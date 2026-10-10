@@ -4,6 +4,7 @@ import ai.neargo.shop.common.ExpressCompanies;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.message.entity.MsgMessage;
+import ai.neargo.shop.message.entity.MchNotifyPref;
 import ai.neargo.shop.message.entity.MsgSceneChannel;
 import ai.neargo.shop.message.notify.SceneChannelRouting;
 import ai.neargo.shop.message.notify.WxSubscribeSender;
@@ -61,6 +62,8 @@ public class NotificationConsumer implements OutboxConsumer {
     private final ObjectMapper json;
     private final SubOrderBuyerPort buyerPort;
     private final ai.neargo.shop.message.notify.WeComOrderAlert weComOrderAlert;
+    private final ai.neargo.shop.message.notify.MerchantNotifyPrefs prefs;
+    private final ai.neargo.shop.spi.notify.SmsPort smsPort;
 
     public NotificationConsumer(MessageService messageService, WxSubscribeSender wxSender,
                                 ai.neargo.shop.message.notify.PushSender pushSender,
@@ -68,7 +71,9 @@ public class NotificationConsumer implements OutboxConsumer {
                                 ai.neargo.shop.spi.user.StoreFavoritePort storeFavoritePort,
                                 SceneChannelRouting routing, ObjectMapper json,
                                 SubOrderBuyerPort buyerPort,
-                                ai.neargo.shop.message.notify.WeComOrderAlert weComOrderAlert) {
+                                ai.neargo.shop.message.notify.WeComOrderAlert weComOrderAlert,
+                                ai.neargo.shop.message.notify.MerchantNotifyPrefs prefs,
+                                ai.neargo.shop.spi.notify.SmsPort smsPort) {
         this.messageService = messageService;
         this.wxSender = wxSender;
         this.pushSender = pushSender;
@@ -78,6 +83,8 @@ public class NotificationConsumer implements OutboxConsumer {
         this.json = json;
         this.buyerPort = buyerPort;
         this.weComOrderAlert = weComOrderAlert;
+        this.prefs = prefs;
+        this.smsPort = smsPort;
     }
 
     @Override
@@ -224,7 +231,7 @@ public class NotificationConsumer implements OutboxConsumer {
             case NotifyScene.GROUP_FAILED -> fanOutToGroup(event, payload, false);
             // ------------------------------------------------------------ B 端
             case NotifyScene.SUB_ORDER_PAID -> {
-                fanOutToStaff(event, text(payload, "entityNo"), ORDER_ROLES,
+                fanOutToStaff(event, text(payload, "entityNo"), text(payload, "storeNo"), ORDER_ROLES,
                         "新订单", "有新的订单待备货，记得按时送到自提点",
                         "/pages/orders/index?tab=PAID",
                         // 来单：App 响铃与微信**都发**（wxFirst=false）—— 厂商通道没报备，App 在后台收不到（通知 TDD §13.3②）
@@ -234,19 +241,29 @@ public class NotificationConsumer implements OutboxConsumer {
                                 "time", String.valueOf(System.currentTimeMillis()),
                                 "tip", "有新订单，请及时备货"), false));
                 /*
-                 * **第四条出口：商家自己的企微群**（TDD-商家企微群来单通知 AC1）。
+                 * 来单这一条**四条腿同时走**（TDD-来单四渠道与商家通知设置 AC1）：
+                 * 上面 fanOutToStaff 里的站内信 / 微信订阅 / App 推送，加这里两条。
                  *
-                 * 与上面三条（站内信 / App 推送 / 微信订阅）并列而不是替代：
-                 * 微信订阅消息**一次授权只够一条**，商家不进小程序就没有额度；
-                 * 而群机器人只要配过一次就一直能发 —— 来单这条最怕漏，所以多一条腿。
+                 * 为什么要这么多条腿：微信订阅**一次授权只够一条**，商家不进小程序就没额度；
+                 * App 的厂商通道没报备，退到后台就收不到；企微群与短信配过一次就一直能发。
+                 * 来单是全链路最怕漏的一条，任一条单独都不够可靠。
                  *
-                 * 商家没配群就什么都不做（{@code MerchantWecomWebhook} 返回空），
-                 * **绝不回落到平台那条 env** —— 理由见那个类的注释。
+                 * 每条各自吞掉自己的失败 —— 冒到 outbox 消费者那里会判整条事件失败并重投，
+                 * 于是站内信被发第二遍。
                  */
-                weComOrderAlert.paid(text(payload, "entityNo"), text(payload, "storeNo"),
-                        text(payload, "subOrderNo"), payload.path("payAmount").asLong(0));
+                String entityNo = text(payload, "entityNo");
+                String storeNo = text(payload, "storeNo");
+                String subOrderNo = text(payload, "subOrderNo");
+                long paid = payload.path("payAmount").asLong(0);
+                if (prefs.on(storeNo, scene, MchNotifyPref.CH_WEBHOOK)) {
+                    weComOrderAlert.paid(entityNo, storeNo, subOrderNo, paid);
+                }
+                if (prefs.on(storeNo, scene, MchNotifyPref.CH_SMS)) {
+                    smsOrderPaid(entityNo, subOrderNo, paid);
+                }
             }
-            case NotifyScene.AFTER_SALE_APPLIED -> fanOutToStaff(event, text(payload, "entityNo"), AFTER_SALE_ROLES,
+            case NotifyScene.AFTER_SALE_APPLIED -> fanOutToStaff(event, text(payload, "entityNo"),
+                    text(payload, "storeNo"), AFTER_SALE_ROLES,
                     "新的售后申请", "买家提交了售后申请，尽早处理更容易协商解决",
                     "/pages/after-sale/index",
                     new WxStaff(WxSubscribePort.SCENE_MCH_AFTER_SALE, Map.of(
@@ -257,7 +274,7 @@ public class NotificationConsumer implements OutboxConsumer {
             case NotifyScene.REVIEW_CREATED -> {
                 int rating = payload.get("rating") == null ? 5 : payload.get("rating").asInt();
                 // 差评单独点名：混在普通评价里会被当成例行夸奖划掉
-                fanOutToStaff(event, text(payload, "entityNo"), REVIEW_ROLES,
+                fanOutToStaff(event, text(payload, "entityNo"), text(payload, "storeNo"), REVIEW_ROLES,
                         rating <= 2 ? "收到差评" : "收到新评价",
                         rating <= 2 ? "有一条 " + rating + " 星评价，回复得当能挽回大多数顾客"
                                 : "有顾客发表了新评价",
@@ -494,14 +511,25 @@ public class NotificationConsumer implements OutboxConsumer {
         return "%.2f元".formatted(minor / 100.0);
     }
 
-    private void fanOutToStaff(SysOutbox event, String entityNo, Set<String> roles,
+    /**
+     * @param storeNo 这件事发生在哪家店 —— **门店级开关要它**
+     *                （TDD-来单四渠道与商家通知设置 §2.2）。历史 outbox payload 里
+     *                可能为 null（售后与评价的 storeNo 是 2026-10-10 才加进事件的），
+     *                那时回落成只受平台总闸管，与改造前一致
+     */
+    private void fanOutToStaff(SysOutbox event, String entityNo, String storeNo, Set<String> roles,
                                String title, String body, String link, WxStaff wxStaff) {
         String scene = event.getEventType();
-        boolean push = routing.enabled(scene, MsgSceneChannel.AUD_B_STAFF, MsgSceneChannel.CH_PUSH);
+        /*
+         * **两级串联**：平台总闸（notify_scene_channel，运营配）× 商家分闸
+         * （mch_notify_pref，店主配）。只问 prefs.on(...) 这一个方法 ——
+         * 自己先问 routing 再问商家的话，串联顺序会在各个调用点分叉
+         * （TDD-来单四渠道与商家通知设置 §2.2）。
+         */
+        boolean push = prefs.on(storeNo, scene, MsgSceneChannel.CH_PUSH);
         boolean ring = push
                 && MsgSceneChannel.LEVEL_RING.equals(routing.pushLevel(scene, MsgSceneChannel.AUD_B_STAFF));
-        boolean wx = wxStaff != null
-                && routing.enabled(scene, MsgSceneChannel.AUD_B_STAFF, MsgSceneChannel.CH_WXSUB);
+        boolean wx = wxStaff != null && prefs.on(storeNo, scene, MsgSceneChannel.CH_WXSUB);
         List<String> userNos = merchantStaffPort.staffUserNos(entityNo, roles);
         for (String userNo : userNos) {
             messageService.pushTo(MsgMessage.RECEIVER_STAFF, userNo, MessageService.TRADE,
@@ -519,6 +547,25 @@ public class NotificationConsumer implements OutboxConsumer {
             } else {
                 pushSender.notify(MsgMessage.RECEIVER_STAFF, userNo, title, body, link);
             }
+        }
+    }
+
+    /**
+     * 来单短信。**只发店主**，失败吞掉只留日志（{@code sys_notify_log} 里已有 FAILED 行）。
+     *
+     * <p>模板没报备时这里每单会写一行 {@code tpl_unconfigured} ——
+     * 那是刻意的：它是「为什么商家没收到短信」唯一的答案，
+     * 静默跳过的话这个问题在线上无从回答。
+     */
+    private void smsOrderPaid(String entityNo, String subOrderNo, long payAmountMinor) {
+        String phone = merchantStaffPort.ownerPhone(entityNo).orElse(null);
+        if (phone == null) {
+            return;     // 没店主号可发 —— 不是失败，没必要留痕
+        }
+        try {
+            smsPort.sendOrderPaid(phone, subOrderNo, "%.2f".formatted(payAmountMinor / 100.0));
+        } catch (RuntimeException e) {
+            log.warn("[notify] 来单短信没发出去 subOrderNo={} {}", subOrderNo, e.toString());
         }
     }
 

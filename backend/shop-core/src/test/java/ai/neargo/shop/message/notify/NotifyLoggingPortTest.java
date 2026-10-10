@@ -76,13 +76,34 @@ class NotifyLoggingPortTest {
         assertThat(row.operatorNo()).isEqualTo("ST-ADMIN");
     }
 
+    /**
+     * 只关心 {@code sendOtp} 的短信通道替身。
+     *
+     * <p>{@link SmsPort} 不再是函数接口（2026-10-10 加了 {@code sendOrderPaid}，
+     * 一种用途一个方法是它的设计约定），所以 lambda 写不了了。
+     * 这个工厂把「只实现 otp」这件事收在一处，而不是在三个用例里各写一个匿名类。
+     */
+    private static SmsPort otp(java.util.function.BiFunction<String, String, SendResult> fn) {
+        return new SmsPort() {
+            @Override
+            public SendResult sendOtp(String phone, String code) {
+                return fn.apply(phone, code);
+            }
+
+            @Override
+            public SendResult sendOrderPaid(String phone, String subOrderNo, String amountYuan) {
+                throw new UnsupportedOperationException("这个替身只管验证码");
+            }
+        };
+    }
+
     @Test
     @DisplayName("★★★ 短信同理：通道拒绝时记 FAILED 并抛")
     void smsFailureIsRecordedThenRethrown() {
         CapturingWriter writer = new CapturingWriter();
-        SmsPort exploding = (phone, code) -> {
+        SmsPort exploding = otp((phone, code) -> {
             throw new SmsPort.SmsException("isv.TEMPLATE_MISSING_PARAMETERS", false);
-        };
+        });
         SmsPort port = new NotifyLoggingSmsPort(exploding, writer);
 
         assertThatThrownBy(() -> port.sendOtp("13900001111", "123456"))
@@ -99,7 +120,7 @@ class NotifyLoggingPortTest {
     @DisplayName("★★ 成功时把通道回执一起记下 —— providerMsgId 是找通道对账的唯一线索")
     void successRecordsProviderReceipt() {
         CapturingWriter writer = new CapturingWriter();
-        SmsPort ok = (phone, code) -> SendResult.of("BizId-123", "SMS_474945291");
+        SmsPort ok = otp((phone, code) -> SendResult.of("BizId-123", "SMS_474945291"));
         SmsPort port = new NotifyLoggingSmsPort(ok, writer);
 
         port.sendOtp("13900001111", "123456");
@@ -115,7 +136,7 @@ class NotifyLoggingPortTest {
     @DisplayName("★★ 装饰器把明文交给 writer —— 掩码是 writer 的职责，两处各写一遍必然分叉")
     void decoratorPassesPlaintextAndWriterMasks() {
         CapturingWriter writer = new CapturingWriter();
-        SmsPort port = new NotifyLoggingSmsPort((p, c) -> SendResult.none(), writer);
+        SmsPort port = new NotifyLoggingSmsPort(otp((p, c) -> SendResult.none()), writer);
 
         port.sendOtp("13900001111", "123456");
 

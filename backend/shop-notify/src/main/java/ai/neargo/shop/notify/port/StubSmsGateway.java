@@ -33,7 +33,7 @@ public class StubSmsGateway implements SmsPort {
 
     private final Deque<Sent> sent = new ArrayDeque<>();
 
-    /** @param code 验证码明文。**只在桩里保留** */
+    /** @param code 验证码明文。**只在桩里保留**。来单短信这里放的是「单号|金额」 */
     public record Sent(String phone, String code) {
     }
 
@@ -67,6 +67,22 @@ public class StubSmsGateway implements SmsPort {
             return "***";
         }
         return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
+    }
+
+    /**
+     * 来单提醒。桩里**也按 KEEP 截断**，与验证码走同一个队列 ——
+     * 分两个队列的话测试要记住该查哪个，而「发给谁」的断言形状是一样的。
+     */
+    @Override
+    public SendResult sendOrderPaid(String phone, String subOrderNo, String amountYuan) {
+        synchronized (sent) {
+            sent.addLast(new Sent(phone, subOrderNo + "|" + amountYuan));
+            while (sent.size() > KEEP) {
+                sent.pollFirst();
+            }
+        }
+        log.debug("[sms-stub] order-paid to {} = {} {}", maskPhone(phone), subOrderNo, amountYuan);
+        return SendResult.none();
     }
 
     /** 供测试断言：最近发出的一条。 */

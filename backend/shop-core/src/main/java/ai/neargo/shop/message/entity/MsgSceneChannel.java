@@ -29,6 +29,12 @@ public class MsgSceneChannel extends BaseEntity {
     public static final String CH_WXSUB = "WXSUB";
     public static final String CH_PUSH = "PUSH";
     public static final String CH_SMS = "SMS";
+    /**
+     * 群机器人 Webhook（企微）。<b>不是发给某个人的</b> —— 受众仍记 B_STAFF，
+     * 因为「这家店的人该不该被这条场景打扰」是同一个决定，
+     * 只是落地时发到整店共用的一个群（TDD-商家企微群来单通知）。
+     */
+    public static final String CH_WEBHOOK = SysNotifyLog.WEBHOOK;
 
     // ---- 推送级别
     public static final String LEVEL_NORMAL = "NORMAL";

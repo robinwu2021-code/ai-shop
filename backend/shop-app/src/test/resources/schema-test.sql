@@ -4635,6 +4635,24 @@ CREATE TABLE IF NOT EXISTS stl_payout
     CONSTRAINT uk_stl_payout_no UNIQUE (payout_no, tenant_no)
 );
 
+CREATE TABLE IF NOT EXISTS mch_notify_pref
+(
+    id         BIGINT(20)  NOT NULL AUTO_INCREMENT,
+    store_no   VARCHAR(64) NOT NULL,
+    scene      VARCHAR(48) NOT NULL,
+    channel    VARCHAR(16) NOT NULL,
+    enabled    TINYINT(4)  NOT NULL DEFAULT 1,
+    tenant_no  VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME    NOT NULL,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME    NOT NULL,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version    BIGINT(20)  NOT NULL DEFAULT 0,
+    deleted    TINYINT(4)  NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_notify_pref UNIQUE (store_no, scene, channel, tenant_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
@@ -9873,3 +9891,16 @@ WHERE NOT EXISTS (
     SELECT 1 FROM notify_scene_channel m
     WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
 );
+INSERT IGNORE INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level,
+                                  tenant_no, created_at, updated_at)
+
+
+SELECT t.scene_code, t.audience, t.channel, 1, 'NORMAL', 'MAIN', NOW(), NOW()
+FROM (SELECT 'SUB_ORDER_PAID' AS scene_code, 'B_STAFF' AS audience, 'SMS' AS channel
+      UNION ALL
+      SELECT 'SUB_ORDER_PAID', 'B_STAFF', 'WEBHOOK') t
+WHERE NOT EXISTS (SELECT 1
+                  FROM notify_scene_channel x
+                  WHERE x.scene_code = t.scene_code
+                    AND x.audience = t.audience
+                    AND x.channel = t.channel);

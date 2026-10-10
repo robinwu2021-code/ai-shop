@@ -245,6 +245,12 @@ shop:
       templates:
         # 阿里云后台报备通过的验证码模板号。缺它一条也发不出去，所以启动即校验
         otp: ${ALI_SMS_TPL_OTP:}
+        # 来单提醒模板（TDD-来单四渠道与商家通知设置 §2.3）。**可选** ——
+        # 阿里云的模板报备是人工审批，列成必需的后果是「审批没下来、生产一重启就起不来」，
+        # 一条通知把整个服务拖下线。缺它只有来单短信这一条发不出去，
+        # 而且会写一行 SMS/FAILED/tpl_unconfigured 留痕，不静默。
+        # 模板文案形如：您有新订单，单号 ${no}，金额 ${amt} 元，请及时备货。
+        order-paid: ${ALI_SMS_TPL_ORDER_PAID:}
   mail:
     stub: ${SHOP_MAIL_STUB:true}
     host: ${MAIL_HOST:smtp.office365.com}

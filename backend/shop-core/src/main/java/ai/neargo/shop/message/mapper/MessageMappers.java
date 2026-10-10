@@ -12,6 +12,11 @@ public final class MessageMappers {
     public interface FaqMapper extends BaseMapper<ai.neargo.shop.message.entity.MsgFaq> {
     }
 
+    /** 商家自己的通知开关（缺行=开，见 {@link ai.neargo.shop.message.entity.MchNotifyPref}） */
+    public interface MchNotifyPrefMapper
+            extends BaseMapper<ai.neargo.shop.message.entity.MchNotifyPref> {
+    }
+
 
     private MessageMappers() {
     }

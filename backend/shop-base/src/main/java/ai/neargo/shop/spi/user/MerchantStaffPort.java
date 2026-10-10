@@ -30,4 +30,17 @@ public interface MerchantStaffPort {
      * @return 商家不存在时给空列表 —— 通知的受众解析失败不该抛错拖住事件消费
      */
     List<String> staffUserNos(String entityNo, Set<String> roles);
+
+    /**
+     * 店主本人的手机号 —— **短信专用**（TDD-来单四渠道与商家通知设置 §2.3）。
+     *
+     * <p>为什么单开一个方法而不是让调用方拿 {@link #staffUserNos} 再去查号：
+     * 短信按条计费，扇给所有能看订单的员工等于按员工数翻倍。
+     * 「只发店主」这条决定要在**受众解析这一层**就定死，
+     * 而不是让每个调用点自己记得「这条只给第一个人」—— 那种约定一定会被下一个人改掉。
+     *
+     * @return 店主的登录手机号；没有店主、号为空、商家不存在都给空
+     *         （通知的受众解析失败不该抛错拖住事件消费）
+     */
+    java.util.Optional<String> ownerPhone(String entityNo);
 }

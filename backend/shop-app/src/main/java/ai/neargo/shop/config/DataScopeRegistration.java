@@ -452,6 +452,17 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
         registry.register("mch_debt_txn", Map.of(
                 ScopeDim.MERCHANT, "entity_no"));
+        /*
+         * 商家自己的通知开关（TDD-来单四渠道与商家通知设置）。
+         *
+         * ⚠️ **发送侧一律显式豁免**（MerchantNotifyPrefs 里全是 executeWithoutScope）：
+         * 读它的是 outbox 消费线程，没有会话 —— 不豁免会 fail-closed 拼成 1=0，
+         * 于是「缺行 = 开」这条默认值反而把所有商家都判成开，看着没事，
+         * 可商家真关掉的那一条也照发，而他点了关却毫无效果。
+         * 登记这一行是为了**运营端将来要看这张表时**有正确的域，不是为发送侧。
+         */
+        registry.register("mch_notify_pref", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
         // 快递代下单的取件单（TDD-快递100商家寄件）。服务层读写一律显式豁免、自己按 entity_no 判归属 ——
         // 商家用的是消费者令牌（维度 SELF），不豁免会拼成 1=0；回调线程则根本没有会话
         registry.register("ord_express_pickup", Map.of(

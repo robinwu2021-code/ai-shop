@@ -10,8 +10,8 @@ package ai.neargo.shop.spi.notify;
  *
  * <p><b>为什么不设计成通用的 {@code send(phone, template, params)}</b>：
  * 那样调用方仍然要知道模板名与参数名，只是把耦合从「模板号」换成「模板名」。
- * 目前真实场景只有验证码一种，就给一个方法；再来第二种时**新增一个方法**，
- * 让通道去决定它对应哪个模板。
+ * 一种用途一个方法，由通道去决定它对应哪个模板 ——
+ * {@link #sendOrderPaid} 就是按这条规矩加的第二个。
  *
  * <p><b>失败语义</b>：发不出去时抛 {@link SmsException}，**不静默吞掉**。
  * 吞掉的表现是「验证码已发送」的提示照常出现，而用户永远等不到那条短信 ——
@@ -35,6 +35,26 @@ public interface SmsPort {
     default SendResult sendOtp(String phone, String code, String bizType, String operatorNo) {
         return sendOtp(phone, code);
     }
+
+    /**
+     * 来单提醒（TDD-来单四渠道与商家通知设置 §2.3）。<b>只发店主</b> ——
+     * 短信按条计费，扇给所有能看订单的员工等于按员工数翻倍。
+     *
+     * <p><b>失败抛 {@link SmsException}，与 {@link #sendOtp} 一致</b>；
+     * 留痕层照样先记后抛。但<b>调用方必须自己吞掉</b> ——
+     * 来单短信只是四条出口之一，让它冒到 outbox 消费者那里会判整条事件失败并重投，
+     * 于是站内信被发第二遍。「吞不吞」是调用方的决定，不是通道的：
+     * 同一个方法在「店主手动测试发一条」那里就该把失败原样抛给他看。
+     *
+     * <p><b>模板没报备时也是抛，而且不去调阿里云</b>：不带 TemplateCode 的请求
+     * 会被拒成一个含糊的参数错误，真正的原因「模板还没报备」就被埋进那条消息里了。
+     * 实现直接抛 {@code tpl_unconfigured} —— 「为什么没收到短信」只有这一处答案。
+     *
+     * @param amountYuan 已经格式化成元的金额字符串（如 {@code 12.34}）。
+     *                   <b>通道不做分→元的换算</b>：那是排版，而排版是调用方与模板约定的事
+     * @return 真的发出去了才是成功；模板缺配、通道拒绝都返回失败
+     */
+    SendResult sendOrderPaid(String phone, String subOrderNo, String amountYuan);
 
 
     /** 通道发送失败。{@code retryable} 区分「重试可能成功」与「这条永远发不出去」。 */

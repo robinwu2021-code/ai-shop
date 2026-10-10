@@ -2,6 +2,7 @@ package ai.neargo.shop.message.notify.port;
 
 import ai.neargo.shop.message.entity.SysNotifyLog;
 import ai.neargo.shop.message.notify.NotifyLogWriter;
+import ai.neargo.shop.spi.notify.NotifyBizType;
 import ai.neargo.shop.spi.notify.SendResult;
 import ai.neargo.shop.spi.notify.SmsPort;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,12 +31,9 @@ public class NotifyLoggingSmsPort implements SmsPort {
         this.writer = writer;
     }
 
-    /**
-     * 短信目前只有验证码这一条业务模板 —— 模拟发送走的也是它
-     * （阿里云只收已报备的模板，测试发一条"自由文本"是发不出去的）。
-     * 报备第二条之后，这里要改成由调用方传（触达能力矩阵 G4）。
-     */
     private static final String TPL_SMS_OTP = "TPL_SMS_OTP";
+    /** 来单提醒（TDD-来单四渠道与商家通知设置）。第二条业务模板 */
+    private static final String TPL_SMS_ORDER_PAID = "TPL_SMS_ORDER_PAID";
 
     @Override
     public SendResult sendOtp(String phone, String code) {
@@ -57,6 +55,25 @@ public class NotifyLoggingSmsPort implements SmsPort {
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.SMS, bizType, phone, null,
                     TPL_SMS_OTP, SysNotifyLog.FAILED, e.getMessage(), null, operatorNo);
+            throw e;
+        }
+    }
+
+    /**
+     * 来单提醒。**先记后抛**，与上面同一个形状 ——
+     * 「吞不吞」是调用方的决定（见 {@link SmsPort#sendOrderPaid}）：
+     * 来单的四条出口要互不拖累，而店主手动「测试发一条」时要把失败原样给他看。
+     */
+    @Override
+    public SendResult sendOrderPaid(String phone, String subOrderNo, String amountYuan) {
+        try {
+            SendResult r = delegate.sendOrderPaid(phone, subOrderNo, amountYuan);
+            writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, r.templateCode(),
+                    TPL_SMS_ORDER_PAID, SysNotifyLog.SENT, null, r.providerMsgId(), null);
+            return r;
+        } catch (RuntimeException e) {
+            writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, null,
+                    TPL_SMS_ORDER_PAID, SysNotifyLog.FAILED, e.getMessage(), null, null);
             throw e;
         }
     }

@@ -68,4 +68,27 @@ public class MerchantStaffPortImpl implements MerchantStaffPort {
             return List.copyOf(userNos);
         });
     }
+
+    /**
+     * ⚠️ 同样绕开数据域（理由见类注释）。
+     *
+     * <p>只取 {@code is_owner=1 AND status=ACTIVE} 的那一个 ——
+     * 停用的账号不该再收到来单短信，而它的 login_phone 还留在表里。
+     */
+    @Override
+    public java.util.Optional<String> ownerPhone(String entityNo) {
+        if (entityNo == null || entityNo.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        return DataScopeContext.executeWithoutScope(() -> {
+            MchAccount owner = accountMapper.selectOne(Wrappers.<MchAccount>lambdaQuery()
+                    .eq(MchAccount::getEntityNo, entityNo)
+                    .eq(MchAccount::getStatus, MchAccount.ACTIVE)
+                    .eq(MchAccount::getIsOwner, true)
+                    .last("limit 1"));
+            return owner == null ? java.util.Optional.<String>empty()
+                    : java.util.Optional.ofNullable(owner.getLoginPhone())
+                            .filter(p -> !p.isBlank());
+        });
+    }
 }

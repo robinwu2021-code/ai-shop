@@ -100,7 +100,13 @@ class BizEndpointPermTest {
             "/biz/message/subscribe",
             // 设备绑定：绑的是当前登录者自己的设备。要权限的话，
             // 收「新订单」提醒的店员反而绑不上（ADR-018）
-            "/biz/push-token", "/biz/push-token/unregister");
+            "/biz/push-token", "/biz/push-token/unregister",
+            /*
+             * 通知设置（TDD-来单四渠道与商家通知设置）。同 /biz/message 的理由：
+             * 作用域由 BizContext.merchantNo 限住，改的永远是自己这家店的设置；
+             * 要权限码的话，恰恰是收不到来单提醒的那个人没法去把开关打开。
+             */
+            "/biz/notify/setting", "/biz/notify/wecom", "/biz/notify/wecom/test");
 
     /**
      * 端点 → 需要的权限码。

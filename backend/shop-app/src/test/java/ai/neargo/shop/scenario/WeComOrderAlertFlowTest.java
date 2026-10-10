@@ -83,10 +83,10 @@ class WeComOrderAlertFlowTest {
     void paidOrderAlertsWeCom() throws Exception {
         String entityNo = "M-WCA-1";
         anOwnerWithDevice("wx-open-wca-1", entityNo, "cid-wca-1");
-        configureGroup(entityNo, GROUP);
+        configureGroup("ST-" + entityNo, GROUP);
 
         eventBus.publish(new OrderEvents.SubOrderPaid("SUB-WCA-1", "SO-WCA-1", entityNo,
-                "ST-WCA-1", "U-BUYER-WCA-1", 12_80L));
+                "ST-" + entityNo, "U-BUYER-WCA-1", 12_80L));
         drainOutbox();
 
         assertThat(botSender.sent()).singleElement().satisfies(s -> {
@@ -102,7 +102,7 @@ class WeComOrderAlertFlowTest {
         anOwnerWithDevice("wx-open-wca-2", entityNo, "cid-wca-2");
 
         eventBus.publish(new OrderEvents.SubOrderPaid("SUB-WCA-2", "SO-WCA-2", entityNo,
-                "ST-WCA-2", "U-BUYER-WCA-2", 500L));
+                "ST-" + entityNo, "U-BUYER-WCA-2", 500L));
         drainOutbox();
 
         assertThat(botSender.sent()).isEmpty();
@@ -113,11 +113,11 @@ class WeComOrderAlertFlowTest {
     void weComFailureDoesNotBlockOtherChannels() throws Exception {
         String entityNo = "M-WCA-3";
         Owner o = anOwnerWithDevice("wx-open-wca-3", entityNo, "cid-wca-3");
-        configureGroup(entityNo, GROUP);
+        configureGroup("ST-" + entityNo, GROUP);
         botSender.failNext(); // 企微那条炸了（限流、URL 失效、网络不通都长这样）
 
         eventBus.publish(new OrderEvents.SubOrderPaid("SUB-WCA-3", "SO-WCA-3", entityNo,
-                "ST-WCA-3", "U-BUYER-WCA-3", 900L));
+                "ST-" + entityNo, "U-BUYER-WCA-3", 900L));
         drainOutbox();
 
         /*
@@ -135,8 +135,9 @@ class WeComOrderAlertFlowTest {
 
     // ------------------------------------------------------------------ 辅助
 
-    private void configureGroup(String entityNo, String url) {
-        channels.upsert(entityNo, NotifyChannel.TYPE_WEBHOOK, NotifyChannel.PROV_WECOM,
+    /** owner_no 存的是**门店号**（2026-10-10 订正：群按门店不按主体） */
+    private void configureGroup(String storeNo, String url) {
+        channels.upsert(storeNo, NotifyChannel.TYPE_WEBHOOK, NotifyChannel.PROV_WECOM,
                 "{}", "{\"webhook\":\"" + url + "\"}", "test");
     }
 

@@ -239,7 +239,7 @@ public class ReviewServiceImpl implements ReviewService {
         recomputeRating(cmd.goodsNo(), item.merchantNo(), item.storeNo());
         // B-N-3：商家要看到新评价，差评（≤2 星）在消费侧单独点名
         eventBus.publish(new ai.neargo.shop.spi.product.ProductEvents.ReviewCreated(
-                r.getReviewNo(), item.merchantNo(), cmd.goodsNo(), cmd.rating()));
+                r.getReviewNo(), item.merchantNo(), item.storeNo(), cmd.goodsNo(), cmd.rating()));
         return toVO(r, false, null);
     }
 

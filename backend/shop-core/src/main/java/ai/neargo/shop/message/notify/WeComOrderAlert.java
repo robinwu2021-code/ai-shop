@@ -42,18 +42,18 @@ public class WeComOrderAlert {
     /**
      * 付款成功的一张子单。
      *
-     * @param entityNo    商家主体号 —— 决定发到**哪个**群
-     * @param storeNo     门店号，用来取门店名；空就回落主体名
+     * @param entityNo    商家主体号 —— 只用来在查不到门店名时回落主体名
+     * @param storeNo     门店号 —— **决定发到哪个群**（2026-10-10 订正：群按门店不按主体）
      * @param subOrderNo  子单号
      * @param payAmountMinor 实付（分）
      * @return 真的发出去了 true。商家没配群、发送失败都是 false（都不抛）
      */
     public boolean paid(String entityNo, String storeNo, String subOrderNo, long payAmountMinor) {
         /*
-         * **先解析 webhook，再去补查门店名与商品**：绝大多数商家没配群（自营阶段只有一家配），
+         * **先解析 webhook，再去补查门店名与商品**：绝大多数门店没配群，
          * 那时候补查是白跑两条 SQL。来单是全站最高频的通知之一，这个顺序不是洁癖。
          */
-        Optional<String> url = webhooks.of(entityNo);
+        Optional<String> url = webhooks.of(storeNo);
         if (url.isEmpty()) {
             return false;
         }

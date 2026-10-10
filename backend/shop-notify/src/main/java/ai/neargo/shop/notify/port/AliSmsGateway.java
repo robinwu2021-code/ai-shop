@@ -61,20 +61,25 @@ public class AliSmsGateway implements SmsPort {
     private final String accessKeySecret;
     private final String signName;
     private final String otpTemplate;
+    /** 来单提醒模板。**可以为空**（阿里云审批没下来），见 requireConfigured 的注释 */
+    private final String orderPaidTemplate;
 
     public AliSmsGateway(@Value("${shop.sms.ali.endpoint:dysmsapi.aliyuncs.com}") String endpoint,
                          @Value("${shop.sms.ali.access-key-id:}") String accessKeyId,
                          @Value("${shop.sms.ali.access-key-secret:}") String accessKeySecret,
                          @Value("${shop.sms.ali.sign:}") String signName,
-                         @Value("${shop.sms.ali.templates.otp:}") String otpTemplate) {
+                         @Value("${shop.sms.ali.templates.otp:}") String otpTemplate,
+                         @Value("${shop.sms.ali.templates.order-paid:}") String orderPaidTemplate) {
         this.endpoint = endpoint;
         this.accessKeyId = accessKeyId;
         this.accessKeySecret = accessKeySecret;
         this.signName = signName;
         this.otpTemplate = otpTemplate;
+        this.orderPaidTemplate = orderPaidTemplate == null ? "" : orderPaidTemplate.trim();
         requireConfigured();
-        log.info("[sms] 阿里云短信已启用 endpoint={} sign={} otpTemplate={}",
-                endpoint, signName, otpTemplate);
+        log.info("[sms] 阿里云短信已启用 endpoint={} sign={} otpTemplate={} orderPaidTemplate={}",
+                endpoint, signName, otpTemplate,
+                this.orderPaidTemplate.isBlank() ? "(未报备，来单短信发不出去)" : this.orderPaidTemplate);
     }
 
     /**
@@ -88,6 +93,16 @@ public class AliSmsGateway implements SmsPort {
         require(accessKeySecret, "ALI_SMS_SK");
         require(signName, "ALI_SMS_SIGN");
         require(otpTemplate, "ALI_SMS_TPL_OTP（阿里云后台报备通过的验证码模板号，形如 SMS_1234567）");
+        /*
+         * **ALI_SMS_TPL_ORDER_PAID 刻意不在这里**（TDD-来单四渠道与商家通知设置 §2.3）。
+         *
+         * 它与验证码那个的区别不是重要程度，是**可得性**：阿里云的模板报备是人工审批，
+         * 几小时到一天。把它列成必需的后果是「审批还没下来，而生产一重启就起不来」——
+         * 一条锦上添花的通知把整个服务拖下线，这个代价和它的价值完全不成比例。
+         *
+         * 缺它的代价限制在一条通道内：sendOrderPaid 返回失败并写一行
+         * SMS/FAILED/tpl_unconfigured，其余三条出口照发。
+         */
     }
 
     private static void require(String v, String envName) {
@@ -148,6 +163,69 @@ public class AliSmsGateway implements SmsPort {
             throw new SmsException("阿里云拒绝：" + respCode + " " + msg, false);
         }
         return SendResult.of(field(resp.body(), "BizId"), otpTemplate);
+    }
+
+    /**
+     * 来单提醒。**不抛** —— 理由见 {@link SmsPort#sendOrderPaid}：
+     * 它只是四条出口之一，抛出去会连带让站内信被重投发第二遍。
+     *
+     * <p>模板没报备（空）时直接返回失败。<b>这一条不去调阿里云</b>：
+     * 不带 TemplateCode 的请求会被拒成一个含糊的参数错误，
+     * 而真正的原因「模板还没报备」就被埋在那条消息里了。
+     */
+    @Override
+    public SendResult sendOrderPaid(String phone, String subOrderNo, String amountYuan) {
+        if (orderPaidTemplate.isBlank()) {
+            log.warn("[sms] 来单短信发不出去：ALI_SMS_TPL_ORDER_PAID 未配（阿里云模板还没报备）");
+            throw new SmsException("tpl_unconfigured", false);
+        }
+        Map<String, String> p = common();
+        p.put("PhoneNumbers", phone);
+        p.put("SignName", signName);
+        p.put("TemplateCode", orderPaidTemplate);
+        p.put("TemplateParam", "{\"no\":\"" + subOrderNo + "\",\"amt\":\"" + amountYuan + "\"}");
+        p.put("Signature", sign("POST&%2F&" + enc(canonicalize(p))));
+        try {
+            HttpResponse<String> resp = post(p);
+            String respCode = field(resp.body(), "Code");
+            if (!"OK".equals(respCode)) {
+                throw new SmsException("阿里云拒绝：" + respCode + " "
+                        + field(resp.body(), "Message"), false);
+            }
+            return SendResult.of(field(resp.body(), "BizId"), orderPaidTemplate);
+        } catch (java.io.IOException e) {
+            throw new SmsException("短信通道网络失败：" + e.getMessage(), true);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SmsException("短信发送被中断", true);
+        }
+    }
+
+    /** 两条用途共用的公共参数（签名所需的那一套） */
+    private Map<String, String> common() {
+        Map<String, String> p = new TreeMap<>();
+        p.put("Action", "SendSms");
+        p.put("Version", "2017-05-25");
+        p.put("Format", "JSON");
+        p.put("RegionId", "cn-hangzhou");
+        p.put("AccessKeyId", accessKeyId);
+        p.put("SignatureMethod", "HMAC-SHA1");
+        p.put("SignatureVersion", "1.0");
+        p.put("SignatureNonce", UUID.randomUUID().toString());
+        p.put("Timestamp", TS.format(Instant.now()));
+        return p;
+    }
+
+    private HttpResponse<String> post(Map<String, String> p)
+            throws java.io.IOException, InterruptedException {
+        String body = p.entrySet().stream()
+                .map(e -> enc(e.getKey()) + "=" + enc(e.getValue()))
+                .reduce((a, b) -> a + "&" + b).orElseThrow();
+        return http.send(HttpRequest.newBuilder(URI.create("https://" + endpoint + "/"))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .timeout(Duration.ofSeconds(10))
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
     }
 
     /** 阿里云要求：按 key 字典序，key 与 value 各自百分号编码后用 = 与 & 连接。 */

@@ -219,7 +219,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
         // B-N-2：商家越早看到售后越可能协商解决。自营单也发 —— 收件的是平台商户的员工
         eventBus.publish(new OrderEvents.AfterSaleApplied(as.getAfterSaleNo(), subOrderNo,
-                sub.getEntityNo(), sub.getUserNo(), cmd.type(), refund));
+                sub.getEntityNo(), sub.getStoreNo(), sub.getUserNo(), cmd.type(), refund));
 
         if (instant) {
             doRefund(as, "极速退");

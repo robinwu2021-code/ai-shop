@@ -186,7 +186,8 @@ public final class ProductEvents {
         }
     }
 
-    public record ReviewCreated(String reviewNo, String entityNo, String goodsNo, int rating)
+    public record ReviewCreated(String reviewNo, String entityNo, String storeNo,
+                                String goodsNo, int rating)
             implements DomainEvent {
         @Override
         public String aggregateType() {

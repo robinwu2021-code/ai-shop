@@ -179,7 +179,7 @@ class WxSubscribeMoreFlowTest {
         grant(o.userNo, WxSubscribePort.SCENE_MCH_AFTER_SALE);
 
         eventBus.publish(new OrderEvents.AfterSaleApplied("AS-WSM-6", "SUB-WSM-6", o.entityNo,
-                "U-BUYER-WSM-6", "REFUND_ONLY", 500L));
+                "ST-WSM-6", "U-BUYER-WSM-6", "REFUND_ONLY", 500L));
         drainOutbox();
 
         assertThat(sentTo(o.openId)).singleElement().satisfies(s -> {
@@ -194,7 +194,8 @@ class WxSubscribeMoreFlowTest {
     void reviewFallsBackToAppWithoutQuota() throws Exception {
         Owner o = anOwnerWithDevice("wx-open-wsm-7", "M-WSM-7", "cid-wsm-7");
 
-        eventBus.publish(new ProductEvents.ReviewCreated("RV-WSM-7", o.entityNo, "G-WSM-7", 1));
+        eventBus.publish(new ProductEvents.ReviewCreated("RV-WSM-7", o.entityNo, "ST-WSM-7",
+                "G-WSM-7", 1));
         drainOutbox();
 
         assertThat(sentTo(o.openId)).isEmpty();

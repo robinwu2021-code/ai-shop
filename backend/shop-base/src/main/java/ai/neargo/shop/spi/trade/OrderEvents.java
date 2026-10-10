@@ -170,9 +170,13 @@ public final class OrderEvents {
      * 售后申请提交。消费方：message（B 端提醒，B-N-2）。
      * <b>发布时机在申请落库之后、任何审核动作之前</b> —— 商家越早看到越可能协商解决，
      * 拖到平台介入时双方都已经在气头上。
+     *
+     * <p><b>{@code storeNo} 是 2026-10-10 补的</b>（用户订正：售后与评价的开关也基于门店）。
+     * 没有它，通知只能按主体级开关发 —— 而那意味着「福田店关掉售后提醒」会连带
+     * 把粮油店的也关掉。历史 payload 里这一格是 null，消费侧据此回落到只走平台总闸。
      */
     public record AfterSaleApplied(String afterSaleNo, String subOrderNo, String entityNo,
-                                   String userNo, String type, long refundMinor)
+                                   String storeNo, String userNo, String type, long refundMinor)
             implements DomainEvent {
         @Override
         public String aggregateType() {
