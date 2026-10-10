@@ -239,7 +239,7 @@ async function runSearch(kw: string) {
  * <p>`redirectTo` 而不是 `navigateTo`：这一页的任务到此为止，
  * 留在栈上的话用户从新建页往回退会又看到它一次。
  */
-async function choose(p: { name?: string; address?: string; lat: number; lng: number }) {
+async function choose(p: { name?: string; address?: string; lat: number; lng: number; communityNo?: string }) {
   /*
    * **浏览模式在这儿分叉。** 选中的那个点当场变成「现在按哪儿看货」，
    * 不进地址簿 —— 地址簿上限 20 条，逛一次存一条很快就满，
@@ -247,7 +247,8 @@ async function choose(p: { name?: string; address?: string; lat: number; lng: nu
    */
   if (browse.value) {
     // 把他刚挑的那个名字一起带上 —— 顶栏要显示它，别只靠后端 resolve（常给不出）
-    await location.useTransient({ lat: p.lat, lng: p.lng }, p.name);
+    // 点的是聚落就把它的号带上：别让「附近第一个」替他做决定（见 useTransient 的参数说明）
+    await location.useTransient({ lat: p.lat, lng: p.lng }, p.name, p.communityNo);
     uni.navigateBack();
     return;
   }
@@ -266,7 +267,10 @@ function chooseHit(h: PlaceSearchHit) {
 
 function chooseCommunity(c: Community) {
   if (c.latE6 == null || c.lngE6 == null) return; // 没坐标的不列，见模板里的 v-if
-  void choose({ name: c.name, address: c.address, lat: c.latE6 / 1e6, lng: c.lngE6 / 1e6 });
+  void choose({
+    name: c.name, address: c.address, lat: c.latE6 / 1e6, lng: c.lngE6 / 1e6,
+    communityNo: c.communityNo,
+  });
 }
 
 function chooseHere() {

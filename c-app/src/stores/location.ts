@@ -421,21 +421,50 @@ export const useLocationStore = defineStore("location", {
      * <p>「没匹配到」因此**不是死路**：他照样能逛、能下单。
      * 回落到「无位置首屏」只留给**连定位都拿不到**的情况。
      */
-    async useTransient(at: { lat: number; lng: number }, name?: string) {
+    /**
+     * @param communityNo 调用方**点的就是某个聚落**时传它（选点页的聚落列表）。
+     *   不传就按坐标解析。★ 以前只按坐标解析：用户点了 A，而该点的「最内层围栏」可能解析不出来，
+     *   于是回落到 `list[0]` —— 绑的是附近第一个，不是他点的那个。
+     *   他点了什么就该是什么，这不需要再推一遍。
+     */
+    async useTransient(at: { lat: number; lng: number }, name?: string, communityNo?: string) {
       this.transientAt = at;
       const community = useCommunityStore();
       const list = await community.loadNearby(at.lat, at.lng).catch(() => [] as never[]);
       const ctx = await api
         .resolveLocation(Math.round(at.lat * 1e6), Math.round(at.lng * 1e6))
         .catch(() => null);
-      const c = list.find((x) => x.communityNo === ctx?.innermostNo) ?? list[0];
+      const c = (communityNo ? list.find((x) => x.communityNo === communityNo) : undefined)
+        ?? list.find((x) => x.communityNo === ctx?.innermostNo) ?? list[0];
       const p = c?.pickups?.[0];
       /*
        * **只要解析出聚落就绑**。此前是 `if (c && p)` ——
        * 聚落没有自提点时整个不绑，用户静默看不到任何货。
        * 点由下单时匹配，这里不再替他挑一个（那等于让数组顺序决定佣金归谁）。
        */
-      if (c) await community.bind(c, p);
+      if (c) {
+        await community.bind(c, p);
+        this.coarseRegion = null;   // 有聚落了，上一次留下的「区」不再参与（见 ensureCoarseRegion 的早退）
+      } else {
+        /*
+         * ★ **这个点上没有我们的聚落 —— 必须把旧归属清掉。**
+         *
+         * 2026-10-10 生产实况：用户在小程序里切到「景滑村」（山西运城临猗县，是地图 POI 不是我们的聚落），
+         * `loadNearby` 回 0 条，于是 `c` 为空、`bind` 根本不执行，**上一次在深圳绑的那个聚落原封不动**。
+         * 而首页算查询参数是 `communityNo ? ... : regionCode` —— 旧聚落在，区划码就完全不参与。
+         * 结果：顶栏写着「景滑村」，首页列的却是深圳的货（金龙鱼、五得利），
+         * 而那几家店的经营范围只框了嘉逸花园。不报错、不空屏，两种状态长得一模一样。
+         *
+         * 清掉之后首页回落到**这个点的区**，看到的是真能送到这儿的货。
+         * 与 `switchTo` 那段「清掉的话用户会发现换了个地址、商品全没了」不冲突：
+         * 那说的是**没有坐标**的地址（推不出任何位置，只能保留现状）；这里有坐标、
+         * 而且明确解析出了另一个区，不是「不知道他在哪」，是「知道他在哪、那儿没有我们的聚落」。
+         */
+        community.clear();
+        this.coarseRegion = ctx?.regionCode
+          ? { code: ctx.regionCode, name: ctx.regionName ?? "" }
+          : null;
+      }
       /*
        * **顶栏那一行是用户刚挑的那个名字。**
        *
