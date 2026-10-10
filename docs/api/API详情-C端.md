@@ -532,6 +532,8 @@
 | `keyword` | query | `string` | 否 | 搜索关键词 |
 | `communityNo` | query | `string` | 否 | 社区单号 |
 | `regionCode` | query | `string` | 否 | — |
+| `latE6` | query | `number` | 否 | — |
+| `lngE6` | query | `number` | 否 | — |
 
 **出参**（`data`）
 
@@ -547,13 +549,17 @@
 
 #### GET `/mp/goods/{goodsNo}`
 
-商品详情（可带 communityNo 判送达）　🔒
+商品详情（可带 communityNo 与 latE6/lngE6 判送达）　🔒
 
 **入参**
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |---|---|---|:---:|---|
 | `goodsNo` | path | `string` | 是 | 商品单号 |
+| `communityNo` | query | `string` | 否 | 社区单号 |
+| `storeNo` | query | `string` | 否 | — |
+| `latE6` | query | `number` | 否 | — |
+| `lngE6` | query | `number` | 否 | — |
 
 **出参**（`data`）
 
@@ -692,6 +698,8 @@
 |---|---|---|:---:|---|
 | `communityNo` | query | `string` | 否 | 社区单号 |
 | `regionCode` | query | `string` | 否 | — |
+| `latE6` | query | `number` | 否 | — |
+| `lngE6` | query | `number` | 否 | — |
 | `size` | query | `number` | 否 | 每页条数 |
 
 **出参**（`data`）
@@ -2546,6 +2554,33 @@
 | `total` | `integer` | 是 | — |
 | `page` | `integer` | 是 | — |
 | `size` | `integer` | 是 | — |
+
+
+### track
+
+#### GET `/mp/track`
+
+免登录看件（令牌即授权）　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`TrackView`](#trackview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `subOrderNo` | `string` | 是 | — |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
+| `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
+| `receiverName` | `string,null` | 否 | — |
+| `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
+| `receiverAddress` | `string,null` | 否 | — |
+| `expressCompany` | `string,null` | 否 | — |
+| `expressNo` | `string,null` | 否 | — |
+| `items` | [`TrackItem`](#trackitem)\[\] | 是 | — |
+| `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
 
 
 ### user
@@ -4891,6 +4926,35 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 | `from` | `string,null` | 否 | 出发城市名 |
 | `cur` | `string,null` | 否 | 当前所在城市名 |
 | `to` | `string,null` | 否 | 目的城市名 |
+
+### TrackItem
+
+看件页的商品摘要 —— **不含价格**。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `title` | `string` | 否 | — |
+| `cover` | `string` | 否 | — |
+| `spec` | `string` | 否 | — |
+| `qty` | `number` | 是 | — |
+
+### TrackView
+
+免登录看件视图（TDD-收件人物流触达与分享裂变 §3）。后端 `GET /mp/track?t=<token>` 返回。 <p>**这是一份删过的订单详情**：发给收件人的看件链接会被转发、截图， 所以只放物流 + 收货 + 店名 + 商品摘要 —— 价格、买家身份不下发（后端就不给）。 手机号是**掩码**的（后端出 `138****8000`）。 <p>令牌无效 / 过期时后端返回 `null`，端上据此显示「链接已失效」。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `subOrderNo` | `string` | 是 | — |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
+| `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
+| `receiverName` | `string,null` | 否 | — |
+| `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
+| `receiverAddress` | `string,null` | 否 | — |
+| `expressCompany` | `string,null` | 否 | — |
+| `expressNo` | `string,null` | 否 | — |
+| `items` | [`TrackItem`](#trackitem)\[\] | 是 | — |
+| `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
 
 ### TrafficSource
 

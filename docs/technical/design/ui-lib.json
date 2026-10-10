@@ -257,8 +257,8 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 519,
-        "c-app": 82
+        "b-app": 520,
+        "c-app": 95
       }
     },
     {
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 430,
+        "b-app": 431,
         "c-app": 83
       }
     },
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 407,
-        "c-app": 269
+        "b-app": 411,
+        "c-app": 282
       }
     },
     {
@@ -492,7 +492,7 @@
       },
       "usage": {
         "b-app": 133,
-        "c-app": 51
+        "c-app": 54
       }
     },
     {
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 118,
-        "c-app": 90
+        "c-app": 91
       }
     },
     {
@@ -536,7 +536,7 @@
       },
       "usage": {
         "b-app": 123,
-        "c-app": 32
+        "c-app": 33
       }
     },
     {
@@ -618,7 +618,7 @@
       },
       "usage": {
         "b-app": 230,
-        "c-app": 84
+        "c-app": 89
       }
     },
     {
@@ -1017,7 +1017,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 114,
+        "b-app": 113,
         "c-app": 14
       }
     },
@@ -1078,7 +1078,7 @@
       },
       "usage": {
         "b-app": 349,
-        "c-app": 147
+        "c-app": 151
       }
     },
     {
@@ -1141,7 +1141,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 152,
+        "b-app": 157,
         "c-app": 54
       }
     },
@@ -1235,7 +1235,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 69,
+        "b-app": 71,
         "c-app": 25
       }
     },
@@ -1403,8 +1403,8 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 175,
-        "c-app": 90
+        "b-app": 176,
+        "c-app": 91
       }
     },
     {
@@ -1439,8 +1439,8 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 583,
-        "c-app": 198
+        "b-app": 584,
+        "c-app": 203
       }
     },
     {
@@ -1472,7 +1472,7 @@
       },
       "usage": {
         "b-app": 324,
-        "c-app": 96
+        "c-app": 100
       }
     },
     {
@@ -1487,7 +1487,7 @@
         "padding": "8px 0"
       },
       "usage": {
-        "b-app": 27,
+        "b-app": 28,
         "c-app": 7
       }
     },
@@ -2126,7 +2126,7 @@
       ],
       "usage": {
         "b-app": 61,
-        "c-app": 35,
+        "c-app": 36,
         "lib": 1
       },
       "note": "空态",
@@ -2544,8 +2544,8 @@
         "immersive?: boolean"
       ],
       "usage": {
-        "b-app": 88,
-        "c-app": 40,
+        "b-app": 89,
+        "c-app": 41,
         "lib": 1
       },
       "note": "页面外壳",
@@ -2926,7 +2926,7 @@
       ],
       "usage": {
         "b-app": 1,
-        "c-app": 1,
+        "c-app": 2,
         "lib": 0
       },
       "note": "物流轨迹（TDD-物流轨迹多渠道；原型 prototypes/logistics-trace.html s01–s03、",
@@ -4894,10 +4894,31 @@
         "biz-scope-text",
         "biz-store-tag"
       ],
-      "libClassHits": 102,
+      "libClassHits": 109,
       "localSelectors": 26,
       "localCssLines": 100,
       "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "store-scope-polygon",
+      "key": "b-app/store-scope-polygon",
+      "file": "b-app/src/pages/store-scope-polygon/index.vue",
+      "components": [
+        "sh-scaffold"
+      ],
+      "libClassHits": 8,
+      "localSelectors": 13,
+      "localCssLines": 67,
+      "rolled": [
+        {
+          "id": "listrow",
+          "label": "横排行",
+          "lib": ".sh-row",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -5382,9 +5403,9 @@
         "sh-scaffold",
         "sh-trace"
       ],
-      "libClassHits": 144,
-      "localSelectors": 38,
-      "localCssLines": 151,
+      "libClassHits": 155,
+      "localSelectors": 39,
+      "localCssLines": 152,
       "rolled": []
     },
     {
@@ -5524,6 +5545,21 @@
       "libClassHits": 56,
       "localSelectors": 34,
       "localCssLines": 154,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "track",
+      "key": "c-app/track",
+      "file": "c-app/src/pages/track/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold",
+        "sh-trace"
+      ],
+      "libClassHits": 39,
+      "localSelectors": 9,
+      "localCssLines": 9,
       "rolled": []
     },
     {
@@ -5995,6 +6031,16 @@
       ]
     },
     {
+      "id": "listrow",
+      "label": "横排行",
+      "lib": ".sh-row",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+      "pages": [
+        "b-app/store-scope-polygon"
+      ]
+    },
+    {
       "id": "uploader",
       "label": "图片上传格",
       "lib": "sh-uploader",
@@ -6009,7 +6055,7 @@
     "tokens": 16,
     "blocks": 81,
     "components": 40,
-    "pages": 157,
+    "pages": 159,
     "gapKinds": 2
   }
 }
