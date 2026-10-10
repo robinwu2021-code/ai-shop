@@ -7,6 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import ai.neargo.shop.trade.mapper.TradeMappers.SeqMapper;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -34,6 +37,10 @@ class OrderNoGeneratorTest {
     private OrderNoGenerator gen;
     @Autowired
     private SeqSegmentSource source;
+    @Autowired
+    private SeqMapper seqMapper;
+    @Autowired
+    private PlatformTransactionManager txm;
 
     /** 同一小时的毫秒（固定住 yyMMddHH，只看尾 4 位序列） */
     private static final long HOUR_T = 1_760_000_000_000L;
@@ -142,6 +149,29 @@ class OrderNoGeneratorTest {
         Set<Integer> uniq = new HashSet<>(out);
         assertThat(out).as("丢了号或多发了号").hasSize(threads * each);
         assertThat(uniq).as("有重复号（并发发号撞了）").hasSize(threads * each);
+    }
+
+    @Test
+    @DisplayName("★★★ 领段独立提交：外层事务回滚，DB 游标也不退（号领了就不重用）")
+    void claimCommitsEvenIfOuterRolls() {
+        // 先确保 ord_main 存在、读到基线
+        source.claim("ord_main", 1);
+        long before = seqMapper.peek("ord_main");
+
+        // 在一个**会回滚**的外层事务里取号（触发领新段）
+        new TransactionTemplate(txm).execute(status -> {
+            for (int i = 0; i < 12; i++) {   // 跨段，必触发至少一次 claim
+                gen.mainOrderNo(HOUR_T);
+            }
+            status.setRollbackOnly();
+            return null;
+        });
+
+        long after = seqMapper.peek("ord_main");
+        assertThat(after)
+                .as("领段必须独立提交 —— 外层回滚了，游标也不能退回（退回就会重号）。"
+                        + "撤回 REQUIRES_NEW 改回 REQUIRED，这里 after==before → 红")
+                .isGreaterThan(before);
     }
 
     @Test
