@@ -401,6 +401,11 @@ export interface ShopApi {
    */
   trackMiniLink(t: string): Promise<{ url: string } | null>;
   /**
+   * 小程序侧看件：**要登录**，且登录手机号==收货号才返回；非本人后端回 FORBIDDEN(前端据此提示)。
+   * H5 用 track（免登录收窄）；小程序绑手机号后用这条。
+   */
+  trackMine(t: string): Promise<TrackView>;
+  /**
    * 物流页：点「查看物流」时调（TDD-物流模块 批 3）。小程序 + 微信支付单会顺带向微信校正一次状态
    * （10 分钟内不重复）。不是快递 / 还没发货 → null
    */

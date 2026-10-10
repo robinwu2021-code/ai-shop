@@ -27,6 +27,8 @@ export default {
     noTrace: "Shipped by the merchant, tracking updates soon",
     viewHint: "A parcel on its way to you — follow its progress here",
     openInMini: "Open in Mini Program",
+    notRecipientTitle: "Not addressed to you",
+    notRecipientTip: "The phone you signed in with differs from the recipient. Sign in with the recipient\u2019s phone to view.",
   },
   common: {
     later: "Later",

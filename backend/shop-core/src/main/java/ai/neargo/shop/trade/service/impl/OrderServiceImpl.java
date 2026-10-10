@@ -2336,6 +2336,37 @@ public class OrderServiceImpl implements OrderService {
                 traceOf(sub, surfaceOf(client)));
     }
 
+    @Override
+    public ai.neargo.shop.trade.dto.TrackVO trackForRecipient(String subOrderNo, String client) {
+        OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1"));
+        if (sub == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        // **登录手机号 == 收货号才给看**（小程序绑定墙，用户 2026-10-10）。
+        // 登录号取当前 C 端账号的手机号；两边都归一到后 11 位数字再比，躲开格式差异
+        String loginPhone = userPort.phoneOf(SecurityUtils.currentUserNo()).orElse(null);
+        if (!samePhone(loginPhone, sub.getReceiverPhone())) {
+            throw BizException.of(ErrorCode.TRACK_NOT_RECIPIENT);
+        }
+        return trackBySubOrder(subOrderNo, client);
+    }
+
+    /** 手机号比对：各取末 11 位数字再比。空、位数不足一律当不一致（宁可拒看也不错给） */
+    private static boolean samePhone(String a, String b) {
+        String na = digitsTail11(a);
+        String nb = digitsTail11(b);
+        return na != null && na.equals(nb);
+    }
+
+    private static String digitsTail11(String s) {
+        if (s == null) {
+            return null;
+        }
+        String d = s.replaceAll("\\D", "");
+        return d.length() < 11 ? null : d.substring(d.length() - 11);
+    }
+
     /**
      * 售后未闭环的状态 —— 与 {@code SettleSourcePortImpl.AFTER_SALE_OPEN} 同一份口径。
      *

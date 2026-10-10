@@ -10,13 +10,17 @@ import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
 import { statusTone } from "@shared/strategies/order-view";
 import { traceStepKey } from "@shared/strategies/trace-step";
 import { api } from "@/api";
+import { ApiError } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
+import { useUserStore } from "@/stores/user";
 import type { TrackView } from "@shared/types";
 
 const { t } = useI18n();
 const token = ref("");
 const view = ref<TrackView | null>(null);
 const loaded = ref(false);
+// 小程序侧：登录手机号≠收货号时为 true，页面提示「这单不是寄给你的」
+const notRecipient = ref(false);
 
 onLoad((q) => {
   token.value = (q?.t as string) ?? "";
@@ -25,10 +29,29 @@ onLoad((q) => {
 
 async function load() {
   loaded.value = false;
+  notRecipient.value = false;
   try {
+    // #ifdef MP-WEIXIN
+    // 小程序：进来先绑手机号（走登录页），再按「本人」校验看件（TDD §3）。
+    const user = useUserStore();
+    if (!user.isLogin) {
+      loaded.value = true;
+      uni.redirectTo({
+        url: `${ROUTES.login}?redirect=${encodeURIComponent(ROUTES.track + "?t=" + token.value)}`,
+      });
+      return;
+    }
+    view.value = token.value ? await api.trackMine(token.value) : null;
+    // #endif
+    // #ifndef MP-WEIXIN
+    // H5：免登录收窄视图，谁都能看一眼
     view.value = token.value ? await api.track(token.value) : null;
-  } catch {
-    // 看件是只读页，拉不到就当失效处理，不弹错
+    // #endif
+  } catch (e) {
+    // 403 = 登录号与收货号不一致（非本人）；其余当失效
+    if (e instanceof ApiError && e.code === 80103) {
+      notRecipient.value = true;
+    }
     view.value = null;
   } finally {
     loaded.value = true;
@@ -69,7 +92,12 @@ onShareAppMessage(() => ({
   <sh-scaffold title-key="track.title">
     <!-- 失效：令牌错 / 过期 / 订单没了。只读页，直说 -->
     <sh-empty
-      v-if="loaded && !view"
+      v-if="loaded && !view && notRecipient"
+      :text="String($t('track.notRecipientTitle'))"
+      :tip="String($t('track.notRecipientTip'))"
+    ></sh-empty>
+    <sh-empty
+      v-else-if="loaded && !view"
       :text="String($t('track.invalidTitle'))"
       :tip="String($t('track.invalidTip'))"
     ></sh-empty>

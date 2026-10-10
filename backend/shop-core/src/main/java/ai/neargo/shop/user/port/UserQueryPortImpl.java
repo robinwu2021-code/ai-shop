@@ -153,6 +153,18 @@ public class UserQueryPortImpl implements UserQueryPort {
     }
 
     @Override
+    public java.util.Optional<String> phoneOf(String userNo) {
+        if (userNo == null || userNo.isBlank()) {
+            return Optional.empty();
+        }
+        UsrAccount u = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                        .eq(UsrAccount::getUserNo, userNo).last("limit 1")));
+        return Optional.ofNullable(u == null ? null : u.getPhone())
+                .filter(p -> !p.isBlank());
+    }
+
+    @Override
     public java.util.Optional<String> communityOf(String userNo) {
         if (userNo == null || userNo.isBlank()) {
             return java.util.Optional.empty();

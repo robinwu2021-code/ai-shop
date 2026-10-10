@@ -55,6 +55,22 @@ public class MpTrackController {
      * 发布了看件页、且 {@code urllink} 真通道开着（{@code SHOP_WX_URLLINK_STUB=false}）才有；
      * 在那之前这里恒为空，H5 只展示看件内容、不露一个点不动的按钮。
      */
+    /**
+     * 小程序侧的看件：**要登录**（绑过手机号），且登录号==收货号才返回（否则 FORBIDDEN）。
+     * H5 走上面的 /mp/track（免登录收窄）；小程序进来先绑手机号再调这条。
+     */
+    @GetMapping("/mp/track/mine")
+    public TrackVO trackMine(@RequestParam(value = "t", required = false) String t,
+                             @RequestHeader(value = "X-Client", required = false) String client) {
+        // **先要登录再验票**：这条是 REQUIRES_LOGIN，鉴权必须排在验票之前，
+        // 否则匿名无票探测会先撞「验票 NOT_FOUND」拿到 200 信封、而不是 401（MpEndpointAuthTest 据此判它要不要登录）。
+        ai.neargo.shop.auth.SecurityUtils.currentUserNo();
+        String subOrderNo = token.verify(t)
+                .orElseThrow(() -> ai.neargo.shop.common.BizException.of(
+                        ai.neargo.shop.common.ErrorCode.NOT_FOUND));
+        return orderService.trackForRecipient(subOrderNo, client);
+    }
+
     @GetMapping("/mp/track/mini-link")
     public MiniLink miniLink(@RequestParam(value = "t", required = false) String t) {
         return token.verify(t)

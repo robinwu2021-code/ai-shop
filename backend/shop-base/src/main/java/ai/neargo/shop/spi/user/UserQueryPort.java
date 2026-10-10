@@ -64,6 +64,15 @@ public interface UserQueryPort {
     java.util.Optional<String> communityOf(String userNo);
 
     /**
+     * 这个用户绑定的手机号（明文，归一化后 11 位）。查不到为空。
+     *
+     * <p>给免登录看件的「校验收货人本人」用（TDD-收件人物流触达 §3）：进小程序绑手机号后，
+     * 后端比对「登录用户的手机号 == 订单收货号」一致才展示。只这一处跨域要它，
+     * 加在现成的 user 查询端口上，不新开端口。
+     */
+    java.util.Optional<String> phoneOf(String userNo);
+
+    /**
      * 收货地址的坐标健康度。**只给聚合数，不给明细** ——
      * 地址是个人信息，运营看总数就够判断「分母有多脏」，没有理由逐条看。
      *

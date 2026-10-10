@@ -83,6 +83,8 @@ class MpEndpointAuthTest {
             "GET /mp/order/{orderNo}",
             // 物流页（TDD-物流模块 批 3）：先按当前登录人查子单再问物流
             "GET /mp/order/{orderNo}/trace",
+            // 小程序侧看件：要登录(绑过手机号)且本人才看，匿名调 401
+            "GET /mp/track/mine",
             "GET /mp/order/{orderNo}/pay-result",
             // 收银台的支付方式列表（C-1）：要登录 —— 它按下单的商家算，是这个人的单
             "GET /mp/order/{orderNo}/pay-method",

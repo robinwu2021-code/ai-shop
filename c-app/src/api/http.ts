@@ -200,6 +200,7 @@ export const httpApi: ShopApi = {
   orderDetail: (orderNo) => call<Order>("orderDetail", { orderNo }),
   track: (t) => call<TrackView | null>("track", undefined, { t }),
   trackMiniLink: (t) => call<{ url: string } | null>("trackMiniLink", undefined, { t }),
+  trackMine: (t) => call<TrackView>("trackMine", undefined, { t }),
   orderTrace: (orderNo) => call<ShipmentTrace | null>("orderTrace", { orderNo }),
   cancelOrder: (orderNo) => call<Order>("cancelOrder", { orderNo }),
   applyAfterSale: (orderNo, reason, images, type) =>

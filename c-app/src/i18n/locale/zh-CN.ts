@@ -27,6 +27,8 @@ export default {
     noTrace: "商家已发货，物流信息稍后更新",
     viewHint: "这是寄给你的一笔订单，可查看物流进度",
     openInMini: "在小程序中打开",
+    notRecipientTitle: "这单不是寄给你的",
+    notRecipientTip: "当前登录的手机号与收货人不一致，换收货人手机号登录后可查看。",
   },
   common: {
     later: "以后再说",

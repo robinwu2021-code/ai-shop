@@ -1247,7 +1247,14 @@ public enum ErrorCode {
     /** 该用户没有可用的微信订阅额度，测试会白发（发出去也会被微信以 43101 拒） */
     NOTIFY_WX_QUOTA_EMPTY(80101, "err.notify.wx_quota_empty"),
     /** 该用户没有绑定 App 设备：没装、没登录过 App，或已登出解绑 */
-    NOTIFY_NO_DEVICE(80102, "err.notify.no_device");
+    NOTIFY_NO_DEVICE(80102, "err.notify.no_device"),
+
+    /**
+     * 看件：登录手机号与收货号不一致（非本人，TDD-收件人物流触达 §3）。
+     * <b>刻意不用 FORBIDDEN(10403)</b>：那个在前端 FORBIDDEN_CODES 里会触发全局「无权限」处理（跳登录），
+     * 而「非本人」要的是页面提示「这单不是寄给你的」，不是登出 —— 用它会把人踢进登录死循环。
+     */
+    TRACK_NOT_RECIPIENT(80103, "err.track.not_recipient");
 
     // ---- 9xxxx 保留给电子元器件，**本仓库不要再用** ----
     // 2026-09-30 元器件独立成项目 ai-hxkey，9xxxx 整段搬到 ai-hxkey 的 ElecErrorCode（码值不变，端上按码分流）。

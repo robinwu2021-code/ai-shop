@@ -203,6 +203,18 @@ public interface OrderService {
     ai.neargo.shop.trade.dto.TrackVO trackBySubOrder(String subOrderNo, String client);
 
     /**
+     * 校验版看件（TDD-收件人物流触达 §3，小程序侧）：**要登录，且登录手机号==收货号才给看**。
+     *
+     * <p>与 {@link #trackBySubOrder}（H5 免登录收窄视图）的区别：小程序里进来要先绑手机号，
+     * 绑了只有「本人」才展示 —— 用户 2026-10-10：「进入小程序需要绑定手机号，校验一致才看」。
+     * 收货号在订单上，登录号取当前 C 端用户的账号手机号。
+     *
+     * @throws ai.neargo.shop.common.BizException NOT_FOUND 子单不存在 / 令牌无对应单；
+     *         FORBIDDEN 登录手机号与收货号不一致（非本人）
+     */
+    ai.neargo.shop.trade.dto.TrackVO trackForRecipient(String subOrderNo, String client);
+
+    /**
      * @param items       下单行；为空时取购物车勾选行
      * @param fulfillment 履约方式：STORE_PICKUP / NEIGHBOR_PICKUP / MERCHANT_DELIVERY / EXPRESS
      * @param usePoints   想用多少积分。<b>只是意愿值</b> —— 服务端按
