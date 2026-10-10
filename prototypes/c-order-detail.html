@@ -9,14 +9,14 @@
 
 <div class="wrap">
 <header class="top">
-  <div class="eyebrow">买家小程序 · 界面原型 · 2026-10-10</div>
+  <div class="eyebrow">买家小程序 · 界面原型 · v2 2026-10-10</div>
   <h1>订单详情：一眼看懂「货到哪、我该做什么」</h1>
-  <p class="sub">重排订单详情页，参考京东/淘宝与 B 端 App 的物流卡。四态各一屏：待付款 / 待发货 / 已发货(含物流) / 已完成。核心是把「状态 + 物流 + 收货」提到最顶，操作沉到底部常驻条。</p>
+  <p class="sub">v2 修两件在真机上才看出来的事：① <b>「查看物流」没有入口</b> —— 原设计只在微信插件态给入口，而插件未开通（48001），于是普通快递单根本点不进轨迹；现在改成<b>只要有运单就恒给入口</b>，并落到一张独立的物流详情页。② <b>吸底条与页内按钮重复</b> —— 「再来一单 / 申请售后」同时出现在页尾那一排和吸底条里，某些状态下吸底条自己两颗还都是「再来一单」；现在<b>操作只有一处</b>：吸底条是唯一的操作区，页内不再排按钮。</p>
 </header>
 
 <section>
   <div class="sec-head"><span class="sec-num">01 — 04</span><h2>四个状态，同一套骨架</h2></div>
-  <div class="sec-note">从上到下恒定：① 状态头（大字状态 + 一句「接下来」）② 物流（已发货时并进状态卡：最新节点+承运商单号+查看物流）③ 收货地址 ④ 店铺 + 商品 ⑤ 订单信息（单号/下单时间，可复制）⑥ 金额 ⑦ 底部操作条（随状态变）。</div>
+  <div class="sec-note">从上到下恒定：① 状态头（大字状态 + 一句「接下来」+ 有运单就给「查看物流」）② 收货 / 自提 ③ 店铺 + 商品 ④ 金额 ⑤ 订单信息（单号 / 时间，可复制）⑥ 吸底操作条（随状态变，且<b>只在这里</b>）。状态头只铺<b>最新一条</b>轨迹，明细全部交给 05 那张独立页 —— 详情页不再内嵌整条时间线。</div>
   <div class="grid">
 
     <figure id="s01">
@@ -26,13 +26,13 @@
           <div class="card ostat wait"><div class="frow"><span class="k"><b>等待付款</b></span><span class="v num">14:58</span></div><div class="frow"><span class="k meta">超时未付将自动取消，名额释放</span></div></div>
           <div class="card"><div class="frow"><span class="k">🏠 武国斌 185****8359</span><span class="v meta">›</span></div><div class="frow"><span class="k meta">广东省深圳市龙华新区 招商锦绣观园 5-10F</span></div></div>
           <div class="card"><div class="hd">虹选粮油</div><div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 约10斤</span><div class="ln"><span class="pr num">¥50.00</span><span class="meta">×1</span></div></div></div></div>
-          <div class="card"><div class="frow"><span class="k">订单号</span><span class="v meta num">SUB…2260 <span class="go">复制</span></span></div><div class="frow"><span class="k">下单时间</span><span class="v meta num">10-09 20:51</span></div></div>
           <div class="card"><div class="frow"><span class="k">商品金额</span><span class="v num">¥50.00</span></div><div class="frow"><span class="k">运费</span><span class="v num">免运费</span></div></div>
+          <div class="card"><div class="frow"><span class="k">订单号</span><span class="v meta num">SUB…2260 <span class="go">复制</span></span></div><div class="frow"><span class="k">下单时间</span><span class="v meta num">10-09 20:51</span></div></div>
         </div>
-        <div class="foot"><span class="meta">应付 <b class="num hot">¥50.00</b></span><div class="btn sec">取消</div><div class="btn main">去付款</div></div>
+        <div class="foot"><span class="meta">应付 <b class="num hot">¥50.00</b></span><div class="btn sec">取消订单</div><div class="btn main">去支付</div></div>
       </div>
-      <figcaption class="cap"><b>01 待付款</b>状态头给倒计时，底部主操作「去付款」。</figcaption>
-      <p class="why">状态头用一句「接下来会发生什么」替代只说此刻的「待付款」——京东淘宝都这么做。倒计时放状态头右侧，不再混进金额行。</p>
+      <figcaption class="cap"><b>01 待付款</b>状态头给倒计时；吸底条「取消订单 / 去支付」。</figcaption>
+      <p class="why">状态头用一句「接下来会发生什么」替代只说此刻的「待付款」。倒计时在状态头右侧，不混进金额行。此态没有运单，所以状态头右上<b>不出现</b>「查看物流」——不露点不动的入口。</p>
     </figure>
 
     <figure id="s02">
@@ -42,46 +42,95 @@
           <div class="card ostat paid"><div class="frow"><span class="k"><b>商家备货中</b></span></div><div class="frow"><span class="k meta">商家接单后尽快发货，发货后可查物流</span></div></div>
           <div class="card"><div class="frow"><span class="k">🏠 武国斌 185****8359</span><span class="v meta">›</span></div><div class="frow"><span class="k meta">广东省深圳市龙华新区 招商锦绣观园 5-10F</span></div></div>
           <div class="card"><div class="hd">虹选粮油</div><div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 约10斤</span><div class="ln"><span class="pr num">¥50.00</span><span class="meta">×1</span></div></div></div></div>
-          <div class="card"><div class="frow"><span class="k">订单号</span><span class="v meta num">SUB…2260 <span class="go">复制</span></span></div><div class="frow"><span class="k">支付时间</span><span class="v meta num">10-09 20:52</span></div></div>
           <div class="card"><div class="frow"><span class="k">实付</span><span class="v num">¥40.00</span></div></div>
+          <div class="card"><div class="frow"><span class="k">订单号</span><span class="v meta num">SUB…2260 <span class="go">复制</span></span></div><div class="frow"><span class="k">支付时间</span><span class="v meta num">10-09 20:52</span></div></div>
         </div>
-        <div class="foot"><span class="meta">预计 1-2 天发货</span><div class="btn sec">申请退款</div><div class="btn">再买一单</div></div>
+        <div class="foot"><span class="meta">预计 1-2 天发货</span><div class="btn main">申请退款</div></div>
       </div>
-      <figcaption class="cap"><b>02 待发货</b>还没有物流卡；状态头说清「在等什么」。</figcaption>
-      <p class="why">待发货没有物流可看，所以不放物流卡（京东淘宝同理），用状态头副文案告诉买家「商家接单后尽快发货」。</p>
+      <figcaption class="cap"><b>02 待发货</b>没有物流可看，也只有一颗操作。</figcaption>
+      <p class="why">待发货没有物流（京东淘宝同理），状态头副文案告诉他「在等什么」。<b>吸底条只给一颗</b>：此态唯一有意义的动作是申请退款 —— 原设计硬凑两颗，第二颗「再来一单」与页尾那排重复。只有一颗时它占满宽。</p>
     </figure>
 
     <figure id="s03">
       <div class="ph c">
         <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
         <div class="scr">
-          <div class="card ostat ship"><div class="frow"><span class="k"><b>运输中</b></span><span class="v go">查看物流 ›</span></div><div class="frow"><span class="k meta">【深圳市】快件已到达 深圳龙华集散中心</span></div><div class="frow"><span class="k meta">🚚 申通 773445428425272 · 今天 09:12 · 预计明天送达</span></div></div>
+          <div class="card ostat ship"><div class="frow"><span class="k"><b>运输中</b></span><span class="v go">查看物流</span></div><div class="frow"><span class="k meta">【深圳市】快件已到达 深圳龙华集散中心</span></div><div class="frow"><span class="k meta">🚚 申通 773445428425272 <span class="go">复制</span></span></div></div>
           <div class="card"><div class="frow"><span class="k">🏠 武国斌 185****8359</span><span class="v meta">›</span></div><div class="frow"><span class="k meta">广东省深圳市龙华新区 招商锦绣观园 5-10F</span></div></div>
           <div class="card"><div class="hd">虹选粮油</div><div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 约10斤</span><div class="ln"><span class="pr num">¥50.00</span><span class="meta">×1</span></div></div></div></div>
-          <div class="card"><div class="frow"><span class="k">订单号</span><span class="v meta num">SUB…2260 <span class="go">复制</span></span></div></div>
+          <div class="card"><div class="frow"><span class="k">实付</span><span class="v num">¥40.00</span></div></div>
+          <div class="card"><div class="frow"><span class="k">订单号</span><span class="v meta num">SUB…2260 <span class="go">复制</span></span></div><div class="frow"><span class="k">发货时间</span><span class="v meta num">10-10 09:12</span></div></div>
         </div>
-        <div class="foot"><span class="meta"></span><div class="btn sec">申请售后</div><div class="btn main">确认收货</div></div>
+        <div class="foot"><span class="meta"></span><div class="btn main">申请售后</div></div>
       </div>
-      <figcaption class="cap"><b>03 已发货（状态+物流合并）</b>一张卡：状态「运输中」+ 最新节点 + 承运商单号，右上「查看物流」，整卡点进轨迹。</figcaption>
-      <p class="why">状态与物流合并成顶部一张卡（京东/淘宝已发货态同款）：第一行状态+「查看物流」入口，第二行最新节点（比「运输中」三字具体），第三行承运商·单号·预计送达。整卡点进轨迹页。底部主操作「确认收货」。</p>
+      <figcaption class="cap"><b>03 运输中</b>状态头 = 状态 + 最新节点 + 承运商单号，右上「查看物流」进 05。</figcaption>
+      <p class="why">合并卡只铺<b>最新一条</b>，整卡可点、右上也给文字入口（两个热区指同一页）。<b>轨迹明细不内嵌</b>：原来在这张卡下面铺整条时间线，详情页被顶得很长，而买家十次里九次只想知道「到哪了」。确认收货不放吸底条 —— 本系统快递由 <code>autoConfirm</code> job 自动确认，没有手动入口。</p>
     </figure>
 
     <figure id="s04">
       <div class="ph c">
         <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
         <div class="scr">
-          <div class="card ostat done"><div class="frow"><span class="k"><b>已完成</b></span><span class="v go">查看物流 ›</span></div><div class="frow"><span class="k meta">10-12 14:30 已签收 · 感谢购买，欢迎评价</span></div><div class="frow"><span class="k meta">🚚 申通 773445428425272</span></div></div>
+          <div class="card ostat done"><div class="frow"><span class="k"><b>已完成</b></span><span class="v go">查看物流</span></div><div class="frow"><span class="k meta">10-12 14:30 已签收 · 感谢购买，欢迎评价</span></div><div class="frow"><span class="k meta">🚚 申通 773445428425272 <span class="go">复制</span></span></div></div>
           <div class="card"><div class="frow"><span class="k">🏠 武国斌 185****8359</span><span class="v meta">›</span></div><div class="frow"><span class="k meta">广东省深圳市龙华新区 招商锦绣观园 5-10F</span></div></div>
           <div class="card"><div class="hd">虹选粮油</div><div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 约10斤</span><div class="ln"><span class="pr num">¥50.00</span><span class="meta">×1</span></div></div></div></div>
-          <div class="card"><div class="frow"><span class="k">实付</span><span class="v num">¥40.00</span></div><div class="frow"><span class="k">下单 / 支付 / 发货 / 签收</span><span class="v meta num">10-09 … 10-12</span></div></div>
+          <div class="card"><div class="frow"><span class="k">实付</span><span class="v num">¥40.00</span></div></div>
+          <div class="card"><div class="frow"><span class="k">订单号</span><span class="v meta num">SUB…2260 <span class="go">复制</span></span></div><div class="frow"><span class="k">下单 / 支付 / 发货 / 签收</span><span class="v meta num">10-09 … 10-12</span></div></div>
+          <div class="card"><div class="frow"><span class="k">申请发票</span><span class="v meta">›</span></div><div class="frow"><span class="k meta">开票后发到你填的邮箱</span></div></div>
         </div>
-        <div class="foot"><span class="meta"></span><div class="btn sec">再买一单</div><div class="btn main">去评价</div></div>
+        <div class="foot"><span class="meta"></span><div class="btn sec">再来一单</div><div class="btn main">发表评价</div></div>
       </div>
-      <figcaption class="cap"><b>04 已完成</b>同一张卡定格「已完成 + 已签收」，仍可点进轨迹；底部引导评价。</figcaption>
-      <p class="why">完成态状态+物流仍合并一卡（可回看轨迹）；金额卡末行给「下单/支付/发货/签收」四时点一行，替代零散时间线。</p>
+      <figcaption class="cap"><b>04 已完成</b>可回看轨迹；发票做成会回读状态的选择行，不再是页尾一颗按钮。</figcaption>
+      <p class="why">「申请发票」是一件有后续状态的事（已申请 / 已开 / 被拒），做成一张会回读状态的卡比一颗按钮合适 —— 也顺手把它从页尾那排按钮里拿掉。吸底条两颗<b>必然不同</b>（见 06 的去重矩阵）。</p>
     </figure>
 
   </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">05</span><h2>物流详情：独立一页</h2></div>
+  <div class="sec-note">新路由 <code>pages/trace/index?orderNo=</code>。从订单详情的状态头进来，也从订单列表的「查看物流」进来。页内自带承运商 / 单号 / 收货人 / 商品缩略 —— 买家从消息里直接进这页时不该再回跳一次。</div>
+  <div class="grid">
+    <figure id="s05">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">物流详情</span><span></span></div>
+        <div class="scr">
+          <div class="card ostat ship"><div class="frow"><span class="k"><b>运输中</b></span><span class="v meta num">预计明天送达</span></div><div class="frow"><span class="k meta">🚚 申通 773445428425272 <span class="go">复制</span></span></div></div>
+          <div class="card"><div class="frow"><span class="k meta">🏠 武国斌 185****8359 · 招商锦绣观园 5-10F</span></div><div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 约10斤</span><div class="ln"><span class="meta">虹选粮油 · 共 1 件</span></div></div></div></div>
+          <div class="card">
+            <div class="tl">
+              <div class="st now">今天 09:40 【深圳市】快件已到达 深圳龙华集散中心</div>
+              <div class="st done">今天 09:12 【深圳市】申通已揽收，快递员 王师傅 138****0021</div>
+              <div class="st done">昨天 20:52 商家已发货，等待揽收</div>
+              <div class="st done">昨天 20:52 支付成功</div>
+              <div class="st done">昨天 20:51 订单提交成功</div>
+            </div>
+          </div>
+          <div class="card"><div class="frow"><span class="k meta">轨迹由承运商回传，最后更新 09:40</span><span class="v meta">刷新</span></div></div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>05 物流详情</b>顶部定格状态 + 预计送达，中间收货人与货，下面整条轨迹。</figcaption>
+      <p class="why">独立成页的理由不是「详情页太长」，是<b>入口要有落点</b>：订单详情、订单列表、发货消息三处都要能点进「物流」，而它们不该各铺一份。不画地图 —— 城市级示意回答不了「今天到不到」，而门到门的点位我们没有。「刷新」显式给出来：轨迹靠 30 分钟轮询 + 订阅推送，买家想立刻看新的时有处可点。</p>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">06</span><h2>操作去重：吸底条是唯一的操作区</h2></div>
+  <div class="sec-note">规则三条：① 页内<b>不排按钮</b>（页尾那排 <code>.ops</code> 整块删掉）；② 吸底条最多两颗，<b>主次必须不同</b>，只有一颗时占满宽；③ 有后续状态的事（发票、售后进度）做成会回读状态的卡片行，不是按钮。下表是每个状态下吸底条到底给什么。</div>
+  <table class="ptable">
+    <colgroup><col><col><col><col></colgroup>
+    <thead><tr><th>状态</th><th>次要（左）</th><th>主要（右）</th><th>卡片行</th></tr></thead>
+    <tbody>
+      <tr><td class="n">待付款</td><td class="o">取消订单</td><td class="o warn">去支付</td><td class="p">—</td></tr>
+      <tr><td class="n">待发货</td><td class="p">（无）</td><td class="o warn">申请退款</td><td class="p">—</td></tr>
+      <tr><td class="n">运输中</td><td class="p">（无）</td><td class="o warn">申请售后</td><td class="p">查看物流</td></tr>
+      <tr><td class="n">已完成 · 可评价</td><td class="o">再来一单</td><td class="o warn">发表评价</td><td class="p">查看物流 · 申请发票</td></tr>
+      <tr><td class="n">已完成 · 评过</td><td class="p">（无）</td><td class="o warn">再来一单</td><td class="p">查看物流 · 申请发票</td></tr>
+      <tr><td class="n">已取消 / 已退款</td><td class="p">（无）</td><td class="o warn">再来一单</td><td class="p">退款进度</td></tr>
+    </tbody>
+  </table>
+  <p class="why">现状的重复出自两处：<code>secondaryOp</code> 与 <code>primaryKey</code> 都会回落到「再来一单」（已完成且不可评价时<b>吸底条两颗同名</b>），而页尾 <code>.ops</code> 又无条件给一颗「再来一单」。表里每一行主次都不同名，且「再来一单」在全页只出现一次。</p>
 </section>
 
 <footer>真源：prototypes/c-order-detail.html · 登记：prototypes/registry.json · 参考：b-app/src/pages/order、京东/淘宝订单详情</footer>

@@ -11,7 +11,7 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">30 份有效稿子，其中页面稿 20 份、共 244 屏；3 份作废。
+  <p class="sub">30 份有效稿子，其中页面稿 20 份、共 245 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
@@ -213,9 +213,9 @@
     <b>C 端订单详情：状态·物流·收货 重排</b>
     <span class="chip warn">在建</span>
   </div>
-  <div class="pcard__meta">页面稿 · 买家小程序 · 2026-10-10 · 4 屏</div>
-  <p class="pcard__sum">重排买家订单详情页，参考京东/淘宝与 B 端 App 的物流卡。四态各一屏（待付款/待发货/已发货含物流/已完成），恒定骨架：状态头（大字状态+一句接下来）→ 物流卡（已发货才有、整卡点进轨迹）→ 收货地址 → 店铺+商品 → 订单信息（单号可复制）→ 金额 → 底部常驻操作条（随状态变）。把「货到哪、我该做什么」提到最顶，替代现状「取货码→拼团→状态时间线→履约落点」的平铺。</p>
-  <div class="screens"><a class="scr" href="c-order-detail.html#s01" title="s01 待付款">s01</a><a class="scr" href="c-order-detail.html#s02" title="s02 待发货">s02</a><a class="scr" href="c-order-detail.html#s03" title="s03 已发货(含物流)">s03</a><a class="scr" href="c-order-detail.html#s04" title="s04 已完成">s04</a></div>
+  <div class="pcard__meta">页面稿 · 买家小程序 · 2026-10-10 · 5 屏</div>
+  <p class="pcard__sum">重排买家订单详情页（v2）。恒定骨架：状态头（大字状态+一句接下来+有运单恒给「查看物流 ›」）→ 收货/自提 → 店铺+商品 → 金额 → 订单信息 → 吸底操作条。v2 修两件真机才看出来的事：① 「查看物流」原来只在微信插件态给入口（插件未开通 48001），普通快递单点不进轨迹——改成只要有运单就给，并落到独立的物流详情页 pages/trace/index；② 吸底条与页尾按钮重复（「再来一单/申请售后」两处都有，某些状态吸底条自己两颗同名）——改成页内不排按钮、吸底条是唯一操作区、主次必须不同、只有一颗时占满宽；有后续状态的事（发票/售后）做成会回读状态的卡片行。</p>
+  <div class="screens"><a class="scr" href="c-order-detail.html#s01" title="s01 待付款">s01</a><a class="scr" href="c-order-detail.html#s02" title="s02 待发货">s02</a><a class="scr" href="c-order-detail.html#s03" title="s03 运输中(状态+物流合并)">s03</a><a class="scr" href="c-order-detail.html#s04" title="s04 已完成">s04</a><a class="scr" href="c-order-detail.html#s05" title="s05 物流详情(独立页)">s05</a></div>
   <div class="pcard__links"><a href="c-order-detail.html">本地稿</a> <a href="../docs/technical/TDD-收件人物流触达与分享裂变.md">TDD-收件人物流触达与分享裂变</a></div>
   
 </article>
