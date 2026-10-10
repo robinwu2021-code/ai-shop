@@ -38,7 +38,7 @@ def call(action, params):
 CONTENT="您的包裹已发货，物流与签收进度请点击 s.hxmall.top/${code} 查看。"
 REMARK=("虹选商城电商订单：买家下单、商家发货后，系统给收货人发送一条物流进度短信，"
         "内含本商城已 ICP 备案域名 s.hxmall.top 的物流查询短链（302 跳转到小程序/H5 看件页）。"
-        "示例：您的包裹已发货，物流与签收进度请点击 s.hxmall.top/AB12345 查看。")
+        "可点击短链示例（真实、公网可打开）：https://s.hxmall.top/DEMO2025 ，点击 302 跳转到本商城 H5 物流查询页展示该订单的物流进度。")
 
 if sys.argv[1]=="create":
     r=call("CreateSmsTemplate",{
