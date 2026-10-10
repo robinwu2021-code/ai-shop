@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 520,
+        "b-app": 521,
         "c-app": 95
       }
     },
@@ -1439,7 +1439,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 584,
+        "b-app": 586,
         "c-app": 203
       }
     },
@@ -4907,29 +4907,15 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 8,
-      "localSelectors": 12,
-      "localCssLines": 58,
+      "libClassHits": 11,
+      "localSelectors": 11,
+      "localCssLines": 49,
       "rolled": [
         {
           "id": "sysmodal",
           "label": "系统弹框",
           "lib": "sh-sheet",
           "rule": "showModal\\(|showActionSheet\\(",
-          "gap": false
-        },
-        {
-          "id": "listrow",
-          "label": "横排行",
-          "lib": ".sh-row",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-          "gap": false
-        },
-        {
-          "id": "quietover",
-          "label": "次要色自写",
-          "lib": ".txt-quiet（整段次要用 .sh-muted）",
-          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
           "gap": false
         }
       ]
@@ -6042,26 +6028,6 @@
       "rule": "showModal\\(|showActionSheet\\(",
       "pages": [
         "b-app/goods-edit",
-        "b-app/store-scope-polygon"
-      ]
-    },
-    {
-      "id": "listrow",
-      "label": "横排行",
-      "lib": ".sh-row",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
-      "pages": [
-        "b-app/store-scope-polygon"
-      ]
-    },
-    {
-      "id": "quietover",
-      "label": "次要色自写",
-      "lib": ".txt-quiet（整段次要用 .sh-muted）",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
-      "pages": [
         "b-app/store-scope-polygon"
       ]
     },
