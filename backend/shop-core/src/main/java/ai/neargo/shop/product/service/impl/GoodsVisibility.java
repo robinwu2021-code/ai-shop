@@ -216,7 +216,23 @@ public class GoodsVisibility {
              */
             return merchantPort.servingStoresInRegion(regionCode, latE6, lngE6);
         }
-        return merchantPort.servingStores(profileResolver.resolve(communityNo, regionCode, latE6, lngE6));
+        var profile = profileResolver.resolve(communityNo, regionCode, latE6, lngE6);
+        /*
+         * ★ **只给坐标时也要走区域展开**（同一类缺陷的第三例，2026-10-10 生产上一起量出来的）。
+         *
+         * 端上没给区划码、只给了 GPS：解析器会把坐标反解到区县（纯定位这一级唯一能给出的结论），
+         * 于是画像里有区划码、没有聚落号 —— 落到这一支就又回到了「只框了某个小区的商家不可见」。
+         * 实测：同一个点，带 regionCode 看到 11 件、不带只看到 1 件。**同一个位置、不同参数组合，
+         * 可见性不该不一样** —— 买家不知道端上传了什么，他只知道自己站在哪儿。
+         *
+         * 判据：没有聚落号、但反解出了区划码 → 与「只给区划码 + 坐标」逐字同一条路。
+         * `ancestors()` 是 2/4/6/9/12 位前缀，升序，最后一个最具体。
+         */
+        if (!hasCommunity && profile.hasRegion()) {
+            var ancestors = profile.ancestors();
+            return merchantPort.servingStoresInRegion(ancestors.get(ancestors.size() - 1), latE6, lngE6);
+        }
+        return merchantPort.servingStores(profile);
     }
 
 
