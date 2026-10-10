@@ -189,8 +189,8 @@ function back() {
   top: 50%;
   width: 48rpx;
   height: 48rpx;
-  margin-left: -24rpx;
-  margin-top: -24rpx;
+  /* 居中用 translate，不用负 margin：margin-left 在阿语下不跟着翻（而这里要的是「正中」，与读写方向无关） */
+  transform: translate(-50%, -50%);
   pointer-events: none;
 }
 .cross__v,
@@ -232,7 +232,8 @@ function back() {
   padding: 0 24rpx 24rpx;
 }
 .ops__add {
-  margin-left: auto;
+  /* 「加点」推到行尾：阿语下行尾在左边，所以用逻辑属性 */
+  margin-inline-start: auto;
 }
 .is-off {
   opacity: 0.45;
