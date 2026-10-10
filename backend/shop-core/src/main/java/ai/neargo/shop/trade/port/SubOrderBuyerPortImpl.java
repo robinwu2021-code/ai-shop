@@ -56,4 +56,15 @@ public class SubOrderBuyerPortImpl implements SubOrderBuyerPort {
         int qty = items.stream().mapToInt(i -> i.getQty() == null ? 0 : i.getQty()).sum();
         return Optional.of(new ItemsBrief(items.get(0).getTitle(), qty));
     }
+
+    /** ⚠️ 同样绕过数据域（理由见 {@link #buyerOf}）。只取收件号这一列 */
+    @Override
+    public Optional<String> receiverPhoneOf(String subOrderNo) {
+        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .select(OrdSubOrder::getReceiverPhone)
+                        .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("LIMIT 1")));
+        return sub == null || sub.getReceiverPhone() == null || sub.getReceiverPhone().isBlank()
+                ? Optional.empty() : Optional.of(sub.getReceiverPhone());
+    }
 }

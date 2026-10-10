@@ -267,6 +267,11 @@ shop:
         # ⚠️ **只有 ${amt} 一个变量**：阿里云通知短信的变量只认语义类型（money/name/time…），
         #   订单号 SUB2026… 不符合任何一种，进不了模板。订单号在其余四条通道里有完整详情。
         order-paid: ${ALI_SMS_TPL_ORDER_PAID:}
+        # 发货触达收件人模板（TDD-收件人物流触达与分享裂变 §2.2）。**可选**，同 order-paid 的理由。
+        # 带一个 ${url} 变量（完整短链 https://s.hxmall.top/<code>）——
+        # ⚠️ 短链域名要在阿里云短信后台**报白名单**，否则带链接的模板审核不过（部署步骤）。
+        # 缺它只有发货短信这一条发不出去，写一行 SMS/FAILED/tpl_unconfigured 留痕。
+        ship: ${ALI_SMS_TPL_SHIP:}
   mail:
     stub: ${SHOP_MAIL_STUB:true}
     host: ${MAIL_HOST:smtp.office365.com}
@@ -286,6 +291,21 @@ shop:
   # 而那两个功能点在清单上都标着「已实现」。备案下来后填上即可。
   web:
     base-url: ${SHOP_WEB_BASE_URL:}
+
+  # 发货触达收件人与免登录看件（TDD-收件人物流触达与分享裂变）。
+  ship:
+    # 看件令牌的签名密钥（HMAC-SHA256）。**生产必须配**，否则看件链接可被伪造。
+    # 没配时用开发默认值并告警 —— 看件是面向收件人的只读页，缺配置降的是「伪造难度」，
+    # 不该把页面打挂（同 shop.person.phone-pepper 的取舍）。
+    track-key: ${SHIP_TRACK_KEY:}
+    # 看件令牌与短链、URL Link 的共同寿命（天）。短信会被转发、截图，给它有限寿命
+    track-ttl-days: ${SHIP_TRACK_TTL_DAYS:30}
+    # 短链域名前缀，不带尾斜杠。短信里拼的是 <base>/<code>
+    short-link-base: ${SHIP_SHORT_LINK_BASE:https://s.hxmall.top}
+    # 看件页在小程序里的路径（URL Link 用），不带前导斜杠
+    track-mini-path: ${SHIP_TRACK_MINI_PATH:pages/track/index}
+    # URL Link 生成不出来时退回的 H5 看件页前缀（hash 路由），token 以 ?t= 拼在后面
+    track-h5-base: ${SHIP_TRACK_H5_BASE:https://hxmall.top/c/#/pages/track/index}
 
   # 微信小程序：登录 code2Session + 订阅消息（服务通知）。
   #
@@ -325,6 +345,13 @@ shop:
       stub: ${SHOP_WX_ACODE_STUB:${SHOP_WX_STUB:true}}
       # 小程序**还没发布过任何版本**时必须 false，否则微信校验 page 是否存在于已发布版本
       check-path: ${SHOP_WX_ACODE_CHECK_PATH:false}
+    # 小程序 URL Link（urllink.generate）：从浏览器里的短链唤起小程序看件页（TDD-收件人物流触达 §4）。
+    # **默认走桩**（返回空 → 调用方退回 H5 看件页）：URL Link 要小程序已发布且接口开通，
+    # 这两件可能暂时不满足。它是增强，不是发货短信的前置。接通后设 SHOP_WX_URLLINK_STUB=false。
+    urllink:
+      stub: ${SHOP_WX_URLLINK_STUB:${SHOP_WX_STUB:true}}
+      # URL Link 有效期（天，≤30）。到期链接失效，与看件令牌同寿
+      expire-days: ${SHOP_WX_URLLINK_EXPIRE_DAYS:30}
     # 手机号快速验证（phonenumber.getPhoneNumber）。**要已认证 + 非个人主体，且按次计费** ——
     # 所以它默认关着，而验证码那条路必须一直在（端上按 /mp/user/phone/capable 决定显示哪个）
     phone:

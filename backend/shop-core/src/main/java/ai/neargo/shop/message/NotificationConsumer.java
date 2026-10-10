@@ -69,6 +69,7 @@ public class NotificationConsumer implements OutboxConsumer {
     private final ai.neargo.shop.spi.notify.SmsPort smsPort;
     private final ai.neargo.shop.spi.notify.MailPort mailPort;
     private final ai.neargo.shop.message.notify.NotifyLogWriter logWriter;
+    private final ai.neargo.shop.message.notify.ShipRecipientNotify shipNotify;
 
     public NotificationConsumer(MessageService messageService, WxSubscribeSender wxSender,
                                 ai.neargo.shop.message.notify.PushSender pushSender,
@@ -81,7 +82,8 @@ public class NotificationConsumer implements OutboxConsumer {
                                 ai.neargo.shop.message.notify.MerchantNotifyRecipients recipients,
                                 ai.neargo.shop.spi.notify.SmsPort smsPort,
                                 ai.neargo.shop.spi.notify.MailPort mailPort,
-                                ai.neargo.shop.message.notify.NotifyLogWriter logWriter) {
+                                ai.neargo.shop.message.notify.NotifyLogWriter logWriter,
+                                ai.neargo.shop.message.notify.ShipRecipientNotify shipNotify) {
         this.messageService = messageService;
         this.wxSender = wxSender;
         this.pushSender = pushSender;
@@ -96,6 +98,7 @@ public class NotificationConsumer implements OutboxConsumer {
         this.smsPort = smsPort;
         this.mailPort = mailPort;
         this.logWriter = logWriter;
+        this.shipNotify = shipNotify;
     }
 
     @Override
@@ -168,6 +171,14 @@ public class NotificationConsumer implements OutboxConsumer {
                 messageService.push(userNo, MessageService.TRADE, title, body,
                         link, event.getEventNo());
                 cPush(scene, userNo, title, body, link);
+                /*
+                 * 快递发货：再给**收件人**发一条带短链的物流短信（TDD-收件人物流触达 §2）。
+                 * 只对快递单发 —— 自送/自提没有「物流轨迹」可看，短信的价值在那条链。
+                 * 整条链封在 ShipRecipientNotify 里、自己吞异常，不影响上面已发的站内信与推送。
+                 */
+                if (byExpress) {
+                    shipNotify.notify(nz(text(payload, "subOrderNo"), text(payload, "orderNo")));
+                }
                 /*
                  * 微信订阅消息**只发商家配送的「开始配送」**（TDD-微信订阅消息优先 AC5）：
                  * 快递发货那条微信支付单由微信「发货信息录入」推、线下单由物流「揽收」推，再发就重复；

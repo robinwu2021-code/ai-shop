@@ -63,23 +63,29 @@ public class AliSmsGateway implements SmsPort {
     private final String otpTemplate;
     /** 来单提醒模板。**可以为空**（阿里云审批没下来），见 requireConfigured 的注释 */
     private final String orderPaidTemplate;
+    /** 发货触达模板。同样**可以为空**（审批没下来），缺它时 sendShipToRecipient 直接失败留痕 */
+    private final String shipTemplate;
 
     public AliSmsGateway(@Value("${shop.sms.ali.endpoint:dysmsapi.aliyuncs.com}") String endpoint,
                          @Value("${shop.sms.ali.access-key-id:}") String accessKeyId,
                          @Value("${shop.sms.ali.access-key-secret:}") String accessKeySecret,
                          @Value("${shop.sms.ali.sign:}") String signName,
                          @Value("${shop.sms.ali.templates.otp:}") String otpTemplate,
-                         @Value("${shop.sms.ali.templates.order-paid:}") String orderPaidTemplate) {
+                         @Value("${shop.sms.ali.templates.order-paid:}") String orderPaidTemplate,
+                         @Value("${shop.sms.ali.templates.ship:}") String shipTemplate) {
         this.endpoint = endpoint;
         this.accessKeyId = accessKeyId;
         this.accessKeySecret = accessKeySecret;
         this.signName = signName;
         this.otpTemplate = otpTemplate;
         this.orderPaidTemplate = orderPaidTemplate == null ? "" : orderPaidTemplate.trim();
+        this.shipTemplate = shipTemplate == null ? "" : shipTemplate.trim();
         requireConfigured();
         log.info("[sms] 阿里云短信已启用 endpoint={} sign={} otpTemplate={} orderPaidTemplate={}",
                 endpoint, signName, otpTemplate,
                 this.orderPaidTemplate.isBlank() ? "(未报备，来单短信发不出去)" : this.orderPaidTemplate);
+        log.info("[sms] 发货触达模板 shipTemplate={}",
+                this.shipTemplate.isBlank() ? "(未报备，发货短信发不出去)" : this.shipTemplate);
     }
 
     /**
@@ -201,6 +207,41 @@ public class AliSmsGateway implements SmsPort {
                         + field(resp.body(), "Message"), false);
             }
             return SendResult.of(field(resp.body(), "BizId"), orderPaidTemplate);
+        } catch (java.io.IOException e) {
+            throw new SmsException("短信通道网络失败：" + e.getMessage(), true);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SmsException("短信发送被中断", true);
+        }
+    }
+
+    /**
+     * 发货触达收件人。形状同 {@link #sendOrderPaid}：**不抛给 outbox**（调用方吞）、
+     * 模板没报备（空）时直接失败不调阿里云。
+     *
+     * <p>模板带一个 {@code ${url}} 变量，值是完整短链 {@code https://s.hxmall.top/<code>}。
+     * <b>短链域名要在阿里云短信后台报白名单</b>，否则带链接的模板审核不过（部署步骤，见设计 §8 决策 D）。
+     */
+    @Override
+    public SendResult sendShipToRecipient(String phone, String trackUrl) {
+        if (shipTemplate.isBlank()) {
+            log.warn("[sms] 发货短信发不出去：ALI_SMS_TPL_SHIP 未配（阿里云模板还没报备）");
+            throw new SmsException("tpl_unconfigured", false);
+        }
+        Map<String, String> p = common();
+        p.put("PhoneNumbers", phone);
+        p.put("SignName", signName);
+        p.put("TemplateCode", shipTemplate);
+        p.put("TemplateParam", "{\"url\":\"" + trackUrl + "\"}");
+        p.put("Signature", sign("POST&%2F&" + enc(canonicalize(p))));
+        try {
+            HttpResponse<String> resp = post(p);
+            String respCode = field(resp.body(), "Code");
+            if (!"OK".equals(respCode)) {
+                throw new SmsException("阿里云拒绝：" + respCode + " "
+                        + field(resp.body(), "Message"), false);
+            }
+            return SendResult.of(field(resp.body(), "BizId"), shipTemplate);
         } catch (java.io.IOException e) {
             throw new SmsException("短信通道网络失败：" + e.getMessage(), true);
         } catch (InterruptedException e) {

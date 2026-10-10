@@ -204,6 +204,9 @@ class MpEndpointAuthTest {
             "GET /mp/topics",
             "GET /mp/topics/{topicNo}/goods",
             "GET /mp/user/phone/capable",
+            // 免登录看件（TDD-收件人物流触达 §3）：收件人没有账号，令牌即授权。
+            // 不带票探测时返回成功的空信封（data=null），所以归游客可看而不是要登录。
+            "GET /mp/track",
             "");
 
     /**

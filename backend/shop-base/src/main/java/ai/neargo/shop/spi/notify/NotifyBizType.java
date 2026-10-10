@@ -29,4 +29,11 @@ public final class NotifyBizType {
 
     /** 交易关键节点的用户触达（到货、退款）。事件驱动，没有操作人 */
     public static final String TRADE_NOTIFY = "TRADE_NOTIFY";
+
+    /**
+     * 发货触达**收件人**（TDD-收件人物流触达与分享裂变）。与 {@link #TRADE_NOTIFY} 分开：
+     * 那是发给买家的交易通知，这是发给收货人（可能不是买家）的物流短信，
+     * 运营端要按它单独筛「发货短信发了多少、裂变入口点了多少」。
+     */
+    public static final String SHIP_NOTIFY = "SHIP_NOTIFY";
 }

@@ -213,4 +213,19 @@ public final class BizKey {
         }
         return prefix + LocalDate.now().format(FMT) + new String(rnd);
     }
+
+    /**
+     * 纯随机短码：{@code len} 位 Crockford base32，**不带前缀也不带日期**。
+     *
+     * <p>给短链这种「要塞进短信、越短越省钱、又不念不抄」的场景用 ——
+     * 7 位 = 35 bit，配上库里的唯一索引与「撞了重取」足够稀。
+     * 与业务键共用同一张字母表（去 I/L/O/U），但不共用那套可排序结构：短链不需要。
+     */
+    public static String shortCode(int len) {
+        char[] c = new char[len];
+        for (int i = 0; i < len; i++) {
+            c[i] = CROCKFORD[RANDOM.nextInt(CROCKFORD.length)];
+        }
+        return new String(c);
+    }
 }

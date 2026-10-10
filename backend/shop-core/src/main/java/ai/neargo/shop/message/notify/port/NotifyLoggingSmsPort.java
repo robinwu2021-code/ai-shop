@@ -34,6 +34,8 @@ public class NotifyLoggingSmsPort implements SmsPort {
     private static final String TPL_SMS_OTP = "TPL_SMS_OTP";
     /** 来单提醒（TDD-来单四渠道与商家通知设置）。第二条业务模板 */
     private static final String TPL_SMS_ORDER_PAID = "TPL_SMS_ORDER_PAID";
+    /** 发货触达收件人（TDD-收件人物流触达与分享裂变）。第三条业务模板 */
+    private static final String TPL_SMS_SHIP = "TPL_SMS_SHIP";
 
     @Override
     public SendResult sendOtp(String phone, String code) {
@@ -74,6 +76,24 @@ public class NotifyLoggingSmsPort implements SmsPort {
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, null,
                     TPL_SMS_ORDER_PAID, SysNotifyLog.FAILED, e.getMessage(), null, null);
+            throw e;
+        }
+    }
+
+    /**
+     * 发货触达收件人。**先记后抛**，形状同上，bizType 用 {@code SHIP_NOTIFY} ——
+     * 运营端据此把发货短信与交易通知分开统计（见 {@link NotifyBizType#SHIP_NOTIFY}）。
+     */
+    @Override
+    public SendResult sendShipToRecipient(String phone, String trackUrl) {
+        try {
+            SendResult r = delegate.sendShipToRecipient(phone, trackUrl);
+            writer.write(SysNotifyLog.SMS, NotifyBizType.SHIP_NOTIFY, phone, r.templateCode(),
+                    TPL_SMS_SHIP, SysNotifyLog.SENT, null, r.providerMsgId(), null);
+            return r;
+        } catch (RuntimeException e) {
+            writer.write(SysNotifyLog.SMS, NotifyBizType.SHIP_NOTIFY, phone, null,
+                    TPL_SMS_SHIP, SysNotifyLog.FAILED, e.getMessage(), null, null);
             throw e;
         }
     }

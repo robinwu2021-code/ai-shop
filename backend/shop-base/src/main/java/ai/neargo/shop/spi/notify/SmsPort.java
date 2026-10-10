@@ -57,6 +57,24 @@ public interface SmsPort {
     SendResult sendOrderPaid(String phone, String subOrderNo, String amountYuan);
 
 
+    /**
+     * 发货通知**给收件人**（TDD-收件人物流触达与分享裂变 §2.2）。
+     *
+     * <p>与 {@link #sendOrderPaid} 发给商家不同，这一条发给**买家填的收货人**（可能根本不是买家本人）——
+     * 短信里放一条短链，点开看物流、看件，也成为分享裂变的入口。
+     *
+     * <p><b>失败语义同 {@link #sendOrderPaid}</b>：抛 {@link SmsException}，留痕层先记后抛，
+     * 调用方（SUB_ORDER_SHIPPED 分支）自己吞掉 —— 它只是发货事件的一条附带出口，
+     * 冒到 outbox 消费者会判整条事件失败并把站内信重投。模板没报备（空）时直接抛
+     * {@code tpl_unconfigured}，不去调阿里云。
+     *
+     * @param phone    收件人手机号（{@code OrdSubOrder.receiverPhone}）
+     * @param trackUrl 完整短链（{@code https://s.hxmall.top/<code>}）。<b>通道只负责把它塞进模板</b>，
+     *                 短链怎么生成、指向哪是调用方的事
+     */
+    SendResult sendShipToRecipient(String phone, String trackUrl);
+
+
     /** 通道发送失败。{@code retryable} 区分「重试可能成功」与「这条永远发不出去」。 */
     class SmsException extends RuntimeException {
 

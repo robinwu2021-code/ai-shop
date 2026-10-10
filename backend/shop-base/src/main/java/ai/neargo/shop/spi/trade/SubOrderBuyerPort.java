@@ -28,6 +28,15 @@ public interface SubOrderBuyerPort {
      */
     Optional<ItemsBrief> itemsOf(String subOrderNo);
 
+    /**
+     * 这张子单的收件人手机号 —— 发货短信要发给**收货人**（可能不是买家本人）。
+     *
+     * <p><b>加在这个端口而不是复用 {@link #buyerOf}</b>：买家是「谁下的单」，
+     * 收件人是「送给谁」，发货短信发的是后者。子单号查不到、或这张单没有收件人
+     * （自提单）时为空 —— 调用方据此跳过发货短信。
+     */
+    Optional<String> receiverPhoneOf(String subOrderNo);
+
     record Buyer(String userNo, String orderNo) {
     }
 

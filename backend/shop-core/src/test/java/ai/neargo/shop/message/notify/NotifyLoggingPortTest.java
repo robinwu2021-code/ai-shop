@@ -94,6 +94,11 @@ class NotifyLoggingPortTest {
             public SendResult sendOrderPaid(String phone, String subOrderNo, String amountYuan) {
                 throw new UnsupportedOperationException("这个替身只管验证码");
             }
+
+            @Override
+            public SendResult sendShipToRecipient(String phone, String trackUrl) {
+                throw new UnsupportedOperationException("这个替身只管验证码");
+            }
         };
     }
 

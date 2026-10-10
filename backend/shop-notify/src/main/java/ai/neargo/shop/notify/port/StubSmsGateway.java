@@ -85,6 +85,22 @@ public class StubSmsGateway implements SmsPort {
         return SendResult.none();
     }
 
+    /**
+     * 发货触达收件人。桩里也进同一个队列：{@code Sent.code} 放短链，
+     * 测试据此断言「发给了收件人、带的是哪条短链」。
+     */
+    @Override
+    public SendResult sendShipToRecipient(String phone, String trackUrl) {
+        synchronized (sent) {
+            sent.addLast(new Sent(phone, trackUrl));
+            while (sent.size() > KEEP) {
+                sent.pollFirst();
+            }
+        }
+        log.debug("[sms-stub] ship to {} = {}", maskPhone(phone), trackUrl);
+        return SendResult.none();
+    }
+
     /** 供测试断言：最近发出的一条。 */
     public Sent last() {
         synchronized (sent) {

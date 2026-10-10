@@ -2266,6 +2266,36 @@ public class OrderServiceImpl implements OrderService {
         return detail(subOrderNo, null);
     }
 
+    @Override
+    public ai.neargo.shop.trade.dto.TrackVO trackBySubOrder(String subOrderNo, String client) {
+        // **不加 userNo 过滤**：票据已验，持票即可看（见接口注释）。按子单号直查
+        OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                .eq(OrdSubOrder::getSubOrderNo, subOrderNo)
+                .last("limit 1"));
+        if (sub == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("limit 1"));
+        OrderVO.StoreBrief store = storeBriefOf(sub);
+        List<ai.neargo.shop.trade.dto.TrackVO.Item> items = itemsOf(subOrderNo).stream()
+                .map(i -> new ai.neargo.shop.trade.dto.TrackVO.Item(
+                        i.getTitle(), i.getCover(), i.getSpec(), i.getQty() == null ? 0 : i.getQty()))
+                .toList();
+        return new ai.neargo.shop.trade.dto.TrackVO(
+                sub.getSubOrderNo(),
+                OrderStatusView.toContract(sub.getStatus(), order == null ? null : order.getStatus()),
+                sub.getFulfillment(),
+                store == null ? null : store.storeName(),
+                sub.getReceiverName(),
+                ai.neargo.shop.common.Masks.phone(sub.getReceiverPhone()),
+                sub.getReceiverAddress(),
+                sub.getExpressCompany(),
+                sub.getExpressNo(),
+                items,
+                traceOf(sub, surfaceOf(client)));
+    }
+
     /**
      * 售后未闭环的状态 —— 与 {@code SettleSourcePortImpl.AFTER_SALE_OPEN} 同一份口径。
      *

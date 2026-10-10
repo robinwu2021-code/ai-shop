@@ -176,6 +176,21 @@ public interface OrderService {
     OrderVO confirmReceipt(String subOrderNo);
 
     /**
+     * 免登录看件（TDD-收件人物流触达与分享裂变 §3）：<b>凭子单号直接查，不认登录人</b>。
+     *
+     * <p>调用方（{@code MpTrackController}）已经用 {@code ShipTrackToken} 验过票 ——
+     * 票据本身就是授权，持票即可看。所以这里**不加 userNo 过滤**（与 {@link #detail}
+     * 的「只认当前登录人」刻意不同）：收件人没有、也不该有账号。
+     *
+     * <p>返回的是收窄视图 {@link ai.neargo.shop.trade.dto.TrackVO} —— 价格、买家身份一律不下发。
+     *
+     * @param subOrderNo 子单号（从看件令牌里解出来的）
+     * @param client     原始 {@code X-Client} 头，决定轨迹展示口径，同 {@link #detail}
+     * @throws ai.neargo.shop.common.BizException NOT_FOUND 当子单不存在
+     */
+    ai.neargo.shop.trade.dto.TrackVO trackBySubOrder(String subOrderNo, String client);
+
+    /**
      * @param items       下单行；为空时取购物车勾选行
      * @param fulfillment 履约方式：STORE_PICKUP / NEIGHBOR_PICKUP / MERCHANT_DELIVERY / EXPRESS
      * @param usePoints   想用多少积分。<b>只是意愿值</b> —— 服务端按
