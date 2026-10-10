@@ -63,7 +63,17 @@ public interface CommunityQueryPort {
      * @param parentNo   楼栋的上级小区；不是楼栋时为空
      * @param open       {@code status=OPEN}
      */
-    record CommunityRef(String communityNo, String regionCode, String parentNo, boolean open) {
+    /**
+     * 判定要用的几列。{@code latE6/lngE6} 是聚落坐标（V396 起带出，供多边形范围按 S2 cell 命中、边界精判）；
+     * 库里没坐标的聚落为 null。{@code open} 已不参与可见性匹配（ADR-034），仅供运营展示/展开候选用。
+     */
+    record CommunityRef(String communityNo, String regionCode, String parentNo, boolean open,
+                        Integer latE6, Integer lngE6) {
+
+        /** 不带坐标的老形状（查不到的小区、兜底 ref） */
+        public CommunityRef(String communityNo, String regionCode, String parentNo, boolean open) {
+            this(communityNo, regionCode, parentNo, open, null, null);
+        }
     }
 
     /** 全部开放小区。展开「全部开放小区」类范围时的候选全集 */

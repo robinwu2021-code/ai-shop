@@ -2,6 +2,7 @@ package ai.neargo.shop.merchant.reach;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.geo.GeoPolygon;
+import ai.neargo.shop.geo.ReachGeoProps;
 import ai.neargo.shop.geo.S2Cover;
 import ai.neargo.shop.merchant.entity.MchServiceArea;
 import ai.neargo.shop.merchant.entity.MchServiceAreaCell;

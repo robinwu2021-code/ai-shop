@@ -1,4 +1,4 @@
-package ai.neargo.shop.merchant.reach;
+package ai.neargo.shop.geo;
 
 import lombok.Getter;
 import lombok.Setter;

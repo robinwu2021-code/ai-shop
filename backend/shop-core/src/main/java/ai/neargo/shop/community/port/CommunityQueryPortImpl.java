@@ -142,11 +142,13 @@ public class CommunityQueryPortImpl implements CommunityQueryPort {
     /** 只取判定要用的四列 —— 全量开放小区两万多行，整行读进来是白搬坐标和围栏 */
     private java.util.List<CommunityRef> refs(
             com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CmtCommunity> w) {
+        // 多边形范围按坐标命中，所以加两列 int；仍不读围栏 blob（两万多行×blob 才是「白搬」的那部分）
         w.select(CmtCommunity::getCommunityNo, CmtCommunity::getRegionCode,
-                CmtCommunity::getParentNo, CmtCommunity::getStatus);
+                CmtCommunity::getParentNo, CmtCommunity::getStatus,
+                CmtCommunity::getLatE6, CmtCommunity::getLngE6);
         return DataScopeContext.executeWithoutScope(() -> communityMapper.selectList(w)).stream()
                 .map(c -> new CommunityRef(c.getCommunityNo(), c.getRegionCode(), c.getParentNo(),
-                        OPEN.equals(c.getStatus())))
+                        OPEN.equals(c.getStatus()), c.getLatE6(), c.getLngE6()))
                 .toList();
     }
 
