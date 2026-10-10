@@ -141,6 +141,10 @@ const RESPONSE_TYPES = {
   favoriteGoods: "PageResult<Goods>",
   favoriteStores: "Merchant[]",
   verifyGroupPickup: "Order",
+  // 6cf46ce62 加了 /mp/track 却没登记这张表 —— 这张表漏一条，生成器就整个拒绝输出，
+  // 于是 check-generated-docs 卡在第一步，**三份 spec 一份都生不出来，挡所有人**。
+  // 类型取自契约自己声明的那行：`track(t: string): Promise<TrackView | null>`。
+  track: "TrackView",
   // 这三条曾长期缺席：端点表里有、契约方法也有返回类型，但漏配了这张表，
   // 生成器于是拒绝输出（见下方 missingResp 守卫）。结果是**契约里没有它们**，
   // 而后端明明实现了 —— 所有按契约算的覆盖率都因此低估后端。
@@ -272,6 +276,9 @@ const REQUEST_TYPES = {
   saveAddress: "SaveAddressReq",
   nearbyCommunities: "NearbyQuery",
   goodsList: "GoodsListQuery",
+  // 详情的 query 以前没登记：端上一直在发 communityNo/storeNo，而 spec 里看不到。
+  // ADR-034 又给它加了坐标（判地图范围内送不送到），再不登记后端就只能靠读端上代码。
+  goodsDetail: "GoodsDetailQuery",
   cartAdd: "CartAddReq",
   cartUpdate: "CartUpdateReq",
   cartRemove: "CartRemoveReq",

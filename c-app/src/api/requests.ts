@@ -172,6 +172,39 @@ export interface GoodsListQuery {
    * 而用户会把它当成「我这儿能买到的」。
    */
   regionCode?: string;
+  /**
+   * 当前浏览点的经纬度（E6 整数，gcj02，ADR-034）。
+   *
+   * 与 `communityNo`/`regionCode` **不是替代关系，是补充** —— 商家在地图上画的那片
+   * 配送范围只能靠坐标判；只有定位、没落到任何聚落时也靠它反解省市区去匹配行政级范围。
+   * 取不到就不传，服务端逐字退回按聚落/区县筛。
+   */
+  latE6?: number;
+  /** 见 `latE6` */
+  lngE6?: number;
+}
+
+/**
+ * 商品详情的 query（路径里只有 `goodsNo`）。
+ *
+ * 这几个参数**只影响「送不送到我这儿」那一行**（`deliverable`）：详情页据此拦购买并给理由。
+ * 以前它们没进契约 —— 端上一直在发，而 spec 里看不到，后端照着 spec 实现就不知道有。
+ */
+export interface GoodsDetailQuery {
+  /** 按哪个聚落判送达。不传则按当前绑定社区 */
+  communityNo?: string;
+  /** 从哪个门店进来的（分享链路带）。影响详情展示的那家店 */
+  storeNo?: string;
+  /**
+   * 当前浏览点的经纬度（E6 整数，gcj02，ADR-034）。
+   *
+   * 与 `communityNo`/`regionCode` **不是替代关系，是补充** —— 商家在地图上画的那片
+   * 配送范围只能靠坐标判；只有定位、没落到任何聚落时也靠它反解省市区去匹配行政级范围。
+   * 取不到就不传，服务端逐字退回按聚落/区县筛。
+   */
+  latE6?: number;
+  /** 见 `latE6` */
+  lngE6?: number;
 }
 
 export interface PromotedMerchantsQuery {
@@ -186,6 +219,16 @@ export interface PromotedGoodsQuery {
   communityNo?: string;
   /** 模糊定位时的兜底筛选（区县码）。与 GoodsQuery 同一条规矩 */
   regionCode?: string;
+  /**
+   * 当前浏览点的经纬度（E6 整数，gcj02，ADR-034）。
+   *
+   * 与 `communityNo`/`regionCode` **不是替代关系，是补充** —— 商家在地图上画的那片
+   * 配送范围只能靠坐标判；只有定位、没落到任何聚落时也靠它反解省市区去匹配行政级范围。
+   * 取不到就不传，服务端逐字退回按聚落/区县筛。
+   */
+  latE6?: number;
+  /** 见 `latE6` */
+  lngE6?: number;
   /** 取几条，默认由服务端定 */
   size?: number;
 }
