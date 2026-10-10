@@ -369,33 +369,43 @@ function pickCountry(code: string, cc: string) {
       </text>
     </view>
     <template v-else>
-      <view class="regionrow sh-row">
-        <input
-          maxlength="96"
-          v-model="draft.region"
-          class="field__input sh-fill"
-          :placeholder="$t('address.region')"
-          @blur="onRegionInput"
-        />
-        <text class="txt-caption regionrow__pick" @tap="pickingRegion = true">{{ $t("address.regionSelect") }}</text>
-        <text v-if="canPick" class="txt-caption regionrow__pick" @tap="pickOnMap">
-          {{ $t("address.pick") }}
-        </text>
-        <text v-if="canWx" class="txt-caption regionrow__pick" @tap="fillFromWx">{{ $t("address.fromWx") }}</text>
+      <!--
+        **三个「帮我填」的入口单独一行，不再挤在输入框旁边。**
+
+        此前它们与省市区输入框同一行：输入框被压到 113px（上面那段注释自己写着
+        「只剩指甲盖那么宽」，当时只给已选点的情况收成了卡片，**没选点的新增仍走这一支**），
+        而三个入口是 `<text>` ——行内元素，垂直 padding 撑不开盒子，**点击热区实测只有 15px 高**。
+        2026-10-10 用户上报「选择按钮不能点击」就是它：看得见，手指点不中。
+        改成整行三等分的 `.sh-chip`（库件，inline-block，padding 真的算进盒子）。
+      -->
+      <input
+        maxlength="96"
+        v-model="draft.region"
+        class="field__input"
+        :placeholder="$t('address.region')"
+        @blur="onRegionInput"
+      />
+      <view class="pickrow sh-row">
+        <text class="sh-chip pickrow__btn" @tap="pickingRegion = true">{{ $t("address.regionSelect") }}</text>
+        <text v-if="canPick" class="sh-chip pickrow__btn" @tap="pickOnMap">{{ $t("address.pick") }}</text>
+        <text v-if="canWx" class="sh-chip pickrow__btn" @tap="fillFromWx">{{ $t("address.fromWx") }}</text>
       </view>
       <text v-if="regionUnsplit" class="sh-hint">{{ $t("address.regionIncomplete") }}</text>
       <!--
-        **能选点的端上仍然只读**，改要回选点页。它是跟坐标一起来的，
-        在这里随手改几个字坐标不会跟着动 —— 于是「文字写着 A、坐标指着 B」，
-        而页面上完全看不出来。没有任何选点路的端（H5）保持可输入，
-        否则他连存量地址都改不了。
-        （这一条我重排表单时弄丢过一次，守卫当场抓了回来。）
+        ★ **这一支里必须可输入** —— 此前挂着 `:disabled="canPick"`，锁反了。
+
+        「地址主体跟坐标一起来的，手改几个字坐标不会跟着动，于是文字写着 A、坐标指着 B」
+        这条理由是对的，但它**只在有坐标时成立**，而有坐标走的是上面那张只读卡片（`v-if="picked"`）。
+        这一支是 `v-else` = **没有坐标**，这里压根没有坐标可以跟文字不一致。
+        结果是锁恰好落在唯一需要手填的场景上：
+        小程序里 `canPick` 恒为真 →「新增地址」里详细地址填不了；
+        存量那些没有坐标的地址（微信导入、粘贴识别、手填）也永远改不了 ——
+        而守卫的注释只保住了 H5（2026-10-10 用户上报「新增地址后不能编辑和修改」）。
       -->
       <input
         maxlength="255"
         v-model="draft.detail"
         class="field__input"
-        :disabled="canPick"
         :placeholder="$t('address.detail')"
       />
     </template>
@@ -469,18 +479,14 @@ function pickCountry(code: string, cc: string) {
 </template>
 
 <style scoped>
-.regionrow {
-  gap: 12rpx;
-}
-.regionrow__pick {
-  flex-shrink: 0;
-  padding: 12rpx 20rpx;
+/* 三等分；垂直内距给足，热区才够手指点（此前是行内 text，实测只有 15px 高） */
+.pickrow__btn {
+  flex: 1;
+  text-align: center;
+  /* 24rpx 时实测 40px，差一点到 44px（通用触控下限），抬到 28rpx 正好 */
+  padding-top: 28rpx;
+  padding-bottom: 28rpx;
   border-radius: 16rpx;
-  background: var(--sh-faint);
-}
-.regionrow__pick.is-ok {
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary-text);
 }
 /* 共用的 `.field__input`（88rpx 高 / md 圆角 / faint 底 / 30rpx）已经是这个形状 ——
    此前这里把它重写了一遍，而且字号写成 26rpx，比 base.css 的 30rpx 小两档。

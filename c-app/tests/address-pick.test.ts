@@ -380,13 +380,22 @@ describe("门牌号与地址簿上限", () => {
     expect(body).toContain("draft.value.houseNo");
   });
 
-  it("★★★ 地址主体只在**能选点的端**上只读 —— 否则 H5 用户永远存不了地址", () => {
+  it("★★★ 有坐标时地址主体只读（走卡片），没坐标时必须能填", () => {
     /*
      * 地址主体是跟坐标一起来的。在表单里随手改几个字，坐标不会跟着动 ——
      * 于是「文字写着 A、坐标指着 B」，而页面上完全看不出来。
-     * 但没有任何选点路的端（H5）必须保持可输入，否则他连存量地址都改不了。
+     *
+     * ⚠️ **这一条此前断的是字面量 `:disabled="canPick"`，于是它挡不住「锁反了」。**
+     * 那个输入框只在 `v-else`（= 没有坐标）那一支里渲染，而那里压根没有坐标可以跟文字不一致；
+     * 锁恰好落在唯一需要手填的场景上：小程序里 canPick 恒为真 → 新增地址填不了，
+     * 存量没坐标的地址也永远改不了（2026-10-10 用户上报）。钉写法挡不住锁反，钉性质才行。
+     *
+     * 真正的性质由 `address-detail-editable.test.ts` **挂载组件**来断
+     * （有坐标 → 不渲染输入框；没坐标 → 输入框可用）。这里只守住结构：
+     * 有坐标那一支是只读卡片，不是输入框。
      */
-    expect(addressForm).toMatch(/:disabled="canPick"/);
+    expect(addressForm).toMatch(/v-if="picked"[\s\S]{0,400}placecard/);
+    expect(addressForm).toMatch(/\{\{ draft\.detail \}\}/);
     expect(addressPage).toMatch(/canSearchPlaces\(\) \|\| canChooseLocation\(\)/);
   });
 
