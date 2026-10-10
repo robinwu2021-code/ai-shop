@@ -11,14 +11,14 @@
  *
  * 装修与获客拆去了页 B（pages/store）：那是日常会反复改的内容，和这两个决策不同频。
  */
-import { computed, ref, watch } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
 import { onBackPress, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
 import { money } from "@shared/utils/money";
-import { FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
+import { AREA_LEVEL, FULFILLMENT_REACH, SERVICE_SCOPE } from "@shared/utils/constants";
 import { includedAreas } from "@shared/utils/coverage";
 import type { ScopePreview } from "@shared/types";
 import type { StorePaySetting } from "@/api/contract";
@@ -88,11 +88,24 @@ const dirty = computed(() => loaded.value && JSON.stringify(areas.value) !== sna
  * 列表里主标题取最后一段，路径作次要文字 —— 不分组、不标级别，一眼看得出是哪里。
  */
 function splitName(a: ServiceArea) {
+  /*
+   * POLYGON 与 UNLIMITED **没有地名**（ADR-034）：前者的 refCode 是服务端算的几何指纹、
+   * 后者恒为 `*`。照原来的 `a.name || a.refCode` 会把一串 32 位十六进制或一个星号
+   * 当成地名显示给商家 —— 他根本不知道那是什么。
+   */
+  if (a.level === AREA_LEVEL.UNLIMITED) {
+    return { main: t("store.unlimitedArea"), path: "" };
+  }
+  if (a.level === AREA_LEVEL.POLYGON) {
+    const n = polygonVertexCount(a);
+    return { main: n ? t("store.polygonArea", { n }) : t("store.polygonAreaBroken"), path: "" };
+  }
   const parts = (a.name || a.refCode).split(" / ");
   return { main: parts[parts.length - 1] ?? a.refCode, path: parts.slice(0, -1).join(" · ") };
 }
 function isWhole(a: ServiceArea) {
-  return a.level !== "COMMUNITY";
+  // 「整个」是给区划级加的后缀（「西湖区 整个」）。多边形与不限不是区划，不加
+  return a.level !== "COMMUNITY" && a.level !== AREA_LEVEL.POLYGON && a.level !== AREA_LEVEL.UNLIMITED;
 }
 
 function removeArea(a: ServiceArea) {
@@ -103,6 +116,19 @@ const pickerOpen = ref(false);
 function setAreas(v: ServiceArea[]) {
   form.value.serviceAreas = v;
 }
+
+/*
+ * 画图页画完回传顶点。走事件而不是 URL 参数：顶点串可能上千字符，塞 query 会被截断，
+ * 而截断后的 JSON 解析失败只会表现成「画了半天保存上去是空的」。
+ */
+uni.$on("store-scope:polygon", (geometry: string) => {
+  if (!geometry) return;
+  form.value.serviceAreas = [
+    ...areas.value,
+    { level: AREA_LEVEL.POLYGON, refCode: "", name: "", mode: "INCLUDE", geometry } as ServiceArea,
+  ];
+});
+onUnmounted(() => uni.$off("store-scope:polygon"));
 /** 用文字填（TDD-经营范围文字录入）：识别结果写进清单的未保存态，预览与保存条照常出现 */
 const textOpen = ref(false);
 const storeNear = computed(() =>
@@ -121,23 +147,61 @@ const pickupOn = computed(() => on("STORE_PICKUP") || on("NEIGHBOR_PICKUP"));
 const deliveryOn = computed(() => on("MERCHANT_DELIVERY"));
 const expressOn = computed(() => on("EXPRESS"));
 
-/**
- * 覆盖项为空的含义**由送货方式决定**：只有自提是「谁也看不到」（拦），
- * 开了自送/快递是「不限」（正常）。判的是生效中的项 —— 待审的不参与展开。
- */
-const emptyIsBlocking = computed(
-  () => pickupOn.value && !deliveryOn.value && !expressOn.value && !activeAreas.value.length,
-);
+/** 显式的「全平台不限」项（ADR-034）。它只对快递/自送生效 —— 自提没有落点 */
+const unlimitedArea = computed(() => areas.value.find((a) => a.level === AREA_LEVEL.UNLIMITED && !isExclude(a)));
+const unlimitedOn = computed(() => !!unlimitedArea.value);
 
 /**
- * 「不限」那句提示的判据是**没有纳入项**，不是「一条都没有」。
+ * 覆盖项为空 = **谁也看不到**，与送货方式无关（ADR-034）。
  *
- * 只写了排除的自送商家（「我上门送，就是不送 3 幢」）在后端走的正是
- * 「没框 = 不限」那个分支再减去排除（`includes.isEmpty()`）。这里若还看
- * `areas.length`，他会看到提示消失、以为自己框了一片范围 ——
- * 而实际生效的是全平台减掉那一栋，两句话差着整个平台。
+ * 此前这里按送货方式分两种含义：只自提是故障、开了自送/快递是「不限」。
+ * 那条隐式规则已经删掉 —— 「没框范围」有四种成因（框写到别家店、没物化、框成排除、
+ * 门店级错位），任何一种都会让商家在不知情的情况下铺满全平台。现在「不限」必须显式勾。
+ *
+ * 跟着改这一句是必须的：不改的话，开着快递而范围为空的商家会在这一页看到
+ * 「不限地区」，而实际是谁也看不到 —— **页面方向正好说反**，而他永远查不出来。
  */
-const noIncludes = computed(() => !areas.value.some((a) => !isExclude(a)));
+const emptyIsBlocking = computed(() => !activeAreas.value.length);
+
+/** 「不限」这一条对当前送货方式有没有意义：只开自提时它不生效，要提醒 */
+const unlimitedIdle = computed(() => unlimitedOn.value && !deliveryOn.value && !expressOn.value);
+
+/** 多边形那一条的顶点数（显示用）。几何坏了就不显示数字，不猜 */
+function polygonVertexCount(a: ServiceArea) {
+  if (!a.geometry) return 0;
+  try {
+    const pts = JSON.parse(a.geometry) as unknown[];
+    return Array.isArray(pts) ? pts.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** 切换「全平台不限」。开 = 加一条范围项，关 = 删掉它 —— 它就是一条范围，不是开关位 */
+function toggleUnlimited() {
+  if (unlimitedOn.value) {
+    form.value.serviceAreas = areas.value.filter((a) => a.level !== AREA_LEVEL.UNLIMITED);
+    return;
+  }
+  form.value.serviceAreas = [
+    ...areas.value,
+    { level: AREA_LEVEL.UNLIMITED, refCode: "*", name: "", mode: "INCLUDE" } as ServiceArea,
+  ];
+}
+
+/** 去画配送范围。独立页承载原生地图（放弹层会把子树打掉），回来时监听事件收顶点 */
+function openPolygonDraw() {
+  uni.navigateTo({ url: "/pages/store-scope-polygon/index" });
+}
+
+/**
+ * 选择器的「不限态」：任意一行都能单独打排除（「我全平台送，就是不送 3 幢」）。
+ *
+ * 判据从「没有纳入项 + 开了自送/快递」换成「有显式 UNLIMITED 项 + 开了自送/快递」（ADR-034）——
+ * 后端那条「没框 = 不限再减排除」的隐式分支已经删了。不跟着换的话，范围为空的商家
+ * 会拿到一个「可以到处打排除」的界面，而他其实谁也看不到，排除谁都没有意义。
+ */
+const unlimitedPickerMode = computed(() => unlimitedOn.value && (deliveryOn.value || expressOn.value));
 
 /**
  * 范围预览：**保存之前**问一次「改成这样会覆盖到哪儿、那儿有多少买家」。
@@ -526,6 +590,8 @@ onShow(() => {
         <!-- 添加是这张卡的动作：放卡头右侧的药丸，不再是卡底一整条粉色大块 -->
         <view class="sh-row">
           <text class="sh-chip" @tap="textOpen = true">{{ $t("store.text.entry") }}</text>
+          <!-- 画配送范围：进独立页承载原生地图（放弹层会把 <map> 整棵子树打掉） -->
+          <text class="sh-chip" @tap="openPolygonDraw">{{ $t("store.drawArea") }}</text>
           <view class="sh-chip sh-chip--primary sh-chip--icon" @tap="pickerOpen = true">
             <sh-icon name="plus" :size="22" color="var(--sh-primary-text)"></sh-icon>
             {{ $t("store.addArea") }}
@@ -548,9 +614,27 @@ onShow(() => {
         </view>
       </view>
 
-      <!-- 空列表的含义两分：只自提是故障，开了自送/快递是「不限」。绝不能显示同一句话 -->
+      <!--
+        「全平台不限」是一条**范围项**，不是开关位 —— 勾上就往清单里加一条，取消就删掉它。
+        做成显式的理由见 ADR-034：此前它由「没框范围 + 开了快递/自送」隐式成立，
+        而「没框范围」有四种成因，任何一种都会让商家在不知情的情况下铺满全平台。
+      -->
+      <view class="sh-row sh-row--divided item" @tap="toggleUnlimited">
+        <view class="sh-fill">
+          <text class="txt-body">{{ $t("store.unlimitedArea") }}</text>
+          <text class="txt-caption sh-muted">{{ $t("store.unlimitedHint") }}</text>
+        </view>
+        <switch :checked="unlimitedOn" @tap.stop="toggleUnlimited"></switch>
+      </view>
+      <!-- 勾了不限却只开自提：这一条当下不生效，必须说出来，否则他以为已经全平台了 -->
+      <text v-if="unlimitedIdle" class="txt-caption warn">{{ $t("store.unlimitedIdle") }}</text>
+
+      <!--
+        一条生效的纳入项都没有 = **谁也看不到**，与送货方式无关（ADR-034）。
+        此前这里按送货方式分两句（只自提说「要配范围」、开了快递说「不限地区」），
+        而后者在新规则下是**反的**：范围为空就是看不见，页面不能给他一句相反的承诺。
+      -->
       <text v-if="emptyIsBlocking" class="txt-caption warn">{{ $t("store.areaNeeded") }}</text>
-      <text v-else-if="noIncludes" class="sh-hint">{{ $t("store.areaUnlimited") }}</text>
 
       <!--
         范围预览：**改完还没保存**时才出现。
@@ -713,7 +797,7 @@ onShow(() => {
       :visible="pickerOpen"
       @close="pickerOpen = false"
       :areas="areas"
-      :bare-exclude="noIncludes && (deliveryOn || expressOn)"
+      :bare-exclude="unlimitedPickerMode"
       @update:areas="setAreas"
     ></biz-region-picker>
 

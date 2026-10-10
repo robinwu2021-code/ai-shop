@@ -1322,6 +1322,12 @@ export default {
     scopeAll: "全部门店共用",
     whole: "整个",
     addArea: "添加",
+    drawArea: "画配送范围",
+    unlimitedArea: "全平台不限",
+    unlimitedHint: "打开后，全平台的买家都能看到本店",
+    unlimitedIdle: "「全平台不限」只对快递和自送生效 —— 本店当前只开了自提，这一条暂时不起作用",
+    polygonArea: "配送范围（{n} 个顶点）",
+    polygonAreaBroken: "配送范围（数据异常，请重画）",
     text: {
       entry: "用文字填",
       title: "用文字填写经营范围",
