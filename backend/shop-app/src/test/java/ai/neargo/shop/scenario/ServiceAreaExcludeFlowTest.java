@@ -138,18 +138,22 @@ class ServiceAreaExcludeFlowTest {
         /*
          * **这是全组最容易写反的一条。**
          *
-         * 「我上门送、不限范围，但不送这个小区」——判据若沿用 areas.isEmpty()，
-         * 他会因为「有 area 行」而跳过「没框=不限」那个 fallback、展开出空集，
-         * 于是**谁也看不到**。结果正好相反，而且不报错：
-         * 商家只会发现自己的货从所有人的首页上消失了。
+         * 「我上门送、不限范围，但不送这个小区」—— 判据若把「不限」与「有没有 area 行」绑在一起，
+         * 他会因为「有一条排除行」而丢掉不限、展开出空集，于是**谁也看不到**。
+         * 结果正好相反，而且不报错：商家只会发现自己的货从所有人的首页上消失了。
+         *
+         * ADR-034 之后「不限」是一条**显式**的 UNLIMITED 纳入项（此前靠「没框任何纳入」隐式成立）。
+         * 要守的东西没变：<b>排除项不该把不限吃掉</b> —— 纳入与排除是两个维度，先并后减。
          */
         String dropped = community("330106903", null);
         String m = merchant("ONSITE");
+        area(m, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_UNLIMITED,
+                ai.neargo.shop.merchant.entity.MchServiceArea.UNLIMITED_REF, "INCLUDE");
         area(m, "COMMUNITY", dropped, "EXCLUDE");
 
         var reach = merchantQuery.reachableCommunities(m);
         assertThat(reach)
-                .as("只写了排除就变成谁也看不到 = 判据用了 areas 而不是 includes")
+                .as("显式不限 + 一条排除 → 其余照样覆盖；变空集 = 排除把不限吃掉了")
                 .isNotEmpty();
         assertThat(reach).doesNotContain(dropped);
     }

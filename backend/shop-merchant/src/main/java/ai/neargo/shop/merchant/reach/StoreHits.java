@@ -29,12 +29,18 @@ public record StoreHits(Set<String> includeAreaNos, Set<String> excludeAreaNos,
         private final Set<String> boundaryInclude = new LinkedHashSet<>();
         private final Set<String> boundaryExclude = new LinkedHashSet<>();
 
+        /** areaNo 为空就不记：{@code Set.copyOf} 不收 null 元素，会在 build() 抛 NPE */
         public Builder area(String areaNo, boolean exclude) {
-            (exclude ? this.exclude : this.include).add(areaNo);
+            if (areaNo != null) {
+                (exclude ? this.exclude : this.include).add(areaNo);
+            }
             return this;
         }
 
         public Builder cell(String areaNo, boolean exclude, boolean boundary) {
+            if (areaNo == null) {
+                return this;
+            }
             if (boundary) {
                 (exclude ? boundaryExclude : boundaryInclude).add(areaNo);
             } else {

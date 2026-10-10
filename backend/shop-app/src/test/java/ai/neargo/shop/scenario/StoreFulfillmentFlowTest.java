@@ -147,13 +147,29 @@ class StoreFulfillmentFlowTest {
     }
 
     @Test
-    @DisplayName("可见性：EXPRESS 开着 = 原 SHIPPING —— 全部开放社区可达")
-    void expressReachesAllOpenCommunities() {
+    @DisplayName("可见性：EXPRESS + 显式「全平台不限」—— 全部开放社区可达")
+    void expressWithExplicitUnlimitedReachesAllOpenCommunities() {
         String c = openCommunity();
         String m = merchant("文三路 1 号");
         fulfillmentService.save(m, null, List.of(
                 new ChannelCmd(Fulfillments.EXPRESS, true, null, null, null, null)));
+        unlimited(m);
         assertThat(merchantQuery.reachableCommunities(m)).contains(c);
+    }
+
+    @Test
+    @DisplayName("★★★ 可见性：EXPRESS 开着但一条范围项都没有 —— 谁也看不到，不再隐式等于全平台")
+    void expressWithoutAnyAreaReachesNobody() {
+        /*
+         * 消融判据（ADR-034 AC5）：把「没框范围 + 快递/自送 = 全平台」那条隐式分支加回去，这一条立刻变红。
+         * 删掉它是因为「没框范围」有四种成因（框写到别家店、没物化、框成排除、门店级错位），
+         * 任何一种都会让商家在不知情的情况下铺满全平台，而且不报错。
+         */
+        openCommunity();
+        String m = merchant("文三路 1 号");
+        fulfillmentService.save(m, null, List.of(
+                new ChannelCmd(Fulfillments.EXPRESS, true, null, null, null, null)));
+        assertThat(merchantQuery.reachableCommunities(m)).isEmpty();
     }
 
     @Test
@@ -167,13 +183,27 @@ class StoreFulfillmentFlowTest {
     }
 
     @Test
-    @DisplayName("可见性：自送开着且没框范围 = 原 ONSITE —— 不限")
-    void deliveryWithoutAreasReachesAll() {
+    @DisplayName("可见性：自送 + 显式「全平台不限」—— 不限")
+    void deliveryWithExplicitUnlimitedReachesAll() {
         String c = openCommunity();
         String m = merchant("文三路 1 号");
         fulfillmentService.save(m, null, List.of(
                 new ChannelCmd(Fulfillments.MERCHANT_DELIVERY, true, null, null, null, null)));
+        unlimited(m);
         assertThat(merchantQuery.reachableCommunities(m)).contains(c);
+    }
+
+    /**
+     * 给这家主体的默认店加一条显式「全平台不限」纳入项（ADR-034）。
+     * 「不限」从此是一条范围项，不再由「没框范围 + 开了快递/自送」隐式成立。
+     */
+    private void unlimited(String merchantNo) {
+        storeService.save(merchantNo, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null,
+                List.of(new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand(
+                        ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_UNLIMITED,
+                        ai.neargo.shop.merchant.entity.MchServiceArea.UNLIMITED_REF)),
+                null, null));
     }
 
     @Test

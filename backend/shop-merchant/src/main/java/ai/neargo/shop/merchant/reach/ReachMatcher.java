@@ -145,9 +145,9 @@ public class ReachMatcher {
         }
         LinkedHashSet<String> union = new LinkedHashSet<>();
         for (String st : activeStoreNos(m.getEntityNo())) {
-            // 主体口径：各店足迹取并集。不能把各店范围混成一份再判 ——
-            // A 店排除的楼会把 B 店纳入的同一栋一起减掉
-            union.addAll(expand(context(m, st, null)));
+            // 主体口径：各店足迹取并集、路一律按「全部」（见 context 的 entityScope）。
+            // 不能把各店范围混成一份再判 —— A 店排除的楼会把 B 店纳入的同一栋一起减掉
+            union.addAll(expand(context(m, st, null, true)));
         }
         return List.copyOf(union);
     }
@@ -183,12 +183,23 @@ public class ReachMatcher {
      * 组装上下文。{@code overrideAreas} 非空 = 预览：用传入的范围行，当场算网格、当场建几何。
      */
     private Context context(MchEntity m, String storeNo, List<MchServiceArea> overrideAreas) {
+        return context(m, storeNo, overrideAreas, false);
+    }
+
+    /**
+     * @param entityScope 主体口径：<b>路一律按「全部」，不套门店的 SUBSET</b>。
+     *     「这家商家覆盖哪儿」问的是足迹，不该被某一路的收窄裁小（SUBSET 只在按门店判时生效）——
+     *     跟着门店收窄的话，一家开了两个片区的商家会在自己主页上只显示其中一片。
+     *     范围项仍按这家店取：范围是门店级的（V381），混成一份再判会让 A 店排除的楼
+     *     把 B 店纳入的同一栋一起减掉。
+     */
+    private Context context(MchEntity m, String storeNo, List<MchServiceArea> overrideAreas, boolean entityScope) {
         if (storeNo == null) {
             // 主体还没有任何门店：没有范围可言（不是「全国」）
             return new Context(new StoreMeta(m.getEntityNo(), null, List.of(), false, false, false, false),
                     new StoreItems(null, List.of(), List.of()), Map.of());
         }
-        List<MchServiceArea> areas = overrideAreas != null ? overrideAreas : areasOf(storeNo);
+        List<MchServiceArea> areas = overrideAreas != null ? withPlaceholderAreaNos(overrideAreas) : areasOf(storeNo);
         List<MchFulfillmentChannel> channels = DataScopeContext.executeWithoutScope(() ->
                 channelMapper.selectList(Wrappers.<MchFulfillmentChannel>lambdaQuery()
                         .eq(MchFulfillmentChannel::getEntityNo, m.getEntityNo())
@@ -244,8 +255,38 @@ public class ReachMatcher {
             cells = cellsOf(storeNo);
         }
         StoreMeta meta = new StoreMeta(m.getEntityNo(), storeNo,
-                StoreRoutes.of(m, storeNo, channels, subsets), unlimited, adminEx, cmtEx, polyEx);
+                StoreRoutes.of(m, entityScope ? null : storeNo, channels, subsets),
+                unlimited, adminEx, cmtEx, polyEx);
         return new Context(meta, new StoreItems(storeNo, areas, cells), polygons);
+    }
+
+    /**
+     * 预览传进来的范围行<b>还没落库、没有 area_no</b>，而命中结果是按 area_no 聚合的。
+     * 补一个由 {@code level|refCode} 决定的占位号：稳定、彼此可区分，又不会与库里的真号混淆。
+     *
+     * <p>不补的话 {@code StoreHits} 里会出现 null 元素 —— {@code Set.copyOf} 不收 null，
+     * 预览直接 NPE（ScopePreviewFlowTest 两条就是这么红的）。
+     */
+    private static List<MchServiceArea> withPlaceholderAreaNos(List<MchServiceArea> rows) {
+        List<MchServiceArea> out = new ArrayList<>(rows.size());
+        int i = 0;
+        for (MchServiceArea r : rows) {
+            if (r.getAreaNo() != null) {
+                out.add(r);
+                continue;
+            }
+            MchServiceArea copy = new MchServiceArea();
+            copy.setAreaNo("preview:" + (++i) + ":" + r.getLevel() + "|" + r.getRefCode());
+            copy.setEntityNo(r.getEntityNo());
+            copy.setStoreNo(r.getStoreNo());
+            copy.setLevel(r.getLevel());
+            copy.setRefCode(r.getRefCode());
+            copy.setMode(r.getMode());
+            copy.setStatus(r.getStatus());
+            copy.setGeometry(r.getGeometry());
+            out.add(copy);
+        }
+        return out;
     }
 
     /** 候选 = 全部开放小区 ∪ 范围里点名的小区（它们可能没开放，不在开放全集里），逐个过同一条规则 */
