@@ -110,13 +110,13 @@ export const site = {
      * 带版本号的那些年：这一行、服务器 env、人的记性，三处各写一份，
      * 每处都要手工跟，于是每处都会掉队（env 那处停在 0.4.98，这里已经 0.5.21）。
      */
-    merchantAndroid: "/dl/hxmall-merchant-0.5.43.apk",
+    merchantAndroid: "/dl/hxmall-merchant-0.5.57.apk",
     /**
      * 构建那一刻的版本号，**只是兜底**：页面加载后会从 {@link manifest} 取真的那个
      * （layout.tsx 的 LATEST_APK，更新所有 `[data-apk-version]`）。
      * 清单取不到时这个值仍在页面上 —— 可能旧一版，比空白好。
      */
-    merchantAndroidVersion: "0.5.43",
+    merchantAndroidVersion: "0.5.57",
     /** 版本清单，发版脚本写的（release-bapp-apk.sh 第 3.6 步）。「最新版是哪个」的唯一真源 */
     manifest: "/dl/latest.json",
   },
