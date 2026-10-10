@@ -22,7 +22,6 @@
 import { computed, onMounted, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
-import { confirm } from "@ai-shop/ui/prompt";
 
 const { t } = useI18n();
 
@@ -108,10 +107,26 @@ function undo() {
   points.value = points.value.slice(0, -1);
 }
 
-async function clearAll() {
+/**
+ * ★ 这里**必须用 `uni.showModal`，不能用仓库通用的 `confirm()`**。
+ *
+ * 真机 0.5.61 上点「清空」：屏幕变暗（遮罩在了），**对话框一个字都看不见** ——
+ * `confirm()` 是自绘的 view 弹层，而本页有原生 `<map>`，原生组件是独立图层、层级最高，
+ * 自绘弹层被它整个盖住。商家看到的是「屏幕暗了、什么都点不动」，只能按返回键退出去。
+ * 不报错、不白屏，和前面两处（地图不渲染、准星看不见）是同一个根：原生组件不吃 DOM 层级。
+ * `showModal` 是系统原生弹窗，一定在最上层。
+ */
+function clearAll() {
   if (!points.value.length) return;
-  if (!(await confirm({ title: t("store.polygonClearConfirm") }))) return;
-  points.value = [];
+  uni.showModal({
+    // 文案放 content 不放 title：原生弹窗的 title 是粗体短标题，只给 title 会在下面留一片空白
+    content: t("store.polygonClearConfirm"),
+    success: (res) => {
+      if (res.confirm) {
+        points.value = [];
+      }
+    },
+  });
 }
 
 function finish() {
@@ -142,11 +157,18 @@ function back() {
           :markers="markers"
           :polygons="polygons"
           :show-location="true"
-        ></map>
-        <view class="cross">
-          <view class="cross__v"></view>
-          <view class="cross__h"></view>
-        </view>
+        >
+          <!--
+            ★ 准星必须是 `<cover-view>`，而且必须是 `<map>` 的**子节点**。
+            真机 0.5.59 上用普通 `<view>` 叠在地图上：地图画出来了，**十字一点都看不见** ——
+            原生组件在 App 端是独立图层、层级最高，普通 view 盖不住它，不报错也没有任何痕迹。
+            样式写成内联：cover-view 是原生渲染的，对 scoped class 的支持各端不一。
+          -->
+          <cover-view class="cross">
+            <cover-view class="cross__v"></cover-view>
+            <cover-view class="cross__h"></cover-view>
+          </cover-view>
+        </map>
       </view>
 
       <view class="bar">
@@ -190,15 +212,16 @@ function back() {
   width: 100%;
   height: 100%;
 }
-/* 准星：叠在地图上的一个十字，不参与点击 */
+/*
+ * 准星：铺满地图的一层，十字靠两条线各自 50% 定位 ——
+ * 不用 transform 也不用负 margin（cover-view 对两者的支持各端不一，而偏 1rpx 肉眼看不出）。
+ */
 .cross {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 48rpx;
-  height: 48rpx;
-  /* 居中用 translate，不用负 margin：margin-left 在阿语下不跟着翻（而这里要的是「正中」，与读写方向无关） */
-  transform: translate(-50%, -50%);
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 .cross__v,
@@ -207,19 +230,23 @@ function back() {
   background: var(--sh-primary);
 }
 /* 居中用 translate 而不是 -1rpx 负 margin：半格值不在 4rpx 网格上，且 2rpx 线的一半本就不是整格 */
+/*
+ * 线长用**百分比**，不用 calc 也不用 transform —— cover-view 是原生渲染的，
+ * 对这两者的支持各端不一（0.5.60 真机上线长写 100% 就成了贯穿全图的两条红线，
+ * 看着像地图自己的分区线，而不是一个取景准星）。
+ * 48% 起、长 4%，中心正好落在 50%。
+ */
 .cross__v {
   left: 50%;
-  top: 0;
+  top: 48%;
   width: 2rpx;
-  height: 100%;
-  transform: translateX(-50%);
+  height: 4%;
 }
 .cross__h {
   top: 50%;
-  left: 0;
+  left: 48%;
   height: 2rpx;
-  width: 100%;
-  transform: translateY(-50%);
+  width: 4%;
 }
 .bar {
   display: flex;

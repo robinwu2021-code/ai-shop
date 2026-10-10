@@ -110,6 +110,10 @@ function isWhole(a: ServiceArea) {
 
 function removeArea(a: ServiceArea) {
   form.value.serviceAreas = areas.value.filter((x) => !(x.level === a.level && x.refCode === a.refCode));
+  // 还没保存的多边形 refCode 都是空串，按几何串认人 —— 否则删掉一个会把另一个也带走
+  if (a.level === AREA_LEVEL.POLYGON) {
+    pendingPolygons.value = pendingPolygons.value.filter((x) => x.geometry !== a.geometry);
+  }
 }
 
 const pickerOpen = ref(false);
@@ -121,12 +125,25 @@ function setAreas(v: ServiceArea[]) {
  * 画图页画完回传顶点。走事件而不是 URL 参数：顶点串可能上千字符，塞 query 会被截断，
  * 而截断后的 JSON 解析失败只会表现成「画了半天保存上去是空的」。
  */
+/**
+ * 画完回来还没保存的多边形。
+ *
+ * ★ **必须单独记一份**：`onShow` 会重新 `load()`，而 `load()` 整份覆盖 `serviceAreas` ——
+ * 回传那一下发生在 `navigateBack` 之前，紧接着 onShow 就把它冲掉了。
+ * 真机 0.5.63 上的表现是：画完点「完成」，回到范围页**清单里什么都没多**，
+ * 既不报错也没有提示，商家只会以为「这功能不好使」。
+ */
+const pendingPolygons = ref<ServiceArea[]>([]);
+
+/*
+ * 画图页画完回传顶点。走事件而不是 URL 参数：顶点串可能上千字符，塞 query 会被截断，
+ * 而截断后的 JSON 解析失败只会表现成「画了半天保存上去是空的」。
+ */
 uni.$on("store-scope:polygon", (geometry: string) => {
   if (!geometry) return;
-  form.value.serviceAreas = [
-    ...areas.value,
-    { level: AREA_LEVEL.POLYGON, refCode: "", name: "", mode: "INCLUDE", geometry } as ServiceArea,
-  ];
+  const area = { level: AREA_LEVEL.POLYGON, refCode: "", name: "", mode: "INCLUDE", geometry } as ServiceArea;
+  pendingPolygons.value = [...pendingPolygons.value, area];
+  form.value.serviceAreas = [...areas.value, area];
 });
 onUnmounted(() => uni.$off("store-scope:polygon"));
 /** 用文字填（TDD-经营范围文字录入）：识别结果写进清单的未保存态，预览与保存条照常出现 */
@@ -496,7 +513,19 @@ async function load() {
   const [s, ap] = await Promise.allSettled([api.mStore(), api.mMyCommunityApplies()]);
   if (s.status === "fulfilled") {
     form.value = normalize(s.value);
+    /*
+     * ★ 把「画完还没保存的多边形」补回去。load() 整份覆盖 serviceAreas，
+     * 而 onShow 每次都会 load —— 不补的话从画图页返回那一下就把它冲掉了（见 pendingPolygons）。
+     * 服务端已经存下的那些会带着 refCode（几何指纹）回来，不会和这里的重复：
+     * 保存成功后 pendingPolygons 就清空了。
+     */
+    // ★ snapshot 必须取**服务端那一份**（它是「有没有改动」的基准）。
+    // 先补再取的话，待保存的多边形会被算进基准里 —— dirty 恒 false，保存条根本不出现，
+    // 商家画完、看见了那一条，却没有任何地方能提交它。
     snapshot.value = JSON.stringify(form.value.serviceAreas ?? []);
+    if (pendingPolygons.value.length) {
+      form.value.serviceAreas = [...(form.value.serviceAreas ?? []), ...pendingPolygons.value];
+    }
     loaded.value = true;
     failed.value = false;
   } else {
@@ -538,6 +567,7 @@ async function save() {
   } as unknown as StoreProfile;
   try {
     form.value = normalize(await api.mSaveStore(payload));
+    pendingPolygons.value = [];   // 已经落库了，再补回去就成了重复项
     snapshot.value = JSON.stringify(form.value.serviceAreas ?? []);
     uni.showToast({ title: t("common.saved"), icon: "none" });
   } catch (e) {
