@@ -127,20 +127,20 @@
 
 <section>
   <div class="sec-head"><span class="sec-num">06</span><h2>操作去重：吸底条是唯一的操作区</h2></div>
-  <div class="sec-note">规则三条：① 页内<b>不排按钮</b>（页尾那排 <code>.ops</code> 整块删掉）；② 吸底条最多两颗，<b>主次必须不同</b>，只有一颗时占满宽；③ 有后续状态的事（发票、售后进度）做成会回读状态的卡片行，不是按钮。下表是每个状态下吸底条到底给什么。</div>
+  <div class="sec-note">规则三条：① 页内<b>不排按钮</b>（页尾那排 <code>.ops</code> 整块删掉）；② 吸底条用库件 <code>&lt;sh-actionbar&gt;</code>（C 端统一贴底形态），主操作只有<b>去支付 / 评价 / 再来一单</b>三种，次要位最多再给一颗（取消 / 再来一单），主次必须不同；③ <b>有后续状态的事（退款、售后、发票）一律做成会回读状态的卡片行</b>，不上吸底条 —— 它们都带「申请中 / 已处理 / 被驳回」的后续，钉在常驻条上既重复又每单都在问「是不是有问题」。下表是每个状态下吸底条给什么、哪些入口在卡片。</div>
   <table class="ptable">
     <colgroup><col><col><col><col></colgroup>
     <thead><tr><th>状态</th><th>次要（左）</th><th>主要（右）</th><th>卡片行</th></tr></thead>
     <tbody>
       <tr><td class="n">待付款</td><td class="o">取消订单</td><td class="o warn">去支付</td><td class="p">—</td></tr>
-      <tr><td class="n">待发货</td><td class="p">（无）</td><td class="o warn">申请退款</td><td class="p">—</td></tr>
-      <tr><td class="n">运输中</td><td class="p">（无）</td><td class="o warn">申请售后</td><td class="p">查看物流</td></tr>
-      <tr><td class="n">已完成 · 可评价</td><td class="o">再来一单</td><td class="o warn">发表评价</td><td class="p">查看物流 · 申请发票</td></tr>
-      <tr><td class="n">已完成 · 评过</td><td class="p">（无）</td><td class="o warn">再来一单</td><td class="p">查看物流 · 申请发票</td></tr>
+      <tr><td class="n">待发货</td><td class="p">（无）</td><td class="o warn">再来一单</td><td class="p">退款 / 售后</td></tr>
+      <tr><td class="n">运输中</td><td class="p">（无）</td><td class="o warn">再来一单</td><td class="p">查看物流 · 退款 / 售后</td></tr>
+      <tr><td class="n">已完成 · 可评价</td><td class="o">再来一单</td><td class="o warn">发表评价</td><td class="p">查看物流 · 发票</td></tr>
+      <tr><td class="n">已完成 · 评过</td><td class="p">（无）</td><td class="o warn">再来一单</td><td class="p">查看物流 · 发票</td></tr>
       <tr><td class="n">已取消 / 已退款</td><td class="p">（无）</td><td class="o warn">再来一单</td><td class="p">退款进度</td></tr>
     </tbody>
   </table>
-  <p class="why">现状的重复出自两处：<code>secondaryOp</code> 与 <code>primaryKey</code> 都会回落到「再来一单」（已完成且不可评价时<b>吸底条两颗同名</b>），而页尾 <code>.ops</code> 又无条件给一颗「再来一单」。表里每一行主次都不同名，且「再来一单」在全页只出现一次。</p>
+  <p class="why">重复出自三处：<code>secondaryOp</code> 与 <code>primaryKey</code> 都回落「再来一单」（已完成不可评价时<b>吸底条两颗同名</b>）；页尾 <code>.ops</code> 又无条件给一颗；售后（含退款）既在吸底条又在售后卡（运输中态两颗「申请售后」）。收敛后：吸底主操作只剩三种，售后/退款/发票全进卡片行，「再来一单」全页只出现一次，每行主次不同名。</p>
 </section>
 
 <footer>真源：prototypes/c-order-detail.html · 登记：prototypes/registry.json · 参考：b-app/src/pages/order、京东/淘宝订单详情</footer>

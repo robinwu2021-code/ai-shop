@@ -784,29 +784,29 @@ onShow(load);
       </template>
     </view>
 
-    <!-- 吸底条的占位：不留这块，最后一张卡会被压在条下面 -->
-    <view class="barph" />
-
     <!--
-      ⑥ 吸底操作条（原型）：左边实付、右边主次两颗。
-      京东淘宝都把「该做什么」钉在底部 —— 此前这几颗按钮排在页尾，
-      长单要滚到底才看得见「去支付」。
+      ⑥ 吸底操作条：收编进库件 <sh-actionbar>（C 端统一的贴底形态，已收 12 处）。
+      **此前这里手搓 <view class="bar"> fixed 条，在小程序端底色变透明** ——
+      --sh-* 变量声明在 .sh-root 上（小程序没有 :root），手搓的条拿不到 `--sh-surface`，
+      药丸底与按钮底一起透掉，和其他吸底页不一致（2026-10-10 店主反馈）。
+      组件自带定位 + 底色 + 占位块（占位高它自己算，不再手估）。
+      lead 档：左实付、右主次按钮（与 cart / order-confirm 同款）。
     -->
-    <view class="bar">
-      <view class="bar__sum">
+    <sh-actionbar pill="lead">
+      <view class="sh-fill">
         <text class="txt-caption sh-muted">{{ $t("order.paid") }}</text>
-        <text class="txt-price sh-num bar__price">
+        <text class="txt-price sh-num obar__price">
           {{ money(order.amount.paidMinor || order.amount.payableMinor) }}
         </text>
       </view>
-      <view v-if="secondaryOp === 'cancel'" class="txt-sub sh-btn sh-btn--muted bar__btn" @tap="cancel">
+      <view v-if="secondaryOp === 'cancel'" class="txt-body sh-btn sh-btn--muted obar__btn" @tap="cancel">
         {{ $t("order.cancel") }}
       </view>
-      <view v-else-if="secondaryOp === 'buyAgain'" class="txt-sub sh-btn sh-btn--muted bar__btn" @tap="buyAgain">
+      <view v-else-if="secondaryOp === 'buyAgain'" class="txt-body sh-btn sh-btn--muted obar__btn" @tap="buyAgain">
         {{ $t("order.buyAgain") }}
       </view>
-      <view class="txt-sub sh-btn bar__btn bar__btn--main" @tap="runPrimary">{{ primaryLabel }}</view>
-    </view>
+      <view class="txt-body sh-btn obar__btn" @tap="runPrimary">{{ primaryLabel }}</view>
+    </sh-actionbar>
     </template>
 
   </sh-scaffold>
@@ -931,46 +931,14 @@ onShow(load);
   margin-bottom: 12rpx;
 }
 
-/* 吸底操作条：左边实付、右边主次两颗。占位块把最后一张卡顶起来，别被条压住 */
-.bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
-  background: var(--sh-card);
-  border-top: 1rpx solid var(--sh-line);
-}
-.bar__sum {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-.bar__price {
-  line-height: 1.2;
-}
-/* 吸底的按钮不能被 flex 压扁：库件的 sh-btn 是块级满宽的，放进横向条里会缩成一颗圆球、
-   文字挤成两行（2026-10-10 本地实测）。这里把宽度交还给内容，并给足左右内距。 */
-.bar__btn {
+/* 吸底按钮：库件 sh-btn 默认块级满宽，放进 <sh-actionbar> 的横向药丸里要按内容宽。
+   padding-inline 对齐 order-confirm 的 actionbar__btn（52rpx），各页一个样 */
+.obar__btn {
   flex: 0 0 auto;
-  width: auto;
-  margin: 0;
-  padding-inline-start: 32rpx;
-  padding-inline-end: 32rpx;
-  min-width: 168rpx;
-  white-space: nowrap;
+  padding-inline: 52rpx;
 }
-/* 主操作吃掉剩下的宽：没有次要操作时它自己占满（见 secondaryOp 可为 null） */
-.bar__btn--main {
-  flex: 1 1 auto;
-}
-.barph {
-  height: calc(140rpx + env(safe-area-inset-bottom));
+.obar__price {
+  line-height: 1.2;
 }
 .timeline {
   margin-top: 28rpx;
