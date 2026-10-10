@@ -7,7 +7,7 @@ import type { CreateOrderReq } from "../contract";
 import { allCommunitySeeds, assertTransition, db, delay, findGoodsSeed, merchantBrief, nextNo, paginate, persist, pick, pointBalance, pushMessage, pushPoint, toCommunity, toGoods } from "@shared/mock/db";
 import { fulfillmentFor } from "@shared/strategies/fulfillment";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
-import type { Coupon, InvoiceRequest, Order, OrderItem, PageQuery, ShipmentTrace } from "@shared/types";
+import type { Coupon, InvoiceRequest, Order, OrderItem, PageQuery, ShipmentTrace, TrackView } from "@shared/types";
 import { CATEGORY_TYPE, FULFILLMENT, TRADE_RULES } from "@shared/utils/constants";
 import { currentCurrency } from "@shared/utils/money";
 import { buyNGetM, giftQtyFor } from "@shared/utils/promotion";
@@ -56,6 +56,7 @@ export const tradeMock: Pick<ShopApi,
   | "invoiceOfOrder"
   | "orderDetail"
   | "orderTrace"
+  | "track"
   | "cancelOrder"
 > = {
   // ---------------------------------------------------------------- 交易
@@ -403,6 +404,25 @@ export const tradeMock: Pick<ShopApi,
   async orderTrace(orderNo) {
     const o = findOrder(orderNo) as { trace?: ShipmentTrace } | undefined;
     return delay(o?.trace ?? null);
+  },
+
+  /** mock 看件：把本地一张单收窄成看件视图（够把看件页跑起来） */
+  async track(t) {
+    const o = findOrder(t) as (Order & { receiver?: { name?: string; phone?: string; address?: string } }) | undefined;
+    if (!o) return delay<TrackView | null>(null);
+    return delay<TrackView | null>({
+      subOrderNo: o.orderNo,
+      status: o.status,
+      fulfillment: o.fulfillment,
+      storeName: o.store?.storeName ?? null,
+      receiverName: o.receiver?.name ?? null,
+      receiverPhoneMasked: o.receiver?.phone ?? null,
+      receiverAddress: o.receiver?.address ?? null,
+      expressCompany: o.expressCompany ?? null,
+      expressNo: o.expressNo ?? null,
+      items: o.items.map((i) => ({ title: i.title, cover: i.cover, spec: i.spec, qty: i.qty })),
+      trace: o.trace ?? null,
+    });
   },
 
   async orderDetail(orderNo) {

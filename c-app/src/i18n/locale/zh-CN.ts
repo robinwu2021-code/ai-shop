@@ -15,6 +15,18 @@ export default {
     wxUnavailable: "物流插件没加载出来，稍后再试",
     at: "{t}",
   },
+  track: {
+    title: "物流详情",
+    invalidTitle: "链接已失效",
+    invalidTip: "这条物流链接可能已过期，请在最新的发货通知里打开。",
+    shipFrom: "{store} 发货",
+    shipFromDefault: "商家发货",
+    receiverTitle: "收货信息",
+    itemsTitle: "商品",
+    itemCount: "共 {n} 件",
+    noTrace: "商家已发货，物流信息稍后更新",
+    viewHint: "这是寄给你的一笔订单，可查看物流进度",
+  },
   common: {
     later: "以后再说",
     loadFailed: "没能加载出来",

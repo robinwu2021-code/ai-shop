@@ -15,6 +15,18 @@ export default {
     wxUnavailable: "تعذّر تحميل مكوّن التتبع، حاول لاحقًا",
     at: "{t}",
   },
+  track: {
+    title: "تتبّع الشحنة",
+    invalidTitle: "انتهت صلاحية الرابط",
+    invalidTip: "قد تكون صلاحية رابط التتبّع قد انتهت. افتحه من أحدث إشعار شحن.",
+    shipFrom: "تم الشحن بواسطة {store}",
+    shipFromDefault: "تم الشحن بواسطة التاجر",
+    receiverTitle: "معلومات التسليم",
+    itemsTitle: "المنتجات",
+    itemCount: "{n} قطعة",
+    noTrace: "تم الشحن من قبل التاجر، سيتم تحديث التتبّع قريبًا",
+    viewHint: "طرد في طريقه إليك — تابع تقدّمه هنا",
+  },
   common: {
     later: "لاحقًا",
     loadFailed: "تعذّر التحميل",

@@ -245,6 +245,18 @@
       }
     },
     {
+      "path": "pages/track/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/after-sale/index",
       "style": {
         "navigationBarTitleText": "",

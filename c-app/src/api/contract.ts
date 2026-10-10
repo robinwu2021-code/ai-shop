@@ -30,6 +30,7 @@ import type {
   LoginResp,
   Order,
   ShipmentTrace,
+  TrackView,
   PageQuery,
   PageResult,
   Address,
@@ -378,6 +379,11 @@ export interface ShopApi {
   /** 某单的开票状态。**没申请过返回 null 而不是报错** —— 那是常态不是错误 */
   invoiceOfOrder(orderNo: string): Promise<InvoiceRequest | null>;
   orderDetail(orderNo: string): Promise<Order>;
+  /**
+   * 免登录看件（TDD-收件人物流触达与分享裂变 §3）。发货短信/分享链接里的 `t` 是看件令牌。
+   * **匿名可调** —— 令牌即授权。令牌无效 / 过期返回 null，端上显示「链接已失效」。
+   */
+  track(t: string): Promise<TrackView | null>;
   /**
    * 物流页：点「查看物流」时调（TDD-物流模块 批 3）。小程序 + 微信支付单会顺带向微信校正一次状态
    * （10 分钟内不重复）。不是快递 / 还没发货 → null

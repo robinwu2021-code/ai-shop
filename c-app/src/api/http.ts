@@ -78,6 +78,7 @@ import type {
   Message,
   Order,
   ShipmentTrace,
+  TrackView,
   PageQuery,
   PageResult,
   PointAccount,
@@ -192,6 +193,7 @@ export const httpApi: ShopApi = {
   myInvoices: () => call<InvoiceRequest[]>("myInvoices"),
   invoiceOfOrder: (orderNo) => call<InvoiceRequest | null>("invoiceOfOrder", { orderNo }),
   orderDetail: (orderNo) => call<Order>("orderDetail", { orderNo }),
+  track: (t) => call<TrackView | null>("track", undefined, { t }),
   orderTrace: (orderNo) => call<ShipmentTrace | null>("orderTrace", { orderNo }),
   cancelOrder: (orderNo) => call<Order>("cancelOrder", { orderNo }),
   applyAfterSale: (orderNo, reason, images, type) =>

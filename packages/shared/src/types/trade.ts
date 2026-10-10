@@ -789,3 +789,38 @@ export interface RefundImpact {
   /** 收回用户的赠送积分 */
   pointsRevoke: number;
 }
+
+/**
+ * 免登录看件视图（TDD-收件人物流触达与分享裂变 §3）。后端 `GET /mp/track?t=<token>` 返回。
+ *
+ * <p>**这是一份删过的订单详情**：发给收件人的看件链接会被转发、截图，
+ * 所以只放物流 + 收货 + 店名 + 商品摘要 —— 价格、买家身份不下发（后端就不给）。
+ * 手机号是**掩码**的（后端出 `138****8000`）。
+ *
+ * <p>令牌无效 / 过期时后端返回 `null`，端上据此显示「链接已失效」。
+ */
+export interface TrackView {
+  subOrderNo: string;
+  /** 契约抽象状态，与订单详情同口径 */
+  status: OrderStatus;
+  fulfillment: FulfillmentType;
+  /** 发货门店名。空 → 退化成「商家」 */
+  storeName?: string | null;
+  receiverName?: string | null;
+  /** 已掩码，非明文 */
+  receiverPhoneMasked?: string | null;
+  receiverAddress?: string | null;
+  expressCompany?: string | null;
+  expressNo?: string | null;
+  items: TrackItem[];
+  /** 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null */
+  trace?: ShipmentTrace | null;
+}
+
+/** 看件页的商品摘要 —— **不含价格**。 */
+export interface TrackItem {
+  title?: string;
+  cover?: string;
+  spec?: string;
+  qty: number;
+}

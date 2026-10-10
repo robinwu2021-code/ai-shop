@@ -105,7 +105,7 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
   const chLabels = { sms: c.nlSms, mail: c.nlMail, wxsub: c.nlWxsub, push: c.nlPush, webhook: c.nlWebhook };
   const bizLabels = {
     otp: c.nlBizOTP, initPwd: c.nlBizInitPwd, resetPwd: c.nlBizResetPwd,
-    test: c.nlBizTest, trade: c.nlBizTrade,
+    test: c.nlBizTest, trade: c.nlBizTrade, ship: c.nlBizShip,
   };
 
   /** 失败原文 → 可读归因文案。规则在 lib/notify-reason.ts（那里的中文是匹配模式，不是文案）。 */
@@ -206,6 +206,7 @@ export function NotifyLogTab({ c, canWrite }: { c: MessageCopy; canWrite: boolea
             <option value="">{c.nlColBizAll}</option>
             <option value="OTP">{c.nlBizOTP}</option>
             <option value="TRADE_NOTIFY">{c.nlBizTrade}</option>
+            <option value="SHIP_NOTIFY">{c.nlBizShip}</option>
             <option value="TEST">{c.nlBizTest}</option>
           </Select>
           <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="w-32">

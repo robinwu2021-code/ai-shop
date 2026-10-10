@@ -4,7 +4,7 @@ import { bizLabel, channelLabel, type BizLabels, type ChannelLabels } from "./no
 const CH: ChannelLabels = { sms: "短信", mail: "邮件", wxsub: "微信订阅消息", push: "App 推送", webhook: "企业微信群" };
 const BIZ: BizLabels = {
   otp: "验证码", initPwd: "账号初始密码", resetPwd: "密码重置",
-  test: "测试发送", trade: "交易触达",
+  test: "测试发送", trade: "交易触达", ship: "发货触达",
 };
 
 describe("发送记录的码 → 文案", () => {
@@ -35,6 +35,10 @@ describe("发送记录的码 → 文案", () => {
   it("用途码含 TRADE_NOTIFY（事件驱动的交易触达）", () => {
     expect(bizLabel("TRADE_NOTIFY", BIZ)).toBe("交易触达");
     expect(bizLabel("OTP", BIZ)).toBe("验证码");
+  });
+
+  it("用途码含 SHIP_NOTIFY（发货触达收件人，与交易触达分开）", () => {
+    expect(bizLabel("SHIP_NOTIFY", BIZ)).toBe("发货触达");
   });
 
   it("★ 未知用途码同样回落原码", () => {

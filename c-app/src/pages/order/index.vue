@@ -525,6 +525,16 @@ onShow(load);
       </view>
     </view>
 
+    <!-- 收货信息（原型 k；买家看自己的单：完整地址与完整手机号，那是他填的） -->
+    <view v-if="order.receiver && (order.receiver.name || order.receiver.address)" class="sh-card block">
+      <text class="txt-caption sh-muted">{{ $t("track.receiverTitle") }}</text>
+      <view class="sh-row sh-row--between recv">
+        <text class="txt-strong">{{ order.receiver.name }}</text>
+        <text v-if="order.receiver.phone" class="txt-caption sh-muted sh-num">{{ order.receiver.phone }}</text>
+      </view>
+      <text v-if="order.receiver.address" class="txt-caption sh-muted">{{ order.receiver.address }}</text>
+    </view>
+
     <!-- 商品 -->
     <view class="sh-card block">
       <biz-sku-row
@@ -674,6 +684,7 @@ onShow(load);
 </template>
 
 <style scoped>
+.recv { margin-top: 8rpx; }
 .returned {
   display: flex;
   flex-direction: column;

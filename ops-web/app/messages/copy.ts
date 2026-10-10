@@ -127,6 +127,7 @@ const zh = {
   nlBizResetPwd: "密码重置",
   nlBizTest: "测试发送",
   nlBizTrade: "交易触达",
+  nlBizShip: "发货触达",
   nlColReason: "失败归因",
   // 失败原文照留（排查要它），这一层是给「一眼看出该找谁」用的
   nlReasonCred: "凭据无效或未配置 —— 去通道配置检查",
@@ -450,6 +451,7 @@ const en: typeof zh = {
   nlBizResetPwd: "Password reset",
   nlBizTest: "Test send",
   nlBizTrade: "Transactional",
+  nlBizShip: "Shipping",
   nlColReason: "Likely cause",
   nlReasonCred: "Credentials missing or invalid — check channel config",
   nlReasonQuota: "Channel quota exhausted (the free tier has a daily cap)",

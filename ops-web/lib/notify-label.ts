@@ -29,6 +29,8 @@ export interface BizLabels {
   resetPwd: string;
   test: string;
   trade: string;
+  /** 发货触达收件人（SHIP_NOTIFY）。与 trade 分开：运营要单独筛发货短信/裂变 */
+  ship: string;
 }
 
 /** 通道码 → 文案。未知码回落原码。 */
@@ -49,6 +51,7 @@ export function bizLabel(bizType: string, l: BizLabels): string {
     OPS_RESET_PASSWORD: l.resetPwd,
     TEST: l.test,
     TRADE_NOTIFY: l.trade,
+    SHIP_NOTIFY: l.ship,
   };
   return map[bizType] ?? bizType;
 }

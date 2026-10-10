@@ -15,6 +15,18 @@ export default {
     wxUnavailable: "Tracking plugin failed to load, try again later",
     at: "{t}",
   },
+  track: {
+    title: "Tracking",
+    invalidTitle: "Link expired",
+    invalidTip: "This tracking link may have expired. Open it from the latest shipping notice.",
+    shipFrom: "Shipped by {store}",
+    shipFromDefault: "Shipped by merchant",
+    receiverTitle: "Delivery",
+    itemsTitle: "Items",
+    itemCount: "{n} item(s)",
+    noTrace: "Shipped by the merchant, tracking updates soon",
+    viewHint: "A parcel on its way to you — follow its progress here",
+  },
   common: {
     later: "Later",
     loadFailed: "Could not load",

@@ -677,6 +677,7 @@ export const ROUTES = {
   pay: "/pages/pay/index",
   orders: "/pages/orders/index",
   order: "/pages/order/index",
+  track: "/pages/track/index",
   afterSale: "/pages/after-sale/index",
   coupons: "/pages/coupons/index",
   /** 邀请有礼（§3.1）。没有在跑的活动时「我的」页不显示这条入口 */
