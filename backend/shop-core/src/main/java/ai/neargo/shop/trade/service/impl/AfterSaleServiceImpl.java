@@ -46,6 +46,10 @@ import java.util.List;
 @Service
 public class AfterSaleServiceImpl implements AfterSaleService {
 
+    /** 不用 @Slf4j：下面 appendLog 里有局部变量叫 {@code log}（OrdStatusLog），会撞名。 */
+    private static final org.slf4j.Logger LOG =
+            org.slf4j.LoggerFactory.getLogger(AfterSaleServiceImpl.class);
+
     /** 三种售后类型。与 {@link OrdAfterSale} 的常量同源，不在这里另写字符串 */
     private static final java.util.Set<String> AFTER_SALE_TYPES = java.util.Set.of(
             OrdAfterSale.REFUND_ONLY, OrdAfterSale.RETURN_REFUND, OrdAfterSale.EXCHANGE);
@@ -141,6 +145,12 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Override
     @Transactional
     public AfterSaleVO apply(String subOrderNo, ApplyCommand cmd) {
+        // 售后定位日志（2026-10-11 店主反馈退款"数据不存在"）：先把"谁在退哪一单、带没带图"记下来
+        LOG.info("[after-sale] apply 进入 subOrderNo={} currentUser={} type={} hasReason={} imageCount={}",
+                subOrderNo, SecurityUtils.currentUserNo(),
+                cmd == null ? null : cmd.type(),
+                cmd != null && cmd.reason() != null && !cmd.reason().isBlank(),
+                cmd == null || cmd.images() == null ? 0 : cmd.images().size());
         OrdSubOrder sub = ownSubOrder(subOrderNo);
 
         /*
@@ -647,11 +657,24 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     private OrdSubOrder ownSubOrder(String subOrderNo) {
+        String currentUser = SecurityUtils.currentUserNo();
         OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
                 .eq(OrdSubOrder::getSubOrderNo, subOrderNo)
-                .eq(OrdSubOrder::getUserNo, SecurityUtils.currentUserNo())
+                .eq(OrdSubOrder::getUserNo, currentUser)
                 .last("limit 1"));
         if (sub == null) {
+            /*
+             * **定位日志**：这单是真不存在，还是存在却属于别的账号？
+             * 后者 = 当前登录账号不是下单人（店主换了微信登录就会这样），
+             * 是"数据不存在"最常见的原因。绕数据域查全局真实归属（只在失败路径多一次查）。
+             */
+            String owner = DataScopeContext.executeWithoutScope(() -> {
+                OrdSubOrder any = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1"));
+                return any == null ? null : any.getUserNo();
+            });
+            LOG.warn("[after-sale] 子单找不到：subOrderNo={} currentUser={} 该单真实归属={}"
+                    + "（归属非空却找不到 = 登录账号≠下单人）", subOrderNo, currentUser, owner);
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         return sub;
