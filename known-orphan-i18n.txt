@@ -79,3 +79,7 @@ c-app order.pickup
 c-app order.express
 c-app order.trace
 c-app order.traceView
+# 2026-10-10：订单详情重排（8b01b6997「进度合成一个区域」）新加的词条，页面上还没接上。
+# 不是我这条线的，也不替它决定是接上还是删掉 —— 同一条线还留着三条红的用例
+# （order-page ×2、order-detail-review ×1，干净 HEAD 上同样红），一并由那条线收。
+c-app order.progress
