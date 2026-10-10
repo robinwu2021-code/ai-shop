@@ -3886,6 +3886,12 @@
           "ar": "نقطة الاستلام"
         },
         {
+          "key": "order.progress",
+          "zh-CN": "订单进度",
+          "en": "Order progress",
+          "ar": "تقدم الطلب"
+        },
+        {
           "key": "order.providedBy",
           "zh-CN": "本单商品由「{m}」提供并收款",
           "en": "Sold and charged by {m}",
@@ -3932,6 +3938,12 @@
           "zh-CN": "物流轨迹",
           "en": "Tracking",
           "ar": "تتبع الشحنة"
+        },
+        {
+          "key": "order.traceView",
+          "zh-CN": "查看",
+          "en": "View",
+          "ar": "عرض"
         },
         {
           "key": "order.weighAdjust",
@@ -7356,6 +7368,12 @@
           "zh-CN": "确定",
           "en": "OK",
           "ar": "تأكيد"
+        },
+        {
+          "key": "common.delete",
+          "zh-CN": "删除",
+          "en": null,
+          "ar": null
         },
         {
           "key": "common.done",
@@ -11366,6 +11384,12 @@
           "ar": "حتى {s}"
         },
         {
+          "key": "home.notifyEntry",
+          "zh-CN": "通知设置",
+          "en": "Notifications",
+          "ar": "الإشعارات"
+        },
+        {
           "key": "home.orders",
           "zh-CN": "订单",
           "en": "Orders",
@@ -13886,6 +13910,252 @@
           "ar": "لدى المنصة «{name}» بالفعل؛ سنستخدمها"
         },
         {
+          "key": "notifySetting.addPhone",
+          "zh-CN": "加一个号",
+          "en": "Add a number",
+          "ar": "إضافة رقم"
+        },
+        {
+          "key": "notifySetting.adminOnly",
+          "zh-CN": "仅店主可以改通知设置",
+          "en": "Only the owner can change notification settings",
+          "ar": "المالك فقط يمكنه تغيير إعدادات الإشعارات"
+        },
+        {
+          "key": "notifySetting.channel.MAIL",
+          "zh-CN": "邮件",
+          "en": "Email",
+          "ar": "البريد"
+        },
+        {
+          "key": "notifySetting.channel.PUSH",
+          "zh-CN": "App 通知",
+          "en": "App notification",
+          "ar": "إشعار التطبيق"
+        },
+        {
+          "key": "notifySetting.channel.SMS",
+          "zh-CN": "短信",
+          "en": "SMS",
+          "ar": "رسالة نصية"
+        },
+        {
+          "key": "notifySetting.channel.WEBHOOK",
+          "zh-CN": "企业微信群",
+          "en": "WeCom group",
+          "ar": "مجموعة ويكوم"
+        },
+        {
+          "key": "notifySetting.channel.WXSUB",
+          "zh-CN": "微信通知",
+          "en": "WeChat message",
+          "ar": "رسالة ويتشات"
+        },
+        {
+          "key": "notifySetting.emailBad",
+          "zh-CN": "邮箱格式不对",
+          "en": "Not a valid email",
+          "ar": "صيغة البريد غير صحيحة"
+        },
+        {
+          "key": "notifySetting.emailPlaceholder",
+          "zh-CN": "邮箱",
+          "en": "Email",
+          "ar": "البريد الإلكتروني"
+        },
+        {
+          "key": "notifySetting.emailTitle",
+          "zh-CN": "邮件接收地址",
+          "en": "Email address",
+          "ar": "عنوان البريد"
+        },
+        {
+          "key": "notifySetting.hint.MAIL",
+          "zh-CN": "发到下面填的邮箱",
+          "en": "Goes to the address below",
+          "ar": "يُرسل إلى العنوان أدناه"
+        },
+        {
+          "key": "notifySetting.hint.PUSH",
+          "zh-CN": "装了 App 的人收到",
+          "en": "For anyone with the app",
+          "ar": "لمن لديه التطبيق"
+        },
+        {
+          "key": "notifySetting.hint.SMS",
+          "zh-CN": "店主的号 + 最多两个",
+          "en": "Owner plus up to two more",
+          "ar": "المالك وحتى رقمين إضافيين"
+        },
+        {
+          "key": "notifySetting.hint.WEBHOOK",
+          "zh-CN": "发到本店的群，群里的人都能看到",
+          "en": "Goes to this store's group",
+          "ar": "يُرسل إلى مجموعة هذا المتجر"
+        },
+        {
+          "key": "notifySetting.hint.WXSUB",
+          "zh-CN": "要在小程序里授权，一次授权一条",
+          "en": "Needs opt-in in the mini program; one message per opt-in",
+          "ar": "يتطلب الموافقة في البرنامج المصغر؛ رسالة واحدة لكل موافقة"
+        },
+        {
+          "key": "notifySetting.mail",
+          "zh-CN": "邮件接收",
+          "en": "Email",
+          "ar": "البريد"
+        },
+        {
+          "key": "notifySetting.mailAddr",
+          "zh-CN": "邮件地址",
+          "en": "Email address",
+          "ar": "عنوان البريد"
+        },
+        {
+          "key": "notifySetting.notReady",
+          "zh-CN": "未配置",
+          "en": "Not configured",
+          "ar": "غير مُهيّأ"
+        },
+        {
+          "key": "notifySetting.ownerPhone",
+          "zh-CN": "登录手机号",
+          "en": "Login number",
+          "ar": "رقم الدخول"
+        },
+        {
+          "key": "notifySetting.phoneBad",
+          "zh-CN": "号码不对，或已经两个了",
+          "en": "Bad number, or already two",
+          "ar": "رقم غير صحيح أو بلغت الحد"
+        },
+        {
+          "key": "notifySetting.phoneFull",
+          "zh-CN": "最多两个",
+          "en": "Two at most",
+          "ar": "رقمان كحد أقصى"
+        },
+        {
+          "key": "notifySetting.phoneHint",
+          "zh-CN": "店主的登录手机号一直会收到，不占这两个名额",
+          "en": "The owner's login number always receives these; it doesn't use a slot",
+          "ar": "رقم دخول المالك يستقبلها دائمًا ولا يشغل خانة"
+        },
+        {
+          "key": "notifySetting.phoneLeft",
+          "zh-CN": "还能加 {n} 个",
+          "en": "{n} left",
+          "ar": "بقي {n}"
+        },
+        {
+          "key": "notifySetting.phonePlaceholder",
+          "zh-CN": "手机号",
+          "en": "Phone number",
+          "ar": "رقم الهاتف"
+        },
+        {
+          "key": "notifySetting.phoneTitle",
+          "zh-CN": "加一个短信接收号",
+          "en": "Add an SMS recipient",
+          "ar": "إضافة رقم لاستقبال الرسائل"
+        },
+        {
+          "key": "notifySetting.ready",
+          "zh-CN": "已配置",
+          "en": "Configured",
+          "ar": "مُهيّأ"
+        },
+        {
+          "key": "notifySetting.saved",
+          "zh-CN": "已保存",
+          "en": "Saved",
+          "ar": "تم الحفظ"
+        },
+        {
+          "key": "notifySetting.scene.AFTER_SALE_APPLIED",
+          "zh-CN": "售后申请",
+          "en": "Return request",
+          "ar": "طلب إرجاع"
+        },
+        {
+          "key": "notifySetting.scene.REVIEW_CREATED",
+          "zh-CN": "新评价",
+          "en": "New review",
+          "ar": "تقييم جديد"
+        },
+        {
+          "key": "notifySetting.scene.SUB_ORDER_PAID",
+          "zh-CN": "新订单",
+          "en": "New order",
+          "ar": "طلب جديد"
+        },
+        {
+          "key": "notifySetting.sms",
+          "zh-CN": "短信接收号",
+          "en": "SMS recipients",
+          "ar": "مستلمو الرسائل"
+        },
+        {
+          "key": "notifySetting.test",
+          "zh-CN": "发一条测试消息",
+          "en": "Send a test message",
+          "ar": "إرسال رسالة تجريبية"
+        },
+        {
+          "key": "notifySetting.testFailed",
+          "zh-CN": "没发出去，检查地址是否还有效",
+          "en": "Not sent; check whether the address is still valid",
+          "ar": "لم يُرسل؛ تحقق من صلاحية العنوان"
+        },
+        {
+          "key": "notifySetting.testSent",
+          "zh-CN": "已发出，去群里看看",
+          "en": "Sent — check the group",
+          "ar": "تم الإرسال — تحقق من المجموعة"
+        },
+        {
+          "key": "notifySetting.title",
+          "zh-CN": "通知设置",
+          "en": "Notifications",
+          "ar": "الإشعارات"
+        },
+        {
+          "key": "notifySetting.wecom",
+          "zh-CN": "企业微信群",
+          "en": "WeCom group",
+          "ar": "مجموعة ويكوم"
+        },
+        {
+          "key": "notifySetting.wecomAddr",
+          "zh-CN": "群机器人地址",
+          "en": "Group bot address",
+          "ar": "عنوان روبوت المجموعة"
+        },
+        {
+          "key": "notifySetting.wecomBad",
+          "zh-CN": "地址不对，要以 https://qyapi.weixin.qq.com/ 开头",
+          "en": "Address must start with https://qyapi.weixin.qq.com/",
+          "ar": "يجب أن يبدأ العنوان بـ https://qyapi.weixin.qq.com/"
+        },
+        {
+          "key": "notifySetting.wecomHint",
+          "zh-CN": "在企业微信群里添加「群机器人」，复制它的 Webhook 地址",
+          "en": "Add a group bot in your WeCom group and copy its webhook address",
+          "ar": "أضف روبوت مجموعة في ويكوم وانسخ عنوان الويب هوك"
+        },
+        {
+          "key": "notifySetting.wecomPlaceholder",
+          "zh-CN": "群机器人地址",
+          "en": "Group bot address",
+          "ar": "عنوان روبوت المجموعة"
+        },
+        {
+          "key": "notifySetting.wecomTitle",
+          "zh-CN": "填写群机器人地址",
+          "en": "Enter the group bot address",
+          "ar": "أدخل عنوان روبوت المجموعة"
+        },
+        {
           "key": "offlineSale.addItem",
           "zh-CN": "添加商品",
           "en": "Add product",
@@ -14460,6 +14730,12 @@
           "zh-CN": "物流轨迹",
           "en": "Tracking",
           "ar": "تتبع الشحنة"
+        },
+        {
+          "key": "order.traceView",
+          "zh-CN": "查看",
+          "en": "View",
+          "ar": "عرض"
         },
         {
           "key": "order.trafficMERCHANT_OWNED",
@@ -26153,6 +26429,20 @@
       "package": "ai.neargo.shop.merchant.entity"
     },
     {
+      "table": "mch_notify_pref",
+      "class": "MchNotifyPref",
+      "zh": "门店自己的通知开关（TDD-来单四渠道与商家通知设置 §2.1）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.message.entity"
+    },
+    {
+      "table": "mch_notify_recipient",
+      "class": "MchNotifyRecipient",
+      "zh": "门店的通知收件地址（TDD-来单四渠道与商家通知设置 §2.5）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.message.entity"
+    },
+    {
       "table": "mch_payment_merchant",
       "class": "MchPaymentMerchant",
       "zh": "商家支付进件 —— **每通道一条**。",
@@ -28496,8 +28786,8 @@
       {
         "host": "BizKey",
         "name": "STAFF",
-        "value": "ST",
-        "zh": "",
+        "value": "STF",
+        "zh": "平台运营员工（sys_ops_staff）。",
         "module": "shop-base"
       },
       {
@@ -28671,8 +28961,8 @@
       {
         "host": "BizKey",
         "name": "CHANNEL_MESSAGE",
-        "value": "CM",
-        "zh": "渠道报文（stl_channel_message，V286）。",
+        "value": "CHM",
+        "zh": "渠道报文（stl_channel_message）。",
         "module": "shop-base"
       },
       {
@@ -28769,8 +29059,8 @@
       {
         "host": "BizKey",
         "name": "POINTS_POOL",
-        "value": "PP",
-        "zh": "积分资金池流水",
+        "value": "PPL",
+        "zh": "积分池。",
         "module": "shop-base"
       },
       {
@@ -28783,8 +29073,8 @@
       {
         "host": "BizKey",
         "name": "MATERIAL",
-        "value": "MT",
-        "zh": "运营素材",
+        "value": "MAT",
+        "zh": "素材（content_material）。",
         "module": "shop-base"
       },
       {
@@ -28797,8 +29087,8 @@
       {
         "host": "BizKey",
         "name": "STAFF_LOG",
-        "value": "SL",
-        "zh": "员工与授权的操作日志（B-11.10.3）",
+        "value": "SFL",
+        "zh": "员工操作日志。",
         "module": "shop-base"
       },
       {
@@ -30462,6 +30752,13 @@
       },
       {
         "host": "MsgSceneChannel",
+        "name": "CH_MAIL",
+        "value": "MAIL",
+        "zh": "邮件。",
+        "module": "shop-core"
+      },
+      {
+        "host": "MsgSceneChannel",
         "name": "LEVEL_NORMAL",
         "value": "NORMAL",
         "zh": "",
@@ -30588,6 +30885,13 @@
       },
       {
         "host": "NotifyChannel",
+        "name": "TYPE_WEBHOOK",
+        "value": "WEBHOOK",
+        "zh": "群机器人 Webhook。",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyChannel",
         "name": "PROV_ALI",
         "value": "ALI",
         "zh": "",
@@ -30633,6 +30937,13 @@
         "name": "PROV_INTERNAL",
         "value": "INTERNAL",
         "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "NotifyChannel",
+        "name": "PROV_WECOM",
+        "value": "WECOM",
+        "zh": "企业微信（群机器人）。",
         "module": "shop-core"
       },
       {
@@ -34494,7 +34805,7 @@
           "B",
           "OPS"
         ],
-        "zh": "密钥票据的端：B = 店主（btk_），OPS = 运营（otk_）。"
+        "zh": ""
       },
       {
         "name": "BatchPeriodStatus",
@@ -35549,6 +35860,18 @@
         "zh": "外发渠道。"
       },
       {
+        "name": "NotifyChannelCode",
+        "client": "b-app",
+        "values": [
+          "WXSUB",
+          "WEBHOOK",
+          "SMS",
+          "MAIL",
+          "PUSH"
+        ],
+        "zh": "商家能自己开关的四条通道。"
+      },
+      {
         "name": "NotifyFailReason",
         "client": "ops-web",
         "values": [
@@ -35948,6 +36271,7 @@
           "/pages/store/index",
           "/pages/store-notice/index",
           "/pages/ship-settings/index",
+          "/pages/notify-settings/index",
           "/pages/store-scope/index",
           "/pages/store-pick/index",
           "/pages/payment/index",
@@ -38610,6 +38934,70 @@
       "type": "Set<String>",
       "value": "Set.of(NEW_GOODS_ON_SALE)",
       "zh": "营销类场景 —— 站内信不强制开。",
+      "module": "shop-core"
+    },
+    {
+      "host": "MchNotifyPref",
+      "name": "CH_WXSUB",
+      "type": "String",
+      "value": "MsgSceneChannel.CH_WXSUB",
+      "zh": "微信订阅消息（商家在小程序里授权的那条）",
+      "module": "shop-core"
+    },
+    {
+      "host": "MchNotifyPref",
+      "name": "CH_WEBHOOK",
+      "type": "String",
+      "value": "SysNotifyLog.WEBHOOK",
+      "zh": "企业微信群机器人",
+      "module": "shop-core"
+    },
+    {
+      "host": "MchNotifyPref",
+      "name": "CH_SMS",
+      "type": "String",
+      "value": "MsgSceneChannel.CH_SMS",
+      "zh": "短信（只发店主）",
+      "module": "shop-core"
+    },
+    {
+      "host": "MchNotifyPref",
+      "name": "CH_PUSH",
+      "type": "String",
+      "value": "MsgSceneChannel.CH_PUSH",
+      "zh": "App 推送",
+      "module": "shop-core"
+    },
+    {
+      "host": "MchNotifyPref",
+      "name": "CH_MAIL",
+      "type": "String",
+      "value": "MsgSceneChannel.CH_MAIL",
+      "zh": "邮件（收件地址在 MchNotifyRecipient#getEmail()）",
+      "module": "shop-core"
+    },
+    {
+      "host": "MchNotifyPref",
+      "name": "SWITCHABLE",
+      "type": "List<String>",
+      "value": "List.of(CH_WXSUB, CH_WEBHOOK, CH_SMS, CH_MAIL, CH_PUSH)",
+      "zh": "商家能自己开关的四条。",
+      "module": "shop-core"
+    },
+    {
+      "host": "MchNotifyRecipient",
+      "name": "MAX_EXTRA_PHONES",
+      "type": "int",
+      "value": "2",
+      "zh": "额外短信号最多几个。",
+      "module": "shop-core"
+    },
+    {
+      "host": "MsgSceneChannel",
+      "name": "CH_WEBHOOK",
+      "type": "String",
+      "value": "SysNotifyLog.WEBHOOK",
+      "zh": "群机器人 Webhook（企微）。",
       "module": "shop-core"
     },
     {

@@ -257,8 +257,8 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 514,
-        "c-app": 75
+        "b-app": 519,
+        "c-app": 82
       }
     },
     {
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 420,
+        "b-app": 430,
         "c-app": 83
       }
     },
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 400,
-        "c-app": 273
+        "b-app": 407,
+        "c-app": 269
       }
     },
     {
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 119,
+        "b-app": 123,
         "c-app": 32
       }
     },
@@ -617,8 +617,8 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 225,
-        "c-app": 85
+        "b-app": 230,
+        "c-app": 84
       }
     },
     {
@@ -641,7 +641,7 @@
         "margin-bottom": "10px"
       },
       "usage": {
-        "b-app": 20,
+        "b-app": 24,
         "c-app": 0
       }
     },
@@ -809,7 +809,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 197,
+        "b-app": 196,
         "c-app": 77
       }
     },
@@ -885,7 +885,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 63,
+        "b-app": 62,
         "c-app": 7
       }
     },
@@ -903,7 +903,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 53,
+        "b-app": 52,
         "c-app": 15
       }
     },
@@ -961,7 +961,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 68,
+        "b-app": 71,
         "c-app": 16
       }
     },
@@ -1017,7 +1017,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 113,
+        "b-app": 114,
         "c-app": 14
       }
     },
@@ -1077,7 +1077,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 347,
+        "b-app": 349,
         "c-app": 147
       }
     },
@@ -1141,7 +1141,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 153,
+        "b-app": 152,
         "c-app": 54
       }
     },
@@ -1235,7 +1235,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 70,
+        "b-app": 69,
         "c-app": 25
       }
     },
@@ -1439,8 +1439,8 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 573,
-        "c-app": 202
+        "b-app": 583,
+        "c-app": 198
       }
     },
     {
@@ -1471,8 +1471,8 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 317,
-        "c-app": 100
+        "b-app": 324,
+        "c-app": 96
       }
     },
     {
@@ -1487,7 +1487,7 @@
         "padding": "8px 0"
       },
       "usage": {
-        "b-app": 20,
+        "b-app": 27,
         "c-app": 7
       }
     },
@@ -1504,7 +1504,7 @@
       },
       "usage": {
         "b-app": 2,
-        "c-app": 26
+        "c-app": 21
       }
     },
     {
@@ -1845,7 +1845,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 99,
+        "b-app": 98,
         "c-app": 3
       }
     },
@@ -2207,8 +2207,8 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 23,
-        "c-app": 3,
+        "b-app": 24,
+        "c-app": 4,
         "lib": 0
       },
       "note": "带箭头的行内链接：「去填地址 ›」「切换门店 ›」「查看详情 ›」这一类",
@@ -2281,7 +2281,7 @@
         "color?: string"
       ],
       "usage": {
-        "b-app": 127,
+        "b-app": 130,
         "c-app": 28,
         "lib": 13
       },
@@ -2544,7 +2544,7 @@
         "immersive?: boolean"
       ],
       "usage": {
-        "b-app": 87,
+        "b-app": 88,
         "c-app": 40,
         "lib": 1
       },
@@ -2631,7 +2631,7 @@
         "fit?: boolean"
       ],
       "usage": {
-        "b-app": 27,
+        "b-app": 28,
         "c-app": 11,
         "lib": 1
       },
@@ -2918,10 +2918,11 @@
       "name": "sh-trace",
       "file": "packages/ui/src/components/sh-trace.vue",
       "scope": "跨端",
-      "lines": 303,
+      "lines": 307,
       "props": [
         "trace: ShipmentTrace",
-        "foldAt?: number"
+        "foldAt?: number",
+        "showMap?: boolean"
       ],
       "usage": {
         "b-app": 1,
@@ -3361,7 +3362,7 @@
         "readonly?: boolean"
       ],
       "usage": {
-        "b-app": 7,
+        "b-app": 8,
         "c-app": 0,
         "lib": 0
       },
@@ -4202,6 +4203,21 @@
     },
     {
       "app": "b-app",
+      "page": "notify-settings",
+      "key": "b-app/notify-settings",
+      "file": "b-app/src/pages/notify-settings/index.vue",
+      "components": [
+        "sh-icon",
+        "sh-scaffold",
+        "biz-store-tag"
+      ],
+      "libClassHits": 59,
+      "localSelectors": 2,
+      "localCssLines": 8,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
       "page": "offline-sale",
       "key": "b-app/offline-sale",
       "file": "b-app/src/pages/offline-sale/index.vue",
@@ -4230,11 +4246,12 @@
         "sh-dialog",
         "sh-go",
         "sh-scaffold",
+        "sh-sheet",
         "sh-trace"
       ],
       "libClassHits": 161,
-      "localSelectors": 19,
-      "localCssLines": 77,
+      "localSelectors": 24,
+      "localCssLines": 98,
       "rolled": []
     },
     {
@@ -5361,12 +5378,13 @@
       "file": "c-app/src/pages/order/index.vue",
       "components": [
         "sh-empty",
+        "sh-go",
         "sh-scaffold",
         "sh-trace"
       ],
-      "libClassHits": 155,
-      "localSelectors": 35,
-      "localCssLines": 140,
+      "libClassHits": 144,
+      "localSelectors": 38,
+      "localCssLines": 151,
       "rolled": []
     },
     {
@@ -5991,7 +6009,7 @@
     "tokens": 16,
     "blocks": 81,
     "components": 40,
-    "pages": 156,
+    "pages": 157,
     "gapKinds": 2
   }
 }
