@@ -5,6 +5,8 @@ import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.entity.MchNotifyPref;
+import ai.neargo.shop.message.entity.SysNotifyLog;
+import ai.neargo.shop.spi.notify.NotifyBizType;
 import ai.neargo.shop.message.entity.MsgSceneChannel;
 import ai.neargo.shop.message.notify.SceneChannelRouting;
 import ai.neargo.shop.message.notify.WxSubscribeSender;
@@ -66,6 +68,7 @@ public class NotificationConsumer implements OutboxConsumer {
     private final ai.neargo.shop.message.notify.MerchantNotifyRecipients recipients;
     private final ai.neargo.shop.spi.notify.SmsPort smsPort;
     private final ai.neargo.shop.spi.notify.MailPort mailPort;
+    private final ai.neargo.shop.message.notify.NotifyLogWriter logWriter;
 
     public NotificationConsumer(MessageService messageService, WxSubscribeSender wxSender,
                                 ai.neargo.shop.message.notify.PushSender pushSender,
@@ -77,7 +80,8 @@ public class NotificationConsumer implements OutboxConsumer {
                                 ai.neargo.shop.message.notify.MerchantNotifyPrefs prefs,
                                 ai.neargo.shop.message.notify.MerchantNotifyRecipients recipients,
                                 ai.neargo.shop.spi.notify.SmsPort smsPort,
-                                ai.neargo.shop.spi.notify.MailPort mailPort) {
+                                ai.neargo.shop.spi.notify.MailPort mailPort,
+                                ai.neargo.shop.message.notify.NotifyLogWriter logWriter) {
         this.messageService = messageService;
         this.wxSender = wxSender;
         this.pushSender = pushSender;
@@ -91,6 +95,7 @@ public class NotificationConsumer implements OutboxConsumer {
         this.recipients = recipients;
         this.smsPort = smsPort;
         this.mailPort = mailPort;
+        this.logWriter = logWriter;
     }
 
     @Override
@@ -644,6 +649,18 @@ public class NotificationConsumer implements OutboxConsumer {
         java.util.LinkedHashSet<String> to = new java.util.LinkedHashSet<>();
         merchantStaffPort.ownerPhone(entityNo).ifPresent(to::add);
         to.addAll(recipients.extraPhones(storeNo));
+        if (to.isEmpty()) {
+            /*
+             * 开了短信却没有收件人（自营店主没登录手机号、也没在设置页填额外号）——
+             * **记一行 FAILED 让它在消息记录表里看得见**（用户 2026-10-10：
+             * 「不管是否通过，如果错误，展示在消息记录表即可」），而不是静默跳过。
+             * 这改了最初「没号可发不是失败、不留痕」的口径：店主开了短信开关，
+             * 「为什么没人收到」就该在日志里有答案。不影响其余出口。
+             */
+            logWriter.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, "-", null,
+                    "TPL_SMS_ORDER_PAID", SysNotifyLog.FAILED, "no_recipient", null, null);
+            return;
+        }
         String yuan = "%.2f".formatted(payAmountMinor / 100.0);
         for (String phone : to) {
             try {

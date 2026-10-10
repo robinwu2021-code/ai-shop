@@ -341,6 +341,22 @@ class OrderPaidFourChannelsFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 短信开着但没收件人 → **也记一行 FAILED no_recipient**（用户 2026-10-10：要在消息记录表看得见）")
+    void smsWithoutRecipientStillLogs() throws Exception {
+        Owner o = anOwner("wx-open-f4-18", "M-F4-18", "cid-f4-18", null);  // 店主无登录号、不填额外号
+        long before = logCount();
+
+        publishPaid(o.entityNo(), "SUB-F4-18", 500L);
+
+        var sms = logsSince(before).stream()
+                .filter(r -> SysNotifyLog.SMS.equals(r.getChannel())).toList();
+        assertThat(sms).as("开了短信没人收，也要在记录表里看得见").singleElement().satisfies(r -> {
+            assertThat(r.getStatus()).isEqualTo(SysNotifyLog.FAILED);
+            assertThat(r.getError()).contains("no_recipient");
+        });
+    }
+
+    @Test
     @DisplayName("★★★ **没配地址的通道不留痕** —— 那不是失败，是这条通道对这家店不存在")
     void unconfiguredChannelLeavesNoRow() throws Exception {
         // 不配群、不配邮箱、不授权微信，只有 App 与短信（店主号恒有）
