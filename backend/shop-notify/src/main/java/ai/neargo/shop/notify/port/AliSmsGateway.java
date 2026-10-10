@@ -182,8 +182,16 @@ public class AliSmsGateway implements SmsPort {
         Map<String, String> p = common();
         p.put("PhoneNumbers", phone);
         p.put("SignName", signName);
+        /*
+         * **只发金额，不发订单号**（2026-10-10）。阿里云通知短信的变量只认语义类型
+         * （money / name / time / address / phoneNumber…），而订单号 SUB2026… 不符合任何一种——
+         * 探测过一圈类型码，没有「字符串/订单号」这种通用类型，所以它根本进不了模板。
+         * 订单号在站内信 / 企微群 / 邮件里都有完整详情，短信只做「有新单 + 金额」的提醒。
+         * subOrderNo 仍留作参数：日志（TPL_SMS_ORDER_PAID）按它记。
+         * 模板 SMS_512580867：您有新订单，实付金额${amt}元，请登录虹选商家端查看订单并及时备货。
+         */
         p.put("TemplateCode", orderPaidTemplate);
-        p.put("TemplateParam", "{\"no\":\"" + subOrderNo + "\",\"amt\":\"" + amountYuan + "\"}");
+        p.put("TemplateParam", "{\"amt\":\"" + amountYuan + "\"}");
         p.put("Signature", sign("POST&%2F&" + enc(canonicalize(p))));
         try {
             HttpResponse<String> resp = post(p);
