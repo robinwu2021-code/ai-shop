@@ -52,7 +52,6 @@
 api-path-naming.test.ts::端点路径：资源段的单复数按域一致 ★★ 新端点必须跟随本域的约定（/mp /biz 单数 · /ops 复数） @<=5
 design-tokens.test.ts::端差异下沉到 ports/，页面里不写条件编译 pages/ 下没有 #ifdef / #ifndef @<=10
 doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基线只降不升） @<=42
-glossary.test.ts::后端验收清单与 mock 同步 拒绝规则条数与 mock 一致 @<=10
 i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 ar：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
 i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 en：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
 i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 zh-CN：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1

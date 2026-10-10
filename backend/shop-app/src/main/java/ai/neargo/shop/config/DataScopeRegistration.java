@@ -220,6 +220,16 @@ public class DataScopeRegistration implements DataScopeRegistrar {
                 ScopeDim.MERCHANT, "entity_no"));
 
         /*
+         * 商家的地理覆盖项（经营范围）。**父表此前一直没登记，而它的派生表（上面那张）
+         * 与同形状的 `mch_fulfillment_channel` 都登记了** —— 表册覆盖那道棘轮就一直差这一条。
+         * 登记 MERCHANT 是给运营端看的（覆盖分布、范围审核）；可见性命中查询（ReachMatchMapper）、
+         * B 端范围页、买家目录全走 executeWithoutScope —— 那些调用方是 C 端或 B 端会话（SELF 维度），
+         * 接上就是 1=0。归属由 Service 的 requireStore / requireMerchantNo 保证。
+         */
+        registry.register("mch_service_area", Map.of(
+                ScopeDim.MERCHANT, "entity_no"));
+
+        /*
          * 门店货架。登记 MERCHANT 是给运营端看的（「这家店摆了哪几类」）；
          * B 端自己读写走 executeWithoutScope —— B 端会话是 SELF 维度，
          * 接上就是 1=0，商家自己的货架当场全空。归属由 requireMerchantNo + storeNos 保证。
