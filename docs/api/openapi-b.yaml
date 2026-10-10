@@ -6999,6 +6999,8 @@ components:
         - "DISTRICT"
         - "CITY"
         - "PROVINCE"
+        - "POLYGON"
+        - "UNLIMITED"
     AreaStatus: 
       type: "string"
       enum: 
@@ -7276,6 +7278,9 @@ components:
         status: 
           "$ref": "#/components/schemas/AreaStatus"
           description: "`ACTIVE` 已生效 / `PENDING` 待运营审核。\n\n勾已有社区自助生效；勾区、街道要审 —— 一家菜摊声称覆盖整个西湖区， 影响面差一个量级（ADR-013 §4.2）。**端上必须把待审标出来**： 待审的不参与展开，商家看着它在清单里却一个订单也不来， 而这是他自己永远查不出来的那类故障。"
+        geometry: 
+          type: "string"
+          description: "仅 `level=POLYGON`：商家画的闭合顶点 JSON `[[lngE6,latE6],...]`（ADR-034）。\n\n保存时端上传这个，服务端规范化、校验、按它算几何指纹覆写 `refCode`，并派生 S2 网格； 回显时带回来，端上据此在地图上画出那片范围。其余粒度为空。"
       required: 
         - "level"
         - "refCode"
@@ -10086,6 +10091,73 @@ components:
         - "orderedQty"
       additionalProperties: false
       description: "商品详情的社区集单块（原型 s26）。不是集单商品时接口返回 null"
+    TrackView: 
+      type: "object"
+      properties: 
+        subOrderNo: 
+          type: "string"
+        status: 
+          "$ref": "#/components/schemas/OrderStatus"
+          description: "契约抽象状态，与订单详情同口径"
+        fulfillment: 
+          "$ref": "#/components/schemas/FulfillmentType"
+        storeName: 
+          type: 
+            - "string"
+            - "null"
+          description: "发货门店名。空 → 退化成「商家」"
+        receiverName: 
+          type: 
+            - "string"
+            - "null"
+        receiverPhoneMasked: 
+          type: 
+            - "string"
+            - "null"
+          description: "已掩码，非明文"
+        receiverAddress: 
+          type: 
+            - "string"
+            - "null"
+        expressCompany: 
+          type: 
+            - "string"
+            - "null"
+        expressNo: 
+          type: 
+            - "string"
+            - "null"
+        items: 
+          type: "array"
+          items: 
+            "$ref": "#/components/schemas/TrackItem"
+        trace: 
+          anyOf: 
+            - "$ref": "#/components/schemas/ShipmentTrace"
+            - type: "null"
+          description: "物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null"
+      required: 
+        - "subOrderNo"
+        - "status"
+        - "fulfillment"
+        - "items"
+      additionalProperties: false
+      description: "免登录看件视图（TDD-收件人物流触达与分享裂变 §3）。后端 `GET /mp/track?t=<token>` 返回。\n\n<p>**这是一份删过的订单详情**：发给收件人的看件链接会被转发、截图， 所以只放物流 + 收货 + 店名 + 商品摘要 —— 价格、买家身份不下发（后端就不给）。 手机号是**掩码**的（后端出 `138****8000`）。\n\n<p>令牌无效 / 过期时后端返回 `null`，端上据此显示「链接已失效」。"
+    TrackItem: 
+      type: "object"
+      properties: 
+        title: 
+          type: "string"
+        cover: 
+          type: "string"
+        spec: 
+          type: "string"
+        qty: 
+          type: "number"
+      required: 
+        - "qty"
+      additionalProperties: false
+      description: "看件页的商品摘要 —— **不含价格**。"
     User: 
       type: "object"
       properties: 

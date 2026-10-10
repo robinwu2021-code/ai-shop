@@ -5656,6 +5656,66 @@
           "ar": "تعذّر تحميل مكوّن التتبع، حاول لاحقًا"
         },
         {
+          "key": "track.invalidTip",
+          "zh-CN": "这条物流链接可能已过期，请在最新的发货通知里打开。",
+          "en": "This tracking link may have expired. Open it from the latest shipping notice.",
+          "ar": "قد تكون صلاحية رابط التتبّع قد انتهت. افتحه من أحدث إشعار شحن."
+        },
+        {
+          "key": "track.invalidTitle",
+          "zh-CN": "链接已失效",
+          "en": "Link expired",
+          "ar": "انتهت صلاحية الرابط"
+        },
+        {
+          "key": "track.itemCount",
+          "zh-CN": "共 {n} 件",
+          "en": "{n} item(s)",
+          "ar": "{n} قطعة"
+        },
+        {
+          "key": "track.itemsTitle",
+          "zh-CN": "商品",
+          "en": "Items",
+          "ar": "المنتجات"
+        },
+        {
+          "key": "track.noTrace",
+          "zh-CN": "商家已发货，物流信息稍后更新",
+          "en": "Shipped by the merchant, tracking updates soon",
+          "ar": "تم الشحن من قبل التاجر، سيتم تحديث التتبّع قريبًا"
+        },
+        {
+          "key": "track.receiverTitle",
+          "zh-CN": "收货信息",
+          "en": "Delivery",
+          "ar": "معلومات التسليم"
+        },
+        {
+          "key": "track.shipFrom",
+          "zh-CN": "{store} 发货",
+          "en": "Shipped by {store}",
+          "ar": "تم الشحن بواسطة {store}"
+        },
+        {
+          "key": "track.shipFromDefault",
+          "zh-CN": "商家发货",
+          "en": "Shipped by merchant",
+          "ar": "تم الشحن بواسطة التاجر"
+        },
+        {
+          "key": "track.title",
+          "zh-CN": "物流详情",
+          "en": "Tracking",
+          "ar": "تتبّع الشحنة"
+        },
+        {
+          "key": "track.viewHint",
+          "zh-CN": "这是寄给你的一笔订单，可查看物流进度",
+          "en": "A parcel on its way to you — follow its progress here",
+          "ar": "طرد في طريقه إليك — تابع تقدّمه هنا"
+        },
+        {
           "key": "visited.go",
           "zh-CN": "去逛逛",
           "en": "Start browsing",
@@ -20498,6 +20558,12 @@
           "ar": "تجاهل"
         },
         {
+          "key": "store.drawArea",
+          "zh-CN": "画配送范围",
+          "en": "Draw area",
+          "ar": "رسم النطاق"
+        },
+        {
           "key": "store.edit",
           "zh-CN": "编辑",
           "en": "Edit",
@@ -21200,6 +21266,60 @@
           "ar": "تم إرفاق موقع الخريطة: {s}"
         },
         {
+          "key": "store.polygonAdd",
+          "zh-CN": "加点",
+          "en": "Add point",
+          "ar": "إضافة نقطة"
+        },
+        {
+          "key": "store.polygonArea",
+          "zh-CN": "配送范围（{n} 个顶点）",
+          "en": "Delivery area ({n} points)",
+          "ar": "نطاق التوصيل ({n} نقاط)"
+        },
+        {
+          "key": "store.polygonAreaBroken",
+          "zh-CN": "配送范围（数据异常，请重画）",
+          "en": "Delivery area (invalid, please redraw)",
+          "ar": "نطاق التوصيل (بيانات غير صالحة، يرجى إعادة الرسم)"
+        },
+        {
+          "key": "store.polygonClear",
+          "zh-CN": "清空",
+          "en": "Clear",
+          "ar": "مسح"
+        },
+        {
+          "key": "store.polygonClearConfirm",
+          "zh-CN": "清空已画的点？",
+          "en": "Clear all points?",
+          "ar": "مسح كل النقاط؟"
+        },
+        {
+          "key": "store.polygonCount",
+          "zh-CN": "已画 {n} 个点",
+          "en": "{n} points",
+          "ar": "{n} نقاط"
+        },
+        {
+          "key": "store.polygonNeedThree",
+          "zh-CN": "至少 3 个点才能围成一片范围",
+          "en": "At least 3 points are needed to enclose an area",
+          "ar": "يلزم 3 نقاط على الأقل لتحديد نطاق"
+        },
+        {
+          "key": "store.polygonPointFailed",
+          "zh-CN": "取不到当前位置，稍等一下再点",
+          "en": "Cannot read the current position, try again in a moment",
+          "ar": "تعذّر تحديد الموقع الحالي، أعد المحاولة بعد لحظة"
+        },
+        {
+          "key": "store.polygonUndo",
+          "zh-CN": "退一点",
+          "en": "Undo",
+          "ar": "رجوع نقطة"
+        },
+        {
           "key": "store.poster",
           "zh-CN": "海报",
           "en": "Poster",
@@ -21642,6 +21762,24 @@
           "zh-CN": "{s} 自动清空",
           "en": "clears at {s}",
           "ar": "يُمسح عند {s}"
+        },
+        {
+          "key": "store.unlimitedArea",
+          "zh-CN": "全平台不限",
+          "en": "No area limit",
+          "ar": "بدون حدود للنطاق"
+        },
+        {
+          "key": "store.unlimitedHint",
+          "zh-CN": "打开后，全平台的买家都能看到本店",
+          "en": "Buyers anywhere can see this store",
+          "ar": "يمكن للمشترين في كل مكان رؤية هذا المتجر"
+        },
+        {
+          "key": "store.unlimitedIdle",
+          "zh-CN": "「全平台不限」只对快递和自送生效 —— 本店当前只开了自提，这一条暂时不起作用",
+          "en": "“No area limit” only applies to express and own delivery — this store currently offers pickup only, so it has no effect yet",
+          "ar": "«بدون حدود للنطاق» ينطبق على التوصيل السريع والتوصيل الذاتي فقط — هذا المتجر يوفر الاستلام فقط حاليًا، لذا لا تأثير له بعد"
         },
         {
           "key": "store.unsaved",
@@ -25641,6 +25779,12 @@
           "ar": "الخلاصة مطلوبة: اكتب المبرر سواء أكدت أم استبعدت"
         },
         {
+          "key": "err.service_area.polygon_invalid",
+          "zh-CN": "配送范围画得不对：{0}",
+          "en": "The delivery area is invalid: {0}",
+          "ar": "نطاق التوصيل غير صالح: {0}"
+        },
+        {
           "key": "err.settle.batch_not_releasable",
           "zh-CN": "批次当前状态 {0} 不能放款，只有自查通过（RECONCILED）的批次能放",
           "en": "Batch is in status {0} and cannot be released; only RECONCILED batches can",
@@ -26261,6 +26405,13 @@
       "package": "ai.neargo.shop.fulfillment.entity"
     },
     {
+      "table": "lnk_short",
+      "class": "ShortLink",
+      "zh": "短链（TDD-收件人物流触达与分享裂变 §4.2）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.link.entity"
+    },
+    {
       "table": "mbr_member",
       "class": "MbrMember",
       "zh": "会员：一个人（personNo）与一家主体（entityNo）的关系。",
@@ -26474,6 +26625,13 @@
       "table": "mch_service_area",
       "class": "MchServiceArea",
       "zh": "商家的一条地理覆盖项（ADR-013 阶段二）。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_service_area_cell",
+      "class": "MchServiceAreaCell",
+      "zh": "多边形范围项的 S2 网格派生行（V396，ADR-034）。",
       "module": "shop-merchant",
       "package": "ai.neargo.shop.merchant.entity"
     },
@@ -29421,6 +29579,13 @@
         "module": "shop-base"
       },
       {
+        "host": "NotifyBizType",
+        "name": "SHIP_NOTIFY",
+        "value": "SHIP_NOTIFY",
+        "zh": "发货触达**收件人**（TDD-收件人物流触达与分享裂变）。",
+        "module": "shop-base"
+      },
+      {
         "host": "PushProvider",
         "name": "GETUI",
         "value": "GETUI",
@@ -29999,6 +30164,13 @@
         "name": "TYPE_ON_BEHALF",
         "value": "ON_BEHALF",
         "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "ShortLink",
+        "name": "BIZ_SHIP_TRACK",
+        "value": "SHIP_TRACK",
+        "zh": "发货看件",
         "module": "shop-core"
       },
       {
@@ -33831,6 +34003,62 @@
         "module": "shop-merchant"
       },
       {
+        "host": "MchServiceArea",
+        "name": "LEVEL_COMMUNITY",
+        "value": "COMMUNITY",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchServiceArea",
+        "name": "LEVEL_VILLAGE",
+        "value": "VILLAGE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchServiceArea",
+        "name": "LEVEL_STREET",
+        "value": "STREET",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchServiceArea",
+        "name": "LEVEL_DISTRICT",
+        "value": "DISTRICT",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchServiceArea",
+        "name": "LEVEL_CITY",
+        "value": "CITY",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchServiceArea",
+        "name": "LEVEL_PROVINCE",
+        "value": "PROVINCE",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchServiceArea",
+        "name": "LEVEL_POLYGON",
+        "value": "POLYGON",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
+        "host": "MchServiceArea",
+        "name": "LEVEL_UNLIMITED",
+        "value": "UNLIMITED",
+        "zh": "",
+        "module": "shop-merchant"
+      },
+      {
         "host": "MchStaffLog",
         "name": "STAFF_ADD",
         "value": "STAFF_ADD",
@@ -34260,6 +34488,7 @@
           "NOT_A_MERCHANT",
           "PHONE_REQUIRED_FOR_MERCHANT",
           "ZIP_TOO_LARGE",
+          "SERVICE_AREA_POLYGON_INVALID",
           "APPLY_NOT_EDITABLE",
           "PASSWORD_INVALID",
           "PASSWORD_NOT_SET",
@@ -34654,7 +34883,9 @@
           "STREET",
           "DISTRICT",
           "CITY",
-          "PROVINCE"
+          "PROVINCE",
+          "POLYGON",
+          "UNLIMITED"
         ],
         "zh": "覆盖项的粒度。"
       },
@@ -36357,6 +36588,7 @@
           "/pages/pay/index",
           "/pages/orders/index",
           "/pages/order/index",
+          "/pages/track/index",
           "/pages/after-sale/index",
           "/pages/coupons/index",
           "/pages/invite/index",
@@ -39225,6 +39457,22 @@
       "module": "shop-merchant"
     },
     {
+      "host": "MchServiceArea",
+      "name": "UNLIMITED_REF",
+      "type": "String",
+      "value": "\"*\"",
+      "zh": "UNLIMITED 项的 ref_code 恒为它：一店一条，由唯一键 (entity_no, store_no, level, ref_code) 保证",
+      "module": "shop-merchant"
+    },
+    {
+      "host": "MchServiceArea",
+      "name": "ADMIN_LEVELS",
+      "type": "java.util.Set<String>",
+      "value": "java.util.Set.of( LEVEL_PROVINCE, LEVEL_CITY, LEVEL_DISTRICT, LEVEL_STREET, LEVEL_VILLAGE)",
+      "zh": "行政五级：按 region_code 前缀匹配的那几档",
+      "module": "shop-merchant"
+    },
+    {
       "host": "MchStore",
       "name": "SELF_OPERATED",
       "type": "String",
@@ -39286,14 +39534,18 @@
       "properties": {
         "archunit.version": "1.3.0",
         "shedlock.version": "6.9.0",
-        "cos.version": "5.6.245"
+        "cos.version": "5.6.245",
+        "jts.version": "1.20.0",
+        "s2.version": "2.0.0"
       },
       "managed": [
         "com.google.errorprone:error_prone_annotations",
+        "com.google.geometry:s2-geometry",
         "com.qcloud:cos_api",
         "com.tngtech.archunit:archunit-junit5",
         "net.javacrumbs.shedlock:shedlock-provider-jdbc-template",
-        "net.javacrumbs.shedlock:shedlock-spring"
+        "net.javacrumbs.shedlock:shedlock-spring",
+        "org.locationtech.jts:jts-core"
       ],
       "literalVersions": []
     },
