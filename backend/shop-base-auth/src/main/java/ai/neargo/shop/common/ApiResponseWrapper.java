@@ -52,6 +52,14 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
      */
     private static final String SHORT_LINK_PATH_PREFIX = "/s/";
 
+    /**
+     * 通用短链 {@code /l/<码>}（TDD-收件人物流触达与分享裂变 §4.2）。与 {@code /s/} 同一个理由：
+     * 命中是 {@code ResponseEntity<Void>} 的 302，未命中是 {@code ResponseEntity<String>} 的失效页 ——
+     * 两种都不该被信封包。{@code ResponseEntity<String>} 尤其要排：它的参数类型是 ResponseEntity 不是 String，
+     * 躲不过 {@link #supports} 的 String 排除，包到一半会抛，渲染成 {@code {"code":10500}}（实测）。
+     */
+    private static final String SHORT_LINK2_PATH_PREFIX = "/l/";
+
     @Override
     public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
         // String 走 StringHttpMessageConverter，包成对象再交给它会 ClassCastException —— 这里就排除
@@ -74,9 +82,10 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
         return pathOf(request).startsWith(INTERNAL_PATH_PREFIX);
     }
 
-    /** 请求路径（去掉 context path 之后）是否在 {@code /s/} 之下 */
+    /** 请求路径（去掉 context path 之后）是否在 {@code /s/} 或 {@code /l/} 之下（两类短链都不包信封） */
     static boolean isShortLink(ServerHttpRequest request) {
-        return pathOf(request).startsWith(SHORT_LINK_PATH_PREFIX);
+        String p = pathOf(request);
+        return p.startsWith(SHORT_LINK_PATH_PREFIX) || p.startsWith(SHORT_LINK2_PATH_PREFIX);
     }
 
     /** 去掉 context path 的请求路径。两处判前缀共用一份 —— 分开写迟早只改一处 */

@@ -56,6 +56,15 @@ class ApiResponseWrapperTest {
     }
 
     @Test
+    @DisplayName("★★★ 通用短链 /l/ 也不包 —— 命中 302(null body)、未命中失效页(String)，包了后者会渲染成 10500")
+    void genericShortLinkIsNotWrapped() {
+        assertThat(write("", "/l/ABC1234", null)).isNull();
+        assertThat(write("", "/l/ABC1234", "<html>link expired</html>")).isEqualTo("<html>link expired</html>");
+        // /l/ 也只认前缀：别的路径照旧包
+        assertThat(write("", "/biz/l/ABC", "x")).isInstanceOf(ApiResult.class);
+    }
+
+    @Test
     @DisplayName("★★ /s/ 也只认前缀：/search 与 /biz/s/... 照旧要包")
     void shortLinkPrefixMustBeExact() {
         assertThat(write("", "/search?kw=x", "x")).isInstanceOf(ApiResult.class);
