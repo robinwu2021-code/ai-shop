@@ -149,7 +149,8 @@ public class GoodsServiceImpl implements GoodsService {
          * 主流按距离/上架时间，这里按销量；同序的话推荐位和下面的列表会是同一批货，
          * 这个位子就白占了。接上运营配置时只换这一段。
          */
-        w.orderByDesc(PrdGoods::getSales).last("limit " + limit);
+        // 末级判据同 list()：只按 sales 取 top-N，并列时取到谁是不确定的（见 list() 那段注释）
+        w.orderByDesc(PrdGoods::getSales).orderByDesc(PrdGoods::getId).last("limit " + limit);
 
         // ★ 公共目录必须显式豁免数据域，与 list() 同一条规矩（见类注释）
         List<PrdGoods> rows = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectList(w));
@@ -330,7 +331,14 @@ public class GoodsServiceImpl implements GoodsService {
             // 别把这条改成「有索引兜底」：它没有，写成有会让 ES 的紧迫性被低估
             w.and(x -> x.like(PrdGoods::getTitle, q.keyword()).or().like(PrdGoods::getSubtitle, q.keyword()));
         }
-        w.orderByDesc(PrdGoods::getSales);
+        /*
+         * ★ **必须有末级判据**。只按 sales 排序不是全序：绝大多数商品 sales 相同（新店全是 0），
+         * 并列行的返回顺序由执行计划决定，**同一个查询翻第 1 页与第 2 页可以给出不同的顺序** ——
+         * 于是翻页会**漏行**，也会**重复**。买家的症状是「下滑之后某件货就是找不到」，刷一次又出来了；
+         * 零报错。2026-10-10 全量跑里两条可见性用例交替飘红，就是这个（翻页遍历在非全序上不成立）。
+         * `id` 是自增主键，接在后面就是全序；并列时新货在前，也是合理的顺序。
+         */
+        w.orderByDesc(PrdGoods::getSales).orderByDesc(PrdGoods::getId);
 
         // ★ 公共目录必须显式豁免数据域，见类注释「关于 executeWithoutScope」
         Page<PrdGoods> page = DataScopeContext.executeWithoutScope(
@@ -659,6 +667,7 @@ public class GoodsServiceImpl implements GoodsService {
                                 .func(shelf)
                                 .like(PrdGoods::getTitle, keyword)
                                 .orderByDesc(PrdGoods::getSales)
+                                .orderByDesc(PrdGoods::getId)
                                 .last("limit 10"))).stream()
                 .map(PrdGoods::getTitle).distinct().toList();
     }
@@ -674,6 +683,7 @@ public class GoodsServiceImpl implements GoodsService {
                                 .eq(PrdGoods::getAuditStatus, "APPROVED")
                                 .func(shelf)
                                 .orderByDesc(PrdGoods::getSales)
+                                .orderByDesc(PrdGoods::getId)
                                 .last("limit 10"))).stream()
                 .map(PrdGoods::getTitle).toList();
     }
