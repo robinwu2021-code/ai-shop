@@ -241,7 +241,17 @@ selectable(s, h, p, r, polys)：同上只看一条路；自提 ALL 路在排除�
 ### 2.10 查询接口与端
 
 - 后端：`GoodsQuery` 加 `latE6, lngE6`（保留两个旧构造）；`MpCatalogController.goodsList/promotedGoods/goodsDetail` 透传；`GoodsService.deliverableTo(goodsNo, communityNo, latE6, lngE6)` 重载。
-- c-app：`GoodsQuery` TS 类型加 `latE6?/lngE6?`；`pages/home`、`category`、`search`、`groups` 调 `goodsList`/`promoted` 时从 `stores/location.ts` 取坐标；详情页同。「销售区域」：`unlimited=true` → 「不限地区」；多边形店 → 「配送范围内」。
+- c-app：`GoodsQuery` TS 类型加 `latE6?/lngE6?`；首页、分类、商品详情从 `location.browsePointE6` 取坐标传给
+  `goodsList`/`promoted`/`goodsDetail`。**搜索页、店铺页、同类推荐刻意不传** —— 它们本来就不按位置筛
+  （搜索页注释写着「那是主动找特定商家，用户自己清楚在找什么」），加上去是改它们的行为。
+
+  > **与原设想不同的一处取舍（2026-10-10 实施时定）**：原计划给只画了多边形的店在「销售区域」
+  > 那一行显示「配送范围内」，为此要给后端 `SaleScope` 加一个「有没有多边形」的标记。**没做。**
+  > 那句话对买家几乎没有信息量（他不知道那片在哪），而他真正要问的「送不送到我这儿」
+  > 由已有的 `deliverable` 字段回答 —— 详情页的 `outOfScope` 读的就是它，拦购买并给理由。
+  > 本次给详情接口接上坐标之后，**多边形店的送达判断才真的判得出来**，那比多一句模糊的描述有用。
+  > `unlimited=true` 那一行的文案不用改：后端 `ReachRule.unlimited` 的判据已换成显式 UNLIMITED 项，
+  > 端上照旧读这个布尔。
 - b-app：`AREA_LEVEL` 加三值（类型自动跟上）；`ServiceArea` 加 `geometry?: string`；`store-scope` 列表渲染 POLYGON 行（顶点数）、UNLIMITED 开关行；`biz-region-picker` 放开 PROVINCE；新页 `pages/store-scope-polygon/index.vue`（独立页承载原生 `<map>`，点加顶点、长按删末点、完成/清空、≥3 点才能完成；`polygons` 属性实时填充）；三语词条。
 
 ### 2.11 登记面（漏一处 pre-push 就红）

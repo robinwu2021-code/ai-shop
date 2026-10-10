@@ -198,7 +198,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
 
   // ---------------------------------------------------------------- 商品
   goodsList: { method: "GET", path: "/mp/goods", auth: false, summary: "商品列表" },
-  goodsDetail: { method: "GET", path: "/mp/goods/:goodsNo", auth: false, summary: "商品详情（可带 communityNo 判送达）" },
+  goodsDetail: { method: "GET", path: "/mp/goods/:goodsNo", auth: false, summary: "商品详情（可带 communityNo 与 latE6/lngE6 判送达）" },
   goodsBatch: { method: "GET", path: "/mp/goods/:goodsNo/batch", auth: false, summary: "商品的社区集单信息（截单、提货、已订份数）" },
 
   // ---------------------------------------------------------------- 购物车

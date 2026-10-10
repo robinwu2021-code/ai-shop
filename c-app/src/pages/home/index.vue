@@ -106,6 +106,12 @@ async function load() {
   const region = await location.ensureCoarseRegion();
   const communityNo = community.community?.communityNo;
   const regionCode = communityNo ? undefined : region?.code;
+  /*
+   * 当前浏览点的坐标（ADR-034）。与 communityNo/regionCode **不是替代关系**：
+   * 有坐标才判得出商家在地图上画的那片配送范围；没落到聚落时也靠它反解省市区。
+   * 取不到就不传，后端逐字退回按聚落/区县筛。
+   */
+  const at = location.browsePointE6 ?? {};
   noPlace.value = !communityNo && !regionCode;
   if (noPlace.value) {
     // 连区都推不出来：这是**唯一**该空屏的一格，列一屏买不到的东西比空着更糟
@@ -118,10 +124,10 @@ async function load() {
   }
   try {
     const [res, gs, promo] = await Promise.all([
-      api.goodsList({ size: 20, communityNo, regionCode }),
+      api.goodsList({ size: 20, communityNo, regionCode, ...at }),
       api.groupBuyList(community.pickup?.pickupNo),
       // 关着的模块**不发请求** —— 开关关掉却照样打接口，是白白的一次往返
-      SHOW_PROMOTED ? api.promotedGoods({ communityNo, regionCode }) : Promise.resolve([]),
+      SHOW_PROMOTED ? api.promotedGoods({ communityNo, regionCode, ...at }) : Promise.resolve([]),
     ]);
     goods.value = res.records;
     promoted.value = promo;

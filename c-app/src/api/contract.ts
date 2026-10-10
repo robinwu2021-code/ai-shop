@@ -112,6 +112,15 @@ export interface GoodsQuery extends PageQuery {
    * 而用户会把它当成「我这儿能买到的」。
    */
   regionCode?: string;
+  /**
+   * 当前浏览点的经纬度（E6 整数，ADR-034）。
+   *
+   * **它与 communityNo / regionCode 不是替代关系，是补充**：
+   * 有了坐标，商家在地图上画的那片配送范围才判得出来；而只有定位、没落到任何聚落时，
+   * 也靠它反解出省市区去匹配行政级范围。不传则逐字退回原行为（按聚落/区县筛）。
+   */
+  latE6?: number;
+  lngE6?: number;
 }
 
 export interface CreateOrderReq {
@@ -317,7 +326,9 @@ export interface ShopApi {
    * @param storeNo 从哪家门店的列表/门户点进来的。**带上它，库存与在架就按那家店算**；
    *                不带 = 没有门店上下文，给主体口径（与门店化之前相同）
    */
-  goodsDetail(goodsNo: string, communityNo?: string, storeNo?: string): Promise<Goods>;
+  goodsDetail(goodsNo: string, communityNo?: string, storeNo?: string,
+    /** 当前浏览点（E6）。给了才判得出商家画的地图范围（ADR-034） */
+    at?: { latE6: number; lngE6: number }): Promise<Goods>;
   /** 社区集单块（s26）：不是集单商品时为 null。匿名可看 —— 未登录的人也要看得到截单时间才会下单 */
   goodsBatch(goodsNo: string): Promise<GoodsBatch | null>;
 

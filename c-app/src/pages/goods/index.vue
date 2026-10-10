@@ -18,6 +18,7 @@ import { prompt } from "@ai-shop/ui/prompt";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
 import { useCommunityStore } from "@/stores/community";
+import { useLocationStore } from "@/stores/location";
 import { buildShareMessage, buildShareTimeline, shareImageUrl } from "@shared/ports/share";
 import { navBox as readNavBox } from "@shared/ports/capsule";
 import { CATEGORY_TYPE, FEATURES, FULFILLMENT, ROUTES, TRADE_RULES } from "@shared/utils/constants";
@@ -39,6 +40,7 @@ const { t } = useI18n();
 const cart = useCartStore();
 const user = useUserStore();
 const community = useCommunityStore();
+const location = useLocationStore();
 /** 小程序才有原生分享按钮；H5 与团购页同一约定：不显示 */
 
 const goods = ref<Goods | null>(null);
@@ -604,7 +606,7 @@ async function load(goodsNo: string) {
      * 到下单落店那一步才发现那家店没有，而那时人已经在结算页了。
      */
     const g = await api.goodsDetail(goodsNo, community.community?.communityNo,
-      viaStore.value || undefined);
+      viaStore.value || undefined, location.browsePointE6 ?? undefined);
     const [grpNow, allNow, batchNow] = await Promise.all([
       within(groupP, FIRST_SCREEN_WAIT_MS),
       within(couponsP, FIRST_SCREEN_WAIT_MS),

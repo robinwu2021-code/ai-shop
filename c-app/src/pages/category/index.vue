@@ -6,6 +6,7 @@ import { phoneRequired, requirePhoneOnEnter, onPhoneBound, onPhoneGateClose } fr
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
+import { useLocationStore } from "@/stores/location";
 import { GOODS_COVER_FALLBACK, CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { goodsUrl } from "@/shared/goods-route";
 import { firstBuyableSku } from "@shared/utils/goods";
@@ -14,6 +15,7 @@ import type { CategoryType, Goods } from "@shared/types";
 
 const cart = useCartStore();
 const community = useCommunityStore();
+const location = useLocationStore();
 const active = ref<CategoryType>(CATEGORY_TYPE.FRESH);
 const list = ref<Goods[]>([]);
 
@@ -47,6 +49,8 @@ async function load() {
       type: active.value,
       size: 50,
       communityNo: community.community?.communityNo,
+      // 坐标让商家画的地图范围也参与筛（ADR-034）；取不到就不传
+      ...(location.browsePointE6 ?? {}),
     });
     list.value = res.records;
     failed.value = false;

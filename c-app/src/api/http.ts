@@ -163,10 +163,15 @@ export const httpApi: ShopApi = {
 
   // ---- 商品
   goodsList: (q: GoodsQuery) => call<PageResult<Goods>>("goodsList", undefined, { ...q } satisfies GoodsListQuery),
-  goodsDetail: (goodsNo, communityNo, storeNo) =>
+  goodsDetail: (goodsNo, communityNo, storeNo, at) =>
     call<Goods>("goodsDetail", { goodsNo },
-      communityNo || storeNo
-        ? { ...(communityNo ? { communityNo } : {}), ...(storeNo ? { storeNo } : {}) }
+      communityNo || storeNo || at
+        ? {
+          ...(communityNo ? { communityNo } : {}),
+          ...(storeNo ? { storeNo } : {}),
+          // 坐标决定「送达」那一行判不判得出地图范围（ADR-034）；没有就不传，行为与改造前一致
+          ...(at ? { latE6: at.latE6, lngE6: at.lngE6 } : {}),
+        }
         : undefined),
   goodsBatch: (goodsNo) => call<GoodsBatch | null>("goodsBatch", { goodsNo }),
 
