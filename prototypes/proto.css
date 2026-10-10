@@ -646,3 +646,16 @@ a{color:inherit}
 /* 轨迹行里的可点元素（复制单号、拨快递员电话） */
 .tl .st .bd a{color:var(--sh-primary-text);text-decoration:none}
 .more{text-align:center;font-size:10.5px;color:var(--sh-primary-text);padding:6px 0}
+
+/* 订单详情重构（c-order-detail）：状态头 ostat + 物流卡 trk。四态用语义 tint 区分，状态字加大 */
+.card.ostat{gap:4px}
+.card.ostat .k b{font-size:15px;font-weight:700}
+.card.ostat.wait{background:var(--sh-warning-tint)}
+.card.ostat.wait .k b,.card.ostat.wait .v.num{color:var(--sh-warning-text)}
+.card.ostat.paid{background:var(--sh-primary-tint)}
+.card.ostat.paid .k b{color:var(--sh-primary-text)}
+.card.ostat.ship{background:var(--sh-primary-tint)}
+.card.ostat.ship .k b{color:var(--sh-primary-text)}
+.card.ostat.done{background:var(--sh-success-tint)}
+.card.ostat.done .k b{color:var(--sh-success-text)}
+.card.trk .v.go{color:var(--sh-primary-text);font-weight:600}

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>C 端 · 订单详情页重构（状态·物流·收货）</title>
+<!-- 真源在仓库 prototypes/c-order-detail.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写样式块 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">买家小程序 · 界面原型 · 2026-10-10</div>
+  <h1>订单详情：一眼看懂「货到哪、我该做什么」</h1>
+  <p class="sub">重排订单详情页，参考京东/淘宝与 B 端 App 的物流卡。四态各一屏：待付款 / 待发货 / 已发货(含物流) / 已完成。核心是把「状态 + 物流 + 收货」提到最顶，操作沉到底部常驻条。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 04</span><h2>四个状态，同一套骨架</h2></div>
+  <div class="sec-note">从上到下恒定：① 状态头（大字状态 + 一句「接下来」）② 物流卡（已发货才有，整卡可点进轨迹）③ 收货地址 ④ 店铺 + 商品 ⑤ 订单信息（单号/下单时间，可复制）⑥ 金额 ⑦ 底部操作条（随状态变）。</div>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="card ostat wait"><div class="frow"><span class="k"><b>等待付款</b></span><span class="v num">14:58</span></div><div class="frow"><span class="k meta">超时未付将自动取消，名额释放</span></div></div>
+          <div class="card"><div class="frow"><span class="k">🏠 武国斌 185****8359</span><span class="v meta">›</span></div><div class="frow"><span class="k meta">广东省深圳市龙华新区 招商锦绣观园 5-10F</span></div></div>
+          <div class="card"><div class="hd">虹选粮油</div><div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 约10斤</span><div class="ln"><span class="pr num">¥50.00</span><span class="meta">×1</span></div></div></div></div>
+          <div class="card"><div class="frow"><span class="k">订单号</span><span class="v meta num">SUB…2260 <span class="go">复制</span></span></div><div class="frow"><span class="k">下单时间</span><span class="v meta num">10-09 20:51</span></div></div>
+          <div class="card"><div class="frow"><span class="k">商品金额</span><span class="v num">¥50.00</span></div><div class="frow"><span class="k">运费</span><span class="v num">免运费</span></div></div>
+        </div>
+        <div class="foot"><span class="meta">应付 <b class="num hot">¥50.00</b></span><div class="btn sec">取消</div><div class="btn main">去付款</div></div>
+      </div>
+      <figcaption class="cap"><b>01 待付款</b>状态头给倒计时，底部主操作「去付款」。</figcaption>
+      <p class="why">状态头用一句「接下来会发生什么」替代只说此刻的「待付款」——京东淘宝都这么做。倒计时放状态头右侧，不再混进金额行。</p>
+    </figure>
+
+    <figure id="s02">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="card ostat paid"><div class="frow"><span class="k"><b>商家备货中</b></span></div><div class="frow"><span class="k meta">商家接单后尽快发货，发货后可查物流</span></div></div>
+          <div class="card"><div class="frow"><span class="k">🏠 武国斌 185****8359</span><span class="v meta">›</span></div><div class="frow"><span class="k meta">广东省深圳市龙华新区 招商锦绣观园 5-10F</span></div></div>
+          <div class="card"><div class="hd">虹选粮油</div><div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 约10斤</span><div class="ln"><span class="pr num">¥50.00</span><span class="meta">×1</span></div></div></div></div>
+          <div class="card"><div class="frow"><span class="k">订单号</span><span class="v meta num">SUB…2260 <span class="go">复制</span></span></div><div class="frow"><span class="k">支付时间</span><span class="v meta num">10-09 20:52</span></div></div>
+          <div class="card"><div class="frow"><span class="k">实付</span><span class="v num">¥40.00</span></div></div>
+        </div>
+        <div class="foot"><span class="meta">预计 1-2 天发货</span><div class="btn sec">申请退款</div><div class="btn">再买一单</div></div>
+      </div>
+      <figcaption class="cap"><b>02 待发货</b>还没有物流卡；状态头说清「在等什么」。</figcaption>
+      <p class="why">待发货没有物流可看，所以不放物流卡（京东淘宝同理），用状态头副文案告诉买家「商家接单后尽快发货」。</p>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="card ostat ship"><div class="frow"><span class="k"><b>运输中</b></span></div><div class="frow"><span class="k meta">【深圳市】快件已到达 深圳龙华集散中心</span></div></div>
+          <div class="card trk"><div class="frow"><span class="k">🚚 申通 773445428425272</span><span class="v go">查看物流 ›</span></div><div class="frow"><span class="k meta">今天 09:12 · 预计明天送达</span></div></div>
+          <div class="card"><div class="frow"><span class="k">🏠 武国斌 185****8359</span><span class="v meta">›</span></div><div class="frow"><span class="k meta">广东省深圳市龙华新区 招商锦绣观园 5-10F</span></div></div>
+          <div class="card"><div class="hd">虹选粮油</div><div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 约10斤</span><div class="ln"><span class="pr num">¥50.00</span><span class="meta">×1</span></div></div></div></div>
+          <div class="card"><div class="frow"><span class="k">订单号</span><span class="v meta num">SUB…2260 <span class="go">复制</span></span></div></div>
+        </div>
+        <div class="foot"><span class="meta"></span><div class="btn sec">申请售后</div><div class="btn main">确认收货</div></div>
+      </div>
+      <figcaption class="cap"><b>03 已发货（含物流）</b>状态头吃最新物流节点；物流卡整卡可点进轨迹。</figcaption>
+      <p class="why">参考 B 端 App 的物流卡形态：承运商+单号一行、最新一条+预计送达一行，整卡点进轨迹页。状态头直接显示最新节点（比「运输中」三个字具体）。底部主操作换「确认收货」。</p>
+    </figure>
+
+    <figure id="s04">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="card ostat done"><div class="frow"><span class="k"><b>已完成</b></span></div><div class="frow"><span class="k meta">10-12 已签收 · 感谢购买，欢迎评价</span></div></div>
+          <div class="card trk"><div class="frow"><span class="k">🚚 申通 773445428425272</span><span class="v go">查看物流 ›</span></div><div class="frow"><span class="k meta">10-12 14:30 · 已签收</span></div></div>
+          <div class="card"><div class="frow"><span class="k">🏠 武国斌 185****8359</span><span class="v meta">›</span></div><div class="frow"><span class="k meta">广东省深圳市龙华新区 招商锦绣观园 5-10F</span></div></div>
+          <div class="card"><div class="hd">虹选粮油</div><div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 约10斤</span><div class="ln"><span class="pr num">¥50.00</span><span class="meta">×1</span></div></div></div></div>
+          <div class="card"><div class="frow"><span class="k">实付</span><span class="v num">¥40.00</span></div><div class="frow"><span class="k">下单 / 支付 / 发货 / 签收</span><span class="v meta num">10-09 … 10-12</span></div></div>
+        </div>
+        <div class="foot"><span class="meta"></span><div class="btn sec">再买一单</div><div class="btn main">去评价</div></div>
+      </div>
+      <figcaption class="cap"><b>04 已完成</b>物流卡定格在「已签收」；底部引导评价。</figcaption>
+      <p class="why">完成态保留物流卡（可回看轨迹）；金额卡末行给「下单/支付/发货/签收」四时点一行，替代零散时间线。</p>
+    </figure>
+
+  </div>
+</section>
+
+<footer>真源：prototypes/c-order-detail.html · 登记：prototypes/registry.json · 参考：b-app/src/pages/order、京东/淘宝订单详情</footer>
+</div>
+</html>
