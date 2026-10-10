@@ -2583,6 +2583,42 @@
 | `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
 
 
+#### GET `/mp/track/mine`
+
+小程序侧看件(本人)　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`TrackView`](#trackview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `subOrderNo` | `string` | 是 | — |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
+| `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
+| `receiverName` | `string,null` | 否 | — |
+| `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
+| `receiverAddress` | `string,null` | 否 | — |
+| `expressCompany` | `string,null` | 否 | — |
+| `expressNo` | `string,null` | 否 | — |
+| `items` | [`TrackItem`](#trackitem)\[\] | 是 | — |
+| `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
+
+
+#### GET `/mp/track/mini-link`
+
+看件页跳小程序的 URL Link　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
 ### user
 
 #### GET `/mp/user/active-address`
