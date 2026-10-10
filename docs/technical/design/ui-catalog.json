@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 89,
+      "count": 90,
       "domains": [
         {
           "name": "工作台",
@@ -318,6 +318,17 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5175/#/pages/ship-settings/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/store-scope-polygon/index",
+              "title": "画配送范围",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/store-scope-polygon/index"
             },
             {
               "app": "b-app",
@@ -3499,5 +3510,5 @@
       ]
     }
   ],
-  "total": 276
+  "total": 277
 }

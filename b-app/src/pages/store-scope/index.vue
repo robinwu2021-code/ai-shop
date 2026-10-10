@@ -189,9 +189,16 @@ function toggleUnlimited() {
   ];
 }
 
-/** 去画配送范围。独立页承载原生地图（放弹层会把子树打掉），回来时监听事件收顶点 */
+/**
+ * 去画配送范围。独立页承载原生地图（放弹层会把子树打掉），回来时监听事件收顶点。
+ *
+ * 门店坐标用 query 带过去作地图初始中心 —— 两个整数，不会像顶点串那样被截断。
+ * 不带的话画图页从一个固定点起步，商家得先把地图从别的城市拖回自己店门口。
+ */
 function openPolygonDraw() {
-  uni.navigateTo({ url: "/pages/store-scope-polygon/index" });
+  const q = form.value.latE6 != null && form.value.lngE6 != null
+    ? `?latE6=${form.value.latE6}&lngE6=${form.value.lngE6}` : "";
+  uni.navigateTo({ url: `/pages/store-scope-polygon/index${q}` });
 }
 
 /**

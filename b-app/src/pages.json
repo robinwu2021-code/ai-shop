@@ -406,6 +406,18 @@
       }
     },
     {
+      "path": "pages/store-scope-polygon/index",
+      "style": {
+        "navigationBarTitleText": "画配送范围",
+        "app-plus": {
+          "navigationStyle": "custom"
+        },
+        "h5": {
+          "navigationStyle": "custom"
+        }
+      }
+    },
+    {
       "path": "pages/store-pick/index",
       "style": {
         "navigationBarTitleText": "选择门店",
