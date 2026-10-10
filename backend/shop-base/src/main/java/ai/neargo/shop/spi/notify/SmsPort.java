@@ -69,8 +69,8 @@ public interface SmsPort {
      * {@code tpl_unconfigured}，不去调阿里云。
      *
      * @param phone    收件人手机号（{@code OrdSubOrder.receiverPhone}）
-     * @param trackUrl 完整短链（{@code https://s.hxmall.top/<code>}）。<b>通道只负责把它塞进模板</b>，
-     *                 短链怎么生成、指向哪是调用方的事
+     * @param trackUrl 完整短链（{@code https://s.hxmall.top/<code>}）。<b>通道负责把它塞进模板</b> ——
+     *                 阿里云链接变量只放路径段，所以 Ali 实现从中抠出短码传 {@code ${code}}（域名在模板里是固定文本）
      */
     SendResult sendShipToRecipient(String phone, String trackUrl);
 

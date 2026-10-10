@@ -232,7 +232,12 @@ public class AliSmsGateway implements SmsPort {
         p.put("PhoneNumbers", phone);
         p.put("SignName", signName);
         p.put("TemplateCode", shipTemplate);
-        p.put("TemplateParam", "{\"url\":\"" + trackUrl + "\"}");
+        /*
+         * **只传短码，不传整条 URL**（阿里云链接变量规则）：模板里域名是固定文本
+         * （`s.hxmall.top/${code}`），变量只认链接的路径段，且「不支持全变量链接」。
+         * 所以这里从短链里抠出最后一段短码（BizKey.shortCode 保证首字母是字母、≤8 位）。
+         */
+        p.put("TemplateParam", "{\"code\":\"" + shortCodeOf(trackUrl) + "\"}");
         p.put("Signature", sign("POST&%2F&" + enc(canonicalize(p))));
         try {
             HttpResponse<String> resp = post(p);
@@ -248,6 +253,17 @@ public class AliSmsGateway implements SmsPort {
             Thread.currentThread().interrupt();
             throw new SmsException("短信发送被中断", true);
         }
+    }
+
+    /** 从完整短链里取最后一段短码（{@code https://s.hxmall.top/AB12345} → {@code AB12345}）。去掉可能的 query */
+    private static String shortCodeOf(String url) {
+        String u = url;
+        int q = u.indexOf('?');
+        if (q >= 0) {
+            u = u.substring(0, q);
+        }
+        int slash = u.lastIndexOf('/');
+        return slash >= 0 ? u.substring(slash + 1) : u;
     }
 
     /** 两条用途共用的公共参数（签名所需的那一套） */

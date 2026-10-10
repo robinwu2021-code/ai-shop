@@ -29,7 +29,10 @@ class ShortLinkServiceTest {
         when(mapper.insert(any(ShortLink.class))).thenReturn(1);
         String url = service.shorten("https://wxaurl.cn/x", ShortLink.BIZ_SHIP_TRACK, "SUB-A", null);
         assertThat(url).startsWith("https://s.hxmall.top/");
-        assertThat(url.substring("https://s.hxmall.top/".length())).hasSize(7);
+        String code = url.substring("https://s.hxmall.top/".length());
+        assertThat(code).hasSize(7);
+        // 阿里云短信链接变量：值首字母须是字母、≤8 位（见 BizKey.shortCode）。数字开头会被拒
+        assertThat(Character.isLetter(code.charAt(0))).as("短码首字母必须是字母").isTrue();
     }
 
     @Test

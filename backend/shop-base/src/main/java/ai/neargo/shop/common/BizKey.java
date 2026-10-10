@@ -188,6 +188,8 @@ public final class BizKey {
      * 32 个字符 = 每位 5 bit。
      */
     private static final char[] CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ".toCharArray();
+    /** Crockford 里的字母部分（去 I/L/O/U）。短码首位用它 —— 见 {@link #shortCode} 的注释 */
+    private static final char[] CROCKFORD_LETTERS = "ABCDEFGHJKMNPQRSTVWXYZ".toCharArray();
 
     /** 随机段位数。10 位 = 50 bit。短 ↔ 碰撞余量的取舍见 ADR-033；高量类型另有 DB 唯一索引兜底 */
     private static final int RAND_LEN = 10;
@@ -223,7 +225,10 @@ public final class BizKey {
      */
     public static String shortCode(int len) {
         char[] c = new char[len];
-        for (int i = 0; i < len; i++) {
+        // **首字母必须是字母**：阿里云短信「域名/${code}」的链接变量要求值首字母为英文、
+        // 英数字、≤8 位（CreateSmsTemplate 链接变量规则）。Crockford 含数字，数字开头会被拒。
+        c[0] = CROCKFORD_LETTERS[RANDOM.nextInt(CROCKFORD_LETTERS.length)];
+        for (int i = 1; i < len; i++) {
             c[i] = CROCKFORD[RANDOM.nextInt(CROCKFORD.length)];
         }
         return new String(c);
