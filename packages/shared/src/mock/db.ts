@@ -1071,6 +1071,7 @@ function shippedOrder(
     phone: "18588888359",
     address: "广东省深圳市龙华区民治街道 招商锦绣观园 5 栋 10F",
   };
+  o.verifyCode = "474280"; // 复现：快递单库里也带了核销码（生产实况），验前端会不会误显示取件码
   o.expressCompany = "STO";
   o.expressNo = "773445428425272";
   const t0 = Date.now();

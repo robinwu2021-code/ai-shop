@@ -195,6 +195,11 @@ export function showVerifyCode(
   fulfillment?: FulfillmentType | null,
 ): boolean {
   if (type === "VIRTUAL" || type === "CARD") return true;
+  // **履约方式缺失就不显示码**：OrderVO 支付视角的 fulfillment 是 null（见其注释），
+  // 而 shapeOf(null) 兜底成 SELF_PICKUP —— 不拦的话，刚下单的快递单在支付视角里
+  // 会冒出一个"取货码"（2026-10-11 店主反馈"没发货就有取件码"）。
+  // 取货/核销码只在**确知是自提或到店核销**时才给，拿不到履约方式按"不该有码"处理。
+  if (!fulfillment) return false;
   const shape = shapeOf(fulfillment);
   return shape === DELIVERY_SHAPE.SELF_PICKUP || shape === DELIVERY_SHAPE.SELF_SERVE;
 }
