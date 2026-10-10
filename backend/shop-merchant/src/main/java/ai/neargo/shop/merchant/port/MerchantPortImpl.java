@@ -603,6 +603,11 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
 
     @Override
     public SaleScope saleScope(String merchantNo) {
+        return saleScope(merchantNo, null);
+    }
+
+    @Override
+    public SaleScope saleScope(String merchantNo, String storeNo) {
         MchEntity m = merchantNo == null || merchantNo.isBlank() ? null
                 : DataScopeContext.executeWithoutScope(() ->
                 merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
@@ -628,7 +633,14 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
          * 默认店全国发快递、分店只框了乌鲁木齐 —— 先列框选的话买家页只写「乌鲁木齐」，
          * 而可见性（各店并集）是全国。主体口径与可见性同一个：任一 ACTIVE 门店不限，这件货就不限。
          */
-        var reaches = reachLoader.loadEach(m);
+        /*
+         * 有归属门店就只看那一家 —— 商品只属于一家店（V384），主体并集会把别家店的「不限」
+         * 算到这件货头上，详情页于是与列表互相打脸（见端口上那段注释里的生产实况）。
+         */
+        boolean oneStore = storeNo != null && !storeNo.isBlank();
+        var reaches = reachLoader.loadEach(m).stream()
+                .filter(r -> !oneStore || storeNo.equals(r.storeNo()))
+                .toList();
         var unlimitedStores = reaches.stream().filter(ai.neargo.shop.merchant.reach.ReachRule::unlimited).toList();
         if (!unlimitedStores.isEmpty()) {
             return new SaleScope(true, java.util.List.of(), 0,
@@ -636,6 +648,10 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
                             .filter(r -> !ai.neargo.shop.merchant.reach.ReachRule.unlimited(r)).toList()));
         }
         java.util.Set<String> activeStores = new java.util.HashSet<>(activeStoreNos(merchantNo));
+        if (oneStore) {
+            // 列框选也只列这一家的（上面已把 reaches 收窄，这里是另一条查询，必须一起收）
+            activeStores.retainAll(java.util.Set.of(storeNo));
+        }
         java.util.Map<String, MchServiceArea> uniq = new java.util.LinkedHashMap<>();
         DataScopeContext.executeWithoutScope(() ->
                         serviceAreaMapper.selectList(Wrappers.<MchServiceArea>lambdaQuery()

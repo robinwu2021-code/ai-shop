@@ -478,6 +478,66 @@ class StoreScopedVisibilityFlowTest {
         }
     }
 
+    /** 只按坐标翻页找货 —— 既不给 communityNo 也不给 regionCode，这是「只有定位」的那条路 */
+    private boolean buyerSeesByCoords(int latE6, int lngE6, String goodsNo) throws Exception {
+        for (long page = 1; ; page++) {
+            String body = mvc().perform(get("/mp/goods")
+                            .param("latE6", String.valueOf(latE6))
+                            .param("lngE6", String.valueOf(lngE6))
+                            .param("page", String.valueOf(page)).param("size", "50"))
+                    .andReturn().getResponse().getContentAsString();
+            var data = json.readTree(body).get("data");
+            var records = data.get("records");
+            if (records == null || records.isEmpty()) {
+                return false;
+            }
+            for (var r : records) {
+                if (goodsNo.equals(r.get("goodsNo").asString())) {
+                    return true;
+                }
+            }
+            if (page * 50 >= data.get("total").asLong()) {
+                return false;
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 只传坐标也要筛 —— 这条链路曾经整条是死的（坐标被 visibleGoodsNos 吃掉）")
+    void coordsAloneStillFilters() throws Exception {
+        /*
+         * 2026-10-10 在生产上实测抓到的缺陷：端上传了坐标、控制器绑上了、GoodsVisibility
+         * 两个重载都收，而 GoodsServiceImpl.visibleGoodsNos 少传两个参数把它们扔掉 ——
+         * 于是「只有定位」的买家走到 serving() 里是「什么都没给」，返回 null = **不筛**，
+         * 看到的是全平台的货。零报错、闸门全绿、所有单测全绿（它们都从带 communityNo 的路进）。
+         *
+         * 这条用例就从那条路进：只给坐标。
+         */
+        String biz = merchant("12600180063", "只做福田区的店（坐标路径）");
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+        String store = defaultStoreNo(biz);
+        storeService.save(merchantNo, store, new MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null, List.of(
+                        new MerchantStoreService.AreaCommand("DISTRICT", "440304")), null, null));
+        fulfillmentService.save(merchantNo, store, List.of(new ChannelCmd(
+                Fulfillments.MERCHANT_DELIVERY, true, null, null, "ALL", null)));
+        String goodsNo = onSaleGoodsAt(biz, store, "只传坐标也该筛掉的货");
+
+        /*
+         * 只给坐标时画像里没有区划码（坐标还没反解），所以框了行政区的店命中不了 ——
+         * **这正是要断言的**：筛了，而不是「什么都没给所以全给你」。
+         * 反解坐标到区划是另一件事（端上 resolveLocation 已经做了，会连 regionCode 一起传）。
+         */
+        assertThat(buyerSeesByCoords(22_540_000, 114_060_000, goodsNo))
+                .as("只有坐标、判不出在不在那个区 → 不该出现；撤掉修复这里会变 true")
+                .isFalse();
+        // 对照：同一件货按区划码就看得到 —— 证明它确实在架、不是被别的原因筛掉的
+        assertThat(buyerSeesByRegion("440304", goodsNo))
+                .as("对照：按区划码要看得到，否则这条用例测的是「商品本来就不在」")
+                .isTrue();
+    }
+
     @Test
     @DisplayName("★★★ 框了区的店对区外不可见 —— 买家只有粗定位（ADR-034 AC2）")
     void framedDistrictIsInvisibleOutsideIt() throws Exception {

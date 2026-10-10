@@ -94,9 +94,17 @@ public class GoodsServiceImpl implements GoodsService {
         return visibleGoodsNos(communityNo, regionCode, null, null);
     }
 
-    /** 带消费者坐标：才能命中商家画的多边形范围，也才能在「只有定位、没落到小区」时按省市区匹配（ADR-034） */
+    /**
+     * 带消费者坐标：才能命中商家画的多边形范围，也才能在「只有定位、没落到小区」时按省市区匹配（ADR-034）。
+     *
+     * <p>★ <b>这一行曾经把坐标接下来又扔掉</b>（`goodsNos(communityNo, regionCode)`，少传两个参数）。
+     * 后果是整条坐标链路在生产上是死的：端上传了、控制器绑上了、下游两个重载都收，
+     * 而这里一声不吭地丢掉 —— 于是「只有定位」的买家走到 `serving()` 里是「什么都没给」，
+     * 返回 null = <b>不筛</b>，看到的是全平台的货。零报错、闸门全绿、单测全绿
+     * （单测都从带 communityNo 的那条路进），只有在生产上按纯坐标调一次才看得见。
+     */
     private List<String> visibleGoodsNos(String communityNo, String regionCode, Integer latE6, Integer lngE6) {
-        return visibility.goodsNos(communityNo, regionCode);
+        return visibility.goodsNos(communityNo, regionCode, latE6, lngE6);
     }
 
     @Override
@@ -489,7 +497,7 @@ public class GoodsServiceImpl implements GoodsService {
                             s.merchantSkuCode(), s.saleUnit()))
                     .toList());
         }
-        v = withSaleScope(v, v.merchant() == null ? null : v.merchant().merchantNo());
+        v = withSaleScope(v, v.merchant() == null ? null : v.merchant().merchantNo(), owner);
         v = v.withSaleGate(directBuyable(v), null);
         v = v.withPromotions(promotionsOf(v.goodsNo()),
                 v.merchant() == null ? List.of() : campaignPort.activityTags(v.merchant().merchantNo()).stream()
@@ -769,8 +777,13 @@ public class GoodsServiceImpl implements GoodsService {
      * <p>Java record 没有 with，只能整份重建 —— 字段一多就容易漏填一个，
      * 所以这里逐个透传、不做任何加工，新增字段时这一段要跟着补。
      */
-    private GoodsVO withSaleScope(GoodsVO v, String entityNo) {
-        var scope = merchantPort.saleScope(entityNo);
+    private GoodsVO withSaleScope(GoodsVO v, String entityNo, String ownerStoreNo) {
+        /*
+         * ★ 按**归属门店**问，不是按主体问。主体口径是各店并集（任一家不限就算不限），
+         * 而商品只属于一家店（V384）—— 多门店主体上这两个口径会给出相反结论，
+         * 2026-10-10 在生产上就撞到了：面粉只在嘉逸花园可见，详情页却写着「不限地区」。
+         */
+        var scope = merchantPort.saleScope(entityNo, ownerStoreNo);
         if (scope == null || scope.isEmpty()) {
             return v;
         }

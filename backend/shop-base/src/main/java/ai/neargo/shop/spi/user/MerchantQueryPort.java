@@ -478,6 +478,18 @@ public interface MerchantQueryPort {
     SaleScope saleScope(String merchantNo);
 
     /**
+     * 同上，但只算<b>某一家门店</b>的范围。
+     *
+     * <p><b>为什么必须有这一个</b>：商品只属于一家门店（V384，ADR-031），而主体口径是各店并集 ——
+     * 「任一家不限，这件货就不限」。这两件事在多门店主体上会给出相反的结论：
+     * 2026-10-10 生产实况是「虹选鲜果」全平台（显式 UNLIMITED）、「虹选粮油」只框了嘉逸花园，
+     * 于是粮油那件面粉的详情页写着「不限地区」，而它在广州根本搜不到 —— 列表与详情互相打脸。
+     *
+     * @param storeNo 商品的归属门店；{@code null} 时退回主体并集（没有归属的存量商品、测试种子）
+     */
+    SaleScope saleScope(String merchantNo, String storeNo);
+
+    /**
      * 这家店排除掉的<b>省</b>（两位国标码），下单按收货地址拦用。
      *
      * <p>只给省级：收货地址只存省市名字、没有区划码，市/区级排除下单时认不准（多个「朝阳区」），

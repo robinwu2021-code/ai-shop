@@ -123,6 +123,60 @@ class GoodsSaleScopeFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 多门店主体：这件货的范围按**归属门店**算，不吃别家店的「不限」")
+    void scopeFollowsOwningStoreNotEntityUnion() throws Exception {
+        /*
+         * 2026-10-10 生产实况：同一个主体下「虹选鲜果」是显式全平台不限、「虹选粮油」只框了嘉逸花园。
+         * 主体口径是各店并集（任一家不限就算不限），而商品只属于一家店（V384）——
+         * 于是粮油那件面粉的详情页写着「不限地区」，它在广州却根本搜不到：**列表与详情互相打脸**。
+         * 买家读到的是一句正好相反的承诺，而两侧都不报错。
+         */
+        String entityNo = merchant("SHIPPING");
+        unlimited(entityNo);                       // 默认店（SST<entityNo>）：全平台不限
+
+        // 第二家店：只框一个区
+        String narrow = "SST2" + entityNo;
+        var st = new ai.neargo.shop.merchant.entity.MchStore();
+        st.setEntityNo(entityNo);
+        st.setStoreNo(narrow);
+        st.setName("只做福田区的分店");
+        st.setStatus("ACTIVE");
+        storeMapper.insert(st);
+        var a = new ai.neargo.shop.merchant.entity.MchServiceArea();
+        a.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
+        a.setEntityNo(entityNo);
+        a.setStoreNo(narrow);
+        a.setLevel(ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_DISTRICT);
+        a.setRefCode("440304");
+        a.setSource("SELF");
+        a.setStatus("ACTIVE");
+        a.setMode("INCLUDE");
+        areaMapper.insert(a);
+
+        // 这件货**归属那家窄的店**
+        String goodsNo = goods(entityNo);
+        var g = goodsMapper.selectById(
+                goodsMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.product.entity.PrdGoods>lambdaQuery()
+                        .eq(ai.neargo.shop.product.entity.PrdGoods::getGoodsNo, goodsNo)).get(0).getId());
+        g.setStoreNo(narrow);
+        goodsMapper.updateById(g);
+
+        var scope = detail(goodsNo).get("saleScope");
+        assertThat(scope.get("unlimited").asBoolean())
+                .as("归属店只框了一个区，不该因为**别家店**不限就对买家说「不限地区」")
+                .isFalse();
+        assertThat(scope.get("areaCount").asInt())
+                .as("要列归属店自己框的那一块")
+                .isEqualTo(1);
+
+        // 对照：主体口径（不传门店）仍是并集 —— 存量调用方的行为没被改掉
+        assertThat(merchantQuery.saleScope(entityNo).unlimited())
+                .as("不传门店时仍按主体并集：默认店不限 → 不限")
+                .isTrue();
+    }
+
+    @Test
     @DisplayName("★★★ 框了两块地方 → 详情里就是那两个名字，且带总数")
     void configuredAreasAreListed() throws Exception {
         String m = merchant("ONSITE");
