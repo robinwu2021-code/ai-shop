@@ -91,11 +91,22 @@ public class GoodsServiceImpl implements GoodsService {
      *         正是「没铺货的区看到全平台商品」的由来
      */
     private List<String> visibleGoodsNos(String communityNo, String regionCode) {
+        return visibleGoodsNos(communityNo, regionCode, null, null);
+    }
+
+    /** 带消费者坐标：才能命中商家画的多边形范围，也才能在「只有定位、没落到小区」时按省市区匹配（ADR-034） */
+    private List<String> visibleGoodsNos(String communityNo, String regionCode, Integer latE6, Integer lngE6) {
         return visibility.goodsNos(communityNo, regionCode);
     }
 
     @Override
     public List<GoodsVO> promoted(String communityNo, String regionCode, Integer size) {
+        return promoted(communityNo, regionCode, size, null, null);
+    }
+
+    @Override
+    public List<GoodsVO> promoted(String communityNo, String regionCode, Integer size,
+                                  Integer latE6, Integer lngE6) {
         int limit = size == null || size <= 0 ? 6 : size;
         /*
          * **运营配的内容位优先**。配了就按运营给的顺序展示 —— 首页上写的是「推荐」，
@@ -118,7 +129,7 @@ public class GoodsServiceImpl implements GoodsService {
         onShelf(null).accept(w);
 
         // 与 list() 同一条规矩：这里没有门店服务的商品不该出现 —— 用户看到也买不到
-        List<String> goodsNos = visibleGoodsNos(communityNo, regionCode);
+        List<String> goodsNos = visibleGoodsNos(communityNo, regionCode, latE6, lngE6);
         if (goodsNos != null) {
             if (goodsNos.isEmpty()) {
                 return List.of();
@@ -282,7 +293,7 @@ public class GoodsServiceImpl implements GoodsService {
         } else {
             // 先取这里看得到的 goodsNo，再查商品。
             // 一件都没有 = 那儿还没有门店服务，返回空列表而不是全量 —— 否则用户会看到根本买不到的东西
-            List<String> goodsNos = visibleGoodsNos(q.communityNo(), q.regionCode());
+            List<String> goodsNos = visibleGoodsNos(q.communityNo(), q.regionCode(), q.latE6(), q.lngE6());
             if (goodsNos != null) {
                 if (goodsNos.isEmpty()) {
                     return PageData.empty(q.page(), q.size());
@@ -330,7 +341,7 @@ public class GoodsServiceImpl implements GoodsService {
          * 那条路没有社区上下文，挂不出「哪家店」，端上退回主体名。
          */
         Map<String, String> byVisibility = q.merchantNo() != null && !q.merchantNo().isBlank()
-                ? Map.of() : visibility.providingStores(q.communityNo(), q.regionCode(), nos);
+                ? Map.of() : visibility.providingStores(q.communityNo(), q.regionCode(), q.latE6(), q.lngE6(), nos);
         /*
          * ★ **没有位置时的兜底：按「在架卖它的门店」反查，唯一才填**（2026-09-30）。
          *
@@ -559,7 +570,12 @@ public class GoodsServiceImpl implements GoodsService {
 
     @Override
     public Boolean deliverableTo(String goodsNo, String communityNo) {
-        return visibility.deliverable(goodsNo, communityNo);
+        return deliverableTo(goodsNo, communityNo, null, null);
+    }
+
+    @Override
+    public Boolean deliverableTo(String goodsNo, String communityNo, Integer latE6, Integer lngE6) {
+        return visibility.deliverable(goodsNo, communityNo, latE6, lngE6);
     }
 
     /**

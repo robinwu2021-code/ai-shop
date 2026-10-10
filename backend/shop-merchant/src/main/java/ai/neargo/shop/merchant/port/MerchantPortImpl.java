@@ -222,16 +222,39 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     /**
-     * 按区划反查。<b>区划码本身就是画像的一部分</b>（ADR-034）—— 不再「先找区里的开放小区、再逐个判」：
-     * 那条路让「所在区没有运营开过小区」的消费者一片空白，而商家明明框了整个市。
+     * 按区划反查：「这个区里有没有它送得到的地方」（ADR-034 用<b>区域画像</b>一次算完）。
+     *
+     * <p>画像要装三样，少一样就漏一类商家：
+     * <ul>
+     *   <li><b>区划码的祖先集</b> —— 命中框了省/市/区/街道/村的商家。
+     *       这一项让「所在区没有运营开过小区」也能匹配（旧实现在那种情形下返回空 map，
+     *       而商家明明框了整个市）。</li>
+     *   <li><b>该区全部聚落号</b> —— 命中只框了某个小区的商家。少了它，「只框嘉逸花园」的店
+     *       在「福田区」的模糊定位下不可见，可嘉逸花园就在福田区。旧实现靠「展开小区逐个判」
+     *       拿到这个结果，这里把那一步并进同一次点查。</li>
+     *   <li><b>这些聚落的 cell token 之并</b> —— 命中画了多边形的商家（内部 cell 即算；
+     *       边界 cell 没有单点坐标无法精判，按不算处理）。</li>
+     * </ul>
      */
     @Override
     public java.util.Map<String, java.util.Set<String>> servingStoresInRegion(String regionCode) {
         if (regionCode == null || regionCode.isBlank()) {
             return java.util.Map.of();
         }
-        return servingStores(ConsumerProfile.of(regionCode, null, null, null, null,
-                geoProps.getS2MinLevel(), geoProps.getS2MaxLevel()));
+        var refs = communityQueryPort.openCommunityRefsUnderRegion(regionCode);
+        java.util.List<String> communityNos = new java.util.ArrayList<>(refs.size());
+        java.util.LinkedHashSet<String> tokens = new java.util.LinkedHashSet<>();
+        for (var ref : refs) {
+            communityNos.add(ref.communityNo());
+            if (ref.parentNo() != null) {
+                communityNos.add(ref.parentNo());
+            }
+            if (ConsumerProfile.validCoords(ref.latE6(), ref.lngE6())) {
+                tokens.addAll(ai.neargo.shop.geo.S2Cover.tokens(ref.latE6(), ref.lngE6(),
+                        geoProps.getS2MinLevel(), geoProps.getS2MaxLevel()));
+            }
+        }
+        return servingStores(ConsumerProfile.ofArea(regionCode, communityNos, java.util.List.copyOf(tokens)));
     }
 
     @Override

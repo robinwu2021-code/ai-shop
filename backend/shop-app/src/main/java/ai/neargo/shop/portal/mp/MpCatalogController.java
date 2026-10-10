@@ -233,9 +233,16 @@ public class MpCatalogController {
                                        @RequestParam(required = false) String categoryNo,
                                        @RequestParam(required = false) String keyword,
                                        @RequestParam(defaultValue = "1") long page,
-                                       @RequestParam(defaultValue = "10") long size) {
+                                       @RequestParam(defaultValue = "10") long size,
+                                       @RequestParam(required = false) Integer latE6,
+                                       @RequestParam(required = false) Integer lngE6) {
+        /*
+         * 坐标是**可选**的（ADR-034）：给了才命中商家在地图上画的范围，也才能在「只有定位、
+         * 没落到任何小区」时按省市区匹配。不给就退回按 communityNo/regionCode 判，与改造前逐字相同。
+         */
         return goodsService.list(new GoodsService.GoodsQuery(
-                communityNo, regionCode, merchantNo, type, categoryNo, keyword, page, Math.min(size, 50)));
+                communityNo, regionCode, merchantNo, type, categoryNo, keyword, page, Math.min(size, 50),
+                null, latE6, lngE6));
     }
 
     /**
@@ -245,10 +252,12 @@ public class MpCatalogController {
     @GetMapping("/mp/goods/{goodsNo}")
     public GoodsVO goodsDetail(@PathVariable String goodsNo,
                                @RequestParam(required = false) String communityNo,
-                               @RequestParam(required = false) String storeNo) {
+                               @RequestParam(required = false) String storeNo,
+                               @RequestParam(required = false) Integer latE6,
+                               @RequestParam(required = false) Integer lngE6) {
         return goodsService.detailForBuyer(goodsNo, storeNo).withViewer(
                 goodsFavoriteService.isFavorited(goodsNo),
-                goodsService.deliverableTo(goodsNo, communityNo));
+                goodsService.deliverableTo(goodsNo, communityNo, latE6, lngE6));
     }
 
     @GetMapping("/mp/category/tree")
@@ -284,8 +293,10 @@ public class MpCatalogController {
     @GetMapping("/mp/goods/promoted")
     public List<GoodsVO> promotedGoods(@RequestParam(required = false) String communityNo,
                                        @RequestParam(required = false) String regionCode,
-                                       @RequestParam(required = false) Integer size) {
-        return goodsService.promoted(communityNo, regionCode, size);
+                                       @RequestParam(required = false) Integer size,
+                                       @RequestParam(required = false) Integer latE6,
+                                       @RequestParam(required = false) Integer lngE6) {
+        return goodsService.promoted(communityNo, regionCode, size, latE6, lngE6);
     }
 
     /** 推荐门店（运营位）。用途是新店冷启动，刻意不看历史成绩 */

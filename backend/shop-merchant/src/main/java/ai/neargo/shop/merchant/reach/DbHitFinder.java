@@ -28,7 +28,7 @@ public class DbHitFinder implements HitFinder {
     public Map<String, StoreHits> find(ConsumerProfile profile, String storeNo) {
         Map<String, StoreHits.Builder> byStore = new LinkedHashMap<>();
         for (ReachMatchMapper.AreaHitRow r : DataScopeContext.executeWithoutScope(() -> mapper.areaHits(
-                profile.ancestors(), profile.communityNo(), profile.parentNo(), storeNo))) {
+                profile.ancestors(), profile.communityNos(), storeNo))) {
             byStore.computeIfAbsent(r.storeNo(), k -> new StoreHits.Builder())
                     .area(r.areaNo(), MchServiceArea.MODE_EXCLUDE.equals(r.mode()));
         }

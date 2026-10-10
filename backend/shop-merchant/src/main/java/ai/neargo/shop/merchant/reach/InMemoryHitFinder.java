@@ -23,6 +23,7 @@ public final class InMemoryHitFinder {
 
     public static StoreHits hitsFor(StoreItems items, ConsumerProfile profile) {
         Set<String> ancestors = new HashSet<>(profile.ancestors());
+        Set<String> communityNos = new HashSet<>(profile.communityNos());
         Set<String> tokens = new HashSet<>(profile.cellTokens());
         StoreHits.Builder b = new StoreHits.Builder();
 
@@ -40,7 +41,7 @@ public final class InMemoryHitFinder {
                     b.area(a.getAreaNo(), exclude);
                 }
             } else if (MchServiceArea.LEVEL_COMMUNITY.equals(a.getLevel())) {
-                if (a.getRefCode().equals(profile.communityNo()) || a.getRefCode().equals(profile.parentNo())) {
+                if (communityNos.contains(a.getRefCode())) {
                     b.area(a.getAreaNo(), exclude);
                 }
             }

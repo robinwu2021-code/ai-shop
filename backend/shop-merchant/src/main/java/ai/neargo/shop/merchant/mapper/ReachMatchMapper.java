@@ -41,19 +41,16 @@ public interface ReachMatchMapper {
                     </when>
                     <otherwise>(1 = 0)</otherwise>
                   </choose>
-                  <if test="communityNo != null">
-                    OR (level = 'COMMUNITY' AND ref_code = #{communityNo})
-                  </if>
-                  <if test="parentNo != null">
-                    OR (level = 'COMMUNITY' AND ref_code = #{parentNo})
+                  <if test="communityNos != null and communityNos.size() > 0">
+                    OR (level = 'COMMUNITY' AND ref_code IN
+                    <foreach collection="communityNos" item="c" open="(" separator="," close=")">#{c}</foreach>)
                   </if>
                 </trim>
               )
             </script>
             """)
     List<AreaHitRow> areaHits(@Param("ancestors") List<String> ancestors,
-                              @Param("communityNo") String communityNo,
-                              @Param("parentNo") String parentNo,
+                              @Param("communityNos") List<String> communityNos,
                               @Param("storeNo") String storeNo);
 
     /** 多边形的网格命中行。{@code boundary=1} 的只是「可能在内」，判定前要用几何精判 */

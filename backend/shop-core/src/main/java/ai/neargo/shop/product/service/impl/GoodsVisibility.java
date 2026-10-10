@@ -41,11 +41,11 @@ public class GoodsVisibility {
     private final GoodsMapper goodsMapper;
     private final StoreGoodsMapper storeGoodsMapper;
 
-    private final ai.neargo.shop.community.service.ConsumerProfileResolver profileResolver;
+    private final ai.neargo.shop.spi.reach.ConsumerProfilePort profileResolver;
 
     public GoodsVisibility(MerchantQueryPort merchantPort, GoodsMapper goodsMapper,
                            StoreGoodsMapper storeGoodsMapper,
-                           ai.neargo.shop.community.service.ConsumerProfileResolver profileResolver) {
+                           ai.neargo.shop.spi.reach.ConsumerProfilePort profileResolver) {
         this.merchantPort = merchantPort;
         this.goodsMapper = goodsMapper;
         this.storeGoodsMapper = storeGoodsMapper;
@@ -120,7 +120,18 @@ public class GoodsVisibility {
 
     /** 这件货送不送得到这个小区。没给小区返回 {@code null}（端上据此不显示这一行） */
     public Boolean deliverable(String goodsNo, String communityNo) {
-        if (communityNo == null || communityNo.isBlank()) {
+        return deliverable(goodsNo, communityNo, null, null);
+    }
+
+    /**
+     * 同上，带消费者坐标（ADR-034）：有坐标才判得出「在不在商家画的那片配送范围里」。
+     *
+     * <p>小区与坐标<b>都没有</b>时返回 {@code null}（端上据此不显示这一行）—— 与改造前逐字相同：
+     * 「判不出来」不等于「送不到」，前者不该在详情页写一句「这儿不在范围内」。
+     */
+    public Boolean deliverable(String goodsNo, String communityNo, Integer latE6, Integer lngE6) {
+        boolean noCommunity = communityNo == null || communityNo.isBlank();
+        if (noCommunity && !ai.neargo.shop.spi.reach.ConsumerProfile.validCoords(latE6, lngE6)) {
             return null;
         }
         PrdGoods g = DataScopeContext.executeWithoutScope(() -> goodsMapper.selectOne(
@@ -130,7 +141,9 @@ public class GoodsVisibility {
         if (g == null || !Boolean.TRUE.equals(g.getOnSale())) {
             return false;
         }
-        Set<String> stores = merchantPort.servingStores(communityNo).get(g.getEntityNo());
+        Set<String> stores = merchantPort
+                .servingStores(profileResolver.resolve(communityNo, null, latE6, lngE6))
+                .get(g.getEntityNo());
         return stores != null && !sellingAt(g, shelfOf(List.of(goodsNo)), stores).isEmpty();
     }
 
@@ -179,10 +192,22 @@ public class GoodsVisibility {
          * 此前是「有小区走小区、否则按区里的开放小区逐个判」—— 那条路让「所在区没有运营开过小区」的
          * 消费者一片空白，而商家明明框了整个市。
          */
-        if ((communityNo == null || communityNo.isBlank())
-                && (regionCode == null || regionCode.isBlank())
-                && !ai.neargo.shop.spi.reach.ConsumerProfile.validCoords(latE6, lngE6)) {
+        boolean hasCommunity = communityNo != null && !communityNo.isBlank();
+        boolean hasRegion = regionCode != null && !regionCode.isBlank();
+        boolean hasCoords = ai.neargo.shop.spi.reach.ConsumerProfile.validCoords(latE6, lngE6);
+        if (!hasCommunity && !hasRegion && !hasCoords) {
             return null;   // 什么都没给：不按地址筛（与改造前逐字相同）
+        }
+        /*
+         * 两种语义，分流处理 —— 合成一条会漏掉一整类商家：
+         *   **单点**（有聚落号或坐标）：消费者就在那一个点上，按他的画像判。
+         *   **纯区域**（只有区划码 = 模糊定位只落到区）：语义是「这个区里任一处」，
+         *       要把该区的聚落与它们的 cell 一并装进画像。只给区划码的话，
+         *       「只框了嘉逸花园」的商家在「福田区」下就不可见了 —— 可嘉逸花园就在福田区。
+         *       那一步在 servingStoresInRegion 里（它造区域画像），所以这里必须走它而不是 servingStores。
+         */
+        if (!hasCommunity && !hasCoords) {
+            return merchantPort.servingStoresInRegion(regionCode);
         }
         return merchantPort.servingStores(profileResolver.resolve(communityNo, regionCode, latE6, lngE6));
     }

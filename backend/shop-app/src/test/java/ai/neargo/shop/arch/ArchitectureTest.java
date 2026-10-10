@@ -463,6 +463,11 @@ class ArchitectureTest {
                 // 与 channel 同构——不是业务域，只把各家推送/短信协议翻译成 spi.notify 的接口。
                 // 编排（谁该收到）仍在 message 域；这里只管「怎么发出去」。见 domainsMustNotTouchChannel。
                 "notify",
+                // geo：几何与网格工具（多边形解析/含边界精判、S2 网格覆盖与 cell token）。
+                // **不是业务域** —— 它没有自己的表、不认识任何业务概念，只做坐标与形状的算术。
+                // 可见范围（merchant 域）与消费者画像（spi.reach）都用它，放进域里就会出现
+                // 「merchant 依赖 community 的几何」这种假跨域。见 ADR-034。
+                "geo",
                 // archive：运营端归档（软删除）。**同样不是业务域** ——
                 // 它没有自己的表，只往别人的表上盖一个 archived_at，
                 // 表名由调用方的枚举给。四个域的这段逻辑逐字相同，

@@ -12,7 +12,9 @@ import java.util.List;
  *   <li>{@link #ancestors}：已知最精确区划码按国标嵌套截出的祖先集（省 2 / 市 4 / 区县 6 / 街道 9 / 村居 12 位）。
  *       范围项 {@code ref_code IN (ancestors)} 即命中 —— 五个行政级一条规则；
  *       消费者码比范围项粗时祖先集里没有那一级，自然不命中（「不知道在不在」≠「在」）。</li>
- *   <li>{@link #communityNo} / {@link #parentNo}：落到的聚落及其上级（楼栋→小区），小区级范围按它们精确匹配。</li>
+ *   <li>{@link #communityNos}：聚落号集合。单个消费者 = 「他所在的那个 + 它的上级」（点名小区要覆盖里面的楼栋）；
+ *       区域画像（模糊定位只到区）= 该区域里的<b>全部</b>聚落号 —— 否则「只框了嘉逸花园」的商家
+ *       在「福田区」下就不可见了，可嘉逸花园就在福田区。小区级范围项按它精确匹配。</li>
  *   <li>{@link #cellTokens}：坐标在 S2 {@code [minLevel, maxLevel]} 各级所在 cell 的 token，多边形范围按它们命中。</li>
  *   <li>{@link #latE6} / {@link #lngE6}：边界 cell 精判用。</li>
  * </ul>
@@ -20,7 +22,7 @@ import java.util.List;
  * <p><b>确知即记，不臆造。</b>缺坐标就没有 token、缺区划码就没有祖先；判定侧按 fail-closed 处理排除项。
  * (0,0) 与越界坐标视为没坐标 —— 前者是端上没拿到定位时的典型值。
  */
-public record ConsumerProfile(List<String> ancestors, String communityNo, String parentNo,
+public record ConsumerProfile(List<String> ancestors, List<String> communityNos,
                               List<String> cellTokens, Integer latE6, Integer lngE6) {
 
     /** 国标区划码各级长度 */
@@ -28,20 +30,40 @@ public record ConsumerProfile(List<String> ancestors, String communityNo, String
 
     public ConsumerProfile {
         ancestors = ancestors == null ? List.of() : List.copyOf(ancestors);
+        communityNos = communityNos == null ? List.of()
+                : communityNos.stream().filter(c -> c != null && !c.isBlank()).distinct().toList();
         cellTokens = cellTokens == null ? List.of() : List.copyOf(cellTokens);
-        communityNo = blankToNull(communityNo);
-        parentNo = blankToNull(parentNo);
     }
 
     /**
-     * 组装画像。坐标只有两个都给且合法才算有；S2 token 按 {@code [minLevel, maxLevel]} 取。
+     * 组装一个<b>消费者</b>的画像。坐标只有两个都给且合法才算有；S2 token 按 {@code [minLevel, maxLevel]} 取。
+     *
+     * <p>聚落维度装「他所在的那个 + 它的上级」：点名小区的范围项要覆盖该小区里的楼栋。
      */
     public static ConsumerProfile of(String regionCode, String communityNo, String parentNo,
                                      Integer latE6, Integer lngE6, int minLevel, int maxLevel) {
         boolean coords = validCoords(latE6, lngE6);
         List<String> tokens = coords ? S2Cover.tokens(latE6, lngE6, minLevel, maxLevel) : List.of();
-        return new ConsumerProfile(ancestorsOf(regionCode), communityNo, parentNo, tokens,
-                coords ? latE6 : null, coords ? lngE6 : null);
+        return new ConsumerProfile(ancestorsOf(regionCode), java.util.Arrays.asList(communityNo, parentNo),
+                tokens, coords ? latE6 : null, coords ? lngE6 : null);
+    }
+
+    /**
+     * 一个<b>区域</b>的画像（模糊定位只落到区县时用）。
+     *
+     * <p>语义是「这个区域里<b>任一处</b>」——所以聚落维度装该区域里的<b>全部</b>聚落号、
+     * cell 维度装它们各自的 cell token 之并。
+     *
+     * <p><b>为什么不能只给区划码</b>：那样只命中得了行政级范围项，而「只框了嘉逸花园」的商家
+     * 在「福田区」的模糊定位下就不可见了 —— 可嘉逸花园就在福田区，他明明送得到。
+     * 旧实现靠「展开该区的小区再逐个判」拿到这个结果，这里把那一步并进同一次点查。
+     *
+     * <p>区域没有单点坐标，所以 {@code latE6/lngE6} 为空：多边形的<b>内部</b> cell 命中仍然算
+     * （那片确实在区域内），<b>边界</b> cell 无法精判则不算，排除型多边形按 fail-closed 处理 ——
+     * 判不出来就不放行，宁可少卖。
+     */
+    public static ConsumerProfile ofArea(String regionCode, List<String> communityNos, List<String> cellTokens) {
+        return new ConsumerProfile(ancestorsOf(regionCode), communityNos, cellTokens, null, null);
     }
 
     /** 2/4/6/9/12 位截取，只取不超过自身长度的整级 */
@@ -67,7 +89,7 @@ public record ConsumerProfile(List<String> ancestors, String communityNo, String
     }
 
     public boolean hasCommunity() {
-        return communityNo != null;
+        return !communityNos.isEmpty();
     }
 
     public boolean hasCoords() {
@@ -83,9 +105,5 @@ public record ConsumerProfile(List<String> ancestors, String communityNo, String
             return false;
         }
         return latE6 >= -90_000_000 && latE6 <= 90_000_000 && lngE6 >= -180_000_000 && lngE6 <= 180_000_000;
-    }
-
-    private static String blankToNull(String s) {
-        return s == null || s.isBlank() ? null : s;
     }
 }

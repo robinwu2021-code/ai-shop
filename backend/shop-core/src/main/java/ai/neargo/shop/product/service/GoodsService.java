@@ -46,6 +46,9 @@ public interface GoodsService {
      */
     Boolean deliverableTo(String goodsNo, String communityNo);
 
+    /** 同上，带消费者坐标（ADR-034）：有坐标才判得出「在不在商家画的那片配送范围里」 */
+    Boolean deliverableTo(String goodsNo, String communityNo, Integer latE6, Integer lngE6);
+
     /**
      * 批量取详情，{@code goodsNo → GoodsVO}。查不到的编号不出现在返回里。
      *
@@ -66,6 +69,10 @@ public interface GoodsService {
      * 刻意与主商品流<b>不同序</b>（主流按距离，这里按销量），否则两处内容会完全重合。
      */
     java.util.List<GoodsVO> promoted(String communityNo, String regionCode, Integer size);
+
+    /** 同上，带消费者坐标（ADR-034）：首页推荐楼层与目录用同一条可见性判定 */
+    java.util.List<GoodsVO> promoted(String communityNo, String regionCode, Integer size,
+                                     Integer latE6, Integer lngE6);
 
     /** 规格选中后的实时价格与库存（C-PD-04）。下单前的最后一次校准。 */
     ai.neargo.shop.product.dto.SkuPriceVO skuPrice(String goodsNo, String skuNo);
@@ -88,12 +95,19 @@ public interface GoodsService {
      *                有了任意一行就只认本店那行
      */
     record GoodsQuery(String communityNo, String regionCode, String merchantNo, String type,
-                      String categoryNo, String keyword, long page, long size, String storeNo) {
+                      String categoryNo, String keyword, long page, long size, String storeNo,
+                      Integer latE6, Integer lngE6) {
+
+        /** 不带坐标（存量调用方、运营视图） */
+        public GoodsQuery(String communityNo, String regionCode, String merchantNo, String type,
+                          String categoryNo, String keyword, long page, long size, String storeNo) {
+            this(communityNo, regionCode, merchantNo, type, categoryNo, keyword, page, size, storeNo, null, null);
+        }
 
         /** 不按门店筛（跨店目录、搜索、存量调用方） */
         public GoodsQuery(String communityNo, String regionCode, String merchantNo, String type,
                           String categoryNo, String keyword, long page, long size) {
-            this(communityNo, regionCode, merchantNo, type, categoryNo, keyword, page, size, null);
+            this(communityNo, regionCode, merchantNo, type, categoryNo, keyword, page, size, null, null, null);
         }
     }
 }
