@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 819 个接口**：后端已实现 742（91%）· 前端在调 743
+**合计 825 个接口**：后端已实现 748（91%）· 前端在调 749
 
 ---
 
@@ -266,7 +266,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **290** 个接口 ｜ 后端已实现 **280**（97%）｜ 前端在调 **290**
+共 **296** 个接口 ｜ 后端已实现 **286**（97%）｜ 前端在调 **296**
 
 ### activities（4）
 
@@ -612,6 +612,17 @@
 | GET | `/biz/my-spec-dims` | 我建的规格维度（含用量与配额） | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/my-spec-dims/{dimNo}/archive` | 停用/启用自建维度 | — | — | 🔒 | ✅ | ✅ |
 | POST | `/biz/my-spec-dims/{dimNo}/rename` | 给自建维度改名 | — | — | 🔒 | ✅ | ✅ |
+
+### notify（6）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| PUT | `/biz/notify/email` | 改本店的邮件接收地址 | — | `NotifySetting` | 🔒 | ✅ | ✅ |
+| GET | `/biz/notify/setting` | 本店的通知开关与企微群状态 | — | `NotifySetting` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/notify/setting` | 改本店某个场景某条通道的开关 | — | `NotifySetting` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/notify/sms-phones` | 改本店的额外短信接收号 | — | `NotifySetting` | 🔒 | ✅ | ✅ |
+| PUT | `/biz/notify/wecom` | 录入本店的企业微信群机器人地址 | — | `NotifySetting` | 🔒 | ✅ | ✅ |
+| POST | `/biz/notify/wecom/test` | 往本店的企微群发一条测试 | — | `boolean` | 🔒 | ✅ | ✅ |
 
 ### order（10）
 

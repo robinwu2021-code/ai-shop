@@ -12,7 +12,7 @@
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
 统计：**13 个权限码 × 6 个角色 × 226 个受控功能点**
-（另有 34 个登录即可、1 个「任一权限即可」）。
+（另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
 > 不在这份生成物里 —— 但它们能勾的权限点就是本表第一列（少一个 `biz:store:admin`）。
@@ -555,6 +555,11 @@
 | `/biz/message/subscribe` | 上报订阅消息授权结果（小程序里的商家页面） |
 | `/biz/message/unread-count` | 未读数（红点轮询，只给一个数） |
 | `/biz/message/{}/read` | 标记已读 |
+| `/biz/notify/email` | 改本店的邮件接收地址 |
+| `/biz/notify/setting` | 本店的通知开关与企微群状态 |
+| `/biz/notify/sms-phones` | 改本店的额外短信接收号 |
+| `/biz/notify/wecom` | 录入本店的企业微信群机器人地址 |
+| `/biz/notify/wecom/test` | 往本店的企微群发一条测试 |
 | `/biz/push-token` | 绑定 App 推送设备（登录后） |
 | `/biz/push-token/unregister` | 解绑推送设备（登出前，共用设备换班必须解） |
 | `/biz/regions` | 行政区划下一级（框覆盖范围用） |

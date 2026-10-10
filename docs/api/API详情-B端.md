@@ -4202,6 +4202,74 @@ _无字段_
 类型：`any`
 
 
+### notify
+
+#### PUT `/biz/notify/email`
+
+改本店的邮件接收地址　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`NotifySetting`](#notifysetting)
+
+
+#### GET `/biz/notify/setting`
+
+本店的通知开关与企微群状态　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`NotifySetting`](#notifysetting)
+
+
+#### PUT `/biz/notify/setting`
+
+改本店某个场景某条通道的开关　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`NotifySetting`](#notifysetting)
+
+
+#### PUT `/biz/notify/sms-phones`
+
+改本店的额外短信接收号　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`NotifySetting`](#notifysetting)
+
+
+#### PUT `/biz/notify/wecom`
+
+录入本店的企业微信群机器人地址　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`NotifySetting`](#notifysetting)
+
+
+#### POST `/biz/notify/wecom/test`
+
+往本店的企微群发一条测试　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`boolean`
+
+
 ### order
 
 #### GET `/biz/order`
