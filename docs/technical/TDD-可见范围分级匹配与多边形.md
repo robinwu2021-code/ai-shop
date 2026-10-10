@@ -566,28 +566,64 @@ private boolean legacyUnlimited(Connection c, String store, String reach) {
 
 | AC | 测试 | 消融（撤掉实现必须红） |
 |---|---|---|
-| AC1 | `GeoPolygonTest`、`S2CoverTest`（属性测试）、`ReachRuleTest#边界cell要精判` | 去掉精判 → 红 |
-| AC2 | `ConsumerProfileTest#祖先码`、`HitFinderParityTest`、`StoreScopedVisibilityFlowTest#框区的店对区外不可见` | 祖先码截法改错 → 红 |
+| AC1 | `GeoPolygonTest`（5）、`S2CoverTest`（3）、`ReachDecideTest#boundaryCellsNeedExactCheck` | 去掉精判 → 红 |
+| AC2 | `ConsumerProfileTest#ancestors`、`HitFinderParityTest#dbAndInMemoryAgree`、`StoreScopedVisibilityFlowTest#framedDistrictIsInvisibleOutsideIt` | **已消融验证**：`ancestorsOf` 改成不截（只给自身一级）→ 2 红 |
 | AC3 | `HitFinderParityTest`（小区/楼栋画像） | — |
-| AC4 | `StoreScopedVisibilityFlowTest#纯定位无小区命中市级店` | 恢复 open 要求 → 红 |
-| AC5 | `ReachRuleTest#没框范围的店对谁都不可见`、`#不限只对快递自送为真` | 恢复隐式分支 → 红 |
+| AC4 | `StoreScopedVisibilityFlowTest#cityLevelStoreIsVisibleWithoutAnyCommunity` | **已消融验证**：在 `decide` 开头加回「消费者必须落在聚落里」→ 2 红 |
+| AC5 | `ReachDecideTest#unframedStoreReachesNobody`、`#unlimitedOnlyForExpressAndDelivery` | 恢复隐式分支 → 红 |
 | AC6 | `UnlimitedBackfillTest`（四家店只补两家、幂等）+ 生产预检 N 对账 | 删回填 → 红 |
-| AC7 | `ServiceAreaFlowTest#保存多边形后立即 ACTIVE` | — |
+| AC7 | `ServiceAreaPolygonFlowTest#savingPolygonDerivesCells`（同条断言「自助生效，不送审」） | — |
 | AC8 | 现有下单/落店/送达/结算路选择测试全绿 | — |
-| AC9 | `ReachSnapshotCacheTest` | 去掉 evict → 红 |
+| AC9 | `ReachSnapshotCacheTest#cachesAndEvicts`、`#unlimitedStoresReflectExplicitItem`、`#excludeFlagsPerDimension` | 去掉 evict → 红 |
 | AC10/11 | `vue-tsc`、i18n-parity、真机 | — |
-| AC12 | `ServiceAreaFlowTest#非法多边形被拒` | — |
-| AC13 | `ReachRuleTest#failClosed_*` | 去掉前置判 → 红 |
-| AC14 | `HitFinderParityTest` | 任一查找改语义 → 红 |
-| AC15 | `ServiceAreaFlowTest#rebuildAll 重算后网格行等价` | — |
+| AC12 | `ServiceAreaPolygonFlowTest#invalidPolygonIsRejected` | — |
+| AC13 | `ReachDecideTest#failClosedWhenDimensionMissing`、`#communityExcludeDoesNotFailClosed` | 去掉前置判 → 红 |
+| AC14 | `HitFinderParityTest#dbAndInMemoryAgree`（六种画像逐店逐项比对） | 任一查找改语义 → 红 |
+| AC15 | `ServiceAreaPolygonFlowTest#sameGeometryKeepsAreaNo`、`#changingGeometryRebuildsAndPurgesOld`、`#removingPolygonPurgesCells` | 不清旧网格 → 红 |
 | 性能 | 本机 1000 店×50 多边形 `/mp/goods` P95 < 200 ms | — |
+
+
+> **这张表写错过一次，值得记下来**：第一版里 AC1/AC2/AC4/AC5/AC7/AC12/AC13/AC15 写的是
+> `ReachRuleTest` / `ServiceAreaFlowTest` 这些**代码里并不存在**的类名与中文方法名 ——
+> 实现时类名定成了 `ReachDecideTest` / `ServiceAreaPolygonFlowTest`，而表没跟着改。
+> 更要紧的是 **AC2/AC4 那两条当时根本没有对应的用例**，只是表里写着像有。
+> 对账三的全部价值在于「说的是真话」，一份写着不存在的用例名的表比没有表更坏：
+> 读的人会以为验过了。两条用例已补齐（见上），并各做了一次消融确认它们真的在保护那件事。
 
 ## §6 对账二 · 设计 → 实现
 
-[每批填]
+| 设计（§2） | 落到哪儿 | 备注 |
+|---|---|---|
+| 显式 `UNLIMITED` 项取代隐式分支 | `MchServiceArea.UNLIMITED_REF`、`ReachRule.unlimited/unlimitedChannel` | 判据从「没有 INCLUDE + 快递/自送」换成「有一条显式 UNLIMITED」 |
+| 存量自动迁移 | `V397__backfill_unlimited_service_area.java` | `area_no` 用 `SVAMIG` + SHA-256(storeNo) 前 16 位：**同一个库跑第二遍不撞唯一键**（第一版用自增计数器，测试当场抓到） |
+| 祖先码 `IN` 取代前缀匹配 | `ConsumerProfile.ancestorsOf`（2/4/6/9/12 位）、`ReachMatchMapper.areaHits` | 走得上既有的 `idx_service_area_ref(level, ref_code)` |
+| 多边形存顶点、派生 S2 网格 | `mch_service_area.geometry`、`mch_service_area_cell`、`S2Cover`、`ServiceAreaCells` | 网格是**派生**的，`geometry` 在就能重建 |
+| 边界精判 | `GeoPolygon.covers`（bbox 预筛 + `PreparedGeometry`） | 内部 cell 直接算命中，边界 cell 才下到 JTS |
+| 自相交不拒、规范化 | `GeoPolygon` 用 `GeometryFixer` | **不能用 `buffer(0)`**：它按绕向只留领结的一半，商家画的半片被静默丢掉而界面显示「已保存」 |
+| 快照 + 失效 | `ReachSnapshot(Loader\|Cache)`、`ReachMatchMapper.snapshotVersion` | 失效靠 `COUNT(*) + SUM(version)` 探针，**不是**在 ~20 个事务方法里手写 evict —— 那种漏一处就是静默错 |
+| 区域画像（模糊定位只到区县） | `ConsumerProfile.ofArea`、`MerchantPortImpl.servingStoresInRegion`、`GoodsVisibility.serving` 分支 | T11 时我自己引入过这个缺陷：T8 让 `serving` 直接走点画像，于是「只框了嘉逸花园」的商家在「福田区」下不可见 |
+| 两套查找等价 | `HitFinder` / `DbHitFinder` / `InMemoryHitFinder` + `HitFinderParityTest` | 六种画像逐店逐项比对 |
+| B 端范围页 / 画图页 | `b-app/src/pages/store-scope`、`store-scope-polygon` | 画图独立成页（原生 `<map>` 在 fixed 弹层里整棵子树不渲染）、准星取中心点（`@tap` 两端不一致） |
+| C 端传坐标 | `c-app` 首页/分类/详情 + `requests.ts` 三个 query 类型 | 契约那一步我漏过一次：`satisfies` 对展开不做多余属性检查，字段发得出去而 spec 里没有 |
+
+**没做的**（都在上面各处写了理由）：多边形店的「配送范围内」文案（买家要的是 `deliverable`，已接上）；
+`GoodsDetailQuery` 之外的其余端点 query 登记（不在本次范围）。
 
 ## §7 确认与完成
 
 | 日期 | 事件 |
 |---|---|
 | 2026-10-10 | 需求澄清（多边形/门店级/显式不限/不审/去锚点）；A vs B 比较；用户要求按 ES/SQL/中间件调研比较；调研后定「祖先码 IN + S2 网格 + JTS 边界精判 + 快照」，否决 MySQL 空间/ES/聚合 SQL；用户确认结论，写本 TDD §2.14 实施计划 |
+| 2026-10-10 | 用户指出「测不到不是决策依据」——撤回「H2 无 JTS 测不到」这条否决理由（`scripts/test-on-mysql.sh` 跑真 MySQL 9.7），改按真实代价重新论证 |
+| 2026-10-10 | 后端 T0–T12 落地：2639 个测试，本次改动 0 失败。遗留两条 `ArchitectureTest`（`message→trade`、`link` 包未登记）属 ship-notify 那条线，挡所有人，**不由我修也不绕过** |
+| 2026-10-10 | B 端 T13/T14、C 端 T15 落地；生成物 T16：24 个生成器全部最新、界面清单 277 屏。顺手补了 `track: "TrackView"`（别人漏的登记让三份 spec 一份都生不出来） |
+| 2026-10-10 | T17：把 §5 里写错的用例名改成真的，**补齐 AC2/AC4 两条此前只在表里存在的用例**，各做一次消融（加回聚落前置条件 / 祖先码不截）确认变红后还原 |
+
+## §8 还没做完的
+
+| 项 | 说明 |
+|---|---|
+| 真机验画图页 | `store-scope-polygon` 用原生 `<map>`，本仓库的规矩是「模拟器不是真机」 |
+| 推送 | 被 ship-notify 那条线的两条 `ArchitectureTest` 挡着；不用 `--no-verify` |
+| 虹选粮油**当前**那一例 | 本方案消除这一类，但它现在是四种成因里的哪一种，仍要查生产 `mch_store`/`mch_service_area`/`mch_fulfillment_channel` 才知道，单独修数据 |
+| 性能那一行 | §5 里「本机 1000 店×50 多边形 P95 < 200 ms」**还没实测**，不要当成已验 |

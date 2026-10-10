@@ -452,6 +452,94 @@ class StoreScopedVisibilityFlowTest {
         }
     }
 
+    /**
+     * 按区划码翻页找货。与 {@link #buyerSees} 同一个翻页理由（随机业务码之后「只看首页」会随机假绿），
+     * 只是**不带 communityNo** —— 这正是要验的：买家只有一个粗定位，没落到任何聚落。
+     */
+    private boolean buyerSeesByRegion(String regionCode, String goodsNo) throws Exception {
+        for (long page = 1; ; page++) {
+            String body = mvc().perform(get("/mp/goods")
+                            .param("regionCode", regionCode)
+                            .param("page", String.valueOf(page)).param("size", "50"))
+                    .andReturn().getResponse().getContentAsString();
+            var data = json.readTree(body).get("data");
+            var records = data.get("records");
+            if (records == null || records.isEmpty()) {
+                return false;
+            }
+            for (var r : records) {
+                if (goodsNo.equals(r.get("goodsNo").asString())) {
+                    return true;
+                }
+            }
+            if (page * 50 >= data.get("total").asLong()) {
+                return false;
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("★★★ 框了区的店对区外不可见 —— 买家只有粗定位（ADR-034 AC2）")
+    void framedDistrictIsInvisibleOutsideIt() throws Exception {
+        String biz = merchant("12600180061", "只做福田区的店");
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+        String store = defaultStoreNo(biz);
+
+        // 框一个**区**，不框任何聚落 —— 改造前这种店在买家侧要么全平台可见（没有 INCLUDE 的隐式分支），
+        // 要么因为拿不到开放聚落而谁都看不见。两种都不对。
+        storeService.save(merchantNo, store, new MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null, List.of(
+                        new MerchantStoreService.AreaCommand("DISTRICT", "440304")), null, null));
+        fulfillmentService.save(merchantNo, store, List.of(new ChannelCmd(
+                Fulfillments.MERCHANT_DELIVERY, true, null, null, "ALL", null)));
+        String goodsNo = onSaleGoodsAt(biz, store, "福田区才送的米");
+
+        /*
+         * 440304001 是福田区下面的一个**街道**码 —— 它的祖先集里有 440304，所以命中。
+         * 这一条同时钉住祖先码的截法：按前缀匹配改成「范围码 ∈ 消费者祖先集」之后，
+         * 截错一位（比如把街道码当成 9 位截到 440304001 之外）就会在这里红。
+         */
+        assertThat(buyerSeesByRegion("440304001", goodsNo))
+                .as("福田区某街道的买家要看得到")
+                .isTrue();
+        assertThat(buyerSeesByRegion("440304", goodsNo))
+                .as("区码本身也要命中")
+                .isTrue();
+        assertThat(buyerSeesByRegion("440103", goodsNo))
+                .as("广州越秀区不该看到只做福田区的店")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("★★★ 市级店对纯粗定位的买家可见 —— 不再要求「落在某个开放聚落里」（ADR-034 AC4）")
+    void cityLevelStoreIsVisibleWithoutAnyCommunity() throws Exception {
+        String biz = merchant("12600180062", "整个深圳都送的店");
+        String merchantNo = merchantNoOf(biz);
+        TestPlan.grantQuota(planMapper, merchantNo, 3);
+        String store = defaultStoreNo(biz);
+
+        storeService.save(merchantNo, store, new MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null, List.of(
+                        new MerchantStoreService.AreaCommand("CITY", "4403")), null, null));
+        fulfillmentService.save(merchantNo, store, List.of(new ChannelCmd(
+                Fulfillments.MERCHANT_DELIVERY, true, null, null, "ALL", null)));
+        String goodsNo = onSaleGoodsAt(biz, store, "深圳全市送的油");
+
+        /*
+         * ★ 这条是本次改造的要害。旧判定里「没框聚落」的店要靠消费者落在一个**开放聚落**
+         * 才可见（{@code c.open()}）—— 而一个只框了市的店，消费者小区有没有开通跟它毫无关系。
+         * 症状是商家框了整个深圳、买家在深圳却什么都看不到，而两侧都不报错。
+         * 现在判据只看「市码在不在消费者的祖先集里」。
+         */
+        assertThat(buyerSeesByRegion("440304001", goodsNo))
+                .as("深圳福田某街道的买家要看得到整个深圳都送的店")
+                .isTrue();
+        assertThat(buyerSeesByRegion("440103", goodsNo))
+                .as("广州的买家不该看到只做深圳的店")
+                .isFalse();
+    }
+
     private String areaNoOf(String merchantNo, String communityNo) {
         return serviceAreaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
                         .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
