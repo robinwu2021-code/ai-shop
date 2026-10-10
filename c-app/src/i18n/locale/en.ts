@@ -846,6 +846,7 @@ export default {
     buyAgain: "Buy again",
   },
   afterSale: {
+    section: "Refund / after-sales",
     pickType: "Type of request",
     typeREFUND_ONLY: "Refund only",
     typeREFUND_ONLYDesc: "Nothing to send back",

@@ -1049,6 +1049,52 @@ function histOrder(
 }
 
 /**
+ * 一笔**运输中的快递单**。mock 此前一笔都没有 —— 四笔单全是自提（`STORE_PICKUP`、
+ * 无 `receiver`、无 `expressNo`、无 `trace`），于是订单详情里
+ * **收货卡、物流入口、轨迹明细三块在本地一次都渲染不出来**，
+ * 「改完自己看一遍」这条规矩在最需要它的那几块上失效（2026-10-10 改详情页时撞到）。
+ *
+ * <p>`displayMode` 给 `self-map`：微信插件那一屏是微信画的，本地 H5 没有它，
+ * 这里要验的恰恰是**插件不可用时**我们自己的那条路。
+ */
+function shippedOrder(
+  orderNo: string,
+  rows: [goodsNo: string, skuNo: string, price: number, qty: number][],
+): Order {
+  const o = histOrder(orderNo, 1, rows);
+  // 状态集合封闭：发货了的快递单是 FULFILLING × EXPRESS，不是一个 SHIPPED 值
+  o.status = "FULFILLING";
+  o.fulfillment = "EXPRESS";
+  o.pickupNo = undefined;
+  o.receiver = {
+    name: "武国斌",
+    phone: "18588888359",
+    address: "广东省深圳市龙华区民治街道 招商锦绣观园 5 栋 10F",
+  };
+  o.expressCompany = "STO";
+  o.expressNo = "773445428425272";
+  const t0 = Date.now();
+  o.trace = {
+    status: "IN_TRANSIT",
+    displayMode: "self-map",
+    carrier: "STO",
+    waybillNo: "773445428425272",
+    freshAt: t0 - 40 * 60 * 1000,
+    refreshable: true,
+    nodes: [
+      { at: t0 - 40 * 60 * 1000, text: "【深圳市】快件已到达 深圳龙华集散中心", location: "深圳市" },
+      { at: t0 - 4 * 3600 * 1000, text: "【深圳市】申通快递已揽收", location: "深圳市" },
+      { at: t0 - 20 * 3600 * 1000, text: "商家已发货，等待揽收" },
+    ],
+  };
+  o.timeline = [
+    { status: "FULFILLING", label: "商家已发货", at: t0 - 20 * 3600 * 1000 },
+    { status: "PAID", label: "支付成功", at: o.createdAt },
+  ];
+  return o;
+}
+
+/**
  * mock 里的日志行：比下发给端上的 {@link StaffLog} 多一个 `targetAccountNo` ——
  * 「只看某个人的」要按它筛，而下发时不需要（端上已经知道自己点的是谁）。
  */
@@ -2191,6 +2237,8 @@ export const db = {
       ["G002", "G002S1", 1280, 1],
       ["G001", "G001S1", 2980, 1],
     ]),
+    // 运输中的快递单：收货卡 / 物流入口 / 轨迹三块只有它能渲染出来
+    shippedOrder("SO904", [["G001", "G001S1", 2980, 1]]),
     histOrder("SO903", 11, [
       ["G002", "G002S1", 1280, 2],
       ["G001", "G001S1", 2980, 1],

@@ -846,6 +846,7 @@ export default {
     buyAgain: "اطلب مجددًا",
   },
   afterSale: {
+    section: "الاسترداد / ما بعد البيع",
     pickType: "نوع الطلب",
     typeREFUND_ONLY: "استرجاع فقط",
     typeREFUND_ONLYDesc: "لا يوجد ما يُعاد إرساله",

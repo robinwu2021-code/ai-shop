@@ -58,22 +58,42 @@ const hasDelivery = computed(() => {
 const shopName = computed(() => order.value?.store?.storeName || order.value?.merchantName || "");
 
 /**
- * 吸底条的次要操作。**一次只给一颗** —— 底部放三颗以上就谁也点不准，
- * 低频的（开票、再来一单）留在页内那一排。
+ * 吸底条的主操作：按「此刻最该做什么」排序 —— 去支付 > 评价 > 再来一单。
+ *
+ * <p><b>没有「申请售后」</b>：它有后续状态（审核中 / 已退款 / 被驳回），
+ * 按本页的规矩归到会回读状态的卡片行。留在这里的话，运输中态会出现
+ * **吸底条主位与售后卡各一颗「申请售后」** —— 这正是这次要去掉的那种重复。
  */
-const secondaryOp = computed<"cancel" | "afterSale" | "buyAgain">(() => {
-  if (canCancel.value) return "cancel";
-  if (canAfterSale.value) return "afterSale";
-  return "buyAgain";
-});
-
-/** 吸底条的主操作：按「此刻最该做什么」排序 —— 去支付 > 评价 > 售后 > 再来一单 */
-const primaryKey = computed<"pay" | "review" | "afterSale" | "buyAgain">(() => {
+const primaryKey = computed<"pay" | "review" | "buyAgain">(() => {
   const o = order.value;
   if (o?.status === "WAIT_PAY") return "pay";
   if (canReview.value) return "review";
-  if (canAfterSale.value && secondaryOp.value !== "afterSale") return "afterSale";
   return "buyAgain";
+});
+
+/**
+ * 吸底条的次要操作。**可以没有** —— 返回 null 时主操作占满宽。
+ *
+ * <p>此前它的类型是 `"cancel" | "afterSale" | "buyAgain"`，**兜底恒落「再来一单」**，
+ * 而 `primaryKey` 的兜底也是它 —— 已完成且不可评价、不可售后时，
+ * **吸底条两颗都叫「再来一单」**。加上页尾那排 `.ops` 又无条件给一颗，
+ * 同一个动作在一屏里出现三次。现在反过来算：先定主操作，
+ * 次要只在「确实还有第二件该做的事」时才有，且**必然与主操作不同名**。
+ */
+const secondaryOp = computed<"cancel" | "buyAgain" | null>(() => {
+  // 取消：主操作里没有它（WAIT_PAY 的主操作是「去支付」），所以不会同名
+  if (canCancel.value) return "cancel";
+  /*
+   * 次位固定给「再来一单」，**不给「申请售后」**。
+   *
+   * <p>售后是例外路径，钉在常驻条上等于每一单都在问「是不是有问题」；
+   * 而且它有后续状态（审核中 / 已退款 / 被驳回），按本页的规矩
+   * 「有后续状态的事做成会回读状态的卡片行」—— 它的入口在售后那张卡里。
+   * 此前次位被售后占掉，结果是**「再来一单」在整页消失**：
+   * 页尾那排删掉之后它没有别的落点，去重变成了砍功能。
+   */
+  if (primaryKey.value !== "buyAgain" && order.value?.status !== "WAIT_PAY") return "buyAgain";
+  return null;
 });
 
 const primaryLabel = computed(() => {
@@ -82,8 +102,6 @@ const primaryLabel = computed(() => {
       return String(t("orders.pay"));
     case "review":
       return String(t("review.writeTitle"));
-    case "afterSale":
-      return String(t("order.afterSale"));
     default:
       return String(t("order.buyAgain"));
   }
@@ -96,9 +114,6 @@ function runPrimary() {
       break;
     case "review":
       review();
-      break;
-    case "afterSale":
-      afterSale();
       break;
     default:
       buyAgain();
@@ -114,6 +129,31 @@ function runPrimary() {
  */
 const traceInPlugin = computed(() =>
   order.value?.trace?.displayMode === "wx-plugin" && !!order.value?.trace?.displayToken);
+
+/**
+ * 「查看物流」这颗入口显不显示。**判据是「这一单有运单」，不是「插件可用」**。
+ *
+ * <p>此前写的是 `traceInPlugin` —— 微信物流插件可用时才给。插件确实通了
+ * （生产两条运单都拿到了 token），但它的前提是 `surface=MP && profile=WX`：
+ * **线下收款 / 余额支付的单，以及 H5 与 App，恒为假**，那几种情况一个入口都没有，
+ * 轨迹只能靠卡下面恒铺开的那段时间线。
+ */
+const hasWaybill = computed(() => hasTrace.value || !!order.value?.expressNo);
+
+/**
+ * 自建轨迹展开着吗。**默认收起** —— 此前恒铺开，详情页被整条时间线顶得很长，
+ * 而买家十次里九次只想知道「到哪了」，那一条在状态头已经有了。
+ */
+const traceOpen = ref(false);
+
+/** 点「查看物流」：插件可用就交给微信那一屏，否则就地展开我们自己的轨迹 */
+function openTrace() {
+  if (traceInPlugin.value) {
+    openWxTracking();
+    return;
+  }
+  traceOpen.value = !traceOpen.value;
+}
 /** 摘要那一行。节点按时间倒序，第一条就是最新 */
 const traceLatest = computed(() => order.value?.trace?.nodes?.[0]?.text ?? "");
 
@@ -500,12 +540,12 @@ onShow(load);
           <text class="ostat__st" :class="statusTone(order.status)">
             {{ hasTrace ? $t(`trace.step.${traceStep}`) : $t(`orderStatus.${order.status}`) }}
           </text>
-          <!-- 右上：待付款给倒计时；走插件的单给物流入口 -->
+          <!-- 右上：待付款给倒计时；只要有运单就给物流入口（插件 or 就地展开） -->
           <text v-if="payLeft" class="txt-caption ostat__cd sh-num">{{ payLeft }}</text>
           <sh-go
-            v-else-if="traceInPlugin"
-            :text="String($t('trace.openWx'))"
-            @tap="openWxTracking"
+            v-else-if="hasWaybill"
+            :text="String(traceOpen && !traceInPlugin ? $t('trace.fold') : $t('trace.openWx'))"
+            @tap="openTrace"
           ></sh-go>
         </view>
         <!-- 有物流就说最新那条（比状态词具体）；没有就说「接下来会发生什么」 -->
@@ -522,10 +562,11 @@ onShow(load);
         <text v-for="(l, i) in returnedLines" :key="i" class="txt-caption txt-primary">{{ l }}</text>
       </view>
       <!--
-        轨迹明细只在插件不可用时铺（走微信插件的单，明细在插件那一屏；两边新旧还可能不一致）。
+        轨迹明细只在插件不可用时铺（走微信插件的单，明细在插件那一屏；两边新旧还可能不一致），
+        且**要点开才铺**（见 traceOpen）—— 恒铺开会把详情页顶得很长。
         不画地图：城市级示意回答不了「今天到不到」。
       -->
-      <view v-if="hasTrace && !traceInPlugin" class="ostat__body">
+      <view v-if="hasTrace && !traceInPlugin && traceOpen" class="ostat__body">
         <sh-trace :trace="order.trace!" :show-map="false" @open-wx="openWxTracking"></sh-trace>
       </view>
     </view>
@@ -683,6 +724,18 @@ onShow(load);
       </text>
     </view>
 
+    <!--
+      还没申请过售后：入口做成一行，**与发票卡同构**。
+      它不上吸底条 —— 售后是例外路径，钉在常驻条上等于每单都在问「是不是有问题」；
+      而且它有后续状态，申请之后这一行就被下面那张进行中的卡取代。
+    -->
+    <view v-if="canAfterSale && !order.afterSale" class="sh-card as" @tap="afterSale">
+      <view class="sh-row sh-row--between">
+        <text class="sh-muted">{{ $t("afterSale.section") }}</text>
+        <text class="txt-caption txt-primary">{{ $t("order.afterSale") }}</text>
+      </view>
+    </view>
+
     <!-- 售后进行中：把「下一步该我做什么」直接摆出来，别让用户自己找入口。
          判据是**售后单存在**，不是订单状态 —— 订单在售后期间保持原状态。 -->
     <view v-if="order.afterSale" class="sh-card as">
@@ -709,24 +762,26 @@ onShow(load);
       </view>
     </view>
 
-    <!-- 开票状态。**申请完就没下文**是这类入口最常见的失败 -->
-    <view v-if="invoice" class="sh-card invoicecard">
-      <text class="sh-muted">{{ $t("invoice.section") }}</text>
-      <text class="invoicecard__st">{{ $t(`invoiceStatus.${invoice.status}`) }}</text>
-      <text v-if="invoice.status === 'ISSUED'" class="sh-muted">
-        {{ $t("invoice.sentTo", { email: invoice.email }) }}
-      </text>
-      <text v-if="invoice.rejectReason" class="sh-muted">{{ invoice.rejectReason }}</text>
-    </view>
-
-    <!-- 低频操作留在页内：吸底条只放主次两颗，其余（开票 / 再来一单）在这里 -->
-    <view class="ops sh-wrap">
-      <view v-if="canInvoice" class="txt-sub sh-btn sh-btn--soft op" @tap="applyInvoice">
-        {{ invoice ? $t("invoice.reapply") : $t("invoice.apply") }}
+    <!--
+      开票：**一张会回读状态的卡，不是页尾一颗按钮**。
+      申请完就没下文是这类入口最常见的失败，所以申请入口与状态结果在同一张卡里 ——
+      点这张卡去申请，申请完它原地变成「已申请 / 已开 / 被驳回」。
+      顺带把它从页尾那排按钮里拿掉：那排整个删了（操作只在吸底条一处）。
+    -->
+    <view v-if="invoice || canInvoice" class="sh-card invoicecard" @tap="canInvoice && applyInvoice()">
+      <view class="sh-row sh-row--between">
+        <text class="sh-muted">{{ $t("invoice.section") }}</text>
+        <text v-if="canInvoice" class="txt-caption txt-primary">
+          {{ invoice ? $t("invoice.reapply") : $t("invoice.apply") }}
+        </text>
       </view>
-      <view v-if="secondaryOp !== 'buyAgain'" class="txt-sub sh-btn sh-btn--muted op" @tap="buyAgain">
-        {{ $t("order.buyAgain") }}
-      </view>
+      <template v-if="invoice">
+        <text class="invoicecard__st">{{ $t(`invoiceStatus.${invoice.status}`) }}</text>
+        <text v-if="invoice.status === 'ISSUED'" class="sh-muted">
+          {{ $t("invoice.sentTo", { email: invoice.email }) }}
+        </text>
+        <text v-if="invoice.rejectReason" class="sh-muted">{{ invoice.rejectReason }}</text>
+      </template>
     </view>
 
     <!-- 吸底条的占位：不留这块，最后一张卡会被压在条下面 -->
@@ -746,9 +801,6 @@ onShow(load);
       </view>
       <view v-if="secondaryOp === 'cancel'" class="txt-sub sh-btn sh-btn--muted bar__btn" @tap="cancel">
         {{ $t("order.cancel") }}
-      </view>
-      <view v-else-if="secondaryOp === 'afterSale'" class="txt-sub sh-btn sh-btn--soft bar__btn" @tap="afterSale">
-        {{ $t("order.afterSale") }}
       </view>
       <view v-else-if="secondaryOp === 'buyAgain'" class="txt-sub sh-btn sh-btn--muted bar__btn" @tap="buyAgain">
         {{ $t("order.buyAgain") }}
@@ -913,6 +965,10 @@ onShow(load);
   min-width: 168rpx;
   white-space: nowrap;
 }
+/* 主操作吃掉剩下的宽：没有次要操作时它自己占满（见 secondaryOp 可为 null） */
+.bar__btn--main {
+  flex: 1 1 auto;
+}
 .barph {
   height: calc(140rpx + env(safe-area-inset-bottom));
 }
@@ -976,15 +1032,6 @@ onShow(load);
 .fact__v {
   color: var(--sh-ink);
   text-align: end;
-}
-.ops {
-  gap: 16rpx;
-  margin-top: 28rpx;
-}
-.op {
-  flex: 1 0 calc(50% - 16rpx);
-  padding-top: 24rpx;
-  padding-bottom: 24rpx;
 }
 .spacer {
   height: 60rpx;

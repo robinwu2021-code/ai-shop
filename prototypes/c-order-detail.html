@@ -9,14 +9,14 @@
 
 <div class="wrap">
 <header class="top">
-  <div class="eyebrow">买家小程序 · 界面原型 · v2 2026-10-10</div>
+  <div class="eyebrow">买家小程序 · 界面原型 · v2 2026-10-10（物流详情不自建：用微信插件）</div>
   <h1>订单详情：一眼看懂「货到哪、我该做什么」</h1>
-  <p class="sub">v2 修两件在真机上才看出来的事：① <b>「查看物流」没有入口</b> —— 原设计只在微信插件态给入口，而插件未开通（48001），于是普通快递单根本点不进轨迹；现在改成<b>只要有运单就恒给入口</b>，并落到一张独立的物流详情页。② <b>吸底条与页内按钮重复</b> —— 「再来一单 / 申请售后」同时出现在页尾那一排和吸底条里，某些状态下吸底条自己两颗还都是「再来一单」；现在<b>操作只有一处</b>：吸底条是唯一的操作区，页内不再排按钮。</p>
+  <p class="sub">v2 修两件在真机上才看出来的事：① <b>「查看物流」入口的条件写窄了</b> —— 只有微信插件可用时才给。插件现在确实通了（生产两条运单都拿到了 token），但<b>非微信支付的单、H5 与 App 恒不可用</b>，那几种情况一个入口都没有。改成<b>只要有运单就给入口</b>：插件可用就打开插件，不可用就地展开我们自己的轨迹。② <b>吸底条与页内按钮重复</b> —— 「再来一单 / 申请售后」同时出现在页尾那一排和吸底条里，某些状态下吸底条自己两颗还都是「再来一单」；现在<b>操作只有一处</b>：吸底条是唯一的操作区，页内不再排按钮。</p>
 </header>
 
 <section>
   <div class="sec-head"><span class="sec-num">01 — 04</span><h2>四个状态，同一套骨架</h2></div>
-  <div class="sec-note">从上到下恒定：① 状态头（大字状态 + 一句「接下来」+ 有运单就给「查看物流」）② 收货 / 自提 ③ 店铺 + 商品 ④ 金额 ⑤ 订单信息（单号 / 时间，可复制）⑥ 吸底操作条（随状态变，且<b>只在这里</b>）。状态头只铺<b>最新一条</b>轨迹，明细全部交给 05 那张独立页 —— 详情页不再内嵌整条时间线。</div>
+  <div class="sec-note">从上到下恒定：① 状态头（大字状态 + 一句「接下来」+ 有运单就给「查看物流」）② 收货 / 自提 ③ 店铺 + 商品 ④ 金额 ⑤ 订单信息（单号 / 时间，可复制）⑥ 吸底操作条（随状态变，且<b>只在这里</b>）。状态头只铺<b>最新一条</b>轨迹；明细要么在微信插件那一屏（微信支付单），要么点「查看物流」就地展开（见 05）—— <b>不自建物流详情页</b>。</div>
   <div class="grid">
 
     <figure id="s01">
@@ -63,8 +63,8 @@
         </div>
         <div class="foot"><span class="meta"></span><div class="btn main">申请售后</div></div>
       </div>
-      <figcaption class="cap"><b>03 运输中</b>状态头 = 状态 + 最新节点 + 承运商单号，右上「查看物流」进 05。</figcaption>
-      <p class="why">合并卡只铺<b>最新一条</b>，整卡可点、右上也给文字入口（两个热区指同一页）。<b>轨迹明细不内嵌</b>：原来在这张卡下面铺整条时间线，详情页被顶得很长，而买家十次里九次只想知道「到哪了」。确认收货不放吸底条 —— 本系统快递由 <code>autoConfirm</code> job 自动确认，没有手动入口。</p>
+      <figcaption class="cap"><b>03 运输中</b>状态头 = 状态 + 最新节点 + 承运商单号，右上「查看物流」：插件可用开插件，否则就地展开。</figcaption>
+      <p class="why">合并卡只铺<b>最新一条</b>，整卡可点、右上也给文字入口（同一个动作）。<b>明细默认收起</b>：原来在这张卡下面恒铺整条时间线，详情页被顶得很长，而买家十次里九次只想知道「到哪了」。确认收货不放吸底条 —— 本系统快递由 <code>autoConfirm</code> job 自动确认，没有手动入口。</p>
     </figure>
 
     <figure id="s04">
@@ -88,30 +88,40 @@
 </section>
 
 <section>
-  <div class="sec-head"><span class="sec-num">05</span><h2>物流详情：独立一页</h2></div>
-  <div class="sec-note">新路由 <code>pages/trace/index?orderNo=</code>。从订单详情的状态头进来，也从订单列表的「查看物流」进来。页内自带承运商 / 单号 / 收货人 / 商品缩略 —— 买家从消息里直接进这页时不该再回跳一次。</div>
+  <div class="sec-head"><span class="sec-num">05</span><h2>「查看物流」两种落地，都不是新页</h2></div>
+  <div class="sec-note">入口的显示条件是<b>「这一单有运单」</b>，不是「插件可用」。点下去分两种：微信支付的单交给<b>微信物流插件</b>（<code>openWaybillTracking</code>，全屏、微信自己维护）；其余的单（线下收款 / 余额支付，以及 H5 与 App）<b>就地展开</b>我们自己的轨迹。<b>不自建物流详情页</b> —— 那等于把插件那一屏再抄一遍，同一份数据两套渲染，还多一个路由与一次发布依赖。</div>
   <div class="grid">
+
     <figure id="s05">
       <div class="ph c">
-        <div class="nav"><span class="bk">‹</span><span class="t">物流详情</span><span></span></div>
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
         <div class="scr">
-          <div class="card ostat ship"><div class="frow"><span class="k"><b>运输中</b></span><span class="v meta num">预计明天送达</span></div><div class="frow"><span class="k meta">🚚 申通 773445428425272 <span class="go">复制</span></span></div></div>
-          <div class="card"><div class="frow"><span class="k meta">🏠 武国斌 185****8359 · 招商锦绣观园 5-10F</span></div><div class="gc"><div class="th">🍐</div><div class="bd"><span class="nm">香梨 约10斤</span><div class="ln"><span class="meta">虹选粮油 · 共 1 件</span></div></div></div></div>
-          <div class="card">
-            <div class="tl">
-              <div class="st now">今天 09:40 【深圳市】快件已到达 深圳龙华集散中心</div>
-              <div class="st done">今天 09:12 【深圳市】申通已揽收，快递员 王师傅 138****0021</div>
-              <div class="st done">昨天 20:52 商家已发货，等待揽收</div>
-              <div class="st done">昨天 20:52 支付成功</div>
-              <div class="st done">昨天 20:51 订单提交成功</div>
-            </div>
-          </div>
-          <div class="card"><div class="frow"><span class="k meta">轨迹由承运商回传，最后更新 09:40</span><span class="v meta">刷新</span></div></div>
+          <div class="card ostat ship"><div class="frow"><span class="k"><b>运输中</b></span><span class="v go">查看物流</span></div><div class="frow"><span class="k meta">【深圳市】快件已到达 深圳龙华集散中心</span></div><div class="frow"><span class="k meta">🚚 申通 773445428425272 <span class="go">复制</span></span></div></div>
+          <div class="card"><div class="frow"><span class="k meta">点「查看物流」→ 微信全屏物流页</span></div></div>
+          <div class="card"><div class="frow"><span class="k">🏠 武国斌 185****8359</span><span class="v meta">›</span></div></div>
         </div>
+        <div class="mask"><div class="sheet"><div class="frow"><span class="k"><b>微信 · 物流助手</b></span><span class="v meta">✕</span></div><div class="tl"><div class="st now">09:40 【深圳市】快件已到达 深圳龙华集散中心</div><div class="st done">09:12 【深圳市】申通已揽收</div><div class="st done">昨天 20:52 商家已发货</div></div><div class="frow"><span class="k meta">由微信物流助手提供</span></div></div></div>
       </div>
-      <figcaption class="cap"><b>05 物流详情</b>顶部定格状态 + 预计送达，中间收货人与货，下面整条轨迹。</figcaption>
-      <p class="why">独立成页的理由不是「详情页太长」，是<b>入口要有落点</b>：订单详情、订单列表、发货消息三处都要能点进「物流」，而它们不该各铺一份。不画地图 —— 城市级示意回答不了「今天到不到」，而门到门的点位我们没有。「刷新」显式给出来：轨迹靠 30 分钟轮询 + 订阅推送，买家想立刻看新的时有处可点。</p>
+      <figcaption class="cap"><b>05a 微信支付单 → 插件</b>生产两条运单都已拿到 token，这条路现在是通的。</figcaption>
+      <p class="why">判据在 <code>LogisticsPortImpl</code>：<code>surface=MP &amp;&amp; profile=WX &amp;&amp; displayToken 非空</code>。此时我们<b>自己的时间线隐藏</b> —— 同一份数据两边新旧可能不一致，说两次反而更糟。插件那一屏不归我们画，所以这里只示意。</p>
     </figure>
+
+    <figure id="s06">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单详情</span><span></span></div>
+        <div class="scr">
+          <div class="card ostat ship"><div class="frow"><span class="k"><b>运输中</b></span><span class="v go">收起</span></div><div class="frow"><span class="k meta">【深圳市】快件已到达 深圳龙华集散中心</span></div><div class="frow"><span class="k meta">🚚 申通 773445428425272 <span class="go">复制</span></span></div>
+            <div class="tl"><div class="st now">今天 09:40 【深圳市】快件已到达 深圳龙华集散中心</div><div class="st done">今天 09:12 【深圳市】申通已揽收，快递员 王师傅 138****0021</div><div class="st done">昨天 20:52 商家已发货，等待揽收</div><div class="st done">昨天 20:51 订单提交成功</div></div>
+            <div class="frow"><span class="k meta">轨迹由承运商回传，最后更新 09:40</span><span class="v meta">刷新</span></div>
+          </div>
+          <div class="card"><div class="frow"><span class="k">🏠 武国斌 185****8359</span><span class="v meta">›</span></div><div class="frow"><span class="k meta">广东省深圳市龙华新区 招商锦绣观园 5-10F</span></div></div>
+        </div>
+        <div class="foot"><span class="meta"></span><div class="btn main">申请售后</div></div>
+      </div>
+      <figcaption class="cap"><b>05b 非微信单 / H5 / App → 就地展开</b>同一颗入口，文案在「查看物流 / 收起」之间切。</figcaption>
+      <p class="why">展开在<b>状态卡内部</b>，不另起一张卡 —— 它回答的还是「货到哪」。默认收起是这次的改动：原来恒铺开，详情页被顶得很长。「刷新」显式给出来：轨迹靠 30 分钟轮询 + 订阅推送，买家想立刻看新的时有处可点。不画地图 —— 城市级示意回答不了「今天到不到」，门到门的点位我们没有。</p>
+    </figure>
+
   </div>
 </section>
 

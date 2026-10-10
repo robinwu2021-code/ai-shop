@@ -919,6 +919,7 @@ export default {
     buyAgain: "再来一单",
   },
   afterSale: {
+    section: "退款 / 售后",
     pickType: "选择售后类型",
     typeREFUND_ONLY: "仅退款",
     typeREFUND_ONLYDesc: "货已不在或无需退回",
