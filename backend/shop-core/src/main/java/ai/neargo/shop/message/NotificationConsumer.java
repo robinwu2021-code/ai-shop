@@ -555,9 +555,23 @@ public class NotificationConsumer implements OutboxConsumer {
     private record WxStaff(String scene, Map<String, String> values, boolean wxFirst) {
     }
 
-    /** 商家页面在小程序里挂在分包 {@code pkg-biz} 下（c-app/scripts/with-biz.mjs） */
+    /**
+     * 微信订阅消息点开后要跳的商家页 —— **必须先过 `_entry`**（c-app/scripts/with-biz.mjs）。
+     *
+     * <p>并包小程序跑的是 c-app 的 App.vue，b-app 的 {@code onLaunch → merchant.restore()}
+     * 不执行；商家令牌（btk_）只在 `_entry` 里从 C 端会话换取、商家 store 也只在那里 restore。
+     * 直接深链到 {@code pkg-biz/pages/orders/index} 会绕过它 —— 落地页的 {@code this.token} 为空，
+     * 于是 {@code loadScope} 取不到权限、{@code perms} 恒空、{@code can()} 全 false，
+     * 页面被自己的 {@code :denied} 锁成「没有权限」（2026-10-10 真机实测）。
+     *
+     * <p>所以把真正的目标页塞进 `_entry` 的 {@code redirect}：`_entry` 先把会话建好，
+     * 再 reLaunch 到它。{@code link} 形如 {@code /pages/orders/index?tab=PAID}，
+     * 去掉前导斜杠后整段 URL 编码，微信打开时会自动解码还原成 {@code redirect} 的值。
+     */
     private static String mpBizPage(String link) {
-        return "pkg-biz" + link;
+        String target = link.startsWith("/") ? link.substring(1) : link;
+        return "pkg-biz/_entry/index?redirect="
+                + java.net.URLEncoder.encode(target, java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private static String yuan(long minor) {

@@ -438,7 +438,7 @@ function generated() {
     `// 构建期生成（with-biz.mjs）。c-app「我的」→ 这里。\n` +
     `// **不要手机号+验证码**：凭 C 端会话(ctk_)向 /mp/user/switch-to-merchant 换商家令牌(btk_)。\n` +
     `// 关联键是 mch_account.user_no == 当前 C 端 user_no（见 TDD-C端免登录切商家端）。\n` +
-    `import { onShow } from "@dcloudio/uni-app";\n` +
+    `import { onLoad, onShow } from "@dcloudio/uni-app";\n` +
     `import { ref } from "vue";\n` +
     `import { useMerchantStore } from "@/${PKG}/stores/merchant";\n` +
     `import { ROUTES } from "@/${PKG}/shared/nav";\n` +
@@ -450,6 +450,15 @@ function generated() {
     `const m = useMerchantStore();\n` +
     `/** loading | ready | not-merchant | need-c-login */\n` +
     `const state = ref("loading");\n` +
+    `// 深链目标页（微信订阅消息点开时后端 mpBizPage 塞的 redirect）。\n` +
+    `// 只认本分包 pages/ 下的路径——其余一律回工作台，挡住任何注入。\n` +
+    `let redirect = "";\n` +
+    `onLoad((o: Record<string, string> | undefined) => {\n` +
+    `  const r = o && o.redirect ? o.redirect : "";\n` +
+    `  redirect = r.indexOf("pages/") === 0 ? r : "";\n` +
+    `});\n` +
+    `/** 会话建好后去哪：有合法 redirect 就去它，否则工作台 */\n` +
+    `function dest(): string { return redirect ? ("/${PKG}/" + redirect) : ROUTES.home; }\n` +
     `/**\n` +
     ` * 后端两个码对应端上两条不同的出路，别合并：\n` +
     ` *   10470 NOT_A_MERCHANT            → 真不是商家，引导「去开店」\n` +
@@ -474,7 +483,7 @@ function generated() {
     `}\n` +
     `onShow(async () => {\n` +
     `  await m.restore();\n` +
-    `  if (m.isLogin) { uni.reLaunch({ url: ROUTES.home }); return; }   // 已有商家会话，直接进\n` +
+    `  if (m.isLogin) { uni.reLaunch({ url: dest() }); return; }   // 已有商家会话，直接进目标页\n` +
     `  const ctk = uni.getStorageSync(C_STORAGE.token) as string;\n` +
     `  if (!ctk) { state.value = "need-c-login"; return; }\n` +
     `  const r = await exchange(ctk);\n` +
@@ -486,8 +495,8 @@ function generated() {
     `  uni.setStorageSync(BIZ_STORAGE.token, r.token);\n` +
     `  await m.restore();\n` +
     `  if (!m.isLogin) { state.value = "not-merchant"; return; }\n` +
-    `  // 全量并包：换到令牌就直接进 b 端工作台，之后完全是 b-app 自己的导航\n` +
-    `  uni.reLaunch({ url: ROUTES.home });\n` +
+    `  // 换到令牌就进目标页（深链）或工作台（正常进入），之后是 b-app 自己的导航\n` +
+    `  uni.reLaunch({ url: dest() });\n` +
     `});\n` +
     `/** 去入驻：c-app「我的」里有「我也想开店」。它是 tab 页，只能 switchTab */\n` +
     `function goApply() { uni.switchTab({ url: "/pages/me/index" }); }\n` +

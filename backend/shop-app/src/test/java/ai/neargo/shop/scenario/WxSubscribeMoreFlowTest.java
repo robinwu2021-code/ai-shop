@@ -184,7 +184,11 @@ class WxSubscribeMoreFlowTest {
 
         assertThat(sentTo(o.openId)).singleElement().satisfies(s -> {
             assertThat(s.scene()).isEqualTo(WxSubscribePort.SCENE_MCH_AFTER_SALE);
-            assertThat(s.summary()).contains("SUB-WSM-6").contains("pkg-biz/pages/after-sale/index");
+            // 深链先过 _entry 换商家令牌，真正的目标页在 redirect 里（URL 编码）——
+            // 直接进 pkg-biz/pages 会绕过会话建立、落地显示「没有权限」（mpBizPage 的注释）
+            assertThat(s.summary()).contains("SUB-WSM-6")
+                    .contains("pkg-biz/_entry/index?redirect=")
+                    .contains("pages%2Fafter-sale%2Findex");
         });
         assertThat(pushTo("cid-wsm-6")).as("微信到了还响 App = 同一件事说两遍").isEmpty();
     }
