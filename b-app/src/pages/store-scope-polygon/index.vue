@@ -172,7 +172,7 @@ function back() {
       </view>
 
       <view class="bar">
-        <text class="txt-caption bar__n">{{ $t("store.polygonCount", { n: points.length }) }}</text>
+        <text class="txt-strong">{{ $t("store.polygonCount", { n: points.length }) }}</text>
         <!-- 顶点不足 3 个时说清差几个，而不是让「完成」灰着不解释 -->
         <text v-if="!canFinish" class="txt-caption bar__hint">{{ $t("store.polygonNeedThree") }}</text>
       </view>
@@ -253,9 +253,6 @@ function back() {
   align-items: center;
   gap: 12rpx;
   padding: 12rpx 24rpx;
-}
-.bar__n {
-  font-weight: 600;
 }
 .bar__hint {
   color: var(--sh-sub);

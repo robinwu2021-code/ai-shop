@@ -166,7 +166,7 @@ onShareAppMessage(() => ({
 .block { margin-bottom: 16rpx; }
 .trk-store { display: block; margin-top: 8rpx; }
 .trk-mini { margin-top: 16rpx; }
-.status { font-weight: 600; }
+/* 字重交给字阶：这个元素挂的是 .txt-title，它本来就是 600，这一行是冗余的 */
 .prog__row { display: block; margin-top: 8rpx; }
 .prog__sec { margin-top: 16rpx; }
 .trk-recv { margin-top: 8rpx; }

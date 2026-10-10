@@ -356,7 +356,7 @@ onLoad(async (q) => {
       -->
       <view v-if="shownTrace && shownTrace.nodes.length" class="sh-card trace-card" @tap="traceOpen = true">
         <view class="sh-row sh-row--between">
-          <text class="txt-body trace-card__st">{{ $t(`trace.step.${traceStep}`) }}</text>
+          <text class="txt-strong trace-card__st">{{ $t(`trace.step.${traceStep}`) }}</text>
           <sh-go :text="String($t('order.traceView'))"></sh-go>
         </view>
         <!-- 最新一条**最多两行**：一行截得太狠（「预计10月10日到达…」停在「两地」），
@@ -732,9 +732,6 @@ onLoad(async (q) => {
 }
 
 /* 物流卡：整卡可点。放在最顶上 —— 店主打开这一页最先问的就是「货到哪了」 */
-.trace-card__st {
-  font-weight: 600;
-}
 .trace-card__last {
   display: -webkit-box;
   -webkit-box-orient: vertical;
