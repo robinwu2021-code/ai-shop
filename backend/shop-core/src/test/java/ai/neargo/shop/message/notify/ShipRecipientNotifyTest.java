@@ -6,6 +6,7 @@ import ai.neargo.shop.spi.notify.SmsPort;
 import ai.neargo.shop.spi.notify.WxUrlLinkPort;
 import ai.neargo.shop.spi.trade.SubOrderBuyerPort;
 import ai.neargo.shop.trade.track.ShipTrackToken;
+import ai.neargo.shop.trade.port.ShipTrackPortImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,7 @@ class ShipRecipientNotifyTest {
         when(shortLink.shorten(anyString(), anyString(), anyString(), any()))
                 .thenReturn("https://s.hxmall.top/ABC1234");
         when(sms.sendShipToRecipient(anyString(), anyString())).thenReturn(SendResult.none());
-        notify = new ShipRecipientNotify(new ShipTrackToken("k", 30), urlLink, shortLink, sms, buyer,
+        notify = new ShipRecipientNotify(new ShipTrackPortImpl(new ShipTrackToken("k", 30)), urlLink, shortLink, sms, buyer,
                 "pages/track/index", "https://hxmall.top/c/#/pages/track/index", 30);
     }
 

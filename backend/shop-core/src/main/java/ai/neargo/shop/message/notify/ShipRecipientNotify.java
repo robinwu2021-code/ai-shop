@@ -5,7 +5,7 @@ import ai.neargo.shop.link.entity.ShortLink;
 import ai.neargo.shop.spi.notify.SmsPort;
 import ai.neargo.shop.spi.notify.WxUrlLinkPort;
 import ai.neargo.shop.spi.trade.SubOrderBuyerPort;
-import ai.neargo.shop.trade.track.ShipTrackToken;
+import ai.neargo.shop.spi.trade.ShipTrackPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,7 +32,7 @@ public class ShipRecipientNotify {
 
     private static final Logger log = LoggerFactory.getLogger(ShipRecipientNotify.class);
 
-    private final ShipTrackToken token;
+    private final ShipTrackPort token;
     private final WxUrlLinkPort urlLink;
     private final ShortLinkService shortLink;
     private final SmsPort smsPort;
@@ -44,7 +44,7 @@ public class ShipRecipientNotify {
     /** 短链有效期（天），与看件令牌同寿 */
     private final long linkTtlDays;
 
-    public ShipRecipientNotify(ShipTrackToken token, WxUrlLinkPort urlLink,
+    public ShipRecipientNotify(ShipTrackPort token, WxUrlLinkPort urlLink,
                                ShortLinkService shortLink, SmsPort smsPort,
                                SubOrderBuyerPort buyerPort,
                                @Value("${shop.ship.track-mini-path:pages/track/index}") String miniPath,
