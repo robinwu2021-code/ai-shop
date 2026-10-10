@@ -1,11 +1,9 @@
 package ai.neargo.shop.message.notify;
 
-import ai.neargo.shop.message.entity.NotifyChannel;
 import ai.neargo.shop.spi.trade.SubOrderBuyerPort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +21,8 @@ import static org.mockito.Mockito.when;
  *
  * <p>不起 Spring、不发 HTTP：{@link WeComBotSender} 用一个记下「发到哪个 URL、发了什么」
  * 的替身。这里要断言的两件事都与 HTTP 无关 —— <b>发到哪个群</b>，以及<b>内容长什么样</b>。
+ *
+ * <p>群按**门店**解析（2026-10-10 订正），真源是 {@code mch_notify_recipient.wecom_webhook}。
  */
 class WeComOrderAlertTest {
 
@@ -44,20 +44,12 @@ class WeComOrderAlertTest {
         return s;
     }
 
-    /** 商家 ENTITY 的群是 GROUP_A；其余商家没配 */
-    private MerchantWecomWebhook webhooksWith(String entityNo, String url) {
-        MerchantChannelService channels = mock(MerchantChannelService.class);
-        NotifyChannel ch = new NotifyChannel();
-        ch.setChannelType(NotifyChannel.TYPE_WEBHOOK);
-        ch.setProvider(NotifyChannel.PROV_WECOM);
-        ch.setScope(NotifyChannel.SCOPE_MERCHANT);
-        ch.setOwnerNo(entityNo);
-        ch.setEnabled(true);
-        ch.setSecretCipher("whatever-cipher");
-        when(channels.listForOwner(anyString())).thenReturn(List.of());
-        when(channels.listForOwner(entityNo)).thenReturn(List.of(ch));
-        when(channels.decryptSecret(any())).thenReturn("{\"webhook\":\"" + url + "\"}");
-        return new MerchantWecomWebhook(channels, new ObjectMapper());
+    /** 门店 storeNo 的群是 url；别的门店没配 */
+    private MerchantNotifyRecipients recipientsWith(String storeNo, String url) {
+        MerchantNotifyRecipients r = mock(MerchantNotifyRecipients.class);
+        when(r.wecomWebhook(anyString())).thenReturn(Optional.empty());
+        when(r.wecomWebhook(storeNo)).thenReturn(Optional.of(url));
+        return r;
     }
 
     private MerchantQueryPort merchantWith(Map<String, String> storeNames, String merchantName) {
@@ -76,15 +68,15 @@ class WeComOrderAlertTest {
         return p;
     }
 
-    private WeComOrderAlert alert(MerchantWecomWebhook hooks, MerchantQueryPort mch,
+    private WeComOrderAlert alert(MerchantNotifyRecipients recipients, MerchantQueryPort mch,
                                  SubOrderBuyerPort sub) {
-        return new WeComOrderAlert(hooks, recordingSender(), mch, sub);
+        return new WeComOrderAlert(recipients, recordingSender(), mch, sub);
     }
 
     @Test
-    @DisplayName("★★★ 发到**那个商家名下**的群，不是平台那条（AC2）")
-    void sendsToMerchantOwnGroup() {
-        var a = alert(webhooksWith(ENTITY, GROUP_A),
+    @DisplayName("★★★ 发到**那家门店**的群，不是平台那条（AC2）")
+    void sendsToStoreOwnGroup() {
+        var a = alert(recipientsWith("ST-1", GROUP_A),
                 merchantWith(Map.of("ST-1", "虹选演示店"), "虹选"), subOrderWith("土豆", 3));
 
         assertThat(a.paid(ENTITY, "ST-1", "SUB-1", 1234)).isTrue();
@@ -92,35 +84,35 @@ class WeComOrderAlertTest {
     }
 
     @Test
-    @DisplayName("★★★ 商家没配群 → **一条都不发**，绝不回落到平台那条 env（AC2）")
-    void unconfiguredMerchantSendsNothing() {
-        // 配的是 MCH-1 的群，来的单属于 MCH-2
-        var a = alert(webhooksWith(ENTITY, GROUP_A),
+    @DisplayName("★★★ 这家店没配群 → **一条都不发**，绝不回落到平台那条 env（AC2）")
+    void unconfiguredStoreSendsNothing() {
+        // 配的是 ST-1 的群，来的单属于 ST-9
+        var a = alert(recipientsWith("ST-1", GROUP_A),
                 merchantWith(Map.of(), "别家"), subOrderWith("土豆", 1));
 
-        assertThat(a.paid("MCH-2", "ST-9", "SUB-2", 500)).isFalse();
+        assertThat(a.paid(ENTITY, "ST-9", "SUB-2", 500)).isFalse();
         assertThat(sent).isEmpty();
     }
 
     @Test
-    @DisplayName("停用的那行不算配了（AC2）")
-    void disabledChannelCountsAsUnconfigured() {
-        MerchantChannelService channels = mock(MerchantChannelService.class);
-        NotifyChannel ch = new NotifyChannel();
-        ch.setChannelType(NotifyChannel.TYPE_WEBHOOK);
-        ch.setProvider(NotifyChannel.PROV_WECOM);
-        ch.setOwnerNo(ENTITY);
-        ch.setEnabled(false);
-        ch.setSecretCipher("c");
-        when(channels.listForOwner(ENTITY)).thenReturn(List.of(ch));
+    @DisplayName("★★ 群里与邮件里说的是**同一份内容**，只是去掉 markdown 记号")
+    void plainTextMatchesMarkdown() {
+        var a = alert(recipientsWith("ST-1", GROUP_A),
+                merchantWith(Map.of("ST-1", "虹选演示店"), "虹选"), subOrderWith("土豆", 3));
 
-        assertThat(new MerchantWecomWebhook(channels, new ObjectMapper()).of(ENTITY)).isEmpty();
+        String md = a.content(ENTITY, "ST-1", "SUB-1", 1234);
+        String txt = a.plainText(ENTITY, "ST-1", "SUB-1", 1234);
+        assertThat(txt).doesNotContain("**").doesNotContain("> ")
+                .contains("虹选演示店").contains("￥12.34").contains("土豆 等 3 件").contains("SUB-1");
+        // 同一份排版：去掉记号之后逐行相等
+        assertThat(txt.lines().toList())
+                .isEqualTo(md.replace("**", "").replace("> ", "").lines().toList());
     }
 
     @Test
     @DisplayName("门店、金额、商品、单号四行都在；金额是元不是分（AC4）")
     void contentCarriesStoreAmountItemsAndNo() {
-        var a = alert(webhooksWith(ENTITY, GROUP_A),
+        var a = alert(recipientsWith("ST-1", GROUP_A),
                 merchantWith(Map.of("ST-1", "虹选演示店"), "虹选"), subOrderWith("土豆", 3));
 
         String md = a.content(ENTITY, "ST-1", "SUB202610092051300002260", 1234);
@@ -136,12 +128,12 @@ class WeComOrderAlertTest {
     @Test
     @DisplayName("查不到门店名 → 回落主体名；两个都查不到 → 省掉那一行（AC4）")
     void missingStoreNameFallsBack() {
-        String fellBack = alert(webhooksWith(ENTITY, GROUP_A),
+        String fellBack = alert(recipientsWith("ST-1", GROUP_A),
                 merchantWith(Map.of(), "虹选超市"), subOrderWith("土豆", 1))
                 .content(ENTITY, "ST-1", "SUB-1", 100);
         assertThat(fellBack).contains("> 门店：虹选超市");
 
-        String omitted = alert(webhooksWith(ENTITY, GROUP_A),
+        String omitted = alert(recipientsWith("ST-1", GROUP_A),
                 merchantWith(Map.of(), null), subOrderWith("土豆", 1))
                 .content(ENTITY, "ST-1", "SUB-1", 100);
         assertThat(omitted).doesNotContain("门店").contains("> 金额：").contains("> 单号：");
@@ -150,7 +142,7 @@ class WeComOrderAlertTest {
     @Test
     @DisplayName("只有一件 → 不写「等 1 件」（AC4）")
     void singleItemOmitsCount() {
-        String md = alert(webhooksWith(ENTITY, GROUP_A),
+        String md = alert(recipientsWith("ST-1", GROUP_A),
                 merchantWith(Map.of(), "虹选"), subOrderWith("土豆", 1))
                 .content(ENTITY, null, "SUB-1", 100);
         assertThat(md).contains("> 商品：土豆").doesNotContain("等 1 件");
@@ -159,7 +151,7 @@ class WeComOrderAlertTest {
     @Test
     @DisplayName("一件明细都查不到 → 省掉商品那一行，不显示「共 0 件」（AC4）")
     void noItemsOmitsLine() {
-        String md = alert(webhooksWith(ENTITY, GROUP_A),
+        String md = alert(recipientsWith("ST-1", GROUP_A),
                 merchantWith(Map.of(), "虹选"), subOrderWith(null, 0))
                 .content(ENTITY, null, "SUB-1", 100);
         assertThat(md).doesNotContain("商品").doesNotContain("0 件");
@@ -168,7 +160,7 @@ class WeComOrderAlertTest {
     @Test
     @DisplayName("★★★ 内容里**没有买家信息** —— 群里人多，手机号/地址不进群（AC4）")
     void noBuyerInfoInContent() {
-        String md = alert(webhooksWith(ENTITY, GROUP_A),
+        String md = alert(recipientsWith("ST-1", GROUP_A),
                 merchantWith(Map.of("ST-1", "虹选演示店"), "虹选"), subOrderWith("土豆", 3))
                 .content(ENTITY, "ST-1", "SUB-1", 1234);
         // 排版只有这四个键，多一个都要在这里显式加 —— 买家信息要进群得先过这条断言

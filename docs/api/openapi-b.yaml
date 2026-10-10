@@ -19105,6 +19105,62 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/notify/sms-phones": 
+    put: 
+      operationId: "mSaveNotifyPhones"
+      summary: "改本店的额外短信接收号"
+      tags: 
+        - "notify"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/NotifySetting"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/notify/email": 
+    put: 
+      operationId: "mSaveNotifyEmail"
+      summary: "改本店的邮件接收地址"
+      tags: 
+        - "notify"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/NotifySetting"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/notify/wecom/test": 
     post: 
       operationId: "mTestNotifyWecom"

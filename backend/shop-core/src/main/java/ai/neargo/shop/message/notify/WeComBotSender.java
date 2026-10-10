@@ -36,9 +36,10 @@ import java.util.Map;
  *       「运营能在后台配、有 owner」的通道用的，为一个配在 env 里的东西加一行半真半假的
  *       记录，只会让那一屏说假话。</li>
  *   <li><b>商家自己那条</b>（来单提醒）：进 {@code notify_channel} 的
- *       {@code scope=MERCHANT} 行，URL 作为凭据存 {@code secret_cipher}（AES-256-GCM），
- *       明文永不落库、永不回前端。进库是因为它**按商家各一条**，env 装不下也不该装
- *       （TDD-商家企微群来单通知 §2.1）。解析走 {@code MerchantWecomWebhook}。</li>
+ *       {@code mch_notify_recipient.wecom_webhook}（**按门店各一条**，env 装不下也不该装）。
+ *       2026-10-10 起存明文（用户决定，加密将来再议）；
+ *       <b>仍然不回显给前端</b> —— 存明文是一回事，下发是另一回事。
+ *       解析走 {@code MerchantNotifyRecipients#wecomWebhook}。</li>
  * </ul>
  *
  * <p><b>没配就静默跳过</b>：与门店链接、App 下载地址同一个口径 —— 缺配置时不发半截。
@@ -107,7 +108,7 @@ public class WeComBotSender {
     /**
      * 发一条 markdown 消息到**指定的群**。
      *
-     * <p>商家自己的群走这条（{@code MerchantWecomWebhook} 解析出来的 URL）；
+     * <p>商家自己的群走这条（{@code MerchantNotifyRecipients} 解析出来的 URL）；
      * 平台那条入驻通知走上面的无参方法。两条路共用同一套限流、留痕与 errcode 判定，
      * 唯一的差别是「发到哪个 URL」。
      *

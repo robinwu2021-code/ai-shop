@@ -94,7 +94,7 @@ public class PlatformChannelCredentials {
              *
              * <b>stubDefault=false</b>：{@code shop.notify.wecom.stub} 确实存在
              * （测试世界装 StubWeComBotSender），但**默认不走桩** —— 群机器人的「发不发」
-             * 本来由「这个商家配了 URL 没有」决定（MerchantWecomWebhook），
+             * 本来由「这家门店配了 URL 没有」决定（MerchantNotifyRecipients），
              * 让它在生产里显示成 STUB 会让人以为「配了也不会真发」。
              *
              * <b>secretKeys=["webhook"]</b> 是这条规格真正的作用：upsert 时校验商家交上来的

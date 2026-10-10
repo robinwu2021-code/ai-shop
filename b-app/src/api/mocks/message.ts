@@ -19,6 +19,8 @@ export const messageMock: Pick<MerchantApi,
   | "mSaveNotifySwitch"
   | "mSaveNotifyWecom"
   | "mTestNotifyWecom"
+  | "mSaveNotifyPhones"
+  | "mSaveNotifyEmail"
 > = {
   // ---- 消息。mock 世界与 C 端共用一个消息池（没有 receiver 维度）——
   // 这里演示的是消息中心的交互，不是收件箱隔离；隔离由后端场景测试保证
@@ -89,6 +91,20 @@ export const messageMock: Pick<MerchantApi,
   async mTestNotifyWecom() {
     return delay(wecomByStore[currentStoreNo()] ?? false);
   },
+
+  async mSaveNotifyPhones(phones) {
+    const at = currentStoreNo();
+    // 与后端同一条规矩：**最多两个**，超了整笔拒（替身也拒，否则页面上试不出这条）
+    if (phones.length > 2) throw new Error("最多两个");
+    phonesByStore[at] = [...phones];
+    return delay(notifySettingSnapshot(at));
+  },
+
+  async mSaveNotifyEmail(email) {
+    const at = currentStoreNo();
+    emailByStore[at] = email.trim() || null;
+    return delay(notifySettingSnapshot(at));
+  },
 };
 
 /** 与后端 SCENES 同序：来单 / 售后申请 / 新评价 */
@@ -96,13 +112,17 @@ const NOTIFY_SCENES = ["SUB_ORDER_PAID", "AFTER_SALE_APPLIED", "REVIEW_CREATED"]
 
 /** 键序即页面顺序，与后端 MchNotifyPref.SWITCHABLE 一致 */
 const DEFAULT_SWITCHES: Record<string, boolean> = {
-  WXSUB: true, WEBHOOK: true, SMS: true, PUSH: true,
+  WXSUB: true, WEBHOOK: true, SMS: true, MAIL: true, PUSH: true,
 };
 
 /** 门店号 → 场景 → 通道 → 开关 */
 const notifySwitches: Record<string, Record<string, Record<string, boolean>>> = {};
 /** 门店号 → 企微群配过没有 */
 const wecomByStore: Record<string, boolean> = {};
+/** 门店号 → 额外短信号 */
+const phonesByStore: Record<string, string[]> = {};
+/** 门店号 → 邮件地址 */
+const emailByStore: Record<string, string | null> = {};
 
 /**
  * @param at 门店号。**由调用方传进来而不是在这里取**：那道守卫扫的是接口方法体里
@@ -116,6 +136,10 @@ function notifySettingSnapshot(at: string) {
       scene,
       switches: { ...DEFAULT_SWITCHES, ...(store[scene] ?? {}) },
     })),
+    extraPhones: phonesByStore[at] ?? [],
+    // 替身世界里的「店主登录手机号」—— 真后端取的是 mch_account.login_phone
+    ownerPhone: "13800000000",
+    email: emailByStore[at] ?? null,
     wecomReady: wecomByStore[at] ?? false,
   };
 }

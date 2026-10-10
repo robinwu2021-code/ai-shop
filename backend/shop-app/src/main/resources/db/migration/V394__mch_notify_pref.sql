@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS mch_notify_pref
     id         BIGINT(20)  NOT NULL AUTO_INCREMENT,
     store_no   VARCHAR(64) NOT NULL COMMENT '门店号。粒度是门店不是主体 —— 一个主体下多家店各管各的',
     scene      VARCHAR(48) NOT NULL COMMENT '场景码，如 SUB_ORDER_PAID（与 NotifyScene 同一套）',
-    channel    VARCHAR(16) NOT NULL COMMENT 'WXSUB 微信订阅 / WEBHOOK 企微群 / SMS 短信 / PUSH App 推送。INAPP 不在此表',
+    channel    VARCHAR(16) NOT NULL COMMENT 'WXSUB 微信订阅 / WEBHOOK 企微群 / SMS 短信 / MAIL 邮件 / PUSH App 推送。INAPP 不在此表',
     enabled    TINYINT(4)  NOT NULL DEFAULT 1 COMMENT '商家自己的开关。与平台 notify_scene_channel 串联：平台关了这里开也不发',
     tenant_no  VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME    NOT NULL,

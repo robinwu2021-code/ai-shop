@@ -192,7 +192,7 @@ export interface GoodsPayMode {
  *
  * <p>**没有 INAPP**：站内信是事实记录，恒发不可关。
  */
-export type NotifyChannelCode = "WXSUB" | "WEBHOOK" | "SMS" | "PUSH";
+export type NotifyChannelCode = "WXSUB" | "WEBHOOK" | "SMS" | "MAIL" | "PUSH";
 
 /** 一个场景的一组开关。`switches` 的键序即页面顺序 */
 export interface NotifySceneSwitches {
@@ -203,7 +203,19 @@ export interface NotifySceneSwitches {
 export interface NotifySetting {
   /** 三个场景各一组：来单 / 售后申请 / 新评价。顺序即页面顺序 */
   scenes: NotifySceneSwitches[];
-  /** 本店的企微群配过没有。**URL 本身永远不下发** —— 它是凭据 */
+  /**
+   * 本店自填的额外短信号，**原值回显** —— 店主要能核对填对没有。
+   * 最多两个；店主自己的登录手机号恒发、不在这里。
+   */
+  extraPhones: string[];
+  /** 店主的登录手机号，只读。页面上标成「登录手机号」且不可删 */
+  ownerPhone: string | null;
+  /** 邮件地址，原值回显；空 = 没填 */
+  email: string | null;
+  /**
+   * 本店的企微群配过没有。**URL 本身永远不下发** ——
+   * 库里存的是明文（2026-10-10 的决定），但那是存储，不是下发：它仍然是凭据。
+   */
   wecomReady: boolean;
 }
 
@@ -2010,6 +2022,13 @@ export interface MerchantApi {
   mSaveNotifyWecom(webhook: string): Promise<NotifySetting>;
   /** 往本店的群发一条测试。失败会抛（企微的 errcode 是唯一线索，别吞） */
   mTestNotifyWecom(): Promise<boolean>;
+  /**
+   * 改额外短信号。**传完整的新名单，不是追加** —— 删一个就是传剩下的那些。
+   * 超过两个、或有一个不是大陆手机号，后端整笔拒。
+   */
+  mSaveNotifyPhones(phones: string[]): Promise<NotifySetting>;
+  /** 改邮件地址。空串 = 不发邮件 */
+  mSaveNotifyEmail(email: string): Promise<NotifySetting>;
 
   // ---- 进销存（P-18 / B-1…B-21）。**独立模块、独立库**，见 shop-inventory
   //

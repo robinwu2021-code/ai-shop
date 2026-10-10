@@ -1,5 +1,6 @@
 package ai.neargo.shop.message.notify;
 
+import ai.neargo.shop.message.entity.SysNotifyLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,7 +34,11 @@ public class StubWeComBotSender extends WeComBotSender {
     public record Sent(String bizType, String content, String webhook) {
     }
 
+    /** 与真实实现同一个收件人标识（群机器人不是发给某个人的） */
+    private static final String TARGET_STUB = "wecombot";
+
     private final List<Sent> sent = new ArrayList<>();
+    private final NotifyLogWriter logWriter;
 
     /** 下一次发送是否模拟抛异常（验「群发炸了不拖累其余出口」） */
     private volatile boolean failNext;
@@ -41,6 +46,7 @@ public class StubWeComBotSender extends WeComBotSender {
     public StubWeComBotSender(ObjectMapper json, NotifyLogWriter logWriter,
                               @Value("${shop.notify.wecom.webhook:}") String webhook) {
         super(json, logWriter, webhook);
+        this.logWriter = logWriter;
     }
 
     /*
@@ -57,11 +63,27 @@ public class StubWeComBotSender extends WeComBotSender {
         }
         if (failNext) {
             failNext = false;
+            /*
+             * 失败也留痕 —— 与真实实现同一个口径（见下面那段注释）。
+             * 不写的话，「发失败了会不会记一行」这件事在测试里没有量具。
+             */
+            logWriter.write(SysNotifyLog.WEBHOOK, bizType, TARGET_STUB, null, null,
+                    SysNotifyLog.FAILED, "[stub] 模拟失败", null, null, "WECOM");
             throw new IllegalStateException("[stub] 企微群机器人模拟失败");
         }
         synchronized (sent) {
             sent.add(new Sent(bizType, content, webhook));
         }
+        /*
+         * **桩也要写 sys_notify_log。**
+         *
+         * 桩替换的只是「发 HTTP」这一步，留痕是发送器的另一半职责 ——
+         * 少做它的后果是「企微有没有留痕」这件事在测试里永远验不到：
+         * 2026-10-10 加端到端留痕覆盖时，四条通道里偏偏就缺它这一行，
+         * 而生产上其实是有的。桩与真实实现的行为分叉，比桩本身更难发现。
+         */
+        logWriter.write(SysNotifyLog.WEBHOOK, bizType, TARGET_STUB, null, null,
+                SysNotifyLog.SENT, null, null, null, "WECOM");
         log.info("[stub] 企微群机器人 bizType={} 群={} 内容={}", bizType, mask(webhook), content);
         return true;
     }

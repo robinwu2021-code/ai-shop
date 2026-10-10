@@ -26,14 +26,14 @@ public class WeComOrderAlert {
 
     private static final Logger log = LoggerFactory.getLogger(WeComOrderAlert.class);
 
-    private final MerchantWecomWebhook webhooks;
+    private final MerchantNotifyRecipients recipients;
     private final WeComBotSender sender;
     private final MerchantQueryPort merchantPort;
     private final SubOrderBuyerPort subOrderPort;
 
-    public WeComOrderAlert(MerchantWecomWebhook webhooks, WeComBotSender sender,
+    public WeComOrderAlert(MerchantNotifyRecipients recipients, WeComBotSender sender,
                            MerchantQueryPort merchantPort, SubOrderBuyerPort subOrderPort) {
-        this.webhooks = webhooks;
+        this.recipients = recipients;
         this.sender = sender;
         this.merchantPort = merchantPort;
         this.subOrderPort = subOrderPort;
@@ -53,7 +53,7 @@ public class WeComOrderAlert {
          * **先解析 webhook，再去补查门店名与商品**：绝大多数门店没配群，
          * 那时候补查是白跑两条 SQL。来单是全站最高频的通知之一，这个顺序不是洁癖。
          */
-        Optional<String> url = webhooks.of(storeNo);
+        Optional<String> url = recipients.wecomWebhook(storeNo);
         if (url.isEmpty()) {
             return false;
         }
@@ -65,6 +65,18 @@ public class WeComOrderAlert {
             log.warn("来单推企微群失败 subOrderNo={} {}", subOrderNo, e.toString());
             return false;
         }
+    }
+
+    /**
+     * 同一份内容的**纯文本版**，给邮件用（主题在调用方拼）。
+     *
+     * <p>两边共用一份排版而不是各写一份：同一张单在群里与邮件里说的话不一致，
+     * 是最难查的那种不一致 —— 两处都「看起来对」。这里只是把 markdown 的
+     * 引用符去掉，其余一个字不改。
+     */
+    public String plainText(String entityNo, String storeNo, String subOrderNo, long payAmountMinor) {
+        return content(entityNo, storeNo, subOrderNo, payAmountMinor)
+                .replace("**", "").replace("> ", "");
     }
 
     /** 包可见供单测直接断言排版，不必起 HTTP */

@@ -63,7 +63,9 @@ public class NotificationConsumer implements OutboxConsumer {
     private final SubOrderBuyerPort buyerPort;
     private final ai.neargo.shop.message.notify.WeComOrderAlert weComOrderAlert;
     private final ai.neargo.shop.message.notify.MerchantNotifyPrefs prefs;
+    private final ai.neargo.shop.message.notify.MerchantNotifyRecipients recipients;
     private final ai.neargo.shop.spi.notify.SmsPort smsPort;
+    private final ai.neargo.shop.spi.notify.MailPort mailPort;
 
     public NotificationConsumer(MessageService messageService, WxSubscribeSender wxSender,
                                 ai.neargo.shop.message.notify.PushSender pushSender,
@@ -73,7 +75,9 @@ public class NotificationConsumer implements OutboxConsumer {
                                 SubOrderBuyerPort buyerPort,
                                 ai.neargo.shop.message.notify.WeComOrderAlert weComOrderAlert,
                                 ai.neargo.shop.message.notify.MerchantNotifyPrefs prefs,
-                                ai.neargo.shop.spi.notify.SmsPort smsPort) {
+                                ai.neargo.shop.message.notify.MerchantNotifyRecipients recipients,
+                                ai.neargo.shop.spi.notify.SmsPort smsPort,
+                                ai.neargo.shop.spi.notify.MailPort mailPort) {
         this.messageService = messageService;
         this.wxSender = wxSender;
         this.pushSender = pushSender;
@@ -84,7 +88,9 @@ public class NotificationConsumer implements OutboxConsumer {
         this.buyerPort = buyerPort;
         this.weComOrderAlert = weComOrderAlert;
         this.prefs = prefs;
+        this.recipients = recipients;
         this.smsPort = smsPort;
+        this.mailPort = mailPort;
     }
 
     @Override
@@ -241,25 +247,50 @@ public class NotificationConsumer implements OutboxConsumer {
                                 "time", String.valueOf(System.currentTimeMillis()),
                                 "tip", "有新订单，请及时备货"), false));
                 /*
-                 * 来单这一条**四条腿同时走**（TDD-来单四渠道与商家通知设置 AC1）：
-                 * 上面 fanOutToStaff 里的站内信 / 微信订阅 / App 推送，加这里两条。
+                 * 来单这一条**多条腿同时走**（TDD-来单四渠道与商家通知设置 AC1）：
+                 * 上面 fanOutToStaff 里的站内信 / 微信订阅 / App 推送，加这里三条。
                  *
                  * 为什么要这么多条腿：微信订阅**一次授权只够一条**，商家不进小程序就没额度；
-                 * App 的厂商通道没报备，退到后台就收不到；企微群与短信配过一次就一直能发。
+                 * App 的厂商通道没报备，退到后台就收不到；企微群、短信与邮件配过一次就一直能发。
                  * 来单是全链路最怕漏的一条，任一条单独都不够可靠。
                  *
-                 * 每条各自吞掉自己的失败 —— 冒到 outbox 消费者那里会判整条事件失败并重投，
-                 * 于是站内信被发第二遍。
+                 * **按 {@link #STORE_CHANNEL_ORDER} 逐条走，每条各自吞掉自己的失败。**
+                 * 顺序写成一份名单而不是靠这几行的书写次序：靠书写次序的话，
+                 * 谁调一下行序就变了，而且 diff 里看不出「顺序变了」这件事。
                  */
                 String entityNo = text(payload, "entityNo");
                 String storeNo = text(payload, "storeNo");
                 String subOrderNo = text(payload, "subOrderNo");
                 long paid = payload.path("payAmount").asLong(0);
-                if (prefs.on(storeNo, scene, MchNotifyPref.CH_WEBHOOK)) {
-                    weComOrderAlert.paid(entityNo, storeNo, subOrderNo, paid);
-                }
-                if (prefs.on(storeNo, scene, MchNotifyPref.CH_SMS)) {
-                    smsOrderPaid(entityNo, subOrderNo, paid);
+                for (String ch : STORE_CHANNEL_ORDER) {
+                    /*
+                     * 开关关着、或这家店没填地址 → **什么都不做，也不留痕**。
+                     * 那不是一次失败的发送，是「这条通道对这家店不存在」——
+                     * 记下来的话，绝大多数没配企微群的门店每单都会刷一行「没配」，
+                     * 真正的失败就埋在里面了。配了却发不出去才写 FAILED。
+                     */
+                    if (!prefs.on(storeNo, scene, ch)) {
+                        continue;
+                    }
+                    try {
+                        switch (ch) {
+                            case MchNotifyPref.CH_WEBHOOK ->
+                                    weComOrderAlert.paid(entityNo, storeNo, subOrderNo, paid);
+                            case MchNotifyPref.CH_SMS ->
+                                    smsOrderPaid(entityNo, storeNo, subOrderNo, paid);
+                            case MchNotifyPref.CH_MAIL ->
+                                    mailOrderPaid(entityNo, storeNo, subOrderNo, paid);
+                            default -> log.warn("[notify] 门店级通道 {} 没有发送实现 —— "
+                                    + "往 STORE_CHANNEL_ORDER 加了成员却忘了在这里加分支", ch);
+                        }
+                    } catch (RuntimeException e) {
+                        /*
+                         * 每条自己已经吞过一次，这里是兜底：**一条炸了不能影响下一条**，
+                         * 更不能冒到 outbox 消费者那里 —— 那会判整条事件失败并重投，
+                         * 于是站内信被发第二遍。
+                         */
+                        log.warn("[notify] 通道 {} 发送异常 subOrderNo={} {}", ch, subOrderNo, e.toString());
+                    }
                 }
             }
             case NotifyScene.AFTER_SALE_APPLIED -> fanOutToStaff(event, text(payload, "entityNo"),
@@ -499,6 +530,28 @@ public class NotificationConsumer implements OutboxConsumer {
      *
      * @param wxFirst true = 微信发出去了就不再走 App（售后、评价）；false = 两路都发（来单）
      */
+    /**
+     * **门店级通道的推送顺序**（用户 2026-10-10：「推送按渠道顺序逐个推送」）。
+     *
+     * <p>按人扇出的那三条（站内信 / 微信订阅 / App 推送）在 {@link #fanOutToStaff} 里，
+     * 它们的顺序由那个方法固定；这份名单管的是**按店发**的三条。
+     * 两组分开是因为扇出粒度不同，不是因为顺序分了两处 —— 完整顺序是：
+     *
+     * <pre>
+     *   站内信 → 微信订阅 → App 推送   （按人，fanOutToStaff）
+     *     → 企微群 → 短信 → 邮件        （按店，这份名单）
+     * </pre>
+     *
+     * <p><b>企微群排第一</b>：它是三条里最可靠的（配过一次就一直能发，没有额度、
+     * 没有模板审批、没有计费）。短信排在邮件前面是因为它更「吵」—— 店主没在看屏幕时，
+     * 短信比邮件更可能被注意到。
+     *
+     * <p>加一条通道就在这里加一个成员并在 switch 里加一支；
+     * 只加成员不加分支的话，那一支会落到 default 的 WARN 上，不会静默。
+     */
+    private static final List<String> STORE_CHANNEL_ORDER =
+            List.of(MchNotifyPref.CH_WEBHOOK, MchNotifyPref.CH_SMS, MchNotifyPref.CH_MAIL);
+
     private record WxStaff(String scene, Map<String, String> values, boolean wxFirst) {
     }
 
@@ -551,21 +604,52 @@ public class NotificationConsumer implements OutboxConsumer {
     }
 
     /**
-     * 来单短信。**只发店主**，失败吞掉只留日志（{@code sys_notify_log} 里已有 FAILED 行）。
+     * 来单短信。**店主的登录手机号 + 这家店自填的最多两个**，逐个发、逐个吞失败。
      *
-     * <p>模板没报备时这里每单会写一行 {@code tpl_unconfigured} ——
-     * 那是刻意的：它是「为什么商家没收到短信」唯一的答案，
-     * 静默跳过的话这个问题在线上无从回答。
+     * <p>店主那一个恒发、删不掉（真源是 {@code mch_account.login_phone}）；
+     * 额外的在 {@code mch_notify_recipient.sms_phones} 里（TDD §2.5）。
+     *
+     * <p><b>去重</b>：店主很可能把自己的号又填了一遍，而短信按条计费，
+     * 发两遍既花钱又像系统出错。
+     *
+     * <p>模板没报备时每个号会写一行 {@code tpl_unconfigured} —— 那是刻意的：
+     * 它是「为什么商家没收到短信」唯一的答案，静默跳过的话这个问题在线上无从回答。
      */
-    private void smsOrderPaid(String entityNo, String subOrderNo, long payAmountMinor) {
-        String phone = merchantStaffPort.ownerPhone(entityNo).orElse(null);
-        if (phone == null) {
-            return;     // 没店主号可发 —— 不是失败，没必要留痕
+    private void smsOrderPaid(String entityNo, String storeNo, String subOrderNo, long payAmountMinor) {
+        java.util.LinkedHashSet<String> to = new java.util.LinkedHashSet<>();
+        merchantStaffPort.ownerPhone(entityNo).ifPresent(to::add);
+        to.addAll(recipients.extraPhones(storeNo));
+        String yuan = "%.2f".formatted(payAmountMinor / 100.0);
+        for (String phone : to) {
+            try {
+                smsPort.sendOrderPaid(phone, subOrderNo, yuan);
+            } catch (RuntimeException e) {
+                // 一个号发不出去不该拖累其余的 —— 逐个 try，否则第一个号有问题后面都收不到
+                log.warn("[notify] 来单短信没发出去 subOrderNo={} {}", subOrderNo, e.toString());
+            }
+        }
+    }
+
+    /**
+     * 来单邮件。发到这家店填的那个地址；没填就不发。
+     *
+     * <p>**五条通道里生产上唯一即开即用的一条** —— 邮件的四项配置早就齐了，
+     * 不像短信要等阿里云报备模板。所以它是「短信还发不出去」期间的实际主力。
+     *
+     * <p>内容是企微那四行的纯文本版：主题一眼看出金额与门店，正文给细节。
+     * 失败吞掉 —— 四条出口各自独立（留痕在 {@code sys_notify_log}，由 MailPort 的装饰器写）。
+     */
+    private void mailOrderPaid(String entityNo, String storeNo, String subOrderNo, long payAmountMinor) {
+        String to = recipients.email(storeNo).orElse(null);
+        if (to == null) {
+            return;     // 没填地址 —— 不是失败，没必要留痕
         }
         try {
-            smsPort.sendOrderPaid(phone, subOrderNo, "%.2f".formatted(payAmountMinor / 100.0));
+            String amount = "￥%.2f".formatted(payAmountMinor / 100.0);
+            mailPort.send(to, "新订单 " + amount,
+                    weComOrderAlert.plainText(entityNo, storeNo, subOrderNo, payAmountMinor));
         } catch (RuntimeException e) {
-            log.warn("[notify] 来单短信没发出去 subOrderNo={} {}", subOrderNo, e.toString());
+            log.warn("[notify] 来单邮件没发出去 subOrderNo={} {}", subOrderNo, e.toString());
         }
     }
 

@@ -35,6 +35,8 @@ export const STORE_SCOPED_ENDPOINTS: Record<string, string> = {
   mSaveNotifySwitch: "按 X-Store-No：改的是这家店的开关",
   mSaveNotifyWecom: "按 X-Store-No：企微群是这家店自己的",
   mTestNotifyWecom: "按 X-Store-No：往这家店的群发测试",
+  mSaveNotifyPhones: "按 X-Store-No：短信号是这家店自己的",
+  mSaveNotifyEmail: "按 X-Store-No：邮件地址是这家店自己的",
   mStats: "BizDashboardController#stats → orderService.stats(merchantNo, ctx.currentStoreScope())",
   mTodo: "BizDashboardController#todo → orderService.todo(..., ctx.currentStoreScope(), ...)",
   mCustomers: "BizDashboardController#customers → ctx.currentStoreScope()",

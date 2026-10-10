@@ -7,10 +7,9 @@ import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.entity.MsgPushToken;
-import ai.neargo.shop.message.entity.NotifyChannel;
 import ai.neargo.shop.message.mapper.MessageMappers.MessageMapper;
 import ai.neargo.shop.message.mapper.MessageMappers.PushTokenMapper;
-import ai.neargo.shop.message.notify.MerchantChannelService;
+import ai.neargo.shop.message.notify.MerchantNotifyRecipients;
 import ai.neargo.shop.message.notify.StubWeComBotSender;
 import ai.neargo.shop.notify.port.StubPushGateway;
 import ai.neargo.shop.spi.trade.OrderEvents;
@@ -57,7 +56,7 @@ class WeComOrderAlertFlowTest {
     @Autowired
     private OutboxDispatcher dispatcher;
     @Autowired
-    private MerchantChannelService channels;
+    private MerchantNotifyRecipients recipients;
     @Autowired
     private MchAccountMapper accountMapper;
     @Autowired
@@ -137,8 +136,7 @@ class WeComOrderAlertFlowTest {
 
     /** owner_no 存的是**门店号**（2026-10-10 订正：群按门店不按主体） */
     private void configureGroup(String storeNo, String url) {
-        channels.upsert(storeNo, NotifyChannel.TYPE_WEBHOOK, NotifyChannel.PROV_WECOM,
-                "{}", "{\"webhook\":\"" + url + "\"}", "test");
+        recipients.setWecom(storeNo, url, "test");
     }
 
     private java.util.List<MsgMessage> inbox(String userNo) {

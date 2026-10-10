@@ -40,12 +40,15 @@ public class MchNotifyPref extends BaseEntity {
     public static final String CH_SMS = MsgSceneChannel.CH_SMS;
     /** App 推送 */
     public static final String CH_PUSH = MsgSceneChannel.CH_PUSH;
+    /** 邮件（收件地址在 {@link MchNotifyRecipient#getEmail()}） */
+    public static final String CH_MAIL = MsgSceneChannel.CH_MAIL;
 
     /**
      * 商家能自己开关的四条。**顺序即 B 端页面上的顺序**，
      * 端上不要另写一份 —— 两份名单迟早分叉，而分叉的症状是「页面上少一个开关」。
      */
-    public static final List<String> SWITCHABLE = List.of(CH_WXSUB, CH_WEBHOOK, CH_SMS, CH_PUSH);
+    public static final List<String> SWITCHABLE =
+            List.of(CH_WXSUB, CH_WEBHOOK, CH_SMS, CH_MAIL, CH_PUSH);
 
     private String storeNo;
     private String scene;

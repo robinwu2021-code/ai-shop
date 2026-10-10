@@ -6,10 +6,9 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.message.NotifyScene;
 import ai.neargo.shop.message.entity.MchNotifyPref;
-import ai.neargo.shop.message.entity.NotifyChannel;
-import ai.neargo.shop.message.notify.MerchantChannelService;
+import ai.neargo.shop.message.entity.MchNotifyRecipient;
 import ai.neargo.shop.message.notify.MerchantNotifyPrefs;
-import ai.neargo.shop.message.notify.MerchantWecomWebhook;
+import ai.neargo.shop.message.notify.MerchantNotifyRecipients;
 import ai.neargo.shop.message.notify.WeComBotSender;
 import ai.neargo.shop.spi.notify.NotifyBizType;
 import org.springframework.context.annotation.Profile;
@@ -54,16 +53,17 @@ public class BizNotifySettingController {
             NotifyScene.SUB_ORDER_PAID, NotifyScene.AFTER_SALE_APPLIED, NotifyScene.REVIEW_CREATED);
 
     private final MerchantNotifyPrefs prefs;
-    private final MerchantChannelService channels;
-    private final MerchantWecomWebhook webhooks;
+    private final MerchantNotifyRecipients recipients;
     private final WeComBotSender sender;
+    private final ai.neargo.shop.spi.user.MerchantStaffPort staffPort;
 
-    public BizNotifySettingController(MerchantNotifyPrefs prefs, MerchantChannelService channels,
-                                      MerchantWecomWebhook webhooks, WeComBotSender sender) {
+    public BizNotifySettingController(MerchantNotifyPrefs prefs,
+                                      MerchantNotifyRecipients recipients, WeComBotSender sender,
+                                      ai.neargo.shop.spi.user.MerchantStaffPort staffPort) {
         this.prefs = prefs;
-        this.channels = channels;
-        this.webhooks = webhooks;
+        this.recipients = recipients;
         this.sender = sender;
+        this.staffPort = staffPort;
     }
 
     /**
@@ -76,20 +76,56 @@ public class BizNotifySettingController {
     }
 
     /**
-     * @param scenes     三个场景各一组开关，顺序即页面顺序
-     * @param wecomReady 这家店的企微群配过没有。<b>URL 本身不回传</b> —— 它是凭据
+     * @param scenes      三个场景各一组开关，顺序即页面顺序
+     * @param extraPhones 这家店自填的额外短信号（**原值回显** —— 店主要能核对填对没有）。
+     *                    店主自己的登录手机号恒发、不在这里，由 {@code ownerPhone} 单独给
+     * @param ownerPhone  店主的登录手机号，只读。页面上标成「登录手机号」且不可删
+     * @param email       邮件地址，原值回显；空 = 没填
+     * @param wecomReady  企微群配过没有。<b>URL 本身不回传</b> ——
+     *                    库里存的是明文（2026-10-10 的决定），但下发是另一回事：
+     *                    它是凭据，回显只给「配过没有」
      */
-    public record SettingVO(List<SceneSwitchesVO> scenes, boolean wecomReady) {
+    public record SettingVO(List<SceneSwitchesVO> scenes, List<String> extraPhones,
+                            String ownerPhone, String email, boolean wecomReady) {
     }
 
     @GetMapping("/biz/notify/setting")
     public SettingVO setting() {
         String storeNo = requireStore();
+        MchNotifyRecipient r = recipients.rowOf(storeNo);
         return new SettingVO(
                 SCENES.stream()
                         .map(sc -> new SceneSwitchesVO(sc, prefs.switchesOf(storeNo, sc)))
                         .toList(),
-                webhooks.of(storeNo).isPresent());
+                MerchantNotifyRecipients.splitPhones(r == null ? null : r.getSmsPhones()),
+                staffPort.ownerPhone(BizContext.current().merchantNo()).orElse(null),
+                r == null ? null : r.getEmail(),
+                recipients.wecomWebhook(storeNo).isPresent());
+    }
+
+    /**
+     * @param phones 完整的新名单（不是追加）—— 删一个就是传剩下的那些。
+     *               最多 {@link MchNotifyRecipient#MAX_EXTRA_PHONES} 个，超了整笔拒
+     */
+    public record PhonesReq(List<String> phones) {
+    }
+
+    @PutMapping("/biz/notify/sms-phones")
+    public SettingVO savePhones(@RequestBody PhonesReq req) {
+        recipients.setPhones(requireStore(), req == null ? List.of() : req.phones(),
+                SecurityUtils.currentUserNo());
+        return setting();
+    }
+
+    /** @param email 空 = 不发邮件 */
+    public record EmailReq(String email) {
+    }
+
+    @PutMapping("/biz/notify/email")
+    public SettingVO saveEmail(@RequestBody EmailReq req) {
+        recipients.setEmail(requireStore(), req == null ? null : req.email(),
+                SecurityUtils.currentUserNo());
+        return setting();
     }
 
     /**
@@ -110,28 +146,20 @@ public class BizNotifySettingController {
         return setting();
     }
 
-    /** @param webhook 企微群机器人地址。<b>进加密列，永不回显</b> */
+    /** @param webhook 企微群机器人地址。空 = 清掉。<b>存进去之后永不回显</b> */
     public record WecomReq(String webhook) {
     }
 
     /**
      * 存自己的企微群地址。
      *
-     * <p>校验（含「凭证 JSON 必须有 webhook 字段」与「加密密钥必须已配」）
-     * 都在 {@link MerchantChannelService#upsert} 里，与运营端那条入口同一份 ——
+     * <p>前缀校验在 {@link MerchantNotifyRecipients#setWecom} 里，与其余两条入口同一份 ——
      * 两处各写一遍校验，迟早有一处松。
      */
     @PutMapping("/biz/notify/wecom")
     public SettingVO saveWecom(@RequestBody WecomReq req) {
-        String storeNo = requireStore();
-        String url = req == null || req.webhook() == null ? "" : req.webhook().trim();
-        if (!url.startsWith("https://qyapi.weixin.qq.com/")) {
-            // 填错地址的后果是「开关开着却永远收不到」，而那时没有任何线索指向这一格
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        // owner_no 存的是**门店号**（群按门店不按主体，见 MerchantWecomWebhook 的注释）
-        channels.upsert(storeNo, NotifyChannel.TYPE_WEBHOOK, NotifyChannel.PROV_WECOM,
-                "{}", "{\"webhook\":\"" + url + "\"}", SecurityUtils.currentUserNo());
+        recipients.setWecom(requireStore(), req == null ? null : req.webhook(),
+                SecurityUtils.currentUserNo());
         return setting();
     }
 
@@ -144,7 +172,7 @@ public class BizNotifySettingController {
      */
     @PostMapping("/biz/notify/wecom/test")
     public boolean testWecom() {
-        String url = webhooks.of(requireStore())
+        String url = recipients.wecomWebhook(requireStore())
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
         return sender.sendMarkdown(NotifyBizType.TEST,
                 "**通知设置测试**\n> 看到这条，说明来单提醒能发到这个群", url);

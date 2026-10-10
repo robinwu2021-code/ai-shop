@@ -106,7 +106,8 @@ class BizEndpointPermTest {
              * 作用域由 BizContext.merchantNo 限住，改的永远是自己这家店的设置；
              * 要权限码的话，恰恰是收不到来单提醒的那个人没法去把开关打开。
              */
-            "/biz/notify/setting", "/biz/notify/wecom", "/biz/notify/wecom/test");
+            "/biz/notify/setting", "/biz/notify/wecom", "/biz/notify/wecom/test",
+            "/biz/notify/sms-phones", "/biz/notify/email");
 
     /**
      * 端点 → 需要的权限码。

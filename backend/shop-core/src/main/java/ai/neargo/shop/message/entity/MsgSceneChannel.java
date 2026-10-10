@@ -29,6 +29,8 @@ public class MsgSceneChannel extends BaseEntity {
     public static final String CH_WXSUB = "WXSUB";
     public static final String CH_PUSH = "PUSH";
     public static final String CH_SMS = "SMS";
+    /** 邮件。**五条通道里生产上唯一即开即用的那条** —— 不像短信要等阿里云报备模板 */
+    public static final String CH_MAIL = "MAIL";
     /**
      * 群机器人 Webhook（企微）。<b>不是发给某个人的</b> —— 受众仍记 B_STAFF，
      * 因为「这家店的人该不该被这条场景打扰」是同一个决定，

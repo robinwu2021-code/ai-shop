@@ -17,6 +17,11 @@ public final class MessageMappers {
             extends BaseMapper<ai.neargo.shop.message.entity.MchNotifyPref> {
     }
 
+    /** 门店的通知收件地址（一店一行，见 {@link ai.neargo.shop.message.entity.MchNotifyRecipient}） */
+    public interface MchNotifyRecipientMapper
+            extends BaseMapper<ai.neargo.shop.message.entity.MchNotifyRecipient> {
+    }
+
 
     private MessageMappers() {
     }

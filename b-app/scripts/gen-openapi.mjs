@@ -193,6 +193,8 @@ const RESPONSE_TYPES = {
   mSaveNotifySwitch: "NotifySetting",
   mSaveNotifyWecom: "NotifySetting",
   mTestNotifyWecom: "boolean",
+  mSaveNotifyPhones: "NotifySetting",
+  mSaveNotifyEmail: "NotifySetting",
   mFreightTemplate: "StoreFreightTemplate",
   mFreightTemplates: "StoreFreightTemplate[]",
   mSaveShipSetting: "ShipSetting",

@@ -708,6 +708,8 @@ export const httpApi: MerchantApi = {
   mSaveNotifyWecom: (webhook) =>
     http.put<NotifySetting>(E.mSaveNotifyWecom.path, { webhook }),
   mTestNotifyWecom: () => http.post<boolean>(E.mTestNotifyWecom.path),
+  mSaveNotifyPhones: (phones) => http.put<NotifySetting>(E.mSaveNotifyPhones.path, { phones }),
+  mSaveNotifyEmail: (email) => http.put<NotifySetting>(E.mSaveNotifyEmail.path, { email }),
 
   // ---- 进销存（P-18）
   mStockSummary: () => http.get<StockSummary>(E.mStockSummary.path),

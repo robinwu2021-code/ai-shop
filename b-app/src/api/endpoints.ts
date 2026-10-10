@@ -394,6 +394,9 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSaveNotifySwitch: { method: "PUT", path: "/biz/notify/setting", auth: true, summary: "改本店某个场景某条通道的开关" },
   // webhook 进加密列、永不回显 —— 它是凭据，拿到的人都能往那个群发消息
   mSaveNotifyWecom: { method: "PUT", path: "/biz/notify/wecom", auth: true, summary: "录入本店的企业微信群机器人地址" },
+  // 收件地址：短信号（店主登录手机号之外最多两个）与邮件地址
+  mSaveNotifyPhones: { method: "PUT", path: "/biz/notify/sms-phones", auth: true, summary: "改本店的额外短信接收号" },
+  mSaveNotifyEmail: { method: "PUT", path: "/biz/notify/email", auth: true, summary: "改本店的邮件接收地址" },
   mTestNotifyWecom: { method: "POST", path: "/biz/notify/wecom/test", auth: true, summary: "往本店的企微群发一条测试" },
 
   // ── 进销存（P-18）。**注释别夹在 `{` 与 `method:` 之间** ——

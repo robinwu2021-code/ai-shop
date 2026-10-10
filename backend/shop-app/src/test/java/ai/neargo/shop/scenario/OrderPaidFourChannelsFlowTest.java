@@ -10,14 +10,15 @@ import ai.neargo.shop.message.entity.MchNotifyPref;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.entity.MsgPushToken;
 import ai.neargo.shop.message.entity.MsgSubscribe;
-import ai.neargo.shop.message.entity.NotifyChannel;
+import ai.neargo.shop.message.entity.SysNotifyLog;
 import ai.neargo.shop.message.mapper.MessageMappers.MchNotifyPrefMapper;
 import ai.neargo.shop.message.mapper.MessageMappers.MessageMapper;
 import ai.neargo.shop.message.mapper.MessageMappers.PushTokenMapper;
 import ai.neargo.shop.message.mapper.MessageMappers.SubscribeMapper;
-import ai.neargo.shop.message.notify.MerchantChannelService;
+import ai.neargo.shop.message.notify.MerchantNotifyRecipients;
 import ai.neargo.shop.message.notify.MerchantNotifyPrefs;
 import ai.neargo.shop.message.notify.StubWeComBotSender;
+import ai.neargo.shop.notify.port.StubMailGateway;
 import ai.neargo.shop.notify.port.StubPushGateway;
 import ai.neargo.shop.notify.port.StubSmsGateway;
 import ai.neargo.shop.notify.port.StubWxSubscribeGateway;
@@ -81,7 +82,7 @@ class OrderPaidFourChannelsFlowTest {
     @Autowired
     private MchNotifyPrefMapper prefMapper;
     @Autowired
-    private MerchantChannelService channels;
+    private MerchantNotifyRecipients recipients;
     @Autowired
     private MerchantNotifyPrefs prefs;
     @Autowired
@@ -91,6 +92,10 @@ class OrderPaidFourChannelsFlowTest {
     @Autowired
     private StubSmsGateway smsStub;
     @Autowired
+    private StubMailGateway mailStub;
+    @Autowired
+    private ai.neargo.shop.message.mapper.MessageMappers.NotifyLogMapper notifyLogMapper;
+    @Autowired
     private StubWeComBotSender botStub;
 
     @BeforeEach
@@ -99,6 +104,7 @@ class OrderPaidFourChannelsFlowTest {
         wxStub.clear();
         pushStub.clear();
         smsStub.clear();
+        mailStub.clear();
         botStub.clear();
     }
 
@@ -116,6 +122,68 @@ class OrderPaidFourChannelsFlowTest {
         assertThat(botStub.sent()).as("企微群").hasSize(1);
         assertThat(smsTo("13700000001")).as("短信").hasSize(1);
         assertThat(inbox(o.userNo)).as("站内信（恒发）").isNotEmpty();
+    }
+
+    @Test
+    @DisplayName("★★★ 短信到店主 + 这家店自填的两个号（用户 2026-10-10）")
+    void smsGoesToOwnerPlusExtras() throws Exception {
+        Owner o = anOwner("wx-open-f4-10", "M-F4-10", "cid-f4-10", "13700000010");
+        recipients.setPhones(o.storeNo(), List.of("13700000011", "13700000012"), "test");
+
+        publishPaid(o.entityNo(), "SUB-F4-10", 600L);
+
+        assertThat(smsTo("13700000010")).as("店主那一个恒发").hasSize(1);
+        assertThat(smsTo("13700000011")).hasSize(1);
+        assertThat(smsTo("13700000012")).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("★★ 店主把自己的号又填了一遍 → **只发一条**（短信按条计费）")
+    void ownerPhoneIsNotSentTwice() throws Exception {
+        Owner o = anOwner("wx-open-f4-11", "M-F4-11", "cid-f4-11", "13700000013");
+        recipients.setPhones(o.storeNo(), List.of("13700000013"), "test");
+
+        publishPaid(o.entityNo(), "SUB-F4-11", 600L);
+
+        assertThat(smsTo("13700000013")).as("去重了才对").hasSize(1);
+    }
+
+    @Test
+    @DisplayName("★★★ 邮件发到这家店填的地址；**没填就不发**（用户 2026-10-10）")
+    void mailGoesToConfiguredAddress() throws Exception {
+        Owner o = anOwner("wx-open-f4-12", "M-F4-12", "cid-f4-12", "13700000014");
+        recipients.setEmail(o.storeNo(), "shop@example.com", "test");
+
+        publishPaid(o.entityNo(), "SUB-F4-12", 12_80L);
+
+        assertThat(mailTo("shop@example.com")).singleElement().satisfies(m -> {
+            assertThat(m.subject()).contains("新订单").contains("￥12.80");
+            // 与企微群里那条是同一份排版，只是没有 markdown 记号
+            assertThat(m.body()).contains("SUB-F4-12").doesNotContain("**").doesNotContain("> ");
+        });
+
+        // 另一家店没填地址 —— 一封都不该发
+        Owner none = anOwner("wx-open-f4-13", "M-F4-13", "cid-f4-13", "13700000015");
+        int before = mailStub.all().size();
+        publishPaid(none.entityNo(), "SUB-F4-13", 100L);
+        assertThat(mailStub.all()).as("没填地址就不发").hasSize(before);
+    }
+
+    @Test
+    @DisplayName("★★★ 关掉邮件 → 不发邮件，**其余四条照发**")
+    void merchantCanMuteMail() throws Exception {
+        Owner o = anOwner("wx-open-f4-14", "M-F4-14", "cid-f4-14", "13700000016");
+        recipients.setEmail(o.storeNo(), "muted@example.com", "test");
+        configureGroup(o.storeNo());
+        grantWx(o.userNo());
+        prefs.set(o.storeNo(), SCENE, MchNotifyPref.CH_MAIL, false, "test");
+
+        publishPaid(o.entityNo(), "SUB-F4-14", 700L);
+
+        assertThat(mailTo("muted@example.com")).isEmpty();
+        assertThat(smsTo("13700000016")).hasSize(1);
+        assertThat(botStub.sent()).hasSize(1);
+        assertThat(pushTo("cid-f4-14")).hasSize(1);
     }
 
     @Test
@@ -248,6 +316,64 @@ class OrderPaidFourChannelsFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 每条**真的发过**的通道，在 sys_notify_log 里都有一行（用户 2026-10-10）")
+    void everyAttemptedChannelIsLogged() throws Exception {
+        Owner o = anOwner("wx-open-f4-15", "M-F4-15", "cid-f4-15", "13700000017");
+        grantWx(o.userNo());
+        configureGroup(o.storeNo());
+        recipients.setEmail(o.storeNo(), "log@example.com", "test");
+        long before = logCount();
+
+        publishPaid(o.entityNo(), "SUB-F4-15", 12_80L);
+
+        /*
+         * 四条外发通道各一行。**站内信不在这张表里** —— 它本身就是 msg_message 的一行，
+         * 那是事实记录，不是投递记录；把它也记进来会让「发了几条」这个数字说不清。
+         */
+        var rows = logsSince(before);
+        assertThat(rows.stream().map(SysNotifyLog::getChannel).toList())
+                .as("四条外发通道都要留痕")
+                .contains(SysNotifyLog.WXSUB, SysNotifyLog.PUSH,
+                        SysNotifyLog.SMS, SysNotifyLog.MAIL, SysNotifyLog.WEBHOOK);
+        assertThat(rows).allSatisfy(r -> assertThat(r.getStatus())
+                .as("成功失败都要有个明确状态，不能空着")
+                .isIn(SysNotifyLog.SENT, SysNotifyLog.FAILED));
+    }
+
+    @Test
+    @DisplayName("★★★ **没配地址的通道不留痕** —— 那不是失败，是这条通道对这家店不存在")
+    void unconfiguredChannelLeavesNoRow() throws Exception {
+        // 不配群、不配邮箱、不授权微信，只有 App 与短信（店主号恒有）
+        Owner o = anOwner("wx-open-f4-16", "M-F4-16", "cid-f4-16", "13700000018");
+        long before = logCount();
+
+        publishPaid(o.entityNo(), "SUB-F4-16", 500L);
+
+        var channels = logsSince(before).stream().map(SysNotifyLog::getChannel).toList();
+        assertThat(channels).as("企微群没配，不该有行").doesNotContain(SysNotifyLog.WEBHOOK);
+        assertThat(channels).as("邮箱没填，不该有行").doesNotContain(SysNotifyLog.MAIL);
+        assertThat(channels).as("App 配了设备，该有行").contains(SysNotifyLog.PUSH);
+    }
+
+    @Test
+    @DisplayName("★★ 门店级通道的**顺序**写在一份名单里，不是靠代码行序")
+    void storeChannelOrderIsDeclared() throws Exception {
+        Owner o = anOwner("wx-open-f4-17", "M-F4-17", "cid-f4-17", "13700000019");
+        configureGroup(o.storeNo());
+        recipients.setEmail(o.storeNo(), "order@example.com", "test");
+        long before = logCount();
+
+        publishPaid(o.entityNo(), "SUB-F4-17", 500L);
+
+        // 企微 → 短信 → 邮件：按 NotificationConsumer.STORE_CHANNEL_ORDER
+        var seq = logsSince(before).stream().map(SysNotifyLog::getChannel)
+                .filter(c -> List.of(SysNotifyLog.WEBHOOK, SysNotifyLog.SMS,
+                        SysNotifyLog.MAIL).contains(c))
+                .toList();
+        assertThat(seq).containsExactly(SysNotifyLog.WEBHOOK, SysNotifyLog.SMS, SysNotifyLog.MAIL);
+    }
+
+    @Test
     @DisplayName("★★★ 站内信**没有开关** —— 想关 INAPP 的请求被拒（§2.1）")
     void inappHasNoSwitch() {
         assertThat(prefs.on("ST-F4-7", SCENE, "INAPP")).as("问它恒 true").isTrue();
@@ -321,10 +447,9 @@ class OrderPaidFourChannelsFlowTest {
         subscribeMapper.insert(s);
     }
 
-    /** owner_no 存**门店号** —— 群按门店不按主体 */
+    /** 群按门店 —— 真源是 mch_notify_recipient.wecom_webhook */
     private void configureGroup(String storeNo) {
-        channels.upsert(storeNo, NotifyChannel.TYPE_WEBHOOK, NotifyChannel.PROV_WECOM,
-                "{}", "{\"webhook\":\"" + GROUP + "\"}", "test");
+        recipients.setWecom(storeNo, GROUP, "test");
     }
 
     private void publishPaid(String entityNo, String subOrderNo, long minor) {
@@ -345,10 +470,27 @@ class OrderPaidFourChannelsFlowTest {
         return smsStub.all().stream().filter(s -> phone.equals(s.phone())).toList();
     }
 
+    private List<StubMailGateway.Sent> mailTo(String to) {
+        return mailStub.all().stream().filter(m -> to.equals(m.to())).toList();
+    }
+
     private List<MsgMessage> inbox(String userNo) {
         return DataScopeContext.executeWithoutScope(() ->
                 messageMapper.selectList(Wrappers.<MsgMessage>lambdaQuery()
                         .eq(MsgMessage::getReceiverNo, userNo)));
+    }
+
+    private long logCount() {
+        return DataScopeContext.executeWithoutScope(() ->
+                notifyLogMapper.selectCount(Wrappers.<SysNotifyLog>lambdaQuery()));
+    }
+
+    /** 这一单之后新写进去的那些，按 id 升序 —— 顺序断言靠它 */
+    private List<SysNotifyLog> logsSince(long beforeCount) {
+        List<SysNotifyLog> all = DataScopeContext.executeWithoutScope(() ->
+                notifyLogMapper.selectList(Wrappers.<SysNotifyLog>lambdaQuery()
+                        .orderByAsc(SysNotifyLog::getId)));
+        return all.subList((int) Math.min(beforeCount, all.size()), all.size());
     }
 
     private void drainOutbox() {
