@@ -810,7 +810,7 @@
       },
       "usage": {
         "b-app": 196,
-        "c-app": 77
+        "c-app": 78
       }
     },
     {
@@ -904,7 +904,7 @@
       },
       "usage": {
         "b-app": 52,
-        "c-app": 15
+        "c-app": 16
       }
     },
     {
@@ -2126,7 +2126,7 @@
       ],
       "usage": {
         "b-app": 61,
-        "c-app": 36,
+        "c-app": 37,
         "lib": 1
       },
       "note": "空态",
@@ -4909,8 +4909,15 @@
       ],
       "libClassHits": 8,
       "localSelectors": 13,
-      "localCssLines": 66,
+      "localCssLines": 61,
       "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        },
         {
           "id": "listrow",
           "label": "横排行",
@@ -5564,9 +5571,9 @@
         "sh-scaffold",
         "sh-trace"
       ],
-      "libClassHits": 39,
-      "localSelectors": 9,
-      "localCssLines": 9,
+      "libClassHits": 41,
+      "localSelectors": 10,
+      "localCssLines": 10,
       "rolled": []
     },
     {
@@ -6034,7 +6041,8 @@
       "gap": false,
       "rule": "showModal\\(|showActionSheet\\(",
       "pages": [
-        "b-app/goods-edit"
+        "b-app/goods-edit",
+        "b-app/store-scope-polygon"
       ]
     },
     {

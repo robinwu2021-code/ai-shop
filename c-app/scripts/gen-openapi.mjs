@@ -145,6 +145,11 @@ const RESPONSE_TYPES = {
   // 于是 check-generated-docs 卡在第一步，**三份 spec 一份都生不出来，挡所有人**。
   // 类型取自契约自己声明的那行：`track(t: string): Promise<TrackView | null>`。
   track: "TrackView",
+  // 同一条线后加的两个，同样漏了登记（这张表漏一条，三份 spec 一份都生不出来）。
+  // 类型取自契约自己声明的那两行。
+  trackMine: "TrackView",
+  // `{ url: string }` 没有对应 schema，用 object 兜底并在此说明 —— 与 toggleFavoriteStore 同一处理
+  trackMiniLink: "object",
   // 这三条曾长期缺席：端点表里有、契约方法也有返回类型，但漏配了这张表，
   // 生成器于是拒绝输出（见下方 missingResp 守卫）。结果是**契约里没有它们**，
   // 而后端明明实现了 —— 所有按契约算的覆盖率都因此低估后端。

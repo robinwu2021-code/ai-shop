@@ -5686,6 +5686,24 @@
           "ar": "تم الشحن من قبل التاجر، سيتم تحديث التتبّع قريبًا"
         },
         {
+          "key": "track.notRecipientTip",
+          "zh-CN": "当前登录的手机号与收货人不一致，换收货人手机号登录后可查看。",
+          "en": "The phone you signed in with differs from the recipient. Sign in with the recipient’s phone to view.",
+          "ar": "رقم الهاتف الذي سجّلت به يختلف عن المستلم. سجّل الدخول برقم المستلم لعرضه."
+        },
+        {
+          "key": "track.notRecipientTitle",
+          "zh-CN": "这单不是寄给你的",
+          "en": "Not addressed to you",
+          "ar": "هذا الطرد ليس موجّهًا إليك"
+        },
+        {
+          "key": "track.openInMini",
+          "zh-CN": "在小程序中打开",
+          "en": "Open in Mini Program",
+          "ar": "افتح في البرنامج المصغّر"
+        },
+        {
           "key": "track.receiverTitle",
           "zh-CN": "收货信息",
           "en": "Delivery",
@@ -25983,6 +26001,12 @@
           "ar": "محاولات كثيرة جدًا، يرجى المحاولة لاحقًا"
         },
         {
+          "key": "err.track.not_recipient",
+          "zh-CN": "这单不是寄给你的，当前手机号与收货人不一致",
+          "en": "This parcel is not addressed to your phone number",
+          "ar": "هذا الطرد غير موجّه إلى رقم هاتفك"
+        },
+        {
           "key": "err.trade.count_already_open",
           "zh-CN": "已经有一张盘点单开着（{0}），先把它盘完或作废",
           "en": "A stocktake is already open ({0}); finish or void it first",
@@ -34693,7 +34717,8 @@
           "SPEC_TEMPLATE_DUPLICATE",
           "SPEC_VALUE_NEEDS_QUANTITY",
           "NOTIFY_WX_QUOTA_EMPTY",
-          "NOTIFY_NO_DEVICE"
+          "NOTIFY_NO_DEVICE",
+          "TRACK_NOT_RECIPIENT"
         ],
         "zh": "错误码（分段见 docs/api/响应格式规范.md §3，与本枚举的同步有守卫测试锁住）。",
         "module": "shop-base"
