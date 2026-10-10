@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 431,
+        "b-app": 430,
         "c-app": 83
       }
     },
@@ -317,7 +317,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 411,
+        "b-app": 410,
         "c-app": 282
       }
     },
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 133,
+        "b-app": 135,
         "c-app": 54
       }
     },
@@ -4250,8 +4250,8 @@
         "sh-trace"
       ],
       "libClassHits": 161,
-      "localSelectors": 24,
-      "localCssLines": 98,
+      "localSelectors": 23,
+      "localCssLines": 95,
       "rolled": []
     },
     {
@@ -4908,8 +4908,8 @@
         "sh-scaffold"
       ],
       "libClassHits": 8,
-      "localSelectors": 13,
-      "localCssLines": 61,
+      "localSelectors": 12,
+      "localCssLines": 58,
       "rolled": [
         {
           "id": "sysmodal",
@@ -5572,8 +5572,8 @@
         "sh-trace"
       ],
       "libClassHits": 41,
-      "localSelectors": 10,
-      "localCssLines": 10,
+      "localSelectors": 9,
+      "localCssLines": 9,
       "rolled": []
     },
     {
