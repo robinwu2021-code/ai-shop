@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <h2>失效靠版本探针，不靠人工接线</h2>
  * 每次 {@link #get()} 先用一条很轻的聚合 SQL 问「影响判定的那五张表变了没有」
- * （{@link ReachMatchMapper#snapshotVersion()}：{@code COUNT(*) + SUM(version)}，
+ * （{@link ReachMatchMapper#snapshotVersion()}：每张表的 {@code COUNT(*)} 与 {@code SUM(version)} 拼成一个串，
  * 对 insert / update / 物理删都敏感、与时间精度无关）。变了就重装，没变就复用。
  *
  * <p><b>为什么不在写入口 evict</b>：影响快照的写路径散在 6 个 service 的二十多个事务方法里
@@ -37,7 +37,7 @@ public class ReachSnapshotCache {
     private final ReachGeoProps props;
 
     private final AtomicReference<ReachSnapshot> snapshot = new AtomicReference<>();
-    private final AtomicLong cachedVersion = new AtomicLong(Long.MIN_VALUE);
+    private final AtomicReference<String> cachedVersion = new AtomicReference<>(null);
     private final AtomicLong probeSkipUntilMs = new AtomicLong(0);
     /** 对照量：测试据此断言「复用时没有重装」「数据变了会重装」 */
     private final AtomicLong loadCount = new AtomicLong(0);
@@ -54,8 +54,8 @@ public class ReachSnapshotCache {
         if (cur != null && now < probeSkipUntilMs.get()) {
             return cur;
         }
-        long version = DataScopeContext.executeWithoutScope(mapper::snapshotVersion);
-        if (cur != null && version == cachedVersion.get()) {
+        String version = DataScopeContext.executeWithoutScope(mapper::snapshotVersion);
+        if (cur != null && version != null && version.equals(cachedVersion.get())) {
             probeSkipUntilMs.set(now + props.getSnapshotProbeSkipMs());
             return cur;
         }
@@ -79,7 +79,7 @@ public class ReachSnapshotCache {
      */
     public void evict() {
         probeSkipUntilMs.set(0);
-        cachedVersion.set(Long.MIN_VALUE);
+        cachedVersion.set(null);
     }
 
     /** 装载次数，仅供测试断言缓存真的在复用 */

@@ -71,29 +71,50 @@ public interface ReachMatchMapper {
     List<CellHitRow> cellHits(@Param("tokens") List<String> tokens, @Param("storeNo") String storeNo);
 
     /**
-     * 门店属性快照的<b>版本探针</b>（ADR-034）：影响判定的五张表的 {@code COUNT(*) + SUM(version)}。
+     * 门店属性快照的<b>版本探针</b>（ADR-034）：影响判定的五张表、每张表的
+     * {@code COUNT(*)} 与 {@code SUM(version)}，<b>拼成一个字符串</b>。
      *
      * <p>为什么是这两个量：新增/物理删改变 {@code COUNT(*)}；{@code updateById} 走 MyBatis-Plus 乐观锁
      * （{@code BaseEntity.version} 带 {@code @Version}）必然递增 {@code version}。于是 insert / update / delete
-     * 三种写操作都会改变这个数，<b>且与时间精度无关</b> —— 同一毫秒内的修改也测得出来。
+     * 三种写操作都会改变它，<b>且与时间精度无关</b> —— 同一毫秒内的修改也测得出来。
+     *
+     * <p>★ <b>为什么是拼接而不是相加</b>（2026-10-10 改）。第一版把这 10 个聚合<b>加成一个数</b>，
+     * 那是有损的，而且碰撞一点都不难凑：
+     * <ul>
+     *   <li>跨表抵消：{@code mch_store} 删掉一行（−1）、{@code mch_service_area} 插进一行（+1）→ 和不变；</li>
+     *   <li>表内抵消：删掉 {@code version=V} 的一行（COUNT −1、SUM −V），
+     *       另有若干行的 version 合计 +V+1 → 和不变。</li>
+     * </ul>
+     * 和不变 = 探针判「没变」= 快照不重装，而门店属性已经变了。症状是**商品在买家那儿静默消失**
+     * （门店 meta 读到旧的）或反过来，零报错。
+     *
+     * <p><b>说清边界</b>：抵消要求某处 {@code COUNT(*)} 真的减少，而本库大部分删除是全局逻辑删
+     * （{@code delete(wrapper)} 被改写成 {@code UPDATE deleted=1}，COUNT 不减）。真能物理删的是
+     * 「范围子集物理删后重插」那条路（{@code mch_channel_area}）与多边形项的清理。
+     * 所以这是**可证的信息损失 + 存在真实触发路径**，但我<b>没有</b>证明它就是 2026-10-10 全量跑里
+     * {@code M9bBizGoodsFlowTest#onSaleGoodsIsVisibleToBuyers} 那一红的原因 ——
+     * 那一条仍在查。改成拼接是因为「加成一个数」本身不该留着，不是因为已经抓到现行。
+     *
+     * <p>拼接之后每个聚合占自己的位置，任一变化都改变整个串，不存在抵消。代价是多几个字节。
      *
      * <p>这替掉了「在每个写入口手工 evict 缓存」：那条路要覆盖 6 个 service 的二十多个事务方法，
      * 漏一处的症状是「商家改完范围，买家几十秒内看不到」，而且不报错。
      * 探针让正确性由机器保证，新增写路径不需要任何人记得接线。
      */
     @Select("""
-            SELECT (SELECT COUNT(*) FROM mch_entity)
-                 + (SELECT COALESCE(SUM(version), 0) FROM mch_entity)
-                 + (SELECT COUNT(*) FROM mch_store)
-                 + (SELECT COALESCE(SUM(version), 0) FROM mch_store)
-                 + (SELECT COUNT(*) FROM mch_service_area)
-                 + (SELECT COALESCE(SUM(version), 0) FROM mch_service_area)
-                 + (SELECT COUNT(*) FROM mch_fulfillment_channel)
-                 + (SELECT COALESCE(SUM(version), 0) FROM mch_fulfillment_channel)
-                 + (SELECT COUNT(*) FROM mch_channel_area)
-                 + (SELECT COALESCE(SUM(version), 0) FROM mch_channel_area)
+            SELECT CONCAT_WS('/',
+                   (SELECT COUNT(*) FROM mch_entity),
+                   (SELECT COALESCE(SUM(version), 0) FROM mch_entity),
+                   (SELECT COUNT(*) FROM mch_store),
+                   (SELECT COALESCE(SUM(version), 0) FROM mch_store),
+                   (SELECT COUNT(*) FROM mch_service_area),
+                   (SELECT COALESCE(SUM(version), 0) FROM mch_service_area),
+                   (SELECT COUNT(*) FROM mch_fulfillment_channel),
+                   (SELECT COALESCE(SUM(version), 0) FROM mch_fulfillment_channel),
+                   (SELECT COUNT(*) FROM mch_channel_area),
+                   (SELECT COALESCE(SUM(version), 0) FROM mch_channel_area))
             """)
-    long snapshotVersion();
+    String snapshotVersion();
 
     /** 行政级/聚落级命中的一行 */
     record AreaHitRow(String storeNo, String areaNo, String mode) {
