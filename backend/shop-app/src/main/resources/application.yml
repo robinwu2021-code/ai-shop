@@ -312,7 +312,7 @@ shop:
     # 不该把页面打挂（同 shop.person.phone-pepper 的取舍）。
     track-key: ${SHIP_TRACK_KEY:}
     # 看件令牌与短链、URL Link 的共同寿命（天）。短信会被转发、截图，给它有限寿命
-    track-ttl-days: ${SHIP_TRACK_TTL_DAYS:30}
+    track-ttl-days: ${SHIP_TRACK_TTL_DAYS:5}
     # 短链域名前缀，不带尾斜杠。短信里拼的是 <base>/<code>
     short-link-base: ${SHIP_SHORT_LINK_BASE:https://s.hxmall.top}
     # 看件页在小程序里的路径（URL Link 用），不带前导斜杠
