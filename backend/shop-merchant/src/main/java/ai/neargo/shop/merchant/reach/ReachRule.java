@@ -1,6 +1,7 @@
 package ai.neargo.shop.merchant.reach;
 
 import ai.neargo.shop.common.Fulfillments;
+import ai.neargo.shop.spi.reach.ConsumerProfile;
 import ai.neargo.shop.spi.user.CommunityQueryPort.CommunityRef;
 
 import java.util.Collection;
@@ -109,6 +110,122 @@ public final class ReachRule {
             return true;
         }
         return covers(s, r, c);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // 新判定（ADR-034）：命中由 HitFinder 查、属性由快照给，这里只做组合。
+    // 与上面那组的区别：没有「includes 为空 + 快递/自送 = 全平台」这条隐式分支 ——
+    // 「不限」必须是显式的 UNLIMITED 范围项。上面那组在调用方迁完后删除。
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * 这家店对这个消费者可不可见 —— <b>全平台唯一的组合规则</b>。
+     *
+     * <ol>
+     *   <li><b>fail-closed</b>：店有行政级排除而消费者没有区划码、或有多边形排除而没有坐标 → 不可见。
+     *       不能证明「不在排除里」就不放行（宁可少卖不可错卖）。
+     *       聚落级排除<b>不</b>收紧 —— 聚落解析是尽力而为，收紧会让所有纯定位用户看不到任何
+     *       「排除了某一栋楼」的店，不成比例。</li>
+     *   <li><b>排除先算、永远赢</b>：任一排除项命中即不可见（含「框了深圳、点名纳入某小区」那种矛盾输入）。
+     *       边界 cell 命中的排除多边形要精判。</li>
+     *   <li><b>纳入再并</b>：确定命中的纳入项 ∪ 精判通过的边界纳入项。</li>
+     *   <li><b>路再闸</b>：任一路可达即可见。SUBSET 路只认它勾的那几条纳入项（「不限」不参与子集）；
+     *       「全部」路有任一纳入项即可达，否则看「不限」—— 而「不限」只对快递/自送为真，
+     *       自提没有落点。</li>
+     *   <li><b>没有任何纳入命中、也没有「不限」→ 不可见</b>。没框范围的店对谁都不可见。</li>
+     * </ol>
+     */
+    public static boolean decide(StoreMeta s, StoreHits h, ConsumerProfile p, PolygonProbe polys) {
+        if (s == null || p == null) {
+            return false;
+        }
+        StoreHits hits = h == null ? StoreHits.empty() : h;
+        if (excluded(s, hits, p, polys)) {
+            return false;
+        }
+        Set<String> included = included(hits, p, polys);
+        for (Route r : s.routes()) {
+            if (routeReaches(s, included, r)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 结算时这一路能不能选。与 {@link #decide} 只差一处：
+     * <b>自提选「全部」时不看买家在哪个小区</b> —— 自提的地理约束在取货点上
+     * （下单那道「取货点这家店送不送」的闸），买家住哪儿与能不能去取无关。
+     * 否则「自送不限范围、也支持到店自取」的商家，买家一选自提就被拒。
+     *
+     * <p>排除照样先减（含 fail-closed）：商家明说了不服务那里。
+     */
+    public static boolean selectable(StoreMeta s, StoreHits h, ConsumerProfile p, Route r, PolygonProbe polys) {
+        if (s == null || p == null || r == null) {
+            return false;
+        }
+        StoreHits hits = h == null ? StoreHits.empty() : h;
+        if (excluded(s, hits, p, polys)) {
+            return false;
+        }
+        if (!r.subset() && Fulfillments.isPickup(r.channel())) {
+            return true;
+        }
+        return routeReaches(s, included(hits, p, polys), r);
+    }
+
+    /** 排除判定：fail-closed + 确定命中 + 边界精判 */
+    private static boolean excluded(StoreMeta s, StoreHits h, ConsumerProfile p, PolygonProbe polys) {
+        if (s.hasAdminExclude() && !p.hasRegion()) {
+            return true;
+        }
+        if (s.hasPolygonExclude() && !p.hasCoords()) {
+            return true;
+        }
+        if (!h.excludeAreaNos().isEmpty()) {
+            return true;
+        }
+        for (String areaNo : h.boundaryExcludeAreaNos()) {
+            if (polys.covers(areaNo, p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 确定命中的纳入项 ∪ 精判通过的边界纳入项 */
+    private static Set<String> included(StoreHits h, ConsumerProfile p, PolygonProbe polys) {
+        if (h.boundaryIncludeAreaNos().isEmpty()) {
+            return h.includeAreaNos();
+        }
+        Set<String> out = new LinkedHashSet<>(h.includeAreaNos());
+        for (String areaNo : h.boundaryIncludeAreaNos()) {
+            if (polys.covers(areaNo, p)) {
+                out.add(areaNo);
+            }
+        }
+        return out;
+    }
+
+    private static boolean routeReaches(StoreMeta s, Set<String> included, Route r) {
+        if (r.subset()) {
+            // 「不限」不参与子集：子集说的是「这一路只服务我框的其中几块」
+            for (String areaNo : included) {
+                if (r.subsetAreaNos().contains(areaNo)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (!included.isEmpty()) {
+            return true;
+        }
+        return s.unlimited() && unlimitedChannel(r.channel());
+    }
+
+    /** 「不限」对哪几路成立：快递与自送没有落点约束；自提有（取货点），「不限」对它无意义 */
+    private static boolean unlimitedChannel(String channel) {
+        return Fulfillments.EXPRESS.equals(channel) || Fulfillments.MERCHANT_DELIVERY.equals(channel);
     }
 
     /** 在候选小区里筛出送得到的（正向展开）。保持候选的顺序、去重 */
