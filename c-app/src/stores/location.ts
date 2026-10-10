@@ -555,10 +555,29 @@ export const useLocationStore = defineStore("location", {
       // 同上：有聚落就绑得上，点交给下单时匹配
       if (c) {
         await community.bind(c, p);
+        this.coarseRegion = null;   // 有聚落了，上一次留下的「区」不再参与
         return true;
       }
-      // 有坐标但一个聚落都没落进（新城区）—— 也算没换成，调用方同样要说一句
-      return false;
+      /*
+       * ★ **有坐标、但一个聚落都没落进 —— 必须清掉旧归属，按这个地址的区筛。**
+       *
+       * 这是 useTransient 里那个 bug 的孪生，在切收货地址这条路上（switchTo →
+       * 这里）一直没修。2026-10-10 用户上报：从「家·嘉逸花园」切到「家·景滑村」
+       * （景滑村在山西运城临猗县，有坐标但那儿没有我们的聚落），**产品列表没变**。
+       * 根因就是这里：loadNearby 回空、c 为 undefined，原来直接 return false，
+       * 而旧归属（嘉逸花园）原封不动 —— 首页 `communityNo ? ... : regionCode` 于是
+       * 继续按嘉逸花园列深圳的货。切了地址、顶栏变了、货没变。
+       *
+       * 清掉之后首页回落到这个地址的区。regionCode 由 resolveLocation 给（Address 本身
+       * 只有省市区名字、没有码）。返回值语义也跟着明确：**商品池有没有跟着这个地址变** ——
+       * 按区筛到了就是变了（true）；连区都解析不出（极罕见）才算真没换（false）。
+       * 调用方的「该地址未设置定位点，商品仍按原范围」只在真没变时说，不会再误报。
+       */
+      community.clear();
+      this.coarseRegion = ctx?.regionCode
+        ? { code: ctx.regionCode, name: ctx.regionName ?? "" }
+        : null;
+      return !!ctx?.regionCode;
     },
   },
 
