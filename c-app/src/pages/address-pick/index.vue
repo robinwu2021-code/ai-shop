@@ -286,7 +286,22 @@ function chooseHere() {
  * 否则顶栏挂着「当前位置 · XX」而货已经按这条地址换过了。
  */
 async function pickAddress(a: Address) {
-  await location.switchTo(a.addressId).catch(() => null);
+  const r = await location.switchTo(a.addressId).catch(() => null);
+  /*
+   * ★ **没换成也要说一句** —— 与地址页的 `useHere` 同一条规矩，这里此前是哑的。
+   *
+   * 没坐标的地址（微信导入、粘贴识别、存量手填）推不出聚落，归属保持不变，
+   * 那是对的；但一声不吭就成了「顶栏变了、商品没变」，他无从判断是坏了还是本该如此。
+   * 两条切地址的路只有一条会解释，另一条静默，是更糟的一种不一致：
+   * 同一件事在两个入口下表现不同。
+   */
+  if (r && !r.rebound) {
+    uni.showToast({
+      title: String(t("address.nowHereNoCoord", { name: a.tag || a.detail })),
+      icon: "none",
+      duration: 3000,
+    });
+  }
   uni.navigateBack();
 }
 

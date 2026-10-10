@@ -112,21 +112,26 @@ export const useLocationStore = defineStore("location", {
      * 此刻看到的货就是按那个点算的 —— 顶栏还显示「家」就是在说假话。
      */
     label: (s) => {
+      /*
+       * ★ **主动挑的那个点排在最前 —— 与 {@link browsePointE6} 同序。**
+       *
+       * 这两个 getter 必须同序：一个决定顶栏说什么，一个决定按哪个点取货。
+       * `browsePointE6` 的注释写着「优先级与 label 同序」，而 label 此前把
+       * `pickedByUser && active` 放在 transient 前面 —— **两边口径相反**。
+       * 后果（2026-10-10 用户在小程序上报）：从地图上选了点，货按新点换了，
+       * **顶栏还显示上次挑的那条收货地址**。这是「切了位置顶栏没变」那个老缺陷的
+       * 另一半：上次修的是 transient 被 here 压过，这次是被 active 压过。
+       *
+       * 两者不会打架：`switchTo` 会把 transient 清掉（见那里的注释），
+       * 所以谁在就是谁，判据是**最近一次明确动作**。
+       * transientName 为空时（「用当前位置」没解析出聚落名）才往下让，
+       * 那条路本来就该显示定位到的地名。
+       */
+      if (s.transientAt && s.transientName) return s.transientName;
       // 用户显式挑过地址就听他的（见 pickedByUser）
       if (s.pickedByUser && s.active) {
         return s.active.tag || s.active.detail || s.active.region || "";
       }
-      /*
-       * **用户在选点页主动挑了「逛这儿」—— 和挑地址同级，压过被动定位 here。**
-       *
-       * 真机报过：切了位置商品变了、顶栏没变。根因就是这一条原来排在 here 之后，
-       * 而首页一加载 ensureHere() 就把 here 填上，于是 transient 永远轮不到。
-       * 它是明确动作（在选点页点了某个社区 / 当前位置），不是 here 那种被动定位，
-       * 所以要和 pickedByUser 一样排在 here 前面。
-       * transientName 为空时（「用当前位置」没解析出聚落名）才让位给 here，
-       * 那条路本来就该显示定位到的地名。
-       */
-      if (s.transientAt && s.transientName) return s.transientName;
       /*
        * **模糊定位只说到区。**（2026-09-19 真机：人在龙华体育馆，顶栏写「棱镜·男生公寓(清湖地铁站总店)」）
        *
@@ -505,6 +510,15 @@ export const useLocationStore = defineStore("location", {
        */
       this.transientAt = null;
       this.transientName = "";
+      /*
+       * ★ 上一次按定位/按挑的点推出来的「区」也要清掉。
+       *
+       * 它是 `ensureCoarseRegion` 的会话级缓存，而首页在没有归属时正是拿它去筛货。
+       * 不清的话：他从「景滑村（临猗县）」切回地址簿里的某条地址，而那条地址没有坐标
+       * （归属换不过去，见 syncCommunityFromActive），首页就会继续按**临猗县**列货 ——
+       * 一个他已经离开的地方。清掉之后下一次 ensureCoarseRegion 重新推。
+       */
+      this.coarseRegion = null;
       const rebound = await this.syncCommunityFromActive();
       return { addr, rebound };
     },
