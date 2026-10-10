@@ -4909,13 +4909,20 @@
       ],
       "libClassHits": 8,
       "localSelectors": 13,
-      "localCssLines": 67,
+      "localCssLines": 66,
       "rolled": [
         {
           "id": "listrow",
           "label": "横排行",
           "lib": ".sh-row",
           "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+          "gap": false
+        },
+        {
+          "id": "quietover",
+          "label": "次要色自写",
+          "lib": ".txt-quiet（整段次要用 .sh-muted）",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
           "gap": false
         }
       ]
@@ -6036,6 +6043,16 @@
       "lib": ".sh-row",
       "gap": false,
       "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*align-items:\\s*center;[^}]*gap:",
+      "pages": [
+        "b-app/store-scope-polygon"
+      ]
+    },
+    {
+      "id": "quietover",
+      "label": "次要色自写",
+      "lib": ".txt-quiet（整段次要用 .sh-muted）",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-sub\\);?\\s*\\}",
       "pages": [
         "b-app/store-scope-polygon"
       ]
