@@ -57,6 +57,7 @@ export const tradeMock: Pick<ShopApi,
   | "orderDetail"
   | "orderTrace"
   | "track"
+  | "trackMiniLink"
   | "cancelOrder"
 > = {
   // ---------------------------------------------------------------- 交易
@@ -407,6 +408,11 @@ export const tradeMock: Pick<ShopApi,
   },
 
   /** mock 看件：把本地一张单收窄成看件视图（够把看件页跑起来） */
+  /** mock：本地不接微信，URL Link 返回 null（端上不显示「打开小程序」按钮） */
+  async trackMiniLink() {
+    return delay<{ url: string } | null>(null);
+  },
+
   async track(t) {
     const o = findOrder(t) as (Order & { receiver?: { name?: string; phone?: string; address?: string } }) | undefined;
     if (!o) return delay<TrackView | null>(null);

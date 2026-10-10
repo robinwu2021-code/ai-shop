@@ -3,7 +3,6 @@ package ai.neargo.shop.message.notify;
 import ai.neargo.shop.link.ShortLinkService;
 import ai.neargo.shop.link.entity.ShortLink;
 import ai.neargo.shop.spi.notify.SmsPort;
-import ai.neargo.shop.spi.notify.WxUrlLinkPort;
 import ai.neargo.shop.spi.trade.SubOrderBuyerPort;
 import ai.neargo.shop.spi.trade.ShipTrackPort;
 import org.slf4j.Logger;
@@ -33,29 +32,23 @@ public class ShipRecipientNotify {
     private static final Logger log = LoggerFactory.getLogger(ShipRecipientNotify.class);
 
     private final ShipTrackPort token;
-    private final WxUrlLinkPort urlLink;
     private final ShortLinkService shortLink;
     private final SmsPort smsPort;
     private final SubOrderBuyerPort buyerPort;
-    /** 小程序看件页路径，不带前导斜杠 */
-    private final String miniPath;
     /** H5 看件页前缀（hash 路由），token 以 {@code ?t=} 拼在后面 */
     private final String h5Base;
     /** 短链有效期（天），与看件令牌同寿 */
     private final long linkTtlDays;
 
-    public ShipRecipientNotify(ShipTrackPort token, WxUrlLinkPort urlLink,
+    public ShipRecipientNotify(ShipTrackPort token,
                                ShortLinkService shortLink, SmsPort smsPort,
                                SubOrderBuyerPort buyerPort,
-                               @Value("${shop.ship.track-mini-path:pages/track/index}") String miniPath,
                                @Value("${shop.ship.track-h5-base:https://hxmall.top/c/#/pages/track/index}") String h5Base,
                                @Value("${shop.ship.track-ttl-days:30}") long linkTtlDays) {
         this.token = token;
-        this.urlLink = urlLink;
         this.shortLink = shortLink;
         this.smsPort = smsPort;
         this.buyerPort = buyerPort;
-        this.miniPath = miniPath;
         this.h5Base = h5Base;
         this.linkTtlDays = linkTtlDays > 0 ? linkTtlDays : 30;
     }
@@ -74,8 +67,13 @@ public class ShipRecipientNotify {
                 return;   // 自提单等没有收件人，不发
             }
             String t = token.sign(subOrderNo);
-            String target = urlLink.generate(miniPath, "t=" + t)
-                    .orElseGet(() -> h5Base + "?t=" + t);
+            /*
+             * **短链永远指 H5 看件页**（TDD §3，2026-10-10 定）：短信指一个稳定可打开的 H5，
+             * 没微信也能看；去小程序交给 H5 页上的「在小程序中打开」按钮（它按需调
+             * /mp/track/mini-link 拿 URL Link）。这里不再在后端生成 URL Link 作 target ——
+             * 那条要小程序正式版发布才有，拿它当短信落点会在未发布时把短信指向一个唤不起的链接。
+             */
+            String target = h5Base + "?t=" + t;
             LocalDateTime expiresAt = LocalDateTime.now().plusDays(linkTtlDays);
             String shortUrl = shortLink.shorten(target, ShortLink.BIZ_SHIP_TRACK, subOrderNo, expiresAt);
             smsPort.sendShipToRecipient(phone.get(), shortUrl);

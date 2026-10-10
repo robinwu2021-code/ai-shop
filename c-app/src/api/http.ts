@@ -199,6 +199,7 @@ export const httpApi: ShopApi = {
   invoiceOfOrder: (orderNo) => call<InvoiceRequest | null>("invoiceOfOrder", { orderNo }),
   orderDetail: (orderNo) => call<Order>("orderDetail", { orderNo }),
   track: (t) => call<TrackView | null>("track", undefined, { t }),
+  trackMiniLink: (t) => call<{ url: string } | null>("trackMiniLink", undefined, { t }),
   orderTrace: (orderNo) => call<ShipmentTrace | null>("orderTrace", { orderNo }),
   cancelOrder: (orderNo) => call<Order>("cancelOrder", { orderNo }),
   applyAfterSale: (orderNo, reason, images, type) =>

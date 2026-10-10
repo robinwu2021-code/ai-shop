@@ -396,6 +396,11 @@ export interface ShopApi {
    */
   track(t: string): Promise<TrackView | null>;
   /**
+   * 看件 H5 的「在小程序中打开」：拿一条指向小程序看件页的微信 URL Link。
+   * 生成不出（小程序未发布/未开通）返回 null，端上据此不显示按钮。匿名。
+   */
+  trackMiniLink(t: string): Promise<{ url: string } | null>;
+  /**
    * 物流页：点「查看物流」时调（TDD-物流模块 批 3）。小程序 + 微信支付单会顺带向微信校正一次状态
    * （10 分钟内不重复）。不是快递 / 还没发货 → null
    */

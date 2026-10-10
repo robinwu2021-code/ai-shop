@@ -33,6 +33,28 @@ async function load() {
   } finally {
     loaded.value = true;
   }
+  loadMiniLink();
+}
+
+// 「在小程序中打开」：仅 H5 端有意义（小程序里已经在小程序内了）。
+// 拿到 URL Link 才显示按钮——小程序未发布/未开通时后端返 null，不露点不动的按钮。
+const miniLink = ref("");
+async function loadMiniLink() {
+  // #ifdef H5
+  try {
+    const r = token.value ? await api.trackMiniLink(token.value) : null;
+    miniLink.value = r?.url ?? "";
+  } catch {
+    miniLink.value = "";
+  }
+  // #endif
+}
+function openInMini() {
+  // #ifdef H5
+  if (miniLink.value) {
+    window.location.href = miniLink.value;
+  }
+  // #endif
 }
 
 // 转发：原样带着令牌分享出去 —— 收件人可以再转给家人同住的人代收。
@@ -59,6 +81,12 @@ onShareAppMessage(() => ({
         <text class="txt-strong trk-store">
           {{ view.storeName ? $t("track.shipFrom", { store: view.storeName }) : $t("track.shipFromDefault") }}
         </text>
+        <!-- #ifdef H5 -->
+        <!-- 拿到 URL Link 才显示：小程序未发布/未开通时不露点不动的按钮 -->
+        <view v-if="miniLink" class="sh-btn sh-btn--sm trk-mini" @tap="openInMini">
+          {{ $t("track.openInMini") }}
+        </view>
+        <!-- #endif -->
       </view>
 
       <!-- 物流状态 + 轨迹 -->
@@ -109,6 +137,7 @@ onShareAppMessage(() => ({
 <style scoped>
 .block { margin-bottom: 16rpx; }
 .trk-store { display: block; margin-top: 8rpx; }
+.trk-mini { margin-top: 16rpx; }
 .status { font-weight: 600; }
 .prog__row { display: block; margin-top: 8rpx; }
 .prog__sec { margin-top: 16rpx; }

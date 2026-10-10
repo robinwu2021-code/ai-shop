@@ -26,6 +26,7 @@ export default {
     itemCount: "共 {n} 件",
     noTrace: "商家已发货，物流信息稍后更新",
     viewHint: "这是寄给你的一笔订单，可查看物流进度",
+    openInMini: "在小程序中打开",
   },
   common: {
     later: "以后再说",

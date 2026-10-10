@@ -26,6 +26,7 @@ export default {
     itemCount: "{n} item(s)",
     noTrace: "Shipped by the merchant, tracking updates soon",
     viewHint: "A parcel on its way to you — follow its progress here",
+    openInMini: "Open in Mini Program",
   },
   common: {
     later: "Later",

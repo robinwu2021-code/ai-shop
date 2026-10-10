@@ -207,6 +207,8 @@ class MpEndpointAuthTest {
             // 免登录看件（TDD-收件人物流触达 §3）：收件人没有账号，令牌即授权。
             // 不带票探测时返回成功的空信封（data=null），所以归游客可看而不是要登录。
             "GET /mp/track",
+            // 看件 H5 的「在小程序中打开」按钮用：生成 URL Link。同样令牌即授权、无票返回 null。
+            "GET /mp/track/mini-link",
             "");
 
     /**
