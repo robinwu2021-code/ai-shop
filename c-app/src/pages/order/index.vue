@@ -908,8 +908,8 @@ onShow(load);
   flex: 0 0 auto;
   width: auto;
   margin: 0;
-  padding-left: 32rpx;
-  padding-right: 32rpx;
+  padding-inline-start: 32rpx;
+  padding-inline-end: 32rpx;
   min-width: 168rpx;
   white-space: nowrap;
 }
