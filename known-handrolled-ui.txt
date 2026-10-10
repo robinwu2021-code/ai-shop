@@ -83,3 +83,18 @@
 # profile 页的头像上传是自画的 uploader（chooseImage → previewImage 的裸循环），
 # 库里有 sh-uploader。收编留待下单——这次先过闸。
 c-app/me/profile uploader
+
+# ── 2026-10-10：2 条系统弹框 ──
+#
+# ① 画配送范围页用 `uni.showModal` 而不是 sh-sheet，**这一条是故意的，别收编**：
+#    本页有原生 `<map>`，原生组件在 App 端是独立图层、层级最高，自绘弹层（sh-sheet 也是自绘的）
+#    会被它整个盖住 —— 真机 0.5.61 上的表现是屏幕变暗、对话框一个字看不见、什么都点不动，
+#    商家只能按返回键退出去。系统弹窗才一定在最上层。
+#    收编的前提是 sh-sheet 先解决「压在原生组件上」这件事（cover-view 那条路）。
+b-app/store-scope-polygon sysmodal
+#
+# ② goods-edit 用 `uni.showActionSheet` 选运费模板 —— 系统选择器。
+#    该不该换成 sh-sheet 是那条线的取舍（同一页里挑参数用的就是 sh-sheet，
+#    注释写着「不用 uni.showModal，它的标题与输入框不是同一套字」）。
+#    我不替别人定，先登记；要收编由那条线来。
+b-app/goods-edit sysmodal

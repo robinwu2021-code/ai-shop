@@ -171,13 +171,13 @@ function back() {
         </map>
       </view>
 
-      <view class="bar">
+      <view class="sh-row bar">
         <text class="txt-strong">{{ $t("store.polygonCount", { n: points.length }) }}</text>
         <!-- 顶点不足 3 个时说清差几个，而不是让「完成」灰着不解释 -->
-        <text v-if="!canFinish" class="txt-caption bar__hint">{{ $t("store.polygonNeedThree") }}</text>
+        <text v-if="!canFinish" class="txt-caption sh-muted">{{ $t("store.polygonNeedThree") }}</text>
       </view>
 
-      <view class="ops">
+      <view class="sh-row ops">
         <view class="sh-chip" :class="{ 'is-off': !points.length }" @tap="undo">{{ $t("store.polygonUndo") }}</view>
         <view class="sh-chip" :class="{ 'is-off': !points.length }" @tap="clearAll">{{ $t("store.polygonClear") }}</view>
         <view class="sh-chip sh-chip--primary ops__add" @tap="addPoint">{{ $t("store.polygonAdd") }}</view>
@@ -248,19 +248,11 @@ function back() {
   height: 2rpx;
   width: 4%;
 }
+/* 横排与弱化色都走库件（.sh-row / .sh-muted），这里只留本页特有的内边距 */
 .bar {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
   padding: 12rpx 24rpx;
 }
-.bar__hint {
-  color: var(--sh-sub);
-}
 .ops {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
   padding: 0 24rpx 24rpx;
 }
 .ops__add {
