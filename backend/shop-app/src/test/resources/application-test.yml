@@ -4,6 +4,19 @@
 # 在这里重复一份生产配置的话，两边就会各自漂移，而漂移的表现是
 # 「测试全绿、上线才炸」。
 shop:
+  outbox:
+    pump:
+      # **测试世界关掉投递泵。**
+      #
+      # 场景测试自己调 drainOutbox() 手动投递 —— 那是它们能断言「发了什么」的前提。
+      # 泵开着的话两边会同时投同一条事件：泵的线程用 REQUIRES_NEW 事务，
+      # 与测试事务在 H2 上撞锁，症状是满屏
+      # `UnexpectedRollbackException: marked as rollback-only`，
+      # 而报错位置在被撞的那个测试上，与 outbox 看着毫无关系（2026-10-10 撞过一次，45 条红）。
+      #
+      # 泵本身的行为由 OutboxPumpTest 覆盖（8 条 + 两处消融），
+      # 「publish 之后会不会真的交给泵」由 OutboxEventBusPumpTest 覆盖。
+      enabled: false
   notify:
     # 商家自带渠道凭据的落库加密密钥（NotifyCredCipher）。32 个零字节的 base64 ——
     # 测试世界不需要真随机，需要的是**确定**：没它 upsert 会在「绝不明文落库」那一行拒掉，

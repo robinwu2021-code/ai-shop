@@ -223,6 +223,19 @@ shop:
     #   PropertySource 的实现细节，而「配了等于没配」这种失败是全静默的
     #   （configured() 返回 false，服务照起，只是永远存不进凭据）。
     cred-key: ${SHOP_NOTIFY_CRED_KEY:}
+  outbox:
+    pump:
+      # 投递泵（OutboxPump）：事务提交后直接投、单机并发 5、按聚合分线保证同一张单有序、
+      # 启动补扫承担「重启后继续发送」。关掉它等于只写库不投递 —— 那时必须把下面那条打开。
+      enabled: ${SHOP_OUTBOX_PUMP:true}
+    legacy-scan:
+      # 旧的 5 秒一轮定时投递（OutboxDispatchJob + ShedLock）。**默认关**。
+      #
+      # 这是应急开关：投递是全域的（结算、库存、商品镜像都走），
+      # 而它此前是生产上唯一在工作的那条路。泵万一有问题，把这条打到 true
+      # 就能把旧路开回来，不用紧急发版。两条同时开也安全 ——
+      # 投递语义本来就是 at-least-once，消费者自己幂等。
+      enabled: ${SHOP_OUTBOX_LEGACY_SCAN:false}
   features:
     # 积分一期关闭：成本模型已定但跨商家清算未定（ADR-006 §2），打开开关即上线
     points: false

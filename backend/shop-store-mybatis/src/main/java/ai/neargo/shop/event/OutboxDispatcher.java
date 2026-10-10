@@ -138,6 +138,59 @@ public class OutboxDispatcher {
         }
     }
 
+    /**
+     * 投**一条**。{@link OutboxPump} 的主路：事件提交后直接走这里，不等任何轮次。
+     *
+     * <p>独立事务：一条的成败不牵连别条 —— 批量那条路里它们本来就共用一个事务，
+     * 而单条路径下共用没有意义。
+     *
+     * <p><b>查不到、或已经不是 PENDING 就什么都不做</b>：另一个实例抢先投了、
+     * 或启动补扫与即时投递撞上了同一条，都会走到这里。投递语义是 at-least-once、
+     * 消费者自己幂等，所以这里不加锁，只是省掉一次白工。
+     *
+     * @return 这一条的结局；{@code retryAfter} 非空表示失败且还没到上限，
+     *         调用方要在那之后把它排回来 —— <b>去掉定时轮之后没有别人会捞它</b>
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Outcome dispatchOne(long id) {
+        SysOutbox event = mapper.selectById(id);
+        if (event == null || !SysOutbox.PENDING.equals(event.getStatus())) {
+            return new Outcome(false, null);
+        }
+        try {
+            deliver(event);
+            event.setStatus(SysOutbox.SENT);
+            event.setSentAt(LocalDateTime.now());
+            mapper.updateById(event);
+            return new Outcome(true, null);
+        } catch (RuntimeException e) {
+            LocalDateTime now = LocalDateTime.now();
+            onFailure(event, e, now);
+            // 转了 FAILED 就别再排 —— 那是「不再自动重投，交给人」的意思
+            return new Outcome(false, SysOutbox.FAILED.equals(event.getStatus())
+                    ? null : backoff(nz(event.getRetryCount())));
+        }
+    }
+
+    /**
+     * @param sent       真的投出去了
+     * @param retryAfter 非空 = 失败且未到上限，这么久之后该重排
+     */
+    public record Outcome(boolean sent, Duration retryAfter) {
+    }
+
+    /** 启动补扫用：所有 PENDING 的 id 与聚合键（聚合键决定走哪条处理线） */
+    public List<Pending> pendingIds() {
+        return mapper.selectList(Wrappers.<SysOutbox>lambdaQuery()
+                        .select(SysOutbox::getId, SysOutbox::getAggregateId)
+                        .eq(SysOutbox::getStatus, SysOutbox.PENDING)
+                        .orderByAsc(SysOutbox::getId)).stream()
+                .map(e -> new Pending(e.getId(), e.getAggregateId())).toList();
+    }
+
+    public record Pending(long id, String aggregateId) {
+    }
+
     /** 待投递条数。运维看板与测试用。 */
     public long pendingCount() {
         return mapper.selectCount(Wrappers.<SysOutbox>lambdaQuery()

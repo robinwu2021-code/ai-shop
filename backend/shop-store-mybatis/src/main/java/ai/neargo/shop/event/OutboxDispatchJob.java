@@ -37,7 +37,29 @@ import org.springframework.stereotype.Component;
  * 所以这个任务重跑、并发跑都不会重复发 —— ShedLock 防的不是重复投递，
  * 是**两个实例同时扫同一批**造成的白工与锁竞争。
  */
-@ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
+/**
+ * ⚠️ <b>2026-10-10 起默认不装配</b>（用户：「发送不要用 job，用队列即可」）。
+ *
+ * <p>投递改走 {@link OutboxPump}：事务提交后直接投、单机并发 5、按聚合分线保证同单有序、
+ * 启动补扫承担「重启后继续发送」。这条 5 秒一轮的路退成**应急开关**：
+ * {@code shop.outbox.legacy-scan.enabled=true} 才回来。
+ *
+ * <p><b>留着它而不是删掉</b>：这是全域事件投递（结算、库存、商品镜像都走），
+ * 而它此前是生产上唯一在工作的那条路。新路径万一有问题，
+ * 改一个配置就能把旧路开回来，不用紧急发版。
+ * 两条路同时开也是安全的 —— 投递语义本来就是 at-least-once、消费者自己幂等。
+ *
+ * <p>停用这一个 Bean 就等于两条触发路径一起停：{@code PlatformOutboxJobHandler}
+ * 挂着 {@code @ConditionalOnBean(OutboxDispatchJob.class)}。
+ *
+ * <p><b>两个条件都要 true</b>：{@code shop.job.enabled}（任务模块的总门，
+ * {@code ScheduledJobConventionTest} 盯着每个带 {@code @Scheduled} 的类都有它）
+ * 与 {@code shop.outbox.legacy-scan.enabled}（这条路自己的应急开关，默认 false）。
+ * 生产的任务总门本来就开着，所以应急时只要打开后面那个。
+ */
+@ConditionalOnProperty(
+        name = {"shop.job.enabled", "shop.outbox.legacy-scan.enabled"},
+        havingValue = "true")
 @Component
 public class OutboxDispatchJob {
 
