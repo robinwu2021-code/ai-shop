@@ -986,6 +986,10 @@ export default {
     regionSelect: "Select",
     /** 一键导入微信通讯录里的收货地址（只小程序有） */
     fromWx: "WeChat address",
+    mapPickTitle: "Pick location on map",
+    mapPickHint: "Tap to choose on the map; region fills in automatically",
+    mapRepickHint: "Tap to re-pick on the map",
+    fromWxLong: "Import from WeChat addresses",
     noCoordHint: "No map pin set; delivery range may not be checkable",
     province: "Province",
     city: "City",

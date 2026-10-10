@@ -53,6 +53,23 @@ describe("详细地址能不能填", () => {
       .toBeUndefined();
   });
 
+  it("★★★ 能选点的端、没坐标：顶部是地图卡片，不再有省市区手填框", async () => {
+    // 端能力全开 = 小程序那一侧（见文件顶部 mock），canPick 为真
+    const w = await form({ address: null, place: null, first: false });
+    expect(w.find(".mapcard").exists(), "该用地图卡片代替省市区手填框").toBe(true);
+    const region = w.findAll("input").find((i: any) => i.attributes("placeholder") === "address.region");
+    expect(region, "能选点时省市区不再手填 —— 撤掉重构这里会冒出 region 输入框").toBeFalsy();
+  });
+
+  it("★★★ 编辑一条没坐标的旧地址：卡片显示它原有的地名", async () => {
+    const w = await form({
+      address: { addressId: "A9", region: "广东省深圳市龙华区", detail: "某路1号", name: "张三", phone: "13800000000" },
+      place: null, first: false,
+    });
+    expect(w.find(".mapcard").text(), "编辑旧地址时卡片要带出原地名，不能只显示空的引导语")
+      .toContain("广东省深圳市龙华区");
+  });
+
   it("★★★ 有坐标时不渲染这个输入框 —— 那一支走只读卡片，文字与坐标才不会各说各的", async () => {
     const w = await form({
       address: null,

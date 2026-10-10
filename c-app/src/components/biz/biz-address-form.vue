@@ -370,37 +370,57 @@ function pickCountry(code: string, cc: string) {
     </view>
     <template v-else>
       <!--
-        **三个「帮我填」的入口单独一行，不再挤在输入框旁边。**
+        **没坐标时的「所在位置」分两种端，不再是一行手填框 + 三个小按钮。**
 
-        此前它们与省市区输入框同一行：输入框被压到 113px（上面那段注释自己写着
-        「只剩指甲盖那么宽」，当时只给已选点的情况收成了卡片，**没选点的新增仍走这一支**），
-        而三个入口是 `<text>` ——行内元素，垂直 padding 撑不开盒子，**点击热区实测只有 15px 高**。
-        2026-10-10 用户上报「选择按钮不能点击」就是它：看得见，手指点不中。
-        改成整行三等分的 `.sh-chip`（库件，inline-block，padding 真的算进盒子）。
+        能地图选点的端（小程序）：一张大卡片「从地图选择收货位置」—— 点一下开地图，
+        选完回到上面那张只读卡片（`v-if="picked"`）。省市区不再手填（它本来就该跟坐标一起来）。
+        编辑一条没坐标的旧地址时，卡片显示它原有的地名 +「点此重选」。
+        微信地址导入降为卡片下方一个次要入口。
+
+        没有地图选点能力的端（H5）：保留省市区手填 +「请选择」级联选择器，
+        否则 H5 用户没法新增/编辑地址（canChooseLocation 在 H5 恒为 false）。
+
+        （此前这一支是省市区输入框 + 三个挤在一起的 `<text>` 按钮，热区只有 15px 高、
+        输入框被压到 113px —— 2026-10-10 用户两次上报「按钮点不中」「顶部输入框该去掉」。）
       -->
-      <input
-        maxlength="96"
-        v-model="draft.region"
-        class="field__input"
-        :placeholder="$t('address.region')"
-        @blur="onRegionInput"
-      />
-      <view class="pickrow sh-row">
-        <text class="sh-chip pickrow__btn" @tap="pickingRegion = true">{{ $t("address.regionSelect") }}</text>
-        <text v-if="canPick" class="sh-chip pickrow__btn" @tap="pickOnMap">{{ $t("address.pick") }}</text>
-        <text v-if="canWx" class="sh-chip pickrow__btn" @tap="fillFromWx">{{ $t("address.fromWx") }}</text>
-      </view>
-      <text v-if="regionUnsplit" class="sh-hint">{{ $t("address.regionIncomplete") }}</text>
+      <template v-if="canPick">
+        <view class="sh-notice mapcard sh-row" @tap="pickOnMap">
+          <view class="sh-fill mapcard__body">
+            <text class="txt-strong">{{ draft.region || $t("address.mapPickTitle") }}</text>
+            <text class="txt-caption placecard__region">
+              {{ draft.region ? $t("address.mapRepickHint") : $t("address.mapPickHint") }}
+            </text>
+          </view>
+          <text class="txt-caption txt-primary mapcard__act">{{ $t("address.pick") }}</text>
+        </view>
+      </template>
+      <template v-else>
+        <view class="regionline sh-row">
+          <input
+            maxlength="96"
+            v-model="draft.region"
+            class="field__input sh-fill"
+            :placeholder="$t('address.region')"
+            @blur="onRegionInput"
+          />
+          <text class="sh-chip regionline__pick" @tap="pickingRegion = true">{{ $t("address.regionSelect") }}</text>
+        </view>
+        <text v-if="regionUnsplit" class="sh-hint">{{ $t("address.regionIncomplete") }}</text>
+      </template>
       <!--
-        ★ **这一支里必须可输入** —— 此前挂着 `:disabled="canPick"`，锁反了。
-
-        「地址主体跟坐标一起来的，手改几个字坐标不会跟着动，于是文字写着 A、坐标指着 B」
-        这条理由是对的，但它**只在有坐标时成立**，而有坐标走的是上面那张只读卡片（`v-if="picked"`）。
-        这一支是 `v-else` = **没有坐标**，这里压根没有坐标可以跟文字不一致。
-        结果是锁恰好落在唯一需要手填的场景上：
-        小程序里 `canPick` 恒为真 →「新增地址」里详细地址填不了；
-        存量那些没有坐标的地址（微信导入、粘贴识别、手填）也永远改不了 ——
-        而守卫的注释只保住了 H5（2026-10-10 用户上报「新增地址后不能编辑和修改」）。
+        微信导入：**只看 canWx，不绑在能不能地图选点上**。
+        现实中 canWx=true 的端（小程序）同时 canPick=true，但两者是独立能力 ——
+        把它放进 canPick 分支的话，一旦出现「能导入微信地址、但不能地图选点」的端，
+        这个入口就凭空消失了。放在这里，两种端只要 canWx 就有。
+      -->
+      <text v-if="canWx" class="txt-caption txt-primary wximport" @tap="fillFromWx">
+        {{ $t("address.fromWxLong") }}
+      </text>
+      <!--
+        详细地址两端都能填。★ 此前挂着 `:disabled="canPick"`，锁反了 ——
+        那条「地址主体跟坐标一起来、手改坐标不跟着动」的理由只在**有坐标**时成立，
+        而有坐标走上面的只读卡片；这一支（没坐标）压根没有坐标可以跟文字不一致。
+        锁恰好落在唯一需要手填的场景上（2026-10-10 用户上报「新增地址后不能编辑」）。
       -->
       <input
         maxlength="255"
@@ -479,14 +499,35 @@ function pickCountry(code: string, cc: string) {
 </template>
 
 <style scoped>
-/* 三等分；垂直内距给足，热区才够手指点（此前是行内 text，实测只有 15px 高） */
-.pickrow__btn {
-  flex: 1;
-  text-align: center;
-  /* 24rpx 时实测 40px，差一点到 44px（通用触控下限），抬到 28rpx 正好 */
-  padding-top: 28rpx;
-  padding-bottom: 28rpx;
-  border-radius: 16rpx;
+/*
+ * 地图选点卡片（能选点的端用它代替省市区手填框）。整卡可点 ——
+ * 热区是一整张卡，不再是 15px 高的一截文字（2026-10-10 两次上报的「点不中」）。
+ */
+.mapcard {
+  align-items: center;
+}
+.mapcard__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.mapcard__act {
+  flex-shrink: 0;
+}
+/* 微信导入：卡片下方的次要入口，给足上下内距才点得中 */
+.wximport {
+  display: inline-block;
+  padding-top: 20rpx;
+  padding-bottom: 20rpx;
+}
+/* H5：省市区输入框 +「请选择」同一行；按钮不抢宽度，靠内距撑开热区 */
+.regionline {
+  gap: 12rpx;
+}
+.regionline__pick {
+  flex-shrink: 0;
+  padding-top: 20rpx;
+  padding-bottom: 20rpx;
 }
 /* 共用的 `.field__input`（88rpx 高 / md 圆角 / faint 底 / 30rpx）已经是这个形状 ——
    此前这里把它重写了一遍，而且字号写成 26rpx，比 base.css 的 30rpx 小两档。

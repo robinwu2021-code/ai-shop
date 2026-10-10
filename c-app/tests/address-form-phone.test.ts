@@ -47,7 +47,8 @@ const phoneInput = (w: Awaited<ReturnType<typeof render>>) =>
 
 /** 点「从微信导入」。找不到入口要直接红 —— 不然「没盖掉」那条会因为根本没点而假绿 */
 async function fromWx(w: Awaited<ReturnType<typeof render>>) {
-  const btn = w.findAll("text").find((n) => n.text() === "address.fromWx");
+  // 入口文案改成了 address.fromWxLong（2026-10-10 新增地址页重构，微信导入降为次要入口）
+  const btn = w.findAll("text").find((n) => n.text() === "address.fromWxLong");
   expect(btn, "没找到「从微信导入」入口").toBeTruthy();
   await btn!.trigger("tap");
   for (let i = 0; i < 4; i++) {
