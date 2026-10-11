@@ -9,11 +9,11 @@ import { couponDiscount } from "@shared/strategies/pricing/types";
 import type { AfterSaleReason, Coupon, Order, OrderItem } from "@shared/types";
 import { ACTIVITY_NONE, FULFILLMENT, PAY_MODE } from "@shared/utils/constants";
 import { currentCurrency } from "@shared/utils/money";
+import { orderStageOf } from "@shared/strategies/after-sale";
 import {
   findOrder,
   findOrderByAfterSale,
   pushTimeline,
-  settleRefund,
   boughtQtyOf,
   limitOf,
   couponSeedOfUserCoupon,
@@ -48,20 +48,13 @@ export const aftersaleMock: Pick<ShopApi,
       images,
       // 整单退：mock 不做部分退款
       refundMinor: o.amount.paidMinor || o.amount.payableMinor,
-      // 与后端同一口径：会不会秒退由订单详情那一层给（mock 里是 mockInstantEligible），
-      // 这里只读它 —— 两处各算一遍是此前那份常量能与后端分叉两年的原因
-      instant: type === "REFUND_ONLY" && o.instantRefundEligible === true,
+      // 极速退已废除（售后规则 §2.3）：退款一律先审核，apply 不再秒退
+      instant: false,
+      // 申请当时的履约进度快照（与后端一致，B 端审核据它显示实况）
+      fulfillStage: orderStageOf(o),
       updatedAt: Date.now(),
     };
     pushTimeline(o, `已申请${type === "RETURN_REFUND" ? "退货退款" : "仅退款"}：${reason}`);
-
-    /**
-     * 极速退：小额自动通过。**只对「仅退款」生效** ——
-     * 退货退款要等货回来才能退，自动退等于货款两失。
-     */
-    if (type === "REFUND_ONLY" && o.instantRefundEligible === true) {
-      settleRefund(o, "极速退款已到账");
-    }
     persist();
     // 返回售后单本身 —— 与后端同形（端上拿它刷新，不是拿它替换订单）
     return delay(o.afterSale!);
