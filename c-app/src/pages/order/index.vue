@@ -4,7 +4,7 @@
 import { computed, ref } from "vue";
 import { codeLabelKey, showVerifyCode, statusTone } from "@shared/strategies/order-view";
 import { useI18n } from "vue-i18n";
-import { onShow, onLoad, onShareAppMessage } from "@dcloudio/uni-app";
+import { onShow, onLoad, onShareAppMessage, onPullDownRefresh } from "@dcloudio/uni-app";
 import { buildShareMessage, canNativeShare } from "@shared/ports/share";
 import { api } from "@/api";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
@@ -508,6 +508,12 @@ onLoad((q) => {
 
 // 用 onShow 而非 onLoad 加载：从售后页返回时状态会变，必须重新拉
 onShow(load);
+
+// 下拉刷新：页面一直开着时，商家发了货等状态变化也能主动拉到最新
+onPullDownRefresh(async () => {
+  await load();
+  uni.stopPullDownRefresh();
+});
 </script>
 
 <template>

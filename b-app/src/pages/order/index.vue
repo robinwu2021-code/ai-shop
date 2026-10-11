@@ -4,7 +4,7 @@
 // 一个页面只给一个主动作：快递单给「填运单号发货」，自送单给「已送达」，
 // 自提单什么都不给 —— 自提的动作在履约台（核销），不在这里。
 import { computed, ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onShow, onPullDownRefresh } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { ROUTES } from "@/shared/nav";
@@ -362,6 +362,23 @@ onLoad(async (q) => {
   } else {
     void load(no as string);
   }
+});
+
+/*
+ * 返回这一页时重新拉：订单状态可能在别处变了（发货、收款、售后）。
+ * onLoad 只在首次进页面触发，从子页（发货设置 / 物流）返回不会重拉 —— 那时靠 onShow。
+ * 首次 show 紧跟 onLoad 之后，跳过它那一次，避免重复拉。
+ */
+let shownOnce = false;
+onShow(() => {
+  if (shownOnce && currentNo.value) void load(currentNo.value);
+  shownOnce = true;
+});
+
+/** 下拉刷新：页面一直开着时，状态在别端变了也能主动拉到最新。 */
+onPullDownRefresh(async () => {
+  if (currentNo.value) await load(currentNo.value);
+  uni.stopPullDownRefresh();
 });
 </script>
 

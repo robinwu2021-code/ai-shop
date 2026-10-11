@@ -145,6 +145,7 @@
       "path": "pages/order/index",
       "style": {
         "navigationBarTitleText": "",
+        "enablePullDownRefresh": true,
         "app-plus": {
           "navigationStyle": "custom"
         },

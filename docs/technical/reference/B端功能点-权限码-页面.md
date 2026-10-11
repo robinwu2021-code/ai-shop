@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 226 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 227 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -29,7 +29,7 @@
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 21 | ✅ | — | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 21 | ✅ | — | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
-| `biz:ship` | `SHIP` | 发货、标记自送送达 | 5 | ✅ | ✅ | ✅ | — | ✅ | — |
+| `biz:ship` | `SHIP` | 发货、标记自送送达 | 6 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 4 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 3 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
@@ -344,6 +344,7 @@
 | 取件单 | GET | `/biz/order/:orderNo/express` | `mExpressPickup` | order |
 | 取消取件 | POST | `/biz/order/:orderNo/express/cancel` | `mCancelExpress` | order |
 | 快递报价 | GET | `/biz/order/:orderNo/express/quotes` | `mExpressQuotes` | order |
+| 开始备货 | POST | `/biz/order/:orderNo/prepare` | `mPrepare` | order |
 | 快递发货 | POST | `/biz/order/:orderNo/ship` | `mShip` | order |
 
 ### `biz:receive`　到货登记、分拣单、短少上报
@@ -436,7 +437,7 @@
 | `member-tags` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `my-specs` | `biz:goods` | `biz:goods` | 老板、店长 | — |
 | `offline-sale` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
-| `order` | `biz:order:view` | `biz:receive`、`biz:order:view`、`biz:ship`、`biz:store` | 老板、店长、店员、配送员、客服 | 店员（缺 biz:store）　配送员（缺 biz:receive、biz:store）　客服（缺 biz:receive、biz:ship、biz:store） |
+| `order` | `biz:order:view` | `biz:ship`、`biz:receive`、`biz:order:view`、`biz:store` | 老板、店长、店员、配送员、客服 | 店员（缺 biz:store）　配送员（缺 biz:receive、biz:store）　客服（缺 biz:ship、biz:receive、biz:store） |
 | `orders` | `biz:order:view` | `biz:aftersale`、`biz:order:view` | 老板、店长、店员、配送员、客服 | 店员（缺 biz:aftersale）　配送员（缺 biz:aftersale） |
 | `payment` | `biz:finance` | `biz:finance` | 老板 | — |
 | `payout-account` | `biz:finance` | `biz:finance` | 老板 | — |
