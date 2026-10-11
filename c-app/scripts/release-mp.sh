@@ -77,6 +77,20 @@ if echo "$BASES" | grep -qE "^  *· *http://|https?://[0-9]+\.[0-9]+\.[0-9]+\.[0
   echo ""
 fi
 
+# **商家分包必须在**：商家四屏（订单/核销/上下架/售后）是构建时并进 pkg-biz 分包的
+# （with-biz.mjs），商家订阅消息（来单/售后待处理/评价）点开落 pkg-biz/_entry/...。
+# 用纯 `release:mp` 发会丢掉这个分包，商家点通知就是「页面不存在」——
+# 2026-10-11 连发三版都栽在这。所以这里硬拦：产物 app.json 没有 pkg-biz 就不许上传。
+# 元器件（with-elec）是另一回事：它已独立小程序、不并包，发那个不走这条脚本。
+if ! python3 -c "import json,sys; a=json.load(open('$DIST/app.json')); \
+sub=a.get('subPackages') or a.get('subpackages') or []; \
+sys.exit(0 if any((s.get('root') or '')=='pkg-biz' for s in sub) else 1)" 2>/dev/null; then
+  echo "✗ 产物缺 pkg-biz 商家分包 —— 商家通知点开会「页面不存在」。"
+  echo "  发虹选正式/体验版要用：npm run release:mp:with-biz -- $VERSION \"$DESC\""
+  echo "  （纯 release:mp 只打 C 端，不含商家四屏）"
+  exit 1
+fi
+
 echo "▶ 3/4 传到 $HOST"
 # COPYFILE_DISABLE=1 不能省：macOS 的 tar 会带出 ._* 资源叉文件，
 # 小程序编译器读到就报 `/._app.wxss:1:1: Unknown word` —— 看着像样式写错了
