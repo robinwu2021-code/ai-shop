@@ -184,6 +184,14 @@ public class OrdSubOrder extends BaseEntity {
     /** WAIT_PAY / WAIT_FULFILL / FULFILLING / COMPLETED / CANCELLED / REFUNDED */
     private String status;
 
+    /**
+     * 商家开始备货时刻(ms)；未备货为 null。
+     *
+     * <p>录运单号那一刻子单就置 FULFILLING，所以订单状态表达不了「备货中」这段。
+     * 售后判「货还拦不拦得住」（{@code FulfillStage}）要靠它补上 PREPARING 档（TDD-售后规则 §2.1）。
+     */
+    private Long preparedAt;
+
     /** 核销码：自提码/核销码/兑换码三态共用，支付成功后生成，**全局唯一**（C4）。 */
     private String verifyCode;
 

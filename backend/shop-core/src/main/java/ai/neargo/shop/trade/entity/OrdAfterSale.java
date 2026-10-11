@@ -22,6 +22,17 @@ public class OrdAfterSale extends BaseEntity {
     public static final String REJECTED = "REJECTED";
     public static final String ARBITRATING = "ARBITRATING";
     public static final String CLOSED = "CLOSED";
+    /**
+     * 待收货后退款：仅退款的单在**已揽收未签收**时审核通过，不立即退钱，
+     * 等买家签收（或包裹退回商家）后再退 —— 防货还在路上就退了钱（TDD-售后规则 §2.3）。
+     */
+    public static final String WAIT_RECEIPT = "WAIT_RECEIPT";
+
+    // ── 退款形式（refund_mode）──
+    /** 原路退现金（默认）。 */
+    public static final String REFUND_MODE_CASH = "CASH";
+    /** 折算积分补偿：不退现金、不回冲分账，按 PointsConfig.perMinor 发积分给买家。 */
+    public static final String REFUND_MODE_POINTS = "POINTS";
 
     public static final String REFUND_ONLY = "REFUND_ONLY";
     public static final String RETURN_REFUND = "RETURN_REFUND";
@@ -97,6 +108,21 @@ public class OrdAfterSale extends BaseEntity {
      * 不写清楚，「我退 100 你只退我 99」必然变成客诉。
      */
     private Long pointsOffsetMinor;
+
+    /** 退款形式：{@link #REFUND_MODE_CASH} / {@link #REFUND_MODE_POINTS}，商家审核时定。 */
+    private String refundMode;
+
+    /** 退款形式为 POINTS 时发放的积分数（= 核定额 × PointsConfig.perMinor）。 */
+    private Long refundPoints;
+
+    /**
+     * 商家核定的退款额(分)，与买家申请额 {@link #refundMinor} 分开留痕；**仅已签收可改**。
+     * 为空表示未核定（= 全额，或还没审到这一步）。
+     */
+    private Long approvedMinor;
+
+    /** 申请当时的履约进度快照（{@code FulfillStage} 名，留痕用）。 */
+    private String fulfillStage;
 
     /** 对应的退款流水号（stl_payment.payment_no）。退款要重试，重试要幂等，幂等靠它。 */
     private String refundPaymentNo;
