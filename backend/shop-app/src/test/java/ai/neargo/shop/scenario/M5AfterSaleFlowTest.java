@@ -5,6 +5,8 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers;
+import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.mapper.TradeMappers;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
@@ -550,23 +552,56 @@ class M5AfterSaleFlowTest {
     }
 
     @Test
-    @DisplayName("极速退：小额自动通过，商家只可见不可拒")
-    void instantRefundAutoApproved() throws Exception {
-        // 阈值内金额（配置默认 100 元以内）
-        Ordered o = placeAndPay("13200132011", 3980L);
+    @DisplayName("★★★ 不再有极速退：小额仅退款也不自动退、等审核（TDD-售后规则 §2.3）")
+    void apply_never_auto_refunds() throws Exception {
+        // 3980（M0002）正是旧极速退会自动退的那种单（阈值内 + 仅退款 + 刚下单）——
+        // 恢复极速退分支时这单会变 REFUNDED，本用例即变红（消融判据）
+        Ordered o = placeAndPay("13200132600", 3980L);
         String asNo = applyAfterSale(o, "REFUND_ONLY", "买错了");
 
-        String body = detail(o.userToken, asNo);
-        JsonNode data = json.readTree(body).get("data");
-        assertThat(data.get("instant").asBoolean()).isTrue();
-        // 自动通过：用户不用等商家点同意
-        assertThat(data.get("status").asString()).isEqualTo("REFUNDED");
+        JsonNode data = json.readTree(detail(o.userToken, asNo)).get("data");
+        assertThat(data.get("status").asString())
+                .as("退款一律先审核、收货后再退钱——apply 里绝不能直接退成 REFUNDED")
+                .isNotEqualTo("REFUNDED");
+        assertThat(data.get("instant").asBoolean())
+                .as("极速退已删，instant 恒 false").isFalse();
+    }
 
-        // 3980 那件是 M0002（鲜果直供）的货 —— 售后归属跟着商品走，不是跟着自提点走
-        String biz = loginAsOwnerOf("M0002", "13200132012");
-        mvc().perform(post("/biz/after-sale/" + asNo + "/reject").header("Authorization", "Bearer " + biz)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"remark\":\"我不同意\"}"))
-                .andExpect(jsonPath("$.code").value(20004));   // 状态机拒绝
+    @Test
+    @DisplayName("★★★ 生鲜已签收后非质量退款被拒（只收质量问题 20009）")
+    void fresh_received_non_quality_rejected() throws Exception {
+        // 3980 → G0004/SK0005，是 M0002 鲜果（FRESH）。推到已签收（RECEIVED）
+        Ordered o = placeAndPay("13200132601", 3980L);
+        setSubStage(o.subOrderNo, OrdSubOrder.COMPLETED, null);
+
+        // SHIPPED 与 RECEIVED 同属「拦不住」，共用这条拒绝（逐档矩阵见 AfterSaleRulesTest）
+        mvc().perform(post("/mp/order/" + o.subOrderNo + "/after-sale")
+                        .header("Authorization", "Bearer " + o.userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"REFUND_ONLY\",\"reason\":\"NOT_WANTED\",\"images\":[\"https://cdn/x.jpg\"]}"))
+                .andExpect(jsonPath("$.code").value(20009));
+    }
+
+    @Test
+    @DisplayName("★★★ 生鲜已签收 + 质量原因 → 受理（质量问题不受发货后限制）")
+    void fresh_received_quality_allowed() throws Exception {
+        Ordered o = placeAndPay("13200132602", 3980L);
+        setSubStage(o.subOrderNo, OrdSubOrder.COMPLETED, null);
+
+        // applyAfterSale 内部断言 code=0：没被 20009 拦住就证明质量原因放行
+        // （M0002 是自营，建单后进 ARBITRATING，这里只验「没被拒」）
+        assertThat(applyAfterSale(o, "REFUND_ONLY", "DAMAGED")).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("★★★ 生鲜备货中（灰色）+ 非质量 → 可建单、不被拒（LABELED 同此结论）")
+    void fresh_preparing_non_quality_allowed() throws Exception {
+        // 备货中：货还拦得住，是灰色地带——建单成功（PREPARING / LABELED 同 Gate）
+        Ordered o = placeAndPay("13200132603", 3980L);
+        setSubStage(o.subOrderNo, OrdSubOrder.WAIT_FULFILL, System.currentTimeMillis());
+
+        // 没被 20009 拦住即证明灰色地带放行（applyAfterSale 断言 code=0）
+        assertThat(applyAfterSale(o, "REFUND_ONLY", "NOT_WANTED")).isNotBlank();
     }
 
     @Test
@@ -861,6 +896,21 @@ class M5AfterSaleFlowTest {
     // ---------------------------------------------------------------- helpers
 
     private record Ordered(String userToken, String subOrderNo, String payOrderNo) {
+    }
+
+    @Autowired
+    private TradeMappers.SubOrderMapper subOrderMapper;
+
+    /** 把子单推到某个履约档：改状态 + 置/清备货时刻。直接改库，绕过业务流（只为摆出测试需要的档位）。 */
+    private void setSubStage(String subOrderNo, String status, Long preparedAt) {
+        DataScopeContext.executeWithoutScope(() -> {
+            OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                    .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("LIMIT 1"));
+            sub.setStatus(status);
+            sub.setPreparedAt(preparedAt);
+            subOrderMapper.updateById(sub);
+            return null;
+        });
     }
 
     /** 先把结算单推到已分账，回退才有意义（没分过账的单不会向通道发回退指令）。 */

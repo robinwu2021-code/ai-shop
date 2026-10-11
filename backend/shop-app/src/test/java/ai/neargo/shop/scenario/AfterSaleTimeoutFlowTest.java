@@ -222,30 +222,26 @@ class AfterSaleTimeoutFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 运营配的极速退规则真的生效 —— 此前那一屏写进库里没人读")
-    void opsRuleActuallyApplies() throws Exception {
+    @DisplayName("★★★ 极速退已废除：抬高上限 / 开关开着都不再让 apply 秒退（TDD-售后规则 §2.3）")
+    void fastRefundRuleNoLongerAutoRefundsOnApply() throws Exception {
         AfterSaleRuleVO base = ruleService.get();
 
-        // ① 把上限抬到 1 万元：原本要等商家的 6980 应当变成秒退
+        /*
+         * 退款一律先审核、收货后再退钱 —— apply 不再读极速退规则。
+         * 这里把上限抬到 1 万、开关开着（原本必然秒退的配置），申请后仍须停在 APPLIED。
+         * 规则本身仍可保存（运营那一屏保留），只是对 apply 不再有任何效果。
+         */
         ruleService.save(new AfterSaleRuleVO(true, 1_000_000L, base.withinHours(), List.of(),
                 base.replyHours(), base.shipBackDays(), base.confirmHours(),
                 base.interveneWorkDays(), null, null), "OP");
         String t1 = login(PHONE_1);
         String sub1 = placeAndPay(t1, PHONE_1 + "-hi");
         String as1 = apply(t1, sub1, "REFUND_ONLY");
-        assertThat(statusOf(as1)).as("运营抬高了上限却没生效 —— 那一屏又是白配的")
-                .isEqualTo(OrdAfterSale.REFUNDED);
-
-        // ② 总开关关掉：同样的单必须回到人工
-        ruleService.save(new AfterSaleRuleVO(false, 1_000_000L, base.withinHours(), List.of(),
-                base.replyHours(), base.shipBackDays(), base.confirmHours(),
-                base.interveneWorkDays(), null, null), "OP");
-        String sub2 = placeAndPay(t1, PHONE_1 + "-off");
-        String as2 = apply(t1, sub2, "REFUND_ONLY");
-        assertThat(statusOf(as2)).as("开关关了还在秒退 —— 那它不是开关")
+        assertThat(statusOf(as1))
+                .as("极速退已删：再高的上限也不该在 apply 里把钱退了")
                 .isEqualTo(OrdAfterSale.APPLIED);
 
-        // ③ 时限写成 0 会被挡住：replyHours=0 等于每笔申请下一分钟就自动同意
+        // 时限写成 0 仍要被挡住：replyHours=0 等于每笔申请下一分钟就自动同意（这条校验不随极速退废除）
         assertThat(catchSave(new AfterSaleRuleVO(true, 10_000L, 24, List.of(),
                 0, 7, 48, 5, null, null)))
                 .as("0 小时的时限存进去了 —— 库里那个 0 会让系统立刻替商家同意所有单")

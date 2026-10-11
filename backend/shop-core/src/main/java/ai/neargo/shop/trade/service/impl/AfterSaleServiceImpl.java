@@ -1,7 +1,9 @@
 package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.trade.service.AfterSaleRuleService;
+import ai.neargo.shop.trade.service.AfterSaleRules;
 import ai.neargo.shop.trade.service.AfterSaleService;
+import ai.neargo.shop.trade.service.FulfillStage;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -140,6 +142,47 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         return OrdAfterSale.REASONS;
     }
 
+    /**
+     * 读运单判履约进度用。setter 注入（{@code required=false}）：物流模块缺席时为 null，
+     * 手工构造本类的测试也不必跟着改（同 {@code MerchantOrderServiceImpl}）。
+     */
+    private ai.neargo.shop.spi.logistics.LogisticsPort logisticsPort;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setLogisticsPort(ai.neargo.shop.spi.logistics.LogisticsPort port) {
+        this.logisticsPort = port;
+    }
+
+    /**
+     * 这单的履约进度（货还拦不拦得住）。快递单才查运单；运单状态与建单时刻来自物流域，
+     * 其余按子单状态 + 备货时刻判（{@link FulfillStage}）。
+     */
+    private FulfillStage stageOf(OrdSubOrder sub) {
+        String waybillStatus = null;
+        Long waybillCreatedAt = null;
+        if (logisticsPort != null && OrdSubOrder.EXPRESS.equals(sub.getFulfillment())
+                && sub.getExpressNo() != null && !sub.getExpressNo().isBlank()) {
+            var tv = logisticsPort.track(
+                    ai.neargo.shop.spi.logistics.LogisticsPort.TrackQuery.subOrder(
+                            sub.getSubOrderNo(), "BIZ", false)).orElse(null);
+            if (tv != null) {
+                waybillStatus = tv.status();
+                waybillCreatedAt = tv.createdAt();
+            }
+        }
+        return FulfillStage.of(sub.getStatus(), sub.getPreparedAt(),
+                waybillStatus, waybillCreatedAt, System.currentTimeMillis());
+    }
+
+    /** 这单是不是生鲜（任一行品类为 FRESH）。生鲜发货后非质量退款要受限。 */
+    private boolean isFreshSub(String subOrderNo) {
+        List<OrdItem> items = DataScopeContext.executeWithoutScope(() ->
+                orderItemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
+                        .eq(OrdItem::getSubOrderNo, subOrderNo)));
+        return items.stream().anyMatch(
+                it -> ai.neargo.shop.product.entity.PrdGoods.TYPE_FRESH.equals(it.getCategoryType()));
+    }
+
     // ---------------------------------------------------------------- C 端
 
     @Override
@@ -186,6 +229,18 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
 
+        /*
+         * 分档校验（TDD-售后规则 §2.2）：能不能退取决于**履约进度**（货还拦不拦得住），
+         * 不是订单状态。生鲜已揽收/已签收 + 非质量原因 → 拒；备货中/已出单未揽收是灰色地带，
+         * 可建单但要商家确认（needMerchant，归 approve 那步处理）。进度快照落库留痕。
+         */
+        FulfillStage stage = stageOf(sub);
+        boolean fresh = isFreshSub(subOrderNo);
+        AfterSaleRules.Gate gate = AfterSaleRules.applyGate(stage, fresh, cmd.reason());
+        if (!gate.allow()) {
+            throw BizException.of(ErrorCode.AFTERSALE_FRESH_QUALITY_ONLY);
+        }
+
         OrdAfterSale as = new OrdAfterSale();
         as.setAfterSaleNo(BizKey.next(BizKey.AFTER_SALE));
         as.setSubOrderNo(subOrderNo);
@@ -215,11 +270,15 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 .equals(merchantPort.fundsModeOf(sub.getEntityNo()));
         as.setStatus(platformIsSeller ? OrdAfterSale.ARBITRATING : OrdAfterSale.APPLIED);
         as.setSplitReversed(false);
+        // 申请当时的履约进度快照（审核、灰色地带判定、留痕都读它）
+        as.setFulfillStage(stage.name());
 
-        // 极速退：仅退款、开关开着、金额在上限内、还在下单后的时限内 → 自动通过。
-        // 四个条件都在 ruleService 里，端上也读同一份判定结果，不再各算一遍
-        boolean instant = ruleService.instantEligible(cmd.type(), refund, placedAtOf(sub));
-        as.setInstant(instant);
+        /*
+         * **不再有极速退**（TDD-售后规则 §2.3）：退款一律先审核、收货后再退钱。
+         * 原先「仅退款 + 小额 + 时限内」会在这里直接 doRefund —— 现在状态恒 APPLIED
+         * （自营单仍走 ARBITRATING 分支不变），退钱动作全部移到 approve / 签收触发那步。
+         */
+        as.setInstant(false);
         afterSaleMapper.insert(as);
         // 日志要写**真实去向**：自营单没有「等商家处理」这一步，
         // 写成一样的话，用户看时间线会以为在等商家，而实际在等平台
@@ -231,9 +290,6 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         eventBus.publish(new OrderEvents.AfterSaleApplied(as.getAfterSaleNo(), subOrderNo,
                 sub.getEntityNo(), sub.getStoreNo(), sub.getUserNo(), cmd.type(), refund));
 
-        if (instant) {
-            doRefund(as, "极速退");
-        }
         return detailOf(as);
     }
 

@@ -41,10 +41,12 @@ public interface LogisticsPort {
      * @param displayToken 微信插件的 waybillToken，只在 wx-plugin 时有
      * @param freshAt      最近一次有新进展的时刻（毫秒）
      * @param refreshable  这个界面的「刷新」能不能真的去问渠道
+     * @param createdAt    运单建单时刻（毫秒）；售后按 {@code FulfillStage} 判「录了单号但还没揽收」
+     *                     的宽限期要用它（录单超 6h 仍停在 CREATED 从严当已发出）。无则 null
      */
     record TrackView(String shipmentNo, String carrier, String waybillNo, String status, Long signedAt,
                      boolean atLocker, List<Node> nodes, String displayMode, String displayToken,
-                     Long freshAt, boolean refreshable) {
+                     Long freshAt, boolean refreshable, Long createdAt) {
     }
 
     /** @param at 毫秒；nodes 倒序（最新在前） */

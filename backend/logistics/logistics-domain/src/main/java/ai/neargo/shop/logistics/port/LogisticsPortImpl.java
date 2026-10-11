@@ -96,7 +96,9 @@ public class LogisticsPortImpl implements LogisticsPort {
         return Optional.of(new TrackView(cur.getShipmentNo(), cur.getCarrier(), cur.getWaybillNo(), cur.getStatus(),
                 cur.getSignedAt(), cur.getAtLocker() != null && cur.getAtLocker() == 1, list,
                 plugin ? "wx-plugin" : "self-map", plugin ? cur.getDisplayToken() : null,
-                cur.getLastEventAt(), !allowed.isEmpty()));
+                cur.getLastEventAt(), !allowed.isEmpty(),
+                cur.getCreatedAt() == null ? null
+                        : cur.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()));
     }
 
     @Override

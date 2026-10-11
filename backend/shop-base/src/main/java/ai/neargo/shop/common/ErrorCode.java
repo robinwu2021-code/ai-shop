@@ -326,6 +326,15 @@ public enum ErrorCode {
      */
     STORE_PAUSED(20008, "err.trade.store_paused"),
 
+    /**
+     * 生鲜在已发货 / 已签收后只支持质量原因退款（损坏 / 变质 / 过期），
+     * 非质量原因（不想要等）此时不受理（TDD-售后规则 §2.2）。
+     *
+     * <p>判据是**履约进度**（货还拦不拦得住）而非订单状态：备货中 / 已出单未揽收是灰色地带，
+     * 可申请但要商家确认；已揽收在途 / 已签收才拒。
+     */
+    AFTERSALE_FRESH_QUALITY_ONLY(20009, "err.trade.aftersale_fresh_quality_only"),
+
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),
     NOT_THIS_PICKUP_POINT(30002, "err.fulfillment.not_this_pickup"),
