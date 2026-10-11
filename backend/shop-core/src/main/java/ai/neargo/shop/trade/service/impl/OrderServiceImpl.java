@@ -3052,7 +3052,7 @@ public class OrderServiceImpl implements OrderService {
                 && children.stream().map(OrderVO::status).distinct().count() == 1
                 ? children.get(0).status()
                 : order.getStatus();
-        return new OrderVO(
+        OrderVO vo = new OrderVO(
                 order.getOrderNo(), order.getOrderNo(), headStatus, null,
                 null, null, allItems,
                 OrderVO.Amount.of(nz(order.getGoodsAmount()), nz(order.getFreightAmount()),
@@ -3073,6 +3073,9 @@ public class OrderServiceImpl implements OrderService {
                 false, null, children.size(),
                 // 支付视角跨商家，快递公司同快递号：它在每个子单上，主单这层没有
                 null, null, null, null, null);
+        // 单商家单只有一种履约：把子单的履约面字段提到主层，买家用主单号打开也看得到
+        // 「已发货 / 快递单号 / 收件人」。跨商家单保持支付视角原样（主层不给单一履约值）。
+        return subs.size() == 1 ? vo.withFulfillmentFacing(children.get(0)) : vo;
     }
 
     private OrderVO.ItemVO toItemVO(OrdItem i) {

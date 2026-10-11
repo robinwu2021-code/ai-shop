@@ -208,6 +208,25 @@ public record OrderVO(String orderNo,
                 expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, s, preparedAt);
     }
 
+    /**
+     * 单商家单（只有一张子单）用<b>主单号</b>打开时走支付视角，而支付视角按设计不带履约字段
+     * —— 跨商家时各子单履约方式可能不同，主层给单一值就是错的（见 {@code detailByOrderNoIsPayView}）。
+     *
+     * <p>但单商家单只有一种履约。把这张子单的履约面字段提到主层，买家用主单号打开（付款成功页
+     * 正是用主单号跳进来）才看得到「已发货 / 快递单号 / 收件人」，而不是因为主层没有履约方式、
+     * 又没有物流轨迹，永远回落成「履约中」。
+     *
+     * <p><b>只在 {@code subs.size()==1} 时调用</b>；跨商家单不调，支付视角契约不变。
+     */
+    public OrderVO withFulfillmentFacing(OrderVO sole) {
+        return new OrderVO(orderNo, payOrderNo, status, sole.fulfillment(), merchantNo, merchantName, items,
+                amount, sole.verifyCode(), sole.pickupNo(), sole.pickupName(), payDeadlineAt, createdAt, paidAt,
+                sole.expressNo(), sole.trafficSource(), sole.appointmentAt(), sole.receiver(), timeline, subOrders,
+                buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo,
+                sole.pickupDistanceM(), sole.expressCompany(), discountLines, returned, outOfRange, offers,
+                instantRefundEligible, trace, store, preparedAt);
+    }
+
     /** 挂上备货时刻（只在 C/B 端订单视角填）。null = 还没备货 */
     public OrderVO withPrepared(Long preparedAt) {
         return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items,

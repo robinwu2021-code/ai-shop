@@ -2,7 +2,7 @@
 // 订单详情：码 → 状态时间线 → 商品 → 金额 → 履约信息 → 操作。
 // 码放最上面：待取货的用户打开订单，十有八九就是来看码的。
 import { computed, ref } from "vue";
-import { codeLabelKey, showVerifyCode, statusTone } from "@shared/strategies/order-view";
+import { codeLabelKey, orderView, showVerifyCode, statusTone } from "@shared/strategies/order-view";
 import { useI18n } from "vue-i18n";
 import { onShow, onLoad, onShareAppMessage, onPullDownRefresh } from "@dcloudio/uni-app";
 import { buildShareMessage, canNativeShare } from "@shared/ports/share";
@@ -25,6 +25,22 @@ const { t } = useI18n();
 const traceStep = computed(() => (order.value?.trace ? traceStepKey(order.value.trace) : "picked"));
 /** 有没有轨迹。没有就不渲染轨迹那一段 */
 const hasTrace = computed(() => !!order.value?.trace?.nodes?.length);
+
+/*
+ * 状态文字：有物流轨迹就显示轨迹步骤；否则走**履约感知**的 orderView（与订单列表同一把尺）——
+ * FULFILLING + 快递 → 「已发货」，自提 → 「已到自提点」。
+ * 只有在既无轨迹、又拿不到履约方式（跨商家支付视角，fulfillment 为空）时，才回落到原始状态词条。
+ */
+const statusLabel = computed(() => {
+  const o = order.value;
+  if (!o) return "";
+  if (hasTrace.value) return String(t(`trace.step.${traceStep.value}`));
+  if (o.fulfillment) {
+    const v = orderView(o.status, o.fulfillment, { appointmentAt: o.appointmentAt });
+    return String(v.needsTime ? t(v.labelKey, { t: datetime(o.appointmentAt!) }) : t(v.labelKey));
+  }
+  return String(t(`orderStatus.${o.status}`));
+});
 /**
  * 状态头的底色档（原型 c-order-detail）：待办给暖色、进行中给主色、终态给灰。
  * 与 statusTone（文字色，库件给）分开 —— 这里只决定 header 背景，不碰字色。
@@ -544,7 +560,7 @@ onPullDownRefresh(async () => {
       <view class="ostat__head">
         <view class="sh-row sh-row--between ostat__line">
           <text class="ostat__st" :class="statusTone(order.status)">
-            {{ hasTrace ? $t(`trace.step.${traceStep}`) : $t(`orderStatus.${order.status}`) }}
+            {{ statusLabel }}
           </text>
           <!-- 右上：待付款给倒计时；只要有运单就给物流入口（插件 or 就地展开） -->
           <text v-if="payLeft" class="txt-caption ostat__cd sh-num">{{ payLeft }}</text>

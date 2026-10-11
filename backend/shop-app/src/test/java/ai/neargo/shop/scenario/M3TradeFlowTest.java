@@ -115,6 +115,23 @@ class M3TradeFlowTest {
                 .andExpect(jsonPath("$.data.amount.payableMinor").value(4980 + 5800));
     }
 
+    @Test
+    @DisplayName("Q6：单商家单传主单号 → 支付视角仍带该单的履约方式（买家用主单号打开也看得到发货）")
+    void singleMerchantPayViewCarriesFulfillment() throws Exception {
+        // 付款成功页用**主单号**跳订单详情。单商家单只有一张子单、只有一种履约，
+        // 支付视角此前主层不给 fulfillment，详情页既无轨迹又无履约方式 → 永远「履约中」。
+        // 把子单履约面提到主层后，主单号打开也拿得到履约方式与子单（subOrders 不动）。
+        String token = login("13400134099");
+        addToCart(token, "G0002", "SK0003", 1);   // 单商家（M0001）
+        String payOrderNo = createOrder(token, "m3-single-payview");
+
+        mvc().perform(get("/mp/order/" + payOrderNo).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.orderNo").value(payOrderNo))
+                .andExpect(jsonPath("$.data.subOrders.length()").value(1))
+                .andExpect(jsonPath("$.data.fulfillment").value("STORE_PICKUP"));
+    }
+
     // ---------------------------------------------------------------- C4/C5/C6
 
     @Test
