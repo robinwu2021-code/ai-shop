@@ -323,19 +323,23 @@ ALTER TABLE ord_after_sale
 
 | AC | 测试方法 | 跑过 | 消融验证 |
 |---|---|---|---|
-| AC1/AC2 | `after-sale.ts` 单测：签收前后图片可见性 | | |
-| AC3/AC5 | `AfterSaleRulesTest` + 前端单测：生鲜 × 五档 × 原因 | | |
-| AC4 | `AfterSaleServiceTest#fresh_shipped_non_quality_rejected` | | 注掉校验 → 变红 |
-| AC6 | `AfterSaleServiceTest#apply_never_auto_refunds` | | 恢复极速退 → 变红 |
-| AC7 | `AfterSaleFlowTest#refund_only_in_transit_waits_for_receipt` | | |
-| AC8 | `AfterSaleFlowTest#approve_refunds_immediately_when_unshipped_or_signed` | | |
-| AC9 | `#merchant_partial_amount_after_receipt` + `#partial_before_receipt_rejected` | | |
-| AC10 | `#points_mode_grants_points_no_cash` | | 改回退现金 → 变红 |
-| AC11 | `release-mp.sh` 缺 pkg-biz 拒绝上传（脚本自测）+ 真机点通知 | | |
-| **AC12** | `MerchantOrderServiceTest#prepare_marks_prepared_at`（幂等） | | |
-| **AC13** | `#fresh_preparing_non_quality_goes_to_merchant_review`（不自动退、不硬拒、不进 autoApprove） | | 让它走 autoApprove → 变红 |
-| **AC14** | `#fresh_labeled_not_picked_up_allows_non_quality`（运单 CREATED） | | 改用子单状态判 → 变红 |
-| **AC15** | `AfterSaleVO.fulfillStage` 五档各一例 | | |
+| AC1/AC2 | `after-sale.test.ts` needImage 五档 + c-app mock H5 走查（SHIPPED 无图片框 / RECEIVED 出图片框） | ✓ | — |
+| AC3/AC5 | `AfterSaleRulesTest`(9) + shared `after-sale.test.ts`(10)：生鲜 × 五档 × 原因，共用同一张矩阵 | ✓ | — |
+| AC4 | `M5AfterSaleFlowTest#fresh_received_non_quality_rejected`（SHIPPED 同属拦不住，共用拒绝；逐档矩阵见 AfterSaleRulesTest） | ✓ | — |
+| AC6 | `M5AfterSaleFlowTest#apply_never_auto_refunds` | ✓ | **恢复极速退分支 → 变红**（已验） |
+| AC7 | `M5AfterSaleFlowTest#refund_only_in_transit_waits_for_receipt`、`#signed_triggers_waiting_refund` | ✓ | — |
+| AC8 | `M5AfterSaleFlowTest#approve_refunds_immediately_when_unshipped_or_signed` | ✓ | — |
+| AC9 | `#merchant_partial_amount_after_receipt` + `#partial_before_receipt_rejected` + `#amount_over_paid_rejected` | ✓ | — |
+| AC10 | `#points_mode_grants_points_no_cash` | ✓ | **POINTS 分支改回退现金 → 变红**（已验） |
+| AC11 | `c-app/scripts/release-mp.sh` 缺 pkg-biz 拒绝上传（脚本自测，已加闸）+ 真机点通知 | 脚本✓ / 真机待 | — |
+| **AC12** | `MerchantOrderPrepareTest#prepare_marks_prepared_at_idempotent` + `#prepare_rejects_non_wait_fulfill` | ✓ | — |
+| **AC13** | `AfterSaleTimeoutFlowTest#grayStageNotAutoApproved`（灰色档超时不自动同意）+ `M5#fresh_preparing_non_quality_allowed` | ✓ | **撤掉 autoApprove gray-skip → 变红**（已验） |
+| **AC14** | `M5#fresh_preparing_non_quality_allowed`（备货中灰色放行；LABELED 共用同一 Gate，逐档见 AfterSaleRulesTest）；`#signed_triggers_waiting_refund` 用真 lgs_waybill(PICKED_UP) 走 SHIPPED 判据 | ✓ | — |
+| **AC15** | `AfterSaleVO.fulfillStage`（T7 下发快照）+ B 端审核弹层五档文案（T9）；mock H5 B 端走查 | 后端✓ / B端走查待 | — |
+
+> 说明：AC14 的「LABELED（运单 CREATED 未揽收）允许非质量」这一格，矩阵由 `AfterSaleRulesTest`/`after-sale.test.ts` 逐档断言；
+> 场景集成用 PREPARING（同为灰色 Gate、免 waybill 造数）验放行，用 PICKED_UP 运单验 SHIPPED 的「不立即退」。
+> AC4 的拒绝路径用 RECEIVED（子单 COMPLETED）达成，与 SHIPPED 同属「拦不住」共用同一条 deny。
 
 ## §6 对账二 · 设计 → 实现（实现完再填）
 
@@ -344,3 +348,4 @@ ALTER TABLE ord_after_sale
 | 日期 | 事件 |
 |---|---|
 | 2026-10-11 | 草稿；补充履约进度模型（AC12–AC15）后待店主确认 |
+| 2026-10-11 | 实现完成 T1–T10：FulfillStage 五档、售后规则矩阵（两端共用）、V400 迁移、开始备货、apply 分档+删极速退、approve 分档+WAIT_RECEIPT+签收触发、autoApprove 灰色档跳过、部分退款+积分形式、C 端售后页分档、B 端审核弹层。全量测试绿；AC6/AC10/AC13 经消融验证。待：生产发版（T11.6，with-biz）+ 真机验（T11.7）。|
