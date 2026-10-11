@@ -11379,6 +11379,20 @@ components:
       required: 
         - "remark"
       additionalProperties: false
+    ApproveAfterSaleReq: 
+      type: "object"
+      properties: 
+        remark: 
+          type: "string"
+          description: "同意说明，可空 —— 驳回才强制，同意不强制"
+        refundMinor: 
+          type: "number"
+          description: "商家核定退款额(分)，可空。**仅已签收可传**（部分退款，AC9）；默认全额"
+        refundMode: 
+          "$ref": "#/components/schemas/RefundMode"
+          description: "退款形式，可空（默认现金）：CASH / POINTS（AC10）"
+      additionalProperties: false
+      description: "同意售后（TDD-售后规则 §2.4）。对应后端 `BizAfterSaleController.ApproveReq`。"
     CreateGroupReq: 
       type: "object"
       properties: 

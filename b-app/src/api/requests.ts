@@ -26,6 +26,7 @@ import type {
   GoodsParam,
   StoreProfile,
   SaleMode,
+  RefundMode,
 } from "@shared/types";
 import type { GoodsDraft, GoodsEntrySource } from "./contract";
 import type { ZipPick } from "@shared/ports/zip-media";
@@ -513,6 +514,16 @@ export interface HandleAfterSaleReq {
    * 字段名是 `remark` 不是 `reply` —— 后端 `BizAfterSaleController.RejectReq` 收的是它。
    */
   remark: string;
+}
+
+/** 同意售后（TDD-售后规则 §2.4）。对应后端 `BizAfterSaleController.ApproveReq`。 */
+export interface ApproveAfterSaleReq {
+  /** 同意说明，可空 —— 驳回才强制，同意不强制 */
+  remark?: string;
+  /** 商家核定退款额(分)，可空。**仅已签收可传**（部分退款，AC9）；默认全额 */
+  refundMinor?: number;
+  /** 退款形式，可空（默认现金）：CASH / POINTS（AC10） */
+  refundMode?: RefundMode;
 }
 
 // ---------------------------------------------------------------- 团购与报价

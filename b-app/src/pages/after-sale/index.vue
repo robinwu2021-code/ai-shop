@@ -16,9 +16,12 @@ import { api } from "@/api";
 import { askMchSubscribe } from "@/shared/mch-subscribe";
 import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
-import type { AfterSale, Order } from "@shared/types";
+import type { AfterSale, Order, RefundMode } from "@shared/types";
 
 const { t } = useI18n();
+
+/** 五档履约进度文案（AC15）。空档位（老数据无快照）不显示。 */
+const stageText = (s?: string | null) => (s ? String(t(`afterSale.stage.${s}`)) : "");
 
 /** 「整单退款，将同时退回用户的券「满 30 减 5」、200 积分，并收回赠送的 50 积分」 */
 function impactText(r: Row): string {
@@ -46,7 +49,16 @@ const list = ref<Row[]>([]);
 /** 正在驳回的单号 —— 展开理由输入框 */
 const rejecting = ref("");
 const reason = ref("");
+/** 正在核定金额/形式的单号 —— 展开审核面板（仅已签收） */
+const approving = ref("");
+/** 核定退款额（元，字符串输入）；默认全额 */
+const approveAmount = ref("");
+/** 退款形式：现金 / 积分 */
+const approveMode = ref<RefundMode>("CASH");
 const busy = ref(false);
+
+/** 这单的实付上限（分）：优先订单实付，退而取买家申请额（它已 ≤ 实付） */
+const paidMaxOf = (r: Row) => r.order?.amount.paidMinor || r.as.refundMinor;
 
 /**
  * 老数据（以及后端补字段之前的数据）可能没有 `afterSale`。
@@ -64,6 +76,7 @@ async function load() {
   try {
     rejecting.value = "";
     reason.value = "";
+    approving.value = "";
     const [afterSales, orders] = await Promise.all([
       api.mAfterSaleList(),
       api.mOrderList({ size: 50 }),
@@ -77,13 +90,13 @@ async function load() {
   loaded.value = true;
 }
 
-async function agree(r: Row) {
+async function agree(r: Row, refundMinor?: number, refundMode?: RefundMode) {
   if (busy.value) return;
   // 小程序里顺带攒订阅额度（TDD-微信订阅消息优先 AC8）
   askMchSubscribe();
   busy.value = true;
   try {
-    await api.mApproveAfterSale(r.as.afterSaleNo, "");
+    await api.mApproveAfterSale(r.as.afterSaleNo, "", refundMinor, refundMode);
     uni.showToast({ title: t("afterSale.agreed"), icon: "none" });
     await load();
   } catch (e) {
@@ -91,6 +104,31 @@ async function agree(r: Row) {
   } finally {
     busy.value = false;
   }
+}
+
+/**
+ * 点「同意」：已签收才展开核定面板（可改金额/形式，AC9/AC10）；
+ * 未签收只能全额同意（商家看不到实物损坏比例，§2.4），直接提交。
+ */
+function startApprove(r: Row) {
+  if (r.as.fulfillStage === "RECEIVED") {
+    approving.value = r.as.afterSaleNo;
+    approveAmount.value = (paidMaxOf(r) / 100).toFixed(2);
+    approveMode.value = "CASH";
+  } else {
+    void agree(r);
+  }
+}
+
+/** 确认核定：校验金额（>0 且 ≤实付），带金额与形式提交 */
+function confirmApprove(r: Row) {
+  const minor = Math.round(Number(approveAmount.value) * 100);
+  if (!(minor > 0 && minor <= paidMaxOf(r))) {
+    uni.showToast({ title: t("afterSale.amountInvalid"), icon: "none" });
+    return;
+  }
+  approving.value = "";
+  void agree(r, minor, approveMode.value);
 }
 
 /**
@@ -147,6 +185,8 @@ onShow(load);
       </view>
       <view class="item__tags sh-row">
         <text class="sh-chip">{{ $t(`afterSale.type${asType(r)}`) }}</text>
+        <!-- 履约进度实况（AC15）：商家据此判断货还拦不拦得住、该不该全额退 -->
+        <text v-if="r.as.fulfillStage" class="sh-chip sh-chip--warning">{{ stageText(r.as.fulfillStage) }}</text>
         <text class="txt-caption sh-muted sh-num item__no">{{ r.as.subOrderNo }}</text>
       </view>
       <text v-if="r.as.reason" class="sh-muted reason">
@@ -190,13 +230,46 @@ onShow(load);
         券若是本店发的，退回等于少收一次核销 —— 要在点下去之前看见。
       -->
       <text v-if="impactText(r)" class="txt-caption sh-muted impact">{{ impactText(r) }}</text>
+      <!-- 核定面板（仅已签收）：改金额 + 选现金/积分（AC9/AC10） -->
+      <template v-else-if="approving === r.as.afterSaleNo">
+        <view class="approve sh-mt-sm">
+          <view class="sh-row sh-row--between sh-row--baseline">
+            <text class="sh-muted">{{ $t("afterSale.approveAmount") }}</text>
+            <view class="sh-row amount-in sh-row--baseline">
+              <text class="sh-muted">¥</text>
+              <input v-model="approveAmount" type="digit" maxlength="9" class="field__input amount-field" />
+            </view>
+          </view>
+          <view class="sh-row modes sh-mt-sm">
+            <text
+              class="sh-seg sh-seg--fill"
+              :class="{ 'sh-seg--on': approveMode === 'CASH' }"
+              @tap="approveMode = 'CASH'"
+            >{{ $t("afterSale.refundModeCash") }}</text>
+            <text
+              class="sh-seg sh-seg--fill"
+              :class="{ 'sh-seg--on': approveMode === 'POINTS' }"
+              @tap="approveMode = 'POINTS'"
+            >{{ $t("afterSale.refundModePoints") }}</text>
+          </view>
+          <view class="btns sh-row sh-mt-sm">
+            <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="approving = ''">{{ $t("common.cancel") }}</text>
+            <text class="sh-btn sh-btn--sm txt-strong btn" @tap="confirmApprove(r)">{{ $t("afterSale.agree") }}</text>
+          </view>
+        </view>
+      </template>
       <view v-else-if="asStatus(r) === 'APPLIED'" class="btns sh-row">
         <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="rejecting = r.as.afterSaleNo">
           {{ $t("afterSale.reject") }}
         </text>
-        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="agree(r)">
+        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="startApprove(r)">
           {{ asType(r) === "RETURN_REFUND" ? $t("afterSale.agreeReturn") : $t("afterSale.agree") }}
         </text>
+      </view>
+
+      <!-- 待收货后退款（AC7）：货在途已同意，等买家签收自动退 -->
+      <view v-else-if="asStatus(r) === 'WAIT_RECEIPT'" class="waiting">
+        <text class="sh-muted">{{ $t("afterSale.waitReceiptHint") }}</text>
       </view>
 
       <view
@@ -224,7 +297,7 @@ onShow(load);
            极速退单独说：那类单商家可见不可拒，不说清楚会以为是自己漏点了。 -->
       <view v-else-if="asStatus(r) === 'REFUNDED'" class="waiting">
         <text class="sh-muted">
-          {{ r.as.instant ? $t("afterSale.instantHint") : $t("afterSale.doneHint") }}
+          {{ r.as.refundPoints ? $t("afterSale.donePointsHint", { n: r.as.refundPoints }) : $t("afterSale.doneHint") }}
         </text>
       </view>
 
@@ -314,5 +387,20 @@ onShow(load);
 .impact {
   display: block;
   margin-top: 12rpx;
+}
+.approve {
+  border-top: 2rpx solid var(--sh-line);
+  padding-top: 20rpx;
+}
+.amount-in {
+  gap: 4rpx;
+}
+/* 金额输入框右对齐、窄一点 —— 它只放一个数 */
+.amount-field {
+  width: 180rpx;
+  text-align: right;
+}
+.modes {
+  gap: 16rpx;
 }
 </style>

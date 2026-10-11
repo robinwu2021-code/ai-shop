@@ -551,11 +551,14 @@ export const orderMock: Pick<MerchantApi,
     );
   },
 
-  async mApproveAfterSale(afterSaleNo, reply) {
+  async mApproveAfterSale(afterSaleNo, reply, refundMinor, refundMode) {
     const o = takePendingAfterSale(afterSaleNo);
     const as = o.afterSale!;
     as.merchantReply = reply;
     as.updatedAt = Date.now();
+    // 核定金额 / 形式（AC9/AC10）：仅已签收能改金额，这里按后端一致存下
+    if (refundMinor != null) as.approvedMinor = refundMinor;
+    if (refundMode) as.refundMode = refundMode;
 
     /**
      * 同意后**按类型分流**，这是售后闭环此前缺的那半段：
@@ -572,6 +575,26 @@ export const orderMock: Pick<MerchantApi,
         "请寄回商品并在订单里填写退货运单号",
         `/pages/order/index?orderNo=${o.orderNo}`,
       );
+      persist();
+      return delay(o.afterSale!);
+    }
+
+    // 仅退款 + 已揽收在途：不立即退，转「待收货后退款」（AC7）
+    if (as.fulfillStage === "SHIPPED") {
+      as.status = "WAIT_RECEIPT";
+      as.waitReceipt = true;
+      pushTimeline(o, "商家已同意，货在途——签收后自动退款");
+      persist();
+      return delay(o.afterSale!);
+    }
+
+    // 积分形式：不退现金，按核定额折积分（mock perMinor=1）
+    if (refundMode === "POINTS") {
+      const amt = as.approvedMinor ?? as.refundMinor;
+      as.refundPoints = amt;
+      as.status = "REFUNDED";
+      as.updatedAt = Date.now();
+      pushTimeline(o, "商家已同意，按约定折积分退回");
       persist();
       return delay(o.afterSale!);
     }

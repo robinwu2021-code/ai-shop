@@ -6758,6 +6758,18 @@
           "ar": "تمت الموافقة، ويعود المبلغ بنفس طريقة الدفع"
         },
         {
+          "key": "afterSale.amountInvalid",
+          "zh-CN": "退款金额需大于 0 且不超过实付",
+          "en": "Refund amount must be >0 and not exceed the amount paid",
+          "ar": "يجب أن يكون المبلغ أكبر من 0 ولا يتجاوز المدفوع"
+        },
+        {
+          "key": "afterSale.approveAmount",
+          "zh-CN": "退款金额",
+          "en": "Refund amount",
+          "ar": "مبلغ الاسترداد"
+        },
+        {
           "key": "afterSale.buyerReason",
           "zh-CN": "顾客理由：",
           "en": "Customer's reason:",
@@ -6792,6 +6804,12 @@
           "zh-CN": "已退款，这一单结束了。",
           "en": "Refunded — this case is closed.",
           "ar": "تم الاسترجاع؛ أُغلقت هذه الحالة."
+        },
+        {
+          "key": "afterSale.donePointsHint",
+          "zh-CN": "已按约定折 {n} 积分退回买家，这一单结束了。",
+          "en": "Refunded as {n} points to the buyer per agreement — this case is closed.",
+          "ar": "تم الاسترجاع كـ {n} نقطة للمشتري حسب الاتفاق؛ أُغلقت هذه الحالة."
         },
         {
           "key": "afterSale.empty",
@@ -6830,12 +6848,6 @@
           "ar": "وسيتم استرداد {n} نقطة مكتسبة من هذا الطلب"
         },
         {
-          "key": "afterSale.instantHint",
-          "zh-CN": "小额仅退款订单，系统已自动通过并退款，无需处理。",
-          "en": "A small refund-only order, approved and refunded automatically. No action required.",
-          "ar": "طلب استرجاع صغير وافقت عليه المنصة واسترجعته تلقائيًا؛ لا إجراء مطلوب منك."
-        },
-        {
           "key": "afterSale.needReason",
           "zh-CN": "驳回必须写理由",
           "en": "A reason is required",
@@ -6852,6 +6864,18 @@
           "zh-CN": "退款金额",
           "en": "Refund amount",
           "ar": "مبلغ الاسترجاع"
+        },
+        {
+          "key": "afterSale.refundModeCash",
+          "zh-CN": "退现金",
+          "en": "Cash",
+          "ar": "نقدًا"
+        },
+        {
+          "key": "afterSale.refundModePoints",
+          "zh-CN": "退积分",
+          "en": "Points",
+          "ar": "نقاط"
         },
         {
           "key": "afterSale.refunded",
@@ -6884,6 +6908,36 @@
           "ar": "رقم تتبع الإرجاع"
         },
         {
+          "key": "afterSale.stage.LABELED",
+          "zh-CN": "已出单未揽收",
+          "en": "Labeled, not picked up",
+          "ar": "صدر الشحن ولم يُستلم بعد"
+        },
+        {
+          "key": "afterSale.stage.NOT_PREPARED",
+          "zh-CN": "未备货",
+          "en": "Not prepared",
+          "ar": "لم يُجهّز"
+        },
+        {
+          "key": "afterSale.stage.PREPARING",
+          "zh-CN": "备货中",
+          "en": "Preparing",
+          "ar": "قيد التجهيز"
+        },
+        {
+          "key": "afterSale.stage.RECEIVED",
+          "zh-CN": "已签收",
+          "en": "Delivered",
+          "ar": "تم التوصيل"
+        },
+        {
+          "key": "afterSale.stage.SHIPPED",
+          "zh-CN": "已揽收·在途",
+          "en": "Picked up, in transit",
+          "ar": "تم الاستلام وفي الطريق"
+        },
+        {
           "key": "afterSale.title",
           "zh-CN": "售后处理",
           "en": "After-sales",
@@ -6900,6 +6954,12 @@
           "zh-CN": "退货退款",
           "en": "Return & refund",
           "ar": "إرجاع واسترجاع"
+        },
+        {
+          "key": "afterSale.waitReceiptHint",
+          "zh-CN": "已同意，货在途——买家签收后自动退款。",
+          "en": "Approved; the parcel is on the way — refund is issued automatically after the buyer confirms delivery.",
+          "ar": "تمت الموافقة، والطرد في الطريق — يتم الاسترجاع تلقائيًا بعد تأكيد المشتري الاستلام."
         },
         {
           "key": "afterSale.waitReturn",

@@ -154,6 +154,7 @@ import type {
   Supplier,
   VerifyBatchResult,
   VerifyResult,
+  RefundMode,
 } from "@shared/types";
 
 /** 拍照识别的结果。全部是**建议值**，店主可改可弃 */
@@ -1657,8 +1658,14 @@ export interface MerchantApi {
     accountNumber: string; bankName?: string; bankBranch?: string }): Promise<PayoutAccount>;
 
   mAfterSaleList(): Promise<AfterSale[]>;
-  /** 同意：仅退款直接退；退货退款要等收货后才退（见 mConfirmReturn） */
-  mApproveAfterSale(afterSaleNo: string, reply: string): Promise<AfterSale>;
+  /**
+   * 同意。仅退款未发货/已签收直接退，已揽收在途转「待收货后退款」；退货退款等收货（见 mConfirmReturn）。
+   * 已签收可带核定金额 `refundMinor`（部分退，AC9）与形式 `refundMode`（现金/积分，AC10）。
+   */
+  mApproveAfterSale(
+    afterSaleNo: string, reply: string,
+    refundMinor?: number, refundMode?: RefundMode,
+  ): Promise<AfterSale>;
   /** 驳回**必须给理由** —— 用户据此决定要不要上升平台，没理由就是把路堵死 */
   mRejectAfterSale(afterSaleNo: string, reply: string): Promise<AfterSale>;
   /**

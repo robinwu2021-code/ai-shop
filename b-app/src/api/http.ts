@@ -30,6 +30,7 @@ import type {
   GoodsListQuery,
   GrantStoreReq,
   HandleAfterSaleReq,
+  ApproveAfterSaleReq,
   MarkArrivedReq,
   MerchantLoginReqBody,
   OpenFromMapReq,
@@ -540,10 +541,10 @@ export const httpApi: MerchantApi = {
   mPayoutAccounts: () => http.get<PayoutAccount[]>(E.mPayoutAccounts.path),
   mSubmitPayoutAccount: (v) => http.post<PayoutAccount>(E.mSubmitPayoutAccount.path, v),
   mAfterSaleList: () => http.get<AfterSale[]>(E.mAfterSaleList.path),
-  mApproveAfterSale: (afterSaleNo, reply) =>
+  mApproveAfterSale: (afterSaleNo, reply, refundMinor, refundMode) =>
     http.post<AfterSale>(buildPath(E.mApproveAfterSale.path, { afterSaleNo }), {
-      remark: reply,
-    } satisfies HandleAfterSaleReq),
+      remark: reply, refundMinor, refundMode,
+    } satisfies ApproveAfterSaleReq),
   mRejectAfterSale: (afterSaleNo, reply) =>
     http.post<AfterSale>(buildPath(E.mRejectAfterSale.path, { afterSaleNo }), {
       remark: reply,
