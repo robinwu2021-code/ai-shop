@@ -64,6 +64,12 @@ public interface AfterSaleService {
     /** 确认收到退货 → 触发退款。 */
     AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo);
 
+    /**
+     * 子单签收/完成时调用：把该子单上「待收货后退款」({@code WAIT_RECEIPT}) 的仅退款单退掉（AC7 出口①）。
+     * 幂等；没有这类单时为空操作。系统身份调用。
+     */
+    void settleOnReceipt(String subOrderNo);
+
     record ApplyCommand(String type, String reason, List<String> images, Long refundMinor) {
     }
 

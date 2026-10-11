@@ -55,8 +55,12 @@ public final class OrderStateMachine {
 
     /** 售后状态机（A2 §3.3）。终态：REFUNDED / REJECTED / CLOSED。 */
     private static final Map<String, Set<String>> AFTER_SALE = Map.of(
-            "APPLIED", Set.of("REFUNDING", "REFUNDED", "REJECTED", "CLOSED"),
+            // WAIT_RECEIPT：仅退款在「已揽收未签收」审核通过后在这里等签收（TDD-售后规则 §2.3）
+            "APPLIED", Set.of("REFUNDING", "REFUNDED", "WAIT_RECEIPT", "REJECTED", "CLOSED"),
             "REFUNDING", Set.of("REFUNDED", "CLOSED"),
+            // 出口：① 签收 → REFUNDED；② 商家收到退回 → REFUNDED；③ 超时未签收 → 转平台仲裁。
+            // 退款统一经 doRefund 的中间态 REFUNDING（回退分账→退款→落终态），故也允许 →REFUNDING
+            "WAIT_RECEIPT", Set.of("REFUNDING", "REFUNDED", "ARBITRATING", "CLOSED"),
             // 驳回后用户可申诉；申诉由平台裁决，可能退也可能关闭
             "REJECTED", Set.of("ARBITRATING", "CLOSED"),
             "ARBITRATING", Set.of("REFUNDING", "REFUNDED", "CLOSED"),

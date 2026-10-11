@@ -2313,6 +2313,8 @@ public class OrderServiceImpl implements OrderService {
         subOrderMapper.updateById(sub);
         appendStatusLog(subOrderNo, OrdSubOrder.COMPLETED, "已确认收货",
                 OrdStatusLog.BY_USER, SecurityUtils.currentUserNo());
+        // 签收触发「待收货后退款」：货在途时审过的仅退款单，此刻按约定退（AC7 出口①）
+        afterSaleService.settleOnReceipt(subOrderNo);
         return detail(subOrderNo, null);
     }
 
@@ -2480,6 +2482,8 @@ public class OrderServiceImpl implements OrderService {
                     bySigned ? "签收满 " + signedDays + " 天自动确认收货"
                             : "发货满 " + shippedDays + " 天自动确认收货",
                     OrdStatusLog.BY_SYSTEM, null);
+            // 自动签收同样触发「待收货后退款」（AC7 出口①）
+            afterSaleService.settleOnReceipt(sub.getSubOrderNo());
             n++;
         }
         return n;

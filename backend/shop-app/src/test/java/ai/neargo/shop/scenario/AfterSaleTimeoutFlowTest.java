@@ -43,6 +43,7 @@ class AfterSaleTimeoutFlowTest {
     private static final String PHONE_2 = "13000330002";
     private static final String PHONE_3 = "13000330003";
     private static final String PHONE_4 = "13000330004";
+    private static final String PHONE_5 = "13000330005";
 
     private static final long HOUR = 3_600_000L;
     private static final String MERCHANT = "M0001";
@@ -298,6 +299,52 @@ class AfterSaleTimeoutFlowTest {
             out.add(n.get("label").asString());
         }
         return out;
+    }
+
+    @Test
+    @DisplayName("★★★ 灰色地带（生鲜已备货）超时也不自动同意——系统不替商家决定（AC13）")
+    void grayStageNotAutoApproved() throws Exception {
+        // 生鲜在 M0002：本类里也要改成非自营，否则 apply 直接进 ARBITRATING，不经 APPLIED
+        String savedM0002 = jdbc.queryForObject(
+                "SELECT funds_mode FROM mch_entity WHERE entity_no = 'M0002'", String.class);
+        jdbc.update("UPDATE mch_entity SET funds_mode = ? WHERE entity_no = 'M0002'",
+                MerchantQueryPort.FUNDS_DIRECT);
+        try {
+            String token = login(PHONE_5);
+            String sub = placeAndPayFresh(token, PHONE_5);
+            String asNo = apply(token, sub, "REFUND_ONLY");
+            assertThat(statusOf(asNo)).as("申请时未备货，正常受理").isEqualTo(OrdAfterSale.APPLIED);
+
+            // 商家开始备货 → 进入灰色地带（货可能已备，有成本）
+            jdbc.update("UPDATE ord_sub_order SET prepared_at = ? WHERE sub_order_no = ?",
+                    System.currentTimeMillis(), sub);
+
+            afterSaleService.autoApprove(asNo);
+            assertThat(statusOf(asNo))
+                    .as("灰色档超时也绝不自动同意——必须商家人工确认（撤掉 gray-skip 就变红）")
+                    .isEqualTo(OrdAfterSale.APPLIED);
+        } finally {
+            jdbc.update("UPDATE mch_entity SET funds_mode = ? WHERE entity_no = 'M0002'", savedM0002);
+        }
+    }
+
+    /** 3980 的蓝莓（M0002/G0004 FRESH）：灰色档用例要生鲜货 */
+    private String placeAndPayFresh(String token, String idemKey) throws Exception {
+        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"goodsNo\":\"G0004\",\"skuNo\":\"SK0005\",\"qty\":1}"));
+        String body = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", "ast-" + idemKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
+                .andReturn().getResponse().getContentAsString();
+        String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-astf-" + idemKey
+                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        String list = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(list).get("data").get("records").get(0).get("orderNo").asString();
     }
 
     /** 6980 的油（M0001/G0002）：**高于极速退阈值**，所以申请后停在等商家 */

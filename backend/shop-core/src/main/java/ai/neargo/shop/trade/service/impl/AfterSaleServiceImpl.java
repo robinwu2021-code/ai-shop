@@ -465,6 +465,20 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                     OrderEvents.AfterSaleDecided.RETURN_WAIT, as.getMerchantRemark()));
             return detailOf(as);
         }
+        /*
+         * 仅退款（AC7/AC8）：同意 ≠ 立刻退钱。货还在路上（已揽收未签收 SHIPPED）就退钱，
+         * 等于钱货两失 —— 此时转「待收货后退款」WAIT_RECEIPT，等买家签收（或包裹退回商家）再退。
+         * 未发货（可拦）或已签收（到手）则立即退（TDD-售后规则 §2.3）。
+         */
+        if (OrdAfterSale.REFUND_ONLY.equals(as.getType())
+                && stageOf(subOrderOf(as.getSubOrderNo())) == FulfillStage.SHIPPED) {
+            OrderStateMachine.assertAfterSaleTransit(as.getStatus(), OrdAfterSale.WAIT_RECEIPT);
+            as.setStatus(OrdAfterSale.WAIT_RECEIPT);
+            update(as);
+            appendLog(as.getSubOrderNo(), OrdAfterSale.WAIT_RECEIPT,
+                    "商家已同意，货在途——签收后自动退款", OrdStatusLog.BY_MERCHANT, merchantNo);
+            return detailOf(as);
+        }
         doRefund(as, "商家同意退款");
         return detailOf(as);
     }
@@ -492,6 +506,25 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
         doRefund(as, "商家已收到退货");
         return detailOf(as);
+    }
+
+    /**
+     * 签收触发「待收货后退款」（AC7/AC8 出口①）：子单签收/完成时调用，把这单上处于
+     * {@link OrdAfterSale#WAIT_RECEIPT} 的仅退款单退掉。**幂等**（无 WAIT_RECEIPT 单就是空操作，
+     * Outbox/重试再调也只退一次 —— doRefund 自己也挡 REFUNDED）。系统身份调用，绕数据域。
+     */
+    @Override
+    @Transactional
+    public void settleOnReceipt(String subOrderNo) {
+        OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectOne(
+                Wrappers.<OrdAfterSale>lambdaQuery()
+                        .eq(OrdAfterSale::getSubOrderNo, subOrderNo)
+                        .eq(OrdAfterSale::getStatus, OrdAfterSale.WAIT_RECEIPT)
+                        .last("limit 1")));
+        if (as == null) {
+            return;
+        }
+        doRefund(as, "买家已签收，按约定退款");
     }
 
 
@@ -1069,6 +1102,21 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         if (as == null || !OrdAfterSale.APPLIED.equals(as.getStatus())) {
             return;   // 幂等：上一轮已经处置过，或者商家在这一刻自己点了
         }
+        /*
+         * **灰色地带（生鲜已备货 / 已出单未揽收）绝不自动同意**（AC13）：这类单系统既不放行也不硬拒，
+         * 必须由商家人工确认（他可能已为这单备了货、打了包，有成本）。超时只催商家、不替他做决定。
+         * 判据当场重算（货可能已推进），与 apply 同一套 FulfillStage × fresh。
+         */
+        OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
+        AfterSaleRules.Gate gate = AfterSaleRules.applyGate(stageOf(sub), isFreshSub(as.getSubOrderNo()), as.getReason());
+        if (gate.needMerchant()) {
+            appendLog(as.getSubOrderNo(), as.getStatus(),
+                    "灰色地带（商家可能已备货/打包），不自动同意，已再次提醒商家", OrdStatusLog.BY_SYSTEM, null);
+            eventBus.publish(new OrderEvents.AfterSaleApplied(as.getAfterSaleNo(), as.getSubOrderNo(),
+                    as.getEntityNo(), sub.getStoreNo(), as.getUserNo(), as.getType(),
+                    as.getRefundMinor() == null ? 0L : as.getRefundMinor()));
+            return;
+        }
         appendLog(as.getSubOrderNo(), as.getStatus(),
                 "商家超时未处理，系统自动同意", OrdStatusLog.BY_SYSTEM, null);
         if (OrdAfterSale.RETURN_REFUND.equals(as.getType())) {
@@ -1077,6 +1125,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             update(as);
             appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDING, "待买家寄回",
                     OrdStatusLog.BY_SYSTEM, null);
+            return;
+        }
+        // 仅退款在途（已揽收未签收）：自动同意也不能在途退钱，转「待收货后退款」
+        if (OrdAfterSale.REFUND_ONLY.equals(as.getType()) && stageOf(sub) == FulfillStage.SHIPPED) {
+            as.setStatus(OrdAfterSale.WAIT_RECEIPT);
+            update(as);
+            appendLog(as.getSubOrderNo(), OrdAfterSale.WAIT_RECEIPT,
+                    "系统自动同意，货在途——签收后自动退款", OrdStatusLog.BY_SYSTEM, null);
             return;
         }
         doRefund(as, "商家超时未处理，系统自动退款");

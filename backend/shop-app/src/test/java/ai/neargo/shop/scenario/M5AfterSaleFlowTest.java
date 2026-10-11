@@ -5,8 +5,10 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers;
+import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers;
+import org.springframework.jdbc.core.JdbcTemplate;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
@@ -605,6 +607,51 @@ class M5AfterSaleFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ 仅退款 + 已揽收在途 → 审核通过不立即退，转 WAIT_RECEIPT（AC7）")
+    void refund_only_in_transit_waits_for_receipt() throws Exception {
+        Ordered o = placeAndPay("13200132610", 6980L);           // M0001 非生鲜
+        String asNo = applyAfterSale(o, "REFUND_ONLY", "不想要了"); // 申请时未发货，放行
+        shipPickedUp(o.subOrderNo);                               // 之后商家发货、快递已揽收
+
+        approve(loginAsOwnerOf("M0001", "13200132611"), asNo);
+        assertThat(asStatus(o.userToken, asNo))
+                .as("货在途审核通过不能立刻退钱，要等签收")
+                .isEqualTo(OrdAfterSale.WAIT_RECEIPT);
+    }
+
+    @Test
+    @DisplayName("★★★ 未发货 / 已签收审核通过 → 立即退款（AC8）")
+    void approve_refunds_immediately_when_unshipped_or_signed() throws Exception {
+        // 未发货（NOT_PREPARED）
+        Ordered a = placeAndPay("13200132612", 6980L);
+        String asA = applyAfterSale(a, "REFUND_ONLY", "不想要了");
+        approve(loginAsOwnerOf("M0001", "13200132613"), asA);
+        assertThat(asStatus(a.userToken, asA)).as("未发货，可直接退").isEqualTo(OrdAfterSale.REFUNDED);
+
+        // 已签收（RECEIVED）
+        Ordered b = placeAndPay("13200132614", 6980L);
+        String asB = applyAfterSale(b, "REFUND_ONLY", "不想要了");
+        setSubStage(b.subOrderNo, OrdSubOrder.COMPLETED, null);
+        approve(loginAsOwnerOf("M0001", "13200132615"), asB);
+        assertThat(asStatus(b.userToken, asB)).as("已签收，货到手，可直接退").isEqualTo(OrdAfterSale.REFUNDED);
+    }
+
+    @Test
+    @DisplayName("★★★ WAIT_RECEIPT 单在买家签收后自动退款（AC7 出口①）")
+    void signed_triggers_waiting_refund() throws Exception {
+        Ordered o = placeAndPay("13200132616", 6980L);
+        String asNo = applyAfterSale(o, "REFUND_ONLY", "不想要了");
+        shipPickedUp(o.subOrderNo);
+        approve(loginAsOwnerOf("M0001", "13200132617"), asNo);
+        assertThat(asStatus(o.userToken, asNo)).isEqualTo(OrdAfterSale.WAIT_RECEIPT);
+
+        confirmReceipt(o.userToken, o.subOrderNo);
+        assertThat(asStatus(o.userToken, asNo))
+                .as("签收应触发那张 WAIT_RECEIPT 单退款")
+                .isEqualTo(OrdAfterSale.REFUNDED);
+    }
+
+    @Test
     @DisplayName("商家驳回必须写理由，用户可申诉上升平台")
     void rejectThenEscalate() throws Exception {
         Ordered o = placeAndPay("13200132013", 6980L);
@@ -900,6 +947,8 @@ class M5AfterSaleFlowTest {
 
     @Autowired
     private TradeMappers.SubOrderMapper subOrderMapper;
+    @Autowired
+    private JdbcTemplate jdbc;
 
     /** 把子单推到某个履约档：改状态 + 置/清备货时刻。直接改库，绕过业务流（只为摆出测试需要的档位）。 */
     private void setSubStage(String subOrderNo, String status, Long preparedAt) {
@@ -911,6 +960,35 @@ class M5AfterSaleFlowTest {
             subOrderMapper.updateById(sub);
             return null;
         });
+    }
+
+    /** 把子单做成「已揽收在途」(SHIPPED)：改成快递 + 录单号 + FULFILLING，并落一张 PICKED_UP 运单。 */
+    private void shipPickedUp(String subOrderNo) {
+        DataScopeContext.executeWithoutScope(() -> {
+            OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                    .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("LIMIT 1"));
+            sub.setFulfillment(ai.neargo.shop.common.Fulfillments.EXPRESS);
+            sub.setExpressNo("SF-WR-" + subOrderNo);
+            sub.setStatus(OrdSubOrder.FULFILLING);
+            subOrderMapper.updateById(sub);
+            return null;
+        });
+        jdbc.update("insert into lgs_waybill (biz_type, biz_ref, shipment_no, carrier, waybill_no, status,"
+                        + " tenant_no, created_at, updated_at) values ('SUB_ORDER', ?, ?, 'SF', ?, 'PICKED_UP',"
+                        + " 'MAIN', now(), now())",
+                subOrderNo, "SH-" + subOrderNo, "SF-WR-" + subOrderNo);
+    }
+
+    /** 读某张售后单的当前状态。 */
+    private String asStatus(String token, String afterSaleNo) throws Exception {
+        return json.readTree(detail(token, afterSaleNo)).get("data").get("status").asString();
+    }
+
+    /** 买家确认收货。 */
+    private void confirmReceipt(String token, String subOrderNo) throws Exception {
+        mvc().perform(post("/mp/order/" + subOrderNo + "/confirm-receipt")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
     }
 
     /** 先把结算单推到已分账，回退才有意义（没分过账的单不会向通道发回退指令）。 */
