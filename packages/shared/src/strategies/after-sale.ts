@@ -73,3 +73,22 @@ export function reasonsFor(stage: FulfillStage, fresh: boolean): AfterSaleReason
   const onlyQuality = fresh && (stage === "SHIPPED" || stage === "RECEIVED");
   return onlyQuality ? QUALITY_REASONS : ALL_REASONS;
 }
+
+/**
+ * 从**订单详情**算出履约进度（C 端用，与后端 {@code FulfillStage.of} 同一判据的端上镜像）。
+ *
+ * 端上拿到的是**契约状态**（`WAIT_FULFILL` 已归一成 `PAID`），所以：
+ * 已签收看 `COMPLETED`；在途看运单（`trace.status`，非 `CREATED` 即已揽收）；
+ * 否则看有没有开始备货。6 小时宽限（LABELED→SHIPPED）端上不精算 —— 那是灰色与硬拒的边界，
+ * 后端 apply 会权威判定；端上宁可显示成「灰色（可申请、商家确认）」也不先行硬拒。
+ */
+export function orderStageOf(o: {
+  status: string;
+  preparedAt?: number | null;
+  trace?: { status: string } | null;
+}): FulfillStage {
+  if (o.status === "COMPLETED") return "RECEIVED";
+  const w = o.trace?.status;
+  if (w) return w === "CREATED" ? "LABELED" : "SHIPPED";
+  return o.preparedAt != null ? "PREPARING" : "NOT_PREPARED";
+}

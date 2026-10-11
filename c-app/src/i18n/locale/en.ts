@@ -891,12 +891,17 @@ export default {
     detail: "More detail",
     detailPh: "What went wrong?",
     images: "Photos (up to 3)",
-    instant: "This order qualifies for instant refund — the money goes back to your original payment method right away.",
     submit: "Submit",
     applied: "Request submitted",
     appliedHint: "The shop will respond shortly; track it in your order",
     refunded: "Refunded",
     refundedHint: "Money returned to your original payment method; timing depends on your bank",
+    freshQualityOnly: "After a fresh item ships, only quality issues (damaged/spoiled/expired) are refundable",
+    grayStageTitle: "Merchant may be preparing",
+    grayStageTip: "The merchant may have already prepared or packed your order. After you submit, they will review it before processing, and a full refund is not guaranteed. Submit anyway?",
+    grayStageOk: "Submit anyway",
+    waitReceipt: "Merchant approved; the parcel is on the way — refund is issued automatically after you confirm delivery",
+    refundedPoints: "Refunded as points to your account per agreement; see your points page",
   },
   /** 选城市。**让「在别处填地址」成立** —— 搜索此前只围着当前定位搜 */
   cityPick: {

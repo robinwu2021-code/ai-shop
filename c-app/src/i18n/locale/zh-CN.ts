@@ -964,12 +964,17 @@ export default {
     detail: "补充说明",
     detailPh: "遇到了什么问题？",
     images: "上传凭证（最多 3 张）",
-    instant: "本单金额较小，符合极速退款条件，提交后预计立即退回原支付账户。",
     submit: "提交申请",
     applied: "已提交申请",
     appliedHint: "商家会尽快处理，进度可在订单详情查看",
     refunded: "退款已到账",
     refundedHint: "款项已原路退回，到账时间以支付渠道为准",
+    freshQualityOnly: "生鲜发货后只支持损坏/变质/过期等质量问题的退款",
+    grayStageTitle: "商家可能已在备货",
+    grayStageTip: "商家可能已为你备货或打包，提交后商家会核实再处理，不一定能全额退。确认提交？",
+    grayStageOk: "仍要提交",
+    waitReceipt: "商家已同意，货还在路上——签收后自动退款",
+    refundedPoints: "已按约定折算积分退回你的账户，可在积分页查看",
   },
   /** 选城市。**让「在别处填地址」成立** —— 搜索此前只围着当前定位搜 */
   cityPick: {

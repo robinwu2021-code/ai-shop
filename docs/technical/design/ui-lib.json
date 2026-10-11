@@ -258,7 +258,7 @@
       },
       "usage": {
         "b-app": 521,
-        "c-app": 93
+        "c-app": 94
       }
     },
     {
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 46,
-        "c-app": 52
+        "c-app": 51
       }
     },
     {
@@ -618,7 +618,7 @@
       },
       "usage": {
         "b-app": 231,
-        "c-app": 91
+        "c-app": 90
       }
     },
     {
@@ -5044,10 +5044,18 @@
         "sh-scaffold",
         "sh-uploader"
       ],
-      "libClassHits": 28,
+      "libClassHits": 27,
       "localSelectors": 17,
-      "localCssLines": 75,
-      "rolled": []
+      "localCssLines": 76,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "c-app",
@@ -6029,7 +6037,8 @@
       "rule": "showModal\\(|showActionSheet\\(",
       "pages": [
         "b-app/goods-edit",
-        "b-app/store-scope-polygon"
+        "b-app/store-scope-polygon",
+        "c-app/after-sale"
       ]
     },
     {

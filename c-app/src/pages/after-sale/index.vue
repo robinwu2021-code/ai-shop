@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // 售后申请。
 // 生鲜的坏果包赔走的也是这条 —— 原因选「品质问题」+ 传图，小额自动通过（极速退）。
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
@@ -9,6 +9,9 @@ import { chooseImages } from "@shared/ports/media";
 import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
 import { ROUTES } from "@shared/utils/constants";
 import { money } from "@shared/utils/format";
+import {
+  applyGate, isFresh, needImage, orderStageOf, reasonsFor,
+} from "@shared/strategies/after-sale";
 import type { AfterSaleReason, AfterSaleType, Order } from "@shared/types";
 
 const { t } = useI18n();
@@ -41,19 +44,38 @@ const submitting = ref(false);
 const submitted = ref(false);
 
 /**
- * 小额自动通过：让用户提交前就知道会不会秒退，而不是提交后才发现。
- *
- * **判定来自后端**（`Order.instantRefundEligible`）。此前这里拿
- * `TRADE_RULES.instantRefundMaxMinor` 比金额，那份常量是 ¥50、后端阈值是 ¥100 ——
- * 差了一倍；而且常量表达不了规则里的另两半：总开关，和「下单 N 小时内」。
- * 于是这句提示说的和后端做的，从来不是同一个判断。
+ * 履约进度（货还拦不拦得住）与是否生鲜 —— 售后能不能退、要不要图片、原因过滤都按它（售后规则 §2.1/§2.2）。
+ * 判据与后端 {@code FulfillStage}/{@code AfterSaleRules} 同一份（{@code @shared/strategies/after-sale}）。
  */
-// 只对仅退款成立：要退货的，货还没回来就秒退等于白送
-const instantRefund = computed(
-  () => type.value === "REFUND_ONLY" && order.value?.instantRefundEligible === true,
-);
+const stage = computed(() => (order.value ? orderStageOf(order.value) : "NOT_PREPARED"));
+const fresh = computed(() => isFresh((order.value?.items ?? []).map((i) => i.type)));
+
+/** 这一档可选的原因：生鲜已揽收/已签收只剩质量三项。与后端下发的清单取交集 —— 两边都收窄。 */
+const shownReasons = computed(() => {
+  const allowed = reasonsFor(stage.value, fresh.value);
+  return REASONS.value.filter((r) => allowed.includes(r));
+});
+
+/** 已签收才显示图片上传框（未收货看不到实物损坏，传图没意义）。 */
+const showImageBox = computed(() => needImage(stage.value));
+
+/** 选中的原因若不在当前档位允许范围内，清掉 —— 否则换档后带着一个被禁的原因提交 */
+watch([shownReasons, reason], () => {
+  if (reason.value && !shownReasons.value.includes(reason.value)) {
+    reason.value = "";
+  }
+});
 
 const canSubmit = computed(() => !!reason.value && !submitting.value);
+
+/** 已提交卡片的状态与文案：读售后单（order.afterSale），区分「待收货后退款」与「积分退款」。 */
+const asStatus = computed(() => order.value?.afterSale?.status ?? null);
+const refundedByPoints = computed(() => (order.value?.afterSale?.refundPoints ?? 0) > 0);
+const doneHintKey = computed(() => {
+  if (refundedByPoints.value) return "afterSale.refundedPoints";
+  if (asStatus.value === "WAIT_RECEIPT") return "afterSale.waitReceipt";
+  return asStatus.value === "REFUNDED" ? "afterSale.refundedHint" : "afterSale.appliedHint";
+});
 
 /** 这次没取到。**与「这个东西不存在」是两件事** —— 整页都挂在 `order` 后面，
  *  拉不到连外壳都不渲染，是一整块白屏：没有导航栏、没有一个字、退不回去 */
@@ -97,20 +119,35 @@ async function pickImages() {
 
 async function submit() {
   const o = order.value;
-  if (!o || !canSubmit.value) return;
+  if (!o || !canSubmit.value || !reason.value) return;
   /*
-   * 售后结果 / 退货寄回的订阅授权（TDD-微信订阅消息优先 AC7）。**排在任何 await 前面** —— 隔一次 await 就弹不出来。
-   * 极速退不问：不经商家审，没有「结果」要等；仅退款不问「寄回」。
+   * 灰色地带（生鲜已备货 / 已出单未揽收）：系统不自动放行也不硬拒，提交前先说清
+   * 「商家可能已为你备货/打包，会核实后处理」，让买家心里有数（AC13）。
+   * **这一步要在订阅授权与任何 await 之前** —— showModal 本身是 await，但它是用户主动触发的点击链路内，弹得出来。
    */
-  if (!instantRefund.value) {
-    const tmpls = type.value === "RETURN_REFUND"
-      ? [SUBSCRIBE_TMPL.afterSaleResult, SUBSCRIBE_TMPL.returnWait]
-      : [SUBSCRIBE_TMPL.afterSaleResult];
-    void requestSubscribe(tmpls).then((r) => {
-      if (r.accepted.length) void api.subscribeReport(r.accepted, true);
-      if (r.rejected.length) void api.subscribeReport(r.rejected, false);
+  if (applyGate(stage.value, fresh.value, reason.value).needMerchant) {
+    const ok = await new Promise<boolean>((resolve) => {
+      uni.showModal({
+        title: String(t("afterSale.grayStageTitle")),
+        content: String(t("afterSale.grayStageTip")),
+        confirmText: String(t("afterSale.grayStageOk")),
+        success: (r) => resolve(!!r.confirm),
+        fail: () => resolve(false),
+      });
     });
+    if (!ok) return;
   }
+  /*
+   * 售后结果 / 退货寄回的订阅授权（TDD-微信订阅消息优先 AC7）。
+   * 退款一律先审核（极速退已废除），所以都要订阅「结果」；退货退款再加「寄回」。
+   */
+  const tmpls = type.value === "RETURN_REFUND"
+    ? [SUBSCRIBE_TMPL.afterSaleResult, SUBSCRIBE_TMPL.returnWait]
+    : [SUBSCRIBE_TMPL.afterSaleResult];
+  void requestSubscribe(tmpls).then((r) => {
+    if (r.accepted.length) void api.subscribeReport(r.accepted, true);
+    if (r.rejected.length) void api.subscribeReport(r.rejected, false);
+  });
   submitting.value = true;
   try {
     const label = String(t(`afterSale.reason.${reason.value}`));
@@ -159,11 +196,9 @@ onLoad((q) => {
         <view class="sh-card done">
           <text class="done__icon">✓</text>
           <text class="txt-title done__title">
-            {{ order.status === "REFUNDED" ? $t("afterSale.refunded") : $t("afterSale.applied") }}
+            {{ asStatus === "REFUNDED" ? $t("afterSale.refunded") : $t("afterSale.applied") }}
           </text>
-          <text class="txt-caption done__hint">
-            {{ order.status === "REFUNDED" ? $t("afterSale.refundedHint") : $t("afterSale.appliedHint") }}
-          </text>
+          <text class="txt-caption done__hint">{{ $t(doneHintKey) }}</text>
         </view>
 
         <view class="sh-card block">
@@ -210,9 +245,12 @@ onLoad((q) => {
 
         <view class="sh-card block">
           <text class="txt-title">{{ $t("afterSale.pickReason") }}</text>
+          <!-- 生鲜已发货/已签收：只收质量问题，说清楚为什么只剩这几项 -->
+          <text v-if="fresh && (stage === 'SHIPPED' || stage === 'RECEIVED')"
+            class="txt-caption sh-muted reasons__hint">{{ $t("afterSale.freshQualityOnly") }}</text>
           <view class="reasons sh-wrap">
             <view
-              v-for="r in REASONS"
+              v-for="r in shownReasons"
               :key="r"
               class="sh-seg"
               :class="{ 'sh-seg--on': reason === r }"
@@ -232,12 +270,11 @@ onLoad((q) => {
             maxlength="200"
           />
 
-          <text class="sh-muted imglabel">{{ $t("afterSale.images") }}</text>
-          <sh-uploader class="imgs" :list="images" :max="3" :width="160" :uploading="uploadingImg" @add="pickImages"></sh-uploader>
-        </view>
-
-        <view v-if="instantRefund" class="sh-card block notice">
-          <text class="txt-caption notice__text txt-primary">{{ $t("afterSale.instant") }}</text>
+          <!-- 已签收才传图：未收货看不到实物损坏，上传框不显示（AC1/AC2） -->
+          <template v-if="showImageBox">
+            <text class="sh-muted imglabel">{{ $t("afterSale.images") }}</text>
+            <sh-uploader class="imgs" :list="images" :max="3" :width="160" :uploading="uploadingImg" @add="pickImages"></sh-uploader>
+          </template>
         </view>
 
         <sh-actionbar :pad="180">
@@ -275,6 +312,10 @@ onLoad((q) => {
   gap: 16rpx;
   margin-top: 24rpx;
 }
+.reasons__hint {
+  display: block;
+  margin-top: 16rpx;
+}
 /* 盒子归 .field__area，这里只说「这一个框多高」—— 尺寸是版面，不是件的属性 */
 .ta {
   min-height: 160rpx;
@@ -290,9 +331,6 @@ onLoad((q) => {
    顺带把那个 `＋` 换成真图标 —— 字符跟着字体走，三端字形不一样。 */
 .imgs {
   margin-top: 16rpx;
-}
-.notice {
-  background: var(--sh-primary-tint);
 }
 .done {
   text-align: center;

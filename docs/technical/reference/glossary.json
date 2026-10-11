@@ -532,16 +532,34 @@
           "ar": "إضافة رقم تتبع الإرجاع"
         },
         {
+          "key": "afterSale.freshQualityOnly",
+          "zh-CN": "生鲜发货后只支持损坏/变质/过期等质量问题的退款",
+          "en": "After a fresh item ships, only quality issues (damaged/spoiled/expired) are refundable",
+          "ar": "بعد شحن المنتج الطازج، يُقبل الاسترداد فقط لمشاكل الجودة (تلف/فساد/انتهاء صلاحية)"
+        },
+        {
+          "key": "afterSale.grayStageOk",
+          "zh-CN": "仍要提交",
+          "en": "Submit anyway",
+          "ar": "إرسال على أي حال"
+        },
+        {
+          "key": "afterSale.grayStageTip",
+          "zh-CN": "商家可能已为你备货或打包，提交后商家会核实再处理，不一定能全额退。确认提交？",
+          "en": "The merchant may have already prepared or packed your order. After you submit, they will review it before processing, and a full refund is not guaranteed. Submit anyway?",
+          "ar": "قد يكون التاجر قد جهّز أو غلّف طلبك. بعد الإرسال سيتحقق التاجر قبل المعالجة، وقد لا يكون الاسترداد كاملاً. هل تريد الإرسال؟"
+        },
+        {
+          "key": "afterSale.grayStageTitle",
+          "zh-CN": "商家可能已在备货",
+          "en": "Merchant may be preparing",
+          "ar": "قد يكون التاجر يجهّز طلبك"
+        },
+        {
           "key": "afterSale.images",
           "zh-CN": "上传凭证（最多 3 张）",
           "en": "Photos (up to 3)",
           "ar": "صور (حتى ٣)"
-        },
-        {
-          "key": "afterSale.instant",
-          "zh-CN": "本单金额较小，符合极速退款条件，提交后预计立即退回原支付账户。",
-          "en": "This order qualifies for instant refund — the money goes back to your original payment method right away.",
-          "ar": "هذا الطلب مؤهل للاسترجاع الفوري؛ يعود المبلغ إلى وسيلة الدفع الأصلية مباشرة."
         },
         {
           "key": "afterSale.merchantReply",
@@ -620,6 +638,12 @@
           "zh-CN": "款项已原路退回，到账时间以支付渠道为准",
           "en": "Money returned to your original payment method; timing depends on your bank",
           "ar": "أُعيد المبلغ إلى وسيلة الدفع الأصلية"
+        },
+        {
+          "key": "afterSale.refundedPoints",
+          "zh-CN": "已按约定折算积分退回你的账户，可在积分页查看",
+          "en": "Refunded as points to your account per agreement; see your points page",
+          "ar": "تم الاسترداد كنقاط إلى حسابك حسب الاتفاق؛ راجع صفحة النقاط"
         },
         {
           "key": "afterSale.returnExpressOk",
@@ -752,6 +776,12 @@
           "zh-CN": "商家同意后寄回商品，收到货后退款",
           "en": "Ship it back after approval; refund on receipt",
           "ar": "أعد إرسال المنتج بعد الموافقة، والاسترجاع عند الاستلام"
+        },
+        {
+          "key": "afterSale.waitReceipt",
+          "zh-CN": "商家已同意，货还在路上——签收后自动退款",
+          "en": "Merchant approved; the parcel is on the way — refund is issued automatically after you confirm delivery",
+          "ar": "وافق التاجر، والطرد في الطريق — يتم الاسترداد تلقائياً بعد تأكيد الاستلام"
         },
         {
           "key": "cards.empty",
