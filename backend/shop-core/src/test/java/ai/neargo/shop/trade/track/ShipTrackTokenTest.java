@@ -23,12 +23,20 @@ class ShipTrackTokenTest {
     }
 
     @Test
-    @DisplayName("★ 改任意一个字节都验不过 —— 别人伪造不出来")
+    @DisplayName("★ 改签名里的字节都验不过 —— 别人伪造不出来")
     void tamperedTokenRejected() {
         String t = token.sign("SUB-A");
-        // 翻掉最后一个字符
-        char last = t.charAt(t.length() - 1);
-        String flipped = t.substring(0, t.length() - 1) + (last == 'A' ? 'B' : 'A');
+        /*
+         * 翻签名的**第一个** base64 字符，而不是最后一个。
+         *
+         * HMAC-SHA256 是 32 字节 = 43 个 base64url 字符，**末位只承载 2 个有效 bit、另 4 bit 未用**，
+         * 而 JDK 的 url 解码器对尾部未用 bit 是宽松的 —— 翻末位有时落进同一等价类、decode 回同样的字节，
+         * 验签照过（base64 可变性）。`sign` 的 payload 含随时间变的 exp，于是末位是否可变随机，
+         * 这条断言便成了时间相关的偶发假阴性。签名首字符 6 bit 全用，任何翻转必改变字节，恒被拒。
+         */
+        int dot = t.indexOf('.');
+        char first = t.charAt(dot + 1);
+        String flipped = t.substring(0, dot + 1) + (first == 'A' ? 'B' : 'A') + t.substring(dot + 2);
         assertThat(token.verify(flipped)).isEmpty();
     }
 
