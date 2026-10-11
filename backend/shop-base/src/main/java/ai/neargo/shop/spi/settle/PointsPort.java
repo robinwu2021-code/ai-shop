@@ -50,6 +50,19 @@ public interface PointsPort {
     void reverse(String subOrderNo, String reason);
 
     /**
+     * 售后以**积分形式**补偿买家（TDD-售后规则 §2.4，AC10）：按核定退款额折算积分发到买家可用余额，
+     * 落 {@code AFTER_SALE_COMP} 流水。<b>折算汇率（perMinor）是积分域的知识，在域内算</b>。
+     *
+     * <p><b>幂等</b>：同一张售后单重复调只发一次。没有积分域的部署里什么都不做、返回 0。
+     *
+     * @param refundMinor 核定退款额(分)
+     * @return 实际发放的积分数（= refundMinor × perMinor），0 = 没有积分域或折算为 0
+     */
+    default long compensate(String userNo, String merchantNo, long refundMinor, String afterSaleNo) {
+        return 0L;
+    }
+
+    /**
      * 这些子单上退回了多少分、收回了多少分（待办设计 P3，订单详情「去向」那一块用）。
      *
      * <p><b>只读、从流水查</b>：退回 = REFUND 流水之和，收回 = REVOKE（退款扣回）流水之和。

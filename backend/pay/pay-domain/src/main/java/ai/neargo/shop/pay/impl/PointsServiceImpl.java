@@ -447,6 +447,8 @@ public class PointsServiceImpl implements PointsService {
     private static final String BIZ_USE = "USE";
     private static final String BIZ_EARN = "EARN";
     private static final String BIZ_REFUND = "REFUND";
+    /** 售后积分补偿流水类型（TDD-售后规则 §2.4）。 */
+    private static final String BIZ_AFTER_SALE_COMP = "AFTER_SALE_COMP";
     private static final String USE_PENDING = "PENDING";
     private static final String USE_REVERSED = "REVERSED";
     /** 兑付成立 —— 平台已把钱付给收单商家，此后不可再退回池子 */
@@ -1048,5 +1050,53 @@ public class PointsServiceImpl implements PointsService {
          * 提前入池等于池子里记着一笔还没收到的钱。
          */
         return new ai.neargo.shop.spi.settle.PointsPort.GrantResult(points, cfg.toMinor(points));
+    }
+
+    @Override
+    @Transactional("payTxManager")
+    public long compensate(String userNo, String merchantNo, long refundMinor, String afterSaleNo) {
+        /*
+         * 幂等按 afterSaleNo：同一张售后单重复退款（Outbox/重试）只补一次。
+         * 流水的 sub_order_no 列借用来存 afterSaleNo（它是一个业务引用），bizType 区分。
+         */
+        PtsUserLedger existing = DataScopeContext.executeWithoutScope(() ->
+                ledgerMapper.selectOne(Wrappers.<PtsUserLedger>lambdaQuery()
+                        .eq(PtsUserLedger::getSubOrderNo, afterSaleNo)
+                        .eq(PtsUserLedger::getBizType, BIZ_AFTER_SALE_COMP)
+                        .last("limit 1")));
+        if (existing != null) {
+            return existing.getPoints() == null ? 0L : existing.getPoints();
+        }
+        PointsConfig cfg = config();
+        long points = refundMinor * cfg.perMinor();
+        if (points <= 0) {
+            return 0L;
+        }
+        PtsUserAccount account = loadAccount(userNo);
+        long now = System.currentTimeMillis();
+        String market = account.getMarket() == null ? DEFAULT_MARKET : account.getMarket();
+        long expireAt = now + cfg.inactiveDays() * 86_400_000L;
+        if (account.getId() == null) {
+            account.setMarket(market);
+            account.setLastActiveAt(now);
+            account.setExpireAt(expireAt);
+            account.setBalance(points);
+            account.setTotalEarn(points);
+            accountMapper.insert(account);
+        } else {
+            accountMapper.compensate(userNo, market, points, now, expireAt);
+        }
+        PtsUserLedger comp = new PtsUserLedger();
+        comp.setLedgerNo(BizKey.next(BizKey.POINTS_LEDGER));
+        comp.setUserNo(userNo);
+        comp.setBizType(BIZ_AFTER_SALE_COMP);
+        comp.setPoints(points);
+        comp.setBalanceAfter(loadAccount(userNo).getBalance());
+        comp.setSubOrderNo(afterSaleNo);
+        comp.setIssuerMerchantNo(merchantNo);
+        comp.setRemark("售后积分补偿");
+        comp.setMarket(market);
+        DataScopeContext.executeWithoutScope(() -> ledgerMapper.insert(comp));
+        return points;
     }
 }

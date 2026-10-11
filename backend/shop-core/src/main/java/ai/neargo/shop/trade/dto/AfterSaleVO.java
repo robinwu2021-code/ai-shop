@@ -42,7 +42,17 @@ public record AfterSaleVO(String afterSaleNo,
                            * 只在商家侧、待处理、且这是整单最后一笔时给；其余为 null。
                            * <b>商家券</b>的退回让他少收一次券核销，所以要在点同意之前看见。
                            */
-                          RefundImpact impact) {
+                          RefundImpact impact,
+                          /** 退款形式：{@code CASH}/{@code POINTS}（AC10）。商家审核时定，默认现金 */
+                          String refundMode,
+                          /** 退款形式为 POINTS 时发放的积分数；现金时为 null */
+                          Long refundPoints,
+                          /** 商家核定的退款额(分)，部分退款时 < 申请额；未核定为 null（= 全额）（AC9） */
+                          Long approvedMinor,
+                          /** 申请当时的履约进度快照（{@code FulfillStage} 名）。B 端审核弹层显示实况（AC15） */
+                          String fulfillStage,
+                          /** 是否「待收货后退款」：等价于 {@code status == WAIT_RECEIPT}，端上少判一层（AC7） */
+                          boolean waitReceipt) {
 
     /** 整单退款会一并退回的券与积分；开关关掉的那一项为空 / 0 */
     public record RefundImpact(String couponTitle, long pointsReturn, long pointsRevoke) {
@@ -54,7 +64,8 @@ public record AfterSaleVO(String afterSaleNo,
     public AfterSaleVO withImpact(RefundImpact i) {
         return new AfterSaleVO(afterSaleNo, subOrderNo, orderNo, type, status, reason, images,
                 refundMinor, instant, merchantReply, returnExpressNo, liability, createdAt,
-                updatedAt, timeline, i == null || i.isEmpty() ? null : i);
+                updatedAt, timeline, i == null || i.isEmpty() ? null : i,
+                refundMode, refundPoints, approvedMinor, fulfillStage, waitReceipt);
     }
 
     public record TimelineNode(String status, String label, long at) {

@@ -5,6 +5,8 @@
 import type { CategoryType, CurrencyCode, FulfillmentType, TrafficSource } from "./core";
 import type { MerchantCapability } from "./merchant";
 import type { CouponFunder } from "./marketing";
+// FulfillStage 定义在策略层（售后规则矩阵与它同处）；契约类型按名引用，type-only 导入，编译期擦除不成环
+import type { FulfillStage } from "../strategies/after-sale";
 
 // ---------------------------------------------------------------- 售后
 
@@ -714,9 +716,13 @@ export type AfterSaleType = "REFUND_ONLY" | "RETURN_REFUND";
  * 退货物流走 `expressNo` 字段而不是状态。粒度差异是真实的设计选择，
  * 端上不能自己补一套更细的词然后假装后端会给。
  */
+/** 退款形式（售后规则 §2.4，AC10）：现金原路退 / 折积分补偿。 */
+export type RefundMode = "CASH" | "POINTS";
+
 export type AfterSaleStatus =
   | "APPLIED" // 待商家处理
   | "REFUNDING" // 商家已同意，退款处理中；退货退款时这一段也含「等买家寄回」
+  | "WAIT_RECEIPT" // 仅退款在「已揽收未签收」审核通过后在这里等签收，签收/退回后才退钱（售后规则 §2.3）
   | "REFUNDED" // 退款完成
   | "REJECTED" // 商家驳回
   | "ARBITRATING" // 用户不服，已上升平台裁决
@@ -769,6 +775,22 @@ export interface AfterSale {
   instant?: boolean;
   /** 商家同意/驳回时的说明 */
   merchantReply?: string;
+  /**
+   * 退款形式：现金 / 积分（售后规则 §2.4，AC10）。商家审核时定，默认现金。
+   * 积分形式不退现金、不回冲分账，按核定额折积分补偿。
+   */
+  refundMode?: RefundMode;
+  /** 退款形式为 POINTS 时发放的积分数；现金时为空 */
+  refundPoints?: number | null;
+  /** 商家核定的退款额（分），部分退款时 < 申请额；未核定为空（= 全额）（AC9） */
+  approvedMinor?: number | null;
+  /**
+   * 申请当时的履约进度快照：未备货/备货中/已出单未揽收/已揽收/已签收。
+   * B 端审核弹层显示实况，C 端据它给灰色档提示（AC13/AC15）。
+   */
+  fulfillStage?: FulfillStage | null;
+  /** 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） */
+  waitReceipt?: boolean;
   /** 用户寄回的运单号（RETURN_REFUND） */
   returnExpressNo?: string;
   /** 上升平台时用户的申诉理由 */

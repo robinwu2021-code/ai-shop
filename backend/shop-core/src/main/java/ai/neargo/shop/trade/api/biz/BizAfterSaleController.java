@@ -55,7 +55,9 @@ public class BizAfterSaleController {
     public AfterSaleVO approve(@PathVariable String afterSaleNo,
                                @RequestBody(required = false) ApproveReq req) {
         return afterSaleService.approve(BizContext.requireMerchantNo(), afterSaleNo,
-                req == null ? null : req.remark());
+                req == null ? null : req.remark(),
+                req == null ? null : req.refundMinor(),
+                req == null ? null : req.refundMode());
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
@@ -73,7 +75,11 @@ public class BizAfterSaleController {
     public record RejectReq(@NotBlank String remark) {
     }
 
-    /** @param remark 同意时的说明，可空 —— 驳回必须给理由，同意不强制 */
-    public record ApproveReq(String remark) {
+    /**
+     * @param remark      同意时的说明，可空 —— 驳回必须给理由，同意不强制
+     * @param refundMinor 商家核定的退款额(分)，可空。装箱类型防 Jackson 3 基本类型 400；仅已签收可传（AC9）
+     * @param refundMode  退款形式，可空（默认现金）：CASH / POINTS（AC10）
+     */
+    public record ApproveReq(String remark, Long refundMinor, String refundMode) {
     }
 }

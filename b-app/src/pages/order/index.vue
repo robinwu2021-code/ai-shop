@@ -500,7 +500,7 @@ onLoad(async (q) => {
       -->
       <view v-if="canPrepare" class="sh-card sh-mt-sm prepare-card">
         <view v-if="order.preparedAt" class="sh-row">
-          <text class="sh-chip sh-chip--ok">{{ $t("order.prepared") }}</text>
+          <text class="sh-chip sh-chip--success">{{ $t("order.prepared") }}</text>
         </view>
         <view v-else class="sh-btn sh-btn--muted" @tap="prepare">{{ $t("order.prepare") }}</view>
       </view>

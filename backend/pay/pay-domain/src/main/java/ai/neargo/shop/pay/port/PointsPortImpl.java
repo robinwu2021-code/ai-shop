@@ -73,4 +73,9 @@ public class PointsPortImpl implements PointsPort {
                              String payChannel, String payScene) {
         return pointsService.grantOnPay(userNo, merchantNo, lines, subOrderNo, payChannel, payScene);
     }
+
+    @Override
+    public long compensate(String userNo, String merchantNo, long refundMinor, String afterSaleNo) {
+        return pointsService.compensate(userNo, merchantNo, refundMinor, afterSaleNo);
+    }
 }

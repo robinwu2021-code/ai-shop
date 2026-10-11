@@ -1271,7 +1271,7 @@
         "color": "var(--sh-success)"
       },
       "usage": {
-        "b-app": 4,
+        "b-app": 5,
         "c-app": 0
       }
     },
@@ -4249,7 +4249,7 @@
         "sh-sheet",
         "sh-trace"
       ],
-      "libClassHits": 167,
+      "libClassHits": 168,
       "localSelectors": 23,
       "localCssLines": 95,
       "rolled": []

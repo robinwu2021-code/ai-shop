@@ -248,6 +248,12 @@ public interface PointsService {
             java.util.List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines, String subOrderNo,
             String payChannel, String payScene);
 
+    /**
+     * 售后积分补偿（TDD-售后规则 §2.4）：核定退款额 × {@code perMinor} 折积分发到买家可用余额，
+     * 落 {@code AFTER_SALE_COMP} 流水。幂等按 afterSaleNo。返回实发分数。
+     */
+    long compensate(String userNo, String merchantNo, long refundMinor, String afterSaleNo);
+
     // ------------------------------------------------------------ 端开关
 
     /**

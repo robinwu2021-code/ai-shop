@@ -335,6 +335,15 @@ public enum ErrorCode {
      */
     AFTERSALE_FRESH_QUALITY_ONLY(20009, "err.trade.aftersale_fresh_quality_only"),
 
+    /**
+     * 部分退款只有已签收才可用（TDD-售后规则 §2.4）：未签收时商家看不到实物损坏比例，
+     * 只能全额或驳回，不能核定一个部分金额。
+     */
+    AFTERSALE_PARTIAL_NEED_RECEIPT(20010, "err.trade.aftersale_partial_need_receipt"),
+
+    /** 核定退款额非法：≤0 或超过实付（TDD-售后规则 §2.4）。 */
+    AFTERSALE_AMOUNT_INVALID(20011, "err.trade.aftersale_amount_invalid"),
+
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),
     NOT_THIS_PICKUP_POINT(30002, "err.fulfillment.not_this_pickup"),

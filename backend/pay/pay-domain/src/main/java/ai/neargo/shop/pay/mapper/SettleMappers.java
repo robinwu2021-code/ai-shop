@@ -127,6 +127,21 @@ public final class SettleMappers {
                    @Param("expireAt") long expireAt);
 
         /**
+         * 售后积分补偿：直接加到<b>可用</b>余额（它替代的是现金退款，买家应能立刻花），
+         * 并计入发放总额。不校验余额。幂等由调用方按 afterSaleNo 的流水保证。
+         */
+        @Update("""
+                UPDATE pts_user_account
+                   SET balance = balance + #{points},
+                       total_earn = total_earn + #{points},
+                       last_active_at = #{now}, expire_at = #{expireAt},
+                       updated_at = NOW(), version = version + 1
+                 WHERE user_no = #{userNo} AND market = #{market} AND deleted = 0""")
+        int compensate(@Param("userNo") String userNo, @Param("market") String market,
+                       @Param("points") long points, @Param("now") long now,
+                       @Param("expireAt") long expireAt);
+
+        /**
          * 发放到<b>待生效</b>余额。
          *
          * <p>不进 {@code balance}：售后期内退款要把分收回，

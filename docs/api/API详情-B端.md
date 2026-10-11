@@ -7216,6 +7216,11 @@ _无字段_
 | `refundMinor` | `number` | 是 | 这张售后单要退的钱（分）。**不等于订单金额** —— 一张子订单可以只退其中一件，也可以先后发起多次。 <p>后端一直在发（`AfterSaleVO.refundMinor`），只是契约里漏了声明， 于是 B 端售后页拿不到它，只能退而求其次显示**整张子订单的应付**。 单件单品的单子上两个数恰好相等，所以这个错在联调环境里看不出来 —— 直到有人退三件里的一件。 |
 | `instant` | `boolean` | 否 | 极速退：金额在阈值内的仅退款，系统自动通过。 **商家只可见不可拒**，所以这类单上不该出现同意/驳回按钮。 |
 | `merchantReply` | `string` | 否 | 商家同意/驳回时的说明 |
+| `refundMode` | [`RefundMode`](#refundmode) | 否 | 退款形式：现金 / 积分（售后规则 §2.4，AC10）。商家审核时定，默认现金。 积分形式不退现金、不回冲分账，按核定额折积分补偿。 |
+| `refundPoints` | `number,null` | 否 | 退款形式为 POINTS 时发放的积分数；现金时为空 |
+| `approvedMinor` | `number,null` | 否 | 商家核定的退款额（分），部分退款时 < 申请额；未核定为空（= 全额）（AC9） |
+| `fulfillStage` | [`FulfillStage`](#fulfillstage) \| `null` | 否 | 申请当时的履约进度快照：未备货/备货中/已出单未揽收/已揽收/已签收。 B 端审核弹层显示实况，C 端据它给灰色档提示（AC13/AC15）。 |
+| `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
@@ -7234,12 +7239,11 @@ _无字段_
 
 ### AfterSaleStatus
 
-售后单状态。**这是后端 `OrdAfterSale` 真实存的取值。** ⚠️ 这里此前是完全另一套：`PENDING`/`AGREED`/`RETURNING`/`RECEIVED`/`DONE`/`DISPUTED`， 与后端**只有 `REJECTED` 一个词重合**。c/b 两端按它判断、按它建 i18n 词条， 于是售后详情页的状态永远落进兜底分支，「填退货单号」按钮永远不出现 （它 gate 在一个后端永远不会下发的 `AGREED` 上）。 那一套描述的是**想象中更细的流程**：同意 → 寄回 → 收货 → 退款四步。 后端没有把「寄回中」「已收货」做成独立状态 —— 商家一同意就进 `REFUNDING`， 退货物流走 `expressNo` 字段而不是状态。粒度差异是真实的设计选择， 端上不能自己补一套更细的词然后假装后端会给。
-
 枚举取值：
 
 - `APPLIED`
 - `REFUNDING`
+- `WAIT_RECEIPT`
 - `REFUNDED`
 - `REJECTED`
 - `ARBITRATING`
@@ -7934,6 +7938,18 @@ _无字段_
 |---|---|:---:|---|
 | `entity` | [`Entity`](#entity) | 是 | 所属主体（一张证照） |
 | `stores` | [`Store`](#store)\[\] | 是 | 这张证照下我能进的门店 |
+
+### FulfillStage
+
+履约进度五档（与后端 FulfillStage 同名同义）
+
+枚举取值：
+
+- `NOT_PREPARED`
+- `PREPARING`
+- `LABELED`
+- `SHIPPED`
+- `RECEIVED`
 
 ### FulfillmentImpactItem
 
@@ -9713,6 +9729,15 @@ _无字段_
 | `couponTitle` | `string,null` | 否 | 会一并退回的券名（此刻还占在这一单上的那张）；没用券或退券开关关着时为空 |
 | `pointsReturn` | `number` | 是 | 退回用户的抵扣积分 |
 | `pointsRevoke` | `number` | 是 | 收回用户的赠送积分 |
+
+### RefundMode
+
+退款形式（售后规则 §2.4，AC10）：现金原路退 / 折积分补偿。
+
+枚举取值：
+
+- `CASH`
+- `POINTS`
 
 ### Region
 

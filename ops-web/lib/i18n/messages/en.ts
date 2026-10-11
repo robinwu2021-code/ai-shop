@@ -209,7 +209,7 @@ export const en: Messages = {
   riskFlag: { SAME_DEVICE: "Same device", SAME_IP: "Same IP", TEXT_DUP: "Duplicate text", BURST: "Burst in time" },
   afterSaleType: { REFUND_ONLY: "Refund only", RETURN_REFUND: "Return & refund", EXCHANGE: "Exchange" },
   afterSaleStatus: {
-    APPLIED: "Awaiting merchant", REFUNDING: "Approved, refund pending", ARBITRATING: "Platform review",
+    APPLIED: "Awaiting merchant", REFUNDING: "Approved, refund pending", WAIT_RECEIPT: "Refund after delivery", ARBITRATING: "Platform review",
     REJECTED: "Merchant rejected", REFUNDED: "Refunded", CLOSED: "Closed",
   },
   groupStatus: { PENDING: "Pending review", OPEN: "Open", FORMED: "Formed", FAILED: "Not formed", CLOSED: "Closed" },

@@ -1066,6 +1066,62 @@ class M5AfterSaleFlowTest {
                 .andExpect(status().isOk());
     }
 
+    /** 带核定金额 / 形式的同意，返回响应体（含 code，供断言拒绝码）。 */
+    private String approveWith(String bizToken, String afterSaleNo, String bodyJson) throws Exception {
+        return mvc().perform(post("/biz/after-sale/" + afterSaleNo + "/approve")
+                        .header("Authorization", "Bearer " + bizToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(bodyJson))
+                .andReturn().getResponse().getContentAsString();
+    }
+
+    @Test
+    @DisplayName("★★★ 已签收商家核定部分金额 → 退部分（AC9）")
+    void merchant_partial_amount_after_receipt() throws Exception {
+        Ordered o = placeAndPay("13200132620", 6980L);            // 实付 6980
+        String asNo = applyAfterSale(o, "REFUND_ONLY", "少量破损");
+        setSubStage(o.subOrderNo, OrdSubOrder.COMPLETED, null);    // 已签收
+        approveWith(loginAsOwnerOf("M0001", "13200132621"), asNo, "{\"refundMinor\":3000}");
+
+        JsonNode data = json.readTree(detail(o.userToken, asNo)).get("data");
+        assertThat(data.get("status").asString()).isEqualTo("REFUNDED");
+        assertThat(data.get("approvedMinor").asLong()).as("核定额留痕").isEqualTo(3000L);
+    }
+
+    @Test
+    @DisplayName("★★★ 未签收不能核定部分金额（AFTERSALE_PARTIAL_NEED_RECEIPT 20010）")
+    void partial_before_receipt_rejected() throws Exception {
+        Ordered o = placeAndPay("13200132622", 6980L);            // 未发货 NOT_PREPARED
+        String asNo = applyAfterSale(o, "REFUND_ONLY", "不想要了");
+        String body = approveWith(loginAsOwnerOf("M0001", "13200132623"), asNo, "{\"refundMinor\":3000}");
+        assertThat(json.readTree(body).get("code").asInt()).isEqualTo(20010);
+    }
+
+    @Test
+    @DisplayName("★★★ 核定额超过实付被拒（AFTERSALE_AMOUNT_INVALID 20011）")
+    void amount_over_paid_rejected() throws Exception {
+        Ordered o = placeAndPay("13200132624", 6980L);
+        String asNo = applyAfterSale(o, "REFUND_ONLY", "破损");
+        setSubStage(o.subOrderNo, OrdSubOrder.COMPLETED, null);
+        String body = approveWith(loginAsOwnerOf("M0001", "13200132625"), asNo, "{\"refundMinor\":99999999}");
+        assertThat(json.readTree(body).get("code").asInt()).isEqualTo(20011);
+    }
+
+    @Test
+    @DisplayName("★★★ 积分形式：发积分、不退现金（AC10）")
+    void points_mode_grants_points_no_cash() throws Exception {
+        Ordered o = placeAndPay("13200132626", 6980L);
+        String asNo = applyAfterSale(o, "REFUND_ONLY", "少量破损");
+        setSubStage(o.subOrderNo, OrdSubOrder.COMPLETED, null);
+        approveWith(loginAsOwnerOf("M0001", "13200132627"), asNo,
+                "{\"refundMinor\":3000,\"refundMode\":\"POINTS\"}");
+
+        JsonNode data = json.readTree(detail(o.userToken, asNo)).get("data");
+        assertThat(data.get("status").asString()).isEqualTo("REFUNDED");
+        assertThat(data.get("refundMode").asString()).isEqualTo("POINTS");
+        // 默认 perMinor=1：3000 分 → 3000 积分
+        assertThat(data.get("refundPoints").asLong()).as("核定额×perMinor").isEqualTo(3000L);
+    }
+
     private String applyAfterSale(Ordered o, String type, String reason) throws Exception {
         String body = mvc().perform(post("/mp/order/" + o.subOrderNo + "/after-sale")
                         .header("Authorization", "Bearer " + o.userToken)

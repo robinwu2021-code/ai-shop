@@ -442,11 +442,35 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     @Override
     @Transactional
-    public AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark) {
+    public AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark,
+                               Long refundMinor, String refundMode) {
         OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
         // 说明可空；给了就留下来 —— C 端订单页那句「商家回复」读的就是它
         if (remark != null && !remark.isBlank()) {
             as.setMerchantRemark(remark.trim());
+        }
+
+        OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
+        FulfillStage stage = stageOf(sub);
+
+        /*
+         * 核定金额（AC9，§2.4）：**只有已签收能定制金额** —— 未签收商家看不到实物损坏比例，
+         * 只能全额或驳回。传了金额却未签收 → 拒；金额 ≤0 或超实付 → 拒。核定额落 approved_minor，
+         * 与买家申请额分开留痕，实退以它为准。
+         */
+        if (refundMinor != null) {
+            if (stage != FulfillStage.RECEIVED) {
+                throw BizException.of(ErrorCode.AFTERSALE_PARTIAL_NEED_RECEIPT);
+            }
+            long paid = sub == null || sub.getPayAmount() == null ? 0L : sub.getPayAmount();
+            if (refundMinor <= 0 || refundMinor > paid) {
+                throw BizException.of(ErrorCode.AFTERSALE_AMOUNT_INVALID);
+            }
+            as.setApprovedMinor(refundMinor);
+        }
+        // 退款形式（AC10）：只认 POINTS，其余（含空）为现金默认
+        if (OrdAfterSale.REFUND_MODE_POINTS.equals(refundMode)) {
+            as.setRefundMode(OrdAfterSale.REFUND_MODE_POINTS);
         }
 
         if (OrdAfterSale.RETURN_REFUND.equals(as.getType())) {
@@ -470,8 +494,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          * 等于钱货两失 —— 此时转「待收货后退款」WAIT_RECEIPT，等买家签收（或包裹退回商家）再退。
          * 未发货（可拦）或已签收（到手）则立即退（TDD-售后规则 §2.3）。
          */
-        if (OrdAfterSale.REFUND_ONLY.equals(as.getType())
-                && stageOf(subOrderOf(as.getSubOrderNo())) == FulfillStage.SHIPPED) {
+        if (OrdAfterSale.REFUND_ONLY.equals(as.getType()) && stage == FulfillStage.SHIPPED) {
             OrderStateMachine.assertAfterSaleTransit(as.getStatus(), OrdAfterSale.WAIT_RECEIPT);
             as.setStatus(OrdAfterSale.WAIT_RECEIPT);
             update(as);
@@ -559,6 +582,25 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             update(as);
         }
 
+        /*
+         * 实退金额 = 商家核定额（{@code approved_minor}）优先，否则买家申请额。
+         * 部分退款（AC9）就是核定额 < 申请额；未核定时两者相等。
+         */
+        long amount = as.getApprovedMinor() != null ? as.getApprovedMinor()
+                : (as.getRefundMinor() == null ? 0L : as.getRefundMinor());
+
+        if (OrdAfterSale.REFUND_MODE_POINTS.equals(as.getRefundMode())) {
+            /*
+             * 积分形式（AC10，§2.4）：**不回冲分账、不退现金** —— 商家保留这笔成交，
+             * 按核定额折积分补偿给买家。折算在积分域做（perMinor 是积分域的知识），
+             * 返回实发分数落 refund_points。幂等按 afterSaleNo。
+             */
+            long pts = pointsPort.compensate(as.getUserNo(), as.getEntityNo(), amount, as.getAfterSaleNo());
+            as.setRefundPoints(pts);
+            settleRefundTerminal(as, label, 0L);
+            return;
+        }
+
         // ① 先回退分账
         if (!settlePort.reverseSplit(as.getSubOrderNo())) {
             appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDING, "分账回退失败，待重试",
@@ -568,19 +610,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         as.setSplitReversed(true);
 
         /*
-         * ② 再退款，**并把退款流水号记下来**（S8 · 2026-09-02）。
-         *
-         * 此前这里丢弃了返回值 —— 而 refund 本身也只打了一行日志、
-         * 返回一个编造的号。两边加起来的效果是：<b>一笔退款发生之后，
-         * 资金侧没有任何东西记得它</b>，而售后单上的 refund_payment_no
-         * 这个字段只声明、从没被赋值过。
+         * ② 再退款，**并把退款流水号记下来**（S8 · 2026-09-02）。按**实退金额**退，
+         * 部分退款退核定额，不是买家申请额。
          *
          * 拿不到流水号不阻断退款：那说明原收款流水找不到（存量单、
          * 或者钱本来就没收到），而<b>此时更不该把用户的退款卡住</b> ——
          * 缺的那一行是账，账可以补，用户的钱不能不退。记 WARN 让人能查。
          */
-        String refundPaymentNo = settlePort.refund(
-                as.getSubOrderNo(), as.getRefundMinor(), as.getReason());
+        String refundPaymentNo = settlePort.refund(as.getSubOrderNo(), amount, as.getReason());
         if (refundPaymentNo == null) {
             /*
              * 留痕落在**售后单的时间线**上，不只写日志 ——
@@ -597,8 +634,18 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         // ③ 退货类的把货加回来
         restoreStockIfReturned(as);
 
-        // ④ 落终态。**回补的标记与状态一起写** —— 分两次写的话，
-        //    中间挂掉会让重试再补一次，而多出来的那几件不会有任何地方报错
+        settleRefundTerminal(as, label, amount);
+    }
+
+    /**
+     * 退款落终态（现金与积分两条分支的公共收尾）：售后单转 {@code REFUNDED}、子单转
+     * {@code REFUNDED}、整单退完退券退积分、留痕、发 {@code AfterSaleRefunded}。
+     *
+     * @param cashMinor 本次实际退回的**现金**（分）；积分形式为 0
+     */
+    private void settleRefundTerminal(OrdAfterSale as, String label, long cashMinor) {
+        // 落终态。**回补的标记与状态一起写** —— 分两次写的话，
+        // 中间挂掉会让重试再补一次，而多出来的那几件不会有任何地方报错
         as.setStatus(OrdAfterSale.REFUNDED);
         as.setRefundedAt(System.currentTimeMillis());
         update(as);
@@ -612,7 +659,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         returnBenefitsIfWholeOrderRefunded(sub);
         appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDED, label, OrdStatusLog.BY_SYSTEM, null);
         eventBus.publish(new OrderEvents.AfterSaleRefunded(as.getAfterSaleNo(), as.getSubOrderNo(),
-                as.getUserNo(), as.getRefundMinor()));
+                as.getUserNo(), cashMinor));
     }
 
     /**
@@ -820,7 +867,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 Boolean.TRUE.equals(as.getInstant()), as.getMerchantRemark(),
                 as.getExpressNo(), as.getLiability(), millis(as.getCreatedAt()),
                 // 更新时间：库里有 updated_at，此前没往外发 —— 两个端都按它显示「最后动了什么时候」
-                millis(as.getUpdatedAt()), timeline, null);
+                millis(as.getUpdatedAt()), timeline, null,
+                as.getRefundMode(), as.getRefundPoints(), as.getApprovedMinor(), as.getFulfillStage(),
+                OrdAfterSale.WAIT_RECEIPT.equals(as.getStatus()));
     }
 
     private void appendLog(String subOrderNo, String status, String label,

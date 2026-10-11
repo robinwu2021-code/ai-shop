@@ -23069,6 +23069,12 @@
           "ar": null
         },
         {
+          "key": "afterSaleStatus.WAIT_RECEIPT",
+          "zh-CN": "待收货后退款",
+          "en": "Refund after delivery",
+          "ar": null
+        },
+        {
           "key": "afterSaleType.EXCHANGE",
           "zh-CN": "换货",
           "en": "Exchange",
@@ -26049,10 +26055,22 @@
           "ar": "هذا الطرد غير موجّه إلى رقم هاتفك"
         },
         {
+          "key": "err.trade.aftersale_amount_invalid",
+          "zh-CN": "退款金额不正确（需大于0且不超过实付）",
+          "en": "Invalid refund amount (must be >0 and not exceed the amount paid)",
+          "ar": "مبلغ الاسترداد غير صحيح (يجب أن يكون أكبر من 0 ولا يتجاوز المبلغ المدفوع)"
+        },
+        {
           "key": "err.trade.aftersale_fresh_quality_only",
           "zh-CN": "生鲜发货后只支持损坏/变质/过期等质量问题的退款",
           "en": "After a fresh item ships, only quality issues (damaged/spoiled/expired) are refundable",
           "ar": "بعد شحن المنتج الطازج، يُقبل الاسترداد فقط لمشاكل الجودة (تلف/فساد/انتهاء صلاحية)"
+        },
+        {
+          "key": "err.trade.aftersale_partial_need_receipt",
+          "zh-CN": "部分退款需等签收后由商家核定金额",
+          "en": "Partial refunds are available only after delivery is confirmed",
+          "ar": "الاسترداد الجزئي متاح فقط بعد تأكيد الاستلام"
         },
         {
           "key": "err.trade.count_already_open",
@@ -34634,6 +34652,8 @@
           "PURCHASE_LIMIT_EXCEEDED",
           "STORE_PAUSED",
           "AFTERSALE_FRESH_QUALITY_ONLY",
+          "AFTERSALE_PARTIAL_NEED_RECEIPT",
+          "AFTERSALE_AMOUNT_INVALID",
           "ALREADY_VERIFIED",
           "NOT_THIS_PICKUP_POINT",
           "ORDER_REFUNDED",
@@ -35078,6 +35098,7 @@
         "values": [
           "APPLIED",
           "REFUNDING",
+          "WAIT_RECEIPT",
           "ARBITRATING",
           "REJECTED",
           "REFUNDED",
@@ -35091,12 +35112,13 @@
         "values": [
           "APPLIED",
           "REFUNDING",
+          "WAIT_RECEIPT",
           "REFUNDED",
           "REJECTED",
           "ARBITRATING",
           "CLOSED"
         ],
-        "zh": "售后单状态。"
+        "zh": ""
       },
       {
         "name": "AfterSaleType",
@@ -36797,6 +36819,15 @@
           "REFUND"
         ],
         "zh": "掉单补偿的处置方式（P-4.2.2）。"
+      },
+      {
+        "name": "RefundMode",
+        "client": "shared",
+        "values": [
+          "CASH",
+          "POINTS"
+        ],
+        "zh": "退款形式（售后规则 §2.4，AC10）：现金原路退 / 折积分补偿。"
       },
       {
         "name": "RegionMatchSource",

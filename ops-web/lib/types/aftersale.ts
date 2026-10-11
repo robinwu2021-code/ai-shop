@@ -4,6 +4,7 @@ export type AfterSaleType = "REFUND_ONLY" | "RETURN_REFUND" | "EXCHANGE";
 export type AfterSaleStatus =
   | "APPLIED"      // 用户已申请，等商家处理
   | "REFUNDING"    // 已同意，退款处理中（退货退款时是「等买家寄回」）
+  | "WAIT_RECEIPT" // 仅退款在「已揽收未签收」审核通过后在这里等签收（售后规则 §2.3）
   | "ARBITRATING"  // 争议上升，平台介入
   | "REJECTED"     // 商家驳回（用户仍可上升平台）
   | "REFUNDED"     // 已退款（终态）
@@ -22,8 +23,10 @@ export type AfterSaleStatus =
  * 中间没有「商家处理中」这一档。
  */
 export const AFTERSALE_TRANSITIONS: Record<AfterSaleStatus, AfterSaleStatus[]> = {
-  APPLIED: ["REFUNDING", "REFUNDED", "REJECTED", "CLOSED"],
+  APPLIED: ["REFUNDING", "REFUNDED", "WAIT_RECEIPT", "REJECTED", "CLOSED"],
   REFUNDING: ["REFUNDED", "CLOSED"],
+  // 待收货后退款：签收/退回 → 退款；超时未签收 → 转平台仲裁
+  WAIT_RECEIPT: ["REFUNDING", "REFUNDED", "ARBITRATING", "CLOSED"],
   // 驳回不是终点：用户可以把争议上升到平台，这是「平台介入」存在的理由
   REJECTED: ["ARBITRATING", "CLOSED"],
   ARBITRATING: ["REFUNDING", "REFUNDED", "CLOSED"],

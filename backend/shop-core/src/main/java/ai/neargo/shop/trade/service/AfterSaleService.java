@@ -55,8 +55,15 @@ public interface AfterSaleService {
 
     List<AfterSaleVO> merchantList(String merchantNo, String status);
 
-    /** 同意。**退货退款的「同意」不等于退钱** —— 要等收到货（见实现）。 */
-    AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark);
+    /**
+     * 同意。**退货退款的「同意」不等于退钱** —— 要等收到货（见实现）。
+     *
+     * @param refundMinor 商家核定的退款额(分)，可空。**仅已签收可传**（部分退款，AC9）；
+     *                    未签收传了按 {@code AFTERSALE_PARTIAL_NEED_RECEIPT} 拒。>实付按 {@code AFTERSALE_AMOUNT_INVALID} 拒。
+     * @param refundMode  退款形式，可空（默认现金）：{@code CASH}/{@code POINTS}（AC10）。
+     */
+    AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark,
+                        Long refundMinor, String refundMode);
 
     /** 驳回。{@code remark} 必填 —— 用户要据此决定是否申诉。 */
     AfterSaleVO reject(String merchantNo, String afterSaleNo, String remark);
