@@ -147,9 +147,9 @@ class OpsDashboardRankingFlowTest {
     void afterSaleRateReflectsRealTickets() throws Exception {
         String biz = merchant("12600390020", "排行·售后店");
         String merchantNo = merchantNoOf(biz);
-        // ¥30 低于极速退阈值（¥50）→ 申请即自动退款，子单转 REFUNDED。
-        // **这正是要覆盖的形状**：退掉的单会离开成交态，若排行只按成交态取商家集合，
-        // 这家店会从榜上凭空消失 —— 而它是「卖得多也赔得多」那一类的极端情形
+        // 退掉的单会离开成交态。**这正是要覆盖的形状**：若排行只按成交态取商家集合，
+        // 这家店会从榜上凭空消失 —— 而它是「卖得多也赔得多」那一类的极端情形。
+        // 极速退已废除（售后规则 §2.3）：退款要先申请、商家同意；未发货同意即退。
         String goodsNo = listedGoods(biz, 30_00, 100);
         String skuNo = firstSku(goodsNo);
 
@@ -163,10 +163,16 @@ class OpsDashboardRankingFlowTest {
         assertThat(before.get("afterSaleCount").asLong()).isZero();
 
         // 真的申请一次售后（不是造数据）
-        mvc().perform(post("/mp/order/" + subOrderNo + "/after-sale")
+        String applyBody = mvc().perform(post("/mp/order/" + subOrderNo + "/after-sale")
                         .header("Authorization", "Bearer " + buyer)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"type\":\"REFUND_ONLY\",\"reason\":\"不新鲜\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String asNo = json.readTree(applyBody).get("data").get("afterSaleNo").asString();
+        // 商家同意 → 未发货即退款，子单转 REFUNDED（离开成交态）
+        mvc().perform(post("/biz/after-sale/" + asNo + "/approve")
+                        .header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.code").value(0));
 
         /*

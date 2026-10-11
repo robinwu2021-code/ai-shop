@@ -193,17 +193,17 @@ public class DevSeeder {
 
             seedGoods(goodsMapper, skuMapper,
                     "G0001", "M0001", "NORMAL", "🍚", "五常大米 10斤装", "东北五常，当季新米",
-                    List.of(new SkuSeed("SK0001", "10斤装", 4980L, 5980L, 120),
-                            new SkuSeed("SK0002", "20斤装", 9580L, 11800L, 60)));
+                    List.of(new SkuSeed("SK0001", "10斤装", 4980L, 5980L, 400),
+                            new SkuSeed("SK0002", "20斤装", 9580L, 11800L, 200)));
             seedGoods(goodsMapper, skuMapper,
                     "G0002", "M0001", "NORMAL", "🛢️", "金龙鱼调和油 5L", "家庭装，煎炒烹炸",
-                    List.of(new SkuSeed("SK0003", "5L", 6980L, 7980L, 80)));
+                    List.of(new SkuSeed("SK0003", "5L", 6980L, 7980L, 300)));
             seedGoods(goodsMapper, skuMapper,
                     "G0003", "M0002", "FRESH", "🍑", "阳山水蜜桃 4枚礼盒", "次日到货，坏果包赔",
-                    List.of(new SkuSeed("SK0004", "4枚装", 5800L, 6800L, 40)));
+                    List.of(new SkuSeed("SK0004", "4枚装", 5800L, 6800L, 150)));
             seedGoods(goodsMapper, skuMapper,
                     "G0004", "M0002", "FRESH", "🫐", "云南蓝莓 125g×4盒", "当季头茬",
-                    List.of(new SkuSeed("SK0005", "4盒装", 3980L, null, 30)));
+                    List.of(new SkuSeed("SK0005", "4盒装", 3980L, null, 150)));
 
         };
     }
