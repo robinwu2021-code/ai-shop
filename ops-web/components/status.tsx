@@ -296,6 +296,7 @@ export function useAfterSaleStatusMap(): StatusMap<AfterSaleStatus> {
   return {
     APPLIED: { label: t("afterSaleStatus.APPLIED"), tone: "warning" },
     REFUNDING: { label: t("afterSaleStatus.REFUNDING"), tone: "info" },
+    WAIT_RECEIPT: { label: t("afterSaleStatus.WAIT_RECEIPT"), tone: "info" },
     ARBITRATING: { label: t("afterSaleStatus.ARBITRATING"), tone: "danger" },
     REJECTED: { label: t("afterSaleStatus.REJECTED"), tone: "muted" },
     REFUNDED: { label: t("afterSaleStatus.REFUNDED"), tone: "success" },
