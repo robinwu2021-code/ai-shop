@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**117 个功能点**，其中 **36 个游客可用**；**8 个没有任何页面调用**。
+统计：**118 个功能点**，其中 **36 个游客可用**；**8 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -129,6 +129,7 @@
 | `track` | `GET /mp/track` | 游客 | track | — |
 | `trackMine` | `GET /mp/track/mine` | 是 | track | — |
 | `trackMiniLink` | `GET /mp/track/mini-link` | 游客 | track | — |
+| `uploadImage` | `POST /mp/upload/image` | 是 | after-sale · review-write | — |
 | `activeAddress` | `GET /mp/user/active-address` | 是 | (stores) | — |
 | `switchActiveAddress` | `POST /mp/user/active-address/:addressId` | 是 | (stores) | — |
 | `addressList` | `GET /mp/user/address` | 是 | (stores) · address · address-edit · order-confirm | — |

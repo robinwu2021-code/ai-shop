@@ -82,6 +82,12 @@
           "ar": "عنوان WeChat"
         },
         {
+          "key": "address.fromWxLong",
+          "zh-CN": "从微信地址簿导入",
+          "en": "Import from WeChat addresses",
+          "ar": "استيراد من عناوين WeChat"
+        },
+        {
           "key": "address.here",
           "zh-CN": "当前位置",
           "en": "Current",
@@ -116,6 +122,24 @@
           "zh-CN": "公寓/门牌（Address line 2）",
           "en": "Address line 2 (apt, suite)",
           "ar": "العنوان – السطر 2"
+        },
+        {
+          "key": "address.mapPickHint",
+          "zh-CN": "点一下在地图上选，省市区自动填好",
+          "en": "Tap to choose on the map; region fills in automatically",
+          "ar": "انقر للاختيار على الخريطة؛ تُملأ المنطقة تلقائيًا"
+        },
+        {
+          "key": "address.mapPickTitle",
+          "zh-CN": "从地图选择收货位置",
+          "en": "Pick location on map",
+          "ar": "اختر الموقع من الخريطة"
+        },
+        {
+          "key": "address.mapRepickHint",
+          "zh-CN": "点此在地图上重选位置",
+          "en": "Tap to re-pick on the map",
+          "ar": "انقر لإعادة الاختيار على الخريطة"
         },
         {
           "key": "address.mapUnsupported",
@@ -614,6 +638,12 @@
           "zh-CN": "退货运单号",
           "en": "Return tracking no.",
           "ar": "رقم تتبع الإرجاع"
+        },
+        {
+          "key": "afterSale.section",
+          "zh-CN": "退款 / 售后",
+          "en": "Refund / after-sales",
+          "ar": "الاسترداد / ما بعد البيع"
         },
         {
           "key": "afterSale.status.APPLIED",
@@ -27556,6 +27586,13 @@
       "package": "ai.neargo.shop.platform.perm.entity"
     },
     {
+      "table": "sys_sequence",
+      "class": "SysSequence",
+      "zh": "号段序列（ADR-035）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
       "table": "sys_setting",
       "class": "SysSetting",
       "zh": "平台可调参数：一行一组，值是 JSON。",
@@ -32754,6 +32791,27 @@
       },
       {
         "host": "OrdAfterSale",
+        "name": "WAIT_RECEIPT",
+        "value": "WAIT_RECEIPT",
+        "zh": "待收货后退款：仅退款的单在**已揽收未签收**时审核通过，不立即退钱， 等买家签收（或包裹退回商家）后再退 —— 防货还在路上就退了钱（TDD-售后规则 §2.3）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdAfterSale",
+        "name": "REFUND_MODE_CASH",
+        "value": "CASH",
+        "zh": "原路退现金（默认）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdAfterSale",
+        "name": "REFUND_MODE_POINTS",
+        "value": "POINTS",
+        "zh": "折算积分补偿：不退现金、不回冲分账，按 PointsConfig.perMinor 发积分给买家。",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdAfterSale",
         "name": "REFUND_ONLY",
         "value": "REFUND_ONLY",
         "zh": "",
@@ -33044,6 +33102,13 @@
         "name": "FAILED",
         "value": "FAILED",
         "zh": "不可重试的失败（参数错、未开通）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "AfterSaleRules",
+        "name": "DENY_FRESH_QUALITY_ONLY",
+        "value": "FRESH_SHIPPED_NON_QUALITY",
+        "zh": "拒绝码（映射到 ErrorCode.AFTERSALE_FRESH_QUALITY_ONLY，前端据此提示）。",
         "module": "shop-core"
       },
       {
@@ -34391,6 +34456,13 @@
         "module": "shop-store-mybatis"
       },
       {
+        "host": "SysMediaAsset",
+        "name": "EVIDENCE",
+        "value": "EVIDENCE",
+        "zh": "买家上传的凭证图：售后问题照、评价晒单。",
+        "module": "shop-store-mybatis"
+      },
+      {
         "host": "SysMediaPurgeBatch",
         "name": "QUEUED",
         "value": "QUEUED",
@@ -34722,6 +34794,18 @@
         ],
         "zh": "错误码（分段见 docs/api/响应格式规范.md §3，与本枚举的同步有守卫测试锁住）。",
         "module": "shop-base"
+      },
+      {
+        "name": "FulfillStage",
+        "values": [
+          "NOT_PREPARED",
+          "PREPARING",
+          "LABELED",
+          "SHIPPED",
+          "RECEIVED"
+        ],
+        "zh": "履约进度 —— 售后「货还能不能拦下来」的判据（TDD-售后规则-审核与部分退款 §2.1）。",
+        "module": "shop-core"
       },
       {
         "name": "JobStatus",
@@ -39367,6 +39451,14 @@
       "type": "String",
       "value": "ai.neargo.shop.common.Fulfillments.STORE_VERIFY",
       "zh": "到店核销（服务品类）。",
+      "module": "shop-core"
+    },
+    {
+      "host": "AfterSaleRules",
+      "name": "QUALITY_REASONS",
+      "type": "List<String>",
+      "value": "List.of( OrdAfterSale.REASON_DAMAGED, OrdAfterSale.REASON_QUALITY, OrdAfterSale.REASON_EXPIRED)",
+      "zh": "质量原因：损坏 / 变质 / 过期。",
       "module": "shop-core"
     },
     {

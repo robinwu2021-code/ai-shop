@@ -519,6 +519,10 @@ CREATE TABLE IF NOT EXISTS ord_after_sale
     points_offset_minor BIGINT(20) NOT NULL DEFAULT 0,
     refund_payment_no VARCHAR(64) DEFAULT NULL,
     stock_restored TINYINT NOT NULL DEFAULT 0,
+    refund_mode    VARCHAR(8) NOT NULL DEFAULT 'CASH',
+    refund_points  BIGINT     NULL,
+    approved_minor BIGINT     NULL,
+    fulfill_stage  VARCHAR(16) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_after_sale_no UNIQUE (after_sale_no)
 );
@@ -653,6 +657,7 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     period_no VARCHAR(64) DEFAULT NULL,
     arrive_date VARCHAR(10) DEFAULT NULL,
     express_company VARCHAR(32) DEFAULT NULL,
+    prepared_at BIGINT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
     CONSTRAINT uk_verify_code UNIQUE (verify_code)

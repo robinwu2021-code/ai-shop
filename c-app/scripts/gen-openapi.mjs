@@ -150,6 +150,9 @@ const RESPONSE_TYPES = {
   trackMine: "TrackView",
   // `{ url: string }` 没有对应 schema，用 object 兜底并在此说明 —— 与 toggleFavoriteStore 同一处理
   trackMiniLink: "object",
+  // 售后/评价凭证图上传，返回 { url }（契约声明 Promise<string>）。没有对应 schema，用 object 兜底。
+  // 别的会话加了 /mp/upload/image 端点但漏配这张表 —— 漏一条生成器整个拒绝输出，挡所有人 push。
+  uploadImage: "object",
   // 这三条曾长期缺席：端点表里有、契约方法也有返回类型，但漏配了这张表，
   // 生成器于是拒绝输出（见下方 missingResp 守卫）。结果是**契约里没有它们**，
   // 而后端明明实现了 —— 所有按契约算的覆盖率都因此低估后端。

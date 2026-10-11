@@ -2619,6 +2619,19 @@
 类型：`object`
 
 
+### upload
+
+#### POST `/mp/upload/image`
+
+上传售后/评价凭证图，返回公开 URL　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
 ### user
 
 #### GET `/mp/user/active-address`
