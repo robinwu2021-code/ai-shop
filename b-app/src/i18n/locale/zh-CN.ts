@@ -760,6 +760,8 @@ export default {
       FAILED: "未成功",
     },
     delivered: "已送达",
+    prepare: "开始备货",
+    prepared: "已备货，待发货",
     detail: "详情",
     empty: "还没有订单",
     trafficMERCHANT_OWNED: "自带客流",

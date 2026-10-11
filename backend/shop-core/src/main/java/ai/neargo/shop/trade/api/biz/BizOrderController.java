@@ -138,6 +138,17 @@ public class BizOrderController {
     }
 
     /**
+     * 开始备货。只记时刻、不改状态（仍待发货）。生鲜备货后，非质量退款从「自由退」
+     * 变成「商家确认」（TDD-售后规则 §2.1）。用发货权限（备货是发货前一步）。
+     */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.SHIP + "')")
+    @PostMapping("/biz/order/{subOrderNo}/prepare")
+    public OrderVO prepare(@PathVariable String subOrderNo) {
+        var ctx = BizContext.current();
+        return merchantOrderService.prepare(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo);
+    }
+
+    /**
      * 标记送达。**不是「确认收货」** —— 那是买家的动作，
      * 两者都推到 COMPLETED 但责任方不同，所以各走各的入口、各自留痕。
      */

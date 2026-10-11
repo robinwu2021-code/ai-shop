@@ -232,6 +232,25 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
 
     @Override
     @Transactional
+    public OrderVO prepare(String merchantNo, String storeNo, String subOrderNo) {
+        OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        // 幂等：已备货再点是空操作（备货时刻不覆盖，留住第一次的真实时间）
+        if (sub.getPreparedAt() != null) {
+            return toVO(sub);
+        }
+        // 只在待发货时能开始备货：已发货/已签收/已取消再点没有意义，明确拒而不是静默
+        if (!OrdSubOrder.WAIT_FULFILL.equals(sub.getStatus())) {
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        sub.setPreparedAt(System.currentTimeMillis());
+        save(sub);
+        // 不改状态（仍 WAIT_FULFILL），所以状态日志记当前状态、只说做了什么
+        log(sub, sub.getStatus(), "商家开始备货", merchantNo);
+        return toVO(sub);
+    }
+
+    @Override
+    @Transactional
     public OrderVO confirmOfflinePay(String merchantNo, String storeNo, String subOrderNo,
                                      String operator) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
@@ -510,7 +529,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 // 走全参构造而不是旧的短签名：末尾要带上快递公司。
                 // 商家改完单号要能核对自己选的是哪一家 —— 选错快递公司与填错单号
                 // 对买家是同一种后果（查不到物流），却只有单号看得见
-                null, null, null, null, s.getExpressCompany());
+                null, null, null, null, s.getExpressCompany())
+                // 备货时刻：b-app 据它在待发货单上显示「开始备货」还是「已备货」
+                .withPrepared(s.getPreparedAt());
     }
 
     private static final int PHONE_TAIL = 4;

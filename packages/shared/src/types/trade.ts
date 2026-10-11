@@ -494,6 +494,13 @@ export interface Order {
    * V344 之前发的存量单是空的 —— 当时根本没收集过。
    */
   expressCompany?: string;
+  /**
+   * 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。
+   *
+   * 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」
+   * 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。
+   */
+  preparedAt?: number | null;
   /** APPOINTMENT：预约开始时间戳 */
   appointmentAt?: number;
   /** 下单时间 */

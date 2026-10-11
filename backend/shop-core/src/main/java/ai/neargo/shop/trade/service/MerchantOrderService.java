@@ -102,6 +102,17 @@ public interface MerchantOrderService {
                  String expressNo, String expressCompany);
 
     /**
+     * 开始备货。只记一个时刻 {@code prepared_at}，<b>不改订单状态</b>（仍 WAIT_FULFILL）。
+     *
+     * <p>为什么要这个显式动作：录运单号那刻子单才置 FULFILLING，之前商家为生鲜采购、
+     * 分拣这段系统一无所知。售后判「货还拦不拦得住」（{@code FulfillStage}）要靠它补上
+     * 「备货中」档 —— 生鲜一旦备货，非质量退款就从「自由退」变成「商家确认」（TDD-售后规则 §2.1）。
+     *
+     * <p><b>幂等</b>：已备货再点是空操作；非 WAIT_FULFILL（已发货/已取消）点则抛 ORDER_STATE_ILLEGAL。
+     */
+    OrderVO prepare(String merchantNo, String storeNo, String subOrderNo);
+
+    /**
      * 标记送达。FULFILLING → COMPLETED。
      *
      * <p><b>它不是「确认收货」</b>：确认收货是买家的动作（C 端），

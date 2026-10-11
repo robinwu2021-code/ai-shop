@@ -167,7 +167,16 @@ public record OrderVO(String orderNo,
                        * 同一主体两家店在一单里是两张子单，{@code merchantNo} 相同 —— 端上分段、
                        * 段头显示、选活动都要按它分。主单与老数据为空。
                        */
-                      StoreBrief store) {
+                      StoreBrief store,
+                      /**
+                       * 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。
+                       *
+                       * <p>售后判进度的分水岭之一（TDD-售后规则 §2.1 FulfillStage）：生鲜备货后，
+                       * 非质量退款从「自由退」变成「商家确认」。<b>加在末尾</b>（同 expressCompany 的理由：
+                       * 这个 record 有多处位置参数构造，插中间每处都要改且未必报错）。
+                       * B 端据它决定订单上显示「开始备货」还是「已备货」。
+                       */
+                      Long preparedAt) {
 
     public record StoreBrief(String storeNo, String storeName) {
     }
@@ -188,7 +197,7 @@ public record OrderVO(String orderNo,
                 trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
                 reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo,
                 pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers,
-                instantRefundEligible, trace, null);
+                instantRefundEligible, trace, null, null);
     }
 
     public OrderVO withStore(StoreBrief s) {
@@ -196,7 +205,16 @@ public record OrderVO(String orderNo,
                 amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
                 trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname, reviewed,
                 afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo, pickupDistanceM,
-                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, s);
+                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, s, preparedAt);
+    }
+
+    /** 挂上备货时刻（只在 C/B 端订单视角填）。null = 还没备货 */
+    public OrderVO withPrepared(Long preparedAt) {
+        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items,
+                amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
+                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname, reviewed,
+                afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo, pickupDistanceM,
+                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store, preparedAt);
     }
 
     /** 物流轨迹（Y4）。status 同 ful_shipment；nodes 按时间倒序（最新在前） */
@@ -247,7 +265,7 @@ public record OrderVO(String orderNo,
                 amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
                 trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname, reviewed,
                 afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo, pickupDistanceM,
-                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, t, store);
+                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, t, store, preparedAt);
     }
 
     /**
@@ -424,7 +442,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store, preparedAt);
     }
 
     /**
@@ -439,7 +457,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store, preparedAt);
     }
 
     /**
@@ -451,7 +469,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store, preparedAt);
     }
 
     /** 挂上超出配送范围的商家（P6，只在预览）。空表给 null —— 端上看 null 就不提示 */
@@ -462,7 +480,7 @@ public record OrderVO(String orderNo,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
                 groupNo, pickupDistanceM, expressCompany, discountLines, returned,
                 merchants == null || merchants.isEmpty() ? null : merchants, offers,
-                instantRefundEligible, trace, store);
+                instantRefundEligible, trace, store, preparedAt);
     }
 
     /** 挂上优惠选项（批 2，只在预览）。没有活动也没有券可选时给 null */
@@ -472,7 +490,7 @@ public record OrderVO(String orderNo,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
                 groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, o,
-                instantRefundEligible, trace, store);
+                instantRefundEligible, trace, store, preparedAt);
     }
 
     /** 挂上去向（P3）。空的一律给 null —— 端上看 null 就整块不显示 */
@@ -482,7 +500,7 @@ public record OrderVO(String orderNo,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
                 groupNo, pickupDistanceM, expressCompany, discountLines,
-                r == null || r.isEmpty() ? null : r, outOfRange, offers, instantRefundEligible, trace, store);
+                r == null || r.isEmpty() ? null : r, outOfRange, offers, instantRefundEligible, trace, store, preparedAt);
     }
 
     /** 挂上优惠明细。预览与订单详情各自取各自的来源，见 TDD-C端优惠依据 */
@@ -491,7 +509,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, lines == null ? List.of() : lines, returned, outOfRange, offers, instantRefundEligible, trace, store);
+                groupNo, pickupDistanceM, expressCompany, lines == null ? List.of() : lines, returned, outOfRange, offers, instantRefundEligible, trace, store, preparedAt);
     }
 
     /**
@@ -505,7 +523,7 @@ public record OrderVO(String orderNo,
                 items, amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt,
                 paidAt, expressNo, trafficSource, appointmentAt, receiver, timeline, subOrders,
                 buyerNickname, reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil,
-                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store);
+                groupNo, pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible, trace, store, preparedAt);
     }
 
     /**

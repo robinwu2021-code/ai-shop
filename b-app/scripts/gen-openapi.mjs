@@ -434,6 +434,7 @@ const RESPONSE_TYPES = {
   mOrderTrace: "ShipmentTrace",
   mShip: "Order",
   mDelivered: "Order",
+  mPrepare: "Order",
   mDeliveryRule: "DeliveryRule",
   mSaveDeliveryRule: "DeliveryRule",
   mPickupOverview: "PickupOverview",

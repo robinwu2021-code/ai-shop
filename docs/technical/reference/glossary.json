@@ -14678,6 +14678,18 @@
           "ar": "اختر شركة الشحن"
         },
         {
+          "key": "order.prepare",
+          "zh-CN": "开始备货",
+          "en": "Start packing",
+          "ar": "بدء التجهيز"
+        },
+        {
+          "key": "order.prepared",
+          "zh-CN": "已备货，待发货",
+          "en": "Packed, ready to ship",
+          "ar": "تم التجهيز، بانتظار الشحن"
+        },
+        {
           "key": "order.receiver",
           "zh-CN": "收件人",
           "en": "Ship to",

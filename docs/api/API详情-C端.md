@@ -68,6 +68,7 @@
 | `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
+| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -122,6 +123,7 @@
 | `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
+| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -897,6 +899,7 @@
 | `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
+| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -1767,6 +1770,7 @@
 | `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
+| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -1845,6 +1849,7 @@
 | `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
+| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -1908,6 +1913,7 @@
 | `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
+| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -1962,6 +1968,7 @@
 | `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
+| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -2016,6 +2023,7 @@
 | `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
+| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
@@ -4154,6 +4162,7 @@
 | `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
 | `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
 | `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
+| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
 | `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
 | `createdAt` | `number` | 是 | 下单时间 |
 | `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |

@@ -9728,6 +9728,11 @@ components:
         expressCompany: 
           type: "string"
           description: "EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。\n\n**与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。"
+        preparedAt: 
+          type: 
+            - "number"
+            - "null"
+          description: "商家点「开始备货」的时刻（毫秒）。空 = 还没备货。\n\n售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。"
         appointmentAt: 
           type: "number"
           description: "APPOINTMENT：预约开始时间戳"
@@ -15624,6 +15629,39 @@ paths:
     post: 
       operationId: "mDelivered"
       summary: "自送已送达"
+      tags: 
+        - "order"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Order"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/order/{orderNo}/prepare": 
+    post: 
+      operationId: "mPrepare"
+      summary: "开始备货"
       tags: 
         - "order"
       security: 

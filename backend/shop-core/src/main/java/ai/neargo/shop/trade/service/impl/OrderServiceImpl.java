@@ -3003,7 +3003,8 @@ public class OrderServiceImpl implements OrderService {
                 // 集单四样这里不填；末位 expressCompany 要下发 ——
                 // 买家查物流认的是「哪家快递 + 单号」，只给单号等于让他自己猜快递公司
                 null, null, null, null, s.getExpressCompany())
-                .withStore(storeBriefOf(s));
+                .withStore(storeBriefOf(s))
+                .withPrepared(s.getPreparedAt());
     }
 
     /** 子单的门店（ADR-031）：端上按它分段、显示段头。门店名要解域，理由见 {@link #storeNamesOf} */

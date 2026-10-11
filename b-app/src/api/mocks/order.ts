@@ -29,6 +29,7 @@ export const orderMock: Pick<MerchantApi,
   | "mOrderTrace"
   | "mShip"
   | "mDelivered"
+  | "mPrepare"
   | "mConfirmOfflinePay"
   | "mExpressQuotes"
   | "mBookExpress"
@@ -158,6 +159,21 @@ export const orderMock: Pick<MerchantApi,
       `/pages/order/index?orderNo=${o.orderNo}`,
     );
     persist();
+    return delay(o);
+  },
+
+  async mPrepare(orderNo) {
+    const o = findOrder(orderNo);
+    // 只在待发货时能备货；替身也判，否则「已发货再点」只在真机露面
+    if (o.status !== "PAID") {
+      throw new Error("当前状态不能备货");
+    }
+    // 幂等：已备货不覆盖，留住第一次的真实时间（同后端 prepare()）
+    if (o.preparedAt == null) {
+      o.preparedAt = Date.now();
+      pushTimeline(o, "商家开始备货");
+      persist();
+    }
     return delay(o);
   },
 

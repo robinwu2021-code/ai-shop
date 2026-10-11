@@ -78,6 +78,30 @@ const canDeliver = computed(
 );
 
 /**
+ * 待发货单（快递 / 自送）→ 可备货。备货只记时刻、不改状态，是售后判进度的分水岭：
+ * 生鲜备货后非质量退款从「自由退」变成「商家确认」（售后规则 §2.1）。
+ * 用 `biz:ship` 权限（备货是发货前一步）。已备货仍显示这张卡（给「已备货」状态）。
+ */
+const canPrepare = computed(
+  () => order.value?.status === "PAID" && merchant.can("biz:ship")
+    && (order.value?.fulfillment === FULFILLMENT.EXPRESS
+      || order.value?.fulfillment === FULFILLMENT.DELIVERY),
+);
+
+async function prepare() {
+  if (!order.value || busy.value || order.value.preparedAt) return;
+  busy.value = true;
+  try {
+    order.value = await api.mPrepare(order.value.orderNo);
+    uni.showToast({ title: t("order.prepared"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+/**
  * 线下收款。**权限是 `biz:receive` 不是 `biz:order:view`** ——
  * 后者是只读权限，配送员（COURIER）也持有；让他能点等于让送货的人替商家宣布已收款。
  */
@@ -470,6 +494,17 @@ onLoad(async (q) => {
           · 自己发货：已经交给快递了，填运单号（B-11.4.3；快递公司与运单号成对，微信发货信息录入要求）
         默认值取「发货设置」（快递公司、重量），右上角直达那一页。叫过快递之后这张卡只显示进度。
       -->
+      <!--
+        开始备货（售后规则 §2.1）：只记时刻、不改状态。生鲜备货后非质量退款要商家确认。
+        发货卡之上、与发货同一权限 —— 备货是发货前一步。
+      -->
+      <view v-if="canPrepare" class="sh-card sh-mt-sm prepare-card">
+        <view v-if="order.preparedAt" class="sh-row">
+          <text class="sh-chip sh-chip--ok">{{ $t("order.prepared") }}</text>
+        </view>
+        <view v-else class="sh-btn sh-btn--muted" @tap="prepare">{{ $t("order.prepare") }}</view>
+      </view>
+
       <view v-if="pickupActive && pickup" class="sh-card sh-mt-sm">
         <view class="sh-row sh-row--between">
           <view class="sh-row">
