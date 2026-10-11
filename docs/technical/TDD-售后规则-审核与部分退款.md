@@ -172,16 +172,136 @@ APPLIED ──approve──▶ 立即退款? ──是(未发货 / 已签收)─
 - **修法**：发版改用 `npm run release:mp:with-biz`（在干净 HEAD 副本里跑）。**可立即单独补发一版**恢复商家通知，不必等本 TDD 实现完。
 - **防再犯**：`release-mp.sh` 上传前校验产物有 `pkg-biz` 分包，否则拒绝并提示用 with-biz。
 
-### 2.8 实施顺序（一次做完，按 TDD）
+### 2.8 实施计划（bite-sized tasks，一次做完，按 TDD）
 
-1. **补发 with-biz 版**（恢复商家通知，独立、可最先做）。
-2. `FulfillStage` + `AfterSaleRules` + 前端 `after-sale.ts`：先写 §2.2 矩阵的用例表，两端各钉一份。
-3. 迁移（`prepared_at` + 售后四列 + `WAIT_RECEIPT`）；`prepare` 端点 + B 端按钮（AC12）。
-4. `apply`：分档校验、删极速退、落 stage 快照（AC3–AC6、AC13、AC14）。
-5. `approve`/`doRefund`：立即退 vs `WAIT_RECEIPT`、签收触发、部分退款与积分（AC7–AC10）。
-6. 前端：C 端售后页（AC1–AC3、AC13）、B 端审核弹层（AC9、AC15）。
-7. 登记清单（/biz 端点 7 处、ErrorCode 4 处、枚举表 8 处、i18n 三语）。
-8. 闸门（`check-head-compiles` 全量）→ 发版（后端 + **`release:mp:with-biz`** + H5）。
+> 执行用 superpowers 的 executing-plans / subagent-driven-development。每个任务一条测试循环、一次提交。
+> 全局约束：Java 用 `mvn -o`（见 CLAUDE.md 后端构建环境）；DTO 字段一律装箱（防 Jackson 3 基本类型 400）；
+> 共享工作区提交只带自己认得的路径、add 完立刻 commit；改 `.vue` 用 `vue-tsc` 不是 `tsc`。
+> 提交署名以当前会话 system-reminder 为准（不写进计划，避免过期）。
+
+#### Task 0 · 补发带商家分包的小程序（修 AC11，独立、最先做）
+**Files:** 改 `c-app/scripts/release-mp.sh`（上传前校验）。
+- [ ] 1 读 `release-mp.sh` 第 4 步上传前，加：`python3 -c` 解析 `$DIST/app.json`，`subPackages` 里没有 `pkg-biz` 就 `echo "✗ 产物缺 pkg-biz 商家分包——用 npm run release:mp:with-biz"; exit 1`。
+- [ ] 2 在干净 HEAD 副本里跑 `npm run release:mp:with-biz -- 0.1.127 "恢复商家分包：售后待处理通知可点开"`；传完真机点一次「售后待处理」通知验证进得去。
+- [ ] 3 提交 `release-mp.sh` + manifest（版本号）。
+
+#### Task 1 · FulfillStage 判定（后端纯函数，AC12/14/15 的地基）
+**Files:** Create `backend/shop-core/src/main/java/ai/neargo/shop/trade/service/FulfillStage.java`；Test `backend/shop-core/src/test/java/ai/neargo/shop/trade/service/FulfillStageTest.java`。
+**Interfaces — Produces:**
+```java
+public enum FulfillStage { NOT_PREPARED, PREPARING, LABELED, SHIPPED, RECEIVED;
+  /** subStatus: OrdSubOrder 状态；preparedAt: 备货时刻或null；
+      waybillStatus: LgsWaybill.status 或null；pickedUpAt: 揽收时刻或null；createdAt: 运单创建时刻或null */
+  static FulfillStage of(String subStatus, Long preparedAt,
+                         String waybillStatus, Long pickedUpAt, Long waybillCreatedAt, long now); }
+```
+- [ ] 1 写 `FulfillStageTest`：COMPLETED→RECEIVED；有运单且 pickedUpAt非空→SHIPPED；有运单 pickedUpAt空且创建<6h→LABELED；创建≥6h→SHIPPED（R7 从严）；WAIT_FULFILL+preparedAt非空→PREPARING；WAIT_FULFILL+preparedAt空→NOT_PREPARED。各一例。
+- [ ] 2 `mvn -o -pl shop-core test -Dtest=FulfillStageTest` 看红（类不存在）。
+- [ ] 3 写 `FulfillStage.of`：按上述优先级（先签收→再揽收→再出单→再备货）判定；常量 `LABEL_GRACE_HOURS=6`。
+- [ ] 4 跑绿。
+- [ ] 5 提交。
+
+#### Task 2 · 售后规则纯函数（后端 + 前端共用矩阵，AC3/5/13/14）
+**Files:** Create `backend/shop-core/.../trade/service/AfterSaleRules.java` + Test；Create `packages/shared/src/strategies/after-sale.ts` + `packages/shared/tests/after-sale.test.ts`。
+**Interfaces — Produces（两端同名同义）:**
+```
+isFresh(itemTypes): 任一 == "FRESH"
+isQualityReason(r): r ∈ {DAMAGED, QUALITY, EXPIRED}
+// 能否申请 + 是否灰色（需商家确认）+ 要不要图片，入参为 FulfillStage + isFresh + reason
+applyGate(stage, fresh, reason) -> { allow: boolean, needMerchant: boolean, reason?: "FRESH_SHIPPED_NON_QUALITY" }
+needImage(stage) -> stage == RECEIVED
+reasonsFor(stage, fresh) -> string[]   // 前端原因下拉用
+```
+规则（§2.2 矩阵）：`SHIPPED`+fresh+非质量 → `{allow:false, reason:FRESH_SHIPPED_NON_QUALITY}`；`PREPARING`/`LABELED`+fresh → `{allow:true, needMerchant:true}`；其余 `{allow:true}`。
+- [ ] 1 写两端测试，用**同一张用例表**（五档 × fresh × 质量/非质量 的期望），断言 allow/needMerchant/needImage。
+- [ ] 2 两边跑红（`mvn -o -pl shop-core test -Dtest=AfterSaleRulesTest`；`cd packages/shared && npx vitest run after-sale`）。
+- [ ] 3 实现两份（逻辑逐条对齐）。
+- [ ] 4 两边跑绿。
+- [ ] 5 提交。
+
+#### Task 3 · 迁移 + 实体 + 新状态（库表契约）
+**Files:** Create `backend/shop-app/src/main/resources/db/migration/V400__after_sale_stage_and_refund_mode.sql`（实现时确认 V399 仍是最大，撞车则顺延）；Modify `OrdSubOrder.java`（+`preparedAt`）、`OrdAfterSale.java`（+`refundMode/refundPoints/approvedMinor/fulfillStage`、新状态常量 `WAIT_RECEIPT`、新 refundMode 常量 `CASH/POINTS`）。
+```sql
+ALTER TABLE ord_sub_order ADD COLUMN prepared_at BIGINT NULL COMMENT '商家开始备货时刻(ms)';
+ALTER TABLE ord_after_sale
+  ADD COLUMN refund_mode VARCHAR(8) NOT NULL DEFAULT 'CASH' COMMENT 'CASH/POINTS',
+  ADD COLUMN refund_points BIGINT NULL COMMENT '退款形式为积分时发放的积分数',
+  ADD COLUMN approved_minor BIGINT NULL COMMENT '商家核定退款额(分)，与申请额分开留痕',
+  ADD COLUMN fulfill_stage VARCHAR(16) NULL COMMENT '申请当时的履约进度快照';
+```
+- [ ] 1 写迁移 + 实体字段（`@TableField` 跟随现有风格）+ 常量。
+- [ ] 2 本地起后端（临时库，见记忆 local-fullstack-verify-recipe）确认迁移跑过、列在。
+- [ ] 3 加列三处对账（实体/迁移/读写点）——此处只到实体+迁移，读写在后续任务补。
+- [ ] 4 提交。
+
+#### Task 4 · 开始备货（AC12）
+**Files:** Modify `MerchantOrderServiceImpl.java`（+`prepare`）、`MerchantOrderService.java`（接口）、`BizOrderController.java`（+`/biz/order/{subOrderNo}/prepare`）、`OrderVO.java`（+`preparedAt`）、`OrderServiceImpl#orderViewBase`（下发 preparedAt）；b-app 订单页加按钮；i18n `order.prepare`。
+**Interfaces — Produces:** `void prepare(String merchantNo, String subOrderNo)`（幂等：已 prepared 直接返回；非 WAIT_FULFILL 抛 ORDER_STATE_ILLEGAL）。
+- [ ] 1 写 `MerchantOrderServiceTest#prepare_marks_prepared_at_idempotent`。
+- [ ] 2 跑红。
+- [ ] 3 实现 `prepare`（`executeWithoutScope` 不需要——商家会话带域；置 `prepared_at=now`，用 updateById 但注意 null 跳过问题用显式 set）。
+- [ ] 4 跑绿；端点登记 /biz 清单（见 Task 11）。
+- [ ] 5 B 端按钮：生鲜 WAIT_FULFILL 单显示「开始备货」，点后灰显；vue-tsc。
+- [ ] 6 提交。
+
+#### Task 5 · apply 分档校验 + 删极速退（AC3/4/5/6/13/14）
+**Files:** Modify `AfterSaleServiceImpl#apply`。
+**Interfaces — Consumes:** `FulfillStage.of(...)`、`AfterSaleRules.applyGate(...)`；新 `ErrorCode.AFTERSALE_FRESH_QUALITY_ONLY`。
+- [ ] 1 新增 ErrorCode（Task 11 登记）。写测试：`fresh_shipped_non_quality_rejected`（SHIPPED+FRESH+NOT_WANTED→AFTERSALE_FRESH_QUALITY_ONLY）、`fresh_labeled_non_quality_allowed`（LABELED+FRESH+NOT_WANTED→建单成功、needMerchant）、`apply_never_auto_refunds`（小额 REFUND_ONLY 不再 REFUNDED，停在 APPLIED）。
+- [ ] 2 跑红。
+- [ ] 3 实现：apply 里算 `stage = FulfillStage.of(...)`（查该子单的运单：复用 `logisticsPort`/现有 trace 读法拿 waybillStatus/pickedUpAt）；`gate = applyGate(stage, fresh, reason)`；`!gate.allow` → 抛对应 ErrorCode；落 `fulfill_stage` 快照；**删掉 `if (instant) doRefund(...)` 与 instant 计算**，状态恒 `APPLIED`（自营仍可走 ARBITRATING 分支不变）。
+- [ ] 4 跑绿。消融：恢复极速退分支→`apply_never_auto_refunds` 变红。
+- [ ] 5 提交。
+
+#### Task 6 · approve 分支 + WAIT_RECEIPT + 签收触发（AC7/8）
+**Files:** Modify `AfterSaleServiceImpl#approve`、`autoApprove`、签收消费处（订单完成事件 → 找 WAIT_RECEIPT 售后单退款）；`OrdAfterSale` `WAIT_RECEIPT`；配置 `after-sale.wait-receipt-days`。
+**Interfaces:** `approve` 内部按 `FulfillStage` + type 决定 `doRefund` 立即 or 置 `WAIT_RECEIPT`。
+- [ ] 1 写 `AfterSaleFlowTest#refund_only_in_transit_waits_for_receipt`（SHIPPED→approve→WAIT_RECEIPT，未退钱）、`#approve_refunds_immediately_when_unshipped_or_signed`（NOT_PREPARED/RECEIVED→approve→REFUNDED）、`#signed_triggers_waiting_refund`（WAIT_RECEIPT 单在子单 COMPLETED 后→REFUNDED）。
+- [ ] 2 跑红。
+- [ ] 3 实现：approve 里 `立即退 = REFUND_ONLY && (未发货 || 已签收)`；否则置 WAIT_RECEIPT；签收事件消费里扫该子单 WAIT_RECEIPT 售后单并 doRefund；`autoApprove` 对 `needMerchant` 的灰色档**跳过**（改发提醒，不自动同意）。
+- [ ] 4 跑绿。消融：让 autoApprove 不跳过灰色档→AC13 测试变红。
+- [ ] 5 提交。
+
+#### Task 7 · 部分退款 + 积分形式（AC9/10）
+**Files:** Modify `BizAfterSaleController.ApproveReq`（+`refundMinor:Long`、`refundMode:String`）、`approve` 透传、`doRefund`（积分分支）、`AfterSaleService#approve` 扩参；`PointsPort.compensate`（接口+实现）；ErrorCode `AFTERSALE_PARTIAL_NEED_RECEIPT`/`AFTERSALE_AMOUNT_INVALID`。
+**Interfaces — Produces:** `PointsPort.compensate(String userNo, String merchantNo, long points, String afterSaleNo)`（落 `AFTER_SALE_COMP` 流水，幂等按 afterSaleNo）。
+- [ ] 1 写 `#merchant_partial_amount_after_receipt`（RECEIVED+approve(refundMinor=部分)→退部分）、`#partial_before_receipt_rejected`（非 RECEIVED 传 refundMinor→AFTERSALE_PARTIAL_NEED_RECEIPT）、`#amount_over_paid_rejected`（refundMinor>实付→AFTERSALE_AMOUNT_INVALID）、`#points_mode_grants_points_no_cash`（refundMode=POINTS→无现金、发 `核定额×perMinor` 积分、不回冲分账）。
+- [ ] 2 跑红。
+- [ ] 3 实现：approve 校验金额档位；doRefund 按 refundMode 分流；POINTS 读运行时 `PointsConfig.perMinor` 折算、调 compensate、`refund_points` 落值、`refund_mode` 落值、`approved_minor` 留痕。
+- [ ] 4 跑绿。消融：POINTS 分支改回退现金→`points_mode` 变红。
+- [ ] 5 提交。
+
+#### Task 8 · C 端售后页（AC1/2/3/13）
+**Files:** Modify `c-app/src/pages/after-sale/index.vue`；i18n `afterSale.freshQualityOnly/grayStageTip/waitReceipt/refundedPoints`。
+- [ ] 1 图片框 `v-if="needImage(stage)"`（未签收隐藏）。
+- [ ] 2 原因下拉用 `reasonsFor(stage, fresh)`（生鲜已揽收只剩质量三项）。
+- [ ] 3 灰色档（needMerchant）：提交前 `uni.showModal` 提示「商家可能已为你备货/打包，商家会核实后处理」。
+- [ ] 4 WAIT_RECEIPT / 积分退款在售后进度卡的文案。
+- [ ] 5 `cd c-app && npx vue-tsc --noEmit`；mock H5 走查三态截图。
+- [ ] 6 提交。
+
+#### Task 9 · B 端审核弹层（AC9/15）
+**Files:** Modify `b-app/src/pages/after-sale/index.vue`；`AfterSaleVO` 加 `fulfillStage`（后端 detail 下发）；i18n `afterSale.stage.*`（五档）、`approveAmount`、`refundModeCash/Points`。
+- [ ] 1 审核弹层显示履约进度实况（fulfillStage 五档文案）+ 运单揽收时间。
+- [ ] 2 已签收时可改金额（输入，默认实付、≤实付）+ 选现金/积分；未签收只能全额同意/驳回。
+- [ ] 3 调 approve 带 refundMinor/refundMode。
+- [ ] 4 vue-tsc；（b-app 真机或 mock 走查）。
+- [ ] 5 提交。
+
+#### Task 10 · 发货 FULFILLING 不动，但读路径补 stage
+**Files:** 确认 `apply`/`detail`/B 端审核都用 `FulfillStage.of` 取同一进度（Task 1 已产出），无遗漏读点。
+- [ ] 1 grep 所有「按 sub.status 判已发货」的售后相关分支，确认都改成了 FulfillStage。
+- [ ] 2 补测任一遗漏；提交（若有）。
+
+#### Task 11 · 登记 + 闸门 + 发版
+- [ ] 1 /biz 新端点 `prepare` 登记 7 处（见记忆 registration-checklists / ops-web mock 不涉及；biz 鉴权名单、端点表、契约 spec）。
+- [ ] 2 新 ErrorCode 3 个各登记 4 处；带枚举的表（售后 refund_mode / 子单无新枚举）登记 8 处。
+- [ ] 3 i18n 三语补齐，跑 `node scripts/check-i18n-orphan.mjs` 不新增欠账。
+- [ ] 4 跑生成器：若动了页面另说（本方案不新增页面）；`python3 scripts/gen-ui-catalog.py --check`。
+- [ ] 5 `scripts/check-head-compiles.sh` 全量绿（干净副本）。
+- [ ] 6 发版：`REF=<HEAD> scripts/deploy-backend.sh` → `npm run release:mp:with-biz -- 0.1.1xx "..."`（**务必 with-biz**）→ `REF=<HEAD> scripts/deploy-frontend.sh c-app`；各自回读 health/VERSION。
+- [ ] 7 真机验：生鲜各档申请、商家审核改金额/积分、未签收无图片、通知点开可进。
+- [ ] 8 回填 TDD §5 消融列、§6 对账二、§7 完成。
 
 ---
 
