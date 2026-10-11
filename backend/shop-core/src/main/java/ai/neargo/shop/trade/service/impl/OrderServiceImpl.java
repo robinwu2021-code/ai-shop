@@ -2003,7 +2003,19 @@ public class OrderServiceImpl implements OrderService {
             return vo;
         }
         OrdOrder order = requireOwnOrder(orderNo, userNo);
-        return payView(order, subOrders(orderNo));
+        List<OrdSubOrder> subs = subOrders(orderNo);
+        OrderVO vo = payView(order, subs);
+        /*
+         * 单商家单用主单号打开（付款成功页正是如此）走支付视角，而支付视角原本**不挂物流轨迹**
+         * （只有子单号那条详情路径挂）。于是买家看不到物流详情、状态头也拿不到轨迹步骤 ——
+         * 状态停在「已发货」，而运单其实已签收，两处对不上。子单详情与 B 端都正常，正因为它们
+         * 走的是带 withTrace 的路径。单商家单只有一张子单、轨迹无歧义，这里补挂上。
+         * 展示渠道仍由后端统一判定（微信插件可用就优先插件，否则自建节点列表）。
+         */
+        if (subs.size() == 1) {
+            vo = vo.withTrace(traceOf(subs.get(0), surface));
+        }
+        return vo;
     }
 
     /**
