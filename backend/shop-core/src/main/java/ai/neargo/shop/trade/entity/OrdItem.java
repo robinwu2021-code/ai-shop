@@ -62,4 +62,9 @@ public class OrdItem extends BaseEntity {
      * 只有汇总的话，用户问「差价 −3.50 是哪个商品」时客服答不上来。
      */
     private Long weighAdjustMinor;
+
+    // 订单服务 2.0（W1）：供货门店 + 发货归属 + 已发数量。向后兼容加列，现有逻辑不读。
+    private String supplyStoreNo;
+    private String shipmentNo;
+    private Integer shippedQty;
 }
