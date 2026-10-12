@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OrderSplitterTest {
 
     private CartLine line(String sku, int qty, String merchant, String store) {
-        return new CartLine(sku, qty, merchant, store);
+        return new CartLine(sku, qty, 100L, merchant, store);
     }
 
     @Test
