@@ -22,7 +22,7 @@ public class CreateOrderHandler {
 
     /** @return 支付单号（幂等命中时为原单号） */
     public String create(String userNo, String communityNo, List<CartLine> lines, String idemKey) {
-        List<OrderGroup> groups = OrderSplitter.splitByMerchant(lines);
+        List<OrderGroup> groups = OrderSplitter.splitByStore(lines);
         String payNo = noGen.nextPayNo();
         PaymentDraft draft = PaymentDraftFactory.build(
                 payNo, userNo, communityNo, groups, n -> noGen.subOrderNo(payNo, n));

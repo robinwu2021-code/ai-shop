@@ -25,6 +25,7 @@ public final class OrderDraftFactory {
         order.setOrderNo(payNo);
         order.setUserNo(userNo);
         order.setEntityNo(group.merchantNo());
+        order.setStoreNo(group.storeNo());
         order.setStatus(OrdSubOrder.WAIT_PAY);
         order.setGoodsAmount(goods);
         order.setPayAmount(goods);

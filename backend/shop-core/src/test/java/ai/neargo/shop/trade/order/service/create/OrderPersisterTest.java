@@ -63,7 +63,7 @@ class OrderPersisterTest {
 
     private PaymentDraft draft() {
         return PaymentDraftFactory.build("PAY1", "U1", "C1",
-                List.of(new OrderGroup("M0001", List.of(new CartLine("SK1", 2, 100L, "M0001", "ST-A")))),
+                List.of(new OrderGroup("M0001", "ST-A", List.of(new CartLine("SK1", 2, 100L, "M0001", "ST-A")))),
                 n -> "PAY1-" + n);
     }
 

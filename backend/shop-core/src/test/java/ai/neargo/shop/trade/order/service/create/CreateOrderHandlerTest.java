@@ -62,11 +62,11 @@ class CreateOrderHandlerTest {
     }
 
     @Test
-    @DisplayName("端到端主干：跨商家 2 行 → 1 支付单含 2 订单，落库，返回支付单号")
-    void createSplitsBuildsAndPersists() {
+    @DisplayName("同商家两门店 → 1 支付单含 2 订单（按门店拆）")
+    void sameMerchantTwoStores() {
         List<CartLine> lines = List.of(
                 new CartLine("SK1", 2, 4980L, "M0001", "ST-A"),
-                new CartLine("SK2", 1, 5800L, "M0002", "ST-B"));
+                new CartLine("SK2", 1, 5800L, "M0001", "ST-B"));
 
         String payNo = handler.create("U1", "C1", lines, "idem-1");
 
@@ -75,14 +75,13 @@ class CreateOrderHandlerTest {
         PaymentDraft draft = store.saved.get(0);
         assertThat(draft.payment().getPayAmount()).isEqualTo(4980L * 2 + 5800L);
         assertThat(draft.orders()).hasSize(2);
-        assertThat(draft.orders().get(0).order().getSubOrderNo()).isEqualTo("PAY1-1");
-        assertThat(draft.orders().get(0).order().getEntityNo()).isEqualTo("M0001");
-        assertThat(draft.orders().get(1).order().getEntityNo()).isEqualTo("M0002");
+        assertThat(draft.orders().get(0).order().getStoreNo()).isEqualTo("ST-A");
+        assertThat(draft.orders().get(1).order().getStoreNo()).isEqualTo("ST-B");
     }
 
     @Test
-    @DisplayName("单商家：1 支付单 1 订单")
-    void singleMerchant() {
+    @DisplayName("单门店：1 支付单 1 订单")
+    void singleStore() {
         String payNo = handler.create("U1", "C1",
                 List.of(new CartLine("SK1", 1, 1000L, "M0001", "ST-A")), "idem-2");
         assertThat(payNo).isEqualTo("PAY1");
