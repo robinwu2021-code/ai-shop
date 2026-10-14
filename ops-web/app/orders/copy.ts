@@ -5,6 +5,15 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
+  cancelImpactTitle: "本次取消影响",
+  cancelImpactTotal: "整笔付款应付金额",
+  cancelImpactPayment: "支付单号",
+  cancelImpactLoading: "正在检查整笔付款的取消权限…",
+  cancelImpactFailed: "无法检查取消影响，请重试。",
+  cancelImpactRetry: "重新检查",
+  cancelImpactForbidden: "当前账号没有整笔付款的完整取消权限。",
+  cancelImpactState: "这笔付款已不能取消，请刷新订单并按当前状态处理。",
+
   exceptionReadOnlyWhat: "异常单队列",
   proxyReadOnlyWhat: "代客下单与取消",
   exceptionNotice: "这是订单卡在某个状态超时的队列，实时算出来的 —— 单子一推进它就自己消失，不需要「标记已处理」。阈值按状态分别给：待支付 15 分钟就该关单，而「已送达待自提」放一天很正常。",
@@ -210,6 +219,15 @@ const zh = {
 };
 
 const en: typeof zh = {
+  cancelImpactTitle: "Cancellation impact",
+  cancelImpactTotal: "Total payment due",
+  cancelImpactPayment: "Payment order number",
+  cancelImpactLoading: "Checking permission for the whole payment…",
+  cancelImpactFailed: "Unable to check cancellation impact. Please retry.",
+  cancelImpactRetry: "Check again",
+  cancelImpactForbidden: "This account cannot cancel the whole payment.",
+  cancelImpactState: "This payment can no longer be cancelled. Refresh the order to see its current status.",
+
   exceptionReadOnlyWhat: "the exception queue",
   proxyReadOnlyWhat: "proxy ordering and cancellation",
   exceptionNotice: "This queue holds orders stuck in a state past its limit. It is computed live — an order leaves the moment it moves on, so there is no “mark as handled”. Limits are per state: an unpaid order should close after 15 minutes, while “arrived, awaiting pickup” sitting for a day is normal.",

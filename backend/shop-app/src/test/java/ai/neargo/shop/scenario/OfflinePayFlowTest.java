@@ -13,6 +13,9 @@ import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers;
 import ai.neargo.shop.merchant.service.StoreFulfillmentService;
 import ai.neargo.shop.product.entity.PrdGoods;
+import ai.neargo.shop.product.entity.PrdSku;
+import org.springframework.beans.BeanUtils;
+import java.util.UUID;
 import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.spi.user.QualificationPort;
 import ai.neargo.shop.support.TestLogin;
@@ -63,6 +66,8 @@ class OfflinePayFlowTest {
     private ObjectMapper json;
     @Autowired
     private ProductMappers.GoodsMapper goodsMapper;
+    @Autowired
+    private ProductMappers.SkuMapper skuMapper;
     @Autowired
     private MerchantMappers.MchStoreMapper storeMapper;
     @Autowired
@@ -180,6 +185,78 @@ class OfflinePayFlowTest {
         DataScopeContext.executeWithoutScope(() -> jdbc.update(
                 "DELETE FROM mch_fulfillment_channel WHERE entity_no = ?", SEED_ENTITY));
         restorePointsSwitches();
+    }
+
+    @Test
+    void crossStoreOfflineBasketIsRejectedBeforeAnyReservation() throws Exception {
+        String token = login("13400188990");
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 24);
+        MchStore store = offlineSecondStore(suffix);
+        PrdGoods goods = offlineSecondGoods(store.getStoreNo(), suffix);
+        PrdSku sku = offlineSecondSku(goods.getGoodsNo(), suffix);
+        long before = jdbc.queryForObject("select count(*) from ord_order", Long.class);
+        JsonNode response = null;
+        try {
+            String body = "{\"fulfillment\":\"STORE_PICKUP\",\"payMode\":\"OFFLINE\",\"items\":["
+                    + "{\"goodsNo\":\"G0001\",\"skuNo\":\"SK0001\",\"qty\":1},"
+                    + "{\"goodsNo\":\"" + goods.getGoodsNo() + "\",\"skuNo\":\"" + sku.getSkuNo() + "\",\"qty\":1}]}";
+            String capability = mvc().perform(post("/mp/order/capability")
+                            .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(jsonPath("$.code").value(0)).andReturn().getResponse().getContentAsString();
+            JsonNode modes = json.readTree(capability).get("data").get("usablePayModes");
+            assertThat(modes.isArray()).isTrue();
+            assertThat(modes.toString()).doesNotContain("OFFLINE");
+            response = json.readTree(createRaw(token, "offline-multi-" + suffix, body));
+            assertThat(response.path("code").asInt()).isEqualTo(80011);
+            assertThat(jdbc.queryForObject("select count(*) from ord_order", Long.class)).isEqualTo(before);
+            assertThat(jdbc.queryForObject("select count(*) from prd_stock_lock where sku_no = ?",
+                    Long.class, sku.getSkuNo())).isZero();
+        } finally {
+            if (response != null && response.path("code").asInt() == 0) {
+                String payNo = response.get("data").get("payOrderNo").asString();
+                mvc().perform(post("/mp/order/" + payNo + "/cancel").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"));
+            }
+            jdbc.update("delete from prd_sku where sku_no = ?", sku.getSkuNo());
+            jdbc.update("delete from prd_goods where goods_no = ?", goods.getGoodsNo());
+            jdbc.update("delete from mch_store where store_no = ?", store.getStoreNo());
+        }
+    }
+
+    private MchStore offlineSecondStore(String suffix) {
+        MchStore seed = storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                .eq(MchStore::getStoreNo, "ST-M0001"));
+        MchStore second = new MchStore();
+        BeanUtils.copyProperties(seed, second);
+        second.setId(null);
+        second.setStoreNo("ST-" + suffix);
+        second.setName("线下跨店测试分店");
+        second.setIsDefault(false);
+        storeMapper.insert(second);
+        return second;
+    }
+
+    private PrdGoods offlineSecondGoods(String storeNo, String suffix) {
+        PrdGoods seed = goodsMapper.selectOne(Wrappers.<PrdGoods>lambdaQuery().eq(PrdGoods::getGoodsNo, "G0001"));
+        PrdGoods second = new PrdGoods();
+        BeanUtils.copyProperties(seed, second);
+        second.setId(null);
+        second.setGoodsNo("G-" + suffix);
+        second.setStoreNo(storeNo);
+        goodsMapper.insert(second);
+        return second;
+    }
+
+    private PrdSku offlineSecondSku(String goodsNo, String suffix) {
+        PrdSku seed = skuMapper.selectOne(Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, "SK0001"));
+        PrdSku second = new PrdSku();
+        BeanUtils.copyProperties(seed, second);
+        second.setId(null);
+        second.setSkuNo("SK-" + suffix);
+        second.setGoodsNo(goodsNo);
+        second.setLockedStock(0);
+        skuMapper.insert(second);
+        return second;
     }
 
     @Test

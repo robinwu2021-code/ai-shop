@@ -1,5 +1,5 @@
 // 覆盖范围：订单管理（P-4.1）。
-import type { FulfillmentType, Order, OrderException, OrderIntervention, OrderStatus, Page, PayMode, ProxyLimit } from "@/lib/types";
+import type { CancellationImpact, FulfillmentType, Order, OrderException, OrderIntervention, OrderStatus, Page, PayMode, ProxyLimit } from "@/lib/types";
 import type { OrderQ, PageQ } from "../query";
 
 export type ExceptionQ = PageQ & { kind?: string };
@@ -34,10 +34,11 @@ export interface OrderApi {
   /**
    * 代客取消。
    *
-   * 已支付的单**只能带退款取消** —— 契约里不给"取消但不退款"这条路：
-   * 那等于平台收了钱又不发货，任何理由都不成立。
+   * 仅未付款/待当面收款支付单可以整笔取消；已付款走售后。
    */
   proxyCancelOrder(v: { orderNo: string; reason: string }): Promise<Order>;
+  /** 整笔取消影响，权限不足时不返回隐藏明细。 */
+  getCancellationImpact(orderNo: string): Promise<CancellationImpact>;
 
   /**
    * 代客下单（客服电话代下，P-4.1.4）。需求梳理见

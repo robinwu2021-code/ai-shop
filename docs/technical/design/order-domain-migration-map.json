@@ -5,7 +5,7 @@
   "targetPackage": "ai.neargo.shop.order",
   "status": "implementation-started",
   "counts": {
-    "coreProductionFiles": 133,
+    "coreProductionFiles": 135,
     "coreTestClasses": 27
   },
   "entries": [
@@ -4552,6 +4552,51 @@
       "tables": [],
       "externalConsumers": [],
       "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/contract/CancellationImpact.java",
+      "sourceType": "ai.neargo.shop.trade.order.contract.CancellationImpact",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/contract/CancellationImpact.java",
+      "targetType": "ai.neargo.shop.order.contract.CancellationImpact",
+      "owner": "order",
+      "state": "added-F04",
+      "tables": [],
+      "externalConsumers": [
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/api/ops/OpsOrderController.java",
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/policy/PaymentImpactPolicy.java",
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/OrderService.java",
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/PlatformOrderService.java",
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/PlatformOrderServiceImpl.java"
+      ],
+      "publicMethods": [
+        "public static CancellationImpact blocked(String code) {",
+        "public record AffectedOrder(String subOrderNo, String merchantNo, String merchantName,"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/policy/PaymentImpactPolicy.java",
+      "sourceType": "ai.neargo.shop.trade.order.policy.PaymentImpactPolicy",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/policy/PaymentImpactPolicy.java",
+      "targetType": "ai.neargo.shop.order.policy.PaymentImpactPolicy",
+      "owner": "order",
+      "state": "added-F04",
+      "tables": [],
+      "externalConsumers": [
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/MerchantOrderServiceImpl.java",
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java"
+      ],
+      "publicMethods": [
+        "public PaymentImpactPolicy(PaymentMapper payments, StoreOrderMapper orders, MerchantQueryPort merchants) {",
+        "public CancellationImpact preview(String requestedNo) {",
+        "public PaymentSet requireCancellable(String requestedNo) {",
+        "public static boolean singleStore(Collection<String> stores) {",
+        "public static void requireSingleStore(Collection<String> stores) {",
+        "public record PaymentSet(OrdOrder payment, List<OrdSubOrder> orders) { }"
+      ],
+      "beanNames": [
+        "paymentImpactPolicy"
+      ]
     }
   ],
   "mixedMapperSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/TradeMappers.java",

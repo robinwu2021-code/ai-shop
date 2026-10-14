@@ -11,6 +11,8 @@ import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
 import ai.neargo.shop.trade.order.service.receipt.OrderReceiptCompleter;
+import ai.neargo.shop.trade.order.contract.CancellationImpact;
+import ai.neargo.shop.trade.order.policy.PaymentImpactPolicy;
 import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.trade.service.OrderStatusView;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
@@ -176,6 +178,13 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderReceiptCompleter receiptCompleter;
+    private PaymentImpactPolicy paymentImpact;
+
+    @Autowired
+    public void setPaymentImpact(PaymentImpactPolicy paymentImpact) {
+        this.paymentImpact = paymentImpact;
+    }
+
 
     @Autowired
     public void setReceiptCompleter(OrderReceiptCompleter receiptCompleter) {
@@ -444,6 +453,10 @@ public class OrderServiceImpl implements OrderService {
                 payModes = payModes == null ? new java.util.LinkedHashSet<>(modes)
                         : intersect(payModes, modes);
             }
+        }
+        if (payModes != null && !PaymentImpactPolicy.singleStore(split.groups().stream()
+                .map(group -> stores.get(group.key())).toList())) {
+            payModes.remove(PayModes.OFFLINE);
         }
         return new ai.neargo.shop.trade.dto.CheckoutCapabilityVO(
                 usable == null ? null : new ArrayList<>(usable), anyNoInvoice, rows,
@@ -2229,7 +2242,17 @@ public class OrderServiceImpl implements OrderService {
          * 代客取消（TDD-订单状态机 AC15）。此前走通用人工干预，只把**子单**改成 CANCELLED：
          * 支付单仍是 WAIT_PAY（买家还能付）、库存 / 券 / 积分都没释放。现在与买家取消同一条路，执行者记平台。
          */
-        cancelPayment(resolveForPlatform(orderNo), reason, Actor.PLATFORM, operatorNo, "平台代客取消：" + reason);
+        var impact = paymentImpact.requireCancellable(orderNo);
+        DataScopeContext.executeWithoutScope(() -> {
+            cancelPayment(impact.payment(), reason, Actor.PLATFORM, operatorNo, "平台代客取消：" + reason);
+            return null;
+        });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CancellationImpact cancellationImpact(String orderNo) {
+        return paymentImpact.preview(orderNo);
     }
 
     /** 取消一次支付（未付款 / 待当面收款）：支付单 CANCELLED + 其下订单 CANCELLED + 释放占用 */
@@ -3017,23 +3040,6 @@ public class OrderServiceImpl implements OrderService {
         return requireOwnOrder(sub == null ? orderNo : sub.getOrderNo());
     }
 
-    /**
-     * 平台侧取单：子单号或支付单号都认，<b>不按买家过滤</b>（{@link #resolveOrder} 按当前登录买家过滤，
-     * 运营调用必然查不到）。与此前代客取消走的人工干预取单（{@code requireAny}）同口径：解除数据域，
-     * 写操作的边界由权限码 {@code order:order:proxy} 管。
-     */
-    private OrdOrder resolveForPlatform(String orderNo) {
-        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectOne(
-                Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getSubOrderNo, orderNo).last("limit 1")));
-        String payNo = sub == null ? orderNo : sub.getOrderNo();
-        OrdOrder order = DataScopeContext.executeWithoutScope(() -> orderMapper.selectOne(
-                Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo, payNo).last("limit 1")));
-        if (order == null) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
-        return order;
-    }
-
     private List<OrdSubOrder> subOrders(String orderNo) {
         return subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
                 .eq(OrdSubOrder::getOrderNo, orderNo).orderByAsc(OrdSubOrder::getId));
@@ -3262,6 +3268,8 @@ public class OrderServiceImpl implements OrderService {
         if (PayModes.ONLINE.equals(payMode)) {
             return payMode;   // 线上不受四层约束，见 PayModePort#availablePayModes
         }
+        PaymentImpactPolicy.requireSingleStore(split.groups().stream()
+                .map(group -> storeOfMerchant.get(group.key())).toList());
         /*
          * 线下 × 履约方式：只有「当面能收到钱」的那几种。
          *

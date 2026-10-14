@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.trade.order.contract.CancellationImpact;
+
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.PlatformOrderService;
 import ai.neargo.shop.trade.service.ProxyLimitService;
@@ -257,6 +259,11 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
                         false, null, 1))
                 .toList();
         return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
+    }
+
+    @Override
+    public CancellationImpact cancellationImpact(String orderNo) {
+        return orderService.cancellationImpact(orderNo);
     }
 
     @Override

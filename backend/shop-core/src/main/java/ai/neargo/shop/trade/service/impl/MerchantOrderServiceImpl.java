@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.trade.order.policy.PaymentImpactPolicy;
+
 import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
@@ -266,47 +268,26 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     public OrderVO confirmOfflinePay(String merchantNo, String storeNo, String subOrderNo,
                                      String operator) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
-        /*
-         * ⚠️ **必须绕过数据域**。B 端会话是 SELF 维度，而 ord_order 按买家登记 ——
-         * 维度对不上时 DataScopeHandler fail-closed 拼 `1=0`：
-         * **查不到、update 影响 0 行，而接口成功、日志干净**。
-         * 第一版没加，症状是这里恒抛「订单状态不允许该操作」，
-         * 而子单明明就在眼前 —— 归属已由上面的 require(merchantNo, storeNo, …) 判过了。
-         */
+        List<OrdSubOrder> siblings = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectList(
+                Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getOrderNo, sub.getOrderNo())));
+        PaymentImpactPolicy.requireSingleStore(siblings.stream().map(OrdSubOrder::getStoreNo).toList());
+        if (siblings.stream().anyMatch(row -> !merchantNo.equals(row.getEntityNo())
+                || !sub.getStoreNo().equals(row.getStoreNo()))) {
+            throw BizException.of(ErrorCode.PAY_MODE_NOT_SUPPORTED);
+        }
+
+        // 已验证完整集合；B端SELF维度不等于主单买家，资金入口读取须解域。
         OrdOrder order = DataScopeContext.executeWithoutScope(() ->
                 orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                         .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("LIMIT 1")));
         if (order == null || !OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus())) {
-            /*
-             * 不是「等确认收款」的单一律拒。包括线上单 —— 否则商家点一下
-             * 就能把一笔没付钱的线上单标成已付，那是凭空发货。
-             */
-            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+                throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
-        /*
-         * 留痕先写：markPaid 里会发事件、触发结算，那些都可能失败重试，
-         * 而「谁点的确认」这件事不该跟着重试语义走。
-         */
+        // 保留确认人/时间；markPaid和留痕仍在外层同一事务内。
         order.setOfflineConfirmedBy(operator);
         order.setOfflineConfirmedAt(System.currentTimeMillis());
         DataScopeContext.executeWithoutScope(() -> orderMapper.updateById(order));
 
-        /*
-         * **复用 markPaid**，payChannel 传 OFFLINE。
-         *
-         * 它是幂等的（已 PAID 直接返回），且不关心钱从哪来 ——
-         * 微信回调与这里是同一个方法的两个调用方。
-         * payTradeNo 记操作人：线下没有支付流水号，而这一列是对账时回溯用的，
-         * 留空等于把这单从对账链路上摘掉。
-         */
-        /*
-         * ⚠️ **整段绕过数据域**。markPaid 内部还要读写 ord_order / ord_sub_order / 库存，
-         * 而它此前**只被支付回调调用**（那条路上没有会话），所以从没撞过数据域。
-         * 从 B 端会话调它，那些读会被 fail-closed 拼成 `1=0` —— 症状是
-         * 「确认收款报订单不存在」，而订单就在眼前。
-         *
-         * 归属已经由上面的 require(merchantNo, storeNo, …) 判过：绕过的是数据域，不是鉴权。
-         */
         DataScopeContext.executeWithoutScope(() -> {
             orderService.markPaid(order.getOrderNo(), PayModes.OFFLINE, "OFFLINE:" + operator);
             return null;

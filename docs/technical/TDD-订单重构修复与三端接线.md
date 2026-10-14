@@ -235,15 +235,15 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PA
 
 #### F04：整笔取消影响集合及授权
 
-**修改：** `T/service/impl/OrderServiceImpl.java#cancelByPlatform/cancelPayment/createFor`、`T/service/impl/MerchantOrderServiceImpl.java#confirmOfflinePay`、`T/api/ops/OpsOrderController.java`、`T/service/PlatformOrderService.java` 及 impl；测试 `IT/TradeStatusGateFlowTest.java`、`IT/OpsDataScopeFlowTest.java`、`IT/OfflinePayFlowTest.java`。
+**修改：** `T/service/impl/OrderServiceImpl.java#cancelByPlatform/cancelPayment/createFor/capability`、`T/service/impl/MerchantOrderServiceImpl.java#confirmOfflinePay`、`T/api/ops/OpsOrderController.java`、`T/service/PlatformOrderService.java` 及 impl；测试 `IT/TradeStatusGateFlowTest.java`、`IT/OpsDataScopeFlowTest.java`、`IT/OfflinePayFlowTest.java`。
 
-**新增：** `T/order/policy/PaymentImpactPolicy.java`、`T/order/contract/CancellationImpact.java`；拟 GET `/ops/orders/{subOrderNo}/cancel-impact`。可取消时返回 requestedOrderNo/payOrderNo/totalPayableMinor/affectedOrders；不可完整授权时只返回 canCancel=false、blockedCode，不返回域外明细或金额。
+**新增：** `O/policy/PaymentImpactPolicy.java`、`O/contract/CancellationImpact.java`、真实身份夹具`IT/OrderImpactFixtures.java`和`IT/PaymentImpactFlowTest.java`；GET `/ops/orders/{subOrderNo}/cancel-impact`。可取消时返回 requestedOrderNo/payOrderNo/totalPayableMinor/currency/affectedOrders；不可完整授权时只返回 canCancel=false、blockedCode，不返回域外明细或金额。
 
-- [ ] 复用 OpsDataScopeFlowTest 的 staffWithScope，主单含 M0001/M0002，仅授权 M0001：预览不泄露 M0002，POST拒绝，主子状态与占用全部不变。ALL账号取消则全部 CANCELLED、资源只释放一次。
-- [ ] 运行 `TradeStatusGateFlowTest,OpsDataScopeFlowTest`；增加预览后付款、再取消必须拒绝的场景。
-- [ ] 服务端读取未过滤的真实集合后逐对象授权，成功才执行限定支付单的完整事务；不得用按域过滤的 siblings 查询证明完整。
-- [ ] 明确取消是旧 T2 写策略的专项例外，保留其他运营写操作原规则；同测试及接口对账通过、消融全集合校验变红，精确提交。
-- [ ] 按 D1 在 `createFor` 落库/锁库存前验证 OFFLINE 分组恰为单门店，`confirmOfflinePay` 重新验证实际兄弟集合及收款店。新增跨店篮子拒绝且无占用、历史跨店单不被一店收款全部推进的测试，运行 `OfflinePayFlowTest`；此业务门槛未评审时不启用。
+- [x] 复用 OpsDataScopeFlowTest 的 staffWithScope，主单含 M0001/M0002，仅授权 M0001：预览不泄露 M0002，POST拒绝，主子状态与占用全部不变。ALL账号取消则全部 CANCELLED、资源只释放一次。
+- [x] 运行 `TradeStatusGateFlowTest,OpsDataScopeFlowTest`；增加预览后付款、再取消必须拒绝的场景。
+- [x] 服务端读取未过滤的真实集合后逐对象授权，成功才执行限定支付单的完整事务；不得用按域过滤的 siblings 查询证明完整。
+- [x] 明确取消是旧 T2 写策略的专项例外，保留其他运营写操作原规则；同测试及接口对账通过、消融全集合校验变红，精确提交。
+- [x] 按 D1 在 `createFor` 落库/锁库存前验证 OFFLINE 分组恰为单门店，`confirmOfflinePay` 重新验证实际兄弟集合及收款店。新增跨店篮子拒绝且无占用、历史跨店单不被一店收款全部推进的测试，运行 `OfflinePayFlowTest`；此业务门槛未评审时不启用。
 
 #### F05：收银台粒度、结果与有界回查
 
@@ -256,6 +256,8 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PA
 - [x] `paymentPhase` 显式区分待支付、待收款、确认中、成功、取消、退款、未知；支付交互成功后串行回查，拟延迟1/1/2/3/5秒，共5次、最多12秒。超时显示待确认与手动刷新，不自动再次发起付款。
 - [x] fake timers 验证 WAIT_PAY→WAIT_PAY→PAID 收敛、达到上限/隐藏/卸载停止请求、旧请求不覆盖新单；保留订阅授权在回查 await 之前，确认付款后才清 checkout key。
 - [x] 类型检查与实际多店/延迟结果预览通过、精确提交。运营取消抽屉等待 F04 合同，单独修改 `ops-web/app/orders/proxy-tab.tsx` 展示全部已授权影响集合。
+
+F04同时补齐F05所等待的运营影响抽屉：新增`ops-web/app/orders/proxy-cancel-drawer.tsx`，修改proxy-tab/copy、OrderApi合同/HTTP/mock、取消影响类型；新增`ops-web/lib/proxy-cancel-page.test.ts`和真实mock集合反例。预览pending/失败/无完整权限不能确认；显示整笔金额/币种/支付单号及全部已授权门店订单，服务端执行仍重新校验，不依赖客户端预览授权。nullable的门店字段在嵌套JSON中保留null，权限不足的顶层只输出canCancel/blockedCode。能力接口与建单共用单店判据，不将OFFLINE提供给跨店篮子。
 
 #### F06：结算原始基数，先写不切读
 
@@ -569,6 +571,7 @@ ShipCommand改为`List<Long> itemIds`，查真实行ID且校验订单归属，�
 | F03 | PrepareFactFlowTest2+TradeStatusGateFlowTest3；红2/5；PREPARE旁路消融红2/2；最终相关集合38/38 | 红→绿及消融通过；独立review及复核无剩余问题 | 双读者并发只一条流水/版本；重放不变；售后占槽拒绝 |
 | F05 | 挂载红9/36；review新增生命周期及真实mock红5/19；修复后C全量77类510/510、指定45/45；错误成功状态消融红2/17；vue-tsc、小程序build、API生成、277界面清单检查通过 | 红→绿及消融通过；独立review问题均关闭 | 主单金额/号、取消退款不报成功、零元、五次回查/刷新、隐藏返回/迟到/旧路由、真实mock取消/金额 |
 | M01 | 新归属装配断言红2/9、既有7绿；提取后定向56/56；扩展回归152+6+136=294/294；修正行宽后状态兼容/投影/归属17/17；枚举字段对账通过 | 独立review无剩余问题；撤掉ExpressPickupMapper扫描明确因缺Bean无法装配（2个setup error，不记业务断言红） | 9个Mapper平台工厂/唯一Bean/真实SQL；预约释放CAS；规则内容等价；支付、售后、线下、预约、开票 |
+| F04 | 真实影响集合红6/6、能力门槛红1/1；历史空店红1/1；去掉全集合授权红2/6、Errors0；恢复后相关51/51。运营挂载/真实mock红6/27，review缓存/迟到/重开红3/6，整页重挂红1/7，合同引用红1/1；修复后运营全量733/733、类型检查通过 | 独立review发现均修复；接口对账及277界面清单通过；真实页面预览30元/两店、临时夹具恢复 | 取消全授权、无泄露、无重复释放；跨店OFFLINE拒绝且能力不提供；历史null；旧请求隔离及每次打开新预览 |
 | B00 | baseline-selectors.txt列出的37类；JDK21离线Maven -pl shop-app -am | 222条，失败0/错误0/跳过0；BUILD SUCCESS | df2adc641的订单内核与相关场景，不计作新修复验收 |
 
 RF01–RF20 的测试责任和具体反例映射到§2.5，DEV01–DEV08映射到§2.6。已完成批次的实际红/绿输出、消融结果和范围见上表；其他新增场景仍待执行。§1.3的222条是当前实现定向基线，不是开发批次的验收通过记录。
@@ -585,10 +588,12 @@ F03提交`cfbfd3bf4`。F05补payment-result辅助类、两个挂载/真实mock�
 
 F05提交`90d8f68ed`。M01提取9个Mapper、4份政策及2个旧规则测试，修改全部引用并保留Cart Mapper。旧state/view薄委托，未改变迁移表、数据库、状态机或HTTP契约。B00迁移清单刷新为当前133个内核生产文件/27个核心测试类，基线118/25另存baselineCounts；新Mapper表/Bean/工厂及消费者均对齐。独立review指出薄委托行宽问题，修正后定向17/17通过。
 
+F04新增完整取消影响政策/合同及真实身份集成测试、运营影响抽屉及挂载/产物引用测试；修改订单/平台服务、运营Controller、线下收款门槛与能力、运营API/HTTP/mock/文案/类型。新增门店名称和币种为可读影响预览所需；无完整授权只输出拒绝标志。运营OpenAPI生成器统一内部引用到components.schemas，保证新合同嵌套引用可解析；同时清除既有生成YAML行尾空白，语义差异已另以忽略空白方式检查。历史null门店与运营缓存失败/迟到取消/整页重挂反例已修复。每次打开使用UUID会话隔离缓存和旧请求。迁移清单当前内核135个生产文件/27个核心测试类。未修改其他运营T2写规则、数据库或旧订单TDD历史§5/§6。
+
 后续按批记录 `git show --stat`，与修改/新增文件逐项核对；新增辅助类、字段或接口先更新设计，不让实现与本篇分叉。
 
 ## §7 本轮交付与下一步
 
-开发计划共7阶段、26个唯一批次，B00/F01/F02/F03/F05/M01已完成，下一批F04，其余待实施。用户已授权基于本计划开发；未确定的供应商资金账户/权限及新积分能力保持关闭，新入口按批次验证和能力门槛启用。
+开发计划共7阶段、26个唯一批次，B00/F01/F02/F03/F05/M01/F04已完成，F06进入实施，其余待实施。用户已授权基于本计划开发；未确定的供应商资金账户/权限及新积分能力保持关闭，新入口按批次验证和能力门槛启用。
 
 计划制定时的文档验证：3份文档、551个本地链接、代码围栏和空白检查通过，7阶段/26个唯一批次、RF01–RF20与DEV01–DEV08完整，旧订单TDD的§5/§6记录保持原文。字段/接口一致性及依赖无环已核对；开发后的业务测试与实现证据追加到§5/§6。

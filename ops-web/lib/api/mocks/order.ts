@@ -7,6 +7,13 @@ import type { OrderApi } from "../contracts/order";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
+type ImpactMockOrder = Order & { storeNo?: string; storeName?: string; currency?: string };
+function cancellationGroup(orderNo: string): ImpactMockOrder[] {
+  const target = db.orders.find((o) => o.orderNo === orderNo || o.parentNo === orderNo);
+  if (!target) notFound("订单", "Order", orderNo);
+  return target.parentNo ? db.orders.filter((o) => o.parentNo === target.parentNo) : [target];
+}
+
 function find(orderNo: string): Order {
   const o = db.orders.find((x) => x.orderNo === orderNo);
   if (!o) notFound("订单", "Order", orderNo);
@@ -89,18 +96,34 @@ export const orderMock: OrderApi = {
 
   listOrderInterventions: (orderNo) => wait(db.orderInterventions.filter((x) => x.orderNo === orderNo)),
 
-  proxyCancelOrder: async ({ orderNo, reason }) => {
-    const o = find(orderNo);
-    if (!reason.trim()) fail("代客取消必须写原因，否则用户来问时没人说得清", "Cancelling for a customer needs a reason, or nobody can explain it when they ask");
-    // 与后端一致：只有未付款 / 待当面收款能代客取消（支付单与订单一起取消、释放占用）
-    if (!PROXY_CANCELLABLE.includes(o.status)) fail("只有未付款的单能代客取消", "Only unpaid orders can be cancelled for the customer");
-    db.orderInterventions.unshift({
-      orderNo, from: o.status, to: "CANCELLED", remark: `代客取消：${reason.trim()}`,
-      operator: "admin", at: new Date().toISOString(),
+  getCancellationImpact: async (orderNo) => {
+    const group = cancellationGroup(orderNo);
+    if (group.some((o) => !PROXY_CANCELLABLE.includes(o.status))) {
+      return wait({ canCancel: false, blockedCode: "ORDER_STATE_ILLEGAL" } as const);
+    }
+    const first = group[0]!;
+    return wait({ canCancel: true as const, requestedOrderNo: orderNo, payOrderNo: first.parentNo || first.orderNo,
+      totalPayableMinor: group.reduce((sum, o) => sum + o.payAmount, 0), currency: first.currency || "CNY",
+      affectedOrders: group.map((o) => ({ subOrderNo: o.orderNo, merchantNo: o.merchantNo,
+        merchantName: o.merchantName, storeNo: o.storeNo || null, storeName: o.storeName || null,
+        payableMinor: o.payAmount, status: o.status })),
     });
-    o.status = "CANCELLED";
-    o.statusAt = new Date().toISOString();
-    return wait(o, 350);
+  },
+
+  proxyCancelOrder: async ({ orderNo, reason }) => {
+    const group = cancellationGroup(orderNo);
+    if (!reason.trim()) fail("代客取消必须写原因，否则用户来问时没人说得清", "Cancelling for a customer needs a reason");
+    if (group.some((o) => !PROXY_CANCELLABLE.includes(o.status))) {
+      fail("只有未付款的单能代客取消", "Only unpaid orders can be cancelled for the customer");
+    }
+    const at = new Date().toISOString();
+    for (const o of group) {
+      db.orderInterventions.unshift({ orderNo: o.orderNo, from: o.status, to: "CANCELLED",
+        remark: `代客取消：${reason.trim()}`, operator: "admin", at });
+      o.status = "CANCELLED";
+      o.statusAt = at;
+    }
+    return wait(group.find((o) => o.orderNo === orderNo) || group[0]!, 350);
   },
 
   getProxyLimit: async () => wait({ ...proxyLimit }),

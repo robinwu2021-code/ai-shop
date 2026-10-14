@@ -204,3 +204,19 @@ export interface OrderIntervention {
   /** 操作时间 */
   at: string;
 }
+
+/** 只有完整授权且可取消时才含主单金额和影响明细。 */
+export type CancellationImpact =
+  | { canCancel: false; blockedCode: string }
+  | { canCancel: true; requestedOrderNo: string; payOrderNo: string; totalPayableMinor: number;
+      currency: string; affectedOrders: CancellationAffectedOrder[] };
+
+export interface CancellationAffectedOrder {
+  subOrderNo: string;
+  merchantNo: string;
+  merchantName: string;
+  storeNo: string | null;
+  storeName: string | null;
+  payableMinor: number;
+  status: OrderStatus;
+}

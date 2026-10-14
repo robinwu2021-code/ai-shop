@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service;
 
+import ai.neargo.shop.trade.order.contract.CancellationImpact;
+
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.OrderVO;
 
@@ -173,6 +175,9 @@ public interface OrderService {
      * 执行者记平台（TDD-订单状态机 AC15）。{@code orderNo} 可传子单号。
      */
     void cancelByPlatform(String orderNo, String reason, String operatorNo);
+
+    /** 完整授权的整笔取消影响；读取不改变任何事实。 */
+    CancellationImpact cancellationImpact(String orderNo);
 
     /**
      * 这张子单关闭后券与积分的去向（待办设计 P3）；非关闭态返回 null。
