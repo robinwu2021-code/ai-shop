@@ -554,32 +554,8 @@ CREATE TABLE IF NOT EXISTS ord_item
     weigh_adjust_minor BIGINT(20) NOT NULL DEFAULT 0,
     category_no VARCHAR(64) DEFAULT NULL,
     supply_store_no VARCHAR(40) DEFAULT NULL,
-    shipment_no VARCHAR(40) DEFAULT NULL,
-    shipped_qty INT(11) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id)
-);
-
--- 订单服务 2.0（W1）：发货单
-CREATE TABLE IF NOT EXISTS ord_shipment
-(
-    id BIGINT(20) NOT NULL AUTO_INCREMENT,
-    shipment_no VARCHAR(40) NOT NULL,
-    sub_order_no VARCHAR(40) NOT NULL,
-    ship_store_no VARCHAR(40) DEFAULT NULL,
-    fulfillment VARCHAR(20) NOT NULL,
-    carrier VARCHAR(40) DEFAULT NULL,
-    waybill_no VARCHAR(64) DEFAULT NULL,
-    status VARCHAR(16) NOT NULL DEFAULT 'CREATED',
-    voided_at BIGINT(20) DEFAULT NULL,
-    void_reason VARCHAR(64) DEFAULT NULL,
-    superseded_by VARCHAR(40) DEFAULT NULL,
-    tenant_no VARCHAR(32) DEFAULT NULL,
-    created_at DATETIME DEFAULT NULL,
-    created_by VARCHAR(64) DEFAULT NULL,
-    updated_at DATETIME DEFAULT NULL,
-    updated_by VARCHAR(64) DEFAULT NULL,
-    version BIGINT(20) NOT NULL DEFAULT 0,
-    deleted TINYINT(4) NOT NULL DEFAULT 0,
+    shipment_no     VARCHAR(40) DEFAULT NULL,
+    shipped_qty     INT(11)     NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
 );
 
@@ -4751,6 +4727,30 @@ CREATE TABLE IF NOT EXISTS sys_sequence
     next_value BIGINT      NOT NULL DEFAULT 0,
     updated_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (seq_name)
+);
+
+CREATE TABLE IF NOT EXISTS ord_shipment
+(
+    id            BIGINT(20)  NOT NULL AUTO_INCREMENT,
+    shipment_no   VARCHAR(40) NOT NULL,
+    sub_order_no  VARCHAR(40) NOT NULL,
+    ship_store_no VARCHAR(40) DEFAULT NULL,
+    fulfillment   VARCHAR(20) NOT NULL,
+    carrier       VARCHAR(40) DEFAULT NULL,
+    waybill_no    VARCHAR(64) DEFAULT NULL,
+    status        VARCHAR(16) NOT NULL DEFAULT 'CREATED',
+    voided_at     BIGINT(20)  DEFAULT NULL,
+    void_reason   VARCHAR(64) DEFAULT NULL,
+    superseded_by VARCHAR(40) DEFAULT NULL,
+    tenant_no     VARCHAR(32) DEFAULT NULL,
+    created_at    DATETIME    DEFAULT NULL,
+    created_by    VARCHAR(64) DEFAULT NULL,
+    updated_at    DATETIME    DEFAULT NULL,
+    updated_by    VARCHAR(64) DEFAULT NULL,
+    version       BIGINT(20)  NOT NULL DEFAULT 0,
+    deleted       TINYINT(4)  NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_shipment_no UNIQUE (shipment_no, tenant_no)
 );
 
 -- 种子数据
