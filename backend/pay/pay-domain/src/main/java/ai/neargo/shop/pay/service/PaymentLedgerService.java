@@ -219,4 +219,10 @@ public interface PaymentLedgerService {
      *         （通道回传了一个我方没发出去过的退款号，那不能当成功）
      */
     String settleRefundByOutTradeNo(String outRefundNo,String providerNo,long verifiedMinor);
+    /** Read-only trusted cash proof; acceptance is insufficient to complete source refunds. */
+    SettlePort.RefundEvidence refundEvidence(String paymentNo);
+    /** Uses the original successful payment instead of a default currency. */
+    String paymentCurrency(String orderNo);
+    /** Detects an existing refund intent before source reservations can be released. */
+    boolean hasRefundForAfterSale(String afterSaleNo);
 }

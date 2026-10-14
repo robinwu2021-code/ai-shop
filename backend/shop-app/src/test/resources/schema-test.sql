@@ -5513,6 +5513,29 @@ CREATE TABLE IF NOT EXISTS stl_split_intent
     CONSTRAINT uk_split_intent_request UNIQUE (request_no)
 );
 
+CREATE TABLE IF NOT EXISTS ord_refund_execution
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    after_sale_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    input_hash VARCHAR(64) NOT NULL,
+    payload_json MEDIUMTEXT NOT NULL,
+    cash_payment_no VARCHAR(64) DEFAULT NULL,
+    net_cash_minor BIGINT DEFAULT NULL,
+    result_json MEDIUMTEXT DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_refund_execution_as UNIQUE (after_sale_no),
+    CONSTRAINT uk_refund_execution_cash UNIQUE (cash_payment_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

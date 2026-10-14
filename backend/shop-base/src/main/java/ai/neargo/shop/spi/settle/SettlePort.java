@@ -186,4 +186,13 @@ public interface SettlePort {
      *         —— 调用方要当成「这笔退款不是我方发出去的」，而不是当成成功
      */
     String settleRefund(String outRefundNo,String providerNo,long verifiedMinor);
+    /** Trusted payment-ledger query used by source completion, without any remote bank operation. */
+    RefundEvidence refundEvidence(String paymentNo);
+    /** Currency of the original successful payment, frozen before any refund is prepared. */
+    String paymentCurrency(String orderNo);
+    /** Any existing cash intent blocks releasing a source preparation as if no funds action occurred. */
+    boolean hasRefundForAfterSale(String afterSaleNo);
+    record RefundEvidence(String paymentNo,String direction,String afterSaleNo,String subOrderNo,String userNo,
+                          String currency,long amountMinor,String status,Long verifiedMinor,Long verifiedAt,
+                          String providerNo) { }
 }

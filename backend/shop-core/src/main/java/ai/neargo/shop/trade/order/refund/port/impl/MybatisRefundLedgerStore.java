@@ -10,19 +10,27 @@ import java.util.Map;
 public class MybatisRefundLedgerStore implements RefundLedgerStore {
 
     private final RefundLedgerMapper mapper;
+    private final String preparationNo;
 
     public MybatisRefundLedgerStore(RefundLedgerMapper mapper) {
-        this.mapper = mapper;
+        this(mapper,null);
+    }
+
+    /** The prepared write lane is used only while the source service holds the parent sub-order lock. */
+    public MybatisRefundLedgerStore(RefundLedgerMapper mapper,String preparationNo) {
+        this.mapper=mapper; this.preparationNo=preparationNo;
     }
 
     @Override
     public boolean addItemRefund(long itemId, int qty, long minor) {
-        return DataScopeContext.executeWithoutScope(() -> mapper.addItemRefund(itemId, qty, minor)) == 1;
+        return DataScopeContext.executeWithoutScope(() -> preparationNo==null?mapper.addItemRefund(itemId,qty,minor):
+                mapper.addPreparedItem(preparationNo,itemId,qty,minor)) == 1;
     }
 
     @Override
     public boolean addSubRefund(String subOrderNo, long minor) {
-        return DataScopeContext.executeWithoutScope(() -> mapper.addSubRefund(subOrderNo, minor)) == 1;
+        return DataScopeContext.executeWithoutScope(() -> preparationNo==null?mapper.addSubRefund(subOrderNo,minor):
+                mapper.addPreparedSub(preparationNo,subOrderNo,minor)) == 1;
     }
 
     @Override

@@ -438,4 +438,21 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
                         .eq(StlPayment::getOutTradeNo, outTradeNo)
                         .last("LIMIT 1")));
     }
+    @Override public SettlePort.RefundEvidence refundEvidence(String no) {
+        var row=byPaymentNo(no);
+        if (row==null) { return null; }
+        return new SettlePort.RefundEvidence(row.getPaymentNo(),row.getDirection(),row.getAfterSaleNo(),
+                row.getSubOrderNo(),row.getUserNo(),row.getCurrency(),row.getAmountMinor(),row.getStatus(),
+                row.getRefundVerifiedMinor(),row.getRefundVerifiedAt(),row.getRefundVerifiedProviderNo());
+    }
+    @Override public boolean hasRefundForAfterSale(String no) {
+        return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectCount(Wrappers.<StlPayment>lambdaQuery()
+                .eq(StlPayment::getDirection,StlPayment.REFUND).eq(StlPayment::getAfterSaleNo,no)))>0;
+    }
+    @Override public String paymentCurrency(String orderNo) {
+        var row=DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(Wrappers.<StlPayment>lambdaQuery()
+                .eq(StlPayment::getOrderNo,orderNo).eq(StlPayment::getDirection,StlPayment.PAY)
+                .eq(StlPayment::getStatus,StlPayment.SUCCESS).orderByDesc(StlPayment::getId).last("LIMIT 1")));
+        return row==null?null:row.getCurrency();
+    }
 }
