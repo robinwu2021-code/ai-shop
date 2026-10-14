@@ -30,6 +30,9 @@ import ai.neargo.shop.pay.points.refund.PointsRefundPreparationService;
 import ai.neargo.shop.pay.points.refund.PointsRefundConfirmationService;
 import ai.neargo.shop.pay.points.refund.PointsRefundAbortService;
 import ai.neargo.shop.pay.points.refund.PointsRefundCollectionExecutionService;
+import ai.neargo.shop.pay.points.refund.PointsRefundCollectionService;
+import ai.neargo.shop.pay.points.refund.PointsReceivableRecoveryService;
+import ai.neargo.shop.pay.points.refund.PointsReceivableRecoveryExecutionService;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundConfirmation;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundPreparation;
@@ -62,6 +65,8 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.util.UUID;
 
@@ -83,8 +88,11 @@ class PointsRefundPreparationTest {
     @Autowired private PointsRefundConfirmationService confirmations;
     @Autowired private PointsRefundAbortService aborts;
     @Autowired private PointsRefundCollectionExecutionService collections;
+    @Autowired private PointsRefundCollectionService collectionDecisions;
     @Autowired private TestFunds funds;
     @Autowired private PointsSettlementHook settlement;
+    @Autowired private PointsReceivableRecoveryService recoveries;
+    @Autowired private PointsReceivableRecoveryExecutionService recoveryExecution;
     @Autowired private PointsPostingService posting;
     @Autowired @Qualifier("payDataSource") private DataSource dataSource;
     @BeforeAll void schema() {
@@ -304,6 +312,101 @@ class PointsRefundPreparationTest {
         } finally { funds.supported=true; }
     }
 
+    @Test void late_store_recovery_replenishes_b_and_closes_r_without_returning_user_points_again() {
+        String type=fixture(false,true);
+        addRedemption(type,true);
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        confirmations.confirm(successfulCash(type,prepared));
+        String receivable=PointsKeys.position("L",type,"AS:"+type);
+        var fundsCommand=recoveries.prepare("RECOVER:"+type,receivable,20);
+        assertThat(recoveries.prepare("RECOVER:"+type,receivable,20)).isEqualTo(fundsCommand);
+        assertThatThrownBy(() -> recoveries.prepare("SECOND:"+type,receivable,1))
+                .hasMessage("POINTS_RECOVERY_RECEIVABLE_INSUFFICIENT");
+        assertThat(recoveryExecution.execute(fundsCommand.ticketNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.UNKNOWN);
+        assertThat(pool(type,"b_minor")).isEqualTo(20);
+        assertThat(balance(type,"available_points")).isEqualTo(20);
+        assertThat(recoveryExecution.execute(fundsCommand.ticketNo()).confirmedMinor()).isEqualTo(20);
+        assertThat(recoveryExecution.execute(fundsCommand.ticketNo()).replayed()).isTrue();
+        assertThat(pool(type,"b_minor")).isEqualTo(40);
+        assertThat(pool(type,"c_minor")).isEqualTo(30);
+        assertThat(balance(type,"available_points")).isEqualTo(20);
+        var debt=jdbc().queryForMap("SELECT * FROM pts_receivable WHERE receivable_no=?",receivable);
+        assertThat(debt.get("state")).isEqualTo("CLOSED");
+        assertThat(((Number)debt.get("recovered_minor")).longValue()).isEqualTo(20);
+        assertThat(((Number)debt.get("locked_minor")).longValue()).isZero();
+        assertThat(funds.sends.get(fundsCommand.ticketNo())).isEqualTo(1);
+        assertThat(funds.queries.get(fundsCommand.ticketNo())).isEqualTo(1);
+    }
+
+    @Test void definite_recovery_failure_unlocks_r_without_creating_cash_and_allows_a_new_intent() {
+        String type=fixture(false,true);
+        addRedemption(type,true);
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        confirmations.confirm(successfulCash(type,prepared));
+        String receivable=PointsKeys.position("L",type,"AS:"+type);
+        var command=recoveries.prepare("FAILED:"+type,receivable,20);
+        funds.failTickets.add(command.ticketNo());
+        assertThat(recoveryExecution.execute(command.ticketNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.FAILED);
+        assertThat(recoveryExecution.execute(command.ticketNo()).replayed()).isTrue();
+        assertThat(pool(type,"b_minor")).isEqualTo(20);
+        var debt=jdbc().queryForMap("SELECT * FROM pts_receivable WHERE receivable_no=?",receivable);
+        assertThat(((Number)debt.get("locked_minor")).longValue()).isZero();
+        assertThat(((Number)debt.get("recovered_minor")).longValue()).isZero();
+        assertThat(recoveries.prepare("RETRY:"+type,receivable,20).ticketNo()).isNotEqualTo(command.ticketNo());
+        assertThat(balance(type,"available_points")).isEqualTo(20);
+    }
+
+    @Test void rejected_collection_revises_before_cash_dispatch_and_platform_waives_missing_points() {
+        String type=fixture(true,true);
+        posting.post(new Voucher("SPEND:"+type,type,"CNY",new RedeemRate(1,1),List.of(
+                move(type,Bucket.AVAILABLE,-20),move(type,Bucket.HELD,20)),List.of(),List.of(),0,List.of(),"{}"));
+        var command=command(type,"AS:"+type,50);
+        var prepared=refunds.prepare(command);
+        funds.failTickets.add(prepared.collectionTicket());
+        assertThat(collections.execute(prepared.preparationNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.FAILED);
+        var revised=collectionDecisions.reviseFailed(prepared.preparationNo());
+        assertThat(revised.revision()).isEqualTo(2);
+        assertThat(revised.inputHash()).isEqualTo(prepared.inputHash());
+        assertThat(revised.cashOffsetMinor()).isZero();
+        assertThat(revised.netCashMinor()).isEqualTo(50);
+        assertThat(revised.waivedPoints()).isEqualTo(10);
+        assertThat(refunds.prepare(command)).isEqualTo(revised);
+        assertThat(collectionDecisions.reviseFailed(prepared.preparationNo())).isEqualTo(revised);
+        var outcome=confirmations.confirm(successfulCash(type,revised));
+        assertThat(outcome.waivedPoints()).isEqualTo(10);
+        assertThat(outcome.collectedMinor()).isZero();
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+        assertThat(pool(type,"c_minor")).isEqualTo(20);
+    }
+
+    @Test void unknown_collection_and_existing_cash_intent_cannot_be_revised() {
+        String type=fixture(true,true);
+        posting.post(new Voucher("SPEND:"+type,type,"CNY",new RedeemRate(1,1),List.of(
+                move(type,Bucket.AVAILABLE,-20),move(type,Bucket.HELD,20)),List.of(),List.of(),0,List.of(),"{}"));
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        collections.execute(prepared.preparationNo());
+        assertThatThrownBy(() -> collectionDecisions.reviseFailed(prepared.preparationNo()))
+                .hasMessage("POINTS_REFUND_COLLECTION_NOT_FAILED");
+        String failedType=fixture(true,true);
+        posting.post(new Voucher("SPEND:"+failedType,failedType,"CNY",new RedeemRate(1,1),List.of(
+                move(failedType,Bucket.AVAILABLE,-20),move(failedType,Bucket.HELD,20)),
+                List.of(),List.of(),0,List.of(),"{}"));
+        var command=command(failedType,"AS:"+failedType,50);
+        var failed=refunds.prepare(command);
+        funds.failTickets.add(failed.collectionTicket());
+        collections.execute(failed.preparationNo());
+        jdbc().update("INSERT INTO stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,"
+                + "amount_minor,status,pay_channel) VALUES(?,'REFUND',?,?,'USER','CNY',40,'PENDING','TEST')",
+                "CASH:"+failedType,"AS:"+failedType,failedType);
+        assertThatThrownBy(() -> collectionDecisions.reviseFailed(failed.preparationNo()))
+                .hasMessage("POINTS_REFUND_CASH_ALREADY_PREPARED");
+        assertThat(refunds.prepare(command)).isEqualTo(failed);
+        assertThat(pool(failedType,"u_minor")).isEqualTo(80);
+    }
+
     private RefundConfirmation successfulCash(String type,
             RefundPreparation prepared) {
         String payment="CASH:"+type;
@@ -400,6 +503,7 @@ class PointsRefundPreparationTest {
     /** Synthetic lost replies; remote operations assert there is no active database transaction. */
     static class TestFunds implements PointsFundsGateway {
         boolean supported=true;
+        final Set<String> failTickets=new HashSet<>();
         final Map<String,Integer> sends=new HashMap<>();
         final Map<String,Integer> queries=new HashMap<>();
         final Map<String,FundsCommand> originals=new HashMap<>();
@@ -409,6 +513,9 @@ class PointsRefundPreparationTest {
         public FundsResult submit(FundsCommand command) {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             sends.merge(command.ticketNo(),1,Integer::sum); originals.put(command.ticketNo(),command);
+            if (failTickets.contains(command.ticketNo())) {
+                return new FundsResult(command.ticketNo(),FundsStatus.FAILED,null,command.amountMinor(),"REJECTED");
+            }
             return new FundsResult(command.ticketNo(),FundsStatus.UNKNOWN,null,command.amountMinor(),"LOST_REPLY");
         }
         public FundsResult query(FundsCommand command) {

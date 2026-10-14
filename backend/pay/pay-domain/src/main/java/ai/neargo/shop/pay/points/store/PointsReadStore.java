@@ -18,6 +18,7 @@ public interface PointsReadStore {
     AccountSnapshot account(String typeCode, HolderType holder, String holderNo);
     Map<String, Object> voucher(String bizRef);
     Map<String, Object> position(String table, String positionNo);
+    Map<String,Object> receivable(String receivableNo);
     Map<String, Object> reserve(String reserveNo);
     List<Map<String,Object>> redemptionsForSub(String subOrderNo);
     List<Map<String,Object>> openRefunds(String typeCode,String subOrderNo);

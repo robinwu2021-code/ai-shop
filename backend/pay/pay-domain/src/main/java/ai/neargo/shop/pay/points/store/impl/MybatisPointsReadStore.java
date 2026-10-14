@@ -58,6 +58,9 @@ public class MybatisPointsReadStore implements PointsReadStore {
         if (!allowed) { throw new IllegalArgumentException("POINTS_POSITION_KIND_INVALID"); }
         return DataScopeContext.executeWithoutScope(() -> mapper.position(table,no));
     }
+    @Override public Map<String,Object> receivable(String no) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.receivable(no));
+    }
     @Override public Map<String,Object> reserve(String no) {
         return DataScopeContext.executeWithoutScope(() -> mapper.reserve(no));
     }

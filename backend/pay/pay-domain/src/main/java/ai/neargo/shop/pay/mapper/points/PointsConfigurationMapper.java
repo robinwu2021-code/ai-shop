@@ -26,6 +26,8 @@ public interface PointsConfigurationMapper {
     Map<String, Object> voucher(String biz);
     @Select("SELECT * FROM ${table} WHERE position_no=#{no}")
     Map<String, Object> position(@Param("table") String table, @Param("no") String no);
+    @Select("SELECT * FROM pts_receivable WHERE receivable_no=#{no} AND deleted=0")
+    Map<String,Object> receivable(String no);
     @Select("SELECT * FROM pts_refund_reserve WHERE reserve_no=#{no}")
     Map<String,Object> reserve(String no);
     @Select("SELECT * FROM pts_lifecycle_fact WHERE type_code=#{type} AND sub_order_no=#{sub}")
@@ -35,6 +37,8 @@ public interface PointsConfigurationMapper {
     @Select("SELECT * FROM pts_refund_preparation WHERE type_code=#{type} AND sub_order_no=#{sub}"
             + " AND state NOT IN ('CONFIRMED','ABORTED') AND deleted=0 ORDER BY position_no")
     List<Map<String,Object>> openRefunds(@Param("type") String type,@Param("sub") String sub);
+    @Select("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=#{afterSale} AND direction='REFUND' AND deleted=0")
+    long cashRefundCount(String afterSale);
     @Select("SELECT payment_no,direction,after_sale_no,sub_order_no,user_no,currency,amount_minor,status,"
             + "pay_channel,refund_verified_provider_no,refund_verified_at,refund_verified_minor,succeeded_at FROM stl_payment WHERE payment_no=#{no} AND deleted=0")
     Map<String,Object> cashRefund(String no);

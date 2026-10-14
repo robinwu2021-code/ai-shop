@@ -9,6 +9,8 @@ import ai.neargo.shop.pay.points.posting.PointsPostingService;
 import ai.neargo.shop.pay.points.refund.PointsRefundCollectionService;
 import ai.neargo.shop.pay.points.refund.impl.PointsRefundPreparationServiceImpl.RefundSnapshot;
 import ai.neargo.shop.pay.points.store.PointsConfigurationStore;
+import ai.neargo.shop.pay.points.store.PointsCashRefundReadStore;
+import ai.neargo.shop.spi.points.PointsRefundPort.RefundPreparation;
 import ai.neargo.shop.pay.points.store.PointsReadStore;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,10 +26,29 @@ public class PointsRefundCollectionServiceImpl implements PointsRefundCollection
     private final PointsReadStore read;
     private final PointsConfigurationStore configuration;
     private final PointsPostingService posting;
+    private final PointsCashRefundReadStore cash;
     private final ObjectMapper json=new ObjectMapper();
     public PointsRefundCollectionServiceImpl(PointsReadStore read,PointsConfigurationStore configuration,
-                                            PointsPostingService posting) {
-        this.read=read; this.configuration=configuration; this.posting=posting;
+                                            PointsPostingService posting,PointsCashRefundReadStore cash) {
+        this.read=read; this.configuration=configuration; this.posting=posting; this.cash=cash;
+    }
+    @Override public RefundPreparation reviseFailed(String no) {
+        var head=locked(no);
+        var snapshot=json.readValue((String)head.get("payload_json"),RefundSnapshot.class);
+        require(snapshot.collectionResult()!=null && snapshot.collectionResult().status()==FundsStatus.FAILED,
+                "POINTS_REFUND_COLLECTION_NOT_FAILED");
+        var original=snapshot.preparation();
+        if (original.revision()>1 && original.collectionTicket()==null) { return original; }
+        require("COLLECTION_FAILED".equals(head.get("state")),"POINTS_REFUND_COLLECTION_STATE_CONFLICT");
+        require(!cash.hasRefundForAfterSale(snapshot.command().afterSaleNo()),"POINTS_REFUND_CASH_ALREADY_PREPARED");
+        var revised=new RefundPreparation(original.preparationNo(),original.typeCode(),
+                Math.addExact(original.revision(),1),original.inputHash(),original.returnedPoints(),
+                original.reclaimedPending(),original.reclaimedAvailable(),original.expectedClawbackPoints(),0,
+                snapshot.command().businessCashMinor(),original.expectedClawbackPoints(),null,"PREPARED");
+        var saved=new RefundSnapshot(snapshot.command(),revised,snapshot.grantState(),snapshot.redeemState(),
+                snapshot.reclaimedByLine(),snapshot.collectionCommand(),null,null,snapshot.collectionResult());
+        transition(no,head,saved,"PREPARED","COLLECTION_REVISE:"+revised.revision()+":");
+        return revised;
     }
     @Override public Dispatch claim(String no) {
         var head=locked(no);
