@@ -340,7 +340,7 @@
       },
       "usage": {
         "b-app": 37,
-        "c-app": 7
+        "c-app": 8
       }
     },
     {
@@ -618,7 +618,7 @@
       },
       "usage": {
         "b-app": 231,
-        "c-app": 90
+        "c-app": 91
       }
     },
     {
@@ -810,7 +810,7 @@
       },
       "usage": {
         "b-app": 200,
-        "c-app": 75
+        "c-app": 76
       }
     },
     {
@@ -962,7 +962,7 @@
       },
       "usage": {
         "b-app": 71,
-        "c-app": 16
+        "c-app": 17
       }
     },
     {
@@ -1420,7 +1420,7 @@
       },
       "usage": {
         "b-app": 39,
-        "c-app": 17
+        "c-app": 18
       }
     },
     {
@@ -1880,7 +1880,7 @@
       ],
       "usage": {
         "b-app": 35,
-        "c-app": 16,
+        "c-app": 17,
         "lib": 0
       },
       "note": "悬浮内缩的贴底操作条 —— 第三种贴底形态，此前库里没有",
@@ -5460,7 +5460,7 @@
         "sh-actionbar",
         "sh-scaffold"
       ],
-      "libClassHits": 39,
+      "libClassHits": 44,
       "localSelectors": 26,
       "localCssLines": 113,
       "rolled": []

@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 831 个接口**：后端已实现 753（91%）· 前端在调 755
+**合计 833 个接口**：后端已实现 755（91%）· 前端在调 757
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **117** 个接口 ｜ 后端已实现 **116**（99%）｜ 前端在调 **117**
+共 **118** 个接口 ｜ 后端已实现 **117**（99%）｜ 前端在调 **118**
 
 ### after-sale（4）
 
@@ -170,7 +170,7 @@
 | GET | `/mp/my-memberships` | 我是哪几家店的会员 | — | `数组` | 🔒 | ✅ | ✅ |
 | PUT | `/mp/my-memberships/{entityNo}/reach` | 关掉/打开某家店的消息 | — | — | 🔒 | ✅ | ✅ |
 
-### order（11）
+### order（12）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -179,8 +179,9 @@
 | GET | `/mp/order/{orderNo}` | 订单详情 | — | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/after-sale` | 申请售后 | `AfterSaleReq` | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/cancel` | 取消订单 | — | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/mp/order/{orderNo}/pay` | 支付 | — | `Order` | 🔒 | ✅ | ✅ |
+| POST | `/mp/order/{orderNo}/pay` | 支付 | — | `PayInit` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/pay-method` | 可用支付方式 | — | `PayMethodList` | 🔒 | ✅ | ✅ |
+| GET | `/mp/order/{orderNo}/pay-result` | 支付结果 | — | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/reorder` | 一键再来一单 | — | `ReorderResult` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/trace` | 物流页（查看物流） | — | `ShipmentTrace` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/capability` | 结算页能力提示（开票/支付方式/额度） | — | `CheckoutCapability` | 🔒 | ✅ | ✅ |
@@ -917,7 +918,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **416** 个接口 ｜ 后端已实现 **350**（84%）｜ 前端在调 **340**
+共 **417** 个接口 ｜ 后端已实现 **351**（84%）｜ 前端在调 **341**
 
 ### aftersale（4）
 
@@ -1283,12 +1284,13 @@
 | POST | `/ops/tickets/{no}/proxy-actions` | 记录代客操作（P-14.2.3）：谁、对什么、做了什么 | — | `Ticket` | — | ⬜ | ✅ |
 | POST | `/ops/tickets/{no}/reply` | 客服回复（P-14.2.2） | — | `Ticket` | — | ⬜ | ✅ |
 
-### order（10）
+### order（11）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/orders` | listOrders | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/orders/{orderNo}` | getOrder | — | `Order` | — | ✅ | ✅ |
+| GET | `/ops/orders/{orderNo}/cancel-impact` | 整笔取消影响，权限不足时不返回隐藏明细 | — | `CancellationImpact` | — | ✅ | ✅ |
 | POST | `/ops/orders/{orderNo}/intervene` | 人工把订单推到另一个状态 | — | `Order` | — | ✅ | ✅ |
 | GET | `/ops/orders/{orderNo}/interventions` | 某单的人工干预历史 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/orders/{orderNo}/proxy-cancel` | 代客取消 | — | `Order` | — | ✅ | ✅ |

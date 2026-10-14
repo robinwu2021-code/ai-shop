@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**118 个功能点**，其中 **36 个游客可用**；**8 个没有任何页面调用**。
+统计：**119 个功能点**，其中 **36 个游客可用**；**8 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -103,6 +103,7 @@
 | `cancelOrder` | `POST /mp/order/:orderNo/cancel` | 是 | order · pay | — |
 | `payOrder` | `POST /mp/order/:orderNo/pay` | 是 | pay | — |
 | `payMethods` | `GET /mp/order/:orderNo/pay-method` | 是 | pay | — |
+| `payResult` | `GET /mp/order/:orderNo/pay-result` | 是 | pay | — |
 | `reorderFrom` | `POST /mp/order/:orderNo/reorder` | 是 | **无** | — |
 | `orderTrace` | `GET /mp/order/:orderNo/trace` | 是 | order | — |
 | `orderCapability` | `POST /mp/order/capability` | 是 | order-confirm | — |

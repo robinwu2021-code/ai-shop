@@ -2009,6 +2009,49 @@
 
 **出参**（`data`）
 
+类型：[`PayInit`](#payinit)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `payChannel` | `string` | 是 | — |
+| `payParams` | [`Record_string_string`](#record_string_string) | 是 | 端上唤起收银台要用的参数，**原样透传给 uni.requestPayment** |
+| `settled` | `boolean` | 否 | **这笔已经付掉了，不要唤起收银台**（应付 0 元的单）。此时 `payParams` 是空的。 优惠、券、积分任何一种都能把应付打到 0，而 0 元不需要向任何外部系统付款 —— 后端就地结清并把订单推成已支付，端上直接去查详情即可。 **不要改成按 `payChannel === "FREE"` 判**：那是把通道名当协议用， 将来多一个免支付的来源（全额积分抵扣、全额券）就要改端上。 |
+
+
+#### GET `/mp/order/{orderNo}/pay-method`
+
+可用支付方式　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`PayMethodList`](#paymethodlist)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | `string,null` | 是 | 记账币种。**拿不到时不显示金额** —— 按 2 位小数显示在日元上会差 100 倍 |
+| `configured` | `boolean` | 是 | 有没有商家配过支付方式。false = 进件未完成，不是「一种都不支持」 |
+| `methods` | [`PayMethodItem`](#paymethoditem)\[\] | 是 | — |
+
+
+#### GET `/mp/order/{orderNo}/pay-result`
+
+支付结果　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
 类型：[`Order`](#order)
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -2051,21 +2094,6 @@
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
-
-
-#### GET `/mp/order/{orderNo}/pay-method`
-
-可用支付方式　🔒
-
-**入参**
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|---|---|---|:---:|---|
-| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
-
-**出参**（`data`）
-
-类型：[`PayMethodList`](#paymethodlist)
 
 
 #### POST `/mp/order/{orderNo}/reorder`
@@ -4334,6 +4362,33 @@
 |---|---|:---:|---|
 | `hasPassword` | `boolean` | 是 | 设过密码没有 |
 | `canSet` | `boolean` | 是 | 现在能不能设 —— 等价于「绑了手机号没有」。 <p>由后端说了算，与  {@link  PhoneCapable }  同一个口径：判据是 {@code usr_identity} 里有没有 PHONE 凭证，端上查不到。 <p>为什么它是个前置条件：密码登录按手机号找人，没号的话这条密码 永远登不进来（线上已经有一条这样的死数据）。 |
+
+### PayInit
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `payChannel` | `string` | 是 | — |
+| `payParams` | [`Record_string_string`](#record_string_string) | 是 | 端上唤起收银台要用的参数，**原样透传给 uni.requestPayment** |
+| `settled` | `boolean` | 否 | **这笔已经付掉了，不要唤起收银台**（应付 0 元的单）。此时 `payParams` 是空的。 优惠、券、积分任何一种都能把应付打到 0，而 0 元不需要向任何外部系统付款 —— 后端就地结清并把订单推成已支付，端上直接去查详情即可。 **不要改成按 `payChannel === "FREE"` 判**：那是把通道名当协议用， 将来多一个免支付的来源（全额积分抵扣、全额券）就要改端上。 |
+
+### PayMethodItem
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `methodCode` | `string` | 是 | — |
+| `payChannel` | `string` | 是 | — |
+| `name` | `string` | 是 | — |
+| `available` | `boolean` | 是 | — |
+| `unavailableReason` | `string,null` | 是 | 不可用的原因，由服务端出文案 —— 端上不拼 |
+
+### PayMethodList
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `currency` | `string,null` | 是 | 记账币种。**拿不到时不显示金额** —— 按 2 位小数显示在日元上会差 100 倍 |
+| `configured` | `boolean` | 是 | 有没有商家配过支付方式。false = 进件未完成，不是「一种都不支持」 |
+| `methods` | [`PayMethodItem`](#paymethoditem)\[\] | 是 | — |
 
 ### PhoneCapable
 
