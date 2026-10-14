@@ -298,6 +298,10 @@ public class StlBill extends BaseEntity {
 
     /** 付款凭证号（网银流水号）。自营专用；空 = 尚未付款。 */
     private String paymentRef;
+    /** Original committed points funding ticket; independent of the supplier goods payment. */
+    private String pointsFundingTicket;
+    /** Goods funding readiness: verified replenishment for per-order, paid-store fact for periodic. */
+    private Long pointsFundingReadyAt;
 
     /**
      * T2 可结算时刻 = 履约完成 + 售后期。

@@ -4,7 +4,9 @@ import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.pay.SplitGateway;
 import ai.neargo.shop.pay.settle.SplitPreparationService;
 import ai.neargo.shop.pay.settle.SplitResultService;
+import ai.neargo.shop.pay.settle.SettlementPointsFundingService;
 import ai.neargo.shop.pay.points.payout.PointsPayoutExecutionService;
+import ai.neargo.shop.pay.points.app.PointsSettlementHook;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import ai.neargo.common.data.scope.DataScopeContext;
@@ -67,7 +69,7 @@ public class SettleServiceImpl implements SettleService {
     private final ai.neargo.shop.pay.service.FeeRuleService feeRuleService;
 
     /** 积分池入账 —— 池子的记账口径归积分域，结算侧只在发生时调它 */
-    private final ai.neargo.shop.pay.PointsService pointsService;
+    private final SettlementPointsFundingService pointsFunding;
     /** 通道能力（能否补差）—— 判在结算侧，因为下单时通道还没定 */
     /*
      * 通道属性与通道费率 —— 2026-09-01 起直接调 pay-channel，不再经 MasterDataPort。
@@ -107,6 +109,7 @@ public class SettleServiceImpl implements SettleService {
     private final SplitResultService splitResults;
     private final PointsPayoutExecutionService pointsExecution;
     private final SplitGateway splitGateway;
+    private final PointsSettlementHook pointsHook;
 
     public SettleServiceImpl(BillMapper billMapper, SplitLogMapper splitLogMapper,
                              SettleSourcePort sourcePort,
@@ -115,7 +118,7 @@ public class SettleServiceImpl implements SettleService {
                              ai.neargo.shop.pay.mapper.SettleMappers.PurchaseInvoiceMapper purchaseInvoiceMapper,
                              PaySettingService paySettings,
                              ai.neargo.shop.pay.service.FeeRuleService feeRuleService,
-                             ai.neargo.shop.pay.PointsService pointsService,
+                             SettlementPointsFundingService pointsFunding,
                              PayChannelMasterService channelMaster,
                              PayChannelRateService channelRates,
                              ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper,
@@ -123,7 +126,8 @@ public class SettleServiceImpl implements SettleService {
                              ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter,
                              ai.neargo.shop.pay.settle.SplitInstructionSender splitSender,
                              SplitPreparationService splitPreparation,SplitResultService splitResults,
-                             PointsPayoutExecutionService pointsExecution,SplitGateway splitGateway) {
+                             PointsPayoutExecutionService pointsExecution,SplitGateway splitGateway,PointsSettlementHook pointsHook) {
+        this.pointsHook=pointsHook;
         this.splitPreparation=splitPreparation; this.splitResults=splitResults;
         this.pointsExecution=pointsExecution; this.splitGateway=splitGateway;
         this.splitSender = splitSender;
@@ -132,7 +136,7 @@ public class SettleServiceImpl implements SettleService {
         this.batchMapper = batchMapper;
         this.channelMaster = channelMaster;
         this.channelRates = channelRates;
-        this.pointsService = pointsService;
+        this.pointsFunding = pointsFunding;
         this.paySettings = paySettings;
         this.feeRuleService = feeRuleService;
         this.purchaseInvoiceMapper = purchaseInvoiceMapper;
@@ -229,6 +233,11 @@ public class SettleServiceImpl implements SettleService {
              *
              * 服务费同样按去掉运费之后的基数算 —— 自提点按件收的那档不受影响。
              */
+            boolean periodic=src.pointsDeductMinor()>0
+                    && pointsHook.settleModeOf(src.subOrderNo())==PointsSettlementHook.SettleMode.PERIODIC;
+            if (periodic && !MerchantQueryPort.FUNDS_AGGREGATED.equals(in.fundsMode())) {
+                throw new IllegalStateException("POINTS_PERIODIC_REQUIRES_AGGREGATED");
+            }
             long gross = src.payAmount() + src.discountPlatform() + src.pointsDeductMinor()
                     - src.freightIncomeMinor();
             long serviceFee = serviceFeeOf(src, gross);
@@ -336,7 +345,7 @@ public class SettleServiceImpl implements SettleService {
                         freightCostRaw, freightIncome, freightCap);
             }
             bill.setNetMinor(gross - commission - serviceFee - fee.borneByMerchant()
-                    + freightIncome - freightCost);
+                    - (periodic?src.pointsDeductMinor():0) + freightIncome - freightCost);
             bill.setChannelFeeMinor(fee.minor());
             bill.setChannelFeeRate(fee.rateBp());
             bill.setChannelFeeSource(fee.source());
@@ -1082,13 +1091,7 @@ public class SettleServiceImpl implements SettleService {
         b.setPaidAt(System.currentTimeMillis());
         DataScopeContext.executeWithoutScope(() -> billMapper.updateById(b));
 
-        /*
-         * 归集路径的兑付时点在这里，**不是 executeSplit** ——
-         * 自营单根本不走分账（钱本来就在平台账户，没有划转动作）。
-         * 只把确认挂在分账上的话，归集路径下的 USE 会永远停在 PENDING，
-         * 池子只进不出，而且不报任何错。
-         */
-        pointsService.confirmDeduction(b.getSubOrderNo());
+        pointsFunding.assertReady(b.getSettleNo());
         return toVO(b);
     }
 

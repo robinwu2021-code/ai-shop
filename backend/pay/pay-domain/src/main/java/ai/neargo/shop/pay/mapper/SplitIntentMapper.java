@@ -11,6 +11,9 @@ import java.util.Map;
 public interface SplitIntentMapper {
     @Select("SELECT * FROM stl_bill WHERE settle_no=#{no} AND deleted=0 FOR UPDATE")
     StlBill lockBill(String no);
+    @Update("UPDATE stl_bill SET points_funding_ticket=NULL,points_funding_ready_at=NULL,version=version+1"
+            + " WHERE settle_no=#{settle} AND points_funding_ticket=#{ticket}")
+    int clearFunding(@Param("settle") String settle,@Param("ticket") String ticket);
     @Select("SELECT * FROM stl_split_intent WHERE settle_no=#{no} ORDER BY id DESC LIMIT 1 FOR UPDATE")
     Map<String,Object> latest(String no);
     @Select("SELECT * FROM stl_split_intent WHERE request_no=#{no}")

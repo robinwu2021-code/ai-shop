@@ -1025,6 +1025,8 @@ CREATE TABLE IF NOT EXISTS stl_bill
     payout_no VARCHAR(64) DEFAULT NULL,
     refunded_goods_minor BIGINT(20) NOT NULL DEFAULT 0,
     reversed_minor       BIGINT(20) NOT NULL DEFAULT 0,
+    points_funding_ticket VARCHAR(40) DEFAULT NULL,
+    points_funding_ready_at BIGINT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
