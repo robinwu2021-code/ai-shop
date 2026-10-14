@@ -344,6 +344,12 @@ public enum ErrorCode {
     /** 核定退款额非法：≤0 或超过实付（TDD-售后规则 §2.4）。 */
     AFTERSALE_AMOUNT_INVALID(20011, "err.trade.aftersale_amount_invalid"),
 
+    /** 已过售后期（订单完成后 7 天，质量类 15 天；TDD-订单状态机）。 */
+    AFTERSALE_WINDOW_CLOSED(20012, "err.trade.aftersale_window_closed"),
+
+    /** 本单支付渠道不支持部分退款（或已超次数 / 期限）—— 改用积分补偿、线下退款登记或整单退。 */
+    AFTERSALE_CHANNEL_PARTIAL_UNSUPPORTED(20013, "err.trade.aftersale_channel_partial_unsupported"),
+
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),
     NOT_THIS_PICKUP_POINT(30002, "err.fulfillment.not_this_pickup"),

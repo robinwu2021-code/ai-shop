@@ -1,0 +1,7 @@
+package ai.neargo.shop.trade.order.machine.order;
+
+/** 订单事件（完整方案 §3 O1–O11）。 */
+public enum OrderEvent {
+    PAY_CONFIRMED, CANCEL, PREPARE, SHIPPED, ARRIVED_AT_PICKUP, VERIFIED, DELIVERED_BY_MERCHANT,
+    RECEIPT_CONFIRMED, RECEIPT_AUTO_CONFIRMED, FULLY_REFUNDED, INTERVENE
+}
