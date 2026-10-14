@@ -35,6 +35,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import ai.neargo.shop.pay.setting.PaySettingService;
+import ai.neargo.shop.pay.settle.refund.RefundBasisStore;
 
 /**
  * 结算与分账（ADR-002）。**M7 起取代 {@code SettlePortStub}**。
@@ -53,6 +54,7 @@ import ai.neargo.shop.pay.setting.PaySettingService;
 public class SettleServiceImpl implements SettleService {
 
     private static final Logger log = LoggerFactory.getLogger(SettleServiceImpl.class);
+    private final RefundBasisStore refundBases;
 
     /*
      * 费率来自 stl_fee_rule，不再来自 application.yml（P1-4）。
@@ -113,7 +115,9 @@ public class SettleServiceImpl implements SettleService {
                              ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper,
                              ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger,
                              ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter,
-                             ai.neargo.shop.pay.settle.SplitInstructionSender splitSender) {
+                             ai.neargo.shop.pay.settle.SplitInstructionSender splitSender,
+                             RefundBasisStore refundBases) {
+        this.refundBases = refundBases;
         this.splitSender = splitSender;
         this.gatewayRouter = gatewayRouter;
         this.paymentLedger = paymentLedger;
@@ -183,7 +187,11 @@ public class SettleServiceImpl implements SettleService {
             SettleSourcePort.SettleSource src = in.source();
             // 一个子单只能有一张结算单：重复生成 = 重复分账 = 给商家多打钱。
             // 靠先查再插 + DB 唯一索引双保险（事件重投时两条路径都可能撞上）
-            if (findBySubOrder(src.subOrderNo()) != null) {
+            StlBill existing = findBySubOrder(src.subOrderNo());
+            if (existing != null) {
+                if (refundBases.find(existing.getSettleNo()).isEmpty()) {
+                    refundBases.backfill(existing, src.payAmount() - src.freightIncomeMinor());
+                }
                 continue;
             }
             /*
@@ -400,6 +408,7 @@ public class SettleServiceImpl implements SettleService {
             bill.setInvoiceStatus(selfOperated ? StlBill.INV_PENDING : StlBill.INV_NONE);
             bill.setRetryCount(0);
             DataScopeContext.executeWithoutScope(() -> billMapper.insert(bill));
+            refundBases.recordCreated(bill, src.payAmount() - src.freightIncomeMinor());
 
             /*
              * 费用金入池 —— **与货款扣减同一时刻**。

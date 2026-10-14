@@ -4805,6 +4805,42 @@ CREATE TABLE IF NOT EXISTS stl_bill_refund
     CONSTRAINT uk_stl_bill_refund UNIQUE (after_sale_no)
 );
 
+CREATE TABLE IF NOT EXISTS stl_bill_refund_basis
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    settle_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    basis_version INT NOT NULL,
+    source VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    review_reason VARCHAR(64) DEFAULT NULL,
+    goods_paid_minor BIGINT DEFAULT NULL,
+    gross_minor BIGINT DEFAULT NULL,
+    merchant_goods_minor BIGINT DEFAULT NULL,
+    commission_minor BIGINT DEFAULT NULL,
+    service_fee_minor BIGINT DEFAULT NULL,
+    points_fee_minor BIGINT DEFAULT NULL,
+    points_cost_minor BIGINT DEFAULT NULL,
+    subsidy_minor BIGINT DEFAULT NULL,
+    freight_income_minor BIGINT DEFAULT NULL,
+    freight_cost_minor BIGINT DEFAULT NULL,
+    freight_ship_mode VARCHAR(32) DEFAULT NULL,
+    payment_route VARCHAR(32) DEFAULT NULL,
+    origin_payment_no VARCHAR(64) DEFAULT NULL,
+    account_snapshot_ref VARCHAR(80) DEFAULT NULL,
+    pay_merchant_no VARCHAR(64) DEFAULT NULL,
+    pay_channel VARCHAR(32) DEFAULT NULL,
+    pay_scene VARCHAR(32) DEFAULT NULL,
+    currency VARCHAR(8) DEFAULT NULL,
+    fee_bearer VARCHAR(32) DEFAULT NULL,
+    wx_appid VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_stl_refund_basis UNIQUE (settle_no),
+    CONSTRAINT uk_stl_refund_basis_account UNIQUE (account_snapshot_ref)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

@@ -4276,6 +4276,12 @@
           "ar": "أُلغي الدفع"
         },
         {
+          "key": "pay.confirmPending",
+          "zh-CN": "支付结果确认中，请稍后刷新",
+          "en": "Payment confirmation pending. Refresh shortly.",
+          "ar": "تأكيد الدفع قيد الانتظار. حدّث بعد قليل."
+        },
+        {
           "key": "pay.covers",
           "zh-CN": "本次付款覆盖 {n} 笔订单",
           "en": "This payment covers {n} orders",
@@ -4354,6 +4360,18 @@
           "ar": "لا تتوفر طريقة دفع لمتاجر هذا الطلب"
         },
         {
+          "key": "pay.orderCancelled",
+          "zh-CN": "订单已取消",
+          "en": "Order cancelled",
+          "ar": "تم إلغاء الطلب"
+        },
+        {
+          "key": "pay.orderRefunded",
+          "zh-CN": "订单已退款",
+          "en": "Order refunded",
+          "ar": "تم رد مبلغ الطلب"
+        },
+        {
           "key": "pay.payNow",
           "zh-CN": "立即支付",
           "en": "Pay now",
@@ -4372,10 +4390,22 @@
           "ar": "جارٍ الدفع…"
         },
         {
+          "key": "pay.pendingOffline",
+          "zh-CN": "待商家确认收款",
+          "en": "Awaiting payment confirmation by the store",
+          "ar": "بانتظار تأكيد المتجر لاستلام الدفع"
+        },
+        {
           "key": "pay.redeemCode",
           "zh-CN": "兑换码",
           "en": "Redemption code",
           "ar": "رمز الاستبدال"
+        },
+        {
+          "key": "pay.refreshResult",
+          "zh-CN": "刷新支付结果",
+          "en": "Refresh payment result",
+          "ar": "تحديث نتيجة الدفع"
         },
         {
           "key": "pay.remain",
@@ -4388,6 +4418,12 @@
           "zh-CN": "收银台",
           "en": "Checkout",
           "ar": "الدفع"
+        },
+        {
+          "key": "pay.unknownResult",
+          "zh-CN": "暂时无法确认支付结果",
+          "en": "Payment result unavailable",
+          "ar": "نتيجة الدفع غير متاحة"
         },
         {
           "key": "pay.verifyCode",
@@ -27571,6 +27607,13 @@
       "package": "ai.neargo.shop.pay.entity"
     },
     {
+      "table": "stl_bill_refund_basis",
+      "class": "StlBillRefundBasis",
+      "zh": "只插入的退款原值。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entity"
+    },
+    {
       "table": "stl_channel_message",
       "class": "StlChannelMessage",
       "zh": "渠道报文：通道推给我方的回调、我方发给通道的调用（V286）。",
@@ -28921,6 +28964,20 @@
         "host": "SplitReconAxis",
         "name": "CODE",
         "value": "SPLIT",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "SettlementRefundBasis",
+        "name": "READY",
+        "value": "READY",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "SettlementRefundBasis",
+        "name": "NEEDS_REVIEW",
+        "value": "NEEDS_REVIEW",
         "zh": "",
         "module": "pay/pay-domain"
       },
@@ -33447,49 +33504,49 @@
         "module": "shop-core"
       },
       {
-        "host": "OrderStatusView",
+        "host": "LegacyOrderStatusView",
         "name": "WAIT_PAY",
         "value": "WAIT_PAY",
         "zh": "待付款",
         "module": "shop-core"
       },
       {
-        "host": "OrderStatusView",
+        "host": "LegacyOrderStatusView",
         "name": "WAIT_OFFLINE_PAY",
         "value": "WAIT_OFFLINE_PAY",
         "zh": "等商家当面收款（线下支付）。",
         "module": "shop-core"
       },
       {
-        "host": "OrderStatusView",
+        "host": "LegacyOrderStatusView",
         "name": "PAID",
         "value": "PAID",
         "zh": "已付款、等交付方行动。",
         "module": "shop-core"
       },
       {
-        "host": "OrderStatusView",
+        "host": "LegacyOrderStatusView",
         "name": "FULFILLING",
         "value": "FULFILLING",
         "zh": "交付方已行动，等交接完成。",
         "module": "shop-core"
       },
       {
-        "host": "OrderStatusView",
+        "host": "LegacyOrderStatusView",
         "name": "COMPLETED",
         "value": "COMPLETED",
         "zh": "⚠️ 这里曾有 `SHIPPED`（已发货）与 `ARRIVED`（已到自提点）两个常量。",
         "module": "shop-core"
       },
       {
-        "host": "OrderStatusView",
+        "host": "LegacyOrderStatusView",
         "name": "CANCELLED",
         "value": "CANCELLED",
         "zh": "",
         "module": "shop-core"
       },
       {
-        "host": "OrderStatusView",
+        "host": "LegacyOrderStatusView",
         "name": "REFUNDED",
         "value": "REFUNDED",
         "zh": "",
@@ -40064,6 +40121,62 @@
       "type": "List<String>",
       "value": "List.of( OrdAfterSale.REASON_DAMAGED, OrdAfterSale.REASON_QUALITY, OrdAfterSale.REASON_EXPIRED)",
       "zh": "质量原因：损坏 / 变质 / 过期。",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrderStatusView",
+      "name": "WAIT_PAY",
+      "type": "String",
+      "value": "LegacyOrderStatusView.WAIT_PAY",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrderStatusView",
+      "name": "WAIT_OFFLINE_PAY",
+      "type": "String",
+      "value": "LegacyOrderStatusView.WAIT_OFFLINE_PAY",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrderStatusView",
+      "name": "PAID",
+      "type": "String",
+      "value": "LegacyOrderStatusView.PAID",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrderStatusView",
+      "name": "FULFILLING",
+      "type": "String",
+      "value": "LegacyOrderStatusView.FULFILLING",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrderStatusView",
+      "name": "COMPLETED",
+      "type": "String",
+      "value": "LegacyOrderStatusView.COMPLETED",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrderStatusView",
+      "name": "CANCELLED",
+      "type": "String",
+      "value": "LegacyOrderStatusView.CANCELLED",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrderStatusView",
+      "name": "REFUNDED",
+      "type": "String",
+      "value": "LegacyOrderStatusView.REFUNDED",
+      "zh": "",
       "module": "shop-core"
     },
     {
