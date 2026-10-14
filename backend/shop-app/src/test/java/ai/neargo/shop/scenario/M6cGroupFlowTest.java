@@ -457,6 +457,16 @@ class M6cGroupFlowTest {
     }
     /** 授予 B 端身份：写一条 owner 成员行（幂等）。 */
     private void grantOwner(String merchantNo, String userNo) {
+        // 已是这家店的账号就不动：下面的 limit 1 不带排序，店里有多行账号（全量测试共用库）时
+        // 第二次可能取到另一行，把同一个人写成第二行 → 撞 uk(entity_no, user_no)，且只在全量里偶发
+        boolean already = merchantStaffMapper.selectCount(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, userNo)) > 0;
+        if (already) {
+            return;
+        }
         var existing = merchantStaffMapper.selectOne(
                 com.baomidou.mybatisplus.core.toolkit.Wrappers
                         .<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
