@@ -5,7 +5,7 @@
   "targetPackage": "ai.neargo.shop.order",
   "status": "phase1-backend-in-progress",
   "counts": {
-    "coreProductionFiles": 137,
+    "coreProductionFiles": 142,
     "coreTestClasses": 27
   },
   "entries": [
@@ -4631,6 +4631,81 @@
       "publicMethods": [
         "public OrderCreateRequestHasher(ObjectMapper json)",
         "public String hash(CreateOrderCommand command)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/entity/OrdCreateIntent.java",
+      "sourceType": "ai.neargo.shop.trade.order.entity.OrdCreateIntent",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/entity/OrdCreateIntent.java",
+      "targetType": "ai.neargo.shop.order.entity.OrdCreateIntent",
+      "owner": "order",
+      "state": "phase1-core",
+      "tables": [
+        "ord_create_intent"
+      ],
+      "externalConsumers": [],
+      "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/CreateIntentMapper.java",
+      "sourceType": "ai.neargo.shop.trade.order.mapper.CreateIntentMapper",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/mapper/CreateIntentMapper.java",
+      "targetType": "ai.neargo.shop.order.mapper.CreateIntentMapper",
+      "owner": "order",
+      "state": "phase1-core",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": [
+        "OrdCreateIntent lock(String payNo)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/OrderCreationRecoveryService.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/create/OrderCreationRecoveryService.java",
+      "targetType": "ai.neargo.shop.order.service.create.OrderCreationRecoveryService",
+      "owner": "order",
+      "state": "phase1-core",
+      "tables": [],
+      "externalConsumers": [
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java"
+      ],
+      "publicMethods": [
+        "String register(String proposedPayNo, String userNo, String idemKey, String inputHash, List<StockPort.SkuQty> stockNeeds)",
+        "void enlist(String payNo)",
+        "int recoverAbandoned(long now)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/OrderStockAllocator.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.create.OrderStockAllocator",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/create/OrderStockAllocator.java",
+      "targetType": "ai.neargo.shop.order.service.create.OrderStockAllocator",
+      "owner": "order",
+      "state": "phase1-core",
+      "tables": [],
+      "externalConsumers": [
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java"
+      ],
+      "publicMethods": [
+        "public OrderStockAllocator(StockPort stock)",
+        "public boolean reserve(String payNo, List<StockPort.SkuQty> withGifts, List<StockPort.SkuQty> paidOnly)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/impl/OrderCreationRecoveryServiceImpl.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.create.impl.OrderCreationRecoveryServiceImpl",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/create/impl/OrderCreationRecoveryServiceImpl.java",
+      "targetType": "ai.neargo.shop.order.service.create.impl.OrderCreationRecoveryServiceImpl",
+      "owner": "order",
+      "state": "phase1-core",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": [
+        "public OrderCreationRecoveryServiceImpl(CreateIntentMapper intents, PaymentMapper payments, StockPort stock, ObjectMapper json, PlatformTransactionManager manager, String authority)",
+        "public String register(String proposed, String buyer, String key, String hash, List<StockPort.SkuQty> needs)",
+        "public void enlist(String payNo)",
+        "public int recoverAbandoned(long now)"
       ]
     }
   ],

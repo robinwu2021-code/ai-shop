@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -46,7 +47,7 @@ public class StockPortImpl implements StockPort {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.NESTED)
     public List<String> lock(String lockNo, List<SkuQty> items) {
         List<String> failed = new ArrayList<>();
         for (SkuQty item : items) {
@@ -248,16 +249,16 @@ public class StockPortImpl implements StockPort {
         List<PrdStockLock> locks = DataScopeContext.executeWithoutScope(() ->
                 lockMapper.selectList(Wrappers.<PrdStockLock>lambdaQuery()
                         .eq(PrdStockLock::getLockNo, lockNo)
-                        .eq(PrdStockLock::getStatus, PrdStockLock.LOCKED)));
+                        .eq(PrdStockLock::getStatus, PrdStockLock.LOCKED).last("FOR UPDATE")));
         locks.forEach(action);
     }
 
     /** 库存不足。带上具体 SKU，端上才能精确标红。 */
-    public static class PartialLockException extends RuntimeException {
+    public static class PartialLockException extends StockPort.ShortageException {
         private final transient List<String> skuNos;
 
         public PartialLockException(List<String> skuNos) {
-            super("stock not enough: " + skuNos);
+            super();
             this.skuNos = skuNos;
         }
 

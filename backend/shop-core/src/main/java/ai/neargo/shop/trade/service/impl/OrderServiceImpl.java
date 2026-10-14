@@ -2,6 +2,8 @@ package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.trade.order.policy.PhaseOnePointsPolicy;
 import ai.neargo.shop.trade.order.service.create.OrderCreateRequestHasher;
+import ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService;
+import ai.neargo.shop.trade.order.service.create.OrderStockAllocator;
 
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 
@@ -61,6 +63,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -131,6 +134,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private OrderCreateRequestHasher createRequestHasher;
+    @Autowired private OrderCreationRecoveryService creationRecovery;
+    @Autowired private OrderStockAllocator stockAllocator;
     /** 取该商家按市场筛出的可用通道（S4）—— 下单要选通道 */
     private final ai.neargo.shop.spi.pay.PayChannelMasterPort payChannelMasterPort;
     /**
@@ -1150,24 +1155,25 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderVO create(CreateOrderCommand cmd, String idempotencyKey) {
         return createFor(SecurityUtils.currentUserNo(), cmd, idempotencyKey);
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey) {
         return createFor(userNo, cmd, idempotencyKey, null);
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey,
                              Integer payMinutes) {
         PhaseOnePointsPolicy.validate(cmd.usePoints());
-        return idempotency.execute(idempotencyKey, "POST /mp/order", userNo, createRequestHasher.hash(cmd), OrderVO.class,
-                () -> doCreate(cmd, userNo, payMinutes));
+        String inputHash = createRequestHasher.hash(cmd);
+        return idempotency.execute(idempotencyKey, "POST /mp/order", userNo, inputHash, OrderVO.class,
+                () -> doCreate(cmd, userNo, payMinutes, idempotencyKey, inputHash));
     }
 
     /**
@@ -1175,11 +1181,8 @@ public class OrderServiceImpl implements OrderService {
      * 自调用不走代理，写在这里的 {@code @Transactional} 完全不生效 ——
      * 那样「锁了库存但订单没落库」会变成常态，且测试很难发现。
      */
-    private OrderVO doCreate(CreateOrderCommand cmd, String userNo) {
-        return doCreate(cmd, userNo, null);
-    }
-
-    private OrderVO doCreate(CreateOrderCommand cmd, String userNo, Integer payMinutes) {
+    private OrderVO doCreate(CreateOrderCommand cmd, String userNo, Integer payMinutes,
+                             String idempotencyKey, String inputHash) {
         Split raw = split(cmd);
         if (raw.items.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -1246,12 +1249,6 @@ public class OrderServiceImpl implements OrderService {
         requirePickupServed(cmd, split);
         requireAppointmentWhenNeeded(cmd, split, storeOfMerchant);
 
-        /*
-         * 占预约名额。**一单一次**，不在建子单的循环里 —— 带时段的单只有一个商家
-         * （前置校验保证），循环里调会在将来某次放宽限制时变成重复占位。
-         */
-        var slot = bookAppointmentSlot(cmd, split, storeOfMerchant);
-
         long now = System.currentTimeMillis();
         // 订单号序列化（ADR-035）：O + yyMMddHH + 4位序列（号段），撞 uk 兜底续号
         String orderNo = orderNoGenerator.mainOrderNo(now,
@@ -1267,39 +1264,6 @@ public class OrderServiceImpl implements OrderService {
          * 少送几件在订单里看得见（赠品行的 qty），商家侧也能对上。
          */
         Map<String, Integer> gifts = giftQtyOf(split);
-
-        // ⑤ 锁库存 —— 放在落库之前：库存不足就整单失败，不留半张订单
-        try {
-            List<StockPort.SkuQty> lock = new ArrayList<>();
-            for (Group g : split.groups) {
-                String storeNo = storeOfMerchant.get(g.key());
-                for (Line i : g.lines) {
-                    // 赠品与付费件是同一个 SKU（活动表里没有「赠哪件」），合并成一次锁
-                    lock.add(new StockPort.SkuQty(
-                            i.skuNo(), i.qty() + gifts.getOrDefault(i.skuNo(), 0), storeNo));
-                }
-            }
-            stockPort.lock(orderNo, lock);
-        } catch (RuntimeException e) {
-            /*
-             * 连赠品一起锁失败时**退回只锁付费件**再试一次：
-             * 这一步就是「库存不够少送」的落地 —— 不重试的话，
-             * 赠品缺货会表现成「这单买不了」，而用户根本没要那个赠品。
-             */
-            gifts.clear();
-            try {
-                List<StockPort.SkuQty> paidOnly = new ArrayList<>();
-                for (Group g : split.groups) {
-                    String storeNo = storeOfMerchant.get(g.key());
-                    for (Line i : g.lines) {
-                        paidOnly.add(new StockPort.SkuQty(i.skuNo(), i.qty(), storeNo));
-                    }
-                }
-                stockPort.lock(orderNo, paidOnly);
-            } catch (RuntimeException retry) {
-                throw BizException.of(ErrorCode.STOCK_NOT_ENOUGH);
-            }
-        }
 
         // 优惠：与预览同一套规则（discountsOf 是唯一实现）
         Discounts discounts = discountsOf(cmd, split, userNo);
@@ -1435,6 +1399,31 @@ public class OrderServiceImpl implements OrderService {
             if (cap.wouldExceed(merchantPay)) {
                 throw BizException.of(ErrorCode.MERCHANT_QUOTA_EXHAUSTED);
             }
+        }
+
+        List<StockPort.SkuQty> paidOnly = new ArrayList<>();
+        List<StockPort.SkuQty> withGifts = new ArrayList<>();
+        for (Group g : split.groups) {
+            String storeNo = storeOfMerchant.get(g.key());
+            for (Line line : g.lines) {
+                paidOnly.add(new StockPort.SkuQty(line.skuNo(), line.qty(), storeNo));
+                withGifts.add(new StockPort.SkuQty(line.skuNo(),
+                        line.qty() + gifts.getOrDefault(line.skuNo(), 0), storeNo));
+            }
+        }
+        String registered = creationRecovery.register(orderNo, userNo, idempotencyKey, inputHash, withGifts);
+        if (!orderNo.equals(registered)) {
+            if (orderMapper.selectCount(Wrappers.<OrdOrder>lambdaQuery()
+                    .eq(OrdOrder::getOrderNo, registered).eq(OrdOrder::getUserNo, userNo)) == 0) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            return detailOf(registered, userNo, "MP");
+        }
+        creationRecovery.enlist(orderNo);
+        // Only a new durable intent can book a slot; replay must never reserve another resource.
+        var slot = bookAppointmentSlot(cmd, split, storeOfMerchant);
+        if (!stockAllocator.reserve(orderNo, withGifts, paidOnly)) {
+            gifts.clear();
         }
 
         orderMapper.insert(order);
@@ -2322,6 +2311,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public int closeExpiredOrders(long now) {
+        creationRecovery.recoverAbandoned(now);
         List<OrdOrder> expired = orderMapper.selectList(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getStatus, OrdOrder.WAIT_PAY)
                 .le(OrdOrder::getPayDeadlineAt, now));

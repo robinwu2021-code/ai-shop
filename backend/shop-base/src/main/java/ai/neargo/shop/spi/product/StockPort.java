@@ -20,6 +20,18 @@ public interface StockPort {
      */
     List<String> lock(String lockNo, List<SkuQty> items);
 
+    /** A rolled-back shortage is distinct from an unknown reservation outcome. */
+    class ShortageException extends RuntimeException {
+        public ShortageException() {
+            super("stock shortage");
+        }
+    }
+
+    /** Frozen SKU ownership lets a remote source reject a reserve that arrives after cancellation. */
+    default void release(String lockNo, List<SkuQty> originalNeeds) {
+        release(lockNo);
+    }
+
     /** 释放（超时未支付、下单失败回滚）。幂等：重复释放不会把库存加两次。 */
     void release(String lockNo);
 

@@ -323,6 +323,20 @@ class AppointmentSlotFlowTest {
     }
 
     @Test
+    void durableReplayAfterCacheCleanupDoesNotBookAnotherSlot() {
+        String slotNo = openSlot(2);
+        asBuyer();
+        String idem = key("durable-replay");
+        var command = appointmentOrder(slotNo);
+        var original = orderService.create(command, idem);
+        assertThat(slot(slotNo).getBooked()).isEqualTo(1);
+        jdbc.update("delete from sys_idempotent where idem_key=?", idem);
+        var replay = orderService.create(command, idem);
+        assertThat(replay.payOrderNo()).isEqualTo(original.payOrderNo());
+        assertThat(slot(slotNo).getBooked()).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("★★★ 取消被重放也只还一次 —— 超时关闭与用户取消可能同时到达")
     void cancelIsIdempotentOnSlot() {
         String slotNo = openSlot(2);

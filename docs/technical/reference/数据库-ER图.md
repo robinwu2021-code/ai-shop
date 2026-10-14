@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **202** 张表、**321** 条引用关系，分 **16** 个域。
+全库 **203** 张表、**322** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -18,7 +18,7 @@
 | 社区与自提点 | `cmt_*` | 3 | 7 |
 | 商品与类目 | `prd_*` | 27 | 8 |
 | 购物车 | `trd_*` | 2 | 0 |
-| 交易 | `ord_*` | 9 | 8 |
+| 交易 | `ord_*` | 10 | 8 |
 | 履约 | `ful_*` | 5 | 0 |
 | 营销与团购 | `mkt_*` | 17 | 4 |
 | 积分 | `pts_*` | 2 | 0 |
@@ -152,7 +152,7 @@
 
 **跨域引用**：`trd_cart_item.user_no` → `usr_account`、`trd_cart_item.goods_no` → `prd_goods`、`trd_cart_item.sku_no` → `prd_sku`、`trd_shipping_upload.order_no` → `ord_order`、`trd_shipping_upload.out_trade_no` → `stl_payment`
 
-### 交易 `ord_*`（9 张）
+### 交易 `ord_*`（10 张）
 
 ![交易表关系](../diagrams/db-ord.svg)
 
@@ -167,8 +167,9 @@
 | `ord_express_pickup` | 快递代下单取件单 |
 | `ord_shipment` | 发货单（交易域）：一个订单可多次发货/多包裹，每张关联一条物流运单 |
 | `ord_after_sale_item` | 售后行：一张售后单退哪几行、各几件、各多少钱 |
+| `ord_create_intent` | — |
 
-**跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_item.category_no` → `prd_category`、`ord_item.shipment_no` → `lgs_waybill`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`、`ord_sub_order.community_no` → `cmt_community`、`ord_sub_order.period_no` → `pmt_period`、`ord_invoice_request.user_no` → `usr_account`、`ord_express_pickup.pickup_no` → `cmt_pickup_point`、`ord_express_pickup.entity_no` → `mch_entity`、`ord_express_pickup.store_no` → `mch_store`、`ord_shipment.shipment_no` → `lgs_waybill`
+**跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_item.category_no` → `prd_category`、`ord_item.shipment_no` → `lgs_waybill`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`、`ord_sub_order.community_no` → `cmt_community`、`ord_sub_order.period_no` → `pmt_period`、`ord_invoice_request.user_no` → `usr_account`、`ord_express_pickup.pickup_no` → `cmt_pickup_point`、`ord_express_pickup.entity_no` → `mch_entity`、`ord_express_pickup.store_no` → `mch_store`、`ord_shipment.shipment_no` → `lgs_waybill`、`ord_create_intent.user_no` → `usr_account`
 
 ### 履约 `ful_*`（5 张）
 

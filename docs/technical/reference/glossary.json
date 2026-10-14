@@ -27193,6 +27193,13 @@
       "package": "ai.neargo.shop.trade.order.entity"
     },
     {
+      "table": "ord_create_intent",
+      "class": "OrdCreateIntent",
+      "zh": "Durable ownership and original stock references survive a failed order transaction.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.order.entity"
+    },
+    {
       "table": "ord_express_pickup",
       "class": "OrdExpressPickup",
       "zh": "快递代下单的取件单（TDD-快递100商家寄件）。",
@@ -33465,6 +33472,41 @@
         "name": "REFUNDED",
         "value": "REFUNDED",
         "zh": "已退款",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdCreateIntent",
+        "name": "PREPARED",
+        "value": "PREPARED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdCreateIntent",
+        "name": "COMMITTED",
+        "value": "COMMITTED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdCreateIntent",
+        "name": "RECOVERING",
+        "value": "RECOVERING",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdCreateIntent",
+        "name": "RELEASED",
+        "value": "RELEASED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdCreateIntent",
+        "name": "RECOVERY_REQUIRED",
+        "value": "RECOVERY_REQUIRED",
+        "zh": "",
         "module": "shop-core"
       },
       {

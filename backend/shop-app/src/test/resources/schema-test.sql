@@ -1157,10 +1157,10 @@ CREATE TABLE IF NOT EXISTS sys_idempotent
     idem_key VARCHAR(128) NOT NULL,
     endpoint VARCHAR(128) NOT NULL,
     user_no VARCHAR(64) DEFAULT NULL,
-    request_hash VARCHAR(64) DEFAULT NULL,
     result_json TEXT DEFAULT NULL,
     created_at DATETIME NOT NULL,
     expire_at DATETIME NOT NULL,
+    request_hash VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_key_endpoint UNIQUE (idem_key,endpoint)
 );
@@ -4840,6 +4840,31 @@ CREATE TABLE IF NOT EXISTS stl_bill_refund_basis
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_refund_basis UNIQUE (settle_no),
     CONSTRAINT uk_stl_refund_basis_account UNIQUE (account_snapshot_ref)
+);
+
+CREATE TABLE IF NOT EXISTS ord_create_intent
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    endpoint VARCHAR(64) NOT NULL,
+    idem_key VARCHAR(128) NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    stock_authority VARCHAR(16) NOT NULL,
+    stock_needs_json TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    error_code VARCHAR(64) NULL,
+    next_attempt_at BIGINT NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_create_pay UNIQUE (pay_no),
+    CONSTRAINT uk_ord_create_key UNIQUE (endpoint, idem_key)
 );
 
 -- 种子数据

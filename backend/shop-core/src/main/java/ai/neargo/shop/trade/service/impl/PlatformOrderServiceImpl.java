@@ -1,5 +1,8 @@
 package ai.neargo.shop.trade.service.impl;
 
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+
 import ai.neargo.shop.trade.order.contract.CancellationImpact;
 
 import ai.neargo.shop.trade.service.OrderService;
@@ -76,7 +79,7 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderVO createProxyOrder(ProxyOrderCommand cmd, String operatorNo, String idempotencyKey) {
         String reason = cmd.reason() == null ? "" : cmd.reason().trim();
         if (reason.isEmpty() || cmd.items() == null || cmd.items().isEmpty()

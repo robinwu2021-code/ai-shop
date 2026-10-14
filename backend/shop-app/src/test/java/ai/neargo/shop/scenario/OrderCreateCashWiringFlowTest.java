@@ -24,7 +24,8 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Exercise the production request and database claim, not a fake idempotency cache. */
 @SpringBootTest(properties = {
-        "spring.datasource.url=${order.phase1.test.url:jdbc:h2:mem:order-create-cash;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1}"
+        "spring.datasource.url=${order.phase1.test.url:jdbc:h2:mem:order-create-cash;MODE=MySQL;"
+                + "DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1}"
 })
 @ActiveProfiles("test")
 class OrderCreateCashWiringFlowTest {

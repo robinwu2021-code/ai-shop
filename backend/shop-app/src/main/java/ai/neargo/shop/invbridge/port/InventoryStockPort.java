@@ -11,6 +11,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.LinkedHashMap;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 把交易域的库存调用接到**进销存**上 —— D2 的真相源切换开关。
@@ -61,21 +64,25 @@ public class InventoryStockPort implements StockPort {
     }
 
     @Override
+    @Transactional(transactionManager = "invTransactionManager")
     public List<String> lock(String lockNo, List<SkuQty> items) {
         if (items == null || items.isEmpty()) {
             return List.of();
         }
-        String owner = acl.ownerOfSku(items.get(0).skuNo());
-        List<ReservationService.Line> lines = toLines(owner, items);
-        /*
-         * **不吞异常**：库存不足时 reserve 抛 STOCK_NOT_ENOUGH，让它一路上去。
-         *
-         * 旧签名的约定是「返回不足的 SKU 列表」，而新协议把这件事放进错误体里
-         * （带上是哪几件、各差多少）。这里返回空列表 = 全部成功；
-         * 失败走异常 —— 熔断的方向是拒绝不是放行，返回空列表会被上游当成成功。
-         */
-        reservations.reserve(owner, lockNo, lines, RESERVE_TTL_SECONDS);
+        Map<String, List<SkuQty>> byOwner = new LinkedHashMap<>();
+        for (SkuQty item : items) {
+            byOwner.computeIfAbsent(acl.ownerOfSku(item.skuNo()), owner -> new ArrayList<>()).add(item);
+        }
+        for (var group : byOwner.entrySet()) {
+            reservations.reserve(group.getKey(), lockNo, toLines(group.getKey(), group.getValue()), RESERVE_TTL_SECONDS);
+        }
         return List.of();
+    }
+
+    @Override
+    public void release(String lockNo, List<SkuQty> originalNeeds) {
+        originalNeeds.stream().map(item -> acl.ownerOfSku(item.skuNo())).distinct()
+                .forEach(owner -> reservations.cancelByRef(owner, lockNo));
     }
 
     @Override
