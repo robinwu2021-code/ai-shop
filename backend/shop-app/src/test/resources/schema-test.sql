@@ -1067,9 +1067,13 @@ CREATE TABLE IF NOT EXISTS stl_payment
     entity_no VARCHAR(64) DEFAULT NULL,
     payer_openid VARCHAR(64) NULL,
     wx_appid     VARCHAR(32) NULL,
+    refund_verified_minor BIGINT DEFAULT NULL,
+    refund_verified_provider_no VARCHAR(128) DEFAULT NULL,
+    refund_verified_at BIGINT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),
-    CONSTRAINT uk_stl_payment_trade UNIQUE (pay_channel,trade_no)
+    CONSTRAINT uk_stl_payment_trade UNIQUE (pay_channel,trade_no),
+    CONSTRAINT uk_stl_refund_verified_provider UNIQUE (pay_channel,refund_verified_provider_no)
 );
 
 CREATE TABLE IF NOT EXISTS stl_points_pool

@@ -249,32 +249,36 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     @Override
     @Transactional("payTxManager")
-    public void markRefundSettled(String refundPaymentNo, String providerNo) {
-        StlPayment r = byPaymentNo(refundPaymentNo);
-        if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
-            log.warn("[payment-ledger] 确认退款到账时找不到退款流水 {}", refundPaymentNo);
+    public void markRefundSettled(String refundPaymentNo,String providerNo,long verifiedMinor) {
+        StlPayment refund=DataScopeContext.executeWithoutScope(() -> paymentMapper.lockRefundEvidence(refundPaymentNo));
+        if (refund==null) { throw new IllegalArgumentException("PAY_REFUND_UNKNOWN"); }
+        if (verifiedMinor<=0 || refund.getAmountMinor()==null || refund.getAmountMinor()!=verifiedMinor) {
+            throw new IllegalArgumentException("PAY_REFUND_VERIFIED_AMOUNT_MISMATCH");
+        }
+        if (providerNo==null || providerNo.isBlank() || providerNo.length()>128) {
+            throw new IllegalArgumentException("PAY_REFUND_VERIFIED_RECEIPT_REQUIRED");
+        }
+        if (refund.getRefundVerifiedAt()!=null) {
+            if (!StlPayment.SUCCESS.equals(refund.getStatus())
+                    || !providerNo.equals(refund.getRefundVerifiedProviderNo())
+                    || refund.getRefundVerifiedMinor()==null || refund.getRefundVerifiedMinor()!=verifiedMinor) {
+                throw new IllegalArgumentException("PAY_REFUND_VERIFIED_RECEIPT_CONFLICT");
+            }
             return;
         }
-        if (StlPayment.SUCCESS.equals(r.getStatus())) {
-            // **幂等**：不覆盖已有的成功时刻，否则对账查到的时刻会一轮一轮往后跳
-            return;
+        if (!StlPayment.PENDING.equals(refund.getStatus()) && !StlPayment.SUCCESS.equals(refund.getStatus())) {
+            throw new IllegalStateException("PAY_REFUND_STATE_CONFLICT");
         }
-        StlPayment patch = new StlPayment();
-        patch.setId(r.getId());
+        long now=System.currentTimeMillis();
+        StlPayment patch=new StlPayment();
+        patch.setId(refund.getId());
         patch.setStatus(StlPayment.SUCCESS);
-        patch.setSucceededAt(System.currentTimeMillis());
-        /*
-         * **不写 trade_no。**它在受理那一刻就由 markRefundSent 记下了
-         * （通道自己回的 refund_id），那个才是权威；回查只负责确认「退成功了没」。
-         *
-         * 覆盖它有实打实的代价：`stl_payment` 上有
-         * <b>UNIQUE (pay_channel, trade_no)</b>，而这个索引是<b>跨方向</b>的 ——
-         * 回查一旦给回一个别的行已经占着的号，插不进去的不是这一行，
-         * 是<b>整轮自查当场抛异常中断</b>，后面几百笔一笔都不查了。
-         * 用一个不带新信息的写，去换一条能炸掉整轮扫描的路径，不划算。
-         */
+        patch.setSucceededAt(refund.getSucceededAt()==null?now:refund.getSucceededAt());
+        patch.setRefundVerifiedMinor(verifiedMinor);
+        patch.setRefundVerifiedProviderNo(providerNo);
+        patch.setRefundVerifiedAt(now);
+        // Do not overwrite trade_no: its original acceptance value participates in a cross-direction unique key.
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
-        log.info("[payment-ledger] 退款 {} 已确认到账（通道单号 {}）", refundPaymentNo, providerNo);
     }
 
     @Override
@@ -300,7 +304,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     @Override
     @Transactional("payTxManager")
-    public String settleRefundByOutTradeNo(String outRefundNo, String providerNo) {
+    public String settleRefundByOutTradeNo(String outRefundNo,String providerNo,long verifiedMinor) {
         StlPayment r = byOutTradeNo(outRefundNo);
         if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
             /*
@@ -311,7 +315,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             log.error("[payment-ledger] 收到无法认领的退款回调 out_refund_no={}", outRefundNo);
             return null;
         }
-        markRefundSettled(r.getPaymentNo(), providerNo);
+        markRefundSettled(r.getPaymentNo(),providerNo,verifiedMinor);
         return r.getOrderNo();
     }
 

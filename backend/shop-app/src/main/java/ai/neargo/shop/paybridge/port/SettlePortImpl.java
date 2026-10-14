@@ -215,7 +215,7 @@ public class SettlePortImpl implements SettlePort {
     }
 
     @Override
-    public String settleRefund(String outRefundNo, String providerNo) {
-        return paymentLedger.settleRefundByOutTradeNo(outRefundNo, providerNo);
+    public String settleRefund(String outRefundNo,String providerNo,long verifiedMinor) {
+        return paymentLedger.settleRefundByOutTradeNo(outRefundNo,providerNo,verifiedMinor);
     }
 }

@@ -156,7 +156,7 @@ public class PaymentReconReconciler {
                 if (f.paidOnChannel()) {
                     // 钱确实退出去了 —— 把退款流水推到终态。这是这条轴唯一该对退款做的事
                     try {
-                        paymentLedger.markRefundSettled(f.paymentNo(), f.channelTradeNo());
+                        paymentLedger.markRefundSettled(f.paymentNo(),f.channelTradeNo(),f.channelAmountMinor());
                         repaired++;
                         c[1]++;
                     } catch (RuntimeException e) {

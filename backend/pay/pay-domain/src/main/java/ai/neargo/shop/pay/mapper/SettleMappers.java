@@ -9,6 +9,7 @@ import ai.neargo.shop.pay.entity.StlSplitLog;
 import ai.neargo.shop.pay.entity.StlPurchaseInvoice;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 /** settle 域的 Mapper 集合。 */
@@ -80,6 +81,9 @@ public final class SettleMappers {
     }
 
     public interface PaymentMapper extends BaseMapper<StlPayment> {
+        /** Trusted pay confirmation serializes verification and immutable receipt replay. */
+        @Select("SELECT * FROM stl_payment WHERE payment_no=#{no} AND direction='REFUND' AND deleted=0 FOR UPDATE")
+        StlPayment lockRefundEvidence(String no);
     }
 
     public interface PointsPoolMapper extends BaseMapper<StlPointsPool> {

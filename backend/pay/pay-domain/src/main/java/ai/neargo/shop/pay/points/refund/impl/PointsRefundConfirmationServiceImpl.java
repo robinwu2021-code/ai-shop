@@ -69,12 +69,14 @@ public class PointsRefundConfirmationServiceImpl implements PointsRefundConfirma
         var command=snapshot.command();
         var payment=cash.refund(confirmation.cashRefundPaymentNo());
         require(payment!=null && "SUCCESS".equals(payment.status()) && payment.succeededAt()!=null
-                && payment.providerNo()!=null && !payment.providerNo().isBlank(),"POINTS_CASH_REFUND_NOT_CONFIRMED");
+                && payment.providerNo()!=null && !payment.providerNo().isBlank() && payment.verifiedAt()!=null
+                && payment.verifiedMinor()!=null,"POINTS_CASH_REFUND_NOT_CONFIRMED");
         require("REFUND".equals(payment.direction()) && command.afterSaleNo().equals(payment.afterSaleNo())
                 && command.subOrderNo().equals(payment.subOrderNo()) && command.userNo().equals(payment.userNo())
                 && command.currency().equals(payment.currency())
                 && command.payment().channel().equals(payment.channel())
-                && preparation.netCashMinor()==payment.amountMinor(),"POINTS_CASH_REFUND_MISMATCH");
+                && preparation.netCashMinor()==payment.amountMinor()
+                && preparation.netCashMinor()==payment.verifiedMinor(),"POINTS_CASH_REFUND_MISMATCH");
         PointType type=read.type(command.typeCode()).orElseThrow();
         List<PointsMove> points=new ArrayList<>();
         List<FundMove> funds=new ArrayList<>();

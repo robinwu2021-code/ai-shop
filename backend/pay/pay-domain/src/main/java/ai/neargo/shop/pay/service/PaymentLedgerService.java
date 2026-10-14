@@ -183,28 +183,10 @@ public interface PaymentLedgerService {
                         String providerNo, String reason);
 
     /**
-     * <b>退款确认到账，转 SUCCESS。</b>由对账回查驱动。
-     *
-     * <h2>这个闭环此前不存在</h2>
-     * {@code markRefundSent} 受理之后<b>刻意留 PENDING</b>（微信退款异步，
-     * 受理≠钱退了），而「谁把它转成 SUCCESS」当时写的是「交给对账轴」——
-     * <b>那句话是错的</b>：对账轴只会 {@code markPaid} / {@code closeUnpaid} 订单，
-     * 从来没有任何东西写过退款流水的终态。
-     *
-     * <p>不补这一步的话，每一笔退款都会永远停在 PENDING：
-     * 对账轴每一轮都把它捞出来、每一轮都去问通道、每一轮都得到「已退款」，
-     * 然后什么都不做。而运营看到的是一张越堆越长的「待确认退款」。
-     *
-     * <p><b>幂等</b>：已经是 SUCCESS 的直接返回，不覆盖已有的成功时刻 ——
-     * 覆盖的话，对账查到的成功时刻会一轮一轮往后跳。
-     *
-     * @param providerNo 通道退款单号，<b>仅用于日志，不回写</b>：
-     *                   受理时 {@link #markRefundSent} 记下的那个才是权威，
-     *                   而 {@code stl_payment} 上 {@code (pay_channel, trade_no)}
-     *                   是跨方向唯一的 —— 覆盖它可能撞键，
-     *                   而撞键炸掉的是**整轮自查**，不是这一行
+     * Confirms a refund only when the trusted query amount exactly matches the immutable payment amount.
+     * Stores query evidence separately from the original acceptance trade number; replay retains timestamps.
      */
-    void markRefundSettled(String refundPaymentNo, String providerNo);
+    void markRefundSettled(String refundPaymentNo,String providerNo,long verifiedMinor);
 
     /**
      * 记下这笔收款的<b>付款人</b>（{@code stl_payment.payer_openid} / {@code wx_appid}）。
@@ -236,5 +218,5 @@ public interface PaymentLedgerService {
      * @return 这笔退款挂的订单号；找不到这个单号返回 {@code null}
      *         （通道回传了一个我方没发出去过的退款号，那不能当成功）
      */
-    String settleRefundByOutTradeNo(String outRefundNo, String providerNo);
+    String settleRefundByOutTradeNo(String outRefundNo,String providerNo,long verifiedMinor);
 }

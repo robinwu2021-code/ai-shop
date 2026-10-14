@@ -17,8 +17,10 @@ public class MybatisPointsCashRefundReadStore implements PointsCashRefundReadSto
             return new CashRefund((String)row.get("payment_no"),(String)row.get("direction"),
                     (String)row.get("after_sale_no"),(String)row.get("sub_order_no"),(String)row.get("user_no"),
                     (String)row.get("currency"),((Number)row.get("amount_minor")).longValue(),(String)row.get("status"),
-                    (String)row.get("pay_channel"),(String)row.get("trade_no"),row.get("succeeded_at")==null?null:
-                    ((Number)row.get("succeeded_at")).longValue());
+                    (String)row.get("pay_channel"),(String)row.get("refund_verified_provider_no"),row.get("succeeded_at")==null?null:
+                    ((Number)row.get("succeeded_at")).longValue(),row.get("refund_verified_minor")==null?null:
+                    ((Number)row.get("refund_verified_minor")).longValue(),row.get("refund_verified_at")==null?null:
+                    ((Number)row.get("refund_verified_at")).longValue());
         });
     }
 }

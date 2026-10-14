@@ -235,7 +235,14 @@ public class ChannelPayCallbackController {
             return v.ackFail();
         }
 
-        String orderNo = settlePort.settleRefund(String.valueOf(outRefundNo), r.tradeNo());
+        String orderNo;
+        try { orderNo=settlePort.settleRefund(String.valueOf(outRefundNo),r.tradeNo(),r.amountMinor()); }
+        catch (RuntimeException rejected) {
+            log.warn("[callback] {} 退款证据不匹配 out_refund_no={}",channel,outRefundNo);
+            payMessage.callbackSettled(msgNo,PayMessagePort.REJECTED,"退款回查证据不匹配",
+                    String.valueOf(outRefundNo),null,payload);
+            return v.ackFail();
+        }
         if (orderNo == null) {
             log.error("[callback] {} 收到无法认领的退款 out_refund_no={} —— 流水里没有这个单号",
                     channel, outRefundNo);

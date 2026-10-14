@@ -185,5 +185,5 @@ public interface SettlePort {
      * @return 这笔退款挂在哪个订单上；认领不了返回 {@code null}
      *         —— 调用方要当成「这笔退款不是我方发出去的」，而不是当成成功
      */
-    String settleRefund(String outRefundNo, String providerNo);
+    String settleRefund(String outRefundNo,String providerNo,long verifiedMinor);
 }

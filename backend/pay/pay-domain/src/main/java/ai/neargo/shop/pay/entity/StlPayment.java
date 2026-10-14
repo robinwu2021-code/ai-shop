@@ -98,6 +98,15 @@ public class StlPayment extends BaseEntity {
 
     private Long succeededAt;
 
+    /** Actual refund amount verified by a trusted channel query, distinct from the requested amount. */
+    private Long refundVerifiedMinor;
+
+    /** Query receipt remains available when the original acceptance reply was lost. */
+    private String refundVerifiedProviderNo;
+
+    /** Immutable successful verification time; retries retain it. */
+    private Long refundVerifiedAt;
+
     private Long closedAt;
 
     private String errCode;

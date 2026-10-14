@@ -56,6 +56,9 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import javax.sql.DataSource;
+import java.sql.SQLException;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -90,6 +93,18 @@ class PointsRefundPreparationTest {
                 + "direction VARCHAR(24),after_sale_no VARCHAR(40),sub_order_no VARCHAR(40),user_no VARCHAR(40),"
                 + "currency VARCHAR(8),amount_minor BIGINT,status VARCHAR(24),pay_channel VARCHAR(32),"
                 + "trade_no VARCHAR(64),succeeded_at BIGINT,deleted TINYINT DEFAULT 0)");
+        try (var connection=dataSource.getConnection();
+             var columns=connection.getMetaData().getColumns(connection.getCatalog(),null,"stl_payment",null)) {
+            boolean installed=false;
+            while (columns.next()) {
+                installed|="refund_verified_minor".equalsIgnoreCase(columns.getString("COLUMN_NAME"));
+            }
+            if (!installed) {
+                new ResourceDatabasePopulator(
+                        new ClassPathResource("db/migration/V413__refund_verified_cash_evidence.sql"))
+                        .execute(dataSource);
+            }
+        } catch (SQLException failure) { throw new IllegalStateException("Refund schema fixture failed",failure); }
     }
 
     @Test void pending_grants_are_frozen_once_with_immutable_input_and_no_early_return() {
@@ -162,6 +177,9 @@ class PointsRefundPreparationTest {
         assertThat(pool(type,"u_minor")).isEqualTo(80);
         jdbc().update("UPDATE stl_payment SET status='SUCCESS',trade_no='RECEIPT',succeeded_at=1,"
                 + "after_sale_no='OTHER' WHERE payment_no=?",payment);
+        assertThatThrownBy(() -> confirmations.confirm(confirmation)).hasMessage("POINTS_CASH_REFUND_NOT_CONFIRMED");
+        jdbc().update("UPDATE stl_payment SET refund_verified_minor=50,refund_verified_at=1,"
+                + "refund_verified_provider_no=? WHERE payment_no=?","VERIFIED:"+type,payment);
         assertThatThrownBy(() -> confirmations.confirm(confirmation)).hasMessage("POINTS_CASH_REFUND_MISMATCH");
         jdbc().update("UPDATE stl_payment SET after_sale_no=?,amount_minor=49 WHERE payment_no=?","AS:"+type,payment);
         assertThatThrownBy(() -> confirmations.confirm(confirmation)).hasMessage("POINTS_CASH_REFUND_MISMATCH");
@@ -290,9 +308,10 @@ class PointsRefundPreparationTest {
             RefundPreparation prepared) {
         String payment="CASH:"+type;
         jdbc().update("INSERT INTO stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,"
-                + "amount_minor,status,pay_channel,trade_no,succeeded_at)"
-                + " VALUES(?,'REFUND',?,?,'USER','CNY',?,'SUCCESS','TEST','RECEIPT',1)",
-                payment,"AS:"+type,type,prepared.netCashMinor());
+                + "amount_minor,status,pay_channel,trade_no,succeeded_at,refund_verified_minor,refund_verified_at,"
+                + "refund_verified_provider_no)"
+                + " VALUES(?,'REFUND',?,?,'USER','CNY',?,'SUCCESS','TEST','RECEIPT',1,?,1,?)",
+                payment,"AS:"+type,type,prepared.netCashMinor(),prepared.netCashMinor(),"VERIFIED:"+type);
         return new RefundConfirmation(prepared.preparationNo(),prepared.inputHash(),payment,null,null);
     }
     private void addRedemption(String type,boolean paid) {
