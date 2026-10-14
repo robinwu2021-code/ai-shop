@@ -35377,6 +35377,16 @@
         "module": "shop-base-auth"
       },
       {
+        "name": "RefundProgress",
+        "values": [
+          "NONE",
+          "PARTIAL",
+          "FULL"
+        ],
+        "zh": "退款进度：与订单状态正交 —— 部分退款不改订单状态，只改它。",
+        "module": "shop-core"
+      },
+      {
         "name": "RevokeReason",
         "values": [
           "LOGOUT",
