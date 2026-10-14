@@ -9,12 +9,12 @@ import ai.neargo.shop.trade.order.contract.UnifiedOrderVO;
  * 订单<b>写命令</b>（下单/支付/发货/收货/取消）。
  *
  * <p><b>本阶段只定接口，不提供实现</b>（strangler 第一步）。写路径实现落在后续阶段：
- * 下单按商家拆、发货建发货单（ord_shipment）、行级退款，均依赖领域假设①~⑥定稿与迁移，
+ * 下单按门店拆、发货建发货单（ord_shipment）、行级退款，均依赖领域假设①~⑥定稿与迁移，
  * 且会替换现有写入 → 需灰度。届时实现类接 {@code OrderTransitions}（唯一写入门）。
  */
 public interface OrderCommandService {
 
-    /** 下单：按商家拆 → 支付单 + 订单 + 订单行 + 锁库存；返回统一订单。 */
+    /** 下单：按门店拆 → 支付单 + 订单 + 订单行 + 锁库存；返回统一订单。 */
     UnifiedOrderVO create(CreateOrderCommand cmd, String idemKey);
 
     /** 支付成功回调：支付单→PAID（终态），其下订单→待履约/履约中，出码实扣。 */

@@ -9,16 +9,16 @@ import ai.neargo.shop.trade.order.transition.OrderTransitions;
 /**
  * 行级退款门面（订单服务 2.0 · W6）：校验可退数量 → 委托资金执行 → 整单退完则订单置 REFUNDED。
  *
- * <p>支持"买三退一"（按行按数量）。资金执行（分账/原路退/积分/券/库存）经 {@link RefundExecutorPort}
+ * <p>支持"买三退一"（按行按数量）。资金执行（分账/原路退/积分/券/库存）经 {@link RefundExecutor}
  * 复用现有引擎，本门面只管行级计量（{@link RefundCalc}）与订单状态联动（{@link OrderTransitions}）。
  */
 public class RefundHandler {
 
     private final RefundReadStore read;
-    private final RefundExecutorPort executor;
+    private final RefundExecutor executor;
     private final OrderTransitions transitions;
 
-    public RefundHandler(RefundReadStore read, RefundExecutorPort executor, OrderTransitions transitions) {
+    public RefundHandler(RefundReadStore read, RefundExecutor executor, OrderTransitions transitions) {
         this.read = read;
         this.executor = executor;
         this.transitions = transitions;

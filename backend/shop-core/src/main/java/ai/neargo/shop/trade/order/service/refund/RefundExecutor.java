@@ -5,7 +5,7 @@ package ai.neargo.shop.trade.order.service.refund;
  * 整单退完退券/退积分 → 退货回补库存，线上验证过的 {@code AfterSaleServiceImpl.doRefund} 一族）。
  * 新内核不重写这坨资金逻辑，只经本 port 调用；接线阶段提供委托实现。
  */
-public interface RefundExecutorPort {
+public interface RefundExecutor {
 
     /** 对某订单的某行退 refundQty 件、金额 amountMinor。负责资金回退与行已退数量落库。 */
     void refund(String subOrderNo, String itemId, int refundQty, long amountMinor);

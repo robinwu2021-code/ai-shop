@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * 从拆单结果 {@link OrderGroup} 建一张订单（{@code OrdSubOrder}）+ 商品行（{@code OrdItem}），尚未落库。
  *
- * <p>订单服务 2.0：订单 = 商家粒度（{@code entityNo}）；{@code order_no} 指向支付单（主单号），
+ * <p>订单服务 2.0：订单 = 门店粒度（ADR-031，{@code storeNo}；{@code entityNo} 记所属商家）；{@code order_no} 指向支付单（主单号），
  * {@code sub_order_no} 是对外订单号；每行记供货门店（{@code supplyStoreNo}）。
  * 金额本环节只填<b>商品额</b>（Σ 行金额）；运费/优惠/积分抵扣由后续环节调整。
  */

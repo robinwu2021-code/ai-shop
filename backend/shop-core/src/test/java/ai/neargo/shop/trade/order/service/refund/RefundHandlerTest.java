@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RefundHandlerTest {
 
-    static class FakeExecutor implements RefundExecutorPort {
+    static class FakeExecutor implements RefundExecutor {
         int calls;
         long lastAmount;
 
