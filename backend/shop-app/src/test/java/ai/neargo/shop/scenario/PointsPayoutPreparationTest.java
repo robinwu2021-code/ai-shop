@@ -224,7 +224,7 @@ class PointsPayoutPreparationTest {
                 new FundMove(FundBucket.U,-100),new FundMove(FundBucket.C,100)),List.of(),0,List.of(),"{}"));
         String sub="S:"+type;
         String position=PointsKeys.position("R",type,sub);
-        FundsContext funds=new FundsContext(FundsPath.AGGREGATED,"TEST","M","A1","SM","TRADE",sub,100);
+        FundsContext funds=new FundsContext(FundsPath.AGGREGATED,"TEST","M","STORE","A1","SM","TRADE",sub,100);
         var agreement=new AgreementSnapshot("A:"+type,type,"M","STORE","OWNER","v1","HASH","TEST TERMS",
                 "PER_ORDER","AGGREGATED","TEST","A1","ACTIVE");
         var snapshot=new RedeemSnapshot(sub,"U","O:"+type,new Share(sub,"M","STORE",30,30),
@@ -237,7 +237,7 @@ class PointsPayoutPreparationTest {
                 new PositionMove(PositionMove.Kind.REDEEM,position,-1,"NEW","PAYABLE",30,0,
                         json.writeValueAsString(snapshot))),30,List.of(),"{}",
                 List.of(new ReserveMove(position,position,-1,30,30,0,0))));
-        return new PayoutCommand("PAY:"+type,type,sub,List.of(position),FundsPurpose.SUBSIDY,funds,"CNY");
+        return new PayoutCommand("PAY:"+type,type,sub,List.of(position),FundsPurpose.INTERNAL_REPLENISHMENT,funds,"CNY");
     }
     private PayoutTicket begin(PayoutCommand command) {
         try {

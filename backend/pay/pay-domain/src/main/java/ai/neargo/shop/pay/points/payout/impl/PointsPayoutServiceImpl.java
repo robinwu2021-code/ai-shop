@@ -14,7 +14,6 @@ import ai.neargo.shop.pay.points.model.Voucher;
 import ai.neargo.shop.pay.points.payout.PayoutSnapshot;
 import ai.neargo.shop.pay.points.payout.PointsPayoutService;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsCommand;
-import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPath;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPurpose;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsStatus;
 import ai.neargo.shop.pay.points.posting.PointsPostingService;
@@ -181,8 +180,7 @@ public class PointsPayoutServiceImpl implements PointsPayoutService {
                 || new HashSet<>(c.positionIds()).size()!=c.positionIds().size()) {
             throw new IllegalArgumentException("POINTS_PAYOUT_INPUT_INVALID");
         }
-        FundsPurpose required=c.context().path()==FundsPath.DIRECT?FundsPurpose.INTERNAL_REPLENISHMENT:
-                FundsPurpose.SUBSIDY;
+        FundsPurpose required=FundsPurpose.forPerOrder(c.context().path());
         if (c.purpose()!=required) { throw new IllegalArgumentException("POINTS_PAYOUT_PURPOSE_INVALID"); }
         return new PayoutCommand(c.bizRef(),c.typeCode(),c.sourceRef(),c.positionIds().stream().sorted().toList(),
                 c.purpose(),c.context(),c.currency());

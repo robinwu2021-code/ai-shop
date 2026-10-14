@@ -70,7 +70,8 @@ public class AgreementServiceImpl implements AgreementService {
         if (!"PER_ORDER".equals(c.settleMode()) && !"PERIODIC".equals(c.settleMode())) {
             throw new IllegalArgumentException("POINTS_SETTLE_MODE_INVALID");
         }
-        if (c.fundsContext()==null || !c.merchantNo().equals(c.fundsContext().merchantNo())) {
+        if (c.fundsContext()==null || !c.merchantNo().equals(c.fundsContext().merchantNo())
+                || !c.storeNo().equals(c.fundsContext().storeNo())) {
             throw new IllegalArgumentException("POINTS_FUNDS_CONTEXT_INVALID");
         }
         if ("PERIODIC".equals(c.settleMode())) {

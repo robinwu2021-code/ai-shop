@@ -888,3 +888,5 @@ mvn -o -f backend/pom.xml -pl pay/pay-domain -am test \
 T06.4 前置核对：直连 `DIRECT` 的随单兑付应为 `SUBSIDY`，归集 `AGGREGATED` 应为 `INTERNAL_REPLENISHMENT`（专项回补，不再多付一次商家）。现有核销能力选择和 PayoutService 的用途判断反向，必须先修正并验证；定期归集付款仍为 TRANSFER。`FundsContext` / 原生 `PayFundsOperations.Context` 增加明确 storeNo，签署/核销/付款均校验原门店快照，不保留无门店的兼容构造。新增契约反例与受影响回归后再进行结算事务拆分。
 
 本轮记录：执行工具 `--timeout 0` 反例 RED（原 CLI 拒绝 0），修复后标准库 8 tests 全部通过，保留 wall_seconds 且 timeout_enabled=false。T05 DRAINING 反例 RED 1/28.873 秒（期望 100，实际 0）；允许 ACTIVE/DRAINING 核销但仍由 EarnService 拒绝 DRAINING 新返分后，核销组合 6 tests 全部通过/30.177 秒。未触及资金关闭、冻结或未受理门店的保护。
+
+T06.4a 记录：门店字段/路径用途契约 RED 2 tests（4.470 秒），修改 FundsContext/原生 Context、签署校验、核销能力选择及付款用途后 GREEN 47 tests；生产能力仍默认关闭，未执行实际资金。

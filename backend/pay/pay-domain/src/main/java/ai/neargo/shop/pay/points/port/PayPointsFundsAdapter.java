@@ -93,11 +93,11 @@ public class PayPointsFundsAdapter implements PointsFundsGateway {
     }
     private PayFundsOperations.Context nativeContext(FundsContext c) {
         return new PayFundsOperations.Context(PayFundsOperations.Path.valueOf(c.path().name()),c.channel(),
-                c.merchantNo(),c.accountVersion(),c.subMerchantId(),c.tradeNo(),c.outTradeNo(),c.orderTotalMinor());
+                c.merchantNo(),c.storeNo(),c.accountVersion(),c.subMerchantId(),c.tradeNo(),c.outTradeNo(),c.orderTotalMinor());
     }
     private boolean validContext(FundsContext context) {
         return context!=null && context.path()!=null && !blank(context.channel()) && !blank(context.merchantNo())
-                && !blank(context.accountVersion()) && context.orderTotalMinor()>=0;
+                && !blank(context.storeNo()) && !blank(context.accountVersion()) && context.orderTotalMinor()>=0;
     }
     private void validate(FundsCommand c) {
         if (c==null || blank(c.ticketNo()) || blank(c.providerIdem()) || c.purpose()==null || blank(c.currency())

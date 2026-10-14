@@ -19,7 +19,7 @@ public interface PayFundsOperations {
     enum Path { DIRECT, AGGREGATED }
     enum Operation { SUBSIDY, INTERNAL_REPLENISHMENT, TRANSFER, COLLECTION, EXPIRY_INCOME }
     enum Status { SUCCEEDED, REJECTED, UNKNOWN }
-    record Context(Path path,String channel,String merchantNo,String accountVersion,String subMerchantId,
+    record Context(Path path,String channel,String merchantNo,String storeNo,String accountVersion,String subMerchantId,
                    String tradeNo,String outTradeNo,long orderTotalMinor) { }
     record Capabilities(Set<Operation> executable,Set<Operation> queryable) {
         public Capabilities { executable=Set.copyOf(executable); queryable=Set.copyOf(queryable); }

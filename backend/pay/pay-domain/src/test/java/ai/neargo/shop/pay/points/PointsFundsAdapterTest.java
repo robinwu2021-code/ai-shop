@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.List;
+import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -171,6 +172,22 @@ class PointsFundsAdapterTest {
         assertThat(result.evidenceNo()).isNull();
     }
 
+    @Test
+    void funds_context_preserves_store_dimension() {
+        assertThat(Arrays.stream(FundsContext.class.getRecordComponents()).map(c -> c.getName()).toList())
+                .contains("storeNo");
+        assertThat(Arrays.stream(PayFundsOperations.Context.class.getRecordComponents()).map(c -> c.getName()).toList())
+                .contains("storeNo");
+    }
+    @Test
+    void per_order_purpose_matches_money_path() {
+        try {
+            var method=FundsPurpose.class.getMethod("forPerOrder",FundsPath.class);
+            assertThat(method.invoke(null,FundsPath.DIRECT)).isEqualTo(FundsPurpose.SUBSIDY);
+            assertThat(method.invoke(null,FundsPath.AGGREGATED)).isEqualTo(FundsPurpose.INTERNAL_REPLENISHMENT);
+        } catch (ReflectiveOperationException e) { throw new AssertionError("Explicit per-order funds routing missing",e); }
+    }
+
     private NativeFixture nativeFixture() {
         var router=mock(PayGatewayRouter.class);
         var master=mock(PayChannelMasterService.class);
@@ -187,7 +204,7 @@ class PointsFundsAdapterTest {
     }
     private Request nativeRequest() {
         return new Request("TICKET","IDEM",Operation.SUBSIDY,new PayFundsOperations.Context(
-                PayFundsOperations.Path.AGGREGATED,"TEST","M","A1","SM","TRADE","ORDER",100),"CNY",30);
+                PayFundsOperations.Path.DIRECT,"TEST","M","STORE","A1","SM","TRADE","ORDER",100),"CNY",30);
     }
     private Receipt receipt(Status status,String evidence) {
         return new Receipt("IDEM",status,"CNY",30,evidence,"TEST_REASON");
@@ -204,7 +221,7 @@ class PointsFundsAdapterTest {
         }
     }
     private FundsContext context() {
-        return new FundsContext(FundsPath.AGGREGATED,"TEST","M","A1","SM","TRADE","ORDER",100);
+        return new FundsContext(FundsPath.DIRECT,"TEST","M","STORE","A1","SM","TRADE","ORDER",100);
     }
     private FundsCommand command() {
         return new FundsCommand("TICKET","IDEM",FundsPurpose.SUBSIDY,context(),"CNY",30);

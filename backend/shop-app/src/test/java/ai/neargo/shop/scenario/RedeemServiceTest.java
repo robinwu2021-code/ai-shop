@@ -202,7 +202,7 @@ class RedeemServiceTest {
                 .digest(text.getBytes(StandardCharsets.UTF_8)));
         agreements.sign(new AgreementService.SignCommand(type,"M"+type,"ST"+type,"v1",hash,"PER_ORDER",
                 new PointsFundsGateway.FundsContext(PointsFundsGateway.FundsPath.DIRECT,"TEST","M"+type,
-                        "A1",null,null,null,0)),"OWNER");
+                        "ST"+type,"A1",null,null,null,0)),"OWNER");
         return type;
     }
     private void fund(String type,String kind,PoolRequest.Action action) {

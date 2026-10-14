@@ -165,13 +165,13 @@ public class RedeemServiceImpl implements RedeemService {
                     reason="POINTS_FUNDS_CONTEXT_CHANGED"; break;
                 }
                 FundsContext context=new FundsContext(FundsPath.valueOf(agreement.path()),agreement.channel(),
-                        agreement.merchantNo(),agreement.accountVersion(),target.subMerchantId(),target.tradeNo(),
+                        agreement.merchantNo(),agreement.storeNo(),agreement.accountVersion(),target.subMerchantId(),target.tradeNo(),
                         target.subOrderNo(),target.goodsMinor());
                 var funds=gateway.getIfAvailable();
                 if (funds==null) { reason="POINTS_CAPABILITY_UNSUPPORTED"; break; }
                 var cap=funds.capabilities(context);
                 boolean supported="PERIODIC".equals(agreement.settleMode())?cap.transfer():
-                        context.path()==FundsPath.DIRECT?cap.internalReplenishment():cap.subsidy();
+                        context.path()==FundsPath.DIRECT?cap.subsidy():cap.internalReplenishment();
                 if (!supported) { reason="POINTS_CAPABILITY_UNSUPPORTED"; break; }
                 accepted.add(new Accepted(target,agreement,context));
             }
