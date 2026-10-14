@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **194** 张表、**306** 条引用关系，分 **16** 个域。
+全库 **198** 张表、**310** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -14,7 +14,7 @@
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
 | 消费者账号 | `usr_*` | 10 | 14 |
-| 商家主体与门店 | `mch_*` | 29 | 13 |
+| 商家主体与门店 | `mch_*` | 31 | 13 |
 | 社区与自提点 | `cmt_*` | 3 | 7 |
 | 商品与类目 | `prd_*` | 27 | 8 |
 | 购物车 | `trd_*` | 2 | 0 |
@@ -28,7 +28,7 @@
 | 内容 | `cnt_*` | 4 | 0 |
 | 会员 | `mbr_*` | 10 | 1 |
 | 券与活动 | `pmt_*` | 12 | 3 |
-| 系统 | `sys_*` | 26 | 0 |
+| 系统 | `sys_*` | 27 | 0 |
 
 > `usr` 被 14 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
@@ -53,7 +53,7 @@
 
 **跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`、`usr_store_view.store_no` → `mch_store`、`usr_store_view.entity_no` → `mch_entity`
 
-### 商家主体与门店 `mch_*`（29 张）
+### 商家主体与门店 `mch_*`（31 张）
 
 ![商家主体与门店表关系](../diagrams/db-mch.svg)
 
@@ -88,6 +88,8 @@
 | `mch_store_qrcode_print` | 店铺码印刷量登记台账（线下事实，运营录入） |
 | `mch_payout_account` | 供应商收款账户（自营付款用，账号密文存储） |
 | `mch_notify_pref` | 门店自己的通知开关（缺行=开） |
+| `mch_notify_recipient` | 门店的通知收件地址（短信 / 邮件 / 企微群） |
+| `mch_service_area_cell` | 多边形范围的 S2 网格派生表（可由 mch_service_area.geometry 重建） |
 
 **跨域引用**：`mch_entity_apply.user_no` → `usr_account`、`mch_entity_community.community_no` → `cmt_community`、`mch_account.user_no` → `usr_account`、`mch_store_category.category_no` → `prd_category`、`mch_channel_pickup.pickup_no` → `cmt_pickup_point`、`mch_session.user_no` → `usr_account`、`mch_login_log.user_no` → `usr_account`
 
@@ -312,7 +314,7 @@
 
 **跨域引用**：`pmt_coupon.coupon_no` → `mkt_coupon`、`pmt_coupon.entity_no` → `mch_entity`、`pmt_coupon_scope.coupon_no` → `mkt_coupon`、`pmt_user_coupon.coupon_no` → `mkt_coupon`、`pmt_user_coupon.user_no` → `usr_account`、`pmt_user_coupon.entity_no` → `mch_entity`、`pmt_user_coupon.order_no` → `ord_order`、`pmt_coupon_issue.coupon_no` → `mkt_coupon`、`pmt_coupon_issue.entity_no` → `mch_entity`、`pmt_coupon_issue.segment_no` → `mbr_segment`、`pmt_apply.user_no` → `usr_account`、`pmt_apply.entity_no` → `mch_entity`、`pmt_apply.store_no` → `mch_store`、`pmt_apply.order_no` → `ord_order`、`pmt_apply.sub_order_no` → `ord_sub_order`、`pmt_activity.entity_no` → `mch_entity`、`pmt_activity.store_no` → `mch_store`、`pmt_activity_audience.entity_no` → `mch_entity`、`pmt_activity_goods.entity_no` → `mch_entity`、`pmt_period.entity_no` → `mch_entity`、`pmt_enrollment.entity_no` → `mch_entity`、`pmt_enrollment_goods.goods_no` → `prd_goods`
 
-### 系统 `sys_*`（26 张）
+### 系统 `sys_*`（27 张）
 
 ![系统表关系](../diagrams/db-sys.svg)
 
@@ -344,6 +346,7 @@
 | `sys_market` | 市场主数据。归 pay —— 币种与账期口径是资金域的知识 |
 | `sys_pay_channel_market` | 通道在哪些市场可用。无行=不限市场 |
 | `sys_banned_word` | 平台禁售词：商品标题提审前置校验 |
+| `sys_sequence` | 号段序列表（ADR-035）：订单号等自增序列的 DB 游标 |
 
 **跨域引用**：`sys_idempotent.user_no` → `usr_account`、`sys_ops_staff.merchant_no` → `mch_entity`、`sys_ops_staff.community_no` → `cmt_community`、`sys_ops_staff.pickup_no` → `cmt_pickup_point`、`sys_role.entity_no` → `mch_entity`、`sys_role_point.entity_no` → `mch_entity`、`sys_media_asset.entity_no` → `mch_entity`、`sys_media_asset.store_no` → `mch_store`
 

@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  *
  * <p>会绊人的地方：误引一个 starter 之后**什么都不会报错** ——
  * 编译过、测试绿、跑起来也正常。只有等到把这个模块嵌进一个没有 MyBatis 的服务
- * （比如 shop-job）时才会发现它把整套平台持久层带了过去，
+ * （比如 job-worker）时才会发现它把整套平台持久层带了过去，
  * 而那时候已经很难说清是哪一次提交引进来的。
  *
  * <p>用 {@code Class.forName} 而不是解析依赖树：它检的是**真实 classpath**，

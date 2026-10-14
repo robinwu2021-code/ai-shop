@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 里按表名取出需要的那几段。
  *
  * <p>建表语句不在本模块而在 shop-app，是因为这六张表住在**平台库**里 ——
- * 与 shop-job 那种独立库不同，那边的迁移才归模块自己。
+ * 与 job-worker 那种独立库不同，那边的迁移才归模块自己。
  */
 public final class AuthStoreTestSupport {
 

@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
  *       PAY:      http://127.0.0.1:8083
  * </pre>
  *
- * <p>延续 {@code shop-job} 已有的 {@code targets} 写法（它跑了一段时间，
+ * <p>延续 {@code job-worker} 已有的 {@code targets} 写法（它跑了一段时间，
  * 形状被验证过），只是把它从 worker 里提上来，让三个进程共用一份。
  *
  * <p><b>多机时把值里的 IP 换成域名即可</b>，这个类不需要改：
