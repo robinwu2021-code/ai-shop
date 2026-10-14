@@ -114,6 +114,9 @@ public interface PaymentLedgerService {
      */
     java.util.Optional<RefundTicket> refundTicket(String refundPaymentNo);
 
+    /** Commit the single send attempt before contacting the channel. False means query the original intent. */
+    boolean claimRefundDispatch(String refundPaymentNo);
+
     /**
      * 这个订单**付成功的那一笔**收款流水，给微信发货信息录入定位微信那笔单用。
      *

@@ -48,6 +48,7 @@ class RefundExecutionTest {
         executions.prepare(f.as(),plan);
         String payment="P:"+f.as();
         cash(payment,f,30,"PENDING");
+        executions.beginCash(f.as());
         executions.bindCash(f.as(),payment,30);
         assertThatThrownBy(() -> executions.confirmCash(f.as())).hasMessage("REFUND_CASH_NOT_CONFIRMED");
         assertThatThrownBy(() -> executions.commit(f.as())).hasMessage("REFUND_EXECUTION_NOT_CONFIRMED");
@@ -71,6 +72,7 @@ class RefundExecutionTest {
         String second=afterSale(f.sub(),60);
         executions.prepare(second,plan);
         cash("P:"+second,new Fixture(f.sub(),second,f.item()),60,"PENDING");
+        executions.beginCash(second);
         executions.bindCash(second,"P:"+second,60);
         assertThatThrownBy(() -> executions.release(second)).hasMessage("REFUND_EXECUTION_RELEASE_UNSAFE");
         assertThat(refunded(f.sub())).isZero();
@@ -81,6 +83,7 @@ class RefundExecutionTest {
         assertThat(legacy.addItemRefund(f.item(),1,50)).isZero();
         assertThat(legacy.addSubRefund(f.sub(),60)).isZero();
         cash("P:"+f.as(),f,60,"PENDING");
+        executions.beginCash(f.as());
         executions.bindCash(f.as(),"P:"+f.as(),60);
         jdbc.update("UPDATE stl_payment SET status='SUCCESS',refund_verified_at=1,refund_verified_minor=60,"
                 + "refund_verified_provider_no=? WHERE payment_no=?","PROOF:"+f.as(),"P:"+f.as());
@@ -122,6 +125,7 @@ class RefundExecutionTest {
             cash("P:"+as,new Fixture(f.sub(),as,f.item()),amount,"PENDING");
             jdbc.update("UPDATE stl_payment SET currency='KWD',status='SUCCESS',refund_verified_at=1,"
                     + "refund_verified_minor=?,refund_verified_provider_no=? WHERE payment_no=?",amount,"V:"+as,"P:"+as);
+            executions.beginCash(as);
             executions.bindCash(as,"P:"+as,amount);
             executions.confirmCash(as); executions.commit(as);
         }
@@ -134,6 +138,7 @@ class RefundExecutionTest {
         var f=fixture();
         executions.prepare(f.as(),new RefundPlan(f.sub(),List.of(new RefundLine(f.item(),1,50)),10));
         cash("P:"+f.as(),f,60,"PENDING");
+        executions.beginCash(f.as());
         executions.bindCash(f.as(),"P:"+f.as(),60);
         jdbc.update("UPDATE stl_payment SET status='SUCCESS',refund_verified_at=1,refund_verified_minor=60,"
                 + "refund_verified_provider_no=? WHERE payment_no=?","V:"+f.as(),"P:"+f.as());
@@ -145,6 +150,37 @@ class RefundExecutionTest {
         assertThat(jdbc.queryForObject("SELECT refunded_minor FROM ord_item WHERE id=?",Long.class,f.item())).isZero();
         assertThat(jdbc.queryForObject("SELECT state FROM ord_refund_execution WHERE after_sale_no=?",
                 String.class,f.as())).isEqualTo("CASH_CONFIRMED");
+    }
+
+    @Test void cash_opening_fences_release_before_a_payment_number_exists() {
+        var f=fixture();
+        executions.prepare(f.as(),new RefundPlan(f.sub(),List.of(new RefundLine(f.item(),1,50)),10));
+        var intent=executions.beginCash(f.as());
+        assertThat(executions.beginCash(f.as())).isEqualTo(intent);
+        assertThat(intent.netCashMinor()).isEqualTo(60);
+        assertThatThrownBy(() -> executions.release(f.as())).hasMessage("REFUND_EXECUTION_RELEASE_UNSAFE");
+        assertThat(refunded(f.sub())).isZero();
+    }
+
+    @Test void points_order_cannot_open_cash_without_points_decision_confirmation() {
+        var f=fixture();
+        executions.prepare(f.as(),new RefundPlan(f.sub(),List.of(new RefundLine(f.item(),1,50)),10));
+        jdbc.update("UPDATE ord_sub_order SET points_deduct=10 WHERE sub_order_no=?",f.sub());
+        assertThatThrownBy(() -> executions.beginCash(f.as()))
+                .hasMessage("REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+        executions.release(f.as());
+    }
+
+    @Test void cash_binding_rejects_a_foreign_after_sale_intent_before_sending() {
+        var f=fixture();
+        executions.prepare(f.as(),new RefundPlan(f.sub(),List.of(new RefundLine(f.item(),1,50)),10));
+        executions.beginCash(f.as());
+        String other=afterSale(f.sub(),60);
+        cash("P:"+other,new Fixture(f.sub(),other,f.item()),60,"PENDING");
+        assertThatThrownBy(() -> executions.bindCash(f.as(),"P:"+other,60))
+                .hasMessage("REFUND_CASH_EVIDENCE_MISMATCH");
+        assertThat(jdbc.queryForObject("SELECT state FROM ord_refund_execution WHERE after_sale_no=?",
+                String.class,f.as())).isEqualTo("CASH_OPENING");
     }
 
     private Fixture fixture() {

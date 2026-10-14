@@ -1070,6 +1070,7 @@ CREATE TABLE IF NOT EXISTS stl_payment
     refund_verified_minor BIGINT DEFAULT NULL,
     refund_verified_provider_no VARCHAR(128) DEFAULT NULL,
     refund_verified_at BIGINT DEFAULT NULL,
+    refund_dispatch_at BIGINT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),
     CONSTRAINT uk_stl_payment_trade UNIQUE (pay_channel,trade_no),

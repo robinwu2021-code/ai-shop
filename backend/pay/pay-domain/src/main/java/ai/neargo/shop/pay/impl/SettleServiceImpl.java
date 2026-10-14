@@ -605,6 +605,31 @@ public class SettleServiceImpl implements SettleService {
         return refundNo;
     }
 
+    @Override
+    public String prepareRefund(String subOrderNo, String afterSaleNo, long amountMinor, String reason) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("PAY_REFUND_PREPARE_IN_TRANSACTION");
+        }
+        StlBill bill = DataScopeContext.executeWithoutScope(() -> billMapper.selectOne(
+                Wrappers.<StlBill>lambdaQuery().eq(StlBill::getSubOrderNo, subOrderNo).last("LIMIT 1")));
+        if (bill == null) {
+            throw new IllegalArgumentException("PAY_REFUND_BILL_UNKNOWN");
+        }
+        String no = paymentLedger.refund(bill.getOrderNo(), subOrderNo, afterSaleNo, amountMinor, reason);
+        if (no == null) {
+            throw new IllegalArgumentException("PAY_REFUND_ORIGINAL_PAYMENT_UNKNOWN");
+        }
+        return no;
+    }
+
+    @Override
+    public void dispatchRefund(String paymentNo) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("PAY_REFUND_DISPATCH_IN_TRANSACTION");
+        }
+        sendRefundToChannel(paymentNo);
+    }
+
     /**
      * <b>把退款真的发给通道。</b>
      *
@@ -627,6 +652,9 @@ public class SettleServiceImpl implements SettleService {
      * 回滚掉之后，一笔可能已经发到通道的退款在我方一点痕迹都没有。
      */
     private void sendRefundToChannel(String refundNo) {
+        if (!paymentLedger.claimRefundDispatch(refundNo)) {
+            return;
+        }
         var ticket = paymentLedger.refundTicket(refundNo);
         if (ticket.isEmpty()) {
             paymentLedger.markRefundSent(refundNo, false, false, null,
@@ -649,9 +677,13 @@ public class SettleServiceImpl implements SettleService {
          */
         var ctx = new ai.neargo.shop.pay.channel.PayGateway.TxContext(
                 null, t.originTradeNo(), t.originOutTradeNo(), t.originTotalMinor());
-        var r = channel.refund(ctx, t.amountMinor(), t.outRefundNo(), t.reason());
-        paymentLedger.markRefundSent(refundNo, r.success(), r.retryable(),
-                r.providerNo(), r.message());
+        try {
+            var r = channel.refund(ctx, t.amountMinor(), t.outRefundNo(), t.reason());
+            paymentLedger.markRefundSent(refundNo, r.success(), r.retryable(), r.providerNo(), r.message());
+        } catch (RuntimeException e) {
+            paymentLedger.markRefundSent(refundNo, false, true, null, "退款发送结果未知，等待原单回查");
+            log.warn("[settle] 退款结果未知 paymentNo={} exception={}", refundNo, e.getClass().getSimpleName());
+        }
     }
 
     /**

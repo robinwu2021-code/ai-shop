@@ -175,6 +175,12 @@ public interface SettleService {
     /** 同上，幂等键 = 售后单号（一张售后单一笔退款）。 */
     String refund(String subOrderNo, String afterSaleNo, long amountMinor, String reason);
 
+    /** Persist the cash intent without sending. Bind it to source preparation before dispatch. */
+    String prepareRefund(String subOrderNo, String afterSaleNo, long amountMinor, String reason);
+
+    /** Dispatch a committed intent outside any transaction, at most once; unknown results require reconciliation. */
+    void dispatchRefund(String paymentNo);
+
     /**
      * @param storeNos 门店作用域。<b>空集合不等于不过滤</b> —— 与订单侧同一个越权陷阱；
      *                 单店主体一律不收窄（存量流水没有 store_no，一筛就全没了）

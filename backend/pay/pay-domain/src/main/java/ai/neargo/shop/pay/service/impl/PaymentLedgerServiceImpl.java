@@ -109,35 +109,21 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Transactional("payTxManager")
     public String refund(String orderNo, String subOrderNo, String afterSaleNo,
                          long amountMinor, String reason) {
-        /*
-         * **幂等按售后单号。**重试是常态 —— 分账回退失败会让整笔退款停在
-         * REFUNDING 等续跑任务再来一次。不幂等的话每重试一次多一行退款流水，
-         * 而对账会把它们当成「多退了几笔」。
-         */
-        StlPayment exist = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
-                Wrappers.<StlPayment>lambdaQuery()
-                        .eq(StlPayment::getDirection, StlPayment.REFUND)
-                        .eq(StlPayment::getAfterSaleNo, afterSaleNo)
-                        .last("LIMIT 1")));
-        if (exist != null) {
-            return exist.getPaymentNo();
+        if (amountMinor <= 0 || afterSaleNo == null || afterSaleNo.isBlank()) {
+            throw new IllegalArgumentException("PAY_REFUND_INPUT_INVALID");
         }
-
-        /*
-         * **挂在原收款上。**没有原收款就退不了 —— 那说明这笔单的钱从没收到过，
-         * 而给一笔没收到钱的单退款是真通道一定会拒的。
-         * 返回 null 让调用方知道，而不是落一行无主的退款流水。
-         */
-        StlPayment origin = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
-                Wrappers.<StlPayment>lambdaQuery()
-                        .eq(StlPayment::getDirection, StlPayment.PAY)
-                        .eq(StlPayment::getOrderNo, orderNo)
-                        .eq(StlPayment::getStatus, StlPayment.SUCCESS)
-                        .orderByDesc(StlPayment::getId).last("LIMIT 1")));
+        StlPayment origin = DataScopeContext.executeWithoutScope(() -> paymentMapper.lockPaidForRefund(orderNo));
         if (origin == null) {
-            log.warn("[payment-ledger] 订单 {} 没有成功的收款流水，退款无从挂靠（售后 {}）",
-                    orderNo, afterSaleNo);
             return null;
+        }
+        StlPayment exist = DataScopeContext.executeWithoutScope(
+                () -> paymentMapper.lockRefundByAfterSale(afterSaleNo));
+        if (exist != null) {
+            if (!orderNo.equals(exist.getOrderNo()) || !subOrderNo.equals(exist.getSubOrderNo())
+                    || exist.getAmountMinor() == null || exist.getAmountMinor() != amountMinor) {
+                throw new IllegalArgumentException("PAY_REFUND_INPUT_CONFLICT");
+            }
+            return exist.getPaymentNo();
         }
 
         // 商户单号 = 原单号-R序号。客服按前缀能把一笔单的收与退一次找全
@@ -172,6 +158,24 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     }
 
     @Override
+    @Transactional("payTxManager")
+    public boolean claimRefundDispatch(String refundPaymentNo) {
+        StlPayment refund = DataScopeContext.executeWithoutScope(
+                () -> paymentMapper.lockRefundEvidence(refundPaymentNo));
+        if (refund == null) {
+            throw new IllegalArgumentException("PAY_REFUND_UNKNOWN");
+        }
+        if (!StlPayment.PENDING.equals(refund.getStatus()) || refund.getRefundDispatchAt() != null) {
+            return false;
+        }
+        StlPayment patch = new StlPayment();
+        patch.setId(refund.getId());
+        patch.setRefundDispatchAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+        return true;
+    }
+
+    @Override
     public java.util.Optional<RefundTicket> refundTicket(String refundPaymentNo) {
         StlPayment r = byPaymentNo(refundPaymentNo);
         if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
@@ -202,9 +206,9 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Transactional("payTxManager")
     public void markRefundSent(String refundPaymentNo, boolean accepted, boolean retryable,
                                String providerNo, String reason) {
-        StlPayment r = byPaymentNo(refundPaymentNo);
-        if (r == null) {
-            log.warn("[payment-ledger] 回填退款结果时找不到流水 {}", refundPaymentNo);
+        StlPayment r = DataScopeContext.executeWithoutScope(
+                () -> paymentMapper.lockRefundEvidence(refundPaymentNo));
+        if (r == null || !StlPayment.PENDING.equals(r.getStatus())) {
             return;
         }
         StlPayment patch = new StlPayment();
@@ -305,7 +309,9 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     @Transactional("payTxManager")
     public String settleRefundByOutTradeNo(String outRefundNo,String providerNo,long verifiedMinor) {
-        StlPayment r = byOutTradeNo(outRefundNo);
+        StlPayment r = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getDirection, StlPayment.REFUND)
+                        .eq(StlPayment::getOutTradeNo, outRefundNo).last("LIMIT 1")));
         if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
             /*
              * **认领不了就说认领不了。** 通道回传了一个我方没发出去过的退款号，

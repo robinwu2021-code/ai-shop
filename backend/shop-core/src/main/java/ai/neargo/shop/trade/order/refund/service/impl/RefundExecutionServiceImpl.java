@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.order.refund.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.SettlePort.RefundEvidence;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.order.mapper.RefundExecutionMapper;
@@ -64,6 +65,22 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             return preparation(store.execution(as));
         });
     }
+    @Override public CashIntent beginCash(String as) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var head=locked(as);
+            require(List.of("PREPARED","CASH_OPENING","CASH_PENDING","CASH_CONFIRMED","COMMITTED")
+                    .contains(head.get("state")),"REFUND_EXECUTION_PHASE_CONFLICT");
+            var saved=snapshot(head);
+            if ("PREPARED".equals(head.get("state"))) {
+                var sub=store.lockSub(saved.plan().subOrderNo());
+                require(nz(sub.getPointsDeduct())==0 && nz(sub.getPointsDeductMinor())==0
+                        && !Boolean.TRUE.equals(sub.getPointsGranted()),
+                        "REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+                change(head,"CASH_OPENING",null,saved.plan().totalMinor(),null);
+            }
+            return new CashIntent(as,saved.plan().subOrderNo(),saved.plan().totalMinor());
+        });
+    }
     @Override public void bindCash(String as,String payment,long net) {
         DataScopeContext.executeWithoutScope(() -> {
             var head=locked(as);
@@ -75,7 +92,8 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
                         "REFUND_EXECUTION_CASH_CONFLICT");
                 return null;
             }
-            require("PREPARED".equals(head.get("state")),"REFUND_EXECUTION_PHASE_CONFLICT");
+            require("CASH_OPENING".equals(head.get("state")),"REFUND_EXECUTION_PHASE_CONFLICT");
+            matchingIntent(head,settle.refundEvidence(payment),net);
             change(head,"CASH_PENDING",payment,net,null);
             return null;
         });
@@ -159,11 +177,17 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
         var proof=settle.refundEvidence((String)head.get("cash_payment_no"));
         require(proof!=null && "SUCCESS".equals(proof.status()) && proof.verifiedAt()!=null
                 && proof.verifiedMinor()!=null && proof.providerNo()!=null,"REFUND_CASH_NOT_CONFIRMED");
+        long net=number(head,"net_cash_minor");
+        matchingIntent(head,proof,net);
+        require(proof.verifiedMinor()==net,"REFUND_CASH_EVIDENCE_MISMATCH");
+    }
+    private void matchingIntent(Map<String,Object> head,RefundEvidence proof,long net) {
         var original=snapshot(head);
-        require("REFUND".equals(proof.direction()) && original.afterSaleNo().equals(proof.afterSaleNo())
+        require(proof!=null && "REFUND".equals(proof.direction())
+                && original.afterSaleNo().equals(proof.afterSaleNo())
                 && original.plan().subOrderNo().equals(proof.subOrderNo()) && original.userNo().equals(proof.userNo())
-                && original.currency().equals(proof.currency()) && proof.amountMinor()==number(head,"net_cash_minor")
-                && proof.verifiedMinor()==number(head,"net_cash_minor"),"REFUND_CASH_EVIDENCE_MISMATCH");
+                && original.currency().equals(proof.currency()) && proof.amountMinor()==net,
+                "REFUND_CASH_EVIDENCE_MISMATCH");
     }
     private Map<String,Object> locked(String as) {
         var initial=store.execution(as);

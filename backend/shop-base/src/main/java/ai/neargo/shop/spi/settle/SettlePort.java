@@ -174,6 +174,12 @@ public interface SettlePort {
      */
     String refund(String subOrderNo, String afterSaleNo, long amountMinor, String reason);
 
+    /** Persist the cash intent without sending. Bind it to source preparation before dispatch. */
+    String prepareRefund(String subOrderNo, String afterSaleNo, long amountMinor, String reason);
+
+    /** Dispatch a committed intent outside any transaction, at most once; unknown results require reconciliation. */
+    void dispatchRefund(String paymentNo);
+
     /**
      * <b>退款确认到账</b>：把退款流水推到终态。由退款回调与对账回查共同驱动。
      *

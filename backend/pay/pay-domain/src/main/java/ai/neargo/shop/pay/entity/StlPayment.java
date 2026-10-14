@@ -98,6 +98,9 @@ public class StlPayment extends BaseEntity {
 
     private Long succeededAt;
 
+    /** Durable single send attempt. A lost response must be resolved using the original refund number. */
+    private Long refundDispatchAt;
+
     /** Actual refund amount verified by a trusted channel query, distinct from the requested amount. */
     private Long refundVerifiedMinor;
 

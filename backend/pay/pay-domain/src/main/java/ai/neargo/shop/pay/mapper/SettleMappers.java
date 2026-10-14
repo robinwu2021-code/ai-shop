@@ -84,6 +84,16 @@ public final class SettleMappers {
         /** Trusted pay confirmation serializes verification and immutable receipt replay. */
         @Select("SELECT * FROM stl_payment WHERE payment_no=#{no} AND direction='REFUND' AND deleted=0 FOR UPDATE")
         StlPayment lockRefundEvidence(String no);
+
+        /** Serialize cash intents of one original payment, including retry number allocation. */
+        @Select("SELECT * FROM stl_payment WHERE order_no=#{orderNo} AND direction='PAY'"
+                + " AND status='SUCCESS' AND deleted=0 ORDER BY id DESC LIMIT 1 FOR UPDATE")
+        StlPayment lockPaidForRefund(String orderNo);
+
+        /** Current read after waiting for the original payment lock. */
+        @Select("SELECT * FROM stl_payment WHERE after_sale_no=#{afterSaleNo} AND direction='REFUND'"
+                + " AND deleted=0 LIMIT 1 FOR UPDATE")
+        StlPayment lockRefundByAfterSale(String afterSaleNo);
     }
 
     public interface PointsPoolMapper extends BaseMapper<StlPointsPool> {
