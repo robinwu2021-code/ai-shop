@@ -39971,6 +39971,14 @@
       "module": "shop-core"
     },
     {
+      "host": "AfterSaleSlots",
+      "name": "RELEASING",
+      "type": "Set<String>",
+      "value": "Set.of(OrdAfterSale.CLOSED, OrdAfterSale.REJECTED, OrdAfterSale.REFUNDED)",
+      "zh": "进了这些状态，这张售后就不再占着订单（与 activeOf 的口径一致）",
+      "module": "shop-core"
+    },
+    {
       "host": "ContractOrderStatus",
       "name": "ALL",
       "type": "Set<String>",
