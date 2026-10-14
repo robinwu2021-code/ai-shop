@@ -82,6 +82,9 @@ class OpsFinanceGovernFlowTest {
     @Autowired
     private PaymentMapper paymentMapper;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers
@@ -186,6 +189,9 @@ class OpsFinanceGovernFlowTest {
         String settleNo = billOf(biz, o.subOrderNo()).get("settleNo").asString();
         settleService.executeSplit(settleNo);
 
+        // 商家同意只属于「直连」商家：新入驻默认归集（平台是卖家），售后进平台裁决，商家同意不了（步 5.6 起由状态机挡）
+        jdbc.update("update mch_entity set funds_mode = 'DIRECT' where entity_no = "
+                + "(select entity_no from ord_sub_order where sub_order_no = ?)", o.subOrderNo());
         // 退货退款 + 商家同意：2026-10-14 起是独立状态 WAIT_RETURN（此前也叫 REFUNDING，只能靠「没有责任方」区分）
         String asNo = applyAfterSale(o, "RETURN_REFUND", "尺码不对");
         mvc().perform(post("/biz/after-sale/" + asNo + "/approve")

@@ -449,6 +449,8 @@ class M7SettleFlowTest {
     void refundReversesSplitFirst() throws Exception {
         String token = login("12800128030");
         buyAndPay(token, "G0002", "SK0003", null, "m7-refund");
+        // 商家同意 → 退款这条链只属于「直连」商家；归集（平台是卖家）的售后进平台裁决，商家同意不了（步 5.6 起由状态机挡）
+        makeMerchantDirect("M0001");
         String biz = loginAsOwnerOf("M0001", "12800128031");
         String settleNo = firstBill(biz).get("settleNo").asString();
         settleService.executeSplit(settleNo);
@@ -470,6 +472,8 @@ class M7SettleFlowTest {
     void refundBeforeSplitNeedsNoReversal() throws Exception {
         String token = login("12800128032");
         buyAndPay(token, "G0002", "SK0003", null, "m7-refund-early");
+        // 商家同意 → 退款这条链只属于「直连」商家；归集（平台是卖家）的售后进平台裁决，商家同意不了（步 5.6 起由状态机挡）
+        makeMerchantDirect("M0001");
         String biz = loginAsOwnerOf("M0001", "12800128033");
         String settleNo = firstBill(biz).get("settleNo").asString();
 
@@ -536,6 +540,16 @@ class M7SettleFlowTest {
         String body = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("records").get(0).get("orderNo").asString();
+    }
+
+    private void makeMerchantDirect(String merchantNo) {
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            MchEntity m = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                    .eq(MchEntity::getEntityNo, merchantNo).last("limit 1"));
+            m.setFundsMode(ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_DIRECT);
+            merchantMapper.updateById(m);
+            return null;
+        });
     }
 
     private String applyAfterSale(String token, String subOrderNo) throws Exception {

@@ -98,6 +98,48 @@ class LineRefundFlowTest {
         assertThat(jdbc.queryForObject("select count(*) from ord_after_sale where sub_order_no = ?", Integer.class, sub)).isZero();
     }
 
+    @Test
+    @DisplayName("★★★ 5.6 商家同意与驳回同时到达：恰一方成功，状态与退款流水一致（不会退了钱又显示已驳回）")
+    void approveAndRejectRace() throws Exception {
+        String token = TestLogin.consumer(mvc(), json, otpStore, "13400155004");
+        String sub = buy(token, 1, "line-race");
+        String asNo = apply(token, sub, "{\"type\":\"REFUND_ONLY\",\"reason\":\"不想要了\",\"reasonCode\":\"NOT_WANTED\"}")
+                .get("data").get("afterSaleNo").asString();
+        String merchant = entityOf(sub);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.Callable<Boolean> approve = () -> {
+            start.await();
+            try {
+                afterSales.approve(merchant, asNo, null, null, null);
+                return true;
+            } catch (RuntimeException e) {
+                return false;
+            }
+        };
+        java.util.concurrent.Callable<Boolean> reject = () -> {
+            start.await();
+            try {
+                afterSales.reject(merchant, asNo, "不符合");
+                return true;
+            } catch (RuntimeException e) {
+                return false;
+            }
+        };
+        var a = pool.submit(approve);
+        var r = pool.submit(reject);
+        start.countDown();
+        boolean approved = a.get();
+        boolean rejected = r.get();
+        pool.shutdown();
+        assertThat(approved ^ rejected).as("必须恰一方成功").isTrue();
+        String status = jdbc.queryForObject("select status from ord_after_sale where after_sale_no = ?", String.class, asNo);
+        int refunds = jdbc.queryForObject("select count(*) from stl_payment where after_sale_no = ? and direction = 'REFUND'",
+                Integer.class, asNo);
+        assertThat(status).isEqualTo(approved ? "REFUNDED" : "REJECTED");
+        assertThat(refunds).isEqualTo(approved ? 1 : 0);
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private JsonNode apply(String token, String sub, String body) throws Exception {
@@ -117,8 +159,9 @@ class LineRefundFlowTest {
         return col(sub, "entity_no");
     }
 
-    /** 买 qty 件同一个 SKU、自提、付款，返回子单号 */
+    /** 买 qty 件同一个 SKU、自提、付款，返回子单号。商家设为直连：售后由商家审（归集的进平台裁决） */
     private String buy(String token, int qty, String key) throws Exception {
+        jdbc.update("update mch_entity set funds_mode = 'DIRECT' where entity_no = 'M0001'");
         mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":%d}".formatted(qty)))

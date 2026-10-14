@@ -1,6 +1,11 @@
 package ai.neargo.shop.trade.order.transition;
 
 import ai.neargo.shop.common.BaseEntity;
+import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleContext;
+import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleEvent;
+import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleMachine;
+import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleStatus;
+import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
@@ -66,6 +71,17 @@ public class TradeStatusWriter {
                     () -> casMapper.markOrderCompleted(sub.getSubOrderNo(), now));
             sub.setCompletedAt(now);
         }
+        return f;
+    }
+
+    /** 售后单迁移（步 5.6）。流水锚在子单号上（进订单时间线），取代手写的 setStatus + appendLog */
+    public Fired<AfterSaleStatus, AfterSaleEvent> afterSale(OrdAfterSale as, AfterSaleEvent event, Actor actor,
+                                                            String operatorNo, String reason, AfterSaleContext ctx) {
+        Fired<AfterSaleStatus, AfterSaleEvent> f = gate.apply(AfterSaleMachine.MACHINE, AfterSaleStatus.class,
+                new Command<>(Aggregate.AFTER_SALE, as.getAfterSaleNo(), as.getSubOrderNo(), event, actor,
+                        operatorNo, reason, ctx));
+        sync(as, f.changed());
+        as.setStatus(f.to().name());
         return f;
     }
 

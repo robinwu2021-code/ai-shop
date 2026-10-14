@@ -111,6 +111,14 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 | AC32 | 退货按本张售后的行 × 件数回补库存（此前整单补） | `AfterSaleServiceImpl#restoreStockIfReturned(as, plan)` |
 | AC33 | 渠道不支持部分退（线下 / 0 元）→ 20013 | `RefundPlan#isPartial` + `ChannelRefundCapability` |
 
+### 5.6 售后写路径经门
+
+| AC | 需求 | 落点 |
+|---|---|---|
+| AC34 | 售后状态写入全部经转换门（CAS + 一行流水），取代 `setStatus + updateById + appendLog`：撤销 / 寄回 / 介入 / 同意（三种去向）/ 驳回 / 进退款中 / 退款落定 / 裁决 / 寄回超时关闭 | `TradeStatusWriter#afterSale` + `AfterSaleServiceImpl#transit`（同一动作的其余字段随后 `updateById` 并校验返回值，R5） |
+| AC35 | 系统退款（交易不成立）建单即「退款中」（A3 TRADE_VOID），不再先建 APPLIED 再走「同意」（同意是商家的决定，I1） | `AfterSaleServiceImpl#systemRefund` |
+| AC36 | 归集商家（平台是卖家）的售后在「平台介入」，商家在 B 端「同意」被拒（旧写法放行，等于绕过平台裁决） | 状态机 A4 只从 APPLIED 出发 |
+
 5.5 剩余（下一段）：`GET /mp/order/{no}/refundable`、VO 加 `refundProgress` / `refundedMinor` / `afterSaleDeadlineAt` / `items`、
 售后单对子单的 CAS 占位（`open_after_sale_no`，V406）、抵扣积分按比例退（需积分域新增按额退回的接口；今天仍是整单退完才退）。
 
@@ -152,6 +160,8 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 | AC27 | 同上（同一售后单重放） | ✅ | 去掉按售后单判重 → 唯一键撞出 DuplicateKey 红 ✅（唯一键是第二道兜底） |
 | AC28 / AC30 / AC31 | `LineRefundFlowTest#partialThenRest`（3 件退 1：状态不变、PARTIAL、结算单未 REVERSED；再退剩余：REFUNDED / FULL、两笔退款流水各挂各的售后单）+ `#overQtyRejected` | ✅ | 落定即 REFUNDED（旧行为）→ 红 ✅；退款键改回子单号 → 第二笔被吞、红 ✅ |
 | AC29 | `LineRefundFlowTest#windowGuard`（8 天后非质量 20012、质量可申请） | ✅ | 去掉守卫 → 红 ✅。顺带修 `AfterSaleRules.isQualityReason(null)` NPE（`List.of().contains(null)`） |
+| AC34 | `LineRefundFlowTest#approveAndRejectRace`（同意与驳回并发：恰一方成功，状态与退款流水一致）；M5 售后 40、M7 结算 33、售后整组 195 绿 | ✅ | 驳回换回 `setStatus + updateById`（加 300ms 延迟强制重叠）→ 两方都「成功」、钱退了状态却是驳回，红 ✅ |
+| AC36 | `M7SettleFlowTest#refundReversesSplitFirst` / `#refundBeforeSplitNeedsNoReversal`、`OpsFinanceGovernFlowTest#queueExcludesReturnRefundWaitingForGoods`：夹具改为直连商家（原来靠旧写法放行归集商家的「同意」） | ✅ | — |
 
 相关后端整组 855 绿。步 4 偏差：O7「商家标记送达」补上从 FULFILLING 出发（自送单「配送中」后送达，既有用例覆盖；方案 §3 与 MachineTablesTest 同步改）。
 全量闸门第一轮又撞出两处，均为**老行为本来允许、新机器漏了**：
