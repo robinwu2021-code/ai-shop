@@ -236,6 +236,42 @@ describe("订单详情页的操作按钮", () => {
     expect((await render()).text()).toContain("order.splitHint");
   });
 
+  // ---------------------------------------------------------------- TDD-订单售后三端断点修复
+
+  it("★★★ AC5 开票按主单号查 —— 订单视角下 orderNo 是子单号，拿它查必然 NOT_FOUND", async () => {
+    orderDetail.mockResolvedValue(order("COMPLETED", { orderNo: "SUB1", payOrderNo: "PAY1" }));
+    await render();
+    expect(invoiceOfOrder).toHaveBeenCalledWith("PAY1");
+  });
+
+  it("★★★ AC7 主单号打开、只有一家店 → 切到那张订单（售后按子单号走）", async () => {
+    const sub = order("FULFILLING", { orderNo: "SUB1", payOrderNo: "O1" });
+    orderDetail.mockImplementation((no: string) =>
+      Promise.resolve(no === "O1" ? order("FULFILLING", { payOrderNo: "O1", subOrders: [sub] }) : sub));
+    const w = await render();
+    expect(orderDetail).toHaveBeenLastCalledWith("SUB1");
+    expect(w.text(), "切过去之后售后入口要在").toContain("order.afterSale");
+  });
+
+  it("★★★ AC7 主单号打开、多家店 → 不给售后入口（售后是子单粒度）", async () => {
+    const subs = [order("FULFILLING", { orderNo: "SUB1" }), order("FULFILLING", { orderNo: "SUB2" })];
+    orderDetail.mockResolvedValue(order("FULFILLING", { payOrderNo: "O1", subOrders: subs }));
+    const w = await render();
+    expect(orderDetail).toHaveBeenCalledTimes(1);
+    expect(w.text()).not.toContain("order.afterSale");
+  });
+
+  it("★★ AC8 上一张售后被驳回 / 已关闭 → 可以再申请；已退款暂不放开", async () => {
+    for (const [st, can] of [["REJECTED", true], ["CLOSED", true], ["REFUNDED", false], ["APPLIED", false]] as const) {
+      orderDetail.mockResolvedValue(order("COMPLETED", {
+        afterSale: { afterSaleNo: "AS1", status: st, type: "REFUND_ONLY", refundMinor: 100 },
+      } as unknown as Partial<Order>));
+      const text = (await render()).text();
+      if (can) expect(text, st).toContain("order.afterSale");
+      else expect(text, st).not.toContain("order.afterSale");
+    }
+  });
+
   it("★ 「再买一单」在付款后的各状态都在 —— 它不依赖履约进度", async () => {
     // 待付款不在列：吸底条两位是「去支付 + 取消」，再挤一颗就是三选一（2026-10-10 按原型重排）
     for (const st of ["PAID", "FULFILLING", "COMPLETED", "CANCELLED"] as OrderStatus[]) {

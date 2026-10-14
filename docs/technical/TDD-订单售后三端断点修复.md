@@ -64,8 +64,27 @@
 | AC1 | `M5AfterSaleFlowTest#fresh_received_reason_code_quality_with_text_allowed` | ✅ 40/40 绿 | 实现前先跑：`expected:<0> but was:<20009>` 红 ✅ |
 | AC2 | `M5AfterSaleFlowTest#fresh_received_non_quality_rejected` / `#fresh_received_quality_allowed`（老客户端只发 reason） | ✅ | —（既有用例，行为不变） |
 | AC3 | `M5AfterSaleFlowTest#unknown_reason_code_rejected` | ✅ | 实现前先跑：`expected:<10400> but was:<0>` 红 ✅ |
-| AC4–8 | `vue-tsc`（c-app）+ i18n 闸门 + H5 预览核对 | 待填 | — |
-| AC9–11 | `vue-tsc`（b-app）+ i18n 闸门 | 待填 | — |
-| AC12–13 | ops-web `tsc` / 测试 | 待填 | — |
+| AC4 | 类型：`contract.raiseDispute(afterSaleNo, appeal)` + `http.ts` 发 `{ appeal }`；`vue-tsc` 绿 | ✅ | —（无端上可挂载的断言点，靠字段名与后端 `EscalateReq(appeal)` 对齐） |
+| AC5 | `c-app/tests/order-page.test.ts` · AC5 开票按主单号查 | ✅ 19/19 | 页面换回改前版本 → 红 ✅ |
+| AC6 | i18n 闸门（三语键集一致 + 引用必存在）；`order-view.test.ts` 六个状态都写了说明（改按契约 PAID） | ✅ pre-push 全绿 | 测试原先断言死键 WAIT_FULFILL，已改 |
+| AC7 | `order-page.test.ts` · AC7 单店切订单视角 / 多店不给售后入口 | ✅ | 页面换回改前版本 → 两条都红 ✅ |
+| AC8 | `order-page.test.ts` · AC8 驳回/关闭可再申请、已退款不放开 | ✅ | 页面换回改前版本 → 红 ✅ |
+| AC9 | `b-app/tests/after-sale-approve.test.ts` · 提示行之后另起 v-if 链 | ✅ 187/187 | 页面换回改前版本 → 红 ✅ |
+| AC10 | `after-sale-approve.test.ts` · `approveCap` 取申请额 | ✅ | 函数为新抽出，旧页面不调用它，消融不适用；断言本身对「取实付」实现为红 |
+| AC11 | `vue-tsc`（b-app）+ i18n 闸门（`afterSale.closedHint` 三语） | ✅ | — |
+| AC12–13 | ops-web `tsc` + pre-push ops-web 722 条断言 0 红 | ✅ | — |
 
-## §6 对账二 · 设计 → 实现（实现完再填）
+**整套闸门**：`bash .githooks/pre-push </dev/null` @ 75e0b17c5 → 14 道全过；后端全量 3403 跑 / 0 红。
+
+## §6 对账二 · 设计 → 实现
+
+主提交 `442160057`（23 个文件）与 §2 模块设计逐行一致。偏差：
+
+| 差异 | 说明 |
+|---|---|
+| 测试落在 `M5AfterSaleFlowTest` 而非新类 | 复用现成的造单 / 拨履约进度工具（§2 已同步改） |
+| 新增 `b-app/src/shared/approve-cap.ts` | 为 AC10 可单测而抽出（b-app 无组件测试设施） |
+| 附带：生成物重生成（openapi ×2、API 详情、词条/常量、表清单、分层清单、组件/页面规范、schema-test.sql） | 闸门要求，内容只含本轮与订单内核的改动；`规范-页面.md` 工作区未提交版与 HEAD 生成结果逐字相同后才提交 |
+| 附带：c-app 4 个测试文件跟上 10-10 原型重排 / 极速退废除 | 远端分支上本就 5 条红，不修推不上去 |
+| 附带：新内核守卫欠账（BAD_REQUEST 带参、ord_shipment 枚举、waybill_no 同名、mermaid） | 订单服务 2.0 内核提交时漏的闸门项 |
+| 附带：`known-handrolled-ui.txt` 登记 c-app 售后页系统弹框 | 保订阅授权的点击链，理由写在清单里 |
