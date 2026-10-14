@@ -27144,6 +27144,13 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "ord_after_sale_item",
+      "class": "OrdAfterSaleItem",
+      "zh": "售后行（V404）：一张售后单退的是哪几行、各几件、各多少钱。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.order.entity"
+    },
+    {
       "table": "ord_express_pickup",
       "class": "OrdExpressPickup",
       "zh": "快递代下单的取件单（TDD-快递100商家寄件）。",
