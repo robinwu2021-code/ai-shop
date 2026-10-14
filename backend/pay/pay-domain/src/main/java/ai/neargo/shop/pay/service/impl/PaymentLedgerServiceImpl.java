@@ -301,7 +301,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     @Transactional("payTxManager")
     public String settleRefundByOutTradeNo(String outRefundNo, String providerNo) {
-        StlPayment r = byOutTradeNo(outRefundNo);
+        StlPayment r = byOutTradeNo(outRefundNo, StlPayment.REFUND);
         if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
             /*
              * **认领不了就说认领不了。** 通道回传了一个我方没发出去过的退款号，
@@ -428,9 +428,13 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     }
 
     private StlPayment byOutTradeNo(String outTradeNo) {
+        return byOutTradeNo(outTradeNo, StlPayment.PAY);
+    }
+
+    private StlPayment byOutTradeNo(String outTradeNo, String direction) {
         return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
                 Wrappers.<StlPayment>lambdaQuery()
-                        .eq(StlPayment::getDirection, StlPayment.PAY)
+                        .eq(StlPayment::getDirection, direction)
                         .eq(StlPayment::getOutTradeNo, outTradeNo)
                         .last("LIMIT 1")));
     }

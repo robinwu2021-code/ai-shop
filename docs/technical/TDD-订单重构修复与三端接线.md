@@ -202,14 +202,14 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PA
 
 #### F01：正确认领退款回调
 
-**修改：** `P/service/impl/PaymentLedgerServiceImpl.java` 的 `settleRefundByOutTradeNo/byOutTradeNo`；测试 `IT/ChannelPayCallbackFlowTest.java`，拟新增 `PU/service/PaymentLedgerRefundCallbackTest.java`。
+**修改：** `P/service/impl/PaymentLedgerServiceImpl.java` 的 `settleRefundByOutTradeNo/byOutTradeNo`；测试 `IT/ChannelPayCallbackFlowTest.java`，新增 `IT/PaymentLedgerRefundCallbackTest.java`（真实Spring/MyBatis/H2装配属于shop-app，避免用mock查询代替真实方向过滤）。
 
 **接口：** 新增私有 `byOutTradeNo(String no, String direction)` 或等价明确方向查询；付款调用始终传 PAY，退款调用始终传 REFUND，不改变公开字符串返回合同。
 
-- [ ] 在真实 REFUND 行上调用回执，断言 `status=SUCCESS`、返回原支付单号；重复回执保持 succeeded_at；不存在退款号及 PAY 行不被认领。
-- [ ] 运行 `ChannelPayCallbackFlowTest,PaymentLedgerRefundCallbackTest`，确认旧实现因查不到退款行失败。
-- [ ] 只修方向查询及调用点，检查不影响记录付款人与支付认领。
-- [ ] 同测试通过；消融改回 PAY 筛选必须变红，再精确提交。此批不解决售后提前终态，后者属于 F11。
+- [x] 在真实 REFUND 行上调用回执，断言 `status=SUCCESS`、返回原支付单号；重复回执保持 succeeded_at；不存在退款号及 PAY 行不被认领。
+- [x] 运行 `ChannelPayCallbackFlowTest,PaymentLedgerRefundCallbackTest`，确认旧实现因查不到退款行失败。
+- [x] 只修方向查询及调用点，检查不影响记录付款人与支付认领。
+- [x] 同测试通过；消融改回 PAY 筛选必须变红，再精确提交。此批不解决售后提前终态，后者属于 F11。
 
 #### F02：自动收货按单事务
 
@@ -564,6 +564,7 @@ ShipCommand改为`List<Long> itemIds`，查真实行ID且校验订单归属，�
 
 | 批次 | 实际验证 | 结果 | 范围 |
 |---|---|---|---|
+| F01 | PaymentLedgerRefundCallbackTest（3）+ChannelPayCallbackFlowTest（14）；初始业务红1/17，恢复修复后绿17/17；PAY方向消融红1/3 | 红→绿及消融通过，待独立review | 真实退款行、重复成功时间、未知/PAY拒认领、付款人写入方向 |
 | B00 | baseline-selectors.txt列出的37类；JDK21离线Maven -pl shop-app -am | 222条，失败0/错误0/跳过0；BUILD SUCCESS | df2adc641的订单内核与相关场景，不计作新修复验收 |
 
 RF01–RF20 的测试责任和具体反例映射到§2.5，DEV01–DEV08映射到§2.6。每批实施后追加测试方法、实际红/绿输出、消融结果、运行SHA及扫描范围；目前没有新增场景的通过记录。§1.3的222条是当前实现定向基线，不是开发批次的验收通过记录。
