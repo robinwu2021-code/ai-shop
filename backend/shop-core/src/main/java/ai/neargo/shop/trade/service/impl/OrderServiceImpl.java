@@ -1521,8 +1521,8 @@ public class OrderServiceImpl implements OrderService {
                     OrdStatusLog.BY_USER, userNo);
 
             // 行实付快照（TDD-订单状态机 AC19）：子单商品实付按行金额比例分摊，最大余数法，Σ 恰等于商品实付
-            long[] shares = ai.neargo.shop.trade.order.service.refund.LineShares.allocate(
-                    ai.neargo.shop.trade.order.service.refund.LineShares.goodsPaid(sub),
+            long[] shares = ai.neargo.shop.trade.order.refund.policy.LineShares.allocate(
+                    ai.neargo.shop.trade.order.refund.policy.LineShares.goodsPaid(sub),
                     g.lines.stream().mapToLong(Line::amount).toArray());
             int lineIdx = 0;
             for (Line line : g.lines) {
