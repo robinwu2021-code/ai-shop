@@ -556,6 +556,9 @@ CREATE TABLE IF NOT EXISTS ord_item
     supply_store_no VARCHAR(40) DEFAULT NULL,
     shipment_no     VARCHAR(40) DEFAULT NULL,
     shipped_qty     INT(11)     NOT NULL DEFAULT 0,
+    paid_share_minor BIGINT(20) NOT NULL DEFAULT 0,
+    refunded_qty     INT(11)    NOT NULL DEFAULT 0,
+    refunded_minor   BIGINT(20) NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
 );
 
@@ -665,6 +668,9 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     arrive_date VARCHAR(10) DEFAULT NULL,
     express_company VARCHAR(32) DEFAULT NULL,
     prepared_at BIGINT NULL,
+    completed_at    BIGINT(20) DEFAULT NULL,
+    refunded_minor  BIGINT(20) NOT NULL DEFAULT 0,
+    refund_progress VARCHAR(8) NOT NULL DEFAULT 'NONE',
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
     CONSTRAINT uk_verify_code UNIQUE (verify_code)
@@ -4755,6 +4761,25 @@ CREATE TABLE IF NOT EXISTS ord_shipment
     deleted       TINYINT(4)  NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_shipment_no UNIQUE (shipment_no, tenant_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_after_sale_item
+(
+    id            BIGINT(20)  NOT NULL AUTO_INCREMENT,
+    after_sale_no VARCHAR(40) NOT NULL,
+    sub_order_no  VARCHAR(40) NOT NULL,
+    item_id       BIGINT(20)  NOT NULL,
+    qty           INT(11)     NOT NULL,
+    refund_minor  BIGINT(20)  NOT NULL DEFAULT 0,
+    tenant_no     VARCHAR(32) DEFAULT NULL,
+    created_at    DATETIME    DEFAULT NULL,
+    created_by    VARCHAR(64) DEFAULT NULL,
+    updated_at    DATETIME    DEFAULT NULL,
+    updated_by    VARCHAR(64) DEFAULT NULL,
+    version       BIGINT(20)  NOT NULL DEFAULT 0,
+    deleted       TINYINT(4)  NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_after_sale_item UNIQUE (after_sale_no, item_id)
 );
 
 -- 种子数据

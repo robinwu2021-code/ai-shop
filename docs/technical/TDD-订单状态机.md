@@ -68,6 +68,23 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 实体有 `@Version`，不同步的话后续 `updateById` 会被乐观锁静默拒掉，写 0 行且不报错）。
 不在本步：商家发货（`MerchantOrderServiceImpl#ship`）随发货单层在步 6 接；售后写路径在步 5。
 
+## §2C 步 5：售后写路径 + 行级退款（方案：specs/2026-10-14-第5步-售后写路径与行级退款-方案.md）
+
+**已拍板（2026-10-14「按照建议执行」）**：分账按「商家应收 × 退款比例」回退、部分回退保持 SPLIT，并排查 10-11 以来已发生的部分退款；
+完成时间加列 `completed_at` 并回填；支付宝若不支持按额多次回退，该通道部分退款只走积分补偿 / 线下退款登记；
+已发货运费仅 DAMAGED / QUALITY / WRONG_ITEM / MISSING 退；顺序 5.4 → 5.2/5.3 → 5.5/5.6 → 5.7，5.1 独立。
+
+### 5.4 行级数据（只写不读）
+
+| AC | 需求 | 落点 |
+|---|---|---|
+| AC19 | 下单时每行落「分摊后实付」快照，Σ = 子单实付 − 运费（最大余数法，零头不丢） | `trade/order/service/refund/LineShares` + `OrderServiceImpl` 建行处 |
+| AC20 | 存量行不在迁移里回填快照（MySQL 1093 不许 UPDATE 子查询引用同表、H2 语法又不同）：读时用**同一算法**现算 | `LineShares.of(sub, items)`：快照齐全用快照，否则现算 |
+| AC21 | 子单完成时刻落 `completed_at`（售后期起算点）；存量从状态流水回填 | V404 + `TradeStatusWriter`（迁到 COMPLETED 时写） |
+| AC22 | 存量已退款子单标 `refund_progress = FULL`，`refunded_minor` = 其售后实退额之和 | V404 |
+
+契约：V404（`ord_item` +3 列、`ord_sub_order` +3 列、新表 `ord_after_sale_item`）；`refund_progress` 取值域 5.7 下发前登记 DISMISSED。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试 | 跑过 | 消融 |

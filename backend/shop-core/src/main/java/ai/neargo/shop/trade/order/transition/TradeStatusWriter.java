@@ -32,8 +32,10 @@ import org.springframework.stereotype.Component;
 public class TradeStatusWriter {
 
     private final StateTransitionGate gate;
+    private final StatusCasMapper casMapper;
 
     public TradeStatusWriter(StatusCasMapper casMapper, StatusLogMapper logMapper) {
+        this.casMapper = casMapper;
         this.gate = new StateTransitionGate(new MybatisStatusStore(casMapper), new StatusLogStore(logMapper),
                 SignalPublisher.NONE);
     }
@@ -57,6 +59,13 @@ public class TradeStatusWriter {
                         operatorNo, reason, ctx));
         sync(sub, f.changed());
         sub.setStatus(f.to().name());
+        if (f.changed() && f.to() == OrderStatus.COMPLETED) {
+            // 售后期起算点（TDD-订单状态机 AC21）。所有到 COMPLETED 的路径都经这里（步 4）
+            long now = System.currentTimeMillis();
+            ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
+                    () -> casMapper.markOrderCompleted(sub.getSubOrderNo(), now));
+            sub.setCompletedAt(now);
+        }
         return f;
     }
 

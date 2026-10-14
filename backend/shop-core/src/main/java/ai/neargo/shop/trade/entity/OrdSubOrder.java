@@ -192,6 +192,13 @@ public class OrdSubOrder extends BaseEntity {
      */
     private Long preparedAt;
 
+    /** 完成时刻（毫秒，V404）：售后期起算点。由转换门在迁到 COMPLETED 时写 */
+    private Long completedAt;
+    /** 已退总额（含运费，V404） */
+    private Long refundedMinor;
+    /** 退款进度 NONE / PARTIAL / FULL（V404）：与订单状态正交，部分退款不改订单状态 */
+    private String refundProgress;
+
     /** 核销码：自提码/核销码/兑换码三态共用，支付成功后生成，**全局唯一**（C4）。 */
     private String verifyCode;
 

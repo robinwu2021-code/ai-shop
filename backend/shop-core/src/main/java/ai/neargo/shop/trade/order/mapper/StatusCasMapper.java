@@ -31,6 +31,10 @@ public interface StatusCasMapper {
     int casOrder(@Param("no") String no, @Param("from") String from, @Param("to") String to,
                  @Param("now") LocalDateTime now);
 
+    /** 子单完成时刻（售后期起算点）：只写第一次，不动 version（与 CAS 互不干扰） */
+    @Update("UPDATE ord_sub_order SET completed_at = #{at} WHERE sub_order_no = #{no} AND completed_at IS NULL")
+    int markOrderCompleted(@Param("no") String no, @Param("at") long at);
+
     @Select("SELECT status FROM ord_shipment WHERE shipment_no = #{no} LIMIT 1")
     String shipmentStatus(@Param("no") String no);
 

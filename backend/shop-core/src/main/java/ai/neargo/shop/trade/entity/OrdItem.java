@@ -67,4 +67,11 @@ public class OrdItem extends BaseEntity {
     private String supplyStoreNo;
     private String shipmentNo;
     private Integer shippedQty;
+
+    /** 分摊后的本行实付（含优惠 / 积分抵扣分摊，不含运费）—— 下单时落快照（V404）。存量为 0，读时现算 */
+    private Long paidShareMinor;
+    /** 已退件数（V404） */
+    private Integer refundedQty;
+    /** 已退金额（V404） */
+    private Long refundedMinor;
 }
