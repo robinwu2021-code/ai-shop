@@ -5,7 +5,7 @@
   "targetPackage": "ai.neargo.shop.order",
   "status": "phase1-backend-in-progress",
   "counts": {
-    "coreProductionFiles": 142,
+    "coreProductionFiles": 151,
     "coreTestClasses": 27
   },
   "entries": [
@@ -4707,6 +4707,118 @@
         "public void enlist(String payNo)",
         "public int recoverAbandoned(long now)"
       ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/contract/StoreOrderQuery.java",
+      "sourceType": "ai.neargo.shop.trade.order.contract.StoreOrderQuery",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/contract/StoreOrderQuery.java",
+      "targetType": "ai.neargo.shop.order.contract.StoreOrderQuery",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/contract/StoreOrderSummary.java",
+      "sourceType": "ai.neargo.shop.trade.order.contract.StoreOrderSummary",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/contract/StoreOrderSummary.java",
+      "targetType": "ai.neargo.shop.order.contract.StoreOrderSummary",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/contract/StoreOrderView.java",
+      "sourceType": "ai.neargo.shop.trade.order.contract.StoreOrderView",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/contract/StoreOrderView.java",
+      "targetType": "ai.neargo.shop.order.contract.StoreOrderView",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/StoreOrderQueryService.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.StoreOrderQueryService",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/StoreOrderQueryService.java",
+      "targetType": "ai.neargo.shop.order.service.StoreOrderQueryService",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/impl/StoreOrderQueryServiceImpl.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.impl.StoreOrderQueryServiceImpl",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/impl/StoreOrderQueryServiceImpl.java",
+      "targetType": "ai.neargo.shop.order.service.impl.StoreOrderQueryServiceImpl",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": [
+        "public StoreOrderQueryServiceImpl(StoreOrderReadStore store)",
+        "public StoreOrderView detail(String no, String buyer)",
+        "public PageData<StoreOrderSummary> list(String buyer, StoreOrderQuery query, long page, long size)",
+        "public StoreOrderMaterial material(String no, String buyer)",
+        "public PageData<StoreOrderMaterial> materials(String buyer, StoreOrderQuery query, long page, long size)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/query/MybatisStoreOrderReadStore.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.query.MybatisStoreOrderReadStore",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/query/MybatisStoreOrderReadStore.java",
+      "targetType": "ai.neargo.shop.order.service.query.MybatisStoreOrderReadStore",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": [
+        "public MybatisStoreOrderReadStore(StoreOrderMapper orders, PaymentMapper payments, OrderItemMapper items,",
+        "public StoreOrderMaterial findOwned(String no, String buyer)",
+        "public PageData<StoreOrderMaterial> pageOwned(String buyer, StoreOrderQuery query, long page, long size)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/query/StoreOrderAssembler.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.query.StoreOrderAssembler",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/query/StoreOrderAssembler.java",
+      "targetType": "ai.neargo.shop.order.service.query.StoreOrderAssembler",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": [
+        "public static StoreOrderView view(StoreOrderMaterial material)",
+        "public static StoreOrderSummary summary(StoreOrderMaterial material)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/query/StoreOrderMaterial.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.query.StoreOrderMaterial",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/query/StoreOrderMaterial.java",
+      "targetType": "ai.neargo.shop.order.service.query.StoreOrderMaterial",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/query/StoreOrderReadStore.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.query.StoreOrderReadStore",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/query/StoreOrderReadStore.java",
+      "targetType": "ai.neargo.shop.order.service.query.StoreOrderReadStore",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": []
     }
   ],
   "mixedMapperSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/TradeMappers.java",

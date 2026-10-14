@@ -4,6 +4,9 @@ import ai.neargo.shop.trade.order.policy.PhaseOnePointsPolicy;
 import ai.neargo.shop.trade.order.service.create.OrderCreateRequestHasher;
 import ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService;
 import ai.neargo.shop.trade.order.service.create.OrderStockAllocator;
+import ai.neargo.shop.trade.order.service.StoreOrderQueryService;
+import ai.neargo.shop.trade.order.service.query.StoreOrderMaterial;
+import ai.neargo.shop.trade.order.contract.StoreOrderQuery;
 
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 
@@ -136,6 +139,7 @@ public class OrderServiceImpl implements OrderService {
     private OrderCreateRequestHasher createRequestHasher;
     @Autowired private OrderCreationRecoveryService creationRecovery;
     @Autowired private OrderStockAllocator stockAllocator;
+    @Autowired private StoreOrderQueryService storeQueries;
     /** 取该商家按市场筛出的可用通道（S4）—— 下单要选通道 */
     private final ai.neargo.shop.spi.pay.PayChannelMasterPort payChannelMasterPort;
     /**
@@ -1994,13 +1998,10 @@ public class OrderServiceImpl implements OrderService {
      */
     private OrderVO detailOf(String orderNo, String userNo, String surface) {
         // Q6：先按子单号查（C 端绝大多数请求是订单视角），查不到再按主单号
-        OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
-                .eq(OrdSubOrder::getSubOrderNo, orderNo)
-                .eq(OrdSubOrder::getUserNo, userNo)
-                .last("limit 1"));
+        StoreOrderMaterial material = storeQueries.material(orderNo, userNo);
+        OrdSubOrder sub = material == null ? null : material.order();
         if (sub != null) {
-            OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
-                    .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("limit 1"));
+            OrdOrder order = material.payment();
             /*
              * **三样只在详情查**（见 OrderVO 上的说明）：列表一次几十条，
              * 在 `orderView` 里查就是每条三次额外查询。
@@ -2009,7 +2010,7 @@ public class OrderServiceImpl implements OrderService {
              * 「已评价的单照样显示去评价」「售后进行中整张卡不显示」
              * 「拆单提示不显示」，三条都不报错。见 TDD-交互清单缺口修复 G15。
              */
-            OrderVO vo = orderView(sub, order).withDetail(
+            OrderVO vo = orderView(material).withDetail(
                     reviewQueryPort.reviewed(sub.getSubOrderNo()),
                     afterSaleService.ofSubOrder(sub.getSubOrderNo()).orElse(null),
                     subOrderMapper.selectCount(Wrappers.<OrdSubOrder>lambdaQuery()
@@ -2171,40 +2172,10 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageData<OrderVO> list(String status, List<String> fulfillments, long page, long size) {
-        // Q6：列表是子单粒度
-        var w = Wrappers.<OrdSubOrder>lambdaQuery()
-                .eq(OrdSubOrder::getUserNo, SecurityUtils.currentUserNo());
-        /*
-         * **两个正交的筛选条件**，不是一个。
-         *
-         * 此前端上传的是「状态 × 履约」的组合词（ARRIVED / SHIPPED），后端再拆回去 ——
-         * 于是「待取货」这种页签是一个**状态值**，加一种履约就得加一个值。
-         * 现在端上传抽象状态 + 想要的履约集合，页签变成**谓词**：
-         * 「待取货」= FULFILLING ∧ 自提类，「待使用」= FULFILLING ∧ 服务类，
-         * 想合并两个页签只改端上传的集合，后端一行不动。
-         */
-        List<String> stored = OrderStatusView.toStored(status);
-        if (!stored.isEmpty()) {
-            w.in(OrdSubOrder::getStatus, stored);
-        }
-        if (fulfillments != null && !fulfillments.isEmpty()) {
-            w.in(OrdSubOrder::getFulfillment, fulfillments);
-        }
-        w.orderByDesc(OrdSubOrder::getId);
-
-        Page<OrdSubOrder> p = subOrderMapper.selectPage(Page.of(page, size), w);
-        if (p.getRecords().isEmpty()) {
-            return PageData.empty(page, size);
-        }
-        Map<String, OrdOrder> orders = orderMapper.selectList(Wrappers.<OrdOrder>lambdaQuery()
-                        .in(OrdOrder::getOrderNo,
-                                p.getRecords().stream().map(OrdSubOrder::getOrderNo).distinct().toList()))
-                .stream().collect(Collectors.toMap(OrdOrder::getOrderNo, o -> o, (a, b) -> a));
-
-        List<OrderVO> records = p.getRecords().stream()
-                .map(s -> orderView(s, orders.get(s.getOrderNo())))
-                .toList();
-        return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
+        var result = storeQueries.materials(SecurityUtils.currentUserNo(),
+                new StoreOrderQuery(status, fulfillments), page, size);
+        return PageData.of(result.records().stream().map(this::orderView).toList(),
+                result.total(), result.page(), result.size());
     }
 
     @Override
@@ -3058,7 +3029,23 @@ public class OrderServiceImpl implements OrderService {
         return orderViewBase(s, order).withGroup(s.getGroupNo());
     }
 
+    private OrderVO orderView(StoreOrderMaterial material) {
+        var nodes = material.timeline().stream().map(log -> new OrderVO.TimelineNode(log.getStatus(),
+                log.getLabel(), nz(log.getAt()))).toList();
+        String storeNo = material.order().getStoreNo();
+        OrderVO.StoreBrief store = storeNo == null || storeNo.isBlank() ? null
+                : new OrderVO.StoreBrief(storeNo, material.storeName());
+        return orderViewBase(material.order(), material.payment(), material.items(), nodes, store)
+                .withGroup(material.order().getGroupNo());
+    }
+
     private OrderVO orderViewBase(OrdSubOrder s, OrdOrder order) {
+        return orderViewBase(s, order, itemsOf(s.getSubOrderNo()), timelineOf(s.getSubOrderNo()), storeBriefOf(s));
+    }
+
+    private OrderVO orderViewBase(OrdSubOrder s, OrdOrder order, List<OrdItem> lines,
+                                  List<OrderVO.TimelineNode> timeline, OrderVO.StoreBrief store) {
+
         return new OrderVO(
                 /*
                  * 下发**抽象状态**：`WAIT_FULFILL` 归一成契约的 `PAID`，`FULFILLING` 原样。
@@ -3073,7 +3060,7 @@ public class OrderServiceImpl implements OrderService {
                 OrderStatusView.toContract(s.getStatus(), order == null ? null : order.getStatus()),
                 s.getFulfillment(),
                 s.getEntityNo(), s.getEntityName(),
-                itemsOf(s.getSubOrderNo()).stream().map(this::toItemVO).toList(),
+                lines.stream().map(this::toItemVO).toList(),
                 OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
                         nz(s.getDiscountAmount()),
                         order != null && order.getPaidAt() != null ? nz(s.getPayAmount()) : 0L,
@@ -3092,7 +3079,7 @@ public class OrderServiceImpl implements OrderService {
                 s.getAppointmentAt(),
                 // 买家看自己的单：完整地址与完整手机号，那本来就是他填的
                 receiverOf(s),
-                timelineOf(s.getSubOrderNo()),
+                timeline,
                 null,
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
                 null,
@@ -3105,7 +3092,7 @@ public class OrderServiceImpl implements OrderService {
                 // 集单四样这里不填；末位 expressCompany 要下发 ——
                 // 买家查物流认的是「哪家快递 + 单号」，只给单号等于让他自己猜快递公司
                 null, null, null, null, s.getExpressCompany())
-                .withStore(storeBriefOf(s))
+                .withStore(store)
                 .withPrepared(s.getPreparedAt());
     }
 
