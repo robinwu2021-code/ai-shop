@@ -189,9 +189,11 @@ class OrderCloseRuleFlowTest {
          */
         backdate(orderNo);
         job().close();
-        assertThat(statusOf(token, orderNo))
+        assertThat(mainStatusInDb(orderNo))
                 .as("到点了 Job 却没关它 —— 待支付单会永远堆着，库存/券/积分一并占住")
                 .isEqualTo("CLOSED");
+        // 对外口径：库里 CLOSED，买家看到的是「已取消」（订单服务 2.0 投影；CLOSED 不在 7 个契约值里）
+        assertThat(statusOf(token, orderNo)).isEqualTo("CANCELLED");
     }
 
     @Test
@@ -219,9 +221,10 @@ class OrderCloseRuleFlowTest {
         // 而要证明的是它靠「已支付」活下来 —— 两者能分辨，测试才有意义
         backdate(paid);
         job().close();
-        assertThat(statusOf(token, paid))
+        // 判库不判接口：接口已把 CLOSED 投影成 CANCELLED，判「不是 CLOSED」会恒绿
+        assertThat(mainStatusInDb(paid))
                 .as("已支付的订单被关单任务关掉了 —— 这是扫描范围写错的典型症状")
-                .isNotEqualTo("CLOSED");
+                .isEqualTo("PAID");
     }
 
     @Test
@@ -300,6 +303,10 @@ class OrderCloseRuleFlowTest {
                                 + idempotencyKey + "\",\"sign\":\"stub-secret\"}"))
                 .andExpect(status().isOk());
         return orderNo;
+    }
+
+    private String mainStatusInDb(String orderNo) {
+        return jdbc.queryForObject("select status from ord_order where order_no = ?", String.class, orderNo);
     }
 
     private long payDeadlineOf(String token, String orderNo) throws Exception {

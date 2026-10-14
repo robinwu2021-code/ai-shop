@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.service;
 
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 
 import java.util.List;
@@ -77,10 +78,8 @@ public final class OrderStatusView {
      * 关心的是「货走到哪了」，与钱怎么收无关。
      */
     public static String toContract(String subStatus, String mainStatus) {
-        if ("WAIT_OFFLINE_PAY".equals(mainStatus) && WAIT_PAY.equals(toContract(subStatus))) {
-            return WAIT_OFFLINE_PAY;
-        }
-        return toContract(subStatus);
+        // 订单服务 2.0 接线：口径唯一处在投影器（多认一格：主单 CLOSED → CANCELLED）
+        return OrderStatusProjector.contract(subStatus, mainStatus);
     }
 
     public static String toContract(String status) {

@@ -7,6 +7,7 @@ import ai.neargo.shop.trade.service.AfterSaleService;
 import ai.neargo.shop.trade.service.CloseRuleService;
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.OrderStateMachine;
+import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
 import ai.neargo.shop.trade.service.OrderStatusView;
 
 import ai.neargo.shop.spi.marketing.AttributionPort;
@@ -3048,22 +3049,13 @@ public class OrderServiceImpl implements OrderService {
         List<OrderVO> children = subs.stream().map(s -> orderView(s, order)).toList();
         List<OrderVO.ItemVO> allItems = children.stream().flatMap(c -> c.items().stream()).toList();
         /*
-         * **付款后总状态随子单走**（2026-10-11 真机实测修）：主单 `PAID` 是终态
-         * （OrderStateMachine：已支付不再有主单级迁移，履约全在子单），所以直接发
-         * `order.getStatus()` 会让「用主单号打开订单」的买家永远停在「已支付」——
-         * 商家发了货也看不到。付款成功页正是用主单号跳进来的。
-         *
-         * 只在主单已到 `PAID` 这个「按设计不再前进」的终态时，才改用子单状态当总状态
-         * （子单此时才真正携带履约进度：WAIT_FULFILL→PAID、FULFILLING→已发货…）。
-         * 付款前/取消/超时关闭（WAIT_PAY、WAIT_OFFLINE_PAY、CANCELLED、CLOSED）仍以主单为准——
-         * 这些是主单自己的生命周期，子单映射不出 CLOSED 与 CANCELLED 的区别。
-         * 子单状态需一致（含**单商家单**，只一张子单）；跨商家状态不一时聚合口径未定，
-         * 回落主单（PAID），买家看 subOrders 里的逐家进度。
+         * **总状态 = 主单 + 全部子单的聚合**（订单服务 2.0 接线，口径唯一处在投影器）：
+         * 付款前/取消/关闭跟主单（超时关闭 CLOSED 对外是 CANCELLED，不再露出契约外的值）；
+         * 付款后主单 PAID 是终态，取**最落后的活跃子单** —— 多门店一发一未发显示「待发货」，
+         * 而不是停在「已支付」。付款成功页正是用主单号跳进来的。
          */
-        String headStatus = OrdOrder.PAID.equals(order.getStatus())
-                && children.stream().map(OrderVO::status).distinct().count() == 1
-                ? children.get(0).status()
-                : order.getStatus();
+        String headStatus = OrderStatusProjector.aggregate(order.getStatus(),
+                subs.stream().map(OrdSubOrder::getStatus).toList());
         OrderVO vo = new OrderVO(
                 order.getOrderNo(), order.getOrderNo(), headStatus, null,
                 null, null, allItems,
