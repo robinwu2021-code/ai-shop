@@ -75,6 +75,18 @@ class PointsPostingDatabaseTest {
                         new ClassPathResource("db/migration/V411__points_withdrawal_budget_locks.sql"))
                         .execute(dataSource);
             }
+            try (var evidenceColumns=connection.getMetaData()
+                    .getColumns(connection.getCatalog(),null,"pts_fund_evidence",null)) {
+                boolean bound=false;
+                while (evidenceColumns.next()) {
+                    bound|="binding_purpose".equalsIgnoreCase(evidenceColumns.getString("COLUMN_NAME"));
+                }
+                if (!bound) {
+                    new ResourceDatabasePopulator(
+                            new ClassPathResource("db/migration/V412__points_evidence_business_binding.sql"))
+                            .execute(dataSource);
+                }
+            }
         } catch (SQLException failure) { throw new IllegalStateException("Points schema fixture failed",failure); }
     }
 

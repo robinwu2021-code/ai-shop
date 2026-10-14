@@ -141,7 +141,7 @@ public class PointsSettlementHookImpl implements PointsSettlementHook {
         moves.add(move(type,HolderType.USER,grant.userNo(),Bucket.AVAILABLE,remaining));
         var next=new GrantSnapshot(grant.subOrderNo(),grant.userNo(),grant.command(),grant.decision(),grant.outcome(),
                 Math.addExact(grant.activatedPoints(),remaining),grant.reclaimedPending(),grant.reclaimedAvailable(),
-                grant.collectedMinor(),grant.waivedPoints());
+                grant.collectedMinor(),grant.waivedPoints(),grant.processedByLine(),grant.refundedGoodsByLine());
         positions.add(new PositionMove(PositionMove.Kind.GRANT,no,number(head,"version"),(String)head.get("state"),
                 (String)head.get("state"),number(head,"original_points"),0,json.writeValueAsString(next)));
     }

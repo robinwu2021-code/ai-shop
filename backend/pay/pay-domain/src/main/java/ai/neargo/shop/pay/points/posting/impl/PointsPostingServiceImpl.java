@@ -51,7 +51,8 @@ public class PointsPostingServiceImpl implements PointsPostingService {
     @Transactional("payTxManager")
     public void recordEvidence(EvidenceRef e) {
         if (e==null || e.evidenceNo()==null || e.evidenceNo().isBlank() || e.currency()==null
-                || e.currency().isBlank() || e.externalMinor()==0) {
+                || e.currency().isBlank() || e.externalMinor()==0 || (e.purpose()==null)!=(e.sourceRef()==null)
+                || (e.purpose()!=null && (e.purpose().isBlank() || e.sourceRef().isBlank()))) {
             throw new IllegalArgumentException("POINTS_EVIDENCE_INVALID");
         }
         DataScopeContext.executeWithoutScope(() -> { store.recordEvidence(e); return null; });

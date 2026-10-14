@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Map;
 
 /** Pool locking makes the last-budget decision and its entire grant atomic, with a recorded skipped result. */
 @Service
@@ -99,5 +100,18 @@ public class EarnServiceImpl implements EarnService {
     public record GrantSnapshot(String subOrderNo,String userNo,PointsEarnPort.GrantCommand command,
                                 EarnPolicy.EarnDecision decision,PointsEarnPort.GrantOutcome outcome,
                                 long activatedPoints,long reclaimedPending,long reclaimedAvailable,
-                                long collectedMinor,long waivedPoints) { }
+                                long collectedMinor,long waivedPoints,Map<String,Long> processedByLine,
+                                Map<String,Long> refundedGoodsByLine) {
+        public GrantSnapshot {
+            processedByLine=processedByLine==null?Map.of():Map.copyOf(processedByLine);
+            refundedGoodsByLine=refundedGoodsByLine==null?Map.of():Map.copyOf(refundedGoodsByLine);
+        }
+        public GrantSnapshot(String subOrderNo,String userNo,PointsEarnPort.GrantCommand command,
+                             EarnPolicy.EarnDecision decision,PointsEarnPort.GrantOutcome outcome,
+                             long activatedPoints,long reclaimedPending,long reclaimedAvailable,
+                             long collectedMinor,long waivedPoints) {
+            this(subOrderNo,userNo,command,decision,outcome,activatedPoints,reclaimedPending,reclaimedAvailable,
+                    collectedMinor,waivedPoints,Map.of(),Map.of());
+        }
+    }
 }

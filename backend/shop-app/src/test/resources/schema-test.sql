@@ -4956,6 +4956,8 @@ CREATE TABLE IF NOT EXISTS pts_fund_evidence
     external_minor BIGINT NOT NULL,
     verified TINYINT NOT NULL DEFAULT 0,
     used_voucher_no VARCHAR(40) DEFAULT NULL,
+    binding_purpose VARCHAR(40) DEFAULT NULL,
+    binding_ref VARCHAR(120) DEFAULT NULL,
     CONSTRAINT uk_pts_evidence UNIQUE (evidence_no),
     id BIGINT NOT NULL AUTO_INCREMENT,
     tenant_no VARCHAR(32) DEFAULT NULL,

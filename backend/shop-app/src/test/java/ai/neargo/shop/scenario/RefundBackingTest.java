@@ -30,9 +30,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringJUnitConfig(PointsPostingDatabaseTest.Config.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(properties={
-        "spring.datasource.url=jdbc:h2:mem:points_refund_backing;MODE=MySQL;DATABASE_TO_LOWER=TRUE",
-        "spring.datasource.username=sa","spring.datasource.password=",
-        "spring.datasource.driver-class-name=org.h2.Driver"
+        "spring.datasource.url=${points.jdbc.url:jdbc:h2:mem:points_refund_backing;MODE=MySQL;DATABASE_TO_LOWER=TRUE}",
+        "spring.datasource.username=${points.jdbc.user:sa}","spring.datasource.password=${points.jdbc.password:}",
+        "spring.datasource.driver-class-name=${points.jdbc.driver:org.h2.Driver}"
 })
 class RefundBackingTest {
     @Autowired private PointsPostingService posting;

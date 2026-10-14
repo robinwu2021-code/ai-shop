@@ -117,7 +117,8 @@ public record Voucher(String bizRef, String typeCode, String currency, RedeemRat
         BigInteger external = BigInteger.ZERO;
         for (EvidenceRef evidence : evidenceRefs) {
             if (!currency.equals(evidence.currency()) || evidence.evidenceNo() == null
-                    || evidence.evidenceNo().isBlank()) {
+                    || evidence.evidenceNo().isBlank() || (evidence.purpose()==null)!=(evidence.sourceRef()==null)
+                    || (evidence.purpose()!=null && (evidence.purpose().isBlank() || evidence.sourceRef().isBlank()))) {
                 throw new IllegalArgumentException("Invalid money evidence currency or identity");
             }
             external = external.add(BigInteger.valueOf(evidence.externalMinor()));

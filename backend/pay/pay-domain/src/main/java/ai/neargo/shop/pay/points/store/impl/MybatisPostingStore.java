@@ -24,6 +24,7 @@ import java.math.BigInteger;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -36,11 +37,13 @@ public class MybatisPostingStore implements PostingStore {
     public MybatisPostingStore(PointsPostingMapper mapper) { this.mapper = mapper; }
 
     @Override public void recordEvidence(EvidenceRef e) {
-        try { mapper.registerEvidence(e.evidenceNo(),e.currency(),e.externalMinor()); }
+        try { mapper.registerEvidence(e.evidenceNo(),e.currency(),e.externalMinor(),e.purpose(),e.sourceRef()); }
         catch (DuplicateKeyException conflict) {
             var existing=mapper.evidence(e.evidenceNo());
             require(existing!=null && e.currency().equals(existing.get("currency"))
-                    && number(existing,"external_minor")==e.externalMinor() && number(existing,"verified")==1,
+                    && number(existing,"external_minor")==e.externalMinor() && number(existing,"verified")==1
+                    && Objects.equals(existing.get("binding_purpose"),e.purpose())
+                    && Objects.equals(existing.get("binding_ref"),e.sourceRef()),
                     "POINTS_EVIDENCE_CONFLICT");
         }
     }
@@ -111,7 +114,8 @@ public class MybatisPostingStore implements PostingStore {
         }
         for (var evidence : voucher.evidenceRefs().stream()
                 .sorted(Comparator.comparing(e -> e.evidenceNo())).toList()) {
-            require(mapper.consumeEvidence(evidence.evidenceNo(), evidence.currency(), evidence.externalMinor(), no) == 1,
+            require(mapper.consumeEvidence(evidence.evidenceNo(),evidence.currency(),evidence.externalMinor(),no,
+                    evidence.purpose(),evidence.sourceRef()) == 1,
                     "POINTS_EVIDENCE_UNVERIFIED_OR_REUSED");
         }
         for (PositionMove move : voucher.positionMoves().stream().sorted(Comparator.comparing(PositionMove::kind)

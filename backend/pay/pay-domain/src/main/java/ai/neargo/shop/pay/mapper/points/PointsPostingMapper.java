@@ -76,15 +76,19 @@ public interface PointsPostingMapper {
             + " AND withdraw_bucket=#{bucket} AND state IN ('READY','DISPATCHING','UNKNOWN')")
     long lockedWithdrawalTotal(@Param("type") String type,@Param("bucket") String bucket);
 
-    @Insert("INSERT INTO pts_fund_evidence(evidence_no,currency,external_minor,verified)"
-            + " VALUES(#{no},#{currency},#{amount},1)")
-    int registerEvidence(@Param("no") String no,@Param("currency") String currency,@Param("amount") long amount);
+    @Insert("INSERT INTO pts_fund_evidence(evidence_no,currency,external_minor,verified,binding_purpose,binding_ref)"
+            + " VALUES(#{no},#{currency},#{amount},1,#{purpose},#{source})")
+    int registerEvidence(@Param("no") String no,@Param("currency") String currency,@Param("amount") long amount,
+                         @Param("purpose") String purpose,@Param("source") String source);
     @Select("SELECT * FROM pts_fund_evidence WHERE evidence_no=#{no} FOR UPDATE")
     Map<String,Object> evidence(String no);
     @Update("UPDATE pts_fund_evidence SET used_voucher_no=#{voucher} WHERE evidence_no=#{no} "
-            + "AND currency=#{currency} AND external_minor=#{amount} AND verified=1 AND used_voucher_no IS NULL")
+            + "AND currency=#{currency} AND external_minor=#{amount} AND verified=1 AND used_voucher_no IS NULL "
+            + "AND ((binding_purpose IS NULL AND #{purpose} IS NULL) OR binding_purpose=#{purpose}) "
+            + "AND ((binding_ref IS NULL AND #{source} IS NULL) OR binding_ref=#{source})")
     int consumeEvidence(@Param("no") String no, @Param("currency") String currency,
-                        @Param("amount") long amount, @Param("voucher") String voucher);
+                        @Param("amount") long amount, @Param("voucher") String voucher,
+                        @Param("purpose") String purpose,@Param("source") String source);
 
     @Insert("INSERT INTO pts_ledger_entry(entry_no,voucher_no,type_code,holder_type,holder_no,bucket,"
             + "delta_points,after_points) VALUES(#{no},#{voucher},#{key.typeCode},#{key.holderType},"
