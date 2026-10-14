@@ -602,7 +602,9 @@ public class SettleServiceImpl implements SettleService {
          *
          * 各设一套时点的代价：月末对不平，第一件事要先分辨是账单晚了还是积分晚了。
          */
-        pointsService.confirmDeduction(bill.getSubOrderNo());
+        if (nz(bill.getSubsidyMinor()) > 0 || nz(bill.getPointsCostMinor()) > 0) {
+            pointsService.confirmDeduction(bill.getSubOrderNo());
+        }
     }
 
     // ---------------------------------------------------------------- SettlePort（退款链路）
@@ -1192,7 +1194,9 @@ public class SettleServiceImpl implements SettleService {
          * 只把确认挂在分账上的话，归集路径下的 USE 会永远停在 PENDING，
          * 池子只进不出，而且不报任何错。
          */
-        pointsService.confirmDeduction(b.getSubOrderNo());
+        if (nz(b.getSubsidyMinor()) > 0 || nz(b.getPointsCostMinor()) > 0) {
+            pointsService.confirmDeduction(b.getSubOrderNo());
+        }
         return toVO(b);
     }
 

@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.trade.order.policy.PhaseOnePointsPolicy;
+
 import ai.neargo.shop.trade.service.AfterSaleRuleService;
 import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleContext;
 import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleEvent;
@@ -472,7 +474,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 ? couponPort.usedTitleOf(sub.getOrderNo()) : null;
         long ret = 0L;
         long revoke = 0L;
-        if (pointsPort != null) {
+        if (PhaseOnePointsPolicy.enabled() && pointsPort != null) {
             var impact = pointsPort.pendingImpactOf(
                     siblings.stream().map(OrdSubOrder::getSubOrderNo).toList());
             ret = on(FLAG_RETURN_POINTS) ? impact.refunded() : 0L;
@@ -485,7 +487,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Transactional
     public AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark,
                                Long refundMinor, String refundMode) {
+        if (OrdAfterSale.REFUND_MODE_POINTS.equals(refundMode)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
         OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
+        PhaseOnePointsPolicy.requireCashHistory(subOrderOf(as.getSubOrderNo()));
         // 说明可空；给了就留下来 —— C 端订单页那句「商家回复」读的就是它
         if (remark != null && !remark.isBlank()) {
             as.setMerchantRemark(remark.trim());
@@ -616,6 +622,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      * 反过来做的话，钱退了但分账收不回，商家已提现的部分只能人工追。
      */
     private void doRefund(OrdAfterSale as, String label, AfterSaleEvent event, Actor actor, String operatorNo) {
+        PhaseOnePointsPolicy.requireCashHistory(subOrderOf(as.getSubOrderNo()));
+        if (OrdAfterSale.REFUND_MODE_POINTS.equals(as.getRefundMode())) {
+            throw BizException.of(ErrorCode.ORDER_POINTS_MANUAL_REQUIRED);
+        }
         if (OrdAfterSale.REFUNDED.equals(as.getStatus())) {
             return;   // 幂等：重复点「同意」不会退两次
         }
@@ -737,7 +747,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         if (couponPort != null && on(FLAG_RETURN_COUPON)) {
             couponPort.release(sub.getOrderNo());
         }
-        if (pointsPort != null && on(FLAG_RETURN_POINTS)) {
+        if (PhaseOnePointsPolicy.enabled() && pointsPort != null && on(FLAG_RETURN_POINTS)) {
             for (OrdSubOrder x : siblings) {
                 /*
                  * 跨域写推迟到提交之后，与取消订单退分同一个姿势（OrderServiceImpl.cancel）。
@@ -755,7 +765,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          * 收回这一单发放的购物积分（待办设计 P2c）。货钱都退了，买它得的分还留着的话，
          * 「买了退、退了买」就能刷分。已转正且花掉的允许扣成负数（points.config 可关）。
          */
-        if (pointsPort != null && on(FLAG_CLAWBACK_EARNED)) {
+        if (PhaseOnePointsPolicy.enabled() && pointsPort != null && on(FLAG_CLAWBACK_EARNED)) {
             for (OrdSubOrder x : siblings) {
                 final String subNo = x.getSubOrderNo();
                 ai.neargo.shop.event.AfterCommit.run("整单退款收回赠送积分 subOrderNo=" + subNo,

@@ -106,7 +106,7 @@
 
 路径缩写：`T=backend/shop-core/src/main/java/ai/neargo/shop/trade/`，`O=T/order/`，`S=backend/shop-base/src/main/java/ai/neargo/shop/spi/`，`P=backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/`，`IT=backend/shop-app/src/test/java/ai/neargo/shop/scenario/`。下列“新增”是拟创建，实施时先验证不存在并复用等价构件。
 
-### Task N00：固定一期实施基线和接线清单
+### Task 0: N00 固定一期实施基线和接线清单
 
 **文件：** 修改本文 §1/§6、`docs/technical/design/order-domain-migration-map.json` 的现状标记；执行记录放 `.superpowers/sdd/TDD-订单一期主流程与基础退款/`，不调整已有归属目标。必要迁移编号核查位置 `backend/shop-app/src/main/resources/db/migration/`。
 
@@ -117,9 +117,9 @@
 - [ ] 运行原 `ConsumerOrderFlowTest,StoreSplitOrderFlowTest,BizOrderFulfillFlowTest,LogisticsRegistrationFlowTest,OrderAutoReceiptFlowTest,M5AfterSaleFlowTest,ArchitectureTest`，记录每个真实入口当前能力与失败，固定测试选择和 SHA。
 - [ ] 将遗漏 Store、主单/子单合同、积分调用和支付/物流外部依赖写回本文；只提交基线文档，不制造“基线必须红”的业务测试。
 
-### Task N01：订单一期积分隔离
+### Task 1: N01 订单一期积分隔离
 
-**文件：** 修改 `T/service/impl/{OrderServiceImpl,AfterSaleServiceImpl}.java`、`T/dto/CheckoutCapabilityVO.java`；新增 `O/policy/PhaseOnePointsPolicy.java`。修改 `c-app/src/pages/order-confirm/index.vue`、三端 API 合同及订单/售后展示；复用现有 C 端 `FEATURES.points`，不改积分域实现。
+**文件：** 修改 `T/service/impl/{OrderServiceImpl,AfterSaleServiceImpl}.java`、`T/dto/CheckoutCapabilityVO.java`；新增 `O/policy/PhaseOnePointsPolicy.java`。增量错误码 `ORDER_POINTS_MANUAL_REQUIRED=20014` 与三语消息提示历史义务人工核对；cash 的 pay 结算不调用积分转正（`P/impl/SettleServiceImpl.java` 根据原积分成本/补差快照跳过零积分调用，历史非零财务回执保留既有处理）。修改 `c-app/src/pages/order-confirm/index.vue`、三端 API 合同及订单/售后展示；复用现有 C 端 `FEATURES.points`，不改积分域实现。
 
 **接口：** 新增 `void PhaseOnePointsPolicy.validate(Long usePoints)`：正值拒绝，null/0 合法，负值按输入错误拒绝；`boolean enabled()` 一期固定 false。结算能力增量字段 `pointsEnabled=false`；C 端缺字段也按关闭处理。现金订单的调用编排依据此政策跳过扣分/赠分/返分和规则查询，历史积分义务不能套用“无积分已完成”。
 
@@ -128,7 +128,7 @@
 - [ ] 以策略统一隔离调用；如存在收货/事件消费者继续发积分，纳入同一检查。不把组件余额置零伪装完成，不改历史金额。
 - [ ] 运行上述测试及 `OrderPaidFourChannelsFlowTest`、C 页面测试/类型检查，证明支付不依赖积分；保存真实输出、消融策略守卫、复核并精确提交。
 
-### Task N02：完整现金下单与门店查询接线
+### Task 2: N02 完整现金下单与门店查询接线
 
 **文件：** 修改 `O/command/CreateOrderCommand.java`、`O/service/create/{CreateOrderHandler,PaymentDraftFactory,OrderDraftFactory,OrderPersister,OrderWriteStore}.java`、`T/service/impl/OrderServiceImpl.java`。新增 `O/command/OrderActor.java`、`O/service/create/{CheckoutPreparationService,PreparedOrder,MybatisOrderWriteStore,OrderCreateTransaction}.java` 及准备服务实现；新增 `O/service/{StoreOrderQueryService,impl/StoreOrderQueryServiceImpl}.java`、`O/service/query/{StoreOrderReadStore,MybatisStoreOrderReadStore,StoreOrderAssembler}.java`、`O/contract/{StoreOrderView,StoreOrderSummary,StoreOrderQuery}.java`。复用 `backend/shop-store-mybatis/src/main/java/ai/neargo/shop/idem/IdempotencyService.java`，只补真实订单缺口。
 
@@ -144,7 +144,7 @@
 - [ ] 资源占用前固定稳定支付号；失败后核对本地完整订单与外域占用事实。复用已有稳定业务键/Outbox 恢复；若缺持久化恢复记录，在本任务先增量设计最小创建记录（buyer/endpoint/key/hash/payNo/status/resource refs），再实现，不能把跨库占用当成本地回滚成功。未知结果按原号回查，不另建单。
 - [ ] 运行新测试和 `StoreSplitOrderFlowTest,FreightOrderFlowTest,CouponDoubleUseTest,AppointmentSlotFlowTest,GroupOrderFlowTest`；C 确认页/订单列表与 B/运营订单详情接真实 API 验证字段/权限，消融一项幂等/选择字段、复核并提交。此任务不要求全域搬迁。
 
-### Task N03：支付、取消和自动关单闭环
+### Task 3: N03 支付、取消和自动关单闭环
 
 **文件：** 新增 `O/service/lifecycle/{PaymentLifecycleService,OrderCancellationService}.java` 及同包 `impl` 实现；修改 `T/service/impl/OrderServiceImpl.java`、`T/api/callback/{PayCallbackController,ChannelPayCallbackController}.java`、`T/job/OrderAutoCloseJob.java`、`backend/shop-app/src/main/java/ai/neargo/shop/paybridge/OrderPaidReconciler.java`。保留 `c-app/src/pages/pay/index.vue` 和已有支付测试中的 F05 行为；必要资金上下文修改走 `backend/shop-app/src/main/java/ai/neargo/shop/paybridge/port/SettlePortImpl.java`，不直接调用 pay Mapper。
 
@@ -155,7 +155,7 @@
 - [ ] 将付款/取消/关单规则接同一写门；支付账确认在订单投影之前，库间中断由原流水回查恢复。保持实际付款账户/场景来源，不由调用端 header 伪造金融身份。
 - [ ] 运行新测试及 `OrderPaidFourChannelsFlowTest,OrderCloseRuleFlowTest,MultiStoreOrderScopeTest`、C `pay-page.test.ts/one-tap-pay.test.ts`；真接口验证付款失败/用户取消/成功延迟回查。复核提交后交付里程碑 A。
 
-### Task N04：备货、整单发货和有效发货单
+### Task 4: N04 备货、整单发货和有效发货单
 
 **文件：** 修改 `O/service/OrderCommandService.java`、`O/command/ShipCommand.java`、`O/service/ship/ShipHandler.java`、`T/service/impl/MerchantOrderServiceImpl.java`、`T/api/biz/BizOrderController.java`。新增 `O/service/impl/OrderCommandServiceImpl.java`、`O/service/ship/{MybatisShipmentReadStore,MybatisShipmentWriteStore}.java`；修改 `b-app/src/pages/order/index.vue`、`b-app/src/api/{contract,requests}.ts`。
 
@@ -167,7 +167,7 @@
 - [ ] 发货登记和微信上传使用稳定 shipmentNo 触发现有可靠事件/Outbox；本地已发货、外部订阅失败可见且可恢复，不能回滚后再建第二张。既有改单号入口需作废旧单并生成有效新单、保留审计。
 - [ ] 运行新测试及 `MerchantOrderPrepareTest,BizOrderFulfillFlowTest,ShipNotifyFlowTest,WxShippingUploadFlowTest`，B 真接口发货/C 查看；消融绑定/事务守卫、复核并提交。
 
-### Task N05：物流登记、推送、换号和三端查看
+### Task 5: N05 物流登记、推送、换号和三端查看
 
 **文件：** 修改 `backend/logistics/logistics-domain/src/main/java/ai/neargo/shop/logistics/{registration/ShipmentRegistrar.java,registration/SubscribeExecutor.java,push/PushIngestion.java,domain/WaybillProgress.java,port/LogisticsPortImpl.java}`、`T/service/impl/{OrderServiceImpl,MerchantOrderServiceImpl}.java`；必要订单接收适配新增 `O/service/ship/ShipmentSnapshotConverger.java`。复用 `backend/shop-app/src/main/java/ai/neargo/shop/logisticsbridge/LogisticsCompensationJob.java`、`backend/shop-core/src/main/java/ai/neargo/shop/fulfillment/service/impl/LogisticsServiceImpl.java` 的既有运营能力，C/B 订单页及运营现有物流页面补消费。
 
@@ -179,7 +179,7 @@
 - [ ] 微信发货上传/token 前置未满足可见且可重试；运营可以按原号重放订阅/上传失败，换号留痕并隔离旧回执。异常/无轨迹显示真实原因，不写虚构轨迹。
 - [ ] 跑新场景和 `WaybillProgressTest,SubscribeExecutorTest,WxBindTest`（域模块），三端类型/页面检查；准备真实渠道配置与 HTTPS 回调联调清单。记录测试替身、沙箱和真实渠道分别验到哪里，复核提交。
 
-### Task N06：确认收货、自动收货和完成收敛
+### Task 6: N06 确认收货、自动收货和完成收敛
 
 **文件：** 修改 `O/service/receipt/{ReceiptHandler,OrderCompletion,OrderReceiptCompleter}.java` 及 `impl/OrderReceiptCompleterImpl.java`、`T/service/impl/OrderServiceImpl.java`、`T/job/OrderAutoReceiptJob.java`、命令门面；新增 `O/service/receipt/{MybatisReceiptReadStore,MybatisReceiptWriteStore}.java`。C `c-app/src/pages/order/index.vue` 接真实收货结果。
 
@@ -190,7 +190,7 @@
 - [ ] 包裹更新按所属子单串行，再当前读重算完成；完成、退款终态不被迟到物流事件改回履约中；复用状态写门/通知，积分调用仍为 0。
 - [ ] 跑新场景与 `OrderAutoReceiptFlowTest,BizOrderFulfillFlowTest`、C 收货页面测试；真接口完成普通快递订单。复核提交后交付里程碑 B。
 
-### Task N07：基础全额退款和必要恢复
+### Task 7: N07 基础全额退款和必要恢复
 
 **文件：** 修改 `T/service/impl/AfterSaleServiceImpl.java`、`O/refund/service/{AfterSaleRefundExecutor,RefundLedger}.java`、`T/api/{mp/MpTradeController,biz/BizAfterSaleController,ops/OpsAfterSaleController}.java`、`T/job/RefundRetryJob.java`；扩展 `S/settle/SettlePort.java`、`backend/shop-app/src/main/java/ai/neargo/shop/paybridge/port/SettlePortImpl.java` 和 `P/service/impl/PaymentLedgerServiceImpl.java` 的最小退款结果能力。新增 `O/refund/service/{BasicRefundExecutionService,impl/BasicRefundExecutionServiceImpl}.java`、`S/settle/{RefundRequest,RefundDispatchResult}.java`。三端售后页和合同同步；必要执行数据用新 Flyway 迁移及测试 schema 对账。
 
@@ -206,7 +206,7 @@
 - [ ] C 能申请/撤销/看进度/填寄回单号，B 能审核/确认退回，运营能审核并查失败原因/原执行恢复；不得显示积分补偿或新部分退款操作。扩展 `b-app/tests/after-sale-approve.test.ts` 并新增 C 基础退款页面测试。
 - [ ] 运行新场景及 `LineRefundFlowTest,M5AfterSaleFlowTest,AfterSaleTimeoutFlowTest,RefundLeavesLedgerTest`、真实 MariaDB 并发/事务验证和三端售后测试。原分账后回退/原路退款的沙箱或真实小额联调另记证据，未通过不得宣告上线；消融成功确认守卫、复核并提交。
 
-### Task N08：三端贯通验收与交付清单
+### Task 8: N08 三端贯通验收与交付清单
 
 **文件：** C `c-app/src/pages/{order-confirm,pay,orders,order,after-sale}/index.vue`；B `b-app/src/pages/{orders,order,after-sale}/index.vue`；运营 `ops-web/app/orders/page.tsx`、`ops-web/app/after-sales/page.tsx`、`ops-web/app/fulfillment/{page,express-tab}.tsx`；三端 API 合同/HTTP/mock；修改本文 §5/§6。仅在页面/菜单实际变化时运行 UI 清单生成器。
 
@@ -272,7 +272,7 @@ git diff --check
 | 任务 | 状态 | 交付出口 |
 |---|---|---|
 | N00 | 已完成 | 干净一期基线/接线清单/旧改动保留 |
-| N01 | 待实施 | 无积分依赖、端与服务端一致 |
+| N01 | 后端已完成，C/B 待 N08 | 无积分依赖、端与服务端一致 |
 | N02 | 待实施 | 现金下单/查询生产接线和幂等 |
 | N03 | 待实施 | 付款/取消/关单闭环，里程碑 A |
 | N04 | 待实施 | 商家备货/整单发货 |
@@ -284,3 +284,7 @@ git diff --check
 计划自检：P01–P12 均有任务落点；Review 重点五项均指定反例测试；支付聚合与子单/Shipment 编号分开；新积分、复杂财务和迁包未作为主线前置；F07 保留未提交且未记完成。实现时用实际 diff 更新文件清单/偏差与测试结果，不能把本节规划自检写成代码通过。
 
 N00 执行：隔离树 `/Users/robin/.codex/worktrees/order-phase1/ai-shop-codex`，分支 `codex/order-phase1`，BASE `fdb3926e84a1fe11007bccde2f9c9a0dcb3e496d`。原 F07 保留，未复制共享登录/积分代码。接线清单及暂停状态保存在本计划工作区；本地测试 Flyway 禁用，仅 H2 schema，未对生产数据库执行迁移。
+
+N01 范围对账：初始5条反例、历史取消/到期两条反例和现金结算转正反例均已得到业务 RED；首轮现金结算夹具误写 NONE 而应 NO_INVOICE（发票守卫错误不计入 RED）。M5 旧积分订单/补偿的3条验收按一期范围改为拒绝和历史人工核对，现金售后37条保留。新 capability 字段与三语错误消息同步后端合同；C/B 按用户要求暂不修改。
+
+N01 后端验收：`N01-verified.log` 11 类129/129，`N01-restored.log` 3 类54/54，均0失败/错误；移除正积分守卫后 `N01-ablation.log` 1/1失败，恢复文件与备份字节一致后重新编译54条通过。覆盖正/负积分、能力关闭、付款/取消/超时/历史人工处理、现金结算无转正、积分补偿拒绝，普通下单/支付/发货/物流/收货/现金售后回归保持通过。仅后端及文档改动，C/B 没有提前接线。

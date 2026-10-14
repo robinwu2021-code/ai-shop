@@ -350,6 +350,9 @@ public enum ErrorCode {
     /** 本单支付渠道不支持部分退款（或已超次数 / 期限）—— 改用积分补偿、线下退款登记或整单退。 */
     AFTERSALE_CHANNEL_PARTIAL_UNSUPPORTED(20013, "err.trade.aftersale_channel_partial_unsupported"),
 
+    /** Do not report cash-order cleanup complete when an older order still contains points liabilities. */
+    ORDER_POINTS_MANUAL_REQUIRED(20014, "err.trade.order_points_manual_required"),
+
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),
     NOT_THIS_PICKUP_POINT(30002, "err.fulfillment.not_this_pickup"),

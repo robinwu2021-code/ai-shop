@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.trade.order.policy.PhaseOnePointsPolicy;
+
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 
 import ai.neargo.shop.spi.fulfillment.FreightPort;
@@ -381,6 +383,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public ai.neargo.shop.trade.dto.CheckoutCapabilityVO capability(CreateOrderCommand cmd) {
+        PhaseOnePointsPolicy.validate(cmd.usePoints());
         Split raw = split(cmd);
         Map<String, String> stores = storesOf(cmd, raw);
         // 运费计进额度判断：快递单的「这一单要付多少」含运费（TDD-快递100商家寄件 §8）
@@ -486,6 +489,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderVO preview(CreateOrderCommand cmd) {
+        PhaseOnePointsPolicy.validate(cmd.usePoints());
         String userNo = SecurityUtils.currentUserNo();
         // 团价在预览就要算进去：确认页显示的是「参团 ¥8」，提交后不能变成原价
         Split raw = split(cmd);
@@ -564,7 +568,8 @@ public class OrderServiceImpl implements OrderService {
             return null;
         }
         String title = couponPort.returnedTitleOf(sub.getOrderNo());
-        var pts = pointsPort.returnedOf(List.of(sub.getSubOrderNo()));
+        var pts = PhaseOnePointsPolicy.enabled()
+                ? pointsPort.returnedOf(List.of(sub.getSubOrderNo())) : new PointsPort.PointsReturned(0L, 0L);
         return new OrderVO.Returned(title, pts.refunded(), pts.clawedBack());
     }
 
@@ -1156,6 +1161,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey,
                              Integer payMinutes) {
+        PhaseOnePointsPolicy.validate(cmd.usePoints());
         return idempotency.execute(idempotencyKey, "POST /mp/order", userNo, OrderVO.class,
                 () -> doCreate(cmd, userNo, payMinutes));
     }
@@ -1316,19 +1322,7 @@ public class OrderServiceImpl implements OrderService {
          * 抵不了就是不抵（返回零值），**不抛异常** —— 为了抵扣失败把一笔真实成交挡掉，
          * 代价与收益完全不成比例，与买赠缺货少送是同一条原则。
          */
-        PointsPort.Deduction points = cmd.usePoints() == null || cmd.usePoints() <= 0
-                ? PointsPort.Deduction.none()
-                : pointsPort.deduct(userNo, cmd.usePoints(), split.groups.stream()
-                        .map(g -> new PointsPort.Target(g.merchantNo,
-                                g.goodsAmount() - discounts.of(g.merchantNo, g.storeNo()),
-                                subOrderNoOf.get(g.key())))
-                        /*
-                         * 端与支付方式一起传进去：能不能用积分抵扣是平台策略，
-                         * 判定收在积分域一处。**传的是本次请求的端**（cmd.payScene()
-                         * 来自 X-Client），核销判定的对象就是当前端 ——
-                         * 发放那边恰好相反，读的是订单快照，别把两者写混。
-                         */
-                        .toList(), payMode, cmd.payScene());
+        PointsPort.Deduction points = PointsPort.Deduction.none();
 
         /*
          * 线下支付**不能用平台券** —— 券要按出资方拆开看：
@@ -1885,7 +1879,7 @@ public class OrderServiceImpl implements OrderService {
             merchantAdminPort.accruePayQuota(sub.getEntityNo(), sub.getStoreNo(),
                     sub.getPayAmount() == null ? 0L : sub.getPayAmount());
 
-            if (!Boolean.TRUE.equals(sub.getPointsGranted())) {
+            if (PhaseOnePointsPolicy.enabled() && !Boolean.TRUE.equals(sub.getPointsGranted())) {
                 /*
                  * 发积分**在支付状态提交之后**做，与生成结算单同一条理由：
                  * 支付域独立成进程后就没有共享事务了，而这里后面还有事件发布 ——
@@ -2258,6 +2252,7 @@ public class OrderServiceImpl implements OrderService {
     /** 取消一次支付（未付款 / 待当面收款）：支付单 CANCELLED + 其下订单 CANCELLED + 释放占用 */
     /** 不返回详情：详情按买家身份取，平台调用会 NOT_FOUND 并把整个取消回滚掉 */
     private void cancelPayment(OrdOrder order, String reason, Actor actor, String operatorNo, String label) {
+        subOrders(order.getOrderNo()).forEach(PhaseOnePointsPolicy::requireCashHistory);
         statusWriter.payment(order, PaymentEvent.CANCEL, actor, operatorNo, label,
                 new PaymentContext(OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus()), true, true, false));
         order.setCancelReason(reason);
@@ -2280,8 +2275,10 @@ public class OrderServiceImpl implements OrderService {
          */
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
             final String subNo = sub.getSubOrderNo();
-            AfterCommit.run("退回积分 subOrderNo=" + subNo,
-                    () -> pointsPort.reverse(subNo, "订单已取消"));
+            if (PhaseOnePointsPolicy.enabled()) {
+                AfterCommit.run("退回积分 subOrderNo=" + subNo,
+                        () -> pointsPort.reverse(subNo, "订单已取消"));
+            }
             // 名额还回去。幂等标记在子单上 —— 与超时关闭那条路同时到达也只还一次
             releaseAppointmentSlot(sub);
         }
@@ -2325,10 +2322,19 @@ public class OrderServiceImpl implements OrderService {
                 .eq(OrdOrder::getStatus, OrdOrder.WAIT_PAY)
                 .le(OrdOrder::getPayDeadlineAt, now));
 
+        int closed = 0;
         for (OrdOrder order : expired) {
-            closeOne(order, "支付超时");
+            try {
+                closeOne(order, "支付超时");
+                closed++;
+            } catch (BizException e) {
+                if (e.errorCode() != ErrorCode.ORDER_POINTS_MANUAL_REQUIRED) {
+                    throw e;
+                }
+                log.warn("[close] {} 历史积分待人工处理，不自动关闭", order.getOrderNo());
+            }
         }
-        return expired.size();
+        return closed;
     }
 
     /**
@@ -2339,6 +2345,7 @@ public class OrderServiceImpl implements OrderService {
      * 各写一遍的话，漏掉的那一项会让库存或券一直占着，而没有任何报错。
      */
     void closeOne(OrdOrder order, String reason) {
+        subOrders(order.getOrderNo()).forEach(PhaseOnePointsPolicy::requireCashHistory);
         /*
          * 状态先改再释放：**改失败（并发下已被支付）就不该释放**。
          * 此前这里是无条件 updateById —— 与付款回调同时到达时会把已付款的单写回 CLOSED，
@@ -2378,8 +2385,10 @@ public class OrderServiceImpl implements OrderService {
         // reverse 只认 PENDING 的 USE 流水，重复跑不会退两次 —— 幂等在数据里，不在标记上
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
             final String subNo = sub.getSubOrderNo();
-            AfterCommit.run("退回积分 subOrderNo=" + subNo,
-                    () -> pointsPort.reverse(subNo, reason + "，订单关闭"));
+            if (PhaseOnePointsPolicy.enabled()) {
+                AfterCommit.run("退回积分 subOrderNo=" + subNo,
+                        () -> pointsPort.reverse(subNo, reason + "，订单关闭"));
+            }
             releaseAppointmentSlot(sub);
         }
     }
