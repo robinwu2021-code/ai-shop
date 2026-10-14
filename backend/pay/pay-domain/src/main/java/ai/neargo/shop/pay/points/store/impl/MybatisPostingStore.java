@@ -130,12 +130,25 @@ public class MybatisPostingStore implements PostingStore {
                         && voucher.rate().toMinor(move.originalPoints())==gross,"POINTS_PAYOUT_SNAPSHOT_INVALID");
                 require(mapper.indexPayout(move.positionNo(),ticket.path("providerIdem").asText(),gross,offset,cash,
                         command.path("currency").asText())==1,"POINTS_PAYOUT_SNAPSHOT_INVALID");
+                if (!"FAILED".equals(move.nextState())) {
+                    for (var source:snapshot.path("command").path("positionIds")) {
+                        require(mapper.bindPayout(source.asText(),type,move.positionNo())==1,
+                                "POINTS_PAYOUT_BINDING_CONFLICT");
+                    }
+                }
+            }
+            if (move.kind()==PositionMove.Kind.REDEEM && "PAYABLE".equals(move.nextState())) {
+                mapper.releasePayoutBinding(move.positionNo());
             }
             if (move.kind()==PositionMove.Kind.GRANT || move.kind()==PositionMove.Kind.REDEEM) {
                 var payload=json.readTree(move.payload());
                 if (payload.hasNonNull("subOrderNo") && payload.hasNonNull("userNo")) {
                     mapper.indexOrderPosition(move.kind().table(),move.positionNo(),payload.get("subOrderNo").asText(),
                             payload.get("userNo").asText());
+                    if (move.kind()==PositionMove.Kind.REDEEM) {
+                        mapper.indexRedeemStore(move.positionNo(),payload.path("orderNo").asText(),
+                                payload.path("share").path("storeNo").asText());
+                    }
                 }
             }
         }

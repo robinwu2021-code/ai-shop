@@ -98,6 +98,13 @@ public interface PointsPostingMapper {
             + "cash_minor=#{cash},currency=#{currency} WHERE position_no=#{no}")
     int indexPayout(@Param("no") String no,@Param("idem") String idem,@Param("gross") long gross,
                     @Param("offset") long offset,@Param("cash") long cash,@Param("currency") String currency);
+    @Update("UPDATE pts_redeem_position SET order_no=#{order},store_no=#{store} WHERE position_no=#{no}")
+    int indexRedeemStore(@Param("no") String no,@Param("order") String order,@Param("store") String store);
+    @Update("UPDATE pts_redeem_position SET ticket_no=#{ticket} WHERE position_no=#{no} AND type_code=#{type} "
+            + "AND state IN ('PAYING','PAID') AND (ticket_no IS NULL OR ticket_no=#{ticket})")
+    int bindPayout(@Param("no") String no,@Param("type") String type,@Param("ticket") String ticket);
+    @Update("UPDATE pts_redeem_position SET ticket_no=NULL WHERE position_no=#{no} AND state='PAYABLE'")
+    int releasePayoutBinding(String no);
     @Update("UPDATE pts_account SET last_active_at=#{at},expire_at=#{expiry},expiry_revision=expiry_revision+1 "
             + "WHERE type_code=#{type} AND holder_type='USER' AND holder_no=#{user}")
     int renewUser(@Param("type") String type,@Param("user") String user,@Param("at") long at,

@@ -20,13 +20,18 @@ public class PointsPayoutExecutionServiceImpl implements PointsPayoutExecutionSe
         this.preparation=preparation; this.gateways=gateways;
     }
     @Override public PayoutOutcome execute(String no) {
+        DispatchResult dispatch = perform(no);
+        return dispatch.completed() != null ? dispatch.completed() : preparation.acceptResult(dispatch.result());
+    }
+
+    @Override public DispatchResult perform(String no) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("POINTS_FUNDS_REQUIRES_NO_TRANSACTION");
         }
         PointsFundsGateway gateway=gateways.getIfAvailable();
         if (gateway==null) { throw new IllegalStateException("POINTS_FUNDS_GATEWAY_REQUIRED"); }
         var claim=preparation.claimDispatch(no);
-        if (claim.completed()!=null) { return claim.completed(); }
+        if (claim.completed()!=null) { return new DispatchResult(null, claim.completed()); }
         FundsResult result;
         try { result=claim.submit()?gateway.submit(claim.command()):gateway.query(claim.command()); }
         catch (RuntimeException e) {
@@ -40,6 +45,6 @@ public class PointsPayoutExecutionServiceImpl implements PointsPayoutExecutionSe
             result=new FundsResult(no,FundsStatus.UNKNOWN,null,claim.command().amountMinor(),
                     "POINTS_FUNDS_RECEIPT_MISMATCH");
         }
-        return preparation.acceptResult(result);
+        return new DispatchResult(result, null);
     }
 }

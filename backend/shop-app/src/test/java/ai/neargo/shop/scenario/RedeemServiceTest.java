@@ -178,6 +178,18 @@ class RedeemServiceTest {
         } finally { db("payDataSource").update("UPDATE pts_point_type SET active_market=NULL WHERE type_code=?",type); }
     }
 
+    @Test
+    void redemption_projects_store_and_order_dimensions() throws Exception {
+        String type=fixture(true);
+        try {
+            context.getBean(RedeemService.class).hold(command(type));
+            assertThat(db("payDataSource").queryForObject("SELECT store_no FROM pts_redeem_position"
+                    + " WHERE type_code=? AND sub_order_no=?",String.class,type,"S:"+type)).isEqualTo("ST"+type);
+            assertThat(db("payDataSource").queryForObject("SELECT order_no FROM pts_redeem_position"
+                    + " WHERE type_code=? AND sub_order_no=?",String.class,type,"S:"+type)).isEqualTo("O:"+type);
+        } finally { db("payDataSource").update("UPDATE pts_point_type SET active_market=NULL WHERE type_code=?",type); }
+    }
+
     private String fixture(boolean reserve) throws Exception {
         String type="RD"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
         types.create(new PointTypeService.CreateType(type,"CN",new RedeemRate(1,1),10000,365),"ops");

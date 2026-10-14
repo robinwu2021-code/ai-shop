@@ -16,7 +16,6 @@ import ai.neargo.shop.pay.dto.RateCardVO;
 import ai.neargo.shop.pay.dto.SettleBillVO;
 import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.entity.StlSettleBatch;
-import ai.neargo.shop.pay.entity.StlPointsPool;
 import ai.neargo.shop.pay.entity.StlFeeRule;
 import ai.neargo.shop.pay.entity.StlPurchaseInvoice;
 import ai.neargo.shop.pay.dto.PurchaseInvoiceVO;
@@ -266,19 +265,8 @@ public class SettleServiceImpl implements SettleService {
             bill.setPayChannel(src.payChannel());
             bill.setPayScene(src.payScene());
             bill.setCurrency(currencyOf(src.payChannel()));
-            /*
-             * ★ 发分费用金：**单独一列，不并进 serviceFeeMinor**。
-             *
-             * 商家最常问的是「这个月为什么少了」，而两者的解释路径完全不同 ——
-             * 佣金是按率的（他改不了），费用金是按他自己开的积分活动走的（他关掉就没了）。
-             * 并成一列，客服每次都得回去翻明细才答得出。
-             *
-             * 此前这一列全库零写入：B 端「本期积分支出」永远是 0，
-             * 而池子只出不进（用户花分时 MERCHANT_PAY 出账，发分时没有对应入账）——
-             * 恒等式 2「池子余额 == 流通中积分 × 汇率」会随发放量单调失衡。
-             */
-            long pointsFee = src.pointsFeeMinor();
-            bill.setPointsFeeMinor(pointsFee);
+            // Earning is platform-funded; settlement does not charge the merchant an earning fee.
+            bill.setPointsFeeMinor(0L);
             /*
              * ★ 商家实得要减掉**他自己承担的**那部分通道手续费。
              *
@@ -333,7 +321,7 @@ public class SettleServiceImpl implements SettleService {
                                 + "只扣 {} 分，差额待人工处理", src.subOrderNo(),
                         freightCostRaw, freightIncome, freightCap);
             }
-            bill.setNetMinor(gross - commission - serviceFee - pointsFee - fee.borneByMerchant()
+            bill.setNetMinor(gross - commission - serviceFee - fee.borneByMerchant()
                     + freightIncome - freightCost);
             bill.setChannelFeeMinor(fee.minor());
             bill.setChannelFeeRate(fee.rateBp());
@@ -401,33 +389,6 @@ public class SettleServiceImpl implements SettleService {
             bill.setRetryCount(0);
             DataScopeContext.executeWithoutScope(() -> billMapper.insert(bill));
 
-            /*
-             * 费用金入池 —— **与货款扣减同一时刻**。
-             *
-             * 不在发分时入池：那一刻钱还没到手（货款要到结算才扣），
-             * 提前入池等于池子里记着一笔还没收到的钱。
-             *
-             * refNo 用结算单号：对账时要能从池子的一笔回溯到是哪张单收的。
-             */
-            if (pointsFee > 0) {
-                /*
-                 * ⚠️ 通道**显式传 null**，不要改成 bill.getPayChannel()。
-                 *
-                 * 池子按 (market, pay_channel) 分桶记账，而**所有出池都传 null**
-                 * （PointsServiceImpl 的 MERCHANT_PAY 与 EXPIRE_INCOME 两处）——
-                 * null 落到列默认值 'WECHAT'，于是进出目前都在同一个桶里，是平的。
-                 *
-                 * 这一行此前读的 bill.getPayChannel() 恒为 null（那一列从没被写过），
-                 * 所以碰巧也落 WECHAT。本步开始真的写通道了：若照旧读它，
-                 * 线下单的入池会落进 OFFLINE 桶而出池还在 WECHAT 桶 ——
-                 * 两个桶一个单调涨一个单调负，而账面总额仍然是平的，
-                 * 只有翻「按通道」那张明细才看得出来。
-                 *
-                 * 要真按通道分桶，得进出两侧一起改，那是独立的一件事。
-                 */
-                pointsService.recordPoolFlow(StlPointsPool.MERCHANT_RECEIVE, pointsFee,
-                        src.merchantNo(), bill.getSettleNo(), null, null);
-            }
             created++;
         }
         return created;

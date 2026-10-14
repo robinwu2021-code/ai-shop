@@ -19,5 +19,6 @@ public interface PointsReadStore {
     Map<String, Object> voucher(String bizRef);
     Map<String, Object> position(String table, String positionNo);
     Map<String, Object> reserve(String reserveNo);
+    List<Map<String,Object>> redemptionsForSub(String subOrderNo);
     Map<String, Object> lifecycle(String typeCode, String subOrderNo);
 }

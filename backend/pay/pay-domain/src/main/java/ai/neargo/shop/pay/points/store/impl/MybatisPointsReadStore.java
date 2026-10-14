@@ -61,6 +61,9 @@ public class MybatisPointsReadStore implements PointsReadStore {
     @Override public Map<String,Object> reserve(String no) {
         return DataScopeContext.executeWithoutScope(() -> mapper.reserve(no));
     }
+    @Override public List<Map<String,Object>> redemptionsForSub(String sub) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.redemptionsForSub(sub));
+    }
     @Override public Map<String,Object> lifecycle(String type,String sub) {
         return DataScopeContext.executeWithoutScope(() -> mapper.lifecycle(type,sub));
     }

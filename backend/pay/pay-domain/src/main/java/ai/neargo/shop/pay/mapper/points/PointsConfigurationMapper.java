@@ -30,6 +30,23 @@ public interface PointsConfigurationMapper {
     Map<String,Object> reserve(String no);
     @Select("SELECT * FROM pts_lifecycle_fact WHERE type_code=#{type} AND sub_order_no=#{sub}")
     Map<String, Object> lifecycle(@Param("type") String type, @Param("sub") String sub);
+    @Select("SELECT * FROM pts_redeem_position WHERE sub_order_no=#{sub} AND deleted=0 ORDER BY type_code")
+    List<Map<String,Object>> redemptionsForSub(String sub);
+    @Select("SELECT * FROM pts_inbox WHERE event_no=#{event}")
+    Map<String,Object> inbox(String event);
+    @Insert("INSERT INTO pts_inbox(type_code,state,payload_json,event_no,payload_hash)"
+            + " VALUES(#{type},#{state},#{payload},#{event},#{hash})")
+    int inboxInsert(@Param("type") String type,@Param("state") String state,@Param("payload") String payload,
+                    @Param("event") String event,@Param("hash") String hash);
+    @Insert("INSERT INTO pts_lifecycle_fact(type_code,state,payload_json,sub_order_no,source_version)"
+            + " VALUES(#{type},#{state},#{payload},#{sub},#{sourceVersion})")
+    int lifecycleInsert(@Param("state") String state,@Param("type") String type,@Param("sub") String sub,@Param("sourceVersion") long version,
+                        @Param("payload") String payload);
+    @Update("UPDATE pts_lifecycle_fact SET state=#{state},payload_json=#{payload},source_version=#{sourceVersion},"
+            + "version=version+1 WHERE type_code=#{type} AND sub_order_no=#{sub} AND version=#{expected}")
+    int lifecycleFinalize(@Param("state") String state,@Param("type") String type,@Param("sub") String sub,
+                          @Param("sourceVersion") long version,@Param("payload") String payload,
+                          @Param("expected") long expected);
     @Insert("INSERT INTO pts_point_type(type_code,market,currency,scale,rate_points,rate_minor,deduct_ratio_bp,"
             + "idle_days,status,created_by) VALUES(#{t.typeCode},#{t.market},#{t.currency},#{t.scale},"
             + "#{t.rate.pointsUnit},#{t.rate.minorUnit},#{t.deductRatioBp},#{t.idleDays},'DRAFT',#{actor})")

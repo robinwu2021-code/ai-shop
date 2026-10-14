@@ -57,7 +57,7 @@ class PointsPostingDatabaseTest {
 
     @BeforeAll
     void schema() {
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V407__points_v3_ledger.sql"))
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V408__points_v3_ledger.sql"))
                 .execute(dataSource);
     }
 
