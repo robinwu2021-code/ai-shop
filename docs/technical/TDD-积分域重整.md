@@ -712,3 +712,12 @@ PointsJobWiringTest新增#only_new_points_jobs_registered；PointsReconTest新�
 2026-10-14 边界修订：按用户明确意见，积分集成pay-domain，业务独立而非独立JAR；取消新数据源/新事务/pom调整，复用payTxManager、paySqlSessionFactory，结算以域内Hook协作，订单跨域可靠性与资金优化继续适用。
 
 | 2026-10-14 | 用户确认积分尚未上线：撤回此前存量迁移/双引擎/兼容设计，直接替换旧实现；T13改为旧方案移除、全链路验收与首次上线。 |
+
+### 实施记录：T01（2026-10-14）
+
+- 本地分支：codex/points-v3，独立工作树执行。
+- 已实现：pay.points.app.PointsSettlementHook、pay.points.port.PointsFundsPort；shop-base.spi.points.PointsFactPort提前作为纯DTO契约建立；PointsArchitectureTest保护包边界与纯契约。
+- 基线：6个现有积分测试类，32 tests / 0 failures / 0 errors。
+- RED：PointsArchitectureTest 3 failures（业务包/契约缺失），非编译错误。GREEN：PointsArchitectureTest及PayTxManagerConventionTest 4 tests / 0 failures / 0 errors。
+- 执行命令均用JDK21、mvn -o -f backend/pom.xml -pl shop-app -am test，指定-Dtest及-Dsurefire.failIfNoSpecifiedTests=false；完整日志在本工作树.superpowers/sdd/points-v3/。
+- 计划修正：真实积分/结算事务测试随T02 posting和Mapper落地执行；T01纯契约不建立合成业务写服务。资金适配真实实现留T06，不设默认成功桩。其余任务仍未完成。
