@@ -785,3 +785,12 @@ PointsJobWiringTest新增#only_new_points_jobs_registered；PointsReconTest新�
 - 首轮协议/核销及架构约束组合：23 tests，0 failures / 0 errors。生产同版本 MySQL 验证仍待执行；目前 H2 和自建 MariaDB 均不等同该验证。
 
 - 消融验证：去掉 hold 的原命令比较后，`immutable_hold_rejects_changed_amount_and_release_replays` 失败（未抛出金额冲突）；恢复保护后，最终模型/协议/核销/架构组合 36 tests，0 failures / 0 errors。
+
+### T06.1 实施契约补充（2026-10-14）
+
+- `pay-channel` 新增本地能力扩展 `channel.PayFundsOperations`：由通道实现声明针对资金路径/收款账户快照的可执行及可查询用途；独立于积分 DTO，不新增 JAR。旧 PayGateway 仅有补差标志或调用接口不算完成认证，不提供默认成功/查询成功。
+- `pay.points.port.PayPointsFundsAdapter` 使用现有 PayGatewayRouter 与 PayChannelMasterService，映射明确资金命令和回执；缺扩展、通道停用、币种不匹配、能力未经查询支持时拒绝新资金执行。已提交操作的查询不因通道停用或新增能力关闭而丢弃。
+- 适配器无积分表写入；提交/查询发生在事务外。传输异常与回执身份/金额/币种不匹配均为 UNKNOWN，不伪造 FAILED 或到账证据。通道本身承担真实账户核验及请求幂等；业务票据固定原命令的校验由 T06.2/T06.3 完成。
+- `PointsFundsAdapterTest` 放在 pay-domain 的测试目录，用原生网关测试替身验证适配和边界，不启动 shop-app；生产通道尚未声明/实现该扩展时能力保持关闭。具体通道资金接口认证与真实证据联调未完成不能宣称 T06 全部交付。
+
+T06.1 验证记录：轻量测试首次 RED 3 failures（适配器缺失，4.580 秒）；新增能力扩展/适配后 GREEN 3/0（7.002 秒）。去掉到账证据必填保护后，反例 RED（期待 UNKNOWN，实际 SUCCEEDED，6.128 秒）；恢复后适配 11 tests + 核销/架构 25 tests 全部通过，组合命令 36.811 秒，未超过 120 秒预算。实际生产通道尚未实现/认证资金能力扩展，保持关闭；资金意图、回执入账和结算接线仍属未完成 T06 小项。

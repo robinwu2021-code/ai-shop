@@ -25,6 +25,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -200,7 +201,7 @@ class RedeemServiceTest {
 
     @TestConfiguration
     static class VerifiedCapabilities {
-        @Bean PointsFundsGateway testPointsFundsGateway() {
+        @Bean @Primary PointsFundsGateway testPointsFundsGateway() {
             return new PointsFundsGateway() {
                 @Override public FundsCapabilities capabilities(FundsContext c) {
                     return new FundsCapabilities(true,true,true,false);
