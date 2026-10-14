@@ -1,9 +1,9 @@
 package ai.neargo.shop.pay.points.app;
 
-import ai.neargo.shop.pay.points.port.PointsFundsPort.FundsContext;
-import ai.neargo.shop.pay.points.port.PointsFundsPort.FundsPurpose;
-import ai.neargo.shop.pay.points.port.PointsFundsPort.FundsResult;
-import ai.neargo.shop.pay.points.port.PointsFundsPort.FundsStatus;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPurpose;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsResult;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsStatus;
 import ai.neargo.shop.spi.points.PointsFactPort.LifecycleFact;
 
 import java.util.List;

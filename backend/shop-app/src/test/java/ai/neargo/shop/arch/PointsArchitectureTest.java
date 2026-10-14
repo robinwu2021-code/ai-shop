@@ -23,7 +23,7 @@ class PointsArchitectureTest {
     @Test
     void settlement_and_funds_contracts_are_local_interfaces() {
         assertThat(load("ai.neargo.shop.pay.points.app.PointsSettlementHook").isInterface()).isTrue();
-        assertThat(load("ai.neargo.shop.pay.points.port.PointsFundsPort").isInterface()).isTrue();
+        assertThat(load("ai.neargo.shop.pay.points.port.PointsFundsGateway").isInterface()).isTrue();
     }
 
     @Test

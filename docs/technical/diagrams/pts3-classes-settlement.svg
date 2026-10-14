@@ -50,7 +50,7 @@
 <text x="606" y="533" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«service»  pay.points.payout</text>
 <text x="606" y="562" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">PointsPayoutService</text>
 <path d="M590 579H1040" stroke="#0f766e" stroke-width="1"/>
-<text x="606" y="604" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">funds: PointsFundsPort</text>
+<text x="606" y="604" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">funds: PointsFundsGateway</text>
 <text x="606" y="626" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">posting: PointsPostingService</text>
 <path d="M590 642H1040" stroke="#cbd5e1"/>
 <text x="606" y="666" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ beginPayout(PayoutCommand): PayoutTicket</text>

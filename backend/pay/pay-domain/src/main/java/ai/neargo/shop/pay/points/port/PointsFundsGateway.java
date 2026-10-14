@@ -1,7 +1,7 @@
 package ai.neargo.shop.pay.points.port;
 
 /** Explicit money operations; accepting a command never means money has arrived. */
-public interface PointsFundsPort {
+public interface PointsFundsGateway {
     /** Advertises separately verified capabilities before accepting a financial promise. */
     FundsCapabilities capabilities(FundsContext context);
 

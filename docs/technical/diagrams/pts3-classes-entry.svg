@@ -40,7 +40,7 @@
 <text x="56" y="540" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">AgreementService</text>
 <path d="M40 557H490" stroke="#0f766e" stroke-width="1"/>
 <text x="56" y="582" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">agreements: AgreementStore</text>
-<text x="56" y="604" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">funds: PointsFundsPort</text>
+<text x="56" y="604" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">funds: PointsFundsGateway</text>
 <path d="M40 620H490" stroke="#cbd5e1"/>
 <text x="56" y="644" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ sign(command)</text>
 <text x="56" y="666" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ changeMode(command)</text>
@@ -58,7 +58,7 @@
 <text x="1156" y="540" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">RedeemService</text>
 <path d="M1140 557H1590" stroke="#0f766e" stroke-width="1"/>
 <text x="1156" y="582" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">policy: RedeemPolicy</text>
-<text x="1156" y="604" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">funds: PointsFundsPort</text>
+<text x="1156" y="604" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">funds: PointsFundsGateway</text>
 <text x="1156" y="626" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">posting: PointsPostingService</text>
 <path d="M1140 642H1590" stroke="#cbd5e1"/>
 <text x="1156" y="666" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ quote(RedeemQuery): RedeemQuote</text>

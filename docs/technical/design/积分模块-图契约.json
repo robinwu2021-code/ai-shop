@@ -543,7 +543,7 @@
       "package": "pay.points.agreement",
       "fields": [
         "agreements: AgreementStore",
-        "funds: PointsFundsPort"
+        "funds: PointsFundsGateway"
       ],
       "methods": [
         "sign(command)",
@@ -575,7 +575,7 @@
       "package": "pay.points.redeem",
       "fields": [
         "policy: RedeemPolicy",
-        "funds: PointsFundsPort",
+        "funds: PointsFundsGateway",
         "posting: PointsPostingService"
       ],
       "methods": [
@@ -702,7 +702,7 @@
       "kind": "service",
       "package": "pay.points.payout",
       "fields": [
-        "funds: PointsFundsPort",
+        "funds: PointsFundsGateway",
         "posting: PointsPostingService"
       ],
       "methods": [
@@ -1044,7 +1044,7 @@
       "javaPackage": "ai.neargo.shop.pay.points.app"
     },
     {
-      "name": "PointsFundsPort",
+      "name": "PointsFundsGateway",
       "kind": "interface",
       "package": "pay.points.port",
       "fields": [
@@ -1396,14 +1396,14 @@
     },
     {
       "source": "RedeemService",
-      "target": "PointsFundsPort",
+      "target": "PointsFundsGateway",
       "kind": "dependency",
       "label": "uses",
       "multiplicity": ""
     },
     {
       "source": "AgreementService",
-      "target": "PointsFundsPort",
+      "target": "PointsFundsGateway",
       "kind": "dependency",
       "label": "uses",
       "multiplicity": ""
@@ -1445,7 +1445,7 @@
     },
     {
       "source": "PointsPayoutService",
-      "target": "PointsFundsPort",
+      "target": "PointsFundsGateway",
       "kind": "dependency",
       "label": "uses",
       "multiplicity": ""
@@ -1599,7 +1599,7 @@
     },
     {
       "source": "PayPointsFundsAdapter",
-      "target": "PointsFundsPort",
+      "target": "PointsFundsGateway",
       "kind": "realization",
       "label": "implements",
       "multiplicity": ""
@@ -1692,7 +1692,7 @@
         "PointsRefundService",
         "StoreStatementService",
         "PointsPayoutService",
-        "PointsFundsPort",
+        "PointsFundsGateway",
         "PointsPostingService",
         "Voucher",
         "PostingStore",
@@ -1823,7 +1823,7 @@
       "id": "funds-spi",
       "title": "pay内资金接口与订单事实SPI",
       "classes": [
-        "PointsFundsPort",
+        "PointsFundsGateway",
         "PointsSourceFactsPort",
         "PayPointsFundsAdapter",
         "OrderPointsSourceFactsAdapter",

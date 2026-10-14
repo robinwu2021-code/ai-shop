@@ -57,7 +57,7 @@ def module_architecture(module):
  o += [text(795,445,module['settlementHook']+' · 域内同步协作',17)]
  o += arrow([(350,365),(380,365),(380,480),(1120,480),(1120,415)],'SPI / Outbox→Inbox',labelpos=(450,475))
  o += card(430,520,420,170,'统一事务与Mapper工厂',[module['txManager']+' · REQUIRED',module['sqlSessionFactory'],'pay.mapper.points'],'guard')
- o += card(905,520,430,170,'统一积分过账与资金适配',['PointsPostingService写账','PointsFundsPort / Adapter','只依赖pay资金与通道接口'])
+ o += card(905,520,430,170,'统一积分过账与资金适配',['PointsPostingService写账','PointsFundsGateway / Adapter','只依赖pay资金与通道接口'])
  o += arrow([(1120,415),(1120,520)])
  o += arrow([(905,610),(850,610)],'共用pay事务',labelpos=(800,730))
  o += card(430,770,905,115,'本地事务提交边界',['结算状态与积分账务必要变更一起提交 / 回滚；跨域结果通过pay Outbox发布。'],'guard')

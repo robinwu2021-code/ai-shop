@@ -57,7 +57,7 @@
 <text x="606" y="600" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ acceptResult(FundsResult): PayoutOutcome</text>
 <rect x="1140" y="443" width="450" height="188" rx="8" fill="white" stroke="#7c3aed" stroke-width="1.5"/>
 <text x="1156" y="467" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#7c3aed" font-weight="400" text-anchor="start">«interface»  pay.points.port</text>
-<text x="1156" y="496" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">PointsFundsPort</text>
+<text x="1156" y="496" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">PointsFundsGateway</text>
 <path d="M1140 513H1590" stroke="#7c3aed" stroke-width="1"/>
 <text x="1156" y="538" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">—</text>
 <path d="M1140 554H1590" stroke="#cbd5e1"/>
@@ -113,10 +113,10 @@
 <text x="40" y="1319" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="18" fill="#172554" font-weight="650" text-anchor="start">本图内关系（跨图关系及完整属性见图册与JSON契约）</text>
 <text x="40" y="1352" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">EarnService - - &gt; PointsPostingService   uses </text>
 <text x="40" y="1376" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">RedeemService - - &gt; PointsPostingService   uses </text>
-<text x="40" y="1400" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">RedeemService - - &gt; PointsFundsPort   uses </text>
+<text x="40" y="1400" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">RedeemService - - &gt; PointsFundsGateway   uses </text>
 <text x="40" y="1424" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PointsRefundService - - &gt; PointsPostingService   uses </text>
 <text x="40" y="1448" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">StoreStatementService - - &gt; PointsPostingService   uses </text>
-<text x="40" y="1472" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PointsPayoutService - - &gt; PointsFundsPort   uses </text>
+<text x="40" y="1472" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PointsPayoutService - - &gt; PointsFundsGateway   uses </text>
 <text x="40" y="1496" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PointsPayoutService - - &gt; PointsPostingService   uses </text>
 <text x="40" y="1520" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PointsPostingService - - &gt; PostingStore   uses </text>
 <text x="40" y="1544" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PointsPostingService - - &gt; Voucher   uses </text>

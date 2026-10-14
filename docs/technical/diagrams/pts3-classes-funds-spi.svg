@@ -10,7 +10,7 @@
 <path d="M490,581.0 L544,581.0 L544,400 L815.0,400 L815.0,365" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#real)"/>
 <rect x="40" y="155" width="450" height="210" rx="8" fill="white" stroke="#7c3aed" stroke-width="1.5"/>
 <text x="56" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#7c3aed" font-weight="400" text-anchor="start">«interface»  pay.points.port</text>
-<text x="56" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">PointsFundsPort</text>
+<text x="56" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">PointsFundsGateway</text>
 <path d="M40 225H490" stroke="#7c3aed" stroke-width="1"/>
 <text x="56" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">DTO nested records / business keys</text>
 <path d="M40 266H490" stroke="#cbd5e1"/>
@@ -44,7 +44,7 @@
 <text x="606" y="489" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«service»  pay.points.payout</text>
 <text x="606" y="518" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">PointsPayoutService</text>
 <path d="M590 535H1040" stroke="#0f766e" stroke-width="1"/>
-<text x="606" y="560" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">funds: PointsFundsPort</text>
+<text x="606" y="560" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">funds: PointsFundsGateway</text>
 <text x="606" y="582" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">posting: PointsPostingService</text>
 <path d="M590 598H1040" stroke="#cbd5e1"/>
 <text x="606" y="622" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ beginPayout(PayoutCommand): PayoutTicket</text>
@@ -59,8 +59,8 @@
 <path d="M1140 598H1590" stroke="#cbd5e1"/>
 <text x="1156" y="622" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ scanAndReplay(cursor)</text>
 <text x="40" y="809" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="18" fill="#172554" font-weight="650" text-anchor="start">本图内关系（跨图关系及完整属性见图册与JSON契约）</text>
-<text x="40" y="842" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PointsPayoutService - - &gt; PointsFundsPort   uses </text>
+<text x="40" y="842" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PointsPayoutService - - &gt; PointsFundsGateway   uses </text>
 <text x="40" y="866" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PointsSourceReconciler - - &gt; PointsSourceFactsPort   uses </text>
-<text x="40" y="890" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PayPointsFundsAdapter - -▷ PointsFundsPort   implements </text>
+<text x="40" y="890" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PayPointsFundsAdapter - -▷ PointsFundsGateway   implements </text>
 <text x="40" y="914" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">OrderPointsSourceFactsAdapter - -▷ PointsSourceFactsPort   implements </text>
 </svg>

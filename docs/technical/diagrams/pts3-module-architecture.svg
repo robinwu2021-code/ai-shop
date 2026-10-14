@@ -38,7 +38,7 @@
 <rect x="905" y="520" width="6" height="170" rx="3" fill="#2563eb"/>
 <text x="921" y="549" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">统一积分过账与资金适配</text>
 <text x="921" y="575" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">PointsPostingService写账</text>
-<text x="921" y="598" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">PointsFundsPort / Adapter</text>
+<text x="921" y="598" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">PointsFundsGateway / Adapter</text>
 <text x="921" y="621" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">只依赖pay资金与通道接口</text>
 <path d="M1120,415 L1120,520" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
 <path d="M905,610 L850,610" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>

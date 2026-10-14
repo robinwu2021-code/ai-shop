@@ -114,7 +114,7 @@
 | 持久化 | `pay.points.store/impl`；Mapper单独放`pay.mapper.points`，使用已有paySqlSessionFactory |
 | 跨域SPI实现 | `pay.points.port/`实现shop-base/spi/points的Earn/Redeem/Refund/Fact；HTTP Controller继续在shop-app |
 | 域内结算Hook | `pay.points.app.PointsSettlementHook` + `pay.points.port.PointsSettlementHookImpl`；结算只读快照/提交业务动作，不直写积分表 |
-| 域内资金接口 | `pay.points.port.PointsFundsPort` + `pay.points.port.PayPointsFundsAdapter`；只依赖pay资金/通道接口，不依赖pay.impl结算实现 |
+| 域内资金接口 | `pay.points.port.PointsFundsGateway` + `pay.points.port.PayPointsFundsAdapter`；只依赖pay资金/通道接口，不依赖pay.impl结算实现 |
 | 外部事实适配 | `shop-app/.../payclient/OrderPointsSourceFactsAdapter`实现PointsSourceFactsPort；积分不跨包SQL查订单/售后 |
 
 复用`payTxManager`、`payDataSource`、`paySqlSessionFactory`。已有扫描`ai.neargo.shop.pay.mapper`自动涵盖积分Mapper，不新增工厂/连接池/全局扫描排除规则。shop-app与pay-svc两种宿主均沿既有pay装配；权限/填充器/分页仍须验证，没有新数据源不等于可省数据权限检查。
@@ -125,7 +125,7 @@
 
 ArchUnit：model/policy不碰框架；订单/行业仅经SPI调用积分；结算只能经PointsSettlementHook进入积分业务服务；pay其他子模块不能直写pts表。积分不依赖shop-core、shop-merchant或pay.impl结算实现，可以依赖pay资金/通道接口。账务Store写只被posting使用，非账务元数据服务可条件写审计；Mapper仅被store.impl使用。测试确认积分/结算共享pay事务，而platform事务仍隔离。
 
-资金能力接口PointsFundsPort留在pay.points内；DIRECT补差、AGGREGATED专项回补/付款、现金补收逐项判定。远程pay部署复用既有PayInternalApi及宿主适配扩展，不引入独立积分部署开关；未验证的通道/部署组合禁止开放积分，不能默认成功。
+资金能力接口PointsFundsGateway留在pay.points内；DIRECT补差、AGGREGATED专项回补/付款、现金补收逐项判定。远程pay部署复用既有PayInternalApi及宿主适配扩展，不引入独立积分部署开关；未验证的通道/部署组合禁止开放积分，不能默认成功。
 
 ### 2.2 语言、数值与统一过账
 
@@ -190,7 +190,7 @@ quote/hold用同策略但hold重判余额与freeB；降级返回reason及实际�
 
 ### 2.7 事件与跨域契约
 
-订单/售后跨域接口Earn/Redeem/Refund/Fact/SourceFacts放shop-base/spi/points，只含纯DTO和业务键。PointsSettlementHook位于pay.points.app，提供beginPayout/acceptResult/onBillFinalized/settleModeOf，PointsFundsPort位于pay.points.port，仅供pay内协作；其DTO同样为纯record。具体字段是最低必需契约：
+订单/售后跨域接口Earn/Redeem/Refund/Fact/SourceFacts放shop-base/spi/points，只含纯DTO和业务键。PointsSettlementHook位于pay.points.app，提供beginPayout/acceptResult/onBillFinalized/settleModeOf，PointsFundsGateway位于pay.points.port，仅供pay内协作；其DTO同样为纯record。具体字段是最低必需契约：
 
 | 接口签名 | DTO内容 / 语义 |
 |---|---|
@@ -205,8 +205,8 @@ quote/hold用同策略但hold重判余额与freeB；降级返回reason及实际�
 | `PointsSettlementHook.beginPayout(PayoutCommand): PayoutTicket` | sourceRef/头寸ID/用途/收款账户版本；返回ticketNo/gross/offset/cash/providerIdem；域内Hook |
 | `PointsSettlementHook.acceptResult(FundsResult): PayoutOutcome` | ticketNo/证据号/确切金额/SUCCEEDED,FAILED,UNKNOWN；仅成功过账，同事务更新结算/积分 |
 | `PointsSettlementHook.onBillFinalized(LifecycleFact): void`、`settleModeOf(String subOrderNo): SettleMode` | 结算终局同步转正/门店确认；生成结算单读取hold快照，均为pay域内接口 |
-| `PointsFundsPort.capabilities(FundsContext): FundsCapabilities` | path/channel/主体/收款账户；分别返回补差、转账、内部划拨、补收能力 |
-| `PointsFundsPort.submit(FundsCommand): FundsResult`、`query(String ticketNo): FundsResult` | command携ticket/currency/cash/idem/purpose；实现只执行资金并给可信结果，不更新积分表 |
+| `PointsFundsGateway.capabilities(FundsContext): FundsCapabilities` | path/channel/主体/收款账户；分别返回补差、转账、内部划拨、补收能力 |
+| `PointsFundsGateway.submit(FundsCommand): FundsResult`、`query(String ticketNo): FundsResult` | command携ticket/currency/cash/idem/purpose；实现只执行资金并给可信结果，不更新积分表 |
 
 源订单/售后事件写平台sys_outbox；pay跨域出站事件写pay事务绑定的pay_outbox（不能用平台连接伪同事务），积分专属结果也可使用pts_outbox但同样绑定pay事务。跨域消费Inbox唯一(eventNo)与积分过账同pay事务提交，失败抛出供源重试。pay内结算终局、补差回执和本地付款确认直接调用Hook与结算状态同事务，无须人为制造pay→积分异步事务边界；对其他域发布结果仍须Outbox。后台调度覆盖启动补扫，不要求新MQ。
 
@@ -321,7 +321,7 @@ T01登记旧代码引用与有价值的场景；T04–T12在实现新功能时�
 依赖：无。
 
 **Files**
-- Create：`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/app/PointsSettlementHook.java`、`points/port/PointsFundsPort.java`、`points/port/PayPointsFundsAdapter.java`的纯契约与骨架；缩写points路径以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/`为根，只有本节采用此缩写。
+- Create：`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/app/PointsSettlementHook.java`、`points/port/PointsFundsGateway.java`、`points/port/PayPointsFundsAdapter.java`的纯契约与骨架；缩写points路径以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/`为根，只有本节采用此缩写。
 - Modify：`backend/shop-app/src/test/java/ai/neargo/shop/arch/PayTxManagerConventionTest.java`（扩大points覆盖）；不改pom.xml、不新建数据源配置。登记§1.1的所有写入口/读入口/任务与现有测试，区分沿用场景、替换断言和删除项。
 - Test：`backend/shop-app/src/test/java/ai/neargo/shop/arch/PointsArchitectureTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsPayTransactionTest.java`。
 
@@ -423,7 +423,7 @@ T01登记旧代码引用与有价值的场景；T04–T12在实现新功能时�
 
 **Files**
 - Create：`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/payout/PointsPayoutService.java`、`port/PointsSettlementHookImpl.java`。模块内缩写路径均以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/`为根。
-- Modify：T01已建立的`app/PointsSettlementHook.java`、`port/PointsFundsPort.java`和`port/PayPointsFundsAdapter.java`，补齐具体实现与契约测试。
+- Modify：T01已建立的`app/PointsSettlementHook.java`、`port/PointsFundsGateway.java`和`port/PayPointsFundsAdapter.java`，补齐具体实现与契约测试。
 - Modify：backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/impl/{SettleServiceImpl,PayoutServiceImpl}.java；对应支付业务接口/资金证据及pay_outbox发布器；新增pay内SplitPreparationService和SplitResultService，把现有executeSplit的长事务拆成准备/外部调用/结果确认。
 - Test：`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PerOrderSettlementTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsFundsAdapterTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsPayoutRaceTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsSettlementBasisTest.java`。
 
@@ -716,8 +716,19 @@ PointsJobWiringTest新增#only_new_points_jobs_registered；PointsReconTest新�
 ### 实施记录：T01（2026-10-14）
 
 - 本地分支：codex/points-v3，独立工作树执行。
-- 已实现：pay.points.app.PointsSettlementHook、pay.points.port.PointsFundsPort；shop-base.spi.points.PointsFactPort提前作为纯DTO契约建立；PointsArchitectureTest保护包边界与纯契约。
+- 已实现：pay.points.app.PointsSettlementHook、pay.points.port.PointsFundsGateway；shop-base.spi.points.PointsFactPort提前作为纯DTO契约建立；PointsArchitectureTest保护包边界与纯契约。
 - 基线：6个现有积分测试类，32 tests / 0 failures / 0 errors。
 - RED：PointsArchitectureTest 3 failures（业务包/契约缺失），非编译错误。GREEN：PointsArchitectureTest及PayTxManagerConventionTest 4 tests / 0 failures / 0 errors。
 - 执行命令均用JDK21、mvn -o -f backend/pom.xml -pl shop-app -am test，指定-Dtest及-Dsurefire.failIfNoSpecifiedTests=false；完整日志在本工作树.superpowers/sdd/points-v3/。
 - 计划修正：真实积分/结算事务测试随T02 posting和Mapper落地执行；T01纯契约不建立合成业务写服务。资金适配真实实现留T06，不设默认成功桩。其余任务仍未完成。
+
+### 实施记录：T02（2026-10-14）
+
+- 已实现：整数RedeemRate、不可变Voucher/PointsMove/FundMove/PositionMove/ReserveMove；PointsPostingService接口及posting.impl实现；pay.mapper.points绑定现有pay工厂，原子过账、真实证据一次消费、结果重放/冲突、账户稳定锁序、头寸CAS/上限、B逐头寸预留与aggregate核对；凭证、两类流水及pts_outbox同事务。
+- DDL：V407__points_v3_ledger.sql（32张最新表），重新生成schema-test.sql；非索引业务快照用payload_json，金融余额/约束/唯一键显式列；增加pts_fund_evidence以核验及一次消费外部证据。
+- RED：整数模型缺失；无守恒校验3条失败；posting缺失2条失败；裸B预留1条失败；不存在核销头寸仍可建预留1条失败。均记录日志，修复后回归。
+- GREEN：最新模型8 tests；posting/真实pay事务/并发持久化/架构/schema 32 tests，全部0 failures/0 errors。独立MariaDB 12.2.2的4条原生过账测试通过：抢最后预算、证据复用、反向账户输入顺序、逐头寸预留/释放。
+- 消融：posting改用平台transactionManager后，失败过账残留1张凭证，PostingServiceTest变红；恢复payTxManager后相关回归全绿。
+- 无新增SQL方言依赖，未改任何历史迁移；生产同版本MySQL验证仍待执行，本机原生实例为MariaDB，不据此声称MySQL验证完成。
+- 架构修正：资金域内接口命名PointsFundsGateway（原设计PointsFundsPort与仓库Port仅限SPI规则冲突）；职责仍在pay内，规则未放宽。PointsPostingService采用接口+impl，遵循现有Service规则。
+- 后续T03–T13尚未完成，新模块未开放，旧业务接线与旧代码清理将在相应任务执行。
