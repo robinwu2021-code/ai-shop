@@ -1,7 +1,7 @@
 // 覆盖范围：订单管理（P-4.1）。
 import * as db from "@/lib/mock/db";
 import { STUCK_MINUTES } from "@/lib/constants";
-import { ORDER_TRANSITIONS } from "@/lib/types";
+import { ORDER_TRANSITIONS, PROXY_CANCELLABLE } from "@/lib/types";
 import type { ExceptionKind, Order, OrderException, ProxyLimit } from "@/lib/types";
 import type { OrderApi } from "../contracts/order";
 import { fail, notFound } from "@/lib/biz-error";
@@ -92,8 +92,8 @@ export const orderMock: OrderApi = {
   proxyCancelOrder: async ({ orderNo, reason }) => {
     const o = find(orderNo);
     if (!reason.trim()) fail("代客取消必须写原因，否则用户来问时没人说得清", "Cancelling for a customer needs a reason, or nobody can explain it when they ask");
-    db.assertTransition(ORDER_TRANSITIONS, o.status, "CANCELLED", "订单", "Order");
-    // 已支付的取消必然退款：契约里不给"不退款"这条路，这里也不需要判断
+    // 与后端一致：只有未付款 / 待当面收款能代客取消（支付单与订单一起取消、释放占用）
+    if (!PROXY_CANCELLABLE.includes(o.status)) fail("只有未付款的单能代客取消", "Only unpaid orders can be cancelled for the customer");
     db.orderInterventions.unshift({
       orderNo, from: o.status, to: "CANCELLED", remark: `代客取消：${reason.trim()}`,
       operator: "admin", at: new Date().toISOString(),

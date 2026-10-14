@@ -62,4 +62,7 @@ public interface PlatformOrderService {
         public record Item(String skuNo, int qty) {
         }
     }
+
+    /** 代客取消：与买家取消同一条路（支付单 + 订单一起取消、释放占用），执行者记平台 */
+    void proxyCancel(String orderNo, String reason, String operatorNo);
 }

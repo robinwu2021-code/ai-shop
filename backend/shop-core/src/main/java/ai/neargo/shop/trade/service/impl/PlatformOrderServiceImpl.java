@@ -259,6 +259,11 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
         return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
     }
 
+    @Override
+    public void proxyCancel(String orderNo, String reason, String operatorNo) {
+        orderService.cancelByPlatform(orderNo, reason, operatorNo);
+    }
+
     private static long nz(Long v) {
         return v == null ? 0L : v;
     }

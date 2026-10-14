@@ -96,7 +96,7 @@ describe("代客取消（P-4.1.5）", () => {
   it("已完成的单不能取消 —— 走售后，不是取消", async () => {
     await expect(
       orderMock.proxyCancelOrder({ orderNo: "SO2026080505", reason: "用户说不要了" }),
-    ).rejects.toThrow(/不允许从/);
+    ).rejects.toThrow(/只有未付款的单能代客取消/);
   });
 
   it("取消成功并留痕", async () => {

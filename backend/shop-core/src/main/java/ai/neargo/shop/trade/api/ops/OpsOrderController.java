@@ -136,10 +136,10 @@ public class OpsOrderController {
     public MerchantOrderService.OpsOrderVO proxyCancel(@PathVariable String orderNo,
                                                        @RequestBody ProxyCancelReq req) {
         String reason = req.reason() == null ? "" : req.reason().trim();
-        var vo = orderService.intervene(orderNo, "CANCELLED", "代客取消：" + reason,
-                SecurityUtils.currentUserNo());
+        // 走正规取消（支付单 + 订单一起取消、释放占用），不再借通用干预只改子单（TDD-订单状态机 AC15）
+        platformOrderService.proxyCancel(orderNo, reason, SecurityUtils.currentUserNo());
         auditLogPort.record("ORDER_PROXY_CANCEL", orderNo, reason);
-        return vo;
+        return orderService.opsDetail(orderNo);
     }
 
     /**

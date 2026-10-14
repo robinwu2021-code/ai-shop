@@ -51,8 +51,8 @@ public final class OrderMachine {
                     .from(WAIT_FULFILL, FULFILLING).on(VERIFIED).by(MERCHANT).when(AUTHORIZED)
                     .toOneOf(Set.of(FULFILLING, COMPLETED), (f, c) -> c.requireBuyerConfirm() ? FULFILLING : COMPLETED)
                     .emit("OrderVerified").add()
-                    // O7 商家自送送达
-                    .from(WAIT_FULFILL).on(DELIVERED_BY_MERCHANT).by(MERCHANT).when(AUTHORIZED).to(COMPLETED)
+                    // O7 商家标记送达：自送单可能已在「配送中」（FULFILLING），也可能直接从待发货送达
+                    .from(WAIT_FULFILL, FULFILLING).on(DELIVERED_BY_MERCHANT).by(MERCHANT).when(AUTHORIZED).to(COMPLETED)
                     .emit("OrderCompleted").add()
                     // O8 买家确认收货
                     .from(FULFILLING).on(RECEIPT_CONFIRMED).by(BUYER).when(AUTHORIZED, ALL_SHIPPED).to(COMPLETED)

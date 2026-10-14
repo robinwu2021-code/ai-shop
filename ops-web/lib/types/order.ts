@@ -76,18 +76,22 @@ export type OrderStatus =
  * 把它做成状态，订单就会在「售后中」和真实状态之间二选一，而两者其实并存。
  */
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  WAIT_PAY: ["PAID", "CANCELLED"],
-  // 与后端 OrderStateMachine 一致：**没有回到 WAIT_PAY 的边**。
-  // 改主意想线上付要重新下单，否则「收没收到钱」有两个真源
-  WAIT_OFFLINE_PAY: ["PAID", "CANCELLED"],
-  // **没有 CANCELLED**：后端子单图里 WAIT_FULFILL（对外 PAID）到 CANCELLED 没有边。
-  // 此前列着它，代客取消对已付款单显示按钮、点下去必然报错。已付款要退钱走售后。
-  PAID: ["FULFILLING", "COMPLETED", "REFUNDED"],
-  FULFILLING: ["COMPLETED", "REFUNDED"],
-  COMPLETED: ["REFUNDED"],
+  /*
+   * 人工干预**只能往前推、且不碰钱**（与后端 OrderMachine 的 INTERVENE 一致，TDD-订单状态机 AC17）。
+   * 改到「已付款 / 已退款 / 已取消」此前也列着 —— 后端只改状态字段、不收款不退款，钱和状态就对不上了。
+   * 收款走对账处置，退款走售后裁决，取消未付款单走「代客取消」（PROXY_CANCELLABLE）。
+   */
+  WAIT_PAY: [],
+  WAIT_OFFLINE_PAY: [],
+  PAID: ["FULFILLING", "COMPLETED"],
+  FULFILLING: ["COMPLETED"],
+  COMPLETED: [],
   CANCELLED: [],
   REFUNDED: [],
 };
+
+/** 能代客取消的状态：未付款 / 待当面收款。已付款要退钱走售后（后端子单从待履约到已取消没有边） */
+export const PROXY_CANCELLABLE: readonly OrderStatus[] = ["WAIT_PAY", "WAIT_OFFLINE_PAY"];
 
 /**
  * 支付方式。**与后端 `PayModes` 逐字一致**：

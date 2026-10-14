@@ -30,7 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PagedTable } from "@/components/ui/paged-table";
 import { IdCell } from "@/components/ui/misc";
-import { ORDER_TRANSITIONS } from "@/lib/types";
+import { PROXY_CANCELLABLE } from "@/lib/types";
 import { usePaging } from "@/lib/use-paging";
 import type { OrdersCopy } from "./copy";
 
@@ -162,7 +162,7 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
       header: c.colActions,
       // 只有状态机允许取消的单才给按钮：已完成的要走售后，摆个会报错的按钮是在骗人点一次
       cell: (o) =>
-        canProxy && ORDER_TRANSITIONS[o.status].includes("CANCELLED") ? (
+        canProxy && PROXY_CANCELLABLE.includes(o.status) ? (
           <Button size="sm" variant="outline" onClick={() => { setCancelling(o); setReason(""); }}>
             {c.actionProxyCancel}
           </Button>

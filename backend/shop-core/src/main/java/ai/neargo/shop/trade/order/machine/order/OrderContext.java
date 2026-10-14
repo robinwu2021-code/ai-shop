@@ -22,4 +22,29 @@ public record OrderContext(boolean authorized, boolean serviceClass, boolean pre
     public static OrderContext authorizedOnly() {
         return new OrderContext(true, false, false, false, false, true, false, false, null, false);
     }
+
+    public OrderContext withServiceClass(boolean v) {
+        return new OrderContext(authorized, v, prepared, openAfterSale, requireBuyerConfirm, allLinesShipped,
+                autoReceiptDue, fullyRefunded, interveneTarget, remarkPresent);
+    }
+
+    public OrderContext withOpenAfterSale(boolean v) {
+        return new OrderContext(authorized, serviceClass, prepared, v, requireBuyerConfirm, allLinesShipped,
+                autoReceiptDue, fullyRefunded, interveneTarget, remarkPresent);
+    }
+
+    public OrderContext withRequireBuyerConfirm(boolean v) {
+        return new OrderContext(authorized, serviceClass, prepared, openAfterSale, v, allLinesShipped,
+                autoReceiptDue, fullyRefunded, interveneTarget, remarkPresent);
+    }
+
+    public OrderContext withAutoReceiptDue(boolean v) {
+        return new OrderContext(authorized, serviceClass, prepared, openAfterSale, requireBuyerConfirm,
+                allLinesShipped, v, fullyRefunded, interveneTarget, remarkPresent);
+    }
+
+    public OrderContext withIntervene(OrderStatus target, boolean remark) {
+        return new OrderContext(authorized, serviceClass, prepared, openAfterSale, requireBuyerConfirm,
+                allLinesShipped, autoReceiptDue, fullyRefunded, target, remark);
+    }
 }

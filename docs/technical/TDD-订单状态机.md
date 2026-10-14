@@ -53,6 +53,21 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 | 2 | 新增 | `transition/{StateTransitionGate, Command, Aggregate, StatusStore, TransitionLog}` + `transition/impl/{MybatisStatusStore, StatusLogStore}`；`V402` |
 | 3 | 修改 | `trade/service/impl/AfterSaleServiceImpl`、`trade/job/AfterSaleTimeoutJob`、`trade/service/OrderStateMachine`、`trade/api/biz/BizAfterSaleController`；`V403`；三端售后卡与词条 |
 
+## §2B 步 4：支付单 / 订单写路径改走门
+
+| AC | 需求 | 落点 |
+|---|---|---|
+| AC13 | 超时关单与付款回调并发：只有一方成功；关单输了**不释放库存 / 券 / 积分** | `OrderServiceImpl#closeOne` → 门 `PAY_TIMEOUT` |
+| AC14 | 付款回调 / 线下确认收款 / 0 元单 → 支付单 PAID，其下订单同事务转待履约（服务类直接履约中） | `markPaid` → 门 `PAY_SUCCEEDED` / `OFFLINE_CONFIRMED` + 每张订单 `PAY_CONFIRMED` |
+| AC15 | 买家取消、**运营代客取消**走同一条路：支付单 CANCELLED + 订单 CANCELLED + 释放；代客取消此前只改子单状态、不释放、支付单仍可付 | `cancel` / 新 `cancelByPlatform`；`OpsOrderController#proxyCancel` |
+| AC16 | 确认收货 / 自动确认收货 / 自送送达 / 自提到店 / 核销 / 开始备货 经门；有进行中售后不许备货 | `confirmReceipt` / `autoConfirmReceipt` / `MerchantOrderServiceImpl#delivered,#prepare` / `FulfillmentQueryPortImpl` |
+| AC17 | 人工干预只能做非资金迁移（往前推到履约中 / 已完成）；运营端迁移下拉同步收窄 | `MerchantOrderServiceImpl#intervene` → 门 `INTERVENE`；ops-web `ORDER_TRANSITIONS` |
+| AC18 | 经门的迁移，状态流水只记一行（门记），不再手写重复的 `appendStatusLog` | 各转换点 |
+
+模块：新增 `trade/order/transition/TradeStatusWriter`（Spring 组件：建门、按实体执行迁移，成功后把实体的 `status` / `version` 同步到库里的新值 ——
+实体有 `@Version`，不同步的话后续 `updateById` 会被乐观锁静默拒掉，写 0 行且不报错）。
+不在本步：商家发货（`MerchantOrderServiceImpl#ship`）随发货单层在步 6 接；售后写路径在步 5。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试 | 跑过 | 消融 |
@@ -68,6 +83,19 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 | AC10 | `AfterSaleTimeoutFlowTest#overdueOnlyReminds`（canEscalate 前 false 后 true、escalate 成功）；`M5#rejectThenEscalate` | ✅ | — |
 | AC11 | c-app `order-page.test.ts`（WAIT_RETURN 给填单号、REFUNDING 不给；canEscalate 决定介入按钮）491 绿；b-app 187 绿；ops-web 722 绿；三端 `vue-tsc` / `tsc` 通过 | ✅ | — |
 | AC12 | `OrderStateMachineTest`（售后图由新机器导出；ARBITRATING→REFUNDED 直达边按设计去掉，用例改为 →REFUNDING） | ✅ | — |
+
+### 步 4（§2B）
+
+| AC | 测试 | 跑过 | 消融 |
+|---|---|---|---|
+| AC13 | `CloseRaceReleaseTest`（独立库 + spy：关单拿旧数据、付款已落库 → **券从未释放**、状态仍 PAID） | ✅ | `closeOne` 换回旧写法 → 红（release 被调）✅。注：只断言状态是假绿 —— 旧写法被 `@Version` 静默拒写，状态本来就不会变 |
+| AC14 | `M3TradeFlowTest` / `OrderCloseRuleFlowTest` / `Pay*Test` 等既有支付链路全绿 | ✅ | — |
+| AC15 | `TradeStatusGateFlowTest#proxyCancelCancelsPayment` | ✅ | 实现前即红（原代客取消根本没有测试覆盖） |
+| AC16 | `TradeStatusGateFlowTest#prepareBlockedByOpenAfterSale`（CONFLICT、备货时间未写）；`BizOrderFulfillFlowTest` 送达 / 核销 | ✅ | — |
+| AC17 | `TradeStatusGateFlowTest#interveneNonMonetaryOnly`（到 REFUNDED → 20004；到 COMPLETED 成功）；ops-web 722 绿 | ✅ | — |
+| AC18 | `TradeStatusGateFlowTest#prepareBlockedByOpenAfterSale`（付款成功只记一行流水） | ✅ | — |
+
+相关后端整组 855 绿。步 4 偏差：O7「商家标记送达」补上从 FULFILLING 出发（自送单「配送中」后送达，既有用例覆盖；方案 §3 与 MachineTablesTest 同步改）。
 
 ## §6 对账二 · 设计 → 实现
 

@@ -16,6 +16,10 @@ import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 import ai.neargo.shop.trade.service.OrderStatusView;
+import ai.neargo.shop.trade.order.machine.order.OrderContext;
+import ai.neargo.shop.trade.order.machine.order.OrderEvent;
+import ai.neargo.shop.trade.order.machine.order.OrderStatus;
+import ai.neargo.shop.trade.order.statemachine.Actor;
 import org.springframework.transaction.annotation.Transactional;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
@@ -75,6 +79,14 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setShippingUploadPort(ai.neargo.shop.spi.trade.ShippingUploadPort port) {
         this.shippingUploadPort = port;
+    }
+
+    /** 状态写入口（TDD-订单状态机 §2B） */
+    private ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setStatusWriter(ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter) {
+        this.statusWriter = statusWriter;
     }
 
     public MerchantOrderServiceImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
@@ -238,14 +250,12 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         if (sub.getPreparedAt() != null) {
             return toVO(sub);
         }
-        // 只在待发货时能开始备货：已发货/已签收/已取消再点没有意义，明确拒而不是静默
-        if (!OrdSubOrder.WAIT_FULFILL.equals(sub.getStatus())) {
-            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
-        }
+        // 经门（原地动作）：只在待发货时能点；**有进行中售后时不许点**（退货退款逻辑 §12-4）——
+        // 买家已经在申请退款了，此刻再点备货只会让那张申请多一层「已备货」的说法
+        statusWriter.order(sub, OrderEvent.PREPARE, Actor.MERCHANT, merchantNo, "商家开始备货",
+                OrderContext.authorizedOnly().withOpenAfterSale(hasOpenAfterSale(sub.getSubOrderNo())));
         sub.setPreparedAt(System.currentTimeMillis());
         save(sub);
-        // 不改状态（仍 WAIT_FULFILL），所以状态日志记当前状态、只说做了什么
-        log(sub, sub.getStatus(), "商家开始备货", merchantNo);
         return toVO(sub);
     }
 
@@ -308,14 +318,12 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     @Transactional
     public OrderVO delivered(String merchantNo, String storeNo, String subOrderNo) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
-        OrderStateMachine.assertMerchantSubOrderTransit(sub.getStatus(), OrdSubOrder.COMPLETED);
-        sub.setStatus(OrdSubOrder.COMPLETED);
-        save(sub);
         /*
          * 留痕写「商家标记送达」而不是「已完成」——
          * 买家自己确认收货也会把单推到 COMPLETED，纠纷时要能分清是谁点的。
          */
-        log(sub, OrdSubOrder.COMPLETED, "商家标记送达", merchantNo);
+        statusWriter.order(sub, OrderEvent.DELIVERED_BY_MERCHANT, Actor.MERCHANT, merchantNo, "商家标记送达",
+                OrderContext.authorizedOnly());
         publishCompleted(sub);
         /*
          * **商家点送达也要向微信报发货**（2026-09-28 补）。
@@ -404,6 +412,18 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
 
     private void save(OrdSubOrder sub) {
         DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
+    }
+
+    /** 这张子单有没有进行中的售后（终态之外的都算） */
+    private boolean hasOpenAfterSale(String subOrderNo) {
+        Long n = DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectCount(
+                Wrappers.<ai.neargo.shop.trade.entity.OrdAfterSale>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdAfterSale::getSubOrderNo, subOrderNo)
+                        .notIn(ai.neargo.shop.trade.entity.OrdAfterSale::getStatus,
+                                ai.neargo.shop.trade.entity.OrdAfterSale.REFUNDED,
+                                ai.neargo.shop.trade.entity.OrdAfterSale.REJECTED,
+                                ai.neargo.shop.trade.entity.OrdAfterSale.CLOSED)));
+        return n != null && n > 0;
     }
 
     private void log(OrdSubOrder sub, String status, String label, String operatorNo) {
@@ -1327,22 +1347,21 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
          * 那份表只是让界面提前把不可能的选项灰掉。两份表都存在时，
          * 必须有一份是权威，否则迟早出现「界面允许、后端拒绝」或更糟的反过来。
          */
-        OrderStateMachine.assertSubOrderTransit(sub.getStatus(), stored);
         String from = OrderStatusView.toContract(sub.getStatus());
-
-        sub.setStatus(stored);
-        DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
-
-        OrdStatusLog log = new OrdStatusLog();
-        log.setSubOrderNo(subOrderNo);
-        log.setStatus(stored);
-        log.setLabel("人工干预（" + from + " → " + to + "）：" + remark.trim());
-        log.setOperatorType(OrdStatusLog.BY_PLATFORM);
-        log.setOperatorNo(operatorNo);
-        log.setAt(System.currentTimeMillis());
-        log.setTenantNo("MAIN");
-        log.setCreatedAt(java.time.LocalDateTime.now());
-        statusLogMapper.insert(log);
+        /*
+         * 干预**只能往前推、且不碰钱**（TDD-订单状态机 AC17）：只到履约中 / 已完成。
+         * 改到已退款 / 已付款 / 已取消此前也放行 —— 只改状态字段、不退款不收款、不动主单与库存，
+         * 于是钱和状态对不上。动钱的走售后裁决或对账处置；代客取消走 proxy-cancel。
+         */
+        OrderStatus toStatus;
+        try {
+            toStatus = OrderStatus.valueOf(stored);
+        } catch (IllegalArgumentException e) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        statusWriter.order(sub, OrderEvent.INTERVENE, Actor.PLATFORM, operatorNo,
+                "人工干预（" + from + " → " + to + "）：" + remark.trim(),
+                OrderContext.authorizedOnly().withIntervene(toStatus, true));
         return toOpsVO(sub);
     }
 

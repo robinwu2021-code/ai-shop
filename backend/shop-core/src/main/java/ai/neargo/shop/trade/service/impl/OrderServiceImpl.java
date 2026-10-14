@@ -9,6 +9,11 @@ import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
 import ai.neargo.shop.trade.service.OrderStatusView;
+import ai.neargo.shop.trade.order.machine.order.OrderContext;
+import ai.neargo.shop.trade.order.machine.order.OrderEvent;
+import ai.neargo.shop.trade.order.machine.payment.PaymentContext;
+import ai.neargo.shop.trade.order.machine.payment.PaymentEvent;
+import ai.neargo.shop.trade.order.statemachine.Actor;
 
 import ai.neargo.shop.spi.marketing.AttributionPort;
 import ai.neargo.shop.spi.marketing.CampaignPort;
@@ -157,6 +162,14 @@ public class OrderServiceImpl implements OrderService {
      * 可选依赖放 setter 让没有集单能力的装配（部分切片测试）也能起来 —— 缺了按「不是集单」处理。
      */
     private ai.neargo.shop.spi.marketing.PeriodPort periodPort;
+
+    /** 状态写入口（TDD-订单状态机 §2B）：支付单 / 订单状态一律经它 CAS 落库 + 记流水 */
+    private ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setStatusWriter(ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter) {
+        this.statusWriter = statusWriter;
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setPeriodPort(ai.neargo.shop.spi.marketing.PeriodPort periodPort) {
@@ -1739,9 +1752,12 @@ public class OrderServiceImpl implements OrderService {
         if (OrdOrder.PAID.equals(order.getStatus())) {
             return;   // 幂等：回调会重发，重复到达不能重复扣库存、重复发事件
         }
-        OrderStateMachine.assertOrderTransit(order.getStatus(), OrdOrder.PAID);
-
-        order.setStatus(OrdOrder.PAID);
+        // 经门：WAIT_PAY → 通道回调；WAIT_OFFLINE_PAY → 商家确认当面收款。与超时关单并发时 CAS 决出一方
+        boolean offline = OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus());
+        statusWriter.payment(order,
+                offline ? PaymentEvent.OFFLINE_CONFIRMED : PaymentEvent.PAY_SUCCEEDED,
+                offline ? Actor.MERCHANT : Actor.CHANNEL, null, "支付成功",
+                new PaymentContext(offline, true, true, false));
         order.setPayChannel(payChannel);
         order.setPayTradeNo(payTradeNo);
         order.setPaidAt(System.currentTimeMillis());
@@ -1761,16 +1777,13 @@ public class OrderServiceImpl implements OrderService {
              * 界面会说「待发货」而根本没有东西要发。**不是文案错，是状态落错了。**
              */
             boolean serviceLike = Fulfillments.SERVICE_LIKE.contains(sub.getFulfillment());
-            String next = serviceLike ? OrdSubOrder.FULFILLING : OrdSubOrder.WAIT_FULFILL;
-            OrderStateMachine.assertSubOrderTransit(sub.getStatus(), next);
-            sub.setStatus(next);
+            statusWriter.order(sub, OrderEvent.PAY_CONFIRMED, Actor.SYSTEM, null,
+                    serviceLike ? "支付成功，凭码到店使用" : "支付成功，待备货",
+                    OrderContext.authorizedOnly().withServiceClass(serviceLike));
             // 核销码在支付成功后生成：未付款的订单不该有能核销的码。
             // 全局唯一由 uk_verify_code 兜底 —— 撞码时插入失败总比核销台扫出两单强
             sub.setVerifyCode(newUnusedVerifyCode());
             subOrderMapper.updateById(sub);
-            appendStatusLog(sub.getSubOrderNo(), next,
-                    serviceLike ? "支付成功，凭码到店使用" : "支付成功，待备货",
-                    OrdStatusLog.BY_SYSTEM, null);
 
             // 服务类在这一刻就要向微信报发货（实物类走各自的发货/到货迁移点）
             notifyShippingOnPaid(sub);
@@ -2180,18 +2193,31 @@ public class OrderServiceImpl implements OrderService {
                 return undone;
             }
         }
-        OrderStateMachine.assertOrderTransit(order.getStatus(), OrdOrder.CANCELLED);
+        cancelPayment(order, reason, Actor.BUYER, order.getUserNo(), "订单已取消");
+        return detail(order.getOrderNo(), null);
+    }
 
-        order.setStatus(OrdOrder.CANCELLED);
+    @Override
+    @Transactional
+    public void cancelByPlatform(String orderNo, String reason, String operatorNo) {
+        /*
+         * 代客取消（TDD-订单状态机 AC15）。此前走通用人工干预，只把**子单**改成 CANCELLED：
+         * 支付单仍是 WAIT_PAY（买家还能付）、库存 / 券 / 积分都没释放。现在与买家取消同一条路，执行者记平台。
+         */
+        cancelPayment(resolveForPlatform(orderNo), reason, Actor.PLATFORM, operatorNo, "平台代客取消：" + reason);
+    }
+
+    /** 取消一次支付（未付款 / 待当面收款）：支付单 CANCELLED + 其下订单 CANCELLED + 释放占用 */
+    /** 不返回详情：详情按买家身份取，平台调用会 NOT_FOUND 并把整个取消回滚掉 */
+    private void cancelPayment(OrdOrder order, String reason, Actor actor, String operatorNo, String label) {
+        statusWriter.payment(order, PaymentEvent.CANCEL, actor, operatorNo, label,
+                new PaymentContext(OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus()), true, true, false));
         order.setCancelReason(reason);
         orderMapper.updateById(order);
 
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
-            OrderStateMachine.assertSubOrderTransit(sub.getStatus(), OrdSubOrder.CANCELLED);
-            sub.setStatus(OrdSubOrder.CANCELLED);
-            subOrderMapper.updateById(sub);
-            appendStatusLog(sub.getSubOrderNo(), OrdSubOrder.CANCELLED, "订单已取消",
-                    OrdStatusLog.BY_USER, order.getUserNo());
+            statusWriter.order(sub, OrderEvent.CANCEL, Actor.SYSTEM, operatorNo, label,
+                    OrderContext.authorizedOnly());
         }
         stockPort.release(order.getOrderNo());
         couponPort.release(order.getOrderNo());
@@ -2211,7 +2237,6 @@ public class OrderServiceImpl implements OrderService {
             // 名额还回去。幂等标记在子单上 —— 与超时关闭那条路同时到达也只还一次
             releaseAppointmentSlot(sub);
         }
-        return detail(order.getOrderNo(), null);
     }
 
     /**
@@ -2266,8 +2291,22 @@ public class OrderServiceImpl implements OrderService {
      * 各写一遍的话，漏掉的那一项会让库存或券一直占着，而没有任何报错。
      */
     void closeOne(OrdOrder order, String reason) {
-        // 状态先改再释放库存：改失败（并发下已被支付）就不该释放
-        order.setStatus(OrdOrder.CLOSED);
+        /*
+         * 状态先改再释放：**改失败（并发下已被支付）就不该释放**。
+         * 此前这里是无条件 updateById —— 与付款回调同时到达时会把已付款的单写回 CLOSED，
+         * 接着释放库存 / 券 / 积分（TDD-订单状态机 AC13）。现在经门 CAS，输了就整段跳过。
+         */
+        try {
+            statusWriter.payment(order, PaymentEvent.PAY_TIMEOUT, Actor.SYSTEM, null, reason,
+                    new PaymentContext(false, true, true, true));
+        } catch (BizException e) {
+            // CONFLICT = CAS 时被抢先；ORDER_STATE_ILLEGAL = 读到时已不是 WAIT_PAY。两者都是「已被别的流程改走」
+            if (e.errorCode() == ErrorCode.CONFLICT || e.errorCode() == ErrorCode.ORDER_STATE_ILLEGAL) {
+                log.info("[close] {} 关单时状态已被改走（多半刚付款），跳过、不释放", order.getOrderNo());
+                return;
+            }
+            throw e;
+        }
         order.setCancelReason(reason);
         orderMapper.updateById(order);
 
@@ -2275,10 +2314,8 @@ public class OrderServiceImpl implements OrderService {
             if (!OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) {
                 continue;
             }
-            sub.setStatus(OrdSubOrder.CANCELLED);
-            subOrderMapper.updateById(sub);
-            appendStatusLog(sub.getSubOrderNo(), OrdSubOrder.CANCELLED, reason + "，订单关闭",
-                    OrdStatusLog.BY_SYSTEM, null);
+            statusWriter.order(sub, OrderEvent.CANCEL, Actor.SYSTEM, null, reason + "，订单关闭",
+                    OrderContext.authorizedOnly());
         }
         // 幂等：release 只作用于 LOCKED 的锁定行，重复跑不会把库存加两遍
         stockPort.release(order.getOrderNo());
@@ -2321,11 +2358,8 @@ public class OrderServiceImpl implements OrderService {
         if (sub == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        OrderStateMachine.assertSubOrderTransit(sub.getStatus(), OrdSubOrder.COMPLETED);
-        sub.setStatus(OrdSubOrder.COMPLETED);
-        subOrderMapper.updateById(sub);
-        appendStatusLog(subOrderNo, OrdSubOrder.COMPLETED, "已确认收货",
-                OrdStatusLog.BY_USER, SecurityUtils.currentUserNo());
+        statusWriter.order(sub, OrderEvent.RECEIPT_CONFIRMED, Actor.BUYER, SecurityUtils.currentUserNo(),
+                "已确认收货", OrderContext.authorizedOnly());
         // 签收触发「待收货后退款」：货在途时审过的仅退款单，此刻按约定退（AC7 出口①）
         afterSaleService.settleOnReceipt(subOrderNo);
         return detail(subOrderNo, null);
@@ -2491,13 +2525,11 @@ public class OrderServiceImpl implements OrderService {
             if (!bySigned && !byShipped) {
                 continue;
             }
-            sub.setStatus(OrdSubOrder.COMPLETED);
-            DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
             // 理由写清按哪条到期的 —— 对账时「为什么这单这天完成」只能看这一行
-            appendStatusLog(sub.getSubOrderNo(), OrdSubOrder.COMPLETED,
+            statusWriter.order(sub, OrderEvent.RECEIPT_AUTO_CONFIRMED, Actor.SYSTEM, null,
                     bySigned ? "签收满 " + signedDays + " 天自动确认收货"
                             : "发货满 " + shippedDays + " 天自动确认收货",
-                    OrdStatusLog.BY_SYSTEM, null);
+                    OrderContext.authorizedOnly().withAutoReceiptDue(true));
             // 自动签收同样触发「待收货后退款」（AC7 出口①）
             afterSaleService.settleOnReceipt(sub.getSubOrderNo());
             n++;
@@ -2959,6 +2991,23 @@ public class OrderServiceImpl implements OrderService {
                 .eq(OrdSubOrder::getUserNo, SecurityUtils.currentUserNo())
                 .last("limit 1"));
         return requireOwnOrder(sub == null ? orderNo : sub.getOrderNo());
+    }
+
+    /**
+     * 平台侧取单：子单号或支付单号都认，<b>不按买家过滤</b>（{@link #resolveOrder} 按当前登录买家过滤，
+     * 运营调用必然查不到）。与此前代客取消走的人工干预取单（{@code requireAny}）同口径：解除数据域，
+     * 写操作的边界由权限码 {@code order:order:proxy} 管。
+     */
+    private OrdOrder resolveForPlatform(String orderNo) {
+        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectOne(
+                Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getSubOrderNo, orderNo).last("limit 1")));
+        String payNo = sub == null ? orderNo : sub.getOrderNo();
+        OrdOrder order = DataScopeContext.executeWithoutScope(() -> orderMapper.selectOne(
+                Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo, payNo).last("limit 1")));
+        if (order == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return order;
     }
 
     private List<OrdSubOrder> subOrders(String orderNo) {

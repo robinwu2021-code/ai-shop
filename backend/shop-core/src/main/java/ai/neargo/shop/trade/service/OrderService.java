@@ -169,6 +169,12 @@ public interface OrderService {
     OrderVO cancel(String orderNo, String reason);
 
     /**
+     * 运营代客取消（未付款 / 待当面收款的单）：与买家取消同一条路 —— 支付单与订单一起取消、释放占用，
+     * 执行者记平台（TDD-订单状态机 AC15）。{@code orderNo} 可传子单号。
+     */
+    void cancelByPlatform(String orderNo, String reason, String operatorNo);
+
+    /**
      * 这张子单关闭后券与积分的去向（待办设计 P3）；非关闭态返回 null。
      * C 端与 B 端的订单详情共用这一份 —— 两边说的话要一样。
      */

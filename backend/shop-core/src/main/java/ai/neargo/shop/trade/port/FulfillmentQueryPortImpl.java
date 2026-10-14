@@ -1,5 +1,8 @@
 package ai.neargo.shop.trade.port;
 
+import ai.neargo.shop.trade.order.machine.order.OrderContext;
+import ai.neargo.shop.trade.order.machine.order.OrderEvent;
+import ai.neargo.shop.trade.order.statemachine.Actor;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 
 import ai.neargo.shop.spi.trade.FulfillmentQueryPort;
@@ -70,6 +73,14 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
     private final StatusLogMapper statusLogMapper;
     private final UserQueryPort userPort;
     private final OutboxEventBus eventBus;
+
+    /** 状态写入口（TDD-订单状态机 §2B） */
+    private ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setStatusWriter(ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter) {
+        this.statusWriter = statusWriter;
+    }
 
     public FulfillmentQueryPortImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                                     StatusLogMapper statusLogMapper, UserQueryPort userPort,
@@ -147,12 +158,15 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
          * 返回 false 而不是抛异常：核销台点了没反应会让店主反复点，
          * 而这不是错误、是这一单本来就该这么走。上层据此提示「已登记，待买家确认」。
          */
-        if (sub.getRequireBuyerConfirm() != null && sub.getRequireBuyerConfirm() == 1) {
+        /*
+         * 核销方（商家 / 自提点 / 邻里团长）在状态机里都记 MERCHANT —— 它们都是「履约方」，
+         * 归属已由调用方判过（PickupServiceImpl / GroupServiceImpl）。
+         */
+        boolean degraded = sub.getRequireBuyerConfirm() != null && sub.getRequireBuyerConfirm() == 1;
+        if (degraded) {
             if (!OrdSubOrder.FULFILLING.equals(sub.getStatus())) {
-                sub.setStatus(OrdSubOrder.FULFILLING);
-                DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
-                appendLog(subOrderNo, OrdSubOrder.FULFILLING,
-                        "已核销，等待买家确认收货", operatorNo);
+                statusWriter.order(sub, OrderEvent.VERIFIED, Actor.MERCHANT, operatorNo,
+                        "已核销，等待买家确认收货", OrderContext.authorizedOnly().withRequireBuyerConfirm(true));
             }
             return false;
         }
@@ -161,19 +175,9 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
         // 不豁免的话，UPDATE 会被拼上当前会话的 user_no（店主自己），影响行数 0 ——
         // 而 updateById 返回 0 不会抛异常：核销接口返回成功、订单状态纹丝不动，
         // 店主以为核销了、顾客的单还卡在待取货。这是最难查的一类 bug，因为没有任何报错。
-        sub.setStatus(OrdSubOrder.COMPLETED);
-        DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
-
-        OrdStatusLog log = new OrdStatusLog();
-        log.setSubOrderNo(subOrderNo);
-        log.setStatus(OrdSubOrder.COMPLETED);
-        log.setLabel(label);
-        log.setOperatorType(operatorNo == null ? OrdStatusLog.BY_SYSTEM : OrdStatusLog.BY_MERCHANT);
-        log.setOperatorNo(operatorNo);
-        log.setAt(System.currentTimeMillis());
-        log.setTenantNo("MAIN");
-        log.setCreatedAt(java.time.LocalDateTime.now());
-        statusLogMapper.insert(log);
+        // 门的 CAS 不带数据域（与此前这里的豁免同理：核销天然跨属主）
+        statusWriter.order(sub, OrderEvent.VERIFIED, Actor.MERCHANT, operatorNo, label,
+                OrderContext.authorizedOnly());
 
         // 核销是自提线走到终态的唯一出口：评价开放、结算解冻计时、通知用户都挂在这条事件上
         eventBus.publish(new OrderEvents.SubOrderCompleted(sub.getSubOrderNo(), sub.getOrderNo(),
@@ -219,9 +223,8 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
             if (!OrdSubOrder.WAIT_FULFILL.equals(sub.getStatus())) {
                 continue;
             }
-            sub.setStatus(OrdSubOrder.FULFILLING);
-            DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
-            appendLog(sub.getSubOrderNo(), OrdSubOrder.FULFILLING, "已到自提点，可来取货", operatorNo);
+            statusWriter.order(sub, OrderEvent.ARRIVED_AT_PICKUP, Actor.MERCHANT, operatorNo,
+                    "已到自提点，可来取货", OrderContext.authorizedOnly());
             /*
              * **自提单的「发货」就是这一刻**，不是买家来取的那一刻
              * （微信 logistics_type=4 的语义是「商家已备货、用户可来取」）。
