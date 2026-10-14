@@ -6,6 +6,7 @@ import ai.neargo.shop.pay.points.posting.PostingResult;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.points.model.FundMove;
 import ai.neargo.shop.pay.points.model.BudgetLockMove;
+import ai.neargo.shop.pay.points.model.ReceivableMove;
 import ai.neargo.shop.pay.points.model.EvidenceRef;
 import ai.neargo.shop.pay.points.model.PointsMove;
 import ai.neargo.shop.pay.points.model.PositionMove;
@@ -69,7 +70,8 @@ public class PointsPostingServiceImpl implements PointsPostingService {
                 voucher.resultSnapshot(), voucher.reserveMoves().stream()
                         .sorted(Comparator.comparing(ReserveMove::reserveNo)).toList(),voucher.budgetMoves().stream()
                         .sorted(Comparator.comparing(BudgetLockMove::bucket)
-                                .thenComparingLong(BudgetLockMove::deltaMinor)).toList());
+                                .thenComparingLong(BudgetLockMove::deltaMinor)).toList(),voucher.receivableMoves().stream()
+                        .sorted(Comparator.comparing(ReceivableMove::receivableNo)).toList());
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                     .digest(json.writeValueAsString(canonical).getBytes(StandardCharsets.UTF_8)));

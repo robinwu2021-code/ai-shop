@@ -13,6 +13,7 @@ import ai.neargo.shop.pay.points.model.PointsMove;
 import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.model.Voucher;
 import ai.neargo.shop.pay.points.model.ReserveMove;
+import ai.neargo.shop.pay.points.model.ReceivableMove;
 import ai.neargo.shop.pay.points.posting.PostingResult;
 import ai.neargo.shop.pay.points.store.PostingStore;
 import org.springframework.dao.DuplicateKeyException;
@@ -196,6 +197,13 @@ public class MybatisPostingStore implements PostingStore {
                 revision = 0;
             }
             require(mapper.moveReserve(type, move, revision) == 1, "POINTS_RESERVE_STATE_CONFLICT");
+        }
+        for (ReceivableMove move:voucher.receivableMoves().stream()
+                .sorted(Comparator.comparing(ReceivableMove::receivableNo)).toList()) {
+            json.readTree(move.payload());
+            long expected=move.expectedVersion();
+            if (expected==-1) { mapper.createReceivable(type,move); expected=0; }
+            require(mapper.moveReceivable(type,move,expected)==1,"POINTS_RECEIVABLE_STATE_CONFLICT");
         }
         require(mapper.lockedWithdrawalTotal(type,"U")==number(pool,"locked_u_minor")
                 && mapper.lockedWithdrawalTotal(type,"B")==number(pool,"locked_b_minor"),

@@ -11,7 +11,7 @@ public record Voucher(String bizRef, String typeCode, String currency, RedeemRat
                       List<PointsMove> pointsMoves, List<FundMove> fundMoves,
                       List<PositionMove> positionMoves, long reserveDelta,
                       List<EvidenceRef> evidenceRefs, String resultSnapshot, List<ReserveMove> reserveMoves,
-                      List<BudgetLockMove> budgetMoves) {
+                      List<BudgetLockMove> budgetMoves,List<ReceivableMove> receivableMoves) {
     public Voucher {
         pointsMoves = List.copyOf(pointsMoves);
         fundMoves = List.copyOf(fundMoves);
@@ -19,10 +19,20 @@ public record Voucher(String bizRef, String typeCode, String currency, RedeemRat
         evidenceRefs = List.copyOf(evidenceRefs);
         reserveMoves = List.copyOf(reserveMoves);
         budgetMoves = List.copyOf(budgetMoves);
+        receivableMoves = List.copyOf(receivableMoves);
     }
     public Voucher(String bizRef,String typeCode,String currency,RedeemRate rate,
                    List<PointsMove> pointsMoves,List<FundMove> fundMoves,List<PositionMove> positionMoves,
-                   long reserveDelta,List<EvidenceRef> evidenceRefs,String resultSnapshot,List<ReserveMove> reserveMoves) {
+                   long reserveDelta,List<EvidenceRef> evidenceRefs,String resultSnapshot,
+                   List<ReserveMove> reserveMoves,
+                   List<BudgetLockMove> budgetMoves) {
+        this(bizRef,typeCode,currency,rate,pointsMoves,fundMoves,positionMoves,reserveDelta,evidenceRefs,
+                resultSnapshot,reserveMoves,budgetMoves,List.of());
+    }
+    public Voucher(String bizRef,String typeCode,String currency,RedeemRate rate,
+                   List<PointsMove> pointsMoves,List<FundMove> fundMoves,List<PositionMove> positionMoves,
+                   long reserveDelta,List<EvidenceRef> evidenceRefs,String resultSnapshot,
+                   List<ReserveMove> reserveMoves) {
         this(bizRef,typeCode,currency,rate,pointsMoves,fundMoves,positionMoves,reserveDelta,evidenceRefs,
                 resultSnapshot,reserveMoves,List.of());
     }
@@ -87,6 +97,22 @@ public record Voucher(String bizRef, String typeCode, String currency, RedeemRat
                 || rate.toMinor(userStore.longValueExact()) != funds.getOrDefault(FundBucket.C, BigInteger.ZERO)
                 .longValueExact()) {
             throw new IllegalArgumentException("Points rights lack real U/C backing");
+        }
+        BigInteger receivableChange=BigInteger.ZERO;
+        for (ReceivableMove move:receivableMoves) {
+            if (move.receivableNo()==null || move.receivableNo().isBlank() || move.storeNo()==null
+                    || move.storeNo().isBlank() || move.expectedVersion() < -1 || move.originalMinor()<=0
+                    || move.recoveredDelta()<0 || move.payload()==null) {
+                throw new IllegalArgumentException("Invalid store receivable move");
+            }
+            if (move.expectedVersion()==-1) {
+                receivableChange=receivableChange.add(BigInteger.valueOf(move.originalMinor()));
+            }
+            receivableChange=receivableChange.subtract(BigInteger.valueOf(move.recoveredDelta()));
+        }
+        if (!receivableMoves.isEmpty() && !receivableChange.negate()
+                .equals(funds.getOrDefault(FundBucket.B,BigInteger.ZERO))) {
+            throw new IllegalArgumentException("Receivable change does not match actual refund buffer funding");
         }
         BigInteger external = BigInteger.ZERO;
         for (EvidenceRef evidence : evidenceRefs) {

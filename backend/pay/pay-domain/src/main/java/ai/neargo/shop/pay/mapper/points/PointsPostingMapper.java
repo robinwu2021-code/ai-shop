@@ -2,6 +2,7 @@ package ai.neargo.shop.pay.mapper.points;
 
 import ai.neargo.shop.pay.points.model.AccountKey;
 import ai.neargo.shop.pay.points.model.PositionMove;
+import ai.neargo.shop.pay.points.model.ReceivableMove;
 import ai.neargo.shop.pay.points.model.ReserveMove;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
@@ -53,6 +54,19 @@ public interface PointsPostingMapper {
     int movePool(@Param("type") String type, @Param("u") long u, @Param("c") long c,
                  @Param("d") long d, @Param("b") long b, @Param("reserved") long reserved,
                  @Param("lockedU") long lockedU,@Param("lockedB") long lockedB);
+
+    @Insert("INSERT INTO pts_receivable(type_code,receivable_no,store_no,state,original_minor,payload_json)"
+            + " VALUES(#{type},#{move.receivableNo},#{move.storeNo},#{move.fromState},"
+            + "#{move.originalMinor},#{move.payload})")
+    int createReceivable(@Param("type") String type,@Param("move") ReceivableMove move);
+    @Update("UPDATE pts_receivable SET state=#{move.nextState},recovered_minor=recovered_minor+#{move.recoveredDelta},"
+            + "locked_minor=locked_minor+#{move.lockedDelta},payload_json=#{move.payload},version=version+1"
+            + " WHERE type_code=#{type} AND receivable_no=#{move.receivableNo} AND store_no=#{move.storeNo}"
+            + " AND original_minor=#{move.originalMinor} AND state=#{move.fromState} AND version=#{expected}"
+            + " AND recovered_minor+#{move.recoveredDelta}>=0 AND locked_minor+#{move.lockedDelta}>=0"
+            + " AND recovered_minor+#{move.recoveredDelta}+locked_minor+#{move.lockedDelta}<=original_minor")
+    int moveReceivable(@Param("type") String type,@Param("move") ReceivableMove move,
+                       @Param("expected") long expected);
 
     @Update("UPDATE pts_fund_transfer SET withdraw_bucket=#{bucket},amount_minor=#{amount},provider_idem=#{idem}"
             + " WHERE position_no=#{no}")
