@@ -34,6 +34,9 @@ public interface PayQueryPort {
      * @param paid  通道侧是否已支付
      * @param found 通道有没有这笔单
      */
-    record Result(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo) {
+    record Result(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo, String currency) {
+        public Result(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo) {
+            this(ok, paid, found, amountMinor, tradeNo, "CNY");
+        }
     }
 }

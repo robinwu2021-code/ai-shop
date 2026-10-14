@@ -124,7 +124,10 @@ public class WechatPayGateway extends AbstractPayGateway {
             Object amount = resp.get("amount");
             long minor = amount instanceof Map<?, ?> m && m.get("total") instanceof Number n
                     ? n.longValue() : 0L;
-            return QueryResult.paid(minor, String.valueOf(resp.get("transaction_id")));
+            return new QueryResult(true, true, true, minor,
+                    resp.get("transaction_id") instanceof String trade ? trade : null,
+                    resp.get("amount") instanceof Map<?, ?> details && details.get("currency") instanceof String currency
+                            ? currency : null);
         } catch (ChannelClient.ChannelException e) {
             // 查询失败 ≠ 没有这笔。返回 failed 让对账留到下一轮，别关单
             return QueryResult.failed();

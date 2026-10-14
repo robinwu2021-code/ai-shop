@@ -96,21 +96,21 @@ class BizOrderFulfillFlowTest {
     void reshipSemantics() throws Exception {
         Ctx c = prepare("12600129005", "重复发货店", "12600129006");
 
-        ship(c, "SF999").andExpect(jsonPath("$.code").value(0));
+        ship(c, "SF999001").andExpect(jsonPath("$.code").value(0));
         // 重复点击是常态（网络慢时人会连点两下），不该报错
-        ship(c, "SF999").andExpect(jsonPath("$.code").value(0));
+        ship(c, "SF999001").andExpect(jsonPath("$.code").value(0));
 
         /*
          * 换单号：**允许**。填错单号必须能改，拒了商家只能打客服。
          * 但它会改掉买家看到的物流号，所以要留痕 —— 见时间线里那条「商家改快递单号」。
          */
         // 同上：状态是 FULFILLING，SHIPPED 已不是状态常量
-        ship(c, "YT123").andExpect(jsonPath("$.data.status").value("FULFILLING"));
+        ship(c, "YT123001").andExpect(jsonPath("$.data.status").value("FULFILLING"));
 
         String detail = mvc().perform(get("/biz/order/" + c.subOrderNo)
                         .header("Authorization", "Bearer " + c.merchantToken))
                 .andReturn().getResponse().getContentAsString();
-        assertThat(detail).contains("YT123");
+        assertThat(detail).contains("YT123001");
     }
 
     @Test
@@ -251,11 +251,10 @@ class BizOrderFulfillFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("payOrderNo").asString();
-        /*
-         * **走支付回调而不是 /pay**：`/pay` 只是拿收银台参数，
-         * 真正把单推到 WAIT_FULFILL 的是通道回调 —— 只调 /pay 的话单还在 WAIT_PAY，
-         * 发货会被状态机拒，而那是测试写错了不是代码错了。
-         */
+        // Open the authoritative payment request before applying its signed success receipt.
+        mvc().perform(post("/mp/order/" + payOrderNo + "/pay")
+                        .header("Authorization", "Bearer " + buyer))
+                .andExpect(jsonPath("$.code").value(0));
         mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-"
                                 + payOrderNo + "\",\"sign\":\"" + STUB_SECRET + "\"}"))

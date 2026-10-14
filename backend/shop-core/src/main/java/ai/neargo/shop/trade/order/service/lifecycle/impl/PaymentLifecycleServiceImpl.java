@@ -6,15 +6,19 @@ import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.order.service.lifecycle.PaymentLifecycleService;
+import ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService;
+import ai.neargo.shop.trade.order.entity.OrdPaymentResolution;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PaymentLifecycleServiceImpl implements PaymentLifecycleService {
     private final SettlePort settlement;
+    private final PaymentResolutionService resolutions;
 
-    public PaymentLifecycleServiceImpl(SettlePort settlement) {
+    public PaymentLifecycleServiceImpl(SettlePort settlement, PaymentResolutionService resolutions) {
         this.settlement = settlement;
+        this.resolutions = resolutions;
     }
 
     @Override
@@ -32,6 +36,16 @@ public class PaymentLifecycleServiceImpl implements PaymentLifecycleService {
                 || receipt.payChannel() == null || receipt.payChannel().isBlank()
                 || channel != null && !Objects.equals(channel, receipt.payChannel())
                 || tradeNo != null && !Objects.equals(tradeNo, receipt.tradeNo())) {
+            resolutions.record(order, receipt, OrdPaymentResolution.RECEIPT_MISMATCH);
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (OrdOrder.CANCELLED.equals(order.getStatus()) || OrdOrder.CLOSED.equals(order.getStatus())) {
+            resolutions.record(order, receipt, OrdPaymentResolution.LATE_PAYMENT);
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (OrdOrder.PAID.equals(order.getStatus()) && order.getPayTradeNo() != null
+                && !Objects.equals(order.getPayTradeNo(), receipt.tradeNo())) {
+            resolutions.record(order, receipt, OrdPaymentResolution.DUPLICATE_PAYMENT);
             throw BizException.of(ErrorCode.CONFLICT);
         }
         return new ConfirmedPayment(receipt.payChannel(), receipt.tradeNo());

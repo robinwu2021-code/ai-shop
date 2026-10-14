@@ -10,6 +10,11 @@ import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleMachine;
 import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleStatus;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdOrder;
+import ai.neargo.shop.trade.order.entity.OrdShipment;
+import ai.neargo.shop.trade.order.machine.shipment.ShipmentContext;
+import ai.neargo.shop.trade.order.machine.shipment.ShipmentEvent;
+import ai.neargo.shop.trade.order.machine.shipment.ShipmentMachine;
+import ai.neargo.shop.trade.order.machine.shipment.ShipmentStatus;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
@@ -111,6 +116,17 @@ public class TradeStatusWriter {
                         actor, operatorNo, reason, ctx));
         sub.setPreparedAt(at);
         sync(sub, true);
+        return fired;
+    }
+
+    /** Package corrections share the same CAS/log gate as parent and child order writes. */
+    public Fired<ShipmentStatus, ShipmentEvent> shipment(OrdShipment shipment, ShipmentEvent event, Actor actor,
+                                                        String operatorNo, String reason, ShipmentContext ctx) {
+        Fired<ShipmentStatus, ShipmentEvent> fired = gate.apply(ShipmentMachine.MACHINE, ShipmentStatus.class,
+                new Command<>(Aggregate.SHIPMENT, shipment.getShipmentNo(), shipment.getSubOrderNo(), event,
+                        actor, operatorNo, reason, ctx));
+        sync(shipment, fired.changed());
+        shipment.setStatus(fired.to().name());
         return fired;
     }
 

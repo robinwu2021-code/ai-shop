@@ -5,7 +5,7 @@
   "targetPackage": "ai.neargo.shop.order",
   "status": "phase1-backend-in-progress",
   "counts": {
-    "coreProductionFiles": 153,
+    "coreProductionFiles": 163,
     "coreTestClasses": 27
   },
   "entries": [
@@ -4843,6 +4843,147 @@
       "publicMethods": [
         "public PaymentLifecycleServiceImpl(SettlePort settlement)",
         "public ConfirmedPayment requireConfirmed(OrdOrder order, String channel, String tradeNo)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/command/OrderActor.java",
+      "sourceType": "ai.neargo.shop.trade.order.command.OrderActor",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/command/OrderActor.java",
+      "targetType": "ai.neargo.shop.order.command.OrderActor",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": [
+        "public OrderActor(String merchantNo, String storeNo)",
+        "public boolean owns(OrdSubOrder order)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/contract/PaymentResolutionView.java",
+      "sourceType": "ai.neargo.shop.trade.order.contract.PaymentResolutionView",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/contract/PaymentResolutionView.java",
+      "targetType": "ai.neargo.shop.order.contract.PaymentResolutionView",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/entity/OrdPaymentResolution.java",
+      "sourceType": "ai.neargo.shop.trade.order.entity.OrdPaymentResolution",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/entity/OrdPaymentResolution.java",
+      "targetType": "ai.neargo.shop.order.entity.OrdPaymentResolution",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [
+        "ord_payment_resolution"
+      ],
+      "externalConsumers": [],
+      "publicMethods": [
+        "public static final String MANUAL_REQUIRED = \"MANUAL_REQUIRED\";",
+        "public static final String RESOLVED = \"RESOLVED\";",
+        "public static final String LATE_PAYMENT = \"LATE_PAYMENT\";",
+        "public static final String RECEIPT_MISMATCH = \"RECEIPT_MISMATCH\";",
+        "public static final String DUPLICATE_PAYMENT = \"DUPLICATE_PAYMENT\";"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/mapper/PaymentResolutionMapper.java",
+      "sourceType": "ai.neargo.shop.trade.order.mapper.PaymentResolutionMapper",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/mapper/PaymentResolutionMapper.java",
+      "targetType": "ai.neargo.shop.order.mapper.PaymentResolutionMapper",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/OrderShippingService.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.OrderShippingService",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/OrderShippingService.java",
+      "targetType": "ai.neargo.shop.order.service.OrderShippingService",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/impl/OrderShippingServiceImpl.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.impl.OrderShippingServiceImpl",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/impl/OrderShippingServiceImpl.java",
+      "targetType": "ai.neargo.shop.order.service.impl.OrderShippingServiceImpl",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": [
+        "public OrderShippingServiceImpl(MybatisShipmentReadStore read, MybatisShipmentWriteStore write,",
+        "public ShipResult ship(String subOrderNo, ShipCommand command, OrderActor actor)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/lifecycle/PaymentResolutionService.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/lifecycle/PaymentResolutionService.java",
+      "targetType": "ai.neargo.shop.order.service.lifecycle.PaymentResolutionService",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/lifecycle/impl/PaymentResolutionServiceImpl.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.lifecycle.impl.PaymentResolutionServiceImpl",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/lifecycle/impl/PaymentResolutionServiceImpl.java",
+      "targetType": "ai.neargo.shop.order.service.lifecycle.impl.PaymentResolutionServiceImpl",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": [
+        "public PaymentResolutionServiceImpl(PaymentResolutionMapper resolutions,",
+        "public PaymentResolutionView view(String payNo, String buyerNo)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/ship/MybatisShipmentReadStore.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.ship.MybatisShipmentReadStore",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/ship/MybatisShipmentReadStore.java",
+      "targetType": "ai.neargo.shop.order.service.ship.MybatisShipmentReadStore",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": [
+        "public MybatisShipmentReadStore(StatusCasMapper locks, PaymentMapper payments, OrderItemMapper items,",
+        "public OrdSubOrder findOrder(String subOrderNo)",
+        "public boolean parentPaid(String orderNo)",
+        "public boolean openAfterSale(OrdSubOrder order)",
+        "public List<OrdItem> itemsOf(String subOrderNo)",
+        "public List<OrdShipment> activeOf(String subOrderNo)",
+        "public OrdShipment findActiveWaybill(String carrier, String waybillNo)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/ship/MybatisShipmentWriteStore.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.ship.MybatisShipmentWriteStore",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/ship/MybatisShipmentWriteStore.java",
+      "targetType": "ai.neargo.shop.order.service.ship.MybatisShipmentWriteStore",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": [
+        "public MybatisShipmentWriteStore(ShipmentMapper shipments, OrderItemMapper items, StoreOrderMapper orders,",
+        "public void saveShipment(OrdShipment shipment)",
+        "public void bindItems(List<OrdItem> rows)",
+        "public void supersede(OrdShipment old, String replacement, Operator operator)",
+        "public void saveLegacyFields(OrdSubOrder order, String carrier, String waybillNo)"
       ]
     }
   ],

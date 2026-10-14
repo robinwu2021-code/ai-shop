@@ -216,7 +216,10 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
             if (!"SUCCESS".equals(state)) {
                 return QueryResult.unpaid();
             }
-            return QueryResult.paid(totalOf(resp), String.valueOf(resp.get("transaction_id")));
+            return new QueryResult(true, true, true, totalOf(resp),
+                    resp.get("transaction_id") instanceof String trade ? trade : null,
+                    resp.get("amount") instanceof Map<?, ?> details && details.get("currency") instanceof String currency
+                            ? currency : null);
         } catch (ChannelClient.ChannelException e) {
             /*
              * **只有 ORDER_NOT_EXIST 才是「通道没有这笔」**，其余失败一律 failed()。

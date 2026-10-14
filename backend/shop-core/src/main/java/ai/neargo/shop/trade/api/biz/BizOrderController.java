@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.api.biz;
 import ai.neargo.shop.auth.BizPerms;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
+import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.CourierOrderVO;
 import ai.neargo.shop.trade.dto.OrderVO;
@@ -134,7 +135,7 @@ public class BizOrderController {
     public OrderVO ship(@PathVariable String subOrderNo, @RequestBody ShipReq req) {
         var ctx = BizContext.current();
         return merchantOrderService.ship(ctx.requireMerchantNo(), ctx.currentStoreNo(),
-                subOrderNo, req.expressNo(), req.expressCompany());
+                subOrderNo, req.expressNo(), req.expressCompany(), SecurityUtils.currentUserNo());
     }
 
     /**

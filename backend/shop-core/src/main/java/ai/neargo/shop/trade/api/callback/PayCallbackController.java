@@ -96,7 +96,7 @@ public class PayCallbackController {
         }
         String orderNo = settlePort.settlePayment(new SettlePort.PaymentSettled(
                 body.outTradeNo(), initiated.payChannel(), body.transactionId(), initiated.amountMinor(),
-                System.currentTimeMillis()));
+                System.currentTimeMillis(), initiated.currency()));
 
         /*
          * **订单号由支付域给**，不要把 outTradeNo 当订单号用。

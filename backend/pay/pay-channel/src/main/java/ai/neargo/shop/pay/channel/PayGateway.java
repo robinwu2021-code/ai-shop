@@ -123,7 +123,14 @@ public interface PayGateway {
      * @param amountMinor 通道侧金额（分）—— 与我方不符时是 AMOUNT_DIFF
      * @param tradeNo   通道流水号
      */
-    record QueryResult(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo) {
+    record QueryResult(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo, String currency) {
+        public QueryResult(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo) {
+            this(ok, paid, found, amountMinor, tradeNo, "CNY");
+        }
+
+        public static QueryResult paid(long amountMinor, String tradeNo, String currency) {
+            return new QueryResult(true, true, true, amountMinor, tradeNo, currency);
+        }
         public static QueryResult paid(long amountMinor, String tradeNo) {
             return new QueryResult(true, true, true, amountMinor, tradeNo);
         }

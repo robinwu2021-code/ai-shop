@@ -1,6 +1,14 @@
 package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.trade.order.policy.PaymentImpactPolicy;
+import ai.neargo.shop.trade.order.command.OrderActor;
+import ai.neargo.shop.trade.order.command.ShipCommand;
+import ai.neargo.shop.trade.order.service.OrderShippingService;
+import ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService;
+import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
+import ai.neargo.shop.trade.order.mapper.StatusCasMapper;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 
@@ -17,6 +25,7 @@ import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PayModes;
+import ai.neargo.shop.common.ExpressCompanies;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
@@ -95,6 +104,28 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         this.statusWriter = statusWriter;
     }
 
+    private OrderShippingService orderShippingService;
+    private StatusCasMapper shippingLocks;
+    private PaymentResolutionService paymentResolutions;
+
+    /** Express commands need package facts before the legacy JSON view is reconstructed. */
+    @Autowired
+    public void setOrderShippingService(OrderShippingService service) {
+        this.orderShippingService = service;
+    }
+
+    /** Current read comes first so a retry cannot establish an obsolete pre-lock snapshot. */
+    @Autowired
+    public void setShippingLocks(StatusCasMapper locks) {
+        this.shippingLocks = locks;
+    }
+
+    /** Authorized detail uses the original payment buyer, never the staff identity, for its safe projection. */
+    @Autowired
+    public void setPaymentResolutions(PaymentResolutionService resolutions) {
+        this.paymentResolutions = resolutions;
+    }
+
     public MerchantOrderServiceImpl(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                                     PaymentMapper orderMapper,
                                     ai.neargo.shop.trade.service.OrderService orderService,
@@ -122,7 +153,8 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 .withStore(new OrderVO.StoreBrief(sub.getStoreNo(), null))
                 .withDiscountLines(orderService.discountLinesOf(sub))
                 .withReturned(orderService.returnedOf(sub))
-                .withTrace(traceOf(sub));
+                .withTrace(traceOf(sub))
+                .withPaymentResolution(paymentResolutionOf(sub));
     }
 
 
@@ -187,62 +219,51 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderVO ship(String merchantNo, String storeNo, String subOrderNo,
                         String expressNo, String expressCompany) {
-        /*
-         * **快递公司与运单号成对校验，在这里拒，不要等微信拒。**
-         *
-         * 放行到上报那一步的话，微信回的是一个编码错误码，而那时错误已经离
-         * 「商家刚才填错了」很远：台账上是一条失败、界面上什么都没发生、
-         * 商家以为自己发过货了，几天后才发现钱没结出来。
-         */
-        if (!ai.neargo.shop.common.ExpressCompanies.isValid(expressCompany)) {
+        return ship(merchantNo, storeNo, subOrderNo, expressNo, expressCompany, merchantNo);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public OrderVO ship(String merchantNo, String storeNo, String subOrderNo,
+                        String expressNo, String expressCompany, String operatorNo) {
+        OrdSubOrder current = DataScopeContext.executeWithoutScope(() -> shippingLocks.lockOrder(subOrderNo));
+        if (current == null || !new OrderActor(merchantNo, storeNo, operatorNo).owns(current)) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (OrdSubOrder.EXPRESS.equals(current.getFulfillment())) {
+            orderShippingService.ship(subOrderNo, new ShipCommand(List.of(), expressCompany, expressNo),
+                    new OrderActor(merchantNo, storeNo, operatorNo));
+            return toVO(require(merchantNo, storeNo, subOrderNo));
+        }
+        return shipLegacy(current, expressNo, expressCompany, operatorNo);
+    }
+
+    /** Preserve nonexpress route semantics; only the first state transition uses the canonical CAS/log gate. */
+    private OrderVO shipLegacy(OrdSubOrder sub, String expressNo, String expressCompany, String operatorNo) {
+        if (!ExpressCompanies.isValid(expressCompany)
+                || expressNo == null || expressNo.isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        if (expressNo == null || expressNo.isBlank()) {
-            /*
-             * 没有单号的「已发货」对买家没有任何用处 —— 他既查不到物流，
-             * 也无法判断该不该继续等。所以这里拦住，而不是存一个空单号。
-             */
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
         String no = expressNo.trim();
-        /*
-         * 状态机对 from==to 是**幂等友好**的（为回调重放设计），所以重复发货不会在这里被拒。
-         * 于是要在这一层区分两件事：
-         *   同一个单号再发一次 → 重复点击，空操作；
-         *   换了一个单号     → 这是「改单号」，允许（填错单号必须能改，
-         *                      拒了商家只能打客服），但**必须留痕** ——
-         *                      买家那边的物流号变了却查不到是谁改的，是纠纷的开始。
-         */
         boolean shipped = OrdSubOrder.FULFILLING.equals(sub.getStatus());
-        // 单号与公司**都**没变才算重复点击。只比单号的话，「单号没填错、
-        // 快递公司选错了」这种改不进去 —— 而那正是最需要能改的一种
-        if (shipped && no.equals(sub.getExpressNo())
-                && expressCompany.equals(sub.getExpressCompany())) {
+        if (shipped && no.equals(sub.getExpressNo()) && expressCompany.equals(sub.getExpressCompany())) {
             return toVO(sub);
         }
-        // 商家发起 → 用带「未付款不许推进」那条闸的断言（见 assertMerchantSubOrderTransit）
         OrderStateMachine.assertMerchantSubOrderTransit(sub.getStatus(), OrdSubOrder.FULFILLING);
         String old = sub.getExpressNo();
-        sub.setStatus(OrdSubOrder.FULFILLING);
+        if (!shipped) {
+            statusWriter.order(sub, OrderEvent.SHIP_BY_MERCHANT, Actor.MERCHANT, operatorNo,
+                    "商家发货：" + no, OrderContext.authorizedOnly());
+        }
         sub.setExpressNo(no);
         sub.setExpressCompany(expressCompany);
         save(sub);
-        log(sub, OrdSubOrder.FULFILLING,
-                shipped ? "商家改快递单号：" + old + " → " + no : "商家发货：" + no,
-                merchantNo);
-        /*
-         * **向微信报发货**（TDD-微信发货信息录入 §5.2）。挂在状态迁移上而不是 controller 上：
-         * 挂 controller 的话，每多一个推进到「已发货」的入口就要记得加一次，
-         * 而漏掉的那一个不报错、只是那些单的钱结不出来。
-         *
-         * 改单号的那次（shipped==true）也走这里：台账幂等，重复入队不产生第二行。
-         * 运单号变了要不要重报是另一件事 —— 微信的 10060002 会把它挡掉，
-         * 已记在 §7 待确认。
-         */
+        if (shipped) {
+            log(sub, OrdSubOrder.FULFILLING, "商家改快递单号：" + old + " → " + no, operatorNo);
+        }
         notifyShipping(sub);
         publishShipped(sub, no, expressCompany);
         return toVO(sub);
@@ -1246,7 +1267,8 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
 
     @Override
     public OpsOrderVO opsDetail(String subOrderNo) {
-        return toOpsVO(requireInScope(subOrderNo));
+        OrdSubOrder sub = requireInScope(subOrderNo);
+        return toOpsVO(sub).withPaymentResolution(paymentResolutionOf(sub));
     }
 
     @Override
@@ -1380,6 +1402,12 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         return sub;
+    }
+
+    private PaymentResolutionView paymentResolutionOf(OrdSubOrder sub) {
+        OrdOrder parent = DataScopeContext.executeWithoutScope(() -> orderMapper.selectOne(
+                Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("LIMIT 1")));
+        return parent == null ? null : paymentResolutions.view(parent.getOrderNo(), parent.getUserNo());
     }
 
     private OpsOrderVO toOpsVO(OrdSubOrder s) {

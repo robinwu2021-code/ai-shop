@@ -4763,6 +4763,9 @@ CREATE TABLE IF NOT EXISTS ord_shipment
     updated_by    VARCHAR(64) DEFAULT NULL,
     version       BIGINT(20)  NOT NULL DEFAULT 0,
     deleted       TINYINT(4)  NOT NULL DEFAULT 0,
+    active_waybill_no VARCHAR(64)
+        GENERATED ALWAYS AS (CASE WHEN status <> 'VOIDED' AND deleted = 0 THEN waybill_no ELSE NULL END),
+    CONSTRAINT uk_ord_shipment_active_waybill UNIQUE (carrier, active_waybill_no, tenant_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_shipment_no UNIQUE (shipment_no, tenant_no)
 );
@@ -4865,6 +4868,32 @@ CREATE TABLE IF NOT EXISTS ord_create_intent
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_create_pay UNIQUE (pay_no),
     CONSTRAINT uk_ord_create_key UNIQUE (endpoint, idem_key)
+);
+
+CREATE TABLE IF NOT EXISTS ord_payment_resolution
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_no VARCHAR(64) NOT NULL,
+    payment_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    source_user_no VARCHAR(64) NULL,
+    source_pay_no VARCHAR(64) NULL,
+    amount_minor BIGINT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    trade_no VARCHAR(128) NOT NULL,
+    reason VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    refund_no VARCHAR(64) NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_payment_resolution UNIQUE (pay_no, payment_no)
 );
 
 -- 种子数据

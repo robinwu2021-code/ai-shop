@@ -147,7 +147,11 @@ public interface SettlePort {
      * @param succeededAt 通道回执的成功时刻
      */
     record PaymentSettled(String outTradeNo, String payChannel, String tradeNo,
-                          long amountMinor, long succeededAt) {
+                          long amountMinor, long succeededAt, String currency) {
+        public PaymentSettled(String outTradeNo, String payChannel, String tradeNo,
+                              long amountMinor, long succeededAt) {
+            this(outTradeNo, payChannel, tradeNo, amountMinor, succeededAt, "CNY");
+        }
     }
 
     int generateForOrder(String orderNo);

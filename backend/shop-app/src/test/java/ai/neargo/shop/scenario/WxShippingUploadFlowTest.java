@@ -3,6 +3,10 @@ package ai.neargo.shop.scenario;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 
 import ai.neargo.shop.trade.order.mapper.ShippingUploadMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.entity.OrdOrder;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.paybridge.WxShippingUploadService;
@@ -125,6 +129,9 @@ class WxShippingUploadFlowTest {
 
     // ------------------------------------------------------------------ 接线
 
+    @Autowired private OrderItemMapper shippingItems;
+    @Autowired private PaymentMapper shippingPayments;
+
     /**
      * 造一笔「已支付、待发货」的快递单，并把微信收款流水补成付成功。
      *
@@ -142,6 +149,8 @@ class WxShippingUploadFlowTest {
         sub.setFulfillment(ai.neargo.shop.common.Fulfillments.EXPRESS);
         sub.setPayAmount(1_000L);
         DataScopeContext.executeWithoutScope(() -> subOrderMapper.insert(sub));
+
+        seedPaidPackageRows(orderNo, subOrderNo, sub.getUserNo());
 
         String out = ledger.open(new ai.neargo.shop.spi.settle.SettlePort.PaymentOpen(
                 orderNo, sub.getUserNo(), entityNo, "TEST", 1_000L, "柠檬"));
@@ -259,10 +268,29 @@ class WxShippingUploadFlowTest {
         sub.setPayAmount(1_000L);
         DataScopeContext.executeWithoutScope(() -> subOrderMapper.insert(sub));
 
+        seedPaidPackageRows(orderNo, subNo, sub.getUserNo());
+
         merchantOrderService.ship(entityNo, null, subNo, "SF9900", "SF");
 
         assertThat(row(orderNo))
                 .as("没有微信支付流水还入队的话，补报任务会永远报不出去并占着队列")
                 .isNull();
     }
+    private void seedPaidPackageRows(String orderNo, String subOrderNo, String userNo) {
+        OrdOrder payment = new OrdOrder();
+        payment.setOrderNo(orderNo);
+        payment.setUserNo(userNo);
+        payment.setStatus(OrdOrder.PAID);
+        payment.setPayAmount(1_000L);
+        DataScopeContext.executeWithoutScope(() -> shippingPayments.insert(payment));
+        OrdItem item = new OrdItem();
+        item.setSubOrderNo(subOrderNo);
+        item.setOrderNo(orderNo);
+        item.setGoodsNo("WX-SHIP-GOODS");
+        item.setSkuNo("WX-SHIP-SKU");
+        item.setQty(1);
+        DataScopeContext.executeWithoutScope(() -> shippingItems.insert(item));
+
+    }
+
 }

@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import java.util.Objects;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
 
 @Service
 public class PaymentLedgerServiceImpl implements PaymentLedgerService {
@@ -330,9 +332,10 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     }
 
     @Override
-    @Transactional("payTxManager")
+    @Transactional(value = "payTxManager", propagation = Propagation.REQUIRES_NEW,
+            isolation = Isolation.READ_COMMITTED)
     public void close(String outTradeNo, String reason) {
-        StlPayment p = byOutTradeNo(outTradeNo);
+        StlPayment p = lockPayment(outTradeNo);
         if (p == null || StlPayment.SUCCESS.equals(p.getStatus())
                 || StlPayment.CLOSED.equals(p.getStatus())) {
             /*
@@ -354,16 +357,16 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     @Transactional("payTxManager")
     public String settle(SettlePort.PaymentSettled cmd) {
-        StlPayment existing = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
-                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getDirection, StlPayment.PAY)
-                        .eq(StlPayment::getOutTradeNo, cmd.outTradeNo()).last("LIMIT 1 FOR UPDATE")));
+        StlPayment existing = lockPayment(cmd.outTradeNo());
         if (existing == null || !Objects.equals(existing.getPayChannel(), cmd.payChannel())
-                || cmd.tradeNo() == null || cmd.tradeNo().isBlank() || cmd.amountMinor() < 0) {
+                || cmd.tradeNo() == null || cmd.tradeNo().isBlank() || cmd.amountMinor() < 0
+                || cmd.currency() == null || cmd.currency().isBlank()) {
             return null;
         }
         if (StlPayment.SUCCESS.equals(existing.getStatus())) {
             return Objects.equals(existing.getTradeNo(), cmd.tradeNo())
-                    && nz(existing.getAmountMinor()) == cmd.amountMinor() ? existing.getOrderNo() : null;
+                    && nz(existing.getAmountMinor()) == cmd.amountMinor()
+                    && Objects.equals(existing.getCurrency(), cmd.currency()) ? existing.getOrderNo() : null;
         }
         StlPayment patch = new StlPayment();
         patch.setId(existing.getId());
@@ -372,6 +375,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         patch.setSucceededAt(cmd.succeededAt());
         // Preserve the channel's actual money. Order projection independently compares its immutable amount.
         patch.setAmountMinor(cmd.amountMinor());
+        patch.setCurrency(cmd.currency());
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
         return existing.getOrderNo();
     }
@@ -394,6 +398,12 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         return p == null ? null : new SettlePort.PaymentReceipt(p.getPaymentNo(), p.getOrderNo(),
                 p.getUserNo(), p.getPayChannel(), p.getTradeNo(), nz(p.getAmountMinor()),
                 p.getCurrency(), p.getStatus());
+    }
+
+    private StlPayment lockPayment(String outTradeNo) {
+        return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getDirection, StlPayment.PAY)
+                        .eq(StlPayment::getOutTradeNo, outTradeNo).last("LIMIT 1 FOR UPDATE")));
     }
 
     private StlPayment byOutTradeNo(String outTradeNo) {

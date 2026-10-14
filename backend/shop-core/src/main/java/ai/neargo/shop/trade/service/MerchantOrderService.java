@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.service;
 
 import ai.neargo.shop.trade.order.policy.FulfillStage;
+import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
 
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.OrderVO;
@@ -102,6 +103,10 @@ public interface MerchantOrderService {
      */
     OrderVO ship(String merchantNo, String storeNo, String subOrderNo,
                  String expressNo, String expressCompany);
+
+    /** Keep audit identity separate from the merchant/store scope resolved by the B authorization boundary. */
+    OrderVO ship(String merchantNo, String storeNo, String subOrderNo,
+                 String expressNo, String expressCompany, String operatorNo);
 
     /**
      * 开始备货。只记一个时刻 {@code prepared_at}，<b>不改订单状态</b>（仍 WAIT_FULFILL）。
@@ -356,7 +361,24 @@ public interface MerchantOrderService {
                       String merchantName, String communityNo, String pickupNo,
                       String fulfillType, String trafficSource, String buyerNickname,
                       java.util.List<ItemVO> items, long payAmount,
-                      long createdAt, Long paidAt, long statusAt) {
+                      long createdAt, Long paidAt, long statusAt, PaymentResolutionView paymentResolution) {
+
+        /** Preserve legacy callers while detail alone adds the safe financial-conflict projection. */
+        public OpsOrderVO(String orderNo, String parentNo, String status, String merchantNo,
+                          String merchantName, String communityNo, String pickupNo,
+                          String fulfillType, String trafficSource, String buyerNickname,
+                          List<ItemVO> items, long payAmount,
+                          long createdAt, Long paidAt, long statusAt) {
+            this(orderNo, parentNo, status, merchantNo, merchantName, communityNo, pickupNo, fulfillType,
+                    trafficSource, buyerNickname, items, payAmount, createdAt, paidAt, statusAt, null);
+        }
+
+        /** Authorized detail adds conflict facts without changing existing list projections. */
+        public OpsOrderVO withPaymentResolution(PaymentResolutionView resolution) {
+            return new OpsOrderVO(orderNo, parentNo, status, merchantNo, merchantName, communityNo, pickupNo,
+                    fulfillType, trafficSource, buyerNickname, items, payAmount, createdAt, paidAt, statusAt,
+                    resolution);
+        }
 
         public record ItemVO(String skuNo, String title, int qty, long price) {
         }

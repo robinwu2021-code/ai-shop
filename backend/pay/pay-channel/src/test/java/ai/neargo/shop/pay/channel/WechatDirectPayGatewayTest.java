@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.channel;
 
+import tools.jackson.databind.ObjectMapper;
+
 import ai.neargo.shop.pay.channel.entity.SysPayChannel;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 import org.junit.jupiter.api.DisplayName;
@@ -133,6 +135,15 @@ class WechatDirectPayGatewayTest {
 
         assertThat(r.success()).isFalse();
         assertThat(r.params()).isEmpty();
+    }
+
+    @Test
+    void queryPreservesActualReceiptCurrency() throws Exception {
+        RecordingClient client = new RecordingClient();
+        client.reply = Map.of("trade_state", "SUCCESS", "transaction_id", "420-CURRENCY",
+                "amount", Map.of("total", 1, "currency", "USD"));
+        var serialized = new ObjectMapper().valueToTree(gateway(client).query("P1"));
+        assertThat(serialized.path("currency").asString()).isEqualTo("USD");
     }
 
     // ---------------------------------------------------------------- 查单

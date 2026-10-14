@@ -44,6 +44,8 @@ public final class OrderMachine {
                     .stay().emit("OrderPrepared").add()
                     // O4 首张发货单揽收（级联自发货单）
                     .from(WAIT_FULFILL).on(SHIPPED).by(SYSTEM).to(FULFILLING).emit("OrderShipped").add()
+                    .from(WAIT_FULFILL).on(SHIP_BY_MERCHANT).by(MERCHANT)
+                    .when(AUTHORIZED, NO_OPEN_AFTER_SALE).to(FULFILLING).emit("OrderShipped").add()
                     // O5 自提到店
                     .from(WAIT_FULFILL).on(ARRIVED_AT_PICKUP).by(MERCHANT).when(AUTHORIZED).to(FULFILLING)
                     .emit("OrderArrived").add()

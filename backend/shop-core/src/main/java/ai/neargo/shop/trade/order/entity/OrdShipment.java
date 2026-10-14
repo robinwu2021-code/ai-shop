@@ -2,12 +2,14 @@ package ai.neargo.shop.trade.order.entity;
 
 import ai.neargo.shop.common.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
 import lombok.Getter;
 import lombok.Setter;
 
 /**
  * 发货单（交易域，订单服务 2.0）。一个订单（{@code ord_sub_order}）可有多张发货单
- * （部分发货/多包裹）；快递发货单关联一条物流运单（{@code lgs_waybill.biz_ref=shipmentNo}）。
+ * （部分发货/多包裹）；快递发货单关联一条物流运单（物流的运单号独立生成，登记事件携带本单身份）。
  */
 @Getter
 @Setter
@@ -26,6 +28,9 @@ public class OrdShipment extends BaseEntity {
     private String fulfillment;
     private String carrier;
     private String waybillNo;
+    /** Database-only claim projection; INSERT/UPDATE must never write a generated column. */
+    @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
+    private String activeWaybillNo;
     private String status;
     private Long voidedAt;
     private String voidReason;

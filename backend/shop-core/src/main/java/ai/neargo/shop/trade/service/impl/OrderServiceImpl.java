@@ -8,6 +8,7 @@ import ai.neargo.shop.trade.order.service.StoreOrderQueryService;
 import ai.neargo.shop.trade.order.service.query.StoreOrderMaterial;
 import ai.neargo.shop.trade.order.contract.StoreOrderQuery;
 import ai.neargo.shop.trade.order.service.lifecycle.PaymentLifecycleService;
+import ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService;
 
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 
@@ -142,6 +143,7 @@ public class OrderServiceImpl implements OrderService {
     @Autowired private OrderStockAllocator stockAllocator;
     @Autowired private StoreOrderQueryService storeQueries;
     @Autowired private PaymentLifecycleService paymentLifecycle;
+    @Autowired private PaymentResolutionService paymentResolutions;
     /** 取该商家按市场筛出的可用通道（S4）—— 下单要选通道 */
     private final ai.neargo.shop.spi.pay.PayChannelMasterPort payChannelMasterPort;
     /**
@@ -1754,7 +1756,7 @@ public class OrderServiceImpl implements OrderService {
          */
         boolean settled = ai.neargo.shop.common.PayChannels.FREE.equals(init.payChannel());
         if (settled) {
-            markPaid(orderNo, init.payChannel(), init.outTradeNo());
+            markPaid(orderNo, init.payChannel(), null);
         }
         return new PayResult(orderNo, init.payChannel(), init.payParams(), settled);
     }
@@ -1765,10 +1767,10 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void markPaid(String orderNo, String payChannel, String payTradeNo) {
         OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
-                .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));
+                .eq(OrdOrder::getOrderNo, orderNo).last("limit 1 FOR UPDATE"));
         if (order == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -2043,7 +2045,7 @@ public class OrderServiceImpl implements OrderService {
                         ? null : periodPort.openUntil(sub.getPeriodNo(), System.currentTimeMillis());
                 vo = vo.withBatch(sub.getArriveDate(), until);
             }
-            return vo;
+            return vo.withPaymentResolution(paymentResolutions.view(order.getOrderNo(), userNo));
         }
         OrdOrder order = requireOwnOrder(orderNo, userNo);
         List<OrdSubOrder> subs = subOrders(orderNo);
@@ -2058,7 +2060,7 @@ public class OrderServiceImpl implements OrderService {
         if (subs.size() == 1) {
             vo = vo.withTrace(traceOf(subs.get(0), surface));
         }
-        return vo;
+        return vo.withPaymentResolution(paymentResolutions.view(order.getOrderNo(), userNo));
     }
 
     /**
@@ -2182,7 +2184,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderVO cancel(String orderNo, String reason) {
         // 端上可能传子单号（订单列表上点取消）：解析成主单，一次支付整体取消
         OrdOrder order = resolveOrder(orderNo);
@@ -2197,7 +2199,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void cancelByPlatform(String orderNo, String reason, String operatorNo) {
         /*
          * 代客取消（TDD-订单状态机 AC15）。此前走通用人工干预，只把**子单**改成 CANCELLED：
@@ -2283,7 +2285,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public int closeExpiredOrders(long now) {
         creationRecovery.recoverAbandoned(now);
         List<OrdOrder> expired = orderMapper.selectList(Wrappers.<OrdOrder>lambdaQuery()
@@ -2293,8 +2295,9 @@ public class OrderServiceImpl implements OrderService {
         int closed = 0;
         for (OrdOrder order : expired) {
             try {
-                closeOne(order, "支付超时");
-                closed++;
+                if (closeOne(order, "支付超时")) {
+                    closed++;
+                }
             } catch (BizException e) {
                 if (e.errorCode() != ErrorCode.ORDER_POINTS_MANUAL_REQUIRED) {
                     throw e;
@@ -2312,7 +2315,7 @@ public class OrderServiceImpl implements OrderService {
      * <b>两处必须走同一段代码</b> —— 关单要连着释放库存、券、积分，
      * 各写一遍的话，漏掉的那一项会让库存或券一直占着，而没有任何报错。
      */
-    void closeOne(OrdOrder order, String reason) {
+    boolean closeOne(OrdOrder order, String reason) {
         subOrders(order.getOrderNo()).forEach(PhaseOnePointsPolicy::requireCashHistory);
         /*
          * 状态先改再释放：**改失败（并发下已被支付）就不该释放**。
@@ -2326,7 +2329,7 @@ public class OrderServiceImpl implements OrderService {
             // CONFLICT = CAS 时被抢先；ORDER_STATE_ILLEGAL = 读到时已不是 WAIT_PAY。两者都是「已被别的流程改走」
             if (e.errorCode() == ErrorCode.CONFLICT || e.errorCode() == ErrorCode.ORDER_STATE_ILLEGAL) {
                 log.info("[close] {} 关单时状态已被改走（多半刚付款），跳过、不释放", order.getOrderNo());
-                return;
+                return false;
             }
             throw e;
         }
@@ -2359,11 +2362,12 @@ public class OrderServiceImpl implements OrderService {
             }
             releaseAppointmentSlot(sub);
         }
+        return true;
     }
 
     /** 按单号关一笔待支付的单。已经不是待支付就当没事发生 —— 对账每轮都可能再撞到它 */
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void closeUnpaid(String orderNo, String reason) {
         OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));

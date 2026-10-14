@@ -104,8 +104,14 @@ public final class OrderEvents {
 
     public record SubOrderShipped(String subOrderNo, String orderNo, String merchantNo,
                                   String userNo, String fulfillment,
-                                  String expressCompany, String expressNo)
+                                  String expressCompany, String expressNo,
+                                  String sourceShipmentNo, Long sourceShipmentVersion)
             implements DomainEvent {
+        /** Old publishers remain compatible; new shipping freezes the immutable source generation. */
+        public SubOrderShipped(String subOrderNo, String orderNo, String merchantNo, String userNo,
+                               String fulfillment, String expressCompany, String expressNo) {
+            this(subOrderNo, orderNo, merchantNo, userNo, fulfillment, expressCompany, expressNo, null, null);
+        }
         @Override
         public String aggregateType() {
             return AGG_SUB_ORDER;

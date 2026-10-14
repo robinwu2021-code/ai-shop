@@ -2,12 +2,10 @@ package ai.neargo.shop.trade.order.service.receipt;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.trade.entity.OrdItem;
-import ai.neargo.shop.trade.entity.OrdOrder;
-import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.entity.OrdShipment;
 import ai.neargo.shop.trade.order.transition.Operator;
-import ai.neargo.shop.trade.order.transition.OrderStateStore;
+import ai.neargo.shop.trade.order.support.MemoryStatusWriter;
 import ai.neargo.shop.trade.order.transition.OrderTransitions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -48,17 +46,6 @@ class ReceiptHandlerTest {
         }
     }
 
-    static class FakeStateStore implements OrderStateStore {
-        public void saveOrderStatus(OrdOrder order) {
-        }
-
-        public void saveSubStatus(OrdSubOrder sub) {
-        }
-
-        public void appendLog(OrdStatusLog log) {
-        }
-    }
-
     private FakeRead read;
     private ReceiptHandler handler;
 
@@ -84,7 +71,9 @@ class ReceiptHandlerTest {
         o.setSubOrderNo("ORD1");
         o.setStatus(OrdSubOrder.FULFILLING);
         read.order = o;
-        handler = new ReceiptHandler(read, new FakeWrite(), new OrderTransitions(new FakeStateStore()));
+        MemoryStatusWriter status = new MemoryStatusWriter();
+        status.track(o);
+        handler = new ReceiptHandler(read, new FakeWrite(), new OrderTransitions(status.writer()));
     }
 
     @Test
