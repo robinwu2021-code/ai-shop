@@ -26181,6 +26181,12 @@
           "ar": "مبلغ الاسترداد غير صحيح (يجب أن يكون أكبر من 0 ولا يتجاوز المبلغ المدفوع)"
         },
         {
+          "key": "err.trade.aftersale_channel_partial_unsupported",
+          "zh-CN": "这笔订单的付款方式不支持部分退款，可改用积分补偿或线下退款",
+          "en": "This payment method does not support partial refunds; use points compensation or an offline refund instead",
+          "ar": "طريقة الدفع لهذا الطلب لا تدعم الاسترداد الجزئي؛ استخدم تعويض النقاط أو الاسترداد خارج المنصة"
+        },
+        {
           "key": "err.trade.aftersale_fresh_quality_only",
           "zh-CN": "生鲜发货后只支持损坏/变质/过期等质量问题的退款",
           "en": "After a fresh item ships, only quality issues (damaged/spoiled/expired) are refundable",
@@ -26191,6 +26197,12 @@
           "zh-CN": "部分退款需等签收后由商家核定金额",
           "en": "Partial refunds are available only after delivery is confirmed",
           "ar": "الاسترداد الجزئي متاح فقط بعد تأكيد الاستلام"
+        },
+        {
+          "key": "err.trade.aftersale_window_closed",
+          "zh-CN": "已超过售后期，不能再申请",
+          "en": "The after-sales period has ended",
+          "ar": "انتهت فترة ما بعد البيع"
         },
         {
           "key": "err.trade.count_already_open",
@@ -34740,6 +34752,66 @@
     ],
     "javaEnums": [
       {
+        "name": "Actor",
+        "values": [
+          "BUYER",
+          "MERCHANT",
+          "PLATFORM",
+          "SYSTEM",
+          "CHANNEL"
+        ],
+        "zh": "谁触发了这次迁移。",
+        "module": "shop-core"
+      },
+      {
+        "name": "AfterSaleEvent",
+        "values": [
+          "APPLY",
+          "MERCHANT_INITIATE",
+          "TRADE_VOID",
+          "APPROVE",
+          "OFFER",
+          "ACCEPT_OFFER",
+          "DECLINE_OFFER",
+          "OFFER_EXPIRED",
+          "REJECT",
+          "CONFIRM_REFUND",
+          "RETURN_SHIPPED",
+          "RETURN_EXPIRED",
+          "RETURN_RECEIVED",
+          "REFUND_SUCCEEDED",
+          "REFUND_FAILED",
+          "ESCALATE",
+          "ARBITRATE_REFUND",
+          "ARBITRATE_CLOSE",
+          "WITHDRAW",
+          "ESCALATION_WINDOW_EXPIRED",
+          "OFFLINE_REFUND_REGISTERED",
+          "OFFLINE_REFUND_ACKED"
+        ],
+        "zh": "售后单事件（完整方案 §5.2 A1–A21）。",
+        "module": "shop-core"
+      },
+      {
+        "name": "AfterSaleStatus",
+        "values": [
+          "APPLIED",
+          "NEGOTIATING",
+          "WAIT_RETURN",
+          "RETURNING",
+          "WAIT_RECEIPT",
+          "REFUNDING",
+          "WAIT_OFFLINE_REFUND",
+          "OFFLINE_REFUNDED",
+          "REFUNDED",
+          "REJECTED",
+          "ARBITRATING",
+          "CLOSED"
+        ],
+        "zh": "售后单（ord_after_sale）状态，12 个（完整方案 §5.1）。",
+        "module": "shop-core"
+      },
+      {
         "name": "BookOutcome",
         "values": [
           "BOOKED",
@@ -34865,6 +34937,8 @@
           "AFTERSALE_FRESH_QUALITY_ONLY",
           "AFTERSALE_PARTIAL_NEED_RECEIPT",
           "AFTERSALE_AMOUNT_INVALID",
+          "AFTERSALE_WINDOW_CLOSED",
+          "AFTERSALE_CHANNEL_PARTIAL_UNSUPPORTED",
           "ALREADY_VERIFIED",
           "NOT_THIS_PICKUP_POINT",
           "ORDER_REFUNDED",
@@ -35137,6 +35211,37 @@
         "module": "shop-report"
       },
       {
+        "name": "OrderEvent",
+        "values": [
+          "PAY_CONFIRMED",
+          "CANCEL",
+          "PREPARE",
+          "SHIPPED",
+          "ARRIVED_AT_PICKUP",
+          "VERIFIED",
+          "DELIVERED_BY_MERCHANT",
+          "RECEIPT_CONFIRMED",
+          "RECEIPT_AUTO_CONFIRMED",
+          "FULLY_REFUNDED",
+          "INTERVENE"
+        ],
+        "zh": "订单事件（完整方案 §3 O1–O11）。",
+        "module": "shop-core"
+      },
+      {
+        "name": "OrderStatus",
+        "values": [
+          "WAIT_PAY",
+          "WAIT_FULFILL",
+          "FULFILLING",
+          "COMPLETED",
+          "CANCELLED",
+          "REFUNDED"
+        ],
+        "zh": "订单（ord_sub_order）状态。",
+        "module": "shop-core"
+      },
+      {
         "name": "Outcome",
         "values": [
           "ACCEPTED",
@@ -35155,6 +35260,31 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "PaymentEvent",
+        "values": [
+          "PLACE",
+          "PAY_SUCCEEDED",
+          "OFFLINE_CONFIRMED",
+          "CANCEL",
+          "PAY_TIMEOUT",
+          "LATE_PAY_SUCCEEDED"
+        ],
+        "zh": "支付单事件（完整方案 §2 P1–P6）。",
+        "module": "shop-core"
+      },
+      {
+        "name": "PaymentStatus",
+        "values": [
+          "WAIT_PAY",
+          "WAIT_OFFLINE_PAY",
+          "PAID",
+          "CANCELLED",
+          "CLOSED"
+        ],
+        "zh": "支付单（ord_order）状态。",
+        "module": "shop-core"
       },
       {
         "name": "Realm",
@@ -35177,6 +35307,31 @@
         ],
         "zh": "为什么被撤销。",
         "module": "shop-auth-store"
+      },
+      {
+        "name": "ShipmentEvent",
+        "values": [
+          "CREATE",
+          "PICKED_UP",
+          "SIGNED",
+          "RECEIPT_CONFIRMED",
+          "CORRECT_WAYBILL",
+          "CANCEL"
+        ],
+        "zh": "发货单事件（完整方案 §4 H1–H6）。",
+        "module": "shop-core"
+      },
+      {
+        "name": "ShipmentStatus",
+        "values": [
+          "CREATED",
+          "SHIPPED",
+          "DELIVERED",
+          "RECEIVED",
+          "VOIDED"
+        ],
+        "zh": "发货单（ord_shipment）状态。",
+        "module": "shop-core"
       },
       {
         "name": "SubjectKind",
@@ -39720,6 +39875,78 @@
       "type": "Set<String>",
       "value": "Set.of( WAIT_PAY, WAIT_OFFLINE_PAY, PAID, FULFILLING, COMPLETED, CANCELLED, REFUNDED)",
       "zh": "全部契约状态。",
+      "module": "shop-core"
+    },
+    {
+      "host": "AfterSaleMachine",
+      "name": "MACHINE",
+      "type": "StateMachine<AfterSaleStatus, AfterSaleEvent, AfterSaleContext>",
+      "value": "StateMachine.<AfterSaleStatus, AfterSaleEvent, AfterSaleContext>builder(\"after-sale\") // A1 买家申请 .create().on(APPLY).by(BUYER).when(AUTHORIZED, IN_WINDOW, NO_OPEN, REFUNDABLE, REASON, APPLY_RULE) .to(APPLIED).emit(\"AfterSaleApplied\").add() // A2 商家主动退款（缺货少发 / 称重差价 / 补偿 …） .create().on(MERCHANT_INITIATE).by(MERCHANT).when(AUTHORIZED, REASON, REFUNDABLE, CHANNEL_OK) .toOneOf(AfterSaleTargets.MONEY, AfterSaleTargets::moneyStep).emit(\"AfterSaleInitiated\").add() // A3 交易不成立（拼团未成团 / 集单撤单 / 关单后迟到回调）—— 系统唯一可退钱的入口 .create().on(TRADE_VOID).by(SYSTEM).when(VOID_REASON).to(REFUNDING).emit(\"TradeVoided\").add() // A4 商家同意（分流见 AfterSaleTargets.approve） .from(APPLIED).on(APPROVE).by(MERCHANT).when(AUTHORIZED, CHANNEL_OK) .toOneOf(AfterSaleTargets.APPROVE_TARGETS, AfterSaleTargets::approve).emit(\"AfterSaleApproved\").add() // A5 商家提出协商金额 .from(APPLIED).on(OFFER).by(MERCHANT).when(AUTHORIZED, OFFER_VALID, CHANNEL_OK).to(NEGOTIATING) .emit(\"AfterSaleOffered\").add() // A6 买家接受协商额（决定是商家做的，买家只是接受） .from(NEGOTIATING).on(ACCEPT_OFFER).by(BUYER).when(AUTHORIZED) .toOneOf(AfterSaleTargets.ACCEPT_TARGETS, AfterSaleTargets::refundOrAwaitReturn) .emit(\"AfterSaleOfferAccepted\").add() // A7 买家拒绝 / 48h 未答 → 回到待商家处理 .from(NEGOTIATING).on(DECLINE_OFFER).by(BUYER).when(AUTHORIZED).to(APPLIED).add() .from(NEGOTIATING).on(OFFER_EXPIRED).by(SYSTEM).when(EXPIRED).to(APPLIED).add() // A8 商家驳回（理由必填） .from(APPLIED).on(REJECT).by(MERCHANT).when(AUTHORIZED, REMARK).to(REJECTED) .emit(\"AfterSaleRejected\").add() // A9 在途仅退款签收后，商家一键确认退款（不自动） .from(WAIT_RECEIPT).on(CONFIRM_REFUND).by(MERCHANT).when(AUTHORIZED) .toOneOf(AfterSaleTargets.MONEY, AfterSaleTargets::moneyStep).emit(\"AfterSaleRefundConfirmed\").add() // A10–A12 退货：买家寄回 → 商家确认收货 → 退钱；7 天不寄回关闭 .from(WAIT_RETURN).on(RETURN_SHIPPED).by(BUYER).when(AUTHORIZED, WAYBILL).to(RETURNING) .emit(\"AfterSaleReturnShipped\").add() .from(WAIT_RETURN).on(RETURN_EXPIRED).by(SYSTEM).when(EXPIRED).to(CLOSED).add() .from(RETURNING).on(RETURN_RECEIVED).by(MERCHANT).when(AUTHORIZED) .toOneOf(AfterSaleTargets.MONEY, AfterSaleTargets::moneyStep).emit(\"AfterSaleReturnReceived\").add() // A13 / A14 退款回执（执行结果，不是决定） .from(REFUNDING).on(REFUND_SUCCEEDED).by(CHANNEL, SYSTEM).to(REFUNDED).emit(\"AfterSaleRefunded\").add() .from(REFUNDING).on(REFUND_FAILED).by(CHANNEL).stay().emit(\"AfterSaleRefundFailed\").add() // A15 申请平台介入（只能由买家 / 商家发起，系统不自动转入） .from(APPLIED, NEGOTIATING, WAIT_RETURN, RETURNING, WAIT_RECEIPT, REJECTED, WAIT_OFFLINE_REFUND, OFFLINE_REFUNDED) .on(ESCALATE).by(BUYER, MERCHANT).when(AUTHORIZED, ESCALATION_OPEN).to(ARBITRATING) .emit(\"AfterSaleEscalated\").add() // A16 / A17 平台裁决 .from(ARBITRATING).on(ARBITRATE_REFUND).by(PLATFORM).when(AUTHORIZED, REFUNDABLE, CHANNEL_OK) .toOneOf(AfterSaleTargets.ACCEPT_TARGETS, AfterSaleTargets::refundOrAwaitReturn) .emit(\"AfterSaleArbitrated\").add() .from(ARBITRATING).on(ARBITRATE_CLOSE).by(PLATFORM).when(AUTHORIZED, REMARK).to(CLOSED) .emit(\"AfterSaleArbitrated\").add() // A18 买家撤销（钱已在路上不能撤） .from(APPLIED, NEGOTIATING, WAIT_RETURN, REJECTED).on(WITHDRAW).by(BUYER).when(AUTHORIZED) .to(CLOSED).emit(\"AfterSaleWithdrawn\").add() // A19 驳回后 7 天未申请介入 .from(REJECTED).on(ESCALATION_WINDOW_EXPIRED).by(SYSTEM).when(EXPIRED).to(CLOSED).add() // A20 / A21 线下付款单：商家线下退款登记 → 买家确认收到 .from(WAIT_OFFLINE_REFUND).on(OFFLINE_REFUND_REGISTERED).by(MERCHANT).when(AUTHORIZED, PROOF) .to(OFFLINE_REFUNDED).emit(\"AfterSaleOfflineRefunded\").add() .from(OFFLINE_REFUNDED).on(OFFLINE_REFUND_ACKED).by(BUYER).when(AUTHORIZED).to(REFUNDED) .emit(\"AfterSaleRefunded\").add() .build()",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "AfterSaleMachine",
+      "name": "TERMINALS",
+      "type": "Set<AfterSaleStatus>",
+      "value": "Set.of(REFUNDED, CLOSED)",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "AfterSaleMachine",
+      "name": "MONEY_MOVING",
+      "type": "Set<AfterSaleStatus>",
+      "value": "Set.of(REFUNDING, WAIT_OFFLINE_REFUND, OFFLINE_REFUNDED)",
+      "zh": "「钱开始走」的状态：进入它们的迁移受「退款永不自动」约束",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrderMachine",
+      "name": "MACHINE",
+      "type": "StateMachine<OrderStatus, OrderEvent, OrderContext>",
+      "value": "StateMachine.<OrderStatus, OrderEvent, OrderContext>builder(\"order\") // O1 付款（级联自支付单）：服务类付款即出码 .from(WAIT_PAY).on(PAY_CONFIRMED).by(SYSTEM) .toOneOf(Set.of(WAIT_FULFILL, FULFILLING), (f, c) -> c.serviceClass() ? FULFILLING : WAIT_FULFILL) .emit(\"OrderPaid\").add() // O2 取消 / 关单（级联自支付单） .from(WAIT_PAY).on(CANCEL).by(SYSTEM).to(CANCELLED).add() // O3 开始备货：一次、不改状态；有进行中售后时不许点 .from(WAIT_FULFILL).on(PREPARE).by(MERCHANT).when(AUTHORIZED, NOT_PREPARED, NO_OPEN_AFTER_SALE) .stay().emit(\"OrderPrepared\").add() // O4 首张发货单揽收（级联自发货单） .from(WAIT_FULFILL).on(SHIPPED).by(SYSTEM).to(FULFILLING).emit(\"OrderShipped\").add() // O5 自提到店 .from(WAIT_FULFILL).on(ARRIVED_AT_PICKUP).by(MERCHANT).when(AUTHORIZED).to(FULFILLING) .emit(\"OrderArrived\").add() // O6 核销：降级单只推进到履约中，由买家确认收口 .from(WAIT_FULFILL, FULFILLING).on(VERIFIED).by(MERCHANT).when(AUTHORIZED) .toOneOf(Set.of(FULFILLING, COMPLETED), (f, c) -> c.requireBuyerConfirm() ? FULFILLING : COMPLETED) .emit(\"OrderVerified\").add() // O7 商家自送送达 .from(WAIT_FULFILL).on(DELIVERED_BY_MERCHANT).by(MERCHANT).when(AUTHORIZED).to(COMPLETED) .emit(\"OrderCompleted\").add() // O8 买家确认收货 .from(FULFILLING).on(RECEIPT_CONFIRMED).by(BUYER).when(AUTHORIZED, ALL_SHIPPED).to(COMPLETED) .emit(\"OrderCompleted\").add() // O9 自动确认收货（不是退款，保留自动）；有进行中售后不收口 .from(FULFILLING).on(RECEIPT_AUTO_CONFIRMED).by(SYSTEM).when(AUTO_RECEIPT_DUE, NO_OPEN_AFTER_SALE) .to(COMPLETED).emit(\"OrderCompleted\").add() // O10 全部行退完（级联自退款账本） .from(WAIT_FULFILL, FULFILLING, COMPLETED).on(FULLY_REFUNDED).by(SYSTEM).when(REFUND_COMPLETE) .to(REFUNDED).emit(\"OrderRefunded\").add() // O11 人工干预：只能往前推，且不碰钱 .from(WAIT_FULFILL, FULFILLING).on(INTERVENE).by(PLATFORM).when(AUTHORIZED, REMARK) .toOneOf(Set.of(FULFILLING, COMPLETED), OrderMachine::interveneTarget) .emit(\"OrderIntervened\").add() .build()",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "OrderMachine",
+      "name": "TERMINALS",
+      "type": "Set<OrderStatus>",
+      "value": "Set.of(CANCELLED, REFUNDED)",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "PaymentMachine",
+      "name": "MACHINE",
+      "type": "StateMachine<PaymentStatus, PaymentEvent, PaymentContext>",
+      "value": "StateMachine.<PaymentStatus, PaymentEvent, PaymentContext>builder(\"payment\") // P1 下单：按支付方式落待付 / 待当面收 .create().on(PLACE).by(BUYER, PLATFORM).when(AUTHORIZED) .toOneOf(Set.of(WAIT_PAY, WAIT_OFFLINE_PAY), (f, c) -> c.offlinePay() ? WAIT_OFFLINE_PAY : WAIT_PAY) .emit(\"PaymentPlaced\").add() // P2 通道回调付款成功 .from(WAIT_PAY).on(PAY_SUCCEEDED).by(CHANNEL).when(AMOUNT_MATCHES).to(PAID) .emit(\"PaymentPaid\").add() // P3 商家确认当面收款 .from(WAIT_OFFLINE_PAY).on(OFFLINE_CONFIRMED).by(MERCHANT).when(AUTHORIZED).to(PAID) .emit(\"PaymentPaid\").add() // P4 买家 / 平台取消 .from(WAIT_PAY, WAIT_OFFLINE_PAY).on(CANCEL).by(BUYER, PLATFORM).when(AUTHORIZED).to(CANCELLED) .emit(\"PaymentCancelled\").add() // P5 超时关闭（与 P2 并发时由 CAS 决出一方） .from(WAIT_PAY).on(PAY_TIMEOUT).by(SYSTEM).when(DEADLINE_PASSED).to(CLOSED) .emit(\"PaymentClosed\").add() // P6 关单后才到账：交易不成立，原路退回（售后 TRADE_VOID） .from(CLOSED, CANCELLED).on(LATE_PAY_SUCCEEDED).by(CHANNEL).stay() .emit(\"TradeVoidRefundRequired\").add() .build()",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "PaymentMachine",
+      "name": "TERMINALS",
+      "type": "Set<PaymentStatus>",
+      "value": "Set.of(PAID, CANCELLED, CLOSED)",
+      "zh": "终态：之后不再有改变状态的迁移",
+      "module": "shop-core"
+    },
+    {
+      "host": "ShipmentMachine",
+      "name": "MACHINE",
+      "type": "StateMachine<ShipmentStatus, ShipmentEvent, ShipmentContext>",
+      "value": "StateMachine.<ShipmentStatus, ShipmentEvent, ShipmentContext>builder(\"shipment\") // H1 建发货单（录运单号） .create().on(CREATE).by(MERCHANT).when(AUTHORIZED, WAYBILL_VALID, WAYBILL_FREE).to(CREATED) .emit(\"ShipmentCreated\").add() // H2 揽收（轨迹） .from(CREATED).on(PICKED_UP).by(CHANNEL).to(SHIPPED).emit(\"ShipmentPickedUp\").add() // H3 承运商签收（轨迹） .from(SHIPPED).on(SIGNED).by(CHANNEL).to(DELIVERED).emit(\"ShipmentSigned\").add() // H4 买家确认 / 自动确认收货 .from(SHIPPED, DELIVERED).on(RECEIPT_CONFIRMED).by(BUYER, SYSTEM).to(RECEIVED) .emit(\"ShipmentReceived\").add() // H5 改单号：旧单作废（新号先过与建单相同的守卫） .from(CREATED, SHIPPED).on(CORRECT_WAYBILL).by(MERCHANT).when(AUTHORIZED, WAYBILL_VALID, WAYBILL_FREE) .to(VOIDED).emit(\"ShipmentVoided\").add() // H6 未揽收前取消 .from(CREATED).on(CANCEL).by(MERCHANT).when(AUTHORIZED).to(VOIDED).emit(\"ShipmentVoided\").add() .build()",
+      "zh": "",
+      "module": "shop-core"
+    },
+    {
+      "host": "ShipmentMachine",
+      "name": "TERMINALS",
+      "type": "Set<ShipmentStatus>",
+      "value": "Set.of(RECEIVED, VOIDED)",
+      "zh": "",
       "module": "shop-core"
     },
     {
