@@ -41,7 +41,9 @@ describe("详情：状态下面说下一步", () => {
 
   it("六个状态都写了说明 —— 漏一个那一格就空着", () => {
     const next = (zh as unknown as { order: { next: Record<string, string> } }).order.next;
-    for (const st of ["WAIT_PAY", "WAIT_FULFILL", "FULFILLING", "COMPLETED", "CANCELLED", "REFUNDED"]) {
+    // 按**契约状态**列：后端下发 PAID（库里叫 WAIT_FULFILL）。此前这里列的是 WAIT_FULFILL ——
+    // 词条照着测试写成了一个永远查不到的键，已付款订单的说明行一直是空的
+    for (const st of ["WAIT_PAY", "PAID", "FULFILLING", "COMPLETED", "CANCELLED", "REFUNDED"]) {
       expect(next[st], `${st} 没有说明`).toBeTruthy();
     }
   });

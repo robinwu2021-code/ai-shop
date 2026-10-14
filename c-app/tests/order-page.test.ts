@@ -143,7 +143,7 @@ describe("订单详情页的操作按钮", () => {
     const w = await render();
     expect(w.text()).toContain("order.cancel");
 
-    const btn = w.findAll(".op").find((b) => b.text().includes("order.cancel"))!;
+    const btn = w.findAll(".obar__btn").find((b) => b.text().includes("order.cancel"))!;
     await btn.trigger("tap");
     await w.vm.$nextTick();
     expect(confirmMock).toHaveBeenCalled();
@@ -153,7 +153,7 @@ describe("订单详情页的操作按钮", () => {
     orderDetail.mockResolvedValue(order("WAIT_PAY"));
     cancelOrder.mockRejectedValue(new Error("订单状态不允许取消"));
     const w = await render();
-    const btn = w.findAll(".op").find((b) => b.text().includes("order.cancel"))!;
+    const btn = w.findAll(".obar__btn").find((b) => b.text().includes("order.cancel"))!;
     await btn.trigger("tap");
     for (let i = 0; i < 6; i++) await w.vm.$nextTick();
     expect(uniMock.showToast).toHaveBeenCalled();
@@ -236,8 +236,9 @@ describe("订单详情页的操作按钮", () => {
     expect((await render()).text()).toContain("order.splitHint");
   });
 
-  it("★ 「再买一单」在任何状态下都在 —— 它不依赖订单状态", async () => {
-    for (const st of ["WAIT_PAY", "PAID", "FULFILLING", "COMPLETED", "CANCELLED"] as OrderStatus[]) {
+  it("★ 「再买一单」在付款后的各状态都在 —— 它不依赖履约进度", async () => {
+    // 待付款不在列：吸底条两位是「去支付 + 取消」，再挤一颗就是三选一（2026-10-10 按原型重排）
+    for (const st of ["PAID", "FULFILLING", "COMPLETED", "CANCELLED"] as OrderStatus[]) {
       orderDetail.mockResolvedValue(order(st));
       expect((await render()).text(), st).toContain("order.buyAgain");
     }

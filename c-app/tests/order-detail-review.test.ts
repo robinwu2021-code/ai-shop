@@ -106,7 +106,11 @@ describe("订单详情页（微信购物订单的落点）", () => {
   });
 
   it("有履约方式时照常显示 —— 上一条不能是靠把整行删掉换来的", async () => {
-    orderDetail.mockResolvedValue(anOrder({ fulfillment: "EXPRESS" as Order["fulfillment"] }));
+    // 履约方式标在收货卡上（2026-10-10 按原型重排）—— 卡片要有收件人才出现，所以带上收件人
+    orderDetail.mockResolvedValue(anOrder({
+      fulfillment: "EXPRESS" as Order["fulfillment"],
+      receiver: { name: "张三", phone: "138****0000", address: "XX 路 1 号" },
+    } as Partial<Order>));
     const html = (await render()).html();
     expect(html).toContain("fulfillment.EXPRESS");
   });

@@ -90,9 +90,10 @@ describe("售后申请页 · 极速退提示", () => {
     orderDetail.mockReset();
   });
 
-  it("★★★ 后端说会秒退 → 提示出现，金额再大也照说", async () => {
+  it("★★★ 极速退已废（TDD-售后规则 §2.3）：后端字段即便还说会秒退，也不许提示", async () => {
+    // 退款一律先审核。这里若还承诺「秒退」，买家等来的却是商家审核 —— 承诺了做不到的事
     orderDetail.mockResolvedValue(anOrder({ instantRefundEligible: true }));
-    expect((await render()).html()).toContain("afterSale.instant");
+    expect((await render()).html()).not.toContain("afterSale.instant");
   });
 
   it("★★★ 后端说不会 → 不许提示，金额再小也不说", async () => {
