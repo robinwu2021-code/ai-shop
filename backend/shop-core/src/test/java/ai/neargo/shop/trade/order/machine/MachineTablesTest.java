@@ -46,7 +46,7 @@ class MachineTablesTest {
                 .row(List.of("WAIT_FULFILL"), "ARRIVED_AT_PICKUP", List.of("MERCHANT"), "FULFILLING")
                 .row(List.of("WAIT_FULFILL", "FULFILLING"), "VERIFIED", List.of("MERCHANT"), "FULFILLING", "COMPLETED")
                 .row(List.of("WAIT_FULFILL", "FULFILLING"), "DELIVERED_BY_MERCHANT", List.of("MERCHANT"), "COMPLETED")
-                .row(List.of("FULFILLING"), "RECEIPT_CONFIRMED", List.of("BUYER"), "COMPLETED")
+                .row(List.of("WAIT_FULFILL", "FULFILLING"), "RECEIPT_CONFIRMED", List.of("BUYER"), "COMPLETED")
                 .row(List.of("FULFILLING"), "RECEIPT_AUTO_CONFIRMED", List.of("SYSTEM"), "COMPLETED")
                 .row(List.of("WAIT_FULFILL", "FULFILLING", "COMPLETED"), "FULLY_REFUNDED", List.of("SYSTEM"), "REFUNDED")
                 .row(List.of("WAIT_FULFILL", "FULFILLING"), "INTERVENE", List.of("PLATFORM"), "FULFILLING", "COMPLETED");

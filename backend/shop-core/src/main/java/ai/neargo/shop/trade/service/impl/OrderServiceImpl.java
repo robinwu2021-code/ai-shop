@@ -1776,6 +1776,14 @@ public class OrderServiceImpl implements OrderService {
              * 商家没有任何前置动作 —— 把它丢进「待发货」，
              * 界面会说「待发货」而根本没有东西要发。**不是文案错，是状态落错了。**
              */
+            /*
+             * 已经不是待付款的子单跳过：它们当初付款时已经走过这一段（出码、报发货、参团）。
+             * 对账修复会把「主单被打回 WAIT_PAY、子单仍是待履约」的单重新 markPaid —— 老写法靠
+             * 「from == to 一律放行」吞掉了这种情况，状态机没有这条边，这里显式跳过。
+             */
+            if (!OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) {
+                continue;
+            }
             boolean serviceLike = Fulfillments.SERVICE_LIKE.contains(sub.getFulfillment());
             statusWriter.order(sub, OrderEvent.PAY_CONFIRMED, Actor.SYSTEM, null,
                     serviceLike ? "支付成功，凭码到店使用" : "支付成功，待备货",

@@ -54,8 +54,8 @@ public final class OrderMachine {
                     // O7 商家标记送达：自送单可能已在「配送中」（FULFILLING），也可能直接从待发货送达
                     .from(WAIT_FULFILL, FULFILLING).on(DELIVERED_BY_MERCHANT).by(MERCHANT).when(AUTHORIZED).to(COMPLETED)
                     .emit("OrderCompleted").add()
-                    // O8 买家确认收货
-                    .from(FULFILLING).on(RECEIPT_CONFIRMED).by(BUYER).when(AUTHORIZED, ALL_SHIPPED).to(COMPLETED)
+                    // O8 买家确认收货：也可从待履约出发 —— 微信购物订单的「确认收货」组件不等我们标发货
+                    .from(WAIT_FULFILL, FULFILLING).on(RECEIPT_CONFIRMED).by(BUYER).when(AUTHORIZED, ALL_SHIPPED).to(COMPLETED)
                     .emit("OrderCompleted").add()
                     // O9 自动确认收货（不是退款，保留自动）；有进行中售后不收口
                     .from(FULFILLING).on(RECEIPT_AUTO_CONFIRMED).by(SYSTEM).when(AUTO_RECEIPT_DUE, NO_OPEN_AFTER_SALE)

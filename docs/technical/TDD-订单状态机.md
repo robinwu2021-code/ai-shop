@@ -96,6 +96,9 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 | AC18 | `TradeStatusGateFlowTest#prepareBlockedByOpenAfterSale`（付款成功只记一行流水） | ✅ | — |
 
 相关后端整组 855 绿。步 4 偏差：O7「商家标记送达」补上从 FULFILLING 出发（自送单「配送中」后送达，既有用例覆盖；方案 §3 与 MachineTablesTest 同步改）。
+全量闸门第一轮又撞出两处，均为**老行为本来允许、新机器漏了**：
+- O8「买家确认收货」补上从 WAIT_FULFILL 出发 —— 微信购物订单的「确认收货」组件不等我们标发货（`M4FulfillmentFlowTest#confirmReceipt`、`ReviewStoreAttributionFlowTest`）。
+- `markPaid` 跳过已不是待付款的子单 —— 对账修复会重放 markPaid，老写法靠「from == to 一律放行」吞掉，状态机没有这条边（`M7SettleFlowTest#invariantI8RepairsOrderStuckInWaitPay`）。
 
 ## §6 对账二 · 设计 → 实现
 
