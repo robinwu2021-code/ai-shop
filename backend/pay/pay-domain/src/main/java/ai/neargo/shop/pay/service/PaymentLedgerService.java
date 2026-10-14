@@ -57,6 +57,10 @@ public interface PaymentLedgerService {
      */
     String settle(SettlePort.PaymentSettled cmd);
 
+    SettlePort.PaymentReceipt successPayment(String orderNo);
+
+    SettlePort.PaymentReceipt paymentByOutTradeNo(String outTradeNo);
+
     /**
      * 关掉一笔未终态的收款。
      *

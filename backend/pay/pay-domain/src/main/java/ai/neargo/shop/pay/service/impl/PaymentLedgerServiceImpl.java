@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import java.util.Objects;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -353,78 +354,46 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     @Transactional("payTxManager")
     public String settle(SettlePort.PaymentSettled cmd) {
-        StlPayment existing = byOutTradeNo(cmd.outTradeNo());
-        if (existing == null) {
-            /*
-             * **按订单号回退认领一次。**
-             *
-             * 2026-09-01 之前 out_trade_no 就是订单号，所以调用方传订单号是对的；
-             * 独立之后真通道回传的一定是我方给它的 out_trade_no，走上面那条就找到了。
-             *
-             * 回退这条留给两种情况：**存量在途的单**（发起于改动之前），
-             * 以及 stub 通道 —— 它是开发期的假通道，调用方手上常常只有订单号。
-             *
-             * <b>生产上真通道走到这里即异常</b>，所以记 WARN 而不是静默 ——
-             * 它意味着通道回传了一个我方没发出去过的单号。
-             */
-            StlPayment byOrder = openPaymentOf(cmd.outTradeNo());
-            if (byOrder != null) {
-                log.warn("[payment-ledger] 按 out_trade_no 认领不到，按订单号找到了 —— "
-                        + "传入 {}（存量在途单或 stub 通道；真通道走到这里即异常）",
-                        cmd.outTradeNo());
-                existing = byOrder;
-            }
-        }
-        if (existing == null) {
-            /*
-             * 没有起点行。**正常链路不会走到这里** —— 端上必须先调
-             * /mp/order/{no}/pay 拿到支付参数才付得成，而那一步会落 PENDING 行。
-             * 走到这里的是存量单：本功能（2026-09-01）上线之前发起、之后才回调的。
-             *
-             * <b>不硬补一行</b>：stl_payment.user_no 是 NOT NULL，而这里拿不到付款人 ——
-             * 编一个值进去，这行流水就永远指向一个不存在的用户，
-             * 而它会被对账、退款追溯当成真数据用。**宁可缺一行，不要一行假的。**
-             *
-             * 也不抛错：抛了通道会一直重推，而订单状态那边照样要推进 ——
-             * 这笔钱确实收到了。缺的这一行是存量的历史问题，随窗口过去自己消失。
-             */
-            log.warn("[payment-ledger] {} 没有发起行，跳过记账 —— "
-                    + "存量单（本功能上线前发起），或调用方跳过了发起。订单状态不受影响",
-                    cmd.outTradeNo());
-            /*
-             * **把传入值当订单号返回**，让订单状态照常推进。
-             *
-             * 这笔钱确实收到了 —— 返回 null 让回调 ackFail 的话，通道会一直重推，
-             * 而重推多少次都不会有发起行。用户付了钱而订单一直不动，
-             * 比「缺一行流水」严重得多。
-             *
-             * 这条能成立是因为**第一次发起的商户单号就是订单号本身**
-             * （见 open 里的后缀规则）。重试单（带 -2 后缀）走不到这里 ——
-             * 它一定有发起行，否则那个号根本不会存在。
-             */
-            return cmd.outTradeNo();
+        StlPayment existing = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getDirection, StlPayment.PAY)
+                        .eq(StlPayment::getOutTradeNo, cmd.outTradeNo()).last("LIMIT 1 FOR UPDATE")));
+        if (existing == null || !Objects.equals(existing.getPayChannel(), cmd.payChannel())
+                || cmd.tradeNo() == null || cmd.tradeNo().isBlank() || cmd.amountMinor() < 0) {
+            return null;
         }
         if (StlPayment.SUCCESS.equals(existing.getStatus())) {
-            /*
-             * 幂等：通道会重推。**不覆盖已有的成功时刻** ——
-             * 覆盖的话对账查到的成功时刻会随每次重推往后跳，
-             * 而那个时刻是「钱什么时候到的」的唯一依据。
-             */
-            return existing.getOrderNo();
+            return Objects.equals(existing.getTradeNo(), cmd.tradeNo())
+                    && nz(existing.getAmountMinor()) == cmd.amountMinor() ? existing.getOrderNo() : null;
         }
         StlPayment patch = new StlPayment();
         patch.setId(existing.getId());
         patch.setStatus(StlPayment.SUCCESS);
         patch.setTradeNo(cmd.tradeNo());
         patch.setSucceededAt(cmd.succeededAt());
-        /*
-         * 金额以**通道回执**为准，不是以发起时的应付为准。
-         * 两者不一致时留下的是通道说的那个数 —— 对账要对的就是它，
-         * 而「我方以为该收多少」在发起行里已经记过了。
-         */
+        // Preserve the channel's actual money. Order projection independently compares its immutable amount.
         patch.setAmountMinor(cmd.amountMinor());
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
         return existing.getOrderNo();
+    }
+
+    @Override
+    public SettlePort.PaymentReceipt successPayment(String orderNo) {
+        StlPayment p = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getDirection, StlPayment.PAY)
+                        .eq(StlPayment::getOrderNo, orderNo).eq(StlPayment::getStatus, StlPayment.SUCCESS)
+                        .orderByDesc(StlPayment::getId).last("LIMIT 1")));
+        return receipt(p);
+    }
+
+    @Override
+    public SettlePort.PaymentReceipt paymentByOutTradeNo(String outTradeNo) {
+        return receipt(byOutTradeNo(outTradeNo));
+    }
+
+    private SettlePort.PaymentReceipt receipt(StlPayment p) {
+        return p == null ? null : new SettlePort.PaymentReceipt(p.getPaymentNo(), p.getOrderNo(),
+                p.getUserNo(), p.getPayChannel(), p.getTradeNo(), nz(p.getAmountMinor()),
+                p.getCurrency(), p.getStatus());
     }
 
     private StlPayment byOutTradeNo(String outTradeNo) {

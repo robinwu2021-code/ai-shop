@@ -88,8 +88,15 @@ public class PayCallbackController {
          * 多通道那个，测试当场红在「一笔成功支付都没扫到」——
          * 因为今天真正在用的是这个 stub 入口。
          */
+        var initiated = settlePort.paymentByOutTradeNo(body.outTradeNo());
+        if (initiated == null) {
+            payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED, "流水里没有这个商户单号",
+                    body.outTradeNo(), null, fields(body));
+            return "FAIL";
+        }
         String orderNo = settlePort.settlePayment(new SettlePort.PaymentSettled(
-                body.outTradeNo(), "STUB", body.transactionId(), 0L, System.currentTimeMillis()));
+                body.outTradeNo(), initiated.payChannel(), body.transactionId(), initiated.amountMinor(),
+                System.currentTimeMillis()));
 
         /*
          * **订单号由支付域给**，不要把 outTradeNo 当订单号用。
@@ -107,7 +114,7 @@ public class PayCallbackController {
                     "流水里没有这个商户单号", body.outTradeNo(), null, fields(body));
             return "FAIL";
         }
-        orderService.markPaid(orderNo, "STUB", body.transactionId());
+        orderService.markPaid(orderNo, initiated.payChannel(), body.transactionId());
         payMessage.callbackSettled(msgNo, PayMessagePort.ACCEPTED, null,
                 body.outTradeNo(), null, fields(body));
         return "SUCCESS";

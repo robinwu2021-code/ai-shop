@@ -103,6 +103,16 @@ public interface SettlePort {
      */
     String settlePayment(PaymentSettled cmd);
 
+    /** Financial facts only; implementations must not infer success from an order projection. */
+    default PaymentReceipt successPayment(String orderNo) { return null; }
+
+    /** Exact initiated channel reference, used by the explicitly enabled development callback. */
+    default PaymentReceipt paymentByOutTradeNo(String outTradeNo) { return null; }
+
+    record PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel,
+                          String tradeNo, long amountMinor, String currency, String status) { }
+
+
     /**
      * <p><b>这里没有 out_trade_no</b>：商户单号由支付域生成并<b>回传</b>
      * （见 {@link #openPayment} 的返回值）。2026-09-01 之前调用方传一个进来，

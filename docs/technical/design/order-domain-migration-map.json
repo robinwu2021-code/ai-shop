@@ -5,7 +5,7 @@
   "targetPackage": "ai.neargo.shop.order",
   "status": "phase1-backend-in-progress",
   "counts": {
-    "coreProductionFiles": 151,
+    "coreProductionFiles": 153,
     "coreTestClasses": 27
   },
   "entries": [
@@ -4819,6 +4819,31 @@
       "tables": [],
       "externalConsumers": [],
       "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/lifecycle/PaymentLifecycleService.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.lifecycle.PaymentLifecycleService",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/lifecycle/PaymentLifecycleService.java",
+      "targetType": "ai.neargo.shop.order.service.lifecycle.PaymentLifecycleService",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": []
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/lifecycle/impl/PaymentLifecycleServiceImpl.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.lifecycle.impl.PaymentLifecycleServiceImpl",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/lifecycle/impl/PaymentLifecycleServiceImpl.java",
+      "targetType": "ai.neargo.shop.order.service.lifecycle.impl.PaymentLifecycleServiceImpl",
+      "owner": "order",
+      "state": "phase1-added",
+      "tables": [],
+      "externalConsumers": [],
+      "publicMethods": [
+        "public PaymentLifecycleServiceImpl(SettlePort settlement)",
+        "public ConfirmedPayment requireConfirmed(OrdOrder order, String channel, String tradeNo)"
+      ]
     }
   ],
   "mixedMapperSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/TradeMappers.java",

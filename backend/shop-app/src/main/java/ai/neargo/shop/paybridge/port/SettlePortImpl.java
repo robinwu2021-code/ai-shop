@@ -189,6 +189,16 @@ public class SettlePortImpl implements SettlePort {
     }
 
     @Override
+    public PaymentReceipt successPayment(String orderNo) {
+        return paymentLedger.successPayment(orderNo);
+    }
+
+    @Override
+    public PaymentReceipt paymentByOutTradeNo(String outTradeNo) {
+        return paymentLedger.paymentByOutTradeNo(outTradeNo);
+    }
+
+    @Override
     public String settlePayment(PaymentSettled cmd) {
         return paymentLedger.settle(cmd);
     }

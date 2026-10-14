@@ -7,6 +7,7 @@ import ai.neargo.shop.trade.order.service.create.OrderStockAllocator;
 import ai.neargo.shop.trade.order.service.StoreOrderQueryService;
 import ai.neargo.shop.trade.order.service.query.StoreOrderMaterial;
 import ai.neargo.shop.trade.order.contract.StoreOrderQuery;
+import ai.neargo.shop.trade.order.service.lifecycle.PaymentLifecycleService;
 
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 
@@ -140,6 +141,7 @@ public class OrderServiceImpl implements OrderService {
     @Autowired private OrderCreationRecoveryService creationRecovery;
     @Autowired private OrderStockAllocator stockAllocator;
     @Autowired private StoreOrderQueryService storeQueries;
+    @Autowired private PaymentLifecycleService paymentLifecycle;
     /** 取该商家按市场筛出的可用通道（S4）—— 下单要选通道 */
     private final ai.neargo.shop.spi.pay.PayChannelMasterPort payChannelMasterPort;
     /**
@@ -1770,6 +1772,7 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        var confirmed = paymentLifecycle.requireConfirmed(order, payChannel, payTradeNo);
         if (OrdOrder.PAID.equals(order.getStatus())) {
             return;   // 幂等：回调会重发，重复到达不能重复扣库存、重复发事件
         }
@@ -1779,8 +1782,8 @@ public class OrderServiceImpl implements OrderService {
                 offline ? PaymentEvent.OFFLINE_CONFIRMED : PaymentEvent.PAY_SUCCEEDED,
                 offline ? Actor.MERCHANT : Actor.CHANNEL, null, "支付成功",
                 new PaymentContext(offline, true, true, false));
-        order.setPayChannel(payChannel);
-        order.setPayTradeNo(payTradeNo);
+        order.setPayChannel(confirmed.channel());
+        order.setPayTradeNo(confirmed.tradeNo());
         order.setPaidAt(System.currentTimeMillis());
         orderMapper.updateById(order);
 
