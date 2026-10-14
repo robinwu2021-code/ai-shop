@@ -732,11 +732,6 @@ function plannedValues(src, name, ownerConst) {
  */
 export const DISMISSED = [
   {
-    key: "ord_sub_order.refund_progress",
-    why: "退款进度（NONE / PARTIAL / FULL，V404）。5.4 只建列、尚未下发给任何端；"
-      + "5.7 三端接「部分退款」角标时改登记 FIELDS（TDD-订单状态机 §2C）",
-  },
-  {
     key: "ord_shipment.status",
     why: "订单服务 2.0 发货单（V401）的内部状态（CREATED / SHIPPED / DELIVERED / RECEIVED / VOIDED）。"
       + "新内核尚未接线、**不下发给任何端** —— 对外只有订单的 7 个契约状态。接线下发包裹状态那天改登记 FIELDS",
