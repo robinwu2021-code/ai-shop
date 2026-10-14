@@ -122,6 +122,11 @@ const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
       "且留着才有回滚余地），但不再被写入 —— 映射它就会有人读到陈旧值，" +
       "那正是「运营改了一张表、领域读另一张，保存成功而改动不生效且不报错」的形状。",
   },
+  ord_sub_order: {
+    openAfterSaleNo:
+      "V406 售后占位（一张订单同时只有一张进行中售后，库内 CAS）。只由 AfterSaleSlotMapper 的专用 SQL 读写 ——" +
+      "订单流程会先读子单再 updateById，实体若映射它，会把读到的旧占位原样写回，占位就再也释放不掉。",
+  },
 };
 
   it("实体不缺列 —— 少一个字段 MyBatis 不报错，只是**读不出那一列**", () => {
