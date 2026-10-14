@@ -32,7 +32,7 @@ public class ReceiptHandler {
             return;   // 幂等
         }
         if (!canReceive(s.getStatus())) {
-            throw BizException.of(ErrorCode.BAD_REQUEST, "该包裹尚未发货，不能确认收货");
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);   // 包裹尚未发货，不能确认收货
         }
         s.setStatus(OrdShipment.RECEIVED);
         write.saveShipment(s);

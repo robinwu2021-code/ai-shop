@@ -41,7 +41,7 @@ public class ShipHandler {
             if (subOrderNo.equals(dup.getSubOrderNo())) {
                 return dup.getShipmentNo();   // 幂等：同单重复填同号
             }
-            throw BizException.of(ErrorCode.BAD_REQUEST, "该运单号已用于订单 " + dup.getSubOrderNo());
+            throw BizException.of(ErrorCode.WAYBILL_DUPLICATED);   // 已被别的订单占用（同单同号在上面幂等返回）
         }
         return create(order, carrier, waybillNo, itemSkuNos, op);
     }
@@ -57,7 +57,7 @@ public class ShipHandler {
     private String normalizeAndValidate(String raw) {
         String no = WaybillNormalizer.normalize(raw);
         if (!WaybillFormat.isValid(no)) {
-            throw BizException.of(ErrorCode.BAD_REQUEST, "运单号格式不正确");
+            throw BizException.of(ErrorCode.BAD_REQUEST);   // 运单号格式不正确（BAD_REQUEST 文案无占位符，不传参）
         }
         return no;
     }
@@ -65,7 +65,7 @@ public class ShipHandler {
     private String create(OrdSubOrder order, String carrier, String waybillNo, List<String> itemSkuNos, Operator op) {
         List<OrdItem> toShip = selectUnshipped(read.itemsOf(order.getSubOrderNo()), itemSkuNos);
         if (toShip.isEmpty()) {
-            throw BizException.of(ErrorCode.BAD_REQUEST, "没有可发货的商品行");
+            throw BizException.of(ErrorCode.BAD_REQUEST);   // 没有可发货的商品行
         }
         String shipmentNo = shipmentNoGen.get();
         OrdShipment shipment = ShipmentDraftFactory.express(

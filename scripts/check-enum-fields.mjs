@@ -730,6 +730,16 @@ function plannedValues(src, name, ownerConst) {
  * 那是 §3 待业务拍板的第 4 条（驳回理由谁把关）。
  */
 export const DISMISSED = [
+  {
+    key: "ord_shipment.status",
+    why: "订单服务 2.0 发货单（V401）的内部状态（CREATED / SHIPPED / DELIVERED / RECEIVED / VOIDED）。"
+      + "新内核尚未接线、**不下发给任何端** —— 对外只有订单的 7 个契约状态。接线下发包裹状态那天改登记 FIELDS",
+  },
+  {
+    key: "ord_shipment.fulfillment",
+    why: "与 ord_sub_order.fulfillment 同一取值域（已在 FIELDS 登记、三端对过），这里是发货单上的快照。"
+      + "新内核尚未接线、不下发；接线时随 ord_sub_order.fulfillment 一起对账",
+  },
   { key: "prd_sell_rule.param", why: "数字列（件数或百分比）。注释里点名了 RESERVE / CAP / MANUAL 是在说「哪几种规则用件数」，不是取值域 —— 候选启发式的误报" },
   { key: "stl_settle_invoice.period", why: "日期格式 YYYY/MM，不是取值域 —— 候选启发式的误报" },
   { key: "ful_batch.arrive_date", why: "日期格式 YYYY/MM/DD，同上" },

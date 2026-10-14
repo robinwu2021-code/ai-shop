@@ -239,6 +239,10 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  waybill_no:
+    "两边是**同一个快递运单号**，但它**不是外键**：运单号只在承运商内唯一，lgs_waybill 按（承运商, 运单号）登记；" +
+    "ord_shipment（订单服务 2.0 发货单，V401）记的是商家录入的号。\n" +
+    "  只按 waybill_no join 会把两家快递撞号的单连到一起 —— 要连必须带上承运商（ord_shipment.carrier = lgs_waybill.carrier）。",
   flow_no:
     "stl_points_pool 的是**积分池流水号**（平台自己发号，记池子的每一次增减）；" +
     "stl_bank_flow 的是**银行给的流水号**（人工从网银导出，是出款对账的外部判据）。\n" +

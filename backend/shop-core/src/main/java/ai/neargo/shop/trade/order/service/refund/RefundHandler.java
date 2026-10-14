@@ -31,7 +31,7 @@ public class RefundHandler {
         }
         LineRefundInfo line = read.lineInfo(subOrderNo, itemId);
         if (line == null || !RefundCalc.canRefund(line.orderedQty(), line.refundedQty(), refundQty)) {
-            throw BizException.of(ErrorCode.BAD_REQUEST, "退款数量超出可退范围");
+            throw BizException.of(ErrorCode.AFTERSALE_AMOUNT_INVALID);   // 退款数量超出可退范围
         }
         long amount = RefundCalc.amount(line.unitPrice(), refundQty);
         executor.refund(subOrderNo, itemId, refundQty, amount);
