@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 524,
+        "b-app": 525,
         "c-app": 94
       }
     },
@@ -3590,7 +3590,7 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 86,
+      "libClassHits": 87,
       "localSelectors": 19,
       "localCssLines": 67,
       "rolled": []
