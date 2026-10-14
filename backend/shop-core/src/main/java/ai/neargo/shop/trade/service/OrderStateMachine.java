@@ -4,6 +4,9 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleMachine;
+import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleStatus;
+import ai.neargo.shop.trade.order.statemachine.Transition;
 
 import java.util.Map;
 import java.util.Set;
@@ -54,20 +57,33 @@ public final class OrderStateMachine {
             OrdSubOrder.REFUNDED, Set.of());
 
     /** 售后状态机（A2 §3.3）。终态：REFUNDED / REJECTED / CLOSED。 */
-    private static final Map<String, Set<String>> AFTER_SALE = Map.of(
-            // WAIT_RECEIPT：仅退款在「已揽收未签收」审核通过后在这里等签收（TDD-售后规则 §2.3）
-            "APPLIED", Set.of("REFUNDING", "REFUNDED", "WAIT_RECEIPT", "REJECTED", "CLOSED"),
-            "REFUNDING", Set.of("REFUNDED", "CLOSED"),
-            // 出口：① 签收 → REFUNDED；② 商家收到退回 → REFUNDED；③ 超时未签收 → 转平台仲裁。
-            // 退款统一经 doRefund 的中间态 REFUNDING（回退分账→退款→落终态），故也允许 →REFUNDING
-            "WAIT_RECEIPT", Set.of("REFUNDING", "REFUNDED", "ARBITRATING", "CLOSED"),
-            // 驳回后用户可申诉；申诉由平台裁决，可能退也可能关闭
-            "REJECTED", Set.of("ARBITRATING", "CLOSED"),
-            "ARBITRATING", Set.of("REFUNDING", "REFUNDED", "CLOSED"),
-            "REFUNDED", Set.of(),
-            "CLOSED", Set.of());
+    /**
+     * 售后图<b>由新状态机导出</b>（TDD-订单状态机 AC12）：迁移表只有一份 ——
+     * {@link AfterSaleMachine}。这里去掉执行者与守卫、只留「状态 A 能到哪些状态」，给老调用方用。
+     * 新增 WAIT_RETURN / RETURNING（拆自 REFUNDING）；REFUNDING → CLOSED 不再允许（钱在路上不能撤）。
+     */
+    private static final Map<String, Set<String>> AFTER_SALE = graphOf(AfterSaleMachine.MACHINE.transitions(),
+            java.util.EnumSet.allOf(AfterSaleStatus.class));
 
     private OrderStateMachine() {
+    }
+
+    /** 把迁移表压成「from → 可达 to 集合」：跳过创建与原地动作，每个状态都有一项（终态为空集） */
+    private static <S extends Enum<S>> Map<String, Set<String>> graphOf(
+            java.util.List<? extends Transition<S, ?, ?>> transitions, Set<S> all) {
+        Map<String, Set<String>> g = new java.util.HashMap<>();
+        all.forEach(st -> g.put(st.name(), new java.util.HashSet<>()));
+        for (Transition<S, ?, ?> t : transitions) {
+            if (t.creation() || t.stays()) {
+                continue;
+            }
+            for (S from : t.from()) {
+                t.targets().stream().filter(to -> to != from).forEach(to -> g.get(from.name()).add(to.name()));
+            }
+        }
+        Map<String, Set<String>> frozen = new java.util.HashMap<>();
+        g.forEach((k, v) -> frozen.put(k, Set.copyOf(v)));
+        return Map.copyOf(frozen);
     }
 
     public static void assertAfterSaleTransit(String from, String to) {

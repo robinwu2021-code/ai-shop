@@ -174,7 +174,8 @@ class OrderStateMachineTest {
         void rejectedCanBeAppealed() {
             assertThatCode(() -> {
                 OrderStateMachine.assertAfterSaleTransit("REJECTED", "ARBITRATING");
-                OrderStateMachine.assertAfterSaleTransit("ARBITRATING", "REFUNDED");
+                // 裁决退款先进「退款执行中」，钱到账才 REFUNDED（售后图由新状态机导出，不再有直达边）
+                OrderStateMachine.assertAfterSaleTransit("ARBITRATING", "REFUNDING");
             }).doesNotThrowAnyException();
         }
 

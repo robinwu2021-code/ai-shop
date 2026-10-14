@@ -247,6 +247,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mRejectAfterSale: { method: "POST", path: "/biz/after-sale/:afterSaleNo/reject", auth: true, summary: "驳回售后" },
 
   mConfirmReturn: { method: "POST", path: "/biz/after-sale/:afterSaleNo/receive", auth: true, summary: "确认收到退货" },
+  mConfirmRefund: { method: "POST", path: "/biz/after-sale/:afterSaleNo/confirm-refund", auth: true, summary: "在途仅退款：商家确认退款" },
 
   mGroupList: { method: "GET", path: "/biz/groups", auth: true, summary: "我的商家团" },
   mCreateGroup: { method: "POST", path: "/biz/groups", auth: true, summary: "开团" },

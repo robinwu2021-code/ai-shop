@@ -197,14 +197,33 @@ describe("订单详情页的操作按钮", () => {
 
   it("★★★ 售后进行中的卡片靠 afterSale 出现 —— 后端此前不发，整张卡永远不显示", async () => {
     orderDetail.mockResolvedValue(order("FULFILLING"));
-    expect((await render()).text()).not.toContain("afterSale.status.REFUNDING");
+    expect((await render()).text()).not.toContain("afterSale.status.WAIT_RETURN");
 
+    // 商家同意退货 → WAIT_RETURN（2026-10-14 起独立状态，不再是「REFUNDING + 没运单号」）
+    orderDetail.mockResolvedValue(order("FULFILLING", {
+      afterSale: { afterSaleNo: "AS1", status: "WAIT_RETURN", type: "RETURN_REFUND" },
+    } as never));
+    const w = await render();
+    expect(w.text()).toContain("afterSale.status.WAIT_RETURN");
+    expect(w.text(), "等寄回 → 要给填单号的入口").toContain("afterSale.fillExpress");
+
+    // 钱在路上（REFUNDING）：不再给填单号入口
     orderDetail.mockResolvedValue(order("FULFILLING", {
       afterSale: { afterSaleNo: "AS1", status: "REFUNDING", type: "RETURN_REFUND" },
     } as never));
-    const w = await render();
-    expect(w.text()).toContain("afterSale.status.REFUNDING");
-    expect(w.text(), "退货退款且还没填单号 → 要给填单号的入口").toContain("afterSale.fillExpress");
+    expect((await render()).text()).not.toContain("afterSale.fillExpress");
+  });
+
+  it("★★ 申请平台介入按后端的 canEscalate 显示 —— 商家超时未处理时也能申请，不止驳回", async () => {
+    orderDetail.mockResolvedValue(order("FULFILLING", {
+      afterSale: { afterSaleNo: "AS1", status: "APPLIED", type: "REFUND_ONLY", canEscalate: true },
+    } as never));
+    expect((await render()).text()).toContain("afterSale.raiseDispute");
+
+    orderDetail.mockResolvedValue(order("FULFILLING", {
+      afterSale: { afterSaleNo: "AS1", status: "APPLIED", type: "REFUND_ONLY", canEscalate: false },
+    } as never));
+    expect((await render()).text()).not.toContain("afterSale.raiseDispute");
   });
 
   it("★★★ 那串码的标签按品类走 —— 虚拟商品拿到的是兑换码，不是取货码", async () => {

@@ -27,6 +27,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /**
  * 售后时效：商家沉默到点了，系统替他做决定（TDD-C 端商品详情页·内容丰富度 §3）。
@@ -125,8 +126,8 @@ class AfterSaleTimeoutFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 商家 48 小时不处理 → 系统自动同意并退款；差一小时则一动不动")
-    void autoApproveAfterReplyHours() throws Exception {
+    @DisplayName("★★★ 商家 48 小时不处理 → 只提醒、不退钱；到点后买家才能申请平台介入（退款永不自动）")
+    void overdueOnlyReminds() throws Exception {
         String token = login(PHONE_1);
         String subOrderNo = placeAndPay(token, PHONE_1);
         String asNo = apply(token, subOrderNo, "REFUND_ONLY");
@@ -141,16 +142,26 @@ class AfterSaleTimeoutFlowTest {
         sweep();
         assertThat(statusOf(asNo)).as("没到点却动了").isEqualTo(OrdAfterSale.APPLIED);
 
-        // ② 过点一小时：必须自动同意并退款
+        assertThat(canEscalate(token, asNo)).as("商家还没超时，买家不能越过商家找平台").isFalse();
+
+        // ② 过点一小时：只提醒商家 —— 2026-10-14 前这里会替商家同意并把钱退掉（撤掉改动即红）
         backdate(asNo, replyHours + 1);
         assertThat(afterSaleService.idlePendingNos(System.currentTimeMillis() - replyHours * HOUR, 100))
                 .contains(asNo);
         sweep();
-        assertThat(statusOf(asNo)).as("到点了还挂着 —— 用户在等一个不会来的结果")
-                .isEqualTo(OrdAfterSale.REFUNDED);
-        assertThat(timelineLabels(token, asNo))
-                .as("时间线要说清是系统放的钱，不是商家")
-                .anySatisfy(l -> assertThat(l).contains("系统自动同意"));
+        assertThat(statusOf(asNo)).as("★ 系统替商家退了钱 —— 退款永远不自动").isEqualTo(OrdAfterSale.APPLIED);
+        assertThat(timelineLabels(token, asNo)).filteredOn(l -> l.contains("售后提醒·商家超时未处理")).hasSize(1);
+
+        // 十分钟后又扫一轮：24h 内不重复提醒
+        sweep();
+        assertThat(timelineLabels(token, asNo)).filteredOn(l -> l.contains("售后提醒·商家超时未处理")).hasSize(1);
+
+        // 商家超时后，买家可申请平台介入
+        assertThat(canEscalate(token, asNo)).isTrue();
+        mvc().perform(post("/mp/after-sale/" + asNo + "/escalate").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"appeal\":\"商家两天没理我\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+        assertThat(statusOf(asNo)).isEqualTo(OrdAfterSale.ARBITRATING);
     }
 
     @Test
@@ -177,14 +188,14 @@ class AfterSaleTimeoutFlowTest {
         String token = login(PHONE_3);
         String subOrderNo = placeAndPay(token, PHONE_3);
         String asNo = apply(token, subOrderNo, "RETURN_REFUND");
-        // 商家同意 → 等买家寄回（状态是 REFUNDING，而货还没动）
-        afterSaleService.autoApprove(asNo);
-        assertThat(statusOf(asNo)).isEqualTo(OrdAfterSale.REFUNDING);
+        // 商家同意 → 等买家寄回（V403 起是独立状态 WAIT_RETURN）
+        approveAsMerchant(asNo);
+        assertThat(statusOf(asNo)).isEqualTo(OrdAfterSale.WAIT_RETURN);
 
         int days = ruleService.get().shipBackDays();
         backdate(asNo, (days - 1) * 24);
         sweep();
-        assertThat(statusOf(asNo)).as("没到寄回时限就把申请关了").isEqualTo(OrdAfterSale.REFUNDING);
+        assertThat(statusOf(asNo)).as("没到寄回时限就把申请关了").isEqualTo(OrdAfterSale.WAIT_RETURN);
 
         backdate(asNo, (days + 1) * 24);
         sweep();
@@ -193,13 +204,13 @@ class AfterSaleTimeoutFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 退款重试不许碰「等买家寄回」的退货单 —— 货没回来钱先退了")
-    void refundRetryMustNotTouchAwaitingReturn() throws Exception {
+    @DisplayName("★★★ 退货：等寄回不被退款重试捞走；寄回后商家不确认 → 只提醒、不退钱")
+    void returnFlowNeverAutoRefunds() throws Exception {
         String token = login(PHONE_4);
         String subOrderNo = placeAndPay(token, PHONE_4);
         String asNo = apply(token, subOrderNo, "RETURN_REFUND");
-        afterSaleService.autoApprove(asNo);
-        assertThat(statusOf(asNo)).isEqualTo(OrdAfterSale.REFUNDING);
+        approveAsMerchant(asNo);
+        assertThat(statusOf(asNo)).isEqualTo(OrdAfterSale.WAIT_RETURN);
 
         // 退款重试任务只看「状态是 REFUNDING 且 30 分钟没动过」，而这张单正是那个样子。
         // 它此前会被捞起来退掉：**退货退款在商家同意后就是 REFUNDING**，与「退款卡住」同一个状态
@@ -208,18 +219,20 @@ class AfterSaleTimeoutFlowTest {
                 .as("等买家寄回的退货单被退款重试捞走了 —— 这是一条会真的花钱的路")
                 .doesNotContain(asNo);
 
-        // 而买家寄回之后，它归时效任务管：商家不确认 → 到点自动退款
-        jdbc.update("UPDATE ord_after_sale SET express_no = 'SF123', express_company = 'SF' "
-                + "WHERE after_sale_no = ?", asNo);
-        int confirmHours = ruleService.get().confirmHours();
-        backdate(asNo, confirmHours - 1);
-        sweep();
-        assertThat(statusOf(asNo)).as("没到确认时限就退了").isEqualTo(OrdAfterSale.REFUNDING);
+        // 买家寄回 → RETURNING
+        mvc().perform(post("/mp/after-sale/" + asNo + "/ship").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"expressCompany\":\"SF\",\"expressNo\":\"SF123\"}"))
+                .andExpect(jsonPath("$.code").value(0));
+        assertThat(statusOf(asNo)).isEqualTo(OrdAfterSale.RETURNING);
 
+        // 商家超时不确认收货：2026-10-14 前系统会自动退款；现在只提醒、开放介入（撤掉改动即红）
+        int confirmHours = ruleService.get().confirmHours();
         backdate(asNo, confirmHours + 1);
         sweep();
-        assertThat(statusOf(asNo)).as("买家寄回了、商家不确认，钱就得由系统退")
-                .isEqualTo(OrdAfterSale.REFUNDED);
+        assertThat(statusOf(asNo)).as("★ 系统替商家退了钱 —— 退款永远不自动").isEqualTo(OrdAfterSale.RETURNING);
+        assertThat(timelineLabels(token, asNo)).anySatisfy(l -> assertThat(l).contains("售后提醒·退货待确认收货"));
+        assertThat(canEscalate(token, asNo)).isTrue();
     }
 
     @Test
@@ -267,6 +280,19 @@ class AfterSaleTimeoutFlowTest {
         int n = jdbc.update("UPDATE ord_after_sale SET updated_at = ? WHERE after_sale_no = ?",
                 java.time.LocalDateTime.now().minusHours(hours), afterSaleNo);
         assertThat(n).as("没拨到任何行 —— 后面的断言会变成空转").isOne();
+    }
+
+    /** 以商家身份同意（直接调服务：本类关心的是时效，不是 B 端鉴权） */
+    private void approveAsMerchant(String afterSaleNo) {
+        String entityNo = jdbc.queryForObject("SELECT entity_no FROM ord_after_sale WHERE after_sale_no = ?",
+                String.class, afterSaleNo);
+        afterSaleService.approve(entityNo, afterSaleNo, null, null, null);
+    }
+
+    private boolean canEscalate(String token, String afterSaleNo) throws Exception {
+        String body = mvc().perform(get("/mp/after-sale/" + afterSaleNo).header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("canEscalate").asBoolean();
     }
 
     private String statusOf(String afterSaleNo) {
@@ -319,7 +345,7 @@ class AfterSaleTimeoutFlowTest {
             jdbc.update("UPDATE ord_sub_order SET prepared_at = ? WHERE sub_order_no = ?",
                     System.currentTimeMillis(), sub);
 
-            afterSaleService.autoApprove(asNo);
+            afterSaleService.remindOverdue(asNo);
             assertThat(statusOf(asNo))
                     .as("灰色档超时也绝不自动同意——必须商家人工确认（撤掉 gray-skip 就变红）")
                     .isEqualTo(OrdAfterSale.APPLIED);

@@ -68,11 +68,17 @@ public interface AfterSaleService {
     /** 驳回。{@code remark} 必填 —— 用户要据此决定是否申诉。 */
     AfterSaleVO reject(String merchantNo, String afterSaleNo, String remark);
 
-    /** 确认收到退货 → 触发退款。 */
+    /** 确认收到退货（只认 {@code RETURNING}：买家已寄回）→ 触发退款。 */
     AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo);
 
     /**
-     * 子单签收/完成时调用：把该子单上「待收货后退款」({@code WAIT_RECEIPT}) 的仅退款单退掉（AC7 出口①）。
+     * 在途仅退款（{@code WAIT_RECEIPT}）由商家确认退款（TDD-订单状态机 AC8）。
+     * 签收后系统只提醒，<b>不自动退</b>；商家也可以不等签收直接确认。
+     */
+    AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo);
+
+    /**
+     * 子单签收 / 完成时调用：该子单上有 {@code WAIT_RECEIPT} 的仅退款单时，<b>提醒商家确认退款</b>（不退钱）。
      * 幂等；没有这类单时为空操作。系统身份调用。
      */
     void settleOnReceipt(String subOrderNo);
@@ -199,32 +205,21 @@ public interface AfterSaleService {
     java.util.List<String> idlePendingNos(long idleBefore, int limit);
 
     /**
-     * 商家不处理，系统替他同意（时效 T1）。
+     * 商家超时未处理（时效 T1）→ <b>提醒商家</b>（到点一次、再过 24h 一次），买家此后可申请平台介入。
      *
-     * <p><b>与商家自己点「同意」走同一条实现</b> —— 退款的顺序（先回退分账再退款）
-     * 只有一份，不为自动化再写一遍。区别只在时间线上记的是「系统」而不是「商家」：
-     * 用户日后看这张单，必须能看出钱是谁放的。
+     * <p>2026-10-14 起<b>不再替商家同意</b>：退款永远不自动（《退货退款逻辑》v2）。
      */
-    void autoApprove(String afterSaleNo);
+    void remindOverdue(String afterSaleNo);
 
-    /**
-     * 同意退货后买家一直没寄回的单（时效 T3a）。判据是 {@code REFUNDING} + 退货退款
-     * + <b>没有运单号</b>。
-     */
+    /** 同意退货后买家一直没寄回的单（时效 T3a）：{@code WAIT_RETURN}。 */
     java.util.List<String> unshippedReturnNos(long idleBefore, int limit);
 
     /** 买家逾期没寄回 → 关闭本次申请。他可以重新申请，但不能让单子永远悬着 */
     void autoCloseUnshipped(String afterSaleNo);
 
-    /**
-     * 买家已寄回、而商家迟迟不确认收货的单（时效 T3b）。判据是 {@code REFUNDING}
-     * + 退货退款 + <b>有运单号</b>。
-     *
-     * <p>这条同时兼作退货退款的<b>退款重试入口</b>：分账回退失败而停在 REFUNDING 的
-     * 退货单也落在这个集合里，而 {@code autoConfirmReturn} 是幂等的。
-     */
+    /** 买家已寄回、而商家迟迟不确认收货的单（时效 T3b）：{@code RETURNING}。 */
     java.util.List<String> unconfirmedReturnNos(long idleBefore, int limit);
 
-    /** 商家逾期不确认收货 → 系统退款。走的仍是那条唯一的退款实现 */
-    void autoConfirmReturn(String afterSaleNo);
+    /** 商家逾期不确认收货 → <b>提醒商家</b>，买家可申请平台介入。不再自动退款 */
+    void remindUnconfirmedReturn(String afterSaleNo);
 }

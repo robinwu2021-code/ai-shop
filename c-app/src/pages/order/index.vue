@@ -796,14 +796,14 @@ onPullDownRefresh(async () => {
       </text>
       <text class="txt-caption as__hint">{{ $t(`afterSale.statusHint.${order.afterSale.status}`) }}</text>
       <view
-        v-if="order.afterSale.status === 'REFUNDING' && order.afterSale.type === 'RETURN_REFUND' && !order.afterSale.returnExpressNo"
+        v-if="order.afterSale.status === 'WAIT_RETURN'"
         class="sh-btn as__btn"
         @tap="fillExpress"
       >
         {{ $t("afterSale.fillExpress") }}
       </view>
       <view
-        v-else-if="order.afterSale.status === 'REJECTED'"
+        v-else-if="order.afterSale.canEscalate ?? order.afterSale.status === 'REJECTED'"
         class="sh-btn sh-btn--soft as__btn"
         @tap="dispute"
       >

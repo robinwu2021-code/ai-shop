@@ -21,9 +21,12 @@ import java.util.List;
  * 售后时效（TDD-C 端商品详情页·内容丰富度 §3）：三条时限到了就替沉默的一方做决定。
  *
  * <pre>
- *   商家 replyHours 不处理        → 系统自动同意（仅退款直接退；退货退款转「等寄回」）
+ *   商家 replyHours 不处理        → 提醒商家（到点 + 24h 各一次）；买家可申请平台介入
  *   买家 shipBackDays 不寄回      → 关闭本次申请（可重新申请）
- *   商家 confirmHours 不确认收货  → 系统退款
+ *   商家 confirmHours 不确认收货  → 提醒商家；买家可申请平台介入
+ *
+ * 2026-10-14 起<b>不再替任何人退钱</b>（《退货退款逻辑》v2：退款永远不自动）。
+ * 此前第一、三条分别是「自动同意并退款」「系统退款」。
  * </pre>
  *
  * <p><b>这三条此前一条都没有。</b> 全仓只有「关未付款单」与「退款重试」两个定时任务，
@@ -96,22 +99,22 @@ public class AfterSaleTimeoutJob implements JobHandler {
 
         int approved = each(afterSaleService.idlePendingNos(
                         now - rule.replyHours() * 3_600_000L, BATCH),
-                afterSaleService::autoApprove, "自动同意");
+                afterSaleService::remindOverdue, "商家超时提醒");
         int closed = each(afterSaleService.unshippedReturnNos(
                         now - rule.shipBackDays() * 86_400_000L, BATCH),
                 afterSaleService::autoCloseUnshipped, "逾期未寄回关闭");
         int refunded = each(afterSaleService.unconfirmedReturnNos(
                         now - rule.confirmHours() * 3_600_000L, BATCH),
-                afterSaleService::autoConfirmReturn, "逾期未确认收货退款");
+                afterSaleService::remindUnconfirmedReturn, "退货待确认提醒");
 
         if (approved == 0 && closed == 0 && refunded == 0) {
             // **detail 保持 null** —— JobSupport 用它区分「跑了但没事」
             return JobResult.ok(null);
         }
         // info 而不是 debug：这三件都是用户与商家看得见的结果，出诉时要查得到那个时段做了多少
-        log.info("[after-sale] 超时处置：自动同意 {} 笔、逾期未寄回关闭 {} 笔、逾期未确认退款 {} 笔",
+        log.info("[after-sale] 超时处置：商家超时提醒 {} 笔、逾期未寄回关闭 {} 笔、退货待确认提醒 {} 笔",
                 approved, closed, refunded);
-        return JobResult.ok("自动同意 %d 笔、关闭 %d 笔、自动退款 %d 笔".formatted(approved, closed, refunded));
+        return JobResult.ok("超时提醒 %d 笔、关闭 %d 笔、退货待确认提醒 %d 笔".formatted(approved, closed, refunded));
     }
 
     /**

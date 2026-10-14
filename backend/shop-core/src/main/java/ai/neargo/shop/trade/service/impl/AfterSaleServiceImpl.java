@@ -1,6 +1,11 @@
 package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.trade.service.AfterSaleRuleService;
+import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleContext;
+import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleEvent;
+import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleMachine;
+import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleStatus;
+import ai.neargo.shop.trade.order.statemachine.Actor;
 import ai.neargo.shop.trade.service.AfterSaleRules;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import ai.neargo.shop.trade.service.FulfillStage;
@@ -361,7 +366,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Transactional
     public AfterSaleVO cancel(String afterSaleNo) {
         OrdAfterSale as = own(afterSaleNo);
-        OrderStateMachine.assertAfterSaleTransit(as.getStatus(), OrdAfterSale.CLOSED);
+        // 状态机判：买家只能在待处理 / 待寄回 / 被驳回时撤销 —— 钱已在路上、平台已介入都不能撤
+        machine(as, AfterSaleEvent.WITHDRAW, Actor.BUYER, AfterSaleContext.builder().build());
         as.setStatus(OrdAfterSale.CLOSED);
         afterSaleMapper.updateById(as);
         appendLog(as.getSubOrderNo(), OrdAfterSale.CLOSED, "用户撤销申请",
@@ -373,10 +379,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Transactional
     public AfterSaleVO shipBack(String afterSaleNo, String company, String expressNo) {
         OrdAfterSale as = own(afterSaleNo);
+        // 只在「待寄回」时能填：此前不校验状态，终态单也能写入，且每次写都刷新 updated_at 把超时计时重置
+        machine(as, AfterSaleEvent.RETURN_SHIPPED, Actor.BUYER, AfterSaleContext.builder()
+                .waybillValid(expressNo != null && !expressNo.isBlank()).build());
         as.setExpressCompany(company);
-        as.setExpressNo(expressNo);
+        as.setExpressNo(expressNo.trim());
+        as.setStatus(OrdAfterSale.RETURNING);
         afterSaleMapper.updateById(as);
-        appendLog(as.getSubOrderNo(), as.getStatus(), "买家已寄回：" + expressNo,
+        appendLog(as.getSubOrderNo(), OrdAfterSale.RETURNING, "买家已寄回：" + expressNo.trim(),
                 OrdStatusLog.BY_USER, as.getUserNo());
         return detailOf(as);
     }
@@ -385,8 +395,12 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Transactional
     public AfterSaleVO escalate(String afterSaleNo, String appeal) {
         OrdAfterSale as = own(afterSaleNo);
-        OrderStateMachine.assertAfterSaleTransit(as.getStatus(), OrdAfterSale.ARBITRATING);
+        // 入口：被驳回 / 在途待签收 / 商家超时未处理 / 退货寄回后商家超时未确认（TDD-订单状态机 AC10）
+        machine(as, AfterSaleEvent.ESCALATE, Actor.BUYER,
+                AfterSaleContext.builder().escalationOpen(escalationOpen(as)).build());
         as.setStatus(OrdAfterSale.ARBITRATING);
+        // 申诉理由此前只拼进了日志文案，实体字段 dispute_reason 从未写入
+        as.setDisputeReason(appeal == null ? null : appeal.trim());
         afterSaleMapper.updateById(as);
         appendLog(as.getSubOrderNo(), OrdAfterSale.ARBITRATING, "已申请平台介入：" + appeal,
                 OrdStatusLog.BY_USER, as.getUserNo());
@@ -407,7 +421,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                     AfterSaleVO vo = detailOf(as);
                     // 待处理的才算「同意之后会退回什么」—— 已经处理完的，说了也改变不了什么
                     return OrdAfterSale.APPLIED.equals(as.getStatus())
-                            || OrdAfterSale.REFUNDING.equals(as.getStatus())
+                            || OrdAfterSale.WAIT_RETURN.equals(as.getStatus())
+                            || OrdAfterSale.RETURNING.equals(as.getStatus())
                             ? vo.withImpact(impactOf(as)) : vo;
                 }).toList();
     }
@@ -479,11 +494,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         }
 
         if (OrdAfterSale.RETURN_REFUND.equals(as.getType())) {
-            // 退货退款：同意 ≠ 立刻退钱，要等收到货。这里只推进到「等待寄回」
-            OrderStateMachine.assertAfterSaleTransit(as.getStatus(), OrdAfterSale.REFUNDING);
-            as.setStatus(OrdAfterSale.REFUNDING);
+            // 退货退款：同意 ≠ 立刻退钱，要等收到货。这里只推进到「等待寄回」（V403 起独立状态 WAIT_RETURN）
+            OrderStateMachine.assertAfterSaleTransit(as.getStatus(), OrdAfterSale.WAIT_RETURN);
+            as.setStatus(OrdAfterSale.WAIT_RETURN);
             update(as);
-            appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDING, "商家已同意，待买家寄回",
+            appendLog(as.getSubOrderNo(), OrdAfterSale.WAIT_RETURN, "商家已同意，待买家寄回",
                     OrdStatusLog.BY_MERCHANT, merchantNo);
             /*
              * **待寄回这条有时限**：不寄会被 AfterSaleTimeoutJob 自动关单。
@@ -504,7 +519,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             as.setStatus(OrdAfterSale.WAIT_RECEIPT);
             update(as);
             appendLog(as.getSubOrderNo(), OrdAfterSale.WAIT_RECEIPT,
-                    "商家已同意，货在途——签收后自动退款", OrdStatusLog.BY_MERCHANT, merchantNo);
+                    "商家已同意，货在途——签收后由商家确认退款", OrdStatusLog.BY_MERCHANT, merchantNo);
             return detailOf(as);
         }
         doRefund(as, "商家同意退款");
@@ -532,7 +547,18 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Transactional
     public AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo) {
         OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
+        // 只认「买家已寄回」：此前不校验类型与状态，商家可对在途仅退款单直接退，绕过「等签收」
+        machine(as, AfterSaleEvent.RETURN_RECEIVED, Actor.MERCHANT, AfterSaleContext.builder().build());
         doRefund(as, "商家已收到退货");
+        return detailOf(as);
+    }
+
+    @Override
+    @Transactional
+    public AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo) {
+        OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
+        machine(as, AfterSaleEvent.CONFIRM_REFUND, Actor.MERCHANT, AfterSaleContext.builder().build());
+        doRefund(as, "商家确认退款");
         return detailOf(as);
     }
 
@@ -552,7 +578,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         if (as == null) {
             return;
         }
-        doRefund(as, "买家已签收，按约定退款");
+        // 退款永远不自动（《退货退款逻辑》v2）：签收只提醒商家一键确认，钱由商家放
+        remind(as, REMIND_SIGNED, "买家已签收，待商家确认退款");
     }
 
 
@@ -834,7 +861,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     /** 售后自己的状态集合：时间线按**属于哪个聚合**过滤，不按时间窗口切。 */
     private static final List<String> AFTER_SALE_STATUSES = List.of(
-            OrdAfterSale.APPLIED, OrdAfterSale.REFUNDING, OrdAfterSale.REFUNDED,
+            OrdAfterSale.APPLIED, OrdAfterSale.WAIT_RETURN, OrdAfterSale.RETURNING, OrdAfterSale.WAIT_RECEIPT,
+            OrdAfterSale.REFUNDING, OrdAfterSale.REFUNDED,
             OrdAfterSale.REJECTED, OrdAfterSale.ARBITRATING, OrdAfterSale.CLOSED);
 
     @Override
@@ -874,7 +902,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 // 更新时间：库里有 updated_at，此前没往外发 —— 两个端都按它显示「最后动了什么时候」
                 millis(as.getUpdatedAt()), timeline, null,
                 as.getRefundMode(), as.getRefundPoints(), as.getApprovedMinor(), as.getFulfillStage(),
-                OrdAfterSale.WAIT_RECEIPT.equals(as.getStatus()));
+                OrdAfterSale.WAIT_RECEIPT.equals(as.getStatus()), escalationOpen(as));
     }
 
     private void appendLog(String subOrderNo, String status, String label,
@@ -920,7 +948,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         Long n = DataScopeContext.executeWithoutScope(() ->
                 afterSaleMapper.selectCount(Wrappers.<OrdAfterSale>lambdaQuery()
                         .eq(OrdAfterSale::getEntityNo, merchantNo)
-                        .eq(OrdAfterSale::getStatus, OrdAfterSale.APPLIED)));
+                        .in(OrdAfterSale::getStatus, OrdAfterSale.APPLIED, OrdAfterSale.RETURNING)));
         return n == null ? 0 : n.intValue();
     }
 
@@ -989,7 +1017,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
 
-        String target = refund ? OrdAfterSale.REFUNDING : OrdAfterSale.CLOSED;
+        boolean awaitReturn = OrdAfterSale.RETURN_REFUND.equals(as.getType())
+                && (as.getExpressNo() == null || as.getExpressNo().isBlank());
+        String target = !refund ? OrdAfterSale.CLOSED
+                : awaitReturn ? OrdAfterSale.WAIT_RETURN : OrdAfterSale.REFUNDING;
         OrderStateMachine.assertAfterSaleTransit(as.getStatus(), target);
         as.setStatus(target);
         as.setLiability(liability);
@@ -1034,7 +1065,6 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         return DataScopeContext.executeWithoutScope(() ->
                 afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
                                 .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
-                                .ne(OrdAfterSale::getType, OrdAfterSale.RETURN_REFUND)
                                 .lt(OrdAfterSale::getUpdatedAt, cutoff)
                                 .orderByAsc(OrdAfterSale::getUpdatedAt)
                                 .last("limit " + Math.max(1, limit)))
@@ -1111,21 +1141,12 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     @Override
     public List<String> unshippedReturnNos(long idleBefore, int limit) {
-        return idleNos(idleBefore, limit, q -> q
-                .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
-                .eq(OrdAfterSale::getType, OrdAfterSale.RETURN_REFUND)
-                // 空串与 null 都算「没寄」：端上把输入框留空提交过来就是空串
-                .and(w -> w.isNull(OrdAfterSale::getExpressNo)
-                        .or().eq(OrdAfterSale::getExpressNo, "")));
+        return idleNos(idleBefore, limit, q -> q.eq(OrdAfterSale::getStatus, OrdAfterSale.WAIT_RETURN));
     }
 
     @Override
     public List<String> unconfirmedReturnNos(long idleBefore, int limit) {
-        return idleNos(idleBefore, limit, q -> q
-                .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
-                .eq(OrdAfterSale::getType, OrdAfterSale.RETURN_REFUND)
-                .isNotNull(OrdAfterSale::getExpressNo)
-                .ne(OrdAfterSale::getExpressNo, ""));
+        return idleNos(idleBefore, limit, q -> q.eq(OrdAfterSale::getStatus, OrdAfterSale.RETURNING));
     }
 
     /**
@@ -1151,59 +1172,27 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     @Override
     @Transactional
-    public void autoApprove(String afterSaleNo) {
+    public void remindOverdue(String afterSaleNo) {
         OrdAfterSale as = bySystem(afterSaleNo);
         if (as == null || !OrdAfterSale.APPLIED.equals(as.getStatus())) {
-            return;   // 幂等：上一轮已经处置过，或者商家在这一刻自己点了
+            return;   // 幂等：商家在这一刻自己处理了
         }
         /*
-         * **灰色地带（生鲜已备货 / 已出单未揽收）绝不自动同意**（AC13）：这类单系统既不放行也不硬拒，
-         * 必须由商家人工确认（他可能已为这单备了货、打了包，有成本）。超时只催商家、不替他做决定。
-         * 判据当场重算（货可能已推进），与 apply 同一套 FulfillStage × fresh。
+         * **退款永远不自动**（《退货退款逻辑》v2，2026-10-14 拍板）：此前这里替商家同意并退钱，
+         * 生鲜灰色地带又只会无限再提醒、没有出口。现在统一：提醒商家（到点一次 + 24h 后一次），
+         * 并给买家开「申请平台介入」（escalationOpen 按 replyHours 判）。
          */
-        OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
-        AfterSaleRules.Gate gate = AfterSaleRules.applyGate(stageOf(sub), isFreshSub(as.getSubOrderNo()), as.getReason());
-        if (gate.needMerchant()) {
-            appendLog(as.getSubOrderNo(), as.getStatus(),
-                    "灰色地带（商家可能已备货/打包），不自动同意，已再次提醒商家", OrdStatusLog.BY_SYSTEM, null);
-            eventBus.publish(new OrderEvents.AfterSaleApplied(as.getAfterSaleNo(), as.getSubOrderNo(),
-                    as.getEntityNo(), sub.getStoreNo(), as.getUserNo(), as.getType(),
-                    as.getRefundMinor() == null ? 0L : as.getRefundMinor()));
-            return;
-        }
-        appendLog(as.getSubOrderNo(), as.getStatus(),
-                "商家超时未处理，系统自动同意", OrdStatusLog.BY_SYSTEM, null);
-        if (OrdAfterSale.RETURN_REFUND.equals(as.getType())) {
-            // 退货退款：自动同意也只推进到「等买家寄回」，不能在货回来之前退钱
-            as.setStatus(OrdAfterSale.REFUNDING);
-            update(as);
-            appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDING, "待买家寄回",
-                    OrdStatusLog.BY_SYSTEM, null);
-            return;
-        }
-        // 仅退款在途（已揽收未签收）：自动同意也不能在途退钱，转「待收货后退款」
-        if (OrdAfterSale.REFUND_ONLY.equals(as.getType()) && stageOf(sub) == FulfillStage.SHIPPED) {
-            as.setStatus(OrdAfterSale.WAIT_RECEIPT);
-            update(as);
-            appendLog(as.getSubOrderNo(), OrdAfterSale.WAIT_RECEIPT,
-                    "系统自动同意，货在途——签收后自动退款", OrdStatusLog.BY_SYSTEM, null);
-            return;
-        }
-        doRefund(as, "商家超时未处理，系统自动退款");
+        remind(as, REMIND_OVERDUE, "商家超时未处理，已提醒商家；买家可申请平台介入");
     }
 
     @Override
     @Transactional
     public void autoCloseUnshipped(String afterSaleNo) {
         OrdAfterSale as = bySystem(afterSaleNo);
-        if (as == null || !OrdAfterSale.REFUNDING.equals(as.getStatus())
-                || !OrdAfterSale.RETURN_REFUND.equals(as.getType())) {
-            return;
+        if (as == null || !OrdAfterSale.WAIT_RETURN.equals(as.getStatus())) {
+            return;   // 买家在本轮扫描与这一刻之间寄了（已转 RETURNING），或已处理
         }
-        // 再查一次运单号：买家可能在本轮扫描与这一刻之间寄了
-        if (as.getExpressNo() != null && !as.getExpressNo().isBlank()) {
-            return;
-        }
+        machine(as, AfterSaleEvent.RETURN_EXPIRED, Actor.SYSTEM, AfterSaleContext.builder().build());
         as.setStatus(OrdAfterSale.CLOSED);
         update(as);
         appendLog(as.getSubOrderNo(), OrdAfterSale.CLOSED,
@@ -1213,15 +1202,65 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     @Override
     @Transactional
-    public void autoConfirmReturn(String afterSaleNo) {
+    public void remindUnconfirmedReturn(String afterSaleNo) {
         OrdAfterSale as = bySystem(afterSaleNo);
-        if (as == null || !OrdAfterSale.REFUNDING.equals(as.getStatus())
-                || !OrdAfterSale.RETURN_REFUND.equals(as.getType())) {
+        if (as == null || !OrdAfterSale.RETURNING.equals(as.getStatus())) {
             return;
         }
-        appendLog(as.getSubOrderNo(), as.getStatus(),
-                "商家超时未确认收货，系统自动退款", OrdStatusLog.BY_SYSTEM, null);
-        doRefund(as, "商家超时未确认收货，系统自动退款");
+        // 此前这里「商家超时未确认收货，系统自动退款」—— 改为提醒 + 开放介入，钱由商家或平台放
+        remind(as, REMIND_RETURN, "退货已寄回，商家超时未确认收货，已提醒商家；买家可申请平台介入");
+    }
+
+    // ---------------------------------------------------------------- 状态机 / 提醒 / 介入入口
+
+    /** 提醒的流水标签：每种最多提醒两次（到点一次、再隔 24h 一次），按标签计数 */
+    private static final String REMIND_OVERDUE = "售后提醒·商家超时未处理";
+    private static final String REMIND_RETURN = "售后提醒·退货待确认收货";
+    private static final String REMIND_SIGNED = "售后提醒·已签收待确认退款";
+    private static final int REMIND_MAX = 2;
+    private static final long REMIND_GAP_MS = 24 * 3_600_000L;
+
+    /**
+     * 按新状态机校验这次动作（TDD-订单状态机 步 3：先用它判合法性，写路径在步 5 整体改走转换门）。
+     * 归属已由 own / ofMerchant / bySystem 判过，这里只判「这个人在这个状态能不能做这件事」。
+     */
+    private void machine(OrdAfterSale as, AfterSaleEvent event, Actor actor, AfterSaleContext ctx) {
+        AfterSaleMachine.MACHINE.fire(AfterSaleStatus.valueOf(as.getStatus()), event, actor, ctx);
+    }
+
+    /**
+     * 买家能否申请平台介入：被驳回、在途待签收 → 能；待商家处理 / 已寄回待确认 → 商家超时后才能。
+     * 计时按 {@code updated_at}（提醒只写流水不动它，所以不会把计时重置）。
+     */
+    private boolean escalationOpen(OrdAfterSale as) {
+        long idle = System.currentTimeMillis() - millis(as.getUpdatedAt());
+        var rule = ruleService.get();
+        return switch (as.getStatus()) {
+            case OrdAfterSale.REJECTED, OrdAfterSale.WAIT_RECEIPT -> true;
+            case OrdAfterSale.APPLIED -> idle >= rule.replyHours() * 3_600_000L;
+            case OrdAfterSale.RETURNING -> idle >= rule.confirmHours() * 3_600_000L;
+            default -> false;
+        };
+    }
+
+    /** 提醒商家（写流水 + 发「售后待处理」事件走既有的商家触达）；每种最多两次、间隔 24h */
+    private void remind(OrdAfterSale as, String tag, String label) {
+        List<OrdStatusLog> sent = DataScopeContext.executeWithoutScope(() -> statusLogMapper.selectList(
+                Wrappers.<OrdStatusLog>lambdaQuery()
+                        .eq(OrdStatusLog::getSubOrderNo, as.getSubOrderNo())
+                        .likeRight(OrdStatusLog::getLabel, tag)
+                        .ge(OrdStatusLog::getAt, millis(as.getCreatedAt()))
+                        .orderByDesc(OrdStatusLog::getId)));
+        long now = System.currentTimeMillis();
+        if (sent.size() >= REMIND_MAX
+                || (!sent.isEmpty() && sent.get(0).getAt() != null && now - sent.get(0).getAt() < REMIND_GAP_MS)) {
+            return;
+        }
+        appendLog(as.getSubOrderNo(), as.getStatus(), tag + "：" + label, OrdStatusLog.BY_SYSTEM, null);
+        OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
+        eventBus.publish(new OrderEvents.AfterSaleApplied(as.getAfterSaleNo(), as.getSubOrderNo(),
+                as.getEntityNo(), sub == null ? null : sub.getStoreNo(), as.getUserNo(), as.getType(),
+                as.getRefundMinor() == null ? 0L : as.getRefundMinor()));
     }
 
     /** 系统身份取单：没有属主校验（{@link #ofMerchant} 那套是给商家用的），也不带数据域 */

@@ -27,6 +27,10 @@ public class OrdAfterSale extends BaseEntity {
      * 等买家签收（或包裹退回商家）后再退 —— 防货还在路上就退了钱（TDD-售后规则 §2.3）。
      */
     public static final String WAIT_RECEIPT = "WAIT_RECEIPT";
+    /** 商家同意退货，待买家寄回（V403 起从 REFUNDING 拆出；TDD-订单状态机 AC9） */
+    public static final String WAIT_RETURN = "WAIT_RETURN";
+    /** 买家已寄回（填了退货运单），待商家确认收货 */
+    public static final String RETURNING = "RETURNING";
 
     // ── 退款形式（refund_mode）──
     /** 原路退现金（默认）。 */

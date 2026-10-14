@@ -52,7 +52,12 @@ public record AfterSaleVO(String afterSaleNo,
                           /** 申请当时的履约进度快照（{@code FulfillStage} 名）。B 端审核弹层显示实况（AC15） */
                           String fulfillStage,
                           /** 是否「待收货后退款」：等价于 {@code status == WAIT_RECEIPT}，端上少判一层（AC7） */
-                          boolean waitReceipt) {
+                          boolean waitReceipt,
+                          /*
+                           * 买家此刻能否「申请平台介入」（后端按状态与商家是否超时判；TDD-订单状态机 AC10）。
+                           * 端上按它画按钮，不再各端自己判状态。
+                           */
+                          boolean canEscalate) {
 
     /** 整单退款会一并退回的券与积分；开关关掉的那一项为空 / 0 */
     public record RefundImpact(String couponTitle, long pointsReturn, long pointsRevoke) {
@@ -65,7 +70,7 @@ public record AfterSaleVO(String afterSaleNo,
         return new AfterSaleVO(afterSaleNo, subOrderNo, orderNo, type, status, reason, images,
                 refundMinor, instant, merchantReply, returnExpressNo, liability, createdAt,
                 updatedAt, timeline, i == null || i.isEmpty() ? null : i,
-                refundMode, refundPoints, approvedMinor, fulfillStage, waitReceipt);
+                refundMode, refundPoints, approvedMinor, fulfillStage, waitReceipt, canEscalate);
     }
 
     public record TimelineNode(String status, String label, long at) {

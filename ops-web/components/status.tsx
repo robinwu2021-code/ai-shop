@@ -295,6 +295,8 @@ export function useAfterSaleStatusMap(): StatusMap<AfterSaleStatus> {
   const { t } = useI18n();
   return {
     APPLIED: { label: t("afterSaleStatus.APPLIED"), tone: "warning" },
+    WAIT_RETURN: { label: t("afterSaleStatus.WAIT_RETURN"), tone: "info" },
+    RETURNING: { label: t("afterSaleStatus.RETURNING"), tone: "warning" },
     REFUNDING: { label: t("afterSaleStatus.REFUNDING"), tone: "info" },
     WAIT_RECEIPT: { label: t("afterSaleStatus.WAIT_RECEIPT"), tone: "info" },
     ARBITRATING: { label: t("afterSaleStatus.ARBITRATING"), tone: "danger" },

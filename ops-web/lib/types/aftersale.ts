@@ -3,8 +3,10 @@ export type AfterSaleType = "REFUND_ONLY" | "RETURN_REFUND" | "EXCHANGE";
 
 export type AfterSaleStatus =
   | "APPLIED"      // 用户已申请，等商家处理
-  | "REFUNDING"    // 已同意，退款处理中（退货退款时是「等买家寄回」）
-  | "WAIT_RECEIPT" // 仅退款在「已揽收未签收」审核通过后在这里等签收（售后规则 §2.3）
+  | "WAIT_RETURN"  // 商家同意退货，等买家寄回（2026-10-14 拆自 REFUNDING）
+  | "RETURNING"    // 买家已寄回，等商家确认收货
+  | "REFUNDING"    // 退款处理中（钱在路上）
+  | "WAIT_RECEIPT" // 仅退款货在途已同意；签收后由商家确认退款（不自动退）
   | "ARBITRATING"  // 争议上升，平台介入
   | "REJECTED"     // 商家驳回（用户仍可上升平台）
   | "REFUNDED"     // 已退款（终态）
@@ -23,13 +25,16 @@ export type AfterSaleStatus =
  * 中间没有「商家处理中」这一档。
  */
 export const AFTERSALE_TRANSITIONS: Record<AfterSaleStatus, AfterSaleStatus[]> = {
-  APPLIED: ["REFUNDING", "REFUNDED", "WAIT_RECEIPT", "REJECTED", "CLOSED"],
-  REFUNDING: ["REFUNDED", "CLOSED"],
-  // 待收货后退款：签收/退回 → 退款；超时未签收 → 转平台仲裁
-  WAIT_RECEIPT: ["REFUNDING", "REFUNDED", "ARBITRATING", "CLOSED"],
+  // 与后端 AfterSaleMachine 导出的图一致（TDD-订单状态机）。退款永不自动：进 REFUNDING 只有商家 / 平台
+  APPLIED: ["REFUNDING", "WAIT_RECEIPT", "WAIT_RETURN", "REJECTED", "ARBITRATING", "CLOSED"],
+  WAIT_RETURN: ["RETURNING", "ARBITRATING", "CLOSED"],
+  RETURNING: ["REFUNDING", "ARBITRATING"],
+  REFUNDING: ["REFUNDED"],
+  // 货在途已同意：签收后商家确认 → 退款；买家可申请平台介入
+  WAIT_RECEIPT: ["REFUNDING", "ARBITRATING"],
   // 驳回不是终点：用户可以把争议上升到平台，这是「平台介入」存在的理由
   REJECTED: ["ARBITRATING", "CLOSED"],
-  ARBITRATING: ["REFUNDING", "REFUNDED", "CLOSED"],
+  ARBITRATING: ["REFUNDING", "WAIT_RETURN", "CLOSED"],
   REFUNDED: [],
   CLOSED: [],
 };

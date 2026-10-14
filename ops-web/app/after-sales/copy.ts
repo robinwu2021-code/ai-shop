@@ -60,11 +60,11 @@ const zh = {
 
   slaTitle: "各环节时限",
   fieldReplyHours: "商家响应时限（小时）",
-  replyHint: "超过这个时长商家还没处理，系统替他同意并退款。填得过短等于替商家认赔，过长则买家一直在等。",
+  replyHint: "超过这个时长商家还没处理：提醒商家，并允许买家申请平台介入。系统不会替商家同意或退款。",
   fieldShipBackDays: "买家寄回时限（天）",
   shipBackHint: "商家同意退货后，买家逾期未寄出就关闭本次申请 —— 他可以重新申请。",
   fieldConfirmHours: "商家确认收货时限（小时）",
-  confirmHint: "买家已寄回而商家迟迟不确认，超时由系统退款。",
+  confirmHint: "买家已寄回而商家迟迟不确认：提醒商家，并允许买家申请平台介入。系统不会自动退款。",
   fieldInterveneWorkDays: "平台介入承诺时限（工作日）",
   interveneHint: "只用于展示与超期提醒，不会自动裁决 —— 钱的判定要有人看过材料。",
 
@@ -154,13 +154,13 @@ const en: typeof zh = {
   slaTitle: "Time limits",
   fieldReplyHours: "Merchant response (hours)",
   replyHint:
-    "If the merchant has not acted within this window, the system approves and refunds on their behalf. Too short and you decide against the merchant for them; too long and the customer keeps waiting.",
+    "If the merchant has not acted within this window, they are reminded and the customer may ask the platform to step in. The system never approves or refunds on their behalf.",
   fieldShipBackDays: "Customer ships back within (days)",
   shipBackHint:
     "After the merchant agrees to a return, the claim is closed if nothing is shipped in time — the customer can file again.",
   fieldConfirmHours: "Merchant confirms receipt (hours)",
   confirmHint:
-    "The customer has shipped the goods back and the merchant is not confirming; the system refunds once this expires.",
+    "The customer has shipped the goods back and the merchant is not confirming: the merchant is reminded and the customer may ask the platform to step in. No automatic refund.",
   fieldInterveneWorkDays: "Platform review pledge (working days)",
   interveneHint:
     "Display and overdue alerts only — never an automatic decision. Money questions need a human who has read the evidence.",

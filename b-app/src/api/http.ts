@@ -552,6 +552,8 @@ export const httpApi: MerchantApi = {
 
   mConfirmReturn: (afterSaleNo) =>
     http.post<AfterSale>(buildPath(E.mConfirmReturn.path, { afterSaleNo }), {}),
+  mConfirmRefund: (afterSaleNo) =>
+    http.post<AfterSale>(buildPath(E.mConfirmRefund.path, { afterSaleNo }), {}),
 
   mGroupList: (status) => http.get<GroupBuy[]>(E.mGroupList.path, status ? { status } : undefined),
   mCreateGroup: (req) => http.post<GroupBuy>(E.mCreateGroup.path, req satisfies CreateGroupReq),

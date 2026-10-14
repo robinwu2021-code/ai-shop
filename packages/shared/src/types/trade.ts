@@ -717,18 +717,19 @@ export type AfterSaleType = "REFUND_ONLY" | "RETURN_REFUND";
  * 于是售后详情页的状态永远落进兜底分支，「填退货单号」按钮永远不出现
  * （它 gate 在一个后端永远不会下发的 `AGREED` 上）。
  *
- * 那一套描述的是**想象中更细的流程**：同意 → 寄回 → 收货 → 退款四步。
- * 后端没有把「寄回中」「已收货」做成独立状态 —— 商家一同意就进 `REFUNDING`，
- * 退货物流走 `expressNo` 字段而不是状态。粒度差异是真实的设计选择，
- * 端上不能自己补一套更细的词然后假装后端会给。
+ * 2026-10-14（TDD-订单状态机 AC9）后端把退货的两段拆成了独立状态：
+ * 同意退货 → `WAIT_RETURN`（等寄回），买家填运单 → `RETURNING`（等商家确认收货），
+ * 之后才是 `REFUNDING`（钱在路上）。端上不再用「REFUNDING + 有没有运单号」去猜。
  */
 /** 退款形式（售后规则 §2.4，AC10）：现金原路退 / 折积分补偿。 */
 export type RefundMode = "CASH" | "POINTS";
 
 export type AfterSaleStatus =
   | "APPLIED" // 待商家处理
-  | "REFUNDING" // 商家已同意，退款处理中；退货退款时这一段也含「等买家寄回」
-  | "WAIT_RECEIPT" // 仅退款在「已揽收未签收」审核通过后在这里等签收，签收/退回后才退钱（售后规则 §2.3）
+  | "WAIT_RETURN" // 商家同意退货，等买家寄回
+  | "RETURNING" // 买家已寄回，等商家确认收货
+  | "REFUNDING" // 退款处理中（钱在路上）
+  | "WAIT_RECEIPT" // 仅退款货在途，商家已同意；签收后由商家确认退款（不自动退）
   | "REFUNDED" // 退款完成
   | "REJECTED" // 商家驳回
   | "ARBITRATING" // 用户不服，已上升平台裁决
@@ -797,6 +798,11 @@ export interface AfterSale {
   fulfillStage?: FulfillStage | null;
   /** 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） */
   waitReceipt?: boolean;
+  /**
+   * 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。
+   * 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。
+   */
+  canEscalate?: boolean;
   /** 用户寄回的运单号（RETURN_REFUND） */
   returnExpressNo?: string;
   /** 上升平台时用户的申诉理由 */

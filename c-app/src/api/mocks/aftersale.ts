@@ -230,12 +230,11 @@ export const aftersaleMock: Pick<ShopApi,
     const o = findOrderByAfterSale(afterSaleNo);
     const as = o.afterSale!;
     if (as.type !== "RETURN_REFUND") throw new Error("该售后单不是退货退款");
-    // 只有商家同意之后才谈得上寄回 —— 没同意就寄，货可能被拒收。
-    // 后端同意即进 REFUNDING，没有独立的「等寄回」「已收货」两态：
-    // 退货物流走 expressNo 字段，不是状态（见 AfterSaleStatus 的说明）
-    if (as.status !== "REFUNDING") throw new Error("商家同意后才能填写退货单号");
+    // 只有商家同意退货之后才谈得上寄回（后端 WAIT_RETURN → 填运单 → RETURNING）
+    if (as.status !== "WAIT_RETURN") throw new Error("商家同意后才能填写退货单号");
     if (!expressNo.trim()) throw new Error("请填写退货运单号");
     as.returnExpressNo = expressNo.trim();
+    as.status = "RETURNING";
     as.updatedAt = Date.now();
     pushTimeline(o, `已寄回，运单号 ${as.returnExpressNo}`);
     persist();
@@ -245,8 +244,8 @@ export const aftersaleMock: Pick<ShopApi,
   async raiseDispute(afterSaleNo, reason) {
     const o = findOrderByAfterSale(afterSaleNo);
     const as = o.afterSale!;
-    // **只有被驳回才谈得上申诉** —— 商家还没处理就上升，等于跳过协商
-    if (as.status !== "REJECTED") throw new Error("商家驳回后才能申请平台介入");
+    // 能不能上升由后端判（被驳回 / 在途待签收 / 商家超时）；mock 只模拟最常见的「被驳回」
+    if (!(as.canEscalate ?? as.status === "REJECTED")) throw new Error("现在还不能申请平台介入");
     as.status = "ARBITRATING";
     as.disputeReason = reason;
     as.updatedAt = Date.now();

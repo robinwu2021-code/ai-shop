@@ -137,11 +137,23 @@ function confirmApprove(r: Row) {
  * 只对「已寄回」的退货单出现 —— 用户还没寄就点确认，多半是误操作。
  */
 async function confirmReturn(r: Row) {
+  await runRefund(() => api.mConfirmReturn(r.as.afterSaleNo));
+}
+
+/**
+ * 在途仅退款：签收后系统只提醒，**由商家点这一下才退**（退款永不自动，TDD-订单状态机 AC8）。
+ * 不等签收也可以点 —— 商家判断不用等时自己决定。
+ */
+async function confirmRefund(r: Row) {
+  await runRefund(() => api.mConfirmRefund(r.as.afterSaleNo));
+}
+
+async function runRefund(call: () => Promise<unknown>) {
   if (busy.value) return;
   askMchSubscribe();
   busy.value = true;
   try {
-    await api.mConfirmReturn(r.as.afterSaleNo);
+    await call();
     uni.showToast({ title: t("afterSale.refunded"), icon: "none" });
     await load();
   } catch (e) {
@@ -271,22 +283,24 @@ onShow(load);
         </text>
       </view>
 
-      <!-- 待收货后退款（AC7）：货在途已同意，等买家签收自动退 -->
-      <view v-else-if="asStatus(r) === 'WAIT_RECEIPT'" class="waiting">
-        <text class="sh-muted">{{ $t("afterSale.waitReceiptHint") }}</text>
+      <!-- 货在途已同意：签收后由商家确认退款（不自动退）；不等签收也可以直接确认 -->
+      <view v-else-if="asStatus(r) === 'WAIT_RECEIPT'" class="btns sh-row">
+        <text class="sh-muted sh-fill">{{ $t("afterSale.waitReceiptHint") }}</text>
+        <text class="sh-btn sh-btn--sm txt-strong btn btn--auto" @tap="confirmRefund(r)">
+          {{ $t("afterSale.confirmRefund") }}
+        </text>
       </view>
 
-      <view
-        v-else-if="asStatus(r) === 'REFUNDING' && asType(r) === 'RETURN_REFUND' && !r.as.returnExpressNo"
-        class="waiting"
-      >
+      <!-- 2026-10-14 起退货两段是独立状态：WAIT_RETURN（等寄回）/ RETURNING（已寄回待确认） -->
+      <view v-else-if="asStatus(r) === 'WAIT_RETURN'" class="waiting">
         <text class="sh-muted">{{ $t("afterSale.waitReturn") }}</text>
       </view>
 
-      <view
-        v-else-if="asStatus(r) === 'REFUNDING' && asType(r) === 'RETURN_REFUND'"
-        class="btns sh-row"
-      >
+      <view v-else-if="asStatus(r) === 'REFUNDING'" class="waiting">
+        <text class="sh-muted">{{ $t("afterSale.refundingHint") }}</text>
+      </view>
+
+      <view v-else-if="asStatus(r) === 'RETURNING'" class="btns sh-row">
         <view class="express sh-fill">
           <text class="sh-muted">{{ $t("afterSale.returnExpress") }}</text>
           <text class="sh-num">{{ r.as.returnExpressNo }}</text>

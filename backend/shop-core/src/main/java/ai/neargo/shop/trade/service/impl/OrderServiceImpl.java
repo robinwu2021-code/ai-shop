@@ -2400,6 +2400,9 @@ public class OrderServiceImpl implements OrderService {
      */
     private static final java.util.Set<String> AFTER_SALE_OPEN = java.util.Set.of(
             ai.neargo.shop.trade.entity.OrdAfterSale.APPLIED,
+            // 退货进行中（V403 拆自 REFUNDING）：漏登记的话，退货途中的单会被自动确认收货 / 结算
+            ai.neargo.shop.trade.entity.OrdAfterSale.WAIT_RETURN,
+            ai.neargo.shop.trade.entity.OrdAfterSale.RETURNING,
             ai.neargo.shop.trade.entity.OrdAfterSale.REFUNDING,
             ai.neargo.shop.trade.entity.OrdAfterSale.ARBITRATING);
 

@@ -57,6 +57,7 @@ export const orderMock: Pick<MerchantApi,
   | "mApproveAfterSale"
   | "mRejectAfterSale"
   | "mConfirmReturn"
+  | "mConfirmRefund"
 > = {
   // ---------------------------------------------------------------- 订单与配送
   async mOrderList(q) {
@@ -627,14 +628,21 @@ export const orderMock: Pick<MerchantApi,
     const o = findOrderByAfterSale(afterSaleNo);
     const as = o.afterSale!;
     if (as.type !== "RETURN_REFUND") throw new Error("该售后单不是退货退款");
-    // 用户还没寄（没填运单号）就点确认收货，多半是误操作
-    // 后端没有独立的「等寄回 / 已收货」两态：同意即 REFUNDING，
-    // 是否已寄回看 returnExpressNo 有没有值
-    if (as.status !== "REFUNDING") throw new Error("该售后已处理或状态不对");
-    if (!as.returnExpressNo) throw new Error("用户还未填写退货运单号");
+    // 只认「已寄回」（后端 RETURNING）：用户还没寄就点确认收货，多半是误操作
+    if (as.status !== "RETURNING") throw new Error("该售后已处理或状态不对");
     as.updatedAt = Date.now();
     pushTimeline(o, "商家已确认收到退货");
     // 确认收货与退款是同一个动作的两半，中间不留悬空态
+    settleRefund(o, "退款已发起");
+    persist();
+    return delay(o.afterSale!);
+  },
+  async mConfirmRefund(afterSaleNo) {
+    const o = findOrderByAfterSale(afterSaleNo);
+    const as = o.afterSale!;
+    if (as.status !== "WAIT_RECEIPT") throw new Error("该售后已处理或状态不对");
+    as.updatedAt = Date.now();
+    pushTimeline(o, "商家确认退款");
     settleRefund(o, "退款已发起");
     persist();
     return delay(o.afterSale!);

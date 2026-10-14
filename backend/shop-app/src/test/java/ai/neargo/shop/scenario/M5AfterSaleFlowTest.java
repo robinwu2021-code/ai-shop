@@ -667,18 +667,23 @@ class M5AfterSaleFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ WAIT_RECEIPT 单在买家签收后自动退款（AC7 出口①）")
-    void signed_triggers_waiting_refund() throws Exception {
+    @DisplayName("★★★ 在途仅退款：签收后只提醒商家，商家确认才退（退款永不自动，TDD-订单状态机 AC8）")
+    void signed_reminds_then_merchant_confirms() throws Exception {
         Ordered o = placeAndPay("13200132616", 6980L);
         String asNo = applyAfterSale(o, "REFUND_ONLY", "不想要了");
         shipPickedUp(o.subOrderNo);
-        approve(loginAsOwnerOf("M0001", "13200132617"), asNo);
+        String biz = loginAsOwnerOf("M0001", "13200132617");
+        approve(biz, asNo);
         assertThat(asStatus(o.userToken, asNo)).isEqualTo(OrdAfterSale.WAIT_RECEIPT);
 
         confirmReceipt(o.userToken, o.subOrderNo);
         assertThat(asStatus(o.userToken, asNo))
-                .as("签收应触发那张 WAIT_RECEIPT 单退款")
-                .isEqualTo(OrdAfterSale.REFUNDED);
+                .as("★ 签收后系统自己把钱退了 —— 2026-10-14 前就是这样（撤掉改动即红）")
+                .isEqualTo(OrdAfterSale.WAIT_RECEIPT);
+
+        mvc().perform(post("/biz/after-sale/" + asNo + "/confirm-refund").header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("REFUNDED"));
     }
 
     @Test
@@ -702,7 +707,7 @@ class M5AfterSaleFlowTest {
     // ---------------------------------------------------------------- 平台仲裁（P-6.1）
 
     @Test
-    @DisplayName("★ ARBITRATING 的出口：平台支持用户 → 单子推进到退款")
+    @DisplayName("★ ARBITRATING 的出口：平台支持用户 —— 退货单货还没寄回 → 先等寄回，不让财务在货没回来时放钱")
     void platformArbitratesForUser() throws Exception {
         String asNo = escalated("13200133001", "13200133002");
         String support = opsLogin("support", "support123");
@@ -712,7 +717,8 @@ class M5AfterSaleFlowTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"refund\":true,\"liability\":\"MERCHANT\",\"verdict\":\"照片可见破损，商家承担\"}"))
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("REFUNDING"))
+                // 此前直接 REFUNDING，于是进了财务的分账回退队列 —— 货还没回来钱就可能被退出去
+                .andExpect(jsonPath("$.data.status").value("WAIT_RETURN"))
                 .andExpect(jsonPath("$.data.liability").value("MERCHANT"));
     }
 

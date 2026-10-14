@@ -1673,6 +1673,10 @@ export interface MerchantApi {
    * **退款必须在这一步之后** —— 同意即退的话，货没回来钱先出去了。
    */
   mConfirmReturn(afterSaleNo: string): Promise<AfterSale>;
+  /**
+   * 在途仅退款（WAIT_RECEIPT）由商家确认退款。系统签收后只提醒，**不自动退**（TDD-订单状态机 AC8）。
+   */
+  mConfirmRefund(afterSaleNo: string): Promise<AfterSale>;
 
   // ---- 团购与报价（B-11.6）
   /** 我的团（s09）。status：OPEN（含待审）/ FORMED / FAILED；不传给全部 */

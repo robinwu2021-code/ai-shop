@@ -348,6 +348,7 @@ class BizEndpointPermTest {
         put("/biz/after-sale/{afterSaleNo}/approve", BizPerms.AFTERSALE);
         put("/biz/after-sale/{afterSaleNo}/reject", BizPerms.AFTERSALE);
         put("/biz/after-sale/{afterSaleNo}/receive", BizPerms.AFTERSALE);
+        put("/biz/after-sale/{afterSaleNo}/confirm-refund", BizPerms.AFTERSALE);
 
         // ---- 门店经营面 ----
         put("/biz/store", BizPerms.STORE);

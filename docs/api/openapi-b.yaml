@@ -9883,6 +9883,9 @@ components:
         waitReceipt: 
           type: "boolean"
           description: "是否「待收货后退款」：等价 `status === \"WAIT_RECEIPT\"`，端上少判一层（AC7）"
+        canEscalate: 
+          type: "boolean"
+          description: "买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。"
         returnExpressNo: 
           type: "string"
           description: "用户寄回的运单号（RETURN_REFUND）"
@@ -9941,6 +9944,8 @@ components:
       type: "string"
       enum: 
         - "APPLIED"
+        - "WAIT_RETURN"
+        - "RETURNING"
         - "REFUNDING"
         - "WAIT_RECEIPT"
         - "REFUNDED"
@@ -16807,6 +16812,39 @@ paths:
     post: 
       operationId: "mConfirmReturn"
       summary: "确认收到退货"
+      tags: 
+        - "after-sale"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "afterSaleNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Order"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/after-sale/{afterSaleNo}/confirm-refund": 
+    post: 
+      operationId: "mConfirmRefund"
+      summary: "在途仅退款：商家确认退款"
       tags: 
         - "after-sale"
       security: 

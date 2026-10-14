@@ -72,6 +72,13 @@ public class BizAfterSaleController {
         return afterSaleService.confirmReturn(BizContext.requireMerchantNo(), afterSaleNo);
     }
 
+    /** 在途仅退款：签收后（或商家判断不必等）由商家确认退款。系统不再自动退（TDD-订单状态机 AC8） */
+    @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
+    @PostMapping("/biz/after-sale/{afterSaleNo}/confirm-refund")
+    public AfterSaleVO confirmRefund(@PathVariable String afterSaleNo) {
+        return afterSaleService.confirmRefund(BizContext.requireMerchantNo(), afterSaleNo);
+    }
+
     public record RejectReq(@NotBlank String remark) {
     }
 

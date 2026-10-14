@@ -447,6 +447,7 @@ const RESPONSE_TYPES = {
   mApproveAfterSale: "Order",
   mRejectAfterSale: "Order",
   mConfirmReturn: "Order",
+  mConfirmRefund: "Order",
   mGroupList: "GroupBuy[]",
   mCreateGroup: "GroupBuy",
   mGroup: "GroupBuy",
