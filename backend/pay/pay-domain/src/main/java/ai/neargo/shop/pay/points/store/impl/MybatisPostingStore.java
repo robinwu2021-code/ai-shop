@@ -2,6 +2,8 @@ package ai.neargo.shop.pay.points.store.impl;
 
 import ai.neargo.shop.pay.mapper.points.PointsPostingMapper;
 import ai.neargo.shop.pay.points.model.AccountKey;
+import ai.neargo.shop.pay.points.model.BudgetLockMove;
+import ai.neargo.shop.pay.points.model.PointsKeys;
 import ai.neargo.shop.pay.points.model.EvidenceRef;
 import ai.neargo.shop.pay.points.model.Bucket;
 import ai.neargo.shop.pay.points.model.FundBucket;
@@ -85,8 +87,13 @@ public class MybatisPostingStore implements PostingStore {
         }
         Map<FundBucket, Long> funds = new EnumMap<>(FundBucket.class);
         for (FundMove move : voucher.fundMoves()) { funds.merge(move.bucket(), move.deltaMinor(), Math::addExact); }
+        Map<FundBucket,Long> budget=new EnumMap<>(FundBucket.class);
+        for (BudgetLockMove move:voucher.budgetMoves()) {
+            budget.merge(move.bucket(),move.deltaMinor(),Math::addExact);
+        }
         require(mapper.movePool(type, funds.getOrDefault(FundBucket.U, 0L), funds.getOrDefault(FundBucket.C, 0L),
-                funds.getOrDefault(FundBucket.D, 0L), funds.getOrDefault(FundBucket.B, 0L), voucher.reserveDelta()) == 1,
+                funds.getOrDefault(FundBucket.D, 0L), funds.getOrDefault(FundBucket.B, 0L), voucher.reserveDelta(),
+                budget.getOrDefault(FundBucket.U,0L),budget.getOrDefault(FundBucket.B,0L)) == 1,
                 "POINTS_POOL_OR_RESERVE_INSUFFICIENT");
         Map<String, Object> pool = mapper.lockPool(type);
         for (var entry : funds.entrySet()) {
@@ -96,6 +103,10 @@ public class MybatisPostingStore implements PostingStore {
         if (voucher.reserveDelta() != 0) {
             mapper.flow(UUID.randomUUID().toString(), no, type, "RESERVED_B", voucher.reserveDelta(),
                     number(pool, "reserved_b_minor"));
+        }
+        for (var entry:budget.entrySet()) {
+            mapper.flow(UUID.randomUUID().toString(),no,type,"LOCKED_"+entry.getKey().name(),entry.getValue(),
+                    number(pool,entry.getKey()==FundBucket.U?"locked_u_minor":"locked_b_minor"));
         }
         for (var evidence : voucher.evidenceRefs().stream()
                 .sorted(Comparator.comparing(e -> e.evidenceNo())).toList()) {
@@ -113,6 +124,27 @@ public class MybatisPostingStore implements PostingStore {
             }
             require(mapper.movePosition(move.kind().table(), type, move, revision) == 1,
                     "POINTS_POSITION_STATE_CONFLICT");
+            if (move.kind()==PositionMove.Kind.TRANSFER) {
+                var snapshot=json.readTree(move.payload());
+                var request=snapshot.path("request");
+                var command=snapshot.path("fundsCommand");
+                String action=request.path("action").asText();
+                if ("WITHDRAW_U".equals(action) || "WITHDRAW_B".equals(action)) {
+                    String bucket="WITHDRAW_U".equals(action)?"U":"B";
+                    long amount=request.path("amountMinor").longValue();
+                    require(type.equals(request.path("typeCode").asText()) && amount>0
+                            && voucher.currency().equals(command.path("currency").asText())
+                            && amount==command.path("amountMinor").longValue()
+                            && move.positionNo().equals(command.path("ticketNo").asText())
+                            && move.positionNo().equals(PointsKeys.position("W",type,request.path("requestNo").asText()))
+                            && !command.path("providerIdem").asText().isBlank()
+                            && "TRANSFER".equals(command.path("purpose").asText())
+                            && ("U".equals(bucket)?voucher.rate().toMinor(move.originalPoints())==amount:
+                            move.originalPoints()==0),"POINTS_WITHDRAW_SNAPSHOT_INVALID");
+                    require(mapper.indexWithdrawal(move.positionNo(),bucket,amount,
+                            command.path("providerIdem").asText())==1,"POINTS_WITHDRAW_SNAPSHOT_INVALID");
+                }
+            }
             if (move.kind()==PositionMove.Kind.PAYOUT) {
                 var snapshot=json.readTree(move.payload());
                 var ticket=snapshot.path("ticket");
@@ -165,6 +197,9 @@ public class MybatisPostingStore implements PostingStore {
             }
             require(mapper.moveReserve(type, move, revision) == 1, "POINTS_RESERVE_STATE_CONFLICT");
         }
+        require(mapper.lockedWithdrawalTotal(type,"U")==number(pool,"locked_u_minor")
+                && mapper.lockedWithdrawalTotal(type,"B")==number(pool,"locked_b_minor"),
+                "POINTS_WITHDRAW_LOCK_TOTAL_MISMATCH");
         require(mapper.reserveTotal(type) == number(pool, "reserved_b_minor"), "POINTS_RESERVE_TOTAL_MISMATCH");
         if (voucher.bizRef().startsWith("GRANT:") || voucher.bizRef().startsWith("HOLD:")) {
             long at=System.currentTimeMillis();

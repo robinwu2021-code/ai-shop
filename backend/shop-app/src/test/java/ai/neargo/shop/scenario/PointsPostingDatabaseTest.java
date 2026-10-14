@@ -39,6 +39,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import javax.sql.DataSource;
+import java.sql.SQLException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -57,8 +58,24 @@ class PointsPostingDatabaseTest {
 
     @BeforeAll
     void schema() {
+        initializeSchema(dataSource);
+    }
+
+    static void initializeSchema(DataSource dataSource) {
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V408__points_v3_ledger.sql"))
                 .execute(dataSource);
+        try (var connection=dataSource.getConnection();
+             var columns=connection.getMetaData().getColumns(connection.getCatalog(),null,"pts_fund_pool",null)) {
+            boolean installed=false;
+            while (columns.next()) {
+                installed|="locked_u_minor".equalsIgnoreCase(columns.getString("COLUMN_NAME"));
+            }
+            if (!installed) {
+                new ResourceDatabasePopulator(
+                        new ClassPathResource("db/migration/V411__points_withdrawal_budget_locks.sql"))
+                        .execute(dataSource);
+            }
+        } catch (SQLException failure) { throw new IllegalStateException("Points schema fixture failed",failure); }
     }
 
     @Test

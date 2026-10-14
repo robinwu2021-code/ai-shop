@@ -52,9 +52,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -92,8 +90,7 @@ class PointsPayoutPreparationTest {
 
     @BeforeAll
     void schema() {
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V408__points_v3_ledger.sql"))
-                .execute(dataSource);
+        PointsPostingDatabaseTest.initializeSchema(dataSource);
         jdbc().execute("CREATE TABLE stl_bill (id BIGINT AUTO_INCREMENT PRIMARY KEY,settle_no VARCHAR(64),"
                 + "sub_order_no VARCHAR(64),entity_no VARCHAR(64),status VARCHAR(24),tenant_no VARCHAR(32),"
                 + "created_at DATETIME,created_by VARCHAR(64),updated_at DATETIME,updated_by VARCHAR(64),"
@@ -358,6 +355,17 @@ class PointsPayoutPreparationTest {
                 + " AND holder_type='STORE' AND holder_no='STORE'",Long.class,command.typeCode())).isZero();
         assertThat(jdbc().queryForObject("SELECT state FROM pts_redeem_position WHERE position_no=?",String.class,
                 command.positionIds().getFirst())).isEqualTo("SETTLEABLE");
+    }
+
+    @Test
+    void paid_version_cannot_hide_an_independent_finalization_version() {
+        PayoutCommand command=fixture(false,false,true);
+        var paid=paidFact(command);
+        paid(new LifecycleFact(paid.eventNo(),paid.payloadHash(),paid.subOrderNo(),paid.userNo(),paid.typeCode(),
+                100,paid.kind(),paid.finalGoodsMinor(),paid.refundedGoodsMinor(),paid.lines(),paid.occurredAt()));
+        context.getBean(PointsSettlementHook.class).onBillFinalized(finalFact(command,"FINAL:"+command.typeCode(),2));
+        assertThat(jdbc().queryForObject("SELECT available_points FROM pts_account WHERE type_code=?"
+                + " AND holder_type='STORE' AND holder_no='STORE'",Long.class,command.typeCode())).isEqualTo(30);
     }
 
     private LifecycleFact paidFact(PayoutCommand command) {

@@ -4841,6 +4841,8 @@ CREATE TABLE IF NOT EXISTS pts_fund_pool
     d_minor BIGINT NOT NULL DEFAULT 0,
     b_minor BIGINT NOT NULL DEFAULT 0,
     reserved_b_minor BIGINT NOT NULL DEFAULT 0,
+    locked_u_minor BIGINT NOT NULL DEFAULT 0,
+    locked_b_minor BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_pts_pool UNIQUE (type_code),
     id BIGINT NOT NULL AUTO_INCREMENT,
     tenant_no VARCHAR(32) DEFAULT NULL,
@@ -5121,6 +5123,9 @@ CREATE TABLE IF NOT EXISTS pts_fund_transfer
     original_points BIGINT NOT NULL DEFAULT 0,
     processed_points BIGINT NOT NULL DEFAULT 0,
     payload_json MEDIUMTEXT NOT NULL,
+    withdraw_bucket VARCHAR(8) DEFAULT NULL,
+    amount_minor BIGINT NOT NULL DEFAULT 0,
+    provider_idem VARCHAR(80) DEFAULT NULL,
     CONSTRAINT uk_pts_fund_transfer_position UNIQUE (position_no),
     evidence_no VARCHAR(120) DEFAULT NULL,
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -5131,7 +5136,8 @@ CREATE TABLE IF NOT EXISTS pts_fund_transfer
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pts_transfer_provider UNIQUE (provider_idem)
 );
 
 CREATE TABLE IF NOT EXISTS pts_grant_line

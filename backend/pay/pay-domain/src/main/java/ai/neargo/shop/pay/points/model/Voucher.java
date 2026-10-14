@@ -10,13 +10,21 @@ import java.util.Objects;
 public record Voucher(String bizRef, String typeCode, String currency, RedeemRate rate,
                       List<PointsMove> pointsMoves, List<FundMove> fundMoves,
                       List<PositionMove> positionMoves, long reserveDelta,
-                      List<EvidenceRef> evidenceRefs, String resultSnapshot, List<ReserveMove> reserveMoves) {
+                      List<EvidenceRef> evidenceRefs, String resultSnapshot, List<ReserveMove> reserveMoves,
+                      List<BudgetLockMove> budgetMoves) {
     public Voucher {
         pointsMoves = List.copyOf(pointsMoves);
         fundMoves = List.copyOf(fundMoves);
         positionMoves = List.copyOf(positionMoves);
         evidenceRefs = List.copyOf(evidenceRefs);
         reserveMoves = List.copyOf(reserveMoves);
+        budgetMoves = List.copyOf(budgetMoves);
+    }
+    public Voucher(String bizRef,String typeCode,String currency,RedeemRate rate,
+                   List<PointsMove> pointsMoves,List<FundMove> fundMoves,List<PositionMove> positionMoves,
+                   long reserveDelta,List<EvidenceRef> evidenceRefs,String resultSnapshot,List<ReserveMove> reserveMoves) {
+        this(bizRef,typeCode,currency,rate,pointsMoves,fundMoves,positionMoves,reserveDelta,evidenceRefs,
+                resultSnapshot,reserveMoves,List.of());
     }
     public Voucher(String bizRef, String typeCode, String currency, RedeemRate rate,
                    List<PointsMove> pointsMoves, List<FundMove> fundMoves, List<PositionMove> positionMoves,
@@ -32,6 +40,11 @@ public record Voucher(String bizRef, String typeCode, String currency, RedeemRat
             throw new IllegalArgumentException("Missing immutable voucher identity or result");
         }
         Objects.requireNonNull(rate, "rate");
+        for (BudgetLockMove move:budgetMoves) {
+            if ((move.bucket()!=FundBucket.U && move.bucket()!=FundBucket.B) || move.deltaMinor()==0) {
+                throw new IllegalArgumentException("Invalid outgoing budget reservation");
+            }
+        }
         long reserveTotal = 0;
         for (ReserveMove reserve : reserveMoves) {
             if (reserve.reserveNo() == null || reserve.positionNo() == null || reserve.originalMinor() < 0

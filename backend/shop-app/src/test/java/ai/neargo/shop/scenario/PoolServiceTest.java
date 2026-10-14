@@ -50,6 +50,15 @@ class PoolServiceTest {
         assertThat(read.account(type,HolderType.MINT,"PLATFORM").points(Bucket.ISSUED)).isEqualTo(-100L);
     }
 
+    @Test
+    void refund_buffer_cash_need_not_be_divisible_by_the_points_rate() {
+        String no="PS"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
+        types.create(new PointTypeService.CreateType(no,"CN",new RedeemRate(2,3),3000,365),"maker");
+        approved(no,PoolRequest.Action.TOPUP_B,2,"B");
+        assertThat(read.pool(no).b()).isEqualTo(2);
+        assertThat(read.account(no,HolderType.MINT,"PLATFORM").points(Bucket.ISSUED)).isZero();
+    }
+
     private String type() {
         String no="PS"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
         types.create(new PointTypeService.CreateType(no,"CN",new RedeemRate(1,1),3000,365),"maker");

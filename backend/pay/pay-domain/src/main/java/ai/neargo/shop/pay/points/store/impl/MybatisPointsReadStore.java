@@ -37,7 +37,7 @@ public class MybatisPointsReadStore implements PointsReadStore {
             Map<String, Object> row = mapper.pool(no);
             if (row == null) { throw new IllegalArgumentException("POINTS_TYPE_UNKNOWN"); }
             return new FundPool(no, (String) row.get("currency"), num(row,"u_minor"), num(row,"c_minor"),
-                    num(row,"d_minor"), num(row,"b_minor"), num(row,"reserved_b_minor"));
+                    num(row,"d_minor"), num(row,"b_minor"), num(row,"reserved_b_minor"),num(row,"locked_u_minor"),num(row,"locked_b_minor"));
         });
     }
     @Override public AccountSnapshot account(String type, HolderType holder, String no) {

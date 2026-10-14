@@ -55,14 +55,13 @@ class PoolRequestServiceTest {
     }
 
     @Test
-    void withdrawals_wait_for_committed_outgoing_intent() {
+    void withdrawals_require_the_original_bank_target() {
         String type=type();
         PoolRequestService requests=context.getBean(PoolRequestService.class);
-        requests.submit(new PoolRequest("W:"+type,type,PoolRequest.Action.WITHDRAW_B,100,"maker","RECEIPT"));
-        assertThatThrownBy(() -> requests.approve("W:"+type,"checker"))
-                .isInstanceOf(UnsupportedOperationException.class);
-        assertThat(jdbc().queryForObject("SELECT state FROM pts_pool_request WHERE request_no=?",String.class,"W:"+type))
-                .isEqualTo("SUBMITTED");
+        assertThatThrownBy(() -> requests.submit(new PoolRequest("W:"+type,type,PoolRequest.Action.WITHDRAW_B,
+                100,"maker",null))).hasMessage("POINTS_WITHDRAW_TARGET_REQUIRED");
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_pool_request WHERE request_no=?",Long.class,
+                "W:"+type)).isZero();
     }
 
     private String type() {

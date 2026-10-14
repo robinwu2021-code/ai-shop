@@ -27,6 +27,8 @@ public class PoolRequestServiceImpl implements PoolRequestService {
                 || r.action()==null || r.amountMinor()<=0 || read.type(r.typeCode()).isEmpty()) {
             throw new IllegalArgumentException("POINTS_REQUEST_INVALID");
         }
+        if ((r.action()==PoolRequest.Action.WITHDRAW_U || r.action()==PoolRequest.Action.WITHDRAW_B)
+                && r.fundsContext()==null) { throw new IllegalArgumentException("POINTS_WITHDRAW_TARGET_REQUIRED"); }
         try { config.submit(r,json.writeValueAsString(new Envelope(r,null))); }
         catch (DuplicateKeyException e) {
             var prior=config.lockRequest(r.requestNo());

@@ -44,11 +44,23 @@ public interface PointsPostingMapper {
 
     @Update("UPDATE pts_fund_pool SET u_minor=u_minor+#{u},c_minor=c_minor+#{c},"
             + "d_minor=d_minor+#{d},b_minor=b_minor+#{b},reserved_b_minor=reserved_b_minor+#{reserved},"
+            + "locked_u_minor=locked_u_minor+#{lockedU},locked_b_minor=locked_b_minor+#{lockedB},"
             + "version=version+1 WHERE type_code=#{type} AND u_minor+#{u}>=0 AND c_minor+#{c}>=0 "
             + "AND d_minor+#{d}>=0 AND b_minor+#{b}>=0 AND reserved_b_minor+#{reserved}>=0 "
-            + "AND b_minor+#{b}>=reserved_b_minor+#{reserved}")
+            + "AND locked_u_minor+#{lockedU}>=0 AND locked_b_minor+#{lockedB}>=0"
+            + " AND u_minor+#{u}>=locked_u_minor+#{lockedU}"
+            + " AND b_minor+#{b}>=reserved_b_minor+#{reserved}+locked_b_minor+#{lockedB}")
     int movePool(@Param("type") String type, @Param("u") long u, @Param("c") long c,
-                 @Param("d") long d, @Param("b") long b, @Param("reserved") long reserved);
+                 @Param("d") long d, @Param("b") long b, @Param("reserved") long reserved,
+                 @Param("lockedU") long lockedU,@Param("lockedB") long lockedB);
+
+    @Update("UPDATE pts_fund_transfer SET withdraw_bucket=#{bucket},amount_minor=#{amount},provider_idem=#{idem}"
+            + " WHERE position_no=#{no}")
+    int indexWithdrawal(@Param("no") String no,@Param("bucket") String bucket,@Param("amount") long amount,
+                        @Param("idem") String idem);
+    @Select("SELECT COALESCE(SUM(amount_minor),0) FROM pts_fund_transfer WHERE type_code=#{type}"
+            + " AND withdraw_bucket=#{bucket} AND state IN ('READY','DISPATCHING','UNKNOWN')")
+    long lockedWithdrawalTotal(@Param("type") String type,@Param("bucket") String bucket);
 
     @Insert("INSERT INTO pts_fund_evidence(evidence_no,currency,external_minor,verified)"
             + " VALUES(#{no},#{currency},#{amount},1)")

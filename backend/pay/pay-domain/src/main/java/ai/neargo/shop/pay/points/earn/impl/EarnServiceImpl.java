@@ -73,7 +73,7 @@ public class EarnServiceImpl implements EarnService {
         if (reason==null && read.account(c.typeCode(),HolderType.USER,c.userNo()).frozen()) { reason="POINTS_FROZEN"; }
         if (reason==null && decision.grantedPoints()==0) { reason="POINTS_RULE_ZERO"; }
         long amount=type.rate().toMinor(decision.grantedPoints());
-        if (reason==null && read.pool(c.typeCode()).u()<amount) { reason="POINTS_POOL_INSUFFICIENT"; }
+        if (reason==null && read.pool(c.typeCode()).freeU()<amount) { reason="POINTS_POOL_INSUFFICIENT"; }
         boolean granted=reason==null;
         long actual=granted?decision.grantedPoints():0;
         var result=new PointsEarnPort.GrantOutcome(granted?PointsEarnPort.GrantStatus.GRANTED:

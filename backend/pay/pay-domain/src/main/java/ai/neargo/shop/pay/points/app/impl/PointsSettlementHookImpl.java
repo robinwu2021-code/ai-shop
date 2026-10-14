@@ -104,13 +104,13 @@ public class PointsSettlementHookImpl implements PointsSettlementHook {
             return;
         }
         var lifecycle=read.lifecycle(fact.typeCode(),fact.subOrderNo());
-        if (lifecycle!=null && number(lifecycle,"source_version")>fact.sourceVersion()) {
-            facts.record(fact,payload,"STALE");
-            return;
-        }
-        if (lifecycle!=null && number(lifecycle,"source_version")==fact.sourceVersion()) {
-            var saved=json.readTree((String)lifecycle.get("payload_json")).path("finalFact");
-            require(saved.isObject() && saved.equals(json.readTree(payload)),"POINTS_FACT_VERSION_CONFLICT");
+        var saved=lifecycle==null?null:json.readTree((String)lifecycle.get("payload_json")).path("finalFact");
+        if (saved!=null && saved.isObject()) {
+            long finalVersion=saved.path("sourceVersion").longValue();
+            if (finalVersion>fact.sourceVersion()) { facts.record(fact,payload,"STALE"); return; }
+            if (finalVersion==fact.sourceVersion()) {
+                require(saved.equals(json.readTree(payload)),"POINTS_FACT_VERSION_CONFLICT");
+            }
         }
         PointType type=read.type(fact.typeCode()).orElseThrow();
         List<PointsMove> moves=new ArrayList<>();
