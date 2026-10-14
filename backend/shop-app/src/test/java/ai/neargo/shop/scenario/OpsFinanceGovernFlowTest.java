@@ -186,12 +186,12 @@ class OpsFinanceGovernFlowTest {
         String settleNo = billOf(biz, o.subOrderNo()).get("settleNo").asString();
         settleService.executeSplit(settleNo);
 
-        // 退货退款 + 商家同意：状态同样是 REFUNDING，但**没有责任方** —— 货还没回来
+        // 退货退款 + 商家同意：2026-10-14 起是独立状态 WAIT_RETURN（此前也叫 REFUNDING，只能靠「没有责任方」区分）
         String asNo = applyAfterSale(o, "RETURN_REFUND", "尺码不对");
         mvc().perform(post("/biz/after-sale/" + asNo + "/approve")
                         .header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.code").value(0));
-        assertThat(afterSaleStatus(o.userToken(), asNo)).isEqualTo("REFUNDING");
+        assertThat(afterSaleStatus(o.userToken(), asNo)).isEqualTo("WAIT_RETURN");
 
         /*
          * liability 是关键判别器：REFUNDING 有两个来源，
@@ -308,7 +308,9 @@ class OpsFinanceGovernFlowTest {
      * 而那不是缺陷，是用例假设了另一种主体。
      */
     private String escalated(String bizToken, Ordered o) throws Exception {
-        String asNo = applyAfterSale(o, "RETURN_REFUND", "收到时已破损");
+        // 仅退款：退货单在货寄回前被裁决「退」会先转 WAIT_RETURN（不进本队列，见下一条用例），
+        // 这里要验的是「裁决退款 → 进回退队列 → 真回退」，用仅退款
+        String asNo = applyAfterSale(o, "REFUND_ONLY", "收到时已破损");
         if ("ARBITRATING".equals(afterSaleStatus(o.userToken(), asNo))) {
             return asNo;
         }

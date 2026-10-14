@@ -150,11 +150,11 @@ class AfterSaleTimeoutFlowTest {
                 .contains(asNo);
         sweep();
         assertThat(statusOf(asNo)).as("★ 系统替商家退了钱 —— 退款永远不自动").isEqualTo(OrdAfterSale.APPLIED);
-        assertThat(timelineLabels(token, asNo)).filteredOn(l -> l.contains("售后提醒·商家超时未处理")).hasSize(1);
+        assertThat(timelineLabels(token, asNo)).filteredOn(l -> l.contains("商家超时未处理，已提醒商家")).hasSize(1);
 
         // 十分钟后又扫一轮：24h 内不重复提醒
         sweep();
-        assertThat(timelineLabels(token, asNo)).filteredOn(l -> l.contains("售后提醒·商家超时未处理")).hasSize(1);
+        assertThat(timelineLabels(token, asNo)).filteredOn(l -> l.contains("商家超时未处理，已提醒商家")).hasSize(1);
 
         // 商家超时后，买家可申请平台介入
         assertThat(canEscalate(token, asNo)).isTrue();
@@ -231,7 +231,7 @@ class AfterSaleTimeoutFlowTest {
         backdate(asNo, confirmHours + 1);
         sweep();
         assertThat(statusOf(asNo)).as("★ 系统替商家退了钱 —— 退款永远不自动").isEqualTo(OrdAfterSale.RETURNING);
-        assertThat(timelineLabels(token, asNo)).anySatisfy(l -> assertThat(l).contains("售后提醒·退货待确认收货"));
+        assertThat(timelineLabels(token, asNo)).anySatisfy(l -> assertThat(l).contains("退货已寄回，商家超时未确认收货"));
         assertThat(canEscalate(token, asNo)).isTrue();
     }
 

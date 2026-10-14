@@ -1213,10 +1213,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     // ---------------------------------------------------------------- 状态机 / 提醒 / 介入入口
 
-    /** 提醒的流水标签：每种最多提醒两次（到点一次、再隔 24h 一次），按标签计数 */
-    private static final String REMIND_OVERDUE = "售后提醒·商家超时未处理";
-    private static final String REMIND_RETURN = "售后提醒·退货待确认收货";
-    private static final String REMIND_SIGNED = "售后提醒·已签收待确认退款";
+    /** 提醒的流水事件名（落 ord_status_log.event）：每种最多提醒两次（到点一次、再隔 24h 一次） */
+    private static final String REMIND_OVERDUE = "REMIND_MERCHANT_OVERDUE";
+    private static final String REMIND_RETURN = "REMIND_RETURN_UNCONFIRMED";
+    private static final String REMIND_SIGNED = "REMIND_SIGNED_CONFIRM_REFUND";
     private static final int REMIND_MAX = 2;
     private static final long REMIND_GAP_MS = 24 * 3_600_000L;
 
@@ -1243,20 +1243,37 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         };
     }
 
-    /** 提醒商家（写流水 + 发「售后待处理」事件走既有的商家触达）；每种最多两次、间隔 24h */
+    /**
+     * 提醒商家（写流水 + 发「售后待处理」事件走既有的商家触达）；每种最多两次、间隔 24h。
+     *
+     * <p>去重按 V402 的 {@code aggregate_no + event} 精确查这张售后单自己的提醒，<b>不按时间窗口、不按标签文字</b>。
+     * 上一版按「标签前缀 + at ≥ 售后创建时间」查，在全量测试里出现过重复提醒（单跑复现不了，
+     * 根因未定位；时间窗口要做 LocalDateTime → 毫秒的时区换算，是嫌疑之一），换成按单号与事件名查之后不再依赖它。
+     */
     private void remind(OrdAfterSale as, String tag, String label) {
         List<OrdStatusLog> sent = DataScopeContext.executeWithoutScope(() -> statusLogMapper.selectList(
                 Wrappers.<OrdStatusLog>lambdaQuery()
-                        .eq(OrdStatusLog::getSubOrderNo, as.getSubOrderNo())
-                        .likeRight(OrdStatusLog::getLabel, tag)
-                        .ge(OrdStatusLog::getAt, millis(as.getCreatedAt()))
+                        .eq(OrdStatusLog::getAggregateNo, as.getAfterSaleNo())
+                        .eq(OrdStatusLog::getEvent, tag)
                         .orderByDesc(OrdStatusLog::getId)));
         long now = System.currentTimeMillis();
         if (sent.size() >= REMIND_MAX
                 || (!sent.isEmpty() && sent.get(0).getAt() != null && now - sent.get(0).getAt() < REMIND_GAP_MS)) {
             return;
         }
-        appendLog(as.getSubOrderNo(), as.getStatus(), tag + "：" + label, OrdStatusLog.BY_SYSTEM, null);
+        OrdStatusLog row = new OrdStatusLog();
+        row.setSubOrderNo(as.getSubOrderNo());
+        row.setAggregateType("AFTER_SALE");
+        row.setAggregateNo(as.getAfterSaleNo());
+        row.setEvent(tag);
+        row.setFromStatus(as.getStatus());
+        row.setStatus(as.getStatus());
+        row.setLabel(label);
+        row.setOperatorType(OrdStatusLog.BY_SYSTEM);
+        row.setAt(now);
+        row.setTenantNo("MAIN");
+        row.setCreatedAt(LocalDateTime.now());
+        DataScopeContext.executeWithoutScope(() -> statusLogMapper.insert(row));
         OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
         eventBus.publish(new OrderEvents.AfterSaleApplied(as.getAfterSaleNo(), as.getSubOrderNo(),
                 as.getEntityNo(), sub == null ? null : sub.getStoreNo(), as.getUserNo(), as.getType(),
