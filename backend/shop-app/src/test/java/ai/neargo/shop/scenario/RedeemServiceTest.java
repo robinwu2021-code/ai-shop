@@ -159,6 +159,25 @@ class RedeemServiceTest {
         } finally { db("payDataSource").update("UPDATE pts_point_type SET active_market=NULL WHERE type_code=?",type); }
     }
 
+    @Test
+    void draining_type_allows_existing_balance_redemption_but_no_new_grants() throws Exception {
+        String type=fixture(true);
+        try {
+            types.drain(type,"ops");
+            RedeemService redeem=context.getBean(RedeemService.class);
+            var c=command(type);
+            assertThat(redeem.quote(new PointsRedeemPort.RedeemQuery(c.market(),c.userNo(),c.wantPoints(),
+                    c.payMode(),c.clientType(),c.targets())).points()).isEqualTo(100);
+            assertThat(redeem.hold(c).points()).isEqualTo(100);
+            var skipped=earning.grant(new PointsEarnPort.GrantCommand("NEW:"+type,"NEW-S:"+type,"U",type,
+                    "TEST","MP",1,List.of(new PointsEarnPort.EarnLine("I","G","C",1,100,0,
+                    new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.FIXED,100)))));
+            assertThat(skipped.status()).isEqualTo(PointsEarnPort.GrantStatus.SKIPPED);
+            assertThat(skipped.reason()).isEqualTo("POINTS_TYPE_NOT_ACTIVE");
+            assertThat(read.pool(type).reservedBMinor()).isEqualTo(100);
+        } finally { db("payDataSource").update("UPDATE pts_point_type SET active_market=NULL WHERE type_code=?",type); }
+    }
+
     private String fixture(boolean reserve) throws Exception {
         String type="RD"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
         types.create(new PointTypeService.CreateType(type,"CN",new RedeemRate(1,1),10000,365),"ops");

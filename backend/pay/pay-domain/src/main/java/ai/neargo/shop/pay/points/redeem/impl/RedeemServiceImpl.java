@@ -146,7 +146,9 @@ public class RedeemServiceImpl implements RedeemService {
     private Evaluation evaluate(RedeemQuery q,PointType type) {
         String reason=null;
         if (!enabled) { reason="POINTS_DISABLED"; }
-        else if (type.status()!=PointType.Status.ACTIVE) { reason="POINTS_TYPE_NOT_ACTIVE"; }
+        else if (type.status()!=PointType.Status.ACTIVE && type.status()!=PointType.Status.DRAINING) {
+            reason="POINTS_TYPE_NOT_ACTIVE";
+        }
         else if ("OFFLINE".equals(q.payMode())) { reason="POINTS_OFFLINE"; }
         var account=read.account(type.typeCode(),HolderType.USER,q.userNo());
         if (reason==null && account.frozen()) { reason="POINTS_FROZEN"; }

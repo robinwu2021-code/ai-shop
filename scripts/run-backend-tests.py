@@ -128,7 +128,7 @@ def main(argv=None):
     parser.add_argument('--backend-root', type=Path, default=ROOT / 'backend')
     parser.add_argument('--output', type=Path, help='Parent directory; each run creates a new child directory')
     parser.add_argument('--slow-seconds', type=nonnegative, default=1)
-    parser.add_argument('--timeout', type=positive, default=120)
+    parser.add_argument('--timeout', type=nonnegative, default=120, help='0 disables the automatic deadline')
     parser.add_argument('--collect-only', action='store_true', help='Analyze existing reports without executing tests')
     parser.add_argument('--report', action='append', type=Path, help='Explicit report file; may be repeated')
     parser.add_argument('--since', type=nonnegative, help='Historical collection only: minimum report update epoch')
@@ -153,7 +153,7 @@ def main(argv=None):
                 process = subprocess.Popen(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT,
                                            start_new_session=True)
                 try:
-                    child_code = process.wait(timeout=args.timeout)
+                    child_code = process.wait(timeout=args.timeout if args.timeout else None)
                     code = child_code if child_code >= 0 else 128 - child_code
                 except subprocess.TimeoutExpired:
                     timed_out = True
@@ -176,6 +176,7 @@ def main(argv=None):
                     'wall_seconds': round(time.monotonic() - started, 6), 'command_exit_code': code,
                     'child_exit_code': child_code, 'timed_out': timed_out, 'interrupted': interrupted,
                     'launch_error': launch_error, 'timeout_seconds': args.timeout if command else None,
+                    'timeout_enabled': bool(command and args.timeout),
                     'report_status': 'partial' if timed_out or interrupted or launch_error or summary['report_errors']
                     or summary['test_count'] == 0 else 'complete_for_available_reports'})
     (output / 'summary.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2, allow_nan=False) + '\n',

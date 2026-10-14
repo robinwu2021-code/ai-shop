@@ -73,6 +73,18 @@ class TimingLogTest(unittest.TestCase):
             self.assertIsNone(self.rows(root / 'out' / 'test-timings.log')[0]['duration_seconds'])
             self.assertEqual(len(self.rows(root / 'out' / 'slow-tests.log')), 0)
 
+    def test_zero_timeout_disables_deadline_but_keeps_elapsed_record(self):
+        self.load()
+        with tempfile.TemporaryDirectory() as temp:
+            command = [sys.executable, str(SCRIPT), '--backend-root', temp, '--output', temp,
+                       '--timeout', '0', '--', sys.executable, '-c', 'import time; time.sleep(0.15)']
+            run = subprocess.run(command, capture_output=True, text=True, timeout=5)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            summary = json.loads(next(Path(temp).glob('*/summary.json')).read_text())
+            self.assertFalse(summary['timeout_enabled'])
+            self.assertFalse(summary['timed_out'])
+            self.assertGreaterEqual(summary['wall_seconds'], 0.15)
+
     def test_command_failure_exit_code_is_preserved(self):
         self.load()
         with tempfile.TemporaryDirectory() as temp:
