@@ -4,6 +4,8 @@ import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.pay.points.app.PointsSettlementHook.PayoutCommand;
 import ai.neargo.shop.pay.points.app.PointsSettlementHook.PayoutTicket;
+import ai.neargo.shop.pay.points.app.PointsSettlementHook.PayoutOutcome;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway;
 import ai.neargo.shop.pay.points.model.AccountKey;
 import ai.neargo.shop.pay.points.model.AgreementSnapshot;
 import ai.neargo.shop.pay.points.model.Bucket;
@@ -37,6 +39,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
@@ -52,6 +55,10 @@ import javax.sql.DataSource;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.UUID;
+import java.util.Set;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -70,6 +77,7 @@ class PointsPayoutPreparationTest {
     @Autowired private BillMapper bills;
     @Autowired @Qualifier("payDataSource") private DataSource dataSource;
     @Autowired @Qualifier("payTxManager") private PlatformTransactionManager txManager;
+    @Autowired private LostReplyFunds testFunds;
     private final ObjectMapper json=new ObjectMapper();
 
     @BeforeAll
@@ -140,6 +148,63 @@ class PointsPayoutPreparationTest {
                 .isZero();
     }
 
+    @Test
+    void unknown_external_success_never_repays() {
+        PayoutCommand c=fixture(true);
+        PayoutTicket ticket=begin(c);
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.UNKNOWN);
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",Long.class,c.typeCode()))
+                .isEqualTo(30);
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.SUCCEEDED);
+        assertThat(execute(ticket.ticketNo()).replayed()).isTrue();
+        assertThat(testFunds.sends.get(ticket.ticketNo())).isEqualTo(1);
+        assertThat(testFunds.queries.get(ticket.ticketNo())).isEqualTo(1);
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",Long.class,c.typeCode()))
+                .isZero();
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_redeem_position WHERE position_no=?",String.class,
+                c.positionIds().getFirst())).isEqualTo("PAID");
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_fund_evidence WHERE evidence_no=?"
+                + " AND used_voucher_no IS NOT NULL",Long.class,"TEST-PAID:"+ticket.ticketNo())).isEqualTo(1);
+    }
+
+    @Test
+    void definitive_failure_releases_payment_lock_without_debiting_d() {
+        PayoutCommand c=fixture(true);
+        PayoutTicket ticket=begin(c);
+        testFunds.rejections.add(ticket.ticketNo());
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.FAILED);
+        assertThat(execute(ticket.ticketNo()).replayed()).isTrue();
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",Long.class,c.typeCode()))
+                .isEqualTo(30);
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_redeem_position WHERE position_no=?",String.class,
+                c.positionIds().getFirst())).isEqualTo("PAYABLE");
+        assertThat(testFunds.sends.get(ticket.ticketNo())).isEqualTo(1);
+        assertThat(testFunds.queries.getOrDefault(ticket.ticketNo(),0)).isZero();
+    }
+
+    @Test
+    void foreign_ticket_receipt_cannot_confirm_another_payout() {
+        PayoutCommand c=fixture(true);
+        PayoutTicket ticket=begin(c);
+        execute(ticket.ticketNo());
+        testFunds.corruptReceipts.add(ticket.ticketNo());
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.UNKNOWN);
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",Long.class,c.typeCode()))
+                .isEqualTo(30);
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_payout_ticket WHERE position_no=?",String.class,
+                ticket.ticketNo())).isEqualTo("UNKNOWN");
+    }
+
+    private PayoutOutcome execute(String ticket) {
+        try {
+            Class<?> type=Class.forName("ai.neargo.shop.pay.points.payout.PointsPayoutExecutionService");
+            return (PayoutOutcome)type.getMethod("execute",String.class).invoke(context.getBean(type),ticket);
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof RuntimeException cause) { throw cause; }
+            throw new AssertionError(e.getCause());
+        } catch (ReflectiveOperationException e) { throw new AssertionError("Payout execution service missing",e); }
+    }
+
     private PayoutCommand fixture(boolean finalSnapshot) {
         String type="PY"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
         jdbc().update("INSERT INTO pts_point_type(type_code,market,currency,rate_points,rate_minor,status)"
@@ -191,5 +256,34 @@ class PointsPayoutPreparationTest {
     @Configuration
     @Import({PointsPostingDatabaseTest.Config.class,MybatisPointsReadStore.class,MybatisPointsConfigurationStore.class})
     @ComponentScan(basePackages="ai.neargo.shop.pay.points.payout")
-    static class Config { }
+    static class Config {
+        @Bean LostReplyFunds testFunds() { return new LostReplyFunds(); }
+    }
+    /** Simulates a bank that completed the operation but whose first reply was lost; never a production adapter. */
+    static class LostReplyFunds implements PointsFundsGateway {
+        final Map<String,Integer> sends=new ConcurrentHashMap<>();
+        final Map<String,Integer> queries=new ConcurrentHashMap<>();
+        final Map<String,FundsCommand> originals=new ConcurrentHashMap<>();
+        final Set<String> corruptReceipts=ConcurrentHashMap.newKeySet();
+        final Set<String> rejections=ConcurrentHashMap.newKeySet();
+        @Override public FundsCapabilities capabilities(FundsContext c) {
+            return new FundsCapabilities(true,true,true,false);
+        }
+        @Override public FundsResult submit(FundsCommand c) {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            sends.merge(c.ticketNo(),1,Integer::sum);
+            if (rejections.contains(c.ticketNo())) {
+                return new FundsResult(c.ticketNo(),FundsStatus.FAILED,null,c.amountMinor(),"TEST_REJECTED");
+            }
+            originals.put(c.ticketNo(),c);
+            return new FundsResult(c.ticketNo(),FundsStatus.UNKNOWN,null,c.amountMinor(),"TEST_REPLY_LOST");
+        }
+        @Override public FundsResult query(FundsCommand c) {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            assertThat(c).isEqualTo(originals.get(c.ticketNo()));
+            queries.merge(c.ticketNo(),1,Integer::sum);
+            return new FundsResult(corruptReceipts.contains(c.ticketNo())?"FOREIGN_TICKET":c.ticketNo(),
+                    FundsStatus.SUCCEEDED,"TEST-PAID:"+c.ticketNo(),c.amountMinor(),null);
+        }
+    }
 }

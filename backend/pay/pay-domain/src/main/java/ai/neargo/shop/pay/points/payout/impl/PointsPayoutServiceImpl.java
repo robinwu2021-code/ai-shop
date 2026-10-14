@@ -3,6 +3,11 @@ package ai.neargo.shop.pay.points.payout.impl;
 import ai.neargo.shop.pay.points.app.PointsSettlementHook.PayoutCommand;
 import ai.neargo.shop.pay.points.app.PointsSettlementHook.PayoutTicket;
 import ai.neargo.shop.pay.points.model.PointType;
+import ai.neargo.shop.pay.points.model.FundBucket;
+import ai.neargo.shop.pay.points.model.FundMove;
+import ai.neargo.shop.pay.points.model.EvidenceRef;
+import ai.neargo.shop.pay.points.app.PointsSettlementHook.PayoutOutcome;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsResult;
 import ai.neargo.shop.pay.points.model.PointsKeys;
 import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.model.Voucher;
@@ -93,6 +98,82 @@ public class PointsPayoutServiceImpl implements PointsPayoutService {
         if (head==null) { throw new IllegalArgumentException("POINTS_PAYOUT_UNKNOWN"); }
         return json.readValue((String)head.get("payload_json"),PayoutSnapshot.class).fundsCommand();
     }
+    @Override public DispatchClaim claimDispatch(String no) {
+        var head=lockedTicket(no);
+        PayoutSnapshot snapshot=json.readValue((String)head.get("payload_json"),PayoutSnapshot.class);
+        String state=(String)head.get("state");
+        if (terminal(state)) { return new DispatchClaim(snapshot.fundsCommand(),false,outcome(snapshot,true)); }
+        if (!"READY".equals(state)) { return new DispatchClaim(snapshot.fundsCommand(),false,null); }
+        PointType type=read.type((String)head.get("type_code")).orElseThrow();
+        posting.post(new Voucher("PAYOUT_DISPATCH:"+no,type.typeCode(),type.currency(),type.rate(),List.of(),List.of(),
+                List.of(new PositionMove(PositionMove.Kind.PAYOUT,no,num(head,"version"),"READY","DISPATCHING",
+                        num(head,"original_points"),0,(String)head.get("payload_json"))),0,List.of(),"{}"));
+        return new DispatchClaim(snapshot.fundsCommand(),true,null);
+    }
+    @Override public PayoutOutcome acceptResult(FundsResult result) {
+        if (result==null || result.status()==null || blank(result.ticketNo())) {
+            throw new IllegalArgumentException("POINTS_FUNDS_RESULT_INVALID");
+        }
+        var head=lockedTicket(result.ticketNo());
+        PayoutSnapshot old=json.readValue((String)head.get("payload_json"),PayoutSnapshot.class);
+        if (result.amountMinor()!=old.ticket().cash()) {
+            throw new IllegalArgumentException("POINTS_FUNDS_RESULT_AMOUNT_MISMATCH");
+        }
+        String state=(String)head.get("state");
+        if (terminal(state)) {
+            if (result.status()!=FundsStatus.UNKNOWN && result.status()!=old.result().status()) {
+                throw new IllegalArgumentException("POINTS_FUNDS_RESULT_CONFLICT");
+            }
+            return outcome(old,true);
+        }
+        if (!"DISPATCHING".equals(state) && !"UNKNOWN".equals(state)) {
+            throw new IllegalArgumentException("POINTS_PAYOUT_NOT_DISPATCHED");
+        }
+        if (result.status()==FundsStatus.UNKNOWN && "UNKNOWN".equals(state)) { return outcome(old,true); }
+        PointType type=read.type((String)head.get("type_code")).orElseThrow();
+        PayoutSnapshot next=new PayoutSnapshot(old.command(),old.ticket(),old.fundsCommand(),result);
+        List<PositionMove> positions=new ArrayList<>();
+        List<FundMove> money=List.of();
+        List<EvidenceRef> evidence=List.of();
+        if (result.status()!=FundsStatus.UNKNOWN) {
+            for (String id:old.command().positionIds()) {
+                var source=read.position(PositionMove.Kind.REDEEM.table(),id);
+                if (source==null || !"PAYING".equals(source.get("state"))) {
+                    throw new IllegalArgumentException("POINTS_POSITION_STATE_CONFLICT");
+                }
+                positions.add(new PositionMove(PositionMove.Kind.REDEEM,id,num(source,"version"),"PAYING",
+                        result.status()==FundsStatus.SUCCEEDED?"PAID":"PAYABLE",num(source,"original_points"),0,
+                        (String)source.get("payload_json")));
+            }
+        }
+        if (result.status()==FundsStatus.SUCCEEDED) {
+            if (blank(result.evidenceNo())) { throw new IllegalArgumentException("POINTS_FUNDS_EVIDENCE_MISSING"); }
+            EvidenceRef proof=new EvidenceRef(result.evidenceNo(),type.currency(),
+                    Math.negateExact(result.amountMinor()));
+            posting.recordEvidence(proof);
+            money=List.of(new FundMove(FundBucket.D,-result.amountMinor()));
+            evidence=List.of(proof);
+        }
+        positions.add(new PositionMove(PositionMove.Kind.PAYOUT,result.ticketNo(),num(head,"version"),state,
+                result.status().name(),num(head,"original_points"),0,json.writeValueAsString(next)));
+        PayoutOutcome outcome=outcome(next,false);
+        posting.post(new Voucher("PAYOUT_RESULT:"+result.ticketNo()+":"+result.status(),type.typeCode(),type.currency(),
+                type.rate(),List.of(),money,positions,0,evidence,json.writeValueAsString(outcome)));
+        return outcome;
+    }
+    private Map<String,Object> lockedTicket(String no) {
+        var head=read.position(PositionMove.Kind.PAYOUT.table(),no);
+        if (head==null) { throw new IllegalArgumentException("POINTS_PAYOUT_UNKNOWN"); }
+        config.lockTypeAndPool((String)head.get("type_code"));
+        return read.position(PositionMove.Kind.PAYOUT.table(),no);
+    }
+    private boolean terminal(String state) { return "SUCCEEDED".equals(state) || "FAILED".equals(state); }
+    private PayoutOutcome outcome(PayoutSnapshot snapshot,boolean replayed) {
+        FundsResult result=snapshot.result();
+        return new PayoutOutcome(snapshot.ticket().ticketNo(),result.status(),
+                result.status()==FundsStatus.SUCCEEDED?result.amountMinor():0,replayed);
+    }
+
     private PayoutCommand normalize(PayoutCommand c) {
         if (c==null || blank(c.bizRef()) || blank(c.typeCode()) || blank(c.sourceRef()) || blank(c.currency())
                 || c.context()==null || c.context().path()==null || c.positionIds().isEmpty()

@@ -5,6 +5,7 @@ import ai.neargo.shop.pay.points.posting.PostingResult;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.points.model.FundMove;
+import ai.neargo.shop.pay.points.model.EvidenceRef;
 import ai.neargo.shop.pay.points.model.PointsMove;
 import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.model.Voucher;
@@ -42,6 +43,16 @@ public class PointsPostingServiceImpl implements PointsPostingService {
             store.applyConditions(voucher, no);
             return claimed;
         });
+    }
+
+    @Override
+    @Transactional("payTxManager")
+    public void recordEvidence(EvidenceRef e) {
+        if (e==null || e.evidenceNo()==null || e.evidenceNo().isBlank() || e.currency()==null
+                || e.currency().isBlank() || e.externalMinor()==0) {
+            throw new IllegalArgumentException("POINTS_EVIDENCE_INVALID");
+        }
+        DataScopeContext.executeWithoutScope(() -> { store.recordEvidence(e); return null; });
     }
 
     private String hash(Voucher voucher) {

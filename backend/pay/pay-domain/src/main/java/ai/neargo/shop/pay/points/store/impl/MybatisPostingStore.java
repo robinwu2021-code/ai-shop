@@ -2,6 +2,7 @@ package ai.neargo.shop.pay.points.store.impl;
 
 import ai.neargo.shop.pay.mapper.points.PointsPostingMapper;
 import ai.neargo.shop.pay.points.model.AccountKey;
+import ai.neargo.shop.pay.points.model.EvidenceRef;
 import ai.neargo.shop.pay.points.model.Bucket;
 import ai.neargo.shop.pay.points.model.FundBucket;
 import ai.neargo.shop.pay.points.model.FundMove;
@@ -30,6 +31,16 @@ public class MybatisPostingStore implements PostingStore {
     private final ObjectMapper json = new ObjectMapper();
 
     public MybatisPostingStore(PointsPostingMapper mapper) { this.mapper = mapper; }
+
+    @Override public void recordEvidence(EvidenceRef e) {
+        try { mapper.registerEvidence(e.evidenceNo(),e.currency(),e.externalMinor()); }
+        catch (DuplicateKeyException conflict) {
+            var existing=mapper.evidence(e.evidenceNo());
+            require(existing!=null && e.currency().equals(existing.get("currency"))
+                    && number(existing,"external_minor")==e.externalMinor() && number(existing,"verified")==1,
+                    "POINTS_EVIDENCE_CONFLICT");
+        }
+    }
 
     @Override
     public PostingResult claim(Voucher voucher, String hash, String no) {

@@ -50,6 +50,11 @@ public interface PointsPostingMapper {
     int movePool(@Param("type") String type, @Param("u") long u, @Param("c") long c,
                  @Param("d") long d, @Param("b") long b, @Param("reserved") long reserved);
 
+    @Insert("INSERT INTO pts_fund_evidence(evidence_no,currency,external_minor,verified)"
+            + " VALUES(#{no},#{currency},#{amount},1)")
+    int registerEvidence(@Param("no") String no,@Param("currency") String currency,@Param("amount") long amount);
+    @Select("SELECT * FROM pts_fund_evidence WHERE evidence_no=#{no} FOR UPDATE")
+    Map<String,Object> evidence(String no);
     @Update("UPDATE pts_fund_evidence SET used_voucher_no=#{voucher} WHERE evidence_no=#{no} "
             + "AND currency=#{currency} AND external_minor=#{amount} AND verified=1 AND used_voucher_no IS NULL")
     int consumeEvidence(@Param("no") String no, @Param("currency") String currency,
