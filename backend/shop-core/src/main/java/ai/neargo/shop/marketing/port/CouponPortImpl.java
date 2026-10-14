@@ -100,10 +100,21 @@ public class CouponPortImpl implements CouponPort {
         }
         MktUserCoupon uc = ownUserCoupon(userNo, userCouponNo);
         assertUsable(uc, templateOf(uc.getCouponNo()));
-        uc.setStatus(MktUserCoupon.USED);
-        uc.setOrderNo(orderNo);
-        uc.setUsedAt(System.currentTimeMillis());
-        DataScopeContext.executeWithoutScope(() -> userCouponMapper.updateById(uc));
+        /*
+         * **带条件的 UPDATE 才是这里的锁**（《分布式集群与高可用方案》§5 P0）：只有仍是 UNUSED 才改得动。
+         * 此前是 updateById —— 两笔订单同时用同一张券时都读到 UNUSED、都校验通过，后写的那笔
+         * 被 @Version 乐观锁拒成 0 行却不报错，两单都享受了优惠（一券两用）。0 行即拒，下单事务整体回滚。
+         */
+        int affected = DataScopeContext.executeWithoutScope(() -> userCouponMapper.update(null,
+                Wrappers.<MktUserCoupon>lambdaUpdate()
+                        .eq(MktUserCoupon::getId, uc.getId())
+                        .eq(MktUserCoupon::getStatus, MktUserCoupon.UNUSED)
+                        .set(MktUserCoupon::getStatus, MktUserCoupon.USED)
+                        .set(MktUserCoupon::getOrderNo, orderNo)
+                        .set(MktUserCoupon::getUsedAt, System.currentTimeMillis())));
+        if (affected != 1) {
+            throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
+        }
     }
 
     @Override

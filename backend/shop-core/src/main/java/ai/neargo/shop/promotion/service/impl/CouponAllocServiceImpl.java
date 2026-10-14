@@ -135,15 +135,26 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         PmtCoupon coupon = template(uc.getCouponNo());
         assertUsable(uc, coupon);
 
-        int used = nz(uc.getTimesUsed()) + 1;
-        uc.setTimesUsed(used);
-        uc.setOrderNo(orderNo);
-        uc.setUsedAt(System.currentTimeMillis());
-        // 次卡用满才算 USED —— 用了一次就置 USED 的话，剩下四杯豆浆凭空消失
-        if (used >= coupon.timesTotalOrOne()) {
-            uc.setStatus(PmtUserCoupon.USED);
+        int before = nz(uc.getTimesUsed());
+        int used = before + 1;
+        /*
+         * **带条件的 UPDATE 才是这里的锁**（与 CouponRedeemServiceImpl 同一手法）：已用次数必须还等于我读到的值、
+         * 且仍是 UNUSED。此前是 updateById —— 并发两单都读到同一个次数，一单被乐观锁拒成 0 行却不报错，
+         * 结果两单都用了券、次数只加一次。0 行即拒，下单事务整体回滚。
+         */
+        int affected = DataScopeContext.executeWithoutScope(() -> userCouponMapper.update(null,
+                Wrappers.<PmtUserCoupon>lambdaUpdate()
+                        .eq(PmtUserCoupon::getId, uc.getId())
+                        .eq(PmtUserCoupon::getTimesUsed, before)
+                        .eq(PmtUserCoupon::getStatus, PmtUserCoupon.UNUSED)
+                        .set(PmtUserCoupon::getTimesUsed, used)
+                        .set(PmtUserCoupon::getOrderNo, orderNo)
+                        .set(PmtUserCoupon::getUsedAt, System.currentTimeMillis())
+                        // 次卡用满才算 USED —— 用了一次就置 USED 的话，剩下四杯豆浆凭空消失
+                        .set(used >= coupon.timesTotalOrOne(), PmtUserCoupon::getStatus, PmtUserCoupon.USED)));
+        if (affected != 1) {
+            throw BizException.of(ErrorCode.COUPON_NOT_APPLICABLE);
         }
-        DataScopeContext.executeWithoutScope(() -> userCouponMapper.updateById(uc));
 
         PmtApply row = new PmtApply();
         row.setApplyNo(BizKey.next(BizKey.PROMO_APPLY));
