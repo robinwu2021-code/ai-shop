@@ -27564,6 +27564,13 @@
       "package": "ai.neargo.shop.pay.entity"
     },
     {
+      "table": "stl_bill_refund",
+      "class": "StlBillRefund",
+      "zh": "结算单退款流水（append-only，V405）：一张售后单在结算单上扣了 / 回退了多少。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entity"
+    },
+    {
       "table": "stl_channel_message",
       "class": "StlChannelMessage",
       "zh": "渠道报文：通道推给我方的回调、我方发给通道的调用（V286）。",
