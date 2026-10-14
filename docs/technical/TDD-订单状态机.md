@@ -100,6 +100,20 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 
 **存量排查（拍板项「10-11 以来的部分退款」，2026-10-14 生产只读查询）**：`ord_after_sale` 全库 3 行，唯一 REFUNDED 的一张是整单全退（100 / 100 分，结算单 REVERSED 正确），另两张在 ARBITRATING、结算单 PENDING_RECON 未动。**没有发生过部分退款，无需补回商家。**
 
+### 5.5 行级申请与退款执行（后端第一段）
+
+| AC | 需求 | 落点 |
+|---|---|---|
+| AC28 | 申请可带 `items[{itemId, qty}]`：按行 × 件数出方案；不传 = 整单剩余；老客户端只给金额 = 整单剩余按额分回；超剩余件数 → 20011；上限是剩余可退额（不再是实付） | `AfterSaleRequestPlanner` → `RefundPlanner` / `ApprovedAmountAllocator`；行存 `ord_after_sale_item` |
+| AC29 | 售后期：完成后 7 天、质量类 15 天，过期 → 20012 | `AfterSaleWindowPolicy`（`RefundDomainBeans` 装配 7 / 15） |
+| AC30 | 部分退款不改订单状态，进度 PARTIAL；账本说 FULL 才经门迁到 REFUNDED（O10） | `AfterSaleRefundExecutor` → `RefundLedger`；`settleRefundTerminal` 经 `TradeStatusWriter` |
+| AC31 | 现金退款顺序：记账（条件增量，并发超退在动钱前 CONFLICT）→ 按额回退分账 → 原路退（键 = 售后单号，同一子单第二笔真的退出钱） | `AfterSaleRefundExecutor`；运营端「分账回退」不再先整单回退 |
+| AC32 | 退货按本张售后的行 × 件数回补库存（此前整单补） | `AfterSaleServiceImpl#restoreStockIfReturned(as, plan)` |
+| AC33 | 渠道不支持部分退（线下 / 0 元）→ 20013 | `RefundPlan#isPartial` + `ChannelRefundCapability` |
+
+5.5 剩余（下一段）：`GET /mp/order/{no}/refundable`、VO 加 `refundProgress` / `refundedMinor` / `afterSaleDeadlineAt` / `items`、
+售后单对子单的 CAS 占位（`open_after_sale_no`，V406）、抵扣积分按比例退（需积分域新增按额退回的接口；今天仍是整单退完才退）。
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试 | 跑过 | 消融 |
@@ -136,6 +150,8 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 | AC25 | `SettlementPartialReverseTest#postSplitThreeInstallments` / `#channelFailureStopsRefund` | ✅ | 回退额改回整单 net → 红 ✅ |
 | AC26 | `SettlementPartialReverseTest#preSplitPartialKeepsSettleable` | ✅ | 部分退也标 REVERSED（旧行为）→ 红 ✅ |
 | AC27 | 同上（同一售后单重放） | ✅ | 去掉按售后单判重 → 唯一键撞出 DuplicateKey 红 ✅（唯一键是第二道兜底） |
+| AC28 / AC30 / AC31 | `LineRefundFlowTest#partialThenRest`（3 件退 1：状态不变、PARTIAL、结算单未 REVERSED；再退剩余：REFUNDED / FULL、两笔退款流水各挂各的售后单）+ `#overQtyRejected` | ✅ | 落定即 REFUNDED（旧行为）→ 红 ✅；退款键改回子单号 → 第二笔被吞、红 ✅ |
+| AC29 | `LineRefundFlowTest#windowGuard`（8 天后非质量 20012、质量可申请） | ✅ | 去掉守卫 → 红 ✅。顺带修 `AfterSaleRules.isQualityReason(null)` NPE（`List.of().contains(null)`） |
 
 相关后端整组 855 绿。步 4 偏差：O7「商家标记送达」补上从 FULFILLING 出发（自送单「配送中」后送达，既有用例覆盖；方案 §3 与 MachineTablesTest 同步改）。
 全量闸门第一轮又撞出两处，均为**老行为本来允许、新机器漏了**：

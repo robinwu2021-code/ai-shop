@@ -3,7 +3,6 @@ package ai.neargo.shop.pay.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.pay.dto.FinanceVOs.RefundSplitBackVO;
 import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
@@ -18,18 +17,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/** {@link RefundSplitBackService} 实现。顺序（先回退、后退款）是本类唯一重要的东西。 */
+/** {@link RefundSplitBackService} 实现。「先回退、后退款」的顺序由售后续跑（AfterSaleRefundExecutor）保证。 */
 @Service
 public class RefundSplitBackServiceImpl implements RefundSplitBackService {
 
     private final RefundSplitBackPort backPort;
-    private final SettleService settleService;
     private final BillMapper billMapper;
 
-    public RefundSplitBackServiceImpl(RefundSplitBackPort backPort, SettleService settleService,
+    public RefundSplitBackServiceImpl(RefundSplitBackPort backPort,
                                       BillMapper billMapper) {
         this.backPort = backPort;
-        this.settleService = settleService;
         this.billMapper = billMapper;
     }
 
@@ -67,17 +64,9 @@ public class RefundSplitBackServiceImpl implements RefundSplitBackService {
                 .orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
 
         /*
-         * ① 先回退分账。**失败就停在这里**：返回 false 意味着钱还在商家账户上，
-         * 此时继续退款，平台就要垫付这笔差额（ADR-002 §3）。
-         */
-        if (!settleService.reverseSplit(target.subOrderNo())) {
-            throw BizException.of(ErrorCode.SPLIT_EXPIRED);
-        }
-
-        /*
-         * ② 再走既有退款链路。它内部**会再回退一次**（幂等，REVERSED 直接返回 true）——
-         * 这不是多余：顺序保证只在 doRefund 里有一份，
-         * 在这里跳过它等于把同一条约束拆成两处，而两处迟早会分岔。
+         * 回退分账与退款都在售后续跑里（第 5 步起按退款金额回退，键 REV-售后单号）。
+         * 此前这里先调整单回退 reverseSplit(子单号) —— 部分退款会因此把整单分账退回，商家少收。
+         * 回退失败时续跑抛 SPLIT_EXPIRED，与此前在这里抛的是同一个码。
          */
         backPort.resumeRefund(afterSaleNo, operatorNo);
 

@@ -43,6 +43,11 @@ public record OrderContext(boolean authorized, boolean serviceClass, boolean pre
                 allLinesShipped, v, fullyRefunded, interveneTarget, remarkPresent);
     }
 
+    public OrderContext withFullyRefunded(boolean v) {
+        return new OrderContext(authorized, serviceClass, prepared, openAfterSale, requireBuyerConfirm,
+                allLinesShipped, autoReceiptDue, v, interveneTarget, remarkPresent);
+    }
+
     public OrderContext withIntervene(OrderStatus target, boolean remark) {
         return new OrderContext(authorized, serviceClass, prepared, openAfterSale, requireBuyerConfirm,
                 allLinesShipped, autoReceiptDue, fullyRefunded, target, remark);

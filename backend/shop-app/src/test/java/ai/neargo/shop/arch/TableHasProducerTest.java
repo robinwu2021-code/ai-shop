@@ -72,8 +72,7 @@ class TableHasProducerTest {
         NO_PRODUCER.put("stl_settle_invoice",
                 "同上 —— 商家申请结算发票的入口未做，运营侧的开票/驳回先落地");
         // ord_shipment 已于 W4.3（ShipmentDraftFactory）有生产者，本登记随之移除
-        NO_PRODUCER.put("ord_after_sale_item",
-                "第 5 步 5.4 只建表（只写不读的数据底座）；生产者在 5.5 行级申请落地，届时移除本登记");
+        // ord_after_sale_item 已于第 5 步 5.5（行级申请 MybatisAfterSaleLineStore）有生产者，本登记随之移除
         // 未核实：这条闸门立起来时就在库里，归属由各域自己填
         // cnt_question 从这张表里去掉了：买家提问那条入口做出来了（MpQuestionController，
         // TDD-C 端商品详情页·内容丰富度 §3.3），它现在有生产者

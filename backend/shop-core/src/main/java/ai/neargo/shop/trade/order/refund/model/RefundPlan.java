@@ -22,4 +22,9 @@ public record RefundPlan(String subOrderNo, List<RefundLine> lines, long freight
         return view.lines().stream().filter(l -> l.remainingQty() > 0).allMatch(l -> lines.stream()
                 .anyMatch(r -> r.itemId() == l.itemId() && r.qty() == l.remainingQty()));
     }
+
+    /** 部分退款：没退完所有行的剩余件数，或货款被核定 / 协商压低（渠道不支持部分退时要拦） */
+    public boolean isPartial(RefundableView view) {
+        return !coversAllRemaining(view) || goodsMinor() < view.remainingGoodsMinor();
+    }
 }

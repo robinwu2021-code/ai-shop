@@ -4,6 +4,7 @@ import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
+import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
@@ -54,6 +55,9 @@ class SelfOperatedAfterSaleFlowTest {
 
     @Autowired
     private AfterSaleMapper afterSaleMapper;
+
+    @Autowired
+    private ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper itemMapper;
 
     @Test
     @DisplayName("★★ 归集（平台是销售主体）→ 直接 ARBITRATING")
@@ -149,6 +153,18 @@ class SelfOperatedAfterSaleFlowTest {
         // 那条捷径本来就该优先，所以测分流必须避开它，而不是把它关掉
         s.setPayAmount(50_000L);
         subOrderMapper.insert(s);
+        // 售后按行算可退额（第 5 步）：真实子单一定有行，夹具也要有
+        OrdItem it = new OrdItem();
+        it.setSubOrderNo(no);
+        it.setOrderNo(s.getOrderNo());
+        it.setGoodsNo("G-AS");
+        it.setSkuNo("S-AS");
+        it.setTitle("售后分流测试商品");
+        it.setPrice(50_000L);
+        it.setQty(1);
+        it.setAmount(50_000L);
+        it.setPaidShareMinor(50_000L);
+        itemMapper.insert(it);
         return no;
     }
 }

@@ -168,7 +168,12 @@ public class MpTradeController {
     @PostMapping("/mp/order/{orderNo}/after-sale")
     public AfterSaleVO applyAfterSale(@PathVariable String orderNo, @RequestBody @Valid ApplyAfterSaleReq req) {
         return afterSaleService.apply(orderNo, new AfterSaleService.ApplyCommand(
-                req.type(), req.reason(), req.images(), req.refundMinor(), req.reasonCode()));
+                req.type(), req.reason(), req.images(), req.refundMinor(), req.reasonCode(),
+                req.items() == null ? null : req.items().stream()
+                        .map(i -> new AfterSaleService.ApplyCommand.ItemQty(
+                                // 缺字段落成非法值，由方案对象统一拒（BAD_REQUEST），不在这里拆箱 NPE
+                                i.itemId() == null ? -1L : i.itemId(), i.qty() == null ? 0 : i.qty()))
+                        .toList()));
     }
 
     @GetMapping("/mp/after-sale/reasons")
@@ -202,8 +207,13 @@ public class MpTradeController {
     }
 
     /** {@code reason} 是买家原话；{@code reasonCode} 是原因码（判生鲜等规则），可空 = 老客户端 */
+    /** @param items 退哪几行、各几件；不传 = 整单剩余（老客户端） */
     public record ApplyAfterSaleReq(@NotBlank String type, @NotBlank String reason,
-                                    List<String> images, Long refundMinor, String reasonCode) {
+                                    List<String> images, Long refundMinor, String reasonCode,
+                                    List<AfterSaleItemReq> items) {
+    }
+
+    public record AfterSaleItemReq(Long itemId, Integer qty) {
     }
 
     public record ShipBackReq(String expressCompany, @NotBlank String expressNo) {

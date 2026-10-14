@@ -23,8 +23,9 @@ public final class AfterSaleRules {
     /** 拒绝码（映射到 ErrorCode.AFTERSALE_FRESH_QUALITY_ONLY，前端据此提示）。 */
     public static final String DENY_FRESH_QUALITY_ONLY = "FRESH_SHIPPED_NON_QUALITY";
 
+    /** null 安全：{@code List.of(...).contains(null)} 会抛 NPE，而「没带原因码」是常态（可退额视图、老客户端） */
     public static boolean isQualityReason(String reason) {
-        return QUALITY_REASONS.contains(reason);
+        return reason != null && QUALITY_REASONS.contains(reason);
     }
 
     /**

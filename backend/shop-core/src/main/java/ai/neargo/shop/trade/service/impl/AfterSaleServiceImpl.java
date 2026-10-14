@@ -87,6 +87,12 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      * 运营改阈值、关开关、设「下单 N 小时内」，三样都是白配。
      */
     private final AfterSaleRuleService ruleService;
+    /** 申请：售后期守卫 + 按行出方案（第 5 步） */
+    private final ai.neargo.shop.trade.order.refund.service.AfterSaleRequestPlanner requestPlanner;
+    /** 现金退款：记账 → 按额回退分账 → 原路退（第 5 步，取代 doRefund 的现金分支） */
+    private final ai.neargo.shop.trade.order.refund.service.AfterSaleRefundExecutor refundExecutor;
+    /** 订单状态经门（CAS + 流水） */
+    private final ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter;
     /**
      * 整单退款时把券退回券包（执行计划 B6）。
      * **setter 注入**：切片测试里没有它时，退款其余行为一字不差。
@@ -128,7 +134,13 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                                 OutboxEventBus eventBus, ObjectMapper json,
                                 MerchantQueryPort merchantPort, UserQueryPort userPort,
                                 StockPort stockPort, OrderItemMapper orderItemMapper,
-                                AfterSaleRuleService ruleService) {
+                                AfterSaleRuleService ruleService,
+                                ai.neargo.shop.trade.order.refund.service.AfterSaleRequestPlanner requestPlanner,
+                                ai.neargo.shop.trade.order.refund.service.AfterSaleRefundExecutor refundExecutor,
+                                ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter) {
+        this.requestPlanner = requestPlanner;
+        this.refundExecutor = refundExecutor;
+        this.statusWriter = statusWriter;
         this.ruleService = ruleService;
         this.afterSaleMapper = afterSaleMapper;
         this.subOrderMapper = subOrderMapper;
@@ -232,13 +244,6 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             throw BizException.of(ErrorCode.CONFLICT);
         }
 
-        long paid = sub.getPayAmount() == null ? 0L : sub.getPayAmount();
-        long refund = cmd.refundMinor() == null || cmd.refundMinor() <= 0 ? paid : cmd.refundMinor();
-        if (refund > paid) {
-            // 退款金额超过实付：这是最直接的资损口子，必须在入口就挡住
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-
         /*
          * 分档校验（TDD-售后规则 §2.2）：能不能退取决于**履约进度**（货还拦不拦得住），
          * 不是订单状态。生鲜已揽收/已签收 + 非质量原因 → 拒；备货中/已出单未揽收是灰色地带，
@@ -250,6 +255,16 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         if (!gate.allow()) {
             throw BizException.of(ErrorCode.AFTERSALE_FRESH_QUALITY_ONLY);
         }
+        /*
+         * 退什么、退多少（第 5 步）：售后期守卫 → 按行 × 件数出方案（不传行 = 整单剩余）→ 只给金额就按额分回
+         * → 渠道不支持部分退则拒。上限是剩余可退额，不再是实付（第二张售后只能退剩下的）。
+         */
+        var plan = requestPlanner.plan(sub, stage.ordinal() >= FulfillStage.SHIPPED.ordinal(), cmd.ruleReason(),
+                cmd.items() == null ? null : cmd.items().stream()
+                        .map(i -> new ai.neargo.shop.trade.order.refund.model.RefundLine(i.itemId(), i.qty(), 0L))
+                        .toList(),
+                cmd.refundMinor(), System.currentTimeMillis());
+        long refund = plan.totalMinor();
 
         OrdAfterSale as = new OrdAfterSale();
         as.setAfterSaleNo(BizKey.next(BizKey.AFTER_SALE));
@@ -290,6 +305,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          */
         as.setInstant(false);
         afterSaleMapper.insert(as);
+        requestPlanner.save(as.getAfterSaleNo(), plan);
         // 日志要写**真实去向**：自营单没有「等商家处理」这一步，
         // 写成一样的话，用户看时间线会以为在等商家，而实际在等平台
         appendLog(subOrderNo, as.getStatus(),
@@ -629,44 +645,43 @@ public class AfterSaleServiceImpl implements AfterSaleService {
              */
             long pts = pointsPort.compensate(as.getUserNo(), as.getEntityNo(), amount, as.getAfterSaleNo());
             as.setRefundPoints(pts);
-            settleRefundTerminal(as, label, 0L);
+            // 积分形式不动账本（没有退钱、没有退货）；子单照旧整单落 REFUNDED（行为不变）
+            settleRefundTerminal(as, label, 0L, true);
             return;
         }
 
-        // ① 先回退分账
-        if (!settlePort.reverseSplit(as.getSubOrderNo())) {
-            appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDING, "分账回退失败，待重试",
-                    OrdStatusLog.BY_SYSTEM, null);
-            throw BizException.of(ErrorCode.SPLIT_EXPIRED);
+        /*
+         * ①②③ 记账 → 按额回退分账（REV-售后单号）→ 原路退款（键 = 售后单号），见 AfterSaleRefundExecutor。
+         * 回退失败抛 SPLIT_EXPIRED，整笔回滚、停在原状态等重试，<b>绝不往下退钱</b>。
+         */
+        ai.neargo.shop.trade.order.refund.model.RefundOutcome out;
+        try {
+            out = refundExecutor.execute(as, subOrderOf(as.getSubOrderNo()));
+        } catch (BizException e) {
+            if (e.errorCode() == ErrorCode.SPLIT_EXPIRED) {
+                LOG.warn("[after-sale] 分账回退失败，待重试 afterSaleNo={}", as.getAfterSaleNo());
+            }
+            throw e;
         }
         as.setSplitReversed(true);
-
-        /*
-         * ② 再退款，**并把退款流水号记下来**（S8 · 2026-09-02）。按**实退金额**退，
-         * 部分退款退核定额，不是买家申请额。
-         *
-         * 拿不到流水号不阻断退款：那说明原收款流水找不到（存量单、
-         * 或者钱本来就没收到），而<b>此时更不该把用户的退款卡住</b> ——
-         * 缺的那一行是账，账可以补，用户的钱不能不退。记 WARN 让人能查。
-         */
-        String refundPaymentNo = settlePort.refund(as.getSubOrderNo(), amount, as.getReason());
-        if (refundPaymentNo == null) {
+        if (out.paymentNo() == null) {
             /*
-             * 留痕落在**售后单的时间线**上，不只写日志 ——
-             * 日志会滚掉，而客服查这张单时看到的是时间线。
+             * 拿不到流水号不阻断退款：原收款流水找不到（存量单、或钱本来就没收到），此时更不该卡住用户的退款。
+             * 留痕落在售后单时间线上 —— 日志会滚掉，客服查单看的是时间线。
              */
             appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDING,
                     "退款已执行，但没能落下资金流水（原收款找不到）——"
                             + "这一笔不在对账范围内，需人工补",
                     OrdStatusLog.BY_SYSTEM, null);
         } else {
-            as.setRefundPaymentNo(refundPaymentNo);
+            as.setRefundPaymentNo(out.paymentNo());
         }
 
-        // ③ 退货类的把货加回来
-        restoreStockIfReturned(as);
+        // ④ 退货类的把退回的那几件加回来（按行 × 件数）
+        restoreStockIfReturned(as, out.plan());
 
-        settleRefundTerminal(as, label, amount);
+        settleRefundTerminal(as, label, out.plan().totalMinor(),
+                out.ledger().progress() == ai.neargo.shop.trade.order.refund.model.RefundProgress.FULL);
     }
 
     /**
@@ -675,18 +690,21 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      *
      * @param cashMinor 本次实际退回的**现金**（分）；积分形式为 0
      */
-    private void settleRefundTerminal(OrdAfterSale as, String label, long cashMinor) {
+    private void settleRefundTerminal(OrdAfterSale as, String label, long cashMinor, boolean fullyRefunded) {
         // 落终态。**回补的标记与状态一起写** —— 分两次写的话，
         // 中间挂掉会让重试再补一次，而多出来的那几件不会有任何地方报错
         as.setStatus(OrdAfterSale.REFUNDED);
         as.setRefundedAt(System.currentTimeMillis());
         update(as);
 
+        /*
+         * **部分退款不改订单状态**（第 5 步）：只有账本说「全部退完」才经门迁到 REFUNDED（O10）。
+         * 此前任何一笔退款落定子单就 REFUNDED —— 退一件，买家看到「已退款」。
+         */
         OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
-        if (sub != null && OrderStateMachine.canTransit(OrderStateMachine.subOrderGraph(),
-                sub.getStatus(), OrdSubOrder.REFUNDED)) {
-            sub.setStatus(OrdSubOrder.REFUNDED);
-            DataScopeContext.executeWithoutScope(() -> subOrderMapper.updateById(sub));
+        if (sub != null && fullyRefunded && canFullyRefund(sub)) {
+            statusWriter.order(sub, ai.neargo.shop.trade.order.machine.order.OrderEvent.FULLY_REFUNDED,
+                    Actor.SYSTEM, null, label, fullRefundContext());
         }
         returnBenefitsIfWholeOrderRefunded(sub);
         appendLog(as.getSubOrderNo(), OrdAfterSale.REFUNDED, label, OrdStatusLog.BY_SYSTEM, null);
@@ -768,25 +786,43 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      * 与 {@code OrderServiceImpl} 里 {@code stockPort.release()} 同一个形状，
      * 不新增跨域依赖，也不需要事件带上它本来没有的行明细。
      */
-    private void restoreStockIfReturned(OrdAfterSale as) {
+    private void restoreStockIfReturned(OrdAfterSale as, ai.neargo.shop.trade.order.refund.model.RefundPlan plan) {
         if (!OrdAfterSale.RETURN_REFUND.equals(as.getType())
                 || Integer.valueOf(1).equals(as.getStockRestored())) {
             return;
         }
         OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
-        List<OrdItem> items = DataScopeContext.executeWithoutScope(() ->
-                orderItemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
-                        .eq(OrdItem::getSubOrderNo, as.getSubOrderNo())));
-        if (items.isEmpty()) {
-            return;
-        }
+        java.util.Map<Long, OrdItem> byId = new java.util.HashMap<>();
+        DataScopeContext.executeWithoutScope(() -> orderItemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
+                .eq(OrdItem::getSubOrderNo, as.getSubOrderNo()))).forEach(it -> byId.put(it.getId(), it));
+        // 只补本张售后退回的那几行、那几件 —— 整单补的话，退 1 件库里会多出 2 件
         List<StockPort.SkuQty> lines = new ArrayList<>();
-        for (OrdItem it : items) {
-            lines.add(new StockPort.SkuQty(it.getSkuNo(), it.getQty(),
-                    sub == null ? null : sub.getStoreNo()));
+        for (var l : plan.lines()) {
+            OrdItem it = byId.get(l.itemId());
+            if (it != null && l.qty() > 0) {
+                lines.add(new StockPort.SkuQty(it.getSkuNo(), l.qty(), sub == null ? null : sub.getStoreNo()));
+            }
+        }
+        if (lines.isEmpty()) {
+            return;
         }
         stockPort.restore(as.getAfterSaleNo(), lines);
         as.setStockRestored(1);
+    }
+
+    private static boolean canFullyRefund(OrdSubOrder sub) {
+        try {
+            var from = ai.neargo.shop.trade.order.machine.order.OrderStatus.valueOf(sub.getStatus());
+            return ai.neargo.shop.trade.order.machine.order.OrderMachine.MACHINE
+                    .allowed(from, Actor.SYSTEM, fullRefundContext())
+                    .contains(ai.neargo.shop.trade.order.machine.order.OrderEvent.FULLY_REFUNDED);
+        } catch (IllegalArgumentException unknown) {
+            return false;
+        }
+    }
+
+    private static ai.neargo.shop.trade.order.machine.order.OrderContext fullRefundContext() {
+        return ai.neargo.shop.trade.order.machine.order.OrderContext.authorizedOnly().withFullyRefunded(true);
     }
 
     // ---------------------------------------------------------------- 装配
