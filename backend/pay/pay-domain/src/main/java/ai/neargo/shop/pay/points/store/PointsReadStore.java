@@ -18,5 +18,6 @@ public interface PointsReadStore {
     AccountSnapshot account(String typeCode, HolderType holder, String holderNo);
     Map<String, Object> voucher(String bizRef);
     Map<String, Object> position(String table, String positionNo);
+    Map<String, Object> reserve(String reserveNo);
     Map<String, Object> lifecycle(String typeCode, String subOrderNo);
 }

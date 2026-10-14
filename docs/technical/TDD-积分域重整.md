@@ -399,6 +399,8 @@ T01登记旧代码引用与有价值的场景；T04–T12在实现新功能时�
 
 #### T05 协议、试算、核销占用及释放
 
+测试前提：当前没有真实商家、门店业务数据。协议及核销测试在独立测试库中创建商家、门店、主账号和资金证据夹具，调用现有商家/门店查询接口；不使用真实业务数据，不要求提供生产数据。测试资金证据不代表实际到账，测试通道能力不代表生产通道已接通。测试夹具不作为生产初始化数据。
+
 依赖：T03,T04。
 
 **Files**
@@ -697,7 +699,7 @@ PointsJobWiringTest新增#only_new_points_jobs_registered；PointsReconTest新�
 
 ## §6 对账二 设计到实现
 
-当前只有规划文档及架构SVG，无业务代码交付，不记“已实现”。每个实施任务在此登记实际提交SHA、git show --stat、偏差及真实验证输出；不得用全工作区diff替代自己的提交范围。
+当前已实施 T01 契约与 T02 账本基础，T03/T04/T05 已有部分业务实现及测试；提现、源事实接线和后续任务仍待完成，不记“全部已实现”。每个实施任务在此登记实际提交SHA、git show --stat、偏差及真实验证输出；不得用全工作区diff替代自己的提交范围。
 
 ## §7 待确认与记录
 
@@ -732,3 +734,12 @@ PointsJobWiringTest新增#only_new_points_jobs_registered；PointsReconTest新�
 - 无新增SQL方言依赖，未改任何历史迁移；生产同版本MySQL验证仍待执行，本机原生实例为MariaDB，不据此声称MySQL验证完成。
 - 架构修正：资金域内接口命名PointsFundsGateway（原设计PointsFundsPort与仓库Port仅限SPI规则冲突）；职责仍在pay内，规则未放宽。PointsPostingService采用接口+impl，遵循现有Service规则。
 - 后续T03–T13尚未完成，新模块未开放，旧业务接线与旧代码清理将在相应任务执行。
+
+### T05 当前实施证据（2026-10-14）
+
+- `AgreementServiceTest#authorized_signer_and_digest`：隔离 H2 中的商家/门店测试夹具，使用实际 `MerchantQueryPort` / `StoreDirectoryPort`；主账号签署、非主账号拒绝及全文摘要快照通过，1/0。
+- `RedeemServiceTest` 首次红：缺少业务服务，1 assertion failure + 1 missing-bean error；新增原子 hold/release 后绿，5/0，包括协议终止保留原承诺、B 不足无部分占用、试算后协议变化重判、幂等金额冲突、付款状态与取消释放竞争。
+- 付款竞争在本任务用真实 posting 执行财务状态转换，源支付事实到该转换的可靠接线留 T08；不据此宣称订单全链路完成。计划中的 `RedeemRaceTest#paid_vs_release_has_one_outcome` 归入同名的 `RedeemServiceTest` 方法，共用测试夹具，避免重复启动测试上下文。
+- 首轮协议/核销及架构约束组合：23 tests，0 failures / 0 errors。生产同版本 MySQL 验证仍待执行；目前 H2 和自建 MariaDB 均不等同该验证。
+
+- 消融验证：去掉 hold 的原命令比较后，`immutable_hold_rejects_changed_amount_and_release_replays` 失败（未抛出金额冲突）；恢复保护后，最终模型/协议/核销/架构组合 36 tests，0 failures / 0 errors。

@@ -38,6 +38,19 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
             return null;
         });
     }
+    @Override public void putAgreement(String no,String type,String store,String key,String state,
+                                       String payload,String actor) {
+        DataScopeContext.executeWithoutScope(() -> {
+            mapper.putAgreement(no,type,store,key,state,payload,actor);
+            return null;
+        });
+    }
+    @Override public Map<String,Object> agreement(String key) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.agreement(key));
+    }
+    @Override public void terminateAgreement(String key,String actor) {
+        DataScopeContext.executeWithoutScope(() -> { mapper.terminateAgreement(key,actor); return null; });
+    }
     @Override public void submit(PoolRequest r, String json) {
         DataScopeContext.executeWithoutScope(() -> { mapper.submit(r,json); return null; });
     }

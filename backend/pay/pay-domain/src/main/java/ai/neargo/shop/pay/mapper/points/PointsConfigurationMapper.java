@@ -26,6 +26,8 @@ public interface PointsConfigurationMapper {
     Map<String, Object> voucher(String biz);
     @Select("SELECT * FROM ${table} WHERE position_no=#{no}")
     Map<String, Object> position(@Param("table") String table, @Param("no") String no);
+    @Select("SELECT * FROM pts_refund_reserve WHERE reserve_no=#{no}")
+    Map<String,Object> reserve(String no);
     @Select("SELECT * FROM pts_lifecycle_fact WHERE type_code=#{type} AND sub_order_no=#{sub}")
     Map<String, Object> lifecycle(@Param("type") String type, @Param("sub") String sub);
     @Insert("INSERT INTO pts_point_type(type_code,market,currency,scale,rate_points,rate_minor,deduct_ratio_bp,"
@@ -42,6 +44,16 @@ public interface PointsConfigurationMapper {
             + "WHERE type_code=#{type} AND status=#{expected}")
     int status(@Param("type") String type, @Param("expected") String expected,
                @Param("next") String next, @Param("market") String activeMarket, @Param("actor") String actor);
+    @Select("SELECT * FROM pts_merchant_agreement WHERE active_key=#{key}")
+    Map<String,Object> agreement(String key);
+    @Insert("INSERT INTO pts_merchant_agreement(type_code,agreement_no,store_no,active_key,state,payload_json,created_by)"
+            + " VALUES(#{type},#{no},#{store},#{key},#{state},#{payload},#{actor})")
+    int putAgreement(@Param("no") String no,@Param("type") String type,@Param("store") String store,
+                     @Param("key") String key,@Param("state") String state,@Param("payload") String payload,
+                     @Param("actor") String actor);
+    @Update("UPDATE pts_merchant_agreement SET active_key=NULL,state='TERMINATED',updated_by=#{actor},"
+            + "updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE active_key=#{key}")
+    int terminateAgreement(@Param("key") String key,@Param("actor") String actor);
     @Insert("INSERT INTO pts_pool_request(type_code,request_no,submitted_by,evidence_no,state,payload_json,created_by)"
             + " VALUES(#{r.typeCode},#{r.requestNo},#{r.submittedBy},#{r.evidenceNo},'SUBMITTED',#{json},#{r.submittedBy})")
     int submit(@Param("r") PoolRequest request, @Param("json") String json);

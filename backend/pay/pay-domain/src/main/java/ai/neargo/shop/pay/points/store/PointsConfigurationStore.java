@@ -12,6 +12,9 @@ public interface PointsConfigurationStore {
     void changeTypeStatus(String typeCode, PointType.Status expected, PointType.Status next, String activeMarket, String actor);
     void submit(PoolRequest request, String json);
     Map<String, Object> lockRequest(String requestNo);
+    void putAgreement(String no,String type,String store,String activeKey,String state,String payload,String actor);
+    Map<String,Object> agreement(String activeKey);
+    void terminateAgreement(String activeKey,String actor);
     void beginApproval(String requestNo, String actor);
     void approve(String requestNo, String actor, String resultJson);
 }
