@@ -1,10 +1,99 @@
 // 覆盖范围：商家治理（P-11.1）。写操作真改 db.merchants（重开能读回），状态机在此强制。
 import * as db from "@/lib/mock/db";
-import { MERCHANT_TRANSITIONS, type Merchant } from "@/lib/types";
+import { MERCHANT_TRANSITIONS, type Merchant, type OnboardingRow } from "@/lib/types";
 import { MAX_MERCHANT_BREACH } from "@/lib/constants";
 import type { MerchantApi } from "../contracts/merchant";
+import type { LegalForm, MerchantChainRow } from "@/lib/types";
+
+/** 六个卡点各一行，末两行是通的 —— 全是卡点看不出对比，全是通的看不出这页为什么存在 */
+/** 本次会话里已经提醒过的「商家 × 事由」。真实实现按日期落库，mock 只要能演出第二次 */
+const nudgedToday = new Set<string>();
+
+/** 手机号 → 已建出的平台自营主体号。幂等判据按人，与真实实现同一口径 */
+const selfOperatedByPhone = new Map<string, string>();
+
+/*
+ * mock 侧也把「实际可达多少个小区」算出来，而不是回显入参。
+ * CITY 档在 mock 的社区库里能展开出东西，在一个小区都没有的真库里是 0 ——
+ * 这个差别正是这个字段存在的理由，所以 mock 至少要让它**不恒等于勾选数**。
+ */
+function reachOf(scope: string, communityNos?: string[]): number {
+  if (scope === "COMMUNITY") return communityNos?.length ?? 0;
+  return db.communities.filter((c) => c.opened).length;
+}
+
+const mockChain: MerchantChainRow[] = [
+  { entityNo: "M0001", merchantName: "老张粮油店", goods: 0, pendingAudit: 0, onSale: 0, items: 0,
+    firstInbound: null, lastLedger: null, stuckAt: "NO_GOODS" },
+  { entityNo: "M0002", merchantName: "巷口张记杂货", goods: 41, pendingAudit: 41, onSale: 0, items: 0,
+    firstInbound: null, lastLedger: null, stuckAt: "IN_AUDIT" },
+  { entityNo: "M0003", merchantName: "西城生鲜", goods: 18, pendingAudit: 0, onSale: 0, items: 0,
+    firstInbound: null, lastLedger: null, stuckAt: "NOT_ON_SALE" },
+  { entityNo: "M0004", merchantName: "文三路便利", goods: 22, pendingAudit: 3, onSale: 6, items: 0,
+    firstInbound: null, lastLedger: null, stuckAt: "NO_ACCOUNT" },
+  { entityNo: "M0005", merchantName: "城北果园", goods: 9, pendingAudit: 0, onSale: 9, items: 34,
+    firstInbound: null, lastLedger: null, stuckAt: "NO_INBOUND" },
+  { entityNo: "M0006", merchantName: "南塘水产", goods: 15, pendingAudit: 0, onSale: 12, items: 51,
+    firstInbound: "2026-06-11T09:20:00", lastLedger: "2026-07-02T18:40:00", stuckAt: "STALE_LEDGER" },
+  { entityNo: "M0007", merchantName: "邻里鲜生", goods: 63, pendingAudit: 2, onSale: 58, items: 120,
+    firstInbound: "2026-05-02T10:00:00", lastLedger: "2026-09-02T21:15:00", stuckAt: null },
+  { entityNo: "M0008", merchantName: "老李副食", goods: 31, pendingAudit: 0, onSale: 27, items: 88,
+    firstInbound: "2026-04-18T08:30:00", lastLedger: "2026-09-03T07:05:00", stuckAt: null },
+];
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
+
+/**
+ * 进件看板一行由商家派生（mock 没有独立的进件表）：
+ * `settleAccountReady` 就是「进件走没走完」的现成判据 —— 已就绪即 ACTIVE、能收钱，
+ * 未就绪即 APPLYING、收不了钱。与真实后端读 mch_payment_merchant 是一回事的两种落地。
+ */
+/*
+ * 已经把资料发给通道、还在等回执的那些主体。
+ *
+ * mock 里此前只有两种商家：已开通，和「入驻通过时派生的占位」。
+ * 于是进件看板上**每一行「审核中」都是没提交过的** —— 回查按钮永远是禁的，
+ * 「提交过、正在等通道」这半边在 mock 上根本演不出来，也就测不到。
+ * 这一份是那半边（生产里它是常态）。
+ */
+const SUBMITTED_TO_CHANNEL: Record<string, number> = {
+  M904: Date.parse("2026-08-20T02:00:00Z"),
+};
+
+function onboardingRowOf(m: Merchant): OnboardingRow {
+  const ready = m.settleAccountReady;
+  // 提交时间 = 发给过通道的凭据。已开通的必然提交过；没开通的看它在不在上面那份里
+  const appliedAt = ready ? Date.parse(m.createdAt) : (SUBMITTED_TO_CHANNEL[m.merchantNo] ?? null);
+  return {
+    merchantNo: m.merchantNo,
+    merchantName: m.name,
+    storeNo: "",
+    payChannel: "WECHAT",
+    applyStatus: ready ? "ACTIVE" : "APPLYING",
+    rejectReason: null,
+    settleAccountType: ready ? "PERSONAL_BANK" : null,
+    settleAccountMasked: ready ? "****1234" : null,
+    subMchid: ready ? `SUB-${m.merchantNo}` : null,
+    payMerchantNo: ready ? `PM-${m.merchantNo}` : null,
+    appliedAt,
+    ageMs: null,
+    canReceiveMoney: ready,
+  };
+}
+
+/** 锁 / 解锁只差一个布尔；两个方法共用它，免得两份实现哪天走岔 */
+function setChannelLock(storeNo: string, channel: string, locked: boolean) {
+  const row = db.storeFulfillments.find((r) => r.storeNo === storeNo);
+  const ch = row?.channels.find((c) => c.channel === channel);
+  if (ch) ch.locked = locked;
+  return wait(undefined, 300);
+}
+
+function findApply(applyNo: string) {
+  const a = db.applies.find((x) => x.applyNo === applyNo);
+  if (!a) notFound("入驻申请", "Application", applyNo);
+  return a;
+}
 
 function find(merchantNo: string): Merchant {
   const m = db.merchants.find((x) => x.merchantNo === merchantNo);
@@ -15,7 +104,368 @@ function find(merchantNo: string): Merchant {
 // ⚠️ 会抛错的方法一律写成 **async**：非 async 的箭头函数里 `throw` 是**同步抛出**，
 // 调用方拿不到一个 rejected promise（`api.x().catch()` 根本来不及挂上），
 // 与真实后端「网络返回错误码」的行为不一致 —— react-query 的 onError 也就不会触发。
+/**
+ * mock 侧的主体档位。
+ *
+ * 真实后端现在会在商家档案里下发 legalForm（见 MerchantProfileVO），
+ * 但 mock 的 merchantDeposit 要按档位算限额，而它拿到的只有 merchantNo，
+ * 所以这张表还留着 —— 与 db.merchants 上的 legalForm 保持一致。
+ */
+const MOCK_LEGAL_FORM: Record<string, LegalForm> = {
+  M901: "NATURAL_PERSON",
+};
+
+/** 订阅行。没有行不是「未订阅」而是数据缺失 —— 真后端会兜底建一行 FREE。 */
+function findPlan(merchantNo: string) {
+  const r = db.merchantPlans.find((x) => x.merchantNo === merchantNo);
+  if (!r) notFound("套餐订阅", "Plan subscription", merchantNo);
+  return r;
+}
+
 export const merchantMock: MerchantApi = {
+  // ── 门店经营模式与弱主体准入 ─────────────────────────────────
+
+  storeModes: async (merchantNo) => wait(db.storeModes.filter((s) => s.merchantNo === merchantNo)),
+  // 履约配置只读：mock 数据不区分商家（种子只有 M901 一家有店），照单全返
+  merchantFulfillment: async () => wait(db.storeFulfillments.map((r) => ({ ...r, channels: r.channels.map((c) => ({ ...c })) }))),
+  lockChannel: async (storeNo, channel) => setChannelLock(storeNo, channel, true),
+  unlockChannel: async (storeNo, channel) => setChannelLock(storeNo, channel, false),
+  // 无照 × 自营。mock 里从 storeModes 与商家档案现算，**不另建一份数据** ——
+  // 另建的话它会和 setStoreBusinessMode 的写入脱节，页面上改完模式清单不变
+  modeRisk: async () => wait(
+    db.storeModes
+      .filter((s) => s.businessMode === "SELF_OPERATED")
+      .flatMap((s) => {
+        const m = db.merchants.find((x) => x.merchantNo === s.merchantNo);
+        if (!m || m.legalForm !== "NATURAL_PERSON") return [];
+        return [{
+          merchantNo: m.merchantNo, merchantName: m.name, legalForm: m.legalForm,
+          storeNo: s.storeNo, storeName: s.storeName, businessMode: s.businessMode!,
+          settledBills: 0, settledMinor: 0,
+        }];
+      })),
+
+  setFundsMode: async ({ merchantNo, fundsMode }) => {
+    const m = find(merchantNo);
+    // 无照主体不得走归集：平台按全额确认收入，而他开不出进项票 ——
+    // 那笔支出不得税前扣除。农业生产者例外（平台可自开收购发票）
+    if (fundsMode === "AGGREGATED" && m.legalForm === "NATURAL_PERSON" && !m.agriProducer) {
+      fail("无营业执照的主体不能走归集路径（自产农产品除外）",
+        "Unlicensed entities cannot use the aggregated funds path (self-produced agricultural goods excepted)");
+    }
+    m.fundsMode = fundsMode;
+    return wait(m, 400);
+  },
+
+  /*
+   * 给自营主体开店。**mock 也拦非自营** —— 那条守卫（运营别绕过商家吃掉他的额度）
+   * 是这个端点最要紧的一条，mock 里放行的话开发期永远演不出它。
+   */
+  addSelfOperatedStore: async ({ merchantNo, name, address }) => {
+    const m = find(merchantNo);
+    if (!name?.trim()) {
+      fail("门店名称不能为空", "Store name is required");
+    }
+    if (![...selfOperatedByPhone.values()].includes(merchantNo)) {
+      fail("只有平台自营主体能由运营开店", "Only platform self-operated entities can have stores added by ops");
+    }
+    const n = db.stores.filter((s2) => s2.merchantNo === merchantNo).length + 1;
+    return wait({
+      storeNo: `${merchantNo}-S${n}`,
+      merchantNo,
+      name: name.trim(),
+      address: address ?? null,
+      businessMode: "SELF_OPERATED",
+      // 自营门店不进件，空是正常的
+      payMerchantNo: null,
+    }, 600);
+  },
+
+  /*
+   * 建平台自营商家。**mock 也做幂等**（按手机号找已有主体）——
+   * 只「每次新建一个」的话，「连点两次会怎样」这件事在开发期永远演不出来，
+   * 而那正是这个入口最需要看清的一种行为。
+   */
+  /**
+   * 代商家进件。**mock 里也拦执照**，而且拦的条件与后端同口径
+   * （`requireLicenseIfNeeded`：只在客户端传了 qualificationItems 时生效）——
+   * 不拦的话，开发期永远演不出「代填不放宽证件」这条，而那是这一期的全部要点。
+   */
+  applyOnBehalf: async ({ phone, name, subject, qualificationItems }) => {
+    if (!/^1[3-9]\d{9}$/.test(phone ?? "")) {
+      fail("手机号格式不对，应为 11 位大陆手机号", "Invalid mainland China mobile number");
+    }
+    if (!name?.trim()) {
+      fail("主体名称不能为空", "Merchant name is required");
+    }
+    if (subject === "ENTERPRISE" && qualificationItems
+        && !qualificationItems.some((it) => it.type === "BUSINESS_LICENSE")) {
+      fail("企业主体必须上传营业执照", "Business license is required for enterprises");
+    }
+    return wait({
+      applyNo: `A9${String(Math.floor(Math.random() * 900) + 100)}`,
+      ownerUserNo: `U-${phone}`,
+    }, 500);
+  },
+
+  createSelfOperated: async ({ phone, name, serviceScope, communityNos }) => {
+    if (!/^1[3-9]\d{9}$/.test(phone ?? "")) {
+      fail("手机号格式不对，应为 11 位大陆手机号", "Invalid mainland China mobile number");
+    }
+    if (!name?.trim()) {
+      fail("主体名称不能为空", "Merchant name is required");
+    }
+    const scope = serviceScope || "COMMUNITY";
+    // 没有覆盖社区的商家上着架却对谁都不可见，而这个故障没有任何报错（ADR-009）。
+    // 只对 COMMUNITY 档拦 —— 与真实实现同口径
+    if (scope === "COMMUNITY" && !communityNos?.length) {
+      fail("必须至少选一个覆盖社区", "At least one covered community is required");
+    }
+    const tail = phone.slice(-4);
+    const owned = selfOperatedByPhone.get(phone);
+    if (owned) {
+      return wait({
+        merchantNo: owned, storeNo: `${owned}-S1`,
+        ownerUserNo: `U-${phone}`, fundsMode: "AGGREGATED" as const,
+        businessMode: "SELF_OPERATED", serviceScope: scope, created: false,
+        selfOperated: true,
+        reachableCommunities: reachOf(scope, communityNos),
+      }, 500);
+    }
+    const merchantNo = `M9${String(db.merchants.length + 10).padStart(2, "0")}`;
+    db.merchants.unshift({
+      merchantNo, name: name.trim(), legalForm: "ENTERPRISE", tier: "MEDIUM", status: "ACTIVE",
+      communityNos: [...communityNos],
+      contactName: "平台自营", contactPhone: `${phone.slice(0, 3)}****${tail}`,
+      categoryCodes: [], qualifications: [], verified: true, breachCount: 0,
+      settleAccountReady: false, createdAt: new Date().toISOString(),
+      fundsMode: "AGGREGATED",
+      // 建出来的主体要带上这个标记，否则 mock 下「自营的类目授权不禁用」演不出来
+      selfOperated: true,
+    });
+    selfOperatedByPhone.set(phone, merchantNo);
+    return wait({
+      merchantNo, storeNo: `${merchantNo}-S1`, ownerUserNo: `U-${phone}`,
+      fundsMode: "AGGREGATED" as const, businessMode: "SELF_OPERATED",
+      serviceScope: scope, created: true, selfOperated: true,
+      reachableCommunities: reachOf(scope, communityNos),
+    }, 700);
+  },
+
+  // ── 资质 ───────────────────────────────────────────────
+  // mock 侧真存一份，写完能读回 —— 只返回空数组的话，
+  // 「登记完列表还是空」这种 bug 在开发期永远看不到
+  qualifications: async (merchantNo) => wait(db.qualifications.filter((q) => q.entityNo === merchantNo)),
+
+  saveQualification: async ({ merchantNo, qualNo, ...patch }) => {
+    if (qualNo) {
+      const q = db.qualifications.find((x) => x.qualNo === qualNo);
+      if (!q) notFound("资质", "Qualification", qualNo);
+      Object.assign(q!, patch);
+      return wait(q!, 400);
+    }
+    if (!patch.qualType || !patch.qualName) {
+      fail("资质类型与名称必填", "Qualification type and name are required");
+    }
+    const created = {
+      qualNo: `Q${db.qualifications.length + 1}`, entityNo: merchantNo,
+      qualType: patch.qualType!, qualName: patch.qualName!,
+      qualNumber: patch.qualNumber, imageUrl: patch.imageUrl,
+      expireAt: patch.expireAt ?? null, status: "VALID",
+    };
+    db.qualifications.push(created);
+    return wait(created, 400);
+  },
+
+  revokeQualification: async (qualNo) => {
+    const q = db.qualifications.find((x) => x.qualNo === qualNo);
+    if (!q) notFound("资质", "Qualification", qualNo);
+    // 不物理删：「当初有没有这张证」是要能查的
+    q!.status = "REVOKED";
+    return wait(q!, 400);
+  },
+
+  // 没有种子的商家给空数组，不是 404 —— 「这家店只有老板一个人」是常态
+  merchantStaff: async (merchantNo) => wait(db.merchantStaff[merchantNo] ?? []),
+
+  setStoreBusinessMode: async ({ storeNo, businessMode }) => {
+    const s = db.storeModes.find((x) => x.storeNo === storeNo);
+    if (!s) fail("门店不存在", "Store not found");
+    /*
+     * 切第三方要求该店有可用收款号。不拦的后果不是报错，而是**静默欠款**：
+     * 订单照常成交、账单照常生成，只是钱卡在平台侧下不去，
+     * 等发现时已经积了一批单。自营不需要这一条 —— 自营的钱本来就先进平台。
+     */
+    if (businessMode === "THIRD_PARTY" && !s!.payMerchantNo) {
+      fail("该门店尚无可用收款账户，无法切换为第三方经营模式",
+        "This store has no active payment account; cannot switch to third-party mode");
+    }
+    s!.businessMode = businessMode;
+    return wait(s!, 400);
+  },
+
+  admissionPolicies: async () => wait([...db.admissionPolicies]),
+
+  updateAdmissionPolicy: async ({ legalForm, ...patch }) => {
+    const p = db.admissionPolicies.find((x) => x.legalForm === legalForm);
+    // 三档已锁定，凭空多出一档只可能是笔误 —— 静默新建会让笔误变成一条永不生效的策略
+    if (!p) fail("主体档位不存在", "Unknown legal form");
+    Object.assign(p!, patch);
+    return wait(undefined, 400);
+  },
+
+  merchantDeposit: async (merchantNo) => {
+    const txns = db.depositTxns[merchantNo] ?? [];
+    const paid = txns.filter((t) => t.txnType !== "FREEZE" && t.txnType !== "UNFREEZE")
+      .reduce((n, t) => n + t.amountMinor, 0);
+    const frozen = txns.reduce(
+      (n, t) => n + (t.txnType === "FREEZE" ? t.amountMinor : t.txnType === "UNFREEZE" ? -t.amountMinor : 0), 0);
+    /*
+     * ⚠️ **运营端的商家档案里没有主体类型**（Merchant 上没有 legalForm，
+     * 后端 /ops/merchants 也不返回），而准入档位完全由它决定。
+     * 真实后端是在服务端算好 requiredMinor / 两个限额再下发的，页面用不到它；
+     * 只有 mock 得自己推，所以这里用一张本地映射兜着。
+     * 这个缺口值得单独补 —— 运营看不到「这家是小微」，就理解不了它为什么被限额。
+     */
+    const form = MOCK_LEGAL_FORM[merchantNo] ?? "ENTERPRISE";
+    const policy = db.admissionPolicies.find((x) => x.legalForm === form);
+    // 判「够不够」用**可用**而非实缴：冻结中的钱不能同时用来撑准入，
+    // 否则同一笔保证金被两处重复计数
+    const available = paid - frozen;
+    return wait({
+      merchantNo, paidMinor: paid, frozenMinor: frozen, availableMinor: available,
+      requiredMinor: policy?.requiredDepositMinor ?? 0,
+      sufficient: available >= (policy?.requiredDepositMinor ?? 0),
+      singleOrderLimitMinor: policy?.singleOrderLimitMinor ?? 0,
+      dailyAmountLimitMinor: policy?.dailyAmountLimitMinor ?? 0,
+    });
+  },
+
+  depositTxns: async (merchantNo) => wait([...(db.depositTxns[merchantNo] ?? [])].reverse()),
+
+  payQuotas: async (merchantNo) => wait([...(db.payQuotas[merchantNo] ?? [])]),
+
+  setPayQuota: async ({ merchantNo, storeNo, quotaLimitMinor }) => {
+    const list = db.payQuotas[merchantNo];
+    // 没进过件就没有额度可设 —— 静默建一条会造出一个没进过件的收款号，
+    // 后端也是这么拒的（NOT_FOUND），mock 跟着拒才测得出界面上那条提示
+    const row = list?.find((x) => x.storeNo === (storeNo ?? ""));
+    if (!row) fail("该商家/门店还没有收款号", "No payment merchant for this store");
+    if (quotaLimitMinor < 0) fail("额度不能为负", "Quota must not be negative");
+    // 只改上限，不动已用量：用量是支付累加出来的事实
+    row!.limitMinor = quotaLimitMinor;
+    return wait(undefined, 400);
+  },
+
+  addDepositTxn: async ({ merchantNo, txnType, amountMinor, reason }) => {
+    const list = (db.depositTxns[merchantNo] ??= []);
+    const paid = list.filter((t) => t.txnType !== "FREEZE" && t.txnType !== "UNFREEZE")
+      .reduce((n, t) => n + t.amountMinor, 0);
+    // 符号方向必须与类型一致：缴纳只能是正，退还与扣划只能是负。
+    // 不校验的后果不是报错而是账反了 —— 「退还」把余额加上去，两侧都不报错
+    const shouldBeNegative = txnType === "REFUND" || txnType === "DEDUCT";
+    if (txnType !== "FREEZE" && txnType !== "UNFREEZE"
+      && (amountMinor === 0 || (shouldBeNegative ? amountMinor > 0 : amountMinor < 0))) {
+      fail("金额方向与变动类型不符", "The sign of the amount does not match the entry type");
+    }
+    const after = txnType === "FREEZE" || txnType === "UNFREEZE" ? paid : paid + amountMinor;
+    // 扣成负数意味着平台已经垫付，那是另一笔账，不该混在这张表里
+    if (after < 0) fail("保证金余额不足，无法扣划", "Deposit balance is not enough for this deduction");
+    list.push({
+      txnNo: `DP-${list.length + 1}`, txnType, amountMinor,
+      balanceAfterMinor: after, reason: reason ?? null, operator: "admin",
+      createdAt: new Date().toISOString(),
+    });
+    return wait(undefined, 400);
+  },
+
+  listApplies: (q = {}) => {
+    // 不给状态时只给待办两档 —— 与真后端同口径，否则切到真实环境列表会突然变长
+    const want = (q.status?.split(",").map((x) => x.trim()).filter(Boolean) ?? [])
+      .length
+      ? q.status!.split(",").map((x) => x.trim()).filter(Boolean)
+      : ["PENDING", "REVIEWING"];
+    return wait(
+      db.paginate(db.applies, q.page, q.size, (a) =>
+        want.includes(a.status) && db.kwHit(q.keyword, a.applyNo, a.name, a.contactName, a.contactPhone),
+      ),
+    );
+  },
+
+  acceptApply: async (applyNo) => {
+    const a = findApply(applyNo);
+    if (a.status !== "PENDING") fail("只有待审的申请可以受理", "Only pending applications can be accepted");
+    a.status = "REVIEWING";
+    await wait(undefined);
+  },
+
+  auditApply: async (applyNo, approved, reason, serviceScope, communityNos, grantCodes) => {
+    const a = findApply(applyNo);
+    if (a.status === "APPROVED" || a.status === "REJECTED") {
+      fail("这份申请已经审过了", "This application has already been decided");
+    }
+    if (!approved && !reason?.trim()) {
+      // 不写理由的驳回等于让对方猜 —— mock 也要拦，否则这段校验在开发期永远走不到
+      fail("驳回必须写理由", "A rejection must carry a reason");
+    }
+    if (approved) {
+      if (serviceScope) a.serviceScope = serviceScope;
+      if (communityNos?.length) a.communityNos = [...communityNos];
+      /*
+       * 「仅本社区」却一个都没选 —— 真后端的 activate 会拒，mock 也拒。
+       * 放过去的话商家通过审核、上完架，却对谁都不可见，而这个故障不报错。
+       */
+      const byCommunity = !a.serviceScope || a.serviceScope === "COMMUNITY";
+      if (byCommunity && !a.communityNos?.length) {
+        fail("按社区经营必须至少选一个小区", "Pick at least one community for community-scoped merchants");
+      }
+      a.status = "APPROVED";
+      a.merchantNo = `M${applyNo.slice(1)}`;
+      /*
+       * **授码与通过同一步**（批 B2）。分两步做会留下「通过了但一个码都没授」的状态：
+       * 商家收到通过通知、进去建品、上架被拒，而错误说的是「你还没有资质授权」。
+       * 空是合法的：只卖无门槛类目的商家不需要任何码。
+       */
+      if (grantCodes?.length) {
+        for (const code of grantCodes) {
+          if (!db.authCodes.find((x) => x.code === code)) notFound("授权码", "Permission code", code);
+        }
+        a.categoryCodes = [...grantCodes];
+      }
+    } else {
+      a.status = "REJECTED";
+      a.rejectReason = reason;
+    }
+    a.auditedAt = Date.now();
+    await wait(undefined);
+  },
+
+  /*
+   * 链条画像。**照着 2026-09-03 线上的形状编**：200 个 SPU 里只有 4 个上架、
+   * 6 家商家里只有 2 家真在记账 —— mock 里放一排健康的行，会让这一页
+   * 看起来像个没什么用的报表，而它存在的理由正是那些断掉的行。
+   *
+   * 六个卡点各来一行，最后两行是通的 —— 全是卡点也不对，那样看不出对比。
+   */
+  /*
+   * 提醒。mock 里**记住已经发过谁**，否则连点两次都返回「发出去了」——
+   * 而这条能力最要紧的性质就是「一天一次」，mock 演不出来就等于没演。
+   */
+  nudgeMerchant: ({ entityNo, reason }) => {
+    const key = `${entityNo}:${reason}`;
+    if (nudgedToday.has(key)) {
+      return wait({ sent: 0, alreadySentToday: true, noRecipient: false });
+    }
+    nudgedToday.add(key);
+    return wait({ sent: 2, alreadySentToday: false, noRecipient: false });
+  },
+
+  merchantChain: (q = {}) =>
+    wait(
+      mockChain.filter((r) => (q.stuckOnly ? r.stuckAt !== null : true))
+        .slice(0, q.limit ?? 200),
+    ),
+
   listMerchants: (q = {}) =>
     wait(
       db.paginate(db.merchants, q.page, q.size, (m) =>
@@ -29,11 +479,52 @@ export const merchantMock: MerchantApi = {
 
   getMerchant: async (merchantNo) => wait(find(merchantNo)),
 
-  setMerchantStatus: async (merchantNo, status, remark) => {
+  // 进件看板（WS-C）：从商家派生只读行；status 支持逗号分隔多态，与后端同口径
+  onboardingBoard: (q = {}) =>
+    wait(
+      db.paginate(
+        db.merchants.map(onboardingRowOf),
+        q.page,
+        q.size,
+        (r) =>
+          (!q.status || q.status.split(",").map((s) => s.trim()).includes(r.applyStatus)) &&
+          db.eqHit(q.payChannel, r.payChannel) &&
+          db.kwHit(q.keyword, r.merchantNo, r.merchantName, r.payMerchantNo),
+      ),
+    ),
+  /*
+   * mock 不真的问通道，但要**分得清两种结局**：没提交过的占位行回查是空动作
+   * （submitted=false，页面据此提示「还没提交，回查不到东西」），提交过的才算回查成功。
+   * 一律返回 true 的话，「点了没反应」这个缺陷在 mock 上永远复现不出来。
+   */
+  refreshOnboarding: async (v) => {
+    const m = db.merchants.find((x) => x.merchantNo === v.merchantNo);
+    await wait(undefined);
+    // 与后端同一条判据：发给过通道才有提交时间（占位行 appliedAt 为 null）
+    const r = m ? onboardingRowOf(m) : null;
+    return { submitted: !!r?.appliedAt, applyStatus: r?.applyStatus ?? "NONE" };
+  },
+
+  setMerchantStatus: async (merchantNo, status, remark, communityNos) => {
     const m = find(merchantNo);
+    db.assertTransition(MERCHANT_TRANSITIONS, m.status, status, "商家", "Merchant");
+    /*
+     * 这里只改**经营状态**（ACTIVE / SUSPENDED / FROZEN）。
+     *
+     * 审核（受理 / 通过 / 驳回）不在这条路上 —— 它属于申请单，
+     * 走 `/ops/merchant/apply/{applyNo}/audit`。两者曾经合成一个字段，
+     * 于是「已在经营、又提交了第二张执照」的商家 status 该填什么无解。
+     *
+     * 「通过审核必须同时指定覆盖社区」那条规则也跟着搬到了审核那边：
+     * 不拦的话商家审核通过 → 上架 → 一个订单都不来（service_scope 默认
+     * COMMUNITY 而一个社区都没覆盖 = C 端谁也搜不到），且没有任何报错。
+     */
     db.assertTransition(MERCHANT_TRANSITIONS, m.status, status, "商家", "Merchant");
     m.status = status;
     if (remark !== undefined) m.auditRemark = remark;
+    if (communityNos?.length) {
+      m.communityNos = [...communityNos];
+    }
     return wait(m, 400);
   },
 
@@ -41,7 +532,7 @@ export const merchantMock: MerchantApi = {
     const m = find(merchantNo);
     // 认证标只授予审核通过的商家 —— 这条规则在后端也存在，mock 放行的话
     // 页面就不会去写「先通过再授标」的引导。
-    if (verified && m.status !== "APPROVED") fail("仅已通过审核的商家可授予认证标", "Only approved merchants can hold the verified badge");
+    if (verified && m.status !== "ACTIVE") fail("仅正常经营中的商家可授予认证标", "Only merchants in good standing can hold the verified badge");
     // 认证标是平台的背书，挂在正在毁约的商家身上，赔的是平台的信用
     if (verified && m.breachCount >= MAX_MERCHANT_BREACH) {
       fail(`毁约次数已达 ${m.breachCount} 次（上限 ${MAX_MERCHANT_BREACH}），不能授予认证标`, `${m.breachCount} breaches on record (limit ${MAX_MERCHANT_BREACH}) — the verified badge cannot be granted`);
@@ -59,45 +550,78 @@ export const merchantMock: MerchantApi = {
     const m = find(merchantNo);
     if (!reason.trim()) fail("改授权范围必须写原因 —— 它决定商家能上架什么", "Changing the granted scope needs a reason — it decides what they may list");
     // 没过审就授权等于提前放行
-    if (m.status !== "APPROVED") fail("仅已通过审核的商家可配置类目授权", "Category permissions are open to approved merchants only");
+    if (m.status !== "ACTIVE") fail("仅正常经营中的商家可配置类目授权", "Category permissions are open to merchants in good standing only");
     // 撤空之后商家会静默失去上架能力：要停就走封禁或归档，那是明示的动作
     if (!codes.length) fail("不能把授权撤空 —— 要停止经营请走封禁或归档", "You cannot clear every permission — to stop them trading, ban or archive them");
 
     for (const code of codes) {
       const ac = db.authCodes.find((x) => x.code === code);
       if (!ac) notFound("授权码", "Permission code", code);
-      if (ac.requiredQualification && !m.qualifications.includes(ac.requiredQualification)) {
+      // ⚠️ 这条校验**只有 mock 有**：真实后端 MerchantAuthCodeServiceImpl.setCodes
+      // 不比对 requiredQualification，直调接口即可绕过。前端的 disabled 也只是装饰。
+      // 补后端拦截要等资质数据真的存在（入驻转存 mch_qualification）—— 现在补等于全禁。
+      if (ac.requiredQualification && !(m.qualifications ?? []).includes(ac.requiredQualification)) {
         fail(`${ac.name} 需要「${ac.requiredQualification}」，该商家尚未上传`, `${ac.name} requires “${ac.requiredQualification}”, which this merchant has not uploaded`);
       }
     }
 
-    // 撤销时：该码下还有在售商品的不能撤 —— 撤了架上还挂着那类商品，
-    // 谁也说不清它算不算违规
-    const removed = m.categoryCodes.filter((c) => !codes.includes(c));
-    for (const code of removed) {
-      const live = db.skus.filter(
-        (s) => s.merchantNo === merchantNo && s.status === "ON_SALE" &&
-          db.categories.find((cat) => cat.categoryNo === s.categoryNo)?.requiredCode === code,
-      );
-      if (live.length) {
-        const ac = db.authCodes.find((x) => x.code === code);
-        fail(`${ac?.name ?? code} 下还有 ${live.length} 个在售商品，请先下架再撤销授权`, `${ac?.name ?? code} still has ${live.length} items on sale — take them down before revoking it`);
-      }
-    }
+    /*
+     * 撤销**不拦，但把代价算出来**（批 B3）。
+     *
+     * 这里此前是硬拒「该码下还有在售商品」—— 而真后端不拦：证过期了就得撤，
+     * 拦住的话运营只能先去逐件下架商家的货，那是商家的事不是他的。
+     * mock 比后端严的后果是这条路径在开发期永远走不到，上线才发现行为不同。
+     *
+     * 改成回一个数：撤了几个码、影响多少件在架商品。运营在按下确认之前看得见它 ——
+     * 看不见的话，一次「顺手收紧」会在几天后变成商家的「我的货怎么上不去了」。
+     */
+    const revoked = m.categoryCodes.filter((c) => !codes.includes(c));
+    const affected = db.skus.filter(
+      (s) => s.merchantNo === merchantNo && s.status === "ON_SALE" &&
+        revoked.includes(
+          db.categories.find((cat) => cat.categoryNo === s.categoryNo)?.requiredCode ?? "",
+        ),
+    ).length;
 
     m.categoryCodes = [...codes];
-    return wait(m, 400);
+    return wait({ codes: [...codes], revoked, affected }, 400);
   },
 
+  // 与后端同形：返分页包。mock 返裸数组正是上一版把真后端崩溃藏了一路的原因
   listViolations: async (q = {}) =>
-    wait(db.violations.filter((v) => db.eqHit(q.merchantNo, v.merchantNo))),
+    wait(db.paginate(db.violations, q.page, q.size,
+      (v) => db.eqHit(q.merchantNo, v.merchantNo))),
 
-  recordViolation: async ({ merchantNo, type, action, detail }) => {
+  recordViolation: async ({ merchantNo, type, action, detail, storeNo }) => {
     const m = find(merchantNo);
     if (!detail.trim()) fail("必须写清事实与证据出处 —— 没有事实的处置在申诉时站不住", "State the facts and where the evidence sits — an action with no facts does not hold up on appeal");
 
+    /*
+     * 门店级处置：动作与它作用的对象必须**同一次提交**。
+     * 分成两步（先记违规、再去门店页压下）的话，中间任何一次失败都留下
+     * 「压了店但没有处置记录」或反过来 —— 而申诉时拿不出记录的处置站不住。
+     *
+     * 反向也拦：`storeNo` 只跟着 STORE_OFFLINE 走。主体级处置带着门店号，
+     * 读记录的人会以为只压了那一家店。
+     */
+    if (action === "STORE_OFFLINE" && !storeNo?.trim()) {
+      fail("门店强制下线必须指定门店", "A forced store offline must name the store");
+    }
+    if (action !== "STORE_OFFLINE" && storeNo?.trim()) {
+      fail("只有「门店强制下线」可以指定门店，主体级处置作用于全部门店", "Only a forced store offline may name a store — the other actions hit the whole merchant");
+    }
+
     // SUSPEND 走同一张状态机：已封禁的再封一次会在这里抛错，而不是静默重复
     if (action === "SUSPEND") db.assertTransition(MERCHANT_TRANSITIONS, m.status, "SUSPENDED", "商家", "Merchant");
+
+    const store = action === "STORE_OFFLINE"
+      ? db.stores.find((s) => s.storeNo === storeNo!.trim())
+      : undefined;
+    if (action === "STORE_OFFLINE") {
+      if (!store) notFound("门店", "Store", storeNo!.trim());
+      if (store.merchantNo !== merchantNo) fail("这家门店不属于该商家", "That store does not belong to this merchant");
+      if (store.status === "SUSPENDED") fail("该门店已被强制下线", "That store is already forced offline");
+    }
 
     // 只有毁约计入 breachCount：别的违规也计，ADR-003 那条阈值规则就失去意义了
     if (type === "BREACH") m.breachCount += 1;
@@ -105,13 +629,110 @@ export const merchantMock: MerchantApi = {
       m.status = "SUSPENDED";
       m.auditRemark = detail.trim();
     }
+    // 压下那一刻就落库：真副作用，不是记一笔就完（解除走 restoreStore）
+    if (store) store.status = "SUSPENDED";
 
     const v = {
       violationNo: db.nextNo("VL", db.violations, 900, "violationNo"),
-      merchantNo, merchantName: m.name, type, action,
+      merchantNo, merchantName: m.name, storeNo: store?.storeNo ?? null, type, action,
       detail: detail.trim(), operator: "admin", at: new Date().toISOString(),
     };
     db.violations.unshift(v);
     return wait(v, 400);
+  },
+  // ── 增值包与门店额度（P-11.2.2~11.2.6）─────────────────────────
+  //
+  // 校验逐条对齐后端 `MerchantPlanServiceImpl`：理由必填、停售档位不能新授、
+  // 额度非负、续费顺延而不是从今天重算。**mock 宽于后端的地方，就是上线才发现的地方。**
+
+  merchantPlans: async (q) => {
+    const now = Date.now();
+    const GRACE_MS = 7 * 86_400_000;
+    const rows = db.merchantPlans.filter((r) => {
+      if (q?.filter === "GRACE") return r.status === "GRACE";
+      if (q?.filter === "DOWNGRADED") return r.downgradedAt != null;
+      if (q?.filter === "EXPIRING_7D") {
+        // 「快到期」只对还在生效的有意义 —— 已进宽限期的归上一个筛选
+        return r.status === "ACTIVE" && r.expireAt != null
+          && r.expireAt >= now && r.expireAt <= now + GRACE_MS;
+      }
+      return true;
+    }).filter((r) => {
+      const k = q?.keyword?.trim();
+      return !k || r.merchantName.includes(k) || r.merchantNo.includes(k);
+    });
+    // 与后端同序：按到期日升序 —— 最急的在最上面，这个列表就是一张待办
+    const sorted = [...rows].sort((a, b) => (a.expireAt ?? Infinity) - (b.expireAt ?? Infinity));
+    return wait(db.paginate(sorted, q?.page, q?.size));
+  },
+
+  planUpgradeSignals: async () =>
+    // mock 里只有一个人名下有两个主体。真后端按 owner_user_no 分组，
+    // 这里没有 owner 列，用固定一行代表那个形状 —— 页面要的是「怎么渲染」，不是真数据
+    wait([{
+      ownerUserNo: "U-9001",
+      entityNos: ["M901", "M904"],
+      entityNames: ["阿姨家的菜摊", "社区鲜奶站"],
+      entityCount: 2,
+    }]),
+
+  grantPlan: async ({ merchantNo, planCode, months, reason }) => {
+    if (!reason?.trim()) fail("请填写授予理由", "A reason is required");
+    const row = findPlan(merchantNo);
+    const def = db.planDefs.find((d) => d.planCode === planCode);
+    // 停售的档位不能新授（已订阅的照常用到到期，那才是 enabled 的语义）
+    if (!def || !def.enabled) fail("该档位已停售，不能新授", "That plan tier is retired");
+    const now = Date.now();
+    const extending = !!months && months > 0;
+    // 换档或续费才刷新快照；**只补缴不延长不动快照** ——
+    // 他买的是当初那个额度，中途下调档位定义不该殃及他
+    if (planCode !== row.planCode || extending) {
+      row.planCode = planCode;
+      row.storeQuota = def.storeQuota;
+      row.staffQuota = def.staffQuota;
+      row.crossStoreStats = def.crossStoreStats;
+      row.quotaSource = "PLAN";
+    }
+    if (extending) {
+      // 还在生效期内就从原到期日接着算 —— 一律从今天重算会**吞掉他已付未用的那几天**，
+      // 而提前续费正是我们希望他做的事
+      const base = row.expireAt != null && row.expireAt > now ? row.expireAt : now;
+      row.expireAt = base + months! * 30 * 86_400_000;
+      row.startAt ??= now;
+    }
+    row.status = "ACTIVE";
+    row.grantedBy = "PLATFORM";
+    row.downgradedAt = null;
+    // 恢复被降级压下的门店（真后端只回 plan_suspended=1 的那批；
+    // mock 里 ST004 就是被压的那家，商家自停的不在这张表上）
+    for (const s of db.stores) {
+      if (s.merchantNo === merchantNo && s.status === "READONLY") s.status = "ACTIVE";
+    }
+    return wait(row, 400);
+  },
+
+  overridePlanQuota: async ({ merchantNo, storeQuota, staffQuota, reason }) => {
+    if (!reason?.trim()) fail("请填写覆盖理由", "A reason is required");
+    if ((storeQuota ?? 0) < 0 || (staffQuota ?? 0) < 0) fail("额度不能为负", "Quota cannot be negative");
+    const row = findPlan(merchantNo);
+    const def = db.planDefs.find((d) => d.planCode === row.planCode);
+    // null = 清除覆盖、回到档位快照。**不是把 0 写进额度** ——
+    // 那两件事在界面上长得一样，而后者会让这家商家一家店都开不了
+    row.storeQuota = storeQuota ?? def?.storeQuota ?? row.storeQuota;
+    row.staffQuota = staffQuota ?? def?.staffQuota ?? row.staffQuota;
+    row.quotaSource = storeQuota == null && staffQuota == null ? "PLAN" : "OVERRIDE";
+    return wait(row, 400);
+  },
+
+  planDefs: async () => wait(db.planDefs),
+
+  savePlanDef: async ({ planCode, storeQuota, staffQuota, crossStoreStats, trialDays, enabled }) => {
+    const def = db.planDefs.find((d) => d.planCode === planCode);
+    if (!def) notFound("套餐档位", "Plan tier", planCode);
+    if (storeQuota < 1) fail("门店额度至少为 1", "Store quota must be at least 1");
+    Object.assign(def, { storeQuota, staffQuota, crossStoreStats, trialDays, enabled });
+    // **刻意不动 db.merchantPlans 的任何一行**：已订阅的用的是自己的快照。
+    // 这里顺手改掉他们的额度，就把「老用户保护」这条规则在 mock 里演示反了
+    return wait(def, 400);
   },
 };

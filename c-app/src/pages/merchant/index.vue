@@ -1,33 +1,106 @@
 <script setup lang="ts">
-// 商家详情：资质与评分 → 在售商品 → 全部评价。
+// 商家详情：头部（谁 · 范围 · 三个数）→ 在售商品（两列）/ 全部评价。
 // 一期平台方是唯一入驻方，页面照样按「多商家」写 —— 二期开放入驻只是数据变多。
-import { ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+//
+// 2026-09-19 收过一轮：头部去掉了「企业商家」类型标、入驻时间、「新评价权重更高」那句依据，
+// 以及零评价时一排 5.0 的分维度分（那是默认值，不是评出来的）。
+// 留下的都回答「这家店能不能买、靠不靠谱」。
+import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
+import { onLoad, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
+import { useUserStore } from "@/stores/user";
 import { ROUTES } from "@shared/utils/constants";
-import { isoDate } from "@shared/utils/format";
-import { firstSku } from "@shared/utils/goods";
+import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
+import { buildShareMessage, buildShareTimeline, shareImageUrl } from "@shared/ports/share";
 import type { Goods, Merchant, Review } from "@shared/types";
 
+const { t } = useI18n();
 const cart = useCartStore();
+const user = useUserStore();
 const merchant = ref<Merchant | null>(null);
 const goods = ref<Goods[]>([]);
 const reviews = ref<Review[]>([]);
 const tab = ref<"goods" | "reviews">("goods");
 
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load(merchantNo: string) {
-  const [m, g, r] = await Promise.all([
-    api.merchantDetail(merchantNo),
-    api.goodsList({ merchantNo, size: 50 }),
-    api.reviewList({ merchantNo }),
-  ]);
-  merchant.value = m;
-  goods.value = g.records;
-  reviews.value = r;
-  uni.setNavigationBarTitle({ title: m.name });
+  try {
+    const [m, g, r] = await Promise.all([
+      api.merchantDetail(merchantNo),
+      api.goodsList({ merchantNo, size: 50 }),
+      api.reviewList({ merchantNo }),
+    ]);
+    merchant.value = m;
+    goods.value = g.records;
+    reviews.value = r;
+    uni.setNavigationBarTitle({ title: m.name });
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
 }
+
+/**
+ * 标签去掉与「自营」标重复的那条 —— 库里有店把「平台自营」也写进了标签，
+ * 于是头部同时出现「自营」chip 和「平台自营」chip。
+ */
+const tags = computed(() => {
+  const m = merchant.value;
+  if (!m) return [];
+  const self = String(t("merchant.selfOperated"));
+  return m.tags.filter((tg) => !(m.selfOperated && tg.includes(self)));
+});
+
+/**
+ * 头部的几个数：评分 · 已售 · 营业时间 · 在售，**有值的才出**，最多三个。
+ * - 没人评过写「新店」，不写分：后端对零评价回 5.0，那是默认值；
+ * - 已售 0 不出：零销量是劝退信号（与商品卡、详情页同一条规矩；真机上「已售单 0」很扎眼）。
+ */
+/** 开店天数。当天开的算 1 天 —— 「开店 0 天」读起来像没开 */
+function daysSince(ts: number): number {
+  return Math.max(1, Math.floor((Date.now() - ts) / 86_400_000) + 1);
+}
+
+const stats = computed(() => {
+  const m = merchant.value;
+  if (!m) return [];
+  const all = [
+    { k: t("merchant.statRating"), v: m.ratingCount > 0 ? m.rating.toFixed(1) : String(t("shops.newShop")) },
+    m.salesCount > 0 ? { k: t("merchant.statSold"), v: String(m.salesCount) } : null,
+    m.openHours ? { k: t("merchant.hours"), v: m.openHours } : null,
+    /*
+     * 在售件数：**用后端给的总数**，不是 `goods.value.length` ——
+     * 后者是当前页加载到的条数，分页之后它说的是「第一页有几件」。
+     * 一家有 50 件货的店在这里会显示「在售 10」，而那个数看起来完全正常。
+     */
+    { k: t("merchant.statGoods"), v: String(m.goodsCount) },
+    /*
+     * 收藏人数（§8.2 批 2）。**0 时不显示** —— 与上面的成交数同一个取向：
+     * 这个功能上线至今线上 0 行，「0 人收藏」比不显示更糟。
+     *
+     * 排在开店天数之前：有人收藏是比「开了多久」更强的社会证明。
+     * 下面 slice(0, 3) 会让它挤掉开店天数 —— 没人收藏时自动退回原来那三格。
+     */
+    (m.favoriteCount ?? 0) > 0
+      ? { k: t("merchant.statFavorited"), v: String(m.favoriteCount) }
+      : null,
+    /*
+     * 开店时长（§7.4）。**这是可核验的真实数**，与成交数不同：
+     * 线上真实成交是个位数，显示出来是在自曝冷启动；而「开店多久」
+     * 同样真实、同样是买家关心的（这家店是不是刚冒出来的），却不会因为数小变成反效果。
+     */
+    m.joinedAt ? { k: t("merchant.statDays"), v: String(daysSince(m.joinedAt)) } : null,
+  ];
+  return all.filter((x): x is { k: string; v: string } => x !== null).slice(0, 3);
+});
 
 function openGoods(g: Goods) {
   uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${g.goodsNo}` });
@@ -35,7 +108,7 @@ function openGoods(g: Goods) {
 
 async function add(g: Goods, e: unknown) {
   try {
-    await cart.add(g.goodsNo, firstSku(g).skuNo, 1);
+    await cart.add(g.goodsNo, firstBuyableSku(g).skuNo, 1, g.store?.storeNo);
     const p = tapPoint(e as Parameters<typeof tapPoint>[0]);
     flyToCart(p.x, p.y, g.cover);
   } catch (err) {
@@ -49,104 +122,102 @@ async function like(r: Review) {
   if (i >= 0) reviews.value[i] = updated;
 }
 
+const currentNo = ref("");
+
 onLoad((q) => {
   const no = (q?.merchantNo as string) || "";
+  currentNo.value = no;
   if (no) load(no);
 });
+
+/*
+ * 分享商家。**门店主页有这个、商家页此前没有** —— 而分享商家是 C-ST-05，
+ * 与扫码同属 ADR-004 的主获客路径。
+ *
+ * 落点给门店主页而不是本页：门店主页是为「老客直达下单」设计的
+ * （第一屏是常买、有再来一单），商家页是介绍页。把人分享到介绍页，
+ * 他还要多点一次才能买。
+ *
+ * `merchantNo` 必须带上，否则进店归因断掉、费率分档判不出来（ADR-004 §5.4）。
+ */
+onShareAppMessage(() =>
+  buildShareMessage({
+    title: merchant.value?.name ?? "",
+    path: `${ROUTES.store}?from=SHARE`,
+    merchantNo: currentNo.value,
+  }),
+);
+
+/* 分享到朋友圈。与门店页同一条：朋友圈只吃 query，path 会被忽略 */
+onShareTimeline(() =>
+  buildShareTimeline({
+    title: merchant.value?.name ?? "",
+    path: ROUTES.store,
+    params: "from=SHARE",
+    imageUrl: shareImageUrl(merchant.value?.logo),
+    merchantNo: currentNo.value,
+    inviterNo: user.user?.cUserNo,
+  }),
+);
 </script>
 
 <template>
   <sh-scaffold v-if="merchant">
-    <!-- 商家头部 -->
+    <biz-single-page-tip></biz-single-page-tip>
+    <!-- 商家头部：谁（头像 · 自营 · 店名 · 认证）→ 能不能卖给我（范围 + 标签）→ 三个数 -->
     <view class="sh-card head">
-      <view class="head__top">
-        <text class="head__logo">{{ merchant.logo }}</text>
-        <view class="head__main">
-          <view class="head__title">
-            <text class="sh-h2">{{ merchant.name }}</text>
-            <text
-              v-if="merchant.verified"
-              class="sh-chip sh-chip--primary tiny"
-            >
-              {{ $t("merchant.verified") }}
-            </text>
+      <view class="head__top sh-row">
+        <biz-shop-avatar :name="merchant.name" :logo="merchant.logo" :self-operated="merchant.selfOperated" :size="128"></biz-shop-avatar>
+        <view class="sh-fill head__who">
+          <view class="head__title sh-row">
+            <!-- 自营标（电商法 §37），放店名前：「谁在卖」先于店名 -->
+            <text v-if="merchant.selfOperated" class="sh-chip sh-chip--primary tiny">{{ $t("merchant.selfOperated") }}</text>
+            <text class="txt-title head__name">{{ merchant.name }}</text>
+            <sh-icon v-if="merchant.verified" name="verified" :size="32" color="var(--sh-primary)"></sh-icon>
           </view>
-          <text class="sh-chip tiny">{{
-            $t(`merchant.type.${merchant.type}`)
-          }}</text>
+          <text v-if="merchant.desc" class="txt-caption txt-quiet head__desc">{{ merchant.desc }}</text>
+        </view>
+        <!--
+          分享（§3.2）。与门店页同一条理由：此前只能从右上角「···」转发，H5 上没有出口。
+          路径与 `onShareAppMessage` 用同一份（带 `from=SHARE`），两处不一致的话
+          同一次分享按哪个入口走会算成两种来源。
+        -->
+        <biz-share-act
+          :path="`${ROUTES.store}?from=SHARE`"
+          :inviter-no="user.user?.cUserNo"
+          :merchant-no="currentNo"
+        ></biz-share-act>
+      </view>
+
+      <view v-if="merchant.serviceScope || tags.length" class="tags sh-wrap">
+        <!-- 经营范围排在自定义标签之前：它不是修饰词，是**这家店的货能不能卖给我** -->
+        <!-- serviceScope 已废弃（ADR-013 起销售范围在商品上），接口不再给 —— 没有就不画，
+             否则真机上露出的是词条键「serviceScope.undefined」 -->
+        <text v-if="merchant.serviceScope" class="sh-chip sh-chip--primary">{{ $t(`serviceScope.${merchant.serviceScope}`) }}</text>
+        <text v-for="tg in tags" :key="tg" class="sh-chip sh-chip--primary">{{ tg }}</text>
+      </view>
+
+      <view class="stats">
+        <view v-for="st in stats" :key="st.k" class="sh-fill stat">
+          <text class="txt-title stat__v sh-num">{{ st.v }}</text>
+          <text class="txt-caption txt-quiet stat__k">{{ st.k }}</text>
         </view>
       </view>
 
-      <text class="head__desc">{{ merchant.desc }}</text>
-
-      <view class="tags">
-        <!-- 经营范围排在自定义标签之前：它不是修饰词，是**这家店的货能不能卖给我**，
-             和「已认证」一样属于下单前必须先看到的事实 -->
-        <text class="sh-chip sh-chip--primary">
-          {{ $t(`serviceScope.${merchant.serviceScope}`) }}
-        </text>
-        <text v-for="tg in merchant.tags" :key="tg" class="sh-chip">{{
-          tg
-        }}</text>
-      </view>
-
-      <!-- 评分区：总分 + 分维度 + 依据 -->
-      <view class="score">
-        <view class="score__main">
-          <text class="score__num sh-num">{{
-            merchant.rating.toFixed(1)
-          }}</text>
-          <sh-rating
-            :value="merchant.rating"
-            :size="24"
-            :show-value="false"
-          ></sh-rating>
-          <text class="score__basis sh-num">
-            {{
-              $t("merchant.basis", {
-                r: merchant.ratingCount,
-                s: merchant.salesCount,
-              })
-            }}
-          </text>
-        </view>
-        <view class="score__dims">
-          <view class="dim">
-            <text class="dim__v sh-num">{{
-              merchant.scores.goods.toFixed(1)
-            }}</text>
-            <text class="dim__k">{{ $t("merchant.dim.goods") }}</text>
-          </view>
-          <view class="dim">
-            <text class="dim__v sh-num">{{
-              merchant.scores.service.toFixed(1)
-            }}</text>
-            <text class="dim__k">{{ $t("merchant.dim.service") }}</text>
-          </view>
-          <view class="dim">
-            <text class="dim__v sh-num">{{
-              merchant.scores.speed.toFixed(1)
-            }}</text>
-            <text class="dim__k">{{ $t("merchant.dim.speed") }}</text>
-          </view>
-        </view>
-      </view>
-
-      <view class="facts">
-        <view v-if="merchant.address" class="fact">
-          <text class="fact__k">{{ $t("merchant.address") }}</text>
-          <text class="fact__v">{{ merchant.address }}</text>
-        </view>
-        <view v-if="merchant.openHours" class="fact">
-          <text class="fact__k">{{ $t("merchant.hours") }}</text>
-          <text class="fact__v sh-num">{{ merchant.openHours }}</text>
-        </view>
-        <view class="fact">
-          <text class="fact__k">{{ $t("merchant.joined") }}</text>
-          <text class="fact__v sh-num">{{ isoDate(merchant.joinedAt) }}</text>
-        </view>
+      <!-- 分维度分只在真有人评过时出：零评价时后端给的是一排默认 5.0 -->
+      <text v-if="merchant.ratingCount > 0" class="txt-caption txt-quiet head__dims sh-num">
+        {{ $t("merchant.dim.goods") }} {{ merchant.scores.goods.toFixed(1) }} ·
+        {{ $t("merchant.dim.service") }} {{ merchant.scores.service.toFixed(1) }} ·
+        {{ $t("merchant.dim.speed") }} {{ merchant.scores.speed.toFixed(1) }}
+      </text>
+      <view v-if="merchant.address" class="fact sh-row sh-row--top">
+        <sh-icon name="pin" :size="28" color="var(--sh-sub)"></sh-icon>
+        <text class="txt-caption txt-quiet sh-fill">{{ merchant.address }}</text>
       </view>
     </view>
+
+    <!-- 领券（优惠券全链路梳理 批 1）：这家店能领的券与平台券。没有就整条不出 -->
+    <biz-coupon-strip :merchant-no="merchant.merchantNo"></biz-coupon-strip>
 
     <!-- 商品 / 评价：切换本身就是标题，收进块内 -->
     <view class="sh-block">
@@ -167,15 +238,16 @@ onLoad((q) => {
         ></sh-tabs>
       </view>
 
-      <template v-if="tab === 'goods'">
-        <biz-goods-card
+      <!-- 两列网格：在一家店里逛，每张卡再写一遍店名是纯重复 -->
+      <view v-if="tab === 'goods'" class="grid">
+        <biz-goods-tile
           v-for="g in goods"
           :key="g.goodsNo"
           :goods="g"
           @add="add(g, $event)"
           @tap="openGoods(g)"
-        ></biz-goods-card>
-      </template>
+        ></biz-goods-tile>
+      </view>
 
       <template v-else>
         <biz-review
@@ -186,119 +258,80 @@ onLoad((q) => {
         ></biz-review>
         <sh-empty
           bare
-          v-if="!reviews.length"
+          v-if="!reviews.length" :pending="!loaded" :failed="failed" @retry='() => load(currentNo)'
           :text="$t('common.empty')"
         ></sh-empty>
       </template>
     </view>
+    <!--
+      悬浮购物车入口。**这三页此前加完购就没有下文** —— 不是 tab 页、没有操作条，
+      屏幕上再没有任何东西提到购物车。它同时是飞入动效的落点（见组件注释）。
+    -->
+    <biz-cart-fab></biz-cart-fab>
   </sh-scaffold>
 </template>
 
 <style scoped>
 .head__top {
-  display: flex;
-  align-items: center;
   gap: 24rpx;
 }
-.head__logo {
-  width: 108rpx;
-  height: 108rpx;
-  border-radius: 32rpx;
-  background: var(--sh-faint);
-  text-align: center;
-  line-height: 108rpx;
-  font-size: 52rpx;
-  flex-shrink: 0;
-}
-.head__main {
-  flex: 1;
+.head__who {
   min-width: 0;
 }
 .head__title {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
-  margin-bottom: 10rpx;
 }
-.tiny {
-  padding: 4rpx 14rpx;
-  font-size: 24rpx;
+.head__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .head__desc {
   display: block;
-  font-size: 26rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
-  margin-top: 24rpx;
-}
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 20rpx;
-}
-.score {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  margin-top: 28rpx;
-  background: var(--sh-faint);
-  border-radius: 32rpx;
-  padding: 26rpx;
-}
-.score__main {
-  flex: 0 0 auto;
-}
-.score__num {
-  display: block;
-  font-size: 48rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  line-height: 1.1;
-}
-.score__basis {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
   margin-top: 8rpx;
 }
-.score__dims {
-  flex: 1;
-  display: flex;
-  justify-content: space-around;
+.tiny {
+  flex-shrink: 0;
+  padding: 4rpx 16rpx;
 }
-.dim {
-  text-align: center;
-}
-.dim__v {
-  display: block;
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
-}
-.dim__k {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 4rpx;
-}
-.facts {
+.tags {
   margin-top: 24rpx;
 }
-.fact {
+/* 三个数：一道细线隔开，等分三栏 */
+.stats {
   display: flex;
-  justify-content: space-between;
-  gap: 32rpx;
-  padding: 12rpx 0;
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 2rpx solid var(--sh-faint);
 }
-.fact__k {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  flex-shrink: 0;
+.stat {
+  text-align: center;
 }
-.fact__v {
-  font-size: 24rpx;
-  color: var(--sh-ink);
-  text-align: end;
+.stat__v {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stat__k {
+  display: block;
+  margin-top: 4rpx;
+}
+.head__dims {
+  display: block;
+  margin-top: 16rpx;
+  text-align: center;
+}
+.fact {
+  gap: 8rpx;
+  margin-top: 20rpx;
+}
+/* 网格在白块里：两列，块本身的左右留白给网格 */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  padding: 0 24rpx;
 }
 </style>

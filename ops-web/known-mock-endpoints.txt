@@ -1,0 +1,34 @@
+# ops-web 在调、后端还没有的接口 —— 只准变短，不准变长。
+#
+# 生成于 2026-08-25，HEAD=fdc6604f：ops-web 共 282 条 /ops 调用，后端已实现 255 条，
+# 缺 27 条。缺的这些**在界面上完全看不出来** —— ops-web 默认 `NEXT_PUBLIC_USE_MOCK`
+# 走 mock，页面照常有数据、点得动、不报错。
+#
+# 这份清单纠正了 docs/requirements/入驻进件建店-需求与四层对齐.md 第八节：
+# 那张表列的五组「零实现」（/ops/merchants、violations、auth-codes、
+# payments/recon-diffs、stores/audits）后端**现在都有了**，那份表已经过期。
+#
+# 补上一条就删一行。删空的那天，把 check-ops-contract.mjs 的棘轮换成「必须全绿」。
+#
+#
+# ── 会员卡：整块没有后端（marketing.ts）
+GET /ops/marketing/member-cards
+POST /ops/marketing/member-cards
+POST /ops/marketing/member-cards/*/archive
+POST /ops/marketing/member-cards/*/status
+POST /ops/marketing/member-cards/*/unarchive
+#
+# ── 建店模板：还没有后端（store.ts）
+#    获客看板（V290：埋点 mkt_store_visit + 归因留痕聚合）与店铺码（V292：扫码数走埋点、
+#    印刷量由运营录入台账）都已落地 —— 它们卡的本来就不是接口而是指标源，口径补上接口才有意义。
+#    模板这块同理：依赖 C 端门店主页定稿，先做模板等于两头返工。
+GET /ops/stores/templates
+POST /ops/stores/templates
+POST /ops/stores/templates/*/enabled
+#
+#
+# ── 常见问题（message.ts）
+#
+# ── 零散：工单转派与代客操作、社区归档
+#    代客下单已于 2026-09-03 接通（OpsOrderController POST /ops/orders/proxy，
+#    落在顾客的 userNo 上、默认线下付、不代用券与积分、只到点自取），按棘轮规矩删掉

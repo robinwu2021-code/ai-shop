@@ -3,6 +3,30 @@ import { client } from "../http-client";
 import type { SystemApi } from "../contracts/system";
 
 export const systemHttp: SystemApi = {
+  // ── 测试号固定验证码白名单 ──
+  listTestPhones: () => client.get("/ops/test-phones"),
+  saveTestPhone: (v) => client.post("/ops/test-phones", v),
+  setTestPhoneEnabled: (id, enabled) => client.post(`/ops/test-phones/${id}/enabled`, { enabled }),
+  removeTestPhone: (id) => client.post(`/ops/test-phones/${id}/remove`, {}),
+
+  // 行业主数据是本文件里**唯一接了真后端**的一组（其余仍走 mock，见 Ops契约对账）
+  listIndustries: () => client.get("/ops/industries"),
+  setIndustryMicroAllowed: (industry, payChannel, allowed, remark) =>
+    client.post(`/ops/industries/${industry}/micro-allowed`, { payChannel, allowed, remark }),
+  setIndustryEnabled: (industry, enabled) =>
+    client.post(`/ops/industries/${industry}/enabled`, { enabled }),
+  setIndustryPointsForced: (industry, forced) =>
+    client.post(`/ops/industries/${industry}/points-forced`, { forced }),
+
+  // 授权码字典与经营范围开关同样接了真后端（阶段二）
+  listAuthCodeDict: () => client.get("/ops/auth-codes"),
+  saveAuthCodeDict: (v) => client.post("/ops/auth-codes", v),
+  setAuthCodeDictEnabled: (code, enabled, reason) =>
+    client.post(`/ops/auth-codes/${code}/enabled`, { enabled, reason }),
+  listServiceScopes: () => client.get("/ops/service-scopes"),
+  setServiceScopeEnabled: (scope, enabled, reason) =>
+    client.post(`/ops/service-scopes/${scope}/enabled`, { enabled, reason }),
+
   getAppearance: () => client.get("/ops/appearance"),
   saveAppearance: (v) => client.post("/ops/appearance", v),
   listMarkets: () => client.get("/ops/markets"),
@@ -11,4 +35,15 @@ export const systemHttp: SystemApi = {
   saveRuleTexts: (v) => client.post("/ops/rule-texts", v),
   listFeatureFlags: () => client.get("/ops/feature-flags"),
   saveFeatureFlag: (key, enabled, rolloutPercent) => client.post(`/ops/feature-flags/${key}`, { enabled, rolloutPercent }),
+
+  // ── 存储空间治理 ──
+  getMediaOverview: () => client.get("/ops/media/overview"),
+  listMediaStoreUsage: () => client.get("/ops/media/stores"),
+  listMediaReclaimable: (q) => client.get("/ops/media/reclaimable", q),
+  listMediaBatches: () => client.get("/ops/media/batches"),
+  getMediaBatch: (batchNo) => client.get(`/ops/media/batches/${batchNo}`),
+  scanMedia: () => client.post("/ops/media/scan", {}),
+  backfillMedia: () => client.post("/ops/media/backfill", {}),
+  previewMediaPurge: (q) => client.post("/ops/media/purge/preview", q),
+  purgeMedia: (v) => client.post("/ops/media/purge", v),
 };

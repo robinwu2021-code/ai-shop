@@ -143,7 +143,7 @@ describe("问答（P-15.2.3）", () => {
     const q = questions.find((x) => x.status === "PENDING")!;
     await expect(contentMock.hideQuestion({ questionNo: q.questionNo, reason: "" })).rejects.toThrow(/原因/);
     const r = await contentMock.hideQuestion({ questionNo: q.questionNo, reason: "站外导流" });
-    expect(r.status).toBe("HIDDEN");
+    expect(r.status).toBe("OFFLINE");
     expect(r.hideReason).toBe("站外导流");
   });
 });

@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>基础包分层：内核不含持久层，持久层按方案分包</title>
+<desc>shop-base 瘦身为零框架内核（159 个文件里 113 个本来就零框架），web 与 security 各自成包，持久层拆成 shop-store-mybatis 与 shop-store-data-aot 两个平行实现。六个现有业务模块改依赖聚合 pom shop-app-base，代码零改动；shop-job 与 pay-* 依赖内核 + data-aot，构建产物里不含 mybatis。箭头方向为「依赖」。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12.5px;font-weight:600;fill:#161A21}
+.t{font-size:10.5px;fill:#5A6472}
+.em{font-weight:700;fill:#161A21}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.12em}
+.l{font-size:9.5px;fill:#5A6472;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.core{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.8}
+.mb{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.4}
+.aot{fill:#EEF4FC;stroke:#7FA2CC;stroke-width:1.4}
+.agg{fill:#FBFCFD;stroke:#B9C2CE;stroke-width:1.6}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.zone{fill:none;stroke:#DDE2E9;stroke-width:1.2;stroke-dasharray:5 4}
+.zt{font-size:10px;fill:#A6AEBB;letter-spacing:.1em}
+.num{font-size:10.5px;font-weight:600;fill:#7FB894}
+</style></defs>
+
+<text class="b" x="24" y="26">① 内核 —— 零 MyBatis · 零 web · 零 security</text>
+
+<rect class="core" x="24" y="38" width="420" height="96" rx="8"/>
+<text class="n" x="40" y="60">shop-base　【瘦身·保名】</text>
+<text class="t" x="40" y="80">common 纯净部分 · spi/ 全部 70 个 Port · 常量与工具</text>
+<text class="t" x="40" y="97">+ 幂等 / Outbox / 媒体 / 归档的 SPI 接口</text>
+<text class="t" x="40" y="114">依赖：仅 spring-context</text>
+<text class="num" x="366" y="60">113 / 159</text>
+<text class="t" x="366" y="76">本来就零框架</text>
+
+<rect class="box" x="464" y="38" width="230" height="44" rx="7"/>
+<text class="n" x="480" y="58">shop-base-web　【新】</text>
+<text class="t" x="480" y="74">ApiResponseWrapper · 全局异常</text>
+
+<rect class="box" x="464" y="90" width="230" height="44" rx="7"/>
+<text class="n" x="480" y="110">shop-base-auth　【新】</text>
+<text class="t" x="480" y="126">三端 filter · TokenStore · PermChecker</text>
+
+<path class="ar" marker-end="url(#ar)" d="M464 60 L448 60"/>
+<path class="ar" marker-end="url(#ar)" d="M464 112 L448 112"/>
+
+<rect class="box" x="714" y="38" width="262" height="96" rx="7"/>
+<text class="n" x="730" y="58">为什么它们不在内核里</text>
+<text class="t" x="730" y="77">web 9 个文件 · security 8 个 ——</text>
+<text class="t" x="730" y="94">job 是无 HTTP 的 worker，</text>
+<text class="t" x="730" y="111">拉进 web 只为了拿一个错误码，</text>
+<text class="t" x="730" y="128">那是 256MB 堆里最不该有的东西</text>
+
+<line x1="24" y1="158" x2="976" y2="158" stroke="#E6EAF0" stroke-width="1"/>
+<text class="b" x="24" y="184">② 持久层 —— 两个平行实现，谁用谁装</text>
+
+<rect class="mb" x="24" y="196" width="440" height="104" rx="8"/>
+<text class="n" x="40" y="218">shop-store-mybatis　【新】</text>
+<text class="t" x="40" y="238">BaseEntity（144 个实体继承它）· AuditMetaObjectHandler</text>
+<text class="t" x="40" y="255">*Mapper · 幂等 / Outbox / 媒体 / 归档的 MyBatis 实现</text>
+<text class="t" x="40" y="272">MybatisPages.of(IPage) ← 从 PageData 里搬出来的那个方法</text>
+<text class="t" x="40" y="289">依赖：shop-base + mybatis-plus</text>
+<text class="num" x="392" y="218" fill="#E0B27A">22 / 159</text>
+
+<rect class="aot" x="484" y="196" width="440" height="104" rx="8"/>
+<text class="n" x="500" y="218">shop-store-data-aot　【新】</text>
+<text class="t" x="500" y="238">Spring Data JDBC repository · 构建期生成实现</text>
+<text class="t" x="500" y="255">先只做支付要用的两个：幂等 · Outbox</text>
+<text class="t" x="500" y="272">媒体 / 归档刻意不提供 —— 缺 bean 就装不起来，</text>
+<text class="t" x="500" y="289">好过一个「跑了但什么都没归」的空实现</text>
+
+<path class="ar" marker-end="url(#ar)" d="M180 196 L180 140"/>
+<path class="ar" marker-end="url(#ar)" d="M640 196 L400 140"/>
+
+<line x1="24" y1="324" x2="976" y2="324" stroke="#E6EAF0" stroke-width="1"/>
+<text class="b" x="24" y="350">③ 使用方 —— 左边一行不改，右边拿到统一错误码</text>
+
+<rect class="zone" x="24" y="362" width="440" height="196" rx="8"/>
+<text class="zt" x="38" y="382">今天的业务单体</text>
+
+<rect class="agg" x="42" y="392" width="404" height="48" rx="7"/>
+<text class="n" x="58" y="412">shop-app-base　【新·聚合 pom，零代码】</text>
+<text class="t" x="58" y="429">= shop-base + -web + -auth + shop-store-mybatis</text>
+
+<rect class="box" x="42" y="452" width="404" height="90" rx="7"/>
+<text class="n" x="58" y="472">六个业务模块 + shop-app</text>
+<text class="t" x="58" y="491">core · merchant · settle · channel · inventory · notify</text>
+<text class="t" x="58" y="510">改动：pom 里一行 artifactId。<tspan class="em">包名一个都不换</tspan>，</text>
+<text class="t" x="58" y="529">ai.neargo.shop.common.ApiResult 还在原来的包里</text>
+
+<path class="ar" marker-end="url(#ar)" d="M244 452 L244 440"/>
+<path class="ar" marker-end="url(#ar)" d="M244 392 L244 334"/>
+
+<rect class="zone" x="484" y="362" width="492" height="196" rx="8"/>
+<text class="zt" x="498" y="382">独立进程 —— 都依赖内核</text>
+
+<rect class="box" x="502" y="392" width="228" height="70" rx="7"/>
+<text class="n" x="518" y="412">shop-job</text>
+<text class="t" x="518" y="430">已上线。改依赖内核后</text>
+<text class="t" x="518" y="447">拿到统一 ErrorCode</text>
+
+<rect class="box" x="742" y="392" width="216" height="70" rx="7"/>
+<text class="n" x="758" y="412">pay-svc</text>
+<text class="t" x="758" y="430">内核 + web + auth</text>
+<text class="t" x="758" y="447">+ store-data-aot</text>
+
+<path class="ar" marker-end="url(#ar)" d="M616 392 L616 334"/>
+<path class="ar" marker-end="url(#ar)" d="M850 392 L850 334"/>
+
+<rect class="box" x="502" y="474" width="456" height="68" rx="7"/>
+<text class="n" x="518" y="494">闸门：构建产物里不存在 mybatis-*.jar</text>
+<text class="t" x="518" y="512">ArchUnit 看不见传递依赖 —— 而「进了 classpath 且没有报错」</text>
+<text class="t" x="518" y="529">正是 ADR-021 §3.5 担心的那件事，只有这一条真的测到它</text>
+
+<text class="l" x="24" y="586">依赖方向：箭头指向被依赖方。③ 的每个箭头指向的是「上面那两层」，具体依赖哪几个包写在各自框里。虚线框只表示归类，不是模块。</text>
+<text class="l" x="24" y="606">数字来自 backend/shop-base/src/main/java 的 import 扫描，不是估计值。</text>
+<text class="l" x="24" y="626">第 ①②③ 层可以分三次提交、分三次回滚 —— 它们与支付域的任何决定都不绑在一起。</text>
+</svg>

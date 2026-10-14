@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import org.junit.jupiter.api.DisplayName;
+import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,13 +35,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class M1UserFlowTest {
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -94,18 +96,42 @@ class M1UserFlowTest {
         String token = loginWechat("wx-openid-001");
         String userNo = profileUserNo(token);
 
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"13600136003\"}"));
         String code = otpStore.peek("13600136003").orElseThrow();
         mvc().perform(post("/mp/user/phone/bind").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"phone\":\"13600136003\",\"code\":\"" + code + "\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.phone").value("136****6003"));
+                .andExpect(jsonPath("$.data.phone").value("13600136003"));
 
         // 之后用手机号登录，必须还是同一个人 —— 否则同一用户会有两套订单与两个购物车
         String byPhone = login("13600136003");
         assertThat(profileUserNo(byPhone)).isEqualTo(userNo);
+    }
+
+    @Test
+    @DisplayName("★★★ 绑手机号时验证码不对 → 10455「验证码不对或已过期」，不是 10400「参数有误」")
+    void wrongCodeOnBindSaysWrongCodeNotBadRequest() throws Exception {
+        /*
+         * **这两句话把人带到完全不同的地方。**
+         * 「请求参数有误」让人去查表单字段；真正该做的是重新获取一次验证码。
+         *
+         * 2026-09-04 实测有人卡在这里：短信确实发出去了（sys_notify_log 里是 SENT），
+         * 码过了 5 分钟 TTL，而屏幕上说的是「参数错误」。
+         *
+         * 登录（AuthServiceImpl）与商家员工（MerchantStaffServiceImpl）两条路
+         * 一直用的就是 OTP_INVALID —— **只有绑定这一条漏了**，
+         * 正是本仓库自己警告过的「少一个入口、少一条分支」。
+         */
+        String token = login("13600136099");
+
+        mvc().perform(post("/mp/user/phone/bind").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"13600136098\",\"code\":\"000000\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(10455));
     }
 
     @Test
@@ -211,6 +237,30 @@ class M1UserFlowTest {
         assertThat(second).isEqualTo(first);
     }
 
+    /*
+     * 端上小程序发的是 WX_MINI，后端此前只认 WECHAT_MP —— 请求落进 default 分支抛 400，
+     * 小程序上登录**必然失败**。两个名字同一件事，这里钉住它们不会再分家。
+     */
+    @Test
+    @DisplayName("WX_MINI 与 WECHAT_MP 是同一个授权分支，同一凭证登进同一个账号")
+    void wxMiniIsTheSameGrantAsWechatMp() throws Exception {
+        String viaWechatMp = profileUserNo(loginWechat("wx-openid-mini-001"));
+        String viaWxMini = profileUserNo(loginWxMini("wx-openid-mini-001"));
+        assertThat(viaWxMini).isEqualTo(viaWechatMp);
+    }
+
+    /*
+     * 上一条是「把 default 分支改窄」，这条守住「别改宽」——
+     * 合并 case 时手滑写成 default 也能让上一条变绿，而那等于任何字符串都能登录。
+     */
+    @Test
+    @DisplayName("未知 grantType 仍然被拒（default 分支不许被改宽）")
+    void unknownGrantTypeIsRejected() throws Exception {
+        mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"grantType\":\"WX_PHONE\",\"principal\":\"whatever\",\"agreed\":true}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
     @Test
     @DisplayName("归属整体替换：自提点必须属于该社区（不变量②）")
     void belongingMustBeConsistent() throws Exception {
@@ -224,7 +274,8 @@ class M1UserFlowTest {
     @Test
     @DisplayName("常去店 ≠ 我开的店：登录带 merchantNo 只写常去店，不授予商家身份（不变量③）")
     void visitedStoreDoesNotGrantMerchantRole() throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"13600136012\"}"));
         String code = otpStore.peek("13600136012").orElseThrow();
         String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
@@ -236,16 +287,23 @@ class M1UserFlowTest {
         // 常去店写上了
         mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.merchantNo").value("M0001"));
-        // 但没有任何 B 端权限 —— 两个概念共用字段名的话，扫个店铺码就成了店主。
-        // （M4 实现 /biz/order 之前这里是 404；现在端点存在，判定落在作用域上）
+        /*
+         * 但没有任何 B 端权限 —— 两个概念共用字段名的话，扫个店铺码就成了店主。
+         *
+         * 判定从 10403 变成 **10401**：A7 之前 C 端令牌能过 /biz/** 的认证，
+         * 拦他的是空作用域（403）；A7 之后 C 端令牌连这条链的门都进不来。
+         * 换句话说这条闸变严了 —— 期望值往回改成 10403 的话，
+         * 等于把「C 端令牌又能进 B 端了」当成通过。
+         */
         mvc().perform(get("/biz/order").header("Authorization", "Bearer " + token))
-                .andExpect(jsonPath("$.code").value(10403));
+                .andExpect(jsonPath("$.code").value(10401));
     }
 
     @Test
     @DisplayName("OTP 一次性：用过的验证码不能重放")
     void otpCannotBeReplayed() throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"13600136013\"}"));
         String code = otpStore.peek("13600136013").orElseThrow();
         String payload = "{\"grantType\":\"PHONE_OTP\",\"principal\":\"13600136013\",\"credential\":\""
@@ -253,11 +311,49 @@ class M1UserFlowTest {
 
         mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON).content(payload))
                 .andExpect(jsonPath("$.code").value(0));
+        /*
+         * 重放拿到的是 **10455 OTP_INVALID**，不是 10400。
+         *
+         * 这个码是**有意从 10400 里拆出来的**（见 ErrorCode 上那段注释）：
+         * 10400「请求参数有误」对用户的意思是「你传的东西不对，去检查参数」，
+         * 而验证码错该说的是「再看一眼短信」—— 同屏还出现过中英文混排。
+         * 断言当时没跟着改，于是这条一直红着。
+         */
         mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON).content(payload))
-                .andExpect(jsonPath("$.code").value(10400));
+                .andExpect(jsonPath("$.code").value(10455));
     }
 
     // ---------------------------------------------------------------- helpers
+
+    @Test
+    @DisplayName("★★ 收货人手机号要判**号段**，不是只判 11 位 —— `00000000000` 存不进地址簿")
+    void receiverPhoneMustLookLikeAPhone() throws Exception {
+        String token = login("13600136010");
+
+        /*
+         * 为什么盯着这一个字段：**收货人电话不等于账号手机号**，它是手填的，
+         * 而它是履约那一端唯一的联系方式 —— 号码错了，骑手打不通、自提点核销不了，
+         * 而下单那一刻一切正常。此前只有 @NotBlank：非空即可。
+         */
+        for (String bad : new String[] {"00000000000", "12345678901", "1390000111", "abcdefghijk"}) {
+            mvc().perform(post("/mp/user/address").header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"张三\",\"phone\":\"" + bad
+                                    + "\",\"detail\":\"文一西路 1 号\",\"isDefault\":false}"))
+                    /*
+                     * 10460 ADDRESS_PHONE_FORMAT，不再是 10400。V333 之后判据按国家挑
+                     * （大陆 11 位、海外 3–20 位），泛的「请求参数有误」说不清是哪一格 ——
+                     * 而这条用例的第二句断言要的正是那个：说清是哪个字段。
+                     */
+                    .andExpect(jsonPath("$.code").value(10460))
+                    .andExpect(result -> assertThat(result.getResponse().getContentAsString())
+                            .as("拒了要说清是哪个字段 —— 只回「参数错误」的话，用户改哪儿全靠猜")
+                            .contains("手机号"));
+        }
+
+        // 正常号照旧能存 —— 校验收窄了，但没把正常路径一起收掉
+        saveAddress(token, null, "张三", "13900001111", "文一西路 1 号", false);
+    }
 
     private String saveAddress(String token, String addressId, String name, String phone,
                                String detail, boolean isDefault) throws Exception {
@@ -278,8 +374,12 @@ class M1UserFlowTest {
         return json.readTree(body).get("data").get("userNo").asString();
     }
 
+    private static int seq = 0;
+
+
     private String loginRaw(String phone) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/mp/user/otp/send")
+                .header("Authorization", "Bearer " + ai.neargo.shop.support.TestLogin.otpSession(mvc())).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"phone\":\"" + phone + "\"}"));
         String code = otpStore.peek(phone).orElseThrow();
         return mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
@@ -293,9 +393,35 @@ class M1UserFlowTest {
     }
 
     private String loginWechat(String openid) throws Exception {
+        return loginByGrant("WECHAT_MP", openid);
+    }
+
+    /** 端上小程序真正发的那个值（`shared:GrantType` 的 WX_MINI） */
+    private String loginWxMini(String code) throws Exception {
+        return loginByGrant("WX_MINI", code);
+    }
+
+    private String loginByGrant(String grantType, String principal) throws Exception {
         String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"grantType\":\"WECHAT_MP\",\"principal\":\"" + openid + "\",\"agreed\":true}"))
+                        .content("{\"grantType\":\"" + grantType + "\",\"principal\":\"" + principal
+                                + "\",\"agreed\":true}"))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(body).get("data").get("token").asString();
     }
+
+    // ───────────── 手机号归属：发码侧的判定与绑定侧的接管（2026-09-04）
+
+    @Test
+    @DisplayName("★★★ 号已绑在自己账号上 → 不发短信，直接说「已经绑过了」")
+    void ownPhoneDoesNotTriggerAnotherSms() throws Exception {
+        String phone = "13600137001";
+        String token = login(phone);          // 登录即绑定，这个号现在属于自己
+
+        mvc().perform(post("/mp/user/otp/send").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"" + phone + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(10458));
+    }
+
 }

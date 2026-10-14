@@ -25,8 +25,16 @@ const shown = computed(() => {
 });
 const unread = computed(() => messages.value.filter((m) => !m.read).length);
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  messages.value = await api.messageList();
+  try {
+    messages.value = await api.messageList();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
   loaded.value = true;
 }
 
@@ -45,54 +53,46 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="message.title">
-    <view class="head">
+    <view class="head sh-row">
       <sh-tabs
-        class="tabs"
+        class="sh-fill"
         :items="TABS.map((t) => ({ key: t.key, label: String($t(`message.tab.${t.key}`)) }))"
         :active="tab"
         @change="(k: string) => (tab = k as typeof tab)"
       ></sh-tabs>
-      <text v-if="unread" class="readall" @tap="readAll">{{ $t("message.readAll") }}</text>
+      <text v-if="unread" class="sh-link readall" @tap="readAll">{{ $t("message.readAll") }}</text>
     </view>
 
-    <view v-for="m in shown" :key="m.messageNo" class="msg" @tap="open(m)">
+    <view v-for="m in shown" :key="m.messageNo" class="sh-card msg" @tap="open(m)">
       <view class="msg__dot" :class="{ 'is-unread': !m.read }" />
-      <view class="msg__main">
-        <view class="msg__top">
-          <text class="msg__title" :class="{ 'is-unread': !m.read }">{{ m.title }}</text>
-          <text class="msg__at sh-num">{{ datetime(m.at) }}</text>
+      <view class="sh-fill">
+        <view class="msg__top sh-row sh-row--between sh-row--baseline">
+          <text class="txt-body msg__title" :class="{ 'is-unread': !m.read }">{{ m.title }}</text>
+          <text class="txt-caption msg__at sh-num">{{ datetime(m.at) }}</text>
         </view>
-        <text class="msg__body">{{ m.body }}</text>
-        <text v-if="m.link" class="msg__more">{{ $t("message.view") }}</text>
+        <text class="txt-caption msg__body">{{ m.body }}</text>
+        <text v-if="m.link" class="txt-caption msg__more">{{ $t("message.view") }}</text>
       </view>
     </view>
 
-    <sh-empty bare v-if="loaded && !shown.length" :text='$t("message.empty")'></sh-empty>
+    <sh-empty bare v-if="!shown.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("message.empty")'></sh-empty>
   </sh-scaffold>
 </template>
 
 <style scoped>
 .head {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
   margin-bottom: 24rpx;
 }
-.tabs {
-  flex: 1;
-  min-width: 0;
-}
+
 .readall {
   flex-shrink: 0;
-  font-size: 24rpx;
-  color: var(--sh-primary);
 }
+/* 面色 / 圆角 / 内边距交给 `.sh-card` —— 此前这三行是把它照抄了一遍。
+   内边距因此从 28rpx 变成 C 端的密度档 32rpx（`--sh-pad-card` 没被 C 端覆盖），
+   差 2px：**那正是密度变量存在的意义** —— 各页各写一个数，调密度时就得逐页找。 */
 .msg {
   display: flex;
   gap: 16rpx;
-  background: var(--sh-surface);
-  border-radius: 32rpx;
-  padding: 28rpx;
   margin-bottom: 16rpx;
 }
 .msg__dot {
@@ -106,42 +106,26 @@ onShow(load);
 .msg__dot.is-unread {
   background: var(--sh-danger);
 }
-.msg__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .msg__top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   gap: 20rpx;
 }
 .msg__title {
-  font-size: 26rpx;
   color: var(--sh-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.msg__title.is-unread {
-  font-weight: 400;
-}
 .msg__at {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   flex-shrink: 0;
 }
 .msg__body {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
   margin-top: 12rpx;
 }
 .msg__more {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-primary);
-  margin-top: 14rpx;
+  color: var(--sh-primary-text);
+  margin-top: 16rpx;
 }
 </style>

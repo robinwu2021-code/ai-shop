@@ -3,13 +3,28 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { GOODS_COVER_FALLBACK, CATEGORY_TYPE } from "@shared/utils/constants";
+import { goodsSoldOut } from "@shared/utils/goods";
 import { money } from "@shared/utils/format";
 import type { Goods } from "@shared/types";
+import type { GoodsGroupSummary } from "@/shared/home-feed";
 
-const props = defineProps<{ goods: Goods; countdownText?: string }>();
+/**
+ * `group`：这件商品上有进行中的团（首页把团并进商品卡，见 shared/home-feed.ts）。
+ * 有它时卡片换成团形态 —— 价格行给团价与单买价，「＋」换成「去拼团」。
+ */
+const props = defineProps<{
+  goods: Goods;
+  countdownText?: string;
+  group?: GoodsGroupSummary;
+  /**
+   * 在门店门户里：落款行不写店名 —— 整页都是这一家店，每行再写一遍是噪声。
+   * 已售照留（「卖得好不好」在店里一样要看）
+   */
+  inStore?: boolean;
+}>();
 // add 必须把原始 tap 事件透传出去 —— 「飞入购物车」动效要用它的落点坐标。
 // 不透传的话页面里的 $event 是 undefined，动效静默失效。
-defineEmits<{ (e: "add", ev: unknown): void; (e: "tap"): void }>();
+defineEmits<{ (e: "add", ev: unknown): void; (e: "tap"): void; (e: "join"): void }>();
 
 const isFresh = computed(() => props.goods.type === CATEGORY_TYPE.FRESH);
 const isService = computed(() => props.goods.type === CATEGORY_TYPE.SERVICE);
@@ -28,6 +43,40 @@ const timeText = computed(() => {
   return props.goods.arrivalDesc ? `${head} · ${props.goods.arrivalDesc}` : head;
 });
 
+/**
+ * 整件都没货了。
+ *
+ * ⚠️ **这张卡此前没有售罄态** —— 「＋」无条件画出来、点了也无条件成功
+ *（加购这条路后端与 mock 都不校验库存），于是卖光的商品照样能加进购物车，
+ * 用户要到购物车的失效区才看见。见交互清单 G9。
+ */
+const soldOut = computed(() => goodsSoldOut(props.goods));
+
+/**
+ * 店内那一行的副标题：**描述 · 已售 N**。
+ *
+ * 店内不写店名，落款行就只剩一个销量吊在右下角 —— 一整行版面换一个数字。
+ * 并进这一句之后，一屏能多看到一件货（0 销量不说：零销量是劝退信号，与详情页同一条规矩）。
+ */
+const storeSub = computed(() => {
+  const sub = props.goods.subtitle ?? "";
+  if (!props.inStore || props.goods.sales <= 0) return sub;
+  const sold = String(t("common.sold", { n: props.goods.sales }));
+  return sub ? `${sub} · ${sold}` : sold;
+});
+
+/**
+ * 落款印谁 —— **门店优先，没有才退回主体名**（2026-09-30 门店化口径）。
+ *
+ * <p>C 端展示的单位是门店：一个主体名下可以有好几家店，印主体名的话，
+ * 线上那家四店主体（虹选鲜果 / 鲜果·福田 / 粮油 / 粮油·深圳测试）
+ * 在商品流里全都显示「虹选科技有限公司」，而那不是任何一家店的名字。
+ *
+ * <p>退回主体名的三种情况：按主体号查目录、池行没有门店号、老后端。
+ * 三种都与门店化之前逐字相同 —— 少一个名字比显示一个错的名字好。
+ */
+const sellerName = computed(() => props.goods.store?.storeName || props.goods.merchant.name);
+
 const off = computed(() => {
   const o = props.goods.originPrice;
   if (!o || o <= props.goods.price) return 0;
@@ -36,11 +85,15 @@ const off = computed(() => {
 </script>
 
 <template>
-  <view class="card" @tap="$emit('tap')">
-    <view class="card__cover">{{ goods.cover || GOODS_COVER_FALLBACK }}</view>
+  <view class="card" @tap.stop="$emit('tap')">
+    <view class="card__media">
+      <sh-cover class="sh-center card__cover" :src="goods.cover || GOODS_COVER_FALLBACK" :w="375"></sh-cover>
+      <!-- 实心底：它压在照片上。浅色半透明的那档（--danger）在真机上几乎看不见（2026-09-19 真机截图） -->
+      <text v-if="group" class="sh-chip sh-chip--solid card__tag">{{ $t("home.groupTag", { n: group.minCount }) }}</text>
+    </view>
 
-    <view class="card__body">
-      <text class="card__title">{{ goods.title }}</text>
+    <view class="sh-fill card__body">
+      <text class="txt-strong card__title">{{ goods.title }}</text>
       <!--
         第二行**按优先级取内容**，不是固定放描述：
           有活动时效 → 时效（警示色，且带上到货说明）
@@ -51,29 +104,52 @@ const off = computed(() => {
         为什么不干脆删成三行：倒计时只有生鲜有，百货卡会矮一截，一列卡片高矮不齐、
         封面还得跟着变大小。按优先级取内容，两类商品都是四行，等高。
       -->
-      <text v-if="showCutoff" class="card__sub card__sub--time">{{ timeText }}</text>
-      <text v-else-if="isService && goods.storeName" class="card__sub">
+      <!-- 团形态：第二行说团的进度 —— 「还差几人」是这张卡上最该被看见的一句 -->
+      <text v-if="group" class="sh-muted card__sub is-warning">{{ $t("home.groupLive", { k: group.count, m: group.need }) }}</text>
+      <text v-else-if="showCutoff" class="sh-muted card__sub is-warning card__sub--time">{{ timeText }}</text>
+      <text v-else-if="isService && goods.storeName" class="sh-muted card__sub">
         {{ goods.storeName }}
       </text>
-      <text v-else class="card__sub">{{ goods.subtitle }}</text>
+      <text v-else class="sh-muted card__sub">{{ storeSub }}</text>
 
       <!-- 价格行只放价格这一件事：现价 + 划线价 + 折扣。
            时效搬到上一行之后，这里三件在英文下也放得开 -->
-      <view class="card__foot">
-        <text class="price__now sh-num">{{ money(goods.price) }}</text>
-        <text v-if="goods.originPrice" class="price__was sh-num">
+      <!-- 团形态的价格行：团价 + 单买价 + 去拼团。不再放划线价与折扣 ——
+           「单买」那个价就是对照，再叠一个划线价就是三个价格 -->
+      <view v-if="group" class="sh-row card__foot">
+        <text class="txt-price price__now sh-num">{{ money(group.groupPrice) }}</text>
+        <text class="txt-caption txt-quiet price__was sh-num">{{ $t("home.groupSolo", { p: money(group.basePrice) }) }}</text>
+        <view class="sh-btn sh-btn--sm join" @tap.stop="$emit('join')">{{ $t("home.groupJoin") }}</view>
+      </view>
+      <view v-else class="sh-row card__foot">
+        <text class="txt-price price__now sh-num">{{ money(goods.price) }}</text>
+        <text v-if="goods.originPrice" class="sh-was price__was sh-num">
           {{ money(goods.originPrice) }}
         </text>
         <text v-if="off" class="sh-chip sh-chip--danger sh-num">-{{ off }}%</text>
-        <view class="add" @tap.stop="$emit('add', $event)">
+        <!--
+          售罄就把「＋」换成一句话，而不是画一个点了没用的按钮。
+          位置不变：手指本来就要落在这儿，换的是它说什么。
+        -->
+        <text v-if="soldOut" class="sh-chip sold">{{ $t("goods.soldOut") }}</text>
+        <view v-else class="sh-center add sh-hit" @tap.stop="$emit('add', $event)">
           <text class="add__sign">＋</text>
         </view>
       </view>
 
-      <!-- 落款行：谁在卖 + 卖得好不好。位置固定在最下面才好扫 -->
-      <view class="card__merchant">
-        <text class="card__shop">{{ goods.merchant.logo }} {{ goods.merchant.name }}</text>
-        <text class="card__sales sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
+      <!--
+        落款行：谁在卖 + 卖得好不好。位置固定在最下面才好扫。
+        **店内不画这一行**：店名不写（整页都是这一家），只剩一个销量吊在右下角 ——
+        那是一行空着的版面，销量已经并进上面那句了
+      -->
+      <view v-if="!inStore" class="sh-row sh-row--between card__merchant">
+        <!-- 自营标识（电商法 §37）。放在店名前 —— 「谁在卖」先于「货是谁供的」 -->
+        <text v-if="goods.merchant.selfOperated && !inStore" class="sh-chip sh-chip--primary card__self">{{ $t("merchant.selfOperated") }}</text>
+        <!-- 店名前不再放 logo：此前是 `{{ logo || 🏪 }}` 当文字打印 —— 一排卡片全是同一个表情，
+             商家真传了图片 logo 还会把地址铺出来。自营与否由前面那个标说清楚 -->
+        <text class="txt-caption txt-quiet sh-fill card__shop">{{ inStore ? "" : sellerName }}</text>
+        <!-- 已售 0 不说：零销量是劝退信号（与详情页同一条规矩） -->
+        <text v-if="goods.sales > 0" class="txt-caption txt-quiet card__sales sh-num">{{ $t("common.sold", { n: goods.sales }) }}</text>
       </view>
     </view>
   </view>
@@ -101,6 +177,16 @@ const off = computed(() => {
   padding: 20rpx;
 }
 
+/* 封面外包一层，只为给「N人团」角标一个定位锚 */
+.card__media {
+  position: relative;
+  flex-shrink: 0;
+}
+.card__tag {
+  position: absolute;
+  top: 8rpx;
+  inset-inline-start: 8rpx;
+}
 .card__cover {
   width: 168rpx;
   height: 168rpx;
@@ -110,104 +196,94 @@ const off = computed(() => {
    *
    * 尺寸保留：它撑着每行左侧的对齐节奏。emoji 相应放大填满这块区域 ——
    * 底色去掉后若字号不变，图标会缩在角落，一列商品读起来就散了。
-   * 真实商品图上线后这里直接换成 <image>，尺寸不用再动。
+   *
+   * ⚠️ 这里原先写着「真实商品图上线后这里直接换成 <image>，尺寸不用再动」。
+   * **尺寸确实不用动，但当时漏了框**：`sh-cover` 早就会按值切 <image> 了，
+   * 而这一条规则没有 `border-radius` —— 2026-09-08 把一条真图 URL 放进种子，
+   * 列表里渲染出来的是一个直角硬方块，同屏所有别的东西都是圆角。
+   * 圆角现在归 `sh-cover` 自己（三处调用点此前是 24 / 16 / 无三种）。
    */
   display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 104rpx;
   line-height: 1;
   flex-shrink: 0;
 }
-.card__body {
-  flex: 1;
-  min-width: 0;
-}
 .card__title {
   /* 商品名是列表的主体 —— 用户是照着它找东西的，所以按「卡片主标题」处理
-     （字阶的 .txt-strong，30rpx/600）。
+     （字阶的 .txt-strong，28rpx/600）。**这里原先写死的是 30rpx** ——
+     注释点名了 txt-strong，代码却比它大一档，两边差 1px 谁也看不出来，
+     结果是同一句「主标题」在卡里和在页面上不是一个尺寸。现在挂类，不写字号。
      它现在真的醒目，靠的不是自己变重，而是**周围都轻了**：
      副标题、店铺、销量、标签统统降到 400，一列扫下来先看见的就是名字和价格。 */
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  font-size: 30rpx;
-  font-weight: 600;
-  line-height: 1.4;
   color: var(--sh-ink);
   overflow: hidden;
 }
 .card__sub {
   display: block;
-  font-size: 26rpx;
-  line-height: 1.5;
-  color: var(--sh-sub);
   margin-top: 4rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .card__foot {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  margin-top: 10rpx;
+  gap: 12rpx;
+  margin-top: 12rpx;
 }
-/* 卡片里的 chip 比通用件矮一档：通用 chip 是给正文用的，密排列表里显得肿 */
-.card__foot .sh-chip {
-  padding: 5rpx 14rpx;
+/* 卡片里的 chip 比通用件矮一档：通用 chip 是给正文用的，密排列表里显得肿。
+   落款行的自营标识也是同一颗 chip，所以判据放在整张卡上而不是只在价格行 */
+.card .sh-chip {
+  padding: 4rpx 16rpx;
 }
+/* 价格的档位归 .txt-price（34rpx/700）；这里只把它钉住不被压缩，
+   颜色回到墨色 —— 字阶不管颜色 */
 .price__now {
-  font-size: 34rpx;
-  font-weight: 700;
-  line-height: 1.3;
   color: var(--sh-ink);
   flex-shrink: 0;
 }
 .price__was {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  text-decoration: line-through;
   flex-shrink: 0;
 }
-/* 时效行用警示色：它是「再不下单就没了」，与描述那行的中性灰不是一个分量 */
-.card__sub--time {
-  color: var(--sh-warning);
+/* 售罄标记占的是「＋」的位置，所以也靠右 */
+.sold {
+  margin-inline-start: auto;
+  flex-shrink: 0;
 }
 .add {
   width: 60rpx;
   height: 60rpx;
   border-radius: 9999px;
   background: var(--sh-primary-tint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
   margin-inline-start: auto;
 }
 .add__sign {
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
   font-size: 32rpx;
   line-height: 1;
 }
+/* 「去拼团」与「＋」同一个位置：靠右 */
+.join {
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
 .card__merchant {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
   margin-top: 8rpx;
 }
+/* 自营标识就是一颗 tint chip（形态归 .sh-chip--primary）——
+   此前自己写了一份，圆角还取的是 `var(--sh-radius-sm)`，而库里没有这个变量 */
+.card__self {
+  margin-inline-end: 8rpx;
+}
 .card__shop {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .card__sales {
-  font-size: 24rpx;
-  color: var(--sh-sub);
   flex-shrink: 0;
 }
 </style>

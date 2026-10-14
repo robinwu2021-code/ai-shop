@@ -38,8 +38,15 @@ export interface AttributionRule {
 export interface AttributionTrace {
   /** 归因链路单号 */
   traceNo: string;
-  /** 被归因的用户昵称 */
-  userNickname: string;
+  /**
+   * 被归因的用户号。**后端下发的是它**（`MktAttributionLog.userNo`）。
+   */
+  userNo: string;
+  /**
+   * 用户昵称。**后端目前不下发** —— 它要连 usr_account 才拿得到。
+   * 页面回落显示 userNo：空着一列比显示用户号更难查。
+   */
+  userNickname?: string;
   /** 归因来源 */
   source: AttrSource;
   /** 归因载体：店铺码 / 邀请人昵称 / 渠道名 */
@@ -50,8 +57,18 @@ export interface AttributionTrace {
   orderNo?: string;
   /** 与之冲突的另一次归因（B1 的现实场景） */
   conflictWith?: string;
-  /** 命中的风控信号（与风险事件同一套口径） */
-  riskSignals: string[];
+  /**
+   * 命中的风控信号。**可选：后端目前一条都不下发。**
+   *
+   * <p>归因链路是从 `mkt_attribution_log` 拼的，那张表没有风控信号 ——
+   * 也就是说这一列在真实后端上永远是空的（mock 里有「同设备」「同 IP」这类样例，
+   * 所以开发时看着是有的）。
+   *
+   * <p>声明成必填的代价是**整页崩**：页面 `t.riskSignals.length` 打在 undefined 上，
+   * TypeError 直接把 /growth?tab=traces 变成白屏，而这一页在生产上是点得到的。
+   * 改成可选只是让它不撒谎，**风控信号本身仍然是个没做的功能**。
+   */
+  riskSignals?: string[];
 }
 
 /**

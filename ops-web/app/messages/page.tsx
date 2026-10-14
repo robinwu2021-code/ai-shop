@@ -9,13 +9,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { MESSAGES_COPY } from "./copy";
+import { RoutingTab } from "./routing-tab";
+import { NotifyLogTab } from "./notify-log-tab";
+import { BroadcastTab } from "./broadcast-tab";
+import { ChannelTab } from "./channel-tab";
+import { ChannelOverviewTab } from "./channel-overview-tab";
+import { TestSendDrawer } from "./test-send-drawer";
+import { channelLabel } from "@/lib/notify-label";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
-import type { FaqEntry, MsgTemplate, PushTask, Ticket } from "@/lib/types";
-import { TicketStatusBadge, usePushStatusMap, useTicketStatusMap } from "@/components/status";
+import type { FaqEntry, MsgTemplate, Ticket } from "@/lib/types";
+import { TicketStatusBadge, useTicketStatusMap } from "@/components/status";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,8 +32,9 @@ import { Drawer, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
-import { Pagination } from "@/components/ui/misc";
+import { Pagination, IdCell } from "@/components/ui/misc";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
@@ -34,11 +42,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toolbar } from "@/components/ui/toolbar";
 
 type Copy = (typeof MESSAGES_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "push", label: c.tabPush },
-  { key: "tickets", label: c.tabTickets },
-  { key: "faq", label: c.tabFaq },
-];
+/*
+ * 触达按通道拆 tab（TDD-运营端触达中心 §3.2）。**顺序即菜单顺序**。
+ *
+ * ⚠️ 原来的 "push" tab 指的是「模板 + 推送任务 + 频控」，与新加的 App 推送**通道**
+ * 同名不同义。改名 "inapp"（它管的正是站内信模板与站内推送任务），
+ * 通道那个叫 "apppush" —— 两个 push 并存迟早被人当成一回事。
+ */
+const TAB_KEYS = ["overview", "sms", "mail", "wxsub", "apppush", "inapp",
+                  "tickets", "faq", "notifyLog", "broadcast", "routing"] as const;
 
 export default function MessagesPage() {
   return <Suspense fallback={null}><MessagesInner /></Suspense>;
@@ -46,9 +58,10 @@ export default function MessagesPage() {
 
 function MessagesInner() {
   const c = useCopy(MESSAGES_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/messages", TAB_KEYS);
   const qc = useQueryClient();
   const allow = useCan();
+  const [inappTestOpen, setInappTestOpen] = useState(false);
 
   const [tab, setTab] = usePageTab(tabs, () => { setPage(1); setKeyword(""); setStatus(""); });
 
@@ -65,19 +78,16 @@ function MessagesInner() {
   const canHandleTicket = allow("message:ticket:handle");
   const canEditFaq = allow("message:faq:update");
 
-  const pushStatusMap = usePushStatusMap();
   const ticketStatusMap = useTicketStatusMap();
 
-  const templates = useQuery({ queryKey: ["msg-templates"], queryFn: () => api.listMsgTemplates({ size: 100 }), enabled: tab === "push" });
-  const tasks = useQuery({ queryKey: ["push-tasks"], queryFn: () => api.listPushTasks({ size: 100 }), enabled: tab === "push" });
-  const quota = useQuery({ queryKey: ["notify-quota"], queryFn: () => api.getNotifyQuota(), enabled: tab === "push" });
+  const templates = useQuery({ queryKey: ["msg-templates"], queryFn: () => api.listMsgTemplates({ size: 100 }), enabled: tab === "inapp" });
+  const quota = useQuery({ queryKey: ["notify-quota"], queryFn: () => api.getNotifyQuota(), enabled: tab === "inapp" });
   const ticketQ = { keyword, status, page, size };
   const tickets = useQuery({ queryKey: ["tickets", ticketQ], queryFn: () => api.listTickets(ticketQ), enabled: tab === "tickets" });
   const faqs = useQuery({ queryKey: ["faqs"], queryFn: () => api.listFaqs({ size: 100 }), enabled: tab === "faq" });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["msg-templates"] });
-    qc.invalidateQueries({ queryKey: ["push-tasks"] });
     qc.invalidateQueries({ queryKey: ["tickets"] });
     qc.invalidateQueries({ queryKey: ["faqs"] });
     qc.invalidateQueries({ queryKey: ["notify-quota"] });
@@ -86,10 +96,6 @@ function MessagesInner() {
   const toggleTemplate = useMutation({
     mutationFn: (v: { no: string; enabled: boolean }) => api.setTemplateEnabled(v.no, v.enabled),
     onSuccess: () => { invalidate(); notify.success(c.toastTemplateSaved); },
-  });
-  const sendTask = useMutation({
-    mutationFn: (no: string) => api.sendPushTask(no),
-    onSuccess: (t) => { invalidate(); notify.success(fill(c.toastSent, { name: t.name })); },
   });
   const [quotaForm, setQuotaForm] = useState<{ daily: string; interval: string } | null>(null);
   const editingQuota = quotaForm ?? (quota.data ? { daily: String(quota.data.dailyPerUser), interval: String(quota.data.minIntervalHours) } : null);
@@ -126,7 +132,25 @@ function MessagesInner() {
   const templateColumns: Column<MsgTemplate>[] = [
     { header: c.colTemplateNo, cell: (t) => t.templateNo, numeric: true, align: "start" },
     { header: c.colName, cell: (t) => t.name },
-    { header: c.colChannel, cell: (t) => ({ SUBSCRIBE: c.channelSubscribe, PUSH: c.channelPush, INBOX: c.channelInbox })[t.channel] },
+    {
+      header: c.colChannel,
+      /*
+       * 用与发送记录同一个映射（lib/notify-label）。
+       * 此前这里只认 SUBSCRIBE/PUSH/INBOX —— 那是 V20 建表注释里的旧叫法，
+       * 而代码与种子用的是 SMS/MAIL/WXSUB/PUSH/INAPP：
+       * **六条模板里五条的通道列是空白**，看着像数据坏了。
+       */
+      cell: (t) => channelLabel(t.channel, {
+        sms: c.nlSms, mail: c.nlMail, wxsub: c.nlWxsub,
+        push: c.nlPush, inapp: c.channelInbox,
+      }),
+    },
+    /*
+     * 语言列。V145 之后一个模板号每种语言一行 —— 不显示的话，
+     * 这张表上会出现两条模板号、名称、渠道全都相同的行，只有正文不一样，
+     * 而运营看不出那是「同一条的两个译本」还是「重复数据」。
+     */
+    { header: c.colLang, cell: (t) => t.lang ?? "—" },
     { header: c.colContent, cell: (t) => t.content, className: "whitespace-normal", width: "24rem" },
     { header: c.colSent30d, cell: (t) => t.sentCount, numeric: true },
     {
@@ -135,27 +159,6 @@ function MessagesInner() {
         <Switch checked={t.enabled} disabled={!canEditTemplate} aria-label={fill(c.ariaEnable, { name: t.name })}
           onChange={(v) => toggleTemplate.mutate({ no: t.templateNo, enabled: v })} />
       ),
-    },
-  ];
-
-  const taskColumns: Column<PushTask>[] = [
-    { header: c.colTaskNo, cell: (t) => t.taskNo, numeric: true, align: "start" },
-    { header: c.colName, cell: (t) => t.name },
-    { header: c.colAudience, cell: (t) => t.audience, className: "whitespace-normal", width: "18rem" },
-    {
-      header: c.colReach,
-      numeric: true,
-      // 0 说明人群是空的：发了等于白发，还会污染后面的效果分析
-      cell: (t) => (t.estimatedReach > 0 ? t.estimatedReach : <Badge tone="danger">{c.reachEmpty}</Badge>),
-    },
-    { header: c.colScheduledAt, cell: (t) => fmtTime(t.scheduledAt) },
-    { header: c.colStatus, cell: (t) => <StatusBadge map={pushStatusMap} value={t.status} /> },
-    {
-      header: c.colActions,
-      cell: (t) =>
-        canEditTemplate && t.status !== "SENT" && t.status !== "CANCELLED" ? (
-          <Button size="sm" onClick={() => sendTask.mutate(t.taskNo)}>{c.btnSendNow}</Button>
-        ) : <span className="text-muted-foreground">—</span>,
     },
   ];
 
@@ -168,7 +171,7 @@ function MessagesInner() {
     {
       header: c.colProxy,
       // 代客操作是替用户改数据/退款，有几条要能一眼看见（矩阵 P-14.2.3）
-      cell: (t) => (t.proxyActions.length ? <Badge tone="info">{fill(c.proxyCount, { n: t.proxyActions.length })}</Badge> : <span className="text-muted-foreground">{c.none}</span>),
+      cell: (t) => (t.proxyActions?.length ? <Badge tone="info">{fill(c.proxyCount, { n: t.proxyActions.length })}</Badge> : <span className="text-muted-foreground">{c.none}</span>),
     },
     { header: c.colStatus, cell: (t) => <TicketStatusBadge value={t.status} /> },
     {
@@ -182,7 +185,7 @@ function MessagesInner() {
   ];
 
   const faqColumns: Column<FaqEntry>[] = [
-    { header: c.colFaqNo, cell: (f) => f.faqNo, numeric: true, align: "start" },
+    { header: c.colFaqNo, cell: (f) => <IdCell value={f.faqNo} />, numeric: true, align: "start" },
     { header: c.colQuestion, cell: (f) => f.question, className: "whitespace-normal", width: "20rem" },
     { header: c.colCategory, cell: (f) => f.category },
     {
@@ -215,15 +218,23 @@ function MessagesInner() {
     <div>
       <TabHeader tabs={tabs} value={tab} onChange={setTab} />
 
-      {tab === "push" && (
+      {tab === "routing" && <RoutingTab c={c} canEdit={allow("message:template:update")} />}
+      {tab === "inapp" && (
         <div className="space-y-4">
+          {/* D2：站内信的模拟发送后端一直就绪（/ops/notify-logs/test-inapp），
+              此前前端没有任何调用方 —— 一个接完却用不到的功能 */}
+          <div className="flex justify-end">
+            {allow("message:template:update") && (
+              <Button size="sm" onClick={() => setInappTestOpen(true)}>{c.tsOpen}</Button>
+            )}
+          </div>
           <Card className="max-w-xl">
             <CardHeader><CardTitle>{c.quotaTitle}</CardTitle></CardHeader>
             <CardContent>
               {!canEditTemplate && <ReadOnlyNotice what={c.quotaReadOnlyWhat} perm="message:template:update" className="mb-3" />}
-              <Notice className="mb-3">
+              <HelpNote className="mb-3">
                 {c.quotaNotice}
-              </Notice>
+              </HelpNote>
               {editingQuota && (
                 <div className="flex flex-wrap items-end gap-3">
                   <div className="space-y-1">
@@ -242,22 +253,21 @@ function MessagesInner() {
             </CardContent>
           </Card>
 
-          <div>
-            <div className="mb-2 txt-strong">{c.sectionTasks}</div>
-            <DataTable
-              columns={taskColumns} rows={tasks.data?.records} loading={tasks.isLoading}
-              error={tasks.error} onRetry={() => tasks.refetch()}
-              rowKey={(t) => t.taskNo}
-              empty={c.emptyTasks}
-            />
-          </div>
+          {/*
+            推送任务（群发）后端一条端点都没有。此前这里的表格在调 /ops/push-tasks ——
+            mock 下一切正常，接真后端时这一页当场 404。
+            摘掉表格、留一句说明：一个报错的页面比没有这个页面更糟，
+            它让人以为功能坏了，而不是没做。立项前要保留的三条规则见触达能力矩阵 §7.2.1。
+          */}
+          <Notice tone="info">{c.tasksNotBuilt}</Notice>
 
           <div>
             <div className="mb-2 txt-strong">{c.sectionTemplates}</div>
             <DataTable
               columns={templateColumns} rows={templates.data?.records} loading={templates.isLoading}
               error={templates.error} onRetry={() => templates.refetch()}
-              rowKey={(t) => t.templateNo}
+              // 同上：模板号不再唯一，只用它做 key 会撞车
+              rowKey={(t) => `${t.templateNo}:${t.lang ?? ""}`}
               empty={c.emptyTemplates}
             />
           </div>
@@ -280,11 +290,28 @@ function MessagesInner() {
         </>
       )}
 
+      {/* 发送记录与测试发送。写权限用 message:template:update ——
+          后端 /ops/notify-logs/test-send 用的是同一个码 */}
+      {tab === "overview" && <ChannelOverviewTab c={c} />}
+      {tab === "sms" && <ChannelTab c={c} channel="SMS" canWrite={allow("message:template:update")} />}
+      {tab === "mail" && <ChannelTab c={c} channel="MAIL" canWrite={allow("message:template:update")} />}
+      {tab === "wxsub" && <ChannelTab c={c} channel="WXSUB" canWrite={allow("message:template:update")} />}
+      {tab === "apppush" && <ChannelTab c={c} channel="PUSH" canWrite={allow("message:template:update")} />}
+
+      {tab === "notifyLog" && (
+        <NotifyLogTab c={c} canWrite={allow("message:template:update")} />
+      )}
+
+      {tab === "broadcast" && <BroadcastTab c={c} />}
+
+      <TestSendDrawer c={c} channel="INAPP" open={inappTestOpen}
+                      onOpenChange={setInappTestOpen} onSent={() => undefined} />
+
       {tab === "faq" && (
         <>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.faqNotice}
-          </Notice>
+          </HelpNote>
           <Toolbar
             onAdd={canEditFaq ? openNewFaq : undefined}
             addLabel={c.addFaqLabel}
@@ -343,7 +370,7 @@ function MessagesInner() {
             )}
 
             <Field label={c.fieldProxyLog}>
-              {current.proxyActions.length ? (
+              {current.proxyActions?.length ? (
                 <ul className="list-inside list-disc space-y-1">
                   {current.proxyActions.map((a, i) => <li key={i}>{a}</li>)}
                 </ul>

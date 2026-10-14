@@ -1,0 +1,263 @@
+package ai.neargo.shop.product.entity;
+
+import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * 商品（SPU）。五品类共用一张表，差异字段按 {@link #type} 各用各的 ——
+ * 五张表意味着列表页要 union 五次，而「按社区逛全部商品」是首页的主查询。
+ *
+ * <p><b>价格不在这张表上</b>，在 {@link PrdSku}（(entity_no, sku_no) 唯一）。
+ * 这是双入口同源的落点（TDD-backend §6.3）：同一 SKU 在「逛平台」与「进店」下读的是同一行，
+ * 物理上不可能出现「店里 8 块平台 7 块」。
+ */
+@Getter
+@Setter
+@TableName("prd_goods")
+public class PrdGoods extends BaseEntity {
+
+    private String goodsNo;
+    private String entityNo;
+
+    /**
+     * 引用的平台标准品；<b>为空 = 自建品</b>。
+     *
+     * <p>它是**溯源**不是外键：标准品归档了，已经引用它的商品照常在售、照常可编辑。
+     *
+     * <p>有值时，{@code category_no} 与 {@code spec_groups} 里的 optionCode
+     * <b>以标准品为准</b>（服务端覆盖请求值，见 {@code MerchantGoodsServiceImpl#applyStd}）——
+     * code 能被商家改掉的话，跨店可比就没了，标准品退化成一个填表助手。
+     */
+    private String stdNo;
+
+    /** <b>中文权威</b>：C 端搜索、列表、订单快照都读它，所以必须是一个确定的字符串。 */
+    private String title;
+    private String subtitle;
+
+    /** JSON {@code {"en":"…","ar":"…"}}。译文附件，缺的语言回落 {@link #title}（一期不机翻）。 */
+    private String titleI18n;
+    private String subtitleI18n;
+    private String cover;
+
+    /** JSON 数组。 */
+    private String images;
+
+    /**
+     * 图文详情正文（纯文本）。轮播图仍在 {@link #images}。
+     *
+     * <p>存文本不存 HTML：商家侧是手机端输入，而收 HTML 就要在三端各做一次消毒，
+     * 漏一处就是 XSS。
+     */
+    private String detail;
+
+    /**
+     * JSON 数组：图文详情区的长图，按顺序全宽竖排。
+     *
+     * <p>与 {@link #images}（详情页顶部轮播，方图）<b>分开存</b>：两者形状与位置都不同，
+     * 合成一个数组之后端上只能靠宽高比猜哪几张该轮播、哪几张该竖排。
+     */
+    private String detailImages;
+
+    /** NORMAL / FRESH / SERVICE / VIRTUAL / CARD */
+    /*
+     * ── 五品类（`type` 列）───────────────────────────────────────────────
+     *
+     * 驱动**计价与履约策略分发**，不是展示标签（见项目词典 §4）。
+     * 与 `prd_category.template` 是两套码指同一件事的两个面：
+     * 录入模板用 STANDARD/VOUCHER，商品形态用 NORMAL/CARD，
+     * 对应关系在 {@code CategoryService.TEMPLATE_TO_TYPE}。
+     *
+     * ⚠️ `VIRTUAL` 这个词在本仓库另有一处：{@code InvEnums.LocationKind.VIRTUAL}
+     * 是**虚拟库位**（报废区/样品/借出），与商品形态毫无关系。取值相同、概念不同。
+     */
+    public static final String TYPE_NORMAL = "NORMAL";
+    public static final String TYPE_FRESH = "FRESH";
+    public static final String TYPE_SERVICE = "SERVICE";
+    public static final String TYPE_VIRTUAL = "VIRTUAL";
+    public static final String TYPE_CARD = "CARD";
+
+    private String type;
+    private String categoryNo;
+
+    /** JSON 数组，如 {@code ["STORE_PICKUP","EXPRESS"]}。 */
+    private String fulfillments;
+
+    /**
+     * 支持哪些支付方式（JSON 数组），取值域见 {@link ai.neargo.shop.common.PayModes}。
+     *
+     * <p>它是支付方式四层判定的<b>第 ④ 层</b>（类目 → 主体资质 → 门店 → 商品，取交集）。
+     * 这一层表达的是「<b>商家愿不愿意</b>」，而不是「够不够格」—— 后者在资质那一层。
+     *
+     * <p>⚠️ <b>别重蹈 {@code fulfillments} 的覆辙</b>：那一列曾是无取值域的自由 JSON、
+     * 建品时被写死、商家改不了，于是「这件商品支持怎么送」在商品侧从没真正表达过。
+     * 所以取值域常量、建品可选、下单校验三件事必须一起做完。
+     */
+    private String payModes;
+
+    /** JSON：规格维度定义 {@code [{name,options[]}]}，单规格商品也有一组。 */
+    private String specGroups;
+
+    /**
+     * 团购价（分）。<b>为 null 即「未开放拼团」</b> —— C 端开团时据此拒绝。
+     * 价格存在商品上而不是让开团人填：开团的是用户，<b>定价的必须是商家</b>。
+     */
+    private Long groupPriceMinor;
+
+    /** 起团人数；未配时按 2 人起 —— 一个人不叫团。 */
+    private Integer groupMinCount;
+
+    /** 商品自身评分 ×10（区别于商家整体评分）。 */
+    private Integer rating;
+    private Integer ratingCount;
+    private Integer sales;
+
+    /** 每人限购，0 = 不限。 */
+    private Integer limitPerUser;
+
+    private Boolean onSale;
+
+    /**
+     * 新品开售提醒已发送时间（毫秒）。为空 = 还没发过（V356）。
+     *
+     * <p><b>幂等挂在这一列上，不挂在「上架」这个动作上</b>：`setOnSale(true)` 在
+     * {@code MerchantGoodsServiceImpl} 里有五处调用点，多数是下架后重新上架 ——
+     * 挂在动作上的话商家反复上下架就能给收藏者刷屏，而加第六处调用点的人
+     * 不会知道要带上这件事。挂在列上，第六处什么都不用改。
+     */
+    private Long newNotifiedAt;
+
+    /**
+     * 重审期间记住的**上架意向**（V247）。
+     *
+     * <p>保存会把 {@code on_sale} 置 false 送去重审（审核期间不该在卖，这是对的），
+     * 过审时用这一列把它放回去。没有它的话，商家改个错别字就把自己的货下架了 ——
+     * 而列表里写着「已过审」，看不出还差一步。
+     *
+     * <p><b>不是「过审即置真」</b>：那会推翻既有设计（过审 ≠ 上架，有测试锁着），
+     * 并且会让没有店级行的门店跟着一起在架。这里只恢复他真的表达过的那一份。
+     */
+    private Boolean pendingOnSale;
+
+    /**
+     * 商品参数 JSON（V250）。产地 / 保质期 / 材质这一类 —— {@code usage_type=PROP}。
+     *
+     * <p><b>与 {@code spec_groups} 形状相同、语义相反</b>：那个的每一项都会进笛卡尔积
+     * 生成 SKU，这个一项也不进。混在一起的话价格表会凭空多出几倍行，
+     * 而商家只是想说「这口锅是不锈钢的」。
+     *
+     * <p>{@code [{"dimNo":"SD_ORIGIN","valueNo":"SV_LOCAL","code":"O_LOCAL","label":"本地"}]}；
+     * 量纲型（功率、净重）平台不枚举值，只有 label。
+     */
+    private String params;
+
+    /**
+     * <b>限购地区</b>（设计-发布与销售地区优化 #3）：这件货<b>不卖到</b>哪些省。
+     *
+     * <p>JSON 省级 regionCode 数组，如 {@code ["65","54"]}（新疆/西藏）。语义固定为**排除**：
+     * 默认全国可售，列表里的省不可售。用码不用省名——运费模板那套用省名 {@code startsWith}
+     * 是老债，这一列直接对齐 {@code sys_region.region_code} 的省级两位码，下单时按收货地址
+     * 解析出的 regionCode 取前两位匹配，稳过字符串前缀。空/null = 全国可售。
+     *
+     * <p>与运费模板 {@code out_of_range}（整店快递运费/拒单）分层：这一列管「这件货不卖到哪」，
+     * 两道在下单拦截处都过、任一命中即拒。
+     */
+    private String restrictedRegions;
+
+    /**
+     * 所属门店（V384，ADR-030 / ADR-031）：**商品只属于一家门店**。
+     * B 端在哪家店下建的就归哪家；编辑不改归属。多店卖同款 = 每家店各建一件。
+     *
+     * <p>期 A 只写不读：读路径仍走 {@code prd_store_goods} 投影，期 B 一次切过来。
+     */
+    private String storeNo;
+
+    /**
+     * 商品指定的运费模板（V385，ADR-031）：下单时它 ＞ 门店快递通道的模板 ＞ 平台默认。
+     * 只能是平台模板；空 = 跟随门店。
+     */
+    private String freightTemplateNo;
+
+    /** AUDITING / APPROVED / REJECTED —— 商家商品需平台审核（P-3.2.2）。 */
+    private String auditStatus;
+
+    /**
+     * 驳回/强制下架原因（V96）。**它是商家能看到的那半边**：
+     * 审计日志里的原因只有运营看得到，商家面对 REJECTED 只能猜要改什么。
+     * 通过审核时清空 —— 旧原因留着会被当成「还有问题没改完」。
+     */
+    private String auditReason;
+
+    // ---- FRESH ----
+    /**
+     * <b>生鲜截单</b>：当天几点前下单（毫秒时间戳）。商家自己填（{@code SaveCommand.fresh}）。
+     *
+     * <p>⚠️ <b>与 {@code prd_sku.cutoff_at} 同名不同物，别混</b>：
+     * <ul>
+     *   <li>这一列 = 商家对<b>这件商品</b>的日常截单承诺，展示给买家（「今天 18:00 前下单」）</li>
+     *   <li>{@code prd_sku.cutoff_at}（DATETIME）= <b>平台配的预售截单</b>，
+     *       是下单闸门的一部分（{@code lockPresale} 的 WHERE 条件），运营在
+     *       {@code POST /ops/skus/{no}/presale} 里设</li>
+     * </ul>
+     *
+     * <p>两者曾经**只有 SKU 那一列有人写**，商品这一列有读无写 —— 当时的处置意见是合并。
+     * 补上写入路径（2026-08-21）之后它们是两件真实存在的不同事情，
+     * 合并反而会把「商家的承诺」与「平台的采购闸门」揉成一个，
+     * 而这两者的<b>责任人不同</b>：前者商家改，后者只有运营能改。
+     */
+    private Long cutoffAt;
+    private String arrivalDesc;
+    private Boolean weighed;
+    private String origin;
+
+    // ---- SERVICE ----
+    private Integer durationMin;
+    private String storeName;
+
+    /**
+     * 本商品固定发放的积分数。<b>NULL = 没配</b>，走类目规则或平台兜底。
+     *
+     * <p>⚠️ 这里原本声明成 {@code String} 且注释写着「（JSON）」，
+     * 而库里是 {@code points_config INT(11)}（V1 baseline 的注释原文：
+     * 「本商品发放积分数；NULL 走成交额兜底比例」）。<b>类型与语义都写反了</b> ——
+     * 因为这一列从来没有任何代码读写过，谁也没撞上。2026-08-25 接积分规则时才发现。
+     *
+     * <p><b>「配了 0」与「没配」由 NULL 区分</b>，这正合适：
+     * 储值卡配 0 分是一个明确决定（充 100 送分等于双倍返利），
+     * 它必须压过类目规则；而 NULL 才是「这件商品没特殊要求」。
+     *
+     * <p>只有<b>运营</b>能配，b 端不给入口（平台统一按类目管理，这一列是例外口子）。
+     */
+    private Integer pointsConfig;
+
+    /** 按端的可售覆盖（JSON），如 iOS 屏蔽某些品类。为空时走 sys_channel_category_rule。 */
+    private String sellableOverride;
+
+    /**
+     * 销售方式（V340）：{@link #SALE_NORMAL} 正常售卖 / {@link #SALE_ACTIVITY_ONLY} 仅活动。
+     * <p>仅活动的货：此刻有点名它的活动在跑才能买，且只能按那个活动的路径买
+     * （判定见 {@code SaleGatePort}）。与 {@link #onSale} 正交 —— 下架优先，任何路径都不可买。
+     */
+    private String saleMode;
+
+    /**
+     * 记不记库存（V345，TDD-商品纳入进销存开关 §3）：{@link #INV_INHERIT} 跟随品类 /
+     * {@link #INV_ON} 记 / {@link #INV_OFF} 不记。生效值由 {@code InvManagedService} 三级取值得出，
+     * <b>别在别处自己判</b> —— 两份判据迟早分岔。
+     */
+    private String invMode;
+
+    public static final String INV_INHERIT = "INHERIT";
+    public static final String INV_ON = "ON";
+    public static final String INV_OFF = "OFF";
+
+    public static final String SALE_NORMAL = "NORMAL";
+    public static final String SALE_ACTIVITY_ONLY = "ACTIVITY_ONLY";
+
+    /** 老数据与测试替身可能没有这一列的值 —— 空按正常售卖，与迁移的默认值同一口径 */
+    public boolean activityOnly() {
+        return SALE_ACTIVITY_ONLY.equals(saleMode);
+    }
+}

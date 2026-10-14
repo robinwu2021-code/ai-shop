@@ -1,0 +1,544 @@
+# ai-shop · 腾讯云部署（交接文档）
+
+> 状态截至 **2026-08-18**。**后端 + 三个前端已全部上线并验证通过**。
+> 线上：https://www.hxmall.top
+>
+> **2026-09-14 起，我们的东西全部在 `/data` 下**（应用、日志、本机备份、MySQL 9.7 数据、构建快照），
+> 规则见 [运维-目录与日志方案](../../docs/technical/design/运维-目录与日志方案.md)。
+> 旧路径（`/opt/ai-shop*`、`/var/www/ai-shop`、`/opt/build/*`）暂时是指向新位置的兼容软链 ——
+> **新写的脚本、文档一律用 `/data` 路径**，软链在一个完整部署周期后删掉。
+
+## 1. 目标机
+
+| 项 | 值 |
+|---|---|
+| 产品 | **轻量应用服务器 Lighthouse**（非 CVM） |
+| 实例 ID | `lhins-98lm5asj` · 地域 `ap-guangzhou`（**大陆地域 → 受备案约束**） |
+| 公网 IP | `106.55.27.246`（**Lighthouse 不能绑 EIP，IP 与实例绑死**） |
+| 系统 | Ubuntu 24.04.4 LTS · 内存 7.5 GB · 磁盘 59 GB 单盘（2026-09-14 已用 16 G）；**没有数据盘**，`/data` 是系统盘上的目录 |
+| 域名 | `www.hxmall.top`（DNSPod 托管） |
+
+## 2. 线上拓扑
+
+```
+nginx(443/80) ──┬─ /            → /data/app/ai-shop/web/site     静态（Next.js export·官网）
+   唯一入口     ├─ /c/          → /data/app/ai-shop/web/c-app    静态（uni-app H5·社区好物）
+                ├─ /b/          → /data/app/ai-shop/web/b-app    静态（uni-app H5·邻里商家）
+                ├─ /ops-web/    → /data/app/ai-shop/web/ops-web  静态（Next.js export·平台运营端）
+                ├─ /s/<code>    → 302 /c/                   老店铺码链接的退路
+                └─ /mp /biz /ops /actuator → 127.0.0.1:8081  shop-app.jar (systemd)
+MySQL 9.7.2 LTS（本机 3307 · 库 ai_shop / ai_shop_inv / ai_shop_job · Flyway v164）
+```
+
+| 组件 | 版本 | 运行方式 |
+|---|---|---|
+| 后端 | Spring Boot 4.0.7 · Java 21.0.11 | `systemd: ai-shop` · 端口 **8081** |
+| MySQL | **9.7.2 LTS**（`/opt/mysql`，非 apt 装，见 [`mysql97/`](mysql97/)） | `systemd: mysql97` · 端口 **3307** |
+| ~~MariaDB~~ | ~~12.3.2~~ —— 2026-09-16 退役：`disable` + `mask`（连 `mysql`/`mysqld` 两个别名一起）。数据仍在 `/var/lib/mysql`（530M），没卸包，`unmask` 即可回滚 | 已停 |
+| nginx | 1.24.0 | `systemd: nginx` |
+| Node | 20.20.2 | 仅构建期用 |
+
+**端口是 8081 不是 application.yml 里写的 8080** —— profile 覆盖所致，nginx 按实测值配。
+
+## 3. 落位
+
+按「类型 / 业务 / 服务」三级：`/data/<app|log|backup|db|build>/ai-shop/<服务>/`。
+
+| 路径 | 内容 |
+|---|---|
+| `/data/app/ai-shop/shop-app/` | 后端（`systemd: ai-shop`）：`shop-app-<时间>-<SHA>.jar` 若干版 + `shop-app.jar` 软链指当前版 · `shop-app.env`（600，含真实凭据）· `env-backup/` · `certs/`（微信支付证书，700）· `state/` · `deploy.log`（回滚读它，不轮转） |
+| `/data/app/ai-shop/shop-job/` · `pay-svc/` | 定时任务（`ai-shop-job`，`job.env`）· 支付服务（`ai-shop-pay`，`pay.env`，端口 8083），结构同上 |
+| `/data/app/ai-shop/web/{site,c-app,b-app,ops-web,dl}` | 前端静态产物；`dl/` 是 APK 直出 |
+| `/data/app/ai-shop/ops/` | 运维脚本：`backup-to-cos.sh`、`cos_put.py`、[`housekeeping.sh`](housekeeping.sh)（每日清理，**现在只列清单**）、[`logwatch.sh`](logwatch.sh)（每小时巡检盘与日志） |
+| `/data/log/ai-shop/{shop-app,shop-job,pay-svc}/` | 应用日志。**logback 自己滚动、总量封顶**（测试档 100M / 30M / 50M），参数在各服务单元的 `Environment=` 里；控制台只留 ERROR，进 journal |
+| `/data/log/ai-shop/ops/` | 备份等运维日志，`/etc/logrotate.d/ai-shop` 管（7 份） |
+| `/data/log/ai-shop/incident/2026-09-14/` | 盘满事故留档：`app.log` 从未轮转、被刷到 41.6G 写满根分区 |
+| `/data/backup/ai-shop/{db,predeploy,legacy}` | 本机短留：每日导出（3 天）· 迁移前导出 · 版本化部署之前手工留的 jar 备份（待清） |
+| `/data/build/ai-shop/src` · `/data/build/ai-neargo/src` | 服务器构建快照。后端已改本机打包、前端已改本机构建（见 §4），只剩地基升级那段还用 |
+| `/data/build/ai-shop/mp-upload` | 小程序上传工作区（[`release-mp.sh`](../../c-app/scripts/release-mp.sh)） |
+| `/etc/systemd/system/ai-shop{,-job,-pay}.service` | 服务单元。源文件：[`systemd/`](systemd/)（ai-shop、ai-shop-pay）· [`backend/deploy/tencent/ai-shop-job.service`](../../backend/deploy/tencent/ai-shop-job.service) |
+| `/etc/nginx/sites-available/www.hxmall.top` · `ai-shop-ip` | 站点配置，源文件在 [`nginx/`](nginx/) |
+| `/etc/logrotate.d/ai-shop` · `/etc/systemd/journald.conf.d/00-size.conf` | 日志兜底（logrotate 只管 `ops/`；journal 200M）。源文件在 [`logrotate/`](logrotate/) 与 [`journald/`](journald/)，**重建服务器要装回去** |
+| `/etc/cron.d/ai-shop-{backup,housekeeping,logwatch}` | 03:20 备份 · 04:10 清理 · 每小时第 7 分巡检，源文件在 [`cron/`](cron/) |
+| `/opt/mysql` · `/data/db/mysql97` · `mysql97.service` | MySQL 9.7 LTS **生产主库**（127.0.0.1:3307），见 [`mysql97/README.md`](mysql97/README.md) |
+
+**会话存在库里**（`SHOP_TOKEN_STORE=db`），不在任何目录：`state/sessions` 自 2026-08-28 起不再写入，
+重启、搬家都不会让人掉线。部署后全员掉线的真正原因见 §4 的「别覆盖在跑的 jar」。
+
+`/data/soukmind/` 不是本业务的：另一个项目 2026-09-14 部署进来，用的是 `releases/ shared/` 布局，
+与上面的「类型在前」约定不同。别动它，也别照它的样子加东西。
+
+## 备份
+
+每天 03:20 由 `/etc/cron.d/ai-shop-backup` 跑 `/data/app/ai-shop/ops/backup-to-cos.sh`：
+MySQL 9.7 自带的 `mysqldump`（`--single-transaction` 不锁表 · `--set-gtid-purged=OFF`，缺了恢复不了）→ gzip → 上传 `hxmall-backup-1301656997/db/`，
+本机在 `/data/backup/ai-shop/db/` 只留最近 3 天。桶上配了生命周期：30 天转低频、90 天转归档、365 天删。
+
+```bash
+sudo /data/app/ai-shop/ops/backup-to-cos.sh           # 手动跑一次
+sudo tail -20 /data/log/ai-shop/ops/backup.log        # 看结果
+```
+
+脚本源文件在仓库 [backup-to-cos.sh](./backup-to-cos.sh) 与 [cron/ai-shop-backup](cron/ai-shop-backup)，
+改完要重新 install 到 `/data/app/ai-shop/ops/` 与 `/etc/cron.d/`。
+
+## 商家端 App 分发：**两条路，别只更新一条**（2026-09-30）
+
+店主拿到 APK 有两条路，而它们读的是**两处不同的配置**：
+
+| 从哪儿拿 | 读的是 | 谁维护 |
+|---|---|---|
+| 官网下载页 | `site/lib/site.config.ts` 的 `merchantAndroid` | `release-bapp-apk.sh` 改，然后要发官网 |
+| C 端小程序「复制 App 下载地址」 | 服务器 env `SHOP_MERCHANT_APP_ANDROID` → `/mp/config/bootstrap` 的 `merchantApp.android` | **此前没人维护** |
+
+第二条从 2026-08 起一直停在 **0.4.98**，而官网已经发到 0.5.21 ——
+店主从小程序复制地址，下到的是二十多个版本前的包，
+**HTTP 200、下得动、没有任何报错**，只是功能旧。改 env 要重启服务，
+所以每次发版都「下次再说」，于是一次都没改过。
+
+**现在的做法**：env 指一个**不带版本号**的软链
+`https://www.hxmall.top/dl/hxmall-merchant-latest.apk`，
+`release-bapp-apk.sh` 每次发版重指它并回读 md5。
+后端配置一次配好，以后发版不用再动 env、不用重启。
+
+改 env 的那一次要重启并守到 health=200：
+
+```bash
+sudo sed -i 's|^SHOP_MERCHANT_APP_ANDROID=.*|SHOP_MERCHANT_APP_ANDROID=https://www.hxmall.top/dl/hxmall-merchant-latest.apk|' \
+    /data/app/ai-shop/shop-app/shop-app.env
+sudo systemctl restart ai-shop
+curl -s http://localhost:8081/mp/config/bootstrap | grep -o 'hxmall-merchant-[a-z0-9.]*\.apk'
+```
+
+`/dl/` 在 nginx 里是普通 `alias`（`www.hxmall.top:218`），没有 `disable_symlinks`，所以软链可用。
+
+## 商家端 App 分发（COS `download` 桶）
+
+> 全平台的桶怎么划分、为什么只要三个，见 [cos-buckets.md](./cos-buckets.md)。
+>
+> 状态（**2026-08-28 复验，结论未变**）：**桶已建、包已传，但默认域名不能用来分发 APK。**
+>
+> 复验命令（要从**公网出口**跑，不能在服务器上跑）：
+>
+> ```bash
+> curl -s https://hxmall-download-1301656997.cos.ap-guangzhou.myqcloud.com/latest.apk | head -c 200
+> # → <Code>DownloadForbidden</Code>
+> ```
+>
+> **上传不受这条限制** —— 挡的只有公网下载。所以包该传还是要传：
+> COS 是异地存档（服务器没了它还在），备案下来之后官网换一行直链即可，包不用重传。
+> 当前桶里有 `b-app/hxmall-merchant-0.4.32-159.apk`（版本存档）与 `latest.apk`（稳定键），
+> ETag 与本地 md5 逐字一致。
+>
+> 没装 `coscli` 也不必装 SDK：签名 v5 手写三十行就够，见本次会话用的
+> `cosput.py`（PUT 一个对象，打印 ETag 与本地 md5 供比对）。
+>
+> ## ⚠️ COS 默认域名禁止分发 APK / IPA
+>
+> 包传上去了（`b-app/hxmall-merchant-0.1.0.apk`，ETag 与本地 md5 一致），
+> **但公网取回是 403**：
+>
+> ```
+> <Code>DownloadForbidden</Code>
+> <Message>The APK/IPA file is not allowed to be distributed in a public network
+> using COS default domain, please use custom domain instead.</Message>
+> ```
+>
+> **从服务器上取是 200** —— 它在腾讯云内网，不受这条限制。
+> 只用服务器验证会得出「能下载」的错误结论，**必须从公网出口验一次**。
+>
+> 解封要绑**自定义域名**，而大陆地域桶的自定义域名**要备案**。备案没下来之前这条路走不通。
+>
+> ### 当前的做法：服务器直出
+>
+> 包放 `/data/app/ai-shop/web/dl/`（**不在 `web/site/` 里** —— 官网发布用
+> `rsync --delete` 同步 site 目录，放进去每次发官网都会被删掉），
+> nginx 用 `location ^~ /dl/` 直出，`www.hxmall.top` 与 `ai-shop-ip` **两个 server 块都要有**。
+>
+> `site.config.download.merchantAndroid` 填**相对路径** `/dl/xxx.apk`：
+> 备案未过时商家多半从 `http://<IP>/` 进来，写死 https 的绝对地址会让 IP 入口的下载
+> 跳到一个他打不开的地方。
+>
+> 备案下来、自定义域名绑好之后，把 `site.config` 换成直链即可，页面不用改。
+
+### 桶
+
+| 项 | 值 | 为什么 |
+|---|---|---|
+| 名称 | `hxmall-download-1301656997` | COS 桶名必须以 `-APPID` 结尾；与现有 `hxmall-merchant-1301656997` 同一账号 |
+| 地域 | `ap-guangzhou` | 与服务器同地域（Lighthouse 在广州），且大陆地域受备案约束 —— 与现有桶保持一致 |
+| 访问权限 | **公有读、私有写** | 安装包要能被任何人下载；写入只走密钥 |
+| 版本控制 | 关 | 用文件名带版本，见下 |
+
+**与媒体桶分开是有意的**：媒体桶存的是商家上传的商品图，权限、生命周期、防盗链策略都不一样；
+把安装包放进去，将来给媒体桶加防盗链会把下载一起挡掉。
+
+### 目录与命名
+
+```
+b-app/
+  hxmall-merchant-0.1.0.apk     版本存档，永不覆盖
+  latest.apk                    稳定链接，每次发版覆盖
+```
+
+官网写的是 `latest.apk` —— **不要在官网写带版本号的地址**，否则每次发版都要改一次站点并重新部署。
+版本号通过 `site.config.download.merchantAndroidVersion` 显示，便于商家看出下的是哪一版。
+
+### 三个坑
+
+1. **`latest.apk` 的缓存要短。** COS 默认缓存较长，覆盖之后用户可能下到旧包。
+   上传时显式设 `Cache-Control: public, max-age=300`；版本存档那份可以设长。
+2. **Content-Type 必须是 `application/vnd.android.package-archive`。** 给错类型
+   有些浏览器会当文本打开或直接改扩展名，用户拿到一个装不上的文件。
+3. **微信内打不开 APK 直链** —— 这是微信的策略，不是链接坏了。下载页已写明「请用手机浏览器打开」；
+   给商家发链接时也要带上这句，否则第一反应是「你们的下载坏了」。
+
+### 发布一版
+
+```bash
+# 1) 打包（本机）
+cd android-shell && ./gradlew :app:assembleMerchantRelease
+
+# 2) 上传（需要 COS 密钥；coscli 或控制台均可）
+VER=0.1.0
+coscli cp app/build/outputs/apk/merchant/release/app-merchant-release.apk \
+  cos://hxmall-download-1301656997/b-app/hxmall-merchant-$VER.apk \
+  --meta "Content-Type:application/vnd.android.package-archive"
+coscli cp cos://hxmall-download-1301656997/b-app/hxmall-merchant-$VER.apk \
+  cos://hxmall-download-1301656997/b-app/latest.apk \
+  --meta "Content-Type:application/vnd.android.package-archive#Cache-Control:public, max-age=300"
+
+# 3) 官网：填 site.config.download.merchantAndroid 与 merchantAndroidVersion，重新部署
+```
+
+
+## 4. 部署流程
+
+**一律走脚本**，都在本机构建、再传上去：
+
+```bash
+scripts/deploy-backend.sh                 # 后端 shop-app
+scripts/deploy-backend.sh pay-svc         # 支付服务
+# 电子元器件 elec-svc：2026-09-30 迁到独立项目 ai-hxkey，在那边发（cd ../ai-hxkey && scripts/deploy.sh）
+scripts/deploy-frontend.sh <site|ops-web|c-app|b-app>
+backend/deploy/tencent/deploy-job.sh      # 定时任务；要先自己 mvn package -pl shop-job -am
+```
+
+前两个从 `git worktree` 取干净的 HEAD 构建；`deploy-job.sh` 还是用工作区里现成的 jar，
+**在共享工作区里打出来的包可能带着别人未提交的改动**，发之前先看 `git status`。
+
+锁、版本标识、健康检查、回滚都在脚本里，细节见
+[后端部署-流程与约定](../../docs/technical/design/后端部署-流程与约定.md)。
+
+**早先那套「rsync 源码到服务器 → 服务器上 `mvn package` → `cp` 到 `shop-app.jar` → 重启」已经不能用了**，
+别照着旧版本文档敲：
+
+- **服务器编译不了**：私有父 POM 从服务器的 `~/.m2` 里消失了，所以退回本机打包。
+- **`cp`/`scp` 盖掉在跑的 jar 会让 JVM 挂起或全员掉线**：JVM 按需从 jar 里读类，文件被原地改写后
+  读到的是新包的字节。脚本的做法是传一个带时间和 SHA 的新文件、切软链、再重启。
+- **在主工作区构建会带上别人未提交的改动**：这个仓库常有多个会话同时在改。
+
+### 电子元器件 hxkey（独立项目 ai-hxkey）
+
+> 2026-09-30 起元器件是独立项目 **ai-hxkey**（github.com/robinwu2021-code/ai-hxkey）：发版用 `ai-hxkey/scripts/deploy.sh`，
+> systemd 单元是 `ai-hxkey/deploy/systemd/hxkey.service`。同日下午生产从 `ai-shop-elec` / `ai_shop_elec` 改名为 hxkey；
+> 旧服务（已 disable）与旧库 `ai_shop_elec` 暂留作回滚，确认稳定后再删。
+
+| 项 | 值 |
+|---|---|
+| 服务 / 端口 | `hxkey`（User=deploy）· 8085；nginx `location ^~ /elec/` 转过来（按端口，改名不用动） |
+| 目录 | `/data/app/hxkey`（deploy:deploy 750）：`hxkey.jar` → 带时间与 SHA 的包，`deploy.log` |
+| 配置 | `/data/app/hxkey/hxkey.env`（deploy:deploy 600，凭据文件） |
+| 库 | MySQL 9.7 上的 `hxkey`，账号 `hxkey`（只有这一个库的权限）；迁移历史表 `elc_flyway_history`，服务启动时自己跑 |
+| 日志 / 上传原件 | `/data/log/hxkey/hxkey.log` · `/data/cache/hxkey-upload` |
+| 每日备份 | `backup-to-cos.sh` 的 `DBS` 里有 `hxkey`（2026-09-30 补上，此前元器件库没有每日备份） |
+
+`hxkey.env` 要的键（只列键名，值不进仓库）：
+
+| 键 | 必填 | 说明 |
+|---|---|---|
+| `ELEC_DB_URL` / `ELEC_DB_USER` / `ELEC_DB_PASSWORD` | ✅ | `jdbc:mysql://127.0.0.1:3307/hxkey?…` 与账号 `hxkey` |
+| `SHOP_SERVICES_INTERNAL_TOKEN` | ✅ | **与 `shop-app.env` 同值**。没配就一律拒绝：认运营令牌、发短信、微信登录、发订阅全挂 |
+| `WX_TPL_ELEC_QUOTED` | ✅ | 订阅模板号，与 `shop-app.env` 同值（扣本库的授权额度用；空 = 不发订阅消息） |
+| `ELEC_UPLOAD_DIR` | ✅ | `/data/cache/hxkey-upload`（deploy 可写；写不进去服务起不来） |
+| `SHOP_NOTIFY_WECOM_WEBHOOK` 或 `ELEC_WECOM_WEBHOOK` | ⚠️ | 企业微信群机器人。**两个都不配就一条群消息都不发，且不报错** |
+| `ELEC_MAIN_URL` | — | 默认 `http://127.0.0.1:8081`，同机不用配 |
+| `ELEC_PAGE_PREFIX` | — | 通知落地页前缀。并进虹选期间默认 `pkg-elec/pages/`；独立小程序上线时改成 `pages/` |
+| `ELEC_AUTH_FIXED_OTP` | ❌ | **生产绝不能配**：配了任何手机号都能用这个码登录（启动日志会打 `[DANGEROUS]`） |
+
+发包：在 ai-hxkey 里 `scripts/check-head.sh <sha> && REF=<sha> scripts/deploy.sh`，活口是 `GET /elec/c/part?keyword=health&suggest=true`。
+
+**上线后验两句**（不需要任何账号）：
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://www.hxmall.top/elec/me          # 期望 401（不是 404、不是 502）
+curl -s 'https://www.hxmall.top/elec/c/part?keyword=STM32&suggest=true' | head -c 80 # 期望 {"code":0,...}
+```
+
+401 说明 nginx 转到了 elec-svc 且过滤链在；404 是 nginx 没转；502 是进程没起来。
+（本机 DNS 走内网代理，https 直连线上会假死 —— 这两句要在服务器上打 `localhost:8085`，或走 ssh。）
+
+**2026-09-30 已在本机 MySQL 9.7.2 一次性容器里验过**：空库起服务、迁移一次通过（15 张表 + 历史表，
+没有多出 `flyway_schema_history`），匿名查料号 200、不带令牌 401、主系统不通时 503。
+
+官网构建要读 `site/content/**.md`（正文）与 `brand/logo/mark-red.svg`（页头标识），两者都在仓库里，
+worktree 副本自带；少任一个是构建期直接报错。C 端的 `H5_BASE` 是 `/c/` 不是 `/`，脚本里已写死。
+
+### ⚠️ 发完必须验一句：生产 env 里不许有 IP 字面量
+
+```bash
+ssh soukmind-tx 'sudo grep -hoE "(jdbc:mysql://|http://)[0-9]{1,3}(\.[0-9]{1,3}){3}" \
+  /data/app/ai-shop/shop-app/shop-app.env /data/app/ai-shop/shop-job/job.env /data/app/ai-shop/pay-svc/pay.env'
+# 期望：**没有输出**。有输出就是有人又写了 IP。
+```
+
+内部地址一律用名称（`db.svc.internal` / `platform.svc.internal` / `pay.svc.internal`），
+映射在服务器 `/etc/hosts` 里 —— **换 IP 那天只改那一处**，
+各服务的配置与代码都不动（见 [ADR-023](../../docs/technical/ADR/ADR-023-服务发现先不装中间件.md)）。
+
+**为什么要单列一步检查**：仓库里的默认值仍是 `127.0.0.1`（那是给开发机的），
+所以生产漏配某一项时会静默退回 IP —— 而在单机上它恰好能工作，
+**漏配要等到换 IP 那天才暴露**，那时的症状是「某个服务连不上，而别的都好」。
+
+加新服务时：先在 `/etc/hosts` 加一行，再在 env 里用名称。
+
+### ⚠️ 发完必须验一句：运营端连的是真后端还是 mock
+
+```bash
+ssh soukmind-tx 'curl -sk -H "Host: www.hxmall.top" https://localhost/ops-web/ | grep -o "x-api-mode\" content=\"[a-z]*"'
+# 期望 http；若是 mock，就是构建漏了 NEXT_PUBLIC_USE_MOCK=0 —— **重新构建，别只重发**
+```
+
+**为什么单列一步**：`NEXT_PUBLIC_USE_MOCK` 的默认值是 mock（`!== "0"`），
+所以**漏配不会报错，只会静默退回 mock**。
+
+2026-09-01 就是这么踩的：线上运营端跑了两天 mock 没人发现，
+症状是「admin 登录提示无权限」—— 而请求根本没发给后端，
+`ops_login_log` 里一条记录都没有。查判权、查角色、查权限点，全是好的。
+
+上面那条构建命令**一直写着 `NEXT_PUBLIC_USE_MOCK=0`**，那次部署还是漏了 ——
+所以这里不再靠「记得照着敲」，而是发完探一下产物。
+标记由 `ops-web/app/layout.tsx` 输出，随构建固化在 HTML 里。
+
+### 官网接管根路径（2026-08-19）
+
+`/` 从 C 端 H5 换成官网，C 端移到 `/c/`。**这会动到已经发出去的链接**，两条退路都做了：
+
+| 老链接形态 | 退路 | 为什么要这条 |
+|---|---|---|
+| `https://www.hxmall.top/s/<code>`（店铺码，后端 `SHOP_WEB_BASE_URL` 拼的） | nginx `location ^~ /s/ { return 302 /c/$is_args$args; }` | 路径服务器可见，能重定向。这些码可能已经印在包装上 |
+| `https://www.hxmall.top/#/pages/…`（C 端分享） | 官网 `<head>` 里的内联脚本判 `location.hash`，跳 `/c/#/pages/…` | **hash 不发给服务器**，nginx 看不见，只能在浏览器里判 |
+
+回滚（两步，不用重新构建官网）：
+
+```bash
+ssh soukmind-tx 'sudo cp /etc/nginx/sites-available/www.hxmall.top.bak-<stamp> \
+  /etc/nginx/sites-available/www.hxmall.top && sudo nginx -t && sudo systemctl reload nginx'
+ssh soukmind-tx 'cd /data/build/ai-shop/src && H5_BASE=/ npm run build:h5 -w ai-shop-c-app && \
+  sudo rsync -a --delete c-app/dist/build/h5/ /data/app/ai-shop/web/c-app/'
+```
+
+上线时的 c-app 备份在 `/data/app/ai-shop/web/c-app.bak-<stamp>`（stamp 见部署当天），
+nginx 旧配置在 `/etc/nginx/sites-available/www.hxmall.top.bak-<stamp>`。
+
+### 备案未过期间：用 IP 直连
+
+`http://106.55.27.246/` 是 `ai-shop-ip`（`default_server`，只有 80，不跳 https ——
+证书是 `*.hxmall.top`，用 IP 走 443 必然告警）。它的 location **与 `www.hxmall.top` 逐条对齐**：
+
+| 路径 | IP 入口 | 域名入口 |
+|---|---|---|
+| `/` | 官网 | 官网 |
+| `/c/` `/b/` `/ops-web/` | 同 | 同 |
+| `/s/<code>` | 302 → `/c/` | 同 |
+| `/mp /biz /ops /actuator /uploads /media` | 反代 8081 | 同 |
+
+**改一处必须改两处。** 2026-08-19 官网接管根路径时就漏改过这份：`/` 还指向 c-app，
+而 c-app 已改成 `/c/` 基址 —— 结果 `index.html` 出得来、`/c/assets/*.js` 被 `try_files`
+兜成 HTML，页面白屏而所有状态码都是 200。
+
+> **`sites-enabled/ai-shop-ip` 曾经是实体文件副本，不是软链。**
+> 于是改 `sites-available/ai-shop-ip` 后 `nginx -t` 通过、reload 成功、行为纹丝不动 ——
+> 因为 nginx 读的是 `sites-enabled` 里那份陈旧副本。已改成软链（2026-08-19）。
+> 排查时先跑：`diff /etc/nginx/sites-enabled/X /etc/nginx/sites-available/X`。
+
+验证（**不能只在服务器上 curl 127.0.0.1**，那绕开了真实链路）：
+
+```bash
+curl --noproxy '*' -s -o /dev/null -w "%{http_code}\n" http://106.55.27.246/
+curl --noproxy '*' -s http://106.55.27.246/ | grep -o '<title>[^<]*</title>'
+```
+
+2026-08-19 实测：`/` 200「虹选 · 好物 — 社区邻里电商」· `/c/` 200「社区好物」·
+C 端资源 `application/javascript` 424 KB · 官网 CSS `text/css` 30 KB ·
+`/s/X` 302 → `/c/` · `/nope/` 404 · `/actuator/health` UP。**80 端口未见劫持或注入。**
+
+**地基升级时**（ai-neargo 的 commons 有改动）：
+
+```bash
+rsync -az --exclude 'target/' ~/work/ai/ai-neargo/pom.xml ~/work/ai/ai-neargo/commons \
+  soukmind-tx:/data/build/ai-neargo/src/
+ssh soukmind-tx 'cd /data/build/ai-neargo/src && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 mvn -N install -DskipTests && \
+  cd commons && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 mvn install -DskipTests -B'
+```
+
+> ⚠️ 这段是服务器还能自己编译时的做法。后端已改本机打包（§4），这段只在要恢复服务器构建时才有用。
+>
+> `/data/build/ai-neargo/src/commons/pom.xml` 是**部署侧生成的聚合 pom**（仓库里没有），
+> 让 Maven 自己算 9 个 commons 模块的构建顺序。rsync 时勿用 `--delete` 覆盖掉它。
+
+## 5. 三个**必须由部署侧覆盖**的配置
+
+仓库默认值直接上生产是错的，已在部署侧处理，改动构建流程时勿丢：
+
+| 配置 | 仓库默认 | 生产必须 | 原因 |
+|---|---|---|---|
+| `SPRING_FLYWAY_PLACEHOLDER_REPLACEMENT` | （未设） | `false` | 见 §7 缺陷 ① |
+| `c-app/.env.production`·`b-app/.env.production` 的 `VITE_API_BASE` | `.env` 里写死 `http://127.0.0.1:8081` | 留空（同源） | Vite 的 `VITE_*` 只从 `.env` 文件读，**shell 环境变量覆盖不了**；不覆盖就把本地回环地址烧进生产包 |
+| ops-web 的 `NEXT_PUBLIC_API_BASE` | — | 留空（同源） | 经 nginx 反代到 `/ops/**`，后端刻意没配 CORS |
+
+## 6. 凭据
+
+**全部在仓库外**：
+
+| 文件 | 内容 |
+|---|---|
+| `~/work/env/tencent/tencent.env` | 腾讯云 API 密钥（子用户 `deploy-user`） |
+| `~/work/env/tencent/ai-shop.env` | 数据库账号密码（32 位随机生成） |
+| `~/work/env/server/tencent/soukmind_tx(.pub)` | SSH 部署密钥（名字是历史遗留）。2026-09-14 从 `env/tencent/` 挪来，`~/.ssh/config` 的两个别名已跟着改 |
+
+**SSH 只认这把密钥**（服务器已关口令登录的话）。它丢了 SSH 就进不去 —— 私钥要另有安全备份；
+不走 SSH 的后路是腾讯云控制台的 VNC 登录。
+
+服务器上 `/data/app/ai-shop/shop-app/shop-app.env`（600）含从本机 `backend/.env.local` · `.env.mail.local` ·
+`.env.sms.local` 原样搬运的真实凭据，共 27 个变量。
+
+```bash
+ssh soukmind-tx        # deploy 用户（免密 sudo）
+ssh soukmind-tx-root   # 救火通道
+```
+
+## 7. 部署中发现的两个真缺陷（仓库侧待修）
+
+### ① V121 的注释让全新库无法初始化
+
+`V121__growth_attribution_rule_and_fission.sql:5` 注释里写了 `@Value("${shop.attribution.window-days:30}")`，
+**Flyway 连注释里的 `${}` 也当占位符解析**，报 `No value provided for placeholder`。
+
+任何全新库首次启动必挂。现有库因为在 V121 之前就建好了，一直没暴露。
+
+部署侧用 `SPRING_FLYWAY_PLACEHOLDER_REPLACEMENT=false` 绕开（全库仅此一处 `${}`）。
+**没有改迁移文件** —— `validate-on-migrate: true`，改注释会变 checksum，修一个环境会弄坏另一个。
+根治建议：在 `application.yml` 里显式设 `spring.flyway.placeholder-replacement: false`。
+
+### ② 建表 collation 依赖 MariaDB 版本
+
+97 张表写 `DEFAULT CHARSET=utf8mb4`，其中 **81 张显式 `COLLATE=utf8mb4_uca1400_ai_ci`，
+另 16 张没写**。而 `CHARSET=utf8mb4` 不带 `COLLATE` 时用的是**字符集的默认排序规则**
+（不是库的默认值），这个值随 MariaDB 版本变：
+
+- MariaDB 10.11（Ubuntu 24.04 自带）→ `utf8mb4_general_ci` → **V150 迁移在 JOIN 时报 1267 Illegal mix of collations**
+- MariaDB 11.8 / 12.x（本机是 12.2.2，服务器 12.3.2）→ `utf8mb4_uca1400_ai_ci` → 一致，正常
+
+已把服务器 MariaDB 换成官方源 **12.3.2** 对齐开发环境（noble 上可装的最新版；11.8 是 LTS，12.3 是短期版，支持期约一年）。
+根治建议：给那 16 张表补上显式 `COLLATE`，别让建表结果取决于服务器版本。
+
+> 补充：V150 那段回填 DML 的注释自己就写着「测试库只重放 DDL 不跑 DML，
+> 这一条在 CI 里从来不会被执行，上生产前必须在预发库单独验一次」—— 这次就是那一次，且确实炸了。
+
+## 7.5 告警
+
+两半，缺一半都等于出事没人知道：
+
+- **机器内部**：`logwatch.sh` 每小时巡磁盘 / 日志量 / 写入速率 / outbox 死信 / binlog /
+  **服务是否还活着**，越限发邮件到 `robin@neargo.ai`（凭据复用应用的 M365 配置，不另存一份）。
+- **机器外部**：腾讯云监控，兜「机器整个没了、cron 停了」——
+  那时 `logwatch` 自己也没了。配法见 [cloud-monitor.md](cloud-monitor.md)。
+
+## 8. 遗留 / 待办
+
+1. **备案未确认** —— `hxmall.top` 备案了吗？广州是大陆地域，未备案域名的 80/443 会被拦。
+   目前从本机访问正常，但本机 DNS 走内网代理，**不能代表真实公网路径**，需用外部网络复验。
+2. **`ops` 面与 C/B 面同机部署** —— `SPRING_PROFILES_ACTIVE=api,ops`。项目设计原意
+   （S8 / `DeploymentProfileTest`）是 ops 独立部署在内网，它权限最高（改费率、批提现、封商家）。
+   收紧办法：去掉 `ops` profile，或在 nginx 对 `/ops` 加 IP 白名单。
+3. **短信/邮件/微信登录是真通道**（`SHOP_SMS_STUB=false`·`SHOP_MAIL_STUB=false`·
+   `SHOP_WX_LOGIN_STUB=false`，从本机 env 原样搬来）。`/mp/user/otp/send` 是**公网未鉴权端点**，
+   发码限流默认开着（`SHOP_OTP_RATE_LIMIT=true`）兜底，但仍建议确认限流阈值。
+4. **22 端口对 `0.0.0.0/0` 开放，且开着口令登录、允许 root 登录** —— 2026-09-14 实测上周 SSH 口令失败 7217 次、
+   来自 540 个 IP，其中 6937 次针对 root；`btmp` 已 11M。约 4 周内**没有一次口令登录成功**，
+   所有真实登录都走公钥（root、deploy 各一把），所以关掉口令不影响任何现有用法。
+   关口令（`/etc/ssh/sshd_config.d/00-hardening.conf`：`PasswordAuthentication no` · `KbdInteractiveAuthentication no` ·
+   `PermitRootLogin prohibit-password`；片段目录在主配置第 12 行引入、`00-` 排在 `50-cloud-init.conf` 之前，所以能压过两处 `yes`）；
+   另建议防火墙把 22 收窄到办公 IP + CI 出口 IP（控制台操作）。
+5. ~~证书 90 天到期无人续~~ **已解决（2026-08-18）** —— 见下方「10. 证书」。
+6. **`DNS_AUTO` 自动验证不生效** —— 实测回落成手动模式，`_dnsauth` TXT 是手工补的，脚本未处理。
+   这也是改用 acme.sh 的原因之一：它自己写 TXT、自己轮询、自己清理。原
+   `setup-tls.sh` 已被 [setup-tls-acme.sh](setup-tls-acme.sh) 取代，保留仅作参考。
+7. **无演示数据** —— 需要的话加 `shop.seed.enabled=true`（2 社区 / 2 自提点 / 2 商家 / 4 商品）。
+8. **android-shell 未部署** —— rsync 时排除了，客户端打包不属服务器部署范围。
+
+## 9. 验证与排障
+
+```bash
+curl https://www.hxmall.top/actuator/health          # {"status":"UP"}
+curl https://www.hxmall.top/mp/community/nearby      # {"code":0,...}
+ssh soukmind-tx 'tail -f /data/log/ai-shop/shop-app/shop-app.log'   # 全量日志（deploy 可读）
+ssh soukmind-tx 'sudo journalctl -u ai-shop -p err --since -1h'      # 只有 ERROR 与启动前的 JVM 输出；不加 sudo 看不到系统单元
+ssh soukmind-tx 'systemctl status ai-shop ai-shop-job ai-shop-pay mysql97 nginx'
+```
+
+上线时实测：`/` `/b/` `/ops-web/` `/actuator/health` `/mp/community/nearby` 均 200，
+`/ops/media` 401（路由在、要鉴权），三端 title 分别为「社区好物」「邻里商家」「邻里购 · 平台运营端」。
+
+## 10. 证书（2026-08-18 起全自动）
+
+三张 Let's Encrypt 证书由服务器上的 acme.sh v3.1.5 托管，**到期前自动续签并 reload nginx，
+无需人工介入**。原腾讯云 TrustAsia 证书（90 天、无自动续期）已弃用，旧证书备份在
+`/etc/nginx/ssl/www.hxmall.top.bak-20260818`。
+
+| 证书 | 覆盖 | 证书目录 | DNS 插件（解析在哪家） | 下次自动续期 |
+|---|---|---|---|---|
+| `*.hxmall.top` | 泛域名 + 裸域 | `/etc/nginx/ssl/hxmall.top/` | `dns_tencent`（DNSPod） | 2026-10-18 |
+| `*.ichain.top` | 泛域名 + 裸域 | `/etc/nginx/ssl/ichain.top/` | `dns_ali`（阿里云） | 2026-10-17 |
+| `*.hxtech.top` | 泛域名 + 裸域 | `/etc/nginx/ssl/hxtech.top/` | `dns_ali`（阿里云） | 2026-10-17 |
+
+续期 cron：`51 4,10,16,22 * * * /root/.acme.sh/acme.sh --cron`（root）。
+续期时间由 Let's Encrypt 的 ARI 接口给出，不是固定 60 天。
+
+重签或新增域名用 [setup-tls-acme.sh](setup-tls-acme.sh)，日常**不需要跑**：
+
+```bash
+bash deploy/tencent/setup-tls-acme.sh '*.hxmall.top,hxmall.top' dns_tencent
+bash deploy/tencent/setup-tls-acme.sh '*.ichain.top,ichain.top' dns_ali
+```
+
+### 验证过的事实（别再重新怀疑）
+
+- **签证书不需要 ICP 备案**。DNS-01 只写 TXT，不碰 80/443，不要求网站可访问。
+  `ichain.top` / `hxtech.top` 备案未办就已拿到证书。
+- **泛域名免费**。「阿里云/腾讯云不支持泛域名」指的是它们**自家的免费证书产品**；
+  这里 CA 是 Let's Encrypt，云厂商只当 DNS 服务商被调 API 写一条 TXT。
+- **不需要切 NS**。解析在阿里云就用 `dns_ali`，在 DNSPod 就用 `dns_tencent`。
+- **无人值守路径已实测**：用 `env -i` 清空环境跑 `--issue`，acme.sh 自行从
+  `/root/.acme.sh/account.conf` 读出 AK → 写 TXT → 验证 → 删 TXT → 装证书 → reload，
+  全程无外部输入。这是 cron 的真实路径。
+  （注意：`--renew --force` **不能**验证这一条 —— LE 会缓存 30 天内的域名授权，
+  日志出现 `already verified, skipping dns-01` 时 DNS 写入根本没跑。要验必须换新子域。）
+
+### 签泛域名的两个坑（都踩过）
+
+- **`-d www.x.com` 不能和 `-d '*.x.com'` 写在同一张证书里** —— Let's Encrypt 直接拒单：
+  `Domain name "www.x.com" is redundant with a wildcard domain in the same request`。
+  泛域名本来就覆盖 `www`，去掉即可。
+- **主域名换成 `*.x.com` 会改变证书目录** —— 脚本把 `*.` 剥掉，目录从
+  `/etc/nginx/ssl/www.x.com/` 变成 `/etc/nginx/ssl/x.com/`。**nginx 配置不跟着改的话，
+  新证书装到了新目录，nginx 还在读旧目录里的旧证书，而且一切正常、不报任何错**，
+  直到旧证书到期才暴露。签完务必确认 `ssl_certificate` 指的是新路径，并用
+  `openssl s_client -servername <域名>` 实测握手返回的是哪张。
+
+### 已知副作用
+
+acme.sh 的 `dns_ali` 清理逻辑会误伤**同名的既有 TXT 记录**：`ichain.top` 上一条签发前就
+存在的 `_acme-challenge` 记录被改成了停用（值未变），已手工恢复。之后在这两个域名上签证书，
+跑完用 `python3 deploy/aliyun/alidns.py list <域名>` 检查一遍 `_acme-challenge` 的状态。

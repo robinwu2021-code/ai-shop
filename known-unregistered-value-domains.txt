@@ -1,0 +1,217 @@
+# 代码侧可见、还没有人判定过的取值域列 —— **待办清单，只准变短**。
+#
+# 一行一个 表.列。判定完一条就删一行：要么登记进 scripts/check-enum-fields.mjs 的
+# FIELDS（它对应哪个端上类型），要么写进 DISMISSED 并给出理由（这一列不是受限取值域）。
+#
+# ⚠️ **这不是覆盖率的分母。** 它是建表注释里枚举了取值的列，也就是「代码里实际有什么」。
+# 真正的分母应当是需求端定义的领域对象及其取值域，而那份定义今天基本不存在
+# （17 个 L2 域里只有三处写全：订单状态、售后状态、触达场景码）。
+# 拿这份清单当分母会得到一个自证的覆盖率 —— 需求里有、代码从没实现的状态永远不在里面。
+# 详见 docs/technical/design/TDD-取值域按字段对账-补全登记.md §2.2 与它的偏差说明。
+#
+# 也因此：**这里为空不等于对账做完了**，只等于「代码侧看得见的都有人看过了」。
+#
+# 已登记的三个字段（ord_sub_order.status / ord_after_sale.status / ord_sub_order.fulfillment）
+# 压根不在这份清单里 —— 它们的取值域写在 Java 常量类而不是列注释。
+# 这本身就是这个面不是真分母的证据。
+#
+# ── 2026-09-06 第二版：125 → 197，**清单变长不是欠账变多，是此前少看了 39%** ──
+#
+# 第一版的 surface() 手写了一份 CREATE TABLE 解析，把 scripts/lib/ddl.mjs 早已修好的
+# 三个缺陷重现了一遍：收尾写死 `) ENGINE`（14 张表用的是合法的 `) COMMENT=…;`）、
+# 只扫平台迁移目录（进销存是另一条 Flyway 历史）、只读建表体不重放 ADD/MODIFY COLUMN。
+# 于是可见面报 134 而实际是 206。改用共用解析器之后这 72 列才露出来。
+# 教训：**「找出违规」型判据少扫等于全绿**，所以 surface() 现在带一条表数下界断言。
+#
+# 当前（2026-09-06 第二版）：可见面 206 列，已判定 12（登记 8 + 驳回 4），未判定 196（ful_batch.status 已登记，见 check-enum-fields.mjs 里那条注释）。
+
+# ── 2026-09-09 第三版：176 → 182，**又一次「变长 = 此前少看了」** ──
+#
+# check-enum-fields 的 valuesInComment 在**第一个括号处截断**注释：
+# `ACTIVE / PAUSED 暂停发放（已领的不受影响）/ ENDED` 只抽出前两个，ENDED 静默丢掉。
+# 量过：24 个列受影响，最重的 prd_goods.audit_status 四个值只抽出 DRAFT 一个，
+# stl_payment.direction 丢掉 SUBSIDY_REVERSE 与 PAYOUT。
+#
+# 后果不只是少看：漏抽的值会被报成「端上多出来的、按它筛必然是空列表」——
+# **一个方向完全相反的假结论**。我据它一度把 pmt_coupon.status 与 rvw_appeal.status
+# 记成「端上有后端没有」的真差异，其实两条都是量具造的假阳性。
+#
+# 改成「先剥括号、再在句号处截断」之后：18 个列多抽出真取值（进了这份清单），
+# 23 个列去掉了从散文里误抽的假值（其中 6 个因此不再算取值域，从清单里删了）。
+# 两个方向都变准，所以这次的净增 +6 是**看得更清楚**，不是欠账变多。
+
+cmt_community.coords_source
+cmt_community.kind
+cmt_pickup_point.fee_mode
+cmt_pickup_point.owner_ref
+cmt_pickup_point.scope
+cnt_question.status
+lgs_carrier.carrier
+ful_group_pickup.status
+lgs_waybill.carrier
+ful_shortage_report.kind
+inv_inbound_order.source_type
+inv_inbound_order.status
+inv_item.cost_method
+inv_item.data_source
+inv_item.status
+inv_item_ref.ref_system
+inv_ledger.doc_kind
+inv_location.kind
+inv_location.status
+inv_open_credential.status
+inv_outbound_order.purpose
+inv_outbound_order.source_ref
+inv_outbound_order.status
+inv_outbox.status
+inv_owner.status
+inv_reservation.status
+inv_stock_count.scope
+inv_stock_count.status
+inv_supplier.status
+mbr_member.level
+mbr_member.source
+mbr_member.status
+mbr_member_source.inviter_role
+mbr_member_source.source_type
+mbr_setting.member_scope
+mbr_tag.status
+mbr_tag.tag_type
+mch_account.status
+mch_admission_policy.legal_form
+mch_appointment_slot.status
+mch_channel_pickup.channel
+mch_debt_txn.source_type
+mch_entity.fulfillment_reach
+mch_entity.service_scope
+mch_entity_apply.service_scope
+mch_entity_plan.granted_by
+mch_entity_plan.status
+mch_fulfillment_channel.scope_mode
+mch_payment_merchant.apply_status
+mch_payment_merchant.fee_bearer
+mch_payment_merchant.legal_form
+mch_payment_merchant.pay_channel
+mch_payment_merchant.settle_account_type
+mch_service_area.level
+mch_service_area.source
+mch_service_area.status
+mch_session.subject_kind
+mch_staff_log.action
+mch_store.status
+mch_store_audit.kind
+mch_violation.action
+mkt_attribution_log.trace_no
+mkt_campaign.discount_minor
+mkt_campaign.threshold_minor
+mkt_content_slot.kind
+mkt_coupon_issue.target
+mkt_group_buy.status
+mkt_quote.status
+mkt_request.status
+mkt_user_coupon.status
+notify_channel.channel_type
+notify_channel.provider
+notify_channel.scope
+notify_message.receiver_type
+notify_push_task.status
+notify_push_token.platform
+notify_push_token.provider
+notify_push_token.receiver_type
+notify_scene_channel.audience
+notify_scene_channel.channel
+notify_scene_channel.push_level
+notify_template.channel
+ops_session.subject_kind
+ord_after_sale.type
+ord_invoice_request.title_type
+ord_order.pay_scene
+ord_status_log.operator_type
+pay_risk_shadow_log.verdict
+pmt_activity.benefit_amount_minor
+pmt_activity.benefit_ref
+pmt_activity.benefit_type
+pmt_activity.ended_reason
+pmt_activity.goal
+pmt_activity.schedule_type
+pmt_activity.status
+pmt_activity.trigger_type
+pmt_activity_audience.audience_type
+pmt_activity_goods.scope_type
+pmt_apply.funder
+pmt_apply.promo_type
+pmt_apply.redeem_mode
+pmt_coupon.benefit_mode
+pmt_coupon.benefit_value
+pmt_coupon.issue_mode
+pmt_coupon.redeem_mode
+pmt_coupon.scope_type
+pmt_coupon.validity_mode
+pmt_coupon_issue.issue_mode
+pmt_coupon_scope.scope_type
+pmt_user_coupon.status
+prd_category.template
+prd_category_points.earn_mode
+prd_goods.audit_status
+prd_goods_draft.status
+prd_sku.barcode
+prd_spec_dim.code
+prd_spec_dim.dim_no
+prd_spec_dim.scope
+prd_spec_dim.status
+prd_spec_dim.usage_type
+prd_spec_dim.value_type
+prd_spec_template.status
+prd_spec_value.code
+prd_spu_std.status
+prd_stock_lock.status
+prd_topic.status
+pts_user_ledger.biz_type
+risk_blacklist.appeal_status
+risk_event.status
+risk_event.type
+risk_rule.type
+rvw_review.risk_flags
+stl_bill.channel_fee_source
+stl_bill.invoice_status
+stl_channel_message.msg_type
+stl_payment.direction
+stl_payment.pay_channel
+stl_payment.pay_method
+stl_payment.pay_scene
+stl_payment.status
+stl_payment.sub_order_no
+stl_points_pool.direction
+stl_points_pool.pool_type
+stl_recon_diff.pay_channel
+stl_recon_diff.source
+stl_recon_diff.status
+stl_settle_invoice.title_type
+stl_split_log.result
+sys_channel_category_rule.category_type
+sys_channel_category_rule.scene
+sys_function.end_code
+sys_function.function_code
+sys_function_point.point_type
+sys_function_point.ui_kind
+sys_job_run.status
+sys_media_asset.biz_type
+sys_media_purge_batch.status
+sys_merchant_plan_def.plan_code
+sys_notify_log.biz_type
+sys_notify_log.channel
+sys_notify_log.provider
+sys_notify_log.status
+sys_outbox.aggregate_type
+sys_outbox.status
+sys_pay_channel.pay_channel
+sys_pay_channel_rate.legal_form
+sys_pay_channel_rate.pay_channel
+sys_pay_channel_rate.pay_method
+sys_region.audit_status
+sys_region.level
+sys_region.source
+usr_identity.identity_type
+usr_person.status
+usr_person_merge_log.reason
+usr_session.subject_kind

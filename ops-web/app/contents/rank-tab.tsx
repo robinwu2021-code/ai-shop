@@ -21,13 +21,14 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input, Select } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { SectionHeader } from "@/components/ui/section-header";
 import type { ContentsCopy } from "./copy";
 
 interface RankForm {
@@ -42,7 +43,7 @@ interface RankForm {
 const useQStatusMap = (c: ContentsCopy): StatusMap<QuestionStatus> => ({
   PENDING: { label: c.qsPending, tone: "warning" },
   ANSWERED: { label: c.qsAnswered, tone: "success" },
-  HIDDEN: { label: c.qsHidden, tone: "muted" },
+  OFFLINE: { label: c.qsHidden, tone: "muted" },
 });
 
 export function RankTab({ c, canEdit }: { c: ContentsCopy; canEdit: boolean }) {
@@ -154,7 +155,7 @@ export function RankTab({ c, canEdit }: { c: ContentsCopy; canEdit: boolean }) {
 
   return (
     <>
-      <Notice className="mb-3">{fill(c.rankNotice, { n: MAX_RANKING_SIZE })}</Notice>
+      <HelpNote className="mb-3">{fill(c.rankNotice, { n: MAX_RANKING_SIZE })}</HelpNote>
       <Toolbar
         onAdd={() => setEditing({ name: "", kind: "SALES", size: "10", manualSkus: [], enabled: false })}
         addLabel={c.actionNewRank} canAdd={canEdit}
@@ -166,8 +167,8 @@ export function RankTab({ c, canEdit }: { c: ContentsCopy; canEdit: boolean }) {
         empty={c.emptyRank}
       />
 
-      <h3 className="mt-8 mb-3 txt-label text-muted-foreground">{c.secQuestions}</h3>
-      <Notice className="mb-3">{c.qaNotice}</Notice>
+      <SectionHeader className="mt-8" title={c.secQuestions} />
+      <HelpNote className="mb-3">{c.qaNotice}</HelpNote>
       <Toolbar search={qKeyword} onSearch={(v) => { setQKeyword(v); setQPage(1); }} searchPlaceholder={c.searchQuestion}>
         <FilterSelect aria-label={c.filterQStatus} value={qStatus} onChange={(v) => { setQStatus(v); setQPage(1); }}
           options={qStatusMap} allLabel={c.filterQStatusAll} />

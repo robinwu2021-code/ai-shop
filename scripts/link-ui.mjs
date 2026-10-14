@@ -12,6 +12,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+// 元器件小程序 2026-09-30 迁到独立项目 ai-hxkey：它的 node_modules 整个软链到本仓库根目录，已含这一条
 const APPS = ["c-app", "b-app"];
 
 for (const app of APPS) {

@@ -1,0 +1,200 @@
+<script setup lang="ts">
+// 图片格：已传的缩略图排一行，末尾一个「＋」。
+//
+// **四个页面各写了一份**（2026-08-26 扫出来）：`apply` 的执照、`payment` 的收款码、
+// `qualifications` 的资质照、`goods-edit` 的商品主图 —— 而 `goods-edit` 一页里
+// 还有第二套（详情图，见下）。
+//
+// **这一件不是纯搬运**，四份之间有真差异也有真漂移，收编时要分开处置：
+//
+// · **真差异（留给调用点）**：格子尺寸。执照是横的（160×112）、商品主图是方的（104）、
+//   收款码大一点（160）—— 拍的东西形状不同，不该被组件拉平，所以 `w`/`h` 是 props。
+// · **真漂移（收掉）**：
+//     ‑ 圆角 24 与 16 各两处 → 统一 16rpx（`radius.sm`）。缩略图是小件，24 显得笨
+//     ‑ 「＋」三处是全角 `＋`、`payment` 一处是半角 `+` —— 半角在中文字体里又细又矮，
+//       与旁边三页不是一个东西。统一全角
+//     ‑ 上传中的提示三种写法（`…` / `"…"` / 一句 i18n）→ 统一 `…`
+// · **不改的**：`apply` / `payment` 现在**没有删除入口**，收编后仍然没有 ——
+//   `removable` 默认关。给一个页面凭空添一个删除手势不是收编，是改需求。
+//
+// **`goods-edit` 的详情图（`.dimgs`）不归它管**：那是竖排列表的排序件，
+// 与「一排缩略图 + ＋」是两个形态。名字像、东西不同 ——
+// 这一课这套界面已经上过三次（addbtn/candchip、卡内标题行/分段标题、行内首行）。
+import { computed, getCurrentInstance } from "vue";
+import { useChipDrag } from "../drag-sort";
+
+const props = withDefaults(
+  defineProps<{
+    /** 已经有的图（URL 或 emoji，交给 sh-cover 分流） */
+    list: readonly string[];
+    /** 上限；到了就不再显示「＋」。不给＝不限 */
+    max?: number;
+    /** 格子宽高（rpx）。默认方形 104 —— 商品主图那一档 */
+    width?: number;
+    height?: number;
+    /** 正在传：「＋」变「…」并挡住重复点 */
+    uploading?: boolean;
+    /** 显示右上角的删除角标。**默认关**，见文件头 */
+    removable?: boolean;
+    /** 第一格左下角的角标（如「主图」）。留空不显示 */
+    badge?: string;
+    /**
+     * 长按拖动排序。**默认关** —— 与 `removable` 同一条：给一个页面凭空添一个手势不是收编。
+     *
+     * <p>开了之后长按 180ms 起拖（`useChipDrag`，与规格档位同一套手势与手感），
+     * 松手派 `sort(from, to)`；**组件自己不动数组**，顺序归调用点。
+     */
+    sortable?: boolean;
+  }>(),
+  { max: 0, width: 104, height: 0, uploading: false, removable: false, badge: "", sortable: false },
+);
+
+const emit = defineEmits<{
+  (e: "add"): void;
+  (e: "remove", index: number): void;
+  (e: "tapItem", index: number): void;
+  (e: "sort", from: number, to: number): void;
+}>();
+
+/*
+ * 拖动排序。几何是「离手指最近的那一格」—— 格子会换行，一维的行高整除算不出来。
+ * `.up__cell` 只数到 list.length，末尾那个「＋」不参与（拖到它上面 = 放回最后一张）。
+ */
+const {
+  dragFrom: sortFrom, dragTo: sortTo, shift: sortShift, slotShift,
+  onStart: sortStart, onMove: sortMove, onEnd: sortEnd, cancel: sortCancel,
+} = useChipDrag(
+  getCurrentInstance(),
+  ".up__cell",
+  () => props.list.length,
+  (from, to) => emit("sort", from, to),
+);
+
+const cell = computed(() => ({ width: `${props.width}rpx`, height: `${props.height || props.width}rpx` }));
+const canAdd = computed(() => !props.max || props.list.length < props.max);
+
+function add() {
+  if (props.uploading) return;
+  emit("add");
+}
+
+/**
+ * 拖动中：被拖的那一格**跟手走并抬起来**（放大一点 + 投影），其余的**让位** ——
+ * 它扫过的那几格各自挪一个位置，带过渡。
+ *
+ * <p>只有描边的话看得出落点、却不像在排序：手指底下那一张悬着，别的一动不动。
+ * 让位这一下把「松手会变成什么样」提前画出来（2026-10-07 用户：拖动特效不好）。
+ */
+function cellStyle(i: number) {
+  if (!props.sortable || sortFrom.value < 0) return cell.value;
+  if (sortFrom.value === i) {
+    return {
+      ...cell.value,
+      // 跟手不能有过渡：有的话手指到了、格子还在追，手感是「黏」的
+      transform: `translate(${sortShift.value.x}px, ${sortShift.value.y}px) scale(1.08)`,
+      zIndex: 2,
+      transition: "none",
+    };
+  }
+  const s = slotShift(i);
+  if (!s.x && !s.y) return cell.value;
+  return { ...cell.value, transform: `translate(${s.x}px, ${s.y}px)` };
+}
+
+/** 删一张：顺手取消可能正在计时的那次长按，否则它指向的下标已经没东西了 */
+function remove(i: number) {
+  sortCancel();
+  emit("remove", i);
+}
+</script>
+
+<template>
+  <view class="sh-wrap up">
+    <view
+      v-for="(img, i) in list"
+      :key="img + i"
+      class="up__cell"
+      :class="{ 'up__cell--drag': sortable && sortFrom === i, 'up__cell--move': sortable && sortFrom >= 0 && sortFrom !== i }"
+      :style="cellStyle(i)"
+      @tap="emit('tapItem', i)"
+      @touchstart="sortable && sortStart(i, $event)"
+      @touchmove="sortable && sortMove($event)"
+      @touchend="sortable && sortEnd()"
+    >
+      <sh-cover class="up__img" :style="cell" :src="img" :w="200"></sh-cover>
+      <text v-if="badge && i === 0" class="txt-caption up__badge">{{ badge }}</text>
+      <view v-if="removable" class="up__del sh-hit sh-center" @tap.stop="remove(i)">
+        <sh-icon name="close" :size="24" color="#fff"></sh-icon>
+      </view>
+    </view>
+    <view v-if="canAdd" class="sh-center up__add" :style="cell" @tap="add">
+      <text v-if="uploading" class="txt-display up__plus">…</text>
+      <sh-icon v-else name="plus" :size="40" color="var(--sh-sub)"></sh-icon>
+    </view>
+  </view>
+</template>
+
+<style scoped>
+.up {
+  margin-top: 12rpx;
+}
+.up__cell {
+  position: relative;
+  flex: none;
+}
+/*
+ * 两档反馈：**被拖的那一格抬起来**（放大 + 投影，见 cellStyle），
+ * **让位的那几格平移过去**，带过渡 —— 松手会变成什么样，拖的过程中就画出来了。
+ */
+.up__cell--drag .up__img {
+  box-shadow: var(--sh-shadow-float);
+}
+.up__cell--move {
+  transition: transform var(--sh-t-fast) ease;
+}
+.up__img {
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+  /* 兜底字号：sh-cover 在拿到 emoji 时按文字排，字号继承调用点 */
+  font-size: 48rpx;
+}
+/*
+ * 第一格的角标（「主图」）：压在左下角，不挡图的主体。
+ *
+ * **理由从 goods-edit 搬过来**（收编时那段注释会跟着 CSS 一起消失）：
+ * 用角标而不是另起一行说明 —— **哪张是封面必须看图就知道**；
+ * 靠位置约定（「第一张」）的话，滑动之后没人数得清自己在第几张。
+ */
+.up__badge {
+  position: absolute;
+  /* 逻辑属性：阿语下这枚角标要跟着翻到另一头 */
+  inset-inline-start: 0;
+  bottom: 0;
+  padding: 2rpx 8rpx;
+  /* 上面两角一起圆：只圆一角的话在 RTL 下圆的是外侧那个。16rpx 在圆角五档上，
+     原来的 8rpx 不在 —— 而 `border-top-right-radius` 这种写法圆角判据看不见 */
+  border-radius: 16rpx 16rpx 0 0;
+  background: var(--sh-scrim);
+  /* 白字压在遮罩色上：这一层不随皮肤变，白就是白（与 .sh-btn--danger-solid 同源） */
+  color: #fff;
+}
+/* 删除角标探出格子外一点：压在图上会挡住内容，而缩略图本来就小 */
+.up__del {
+  position: absolute;
+  top: -10rpx;
+  inset-inline-end: -10rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 9999px;
+  background: var(--sh-scrim);
+}
+.up__add {
+  flex: none;
+  border-radius: 16rpx;
+  background: var(--sh-faint);
+}
+/* 上传中那三个点。图标那一格由 sh-icon 画，这里只剩「等」的态 */
+.up__plus {
+  color: var(--sh-sub);
+}
+</style>

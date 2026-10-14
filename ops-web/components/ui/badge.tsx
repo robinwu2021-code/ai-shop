@@ -7,7 +7,7 @@ const badgeVariants = cva(
   // 12px/600：11px + 700 看着"更醒目"，实际笔画在小字号下糊成一团反而更难认。
   // 规范定的字号下限就是 12px。
   // whitespace-nowrap：药丸是一个整体标签，列宽挤时**宁可撑开列也不许把「待审核」折成两行**
-  "inline-flex items-center whitespace-nowrap rounded-chip px-2.5 py-0.5 text-[12px] font-semibold leading-[1.5]",
+  "inline-flex items-center whitespace-nowrap rounded-chip px-2.5 py-0.5 txt-caption font-semibold leading-[1.5]",
   {
     variants: {
       tone: {

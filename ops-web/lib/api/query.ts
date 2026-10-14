@@ -21,14 +21,50 @@ export type ArchiveQ = ScopedQ & { showArchived?: boolean };
 
 // ——— 域特有形状 ———
 
+/**
+ * 入驻申请：状态 + 关键词（店名/联系人/手机号）。
+ *
+ * **没有归档开关** —— 申请单不归档，它是历史事实；已处理的靠 status 翻。
+ */
+export type ApplyQ = { status?: string; keyword?: string; page?: number; size?: number };
+
 /** 商家：审核状态 + 分层 + 归档开关（P-11.1）。 */
+/**
+ * 商家档案检索。
+ *
+ * <p>`status` 保持 `string` 是因为它**逗号分隔多态**（商家页同时看几种审核态）。
+ * 代价是写错一个词也能编译过：2026-09-03 实测有两处写着 `status: "APPROVED"` ——
+ * 那是进件申请单的词，商家档案上从来没有过。真后端返回 0 条，
+ * 而页面看不出任何异常，客服只会以为「一个商家都没有」。
+ * 所以词表由 `lib/merchant-status-literals.test.ts` 那道闸守着。
+ */
 export type MerchantQ = ArchiveQ & { status?: string; tier?: string };
 
-/** 订单：状态 + 履约方式 + 流量来源（P-4.1；trafficSource 供 P-16.1.6 结构分析）。 */
-export type OrderQ = ScopedQ & { status?: string; fulfillType?: string; trafficSource?: string };
+/**
+ * 进件看板：进件状态 + 通道（P-11.1）。
+ *
+ * `status` **逗号分隔多态** —— 运营常同时看「审核中+被拒」（都是要盯的），
+ * 与商家档案的 status 同一口径。没有归档开关：进件记录不归档。
+ */
+export type OnboardingQ = PageQ & { status?: string; payChannel?: string };
+
+/**
+ * 订单：状态 + 履约方式 + 流量来源（P-4.1；trafficSource 供 P-16.1.6 结构分析）。
+ *
+ * `storeNo` 是**门店档案抽屉里那条「看这家店的订单」**用的（P-11.2）——
+ * 一个商家可能有好几家店，按 merchantNo 筛出来的是全部店的单。
+ */
+export type OrderQ = ScopedQ & { status?: string; fulfillType?: string; trafficSource?: string; storeNo?: string };
 
 /** 社区：城市 + 开城状态 + 归档开关（P-2.1）。 */
-export type CommunityQ = ArchiveQ & { city?: string; opened?: string };
+/**
+ * @param regionPrefix 按区划前缀筛（国标码天然分层：`4403` 深圳、`440309` 龙华区）。
+ *                     批量导入之后一个区几千条，不按区筛这一页没法用
+ */
+export type CommunityQ = ArchiveQ & { city?: string; opened?: string; regionPrefix?: string };
+
+/** 商家提报的新社区：按状态筛。`ALL` = 不筛（默认只给待审——这是队列，历史是次要视图） */
+export type CommunityApplyQ = PageQ & { status?: string };
 
 /** 自提点：类型（STORE/NEIGHBOR）+ 状态 + 归档开关（P-2.2）。 */
 export type PickupQ = ArchiveQ & { type?: string; status?: string };
@@ -38,6 +74,37 @@ export type BatchQ = ScopedQ & { status?: string };
 
 /** 门店主页审核：类型（店招/公告）+ 审核状态（P-10.1.2）。 */
 export type StoreAuditQ = PageQ & { kind?: string; status?: string };
+
+/**
+ * 获客看板：时间区间（毫秒时间戳）+ 关键词（P-10.1.4）。
+ *
+ * **不传区间不等于「有史以来」** —— 后端缺省取最近 30 天。
+ * 累计值只会越来越大，且没法用来判断这一轮投放有没有效果。
+ */
+export type AcquisitionQ = PageQ & { from?: number; to?: number };
+
+/**
+ * 店铺码列表：获客区间 + <b>只看还没发码的门店</b>（P-10.1.3 / V298）。
+ *
+ * `codeless` 打开后列的是运营要动手的那一批。此前列表按「有码」过滤，
+ * 于是「这家分店从没发过码」永远不出现 —— 看不见就没人去发。
+ */
+export type QrcodeQ = AcquisitionQ & { codeless?: boolean };
+
+/**
+ * 门店档案检索：主体 + 经营状态 + 经营模式 + 关键词（P-11.2.1）。
+ *
+ * **含停用与强制下线的店** —— 治理视角更不能看不见：
+ * 默认过滤掉非 ACTIVE 的话，运营点开一个被自己压下去的店会找不到它。
+ */
+export type StoreQ = PageQ & {
+  merchantNo?: string; status?: string; businessMode?: string;
+  /**
+   * 按社区筛（P-11.2.1b）。覆盖关系挂在**主体**上，所以筛的是
+   * 「覆盖该社区的主体」名下的门店 —— BD 的问题是「这个片区有哪些店」。
+   */
+  communityNo?: string;
+};
 
 /** 券模板：类型 + 状态 + 归档开关（P-7.1）。 */
 export type CouponQ = ArchiveQ & { type?: string; status?: string };
@@ -63,8 +130,27 @@ export type DemandQ = ScopedQ & { status?: string };
 /** 类目：模板 + 归档开关（P-3.1）。 */
 export type CategoryQ = ArchiveQ & { template?: string };
 
-/** 商品：状态 + 类目 + 商家（P-3.2）。 */
-export type SkuQ = ScopedQ & { status?: string; categoryNo?: string };
+/**
+ * 商品：状态 + 类目 + 商家（P-3.2）。
+ *
+ * 带 `storeNo` 时列表切成**门店商品投影**：行上多一个 `storeOnSale`、
+ * 每个 sku 多一个 `storeStock`（P-11.2）。不带就是主体级的商品池，两者字段不同源，
+ * 别拿门店视图的库存去回答"这个商家总共还有多少货"。
+ */
+export type SkuQ = ScopedQ & {
+  status?: string; categoryNo?: string; storeNo?: string;
+  /**
+   * 只看开了预售额度的 SKU（P-3.3）。
+   *
+   * **必须做在后端**：交给前端拉一页再自己 `filter(presaleQuota > 0)` 的话，
+   * 真实库里预售 SKU 大概率不在第一页，「库存与预售」tab 会长期显示为空 ——
+   * 而接口 200、数据也是真的，没有任何东西提示出错。
+   */
+  presaleOnly?: boolean;
+};
+
+/** 平台规格模板（P-3.4）：按品类筛 + 是否看已归档的。 */
+export type SpecTemplateQ = PageQ & { categoryType?: string; keyword?: string; showArchived?: boolean };
 
 /** 结算单：状态 + 周期（P-12.1）。 */
 export type SettlementQ = ScopedQ & { status?: string; period?: string };
@@ -73,7 +159,15 @@ export type SettlementQ = ScopedQ & { status?: string; period?: string };
 export type StaffQ = PageQ & { role?: string; enabled?: string };
 
 /** 审计日志：是否只看高危（P-1.1.4）。 */
-export type AuditQ = PageQ & { critical?: string };
+/**
+ * 审计日志：关键操作开关 + 操作对象（P-15.2）。
+ *
+ * `target` 是**精确匹配**的对象标识（行业名、staffNo、开关 key），高基数，
+ * 没有做成下拉的意义 —— 运营找「谁动了这个」用 `keyword` 就够（后端对
+ * staffNo/staffName/action/target/detail 一起 LIKE）。这里声明它，是因为
+ * https 客户端一直在转发 `q.target`：不声明的话它是个谁也看不见的死参数。
+ */
+export type AuditQ = PageQ & { critical?: string; target?: string };
 
 /** 归因链路：来源 + 是否只看冲突/风险（P-9.1.3）。 */
 export type TraceQ = PageQ & { source?: string; conflictOnly?: string; riskyOnly?: string };

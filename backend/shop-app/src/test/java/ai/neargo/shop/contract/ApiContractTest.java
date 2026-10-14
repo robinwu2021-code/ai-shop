@@ -58,4 +58,42 @@ class ApiContractTest {
         mockMvc().perform(get("/ops/order"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("★★ 请求本身不合规要说「参数有误」，不能说「系统开小差了，请稍后再试」")
+    void badRequestIsNotDressedUpAsAServerError() throws Exception {
+        /*
+         * 少一个必填参数原先落到兜底的 `onAny` 上：返回 10500「系统开小差了，请稍后再试」，
+         * 日志里还挂一条 error 栈。**那句话是在教人重试，而重试一万次也一样** ——
+         * 错的是这次请求，不是服务端；对着它排查的人会去翻后端日志找一个不存在的故障。
+         *
+         * 实测撞上的是核销台的按码搜索（`/biz/pickup/verify/search` 不带 keyword）。
+         * 这里用免登录的门店码端点打同一条路径，不必先造一个商家会话。
+         */
+        mockMvc().perform(get("/mp/store/by-code"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(10400))
+                // 还要说清是哪个参数：这条错误的读者是写调用方的人，参数名对他有用
+                .andExpect(jsonPath("$.msg").value(org.hamcrest.Matchers.containsString("storeCode")));
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("★ 登录前的三个端点必须免登录 —— 发验证码曾漏在白名单外")
+    void preLoginEndpointsArePublic() throws Exception {
+        /*
+         * `/biz/auth/otp/send` 此前不在白名单里，于是商家点「获取验证码」拿到 401：
+         * **要先登录才能拿到登录用的验证码**，谁也进不来。
+         *
+         * 后端测试没发现，是因为测试里发码走的是 C 端的 /mp/user/otp/send；
+         * 只有真的从 B 端登录页点一次才会走到这条路径。
+         */
+        for (String path : new String[]{"/biz/auth/otp/send", "/biz/auth/login", "/biz/auth/staff-login"}) {
+            mockMvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post(path)
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("{\"phone\":\"13000000000\"}"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                            .status().is(org.hamcrest.Matchers.not(401)));
+        }
+    }
 }

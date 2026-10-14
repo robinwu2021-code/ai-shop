@@ -25,31 +25,35 @@ const style = computed(() => {
 </script>
 
 <template>
-  <view v-if="flyState.visible" class="fly" :style="style">
-    <text class="fly__text">{{ flyState.emoji }}</text>
+  <view v-if="flyState.visible" class="sh-center fly" :style="style">
+    <sh-cover class="fly__text" :src="flyState.emoji"></sh-cover>
   </view>
 </template>
 
 <style scoped>
 .fly {
   position: fixed;
-  z-index: 200;
+  z-index: var(--sh-z-dialog);
   width: 72rpx;
   height: 72rpx;
-  margin-left: -36rpx;
+  margin-inline-start: -36rpx;
   margin-top: -36rpx;
   border-radius: 9999px;
   background: var(--sh-primary-tint);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   pointer-events: none;
-  /* 横向匀速、纵向后段加速 —— 拼出抛物线的观感 */
+  /* 横向匀速、纵向后段加速 —— 拼出抛物线的观感。
+     **这一处不走动效档，是有意的**：档里那三个是「状态切换 / 尺寸位置 / 强调」，
+     而这是一段**飞行轨迹** —— 时长由「从手指飞到购物车图标」这段距离定，
+     曲线也是为抛物线专门配的。把它塞进 --sh-t-slow(0.42s) 只会让球追不上手。 */
   transition:
     transform 0.62s cubic-bezier(0.42, 0.02, 0.72, 0.35),
     opacity 0.62s ease-in;
 }
+/* 真图时 sh-cover 的内层要有可撑的尺寸；emoji 时这个框正好等于字号 */
 .fly__text {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 16rpx;
   font-size: 36rpx;
   line-height: 1;
 }

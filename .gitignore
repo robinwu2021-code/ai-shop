@@ -1,9 +1,39 @@
 node_modules
-# 合站产物（npm run build:web），随时可重建
-dist
+# 构建产物，随时可重建。
+# ⚠️ 必须**逐个写路径**，不能只写 `dist` —— 那条规则匹配任意层级的目录名，
+# 把 `brand/dist/`（按端分发的品牌素材，是要入库的交付物）一起吞掉了，
+# 而症状是「git add 了但文件没进去」，不看 check-ignore 根本发现不了。
+/dist
+/c-app/dist
+/b-app/dist
 .DS_Store
 *.local
 .env.local
 
+# 小程序代码上传密钥（private.wx*.key）。进了库等于任何人都能往你的小程序上传代码。
+*.key
+
 # Maven 构建产物（mvn package 随时可重建；其中 shop-app 的 fat jar 有 50MB+）
 target/
+
+# 文档的 HTML 版（npm run gen:doc-html 从同名 .md 生成）。
+# Markdown 是唯一真源 —— 两份都入库，diff 里就会出现「改了 md 忘了重跑」的半成品状态，
+# 而 review 的人无从判断哪份是对的。要看网页版跑一次 npm run gen:docs 即可。
+docs/**/*.html
+
+# 签名密钥与它的密码。**这两条丢一条都是不可逆的事故**：
+# 密钥泄露 = 别人能签出「看起来是我们」的安装包；密钥丢失 = 这个包名再也发不了更新。
+# keystore.properties.example 是模板，被跟踪；填了真密码的那份永远不进来。
+*.jks
+*.keystore
+android-shell/signing/keystore.properties
+
+# Android 壳的构建产物（gradle 随时重建，含几十 MB 的中间产物与 APK）
+android-shell/.gradle/
+android-shell/build/
+android-shell/app/build/
+# WebView 壳的 H5 资源是从 b-app/c-app 的 dist 拷进来的构建产物（一构建就变，可重建）
+android-shell/app/src/*/assets/h5/
+
+# Android 本机 SDK 路径 —— 每台机器不同，进库只会互相覆盖
+android-shell/local.properties

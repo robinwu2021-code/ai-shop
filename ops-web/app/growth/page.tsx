@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
 import { GROWTH_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
-import { usePageTab } from "@/lib/use-page-tab";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { fmtTime } from "@/lib/utils";
 import { useCan } from "@/lib/use-can";
 import { notify } from "@/lib/notify";
@@ -26,20 +26,16 @@ import { FilterSelect } from "@/components/ui/filter-select";
 import { ConfigCard } from "@/components/ui/config-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Notice } from "@/components/ui/notice";
-import { Pagination } from "@/components/ui/misc";
+import { HelpNote } from "@/components/ui/help-note";
 import { Radio, RadioGroup } from "@/components/ui/radio-group";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Switch } from "@/components/ui/switch";
 import { TabHeader } from "@/components/ui/tab-header";
 import { Toolbar } from "@/components/ui/toolbar";
+import { PagedTable } from "@/components/ui/paged-table";
 
 type Copy = (typeof GROWTH_COPY)["zh"];
-const TABS = (c: Copy) => [
-  { key: "rule", label: c.tabRule },
-  { key: "traces", label: c.tabTraces },
-  { key: "fission", label: c.tabFission },
-];
+const TAB_KEYS = ["rule", "traces", "fission"] as const;
 
 const SOURCE_LABEL = (c: Copy): Record<AttrSource, string> => ({
   STORE_CODE: c.srcStoreCode,
@@ -65,7 +61,7 @@ export default function GrowthPage() {
 
 function GrowthInner() {
   const c = useCopy(GROWTH_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/growth", TAB_KEYS);
   const sourceLabel = SOURCE_LABEL(c);
   const policies = POLICIES(c);
   const factors = FACTORS(c);
@@ -139,7 +135,8 @@ function GrowthInner() {
 
   const traceColumns: Column<AttributionTrace>[] = [
     { header: c.colTraceNo, cell: (t) => t.traceNo, numeric: true, align: "start" },
-    { header: c.colUser, cell: (t) => t.userNickname },
+    // 昵称后端不下发，回落用户号 —— 空着一列比显示用户号更难查
+    { header: c.colUser, cell: (t) => t.userNickname ?? t.userNo },
     { header: c.colSource, cell: (t) => <StatusBadge map={sourceMap} value={t.source} /> },
     { header: c.colSourceRef, cell: (t) => t.sourceRef, className: "whitespace-normal", width: "16rem" },
     { header: c.colAttributedAt, cell: (t) => fmtTime(t.attributedAt) },
@@ -152,8 +149,8 @@ function GrowthInner() {
     {
       header: c.colRiskFlags,
       cell: (t) =>
-        t.riskSignals.length
-          ? <span className="flex flex-wrap gap-1">{t.riskSignals.map((s) => <Badge key={s} tone="danger">{s}</Badge>)}</span>
+        t.riskSignals?.length
+          ? <span className="flex flex-wrap gap-1">{t.riskSignals!.map((s) => <Badge key={s} tone="danger">{s}</Badge>)}</span>
           : <span className="text-muted-foreground">{c.none}</span>,
     },
   ];
@@ -267,9 +264,9 @@ function GrowthInner() {
       {tab === "traces" && (
         <>
           {!canRead && <ReadOnlyNotice what={c.tracesReadOnlyWhat} perm="growth:attribution:read" className="mb-3" />}
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.tracesNotice}
-          </Notice>
+          </HelpNote>
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder}>
             <FilterSelect aria-label={c.filterSource} value={source} onChange={(v) => { setSource(v); setPage(1); }} options={sourceMap} allLabel={c.filterSourceAll} />
             <FilterSelect aria-label={c.filterConflict} value={conflictOnly} onChange={(v) => { setConflictOnly(v); setPage(1); }}
@@ -277,21 +274,25 @@ function GrowthInner() {
             <FilterSelect aria-label={c.filterRisk} value={riskyOnly} onChange={(v) => { setRiskyOnly(v); setPage(1); }}
               options={[{ value: "1", label: c.filterRiskOnly }]} allLabel={c.filterRiskAll} />
           </Toolbar>
-          <DataTable
-            columns={traceColumns} rows={traces.data?.records} loading={traces.isLoading}
-            error={traces.error} onRetry={() => traces.refetch()}
+          <PagedTable
+            query={traces}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
+            loading={traces.isLoading}
+            columns={traceColumns}
             rowKey={(t) => t.traceNo}
             empty={c.emptyTraces}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={traces.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 
       {tab === "fission" && (
         <>
-          <Notice className="mb-3">
+          <HelpNote className="mb-3">
             {c.fissionNotice}
-          </Notice>
+          </HelpNote>
           <DataTable
             columns={fissionColumns} rows={fissions.data?.records} loading={fissions.isLoading}
             error={fissions.error} onRetry={() => fissions.refetch()}

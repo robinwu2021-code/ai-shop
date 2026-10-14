@@ -1,0 +1,17 @@
+# AI 取数接口测试（AiDataEndpointTest）的独立内存库。
+#
+# **为什么要另一套**：那个类带 @TestPropertySource（shop.ai.internal-token 等），
+# 于是它是**另一个 Spring 上下文**。testcfg 的 `jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1` 是进程内共享的一个库 ——
+# 第二个上下文起来时会把 schema-test.sql 在同一个库上再跑一遍，撞 sys_industry 的主键，
+# 10 条全挂；单独跑这个类是绿的，全量红（2026-09-19 pre-push 首次暴露）。
+# 与 application-openapi.yml / application-estatecache.yml 同一个原因、同一个解法：换库名，各起各的。
+#
+# 排在 @ActiveProfiles 的最后一位才能盖住 testcfg 的 url。
+spring:
+  datasource:
+    url: jdbc:h2:mem:shop_aidata;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+
+shop:
+  inventory:
+    datasource:
+      url: jdbc:h2:mem:inv_aidata;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1

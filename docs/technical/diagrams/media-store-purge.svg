@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="560" viewBox="0 0 980 560" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>图片落盘的目录分层、门店空间记账，以及门店下线后的清除闸门</title>
+<desc>目录按 主体/门店/用途/年月 四层分，这条路径逐字就是将来 COS 的 object key。上传时先写记账行再落盘，崩在中间只会留下可对账的 PENDING，不会产生查不出来的孤儿。清除是运营端人工发起的五步闸门，删的依据是记账表而不是目录前缀，所以存量文件不用搬家。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12.5px;font-weight:600;fill:#161A21}
+.t{font-size:10.5px;fill:#5A6472}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.12em}
+.m{font-size:11.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;fill:#161A21}
+.mt{font-size:9.5px;fill:#8A94A2}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.key{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.4}
+.warn{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.6}
+.stop{fill:#FCF3F3;stroke:#D89A9A;stroke-width:1.6}
+.infra{fill:#F5F6F8;stroke:#C6CDD8;stroke-width:1.2}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.zone{fill:none;stroke:#DDE2E9;stroke-width:1.2;stroke-dasharray:5 4}
+.tag{font-size:9.5px;font-weight:600;fill:#5A6472}
+.tb{font-size:10.5px;font-weight:700;fill:#161A21}
+.seg{stroke:#fff;stroke-width:1.5}
+.sl{font-size:10.5px;font-weight:600;fill:#fff}
+</style></defs>
+
+<!-- ① 路径分层 -->
+<text class="b" x="24" y="26">① 一条路径四层 —— 每一层都在为一个具体动作服务</text>
+
+<rect class="seg" x="24" y="40" width="150" height="38" rx="5" fill="#5B7DB1"/>
+<text class="sl" x="36" y="64">{entityNo}</text>
+<rect class="seg" x="176" y="40" width="150" height="38" rx="5" fill="#7FB894"/>
+<text class="sl" x="188" y="64">{storeNo}</text>
+<rect class="seg" x="328" y="40" width="150" height="38" rx="5" fill="#A8829A"/>
+<text class="sl" x="340" y="64">{bizType}</text>
+<rect class="seg" x="480" y="40" width="120" height="38" rx="5" fill="#9AA5B4"/>
+<text class="sl" x="492" y="64">{yyyyMM}</text>
+<rect class="seg" x="602" y="40" width="180" height="38" rx="5" fill="#E4E8ED"/>
+<text class="sl" x="614" y="64" fill="#5A6472">{uuid}.{ext}</text>
+
+<text class="t" x="24" y="96">主体注销</text>
+<text class="t" x="24" y="110">删一个前缀</text>
+<text class="tb" x="176" y="96">门店清除</text>
+<text class="t" x="176" y="110">本需求的核心动作</text>
+<text class="t" x="328" y="96">goods 公开读</text>
+<text class="t" x="328" y="110">qual 私有读 —— 证件不再公开</text>
+<text class="t" x="480" y="96">单目录文件数</text>
+<text class="t" x="480" y="110">不失控</text>
+<text class="t" x="602" y="96">随机名：不可枚举</text>
+<text class="t" x="602" y="110">但不当访问控制用</text>
+
+<rect class="key" x="24" y="126" width="918" height="34" rx="7"/>
+<text class="m" x="38" y="148">data/uploads/E0001/S0003/goods/202608/9f2c…a1.jpg<tspan class="t" dx="16">← 这串字逐字就是将来的 COS object key，不需要任何映射</tspan></text>
+
+<!-- ② 上传时序 -->
+<text class="b" x="24" y="192">② 先记账，后落地 —— 顺序反了就会产生查不出来的孤儿</text>
+
+<rect class="box" x="24" y="206" width="206" height="62" rx="7"/>
+<text class="n" x="38" y="228">1 · 写 sys_media_asset</text>
+<text class="t" x="38" y="246">status = PENDING</text>
+<text class="t" x="38" y="260">拿到 asset_key</text>
+
+<rect class="box" x="256" y="206" width="206" height="62" rx="7"/>
+<text class="n" x="270" y="228">2 · 字节落盘</text>
+<text class="t" x="270" y="246">MediaStore.put(key, …)</text>
+<text class="t" x="270" y="260">一期本地磁盘，二期 COS</text>
+
+<rect class="key" x="488" y="206" width="206" height="62" rx="7"/>
+<text class="n" x="502" y="228">3 · 改 ACTIVE</text>
+<text class="t" x="502" y="246">这一刻起才算进门店空间</text>
+<text class="t" x="502" y="260">返回相对路径给端上</text>
+
+<rect class="warn" x="720" y="206" width="222" height="62" rx="7"/>
+<text class="n" x="734" y="228">崩在中间怎么办</text>
+<text class="t" x="734" y="246">留下 PENDING 行 → 对账任务</text>
+<text class="t" x="734" y="260">补成 ACTIVE 或连文件一起删</text>
+
+<path class="ar" marker-end="url(#ar)" d="M230 237 L256 237"/>
+<path class="ar" marker-end="url(#ar)" d="M462 237 L488 237"/>
+
+<rect class="stop" x="24" y="278" width="918" height="30" rx="7"/>
+<text class="t" x="38" y="298">反过来「先落盘后写库」崩了会留下磁盘有文件、库里没有的孤儿 —— 而孤儿查不出来：统计永远少算，清除永远删不掉。</text>
+
+<!-- ③ 清除闸门 -->
+<text class="b" x="24" y="340">③ 门店下线到清除 —— 五步闸门，四条护栏。删的依据是记账表，不是目录前缀</text>
+
+<rect class="zone" x="24" y="352" width="918" height="112" rx="8"/>
+
+<rect class="box" x="40" y="368" width="164" height="54" rx="7"/>
+<text class="n" x="52" y="388">1 · 门店下线</text>
+<text class="t" x="52" y="406">status = SUSPENDED</text>
+<text class="t" x="52" y="418">（违规处置 STORE_OFFLINE 已有）</text>
+
+<rect class="warn" x="216" y="368" width="150" height="54" rx="7"/>
+<text class="n" x="228" y="388">2 · 冷静期</text>
+<text class="t" x="228" y="406">默认 30 天</text>
+<text class="t" x="228" y="418">防误下线立刻清空</text>
+
+<rect class="box" x="378" y="368" width="176" height="54" rx="7"/>
+<text class="n" x="390" y="388">3 · 预清除</text>
+<text class="t" x="390" y="406">跑引用扫描，给出</text>
+<text class="t" x="390" y="418">可删 N 张 / 不可删 M 张</text>
+
+<rect class="stop" x="566" y="368" width="176" height="54" rx="7"/>
+<text class="n" x="578" y="388">4 · 二次确认</text>
+<text class="tb" x="578" y="406">手输门店编号</text>
+<text class="t" x="578" y="418">不是点一下「确定」</text>
+
+<rect class="box" x="754" y="368" width="172" height="54" rx="7"/>
+<text class="n" x="766" y="388">5 · 异步执行</text>
+<text class="t" x="766" y="406">批次号 + 审计 critical</text>
+<text class="t" x="766" y="418">失败可重跑（幂等）</text>
+
+<text class="t" x="40" y="444">护栏：① 只有 SUSPENDED 可清，后端再校验一次（前端禁用不是访问控制） ② 冷静期未到不可清</text>
+<text class="t" x="40" y="458">③ 手输编号确认 ④ 不可逆 —— 记账行只改 status=PURGED，不删行，谁在什么时候删了多少永远查得到</text>
+
+<!-- ④ 切 COS -->
+<text class="b" x="24" y="496">④ 将来切对象存储时，这三样一行都不用改</text>
+
+<rect class="key" x="24" y="508" width="298" height="40" rx="7"/>
+<text class="n" x="38" y="528">目录结构</text>
+<text class="t" x="38" y="542">路径 = object key，逐字对应</text>
+
+<rect class="key" x="334" y="508" width="298" height="40" rx="7"/>
+<text class="n" x="348" y="528">sys_media_asset</text>
+<text class="t" x="348" y="542">记账口径与清除逻辑都不变</text>
+
+<rect class="key" x="644" y="508" width="298" height="40" rx="7"/>
+<text class="n" x="658" y="528">业务表里的图片 URL</text>
+<text class="t" x="658" y="542">存的是相对路径，换域名不洗表</text>
+</svg>

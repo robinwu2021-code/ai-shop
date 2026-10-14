@@ -1,0 +1,211 @@
+// 「输入一行字」的弹层：`await prompt({...})`，用法与 `uni.showModal({editable:true})` 一样，
+// 但字是我们自己的。
+//
+// **为什么要替掉 showModal**（`sh-sheet` 的类注释第一句就是这个）：
+// 那是系统弹框，标题与输入框不是同一套字，字号、行高、对齐都不归我们管，
+// 也不跟皮肤走。B 端有 26 个页面在用它，其中 11 处是带输入的。
+//
+// **更要命的是它的 `content` 有二义**：`editable: true` 时 `content` 不是说明文字，
+// 而是**输入框的初始值**。`customers` 的代码里记着这个坑：
+//
+// > 试算结果放标题，不能放 content —— 放那儿的话，商家按下确定就存出一个
+// > 叫「命中 1 人，其中 1 人能收到消息」的人群，而他并不觉得自己输了这行字。
+//
+// 写下这段的人修好了自己那一处，**而另外两处一直错着**（2026-08-26 扫出来）：
+//   · `home` 的「快速开店」把整段「填个店名就能开张。执照以后在…」预填进输入框 ——
+//     新商家直接按确定，店名就成了那一段话。**那是第一次开店的必经路径。**
+//   · `goods-list` 的「改门店价」把「仅调整本门店售价，清空后与主体价一致」预填进去，
+//     要先清空才能输价格，而 placeholderText 里的当前价永远不显示。
+//
+// 所以这里把两件事**拆成两个参数**：`hint` 是说明，`value` 是初值。
+// 同一个坑再也长不出来 —— 不是靠注释提醒，是靠签名。
+import { reactive } from "vue";
+
+export interface PromptOptions {
+  title: string;
+  /** 说明文字。**不会**进输入框 */
+  hint?: string;
+  /** 输入框的初始值 */
+  value?: string;
+  placeholder?: string;
+  confirmText?: string;
+  cancelText?: string;
+  /** 数字键盘。`digit` 带小数点（价格），`number` 是整数（库存） */
+  type?: "text" | "number" | "digit";
+  /** 密码：输入时打点 */
+  password?: boolean;
+  maxlength?: number;
+}
+
+interface PromptState extends PromptOptions {
+  visible: boolean;
+  input: string;
+}
+
+/** 弹层状态。**模块级单例**：同一时刻只可能有一个输入弹层 */
+export const promptState = reactive<PromptState>({
+  visible: false, title: "", input: "",
+});
+
+let settle: ((v: string | null) => void) | null = null;
+
+/**
+ * 弹出输入框。确定返回输入的字符串（**未 trim**，由调用方决定），取消返回 `null`。
+ *
+ * <p>返回 `null` 而不是空串：「取消」与「清空后确定」是两件事 ——
+ * `goods-list` 的门店价就是靠「清空 = 与主体价一致」工作的。
+ */
+export function prompt(opts: PromptOptions): Promise<string | null> {
+  // 上一个还开着就先收掉，别让两个叠在一起
+  settle?.(null);
+  Object.assign(promptState, {
+    hint: "", value: "", placeholder: "", confirmText: "", cancelText: "",
+    type: "text", password: false, maxlength: 0,
+    ...opts,
+    input: opts.value ?? "",
+    visible: true,
+  });
+  return new Promise((resolve) => {
+    settle = resolve;
+  });
+}
+
+// ── 确认弹层 ────────────────────────────────────────────────────────
+//
+// `showModal` 的确认框有 25 处。它们的代价比带输入的那 12 处轻 ——
+// 只是「字不是我们的」—— 但**有一件事系统弹框做不到**：
+// 危险操作与普通确认在它那里长得一模一样，都是「取消 / 确定」两个蓝字。
+//
+// 而这套设计语言里危险操作是有专门一档的：`.sh-btn--danger-solid`
+//（红实心，**只留给二次确认那一击**）。它此前**两端引用数是 0** ——
+// 清单每次跑都报「定义了没人用」。不是没人需要，是没有地方用它：
+// 二次确认全在系统弹框里，而那里没有我们的按钮。
+
+export interface ConfirmOptions {
+  title: string;
+  /** 说明。确认框里它就是说明，没有 showModal 那种二义 */
+  hint?: string;
+  confirmText?: string;
+  cancelText?: string;
+  /** 危险操作：确定键用红实心。**这是系统弹框给不了的那一档** */
+  danger?: boolean;
+  /** 只有一个「知道了」（如「怎么升级」这类纯告知） */
+  alert?: boolean;
+}
+
+interface ConfirmState extends ConfirmOptions {
+  visible: boolean;
+}
+
+export const confirmState = reactive<ConfirmState>({ visible: false, title: "" });
+
+let settleConfirm: ((v: boolean) => void) | null = null;
+
+/** 确认。确定 `true`，取消 `false`。 */
+export function confirm(opts: ConfirmOptions): Promise<boolean> {
+  settleConfirm?.(false);
+  Object.assign(confirmState, {
+    hint: "", confirmText: "", cancelText: "", danger: false, alert: false,
+    ...opts,
+    visible: true,
+  });
+  return new Promise((resolve) => {
+    settleConfirm = resolve;
+  });
+}
+
+/** 由 sh-confirm 调用，页面不用管 */
+export function closeConfirm(ok: boolean): void {
+  confirmState.visible = false;
+  const done = settleConfirm;
+  settleConfirm = null;
+  done?.(ok);
+}
+
+/** 由 sh-prompt 调用，页面不用管 */
+export function closePrompt(value: string | null): void {
+  /*
+   * **先收键盘，再撤弹层。**App 默认的键盘适配是 adjustPan：键盘弹出时整个
+   * webview 上移，收起时再移回来。而按下「确定」是**输入框还聚焦着就被销毁** ——
+   * 键盘因为焦点没了而消失，走不到那条还原路径，页面就永远停在上移状态：
+   * 标题被顶到状态栏底下，自绘的底部菜单停在屏幕中间，下面空出一条灰。
+   * 2026-09-20 店主在商品列表「改库存」后撞到，且切页、返回都恢复不了，只能重启 App。
+   *
+   * 显式调一次 hideKeyboard，让还原由「键盘收起」这件事本身触发。
+   * H5 与小程序上它是空操作，不影响那两端。
+   */
+  try {
+    uni.hideKeyboard();
+  } catch {
+    // 没有 uni 运行时（单测、SSR）时忽略 —— 收键盘不是这个函数的主业
+  }
+  promptState.visible = false;
+  const done = settle;
+  settle = null;
+  done?.(value);
+}
+
+// ── 选一项 ────────────────────────────────────────────────────────────
+//
+// `uni.showActionSheet` 有 10 处，**十处的形状完全一样**：
+//
+//     const idx = await new Promise<number>((resolve) => {
+//       uni.showActionSheet({ itemList: items, success: (r) => resolve(r.tapIndex), fail: () => resolve(-1) });
+//     });
+//
+// 也就是「从一列字里选一项」。收编它与收编 showModal 是同一件事，
+// 但**代价不完全一样**：动作面板是一种交互形态（从底部升起、点外部关闭、
+// 两端各长各的样），换成我们自己的弹层会改变手感，所以十处要一起换、一起看过，
+// 不能一处一处改 —— 那会让同一个 app 里两种面板并存。
+//
+// 返回 `number | null`：取消是 `null`，不是 `-1`。
+// 与 `prompt()` 同一条理由 —— 哨兵值总有一天会被人当成合法下标。
+
+export interface PickOptions {
+  /** 标题。不给就只有列表 */
+  title?: string;
+  /** 说明。一句话说清这一列是什么 */
+  hint?: string;
+  items: string[];
+  /** 当前已选中的下标，会打上勾 */
+  selected?: number;
+  /**
+   * 开在**另一个弹层之上**（入驻表单里选店铺类型就是这个形态）。
+   *
+   * 不传的话两层同 z-index，谁在上面只由 DOM 顺序决定 —— 今天 sh-pick 排在
+   * scaffold 的最后，碰巧是对的；而调用它的那张表单一旦落进别的层叠上下文
+   * （祖先上一个 transform 或 position:sticky 就造一个），顺序就翻过来：
+   * 列表开了、蒙层也在，但内容压在表单下面，点哪儿都没反应，**且不报错**。
+   */
+  stacked?: boolean;
+}
+
+interface PickState extends PickOptions {
+  visible: boolean;
+  items: string[];
+}
+
+export const pickState = reactive<PickState>({ visible: false, title: "", items: [] });
+
+let settlePick: ((v: number | null) => void) | null = null;
+
+/** 从一列字里选一项。选中返回下标，取消返回 `null`。 */
+export function pick(opts: PickOptions): Promise<number | null> {
+  settlePick?.(null);
+  Object.assign(pickState, {
+    title: "", hint: "", selected: -1, stacked: false,
+    ...opts,
+    visible: true,
+  });
+  return new Promise((resolve) => {
+    settlePick = resolve;
+  });
+}
+
+/** 由 sh-pick 调用，页面不用管 */
+export function closePick(index: number | null): void {
+  pickState.visible = false;
+  const done = settlePick;
+  settlePick = null;
+  done?.(index);
+}

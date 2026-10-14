@@ -1,0 +1,574 @@
+package ai.neargo.shop.inventory.service.impl;
+
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO;
+import ai.neargo.shop.inventory.dto.InventoryVOs.CrossStoreVO;
+import ai.neargo.shop.inventory.dto.InventoryVOs.DocumentVO;
+import ai.neargo.shop.inventory.dto.InventoryVOs.ItemDetailVO;
+import ai.neargo.shop.inventory.dto.InventoryVOs.LedgerPageVO;
+import ai.neargo.shop.inventory.dto.InventoryVOs.LedgerVO;
+import ai.neargo.shop.inventory.dto.InventoryVOs.LocationQty;
+import ai.neargo.shop.inventory.dto.InventoryVOs.SummaryVO;
+import ai.neargo.shop.inventory.entity.InvItem;
+import ai.neargo.shop.inventory.entity.InvItemRef;
+import ai.neargo.shop.inventory.entity.InvLedger;
+import ai.neargo.shop.inventory.entity.InvLocation;
+import ai.neargo.shop.inventory.entity.InvStockBalance;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.BalanceMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemRefMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.LedgerMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.LocationMapper;
+import ai.neargo.shop.inventory.entity.InvInboundOrder;
+import ai.neargo.shop.inventory.entity.InvOutboundOrder;
+import ai.neargo.shop.inventory.entity.InvStockCount;
+import ai.neargo.shop.inventory.entity.InvTransferOrder;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.InboundOrderMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboundOrderMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.StockCountMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.TransferOrderMapper;
+import ai.neargo.shop.inventory.service.StockQueryService;
+import ai.neargo.shop.inventory.support.InvEnums;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+/** 读侧实现。 */
+@ConditionalOnInventory
+@Service
+public class StockQueryServiceImpl implements StockQueryService {
+
+    /** 多少天没动就算滞销。与需求 B-5 的口径一致，**由服务端判**。 */
+    private static final int STALE_DAYS = 90;
+    /**
+     * 扫码回查时最多扫多少件物料。**比挑货弹层的 200 大**：弹层是给人翻的，
+     * 这一条是按 itemId 精确找一行，翻不到的话商家看到的是「这个码没绑过」——
+     * 而它其实绑过，只是排在 200 名之后。
+     */
+    private static final int PICK_SCAN_LIMIT = 5000;
+
+    private static final String FLAG_SHORTAGE = "SHORTAGE";
+    private static final String FLAG_STALE = "STALE";
+    /**
+     * 来源商品已下架。<b>与另外两个 flag 不是一类</b>：那两个说的是库存健不健康，
+     * 这一个说的是「这一行是哪件货」—— 所以它是挑货弹层里唯一带出去的 flag。
+     *
+     * <p>只在 {@code source_on_sale = 0} 时加。<b>null 不算下架</b>：
+     * 那是「还没同步过」，给存量物料统统标上「已下架」等于凭空造事实。
+     */
+    private static final String FLAG_OFF_SALE = "OFF_SALE";
+    /**
+     * 来源 SKU <b>已经退休</b>（改规格时旧编号被逻辑删）—— 与「已下架」是两件事。
+     *
+     * <p>下架的货还会回来，退休的不会：那个 skuNo 永远不再存在，
+     * 这件物料也永远不会再收到任何同步。它之所以还留在这儿，
+     * 只因为<b>上面还有库存</b> —— 归档掉商家就再也盘不着那几件，账永远平不了。
+     *
+     * <p>所以这个 flag 的意思是一句话：<b>「这几件货得你来决定去哪儿」</b>
+     *（并到接位的那件、或者报损掉）。零库存的那些当场就归档了，
+     * 根本走不到这里。
+     */
+    private static final String FLAG_RETIRED = "RETIRED";
+
+    private final BalanceMapper balanceMapper;
+    private final ItemMapper itemMapper;
+    private final ItemRefMapper refMapper;
+    private final LedgerMapper ledgerMapper;
+    private final LocationMapper locationMapper;
+    private final InboundOrderMapper inboundMapper;
+    private final OutboundOrderMapper outboundMapper;
+    private final StockCountMapper countMapper;
+    private final TransferOrderMapper transferMapper;
+
+    public StockQueryServiceImpl(BalanceMapper balanceMapper, ItemMapper itemMapper,
+                                 ItemRefMapper refMapper, LedgerMapper ledgerMapper,
+                                 LocationMapper locationMapper, InboundOrderMapper inboundMapper,
+                                 OutboundOrderMapper outboundMapper, StockCountMapper countMapper,
+                                 TransferOrderMapper transferMapper) {
+        this.balanceMapper = balanceMapper;
+        this.itemMapper = itemMapper;
+        this.refMapper = refMapper;
+        this.ledgerMapper = ledgerMapper;
+        this.locationMapper = locationMapper;
+        this.inboundMapper = inboundMapper;
+        this.outboundMapper = outboundMapper;
+        this.countMapper = countMapper;
+        this.transferMapper = transferMapper;
+    }
+
+    @Override
+    public SummaryVO summary(String ownerId, String locationId) {
+        List<BalanceVO> all = build(rows(ownerId, locationId));
+        int shortage = (int) all.stream().filter(b -> b.flags().contains(FLAG_SHORTAGE)).count();
+        int stale = (int) all.stream().filter(b -> b.flags().contains(FLAG_STALE)).count();
+        // 在途 = 已发出未收货的调拨单。**不按 locationId 过滤**：一张调拨单跨两个库位，
+        // 按当前库位筛会让「从别处发到我这儿」的单在收货方看不见 —— 而收货正是他要做的事
+        int inTransit = Math.toIntExact(transferMapper.selectCount(
+                Wrappers.<InvTransferOrder>lambdaQuery()
+                        .eq(InvTransferOrder::getOwnerId, ownerId)
+                        .eq(InvTransferOrder::getStatus, InvEnums.TransferStatus.SHIPPED)));
+        // 还开着的盘点单：给**最近的一张**。盘点是当场做的事，手上那张一定是刚开的
+        InvStockCount open = countMapper.selectOne(Wrappers.<InvStockCount>lambdaQuery()
+                .eq(InvStockCount::getOwnerId, ownerId)
+                .eq(locationId != null, InvStockCount::getLocationId, locationId)
+                .eq(InvStockCount::getStatus, InvEnums.DocStatus.COUNTING)
+                .orderByDesc(InvStockCount::getId)
+                .last("LIMIT 1"));
+        return new SummaryVO(all.size(), shortage, stale, inTransit,
+                open == null ? null : open.getCountNo());
+    }
+
+    @Override
+    public List<BalanceVO> balances(String ownerId, String locationId, String filter, int limit) {
+        List<BalanceVO> all = build(rows(ownerId, locationId));
+        /*
+         * `shortage` / `stale` 是**精确的两档**，与 `todo`（两者的并集）分开。
+         *
+         * 端上那四个数是可点的：点「缺货 6」就该给这 6 条。此前它只能落到
+         * `todo`，于是点「滞销」给出的列表里混着缺货，点「在售 SKU 204」
+         * 给的是 18 条 —— **数字说一个数，点下去给另一个**，且不报错。
+         */
+        List<BalanceVO> picked = switch (filter == null ? "todo" : filter) {
+            case "all" -> all;
+            case "reserved" -> all.stream().filter(b -> b.reserved() > 0).toList();
+            case "shortage" -> all.stream().filter(b -> b.flags().contains(FLAG_SHORTAGE)).toList();
+            case "stale" -> all.stream().filter(b -> b.flags().contains(FLAG_STALE)).toList();
+            default -> all.stream().filter(b -> !b.flags().isEmpty()).toList();
+        };
+        // 缺货排在滞销前面：断货是「今天就要补」，滞销是「这周想想怎么清」
+        return picked.stream()
+                .sorted(Comparator.comparingInt((BalanceVO b) ->
+                        b.flags().contains(FLAG_SHORTAGE) ? 0 : b.flags().contains(FLAG_STALE) ? 1 : 2))
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public List<CrossStoreVO> crossStore(String ownerId, String filter, int limit) {
+        List<InvStockBalance> all = rows(ownerId, null);
+        if (all.isEmpty()) {
+            return List.of();
+        }
+        Map<String, InvItem> items = itemMapper.selectList(Wrappers.<InvItem>lambdaQuery()
+                        .eq(InvItem::getOwnerId, ownerId)).stream()
+                .collect(Collectors.toMap(InvItem::getItemId, Function.identity(), (a, b) -> a));
+        /*
+         * **要全部库位，不只是有余额行的那些。**
+         *
+         * 余额挂在（物料 × 库位）上且**按需建** —— 一家店从来没进过这件货，
+         * 那一行根本不存在。只按余额行组装的话，那家店在这一屏上不出现，
+         * 而商家最想知道的恰恰是它：「这件货二号店一件都没有」与
+         * 「二号店有 0 件」对补货是同一件事。
+         *
+         * **排除 TRANSIT**：在途不是一家店，货停在那儿是过程不是目的地；
+         * 把它算成「缺货的店」会让每件在途的货都凭空多断一家。
+         */
+        List<InvLocation> locations = locationMapper.selectList(Wrappers.<InvLocation>lambdaQuery()
+                        .eq(InvLocation::getOwnerId, ownerId)).stream()
+                .filter(l -> !InvEnums.LocationKind.TRANSIT.equals(l.getKind()))
+                .toList();
+
+        // (itemId, locationId) → 余额行；没有的那一格按 0 算
+        Map<String, Map<String, InvStockBalance>> byItem = new LinkedHashMap<>();
+        for (InvStockBalance b : all) {
+            byItem.computeIfAbsent(b.getItemId(), k -> new LinkedHashMap<>())
+                    .put(b.getLocationId(), b);
+        }
+
+        List<CrossStoreVO> out = new ArrayList<>();
+        for (Map.Entry<String, Map<String, InvStockBalance>> e : byItem.entrySet()) {
+            InvItem item = items.get(e.getKey());
+            if (item == null) {
+                continue;   // 物料被归档而余额行还在：不显示，但也不报错
+            }
+            int onHand = 0;
+            int reserved = 0;
+            int shortage = 0;
+            List<LocationQty> byLocation = new ArrayList<>();
+            for (InvLocation loc : locations) {
+                InvStockBalance b = e.getValue().get(loc.getLocationId());
+                if (b == null) {
+                    // 这家店从来没进过这件货 —— 按 0 算，并且**算作缺货**
+                    Integer safety = item.getSafetyStock() == null ? 0 : item.getSafetyStock();
+                    if (shortage(0, safety)) {
+                        shortage++;
+                    }
+                    byLocation.add(new LocationQty(loc.getLocationId(), loc.getName(), 0, null));
+                    continue;
+                }
+                onHand += b.getOnHand();
+                reserved += b.getReserved();
+                /*
+                 * **逐库位判缺货，判据与单店那一屏同一套**（`shortage(available, safety)`）：
+                 * 阈值优先，没设阈值就看可用是否见底。合计之后再判是不合适的 ——
+                 * 五家店合计还有 40 件，而其中一家已经是 0，那一家今天就卖不了货。
+                 */
+                int avail = b.getOnHand() - b.getReserved();
+                Integer safety = b.getSafetyStock() != null ? b.getSafetyStock()
+                        : (item.getSafetyStock() == null ? 0 : item.getSafetyStock());
+                if (shortage(avail, safety)) {
+                    shortage++;
+                }
+                byLocation.add(new LocationQty(loc.getLocationId(), loc.getName(),
+                        b.getOnHand(), b.getSafetyStock()));
+            }
+            out.add(new CrossStoreVO(e.getKey(), item.getName(), item.getSpecText(),
+                    item.getBaseUom(), onHand, reserved, onHand - reserved, shortage, byLocation));
+        }
+
+        List<CrossStoreVO> picked = "all".equals(filter)
+                ? out : out.stream().filter(r -> r.shortageLocations() > 0).toList();
+        /*
+         * 断的店多的排前面；同样多时按可用量升序 —— 两件货都断了两家店，
+         * 手上只剩 3 件的那件比剩 30 件的更急。
+         */
+        return picked.stream()
+                .sorted(Comparator.comparingInt(CrossStoreVO::shortageLocations).reversed()
+                        .thenComparingInt(CrossStoreVO::available))
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public List<BalanceVO> pickableItems(String ownerId, String locationId, String keyword, int limit) {
+        /*
+         * **从物料出发。** 余额行按需建，一件从没进过货的物料没有那一行 ——
+         * 从余额出发的话它不存在，商家没法给它记第一笔进货。
+         */
+        String k = keyword == null ? "" : keyword.trim();
+        List<InvItem> items = itemMapper.selectList(Wrappers.<InvItem>lambdaQuery()
+                .eq(InvItem::getOwnerId, ownerId)
+                .eq(InvItem::getStatus, InvEnums.MasterStatus.ACTIVE)
+                .and(!k.isEmpty(), w -> w.like(InvItem::getName, k)
+                        .or().like(InvItem::getSpecText, k))
+                .orderByAsc(InvItem::getId)
+                .last("limit " + Math.max(1, limit)));
+        if (items.isEmpty()) {
+            return List.of();
+        }
+        List<String> ids = items.stream().map(InvItem::getItemId).toList();
+        Map<String, InvStockBalance> byItem = balanceMapper.selectList(
+                        Wrappers.<InvStockBalance>lambdaQuery()
+                                .eq(InvStockBalance::getOwnerId, ownerId)
+                                .eq(locationId != null, InvStockBalance::getLocationId, locationId)
+                                .in(InvStockBalance::getItemId, ids)).stream()
+                .collect(Collectors.toMap(InvStockBalance::getItemId, Function.identity(), (a, b) -> a));
+
+        List<BalanceVO> out = new ArrayList<>();
+        Map<String, String> skuNos = skuNosOf(ownerId,
+                items.stream().map(InvItem::getItemId).toList());
+        for (InvItem item : items) {
+            InvStockBalance b = byItem.get(item.getItemId());
+            int onHand = b == null ? 0 : b.getOnHand();
+            int reserved = b == null ? 0 : b.getReserved();
+            /*
+             * **只带 OFF_SALE 一个 flag。** 缺货 / 滞销是「看库存」那一屏的判据，
+             * 挑货不需要 —— 带上去会让弹层里冒出一堆红字，而商家此刻只是在找一件货。
+             *
+             * 而「已下架」是例外：它回答的不是「这件货健不健康」，是**「这一行是哪件货」**。
+             * 线上有 13 组同名同规格的物料，弹层里几行完全一样（同库位、库存也一样），
+             * 不标出来商家挑哪一行都不知道自己挑的是什么。
+             */
+            out.add(new BalanceVO(item.getItemId(), skuNos.get(item.getItemId()),
+                    item.getName(), item.getSpecText(),
+                    item.getBaseUom(), onHand, reserved, onHand - reserved,
+                    item.getSafetyStock(), b == null ? null : b.getLastMovedAt(),
+                    offSaleFlags(item)));
+        }
+        return out;
+    }
+
+    /**
+     * <b>{@code null} 不算下架。</b> 那一列是 2026-08-30 才加的，存量 209 件物料
+     * 全是 null —— 它们要等下一次商品上下架同步过来才有值。
+     * 把 null 当成下架，就是给一整批还在正常卖的货凭空贴上「已下架」。
+     */
+    private static List<String> offSaleFlags(InvItem item) {
+        List<String> flags = new ArrayList<>();
+        if (Integer.valueOf(0).equals(item.getSourceOnSale())) {
+            flags.add(FLAG_OFF_SALE);
+        }
+        /*
+         * 退休的也要标。**它仍然挑得到** —— 上面那几件是真实存在的货，
+         * 商家还要把它们调走或报损掉，滤掉之后那些货就再也动不了了
+         * （与「下架的不许滤掉」同一条理由）。标出来是为了让他知道
+         * 这一行与旁边那条同名的不是同一件。
+         */
+        if (item.getRetiredAt() != null) {
+            flags.add(FLAG_RETIRED);
+        }
+        return flags;
+    }
+
+    @Override
+    public BalanceVO byBarcode(String ownerId, String locationId, String code) {
+        String c = code == null ? "" : code.trim();
+        if (c.isEmpty()) {
+            return null;
+        }
+        /*
+         * **显式带 ownerId**：进销存不走平台的 DataScope，不带的话别家绑的码也能扫出来，
+         * 而它不报错 —— 商家会看到一件自己没有的货。
+         *
+         * 一个码最多指向一件货（`inv_item_ref` 的唯一键管这条），所以 LIMIT 1 是安全的。
+         */
+        InvItemRef ref = refMapper.selectOne(Wrappers.<InvItemRef>lambdaQuery()
+                .eq(InvItemRef::getOwnerId, ownerId)
+                .eq(InvItemRef::getRefSystem, InvEnums.RefSystem.BARCODE)
+                .eq(InvItemRef::getRef, c)
+                .last("LIMIT 1"));
+        if (ref == null) {
+            return null;
+        }
+        /*
+         * **走 pickableItems 的口径而不是余额**：扫到一件从没进过货的物料时，
+         * 余额行还不存在 —— 从余额出发的话它「扫不到」，
+         * 而那恰恰是商家最需要扫它的时刻（记第一笔进货）。
+         */
+        return pickableItems(ownerId, locationId, null, PICK_SCAN_LIMIT).stream()
+                .filter(b -> b.itemId().equals(ref.getItemId()))
+                .findFirst().orElse(null);
+    }
+
+    @Override
+    public ItemDetailVO itemDetail(String ownerId, String itemId) {
+        InvItem item = itemMapper.selectOne(Wrappers.<InvItem>lambdaQuery()
+                .eq(InvItem::getOwnerId, ownerId).eq(InvItem::getItemId, itemId));
+        if (item == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        List<InvStockBalance> balances = balanceMapper.selectList(Wrappers.<InvStockBalance>lambdaQuery()
+                .eq(InvStockBalance::getOwnerId, ownerId).eq(InvStockBalance::getItemId, itemId));
+        Map<String, String> names = locationMapper.selectList(Wrappers.<InvLocation>lambdaQuery()
+                        .eq(InvLocation::getOwnerId, ownerId)).stream()
+                .collect(Collectors.toMap(InvLocation::getLocationId, InvLocation::getName, (a, b) -> a));
+        List<LocationQty> byLocation = new ArrayList<>();
+        int onHand = 0;
+        int reserved = 0;
+        for (InvStockBalance b : balances) {
+            onHand += b.getOnHand();
+            reserved += b.getReserved();
+            byLocation.add(new LocationQty(b.getLocationId(),
+                    names.getOrDefault(b.getLocationId(), b.getLocationId()), b.getOnHand(),
+                    b.getSafetyStock()));
+        }
+        return new ItemDetailVO(itemId, item.getName(), item.getSpecText(), item.getBaseUom(),
+                refOf(ownerId, itemId, InvEnums.RefSystem.BARCODE), item.getItemCode(),
+                onHand, reserved, onHand - reserved,
+                // 投影进来的老物料可能没写过这一列，读出 null 时按 0（不预警）报
+                item.getSafetyStock() == null ? 0 : item.getSafetyStock(),
+                byLocation);
+    }
+
+    @Override
+    public LedgerPageVO ledger(String ownerId, String itemId, String docNo, String locationId, Long cursor, int size) {
+        List<InvLedger> rows = ledgerMapper.selectList(Wrappers.<InvLedger>lambdaQuery()
+                .eq(InvLedger::getOwnerId, ownerId)
+                .eq(itemId != null, InvLedger::getItemId, itemId)
+                .eq(docNo != null && !docNo.isBlank(), InvLedger::getDocNo, docNo)
+                .eq(locationId != null, InvLedger::getLocationId, locationId)
+                // 游标按 id 倒序：时间会被回填、时钟会回拨，而 id 是单调的
+                .lt(cursor != null, InvLedger::getId, cursor)
+                .orderByDesc(InvLedger::getId)
+                .last("LIMIT " + size));
+        // 名字批量取：按单查时一张单十几行，逐行查等于十几趟
+        Map<String, String> names = rows.isEmpty() ? Map.of()
+                : itemMapper.selectList(Wrappers.<InvItem>lambdaQuery()
+                        .eq(InvItem::getOwnerId, ownerId)
+                        .in(InvItem::getItemId, rows.stream().map(InvLedger::getItemId).distinct().toList()))
+                .stream().collect(Collectors.toMap(InvItem::getItemId, InvItem::getName, (a, b) -> a));
+        List<LedgerVO> out = rows.stream().map(e -> new LedgerVO(e.getId(),
+                e.getItemId(), names.getOrDefault(e.getItemId(), e.getItemId()), e.getDocKind(),
+                e.getDocNo(), e.getReasonCode(), e.getQtyDelta(), e.getBalanceAfter(),
+                e.getOccurredAt(), e.getOperator())).toList();
+        Long next = out.isEmpty() ? null : out.get(out.size() - 1).id();
+        return new LedgerPageVO(out, next);
+    }
+
+    @Override
+    public List<DocumentVO> documents(String ownerId, String locationId, String kind, String docNo, int limit) {
+        // 单号定位：从台账那一行点过来的「看这张单」，一次只要一张
+        boolean hasNo = docNo != null && !docNo.isBlank();
+        List<DocumentVO> out = new ArrayList<>();
+        if (kind == null || "IN".equals(kind)) {
+            for (InvInboundOrder h : inboundMapper.selectList(Wrappers.<InvInboundOrder>lambdaQuery()
+                    .eq(InvInboundOrder::getOwnerId, ownerId)
+                    .eq(hasNo, InvInboundOrder::getInboundNo, docNo)
+                    .eq(locationId != null, InvInboundOrder::getLocationId, locationId)
+                    .orderByDesc(InvInboundOrder::getId).last("LIMIT " + limit))) {
+                // 差异字段收进 subtitle 由服务端拼：让端上按 kind 分四种拼法，
+                // 那四段文案迟早各自漂
+                out.add(new DocumentVO("IN", h.getInboundNo(), h.getStatus(),
+                        h.getSourceType(),
+                        subtitle(h.getSupplierName(), h.getSourceRef(), null),
+                        h.getTotalQty(), h.getOccurredAt(), h.getCreatedBy()));
+            }
+        }
+        if (kind == null || "OUT".equals(kind)) {
+            for (InvOutboundOrder h : outboundMapper.selectList(Wrappers.<InvOutboundOrder>lambdaQuery()
+                    .eq(InvOutboundOrder::getOwnerId, ownerId)
+                    .eq(hasNo, InvOutboundOrder::getOutboundNo, docNo)
+                    .eq(locationId != null, InvOutboundOrder::getLocationId, locationId)
+                    .orderByDesc(InvOutboundOrder::getId).last("LIMIT " + limit))) {
+                /*
+                  * 第一格给「去向或原因」——**同一张单不会两个都有**：退供应商说得出退给谁、
+                  * 不需要原因；报损说得出为什么、没有去向。
+                  *
+                  * 去向名是自由文本（「老周粮油」），原因是枚举（`BROKEN`）——
+                  * **两者不能都往 subtitle 里塞**，否则枚举又漏出去了。
+                  * 有去向时走 subtitle，没有时把原因当第二个码交给端上。
+                  */
+                boolean hasTarget = h.getTargetName() != null && !h.getTargetName().isBlank();
+                out.add(new DocumentVO("OUT", h.getOutboundNo(), h.getStatus(),
+                        hasTarget ? h.getPurpose() : reasonLabel(h),
+                        // **`sourceRef` 不能挤掉**：销售出库靠它显示订单号，
+                        // 而销售出库恰恰是单据列表里最多的一类
+                        subtitle(hasTarget ? h.getTargetName() : null, h.getSourceRef(), null),
+                        -h.getTotalQty(), h.getOccurredAt(), h.getCreatedBy()));
+            }
+        }
+        if (kind == null || "COUNT".equals(kind)) {
+            for (InvStockCount h : countMapper.selectList(Wrappers.<InvStockCount>lambdaQuery()
+                    .eq(InvStockCount::getOwnerId, ownerId)
+                    .eq(hasNo, InvStockCount::getCountNo, docNo)
+                    .eq(locationId != null, InvStockCount::getLocationId, locationId)
+                    .orderByDesc(InvStockCount::getId).last("LIMIT " + limit))) {
+                out.add(new DocumentVO("COUNT", h.getCountNo(), h.getStatus(),
+                        // 原本这里硬编码中文「盘点」—— 阿语商家看到的就是中文
+                        "COUNT", subtitle(h.getScope(), null, null),
+                        0, h.getStartedAt(), h.getOperator()));
+            }
+        }
+        if (kind == null || "TRANSFER".equals(kind)) {
+            for (InvTransferOrder h : transferMapper.selectList(Wrappers.<InvTransferOrder>lambdaQuery()
+                    .eq(InvTransferOrder::getOwnerId, ownerId)
+                    .eq(hasNo, InvTransferOrder::getTransferNo, docNo)
+                    .orderByDesc(InvTransferOrder::getId).last("LIMIT " + limit))) {
+                out.add(new DocumentVO("TRANSFER", h.getTransferNo(), h.getStatus(),
+                        "TRANSFER", subtitle(h.getFromLocationId(), h.getToLocationId(), null),
+                        0, h.getShippedAt(), h.getOperator()));
+            }
+        }
+        // 四类合成一个列表后统一按时间倒序 —— 端上拿到的就是它要显示的顺序
+        return out.stream()
+                .sorted(Comparator.comparing(DocumentVO::occurredAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(limit).toList();
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+
+    /**
+     * 出库没有去向时，把原因当码交给端上（{@code BROKEN} / {@code EXPIRED} …）。
+     * <b>不拼成文案</b> —— 拼了就又是一个从后端漏出去的取值域。
+     */
+    private static String reasonLabel(InvOutboundOrder h) {
+        return h.getReasonCode() != null && !h.getReasonCode().isBlank()
+                ? h.getReasonCode() : h.getPurpose();
+    }
+
+    private static String subtitle(String a, String b, String c) {
+        StringBuilder sb = new StringBuilder();
+        for (String s : new String[]{a, b, c}) {
+            if (s != null && !s.isBlank()) {
+                sb.append(sb.isEmpty() ? "" : " · ").append(s);
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 缺货判据：<b>阈值优先，没设阈值就看可用是否见底</b>。
+     *
+     * <p>抽出来是因为跨店总览要逐库位判一遍同样的事。两处各写一遍的话，
+     * 「单店那一屏说缺货、跨店那一屏说不缺」迟早会发生，而两个数都对不上账
+     * 时没人知道该信哪个。端上的替身也照抄这一套（见 mock 的 `shortage`）。
+     */
+    private static boolean shortage(int available, Integer safety) {
+        return safety != null && safety > 0 ? available < safety : available <= 0;
+    }
+
+    private List<InvStockBalance> rows(String ownerId, String locationId) {
+        return balanceMapper.selectList(Wrappers.<InvStockBalance>lambdaQuery()
+                .eq(InvStockBalance::getOwnerId, ownerId)
+                .eq(locationId != null, InvStockBalance::getLocationId, locationId));
+    }
+
+    private List<BalanceVO> build(List<InvStockBalance> balances) {
+        if (balances.isEmpty()) {
+            return List.of();
+        }
+        List<String> itemIds = balances.stream().map(InvStockBalance::getItemId).distinct().toList();
+        Map<String, InvItem> items = itemMapper.selectList(Wrappers.<InvItem>lambdaQuery()
+                        .in(InvItem::getItemId, itemIds)).stream()
+                .collect(Collectors.toMap(InvItem::getItemId, Function.identity(), (a, b) -> a));
+        LocalDateTime staleBefore = LocalDateTime.now().minusDays(STALE_DAYS);
+        Map<String, String> skuNos = skuNosOf(balances.get(0).getOwnerId(), itemIds);
+        List<BalanceVO> out = new ArrayList<>();
+        for (InvStockBalance b : balances) {
+            InvItem item = items.get(b.getItemId());
+            int available = b.getOnHand() - b.getReserved();
+            Integer safety = b.getSafetyStock() != null ? b.getSafetyStock()
+                    : item != null ? item.getSafetyStock() : 0;
+            List<String> flags = new ArrayList<>();
+            if (shortage(available, safety)) {
+                flags.add(FLAG_SHORTAGE);
+            }
+            // 滞销要「还有货」才算 —— 零库存零动销是已经清完了，不是压着
+            if (b.getOnHand() > 0 && b.getLastMovedAt() != null
+                    && b.getLastMovedAt().isBefore(staleBefore)) {
+                flags.add(FLAG_STALE);
+            }
+            if (item != null && Integer.valueOf(0).equals(item.getSourceOnSale())) {
+                flags.add(FLAG_OFF_SALE);
+            }
+            if (item != null && item.getRetiredAt() != null) {
+                flags.add(FLAG_RETIRED);
+            }
+            out.add(new BalanceVO(b.getItemId(), skuNos.get(b.getItemId()),
+                    item == null ? b.getItemId() : item.getName(),
+                    item == null ? null : item.getSpecText(),
+                    item == null ? null : item.getBaseUom(),
+                    b.getOnHand(), b.getReserved(), available, safety, b.getLastMovedAt(), flags));
+        }
+        return out;
+    }
+
+    /**
+     * 批量反查 {@code itemId → skuNo}（{@code AISHOP} 一系）。
+     *
+     * <p><b>批量不是优化，是必须</b>：挑货一次给 200 行，逐行查就是 200 趟跨表查询，
+     * 而这一屏商家是边打字边看的。
+     *
+     * <p>查不到的物料<b>不给假值</b>：返回 null，端上据此把绑码那一步跳过。
+     * 2026-09-02 就是拿 {@code itemId} 顶替 {@code skuNo} 才让绑码 100% 失败的 ——
+     * 两个域的 ID 长得都像编号，冒充了也不会有人报错。
+     */
+    private Map<String, String> skuNosOf(String ownerId, List<String> itemIds) {
+        if (itemIds.isEmpty()) {
+            return Map.of();
+        }
+        return refMapper.selectList(Wrappers.<InvItemRef>lambdaQuery()
+                        .eq(InvItemRef::getOwnerId, ownerId)
+                        .eq(InvItemRef::getRefSystem, InvEnums.RefSystem.AISHOP)
+                        .in(InvItemRef::getItemId, itemIds)).stream()
+                .collect(Collectors.toMap(InvItemRef::getItemId, InvItemRef::getRef, (a, b) -> a));
+    }
+
+    private String refOf(String ownerId, String itemId, String system) {
+        InvItemRef ref = refMapper.selectOne(Wrappers.<InvItemRef>lambdaQuery()
+                .eq(InvItemRef::getOwnerId, ownerId).eq(InvItemRef::getItemId, itemId)
+                .eq(InvItemRef::getRefSystem, system).last("LIMIT 1"));
+        return ref == null ? null : ref.getRef();
+    }
+}

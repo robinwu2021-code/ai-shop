@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,13 +31,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class DataScopeFlowTest {
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -75,7 +77,8 @@ class DataScopeFlowTest {
     @Test
     @DisplayName("非商家用户访问 /biz/** 一律 403（BizIdentityResolver fail-closed）")
     void nonMerchantIsRejectedFromBiz() throws Exception {
-        String token = login("13900139002");
+        // A7：这个令牌要打 /biz/**，必须是 btk_
+        String token = TestLogin.merchantOwner(mvc(), json, otpStore, "13900139002");
         // M4 实现 /biz/order 之前这里断言的是 404（端点不存在）；
         // 端点存在之后，真正要守的是**作用域为空 → 403**
         mvc().perform(get("/biz/order").header("Authorization", "Bearer " + token))
@@ -87,13 +90,6 @@ class DataScopeFlowTest {
     }
 
     private String login(String phone) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"phone\":\"" + phone + "\"}"));
-        String code = otpStore.peek(phone).orElseThrow();
-        String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone
-                                + "\",\"credential\":\"" + code + "\",\"agreed\":true}"))
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("token").asString();
+        return TestLogin.consumer(mvc(), json, otpStore, phone);
     }
 }

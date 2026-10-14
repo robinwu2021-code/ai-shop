@@ -1,0 +1,40 @@
+# 带开关的 bean 依赖了开关更严的 bean —— **只准变短，不准变长**。
+#
+# 闸门：ConditionalBeanWiringTest（读源码，不起上下文）。它是被 2026-09-02
+# 一次「起不来」催出来的：InventoryReconJob 挂在 shop.job.enabled 上，却硬依赖
+# 挂在 shop.inventory.enabled 上的 InventoryBackfillService —— job=true +
+# inventory=false 这一格 APPLICATION FAILED TO START，不是那一个任务不装配，
+# 是整个应用起不来。.claude/launch.json 的 backend-ops 正好就是这一格。
+#
+# 格式：<依赖方> -> <被依赖方>。**故意不带文件路径与开关名** —— 带了的话，
+# 类挪个包、多加一个开关都会让条目「变新」，那种闸门第二天就会被整批重新生成，
+# 而重新生成等于清零。
+#
+# 这是**待办型**基线，不是止血线：下面每一条都该修，只是修法不显然，
+# 需要各自的域主拍板。新写的接线不许再进来。
+#
+# ── 为什么这三个没顺手修 ─────────────────────────────────────
+#
+# InventoryBackfillJob：开关是 shop.job.enabled + shop.inventory.backfill.enabled。
+#   补上 inventory.enabled 就完事，风险极低 —— 但 backfill 那个开关在生产 env 里
+#   压根没配（见 InventoryReconJob 的类注释：它此前「无处运行」），改它等于动一个
+#   正在退休的东西，留给要处置 backfill 退休的那次一起做。
+#
+# InventoryStockPort（stock-authority=INVENTORY）、
+# InventoryMirrorConsumer（stock-authority=DUAL）：
+#   这两条**不该用「加开关」来修**。stock-authority 指向进销存、同时把进销存关掉，
+#   本身就是一份矛盾的配置；给它们补上 inventory.enabled 之后，那一格会变成
+#   「bean 静默不装配」——StockPort 落到别的实现上，库存悄悄走了另一条路，
+#   比起不来更糟。正确的修法是在配置装配处校验并**明确报错**（"stock-authority
+#   指向 INVENTORY 时 shop.inventory.enabled 必须为 true"）。那是 invbridge
+#   域主的决定，不是顺手能改的。
+#
+InventoryBackfillJob -> InventoryBackfillService
+InventoryStockPort -> StockCountService
+InventoryStockPort -> ReservationService
+InventoryStockPort -> InventoryAclService
+InventoryStockPort -> LocationService
+InventoryMirrorConsumer -> StockCountService
+InventoryMirrorConsumer -> ReservationService
+InventoryMirrorConsumer -> InventoryAclService
+InventoryMirrorConsumer -> LocationService

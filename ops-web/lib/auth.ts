@@ -18,7 +18,8 @@ export type Role =
   | "FINANCE" // 财务/结算
   | "RISK" // 风控
   | "ANALYST" // 数据分析
-  | "TECH_OPS"; // 技术运维
+  | "TECH_OPS" // 技术运维
+  | "ELEC_ADMIN"; // 元器件负责人（V371：元器件六个码全给，前期一人掌控元器件后台）
 
 export const AUTH_STORAGE_KEY = "shop-ops-auth";
 
@@ -32,10 +33,22 @@ export interface AuthState {
   communityNo: string;
   pickupNo: string;
   token: string;
+  /**
+   * **后端下发的权限码**（`staff.perms`）。判权以它为准，不是本地的 ROLE_PERMS。
+   *
+   * 后端一直在下发，而前端此前一个字节都没读过 —— `can()` 查的是前端自己
+   * 写死的角色表。两套各自演化的结果是：前端放行、后端 403（点了报「没有操作权限」），
+   * 或者前端拦住、后端本来允许（功能存在而没人找得到入口）。
+   *
+   * `["*"]` = 超管通配。空数组 = 零权限（**不是「还没加载」**：
+   * 未登录时本来就该什么都看不见）。
+   */
+  perms: string[];
   login: (v: {
     username: string;
     role: Role;
     token: string;
+    perms?: string[];
     merchantNo?: string;
     communityNo?: string;
     pickupNo?: string;
@@ -54,13 +67,49 @@ export const useAuth = create<AuthState>()(
       tenantNo: MAIN_TENANT,
       ...EMPTY_SCOPE,
       token: "",
-      login: (v) => set({ ...EMPTY_SCOPE, ...v, tenantNo: MAIN_TENANT }),
-      logout: () => set({ username: "", token: "", ...EMPTY_SCOPE }),
+      perms: [],
+      login: (v) => set({ ...EMPTY_SCOPE, perms: [], ...v, tenantNo: MAIN_TENANT }),
+      // 退出要清 perms：留着的话，下一个人在同一台机器上登录、
+      // 在 perms 拉回来之前的那一瞬看到的是上一个人的入口
+      logout: () => set({ username: "", token: "", perms: [], ...EMPTY_SCOPE }),
       loggedIn: () => !!get().token,
     }),
     { name: AUTH_STORAGE_KEY },
   ),
 );
+
+/**
+ * 重新拉一次自己的权限与菜单。**只有一份实现** ——
+ * 挂载时、切回窗口时、被 403 拒绝时走的都是它。
+ *
+ * <p>写在这里而不是 `providers.tsx`：403 的处理在 `lib/api/http-client`，
+ * 那一层不能反过来依赖 React 组件。两处各写一份的下场是
+ * 「切窗口刷新了菜单、被拒时没刷」——同一件事两种行为。
+ *
+ * <p>并发去重：一屏十个请求同时 403，只补拉一次。
+ */
+let inFlight: Promise<void> | null = null;
+
+export function refreshPerms(): Promise<void> {
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    const { api } = await import("./api");
+    const { useServerMenu } = await import("./stores/server-menu");
+    try {
+      const me = await api.me();
+      // 期间退出登录：这时写回去等于把已登出的人的权限塞回来
+      if (!useAuth.getState().token) return;
+      useAuth.setState({ role: me.role, perms: me.perms ?? [] });
+      // perms 到手之后再拉菜单 —— 菜单是后端按人算的，早拉一次拿到的是旧身份的
+      await useServerMenu.getState().load();
+    } catch {
+      // 拉不到就保持现状：这只是让界面追上后端，失败不该影响他手上的事
+    } finally {
+      inFlight = null;
+    }
+  })();
+  return inFlight;
+}
 
 /** 供非 React 层（lib/api）读取当前身份 → 拼请求头。 */
 export function currentAuth(): AuthState | null {

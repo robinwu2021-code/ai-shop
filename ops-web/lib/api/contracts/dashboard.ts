@@ -1,13 +1,62 @@
 // 覆盖范围：认证登录 + 工作台（P-16.1）。
-import type { DashboardKpi, FunnelStep, LoginResp, TrendPoint } from "@/lib/types";
+import type { DashboardKpi, FunnelRow, LoginResp, MenuFunction, MerchantRankRow, TrendPoint, StoreRankRow } from "@/lib/types";
 import type { Role } from "@/lib/auth";
 
 export type { LoginResp };
 
 export interface DashboardApi {
   /** 登录换后端 token。**后端据 token 里的角色鉴权，不认客户端传的角色头。** */
-  login(username: string, role: Role, scope?: { merchantNo?: string; communityNo?: string }): Promise<LoginResp>;
+  /**
+   * 登录。**角色在返回值里，不在入参里** —— 让调用方指定自己的角色，
+   * 等于把权限交给被鉴权的一方。
+   */
+  login(username: string, password: string): Promise<LoginResp>;
+
+  /**
+   * 忘记密码：往登录名那个邮箱发一次性重置码。
+   *
+   * **无论账号存不存在都成功返回** —— 区分开就等于送了个账号探测器，
+   * 而运营账号的价值远高于普通用户（改费率、批提现、封商家）。
+   * 所以端上也不要根据返回值说「该账号不存在」。
+   */
+  forgotPassword(username: string): Promise<void>;
+
+  /** 用邮件里的重置码设新密码。至少 8 位。 */
+  resetPassword(token: string, newPassword: string): Promise<void>;
+  /**
+   * 拿当前登录人的最新身份（`GET /ops/auth/me`）。
+   *
+   * **为什么不能只在登录时拿一次**：perms 存在 localStorage 里，
+   * 管理员改了某人的角色，那个人要重新登录才生效 —— 而他不会知道要重新登录，
+   * 他看到的是「我明明有这个权限，按钮却不见了」（或者反过来，点了报 403）。
+   * 更硬的一种：换了版本后本地存的是旧结构（没有 perms 字段），
+   * 于是导航整个空掉，而 token 还是有效的 —— 用户卡在一个看不出原因的空壳里。
+   */
+  me(): Promise<LoginResp>;
+
+  /**
+   * 当前登录人的**动态菜单**（`GET /ops/menu`）。
+   *
+   * 由后端按 `sys_role_member → sys_role_point → sys_function_point` 算出，
+   * 而不是前端按写死的 nav 过滤 —— 加一个角色不再需要发一次前端版。
+   *
+   * **未实现的功能点也会返回**（`backendStatus: "NOT_IMPLEMENTED"`），
+   * 端上灰显 + 「待建」、不可点：藏起来运营不知道平台规划了这个功能，
+   * 可点则是死按钮。
+   */
+  menu(): Promise<MenuFunction[]>;
   getDashboardKpi(): Promise<DashboardKpi>;
   getDashboardTrend(): Promise<TrendPoint[]>;
-  getAcquisitionFunnel(): Promise<FunnelStep[]>;
+  getAcquisitionFunnel(): Promise<FunnelRow[]>;
+
+  /**
+   * 商家经营排行（P-16.1.2 / P-16.1.3）——大盘之下的第一层下钻。
+   *
+   * 按 GMV 降序、**只含有成交的商家**：零单商家排在末尾没有信息量，
+   * 全带上还会稀释「平台有多少家在做生意」这个数。
+   */
+  getMerchantRanking(): Promise<MerchantRankRow[]>;
+
+  /** 门店经营排行（门店③）。与商家排行是同一份订单的两种切法 */
+  getStoreRanking(q?: { days?: number; limit?: number }): Promise<StoreRankRow[]>;
 }

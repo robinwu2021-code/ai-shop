@@ -16,6 +16,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { backendModules, assertScanScope } from "./lib/backend-modules.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "docs/api/API清单.md");
@@ -58,7 +59,15 @@ function readSpec(file) {
     if (!op) continue;
     const s = line.match(/^ {6}summary:\s*"(.*)"\s*$/);
     if (s) op.summary = s[1];
-    if (/^ {6}security:/.test(line)) op.auth = true;
+    /*
+     * **`security: []` 是「不需要鉴权」，不是「有鉴权这一项」。**
+     *
+     * 原先这里只认键名，于是 22 个免登录端点（社区、商品、区划、类目…）
+     * 在清单里全被标成 🔒 —— 而 C 端「先逛店、要下单时再登录」这条路，
+     * 靠的正是这批端点游客能访问。清单把它说反了，且**每一行都说反**，
+     * 一致得看不出是错的。
+     */
+    if (/^ {6}security:\s*$/.test(line)) op.auth = true;
     const t = line.match(/^ {8}- "(.+)"\s*$/);
     if (t && !op.tag) op.tag = t[1];
     // 段落状态机：先看当前在 requestBody 还是 responses 段，再决定 $ref 归谁。
@@ -93,9 +102,18 @@ function readSpec(file) {
 
 // ---------------------------------------------------------------- 后端
 function backendRoutes() {
-  const dir = join(ROOT, "backend/shop-app/src/main/java/ai/neargo/shop/portal");
+  /*
+   * Controller 不只在 shop-app/portal：2026-08 的 S7 垂直切片之后，
+   * 单域 API 面跟着域走进了各自模块的 `api` 包（`shop.trade.api.mp` 等）。
+   * 只扫 portal 会让「后端已实现」从 200+ 掉到 90 上下 —— 而报告照常输出，
+   * 看起来像后端退化了一半，实际是这个扫描器瞎了。
+   * gen-delivery-status.mjs 与 api-align.py 用的是同一套目录清单，三者必须一致。
+   */
+  const dirs = assertScanScope(backendModules(join(ROOT, "backend")))
+    .map((m) => join(ROOT, "backend", m, "src/main/java/ai/neargo/shop"))
+    .filter((d) => existsSync(d));
   const out = new Set();
-  if (!existsSync(dir)) return out;
+  if (!dirs.length) return out;
   const walk = (d) => {
     for (const f of readdirSync(d)) {
       const p = join(d, f);
@@ -117,7 +135,7 @@ function backendRoutes() {
       }
     }
   };
-  walk(dir);
+  dirs.forEach(walk);
   return out;
 }
 

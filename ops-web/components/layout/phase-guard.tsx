@@ -13,15 +13,15 @@ import { useI18n } from "@/lib/i18n";
 export function PhaseGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const sp = useSearchParams();
-  const role = useAuth((s) => s.role);
+  const perms = useAuth((s) => s.perms);
   const { t } = useI18n();
 
-  const locked = routeLockedPhase(pathname, sp.get("tab"), sp.get("view"), role);
+  const locked = routeLockedPhase(pathname, sp.get("tab"), sp.get("view"), perms);
   if (!locked) return <>{children}</>;
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
-      <div className="mb-4 flex size-14 items-center justify-center rounded-sheet bg-primary/8 text-primary/70">
+      <div className="mb-4 flex size-14 items-center justify-center rounded-sheet bg-primary/8 text-primary-ink">
         <Lock className="size-6" />
       </div>
       <div className="mb-1 txt-title">{t("phase.lockedTitle")}</div>
@@ -34,7 +34,7 @@ export function PhaseGuard({ children }: { children: React.ReactNode }) {
       </p>
       <Link
         href="/"
-        className="mt-5 rounded-field bg-secondary px-4 py-2 txt-strong text-foreground transition-colors hover:bg-accent"
+        className="focus-ring mt-5 rounded-field bg-secondary px-4 py-2 txt-strong text-foreground transition-colors hover:bg-accent"
       >
         {t("phase.backHome")}
       </Link>

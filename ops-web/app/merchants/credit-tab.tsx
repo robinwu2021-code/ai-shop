@@ -13,18 +13,19 @@ import { fmtTime } from "@/lib/utils";
 import { MAX_MERCHANT_BREACH } from "@/lib/constants";
 import { MERCHANT_TRANSITIONS } from "@/lib/types";
 import type { Merchant, Violation, ViolationAction, ViolationType } from "@/lib/types";
+import { usePaging } from "@/lib/use-paging";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { PagedTable } from "@/components/ui/paged-table";
 import { MerchantBrief } from "./authorize-tab";
 import type { MerchantsCopy } from "./copy";
 
@@ -39,6 +40,9 @@ const useActionMap = (c: MerchantsCopy): StatusMap<ViolationAction> => ({
   WARN: { label: c.vaWarn, tone: "muted" },
   LIMIT: { label: c.vaLimit, tone: "warning" },
   SUSPEND: { label: c.vaSuspend, tone: "danger" },
+  // 门店级：只压一家店，不封整个主体。与 SUSPEND 分成两个动作而不是
+  // 「SUSPEND + 可选门店号」—— 后者让读处置记录的人分不出封的是谁
+  STORE_OFFLINE: { label: c.vaStoreOffline, tone: "danger" },
 });
 
 /** 信用档案：只读。它是处置的依据，不是处置本身。 */
@@ -46,8 +50,7 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
   const typeMap = useTypeMap(c);
   const actionMap = useActionMap(c);
   const [keyword, setKeyword] = useState("");
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(10);
+  const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<Merchant | null>(null);
 
   const q = { keyword, page, size };
@@ -61,7 +64,7 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
   const columns: Column<Merchant>[] = [
     { header: c.colNo, cell: (m) => m.merchantNo, numeric: true, align: "start" },
     { header: c.colName, cell: (m) => m.name },
-    { header: c.colCommunity, cell: (m) => m.communityName },
+    { header: c.colCommunity, cell: (m) => m.communityNos.join("、") },
     {
       header: c.colBreach,
       cell: (m) =>
@@ -69,6 +72,19 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
           ? <Badge tone="danger">{fill(c.breachTimes, { n: m.breachCount })}</Badge>
           : fill(c.breachTimes, { n: m.breachCount }),
       numeric: true,
+    },
+    {
+      /*
+       * 责任归属：**这一列决定了「毁约次数」旁边那些分该不该算在他头上**。
+       * 归集路径下平台是销售主体，服务与时效是平台在做 ——
+       * 拿它考核供应商是拿他控制不了的事罚他。
+       * 而分照常展示给消费者：那是他们的真实体验，藏起来的后果是没人为它负责。
+       */
+      header: c.colBorne,
+      cell: (m) =>
+        m.fundsMode === "AGGREGATED"
+          ? <Badge tone="warning">{c.bornePlatform}</Badge>
+          : <span className="text-muted-foreground">{c.borneMerchant}</span>,
     },
     {
       header: c.colVerified,
@@ -86,15 +102,20 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
 
   return (
     <>
-      <Notice className="mb-3">{fill(c.creditNotice, { n: MAX_MERCHANT_BREACH })}</Notice>
+      <HelpNote title={c.creditNoteTitle} className="mb-3">{fill(c.creditNotice, { n: MAX_MERCHANT_BREACH })}</HelpNote>
+      <HelpNote title={c.borneNoteTitle} className="mb-3">{c.borneNotice}</HelpNote>
       <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchPlaceholder} />
-      <DataTable
-        columns={columns} rows={list.data?.records} loading={list.isLoading}
-        error={list.error} onRetry={() => list.refetch()}
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
+        loading={list.isLoading}
+        columns={columns}
         rowKey={(m) => m.merchantNo}
         empty={c.empty}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
 
       <Drawer
         open={!!current}
@@ -109,9 +130,9 @@ export function CreditTab({ c }: { c: MerchantsCopy }) {
             </DrawerSection>
             <DrawerSection title={c.secViolations}>
               {history.isLoading && <p className="txt-caption text-muted-foreground">{c.loading}</p>}
-              {history.data?.length === 0 && <p className="txt-caption text-muted-foreground">{c.noViolation}</p>}
+              {history.data?.records.length === 0 && <p className="txt-caption text-muted-foreground">{c.noViolation}</p>}
               <ul className="space-y-3">
-                {history.data?.map((v) => (
+                {history.data?.records.map((v) => (
                   <li key={v.violationNo} className="border-l-2 border-border pl-3">
                     <div className="flex items-center gap-2">
                       <StatusBadge map={typeMap} value={v.type} />
@@ -138,8 +159,8 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
   const [keyword, setKeyword] = useState("");
   const [type, setType] = useState("");
   const [target, setTarget] = useState<Merchant | null>(null);
-  const [form, setForm] = useState<{ type: ViolationType; action: ViolationAction; detail: string }>({
-    type: "BREACH", action: "WARN", detail: "",
+  const [form, setForm] = useState<{ type: ViolationType; action: ViolationAction; detail: string; storeNo: string }>({
+    type: "BREACH", action: "WARN", detail: "", storeNo: "",
   });
 
   const violations = useQuery({ queryKey: ["violations", "all"], queryFn: () => api.listViolations() });
@@ -148,31 +169,52 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
     queryFn: () => api.listMerchants({ keyword, size: 100 }),
   });
 
+  /*
+   * 该商家的门店，只在选中商家后拉：门店级处置要选**具体哪一家**，
+   * 让人手敲门店号等于把一次选择变成一次记忆测验，敲错了压的是别人家的店。
+   */
+  const stores = useQuery({
+    queryKey: ["stores-govern", "ban", target?.merchantNo],
+    queryFn: () => api.listStores({ merchantNo: target!.merchantNo, size: 100 }),
+    enabled: !!target,
+  });
+
   const record = useMutation({
-    mutationFn: () => api.recordViolation({ merchantNo: target!.merchantNo, ...form }),
+    mutationFn: () => api.recordViolation({
+      merchantNo: target!.merchantNo,
+      type: form.type,
+      action: form.action,
+      detail: form.detail,
+      // storeNo 只跟着门店级动作走：主体级处置带上它，读记录的人会以为只压了那一家
+      storeNo: form.action === "STORE_OFFLINE" ? form.storeNo : undefined,
+    }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["violations"] });
       qc.invalidateQueries({ queryKey: ["merchants"] });
+      qc.invalidateQueries({ queryKey: ["stores-govern"] });
       setTarget(null);
       notify.success(c.toastViolationRecorded);
     },
   });
 
   const unban = useMutation({
-    mutationFn: (m: Merchant) => api.setMerchantStatus(m.merchantNo, "APPROVED", c.unbanRemark),
+    mutationFn: (m: Merchant) => // 解封 = 回到可经营（ACTIVE），不是「审核通过」
+      api.setMerchantStatus(m.merchantNo, "ACTIVE", c.unbanRemark),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["merchants"] });
       notify.success(c.toastUnbanned);
     },
   });
 
-  const rows = (violations.data ?? []).filter((v) => !type || v.type === type);
+  const rows = (violations.data?.records ?? []).filter((v) => !type || v.type === type);
 
   const columns: Column<Violation>[] = [
     { header: c.colViolationNo, cell: (v) => v.violationNo, numeric: true, align: "start" },
     { header: c.colName, cell: (v) => v.merchantName },
     { header: c.colViolationType, cell: (v) => <StatusBadge map={typeMap} value={v.type} /> },
     { header: c.colViolationAction, cell: (v) => <StatusBadge map={actionMap} value={v.action} /> },
+    // 空 = 主体级处置（作用于全部门店），不是「漏填了门店」
+    { header: c.vlStoreLabel, cell: (v) => v.storeNo ?? <span className="text-muted-foreground">—</span> },
     { header: c.colDetail, cell: (v) => v.detail },
     { header: c.colAt, cell: (v) => fmtTime(v.at) },
     { header: c.colOperator, cell: (v) => v.operator },
@@ -182,7 +224,7 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
 
   return (
     <>
-      <Notice className="mb-3">{c.banNotice}</Notice>
+      <HelpNote className="mb-3">{c.banNotice}</HelpNote>
 
       <Toolbar search={keyword} onSearch={setKeyword} searchPlaceholder={c.searchPlaceholder}>
         <FilterSelect aria-label={c.filterViolationType} value={type} onChange={setType}
@@ -195,7 +237,7 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
         <div className="mb-4 flex flex-wrap gap-2">
           {(merchants.data?.records ?? []).slice(0, 8).map((m) => (
             <Button key={m.merchantNo} size="sm" variant="outline"
-              onClick={() => { setTarget(m); setForm({ type: "BREACH", action: "WARN", detail: "" }); }}>
+              onClick={() => { setTarget(m); setForm({ type: "BREACH", action: "WARN", detail: "", storeNo: "" }); }}>
               {fill(c.btnRecordFor, { name: m.name })}
             </Button>
           ))}
@@ -228,7 +270,17 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
         onOpenChange={(o) => !o && setTarget(null)}
         title={target ? fill(c.recordTitle, { name: target.name }) : ""}
         width="w-[520px]"
-        footer={<Button loading={record.isPending} onClick={() => record.mutate()}>{c.btnRecordViolation}</Button>}
+        footer={
+          <Button
+            loading={record.isPending}
+            // 门店级处置没选门店就发出去，后端会拒 —— 前端先拦一道，
+            // 不然人填完一整份表单才被退回来
+            disabled={form.action === "STORE_OFFLINE" && !form.storeNo}
+            onClick={() => record.mutate()}
+          >
+            {c.btnRecordViolation}
+          </Button>
+        }
       >
         {target && (
           <div>
@@ -257,6 +309,26 @@ export function BanTab({ c, canBan }: { c: MerchantsCopy; canBan: boolean }) {
                   ))}
                 </Select>
               </div>
+              {/* 门店级处置才出这一格：其余动作作用于该商家的全部门店，
+                  摆一个用不上的门店选择器会让人以为「不选就是全选」 */}
+              {form.action === "STORE_OFFLINE" && (
+                <div className="mb-3 space-y-1">
+                  <Label htmlFor="vl-store" required>{c.vlStoreLabel}</Label>
+                  <Select id="vl-store" className="w-full" value={form.storeNo}
+                    onChange={(e) => setForm((p) => ({ ...p, storeNo: e.target.value }))}>
+                    <option value="">{c.vlStorePick}</option>
+                    {(stores.data?.records ?? []).map((s) => (
+                      // 已被压下的店不再出现在可选项里：重复压一次会抛错，摆出来是在骗人点
+                      <option key={s.storeNo} value={s.storeNo} disabled={s.status === "SUSPENDED"}>
+                        {s.name} · {s.storeNo}
+                      </option>
+                    ))}
+                  </Select>
+                  <p className="txt-caption text-muted-foreground">
+                    {stores.data && stores.data.records.length === 0 ? c.vlStoreEmpty : c.vlStoreHint}
+                  </p>
+                </div>
+              )}
               <Field className="mb-0" label={c.colDetail}>
                 <Textarea value={form.detail} onChange={(v) => setForm((p) => ({ ...p, detail: v }))}
                   placeholder={c.detailPlaceholder} rows={3} />

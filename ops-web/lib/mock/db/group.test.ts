@@ -35,7 +35,7 @@ describe("团模板审核（P-8.1.1）", () => {
 
   it("通过后进入进行中", async () => {
     const g = await groupMock.auditGroupCampaign("GB9003", true);
-    expect(g.status).toBe("RUNNING");
+    expect(g.status).toBe("OPEN");
   });
 
   it("已审核的团不能重复审", async () => {
@@ -74,14 +74,14 @@ describe("求团指派报价（P-8.2.2）", () => {
 
 describe("改价与毁约（ADR-003）", () => {
   it("改价累加次数并落库", async () => {
-    const q = await groupMock.changeQuotePrice("QT9001", 120_00);
+    const q = await groupMock.changeQuotePrice("QT9001", 120_00, "与商家沟通后下调");
     expect(q.price).toBe(120_00);
     expect(q.priceChanges).toBe(1);
   });
 
   it("改价达上限后禁止再改", async () => {
     // QT9002 已改 3 次
-    await expect(groupMock.changeQuotePrice("QT9002", 100_00)).rejects.toThrow(
+    await expect(groupMock.changeQuotePrice("QT9002", 100_00, "再降一点")).rejects.toThrow(
       new RegExp(String(MAX_QUOTE_PRICE_CHANGES)),
     );
   });

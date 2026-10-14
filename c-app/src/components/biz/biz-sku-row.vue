@@ -29,11 +29,11 @@ withDefaults(
 </script>
 
 <template>
-  <view class="skurow" :class="`skurow--${size}`">
-    <view class="skurow__cover">{{ cover }}</view>
-    <view class="skurow__main">
-      <text class="skurow__title">{{ title }}</text>
-      <text v-if="spec" class="skurow__spec">{{ spec }}</text>
+  <view class="sh-row skurow" :class="`skurow--${size}`">
+    <sh-cover class="sh-center skurow__cover" :src="cover" :w="200"></sh-cover>
+    <view class="sh-fill skurow__main">
+      <text class="txt-strong skurow__title">{{ title }}</text>
+      <text v-if="spec" class="sh-hint">{{ spec }}</text>
       <slot />
     </view>
     <slot name="right" />
@@ -42,8 +42,6 @@ withDefaults(
 
 <style scoped>
 .skurow {
-  display: flex;
-  align-items: center;
   gap: 24rpx;
 }
 /* 行距归组件自己管。原先由各页面的 `.row { margin-bottom }` + `.row:last-child { 0 }`
@@ -56,12 +54,7 @@ withDefaults(
    仍居中 —— 之前六处里有的写 center 有的不写，同一种行在不同页面对齐方式不同。 */
 .skurow__cover {
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: var(--sh-faint);
-  /* 圆角走 token 的 md 档 —— 原先 22 / 24 / 28rpx 三种，前两者根本不在五档上 */
-  border-radius: 24rpx;
 }
 .skurow--md .skurow__cover {
   width: 108rpx;
@@ -73,24 +66,11 @@ withDefaults(
   height: 128rpx;
   font-size: 48rpx;
 }
-.skurow__main {
-  flex: 1;
-  min-width: 0;
-}
 .skurow__title {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  line-height: 1.4;
   color: var(--sh-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.skurow__spec {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
 }
 </style>

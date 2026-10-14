@@ -1,0 +1,151 @@
+package ai.neargo.shop.spi.user;
+
+import java.util.Collection;
+import java.util.List;
+
+/**
+ * merchant / product → community：社区的开放状态与积分开关。
+ *
+ * <p>刻意只暴露<b>两个判断结论</b>，而不是返回社区实体列表。原因在
+ * {@link #anyPointsEnabled(Collection)} 上写得最清楚：那不是一次查询，
+ * 是一条**业务规则**（一个开着就算开）。规则跟着数据走，才不会被两处各写一遍。
+ */
+public interface CommunityQueryPort {
+
+    /** 当前开放（{@code status=OPEN}）的社区编号。商家服务范围为 CITY/PLATFORM 时用它展开。 */
+    List<String> openCommunityNos();
+
+    /**
+     * 这批社区里<b>是否至少有一个开着积分</b>。
+     *
+     * <p>为什么是「任一」而不是「全部」：商家可跨社区经营（ADR-009 三档范围）。
+     * 要求全部开启的话，跨社区商家会因为其中某个尚未开放积分的社区而被整体禁掉——
+     * 而他在其他社区明明是可以用的。
+     *
+     * @param communityNos 空集合返回 {@code false}
+     */
+    boolean anyPointsEnabled(Collection<String> communityNos);
+
+    /**
+     * 某个区划下的**开放**社区（ADR-013 阶段二，展开商家覆盖范围用）。
+     *
+     * <p>靠国标编码的层级性做<b>前缀匹配</b>：区县 {@code 330106} 命中
+     * {@code 330106}（挂到区）与 {@code 330106002}（挂到街道）两种归属；
+     * 城市 {@code 3301} 命中杭州下的所有区与街道。
+     * 这正是当初坚持用国标码而不自造的回报 —— 自造码没有这个性质，
+     * 展开就得先把整棵树查出来再逐层求并。
+     *
+     * <p><b>只给开放的</b>：关城的社区不该因为「商家框了这个区」而重新可见。
+     *
+     * @param regionPrefix 区划码前缀；空返回空集合（**不返回全部**，
+     *                     空前缀匹配一切是最危险的默认值）
+     */
+    java.util.List<String> openCommunityNosUnderRegion(String regionPrefix);
+
+    /**
+     * 这些聚落底下的**子楼栋**（`parent_no` 指向它们的那些，V321）。
+     *
+     * <p>「商家框了小区，算不算覆盖里面每栋楼」—— **算**。这个方法就是那个「算」：
+     * 展开一条 COMMUNITY 级范围时，把它自己和它的楼栋一起纳入。
+     * 商家想排除其中某几栋，走 {@code mode=EXCLUDE}，不是靠这里少给。
+     *
+     * <p>只做一层：楼栋自己不再有子级（`parent_no` 只做两层，
+     * 因为单元和户不是服务单位）。
+     */
+    java.util.List<String> openChildCommunityNos(java.util.Collection<String> parentNos);
+
+    /**
+     * 判定「某家店送不送得到这个小区」所需的小区信息（方案-商品可见性改查询时关联 §2.3）。
+     *
+     * <p>有了这三项，「送不送得到」就能对**一个**小区直接判，而不必先把范围展开成两万多个小区再 contains。
+     *
+     * @param regionCode 国标区划码，按前缀匹配 STREET / DISTRICT / CITY 级范围；可空
+     * @param parentNo   楼栋的上级小区；不是楼栋时为空
+     * @param open       {@code status=OPEN}
+     */
+    /**
+     * 判定要用的几列。{@code latE6/lngE6} 是聚落坐标（V396 起带出，供多边形范围按 S2 cell 命中、边界精判）；
+     * 库里没坐标的聚落为 null。{@code open} 已不参与可见性匹配（ADR-034），仅供运营展示/展开候选用。
+     */
+    record CommunityRef(String communityNo, String regionCode, String parentNo, boolean open,
+                        Integer latE6, Integer lngE6) {
+
+        /** 不带坐标的老形状（查不到的小区、兜底 ref） */
+        public CommunityRef(String communityNo, String regionCode, String parentNo, boolean open) {
+            this(communityNo, regionCode, parentNo, open, null, null);
+        }
+    }
+
+    /** 全部开放小区。展开「全部开放小区」类范围时的候选全集 */
+    java.util.List<CommunityRef> openCommunityRefs();
+
+    /** 按号批量取（**不限开放**：范围里直接点名的小区不检查是否开放）。查不到的不在结果里 */
+    java.util.Map<String, CommunityRef> communityRefs(java.util.Collection<String> communityNos);
+
+    /** 区划前缀下的开放小区。空前缀返回空集，理由同 {@link #openCommunityNosUnderRegion} */
+    java.util.List<CommunityRef> openCommunityRefsUnderRegion(String regionPrefix);
+
+    /**
+     * 这些聚落里有多少条<b>能定位的</b>收货地址。
+     *
+     * <p>归属走的是 C 端那条唯一的判定（围栏 + 层级优先于距离），不另算一遍 ——
+     * 商家在范围预览里看到「这片有 12 个买家」，那 12 个必须与真正搜得到他的人是同一批。
+     *
+     * <p>没坐标的地址一条也不算：它推不出任何聚落。**这不等于那儿没人** ——
+     * 缺口有多大在运营端「位置分布」那一页单列一格，商家侧不重复这件事。
+     */
+    int buyerCountIn(java.util.Collection<String> communityNos);
+
+    /**
+     * 社区展示名。查不到时<b>返回社区号本身</b>，不返回空 ——
+     * 页面上宁可显示 C0001，也不要显示一个空白的覆盖项：
+     * 空白会让商家以为「这一条坏了」而去删掉它。
+     */
+    /**
+     * 按买家坐标匹配自提点：**归属链上的在用点，按离买家最近排**。
+     *
+     * <p><b>规则只放这一处。</b> 它同时需要三样东西：归属链（聚落域）、
+     * 自提点与它们的坐标（聚落域）、以及与围栏判定同一份的距离算法（{@code Geo.meters}）。
+     * 让调用方自己拼，下单那条路与「换点」那个列表迟早会给出不同的顺序 ——
+     * 而两个顺序看起来都合理，只有买家跑错地方时才发现。
+     *
+     * <p>商家的许可点作为**过滤集**传进来：那是商家域的知识，不该由聚落域去查。
+     *
+     * @param allowed 这家商家承接的点；<b>空集视为不限</b> ——
+     *                与 {@code requirePickupServed} 同一条兼容期约定：
+     *                存量商家（只开了自提、从没进过取货点配置）不该在发布当天一单都下不了
+     * @return 按距离升序；坐标为空的点排在最后（**不丢掉** —— 存量点是手填地址建的，
+     *         没有坐标不代表它不能用，只是排不出远近）
+     */
+    java.util.List<PickupOption> pickupOptions(Integer latE6, Integer lngE6,
+                                               java.util.Collection<String> allowed);
+
+    /**
+     * @param distanceM 到买家的米数；<b>坐标为空时是 -1</b>，不是 0 ——
+     *                  0 会被端上显示成「0 米」，那是一句假话
+     */
+    record PickupOption(String pickupNo, String name, String address,
+                        String communityNo, int distanceM) {
+    }
+
+    String communityName(String communityNo);
+
+    /**
+     * 批量取自提点名（门店档案展示挂靠的取货点，P-11.2.1c）。
+     *
+     * <p><b>批量而不是逐个</b>：一家店可能挂多个点，逐个查就是 N+1。
+     *
+     * @return 自提点号 → 名称；<b>查不到的不出现</b>，调用方自己决定显示点号还是留空
+     */
+    java.util.Map<String, String> pickupNames(java.util.Collection<String> pickupNos);
+
+    /**
+     * 这些社区的坐标（gcj02, E6）。<b>下单兜底落店时用来算「哪家店离这儿最近」。</b>
+     *
+     * <p>批量取而不是逐个查：一次上架要给几十个社区建池行，逐个查就是几十次往返。
+     *
+     * @return 只含**有坐标**的那些；没标过点的社区不出现在结果里 ——
+     *         调用方据此走「算不出距离」那一支，而不是拿 (0,0) 去算出一个地球另一端的距离
+     */
+    java.util.Map<String, int[]> coordsOfCommunities(Collection<String> communityNos);
+}

@@ -1,0 +1,101 @@
+# 已知「资源段的单复数与本域约定不符」的端点。判据在
+# packages/shared/tests/api-path-naming.test.ts。
+#
+# ★ 为什么按**域**定约定，而不是全仓库一条规矩（2026-08-28 量出来的实况）：
+#
+#     前缀        单数   复数   复数占比
+#     /mp   C端     24     1       4%
+#     /biz  B端     27    29      51%      ← 真正的混乱在这里
+#     /ops  平台端   7   140      95%
+#
+# `/ops` 不是「140 条违规」，它内部是一致的 —— 只是与 2026-08-06 在 C 端量出来的
+# 那条「单数」规矩不同。把 140 条线上路径改成单数，收益是命名统一，
+# 代价是动后端控制器、SecurityConfig、权限矩阵与数据域注册表。**不做。**
+# 所以 `/ops` 的约定就写成复数，并同样立闸门（防止它反过来混进单数）。
+#
+# `/biz` 27:29 **没有多数派**，只能挑一个：跟它的同族 `/mp` 走单数
+# （同一套客户端、同一套契约生成器、同一种消费方式）。
+#
+# 清一条删一条。**只许变短。** 但也别为了变短去改线上路径 ——
+# 这张表的用途是**拦新增**，存量随各自模块重构时顺手带走。
+#
+# 2026-09-17 新增 `/biz/inventory/counts/{no}/void`（盘点单作废，c4f51800）。
+# 与上面那条「存量随模块重构顺手带走」是同一个判断：counts 这个资源的另外三条
+# 都在本表里，而同形状的 `inbounds/{no}/void` 与 `outbounds/{no}/void` 也都在。
+# 单独把 void 改成单数，counts 会成为进销存模块里自己和自己不一致的那一个。
+# **不是它的作者加的**：开这个端点的会话已经结束，而这道闸挂在 pre-push 上，
+# 红着就是整条分支谁都推不出去。进销存整模块改单数时，这一行跟着一起删。
+
+/biz/activities/{activityNo}  activities
+/biz/activities/{activityNo}/status  activities
+/biz/appointment-slots/{slotNo}/close  appointment-slots
+/biz/coupons/{couponNo}  coupons
+/biz/coupons/{couponNo}/issue  coupons
+/biz/coupons/{couponNo}/status  coupons
+/biz/inventory/counts/{no}  counts
+/biz/inventory/counts/{no}/lines  counts
+/biz/inventory/counts/{no}/post  counts
+/biz/inventory/counts/{no}/void  counts
+/biz/inventory/inbounds/{no}  inbounds
+/biz/inventory/inbounds/{no}/post  inbounds
+/biz/inventory/inbounds/{no}/void  inbounds
+/biz/inventory/items/{itemId}  items
+/biz/inventory/locations/{id}/source  locations
+/biz/inventory/outbounds/{no}/post  outbounds
+/biz/inventory/outbounds/{no}/void  outbounds
+/biz/inventory/transfers/{no}  transfers
+/biz/inventory/transfers/{no}/receive  transfers
+/biz/inventory/transfers/{no}/ship  transfers
+/biz/member-segments/{segmentNo}  member-segments
+/biz/member-segments/{segmentNo}/remove  member-segments
+/biz/member-tags/{tagNo}  member-tags
+/biz/member-tags/{tagNo}/merge  member-tags
+/biz/member-tags/{tagNo}/usage  member-tags
+/biz/members/{memberNo}  members
+/biz/my-spec-dims/{dimNo}/archive  my-spec-dims
+/biz/my-spec-dims/{dimNo}/rename  my-spec-dims
+/biz/spec-dims/{dimNo}/values  spec-dims
+/biz/stores/{storeNo}/appointment-slots  stores
+/biz/stores/{storeNo}/fulfillment  stores
+/biz/stores/{storeNo}/fulfillment/{channel}/impact  stores
+/mp/my-memberships/{entityNo}/reach  my-memberships
+/ops/merchant/apply/{applyNo}/accept  apply
+/ops/merchant/apply/{applyNo}/audit  apply
+/ops/message/{no}/read  message
+/ops/notify-channels/registry/{channelNo}/enabled  registry
+/ops/orders/parent/{parentNo}  parent
+/ops/spu-std/{no}/archive  spu-std
+/ops/spu-std/{no}/unarchive  spu-std
+
+# ── 2026-08-30 ──
+# 这条**不是新增的端点**：`/ops/scene-channel` 早在 e82647d84（msg_* → notify_* 重命名）
+# 就有了，一直没进扫描面 —— 因为它此前**没有运营端入口**，而判据只看端上调用到的端点。
+# 我给它接了入口（场景×通道矩阵），它才第一次被这道闸看见。
+#
+# 改成复数要动后端路径 + 权限矩阵 + 生成物，属于「存量随各自模块重构时顺手带走」
+# 那一类（见本文件开头）—— 不该由「补一个运营端入口」这件事顺手决定。
+/ops/scene-channel/{scene}/{audience}/{channel}  scene-channel
+
+# ── 2026-08-30 · 进销存供应商（S2/S5）──────────────────────────────────
+#
+# /biz/inventory/suppliers/{no} 与 .../active。**没有改成单数**：
+# 进销存整个模块都是复数 —— inbounds / outbounds / counts / locations /
+# items / balances，本文件里已经登记了 13 条同域的。单独把 suppliers 改单数，
+# 它会成为模块里唯一那个，而**「同一件事在这儿长得不一样」比「不合约定」
+# 更容易让人写错**。要改就整模块一起改，不该由「新加一张供应商表」顺手决定。
+#
+# ⚠️ 同一个决定要登**两份**：这一份给 api-path-naming.test.ts，
+# 另一份 b-app/scripts/known-plural-paths.txt 给 gen-openapi.mjs。
+# 两份同名、都活着，而只登一份时另一份不会提醒你 —— 2026-08-30 实测栽过。
+/biz/inventory/suppliers/{no}  suppliers
+/biz/inventory/suppliers/{no}/active  suppliers
+
+# 2026-10-07 新增提交历史的两条（14f89a493 / 4c4fb24ba，作者就是登记这两行的会话）。
+# 当时没看这道闸 —— 66 个提交一直没推，pre-push 从没跑到这里。发现时它们**已经上线**，
+# 并且在已装的 B 端 App（0.5.2x）里：改成单数要么同时留两套路由，要么让旧包的历史页 404。
+# 列表那条 `/biz/goods/{goodsNo}/revisions` 不带 id、不在判据里；三条要一起改，
+# 留到商品域下一次动契约时（加端点那次）一起换成 `revision`，三条同删。
+# 只登这一份：b-app/scripts 那份的生成器正则只看第一个「复数 + id」段，`/goods/:` 先命中被豁免，
+# 这两条它看不到；登进去反而会被它当成「已经修好、请删除」。
+/biz/goods/{goodsNo}/revisions/{revisionNo}  revisions
+/biz/goods/{goodsNo}/revisions/{revisionNo}/fork  revisions

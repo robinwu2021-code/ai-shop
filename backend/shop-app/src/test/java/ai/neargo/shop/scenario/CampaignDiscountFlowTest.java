@@ -1,0 +1,653 @@
+package ai.neargo.shop.scenario;
+
+import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.marketing.campaign.entity.MktCampaign;
+import ai.neargo.shop.marketing.campaign.mapper.CampaignMappers.CampaignMapper;
+import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
+import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+
+import java.time.Duration;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * 店铺活动的自动优惠 —— **补的是一条从来没人测过的断裂**。
+ *
+ * <p>`mkt_campaign` 表此前**没有任何消费方**：读它的只有它自己的
+ * mapper / service / controller。商家在 B 端建了满减活动，后端存下来了，
+ * 下单时一分钱不减，而商家侧界面显示活动「进行中」。
+ *
+ * <p>四层测试当时全绿，因为后端测的是「活动能不能建、字段校验对不对」——
+ * **没有任何一条测「建了活动之后，下单金额有没有变」**。
+ * 这个文件里的每一条测的都是后者。
+ */
+@SpringBootTest
+@ActiveProfiles("test")
+class CampaignDiscountFlowTest {
+
+    /** 本测试造的活动都用这个名字，便于精确清理 */
+    private static final String TEST_CAMPAIGN = "测试活动";
+    /**
+     * 本类建的活动一律用这个号前缀。
+     *
+     * <p><b>清理按号删，不按名删</b>：2026-09-20 让 `fullCut(name, ...)` 真的用上那个名字
+     * （优惠依据要把活动名发给买家）之后，按名删的那条钩子就删不掉它们了 ——
+     * 残留活动泄漏进别的用例，症状是「本来不该减的单减了 800」，而报错指向毫不相干的用例。
+     */
+    private static final String TEST_CAMPAIGN_PREFIX = "CPTEST";
+
+    @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
+    private WebApplicationContext context;
+
+    @Autowired
+    private ObjectMapper json;
+
+
+    @Autowired
+    private CampaignMapper campaignMapper;
+
+    @Autowired
+    private CouponMapper couponMapper;
+
+    /**
+     * 清掉本测试自己造的活动。
+     *
+     * <p>不清的话测试之间会互相污染：同一个 H2 库里，前一条用例建的 RUNNING 满减
+     * 对后一条仍然生效 —— 「未开始/已结束的活动不生效」那条因此会拿到上一条的 800。
+     * 按 name 精确删而不是清空整张表：别的用例（以及 DevSeeder）可能也有活动，
+     * 清空会把它们一起带走，那种失败最难查。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void clearOwnCampaigns() {
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                campaignMapper.delete(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<MktCampaign>lambdaQuery()
+                        .likeRight(MktCampaign::getCampaignNo, TEST_CAMPAIGN_PREFIX)
+                        .or().eq(MktCampaign::getName, TEST_CAMPAIGN)));
+    }
+
+    private MockMvc mvc() {
+        return MockMvcBuilders.webAppContextSetup(context)
+                .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
+                .build();
+    }
+
+    @Test
+    @DisplayName("★ 满额自动减 —— 商家建的满减活动，下单时真的会减")
+    void fullCutApplies() throws Exception {
+        String token = login("13000140001");
+        // M0001 的商品：4980×2 = 9960，满 5000 减 800
+        fullCut("M0001", "满50减8", 5000L, 800L);
+        addToCart(token, "G0001", "SK0001", 2);
+
+        JsonNode data = preview(token, null);
+        assertThat(data.get("amount").get("discountMinor").asLong()).isEqualTo(800L);
+        assertThat(data.get("amount").get("payableMinor").asLong()).isEqualTo(9960L - 800L);
+        /*
+         * ★ **减的是什么，要说出来**（2026-09-20，TDD-C端优惠依据）。
+         *
+         * 线上抓到的样子：商品 ¥39.90、优惠 −¥10.00，而减这 10 块的是一个叫「abc」的
+         * 商家直减活动 —— 端上只有一个光秃秃的金额，买家分不出是活动还是券。
+         * 合计仍然由上面两条断言守着；这里守的是「合计能拆开」。
+         */
+        JsonNode lines = data.get("discountLines");
+        assertThat(lines).as("预览不给优惠依据 —— 买家看到的减免来历不明").isNotNull();
+        assertThat(lines.size()).isEqualTo(1);
+        assertThat(lines.get(0).get("kind").asString()).isEqualTo("ACTIVITY");
+        assertThat(lines.get(0).get("name").asString())
+                .as("只给金额不给名字，等于没说").isEqualTo("满50减8");
+        assertThat(lines.get(0).get("amountMinor").asLong()).isEqualTo(800L);
+    }
+
+    @Test
+    @DisplayName("不满门槛不减 —— 门槛判在后端，不信端上算的那份")
+    void belowThresholdNoDiscount() throws Exception {
+        String token = login("13000140002");
+        fullCut("M0001", "满200减30", 20000L, 3000L);
+        addToCart(token, "G0001", "SK0001", 1); // 4980 < 20000
+
+        assertThat(preview(token, null).get("amount").get("discountMinor").asLong()).isZero();
+    }
+
+    @Test
+    @DisplayName("同店多个满减只取最优的一个，不叠加 —— 叠加会让商家自己算不清成本")
+    void bestOneWinsNotStacked() throws Exception {
+        String token = login("13000140003");
+        fullCut("M0001", "满50减8", 5000L, 800L);
+        fullCut("M0001", "满50减5", 5000L, 500L);
+        addToCart(token, "G0001", "SK0001", 2);
+
+        // 两个都满足门槛，取 800 而不是 1300
+        assertThat(preview(token, null).get("amount").get("discountMinor").asLong()).isEqualTo(800L);
+    }
+
+    @Test
+    @DisplayName("未开始 / 已结束 / 未启用的活动不生效 —— 判的是下单那一刻")
+    void onlyRunningCampaignApplies() throws Exception {
+        String token = login("13000140004");
+        long now = System.currentTimeMillis();
+        // 已结束
+        campaign("M0001", MktCampaign.FULL_CUT, MktCampaign.RUNNING, 5000L, 800L,
+                now - Duration.ofDays(2).toMillis(), now - Duration.ofDays(1).toMillis());
+        // 状态是 PAUSED
+        campaign("M0001", MktCampaign.FULL_CUT, MktCampaign.PAUSED, 5000L, 700L,
+                now - 1000L, now + Duration.ofDays(1).toMillis());
+        addToCart(token, "G0001", "SK0001", 2);
+
+        assertThat(preview(token, null).get("amount").get("discountMinor").asLong()).isZero();
+    }
+
+    @Test
+    @DisplayName("★ 活动与券叠加：先满减、后券，券作用在满减之后的金额上")
+    void couponAppliesAfterCampaign() throws Exception {
+        String token = login("13000140005");
+        fullCut("M0001", "满50减8", 5000L, 800L);
+        String userCouponNo = receive(token, platformCoupon("满80减10", 1000L, 8000L));
+        addToCart(token, "G0001", "SK0001", 2); // 9960
+
+        JsonNode data = preview(token, userCouponNo);
+        /*
+         * 9960 -800(活动) = 9160，仍 ≥ 8000 门槛 → 再 -1000(券) = 8160。
+         * 顺序反过来（先券后活动）总额一样，但「券帮我省了多少」在用户那里对不上 ——
+         * 他看到的券减免应该是已有优惠之上的增量。
+         */
+        assertThat(data.get("amount").get("discountMinor").asLong()).isEqualTo(1800L);
+        assertThat(data.get("amount").get("payableMinor").asLong()).isEqualTo(8160L);
+    }
+
+    @Test
+    @DisplayName("★ 活动优惠恒记商家出资 —— 店铺活动平台不掏这个钱")
+    void campaignDiscountIsMerchantFunded() throws Exception {
+        String token = login("13000140006");
+        fullCut("M0001", "满50减8", 5000L, 800L);
+        addToCart(token, "G0001", "SK0001", 2);
+
+        String payOrderNo = createOrder(token, null, "campaign-funder");
+        // 出资方决定 M7 分账扣谁的钱；活动是商家自己建的，钱当然由商家出
+        assertThat(discountMerchantOf(payOrderNo)).isEqualTo(800L);
+        assertThat(discountPlatformOf(payOrderNo)).isZero();
+    }
+
+    // ---------------------------------------------------------------- 买赠
+
+    @Test
+    @DisplayName("★ 买 2 送 1：订单里多一条赠品行，价格 0，不参与计价")
+    void buyGiftAddsFreeLine() throws Exception {
+        String token = login("13000170001");
+        buyGift("M0001", 2, 1, "G0001");
+        addToCart(token, "G0001", "SK0001", 2);
+
+        String orderNo = createOrder(token, null, "buygift-1");
+        var items = itemsOf(orderNo);
+        assertThat(items).hasSize(2);
+
+        var paid = items.stream().filter(i -> !Boolean.TRUE.equals(i.getIsGift())).findFirst().orElseThrow();
+        var gift = items.stream().filter(i -> Boolean.TRUE.equals(i.getIsGift())).findFirst().orElseThrow();
+        assertThat(paid.getQty()).isEqualTo(2);
+        assertThat(gift.getQty()).isEqualTo(1);
+        // 赠品不参与计价：价格与金额都是 0，实付仍是 2 件的钱
+        assertThat(gift.getPrice()).isZero();
+        assertThat(gift.getAmount()).isZero();
+        assertThat(payAmountOf(orderNo)).isEqualTo(9960L);
+    }
+
+    @Test
+    @DisplayName("买 4 件送 2 件 —— 口径是「付 N 件的钱收到 N+M 件」，不是「每 N+M 件里 M 件免费」")
+    void giftScalesByWholeGroups() throws Exception {
+        String token = login("13000170002");
+        buyGift("M0001", 2, 1, "G0001");
+        addToCart(token, "G0001", "SK0001", 4);
+
+        String orderNo = createOrder(token, null, "buygift-2");
+        var gift = itemsOf(orderNo).stream()
+                .filter(i -> Boolean.TRUE.equals(i.getIsGift())).findFirst().orElseThrow();
+        // 另一种口径会算成 1 件（4 件里凑出 1 组 3 件）—— 与商家说的「买二送一」不符
+        assertThat(gift.getQty()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("不满 N 件不送 —— 也不会产生一条 qty=0 的空赠品行")
+    void belowThresholdNoGift() throws Exception {
+        String token = login("13000170003");
+        buyGift("M0001", 3, 1, "G0001");
+        addToCart(token, "G0001", "SK0001", 2);
+
+        String orderNo = createOrder(token, null, "buygift-3");
+        assertThat(itemsOf(orderNo)).hasSize(1);
+    }
+
+    // ---------------------------------------------------------------- 限时特价
+
+    @Test
+    @DisplayName("★ 限时特价：商品页与下单价一起变，不是只改一处")
+    void flashPriceAppliesToBothDisplayAndOrder() throws Exception {
+        String token = login("13000160001");
+        // G0002 是**单规格**（SK0003，¥69.80）—— 多规格商品不套用商品级特价，见下方用例
+        flash("M0001", 3000L, "G0002");
+        addToCart(token, "G0002", "SK0003", 2);
+
+        // ① 下单价（钱那条路）
+        assertThat(preview(token, null).get("amount").get("goodsMinor").asLong()).isEqualTo(6000L);
+
+        // ② 商品详情页（展示那条路）—— 只改一处的话，用户会看到「页面 69.80、结账 30.00」
+        JsonNode g = goodsDetail(token, "G0002");
+        assertThat(g.get("price").asLong()).isEqualTo(3000L);
+        // 原价挪到划线价：只降价不给划线价，用户感知不到优惠也判断不了值不值
+        assertThat(g.get("originPrice").asLong()).isEqualTo(6980L);
+    }
+
+    @Test
+    @DisplayName("★ 加购时是特价、下单时已结束 → 按原价算（以下单那一刻为准）")
+    void expiredFlashFallsBackToListPrice() throws Exception {
+        String token = login("13000160002");
+        long now = System.currentTimeMillis();
+        // 已结束的特价活动
+        flashWindow("M0001", 3000L, "G0002",
+                now - Duration.ofDays(2).toMillis(), now - Duration.ofDays(1).toMillis());
+        addToCart(token, "G0002", "SK0003", 2);
+
+        // 不是 6000 —— 活动已经结束，端上就算还缓存着特价也不作数
+        assertThat(preview(token, null).get("amount").get("goodsMinor").asLong()).isEqualTo(13960L);
+    }
+
+    @Test
+    @DisplayName("同一商品命中多个特价取最低价 —— 对用户有利的一侧")
+    void lowestFlashPriceWins() throws Exception {
+        String token = login("13000160003");
+        flash("M0001", 3000L, "G0002");
+        flash("M0001", 2500L, "G0002");
+        addToCart(token, "G0002", "SK0003", 1);
+
+        assertThat(preview(token, null).get("amount").get("goodsMinor").asLong()).isEqualTo(2500L);
+    }
+
+    @Test
+    @DisplayName("特价与满减叠加：满减按**特价后**的金额判门槛")
+    void flashThenFullCut() throws Exception {
+        String token = login("13000160004");
+        flash("M0001", 3000L, "G0002");
+        fullCut("M0001", "满50减8", 5000L, 800L);
+        addToCart(token, "G0002", "SK0003", 2); // 特价后 6000 ≥ 5000
+
+        JsonNode a = preview(token, null).get("amount");
+        assertThat(a.get("goodsMinor").asLong()).isEqualTo(6000L);
+        assertThat(a.get("discountMinor").asLong()).isEqualTo(800L);
+        assertThat(a.get("payableMinor").asLong()).isEqualTo(5200L);
+    }
+
+    @Test
+    @DisplayName("★ 多规格商品不套用商品级特价 —— 否则 20 斤装会被拉到 10 斤装的价")
+    void multiSkuGoodsIsNotDiscounted() throws Exception {
+        String token = login("13000160005");
+        flash("M0001", 3000L, "G0001"); // G0001 有 10 斤装与 20 斤装两个规格
+        addToCart(token, "G0001", "SK0001", 1);
+
+        // 不生效：宁可「特价没生效」也不能「按错的价卖」——
+        // 前者商家会来问，后者没人会发现
+        assertThat(preview(token, null).get("amount").get("goodsMinor").asLong()).isEqualTo(4980L);
+        assertThat(goodsDetail(token, "G0001").get("price").asLong()).isEqualTo(4980L);
+    }
+
+    @Test
+    @DisplayName("★ 建多规格商品的限时特价被拒，且给的是**专用错误码** —— 通用的「参数有误」会让商家反复改价格")
+    void creatingFlashOnMultiSkuGoodsIsRejected() throws Exception {
+        String bizToken = merchant("12600160901", "特价·多规格");
+        long now = System.currentTimeMillis();
+        mvc().perform(post("/biz/campaign").header("Authorization", "Bearer " + bizToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"FLASH\",\"name\":\"多规格特价\",\"startAt\":" + (now - 1000)
+                                + ",\"endAt\":" + (now + Duration.ofDays(1).toMillis())
+                                + ",\"flashPriceMinor\":3000,\"goodsNos\":[\"G0001\"]}"))
+                // 70004 = FLASH_MULTI_SKU_UNSUPPORTED。此前是通用的 10400「请求参数有误」，
+                // 商家看不出问题在「这件商品有两个规格，而活动价只有一个」
+                .andExpect(jsonPath("$.code").value(70004));
+    }
+
+    // ---------------------------------------------------------------- 店铺券桥接
+
+    @Test
+    @DisplayName("★ 商家建的店铺券活动 → 领券中心真的能领到")
+    void merchantCouponCampaignBecomesReceivableCoupon() throws Exception {
+        String bizToken = merchant("12600150901", "券桥接·可领");
+        String campaignNo = saveCouponCampaign(bizToken, "店庆券 满50减5", 5000L, 500L);
+        toggleCampaign(bizToken, campaignNo, true);
+
+        String token = login("13000150001");
+        JsonNode center = centerCoupons(token);
+        JsonNode mine = findCoupon(center, "店庆券 满50减5");
+        assertThat(mine).as("建了店铺券活动，领券中心却看不到 —— 这正是此前断掉的那半段").isNotNull();
+
+        // 领得到（此前这一步无从谈起：根本没有券）
+        String userCouponNo = receive(token, mine.get("couponNo").asString());
+        assertThat(userCouponNo).isNotBlank();
+
+        /*
+         * 顺带锁住一条**正确但容易被当成 bug** 的行为：商家券只作用于本店。
+         * 这条断言最初是写错的 —— 我拿新商家的券去抵扣 M0001 的商品，
+         * 期望它减 500，结果被拒（40002）。被拒才是对的：
+         * 商家自己出资的券去抵别家的货，等于让 A 商家替 B 商家掏钱。
+         */
+        addToCart(token, "G0001", "SK0001", 2); // G0001 属于 M0001，不是这张券的店
+        mvc().perform(post("/mp/order/preview").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\",\"couponNo\":\""
+                                + userCouponNo + "\"}"))
+                .andExpect(jsonPath("$.code").value(40002));
+    }
+
+    @Test
+    @DisplayName("重复保存同一个活动只对应一张券 —— 不能存一次多发一张")
+    void savingTwiceDoesNotDuplicateCoupon() throws Exception {
+        String bizToken = merchant("12600150902", "券桥接·不重复");
+        String campaignNo = saveCouponCampaign(bizToken, "只发一张", 5000L, 300L);
+        toggleCampaign(bizToken, campaignNo, true);
+        // 改个名再存一次
+        saveCouponCampaign(bizToken, "只发一张", 5000L, 300L, campaignNo);
+
+        String token = login("13000150002");
+        long n = 0;
+        for (JsonNode c : centerCoupons(token)) {
+            if ("只发一张".equals(c.get("title").asString())) n++;
+        }
+        assertThat(n).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("暂停活动，券停止发放 —— 但已领的不受影响")
+    void pausingCampaignStopsIssuing() throws Exception {
+        String bizToken = merchant("12600150903", "券桥接·暂停");
+        String campaignNo = saveCouponCampaign(bizToken, "会被暂停的券", 5000L, 400L);
+        toggleCampaign(bizToken, campaignNo, true);
+
+        String token = login("13000150003");
+        String couponNo = findCoupon(centerCoupons(token), "会被暂停的券").get("couponNo").asString();
+        String userCouponNo = receive(token, couponNo);
+
+        toggleCampaign(bizToken, campaignNo, false);
+
+        // 领券中心不再出现
+        String other = login("13000150004");
+        assertThat(findCoupon(centerCoupons(other), "会被暂停的券")).isNull();
+        // 但已领的那张还在用户券包里 —— 那是他已经拿到手的东西，停发不等于收回
+        assertThat(userCouponNo).isNotBlank();
+        String bag = mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/mp/coupon/mine").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(bag).contains(userCouponNo);
+    }
+
+    // ---------------------------------------------------------------- 装配
+
+    /**
+     * 建一个满减活动。
+     *
+     * <p><b>name 真的会落到活动上</b>：此前这个参数被丢掉了（活动名恒为「测试活动」），
+     * 于是调用处写着「满50减8」，库里却不是 —— 读用例的人会以为名字有用。
+     * 2026-09-20 优惠依据要把名字发给买家，这才露出来。
+     */
+    private void fullCut(String entityNo, String name, long threshold, long off) {
+        long now = System.currentTimeMillis();
+        campaign(entityNo, MktCampaign.FULL_CUT, MktCampaign.RUNNING, threshold, off,
+                now - 1000L, now + Duration.ofDays(7).toMillis(), name);
+    }
+
+    private void buyGift(String entityNo, int buyN, int giftM, String goodsNo) {
+        long now = System.currentTimeMillis();
+        MktCampaign c = new MktCampaign();
+        c.setCampaignNo(TEST_CAMPAIGN_PREFIX + System.nanoTime());
+        c.setEntityNo(entityNo);
+        c.setType(MktCampaign.BUY_GIFT);
+        c.setName(TEST_CAMPAIGN);
+        c.setStatus(MktCampaign.RUNNING);
+        c.setBuyN(buyN);
+        c.setGiftM(giftM);
+        c.setGoodsNos("[\"" + goodsNo + "\"]");
+        c.setStartAt(now - 1000L);
+        c.setEndAt(now + Duration.ofDays(7).toMillis());
+        campaignMapper.insert(c);
+    }
+
+    @Autowired
+    private ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper itemMapper;
+
+    @Autowired
+    private ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+
+    private java.util.List<ai.neargo.shop.trade.entity.OrdItem> itemsOf(String orderNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                itemMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.trade.entity.OrdItem>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdItem::getOrderNo, orderNo)));
+    }
+
+    private long payAmountOf(String orderNo) {
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                orderMapper.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, orderNo))).getPayAmount();
+    }
+
+    private void flash(String entityNo, long price, String goodsNo) {
+        long now = System.currentTimeMillis();
+        flashWindow(entityNo, price, goodsNo, now - 1000L, now + Duration.ofDays(7).toMillis());
+    }
+
+    private void flashWindow(String entityNo, long price, String goodsNo, long startAt, long endAt) {
+        MktCampaign c = new MktCampaign();
+        c.setCampaignNo(TEST_CAMPAIGN_PREFIX + System.nanoTime());
+        c.setEntityNo(entityNo);
+        c.setType(MktCampaign.FLASH);
+        c.setName(TEST_CAMPAIGN);
+        c.setStatus(MktCampaign.RUNNING);
+        c.setFlashPriceMinor(price);
+        c.setGoodsNos("[\"" + goodsNo + "\"]");
+        c.setStartAt(startAt);
+        c.setEndAt(endAt);
+        campaignMapper.insert(c);
+    }
+
+    private JsonNode goodsDetail(String token, String goodsNo) throws Exception {
+        String body = mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/mp/goods/" + goodsNo).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data");
+    }
+
+    private void campaign(String entityNo, String type, String status,
+                          long threshold, long off, long startAt, long endAt) {
+        campaign(entityNo, type, status, threshold, off, startAt, endAt, TEST_CAMPAIGN);
+    }
+
+    private void campaign(String entityNo, String type, String status,
+                          long threshold, long off, long startAt, long endAt, String name) {
+        MktCampaign c = new MktCampaign();
+        c.setCampaignNo(TEST_CAMPAIGN_PREFIX + System.nanoTime());
+        c.setEntityNo(entityNo);
+        c.setType(type);
+        c.setName(name == null || name.isBlank() ? TEST_CAMPAIGN : name);
+        c.setStatus(status);
+        c.setThresholdMinor(threshold);
+        c.setDiscountMinor(off);
+        c.setStartAt(startAt);
+        c.setEndAt(endAt);
+        campaignMapper.insert(c);
+    }
+
+    private String platformCoupon(String title, long face, long threshold) {
+        MktCoupon c = new MktCoupon();
+        c.setCouponNo("CU" + System.nanoTime());
+        c.setTitle(title);
+        c.setType(MktCoupon.FULL_CUT);
+        c.setFaceMinor(face);
+        c.setThresholdMinor(threshold);
+        c.setFunder(MktCoupon.BY_PLATFORM);
+        c.setPerUserLimit(1);
+        c.setStartAt(System.currentTimeMillis() - 1000L);
+        c.setEndAt(System.currentTimeMillis() + Duration.ofDays(7).toMillis());
+        c.setStatus("ACTIVE");
+        couponMapper.insert(c);
+        return c.getCouponNo();
+    }
+
+    private String receive(String token, String couponNo) throws Exception {
+        String body = mvc().perform(post("/mp/coupon/" + couponNo + "/receive")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("userCouponNo").asString();
+    }
+
+    private void addToCart(String token, String goodsNo, String skuNo, int qty) throws Exception {
+        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo
+                                + "\",\"qty\":" + qty + "}"))
+                .andExpect(status().isOk());
+    }
+
+    private JsonNode preview(String token, String userCouponNo) throws Exception {
+        String coupon = userCouponNo == null ? "" : ",\"couponNo\":\"" + userCouponNo + "\"";
+        String body = mvc().perform(post("/mp/order/preview").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"" + coupon + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data");
+    }
+
+    private String createOrder(String token, String userCouponNo, String idemKey) throws Exception {
+        String coupon = userCouponNo == null ? "" : ",\"couponNo\":\"" + userCouponNo + "\"";
+        String body = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", idemKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"" + coupon + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("orderNo").asString();
+    }
+
+    private long discountMerchantOf(String orderNo) throws Exception {
+        return subOrderField(orderNo, "discountMerchant");
+    }
+
+    private long discountPlatformOf(String orderNo) throws Exception {
+        return subOrderField(orderNo, "discountPlatform");
+    }
+
+    @Autowired
+    private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
+
+    private long subOrderField(String orderNo, String field) {
+        var subs = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                        .<ai.neargo.shop.trade.entity.OrdSubOrder>lambdaQuery()
+                        .eq(ai.neargo.shop.trade.entity.OrdSubOrder::getOrderNo, orderNo)));
+        return subs.stream()
+                .mapToLong(s -> "discountMerchant".equals(field)
+                        ? nz(s.getDiscountMerchant()) : nz(s.getDiscountPlatform()))
+                .sum();
+    }
+
+    private static long nz(Long v) {
+        return v == null ? 0L : v;
+    }
+
+    /** 商家会话：走完整入驻 + 运营审核，与 BizDashboardAndReviewFlowTest 同一套 */
+    private String merchant(String phone, String name) throws Exception {
+        String user = login(phone);
+        String body = mvc().perform(post("/mp/merchant/apply").header("Authorization", "Bearer " + user)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"" + name + "\",\"subject\":\"INDIVIDUAL_BIZ\","
+                                + "\"contactName\":\"张三\",\"contactPhone\":\"13900000000\","
+                                + "\"category\":\"食品\",\"serviceScope\":\"COMMUNITY\","
+                                + "\"communityNos\":[\"CM001\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        String applyNo = json.readTree(body).get("data").get("applyNo").asString();
+
+        String bd = opsLogin();
+        mvc().perform(post("/ops/merchant/apply/" + applyNo + "/audit")
+                        .header("Authorization", "Bearer " + bd)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+                .andExpect(jsonPath("$.code").value(0));
+        // A7：/biz/** 只认 btk_，这里必须换 B 端令牌
+        return TestLogin.merchantOwner(mvc(), json, otpStore, phone);
+    }
+
+    private String opsLogin() throws Exception {
+        String body = mvc().perform(post("/ops/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"bd\",\"password\":\"bd123\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("token").asString();
+    }
+
+    private String saveCouponCampaign(String token, String name, long threshold, long off)
+            throws Exception {
+        return saveCouponCampaign(token, name, threshold, off, null);
+    }
+
+    private String saveCouponCampaign(String token, String name, long threshold, long off,
+                                      String campaignNo) throws Exception {
+        long now = System.currentTimeMillis();
+        String no = campaignNo == null ? "" : ",\"campaignNo\":\"" + campaignNo + "\"";
+        String body = mvc().perform(post("/biz/campaign").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"COUPON\",\"name\":\"" + name + "\",\"startAt\":"
+                                + (now - 1000L) + ",\"endAt\":" + (now + Duration.ofDays(7).toMillis())
+                                + ",\"thresholdMinor\":" + threshold + ",\"discountMinor\":" + off
+                                + ",\"goodsNos\":[]" + no + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data").get("campaignNo").asString();
+    }
+
+    private void toggleCampaign(String token, String campaignNo, boolean running) throws Exception {
+        mvc().perform(post("/biz/campaign/" + campaignNo + "/toggle")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"running\":" + running + "}"))
+                .andExpect(status().isOk());
+    }
+
+    private JsonNode centerCoupons(String token) throws Exception {
+        String body = mvc().perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/mp/coupon").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(body).get("data");
+    }
+
+    private JsonNode findCoupon(JsonNode list, String title) {
+        for (JsonNode c : list) {
+            if (title.equals(c.get("title").asString())) return c;
+        }
+        return null;
+    }
+
+    private String login(String phone) throws Exception {
+        return TestLogin.consumer(mvc(), json, otpStore, phone);
+    }
+}

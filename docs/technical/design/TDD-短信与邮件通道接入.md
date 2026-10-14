@@ -1,0 +1,414 @@
+# TDD-短信与邮件通道接入
+
+状态：**已实现**（除 §8 T6 的「存哈希」一半，理由见 §9）
+关联缺陷：[安全整改方案-认证与账号体系](安全整改方案-认证与账号体系.md) §二 **缺陷 B：OTP 零限流** —— **本批修完**（四道闸齐）
+关联架构：[TDD-backend](TDD-backend.md) §4（`shop-channel` 只装适配器，不装业务判断）
+创建日期：2026-08-13
+
+---
+
+## 1. 需求摘要
+
+接入真实短信（阿里云 dysmsapi）与邮件（Office365 SMTP），替换当前的日志占位。
+
+**现状**：
+
+| | 现状 | 消费方 |
+|---|---|---|
+| 短信 | ❌ `AuthServiceImpl.sendOtp()` **只打日志**：`log.info("[DEV-ONLY] otp for {} = {}")` | `/mp/user/otp/send` · `/biz/auth/otp/send` · 店员登录 |
+| 邮件 | ❌ **完全不存在**，无接口无实现无调用方 | **运营端密码交付**（§3.4，2026-08-13 确认） |
+| 推送 | ❌ 不存在 | 无（本次不做，见 §6） |
+
+依赖也都还没引：全仓 `pom.xml` 无 mail、无 aliyun SDK。
+
+---
+
+## 2. ⚠️ 先说阻塞：接真短信之前必须先修限流
+
+**这不是洁癖，是三件具体的事同时成立**：
+
+1. `sendOtp` **零限流**——`OtpStore` 只有 `save/verifyAndConsume/peek`，没有任何计数
+2. 接上真通道后，**每一次调用都是钱**。今天打日志不花钱，所以这个洞没有代价
+3. 端点是**公网未鉴权**的（发码必须在登录前）
+
+合起来：**任何人循环调 `/mp/user/otp/send` 就能烧平台的短信费**，
+且 6 位码无失败次数限制 → 可枚举（安全文档原话：「没有失败计数就等于没有验证码」）。
+
+安全方案 §2.2 已经设计好四道闸，本方案**只做其中三道**（发码侧），验码侧那道
+（④ 连续失败锁定）属于缺陷 B 本身，建议同批但可独立发布：
+
+| 闸 | 限什么 | 阈值 | 本批 |
+|---|---|---|---|
+| ① 发码间隔 | 同手机号 | 60 秒 | ✅ 必做 |
+| ② 发码总量 | 同手机号 / 天 | 10 次 | ✅ 必做 |
+| ③ 发码来源 | 同 IP / 小时 | 20 次 | ✅ 必做 |
+| ④ 验码失败锁定 | 同手机号连续 5 次 → 锁 15 分钟 | | ⚠️ 缺陷 B 本体，建议同批 |
+
+**若限流不同批做，短信通道的 `enabled` 必须保持 `false`。** 配置可以先落地、
+密钥可以先注入，但不能打开——打开就是给一个公网端点接上计费器。
+
+---
+
+## 3. 方案设计
+
+### 3.1 分层：Port 在 base，实现在 channel（照抄支付通道的既有口径）
+
+```
+shop-base/spi/notify/
+ ├─ SmsPort          send(phone, template, params) → 结果
+ └─ MailPort         send(to, subject, body)
+
+shop-channel/notify/
+ ├─ AliSmsGateway     实现 SmsPort（dysmsapi）
+ ├─ SmtpMailGateway   实现 MailPort（JavaMailSender）
+ ├─ StubSmsGateway    只打日志，开发/测试用
+ └─ StubMailGateway   同上
+```
+
+**为什么 Port 落 `shop-base` 而不是各域各写一个**：发码的消费方有三处
+（C 端登录、B 端登录、店员登录），分属 user 与 merchant 两个域。
+落 base 与 `OtpStore` 同层——那个类的注释已经写明了同样的理由。
+
+**为什么不复用 `ChannelClient`**：它是为支付的双向签名（微信 APIv3 证书 / 支付宝 RSA2）
+抽的，短信只需单向 AK/SK 签名，套进去要给它加一个用不到的分支。
+
+### 3.2 选实现：`@ConditionalOnProperty` + Stub 兜底
+
+与支付通道同一套口径（`shop.pay.stub`）：
+
+```yaml
+shop:
+  sms:
+    stub: ${SHOP_SMS_STUB:true}        # 默认 true —— 默认发真短信 = 默认花钱
+    ali:
+      enabled: ${ALI_SMS_ENABLED:false}
+      sign: ${ALI_SMS_SIGN:数智邻购}
+      endpoint: ${ALI_SMS_ENDPOINT:dysmsapi.aliyuncs.com}
+      access-key-id: ${ALI_SMS_AK:}
+      access-key-secret: ${ALI_SMS_SK:}
+      templates:                        # ⚠️ 见 §7-①
+        otp: ${ALI_SMS_TPL_OTP:}
+  mail:
+    stub: ${SHOP_MAIL_STUB:true}
+    enabled: ${MAIL_ENABLED:false}
+    host: ${MAIL_HOST:smtp.office365.com}
+    port: ${MAIL_PORT:587}
+    starttls: true
+    protocols: TLSv1.2
+    from: ${MAIL_FROM:system@neargo.ai}
+    username: ${MAIL_USERNAME:platform@neargo.ai}
+    password: ${MAIL_PASSWORD:}         # ⚠️ 见 §7-②
+```
+
+**密钥一律走环境变量**，不写进 yml、不进代码库——与 `shop.pay` 的既有规矩一致。
+`sign`/`endpoint`/`host`/`from`/`username` 是**非密**配置，可以留默认值；
+`accessKeySecret` 与邮箱密码**没有默认值**，不注入就起不来（比静默降级安全）。
+
+**`stub` 默认 `true`**：与支付相反（支付 stub 默认 false，因为「假装支付成功」是资金事故）。
+短信反过来——默认发真短信意味着**本地跑一次测试就在花钱**，且会真的骚扰到测试手机号。
+
+### 3.3 顺带修安全方案 §2.4 点名的两处
+
+| 问题 | 现状 | 改法 |
+|---|---|---|
+| OTP 明文入日志 | `log.info("[DEV-ONLY] otp for {} = {}")` | 降 `debug` + 仅 `dev` profile |
+| OTP 明文存储 | `Entry(String code, …)` | 存 `hash(code+phone)`，验时比哈希 |
+
+`peek()` **保留不动**——它只在测试用，且比给生产开「万能验证码」后门正确得多
+（安全文档原话）。
+
+### 3.4 邮件的消费方：运营端密码交付（2026-08-13 确认）
+
+**骨架已经在了，不用新建任何字段**：
+
+| 现成的 | 位置 |
+|---|---|
+| 运营账号的登录名**强制是邮箱** | `OpsServiceImpl.createStaff` 的 `EMAIL` 正则校验 |
+| 一次性初始密码已生成 | `randomPassword()` |
+| 首登强制改密的闸 | `SysOpsStaff.mustChangePassword` ＋ `changeOwnPassword` |
+| 审计里不写密码 | `audit("STAFF_CREATE", …)` 只记用户名与角色 |
+
+**今天的问题是交付方式**：`createStaff` 把明文放在 `CreatedStaffVO.initialPassword`
+**返回给调用方**，ops-web 弹一个抽屉把它显示出来（`app/iam/page.tsx:848`），
+管理员抄下来自己转告本人。
+
+于是这串明文经过：后端响应体 → 网络 → 浏览器内存 → 屏幕。
+它会进浏览器的网络面板、会被截图、会被复制进聊天工具，而**管理员本人不该知道
+另一个人的密码**——即使有 `mustChangePassword`，那也只保证「本人首登后会变」，
+不保证「管理员在这之前没登过」。
+
+#### 场景 A：新建账号 → 邮件发本人，接口不再返回明文
+
+```
+createStaff → 生成一次性密码 → MailPort.send(username, …) → 落审计「已发至 xxx」
+                                    ↓
+            CreatedStaffVO.initialPassword 改为 **不返回**
+```
+
+**收益是明文的传播面从「后端→浏览器→人」缩到「后端→邮件」**，
+管理员界面上只显示「初始密码已发送至 zhang@neargo.ai」。
+
+⚠️ 这是**破坏性变更**：`CreatedStaffVO` 少一个字段，ops-web 的抽屉要改。
+两端同批改，且要留降级——见 §3.5。
+
+#### 场景 B：忘记密码 —— 今天**根本没有这条路径**
+
+`OpsService` 只有 `login` 与 `changeOwnPassword`，**没有任何重置入口**
+（管理员侧没有、员工侧没有，ops-web 登录页也搜不到「忘记密码」）。
+今天员工忘了密码只能找人改库。
+
+邮件通道一旦有了，这条才可能做。建议本批一起：
+
+```
+POST /ops/auth/forgot   { username }   → 无论账号存在与否都返回成功（不泄露账号是否存在）
+                                        → 存在则发一次性重置链接（15 分钟、一次性）
+POST /ops/auth/reset    { token, newPassword }
+```
+
+### 3.5 破坏性变更的降级开关
+
+`shop.ops.password-delivery: mail | response`（默认 `mail`）
+
+- `mail`：接口不返回明文，发邮件
+- `response`：维持今天的行为——**邮件不通时的逃生口**
+
+理由：邮件发不出去时（密码错、MFA、SMTP 被封），如果没有逃生口，
+**新建的账号就永远没人能登录**，而这时管理员连一个能用的运营账号都可能没有。
+开关默认 `mail`，但保留 `response` 让部署方能自救。
+
+---
+
+## 3.6 运营端：发送历史 + 页面测试发送 + 图形验证码（2026-08-13 追加）
+
+### 3.6.1 发送历史：`sys_notify_log`
+
+今天短信/邮件发出去之后**什么都不留**——发没发、发给谁、通道怎么答的，
+只能翻服务器日志，而日志会轮转、会被采集走。
+出问题时最常见的问句是「他到底收没收到」，没有这张表就答不了。
+
+| 列 | 说明 |
+|---|---|
+| `channel` | `SMS` / `MAIL` |
+| `target` | 手机号或邮箱。**存掩码**（`138****8888`）——见 §3.6.4 |
+| `biz_type` | `OTP` / `OPS_INIT_PASSWORD` / `OPS_RESET_PASSWORD` / `TEST` |
+| `template_code` | 阿里云模板号；邮件存主题 |
+| `status` | `SENT` / `FAILED` |
+| `error` | 通道返回的错误码与消息（失败时） |
+| `provider_msg_id` | 阿里云 `BizId` / 邮件 `Message-ID`。**排查时找通道对账要靠它** |
+| `operator_no` | 谁触发的。自动发出的（OTP）留空 |
+| `created_at` | |
+
+**落点：装饰器，不写进各实现。**
+
+```
+NotifyLogging{Sms,Mail}Port  ——  @Primary 包住真实现/桩
+        ↓ 委托
+AliSmsGateway / SmtpMailGateway / Stub*
+```
+
+写进每个实现里的话，四个实现要各写一遍，而**漏写的那个恰恰是最需要记录的**
+（新接的通道）。装饰器还能保证「失败也记一条」——实现抛异常时它先落库再抛。
+
+### 3.6.2 运营端页面
+
+| 端点 | 权限码 | 说明 |
+|---|---|---|
+| `GET /ops/notify-logs` | `message:template:read` | 列表：按渠道/状态/时间筛 |
+| `POST /ops/notify-logs/test-send` | `message:template:update` | 测试发送 |
+| `GET /ops/captcha` | 无（登录即可） | 图形验证码，返回 `{captchaId, imageBase64}` |
+
+页面挂在 `/system` 的消息模板一侧（同一批人维护），不新增顶层菜单。
+
+### 3.6.3 ★ 图形验证码：测试发送必须过
+
+**这条是你点名的，理由完全成立**：测试发送是一个**能指定任意收件人**的接口。
+运营账号一旦泄漏（或内部人误用），它就是一台群发机——而且发的是
+带平台签名的正规短信，比垃圾短信更能骗到人。
+
+三道一起用，缺一不可：
+
+| 闸 | 防什么 |
+|---|---|
+| 权限码 `message:template:update` | 防越权 |
+| **图形验证码** | **防脚本化滥用**——账号泄漏后攻击者拿到的是 token，而验证码要人眼 |
+| 复用 §2 的限流（按操作人 + 按 IP） | 防「一个人手工点很多次」 |
+
+验证码实现：服务端生成 4 位字符 + 干扰线，存 `captchaId → code`（2 分钟 TTL，
+**一次性消费**），图片走 base64 返回。不引第三方库——`java.awt` 够画。
+
+> **为什么不用短信验证码来保护测试发送**：那是循环依赖——
+> 保护发短信的手段本身要先发一条短信。
+
+### 3.6.4 目标地址存掩码
+
+`sys_notify_log.target` 存 `138****8888` / `r***n@neargo.ai`，不存明文。
+
+这张表运营都看得到，而收件人是用户的手机号与邮箱。
+排查具体一条时靠 `provider_msg_id` 去通道后台查，**不需要我方明文留存**。
+仓库已有 `Masks` 工具类（`shop-base/common`），直接复用。
+
+---
+
+## 4. 依赖
+
+| 依赖 | 用途 | 说明 |
+|---|---|---|
+| `spring-boot-starter-mail` | JavaMailSender | 标准件，Boot 4 自带自动配置 |
+| `com.aliyun:dysmsapi20170525` | 阿里云短信 | 官方 SDK。**不手写签名**——AK/SK 签名写错的表现是「一直返回签名错误」，排查成本远高于一个依赖 |
+
+两个都只进 `shop-channel`，不进 `shop-base`（域模块不该传递依赖到通道 SDK）。
+
+---
+
+## 5. 测试策略
+
+| # | 场景 | 层 |
+|---|---|---|
+| 1 | Stub 模式下 `sendOtp` 不调真通道，`peek()` 仍拿得到码（现有测试链路不破） | 集成 |
+| 2 | ★★★ **同手机号 60 秒内第二次发码被拒**（闸①） | 集成 |
+| 3 | ★★★ 同手机号当日第 11 次被拒（闸②）· 同 IP 每小时第 21 次被拒（闸③） | 集成 |
+| 4 | `enabled=false` 时即使配了密钥也不发真短信 | 单元 |
+| 5 | 缺 `access-key-secret` 时启动失败，**不静默降级到 stub** | 单元 |
+| 6 | OTP 不再以 info 级别打进日志；`OtpStore` 里存的不是明文 | 单元 |
+| 7 | 邮件：SMTP 连接失败时抛可识别异常，不吞 | 单元 |
+| 8 | ★★★ `password-delivery=mail` 时 `createStaff` 的响应体里**没有明文密码** | 集成 |
+| 9 | ★★ 邮件发送失败时 `createStaff` **整体失败并回滚**——不能留下一个「已建号但没人知道密码」的账号 | 集成 |
+| 10 | ★★★ `/ops/auth/forgot` 对**不存在的账号也返回成功**（不泄露账号是否存在） | 集成 |
+| 11 | 重置令牌一次性、15 分钟过期；用过的令牌再用返回失败 | 集成 |
+
+场景 2、3 是能不能打开短信开关的凭据；**场景 8 是这次邮件改造的全部意义**
+（明文不再经过浏览器）；场景 9 防的是一个比原问题更糟的状态。
+
+---
+
+## 6. 不做的
+
+- **推送（个推 appKey/masterSecret）**：配置给了，但全仓无推送代码、无消费方，
+  且它与站内信（`msg_message`）的关系没有定过。单独立项。
+- 邮件的业务场景（见 §3.4）
+- 短信模板管理界面（`msg_template` 表是站内信模板，与阿里云短信模板不是一回事）
+
+---
+
+## 7. ⚠️ 阻塞：两处配置信息缺失
+
+| # | 缺什么 | 为什么必须有 |
+|---|---|---|
+| ① | **阿里云短信模板 CODE**（形如 `SMS_1234567`） | 阿里云发短信要 `signName` ＋ `templateCode` ＋ `templateParam` 三件套。给的配置只有 `sign`，**没有模板 CODE 就发不出任何一条**。且验证码模板必须在阿里云后台报备通过 |
+| ② | **邮箱密码**（配置里 `password:` 为空） | Office365 SMTP 需要。且若账号开了 MFA，**普通密码不可用**，要「应用密码」或改走 OAuth2 |
+
+两项都不需要现在给我——**密钥不要贴在对话里**，注入到部署环境的环境变量即可
+（`ALI_SMS_TPL_OTP` / `MAIL_PASSWORD`）。
+但**模板 CODE 是否已在阿里云报备**这件事需要确认，它决定这批能不能真的发出短信。
+
+---
+
+## 8. 实现任务
+
+- [x] T1 `RateLimiter` ＋ `InMemoryRateLimiter`（落 `shop-base/common/ratelimit`，按安全方案 §2.3）
+- [x] T2 三道发码闸接进 `AuthServiceImpl.sendOtp` ＋ 集成测试（场景 2、3）
+- [x] T3 `SmsPort` / `MailPort` ＋ 两个 Stub 实现，`sendOtp` 改调 Port（场景 1）
+- [x] T4 `AliSmsGateway`（**不引 SDK**，JDK 自写签名 —— 见 §9）＋ 缺密钥启动失败（场景 4、5）
+- [x] T5 `SmtpMailGateway`（JavaMailSender）＋ 配置 ＋ 自检（场景 7）
+- [x] T6a OTP 日志降级（明文不再进 info）
+- [x] T6b OTP 存哈希 —— **决定不做**（2026-08-13），理由见 §9.4。做过一次又整体回退
+- [x] **T7 场景 A：`createStaff` 改为邮件交付**，响应体不再含明文
+      ＋ `password-delivery` 降级开关 ＋ ops-web 抽屉改文案（场景 8、9）
+- [x] **T8 场景 B：`/ops/auth/forgot` ＋ `/ops/auth/reset`**（今天完全没有这条路径）
+      ＋ ops-web 登录页加「忘记密码」（场景 10、11）
+- [x] T9 全量回归；文档记录「打开开关的前置条件」
+- [x] T10 闸④验码失败锁定 —— **做了**，安全方案称它是四条里最重要的一条
+
+**§3.6 追加的四项**：
+
+- [x] T11 `sys_notify_log` 表 + 迁移；`NotifyLogging*Port` 装饰器（失败也记）
+- [x] T12 `GET /ops/notify-logs` 列表端点 + ops-web 页面
+- [x] T13 `GET /ops/captcha` 图形验证码（`java.awt`，2 分钟 TTL，一次性消费）
+- [x] T14 `POST /ops/notify-logs/test-send`：权限码 + 图形验证码 + 限流三道齐
+
+> ⚠️ T14 的三道闸**要一起上**。只上权限码的话，账号泄漏就等于拿到一台
+> 能指定任意收件人的群发机，而且发的是带平台签名的正规短信。
+
+> T7 与 T8 都依赖 T5（真实 SMTP）。**在邮箱密码拿到之前，它们可以先用 Stub 做完并测完**
+> ——Stub 会把「发给谁、发了什么」记下来，场景 8–11 全都验得了。
+
+---
+
+确认记录：待确认
+
+
+---
+
+## 9. 实施记录（2026-08-13）
+
+**结果**：四道闸齐、两条真通道实测发通、运营端密码改走邮件、忘记密码从无到有、
+发送记录与测试发送落地。T6b（存哈希）做过一次后按产品决定回退，见 §9.4。
+
+### 9.1 ⚠️ 打开开关的前置条件（上线前逐条核对）
+
+| 开关 | 打开前必须成立 |
+|---|---|
+| `SHOP_SMS_STUB=false` | ① `SHOP_OTP_RATE_LIMIT` 为 `true`（默认就是）——它挡的是「谁都能循环调着烧短信费」；② `ALI_SMS_AK/SK/TPL_OTP` 三项齐（缺任一**直接起不来**，不会静默退回桩） |
+| `SHOP_MAIL_STUB=false` | ① `MAIL_USERNAME` ＋ `MAIL_PASSWORD`（邮箱开了 MFA 要填**应用密码**）；② **`MAIL_FROM` 必须等于 `MAIL_USERNAME`**，除非在 M365 后台授了「发送为」权限 |
+| `SHOP_OPS_PASSWORD_DELIVERY=mail` | 邮件通道已验通。否则新建的账号**永远没人能登录** —— 留 `response` 是逃生口 |
+
+已验通的实测值（2026-08-13）：短信模板 `SMS_474945291`、签名「数智邻购」；
+邮件 `platform@neargo.ai` 自发自收。
+
+### 9.2 两处依赖没按方案引，理由是硬约束
+
+§4 原写「不手写签名，引官方 SDK」。**实际两个依赖都改了**：
+
+- **阿里云 SDK 不引**：本项目一律 `mvn -o` 离线构建，SDK 及其依赖树不在本地仓，
+  引进来会让每个人的构建当场挂掉，报的还是「找不到依赖」。签名用 JDK 自带的写完不到
+  三十行，且对着真实接口验证发通过。
+- **`spring-boot-starter-mail` 不引**：本地仓只有 4.0.6 而 Boot BOM 要 4.0.7，
+  离线解析直接失败。改用 `jakarta.mail-api` ＋ `angus-mail`（本地都有）。
+
+签名里三处 URL 编码差异单独注释了：`URLEncoder` 把空格编成 `+`、不编 `~`、留着 `*`，
+三处都与阿里云口径不同，**任何一处不改都会一直返回签名错误**，而错误信息不说是哪个字符。
+
+### 9.3 测试没抓住、实机才抓住的三个
+
+1. **限流打翻了 374 个既有测试**：整套用例反复给同一号码发码，60 秒间隔闸全拦。
+   报的是 `NoSuchElement`（peek 不到码），看着像测试数据问题。
+   → `testcfg` 关限流，另用一个类专门把闸打开验。
+2. **验红发现自己写了个假测试**：「被拒不计数」的用例把 50 次重试全撞在同一时刻，
+   破坏实现后照样绿。重试必须摊在时间轴上才验得出来。
+3. **文案里的裸星号原样显示**，而守卫的豁免理由本身是错的（`Notice` 不解析 markdown）。
+   是实机截图发现的 —— 只跑测试的话，那条错误的豁免会一直留在守卫里。
+
+### 9.4 T6b（OTP 存哈希）：做过一次，然后整体回退
+
+**这是一个决定，不是遗漏** —— 写在这里免得下一个人照着安全方案 §2.4 又做一遍。
+
+实现过：`SHA-256(phone + ':' + code)`（加手机号做盐，否则 100 万个固定哈希一张彩虹表全解开），
+配了一条翻内部状态的守卫防止有人改回明文，验红通过。**随后按产品决定整体回退**。
+
+回退的理由是**排查**：验证码明文可读时，「他到底收没收到、收到的是不是这一条」
+当场就能答；存了哈希，这个问题只能靠通道后台反查。
+而哈希防的那个威胁（堆转储 / 未来 Redis 快照）**要先攻破服务器才成立** ——
+到那一步，泄露的远不止五分钟有效期的验证码。
+
+代价写明：验证码明文会出现在堆转储里；将来 `OtpStore` 换 Redis 时，
+它会从「进程内存」变成「磁盘上的快照文件」，**那时这个决定要重新过一遍**。
+
+#### 顺带量出来的一件事：`peek()` 被引用 37 次，但那不是耦合，是测试基建缺失
+
+`OtpStore.peek()` 只出现在一个位置上 —— 每个测试类自己手写的 `login()` 私有方法里：
+
+```java
+private String login(String phone) {              // 36 个类里各有一份
+    post("/mp/user/otp/send", phone);
+    String code = otpStore.peek(phone).orElseThrow();
+    return post("/mp/user/login", phone, code).token;
+}
+```
+
+`shop-app/src/test` 下**没有任何共享的登录助手**，而登录是几乎每条旅程的第一步。
+所以 37 这个数字量的不是 `OtpStore` 的耦合度，是**同一段三行代码被抄了 36 遍**
+（`M9aOpsFlowTest` 里甚至有 4 处，说明它连自己类里都写了多份）。
+
+**真正该做的是抽一个 `support/TestLogin`**：
+改登录链路时只改一处；换取码来源时也只改一处 —— 那正是这次回退前
+「要改 37 个文件」的成本，有了助手它会缩成一个文件一行。

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>pay-channel</artifactId>
+    <packaging>jar</packaging>
+    <description>支付通道适配：微信 / 支付宝 / stub。发起、分账、补贴、退款、查单、验签</description>
+
+    <!-- ⚠️ 2026-09-01 从 shop-channel 拆出来。
+
+         **为什么该归 pay**：通道适配是支付域的核心能力 ——
+         发起支付、分账、补贴、退款、查单、回调验签，没有一件不是钱的事。
+         留在 shop-channel（那是「外部通道适配层」的统称，还含 ai/media/notify）
+         的话，支付域独立部署时它要么跟着走、要么留下 ——
+         跟着走则 shop-channel 被拆成两半，留下则 pay 调通道要绕回主应用。
+
+         **拆得干净是因为它本来就没被外部直接引用**：15 个类，
+         主应用只通过 spi 接口（PayQueryPort / ChannelCallbackVerifier /
+         PayApplymentGateway）拿到它们，0 处 import。
+         与 shop-channel 其余三个子包（ai/media/notify）也互不依赖。 -->
+    <dependencies>
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-base</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 通道的主数据与凭据今天还读平台表，M1 之后改读 pay 自己的 -->
+        <dependency>
+            <groupId>ai.neargo.shop</groupId>
+            <artifactId>shop-store-mybatis</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+    </dependencies>
+</project>

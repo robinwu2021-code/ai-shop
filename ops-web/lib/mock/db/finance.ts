@@ -1,58 +1,314 @@
+import type { SettleBatch, MerchantDebt } from "@/lib/types";
 // 结算与资金 mock（P-12）。覆盖五种状态与两类失败（可重试 / 已超时），
 // 否则「重试上限」与「超时兜底」两条规则在页面上验不到。
-import type { FeeRule, Settlement, SplitRecord } from "@/lib/types";
+import type { BuyerInvoiceRequest, FeeRuleVersion, PayoutAccount, PurchaseInvoice, Settlement, SplitLog } from "@/lib/types";
+
+/**
+ * 结算单：**一个子订单一张**，与后端 `stl_bill` 同形。
+ *
+ * 此前这里是周期汇总（period / orderCount），而后端从来不是那么结算的 ——
+ * 那份 mock 好看但对不上任何真实数据。
+ */
+/**
+ * 供应商收款账户（V358，ADR-011）。
+ *
+ * **三档都造**：待审的能点审核，生效中的让「已经有一张在用」看得见，
+ * 被驳回的带着原因 —— 只造待审那一档，「通过之后旧卡被顶替」这条规则
+ * 在页面上就验不到。
+ */
+export const payoutAccounts: PayoutAccount[] = [
+  {
+    accountNo: "PAC20260929000001", entityNo: "E20260801000003",
+    accountType: "CORPORATE", accountName: "深圳市虹选科技有限公司",
+    accountMasked: "****2577", bankName: "浦发银行", bankBranch: "深圳分行",
+    status: "PENDING", auditRemark: null, auditedAt: null,
+  },
+  {
+    accountNo: "PAC20260901000002", entityNo: "E20260801000001",
+    accountType: "CORPORATE", accountName: "深圳市鲜果直供有限公司",
+    accountMasked: "****8812", bankName: "招商银行", bankBranch: "福田支行",
+    status: "ACTIVE", auditRemark: null, auditedAt: 1_788_000_000_000,
+  },
+  {
+    accountNo: "PAC20260820000003", entityNo: "E20260801000002",
+    accountType: "PERSONAL_BANK_CARD", accountName: "李强",
+    accountMasked: "****6630", bankName: "建设银行", bankBranch: null,
+    status: "REJECTED",
+    auditRemark: "户名与营业执照主体名不一致：执照是「深圳市强盛百货商行」，请改用对公账户",
+    auditedAt: 1_787_000_000_000,
+  },
+];
 
 export const settlements: Settlement[] = [
+  /*
+   * ── 快递费三种情形也各要有一条 ──
+   * 平台代寄已扣 / 商家自寄（平台不扣）/ 非快递单（该列空着）。
+   * 只造一种的话，列表里那三条分支只走得到一条 ——
+   * 与下面「只造待付款」是同一个理由。
+   * net 已按 gross − 佣金 − 服务费 + 运费 − 快递费 重算，mock 自己要对得上账。
+   *
+   * ── 自营应付账款三档。**各档都要有** ──
+   * 只造「待付款」的话，「票还没到所以付不了」那条分支永远看不见 ——
+   * 而它恰恰是这一页最要紧的规则（票到付款）。与上面造两种小微形态同一个理由。
+   */
   {
-    settleNo: "ST9001", merchantNo: "M903", merchantName: "邻家便利", period: "2026-08-上",
-    orderCount: 128, grossAmount: 486_500, platformFee: 0, serviceFee: 7_290, netAmount: 479_210,
-    // 商家自带客流为主 → 平台佣金 0（R16 建议值）
-    status: "PENDING", retryCount: 0, frozenAt: "2026-08-06T00:00:00Z", createdAt: "2026-08-06T00:00:00Z",
+    // ① 待对账：还没人认这个数，付不了也收不了票
+    settleNo: "ST9101", subOrderNo: "SUB2026082601", orderNo: "SO2026082601", merchantNo: "M801",
+    grossMinor: 128_000, commissionMinor: 6_400, serviceFeeMinor: 1_920,
+    freightIncomeMinor: 800, freightCostMinor: 0, freightShipMode: "PLATFORM_CALL",
+    netMinor: 120480,
+    trafficSource: "PLATFORM", commissionRate: 500, status: "PENDING_RECON",
+    createdAt: 1_756_166_400_000, storeNo: "ST801", payMerchantNo: null,
+    businessMode: "SELF_OPERATED", invoiceStatus: "PENDING_INVOICE",
   },
   {
-    settleNo: "ST9002", merchantNo: "M902", merchantName: "老张水果店", period: "2026-08-上",
-    orderCount: 64, grossAmount: 238_400, platformFee: 4_768, serviceFee: 3_576, netAmount: 230_056,
-    status: "SPLIT", retryCount: 0, frozenAt: "2026-08-05T00:00:00Z", createdAt: "2026-08-05T00:00:00Z",
+    // ② 已对账、票还没到 → **点「登记付款」应当被拦**，这一条是这页的主角
+    settleNo: "ST9102", subOrderNo: "SUB2026082602", orderNo: "SO2026082602", merchantNo: "M802",
+    grossMinor: 96_000, commissionMinor: 4_800, serviceFeeMinor: 1_440,
+    freightIncomeMinor: 800, freightCostMinor: 0, freightShipMode: "MERCHANT_SELF",
+    netMinor: 90560,
+    trafficSource: "PLATFORM", commissionRate: 500, status: "CONFIRMED",
+    createdAt: 1_756_080_000_000, storeNo: "ST802", payMerchantNo: null,
+    businessMode: "SELF_OPERATED", invoiceStatus: "PENDING_INVOICE",
   },
   {
-    // 失败 2 次：再失败一次就到上限转人工
-    settleNo: "ST9003", merchantNo: "M905", merchantName: "快修家电服务", period: "2026-08-上",
-    orderCount: 12, grossAmount: 153_600, platformFee: 4_608, serviceFee: 0, netAmount: 148_992,
-    status: "FAILED", retryCount: 2, failReason: "分账接收方账户状态异常（PSP 返回 ACCOUNT_ABNORMAL）",
-    frozenAt: "2026-08-04T00:00:00Z", createdAt: "2026-08-04T00:00:00Z",
+    // ③ 无票供应商：不进发票流程，但**要在列表上标出来** ——
+    //    让财务在付款前就看见「这笔付出去是不能列支的」，而不是月末报税才发现
+    settleNo: "ST9103", subOrderNo: "SUB2026082603", orderNo: "SO2026082603", merchantNo: "M803",
+    grossMinor: 24_000, commissionMinor: 1_200, serviceFeeMinor: 360,
+    freightIncomeMinor: 0, freightCostMinor: 0, freightShipMode: undefined,
+    netMinor: 22440,
+    trafficSource: "PLATFORM", commissionRate: 500, status: "CONFIRMED",
+    createdAt: 1_755_993_600_000, storeNo: "ST803", payMerchantNo: null,
+    businessMode: "SELF_OPERATED", invoiceStatus: "NO_INVOICE",
   },
   {
-    // 未报备分账接收方：执行分账会被拒（M901 的 settleAccountReady = false）
-    settleNo: "ST9004", merchantNo: "M901", merchantName: "阿姨家的菜摊", period: "2026-08-上",
-    orderCount: 23, grossAmount: 41_800, platformFee: 836, serviceFee: 627, netAmount: 40_337,
-    status: "PENDING", retryCount: 0, frozenAt: "2026-08-06T00:00:00Z", createdAt: "2026-08-06T00:00:00Z",
+    // 自带客流 → 佣金 0（R16 建议值）
+    settleNo: "ST9001", subOrderNo: "SUB2026080501", orderNo: "SO2026080501", merchantNo: "M903",
+    grossMinor: 1_780, commissionMinor: 0, serviceFeeMinor: 27,
+    freightIncomeMinor: 800, freightCostMinor: 800, freightShipMode: "PLATFORM_CALL",
+    netMinor: 1753,
+    trafficSource: "MERCHANT_OWNED", commissionRate: 0, status: "PENDING",
+    createdAt: 1_754_438_400_000, storeNo: "ST001", payMerchantNo: "PM_M903",
+    businessMode: "THIRD_PARTY", invoiceStatus: "NO_INVOICE",
   },
   {
-    // 冻结已久：用来验超时兜底
-    settleNo: "ST9005", merchantNo: "M906", merchantName: "夜市烧烤", period: "2026-07-下",
-    orderCount: 8, grossAmount: 32_000, platformFee: 640, serviceFee: 480, netAmount: 30_880,
-    status: "PENDING", retryCount: 0, frozenAt: "2026-07-01T00:00:00Z", createdAt: "2026-07-01T00:00:00Z",
+    settleNo: "ST9002", subOrderNo: "SUB2026080502", orderNo: "SO2026080502", merchantNo: "M902",
+    grossMinor: 3_980, commissionMinor: 199, serviceFeeMinor: 60,
+    freightIncomeMinor: 800, freightCostMinor: 0, freightShipMode: "MERCHANT_SELF",
+    netMinor: 4521,
+    trafficSource: "PLATFORM", commissionRate: 500, status: "SPLIT",
+    createdAt: 1_754_352_000_000, splitAt: 1_754_355_600_000,
+    storeNo: "ST002", payMerchantNo: "PM_M902", businessMode: "THIRD_PARTY",
+    invoiceStatus: "NO_INVOICE",
+  },
+  {
+    // 未报备分账接收方：payMerchantNo 为空，发起分账会被拦
+    settleNo: "ST9004", subOrderNo: "SUB2026080504", orderNo: "SO2026080504", merchantNo: "M901",
+    grossMinor: 41_800, commissionMinor: 2_090, serviceFeeMinor: 627,
+    freightIncomeMinor: 0, freightCostMinor: 0, freightShipMode: undefined,
+    netMinor: 39083,
+    trafficSource: "PLATFORM", commissionRate: 500, status: "PENDING",
+    createdAt: 1_754_438_400_000, storeNo: null, payMerchantNo: null,
+    businessMode: "THIRD_PARTY", invoiceStatus: "NO_INVOICE",
+  },
+  {
+    // 自营轨道：走对账→确认→付款，不分账
+    settleNo: "ST9006", subOrderNo: "SUB2026080506", orderNo: "SO2026080506", merchantNo: "M905",
+    grossMinor: 12_800, commissionMinor: 640, serviceFeeMinor: 0,
+    freightIncomeMinor: 800, freightCostMinor: 800, freightShipMode: "PLATFORM_CALL",
+    netMinor: 12160,
+    trafficSource: "PLATFORM", commissionRate: 500, status: "PENDING_RECON",
+    createdAt: 1_754_265_600_000, storeNo: "ST005", payMerchantNo: "PM_M905",
+    businessMode: "SELF_OPERATED", invoiceStatus: "PENDING_INVOICE",
   },
 ];
 
-export const splitRecords: SplitRecord[] = [
-  { splitNo: "SP9001", settleNo: "ST9001", orderNo: "SO2026080501", merchantName: "邻家便利", trafficSource: "MERCHANT_OWNED", grossAmount: 1_780, feeRate: 0, platformFee: 0, pickupNo: "P002", serviceFee: 27, netAmount: 1_753 },
-  { splitNo: "SP9002", settleNo: "ST9001", orderNo: "SO2026080504", merchantName: "邻家便利", trafficSource: "INVITE", grossAmount: 6_550, feeRate: 300, platformFee: 197, serviceFee: 0, netAmount: 6_353 },
-  { splitNo: "SP9003", settleNo: "ST9002", orderNo: "SO2026080502", merchantName: "老张水果店", trafficSource: "MERCHANT_OWNED", grossAmount: 3_980, feeRate: 0, platformFee: 0, pickupNo: "P001", serviceFee: 60, netAmount: 3_920 },
-  { splitNo: "SP9004", settleNo: "ST9002", orderNo: "SO2026080506", merchantName: "老张水果店", trafficSource: "MERCHANT_OWNED", grossAmount: 4_580, feeRate: 0, platformFee: 0, pickupNo: "P001", serviceFee: 69, netAmount: 4_511 },
-  { splitNo: "SP9005", settleNo: "ST9003", orderNo: "SO2026080505", merchantName: "快修家电服务", trafficSource: "CHANNEL", grossAmount: 12_800, feeRate: 500, platformFee: 640, serviceFee: 0, netAmount: 12_160 },
+/** 分账指令流水：**失败的也在这里** —— 出问题时要看的恰恰是它们。 */
+export const splitRecords: SplitLog[] = [
+  { settleNo: "ST9002", subOrderNo: "SUB2026080502", splitAction: "SPLIT", amountMinor: 3_721,
+    result: "SUCCESS", requestNo: "SPL-ST9002", providerNo: "STUB-SPL-ST9002",
+    message: null, createdAt: 1_754_355_600_000 },
+  { settleNo: "ST9001", subOrderNo: "SUB2026080501", splitAction: "SUBSIDY", amountMinor: 200,
+    result: "SUCCESS", requestNo: "SUB-ST9001", providerNo: "STUB-SUB-ST9001",
+    message: null, createdAt: 1_754_442_000_000 },
+  { settleNo: "ST9004", subOrderNo: "SUB2026080504", splitAction: "SPLIT", amountMinor: 39_083,
+    result: "FAIL", requestNo: "SPL-ST9004-F1", providerNo: null,
+    message: "分账接收方账户状态异常（PSP 返回 ACCOUNT_ABNORMAL）", createdAt: 1_754_442_000_000 },
 ];
 
-export const feeRule: FeeRule = {
-  byTrafficSource: {
-    // R16 建议：自带客流零佣金 —— 抽了商家就会把客人带去别处成交
-    MERCHANT_OWNED: 0,
-    PLATFORM: 500,
-    INVITE: 300,
-    CHANNEL: 500,
+/**
+ * 费率版本（后端 stl_fee_rule）。**只增不改**：调费率是插新版本，旧版本永久保留。
+ * effectiveFrom = 0 的四条是初始版本，等价于上线前 application.yml 里的两个默认值。
+ */
+/**
+ * 分账超时兜底天数：冻结超过它仍未分账成功，解冻回平台。
+ *
+ * **不放进费率表**：它不是费率，是结算策略；而且后端至今没有这个配置项。
+ * 此前它挂在旧的 `FeeRule` 上，让人以为是可配的 —— 页面上能改，改了没有任何效果。
+ * 摆成常量至少诚实：它现在只驱动 mock 里的解冻校验。
+ */
+export const SETTLE_FREEZE_DAYS = 15;
+
+export const feeRules: FeeRuleVersion[] = [
+  { ruleNo: "FR-INIT-TP-OWNED", businessMode: "THIRD_PARTY", trafficSource: "MERCHANT_OWNED",
+    rateBp: 0, effectiveFrom: 0, enabled: 1,
+    remark: "自带客流零佣金：他带来的客户在别家消费才是平台收益（R16）" },
+  { ruleNo: "FR-INIT-TP-PLAT", businessMode: "THIRD_PARTY", trafficSource: "PLATFORM",
+    rateBp: 500, effectiveFrom: 0, enabled: 1, remark: "平台客流 5%" },
+  { ruleNo: "FR-INIT-SO-OWNED", businessMode: "SELF_OPERATED", trafficSource: "MERCHANT_OWNED",
+    rateBp: 0, effectiveFrom: 0, enabled: 1, remark: "自营先与第三方取齐" },
+  { ruleNo: "FR-INIT-SO-PLAT", businessMode: "SELF_OPERATED", trafficSource: "PLATFORM",
+    rateBp: 500, effectiveFrom: 0, enabled: 1, remark: "自营先与第三方取齐" },
+];
+
+/**
+ * 支付通道设置（后端 `sys_pay_channel` + `sys_pay_channel_rate`）。
+ *
+ * <b>ALIPAY 故意一条费率都不配</b>：「没配过费率」是真实存在的初始状态，
+ * 而页面在那一支要显示「未配置」而不是 0 —— mock 里两个通道都给上费率的话，
+ * 那一支永远走不到，而它正是运营第一次打开这一页看到的画面。
+ */
+export const payChannels: {
+  payChannel: string; name: string; enabled: boolean; markets: string | null;
+  currency: string | null; settleCycle: string | null; supportsSubsidy: boolean;
+  rates: {
+    rateNo: string; payChannel: string; payMethod: string; legalForm: string;
+    rateBp: number; minFeeMinor: number; effectiveFrom: number;
+    enabled?: boolean; remark?: string | null;
+  }[];
+}[] = [
+  {
+    payChannel: "WECHAT", name: "微信支付", enabled: true, markets: '["CN"]',
+    currency: "CNY", settleCycle: "T+1", supportsSubsidy: true,
+    rates: [
+      { rateNo: "PCR-INIT-WX", payChannel: "WECHAT", payMethod: "*", legalForm: "*",
+        rateBp: 38, minFeeMinor: 0, effectiveFrom: 0, enabled: true, remark: "标准费率 0.38%" },
+    ],
   },
-  pickupServiceFeeRate: 150,
-  freezeDays: 15,
-  updatedAt: "2026-07-25T02:00:00Z",
-  updatedBy: "finance01",
+  {
+    payChannel: "ALIPAY", name: "支付宝", enabled: true, markets: '["CN"]',
+    currency: "CNY", settleCycle: "T+1", supportsSubsidy: true,
+    rates: [],
+  },
+];
+
+/**
+ * 进项票。**两种都要有**：抬头对得上的（能核验）与对不上的（不能核验，
+ * 而界面要说清是这个原因）。只造能过的话，那条拦截分支永远看不见。
+ */
+export const purchaseInvoices: PurchaseInvoice[] = [
+  {
+    invoiceNo: "PI2026080001", entityNo: "M801", period: "202608",
+    invoiceCode: "3100213130", invoiceNumber: "00841122", invoiceType: "SPECIAL",
+    titleName: "杭州小林果蔬有限公司", titleTaxNo: "91330100MA2xxxxx1A",
+    amountMinor: 128_000, taxAmountMinor: 14_690, taxRate: 1300,
+    invoiceDate: 1_756_080_000_000, imageUrl: null,
+    status: "SUBMITTED", rejectReason: null, titleMatched: true,
+    settleNos: ["ST9101"],
+  },
+  {
+    // 抬头对不上 —— 点核验应当被拦，且要说清原因
+    invoiceNo: "PI2026080002", entityNo: "M802", period: "202608",
+    invoiceCode: "3100213130", invoiceNumber: "00841135", invoiceType: "NORMAL",
+    titleName: "杭州小林果蔬商行", titleTaxNo: "91330100MA2xxxxx2B",
+    amountMinor: 96_000, taxAmountMinor: 11_010, taxRate: 1300,
+    invoiceDate: 1_755_993_600_000, imageUrl: null,
+    status: "SUBMITTED", rejectReason: null, titleMatched: false,
+    settleNos: ["ST9102"],
+  },
+];
+
+/** 买家的开票申请。个人抬头与公司抬头各一条 —— 公司的要税号，个人的没有 */
+export const buyerInvoiceRequests: BuyerInvoiceRequest[] = [
+  {
+    requestNo: "IR2026082601", orderNo: "SO2026082611", titleType: "COMPANY",
+    title: "杭州某某科技有限公司", taxNo: "91330100MA2yyyyy1C",
+    email: "fin@example.com", amountMinor: 45_800, status: "PENDING",
+    invoiceNo: null, issuedAt: null, rejectReason: null, createdAt: 1_756_166_400_000,
+  },
+  {
+    requestNo: "IR2026082602", orderNo: "SO2026082612", titleType: "PERSONAL",
+    title: "王女士", taxNo: null,
+    email: "wang@example.com", amountMinor: 16_800, status: "ISSUED",
+    invoiceNo: "0084119922", issuedAt: 1_756_080_000_000, rejectReason: null,
+    createdAt: 1_755_993_600_000,
+  },
+];
+
+/**
+ * 账期批次。
+ *
+ * **四条各是一种真实形态，缺一条界面上就有一支走不到**：
+ * 收单中 / 待放行 / 挂起（风控命中）/ 已放行。
+ * 只造「正常」的那一种，「挂起后要写原因才能放行」那条路永远点不到。
+ */
+export const settleBatches: SettleBatch[] = [
+  {
+    batchNo: "STB20260830000001", entityNo: "M0001", payChannel: "WECHAT",
+    settleCycle: "T+1", periodFrom: 1_788_019_200_000, dueAt: 1_788_019_200_000,
+    releasedAt: null, freezeExpireAt: null,
+    status: "DRAFT", billCount: 0, grossMinor: 0, netMinor: 0,
+    reconScope: "SELF_ONLY",
+    blockedReason: null, blockedAt: null, blockExpireAt: null,
+    decidedBy: null, decideRemark: null,
+  },
+  {
+    batchNo: "STB20260829000002", entityNo: "M0001", payChannel: "WECHAT",
+    settleCycle: "T+1", periodFrom: 1_787_932_800_000, dueAt: 1_787_932_800_000,
+    releasedAt: null, freezeExpireAt: null,
+    status: "RECONCILED", billCount: 12, grossMinor: 68_400, netMinor: 64_980,
+    reconScope: "SELF_ONLY",
+    blockedReason: null, blockedAt: null, blockExpireAt: null,
+    decidedBy: null, decideRemark: null,
+  },
+  {
+    /* 风控命中：原话里带着具体数字与阈值 —— 说不清的提示，商家读完还是要找客服 */
+    batchNo: "STB20260829000003", entityNo: "M0002", payChannel: "WECHAT",
+    settleCycle: "WEEKLY", periodFrom: 1_787_932_800_000, dueAt: 1_787_932_800_000,
+    releasedAt: null, freezeExpireAt: null,
+    status: "BLOCKED", billCount: 31, grossMinor: 324_000, netMinor: 307_800,
+    reconScope: "SELF_ONLY",
+    blockedReason: "近 7 天退款率 32.10%（阈值 20.00%），本批转人工复核",
+    blockedAt: 1_787_932_800_000, blockExpireAt: 1_788_192_000_000,
+    decidedBy: null, decideRemark: null,
+  },
+  {
+    batchNo: "STB20260828000004", entityNo: "M0001", payChannel: "WECHAT",
+    settleCycle: "T+1", periodFrom: 1_787_846_400_000, dueAt: 1_787_846_400_000,
+    releasedAt: 1_787_850_000_000, freezeExpireAt: null,
+    status: "RELEASED", billCount: 8, grossMinor: 41_600, netMinor: 39_520,
+    reconScope: "SELF_ONLY",
+    blockedReason: null, blockedAt: null, blockExpireAt: null,
+    decidedBy: null, decideRemark: null,
+  },
+];
+
+/**
+ * 商家欠款。
+ *
+ * **M0002 有欠款、M0001 没有** —— 两种都要有：
+ * 全都造成有欠款的话，「这家没欠过」那一支（空态）永远看不到，
+ * 而那是绝大多数商家的真实状态。
+ */
+export const merchantDebts: Record<string, MerchantDebt> = {
+  M0001: { entityNo: "M0001", balanceMinor: 0, txns: [] },
+  M0002: {
+    entityNo: "M0002", balanceMinor: 12_800,
+    txns: [
+      {
+        txnNo: "DBT20260829000002", txnType: "OFFSET",
+        // 有符号：偿还为负
+        amountMinor: -3_200, balanceAfterMinor: 12_800,
+        sourceType: null, sourceNo: null, batchNo: "STB20260828000004",
+        reason: "从批次 STB20260828000004 的货款中抵扣", at: 1_787_850_000_000,
+      },
+      {
+        txnNo: "DBT20260828000001", txnType: "INCUR",
+        amountMinor: 16_000, balanceAfterMinor: 16_000,
+        sourceType: "REFUND", sourceNo: "AS20260828000117", batchNo: null,
+        reason: "买家已收货后退款，分账已解冻且商家已提走", at: 1_787_835_600_000,
+      },
+    ],
+  },
 };

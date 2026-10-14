@@ -2,9 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabCampaigns: "商家团",
-  tabDemands: "求团需求",
-  tabQuotes: "报价与信用",
 
   toastAuditPassed: "已通过，团已开始",
   toastAuditRejected: "已驳回，原因已发给商家",
@@ -36,6 +33,8 @@ const zh = {
   colQuoteNo: "报价单号",
   colUnitPrice: "单价",
   ariaNewPrice: "新单价（元）",
+  ariaPriceReason: "改价原因",
+  priceReasonPlaceholder: "改价原因（会公示）",
   save: "存",
   cancel: "取消",
   colMinQty: "起订量",
@@ -90,9 +89,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabCampaigns: "Merchant group buys",
-  tabDemands: "Group requests",
-  tabQuotes: "Quotes & credit",
 
   toastAuditPassed: "Approved — the group buy is live",
   toastAuditRejected: "Rejected — the reason has been sent to the merchant",
@@ -123,6 +119,8 @@ const en: typeof zh = {
   colQuoteNo: "Quote no.",
   colUnitPrice: "Unit price",
   ariaNewPrice: "New unit price (CNY)",
+  ariaPriceReason: "Reason for the change",
+  priceReasonPlaceholder: "Reason (made public)",
   save: "Save",
   cancel: "Cancel",
   colMinQty: "Min. order",

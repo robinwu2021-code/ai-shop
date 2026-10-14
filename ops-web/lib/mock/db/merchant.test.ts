@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { merchantMock } from "@/lib/api/mocks/merchant";
 import { merchants } from "./merchant";
+import { stores } from "./store";
 
 // 用例之间会改同一份内存数据，逐个用例复位受影响的行。
 const SNAPSHOT = JSON.parse(JSON.stringify(merchants)) as typeof merchants;
@@ -27,7 +28,8 @@ describe("列表查询", () => {
   it("数据域收敛：带 communityNo 只剩该社区（矩阵 §2.3）", async () => {
     const page = await merchantMock.listMerchants({ size: 100, communityNo: "C001" });
     expect(page.records.length).toBeGreaterThan(0);
-    expect(page.records.every((m) => m.communityNo === "C001")).toBe(true);
+    // 一家店可以服务多个社区 —— 筛选命中的是「包含该社区」
+    expect(page.records.every((m) => m.communityNos.includes("C001"))).toBe(true);
   });
 
   it("关键词命中编号 / 名称 / 联系人", async () => {
@@ -43,24 +45,35 @@ describe("列表查询", () => {
   });
 });
 
-describe("审核状态机", () => {
-  it("合法迁移落库（重新查能读回）", async () => {
-    await merchantMock.setMerchantStatus("M901", "REVIEWING");
-    expect((await merchantMock.getMerchant("M901")).status).toBe("REVIEWING");
+describe("经营状态机（不是审核状态机）", () => {
+  /*
+   * 商家档案上的 status 是**经营状态**：ACTIVE / SUSPENDED / FROZEN。
+   * 审核状态（PENDING/REVIEWING/APPROVED/REJECTED）在**申请单**上。
+   *
+   * 这一组用例此前测的是审核迁移（SUBMITTED→REVIEWING→APPROVED），
+   * 建在一个把两件事揉进一个字段的模型上 —— 而「已在经营、又提交了第二张
+   * 执照」的商家在那个模型里 status 无解，那正是「一人多主体」的常见情形。
+   */
+  it("封禁与解封是一对：ACTIVE ⇄ SUSPENDED", async () => {
+    await merchantMock.setMerchantStatus("M901", "SUSPENDED", "售假处罚");
+    expect((await merchantMock.getMerchant("M901")).status).toBe("SUSPENDED");
+    await merchantMock.setMerchantStatus("M901", "ACTIVE", "整改完成");
+    expect((await merchantMock.getMerchant("M901")).status).toBe("ACTIVE");
   });
 
-  it("非法迁移抛错（SUBMITTED 不能直接 APPROVED）", async () => {
-    await expect(merchantMock.setMerchantStatus("M901", "APPROVED")).rejects.toThrow(/不允许/);
+  it("非法迁移抛错（封禁中不能直接冻结 —— 两者是不同性质的处置）", async () => {
+    await merchantMock.setMerchantStatus("M901", "SUSPENDED", "售假处罚");
+    await expect(merchantMock.setMerchantStatus("M901", "FROZEN")).rejects.toThrow(/不允许/);
   });
 
-  it("驳回意见落库，商家在 B 端看到的就是这段话", async () => {
-    await merchantMock.setMerchantStatus("M901", "REVIEWING");
-    await merchantMock.setMerchantStatus("M901", "REJECTED", "营业执照缺页");
+  it("处置意见落库，商家在 B 端看到的就是这段话", async () => {
+    await merchantMock.setMerchantStatus("M901", "SUSPENDED", "营业执照缺页");
     expect((await merchantMock.getMerchant("M901")).auditRemark).toBe("营业执照缺页");
   });
 
-  it("认证标只给已通过审核的商家", async () => {
-    await expect(merchantMock.setMerchantVerified("M901", true)).rejects.toThrow(/审核/);
+  it("认证标只给正常经营中的商家 —— 封禁中的店挂着平台背书，赔的是平台信用", async () => {
+    await merchantMock.setMerchantStatus("M901", "SUSPENDED", "售假处罚");
+    await expect(merchantMock.setMerchantVerified("M901", true)).rejects.toThrow(/正常经营/);
     await merchantMock.setMerchantVerified("M903", true);
     expect((await merchantMock.getMerchant("M903")).verified).toBe(true);
   });
@@ -79,5 +92,72 @@ describe("归档", () => {
     const after = await merchantMock.getMerchant("M905");
     expect(after.archivedAt).toBeNull();
     expect(after.breachCount).toBe(before.breachCount);
+  });
+});
+
+describe("门店级违规处置（STORE_OFFLINE，P-11.2）", () => {
+  const S0 = JSON.parse(JSON.stringify(stores)) as typeof stores;
+  beforeEach(() => {
+    stores.length = 0; stores.push(...(JSON.parse(JSON.stringify(S0)) as typeof stores));
+  });
+
+  const base = { merchantNo: "M901", type: "SERVICE" as const, detail: "多次超时未发货，见工单 T-9001" };
+
+  it("门店强制下线必须指定门店", async () => {
+    await expect(merchantMock.recordViolation({ ...base, action: "STORE_OFFLINE" })).rejects.toThrow(/门店/);
+  });
+
+  it("★ 只有门店级动作能带门店号 —— 主体级处置带上它会被读成「只压了那一家」", async () => {
+    await expect(
+      merchantMock.recordViolation({ ...base, action: "WARN", storeNo: "ST001" }),
+    ).rejects.toThrow(/门店/);
+  });
+
+  it("不能压别人家的店", async () => {
+    await expect(
+      merchantMock.recordViolation({ ...base, action: "STORE_OFFLINE", storeNo: "ST004" }),
+    ).rejects.toThrow(/不属于/);
+  });
+
+  it("★ 处置与压下是同一次提交：记录落库，门店状态真的变 SUSPENDED", async () => {
+    const v = await merchantMock.recordViolation({ ...base, action: "STORE_OFFLINE", storeNo: "ST002" });
+    expect(v.storeNo).toBe("ST002");
+    expect(stores.find((s) => s.storeNo === "ST002")!.status).toBe("SUSPENDED");
+  });
+
+  it("已下线的店不重复压 —— 静默重复会在信用档案里堆出一串同样的记录", async () => {
+    await expect(
+      merchantMock.recordViolation({ ...base, merchantNo: "M906", action: "STORE_OFFLINE", storeNo: "ST003" }),
+    ).rejects.toThrow(/已被强制下线/);
+  });
+});
+
+describe("收款额度", () => {
+  it("★ 种子里必须同时有「设过额度」「上限 0」「一条都没有」三种形态", async () => {
+    /*
+     * 这三种在界面上是**三句不同的话**，而它们最容易被画成同一句：
+     *   上限 5000 → ¥5,000.00
+     *   上限 0    → 「未设置（不拦）」，不是 ¥0.00 —— 读成后者的运营会去调大额度
+     *   一条没有  → 「还没有收款号，要先走进件」，也不是「额度为零」
+     * 种子里缺哪一种，那一条分支就永远没人看见过。
+     */
+    const m901 = await merchantMock.payQuotas("M901");
+    expect(m901.some((q) => q.limitMinor > 0)).toBe(true);
+    expect(m901.some((q) => q.limitMinor === 0)).toBe(true);
+    expect(await merchantMock.payQuotas("M903")).toEqual([]);
+  });
+
+  it("★ 没有收款号就设不了额度 —— 静默建一条会造出一个没进过件的收款号", async () => {
+    await expect(
+      merchantMock.setPayQuota({ merchantNo: "M903", quotaLimitMinor: 100_000 }),
+    ).rejects.toThrow(/收款号/);
+  });
+
+  it("只改上限，不动已用量 —— 用量是支付累加出来的事实", async () => {
+    const before = (await merchantMock.payQuotas("M901")).find((q) => q.storeNo === "")!;
+    await merchantMock.setPayQuota({ merchantNo: "M901", quotaLimitMinor: 900_000 });
+    const after = (await merchantMock.payQuotas("M901")).find((q) => q.storeNo === "")!;
+    expect(after.limitMinor).toBe(900_000);
+    expect(after.usedMinor).toBe(before.usedMinor);
   });
 });

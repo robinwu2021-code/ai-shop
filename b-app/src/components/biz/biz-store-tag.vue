@@ -1,0 +1,102 @@
+<script setup lang="ts">
+/**
+ * 页头的「当前门店」胶囊。
+ *
+ * <b>两种形态，一个组件</b>：
+ * - 工作台（可点）：门店这件事的**唯一入口** —— 点进门店管理，在那里切店、改名、开新店。
+ * - 门店维度的作业页（`readonly`）：只说清「这一屏属于哪家店」，不带切换动作。
+ *   曾经每页都能切，结果是人在商品页切了店、回工作台看的是另一家的数字。
+ *   这里保留店名是因为改错门店的成本很高（改的是价格、送货范围这类东西）。
+ *
+ * 单店主体只在可点形态下渲染 —— 那时它是「门店管理」的门，不是上下文提示。
+ */
+import { computed, onMounted } from "vue";
+import { useMerchantStore } from "@/stores/merchant";
+import { ROUTES } from "@/shared/nav";
+import { isStoreScopedPage } from "@/shared/store-scope";
+
+const props = defineProps<{ readonly?: boolean }>();
+const merchant = useMerchantStore();
+
+onMounted(() => {
+  void merchant.ensureStores();
+});
+
+/**
+ * 当前页面的目录名（`/pages/<dir>/index` 里的 `<dir>`）。
+ * 小程序端 `getCurrentPages()` 的 route 不带前导斜杠，H5 端带 —— 两头都剥一次。
+ */
+function currentDir(): string {
+  try {
+    const pages = getCurrentPages();
+    const route = (pages[pages.length - 1] as { route?: string })?.route ?? "";
+    return route.replace(/^\/?pages\//, "").split("/")[0] ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * 只读形态只为消歧义：一家店没有歧义可消。
+ *
+ * <b>并且要在门店维度的页面上</b> —— 判据取自 `shared/store-scope.ts` 那份声明，
+ * 不由各页自己说了算。这样「哪些页面按门店」只有一处答案：
+ * 组件依赖它、`biz-store-scope` 闸门也核对它，清单因此是模型而不是注释。
+ * （闸门双向查：声明了没渲染红，渲染了没声明也红 —— 后者正是这里会静默不显示的情况。）
+ */
+const show = computed(() =>
+  props.readonly
+    ? merchant.multiStore && isStoreScopedPage(currentDir())
+    // 可点形态是「门店管理」的门，与页面按不按门店无关：单店店主也要能进去开第二家
+    : merchant.multiStore || merchant.can("biz:store:admin"));
+
+/** 一家店的人点进去是「管理」（在那里开第二家），多店的人点进去是「切换」 */
+const actionKey = computed(() =>
+  merchant.multiStore ? "storePick.switch" : "storePick.manage");
+
+function go() {
+  if (props.readonly) return;
+  /*
+   * **多证照时去选店页**：门店管理只列当前证照下的店，
+   * 跨证照的店在那儿一家都看不到（同 me 页头部，2026-09-29 真机）。
+   */
+  uni.navigateTo({ url: merchant.multiEntity ? ROUTES.storePick : ROUTES.stores });
+}
+</script>
+
+<template>
+  <!-- 形态归 `.sh-chip`（胶囊药丸）：它是个可点的标签，不是一段提示。
+       只读时退成裸文字（`tag--flat`），因为点了没反应的控件比没有控件更糟。 -->
+  <view
+    v-if="show"
+    class="sh-chip tag"
+    :class="readonly ? 'tag--flat' : 'sh-chip--primary'"
+    @tap="go"
+  >
+    <sh-icon
+      name="store"
+      :size="18"
+      :color="readonly ? 'var(--sh-sub)' : 'var(--sh-primary-text)'"
+    ></sh-icon>
+    <text class="txt-sub txt-bold txt-ink tag__name">{{ merchant.currentStore?.name || "—" }}</text>
+    <sh-go v-if="!readonly" :text="String($t(actionKey))"></sh-go>
+  </view>
+</template>
+
+<style scoped>
+/* 左置胶囊：带底色与边界，看得出「这是一个控件」——右对齐小字的教训 */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+/* 只读：褪成灰底，长得不像能点 —— 点了没反应的控件比没有控件更糟 */
+.tag--flat {
+  padding: 8rpx 0;
+  background: transparent;
+}
+.tag--flat .tag__name {
+  color: var(--sh-sub);
+}
+</style>

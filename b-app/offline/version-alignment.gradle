@@ -1,0 +1,98 @@
+/*
+ * 打包时校验**两处 versionCode 必须一致**，对不上就让构建失败。
+ *
+ * **为什么必须在构建时，而不是靠事后跑体检脚本：**
+ * 仓库里本来就有 `b-app/offline/verify-apk.sh`，里面本来就有「3. 版本号」那一节 ——
+ * 但它只把版本号打印出来，不做比对；而且**全仓库没有任何自动流程调用它**，
+ * 只有文档提到过。2026-08-28 一个两处错开的包就这么发了出去，
+ * 装在测试真机上跑了两个多小时才被发现（还是靠「设备上的包与本地同名包 md5 不同」
+ * 顺出来的，不是靠那个脚本）。
+ *
+ * **一个只能靠人记得跑的守卫，等于没有守卫。**
+ *
+ * ---
+ *
+ * 两处版本号是**两个来源**，各有各的消费者：
+ *
+ *   APK manifest 的 versionCode        ← 离线工程 build.gradle
+ *       消费者是 Android 系统：判断能不能覆盖安装、设置里显示成什么
+ *
+ *   包内 www/manifest.json 的 version.code  ← b-app/src/manifest.json 经 build:app 产出
+ *       消费者是 DCloud 运行时：判断手机上已解压的 www 要不要替换
+ *
+ * 只抬前者 → **静默坏包**：装得上、系统里版本号是新的、零报错，
+ * 而运行时沿用旧 www，新代码根本没上去。界面与好包一模一样。
+ * 反过来只抬后者 → 系统认为版本没变，覆盖安装可能直接被拒。
+ *
+ * 这个脚本与 amap-key.gradle 同理：**逻辑留在仓库里**，离线工程只写一行
+ *   apply from: '<仓库>/b-app/offline/version-alignment.gradle'
+ * 因为离线工程在仓库外（网盘发布、不受版本控制），重解压一次 SDK 就被覆盖没了。
+ * 一行的接线丢了一眼看得出，几十行的逻辑丢了看不出。
+ */
+
+import groovy.json.JsonSlurper
+
+/**
+ * 放在 task 里而不是配置阶段直接跑：www 是打包前**手工拷进** assets 的，
+ * 做成任务才能保证它在真正打包的那一刻校验，而不是在 gradle 刚读脚本时。
+ */
+tasks.register('checkAppVersionAlignment') {
+    group = 'verification'
+    description = '校验 APK versionCode 与包内 www/manifest.json 的 version.code 一致'
+
+    doLast {
+        def apkVersionCode = android.defaultConfig.versionCode
+        if (apkVersionCode == null) {
+            throw new GradleException("build.gradle 里没有 versionCode，拒绝打包。")
+        }
+
+        def assetsRoot = new File(project.projectDir, 'src/main/assets/apps')
+        if (!assetsRoot.isDirectory()) {
+            throw new GradleException(
+                "找不到 ${assetsRoot} —— App 资源没拷进来？\n" +
+                "  先跑 b-app 的 npm run build:app，再把 dist/build/app 拷进 assets/apps/<appid>/www/")
+        }
+
+        def checked = 0
+        assetsRoot.eachDir { appDir ->
+            def mf = new File(appDir, 'www/manifest.json')
+            if (!mf.exists()) {
+                throw new GradleException(
+                    "${appDir.name} 下没有 www/manifest.json —— 这个包里没有页面代码。\n" +
+                    "  文件：${mf}")
+            }
+            def json = new JsonSlurper().parse(mf, 'UTF-8')
+            def wwwCode = json?.version?.code
+            if (wwwCode == null || wwwCode.toString().trim().isEmpty()) {
+                throw new GradleException(
+                    "${mf} 里读不到 version.code。\n" +
+                    "  它来自 b-app/src/manifest.json 的 versionCode，那里也要有值。")
+            }
+            if (wwwCode.toString().trim() != apkVersionCode.toString()) {
+                throw new GradleException(
+                    "versionCode 两处不一致，拒绝打包。\n" +
+                    "  APK manifest（build.gradle）：${apkVersionCode}\n" +
+                    "  包内 www/manifest.json     ：${wwwCode}   ← ${mf}\n" +
+                    "\n" +
+                    "  照这样打出来的包：系统显示 ${apkVersionCode}，实际跑的是 ${wwwCode} 那一版的页面代码，\n" +
+                    "  装得上、零报错、界面一模一样 —— 只有新功能不见了。\n" +
+                    "\n" +
+                    "  两处都要抬：\n" +
+                    "    1) 离线工程 build.gradle 的 versionCode\n" +
+                    "    2) b-app/src/manifest.json 的 versionCode/versionName，\n" +
+                    "       改完**重跑 npm run build:app 并重新拷 www**（否则改的是源码，包里还是旧的）")
+            }
+            println "[version] ${appDir.name}: APK 与 www 的 versionCode 一致（${apkVersionCode}）"
+            checked++
+        }
+
+        if (checked == 0) {
+            throw new GradleException("${assetsRoot} 下一个 app 目录都没有 —— 资源没拷进来。")
+        }
+    }
+}
+
+// 挂在 preBuild 上：assemble / bundle 的任何一条路都会经过它，漏不掉
+tasks.matching { it.name == 'preBuild' }.configureEach {
+    dependsOn 'checkAppVersionAlignment'
+}

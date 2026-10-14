@@ -1,13 +1,271 @@
 // 覆盖范围：商家治理（P-11.1 入驻审核 / 档案 / 认证标 / 封禁）。
 // ⚠️ 契约禁止 delete*：下架商家用 archiveMerchant，封禁用 setMerchantStatus。
-import type { AuthCode, Merchant, MerchantStatus, Page, Violation, ViolationAction, ViolationType } from "@/lib/types";
-import type { MerchantQ } from "../query";
+import type {
+  ModeRisk,
+  FundsMode,
+  ApplyOnBehalfResult,
+  SelfOperatedResult,
+  SelfOperatedStore,
+  Qualification,
+  MerchantPlanRow,
+  PlanDef,
+  PlanUpgradeSignal,
+  OnboardingRow,
+  AdmissionPolicy, AuthCode, AuthCodeSetResult, LegalForm, DepositTxn, DepositTxnType, Merchant, MerchantApply, MerchantDeposit, MerchantStaffRow, PayQuota, MerchantStatus, Page, StoreMode, Violation, ViolationAction, ViolationType, StoreFulfillmentRow, MerchantChainRow, MerchantNudgeReason, MerchantNudgeResult } from "@/lib/types";
+import type { ApplyQ, MerchantQ, OnboardingQ } from "../query";
 
 export interface MerchantApi {
+  // ── 门店经营模式与弱主体准入 ─────────────────────────────────
+
+  /**
+   * 商家链条画像（M1）：一家一行，建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账。
+   * `stuckOnly` 只要卡住的那些行 —— 运营的常用视图是「谁需要我」。
+   */
+  merchantChain(q?: { limit?: number; stuckOnly?: boolean }): Promise<MerchantChainRow[]>;
+
+  /**
+   * 主动触达商家（M2）。**一天一次** —— 同一商家同一事由当天第二次
+   * 返回 `alreadySentToday`，不再发。
+   */
+  nudgeMerchant(v: { entityNo: string; reason: MerchantNudgeReason; note?: string }):
+    Promise<MerchantNudgeResult>;
+
+  storeModes(merchantNo: string): Promise<StoreMode[]>;
+  /** 无照主体 × 自营门店的税务敞口清单。后端按敞口倒序 */
+  modeRisk(): Promise<ModeRisk[]>;
+  /**
+   * 改资金路径。**拒两种**：取值不在枚举里（400）、无照主体要走归集（409）。
+   * 后者的理由不是税负偏高，是成本不可税前扣除 —— 走一单亏一单。
+   */
+  setFundsMode(v: { merchantNo: string; fundsMode: FundsMode }): Promise<Merchant>;
+
+  /**
+   * 建**平台自营商家**（跳过进件与审核）。只有超管调得动
+   * （`merchant:selfop:create` 不在任何角色的码表里）。
+   *
+   * 拒的情形：手机号格式不对、名称为空、范围不在启用白名单里、
+   * scope=COMMUNITY 却没勾社区（400）—— 最后一条不是挑剔：
+   * 没有覆盖社区的商家上着架却对谁都不可见，而这个故障不报错。
+   *
+   * ⚠️ 别的档不要求勾社区，**但也不等于就可见了**。返回的
+   * `reachableCommunities` 才是真判据。
+   *
+   * **幂等按人**：同一个手机号连调两次返回同一个主体，`created=false`。
+   */
+  createSelfOperated(v: {
+    phone: string;
+    name: string;
+    /** COMMUNITY / CITY / PLATFORM；空按 COMMUNITY。先过一期启用白名单 */
+    serviceScope?: string;
+    /** scope=COMMUNITY 时必填 */
+    communityNos: string[];
+    industry?: string;
+    description?: string;
+  }): Promise<SelfOperatedResult>;
+
+  /**
+   * **代商家提交入驻申请**（三期）。BD 在店里把执照拍下来、当场替老板填完。
+   *
+   * **它不建主体，只落一张单**，走的是与商户自填完全相同的那条路：
+   * 证件照要、进件照走、订阅额度照吃、单子照进审核队列。本期只改「谁来填这张表」。
+   * 自营能免证件是因为不存在第三方 —— 代填的时候第三方是存在的，那个论证不成立。
+   *
+   * **会给这个手机号建一个账号**，而本人当时并不知道。不建的话审核通过时
+   * 没有 owner 可挂，所以只能建 —— 代价是商户首次登录必须看到这件事。
+   *
+   * **协议不在这里勾**：`agreed_at` 落库时一律为空，运营不能替商户同意。
+   *
+   * ⚠️ **代填的人审不了自己填的那张单**（后端按 `submitted_by` 拦，403）——
+   * BD 同时持有审核码与代填码，光靠权限配置挡不住。
+   */
+  applyOnBehalf(v: {
+    /** 商户本人手机号。**它决定这张单最终挂给谁** —— 填错就是挂到别人名下 */
+    phone: string;
+    name: string;
+    /** 主体类型（ENTERPRISE / INDIVIDUAL / …）。决定要不要执照 */
+    subject: string;
+    contactName?: string;
+    contactPhone?: string;
+    category?: string;
+    description?: string;
+    serviceScope?: string;
+    communityNos?: string[];
+    qualifications?: string[];
+    asPickupPoint?: boolean;
+    industry?: string;
+    qualificationItems?: {
+      type: string; code?: string; imageUrl?: string;
+      expireAt?: number | null; issuer?: string;
+    }[];
+  }): Promise<ApplyOnBehalfResult>;
+
+  /**
+   * 给**平台自营主体**再开一家门店。
+   *
+   * 不走订阅额度（额度是卖给商家的商品，平台自己的店不该被自己的定价限制），
+   * 也不需要进件（自营按自营结算）。**非自营主体调它会 409** ——
+   * 第三方开店的入口在 B 端，那里有额度闸也有商家自己的操作记录。
+   *
+   * @param categoryNos 这家店的货架；空 = 复制默认店的
+   */
+  addSelfOperatedStore(v: {
+    merchantNo: string;
+    name: string;
+    address?: string;
+    categoryNos?: string[];
+  }): Promise<SelfOperatedStore>;
+
+  // ── 资质（P1-7）。后端三个接口早已实现，此前**前端零调用** ─────────
+  /** 某商家已登记的资质。上架的两个闸门读的就是这张表 */
+  qualifications(merchantNo: string): Promise<Qualification[]>;
+  /** 登记或更新。qualNo 为空 = 新增；expireAt 为 null = 长期有效 */
+  saveQualification(v: { merchantNo: string } & Partial<Qualification>): Promise<Qualification>;
+  /** 撤销。**不物理删** —— 「当初有没有这张证」是要能查的 */
+  revokeQualification(qualNo: string): Promise<Qualification>;
+
+  /**
+   * 改门店经营模式。
+   *
+   * **只对新单生效** —— 结算单在生成时就快照了 businessMode，历史账不受影响。
+   * 页面必须把这句话显示出来，否则运营会以为改了模式能一并修正历史。
+   *
+   * 切第三方要求该店有可用收款号；没有会被后端拒（70012）——
+   * 不拦的后果不是报错而是**静默欠款**：单照常成交，钱卡在平台侧下不去。
+   */
+  setStoreBusinessMode(v: { storeNo: string; businessMode: StoreMode["businessMode"] }): Promise<StoreMode>;
+
+  /** 三档准入策略。 */
+  admissionPolicies(): Promise<AdmissionPolicy[]>;
+  updateAdmissionPolicy(v: { legalForm: LegalForm } & Partial<AdmissionPolicy>): Promise<void>;
+
+  /**
+   * 这家商家的员工与门店授权（**只读**）。
+   *
+   * 契约里刻意没有写的那一半：平台不能改商家的授权 ——
+   * 那是商家的雇佣关系，替他决定谁能动他的钱不是运营该有的按钮。
+   * 要处置该商家走封禁，那是另一个层级、另一个权限码。
+   */
+  merchantStaff(merchantNo: string): Promise<MerchantStaffRow[]>;
+
+  /**
+   * 商家履约配置（方案 v4，**只读**）：门店 × 送货方式矩阵。
+   * 运营接到履约投诉时的第一入口 —— 先看这家店到底开了哪几路，再谈处置。
+   * 写入口在 B 端；平台的干预走锁路（P2），不在本契约。
+   */
+  merchantFulfillment(merchantNo: string): Promise<StoreFulfillmentRow[]>;
+  /*
+   * 锁路 / 解锁（P2）。用锁不用删：商家配置原样保留，处置结束一键恢复。
+   *
+   * **一个动作两个端点，所以是两个方法。** 此前是一个 `lockChannel(…, locked)`，
+   * 路径里写着 `${locked ? "lock" : "unlock"}` —— 后端那边本来就是两个
+   * `@PostMapping`，契约把它们折成一个，等于把「调哪个端点」藏进了一个布尔参数。
+   * 直接的后果：规格生成器**一条都抽不到**（它的正则在模板串里的引号处断掉），
+   * 于是整份 `openapi-ops.yaml` 生成不出来，而没有任何东西会报。
+   */
+  lockChannel(storeNo: string, channel: string, reason?: string): Promise<void>;
+  unlockChannel(storeNo: string, channel: string): Promise<void>;
+
+  merchantDeposit(merchantNo: string): Promise<MerchantDeposit>;
+  /** 当前收款额度。空数组 = 还没进过件，与「额度为零」是两件事 */
+  payQuotas(merchantNo: string): Promise<PayQuota[]>;
+  /**
+   * 设置收款额度上限。只改上限，**不动已用量** —— 用量是支付累加出来的事实。
+   *
+   * @param storeNo 空 = 主体级；@param quotaLimitMinor 0 = 取消限制（不是「额度为零」）
+   */
+  setPayQuota(v: { merchantNo: string; storeNo?: string; quotaLimitMinor: number }): Promise<void>;
+  depositTxns(merchantNo: string): Promise<DepositTxn[]>;
+  /** @param amountMinor 有符号：缴纳为正、扣划为负 */
+  /**
+   * @param requestNo **必填**的幂等键，一次点击一个。
+   *                  这张流水表只增不改、金额又是运营当场填的 ——
+   *                  重复提交会实打实记两笔，而后端漏传时直接 400（不静默放行）。
+   */
+  addDepositTxn(v: { merchantNo: string; txnType: DepositTxnType; amountMinor: number;
+    reason?: string; requestNo: string }): Promise<void>;
+
+  // ── 入驻审核（P-11.1.1）────────────────────────────────────────
+  //
+  // **申请单与商家主体是两个资源**：通过之前商家不存在，所以审核动作打在
+  // applyNo 上而不是 merchantNo 上。这一段已接真后端 `/ops/merchant/apply/**`。
+
+  /**
+   * 入驻申请检索。
+   *
+   * @param q.status 逗号分隔；**不传只给待办两档**（PENDING/REVIEWING）——
+   *   运营台默认打开就该是「要我做的事」，已处理的属于历史
+   */
+  listApplies(q?: ApplyQ): Promise<Page<MerchantApply>>;
+
+  /** 受理：告诉商家「有人在看了」。不改变审核结果，也不是通过的必经步骤 */
+  acceptApply(applyNo: string): Promise<void>;
+
+  /**
+   * 审核。
+   *
+   * @param reason       驳回**必填** —— 不写理由等于让对方猜着改
+   * @param serviceScope 通过时补/改服务范围；不传沿用申请单上的值
+   * @param communityNos 同上。**商家没填时运营必须在这里补** ——
+   *   否则商家通过审核、上完架，却对谁都不可见，而这个故障不报错
+   * @param grantCodes   通过时授予的经营类目码。**与通过同一个事务** ——
+   *   分两步做会留下「通过了但一个码都没授」的状态：商家收到通过通知、
+   *   进去建品、上架被拒，而错误说的是「你还没有资质授权」。
+   *   空 = 只经营无门槛类目（合法，不是漏填）
+   */
+  auditApply(
+    applyNo: string,
+    approved: boolean,
+    reason?: string,
+    serviceScope?: string,
+    communityNos?: string[],
+    grantCodes?: string[],
+  ): Promise<void>;
+
   listMerchants(q?: MerchantQ): Promise<Page<Merchant>>;
   getMerchant(merchantNo: string): Promise<Merchant>;
+
+  // ── 进件看板（WS-C）──────────────────────────────────────────────
+  //
+  // 只读 + 一个人工回查。它补的是「审核过了但收不了钱」的盲区：入驻审核与收款进件
+  // 是两条链，审核过的商家货照上、单照来，进件没走完就是钱收不到，而运营端此前
+  // 没有一个跨商家的地方能看见。**不碰通道** —— 真实进件通道属支付方案，
+  // 看板只读 mch_payment_merchant，回查转调后端已有的 refresh。
+
+  /**
+   * 进件看板。跨商家、跨通道，按状态/通道/关键词筛。
+   * @param q.status 逗号分隔多态；空 = 全部
+   */
+  onboardingBoard(q?: OnboardingQ): Promise<Page<OnboardingRow>>;
+
+  /**
+   * 人工回查：替卡在进件上的商家去通道问一次结果并落库。
+   * @param storeNo 空 = 主体级默认收款号
+   */
+  /**
+   * 人工回查：替卡在进件上的商家去通道问一次结果并落库。
+   *
+   * **返回值不能丢。** 入驻通过时派生的占位记录也是 APPLYING，但它从没发给过通道，
+   * 后端对这种行直接原样返回（不去问通道一个不存在的单号）。此前端上无论如何都弹
+   * 「已回查」，于是运营对着一家卡住的店天天点、天天看到成功、状态天天不动。
+   * `submitted` 就是那个判据：false = 球在商家脚下，回查再多次也不会变。
+   */
+  refreshOnboarding(v: { merchantNo: string; payChannel: string; storeNo?: string }):
+    Promise<{ submitted: boolean; applyStatus: string }>;
   /** 审核推进（DRAFT→SUBMITTED→REVIEWING→APPROVED/REJECTED），非法迁移抛错。 */
-  setMerchantStatus(merchantNo: string, status: MerchantStatus, remark?: string): Promise<Merchant>;
+  /**
+   * 审核推进。
+   *
+   * @param communityNos 覆盖社区。**status=APPROVED 且商家按社区经营时必填** ——
+   *   不给的话商家审核通过却对谁都不可见（ADR-009：service_scope 默认 COMMUNITY，
+   *   一个社区都没覆盖 = C 端任何人都搜不到），而这个故障没有任何报错，
+   *   商家和运营都查不出原因。后端会直接拒绝这种提交。
+   */
+  setMerchantStatus(
+    merchantNo: string,
+    status: MerchantStatus,
+    remark?: string,
+    communityNos?: string[],
+  ): Promise<Merchant>;
   /** 认证标授予/撤销（P-11.1.2）。 */
   /**
    * 认证标授予/撤销（P-11.1.2）。
@@ -33,11 +291,30 @@ export interface MerchantApi {
    * - **不能把授权撤空**：商家会静默失去上架能力，要停就走封禁/归档，那是明示的动作；
    * - **该码下还有在售商品的不能撤**：撤了架上还挂着那类商品，谁也说不清它算不算违规。
    */
-  setMerchantAuthCodes(v: { merchantNo: string; codes: string[]; reason: string }): Promise<Merchant>;
+  /**
+   * 全量覆盖经营授权码。
+   *
+   * <p>响应里带 `revoked` 与 `affected`：**撤码时运营要看得见代价** ——
+   * 那些在架商品下次上架就会被闸门拒。看不见的话，一次「顺手收紧」会在几天后
+   * 变成商家的「我的货怎么上不去了」，而两件事没人会联系起来。
+   */
+  setMerchantAuthCodes(v: {
+    merchantNo: string;
+    codes: string[];
+    reason: string;
+  }): Promise<AuthCodeSetResult>;
 
   // ── 违规处置与信用档案（P-11.1.4 / 11.1.5）─────────────────────
 
-  listViolations(q?: { merchantNo?: string }): Promise<Violation[]>;
+  /**
+   * 违规记录。不传 `merchantNo` 就是全平台。
+   *
+   * ★ 返回**分页包**而不是裸数组 —— 后端 `PageData.ofAll(...)` 一直是这么给的。
+   * 此前契约声明成 `Violation[]`，而 mock 也真的返裸数组，于是两侧一起错、
+   * 本地永远看不出来；只有切到真后端那一刻 `data.map is not a function`，
+   * 信用档案抽屉与违规列表**整块炸掉**。
+   */
+  listViolations(q?: { merchantNo?: string; page?: number; size?: number }): Promise<Page<Violation>>;
 
   /**
    * 记一条违规并执行处置。
@@ -52,5 +329,60 @@ export interface MerchantApi {
     type: ViolationType;
     action: ViolationAction;
     detail: string;
+    /**
+     * 门店级处置的对象门店。**`STORE_OFFLINE` 必填，其余动作必须为空** ——
+     * 处置动作与它作用的对象是同一次提交的两半，分开发就会出现
+     * 「压了店但没有处置记录」或反过来。
+     */
+    storeNo?: string;
   }): Promise<Violation>;
+
+  // ── 增值包与门店额度（P-11.2.2~11.2.6）─────────────────────────
+  //
+  // 一期**没有支付**：商家点「升级」→ 联系平台 → 运营在这里授予。
+  // 所以契约里没有 `payPlan`/`orderPlan` —— 那条链路（通道签约、发票、退订退款）
+  // 是独立项目，在验证「有没有人愿意买」之前建它，是拿最贵的一步去赌未验证的假设。
+
+  /**
+   * 到期与降级看板。
+   *
+   * @param q.filter `EXPIRING_7D`（7 天内到期且仍在生效）/ `GRACE`（宽限期中）/
+   *   `DOWNGRADED`（已降级）。三个筛选各对应一个动作：去催、去救、去回访。
+   *   窗口取 7 天 = 宽限期长度：**催的窗口与救的窗口一样长**，
+   *   于是「催过一轮还没续」与「已经掉进宽限期」在时间上刚好接续
+   */
+  merchantPlans(q?: { filter?: string; keyword?: string; page?: number; size?: number }): Promise<Page<MerchantPlanRow>>;
+
+  /** 升档信号：一个人名下多个主体 = 他已经在多店经营，只是绕过了额度。 */
+  planUpgradeSignals(): Promise<PlanUpgradeSignal[]>;
+
+  /**
+   * 授予 / 延长。
+   *
+   * @param months 延长月数；**留空 = 只补缴不延长**，此时不刷新额度快照 ——
+   *   他买的是当初那个额度，中途运营下调档位定义不该殃及他
+   *
+   * 延长的基准是「原到期日与今天里较晚的那个」：一律从今天重算，
+   * 会吞掉他已付未用的那几天。
+   */
+  grantPlan(v: { merchantNo: string; planCode: string; months?: number; reason: string }): Promise<MerchantPlanRow>;
+
+  /**
+   * 单商家额度覆盖。**优先于档位快照**，`storeQuota` 传 null = 清除覆盖、回到快照。
+   *
+   * 为什么需要它：谈下来的条件常常不落在任何一档上（「先给你 5 家，年底再谈」）。
+   * 没有这个口子，运营只能去改档位定义 —— 而那会影响这一档之后的所有新订阅。
+   */
+  overridePlanQuota(v: { merchantNo: string; storeQuota: number | null; staffQuota: number | null; reason: string }): Promise<MerchantPlanRow>;
+
+  /** 档位定义。读挂商家只读码 —— 授予对话框要拿它填下拉。 */
+  planDefs(): Promise<PlanDef[]>;
+
+  /**
+   * 改档位定义。**只影响之后新订阅的人**，已订阅的用的是自己的额度快照。
+   *
+   * 权限刻意与授予分开（`system:param:update`）：BD 能给某家授予套餐，
+   * 但不能改「套餐是什么」—— 后者影响这一档之后的所有订阅。
+   */
+  savePlanDef(v: { planCode: string; storeQuota: number; staffQuota: number; crossStoreStats: boolean; trialDays: number; enabled: boolean }): Promise<PlanDef>;
 }

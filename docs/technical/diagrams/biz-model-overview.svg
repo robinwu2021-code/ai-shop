@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="466" viewBox="0 0 760 466" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>业务模型总览：账号 · 主体 · 门店 · Plan · 增长 · 权益</title>
+<desc>五层。账号是入口不是权益边界；主体是钱与信用的边界；门店是顾客感知的边界。Plan 挂主体，增长与权益分别挂门店和主体。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12.5px;font-weight:600;fill:#161A21}
+.t{font-size:10.5px;fill:#5A6472}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.12em}
+.l{font-size:10px;fill:#5A6472;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2;rx:7}
+.key{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.4}
+.new{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.2}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.band{stroke:#EDEFF2;stroke-width:1}
+</style></defs>
+
+<line class="band" x1="26" y1="70" x2="734" y2="70"/>
+<line class="band" x1="26" y1="156" x2="734" y2="156"/>
+<line class="band" x1="26" y1="258" x2="734" y2="258"/>
+<line class="band" x1="26" y1="360" x2="734" y2="360"/>
+
+<text class="b" x="26" y="30">① 账号层 —— 入口，不是权益边界</text>
+<rect class="box" x="26" y="38" width="150" height="26"/>
+<text class="n" x="36" y="55">usr_user</text><text class="t" x="112" y="55">注册账号</text>
+<rect class="box new" x="200" y="38" width="300" height="26"/>
+<text class="n" x="210" y="55">usr_merchant_staff · usr_staff_store</text><text class="t" x="416" y="55">每店一个角色</text>
+<text class="l" x="512" y="55">一账号多主体 · A店店长/B店店员</text>
+
+<text class="b" x="26" y="98">② 经营主体 —— 钱与信用的边界</text>
+<rect class="box key" x="26" y="106" width="176" height="42"/>
+<text class="n" x="36" y="124">usr_merchant</text>
+<text class="t" x="36" y="139">进件·分账·信用·行业·主体</text>
+<rect class="box" x="222" y="106" width="150" height="42"/>
+<text class="n" x="232" y="124">usr_merchant_payment</text><text class="t" x="232" y="139">通道进件（ADR-002）</text>
+<rect class="box new" x="392" y="106" width="150" height="42"/>
+<text class="n" x="402" y="124">usr_merchant_plan</text><text class="t" x="402" y="139">档位·额度·有效期</text>
+<rect class="box new" x="562" y="106" width="172" height="42"/>
+<text class="n" x="572" y="124">sys_merchant_plan_def</text><text class="t" x="572" y="139">FREE / PRO / CHAIN</text>
+
+<text class="b" x="26" y="186">③ 门店 —— 顾客感知的边界（连锁型 / 多业态型都要装下）</text>
+<rect class="box key" x="26" y="194" width="176" height="52"/>
+<text class="n" x="36" y="212">usr_store</text>
+<text class="t" x="36" y="227">门面·经营范围·门店码</text>
+<text class="t" x="36" y="240">一主体 N 家，含默认店</text>
+<rect class="box" x="222" y="194" width="150" height="52"/>
+<text class="n" x="232" y="212">prd_goods</text>
+<text class="t" x="232" y="227">商品目录挂主体</text>
+<text class="t" x="232" y="240">三店同款只录一次</text>
+<rect class="box new" x="392" y="194" width="150" height="52"/>
+<text class="n" x="402" y="212">prd_store_goods / _stock</text>
+<text class="t" x="402" y="227">选品：卖不卖这款</text>
+<text class="t" x="402" y="240">库存：这规格有几件</text>
+<rect class="box" x="562" y="194" width="172" height="52"/>
+<text class="n" x="572" y="212">ord_sub_order</text>
+<text class="t" x="572" y="227">merchant_no 结算键</text>
+<text class="t" x="572" y="240">+ store_no 履约键（双写）</text>
+
+<text class="b" x="26" y="288">④ 增长 —— 曝光交换的两层</text>
+<rect class="box new" x="26" y="296" width="150" height="52"/>
+<text class="n" x="36" y="314">mkt_share_link</text>
+<text class="t" x="36" y="329">每次分享一条码</text>
+<text class="t" x="36" y="342">谁·哪店·哪货</text>
+<rect class="box new" x="196" y="296" width="150" height="52"/>
+<text class="n" x="206" y="314">mkt_share_click</text>
+<text class="t" x="206" y="329">有效/无效都记</text>
+<text class="t" x="206" y="342">无效要记原因</text>
+<rect class="box new" x="366" y="296" width="150" height="52"/>
+<text class="n" x="376" y="314">mkt_exposure_pool</text>
+<text class="t" x="376" y="329">①拉新：首页曝光位</text>
+<text class="t" x="376" y="342">权重轮播·续期不叠加</text>
+<rect class="box new" x="536" y="296" width="198" height="52"/>
+<text class="n" x="546" y="314">usr_store_follow · mkt_store_feed</text>
+<text class="t" x="546" y="329">②留存：我常逛的店</text>
+<text class="t" x="546" y="342">逛过即建立·动态自动产生</text>
+
+<text class="b" x="26" y="390">⑤ 权益 —— 边界是主体，门店可收窄</text>
+<rect class="box" x="26" y="398" width="176" height="42"/>
+<text class="n" x="36" y="416">mkt_coupon</text><text class="t" x="36" y="431">merchant_no 已是主体级</text>
+<rect class="box new" x="222" y="398" width="150" height="42"/>
+<text class="n" x="232" y="416">+ store_scope</text><text class="t" x="232" y="431">可选收窄：新店开业</text>
+<rect class="box" x="392" y="398" width="150" height="42"/>
+<text class="n" x="402" y="416">pts_* 积分</text><text class="t" x="402" y="431">账户挂主体（ADR-006）</text>
+<rect class="box" x="562" y="398" width="172" height="42"/>
+<text class="n" x="572" y="416">mkt_attribution</text><text class="t" x="572" y="431">客流来源 → 费率分档</text>
+
+<path class="ar" d="M114 64 L114 106" marker-end="url(#ar)"/>
+<path class="ar" d="M300 64 L180 106" marker-end="url(#ar)"/>
+<path class="ar" d="M467 148 L467 106" marker-start="url(#ar)"/>
+<path class="ar" d="M562 127 L542 127" marker-end="url(#ar)"/>
+<path class="ar" d="M114 148 L114 194" marker-end="url(#ar)"/>
+<path class="ar" d="M101 246 L101 296" marker-end="url(#ar)"/>
+<path class="ar" d="M202 220 L222 220" marker-end="url(#ar)"/>
+<path class="ar" d="M16 220 L6 220 L6 419 L26 419" marker-end="url(#ar)" stroke-dasharray="3 3"/>
+</svg>

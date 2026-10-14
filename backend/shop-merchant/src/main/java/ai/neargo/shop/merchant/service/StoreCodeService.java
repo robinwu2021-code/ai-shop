@@ -1,0 +1,82 @@
+package ai.neargo.shop.merchant.service;
+
+/**
+ * 店铺码：印在物料上、扫了能直达这家店的短码（C-ST-10 / B-11.2.6）。
+ *
+ * <p>这两个方法原本长在 user 域的 {@code StoreFavoriteService} 上。放错位置的代价很具体：
+ * {@code ensureStoreCode} 会**写 mch_entity**，也就是用户域在改商家的行；
+ * 而它被放在那里的唯一理由，只是「扫码进来之后顺手要看收藏状态」——
+ * 那是调用顺序上的相邻，不是职责上的同类。
+ *
+ * <p><b>V298 起码的粒度是门店</b>（{@code mch_store.store_code}）。此前一主体一码，
+ * 多门店商家每家分店贴的是同一个码，扫码/进店/注册在分店之间分不开。
+ * 旧码没有作废：默认店继承了主体上那个码，所以已经印出去的贴纸照常扫得进来。
+ */
+public interface StoreCodeService {
+
+    /**
+     * 码指向的那家店。
+     *
+     * @param storeCode 印在物料上的短码
+     * @return 主体号 + 门店号；<b>门店号可能为空</b>（主体连门店行都没有的历史数据）。
+     *     码不存在给 404，不静默回退到首页 —— 静默回退会让「码印错了」永远没人发现
+     */
+    CodeTarget resolveTarget(String storeCode);
+
+    /**
+     * 码指向的主体。{@link #resolveTarget} 的窄化版本，给只关心主体的调用方。
+     */
+    String resolve(String storeCode);
+
+    /**
+     * 这家<b>门店</b>的店铺码；没有就发一个。
+     *
+     * <p>{@code storeNo} 为空时退回主体的默认店 —— B 端没切店时问的就是「我这家店的码」。
+     */
+    String ensureForStore(String merchantNo, String storeNo);
+
+    /** 商家默认店的店铺码；没有就生成一个。 */
+    String ensureFor(String merchantNo);
+
+    /**
+     * 店铺的小程序码（PNG base64，不含 {@code data:} 前缀）。
+     *
+     * <p><b>生成一次就落库复用</b>：{@code wxacode.getUnlimited} 是永久码且每个 appid
+     * 总量有限（十万级）—— 每次请求都现调，几百个商家反复刷新页面就能把额度耗掉，
+     * 而额度用尽之后新入驻的商家<b>再也拿不到码</b>。
+     *
+     * <p><b>码图必须与码同属一家店</b>（V298）。一店一码之后这两样如果不同源，
+     * 端上会出现「码值是分店的、图扫出来是主店的」—— 而两者都显示得好好的，
+     * 店主把图印了 500 张，每一次扫码都算到另一家店头上，没有任何症状。
+     *
+     * @param storeNo 哪家店的码图；<b>空 = 该主体的默认店</b>
+     * @return 通道未开启或生成失败时 <b>null</b> —— 端上据此不显示码，
+     *     而不是显示一张永远加载不出来的图
+     */
+    String acodeBase64(String merchantNo, String storeNo);
+
+    /**
+     * 对外链接里该用的那一段（V357）：<b>门店代码（{@code slug}）优先，没设过回落店铺码</b>。
+     *
+     * <p><b>为什么不是让 {@link #ensureForStore} 直接返回它</b>：那个方法的结果要印在
+     * 贴纸和小程序码上，那两样一旦印出去就不能变（V298 的「已印出去的码不作废」）。
+     * 链接是给人读的文字，码是给机器扫的 —— 同一家店这两样不一致是正常的，
+     * 而把它们混成一个返回值，将来改代码就会连带让贴纸失效。
+     *
+     * <p>不发码：只读现有的。没有门店行、也没有码时返回 null，
+     * 调用方据此不显示链接（{@link StoreLinkService#linkOf} 也是这个口径）。
+     *
+     * @param storeNo 哪家店；<b>空 = 该主体的默认店</b>
+     */
+    String linkCodeOf(String merchantNo, String storeNo);
+
+    /**
+     * 码解析结果。
+     *
+     * @param entityNo 主体号，永不为空
+     * @param storeNo  门店号；<b>空 = 这个码只知道是哪个主体</b>，不知道是哪家店。
+     *                 拿它当「默认店」用之前先想清楚：分不出店与确定是默认店是两件事
+     */
+    record CodeTarget(String entityNo, String storeNo) {
+    }
+}

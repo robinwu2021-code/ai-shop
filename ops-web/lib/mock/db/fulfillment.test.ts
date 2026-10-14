@@ -29,7 +29,7 @@ describe("到货批次状态机", () => {
 
 describe("分拣", () => {
   it("只出已签收批次的货", async () => {
-    const rows = await fulfillmentMock.listSorting();
+    const rows = (await fulfillmentMock.listSorting()).records;
     expect(rows.length).toBeGreaterThan(0);
     // 未签收的自提点不该出现
     expect(rows.some((r) => r.pickupNo === "P002")).toBe(false);
@@ -37,7 +37,7 @@ describe("分拣", () => {
 
   it("签收一个新批次后，它的自提点才进入分拣视图", async () => {
     await fulfillmentMock.setBatchStatus("B20260806B", "SIGNED");
-    const rows = await fulfillmentMock.listSorting();
+    const rows = (await fulfillmentMock.listSorting()).records;
     // mock 数据里 P002 暂无分拣明细，这里断言的是过滤条件按签收状态走、不再把它排除
     const signedPickups = batches.filter((b) => b.status === "SIGNED").map((b) => b.pickupNo);
     expect(signedPickups).toContain("P002");

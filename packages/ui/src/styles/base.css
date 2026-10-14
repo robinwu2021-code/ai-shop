@@ -24,12 +24,219 @@
    ⚠️ CSS 注释里不能出现星号加斜杠的组合（会提前闭合注释，PostCSS 直接报错）。
    ============================================================================ */
 
-/* ---- 与主题无关的常量 ---- */
+/* ============================================================================
+   uni 自带控件的变量（`--UI-*`）：**App 端必须由我们兜底**
+   ============================================================================
+
+   两份产物逐条比出来的（2026-08-28，`build:h5` vs `build:app`）：
+
+     H5  产物里 `html { --UI-BG: #fff; --UI-FG: #000; … }` —— **无条件生效的浅色默认**
+     App 产物里这组变量**只在 `@media (prefers-color-scheme: dark)` 里定义过一次**
+
+   于是 App 上：
+
+     · 系统浅色 → 这些变量**根本没有定义**。uni 内置件里凡是写
+       `background-color: var(--UI-BG)` 的整条声明**静默失效**（CSS 变量未定义时
+       整条声明被丢弃，不是回退到默认值）—— 页面底层、按钮、选择器、
+       加载态、原生弹框全都掉底色。
+     · 系统深色 → 变成 uni 的深色值，而我们的 `--sh-*` 还是浅色，两套色混在一起。
+
+   两种情况都跟 H5 对不上，而 H5 因为有那份无条件浅色默认，永远是干净的。
+   这就是「打包后的 App 没有 H5 亮」的来源 —— 不是我们的样式表：
+   我们自己的 115 条规则在两份产物里**逐字节相同**。
+
+   补法：把 H5 那份浅色默认原样搬过来，无条件声明。它在本文件里、位置远在
+   uni 那段 `@media` 之后，同为 `html` 选择器 —— **后写的赢**，
+   于是也顺带切断了「跟系统深色走」：明暗是**我们的 mode 说了算**，不是系统。
+   我们自己要深色时，下面那条 `:root[data-theme="dark"]`（多一个属性，权重更高）会接上。 */
+html {
+  --primary-color: #007aff;
+  --UI-BG: #fff;
+  --UI-BG-1: #f7f7f7;
+  --UI-BG-2: #fff;
+  --UI-BG-3: #f7f7f7;
+  --UI-BG-4: #4c4c4c;
+  --UI-BG-5: #fff;
+  --UI-FG: #000;
+  --UI-FG-0: rgba(0, 0, 0, 0.9);
+  --UI-FG-HALF: rgba(0, 0, 0, 0.9);
+  --UI-FG-1: rgba(0, 0, 0, 0.5);
+  --UI-FG-2: rgba(0, 0, 0, 0.3);
+  --UI-FG-3: rgba(0, 0, 0, 0.1);
+}
+/* 我们的 mode 说深色时才深色。多一个属性选择器，权重压得过上面那条 */
+:root[data-theme="dark"] {
+  --UI-BG-COLOR-ACTIVE: #373737;
+  --UI-BORDER-COLOR-1: #373737;
+  --UI-BG: #000;
+  --UI-BG-0: #191919;
+  --UI-BG-1: #1f1f1f;
+  --UI-BG-2: #232323;
+  --UI-BG-3: #2f2f2f;
+  --UI-BG-4: #606060;
+  --UI-BG-5: #2c2c2c;
+  --UI-FG: #fff;
+  --UI-FG-0: hsla(0, 0%, 100%, 0.8);
+  --UI-FG-HALF: hsla(0, 0%, 100%, 0.6);
+  --UI-FG-1: hsla(0, 0%, 100%, 0.5);
+  --UI-FG-2: hsla(0, 0%, 100%, 0.3);
+  --UI-FG-3: hsla(0, 0%, 100%, 0.05);
+}
+
+
+/*
+ * uni 内置件在 `@media (prefers-color-scheme: dark)` 里**写死的深色**（不走变量，
+ * 所以上面那份 `--UI-*` 兜底管不到）。系统一开深色它们就翻，而我们的 `--sh-*`
+ * 仍是浅色 —— 一屏两套色。会撞上的只有三种件：`<button>`（c-app 2 / b-app 5）、
+ * `<switch>`（b-app 1）、`<picker>` 的滚轮遮罩（b-app 4）。
+ *
+ * ⚠️ **不能用 `@media (prefers-color-scheme: dark)` 去压它** ——
+ * App 构建会把**用户写的**这个媒体查询整块丢掉（uni 自己 app.css 里的那四块留着）。
+ * 拿四个探针验过：裸 `uni-button` 进得去、`:root:not(...) uni-button` 进得去，
+ * 而只要外面套上 `prefers-color-scheme`，**不管里面是什么选择器都进不去**。
+ * `@media (min-width: 601px)` 那种普通查询不受影响 —— 是这一个条件被特判掉了。
+ *
+ * 所以改成**无条件**写：值取自 uni 自己的基态规则（把 `@media` 整段剔掉后读出来的），
+ * 所以浅色下它是一条 no-op，深色下才把 uni 的翻转顶回去。
+ * 前缀 `:root:not([data-theme="dark"])` 让我们**自己**要深色时它自动让开。
+ */
+/* #ifndef MP-WEIXIN */
+/* 这一整段只对 H5 / App 成立：`:root` 与 `uni-*` 这两样在 WXSS 里都不存在
+   （小程序的根是 page，标签名也没有 uni- 前缀）—— 不排除的话它只是白进小程序包。 */
+/* ⚠️ **要避开我们自己的按钮。** 这条选择器是 `:root:not(...) uni-button`（0-2-1），
+   而 `.sh-btn` 只有 0-1-0 —— 于是任何 `<button class="sh-btn">` 在 H5 上都被这里
+   染成 `#f8f8f8` 灰底黑字，而不是品牌色。2026-09-06 实测：phone-gate 的
+   「微信一键获取」——那张弹层上的主操作——一直是灰的（量到 rgb(248,248,248)，
+   而 `--sh-primary` 是 #00B578）。全仓现在只剩这一个 `<button>`（微信只认 button 上的
+   open-type 拿手机号），但正因为只剩一个，更没人会去查它为什么长得不一样。 */
+:root:not([data-theme="dark"]) uni-button:not(.sh-btn),
+:root:not([data-theme="dark"]) uni-button[type="default"]:not(.sh-btn) {
+  color: #000;
+  background-color: #f8f8f8;
+}
+:root:not([data-theme="dark"]) .button-hover,
+:root:not([data-theme="dark"]) .button-hover[type="default"] {
+  color: rgba(0, 0, 0, 0.6);
+  background-color: #dedede;
+}
+:root:not([data-theme="dark"]) uni-button[disabled][type="default"]:not(.sh-btn),
+:root:not([data-theme="dark"]) uni-button[disabled]:not([type]):not(.sh-btn) {
+  color: rgba(0, 0, 0, 0.3);
+  background-color: #f7f7f7;
+}
+:root:not([data-theme="dark"]) uni-button[type="default"][plain] {
+  color: #353535;
+  border: 1px solid #353535;
+}
+:root:not([data-theme="dark"]) uni-button[type="default"][plain][disabled],
+:root:not([data-theme="dark"]) uni-button[type="primary"][plain][disabled] {
+  color: rgba(0, 0, 0, 0.2);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+:root:not([data-theme="dark"]) uni-switch .uni-switch-input {
+  border-color: #dfdfdf;
+  background-color: #dfdfdf;
+}
+:root:not([data-theme="dark"]) uni-switch .uni-switch-input:before {
+  background-color: #fdfdfd;
+}
+:root:not([data-theme="dark"]) uni-switch .uni-switch-input:after {
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+:root:not([data-theme="dark"]) uni-switch .uni-checkbox-input {
+  background-color: #fff;
+  border: 1px solid #d1d1d1;
+  color: #007aff;
+}
+:root:not([data-theme="dark"]) .uni-picker-view-mask {
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.6)),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.6));
+}
+/* #endif */
+
+/* #ifdef MP-WEIXIN */
+/*
+ * 微信给原生 `<button>` 画的那一圈边，用的是 `::after` 的一张放大再缩放的边框 ——
+ * `.sh-btn` 改不到它，于是同一屏里「用 button 写的按钮」比「用 view 写的」多一圈线。
+ *
+ * 全仓只剩**一个** `<button>`（phone-gate 的 `open-type="getPhoneNumber"`，
+ * 微信强制要求用 button 才能拿手机号），其余 9 个 2026-09-06 都换成了
+ * `<view class="sh-btn">`。留这一条是为了那一个，也为了将来再出现 open-type 时不用重踩。
+ */
+button::after {
+  border: none;
+}
+/* #endif */
+
+
+/* ---- 与主题无关的常量 ----
+
+   ⚠️ **这一整块在安卓真机的小程序里是死的，原因未知**（2026-09-06/07 三处独立症状）：
+   购物车角标没有红底（`--sh-danger`）、底部菜单顶部既无细线也无投影
+   （`--sh-hairline` / `--sh-scrim`）、对话框遮罩不压暗（`--sh-scrim`，量过：
+   弹框外的白仍是 255,255,255，而模拟器上被压到 103）。
+   **同一份包在开发者工具模拟器里三处全对**，且下面那些**皮肤块在真机上是活的**
+   （页面底色、面色、主色都取到了 token 值，不是回退值）。
+
+   已经排除的两条（都做过实验，别再重走）：
+   · 「`.sh-root` 匹配不到」—— 本机实验：把 `:root,` 去掉只留 `.sh-root`，
+     模拟器里细线与投影照旧，说明这个选择器本身是能交付的；
+   · 「自定义属性的值里嵌 `var()` 会让整条规则被丢掉」（皮肤块一条都没嵌，
+     这里有两条 `--sh-hairline*`）—— 0.1.12 把那两条拆成单独一条规则发到真机，
+     **遮罩仍然是透明的，假设被证伪**，所以又合了回来。
+
+   下一步只能上真机读计算值（vConsole → WXML → Details）。在那之前，
+   **别给这些 token 的使用处逐个补回退值** —— 那是拿创可贴盖住一个还没查清的因，
+   而这一块里还有 z-index、时长、间距十几个变量同样在真机上没生效。 */
+/* ⚠️ **这一条在安卓真机微信上不生效**，小程序靠下面那条 `page` 规则兜底 ——
+   两处要一起改，别只改一处。理由见 `page` 那条的注释。
+   H5 与 App 一直走的是这一条，那两端从来没出过问题。 */
 :root,
 .sh-root {
-  /* 自定义底部菜单的高度（不含安全区）。悬浮条要压在它上面，靠这个变量对齐，
-     不许各页面各写各的数字 —— 改菜单高度时只改这一处。 */
-  --sh-tabbar-h: 124rpx;
+  /* ---- 浮层层级 ----
+     **《规范·版面》上那张表只有四层，代码里跑着九个数**（2026-09-06 数的：
+     200 / 150 / 100 / 90 / 60 / 50 / 40 / 20 / 10）。多出来的那几个不是新层，
+     是「当时随手挑了一个看起来够大的数」—— 其中 `biz-pickup-sheet` 与
+     b 端 `biz-region-picker` 取的 60 **低于 sh-sheet 的 100**：
+     从一个已经打开的弹层里再开这两个 picker，它会被盖在下面。
+     c 端 `biz-address-region` 更彻底 —— 它一个 z-index 都没写，靠 DOM 顺序碰运气，
+     而地址页正是「在编辑弹层里点省市区」这条路。
+
+     所以把层立成档。加一层之前先问：它和下面这几层的先后关系是什么？
+     答不上来就说明它属于其中某一层。 */
+  --sh-z-fab: 10;          /* 贴角悬浮按钮：压在列表上，让位给一切通栏与浮层 */
+  --sh-z-actionbar: 40;    /* 贴底通栏（含 sh-savebar） */
+  --sh-z-nav: 50;          /* 自绘标题栏 */
+  --sh-z-tabbar: 90;       /* 底部菜单 */
+  --sh-z-sheet: 100;       /* 底部弹层 */
+  --sh-z-sheet-stacked: 150; /* 弹层叠弹层：从一个弹层里再开一个 */
+  --sh-z-dialog: 200;      /* 居中对话框 —— 它是要人立刻回答的那一个，永远最上面 */
+
+  /* ---- 动效 ----
+     色、圆角、间距、字阶都有档，**唯独动效没有**：2026-09-06 数下来跑着七个时长
+     （0.18 / 0.2 / 0.22 / 0.3 / 0.32 / 0.42 / 0.62s）。这与当初圆角出问题是同一个形状 ——
+     没有档，每个人就照着「感觉差不多」再挑一个数，而两个差 0.02s 的过渡没人分得出，
+     只会让下一个人再挑一次。
+
+     按**动的是什么**分三档，不按「快慢好看」分：
+       fast  状态切换 —— 颜色、开关、按下。人不看它，只要不突兀
+       base  尺寸与位置 —— 进度条推进、元素落位。人在跟着看
+       slow  强调 —— 角标弹一下这类「请注意这里」，配 spring 曲线才成立
+     曲线只立 spring 一个：其余一律 `ease`，那是浏览器默认，不必起名字。 */
+  --sh-t-fast: 0.18s;
+  --sh-t-base: 0.3s;
+  --sh-t-slow: 0.42s;
+  /* 回弹：超过终点再退回来。用在「弹一下」的强调上，不要拿它做常规过渡 */
+  --sh-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* 自绘标题栏的高度（含状态栏）。**必须定义在这里** —— 它与 `--sh-tabbar-h`
+     是同一类东西：版面常量，不是皮肤色。在组件的 scoped style 里定义过一版，
+     `skin-vars` 当场拦下 —— 那道守卫只认皮肤块里的定义，而它拦的正是
+     「`--sh-*` 拼错了没人知道」，不该为一处破例。
+     默认 44px 是 H5 的最终值（没有状态栏）；App 上 sh-scaffold 按
+     `statusBarHeight` 用行内 style 顶掉它。 */
+  --sh-navbar-h: 44px;
   /* 应用最大宽度。窄屏（手机、小程序、App）恒为 100% —— 等于这条规则不存在；
      PC 浏览器上收成一条居中的窄栏，因为这套界面的信息密度、字号、点按区都是按手机排的，
      铺满 1920px 后一行能横跨半米，读起来比手机还累。
@@ -40,13 +247,148 @@
   /* 弹层遮罩。它压在所有皮肤之上，故不随主色变；但集中一处定义 ——
      之前 4 个文件各抄一份 rgba(10,12,16,.45)，改一次要找四个地方 */
   --sh-scrim: rgba(10, 12, 16, 0.45);
+  /* 压在 scrim 或照片上的字与图标（门户头图、详情主图上的圆钮）。与 --sh-scrim 配对，**不随皮肤变**：
+     深色皮肤里 --sh-on-primary 是深色，拿它写图上的字等于看不见 */
+  --sh-on-scrim: #ffffff;
+  /* 二维码的两色。**它们恒为纯黑纯白，不随皮肤变** —— 对比度是「扫得出来」的前提，
+     换成主色或深色底之后界面上仍然有一张码，只是扫不出来（这种坏法界面上看不见）。
+     与 --sh-scrim 同一个道理：压在皮肤之外，但集中一处定义，
+     免得每个画码的地方各写一次 #000/#fff，也免得组件层的写死颜色守卫逐个去豁免。 */
+  --sh-qr-ink: #000000;
+  --sh-qr-paper: #ffffff;
   --sh-success: #12b76a;
   --sh-success-tint: rgba(18, 183, 106, 0.14);
   --sh-warning: #f79009;
   --sh-warning-tint: rgba(247, 144, 9, 0.14);
+  /*
+   * 星标点亮色。**今天与 --sh-warning 同值，但它们不是同一件事** ——
+   * 评分的实心星、店铺的收藏图标，点亮时是这个琥珀；而 --sh-warning 是「要当心」。
+   * 合用一个 token 的后果是：哪天把告警色调成另一种橙，星星会跟着变，
+   * 而没有人会想到去检查评分页。
+   * 值相同不代表意图相同 —— 分开是为了让它们能各自改。
+   */
+  --sh-star: #f79009;
   --sh-danger: #f04438;
   --sh-danger-tint: rgba(240, 68, 56, 0.14);
 }
+
+/* ---- 带 rpx 的那几个常量 ----
+ *
+ * 分出来是一次**已经证伪的猜测**留下的痕迹，留着是为了别人不再走一遍：
+ * 当时以为「自定义属性的值里含 rpx 会拖垮整条规则」——
+ * 因为全仓所有定义 `--sh-*` 的规则里，只有这一块带 rpx，而也只有这一块在真机上是死的。
+ * 相关性很干净，**但 0.1.31 按 rpx 拆成两条发到真机，角标仍然没红**，假设不成立。
+ *
+ * 真正的原因见下面 `page` 那条。拆分本身无害，就不合回去了。
+ */
+:root,
+.sh-root {
+  /* 自定义底部菜单的高度（不含安全区）。悬浮条要压在它上面，靠这个变量对齐，
+     不许各页面各写各的数字 —— 改菜单高度时只改这一处。 */
+  --sh-tabbar-h: 124rpx;
+  /* 页面里**块与块之间**的那道缝。由 sh-scaffold 的 gap 统一给出 ——
+     此前没有任何人给（`.sh-block + .sh-block` 是 20rpx，`.sh-card` 之间没有），
+     于是一屏白卡连成一整块灰板。理由写在 sh-scaffold 的 `.sh-scaffold` 那段。
+     与 `--sh-pad-page` 同一族的版面常量，两端可各自覆盖密度。 */
+  --sh-gap-block: 20rpx;
+  /* 标准描边。**理由与上面那条遮罩一模一样**：会话开始时 25 个文件各写各的，
+     `2rpx solid var(--sh-line)` 抄了 28 份，另有 7 份 faint、4 份 1rpx、1 份 1px ——
+     同一条线在同一个应用里有四种粗细。
+
+     为什么是变量而不是 `.sh-hairline` 积木类：这一族只有**一条声明**。
+     积木类（.sh-card / .sh-chip）替掉一个元素的整体长相，而分隔线只是
+     `.foot`、`.row`、`.tabs` 这些**已经有语义类**的元素身上的一条边 ——
+     再挂一个表现类上去，元素就同时背着语义名和表现名，读起来更乱。
+     变量塞进原来那条 `border-top:` 里，模板一个字都不用动。
+
+     ⚠️ 1rpx 与 2rpx 不是随手写的差别：1rpx = 0.5px，在 2x 屏上正好一个物理像素，
+     是经典的 hairline 写法。但全仓 28 : 4，房子的规矩是 2rpx，
+     所以那 4 处跟着统一 —— 它们会比之前粗一个物理像素，这是有意的。 */
+  --sh-hairline: 2rpx solid var(--sh-line);
+  /* 更淡的一档。用在「同一块卡片内部的次级分段」上，不是另一种线 */
+  --sh-hairline-soft: 2rpx solid var(--sh-faint);
+  /*
+   * 投影两档。**此前这套设计语言里没有投影档**，于是 5 处投影全都抓了上面那个
+   * `--sh-scrim` 来当颜色 —— 而 scrim 是**蒙层色**：它的活是把弹层背后的整屏压暗，
+   * 所以是 45% 的黑。正常的高度投影是 4%~16%，差一个数量级。
+   * 底部菜单因此顶着一条又黑又宽的灰带（2026-09-06 用户报的就是这个）。
+   *
+   * 两档按「它离页面多远」分，不按大小分：
+   *   `up`    贴在屏幕边缘、只需要一点点「页面在我下面走」的暗示。
+   *           它上面本来就有一条 `--sh-hairline` 在做分界，投影只是补一点纵深。
+   *   `float` 真的浮在内容之上、可以被拖动的东西（FAB、拖起来的行）。
+   *           这一档要看得出来，否则「拿起来了」这件事没有任何表示。
+   *
+   * ⚠️ **深色态不另给一份**：黑投影压在深色面上本来就几乎看不见，
+   * 而这正是对的 —— 深色界面靠面色的明度差表达高度，不靠投影（Material 同一口径）。
+   * 硬调成白色投影会得到一圈发光的边。
+   */
+  --sh-shadow-up: 0 -6rpx 20rpx rgba(10, 12, 16, 0.08);
+  --sh-shadow-float: 0 8rpx 24rpx rgba(10, 12, 16, 0.16);
+}
+
+
+
+/* #ifdef MP-WEIXIN */
+/* ---- 同一批常量，在小程序上再挂一遍到 `page` ----
+ *
+ * **不是冗余，是因为上面那条规则在安卓真机微信上整条不生效。**
+ * 同一份包，开发者工具模拟器一切正常；真机上角标没有红底（白字压白底＝隐形）、
+ * 底部菜单既没有细线也没有投影 —— 全都出自上面那一条 `:root, .sh-root`。
+ * 而紧挨着的皮肤块（`.sh-root` 再加上皮肤与明暗两个类）在真机上**是好的**，
+ * 所以不是「自定义属性不支持」，也不是组件样式隔离 —— 两者走的是同一个节点。
+ *
+ * 已经排掉的四条，别再重走：
+ *   ① `:root` 不被支持 / 组件样式隔离 —— 皮肤块同样带 `:root`，它是好的；
+ *   ② 值里嵌 `var()` 让整条规则被丢掉 —— 0.1.12 拆出来单独发，仍然是死的；
+ *   ③ 皮肤 token 其实也没生效 —— 量过像素，取的是 token 值不是回退值；
+ *   ④ 值里含 `rpx` 拖垮整条规则 —— 0.1.31 按 rpx 把块拆成两条，**角标仍然没红**。
+ *
+ * 挂到 `page` 上**当场全好了**（0.1.32 真机验过：角标红底白字、「-9%」有了淡红底、
+ * 菜单顶部的细线与投影都回来了）。所以判据是确定的：**常量必须落在 `page` 上**。
+ *
+ * 但这是**绕过，不是解释** —— 说不通的那一半仍然摆在这儿：
+ * `page` 是小程序里真正的根节点，`.sh-root` 是 sh-scaffold 组件的宿主 view；
+ * 而**皮肤块挂的也是 `.sh-root`（再加上皮肤与明暗两个类），它一直是好的**。
+ * 同一个节点、同一份 app.wxss，一条送得到、一条送不到，原因未知。
+ * 所以别把这一条当成「小程序不支持 .sh-root」的证据去改别处。
+ *
+ * 上面那条也别删 —— H5 与 App 靠的是它，`page` 在那两端根本不存在。
+ */
+page {
+  --sh-z-fab: 10;
+  --sh-z-actionbar: 40;
+  --sh-z-nav: 50;
+  --sh-z-tabbar: 90;
+  --sh-z-sheet: 100;
+  --sh-z-sheet-stacked: 150;
+  --sh-z-dialog: 200;
+  --sh-t-fast: 0.18s;
+  --sh-t-base: 0.3s;
+  --sh-t-slow: 0.42s;
+  --sh-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --sh-navbar-h: 44px;
+  --sh-app-max: 100%;
+  --sh-scrim: rgba(10, 12, 16, 0.45);
+  --sh-on-scrim: #ffffff;
+  /* 二维码两色：恒为纯黑纯白，理由见上面那份 */
+  --sh-qr-ink: #000000;
+  --sh-qr-paper: #ffffff;
+  --sh-success: #12b76a;
+  --sh-success-tint: rgba(18, 183, 106, 0.14);
+  --sh-warning: #f79009;
+  --sh-warning-tint: rgba(247, 144, 9, 0.14);
+  --sh-star: #f79009;
+  --sh-danger: #f04438;
+  --sh-danger-tint: rgba(240, 68, 56, 0.14);
+  --sh-tabbar-h: 124rpx;
+  --sh-gap-block: 20rpx;
+  --sh-hairline: 2rpx solid var(--sh-line);
+  --sh-hairline-soft: 2rpx solid var(--sh-faint);
+  --sh-shadow-up: 0 -6rpx 20rpx rgba(10, 12, 16, 0.08);
+  --sh-shadow-float: 0 8rpx 24rpx rgba(10, 12, 16, 0.16);
+}
+/* #endif */
 
 /* ---- 配色方案：主色 + 前景 + 中性面（背景与文字）。按明暗分别取值 ----
 
@@ -62,221 +404,266 @@
 
    取值全部由 packages/shared/tests/design-tokens.test.ts 的对比度断言守着。 */
 :root,
+:root[data-skin="brand"],
+:root[data-skin="brand"][data-theme="light"],
+.sh-root.skin-brand.mode-light {
+  --sh-primary: #E1251B;
+  --sh-primary-tint: rgba(225, 37, 27, 0.12);
+  --sh-primary-text: #B31710;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #ECEDEF;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #17181A;
+  --sh-sub: #63676E;
+  --sh-faint: #E4E5E8;
+  --sh-line: #DCDEE2;
+}
+:root[data-skin="brand"][data-theme="dark"],
+.sh-root.skin-brand.mode-dark {
+  --sh-primary: #FF5A4D;
+  --sh-primary-tint: rgba(255, 90, 77, 0.2);
+  --sh-primary-text: #FF5A4D;
+  --sh-on-primary: #14161A;
+  --sh-bg: #000000;
+  --sh-surface: #161719;
+  --sh-elev: #1D2023;
+  --sh-ink: #F3F4F6;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #23262B;
+  --sh-line: #2E3036;
+}
 :root[data-skin="fresh"],
 :root[data-skin="fresh"][data-theme="light"],
 .sh-root.skin-fresh.mode-light {
-  --sh-primary: #00b578;
+  --sh-primary: #00B578;
   --sh-primary-tint: rgba(0, 181, 120, 0.12);
-  --sh-on-primary: #14161a;
-  --sh-bg: #f5f6f8;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
-  --sh-ink: #14161a;
-  --sh-sub: #7b808a;
-  --sh-faint: #edeef1;
-  --sh-line: #e4e6ea;
+  --sh-primary-text: #007A51;
+  --sh-on-primary: #14161A;
+  --sh-bg: #ECEDEF;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #14161A;
+  --sh-sub: #63676E;
+  --sh-faint: #E4E5E8;
+  --sh-line: #DCDEE2;
 }
 :root[data-skin="fresh"][data-theme="dark"],
 .sh-root.skin-fresh.mode-dark {
-  --sh-primary: #00b578;
+  --sh-primary: #00B578;
   --sh-primary-tint: rgba(0, 181, 120, 0.2);
-  --sh-on-primary: #14161a;
+  --sh-primary-text: #00B578;
+  --sh-on-primary: #14161A;
   --sh-bg: #000000;
-  --sh-surface: #111214;
-  --sh-elev: #17191c;
-  --sh-ink: #f3f4f6;
-  --sh-sub: #9aa1ac;
-  --sh-faint: #1c1e22;
-  --sh-line: #24262b;
+  --sh-surface: #161719;
+  --sh-elev: #1D2023;
+  --sh-ink: #F3F4F6;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #23262B;
+  --sh-line: #2E3036;
 }
 :root[data-skin="mono"],
 :root[data-skin="mono"][data-theme="light"],
 .sh-root.skin-mono.mode-light {
-  --sh-primary: #18181b;
+  --sh-primary: #18181B;
   --sh-primary-tint: rgba(24, 24, 27, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #f5f6f8;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
-  --sh-ink: #18181b;
-  --sh-sub: #7b808a;
-  --sh-faint: #edeef1;
-  --sh-line: #e4e6ea;
+  --sh-primary-text: #18181B;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #ECEDEF;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #18181B;
+  --sh-sub: #63676E;
+  --sh-faint: #E4E5E8;
+  --sh-line: #DCDEE2;
 }
 :root[data-skin="mono"][data-theme="dark"],
 .sh-root.skin-mono.mode-dark {
-  --sh-primary: #f2f3f5;
+  --sh-primary: #F2F3F5;
   --sh-primary-tint: rgba(242, 243, 245, 0.2);
-  --sh-on-primary: #14161a;
+  --sh-primary-text: #F2F3F5;
+  --sh-on-primary: #14161A;
   --sh-bg: #000000;
-  --sh-surface: #111214;
-  --sh-elev: #17191c;
-  --sh-ink: #f2f3f5;
-  --sh-sub: #9aa1ac;
-  --sh-faint: #1c1e22;
-  --sh-line: #24262b;
+  --sh-surface: #161719;
+  --sh-elev: #1D2023;
+  --sh-ink: #F2F3F5;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #23262B;
+  --sh-line: #2E3036;
 }
 :root[data-skin="blue"],
 :root[data-skin="blue"][data-theme="light"],
 .sh-root.skin-blue.mode-light {
-  --sh-primary: #2c69ff;
+  --sh-primary: #2C69FF;
   --sh-primary-tint: rgba(44, 105, 255, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #f5f6f8;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
+  --sh-primary-text: #2860E8;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #ECEDEF;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
   --sh-ink: #121619;
-  --sh-sub: #7b808a;
-  --sh-faint: #edeef1;
-  --sh-line: #e4e6ea;
+  --sh-sub: #63676E;
+  --sh-faint: #E4E5E8;
+  --sh-line: #DCDEE2;
 }
 :root[data-skin="blue"][data-theme="dark"],
 .sh-root.skin-blue.mode-dark {
-  --sh-primary: #5b8cff;
+  --sh-primary: #5B8CFF;
   --sh-primary-tint: rgba(91, 140, 255, 0.2);
-  --sh-on-primary: #14161a;
+  --sh-primary-text: #5B8CFF;
+  --sh-on-primary: #14161A;
   --sh-bg: #000000;
-  --sh-surface: #111214;
-  --sh-elev: #17191c;
-  --sh-ink: #f1f4f6;
-  --sh-sub: #9aa1ac;
-  --sh-faint: #1c1e22;
-  --sh-line: #24262b;
+  --sh-surface: #161719;
+  --sh-elev: #1D2023;
+  --sh-ink: #F1F4F6;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #23262B;
+  --sh-line: #2E3036;
 }
 :root[data-skin="crimson"],
 :root[data-skin="crimson"][data-theme="light"],
 .sh-root.skin-crimson.mode-light {
-  --sh-primary: #d6303a;
+  --sh-primary: #D6303A;
   --sh-primary-tint: rgba(214, 48, 58, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #f5f6f8;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
-  --sh-ink: #1a1214;
-  --sh-sub: #7b808a;
-  --sh-faint: #edeef1;
-  --sh-line: #e4e6ea;
+  --sh-primary-text: #C92D37;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #ECEDEF;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #1A1214;
+  --sh-sub: #63676E;
+  --sh-faint: #E4E5E8;
+  --sh-line: #DCDEE2;
 }
 :root[data-skin="crimson"][data-theme="dark"],
 .sh-root.skin-crimson.mode-dark {
-  --sh-primary: #e8555e;
+  --sh-primary: #E8555E;
   --sh-primary-tint: rgba(232, 85, 94, 0.2);
-  --sh-on-primary: #14161a;
+  --sh-primary-text: #E8555E;
+  --sh-on-primary: #14161A;
   --sh-bg: #000000;
-  --sh-surface: #111214;
-  --sh-elev: #17191c;
-  --sh-ink: #f5f0f0;
-  --sh-sub: #9aa1ac;
-  --sh-faint: #1c1e22;
-  --sh-line: #24262b;
+  --sh-surface: #161719;
+  --sh-elev: #1D2023;
+  --sh-ink: #F5F0F0;
+  --sh-sub: #9AA1AC;
+  --sh-faint: #23262B;
+  --sh-line: #2E3036;
 }
 :root[data-skin="promo"],
 :root[data-skin="promo"][data-theme="light"],
 .sh-root.skin-promo.mode-light {
-  --sh-primary: #d24600;
+  --sh-primary: #D24600;
   --sh-primary-tint: rgba(210, 70, 0, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #faf7f2;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
-  --sh-ink: #1a1712;
-  --sh-sub: #857c6e;
-  --sh-faint: #f3eee5;
-  --sh-line: #ebe4d8;
+  --sh-primary-text: #BE3F00;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #EFECE7;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #1A1712;
+  --sh-sub: #71695E;
+  --sh-faint: #E8E4DB;
+  --sh-line: #E1DACE;
 }
 :root[data-skin="promo"][data-theme="dark"],
 .sh-root.skin-promo.mode-dark {
-  --sh-primary: #ff6010;
+  --sh-primary: #FF6010;
   --sh-primary-tint: rgba(255, 96, 16, 0.2);
-  --sh-on-primary: #14161a;
-  --sh-bg: #12100d;
-  --sh-surface: #1b1813;
-  --sh-elev: #221e18;
-  --sh-ink: #f5f2ec;
-  --sh-sub: #a79c8b;
-  --sh-faint: #241f18;
-  --sh-line: #2c271f;
+  --sh-primary-text: #FF6010;
+  --sh-on-primary: #14161A;
+  --sh-bg: #12100D;
+  --sh-surface: #242019;
+  --sh-elev: #2D2720;
+  --sh-ink: #F5F2EC;
+  --sh-sub: #A79C8B;
+  --sh-faint: #2F2920;
+  --sh-line: #3A3329;
 }
 :root[data-skin="amber"],
 :root[data-skin="amber"][data-theme="light"],
 .sh-root.skin-amber.mode-light {
-  --sh-primary: #a46911;
+  --sh-primary: #A46911;
   --sh-primary-tint: rgba(164, 105, 17, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #faf7f2;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
-  --sh-ink: #1a1712;
-  --sh-sub: #857c6e;
-  --sh-faint: #f3eee5;
-  --sh-line: #ebe4d8;
+  --sh-primary-text: #945F0F;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #EFECE7;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
+  --sh-ink: #1A1712;
+  --sh-sub: #71695E;
+  --sh-faint: #E8E4DB;
+  --sh-line: #E1DACE;
 }
 :root[data-skin="amber"][data-theme="dark"],
 .sh-root.skin-amber.mode-dark {
-  --sh-primary: #e8961b;
+  --sh-primary: #E8961B;
   --sh-primary-tint: rgba(232, 150, 27, 0.2);
-  --sh-on-primary: #14161a;
-  --sh-bg: #12100d;
-  --sh-surface: #1b1813;
-  --sh-elev: #221e18;
-  --sh-ink: #f5f2ec;
-  --sh-sub: #a79c8b;
-  --sh-faint: #241f18;
-  --sh-line: #2c271f;
+  --sh-primary-text: #E8961B;
+  --sh-on-primary: #14161A;
+  --sh-bg: #12100D;
+  --sh-surface: #242019;
+  --sh-elev: #2D2720;
+  --sh-ink: #F5F2EC;
+  --sh-sub: #A79C8B;
+  --sh-faint: #2F2920;
+  --sh-line: #3A3329;
 }
 :root[data-skin="teal"],
 :root[data-skin="teal"][data-theme="light"],
 .sh-root.skin-teal.mode-light {
   --sh-primary: #008484;
   --sh-primary-tint: rgba(0, 132, 132, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #f2f6fa;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
+  --sh-primary-text: #007777;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #E9EDF1;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
   --sh-ink: #121619;
-  --sh-sub: #74808a;
-  --sh-faint: #e9f0f6;
-  --sh-line: #dfe7ee;
+  --sh-sub: #626C75;
+  --sh-faint: #E1E7ED;
+  --sh-line: #D7DFE5;
 }
 :root[data-skin="teal"][data-theme="dark"],
 .sh-root.skin-teal.mode-dark {
-  --sh-primary: #00a3a3;
+  --sh-primary: #00A3A3;
   --sh-primary-tint: rgba(0, 163, 163, 0.2);
-  --sh-on-primary: #14161a;
-  --sh-bg: #0a0e12;
-  --sh-surface: #141a20;
-  --sh-elev: #1a222a;
-  --sh-ink: #f1f4f6;
-  --sh-sub: #93a0ac;
-  --sh-faint: #1b232b;
-  --sh-line: #212b34;
+  --sh-primary-text: #00A3A3;
+  --sh-on-primary: #14161A;
+  --sh-bg: #0A0E12;
+  --sh-surface: #182027;
+  --sh-elev: #202933;
+  --sh-ink: #F1F4F6;
+  --sh-sub: #93A0AC;
+  --sh-faint: #212A34;
+  --sh-line: #28343F;
 }
 :root[data-skin="violet"],
 :root[data-skin="violet"][data-theme="light"],
 .sh-root.skin-violet.mode-light {
-  --sh-primary: #7a4ce0;
+  --sh-primary: #7A4CE0;
   --sh-primary-tint: rgba(122, 76, 224, 0.12);
-  --sh-on-primary: #ffffff;
-  --sh-bg: #f2f6fa;
-  --sh-surface: #ffffff;
-  --sh-elev: #ffffff;
+  --sh-primary-text: #7A4CE0;
+  --sh-on-primary: #FFFFFF;
+  --sh-bg: #E9EDF1;
+  --sh-surface: #FFFFFF;
+  --sh-elev: #FFFFFF;
   --sh-ink: #121619;
-  --sh-sub: #74808a;
-  --sh-faint: #e9f0f6;
-  --sh-line: #dfe7ee;
+  --sh-sub: #626C75;
+  --sh-faint: #E1E7ED;
+  --sh-line: #D7DFE5;
 }
 :root[data-skin="violet"][data-theme="dark"],
 .sh-root.skin-violet.mode-dark {
-  --sh-primary: #9a78e8;
+  --sh-primary: #9A78E8;
   --sh-primary-tint: rgba(154, 120, 232, 0.2);
-  --sh-on-primary: #14161a;
-  --sh-bg: #0a0e12;
-  --sh-surface: #141a20;
-  --sh-elev: #1a222a;
-  --sh-ink: #f1f4f6;
-  --sh-sub: #93a0ac;
-  --sh-faint: #1b232b;
-  --sh-line: #212b34;
+  --sh-primary-text: #9A78E8;
+  --sh-on-primary: #14161A;
+  --sh-bg: #0A0E12;
+  --sh-surface: #182027;
+  --sh-elev: #202933;
+  --sh-ink: #F1F4F6;
+  --sh-sub: #93A0AC;
+  --sh-faint: #212A34;
+  --sh-line: #28343F;
 }
 
 /* ============================================================================
@@ -319,6 +706,12 @@ page {
 .sh-root.is-rtl {
   direction: rtl;
 }
+/* **但 glyph 本身不跟着翻。** 方向性图标（sh-icon 里的 DIRECTIONAL 名单）
+   要自己镜像一次，否则箭头在阿语下指着来路。
+   此前用 `›` 字符时看不出这个问题 —— 那是 bidi-mirrored 字符，浏览器替我们翻了。 */
+.sh-root.is-rtl .icon--dir {
+  transform: scaleX(-1);
+}
 
 /* pages.json 的 tabBar.custom 只有微信小程序认；H5 / App 仍会渲染原生 tabBar，
    于是原生（静态中文、字号锁死）会盖住自定义的 sh-tabbar。
@@ -344,12 +737,45 @@ uni-page-wrapper[style*="--window-bottom"] {
  * 在一个刻意压低灰面积的界面上尤其刺眼。
  *
  * 横滑排（推荐商品）同理：它靠「半张卡露在边缘」暗示可滑，不需要滚动条再说一遍。
+ *
+ * **小程序里要排除掉**：WXSS 不支持 `*` 通配选择器，带着它上传会被微信直接拒收
+ * （`-80056 ./app.wxss unexpected token \`*\``）—— 而本地构建、开发者工具预览全都正常，
+ * 只有真正上传那一刻才报，报的还是产物里的字符偏移，回溯不到这几行。
+ * 小程序本来也不显示滚动条，这条规则在那边纯属多余。
  */
+/* #ifndef MP-WEIXIN */
 * {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+/* #endif */
+
+/*
+ * 横滑排：**自带藏滚动条**，不靠上面那条 `*`。
+ *
+ * ⚠️ 上面那段的最后一句写着「小程序本来也不显示滚动条，这条规则在那边纯属多余」——
+ * **那句是错的**。2026-09-05 在线上那份真包里看到了：首页「推荐商品」横滑排的
+ * 价格行底下挂着一条灰杠，占满整块宽度。它不是内容也不是控件，
+ * 而这一排本来靠「半张卡露在边缘」就说清了可以滑。
+ *
+ * 用**类选择器**而不是 `*`：WXSS 不认通配选择器，带着它上传会被微信直接拒收
+ *（`-80056 unexpected token \`*\``），而本地构建与开发者工具预览全都正常，
+ * 只有上传那一刻才报 —— 所以这条必须换一种写法，不能把上面那段的 ifndef 去掉。
+ *
+ * 横滑本身也收进来：`overflow-x` 与「藏掉它的滚动条」是同一件事的两半，
+ * 分开写的话，下一个横滑排会只抄走前一半。
+ */
+.sh-scrollx {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sh-scrollx::-webkit-scrollbar {
+  display: none;
   width: 0;
   height: 0;
 }
@@ -361,11 +787,124 @@ uni-page-wrapper[style*="--window-bottom"] {
   unicode-bidi: isolate;
 }
 
-/* 卡片：纯面色 + 大圆角，无边框无阴影 */
+
+/* ---- 表单字段：标签 / 输入 / 多行 / 说明 ----
+
+   **收进组件库的理由不是复用，是这三份已经漂了**：
+   同一个 `.field__input` 在 b-app/App.vue 里是 `height: 88rpx; font-size: 30rpx`，
+   在 stores 与 payment 两页里各自又写了一遍 `padding: 20rpx; font-size: 28rpx` ——
+   同一个类名，两种高度两种字号，而三处谁也不知道另外两处存在。
+   商品编辑页用了 5 次 `field__label`、3 次 `field__input`，自己一份都没定义，
+   拿到的是哪一份取决于样式加载顺序。
+
+   顺带把层级排开：此前一页里十个元素都是 24rpx，字段标签、说明文字、小按钮
+   同一档 —— 信息层级被压平，看不出主次。现在：输入 30 > 标签 26 > 说明 24。 */
+/* 字段头：标签在左，动作在右（多语言切换、「从标准品填充」这类）。
+   **它此前定义在 goods-edit 自己的 style 里**，却顶着 `field__` 前缀 ——
+   一个只有那一页认得的类，名字却宣称自己属于两端共用的表单族。
+   找 `.field__*` 的人在 base.css 里翻不到它，会以为是漏了一档。
+   定义搬过来，调用点一个没动（仍是 goods-edit 的 5 处）。 */
+.field__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+.field__label {
+  display: block;
+  font-size: 26rpx;
+  color: var(--sh-sub);
+  margin-bottom: 12rpx;
+}
+.field__input {
+  height: 88rpx;
+  padding: 0 24rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  /* 28rpx = 字阶的正文档（.txt-body）。**此前是 30rpx，而 30 不在七档上** ——
+     它只活在这里和 `.sh-btn` 两处，于是两把尺对不上：`typography.test.ts` 的
+     SCALE 认它，而《规范·字体》与 `ui-lib.json` 的字阶（由 .txt-* 类生成）不认。
+     两个原语用同一个档外值，本来是「这一档真的缺」的信号（60rpx 就是这么加的），
+     但这两处要的正是「和正文一样大」：填进去的字与读到的字同一个尺寸。
+     所以是收回七档，不是加第八档。 */
+  font-size: 28rpx;
+  color: var(--sh-ink);
+}
+.field__area {
+  width: 100%;
+  box-sizing: border-box;
+  height: 140rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  font-size: 28rpx;
+  color: var(--sh-ink);
+}
+/* 输入框占位文字。**必须显式给色**：各端的默认占位色不一样（iOS 偏浅、
+   Android WebView 偏深、H5 又是另一档），同一个页面在三个端上看着是三种灰。
+   用 `placeholder-class="sh-ph"` 挂上它 —— placeholder 是原生元素，
+   scoped 样式选不到，只能是全局类。**再配一条 `placeholder-style`**：
+   uni 自己的 `.uni-input-placeholder` 与这条同权重且后加载，光靠类名压不过它
+   （H5 上实测仍是 rgb(128,128,128)），而行内样式一定赢。 */
+.sh-ph {
+  color: var(--sh-sub);
+}
+
+/*
+ * 说明文字：**最弱的一档**。它解释规则，不承载操作。
+ *
+ * **2026-08-28 从 `.field__hint` 改名为 `.sh-hint`。** 原名按 BEM 挂在 `field` 下，
+ * 而它根本不只用在表单里：全站有 **60 处**「小字说明」（`.hint` / `.tip` / `.note`），
+ * 而它们写出了 **35 种不同的样子** —— margin-top 取 8/10/12/16/18/20/24 七个值，
+ * line-height 在 1.5 与 1.6 之间摇摆，一半带 `color: var(--sh-sub)` 一半忘了带
+ *（忘了的那些会从父元素继承墨色，于是「说明」和正文一样重）。
+ * 一个叫 `field__` 的名字，没人会想到页面级的说明也该用它。
+ *
+ * 外边距**从 10rpx 改成 8rpx** —— 10 不在间距档上（8/16/28/40/64）。
+ * 要更大的间距在调用点加 `.sh-mt-sm` / `.sh-mt-md`（它们定义在本文件更后面，压得过这一条）。
+ * 行高取 1.5，与 `.sh-muted` / `.txt-sub` 一致：**60 处里 40 处写的是 1.6**，
+ * 但那一档一旦独立出来，说明文字就成了全站唯一行高不同的文本，
+ * 而它本来就该跟正文是同一族。
+ */
+.sh-hint {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  line-height: 1.5;
+}
+
+
+/* 卡片：纯面色 + 大圆角，无边框无阴影。
+   内边距走变量：**这套界面此前没有任何「松紧总开关」** —— 密度散在 28 个页面的
+   scoped style 里，想整体调紧只能逐页改。而两端对密度的诉求本来就不同：
+   C 端是顾客逛店（松一点显精致），B 端是店主一天扫几十次的作业台，密度即效率。
+   默认值保持原样（C 端不受影响），B 端在自己的 App.vue 里覆盖这几个变量。 */
 .sh-card {
   background: var(--sh-surface);
   border-radius: 32rpx;
-  padding: 32rpx;
+  padding: var(--sh-pad-card, 32rpx);
+}
+
+/* 卡头：卡里的第一行 —— 标题（.txt-title）在左，动作或读数在右，与下面的内容隔一档。
+   B 端工作台四张卡、常用功能进去的八个页面曾是八种写法（裸 text / sh-row baseline /
+   txt-strong + margin / 什么都不写），标题贴着内容、字阶忽大忽小。收成一条。
+   说明文字最多一行，紧跟在卡头下面（.sh-hint 自带 8rpx 上距，这里负责与内容的距离）。 */
+.sh-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 20rpx;
+}
+/* 卡里只有卡头（如「自带客流 54%」）时不留下边距 */
+.sh-card__head:last-child {
+  margin-bottom: 0;
+}
+/* 紧跟卡头的那一句说明：往上收一点贴住标题，下面留一档再接内容 */
+.sh-card__head + .sh-hint {
+  margin-top: -8rpx;
+  margin-bottom: 12rpx;
 }
 
 /*
@@ -384,15 +923,163 @@ uni-page-wrapper[style*="--window-bottom"] {
   padding: 24rpx 0;
   overflow: hidden;
 }
-.sh-block + .sh-block {
-  margin-top: 20rpx;
+/*
+ * 页面里**块与块之间**的那道缝。
+ *
+ * 此前没有任何人给：`.sh-block + .sh-block` 有 20rpx，而 `.sh-card` 之间
+ * 一条规则都没有 —— 全仓 238 处 `sh-card` 里只有 24 处手写了 `sh-mb-sm`，
+ * 其余全是贴着的，一屏白卡连成一整块灰板，看不出哪儿到哪儿是一件事。
+ * 进货页（供应商 / 日期 / 货品行 / 合计）与库存明细（统计 / 标识 / 库位 /
+ * 流水 / 原因）是最明显的两页。
+ *
+ * **为什么是 `> * + *` 的外边距，不是容器的 `gap`。**
+ * `gap` 要把 `.sh-scaffold` 改成 flex，而 flex 会**关掉相邻外边距的合并**：
+ * 页面自己写的那 128 条顶层 margin（b 端 85 条、c 端 43 条）会从「合并」
+ * 变成「相加」，两端加起来 60 多个页面的间距当场全变，而它们大多没人会去看。
+ * 走普通流的外边距则天然合并 —— 结果是 `max(20rpx, 页面自己的那个)`：
+ * 缺缝的补上，刻意留大的（`.sec { margin-top: 40rpx }` 那类分节留白）原样保留。
+ *
+ * 选择器写在这里而不是 sh-scaffold 的 scoped style 里：那些子节点是**页面**
+ * 通过插槽塞进来的，带的是页面的 scope id，组件的 scoped 规则匹配不到它们
+ * （要 `:slotted()`，而 uni 的编译链未必认）。
+ */
+/*
+ * **`*` 在小程序里过不去，所以这条规则要分两份写。**
+ *
+ * WXSS 不支持通配选择器：带着它上传，微信直接拒收
+ * （`-80056 ./app.wxss error at token \`*\``）。而本地构建、开发者工具预览
+ * 全都正常 —— 只有真正上传那一刻才报，报的还是产物里的字符偏移，
+ * 回溯不到这几行（同一个坑本文件上面那条滚动条规则已经踩过一次）。
+ *
+ * 与那次不同的是：**这条规则在小程序上是需要的**，不能只排除掉。
+ * 所以小程序那份改成「每个顶层子节点都给上边距，再把第一个清零」——
+ * 与 `> * + *` 等价，且只用到 WXSS 认的元素选择器与 `:first-child`。
+ *
+ * ⚠️ **只列内置标签是不够的，而这一点在两端上长得不一样。**
+ *
+ * H5 里 `<script setup>` 组件**没有宿主节点** —— `<sh-tabs>` 编译出来就是它
+ * 自己的根 `<uni-view class="tabs">`，`> * + *` 直接命中，缝是有的。
+ * 小程序里宿主节点是**真节点**（`<sh-tabs>` 就在 wxml 里，见
+ * `dist/build/mp-weixin/pages/coupons/index.wxml`），而下面这份只列了八个
+ * 内置标签 —— 于是**顶层放组件的地方，小程序上一条缝都没有，H5 上有**。
+ *
+ * 后果不是「差一点」：这两端的产物本该逐字节等价，而这里 H5 对、小程序错，
+ * 且只有把两个产物摆在一起才看得出来 —— 单看小程序，它只是「整体挤了一点」。
+ * 2026-09-06 数下来两端共 70 处（c-app 13 / b-app 57）。
+ *
+ * 所以把**在文档流里的**组件标签一并列上。**浮层不列**（sh-sheet /
+ * sh-actionbar / sh-dialog / sh-savebar / sh-fab / sh-theme-sheet /
+ * biz-cart-fab / phone-gate / 各种 picker）：它们是 `position: fixed`，
+ * 给宿主加外边距会把浮层本身推下去，而 H5 那边因为没有宿主节点根本不会发生
+ * —— 那才是真把两端做出差别。
+ *
+ * 名单只准加不准漏：`packages/shared/tests/ui-package.test.ts` 有断言守着
+ * 「页面顶层用到的在流组件都在这份名单里」，新写一个当场报。
+ */
+/* #ifndef MP-WEIXIN */
+.sh-scaffold > * + * {
+  margin-top: var(--sh-gap-block, 20rpx);
 }
+/* #endif */
+/* #ifdef MP-WEIXIN */
+/* 内置标签 */
+.sh-scaffold > view,
+.sh-scaffold > text,
+.sh-scaffold > scroll-view,
+.sh-scaffold > image,
+.sh-scaffold > button,
+.sh-scaffold > navigator,
+.sh-scaffold > swiper,
+.sh-scaffold > form,
+/* 在文档流里的组件（宿主节点在小程序里是真节点，见上面那段） */
+.sh-scaffold > sh-empty,
+.sh-scaffold > sh-tabs,
+.sh-scaffold > sh-section,
+.sh-scaffold > sh-stat,
+.sh-scaffold > sh-add,
+.sh-scaffold > sh-kv,
+.sh-scaffold > sh-go,
+.sh-scaffold > sh-cover,
+.sh-scaffold > sh-option,
+.sh-scaffold > sh-check,
+.sh-scaffold > sh-switch,
+.sh-scaffold > sh-rating,
+.sh-scaffold > sh-uploader,
+.sh-scaffold > sh-icon-btn,
+.sh-scaffold > sh-icon,
+.sh-scaffold > biz-address-card,
+.sh-scaffold > biz-address-form,
+.sh-scaffold > biz-coupon-strip,
+.sh-scaffold > biz-place-bar,
+.sh-scaffold > biz-store-tag,
+.sh-scaffold > biz-goods-card,
+.sh-scaffold > biz-group-card,
+.sh-scaffold > biz-merchant-bar,
+.sh-scaffold > biz-review,
+.sh-scaffold > biz-single-page-tip,
+.sh-scaffold > biz-sku-row,
+.sh-scaffold > biz-time-range {
+  margin-top: var(--sh-gap-block, 20rpx);
+}
+.sh-scaffold > view:first-child,
+.sh-scaffold > text:first-child,
+.sh-scaffold > scroll-view:first-child,
+.sh-scaffold > image:first-child,
+.sh-scaffold > button:first-child,
+.sh-scaffold > navigator:first-child,
+.sh-scaffold > swiper:first-child,
+.sh-scaffold > form:first-child,
+.sh-scaffold > sh-empty:first-child,
+.sh-scaffold > sh-tabs:first-child,
+.sh-scaffold > sh-section:first-child,
+.sh-scaffold > sh-stat:first-child,
+.sh-scaffold > sh-add:first-child,
+.sh-scaffold > sh-kv:first-child,
+.sh-scaffold > sh-go:first-child,
+.sh-scaffold > sh-cover:first-child,
+.sh-scaffold > sh-option:first-child,
+.sh-scaffold > sh-check:first-child,
+.sh-scaffold > sh-switch:first-child,
+.sh-scaffold > sh-rating:first-child,
+.sh-scaffold > sh-uploader:first-child,
+.sh-scaffold > sh-icon-btn:first-child,
+.sh-scaffold > sh-icon:first-child,
+.sh-scaffold > biz-address-card:first-child,
+.sh-scaffold > biz-address-form:first-child,
+.sh-scaffold > biz-coupon-strip:first-child,
+.sh-scaffold > biz-place-bar:first-child,
+.sh-scaffold > biz-store-tag:first-child,
+.sh-scaffold > biz-goods-card:first-child,
+.sh-scaffold > biz-group-card:first-child,
+.sh-scaffold > biz-merchant-bar:first-child,
+.sh-scaffold > biz-review:first-child,
+.sh-scaffold > biz-single-page-tip:first-child,
+.sh-scaffold > biz-sku-row:first-child,
+.sh-scaffold > biz-time-range:first-child {
+  margin-top: 0;
+}
+/* #endif */
+/*
+ * 顶层的 `<text>` 要当块看待。
+ *
+ * `<text>` 默认是 inline，而**行内元素的纵向外边距根本不生效** ——
+ * 于是「我的套餐」页那行 `.sec { margin: 28rpx 0 12rpx }` 的分节标题
+ * 实测紧贴在上一张卡下面 1px，页面里写着的 28rpx 一直没落地，且不报错。
+ * 这一条既让上面那条缝生效，也让页面自己写的留白终于算数。
+ */
+.sh-scaffold > text,
+.sh-scaffold > uni-text {
+  display: block;
+}
+
+/* `.sh-block + .sh-block` 那条 20rpx 已被上面这条覆盖（同值，且会合并），
+   删掉以免两处各写一个数、改的时候漏一个。 */
 /* 块内的横向留白由子元素给，块本身只管上下 —— 列表行要通铺到边才不显碎 */
 .sh-block__head {
   display: flex;
   align-items: baseline;
   gap: 16rpx;
-  padding: 0 26rpx 16rpx;
+  padding: 0 24rpx 16rpx;
 }
 /*
  * 分栏切换（sh-tabs）当标题用 —— 分类页、搜索结果、商家详情都是这个形态：
@@ -412,13 +1099,70 @@ uni-page-wrapper[style*="--window-bottom"] {
   border-radius: 9999px;
   /* 24rpx（12px）是这套界面的最小字号：22rpx 折合 11px，中文笔画在那个尺寸下开始糊 */
   font-size: 24rpx;
+  /* **标签从不加粗**。不写死的话，嵌在加粗标题里的 chip 会继承粗体 ——
+     `entities` 与 `store-pick` 各自写了一行 `font-weight: 400` 在修同一件事 */
+  font-weight: 400;
   line-height: 1.3;
   background: var(--sh-faint);
   color: var(--sh-sub);
 }
+/* 里面带图标的 chip（选中的勾、可删的 ✕）。
+   `.sh-chip` 本体是 `inline-block` —— 那是给纯文字用的，
+   塞进图标后文字与图标不会垂直居中，也没有间距。
+   ⚠️ 用它的标签要写成 `<view>` 不是 `<text>`：sh-icon 渲染的是 view，
+   小程序里 `<text>` 套 `<view>` 是非法嵌套（H5 上侥幸能显示，真机上不行）。 */
+.sh-chip--icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+}
 .sh-chip--primary {
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
+}
+/* 更重的一档：实心主色。三处在用同一种处理 ——
+   `apply` 的已选小区、`activity-edit` 的当前步骤、`cross-store` 的「最好的一家」。
+   与 `--primary`（浅底）是同一族的两级强调：浅底说「选中了」，实心说「就是这个」。
+
+   ⚠️ **前景必须走 `--sh-on-primary`，不能写死白字**。那是按对比度算出来的：
+   fresh 这类亮主色上写死白字只有 2.27，选中项反而成了整屏最难认的那一个。
+   三处里已经有一处踩过这个坑并留了注释，收编时把那句话搬到这里 ——
+   它是这一档存在的理由，不该只留在其中一个页面里。 */
+.sh-chip--solid {
+  background: var(--sh-primary);
+  color: var(--sh-on-primary);
+}
+/*
+ * 虚线药丸＝**候选**：点一下当场加进来。
+ *
+ * <p><b>与浅底按钮（`sh-add`）是两件事，形状分得开</b>（这条分工是
+ * `goods-edit` 里写死的，收进来时一并带过来）：
+ * 虚线＝点了就有；浅底按钮＝点了还要再填一屏。一律用虚线的话，
+ * 「点了就有」与「点了还要再填一屏」长成一个样。
+ *
+ * <p>它只声明**与默认 chip 的差别** —— 字号、内边距、圆角一律吃 `.sh-chip`：
+ * 自己再写一份的话，同一张卡里候选会比档位矮一圈，
+ * 而两者本来就该是同一颗药丸的两种状态。
+ *
+ * <p>`--dashed-quiet` 是压一档的候选（跨类目通用的那些，摆在眼前多半不对题）。
+ */
+.sh-chip--dashed {
+  background: transparent;
+  border: 2rpx dashed var(--sh-primary);
+  color: var(--sh-primary-text);
+}
+.sh-chip--dashed-quiet {
+  border-color: var(--sh-line);
+  color: var(--sh-sub);
+}
+/*
+ * 成功 / 进行中（2026-09-18，营销原型的状态标签约定：绿 = 进行中或已成功，黄 = 需要处理，灰 = 其它）。
+ * 此前状态只有「主色 / 黄 / 红 / 灰」四档，「进行中」只能借主色 —— 而主色在本系统里是「可点」，
+ * 一枚红色「进行中」读起来像告警。与 `.sh-notice--success` 同一套 tint 底 + 语义字色。
+ */
+.sh-chip--success {
+  background: var(--sh-success-tint);
+  color: var(--sh-success);
 }
 .sh-chip--warning {
   background: var(--sh-warning-tint);
@@ -427,6 +1171,407 @@ uni-page-wrapper[style*="--window-bottom"] {
 .sh-chip--danger {
   background: var(--sh-danger-tint);
   color: var(--sh-danger);
+}
+
+
+/* ---- 列表与行：整套界面里出现最多、也最没人管的两个形状 ----
+ *
+ * **46 个页面各造一份**（2026-08-27 扫的，45 条基态规则）。逐条读完之后，
+ * 它其实是**两件事**，而判据把它们混成了一条：
+ *
+ *   A 纯间距  21 处   只有 `margin-top/bottom` —— 那根本不是「行」，
+ *                    是**列表项之间的缝**。取值 12/14/16/20/28，其中 14 占 17 处。
+ *                    正确的做法是容器给 `gap`，而不是每一项各自挂 margin：
+ *                    挂 margin 的话最后一项底下会多出一道缝，
+ *                    而这道缝在卡片里就是「下边距比上边距大一截」。
+ *   B 横排行  16 处   `display:flex; align-items:center; gap: N` —— gap 取
+ *                    16(×11) / 20(×5) / 24(×4) / 12(×1)。
+ *   C 两端对齐 5 处   B 再加 `justify-content: space-between`
+ *   D 带分隔线 3 处   B 再加 `padding: 14~20rpx 0` + 一条 hairline
+ *
+ * 取 **gap: 16rpx**（21 个横排行里 11 个本来就是）。
+ *
+ * 与 `sh-kv` 的分工：`sh-kv` 是**语义件**（「名目 + 它的值」，两种排法由它自己管），
+ * 这里是**排法**本身 —— 行里放的是开关、按钮、头像时用这个。
+ */
+/*
+ * ⚠️ **列表间距那一件（`.sh-list`）最后没有做 —— 因为那条路走不通。**
+ *
+ * 原本想的是容器 `display:flex; flex-direction:column; gap: 16rpx`。
+ * 2026-08-28 把 36 个站点的容器逐个看了一遍：**35 个容器里还装着别的东西**
+ *（分组标题、一段说明、空态…）。容器一改成 gap，**标题与第一项之间的距离
+ * 也跟着变** —— 只有 `entities` 一处是干净的 `<view class="list">`。
+ * 一个只对 1/36 成立的件不该建。
+ *
+ * 那真正的债是什么：**距离本身不在档上**。36 处取值 12/14/16/20/28，
+ * 其中 14 占 17 处，而间距档是 8/16/28/40/64 —— **12 与 14 都不在上面**。
+ * 所以修法是现成的 `.sh-mt-* / .sh-mb-*`（就在下面），不是新件：
+ * 29 处就近归档（12→8、14→16、20→16），最大移动 4rpx = 2px。
+ */
+.sh-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+/*
+ * 换行横排：一排装不下就折到下一行。标签组、筛选 chip 组、一排动作按钮。
+ *
+ * **45 处各写一份**（2026-08-28 数的），名字有 chips / acts / tags / cats /
+ * opts / basket / buyers… 二十来种，而形状只有一种。gap 取 **12rpx**
+ *（45 处里 28 处本来就是它 —— 与 `.sh-row` 的 16 不同是有道理的：
+ * 换行排里元素多且小，16 会让一行少放一个）。
+ *
+ * 与 `.sh-row` 的分工：`.sh-row` 是**一行内**的横排（图标 + 文字 + 右侧值，纵向居中），
+ * 这个是**会折行的一堆**（不纵向居中，因为每个元素高度一样）。
+ */
+.sh-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+/* 左边说明、右边值或开关 */
+.sh-row--between {
+  justify-content: space-between;
+}
+/*
+ * 两端对齐时按**基线**而不是垂直居中对齐。**26 处各写一份**（2026-08-28 数的）。
+ *
+ * 都是同一种行：左边一个标题、右边一个小字的动作或数值，两段字号不同
+ *（34 与 24 居多）。`center` 对齐的是**盒子中线**，字号不同 → 两段文字的基线
+ * 错开两三个像素，右边那段看着往下掉了一点。`baseline` 让它们坐在同一条线上。
+ *
+ * 所以「两端对齐」有两个版本，取哪个看**左右字号是否一样**：
+ * 一样 → `.sh-row--between`（55 处）；不一样 → 再加这个（26 处）。
+ */
+.sh-row--baseline {
+  align-items: baseline;
+}
+/*
+ * 两端对齐但**不**垂直居中。**7 处各写一份** —— `.fact` / `.amt` / `.fail`：
+ * 左边一个名字、右边一个值，两侧**同一个字阶**（txt-sub↔txt-sub、caption↔caption）。
+ *
+ * 为什么不用默认的 `.sh-row--between`：右边的值一长就折成两行，这时 `center`
+ * 会把左边的名字**推到两行的中间**，看着像它对着第二行。`flex-start` 让名字
+ * 始终贴着第一行 —— c-app/goods 那处作者自己就写了 `flex-start`，是同一个理由。
+ */
+.sh-row--top {
+  align-items: flex-start;
+}
+
+/*
+ * 内容摆正中间的方块。**7 处各写一份**（step / dimgs__add / qr__box /
+ * hero__item / stepper__btn / actionbar__icon / img）—— 都是先给死宽高再把
+ * 里面那一个东西（图标、序号、二维码、占位图）居中，只有尺寸和圆角不同。
+ *
+ * 只管居中，**不管尺寸** —— 宽高留在调用点，因为那才是各处真正不一样的地方。
+ */
+.sh-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/*
+ * 点按面积。**图标按钮的视觉尺寸和它该有的手指尺寸不是一回事。**
+ *
+ * 2026-09-06 量了一遍：全站 12 个可点元素小于 88rpx（= 44px，Apple HIG 与
+ * 微信小程序设计指南取的是同一个下限），最小的 40rpx 只有 20px ——
+ * 而它们全在最常点的地方：购物车与商品页的加减号、列表里的「＋」、
+ * 上传格子的删除叉。**这类缺陷不会有人报**：点空了人只会再点一次。
+ *
+ * 扩的是 `::after` 不是元素自己：
+ *   · 改宽高会把这一行的排版顶开（加减号一变大，整张购物车行就高一截）
+ *   · 加 padding 同理，而且会把里面的图标推离视觉中心
+ *
+ * 取 **-24rpx**（各边 12px）：40rpx 的那一个正好补到 88rpx，是所有尺寸里
+ * 唯一需要这么多的。横向不会撞 —— 步进器两颗按钮之间隔着 96rpx 的数字与两道 gap。
+ *
+ * `position: relative` 是**默认值**：元素自己已经定位过的（`.up__del` 是
+ * absolute）由它自己那条 scoped 规则压过来，权重更高。
+ */
+.sh-hit {
+  position: relative;
+}
+.sh-hit::after {
+  content: "";
+  position: absolute;
+  /* 四边对称，所以不必用逻辑属性 —— RTL 下无差别 */
+  inset: -24rpx;
+}
+/*
+ * 连排时行与行之间一条发丝线。
+ *
+ * **线画在「相邻的后一行」上**，不是画在每一行上 —— 三个调用点里两个用
+ * `border-bottom`、一个用 `border-top`，于是前者最后一行脚下、后者第一行头顶
+ * 各多出一条**悬空的线**：它下面（或上面）什么都没有，看着像内容被截断了。
+ *
+ * 内边距取 16rpx（三处是 16/18/20，取最小的那个 —— 行本身还有 gap，
+ * 上下再撑开就把一屏能放的行数压掉一两条，而这类页面是拿来一行行扫的）。
+ * 线取 `--sh-hairline`（三处都是它，不是 soft）。
+ */
+.sh-row--divided {
+  padding: 16rpx 0;
+}
+.sh-row--divided + .sh-row--divided {
+  border-top: var(--sh-hairline);
+}
+
+
+/*
+ * 提示条：一段话，压在语义色的 tint 底上。
+ *
+ * **26 处各写一份**（2026-09-06 数的，c 端 13 / b 端 13），而且是 26 种写法 ——
+ * 圆角 16(×12) / 24(×11) / 32(×3)，内边距十二种（10 16 / 16 / 16 20 / 16 24 /
+ * 18 22 / 20 24 / 20 26 / 22 26 / 24 / 28 …）。同一个东西在同一屏上都对不齐。
+ *
+ * 取 **24rpx 圆角**：16 与 24 几乎打平（12:11），而这一族是「卡片里的一个块」——
+ * 与 `.field__input` 同层级，那一档是 24。取 **20rpx 24rpx 内边距**：
+ * 它与 `.field__input` 的横向 24 相同，于是同一张卡里的提示条与输入框内边界对齐。
+ *
+ * 底与字**成对出现**，与 `.sh-chip--*` 同一套配法（tint 底 + 同名语义色的字）——
+ * 26 处里有 14 处本来就是这么配的，剩下的没配字色是漏了，不是另一种设计。
+ */
+.sh-notice {
+  padding: 20rpx 24rpx;
+  border-radius: 24rpx;
+  background: var(--sh-primary-tint);
+  color: var(--sh-primary-text);
+}
+.sh-notice--warning {
+  background: var(--sh-warning-tint);
+  color: var(--sh-warning);
+}
+.sh-notice--danger {
+  background: var(--sh-danger-tint);
+  color: var(--sh-danger);
+}
+.sh-notice--success {
+  background: var(--sh-success-tint);
+  color: var(--sh-success);
+}
+/* 中性的一档：没有语义、只是「这段话与正文分开」。弱色块底 + 次要字色。
+   全站另有 26 处 faint 底的块，但那 26 处是**三件事**混在一起 ——
+   药丸标签（该走 .sh-chip）、弱化的容器（圆角 32、带 gap，那是卡不是话）、
+   以及这一档。只收第三种。 */
+.sh-notice--muted {
+  background: var(--sh-faint);
+  color: var(--sh-sub);
+}
+
+
+/*
+ * 分组密排清单：一组设置项/入口挤在一块白底上，行与行之间只留 2rpx 的缝。
+ *
+ * **两端各写了一遍，逐字节相同**（`c-app/me` 与 `b-app/me` 的 `.cells`），
+ * 唯独行内边距漂了：C 端 `24rpx 26rpx`、B 端 `28rpx`。同一个清单，两端两个行高。
+ *
+ * 为什么不是「一行一张卡」：原先 11 行各自带底色与圆角、彼此留 8rpx 空隙 ——
+ * 满屏漂着 11 个孤立色块，行与行的间距比行本身还抢眼，看起来像 11 个功能模块，
+ * 而它们其实是一张清单。**归属靠分组表达，留白只出现在组与组之间。**
+ *
+ * 缝取 2rpx 而不是发丝线：那 2rpx 露出的是页底色，比画一条线更轻，
+ * 且在圆角处天然收口（`overflow: hidden`）。
+ */
+.sh-cells {
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  /*
+   * ⚠️ **容器自己不上色。** 第一版写的是 `background: var(--sh-surface)`，
+   * 而行（`.sh-cell`）是透明的 —— 于是那 2rpx 缝里露出来的是**容器自己的白**，
+   * 缝等于不存在（2026-09-06 在浏览器里量出来的：gap 确实是 1px，
+   * 只是白压白，看不见）。行看着分开完全是内边距的功劳。
+   *
+   * 白底要给到**行**上，缝才露得出它下面的东西。这里不写 `--sh-bg` 而是不写 ——
+   * 这一族大多数时候坐在页底色上，但也可能被放进别的容器里，
+   * 钉死一个颜色就会在那种地方露出一道不属于任何东西的灰。
+   */
+}
+/* 行的内边距走密度变量：C 端逛店松一点、B 端作业台紧一点，这本来就是两端的分歧，
+   而此前那点分歧是「各写各的」造成的，不是有意的。纵向 24 让行高落在 ~76rpx —— 
+   远超 44pt 的点按下限，一屏又能多放两三行 */
+.sh-cell {
+  /* 白底在行上不在容器上 —— 见上面那段：容器上色会把缝填掉 */
+  background: var(--sh-surface);
+  padding: 24rpx var(--sh-pad-page, 28rpx);
+}
+
+
+/*
+ * 搜索框（也用作「点一下跳到搜索页」的假输入框）。
+ *
+ * **两端各画了一个，形状对不上**：c 端 `category` 是 `9999px` 圆角、`24rpx 32rpx`
+ * 内边距的胶囊；b 端 `goods-list` 是 `16rpx` 圆角、`0 24rpx` 内边距、靠里面的
+ * input 撑高。同一个东西在两个端上一个是药丸一个是方角。
+ *
+ * 取胶囊：这套界面里凡是「一整条可点的东西」都是胶囊（`.sh-btn`、`.sh-chip`）。
+ * 高度取 88rpx —— 与 `.field__input` 同高，于是搜索框与输入框在同一屏上齐平。
+ * 横向留白 28rpx 与 `--sh-pad-page` 的 C 端值相同，视觉上与页面边距成一条线。
+ *
+ * 只管「盒子长什么样」，里面放图标还是 input 由调用点定 —— 两端放的东西不一样。
+ */
+.sh-searchbox {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-height: 88rpx;
+  padding: 0 28rpx;
+  border-radius: 9999px;
+  background: var(--sh-surface);
+}
+
+
+
+/* ---- 底部弹层的壳：遮罩 · 面板 · 抓手条 ----
+ *
+ * **库里三个件各画了一份**（2026-09-06 数的）：`sh-sheet` / `sh-prompt` /
+ * `sh-theme-sheet`。三份的 `__mask` **逐字节相同**，三份的面板也是同一套几何
+ * （44rpx 上圆角 + `24 / 36 / 48` 内边距 + surface 底），抓手条更是三份
+ * `72×8rpx` 的胶囊。页面那一层已经理过两轮了，而**库自己在各写各的**。
+ *
+ * 为什么是三个积木、不是让后两个复用 `sh-sheet` 组件：重复的**不是行为**，
+ * 是面板的几何。`sh-prompt` 没有关闭按钮、层级要压过弹层（它会开在弹层之上）、
+ * 内容是固定的三件；`sh-theme-sheet` 的正文是自己的网格。
+ * 按这个仓库的分法 —— **纯 CSS 无行为 = 积木**，硬塞进组件反而要加两个 prop
+ * 去关掉它用不上的部分。
+ *
+ * `z-index` **不在这里**：它是「谁压谁」，各件按 `--sh-z-*` 自己挑
+ *（弹层 100 / 叠层 150 / 对话框与输入弹层 200）。
+ */
+.sh-mask {
+  position: absolute;
+  inset: 0;
+  background: var(--sh-scrim);
+}
+.sh-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  /* 横向留白走变量，好让「通铺到边」的地方用负外边距精确抵消它 ——
+     抄一个 36 过去的话，改一处另一处就错位，而错位只有几像素，没人会去量 */
+  --sh-panel-pad-x: 36rpx;
+  background: var(--sh-surface);
+  border-radius: 44rpx 44rpx 0 0;
+  /* 三条同名声明是**有意的降级链**（见 safe-area-fallback.test.ts 的头注）：
+     不认 env() 的内核在计算期把整条丢掉、取初始值 auto，**不会退回上一条** ——
+     所以每一条都必须自带回退值，顺序按「老 → 新」，最后那条赢。 */
+  padding: 24rpx var(--sh-panel-pad-x) 48rpx;
+  padding: 24rpx var(--sh-panel-pad-x) calc(48rpx + constant(safe-area-inset-bottom, 0px));
+  padding: 24rpx var(--sh-panel-pad-x) calc(48rpx + env(safe-area-inset-bottom, 0px));
+}
+/* 抓手条：面板顶上那道短横。它不可点 —— 这套界面没有下拉关闭手势，
+   它只是在说「这是一层浮上来的东西，下面还有页面」 */
+.sh-grip {
+  width: 72rpx;
+  height: 8rpx;
+  border-radius: 9999px;
+  background: var(--sh-faint);
+  margin: 0 auto 28rpx;
+}
+
+
+/* ---- 划掉的两种字：折扣前的价 · 不再有效的东西 ----
+ *
+ * 全仓 9 处 `text-decoration: line-through`，而它们是**两种语义**：
+ *
+ *   划线原价（c 端 4 处）  「原价 ¥39.80」—— 折扣前的价，永远是一小段附注
+ *   作废 / 失效（b 端 5 处）「这个区域被移出了」「这个标签失效了」「这是旧值」
+ *
+ * 分成两个而不是一个，是因为**它们对字号的态度相反**：
+ * 划线原价永远是附注，字号固定（此前 4 处却是 caption ×2 / sub ×2，两个数）；
+ * 而作废是挂在**原本就有大小的文本上**的（一个商品名、一个区域名），
+ * 它只该改装饰与颜色，不该动字号 —— 合成一个件就必然有一半要被调用点覆盖回去。
+ */
+.sh-was {
+  font-size: 24rpx;
+  color: var(--sh-sub);
+  text-decoration: line-through;
+}
+/* 不带字号：见上，它挂在什么大小的字上由调用点决定 */
+.sh-void {
+  color: var(--sh-sub);
+  text-decoration: line-through;
+}
+
+/*
+ * 计数徽标：红底白字的小圆点数字（未读数、购物车件数、待办数）。
+ *
+ * 三处各写一份（`me` 的消息未读、`goods` 的购物车角标、`sh-tabbar` 的红点），
+ * 三处的 min-width / height 在 30–32rpx 之间各取各的。取 32rpx。
+ *
+ * **白字压危险红是库里已有的取舍**，不是这里新定的：`--sh-danger` 是固定的语义红
+ *（不随皮肤变），白字压它 3.3 —— 达不到 4.5，但命中 WCAG 对大号粗体的放宽档，
+ * 而这里是 24rpx/600 的数字，且它的作用是「有没有」而不是「读内容」。
+ * 理由与 `.sh-btn--danger-solid` 同源，写在那儿。
+ *
+ * **定位留给调用点**：三处一个在行内、一个绝对定位在图标右上、一个在菜单项上方，
+ * 那是版面不是件的属性。
+ */
+.sh-badge-count {
+  min-width: 32rpx;
+  height: 32rpx;
+  padding: 0 8rpx;
+  border-radius: 9999px;
+  background: var(--sh-danger);
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 600;
+  line-height: 32rpx;
+  text-align: center;
+}
+
+
+/* ---- 分段选择块：一排里挑一个 ----
+ *
+ * **与 `.sh-chip` 是两件事**：chip 是**标签**（说明这个东西是什么），
+ * 这个是**控件**（点它会改变选择）。形状上 chip 是药丸、这个是 24rpx 圆角块，
+ * 因为它常常要装两行（时刻 + 剩余几位）。
+ *
+ * **收编的是五处**（2026-08-27 扫的），内边距**没有两处相同**：
+ *
+ *   me           .type     22rpx 0      等分
+ *   after-sale   .reason   20rpx 30rpx
+ *   goods        .spec     20rpx 32rpx
+ *   goods        .date     18rpx 28rpx
+ *   goods        .time     16rpx 26rpx
+ *
+ * 五个数各自量出来的，而它们在同一个 App 里做同一件事。取 20rpx 28rpx。
+ *
+ * **选中态是实心主色，不是 tint** —— 这条理由原本只写在 `goods` 的注释里：
+ * mono 这类低饱和皮肤下 tint 与 faint 几乎没有差别，选没选中看不出来。
+ * 实底在四套皮肤 × 明暗下都清晰。前景走 `--sh-on-primary` 而非写死白字，
+ * 理由同 `.sh-chip--solid`（fresh 那类亮主色上白字只有 2.27）。
+ *
+ * 块里的文字**不要自己声明 color**，让它从块上继承 —— 只有这样选中时
+ * 一整块（含子元素）才会一起反白。需要保留次要色调的那一档（如「剩 3 位」）
+ * 才在页面里补一条选中覆盖。
+ */
+.sh-seg {
+  padding: 20rpx 28rpx;
+  border-radius: 24rpx;
+  background: var(--sh-faint);
+  color: var(--sh-ink);
+  font-size: 26rpx;
+}
+.sh-seg--on {
+  background: var(--sh-primary);
+  color: var(--sh-on-primary);
+  font-weight: 600;
+}
+/* 不可选：置灰但**仍然显示**。藏起来的话人不知道这一档存在过，
+   会以为是自己找错了地方 */
+.sh-seg--off {
+  opacity: 0.35;
+}
+/* 等分铺满：一排两三个把宽度分完（父级是 flex） */
+.sh-seg--fill {
+  flex: 1;
+  text-align: center;
 }
 
 /* ---- 字阶：六档字号，字重只有三种，且各有专属用途 ----
@@ -438,7 +1583,7 @@ uni-page-wrapper[style*="--window-bottom"] {
  * 只留下「到处都在加粗」的印象。
  *
  * **规则一句话**：700 只给价格，600 只给标题与按钮，其余一律 400。
- * 字号七档：24 / 26 / 28 / 30 / 34 / 40 / 48 rpx。
+ * 字号八档：24 / 26 / 28 / 30 / 34 / 40 / 48 / 60 rpx（60 是收款台那一档，见 .txt-mega）。
  * 层级改由**颜色与留白**承担 —— 这正是下面 sh-block 那段注释早就写下的原则。
  *
  * **行高按用途分档而不是按语言分档**：中文需要 1.5 以上才不挤，
@@ -449,6 +1594,28 @@ uni-page-wrapper[style*="--window-bottom"] {
  * 中文在小字号下收紧会让笔画粘连；而这套界面同一个类要同时承载中/英/阿三种文字。
  * 少一个轴，三种语言就少三种试错。
  */
+/*
+ * 收款台那一档。**加这一档是有代价的，所以理由要写在这儿。**
+ *
+ * <p>字阶原本到 `.txt-hero`（48rpx = 24px）为止。但**三个页面各自越过了它**：
+ * `order` 的应收金额 72rpx、`income` 与 `points` 的结存 60rpx。
+ * 三处独立地走到同一个方向，说明这不是手滑，是这一档真的缺 ——
+ * 这些数不是「页面上最大的字」，是**商家照着它收钱、对账**的那个数，
+ * 隔着柜台一米要一眼读准。
+ *
+ * <p>取 60rpx（30px）：`40 → 48` 是 1.2 倍，`48 → 60` 是 1.25 —— 顺着字阶
+ * 自己的顶端比例走，不是随手挑的。`order` 的 72rpx 一并收到这一档：
+ * 弹层里本来就只有它一个大数，36px 与 30px 的差别买不到什么，
+ * 而多一档就是多一次「这两个到底差在哪」。
+ *
+ * <p>**只加这一档，不加第二档。** 再有页面想更大，先问它是不是也属于收款台。
+ */
+.txt-mega {
+  font-size: 60rpx;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--sh-ink);
+}
 /* 详情页主价、评分大数字这一档。它与 .txt-display 的差别是「整页只有一个」 */
 .txt-hero {
   font-size: 48rpx;
@@ -475,8 +1642,21 @@ uni-page-wrapper[style*="--window-bottom"] {
   line-height: 1.3;
   color: var(--sh-ink);
 }
+/*
+ * 强调行：**与正文同字号，靠字重顶出来**。
+ *
+ * 2026-08-28 从 30rpx 改到 28rpx，**字阶里不再有 30 这一档**
+ *（控件仍然是 30：`.sh-btn` 与 `.field__input` —— 那是控件尺寸，不归字阶管）。
+ * 理由是数出来的：
+ * 页面里 `28rpx/600` 用了 **37 处**，而为这个角色定义的 30/600 只有 12 处 ——
+ * 用得比定义的档还多三倍，说明档位当初取错了尺寸，不是页面用错了。
+ *
+ * 而且「同字号 + 换字重」本来就是这个字阶已有的做法：
+ * `.txt-price`(34/700) 与 `.txt-title`(34/600) 就共用 34。
+ * 强调之于正文，正是价格之于标题的那层关系。
+ */
 .txt-strong {
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 600;
   line-height: 1.4;
   color: var(--sh-ink);
@@ -500,46 +1680,347 @@ uni-page-wrapper[style*="--window-bottom"] {
   color: var(--sh-sub);
 }
 
-/* 区块标题：靠字重与留白分段，不用分隔线 */
-.sh-h1 {
-  font-size: 40rpx;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--sh-ink);
-}
-/* 与 .txt-title 同值 —— 保留这个名字是因为它已被十几个页面引用 */
-.sh-h2 {
-  font-size: 34rpx;
+/*
+ * 同尺寸加重。**这是字阶唯一的修饰类，而且是被现实逼出来的。**
+ *
+ * 字阶把字号与字重 1:1 绑死（那正是它存在的理由：防住「33 个字号 × 任意字重」）。
+ * 但 2026-08-28 逐页体检时，三类需求撞上了这个约束：
+ *   · **状态加重** —— `.is-out` / `.is-bad` / `.is-on` 只想把这一行变重，
+ *     换成别的档会连字号一起变，而那一行的字号是版面定的
+ *   · **24rpx 与 26rpx 的加重** —— 字阶在这两个尺寸上只有 400
+ *   · 小号按钮里的文字
+ *
+ * 所以补一个**只管字重**的修饰类，不新增任何字号档。
+ * ⚠️ **它不许用来造新档**：`.txt-caption.txt-bold` 的意思是「这一条加重了」，
+ * 不是「一个 24/600 的新档」—— 前者由状态驱动，后者会重新长出 33 个字号那种局面。
+ */
+.txt-bold {
   font-weight: 600;
-  line-height: 1.3;
+}
+
+/*
+ * 同尺寸改色。**与 `.txt-bold` 是同一个约束的另一半**：字阶不只把字号与字重绑死，
+ * 也把字号与**颜色**绑死了 —— 28rpx 以上是 ink，`txt-sub` / `txt-caption` 是灰。
+ *
+ * 而「小字号 + 正文色」是真实需求：**14 处各写一份**（2026-08-29 数的）——
+ * 订单金额行的值（`amt__v` 两处）、求团的事实值、售后节点名、地址开关的标签、
+ * 门店类目名、经营范围子集名、操作日志正文…… 它们的字号由版面定（与旁边的标签一样），
+ * 但内容是**主信息**，灰下去就跟标签分不出主次了。
+ *
+ * 与 `.sh-muted` 相反的方向：那个是「把正文降成次要」，这个是「把次要抬回正文」。
+ *
+ * ⚠️ 同 `.txt-bold`：**它不许用来造新档**。`.txt-caption.txt-ink` 的意思是
+ * 「这一条是主信息」，不是「一个 24rpx/ink 的新档」—— 后者会重新长出
+ * 「字号 × 颜色」的笛卡尔积，而字阶存在的理由正是防住那个。
+ */
+.txt-ink {
   color: var(--sh-ink);
 }
+
+/*
+ * 同尺寸改成主色。**27 处各写一份**（2026-08-29 数的）—— 门店持有数、核销大数、
+ * 分拣件数、商品价、报名人数、协议链接、清空历史、拨号电话、优惠券可用态……
+ *
+ * **与 `.sh-link` 的分工**（那个件 49 处在用，别混）：
+ *   · `.sh-link` 是**「文字动作」这个语义件** —— 可点、次要、24rpx、400，
+ *     三个值各有依据（见它自己的注释）。它管的是「这是一个能点的次要动作」。
+ *   · 这一个只是**颜色修饰**，给「需要主色但不是文字动作」的：强调数值、标记、状态。
+ *     字号由版面定，不由它定。
+ * 判断法：如果这处**是**一个文字动作、且 24rpx 合适，用 `.sh-link`；否则用这个。
+ *
+ * 取 `--sh-primary-text` 不是 `--sh-primary`：主色是为「压白字的按钮底」调的，
+ * 当文字压在页面底上不够 4.5:1（同 `.sh-link` 的理由，design-tokens 守卫点名过）。
+ */
+.txt-primary {
+  color: var(--sh-primary-text);
+}
+
+/*
+ * 同尺寸压成次要。**15 处各写一份**（2026-08-29 数的），两种用法：
+ *   · **常驻**（4 处）—— 元素本身不是次要档却要灰：协议说明、分组名、日志时间。
+ *     它们的字号由版面定（`txt-strong` 的 28rpx），只有颜色要降一级。
+ *   · **状态**（11 处）—— 零值、空值、已退款、待审核、发送冷却……
+ *     「这一条此刻没内容/不可用」，不该与有内容的那些抢注意力。
+ *
+ * **与 `.sh-muted` 的分工**：那个件同时定字号（`--sh-fs-sub`）与颜色，
+ * 是「次要文字」这个完整形态；这一个只管颜色，字号留给版面。
+ * 判断法：整段就是次要信息 → `.sh-muted`；只是**这一条**要降下去 → 这个。
+ */
+.txt-quiet {
+  color: var(--sh-sub);
+}
+
+/*
+ * 比次要再淡一级。**只给一种语义：零值**（4 处，`.is-zero`）——
+ * 待办数字为 0 时，它比「次要」还要退后一层：那不是次要信息，是**没有信息**。
+ *
+ * ⚠️ 收编前 4 处里有 1 处（home 的 `fulfill__n`）用的是 `--sh-sub` 而不是 faint，
+ * 与同一页的 `tiles__n` 不一致 —— 同一个「为 0 就淡下去」，两种深浅。
+ * 已统一到 faint（多数那边，也是这个 token 本来的用途）。
+ */
+.txt-faint {
+  color: var(--sh-faint);
+}
+
+
+/* 次要文字。**字号走变量**，理由与密度变量同源（见 .sh-card）：
+   正文是 page 默认的 28rpx，而次要档若取 26rpx，两者只差 1px ——
+   同一张卡里「商品名」与「下单时间」看着一样重，层级只能靠颜色撑。
+   B 端把它降到 24rpx，与正文拉开 2px，一眼分得出主次（C 端维持 26rpx 不变）。 */
 .sh-muted {
   color: var(--sh-sub);
-  font-size: 26rpx;
+  font-size: var(--sh-fs-sub, 26rpx);
   font-weight: 400;
   line-height: 1.5;
+}
+
+/*
+ * 文字动作：**列表行尾那一排「续期 / 改名 / 停用」**，以及卡片里的
+ * 「展开 / 收起 / 去管理」。它不是按钮 —— 没有底色、没有边框，只靠主色说明可点。
+ *
+ * **收进来的理由是它已经漂成九种了**：2026-08-26 扫出来，两端一共 12 处定义、
+ * 顶着 `.act` 与 `.link` **两个名字**，字号 24 或 26、字重 400 或 600、
+ * 色值 `--sh-primary-text` 或 `--sh-primary`。而它们做的是同一件事。
+ *
+ * 三个取值都不是投票投出来的：
+ * · **400 不是 600** —— 字阶那条写着「600 只给标题与按钮」，文字动作两者都不是。
+ *   （六页写 400、两页写 600，多数也站在这边，但依据是规则不是人数。）
+ * · **24rpx** —— 它是行内的次要动作，比正文轻一档；26 与正文只差 1px，分不出主次。
+ * · **`--sh-primary-text` 不是 `--sh-primary`** —— 主色是为「压白字的按钮底」调的，
+ *   当文字压在页面底上不够 4.5:1。`entity-detail` 用的就是主色，没有任何症状，
+ *   只是弱视用户读不清（design-tokens 守卫点名的就是这一类）。
+ *
+ * 两个修饰：`--quiet` 压成灰（「收起」这类不该抢眼的），`--warn` 给申诉这类要当心的。
+ * 位置（margin / display）留给调用点 —— 那是版面，不是这个件的属性。
+ */
+.sh-link {
+  color: var(--sh-primary-text);
+  font-size: 24rpx;
+  font-weight: 400;
+}
+.sh-link--quiet {
+  color: var(--sh-sub);
+}
+.sh-link--warn {
+  color: var(--sh-warning);
+}
+
+/* ---- 间距档（纵向）----
+   五档取自 tokens.ts 的 spacing：8 / 16 / 28 / 40 / 64rpx。
+   **为什么要有这一族**：`.mt` 这个名字在 B 端 26 个页面里各定义了一份，
+   而值有七种（8 / 10 / 12 / 16 / 20 / 24rpx），其中四种不在档上；
+   更别扭的是 `.mt-s`（"small"）在有些页面比同页的 `.mt` 还大。
+   一个类名在不同页面表示不同的距离，等于这个名字没有意义。
+
+   ⚠️ **这一族现在只有新写的地方在用**。那 26 处存量没有一并替换 ——
+   替换要改的不是类名而是**距离本身**（10→8、12→16、20→16 或 28、24→28），
+   那是三十个页面上肉眼可见的变化，得先有人拍板。见覆盖清单 §8.2。
+
+   **2026-08-27 收编完成**：那 26 处已经全部归档 —— 8/10/12 → xs、16/20 → sm、24 → md，
+   都是就近归到五档上。改动的是**距离本身**（最大 4rpx = 2px），不是类名，
+   所以是三十个页面上肉眼可见的一次统一，不是重命名。
+
+   ⚠️ 仍然**只定义真在用的那几档**：lg / xl 没有调用点就不摆出来 ——
+   一次把十个类都写上，清单会立刻报八个「定义了没人用」，
+   而那正是 `.txt-hero` 一直挂着的毛病。用到再加，档位在 tokens.ts 里不会走丢。 */
+/* ---- 两个一行的工具类 ----
+ *
+ * **`.sh-fill`：占满剩余宽度，并且允许收缩。** 30 处各写一份
+ *（`.row__main` ×13、`.item__main` ×6、`.head__main` ×4、`.flex1` ×4…），
+ * 其中 **7 处只写了 `flex: 1`，漏了 `min-width: 0`**。
+ * 那不是风格差异，是**缺陷**：flex 子元素的默认最小宽度是内容宽度，
+ * 少了这一条，一行长标题不会收缩，会把右边的价格/箭头顶出屏幕 ——
+ * 而它只在标题足够长时才现形，短数据下测不出来。
+ *
+ * **`.is-disabled`：压暗且不响应。** 12 处各写一份，11 处 0.45、1 处 0.5。
+ * 它一直是**约定俗成的类名**（模板里 `:class="{ 'is-disabled': … }"` 到处都是），
+ * 却从来没有一处公共定义 —— 页面忘了写，按钮就只是「点了没反应」，
+ * 看不出是禁用还是坏了。
+ */
+.sh-fill {
+  flex: 1;
+  min-width: 0;
+}
+/*
+ * 语义着色。**12 处各写一份，而且同一个颜色用了三个名字**（2026-08-28 数的）：
+ *
+ *   红 6 处 —— `.is-out`×3（出库）/ `.is-bad`×2（算不平、低于成本）/ `.is-loss`（盘亏）
+ *   绿 4 处 —— `.is-in`×2（入库）/ `.is-gain`（盘盈）/ `.is-ok`（算平）
+ *   橙 1 处 —— `.is-transit`（在途）
+ *
+ * 其中 8 处是**同一个判断**：`n < 0 ? 红 : 绿`，三对名字的三元表达式逐字相同。
+ *
+ * **为什么不按业务含义拆成两套**（「数的正负」与「有没有问题」）：
+ * 它们的渲染完全相同 —— 拆开等于造出两个内容一模一样的类，正是这次要修的那件事。
+ * 业务含义留在调用点（`totalQty < 0`、`belowCost(...)`、`balanced`），
+ * 那里本来就写着为什么，比类名说得清楚。
+ *
+ * 名字取 token 名而不是业务词，与库里的 `.sh-chip--danger` / `--warning` 一致。
+ * 「出库」当然不是 danger —— 但 `--sh-danger` 就是这个红的名字，
+ * 而按业务词命名恰恰是这 12 处长出三对名字的原因。
+ *
+ * ⚠️ 只管颜色，不管字重。**加重是另一件事**，走 `.txt-bold`（见字阶那一节的说明）——
+ * 此前有页面把两件事塞进同一个 `.is-*` 里，于是想只改颜色时会连字重一起变。
+ */
+.is-danger {
+  color: var(--sh-danger);
+}
+.is-success {
+  color: var(--sh-success);
+}
+.is-warning {
+  color: var(--sh-warning);
+}
+
+.is-disabled {
+  opacity: 0.45;
+}
+
+
+.sh-mt-xs { margin-top: 8rpx; }
+.sh-mt-sm { margin-top: 16rpx; }
+.sh-mt-md { margin-top: 28rpx; }
+.sh-mb-sm { margin-bottom: 16rpx; }
+.sh-mb-md { margin-bottom: 28rpx; }
+
+/* 对话框动作键：**必须是全局类**。
+   `sh-dialog` 的动作条是它自己的元素（带它的 scope id），而放进去的按钮来自插槽 ——
+   **插槽内容带的是调用方的 scope id**，所以 `.dlg__acts > * { flex: 1 }` 这种写法
+   一行都不会生效。第一次这么写的结果：两个按钮挤成两个小药丸，等宽没了。
+   与 `.field` 那一族同一条理由（见 b-app/App.vue）：跨插槽的布局只能走全局类。 */
+/* 动作条本身。**小程序端插槽内容外面还有一层**，flex 的父子关系断在那儿：
+   uni 把具名插槽编译成 `<view slot="actions">…按钮…</view>` 再塞进
+   `sh-dialog` 的 `.dlg__acts`。于是按钮的父级是那层无名 `view`（不是 flex 容器），
+   下面 `.sh-dialog__act` 的 `flex: 1` 一行都不生效 —— 而那层自己是 `.dlg__acts`
+   的 flex 项，宽度收缩到内容宽。**结果：两个按钮竖着叠成两条窄药丸。**
+   2026-09-07 在真机（支付唤起失败的提示框）与开发者工具模拟器上都复现。
+
+   H5 上没有这一层（插槽内容是直接的 `uni-text`），所以这条规则在那边匹配不到
+   任何东西 —— 它只在小程序上起作用，两端不需要分叉。 */
+.sh-dialog__acts > view {
+  display: flex;
+  gap: 16rpx;
+  flex: 1;
+}
+
+.sh-dialog__act {
+  flex: 1;
+  padding: 24rpx 0;
+  text-align: center;
+}
+
+/*
+ * **`.sh-btn` 与 `.sh-center` 叠在一起时要显式接回 flex。**
+ *
+ * 两者都是单类选择器，特异度相同，于是**写在后面的赢** —— `.sh-btn` 在本文件里
+ * 排在 `.sh-center` 之后，它的 `display: block` 把 `.sh-center` 的 `display: flex`
+ * 压掉了。剩下的 `align-items/justify-content` 落在一个块级盒子上，**一点作用都没有**。
+ *
+ * 这不是假设：b-app `login` 的「获取验证码」挂上 `.sh-center` 之后，computed 的
+ * `display` **仍是 block**，文字中线比按钮中线高 12.5px；加上这条规则后是 0.3px。
+ * c-app `phone-gate` 的同一枚按钮没去量，但形状一模一样 —— 同样两个类、同样给了
+ * 死高度 88rpx 去对齐旁边的输入框、同样把 `.sh-btn` 那份靠 `padding: 32rpx 0`
+ * 撑出来的居中压成了 `0 24rpx`，所以同一条规则一并兜住它。
+ * 盒子是对齐的，所以症状看着只是「字歪了」，两处的注释还都写着「居中用 .sh-center」。
+ *
+ * 靠调换顺序修不牢（谁都可能再往后加一条）；这里用两个类的组合把它钉死。
+ */
+.sh-btn.sh-center {
+  display: flex;
 }
 
 /* 主按钮：实心色块 */
 .sh-btn {
   display: block;
   text-align: center;
-  padding: 30rpx 0;
+  padding: 32rpx 0;
   border-radius: 9999px;
   background: var(--sh-primary);
   color: var(--sh-on-primary);
-  font-size: 30rpx;
+  /* 28rpx/600/1.4 = 字阶的 `.txt-strong`（「需要比正文重一档的行」——按钮正是它）。
+     与 `.field__input` 同一笔收回七档，理由写在那儿。
+     小一号那档 `.sh-btn--sm` 是 26rpx，两者仍差一档。 */
+  font-size: 28rpx;
   font-weight: 600;
   line-height: 1.4;
 }
+/*
+ * 小一号的按钮：**放在一行文字动作里当主操作用**。
+ *
+ * <p>为什么需要它：`stores` 想让「切到这家」比旁边的「改名 / 设默认 / 停用」重一档，
+ * 做法是给那个文字动作加 `font-weight: 600` —— 而字阶那条写着
+ * **600 只给标题与按钮**，文字动作两者都不是。
+ *
+ * <p>正确的解法是**换形态而不是加字重**：把主操作做成一枚 tint 胶囊，
+ * 旁边仍是文字。这与「危险操作靠形态而不是靠颜色区分」是同一条原则 ——
+ * 加粗只是把同一个形状描得更黑，一行里四个都是文字时，重的那个仍要找。
+ *
+ * <p>字号 26rpx 不是新起的：`login` 的「获取验证码」、`sku-identity` 的
+ * 「导出/选文件」、`store-scope` 的「收起」三处覆盖 `.sh-btn` 内边距时，
+ * 取的都是 26rpx —— 这一档本来就存在，只是没有名字。
+ */
+.sh-btn--sm {
+  padding: 12rpx 28rpx;
+  font-size: 26rpx;
+}
+/*
+ * 中间那一档：**贴底操作条里的按钮**。
+ *
+ * <p>为什么不能用 `--sm`：那一档的定义写在上面 —— 「放在一行文字动作里当主操作用」，
+ * 它对比的是**文字**，所以 30px 够用。而贴底操作条是一页的主操作区，
+ * 三个按钮平铺、下面没有别的东西，它对比的是别的页面的贴底主按钮（52px），
+ * 于是显得扁。2026-09-17 店主的原话：「底部 button 是否太扁？大小是否不够协调」。
+ *
+ * <p>为什么不能直接用 `.sh-btn`：那是 52px，贴底条会从 46px 长到 ~70px，
+ * 挡掉更多列表内容 —— 而把条做矮本来就是库存页要解的问题。
+ *
+ * <p><b>44px 不是审美取值，是可点下限</b>（iOS HIG 44pt / Android 48dp）。
+ * `--sm` 的 30px 已经在下限之下。算式：24rpx×2 + 28rpx×1.4 = 87.2rpx = 43.6px。
+ * 字号取 28rpx 而不是 26rpx —— 与 `.sh-btn` 同一档（字阶的 `.txt-strong`，
+ * 「按钮正是它」），主操作不该比正文还小。
+ */
+.sh-btn--md {
+  padding: 24rpx 28rpx;
+  font-size: 28rpx;
+}
 .sh-btn--soft {
   background: var(--sh-primary-tint);
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .sh-btn--muted {
   background: var(--sh-faint);
   color: var(--sh-sub);
+}
+
+/*
+ * 危险操作：**描边 + 墨字**，不是红实心。
+ *
+ * 品牌主色是红（brand 皮肤），而危险色也是红 —— 两个红实心按钮并排时，
+ * 「确认下单」和「删除订单」在一眼之内分不出来，这是会真出事故的。
+ * 所以两者靠**形态**区分而不是靠颜色：主操作实心、危险操作描边。
+ * 颜色不做唯一的信息载体（WCAG 1.4.1）；在红色主色的产品里这条从建议变成必须。
+ *
+ * 文案也要担责：按钮上写明确动词（「停用员工」而不是「确定」）——
+ * 描边形态说明「这一步要当心」，动词说明「当心的是什么」。
+ */
+.sh-btn--danger {
+  background: transparent;
+  color: var(--sh-ink);
+  border: 2rpx solid var(--sh-danger);
+  /* 实心按钮没有边框，描边按钮多出 2rpx 上下边 —— 不减内边距两种按钮会差 4rpx 高，
+     并排时基线对不齐 */
+  padding: 28rpx 0;
+}
+
+/*
+ * 红实心**只留给二次确认**（弹层里的最终一击）。那一刻页面上不会同时出现主色按钮，
+ * 不存在混淆；而这一步确实需要「最重」的视觉分量。
+ */
+.sh-btn--danger-solid {
+  background: var(--sh-danger);
+  /* 危险色是固定的语义红（不随皮肤变），白字压它 3.3 —— 达不到 4.5，
+     但这是 WCAG 对大号粗体文字（≥18.66px bold）放宽后的档位，且此处字号 30rpx/600 命中该档 */
+  color: #fff;
 }
 
 /* 宽屏：应用收成居中窄栏，框外铺一层比页面底色更沉的背景以示边界。
@@ -576,3 +2057,4 @@ uni-page-wrapper[style*="--window-bottom"] {
     transform: translateX(-50%);
   }
 }
+

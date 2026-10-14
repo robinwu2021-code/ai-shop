@@ -15,13 +15,13 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
-import type { GroupBuy, Order } from "@shared/types";
+import type { GroupBuy, GroupPickupOrder } from "@shared/types";
 
 const { t } = useI18n();
 
 const groups = ref<GroupBuy[]>([]);
 const active = ref("");
-const orders = ref<Order[]>([]);
+const orders = ref<GroupPickupOrder[]>([]);
 const code = ref("");
 const error = ref("");
 const busy = ref(false);
@@ -29,14 +29,24 @@ const busy = ref(false);
 /** 只有「送到我家」的团才需要发起人履约 —— 到店自提的团由商家核销 */
 const hosting = computed(() => groups.value.filter((g) => g.neighborPickup));
 const current = computed(() => hosting.value.find((g) => g.groupNo === active.value));
-const waiting = computed(() => orders.value.filter((o) => o.status === "ARRIVED"));
-const preparing = computed(() => orders.value.filter((o) => o.status === "PREPARING"));
+const waiting = computed(() => orders.value.filter((o) => o.status === "FULFILLING"));
+const preparing = computed(() => orders.value.filter((o) => o.status === "PAID"));
+
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
 
 async function load() {
   error.value = "";
-  groups.value = await api.myHostedGroups();
-  if (!active.value && hosting.value[0]) active.value = hosting.value[0].groupNo;
-  if (active.value) orders.value = await api.groupPickupOrders(active.value);
+  try {
+    groups.value = await api.myHostedGroups();
+    if (!active.value && hosting.value[0]) active.value = hosting.value[0].groupNo;
+    if (active.value) orders.value = await api.groupPickupOrders(active.value);
+    failed.value = false;
+  } catch {
+    // `error` 那条红字是**动作**失败用的（建团、核销）；首屏拉不到是另一回事：
+    // 它该整片说「没能加载出来 + 重试」，而不是显示「你还没有团」
+    failed.value = true;
+  }
 }
 
 async function pick(groupNo: string) {
@@ -48,8 +58,11 @@ async function receive() {
   if (!current.value || busy.value) return;
   busy.value = true;
   try {
-    const changed = await api.confirmGroupBatch(current.value.groupNo);
-    uni.showToast({ title: t("groupHost.received", { n: changed.length }), icon: "none" });
+    // 签收前还在途的这些，签收后就变成「待取」—— 数在调用前算，
+    // 因为接口返回的是团本身（后端一直如此），不是被改动的订单列表
+    const n = preparing.value.length;
+    await api.confirmGroupBatch(current.value.groupNo);
+    uni.showToast({ title: t("groupHost.received", { n }), icon: "none" });
     await load();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -85,27 +98,28 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="groupHost.title">
-    <text class="sh-h1">{{ $t("groupHost.title") }}</text>
+    <text class="txt-display">{{ $t("groupHost.title") }}</text>
 
-    <sh-empty v-if="!hosting.length" :text='$t("groupHost.empty")'></sh-empty>
+    <sh-empty v-if="!hosting.length"
+          :failed="failed"
+          @retry="load" :text='$t("groupHost.empty")'></sh-empty>
 
     <template v-else>
       <!-- 多个团时切换 -->
-      <view v-if="hosting.length > 1" class="tabs">
-        <text
-          v-for="g in hosting"
-          :key="g.groupNo"
-          class="sh-chip"
-          :class="{ 'sh-chip--primary': active === g.groupNo }"
-          @tap="pick(g.groupNo)"
-        >
-          {{ g.title }}
-        </text>
-      </view>
+      <!-- 此前这里把 `sh-tabs` 手画了一遍：同样是一排 `sh-chip`、选中挂
+           `sh-chip--primary`。组件多做一件事 —— 超过四项自动横滚，
+           而手画那版一多就换行、把下面的内容顶下去。 -->
+      <sh-tabs
+        v-if="hosting.length > 1"
+        class="tabs"
+        :items="hosting.map((g) => ({ key: g.groupNo, label: g.title }))"
+        :active="active"
+        @change="pick"
+      ></sh-tabs>
 
       <view v-if="current" class="sh-card info">
-        <view class="info__row" @tap="gotoGroup(current.groupNo)">
-          <text class="info__title">{{ current.title }}</text>
+        <view class="info__row sh-row sh-row--between" @tap="gotoGroup(current.groupNo)">
+          <text class="txt-body info__title">{{ current.title }}</text>
           <text class="sh-chip" :class="current.reached ? 'sh-chip--primary' : 'sh-chip--warning'">
             {{ current.reached ? $t("groupHost.reached") : $t("groupHost.need", { n: current.need }) }}
           </text>
@@ -116,7 +130,7 @@ onShow(load);
         <text class="sh-muted">
           {{ $t("groupHost.slot") }}{{ current.neighborPickup?.timeSlot }}
         </text>
-        <text class="free">{{ $t("groupHost.freeHint") }}</text>
+        <text class="txt-caption sh-notice free">{{ $t("groupHost.freeHint") }}</text>
       </view>
 
       <!-- 批次签收：整批到货后点一次，参团邻居收到通知 -->
@@ -126,36 +140,39 @@ onShow(load);
 
       <!-- 轻核销：邻居来取货时逐单核掉 -->
       <view class="sh-card verify">
-        <text class="sh-h2">{{ $t("groupHost.verify") }}</text>
-        <view class="row">
+        <text class="txt-title">{{ $t("groupHost.verify") }}</text>
+        <view class="sh-row sh-mt-sm">
           <input
+            maxlength="16"
             v-model="code"
-            class="field sh-num"
+            class="field__input sh-num"
             :placeholder="$t('groupHost.codePh')"
             confirm-type="done"
             @confirm="verify()"
           />
-          <text class="btn" @tap="verify()">{{ $t("groupHost.doVerify") }}</text>
+          <text class="sh-btn sh-btn--sm" @tap="verify()">{{ $t("groupHost.doVerify") }}</text>
         </view>
-        <text v-if="error" class="err">{{ error }}</text>
+        <text v-if="error" class="txt-caption sh-notice sh-notice--danger err">{{ error }}</text>
       </view>
 
-      <view class="list-head">
-        <text class="sh-h2">{{ $t("groupHost.waiting") }}</text>
+      <view class="list-head sh-row sh-row--between sh-row--baseline">
+        <text class="txt-title">{{ $t("groupHost.waiting") }}</text>
         <text class="sh-muted sh-num">{{ waiting.length }}</text>
       </view>
 
-      <sh-empty v-if="!waiting.length" compact :text='$t("groupHost.noWaiting")'></sh-empty>
+      <sh-empty v-if="!waiting.length"
+          :failed="failed"
+          @retry="load" compact :text='$t("groupHost.noWaiting")'></sh-empty>
 
-      <view v-for="o in waiting" :key="o.orderNo" class="sh-card row-item">
-        <view class="row-item__main">
-          <text class="row-item__code sh-num">{{ o.verifyCode }}</text>
+      <view v-for="o in waiting" :key="o.subOrderNo" class="sh-card row-item sh-row">
+        <view class="sh-fill">
+          <text class="txt-title row-item__code sh-num">{{ o.verifyCode }}</text>
           <text class="sh-muted">{{ o.buyerNickname || "—" }} · {{ o.items.length }} 件</text>
         </view>
-        <text class="btn" @tap="verify(o.verifyCode)">{{ $t("groupHost.doVerify") }}</text>
+        <text class="sh-btn sh-btn--sm" @tap="verify(o.verifyCode)">{{ $t("groupHost.doVerify") }}</text>
       </view>
 
-      <text class="tip">{{ $t("groupHost.afterSaleHint") }}</text>
+      <text class="tip sh-hint">{{ $t("groupHost.afterSaleHint") }}</text>
     </template>
   </sh-scaffold>
 </template>
@@ -164,26 +181,15 @@ onShow(load);
 .empty.small {
   padding: 48rpx 0;
 }
+/* 排布归 `sh-tabs`，这里只留这一段的上下留白 */
 .tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin: 24rpx 0;
 }
 .info {
   margin-top: 24rpx;
 }
-.info__row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-}
 .info__title {
   flex: 1;
-  font-size: 30rpx;
-  font-weight: 400;
-  color: var(--sh-ink);
 }
 .addr {
   display: block;
@@ -192,12 +198,6 @@ onShow(load);
 .free {
   display: block;
   margin-top: 16rpx;
-  padding: 16rpx 20rpx;
-  border-radius: 24rpx;
-  background: var(--sh-primary-tint);
-  color: var(--sh-primary);
-  font-size: 24rpx;
-  line-height: 1.6;
 }
 .receive {
   margin-top: 24rpx;
@@ -205,67 +205,30 @@ onShow(load);
 .verify {
   margin-top: 24rpx;
 }
-.row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-top: 20rpx;
-}
-.field {
+
+/* 这一页特有的两条：与旁边的按钮同行分宽，以及验证码的字距。
+   其余（高度 / 圆角 / 底色 / 字号）都由 `.field__input` 给 */
+.field__input {
   flex: 1;
-  height: 84rpx;
-  padding: 0 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  font-size: 30rpx;
   letter-spacing: 4rpx;
-  color: var(--sh-ink);
-}
-.btn {
-  padding: 20rpx 30rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 26rpx;
-  font-weight: 600;
 }
 .err {
   display: block;
   margin-top: 20rpx;
-  padding: 18rpx 22rpx;
-  border-radius: 24rpx;
-  background: var(--sh-danger-tint);
-  color: var(--sh-danger);
-  font-size: 24rpx;
 }
 .list-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   margin: 32rpx 8rpx 16rpx;
 }
 .row-item {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
   margin-bottom: 16rpx;
 }
-.row-item__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row-item__code {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
   letter-spacing: 4rpx;
-  color: var(--sh-ink);
 }
 .tip {
-  display: block;
   margin: 32rpx 8rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 </style>

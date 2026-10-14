@@ -1,0 +1,247 @@
+# TDD-服务间调用换 HTTP Interface
+
+状态：已上线（2026-09-24，`892bf807`）
+关联：[ADR-025 服务间调用用 HTTP Interface](../ADR/ADR-025-服务间调用用HTTP-Interface.md) ·
+[ADR-023 服务发现先不装中间件](../ADR/ADR-023-服务发现先不装中间件.md) ·
+[ADR-021 支付域独立为服务](../ADR/ADR-021-支付域独立为服务与独立库.md)
+创建：2026-09-24 · 最后更新：2026-09-24
+
+> **一句话**：把两条服务间调用链路 —— `shop-app → pay-svc`、`job-worker → shop-app` ——
+> 从手写 JDK HttpClient（拼路径 + 手工反序列化）换成 `@HttpExchange` 接口。**契约不变**：端点、配置项、JSON 结构、失败语义一个都不改。
+> 档位：契约不动，本应是 0 档；但这是「今后服务间调用一律怎么写」的选型，所以配一份 ADR。
+
+## §0 对账一 · 需求 → 设计
+
+没有 PRD：这是技术债偿还，验收标准是「行为与今天逐条一致」，外加一条新能力。
+
+| AC | 验收标准 | 落点 |
+|---|---|---|
+| AC1 | 5 个 pay 内部端点都经 `@HttpExchange` 接口调用，业务代码里不再有路径字符串与 `TypeReference` | `PayInternalApi` + 两个 `Remote*AppService` |
+| AC1b | job 的 2 个内部端点经 `@HttpExchange` 调用；任务结果的映射照旧：409 → 跳过、404 → 没有这个 handler、2xx 但解析不了 → 失败、没配地址 → 不可达；**超时仍按任务各自的 `timeoutSec`** | `JobBusinessApi` + `HttpBusinessClient` |
+| AC2 | 五种失败分类照旧：`NOT_CONFIGURED` / `UNREACHABLE` / `TIMEOUT` / `REMOTE_ERROR` / `OK`，「没配地址」仍在**调用时**报，不是启动失败 | `ServiceLocatorInterceptor` + `InternalCalls` |
+| AC3 | 调不通时 `rules()` / `effectiveRates()` 抛错，**不返回空集合**（空集合下游语义是「没配过」「零佣金」） | `RemoteOpsFeeRuleAppService` |
+| AC4 | 写操作不重试；`add()` 在有幂等键之前照旧拒绝 | `RemoteOpsFeeRuleAppService#add` |
+| AC5 | 守住四条旧规矩：强制 HTTP/1.1、带 `X-Internal-Token`、密钥没配一律拒绝、不记请求/响应 body | `InternalHttp#restClient` |
+| AC6 | `/internal/**` 不被全局响应信封包裹（被包的话解码结果是**字段全 null 而不报错**） | 回归用例 |
+| AC7 | 客户端接口与服务端 mapping 的路径对得上，漂了**编译不过** | 两边注解引用同一份路径常量：`PayInternalPaths`（pay-domain）、`JobHttpPaths`（job-api，纯字符串，不加依赖） |
+| AC8 | 地址每次调用现查 `ServiceLocator`，将来换服务发现只换 `ServiceLocator` 实现 | `ServiceLocatorInterceptor` |
+
+**孤立项**：无。
+
+## §1 现状与影响面
+
+**服务间调用只有两条链路**（2026-09-24 按 `git grep InternalClient|ServiceName.|"/internal` 全量查过）：
+
+| 链路 | 客户端 | 端点 | 本次 |
+|---|---|---|---|
+| `shop-app → pay-svc` | `InternalClient`（shop-base，JDK HttpClient） | `/internal/pay/fee-rules`、`…/effective`、`/internal/pay/settle-invoices`、`…/{no}/issue`、`…/{no}/reject` | **迁移** |
+| `job-worker → shop-app` | `HttpBusinessClient`（自带 JDK HttpClient） | `/internal/job/declarations`、`/internal/job/{handler}/run` | **迁移**（2026-09-24 用户定：全部迁移） |
+
+- 会被改到的：`RemoteOpsFeeRuleAppService`、`RemoteOpsSettleInvoiceAppService`（仅 `shop.pay.deployment=standalone` 时装配）；
+  `job-worker` 的 `HttpBusinessClient`（**生产在用**：调度器每一次触发都走它）
+- 服务端只把 mapping 里的路径字面量换成常量，路径值不变
+- 可直接复用：`ServiceLocator` / `ConfigServiceLocator`（寻址）、`ServiceName`（服务名常量）、`JobWorkerProperties`（job 的地址与令牌）
+- **明确不受影响**：
+  - `shop.pay.deployment=embedded` 形态（本地实现）不经过 pay 这条代码 —— **但生产是 standalone，经过**，见 §2 生产影响
+  - 端点、响应格式、两边的配置键（`shop.services.*`、job 的 `targets` / `token`）、请求头名（`X-Internal-Token`、`X-Job-Token`）
+  - 第三方网关（微信、个推、FCM、APNs、阿里短信、视觉识别）：它们调的是外部 API，不是服务间调用，不在本次范围
+
+### 放哪儿：为什么要新开一个模块
+
+| 约束 | 出处 |
+|---|---|
+| `job-worker` 不能依赖 `shop-base` | shop-base 带 mybatis 等编译依赖，worker 碰到就进 classpath（`job-api/pom.xml` 注释） |
+| `job-api` 一个依赖都不能加 | 同上 |
+| `shop-base` 与 `job-worker` 都要用同一套传输零件 | 否则 HTTP/1.1、不记 body、失败分类会在两处各写一遍，必然漂移 |
+
+所以传输零件放在**新模块 `backend/svc-client`**（只依赖 `spring-web`，**不带 Tomcat**），包名 `ai.neargo.svc.client` ——
+刻意不用 `ai.neargo.shop` 前缀：job 是独立交付的，不该 import 一个 shop 包。
+它**不认识任何配置键和请求头名**，这些由两边各自传入：
+
+| | shop-app → pay | job-worker → shop-app |
+|---|---|---|
+| 寻址 | `ServiceLocator` | `JobWorkerProperties#getTargets` |
+| 令牌头 | `X-Internal-Token`，没配 → 拒绝 | `X-Job-Token`，行为照旧 |
+| 读超时 | 按服务，pay 5s | **按任务**，每个 `timeoutSec` 一个代理实例（缓存） |
+
+## §2 方案
+
+### 契约变更
+
+无。端点、库表、权限码、i18n、配置项（仍是 `shop.services.targets.*` 与 `shop.services.internal-token`）、JSON 结构都不变。
+
+### 分层
+
+```
+Remote*AppService（业务端口的远程实现，瘦适配：InternalCallException → BizException）
+   └─ PayInternalApi            @HttpExchange 接口，路径与类型在编译期定下
+        └─ RestClient（InternalHttp 统一造）
+             ├─ ServiceLocatorInterceptor   逻辑地址 http://PAY → 每次现查 ServiceLocator
+             ├─ InternalTokenInterceptor    X-Internal-Token；没配 → NOT_CONFIGURED
+             ├─ JdkClientHttpRequestFactory HTTP/1.1 · 连接 3s · 读超时按服务
+             └─ 状态处理器                  非 2xx → REMOTE_ERROR（不读 body 进日志）
+```
+
+**逻辑地址 + 拦截器改写**，而不是启动时把 baseUrl 写死：
+① 保住「没配地址在调用时报」（AC2，`RemoteFeeRuleFailureTest` 第 4 条钉着它）；
+② 寻址每次现查，将来 `ServiceLocator` 换成服务发现实现时这里不用改（AC8）——
+这正是 Spring Cloud LoadBalancer 拦截 `http://服务名` 的同一种做法，届时可以直接替换。
+
+### 模块设计
+
+| 动作 | 路径 | 说明 |
+|---|---|---|
+| 新增 | `backend/svc-client/pom.xml` + 父 pom `<module>` | 只依赖 `spring-web`；模块扫描是自动发现的（`scripts/lib/backend-modules.mjs`），不用登记 |
+| 新增 | `svc-client/…/ServiceClients.java` | 造 `RestClient` 与代理：HTTP/1.1、连接 / 读超时、逻辑地址改写、令牌头、非 2xx → `REMOTE_ERROR` |
+| 新增 | `svc-client/…/ServiceClientSpec.java` | 一次造代理需要的全部参数（寻址函数、令牌头名、令牌、是否必须有令牌、超时） |
+| 新增 | `svc-client/…/CallOutcome.java`、`ServiceCallException.java`、`ServiceCalls.java` | 五种失败分类；执行一次调用并把传输异常映射到分类 |
+| 新增 | `job/job-api/…/JobHttpPaths.java` | 两个路径常量，**纯字符串，不加依赖** |
+| 修改 | `shop-app/…/portal/internal/JobHandlerEndpoint.java` | mapping 改用 `JobHttpPaths` 常量，路径值不变 |
+| 修改 | `job/job-worker/pom.xml` | 加 `svc-client` |
+| 新增 | `job/job-worker/…/JobBusinessApi.java` | `@HttpExchange`：`declarations()`、`run(handler, body)`，返回 `JsonNode` —— 解析沿用现有的宽松规则（缺字段取默认值） |
+| 修改 | `job/job-worker/…/HttpBusinessClient.java` | 改调 `JobBusinessApi`；409 / 404 / 解析失败 / 没配地址的映射一条不改 |
+| 修改 | `backend/shop-base/pom.xml` | 加 `svc-client` |
+| 新增 | `shop-base/…/svc/InternalHttp.java` | shop 侧的薄封装：`ServiceLocator` + `shop.services.internal-token` + `X-Internal-Token` |
+| 新增 | `pay/pay-domain/…/pay/client/PayInternalPaths.java`、`PayInternalApi.java` | 路径常量 + `@HttpExchange` 接口（放 pay-domain：shop-app 与 pay-svc 都看得见） |
+| 修改 | `pay/pay-svc/…/InternalPayEndpoint.java` | mapping 改用 `PayInternalPaths` 常量，路径值不变 |
+| 新增 | `shop-app/…/payclient/PayClientConfig.java` | `@ConditionalOnProperty(shop.pay.deployment=standalone)` 下造 `PayInternalApi` |
+| 修改 | `shop-app/…/payclient/impl/RemoteOps{FeeRule,SettleInvoice}AppService.java` | 改调 `PayInternalApi`；失败语义不变 |
+| 修改 | `shop-app/src/test/…/payclient/RemoteFeeRuleFailureTest.java` | 4 条用例走新栈，**断言不改** |
+| 新增 | `svc-client/src/test/…/ServiceClientsTest.java` | 本地起 JDK `HttpServer`（真实 socket，不用替身）：五种分类、HTTP/1.1、令牌头、每次现查地址 |
+| 新增 | `job/job-worker/src/test/…/HttpBusinessClientTest.java` | 真实 socket：409 / 404 / 500 / 2xx 坏 JSON / 超时 / 没配地址 各一条 |
+| 删除 | `shop-base/…/svc/InternalClient.java` | 最后一步，调用方清零后删 |
+
+### 关键接口
+
+```java
+@HttpExchange("/internal/pay")
+public interface PayInternalApi {
+    @GetExchange("/fee-rules")                         List<FeeRuleVO> feeRules();
+    @GetExchange("/fee-rules/effective")               Map<String, Integer> effectiveRates(@RequestParam("at") long at);
+    @GetExchange("/settle-invoices")                   List<SettleInvoiceVO> settleInvoices(/* 与现有查询参数逐个对齐 */);
+    @PostExchange("/settle-invoices/{no}/issue")       SettleInvoiceVO issue(@PathVariable("no") String no, @RequestBody IssueReq req);
+    @PostExchange("/settle-invoices/{no}/reject")      SettleInvoiceVO reject(@PathVariable("no") String no, @RequestBody RejectReq req);
+}
+
+// svc-client（不认识任何配置键与头名）
+public final class ServiceClients {
+    public static <T> T create(Class<T> api, ServiceClientSpec spec);
+}
+public final class ServiceCalls {
+    /** 执行一次调用；失败统一抛 ServiceCallException(outcome, service, status)，消息里不带 body */
+    public static <R> R call(String service, Supplier<R> invocation);
+}
+
+// shop-base
+public class InternalHttp {
+    /** service 用 ServiceName 常量；readTimeout 按服务给（今天 pay 是 5s） */
+    public <T> T client(String service, Class<T> api, Duration readTimeout);
+}
+```
+
+### 执行步骤（每步单独提交，每步都能停）
+
+| 步 | 做什么 | 完成判据 |
+|---|---|---|
+| 1 | 新模块 `svc-client` + 测试，**不接任何调用方** | `ServiceClientsTest` 五种分类全绿；逐条消融变红 |
+| 2 | job：`JobHttpPaths` 常量 → 服务端改用常量 → `JobBusinessApi` → `HttpBusinessClient` 改调 | `HttpBusinessClientTest` 全绿并逐条消融；`JobApplicationSmokeTest`、`WorkerTokenRequiredTest` 仍绿 |
+| 3 | pay：`PayInternalPaths` + `PayInternalApi` → 服务端改用常量 → `InternalHttp` + `PayClientConfig` → 两个 `Remote*` 改调 | `RemoteFeeRuleFailureTest` 4 条**断言不动**全绿；`PayApplicationBootTest` 绿 |
+| 4 | 删 `InternalClient`；`git grep InternalClient` 只剩文档 | 全量测试绿 |
+| 5 | 冒烟：`PayInternalApiRoundTripTest`（真 pay-svc + 真客户端）、`HttpBusinessClientTest`（真 socket）、`PayStandaloneAssemblyTest`（按生产形态装配 shop-app） | 全绿；「停掉对方后报不可达」由 `unreachable` / `refused` 用例覆盖 |
+| 6 | 重跑生成物（后端分层清单、依赖清单）；整套 pre-push；部署 `shop-app` 与 `job-worker` | 闸门全绿；两个进程 health 回到 200，调度器下一次触发成功 |
+
+**生产影响**（2026-09-24 上服务器核实过：`SHOP_PAY_DEPLOYMENT=standalone`，`ai-shop-pay` 在跑）：
+- **两条链路生产都在用**。本文初稿写的「生产是 embedded、pay 这条不经过」是错的，是未经查证写下的；
+  `PayStandaloneAssemblyTest` 的类注释早就写着「生产跑的是 standalone」
+- pay 这条的调用方：运营端费率页（`rules` / `effectiveRates`）与开票页（`list` / `issue` / `reject`）——
+  `effectiveRates` 只有 `OpsFeeRuleController` 在调，**不在下单与结算的主路径上**
+- job 这条：调度器的每一次触发
+- 兼容性：端点、JSON、请求头都没变，所以新 shop-app 对旧 pay-svc、新 job-worker 对旧 shop-app 都能通，
+  三个进程不必同时切；上线顺序 shop-app → pay-svc → job-worker，每切一个看 health 与一次真实调用
+
+## §3 选型
+
+| 方案 | 优点 | 缺点 | 结论 |
+|---|---|---|---|
+| A. HTTP Interface（`@HttpExchange` + `RestClient`） | spring-web 自带、不引 Spring Cloud；与 MVC 共用序列化；内置 Observation | 无内置负载均衡 / 熔断，要自己接 | ✅ 采用 |
+| B. Spring Cloud OpenFeign | 发现、负载均衡、熔断一个注解带上 | 引入整套 Spring Cloud；官方定为只维护；这些能力我们今天都用不上（ADR-023） | ❌ |
+| C. 保持手写 `InternalClient` | 零改动 | 路径与类型全在字符串里，每加一个端点多一份手工反序列化；漂移只能靠对方报错才知道 | ❌ |
+
+## §4 风险
+
+| 风险 | 影响 | 缓解 |
+|---|---|---|
+| `/internal` 被全局信封包住 | 200 + 字段全 null，**不报错**（仓库踩过） | AC6：`PayInternalApiRoundTripTest` 真客户端打真服务端。**实现时发现**：信封按包名放行（只放 `…portal.internal.`），而 `InternalPayEndpoint` 在 `…pay.svc` 包里 —— 今天没被包住，只因为 pay-svc 没扫描到信封类（它就在 classpath 上）。消融：把信封 `@Import` 进来 → 4 条变红 |
+| JDK HttpClient 走 HTTP/2 发大 body 挂住 | 调用卡死直到超时 | 请求工厂写死 `HTTP_1_1`，`WireTest` 断言协议版本 |
+| 异常映射漏了一种 | 运维看到「连不上」却是配置问题，守着一个不会自己好的故障 | 五种 `Outcome` 各一条用例，逐条消融 |
+| 将来有人给写操作加重试 | 重复开票 / 重复驳回 | `InternalCalls` 不提供重试；`@Retryable` 只允许加在只读方法上，写进 `PayInternalApi` 的类注释 |
+| 客户端与服务端路径漂移 | 调用 404 | AC7：两边引用同一份常量，漂了编译不过 |
+| `job-worker` 带上 `spring-web` 后起了端口 | 多一个监听端口、多吃内存 | **不成立**：`JobApplication` 显式 `.web(WebApplicationType.NONE)`，`application.yml` 也写了 `none`，不靠 classpath 推断（实现时核对，原先写的「靠 Servlet API 缺席」不是真实依据） |
+| 自造 `RestClient`（不走 Boot 的 `RestClient.Builder`）拿不到自动的 Observation | 链路追踪暂时不经过这两条 | 今天没有接 tracing，无损失；接 tracing 那天把 `ObservationRegistry` 传进 `ServiceClientSpec` |
+
+## §5 对账三 · 实现 → 需求（测试）
+
+「跑过」一栏是实现时的真实结果；消融是把实现改回去（或注掉那一行）、看对应用例是否变红，改完即还原。
+
+| AC | 测试 | 跑过 | 消融验证 |
+|---|---|---|---|
+| AC1 | `git grep -nE '"/internal/pay\|TypeReference\|URLEncoder' -- backend/shop-app/src/main/java/ai/neargo/shop/payclient` | ✅ 空 | — |
+| AC1b | `HttpBusinessClientTest` 11 条（真 socket） | ✅ 11/11 | 409 当失败 → `conflictIsSkipped` 红 ✅；超时固定 10s → `timeoutIsPerJob` 红 ✅；解析不了当成功 → `unparseableIsFailed` 红 ✅ |
+| AC2 | `ServiceClientsTest`（`notConfigured` / `unreachable` / `timeout` / `remoteErrorKeepsStatus` / `unreadableBodyIsRemoteError`）· `RemoteFeeRuleFailureTest#notConfiguredIsDistinctFromUnreachable` · `ServiceLocatorTest` 两条 | ✅ | 非 2xx 不判错 → `remoteErrorKeepsStatus` 红 ✅；令牌必填不拦 → `missingRequiredToken` 红 ✅ |
+| AC3 | `RemoteFeeRuleFailureTest#unreachableRulesThrowsInsteadOfEmptyList` / `…EffectiveRates…` | ✅ | — |
+| AC4 | `RemoteFeeRuleFailureTest#addIsRefusedUntilItHasAnIdempotencyKey`；`ServiceCalls` 不提供重试 | ✅ | — |
+| AC5 | `ServiceClientsTest#okRoundTrip`（令牌头 + 无 `Upgrade: h2c`）、`#missingRequiredToken` | ✅ | 去掉 `HTTP_1_1` → 3 条红 ✅ |
+| AC6 | `PayInternalApiRoundTripTest` 5 条（pay-svc 随机端口，真客户端） | ✅ 5/5 | 信封 `@Import` 进上下文 → 4 条红 ✅ |
+| AC7 | 两边注解引用同一份常量（`JobHttpPaths`、`PayInternalPaths`）；`PayInternalApiRoundTripTest` 验参数名 | ✅ 编译过 | 客户端参数名 `at` 改错 → 400 红 ✅ |
+| AC8 | `ServiceClientsTest#resolvesBaseUrlPerCall` | ✅ | 地址启动时定死 → 红 ✅ |
+| 生产形态装配 | `PayStandaloneAssemblyTest`（按 `standalone` 装 shop-app 上下文） | ✅ 4/4 | — |
+
+**生产验证（2026-09-24 22:19–22:24）**：
+
+| 进程 | 版本 | 验证 |
+|---|---|---|
+| shop-app | `shop-app-20260924-2219-892bf807` | health=200；启动后 0 条 ERROR；旧 job-worker 调它（服务端已改用常量）：重启窗口外 0 失败 |
+| pay-svc | `pay-svc-20260924-2221-892bf807` | 活口 401；带令牌实调 3 个只读端点均 200，**应答未被信封包裹**（数组 / 无 `code` 字段的对象） |
+| job-worker | `shop-job-20260924-2222` | 启动即经新客户端取到任务声明（「新增 21 … 共 21 个」）；`outbox-dispatch` 每 5 秒一次，头 65 秒 0 调用失败 / 0 任务失败 / 0 ERROR。对照：shop-app 重启那几秒旧 worker 当场记了 `ConnectException` —— 失败是会被记下的 |
+
+**shop-app → pay-svc 经新客户端（23:35 补测，用户登录运营端后）**：费率页 `/ops/settle/fee-rules` 与 `…/effective` 均 200，
+页面「全部版本（4）」与在 pay-svc 上直接查到的 4 条一致；发票页 `/ops/finance/invoices` 200（走 `RemoteOpsSettleInvoiceAppService`）。
+shop-app 日志 `[pay-remote]` 0 条。期间 6 条 ERROR 全是 `/ops/stream` 实时推送在切页时断开（`AsyncRequestNotUsableException`），与本次无关。
+旧 job-worker 关闭时有几条 `CannotGetJdbcConnectionException`：连接池先于定时任务关掉，是旧版本自身的关闭顺序，与本次改动无关 —— 随后已修，见偏差说明 7。
+
+**一次读错结果的记录**：第 1 步消融时三次全「绿」，原因是读的是 `target/surefire-reports` 里上一轮留下的报告 ——
+改成直接读 Maven 输出后三处都红。验证量本身也要能证伪。
+
+## §6 对账二 · 设计 → 实现
+
+`git diff --name-status d15a976f~1 64914cad -- backend`：28 个文件，与 §2 模块设计逐行比对 ——
+
+| §2 条目 | 实际 | 结论 |
+|---|---|---|
+| svc-client 5 个类 + 测试 + pom + 父 pom `<module>` | 同 | ✅ |
+| `JobHttpPaths` / `JobBusinessApi` / `HttpBusinessClient` / job-worker pom / `JobHandlerEndpoint` | 同 | ✅ |
+| shop-base pom + `InternalHttp` | 同 | ✅ |
+| `PayInternalPaths` / `PayInternalApi`（pay-domain）/ `InternalPayEndpoint` | 同 | ✅ |
+| `PayClientConfig` / 两个 `Remote*` / `RemoteFeeRuleFailureTest` | 同 | ✅ |
+| 删 `InternalClient` | 同 | ✅ |
+| 测试文件 | `ServiceClientsTest`、`HttpBusinessClientTest`、`PayInternalApiRoundTripTest`（§2 写的是 `PayInternalApiWireTest` + `ContractTest`，见偏差 1） | ⚠️ |
+| — | `ServiceLocatorTest`、`ServiceLocator.java`、`ArchitectureTest.java`（仅注释） | ⚠️ 见偏差 3 |
+
+## 偏差说明
+
+1. **契约对齐从反射测试改成共享常量 + 真实往返**：`ContractTest` 要在 shop-app 里反射 `InternalPayEndpoint`，
+   而 shop-app 不依赖 pay-svc，看不见那个类。改为两边注解引用同一份常量（漂了编译不过），
+   再由 `PayInternalApiRoundTripTest` 在 pay-svc 里用真客户端打真服务端 —— 比 `MockRestServiceServer` 更接近实况。
+2. **范围从一条链路变成两条**：用户定「全部迁移」，`job-worker` 纳入。因此传输零件不能放 shop-base
+   （worker 不能依赖它），新开 `svc-client` 模块。
+3. **补回一条迁移中丢掉的行为**：「没配地址 / 令牌」的报错要点名配置项（`ServiceLocatorTest` 原有断言）。
+   svc-client 不认识配置键，改为调用方经 `ServiceClientSpec#withConfigKeys` 传入。
+4. **初稿对生产形态判断错误**：写成「生产是 embedded」，实为 standalone，已在 §2 生产影响改正。
+5. **`job-worker` 不会起端口的依据写错**：初稿写「靠 Servlet API 缺席」，实为启动类显式 `.web(NONE)`，已改正。
+6. **实现时发现的潜在风险**：全局信封按包名放行 `…portal.internal.`，`InternalPayEndpoint` 不在其中；
+   当时没被包住只因 pay-svc 没扫描到信封类。**已修**（`f194042d`）：改为按路径放行 `/internal/**`，
+   `ApiResponseWrapperTest` 钉住；把信封 `@Import` 进 pay-svc 重做实验，此前 4 条红，修后全绿。
+7. **顺带修掉的旧问题**：job-worker 每次重启都刷出几条 `CannotGetJdbcConnectionException`（连接池先于调度器关闭，
+   且关闭时排队的 cron 仍被触发）。**已修**（`f218ddae`），生产上重启验证：关闭从等满 30 秒超时变为 1 秒，0 条 ERROR。
+8. **闸门显示的条数是错的**：pre-push 显示「全量 2170」，只是最后一个模块（shop-app）的数，真实 17 个模块共 2492 条。
+   拦截没有漏，只是数字误导。**已修**（`50fed1a9`）：改为求和并显示模块数。

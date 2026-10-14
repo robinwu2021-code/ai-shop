@@ -1,0 +1,127 @@
+package ai.neargo.shop.spi.user;
+
+import java.util.Optional;
+
+/**
+ * trade/fulfillment → user：买家的**展示信息**。
+ *
+ * <p>只给昵称与手机号后四位。不给完整手机号是刻意的：调用方（核销台、分拣单）
+ * 需要的是「认出这个人」，而不是联系他 —— 需要联系时走平台的客服通道，
+ * 而不是把号码散到每个自提点的手机上（M11/B12）。
+ */
+public interface UserQueryPort {
+
+    Optional<UserBrief> find(String userNo);
+
+    /**
+     * @param phoneTail 手机号后四位。**完整号码永远不出这个 Port**（B12）——
+     *                  商家侧的顾客列表、履约台都只需要「认得出是谁」，不需要能打过去
+     * @param avatar    头像 URL。顾客列表要用；它不是敏感信息，但也只在这里出现一次
+     */
+    record UserBrief(String userNo, String nickname, String phoneTail, String avatar) {
+    }
+
+    /**
+     * 下单时取一次收货地址，用于**在子订单上做快照**（V69）。
+     *
+     * <p><b>这是 {@link UserBrief} 那条规则的例外，且只在这一处</b>：
+     * 它返回完整手机号。理由是快照 —— 存的是「下单那一刻这张单要送给谁」，
+     * 而不是「这个用户现在的联系方式」。两者会分叉，分叉时该以前者为准。
+     *
+     * <p>下发给商家时仍然要脱敏，脱敏口径在 {@code MerchantOrderServiceImpl}：
+     * 自送单给完整（送不到就得打电话），其余给后四位。
+     * <b>Port 的职责是取数，不是决定谁能看到多少</b> —— 两件事混在一起时，
+     * 「换个调用方就漏了」这种错会变得很难看出来。
+     *
+     * @return 地址不存在或不属于这个人时为空
+     */
+    Optional<Receiver> receiverOf(String userNo, String addressId);
+
+    /**
+     * @param phone   <b>完整手机号</b>，仅用于写进订单快照
+     * @param address 省市区 + 详细，拼好的一行
+     */
+    /** @param latE6 收货点坐标（gcj02，E6）。手填的地址没有坐标，为 null —— 自送范围判定据此放行 */
+    record Receiver(String name, String phone, String address, Integer latE6, Integer lngE6) {
+
+        /** 不带坐标的老形状 */
+        public Receiver(String name, String phone, String address) {
+            this(name, phone, address, null, null);
+        }
+    }
+
+    /**
+     * 用户绑定的社区。
+     *
+     * <p>下单时把它固化到主单上 —— <b>运营按社区做数据域隔离</b>，
+     * 而订单上没有社区的话，平台端按社区筛出来永远是空的。
+     *
+     * <p>固化而不是每次现查用户当前绑定：用户搬家换社区之后，
+     * 历史订单仍然属于当时那个社区，否则昨天的单会跳到新社区的报表里。
+     *
+     * @return 没绑过社区时为空
+     */
+    java.util.Optional<String> communityOf(String userNo);
+
+    /**
+     * 这个用户绑定的手机号（明文，归一化后 11 位）。查不到为空。
+     *
+     * <p>给免登录看件的「校验收货人本人」用（TDD-收件人物流触达 §3）：进小程序绑手机号后，
+     * 后端比对「登录用户的手机号 == 订单收货号」一致才展示。只这一处跨域要它，
+     * 加在现成的 user 查询端口上，不新开端口。
+     */
+    java.util.Optional<String> phoneOf(String userNo);
+
+    /**
+     * 收货地址的坐标健康度。**只给聚合数，不给明细** ——
+     * 地址是个人信息，运营看总数就够判断「分母有多脏」，没有理由逐条看。
+     *
+     * <p>没坐标的地址推不出任何聚落：它们既不算进任何一个片区，
+     * 也不该被静默丢掉。位置分布那张表（O11）必须把它们单列一格，
+     * 否则会把「缺数据」说成「缺需求」。
+     */
+    AddressCoordHealth addressCoordHealth();
+
+    /**
+     * 这个圆里有多少条**有坐标的**收货地址。围栏改动的影响预览靠它。
+     *
+     * <p>没坐标的地址一条也不算 —— 它们本来就落不进任何围栏，
+     * 算进来会让运营看到一个「改大也不会变」的数，反而以为围栏没生效。
+     * 缺口有多大在「坐标健康度」那一页单独说（{@link #addressCoordHealth}）。
+     */
+    int addressesWithin(int latE6, int lngE6, int radiusM);
+
+    /**
+     * 有坐标的收货地址的坐标。**位置分布那张表的需求侧靠它** ——
+     * 归属由调用方按围栏算（判据只有一份，见 {@code CommunityService.resolve}），
+     * 这里只负责把点交出去。
+     *
+     * <p>不返回任何可识别到人的字段：这张表要回答的是「哪儿有人」，不是「谁住哪儿」。
+     */
+    java.util.List<Point> addressPoints();
+
+    /**
+     * 下单时<b>买家在哪</b>：给了地址就用那条，否则用他的**生效地址**。
+     *
+     * <p>回落三级：<b>这一单的地址 → 生效地址 → 默认地址</b>。
+     *
+     * <p>回落规则放这一处，不放调用方。自提单本来就不带 {@code addressId}
+     * （不需要收货地址），而自提点要按「离他多远」来配 —— 两件事都成立，
+     * 所以必须有个地方回答「他在哪」。让下单侧自己写这段回落，
+     * 将来「换点」那个列表会再写一遍，两处迟早不一样。
+     *
+     * <p><b>默认地址那一级不能省。</b>「生效地址」只有主动切过才有值，
+     * 而新用户存完第一条地址就直接去下单是最常见的路径 ——
+     * 少了这一级，他会撞上一句「请先选择自提点」，
+     * 而界面上根本没有可选的东西（自提点已经改成自动匹配）。
+     *
+     * @return 地址没有坐标（微信导入、粘贴识别、存量手填）时返回空 —— <b>不是 0,0</b>
+     */
+    java.util.Optional<Point> buyerPoint(String userNo, String addressId);
+
+    record Point(int latE6, int lngE6) {
+    }
+
+    record AddressCoordHealth(int total, int withCoords) {
+    }
+}

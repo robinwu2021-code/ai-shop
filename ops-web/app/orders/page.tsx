@@ -4,9 +4,11 @@
 // 与商家页的差异是刻意的：这里演示「一行展开成一件事」的详情抽屉与跨查询的兄弟单，
 // 而不是审核那种状态机推进。
 import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { usePageTab } from "@/lib/use-page-tab";
+import { ReconAxes } from "./recon-axes";
+import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
 import { usePaging } from "@/lib/use-paging";
 import { useCan } from "@/lib/use-can";
 import { useEditableConfig } from "@/lib/use-editable-config";
@@ -17,14 +19,14 @@ import { MAX_UNPAID_CLOSE_MINUTES, MIN_UNPAID_CLOSE_MINUTES, MINOR_UNIT } from "
 import { fmtTime, money } from "@/lib/utils";
 import { exportCsv } from "@/lib/export-csv";
 import type { Order, ReconDiff, ReconDiffType, ReconStatus, RecoverAction } from "@/lib/types";
-import { OrderStatusBadge, useFulfillTypeMap, useOrderStatusMap, useTrafficSourceMap } from "@/components/status";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { OrderStatusBadge, useFulfillmentTypeMap, useOrderStatusMap, useTrafficSourceMap } from "@/components/status";
+import { type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
 import { FilterSelect } from "@/components/ui/filter-select";
-import { Pagination } from "@/components/ui/misc";
 import { TabHeader } from "@/components/ui/tab-header";
 import { StatusBadge, type StatusMap } from "@/components/ui/status-badge";
 import { Toolbar } from "@/components/ui/toolbar";
+import { HelpNote } from "@/components/ui/help-note";
 import { Notice } from "@/components/ui/notice";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,20 +36,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useConfirm } from "@/components/ui/confirm-dialog";
+import { PagedTable } from "@/components/ui/paged-table";
+import { IdCell } from "@/components/ui/misc";
 import { ReadOnlyNotice } from "@/components/read-only-notice";
 // 异常单与代客操作各自成块，与其它 tab 只共用文案表 —— 拆出去，页面才不会长到读不动
 import { ExceptionTab } from "./exception-tab";
 import { ProxyTab } from "./proxy-tab";
 
 type Copy = ReturnType<typeof useCopy<(typeof ORDERS_COPY)["zh"]>>;
-const TABS = (c: Copy) => [
-  { key: "search", label: c.tabSearch },
-  { key: "exception", label: c.tabException },
-  { key: "proxy", label: c.tabProxy },
-  { key: "pay", label: c.tabPay },
-  { key: "repair", label: c.tabRepair },
-  { key: "close", label: c.tabClose },
-];
+const TAB_KEYS = ["search", "exception", "proxy", "pay", "repair", "close"] as const;
 
 /** 差异类型 → 徽标。三类的处置方式不同，颜色也要能一眼分开。 */
 const useDiffTypeMap = (c: Copy): StatusMap<ReconDiffType> => ({
@@ -57,7 +54,7 @@ const useDiffTypeMap = (c: Copy): StatusMap<ReconDiffType> => ({
 });
 
 const useReconStatusMap = (c: Copy): StatusMap<ReconStatus> => ({
-  OPEN: { label: c.reconOpen, tone: "warning" },
+  PENDING: { label: c.reconOpen, tone: "warning" },
   RESOLVED: { label: c.reconResolved, tone: "success" },
   IGNORED: { label: c.reconIgnored, tone: "muted" },
 });
@@ -68,7 +65,7 @@ export default function OrdersPage() {
 
 function OrdersInner() {
   const c = useCopy(ORDERS_COPY);
-  const tabs = TABS(c);
+  const tabs = useNavTabs("/orders", TAB_KEYS);
   const qc = useQueryClient();
   const allow = useCan();
   const { confirm, dialog } = useConfirm();
@@ -76,12 +73,21 @@ function OrdersInner() {
   const reconStatusMap = useReconStatusMap(c);
   const [tab, setTab] = usePageTab(tabs, () => { setPage(1); setKeyword(""); setStatus(""); });
   const statusMap = useOrderStatusMap();
-  const fulfillMap = useFulfillTypeMap();
+  const fulfillMap = useFulfillmentTypeMap();
   const trafficMap = useTrafficSourceMap();
 
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
   const [fulfillType, setFulfillType] = useState("");
+  /*
+   * 门店筛选（P-11.2.1f）走 URL 参数，**不做全局下拉** ——
+   * 平台有几千家店，下拉里选不出来；运营的问题从来是「这家店的单」，
+   * 而他是从门店详情点过来的。后端与 OrderQ 早就有 storeNo，
+   * 只是此前没有任何地方发它，是个死参数。
+   */
+  const sp = useSearchParams();
+  const [storeCleared, setStoreCleared] = useState(false);
+  const storeNo = storeCleared ? "" : (sp.get("storeNo") ?? "");
   const { page, setPage, size, setSize } = usePaging();
   const [current, setCurrent] = useState<Order | null>(null);
 
@@ -94,7 +100,7 @@ function OrdersInner() {
   const canModify = allow("order:order:modify");
   const canProxy = allow("order:order:proxy");
 
-  const q = { keyword, status, fulfillType, page, size };
+  const q = { keyword, status, fulfillType, storeNo: storeNo || undefined, page, size };
   const list = useQuery({ queryKey: ["orders", q], queryFn: () => api.listOrders(q), enabled: tab === "search" });
 
   // 「掉单补偿」就是对账差异里 CHANNEL_ONLY + 待处置的那个子集 ——
@@ -102,8 +108,22 @@ function OrdersInner() {
   const reconQ = {
     keyword, page, size,
     type: tab === "repair" ? "CHANNEL_ONLY" : diffType,
-    status: tab === "repair" ? "OPEN" : reconStatus,
+    status: tab === "repair" ? "PENDING" : reconStatus,
   };
+  /*
+   * 覆盖范围说明。**单独一个查询、不跟着列表走** ——
+   * 后端把它做成独立端点的理由就是这个：列表是分页包，
+   * 把说明挂在分页包上，翻到第二页时它就没了。
+   *
+   * ⚠️ 拿不到时**不显示提示条**（而不是显示一句写死的）：
+   * 端上写死的话，后端接上渠道账单之后页面还在说「看不见」。
+   */
+  const coverage = useQuery({
+    queryKey: ["recon-coverage"],
+    queryFn: () => api.reconCoverage(),
+    enabled: tab === "pay" || tab === "repair",
+  });
+
   const recon = useQuery({
     queryKey: ["recon", reconQ],
     queryFn: () => api.listReconDiffs(reconQ),
@@ -163,7 +183,7 @@ function OrdersInner() {
     {
       header: c.colActions,
       cell: (d) =>
-        d.status === "OPEN" && canPay ? (
+        d.status === "PENDING" && canPay ? (
           <Button size="sm" variant="outline" onClick={() => { setResolving(d); setResolveForm({ action: "", resolution: "" }); }}>
             {c.actionResolve}
           </Button>
@@ -179,7 +199,7 @@ function OrdersInner() {
   });
 
   const columns: Column<Order>[] = [
-    { header: c.colSubOrderNo, cell: (o) => o.orderNo, numeric: true, align: "start" },
+    { header: c.colSubOrderNo, cell: (o) => <IdCell value={o.orderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (o) => o.merchantName },
     { header: c.colCommunity, cell: (o) => o.communityName },
     { header: c.colFulfill, cell: (o) => <StatusBadge map={fulfillMap} value={o.fulfillType} /> },
@@ -220,7 +240,7 @@ function OrdersInner() {
 
       {tab === "search" && (
       <>
-      <Notice className="mb-3">{c.notice}</Notice>
+      <HelpNote className="mb-3">{c.notice}</HelpNote>
 
       <Toolbar
         search={keyword}
@@ -245,24 +265,55 @@ function OrdersInner() {
       >
         <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={statusMap} allLabel={c.filterStatusAll} />
         <FilterSelect aria-label={c.filterFulfill} value={fulfillType} onChange={(v) => { setFulfillType(v); setPage(1); }} options={fulfillMap} allLabel={c.filterFulfillAll} />
+
       </Toolbar>
 
-      <DataTable
-        columns={columns}
-        rows={list.data?.records}
+      {/*
+        门店筛选是从门店详情带过来的，**必须显式回显 + 给得掉的出口** ——
+        否则运营看到的是一份少了很多单的列表，而页面上没有任何线索说明为什么。
+        不放进 Toolbar：那里的控件会被当成筛选项要求声明 toChip（design-tokens 那道闸），
+        而这是一个「取消筛选」的动作，不是筛选控件本身。
+      */}
+      {storeNo && (
+        <div className="mb-3">
+          <Button size="sm" variant="outline"
+                  onClick={() => { setStoreCleared(true); setPage(1); }}>
+            {fill(c.storeFilterChip, { no: storeNo })} · {c.storeFilterClear}
+          </Button>
+        </div>
+      )}
+
+      <PagedTable
+        query={list}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={setSize}
         loading={list.isLoading}
-        error={list.error}
-        onRetry={() => list.refetch()}
+        columns={columns}
         rowKey={(o) => o.orderNo}
         empty={c.empty}
       />
-      <Pagination page={page} size={size} onSize={setSize} total={list.data?.total ?? 0} onPage={setPage} />
       </>
       )}
 
       {(tab === "pay" || tab === "repair") && (
         <>
-          <Notice className="mb-3">{tab === "repair" ? c.repairNotice : c.payNotice}</Notice>
+          {/* 四轴总览摆在最上面：先回答「哪一类在看、哪一类没看」，再看具体差异 */}
+          {tab === "pay" && <ReconAxes c={c} />}
+          <HelpNote className="mb-3">{tab === "repair" ? c.repairNotice : c.payNotice}</HelpNote>
+          {/*
+            ⚠️ **这一条不能省，而且空表时更要显示。**
+            后端 ReconService 的类注释写着「页面照它显示提示条，
+            否则『今天没有差异』是句假话」—— 而这个接口在此之前
+            没有任何调用方，所以那句假话一直挂在这一页上。
+
+            渠道账单接上之后 channelBillConnected 变 true，这条自然消失 ——
+            判据来自后端，端上不做第二套。
+          */}
+          {coverage.data && !coverage.data.channelBillConnected && (
+            <Notice className="mb-3" tone="warning">{coverage.data.note}</Notice>
+          )}
           <Toolbar search={keyword} onSearch={(v) => { setKeyword(v); setPage(1); }} searchPlaceholder={c.searchRecon}>
             {tab === "pay" && (
               <>
@@ -271,13 +322,17 @@ function OrdersInner() {
               </>
             )}
           </Toolbar>
-          <DataTable
-            columns={reconColumns} rows={recon.data?.records} loading={recon.isLoading}
-            error={recon.error} onRetry={() => recon.refetch()}
+          <PagedTable
+            query={recon}
+            page={page}
+            size={size}
+            onPage={setPage}
+            onSize={setSize}
+            loading={recon.isLoading}
+            columns={reconColumns}
             rowKey={(d) => d.diffNo}
             empty={tab === "repair" ? c.emptyRepair : c.emptyRecon}
           />
-          <Pagination page={page} size={size} onSize={setSize} total={recon.data?.total ?? 0} onPage={setPage} />
         </>
       )}
 
@@ -418,7 +473,7 @@ function OrdersInner() {
                       key={s.orderNo}
                       type="button"
                       onClick={() => setCurrent(s)}
-                      className="flex w-full items-center justify-between gap-3 rounded-field px-2 py-1 text-start transition-colors hover:bg-accent"
+                      className="focus-ring flex w-full items-center justify-between gap-3 rounded-field px-2 py-1 text-start transition-colors hover:bg-accent"
                     >
                       <span className="truncate">{s.merchantName}</span>
                       <span className="shrink-0 tabular-nums text-muted-foreground">{s.orderNo}</span>

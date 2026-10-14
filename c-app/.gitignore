@@ -6,3 +6,17 @@ dist
 unpackage
 android/app/build
 ios/App/Pods
+
+# e2e 截图：失败时用来看「页面当时长什么样」，属跑测的产物，不入库
+tests/e2e/out/
+
+# 环境文件的备份：改地址时顺手留的，不是配置的一部分（曾被一次全量提交扫进库）
+.env*.bak
+
+# 元器件测试期并包（scripts/with-elec.mjs）的中间产物：构建完就还原，残留了也别提交
+src/pkg-elec/
+src/pages.json.with-elec.bak
+# B 端轻量运营并包（scripts/with-biz.mjs）的中间产物：同理，构建完还原，残留了也别提交
+src/pkg-biz/
+src/pages.json.with-biz.bak
+src/App.vue.with-biz.bak

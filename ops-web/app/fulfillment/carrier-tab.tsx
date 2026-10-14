@@ -14,7 +14,7 @@ import { fmtTime } from "@/lib/utils";
 import type { CarrierConfig } from "@/lib/types";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
-import { Notice } from "@/components/ui/notice";
+import { HelpNote } from "@/components/ui/help-note";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,14 @@ interface Form {
   priority: string;
   pickupCutoff: string;
   slaHours: string;
+  /** 各物流渠道里的编码（TDD-物流模块 O5） */
+  codes: Record<string, string>;
 }
+
+/** 编码表里常见的渠道。库里有别的渠道的编码时也照样列出来（见 channelsOf） */
+const KNOWN_CHANNELS = ["kuaidi100", "wx", "yto"];
+const channelsOf = (codes: Record<string, string>) =>
+  [...KNOWN_CHANNELS, ...Object.keys(codes).filter((k) => !KNOWN_CHANNELS.includes(k))];
 
 export function CarrierTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolean }) {
   const qc = useQueryClient();
@@ -38,7 +45,7 @@ export function CarrierTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
   const shipments = useQuery({ queryKey: ["shipments", "all"], queryFn: () => api.listShipments({ size: 100 }) });
 
   const inFlightOf = (carrier: string) =>
-    (shipments.data?.records ?? []).filter((s) => s.carrier === carrier && s.status !== "DELIVERED").length;
+    (shipments.data?.records ?? []).filter((s) => s.carrier === carrier && s.status !== "DELIVERED" && s.status !== "CANCELLED").length;
   const enabledCount = (list.data ?? []).filter((x) => x.enabled).length;
 
   const save = useMutation({
@@ -49,6 +56,8 @@ export function CarrierTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
         priority: Number(editing!.priority),
         pickupCutoff: editing!.pickupCutoff,
         slaHours: Number(editing!.slaHours),
+        // 只发填了的；后端「不传 / 传空 = 不改」，所以至少要留一个渠道的编码才会落库
+        codes: Object.fromEntries(Object.entries(editing!.codes).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim()])),
       }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["carriers"] }); setEditing(null); notify.success(c.toastCarrierSaved); },
   });
@@ -106,6 +115,7 @@ export function CarrierTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
               onClick={() => setEditing({
                 carrier: x.carrier, name: x.name, priority: String(x.priority),
                 pickupCutoff: x.pickupCutoff, slaHours: String(x.slaHours),
+                codes: { ...(x.codes ?? {}) },
               })}>
               {c.actionEditCarrier}
             </Button>
@@ -123,7 +133,7 @@ export function CarrierTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
 
   return (
     <>
-      <Notice className="mb-3">{c.carrierNotice}</Notice>
+      <HelpNote className="mb-3">{c.carrierNotice}</HelpNote>
       <DataTable
         columns={columns} rows={list.data} loading={list.isLoading}
         error={list.error} onRetry={() => list.refetch()}
@@ -165,6 +175,19 @@ export function CarrierTab({ c, canEdit }: { c: FulfillmentCopy; canEdit: boolea
                 <p className="txt-caption text-muted-foreground">{c.cutoffHint}</p>
               </div>
               <p className="mt-3 txt-caption text-muted-foreground">{c.priorityHint}</p>
+            </DrawerSection>
+
+            <DrawerSection title={c.fieldCodes}>
+              <FieldGrid>
+                {channelsOf(editing.codes).map((ch) => (
+                  <div key={ch} className="mb-3 space-y-1">
+                    <Label htmlFor={`cr-code-${ch}`}>{ch}</Label>
+                    <Input id={`cr-code-${ch}`} className="w-full" value={editing.codes[ch] ?? ""}
+                      onChange={(e) => setEditing((p) => p && { ...p, codes: { ...p.codes, [ch]: e.target.value } })} />
+                  </div>
+                ))}
+              </FieldGrid>
+              <p className="txt-caption text-muted-foreground">{c.codesHint}</p>
             </DrawerSection>
 
             <DrawerSection title={c.secApiKey}>

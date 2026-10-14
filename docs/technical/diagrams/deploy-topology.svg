@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="740" viewBox="0 0 980 740" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
+<title>部署拓扑：一个 jar 三种起法（api · ops · worker）</title>
+<desc>同一构建产物按 profile 起三份。api 走公网承载 C/B 两端；ops 只在内网，公网无 /ops 入口；worker 无 HTTP，独占批量任务，避免抢 api 的线程与连接池。三者共用同一个 MySQL 与 Redis。</desc>
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
+<style>
+.n{font-size:12.5px;font-weight:600;fill:#161A21}
+.t{font-size:10.5px;fill:#5A6472}
+.b{font-size:11px;fill:#8A94A2;letter-spacing:.12em}
+.l{font-size:9.5px;fill:#5A6472;paint-order:stroke;stroke:#fff;stroke-width:3.5;stroke-linejoin:round}
+.box{fill:#fff;stroke:#D8DEE6;stroke-width:1.2}
+.unit{fill:#FBFCFD;stroke:#B9C2CE;stroke-width:1.6}
+.key{fill:#F2F8F4;stroke:#7FB894;stroke-width:1.4}
+.warn{fill:#FDF6EC;stroke:#E0B27A;stroke-width:1.2}
+.infra{fill:#F5F6F8;stroke:#C6CDD8;stroke-width:1.2}
+.ar{stroke:#8A94A2;stroke-width:1.3;fill:none}
+.zone{fill:none;stroke:#DDE2E9;stroke-width:1.2;stroke-dasharray:5 4}
+.zt{font-size:10px;fill:#A6AEBB;letter-spacing:.1em}
+</style></defs>
+
+<!-- ① 客户端 -->
+<text class="b" x="24" y="26">① 客户端 —— 三种使用者 × 三种形态</text>
+<rect class="box" x="24" y="36" width="268" height="48" rx="7"/>
+<text class="n" x="38" y="56">C 端消费者</text>
+<text class="t" x="38" y="73">小程序 · App · H5</text>
+<rect class="box" x="306" y="36" width="268" height="48" rx="7"/>
+<text class="n" x="320" y="56">B 端商家</text>
+<text class="t" x="320" y="73">小程序 · App · H5</text>
+<rect class="box warn" x="616" y="36" width="350" height="48" rx="7"/>
+<text class="n" x="630" y="56">平台运营</text>
+<text class="t" x="630" y="73">Web / H5 —— 仅内网可达</text>
+
+<path class="ar" marker-end="url(#ar)" d="M158 84 L158 152"/>
+<text class="l" x="166" y="122">/mp/**</text>
+<path class="ar" marker-end="url(#ar)" d="M440 84 L440 152"/>
+<text class="l" x="448" y="122">/biz/**</text>
+<path class="ar" marker-end="url(#ar)" d="M700 84 L700 178"/>
+<text class="l" x="708" y="122">/ops/** · VPN</text>
+
+<!-- 公网区 -->
+<rect class="zone" x="14" y="140" width="586" height="262" rx="10"/>
+<text class="zt" x="26" y="158">公网区 PUBLIC</text>
+
+<rect class="unit" x="30" y="168" width="554" height="218" rx="9"/>
+<text class="n" x="46" y="192">shop-api</text>
+<text class="t" x="124" y="192">profile=api  ·  多实例 · 无状态 · 可水平扩</text>
+
+<rect class="box key" x="46" y="206" width="256" height="30" rx="6"/>
+<text class="n" x="58" y="225">portal-mp</text><text class="t" x="146" y="225">C 端 API 面 · 消费者链</text>
+<rect class="box key" x="314" y="206" width="254" height="30" rx="6"/>
+<text class="n" x="326" y="225">portal-biz</text><text class="t" x="410" y="225">B 端 API 面 · 商家链</text>
+
+<rect class="box" x="46" y="244" width="522" height="30" rx="6"/>
+<text class="n" x="58" y="263">shop-channel</text>
+<text class="t" x="158" y="263">登录凭证 · 支付通道 · 推送 · 上传 · 分享（按 小程序 / App / H5 适配）</text>
+
+<rect class="box" x="46" y="282" width="522" height="38" rx="6"/>
+<text class="n" x="58" y="298">shop-core</text>
+<text class="t" x="136" y="298">identity · asset · community · catalog · review · trade · fulfillment</text>
+<text class="t" x="136" y="313">aftersale · marketing · group · growth · content · message · platform · risk · read</text>
+
+<rect class="box" x="46" y="328" width="256" height="30" rx="6"/>
+<text class="n" x="58" y="347">shop-merchant</text><text class="t" x="164" y="347">主体·进件·门店·子账号</text>
+<rect class="box" x="314" y="328" width="254" height="30" rx="6"/>
+<text class="n" x="326" y="347">shop-settle</text><text class="t" x="412" y="347">结算·分账·提现·发票</text>
+
+<text class="t" x="46" y="376">＋ shop-base（common · spi）—— 三份部署都含，编译期地基</text>
+
+<!-- 内网区 -->
+<rect class="zone" x="616" y="140" width="350" height="366" rx="10"/>
+<text class="zt" x="628" y="158">内网区 PRIVATE（VPN / 办公网）</text>
+
+<rect class="unit" x="630" y="178" width="322" height="146" rx="9"/>
+<text class="n" x="644" y="200">shop-ops</text>
+<text class="t" x="712" y="200">profile=ops  ·  1–2 实例</text>
+<rect class="box key" x="644" y="212" width="294" height="28" rx="6"/>
+<text class="n" x="656" y="231">portal-ops</text><text class="t" x="742" y="231">平台端 API 面 · 运营链</text>
+<rect class="box" x="644" y="248" width="294" height="26" rx="6"/>
+<text class="t" x="656" y="265">shop-core · shop-merchant · shop-settle（同一套领域代码）</text>
+<rect class="box" x="644" y="282" width="294" height="30" rx="6"/>
+<text class="t" x="656" y="295">shop-channel 仅 media（素材上传）</text>
+<text class="t" x="656" y="308">无微信登录 / 无支付通道</text>
+
+<rect class="unit" x="630" y="338" width="322" height="150" rx="9"/>
+<text class="n" x="644" y="360">shop-worker</text>
+<text class="t" x="726" y="360">profile=worker · 无 HTTP</text>
+<rect class="box key" x="644" y="372" width="294" height="26" rx="6"/>
+<text class="t" x="656" y="389">Outbox 派发 —— 领域事件出站</text>
+<rect class="box" x="644" y="406" width="294" height="26" rx="6"/>
+<text class="t" x="656" y="423">定时任务：结算生成 · 超时关单 · 逾期核销 · 对账</text>
+<rect class="box" x="644" y="440" width="294" height="26" rx="6"/>
+<text class="t" x="656" y="457">事件消费 → read 物化视图（工作台 · 看板）</text>
+<text class="t" x="644" y="477">与 api 分开部署：批量任务不抢 API 的线程与连接池</text>
+
+<!-- ② 外部通道 -->
+<text class="b" x="24" y="432">② 外部通道 —— 只经 shop-channel，领域层不可见</text>
+<rect class="box warn" x="24" y="442" width="112" height="46" rx="7"/>
+<text class="n" x="36" y="461">微信支付</text><text class="t" x="36" y="477">JSAPI/APP/H5</text>
+<rect class="box warn" x="148" y="442" width="104" height="46" rx="7"/>
+<text class="n" x="160" y="461">收付通</text><text class="t" x="160" y="477">进件 · 分账</text>
+<rect class="box warn" x="264" y="442" width="112" height="46" rx="7"/>
+<text class="n" x="276" y="461">APNs / FCM</text><text class="t" x="276" y="477">App 推送</text>
+<rect class="box warn" x="388" y="442" width="128" height="46" rx="7"/>
+<text class="n" x="400" y="461">订阅消息 / 短信</text><text class="t" x="400" y="477">小程序 · 兜底</text>
+
+<path class="ar" marker-end="url(#ar)" d="M80 386 L80 440"/>
+<text class="l" x="88" y="416">出站 · 回调 /callback/**</text>
+
+<!-- ③ 共用数据层 -->
+<text class="b" x="24" y="530">③ 共用数据层 —— 三份部署同库同缓存</text>
+<rect class="infra" x="24" y="540" width="180" height="52" rx="7"/>
+<text class="n" x="36" y="560">MySQL</text><text class="t" x="36" y="577">58 表 · 单库</text>
+<rect class="infra" x="216" y="540" width="180" height="52" rx="7"/>
+<text class="n" x="228" y="560">Redis</text><text class="t" x="228" y="577">令牌 · 幂等 · 缓存</text>
+<rect class="infra" x="408" y="540" width="180" height="52" rx="7"/>
+<text class="n" x="420" y="560">对象存储</text><text class="t" x="420" y="577">图片 · 素材 · 导出</text>
+
+<path class="ar" marker-end="url(#ar)" d="M552 386 L552 500 L300 500 L300 538"/>
+<path class="ar" marker-end="url(#ar)" d="M790 506 L790 520 L480 520 L480 538"/>
+<text class="l" x="600" y="516">ops · worker 同库</text>
+
+<!-- 底注 -->
+<rect class="box key" x="616" y="540" width="350" height="52" rx="7"/>
+<text class="n" x="630" y="560">同一个构建产物 shop.jar</text>
+<text class="t" x="630" y="578">三种起法只差 --spring.profiles.active，代码零分叉</text>
+
+<text class="t" x="24" y="628">虚线框 = 网络分区 ｜ 绿框 = 该部署的入口与关键角色 ｜ 橙框 = 外部依赖或高权限面。</text>
+<text class="t" x="24" y="648">三份部署的业务代码完全相同，差别只在「装哪条 portal 链」与「起不起 HTTP」——</text>
+<text class="t" x="24" y="668">所以这不是微服务拆分，是同一应用的三种角色部署，成本接近零而安全与资源隔离立刻兑现。</text>
+</svg>

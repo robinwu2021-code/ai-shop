@@ -1,184 +1,427 @@
 <script setup lang="ts">
-// 我的客户（B-11.2.8）。
+import { hourMinute, monthDay } from "@shared/utils/datetime";
+// 会员（P1）。**路由沿用 pages/customers** —— 它是「我的客户」那一页的升级版，
+// 换路由只会让存量深链失效，而这一页本来就从「我的」进。
 //
 // 平台电商给商家看的是「流量、转化率、UV」；小店老板要的是另一种东西：
-// **张阿姨上个月每周都来，这半个月没来了**。
-// 所以这页只回答两个问题：谁在买、谁不来了。没有图表，没有漏斗。
+// **张阿姨上个月每周都来，这半个月没来了**。所以这一页只回答三个问题：
+// 有多少人、谁快流失了、这个人是谁带来的。没有图表，没有漏斗。
 //
-// 沉默客户排在最前 —— 那是店主唯一能立刻行动的信号（给他发条消息、留一份货）。
-// 埋在列表底部等于没有。
-//
-// ⚠️ 隐私：只给脱敏昵称，不给完整手机号（B12）。店主想联系走平台的消息通道，
-// 把号码直接摆出来，第二天就会有人拿去做别的事。
+// ⚠️ 隐私：只给手机号后四位（B12）。按号找人**必须输完整号** ——
+// 前缀模糊查询会把会员库变成一本通讯录，输「138」就能翻出一屏人。
 import { computed, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
+import { FEATURES } from "@shared/utils/constants";
 import { money } from "@shared/utils/money";
-import type { MerchantCustomer } from "@shared/types";
+import type { Member, MemberStats, MemberTag } from "@shared/types";
+import { pick, prompt } from "@ai-shop/ui/prompt";
+import { ROUTES } from "@/shared/nav";
+import { setPendingAudience } from "@/shared/audience";
+import type { AudienceItem, BatchTagResult } from "@shared/types";
 
-const list = ref<MerchantCustomer[]>([]);
-const tab = ref<"all" | "silent" | "owned">("all");
+const { t } = useI18n();
+const merchant = useMerchantStore();
 
-const shown = computed(() => {
-  if (tab.value === "silent") return list.value.filter((c) => c.silent);
-  if (tab.value === "owned") return list.value.filter((c) => c.source === "MERCHANT_OWNED");
-  return list.value;
-});
+const stats = ref<MemberStats | null>(null);
 
-const silentCount = computed(() => list.value.filter((c) => c.silent).length);
-const ownedCount = computed(
-  () => list.value.filter((c) => c.source === "MERCHANT_OWNED").length,
-);
-/** 复购率 = 买过两次以上的人占比。一次性客人多说明留不住 */
-const repeatRate = computed(() => {
-  if (!list.value.length) return 0;
-  return Math.round(
-    (list.value.filter((c) => c.orderCount >= 2).length / list.value.length) * 100,
-  );
-});
+function stamp(ts: number) {
+  return `${monthDay(ts)} ${hourMinute(ts)}`;
+}
+const list = ref<Member[]>([]);
+/** 这组筛选命中的总人数（列表只取前 50 条） */
+const total = ref(0);
+/** 批量打标弹层 */
+const showBatch = ref(false);
+const loading = ref(false);
 
-async function load() {
-  list.value = await api.mCustomers();
+/** 四层之一，或空 = 全部。点顶部那四个数字就是在切它 */
+const level = ref("");
+/** 门店筛选。多店主体才出现；空 = 全部门店 */
+const storeNo = ref("");
+const phone = ref("");
+/** 输了号但不足 11 位时给一句解释 —— 否则他会以为「这个人不见了」 */
+const phonePartial = computed(() => phone.value.length > 0 && phone.value.length < 11);
+
+/** 选中的标签。**取交集** —— 点第二个是想收窄，并集会让人数反而涨 */
+const pickedTags = ref<string[]>([]);
+const tags = ref<MemberTag[]>([]);
+
+const LEVELS = ["NEW", "REGULAR", "LOYAL", "SLEEPING"] as const;
+
+function countOf(lv: string) {
+  const s = stats.value;
+  if (!s) return 0;
+  if (lv === "NEW") return s.newCount;
+  if (lv === "REGULAR") return s.regularCount;
+  if (lv === "LOYAL") return s.loyalCount;
+  return s.sleepingCount;
 }
 
-onShow(load);
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
+async function load() {
+  if (loading.value) return;
+  loading.value = true;
+  try {
+    const [s, page] = await Promise.all([
+      api.mMemberStats(storeNo.value || undefined),
+      api.mMembers({
+        storeNo: storeNo.value || undefined,
+        level: level.value || undefined,
+        tagNos: pickedTags.value.length ? pickedTags.value.join(",") : undefined,
+        phone: phone.value.length >= 11 ? phone.value : undefined,
+        page: 1,
+        size: 50,
+      }),
+    ]);
+    stats.value = s;
+    list.value = page.records;
+    total.value = page.total;
+    // 每次回到本页都重拉：去标签页新建 / 停用完回来，筛选区要跟上（只拉一次的话新标签在这里永远不出现）
+    tags.value = (await api.mMemberTags().catch(() => tags.value))
+      .filter((x) => x.status === "ACTIVE");
+    failed.value = false;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+    failed.value = true;
+  } finally {
+    loading.value = false;
+    loaded.value = true;
+  }
+}
+
+function pickLevel(v: string) {
+  level.value = level.value === v ? "" : v;
+  void load();
+}
+
+function toggleTag(no: string) {
+  pickedTags.value = pickedTags.value.includes(no)
+    ? pickedTags.value.filter((x) => x !== no)
+    : [...pickedTags.value, no];
+  void load();
+}
+
+/**
+ * 把**当前这组筛选条件**存成人群。
+ *
+ * 在筛出来的地方存，而不是另开一个筛选器 —— 少一处口径，也少一次「为什么两边人数不一样」。
+ * 存的是条件不是名单：发券那一刻会重算，所以这里先把试算的两个数摆给他看。
+ */
+async function saveAsSegment(): Promise<string | null> {
+  const rule = {
+    level: level.value || undefined,
+    tagNos: pickedTags.value.length ? [...pickedTags.value] : undefined,
+  };
+  const pv = await api.mPreviewMemberSegment({
+    scopeStoreNo: storeNo.value || undefined,
+    rule,
+  }).catch((e: Error) => {
+    // 失败要说出来：静默返回的话商家点了「另存为人群」什么也没发生，看不出是没点上还是出错了
+    uni.showToast({ title: e.message, icon: "none" });
+    return null;
+  });
+  if (!pv) return null;
+  /*
+   * 试算结果现在走 `hint`（说明），不必再挤进标题 ——
+   * 当初挤进标题是因为 `showModal` 的 `content` 在 `editable` 下是**初值**：
+   * 放那儿的话商家按下确定就存出一个叫「命中 1 人…」的人群，
+   * 而他并不觉得自己输了这行字。`prompt()` 把说明与初值拆成两个参数，
+   * 这个坑靠签名就没了（另外两处一直错着的，见 prompt.ts）。
+   * 两个数都报：线索会员与退订的人进不了受众，只报命中数他会以为发漏了。
+   */
+  const input = await prompt({
+    title: String(t("members.saveSegment")),
+    hint: String(t("members.segmentPreview", { n: pv.count, m: pv.reachable })),
+    placeholder: String(t("members.segmentNamePh")),
+  });
+  const name = (input ?? "").trim();
+  if (!name) return null;
+  try {
+    const sg = await api.mSaveMemberSegment({ name, scopeStoreNo: storeNo.value || undefined, rule });
+    uni.showToast({ title: t("members.segmentSaved"), icon: "none" });
+    return sg.segmentNo;
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+    return null;
+  }
+}
+
+/** 有筛选条件才有「这批人」—— 不筛就是全部会员，那不是一批，是整份名单 */
+const filtered = computed(() => !!level.value || pickedTags.value.length > 0);
+
+/**
+ * 这批人 → 受众项。筛选是「且」（分层 且 同时含这些标签），而受众项之间是「或」——
+ * 只有单个分层、或单个标签时能原样变成一项；其余先存成人群，带人群号过去。
+ * 反过来把「沉睡 且 爱囤货」拆成两项的话，会发给「沉睡 或 爱囤货」，人数翻倍。
+ */
+async function currentAudience(): Promise<{ items: AudienceItem[]; label: string } | null> {
+  const tagName = (no: string) => tags.value.find((x) => x.tagNo === no)?.name ?? no;
+  if (!storeNo.value && level.value && !pickedTags.value.length) {
+    return { items: [{ type: "LEVEL", value: level.value }], label: String(t(`members.level.${level.value}`)) };
+  }
+  if (!storeNo.value && !level.value && pickedTags.value.length === 1) {
+    const no = pickedTags.value[0]!;
+    return { items: [{ type: "TAG", value: no }], label: tagName(no) };
+  }
+  const segmentNo = await saveAsSegment();
+  return segmentNo ? { items: [{ type: "SEGMENT", value: segmentNo }], label: String(t("members.thisBatch")) } : null;
+}
+
+/** 「对这批人」四个去处（原型 m03） */
+async function batchActions() {
+  const idx = await pick({ items: [
+    String(t("members.act.tag")), String(t("members.act.segment")),
+    String(t("members.act.reach")), String(t("members.act.coupon")),
+  ] });
+  if (idx === null) return;
+  if (idx === 0) { showBatch.value = true; return; }
+  if (idx === 1) { await saveAsSegment(); return; }
+  const aud = await currentAudience();
+  if (!aud) return;
+  setPendingAudience(aud.items, aud.label);
+  // 发券要先挑一张券：去券列表，发放页会把这批人预选上
+  go(idx === 2 ? ROUTES.memberReach : ROUTES.coupons);
+}
+
+function onBatchDone(_r: BatchTagResult) {
+  showBatch.value = false;
+  void load();
+}
+
+async function pickStore() {
+  const stores = merchant.stores;
+  const items = [String(t("members.allStores")), ...stores.map((s) => s.name || s.storeNo)];
+  const idx = await pick({ items, selected: storeNo.value
+    ? stores.findIndex((s) => s.storeNo === storeNo.value) + 1 : 0 });
+  if (idx === null) return;
+  storeNo.value = idx === 0 ? "" : stores[idx - 1]?.storeNo ?? "";
+  void load();
+}
+
+function storeName(no: string) {
+  return merchant.stores.find((s) => s.storeNo === no)?.name || no;
+}
+
+function go(url: string) {
+  uni.navigateTo({ url });
+}
+
+function open(m: Member) {
+  uni.navigateTo({ url: `/pages/member-detail/index?memberNo=${m.memberNo}` });
+}
+
+/** 沉睡用警示色：那是店主唯一能立刻行动的一批 */
+function levelClass(lv?: string | null) {
+  return lv === "SLEEPING" ? "sh-chip--warning" : "sh-chip--primary";
+}
+
+/** 从标签详情「看这些人」进来时带着标签号：按它筛好 */
+onLoad((q) => {
+  if (q?.tagNo) pickedTags.value = [String(q.tagNo)];
+});
+
+onShow(() => {
+  void load();
+  /*
+   * 门店列表：页内那个门店选择器靠它判多店。不拉的话 `stores` 是空的 →
+   * `multiStore` 为 false → **选择器整条消失**，而数据仍按某一家店取 ——
+   * 界面上没有一个字说是哪家（`ensureStores` 的注释里记着同一个坑）。
+   */
+  void merchant.ensureStores().catch(() => null);
+});
 </script>
 
 <template>
-  <sh-scaffold title-key="customers.title">
-    <text class="sh-h1">{{ $t("customers.title") }}</text>
-
-    <view class="sh-card sum">
-      <view class="sum__i">
-        <text class="sum__v sh-num">{{ list.length }}</text>
-        <text class="sh-muted">{{ $t("customers.total") }}</text>
-      </view>
-      <view class="sum__i">
-        <text class="sum__v sh-num">{{ repeatRate }}%</text>
-        <text class="sh-muted">{{ $t("customers.repeatRate") }}</text>
-      </view>
-      <view class="sum__i">
-        <text class="sum__v sh-num" :class="{ 'is-warn': silentCount > 0 }">
-          {{ silentCount }}
-        </text>
-        <text class="sh-muted">{{ $t("customers.silent") }}</text>
-      </view>
-    </view>
-
-    <view class="tabs">
-      <text class="sh-chip" :class="{ 'sh-chip--primary': tab === 'all' }" @tap="tab = 'all'">
-        {{ $t("common.all") }}
+  <sh-scaffold title-key="members.title" :denied="!merchant.can('biz:customer')">
+    <!--
+      顶部一行：门店切换（多店才有）+ 两个入口。
+      录入与标签放在这里而不是详情里 —— 它们作用在**整份名单**上，不是某一个人身上。
+    -->
+    <view class="bar sh-row">
+      <text v-if="merchant.multiStore" class="sh-chip sh-chip--primary" @tap="pickStore">
+        {{ storeNo ? storeName(storeNo) : $t("members.allStores") }} ▾
       </text>
-      <text
-        class="sh-chip"
-        :class="{ 'sh-chip--warning': tab === 'silent' }"
-        @tap="tab = 'silent'"
-      >
-        {{ $t("customers.silent") }} {{ silentCount }}
+      <text class="sh-chip" @tap="go('/pages/member-tags/index')">{{ $t("memberTags.title") }}</text>
+      <text class="sh-chip" @tap="go('/pages/member-segments/index')">
+        {{ $t("memberSegments.title") }}
       </text>
+      <!--
+        群发入口按开关显示。**代码在包里，入口先不露出来** ——
+        灰度对象没定之前不该让任何商家点得到它（见 FEATURES.memberReach）。
+      -->
       <text
+        v-if="FEATURES.memberReach"
         class="sh-chip"
-        :class="{ 'sh-chip--primary': tab === 'owned' }"
-        @tap="tab = 'owned'"
+        @tap="go('/pages/member-reach/index')"
       >
-        {{ $t("customers.owned") }} {{ ownedCount }}
+        {{ $t("reach.entry") }}
+      </text>
+      <text class="sh-chip sh-chip--primary" @tap="go('/pages/member-add/index')">
+        ＋ {{ $t("memberAdd.title") }}
       </text>
     </view>
 
-    <sh-empty v-if="!shown.length" :text='$t("customers.empty")'></sh-empty>
+    <!--
+      四层数字即入口：点一个就按那一层筛，再点一下取消。
 
-    <view v-for="c in shown" :key="c.nickname" class="sh-card row">
-      <text class="row__avatar">{{ c.avatar }}</text>
-      <view class="row__main">
-        <view class="row__head">
-          <text class="row__name">{{ c.nickname }}</text>
-          <text v-if="c.silent" class="sh-chip sh-chip--warning">
-            {{ $t("customers.silentTag", { n: c.daysSinceLast }) }}
+      ⚠️ **事件名是 `change` 不是 `pick`**（2026-09-17 修）。这一页此前写的是
+      `@pick`，而 `sh-stat` 从来只 emit `change` —— `pick` 那个名字留给了
+      picker 一族（「挑中了这一个，给你」）。于是这四层数字点下去**一点反应都没有**，
+      而上面这句注释一直写着它是能点的。不报错，`vue-tsc` 也看不见：
+      未声明的 `@pick` 只是个落到根节点上的普通属性。库存页同一处见 `d0569f2e`。
+    -->
+    <sh-stat
+      boxed
+      :active="level"
+      :items="LEVELS.map((lv) => ({
+        key: lv,
+        value: countOf(lv),
+        label: String($t(`members.level.${lv}`)),
+        tone: lv === 'SLEEPING' ? 'primary' : undefined,
+      }))"
+      @change="pickLevel"
+    ></sh-stat>
+
+    <text v-if="stats" class="txt-caption sh-muted sub">
+      {{ $t("members.summary", { n: stats.newThisMonth, m: stats.reachable }) }}
+    </text>
+    <!--
+      分层是每天凌晨按口径重算的。把时刻写出来：昨天的常客今天变成沉睡，
+      商家第一反应是数据错了 —— 这一行是它唯一的解释。
+    -->
+    <text v-if="stats?.levelComputedAt" class="txt-caption sh-muted sub">
+      {{ $t("members.levelComputedAt", { t: stamp(stats.levelComputedAt) }) }}
+    </text>
+
+    <!--
+      未计入的买家。**先说，比等他问强** ——
+      商家一定会拿订单数与会员数对，对不上时他的第一反应是数据丢了。
+    -->
+    <view v-if="stats && stats.unlinkedBuyers > 0" class="txt-caption sh-notice notice">
+      {{ $t("members.unlinked", { n: stats.unlinkedBuyers }) }}
+    </view>
+
+    <!--
+      标签筛选。**取交集**：点第二个标签是想收窄。
+      筛出来之后可以直接存成人群 —— 条件在哪儿筛就在哪儿存。
+    -->
+    <text v-if="tags.length" class="txt-caption sh-muted sub">{{ $t("members.tagsAll") }}</text>
+    <view v-if="tags.length" class="tagbar sh-wrap">
+      <text
+        v-for="tg in tags"
+        :key="tg.tagNo"
+        class="sh-chip"
+        :class="{ 'sh-chip--primary': pickedTags.includes(tg.tagNo) }"
+        @tap="toggleTag(tg.tagNo)"
+      >
+        {{ tg.name }}
+      </text>
+      <text
+        v-if="pickedTags.length || level"
+        class="sh-chip sh-chip--primary"
+        @tap="saveAsSegment"
+      >
+        ＋ {{ $t("members.saveSegment") }}
+      </text>
+    </view>
+
+    <!-- 筛出来之后，这批人可以直接去打标、发消息、发券（原型 m03） -->
+    <view v-if="filtered && total > 0" class="sh-btn sh-btn--muted sh-mt-sm" @tap="batchActions">
+      {{ $t("members.forThese", { n: total }) }}
+    </view>
+
+    <view class="search">
+      <input
+        v-model="phone"
+        class="field__input"
+        type="number"
+        maxlength="11"
+        :placeholder="$t('members.phonePh')"
+        @confirm="load"
+      />
+    </view>
+    <text v-if="phonePartial" class="sh-muted sh-hint">{{ $t("members.phonePartial") }}</text>
+
+    <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry='load' :text="String($t('members.empty'))" :tip="String($t('members.emptyTip'))"></sh-empty>
+
+    <view v-for="m in list" :key="m.memberNo" class="sh-row sh-card sh-mt-sm" @tap="open(m)">
+      <!-- row__main：下面那条 `.row__main .sh-muted { display: block }` 此前一直挂空（这一层没有这个类），三行挤成一行 -->
+      <view class="sh-fill row__main">
+        <view class="row__head sh-row">
+          <text class="txt-strong sh-num">{{ m.phoneMasked || $t("members.phoneTail", { n: m.phoneTail || "----" }) }}</text>
+          <text v-if="m.level" class="sh-chip" :class="levelClass(m.level)">
+            {{ $t(`members.level.${m.level}`) }}
           </text>
-          <text v-else-if="c.source === 'MERCHANT_OWNED'" class="sh-chip sh-chip--primary">
-            {{ $t("customers.ownedTag") }}
-          </text>
+          <text v-if="m.status === 'LEAD'" class="sh-chip">{{ $t("members.lead") }}</text>
         </view>
+        <text v-if="m.tagNames?.length" class="sh-muted">{{ m.tagNames.join(" · ") }}</text>
         <text class="sh-muted sh-num">
-          {{ $t("customers.stat", { n: c.orderCount, m: money(c.totalSpentMinor) }) }}
+          {{ $t("members.stat", { n: m.orderCount, m: money(m.totalSpentMinor) }) }}
+        </text>
+        <text class="sh-muted">
+          {{ $t(`members.source.${m.source}`) }}
+          <template v-if="m.daysSinceLast != null">
+            · {{ m.daysSinceLast === 0 ? $t("members.today")
+              : $t("members.daysAgo", { n: m.daysSinceLast }) }}
+          </template>
         </text>
       </view>
-      <text class="row__days sh-num">
-        {{ c.daysSinceLast === 0 ? $t("customers.today") : $t("customers.daysAgo", { n: c.daysSinceLast }) }}
-      </text>
+      <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
     </view>
 
-    <text class="tip">{{ $t("customers.privacyHint") }}</text>
-    <text class="tip">{{ $t("customers.silentHint") }}</text>
+    <text v-if="list.length" class="sh-hint sh-mt-md">{{ $t("members.privacyHint") }}</text>
+
+    <!-- 口径开关只给店主：它一改，全主体的分层与所有活动受众跟着变 -->
+    <text
+      v-if="merchant.can('biz:store:admin')"
+      class="sh-link settings"
+      @tap="go('/pages/member-settings/index')"
+    >
+      {{ $t("memberSettings.entry") }}
+    </text>
+
+    <biz-batch-tag-sheet
+      :visible="showBatch"
+      :count="total"
+      :rule="{ level: level || undefined, tagNos: pickedTags.length ? [...pickedTags] : undefined }"
+      :scope-store-no="storeNo || undefined"
+      @close="showBatch = false"
+      @done="onBatchDone"
+    ></biz-batch-tag-sheet>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.sum {
-  display: flex;
-  margin-top: 24rpx;
-}
-.sum__i {
-  flex: 1;
-  text-align: center;
-}
-.sum__v {
-  display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-  line-height: 1.2;
-}
-.sum__v.is-warn {
-  color: var(--sh-warning);
-}
-.tabs {
-  display: flex;
+.bar {
   gap: 12rpx;
-  margin: 28rpx 0 20rpx;
 }
-.tabs .sh-chip {
-  font-size: 24rpx;
-  padding: 14rpx 24rpx;
+
+.settings {
+  display: block;
+  margin-top: 16rpx;
 }
-.row {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  margin-bottom: 16rpx;
+.sub {
+  display: block;
 }
-.row__avatar {
-  width: 84rpx;
-  height: 84rpx;
-  border-radius: 9999px;
-  background: var(--sh-faint);
-  font-size: 46rpx;
-  text-align: center;
-  line-height: 84rpx;
+/* 未计入提示：主色浅底，不是警示红 —— 这不是故障，是一个需要解释的差额 */
+.notice {
 }
-.row__main {
-  flex: 1;
-  min-width: 0;
-}
+
+
 .row__head {
-  display: flex;
-  align-items: center;
   gap: 12rpx;
+  margin-bottom: 8rpx;
 }
-.row__name {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
-.row__days {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.tip {
+
+/* `<text>` 默认 inline —— 不给 block，「6 单 · ¥272」与「下过单 · 今天」会挤成一行 */
+.row__main .sh-muted {
   display: block;
-  margin: 20rpx 8rpx 0;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
 </style>

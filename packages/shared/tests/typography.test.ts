@@ -15,8 +15,16 @@ const ROOT = join(import.meta.dirname, "../../..");
 const BASE_CSS = join(ROOT, "packages/ui/src/styles/base.css");
 const VUE_ROOTS = ["c-app", "b-app", "packages/ui"];
 
-/** 字阶允许的字号（rpx）。改这里之前先想清楚：多一档就是多一次「这两个到底差在哪」。 */
-const SCALE = [24, 26, 28, 30, 34, 40, 48];
+/** 字阶允许的字号（rpx）。改这里之前先想清楚：多一档就是多一次「这两个到底差在哪」。
+ *  **60 是 2026-08-26 加的**：`order` 的应收 72rpx、`income`/`points` 的结存 60rpx
+ *  三处各自越过了 48 —— 独立走到同一个方向说明这一档真的缺（收款台要隔着柜台读准）。
+ *  取 60 是顺着字阶顶端的比例（40→48 是 1.2，48→60 是 1.25），72 一并收到这一档。 */
+/*  **30 于 2026-09-06 去掉**：它只活在 `.field__input` 与 `.sh-btn` 两处，
+ *  而《规范·字体》与 `ui-lib.json` 的字阶（由 `.txt-*` 类生成）从来没有这一档 ——
+ *  于是两把尺对同一个值给两种答案，`sh-pick` 的 30rpx 过了这道闸、逐页体检报越档。
+ *  两处都收到 28（正文档）：填进去的字与读到的字同一个尺寸，按钮本就是
+ *  「比正文重一档的行」= `.txt-strong`。现在两把尺都是七档。 */
+const SCALE = [24, 26, 28, 34, 40, 48, 60];
 
 /**
  * 豁免：与「文字排版」无关的字号。
@@ -58,9 +66,9 @@ describe("字阶", () => {
     expect(vueFiles.length).toBeGreaterThan(20);
   });
 
-  it("base.css 里八个 .txt-* 类齐全 —— 它们是字阶的唯一落点", () => {
+  it("base.css 里九个 .txt-* 类齐全 —— 它们是字阶的唯一落点", () => {
     const css = readFileSync(BASE_CSS, "utf8");
-    const missing = ["hero", "display", "price", "title", "strong", "body", "sub", "caption"]
+    const missing = ["mega", "hero", "display", "price", "title", "strong", "body", "sub", "caption"]
       .filter((n) => !new RegExp(`\\.txt-${n}\\s*\\{`).test(css));
     expect(missing, `base.css 缺这几档：${missing.join(", ")}`).toEqual([]);
   });
@@ -84,8 +92,12 @@ describe("字阶", () => {
     for (const f of vueFiles) {
       for (const r of rules(styleBlocks(readFileSync(f, "utf8")))) {
         if (!/font-weight:\s*(700|800|900|bold)/.test(r.body)) continue;
-        // 价格类选择器：price / now / amount / total / 以及金额专用的 sh-num
-        if (/(price|__now|amount|total|money|sum|fee)\b/i.test(r.sel)) continue;
+        // 价格类选择器：price / now / amount / total / 以及金额专用的 sh-num。
+        // **`amt` 与 `due` 是 2026-08-26 补的**：income / points 的 `.amt`、
+        // order 的 `.due`（应收）都是 `money(...)` 渲染出来的金额，而名单只认全称，
+        // 于是四处真价格被当成违规报了出来。**一条报四个假的断言等于没有断言** ——
+        // 真正那一处（sh-sheet 的标题用了 700）就淹在里面。
+        if (/(price|__now|amount|amt|due|total|money|sum|fee)\b/i.test(r.sel)) continue;
         if (NON_TEXT.test(r.sel)) continue;
         offenders.push(`${rel(f)}  ${r.sel}`);
       }
@@ -114,7 +126,9 @@ describe("字阶", () => {
     for (const f of [...vueFiles, BASE_CSS]) {
       const css = f.endsWith(".css") ? readFileSync(f, "utf8") : styleBlocks(readFileSync(f, "utf8"));
       for (const r of rules(css)) {
-        for (const m of r.body.matchAll(/border-radius:\s*(\d+)rpx/g)) {
+        // 角写法（`border-top-right-radius` 那一族）也算 —— 只认 `border-radius:` 的话，
+        // 圆一个角就能绕过这条（sh-uploader 的 8rpx 角标就是这么漏的）
+        for (const m of r.body.matchAll(/border(?:-(?:top|bottom|start|end)-(?:left|right|start|end))?-radius:\s*(\d+)rpx/g)) {
           if (!allowed.includes(Number(m[1]))) offenders.push(`${rel(f)}  ${r.sel}  ${m[1]}rpx`);
         }
       }

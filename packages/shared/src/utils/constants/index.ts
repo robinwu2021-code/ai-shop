@@ -9,7 +9,26 @@
  * 现在两端各自独立部署（ADR-008 §5），前缀是第二道保险：
  * 就算有人把它们放回同一域名，两端的存储也各归各。
  */
-const NS = import.meta.env?.VITE_APP_NS || "sh";
+const APP_NS = import.meta.env?.VITE_APP_NS || "sh";
+
+/**
+ * 数据源后缀（`m` = mock / `r` = real）。**切 `VITE_USE_MOCK` 就换一整套存储空间。**
+ *
+ * 不加这个后缀的话，切到真实后端时本地还留着 mock 时代的选择 ——
+ * 而 mock 的社区号是 `CM001`、真库是 `C0001`，两边的号<b>互不存在</b>。
+ * 结果是首页老老实实按 `communityNo=CM001` 去查，后端老老实实返回空，
+ * 用户看到「这个社区暂时还没有商家上架」，<b>一个报错都没有</b> ——
+ * 他会以为平台上没商家，而不是自己选了一个不存在的小区。
+ *
+ * 登录态同理：mock 的 token 在真后端一律 401，而 401 会被当成"登录过期"，
+ * 于是切过去的第一件事是被莫名其妙地踢出登录。
+ *
+ * 换命名空间比"切换时清理旧数据"可靠：清理要枚举所有 key，加一个就漏一个；
+ * 而且切回 mock 时，之前那套 mock 数据还原样在。
+ */
+const SOURCE = import.meta.env?.VITE_USE_MOCK === "0" ? "r" : "m";
+
+const NS = `${APP_NS}${SOURCE}`;
 
 /** 本地存储 key */
 export const STORAGE = {
@@ -20,6 +39,28 @@ export const STORAGE = {
   lang: `${NS}_lang`,
   market: `${NS}_market`,
   community: `${NS}_community`,
+  /**
+   * C 端「上次定位到的位置」（地名/区县/粗坐标/时刻）。**存本地**做 L0 冷启动缓存：
+   * 重开 App 先秒显上次地名，再后台按 TTL 刷 —— 不存的话首屏空着、还要等一次定位授权框。
+   * 只存 `here` 与 `coarseRegion` 这两样驱动顶栏的；pickedByUser / transient* 是会话态，不存。
+   */
+  location: `${NS}_location`,
+  /**
+   * B 端「当前门店」。**存本地**而不是每次问服务端：
+   * 它是会话上下文，切一次要在整个 App 里生效，重开也要还在原来那家店 ——
+   * 每次回落默认店的话，多门店老板每天早上都要重选一次。
+   */
+  storeNo: `${NS}_store_no`,
+  /**
+   * B 端「上次进货用的供应商」。**存本地**，因为它是一个习惯而不是一条数据：
+   * 小店多半固定从一两家进货，每开一张单都从空白重选一遍是纯粹的重复劳动
+   * （2026-09-17 店主：「供应商列表要有默认值」）。
+   *
+   * ⚠️ 只当**默认值**用，不当真相用：进货单存的始终是当次选定的 supplierNo。
+   * 这个键读出来的供应商可能已经停用或被删，用之前要拿它去列表里核一次 ——
+   * 核不到就退回列表第一个，而不是把一个不存在的名字摆在那儿。
+   */
+  lastSupplierNo: `${NS}_last_supplier_no`,
   cart: `${NS}_cart`,
   searchHistory: `${NS}_search_history`,
 } as const;
@@ -60,12 +101,61 @@ export const MARKETS = [
   { id: "US", currency: "USD", utcOffsetMinutes: -5 * 60, labelKey: "market.US" },
 ] as const;
 
+/**
+ * 类目模板 → 品类。**两套码指同一件事，只是不同名。**
+ *
+ * <p>`prd_category.template` 用 STANDARD/VOUCHER，而 `prd_goods.type` 用 NORMAL/CARD ——
+ * 这个不一致是历史遗留，改任何一边都要刷数据，所以留一张映射把它挡在这里，
+ * 别让每个用到的地方各写一遍 `=== "STANDARD" ? "NORMAL" : ...`。
+ *
+ * <p>`VOUCHER → CARD` 而不是 VIRTUAL：卡券要到店核销，虚拟商品是即时发放，
+ * 两者履约方式不同（STORE_VERIFY vs INSTANT）。
+ */
+export const TEMPLATE_TO_TYPE: Record<string, string> = {
+  STANDARD: "NORMAL",
+  FRESH: "FRESH",
+  SERVICE: "SERVICE",
+  VOUCHER: "CARD",
+};
+
 export const DEFAULT_MARKET = "CN";
 
 /** 品类类型 —— 驱动计价/履约策略分发 */
+/**
+ * 五品类。**取值必须与 `prd_goods.type` 一致** —— 它是商品品类的权威字段。
+ *
+ * ⚠️ 键叫 GOODS 而值是 "NORMAL"：库里存的就是 NORMAL，键名只是代码里的叫法。
+ * 这里此前值也写成 "GOODS"，于是 C 端「日用百货」标签页筛 type=GOODS，
+ * 而库里 32 条商品全是 NORMAL —— **一条也筛不出来**，页面却写着
+ * 「你的社区还没有这类商家」，把 bug 伪装成了业务事实。
+ *
+ * 混淆的来源：后端另有一张 `sys_channel_category_rule.category_type`
+ * 用的是 GOODS（端上当年跟的是它）。同一个「五品类」在后端有两套名字，
+ * 而商品筛选走的是前者。
+ */
+/**
+ * 服务承诺码（`Goods.services`）。与后端 `GoodsVO.SERVICE_*` 同一份取值域。
+ *
+ * <p>页面按码取 i18n 文案，**遇到不认识的码跳过** —— 后端加了新承诺而端上还没发版时，
+ * 宁可少显示一条，也不要把 `INSTANT_REFUND` 这样的原始码印给买家看。
+ */
+export const GOODS_SERVICE = {
+  /** 极速退款：小额仅退款申请即退。受售后规则的金额上限与总开关约束，**逐件判** */
+  INSTANT_REFUND: "INSTANT_REFUND",
+  /** 门店自提免运费 */
+  PICKUP_FREE: "PICKUP_FREE",
+} as const;
+
 export const CATEGORY_TYPE = {
-  /** 日用品（标品） */
-  GOODS: "GOODS",
+  /**
+   * 日用品（标品）。
+   *
+   * ⚠️ 这个键此前叫 `GOODS` 而值是 `"NORMAL"` —— 名实不符。
+   * 能跑，但下一个人读到 `CATEGORY_TYPE.NORMAL` 会以为 wire 上是 `GOODS`，
+   * 而这**正是它当初写错的原因**（值也曾写成 "GOODS"，C 端「日用百货」
+   * 标签页因此永远是空的）。键改成与值一致，把这个歧义源掐掉。
+   */
+  NORMAL: "NORMAL",
   /** 生鲜水果（预售 · 约重） */
   FRESH: "FRESH",
   /** 服务（到店核销 / 预约上门） */
@@ -97,27 +187,308 @@ export const SERVICE_SCOPE = {
   PLATFORM: "PLATFORM",
 } as const;
 
+/**
+ * 履约**能力**（ADR-013 阶段二）。回答的是「怎么送到你手上」这一件事 ——
+ * 不再顺带回答「送得到哪儿」，后者由 {@link ServiceArea} 列表单独说。
+ *
+ * 为什么要跟 {@link SERVICE_SCOPE} 拆开：三档枚举把两件事压进一个字段，
+ * 于是「三个小区 + 整个西湖区」这种再普通不过的诉求**没有字段可写** ——
+ * 商家只能选 CITY（卖到全市，送不到）或 COMMUNITY（丢掉那个区）。
+ *
+ * ⚠️ 它与 `FULFILLMENT` 不是一回事：那个是**某一单**怎么送（落在订单上），
+ * 这个是**这家店**有什么送法（落在主体上）。
+ */
+export const FULFILLMENT_REACH = {
+  /** 靠自提点：出了配了的点就送不到。菜摊、理发店 */
+  PICKUP: "PICKUP",
+  /** 上门或同城配送：能到的范围按区/市框 */
+  ONSITE: "ONSITE",
+  /** 快递：没有履约半径 */
+  SHIPPING: "SHIPPING",
+} as const;
+
+/**
+ * 覆盖项的方向。与后端 `MchServiceArea.MODE_INCLUDE / MODE_EXCLUDE` 逐字一致。
+ *
+ * 它回答的是「商家框了小区，算不算覆盖里面每栋楼」——**默认算**，
+ * 但给一个显式的出口：勾了整个小区、单独排除 3 幢。
+ * 展开时先并后减，`EXCLUDE` 优先；而矛盾应当在**输入端**消除
+ * （勾了排除就把对应的 include 去掉），不要求用户记住这条优先级。
+ *
+ * 此前它是 `ServiceArea.mode` 上一个内联的字面量联合，`enum-registry`
+ * 的 §D5 为此红着 —— **内联的枚举对所有工具不可见**：登记不到、对账不到、
+ * 改名必漏。而它的两个邻居（`AREA_LEVEL` / `AREA_STATUS`）本来就是这个写法。
+ */
+export const AREA_MODE = {
+  /** 纳入。**不传即此** —— 端上不必显式回填 */
+  INCLUDE: "INCLUDE",
+  /** 排除。展开时后减，优先于 INCLUDE */
+  EXCLUDE: "EXCLUDE",
+} as const;
+
+/**
+ * 覆盖项的生效状态。勾已有社区自助生效；勾区、街道要运营审 ——
+ * 一家菜摊声称覆盖整个西湖区，影响面差一个量级（ADR-013 §4.2）。
+ */
+export const AREA_STATUS = {
+  /** 已生效，参与展开 */
+  ACTIVE: "ACTIVE",
+  /** 待运营审核。**不参与展开** —— 端上必须标出来，否则商家看着它在清单里却没有订单 */
+  PENDING: "PENDING",
+} as const;
+
+/**
+ * 商家提报新社区的单据状态（ADR-013 阶段三）。
+ *
+ * 与 {@link AREA_STATUS} 不是一回事：那个说「这一条覆盖算不算数」，
+ * 这个说「这张提报单走到哪了」—— APPROVED 意味着平台**已经建出了社区**。
+ */
+export const COMMUNITY_APPLY_STATUS = {
+  PENDING: "PENDING",
+  /** 已通过，社区建出来了（单据上的 communityNo 这时才有值） */
+  APPROVED: "APPROVED",
+  /** 驳回。理由必须原样回给商家，否则他只会再提一次同样的 */
+  REJECTED: "REJECTED",
+} as const;
+
+/**
+ * 「最近用过的城市」存在本机的键。
+ *
+ * <p>**刻意不进服务端**：它是顺手不是资料。换设备就没了，那是对的 ——
+ * 一个人在另一台设备上的「最近」本来就该是另一串。
+ */
+export const RECENT_CITY_KEY = "shcr_recent_cities";
+
+/**
+ * 热门城市（市级国标码）。
+ *
+ * <p>**它不是「已开通的城市」**：那一份由 `openRegions` 给，会随经营范围变。
+ * 这一份回答的是「多数人要填的地址在哪几个城市」—— 按人口与快递量排，
+ * 与我们开没开通无关。混起来的话，一个住在没开通城市的人会发现
+ * 「热门」里没有他的城市，而他要填的正是那儿。
+ */
+export const HOT_CITY_CODES = [
+  "1101", "3101", "4401", "4403", "3301", "5101", "4201", "3201", "3202", "1201",
+] as const;
+
+/**
+ * 解析出来的地名**有多具体**。
+ *
+ * <p>与 {@link PLACE_SOURCE}（从哪儿来）是两件事，必须都读 —— 合成一个字段的话，
+ * 「库里拿到的建筑名」与「现问的街道名」就分不开了，
+ * 而前者该不该沉淀成聚落、该不该显示在顶栏上，答案并不一样。
+ */
+export const PLACE_KIND = {
+  /** 我们自己的聚落。**最权威的一档** —— 围栏、商品池都挂在它上面 */
+  COMMUNITY: "COMMUNITY",
+  /** 建筑 / 兴趣点（「龙华区地域馆」）。唯一值得沉淀成聚落的一档 */
+  POI: "POI",
+  /** 小区 / 楼盘（「桂澜新村」） */
+  AOI: "AOI",
+  /** 街道 + 门牌（「观澜大道 155 号」） */
+  STREET: "STREET",
+  /** 只推得出区县 */
+  REGION: "REGION",
+} as const;
+
+/**
+ * 那个地名**从哪儿来的**。
+ *
+ * <p>端上据此决定要不要标「位置可能不是最新的」；运营端据此看
+ * 「我们还要依赖地图多久」。
+ */
+export const PLACE_SOURCE = {
+  /** 落进了我们自己的聚落围栏 */
+  COMMUNITY: "COMMUNITY",
+  /** 固定地址库命中且没超核对期 —— **这一次没有花额度** */
+  PLACE_DB: "PLACE_DB",
+  /** 这个格子从没见过，现问的地图 */
+  MAP: "MAP",
+  /** 库里那条已超期而地图刷不动（挂了 / 额度用完）。**要在界面上说出来** */
+  PLACE_DB_STALE: "PLACE_DB_STALE",
+} as const;
+
+/**
+ * 覆盖项的粒度。可跨粒度组合 —— 「三个小区 + 一个区」是两条 COMMUNITY 加一条 DISTRICT。
+ */
+export const AREA_LEVEL = {
+  /**
+   * 聚落：小区或村（cmt_community，kind 区分）。
+   *
+   * <p>聚落模型（2026-08-22）：**村不是区划粒度**，它和小区一样是挂在
+   * 街道/镇（L4）下的聚落 —— 此前短暂加过 VILLAGE 一档，随模型统一撤掉。
+   */
+  COMMUNITY: "COMMUNITY",
+  STREET: "STREET",
+  DISTRICT: "DISTRICT",
+  CITY: "CITY",
+  /**
+   * 省。**经营范围本来就是「任意一级的并集」** —— 走快递的商家框的就是省，
+   * 而此前这一档不存在，他只能把一个省下面的市一个个勾（山西 11 个、广东 21 个），
+   * 或者干脆放弃、把范围留空（留空对自提商家是「谁也看不到」）。
+   *
+   * 后端不需要为它加任何东西：覆盖展开走国标码前缀（省码 2 位），
+   * 审核归入「区/市/省要审」那一档 —— 两条规则都已经在了。
+   */
+  PROVINCE: "PROVINCE",
+  /**
+   * 商家在地图上画的任意多边形（ADR-034）。
+   *
+   * **它没有地名** —— `refCode` 是几何指纹（服务端按顶点算，端上传什么都不作数），
+   * 真正的形状在 `geometry` 里。所以界面上不能像别的粒度那样显示 `name`，
+   * 要画出来或者写「配送范围（N 个顶点）」。
+   */
+  POLYGON: "POLYGON",
+  /**
+   * 全平台不限（ADR-034）。`refCode` 恒为 `*`，一家店最多一条。
+   *
+   * 此前「不限」是隐式的：没框任何范围 + 开了快递/自送就算。而「没框范围」有四种成因
+   * （框写到别家店、没物化、框成了排除、门店级错位），任何一种都会让商家在不知情的情况下
+   * 铺满全平台、且不报错。改成显式之后，商家在范围页看得见这一条，也改得掉。
+   *
+   * **它只对快递/自送生效**，自提没有落点。同样没有地名。
+   */
+  UNLIMITED: "UNLIMITED",
+} as const;
+
+/**
+ * 履约方式。**键名是代码里的叫法，值是 wire 契约 —— 值必须逐字等于
+ * `ord_sub_order.fulfillment` 库里存的东西**（见 docs/technical/枚举统一方案.md §3）。
+ *
+ * 这条规则是两次同形状故障换来的：`PICKUP` 与 `DELIVERY` 都曾把端上的叫法
+ * 当成了 wire 值（"PICKUP" / "DELIVERY"），而库里存的是 "STORE_PICKUP" /
+ * "MERCHANT_DELIVERY"。后果在确认订单页直接可见 —— 履约方式那一栏显示
+ * `fulfillment.MERCHANT_DELIVERY`，**i18n 键原样打给用户**：
+ * 词条按端上的叫法建，后端下发库里的值，查不到就回退成键名。
+ *
+ * 下面分两组。分组不是文档，是**给对账工具看的**：
+ * `IMPLEMENTED` 里的值后端此刻就会下发，必须与库严格一致；
+ * `PLANNED` 里的后端还没有，对账时不该报「端上编了个不存在的词」。
+ */
+/**
+ * 支付方式。**与「支付通道」是两根轴**，别混：
+ *   · 这个是「线上付还是当面付」
+ *   · 通道是 WECHAT / ALIPAY / H5 —— 见 CheckoutCapability.usablePayMethods
+ * 一笔订单要同时确定两者。
+ *
+ * ⚠️ **ONLINE 永远可用**：四层判定（商品 → 类目 → 主体资质 → 门店）只收窄 OFFLINE。
+ * 不这么定的话，配错任何一层都会出现「这件商品谁也买不了」——
+ * 那比多开一种支付方式糟得多：前者是收入归零，后者只是多一个选项。
+ */
+export const PAY_MODE = {
+  ONLINE: "ONLINE",
+  /** 当面付。**平台不代收这笔钱** —— 平台券因此用不了（没有资金流可补） */
+  OFFLINE: "OFFLINE",
+} as const;
+
 export const FULFILLMENT = {
   /** 到店自提：商家门店（PickupPoint.type=STORE） */
-  PICKUP: "PICKUP",
+  PICKUP: "STORE_PICKUP",
   /** 邻里自提：送到团发起人家里（PickupPoint.type=NEIGHBOR，ADR-005）
    *  ⚠️ 承接方是用户不是商家，**零报酬**，且只能是自己发起的团 */
   NEIGHBOR_PICKUP: "NEIGHBOR_PICKUP",
-  /** 送货上门（从自提点二次配送到家） */
-  DELIVERY: "DELIVERY",
+  /** 送货上门（从自提点二次配送到家）。**库里存 MERCHANT_DELIVERY** */
+  DELIVERY: "MERCHANT_DELIVERY",
   /** 快递配送 */
   EXPRESS: "EXPRESS",
-  /** 到店核销 */
+
+  /**
+   * 到店核销（SERVICE 商品）。**与 STORE_PICKUP 是两件事**：
+   * 自提是去代收点取别人送来的货，到店核销是去卖家门店消费自己买的服务。
+   * 没有「发货」这一步 —— 付款即出码，支付成功直接落 FULFILLING。
+   */
   STORE_VERIFY: "STORE_VERIFY",
-  /** 预约（到店或上门，需选时段） */
+
+  /**
+   * 预约到店或上门，需选时段（SERVICE 商品）。
+   * **两道必填闸**：预约时间（没时间的「待服务」等于没说）、上门地址（师傅要知道去哪）。
+   */
   APPOINTMENT: "APPOINTMENT",
-  /** 即时发放（虚拟商品发码 / 卡券入卡包） */
+
+  // ── 以下后端未实现（见 PLANNED_FULFILLMENTS） ──
+  /** 即时发放：虚拟商品发码 / 卡券入卡包（VIRTUAL / CARD 商品） */
   INSTANT: "INSTANT",
 } as const;
 
+/**
+ * 后端**尚未实现**的履约方式。
+ *
+ * <p>为什么保留而不是删掉：它们不是端上臆想出来的词，而是
+ * `prd_goods.type` 里已经存在的 SERVICE / VIRTUAL / CARD 三种形态的
+ * 必然对应物，端上有完整的 strategy 实现（`strategies/fulfillment/`）。
+ *
+ * <p>为什么必须显式列出来：这三个与 `MERCHANT_DELIVERY` 那类错误
+ * **形状完全不同，危害也不同**，混在一起就没法自动判定：
+ * <ul>
+ *   <li>同物异名（DELIVERY）—— 端上主动发出去筛选/展示，**现在就在坏**
+ *   <li>后端未实现（本组）—— 由后端下发，后端不发只是让 strategy 暂时不跑，
+ *       不产生错误行为
+ * </ul>
+ * 对账工具据此区别对待：前者必须报，后者是待办不是缺陷。
+ */
+export const PLANNED_FULFILLMENTS: readonly string[] = [
+  // STORE_VERIFY 与 APPOINTMENT 已于 2026-08-17 接通（服务履约一、二期）：
+  // 后端取值域、支付后落 FULFILLING（不经「待发货」）、预约时段与上门地址两道闸、核销全链路
+  FULFILLMENT.INSTANT,
+];
+
 /** 交易规则（一期） */
+/**
+ * 地址簿的规矩。
+ *
+ * `maxCount` 端上这份只管把「新增」按钮提前置灰；**真正的闸在后端**
+ * （`AddressServiceImpl.MAX_ADDRESSES`）—— 还没更新的老版本 App 不知道有这回事。
+ * 两处都改才算改：端上放宽而后端没放，用户会撞一个说不清的保存失败。
+ */
+export const ADDRESS_RULES = {
+  /** 一个人最多存几条。对标值；不设限会让结算页那个选地址的列表没法用 */
+  maxCount: 20,
+} as const;
+
+/**
+ * 自提点多远算「远」（米）。**只是提醒，不是闸门** ——
+ * 上班路上顺路取两公里外的点很常见，拦下来等于替买家做决定。
+ *
+ * <p>两公里：步行约半小时，骑车约十分钟。再近会让市区里几乎每一单都弹提示，
+ * 再远就说不上是提醒了。**这条只影响界面提不提醒**，不影响任何一笔单的钱与状态，
+ * 所以不进 TRADE_RULES（那张表投影给运营看）。
+ */
+export const PICKUP_FAR_M = 2000;
+
+/** 顾客选了「这家店不参加活动」。与后端 `CampaignPort.CHOICE_NONE` 逐字一致 */
+export const ACTIVITY_NONE = "NONE";
+
+/**
+ * 购物车的展示口径。
+ *
+ * **刻意不放进 {@link TRADE_RULES}**：那张表是「交易规则的唯一事实源」，
+ * 由 `scripts/gen-rules-table.mjs` 投影进三端需求矩阵，进去的每一条都要影响
+ * 钱或状态机。下面两条都不影响任何一笔单，只影响界面什么时候提醒。
+ * 混进去会让那张给运营看的表里混入前端细节。
+ */
+export const CART_RULES = {
+  /** 可售库存少到这个数（含）就在行内提醒「仅剩 N 件」。再多就成了噪音 */
+  lowStockHint: 5,
+  /**
+   * 单行最多买几件 —— **后端没给可售库存时的兜底**。
+   * 防的是手滑：数量框里输个 9999，一路走到下单才被库存拒。
+   */
+  maxQtyPerLine: 999,
+} as const;
+
 export const TRADE_RULES = {
-  /** 未支付自动关单（分钟） */
+  /**
+   * 未支付自动关单（分钟）—— **出厂默认值，可被平台配置覆盖**。
+   *
+   * 运营在 /orders?tab=close 配的值存在后端 `trade.close-rule`，
+   * 下单时按当时的配置盖在 `ord_order.pay_deadline_at` 上；没配过时才落回这个 15。
+   *
+   * 所以它的身份是「默认值」而不是「关单时长的值」——
+   * 这张表仍是唯一事实源，它记的是默认值这件事，仍然只有一份。
+   *
+   * 端上倒计时**必须读接口返回的 `payDeadlineAt`，不要读这个常量**：
+   * 运营改过之后两者就不一样了，而症状是「用户看着还剩 3 分钟，订单已经关了」。
+   */
   payTimeoutMinutes: 15,
   /** 提单锁库超时（分钟） */
   stockLockMinutes: 15,
@@ -125,8 +496,6 @@ export const TRADE_RULES = {
   freshCutoffTime: "21:00",
   /** 坏果包赔申请时限（小时，自核销起算） */
   freshClaimHours: 24,
-  /** 极速退款自动通过的金额上限（最小货币单位） */
-  instantRefundMaxMinor: 5000,
   /** 逾期未自提：顺延天数，超出作废 */
   pickupGraceDays: 1,
   /** 拼团超时未成团自动退款（小时） */
@@ -158,13 +527,18 @@ export const GROUP_BUY = {
   fallbackShipAtBasePrice: true,
 } as const;
 
-/**
- * 促销类型。买 N 送 M：付 N 件的钱，收到 N+M 件。
- * 赠品默认同款，也可指定别的商品（如买米送油）。
+/*
+ * 这里曾有一个 `PROMOTION_TYPE = { BUY_N_GET_M: "BUY_N_GET_M" }`。
+ * 删掉的原因：**全仓零引用**（所有地方都直接写字面量），而它是
+ * `Promotion.type` 的重复声明 —— 一个概念一个声明处，见
+ * docs/technical/枚举统一方案.md §3。
+ *
+ * 它还在主动误导对账工具：让工具以为 shared 用 BUY_N_GET_M 表达
+ * **营销活动**类型，从而报出一条并不存在的差异。真正对应
+ * `mkt_campaign.type` 的是 types 里的 `CampaignType`，那个逐字对齐。
+ * 商品级买赠（Promotion）与店铺级买赠活动（Campaign BUY_GIFT）是
+ * 同一件业务事建了两次模，详见 docs/technical/营销枚举对账报告.md §1②。
  */
-export const PROMOTION_TYPE = {
-  BUY_N_GET_M: "BUY_N_GET_M",
-} as const;
 
 /** 裂变与归因（窗口期待业务最终确认，见 TDD §7） */
 export const ATTRIBUTION = {
@@ -190,9 +564,14 @@ export const ATTRIBUTION = {
  */
 export const FEATURES = {
   /**
-   * 积分。一期**不上线**。
-   * 成本模型已定（商家结算时扣除），但跨商家清算方案未定 —— 见 ADR-006。
-   * 打开这个开关即可上线：定价、账户、流水、B 端接收都已实现并通过编译。
+   * 积分。一期**不上线**，但**挡着它的技术问题已经没有了**（2026-08-13）。
+   *
+   * 这里原先写着「跨商家清算方案未定」—— 那句话已经过期：清算方案就是预付费池子，
+   * 而本轮把池子的两端都接上了（发分收费入池 / 兑付与到期出池），
+   * 并补了每日恒等式自检（`PointsIdentityJob`）。
+   *
+   * **打开之前只剩一件事**：先让自检在真实数据上连跑几天且不告警。
+   * 失衡是单调增长的 —— 开了之后才发现差额，就已经查不回是从哪天开始的。
    */
   points: false,
   /**
@@ -205,26 +584,66 @@ export const FEATURES = {
    * 库表也因此不建（`mkt_user_card` + 流水表留到二期）。
    */
   cards: false,
+
+  /**
+   * 给会员群发消息（P7）。**默认关着**。
+   *
+   * <p>后端已经就绪（频次闸、退订、跳过统计都在），端上两页也做完了 ——
+   * 唯独差一件事：**灰度对象还没定**。方案里写着「先只对一家自己的测试商户开，
+   * 观察一周退订率」，而这是整个系统里唯一会打扰真实用户的功能。
+   *
+   * <p>把入口藏起来而不是不发代码：代码留在包里，开的时候只改这一个值，
+   * 不用重新走一遍发布。**要开之前先确认灰度商户是谁** —— 全量打开的第一天，
+   * 如果文案或频次有问题，收到的人不会再给第二次机会。
+   */
+  memberReach: false,
 } as const;
 
 /**
  * 积分规则。
  *
- * 成本模型（已定）：**用户抵扣的金额，在商家收入结算时扣除** —— 即积分等同于商家给的折扣，
- * 平台不垫付、不承担兑付，只做记账与清算。详见 ADR-006。
+ * 成本模型：**预付费** —— 商家发放积分的那一刻就从货款里扣走对应的钱，进平台积分资金池；
+ * 用户在任意一家花分时，由池子付给收单方。发放后这批分与发放商家再无关系。
+ * 详见 [积分域-完整方案](../../../../docs/technical/积分域-完整方案.md)。
  *
- * 由此推出的三条硬约束：
+ * 三条硬约束：
  *   1. **抵扣有上限**：整单抵扣会让商家一分钱收不到，商家不会接受
- *   2. **有有效期**：未使用的积分是商家账上的或有负债，不能无限期挂着
- *   3. **完成时才发放**：支付即发放的话，退款要追回已花掉的积分，很难收场
+ *   2. **有有效期**：流通中的积分都占着池子里的钱，不能无限期挂着
+ *   3. **发放即时、可用延后**：支付成功就发（用户立刻看得到），
+ *      但推到售后期后才能花 —— 否则「下大单 → 拿分 → 立刻花掉 → 退单」白拿
+ *
+ * 第 2、3 条曾经是另一个样子（「或有负债挂在商家账上」「完成时才发放」），
+ * 那是信用模型的说法，已随 V22 废除。
  */
 export const POINTS = {
   /** 抵扣汇率：多少积分抵 1 个最小货币单位（100 积分 = 1 元） */
   perMinor: 1,
   /** 单笔订单积分最多抵扣的金额比例 */
   maxDeductRatio: 0.3,
-  /** 有效期（天） */
-  validDays: 365,
+  /**
+   * 无活动多久清零。**滚动到期**：任何积分变动（获得或使用）都把到期日推后这么久。
+   *
+   * 为什么不用固定期限（获得日 + N 天）：那要在每条发放流水上维护批次剩余与到期日，
+   * 而它们唯一的读者是过期任务本身；用户还要面对「300 分 1/5 过期、200 分 1/18 过期」
+   * 这种记不住的规则。账户级只有一个日子，批次概念整个不需要。
+   *
+   * 行业主流：万豪 24 个月内有活动即延期；达美/美联航里程永久有效；招行积分永久有效。
+   *
+   * ⚠️ 它是**一次性全部清零**，冲击远大于零星过期 ——
+   * 到期前 30 天推送提醒不是可选项，没有提醒这个模型对用户是敌意的。
+   */
+  inactiveDays: 365,
+  /**
+   * 发放后多少天转为**可用**（售后期）。
+   *
+   * 发出来的分先进 `pending_balance`（可见不可用），过了售后期才挪进 `balance`。
+   * 理由是退款：售后期内退了款要连分一起收回，而已经花掉的分收不回来。
+   *
+   * ⚠️ **这个值 0 也要走转正流程**，不能特判成「立即可用」——
+   * 特判会让两条路径（立即 / 延迟）各写一套加余额的逻辑，
+   * 而其中一条平时跑不到，坏了没人知道。
+   */
+  pendingDays: 7,
   /** 未单独配置积分的商品，按成交金额的千分之几发放 */
   defaultEarnRatio: 0.01,
 } as const;
@@ -235,20 +654,55 @@ export const PAGE = {
 } as const;
 
 /** 页面路径 —— 禁止在业务代码里手写路径字符串 */
+/**
+ * 商品封面缺失时的占位。
+ *
+ * <p>**没图是常态，不是异常**：商家在 B 端建完商品往往先上架、图片回头补，
+ * 而 mock 数据每一条都带 emoji 封面，所以这个情况在接真后端之前一次都没出现过。
+ * 不给占位的结果是列表里一块空白 —— 看着像图没加载出来，人会一直等。
+ */
+export const GOODS_COVER_FALLBACK = "🛒";
+
+/**
+ * 商家头像兜底。和 {@link GOODS_COVER_FALLBACK} 是同一个毛病的另一半：
+ * `logo` 在后端是可空字段，**商家不上传是常态**，而 mock 里每家都带 emoji，
+ * 所以接真后端之前一次都没露过。
+ *
+ * <p>空字符串渲染出来是一个 80rpx 的**灰色空方块** —— 不报错、不塌版，
+ * 看着像头像正在加载，人会等一会儿才反应过来它就是这样。
+ * 端上一律走 `merchant.logo || MERCHANT_LOGO_FALLBACK`，不许各页面各写各的。
+ */
+export const MERCHANT_LOGO_FALLBACK = "🏪";
+
 export const ROUTES = {
   goods: "/pages/goods/index",
   merchant: "/pages/merchant/index",
   merchants: "/pages/merchants/index",
   store: "/pages/store/index",
   groupHost: "/pages/group-host/index",
+  /** 我的拼团：拼团中 / 已成团 / 没凑齐（原型 p12） */
+  myGroups: "/pages/my-groups/index",
+  /** 我的收藏：商品 / 店铺（原型 g08） */
+  favorites: "/pages/favorites/index",
   search: "/pages/search/index",
   address: "/pages/address/index",
+  /** 新建/编辑收货地址。**整页，不是弹层** —— 入口只有这一种形态 */
+  addressEdit: "/pages/address-edit/index",
+  addressPick: "/pages/address-pick/index",
+  /** 选城市。**让「在别处填地址」成立** —— 搜索此前只围着当前定位搜 */
+  cityPick: "/pages/city-pick/index",
   orderConfirm: "/pages/order-confirm/index",
   pay: "/pages/pay/index",
   orders: "/pages/orders/index",
   order: "/pages/order/index",
+  track: "/pages/track/index",
   afterSale: "/pages/after-sale/index",
   coupons: "/pages/coupons/index",
+  /** 邀请有礼（§3.1）。没有在跑的活动时「我的」页不显示这条入口 */
+  invite: "/pages/invite/index",
+  // 出示券码（原型 s25）：到店出示的券从「我的券」点进来
+  couponCode: "/pages/coupon-code/index",
+  myMemberships: "/pages/my-memberships/index",
   cards: "/pages/cards/index",
   messages: "/pages/messages/index",
   requestCreate: "/pages/request-create/index",
@@ -258,11 +712,12 @@ export const ROUTES = {
   groups: "/pages/groups/index",
   request: "/pages/request/index",
   login: "/pages/login/index",
-  community: "/pages/community/index",
   home: "/pages/home/index",
   category: "/pages/category/index",
   cart: "/pages/cart/index",
   me: "/pages/me/index",
+  /** 个人资料（C-AC-08）：头像 / 昵称 / 手机号 / 登录密码 */
+  profile: "/pages/me/profile/index",
 } as const;
 
 /** 底部菜单 —— 自定义 tabBar（原生 tabBar 字号锁死且不吃 CSS 变量）。
@@ -274,6 +729,12 @@ export const TABS = [
   { key: "cart", route: ROUTES.cart, icon: "cart", iconOn: "cartFilled", labelKey: "tab.cart" },
   { key: "me", route: ROUTES.me, icon: "user", iconOn: "userFilled", labelKey: "tab.me" },
 ] as const;
+
+/**
+ * tab 页路径集合。**推送落点判断要用它**（ADR-018）：tab 页只能 switchTab 打开，
+ * navigateTo 会静默失败 —— 点开推送却停在原地，与没推没有区别。
+ */
+export const TAB_ROUTES: ReadonlySet<string> = new Set(TABS.map((t) => t.route));
 
 /**
  * 结算参数。
@@ -307,4 +768,5 @@ export const SETTLE = {
   fulfillFeePerItemMinor: 30,
   /** 结算周期：自然周 */
   periodDays: 7,
+
 } as const;

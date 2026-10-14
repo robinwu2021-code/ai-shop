@@ -1,0 +1,76 @@
+// 端能力的替身。**只补页面真正会碰到的那几个** ——
+// 把整个 uni 对象照着文档补全，测试就变成了在测 mock 自己。
+import { vi } from "vitest";
+import { config } from "@vue/test-utils";
+
+/** uni.showModal 默认「点确定」。要测「点取消」的用例自己覆盖它 */
+export const uniMock = {
+  showToast: vi.fn(),
+  showModal: vi.fn((o: { success?: (r: { confirm: boolean }) => void }) =>
+    o.success?.({ confirm: true }),
+  ),
+  navigateTo: vi.fn(),
+  switchTab: vi.fn(),
+  navigateBack: vi.fn(),
+  getLocation: vi.fn(),
+  /* 页面加载时改导航栏标题。**不补的话 load() 会在这一行抛出**，
+     而抛在 await 链中间的表现是「测试照样绿、后面几步没跑」——
+     断言仍然成立，只是成立的理由不是你以为的那个（商品页第一次挂测试时撞到）。 */
+  setNavigationBarTitle: vi.fn(),
+  setStorageSync: vi.fn(),
+  getStorageSync: vi.fn(() => ""),
+  removeStorageSync: vi.fn(),
+  /* 点图看大图。不补的话页面里 preview() 一调就抛，而抛在 tap 处理里的表现是
+     「用例照样绿、后面几步没跑」—— 和上面 setNavigationBarTitle 同一个坑 */
+  previewImage: vi.fn(),
+};
+
+// @ts-expect-error 测试环境里没有 uni，这里给一个
+globalThis.uni = uniMock;
+// 页面绑定后会读它判断返回栈深度
+// @ts-expect-error 同上
+globalThis.getCurrentPages = () => [{}];
+
+// uni-app 的生命周期钩子在 node 下没有宿主，测试里手动调 load()
+/*
+ * **onLoad 直接把回调跑掉**，而不是 vi.fn() 空壳。
+ *
+ * 页面的初始化全在 `onLoad(load)` 里，空壳 mock 会让 mount 之后什么都没发生，
+ * 于是每条用例都要去够 `<script setup>` 里的私有函数（够不到），
+ * 或者把 load 导出来专门给测试用 —— 那就成了「为测试改产品代码」。
+ * 直接执行才是真实时序：挂载即加载。
+ */
+vi.mock("@dcloudio/uni-app", () => ({
+  onLoad: (cb: () => unknown) => cb(),
+  onShow: vi.fn(),
+  onHide: vi.fn(),
+  onPullDownRefresh: vi.fn(),
+  onReachBottom: vi.fn(),
+  onShareAppMessage: vi.fn(),
+  onShareTimeline: vi.fn(), onPageScroll: vi.fn(),
+}));
+
+/*
+ * 组件库按 easycom 的规则全局注册 —— 让测试里的组件树与真机上的一致。
+ *
+ * **为什么必须做这件事**：`<sh-*>` 在 uni 里由 easycom 自动解析
+ * （`c-app/src/pages.json` 的 `^sh-(.*)` → `@ai-shop/ui/components/sh-$1.vue`），
+ * 而 vitest 不走那套。不注册的话它们是未解析的自定义元素：
+ * 标签渲染成空壳、插槽内容一行不出。后果不是报错，是**断言在一个空的 DOM 上求值** ——
+ * 2026-09-06 UI 库把提示条/密排清单/搜索框/步进器收进库件之后，
+ * 16 条用例一次性变红，失败信息全是「期望包含 xxx，实际是空字符串」，
+ * 没有一条指向「这个组件压根没渲染」。
+ *
+ * 用 eager glob 而不是逐个 import：库里加一个件，这里不用跟着改 ——
+ * 而漏改的表现恰恰是上面那种查不出根因的红。
+ */
+const uiComponents = import.meta.glob("../../packages/ui/src/components/sh-*.vue", {
+  eager: true,
+}) as Record<string, { default: unknown }>;
+
+config.global.components = Object.fromEntries(
+  Object.entries(uiComponents).map(([path, mod]) => [
+    path.replace(/^.*\/(sh-[^/]+)\.vue$/, "$1"),
+    mod.default,
+  ]),
+) as typeof config.global.components;

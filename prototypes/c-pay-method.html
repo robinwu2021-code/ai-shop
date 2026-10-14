@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>支付方式选择</title>
+<!-- 真源在仓库 prototypes/c-pay-method.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写样式块 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">C 端 · 界面原型 · 2026-09-28</div>
+  <h1>支付方式：通道与当面付款放进同一张列表</h1>
+  <p class="sub">现在要选两次：结算页先选「在线支付 / 当面付款」，在线的再到收银台选通道。买家心里只有一个问题 ——「我怎么付这笔钱」。
+  这一稿把两者合成<b>一行 + 一个面板</b>：行上写当前选的是什么，点开是全部可选的付法；底栏按钮跟着选择变字。
+  小程序今天只有微信，App 将来有微信、支付宝、云闪付、Apple Pay，<b>同一套规则两端都成立</b>。七屏，接在 c-checkout-order（k01 支付方式一行、k11 支付中断）之后。</p>
+  <p class="sub"><b>2026-09-28 用户拍板：</b>本稿的列表选择<b>留给 App 实施</b>。小程序里线上与线下<b>互斥、不给选择</b> ——
+  具体付法由门店决定：线上看<b>进件</b>（这家店有没有开出线上渠道），线下看门店在 <b>B 端 App「收款方式」</b>里开没开。
+  进件完成只走微信；没进件而门店开了线下收款，只走线下（到店付款 / 送货时付款）。p02、p04 的选择面板在小程序里不出现。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">p01 — p03</span><h2>小程序：今天就能做</h2></div>
+  <div class="grid">
+
+    <figure id="p01">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="scr">
+          <div class="group"><div class="frow"><span class="k">门店自提</span><span class="v">虹选粮油 · 距你 400 m</span></div></div>
+          <div class="gc"><div class="th">🌾</div><div class="bd"><div class="nm">五得利 五星特精小麦粉</div><div class="meta">5kg</div><div class="ln"><span class="pr num">¥24.90</span><span class="meta">× 1</span></div></div></div>
+          <div class="group">
+            <div class="frow"><span class="k">支付方式</span><span class="v go">微信支付</span></div>
+            <div class="frow"><span class="k">优惠</span><span class="v go">满 20 减 2（平台券）</span></div>
+            <div class="frow"><span class="k">备注</span><span class="v ph-">选填</span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="meta">应付 <b class="num">¥22.90</b></span><div class="btn">微信支付 ¥22.90</div></div>
+      </div>
+      <figcaption class="cap"><b>p01 结算页 · 默认微信</b>「支付方式」一行只写当前选的那一个；底栏按钮写「微信支付 ¥22.90」。</figcaption>
+      <p class="why">行上不平铺选项：两颗并排的标签（现状）在只有两种时还行，App 上四五种就挤不下，而且每多一种，结算页就长一截。按钮带上付法与金额 —— 买家按下去之前就知道会发生什么（拉起微信、扣多少）。点这一下同时建单并拉起微信，不经过收银台（沿用 k01 的决定）。</p>
+    </figure>
+
+    <figure id="p02">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="scr"></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="h">选择支付方式</div>
+            <div class="pm">
+              <div class="gh">在线支付</div>
+              <div class="it"><span class="ico wx">微</span><span class="nm"><b>微信支付</b></span><span class="rd on"></span></div>
+              <div class="gh">当面付款</div>
+              <div class="it"><span class="ico cash">¥</span><span class="nm"><b>到店付款</b><small>取货时付给商家，平台不代收；平台券不可用</small></span><span class="rd"></span></div>
+            </div>
+            <div class="acts"><div class="btn">确定</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>p02 选择面板 · 小程序</b>两组：在线支付（通道）、当面付款。当面付款按履约方式改叫「到店付款 / 送货时付款」。</figcaption>
+      <p class="why">当面付款<b>和通道放在同一张列表</b>，但单独一组：它不是「又一个通道」，钱不过平台，所以分组标题要说出来。它的限制（平台不代收、平台券不可用）只在这里说一次、一行说完，结算页上不再挂说明文字（2026-09-27 用户要求去掉那段）。叫法跟着履约走：自提叫「到店付款」，商家配送叫「送货时付款」—— 买家一眼知道钱是什么时候、交给谁。</p>
+    </figure>
+
+    <figure id="p03">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="scr">
+          <div class="group"><div class="frow"><span class="k">门店自提</span><span class="v">虹选粮油 · 距你 400 m</span></div></div>
+          <div class="gc"><div class="th">🌾</div><div class="bd"><div class="nm">五得利 五星特精小麦粉</div><div class="meta">5kg</div><div class="ln"><span class="pr num">¥24.90</span><span class="meta">× 1</span></div></div></div>
+          <div class="group">
+            <div class="frow"><span class="k">支付方式</span><span class="v go">到店付款</span></div>
+            <div class="frow"><span class="k">优惠</span><span class="v go">无可用（平台券不适用到店付款）</span></div>
+            <div class="frow"><span class="k">备注</span><span class="v ph-">选填</span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="meta">取货时付 <b class="num">¥24.90</b></span><div class="btn">提交订单</div></div>
+      </div>
+      <figcaption class="cap"><b>p03 选了到店付款</b>按钮变成「提交订单」；金额旁写「取货时付」；刚才用着的平台券自动摘掉，优惠行说明原因。</figcaption>
+      <p class="why">按钮不能再写「微信支付」—— 这一下不会拉起任何支付。平台券被摘掉时<b>在优惠行说原因</b>，而不是弹窗：它是结果不是需要确认的事，弹窗只会多一次点击。商家券与积分照常可用（现有规则）。提交后订单进「待收款」，商家在 App 里点「已收款」。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">p04 — p05</span><h2>App：多通道时同一套规则</h2></div>
+  <div class="grid">
+
+    <figure id="p04">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="scr"></div>
+        <div class="mask">
+          <div class="sheet">
+            <div class="h">选择支付方式</div>
+            <div class="pm">
+              <div class="gh">在线支付</div>
+              <div class="it"><span class="ico ali">支</span><span class="nm"><b>支付宝</b></span><span class="tag">上次使用</span><span class="rd on"></span></div>
+              <div class="it"><span class="ico wx">微</span><span class="nm"><b>微信支付</b></span><span class="rd"></span></div>
+              <div class="it"><span class="ico up">云</span><span class="nm"><b>云闪付</b></span><span class="rd"></span></div>
+              <div class="it off"><span class="ico ap"></span><span class="nm"><b>Apple Pay</b><small>本机未开通</small></span><span class="rd"></span></div>
+              <div class="gh">当面付款</div>
+              <div class="it"><span class="ico cash">¥</span><span class="nm"><b>送货时付款</b><small>商家送到时付给他，平台不代收；平台券不可用</small></span><span class="rd"></span></div>
+            </div>
+            <div class="acts"><div class="btn">确定</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>p04 选择面板 · App</b>默认选上次用过的通道（标「上次使用」）；本机用不了的置灰并说原因；当面付款照旧单独一组。</figcaption>
+      <p class="why">排序：上次使用 → 其余可用通道（按后端下发顺序）→ 不可用的置灰沉底。<b>置灰而不是隐藏</b>：买家找的是「我常用的那个」，找不到会以为平台不支持；写一句「本机未开通 / 未安装」他就知道问题在手机上。记住上次选择只存在本机（换手机回到默认）。后端不支持的通道（商家没进件）直接不出，那不是买家能解决的事。</p>
+    </figure>
+
+    <figure id="p05">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="scr">
+          <div class="gc"><div class="th">🌾</div><div class="bd"><div class="nm">五得利 五星特精小麦粉</div><div class="meta">5kg</div><div class="ln"><span class="pr num">¥24.90</span><span class="meta">× 1</span></div></div></div>
+          <div class="group">
+            <div class="frow"><span class="k">支付方式</span><span class="v go">支付宝</span></div>
+            <div class="frow"><span class="k">优惠</span><span class="v go">满 20 减 2</span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="meta">应付 <b class="num">¥22.90</b></span><div class="btn">支付宝支付 ¥22.90</div></div>
+      </div>
+      <figcaption class="cap"><b>p05 结算页 · App</b>与 p01 同一个版式，只是行上与按钮上换成了选中的通道。</figcaption>
+      <p class="why">两端的结算页长得一样，差别全在面板里有几项。这样 App 上线多通道时，结算页一行代码都不用为它改。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">p06 — p07</span><h2>只有一种、以及付到一半</h2></div>
+  <div class="grid">
+
+    <figure id="p06">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">确认订单</span><span></span></div>
+        <div class="scr">
+          <div class="gc"><div class="th">🍇</div><div class="bd"><div class="nm">阳光玫瑰青提</div><div class="meta">约 2 斤装</div><div class="ln"><span class="pr num">¥39.90</span><span class="meta">× 1</span></div></div></div>
+          <div class="group">
+            <div class="frow"><span class="k">支付方式</span><span class="v">微信支付</span></div>
+            <div class="frow"><span class="k">优惠</span><span class="v go">满 30 减 3</span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="meta">应付 <b class="num">¥36.90</b></span><div class="btn">微信支付 ¥36.90</div></div>
+      </div>
+      <figcaption class="cap"><b>p06 只有一种可选</b>小程序里、这件货又不支持当面付款：行上照写「微信支付」，但没有箭头、点不开。</figcaption>
+      <p class="why">不隐藏这一行：买家要知道这单用什么付。也不放箭头：点开只有一项的面板是在浪费他一次点击。现状在这种情况下整行不画（「只在有得选时才画」）—— 保留这条取舍的前半句，但行本身留着，因为按钮文案已经带上了通道名，行与按钮要说同一件事。</p>
+    </figure>
+
+    <figure id="p07">
+      <div class="ph c">
+        <div class="nav"><span class="bk">‹</span><span class="t">待支付</span><span></span></div>
+        <div class="scr">
+          <div class="card"><div class="n num">¥22.90</div><div class="meta">订单已建好，14:32 内付款有效</div></div>
+          <div class="pm">
+            <div class="gh">在线支付</div>
+            <div class="it"><span class="ico wx">微</span><span class="nm"><b>微信支付</b></span><span class="rd on"></span></div>
+          </div>
+        </div>
+        <div class="foot"><span class="ic">取消订单</span><div class="btn">微信支付 ¥22.90</div></div>
+      </div>
+      <figcaption class="cap"><b>p07 收银台 · 继续支付</b>支付被中断、或从订单列表点「去支付」才到这里；列表与面板同一套，只列在线通道。</figcaption>
+      <p class="why">单已经建好之后不再提供「改成当面付款」：那会把一笔已经按线上价核算、锁了平台券的单改成另一种结算方式，要撤券、改状态、重算分账 —— 想当面付的人取消重下即可。App 上这里可以换通道（支付宝没付成，换微信），这是收银台存在的主要理由。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">规则</span><h2>一张表说完</h2></div>
+  <table class="spec">
+    <tr><th>问题</th><th>规则</th><th>数据从哪来</th></tr>
+    <tr><td>列表里有什么</td><td>在线通道 ∩ 本端能拉起的（小程序只有微信；App 按系统与已安装）＋ 当面付款（整单支持时）</td><td><code>capability.usablePayMethods</code> · <code>usablePayModes</code>（都已下发）</td></tr>
+    <tr><td>默认选谁</td><td>小程序：微信。App：本机上次用过且此刻可用的，否则第一个可用通道。<b>从不默认选当面付款</b></td><td>本机记忆（现有 <code>checkout.payMode</code> 那一格扩成「方式 + 通道」）</td></tr>
+    <tr><td>不可用的怎么办</td><td>后端不支持（商家没进件）→ 不出；本机不行（未安装 / 未开通）→ 置灰写原因</td><td>后端 <code>available / unavailableReason</code>；本机检测</td></tr>
+    <tr><td>当面付款叫什么</td><td>自提：到店付款；商家配送：送货时付款；其余履约不出现</td><td><code>fulfillment</code></td></tr>
+    <tr><td>当面付款的影响</td><td>平台券摘掉、优惠行写原因；商家券与积分照常；按钮变「提交订单」</td><td>现有规则（<code>usableCoupons</code>）</td></tr>
+    <tr><td>行怎么画</td><td>≥2 项：写当前选择 + 箭头，点开面板；只有 1 项：写名字、无箭头</td><td>—</td></tr>
+    <tr><td>底栏按钮</td><td>在线：「{通道}支付 ¥应付」，一次建单并拉起支付；当面：「提交订单」</td><td>—</td></tr>
+    <tr><td>收银台</td><td>只在支付中断 / 订单列表「去支付」时出现；只列在线通道，可换通道，不可改成当面付</td><td>现有 <code>pages/pay</code></td></tr>
+  </table>
+  <p class="sec-note">要不要改后端：<b>不用</b>。唯一的新依赖是 App 端的本机检测（是否安装支付宝 / 云闪付、是否开通 Apple Pay），那一块等 App 接入多通道时一起做；小程序今天只用上面前三行就够。</p>
+</section>
+
+<footer>真源：prototypes/c-pay-method.html · 登记：prototypes/registry.json · 前一稿：prototypes/c-checkout-order.html（k01 支付方式一行、k11 支付中断）· 页面：c-app pages/order-confirm、pages/pay</footer>
+</div>
+</html>

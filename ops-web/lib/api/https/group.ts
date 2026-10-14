@@ -9,6 +9,9 @@ export const groupHttp: GroupApi = {
   listDemands: (q) => client.get("/ops/demands", q),
   listQuotes: (q) => client.get("/ops/quotes", q),
   assignQuote: (v) => client.post(`/ops/demands/${v.demandNo}/quotes`, v),
-  changeQuotePrice: (no, price) => client.post(`/ops/quotes/${no}/price`, { price }),
+  // 后端字段是 unitPriceMinor，不是 price —— 名字不对时后端收到的是 0，
+  // 而 0 会被「改价必须 > 0」挡下，表现为一个说不通的「参数有误」
+  changeQuotePrice: (no, price, reason) =>
+    client.post(`/ops/quotes/${no}/price`, { unitPriceMinor: price, reason }),
   markQuoteBreached: (no) => client.post(`/ops/quotes/${no}/breach`),
 };

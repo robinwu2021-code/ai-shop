@@ -1,0 +1,13 @@
+{
+  "nativePlugins": [
+    {
+      "plugins": [
+        {
+          "type": "module",
+          "name": "ZipPicker",
+          "class": "top.hxmall.bapp.plugin.ZipPickerModule"
+        }
+      ]
+    }
+  ]
+}

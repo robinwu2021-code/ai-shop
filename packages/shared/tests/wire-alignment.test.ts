@@ -13,24 +13,72 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { backendModules } from "./backend-modules";
 
 const ROOT = join(import.meta.dirname, "../../..");
-const CTRL = (portal: string) =>
-  join(ROOT, `backend/shop-app/src/main/java/ai/neargo/shop/portal/${portal}`);
+/**
+ * 找出所有 Controller 文件。
+ *
+ * **不能只扫 `shop-app/portal`** —— 2026-08 模块合并（S7 垂直切片）之后，
+ * 25 个 Controller 里有 20 个搬进了各自域模块的 `api` 包，
+ * 只扫 portal 会让这条守卫悄悄退化成「只比 5 个 Controller」：
+ * 它不报错、还是绿的，但已经不再守任何东西。
+ *
+ * @param portal `mp` | `biz` | `ops` —— 按端分组，与包名末段一致
+ */
+function controllerFiles(portal: string): string[] {
+  const roots = backendModules(join(ROOT, "backend"))
+    .map((m) => join(ROOT, "backend", m, "src/main/java"))
+    .filter((d) => existsSync(d));
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      // 端的归属看目录：portal/mp 与 user/api/mp 都算 mp
+      else if (e.name.endsWith("Controller.java") && dir.endsWith(`/${portal}`)) out.push(p);
+    }
+  };
+  roots.forEach(walk);
+  return out;
+}
 
 /** 后端：路径 → 请求体字段集合 */
+/**
+ * 按逗号切 record 形参，但**跳过泛型里的逗号**。
+ *
+ * 朴素的 `split(",")` 会把 `Map<String, String> titleI18n` 切成两半，
+ * 于是抽出来的字段名是 `Map<String`。它不会让测试变绿或变红得有道理 ——
+ * 它会报「前端没发 Map<String」，把一个解析 bug 伪装成一处契约错配，
+ * 而人会去改前端。
+ */
+function splitParams(raw: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let cur = "";
+  for (const ch of raw) {
+    if (ch === "<") depth += 1;
+    else if (ch === ">") depth -= 1;
+    if (ch === "," && depth === 0) {
+      out.push(cur);
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  if (cur.trim()) out.push(cur);
+  return out;
+}
+
 function backendBodies(portal: string): Map<string, { type: string; fields: string[] }> {
-  const dir = CTRL(portal);
   const out = new Map<string, { type: string; fields: string[] }>();
-  if (!existsSync(dir)) return out;
-  for (const f of readdirSync(dir).filter((x) => x.endsWith(".java"))) {
-    const src = readFileSync(join(dir, f), "utf8");
+  for (const file of controllerFiles(portal)) {
+    const src = readFileSync(file, "utf8");
 
     // 同一个文件里的 `record XxxReq(String a, Boolean b) {}` —— Java record 的形参就是 JSON 字段
     const records = new Map<string, string[]>();
     for (const m of src.matchAll(/record\s+(\w+)\s*\(([^)]*)\)/g)) {
-      const fields = m[2]!
-        .split(",")
+      const fields = splitParams(m[2]!)
         .map((p) => p.trim().split(/\s+/).pop())
         .filter((x): x is string => !!x);
       records.set(m[1]!, fields);
@@ -90,11 +138,6 @@ function frontendBodies(app: string): Map<string, { type: string; fields: string
  * 且每条必须写清「差在哪 / 谁该改 / 为什么」。空着理由的条目下次就没人看得懂了。
  */
 const KNOWN_BODY_DRIFT: Record<string, string> = {
-  "/mp/order":
-    "前端多发 usePoints / groupNo / appointmentAt，后端 CreateOrderReq 不认。" +
-    "**这三个是真功能不是多余字段**：积分抵扣（一期 FEATURES.points=false，可缓）、" +
-    "参团下单、预约时段。后两条是 C 端已实现的下单路径 —— 后端不补字段，接上去就是**静默丢数据**：" +
-    "参团单变普通单、预约单没有时段。→ 后端补字段。",
   "/mp/order/{orderNo}/after-sale":
     "后端要 refundMinor（退款金额）、前端发 reasonCode（原因编码）。" +
     "退款金额该由服务端按订单算还是前端传，属于口径问题（部分退款要不要支持）→ 待定 M4。",

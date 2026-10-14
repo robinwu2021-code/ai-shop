@@ -1,12 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { Card } from "./card";
 import { Checkbox } from "./checkbox";
 import { Table, THead, TBody, TR, TH, TD } from "./table";
-import { Skeleton, EmptyState } from "./misc";
-import { Button } from "./button";
+import { Skeleton, EmptyState, ErrorState } from "./misc";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
@@ -32,6 +31,17 @@ export interface Column<T> {
   align?: "start" | "end" | "center";
   /** 列宽，直接写 CSS 值（如 "12rem"）。不设则由内容撑开 */
   width?: string;
+  /**
+   * 窄屏下把这一列**钉在行尾**（`< md` 生效，桌面照旧跟着横滚）。
+   *
+   * <p>给操作列用。表格有 `min-w-[56rem]`，手机上一张 9 列的表宽约 1076px 而视口只有
+   * 375 —— 操作列落在最右边看不见的地方，运营要一路横滑到底才点得到「受理/查看」。
+   * 而入驻意向的企微通知点进来落的正是这一页。
+   *
+   * <p>底色走 `bg-inherit` 跟着行走（斑马纹、hover 都不会脱节），
+   * 所以 `TBody` 那边给奇数行补了显式底色 —— 缺了它，滑动时下层文字会透上来。
+   */
+  stickyEnd?: boolean;
 }
 
 export type SortDir = "asc" | "desc";
@@ -39,7 +49,7 @@ export type SortDir = "asc" | "desc";
 /**
  * 行选择 checkbox（含半选态）。
  *
- * 原为就地实现的原生 `<input type=checkbox>`（靠 ref 副作用设 `indeterminate`），
+ * 原为就地实现的原生 `<input className="focus-ring" type=checkbox>`（靠 ref 副作用设 `indeterminate`），
  * 已上移为原语 `ui/checkbox.tsx`；这里只留「三态 boolean → CheckedState」的转接
  * 与 `stopPropagation`（行整体可点，勾选不该顺带打开详情）。
  */
@@ -63,15 +73,12 @@ function RowCheckbox({
   );
 }
 
-// 通用列表表格：列配置 + 行数据 + 加载/空态。让新列表页保持一致、精简。
-// 可选能力（不传即与旧行为完全一致）：行选择 / 行展开 / 受控排序。
-export function DataTable<T>({
-  columns, rows, loading, error, onRetry, rowKey, empty, emptyAction,
-  selectable, selectedKeys, onSelectedChange,
-  expandable,
-  sortKey, sortDir, onSortChange,
-  rowClassName,
-}: {
+/**
+ * `DataTable` 的入参。**具名导出**是为了让组合件（`ui/paged-table.tsx`）能
+ * `Omit` 掉自己接管的那几项后原样转发 —— 否则组合件要把 15 个 prop 抄一遍，
+ * 而抄漏的那个（此前是 `rowProps`）在调用点上看不出任何异常，只是不生效。
+ */
+export interface DataTableProps<T> {
   columns: Column<T>[];
   rows: T[] | undefined;
   loading?: boolean;
@@ -104,7 +111,27 @@ export function DataTable<T>({
    * `Column.className` 只能到列级，行级状态表达不了 —— B0 首版遗漏，2026-07-29 补。
    */
   rowClassName?: (row: T) => string | undefined;
-}) {
+  /**
+   * 行级原生属性（拖拽、data-*、右键菜单）。给的是 `<tr>` 本身的 props ——
+   * 拖放的**放**必须落在整行上：只把 handle 做成放置目标的话，行有 48px 高
+   * 而 handle 只有 16px，八成的下落点会掉进行的空白处、什么都不发生。
+   *
+   * ⚠️ 与 `rowClassName` 各管各的：这里再给 className 会**覆盖**它，所以合并在下面做。
+   */
+  rowProps?: (row: T) => React.HTMLAttributes<HTMLTableRowElement>;
+  /** 关掉隔行底色（行底色已被 `rowClassName` 用来表达语义时）。见 `TBody.striped` */
+  striped?: boolean;
+}
+
+// 通用列表表格：列配置 + 行数据 + 加载/空态。让新列表页保持一致、精简。
+// 可选能力（不传即与旧行为完全一致）：行选择 / 行展开 / 受控排序。
+export function DataTable<T>({
+  columns, rows, loading, error, onRetry, rowKey, empty, emptyAction,
+  selectable, selectedKeys, onSelectedChange,
+  expandable,
+  sortKey, sortDir, onSortChange,
+  rowClassName, rowProps, striped = true,
+}: DataTableProps<T>) {
   const { t } = useI18n();
   const emptyText = empty ?? t("common.empty");
   const [expanded, setExpanded] = React.useState<string[]>([]);
@@ -137,9 +164,24 @@ export function DataTable<T>({
       (c.align ?? (c.numeric ? "end" : undefined)) === "end" && "text-end",
       (c.align ?? (c.numeric ? "end" : undefined)) === "center" && "text-center",
       c.numeric && "tabular-nums",
+      /*
+       * 窄屏钉在行尾（见 Column.stickyEnd）。`end-0` 是逻辑属性 —— 阿语是 RTL，
+       * 写 `right-0` 的话这一列会钉到错的一边（仓库里那道 check-rtl-physical 盯的就是它）。
+       * `md:static` 让桌面完全回到原样：那一侧本来就不需要钉。
+       */
+      c.stickyEnd && "sticky end-0 z-[1] bg-inherit md:static md:z-auto",
       c.className,
     );
   const colStyle = (c: Column<T>) => (c.width ? { width: c.width } : undefined);
+  /**
+   * 列显式声明过对齐时打个标。
+   *
+   * 给 dev 工具 `/dev/pages` 用：它按渲染出来的内容猜「这是不是数字列」，
+   * 而「区划码 11」这种**长得像数字的标识符**照规范就该左对齐 —— 猜错一次，
+   * 下一个人就会去给它加 `numeric`，把一列编号排成右对齐。
+   * 调用点写了 `align` 就是做过判断，工具不再对它下结论。
+   */
+  const colAudit = (c: Column<T>) => (c.align ? { "data-col-align": c.align } : undefined);
 
   const headerCell = (c: Column<T>, i: number) => {
     const sortable = !!c.sortKey && !!onSortChange;
@@ -169,19 +211,7 @@ export function DataTable<T>({
   return (
     <Card className="overflow-hidden">
       {error ? (
-        <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
-          <div className="flex size-11 items-center justify-center rounded-sheet bg-destructive-tint text-[var(--destructive-ink)]">
-            <AlertTriangle className="size-5" />
-          </div>
-          <div>
-            <div className="txt-heading">{t("table.errorTitle")}</div>
-            {/* 把后端/网络的原话给出来：运营报障时能直接截图，不用我们再问一遍 */}
-            <p className="mt-1 max-w-md txt-body text-muted-foreground">
-              {error instanceof Error ? error.message : t("error.unknown")}
-            </p>
-          </div>
-          {onRetry && <Button size="sm" variant="outline" onClick={onRetry}>{t("table.retry")}</Button>}
-        </div>
+        <ErrorState error={error} onRetry={onRetry} />
       ) : loading && !rows ? (
         // 骨架要长成**这张表**的样子：表头照常渲染，占位格按各列宽度铺。
         // 原先是 6 条等宽灰条，加载完成时列宽一变整张表会跳一下，
@@ -194,7 +224,7 @@ export function DataTable<T>({
               {columns.map(headerCell)}
             </TR>
           </THead>
-          <TBody>
+          <TBody striped={striped}>
             {Array.from({ length: 6 }).map((_, r) => (
               <TR key={r}>
                 {selectable && <TD><Skeleton className="size-4" /></TD>}
@@ -229,14 +259,17 @@ export function DataTable<T>({
               {columns.map(headerCell)}
             </TR>
           </THead>
-          <TBody>
+          <TBody striped={striped}>
             {rows.map((row) => {
               const k = rowKey(row);
               const content = expandable?.(row);
               const isOpen = expanded.includes(k);
               return (
                 <React.Fragment key={k}>
-                  <TR className={rowClassName?.(row)}>
+                  <TR
+                    {...rowProps?.(row)}
+                    className={cn(rowClassName?.(row), rowProps?.(row)?.className)}
+                  >
                     {selectable && (
                       <TD className="h-[var(--row-h)] w-10">
                         <RowCheckbox
@@ -266,7 +299,9 @@ export function DataTable<T>({
                         ) : null}
                       </TD>
                     )}
-                    {columns.map((c, i) => <TD key={i} className={colClass(c)} style={colStyle(c)}>{c.cell(row)}</TD>)}
+                    {columns.map((c, i) => (
+                      <TD key={i} className={colClass(c)} style={colStyle(c)} {...colAudit(c)}>{c.cell(row)}</TD>
+                    ))}
                   </TR>
                   {expandable && isOpen && content && (
                     <TR className="hover:bg-muted">

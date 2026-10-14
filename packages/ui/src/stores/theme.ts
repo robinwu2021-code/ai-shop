@@ -5,6 +5,7 @@ import { defineStore } from "pinia";
 import { DEFAULT_MODE, DEFAULT_SKIN, type ModeId, type SkinId } from "@shared/design/tokens";
 import { STORAGE } from "@shared/utils/constants";
 import { applyThemeToRoot, systemPrefersDark } from "@shared/ports/theme";
+import { useShell } from "../shell";
 
 export const useThemeStore = defineStore("theme", {
   state: () => ({
@@ -26,7 +27,13 @@ export const useThemeStore = defineStore("theme", {
 
   actions: {
     init() {
-      this.skin = (uni.getStorageSync(STORAGE.skin) as SkinId) || DEFAULT_SKIN;
+      /*
+       * 优先级：用户存过的 > 该端的默认（configureShell 注入）> 色板兜底。
+       * 中间这一层是为了让 B 端第一次打开就是品牌红，而 C 端仍是 fresh ——
+       * 同时**不动已经切过皮肤的用户**：他存过的值永远在最前面。
+       */
+      const appDefault = useShell().defaultSkin as SkinId | undefined;
+      this.skin = (uni.getStorageSync(STORAGE.skin) as SkinId) || appDefault || DEFAULT_SKIN;
       this.mode = (uni.getStorageSync(STORAGE.mode) as ModeId) || DEFAULT_MODE;
       applyThemeToRoot(this.skin, this.resolvedMode);
     },

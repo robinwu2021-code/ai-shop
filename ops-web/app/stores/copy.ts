@@ -2,8 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabAudit: "合规审核",
-  tabTemplate: "主页模板配置",
   templateNotice: "模板改一次会同时作用在一批店铺页上，所以每一行都摆着「多少家店在用」—— 那是决定要不要动它的唯一依据。至少要启用 {n} 个板块：只剩店招的店铺页等于一张裸列表。",
   colTemplateName: "模板名称",
   colLayout: "商品区排布",
@@ -45,11 +43,11 @@ const zh = {
   confirmDisableTitle: "停用这个模板？",
   confirmDisableDesc: "停用后「{name}」不再出现在商家可选列表里；已经在用它的店铺不受影响。",
   templateReadOnlyWhat: "主页模板配置",
-  tabQrcode: "店铺码",
-  tabEffect: "获客效果",
 
   kindBanner: "店招图",
   kindNotice: "店铺公告",
+  kindArea: "经营覆盖",
+  areaHint: "商家自己框的区 / 街道。通过之后他的货才会在这一片露出 —— 一家菜摊声称覆盖整个西湖区，得有履约能力佐证",
 
   toastPassed: "已通过，商家主页即时生效",
   toastRejected: "已驳回，原因已发给商家",
@@ -73,11 +71,44 @@ const zh = {
   colPrinted: "已印",
   colScanCount: "累计扫码",
 
-  colScan: "扫码",
+  printedUnset: "未登记",
+  colStore: "门店",
+  codeUnset: "待发码",
+  issueAction: "发码",
+  reissueAction: "换码",
+  filterCodeless: "只看待发码",
+  issued: "已发码 {code}",
+  reissued: "已换码 {code}，旧码即刻失效",
+  reissueTitle: "换码 · {store}",
+  reissueWarn: "换码后旧码立刻失效 —— 已经贴在店里的物料会全部扫不出来。确认要换的话，写清楚为什么。",
+  reissueReason: "换码原因",
+  reissueConfirm: "确认换码",
+  printSheet: "导出可印刷页",
+  printSheetTitle: "店铺码印刷页",
+  printSheetEmpty: "这批里没有一家有码图 —— 先发码，或检查微信通道有没有开。",
+  printSheetNoImage: "无码图",
+  printSheetBlocked: "浏览器拦住了新窗口 —— 允许本站弹窗后再点一次",
+  printAction: "登记印量",
+  printTitle: "登记印刷量",
+  printQty: "本次印量",
+  printQtyHint: "有符号：印多了要冲减就填负数，补一行而不是改历史行。0 不接受。",
+  printSize: "贴纸尺寸",
+  printRemark: "备注",
+  printSubmit: "登记",
+  printDone: "已登记",
+
+  colScan: "扫码次数",
+  colScanUv: "扫码人数",
   colEnter: "进店",
-  colRegister: "注册",
+  colRegister: "首次归因",
   colFirstOrder: "首单",
   colConversion: "扫码→首单转化",
+  acqNotice:
+    "口径：扫码人数按设备去重（匿名访客还没有账号）；「首次归因」是第一次把这个人算到本店名下，"
+    + "不等于平台新注册 —— 老用户第一次扫这家店的码也计入。转化率的分母是扫码人数，不是次数。",
+  acqRange7: "近 7 天",
+  acqRange30: "近 30 天",
+  acqRange90: "近 90 天",
 
   readOnlyWhat: "店招与公告审核",
   readOnlyNote: "不能通过或驳回",
@@ -105,8 +136,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabAudit: "Compliance review",
-  tabTemplate: "Storefront templates",
   templateNotice: "One template edit lands on a batch of storefronts at once, which is why every row shows how many stores use it — that is the only basis for deciding whether to touch it. At least {n} blocks must stay on: a storefront with nothing but its header is a bare list.",
   colTemplateName: "Template",
   colLayout: "Product layout",
@@ -148,11 +177,11 @@ const en: typeof zh = {
   confirmDisableTitle: "Turn this template off?",
   confirmDisableDesc: "“{name}” stops appearing in the merchant’s choices; stores already on it are unaffected.",
   templateReadOnlyWhat: "homepage template configuration",
-  tabQrcode: "Store codes",
-  tabEffect: "Acquisition results",
 
   kindBanner: "Storefront banner",
   kindNotice: "Store notice",
+  kindArea: "Service coverage",
+  areaHint: "A district or street the merchant claims. Only after approval do their goods appear there — a produce stall claiming all of West Lake needs the delivery capacity to back it",
 
   toastPassed: "Approved — the merchant's storefront updates immediately",
   toastRejected: "Rejected — the reason has been sent to the merchant",
@@ -176,11 +205,47 @@ const en: typeof zh = {
   colPrinted: "Printed",
   colScanCount: "Total scans",
 
+  printedUnset: "Not recorded",
+  colStore: "Store",
+  codeUnset: "No code yet",
+  issueAction: "Issue code",
+  reissueAction: "Re-issue",
+  filterCodeless: "Needs a code",
+  issued: "Code issued: {code}",
+  reissued: "Re-issued as {code}; the old code stopped working",
+  reissueTitle: "Re-issue · {store}",
+  reissueWarn: "The old code stops working immediately — anything already printed and stuck up in the store will fail to scan. Say why.",
+  reissueReason: "Reason",
+  reissueConfirm: "Re-issue",
+  printSheet: "Printable sheet",
+  printSheetTitle: "Store code print sheet",
+  printSheetEmpty: "None of these rows has a code image — issue codes first, or check the WeChat channel is on.",
+  printSheetNoImage: "No image",
+  printSheetBlocked: "The browser blocked the new window — allow pop-ups for this site and try again",
+  printAction: "Record print run",
+  printTitle: "Record a print run",
+  printQty: "Quantity",
+  printQtyHint:
+    "Signed: to correct an over-print, enter a negative number — a new row, never an edit to history. Zero is rejected.",
+  printSize: "Sticker size",
+  printRemark: "Note",
+  printSubmit: "Record",
+  printDone: "Recorded",
+
   colScan: "Scans",
+  colScanUv: "Unique scanners",
   colEnter: "Store visits",
-  colRegister: "Sign-ups",
+  colRegister: "First attribution",
   colFirstOrder: "First orders",
   colConversion: "Scan → first order",
+  acqNotice:
+    "How to read this: unique scanners are de-duplicated by device (anonymous visitors have no account yet); "
+    + "\"first attribution\" means the first time a person was credited to this store — it is not a platform sign-up, "
+    + "since an existing user scanning this store's code for the first time also counts. "
+    + "The conversion denominator is unique scanners, not raw scans.",
+  acqRange7: "Last 7 days",
+  acqRange30: "Last 30 days",
+  acqRange90: "Last 90 days",
 
   readOnlyWhat: "storefront banner & notice review",
   readOnlyNote: "cannot approve or reject",

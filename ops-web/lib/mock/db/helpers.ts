@@ -30,10 +30,18 @@ export const eqHit = (want: unknown, got: unknown) => {
  */
 export const scopeHit = (
   q: { merchantNo?: string; communityNo?: string; pickupNo?: string },
-  row: { merchantNo?: string; communityNo?: string; pickupNo?: string },
+  row: {
+    merchantNo?: string;
+    communityNo?: string;
+    /** 一行可能覆盖**多个**社区（商家服务范围）—— 此时按「包含」判 */
+    communityNos?: string[];
+    pickupNo?: string;
+  },
 ) =>
   eqHit(q.merchantNo, row.merchantNo) &&
-  eqHit(q.communityNo, row.communityNo) &&
+  (row.communityNos
+    ? !q.communityNo || row.communityNos.includes(q.communityNo)
+    : eqHit(q.communityNo, row.communityNo)) &&
   eqHit(q.pickupNo, row.pickupNo);
 
 /** 通用 mock 新增/编辑：有业务键→就地更新，无→生成键后置顶插入。返回落地记录。 */

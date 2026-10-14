@@ -1,0 +1,132 @@
+// 评价与申诉
+//
+// 三端共用的契约镜像，按域切开的一份 —— 口径与切开之前逐字相同，见 `index.ts`。
+
+// ---------------------------------------------------------------- 评价
+
+export interface Review {
+  /** 评价单号 */
+  reviewNo: string;
+  /** 被评价的商品 */
+  goodsNo: string;
+  /** 被评价的商家。差评会计入商家评分与申诉流程 */
+  merchantNo: string;
+  /** 评价人昵称（匿名评价时为「匿名用户」） */
+  nickname: string;
+  /** 评价人头像 */
+  avatar: string;
+  /** 总分，1–5 整数 */
+  rating: number;
+  /** 评价正文 */
+  content: string;
+  /** 评价图 URL 列表 */
+  images: string[];
+  /** 购买规格。展示在评价上，让人知道这条评价说的是哪个 SKU */
+  spec: string;
+  /** 评价提交时间 */
+  createdAt: number;
+  /** 点赞数 */
+  likeCount: number;
+  /** 当前用户是否已点赞 */
+  liked: boolean;
+  /** 商家回复 */
+  reply?: string;
+  /**
+   * 商家回复的时间。**库里一直有、从没发过** ——
+   * 于是买家看到的是一句没有时间的回复：不知道是当天回的还是三个月后。
+   */
+  repliedAt?: number | null;
+  /**
+   * 三维度评分（B-9.3 / P-13.1.4）。总分 `rating` 仍保留 ——
+   * 老数据没有分维度分，列表页也只显示一个星级；维度分用于**评分算法与商家诊断**：
+   * 「货好但送得慢」这种问题，只看总分永远看不出来。
+   */
+  scores?: ReviewScores;
+  /** 商家申诉（B-9.4）。裁决在平台端 P-13.1 */
+  appeal?: ReviewAppeal;
+}
+/** 三维度：商品本身 / 履约（快慢、包装、缺损） / 服务（沟通、售后态度） */
+export interface ReviewScores {
+  /** 商品本身，1–5 */
+  goods: number;
+  /** 履约：快慢、包装、缺损，1–5 */
+  fulfillment: number;
+  /** 服务：沟通、售后态度，1–5 */
+  service: number;
+}
+export type ReviewAppealStatus =
+  | "PENDING" // 待平台裁决
+  | "UPHELD" // 申诉成立 —— 原评价下架
+  | "REJECTED"; // 申诉驳回 —— 评价保留
+/**
+ * 商家对差评的申诉。
+ * 这是**唯一**能把差评送进平台裁决台的入口 —— 平台端 P-13.1 的裁决页早就建好了，
+ * 但 B 端一直没有申诉入口，那张台子收不到任何单，等于空转。
+ */
+export interface ReviewAppeal {
+  /** 申诉单号 */
+  appealNo: string;
+  /** 申诉理由，商家填写 */
+  reason: string;
+  /** 举证图（聊天记录、物流截图） */
+  images: string[];
+  /** 裁决状态 */
+  status: ReviewAppealStatus;
+  /** 申诉提交时间 */
+  submittedAt: number;
+  /** 裁决说明。**无论成立还是驳回都必须写** —— 商家会看到，「已读不处理」不是一种结果 */
+  verdict?: string;
+}
+
+/**
+ * 评分概览（随商品详情下发，见 `Goods.reviewSummary`）。
+ *
+ * 与列表分开：列表是分页的，而概览说的是整体 —— 从当前这一页算平均分，
+ * 翻页时那个「总分」会变。
+ */
+export interface ReviewSummary {
+  /** 可见评价总数 */
+  total: number;
+  /** 平均分，一位小数 */
+  avg: number;
+  /** 1~5 星各自的条数，**下标 0 是 1 星** */
+  dist: number[];
+  /** 有图的条数 */
+  withImages: number;
+  /** 商品分；没人打过这一维时为 0 */
+  avgGoods: number;
+  /** 履约分 */
+  avgFulfillment: number;
+  /** 服务分 */
+  avgService: number;
+}
+
+/** 评价列表的筛选。空或不认识的值按全部处理 */
+export type ReviewFilter = "ALL" | "IMAGE" | "GOOD" | "BAD";
+
+/**
+ * 商品问答。买家在商品页问，运营在后台答。
+ *
+ * **只有已回答的会下发给买家** —— 一排没人答的问题传达的是「这家店不管事」，
+ * 比没有问答区更糟。
+ */
+export interface Question {
+  /** 问题单号 */
+  questionNo: string;
+  /** 所属商品。买家在商品页问，按它查 —— 只按规格存的话，同一件货的问答会按规格散开 */
+  goodsNo?: string | null;
+  /** 提问时那件货的规格号快照（运营端按规格看） */
+  skuNo?: string | null;
+  /** 提问时那件货的标题快照。商品改名之后，这条问题说的仍是当时那件货 */
+  skuTitle?: string | null;
+  /** 问题正文 */
+  content: string;
+  /** 商家/运营的回答。没答的不会下发给买家，所以这里有值 */
+  answer?: string | null;
+  /** 回答时间（毫秒） */
+  answeredAt?: number | null;
+  /** PENDING 待回答 / ANSWERED 已回答 / HIDDEN 已隐藏。**买家只看得到 ANSWERED** */
+  status: string;
+  /** 提问时间（ISO 串，后端按运营端口径下发） */
+  createdAt?: string | null;
+}

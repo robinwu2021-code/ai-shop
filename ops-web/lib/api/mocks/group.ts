@@ -28,12 +28,12 @@ export const groupMock: GroupApi = {
 
   auditGroupCampaign: async (groupNo, pass, reason) => {
     const g = findGroup(groupNo);
-    if (g.status !== "PENDING_AUDIT") fail("该团已审核，请刷新列表", "This group buy has already been reviewed — refresh the list");
+    if (g.status !== "PENDING") fail("该团已审核，请刷新列表", "This group buy has already been reviewed — refresh the list");
     if (pass) {
       // 1 个人不叫团；团购价不低于原价的话"团购"就是假的 —— 这两条不能只做 UI 提示
       if (g.minCount < 2) fail("起团人数至少为 2", "A group buy needs at least 2 people");
       if (g.groupPrice >= g.originPrice) fail("团购价必须低于原价", "The group price has to be below the regular price");
-      g.status = "RUNNING";
+      g.status = "OPEN";
     } else {
       if (!reason?.trim()) fail("驳回必须填写原因，商家会原样看到", "Rejection needs a reason — the merchant sees it verbatim");
       g.status = "FAILED";
@@ -85,8 +85,11 @@ export const groupMock: GroupApi = {
       quoteNo: db.nextNo("QT", db.quotes, 9000, "quoteNo"),
       demandNo, demandTitle: demand.title,
       merchantNo, merchantName: merchant?.name ?? merchantNo,
-      price, minQty, validTo, priceChanges: 0, breached: false,
-      createdAt: "2026-08-06T00:00:00Z",
+      price, minQty,
+      // 表单里的 validTo 是日期串（date input 给的就是串），存下来的是毫秒 ——
+      // 与后端同口径，页面上才不用为 mock 和真后端各写一套格式化
+      validTo: Date.parse(validTo), priceChanges: 0, breached: false,
+      createdAt: Date.parse("2026-08-06T00:00:00Z"),
     };
     db.quotes.unshift(rec);
     demand.quoteCount += 1;
@@ -94,7 +97,10 @@ export const groupMock: GroupApi = {
     return wait(rec, 400);
   },
 
-  changeQuotePrice: async (quoteNo, price) => {
+  changeQuotePrice: async (quoteNo, price, reason) => {
+    // 与后端同严：平台改的是商家对买家的报价，改价历史公示给用户看，
+    // 一笔没有说明的平台改价解释不了
+    if (!reason?.trim()) fail("请说明改价原因", "A reason is required");
     const q = findQuote(quoteNo);
     if (price <= 0) fail("单价必须为正数", "The unit price must be positive");
     // ADR-003：不禁止改价，但每次留痕；改太多次本身就是信号，超阈即锁

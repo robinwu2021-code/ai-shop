@@ -1,0 +1,21 @@
+# 安装位置：/etc/logrotate.d/ai-shop
+#
+# 2026-09-14 盘满事故后的第三版。**只管运维类小日志**（备份、清理、巡检）：
+# 三个 Java 服务的日志已改由 logback 自己滚动、总量封顶（见 deploy/tencent/systemd/*.service），
+# 不能再让 logrotate 碰 —— 两个机制轮同一个文件会互相打架：logback 正要滚，logrotate 把它截了。
+#
+# 通配 /data/log/*/ops/：将来加业务，它自动覆盖，不用改这里。
+# 测试档留 7 份；转生产改成 90 天（rotate 90）。
+/data/log/*/ops/*.log {
+    su root root
+    daily
+    maxsize 20M
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    dateext
+    dateformat -%Y%m%d-%H%M%S
+}

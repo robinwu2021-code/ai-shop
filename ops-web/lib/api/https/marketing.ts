@@ -4,19 +4,34 @@ import type { MarketingApi } from "../contracts/marketing";
 
 export const marketingHttp: MarketingApi = {
   listCoupons: (q) => client.get("/ops/coupons", q),
-  setCouponStatus: (no, status) => client.post(`/ops/coupons/${no}/status`, { status }),
+  // 字段名对齐后端 CouponSaveCmd：name→title、threshold→thresholdMinor、
+  // budget→budgetMinor、validFrom/To→startAt/endAt
+  saveCoupon: (v) =>
+    client.post("/ops/coupons", {
+      couponNo: v.couponNo, title: v.name, type: v.type,
+      faceMinor: v.faceMinor, discountRate: v.discountRate, maxDiscountMinor: v.maxDiscountMinor,
+      thresholdMinor: v.threshold, totalCount: v.totalCount, perUserLimit: v.perUserLimit,
+      budgetMinor: v.budget, startAt: v.validFrom, endAt: v.validTo,
+    }),
+  setCouponStatus: (no, status, reason) =>
+    client.post(`/ops/coupons/${no}/status`, { status, reason }),
   setCouponBudget: (no, budget) => client.post(`/ops/coupons/${no}/budget`, { budget }),
-  issueCoupon: (v) => client.post(`/ops/coupons/${v.couponNo}/issue`, v),
+  issueCoupon: (v) =>
+    client.post(`/ops/coupons/${v.couponNo}/issue`, {
+      target: v.target, targetDesc: v.targetDesc, userNo: v.userNo, count: v.count,
+    }),
   listCouponIssues: (q) => client.get("/ops/coupon-issues", q),
   archiveCoupon: (no) => client.post(`/ops/coupons/${no}/archive`),
   unarchiveCoupon: (no) => client.post(`/ops/coupons/${no}/unarchive`),
 
   listCampaigns: (q) => client.get("/ops/campaigns", q),
-  saveCampaign: (v) => client.post("/ops/campaigns", v),
+  toggleCampaign: (no, running, reason) =>
+    client.post(`/ops/campaigns/${no}/toggle`, { running, reason }),
   archiveCampaign: (no) => client.post(`/ops/campaigns/${no}/archive`),
   unarchiveCampaign: (no) => client.post(`/ops/campaigns/${no}/unarchive`),
 
   listContentSlots: (q) => client.get("/ops/content-slots", q),
+  saveContentSlot: (v) => client.post("/ops/content-slots", v),
   setSlotEnabled: (no, enabled) => client.post(`/ops/content-slots/${no}/enabled`, { enabled }),
   setSlotSchedule: (no, onlineAt, offlineAt) => client.post(`/ops/content-slots/${no}/schedule`, { onlineAt, offlineAt }),
   archiveSlot: (no) => client.post(`/ops/content-slots/${no}/archive`),

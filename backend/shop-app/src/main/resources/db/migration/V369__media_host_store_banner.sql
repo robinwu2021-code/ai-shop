@@ -1,0 +1,11 @@
+-- 门店背景图（V368 新增的 mch_store.banner_url）跟上 V347 的域名迁移。
+--
+-- V347 把所有图片列从 COS 公网域名换成了规范地址 img.hxmall.top（ADR-026）。
+-- **新增图片列必须补一条同样的 UPDATE**：漏了的话那一列里的地址会一直直连 COS ——
+-- 流量费照旧，而且两端都不报错（图照样显示）。`MediaHostMigrationTest` 守着这件事。
+--
+-- V347 已应用，不能回去改它（改一个字符 checksum 就对不上，线上起不来），所以另起一条。
+-- 语义与 V347 逐字一致：只换完整前缀（含 https:// 与结尾的 /）；
+-- 没有 COS 地址的环境（本地、测试）是 0 行，无副作用。
+-- 反向迁移：把两个字面量对调再跑一遍。
+UPDATE mch_store SET banner_url = REPLACE(banner_url, 'https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/', 'https://img.hxmall.top/') WHERE banner_url LIKE '%https://hxmall-merchant-1301656997.cos.ap-guangzhou.myqcloud.com/%';

@@ -1,0 +1,157 @@
+<script setup lang="ts">
+// 人群（P3）：一组筛选条件，可命名保存、反复用。
+//
+// **存的是条件不是名单**。所以这一页显示的「{n} 人」永远带一句「算于 X」——
+// 那是上次算的结果，发券那一刻会重算。把它当成当前人数展示，
+// 商家就会照着一份两周前的名单做决定，而没有任何东西会提醒他名单旧了。
+//
+// 人群从会员列表「另存为人群」建，这一页只负责看、改名、删 ——
+// 条件在哪儿筛就在哪儿存，比在这里再做一遍筛选器少一半代码，也少一处口径。
+import { ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
+import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
+import type { MemberSegment, MemberTag } from "@shared/types";
+import { confirm, prompt } from "@ai-shop/ui/prompt";
+import { ROUTES } from "@/shared/nav";
+
+const { t } = useI18n();
+const merchant = useMerchantStore();
+
+const list = ref<MemberSegment[]>([]);
+const tags = ref<MemberTag[]>([]);
+const busy = ref(false);
+
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
+async function load() {
+  try {
+    const [sg, tg] = await Promise.all([
+      api.mMemberSegments(),
+      api.mMemberTags(),
+    ]);
+    list.value = sg;
+    tags.value = tg;
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
+}
+
+async function run(fn: () => Promise<unknown>) {
+  if (busy.value) return;
+  busy.value = true;
+  try {
+    await fn();
+    await load();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+/** 条件摘要：**标签显示名字**（存的是号），门店显示店名 —— 号对商家没有意义 */
+function summary(sg: MemberSegment) {
+  const parts: string[] = [];
+  if (sg.scopeStoreNo) parts.push(storeName(sg.scopeStoreNo));
+  if (sg.rule.level) parts.push(String(t(`members.level.${sg.rule.level}`)));
+  for (const no of sg.rule.tagNos ?? []) {
+    parts.push(tags.value.find((x) => x.tagNo === no)?.name ?? no);
+  }
+  return parts.length ? parts.join(" · ") : String(t("memberSegments.allMembers"));
+}
+
+function storeName(no: string) {
+  return merchant.stores.find((s) => s.storeNo === no)?.name || no;
+}
+
+function countedAt(ts?: number | null) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+async function rename(sg: MemberSegment) {
+  const input = await prompt({ title: String(t("memberSegments.rename")), value: sg.name });
+  const name = (input ?? "").trim();
+  if (!name || name === sg.name) return;
+  run(() => api.mSaveMemberSegment({
+    segmentNo: sg.segmentNo,
+    name,
+    scopeStoreNo: sg.scopeStoreNo ?? undefined,
+    rule: sg.rule,
+  }));
+}
+
+async function remove(sg: MemberSegment) {
+  if (await confirm({ title: String(t("memberSegments.removeTitle", { name: sg.name })), hint: String(t("memberSegments.removeBody")), danger: true })) {
+    run(() => api.mRemoveMemberSegment(sg.segmentNo));
+  }
+}
+
+/** 重算一次：条件原样存回去，服务端顺手把命中人数刷新 */
+function recount(sg: MemberSegment) {
+  run(() => api.mSaveMemberSegment({
+    segmentNo: sg.segmentNo,
+    name: sg.name,
+    scopeStoreNo: sg.scopeStoreNo ?? undefined,
+    rule: sg.rule,
+  }));
+}
+
+/** 详情：此刻人数（当场算，不是 lastCount）+ 用在哪（原型 m11） */
+function open(sg: MemberSegment) {
+  uni.navigateTo({ url: `${ROUTES.memberSegment}?segmentNo=${sg.segmentNo}` });
+}
+
+onShow(load);
+</script>
+
+<template>
+  <sh-scaffold title-key="memberSegments.title" :denied="!merchant.can('biz:customer')">
+    <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text="String($t('memberSegments.empty'))" :tip="String($t('memberSegments.emptyTip'))"></sh-empty>
+
+    <view v-for="sg in list" :key="sg.segmentNo" class="sh-card sh-mb-sm">
+      <view class="item__head sh-row sh-row--between sh-row--baseline">
+        <text class="txt-strong" @tap="open(sg)">{{ sg.name }} ›</text>
+        <text class="txt-caption sh-num count txt-primary">{{ $t("memberSegments.count", { n: sg.lastCount }) }}</text>
+      </view>
+      <text class="txt-caption sh-muted cond">{{ summary(sg) }}</text>
+      <!-- 「算于」不是装饰：它是这份数字唯一的保质期标记 -->
+      <text class="txt-caption sh-muted stamp">
+        {{ $t("memberSegments.countedAt", { t: countedAt(sg.countedAt) }) }}
+      </text>
+      <view class="acts">
+        <text class="sh-link" @tap="recount(sg)">{{ $t("memberSegments.recount") }}</text>
+        <text class="sh-link" @tap="rename(sg)">{{ $t("memberSegments.rename") }}</text>
+        <text class="sh-link" @tap="remove(sg)">{{ $t("memberSegments.remove") }}</text>
+      </view>
+    </view>
+
+    <text class="sh-hint sh-mt-md">{{ $t("memberSegments.ruleHint") }}</text>
+    <text class="sh-hint sh-mt-md">{{ $t("memberSegments.reachHint") }}</text>
+  </sh-scaffold>
+</template>
+
+<style scoped>
+.cond {
+  display: block;
+  margin-top: 8rpx;
+}
+.stamp {
+  display: block;
+  margin-top: 4rpx;
+}
+.acts {
+  display: flex;
+  gap: 24rpx;
+  margin-top: 16rpx;
+}
+</style>

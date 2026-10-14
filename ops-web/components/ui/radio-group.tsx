@@ -85,7 +85,7 @@ export function Radio({
       <RadioGroupItem id={inputId} value={value} disabled={disabled} className="mt-0.5" />
       <label
         htmlFor={inputId}
-        className={cn("select-none text-sm leading-tight", disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer")}
+        className={cn("select-none txt-body leading-tight", disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer")}
       >
         {label}
         {desc && <span className="mt-0.5 block txt-caption text-muted-foreground">{desc}</span>}

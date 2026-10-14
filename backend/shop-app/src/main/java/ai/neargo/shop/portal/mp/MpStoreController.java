@@ -1,19 +1,27 @@
 package ai.neargo.shop.portal.mp;
 
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.marketing.attribution.AttributionService;
 import ai.neargo.shop.marketing.attribution.dto.AttributionVO;
 import ai.neargo.shop.product.dto.FrequentItemVO;
 import ai.neargo.shop.product.dto.RebuyResultVO;
+import ai.neargo.shop.product.dto.ReorderResultVO;
 import ai.neargo.shop.product.dto.StoreHomeVO;
 import ai.neargo.shop.product.service.StoreService;
-import ai.neargo.shop.user.dto.MerchantVO;
+import ai.neargo.shop.merchant.service.StoreCodeService;
+import ai.neargo.shop.spi.user.StoreDirectoryPort;
+import ai.neargo.shop.user.dto.StoreCardVO;
+import ai.neargo.shop.user.service.MyStoreService;
 import ai.neargo.shop.user.service.StoreFavoriteService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -24,45 +32,234 @@ import java.util.List;
  * <p>主页与扫码进店**游客可访问**：扫码的人多数还没登录，
  * 要求先登录才能看店，这条路径就断在第一步。
  */
+@Profile("api")
 @RestController
 public class MpStoreController {
 
+    private static final java.util.logging.Logger LOG =
+            java.util.logging.Logger.getLogger(MpStoreController.class.getName());
+
     private final StoreService storeService;
     private final StoreFavoriteService favoriteService;
+    private final StoreCodeService storeCodeService;
     private final AttributionService attributionService;
+    private final ai.neargo.shop.marketing.visit.StoreVisitService storeVisitService;
+    private final ai.neargo.shop.merchant.service.AppointmentSlotService appointmentSlotService;
+    private final MyStoreService myStoreService;
+    private final StoreDirectoryPort storeDirectory;
 
     public MpStoreController(StoreService storeService, StoreFavoriteService favoriteService,
-                             AttributionService attributionService) {
+                             StoreCodeService storeCodeService,
+                             AttributionService attributionService,
+                             ai.neargo.shop.marketing.visit.StoreVisitService storeVisitService,
+                             ai.neargo.shop.merchant.service.AppointmentSlotService appointmentSlotService,
+                             MyStoreService myStoreService, StoreDirectoryPort storeDirectory) {
         this.storeService = storeService;
         this.favoriteService = favoriteService;
+        this.storeCodeService = storeCodeService;
         this.attributionService = attributionService;
+        this.storeVisitService = storeVisitService;
+        this.appointmentSlotService = appointmentSlotService;
+        this.myStoreService = myStoreService;
+        this.storeDirectory = storeDirectory;
     }
 
+    /**
+     * 我的店：成交过的门店 + 近期逛过的门店，<b>以门店为单位</b>（TDD-C端门店化与门店门户 §2.3）。
+     *
+     * <p>此前这条回的是收藏的<b>主体</b>，而且没有任何页面调用它 —— 收藏另有
+     * {@code /mp/favorite/store}。门店化之后它改回「常去」这层本来的意思。
+     */
     @GetMapping("/mp/store/mine")
-    public List<MerchantVO.Brief> myStores() {
-        return favoriteService.myStores();
+    public List<StoreCardVO> myStores(@RequestParam(required = false) Integer latE6,
+                                      @RequestParam(required = false) Integer lngE6) {
+        // 游客回空列表而不是 401：店铺页上半截对游客就是空的，下半截「附近」照常
+        return myStoreService.mine(SecurityUtils.currentUserNoOrNull(), latE6, lngE6);
     }
 
+    /**
+     * 附近的门店：能卖到当前社区、营业中，<b>去掉已在「我的店」里的</b>。
+     * 游客可访问 —— 没登录的人也要能逛到店。有坐标按距离，没坐标按评分。
+     */
+    @GetMapping("/mp/store/nearby")
+    public PageData<StoreCardVO> nearby(@RequestParam(required = false) Integer latE6,
+                                        @RequestParam(required = false) Integer lngE6,
+                                        @RequestParam(required = false) String communityNo,
+                                        @RequestParam(required = false) String keyword,
+                                        @RequestParam(defaultValue = "1") long page,
+                                        @RequestParam(defaultValue = "20") long size) {
+        return myStoreService.nearby(SecurityUtils.currentUserNoOrNull(), latE6, lngE6,
+                communityNo, keyword, page, Math.min(Math.max(size, 1), 50));
+    }
+
+    /**
+     * 扫码落地。<b>游客可访问</b>，并且**在这里记获客漏斗的第一层**。
+     *
+     * <p>为什么埋点挂在这条而不是 {@code /enter}：{@code enter} 要求登录，
+     * 而扫码的人多数还没登录 —— 挂在那儿的话「扫了码但还没注册的人」恒为 0，
+     * 也就是漏斗最宽的那一层永远是空的，而这正是「这批贴纸有没有用」的答案。
+     *
+     * <p>埋点<b>不影响本接口的成败</b>：{@code record} 内部吞掉一切异常。
+     * 商家印出去的贴纸不能因为一次埋点写失败就扫不进来。
+     */
     @GetMapping("/mp/store/by-code")
-    public StoreHomeVO byCode(@RequestParam String storeCode) {
-        String merchantNo = favoriteService.resolveStoreCode(storeCode);
-        return storeService.home(merchantNo, SecurityUtils.currentUserNoOrNull(),
-                favoriteService.isFavorited(merchantNo));
+    public StoreHomeVO byCode(@RequestParam String storeCode,
+                              @RequestParam(required = false) String deviceId,
+                              jakarta.servlet.http.HttpServletRequest request) {
+        // V298：码带得出是哪家分店了。此前这里恒传 null，mkt_store_visit.store_no 一直是空的
+        var target = storeCodeService.resolveTarget(storeCode);
+        String merchantNo = target.entityNo();
+        storeVisitService.record(new ai.neargo.shop.marketing.visit.StoreVisitService.Visit(
+                merchantNo, storeCode, target.storeNo(),
+                // 为空就是匿名访客 —— 那是要测的一层，不是缺失
+                SecurityUtils.currentUserNoOrNull(), deviceId,
+                clientIp(request), uaHash(request)));
+        /*
+         * **归因也在这里写**（漏斗第二环）。
+         *
+         * 此前它只挂在 {@code /enter} 上，而<b>没有任何端调用过 /enter</b> ——
+         * 于是「进店 / 首次归因 / 首单」三环在生产里恒为 0，看板上一片零，
+         * 却看不出是「没人来」还是「没人记」。
+         *
+         * 放在这条而不是让端上再发一次：storeCode 只有服务端解得开，
+         * 端上多一次请求就多一个「忘了调」的机会 —— 而这正是它坏掉的原因。
+         *
+         * 未登录就跳过：归因必须挂在具体的人身上。那部分人已经被上面的
+         * 匿名扫码埋点记下了，是漏斗最宽的那一层。
+         */
+        String userNo = SecurityUtils.currentUserNoOrNull();
+        if (userNo != null && !userNo.isBlank()) {
+            try {
+                attributionService.report(userNo,
+                        new ai.neargo.shop.marketing.attribution.AttributionService.Clue(
+                                // 门店号一路带进归因 —— 看板的后三环靠它才拆得开到分店
+                                merchantNo, null, null, target.storeNo()));
+            } catch (RuntimeException e) {
+                // 与埋点同一条理由：归因失败不能让贴纸扫不进来
+                LOG.log(java.util.logging.Level.WARNING, "扫码归因失败：" + storeCode, e);
+            }
+        }
+        // 码解得出分店就进那家店的门户；解不出（历史主体级码）按主体号走前缀分派
+        return portalOf(target.storeNo() != null && !target.storeNo().isBlank() ? target.storeNo() : merchantNo,
+                userNo, null, null);
     }
 
-    @GetMapping("/mp/store/{merchantNo}")
-    public StoreHomeVO home(@PathVariable String merchantNo) {
-        return storeService.home(merchantNo, SecurityUtils.currentUserNoOrNull(),
-                favoriteService.isFavorited(merchantNo));
+    /**
+     * 门户的统一出口：按编号前缀解析成门店，以门店为根组装；
+     * 主体号解不出门店（主体一家店都没有）时退回改造前的主体主页 —— 老链接不能从能进变成 404。
+     */
+    private StoreHomeVO portalOf(String no, String userNo, Integer latE6, Integer lngE6) {
+        var store = storeDirectory.resolve(no);
+        if (store.isPresent()) {
+            var s = store.get();
+            return storeService.homeOfStore(s, userNo, favoriteService.isFavorited(s.entityNo()), latE6, lngE6);
+        }
+        if (no.startsWith("M")) {
+            return storeService.home(no, userNo, favoriteService.isFavorited(no));
+        }
+        throw BizException.of(ErrorCode.NOT_FOUND);
     }
 
-    /** 进店埋点 + 归因。需要登录 —— 归因必须挂在具体的人身上。 */
-    @PostMapping("/mp/store/{merchantNo}/enter")
-    public AttributionVO enter(@PathVariable String merchantNo, @RequestBody(required = false) EnterReq req) {
-        return attributionService.report(SecurityUtils.currentUserNo(),
-                new AttributionService.Clue(merchantNo,
-                        req == null ? null : req.inviterNo(),
-                        req == null ? null : req.channel()));
+    /** 门户里的读都先把编号解析成门店；解不出就是 404（主体号也要落得到一家店） */
+    private StoreDirectoryPort.StoreCard storeOf(String no) {
+        return storeDirectory.resolve(no).orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
+    }
+
+    /** 取值是 web 层的事（领域服务不碰 web 运行时，ArchitectureTest 拦这条）。 */
+    private static String clientIp(jakarta.servlet.http.HttpServletRequest request) {
+        if (request == null) {
+            return null;
+        }
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            int comma = xff.indexOf(',');
+            return (comma > 0 ? xff.substring(0, comma) : xff).trim();
+        }
+        return request.getRemoteAddr();
+    }
+
+    /** 只留摘要：UA 原文可用于指纹，属个人信息，没有留存的理由。 */
+    private static String uaHash(jakarta.servlet.http.HttpServletRequest request) {
+        String ua = request == null ? null : request.getHeader("User-Agent");
+        if (ua == null || ua.isBlank()) {
+            return null;
+        }
+        return Integer.toHexString(ua.hashCode());
+    }
+
+    /**
+     * 门店门户。{@code no} 按前缀分派：门店号（ST…）直接进；主体号（M…，老分享 / 旧版小程序）
+     * 落到它的默认营业门店。暂停营业的店照样回，{@code closed=true} 并给同主体最近的营业店。
+     */
+    @GetMapping("/mp/store/{no}")
+    public StoreHomeVO home(@PathVariable String no,
+                            @RequestParam(required = false) Integer latE6,
+                            @RequestParam(required = false) Integer lngE6) {
+        return portalOf(no, SecurityUtils.currentUserNoOrNull(), latE6, lngE6);
+    }
+
+    /**
+     * 门户的商品列表：<b>本店在售</b>的（店级上架语义，TDD §2.7）。
+     *
+     * <p>不给 {@code /mp/goods} 加 storeNo：那是跨店目录，一条端点两种可见性口径迟早分岔；
+     * 门户的读都挂在 {@code /mp/store/{no}/} 下，前缀分派只写一处。
+     *
+     * @param categoryNo 货架类目（门户左栏，取自 {@code StoreHomeVO.categories}）
+     */
+    @GetMapping("/mp/store/{no}/goods")
+    public PageData<ai.neargo.shop.product.dto.GoodsVO> goods(@PathVariable String no,
+                                                              @RequestParam(required = false) String categoryNo,
+                                                              @RequestParam(required = false) String keyword,
+                                                              @RequestParam(defaultValue = "1") long page,
+                                                              @RequestParam(defaultValue = "20") long size) {
+        return storeService.goodsOfStore(storeOf(no), categoryNo, keyword, page, Math.min(Math.max(size, 1), 50));
+    }
+
+    /**
+     * 这家店的小程序码（海报用）。一店一码、生成一次落库复用（{@code StoreCodeService#acodeBase64}）；
+     * 码里不带邀请人（§7.3 已定：带了就是一人一码，额度烧穿）。
+     *
+     * <p>通道未开启或生成失败时 {@code imageBase64} 为 null —— 端上画一张不带码的海报。
+     */
+    @GetMapping("/mp/store/{no}/acode")
+    public StoreAcodeVO acode(@PathVariable String no) {
+        var s = storeOf(no);
+        return new StoreAcodeVO(s.storeNo(), s.storeName(), storeCodeService.acodeBase64(s.entityNo(), s.storeNo()));
+    }
+
+    /** @param imageBase64 小程序码 PNG 的 base64（不含 data: 前缀）；通道未开启时为 null */
+    public record StoreAcodeVO(String storeNo, String storeName, String imageBase64) {
+    }
+
+    /**
+     * 进店：归因 + 记进「我的店」。需要登录 —— 两样都必须挂在具体的人身上。
+     *
+     * <p>{@code no} 按前缀分派（{@link StoreDirectoryPort#resolve}）：门店号直接进，
+     * 主体号（老分享、旧版小程序）落到该主体的默认门店。这样老链接进来的人
+     * 也会在「我的店」里留下一家<b>具体的店</b>，而不是一个主体。
+     *
+     * <p>{@code source} 决定这家店「怎么进入他的列表」，只在第一次写入时定；
+     * 不认识的来源按 LIST 记（不猜成分享 —— 分享的计数是给商家看的回报）。
+     */
+    @PostMapping("/mp/store/{no}/enter")
+    public AttributionVO enter(@PathVariable String no, @RequestBody(required = false) EnterReq req) {
+        String userNo = SecurityUtils.currentUserNo();
+        String inviterNo = req == null ? null : req.inviterNo();
+        String channel = req == null ? null : req.channel();
+        var store = storeDirectory.resolve(no);
+        if (store.isEmpty()) {
+            // 主体号解不出门店（主体还没建店、或店全删了）：照旧只记归因 ——
+            // 这是改造前的全部行为，老链接不能因为门店化而从「能进」变成 404
+            if (no.startsWith("M")) {
+                return attributionService.report(userNo, new AttributionService.Clue(no, inviterNo, channel));
+            }
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        var s = store.get();
+        myStoreService.recordView(userNo, s.storeNo(), s.entityNo(),
+                req == null ? null : req.source(), inviterNo);
+        return attributionService.report(userNo,
+                new AttributionService.Clue(s.entityNo(), inviterNo, channel, s.storeNo()));
     }
 
     @PostMapping("/mp/attribution/report")
@@ -71,24 +268,58 @@ public class MpStoreController {
                 new AttributionService.Clue(req.merchantNo(), req.inviterNo(), req.channel()));
     }
 
-    @GetMapping("/mp/store/{merchantNo}/frequent")
-    public List<FrequentItemVO> frequent(@PathVariable String merchantNo) {
-        return storeService.frequentItems(merchantNo);
+    /**
+     * 我常买。按<b>主体</b>聚合：同一品牌几家店买过的货都算「常买」—— 商品定义本来就在主体级。
+     * {@code no} 可以是门店号（新门户）或主体号（旧版）。
+     */
+    @GetMapping("/mp/store/{no}/frequent")
+    public List<FrequentItemVO> frequent(@PathVariable String no) {
+        return storeService.frequentItems(no.startsWith("ST") ? storeOf(no).entityNo() : no);
     }
 
-    @PostMapping("/mp/store/{merchantNo}/rebuy")
-    public RebuyResultVO rebuy(@PathVariable String merchantNo) {
-        return storeService.rebuy(merchantNo);
+    /** 把「我常买」一键加进购物车。{@code no} 与 frequent 同一口径 */
+    @PostMapping("/mp/store/{no}/rebuy")
+    public RebuyResultVO rebuy(@PathVariable String no) {
+        return storeService.rebuy(no.startsWith("ST") ? storeOf(no).entityNo() : no);
     }
 
-    @PostMapping("/mp/store/{merchantNo}/favorite")
-    public List<MerchantVO.Brief> toggleFavorite(@PathVariable String merchantNo) {
-        return favoriteService.toggle(merchantNo);
+    /**
+     * 一键再来一单：<b>整单</b>复制到购物车。
+     * 与上面的 rebuy 不是一回事 —— 那个复制「这家店我常买的」，这个复制「这一单买过的」。
+     */
+    @PostMapping("/mp/order/{orderNo}/reorder")
+    public ReorderResultVO reorderFrom(@PathVariable String orderNo) {
+        return storeService.reorderFrom(orderNo);
     }
 
-    public record EnterReq(String storeCode, String inviterNo, String channel) {
+    // 收藏本店挪到 MpFavoriteController 的 POST /mp/favorite/store/{merchantNo}：
+    // 这里原先回的是「收藏列表」，端上一直当布尔用（数组恒真 —— 点取消也提示已收藏）。
+
+    /**
+     * @param source 进店入口：SHARE / SCAN / LIST / SEARCH / GOODS（{@code UsrStoreView.SOURCES}）
+     */
+    public record EnterReq(String storeCode, String inviterNo, String channel, String source) {
     }
 
     public record AttributionReportReq(String merchantNo, String inviterNo, String channel) {
+    }
+
+    // ---------------------------------------------------------------- 预约时段
+
+    /**
+     * 这家店还约得上的时段。
+     *
+     * <p><b>只列可约且没满的</b>：买家看见一个约不上的档只会去点它，然后拿到一句错误。
+     * 商家侧的接口相反 —— 那边要连约满的和停掉的一起看，否则不知道
+     * 「没人约」是「没开时段」还是「开的都满了」。
+     *
+     * <p>⚠️ 列表只是**那一刻**的快照，不是承诺。真正的判定在下单那条带条件的
+     * UPDATE 里 —— 两个人同时看到同一个「剩 1」，只有一个抢得到。
+     */
+    @GetMapping("/mp/stores/{storeNo}/appointment-slots")
+    public java.util.List<ai.neargo.shop.merchant.service.AppointmentSlotService.SlotVO> appointmentSlots(
+            @PathVariable String storeNo,
+            @RequestParam long from, @RequestParam long to) {
+        return appointmentSlotService.list(storeNo, from, to, true);
     }
 }

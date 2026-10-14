@@ -2,6 +2,7 @@
 // **目录质量**（en/zh key 齐平、英文里不许残留汉字）。
 // 后者是必要的：缺 key 会静默回退成中文，界面上只是"某几处还是中文"，很难被发现。
 import { describe, expect, it } from "vitest";
+import { MERCHANT_TRANSITIONS } from "@/lib/types";
 import { zh } from "./messages/zh";
 import { en } from "./messages/en";
 import { DIR, LOCALES, LOCALE_TAG, translate } from "./index";
@@ -45,8 +46,14 @@ describe("translate 行为", () => {
   it("未知 key 原样返回，便于一眼看出漏配", () =>
     expect(translate("zh", "no.such.key")).toBe("no.such.key"));
   it("枚举文案齐全：状态机的每个值都有文案", () => {
-    for (const s of ["DRAFT", "SUBMITTED", "REVIEWING", "APPROVED", "REJECTED", "SUSPENDED"]) {
+    /*
+     * 取值直接来自类型定义，不再手抄一份 —— 手抄的那份此前还停在旧模型上
+     * （DRAFT/SUBMITTED/REVIEWING/APPROVED…那是**审核状态**，已经搬到申请单上了），
+     * 于是模型改完之后，这条守卫守的是一个不存在的枚举。
+     */
+    for (const s of Object.keys(MERCHANT_TRANSITIONS)) {
       expect(translate("zh", `merchantStatus.${s}`)).not.toBe(`merchantStatus.${s}`);
+      expect(translate("en", `merchantStatus.${s}`)).not.toBe(`merchantStatus.${s}`);
     }
   });
 });

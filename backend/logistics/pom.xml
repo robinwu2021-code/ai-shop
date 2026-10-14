@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <artifactId>logistics-modules</artifactId>
+    <packaging>pom</packaging>
+    <description>物流域模块的聚合 pom（目录分组，不是第二个父工程）。见 ADR-032 / TDD-物流模块</description>
+    <modules>
+        <module>logistics-domain</module>
+        <module>logistics-channel</module>
+    </modules>
+</project>

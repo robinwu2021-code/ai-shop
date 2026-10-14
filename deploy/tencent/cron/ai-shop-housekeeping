@@ -1,0 +1,4 @@
+# 安装位置：/etc/cron.d/ai-shop-housekeeping
+# 每天 04:10 清理非日志累积物；脚本与规则见 deploy/tencent/housekeeping.sh
+# **现在是只列清单模式**（2026-09-14 起先跑一周）。对过 housekeeping.log 里的清单，再在命令前加 APPLY=1 开删除。
+10 4 * * * root /data/app/ai-shop/ops/housekeeping.sh >> /data/log/ai-shop/ops/housekeeping.log 2>&1

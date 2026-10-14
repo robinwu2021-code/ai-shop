@@ -1,0 +1,86 @@
+// 平台下发的运行时配置（`GET /mp/config/bootstrap`）。
+//
+// **此前端上一次都没调过这条端点** —— 后端在发、运营端能改，而 C 端拿到的
+// 只有编译期常量（`FEATURES`）。于是「运营后台改一下开关」对买家侧的任何行为都不成立，
+// 要改只能重新发版；小程序还要重新提审。
+//
+// 现在有一条开关真的需要它：`merchant.apply.mp-visible`（小程序显不显示入驻入口）——
+// 那是一条会影响审核的入口，被驳回时要能**立刻关掉止血**，而不是等一个新版本。
+import { defineStore } from "pinia";
+import { api } from "@/api";
+import { wxKfConfigured } from "@shared/ports";
+
+export const useConfigStore = defineStore("config", {
+  state: () => ({
+    /** 平台开关。yml 与运营端那一屏在后端已经合流，端上只认这一份 */
+    features: {} as Record<string, boolean>,
+    /**
+     * 商家版 App 的下载地址，按平台各一条（后端下发）。
+     * **空的那一档端上不显示** —— iOS 还在苹果审核队列里，现在就是空的。
+     *
+     * `androidVersion` 是后端从版本清单（`/dl/latest.json`）读的最新版本号。
+     * **不要在端上再写一份** —— 版本号此前写死在三处，每处都要手工跟，
+     * 于是每处都会掉队：服务器那处停在 0.4.98，而官网已经 0.5.21，
+     * 而掉队时下载照样 200、照样装得上，只是功能旧。
+     */
+    merchantApp: { android: "", ios: "", androidVersion: "" },
+    /**
+     * 微信客服的接入参数（后端下发，TDD-微信客服接入）。
+     *
+     * **两个都有才算配好** —— 缺一个就回落到小程序原生的 `open-type="contact"`，
+     * 因为拿半截参数去调 `wx.openCustomerServiceChat` 失败是**静默**的，
+     * 界面上与「压根没配」长得一模一样。
+     *
+     * 它必须随冷启动一起拿到：这个 API 在 iOS 上要求由用户手势**直接**触发，
+     * 点的时候现拉配置会被判「并非点击触发」——而 Android 能过，
+     * 于是这个坑只在 iOS 真机上现形。
+     */
+    customerService: { corpId: "", url: "" },
+    loaded: false,
+  }),
+
+  getters: {
+    /**
+     * 开关取值。**拿不到配置时按 `def` 走** ——
+     * 一次网络抖动不该把功能悄悄关掉，也不该把该藏的东西放出来：
+     * 由调用方按这一条开关的性质决定失败方向。
+     */
+    flag: (s) => (key: string, def = false) => (key in s.features ? s.features[key]! : def),
+
+    /**
+     * 微信客服配齐了没有。判断本身在 `@shared/ports/kf` 里 ——
+     * 「两个都要有」这条规则只该有一处实现，端上与将来的 B 端共用同一把尺。
+     */
+    wxKfReady: (s) => wxKfConfigured(s.customerService),
+  },
+
+  actions: {
+    /**
+     * 冷启动拉一次。**失败不抛** —— 配置是锦上添花，不能让它把启动挡住。
+     *
+     * <p>只拉一次：这份配置在一次会话里不会变，而 App 的进程比一次页面加载活得久
+     * （`ensure*` 那类「拉过没有」的判断在 App 上等于整段会话都用同一份）。
+     * 运营改了开关要下一次冷启动才生效 —— 这是可接受的：止血的量级是分钟，不是秒。
+     */
+    async load() {
+      if (this.loaded) return;
+      try {
+        const c = await api.bootstrapConfig();
+        this.features = c?.features ?? {};
+        this.merchantApp = {
+          android: c?.merchantApp?.android ?? "",
+          ios: c?.merchantApp?.ios ?? "",
+          // 后端从版本清单读的。取不到就是空串 —— 那时不显示版本号，而不是显示一个猜的值
+          androidVersion: c?.merchantApp?.androidVersion ?? "",
+        };
+        this.customerService = {
+          corpId: c?.customerService?.corpId ?? "",
+          url: c?.customerService?.url ?? "",
+        };
+        this.loaded = true;
+      } catch {
+        // 拿不到就保持空表，调用方拿到的是各自的默认值
+      }
+    },
+  },
+});

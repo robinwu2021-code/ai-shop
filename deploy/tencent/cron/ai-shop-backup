@@ -1,0 +1,3 @@
+# 安装位置：/etc/cron.d/ai-shop-backup（此前只存在于服务器上，2026-09-14 收进仓库）
+# 每天 03:20 备份数据库并传 COS；脚本见 deploy/tencent/backup-to-cos.sh
+20 3 * * * root /data/app/ai-shop/ops/backup-to-cos.sh >> /data/log/ai-shop/ops/backup.log 2>&1

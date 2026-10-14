@@ -1,0 +1,10 @@
+# `ExpressPickupFlowTest` 的独立内存库。
+#
+# 那个类用 `@TestConfiguration` 换掉快递通道（桩 → 假通道），于是它是**另一个 Spring 上下文**。
+# 共用 testcfg 的 `jdbc:h2:mem:shop` 的话，`schema-test.sql` 会在同一个库上再跑一遍并撞主键 ——
+# 单独跑绿、全量红（2026-09-28 在 HEAD 全量里撞上过，理由同 application-estatecache.yml）。
+#
+# 排在 @ActiveProfiles 的最后一位才能盖住 testcfg 的 url。
+spring:
+  datasource:
+    url: jdbc:h2:mem:shop_expresspickup;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1

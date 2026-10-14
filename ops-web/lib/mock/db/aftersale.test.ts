@@ -1,9 +1,7 @@
-// 售后规则测试（P-6.1）。最关键的一条是**跨域校验**：退款不能超过订单实付。
+// 售后规则测试（P-6.1）。
 import { beforeEach, describe, expect, it } from "vitest";
 import { afterSaleMock } from "@/lib/api/mocks/aftersale";
-import { LIABILITY_SHARE_TOTAL } from "@/lib/constants";
 import { afterSales, fastRefundRule } from "./aftersale";
-import { orders } from "./order";
 
 const A0 = JSON.parse(JSON.stringify(afterSales)) as typeof afterSales;
 const R0 = { ...fastRefundRule };
@@ -12,62 +10,33 @@ beforeEach(() => {
   Object.assign(fastRefundRule, R0);
 });
 
-const share100 = { platform: 0, merchant: 100, pickup: 0 };
-
 describe("平台介入裁决（P-6.1.3 / 6.1.4）", () => {
-  it("退款金额不得超过订单实付（跨域查订单）", async () => {
-    const order = orders.find((o) => o.orderNo === "SO2026080506")!;
+  it("只能裁决已上升到平台的单", async () => {
+    // AS9002 是 APPLIED —— 球还在商家手里，平台不能替他做决定
     await expect(
-      afterSaleMock.decideAfterSale({
-        asNo: "AS9001", liability: "MERCHANT", share: share100,
-        verdict: "坏果属实", amount: order.payAmount + 1,
-      }),
-    ).rejects.toThrow(/不得超过订单实付/);
-  });
-
-  it("赔付比例之和必须为 100", async () => {
-    await expect(
-      afterSaleMock.decideAfterSale({
-        asNo: "AS9001", liability: "MERCHANT",
-        share: { platform: 30, merchant: 30, pickup: 30 },
-        verdict: "坏果属实", amount: 2_290,
-      }),
-    ).rejects.toThrow(new RegExp(String(LIABILITY_SHARE_TOTAL)));
+      afterSaleMock.decideAfterSale({ afterSaleNo: "AS9002", refund: true, liability: "MERCHANT", verdict: "坏果属实" }),
+    ).rejects.toThrow(/已上升到平台/);
   });
 
   it("裁决说明必填", async () => {
     await expect(
-      afterSaleMock.decideAfterSale({ asNo: "AS9001", liability: "MERCHANT", share: share100, verdict: "  ", amount: 2_290 }),
+      afterSaleMock.decideAfterSale({ afterSaleNo: "AS9001", refund: true, liability: "MERCHANT", verdict: "  " }),
     ).rejects.toThrow(/裁决说明/);
   });
 
-  it("合法裁决落库：责任、比例、金额、状态，并打上分账待办标记", async () => {
+  it("支持退款：状态推进到 REFUNDING", async () => {
     const a = await afterSaleMock.decideAfterSale({
-      asNo: "AS9001", liability: "MERCHANT", share: share100,
-      verdict: "坏果 2 个属实，按商品单价全额退", amount: 2_290,
+      afterSaleNo: "AS9001", refund: true, liability: "MERCHANT", verdict: "坏果 2 个属实，按商品单价全额退",
     });
-    expect(a.status).toBe("AGREED");
+    expect(a.status).toBe("REFUNDING");
     expect(a.liability).toBe("MERCHANT");
-    expect(a.share).toEqual(share100);
-    // E4 未接：必须留标记而不是假装已完成
-    expect(a.refundSplitPending).toBe(true);
   });
 
-  it("已退款的单不能再裁决", async () => {
-    await expect(
-      afterSaleMock.decideAfterSale({ asNo: "AS9005", liability: "PLATFORM", share: { platform: 100, merchant: 0, pickup: 0 }, verdict: "重判", amount: 100 }),
-    ).rejects.toThrow(/已结束/);
-  });
-});
-
-describe("状态机", () => {
-  it("驳回不是终点 —— 用户可把争议上升到平台", async () => {
-    const a = await afterSaleMock.setAfterSaleStatus("AS9004", "PLATFORM_INTERVENE");
-    expect(a.status).toBe("PLATFORM_INTERVENE");
-  });
-
-  it("不能从申请直接跳到已退款", async () => {
-    await expect(afterSaleMock.setAfterSaleStatus("AS9002", "REFUNDED")).rejects.toThrow(/不允许/);
+  it("维持商家决定：状态推进到 CLOSED", async () => {
+    const a = await afterSaleMock.decideAfterSale({
+      afterSaleNo: "AS9001", refund: false, liability: "MERCHANT", verdict: "证据不足，维持商家驳回",
+    });
+    expect(a.status).toBe("CLOSED");
   });
 });
 
@@ -75,24 +44,38 @@ describe("平台介入队列与极速退阈值", () => {
   it("intervene=1 只出平台介入的单", async () => {
     const page = await afterSaleMock.listAfterSales({ intervene: "1", size: 100 });
     expect(page.records.length).toBeGreaterThan(0);
-    expect(page.records.every((a) => a.status === "PLATFORM_INTERVENE")).toBe(true);
+    expect(page.records.every((a) => a.status === "ARBITRATING")).toBe(true);
   });
 
   it("金额上限必须大于 0", async () => {
     await expect(
-      afterSaleMock.saveFastRefundRule({ enabled: true, maxAmount: 0, withinHours: 24, categories: [] }),
+      afterSaleMock.saveFastRefundRule({ enabled: true, maxAmount: 0, withinHours: 24, categories: [], replyHours: 48, shipBackDays: 7, confirmHours: 48, interveneWorkDays: 5 }),
     ).rejects.toThrow(/大于 0/);
   });
 
   it("时限不能为 0（等于关掉极速退，但开关还显示已启用）", async () => {
     await expect(
-      afterSaleMock.saveFastRefundRule({ enabled: true, maxAmount: 2000, withinHours: 0, categories: [] }),
+      afterSaleMock.saveFastRefundRule({ enabled: true, maxAmount: 2000, withinHours: 0, categories: [], replyHours: 48, shipBackDays: 7, confirmHours: 48, interveneWorkDays: 5 }),
     ).rejects.toThrow(/时限/);
   });
 
   it("合法配置落库", async () => {
-    await afterSaleMock.saveFastRefundRule({ enabled: false, maxAmount: 5_000, withinHours: 48, categories: ["FRESH"] });
+    await afterSaleMock.saveFastRefundRule({
+      enabled: false, maxAmount: 5_000, withinHours: 48, categories: ["FRESH"],
+      replyHours: 24, shipBackDays: 10, confirmHours: 72, interveneWorkDays: 3,
+    });
     const r = await afterSaleMock.getFastRefundRule();
     expect(r).toMatchObject({ enabled: false, maxAmount: 5_000, withinHours: 48 });
+    // 时限也要真的落下去 —— 它们决定沉默多久之后由系统替人做决定
+    expect(r).toMatchObject({ replyHours: 24, shipBackDays: 10, confirmHours: 72, interveneWorkDays: 3 });
+  });
+
+  it("时限为 0 被拒 —— replyHours=0 等于每笔申请下一分钟就自动同意", async () => {
+    await expect(
+      afterSaleMock.saveFastRefundRule({
+        enabled: true, maxAmount: 2_000, withinHours: 24, categories: [],
+        replyHours: 0, shipBackDays: 7, confirmHours: 48, interveneWorkDays: 5,
+      }),
+    ).rejects.toThrow(/replyHours/);
   });
 });

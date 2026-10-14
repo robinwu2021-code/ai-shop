@@ -1,0 +1,113 @@
+package ai.neargo.shop.product.service;
+
+import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.product.dto.GoodsVO;
+
+/** 商品读（[API 清单 §2.3]）。游客可访问。 */
+public interface GoodsService {
+
+    /**
+     * 商品列表。同一个端点承担四种场景，靠参数区分：
+     * 首页按社区逛（{@code communityNo}）、频道（{@code type}）、搜索（{@code keyword}）、
+     * <b>店内搜索（{@code merchantNo}）</b> —— 最后一种是门店主页的店内搜索（C-ST-06），
+     * 复用同一端点是刻意的：店内店外必须是同一份数据同一个价。
+     */
+    PageData<GoodsVO> list(GoodsQuery query);
+
+    GoodsVO detail(String goodsNo);
+
+    /**
+     * 买家侧的商品详情：{@link #detail} 再补上<b>销售范围</b>那一行。
+     *
+     * <p><b>为什么另开一个方法而不是塞进 {@code detail}：</b> 商家端与运营端的单件详情
+     * 也走 {@code detail}，而他们不要这一行（店主在门店设置里看自己的经营范围）。
+     * 塞进去的代价不只是一次白查 —— 范围要读 {@code mch_entity}，
+     * 而运营端的查询路径一律不许绕过数据域（G1 守卫），
+     * 于是 {@code GET /ops/goods/\{no\}} 会凭空多出一处越权，且不报错。
+     */
+    GoodsVO detailForBuyer(String goodsNo);
+
+    /**
+     * 买家侧详情，**带门店口径**（TDD-C端商品归属门店与库存校验 AC7）。
+     *
+     * @param storeNo 这件货在哪家店看的。空 = 没有门店上下文，与 {@link #detailForBuyer(String)} 等价 ——
+     *                单店商家与「没有店级行」的商品走的都是这一支
+     */
+    GoodsVO detailForBuyer(String goodsNo, String storeNo);
+
+    /**
+     * 这件商品卖不卖到这个社区（TDD-C端商品收藏与送达判断 AC5 / AC6）。
+     *
+     * <p>判据与首页列表同一份（{@code GoodsVisibility}）—— 首页在这个社区看得到它，
+     * 这里就说卖得到；两处各判一次迟早对不上。
+     *
+     * @param communityNo 收货地址推出来的社区。<b>空 = 不判，返回 null</b>：
+     *                    端上只有模糊定位时不传（只准到区，拿它判会误拦）
+     */
+    Boolean deliverableTo(String goodsNo, String communityNo);
+
+    /** 同上，带消费者坐标（ADR-034）：有坐标才判得出「在不在商家画的那片配送范围里」 */
+    Boolean deliverableTo(String goodsNo, String communityNo, Integer latE6, Integer lngE6);
+
+    /**
+     * 批量取详情，{@code goodsNo → GoodsVO}。查不到的编号不出现在返回里。
+     *
+     * <p><b>为列表页而加</b>：商家侧列表原先是逐行调 {@link #detail}，而那一条每次都会
+     * 重新查商品、查 SKU、查商家、查限时特价 —— 一页 20 条就是 80 次往返，
+     * 再加上门店库存投影接近 100 次。同一个类里的 {@code listForOps} 一直是批量写法，
+     * 两种写法并存，说明不是不会写，是这条路径没被重看过。
+     *
+     * <p>返回 Map 而不是 List：调用方要按分页顺序组装，拿 List 还得自己转一次。
+     */
+    java.util.Map<String, GoodsVO> detailAll(java.util.List<String> goodsNos);
+
+    /**
+     * 推荐商品（运营位）。<b>运营意图，不是销量事实</b> ——
+     * 社区里 SKU 只有几十个，按销量自动排出来的「热卖」和「全部商品」几乎是同一个列表。
+     *
+     * <p>一期还没有运营后台，用销量兜底；接上配置时只换这里的实现，端上不动。
+     * 刻意与主商品流<b>不同序</b>（主流按距离，这里按销量），否则两处内容会完全重合。
+     */
+    java.util.List<GoodsVO> promoted(String communityNo, String regionCode, Integer size);
+
+    /** 同上，带消费者坐标（ADR-034）：首页推荐楼层与目录用同一条可见性判定 */
+    java.util.List<GoodsVO> promoted(String communityNo, String regionCode, Integer size,
+                                     Integer latE6, Integer lngE6);
+
+    /** 规格选中后的实时价格与库存（C-PD-04）。下单前的最后一次校准。 */
+    ai.neargo.shop.product.dto.SkuPriceVO skuPrice(String goodsNo, String skuNo);
+
+    /** 搜索联想（C-SR-02）。返回商品标题片段，不是商品本身。 */
+    java.util.List<String> suggest(String keyword);
+
+    /** 热搜词（C-SR-04）。 */
+    java.util.List<String> hotWords();
+
+    /**
+     * @param communityNo 精确定位落到的聚落。有它就按它筛，{@code regionCode} 不再参与
+     * @param regionCode  模糊定位只落得准区县 —— 用它把区展开成社区再筛。
+     *                    <b>两个都没有才是不筛</b>，而端上不该走到那一步：
+     *                    「位置不明」该是空态要位置，不是一屏买不到的全平台商品
+     */
+    /**
+     * @param storeNo 只看这家门店在售的（门户用，TDD-C端门店化与门店门户 §2.7）。空 = 不按门店筛。
+     *                口径与 {@code PrdStoreGoods} 相同：没有店级行的商品看主体级上下架，
+     *                有了任意一行就只认本店那行
+     */
+    record GoodsQuery(String communityNo, String regionCode, String merchantNo, String type,
+                      String categoryNo, String keyword, long page, long size, String storeNo,
+                      Integer latE6, Integer lngE6) {
+
+        /** 不带坐标（存量调用方、运营视图） */
+        public GoodsQuery(String communityNo, String regionCode, String merchantNo, String type,
+                          String categoryNo, String keyword, long page, long size, String storeNo) {
+            this(communityNo, regionCode, merchantNo, type, categoryNo, keyword, page, size, storeNo, null, null);
+        }
+
+        /** 不按门店筛（跨店目录、搜索、存量调用方） */
+        public GoodsQuery(String communityNo, String regionCode, String merchantNo, String type,
+                          String categoryNo, String keyword, long page, long size) {
+            this(communityNo, regionCode, merchantNo, type, categoryNo, keyword, page, size, null, null, null);
+        }
+    }
+}

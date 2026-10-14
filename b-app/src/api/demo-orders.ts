@@ -66,6 +66,21 @@ function build(
     createdAt: at,
     timeline: [{ status: "PAID", label: "已支付", at }],
     buyerNickname: buyer,
+    /*
+     * 收件人快照。**自提单没有**（货在自提点，不送）。
+     *
+     * 手机号跟着真实口径走：自送给完整号（配送员站在楼下要打电话），
+     * 快递给脱敏号 —— mock 里也照这个分档，否则页面在 mock 下看着是对的，
+     * 接上真后端才发现「配送员点电话没反应」。
+     */
+    receiver:
+      fulfillment === FULFILLMENT.PICKUP
+        ? undefined
+        : {
+            name: buyer,
+            phone: fulfillment === FULFILLMENT.DELIVERY ? "13800001234" : "****1234",
+            address: "杭州市西湖区文三路 100 号 3 幢 502",
+          },
     trafficSource,
     // 拆单后一单只属于一个商家（E3）—— 演示单也照这个粒度造，
     // 否则 B 端会走进「兼容历史单」的回退分支，验证不到真实路径
@@ -95,6 +110,10 @@ export function ensureDemoMerchant(): void {
     subject: "INDIVIDUAL_BIZ",
     phone: "13800138000",
     isPickupPoint: true,
+    // 演示商户走**归集**：平台目前只有自营，这是绝大多数商家实际所处的路径。
+    // 种成 DIRECT 的话，「期望收购价」这条在 mock 下永远走不到 ——
+    // 而 mock 正是产品和设计看的那一份
+    fundsMode: "AGGREGATED",
   });
   // 落盘：不存的话每次启动都重新种，店主改过的资料会被盖掉，
   // 而且「刷新一下数据就回到初始」本身就不像真后端
@@ -106,9 +125,11 @@ export function ensureDemoOrders(): void {
   // 判据是「本店有没有**待办**单」，不是「db 里有没有单」——
   // 共享种子里本来就带着几条 C 端的已完成单，用 `db.orders.length` 当判据会被它们挡住，
   // 结果工作台六个待办数字全是 0，看着像没有生意（这正是 B 端「打开像空壳」的第二层原因）
-  const PENDING = ["PAID", "PREPARING", "ARRIVED", "SHIPPED", "REFUNDING"];
+  const PENDING = ["PAID", "FULFILLING", "FULFILLING"];
   const hasPending = db.orders.some(
-    (o) => o.merchantNo === db.merchant.merchantNo && PENDING.includes(o.status),
+    (o) =>
+      o.merchantNo === db.merchant.merchantNo &&
+      (PENDING.includes(o.status) || o.afterSale),
   );
   if (hasPending) return;
   // 未入驻时不补：此时还不知道是哪家店，补出来的单会挂在别人名下，入驻后订单列表反而是空的
@@ -127,12 +148,53 @@ export function ensureDemoOrders(): void {
   const c = pick(2, 3);
 
   // 覆盖三条履约线各自的待办态，让工作台的数字不是全 0
-  if (a) rows.push(build("ARRIVED", FULFILLMENT.PICKUP, "邻居小张", [a], 180, "MERCHANT_OWNED"));
-  if (b) rows.push(build("PREPARING", FULFILLMENT.PICKUP, "李阿姨", [b], 120, "MERCHANT_OWNED"));
+  if (a) rows.push(build("FULFILLING", FULFILLMENT.PICKUP, "邻居小张", [a], 180, "MERCHANT_OWNED"));
+  if (b) rows.push(build("PAID", FULFILLMENT.PICKUP, "李阿姨", [b], 120, "MERCHANT_OWNED"));
   if (c) rows.push(build("PAID", FULFILLMENT.DELIVERY, "王先生", [c], 60, "PLATFORM"));
-  if (a) rows.push(build("PAID", FULFILLMENT.EXPRESS, "陈小姐", [a], 40, "PLATFORM"));
-  // 一条待处理售后，否则售后页永远是空的，同意/驳回两条分支都验证不了
-  if (b) rows.push(build("REFUNDING", FULFILLMENT.PICKUP, "赵大爷", [b], 220, "MERCHANT_OWNED"));
+  if (a) {
+    /*
+     * 这张快递单带**已发货 + 轨迹**：否则订单详情的物流那一行永远不出现，
+     * 弹框、步骤条、地图三样在 mock 下一样都验不了（2026-10-09 加，当时正是因为
+     * mock 里没有轨迹，改完只能上真机才看得见）。
+     * 节点带经纬度 —— sh-trace 要「至少两个带坐标的点」才画地图。
+     */
+    const express = build("FULFILLING", FULFILLMENT.EXPRESS, "陈小姐", [a], 40, "PLATFORM");
+    express.expressCompany = "STO";
+    express.expressNo = "773445428821101";
+    express.trace = {
+      status: "IN_TRANSIT",
+      nodes: [
+        { at: Date.now() - 20 * MIN, text: "【深圳市】快件已到达 广东深圳转运中心",
+          location: "广东,深圳市", latE6: 22547000, lngE6: 114085947 },
+        { at: Date.now() - 90 * MIN, text: "【咸阳市】快件已发往 广东深圳转运中心",
+          location: "陕西,西安市", latE6: 34341568, lngE6: 108940174 },
+        { at: Date.now() - 160 * MIN, text: "【咸阳市】快件已揽收",
+          location: "陕西,西安市", latE6: 34341568, lngE6: 108940174 },
+      ],
+    };
+    rows.push(express);
+  }
+  /*
+   * 一条待处理售后，否则售后页永远是空的，同意/驳回两条分支都验证不了。
+   * **订单状态是 COMPLETED**：售后挂在订单上，两者并存 ——
+   * 此前这里造的是 status="REFUNDING" 的单，那个订单状态后端根本不存在。
+   */
+  if (b) {
+    const withAfterSale = build("COMPLETED", FULFILLMENT.PICKUP, "赵大爷", [b], 220, "MERCHANT_OWNED");
+    withAfterSale.afterSale = {
+      afterSaleNo: nextNo("AS"),
+      subOrderNo: withAfterSale.orderNo,
+      orderNo: withAfterSale.orderNo,
+      type: "REFUND_ONLY",
+      status: "APPLIED",
+      reason: "QUALITY",
+      images: [],
+      // 整单退：mock 里这张单只有一件货
+      refundMinor: withAfterSale.amount.payableMinor,
+      updatedAt: Date.now(),
+    };
+    rows.push(withAfterSale);
+  }
 
   // 历史单。**没有这几条，「我的客户」页就是废的** ——
   // 全是今天的单会让复购率恒等于 0、沉默客户恒等于 0，

@@ -1,28 +1,48 @@
-# 测试用内存库：S0 验证契约、装配与越权防线，不验证 MySQL 方言。
-# 真正的 SQL 兼容性由 S1 起的集成测试对 MySQL 跑（Flyway 脚本本来就是 MySQL 语法）。
-spring:
-  datasource:
-    url: jdbc:h2:mem:shop;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
-    username: sa
-    password: ""
-    driver-class-name: org.h2.Driver
-  flyway:
-    enabled: false     # V1__infra.sql 是 MySQL 语法，H2 下不跑；测试建表见 schema-test.sql
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:schema-test.sql
-  data:
-    redis:
-      host: 127.0.0.1
-      port: 6379
-
+# 测试 profile 的补充配置。
+#
+# **只放「测试世界必须与生产不同」的那几项**，其余一律继承 application.yml ——
+# 在这里重复一份生产配置的话，两边就会各自漂移，而漂移的表现是
+# 「测试全绿、上线才炸」。
 shop:
-  auth:
-    token-store: memory
-  after-sale:
-    # 显式设阈值，让用例的「命中/不命中」一眼可读，不依赖生产缺省值
-    instant-threshold-minor: 5000
-  seed:
-    # 测试库必须有数据才能验证「逛」的链路；生产默认 false
-    enabled: true
+  reach:
+    # **测试世界关掉探针跳过窗口。**
+    #
+    # 生产留 500ms 是性能优化（一次目录请求对几十家店反复问快照，那几十次不该各发一条探针 SQL），
+    # 代价是「商家改完多久生效」的上限 500ms —— 对商家感知是即时的。
+    # 但场景测试在毫秒内完成「停用门店 → 查买家还看不看得到」，窗口会让它读到停用前的快照，
+    # 于是「停用立即生效」这类断言测的是窗口而不是业务规则。
+    # 置 0 = 每次都探针（COUNT+SUM(version)，H2 上微秒级），测试看到的永远是最新配置。
+    snapshot-probe-skip-ms: 0
+  outbox:
+    pump:
+      # **测试世界关掉投递泵。**
+      #
+      # 场景测试自己调 drainOutbox() 手动投递 —— 那是它们能断言「发了什么」的前提。
+      # 泵开着的话两边会同时投同一条事件：泵的线程用 REQUIRES_NEW 事务，
+      # 与测试事务在 H2 上撞锁，症状是满屏
+      # `UnexpectedRollbackException: marked as rollback-only`，
+      # 而报错位置在被撞的那个测试上，与 outbox 看着毫无关系（2026-10-10 撞过一次，45 条红）。
+      #
+      # 泵本身的行为由 OutboxPumpTest 覆盖（8 条 + 两处消融），
+      # 「publish 之后会不会真的交给泵」由 OutboxEventBusPumpTest 覆盖。
+      enabled: false
+  notify:
+    # 商家自带渠道凭据的落库加密密钥（NotifyCredCipher）。32 个零字节的 base64 ——
+    # 测试世界不需要真随机，需要的是**确定**：没它 upsert 会在「绝不明文落库」那一行拒掉，
+    # 而 WeComOrderAlertFlowTest 要先把商家的企微群存进库才能验整条链路。
+    #
+    # ⚠️ 放这里而不是用 @SpringBootTest(properties=…)：那样会给那个测试类**另起一个上下文**，
+    # 而第二个上下文会重跑 schema-test.sql，在同一个 H2 库上撞唯一键（mch_admission_policy）——
+    # 单独跑绿、和别人一起跑红，正是最费时间的那种假信号。
+    cred-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    wecom:
+      # 企微群机器人走桩（StubWeComBotSender）：只记下来，不往企业微信发 HTTP。
+      # 不开的话场景测试要么真在群里刷消息，要么每条等 5 秒超时。
+      stub: true
+  pay:
+    # 假回调端点（POST /pay/callback/stub）**默认不装配**：
+    # 它的共享密钥用的是默认值，生产里存在就等于「知道订单号就能白拿货」。
+    # 而三十多个场景用例靠它推进「支付成功」这一步，所以测试世界要开着。
+    #
+    # ⚠️ 生产的 SHOP_PAY_STUB 必须保持 false（2026-09-04 已核：未设置=false）。
+    stub: true

@@ -22,7 +22,7 @@ describe("认证标（P-11.1.2）", () => {
   it("**毁约达上限的商家不能授标** —— 认证标是平台的背书，赔的是平台的信用", async () => {
     const bad = merchants.find((m) => m.breachCount >= MAX_MERCHANT_BREACH)!;
     // 先让它处于可授标的审核状态，确保这次拒绝是毁约次数导致的，而不是状态
-    bad.status = "APPROVED";
+    bad.status = "ACTIVE";
     await expect(merchantMock.setMerchantVerified(bad.merchantNo, true)).rejects.toThrow(/毁约次数/);
   });
 
@@ -35,20 +35,29 @@ describe("认证标（P-11.1.2）", () => {
 });
 
 describe("类目授权（P-11.1.3）", () => {
-  const approved = () => merchants.find((m) => m.status === "APPROVED" && m.qualifications.length)!;
+  // 「可授权」的前提是**正常经营**（ACTIVE），不是「审核通过」——
+  // 审核状态在申请单上，商家档案上只有经营状态
+  const approved = () => merchants.find((m) => m.status === "ACTIVE" && m.qualifications.length)!;
 
-  it("未过审的商家不能配授权 —— 没过审就授权等于提前放行", async () => {
-    const pending = merchants.find((m) => m.status === "SUBMITTED")!;
+  it("非正常经营的商家不能配授权 —— 封禁中还给他放新类目没有道理", async () => {
+    const banned = merchants.find((m) => m.status !== "ACTIVE")
+      ?? (await merchantMock.setMerchantStatus(merchants[0]!.merchantNo, "SUSPENDED", "测试封禁"));
     await expect(
-      merchantMock.setMerchantAuthCodes({ merchantNo: pending.merchantNo, codes: ["DAILY"], reason: "先配上" }),
-    ).rejects.toThrow(/仅已通过审核/);
+      merchantMock.setMerchantAuthCodes({ merchantNo: banned.merchantNo, codes: ["DAILY"], reason: "先配上" }),
+    ).rejects.toThrow(/正常经营/);
   });
 
   it("缺资质的类目授不了", async () => {
     const m = approved();
-    const missing = m.qualifications.includes("家电维修资质") ? "FRESH_VEG" : "SERVICE_REPAIR";
+    /*
+     * 挑 PACKAGED_FOOD：它要「仅销售预包装食品备案」，而样本里**没有任何商家**有这张。
+     *
+     * 此前这里是「有家电维修资质就试 FRESH_VEG，否则试 SERVICE_REPAIR」——
+     * 断言的成立依赖于恰好选中哪个商家。一期收敛（V22）停用 SERVICE_REPAIR 之后，
+     * 它撞的是「授权码不存在」而不是「资质尚未上传」，测的已经不是这条规则了。
+     */
     await expect(
-      merchantMock.setMerchantAuthCodes({ merchantNo: m.merchantNo, codes: [missing], reason: "扩类目" }),
+      merchantMock.setMerchantAuthCodes({ merchantNo: m.merchantNo, codes: ["PACKAGED_FOOD"], reason: "扩类目" }),
     ).rejects.toThrow(/尚未上传/);
   });
 
@@ -59,19 +68,31 @@ describe("类目授权（P-11.1.3）", () => {
     ).rejects.toThrow(/不能把授权撤空/);
   });
 
-  it("**该类目下还有在售商品的不能撤** —— 撤了架上还挂着那类商品", async () => {
-    // M903 有 FRESH_VEG 授权，且 SKU1001（叶菜 → FRESH_VEG）在售
-    await expect(
-      merchantMock.setMerchantAuthCodes({ merchantNo: "M903", codes: ["DAILY"], reason: "收缩经营范围" }),
-    ).rejects.toThrow(/在售商品/);
+  /*
+   * **撤码不拦，但要把代价算出来**（商品域-优化总方案 批 B3）。
+   *
+   * 这里此前断言的是「有在售商品就拒」—— 而真后端不拦：证过期了就得撤，
+   * 拦住的话运营只能先去逐件下架商家的货，那是商家的事不是他的。
+   * mock 比后端严的后果是这条路径在开发期永远走不到，上线才发现两边行为不同。
+   */
+  it("**撤码要回一个影响面** —— 运营按下确认之前要看得见代价", async () => {
+    // M903 有 FRESH_VEG 授权，且 SKU1001（→ FRESH_VEG）在售
+    const r = await merchantMock.setMerchantAuthCodes({
+      merchantNo: "M903", codes: ["DAILY"], reason: "许可证已过期",
+    });
+    expect(r.revoked).toEqual(["FRESH_VEG"]);
+    expect(r.affected).toBeGreaterThan(0);
   });
 
-  it("先下架商品，再撤授权就能通过", async () => {
+  it("商品都下架之后，同样的撤码影响面是 0", async () => {
     for (const s of skus) {
       if (s.merchantNo === "M903" && s.categoryNo.startsWith("CAT11")) s.status = "OFF_SALE";
     }
-    const m = await merchantMock.setMerchantAuthCodes({ merchantNo: "M903", codes: ["DAILY"], reason: "收缩经营范围" });
-    expect(m.categoryCodes).toEqual(["DAILY"]);
+    const r = await merchantMock.setMerchantAuthCodes({
+      merchantNo: "M903", codes: ["DAILY"], reason: "收缩经营范围",
+    });
+    expect(r.codes).toEqual(["DAILY"]);
+    expect(r.affected).toBe(0);
   });
 
   it("改授权必须写原因", async () => {
@@ -122,8 +143,11 @@ describe("违规处置（P-11.1.4）", () => {
     await merchantMock.recordViolation({
       merchantNo: "M903", type: "PRICE_FRAUD", action: "LIMIT", detail: "先涨后降，截图 #4",
     });
-    const list = await merchantMock.listViolations({ merchantNo: "M903" });
-    expect(list[0].type).toBe("PRICE_FRAUD");
-    expect(list.every((v) => v.merchantNo === "M903")).toBe(true);
+    // 分页包，与后端 PageData 同形 —— 此前这里断言的是裸数组，
+    // 那正是把「切到真后端就 data.map is not a function」藏了一路的那个形状
+    const page = await merchantMock.listViolations({ merchantNo: "M903" });
+    expect(page.records[0].type).toBe("PRICE_FRAUD");
+    expect(page.records.every((v) => v.merchantNo === "M903")).toBe(true);
+    expect(page.total).toBeGreaterThan(0);
   });
 });

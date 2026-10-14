@@ -23,26 +23,81 @@
 
     <!-- 模块数 = 未来可能的部署单元数；域数 = 包数（TDD-backend §4.1） -->
     <modules>
-        <!-- 横切基础设施，零业务依赖 -->
-        <module>shop-common</module>
-        <!-- 只有接口：Port + DTO + Event，谁都能依赖 -->
-        <module>shop-spi</module>
+        <!-- 鉴权持久层：会话与登录日志。**不依赖 shop-base**（那会拖来 MyBatis），
+             也不认识 Realm —— 它只为「一个命名的令牌池」存会话。
+             依赖方向：shop-auth-store ← shop-base，无环 -->
+        <module>shop-auth-store</module>
+        <!-- 定时任务四个模块（契约 / 持久层 / 引擎 / 独立调度器）收在 backend/job/ 下，
+             各自做什么见 job/pom.xml 里那四条注释。
+             它们的包名是 ai.neargo.job.*，与业务域分开：worker 要的正是「不认识业务」 -->
+        <module>job</module>
+        <!-- 服务间调用的传输零件（@HttpExchange + RestClient）。**只依赖 spring-web**：
+             shop-base 与 job-worker 都要用，而 job-worker 不能依赖 shop-base，所以单独成模块 -->
+        <module>svc-client</module>
+        <!-- 地基：横切基础设施 + 跨域契约。零业务依赖，谁都能依赖 -->
+        <module>shop-base</module>
+        <!-- 持久层的 MyBatis 实现。**排在 shop-base 之后、业务域之前** —— 它依赖前者、被后者依赖 -->
+        <module>shop-store-mybatis</module>
+        <!-- 鉴权与 web 接入。层序：内核 ← auth ← web -->
+        <module>shop-base-auth</module>
         <!-- 领域服务实现（jar，不可独立启动） -->
-        <module>shop-svc-user</module>
-        <module>shop-svc-product</module>
-        <module>shop-svc-trade</module>
-        <module>shop-svc-fulfillment</module>
-        <module>shop-svc-marketing</module>
-        <module>shop-svc-settle</module>
-        <module>shop-svc-message</module>
-        <module>shop-svc-platform</module>
+        <!-- 核心域合并为一个工程：模块数 = 未来可能的部署单元数，域数 = 包数 -->
+        <module>shop-core</module>
+        <!-- 独立成工程的两个域：变更节奏与外部依赖都与核心域不同，最可能先拆微服务 -->
+        <module>shop-merchant</module>
+        <!-- 支付域三个模块（通道 / 领域 / 独立服务形态）收在 backend/pay/ 下，见 pay/pom.xml -->
+        <module>pay</module>
+        <!-- 进销存：**独立数据源与独立迁移历史**（db/inventory），将来可独立交付。
+             与 settle/merchant 同级的理由不同 —— 那两个是「变更节奏不同」，
+             这个是「数据边界不同」：它的表不在 ai_shop 里 -->
+        <module>shop-inventory</module>
+        <!-- 报表：**独立库（ai_shop_report）+ 只存派生数据**。与进销存同为「数据边界不同」，
+             但多一条：它的数据全部可重建 —— 丢了重跑日结即可，所以不参与任何业务事务。
+             本模块只是持久层；读交易域算汇总那一步是**跨域组合**，按规矩住在 shop-app -->
+        <module>shop-report</module>
+        <!-- 电子元器件：独立进程（elec-svc）+ 独立库（ai_shop_elec）。主应用不引它，只给它开 /internal/elec -->
+        <module>elec</module>
+        <!-- 外部通道适配：只装适配器，不装业务判断 -->
+        <module>shop-channel</module>
+        <!-- 物流域：运单与轨迹、渠道路由与适配（ADR-032，先内嵌后可拆） -->
+        <module>logistics</module>
+        <!-- 触达中台：短信/邮件/微信订阅/聚合推送/平台直连推送 通道适配 -->
+        <module>shop-notify</module>
         <!-- 启动模块：portal(三端 Controller) + config + 装配 -->
         <module>shop-app</module>
     </modules>
 
+    <!-- 第三方版本的三条规矩（2026-09-06 复核后改写，此前这段话有三处与事实相反）：
+
+         1. **Spring Boot BOM 已管的，这里不写。** 继承链 shop-parent → neargo-parent →
+            spring-boot-starter-parent 把 BOM 的 dependencyManagement 一路带下来：ehcache（含
+            jakarta classifier）、jakarta.mail、angus-mail、flyway 都在里面，模块只写 g:a，
+            版本随 Boot 走。真要偏离 BOM，用 BOM **自己的属性名**覆盖（如 ehcache3.version）
+            并在这里写明原因 —— 别新起一个属性名（只覆盖到一条、家族其余成员留在旧版本），
+            更别用 BOM 的属性名却不知道（jakarta-mail.version / angus-mail.version 曾在这里
+            以「BOM 管不到」为名出现，实际把 BOM 里十个 org.eclipse.angus 条目全钉住了）。
+         2. **BOM 不管的，钉在下面的 dependencyManagement。** 今天只有 archunit、cos_api、shedlock，
+            外加一条纯收敛用的 error_prone_annotations（cos_api 那条链带 2.41.0，caffeine 带 2.49.0，
+            钉在原本就胜出的 2.49.0 上，运行时零变化）
+            （flyway 曾以 BOM 的属性名 flyway.version 钉在这里，值与 BOM 相同，Boot 4.1 起会把
+            Flyway 静默留在 11.14.1 —— 同一次一并撤掉）。
+         3. **模块 pom 里不写任何版本**，字面量与 ${...} 都不写（内部模块的 ${project.version} 除外）。
+            为什么：模块里写的版本在 shop-app 里**根本不生效** —— 根工程继承的 BOM 会覆盖
+            传递依赖声明的版本。此前 shop-base 写着 ehcache 3.12.0，fat jar 与线上装的一直是
+            BOM 的 3.11.1；模块各自的测试跑一个版本、发布物跑另一个，台台机器都一样，
+            Maven 一个字不报。
+
+         闸门有两道：scripts/gen-glossary.mjs 扫到模块 pom 里出现版本就直接失败
+         （连模块级 dependencyManagement 一起扫；`依赖清单.md` §1.2 因此永远为空）；
+         下面 maven-enforcer 的 dependencyConvergence 在 validate 阶段看**传递依赖**里的版本分叉 ——
+         那是生成器看不见的一层，2026-09-06 挂上时全 reactor 只有上面那一处，钉住即归零。 -->
     <properties>
         <archunit.version>1.3.0</archunit.version>
-        <flyway.version>11.14.1</flyway.version>
+        <shedlock.version>6.9.0</shedlock.version>
+        <cos.version>5.6.245</cos.version>
+        <!-- 可见范围几何：JTS 做多边形解析/含边界精判，S2 做网格覆盖；两者纯 Java、无 JNI（ADR-034） -->
+        <jts.version>1.20.0</jts.version>
+        <s2.version>2.0.0</s2.version>
     </properties>
 
     <dependencyManagement>
@@ -53,15 +108,38 @@
                 <version>${archunit.version}</version>
                 <scope>test</scope>
             </dependency>
+            <!-- 以下三条 Boot BOM 不管，版本只在这里出现（用途见各引用方自己的注释） -->
             <dependency>
-                <groupId>org.flywaydb</groupId>
-                <artifactId>flyway-core</artifactId>
-                <version>${flyway.version}</version>
+                <groupId>com.qcloud</groupId>
+                <artifactId>cos_api</artifactId>
+                <version>${cos.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.flywaydb</groupId>
-                <artifactId>flyway-mysql</artifactId>
-                <version>${flyway.version}</version>
+                <groupId>net.javacrumbs.shedlock</groupId>
+                <artifactId>shedlock-spring</artifactId>
+                <version>${shedlock.version}</version>
+            </dependency>
+            <!-- 几何与网格（ADR-034）。版本只在这里出现：模块 POM 里钉版本在根工程不生效 -->
+            <dependency>
+                <groupId>org.locationtech.jts</groupId>
+                <artifactId>jts-core</artifactId>
+                <version>${jts.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.geometry</groupId>
+                <artifactId>s2-geometry</artifactId>
+                <version>${s2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.javacrumbs.shedlock</groupId>
+                <artifactId>shedlock-provider-jdbc-template</artifactId>
+                <version>${shedlock.version}</version>
+            </dependency>
+            <!-- 只为 dependencyConvergence 收敛：钉的是今天本来就胜出的那个版本 -->
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <version>2.49.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -78,5 +156,32 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 与 neargo-parent 的 enforce-build-env（锁 JDK/Maven 版本）并列的第二条执行。
+                 dependencyConvergence：同一个 classpath 上一个 g:a 只许解析出一个版本，
+                 传递依赖带进来的也算 —— 「两处各写一份版本」的真正后果在这里报，
+                 而不是靠人读 pom。冲突了就在上面的 dependencyManagement 钉一条，
+                 钉当前胜出的那个版本，运行时不变。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-dependency-convergence</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <dependencyConvergence/>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

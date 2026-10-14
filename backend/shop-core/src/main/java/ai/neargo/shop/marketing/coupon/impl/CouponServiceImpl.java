@@ -1,0 +1,575 @@
+package ai.neargo.shop.marketing.coupon.impl;
+
+import ai.neargo.shop.marketing.coupon.CouponService;
+
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.marketing.coupon.dto.CouponVO;
+import ai.neargo.shop.marketing.coupon.dto.UserCouponVO;
+import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
+import ai.neargo.shop.marketing.coupon.entity.MktCouponIssue;
+import ai.neargo.shop.marketing.coupon.entity.MktUserCoupon;
+import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
+import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.UserCouponMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class CouponServiceImpl implements CouponService {
+
+    private final CouponMapper couponMapper;
+    private final UserCouponMapper userCouponMapper;
+    private final GoodsQueryPort goodsPort;
+    private final ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponIssueMapper issueMapper;
+    private final ai.neargo.shop.spi.user.UserQueryPort userPort;
+    /** 只用来把 merchantNo 换成店名（scopeDesc） */
+    private final ai.neargo.shop.spi.user.MerchantQueryPort merchantPort;
+
+    public CouponServiceImpl(CouponMapper couponMapper, UserCouponMapper userCouponMapper,
+                             GoodsQueryPort goodsPort,
+                             ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponIssueMapper issueMapper,
+                             ai.neargo.shop.spi.user.UserQueryPort userPort,
+                             ai.neargo.shop.spi.user.MerchantQueryPort merchantPort) {
+        this.couponMapper = couponMapper;
+        this.userCouponMapper = userCouponMapper;
+        this.goodsPort = goodsPort;
+        this.issueMapper = issueMapper;
+        this.userPort = userPort;
+        this.merchantPort = merchantPort;
+    }
+
+    @Override
+    public List<CouponVO> center() {
+        long now = System.currentTimeMillis();
+        List<MktCoupon> coupons = DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getStatus, "ACTIVE")
+                        .le(MktCoupon::getStartAt, now)
+                        .ge(MktCoupon::getEndAt, now)));
+
+        String userNo = SecurityUtils.currentUserNoOrNull();
+        List<String> received = userNo == null ? List.of() : myCoupons(userNo).stream()
+                .map(MktUserCoupon::getCouponNo).toList();
+
+        return coupons.stream().map(c -> toVO(c, received.contains(c.getCouponNo()))).toList();
+    }
+
+    @Override
+    @Transactional
+    public UserCouponVO receive(String couponNo) {
+        return grantTo(SecurityUtils.currentUserNo(), couponNo);
+    }
+
+    /**
+     * 发一张券给**指定的人**。
+     *
+     * <p>与 {@link #receive} 走**同一套**判定（有效期 / 限领 / 原子扣库存）——
+     * 抽出来只是因为发放对象不再是「当前会话那个人」：邀请有礼要把奖励发给邀请人，
+     * 而那一刻的会话是被邀请人。
+     *
+     * <p>复制一份库存逻辑到调用方是这里唯一真正危险的做法：超发是查不回来的钱。
+     */
+    @Override
+    @Transactional
+    public UserCouponVO grantTo(String userNo, String couponNo) {
+        MktCoupon coupon = template(couponNo);
+
+        long now = System.currentTimeMillis();
+        if (!"ACTIVE".equals(coupon.getStatus()) || nz(coupon.getStartAt()) > now
+                || nz(coupon.getEndAt()) < now) {
+            throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
+        }
+
+        long mine = myCoupons(userNo).stream()
+                .filter(uc -> uc.getCouponNo().equals(couponNo)).count();
+        if (mine >= Math.max(nzi(coupon.getPerUserLimit()), 1)) {
+            throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
+        }
+
+        // 原子扣库存：先查后改在并发下必然超发
+        int affected = DataScopeContext.executeWithoutScope(() -> couponMapper.tryReceive(couponNo));
+        if (affected == 0) {
+            throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
+        }
+
+        MktUserCoupon uc = new MktUserCoupon();
+        uc.setUserCouponNo(BizKey.next(BizKey.COUPON));
+        uc.setCouponNo(couponNo);
+        uc.setUserNo(userNo);
+        uc.setStatus(MktUserCoupon.UNUSED);
+        uc.setReceivedAt(now);
+        DataScopeContext.executeWithoutScope(() -> userCouponMapper.insert(uc));
+
+        return new UserCouponVO(uc.getUserCouponNo(), toVO(coupon, true),
+                uc.getStatus(), true, now, null);
+    }
+
+    @Override
+    public List<UserCouponVO> mine() {
+        String userNo = SecurityUtils.currentUserNo();
+        List<MktUserCoupon> rows = myCoupons(userNo);
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        Map<String, MktCoupon> templates = templatesOf(rows);
+        return rows.stream()
+                .map(uc -> toVO(uc, templates.get(uc.getCouponNo()), true))
+                .toList();
+    }
+
+    @Override
+    public BestResult best(List<Item> items) {
+        String userNo = SecurityUtils.currentUserNo();
+        List<MktUserCoupon> rows = myCoupons(userNo).stream()
+                .filter(uc -> MktUserCoupon.UNUSED.equals(uc.getStatus())).toList();
+        if (rows.isEmpty() || items == null || items.isEmpty()) {
+            return new BestResult(null, 0L, List.of(), List.of());
+        }
+
+        Map<String, GoodsQueryPort.SkuSnapshot> snaps =
+                goodsPort.snapshot(items.stream().map(Item::skuNo).toList());
+        // 按商家分组的商品额：商家券只对本店金额计门槛
+        Map<String, Long> byMerchant = new HashMap<>();
+        long total = 0;
+        for (Item i : items) {
+            var s = snaps.get(i.skuNo());
+            if (s == null) {
+                continue;
+            }
+            long amount = s.price() * i.qty();
+            byMerchant.merge(s.merchantNo(), amount, Long::sum);
+            total += amount;
+        }
+
+        Map<String, MktCoupon> templates = templatesOf(rows);
+        List<UserCouponVO> usable = new ArrayList<>();
+        List<BestResult.Unusable> unusable = new ArrayList<>();
+        String bestNo = null;
+        long bestDiscount = 0;
+
+        for (MktUserCoupon uc : rows) {
+            MktCoupon c = templates.get(uc.getCouponNo());
+            if (c == null) {
+                continue;
+            }
+            long base = c.getEntityNo() == null || c.getEntityNo().isBlank()
+                    ? total : byMerchant.getOrDefault(c.getEntityNo(), 0L);
+
+            BestResult.Unusable why = reasonOfUnusable(uc.getUserCouponNo(), c, base);
+            if (why != null) {
+                unusable.add(why);
+                continue;
+            }
+            usable.add(toVO(uc, c, true));
+
+            // 与下单算价同一套算法 —— 各算一次的后果是折扣券在这里恒为 0，
+            // 「最优券」永远不推荐它
+            long discount = c.discountFor(base);
+            if (discount > bestDiscount) {
+                bestDiscount = discount;
+                bestNo = uc.getUserCouponNo();
+            }
+        }
+        return new BestResult(bestNo, bestDiscount, usable, unusable);
+    }
+
+    /**
+     * 不可用原因。**码 + 差额 + 一句中文**三样一起给。
+     *
+     * <p>此前只给中文句子，而且门槛那句写的是「还差 2000 <b>分</b>」——
+     * 买家心里的单位是「¥20.00」，英文与阿语用户还会看到中文。
+     * 现在端上按 {@code code} 出文案、用 {@code gapMinor} 自己格式化金额；
+     * 中文原句留着给老版本小程序（它们还在用户手机上跑）。
+     *
+     * @return null = 这张券能用
+     */
+    private BestResult.Unusable reasonOfUnusable(String userCouponNo, MktCoupon c, long base) {
+        long now = System.currentTimeMillis();
+        if (!"ACTIVE".equals(c.getStatus()) || nz(c.getEndAt()) < now) {
+            return new BestResult.Unusable(userCouponNo, "已过期",
+                    BestResult.Unusable.EXPIRED, null);
+        }
+        if (nz(c.getStartAt()) > now) {
+            return new BestResult.Unusable(userCouponNo, "未到使用时间",
+                    BestResult.Unusable.NOT_STARTED, null);
+        }
+        long gap = nz(c.getThresholdMinor()) - base;
+        if (gap > 0) {
+            return new BestResult.Unusable(userCouponNo, "未达使用门槛，还差 " + gap + " 分",
+                    BestResult.Unusable.BELOW_THRESHOLD, gap);
+        }
+        return null;
+    }
+
+    private List<MktUserCoupon> myCoupons(String userNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                userCouponMapper.selectList(Wrappers.<MktUserCoupon>lambdaQuery()
+                        .eq(MktUserCoupon::getUserNo, userNo)
+                        .orderByDesc(MktUserCoupon::getId)));
+    }
+
+    private Map<String, MktCoupon> templatesOf(List<MktUserCoupon> rows) {
+        List<String> nos = rows.stream().map(MktUserCoupon::getCouponNo).distinct().toList();
+        return DataScopeContext.executeWithoutScope(() ->
+                        couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
+                                .in(MktCoupon::getCouponNo, nos))).stream()
+                .collect(java.util.stream.Collectors.toMap(MktCoupon::getCouponNo, c -> c, (a, b) -> a));
+    }
+
+    private MktCoupon template(String couponNo) {
+        MktCoupon c = DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")));
+        if (c == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        return c;
+    }
+
+    private CouponVO toVO(MktCoupon c, boolean received) {
+        int remain = nzi(c.getTotalCount()) == 0 ? Integer.MAX_VALUE
+                : nzi(c.getTotalCount()) - nzi(c.getReceivedCount());
+        return new CouponVO(c.getCouponNo(), c.getTitle(), c.getType(), nz(c.getFaceMinor()),
+                nzi(c.getDiscountRate()), nz(c.getThresholdMinor()), nz(c.getMaxDiscountMinor()),
+                c.getFunder(), c.getEntityNo(), nz(c.getStartAt()), nz(c.getEndAt()),
+                Math.max(remain, 0), received,
+                c.getStatus() == null ? MktCoupon.ACTIVE : c.getStatus(),
+                scopeDescOf(c));
+    }
+
+    /**
+     * 「这张券能在哪儿用」。**后端拼，不让端上拼** —— 端上手里只有一个 `merchantNo`，
+     * 要拼出「仅限老张粮油店」还得再打一次商家接口，而券列表一屏十几张就是十几次。
+     */
+    private String scopeDescOf(MktCoupon c) {
+        if (c.getEntityNo() == null || c.getEntityNo().isBlank()) {
+            return "全平台可用";
+        }
+        return "仅限" + merchantPort.find(c.getEntityNo())
+                .map(ai.neargo.shop.spi.user.MerchantQueryPort.MerchantBrief::merchantName)
+                .orElse(c.getEntityNo());
+    }
+
+    private UserCouponVO toVO(MktUserCoupon uc, MktCoupon c, boolean usableNow) {
+        return new UserCouponVO(uc.getUserCouponNo(), c == null ? null : toVO(c, true),
+                uc.getStatus(), usableNow && MktUserCoupon.UNUSED.equals(uc.getStatus()),
+                nz(uc.getReceivedAt()), uc.getUsedAt());
+    }
+
+    private static long nz(Long v) {
+        return v == null ? 0L : v;
+    }
+
+    private static int nzi(Integer v) {
+        return v == null ? 0 : v;
+    }
+    // ---------------------------------------------------------------- 平台侧（P-7.1）
+
+    @Override
+    public List<ai.neargo.shop.marketing.coupon.dto.OpsCouponVO> opsCoupons(String status,
+                                                                            boolean showArchived) {
+        /*
+         * **不绕过**（2026-08-31，mkt_coupon 登记数据域时一并接上）。
+         *
+         * 上一版这里写着「平台视角要跨商家。不解除数据域的话，运营看到的永远是空列表」——
+         * **那句话在这张表还没登记时是对的**：未登记 = 拦截器不动这条 SQL，
+         * 无所谓解不解除；而一旦登记，`entity_no` 就是锚点，配了商家域的运营
+         * 看到的正是他该看到的那些，不是空列表。
+         *
+         * 换句话说，那句注释描述的是一个**不成立的担心**，而它的结论
+         * 恰好挡住了真正该做的事 —— 没配数据域的运营照旧看全平台（空 = 不限定）。
+         */
+        return couponMapper.selectList(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(status != null && !status.isBlank(), MktCoupon::getStatus, status)
+                        // 已归档的默认不出现 —— 否则「归档」这个动作在页面上看不出效果
+                        .isNull(!showArchived, MktCoupon::getArchivedAt)
+                        .orderByDesc(MktCoupon::getId)).stream()
+                .map(this::toOpsVO).toList();
+    }
+
+    @Override
+    @Transactional
+    public ai.neargo.shop.marketing.coupon.dto.OpsCouponVO saveCoupon(
+            ai.neargo.shop.marketing.coupon.dto.CouponSaveCmd cmd, String operatorNo) {
+        boolean isNew = cmd.couponNo() == null || cmd.couponNo().isBlank();
+        MktCoupon c = isNew ? new MktCoupon() : DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, cmd.couponNo()).last("limit 1")));
+        if (!isNew && c == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (cmd.title() == null || cmd.title().isBlank()
+                || cmd.totalCount() == null || cmd.endAt() == null || cmd.startAt() == null
+                || cmd.endAt() <= cmd.startAt()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 发行量必须 >0——不限量券的敞口同样算不出来（TDD-营销预算前置 §2.2）
+        if (cmd.totalCount() <= 0) {
+            throw BizException.of(ErrorCode.COUPON_TOTAL_COUNT_REQUIRED);
+        }
+        int received = isNew ? 0 : nzi(c.getReceivedCount());
+        // 编辑时发行量不能改到低于已领张数——已发出去的张数收不回来
+        if (!isNew && cmd.totalCount() < received) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        long maxExposure;
+        if (MktCoupon.DISCOUNT.equals(cmd.type())) {
+            // 折扣券必须封顶——取消「0=不封顶」，否则敞口在建券这一刻算不出来
+            if (cmd.discountRate() == null || cmd.discountRate() <= 0
+                    || cmd.maxDiscountMinor() == null || cmd.maxDiscountMinor() <= 0) {
+                throw BizException.of(ErrorCode.COUPON_DISCOUNT_CAP_REQUIRED);
+            }
+            maxExposure = (long) cmd.totalCount() * cmd.maxDiscountMinor();
+        } else if (MktCoupon.FULL_CUT.equals(cmd.type())) {
+            if (cmd.faceMinor() == null || cmd.faceMinor() <= 0) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            maxExposure = (long) cmd.totalCount() * cmd.faceMinor();
+        } else {
+            // NEWCOMER / TARGETED 还没有折扣算法撑着，明说不支持而不是悄悄当 FULL_CUT 处理
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+
+        long budgetMinor = cmd.budgetMinor() == null ? 0L : cmd.budgetMinor();
+        if (budgetMinor < 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        // 预算非零时必须 ≥ 敞口——不接受一个从第一天起就不可能满足的预算
+        if (budgetMinor > 0 && budgetMinor < maxExposure) {
+            throw BizException.of(ErrorCode.COUPON_BUDGET_BELOW_EXPOSURE, maxExposure);
+        }
+        // 与 setBudget 同一条闸：不能改到低于已发放金额
+        long issuedAmount = received * nz(c.getFaceMinor());
+        if (!isNew && budgetMinor > 0 && budgetMinor < issuedAmount) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        if (isNew) {
+            c.setCouponNo(BizKey.next(BizKey.COUPON));
+            c.setReceivedCount(0);
+            c.setFunder(MktCoupon.BY_PLATFORM);
+            c.setStatus(MktCoupon.ACTIVE);
+        }
+        c.setTitle(cmd.title());
+        c.setType(cmd.type());
+        c.setFaceMinor(MktCoupon.FULL_CUT.equals(cmd.type()) ? cmd.faceMinor() : 0L);
+        c.setDiscountRate(MktCoupon.DISCOUNT.equals(cmd.type()) ? cmd.discountRate() : 0);
+        c.setMaxDiscountMinor(MktCoupon.DISCOUNT.equals(cmd.type()) ? cmd.maxDiscountMinor() : 0L);
+        c.setThresholdMinor(cmd.thresholdMinor() == null ? 0L : cmd.thresholdMinor());
+        c.setTotalCount(cmd.totalCount());
+        c.setPerUserLimit(cmd.perUserLimit() == null ? 1 : cmd.perUserLimit());
+        c.setBudgetMinor(budgetMinor);
+        c.setStartAt(cmd.startAt());
+        c.setEndAt(cmd.endAt());
+
+        DataScopeContext.executeWithoutScope(() -> {
+            if (isNew) {
+                couponMapper.insert(c);
+            } else {
+                couponMapper.updateById(c);
+            }
+            return null;
+        });
+        return toOpsVO(c);
+    }
+
+    @Override
+    @Transactional
+    public ai.neargo.shop.marketing.coupon.dto.OpsCouponVO setBudget(String couponNo,
+                                                                     long budgetMinor,
+                                                                     String operatorNo) {
+        if (budgetMinor < 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MktCoupon c = DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")));
+        if (c == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        /*
+         * **不能改到低于已发放金额**：那等于人为造出一个「已经超支」的状态，
+         * 而超支之后没有任何补救动作可做 —— 券已经在用户手里了，收不回来。
+         *
+         * 0 是显式的「不限」，不受这条约束（把闸门整个撤掉是合法操作）。
+         */
+        long issuedAmount = nzi(c.getReceivedCount()) * nz(c.getFaceMinor());
+        if (budgetMinor > 0 && budgetMinor < issuedAmount) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        c.setBudgetMinor(budgetMinor);
+        DataScopeContext.executeWithoutScope(() -> couponMapper.updateById(c));
+        return toOpsVO(c);
+    }
+
+    @Override
+    @Transactional
+    public ai.neargo.shop.marketing.coupon.dto.CouponIssueVO issue(String couponNo, String target,
+                                                                    String targetDesc, String userKey,
+                                                                    int count, String operatorNo) {
+        if (count <= 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MktCoupon c = DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")));
+        if (c == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        /*
+         * **只有 SINGLE_USER 能真发**。不是后端偷懒 —— 另外三种的收件人
+         * 在入口处就不存在：ops-web 的「定向说明」是自由文本（「锦绣花园」），
+         * 它给不出社区号也给不出 userNo。
+         *
+         * 按名字模糊匹配去猜收券人，猜错就是把钱发给了别人。
+         * 与其那样，不如明说这条路还没通。
+         */
+        if (!MktCouponIssue.SINGLE_USER.equals(target)) {
+            throw BizException.of(ErrorCode.NOT_IMPLEMENTED);
+        }
+        if (userKey == null || userKey.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var user = userPort.find(userKey);
+        if (user.isEmpty()) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+
+        /*
+         * **限领规则不能被主动发放绕开**：客服连发五张「限领一张」的券，
+         * 与用户自己领五张是同一件事，只是路径不同。
+         */
+        long mine = myCoupons(userKey).stream()
+                .filter(uc -> uc.getCouponNo().equals(couponNo)).count();
+        if (mine + count > Math.max(nzi(c.getPerUserLimit()), 1)) {
+            throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
+        }
+
+        /*
+         * **预算是硬闸门，整批拒绝，不部分发放** —— 页面上那句
+         * 「超出剩余预算会被拒绝，不会部分发放」说的就是这件事，它必须是真的。
+         * 部分发放更坏：运营以为发了 100 张，实际发了 37 张，而没有任何提示。
+         */
+        long face = nz(c.getFaceMinor());
+        long amount = face * count;
+        long already = nzi(c.getReceivedCount()) * face;
+        long budget = nz(c.getBudgetMinor());
+        if (budget > 0 && already + amount > budget) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < count; i++) {
+            // 走与用户自领同一条原子扣减：张数上限与预算都在那条 UPDATE 里判
+            int affected = DataScopeContext.executeWithoutScope(() -> couponMapper.tryReceive(couponNo));
+            if (affected == 0) {
+                // 扣不动 = 张数发完或预算到顶。已插的那几张随事务一起回滚
+                throw BizException.of(ErrorCode.COUPON_SOLD_OUT);
+            }
+            MktUserCoupon uc = new MktUserCoupon();
+            uc.setUserCouponNo(BizKey.next(BizKey.COUPON));
+            uc.setCouponNo(couponNo);
+            uc.setUserNo(userKey);
+            uc.setStatus(MktUserCoupon.UNUSED);
+            uc.setReceivedAt(now);
+            DataScopeContext.executeWithoutScope(() -> userCouponMapper.insert(uc));
+        }
+
+        MktCouponIssue rec = new MktCouponIssue();
+        rec.setIssueNo(BizKey.next(BizKey.COUPON) + "-I");
+        rec.setCouponNo(couponNo);
+        rec.setCouponName(c.getTitle());
+        rec.setTarget(target);
+        rec.setTargetDesc(targetDesc);
+        rec.setUserNo(userKey);
+        rec.setIssuedCount(count);
+        rec.setAmountMinor(amount);
+        rec.setOperatorNo(operatorNo);
+        DataScopeContext.executeWithoutScope(() -> issueMapper.insert(rec));
+        return toIssueVO(rec);
+    }
+
+    @Override
+    public java.util.List<ai.neargo.shop.marketing.coupon.dto.CouponIssueVO> issues(String couponNo) {
+        return DataScopeContext.executeWithoutScope(() ->
+                issueMapper.selectList(Wrappers.<MktCouponIssue>lambdaQuery()
+                        .eq(couponNo != null && !couponNo.isBlank(),
+                                MktCouponIssue::getCouponNo, couponNo)
+                        .orderByDesc(MktCouponIssue::getId))).stream()
+                .map(this::toIssueVO).toList();
+    }
+
+    private ai.neargo.shop.marketing.coupon.dto.CouponIssueVO toIssueVO(MktCouponIssue r) {
+        return new ai.neargo.shop.marketing.coupon.dto.CouponIssueVO(
+                r.getIssueNo(), r.getCouponNo(), r.getCouponName(), r.getTarget(),
+                r.getTargetDesc(), nzi(r.getIssuedCount()), nz(r.getAmountMinor()),
+                r.getOperatorNo(),
+                r.getCreatedAt() == null ? 0
+                        : r.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
+                                .toInstant().toEpochMilli());
+    }
+
+    private ai.neargo.shop.marketing.coupon.dto.OpsCouponVO toOpsVO(MktCoupon c) {
+        int issued = nzi(c.getReceivedCount());
+        long face = nz(c.getFaceMinor());
+        /*
+         * 已发放金额 = 已领张数 × 面额。折扣券的面额是 0（它用 discount_rate），
+         * 于是这里返回 0 —— **宁可显示 0，也不要按订单均价估一个看着像真的数**。
+         * 运营会拿这个数去和预算比。
+         */
+        long issuedAmount = issued * face;
+        return new ai.neargo.shop.marketing.coupon.dto.OpsCouponVO(
+                c.getCouponNo(), c.getTitle(), c.getType(), c.getStatus(),
+                // DISCOUNT 券的 value 是折扣万分比，其余是面额 —— 与 ops-web 的 Coupon.value 同口径
+                "DISCOUNT".equals(c.getType()) ? nzi(c.getDiscountRate()) : face,
+                nz(c.getThresholdMinor()), c.getFunder(), c.getEntityNo(),
+                nz(c.getStartAt()), nz(c.getEndAt()),
+                nz(c.getBudgetMinor()), issuedAmount, issued,
+                DataScopeContext.executeWithoutScope(() -> couponMapper.redeemedCount(c.getCouponNo())),
+                c.getCreatedAt() == null ? 0
+                        : c.getCreatedAt().atZone(java.time.ZoneId.systemDefault())
+                                .toInstant().toEpochMilli(),
+                c.getArchivedAt() == null ? null
+                        : c.getArchivedAt().atZone(java.time.ZoneId.systemDefault())
+                                .toInstant().toEpochMilli(),
+                nzi(c.getTotalCount()), nzi(c.getPerUserLimit()), nz(c.getMaxDiscountMinor()));
+    }
+
+    @Override
+    @Transactional
+    public CouponVO setCouponStatus(String couponNo, String status, String reason, String operatorNo) {
+        if (reason == null || reason.isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        if (!MktCoupon.ACTIVE.equals(status) && !MktCoupon.PAUSED.equals(status)
+                && !MktCoupon.ENDED.equals(status)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        MktCoupon c = DataScopeContext.executeWithoutScope(() ->
+                couponMapper.selectOne(Wrappers.<MktCoupon>lambdaQuery()
+                        .eq(MktCoupon::getCouponNo, couponNo).last("limit 1")));
+        if (c == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (MktCoupon.ENDED.equals(c.getStatus())) {
+            // 已结束不可恢复：把它改回 ACTIVE 等于让一批过期券重新可领，
+            // 而发行量与预算的账早就按「结束」结过了
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        c.setStatus(status);
+        DataScopeContext.executeWithoutScope(() -> couponMapper.updateById(c));
+        return toVO(c, false);
+    }
+
+}

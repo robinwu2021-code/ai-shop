@@ -1,0 +1,824 @@
+package ai.neargo.shop.scenario;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * 经营范围新模型：履约能力 × 地理覆盖（ADR-013 阶段二）。
+ *
+ * <p><b>这组用例守的是「可见性没变」</b>，不是「新功能能用」。
+ * 换的是 C 端可见性的唯一出口 {@code reachableCommunities}，改错的症状是
+ * 「商品谁也搜不到」且不报错 —— 没有对照的话，这种故障要等商家来问才会被发现。
+ *
+ * <p>所以每条用例都写成「原来的某一档 → 现在应当得到同一批社区」。
+ */
+@SpringBootTest
+@ActiveProfiles("test")
+class ServiceAreaFlowTest {
+
+    @Autowired
+    private ai.neargo.shop.spi.user.MerchantQueryPort merchantQuery;
+
+    @Autowired
+    private ai.neargo.shop.spi.user.CommunityQueryPort communityQuery;
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper merchantMapper;
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.ServiceAreaMapper areaMapper;
+
+    @Autowired
+    private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapper;
+
+    /** 社区号自增：BizKey 没有社区这一档，测试里自己造就够 */
+    private static int seq = 9000;
+
+    /** 造一个商家，只设履约能力，不给覆盖项 */
+    private String merchant(String reach) {
+        var m = new ai.neargo.shop.merchant.entity.MchEntity();
+        m.setEntityNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.MERCHANT));
+        m.setName("范围测试-" + reach);
+        m.setStatus("ACTIVE");
+        m.setFulfillmentReach(reach);
+        merchantMapper.insert(m);
+        // 真实流程里激活就建好默认店（ensureDefaultStore）；经营范围门店级之后（V381）没有店就没有范围可言
+        store(m.getEntityNo());
+        return m.getEntityNo();
+    }
+
+    private Long area(String entityNo, String level, String refCode) {
+        var a = new ai.neargo.shop.merchant.entity.MchServiceArea();
+        a.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
+        a.setEntityNo(entityNo);
+        // 经营范围门店级（V381）：范围必须挂在某家店上，挂不上的行不属于任何门店、对谁都不可见
+        a.setStoreNo(defaultStoreOf(entityNo));
+        a.setLevel(level);
+        a.setRefCode(refCode);
+        a.setSource("SELF");
+        a.setStatus("ACTIVE");
+        areaMapper.insert(a);
+        return a.getId();
+    }
+
+    /**
+     * 这家主体的默认店；还没有就建一家。真实流程里激活时 ensureDefaultStore 就建好了 ——
+     * 这里补上，测试才不是在造一个「有范围、没门店」的不存在的状态。
+     * 读不走数据域：测试里没有登录上下文，带域查会恒为空、反复建店。
+     */
+    private String defaultStoreOf(String entityNo) {
+        return store(entityNo);
+    }
+
+    /** 造一个挂在指定区划下的开放社区 */
+    private String community(String regionCode) {
+        var c = new ai.neargo.shop.community.entity.CmtCommunity();
+        c.setCommunityNo("CT" + seq++);
+        c.setName("区划测试小区-" + regionCode);
+        c.setStatus("OPEN");
+        c.setRegionCode(regionCode);
+        c.setFenceRadius(1000);
+        communityMapper.insert(c);
+        return c.getCommunityNo();
+    }
+
+    // ---------------------------------------------------------------- 行为保持
+
+    @Test
+    @DisplayName("★ 原 COMMUNITY → PICKUP + 社区覆盖项：还是那几个社区")
+    void pickupWithCommunityAreasKeepsSameSet() {
+        String m = merchant("PICKUP");
+        String c1 = community("330106002");
+        String c2 = community("330106003");
+        area(m, "COMMUNITY", c1);
+        area(m, "COMMUNITY", c2);
+
+        assertThat(merchantQuery.reachableCommunities(m)).containsExactlyInAnyOrder(c1, c2);
+    }
+
+    @Test
+    @DisplayName("★ 原 COMMUNITY 却没配社区 → 仍然谁也看不到（自提必须有落点）")
+    void pickupWithoutAreasIsInvisible() {
+        String m = merchant("PICKUP");
+        /*
+         * 反过来做会出事：把 PICKUP 的空当成「不限」，
+         * 一家没配社区的菜摊会突然铺满全平台 —— 而且不报错。
+         */
+        assertThat(merchantQuery.reachableCommunities(m)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★ 自送 + 显式「全平台不限」：全部开放社区")
+    void onsiteWithExplicitUnlimitedCoversEveryOpenCommunity() {
+        String m = merchant("ONSITE");
+        /*
+         * 这一条守的东西没变：存量 CITY 商家（service_city_code 全是 NULL、造不出覆盖项）
+         * 不能在迁移当天集体从 C 端消失。
+         *
+         * 变的是**凭什么不消失**（ADR-034）：此前是「无覆盖项 + 开着自送」= 隐式不限 ——
+         * 而「无覆盖项」有四种成因（框写到别家店、没物化、框成 EXCLUDE、门店级错位），
+         * 任何一种都会让商家在不知情的情况下铺满全平台，虹选粮油就是这么「框了嘉逸花园却全平台可见」的。
+         * 现在「不限」必须是一条显式的 UNLIMITED 范围项；存量那批由 V397 迁移按旧语义逐字回填
+         * （判据见 StoreRoutes，对照量见 UnlimitedBackfillTest），所以他们照旧不消失、而且从此看得见、改得掉。
+         */
+        area(m, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_UNLIMITED,
+                ai.neargo.shop.merchant.entity.MchServiceArea.UNLIMITED_REF);
+        assertThat(merchantQuery.reachableCommunities(m))
+                .containsExactlyInAnyOrderElementsOf(communityQuery.openCommunityNos());
+    }
+
+    @Test
+    @DisplayName("★★★ 自送但一条范围项都没有：对谁都不可见 —— 不再隐式等于全平台")
+    void onsiteWithoutAnyAreaReachesNobody() {
+        /*
+         * 消融判据（ADR-034 AC5）：把隐式不限那条分支加回去，这一条立刻变红。
+         * 方向上宁可少卖不可错卖 —— 配置错位的后果是「商家自己看不到订单」（会被发现、会来问），
+         * 而不是「消费者买了送不到」（谁都不会主动发现）。
+         */
+        assertThat(merchantQuery.reachableCommunities(merchant("ONSITE"))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★ 原 PLATFORM → SHIPPING：全部开放社区，且不必逐个勾")
+    void shippingRespectsAreas() {
+        // #4②:快递也**尊重框选**。框选是「卖给谁」、快递只是「怎么送」,两者正交。
+        // 此前这里断言「快递忽略框选、全市可见」—— 那正是「框了龙华却全市可见」的分叉,现已修。
+        String framed = merchant("SHIPPING");
+        String c = community("330106002");
+        area(framed, "COMMUNITY", c);   // 开着快递、又框了一个社区
+        assertThat(merchantQuery.reachableCommunities(framed))
+                .as("框了一个社区 → 快递也只服务那个社区")
+                .containsExactly(c);
+
+        // 开快递 + 显式「全平台不限」→ 全部开放社区（ADR-034：不限必须显式，不再由「没框」隐式成立）
+        String nationwide = merchant("SHIPPING");
+        area(nationwide, ai.neargo.shop.merchant.entity.MchServiceArea.LEVEL_UNLIMITED,
+                ai.neargo.shop.merchant.entity.MchServiceArea.UNLIMITED_REF);
+        assertThat(merchantQuery.reachableCommunities(nationwide))
+                .as("开快递 + 显式不限 → 全部开放社区")
+                .containsExactlyInAnyOrderElementsOf(communityQuery.openCommunityNos());
+    }
+
+    // ---------------------------------------------------------------- 新能力
+
+    @Test
+    @DisplayName("★ 按区县覆盖：前缀展开，挂到区与挂到街道的社区都命中")
+    void districtAreaExpandsByPrefix() {
+        String m = merchant("ONSITE");
+        String onDistrict = community("330106");      // 直接挂在区上
+        String onStreet = community("330106002");     // 挂在该区下的街道
+        String elsewhere = community("330105001");    // 隔壁区
+        area(m, "DISTRICT", "330106");
+
+        var reachable = merchantQuery.reachableCommunities(m);
+        assertThat(reachable).contains(onDistrict, onStreet);
+        assertThat(reachable).doesNotContain(elsewhere);
+    }
+
+    @Test
+    @DisplayName("★ 跨粒度组合：三个小区 + 一个区 —— 这正是三档枚举做不到的事")
+    void mixedGranularityIsTheWholePoint() {
+        String m = merchant("ONSITE");
+        String far = community("330100999");           // 不在西湖区下，靠逐个点名
+        String inDistrict = community("330106004");
+        area(m, "COMMUNITY", far);
+        area(m, "DISTRICT", "330106");
+
+        assertThat(merchantQuery.reachableCommunities(m)).contains(far, inDistrict);
+    }
+
+    @Test
+    @DisplayName("★ 关城的社区不会因为「商家框了这个区」而重新可见")
+    void closedCommunityStaysHidden() {
+        String m = merchant("ONSITE");
+        String open = community("330199001");
+        var closed = new ai.neargo.shop.community.entity.CmtCommunity();
+        closed.setCommunityNo("CT" + seq++);
+        closed.setName("已关城");
+        closed.setStatus("CLOSED");
+        closed.setRegionCode("330199002");
+        closed.setFenceRadius(1000);
+        communityMapper.insert(closed);
+
+        area(m, "DISTRICT", "330199");
+        var reachable = merchantQuery.reachableCommunities(m);
+        assertThat(reachable).contains(open);
+        assertThat(reachable).doesNotContain(closed.getCommunityNo());
+    }
+
+    @Test
+    @DisplayName("★ 待审的覆盖项不生效 —— 勾了整个区不等于当场就覆盖整个区")
+    void pendingAreaDoesNotCount() {
+        String m = merchant("PICKUP");
+        String c = community("330106002");
+        var a = new ai.neargo.shop.merchant.entity.MchServiceArea();
+        a.setAreaNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.SERVICE_AREA));
+        a.setEntityNo(m);
+        a.setStoreNo(defaultStoreOf(m));
+        a.setLevel("COMMUNITY");
+        a.setRefCode(c);
+        a.setSource("SELF");
+        a.setStatus("PENDING");
+        areaMapper.insert(a);
+
+        // PENDING 不算覆盖项，于是这家 PICKUP 商家等同「没框」→ 谁也看不到
+        assertThat(merchantQuery.reachableCommunities(m)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★ 空区划码不匹配一切 —— 那是最危险的默认值")
+    void blankRegionMatchesNothing() {
+        assertThat(communityQuery.openCommunityNosUnderRegion("")).isEmpty();
+        assertThat(communityQuery.openCommunityNosUnderRegion(null)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★ 覆盖项走物理删除 —— 移除后再加回同一条不撞唯一键")
+    void areaRemoveThenAddAgain() {
+        String m = merchant("PICKUP");
+        String c = community("330106002");
+        Long id = area(m, "COMMUNITY", c);
+
+        /*
+         * 逻辑删 + 业务唯一键这个组合在本仓库踩过四次（门店角色、商品社区池、
+         * 商家社区表各修了一个 revive）。这张表从一开始就走物理删除，
+         * 从根上消掉那类 bug —— 这条用例守的就是「别哪天改回逻辑删」。
+         */
+        areaMapper.hardDeleteById(id);
+        assertThat(merchantQuery.reachableCommunities(m)).isEmpty();
+
+        area(m, "COMMUNITY", c);
+        assertThat(merchantQuery.reachableCommunities(m)).containsExactly(c);
+    }
+
+    // ---------------------------------------------------------------- B 端写入
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.merchant.service.MerchantStoreService storeService;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper storeMapper;
+
+    /**
+     * 建一行门店。真实流程里这一行由**入驻审核通过**时创建，
+     * 门店保存只会更新它 —— 测试里要照着这个前提造，否则测的是一条不存在的路径。
+     */
+    /** 默认店：已有就返回那一家（幂等），没有才建 —— 一个主体只该有一家默认店 */
+    private String store(String merchantNo) {
+        var existing = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
+                com.baomidou.mybatisplus.core.toolkit.Wrappers.<ai.neargo.shop.merchant.entity.MchStore>lambdaQuery()
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getEntityNo, merchantNo)
+                        .eq(ai.neargo.shop.merchant.entity.MchStore::getIsDefault, true)
+                        .last("limit 1")));
+        if (existing != null) {
+            return existing.getStoreNo();
+        }
+        var st = new ai.neargo.shop.merchant.entity.MchStore();
+        st.setStoreNo("ST" + seq++);
+        st.setEntityNo(merchantNo);
+        st.setIsDefault(true);
+        storeMapper.insert(st);
+        return st.getStoreNo();
+    }
+
+    /** 再开一家非默认店，返回它的门店号 */
+    private String extraStore(String merchantNo, String name) {
+        var st = new ai.neargo.shop.merchant.entity.MchStore();
+        st.setStoreNo("ST" + seq++);
+        st.setEntityNo(merchantNo);
+        st.setName(name);
+        st.setIsDefault(false);
+        storeMapper.insert(st);
+        return st.getStoreNo();
+    }
+
+    @Autowired
+    private ai.neargo.shop.merchant.service.MerchantGovernService governService;
+
+    @Test
+    @DisplayName("★★ 「同时发到」把同一句发进选中的店，别家不动、每家的常用各是各的")
+    void announcementFansOutToPickedStores() {
+        String m = merchant("PICKUP");
+        store(m);                                   // 默认店
+        String b = extraStore(m, "南门店");
+        String c = extraStore(m, "文三店");
+        String other = merchant("PICKUP");          // 另一个主体
+        store(other);
+        String outsider = extraStore(other, "别人家的店");
+
+        storeService.saveAnnouncement(m, null, "今天到了新米", null, java.util.List.of(b, outsider));
+
+        assertThat(storeService.profile(m, null).announcement()).isEqualTo("今天到了新米");
+        assertThat(storeService.profile(m, b).announcement()).as("勾了的店").isEqualTo("今天到了新米");
+        assertThat(storeService.profile(m, c).announcement()).as("没勾的店不动").isEmpty();
+        /*
+         * 端上传来的门店号可能不属于本主体 —— 那会把一句公告写进别人店里，
+         * 而两边都不会报错。所以目标店要从库里按主体查一遍，不信端上给的。
+         */
+        assertThat(storeService.profile(other, outsider).announcement())
+                .as("别家主体的店，写不进去").isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★ 公告带发布时间，而且**只在正文真的变了**的时候刷新")
+    void announcementCarriesItsOwnTimestamp() throws Exception {
+        String m = merchant("PICKUP");
+        store(m);
+        String c = community("330106002");
+
+        storeService.saveAnnouncement(m, null, "今天到了新米", null, java.util.List.of());
+        Long first = merchantQuery.storeFront(m).orElseThrow().announcementAt();
+        assertThat(first).as("发过就该有时间").isNotNull();
+
+        Thread.sleep(5);
+        // 只改有效期：正文没变
+        storeService.saveAnnouncement(m, null, "今天到了新米", System.currentTimeMillis() + 3600_000L,
+                java.util.List.of());
+        assertThat(merchantQuery.storeFront(m).orElseThrow().announcementAt())
+                .as("正文没变，时间不该刷新").isEqualTo(first);
+
+        Thread.sleep(5);
+        // 改别的门面字段：更不该动它
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "今天到了新米", null, "07:00-21:00", "文一西路 1 号", null,
+                java.util.List.of(), null, null, null, "PICKUP",
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                        .AreaCommand("COMMUNITY", c)), null, null));
+        assertThat(merchantQuery.storeFront(m).orElseThrow().announcementAt())
+                .as("改营业时间不该把三周前的公告变成「刚刚更新」").isEqualTo(first);
+
+        Thread.sleep(5);
+        storeService.saveAnnouncement(m, null, "土鸡蛋还有两筐", null, java.util.List.of());
+        assertThat(merchantQuery.storeFront(m).orElseThrow().announcementAt())
+                .as("换了一句话才刷新").isGreaterThan(first);
+    }
+
+    @Test
+    @DisplayName("★ 公告过期时连时间也不下发 —— 那一行整个不该出现")
+    void expiredAnnouncementHasNoTimestamp() {
+        String m = merchant("PICKUP");
+        store(m);
+        storeService.saveAnnouncement(m, null, "昨天到的货", System.currentTimeMillis() - 1000,
+                java.util.List.of());
+
+        var front = merchantQuery.storeFront(m).orElseThrow();
+        assertThat(front.announcement()).isEmpty();
+        assertThat(front.announcementAt()).as("给了时间反而像它还在").isNull();
+    }
+
+    @Test
+    @DisplayName("★ 常用能一条条删 —— 写错一次的那句不该赖着不走")
+    void recentAnnouncementCanBeDropped() {
+        String m = merchant("PICKUP");
+        store(m);
+        storeService.saveAnnouncement(m, null, "今天到了新米", null, java.util.List.of());
+        storeService.saveAnnouncement(m, null, "土鸡蛋还有两筐", null, java.util.List.of());
+
+        var before = storeService.profile(m).announcementRecent();
+        assertThat(before).containsExactly("土鸡蛋还有两筐", "今天到了新米");
+
+        var after = storeService.dropRecentAnnouncement(m, null, "今天到了新米");
+        assertThat(after.announcementRecent()).containsExactly("土鸡蛋还有两筐");
+        // 删候选不该顺带改当前公告
+        assertThat(after.announcement()).isEqualTo("土鸡蛋还有两筐");
+    }
+
+    @Test
+    @DisplayName("★★ 公告命中机审：旧公告照常挂着，而商家看得到「我那条在等审」")
+    void noticeInReviewIsVisibleToMerchant() {
+        String m = merchant("PICKUP");
+        store(m);
+        storeService.saveAnnouncement(m, null, "今天到了新米", null, java.util.List.of());
+
+        // 「最低价」在 V10 种下的词表里
+        storeService.saveAnnouncement(m, null, "全场最低价", null, java.util.List.of());
+
+        var vo = storeService.profile(m);
+        assertThat(vo.announcement()).as("命中期间保留旧公告").isEqualTo("今天到了新米");
+        /*
+         * 这一条是「说了发布其实没发布」的守卫：不下发待审的话，端上照旧提示
+         * 「已发布」而输入框还原成上一句，商家只会以为自己手滑，反复再发一次。
+         */
+        assertThat(vo.noticePending()).as("待审要下发").isNotNull();
+        assertThat(vo.noticePending().content()).isEqualTo("全场最低价");
+    }
+
+    @Test
+    @DisplayName("★★ 审核通过写回**提交它的那家店**，并带上当时选的有效期")
+    void approvedNoticeLandsOnTheRightStore() {
+        String m = merchant("PICKUP");
+        store(m);                                   // 默认店
+        String second = extraStore(m, "南门店");
+        long until = System.currentTimeMillis() + 3600_000L;
+
+        storeService.saveAnnouncement(m, second, "全场最低价，速来", until, java.util.List.of());
+
+        var pending = governService.storeAudits("PENDING", null, null).stream()
+                .filter(a -> a.merchantNo().equals(m)).findFirst().orElseThrow();
+        assertThat(pending.storeName()).as("运营要看得出是哪家店").isEqualTo("南门店");
+        governService.decideStoreAudit(pending.auditNo(), true, null, "OPS-TEST");
+
+        /*
+         * 两个错各守一条：
+         *  ① 此前按商户取 `limit 1` 写回 —— 「南门店今天停电」会落到默认店上；
+         *  ② 此前只写正文 —— 提交时选的「今天有效」丢了，审出来之后就一直挂着。
+         */
+        assertThat(storeService.profile(m, second).announcement()).isEqualTo("全场最低价，速来");
+        assertThat(storeService.profile(m, second).announcementUntil()).isEqualTo(until);
+        assertThat(storeService.profile(m, null).announcement())
+                .as("别家店的公告不该被改").isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★ 公告过期即空 —— 「昨天到货」不该挂到今天，而且两条读路径要一致")
+    void announcementExpires() {
+        String m = merchant("PICKUP");
+        store(m);
+        String c = community("330106002");
+        var areas = java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                .AreaCommand("COMMUNITY", c));
+
+        long past = System.currentTimeMillis() - 3600_000L;
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "今天到了新米", past, "08:00-20:00", "文一西路 1 号", null,
+                java.util.List.of(), null, null, null, "PICKUP", areas, null, null));
+
+        /*
+         * **B 端与 C 端必须给出同一个答案**。只在一处判过期的话，
+         * 商家自己看是空的、买家看到的却是昨天的货 —— 而这种不一致
+         * 没有任何报错，只有买家白跑一趟才会暴露。
+         */
+        assertThat(storeService.profile(m).announcement()).as("B 端").isEmpty();
+        assertThat(merchantQuery.storeFront(m).orElseThrow().announcement()).as("C 端").isEmpty();
+
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "今天到了新米", System.currentTimeMillis() + 3600_000L, "08:00-20:00", "文一西路 1 号", null,
+                java.util.List.of(), null, null, null, "PICKUP", areas, null, null));
+        assertThat(storeService.profile(m).announcement()).isEqualTo("今天到了新米");
+    }
+
+    @Test
+    @DisplayName("★★ 只改公告不碰门面 —— 高频与低频拆成两条路，改一句话不该重写地址")
+    void saveAnnouncementLeavesTheRestAlone() {
+        String m = merchant("PICKUP");
+        store(m);
+        String c = community("330106002");
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "旧公告", null, "06:30-21:00", "龙澜大道 441 号", "3 栋 501",
+                java.util.List.of(), null, null, null, "PICKUP",
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                        .AreaCommand("COMMUNITY", c)), 22_695_293, 114_027_370));
+
+        storeService.saveAnnouncement(m, null, "今天到了新米", null, java.util.List.of());
+
+        var vo = storeService.profile(m);
+        assertThat(vo.announcement()).isEqualTo("今天到了新米");
+        /*
+         * 这几条是这个口子存在的**全部理由**：混在一份全量保存里时，端上少传一个字段
+         * 就会把它写回空 —— 而「地址没了」这种事商家要等到有人来取货才发现。
+         */
+        assertThat(vo.openHours()).isEqualTo("06:30-21:00");
+        assertThat(vo.address()).isEqualTo("龙澜大道 441 号");
+        assertThat(vo.addressDetail()).isEqualTo("3 栋 501");
+        assertThat(vo.latE6()).isEqualTo(22_695_293);
+        assertThat(vo.serviceAreas()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("★ 常用公告：最近用过的排最前、不重复、最多 8 条")
+    void recentAnnouncementsAreDeduped() {
+        String m = merchant("PICKUP");
+        store(m);
+        String c = community("330106002");
+        var areas = java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                .AreaCommand("COMMUNITY", c));
+
+        for (String text : java.util.List.of("一", "二", "三", "一", "四", "五", "六", "七", "八", "九")) {
+            storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                    text, null, "08:00-20:00", "文一西路 1 号", null,
+                    java.util.List.of(), null, null, null, "PICKUP", areas, null, null));
+        }
+
+        var recent = storeService.profile(m).announcementRecent();
+        assertThat(recent).hasSize(8);
+        assertThat(recent.get(0)).as("刚用过的排最前").isEqualTo("九");
+        // 「一」用过两次，只留最近那一次的位置（第 4 次发的，排在「三」前面）
+        assertThat(recent).as("同一句只留一条")
+                .containsExactly("九", "八", "七", "六", "五", "四", "一", "三");
+    }
+
+    @Test
+    @DisplayName("★★ 重选地图不冲掉门牌号 —— 两截分开存，老版本端上不传时也不许被抹掉")
+    void addressDetailSurvivesRepick() {
+        String m = merchant("PICKUP");
+        store(m);
+        String c = community("330106002");
+        var areas = java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                .AreaCommand("COMMUNITY", c));
+
+        // 先选点 + 填门牌号
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "龙澜大道 441 号招商锦绣观园", "3 栋 2 单元 501",
+                java.util.List.of(), null, null, null, "PICKUP", areas, 22_695_293, 114_027_370));
+        assertThat(storeService.profile(m).addressDetail()).isEqualTo("3 栋 2 单元 501");
+
+        /*
+         * 再点一次地图选点：端上只重写 address。**门牌号必须留着** ——
+         * 合成一格的年代，这一步会把商家补的那截无声抹掉，而地址看着还是对的，
+         * 只是又回到了小区门口。
+         */
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "龙澜大道 441 号招商锦绣观园东门", null,
+                java.util.List.of(), null, null, null, "PICKUP", areas, 22_695_300, 114_027_380));
+        assertThat(storeService.profile(m).addressDetail())
+                .as("null = 这次不改门牌号（老版本端上就不传这个字段）").isEqualTo("3 栋 2 单元 501");
+
+        // 空串才是「清掉」
+        storeService.save(m, null, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "龙澜大道 441 号招商锦绣观园东门", "",
+                java.util.List.of(), null, null, null, "PICKUP", areas, 22_695_300, 114_027_380));
+        assertThat(storeService.profile(m).addressDetail()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("★★ 门面资料是**门店级**的：地址填在哪家店，就只从哪家店读回来")
+    void profileFollowsCurrentStore() {
+        String m = merchant("PICKUP");
+        store(m);                                   // 默认店，没地址
+        String second = extraStore(m, "第二家店");
+        String c = community("330106002");
+
+        var cmd = new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "龙澜大道 441 号", java.util.List.of(),
+                null, null, null, "PICKUP",
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                        .AreaCommand("COMMUNITY", c)));
+        storeService.save(m, second, cmd);
+
+        /*
+         * 线上就是这个形状：M0001 三家店，地址填在第二家，而 profile 用
+         * `limit 1`（不排序、不看默认店）读到第一家 —— 于是「门店自取」一直提示
+         * 「还没填地址」，商家反复去填也没用，他填的和系统读的不是同一行。
+         */
+        assertThat(storeService.profile(m, second).address()).isEqualTo("龙澜大道 441 号");
+        assertThat(storeService.profile(m, null).address())
+                .as("默认店没填过地址，不该把别家的读过来").isEmpty();
+    }
+
+    @Test
+    @DisplayName("★ 商家保存「一个社区 + 一个区」—— 三档枚举做不到的组合，从端上真的能存进来")
+    void merchantSavesMixedAreas() {
+        String m = merchant("ONSITE");
+        store(m);
+        String c = community("330106002");
+
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
+                null, null, null, "ONSITE",
+                java.util.List.of(
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("DISTRICT", "330106"))));
+
+        var vo = storeService.profile(m);
+        assertThat(vo.fulfillmentReach()).isEqualTo("ONSITE");
+        assertThat(vo.serviceAreas()).hasSize(2);
+        // 名字由后端补：端上只拿到 330106 的话要么显示数字要么再查一次
+        assertThat(vo.serviceAreas().stream()
+                .map(ai.neargo.shop.merchant.dto.StoreProfileVO.ServiceAreaVO::name))
+                .anySatisfy(n -> assertThat(n).contains("区划测试小区"));
+    }
+
+    @Test
+    @DisplayName("★★ 按省覆盖：省码是 2 位前缀，整省的社区都命中，勾完当场生效（2026-08-24 起不再要审）")
+    void provinceAreaExpandsImmediately() {
+        String m = merchant("SHIPPING");
+        store(m);
+        String inProvince = community("330106002");   // 浙江 → 杭州 → 西湖 → 街道
+        String otherProvince = community("140802001"); // 山西 → 运城
+
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
+                null, null, null, "ONSITE",
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                        .AreaCommand("PROVINCE", "33"))));
+
+        var rows = areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m));
+        /*
+         * 省这一档是新加的（AREA_LEVEL.PROVINCE）。后端没有为它写过任何分支 ——
+         * 这条用例守的正是「不写分支也对」：展开归入「国标码前缀」，
+         * 状态一律 ACTIVE，不再走待审队列。
+         */
+        assertThat(rows).singleElement()
+                .satisfies(r -> assertThat(r.getStatus()).isEqualTo("ACTIVE"));
+
+        // 保存当场就展开，而且只展开这个省
+        var reachable = merchantQuery.reachableCommunities(m);
+        assertThat(reachable).contains(inProvince);
+        assertThat(reachable).doesNotContain(otherProvince);
+    }
+
+    @Test
+    @DisplayName("★★ 同时勾了省与省下面的区 → 只留省。留着子项会在运营队列里多一条永远没意义的待审")
+    void parentSwallowsChild() {
+        String m = merchant("ONSITE");
+        store(m);
+        String c = community("330106002");
+
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
+                null, null, null, "ONSITE",
+                java.util.List.of(
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("PROVINCE", "33"),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("CITY", "3301"),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("DISTRICT", "330106"),
+                        // 聚落不参与归一：它的归属挂在 cmt_community.region_code 上，这一层看不见
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c))));
+
+        var rows = areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m));
+        assertThat(rows).extracting(ai.neargo.shop.merchant.entity.MchServiceArea::getLevel)
+                .containsExactlyInAnyOrder("PROVINCE", "COMMUNITY");
+    }
+
+    @Test
+    @DisplayName("★ 勾社区、勾区，保存后都是同一句话：当场生效")
+    void districtAreaIsSelfEffectiveToo() {
+        String m = merchant("ONSITE");
+        store(m);
+        String c = community("330106002");
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
+                null, null, null, "ONSITE",
+                java.util.List.of(
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("DISTRICT", "330106"))));
+
+        var rows = areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m));
+        assertThat(rows).allSatisfy(r -> assertThat(r.getStatus()).isEqualTo("ACTIVE"));
+    }
+
+    @Test
+    @DisplayName("★ 已经生效的覆盖不会因为商家改了句公告就被打回")
+    void approvedAreaSurvivesLaterSave() {
+        String m = merchant("ONSITE");
+        store(m);
+        var cmd = new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
+                null, null, null, "ONSITE",
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService
+                        .AreaCommand("DISTRICT", "330106")));
+        storeService.save(m, cmd);
+
+        // 商家回来只改了一句公告，覆盖项原样再传一遍
+        storeService.save(m, cmd);
+
+        var after = areaMapper.selectList(com.baomidou.mybatisplus.core.toolkit.Wrappers
+                .<ai.neargo.shop.merchant.entity.MchServiceArea>lambdaQuery()
+                .eq(ai.neargo.shop.merchant.entity.MchServiceArea::getEntityNo, m));
+        assertThat(after).singleElement()
+                .satisfies(r -> assertThat(r.getStatus()).isEqualTo("ACTIVE"));
+    }
+
+    @Test
+    @DisplayName("★ 状态必须回显给端上 —— 商家看清单里的每一条是不是真已经生效")
+    void statusIsReturnedToClient() {
+        String m = merchant("ONSITE");
+        store(m);
+        String c = community("330106002");
+        var profile = storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
+                null, null, null, "ONSITE",
+                java.util.List.of(
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("DISTRICT", "330106"))));
+
+        assertThat(profile.serviceAreas())
+                .allSatisfy(a -> assertThat(a.status()).isEqualTo("ACTIVE"));
+    }
+
+    @Test
+    @DisplayName("★ 覆盖项传 null = 这次不改（老版本 b-app 不传），传空列表才是清空")
+    void nullAreasMeansUnchanged() {
+        String m = merchant("ONSITE");
+        store(m);
+        String c = community("330106002");
+        area(m, "COMMUNITY", c);
+
+        storeService.save(m, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                "营业中", "08:00-20:00", "文一西路 1 号", java.util.List.of(),
+                null, null, null, "ONSITE", null));
+
+        // null 不该把已有覆盖项抹掉 —— 抹掉的话老版本端一保存公告，
+        // 这家店的范围就没了，而他只是改了句公告
+        assertThat(merchantQuery.reachableCommunities(m)).containsExactly(c);
+    }
+
+    // ---------------------------------------------------------------- 经营范围门店级（V381）
+
+    @Autowired
+    private ai.neargo.shop.merchant.service.StoreAdminService storeAdmin;
+
+    @Autowired
+    private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
+
+    private static ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand areasCmd(String... communityNos) {
+        return new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null,
+                java.util.Arrays.stream(communityNos)
+                        .map(c -> new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", c))
+                        .toList(),
+                null, null);
+    }
+
+    private java.util.List<String> areaRefsOf(String m, String storeNo) {
+        return storeService.profile(m, storeNo).serviceAreas().stream()
+                .map(a -> a.refCode()).toList();
+    }
+
+    @Test
+    @DisplayName("★★★ 改一家店的经营范围，别的店一行都不变 —— 店主报的「改一家、全变」")
+    void editingOneStoreRangeLeavesOtherStoresAlone() {
+        /*
+         * 店主原话（2026-10-08）：「修改一个门店的经营范围，其他门店也改了。经营范围在门店，不在主体。」
+         * 此前 mch_service_area 只有 entity_no，一个主体所有门店共用一份；
+         * 虹选鲜果在深圳、虹选粮油在山西，共用一份范围根本不成立。
+         */
+        String m = merchant("ONSITE");
+        String a = store(m);
+        String b = extraStore(m, "B 店");
+        String ca = community("330106002");
+        String cb = community("330106003");
+        String ca2 = community("330106004");
+
+        storeService.save(m, a, areasCmd(ca));
+        storeService.save(m, b, areasCmd(cb));
+        // 再改一次 A 店 —— B 店的范围必须原样
+        storeService.save(m, a, areasCmd(ca2));
+
+        assertThat(areaRefsOf(m, a)).as("A 店改成了 ca2").containsExactly(ca2);
+        assertThat(areaRefsOf(m, b)).as("改 A 店，B 店的范围不该跟着变").containsExactly(cb);
+        assertThat(merchantQuery.reachableCommunities(m, a)).as("A 店只送 A 店框的").containsExactly(ca2);
+        assertThat(merchantQuery.reachableCommunities(m, b)).as("B 店只送 B 店框的").containsExactly(cb);
+    }
+
+    @Test
+    @DisplayName("★★ 主体口径是各店并集 —— A 店排除的楼，不能把 B 店纳入的同一栋减掉")
+    void entityReachIsUnionOfStoresNotAMixedList() {
+        String m = merchant("ONSITE");
+        String a = store(m);
+        String b = extraStore(m, "B 店");
+        String x = community("330106005");
+        String y = community("330106006");
+
+        // A 店框 y、排除 x；B 店框 x
+        storeService.save(m, a, new ai.neargo.shop.merchant.service.MerchantStoreService.SaveCommand(
+                null, null, null, null, null, null, null, null, null, null,
+                java.util.List.of(new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", y, "INCLUDE"),
+                        new ai.neargo.shop.merchant.service.MerchantStoreService.AreaCommand("COMMUNITY", x, "EXCLUDE")),
+                null, null));
+        storeService.save(m, b, areasCmd(x));
+
+        /*
+         * 把两家店的 INCLUDE/EXCLUDE 混成一份再展开的话，A 店的 EXCLUDE x 会把 B 店的 INCLUDE x 减掉，
+         * 主体口径（商家详情「覆盖哪儿」、自提点候选…）里就没有 x —— 而 B 店明明送 x。
+         */
+        assertThat(merchantQuery.reachableCommunities(m))
+                .as("主体口径 = 各店逐个判再取并集")
+                .containsExactlyInAnyOrder(x, y);
+        assertThat(merchantQuery.serves(m, null, x)).as("任一门店送得到即算").isTrue();
+    }
+
+    @Test
+    @DisplayName("★★ 新开的店照抄默认店的范围 —— 不抄的话只做自提的新店对谁都不可见")
+    void newStoreInheritsDefaultStoreRange() {
+        String m = merchant("ONSITE");
+        String a = store(m);
+        // 这个夹具的主体没走真实激活（没有 ensureFreePlan 建的订阅行）—— 补一行，建店才过得了额度闸
+        var plan = new ai.neargo.shop.merchant.entity.MchEntityPlan();
+        plan.setEntityNo(m);
+        plan.setPlanCode(ai.neargo.shop.merchant.entity.MchEntityPlan.FREE);
+        plan.setStatus("ACTIVE");
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> planMapper.insert(plan));
+        ai.neargo.shop.support.TestPlan.grantQuota(planMapper, m, 3);
+        String ca = community("330106007");
+        storeService.save(m, a, areasCmd(ca));
+
+        String b = storeAdmin.create(m, "新开的店", "某路 1 号").storeNo();
+
+        assertThat(areaRefsOf(m, b)).as("新店先照抄一份默认店的范围").containsExactly(ca);
+        // 抄的是一份**独立**的：改新店不影响默认店
+        String cb = community("330106008");
+        storeService.save(m, b, areasCmd(cb));
+        assertThat(areaRefsOf(m, a)).as("改新店，默认店不动").containsExactly(ca);
+    }
+}

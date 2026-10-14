@@ -1,0 +1,188 @@
+<script setup lang="ts">
+// 经营类目 —— 这家门店卖哪几类（TDD-门店经营类目；上游 TDD-品类约束全链路 §三）。
+//
+// 与「商品的类目」的分工：商品选的是**平台类目**（它决定形态：生鲜要截单、
+// 服务不发货），这一页管的是**本店卖哪几类、叫什么名、什么顺序**。
+// 两者同一个 categoryNo —— 所以商家改了显示名，跨店比价照样成立。
+//
+// 2026-09-19 改版：此前这一页把平台整棵类目树铺在上面、本店的压在底部，
+// 店主以为那些灰框也是自己的类目。现在只列本店的；加与移出都在「调整经营类目」面板里
+// （biz-category-sheet，建商品页也用它）。经营类目也不再被建品自动撑大 —— 不在就拒。
+import { computed, ref } from "vue";
+import { onShow } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
+import { api } from "@/api";
+import { useMerchantStore } from "@/stores/merchant";
+import { ROUTES } from "@/shared/nav";
+import { handOffGoodsCategory } from "@/shared/handoff";
+import type { InvCategorySetting, StoreCategory } from "@shared/types";
+import { prompt } from "@ai-shop/ui/prompt";
+import { toggleInvCategory } from "@/utils/inv-category";
+
+const { t } = useI18n();
+const merchant = useMerchantStore();
+const picked = ref<StoreCategory[]>([]);
+const busy = ref(false);
+/** 「调整经营类目」面板开没开 */
+const adjusting = ref(false);
+
+/** 当前门店。多门店时经营类目各店各有一份 —— 分店卖的不一定是同一批货 */
+const storeNo = computed(() => merchant.storeNo);
+
+/**
+ * 点一类直接去商品列表，**并且落在这一类上**。
+ * <p>商家看得出这一类卖得怎么样，也能从这里直接走到那批货。
+ */
+function openGoods(no: string) {
+  // 商品列表是 tabBar 页，switchTab 不能带参数 —— 参数走交接位（见 shared/handoff）
+  handOffGoodsCategory(no);
+  uni.switchTab({ url: ROUTES.goods });
+}
+
+onShow(load);
+
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const loaded = ref(false);
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有经营类目」 */
+const failed = ref(false);
+
+async function load() {
+  try {
+    // 没选门店时本来就没有「本店经营类目」可言，这是确定的空，不是没取到
+    picked.value = storeNo.value ? await api.mStoreCategories(storeNo.value) : [];
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
+  loaded.value = true;
+  void loadInv();
+}
+
+/**
+ * 各类目记不记库存（TDD-商品纳入进销存开关 §3）。店主找这个设置时找的是「类目」这一页，
+ * 所以开关也挂在这里；与「库存 → 更多 → 库存设置」是同一份数据、同一套三道判。
+ * 取不到就不显示那一行 —— 它不是这一页的主线，不该拖着类目列表一起失败。
+ */
+const inv = ref<Record<string, InvCategorySetting>>({});
+const invBusy = ref(false);
+
+async function loadInv() {
+  const rows = await api.mInvCategorySettings().catch(() => [] as InvCategorySetting[]);
+  inv.value = Object.fromEntries(rows.map((r) => [r.categoryNo, r]));
+}
+
+async function toggleInv(c: StoreCategory) {
+  const row = inv.value[c.categoryNo];
+  if (!row || invBusy.value || !merchant.can("biz:goods")) return;
+  invBusy.value = true;
+  try {
+    if (await toggleInvCategory(t, { ...row, name: c.name })) await loadInv();
+  } finally {
+    invBusy.value = false;
+  }
+}
+
+/** 面板里每保存成功一次就回来一份最新的 */
+function onChange(next: StoreCategory[]) {
+  picked.value = next;
+}
+
+/** 改显示名。它只是**皮** —— categoryNo 不变，所以跨店聚合与比价都不受影响 */
+async function rename(c: StoreCategory) {
+  const input = await prompt({
+    title: String(t("storeCategories.rename")),
+    placeholder: c.platformName,
+    value: c.displayName ?? "",
+  });
+  // 清空 = 回到平台名，是合法操作，不是「叫空字符串」——
+  // 所以只有**取消**（null）才提前返回，空串要走下去
+  if (input === null) return;
+  const name = input.trim();
+  if (busy.value || !storeNo.value) return;
+  busy.value = true;
+  try {
+    picked.value = await api.mSaveStoreCategories(storeNo.value, picked.value.map((x, i) => ({
+      categoryNo: x.categoryNo,
+      displayName: x.categoryNo === c.categoryNo ? name : x.displayName,
+      sort: i,
+    })));
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+    await load();
+  } finally {
+    busy.value = false;
+  }
+}
+</script>
+
+<template>
+  <sh-scaffold title-key="storeCategories.title" :denied="!merchant.can('biz:store:admin')">
+    <!--
+      **只列本店的。**平台其余类目收进底部「调整经营类目」面板 ——
+      改版前它们铺在这一页上面，标题又叫「我的类目」，店主以为那些灰框也是自己的。
+    -->
+    <view v-if="picked.length" class="sh-card">
+      <view v-for="c in picked" :key="c.categoryNo" class="sh-row sh-row--divided row">
+        <view class="sh-fill" @tap="openGoods(c.categoryNo)">
+          <text class="txt-body row__name">{{ c.name }}</text>
+          <text v-if="c.displayName" class="txt-caption row__plat">{{ c.platformName }}</text>
+          <text class="txt-caption sh-muted row__stat">
+            {{ $t("storeCategories.onSale", { n: c.onSaleCount }) }}
+            <template v-if="c.pendingCount">
+              · {{ $t("storeCategories.pending", { n: c.pendingCount }) }}
+            </template>
+            <template v-if="c.goodsCount > c.onSaleCount + c.pendingCount">
+              · {{ $t("storeCategories.total", { n: c.goodsCount }) }}
+            </template>
+          </text>
+          <!-- 记不记库存。店主找这个设置时找的是这一页；改它要商品的码，没有的人只看状态 -->
+          <view v-if="inv[c.categoryNo]" class="inv sh-row" @tap.stop="toggleInv(c)">
+            <text class="txt-caption sh-muted">{{ $t("storeCategories.invLabel") }}</text>
+            <sh-switch
+              :model-value="inv[c.categoryNo]?.managed"
+              :disabled="invBusy || !merchant.can('biz:goods')"
+            ></sh-switch>
+          </view>
+        </view>
+        <text class="sh-chip row__act" @tap.stop="rename(c)">{{ $t("storeCategories.rename") }}</text>
+      </view>
+    </view>
+    <sh-empty v-else :pending="!loaded" :failed="failed" @retry="load"
+      :text='$t("storeCategories.empty")' :tip='$t("storeCategories.emptyTip")'></sh-empty>
+
+    <!-- 这一页的主动作：二级页的主动作放贴底通栏，与建活动、建券同位 -->
+    <sh-actionbar v-if="storeNo">
+      <view class="sh-btn" @tap="adjusting = true">{{ $t("storeCategories.adjust") }}</view>
+    </sh-actionbar>
+    <biz-category-sheet
+      :visible="adjusting"
+      :store-no="storeNo"
+      @close="adjusting = false"
+      @change="onChange"
+    ></biz-category-sheet>
+  </sh-scaffold>
+</template>
+
+<style scoped>
+.row__act {
+  flex-shrink: 0;
+}
+.row__name {
+  flex: 1;
+}
+/* 改过名时跟在后面的平台原名：与新名字隔开，别读成一个词。
+   **选择器要写到 `.row__plat`**：原来是 `.row__name + .txt-caption`，
+   而「在售 N」那行也是 `.txt-caption`、也紧跟在名字后面（没改过名时），
+   于是它跟着缩进 8rpx —— 三行左边线对不齐，只有这一行往里让了一截。 */
+.row__plat {
+  margin-inline-start: 8rpx;
+}
+.row__stat {
+  display: block;
+  margin-top: 4rpx;
+}
+.inv {
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+</style>

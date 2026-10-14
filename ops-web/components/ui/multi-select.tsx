@@ -79,7 +79,7 @@ export function MultiSelect({
             <span className="text-muted-foreground">{placeholder ?? t("form.selectPlaceholder")}</span>
           ) : (
             value.map((v) => (
-              <span key={v} className="inline-flex items-center gap-1 rounded-chip bg-card px-1.5 text-xs leading-5">
+              <span key={v} className="inline-flex items-center gap-1 rounded-chip bg-card px-1.5 txt-caption leading-5">
                 {labelOf(v)}
                 {!disabled && (
                   <X
@@ -107,7 +107,7 @@ export function MultiSelect({
                 type="button"
                 onClick={() => toggle(o.value)}
                 className={cn(
-                  "focus-ring flex w-full items-center gap-2 rounded-field px-2 py-1.5 text-start text-[13px] transition-colors",
+                  "focus-ring flex w-full items-center gap-2 rounded-field px-2 py-1.5 text-start txt-body transition-colors",
                   on ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
                 )}
               >

@@ -1,0 +1,339 @@
+package ai.neargo.shop.merchant.service.impl;
+
+import ai.neargo.shop.auth.BizContext;
+import ai.neargo.shop.auth.BizIdentityResolver;
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.merchant.entity.MchStore;
+import ai.neargo.shop.merchant.entity.MchStoreRole;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreRoleMapper;
+import ai.neargo.shop.spi.user.PickupQueryPort;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.stereotype.Component;
+
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * 「这个用户在经营侧是谁」的真实解析（替代 S0 的 {@link BizIdentityResolver#NONE}）。
+ *
+ * <p>三个作用域各查各的，**互不推导**：
+ * <ul>
+ *   <li>{@code merchantNo}：我参与的主体（{@code mch_account}）。
+ *       <b>M1 起身份来源是成员表，不再是 {@code mch_entity.owner_user_no}</b> ——
+ *       那一列一个主体只能有一个人，是「一个账号只能是一家店老板」的根源。
+ *       多主体切换（App）在 M6 放开，<b>现在仍只解析出一个</b>：取默认主体，
+ *       行为与 M1 之前完全一致</li>
+ *   <li>{@code pickupNos}：我这家店承接了哪些常驻自提点</li>
+ *   <li>{@code groupNos}：我发起了哪些团（S5 接 marketing 后填；现在恒空）</li>
+ * </ul>
+ *
+ * <p>刻意不写「是商家就自动拥有自提点权限」这类推导 —— 一家店可以不做自提点，
+ * 一个自提点也可能承接别家的货。推导出来的权限是最难审计的权限。
+ */
+@Component
+public class BizIdentityResolverImpl implements BizIdentityResolver {
+
+    private final MchEntityMapper merchantMapper;
+    private final PickupQueryPort pickupQueryPort;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper;
+    private final MchStoreMapper storeMapper;
+    private final MchStoreRoleMapper roleMapper;
+    private final ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper;
+
+    public BizIdentityResolverImpl(MchEntityMapper merchantMapper, PickupQueryPort pickupQueryPort,
+                                   ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper staffMapper,
+                                   MchStoreMapper storeMapper, MchStoreRoleMapper roleMapper,
+                                   ai.neargo.shop.merchant.mapper.MerchantMappers.MchRoleMapper roleDefMapper) {
+        this.storeMapper = storeMapper;
+        this.roleMapper = roleMapper;
+        this.roleDefMapper = roleDefMapper;
+        this.merchantMapper = merchantMapper;
+        this.pickupQueryPort = pickupQueryPort;
+        this.staffMapper = staffMapper;
+    }
+
+    /**
+     * 角色 → 权限码（V71）：把「他在每家店是什么角色」翻译成「他在每家店能做什么」。
+     *
+     * <p><b>在这里翻译，判权那一刻就不用再查库</b>（见 {@link BizContext#can}）。
+     * 每请求一次、随请求新鲜 —— 老板改了角色的权限，员工的下一个请求就生效，
+     * 不用等他重新登录。收回权限必须立刻生效，这是把它放在这一步的主要理由。
+     *
+     * <p>查询条件是 {@code entity_no IN (本商家, '*')}：预置角色是全局共享的那一份，
+     * 自定义角色属于这家商家。<b>少了任何一半都表现为「权限突然变少」</b>。
+     *
+     * <p>库里查不到的角色码（比如角色被删了而授权还在）**按零权限处理**，不抛错 ——
+     * 认不出角色时给权限是这类判定最坏的失败方式。
+     */
+    private java.util.Map<String, Set<String>> permsByStore(
+            String entityNo, java.util.Map<String, Set<String>> rolesByStore) {
+        if (rolesByStore.isEmpty()) {
+            return java.util.Map.of();
+        }
+        Set<String> used = rolesByStore.values().stream()
+                .flatMap(Set::stream).collect(Collectors.toSet());
+        java.util.Map<String, Set<String>> permsOfRole = roleDefMapper.selectList(
+                        Wrappers.<ai.neargo.shop.merchant.entity.MchRole>lambdaQuery()
+                                .in(ai.neargo.shop.merchant.entity.MchRole::getEntityNo,
+                                        java.util.List.of(entityNo,
+                                                ai.neargo.shop.merchant.entity.MchRole.BUILTIN_ENTITY))
+                                .in(ai.neargo.shop.merchant.entity.MchRole::getRoleCode, used))
+                .stream()
+                .collect(Collectors.toMap(
+                        ai.neargo.shop.merchant.entity.MchRole::getRoleCode,
+                        r -> parsePerms(r.getPerms()),
+                        // 同一个码既有预置又有自定义时以**自定义**为准：
+                        // 唯一键拦住了同名，这里只是兜底，不该静默丢一份
+                        (builtin, custom) -> custom));
+
+        java.util.Map<String, Set<String>> out = new java.util.HashMap<>();
+        rolesByStore.forEach((storeNo, roles) -> out.put(storeNo, roles.stream()
+                .flatMap(r -> permsOfRole.getOrDefault(r, Set.of()).stream())
+                .collect(Collectors.toUnmodifiableSet())));
+        return out;
+    }
+
+    /** `["biz:a","biz:b"]` → Set。手写解析：只有这一处用，引一个 JSON 库不划算 */
+    private static Set<String> parsePerms(String json) {
+        if (json == null || json.isBlank()) {
+            return Set.of();
+        }
+        return java.util.Arrays.stream(json.replaceAll("[\\[\\]\"]", "").split(","))
+                .map(String::trim).filter(x -> !x.isEmpty())
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    /**
+     * 「他现在站在哪家店里」→「那家店是哪个主体的」→ 用哪条成员关系解析。
+     *
+     * <p><b>三道闸，缺一不可</b>：
+     * <ol>
+     *   <li>没传门店号 → 默认主体（{@code memberships} 已按 is_primary 排序）。
+     *       绝大多数请求走这里，与多证照之前的行为一模一样</li>
+     *   <li>门店号查不到（被删了、端上编的）→ 默认主体</li>
+     *   <li>查到了，但那家店的主体<b>不在我的成员关系里</b> → 默认主体。
+     *       ★ 这一条是越权闸：{@code X-Store-No} 是客户端可控的请求头，
+     *       没有这一条，伪造一个别人家的门店号就能把 {@code merchantNo} 解析成别人的主体，
+     *       之后整个请求都按那个主体查库 —— 而页面照常打开，不会有任何报错</li>
+     * </ol>
+     *
+     * <p><b>为什么不在这里再查一遍「这家店我有没有授权」</b>：店员只被授权到主体下的部分门店，
+     * 但那一层由 {@code storeNos} 与 {@link ai.neargo.shop.auth.BizContextFilter} 把关 ——
+     * 同主体下越店的话 {@code storeNos} 里没有它，当前门店会回落到默认店。
+     * 这里只负责「认哪张执照」，两层各管各的，合在一起反而说不清谁在守什么。
+     *
+     * <p>解除数据域的理由与下面查主体一致：这是身份解析<b>本身</b>，跑在作用域建立之前，
+     * 不解除的话这条 select 会被拼上一个空的主体条件，静默查不到 —— 表现为
+     * 「切了门店但主体没变」，而那正是这个方法要修的毛病。
+     */
+    private ai.neargo.shop.merchant.entity.MchAccount membershipFor(
+            java.util.List<ai.neargo.shop.merchant.entity.MchAccount> memberships, String storeNo) {
+        var fallback = memberships.get(0);
+        if (storeNo == null || storeNo.isBlank() || memberships.size() == 1) {
+            // 只有一张执照时连查都不用查 —— 绝大多数商家是这一支，别为多证照给他们加一次查询
+            return fallback;
+        }
+        MchStore store = DataScopeContext.executeWithoutScope(() ->
+                storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                        .eq(MchStore::getStoreNo, storeNo)
+                        .last("limit 1")));
+        if (store == null) {
+            return fallback;
+        }
+        return memberships.stream()
+                .filter(m -> m.getEntityNo().equals(store.getEntityNo()))
+                .findFirst()
+                .orElse(fallback);
+    }
+
+    @Override
+    public BizContext resolve(String userNo, String storeNo) {
+        /*
+         * 我参与的主体，默认主体优先。**排序是确定的**（is_primary 倒序 + id 正序）——
+         * 不给排序的 limit 1 会在多主体时随机挑一个，而"今天进的是 A 店、明天是 B 店"
+         * 这种故障没人能复现。
+         */
+        var memberships = staffMapper.selectList(
+                Wrappers.<ai.neargo.shop.merchant.entity.MchAccount>lambdaQuery()
+                        /*
+                         * **两条登录路径解析到同一条员工记录**：
+                         *   小程序 → C 端账号（user_no）
+                         *   App    → 员工独立登录，principal 是 mch_account_no
+                         * 只认第一条的话，App 上的店员登录后作用域为空，所有 /biz/** 都 403，
+                         * 而他看到的只是「打不开」。
+                         */
+                        .and(q -> q.eq(ai.neargo.shop.merchant.entity.MchAccount::getUserNo, userNo)
+                                .or().eq(ai.neargo.shop.merchant.entity.MchAccount::getMchAccountNo, userNo))
+                        .eq(ai.neargo.shop.merchant.entity.MchAccount::getStatus,
+                                ai.neargo.shop.merchant.entity.MchAccount.ACTIVE)
+                        .orderByDesc(ai.neargo.shop.merchant.entity.MchAccount::getIsPrimary)
+                        .orderByAsc(ai.neargo.shop.merchant.entity.MchAccount::getId));
+        if (memberships.isEmpty()) {
+            // 不是商家：空作用域 = 所有 /biz/** 都 403。fail-closed
+            return BizContext.NONE;
+        }
+        /*
+         * **按门店反查主体**（多证照）。
+         *
+         * 端上带了 X-Store-No 就以它为准：一个人名下可能有两张执照，
+         * 「他现在是哪个主体」的答案只能来自「他现在站在哪家店里」。
+         * 不带、或带了一个不属于他的门店号 → 回落到默认主体（memberships 已按
+         * is_primary 排过序），**不是报错**：端上多半只是缓存了一个旧门店号
+         * （店停用了、授权收回了），让整个 App 报错不如把他带回自己的默认店。
+         *
+         * ★ 这是整条多证照改造里唯一有越权面的地方。守住它的是下面这个 filter：
+         *   反查出来的 entityNo 必须落在**他自己的成员关系集合**里，
+         *   否则整个丢掉。传一个别人家真实存在的门店号，得到的只会是自己的默认主体 ——
+         *   而不是那家店的主体。少了这个 filter，伪造一个请求头就能读别人的库存和订单，
+         *   且不会有任何报错。
+         */
+        var membership = membershipFor(memberships, storeNo);
+        /*
+         * **必须解除数据域**（mch_entity/mch_store 于批② 注册进 DataScopeRegistration）。
+         *
+         * 这里是**身份解析本身** —— 它跑在作用域建立之前，授权来自 token 里的成员关系。
+         * 不解除的话：B 端会话的维度是 SELF，而这两张表只有 MERCHANT 锚点，
+         * handler 直接拼 `1=0` —— **商家登录后作用域恒为空，整个 /biz/** 全部 403**。
+         * （实测：注册那一刻 54 个 B 端用例同时红。这正是 DataScopeRegistration
+         * 类注释第 2 条说的 fail-closed，只是这次踩在 B 端而不是 C 端。）
+         */
+        /*
+         * **能干活的状态有两个，不是一个。**
+         *
+         * ACTIVE          审核通过、正常经营
+         * PENDING_LICENSE 无证照快速开店建出来的占位主体 —— 他要能进经营台
+         *                 录商品、配范围、加员工，把准备工作做完；
+         *                 <b>拦他的是可见性，不是身份</b>（reachableCommunities 返回空，
+         *                 货进不了任何人的可见范围）。这里若一并挡掉，
+         *                 「先开店后补证照」整条路就不成立了 —— 他建完店登录进去，
+         *                 所有 /biz/** 都 403，看到的只是「打不开」。
+         *
+         * 其余状态（SUSPENDED / BANNED）继续 fail-closed —— 那是「这家店被停了」，
+         * 与「还没交执照」是两回事，不能因为放开后者而把前者一起放进来。
+         */
+        MchEntity merchant = DataScopeContext.executeWithoutScope(() ->
+                merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                        .eq(MchEntity::getEntityNo, membership.getEntityNo())
+                        .in(MchEntity::getStatus, MchEntity.ACTIVE, MchEntity.PENDING_LICENSE)
+                        .last("limit 1")));
+        if (merchant == null) {
+            // 成员行在但主体被封 —— 同样 fail-closed
+            return BizContext.NONE;
+        }
+
+        /*
+         * 我有权限的门店。**老板与店员不是同一套口径**：
+         *   老板（is_owner）→ 主体下**全部**门店，包括他明天新建的那家；
+         *   店员          → 只有 mch_store_role 里被授权到的那几家。
+         *
+         * 给店员按主体展开的话，加一个店员等于把所有门店都交出去 ——
+         * 而「A 店店员能看到 B 店订单」这种越权不会报错，只会安静地多看到一些东西。
+         */
+        /*
+         * 每家店上我持有的**全部**角色（V18 起一人一店可多角色）。
+         *
+         * 一次解析好放进 BizContext，切门店（X-Store-No）时不用重查库 ——
+         * 而角色必须跟着门店走：同一个人可能在文三路店是店长、古墩路店是店员。
+         */
+        java.util.Map<String, Set<String>> rolesByStore = roleMapper.selectList(
+                        Wrappers.<MchStoreRole>lambdaQuery()
+                                .eq(MchStoreRole::getMchAccountNo, membership.getMchAccountNo()))
+                .stream()
+                .collect(Collectors.groupingBy(MchStoreRole::getStoreNo,
+                        Collectors.mapping(MchStoreRole::getRole, Collectors.toUnmodifiableSet())));
+
+        /*
+         * 同上：老板的门店集合是作用域的一部分，解析它时作用域还不存在。
+         *
+         * <p><b>不按 status 过滤</b>（2026-09-29 改，可见性按门店算-方案 §9）。
+         * 这里原来只装 ACTIVE 的店，而 {@code BizContextFilter} 的规则是
+         * 「请求的门店不在我的集合里就回落到默认店」—— 两条合起来的效果是：
+         * <b>老板一旦停用一家店，就再也进不去那家店</b>。线上实测「虹选鲜果·福田店」
+         * 停用后，它货架上的商品店主用尽办法撤不下来：带 X-Store-No 被静默忽略，
+         * 下架请求落在默认店上，还返回 code 0 —— 一次什么都没做的成功。
+         * 店员分支反而进得去（它从授权表取，从不看状态）。
+         *
+         * <p>营业状态是给买家看的，管理权限是给老板的。停业之后老板正需要进去收尾 ——
+         * 撤货、查历史订单（需求 B-11.12.4 明写「历史订单可查」）、重新开业。
+         * 买家侧的隔离由别处负责：{@code storesSelling} 只算 ACTIVE 门店，
+         * 店铺页给 closed 标志；这里放开的只是上下文切换。
+         *
+         * <p>数据域不受影响：{@code scopeStoreNos()} 对老板返回 null（不限）。
+         */
+        Set<String> storeNos = Boolean.TRUE.equals(membership.getIsOwner())
+                ? DataScopeContext.executeWithoutScope(() ->
+                        storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                                .eq(MchStore::getEntityNo, merchant.getEntityNo()))).stream()
+                        .map(MchStore::getStoreNo).collect(Collectors.toSet())
+                : roleMapper.selectList(Wrappers.<MchStoreRole>lambdaQuery()
+                        .eq(MchStoreRole::getMchAccountNo, membership.getMchAccountNo())).stream()
+                        .map(MchStoreRole::getStoreNo).collect(Collectors.toSet());
+
+        /*
+         * 放开 storeNos 之后要补的两道边（§9.3 AC3 / AC4）：
+         *   ① 默认门店仍优先落在 ACTIVE 上 —— 否则默认店被停用的商家一登录就站在停业店里；
+         *   ② 自提点核销范围仍按 ACTIVE 门店算 —— 停业店门口那个点不该重新进范围，
+         *      那不是「收尾」，是把店又开了一半。
+         */
+        Set<String> activeStoreNos = DataScopeContext.executeWithoutScope(() ->
+                        storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                                .eq(MchStore::getEntityNo, merchant.getEntityNo())
+                                .eq(MchStore::getStatus, MchStore.ACTIVE))).stream()
+                .map(MchStore::getStoreNo)
+                .filter(storeNos::contains)
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+
+        /*
+         * 默认门店：老板取 is_default，店员取他被授权的第一家。
+         * 请求带了 X-Store-No 时由 Filter 覆盖 —— 这里只负责「没指定时用哪家」。
+         */
+        Set<String> defaultCandidates = activeStoreNos.isEmpty() ? storeNos : activeStoreNos;
+        /*
+         * 一条有序查询定默认店：**is_default 在前，同级按 id（创建序）在前**，过滤到候选取第一个。
+         * 老板命中 is_default 店；店员没被授权 is_default 时，取他能管的**最早一家**。
+         *
+         * ⚠️ 原先 fallback 是 `defaultCandidates.stream().sorted()`——按 storeNo 字符串排。
+         * 旧业务码「前缀+时间戳+递增seq」的字符串序恰好=创建序，于是这条默默依赖了 ID 格式。
+         * 业务码带随机段之后（ADR-033）字符串序变任意序，默认店会随机落到另一家、不报错。
+         * 改成 id 排序：确定、含义是「最早的店」、与 ID 格式无关。
+         */
+        String defaultStore = DataScopeContext.executeWithoutScope(() ->
+                        storeMapper.selectList(Wrappers.<MchStore>lambdaQuery()
+                                .eq(MchStore::getEntityNo, merchant.getEntityNo())
+                                .orderByDesc(MchStore::getIsDefault)
+                                .orderByAsc(MchStore::getId))).stream()
+                .map(MchStore::getStoreNo)
+                .filter(defaultCandidates::contains)
+                .findFirst()
+                .orElse(null);
+
+        /*
+         * 能核销哪些自提点：**按我能管的门店算**，不是按主体（V16 起自提点归属到门店）。
+         *
+         * 按主体算的话，A 店店员能核销 B 店门口那个自提点的货 —— 而门店授权
+         * (mch_store_role) 明明已经把范围划出来了。这与订单作用域是同一条原则：
+         * 越权不会报错，只会安静地多做一些事。
+         */
+        /*
+         * 用 LinkedHashSet 保住顺序。
+         *
+         * 不是洁癖：PickupServiceImpl 拿 `pickupNos().iterator().next()` 当
+         * 「默认自提点」。而 Set.copyOf 的迭代顺序**每次 JVM 启动都不一样**
+         * （JDK 的不可变集合按启动时的随机盐排布），于是「默认点」会在
+         * PP0001 和 PP0002 之间随机漂移 —— 测试里表现为偶发失败，
+         * 线上表现为「今天进来看到的是另一家点的单」。
+         *
+         * 真正的修法是让那处显式挑一个（比如默认门店的点），但那是履约域的决定；
+         * 在此之前，至少不要让顺序本身变成随机数。
+         */
+        Set<String> pickupNos =
+                new java.util.LinkedHashSet<>(pickupQueryPort.activeStorePickupNos(activeStoreNos));
+
+        return new BizContext(merchant.getEntityNo(), pickupNos, Set.of(), storeNos, defaultStore,
+                Boolean.TRUE.equals(membership.getIsOwner()), rolesByStore,
+                permsByStore(merchant.getEntityNo(), rolesByStore));
+    }
+}

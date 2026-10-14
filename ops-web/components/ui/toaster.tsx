@@ -25,8 +25,17 @@ export function Toaster() {
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed bottom-5 z-[var(--z-toast)] flex flex-col gap-2"
-      style={{ insetInlineEnd: "1.25rem" }}
+      /*
+       * 页面**上方居中**。此前在右下角 —— 那是操作发生的反侧：
+       * 运营点的按钮多在表格行内与页面上半部，反馈出现在视线之外，
+       * 于是「保存成功」和「保存失败」都一样容易被错过，
+       * 而后者被错过的代价是他以为已经改好了。
+       *
+       * top-16：顶栏是 h-14（56px）的 sticky，压在它上面会遮住导航与搜索；
+       * 落在它下方 8px 处，既在视线里又不挡任何东西。
+       * 水平居中不用 insetInlineEnd —— 居中在 RTL 下天然对称，不必分方向。
+       */
+      className="pointer-events-none fixed top-16 left-1/2 -translate-x-1/2 z-[var(--z-toast)] flex flex-col items-center gap-2"
     >
       {toasts.map((item) => {
         const Icon = ICON[item.type];

@@ -2,9 +2,6 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
-  tabEvents: "风险事件",
-  tabBlacklist: "黑名单与申诉",
-  tabRules: "拦截规则",
 
   subjectUser: "用户",
   subjectMerchant: "商家",
@@ -106,9 +103,6 @@ const zh = {
 };
 
 const en: typeof zh = {
-  tabEvents: "Risk events",
-  tabBlacklist: "Blacklist & appeals",
-  tabRules: "Interception rules",
 
   subjectUser: "Customer",
   subjectMerchant: "Merchant",

@@ -28,7 +28,7 @@ const text = computed(() => props.value.toFixed(1));
 .rating {
   display: flex;
   align-items: center;
-  gap: 10rpx;
+  gap: 12rpx;
 }
 .rating__stars {
   position: relative;
@@ -49,8 +49,9 @@ const text = computed(() => props.value.toFixed(1));
   color: var(--sh-warning);
   letter-spacing: 2rpx;
 }
+/* 字号由 `size` 走行内样式（各处评分大小不同，是这个件的 API）；
+   字重不设 —— 调用点想让整行重一档时，这个数本来就该跟着 */
 .rating__value {
-  font-weight: 400;
   color: var(--sh-ink);
 }
 </style>

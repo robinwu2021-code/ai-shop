@@ -28,13 +28,21 @@ let timer: ReturnType<typeof setInterval> | undefined;
 
 const pickupNo = computed(() => community.pickup?.pickupNo);
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  const [g, r] = await Promise.all([
-    api.groupBuyList(pickupNo.value),
-    api.requestList(pickupNo.value),
-  ]);
-  groups.value = g;
-  requests.value = r;
+  try {
+    const [g, r] = await Promise.all([
+      api.groupBuyList(pickupNo.value),
+      api.requestList(pickupNo.value),
+    ]);
+    groups.value = g;
+    requests.value = r;
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
   loaded.value = true;
 }
 
@@ -109,7 +117,7 @@ onShow(() => {
 
     <!-- 商家团：商品现成的，参与就行 -->
     <template v-if="tab === 'merchant'">
-      <text class="hint">{{ $t("groups.merchantHint") }}</text>
+      <text class="hint sh-hint">{{ $t("groups.merchantHint") }}</text>
 
       <view class="sh-btn sh-btn--soft mkgroup" @tap="openCreate">
         {{ $t("groups.createGroup") }}
@@ -117,8 +125,8 @@ onShow(() => {
 
       <!-- 发起团表单：商品 + 是否送到我家 -->
       <view v-if="creating" class="sh-card form">
-        <text class="sh-h2">{{ $t("groups.createGroup") }}</text>
-        <view class="chips">
+        <text class="txt-title">{{ $t("groups.createGroup") }}</text>
+        <view class="chips sh-wrap">
           <text
             v-for="g in groupable"
             :key="g.goodsNo"
@@ -131,24 +139,22 @@ onShow(() => {
         </view>
 
         <view class="toggle" @tap="form.toMyHome = !form.toMyHome">
-          <text class="toggle__box" :class="{ 'is-on': form.toMyHome }">
-            {{ form.toMyHome ? "✓" : "" }}
-          </text>
+          <sh-check :model-value="form.toMyHome"></sh-check>
           <view class="toggle__main">
-            <text class="toggle__label">{{ $t("groupHost.toMyHome") }}</text>
+            <text class="txt-strong toggle__label">{{ $t("groupHost.toMyHome") }}</text>
             <text class="sh-muted">{{ $t("groupHost.toMyHomeHint") }}</text>
           </view>
         </view>
 
         <template v-if="form.toMyHome">
-          <input v-model="form.address" class="field" :placeholder="$t('groupHost.addressPh')" />
-          <input v-model="form.timeSlot" class="field" :placeholder="$t('groupHost.timeSlotPh')" />
-          <text class="privacy">{{ $t("groupHost.addressPrivacy") }}</text>
+          <input maxlength="255" v-model="form.address" class="field__input" :placeholder="$t('groupHost.addressPh')" />
+          <input maxlength="64" v-model="form.timeSlot" class="field__input" :placeholder="$t('groupHost.timeSlotPh')" />
+          <text class="txt-caption privacy">{{ $t("groupHost.addressPrivacy") }}</text>
         </template>
 
-        <view class="btns">
-          <text class="btn btn--ghost" @tap="creating = false">{{ $t("common.cancel") }}</text>
-          <text class="btn" @tap="submitCreate">{{ $t("groups.submitCreate") }}</text>
+        <view class="sh-row sh-mt-md">
+          <text class="sh-btn sh-btn--muted btns__act" @tap="creating = false">{{ $t("common.cancel") }}</text>
+          <text class="sh-btn btns__act" @tap="submitCreate">{{ $t("groups.submitCreate") }}</text>
         </view>
       </view>
       <biz-group-card
@@ -158,27 +164,29 @@ onShow(() => {
         :now="now"
         @tap="openGroup(g)"
       ></biz-group-card>
-      <sh-empty bare v-if="loaded && !groups.length" :text='$t("groups.merchantEmpty")'></sh-empty>
+      <sh-empty bare v-if="loaded && !groups.length"
+          :failed="failed"
+          @retry="load" :text='$t("groups.merchantEmpty")'></sh-empty>
     </template>
 
     <!-- 邻里求团：先有需求，后有供给 -->
     <template v-else>
-      <text class="hint">{{ $t("groups.requestHint") }}</text>
+      <text class="hint sh-hint">{{ $t("groups.requestHint") }}</text>
 
       <view v-for="r in requests" :key="r.requestNo" class="sh-card rq" @tap="openRequest(r)">
-        <view class="rq__head">
+        <view class="rq__head sh-row">
           <text class="rq__avatar">{{ r.initiatorAvatar }}</text>
-          <view class="rq__who">
-            <text class="rq__title">{{ r.title }}</text>
-            <text class="rq__by">
+          <view class="sh-fill">
+            <text class="txt-strong rq__title">{{ r.title }}</text>
+            <text class="txt-caption rq__by">
               {{ $t("groups.startedBy", { name: r.initiatorNickname }) }} · {{ r.pickupName }}
             </text>
           </view>
         </view>
 
-        <text class="rq__desc">{{ r.desc }}</text>
+        <text class="txt-caption rq__desc">{{ r.desc }}</text>
 
-        <view class="rq__meta">
+        <view class="rq__meta sh-wrap">
           <text class="sh-chip sh-chip--primary sh-num">
             {{ $t("groups.interested", { n: r.interestedCount }) }}
           </text>
@@ -195,10 +203,13 @@ onShow(() => {
         </view>
       </view>
 
-      <sh-empty bare v-if="loaded && !requests.length" :text='$t("groups.requestEmpty")'></sh-empty>
+      <sh-empty bare v-if="loaded && !requests.length"
+          :failed="failed"
+          @retry="load" :text='$t("groups.requestEmpty")' :tip='$t("groups.requestEmptyTip")'></sh-empty>
 
-      <view class="sh-btn fab" @tap="createRequest">{{ $t("groups.createGroup") }}</view>
-      <view class="fab__spacer" />
+      <sh-actionbar :pad="160">
+        <view class="sh-btn" @tap="createRequest">{{ $t("groups.createGroup") }}</view>
+      </sh-actionbar>
     </template>
   </sh-scaffold>
 </template>
@@ -211,9 +222,6 @@ onShow(() => {
   margin-bottom: 24rpx;
 }
 .chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin: 20rpx 0;
 }
 .toggle {
@@ -222,79 +230,36 @@ onShow(() => {
   align-items: flex-start;
   padding: 20rpx 0;
 }
-.toggle__box {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 16rpx;
-  background: var(--sh-faint);
-  color: var(--sh-on-primary);
-  font-size: 26rpx;
-  text-align: center;
-  line-height: 40rpx;
-  flex-shrink: 0;
-}
-.toggle__box.is-on {
-  background: var(--sh-primary);
-}
 .toggle__main {
   flex: 1;
 }
 .toggle__label {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
-.field {
-  height: 84rpx;
+/* 只留纵向间距。此前这里高 84rpx，与 base.css 的 88rpx 差 2px ——
+   88rpx ≈ 44pt 是点按目标的下限，缩到 84 省不出什么却贴着下限走 */
+.field__input {
   margin-top: 16rpx;
-  padding: 0 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-faint);
-  font-size: 28rpx;
-  color: var(--sh-ink);
 }
 .privacy {
   display: block;
   margin-top: 16rpx;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
 }
-.btns {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 28rpx;
-}
-.btn {
+/* 并排两枚各占一半 —— 形态吃 .sh-btn，这里只给版面 */
+.btns__act {
   flex: 1;
-  text-align: center;
-  padding: 22rpx 0;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 28rpx;
-  font-weight: 600;
-}
-.btn--ghost {
-  background: var(--sh-faint);
-  color: var(--sh-sub);
 }
 
 .hint {
-  display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
+
   margin: 24rpx 4rpx;
+
 }
 .rq {
   margin-bottom: 20rpx;
 }
 .rq__head {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 .rq__avatar {
   width: 72rpx;
@@ -306,41 +271,19 @@ onShow(() => {
   font-size: 36rpx;
   flex-shrink: 0;
 }
-.rq__who {
-  flex: 1;
-  min-width: 0;
-}
+
 .rq__title {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
 }
 .rq__by {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .rq__desc {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  line-height: 1.6;
   margin-top: 20rpx;
 }
 .rq__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 20rpx;
-}
-.fab {
-  position: fixed;
-  inset-inline: 28rpx;
-  bottom: calc(28rpx + env(safe-area-inset-bottom));
-}
-.fab__spacer {
-  height: 160rpx;
 }
 </style>

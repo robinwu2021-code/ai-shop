@@ -123,6 +123,10 @@ export function tapPoint(e?: TapLike | null): { x: number; y: number } {
  * 小程序端导航栏是原生的、不在 webview 内，windowTop 为 0，这里的补偿自然为零。
  */
 export function registerCartAnchor(selector: string, ctx?: unknown): void {
+  // 量不到就不量：飞行动画是锦上添花，拿不到 API 时不该抛。
+  // 商品页自己那处早就这么防着了（measureAnchors），这里一直没有 ——
+  // 表现是单测里一串 unhandled rejection，而真机上它恰好每次都在。
+  if (typeof uni.createSelectorQuery !== "function") return;
   const query = uni.createSelectorQuery();
   // #ifndef H5
   if (ctx) query.in(ctx as never);

@@ -1,0 +1,725 @@
+package ai.neargo.shop.pay.impl;
+
+import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.pay.BillIdentity;
+import ai.neargo.shop.pay.SettleBatchService;
+import ai.neargo.shop.pay.SettleCycles;
+import ai.neargo.shop.pay.entity.StlBill;
+import ai.neargo.shop.pay.entity.StlReconDiff;
+import ai.neargo.shop.pay.entity.StlSettleBatch;
+import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
+import ai.neargo.shop.pay.mapper.SettleMappers.ReconDiffMapper;
+import ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper;
+import ai.neargo.shop.spi.trade.SettleSourcePort;
+import ai.neargo.shop.spi.user.MerchantQueryPort;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.ZoneId;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
+
+@Service
+public class SettleBatchServiceImpl implements SettleBatchService {
+
+    private static final Logger log = LoggerFactory.getLogger(SettleBatchServiceImpl.class);
+
+    /** 一轮最多处理多少单 —— 防止第一次上线时一口气扫全量把库拖住 */
+    private static final int SCAN_LIMIT = 500;
+
+    /** 单据轴：这一条差异说的是「单据自己的账不平」，与通道无关 */
+    private static final String AXIS_BILL = "BILL";
+
+    private static final String DIFF_UNBALANCED = "BILL_UNBALANCED";
+
+    private final BillMapper billMapper;
+    private final SettleBatchMapper batchMapper;
+    private final SettleSourcePort sourcePort;
+    private final MerchantQueryPort merchantQueryPort;
+    /** 通道结算周期。2026-09-01 起直接调 pay-channel，不再经 MasterDataPort */
+    private final PayChannelMasterService channelMaster;
+    private final ReconDiffMapper diffMapper;
+    private final ai.neargo.shop.pay.risk.FundRiskService fundRiskService;
+
+    /**
+     * 售后期天数。<b>与积分转正用的是同一个数</b>（{@code shop.points.pending-days}）——
+     * 积分抵扣的兑付跟着分账走，同一时点，不另立一套「积分售后期」。
+     * 两个数分开配的话，迟早会一个改了另一个没改，而那时钱与分的口径就分岔了。
+     */
+    @Value("${shop.settle.after-sale-days:${shop.points.pending-days:7}}")
+    private int afterSaleDays;
+
+    /**
+     * 自然日/周/月的边界按哪个时区切。
+     *
+     * <p>暂时全局一个值。多市场之后应按主体所在市场取（{@code MarketConfig.timezone}）——
+     * 那时这里要换成按批次查，位置留在 {@link #zoneOf}。
+     */
+    @Value("${shop.settle.zone:Asia/Shanghai}")
+    private String zoneId;
+
+    /**
+     * 冻结窗口天数（TDD-账期推进与放款记录 §2.1 A，2026-10-09 拍定 7 天）。
+     * {@code freeze_expire_at = 本批最早一单成交时刻 + 这个数}。
+     * 此前这一列刻意留空（没有书面口径），盯 Tmax 的任务据此知道「还不能判」。
+     */
+    @Value("${shop.settle.freeze-days:7}")
+    private int freezeDays;
+
+    private final ai.neargo.shop.pay.mapper.SettleMappers.PayoutMapper payoutMapper;
+
+    public SettleBatchServiceImpl(BillMapper billMapper, SettleBatchMapper batchMapper,
+                                  SettleSourcePort sourcePort, MerchantQueryPort merchantQueryPort,
+                                  PayChannelMasterService channelMaster,
+                                  ReconDiffMapper diffMapper,
+                                  ai.neargo.shop.pay.risk.FundRiskService fundRiskService,
+                                  ai.neargo.shop.pay.mapper.SettleMappers.PayoutMapper payoutMapper) {
+        this.billMapper = billMapper;
+        this.batchMapper = batchMapper;
+        this.sourcePort = sourcePort;
+        this.merchantQueryPort = merchantQueryPort;
+        this.channelMaster = channelMaster;
+        this.diffMapper = diffMapper;
+        this.fundRiskService = fundRiskService;
+        this.payoutMapper = payoutMapper;
+    }
+
+    // ---------------------------------------------------------------- ① 定 T2
+
+    @Override
+    public int markSettleable() {
+        return markSettleable(null);
+    }
+
+    /**
+     * 哪些状态的单会被推进：第三方的 {@code PENDING} 与<b>自营的 {@code PENDING_RECON}</b>。
+     *
+     * <p>此前只有前者。自营是 ADR-011 定的活钱路径，而它从来没进过批 ——
+     * 批次链与应付链是两条互不相接的线（TDD-账期推进与放款记录 §1.1）。
+     */
+    private static final List<String> PUSHABLE = List.of(StlBill.PENDING, StlBill.PENDING_RECON);
+
+    @Override
+    @Transactional("payTxManager")
+    public int markSettleable(Long fromAccruedAt) {
+        List<StlBill> pending = DataScopeContext.executeWithoutScope(() ->
+                billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                        .in(StlBill::getStatus, PUSHABLE)
+                        .isNull(StlBill::getSettleableAt)
+                        // 起始日：存量不卷进来，它们走老路（见接口注释）
+                        .ge(fromAccruedAt != null, StlBill::getAccruedAt, fromAccruedAt)
+                        .last("LIMIT " + SCAN_LIMIT)));
+        if (pending.isEmpty()) {
+            return 0;
+        }
+        Map<String, StlBill> bySub = new LinkedHashMap<>();
+        for (StlBill b : pending) {
+            bySub.put(b.getSubOrderNo(), b);
+        }
+        long afterSaleMillis = afterSaleDays * 86400000L;
+        long now = System.currentTimeMillis();
+        int marked = 0;
+        for (SettleSourcePort.SettleReadiness r : sourcePort.settleReadiness(bySub.keySet())) {
+            /*
+             * 三个条件缺一不可，而**第三条是硬闸**：
+             * 售后没闭环就解冻，等于把争议中的钱先给了一方。
+             */
+            if (r.afterSaleOpen()) {
+                continue;
+            }
+            long settleableAt = r.completedAt() + afterSaleMillis;
+            if (settleableAt > now) {
+                continue;   // 售后期还没过
+            }
+            StlBill bill = bySub.get(r.subOrderNo());
+            /*
+             * 落的是**算出来的 T2**，不是 now。
+             * 落 now 的话，T2 会随「这一轮什么时候跑」漂移几分钟到几小时，
+             * 而 T2 一动应结日跟着动 —— 商家看到的是同一批单的到账日不一样。
+             */
+            StlBill patch = new StlBill();
+            patch.setId(bill.getId());
+            patch.setSettleableAt(settleableAt);
+            DataScopeContext.executeWithoutScope(() -> billMapper.updateById(patch));
+            marked++;
+        }
+        if (marked > 0) {
+            log.info("[settle-batch] 定下 T2 {} 单（本轮候选 {}）", marked, pending.size());
+        }
+        return marked;
+    }
+
+    // ---------------------------------------------------------------- ② 入批
+
+    @Override
+    public int collectIntoBatches() {
+        return collectIntoBatches(null);
+    }
+
+    @Override
+    @Transactional("payTxManager")
+    public int collectIntoBatches(Long fromAccruedAt) {
+        List<StlBill> ready = DataScopeContext.executeWithoutScope(() ->
+                billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                        .in(StlBill::getStatus, PUSHABLE)
+                        .isNotNull(StlBill::getSettleableAt)
+                        .isNull(StlBill::getBatchNo)
+                        .ge(fromAccruedAt != null, StlBill::getAccruedAt, fromAccruedAt)
+                        .last("LIMIT " + SCAN_LIMIT)));
+        int collected = 0;
+        for (StlBill bill : ready) {
+            /*
+             * ★ 门 1 在**入批之前**跑，不在截批时跑。
+             *
+             * 不平的单**根本不进批**：进了再剔出来的话，批次的合计已经算过一次，
+             * 而「算过又改」正是对账最难查的一类状态。
+             * 这也落实了「单据级差异只挂该单」—— 同批其他单照常走。
+             */
+            if (!BillIdentity.balanced(bill)) {
+                openIdentityDiff(bill);
+                continue;
+            }
+            StlSettleBatch batch = openBatchFor(bill);
+            if (batch == null) {
+                continue;
+            }
+            StlBill patch = new StlBill();
+            patch.setId(bill.getId());
+            patch.setBatchNo(batch.getBatchNo());
+            DataScopeContext.executeWithoutScope(() -> billMapper.updateById(patch));
+            collected++;
+        }
+        if (collected > 0) {
+            log.info("[settle-batch] 入批 {} 单", collected);
+        }
+        return collected;
+    }
+
+    /**
+     * 找到（或开出）这一单该进的批次。
+     *
+     * <p>区间键取 <b>T3 应结日</b> 而不是 T2 —— 同一个应结日的单本来就该一起放，
+     * 而按 T2 分区间的话，周结下每天各成一批、到了周一同时放七批，
+     * 「批次」这个对象就白建了。
+     *
+     * @return 已 {@code COLLECTED} 之后的批次不再接新单，此时返回下一期的批次
+     */
+    private StlSettleBatch openBatchFor(StlBill bill) {
+        String channel = bill.getPayChannel();
+        if (channel == null || channel.isBlank()) {
+            // 通道为空的单进不了批：批是按通道分的，没有通道就不知道该按谁的账期与冻结窗口算
+            return null;
+        }
+        String cycle = SettleCycles.shorter(
+                merchantQueryPort.settleCycleOf(bill.getEntityNo(), bill.getStoreNo(), channel),
+                channelMaster.settleCycle(channel));
+        long dueAt = SettleCycles.dueAt(bill.getSettleableAt(), cycle, zoneOf());
+
+        /*
+         * **币种进分批键**（V287）。一批是「一起放款的单位」，
+         * 而不同币种的钱不能放在一起 —— 台币的单混进人民币批里，
+         * 合计数会把 100 台币当成 100 元加进去，<b>不报错，只是数字不对</b>。
+         *
+         * 单币种下这一条不改变任何行为（所有单都是 CNY，还是同一批），
+         * 它是<b>接第二个市场之前必须先成立的前提</b>。
+         */
+        String currency = bill.getCurrency() == null || bill.getCurrency().isBlank()
+                ? DEFAULT_CURRENCY : bill.getCurrency();
+
+        StlSettleBatch exist = DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectOne(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getEntityNo, bill.getEntityNo())
+                        .eq(StlSettleBatch::getPayChannel, channel)
+                        .eq(StlSettleBatch::getCurrency, currency)
+                        .eq(StlSettleBatch::getPeriodFrom, dueAt)
+                        .last("LIMIT 1")));
+        if (exist != null) {
+            /*
+             * 已经截批的批次**不再接新单**：那时它的合计数已经被对账用过了，
+             * 再塞进去两边就对不上。这种单落进下一期 —— 靠给它一个更晚的应结日，
+             * 而不是硬塞进一个已经关闭的批。
+             */
+            return StlSettleBatch.DRAFT.equals(exist.getStatus()) ? exist : null;
+        }
+        StlSettleBatch batch = new StlSettleBatch();
+        batch.setBatchNo(BizKey.next(BizKey.SETTLE_BATCH));
+        batch.setEntityNo(bill.getEntityNo());
+        batch.setPayChannel(channel);
+        batch.setCurrency(currency);
+        batch.setSettleCycle(cycle);
+        // 区间键就是应结日：同一个应结日的单归一批
+        batch.setPeriodFrom(dueAt);
+        batch.setPeriodTo(dueAt);
+        batch.setDueAt(dueAt);
+        batch.setStatus(StlSettleBatch.DRAFT);
+        batch.setReconScope(StlSettleBatch.SCOPE_SELF_ONLY);
+        batch.setBillCount(0);
+        batch.setGrossMinor(0L);
+        batch.setNetMinor(0L);
+        DataScopeContext.executeWithoutScope(() -> batchMapper.insert(batch));
+        return batch;
+    }
+
+    // ---------------------------------------------------------------- ③ 截批
+
+    @Override
+    @Transactional("payTxManager")
+    public int closeDueBatches() {
+        long now = System.currentTimeMillis();
+        List<StlSettleBatch> due = DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getStatus, StlSettleBatch.DRAFT)
+                        .le(StlSettleBatch::getDueAt, now)
+                        .last("LIMIT " + SCAN_LIMIT)));
+        int closed = 0;
+        for (StlSettleBatch batch : due) {
+            List<StlBill> bills = DataScopeContext.executeWithoutScope(() ->
+                    billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                            .eq(StlBill::getBatchNo, batch.getBatchNo())));
+            /*
+             * 合计在**截批这一刻**算，不在收单期间维护。
+             * 边收边加的话，每进一单都要改一次批次行，而中途那些值没有任何人会用；
+             * 更糟的是并发入批时那个加法会丢更新，而丢了之后没有任何地方对得出来。
+             */
+            long gross = 0;
+            long net = 0;
+            int counted = 0;
+            Long earliest = null;
+            for (StlBill b : bills) {
+                /*
+                 * **合计之前先确认是同一种钱。**
+                 *
+                 * 开批时已经按币种分了（见 openBatchFor），走到这里应当恒为真 ——
+                 * 而正因为「应当恒为真」，它一旦不真就没有任何地方会说话：
+                 * 加法照做，合计数照出，只是把 100 台币当成了 100 元。
+                 *
+                 * 所以在这里挡一次并<b>跳过那一单</b>，而不是让它污染合计。
+                 * 跳过会让这一批的合计与明细对不上，那正是希望被看见的 ——
+                 * 混进来一单错币种，比合计少算一单严重得多。
+                 */
+                String bc = b.getCurrency() == null || b.getCurrency().isBlank()
+                        ? DEFAULT_CURRENCY : b.getCurrency();
+                String batchCur = batch.getCurrency() == null || batch.getCurrency().isBlank()
+                        ? DEFAULT_CURRENCY : batch.getCurrency();
+                if (!bc.equals(batchCur)) {
+                    log.error("[settle-batch] 批次 {}（{}）里混进了 {} 的结算单 {} —— "
+                                    + "**已跳过，不计入合计**。开批时按币种分批的那一步失效了，要查",
+                            batch.getBatchNo(), batchCur, bc, b.getSettleNo());
+                    continue;
+                }
+                gross += nz(b.getGrossMinor());
+                net += nz(b.getNetMinor());
+                counted++;
+                Long accrued = b.getAccruedAt();
+                if (accrued != null && (earliest == null || accrued < earliest)) {
+                    earliest = accrued;
+                }
+            }
+            StlSettleBatch patch = new StlSettleBatch();
+            patch.setId(batch.getId());
+            patch.setStatus(StlSettleBatch.COLLECTED);
+            /*
+             * **单数用「真的算进去的」而不是「查出来的」。**
+             *
+             * 上面跳过了错币种的单，如果这里还用 bills.size()，
+             * 合计与单数就对不上 —— 而下一个人看到「3 单合计只有 2 单的钱」，
+             * 第一反应是「漏算了一单」，会去查加法，
+             * 而真因在币种。<b>两个数要讲同一个故事。</b>
+             */
+            patch.setBillCount(counted);
+            patch.setGrossMinor(gross);
+            patch.setNetMinor(net);
+            /*
+             * Tmax 取本批**最早一单**的成交时刻 + 冻结窗口。
+             * 取平均或取最晚都会让告警晚于实际到期 —— 整批一起放，
+             * 而最早的那一笔先到期，它到期就意味着这一批已经出问题了。
+             *
+             * 窗口天数 2026-10-09 拍定 7 天（shop.settle.freeze-days）。
+             * 没有成交时刻的批次（全是存量 undated 单）仍留空 —— 判不了就别猜。
+             */
+            if (earliest != null) {
+                patch.setFreezeExpireAt(earliest + freezeDays * 86400000L);
+            }
+            DataScopeContext.executeWithoutScope(() -> batchMapper.updateById(patch));
+            /*
+             * ★ 风控判定放在**截批之后**，因为它要用本批的合计数（集中度 = 批额 / 保证金）——
+             * 收单期间那个数还在变。
+             *
+             * **今天是影子模式**（shop.risk.fund.shadow 默认 true）：只记录会拦谁，
+             * 不真的把批次挂起。真拦的接线点在放行那一步，而放行还没建 ——
+             * 所以现在先让判定跑起来、把数据攒下来，等定了阈值再接。
+             * 失败不影响截批：风控挂了不该让整条结算链路停。
+             */
+            try {
+                patch.setNetMinor(net);
+                patch.setEntityNo(batch.getEntityNo());
+                patch.setBatchNo(batch.getBatchNo());
+                fundRiskService.decide(patch);
+            } catch (RuntimeException e) {
+                log.warn("[settle-batch] 批次 {} 的风控判定失败（不影响截批）：{}",
+                        batch.getBatchNo(), e.toString());
+            }
+            closed++;
+        }
+        if (closed > 0) {
+            log.info("[settle-batch] 截批 {} 个", closed);
+        }
+        return closed;
+    }
+
+    /**
+     * 记一条<b>单据不平</b>的对账差异。
+     *
+     * <p><b>不自动修正。</b>差额来自哪一项是需要判断的问题 ——
+     * 是费率取错、服务费算错，还是手续费落错了承担方？
+     * 自动补平只会把问题藏起来，而账面从此看不出曾经不平过。
+     *
+     * <p>幂等：已有 PENDING 的同类差异就不再开 —— 这一单每一轮扫描都会被捞到，
+     * 不去重的话一天能生出几百条指向同一件事的待处置。
+     */
+    // ---------------------------------------------------------------- ④ 自查过了才可放款
+
+    @Override
+    @Transactional("payTxManager")
+    public int reconcileClosedBatches() {
+        List<StlSettleBatch> closed = DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getStatus, StlSettleBatch.COLLECTED)
+                        .last("LIMIT " + SCAN_LIMIT)));
+        int moved = 0;
+        for (StlSettleBatch batch : closed) {
+            String why = selfCheck(batch);
+            StlSettleBatch patch = new StlSettleBatch();
+            patch.setId(batch.getId());
+            if (why == null) {
+                patch.setStatus(StlSettleBatch.RECONCILED);
+                log.info("[settle-batch] 批次 {} 自查全过，可放款（{} 单 · {} 分）",
+                        batch.getBatchNo(), batch.getBillCount(), batch.getNetMinor());
+            } else {
+                /*
+                 * 挂起原因**原样给商家看**（B 端照抄 blockedReason）：
+                 * 含具体数字，让商家与运营看到同一句话 —— 客服正是照着它答的。
+                 */
+                patch.setStatus(StlSettleBatch.BLOCKED);
+                patch.setBlockedReason(why);
+                patch.setBlockedAt(System.currentTimeMillis());
+                log.warn("[settle-batch] 批次 {} 自查不过，挂起：{}", batch.getBatchNo(), why);
+            }
+            DataScopeContext.executeWithoutScope(() -> batchMapper.updateById(patch));
+            moved++;
+        }
+        return moved;
+    }
+
+    /**
+     * 三道自查。<b>返回 null = 全过</b>，否则是挂起原因（给人读的一句话）。
+     *
+     * <p>顺序：先合计（R6）、再单据差异、最后风控 —— 前两条是「账对不对」，
+     * 第三条是「该不该放」。账不对的批次谈风控没有意义。
+     */
+    private String selfCheck(StlSettleBatch batch) {
+        List<StlBill> bills = DataScopeContext.executeWithoutScope(() ->
+                billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                        .eq(StlBill::getBatchNo, batch.getBatchNo())));
+        String batchCur = batch.getCurrency() == null || batch.getCurrency().isBlank()
+                ? DEFAULT_CURRENCY : batch.getCurrency();
+        long net = 0;
+        int cnt = 0;
+        for (StlBill b : bills) {
+            String bc = b.getCurrency() == null || b.getCurrency().isBlank() ? DEFAULT_CURRENCY : b.getCurrency();
+            if (!bc.equals(batchCur)) {
+                continue;
+            }
+            net += nz(b.getNetMinor());
+            cnt++;
+        }
+        int recordedCount = batch.getBillCount() == null ? 0 : batch.getBillCount();
+        if (nz(batch.getNetMinor()) != net || recordedCount != cnt) {
+            return "批次合计 %d 分 / %d 单，与其下结算单之和 %d 分 / %d 单对不上（R6）"
+                    .formatted(nz(batch.getNetMinor()), recordedCount, net, cnt);
+        }
+        if (!bills.isEmpty()) {
+            List<String> nos = bills.stream().map(StlBill::getSettleNo).toList();
+            Long open = DataScopeContext.executeWithoutScope(() ->
+                    diffMapper.selectCount(Wrappers.<StlReconDiff>lambdaQuery()
+                            .in(StlReconDiff::getPaymentNo, nos)
+                            .eq(StlReconDiff::getStatus, "PENDING")));
+            if (open != null && open > 0) {
+                return "本批有 %d 条结算单差异还没处理".formatted(open);
+            }
+        }
+        try {
+            var verdict = fundRiskService.decide(batch);
+            if (verdict != null && !ai.neargo.shop.pay.risk.FundRisk.PASS.equals(verdict.result())) {
+                return "资金风控拦下：" + (verdict.explain() == null ? verdict.code() : verdict.explain());
+            }
+        } catch (RuntimeException e) {
+            // 风控挂了不该让放款停：记一笔，按过处理 —— 与截批那一步同一条规矩
+            log.warn("[settle-batch] 批次 {} 风控判定失败，按通过处理：{}", batch.getBatchNo(), e.toString());
+        }
+        return null;
+    }
+
+    @Override
+    public Preview preview(Long fromAccruedAt) {
+        long now = System.currentTimeMillis();
+        return DataScopeContext.executeWithoutScope(() -> new Preview(
+                billMapper.selectCount(Wrappers.<StlBill>lambdaQuery()
+                        .in(StlBill::getStatus, PUSHABLE)
+                        .isNull(StlBill::getSettleableAt)
+                        .ge(fromAccruedAt != null, StlBill::getAccruedAt, fromAccruedAt)).intValue(),
+                billMapper.selectCount(Wrappers.<StlBill>lambdaQuery()
+                        .in(StlBill::getStatus, PUSHABLE)
+                        .isNotNull(StlBill::getSettleableAt)
+                        .isNull(StlBill::getBatchNo)
+                        .ge(fromAccruedAt != null, StlBill::getAccruedAt, fromAccruedAt)).intValue(),
+                batchMapper.selectCount(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getStatus, StlSettleBatch.DRAFT)
+                        .le(StlSettleBatch::getDueAt, now)).intValue(),
+                batchMapper.selectCount(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getStatus, StlSettleBatch.COLLECTED)).intValue()));
+    }
+
+    private void openIdentityDiff(StlBill bill) {
+        boolean exists = DataScopeContext.executeWithoutScope(() ->
+                diffMapper.selectCount(Wrappers.<StlReconDiff>lambdaQuery()
+                        .eq(StlReconDiff::getAxis, AXIS_BILL)
+                        .eq(StlReconDiff::getPaymentNo, bill.getSettleNo())
+                        .eq(StlReconDiff::getDiffType, DIFF_UNBALANCED)
+                        .eq(StlReconDiff::getStatus, "PENDING"))) > 0;
+        if (exists) {
+            return;
+        }
+        long gap = BillIdentity.gap(bill);
+        StlReconDiff d = new StlReconDiff();
+        d.setAxis(AXIS_BILL);
+        d.setDiffNo(ai.neargo.shop.common.BizKey.next(ai.neargo.shop.common.BizKey.RECON_DIFF));
+        d.setDiffType(DIFF_UNBALANCED);
+        // 用**发现日**而不是单据日：一笔卡了三天的单，运营要在今天这一页看到它
+        d.setBillDate(java.time.LocalDate.now().toString());
+        d.setSource("SELF_CHECK");
+        d.setOrderNo(bill.getOrderNo());
+        // 与 PayoutReconAxis 同一口径：单据轴的锚点是结算单号
+        d.setPaymentNo(bill.getSettleNo());
+        d.setPayChannel(bill.getPayChannel() == null || bill.getPayChannel().isBlank()
+                ? ai.neargo.shop.pay.service.recon.ReconAxis.CHANNEL_NA : bill.getPayChannel());
+        /*
+         * 两个金额都落：**平台侧记基数，通道侧记「各项之和」**。
+         * 只记差额的话，运营看到「差 3 分」还要自己回去把两边算一遍 ——
+         * 而这两个数正是他要对的那两个。
+         */
+        d.setPlatformAmountMinor(nz(bill.getGrossMinor()));
+        d.setChannelAmountMinor(nz(bill.getGrossMinor()) - gap);
+        d.setStatus("PENDING");
+        d.setTenantNo("MAIN");
+        d.setCreatedAt(java.time.LocalDateTime.now());
+        DataScopeContext.executeWithoutScope(() -> diffMapper.insert(d));
+        log.warn("[settle-batch] 单据不平，不入批：{} 差 {} 分", bill.getSettleNo(), gap);
+    }
+
+    // ---------------------------------------------------------------- 查询与人工处置
+
+    @Override
+    public java.util.List<BatchMismatch> checkBatchTotals(int limit) {
+        /*
+         * **只查已截批的**。DRAFT 状态下合计恒为 0（合计在截批那一刻才算），
+         * 拿它去比必然「不一致」—— 那是设计，不是缺陷。
+         * 不排除的话这条巡检每轮都报几十条假差异，
+         * 而<b>恒红的告警等于没有告警</b>。
+         */
+        List<StlSettleBatch> batches = DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .ne(StlSettleBatch::getStatus, StlSettleBatch.DRAFT)
+                        .orderByDesc(StlSettleBatch::getId)
+                        .last("LIMIT " + Math.max(1, limit))));
+
+        List<BatchMismatch> out = new java.util.ArrayList<>();
+        for (StlSettleBatch b : batches) {
+            List<StlBill> bills = DataScopeContext.executeWithoutScope(() ->
+                    billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
+                            .eq(StlBill::getBatchNo, b.getBatchNo())));
+            /*
+             * **按批次的币种筛一次**，与截批时的口径逐字一致。
+             * 截批跳过了错币种的单（见 closeDueBatches），这里也要跳 ——
+             * 不跳的话，一笔混进来的错币种单会让这条巡检报「合计少算了」，
+             * 而实际上少算是对的。<b>两处口径不一致，巡检就在报自己的差异。</b>
+             */
+            String batchCur = b.getCurrency() == null || b.getCurrency().isBlank()
+                    ? DEFAULT_CURRENCY : b.getCurrency();
+            long net = 0;
+            int cnt = 0;
+            for (StlBill bill : bills) {
+                String bc = bill.getCurrency() == null || bill.getCurrency().isBlank()
+                        ? DEFAULT_CURRENCY : bill.getCurrency();
+                if (!bc.equals(batchCur)) {
+                    continue;
+                }
+                net += nz(bill.getNetMinor());
+                cnt++;
+            }
+            int recordedCount = b.getBillCount() == null ? 0 : b.getBillCount();
+            long recordedNet = nz(b.getNetMinor());
+            if (recordedNet != net || recordedCount != cnt) {
+                out.add(new BatchMismatch(b.getBatchNo(), b.getEntityNo(),
+                        recordedNet, net, recordedCount, cnt));
+            }
+        }
+        if (!out.isEmpty()) {
+            log.error("[fund-invariant] **R6 违反 {} 条**：批次合计与其下结算单之和对不上。"
+                    + "放款按合计走、明细页按结算单算，两处各自都「对」—— "
+                    + "只有摆在一起才看得出。**不自动改**：合计是放款依据，"
+                    + "而巡检自己也可能算错。逐条查：{}", out.size(), out);
+        }
+        return out;
+    }
+
+    @Override
+    public java.util.List<BatchVO> merchantBatches(String entityNo) {
+        List<StlSettleBatch> rows = DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getEntityNo, entityNo)
+                        .orderByDesc(StlSettleBatch::getId)));
+        // B 端无锚点，放款记录同样绕过（与批次同一条理由）
+        Map<String, ai.neargo.shop.pay.entity.StlPayout> latest =
+                DataScopeContext.executeWithoutScope(() -> latestPayouts(rows));
+        return rows.stream().map(b -> toVO(b, latest.get(b.getBatchNo()))).toList();
+    }
+
+    /**
+     * 每个批次最近一笔放款（按 id 倒序取第一条）。<b>一次 IN 查齐</b>：逐批查的话一页 20 批 20 次往返。
+     * 退回过的批次会有一笔 FAILED 和一笔新的，取最近那笔 —— 商家要看的是现在这笔到哪了。
+     */
+    private Map<String, ai.neargo.shop.pay.entity.StlPayout> latestPayouts(List<StlSettleBatch> rows) {
+        if (rows.isEmpty()) {
+            return new java.util.HashMap<>();
+        }
+        List<String> nos = rows.stream().map(StlSettleBatch::getBatchNo).toList();
+        Map<String, ai.neargo.shop.pay.entity.StlPayout> out = new java.util.HashMap<>();
+        for (var p : payoutMapper.selectList(Wrappers.<ai.neargo.shop.pay.entity.StlPayout>lambdaQuery()
+                .in(ai.neargo.shop.pay.entity.StlPayout::getBatchNo, nos)
+                .orderByDesc(ai.neargo.shop.pay.entity.StlPayout::getId))) {
+            out.putIfAbsent(p.getBatchNo(), p);
+        }
+        return out;
+    }
+
+    @Override
+    public java.util.List<BatchVO> opsBatches(String status, String entityNo) {
+        boolean byStatus = status != null && !status.isBlank();
+        boolean byEntity = entityNo != null && !entityNo.isBlank();
+        /*
+         * **不绕过**：这是运营端的全量放款队列（status/entityNo 都可空），
+         * 下一步动作是放款 —— 与提现审批同一档。配了商家域的财务不该看到别家的批次。
+         * `entityNo` 参数是运营主动筛某一家，与数据域是两回事。
+         */
+        List<StlSettleBatch> rows = batchMapper.selectList(Wrappers.<StlSettleBatch>lambdaQuery()
+                .eq(byStatus, StlSettleBatch::getStatus, status)
+                .eq(byEntity, StlSettleBatch::getEntityNo, entityNo)
+                .orderByDesc(StlSettleBatch::getId));
+        Map<String, ai.neargo.shop.pay.entity.StlPayout> latest = latestPayouts(rows);
+        return rows.stream().map(b -> toVO(b, latest.get(b.getBatchNo()))).toList();
+    }
+
+    @Override
+    @Transactional("payTxManager")
+    public BatchVO approve(String batchNo, String operator, String remark) {
+        return decide(batchNo, operator, remark, true);
+    }
+
+    @Override
+    @Transactional("payTxManager")
+    public BatchVO hold(String batchNo, String operator, String reason) {
+        return decide(batchNo, operator, reason, false);
+    }
+
+    /**
+     * 人工处置。
+     *
+     * <p><b>放行与继续挂起都必须写原因</b>：事后要能回答「当时凭什么放的」。
+     *
+     * <p>三处失败都抛 {@code BizException} 而不是 {@code IllegalArgumentException}
+     * （2026-08-31 改）。后者在 {@code GlobalExceptionHandler} 里没有对应的 handler，
+     * 会落到兜底的 {@code onAny} —— 于是运营忘了写原因，界面上显示的是
+     * <b>「系统开小差」（10500）</b>，而监控里多出一条 {@code unhandled error}：
+     * <b>运营的操作失误被算成了服务端故障</b>，两边都看不出真正发生了什么。
+     * 支付域其余 43 处都用 BizException，这 3 处是偏离。
+     * 而超时自动放行走的是另一条路（{@code decided_by = SYSTEM_TIMEOUT}），
+     * 与人工放行分开统计 —— 那个数持续大于零说明挂起时限比处置能力短。
+     */
+    private BatchVO decide(String batchNo, String operator, String remark, boolean pass) {
+        if (remark == null || remark.isBlank()) {
+            throw BizException.of(ErrorCode.REASON_REQUIRED);
+        }
+        StlSettleBatch batch = DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectOne(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getBatchNo, batchNo).last("LIMIT 1")));
+        if (batch == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        /*
+         * 只有挂起中的批次能被人工处置。
+         * 已放行的再「放行」一次是无意义的，而已放行**之后**再挂起更危险 ——
+         * 钱已经在路上了，界面上却显示挂起，读的人会以为还拦得住。
+         */
+        if (!StlSettleBatch.BLOCKED.equals(batch.getStatus())
+                && !StlSettleBatch.RECONCILING.equals(batch.getStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        StlSettleBatch patch = new StlSettleBatch();
+        patch.setId(batch.getId());
+        patch.setStatus(pass ? StlSettleBatch.RECONCILED : StlSettleBatch.BLOCKED);
+        patch.setDecidedBy(operator);
+        patch.setDecideRemark(remark);
+        if (!pass) {
+            patch.setBlockedReason(remark);
+            patch.setBlockedAt(System.currentTimeMillis());
+        }
+        DataScopeContext.executeWithoutScope(() -> batchMapper.updateById(patch));
+        log.warn("[settle-batch] 批次 {} 被 {} {}：{}", batchNo, operator,
+                pass ? "放行" : "继续挂起", remark);
+        return toVO(DataScopeContext.executeWithoutScope(() ->
+                batchMapper.selectOne(Wrappers.<StlSettleBatch>lambdaQuery()
+                        .eq(StlSettleBatch::getBatchNo, batchNo).last("LIMIT 1"))));
+    }
+
+    private static BatchVO toVO(StlSettleBatch b) {
+        return toVO(b, null);
+    }
+
+    private static BatchVO toVO(StlSettleBatch b, ai.neargo.shop.pay.entity.StlPayout p) {
+        return new BatchVO(b.getBatchNo(), b.getEntityNo(), b.getPayChannel(), b.getSettleCycle(),
+                nz(b.getPeriodFrom()), nz(b.getDueAt()), b.getReleasedAt(), b.getFreezeExpireAt(),
+                b.getStatus(), b.getBillCount() == null ? 0 : b.getBillCount(),
+                nz(b.getGrossMinor()), nz(b.getNetMinor()), b.getReconScope(),
+                b.getBlockedReason(), b.getBlockedAt(), b.getBlockExpireAt(),
+                b.getDecidedBy(), b.getDecideRemark(),
+                p == null ? null : p.getStatus(), p == null ? null : p.getPaymentRef(),
+                p == null ? null : p.getPaidAt());
+    }
+
+    private ZoneId zoneOf() {
+        try {
+            return ZoneId.of(zoneId);
+        } catch (RuntimeException e) {
+            // 配错时不让整条链路停 —— 但要吼一声，否则所有人的应结日会静默按 UTC 算
+            log.error("[settle-batch] 时区配置 {} 认不出，回落 Asia/Shanghai", zoneId, e);
+            return ZoneId.of("Asia/Shanghai");
+        }
+    }
+
+    /** 兜底记账币种。与 SettleServiceImpl 同值 —— 结算单没有币种时按它算 */
+    private static final String DEFAULT_CURRENCY = "CNY";
+
+    private static long nz(Long v) {
+        return v == null ? 0L : v;
+    }
+}

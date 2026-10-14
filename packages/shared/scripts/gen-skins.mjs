@@ -49,6 +49,41 @@ const rgba = (hex, alpha) => {
 /** 前景色按对比度选，不手填 */
 const onColor = (bg) => (contrast(bg, WHITE) >= contrast(bg, INK) ? WHITE : INK);
 
+/** 朝黑（k<1）或朝白（k>1）挪一档，保色相 */
+const shift = (hex, k) => {
+  const h = hex.replace("#", "");
+  let [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  if (k <= 1) [r, g, b] = [r * k, g * k, b * k];
+  else {
+    const t = k - 1;
+    [r, g, b] = [r + (255 - r) * t, g + (255 - g) * t, b + (255 - b) * t];
+  }
+  return `#${[r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0")).join("")}`.toUpperCase();
+};
+
+/**
+ * **主色当文字用时的那一档**。同样是算出来的，不手填 —— 与 `onColor` 一个道理。
+ *
+ * 主色是为「压白字的按钮底」调的；同一个色拿去当**文字**压在页面底上就不一定够。
+ * 实测八套皮肤里有六套不达 AA（brand 4.00 / blue 3.92 / promo 3.86 / teal 3.85 …），
+ * 而这件事**没有任何症状**：颜色看着是对的，只是弱视用户读不清。
+ *
+ * 先朝深里挪（浅底场景），挪到底还不够就朝白挪（深色模式）。
+ * 目标 4.55 而不是 4.5：留一点余量，底色微调时不至于立刻掉下去。
+ */
+const textColor = (primary, bg) => {
+  if (contrast(primary, bg) >= 4.5) return primary;
+  for (let k = 1; k > 0.3; k -= 0.005) {
+    const c = shift(primary, k);
+    if (contrast(c, bg) >= 4.55) return c;
+  }
+  for (let k = 1; k < 2; k += 0.005) {
+    const c = shift(primary, k);
+    if (contrast(c, bg) >= 4.55) return c;
+  }
+  return primary;
+};
+
 // ---- 从 tokens.ts 读 SKIN_HEX 与 SURFACES（唯一事实源） ----
 const SRC = readFileSync(join(SHARED, "src/design/tokens.ts"), "utf8");
 
@@ -66,6 +101,8 @@ function readSkins() {
     const dark = field(body, "dark");
     if (!light || !dark) continue;
     const inkBlock = body.match(/ink:\s*\{([^}]*)\}/)?.[1];
+    // 品牌书写死的「主色当文字」那一档。不填就由 textColor 算
+    const deepBlock = body.match(/deep:\s*\{([^}]*)\}/)?.[1];
     skins.push({
       id: m[1],
       light,
@@ -75,6 +112,9 @@ function readSkins() {
       brandLocked: /brandLocked:\s*true/.test(body),
       ink: inkBlock
         ? { light: field(inkBlock, "light"), dark: field(inkBlock, "dark") }
+        : undefined,
+      deep: deepBlock
+        ? { light: field(deepBlock, "light"), dark: field(deepBlock, "dark") }
         : undefined,
     });
   }
@@ -113,10 +153,12 @@ function buildCss(skins, surfaces) {
 
    取值全部由 packages/shared/tests/design-tokens.test.ts 的对比度断言守着。 */`;
 
-  const vars = (primary, tint, sf) =>
+  const vars = (primary, tint, sf, deep) =>
     [
       `  --sh-primary: ${primary};`,
       `  --sh-primary-tint: ${tint};`,
+      // 主色当**文字**用的那一档。品牌书填了就用它，否则按对比度算（见 textColor）
+      `  --sh-primary-text: ${deep ?? textColor(primary, sf.bg)};`,
       `  --sh-on-primary: ${onColor(primary)};`,
       `  --sh-bg: ${sf.bg};`,
       `  --sh-surface: ${sf.surface};`,
@@ -139,8 +181,8 @@ function buildCss(skins, surfaces) {
       : base;
     const head0 = s.id === skins[0].id ? ":root,\n" : "";
     return [
-      `${head0}:root[data-skin="${s.id}"],\n:root[data-skin="${s.id}"][data-theme="light"],\n.sh-root.skin-${s.id}.mode-light {\n${vars(s.light, rgba(s.light, 0.12), sf.light)}\n}`,
-      `:root[data-skin="${s.id}"][data-theme="dark"],\n.sh-root.skin-${s.id}.mode-dark {\n${vars(s.dark, rgba(s.dark, 0.2), sf.dark)}\n}`,
+      `${head0}:root[data-skin="${s.id}"],\n:root[data-skin="${s.id}"][data-theme="light"],\n.sh-root.skin-${s.id}.mode-light {\n${vars(s.light, rgba(s.light, 0.12), sf.light, s.deep?.light)}\n}`,
+      `:root[data-skin="${s.id}"][data-theme="dark"],\n.sh-root.skin-${s.id}.mode-dark {\n${vars(s.dark, rgba(s.dark, 0.2), sf.dark, s.deep?.dark)}\n}`,
     ];
   });
   return [head, ...blocks].join("\n");
@@ -162,11 +204,29 @@ function writeBaseCss(css) {
 }
 
 /** 原生 tabBar 的选中色不吃 CSS 变量，只能往每个 app 的 pages.json 里同步写死 */
-function writeTabBarColor(app, defaultSkin) {
+/**
+ * 各端的默认皮肤 —— **与 `App.vue` 里 `configureShell({ defaultSkin })` 必须一致**。
+ *
+ * 原先这里一律取 `skins[0]`，那在「两端同一个默认」时是对的；
+ * 加了品牌皮肤之后 `skins[0]` 变成 brand，于是**给 B 端换红把 C 端也一起换了**——
+ * 而原生 tabBar 不吃 CSS 变量，只能在这里写死，错了不会有任何报错，
+ * 只是 C 端底部菜单莫名其妙变成了红的。
+ */
+const APP_DEFAULT_SKIN = {
+  "b-app": "brand", // 商家端：品牌红
+  "c-app": "fresh", // 消费端：维持微信绿
+};
+
+function writeTabBarColor(app, skins) {
+  const wanted = APP_DEFAULT_SKIN[app] ?? skins[0].id;
+  const skin = skins.find((s) => s.id === wanted);
+  if (!skin) {
+    throw new Error(`${app} 的默认皮肤 ${wanted} 不在 SKINS 里`);
+  }
   const pagesPath = join(ROOT, app, "src/pages.json");
   const pages = JSON.parse(readFileSync(pagesPath, "utf8"));
   if (pages.tabBar) {
-    pages.tabBar.selectedColor = defaultSkin.light;
+    pages.tabBar.selectedColor = skin.light;
     writeFileSync(pagesPath, JSON.stringify(pages, null, 2) + "\n");
   }
 }
@@ -175,7 +235,7 @@ const skins = readSkins();
 const surfaces = readSurfaces();
 const css = buildCss(skins, surfaces);
 writeBaseCss(css);
-for (const app of APPS) writeTabBarColor(app, skins[0]);
+for (const app of APPS) writeTabBarColor(app, skins);
 
 console.log(`已生成 ${skins.length} 套皮肤 × 明暗，写入 packages/ui 的样式基座与 ${APPS.join(" / ")} 的 pages.json`);
 for (const s of skins) {

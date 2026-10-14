@@ -1,0 +1,127 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>活动列表怎么排</title>
+<!-- 真源在仓库 prototypes/activity-list-layout.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+<style>
+/* 本稿专用：仅本稿的对比排版，不是通用积木 */
+.prose{display:flex;flex-direction:column;gap:10px;max-width:68ch}
+.prose p{margin:0}
+.cap .pick{color:var(--note);font-weight:600;margin-inline-start:8px}
+figure.pick .ph{outline:2px solid var(--note);outline-offset:5px}
+.cap .metrics{display:block;margin-top:6px}
+.cap .metrics .no{color:var(--note)}
+.btn.inl{flex:none;padding-inline:14px}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 方案稿 · 2026-09-18</div>
+  <h1>活动列表怎么排</h1>
+  <p class="sub">这一页现在四个活动占掉 947px（约 2.3 屏），而最抢眼的是三个复盘用的数字。下面的量都是在 375pt 下读 computed 得到的，不是看截图估的。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">量</span><h2>现在量到的</h2></div>
+  <div class="tw"><table class="spec">
+    <tr><th>量</th><th>值</th><th>问题</th></tr>
+    <tr><td>单卡高</td><td class="num">177px</td><td>四个活动 947px ≈ 2.3 屏</td></tr>
+    <tr><td>编辑 / 暂停 / 结束</td><td class="num"><b>各 24 × 15px</b></td><td>纯文字，不到可点下限 44 的三分之一</td></tr>
+    <tr><td>「已用 / 已花 / 还剩」</td><td class="num">20px × 3</td><td>卡里最大的字，而它们是复盘用的</td></tr>
+    <tr><td>状态与排期</td><td>分散两处</td><td>「已到量」在标题后，「限时 / 长期 / 每周三」在规则下</td></tr>
+  </table></div>
+  <p class="why"><b>判据</b>：这一页最常做的是<b>「扫一眼在跑几个」</b>与<b>「停掉那一个」</b>。钱的三个数是复盘，不该占最大字号 —— 它们该在点进去之后。</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01 — 03</span><h2>三个方案</h2></div>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">活动</span><span></span></div>
+        <div class="scr">
+          <div class="card">
+            <div class="nm">满 50 减 5</div>
+            <div>满 ¥50.00 减 ¥5.00</div>
+            <div class="meta">长期有效</div>
+            <div class="stats" style="padding:6px 0">
+              <div><div class="n num">37</div><div class="l">已用</div></div>
+              <div><div class="n num">¥185</div><div class="l">已花</div></div>
+              <div><div class="n num">163</div><div class="l">还剩</div></div>
+            </div>
+            <div class="meta" style="display:flex;gap:12px;color:var(--sh-primary-text)"><span>编辑</span><span>暂停</span><span>结束</span></div>
+          </div>
+          <div class="card" style="opacity:.55">
+            <div class="nm">周三蔬菜特价</div>
+            <div>特价 ¥9.90</div>
+            <div class="meta">每周 三 · 08:00–20:00</div>
+            <div class="stats" style="padding:6px 0;grid-template-columns:1fr">
+              <div><div class="n num">12</div><div class="l">已用</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>01 A · 现状</b>一屏放不下两个。三个动作是<strong>纯文字</strong>，看不出能点、也点不中。
+        <span class="metrics sec-num"><span class="no">177px/条　·　一屏 2.7 条　·　动作 24×15</span></span></figcaption>
+    </figure>
+
+    <figure id="s02" class="pick">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">活动</span><span></span></div>
+        <div class="scr">
+          <div class="gt">正在生效（2）</div>
+          <div class="card">
+            <div class="hd"><span class="nm">满 50 减 5</span><span class="chip ok">长期</span></div>
+            <div class="hd"><span>满 ¥50 减 ¥5</span><span class="meta num">还剩 163</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><span class="nm">周三蔬菜特价</span><span class="chip ok">每周三</span></div>
+            <div class="hd"><span>特价 ¥9.90</span><span class="meta num">还剩 38</span></div>
+          </div>
+          <div class="gt">已结束（1）</div>
+          <div class="card" style="opacity:.6">
+            <div class="hd"><span class="nm">新客立减 3 元</span><span class="chip">已到量</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>02 B · 两行一条 · 按状态分组<span class="pick">推荐</span></b><strong>点整条进详情</strong>，编辑与停在那儿做 —— 列表上不放三个点不中的字。右上角一枚徽章同时说完<strong>排期与状态</strong>（两者从来不会同时需要）。「还剩」留在列表：它是唯一影响「要不要现在管它」的数。
+        <span class="metrics sec-num">66px/条　·　一屏 7 条　·　整条可点 340×66</span></figcaption>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">活动</span><span></span></div>
+        <div class="scr">
+          <div class="gt">正在生效（2）</div>
+          <div class="card">
+            <div class="hd"><div><div class="nm">满 50 减 5</div><div class="meta">满 ¥50 减 ¥5 · 还剩 163</div></div><span class="btn sec inl" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">暂停</span></div>
+          </div>
+          <div class="card">
+            <div class="hd"><div><div class="nm">周三蔬菜特价</div><div class="meta">特价 ¥9.90 · 还剩 38</div></div><span class="btn sec inl" style="background:var(--sh-primary-tint);color:var(--sh-primary-text)">暂停</span></div>
+          </div>
+          <div class="card" style="opacity:.6">
+            <div class="hd"><div><div class="nm">新客立减 3 元</div><div class="meta">已到量</div></div><span class="btn sec inl">已结束</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>03 C · 一行一条 · 右侧开关</b>停一个活动<strong>一下就到</strong>。代价是那枚钮占掉右侧，排期（每周三 / 长期）只能挤进第二行的灰字里 —— 而<strong>「什么时候生效」恰恰是商家最常问活动的那句话</strong>。
+        <span class="metrics sec-num">62px/条　·　一屏 7 条　·　<span class="no">排期降级成灰字</span></span></figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">结论</span><h2>为什么推荐 B</h2></div>
+  <div class="prose">
+    <p><b>它把「点不中的三个字」换成了「整条可点」。</b> A 的三个动作各 24×15px，而 B 的一条是 340×66 —— 不是把按钮做大，是<b>取消按钮</b>：编辑与停都发生在详情里，列表只回答「有哪些、在不在跑、还剩多少」。</p>
+    <p><b>C 快，但它拿排期换的。</b> 停活动是低频动作（一个活动一辈子停一次），而「什么时候生效」是每次打开都要读的。把高频的降级去换低频的一步，划不来。</p>
+    <p><b>三个大数收进详情。</b> 它们是复盘用的：商家看「这个活动花了多少」时是专门去看的，不是扫列表时顺带看的。留在列表上只是让每条多占 55px，而四条就是一整屏。</p>
+    <p class="why">还没定的一件：<b>已结束的要不要默认折叠</b>。接口有 <code>includeEnded</code> 参数，今天端上传的是 true。折叠能再省一截，但「上个月那个活动叫什么」也是真需求 —— 这条我想听你的。</p>
+  </div>
+</section>
+
+<footer>真源：prototypes/activity-list-layout.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/artifact/Ey9uhPDXGsmnt31qzZoKP5">https://claude.ai/artifact/Ey9uhPDXGsmnt31qzZoKP5</a> · 相关文档：prototypes/marketing-rearrange.html（后续的营销重排稿）</footer>
+</div>
+</html>

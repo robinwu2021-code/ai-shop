@@ -18,7 +18,7 @@ export const riskMock: RiskApi = {
   decideRiskEvent: async (eventNo, confirmed, verdict) => {
     const e = db.riskEvents.find((x) => x.eventNo === eventNo);
     if (!e) notFound("风险事件", "Risk event", eventNo);
-    if (e.status !== "OPEN") fail("该事件已处置，请刷新列表", "This event has already been handled — refresh the list");
+    if (e.status !== "PENDING") fail("该事件已处置，请刷新列表", "This event has already been handled — refresh the list");
     // 排除也要写理由：下次同一主体再命中时，得知道上次为什么放过
     if (!verdict?.trim()) fail("处置结论必填：确认与排除都要写清依据", "A conclusion is required — say what it rests on, whether you confirm or dismiss");
     e.status = confirmed ? "CONFIRMED" : "DISMISSED";
@@ -60,7 +60,7 @@ export const riskMock: RiskApi = {
     if (!b) notFound("黑名单记录", "Blocklist entry", blackNo);
     if (b.appealStatus !== "PENDING") fail("该记录没有待裁决的申诉", "This entry has no appeal awaiting a ruling");
     if (!verdict?.trim()) fail("裁决说明必填，被拉黑者会看到", "A ruling note is required — the blocked party sees it");
-    b.appealStatus = accept ? "ACCEPTED" : "REJECTED";
+    b.appealStatus = accept ? "UPHELD" : "REJECTED";
     b.appealVerdict = verdict.trim();
     // 接受申诉 = 解除拉黑；记录本身保留（留痕，不是删除）
     if (accept) b.active = false;

@@ -1,0 +1,148 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>进销存 · 扫码 · 日期 · 调拨</title>
+<!-- 真源在仓库 prototypes/inventory-scan-date-transfer.html；发布到 claude.ai 的是它的副本。样式只在 proto.css -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+<style>
+/* 本稿专用：仅本稿的对比排版，不是通用积木 */
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;align-items:start}
+.pair>div{display:flex;flex-direction:column;gap:10px;max-width:300px}
+.tag-new{color:var(--note)}
+.said{margin:0 0 18px}
+.notes{display:flex;flex-direction:column;gap:10px;max-width:900px;margin-top:18px}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 进销存 · 方案稿 · 2026-09-18</div>
+  <h1>进销存：扫码 · 日期 · 调拨</h1>
+  <p class="sub">三条都先给方案。其中扫码那条有个前提数字，先看它——它决定这件事现在该不该做。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01</span><h2>扫码提到外层</h2></div>
+  <p class="sub said">「<b>添加商品，扫码部分是否考虑放到外层，减少点击</b>」</p>
+  <p class="why" style="margin-bottom:18px"><b>先看这个数：运营端「商品统计」此刻的真实值 —— 条码覆盖率 <code>0%</code>（<code>0 / 1</code> 个 SKU）。</b>那一页自己写着：「扫码入库能覆盖的上限就是这个数」。也就是说，<b>今天把扫码提到最显眼处，它每一次都会扫不出东西</b>。不是做得不对，是没有可扫的数据 —— 商家货号同样是 0/1。</p>
+  <figure id="s01">
+    <div class="pair">
+      <div>
+        <div class="eyebrow">现状 · 相机打开前点两下</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">进货</span><span></span></div>
+          <div class="scr">
+            <div class="gt">商品</div>
+            <div class="group"><div class="frow add">＋ 添加商品</div></div>
+          </div>
+          <div class="mask"><div class="sheet">
+            <div class="h">添加商品</div>
+            <div class="frow" style="border-top:0"><span class="v ph-" style="text-align:left;flex:1">搜索商品名称或规格</span></div>
+            <div class="frow"><span class="v hot" style="text-align:left">扫码</span></div>
+          </div></div>
+        </div>
+        <p class="why">加一件货：<code>添加商品</code> → <code>扫码</code> → 相机。进一车货三十行，光这两下就是 <b>60 次点击</b>。</p>
+      </div>
+      <div>
+        <div class="eyebrow tag-new">建议 · 外层一枚扫码钮 + 连扫不关</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">进货</span><span></span></div>
+          <div class="scr">
+            <div class="gt">商品</div>
+            <div class="group">
+              <div class="frow" style="gap:8px"><span class="btn sec" style="flex:1;color:var(--sh-primary-text);background:var(--sh-primary-tint)">＋ 添加商品</span><span class="btn" style="flex:0 0 44px">⌖</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="why">扫码与「添加商品」并排：<b>它们是同一件事的两种做法</b>（找到那件货），所以并排而不是藏进去。相机打开前 <b>0 次额外点击</b>。<br><b>更要紧的是连扫不关</b>：扫一件加一行、相机不退出，一车货扫完再收 —— 盘点页已经是这么做的（「扫一次 +1」），这里照搬同一套。</p>
+      </div>
+    </div>
+    <figcaption class="cap"><b>01 扫码提到外层</b>左：现状；右：建议。</figcaption>
+  </figure>
+  <div class="notes">
+    <p class="why"><b>我的建议：先做「绑码」，再做「扫码入口」。</b><br>顺序反了的话，商家点开那枚最显眼的钮，扫一件失败一件 —— 而失败的原因（这件货还没绑过码）与他此刻在做的事（进货）毫无关系，他只会认为扫码坏了。<br>可行的接法：外层扫码钮保留，<b>扫到未知码时直接进「绑给哪件货」</b>—— 第一次扫是在建条码库，第二次起才是入库。挑货弹层里现在已经有这个分支，把它搬到外层即可，不用新写逻辑。</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">02</span><h2>发生日期</h2></div>
+  <p class="sub said">「<b>日期选择部分也需要优化，给出更好的体验</b>」</p>
+  <figure id="s02">
+    <div class="pair">
+      <div>
+        <div class="eyebrow">现状 · 系统滚轮</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">进货</span><span></span></div>
+          <div class="scr">
+            <div class="group"><div class="frow"><span class="k">发生日期</span><span class="v hot num">2026-09-17</span></div></div>
+          </div>
+        </div>
+        <p class="why">点一下弹出系统日期滚轮，要拨年、月、日三列再点确定。而进货单的日期<b>九成是今天，剩下的几乎都是昨天</b>——补记昨天的货是常态。为一个「多半不改」的字段付三列滚轮。</p>
+      </div>
+      <div>
+        <div class="eyebrow tag-new">建议 · 三枚快捷 + 兜底滚轮</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">进货</span><span></span></div>
+          <div class="scr">
+            <div class="group">
+              <div class="frow"><span class="k">发生日期</span><span class="seg"><span class="on">今天</span><span>昨天</span><span>前天</span></span></div>
+              <div class="frow"><span class="k"></span><span class="v go">选日期</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="why">九成情况 <b>0 次滚动</b>（默认「今天」已选中，不用点）；补昨天的货一下点中。真要挑别的日子，「选日期」还是原来那个滚轮，一个功能都没少。</p>
+      </div>
+    </div>
+    <figcaption class="cap"><b>02 发生日期</b>左：现状；右：建议。</figcaption>
+  </figure>
+  <div class="notes">
+    <p class="why">顺带一条现状里的坑：那一行现在<b>没有任何「可点」的样子</b>—— 只是一串日期文字。与供应商那行是同一个毛病，上一轮已经给供应商加了「›」。</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">03</span><h2>调拨：从 / 到 点不中</h2></div>
+  <p class="sub said">「<b>调拨部分的 UI 也要优化，选择不好点击</b>」</p>
+  <figure id="s03">
+    <div class="pair">
+      <div>
+        <div class="eyebrow">现状 · 可点区 17px 高</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">调拨</span><span></span></div>
+          <div class="scr">
+            <div class="group">
+              <div class="frow" style="min-height:0;padding:6px 0"><span class="k">从</span><span class="v go hot">虹选鲜果</span></div>
+              <div class="frow" style="min-height:0;padding:6px 0"><span class="k">到</span><span class="v go hot">虹选鲜果·福田店</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="why">线上量到的：两行的可点区是 <code>61 × 17</code> 和 <code>100 × 17</code>。<b>17px 还不到可点下限 44 的一半</b>，而且<b>只有那几个字能点</b>—— 手指落在「从」字上或右边空白处都没反应。「不好点击」是这个数。</p>
+      </div>
+      <div>
+        <div class="eyebrow tag-new">建议 · 整行可点 + 一枚对调</div>
+        <div class="ph">
+          <div class="nav"><span class="bk">‹</span><span class="t">调拨</span><span></span></div>
+          <div class="scr">
+            <div class="group">
+              <div class="frow"><span class="k">从</span><span class="v go hot">虹选鲜果</span></div>
+              <div class="who" style="border-top:1px solid var(--sh-line)"><i>⇅</i></div>
+              <div class="frow"><span class="k">到</span><span class="v go hot">虹选鲜果·福田店</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="why"><b>整行可点</b>，高 44px：手指落在行内任何位置都算数，包括「从」字和右边的空白。<br>中间加一枚 <b>⇅ 对调</b>：调拨最常见的错就是方向填反，发现之后现在要重选两次。一枚 44×44 的圆解决它。</p>
+      </div>
+    </div>
+    <figcaption class="cap"><b>03 调拨：从 / 到</b>左：现状；右：建议。</figcaption>
+  </figure>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">顺序</span><h2>建议的落地顺序</h2></div>
+  <p class="why" style="max-width:900px"><b>建议的落地顺序</b>：③ 调拨（纯可点性，无争议）→ ② 日期（无依赖）→ ① 扫码。<br>① 单独拎出来是因为它<b>依赖条码数据</b>，而那个数今天是 0%。要么先做绑码、要么把外层扫码做成「扫到未知码就去绑」——两条我都能做，你定。</p>
+</section>
+
+<footer>
+  真源：prototypes/inventory-scan-date-transfer.html · 登记：prototypes/registry.json · 原 artifact：<a href="https://claude.ai/artifact/MkbBnDDpfX1KKbZBqDdYgQ">claude.ai/artifact/MkbBnDDpfX1KKbZBqDdYgQ</a><br>
+  相关文档：docs/technical/design/进销存-录入效率-扫码与拍照.md · docs/technical/design/进销存-B端交互梳理.md
+</footer>
+</div>
+</html>

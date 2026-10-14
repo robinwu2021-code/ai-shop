@@ -1,0 +1,18 @@
+# `EstateCacheBackfillFlowTest` 的独立内存库。
+#
+# **为什么要另一套**：那个类用 `@MockitoBean` 替换 `GeoService`，于是它是**另一个
+# Spring 上下文**。而 testcfg 用的 `jdbc:h2:mem:shop;DB_CLOSE_DELAY=-1` 是进程内
+# 共享的一个库 —— 第二个上下文起来时会把 `schema-test.sql` 在同一个库上再跑一遍，
+# 撞 `sys_industry` 的主键（那个脚本有 1607 条不幂等的 INSERT）。
+#
+# 症状与 application-openapi.yml 注释里写的一模一样：**单独跑绿、全量红**，
+# 而且那次失败会拖垮之后的上下文，报错指向的类与真因毫不相干。
+# 这三条在 backend/known-failures.txt 里挂了很久，根因就是这个。
+#
+# 同样不走「第二个上下文跳过初始化」那条路：那会让绿依赖于「它不是第一个跑的」，
+# 而测试顺序不该是正确性的一部分。
+#
+# 排在 @ActiveProfiles 的最后一位才能盖住 testcfg 的 url。
+spring:
+  datasource:
+    url: jdbc:h2:mem:shop_estatecache;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1

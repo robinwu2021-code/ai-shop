@@ -83,7 +83,7 @@ function Row({
             onChange={() => onCheck?.(leaves, state !== "on")}
           />
         )}
-        <div className="min-w-0 flex-1 text-sm">{node.label}</div>
+        <div className="min-w-0 flex-1 txt-body">{node.label}</div>
         {node.extra != null && <div className="flex shrink-0 items-center gap-1.5">{node.extra}</div>}
       </div>
       {hasKids && expanded && (

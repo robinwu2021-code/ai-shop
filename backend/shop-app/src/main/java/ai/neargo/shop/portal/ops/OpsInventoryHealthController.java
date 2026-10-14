@@ -1,0 +1,73 @@
+package ai.neargo.shop.portal.ops;
+
+import ai.neargo.shop.auth.Perms;
+import ai.neargo.shop.invbridge.InventoryHealthService;
+import ai.neargo.shop.invbridge.MerchantStockDigestService;
+import ai.neargo.shop.invbridge.MerchantStockDigestService.Digest;
+import ai.neargo.shop.invbridge.InventoryHealthService.HealthRow;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+/**
+ * 平台端 · 库存健康度。
+ *
+ * <p><b>只有读，没有写</b> —— 与「运营不改商家库存」同一条口径：
+ * 运营改了商家的数，「这个数是谁改的」就多了一个答案，而商家不会知道。
+ *
+ * <p>它在 {@code shop-app} 而不在 {@code shop-inventory}：三类里的「零库存仍在架」
+ * 要同时读平台侧的在架状态与本域的余额，而进销存域<b>不认识平台的表</b>。
+ * 与 {@link OpsInventoryReconController} 同理。
+ *
+ * <p>进销存那侧的 {@code /ops/inventory/balances} 是<b>另一件事</b>：
+ * 它必须先知道看哪个商家（{@code entityNo} 必填）。这一个是「不知道该看谁」时的那一屏。
+ */
+@Profile("ops")
+@RestController
+@ConditionalOnProperty(prefix = "shop.inventory", name = "enabled", havingValue = "true")
+public class OpsInventoryHealthController {
+
+    /** 一次最多返回多少行。**不是扫多少** —— 扫描量的上限在 service 里 */
+    private static final int LIMIT_MAX = 500;
+
+    private final InventoryHealthService health;
+    private final MerchantStockDigestService digest;
+
+    public OpsInventoryHealthController(InventoryHealthService health,
+                                        MerchantStockDigestService digest) {
+        this.health = health;
+        this.digest = digest;
+    }
+
+    /**
+     * 单商家进销存概况（M5）：这家记了多少笔、最近一笔什么时候、有多少条账。
+     *
+     * <p>库存流水那一页能按商家翻明细，但翻之前答不出「这家到底在不在用」——
+     * 而线上 6 家商家里只有 2 家真在记账，那 4 家在流水页上的样子
+     * 与「今天恰好没动」一模一样。
+     *
+     * <p>还没搬进进销存的商家返回 {@code null}：那本身就是答案（去看投影链路），
+     * 不是「零笔」（那是去催商家）。两者要分开说。
+     */
+    @PreAuthorize("@perm.can('" + Perms.INVENTORY_STOCK_READ + "')")
+    @GetMapping("/ops/inventory/merchant-digest")
+    public Digest digest(
+            @RequestParam String entityNo) {
+        return digest.of(entityNo);
+    }
+
+    /**
+     * @param kind null / ALL = 三类都要；NEGATIVE / ZERO_ON_SALE / STALE 只要一类
+     */
+    @PreAuthorize("@perm.can('" + Perms.INVENTORY_STOCK_READ + "')")
+    @GetMapping("/ops/inventory/health")
+    public List<HealthRow> health(@RequestParam(required = false) String kind,
+                                  @RequestParam(defaultValue = "200") int limit) {
+        return health.scan(kind, Math.min(Math.max(limit, 1), LIMIT_MAX));
+    }
+}

@@ -21,7 +21,7 @@ export type PayChannel = "WECHAT" | "ALIPAY" | "BALANCE";
  */
 export type ReconDiffType = "CHANNEL_ONLY" | "PLATFORM_ONLY" | "AMOUNT_DIFF";
 
-export type ReconStatus = "OPEN" | "RESOLVED" | "IGNORED";
+export type ReconStatus = "PENDING" | "RESOLVED" | "IGNORED";
 
 export interface ReconDiff {
   /** 差异单号 */

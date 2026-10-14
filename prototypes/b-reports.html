@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>B 端报表 · 近几日 / 按月 / 商品 TopN</title>
+<!-- 真源在仓库 prototypes/b-reports.html；发布到 claude.ai 的是它的副本。样式只在 proto.css，本文件不写样式块 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="proto.css">
+
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">B 端 App · 界面原型 · 2026-09-30</div>
+  <h1>报表：一眼 → 近几日 → 按月 → 商品</h1>
+  <p class="sub">五屏。回答商家三个问题：最近几日挣了多少、这个月的账、哪些商品卖得好。
+  清单与字段真源见 <b>docs/requirements/B端报表清单-由浅入深.md</b>。</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">01</span><h2>入口：一屏给结论，不给图</h2></div>
+  <div class="sec-note">现状 <code>mStats()</code> 签名一个参数都没有，只有「今日」「本月」两个定点数。
+  这一屏把时间选择放进来（R1），并把两张深一层的报表收成两个入口。</div>
+  <div class="grid">
+
+    <figure id="s01">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">经营数据</span><span></span></div>
+        <div class="scr">
+          <div class="seg"><span>今日</span><span class="on">近 7 天</span><span>本月</span></div>
+          <div class="stats">
+            <div><div class="n num">12,480</div><div class="l">成交额（元）</div></div>
+            <div><div class="n num">86</div><div class="l">订单</div></div>
+            <div><div class="n num">145</div><div class="l">客单价（元）</div></div>
+          </div>
+          <div class="sum">较上一个 7 天 <b class="num">+23%</b>　·　上期 10,140 元 / 71 单</div>
+          <div class="group">
+            <div class="frow"><span class="k">自带客流占比</span><span class="v num">68% ›</span></div>
+            <div class="frow"><span class="k">评分</span><span class="v num">4.8（126）›</span></div>
+          </div>
+          <div class="gt">看得更细</div>
+          <div class="tiles">
+            <div class="tile"><b>按月营收</b><span>6 个月的钱与单量</span></div>
+            <div class="tile"><b>商品销售</b><span>畅销 / 滞销 TopN</span></div>
+          </div>
+          <div class="tiles">
+            <div class="tile"><b>客户与复购</b><span>沉默客户 12 位</span></div>
+            <div class="tile"><b>对账单</b><span>本期应结 9,860 元</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>01 经营数据 · 入口</b>三个数字 + 一句环比 + 四个入口。分段切换 7 天 / 本月即刻换数。</figcaption>
+      <p class="why"><b>用环比替折线</b>：B-13.1 定了「不做图表 —— 一天几十单的折线图读不出东西」。
+      「较上一个 7 天 +23%，上期 10,140 元 / 71 单」把趋势说完了，还顺手给了对照量。
+      客单价是算出来的（成交额 ÷ 订单），不新增后端字段。
+      四个入口用 <code>.tile</code> 而不是列表行 —— 它们是并列的去处，不是设置项。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">02 — 03</span><h2>R1 近几日、R2 按月：同一种骨架</h2></div>
+  <div class="sec-note">合计在上、逐行在下、末行合计。两屏唯一的差别是「行」的粒度：一天 / 一月。</div>
+  <div class="grid">
+
+    <figure id="s02">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">近几日</span><span></span></div>
+        <div class="scr">
+          <div class="seg"><span class="on">7 天</span><span>14 天</span><span>30 天</span></div>
+          <div class="sum">合计 <b class="num">12,480</b> 元　·　<b class="num">86</b> 单　·　较上期 <b class="num">+23%</b></div>
+          <div class="sl-list">
+            <div class="sl-row"><span class="lg num">30</span><div class="bd"><span class="nm">09-30 今天</span><span class="m num">15 单 · 退款 1 笔</span></div><span class="amt num">2,180 ›</span></div>
+            <div class="sl-row"><span class="lg num">29</span><div class="bd"><span class="nm">09-29</span><span class="m num">13 单</span></div><span class="amt num">1,905 ›</span></div>
+            <div class="sl-row"><span class="lg num">28</span><div class="bd"><span class="nm">09-28</span><span class="m num">9 单 · 退款 1 笔</span></div><span class="amt num">1,240 ›</span></div>
+            <div class="sl-row"><span class="lg num">27</span><div class="bd"><span class="nm">09-27 周日</span><span class="m num">18 单</span></div><span class="amt num">2,640 ›</span></div>
+            <div class="sl-row"><span class="lg num">26</span><div class="bd"><span class="nm">09-26 周六</span><span class="m num">16 单</span></div><span class="amt num">2,315 ›</span></div>
+            <div class="sl-row"><span class="lg num">25</span><div class="bd"><span class="nm">09-25</span><span class="m num">8 单</span></div><span class="amt num">1,100 ›</span></div>
+            <div class="sl-row"><span class="lg num">24</span><div class="bd"><span class="nm">09-24</span><span class="m num">7 单</span></div><span class="amt num">1,100 ›</span></div>
+          </div>
+          <div class="note">退款按<b>发生当天</b>计，不回冲原单那天 —— 否则昨天看过的数字今天会变。</div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>02 近几日（R1）</b>逐日一行：日期 · 单量 · 退款笔数 · 成交额，点进当天订单。</figcaption>
+      <p class="why">日期用 <code>.lg</code> 那个方块承载，日与「周六/周日」并排 ——
+      <b>周末峰值是这张表最常被读出来的东西</b>，写在行里比让人自己数更直接。
+      退款只显示笔数不显示金额：一行放两笔钱会变成两列数字，而商家在这一层要的是「哪天不对劲」。
+      末尾那条提示防的是一类真实困惑：<b>退款按发生日计</b> —— 换成回冲原单，
+      昨天截图发群里的数字今天就不一样了。</p>
+    </figure>
+
+    <figure id="s03">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">按月营收</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">区间</span><span class="v">2026-04 → 2026-09 ›</span></div>
+          </div>
+          <div class="sl-list">
+            <div class="sl-row"><div class="bd"><span class="nm">2026-09</span><span class="m num">86 单 · 佣金 620 · 服务费 180</span></div><span class="amt num">9,860 ›</span></div>
+            <div class="sl-row"><div class="bd"><span class="nm">2026-08</span><span class="m num">102 单 · 佣金 742 · 服务费 210</span></div><span class="amt num">11,430 ›</span></div>
+            <div class="sl-row"><div class="bd"><span class="nm">2026-07</span><span class="m num">95 单 · 佣金 688 · 服务费 196</span></div><span class="amt num">10,720 ›</span></div>
+            <div class="sl-row"><div class="bd"><span class="nm">2026-06</span><span class="m num">78 单 · 佣金 561 · 服务费 158</span></div><span class="amt num">8,940 ›</span></div>
+            <div class="sl-row"><div class="bd"><span class="nm">2026-05</span><span class="m num">64 单 · 佣金 452 · 服务费 132</span></div><span class="amt num">7,180 ›</span></div>
+            <div class="sl-row"><div class="bd"><span class="nm">2026-04</span><span class="m num">51 单 · 佣金 361 · 服务费 104</span></div><span class="amt num">5,730 ›</span></div>
+          </div>
+          <div class="sum">六个月合计应结 <b class="num">53,860</b> 元　·　<b class="num">476</b> 单</div>
+          <div class="gt">右侧数字是<b>应结</b>，不是成交额</div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>03 按月营收（R2）</b>逐月一行：单量 · 佣金 · 服务费 · 应结，点进那个月的对账明细。</figcaption>
+      <p class="why">右侧主数字是<b>应结</b>而不是成交额 —— 这一屏的读者关心「到手多少」。
+      成交额与扣项放在副行，`毛 − 佣金 − 服务费 ± 运费 = 应结` 这条等式在下钻的对账单里完整呈现。
+      末尾那句 <code>.gt</code> 是必须的：同一个位置在 02 屏是成交额、这里是应结，
+      不点明就会被当成同一个口径横着比。
+      <b>单量是这屏要补的字段</b>：今天 <code>Statement</code> 只有 <code>billCount</code>（结算笔数），
+      答不了「这个月多少单」。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">04</span><h2>R3 商品 TopN：件数、销售额、毛利三种排法</h2></div>
+  <div class="sec-note">后端 <code>/biz/inventory/report/ranking</code> 已支持 <code>type</code>+<code>days</code>+<code>limit</code>，
+  返回件数与成本额 —— <b>缺的只是销售额</b>，补上就能算毛利。</div>
+  <div class="grid">
+
+    <figure id="s04">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">商品销售 · 近 30 天</span><span></span></div>
+        <div class="scr">
+          <div class="tabs"><span class="on">畅销</span><span>滞销</span></div>
+          <div class="seg"><span>件数</span><span>销售额</span><span class="on">毛利</span></div>
+          <div class="sl-list">
+            <div class="sl-row"><span class="lg num">1</span><div class="bd"><span class="nm">五花肉</span><span class="m num">售 3,120 · 成本 2,180 · 86 件</span></div><span class="amt num">940 ›</span></div>
+            <div class="sl-row"><span class="lg num">2</span><div class="bd"><span class="nm">本地土鸡蛋 · 30 枚装</span><span class="m num">售 2,240 · 成本 1,480 · 56 件</span></div><span class="amt num">760 ›</span></div>
+            <div class="sl-row"><span class="lg num">3</span><div class="bd"><span class="nm">芦花鸡</span><span class="m num">售 1,880 · 成本 1,310 · 22 件</span></div><span class="amt num">570 ›</span></div>
+            <div class="sl-row"><span class="lg num">4</span><div class="bd"><span class="nm">散养猪排骨</span><span class="m num">售 1,650 · 成本 1,190 · 31 件</span></div><span class="amt num">460 ›</span></div>
+            <div class="sl-row"><span class="lg num">5</span><div class="bd"><span class="nm">小米椒 · 500g</span><span class="m num">售 640 · 成本 290 · 74 件</span></div><span class="amt num">350 ›</span></div>
+          </div>
+          <div class="note">按<b>毛利</b>排时第 5 名的件数（74）比第 1 名（86）少不了多少，
+          但毛利只有它的三分之一 —— <b>卖得最多 ≠ 赚得最多</b>。</div>
+          <div class="gt">成本取的是出库时的成本额，不是当前进价</div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>04 商品 TopN（R3）</b>畅销/滞销两页签 × 件数/销售额/毛利三种排法，行内同时给三个数。</figcaption>
+      <p class="why">三个数一起给（售 / 成本 / 件数），主数字跟着当前排法走 ——
+      <b>只给一个数的榜单必然被误读</b>：按件数排时第一名可能是最不赚钱的那件。
+      滞销做成页签而不是第三种排法：它问的是「哪些货压着」，与「哪些货挣钱」不是一个问题，
+      混在一个排序里读者分不清自己在看哪个。
+      末尾点明成本口径 —— 出库成本与当前进价不同，不写清会被当成算错。</p>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">05</span><h2>下钻：这一步今天走不通</h2></div>
+  <div class="sec-note">02 / 03 屏每一行都要能点进明细，而 <code>mOrderList</code> 的契约是
+  <code>PageQuery &amp; {status, fulfillments, allStores}</code>，<code>PageQuery</code> 只有
+  <code>page</code>/<code>size</code> —— <b>订单列表按时间筛不了</b>。</div>
+  <div class="grid">
+
+    <figure id="s05">
+      <div class="ph">
+        <div class="nav"><span class="bk">‹</span><span class="t">订单</span><span></span></div>
+        <div class="scr">
+          <div class="group">
+            <div class="frow"><span class="k">时间</span><span class="v">09-30 全天 ✕</span></div>
+          </div>
+          <div class="sum">当天 <b class="num">15</b> 单　·　成交 <b class="num">2,180</b> 元</div>
+          <div class="card"><div class="hd"><span class="nm">#D2609300117</span><span class="chip ok">已完成</span></div>
+            <div class="meta num">五花肉 ×2 · 土鸡蛋 ×1　·　186 元　·　14:22</div></div>
+          <div class="card"><div class="hd"><span class="nm">#D2609300116</span><span class="chip">待发货</span></div>
+            <div class="meta num">芦花鸡 ×1　·　96 元　·　13:50</div></div>
+          <div class="card"><div class="hd"><span class="nm">#D2609300115</span><span class="chip warn">退款中</span></div>
+            <div class="meta num">排骨 ×1　·　78 元　·　11:04</div></div>
+          <div class="note"><b>要先有 ①</b>：给 <code>/biz/order</code> 加 <code>from</code>/<code>to</code>（档位 1，先写 TDD），
+          再把 02/03 的行接上去（档位 0）。顺序反了的话，点进来是<b>没筛过的全量列表</b>，
+          比点不动更糟 —— 商家会以为「那天 2,180 元」就是眼前这一页。</div>
+        </div>
+      </div>
+      <figcaption class="cap"><b>05 下钻 · 某天的订单</b>顶部一枚可撤的时间筛（<code>09-30 全天 ✕</code>），合计与列表都跟着它。</figcaption>
+      <p class="why">时间筛做成<b>可撤的一行</b>而不是隐式条件：从报表跳进来的人要看得见
+      「我现在只看这一天」，也要能一键回到全部。
+      跳转参数<b>不要叫 <code>tab</code></b> —— 那是 scaffold 的属性名，页面会被当成 tab 页，
+      返回键消失、还多一条空菜单（本仓库踩过）。</p>
+    </figure>
+
+  </div>
+</section>
+
+<footer>真源：prototypes/b-reports.html · 登记：prototypes/registry.json ·
+需求：docs/requirements/B端报表清单-由浅入深.md</footer>
+</div>
+</html>

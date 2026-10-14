@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ai.neargo.shop</groupId>
+        <artifactId>shop-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>elec-api</artifactId>
+    <packaging>jar</packaging>
+    <description>元器件 ↔ 主系统的内部契约（零依赖：路径常量 + record）</description>
+
+    <!-- ⚠️ **这里一个 dependency 都不能加**（理由同 job-api）。
+         主应用与 elec-svc 两边都引它：服务端的 @PostMapping 与客户端的 @HttpExchange
+         用同一份路径常量、同一份 record，契约漂了就编译不过 ——
+         而不是等到线上某个字段读出 null。 -->
+</project>

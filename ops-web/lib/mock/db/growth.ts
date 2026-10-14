@@ -13,15 +13,15 @@ export const attributionRule: AttributionRule = {
 };
 
 export const attributionTraces: AttributionTrace[] = [
-  { traceNo: "AT9001", userNickname: "小满", source: "STORE_CODE", sourceRef: "shop_M903_c2（邻家便利）", attributedAt: "2026-07-28T02:00:00Z", orderNo: "SO2026080501", riskSignals: [] },
-  { traceNo: "AT9002", userNickname: "老周", source: "INVITER", sourceRef: "海棠", attributedAt: "2026-08-01T06:00:00Z", orderNo: "SO2026080503", riskSignals: [] },
+  { traceNo: "AT9001", userNo: "U9001", userNickname: "小满", source: "STORE_CODE", sourceRef: "shop_M903_c2（邻家便利）", attributedAt: "2026-07-28T02:00:00Z", orderNo: "SO2026080501", riskSignals: [] },
+  { traceNo: "AT9002", userNo: "U9002", userNickname: "老周", source: "INVITER", sourceRef: "海棠", attributedAt: "2026-08-01T06:00:00Z", orderNo: "SO2026080503", riskSignals: [] },
   // B1 的现实场景：已归属 A 店，又扫了 B 店的码
-  { traceNo: "AT9003", userNickname: "阿May", source: "STORE_CODE", sourceRef: "shop_M902_c1（老张水果店）", attributedAt: "2026-08-04T09:00:00Z", conflictWith: "AT9004", riskSignals: [] },
-  { traceNo: "AT9004", userNickname: "阿May", source: "STORE_CODE", sourceRef: "shop_M903_c2（邻家便利）", attributedAt: "2026-08-05T10:00:00Z", orderNo: "SO2026080504", conflictWith: "AT9003", riskSignals: [] },
+  { traceNo: "AT9003", userNo: "U9003", userNickname: "阿May", source: "STORE_CODE", sourceRef: "shop_M902_c1（老张水果店）", attributedAt: "2026-08-04T09:00:00Z", conflictWith: "AT9004", riskSignals: [] },
+  { traceNo: "AT9004", userNo: "U9004", userNickname: "阿May", source: "STORE_CODE", sourceRef: "shop_M903_c2（邻家便利）", attributedAt: "2026-08-05T10:00:00Z", orderNo: "SO2026080504", conflictWith: "AT9003", riskSignals: [] },
   // 异常裂变：同设备批量注册后互相邀请
-  { traceNo: "AT9005", userNickname: "用户8821", source: "INVITER", sourceRef: "用户8820", attributedAt: "2026-08-05T14:00:00Z", riskSignals: ["同设备", "短时集中"] },
-  { traceNo: "AT9006", userNickname: "用户8822", source: "INVITER", sourceRef: "用户8820", attributedAt: "2026-08-05T14:02:00Z", riskSignals: ["同设备", "同 IP", "短时集中"] },
-  { traceNo: "AT9007", userNickname: "梧桐苑 12-3", source: "CHANNEL", sourceRef: "物业公众号推文", attributedAt: "2026-08-02T02:00:00Z", orderNo: "SO2026080505", riskSignals: [] },
+  { traceNo: "AT9005", userNo: "U9005", userNickname: "用户8821", source: "INVITER", sourceRef: "用户8820", attributedAt: "2026-08-05T14:00:00Z", riskSignals: ["同设备", "短时集中"] },
+  { traceNo: "AT9006", userNo: "U9006", userNickname: "用户8822", source: "INVITER", sourceRef: "用户8820", attributedAt: "2026-08-05T14:02:00Z", riskSignals: ["同设备", "同 IP", "短时集中"] },
+  { traceNo: "AT9007", userNo: "U9007", userNickname: "梧桐苑 12-3", source: "CHANNEL", sourceRef: "物业公众号推文", attributedAt: "2026-08-02T02:00:00Z", orderNo: "SO2026080505", riskSignals: [] },
 ];
 
 export const fissionCampaigns: FissionCampaign[] = [

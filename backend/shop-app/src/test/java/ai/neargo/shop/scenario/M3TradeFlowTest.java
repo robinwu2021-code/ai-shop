@@ -1,5 +1,6 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,13 +40,14 @@ class M3TradeFlowTest {
     private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
+    private ai.neargo.shop.common.OtpStore otpStore;
+
+    @Autowired
     private WebApplicationContext context;
 
     @Autowired
     private ObjectMapper json;
 
-    @Autowired
-    private ai.neargo.shop.user.service.OtpStore otpStore;
 
     @Autowired
     private ai.neargo.shop.trade.service.OrderService orderService;
@@ -111,6 +113,23 @@ class M3TradeFlowTest {
                 // 跨商家的履约方式可能不同，支付视角不给单一值 —— 给了就是错的
                 .andExpect(jsonPath("$.data.fulfillment").doesNotExist())
                 .andExpect(jsonPath("$.data.amount.payableMinor").value(4980 + 5800));
+    }
+
+    @Test
+    @DisplayName("Q6：单商家单传主单号 → 支付视角仍带该单的履约方式（买家用主单号打开也看得到发货）")
+    void singleMerchantPayViewCarriesFulfillment() throws Exception {
+        // 付款成功页用**主单号**跳订单详情。单商家单只有一张子单、只有一种履约，
+        // 支付视角此前主层不给 fulfillment，详情页既无轨迹又无履约方式 → 永远「履约中」。
+        // 把子单履约面提到主层后，主单号打开也拿得到履约方式与子单（subOrders 不动）。
+        String token = login("13400134099");
+        addToCart(token, "G0002", "SK0003", 1);   // 单商家（M0001）
+        String payOrderNo = createOrder(token, "m3-single-payview");
+
+        mvc().perform(get("/mp/order/" + payOrderNo).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.orderNo").value(payOrderNo))
+                .andExpect(jsonPath("$.data.subOrders.length()").value(1))
+                .andExpect(jsonPath("$.data.fulfillment").value("STORE_PICKUP"));
     }
 
     // ---------------------------------------------------------------- C4/C5/C6
@@ -412,20 +431,13 @@ class M3TradeFlowTest {
     }
 
     private void payCallback(String payOrderNo, String txId) throws Exception {
-        mvc().perform(post("/callback/pay/stub").contentType(MediaType.APPLICATION_JSON)
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"" + txId
                                 + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
                 .andExpect(status().isOk());
     }
 
     private String login(String phone) throws Exception {
-        mvc().perform(post("/mp/user/otp/send").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"phone\":\"" + phone + "\"}"));
-        String code = otpStore.peek(phone).orElseThrow();
-        String body = mvc().perform(post("/mp/user/login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"grantType\":\"PHONE_OTP\",\"principal\":\"" + phone
-                                + "\",\"credential\":\"" + code + "\",\"agreed\":true}"))
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("token").asString();
+        return TestLogin.consumer(mvc(), json, otpStore, phone);
     }
 }

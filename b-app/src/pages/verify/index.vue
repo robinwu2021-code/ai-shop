@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useMerchantStore } from "@/stores/merchant";
+
+const merchant = useMerchantStore();
 // 核销台（B-10.2）。**自提履约的必要条件** —— 没有它，货到自提点没人能核销，
 // 订单永远卡在「已到点」，评价也做不了（评价要求订单已完成）。
 //
@@ -6,49 +9,200 @@
 // 老人机拍的码、屏幕反光都很常见）。只做扫码是不够的。
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
+import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { ROUTES } from "@/shared/nav";
+import { askMchSubscribe } from "@/shared/mch-subscribe";
 import { scanCode } from "@shared/ports/scan";
 import { money } from "@shared/utils/money";
-import type { Order, PickupOverview, VerifyBatchResult } from "@shared/types";
+import { confirm } from "@ai-shop/ui/prompt";
+import type {
+  CouponRedeemView,
+  Order,
+  PickupOrder,
+  PickupOverview,
+  VerifyBatchResult,
+} from "@shared/types";
+
+const { t } = useI18n();
+
+/*
+ * 核销台上两件事共用一个台子：**取货核销**与**券核销**。
+ *
+ * 合成一页而不是新开一页，是因为它们发生在同一个人、同一张收银台前：
+ * 顾客把手机递过来，店员不该先判断「这是取货码还是券码」再决定去哪一页。
+ * 但两者**不能自动识别**：码长得像，认错的代价是核销掉不该核的东西，
+ * 而线下核销不可撤销。所以给一个显式的切换，由店员说出他在核什么。
+ */
+const tab = ref<"pickup" | "coupon">("pickup");
+
+/** 券核销：先看到的那一张（peek 的结果）。**没看到之前不给核销按钮** */
+const couponCode = ref("");
+const couponView = ref<CouponRedeemView | null>(null);
+const couponError = ref("");
+const couponDone = ref("");
+
+async function peekCoupon(input?: string) {
+  const c = (input ?? couponCode.value).trim();
+  if (!c || busy.value) return;
+  busy.value = true;
+  couponError.value = "";
+  couponView.value = null;
+  couponDone.value = "";
+  try {
+    couponView.value = await api.mPeekCouponCode(c);
+    couponCode.value = c;
+  } catch (e) {
+    couponError.value = (e as Error).message;
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function scanCoupon() {
+  const c = await scanCode();
+  if (c) void peekCoupon(c);
+}
+
+/**
+ * 核销。**先二次确认** —— 线下核销不可撤销，东西给出去就收不回来。
+ * 确认框里要写清核的是哪一张、核完还剩几次。
+ */
+async function redeemCoupon() {
+  const v = couponView.value;
+  if (!v || !v.redeemable || busy.value) return;
+  const ok = await confirm({ title: String(t("verify.couponConfirmTitle", { title: v.title })), hint: String(v.timesTotal > 1 ? t("verify.couponConfirmTimes", { n: v.remaining - 1 }) : t("verify.couponConfirmOnce")), confirmText: String(String(t("verify.couponConfirmBtn"))) });
+  if (!ok) return;
+
+  busy.value = true;
+  try {
+    const r = await api.mRedeemCoupon(couponCode.value);
+    // duplicated **不是失败**：店员连点了两下，告诉他刚才那次已经成功
+    couponDone.value = r.duplicated
+      ? String(t("verify.couponDuplicated"))
+      : String(t(r.usedUp ? "verify.couponUsedUp" : "verify.couponLeft", { n: r.remaining }));
+    couponView.value = { ...v, timesUsed: r.timesUsed, remaining: r.remaining,
+      redeemable: r.remaining > 0 };
+  } catch (e) {
+    couponError.value = (e as Error).message;
+  } finally {
+    busy.value = false;
+  }
+}
 
 const overview = ref<PickupOverview | null>(null);
 const code = ref("");
 const busy = ref(false);
-const orders = ref<Order[]>([]);
+
+/** 「09-30」：核销页只要月日，年份柜台上用不着 */
+function ymd(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+const orders = ref<PickupOrder[]>([]);
 /** 刚核销成功的单号，用于列表高亮，让店主确认「我刚点的是这单」 */
 const justDone = ref("");
 const error = ref("");
 
-/** 待核销 = 已到点未核销。已完成的不在这里，避免误点重复核销 */
-const waiting = computed(() => orders.value.filter((o) => o.status === "ARRIVED"));
+/**
+ * 待核销 = **后端认为还能核的那些**。
+ *
+ * 判据与 `PickupServiceImpl.doVerify` 同一套：已完成 / 已退 / 已取消 / 未付款
+ * 之外的都还能核。此前这里写的是 `status === "ARRIVED"` —— 那是 **mock 的口径**
+ * （mock 用主单状态），真实后端发的是子单状态 `WAIT_FULFILL`，
+ * 于是这张列表在真机上**永远是空的**，而头部计数是对的：
+ * 同一屏上「1 待核销」与「当前没有待核销的订单」并排。
+ *
+ * **`WAIT_FULFILL`（备货中，还没标到货）也要排除**——此前排除表漏了这一档，
+ * 于是这张"待核销"列表里混着还没到货的单：点它核销，后端会用 `NOT_ARRIVED`
+ * 拒掉，商家搞不清"明明列在这儿怎么核不了"。备货中的单归分拣页管，见 `preparing`。
+ */
+const NOT_VERIFIABLE = ["COMPLETED", "CANCELLED", "REFUNDED", "WAIT_PAY", "WAIT_FULFILL"];
+const waiting = computed(() => orders.value.filter((o) => !NOT_VERIFIABLE.includes(o.status)));
+
+/**
+ * 还在分拣中（没标到货）的单数。**核销台空、分拣台有货**是最容易让商家困惑的一刻——
+ * "怎么一个待核销的都没有"，答案往往是"还没点标到货"，这里直接说穿，
+ * 不用他自己猜或者跑一趟分拣页才发现。
+ */
+const preparingCount = computed(() => orders.value.filter((o) => o.status === "WAIT_FULFILL").length);
+function goToPicking() {
+  uni.navigateTo({ url: ROUTES.picking });
+}
+
+/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新 */
+const loaded = ref(false);
+/** 这次没取到。**与「今天没有待取的单」是两件事** */
+const failed = ref(false);
 
 async function load() {
   // 重新进页面时清掉上次的失败提示 —— 否则「该订单已核销」会一直挂在那里，
   // 下次进来看到它会以为是这次的结果
   error.value = "";
-  [orders.value, overview.value] = await Promise.all([
-    api.mPickupOrders(),
-    api.mPickupOverview(),
-  ]);
+  try {
+    [orders.value, overview.value] = await Promise.all([
+      api.mPickupOrders(),
+      api.mPickupOverview(),
+    ]);
+    failed.value = false;
+  } catch {
+    // `error` 那条是**核销动作**失败用的（「该订单已核销」）；
+    // 首屏拉不到是另一回事，此前无人接：列表空着，店员以为今天没有待取的单
+    failed.value = true;
+  }
+  loaded.value = true;
 }
+
+/**
+ * 输码失败后的候选单（按码片段搜出来的）。
+ *
+ * **这是第三条路**：扫码 → 输全码 → 按片段搜。前两条都要求那串码是完整可读的，
+ * 而现场最常见的失败恰恰是「读不全」—— 磨花的小票、反光的屏幕、
+ * 邻居只记得后四位。此前走到这一步店主就没辙了，只能让人回家找码。
+ */
+const candidates = ref<PickupOrder[] | null>(null);
 
 async function verify(input?: string) {
   const c = (input ?? code.value).trim();
   if (!c || busy.value) return;
+  // 小程序里顺带攒订阅额度（AC8）。扫码后进来的那次隔了 await，框弹不出来 —— 不碍事，手输核销那次会问
+  askMchSubscribe();
   busy.value = true;
   error.value = "";
+  candidates.value = null;
   try {
-    const o = await api.mVerify(c);
-    justDone.value = o.orderNo;
+    const r = await api.mVerify(c);
+    /*
+     * **失败也是 code 0**：后端把「码无效 / 已核销 / 不是本点」当成业务结果回，
+     * 不抛错。此前这里只 catch 异常，于是任何一次失败都走进成功分支 ——
+     * 输一个不存在的码，界面照样提示「核销成功」。
+     * 实测过：现场店主会把货交给一个拿废码的人，而且没有任何记录说这单没核掉。
+     */
+    if (!r.success) {
+      throw new Error(t(`verify.reason.${r.reason ?? "UNKNOWN"}`));
+    }
+    justDone.value = r.subOrderNo ?? "";
     code.value = "";
-    uni.showToast({ title: "核销成功", icon: "none" });
+    uni.showToast({ title: t("verify.done"), icon: "none" });
     await load();
   } catch (e) {
     // 失败原因必须说清楚：已核销 / 不在本点 / 码无效，三种处理方式完全不同
     error.value = (e as Error).message;
+    /*
+     * 顺手按片段搜一次。**不自动核销搜到的那单** ——
+     * 片段可能命中多单，替他选一单就是替他承担「核错人」的风险；
+     * 而列出来让他确认，只多一次点击。
+     */
+    candidates.value = await api.mVerifySearch(c).catch(() => []);
   } finally {
     busy.value = false;
   }
+}
+
+/** 从候选里确认核销：这时用的是完整码，走的还是同一条核销路径 */
+async function verifyCandidate(o: PickupOrder) {
+  candidates.value = null;
+  await verify(o.verifyCode);
 }
 
 async function scan() {
@@ -103,74 +257,167 @@ onShow(load);
 </script>
 
 <template>
-  <sh-scaffold title-key="verify.title">
-    <text class="sh-h1">{{ $t("verify.title") }}</text>
+  <sh-scaffold title-key="verify.title" :denied="!merchant.can('biz:verify')">
+    <text class="txt-display">{{ $t("verify.title") }}</text>
 
-    <!-- 承接方一进来最关心的三个数：还有几单没人取、今天到了几批、这些活挣了多少。
-         都从同一份订单数据算出来，不另存计数器 —— 否则迟早「总览说 3 单、点进去只有 2 单」 -->
+    <!--
+      两种核销并排。**不自动识别码的类型**：码长得像，认错的代价是
+      核销掉不该核的东西，而线下核销不可撤销 —— 让店员说出他在核什么。
+    -->
+    <!-- 套一层壳只为那条 margin-top：sh-tabs 是多根组件，class 透不过去
+         （goods-list 里记过同一件事） -->
+    <view class="tabs">
+      <sh-tabs
+        :items="[
+          { key: 'pickup', label: String($t('verify.tabPickup')) },
+          { key: 'coupon', label: String($t('verify.tabCoupon')) },
+        ]"
+        :active="tab"
+        @change="(k: string) => (tab = k as 'pickup' | 'coupon')"
+      ></sh-tabs>
+    </view>
+
+    <!-- 券核销：先看后核 -->
+    <view v-if="tab === 'coupon'" class="sh-card entry">
+      <view class="sh-row row">
+        <input
+          maxlength="32"
+          v-model="couponCode"
+          class="field__input sh-num"
+          :placeholder="$t('verify.couponCodePh')"
+          confirm-type="done"
+          @confirm="peekCoupon()"
+        />
+        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="peekCoupon()">{{ $t("verify.couponPeek") }}</text>
+      </view>
+      <view class="sh-btn sh-btn--soft scan" @tap="scanCoupon">{{ $t("verify.scan") }}</view>
+      <text v-if="couponError" class="txt-body sh-notice sh-notice--danger err">{{ couponError }}</text>
+
+      <!-- 扫码后的样子（原型 s17）：码和剩余次数放最上面，隔着柜台看得清 -->
+      <view v-if="couponView" class="peek">
+        <view class="peek__hero">
+          <text class="txt-display sh-num">
+            {{ couponView.timesTotal > 1 ? $t("verify.couponLeftHero", { n: couponView.remaining }) : couponView.benefitText }}
+          </text>
+          <text class="txt-sub sh-muted peek__sub">
+            {{ couponView.title }}<template v-if="couponView.timesTotal > 1"> · {{ $t("verify.couponTotal", { n: couponView.timesTotal }) }}</template>
+          </text>
+        </view>
+        <view class="sh-cells peek__cells">
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ $t("verify.couponCustomer") }}</text>
+            <text class="txt-body sh-num">{{ couponView.phoneMasked || $t("members.phoneTail", { n: couponView.phoneTail || "----" }) }}</text>
+          </view>
+          <view class="sh-cell sh-row sh-row--between">
+            <text class="txt-body sh-muted">{{ $t("verify.couponValid") }}</text>
+            <text class="txt-body sh-num">{{ $t("verify.couponUntil", { d: ymd(couponView.expireAt) }) }}</text>
+          </view>
+        </view>
+        <text v-if="!couponView.redeemable" class="txt-body sh-notice sh-notice--danger err">
+          {{ $t(`verify.couponReason.${couponView.reason}`) }}
+        </text>
+        <template v-else>
+          <!-- 写在按钮上方就说「不可撤销」：确认框里再写一遍已经晚了半步 -->
+          <text class="txt-caption sh-notice sh-notice--warning err">{{ $t("verify.couponIrreversible") }}</text>
+          <view class="sh-row peek__bar">
+            <view class="sh-btn sh-btn--muted sh-fill" @tap="couponView = null">{{ $t("verify.couponCancel") }}</view>
+            <view class="sh-btn peek__main" :class="{ 'is-disabled': busy }" @tap="redeemCoupon">
+              {{ couponView.timesTotal > 1 ? $t("verify.couponRedeemOnce") : $t("verify.couponRedeem") }}
+            </view>
+          </view>
+        </template>
+      </view>
+
+      <view v-if="couponDone" class="txt-sub sh-notice sh-notice--success done">{{ couponDone }}</view>
+    </view>
+
+    <template v-if="tab === 'pickup'">
+
+    <!--
+      承接方一进来最关心的数：还有几单没人取。**只留这一个**——
+      「今日到货批次」「履约服务费」两格口径未定（R15/B9），后端一期恒发 0，
+      跟真实的待核销数字并排显示会被当成"今天真没到货/没收入"长期误读。
+      口径定了再放出来，现在藏起来，不是造一个假 0。
+    -->
     <view v-if="overview" class="sh-card overview">
-      <text class="overview__name">{{ overview.pickupName }}</text>
-      <view class="overview__grid">
+      <text class="txt-strong">{{ overview.pickupName }}</text>
+      <view class="overview__grid overview__grid--single">
         <view class="overview__i">
-          <text class="overview__n sh-num" :class="{ 'is-on': overview.pendingVerify }">
-            {{ overview.pendingVerify }}
+          <text class="txt-display overview__n sh-num" :class="{ 'is-on txt-primary': overview.pendingVerify }">
+            <!-- 用列表算，不用后端那个计数：两处各算一次就会出现
+                 「总览说 1 单、下面说没有」，而这正是实测到的那一幕 -->
+            {{ waiting.length }}
           </text>
           <text class="sh-muted">{{ $t("verify.ovPending") }}</text>
-        </view>
-        <view class="overview__i">
-          <text class="overview__n sh-num">{{ overview.arrivedBatches }}</text>
-          <text class="sh-muted">{{ $t("verify.ovBatches") }}</text>
-        </view>
-        <view class="overview__i">
-          <text class="overview__n sh-num">{{ money(overview.serviceFeeMinor) }}</text>
-          <text class="sh-muted">{{ $t("verify.ovFee") }}</text>
         </view>
       </view>
     </view>
 
     <!-- 单张核销 -->
     <view v-if="!batchMode" class="sh-card entry">
-      <view class="row">
+      <view class="sh-row row">
         <input
+          maxlength="16"
           v-model="code"
           class="field__input sh-num"
           :placeholder="$t('verify.codePh')"
           confirm-type="done"
           @confirm="verify()"
         />
-        <text class="btn" @tap="verify()">{{ $t("verify.submit") }}</text>
+        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="verify()">{{ $t("verify.submit") }}</text>
       </view>
       <view class="sh-btn sh-btn--soft scan" @tap="scan">{{ $t("verify.scan") }}</view>
-      <text v-if="error" class="err">{{ error }}</text>
+      <text v-if="error" class="txt-body sh-notice sh-notice--danger err">{{ error }}</text>
+
+      <!--
+        输码没核销掉时，按这几位搜出来的候选。**让他确认是哪一单，而不是替他选** ——
+        片段可能命中多单，替他选就是替他承担「核错人」的风险。
+      -->
+      <view v-if="candidates" class="cands">
+        <text v-if="!candidates.length" class="sh-muted">{{ $t("verify.searchEmpty") }}</text>
+        <template v-else>
+          <text class="txt-caption sh-muted cands__hint">{{ $t("verify.searchHint") }}</text>
+          <view v-for="c in candidates" :key="c.subOrderNo" class="cand sh-row">
+            <view class="sh-fill">
+              <text class="txt-bold txt-strong cand__code sh-num">{{ c.verifyCode }}</text>
+              <text class="sh-muted">{{ c.buyerNickname || "—" }}</text>
+            </view>
+            <text class="sh-btn sh-btn--sm txt-strong btn" @tap="verifyCandidate(c)">{{ $t("verify.submit") }}</text>
+          </view>
+        </template>
+      </view>
+
       <!-- 高峰期一次来七八个邻居，逐张扫要等七八次往返 -->
-      <text class="link" @tap="batchMode = true">{{ $t("verify.batchEnter") }}</text>
+      <text class="sh-link" @tap="batchMode = true">{{ $t("verify.batchEnter") }}</text>
     </view>
 
     <!-- 批量核销：连续扫码攒起来，最后一次提交 -->
     <view v-else class="sh-card entry">
-      <view class="row">
+      <view class="sh-row row">
         <input
+          maxlength="16"
           v-model="code"
           class="field__input sh-num"
           :placeholder="$t('verify.codePh')"
           confirm-type="done"
           @confirm="addToBasket(code)"
         />
-        <text class="btn" @tap="addToBasket(code)">{{ $t("verify.batchAdd") }}</text>
+        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="addToBasket(code)">{{ $t("verify.batchAdd") }}</text>
       </view>
       <view class="sh-btn sh-btn--soft scan" @tap="scanIntoBasket">
         {{ $t("verify.batchScan") }}
       </view>
 
-      <view v-if="basket.length" class="basket">
-        <text
+      <view v-if="basket.length" class="basket sh-wrap">
+        <view
           v-for="c in basket"
           :key="c"
-          class="sh-chip sh-num"
+          class="sh-chip sh-chip--icon sh-num basket__c"
           @tap="basket = basket.filter((x) => x !== c)"
         >
-          {{ c }} ✕
-        </text>
+          <text>{{ c }}</text>
+          <sh-icon name="close" :size="20" color="currentColor"></sh-icon>
+        </view>
       </view>
 
       <view
@@ -184,46 +431,82 @@ onShow(load);
       <!-- 失败逐条回报：店主要知道是**哪几张**有问题，而不是「3 成功 2 失败」 -->
       <view v-if="batchResult" class="batch-result">
         <text class="ok">{{ $t("verify.batchOk", { n: batchResult.successCount }) }}</text>
-        <view v-for="f in batchResult.failed" :key="f.code" class="fail">
+        <view v-for="f in batchResult.failed" :key="f.code" class="txt-caption fail sh-row sh-row--between sh-row--top">
           <text class="sh-num">{{ f.code }}</text>
           <text class="sh-muted">{{ f.reason }}</text>
         </view>
       </view>
 
-      <text class="link" @tap="exitBatch">{{ $t("verify.batchExit") }}</text>
+      <text class="sh-link" @tap="exitBatch">{{ $t("verify.batchExit") }}</text>
     </view>
 
-    <view class="list-head">
-      <text class="sh-h2">{{ $t("verify.waiting") }}</text>
+    <view class="list-head sh-row sh-row--between sh-row--baseline">
+      <text class="txt-title">{{ $t("verify.waiting") }}</text>
       <text class="sh-muted sh-num">{{ waiting.length }}</text>
     </view>
 
-    <sh-empty v-if="!waiting.length" :text='$t("verify.empty")'></sh-empty>
+    <!--
+      核销台空、分拣台有货，是最容易让商家困惑的一刻——直接说穿原因，
+      不用他自己猜或者跑一趟分拣页才发现是"还没标到货"。
+    -->
+    <view
+      v-if="!waiting.length && preparingCount && merchant.can('biz:receive')"
+      class="txt-sub sh-notice sh-notice--warning prep-hint sh-row sh-row--between"
+      @tap="goToPicking"
+    >
+      <text>{{ $t("picking.verifyPrepHint", { n: preparingCount }) }}</text>
+      <sh-icon name="chevronRight" :size="22" color="var(--sh-sub)"></sh-icon>
+    </view>
+    <sh-empty v-else-if="!waiting.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("verify.empty")'></sh-empty>
 
     <view
       v-for="o in waiting"
-      :key="o.orderNo"
-      class="sh-card row-item"
-      :class="{ 'is-just': justDone === o.orderNo }"
+      :key="o.subOrderNo"
+      class="sh-card row-item sh-row"
+      :class="{ 'is-just': justDone === o.subOrderNo }"
     >
-      <view class="row-item__main">
-        <text class="row-item__code sh-num">{{ o.verifyCode }}</text>
+      <view class="sh-fill">
+        <text class="txt-title row-item__code sh-num">{{ o.verifyCode }}</text>
         <text class="sh-muted">{{ o.buyerNickname || "—" }} · {{ o.items.length }} 件</text>
       </view>
-      <text class="btn" @tap="verify(o.verifyCode)">{{ $t("verify.doIt") }}</text>
+      <text class="sh-btn sh-btn--sm txt-strong btn" @tap="verify(o.verifyCode)">{{ $t("verify.doIt") }}</text>
     </view>
+    </template>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.overview {
-  margin-bottom: 14rpx;
+/* 只留上边距：gap 与下边距归 sh-tabs */
+
+.peek {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: var(--sh-hairline-soft);
 }
-.overview__name {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
+.peek__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
+.peek__sub {
+  margin-top: 8rpx;
+}
+.peek__cells {
+  margin-top: 20rpx;
+}
+.peek__bar {
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+.peek__main {
+  flex: 2;
+}
+.done {
+  margin-top: 16rpx;
+}
+
+
+
 .overview__grid {
   display: flex;
   margin-top: 16rpx;
@@ -232,22 +515,21 @@ onShow(load);
   flex: 1;
   text-align: center;
 }
+/* 只剩一格时不用撑满整行居中——那样看着像在藏什么，靠左更像"这里本来就只有一个数" */
+.overview__grid--single {
+  justify-content: flex-start;
+}
+.overview__grid--single .overview__i {
+  flex: none;
+  text-align: start;
+}
 .overview__n {
   display: block;
-  font-size: 40rpx;
-  font-weight: 600;
-  color: var(--sh-sub);
-  margin-bottom: 6rpx;
+  margin-bottom: 8rpx;
 }
 /* 有待核销才点亮 —— 全是灰的时候一眼就知道没活儿 */
-.overview__n.is-on {
-  color: var(--sh-primary);
-}
 
 .basket {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
   margin-top: 20rpx;
 }
 .batch-submit {
@@ -259,43 +541,23 @@ onShow(load);
 }
 .batch-result .ok {
   display: block;
-  font-size: 26rpx;
-  font-weight: 600;
-  color: var(--sh-primary);
+  color: var(--sh-primary-text);
 }
 .fail {
-  display: flex;
-  justify-content: space-between;
-  gap: 16rpx;
-  margin-top: 10rpx;
-  font-size: 24rpx;
+  margin-top: 8rpx;
   color: var(--sh-danger);
 }
-.link {
+.sh-link {
   display: block;
   margin-top: 20rpx;
-  font-size: 24rpx;
-  color: var(--sh-primary);
-}
-.is-disabled {
-  opacity: 0.45;
 }
 
-.entry {
-  margin: 24rpx 0;
-}
+
 .row {
-  display: flex;
   gap: 20rpx;
-  align-items: center;
 }
 .btn {
   padding: 20rpx 32rpx;
-  border-radius: 9999px;
-  background: var(--sh-primary);
-  color: var(--sh-on-primary);
-  font-size: 26rpx;
-  font-weight: 600;
 }
 .scan {
   margin-top: 20rpx;
@@ -303,38 +565,43 @@ onShow(load);
 .err {
   display: block;
   margin-top: 20rpx;
-  padding: 20rpx 24rpx;
-  border-radius: 24rpx;
-  background: var(--sh-danger-tint);
-  color: var(--sh-danger);
-  font-size: 26rpx;
+}
+
+.cands {
+  margin-top: 20rpx;
+}
+.cands__hint {
+  display: block;
+  margin-bottom: 12rpx;
+}
+.cand {
+  gap: 20rpx;
+  padding: 16rpx 0;
+  border-top: var(--sh-hairline);
+}
+
+.cand__code {
+  display: block;
+  /* 600 而不是 700：700 这个项目里只给价格留着，取货码靠字号和留白突出就够 */
 }
 .list-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin: 32rpx 8rpx 16rpx;
+  margin: 0 8rpx;
+}
+.prep-hint {
+  margin: 0 8rpx;
 }
 /* 列表密度对齐 C 端（平台版式约定）：卡片之间只留一条缝、正文行高 1.35。
    商家一天要扫几十次这类列表，行距每多 10rpx，一屏就少一行。 */
 .row-item {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
-  margin-bottom: 10rpx;
+  margin-bottom: 8rpx;
 }
 .row-item.is-just {
   background: var(--sh-success-tint);
 }
-.row-item__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .row-item__code {
   display: block;
-  font-size: 34rpx;
-  font-weight: 600;
   letter-spacing: 4rpx;
-  color: var(--sh-ink);
 }
 </style>

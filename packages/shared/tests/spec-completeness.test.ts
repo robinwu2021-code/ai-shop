@@ -76,8 +76,16 @@ describe("契约完整性", () => {
   // 响应格式规范.md §3 手抄了 ErrorCode.java 的全部错误码。手抄必然漂移 ——
   // 后端加一个码、文档没更新，评审看到的分段表就是旧的。这里锁住双向一致。
   it("错误码分段表与 ErrorCode.java 一致", () => {
-    const java = join(ROOT, "backend/shop-common/src/main/java/ai/neargo/shop/common/ErrorCode.java");
-    if (!existsSync(java)) return; // 只装前端的场景
+    /*
+     * ⚠️ 路径写错过一次，代价是这条守卫**从来没跑过**：原来指着 `backend/shop-common/…`，
+     * 而那个模块早已改名 `shop-base` —— `existsSync` 为假，下面这行 return 当场生效，
+     * 测试报绿。发现时枚举里 160 个码，文档 §3 只手抄了 25 个。
+     * 所以这里**不再静默 return**：路径不存在就红，让「守卫指着一个不存在的文件」这件事说出来。
+     * （前端独立安装的场景 backend/ 整个目录都不在，用它来区分。）
+     */
+    const java = join(ROOT, "backend/shop-base/src/main/java/ai/neargo/shop/common/ErrorCode.java");
+    if (!existsSync(join(ROOT, "backend"))) return; // 只装前端的场景
+    expect(existsSync(java), `ErrorCode.java 不在 ${java} —— 模块改名了？守卫指着不存在的文件等于没有守卫`).toBe(true);
     const src = readFileSync(java, "utf8");
     const codes = [...src.matchAll(/^\s{4}(\w+)\((\d+),/gm)].map((m) => ({ name: m[1]!, code: m[2]! }));
     expect(codes.length, "ErrorCode.java 一条都没解析到 —— 枚举写法变了？").toBeGreaterThan(0);

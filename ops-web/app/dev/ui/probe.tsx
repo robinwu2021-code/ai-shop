@@ -6,7 +6,7 @@
 // 小字过不了 AA，靠肉眼看了很多轮都没发现。数字必须**运行时量真实 DOM**：
 // 明/暗、三套皮肤、RTL 各一套值，写死就会说谎。
 import * as React from "react";
-import { measure, aaThreshold, type Measured } from "./color";
+import { measure, aaThreshold, fmtRatio, type Measured } from "./color";
 import { cn } from "@/lib/utils";
 
 /** 任一全局开关（明暗/皮肤/RTL/密度）变化时自增，探针据此重量。 */
@@ -56,7 +56,7 @@ export function Ratio({ res }: { res: { m: Measured; need: number } | null }) {
       )}
       title={`前景 ${m.fg} / 实际背景 ${m.bg}；AA 阈值 ${need}:1`}
     >
-      {m.ratio.toFixed(2)}:1 {pass ? "AA 通过" : `低于 AA（需 ${need}）`}
+      {fmtRatio(m.ratio)}:1 {pass ? "AA 通过" : `低于 AA（需 ${need}）`}
     </span>
   );
 }

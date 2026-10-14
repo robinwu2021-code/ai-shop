@@ -26,3 +26,20 @@ export function distance(meter: number): string {
 export function maskPhone(phone: string): string {
   return phone.replace(/^(\d{3})\d{4}(\d{4})$/, "$1****$2");
 }
+
+/**
+ * 计量单位的展示名。
+ *
+ * `baseUom` **有两种来源**：进销存字典表 `inv_uom` 的码（`PIECE` / `BAG` …），
+ * 或平台商品上的自由文本（商家自己填的「袋」「提」）。
+ * 认得的码翻成当地语言，认不得的**原样返回** —— 别把商家自己写的单位吃掉。
+ *
+ * 2026-08-28 之前这里没有转换，库存明细上写的是「单位 PIECE」。
+ */
+export function uomLabel(uom: string | null | undefined, t: (k: string) => string): string {
+  if (!uom) return "";
+  const key = `stock.uom.${uom}`;
+  const got = t(key);
+  // i18n 取不到时各实现返回的东西不一样：有的原样返回 key，有的返回空
+  return got && got !== key ? got : uom;
+}

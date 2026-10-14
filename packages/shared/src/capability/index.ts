@@ -10,17 +10,73 @@
 // 两侧跑同一套逻辑；服务端在下单时**重跑一遍**，不信任端上的裁剪。
 //
 // 设计依据：docs/technical/多端多通道-详细设计.md §二
+import type { FundsMode, MerchantSubject, PaymentApplyStatus } from "@shared/types";
 
 /** 端。注意是「端」不是「支付通道」—— 同一个通道在不同端受的约束不同 */
 export type Scene = "MP_WECHAT" | "MP_ALIPAY" | "IOS" | "ANDROID" | "H5";
 
 export type PayChannel = "WECHAT" | "ALIPAY";
 
+/**
+ * 通道取值域的**运行时清单**。
+ *
+ * 写成 `satisfies Record<PayChannel, 1>` 而不是手写数组：往联合类型里加一个通道
+ * 却忘了加进这里，**是编译错误**。手写数组的话两者会静默分叉，
+ * 而分叉的表现是「新通道在校验里被当成非法值」——发到线上才知道。
+ *
+ * 能力位（能否补差/分账/打款）不在这里，在 `sys_pay_channel` 表里 ——
+ * **表管能力，类型管取值**：能力会随对方发版而变，取值不会凭空冒出来。
+ */
+export const PAY_CHANNELS = Object.keys({
+  WECHAT: 1,
+  ALIPAY: 1,
+} satisfies Record<PayChannel, 1>) as PayChannel[];
+
 export type PayMethod = "JSAPI" | "APP" | "H5" | "NATIVE";
 
-export type SubjectType = "MICRO" | "INDIVIDUAL" | "ENTERPRISE";
+/**
+ * 行业。**商家的基础属性，与商品类目是两个维度** ——
+ * 行业挂商家（一家一个），类目挂商品（一家可卖多类）。
+ *
+ * 前五个是微信小微准入白名单里明确列出的，`ONLINE` 是明确排除的，
+ * `OTHER` 是保守兜底。**不自己发明分类**：多一个我们自造的行业，
+ * 就多一次「它到底映射到通道的哪一类」的猜测。
+ */
+export type Industry =
+  | "CATERING"
+  | "RETAIL"
+  | "LIFE_SERVICE"
+  | "ENTERTAINMENT"
+  | "TRANSPORT"
+  | "ONLINE"
+  | "OTHER";
 
-export type ApplyStatus = "NONE" | "APPLYING" | "ACTIVE" | "REJECTED" | "FROZEN";
+/**
+ * 行业取值域的运行时清单。写法与 {@link PAY_CHANNELS} 同 ——
+ * 往联合类型里加一个却忘了加进这里，**是编译错误**。
+ *
+ * 准入能力（能否小微、是否强制开积分）不在这里，在 `sys_industry` 表里：
+ * 白名单是通道的规则，会变；取值域不会凭空冒出来。
+ */
+export const INDUSTRIES = Object.keys({
+  CATERING: 1,
+  RETAIL: 1,
+  LIFE_SERVICE: 1,
+  ENTERTAINMENT: 1,
+  TRANSPORT: 1,
+  ONLINE: 1,
+  OTHER: 1,
+} satisfies Record<Industry, 1>) as Industry[];
+
+/*
+ * 这里曾有一份 `SubjectType = "MICRO" | "INDIVIDUAL" | "ENTERPRISE"` ——
+ * 与 types 里的 {@link MerchantSubject} **取值逐字相同**，而后者的注释白纸黑字写着
+ * 「不叫 SubjectType：那个名字在平台端已经是风控主体（USER/MERCHANT/DEVICE）」。
+ *
+ * 同一个包内，规则写下来了仍然被违反 —— 这正是 G1 覆盖守卫存在的理由：
+ * 光有注释和文档拦不住，得有一条会让 CI 变红的检查。
+ */
+
 
 /**
  * 判断结果。
@@ -54,8 +110,8 @@ export interface ChannelCategoryRule {
 
 export interface MerchantPayment {
   channel: PayChannel;
-  subjectType: SubjectType;
-  applyStatus: ApplyStatus;
+  subjectType: MerchantSubject;
+  applyStatus: PaymentApplyStatus;
   payMethods: PayMethod[];
   invoiceCapable: boolean;
 }
@@ -118,15 +174,52 @@ export function canPoints(ctx: {
   globalOn: boolean;
   communityOn: boolean;
   merchantOn: boolean;
-  subjectType: SubjectType;
+  /**
+   * 这家主体**有没有营业执照**。权威在 `sys_legal_form.need_license`，
+   * 由 `/common/master-data` 下发 —— **不要在端上写 `subject === "MICRO"`**：
+   * 主体取值正在改造（MICRO → NATURAL_PERSON），写死取值那天会静默失配。
+   */
+  licensed: boolean;
+  /**
+   * 资金路径：钱先进谁的账户。
+   *
+   * **补差只在 `DIRECT` 下发生** —— 钱在商家二级户，积分抵扣让他少收，
+   * 平台要补进去，而那是一次**平台付钱给自然人**（扣缴定性模糊）。
+   * `AGGREGATED` 下钱本就在平台手里，平台自己少收，没有「补」这个动作。
+   *
+   * ⚠️ **不要用 `business_mode` 判**：那说的是「谁是销售主体」，
+   * 与「钱在谁手里」正交。两者不一致时会判错 —— 而库里恰好有这样的单。
+   */
+  fundsMode: FundsMode;
+  /**
+   * 本次支付走的通道能否**补差**（`sys_pay_channel.supports_subsidy`）。
+   *
+   * **只在 `DIRECT` 下参与判断**：归集路径根本不发起补差，
+   * 拿通道能力去拦它会错误拒绝掉本可以开积分的商户（例如农产品农户）。
+   */
+  channelSupportsSubsidy: boolean;
 }): Verdict {
   if (!ctx.globalOn) return deny("积分功能未开放");
+  /*
+   * 通道能否补差 —— **只在直连路径上问这个问题**。
+   * 顺序放在社区/商家开关之前：它是「做不到」，不是「没开」，提示语要让用户
+   * 知道换个端就能用，而不是以为这家店不支持。
+   */
+  if (ctx.fundsMode === "DIRECT" && !ctx.channelSupportsSubsidy) {
+    return deny("当前支付方式不支持积分抵扣");
+  }
   if (!ctx.communityOn) return deny("本社区暂未开放积分");
-  if (ctx.subjectType === "MICRO") {
-    // 积分兑付涉及平台向商家付钱，而小微的税务定性本就模糊，叠加后扣缴风险更高。
-    // 同时它天然是一个升级激励。
-    return deny("本店暂不支持积分（升级为个体工商户后可开启）");
+  /*
+   * 无照 + 直连：补差是一次平台 → 自然人的付款，扣缴义务定性模糊，维持禁止。
+   * 无照 + 归集：平台自己少收，没有付款动作 —— 放行。
+   *
+   * 排在商家开关**之前**是刻意的：这是「不可开」而不是「关着」，
+   * 提示语也不同 —— 前者要告诉他条件是什么，后者只是「你自己关了」。
+   */
+  if (!ctx.licensed && ctx.fundsMode === "DIRECT") {
+    return deny("本店暂不支持积分（无营业执照，且收款直连到商家账户）");
   }
   if (!ctx.merchantOn) return deny("本店未开启积分");
   return allow();
 }
+

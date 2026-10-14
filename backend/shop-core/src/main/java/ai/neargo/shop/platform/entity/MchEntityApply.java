@@ -1,0 +1,185 @@
+package ai.neargo.shop.platform.entity;
+
+import ai.neargo.shop.common.BaseEntity;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * 入驻申请。与 {@code mch_entity} 分开：申请可以被驳回后重提，
+ * 而商家主体一旦创建就有了商品、订单、结算，不该跟着申请状态来回变。
+ */
+@Getter
+@Setter
+@TableName("mch_entity_apply")
+public class MchEntityApply extends BaseEntity {
+
+    public static final String PENDING = "PENDING";
+    /** 已受理，客服正在看。<b>不是流程完整性摆设</b> —— 商家提交后一直显示「待审核」
+     *  不知道有没有人在看；客服接手时点一下，那边就有反馈。 */
+    public static final String REVIEWING = "REVIEWING";
+    public static final String APPROVED = "APPROVED";
+    public static final String REJECTED = "REJECTED";
+
+    /**
+     * 行业的兜底档（{@code sys_industry.industry}）。<b>只有选它时 {@link #industryNote}
+     * 才有意义</b>，所以这个码在两处被引用，不能写成字面量。
+     */
+    public static final String INDUSTRY_OTHER = "OTHER";
+
+    /**
+     * 合法迁移。<b>APPROVED 是终态</b> —— 已经建了商家、发了账号，回退没有意义。
+     *
+     * <p><b>PENDING 可以直接到 APPROVED</b>，不强制先经 REVIEWING：一期运营就几个人，
+     * 看一眼就批是常态。把「受理」做成必经步骤只会让人为了走流程而点一下，
+     * 那样 REVIEWING 就退化成一个没有信息量的状态。它的价值在于**商家看到有人在看**，
+     * 而不在于流程完整。
+     *
+     * <p>REJECTED 是终态，<b>重提是新开一份申请单而不是把旧的改回 PENDING</b> ——
+     * 原地改会把驳回记录抹掉，事后就查不出这家店被驳回过几次、为什么。
+     */
+    public static final Map<String, Set<String>> TRANSITIONS = Map.of(
+            PENDING, Set.of(REVIEWING, APPROVED, REJECTED),
+            REVIEWING, Set.of(APPROVED, REJECTED),
+            REJECTED, Set.of(),
+            APPROVED, Set.of());
+
+    /** 状态机是否允许这次迁移。未知状态一律拒 —— 库里出现脏值时该拦住，不是放行。 */
+    public static boolean canMove(String from, String to) {
+        return TRANSITIONS.getOrDefault(from, Set.of()).contains(to);
+    }
+
+    /** 进行中 = 还占着「一人一份」的名额 */
+    public static boolean inProgress(String status) {
+        return PENDING.equals(status) || REVIEWING.equals(status);
+    }
+
+    private String applyNo;
+    private String userNo;
+
+    /** 审核通过后回填。 */
+    private String entityNo;
+
+    private String name;
+    private String legalForm;
+    private String contactPhone;
+
+    /** 联系人姓名。审核要打电话找人，只有号码没有姓名不合适 */
+    private String contactName;
+
+    /**
+     * 推荐人手机号（选填，V353）。
+     *
+     * <p><b>只是一个中性字段，端内不展示任何奖励规则</b> —— 小程序里出现
+     * 「邀请商家入驻得 X 元」是拉人头 + 奖励，会被判平台型经营而整包驳
+     * （TDD-C 端裂变与商家招募 §3.3 / §8.3）。规则只在官网与企微里出现，
+     * 发奖由运营按这个号人工处理。
+     *
+     * <p>存手机号不存 user_no：推荐人可能还不是平台用户。
+     */
+    private String referrerPhone;
+
+    /** 主营类目。**商家自己的说法**（「食品」），不是权威码 */
+    private String category;
+
+    /**
+     * 审核通过时授予的经营类目编码，JSON 数组。**平台的裁定**，与 {@link #category} 并存。
+     *
+     * <p>合成一列的话，翻译前后就分不开了 —— 而追溯要的恰恰是这两者的差：
+     * 「他说卖食品，我们批的是预包装食品」。
+     */
+    private String categoryCodes;
+
+    /** 店铺简介。C 端门店主页要展示 */
+    private String description;
+
+    /** 通过后写入 mch_entity.service_scope（ADR-009） */
+    private String serviceScope;
+
+    /**
+     * JSON 数组。<b>serviceScope=COMMUNITY 时通过审核必填</b> ——
+     * 空着就是「商家上着架却一个订单都不来」，而他和运营都查不出原因。
+     */
+    private String communityNos;
+
+    /**
+     * 进行中时 = user_no，进入终态时置 NULL。配合唯一键挡住重复提交 ——
+     * 唯一索引忽略 NULL，所以终态的历史申请不占名额。
+     *
+     * <p><b>{@code updateStrategy = ALWAYS} 是这个字段的命根子</b>：
+     * MyBatis-Plus 默认 {@code NOT_NULL}，会把 null 字段直接从 UPDATE 的 SET 里剔掉 ——
+     * 于是「审核完成时释放名额」这行代码<b>一句话都没执行</b>，
+     * 被驳回的申请永远占着位子，商家补完料再也提交不上来。
+     *
+     * <p>这个故障只在<b>驳回之后重提</b>时才现形：直接通过的链路把 activeOwner
+     * 留在那儿也没人再查，所以先前的测试全绿。
+     */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private String activeOwner;
+
+    /**
+     * 是否愿意承接自提点（ADR-005）。<b>只记录意愿，不代表点已建立</b> ——
+     * 建点要谈服务费口径，一期由运营在通过后另行处理。
+     */
+    private Boolean asPickupPoint;
+    private String qualifications;
+
+    /**
+     * 结构化资质 JSON（V79）：{@code [{type,code,imageUrl,expireAt,issuer}]}。
+     *
+     * <p>审核通过时按它逐条写入 {@code mch_qualification} —— 上面那个
+     * {@code qualifications} 是纯 URL 数组，填不出类型/证号/有效期，转不过去。
+     */
+    private String qualificationItems;
+
+    private String status;
+    private String rejectReason;
+    private String auditedBy;
+    private Long auditedAt;
+
+    /**
+     * 所属行业（{@code sys_industry.industry}）。
+     *
+     * <p><b>与商品类目是两个维度</b>：行业挂商家，类目挂商品。
+     * 它决定商家<b>可选的主体类型</b> —— 线上业态不能选小微。
+     */
+    private String industry;
+
+    /**
+     * 商家<b>自己写的</b>行业（仅 {@link #industry} 为 {@code OTHER} 时有值）。
+     *
+     * <p>入驻意向的口径，<b>不参与任何准入判定</b>。它存在的理由是
+     * {@code sys_industry} 只有七个大类，而意向表的价值恰恰在于收集
+     * 「平台还接不了的那些」—— 归不进大类的那句话丢了，这张表就只剩已知的东西。
+     *
+     * <p>选了具体行业时后端置空：留着会让审核的人面对两个对不上的答案。
+     */
+    private String industryNote;
+
+    /**
+     * 代填人（{@code sys_user.user_no}）。<b>商户自己提交时为 NULL</b>。
+     *
+     * <p>运营代商家进件时记下是谁录的资料。审核那一步天然是另一个人看一眼 ——
+     * 而「资料是运营录的、核验也是同一个人」正是代填这件事最需要挡住的。
+     * 有了这一列，审核页才答得出「这份资料我该不该更仔细地看」。
+     *
+     * <p>商户后来自己补勾协议之后<b>也不清空</b>：它是历史，不是当前状态。
+     */
+    private String submittedBy;
+
+    /**
+     * 商户本人同意《商家服务协议》的时刻（毫秒）。<b>NULL = 尚未同意</b>。
+     *
+     * <p><b>运营不能代勾</b>：代填的单子这一列一律留空，等商户首次登录自己补。
+     *
+     * <p>⚠️ 存量行也全是 NULL —— 不是「都没同意」，是当时根本没记
+     * （登录页那一勾传到 {@code LoginCommand.agreed} 就断了）。
+     * 要把两者分开看 {@link #submittedBy}：它为 NULL 的才是存量自填单。
+     */
+    private Long agreedAt;
+}

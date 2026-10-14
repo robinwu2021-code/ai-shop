@@ -11,8 +11,16 @@ import type { UserCard } from "@shared/types";
 const cards = ref<UserCard[]>([]);
 const loaded = ref(false);
 
+/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
+const failed = ref(false);
+
 async function load() {
-  cards.value = await api.myCards();
+  try {
+    cards.value = await api.myCards();
+    failed.value = false;
+  } catch {
+    failed.value = true;
+  }
   loaded.value = true;
 }
 
@@ -29,41 +37,40 @@ onShow(load);
 
 <template>
   <sh-scaffold title-key="cards.title">
-    <view v-for="c in cards" :key="c.cardNo" class="card" :class="{ 'is-expired': expired(c) }">
-      <view class="card__head">
-        <text class="card__cover">{{ c.cover }}</text>
-        <view class="card__main">
-          <text class="card__title">{{ c.title }}</text>
-          <text class="card__no sh-num">{{ c.cardNo }}</text>
+    <view v-for="c in cards" :key="c.cardNo" class="sh-card card" :class="{ 'is-expired': expired(c) }">
+      <view class="card__head sh-row">
+        <sh-cover class="card__cover" :src="c.cover" :w="200"></sh-cover>
+        <view class="sh-fill">
+          <text class="txt-strong card__title">{{ c.title }}</text>
+          <text class="txt-caption card__no sh-num">{{ c.cardNo }}</text>
         </view>
       </view>
 
-      <view class="card__value">
+      <view class="card__value sh-row sh-row--between sh-row--baseline">
         <!-- 储值卡看余额，次卡看次数 —— 两种卡的「还剩多少」是不同的东西 -->
-        <text v-if="c.balanceMinor != null" class="card__v sh-num">
+        <text v-if="c.balanceMinor != null" class="txt-hero sh-num">
           {{ money(c.balanceMinor, c.currency) }}
         </text>
-        <text v-else-if="c.timesLeft != null" class="card__v sh-num">
+        <text v-else-if="c.timesLeft != null" class="txt-hero sh-num">
           {{ $t("cards.timesLeft", { n: c.timesLeft }) }}
         </text>
-        <text class="card__exp sh-num">
+        <text class="txt-caption sh-num">
           {{ expired(c) ? $t("cards.expired") : $t("cards.until", { d: isoDate(c.expireAt) }) }}
         </text>
       </view>
     </view>
 
-    <view v-if="loaded && !cards.length" class="empty">
-      <text class="empty__text">{{ $t("cards.empty") }}</text>
-      <view class="sh-btn empty__btn" @tap="goShopping">{{ $t("visited.go") }}</view>
-    </view>
+    <sh-empty v-if="!cards.length" :pending="!loaded" :failed="failed" @retry="load" :text="String($t('cards.empty'))">
+      <template #action>
+        <view class="sh-btn sh-btn--sm" @tap="goShopping">{{ $t("visited.go") }}</view>
+      </template>
+    </sh-empty>
   </sh-scaffold>
 </template>
 
 <style scoped>
 .card {
   background: var(--sh-primary-tint);
-  border-radius: 32rpx;
-  padding: 32rpx;
   margin-bottom: 20rpx;
 }
 .card.is-expired {
@@ -71,8 +78,6 @@ onShow(load);
   opacity: 0.6;
 }
 .card__head {
-  display: flex;
-  align-items: center;
   gap: 20rpx;
 }
 .card__cover {
@@ -85,55 +90,20 @@ onShow(load);
   font-size: 42rpx;
   flex-shrink: 0;
 }
-.card__main {
-  flex: 1;
-  min-width: 0;
-}
+
 .card__title {
   display: block;
-  font-size: 28rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .card__no {
   display: block;
-  font-size: 24rpx;
-  color: var(--sh-sub);
-  margin-top: 6rpx;
+  margin-top: 8rpx;
 }
 .card__value {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   gap: 20rpx;
   margin-top: 28rpx;
 }
-.card__v {
-  font-size: 48rpx;
-  font-weight: 600;
-  color: var(--sh-ink);
-}
-.card__exp {
-  font-size: 24rpx;
-  color: var(--sh-sub);
-}
-.empty__text {
-  display: block;
-  color: var(--sh-sub);
-  font-size: 26rpx;
-  margin-bottom: 40rpx;
-}
-.empty__btn {
-  display: inline-block;
-  padding-left: 60rpx;
-  padding-right: 60rpx;
-}
-/* 带引导按钮的空态，保留页面自有结构 */
-.empty {
-  text-align: center;
-  padding: 120rpx 40rpx;
-}
+
 </style>

@@ -8,7 +8,9 @@ import { api } from "@/lib/api";
 import { money } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatRow, PageTitle, Skeleton, StatCard } from "@/components/ui/misc";
+import type { MerchantRankRow, StoreRankRow } from "@/lib/types";
 import { fill, useCopy } from "@/lib/use-copy";
 import { HOME_COPY } from "./copy";
 
@@ -24,8 +26,58 @@ export default function DashboardPage() {
   const kpi = useQuery({ queryKey: ["dashboard", "kpi"], queryFn: () => api.getDashboardKpi() });
   const trend = useQuery({ queryKey: ["dashboard", "trend"], queryFn: () => api.getDashboardTrend() });
   const funnel = useQuery({ queryKey: ["dashboard", "funnel"], queryFn: () => api.getAcquisitionFunnel() });
+  const ranking = useQuery({ queryKey: ["dashboard", "merchants"], queryFn: () => api.getMerchantRanking() });
+  /*
+   * 门店排行（门店③）。**与商家排行并排，不是替代它** ——
+   * 多门店商家的货、单、码都挂在门店上，而商家维度会把
+   * 「一家很好、一家半死」平均成「还行」，那家半死的店永远看不见。
+   */
+  const storeRank = useQuery({
+    queryKey: ["dashboard", "stores"],
+    queryFn: () => api.getStoreRanking({ days: 30, limit: 20 }),
+  });
 
   const k = kpi.data;
+
+  const storeRankColumns: Column<StoreRankRow>[] = [
+    { header: c.storeRankColStore, cell: (r) => r.storeName ?? r.storeNo },
+    /* 商家名单独一列：一屏上出现两家都在垫底的店，「同一个老板的」
+       与「两家不相干的店」该做的事完全不同 —— 而只给门店名看不出来 */
+    { header: c.storeRankColMerchant, cell: (r) => r.merchantName ?? r.merchantNo ?? "—" },
+    { header: c.rankColGmv, numeric: true, cell: (r) => money(r.gmv) },
+    { header: c.rankColOrders, numeric: true, cell: (r) => r.orderCount.toLocaleString() },
+    { header: c.rankColAov, numeric: true, cell: (r) => money(r.avgOrderValue) },
+    {
+      header: c.storeRankColRefund,
+      numeric: true,
+      /* 与商家排行的售后率同一个阈值与同一种标法 —— 两张表并排放着，
+         同一件事用两套判据会让人以为它们量的不是一回事 */
+      cell: (r) => (
+        <span className={r.refundedRate >= 0.1 ? "text-destructive" : undefined}>
+          {(r.refundedRate * 100).toFixed(1)}%
+        </span>
+      ),
+    },
+  ];
+
+  const rankColumns: Column<MerchantRankRow>[] = [
+    { header: c.rankColMerchant, cell: (r) => r.merchantName },
+    { header: c.rankColGmv, numeric: true, cell: (r) => money(r.gmv) },
+    { header: c.rankColOrders, numeric: true, cell: (r) => r.orderCount.toLocaleString() },
+    { header: c.rankColAov, numeric: true, cell: (r) => money(r.avgOrderValue) },
+    {
+      header: c.rankColAfterSale,
+      numeric: true,
+      /* 售后率高的标红：这一列的意义就是把「卖得多但赔得也多」的商家挑出来，
+         不标出来的话它混在数字里，而那正是运营要处置的那一家。
+         10% 不是拍脑袋——低于它的都在个位数，超过的只有异常商家。 */
+      cell: (r) => (
+        <span className={r.afterSaleRate >= 0.1 ? "text-destructive" : undefined}>
+          {(r.afterSaleRate * 100).toFixed(1)}%
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div>
@@ -35,7 +87,7 @@ export default function DashboardPage() {
           卡片的标签行不在，加载完成时这一排会跳一下 */}
       <StatRow>
         {kpi.isLoading || !k ? (
-          [c.kpiGmv, c.kpiOrders, c.kpiAov, c.kpiPendingMerchant, c.kpiPendingAfterSale, c.kpiRedeemRate].map(
+          [c.kpiGmv, c.kpiOrders, c.kpiAov, c.kpiPendingMerchant, c.kpiPendingAfterSale, c.kpiPendingGoods, c.kpiRedeemRate].map(
             (label) => <StatCard key={label} label={label} value={null} loading />,
           )
         ) : (
@@ -43,9 +95,16 @@ export default function DashboardPage() {
             <StatCard label={c.kpiGmv} value={money(k.gmv)} />
             <StatCard label={c.kpiOrders} value={k.orderCount.toLocaleString()} />
             <StatCard label={c.kpiAov} value={money(k.avgOrderValue)} />
-            {/* 这三张是**待办**而不是统计：数字大代表有人在等，故用告警色调 */}
+            {/* 这几张是**待办**而不是统计：数字大代表有人在等，故用告警色调 */}
             <StatCard label={c.kpiPendingMerchant} value={k.pendingMerchantAudit} sub={c.kpiPendingMerchantSub} tone={k.pendingMerchantAudit > 0 ? "down" : undefined} />
             <StatCard label={c.kpiPendingAfterSale} value={k.pendingAfterSale} sub={c.kpiPendingAfterSaleSub} tone={k.pendingAfterSale > 0 ? "down" : undefined} />
+            {/*
+              * 待审商品这一格是**主动告知**：审核队列一直都有入口，但入口要人主动点进去才看得到，
+              * 它不会说「有 194 件在等你」。2026-09-03 线上待审 194 件，最早那件已等了两周上下。
+              * 整卡可点，落到那条队列 —— 告诉了有事，就得连着告诉去哪儿办
+              */}
+            <StatCard label={c.kpiPendingGoods} value={k.pendingGoodsAudit} sub={k.goodsAuditOldestDays > 0 ? c.kpiPendingGoodsSub.replace("{n}", String(k.goodsAuditOldestDays)) : c.kpiPendingGoodsSubClear}
+              tone={k.pendingGoodsAudit > 0 ? "down" : undefined} href="/products?tab=audit" />
             <StatCard label={c.kpiRedeemRate} value={`${Math.round(k.redeemRate * 100)}%`} sub={c.kpiRedeemRateSub} />
           </>
         )}
@@ -103,6 +162,44 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 商家经营排行（P-16.1.2 / P-16.1.3）—— 大盘之下的第一层下钻。
+          大盘回答「平台整体怎么样」，运营下一句必然是「哪几家在拉高、哪几家在拖后腿」。 */}
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>{c.storeRankTitle}</CardTitle>
+          <p className="txt-caption text-muted-foreground">{c.storeRankDesc}</p>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            columns={storeRankColumns}
+            rows={storeRank.data}
+            loading={storeRank.isLoading}
+            error={storeRank.error}
+            onRetry={() => storeRank.refetch()}
+            rowKey={(r) => r.storeNo}
+            empty={c.storeRankEmpty}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>{c.rankTitle}</CardTitle>
+          <p className="txt-caption text-muted-foreground">{c.rankDesc}</p>
+        </CardHeader>
+        <CardContent>
+          <DataTable
+            columns={rankColumns}
+            rows={ranking.data}
+            loading={ranking.isLoading}
+            error={ranking.error}
+            onRetry={() => ranking.refetch()}
+            rowKey={(r) => r.merchantNo}
+            empty={c.rankEmpty}
+          />
+        </CardContent>
+      </Card>
 
       <p className="mt-4 txt-caption text-muted-foreground">
         {t("common.mockData")} · {c.soon}
