@@ -409,7 +409,7 @@ onShow(load);
 /* 金额输入框右对齐、窄一点 —— 它只放一个数 */
 .amount-field {
   width: 180rpx;
-  text-align: right;
+  text-align: end;
 }
 .modes {
   gap: 16rpx;
