@@ -10,6 +10,7 @@ import ai.neargo.shop.pay.points.app.PointsSettlementHook;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.pay.channel.PayGateway.QueryResult;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 import ai.neargo.shop.pay.channel.master.PayChannelRateService;
 import ai.neargo.shop.spi.trade.SettleSourcePort;
@@ -628,6 +629,34 @@ public class SettleServiceImpl implements SettleService {
             throw new IllegalStateException("PAY_REFUND_DISPATCH_IN_TRANSACTION");
         }
         sendRefundToChannel(paymentNo);
+    }
+
+    @Override
+    public void refreshRefund(String paymentNo) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("PAY_REFUND_QUERY_IN_TRANSACTION");
+        }
+        var evidence = paymentLedger.refundEvidence(paymentNo);
+        if (evidence == null) {
+            throw new IllegalArgumentException("PAY_REFUND_UNKNOWN");
+        }
+        if (evidence.verifiedAt() != null || (!"PENDING".equals(evidence.status())
+                && !"SUCCESS".equals(evidence.status()))) {
+            return;
+        }
+        var ticket = paymentLedger.refundTicket(paymentNo)
+                .orElseThrow(() -> new IllegalStateException("PAY_REFUND_REQUEST_SNAPSHOT_REQUIRED"));
+        QueryResult result;
+        try {
+            result = gatewayRouter.of(ticket.payChannel()).queryRefund(ticket.outRefundNo());
+        } catch (RuntimeException uncertain) {
+            log.warn("[settle] 退款回查未知 paymentNo={} exception={}", paymentNo,
+                    uncertain.getClass().getSimpleName());
+            return;
+        }
+        if (result != null && result.ok() && result.found() && result.paid()) {
+            paymentLedger.markRefundSettled(paymentNo, result.tradeNo(), result.amountMinor());
+        }
     }
 
     /**

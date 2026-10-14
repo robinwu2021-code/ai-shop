@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class PaymentLedgerServiceImpl implements PaymentLedgerService {
@@ -18,6 +19,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     private static final Logger log = LoggerFactory.getLogger(PaymentLedgerServiceImpl.class);
 
     private final SettleMappers.PaymentMapper paymentMapper;
+    private final ObjectMapper json = new ObjectMapper();
 
     public PaymentLedgerServiceImpl(SettleMappers.PaymentMapper paymentMapper) {
         this.paymentMapper = paymentMapper;
@@ -151,6 +153,8 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         r.setCurrency(origin.getCurrency());
         r.setAmountMinor(amountMinor);
         r.setErrMsg(reason);
+        r.setRefundRequestJson(json.writeValueAsString(new RefundTicket(origin.getPayChannel(), origin.getTradeNo(),
+                origin.getOutTradeNo(), r.getOutTradeNo(), nz(origin.getAmountMinor()), amountMinor, reason)));
         DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(r));
         log.info("[payment-ledger] 退款流水 {} 已落（原收款 {}，{} 分）",
                 r.getPaymentNo(), origin.getOutTradeNo(), amountMinor);
@@ -181,25 +185,15 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
             return java.util.Optional.empty();
         }
-        /*
-         * 原收款按**订单号 + 成功**去找，与 refund() 落账时用的是同一个判据 ——
-         * 两处不一致的话，退款会挂在 A 而发给通道的坐标来自 B。
-         */
-        StlPayment origin = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
-                Wrappers.<StlPayment>lambdaQuery()
-                        .eq(StlPayment::getDirection, StlPayment.PAY)
-                        .eq(StlPayment::getOrderNo, r.getOrderNo())
-                        .eq(StlPayment::getStatus, StlPayment.SUCCESS)
-                        .orderByDesc(StlPayment::getId).last("LIMIT 1")));
-        if (origin == null) {
-            // 落账那一步已经查过一次，走到这里说明中间被改动过
-            log.warn("[payment-ledger] 退款 {} 的原收款不见了，不发通道", refundPaymentNo);
+        if (r.getRefundRequestJson() == null) {
             return java.util.Optional.empty();
         }
-        return java.util.Optional.of(new RefundTicket(
-                origin.getPayChannel(), origin.getTradeNo(), origin.getOutTradeNo(),
-                r.getOutTradeNo(), nz(origin.getAmountMinor()), nz(r.getAmountMinor()),
-                r.getErrMsg()));
+        RefundTicket ticket = json.readValue(r.getRefundRequestJson(), RefundTicket.class);
+        if (!r.getPayChannel().equals(ticket.payChannel()) || !r.getOutTradeNo().equals(ticket.outRefundNo())
+                || nz(r.getAmountMinor()) != ticket.amountMinor()) {
+            throw new IllegalArgumentException("PAY_REFUND_REQUEST_SNAPSHOT_CONFLICT");
+        }
+        return java.util.Optional.of(ticket);
     }
 
     @Override

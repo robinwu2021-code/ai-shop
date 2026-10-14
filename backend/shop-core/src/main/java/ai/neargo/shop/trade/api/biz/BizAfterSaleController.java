@@ -85,7 +85,7 @@ public class BizAfterSaleController {
     /**
      * @param remark      同意时的说明，可空 —— 驳回必须给理由，同意不强制
      * @param refundMinor 商家核定的退款额(分)，可空。装箱类型防 Jackson 3 基本类型 400；仅已签收可传（AC9）
-     * @param refundMode  退款形式，可空（默认现金）：CASH / POINTS（AC10）
+     * @param refundMode  退款形式，可空，仅 CASH；原积分补偿模式已停止受理
      */
     public record ApproveReq(String remark, Long refundMinor, String refundMode) {
     }

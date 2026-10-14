@@ -10,6 +10,7 @@ import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.settle.SettlePort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -123,6 +124,31 @@ class RefundDispatchBoundaryTest {
         ledger.markRefundSettled(no, "VERIFIED-" + no, 1000);
         ledger.markRefundSent(no, false, false, null, "late failure");
         assertThat(refundRow(no).getStatus()).isEqualTo(StlPayment.SUCCESS);
+    }
+
+    @Test
+    void cash_intent_keeps_original_payment_coordinates_when_a_new_payment_arrives() {
+        Fixture f = paidOrderWithBill("TEST");
+        String no = settleService.prepareRefund(f.subOrderNo, "AS-" + f.subOrderNo, 1000, "original reason");
+        var frozen = ledger.refundTicket(no).orElseThrow();
+        String next = ledger.open(new SettlePort.PaymentOpen(f.orderNo, "U-RC", null, "TEST", 20000, "retry"));
+        String trade = testChannel.placeOrder(next, 20000);
+        testChannel.markPaid(next);
+        ledger.settle(new SettlePort.PaymentSettled(next, "TEST", trade, 20000, System.currentTimeMillis()));
+        assertThat(ledger.refundTicket(no)).contains(frozen);
+    }
+
+    @Test
+    void database_rejects_two_cash_intents_for_one_after_sale_even_across_orders() {
+        Fixture f = paidOrderWithBill("TEST");
+        String no = settleService.prepareRefund(f.subOrderNo, "AS-" + f.subOrderNo, 1000, "refund");
+        StlPayment duplicate = refundRow(no);
+        duplicate.setId(null);
+        duplicate.setPaymentNo("DUP-" + no);
+        duplicate.setOrderNo("OTHER-" + f.orderNo);
+        duplicate.setOutTradeNo("DUP-" + no);
+        assertThatThrownBy(() -> DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(duplicate)))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     // ---------------------------------------------------------------- 夹具

@@ -60,7 +60,7 @@ public interface AfterSaleService {
      *
      * @param refundMinor 商家核定的退款额(分)，可空。**仅已签收可传**（部分退款，AC9）；
      *                    未签收传了按 {@code AFTERSALE_PARTIAL_NEED_RECEIPT} 拒。>实付按 {@code AFTERSALE_AMOUNT_INVALID} 拒。
-     * @param refundMode  退款形式，可空（默认现金）：{@code CASH}/{@code POINTS}（AC10）。
+     * @param refundMode  退款形式，可空，当前仅接受 {@code CASH}；积分返还由独立准备/确认处理。
      */
     AfterSaleVO approve(String merchantNo, String afterSaleNo, String remark,
                         Long refundMinor, String refundMode);
@@ -137,21 +137,8 @@ public interface AfterSaleService {
                              String operatorNo);
 
     /**
-     * 把一笔停在 {@code REFUNDING} 的售后单走完退款（矩阵 P-12.1.5，E4）。
-     *
-     * <p><b>为什么需要它</b>：{@link #arbitrate}{@code (refund=true)} 只把状态推到
-     * {@code REFUNDING}，钱一分没退 —— 单子停在那里等一个不会来的动作。
-     * 而它对应的子单可能已经分过账，所以收尾必须走「先回退分账再退款」那条唯一路径。
-     *
-     * <p>本方法<b>只是 {@code doRefund} 的入口</b>，不重写收尾逻辑：
-     * 子单转态、{@code AfterSaleRefunded} 事件、下游回补库存与评分都挂在那里。
-     * 财务侧（{@code /ops/refund-split-backs/{no}/execute}）通过
-     * {@code RefundSplitBackPort} 调它。
-     *
-     * <p><b>幂等</b>：已 {@code REFUNDED} 直接返回 —— 运营看到列表没刷新会再点一次。
-     *
-     * @throws ai.neargo.shop.common.BizException 状态不允许，或分账回退失败
-     *         （后者是 {@code SPLIT_EXPIRED}，此时<b>退款不会发生</b>）
+     * Resume a decided refund outside any transaction: prepare, recover the fixed cash intent, then verify completion.
+     * Pending/unknown cash retains REFUNDING; stock, coupons, counters and terminal events wait for trusted proof.
      */
     void resumeRefund(String afterSaleNo, String operatorNo);
 
@@ -166,7 +153,7 @@ public interface AfterSaleService {
      * 于是「等重试」实际是「等到有人发现」，而发现它的通常是用户 ——
      * 他只知道钱没回来。这条与支付域拆分无关，是<b>今天就欠着的账</b>。
      *
-     * <p><b>这里只查不做</b>：续跑要逐条走 {@link #resumeRefund}（它有事务），
+     * <p>持久准备公平轮转选择；逐条续跑由 {@link #resumeRefund} 的分阶段事务处理，
      * 而<b>自调用不走代理</b> —— 在本类里循环调它，那个 {@code @Transactional}
      * 一条都不生效，表现是「退款做了一半」而没有任何报错。
      * 所以循环放在 {@code RefundRetryJob} 里，它拿到的是代理。

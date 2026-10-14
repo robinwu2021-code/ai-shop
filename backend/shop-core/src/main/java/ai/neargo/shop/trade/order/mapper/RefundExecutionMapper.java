@@ -15,6 +15,13 @@ import java.util.Map;
 /** Every execution mutation is serialized by the parent sub-order lock in the source transaction. */
 @Mapper
 public interface RefundExecutionMapper {
+    @Select("SELECT e.after_sale_no FROM ord_refund_execution e"
+            + " JOIN ord_after_sale a ON a.after_sale_no=e.after_sale_no AND a.deleted=0 AND a.status='REFUNDING'"
+            + " WHERE e.deleted=0 AND e.state<>'ABORTED'"
+            + " ORDER BY COALESCE(e.last_attempt_at,0),e.id LIMIT #{limit} FOR UPDATE")
+    List<String> pendingNos(int limit);
+    @Update("UPDATE ord_refund_execution SET last_attempt_at=#{at} WHERE after_sale_no=#{as}")
+    int attempted(@Param("as") String as,@Param("at") long at);
     @Select("SELECT * FROM ord_sub_order WHERE sub_order_no=#{sub} AND deleted=0 FOR UPDATE")
     OrdSubOrder lockSub(String sub);
     @Select("SELECT * FROM ord_after_sale WHERE after_sale_no=#{as} AND deleted=0 FOR UPDATE")

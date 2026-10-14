@@ -153,6 +153,9 @@ public interface SettlePort {
      */
     boolean reverseSplit(SplitReversal cmd);
 
+    /** Source workflow gate: post-split reversal waits for its durable financial preparation. */
+    boolean reversePreparedRefund(SplitReversal cmd);
+
     /**
      * @param afterSaleNo    售后单号（幂等键）
      * @param goodsMinor     本次退的货款（不含运费）
@@ -179,6 +182,9 @@ public interface SettlePort {
 
     /** Dispatch a committed intent outside any transaction, at most once; unknown results require reconciliation. */
     void dispatchRefund(String paymentNo);
+
+    /** Query the original intent outside transactions; only verified exact channel results can settle it. */
+    void refreshRefund(String paymentNo);
 
     /**
      * <b>退款确认到账</b>：把退款流水推到终态。由退款回调与对账回查共同驱动。

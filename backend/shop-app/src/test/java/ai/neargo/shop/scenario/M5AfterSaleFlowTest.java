@@ -1,6 +1,12 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.RefundScenarioPayments;
+import ai.neargo.shop.pay.channel.TestPayGateway;
+import ai.neargo.shop.pay.service.PaymentLedgerService;
+import ai.neargo.shop.trade.service.AfterSaleService;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.common.BizException;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.product.entity.PrdSku;
@@ -24,6 +30,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -39,6 +46,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @ActiveProfiles("test")
 class M5AfterSaleFlowTest {
+
+    @Autowired private AfterSaleService afterSales;
+    @Autowired private PaymentLedgerService ledger;
+    @Autowired private TestPayGateway bank;
+
+    private void finishRefund(String as) {
+        afterSales.resumeRefund(as,"SYSTEM");
+        afterSales.resumeRefund(as,"SYSTEM");
+    }
 
     private static final String STUB_SECRET = "stub-secret";
 
@@ -143,6 +159,11 @@ class M5AfterSaleFlowTest {
         String biz = loginAsOwnerOf("M0001", "13200132002");
 
         approve(biz, asNo);
+        assertThat(asStatus(o.userToken,asNo)).isEqualTo("REFUNDING");
+        afterSales.resumeRefund(asNo,"SYSTEM");
+        assertThat(jdbc.queryForObject("SELECT status FROM stl_bill WHERE sub_order_no=?",
+                String.class,o.subOrderNo)).isEqualTo("REVERSED");
+        afterSales.resumeRefund(asNo,"SYSTEM");
 
         String body = detail(o.userToken, asNo);
         JsonNode data = json.readTree(body).get("data");
@@ -205,6 +226,7 @@ class M5AfterSaleFlowTest {
         String asNo = mvcApply(token, subNo);
         String biz = loginAsOwnerOf("M0001", "13200132501");
         approve(biz, asNo);
+        finishRefund(asNo);
 
         /*
          * **整单退完，券要回到券包**（执行计划 B6，用户 2026-09-21 拍板）。
@@ -228,59 +250,25 @@ class M5AfterSaleFlowTest {
     private ai.neargo.shop.platform.PlatformConfigService platformConfig;
 
     @Test
-    @DisplayName("★★★ 整单退款退回抵扣积分，并在 C 端与 B 端详情里说清「退回了多少」（P2a / P3）")
-    void pointsReturnedOnWholeOrderRefund() throws Exception {
-        var restore = openPoints();
+    @DisplayName("旧积分订单缺少新准备时保持退款中，不得用旧整单回调退分或退现金")
+    void legacy_points_require_the_new_refund_decision_before_cash() throws Exception {
+        var restore=openPoints();
         try {
-            String token = login("13200132510");
-            String userNo = userNoOf(token);
-            givePoints(userNo, 10_000L);
-
-            String subNo = payWithPoints(token, 800L, "m5-refund-points");
-            assertThat(pointsBalanceOf(userNo)).isEqualTo(9_200L);
-            long earned = pendingOf(userNo);
-            assertThat(earned).as("付款没发分，后面「收回」那条断言就没有意义").isPositive();
-
-            String asNo = mvcApply(token, subNo);
-            String owner = loginAsOwnerOf("M0001", "13200132511");
-            /*
-             * P2c · B 端：**同意之前**就要看见会一并退回什么 ——
-             * 商家券的退回让他少收一次核销，点下去之后再说就晚了。
-             */
-            JsonNode rows = json.readTree(mvc().perform(get("/biz/after-sale")
-                            .header("Authorization", "Bearer " + owner))
-                    .andReturn().getResponse().getContentAsString()).get("data");
-            JsonNode impact = null;
-            for (JsonNode r : rows) {
-                if (asNo.equals(r.get("afterSaleNo").asString())) {
-                    impact = r.get("impact");
-                }
-            }
-            assertThat(impact).as("同意前看不到会退回什么").isNotNull();
-            assertThat(impact.get("pointsReturn").asLong()).isEqualTo(800L);
-            assertThat(impact.get("pointsRevoke").asLong()).isEqualTo(earned);
-
-            approve(owner, asNo);
-
-            assertThat(pointsBalanceOf(userNo))
-                    .as("整单退了，抵扣的 800 分没回来 —— 用户会说「钱退了分没了」").isEqualTo(10_000L);
-
-            JsonNode returned = orderDetail(token, subNo).get("returned");
-            assertThat(returned).as("退款后的详情要说清去向").isNotNull();
-            assertThat(returned.get("pointsReturned").asLong()).isEqualTo(800L);
-            // P2c：货钱都退了，买它得的分也收回 —— 不收的话「买了退、退了买」就能刷分
-            assertThat(pendingOf(userNo)).as("赠送的分没收回").isZero();
-            assertThat(returned.get("pointsClawedBack").asLong()).isEqualTo(earned);
-
-            String biz = loginAsOwnerOf("M0001", "13200132511");
-            JsonNode bizDetail = json.readTree(mvc().perform(get("/biz/order/" + subNo)
-                            .header("Authorization", "Bearer " + biz))
-                    .andReturn().getResponse().getContentAsString()).get("data");
-            assertThat(bizDetail.get("returned").get("pointsReturned").asLong())
-                    .as("商家客服接到「我的分呢」要看得到").isEqualTo(800L);
-        } finally {
-            restore.run();
-        }
+            String token=login("13200132510");
+            String user=userNoOf(token);
+            givePoints(user,10000);
+            String sub=payWithPoints(token,800,"m5-refund-points");
+            long earned=pendingOf(user);
+            String as=mvcApply(token,sub);
+            approve(loginAsOwnerOf("M0001","13200132511"),as);
+            assertThat(asStatus(token,as)).isEqualTo("REFUNDING");
+            assertThatThrownBy(() -> afterSales.resumeRefund(as,"SYSTEM"))
+                    .hasMessage("REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+            assertThat(pointsBalanceOf(user)).isEqualTo(9200);
+            assertThat(pendingOf(user)).isEqualTo(earned);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=?",
+                    Long.class,as)).isZero();
+        } finally { restore.run(); }
     }
 
     @Test
@@ -521,19 +509,15 @@ class M5AfterSaleFlowTest {
     @Test
     @DisplayName("分账回退失败时不得退款（钱只能少退，不能多退）")
     void refundBlockedWhenReverseFails() throws Exception {
-        Ordered o = placeAndPay("13200132003", 6980L);
-        String asNo = applyAfterSale(o, "REFUND_ONLY", "分账回退会失败");
-        String biz = loginAsOwnerOf("M0001", "13200132004");
-
-        // 让分账回退失败：此时**绝不能退款**
-        prepareSplit(o.subOrderNo);
-        splitGateway.failNext(o.subOrderNo);
-        mvc().perform(post("/biz/after-sale/" + asNo + "/approve").header("Authorization", "Bearer " + biz))
-                .andExpect(jsonPath("$.code").value(50002));
-
-        // 停在 REFUNDING 等重试，而不是「退款成功」
-        assertThat(json.readTree(detail(o.userToken, asNo)).get("data").get("status").asString())
-                .isNotEqualTo("REFUNDED");
+        Ordered o=placeAndPay("13200132003",6980);
+        String asNo=applyAfterSale(o,"REFUND_ONLY","等待持久化回退证明");
+        jdbc.update("UPDATE stl_bill SET status='SPLIT_CONFIRMED',split_at=1 WHERE sub_order_no=?",o.subOrderNo);
+        approve(loginAsOwnerOf("M0001","13200132004"),asNo);
+        assertThatThrownBy(() -> afterSales.resumeRefund(asNo,"SYSTEM"))
+                .isInstanceOf(BizException.class);
+        assertThat(asStatus(o.userToken,asNo)).isEqualTo("REFUNDING");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=?",
+                Long.class,asNo)).isZero();
     }
 
     // ---------------------------------------------------------------- 申请与流转
@@ -650,20 +634,24 @@ class M5AfterSaleFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 未发货 / 已签收审核通过 → 立即退款（AC8）")
-    void approve_refunds_immediately_when_unshipped_or_signed() throws Exception {
+    @DisplayName("未发货 / 已签收审核通过只准备，到账核验后完成退款")
+    void approve_prepares_then_verified_refund_finishes_when_unshipped_or_signed() throws Exception {
         // 未发货（NOT_PREPARED）
         Ordered a = placeAndPay("13200132612", 6980L);
         String asA = applyAfterSale(a, "REFUND_ONLY", "不想要了");
         approve(loginAsOwnerOf("M0001", "13200132613"), asA);
-        assertThat(asStatus(a.userToken, asA)).as("未发货，可直接退").isEqualTo(OrdAfterSale.REFUNDED);
+        assertThat(asStatus(a.userToken,asA)).isEqualTo(OrdAfterSale.REFUNDING);
+        finishRefund(asA);
+        assertThat(asStatus(a.userToken,asA)).isEqualTo(OrdAfterSale.REFUNDED);
 
         // 已签收（RECEIVED）
         Ordered b = placeAndPay("13200132614", 6980L);
         String asB = applyAfterSale(b, "REFUND_ONLY", "不想要了");
         setSubStage(b.subOrderNo, OrdSubOrder.COMPLETED, null);
         approve(loginAsOwnerOf("M0001", "13200132615"), asB);
-        assertThat(asStatus(b.userToken, asB)).as("已签收，货到手，可直接退").isEqualTo(OrdAfterSale.REFUNDED);
+        assertThat(asStatus(b.userToken,asB)).isEqualTo(OrdAfterSale.REFUNDING);
+        finishRefund(asB);
+        assertThat(asStatus(b.userToken,asB)).isEqualTo(OrdAfterSale.REFUNDED);
     }
 
     @Test
@@ -683,7 +671,8 @@ class M5AfterSaleFlowTest {
 
         mvc().perform(post("/biz/after-sale/" + asNo + "/confirm-refund").header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("REFUNDED"));
+                .andExpect(jsonPath("$.data.status").value("REFUNDING"));
+        finishRefund(asNo);
     }
 
     @Test
@@ -841,7 +830,8 @@ class M5AfterSaleFlowTest {
                 .andExpect(jsonPath("$.data.returnExpressNo").value("SF123"));
 
         mvc().perform(post("/biz/after-sale/" + asNo + "/receive").header("Authorization", "Bearer " + biz))
-                .andExpect(jsonPath("$.data.status").value("REFUNDED"));
+                .andExpect(jsonPath("$.data.status").value("REFUNDING"));
+        finishRefund(asNo);
     }
 
     @Test
@@ -1065,7 +1055,8 @@ class M5AfterSaleFlowTest {
                 .content("{\"expressCompany\":\"顺丰\",\"expressNo\":\"SF-RS-1\"}"));
         mvc().perform(post("/biz/after-sale/" + asNo + "/receive")
                         .header("Authorization", "Bearer " + biz))
-                .andExpect(jsonPath("$.data.status").value("REFUNDED"));
+                .andExpect(jsonPath("$.data.status").value("REFUNDING"));
+        finishRefund(asNo);
 
         /*
          * 货回到店里了，库存必须回到下单前。
@@ -1097,6 +1088,7 @@ class M5AfterSaleFlowTest {
     }
 
     private void approve(String bizToken, String afterSaleNo) throws Exception {
+        RefundScenarioPayments.received(jdbc,ledger,bank,afterSaleNo);
         mvc().perform(post("/biz/after-sale/" + afterSaleNo + "/approve")
                         .header("Authorization", "Bearer " + bizToken))
                 .andExpect(status().isOk());
@@ -1104,6 +1096,7 @@ class M5AfterSaleFlowTest {
 
     /** 带核定金额 / 形式的同意，返回响应体（含 code，供断言拒绝码）。 */
     private String approveWith(String bizToken, String afterSaleNo, String bodyJson) throws Exception {
+        RefundScenarioPayments.received(jdbc,ledger,bank,afterSaleNo);
         return mvc().perform(post("/biz/after-sale/" + afterSaleNo + "/approve")
                         .header("Authorization", "Bearer " + bizToken)
                         .contentType(MediaType.APPLICATION_JSON).content(bodyJson))
@@ -1118,6 +1111,7 @@ class M5AfterSaleFlowTest {
         setSubStage(o.subOrderNo, OrdSubOrder.COMPLETED, null);    // 已签收
         approveWith(loginAsOwnerOf("M0001", "13200132621"), asNo, "{\"refundMinor\":3000}");
 
+        finishRefund(asNo);
         JsonNode data = json.readTree(detail(o.userToken, asNo)).get("data");
         assertThat(data.get("status").asString()).isEqualTo("REFUNDED");
         assertThat(data.get("approvedMinor").asLong()).as("核定额留痕").isEqualTo(3000L);
@@ -1143,19 +1137,15 @@ class M5AfterSaleFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 积分形式：发积分、不退现金（AC10）")
-    void points_mode_grants_points_no_cash() throws Exception {
-        Ordered o = placeAndPay("13200132626", 6980L);
-        String asNo = applyAfterSale(o, "REFUND_ONLY", "少量破损");
-        setSubStage(o.subOrderNo, OrdSubOrder.COMPLETED, null);
-        approveWith(loginAsOwnerOf("M0001", "13200132627"), asNo,
+    @DisplayName("旧积分补偿退款形式下线，拒绝POINTS且不改变审核状态")
+    void points_compensation_mode_is_rejected() throws Exception {
+        Ordered o=placeAndPay("13200132626",6980);
+        String asNo=applyAfterSale(o,"REFUND_ONLY","少量破损");
+        setSubStage(o.subOrderNo,OrdSubOrder.COMPLETED,null);
+        String body=approveWith(loginAsOwnerOf("M0001","13200132627"),asNo,
                 "{\"refundMinor\":3000,\"refundMode\":\"POINTS\"}");
-
-        JsonNode data = json.readTree(detail(o.userToken, asNo)).get("data");
-        assertThat(data.get("status").asString()).isEqualTo("REFUNDED");
-        assertThat(data.get("refundMode").asString()).isEqualTo("POINTS");
-        // 默认 perMinor=1：3000 分 → 3000 积分
-        assertThat(data.get("refundPoints").asLong()).as("核定额×perMinor").isEqualTo(3000L);
+        assertThat(json.readTree(body).get("code").asInt()).isEqualTo(ErrorCode.BAD_REQUEST.code());
+        assertThat(asStatus(o.userToken,asNo)).isEqualTo("APPLIED");
     }
 
     private String applyAfterSale(Ordered o, String type, String reason) throws Exception {

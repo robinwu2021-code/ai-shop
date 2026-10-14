@@ -37,6 +37,22 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
     public RefundExecutionServiceImpl(RefundExecutionMapper store,RefundLedgerMapper mapper,SettlePort settle) {
         this.store=store; this.ledgerStore=mapper; this.settle=settle;
     }
+    @Override public Execution inspect(String as) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            if (store.execution(as)==null) { return null; }
+            var head=locked(as);
+            return new Execution(preparation(head),snapshot(head).plan(),(String)head.get("cash_payment_no"));
+        });
+    }
+    @Override public List<String> pendingNos(int limit) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            require(limit>0 && limit<=1000,"REFUND_EXECUTION_LIMIT_INVALID");
+            var nos=store.pendingNos(limit);
+            long now=System.currentTimeMillis();
+            for (String as:nos) { store.attempted(as,now); }
+            return nos;
+        });
+    }
     @Override public Preparation prepare(String as,RefundPlan plan) {
         return DataScopeContext.executeWithoutScope(() -> {
             require(as!=null && !as.isBlank() && plan!=null,"REFUND_EXECUTION_INPUT_INVALID");

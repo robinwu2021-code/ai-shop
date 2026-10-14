@@ -205,6 +205,16 @@ public class SettlePortImpl implements SettlePort {
     }
 
     @Override
+    public boolean reversePreparedRefund(SplitReversal cmd) {
+        return settlementRefund.reversePrepared(cmd);
+    }
+
+    @Override
+    public void refreshRefund(String paymentNo) {
+        settleService.refreshRefund(paymentNo);
+    }
+
+    @Override
     public String refund(String subOrderNo, long amountMinor, String reason) {
         return settleService.refund(subOrderNo, amountMinor, reason);
     }

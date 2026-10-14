@@ -1071,6 +1071,8 @@ CREATE TABLE IF NOT EXISTS stl_payment
     refund_verified_provider_no VARCHAR(128) DEFAULT NULL,
     refund_verified_at BIGINT DEFAULT NULL,
     refund_dispatch_at BIGINT DEFAULT NULL,
+    refund_request_json MEDIUMTEXT DEFAULT NULL,
+    CONSTRAINT uk_stl_payment_direction_after_sale_no UNIQUE (direction,after_sale_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),
     CONSTRAINT uk_stl_payment_trade UNIQUE (pay_channel,trade_no),
@@ -5532,6 +5534,7 @@ CREATE TABLE IF NOT EXISTS ord_refund_execution
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(64) DEFAULT NULL,
     deleted TINYINT NOT NULL DEFAULT 0,
+    last_attempt_at BIGINT DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_refund_execution_as UNIQUE (after_sale_no),
     CONSTRAINT uk_refund_execution_cash UNIQUE (cash_payment_no)

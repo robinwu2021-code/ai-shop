@@ -26,9 +26,8 @@ import ai.neargo.shop.pay.points.model.RedeemRate;
 import ai.neargo.shop.pay.points.model.Voucher;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway;
 import ai.neargo.shop.pay.points.posting.PointsPostingService;
-import ai.neargo.shop.pay.points.refund.PointsRefundPreparationService;
-import ai.neargo.shop.pay.points.refund.PointsRefundConfirmationService;
-import ai.neargo.shop.pay.points.refund.PointsRefundAbortService;
+import ai.neargo.shop.spi.points.PointsRefundPort;
+import ai.neargo.shop.pay.points.port.PointsRefundPortImpl;
 import ai.neargo.shop.pay.points.refund.PointsRefundCollectionExecutionService;
 import ai.neargo.shop.pay.points.refund.PointsRefundCollectionService;
 import ai.neargo.shop.pay.points.refund.PointsReceivableRecoveryService;
@@ -83,10 +82,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "spring.datasource.driver-class-name=${points.jdbc.driver:org.h2.Driver}"
 })
 class PointsRefundPreparationTest {
-    @Autowired private PointsRefundPreparationService refunds;
+    @Autowired private PointsRefundPort refunds;
     @Autowired private EarnService earn;
-    @Autowired private PointsRefundConfirmationService confirmations;
-    @Autowired private PointsRefundAbortService aborts;
+    @Autowired private PointsRefundPort confirmations;
+    @Autowired private PointsRefundPort aborts;
     @Autowired private PointsRefundCollectionExecutionService collections;
     @Autowired private PointsRefundCollectionService collectionDecisions;
     @Autowired private TestFunds funds;
@@ -494,7 +493,7 @@ class PointsRefundPreparationTest {
     @Configuration
     @Import({PointsPostingDatabaseTest.Config.class,MybatisPointsReadStore.class,
             MybatisPointsConfigurationStore.class,EarnServiceImpl.class,
-            MybatisPointsCashRefundReadStore.class,MybatisPointsFactStore.class})
+            MybatisPointsCashRefundReadStore.class,MybatisPointsFactStore.class,PointsRefundPortImpl.class})
     @ComponentScan({"ai.neargo.shop.pay.points.refund.impl","ai.neargo.shop.pay.points.app.impl",
             "ai.neargo.shop.pay.points.payout.impl"})
     static class Config {

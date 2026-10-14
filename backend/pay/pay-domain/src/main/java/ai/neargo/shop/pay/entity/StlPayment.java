@@ -101,6 +101,9 @@ public class StlPayment extends BaseEntity {
     /** Durable single send attempt. A lost response must be resolved using the original refund number. */
     private Long refundDispatchAt;
 
+    /** Immutable original payment coordinates and refund request, saved with the intent. */
+    private String refundRequestJson;
+
     /** Actual refund amount verified by a trusted channel query, distinct from the requested amount. */
     private Long refundVerifiedMinor;
 

@@ -44,6 +44,16 @@ public class SettlementRefundCoordinator {
     /** @return false = 回退没做成，调用方<b>必须停止退款</b>（钱还在商家那边） */
     @Transactional("payTxManager")
     public boolean reverse(SplitReversal cmd) {
+        return reverse(cmd, false);
+    }
+
+    /** Never call the legacy transactional remote reversal from the new source workflow. */
+    @Transactional("payTxManager")
+    public boolean reversePrepared(SplitReversal cmd) {
+        return reverse(cmd, true);
+    }
+
+    private boolean reverse(SplitReversal cmd, boolean preparedOnly) {
         StlBill bill = DataScopeContext.executeWithoutScope(() -> billMapper.selectOne(
                 Wrappers.<StlBill>lambdaQuery().eq(StlBill::getSubOrderNo, cmd.subOrderNo()).last("LIMIT 1")));
         if (bill == null || StlBill.REVERSED.equals(bill.getStatus()) || journal.recorded(cmd.afterSaleNo())) {
@@ -56,6 +66,7 @@ public class SettlementRefundCoordinator {
         }
         BillRefundShare share = policy.share(bill, cmd.goodsMinor(), cmd.freightMinor(), cmd.goodsPaidMinor());
         if (splitDone(bill)) {
+            if (preparedOnly) { return false; }
             return postSplit.reverse(bill, share, cmd.afterSaleNo());
         }
         preSplit.adjust(bill, share, cmd.afterSaleNo());

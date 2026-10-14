@@ -1,6 +1,9 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.RefundScenarioPayments;
+import ai.neargo.shop.pay.channel.TestPayGateway;
+import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +39,8 @@ class LineRefundFlowTest {
     private JdbcTemplate jdbc;
     @Autowired
     private AfterSaleService afterSales;
+    @Autowired private PaymentLedgerService ledger;
+    @Autowired private TestPayGateway bank;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -56,7 +61,12 @@ class LineRefundFlowTest {
                 + "\"items\":[{\"itemId\":" + itemId + ",\"qty\":1}]}");
         assertThat(first.get("code").asInt()).isZero();
         assertThat(first.get("data").get("refundMinor").asLong()).isEqualTo(share / 3);
-        afterSales.approve(entityOf(sub), first.get("data").get("afterSaleNo").asString(), null, null, null);
+        String firstNo=first.get("data").get("afterSaleNo").asString();
+        RefundScenarioPayments.received(jdbc,ledger,bank,firstNo);
+        afterSales.approve(entityOf(sub),firstNo,null,null,null);
+        assertThat(col(sub,"refunded_minor")).isEqualTo("0");
+        afterSales.resumeRefund(firstNo,"SYSTEM");
+        afterSales.resumeRefund(firstNo,"SYSTEM");
 
         assertThat(subStatus(sub)).as("部分退款不改订单状态").isEqualTo(statusBefore);
         assertThat(col(sub, "refund_progress")).isEqualTo("PARTIAL");
@@ -66,7 +76,10 @@ class LineRefundFlowTest {
 
         JsonNode rest = apply(token, sub, "{\"type\":\"REFUND_ONLY\",\"reason\":\"不想要了\",\"reasonCode\":\"NOT_WANTED\"}");
         assertThat(rest.get("data").get("refundMinor").asLong()).as("不传行 = 剩余全部").isEqualTo(share - share / 3);
-        afterSales.approve(entityOf(sub), rest.get("data").get("afterSaleNo").asString(), null, null, null);
+        String restNo=rest.get("data").get("afterSaleNo").asString();
+        afterSales.approve(entityOf(sub),restNo,null,null,null);
+        afterSales.resumeRefund(restNo,"SYSTEM");
+        afterSales.resumeRefund(restNo,"SYSTEM");
 
         assertThat(subStatus(sub)).isEqualTo("REFUNDED");
         assertThat(col(sub, "refund_progress")).isEqualTo("FULL");
@@ -106,6 +119,7 @@ class LineRefundFlowTest {
         String asNo = apply(token, sub, "{\"type\":\"REFUND_ONLY\",\"reason\":\"不想要了\",\"reasonCode\":\"NOT_WANTED\"}")
                 .get("data").get("afterSaleNo").asString();
         String merchant = entityOf(sub);
+        RefundScenarioPayments.received(jdbc,ledger,bank,asNo);
         var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
         var start = new java.util.concurrent.CountDownLatch(1);
         java.util.concurrent.Callable<Boolean> approve = () -> {
@@ -136,8 +150,8 @@ class LineRefundFlowTest {
         String status = jdbc.queryForObject("select status from ord_after_sale where after_sale_no = ?", String.class, asNo);
         int refunds = jdbc.queryForObject("select count(*) from stl_payment where after_sale_no = ? and direction = 'REFUND'",
                 Integer.class, asNo);
-        assertThat(status).isEqualTo(approved ? "REFUNDED" : "REJECTED");
-        assertThat(refunds).isEqualTo(approved ? 1 : 0);
+        assertThat(status).isEqualTo(approved ? "REFUNDING" : "REJECTED");
+        assertThat(refunds).as("The decision race cannot send money").isZero();
     }
 
     @Test
