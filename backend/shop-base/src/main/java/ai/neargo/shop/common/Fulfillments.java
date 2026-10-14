@@ -83,8 +83,13 @@ public final class Fulfillments {
 
     private static final Set<String> PICKUP = Set.of(STORE_PICKUP, NEIGHBOR_PICKUP);
 
-    /** 是否为「到点自取」。自提与配送在校验、履约、结算上的分支都不同。 */
+    /**
+     * 是否为「到点自取」。自提与配送在校验、履约、结算上的分支都不同。
+     *
+     * <p><b>null 安全</b>：{@code ord_sub_order.fulfillment} 可空，而 {@code Set.of(...).contains(null)} 抛 NPE ——
+     * 批量任务（自动确认收货）在 stream 里调它，一行空值会让整批单都不处理。
+     */
     public static boolean isPickup(String value) {
-        return PICKUP.contains(value);
+        return value != null && PICKUP.contains(value);
     }
 }

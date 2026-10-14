@@ -27,8 +27,10 @@ class RefundLedgerStoreTest {
     private JdbcTemplate jdbc;
 
     private long newItem(String sub, int qty) {
-        jdbc.update("insert into ord_sub_order (sub_order_no, order_no, user_no, entity_no, status, pay_amount, goods_amount, "
-                + "version, deleted, created_at, updated_at) values (?, ?, 'U-LG', 'M0001', 'FULFILLING', 9000, 9000, 0, 0, now(), now())",
+        // 履约方式要带上：FULFILLING 的单会被自动确认收货任务扫到（全量测试共用一个库）
+        jdbc.update("insert into ord_sub_order (sub_order_no, order_no, user_no, entity_no, status, fulfillment, pay_amount, "
+                + "goods_amount, version, deleted, created_at, updated_at) values (?, ?, 'U-LG', 'M0001', 'FULFILLING', "
+                + "'STORE_PICKUP', 9000, 9000, 0, 0, now(), now())",
                 sub, "P-" + sub);
         jdbc.update("insert into ord_item (sub_order_no, order_no, goods_no, sku_no, title, price, qty, amount, paid_share_minor, "                + "created_at, updated_at) values (?, ?, 'G', 'S', 'T', 3000, ?, 9000, 9000, now(), now())", sub, "P-" + sub, qty);
         return jdbc.queryForObject("select id from ord_item where sub_order_no = ?", Long.class, sub);
