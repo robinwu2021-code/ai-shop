@@ -32,6 +32,12 @@ public interface PointsConfigurationMapper {
     Map<String, Object> lifecycle(@Param("type") String type, @Param("sub") String sub);
     @Select("SELECT * FROM pts_redeem_position WHERE sub_order_no=#{sub} AND deleted=0 ORDER BY type_code")
     List<Map<String,Object>> redemptionsForSub(String sub);
+    @Select("SELECT * FROM pts_refund_preparation WHERE type_code=#{type} AND sub_order_no=#{sub}"
+            + " AND state NOT IN ('CONFIRMED','ABORTED') AND deleted=0 ORDER BY position_no")
+    List<Map<String,Object>> openRefunds(@Param("type") String type,@Param("sub") String sub);
+    @Select("SELECT payment_no,direction,after_sale_no,sub_order_no,user_no,currency,amount_minor,status,"
+            + "pay_channel,trade_no,succeeded_at FROM stl_payment WHERE payment_no=#{no} AND deleted=0")
+    Map<String,Object> cashRefund(String no);
     @Select("SELECT * FROM pts_inbox WHERE event_no=#{event}")
     Map<String,Object> inbox(String event);
     @Insert("INSERT INTO pts_inbox(type_code,state,payload_json,event_no,payload_hash)"

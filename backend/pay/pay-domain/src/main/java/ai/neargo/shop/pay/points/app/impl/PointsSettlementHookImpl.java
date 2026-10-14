@@ -112,6 +112,7 @@ public class PointsSettlementHookImpl implements PointsSettlementHook {
                 require(saved.equals(json.readTree(payload)),"POINTS_FACT_VERSION_CONFLICT");
             }
         }
+        require(read.openRefunds(fact.typeCode(),fact.subOrderNo()).isEmpty(),"POINTS_REFUND_SOURCE_BUSY");
         PointType type=read.type(fact.typeCode()).orElseThrow();
         List<PointsMove> moves=new ArrayList<>();
         List<PositionMove> positions=new ArrayList<>();

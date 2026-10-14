@@ -218,6 +218,10 @@ quote/hold用同策略但hold重判余额与freeB；降级返回reason及实际�
 
 抵扣退回：按该子单累计商品业务退款/原商品现金实付，向下对齐，商品全退精确退满；仅退运费不退积分。返分收回：逐行target=floorAligned(granted_points×max(0,该行累计商品退款−grant_before_refunded_goods_minor)/grant_basis_minor)，本次=target−该行已处理；累计退款达到原商品现金实付时target精确取granted_points，grant_basis为0的行不发也不除。例原商品实付100/规则100分，先退50再发50（basis50），随后再退25只收回25，最后退25再收回25。避免把实际减发50再乘累计75%收回37，也避免退0分商品却扣别行返分。分母0的行返分必0；核销输入无法建立合法退款基线时拒绝，不用除零兜底伪造比例。
 
+退款服务分为 preparation、confirmation、abort、collection 四个域内接口，所有实现仍位于 pay-domain.points.refund.impl。准备单复用现有 pts_refund_preparation 的售后号、子单号、摘要投影，不增加新部署或库表。prepare 在种类/资金池锁内冻结原发放/核销头寸，记录原状态、逐行本次收回量和原支付门店/账户版本；同子单有未终结准备时拒绝并发准备及结算转正。确认更新累计行计数后，后续退款只处理新增加的目标差额。SKIPPED 发放的应发量不作为实际收回基数。
+
+补收使用准备单持久化 COLLECTION_REQUIRED→COLLECTING→COLLECTION_UNKNOWN/COLLECTED/COLLECTION_FAILED；COLLECTING 提交后才调用银行，未知只查询原始指令。成功证据绑定 REFUND_COLLECTION/准备单号，不能被其他备款请求使用。确认前不增加 U；确认时核对现金退款账本绑定，并消费该证据后将实际补收现金等值发行至 ISSUE/U。COLLECTION_FAILED 暂保持冻结，完整失败修订/补偿由后续源执行阶段接线，不能宣称退款流程已经完成。
+
 prepare锁核销头寸、发放行及需要收回的用户P/A，移动到退款HELD并保留原格来源，准备单保留不可变结果；不足部分=min(缺分折现金额,本次可退现金)，路径不支持补收则为0。平台承担差额记录waived，不计“已收回分”且不增U；用户可用余额不扣负。现金扣减后净现金额≥0，准备时不给用户提前可花的退分。
 
 confirm必须由可信适配器核验真实结果，不信客户端success。收到真实现金补收q后，可回流自由接收分或发行登记提供等额q积分到ISSUE/U；用户实际收回a则USER→ISSUE、C→U。现金补收与发行/回流在同一过账凭证校验，不能偷取其他退款预留积分；修订“只有TOPUP发行”为“核验备款支持的TOPUP/现金补收才能发行”。直连路径若钱留商家而未回平台，q=0。
@@ -740,11 +744,11 @@ PointsJobWiringTest新增#only_new_points_jobs_registered；PointsReconTest新�
 | AC-PTS-21 | `StoreStatementServiceTest#redraft_and_stale_confirmation` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T09 |
 | AC-PTS-22 | `StoreStatementRefundTest#refund_at_every_statement_stage` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T09 |
 | AC-PTS-23 | `StatementOffsetTest#cash_plus_offset_equals_gross` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T09 |
-| AC-PTS-24 | `RefundRatioPolicyTest#freight_does_not_distort_goods_ratio` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T07 |
-| AC-PTS-25 | `PointsRefundServiceTest#replay_returns_original_outcome` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T07 |
-| AC-PTS-26 | `CashClawbackTest#refund_nonnegative_and_collection_required` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T07 |
-| AC-PTS-27 | `PointsRefundRecoveryTest#failed_cash_keeps_recoverable_preparation` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T07 |
-| AC-PTS-28 | `RefundBackingTest#failed_recovery_returns_funded_points` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T07 |
+| AC-PTS-24 | `RefundRatioPolicyTest#late_grant_after_partial_refund_uses_remaining_basis` | 策略本地通过；完整源退款接线待完成 | 最近回归77/0；隔离MariaDB17/0；消融转正保护1项失败后恢复 |
+| AC-PTS-25 | `PointsRefundPreparationTest#pending_grants_are_frozen_once_with_immutable_input_and_no_early_return` | 准备、冻结、重放本地通过 | 最近回归77/0；隔离MariaDB17/0；消融转正保护1项失败后恢复 |
+| AC-PTS-26 | `PointsRefundPreparationTest#collection_unknown_queries_original_intent_and_only_cash_confirmation_credits_u` | 成功/未知补收本地通过；失败修订待完成 | 最近回归77/0；隔离MariaDB17/0；消融转正保护1项失败后恢复 |
+| AC-PTS-27 | `PointsRefundPreparationTest#cash_unknown_cannot_abort_and_definite_failure_restores_original_buckets` | 可信现金核对/明确失败撤销本地通过；零现金/补偿待完成 | 最近回归77/0；隔离MariaDB17/0；消融转正保护1项失败后恢复 |
+| AC-PTS-28 | `PointsRefundPreparationTest#paid_redemption_uses_b_with_store_receivable_and_replay_cannot_duplicate_return` | B垫付/门店R本地通过；迟到回款接线待完成 | 最近回归77/0；隔离MariaDB17/0；消融转正保护1项失败后恢复 |
 | AC-PTS-29 | `ReceiveReserveTest#topup_never_consumes_refundable_points` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T10 |
 | AC-PTS-30 | `ExpiryServiceTest#expiry_only_available_and_remind_once` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T10 |
 | AC-PTS-31 | `PointsPauseTest#overlap_extends_once_and_preserves_inflight` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T10 |
@@ -930,3 +934,18 @@ T06.5 本地闭环：PoolRequest冻结平台出款目标；审批先通过统一
 每次命令和 testcase 原始证据保存在 `backend/target/test-timings/<run-id>/`；`summary.json` 标识退出码、超时开关及报告完整性，`slow-tests.log` 记录超过阈值的实际用例。日志是报告采集后的记录，未完成的用例不伪造耗时；本轮 timeout_enabled=false，没有按时间自动中断。
 
 下一阶段清单：T07 完整退款准备/可信现金确认/撤销与补收、修正源退款账本提前“已退”及原分账回退金额方向；T08 源事实与订单/售后可靠接线（含实际支付快照）；T09 门店账单、修订/争议与 R 抵销；T10 责任关闭/回流/到期/不可用顺延；T11 对账/补偿/任务/告警；T12 三端 API/UI/权限；T13 清理剩余旧代码/配置、同版本数据库及真实通道验收、最终整分支 review。没有合并、推送或部署。
+
+### 2026-10-15 T07 退款服务本地检查点
+
+本批实现 `points.refund` preparation/confirmation/abort/collection 接口及 `.impl` 服务，新增内部 `PointsCashRefundReadStore` 和 MyBatis 只读适配。准备单索引复用 V408 已存在的列，由唯一写账入口更新，无新迁移。实际代码把设计中的单一退款服务拆成短事务职责和无事务资金编排；DTO 继续使用已确认的 PointsRefundPort 契约，跨域桥接尚未安装。
+
+- 不改变资金池的准备：冻结原发放/核销状态，实际 P/A→H，逐行保存目标差额；SKIPPED 的“应发”不扣，金额改变拒绝。同子单未终结准备阻止并发准备与结算转正。
+- 可信现金确认：读取现有 stl_payment，只接受退款方向 SUCCESS、有成功时刻及通道回执号，并核对售后/子单/用户/币种/通道/净现金额。请求受理 PENDING 不确认；实际收回 H→ISSUE、C→U。冻结现金未知不撤销，明确失败恢复原始格且重复撤销不重复释放。
+- 退分与备付：付款前 RECEIVE预留→USER.A、D→C；付款后 B→C 同时创建门店 R。预留释放/消耗与头寸计数一起过账，重放只返回原凭证。
+- 补收：持久化发送后才调用资金通道，未知查询原门店/账户版本/金额一次意图；回执绑定准备单用途。成功回执先保存，未确认现金退款时不增 U；确认时消费证据，并等值发行到 ISSUE/U。测试资金通道均是明确模拟器。
+
+验证：受影响回归 `20261014T182214Z-a880e329` 77项、0失败/错误；隔离 MariaDB `20261014T182355Z-66d8681b` 17项、0失败/错误，其中新退款服务11项。撤去转正保护的消融 `20261014T182141Z-169d9cd2` 1项失败，恢复后回归通过。图契约仍为74类/71关系/32守恒流，18张SVG检查通过。并非整个仓库测试，也非目标同版本MySQL验收。
+
+计时可核对窗口从首个测试18:07:52 UTC起，不代指完整对话时长。14条Maven命令共270.161秒（4.50分钟），最长52.464秒；266次测试执行（含重跑）共24.363秒，最长单例1.532秒；累计6次超过1秒，均记录在各轮slow-tests.log。7条非零命令包含新接口缺失的RED、一次撤保护消融、两条用例暴露同一错误预留键，以及一次辅助编辑脚本语法错误后触发的无效编译。保留错误，不将这些命令都归为回归故障。未观察到单例耗时几十分钟，当前主要开销仍在实现/阅读与编译及上下文初始化。没有因时间上限中断。
+
+未完成项：COLLECTION_FAILED 失败修订与现金补偿、迟到补差回款入B/R核减、合法零现金完成证据、售后持久化执行阶段和源RefundLedger成功后才记已退、分账回退方向修正、旧积分退款分支清理，以及T08可靠事实接线。现有现金SUCCESS来源还需随源接线补齐通道实际金额核验和丢失发送回执恢复，不能仅凭本批固定账本夹具认定生产退款闭环完成。T07仍在开发中，总闸及真实通道未开放。

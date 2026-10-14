@@ -129,6 +129,19 @@ public class MybatisPostingStore implements PostingStore {
             }
             require(mapper.movePosition(move.kind().table(), type, move, revision) == 1,
                     "POINTS_POSITION_STATE_CONFLICT");
+            if (move.kind()==PositionMove.Kind.REFUND) {
+                var snapshot=json.readTree(move.payload());
+                var command=snapshot.path("command");
+                var preparation=snapshot.path("preparation");
+                require(type.equals(command.path("typeCode").asText())
+                        && move.positionNo().equals(preparation.path("preparationNo").asText())
+                        && move.positionNo().equals(PointsKeys.position("F",type,command.path("afterSaleNo").asText()))
+                        && !command.path("subOrderNo").asText().isBlank()
+                        && preparation.path("inputHash").asText().length()==64,"POINTS_REFUND_SNAPSHOT_INVALID");
+                require(mapper.indexRefund(move.positionNo(),command.path("afterSaleNo").asText(),
+                        command.path("subOrderNo").asText(),preparation.path("inputHash").asText())==1,
+                        "POINTS_REFUND_SNAPSHOT_INVALID");
+            }
             if (move.kind()==PositionMove.Kind.TRANSFER) {
                 var snapshot=json.readTree(move.payload());
                 var request=snapshot.path("request");

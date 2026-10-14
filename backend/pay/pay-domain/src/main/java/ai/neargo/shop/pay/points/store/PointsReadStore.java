@@ -20,5 +20,6 @@ public interface PointsReadStore {
     Map<String, Object> position(String table, String positionNo);
     Map<String, Object> reserve(String reserveNo);
     List<Map<String,Object>> redemptionsForSub(String subOrderNo);
+    List<Map<String,Object>> openRefunds(String typeCode,String subOrderNo);
     Map<String, Object> lifecycle(String typeCode, String subOrderNo);
 }

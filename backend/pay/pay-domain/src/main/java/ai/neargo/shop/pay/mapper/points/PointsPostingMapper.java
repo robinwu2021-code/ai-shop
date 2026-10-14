@@ -124,6 +124,10 @@ public interface PointsPostingMapper {
     @Update("UPDATE ${table} SET sub_order_no=#{sub},user_no=#{user} WHERE position_no=#{no}")
     int indexOrderPosition(@Param("table") String table,@Param("no") String no,
                            @Param("sub") String sub,@Param("user") String user);
+    @Update("UPDATE pts_refund_preparation SET after_sale_no=#{afterSale},sub_order_no=#{sub},input_hash=#{hash}"
+            + " WHERE position_no=#{no}")
+    int indexRefund(@Param("no") String no,@Param("afterSale") String afterSale,
+                    @Param("sub") String sub,@Param("hash") String hash);
     @Update("UPDATE pts_payout_ticket SET provider_idem=#{idem},gross_minor=#{gross},offset_minor=#{offset},"
             + "cash_minor=#{cash},currency=#{currency} WHERE position_no=#{no}")
     int indexPayout(@Param("no") String no,@Param("idem") String idem,@Param("gross") long gross,
