@@ -2,6 +2,10 @@ package ai.neargo.shop.pay.impl;
 
 import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.pay.SplitGateway;
+import ai.neargo.shop.pay.settle.SplitPreparationService;
+import ai.neargo.shop.pay.settle.SplitResultService;
+import ai.neargo.shop.pay.points.payout.PointsPayoutExecutionService;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
@@ -99,6 +103,11 @@ public class SettleServiceImpl implements SettleService {
     /** 分账指令的发送与留痕（幂等在它那一层） */
     private final ai.neargo.shop.pay.settle.SplitInstructionSender splitSender;
 
+    private final SplitPreparationService splitPreparation;
+    private final SplitResultService splitResults;
+    private final PointsPayoutExecutionService pointsExecution;
+    private final SplitGateway splitGateway;
+
     public SettleServiceImpl(BillMapper billMapper, SplitLogMapper splitLogMapper,
                              SettleSourcePort sourcePort,
                              PickupQueryPort pickupPort,
@@ -112,7 +121,11 @@ public class SettleServiceImpl implements SettleService {
                              ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper,
                              ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger,
                              ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter,
-                             ai.neargo.shop.pay.settle.SplitInstructionSender splitSender) {
+                             ai.neargo.shop.pay.settle.SplitInstructionSender splitSender,
+                             SplitPreparationService splitPreparation,SplitResultService splitResults,
+                             PointsPayoutExecutionService pointsExecution,SplitGateway splitGateway) {
+        this.splitPreparation=splitPreparation; this.splitResults=splitResults;
+        this.pointsExecution=pointsExecution; this.splitGateway=splitGateway;
         this.splitSender = splitSender;
         this.gatewayRouter = gatewayRouter;
         this.paymentLedger = paymentLedger;
@@ -257,6 +270,7 @@ public class SettleServiceImpl implements SettleService {
              */
             bill.setWaivedCommissionMinor(offline ? ruleCommission : 0L);
             bill.setServiceFeeMinor(serviceFee);
+            bill.setSplitAmountMinor(Math.addExact(commission,serviceFee));
             /*
              * 通道与下单端。**payChannel 此前全库为 null** —— 它从没被传进结算域，
              * 而下面入池流水那行已经在读它了（读到的一直是 null）。线下单靠它认，
@@ -457,104 +471,32 @@ public class SettleServiceImpl implements SettleService {
     }
 
     @Override
-    @Transactional("payTxManager")
     public void executeSplit(String settleNo) {
-        StlBill bill = require(settleNo);
-        if (StlBill.SPLIT.equals(bill.getStatus())
-                || StlBill.SPLIT_CONFIRMED.equals(bill.getStatus())
-                || StlBill.REVERSED.equals(bill.getStatus())) {
-            // 幂等：重复执行不会重复打款。**SPLIT_CONFIRMED 也要挡** ——
-            // 少了它，一笔已确认到账的单被重放时会再发一次分账指令
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("SETTLEMENT_FUNDS_REQUIRES_NO_TRANSACTION");
+        }
+        var plan=splitPreparation.prepare(settleNo);
+        if (plan.completed()) { return; }
+        if (plan.pointsTicket()!=null
+                && !splitResults.acceptPoints(plan.command().requestNo(),pointsExecution.perform(plan.pointsTicket()))) {
             return;
         }
-        /*
-         * 线下单**永远不分账**：钱在商家自己口袋里，向二级商户发起分账
-         * 会从他的**其他**收入里划走这笔佣金 —— 而这单的佣金已经说好不收了。
-         *
-         * 直接返回而不是抛异常：批量分账任务是按状态捞单的，OFFLINE_SETTLED
-         * 本来就捞不到；能走到这儿的只有人工重放或将来某个新入口。
-         * 那种时候要的是「这单不动」，不是让整批任务红着停下。
-         */
-        if (StlBill.OFFLINE_SETTLED.equals(bill.getStatus())) {
-            return;
-        }
-
-        bill.setStatus(StlBill.SPLITTING);
-        update(bill);
-
-        /*
-         * **先补差，再分账**。顺序不能反：
-         * 分账是从二级商户账户里往外拿钱，而补差是往里放钱 ——
-         * 先分后补的话，账户余额可能不够扣，分账被通道拒绝，
-         * 而那时订单已经付过款了。
-         *
-         * 补差失败就不分账，整单转重试：只改了结算基数而钱没补进去，
-         * 等于把商家的账做大而钱没打，比不改更糟。
-         */
-        /*
-         * **补差只在直连路径上存在。**
-         *
-         * 归集路径下应付账款已经按全额算过了（gross 里加回了积分抵扣），
-         * 再补一次就是**重复付款** —— 100 元的货平台会付出 110。
-         *
-         * 现在不出这个问题，只是因为自营单不走到这里；那是<b>巧合式的正确</b>，
-         * 不是设计。在执行点断言，而不是指望调用方记得。
-         */
-        if (!MerchantQueryPort.FUNDS_DIRECT.equals(bill.getFundsMode())
-                && nz(bill.getSubsidyMinor()) > 0) {
-            throw BizException.of(ErrorCode.CONFLICT);
-        }
-        /*
-         * **通道要真的支持补差。**
-         *
-         * `sys_pay_channel.supports_subsidy` 这一列建出来就是为了拦这里，
-         * 但此前**零读取** —— 不具备补差能力的通道照样走到这一步，
-         * 然后补差调用失败、整单转重试，而根因（通道压根没这个能力）
-         * 要翻网关日志才看得出来。
-         *
-         * 判在这里而不是扣分那一刻：**下单时通道还没定**（markPaid 才有），
-         * 那时判等于拿一个还不存在的事实做判断。
-         */
-        if (nz(bill.getSubsidyMinor()) > 0 && !channelMaster.supportsSubsidy(bill.getPayChannel())) {
-            bill.setStatus(StlBill.MANUAL);
-            bill.setLastError("通道不支持积分补差，需人工处理：" + bill.getPayChannel());
-            update(bill);
-            return;
-        }
-        long subsidy = nz(bill.getSubsidyMinor());
-        if (subsidy > 0 && bill.getSubsidyAt() == null) {
-            boolean subsidized = callProvider(StlSplitLog.SUBSIDY, bill, "SUB-" + settleNo);
-            if (!subsidized) {
-                bill.setStatus(StlBill.RETRYING);
-                bill.setRetryCount(nzi(bill.getRetryCount()) + 1);
-                bill.setLastError("积分补差失败，未分账");
-                update(bill);
-                return;
+        var claim=splitPreparation.claim(plan.command().requestNo());
+        if (claim.completed()) { return; }
+        var command=claim.command();
+        SplitGateway.Result result;
+        try {
+            if (command.amountMinor()==0) {
+                result=SplitGateway.Result.ok("NO-CASH:"+command.requestNo());
+            } else {
+                result=claim.submit()
+                        ? splitGateway.split(command.subOrderNo(),command.payMerchantNo(),command.amountMinor(),
+                                command.requestNo())
+                        : splitGateway.querySplit(command.subOrderNo(),command.payMerchantNo(),command.amountMinor(),
+                                command.requestNo());
             }
-            bill.setSubsidyAt(System.currentTimeMillis());
-            update(bill);
-        }
-
-        String requestNo = "SPL-" + settleNo;
-        boolean ok = callProvider(StlSplitLog.SPLIT, bill, requestNo);
-        if (!ok) {
-            bill.setStatus(StlBill.RETRYING);
-            bill.setRetryCount(nzi(bill.getRetryCount()) + 1);
-            update(bill);
-            return;
-        }
-        bill.setStatus(StlBill.SPLIT);
-        bill.setSplitAt(System.currentTimeMillis());
-        update(bill);
-
-        /*
-         * 积分抵扣兑付跟着分账走 —— **同一时点，不另立一套「积分售后期」**。
-         * 分账成立意味着钱真的到了商家账户，抵扣的那部分补差也在同一笔里，
-         * 此刻才谈得上「平台已付」。
-         *
-         * 各设一套时点的代价：月末对不平，第一件事要先分辨是账单晚了还是积分晚了。
-         */
-        pointsService.confirmDeduction(bill.getSubOrderNo());
+        } catch (RuntimeException uncertain) { result=SplitGateway.Result.fail("SPLIT_TRANSPORT_UNKNOWN"); }
+        splitResults.acceptCash(command.requestNo(),result);
     }
 
     // ---------------------------------------------------------------- SettlePort（退款链路）
@@ -567,6 +509,8 @@ public class SettleServiceImpl implements SettleService {
             // 没有结算单（例如未支付即取消）：没什么可回退的，视为成功
             return true;
         }
+        bill=splitPreparation.lockForReverse(bill.getSettleNo());
+        if (bill==null) { return false; }
         if (StlBill.REVERSED.equals(bill.getStatus())) {
             return true;
         }

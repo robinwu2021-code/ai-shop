@@ -36,6 +36,11 @@ public interface SplitGateway {
      */
     Result split(String subOrderNo, String payMerchantNo, long amountMinor, String requestNo);
 
+    /** Queries only the original split request after uncertain transport; unsupported query keeps it unknown. */
+    default Result querySplit(String subOrderNo,String payMerchantNo,long amountMinor,String requestNo) {
+        return Result.fail("SPLIT_QUERY_NOT_SUPPORTED");
+    }
+
     /**
      * 冲正。<b>必须打回当初收款的那个账户</b>，同样取自结算单快照。
      *

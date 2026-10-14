@@ -22,6 +22,12 @@ public interface PointsSettlementHook {
     /** Reads the acceptance snapshot; later agreement changes do not rewrite an existing order. */
     SettleMode settleModeOf(String subOrderNo);
 
+    /** Resolves the original store acceptance and prepares its ticket together with the settlement intent. */
+    BillPayoutPlan prepareForBill(BillPayout request);
+    record BillPayout(String settleNo,String subOrderNo,String merchantNo,String storeNo,String currency,
+                      long pointsMinor,String fundsPath) { }
+    record BillPayoutPlan(SettleMode mode,PayoutTicket ticket) { }
+
     enum SettleMode { PER_ORDER, PERIODIC }
     record PayoutCommand(String bizRef, String typeCode, String sourceRef, List<String> positionIds,
                          FundsPurpose purpose, FundsContext context, String currency) {

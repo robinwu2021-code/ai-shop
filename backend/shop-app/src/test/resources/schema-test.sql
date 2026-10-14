@@ -5483,6 +5483,22 @@ CREATE TABLE IF NOT EXISTS pts_cursor
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS stl_split_intent
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    request_no VARCHAR(80) NOT NULL,
+    settle_no VARCHAR(64) NOT NULL,
+    command_json MEDIUMTEXT NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    points_ticket VARCHAR(40) DEFAULT NULL,
+    funding_state VARCHAR(24) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_split_intent_request UNIQUE (request_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

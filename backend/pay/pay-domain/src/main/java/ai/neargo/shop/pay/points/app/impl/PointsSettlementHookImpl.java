@@ -11,6 +11,8 @@ import ai.neargo.shop.pay.points.model.PointsMove;
 import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.model.Voucher;
 import ai.neargo.shop.pay.points.payout.PointsPayoutService;
+import ai.neargo.shop.pay.points.payout.PayoutSnapshot;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPurpose;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsResult;
 import ai.neargo.shop.pay.points.posting.PointsPostingService;
 import ai.neargo.shop.pay.points.redeem.impl.RedeemServiceImpl.RedeemSnapshot;
@@ -52,6 +54,43 @@ public class PointsSettlementHookImpl implements PointsSettlementHook {
         require(sources.size()==1,"POINTS_REDEMPTION_NOT_UNIQUE");
         var snapshot=json.readValue((String)sources.getFirst().get("payload_json"),RedeemSnapshot.class);
         return SettleMode.valueOf(snapshot.agreement().settleMode());
+    }
+    @Override public BillPayoutPlan prepareForBill(BillPayout bill) {
+        require(bill.pointsMinor()>=0,"POINTS_SETTLEMENT_AMOUNT_INVALID");
+        var sources=read.redemptionsForSub(bill.subOrderNo());
+        if (sources.isEmpty() && bill.pointsMinor()==0) { return new BillPayoutPlan(null,null); }
+        require(sources.size()==1,"POINTS_REDEMPTION_NOT_UNIQUE");
+        var head=sources.getFirst();
+        String typeCode=(String)head.get("type_code");
+        configuration.lockTypeAndPool(typeCode);
+        head=read.position(PositionMove.Kind.REDEEM.table(),(String)head.get("position_no"));
+        var snapshot=json.readValue((String)head.get("payload_json"),RedeemSnapshot.class);
+        var type=read.type(typeCode).orElseThrow();
+        require(snapshot.share().storeNo().equals(bill.storeNo())
+                && snapshot.share().merchantNo().equals(bill.merchantNo())
+                && type.currency().equals(bill.currency())
+                && snapshot.fundsContext().path().name().equals(bill.fundsPath()),
+                "POINTS_SETTLEMENT_SUBJECT_MISMATCH");
+        SettleMode mode=SettleMode.valueOf(snapshot.agreement().settleMode());
+        long remaining=type.rate().toMinor(Math.subtractExact(number(head,"original_points"),
+                number(head,"processed_points")));
+        require(remaining==bill.pointsMinor(),"POINTS_SETTLEMENT_AMOUNT_MISMATCH");
+        if (mode==SettleMode.PERIODIC) {
+            require(!"HELD".equals(head.get("state")) && !"RELEASED".equals(head.get("state")),
+                    "POINTS_PAYMENT_FACT_REQUIRED");
+            return new BillPayoutPlan(mode,null);
+        }
+        PayoutCommand command;
+        if (head.get("ticket_no")!=null) {
+            var ticket=read.position(PositionMove.Kind.PAYOUT.table(),(String)head.get("ticket_no"));
+            require(ticket!=null,"POINTS_PAYOUT_BINDING_MISSING");
+            command=json.readValue((String)ticket.get("payload_json"),PayoutSnapshot.class).command();
+        } else {
+            command=new PayoutCommand("SETTLE:"+bill.settleNo()+":"+number(head,"version"),typeCode,
+                    bill.subOrderNo(),List.of((String)head.get("position_no")),
+                    FundsPurpose.forPerOrder(snapshot.fundsContext().path()),snapshot.fundsContext(),type.currency());
+        }
+        return new BillPayoutPlan(mode,payouts.beginPayout(command));
     }
     @Override public void onBillFinalized(LifecycleFact fact) {
         validate(fact);
