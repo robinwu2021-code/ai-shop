@@ -98,3 +98,11 @@ b-app/store-scope-polygon sysmodal
 #    注释写着「不用 uni.showModal，它的标题与输入框不是同一套字」）。
 #    我不替别人定，先登记；要收编由那条线来。
 b-app/goods-edit sysmodal
+#
+# ③ c-app 售后申请页：生鲜灰色地带（已备货 / 已出单未揽收）提交前用 `uni.showModal` 确认，**故意的**。
+#    确认之后紧接着要 `wx.requestSubscribeMessage`（售后结果 / 退货寄回的订阅授权），
+#    而它只认「用户点击的调用链」：系统弹框的 success 回调算在链内；
+#    sh-sheet 是自绘的，确认按钮 resolve 之后在 await 的续体里再申请，微信可能判为非点击、授权框弹不出来 ——
+#    订阅失败是静默的，只能在 wx_subscribe 三张表里看出来（见 memory「订阅消息看三张表」）。
+#    收编的前提是先在真机上证明「sh-sheet 确认 → 订阅授权」能弹出来。
+c-app/after-sale sysmodal
