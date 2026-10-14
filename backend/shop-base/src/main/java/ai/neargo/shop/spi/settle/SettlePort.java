@@ -142,14 +142,37 @@ public interface SettlePort {
 
     int generateForOrder(String orderNo);
 
+    /** 整单回退（旧签名，售后 5.5 接线前的调用方用）。新代码用 {@link #reverseSplit(SplitReversal)}。 */
     boolean reverseSplit(String subOrderNo);
 
     /**
-     * 发起退款。**调用前必须确认 {@link #reverseSplit} 已成功。**
+     * <b>按退款金额</b>回退分账（结算口径 A）：分账前只扣减结算单金额，分账后按额发回退（{@code REV-售后单号}）；
+     * 货款全部退完才把结算单转 REVERSED。按售后单号幂等。
      *
-     * @return 支付服务商的退款单号
+     * @return true=已回退（或无需回退）；false=回退失败，**此时绝不能继续退款**
      */
+    boolean reverseSplit(SplitReversal cmd);
+
+    /**
+     * @param afterSaleNo    售后单号（幂等键）
+     * @param goodsMinor     本次退的货款（不含运费）
+     * @param freightMinor   本次退的运费
+     * @param goodsPaidMinor 该子单商品实付总额（实付 − 运费）—— 口径 A 的比例分母
+     */
+    record SplitReversal(String subOrderNo, String afterSaleNo, long goodsMinor, long freightMinor,
+                         long goodsPaidMinor) {
+    }
+
+    /** 旧签名：幂等键固定为 {@code AS-子单号}，一张子单只能退一次钱。新代码用带售后单号的那个。 */
     String refund(String subOrderNo, long amountMinor, String reason);
+
+    /**
+     * 发起退款。**调用前必须确认 {@link #reverseSplit} 已成功。**
+     * 幂等键 = 售后单号：一张售后单一笔退款，同一子单的第二张售后能真的退出钱。
+     *
+     * @return 支付侧退款流水号
+     */
+    String refund(String subOrderNo, String afterSaleNo, long amountMinor, String reason);
 
     /**
      * <b>退款确认到账</b>：把退款流水推到终态。由退款回调与对账回查共同驱动。

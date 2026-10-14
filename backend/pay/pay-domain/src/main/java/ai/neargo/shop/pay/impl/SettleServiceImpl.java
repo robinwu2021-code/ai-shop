@@ -79,7 +79,6 @@ public class SettleServiceImpl implements SettleService {
     private final ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper;
     private final SplitLogMapper splitLogMapper;
     private final SettleSourcePort sourcePort;
-    private final SplitGateway gateway;
     /** 算履约服务费要知道该自提点谈定的口径（ADR-009） */
     private final PickupQueryPort pickupPort;
     /** 解析「这笔钱打给哪个收款号」—— 门店配的号 ?? 主体默认号，口径只有那一处 */
@@ -91,15 +90,18 @@ public class SettleServiceImpl implements SettleService {
     /**
      * 向通道发退款要它。
      *
-     * <p><b>与 {@code gateway}（{@link SplitGateway}）不是一回事</b>：那个是分账侧的
+     * <p><b>与分账通道（{@link SplitGateway}，经 {@code splitSender}）不是一回事</b>：那个是分账侧的
      * 抽象，今天只有桩实现；这个是收单通道，退款走的是它
      * （微信直连 {@code /v3/refund/domestic/refunds}）。
      * 两者都叫「网关」，但一个动的是商家账户里的钱，一个动的是退给买家的钱。
      */
     private final ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter;
 
+    /** 分账指令的发送与留痕（幂等在它那一层） */
+    private final ai.neargo.shop.pay.settle.SplitInstructionSender splitSender;
+
     public SettleServiceImpl(BillMapper billMapper, SplitLogMapper splitLogMapper,
-                             SettleSourcePort sourcePort, SplitGateway gateway,
+                             SettleSourcePort sourcePort,
                              PickupQueryPort pickupPort,
                              ai.neargo.shop.spi.user.MerchantQueryPort merchantQueryPort,
                              ai.neargo.shop.pay.mapper.SettleMappers.PurchaseInvoiceMapper purchaseInvoiceMapper,
@@ -110,7 +112,9 @@ public class SettleServiceImpl implements SettleService {
                              PayChannelRateService channelRates,
                              ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper,
                              ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger,
-                             ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter) {
+                             ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter,
+                             ai.neargo.shop.pay.settle.SplitInstructionSender splitSender) {
+        this.splitSender = splitSender;
         this.gatewayRouter = gatewayRouter;
         this.paymentLedger = paymentLedger;
         this.batchMapper = batchMapper;
@@ -123,7 +127,6 @@ public class SettleServiceImpl implements SettleService {
         this.billMapper = billMapper;
         this.splitLogMapper = splitLogMapper;
         this.sourcePort = sourcePort;
-        this.gateway = gateway;
         this.pickupPort = pickupPort;
         this.merchantQueryPort = merchantQueryPort;
     }
@@ -653,6 +656,12 @@ public class SettleServiceImpl implements SettleService {
 
     @Override
     public String refund(String subOrderNo, long amountMinor, String reason) {
+        return refund(subOrderNo, afterSaleNoOf(subOrderNo), amountMinor, reason);
+    }
+
+    /** 幂等键 = 售后单号（5.2）：一张售后单一笔；旧签名固定用 {@code AS-子单号}，一张子单只能退一次。 */
+    @Override
+    public String refund(String subOrderNo, String afterSaleNo, long amountMinor, String reason) {
         /*
          * **落一行 REFUND 方向的流水**（S8 · 2026-09-02）。
          *
@@ -674,7 +683,7 @@ public class SettleServiceImpl implements SettleService {
             return null;
         }
         String refundNo = paymentLedger.refund(bill.getOrderNo(), subOrderNo,
-                afterSaleNoOf(subOrderNo), amountMinor, reason);
+                afterSaleNo, amountMinor, reason);
         if (refundNo == null) {
             return null;
         }
@@ -945,14 +954,6 @@ public class SettleServiceImpl implements SettleService {
      * <p>**失败也写日志**：「发过但失败了」和「压根没发」是完全不同的排查方向。
      */
     private boolean callProvider(String action, StlBill bill, String requestNo) {
-        boolean duplicated = DataScopeContext.executeWithoutScope(() ->
-                splitLogMapper.selectCount(Wrappers.<StlSplitLog>lambdaQuery()
-                        .eq(StlSplitLog::getRequestNo, requestNo)
-                        .eq(StlSplitLog::getResult, "SUCCESS"))) > 0;
-        if (duplicated) {
-            return true;
-        }
-
         /*
          * 补差走的是**补差额**，不是净额。
          *
@@ -964,41 +965,7 @@ public class SettleServiceImpl implements SettleService {
         boolean isSubsidy = StlSplitLog.SUBSIDY.equals(action)
                 || StlSplitLog.SUBSIDY_RETURN.equals(action);
         long amount = isSubsidy ? nz(bill.getSubsidyMinor()) : nz(bill.getNetMinor());
-        /*
-         * 收款号取**账单上的快照**，不是「这家店现在用哪个号」。
-         * 商家改号之后还没打的历史流水，仍要打进当初收款的那个账户 ——
-         * 退款尤其：从新账户扣，两个账户各错一笔且方向相反。
-         *
-         * 存量账单没有快照（V14 之前的行），落回主体默认号 —— 与它们生成时的行为一致。
-         */
-        String payTo = bill.getPayMerchantNo();
-        if (payTo == null || payTo.isBlank()) {
-            payTo = merchantQueryPort.payMerchantNoOf(bill.getEntityNo(), bill.getStoreNo()).orElse(null);
-        }
-        SplitGateway.Result result = switch (action) {
-            case StlSplitLog.REVERSE -> gateway.reverse(bill.getSubOrderNo(), payTo, amount, requestNo);
-            case StlSplitLog.SUBSIDY -> gateway.subsidy(bill.getSubOrderNo(), payTo, amount, requestNo);
-            case StlSplitLog.SUBSIDY_RETURN ->
-                    gateway.subsidyReturn(bill.getSubOrderNo(), payTo, amount, requestNo);
-            default -> gateway.split(bill.getSubOrderNo(), payTo, amount, requestNo);
-        };
-
-        StlSplitLog entry = new StlSplitLog();
-        entry.setSettleNo(bill.getSettleNo());
-        entry.setSubOrderNo(bill.getSubOrderNo());
-        entry.setSplitAction(action);
-        entry.setAmountMinor(amount);
-        // 失败的指令也要有唯一 requestNo，但不能挡住重试 —— 加时间戳后缀
-        entry.setRequestNo(result.success() ? requestNo
-                : requestNo + "-F" + System.currentTimeMillis());
-        entry.setResult(result.success() ? "SUCCESS" : "FAILED");
-        entry.setProviderNo(result.providerNo());
-        entry.setMessage(result.message());
-        entry.setAt(System.currentTimeMillis());
-        entry.setTenantNo("MAIN");
-        entry.setCreatedAt(LocalDateTime.now());
-        DataScopeContext.executeWithoutScope(() -> splitLogMapper.insert(entry));
-        return result.success();
+        return splitSender.send(action, bill, requestNo, amount);
     }
 
     /**

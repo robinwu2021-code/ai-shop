@@ -243,6 +243,15 @@ public class StlBill extends BaseEntity {
     private Long splitAmountMinor;
 
     /**
+     * 已退货款累计（分，买家实付口径，不含运费）。口径 A 按「累计已退 ÷ 商品实付」算各项份额，
+     * 每笔退款都以它为 CAS 前值（V405，集群规则 R2）。
+     */
+    private Long refundedGoodsMinor;
+
+    /** 已经经通道按额回退的商家所得累计（分）。分账前的部分退款只扣减金额，不计入这里。 */
+    private Long reversedMinor;
+
+    /**
      * 这笔钱是<b>哪家店</b>挣的（{@code ord_sub_order.store_no} 快照）。
      *
      * <p>纯统计维度：门店经营报表按它聚合。<b>它不决定钱打给谁</b> ——

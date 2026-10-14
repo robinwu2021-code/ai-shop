@@ -85,6 +85,21 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 
 契约：V404（`ord_item` +3 列、`ord_sub_order` +3 列、新表 `ord_after_sale_item`）；`refund_progress` 取值域 5.7 下发前登记 DISMISSED。
 
+### 5.2 / 5.3 退款单号按售后单 · 分账按额回退（结算口径 A）
+
+| AC | 需求 | 落点 |
+|---|---|---|
+| AC23 | 退款幂等键 = 售后单号（同一子单第二张售后能真的退出钱）；旧签名保留并委托新签名 | `SettlePort.refund(sub, afterSaleNo, amount, reason)` |
+| AC24 | 口径 A：商家所得 / 佣金 / 服务费 / 补贴按「累计已退货款 ÷ 商品实付」切分，分几次退完 Σ 恰等于总额；运费商家自寄由商家回退、平台代寄平台承担 | `pay/settle/refund/DefaultSettlementRefundPolicy` → `BillRefundShare` |
+| AC25 | 分账后：按额发回退（`REV-售后单号`）、补贴收回（`SUBR-售后单号`）；中途保持原状态，货款退完才转 REVERSED；通道失败 → 返回 false、转人工、不记账 | `PostSplitReverser` |
+| AC26 | 分账前：只扣减结算单各项金额，状态不变（余款照常分账）；退完才 REVERSED | `PreSplitAdjuster` |
+| AC27 | 同一售后单重放只落一次（R3）；以「已退货款累计 + 状态」为 CAS 前值，并发写 0 行即回滚（R1/R2） | `stl_bill_refund`（`uk(after_sale_no)`）+ `BillRefundMapper` |
+
+契约：V405（`stl_bill` +`refunded_goods_minor`/`reversed_minor`；新表 `stl_bill_refund`）；`SettlePort` +`reverseSplit(SplitReversal)` +`refund(…, afterSaleNo, …)`。
+调用方（`AfterSaleServiceImpl.doRefund`、运营端「分账回退」）在 5.5 切到新签名，此前行为不变。
+
+**存量排查（拍板项「10-11 以来的部分退款」，2026-10-14 生产只读查询）**：`ord_after_sale` 全库 3 行，唯一 REFUNDED 的一张是整单全退（100 / 100 分，结算单 REVERSED 正确），另两张在 ARBITRATING、结算单 PENDING_RECON 未动。**没有发生过部分退款，无需补回商家。**
+
 ## §5 对账三 · 实现 → 需求（测试）
 
 | AC | 测试 | 跑过 | 消融 |
@@ -112,6 +127,16 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 | AC17 | `TradeStatusGateFlowTest#interveneNonMonetaryOnly`（到 REFUNDED → 20004；到 COMPLETED 成功）；ops-web 722 绿 | ✅ | — |
 | AC18 | `TradeStatusGateFlowTest#prepareBlockedByOpenAfterSale`（付款成功只记一行流水） | ✅ | — |
 
+### 步 5（§2C）
+
+| AC | 测试 | 跑过 | 消融 |
+|---|---|---|---|
+| AC19–22 | `LineSharesTest`（5）+ `LineRefundDataFlowTest`（2，快照 Σ、完成时刻、V404 回填语句 H2 原文执行） | ✅ | 去掉快照写入 → 红 ✅ |
+| AC24 | `DefaultSettlementRefundPolicyTest`（6：三次分退 Σ 相等、1/3、运费两种模式、一次全退 = 旧整单回退额、0 元单、超退拒绝） | ✅ | 累计切分改逐笔下取整 → Σ 差 2 分红 ✅ |
+| AC25 | `SettlementPartialReverseTest#postSplitThreeInstallments` / `#channelFailureStopsRefund` | ✅ | 回退额改回整单 net → 红 ✅ |
+| AC26 | `SettlementPartialReverseTest#preSplitPartialKeepsSettleable` | ✅ | 部分退也标 REVERSED（旧行为）→ 红 ✅ |
+| AC27 | 同上（同一售后单重放） | ✅ | 去掉按售后单判重 → 唯一键撞出 DuplicateKey 红 ✅（唯一键是第二道兜底） |
+
 相关后端整组 855 绿。步 4 偏差：O7「商家标记送达」补上从 FULFILLING 出发（自送单「配送中」后送达，既有用例覆盖；方案 §3 与 MachineTablesTest 同步改）。
 全量闸门第一轮又撞出两处，均为**老行为本来允许、新机器漏了**：
 - O8「买家确认收货」补上从 WAIT_FULFILL 出发 —— 微信购物订单的「确认收货」组件不等我们标发货（`M4FulfillmentFlowTest#confirmReceipt`、`ReviewStoreAttributionFlowTest`）。
@@ -132,3 +157,9 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 | `MybatisPlusConfig` 改动（§2 未列） | 同上；顺带确认 `ShipmentMapper`（V401）早已被全局 BaseMapper 扫描收进，注释里「待纳入」已过时 |
 | 售后写路径仍是 `setStatus + updateById` | 步 3 只用新状态机**判**合法性；改走门（CAS）在步 5，与行级退款一起 |
 | 提醒去重按流水标签计数 | 一次合跑中出现过一次重复提醒，单跑与复跑均未复现；原因未定位（怀疑并发扫描），记为待查 |
+| 5.4 / 5.3 提交 | `fe84deaa3`（V404 + 下单快照 + 完成时刻）、`a0a2235a8`（退款领域对象）、`2de5746a8`（RefundLedger）；5.2/5.3 见本节下一提交 |
+| `BillRefundShare` 比对象模型多 6 个字段 | 对象模型只列了商家回退 / 补贴 / 运费 / 是否最后一笔；分账前要把基数、佣金、服务费、积分服务费、积分成本一起扣，份额必须带全 |
+| `SplitReversal` 多一个 `goodsPaidMinor` | 对象模型签名是四参；结算单上没有平台优惠这一项，反推不出商品实付，由调用方（手里有子单）传入 |
+| 新表 `stl_bill_refund`（对象模型未列） | 分账前的退款不发通道指令，没有 `requestNo` 可以判重；R3 要一个按售后单号唯一的落点，同时是「部分退款回退了多少」的唯一出处 |
+| 抽出 `SplitInstructionSender` | `SettleServiceImpl#callProvider` 的金额写死在里面，按额回退要换金额；抽出后原方法只算金额再委托（行为不变） |
+| 遗留：分账指令金额口径 | `callProvider` 分账 / 回退都用 `netMinor`，而 `splitAmountMinor` 注释写「分账指令以它为准（= 平台应收）」—— 今天底下是桩网关，口径未生效；**接真分账通道前要先定**。按额回退沿用 `netMinor` 口径，一次全退的金额与旧整单回退逐分相同 |

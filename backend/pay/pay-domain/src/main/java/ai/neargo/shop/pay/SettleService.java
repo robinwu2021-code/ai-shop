@@ -172,6 +172,9 @@ public interface SettleService {
     /** 原路退款。返回退款单号 */
     String refund(String subOrderNo, long amountMinor, String reason);
 
+    /** 同上，幂等键 = 售后单号（一张售后单一笔退款）。 */
+    String refund(String subOrderNo, String afterSaleNo, long amountMinor, String reason);
+
     /**
      * @param storeNos 门店作用域。<b>空集合不等于不过滤</b> —— 与订单侧同一个越权陷阱；
      *                 单店主体一律不收窄（存量流水没有 store_no，一筛就全没了）

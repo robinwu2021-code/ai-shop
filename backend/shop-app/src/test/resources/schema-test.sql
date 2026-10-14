@@ -1022,6 +1022,8 @@ CREATE TABLE IF NOT EXISTS stl_bill
     freight_ship_mode VARCHAR(32) NULL,
     freight_diff_reason VARCHAR(32) NULL,
     payout_no VARCHAR(64) DEFAULT NULL,
+    refunded_goods_minor BIGINT(20) NOT NULL DEFAULT 0,
+    reversed_minor       BIGINT(20) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
@@ -4780,6 +4782,26 @@ CREATE TABLE IF NOT EXISTS ord_after_sale_item
     deleted       TINYINT(4)  NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_after_sale_item UNIQUE (after_sale_no, item_id)
+);
+
+CREATE TABLE IF NOT EXISTS stl_bill_refund
+(
+    id                     BIGINT(20)  NOT NULL AUTO_INCREMENT,
+    settle_no              VARCHAR(40) NOT NULL,
+    sub_order_no           VARCHAR(40) NOT NULL,
+    after_sale_no          VARCHAR(40) NOT NULL,
+    goods_minor            BIGINT(20)  NOT NULL DEFAULT 0,
+    freight_minor          BIGINT(20)  NOT NULL DEFAULT 0,
+    merchant_reverse_minor BIGINT(20)  NOT NULL DEFAULT 0,
+    subsidy_return_minor   BIGINT(20)  NOT NULL DEFAULT 0,
+    platform_cut_minor     BIGINT(20)  NOT NULL DEFAULT 0,
+    pre_split              TINYINT(4)  NOT NULL DEFAULT 0,
+    final_refund           TINYINT(4)  NOT NULL DEFAULT 0,
+    at                     BIGINT(20)  NOT NULL,
+    tenant_no              VARCHAR(32) DEFAULT NULL,
+    created_at             DATETIME    DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_stl_bill_refund UNIQUE (after_sale_no)
 );
 
 -- 种子数据
