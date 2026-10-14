@@ -226,7 +226,8 @@ export const FIELDS = [
     backend: {
       javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/entity/OrdAfterSale.java",
       // 同一个类里还放着 type 列的取值（REFUND_ONLY 等），按名字排掉
-      only: ["APPLIED", "REFUNDING", "WAIT_RECEIPT", "REFUNDED", "REJECTED", "ARBITRATING", "CLOSED"],
+      only: ["APPLIED", "WAIT_RETURN", "RETURNING", "REFUNDING", "WAIT_RECEIPT", "REFUNDED", "REJECTED",
+        "ARBITRATING", "CLOSED"],
     },
     clients: [
       { file: SHARED_TYPES, type: "AfterSaleStatus" },

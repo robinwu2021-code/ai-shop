@@ -235,9 +235,11 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     words: ["SUBMITTED", "WITHDRAWN"],
     note: "平台活动报名单（另有 L1 的 APPROVED / REJECTED）。审核通过的那一刻带条件占平台预算；只有 SUBMITTED 能审、能撤" },
   { decl: "shared:AfterSaleStatus", dom: "core", shape: "STATUS", verdict: "OK",
-    words: ["APPLIED", "REFUNDING", "WAIT_RECEIPT", "REFUNDED", "ARBITRATING"],
-    note: "WAIT_RECEIPT 申报为领域特有词：仅退款在「已揽收未签收」审核通过后在此等签收（售后规则 §2.3）——"
-      + "L1 表里没有能表达「已同意、但货在途、等签收才退钱」这一档的通用词" },
+    words: ["APPLIED", "WAIT_RETURN", "RETURNING", "REFUNDING", "WAIT_RECEIPT", "REFUNDED", "ARBITRATING"],
+    note: "WAIT_RECEIPT 申报为领域特有词：仅退款货在途、商家已同意，签收后由商家确认退款（售后规则 §2.3）——"
+      + "L1 表里没有能表达「已同意、但货在途」这一档的通用词。"
+      + "WAIT_RETURN / RETURNING（TDD-订单状态机 AC9）：退货的「等买家寄回」「已寄回待商家确认收货」，"
+      + "此前混在 REFUNDING 里靠运单号有无去猜；L1 只有通用的 PENDING / PROCESSING，说不出是谁在等什么" },
   { decl: "shared:RefundMode", dom: "core", shape: "CLASS", verdict: "OK",
     note: "售后退款形式：CASH 原路退现金 / POINTS 折积分补偿（售后规则 §2.4，AC10）。与后端 OrdAfterSale.REFUND_MODE_* 一致" },
   { decl: "shared:InvoiceRequestStatus", dom: "core", shape: "STATUS", verdict: "OK",
@@ -301,8 +303,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
   { decl: "ops-web:AfterSaleType", dom: "aftersale", shape: "CLASS", verdict: "PLANNED",
     note: "多一个 EXCHANGE，一期不做换货" },
   { decl: "ops-web:AfterSaleStatus", dom: "aftersale", shape: "STATUS", verdict: "OK",
-    words: ["APPLIED", "REFUNDING", "WAIT_RECEIPT", "ARBITRATING", "REFUNDED"],
-    note: "WAIT_RECEIPT：待收货后退款，与 shared / 后端同义（售后规则 §2.3）" },
+    words: ["APPLIED", "WAIT_RETURN", "RETURNING", "REFUNDING", "WAIT_RECEIPT", "ARBITRATING", "REFUNDED"],
+    note: "WAIT_RECEIPT / WAIT_RETURN / RETURNING：与 shared / 后端同义（见 shared:AfterSaleStatus）" },
   { decl: "ops-web:Liability", dom: "aftersale", shape: "CLASS", verdict: "PLANNED",
     note: "PLATFORM/MERCHANT/PICKUP 三方定责，后端 ord_after_sale 有 liability 列但没有取值常量 —— 后端补常量时按这三个定" },
   { decl: "ops-web:PickupPointType", dom: "community", shape: "CLASS", verdict: "OK" },

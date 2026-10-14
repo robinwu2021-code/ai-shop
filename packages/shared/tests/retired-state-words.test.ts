@@ -37,7 +37,6 @@ const SRC = join(ROOT, "packages/shared/src");
  */
 const RETIRED: Record<string, string> = {
   AGREED: "AfterSaleStatus 的 REFUNDING（同意后只有一段，含等寄回）",
-  RETURNING: "同上 —— 后端没有把「寄回中」做成独立状态",
   DISPUTED: "AfterSaleStatus 的 ARBITRATING",
   PREPARING: "OrderStatus 的 PAID —— 后端付款后没有独立备货态",
   ARRIVED: "OrderStatus 的 FULFILLING —— 送法移到 fulfillment 表达",
@@ -47,7 +46,6 @@ const RETIRED: Record<string, string> = {
 /** 今天的出现次数。**只降不升** —— 修一处就把对应数字改小。 */
 const BASELINE: Record<string, number> = {
   AGREED: 5,
-  RETURNING: 3,
   DISPUTED: 4,
   PREPARING: 2,
   ARRIVED: 2,
