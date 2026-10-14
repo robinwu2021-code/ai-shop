@@ -57,12 +57,30 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 
 | AC | 测试 | 跑过 | 消融 |
 |---|---|---|---|
-| AC1–2 | `StateMachineTest` | | 撤执行者校验 → 红 |
-| AC3 | `PaymentMachineTest` / `OrderMachineTest` / `ShipmentMachineTest` / `AfterSaleMachineTest`（表内正例 + 全量反例枚举） | | 删一行迁移 → 红 |
-| AC4 | `MachineInvariantsTest` | | 加一条 SYSTEM→REFUNDING → 红 |
-| AC5 | `StateTransitionGateTest`（假存储：CAS 失败、流水、联动） | | 撤 CAS → 红 |
-| AC6–10 | `M5AfterSaleFlowTest` / `AfterSaleTimeoutFlowTest` 改写 + 新用例 | | 恢复自动同意 → 红 |
-| AC11 | `vue-tsc` + i18n 闸门 + c-app / b-app 单测 | | — |
-| AC12 | `OrderStateMachineCompatTest`（新旧图逐边相等，差异白名单） | | — |
+| AC1–2 | `StateMachineTest`（10） | ✅ | — |
+| AC3 | `MachineTablesTest`（四台机器与文档迁移表全集相等）+ `MachineBehaviorTest`（10，分流与守卫） | ✅ | 给 APPROVE 加 SYSTEM → 表测试与 I1 同时红 ✅ |
+| AC4 | `MachineInvariantsTest`（I1 退款永不自动 / I3 终态 / I4 可达与不卡死） | ✅ | 同上 ✅ |
+| AC5 | `StateTransitionGateTest`（6，假存储）+ `StateTransitionStoreTest`（4，H2 真库：两线程 CAS 恰一方成功、V402 列、四表 SQL、列宽） | ✅ | 去掉 `AND status = #{from}` → 并发用例红 ✅ |
+| AC6 | `AfterSaleTimeoutFlowTest#overdueOnlyReminds`（超时只提醒、24h 内不重复、到点可申请介入）+ `#grayStageNotAutoApproved` | ✅ | `remindOverdue` 改回 `doRefund` → 两条红 ✅ |
+| AC7 | `AfterSaleTimeoutFlowTest#returnFlowNeverAutoRefunds` | ✅ | — |
+| AC8 | `M5AfterSaleFlowTest#signed_reminds_then_merchant_confirms`（签收不退、`/confirm-refund` 才退） | ✅ | `settleOnReceipt` 改回 `doRefund` → 红 ✅ |
+| AC9 | `AfterSaleTimeoutFlowTest#closeWhenBuyerNeverShips` / `#returnFlowNeverAutoRefunds`（WAIT_RETURN → RETURNING）；V403 | ✅ | — |
+| AC10 | `AfterSaleTimeoutFlowTest#overdueOnlyReminds`（canEscalate 前 false 后 true、escalate 成功）；`M5#rejectThenEscalate` | ✅ | — |
+| AC11 | c-app `order-page.test.ts`（WAIT_RETURN 给填单号、REFUNDING 不给；canEscalate 决定介入按钮）491 绿；b-app 187 绿；ops-web 722 绿；三端 `vue-tsc` / `tsc` 通过 | ✅ | — |
+| AC12 | `OrderStateMachineTest`（售后图由新机器导出；ARBITRATING→REFUNDED 直达边按设计去掉，用例改为 →REFUNDING） | ✅ | — |
 
-## §6 对账二 · 设计 → 实现（实现完再填）
+## §6 对账二 · 设计 → 实现
+
+| 提交 | 内容 |
+|---|---|
+| `538197842` | 步 1：`statemachine/` 8 类 + `machine/{payment,order,shipment,aftersale}` 16 类 + 3 份测试；ErrorCode 20012/20013 四处登记 |
+| `d9f782626` | 步 2：`transition/` 门 + 接口 + `impl/` 两个实现 + `StatusCasMapper` + V402 + `OrdStatusLog` 4 字段 + `MybatisPlusConfig` 注解扫描登记 |
+| `a0aa3889a` | 步 3：售后服务 / 接口 / 实体 / VO / 作业 / 控制器 / 状态机兼容图 / 两处未闭环集合 + V403 + 三端 |
+
+| 差异 | 说明 |
+|---|---|
+| §2 写「`transition/` 含 `CascadeRules`」 | **未做**：同事务联动要在步 4（支付单写路径接门）才有第一个用户；先放空接口会变成没人调的死代码 |
+| 新增 `StatusCasMapper`（§2 未列） | 不拼表名：四张表各一对显式 SQL；它不继承 BaseMapper，需登记进注解扫描 |
+| `MybatisPlusConfig` 改动（§2 未列） | 同上；顺带确认 `ShipmentMapper`（V401）早已被全局 BaseMapper 扫描收进，注释里「待纳入」已过时 |
+| 售后写路径仍是 `setStatus + updateById` | 步 3 只用新状态机**判**合法性；改走门（CAS）在步 5，与行级退款一起 |
+| 提醒去重按流水标签计数 | 一次合跑中出现过一次重复提醒，单跑与复跑均未复现；原因未定位（怀疑并发扫描），记为待查 |
