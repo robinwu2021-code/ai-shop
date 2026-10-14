@@ -363,6 +363,8 @@ export interface ShopApi {
   payMethods(orderNo: string): Promise<PayMethodList>;
   /** 发起支付。**带上选中的通道** —— 不传时后端按商家所在市场挑一个 */
   payOrder(orderNo: string, payChannel?: string): Promise<PayInit>;
+  /** 服务端确认的支付主单结果，不以通道交互判定成功。 */
+  payResult(orderNo: string): Promise<Order>;
   /**
    * 订单列表。**`status` 与 `fulfillments` 正交**：前者是抽象状态、后者是履约方式，
    * 页签由两者组合成谓词（「待取货」= FULFILLING + 自提类）。

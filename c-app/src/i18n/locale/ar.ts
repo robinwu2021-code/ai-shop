@@ -724,6 +724,13 @@ export default {
     submitting: "جارٍ الإرسال…",
   },
   pay: {
+    pendingOffline: "بانتظار تأكيد المتجر لاستلام الدفع",
+    orderCancelled: "تم إلغاء الطلب",
+    orderRefunded: "تم رد مبلغ الطلب",
+    confirmPending: "تأكيد الدفع قيد الانتظار. حدّث بعد قليل.",
+    refreshResult: "تحديث نتيجة الدفع",
+    unknownResult: "نتيجة الدفع غير متاحة",
+
     verifyCodeStore: "رمز الاستخدام",
     noUsableMethod: "لا تتوفر طريقة دفع لمتاجر هذا الطلب",
     methodFallback: "سيتم تأكيد طريقة الدفع في الخطوة التالية",

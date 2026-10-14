@@ -191,6 +191,7 @@ export const httpApi: ShopApi = {
   // ---- 交易
   createOrder: (req: CreateOrderReq) => call<Order>("createOrder", undefined, { ...req } satisfies CreateOrderReqBody),
   payMethods: (orderNo) => call<PayMethodList>("payMethods", { orderNo }),
+  payResult: (orderNo) => call<Order>("payResult", { orderNo }),
   payOrder: (orderNo, payChannel) => call<PayInit>("payOrder", { orderNo }, { payChannel }),
   orderList: (q: PageQuery & { status?: string }) =>
     call<PageResult<Order>>("orderList", undefined, { ...q } satisfies OrderListQuery),

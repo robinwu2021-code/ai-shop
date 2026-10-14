@@ -724,6 +724,13 @@ export default {
     submitting: "Placing…",
   },
   pay: {
+    pendingOffline: "Awaiting payment confirmation by the store",
+    orderCancelled: "Order cancelled",
+    orderRefunded: "Order refunded",
+    confirmPending: "Payment confirmation pending. Refresh shortly.",
+    refreshResult: "Refresh payment result",
+    unknownResult: "Payment result unavailable",
+
     verifyCodeStore: "Redemption code",
     noUsableMethod: "No payment method is available for the stores in this order",
     methodFallback: "Payment method will be confirmed next",

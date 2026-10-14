@@ -71,6 +71,11 @@ function generatorFor(file) {
 }
 
 let schemas = { ...collectAll(typesFile), ...collectAll(reqFile) };
+// 支付协议声明在 C 端合同中，响应不能引用共享类型里不存在的组件。
+for (const name of ["PayInit", "PayMethodList"]) {
+  const schema = generatorFor(path.resolve(root, "src/api/contract.ts")).createSchema(name);
+  Object.assign(schemas, schema.definitions ?? {});
+}
 
 if (!Object.keys(schemas).length) {
   console.error("没有抽出任何 schema，检查类型文件路径");
@@ -200,7 +205,8 @@ const RESPONSE_TYPES = {
   cartUpdate: "CartItem[]",
   cartRemove: "CartItem[]",
   createOrder: "Order",
-  payOrder: "Order",
+  payOrder: "PayInit",
+  payResult: "Order",
   orderList: "PageResult<Order>",
   orderDetail: "Order",
   orderTrace: "ShipmentTrace",
@@ -520,7 +526,7 @@ function toYaml(value, indent = 0) {
 }
 
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
-fs.writeFileSync(outFile, `# 自动生成，请勿手改（npm run gen:api）${toYaml(doc)}\n`, "utf8");
+fs.writeFileSync(outFile, `# 自动生成，请勿手改（npm run gen:api）${toYaml(doc)}\n`.replace(/[ \t]+$/gm, ""), "utf8");
 
 const opCount = Object.values(paths).reduce((n, p) => n + Object.keys(p).length, 0);
 console.log(`✅ ${outFile}`);

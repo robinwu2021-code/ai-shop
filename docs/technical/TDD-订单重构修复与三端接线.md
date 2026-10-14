@@ -247,15 +247,15 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PA
 
 #### F05：收银台粒度、结果与有界回查
 
-**修改：** `c-app/src/pages/pay/index.vue`、`c-app/src/api/{contract,http,endpoints}.ts`、`c-app/src/api/mocks/trade.ts`、三语 locale；**新增：** `c-app/tests/pay-page.test.ts`，必要时 `c-app/src/shared/payment-result.ts`。
+**修改：** `c-app/src/pages/pay/index.vue`、`c-app/src/api/{contract,http,endpoints}.ts`、`c-app/src/api/mocks/trade.ts`、三语 locale、`c-app/scripts/gen-openapi.mjs`；**新增：** `c-app/tests/pay-page.test.ts`、`c-app/tests/payment-mock.test.ts`，必要时 `c-app/src/shared/payment-result.ts`。
 
 **接口：** 补 `payResult(payOrderNo:string):Promise<Order>`，复用后端现有端点和现有 Order/PayInit。先取详情，再按 payOrderNo 重取支付视角；支付方法/付款/回查统一使用该号。
 
-- [ ] 挂载页面：子单1000+兄弟单2000，断言金额3000及两店，所有支付调用均用主单号。WAIT_OFFLINE_PAY/CANCELLED/REFUNDED均不显示支付成功；零元 settled 不调用 requestPayment。
-- [ ] 运行 `npm run test -w ai-shop-c-app -- tests/pay-page.test.ts tests/order-page.test.ts tests/one-tap-pay.test.ts`，确认旧金额/状态行为失败，不能只用源码扫描代替挂载测试。
-- [ ] `paymentPhase` 显式区分待支付、待收款、确认中、成功、取消、退款、未知；支付交互成功后串行回查，拟延迟1/1/2/3/5秒，共5次、最多12秒。超时显示待确认与手动刷新，不自动再次发起付款。
-- [ ] fake timers 验证 WAIT_PAY→WAIT_PAY→PAID 收敛、达到上限/隐藏/卸载停止请求、旧请求不覆盖新单；保留订阅授权在回查 await 之前，确认付款后才清 checkout key。
-- [ ] 类型检查与实际多店/延迟结果预览通过、精确提交。运营取消抽屉等待 F04 合同，单独修改 `ops-web/app/orders/proxy-tab.tsx` 展示全部已授权影响集合。
+- [x] 挂载页面：子单1000+兄弟单2000，断言金额3000及两店，所有支付调用均用主单号。WAIT_OFFLINE_PAY/CANCELLED/REFUNDED均不显示支付成功；零元 settled 不调用 requestPayment。
+- [x] 运行 `npm run test -w ai-shop-c-app -- tests/pay-page.test.ts tests/order-page.test.ts tests/one-tap-pay.test.ts`，确认旧金额/状态行为失败，不能只用源码扫描代替挂载测试。
+- [x] `paymentPhase` 显式区分待支付、待收款、确认中、成功、取消、退款、未知；支付交互成功后串行回查，拟延迟1/1/2/3/5秒，共5次、最多12秒。超时显示待确认与手动刷新，不自动再次发起付款。
+- [x] fake timers 验证 WAIT_PAY→WAIT_PAY→PAID 收敛、达到上限/隐藏/卸载停止请求、旧请求不覆盖新单；保留订阅授权在回查 await 之前，确认付款后才清 checkout key。
+- [x] 类型检查与实际多店/延迟结果预览通过、精确提交。运营取消抽屉等待 F04 合同，单独修改 `ops-web/app/orders/proxy-tab.tsx` 展示全部已授权影响集合。
 
 #### F06：结算原始基数，先写不切读
 
@@ -441,10 +441,10 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PA
 #### M01：先拆订单Mapper和规则归属，不迁顶层包
 
 **修改：** `T/mapper/TradeMappers.java`及B00列出的引用方；`T/service/{OrderStateMachine,OrderStatusView,AfterSaleRules,FulfillStage}.java`。
-**新增/提取到：** `O/mapper/{PaymentMapper,StoreOrderMapper,OrderItemMapper,OrderStatusLogMapper,AfterSaleMapper,InvoiceRequestMapper,ShippingUploadMapper,ExpressPickupMapper,SeqMapper}.java`；规则到`O/policy/{LegacyOrderStateCompatibility,AfterSaleRules,FulfillStage}.java`。已有O/mapper中Shipment/行级退款/状态CAS Mapper复用。
+**新增/提取到：** `O/mapper/{PaymentMapper,StoreOrderMapper,OrderItemMapper,OrderStatusLogMapper,AfterSaleMapper,InvoiceRequestMapper,ShippingUploadMapper,ExpressPickupMapper,SeqMapper}.java`；规则到`O/policy/{LegacyOrderStateCompatibility,LegacyOrderStatusView,AfterSaleRules,FulfillStage}.java`。已有O/mapper中Shipment/行级退款/状态CAS Mapper复用。
 **测试：** 既有`IT/StateTransitionStoreTest.java`、`IT/LineRefundDataFlowTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/arch/MapperSmokeTest.java`；拟新增`IT/OrderMapperOwnershipFlowTest.java`。
 
-**合同：** SQL、@TableName、版本、数据域和预约释放CAS保持原义；TradeMappers最终只保留CartItemMapper，订单Mapper同表只有一套生产实现。旧状态兼容仅负责历史值和入口映射，不建立第二套事件/守卫政策。
+**合同：** SQL、@TableName、版本、数据域和预约释放CAS保持原义；TradeMappers最终只保留CartItemMapper，订单Mapper同表只有一套生产实现。旧状态兼容仅负责既有历史迁移表和入口映射，不新增第二套事件/守卫政策；OrderStateMachine/OrderStatusView旧类保留薄委托，规则只在O/policy一份。AfterSaleRules/FulfillStage连同用例表测试移到O/policy，枚举对账脚本指向真实常量定义。
 
 - [ ] 新测试`orderMappersUsePlatformFactoryAndSameRows`：旧夹具数据通过新Mapper读取一致，预约释放重复只一次；`everyOrderMapperHasOneBean`断言无重复装配或遗漏。
 - [ ] 运行`OrderMapperOwnershipFlowTest,MapperSmokeTest,StateTransitionStoreTest,LineRefundDataFlowTest`；新增装配断言先红，单纯移动的等价断言作为回归基线先记录绿。
@@ -567,6 +567,7 @@ ShipCommand改为`List<Long> itemIds`，查真实行ID且校验订单归属，�
 | F01 | PaymentLedgerRefundCallbackTest（3）+ChannelPayCallbackFlowTest（14）；初始业务红1/17，恢复修复后绿17/17；PAY方向消融红1/3 | 红→绿及消融通过；独立review无Critical/Important | 真实退款行、重复成功时间、未知/PAY拒认领、付款人写入方向 |
 | F02 | 原收货7+新增故障/外层回滚/待签收售后/未知占槽4+Architecture16；流水故障红1/8；移除事务红1/1；外层回滚红1/2后改REQUIRES_NEW；最终相关集合38/38 | 红→绿及消融通过；独立review及复核无剩余问题 | 坏单回滚、好单继续、调用方回滚不撤销单笔完成 |
 | F03 | PrepareFactFlowTest2+TradeStatusGateFlowTest3；红2/5；PREPARE旁路消融红2/2；最终相关集合38/38 | 红→绿及消融通过；独立review及复核无剩余问题 | 双读者并发只一条流水/版本；重放不变；售后占槽拒绝 |
+| F05 | 挂载红9/36；review新增生命周期及真实mock红5/19；修复后C全量77类510/510、指定45/45；错误成功状态消融红2/17；vue-tsc、小程序build、API生成、277界面清单检查通过 | 红→绿及消融通过；独立review问题均关闭 | 主单金额/号、取消退款不报成功、零元、五次回查/刷新、隐藏返回/迟到/旧路由、真实mock取消/金额 |
 | B00 | baseline-selectors.txt列出的37类；JDK21离线Maven -pl shop-app -am | 222条，失败0/错误0/跳过0；BUILD SUCCESS | df2adc641的订单内核与相关场景，不计作新修复验收 |
 
 RF01–RF20 的测试责任和具体反例映射到§2.5，DEV01–DEV08映射到§2.6。已完成批次的实际红/绿输出、消融结果和范围见上表；其他新增场景仍待执行。§1.3的222条是当前实现定向基线，不是开发批次的验收通过记录。
@@ -579,10 +580,12 @@ F01提交`f031043f4`：PaymentLedgerServiceImpl方向查询重载、shop-app的P
 
 F02提交`cf6280783`，由独立真实装配故障测试补充旧收货场景；StatusCasMapper补锁当前订单/售后槽号查询。公共完成器使用REQUIRES_NEW而非默认REQUIRED，外层回滚反例已验证。独立review发现WAIT_RECEIPT被过宽阻断，新增Job回归后恢复原自动签收与商家提醒，保持售后状态且不自动退款；未知占槽仍阻断。严格占槽条件消融业务红1/4，恢复后38/38绿。F03使用真实事务屏障测试替代拟议纯内核测试，锁后重读事实、条件写成功才记流水，仅改变PREPARE路径，其他原地事件不受影响。
 
+F03提交`cfbfd3bf4`。F05补payment-result辅助类、两个挂载/真实mock测试文件及API生成映射。API生成器同时消除既有YAML行尾空白，生成文件的大部分差异仅为空白归一化。PayInit/PayMethodList从真实C合同导出，pay-result复用后端现有端点；无需新增后端DTO。独立review发现外部收银台隐藏期间交互结果丢失、mock主单取消失败及参数只算首单，新增反例后修复并复核通过。本地mock预览通过待支付单、多店1000+2000=3000、确认中及第三次回查成功；临时预览夹具已移除。真实微信/App支付未执行，不把本地演示记为真机资金验证。
+
 后续按批记录 `git show --stat`，与修改/新增文件逐项核对；新增辅助类、字段或接口先更新设计，不让实现与本篇分叉。
 
 ## §7 本轮交付与下一步
 
-开发计划共7阶段、26个唯一批次，B00/F01/F02/F03已完成，F05实施中，其余待实施。用户已授权基于本计划开发；未确定的供应商资金账户/权限及新积分能力保持关闭，新入口按批次验证和能力门槛启用。
+开发计划共7阶段、26个唯一批次，B00/F01/F02/F03/F05已完成，M01实施中，其余待实施。用户已授权基于本计划开发；未确定的供应商资金账户/权限及新积分能力保持关闭，新入口按批次验证和能力门槛启用。
 
 计划制定时的文档验证：3份文档、551个本地链接、代码围栏和空白检查通过，7阶段/26个唯一批次、RF01–RF20与DEV01–DEV08完整，旧订单TDD的§5/§6记录保持原文。字段/接口一致性及依赖无环已核对；开发后的业务测试与实现证据追加到§5/§6。

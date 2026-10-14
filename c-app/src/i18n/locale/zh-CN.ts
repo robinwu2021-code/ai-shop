@@ -787,6 +787,13 @@ export default {
     submitting: "提交中…",
   },
   pay: {
+    pendingOffline: "待商家确认收款",
+    orderCancelled: "订单已取消",
+    orderRefunded: "订单已退款",
+    confirmPending: "支付结果确认中，请稍后刷新",
+    refreshResult: "刷新支付结果",
+    unknownResult: "暂时无法确认支付结果",
+
     verifyCodeStore: "核销码",
     noUsableMethod: "本单中的店铺暂无可用的支付方式，请联系客服",
     methodFallback: "支付方式将在下一步确认",
