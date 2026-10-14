@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1660" height="1475" viewBox="0 0 1660 1475"><title>积分模块类图 · 种类账户与预留</title><desc>由积分模块图契约JSON生成，UML组合/关联/依赖/接口实现，目标设计非Java源码反射。</desc>
+<defs><marker id="point" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker><marker id="money" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#c2410c"/></marker><marker id="dep" markerWidth="10" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9" fill="none" stroke="#64748b"/></marker><marker id="real" markerWidth="13" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0 0L12 6L0 12Z" fill="white" stroke="#475569"/></marker><marker id="diamond" markerWidth="15" markerHeight="10" refX="14" refY="5" orient="auto-start-reverse"><path d="M0 5L7 0L14 5L7 10Z" fill="#475569"/></marker></defs>
+<rect width="1660" height="1475" fill="#f8fafc"/>
+<text x="35" y="48" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="29" fill="#172554" font-weight="650" text-anchor="start">积分模块类图 · 种类账户与预留</text>
+<text x="35" y="80" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">v3 目标设计 · pay-domain内独立业务模块 · payTxManager · 尚未按此设计实现</text>
+<text x="40" y="115" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">实线＝关联  ◆＝组合  虚线开放箭头＝依赖  空心三角＝接口实现；字段与方法为目标设计。</text>
+<path d="M490,304.0 L590,304.0" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-start="url(#diamond)" marker-end="url(#dep)"/>
+<path d="M1140,304.0 L490,304.0" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#dep)"/>
+<path d="M490,691.0 L534,691.0 L534,488 L265.0,488 L265.0,453" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#dep)"/>
+<path d="M590,691.0 L490,691.0" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#dep)"/>
+<path d="M1590,691.0 L1614,691.0 L1614,488 L265.0,488 L265.0,453" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#dep)"/>
+<path d="M490,1045.0 L590,1045.0" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#dep)"/>
+<rect x="40" y="155" width="450" height="298" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="56" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="56" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">PointType</text>
+<path d="M40 225H490" stroke="#2563eb" stroke-width="1"/>
+<text x="56" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">typeCode: String</text>
+<text x="56" y="272" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">market / currency: String</text>
+<text x="56" y="294" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">rate: RedeemRate</text>
+<text x="56" y="316" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">deductRatioBp / idleDays: int</text>
+<text x="56" y="338" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">status: ACTIVE | DRAINING | RETIRED</text>
+<path d="M40 354H490" stroke="#cbd5e1"/>
+<text x="56" y="378" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ activate()</text>
+<text x="56" y="400" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ startDrain()</text>
+<text x="56" y="422" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ retire()</text>
+<rect x="590" y="155" width="450" height="298" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="606" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«value»  pay.points.model</text>
+<text x="606" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">RedeemRate</text>
+<path d="M590 225H1040" stroke="#2563eb" stroke-width="1"/>
+<text x="606" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">pointsUnit / minorUnit: long</text>
+<path d="M590 266H1040" stroke="#cbd5e1"/>
+<text x="606" y="290" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ toMinor(points): long</text>
+<text x="606" y="312" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ floorAligned(points): long</text>
+<text x="606" y="334" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ requireAligned(points): void</text>
+<rect x="1140" y="155" width="450" height="298" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="1156" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="1156" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">HolderAccount</text>
+<path d="M1140 225H1590" stroke="#2563eb" stroke-width="1"/>
+<text x="1156" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">typeCode / holderNo: String</text>
+<text x="1156" y="272" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">holderType: HolderType</text>
+<text x="1156" y="294" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">buckets: Map&lt;Bucket, long&gt;</text>
+<text x="1156" y="316" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">frozen / expiryRevision</text>
+<path d="M1140 332H1590" stroke="#cbd5e1"/>
+<text x="1156" y="356" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ snapshot(): AccountSnapshot</text>
+<rect x="40" y="553" width="450" height="276" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="56" y="577" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="56" y="606" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">FundPool</text>
+<path d="M40 623H490" stroke="#2563eb" stroke-width="1"/>
+<text x="56" y="648" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">typeCode / currency</text>
+<text x="56" y="670" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">U / C / D / B: long</text>
+<text x="56" y="692" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">reservedBMinor: long</text>
+<text x="56" y="714" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">version: long</text>
+<path d="M40 730H490" stroke="#cbd5e1"/>
+<text x="56" y="754" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ freeB(): long</text>
+<text x="56" y="776" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ requireCovered(): void</text>
+<rect x="590" y="553" width="450" height="276" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="606" y="577" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="606" y="606" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">RefundReserve</text>
+<path d="M590 623H1040" stroke="#2563eb" stroke-width="1"/>
+<text x="606" y="648" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">reserveNo / positionNo</text>
+<text x="606" y="670" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">original / remainingMinor</text>
+<text x="606" y="692" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">consumed / releasedMinor</text>
+<text x="606" y="714" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">version</text>
+<path d="M590 730H1040" stroke="#cbd5e1"/>
+<text x="606" y="754" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ reserve(minor)</text>
+<text x="606" y="776" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ consume(minor)</text>
+<text x="606" y="798" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ release(minor)</text>
+<rect x="1140" y="553" width="450" height="276" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="1156" y="577" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="1156" y="606" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">MerchantAgreement</text>
+<path d="M1140 623H1590" stroke="#2563eb" stroke-width="1"/>
+<text x="1156" y="648" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">agreementNo / entityNo / typeCode</text>
+<text x="1156" y="670" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">docVersion / docDigest</text>
+<text x="1156" y="692" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">settleMode / settlePeriod</text>
+<text x="1156" y="714" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">signedBy / signedAt / status</text>
+<path d="M1140 730H1590" stroke="#cbd5e1"/>
+<text x="1156" y="754" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ snapshot(): AgreementSnapshot</text>
+<rect x="40" y="929" width="450" height="232" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="56" y="953" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="56" y="982" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">PointsSwitch</text>
+<path d="M40 999H490" stroke="#2563eb" stroke-width="1"/>
+<text x="56" y="1024" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">scopeType / scopeId</text>
+<text x="56" y="1046" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">issuePaused / redeemPaused</text>
+<text x="56" y="1068" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">reason / operatorNo</text>
+<path d="M40 1084H490" stroke="#cbd5e1"/>
+<text x="56" y="1108" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ pause(action)</text>
+<text x="56" y="1130" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ resume(action)</text>
+<rect x="590" y="929" width="450" height="232" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="606" y="953" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="606" y="982" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">PauseInterval</text>
+<path d="M590 999H1040" stroke="#2563eb" stroke-width="1"/>
+<text x="606" y="1024" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">scopeType / scopeId</text>
+<text x="606" y="1046" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">action / from / until</text>
+<text x="606" y="1068" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">affectedAvailability</text>
+<path d="M590 1084H1040" stroke="#cbd5e1"/>
+<text x="606" y="1108" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ unionDuration(intervals): long</text>
+<text x="40" y="1273" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="18" fill="#172554" font-weight="650" text-anchor="start">本图内关系（跨图关系及完整属性见图册与JSON契约）</text>
+<text x="40" y="1306" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PointType ◆── RedeemRate   兑换比例 1</text>
+<text x="40" y="1330" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">HolderAccount ── PointType   typeCode 1</text>
+<text x="40" y="1354" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">FundPool ── PointType   typeCode 1</text>
+<text x="40" y="1378" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">RefundReserve ── FundPool   预留覆盖 1</text>
+<text x="40" y="1402" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">MerchantAgreement ── PointType   受理种类 1</text>
+<text x="40" y="1426" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PointsSwitch ── PauseInterval   审计区间 0..*</text>
+</svg>

@@ -37,3 +37,6 @@ android-shell/app/src/*/assets/h5/
 
 # Android 本机 SDK 路径 —— 每台机器不同，进库只会互相覆盖
 android-shell/local.properties
+
+# Task-local implementation ledger
+.superpowers/

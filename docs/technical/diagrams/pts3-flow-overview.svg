@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1660" height="1140" viewBox="0 0 1660 1140"><title>完整积分流转总览</title><desc>五种持有方、用户与门店分格、接收户两格，展示返分、两种兑付、退款、责任解除及回流；细分资金动作见图册。</desc>
+<defs><marker id="point" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker><marker id="money" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#c2410c"/></marker><marker id="dep" markerWidth="10" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9" fill="none" stroke="#64748b"/></marker><marker id="real" markerWidth="13" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0 0L12 6L0 12Z" fill="white" stroke="#475569"/></marker><marker id="diamond" markerWidth="15" markerHeight="10" refX="14" refY="5" orient="auto-start-reverse"><path d="M0 5L7 0L14 5L7 10Z" fill="#475569"/></marker></defs>
+<rect width="1660" height="1140" fill="#f8fafc"/>
+<text x="35" y="48" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="29" fill="#172554" font-weight="650" text-anchor="start">完整积分流转总览</text>
+<text x="35" y="80" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">v3 目标设计 · pay-domain内独立业务模块 · payTxManager · 尚未按此设计实现</text>
+<text x="35" y="118" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="17" fill="#172554" font-weight="400" text-anchor="start">蓝色实线＝积分移动；橙色＝伴随资金；H的订单、退款、到期来源在头寸区分。</text>
+<rect x="35" y="195" width="285" height="130" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="35" y="195" width="6" height="130" rx="3" fill="#2563eb"/>
+<text x="51" y="224" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">MINT 发行登记</text>
+<text x="51" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">累计发行记负数</text>
+<text x="51" y="273" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">新增必须有真实备款</text>
+<rect x="355" y="195" width="285" height="130" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="355" y="195" width="6" height="130" rx="3" fill="#2563eb"/>
+<text x="371" y="224" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">ISSUE 平台发放户</text>
+<text x="371" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">可发积分 ↔ U 未分配</text>
+<text x="371" y="273" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">U不足整张子单停发</text>
+<rect x="675" y="195" width="285" height="130" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="675" y="195" width="6" height="130" rx="3" fill="#2563eb"/>
+<text x="691" y="224" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">USER.P 待生效</text>
+<text x="691" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">支付后获得，可见不可花</text>
+<text x="691" y="273" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">返分与本次核销是两侧</text>
+<rect x="995" y="195" width="285" height="130" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="995" y="195" width="6" height="130" rx="3" fill="#2563eb"/>
+<text x="1011" y="224" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">USER.A 可用</text>
+<text x="1011" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">结算终局只转剩余P</text>
+<text x="1011" y="273" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">可用于后续订单</text>
+<rect x="1315" y="195" width="285" height="130" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="1315" y="195" width="6" height="130" rx="3" fill="#2563eb"/>
+<text x="1331" y="224" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">USER.H 订单占用</text>
+<text x="1331" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">下单成功占用</text>
+<text x="1331" y="273" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">同时预留B退款额度</text>
+<rect x="35" y="600" width="285" height="145" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="35" y="600" width="6" height="145" rx="3" fill="#2563eb"/>
+<text x="51" y="629" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">RECEIVE 可回流</text>
+<text x="51" y="655" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">责任解除 / 已完成到期</text>
+<text x="51" y="678" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">只有本格参与TOPUP回流</text>
+<rect x="675" y="600" width="285" height="145" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="675" y="600" width="6" height="145" rx="3" fill="#2563eb"/>
+<text x="691" y="629" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">RECEIVE 退款预留</text>
+<text x="691" y="655" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">兑付后分仍保留在这里</text>
+<text x="691" y="678" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">付款不移动积分</text>
+<rect x="995" y="600" width="285" height="145" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="995" y="600" width="6" height="145" rx="3" fill="#2563eb"/>
+<text x="1011" y="629" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">STORE.A 待结算</text>
+<text x="1011" y="655" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">终局后可进入账期单</text>
+<text x="1011" y="678" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">确认账单才形成兑付</text>
+<rect x="1315" y="600" width="285" height="145" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="1315" y="600" width="6" height="145" rx="3" fill="#2563eb"/>
+<text x="1331" y="629" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">STORE.P 待确认</text>
+<text x="1331" y="655" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">仅定期结算留余额</text>
+<text x="1331" y="678" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">随单门店只留受理流水</text>
+<path d="M320,260 L355,260" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="215" y="348" width="106" height="26" rx="4" fill="#f8fafc"/>
+<text x="220" y="365" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#2563eb" font-weight="400" text-anchor="start">备款支持发行</text>
+<path d="M640,260 L675,260" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="535" y="348" width="104.8" height="26" rx="4" fill="#f8fafc"/>
+<text x="540" y="365" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#2563eb" font-weight="400" text-anchor="start">GRANT：U→C</text>
+<path d="M960,260 L995,260" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="855" y="348" width="83.2" height="26" rx="4" fill="#f8fafc"/>
+<text x="860" y="365" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#2563eb" font-weight="400" text-anchor="start">ACTIVATE</text>
+<path d="M1280,260 L1315,260" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="1175" y="348" width="103.00000000000001" height="26" rx="4" fill="#f8fafc"/>
+<text x="1180" y="365" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#2563eb" font-weight="400" text-anchor="start">下一单 HOLD</text>
+<path d="M1457,325 L1457,600" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="1170" y="458" width="196.60000000000008" height="26" rx="4" fill="#f8fafc"/>
+<text x="1175" y="475" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#2563eb" font-weight="400" text-anchor="start">定期：H→STORE.P；C不变</text>
+<path d="M1315,670 L1280,670" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="1145" y="783" width="76" height="26" rx="4" fill="#f8fafc"/>
+<text x="1150" y="800" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#2563eb" font-weight="400" text-anchor="start">结算终局</text>
+<path d="M995,670 L960,670" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="745" y="783" width="122.80000000000001" height="26" rx="4" fill="#f8fafc"/>
+<text x="750" y="800" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#2563eb" font-weight="400" text-anchor="start">账单确认：C→D</text>
+<path d="M1457,325 L1457,415 L817,415 L817,600" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="815" y="438" width="206.20000000000002" height="26" rx="4" fill="#f8fafc"/>
+<text x="820" y="455" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#2563eb" font-weight="400" text-anchor="start">随单：H→接收户预留；C→D</text>
+<path d="M750,600 L750,525 L177,525 L177,600" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="270" y="538" width="279.40000000000003" height="26" rx="4" fill="#f8fafc"/>
+<text x="275" y="555" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#2563eb" font-weight="400" text-anchor="start">退款责任解除：预留→自由，释放B额度</text>
+<path d="M177,600 L177,420 L497,420 L497,325" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="225" y="438" width="234.4" height="26" rx="4" fill="#f8fafc"/>
+<text x="230" y="455" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#2563eb" font-weight="400" text-anchor="start">补U：自由分优先回流，不足发行</text>
+<path d="M817,745 L817,890 L1635,890 L1635,500 L1137,500 L1137,325" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="835" y="848" width="231.40000000000003" height="26" rx="4" fill="#f8fafc"/>
+<text x="840" y="865" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#2563eb" font-weight="400" text-anchor="start">核销退款：接收户预留→USER.A</text>
+<path d="M1137,195 L1137,155 L497,155 L497,195" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="595" y="133" width="303.4" height="26" rx="4" fill="#f8fafc"/>
+<text x="600" y="150" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#2563eb" font-weight="400" text-anchor="start">返分收回：P/A经退款准备H→ISSUE；C→U</text>
+<rect x="355" y="600" width="285" height="145" rx="12" fill="white" stroke="#be123c" stroke-width="1.8"/>
+<rect x="355" y="600" width="6" height="145" rx="3" fill="#be123c"/>
+<text x="371" y="629" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#be123c" font-weight="650" text-anchor="start">B 与 R 不持有积分</text>
+<text x="371" y="655" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">B＝实际退款备付金</text>
+<text x="371" y="678" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">R＝待追回款，不算现金</text>
+<rect x="35" y="965" width="760" height="130" rx="12" fill="white" stroke="#c2410c" stroke-width="1.8"/>
+<rect x="35" y="965" width="6" height="130" rx="3" fill="#c2410c"/>
+<text x="51" y="994" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#c2410c" font-weight="650" text-anchor="start">资金与守恒</text>
+<text x="51" y="1020" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">U=m(ISSUE)；C=m(USER+STORE)；实际专项资金=U+C+D+B</text>
+<text x="51" y="1043" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">B ≥ 已预留额度；所有积分户合计（含MINT）=0</text>
+<rect x="825" y="965" width="775" height="130" rx="12" fill="white" stroke="#7c3aed" stroke-width="1.8"/>
+<rect x="825" y="965" width="6" height="130" rx="3" fill="#7c3aed"/>
+<text x="841" y="994" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">例外与恢复入口</text>
+<text x="841" y="1020" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">付款前退款D→C；付款后未追回B→C并登记R；追回回B</text>
+<text x="841" y="1043" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">到期、调账、提取、现金补收、UNKNOWN见分图</text>
+</svg>

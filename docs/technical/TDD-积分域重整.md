@@ -1,1075 +1,714 @@
-# TDD-积分域重整 · 平台积分专户与四类积分户
+# TDD 积分独立业务模块需求设计与开发计划
 
-状态：**草稿**（待确认）
-档位：**2**（新表族 + 跨域接口 + 不可逆的资金模型决策）
-关联需求：[PRD-支付域](../requirements/PRD-支付域.md) §S8（**本 TDD 的 AC 确认后整体回写 §S8**，现有 AC-8.1/8.3 口径已过时）
-资金方案：[积分资金方案-平台预存池](./design/积分资金方案-平台预存池.md) · 决策：[ADR-036](./ADR/ADR-036-积分改为平台出资预存池.md)
-创建：2026-10-14 · 最后更新：2026-10-14（按「四类积分户流转 + 受理协议 + 随单 / 定期两种结算」改写）
+状态：v3开发中，用户已授权实施，生产参数待确认 · 档位：2 · 创建与更新：2026-10-14
 
-> 读法：§2.1 业务抽象 → §2.2 类设计 → §2.3 依赖管理 → §2.4 数据库 → §2.5 接口 → §2.6 流程。
-> 「钱为什么这么走」见资金方案，这里只写**怎么落成代码**。
+实施前提：用户确认积分尚未上线；本期直接替换旧实现，首次上线仅使用最新逻辑，不安排旧业务数据迁移、双引擎或旧客户端兼容版本。
 
----
+积分是`pay/pay-domain`内的独立业务模块，根包`ai.neargo.shop.pay.points`：拥有自己的账本、头寸、退款准备、资金预留及统一写账入口，复用pay事务和数据源。订单/售后经SPI交互，pay内结算经域内Hook协作。采用平台预存 U/C/D/B、R 独立应收、接收户退款预留，形成订单/支付/积分之间可恢复的闭环。
 
-## §0 对账一 · 需求 → 设计
+关联：[独立 PRD](../requirements/PRD-积分模块.md) · [资金方案](./design/积分资金方案-平台预存池.md) · [ADR-036](./ADR/ADR-036-积分改为平台出资预存池.md)。本文取代同路径 v2 草稿；v2 DDL/接口不是本期实施依据，历史可从 Git 76e58770a 查询。开发任务在 §2.13；按§2.13执行，实际进展与验证记录见§5/§6。
 
-| AC | 需求（Given / When / Then 压成一句） | 落点 |
-|---|---|---|
-| AC-P1 | 运营创建积分种类，选区域（币种随区域）与兑换比例；生效后比例不可改 | `PointTypeService#create/activate` · `pts_point_type` |
-| AC-P2 | 同一区域同一时刻只有一种生效中的平台积分 | `pts_point_type.active_market` 唯一键 |
-| AC-P3 | 种类生效前专户必须至少过账过一笔补充 | `PointTypeService#activate` |
-| AC-P4 | 补充 / 提取 / 调账须另一人审批后过账；提取不超过发放户余额 | `PoolService` · `pts_pool_request` |
-| AC-P5 | 定期补充计划按月生成待审批补充单；补充过账时接收户的分优先流转回发放户 | `PointsTopupPlanJob` · `VoucherFactory#topup` |
-| AC-P6 | 积分守恒：任一凭证四类户 + 发行登记变动合计为 0 | `Voucher` 构造校验 V1 |
-| AC-P7 | 支付成功后按规则发放待生效积分；发放户不够整单不发并记 `SKIPPED/POOL_EXHAUSTED` | `EarnService#grant` · `pts_grant_position` |
-| AC-P8 | 线下单、被暂停、用户冻结、规则为 0 时不发放，并记原因；发放不要求商家签协议 | `PointsGate` |
-| AC-P9 | 发放子单结算终局后待生效转可用 | `PointsSettlementHook#onBillFinalized` |
-| AC-P10 | 商家签受理协议（版本、签署人、时刻）后其门店才能受理积分；解约只影响将来 | `AgreementService` · `pts_merchant_agreement` |
-| AC-P11 | 协议选结算方式：随单（默认）/ 定期；直连商家在打款通道接通前不能选定期 | `AgreementService#sign/changeMode` |
-| AC-P12 | 下单抵扣：上限 = 可受理子单（券后不含运费）× 抵扣比例；只在可受理门店间分摊；余额不足降级不抵扣 | `RedeemService#hold` · `DefaultRedeemPolicy` |
-| AC-P13 | 线下单、核销暂停、门店未签协议时不能抵扣 | `PointsGate` |
-| AC-P14 | 随单结算：支付成功即 C 端 → 门店户 → 接收户，钱 C → D；分账前以积分域当时应付额补差（两阶段） | `RedeemService#onPaid` · `PointsSettlementHook#beginPayout/confirmPayout/abortPayout` |
-| AC-P15 | 定期结算：支付成功进门店户待确认，终局转待结算；按账期出结算单，B 端确认（或超期自动确认）后转接收户，平台打款 | `StoreStatementService` · `pts_store_statement` |
-| AC-P16 | 兑付全额：商家得到的金额 == 抵扣金额 | `RedeemPolicy` · I5 / I6 |
-| AC-P17 | 部分退款按累计比例退回抵扣、收回返分；积分所在位置决定 RELEASE / REVERSE / RETURN | `PointsRefundService#apply` · `RefundRatioPolicy` |
-| AC-P18 | 收回已转正积分时余额不够：不许负，差额从退款现金扣并在退款单明示 | `ord_after_sale.points_offset_minor` |
-| AC-P19 | 已付款后退款收不回：用户照退，专户记待追回；定期结算的下期结算单冲减 | `pts_receivable` · `RECOVER` |
-| AC-P20 | 闲置满期清零，分进接收户、钱转平台收入；提前 30 天提醒；核销暂停期间顺延 | `ExpiryService` |
-| AC-P21 | 发放 / 核销按八个粒度分别暂停；只影响将来；必填原因留审计 | `PointsSwitchService` · `pts_switch` |
-| AC-P22 | 发放户低于水位告警；停发告警 | `PoolWatermark` · `OpsAlertPort#pointsAlert` |
-| AC-P23 | 统计：平台 / 门店 / 用户三视角 | `PointsStatsService` · `pts_stat_daily` |
-| AC-P24 | I1–I7 每小时一致性快照核对，可定位差异落差异单，失衡告警 | `PointsReconService` |
-| AC-P25 | 任何积分写入都经凭证过账；同一业务动作重放只生效一次 | `PointsPostingService` · `pts_voucher.biz_ref` |
-| AC-P26 | 售后不能再选「积分退款」形式 | `AfterSaleServiceImpl#approve` · b-app |
+![积分独立模块架构](./diagrams/pts3-module-architecture.svg)
 
-**孤立项**：没落点的 AC 无；挂不上 AC 的设计 —— 划拨单（支撑 L3 外部对账，归 AC-P24）、`commission_cap_bp`（本期关闭，只留列与接口）。
+订单/售后与pay是跨域关系，使用SPI和持久事件；积分与结算是pay内部的业务模块，通过PointsSettlementHook及资金接口协作，可共用pay事务。积分负责分数和账务，外部通道调用在本地付款意图提交后执行。
 
----
+图册：[完整积分流转与模块类图](./design/积分模块-流转与类图.md)；类结构真源：[设计图契约](./design/积分模块-图契约.json)，由`python3 scripts/gen-points-diagrams.py`生成SVG及图册。图契约具名化核心设计类、方法及SPI适配，非现有源码反射；跨域SPI在`port/`对应Earn/Redeem/Refund/Fact四个实现；域内PointsSettlementHookImpl分别委托付款、生命周期和核销服务。
+
+## §0 对账一 需求到设计
+
+| AC | 需求 | 设计节 | 开发任务 |
+|---|---|---|---|
+| AC-PTS-01 | 模块边界 | §2.1 | T01 |
+| AC-PTS-02 | 种类 | §2.2 | T03 |
+| AC-PTS-03 | 运营备款 | §2.3 | T03 |
+| AC-PTS-04 | 备付隔离 | §2.3 | T02 |
+| AC-PTS-05 | 备款流转 | §2.3 | T03 |
+| AC-PTS-06 | 返分规则 | §2.4 | T04 |
+| AC-PTS-07 | 发放预算 | §2.4 | T04 |
+| AC-PTS-08 | 发放闸门 | §2.4 | T04 |
+| AC-PTS-09 | 转正 | §2.7 | T08 |
+| AC-PTS-10 | 受理协议 | §2.5 | T05 |
+| AC-PTS-11 | 在途承诺 | §2.5 | T05 |
+| AC-PTS-12 | 核销计算 | §2.5 | T05 |
+| AC-PTS-13 | 退款额度 | §2.3 | T05 |
+| AC-PTS-14 | 下单降级 | §2.7 | T08 |
+| AC-PTS-15 | 取消与关单 | §2.5 | T05 |
+| AC-PTS-16 | 随单兑付 | §2.6 | T06 |
+| AC-PTS-17 | 付款结果 | §2.6 | T06 |
+| AC-PTS-18 | 路径能力 | §2.1 | T06 |
+| AC-PTS-19 | 结算基数 | §2.6 | T06 |
+| AC-PTS-20 | 定期出单 | §2.6 | T09 |
+| AC-PTS-21 | 草稿修订 | §2.6 | T09 |
+| AC-PTS-22 | 定期退款 | §2.6 | T09 |
+| AC-PTS-23 | 应收抵销 | §2.6 | T09 |
+| AC-PTS-24 | 退款比例 | §2.8 | T07 |
+| AC-PTS-25 | 退款准备 | §2.8 | T07 |
+| AC-PTS-26 | 现金扣减 | §2.8 | T07 |
+| AC-PTS-27 | 退款恢复 | §2.8 | T07 |
+| AC-PTS-28 | 备付退款 | §2.3 | T07 |
+| AC-PTS-29 | 积分回流 | §2.3 | T10 |
+| AC-PTS-30 | 到期 | §2.9 | T10 |
+| AC-PTS-31 | 暂停 | §2.9 | T10 |
+| AC-PTS-32 | 明细统计 | §2.10 | T11 |
+| AC-PTS-33 | 可靠事件 | §2.7 | T08 |
+| AC-PTS-34 | 对账 | §2.10 | T11 |
+| AC-PTS-35 | 权限 | §2.11 | T12 |
+| AC-PTS-36 | 旧方案移除 | §1.1/§2.12 | T13 |
+| AC-PTS-37 | 首次上线 | §2.12 | T13 |
+| AC-PTS-38 | 审计并发 | §2.2 | T02 |
+| AC-PTS-39 | 整数与时区 | §2.2 | T02 |
+| AC-PTS-40 | 运营任务 | §2.10 | T11 |
+
+没有未映射需求；付款意图、事件 Inbox/Outbox、接收户预留、账单修订、退款准备分别支撑 AC-17/33/29/21/25，不作为额外业务功能。
 
 ## §1 现状与影响面
 
-### 会被替换的
-
-| 现有 | 去向 |
+| 现有位置 | 本期改动 |
 |---|---|
-| `pay/.../PointsService` · `impl/PointsServiceImpl`（1100 行） | `points.app.*` 应用服务 + `PointsPostingService` |
-| `pay/.../PointsConfig`（JSON，比例随时可改） | `PointType` 主数据 |
-| `spi/settle/PointsPort` · `pay/.../port/PointsPortImpl` | `spi/points/PointsEarnPort` · `PointsRedeemPort` · `PointsRefundPort` |
-| `PointsActivateJob` · `PointsIdentityJob` · `PointsPoolReconAxis` | 事件驱动转正 + `ActivateSweeper`；`PointsReconJob` / `PointsReconAxis`（轴码 `POINTS`） |
-| `payclient/PointsPolicyAppService`（端策略 JSON） | `pts_switch` 的 `CLIENT` 粒度 |
-| `MerchantPortImpl#pointsDenyReason/isPointsForced` · `mch_entity.points_enabled/forced` · `cmt_community.points_enabled` | 受理协议 + 暂停开关 |
-| 表 `pts_user_account` · `pts_user_ledger` · `stl_points_pool` | 冻结只读，迁移验证后删 |
+| `backend/pay/pay-domain/.../PointsService.java`、`impl/PointsServiceImpl.java`、`PointsConfig.java`、`port/PointsPortImpl.java` | 直接替换并删除旧实现/配置，调用统一改接pay.points；不保留旧写分支 |
+| `backend/shop-base/.../spi/settle/PointsPort.java` | 调用统一迁至 `spi/points`，删除旧SPI及其默认空操作；不建立新旧接口路由 |
+| `backend/shop-core/.../trade/service/impl/OrderServiceImpl.java` | hold/release 及订单事件快照；支付后的内存调用改为源事务 Outbox |
+| `backend/shop-core/.../trade/order/refund/service/AfterSaleRefundExecutor.java` | 在现有退款执行器接入 prepare/confirm/abort，不在 doRefund 再重复一套现金链路 |
+| `backend/pay/pay-domain/.../impl/SettleServiceImpl.java`、`PayoutServiceImpl.java` | 原地改造积分成本/付款来源，删除旧商家发分费口径；与积分经域内Hook，共用pay事务提交必要状态 |
+| `backend/shop-app/.../payclient/*Points*`、`portal/{mp,biz,ops}/pay/*Points*` | 原地改接或移动现有门面/Controller；统一使用最新DTO及端点，每个URL仅一个处理器，三端同步更新 |
+| `backend/shop-app/.../config/{PayDataSourceConfig,DataScopeRegistration}.java` | 复用既有pay Mapper扫描和工厂，积分Mapper归pay.mapper.points，补权限域注册 |
+| `backend/shop-store-mybatis/.../event/{OutboxEventBus,OutboxPump,OutboxConsumer}.java` | 复用平台事件接口；积分出站使用自身表/Mapper，不能误用平台事务发布 |
+| 三端、API/i18n/权限种子、ui-catalog | T12 接新接口；界面落地时更新清单，规划阶段不登记不存在的页面 |
 
-### 会被改到的
+当前 pay 使用独立连接/`payTxManager`但 URL 仍指主库。job-worker 明确不依赖业务模块；积分任务体驻pay-domain，shop-app/pay宿主按现有调度目标装配，由 worker 通过已有 job API 触发。
 
-| 位置 | 改动 |
-|---|---|
-| `OrderServiceImpl` 下单 | `pointsPort.deduct` → `PointsRedeemPort#hold`；**挪到「线下禁平台券」校验之后** |
-| `OrderServiceImpl` 支付提交后 | `PointsRedeemPort#onPaid(orderNo)`（随单兑付 / 进门店户）+ `PointsEarnPort#grant`；不再写 `points_fee_minor` / `points_granted` |
-| `OrderServiceImpl` 未支付取消 / 关单 | `PointsRedeemPort#release` |
-| `AfterSaleServiceImpl#doRefund` | ① 回退分账 → **② `PointsRefundPort#apply`** → ③ 退现金（退款额 − 现金抵扣）；删 `returnBenefitsIfWholeOrderRefunded` 的积分部分；`approve` 拒 `POINTS` 退款形式 |
-| `SettleServiceImpl` 生成结算单 | 不再记 `MERCHANT_RECEIVE`、不再算 `points_fee_minor`；**结算基数按结算方式**：随单 = 实付 + 平台券 + 积分抵扣（不变），定期 = 实付 + 平台券（积分那部分走门店积分结算单）；**佣金基数两种方式都按含积分的全额**，否则定期结算的商家少交佣金 |
-| `SettleServiceImpl#executeSplit` | 补差前 `beginPayout`，成功 `confirmPayout`、失败 `abortPayout`；`SPLIT_CONFIRMED` 时 `onBillFinalized` |
-| `SettleServiceImpl` / `PayoutServiceImpl` 归集确认与付款 | 删 `confirmDeduction`；归集在 `CONFIRMED` 时 `beginPayout + confirmPayout + onBillFinalized` |
-| `SettleServiceImpl#reverseSplit` | 补差回退结果经 `onSubsidyReturn` 告知积分域 |
-| `PayoutServiceImpl`（归集打款单） | 增加「门店积分结算单」作为一类应付来源（定期结算的归集商家） |
-| `FundInvariantReconciler` | I3 删除；I6 改读 `pts_redeem_position` |
-| `BootstrapConfigServiceImpl` | `features.points` 改由后端闸门求值下发 |
-| 三端界面 | 见 §2.5.4 → **更新 `ui-catalog.json`** |
+可复用：MarketService、BizKey、Outbox 调度框架、RefundLedger 的条件写、OpsAlertPort、JobHandler/JobDeclaration、现有付款/通道能力、权限与国际化规范。复用 API，不复用旧积分资金口径。优惠券、物流、库存、储值卡领域模型不改；订单计价、退款、佣金和结算接缝会改。
 
-### 可直接复用
+### 1.1 现有功能处置清单（积分未上线，直接替换）
 
-`MarketService`（币种、小数位、时区）· `BizKey` · `AfterCommit` / Outbox · `RefundLedger` 写法与 `ord_sub_order.refunded_minor`（退款比例分子）· `OpsAlertPort` · `ReconAxis` + `stl_recon_diff` · `JobSupport` / ShedLock · `PointsRulePort` · `PayoutService`（归集打款）。
+实施方式：保留现有pay构件、订单/售后/结算骨架与三端页面，新增pay.points业务内核并直接改接现有调用。删除旧积分业务逻辑、收费口径、任务与配置；开发期间可分任务提交，但发布版本只存在最新实现。
 
-### 明确不受影响的
-
-券、运费、库存、物流、进销存、商家资质；分账主流程除补差那一步。
-
----
-
-## §2 方案
-
-### 2.1 业务抽象
-
-![积分域对象模型](./diagrams/pts2-domain-model.svg)
-
-#### 统一语言
-
-| 词 | 定义 | 不是什么 |
+| 已实现功能 / 现有源码 | 本期处置 | 任务 |
 |---|---|---|
-| **区域** Market | 资金口径隔离单位：币种、小数位、时区（`MarketService`） | 不是配送范围 |
-| **积分种类** PointType | 一套独立核算的积分：属于一个区域，有出资方、兑换比例、抵扣比例、闲置天数 | 不是活动 |
-| **场景** Scene | 积分从哪来：`SHOPPING_REBATE`（本期）、`SIGN_IN`（预留）、`ADJUST`、`MIGRATION` | 场景不决定账本 |
-| **积分户** PointsHolder | 持有积分的一方：`PLATFORM_ISSUE` 发放户 · `USER` C 端户 · `STORE` 门店户 · `PLATFORM_RECEIVE` 接收户 · `PLATFORM_MINT` 发行登记 | 不是资金账户 |
-| **格** Bucket | 户内的分格：C 端 `PENDING/AVAILABLE/HELD`；门店 `PENDING`（待确认）/ `AVAILABLE`（待结算）；平台户只用 `AVAILABLE` | — |
-| **平台积分专户** FundPool | 钱：`U` 未分配 · `C` 已承诺 · `D` 待付商家 · `R` 待追回 | 本期不是独立银行账户 |
-| **受理协议** Agreement | 商家主体 × 种类：签了才能收积分；含结算方式、账期、兑付价格（全额） | 不控制发放 |
-| **结算方式** SettleMode | `PER_ORDER` 随单（默认）· `PERIODIC` 定期 | — |
-| **头寸** Position | 一张子单在一个种类下的累计计数器：**发放头寸**、**核销头寸** | 不是流水 |
-| **门店积分结算单** StoreStatement | 定期结算时，一个门店一个账期的兑付单：出单 → B 端确认 → 打款 | 不是订单结算单 `stl_bill` |
-| **待追回** Receivable | 已付给商家、因退款应收回的钱（按商家记） | — |
-| **凭证** Voucher | 一次业务动作的写入单元 | 不是第四本账 |
-| **结算终局** | 直连 `SPLIT_CONFIRMED`；归集 `CONFIRMED` | 不是「支付 + N 天」 |
+| PointsServiceImpl、PointsService、PointsConfig、PointsPortImpl；旧积分Entity/Mapper | 新业务内核完成后删除旧实现及旧SPI；清理SettleMappers的积分成员，保留支付/结算其他Mapper | T01/T02/T13 |
+| pts_user_account/pts_user_ledger/stl_points_pool | 不导入旧测试余额/流水；建立最新表族。清理旧表/字段时使用新的Flyway脚本，不改已应用脚本 | T02/T13 |
+| OrderServiceImpl.deduct/grant/reverse、PointsRuleHandoff、PointsRulePortImpl | 保留券后计价、分摊输入和商品规则来源；统一改为新SPI/可靠事实，删除旧调用 | T04/T05/T08 |
+| AfterSaleRefundExecutor、RefundLedger、AfterSaleServiceImpl | 保留现金退款唯一执行器与防超退账本，接入prepare/结果确认；删除旧整单退分/收分AfterCommit回调 | T07/T08 |
+| refundMode=POINTS及AFTER_SALE_COMP | 删除积分形式售后退款入口、校验分支与业务实现，前后端枚举/文案/契约同步清理 | T07/T12/T13 |
+| SettleServiceImpl、PayoutServiceImpl、BillRefundMapper、BillRefundShare | 保留货款、佣金、通道及退款份额骨架；按最新设计处理核销/补差/兑付，删除商家发分服务费及旧积分资金池写入 | T06/T09/T13 |
+| PointsActivateJob、PointsIdentityJob、PointsPoolReconAxis | 用新生命周期任务/对账能力替换；复用调度框架，删除旧任务注册，不让两套任务同时加载 | T10/T11/T13 |
+| FundInvariantServiceImpl、shop-app/paybridge/FundInvariantReconciler | 改查新凭证/头寸及源事实；删除旧积分流水查询、清旧发放标志及旧reverse修复路径 | T08/T11 |
+| 三端Points Controller、payclient门面、现有页面 | 保留有用入口，直接改接新服务/DTO；删除旧服务费视图和旧策略端点，不保留兼容适配 | T12 |
+| points.config、points.client.policy及旧商家开关 | 移除旧配置读写及默认兜底；按最新种类/规则/暂停/受理协议配置，不把旧开关自动当协议 | T03/T05/T12/T13 |
+| 现有积分测试/夹具/种子 | 沿用有价值的场景，改为最新业务断言；删除旧收费、允许负余额、旧表和旧接口专属断言，新增真实备款夹具 | T01–T13 |
 
-#### 不变式
+本期不创建钱包/来源引擎路由、迁移批次、旧账映射、迁移开账或旧读兼容服务。数据库结构变更仍按仓库Flyway规范实施；这是表结构升级，不是积分业务数据迁移。测试环境数据用最新模型重新建立，本次文档修订不执行清库或业务代码删除。
 
-| # | 不变式 | 守在哪 |
+## §2 业务设计与技术方案
+
+### 2.1 独立模块与依赖
+
+积分在现有`backend/pay/pay-domain`中独立为业务包，不修改Maven模块拓扑、不新增JAR。根包`ai.neargo.shop.pay.points`；独立是业务职责、对象、表族、应用服务和写账入口的独立，资金执行与部署继续属于pay。
+
+| 单元 | 路径 / 职责 |
+|---|---|
+| 纯模型 | `pay.points.model/`：金额比例、持有方、凭证、快照、状态，无Spring/MyBatis |
+| 计算 | `pay.points.policy/`：返分、核销、退款、到期、账期，只依赖model |
+| 统一写账 | `pay.points.posting/`：校验/幂等/稳定锁序/原子过账 |
+| 子能力 | `pay.points.type/pool/agreement/earn/redeem/refund/statement/payout/lifecycle/recon/query/job/event`；各自编排及读端口 |
+| 持久化 | `pay.points.store/impl`；Mapper单独放`pay.mapper.points`，使用已有paySqlSessionFactory |
+| 跨域SPI实现 | `pay.points.port/`实现shop-base/spi/points的Earn/Redeem/Refund/Fact；HTTP Controller继续在shop-app |
+| 域内结算Hook | `pay.points.app.PointsSettlementHook` + `pay.points.port.PointsSettlementHookImpl`；结算只读快照/提交业务动作，不直写积分表 |
+| 域内资金接口 | `pay.points.port.PointsFundsPort` + `pay.points.port.PayPointsFundsAdapter`；只依赖pay资金/通道接口，不依赖pay.impl结算实现 |
+| 外部事实适配 | `shop-app/.../payclient/OrderPointsSourceFactsAdapter`实现PointsSourceFactsPort；积分不跨包SQL查订单/售后 |
+
+复用`payTxManager`、`payDataSource`、`paySqlSessionFactory`。已有扫描`ai.neargo.shop.pay.mapper`自动涵盖积分Mapper，不新增工厂/连接池/全局扫描排除规则。shop-app与pay-svc两种宿主均沿既有pay装配；权限/填充器/分页仍须验证，没有新数据源不等于可省数据权限检查。
+
+积分账务服务显式`@Transactional("payTxManager")`，posting默认REQUIRED。结算状态、头寸、凭证、回执结果和pay出站事件需要一起落库时，由pay域短事务加入同一事务；任一失败整体回滚。订单事务仍不能联动回滚pay已提交占用，保留prepare、Outbox/Inbox及事实补偿。
+
+外部付款不放在pay数据库事务内：先用短事务提交结算/积分付款意图，随后无事务编排调用通道，明确结果后另开短pay事务同步修改资金状态与积分。不能把beginPayout嵌在尚未提交的长executeSplit事务后立即调外部。
+
+ArchUnit：model/policy不碰框架；订单/行业仅经SPI调用积分；结算只能经PointsSettlementHook进入积分业务服务；pay其他子模块不能直写pts表。积分不依赖shop-core、shop-merchant或pay.impl结算实现，可以依赖pay资金/通道接口。账务Store写只被posting使用，非账务元数据服务可条件写审计；Mapper仅被store.impl使用。测试确认积分/结算共享pay事务，而platform事务仍隔离。
+
+资金能力接口PointsFundsPort留在pay.points内；DIRECT补差、AGGREGATED专项回补/付款、现金补收逐项判定。远程pay部署复用既有PayInternalApi及宿主适配扩展，不引入独立积分部署开关；未验证的通道/部署组合禁止开放积分，不能默认成功。
+
+### 2.2 语言、数值与统一过账
+
+四类业务积分户：ISSUE、USER、STORE、RECEIVE；MINT为发行登记。USER有PENDING/AVAILABLE/HELD（订单与退款占用分别在头寸记来源），STORE有PENDING/AVAILABLE，RECEIVE有REFUND_RESERVED/RECIRCULATABLE。种类ACTIVE→DRAINING→RETIRED：DRAINING停止新返分但允许存量余额核销/收尾，仍占active_market，不能同时启用另一种类；用户/门店余额、D、退款预留、R及未知资金/准备全部清偿后才能RETIRED。兑换比例变化的跨种类价值迁移另行设计，本期不在线改比例。
+
+兑换比例为既约 `(pointsUnit, minorUnit)`；每笔分摊、头寸及凭证行均对齐 pointsUnit。中间乘除使用 BigInteger，最终金额/分数转换long前验溢出，不用double。多币种/多种类不能合成一凭证。时间字段统一epoch毫秒，业务日期按Market时区，存量审计列沿仓库规则。
+
+| 不变式 | 校验 |
+|---|---|
+| V1 | 每凭证积分户变动合计=0，包括发行登记 |
+| V2 | ΔU=m(ΔISSUE)；U=m(ISSUE余额) |
+| V3 | ΔC=m(ΔUSER+ΔSTORE)；C=m(USER三格+STORE两格) |
+| V4 | Δ(U+C+D+B)=经核验的实际现金/专项划拨变动；R不参与 |
+| V5 | 非MINT所有格非负；B≥预留总额；占用/付款/退回计数不超原额 |
+| V6 | REFUND_RESERVED余额=仍须保留的接收户积分头寸之和 |
+| V7 | 原应兑付=未付+付款锁定+已结算价值+付款前退回；已结算价值包括现金与抵销，付款后退回累计不超过已结算价值 |
+| V8 | 原发放=仍待生效+已转正累计+待生效收回；已转正的收回按积分收回/现金补收/平台承担分别计数 |
+
+`PointsPostingService.post(Voucher)`唯一账务写入口。Voucher包含bizRef、payloadHash、type/rate/currency快照、PointsMove、FundMove、PositionMove、ReserveMove、EvidenceRef及结果快照；构造校验V1–V4/对齐，执行校验状态/上限。
+
+固定锁序：(typeCode,对象类别,holderType,holderNo,bucket/positionNo)排序，多用户/多门店不能沿请求数组顺序锁。先抢唯一bizRef，冲突读原结果并校验hash；按稳定键锁定并条件更新，任一0行全部回滚；写凭证/明细/出站事件与结果同事务。
+
+同一业务动作键含对象/修订：HOLD:orderNo、GRANT:subOrderNo、REFUND_PREPARE:afterSaleNo、REFUND_CONFIRM:afterSaleNo、PAYOUT:ticketNo、EXPIRE:accountNo:expiryRevision、STATEMENT_CONFIRM:no:revision、RELEASE_RESERVE:positionNo:closureVersion。不能用仅用户号的到期键，否则续期后第二次到期不执行。
+
+### 2.3 资金、退款额度与接收户
+
+专户U未分配/C权益备付/D兑付未付/B退款备付；R保留在应收台账。B预留记录在`pts_refund_reserve`，不是从余额中再减一遍；freeB=B−有效预留之和。hold预留最大可退核销价值，绑定每张核销头寸；取消/付款前退回释放，付款后失败追回时消耗，权威责任关闭后释放。B不足的新hold原子拒绝。
+
+补U：先消费RECEIVE.RECIRCULATABLE，不足部分MINT→ISSUE，U增加实际备款。补B：B增加，不发行分。U转B：U减少/B增加，同时ISSUE→RECEIVE.RECIRCULATABLE；不虚构外部现金。提取U同步ISSUE→接收户；提取B只可提freeB。补款/提取证据唯一、已核验且同币种，双人复核；计划只建申请。
+
+支付随单/定期确认：用户或门店→RECEIVE.REFUND_RESERVED，C→D。付款前退款：预留接收户→用户，D→C，释放相应B额度。付款后资金已追回：预留接收户→用户，实际回款进C，释放B额度；未追回：预留接收户→用户，B→C、消耗B额度、开R。迟到回款统一经退款准备/应收记录归集，已有B垫付的回款回B，不能再进C。
+
+R回款：R减少、B增加（真实现金入专项）；抵销回款见§2.6。每张应收记录保留原退款/垫付证据和已追回额，累计不能超原额。出资不足停止新承诺，不动已有预留。
+
+退款责任解除需订单权威事实：窗口结束、无进行中售后、资金结果明确；结算终局只是转正/门店确认，不是解除。关闭后把剩余RECEIVE预留转可回流，释放B额度。退款prepare与解除操作锁同头寸，恰一笔先成功；关闭后的额外补偿另经审批备款，不自动走已解除的退款头寸。
+
+### 2.4 发放设计
+
+订单记录每行返分规则版本、数量、商品现金实付及赠品标志，购物返分按子单计算（“整单不足不发”明确为整张子单，不要求跨商家主单一起发）。规则取商品键存在→类目→兜底，0不回退；FIXED×qty，RATIO按实付万分比，行分数向下对齐，行价值不超过该行商品现金实付，合计保存逐行GrantLine。
+
+GrantCommand带订单支付事实和行快照。GRANT U→C、ISSUE→USER.P；预算竞争条件写失败转为SKIPPED/POOL_EXHAUSTED，其他失败仍重试，不能把未知故障吞成预算不足。暂停/线下/冻结/规则0记不同原因。转正只转当前剩余P；退款在先的事实减少应发数量，全部退完不再补发。迟到发放逐行固定grant_before_refunded_goods_minor及grant_basis_minor=原商品现金实付−发放时已退商品额；原规则按原下单快照算original_rule_points，实际发放=floorAligned(original_rule_points×grant_basis_minor/原商品现金实付)。grant_basis为0不发；以后收回以实际发放和该剩余基数计算，不能用实际已减发量再乘从下单开始的累计退款比例。
+
+### 2.5 核销与协议
+
+协议按(entity,type)唯一生效，文本摘要及签署人不可覆盖；方式变更留新版本。hold固定协议和资金路径，在用户可用余额、意愿值、可受理商品券后金额×抵扣比例之间取最小值，再按门店金额分摊且每行对齐，最后余数仍须满足门店上限。
+
+quote/hold用同策略但hold重判余额与freeB；降级返回reason及实际金额，订单计价必须用实际hold结果。券后基数与商品现金实付是不同字段：抵扣上限按券后商品额，返分按积分扣减后的现金商品额；hold先写前者，订单提交后事实补入最终退款分母与逐行快照，未收到最终快照不进入兑付。
+
+未支付释放H→A、释放B预留；支付只用快照和权威事实。迟到取消不释放已支付占用；订单创建失败立即发取消事实，且源事实巡检按订单是否存在/是否提交判断，不能仅凭占用年龄释放。
+
+### 2.6 两种兑付与账单
+
+随单：HELD→PAYABLE→PAYING→PAID；定期：HELD→IN_STORE→SETTLEABLE→IN_STATEMENT→PAYABLE→PAYING→PAID。部分退款用金额/分数累计计数，不靠单一枚举表达“全额退过”。
+
+随单onPaid完成积分预留与C→D；PointsSettlementHook.beginPayout加入调用方的短pay事务，锁定当前应付并建立ticket；准备事务提交后，结算编排拿ticket调用资金执行。外部调用不放进pay事务；明确成功才confirm，失败abort，未知只query。ticket保存用途、资金路径、收款账户/商家快照、gross/offset/cash、通道幂等号、状态及回执。回执/outbox/inbox丢一边均可按ticket补查。
+
+归集随单可在货款确认时创建专项回补意图，但只有内部分录证据确认后扣D；确认货款应付本身不是现金出专项。该划拨给货款资金专项，不新增商家付款来源，实际商家货款仍只付一次。
+
+定期：按[periodFrom,periodTo)固定头寸ID集合，账单头唯一(type,store,periodFrom)，修订明细只增；同一头寸只允许一个有效绑定。原草稿重算保留statementNo、revision+1，旧修订不可确认。CONFIRMED使STORE→RECEIVE预留、C→D、头寸PAYABLE；付款前退款先撤销原确认(未付部分D→C、接收户→STORE)，回DRAFT重算及重新确认。PAYING退款先query，不原地改已提交ticket金额。争议单停自动确认，新修订重设确认时间并通知商家。
+
+抵销先锁具体R记录，未成功不冲销。设本次兑付gross=100、offset=30、cash=70（按最小货币单位同义）：成功凭证D−100/B+30/外部−70，R−30；已结算价值为100。零现金单无需银行流水但须有幂等抵销确认凭证。失败释放R锁，未知保留。超额R只锁min(gross,R)，剩余留应收，绝不创建负付款额。
+
+### 2.7 事件与跨域契约
+
+订单/售后跨域接口Earn/Redeem/Refund/Fact/SourceFacts放shop-base/spi/points，只含纯DTO和业务键。PointsSettlementHook位于pay.points.app，提供beginPayout/acceptResult/onBillFinalized/settleModeOf，PointsFundsPort位于pay.points.port，仅供pay内协作；其DTO同样为纯record。具体字段是最低必需契约：
+
+| 接口签名 | DTO内容 / 语义 |
+|---|---|
+| `PointsEarnPort.grant(GrantCommand): GrantOutcome` | eventNo/subOrderNo/userNo/type/支付事实版本/逐行规则与商品现金额；返回GRANTED/SKIPPED及实际/应发量 |
+| `PointsRedeemPort.quote(RedeemQuery): RedeemQuote` | market/user/端/支付模式/候选门店；返回type/rate/上限/reason |
+| `PointsRedeemPort.hold(HoldCommand): HoldOutcome` | orderNo/user/want/子单与逐行券后金额、协议/能力；返回holdNo/实际分数金额/分摊/原因 |
+| `PointsRedeemPort.release(ReleaseCommand): HoldOutcome` | orderNo/事件号/权威取消版本；返回原释放结果 |
+| `PointsFactPort.accept(LifecycleFact): void` | eventNo/payloadHash/subOrderNo/sourceVersion/PAID,CANCELLED,REFUND_SUCCEEDED,FINALIZED,REFUND_CLOSED/必要累计快照 |
+| `PointsRefundPort.prepare(RefundCommand): RefundPreparation` | afterSaleNo/subOrderNo/退款行/商品业务累计退款/本次现金额/路径/事实版本；返回no/revision/退分/收回/现金扣减/承担差额/hash |
+| `PointsRefundPort.confirm(RefundConfirmation): RefundOutcome` | prepareNo/hash/现金退款成功证据/补收及补差追回证据；返回原不可变结果 |
+| `PointsRefundPort.abort(RefundAbort): void` | prepareNo/hash/未发生资金或补偿完结证据，未知不允许abort |
+| `PointsSettlementHook.beginPayout(PayoutCommand): PayoutTicket` | sourceRef/头寸ID/用途/收款账户版本；返回ticketNo/gross/offset/cash/providerIdem；域内Hook |
+| `PointsSettlementHook.acceptResult(FundsResult): PayoutOutcome` | ticketNo/证据号/确切金额/SUCCEEDED,FAILED,UNKNOWN；仅成功过账，同事务更新结算/积分 |
+| `PointsSettlementHook.onBillFinalized(LifecycleFact): void`、`settleModeOf(String subOrderNo): SettleMode` | 结算终局同步转正/门店确认；生成结算单读取hold快照，均为pay域内接口 |
+| `PointsFundsPort.capabilities(FundsContext): FundsCapabilities` | path/channel/主体/收款账户；分别返回补差、转账、内部划拨、补收能力 |
+| `PointsFundsPort.submit(FundsCommand): FundsResult`、`query(String ticketNo): FundsResult` | command携ticket/currency/cash/idem/purpose；实现只执行资金并给可信结果，不更新积分表 |
+
+源订单/售后事件写平台sys_outbox；pay跨域出站事件写pay事务绑定的pay_outbox（不能用平台连接伪同事务），积分专属结果也可使用pts_outbox但同样绑定pay事务。跨域消费Inbox唯一(eventNo)与积分过账同pay事务提交，失败抛出供源重试。pay内结算终局、补差回执和本地付款确认直接调用Hook与结算状态同事务，无须人为制造pay→积分异步事务边界；对其他域发布结果仍须Outbox。后台调度覆盖启动补扫，不要求新MQ。
+
+`pts_lifecycle_fact`按子单保存支付/最终行额、累计退款、终局、退款责任关闭各自版本；不同源版本不能相互比较大小。先到终局/退款也存事实，后到grant/onPaid按已知事实补齐或拒绝恢复已取消权益。只有源快照足以完整覆盖前序事件时才跳过旧版本，不盲丢乱序增量。业务结果事件回订单独立Inbox，再推进订单/售后进度。
+
+### 2.8 退款、返分收回与现金补收
+
+接线在AfterSaleRefundExecutor：冻结本次RefundPlan和业务退款账本准备 → points.prepare → 回退分账/补差/补收 → 发现金退款 → 明确成功后points.confirm → 源退款事实与业务终态。原RefundLedger直接记“已退”的动作改为执行准备/成功提交：ord_sub_order.refunded_minor表示业务已完成额，不包括未确认通道请求；净现金额单独记录。源订单事务与pay事务无法一起回滚，使用持久化执行阶段和同一计划重试。
+
+抵扣退回：按该子单累计商品业务退款/原商品现金实付，向下对齐，商品全退精确退满；仅退运费不退积分。返分收回：逐行target=floorAligned(granted_points×max(0,该行累计商品退款−grant_before_refunded_goods_minor)/grant_basis_minor)，本次=target−该行已处理；累计退款达到原商品现金实付时target精确取granted_points，grant_basis为0的行不发也不除。例原商品实付100/规则100分，先退50再发50（basis50），随后再退25只收回25，最后退25再收回25。避免把实际减发50再乘累计75%收回37，也避免退0分商品却扣别行返分。分母0的行返分必0；核销输入无法建立合法退款基线时拒绝，不用除零兜底伪造比例。
+
+prepare锁核销头寸、发放行及需要收回的用户P/A，移动到退款HELD并保留原格来源，准备单保留不可变结果；不足部分=min(缺分折现金额,本次可退现金)，路径不支持补收则为0。平台承担差额记录waived，不计“已收回分”且不增U；用户可用余额不扣负。现金扣减后净现金额≥0，准备时不给用户提前可花的退分。
+
+confirm必须由可信适配器核验真实结果，不信客户端success。收到真实现金补收q后，可回流自由接收分或发行登记提供等额q积分到ISSUE/U；用户实际收回a则USER→ISSUE、C→U。现金补收与发行/回流在同一过账凭证校验，不能偷取其他退款预留积分；修订“只有TOPUP发行”为“核验备款支持的TOPUP/现金补收才能发行”。直连路径若钱留商家而未回平台，q=0。
+
+现金退款成功和补收成功可分阶段：退用户积分及实际收回a先确认；未确认q不恢复ISSUE/U，单独现金补收状态及幂等凭证，补收失败转平台承担。合法零现金退款也必须核验补收/抵销及退款完成事实。晚到回款只落对应资金腿一次。
+
+### 2.9 到期与暂停
+
+按区域日期到期，GRANT/HOLD续期，退款恢复到原有效期；若用户仍无法核销，先应用不可用区间顺延再判断到期。pause日志持久化区间，用户/种类的受影响时间取并集；商家/门店局部暂停但仍有可用受理门店不按全局不可用顺延，端暂停仅在用户没有可用受理端时影响。明确查询可用范围且不重复叠加多个暂停。
+
+EXPIRE先把到期A转到带来源的到期准备HELD，保留C并生成收入划拨意图；明确划拨成功后USER.HELD→RECEIVE可回流并减C。未知/失败保持准备和原意图重试，不假记现金已出。EXPIRE、释放B等重复周期键带revision，退款HELD不被清零。
+
+### 2.10 对账、统计和任务
+
+写入检查不替代外部核对。内部一致性快照按种类核V1–V8、账户/专户流水、账单明细/修订、退款准备与B预留；R与回款/抵销独立核对。外部证据核U+C+D+B实际专项覆盖，同币种所有种类及其他已占用资金一起分配，不能拿同一银行余额重复证明每个专项。
+
+源事实巡检经`PointsSourceFactsPort.scan(SourceCursor): SourcePage`（shop-base/spi/points，业务键/快照/水位）取已付、取消、退款、终局及关闭，points不跨域SQL查ord/stl。补偿按事实版本重投相同命令；不直接改余额。
+
+任务：event-dispatch(5秒)、source-reconcile(5分钟)、payout/refund-query(1分钟)、activate/closure-sweep(1小时)、statement/auto-confirm(按区域日切)、expiry/reminder(按区域日切分页清完)、topup-plan(月)、stats(5分钟)、ledger-recon(1小时)、external-recon(日)。JobHandler/JobDeclaration在shop-app装配，job-worker只调名称；同一任务游标持久化，重入不重复入账。
+
+统计从凭证+grant SKIPPED头寸+资金意图汇总：发放/退分/兑付/现金付款/抵销/回流分别记，汇总可重建。告警：U/freeB低水位、无法预留、R>7天、PAYING/UNKNOWN>30分钟、事件积压>60秒、审批>24小时、账务差异、外部覆盖不足；资金差异最高级，低水位建议7天但不自动设生产参数。
+
+### 2.11 库表、HTTP、权限及配置
+
+库表为目标数据字典，T02落实际DDL并生成ER图；迁移号到实施时查当前最大版本再分配，不预占已存在V406。所有表有仓库审计列，金融明细不软删；索引包含常用主体/时间分页键。
+
+| 表 | 关键字段及唯一/条件约束 |
+|---|---|
+| pts_point_type | type_code唯一；market/currency/scale/rate_points/rate_minor/deduct_ratio_bp/idle_days/status；active_market在ACTIVE/DRAINING赋值唯一；DRAINING禁止新返分、允许存量余额核销与收尾，完全清偿后才能RETIRED |
+| pts_fund_pool | type_code唯一；U/C/D/B、reserved_B_minor、version；B≥reserved_B≥0，R单独统计 |
+| pts_account | (type_code,holder_type,holder_no)唯一；格按角色合法；frozen/expire_at/expiry_revision；MINT以外非负 |
+| pts_voucher | biz_ref唯一、payload_hash、结果JSON及金额/币种/比例/维度/外部证据；只追加 |
+| pts_ledger_entry / pts_pool_flow | entry_no/flow_no唯一，voucher_no、bucket、delta、after、bizRef；按账户/type+id分页 |
+| pts_grant_position / pts_grant_line | (type,sub)及(position,item_id)唯一；原发放/转正/收回/现金补收/承担分开累计；rule/原商品实付、original_rule_points、grant_before_refunded_goods_minor、grant_basis_minor快照 |
+| pts_redeem_position / pts_redeem_line | (type,sub)及(position,item_id)唯一；协议/路径/rate、券后金额/最终现金基数、held/returned/paid_cash/paid_offset计数、state/statement/ticket引用 |
+| pts_refund_reserve | reserve_no/position唯一；original/remaining/consumed/released_minor、version；与pool reserved_B原子更新 |
+| pts_merchant_agreement | agreement_no唯一，active_key唯一（非有效NULL）；文本/签署/生效/结算方式和账期，不覆盖历史 |
+| pts_store_statement / pts_statement_revision / pts_statement_line | 逻辑(type,store,period_from)唯一；修订(no,revision)唯一；明细(no,revision,position)唯一；确认带expectedRevision |
+| pts_payout_ticket | ticket_no/provider_idem唯一；gross/offset/cash/currency/用途/收款账户/状态/回执；gross=offset+cash |
+| pts_receivable / pts_receivable_allocation | R原额/追回累计；(ticket,receivable)唯一；allocation状态LOCKED/CONFIRMED/RELEASED，未确认锁不算已追回 |
+| pts_refund_preparation / pts_refund_preparation_line | after_sale_no唯一；input_hash/immutable_outcome、每资金腿和points_confirm状态、原格占用、修订/证据引用；单腿幂等 |
+| pts_pool_request / pts_topup_plan | request/evidence唯一（资金操作复合动作区别）；审批人≠提交人；计划周期生成键(plan,period)唯一 |
+| pts_switch / pts_switch_log / pts_pause_interval | (scope,id)唯一、动作/reason/operator；区间状态与各影响范围审计 |
+| pts_lifecycle_fact / pts_inbox / pts_outbox | fact(type,sub)唯一、多源版本；inbox(event_no)唯一；outbox event_no唯一/status/retry/next_attempt |
+| pts_fund_transfer / pts_stat_daily / pts_cursor | transfer_no唯一、专项资金意图/确认/证据；维度日汇总；任务名唯一水位 |
+
+EXPIRE收入在pts_fund_transfer保存待划拨额；本期不另设第五现金格，准备时锁C中的对应金额与到期头寸，确认现金划拨才减C及积分清零，避免借出账时序破坏V3。用户到期后不可新用该额但在到期准备HELD展示，失败重试原意图；和退款准备同一类“非订单HELD”来源隔离。
+
+HTTP沿用`/mp/points`、`/biz/points`、`/ops/points`，不要另开point单数路径：
+
+| 端 | 端点和必要行为 |
+|---|---|
+| C | GET account/records；quote使用POST（候选items结构），移除旧GET deductible并同步修改三端/OpenAPI；订单详情下发实际返分/抵扣/退款明细 |
+| B | GET/POST agreement（签署仅主账号）；PUT agreement/mode；GET summary/records/statements及详情；POST statements/{no}/confirm或dispute（revision必传） |
+| Ops | types及activate/retire；pools/{type}/flows/reserves/plans；requests及approve/reject；agreements、statements、receivables、payout-tickets、refund-preparations；switches/logs；accounts/freeze；stats/recon/diffs/repair |
+
+B后端强制BizContext主体/门店，C用户来自登录态。Ops权限：points:type、pool:read/submit/approve、agreement:read/terminate、statement:read/manage、account:read/adjust、switch:read/write、stats:read、recon:read/repair；SUPER_ADMIN可读和管理授权但资金自批仍拒绝，approve仅财务权限。具体端点逐项落OpenAPI/API参考/权限种子/功能点/角色五处，不靠prefix推断权限。
+
+错误码至少：RATE_LOCKED、ACTIVE_EXISTS、POOL/B_RESERVE_INSUFFICIENT、SELF_APPROVE、EVIDENCE_REUSED、AGREEMENT_REQUIRED、CAPABILITY_UNSUPPORTED、IDEMPOTENCY_CONFLICT、PAYOUT_UNKNOWN、REFUND_STATE、STATEMENT_STALE、CURRENCY_MISMATCH、OVERFLOW；统一POINTS_前缀按仓库四处登记。不可用理由下发可渲染的i18n键，不只布尔。
+
+配置：shop.points.enabled=false（只禁新增发放/核销，不禁已有收尾）；shop.points.reserve.enabled=true（v3硬要求，不能在线绕过）；不新增积分连接池，沿现有pay池统一核算容量；重试退避1s/5s/30s/5min/30min，资金UNKNOWN始终query，不因次数到顶宣告失败。超期进人工队列继续保留承诺。
+
+### 2.12 旧方案移除与首次上线
+
+前提：积分尚未上线，直接采用最新业务逻辑。开发按任务逐步替换，最终构建只装配最新积分实现；不部署双引擎、不迁旧积分业务数据、不保留旧DTO/API兼容层。
+
+| 步骤 | 开发动作 | 验收结果 |
 |---|---|---|
-| V1 | **积分守恒**：每张凭证所有积分户变动之和 == 0 | `Voucher` 构造校验 |
-| V2 | **发放户对应 U**：`ΔU == m(Δ发放户)` | `Voucher` 构造校验 |
-| V3 | **负债对应 C+R**：`Δ(C + R) == m(Δ(C 端户 + 门店户))` | `Voucher` 构造校验 |
-| V4 | **真钱对外部**：`Δ(U + C + D) == external_minor`，方向是该凭证类型允许的 | `Voucher` 构造校验 |
-| V5 | 所有格 ≥ 0（发行登记除外，它恒为负） | 条件更新 SQL |
-| V6 | 头寸累计不超上限；状态迁移只能从规定的前态出发 | 头寸条件更新 SQL |
-| V7 | 同一业务动作只过账一次 | `pts_voucher.biz_ref` 唯一 |
-| V8 | 分数是 `points_unit` 的整数倍 | `RedeemRate#requireAligned` |
-| V9 | 只有 `PointsPostingService` 能写积分户 / 专户 / 头寸 / 流水 | ArchUnit A3 |
+| 替换业务内核 | 建新账户/凭证/头寸/预算/退款准备服务，全部写账经posting | 新模型资金与积分守恒、条件非负、幂等及并发通过 |
+| 改现有接线 | 订单改SPI、结算改Hook、退款复用现有执行器；任务/巡检查新账 | 下单/支付/取消/退款/兑付/到期/对账只执行最新链路，无旧调用 |
+| 同步三端与契约 | 更新现有页面、Controller/门面、OpenAPI、权限、i18n与种子 | 最新DTO及行为一致；旧收费视图、旧策略接口与积分退款选项移除 |
+| 删除旧实现 | 删除旧PointsService/Impl/Config/Port、旧Entity/Mapper、任务/对账轴及注册；清理旧表/积分费字段、测试/夹具 | 无旧类型引用、旧Bean/任务/URL、旧配置读写和旧表访问；其他pay功能不受破坏 |
+| 首次上线 | 从最新模型初始化种类/预算/规则/协议，核验资金；完成三端和全链路验收后启用 | 新系统只有一个积分实现，预算不足不超发；新业务关闭仍允许已受理业务完成 |
 
-V1–V4 逐张成立 ⇒ 资金方案的总恒等式任何时刻成立；I1 巡检只抓**绕过凭证的带外写**。
+旧收费字段包括stl_bill.points_fee_minor及对应DTO/公式/退款冲回/统计；移除前查清代码和数据库依赖，仅清理旧积分专属内容，不删除货款、佣金及新的核销成本字段points_cost_minor。pts_user_account/pts_user_ledger/stl_points_pool不转为生产账；旧DDL记录保留原checksum，新脚本负责最新表结构与旧结构清理。
 
-凭证允许的外部资金方向（V4）：
+T01登记旧代码引用与有价值的场景；T04–T12在实现新功能时直接替换接线，旧分支随调用消失而删除；T13执行残留检查和首次上线验收。旧文档标记废弃，最新PRD/TDD/ADR为实施依据。上线后暂停仅禁新增，不撤销已提交的付款/退款意图，UNKNOWN仍按原幂等号查询；这属于新系统正常恢复能力。
 
-| 方向 | 凭证 |
-|---|---|
-| 进 | `TOPUP` · `RECOVER` |
-| 出 | `WITHDRAW` · `PAYOUT` · `EXPIRE` |
-| 进或无 | `RETURN`（收回成功为进，失败记 R 为无）· `REVOKE`（有现金抵扣为进） |
-| 无 | `GRANT` · `ACTIVATE` · `HOLD` · `RELEASE` · `PAY_SETTLE` · `PAY_TRANSFER` · `STORE_CONFIRM` · `STORE_SETTLE` · `REVERSE` · `ADJUST` · `PROMO_GRANT` |
+### 2.13 分阶段开发计划
 
-### 2.2 类设计
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans for native execution; use superpowers:subagent-driven-development only when the user selects agent execution. Steps use checkbox syntax.
 
-#### 包结构（`pay/pay-domain`，与结算共用 `payTxManager`）
+**Goal:** 在现有pay内直接实现最新积分业务模块，改造三端与交易接线，删除旧方案，实现资金闭环并完成首次上线验收，满足AC-PTS-01至40。
 
-```text
-ai.neargo.shop.pay.points
-├── model/        值对象与快照 —— 纯 Java
-├── voucher/      VoucherFactory：命令 + 快照 → 已校验的 Voucher
-├── policy/       规则与闸门（接口 + Default），只算不写
-├── posting/      PointsPostingService —— 唯一写入口
-├── store/        持久化端口（接口，写方法全是条件写）
-│   └── impl/     MyBatis 实现
-├── app/          应用服务（编排）+ PointsSettlementHook（给结算域）
-├── payout/       StorePayoutExecutor：归集并入打款单 / 直连转账（未接通）
-├── recon/        I1–I7、外部对账、PointsReconAxis
-├── job/          任务触发器
-└── port/         spi 实现
-ai.neargo.shop.pay.mapper.points   Mapper（须在 pay.mapper 下，才归 paySqlSessionFactory）
-```
+**Architecture:** pay-domain内pay.points业务模块/pts账本；订单经SPI和持久事件，结算经域内Hook，资金适配留pay内。U/C/D/B实际备付、R独立应收，退款采用准备与结果确认。
 
-#### model
+**Tech Stack:** 沿仓库JDK21、Maven父工程、Spring事务、MyBatis-Plus、现有MySQL部署及Outbox/Job；不新增MQ或框架版本。H2仅快速回归，不替代目标MySQL版本的条件写/并发/唯一键验证。
 
-| 类 | 职责 / 关键成员 |
-|---|---|
-| `PointTypeCode` · `PointType` | 种类编码；种类快照（`market, currency, scale, funder, rate, deductRatioBp, idleDays, remindDays, status`） |
-| `RedeemRate` | 既约比例 `(pointsUnit, minorUnit)`：`of()` 约分 · `toMinor(pts)` 要求对齐 · `floorAligned(pts)` |
-| `HolderType` · `Holder` | 五类积分户；`Holder(HolderType, holderNo)`，平台户 `holderNo = "*"` |
-| `Bucket` · `PoolBucket` | `PENDING/AVAILABLE/HELD` · `U/C/D/R` |
-| `VoucherType` | 19 种凭证；`ExternalFlow allowed()` |
-| `SettleMode` · `Scene` · `BizRef` · `Dims` | 结算方式；场景；幂等键 `type:ref`；统计维度（含 `settleMode`、发放 / 受理门店） |
-| `PointsMove` | `(Holder, Bucket, deltaPoints)` —— 一张凭证的所有 `PointsMove` 之和必须为 0 |
-| `PoolMove` | `(PoolBucket, deltaMinor, counterparty)` |
-| `PositionMove`（sealed） | 发放头寸：`Open / Skip / Activate / RevokePending / RevokeAvailable`；核销头寸：`Hold / Release / Transfer / StoreConfirm / Statement / BeginPayout / ConfirmPayout / AbortPayout / Reverse / Return` |
-| `Voucher` | 构造即校验 V1–V4、V8；不平抛 `UnbalancedVoucher` |
-| 快照 | `AccountSnapshot` · `PoolSnapshot` · `GrantPosition` · `RedeemPosition` · `Agreement` · `StoreStatement` |
-| `RedeemState` | `HELD → TRANSFERRED → PAYING → PAID`（随单）· `HELD → IN_STORE → SETTLEABLE → IN_STATEMENT → SETTLED`（定期）· 任一态可 `RELEASED/REVERSED` 到终态 `CLOSED` |
+**Spec:** 本文§0至§2.12及独立PRD；计划状态草稿，本文档工作不等于已选择实施方式。
 
-```java
-/** 一次业务动作的写入单元。构造即校验 —— 拿到实例就一定是平的。 */
-public record Voucher(BizRef bizRef, PointType type, Dims dims, long externalMinor,
-                      List<PointsMove> pointsMoves, List<PoolMove> poolMoves,
-                      List<PositionMove> positionMoves) {
-    public Voucher {
-        pointsMoves = List.copyOf(pointsMoves);
-        poolMoves = List.copyOf(poolMoves);
-        positionMoves = List.copyOf(positionMoves);
-        RedeemRate rate = type.rate();
-        require(sum(pointsMoves) == 0, "V1 积分守恒");
-        require(pool(U) == rate.toMinor(sum(pointsMoves, PLATFORM_ISSUE)), "V2 发放户对应 U");
-        require(pool(C) + pool(R) == rate.toMinor(sum(pointsMoves, USER) + sum(pointsMoves, STORE)), "V3");
-        require(pool(U) + pool(C) + pool(D) == externalMinor
-                && bizRef.type().allowed().permits(externalMinor), "V4 真钱对外部");
-    }
-}
-```
+**Global Constraints:** 不改已应用迁移；迁移编号临实施分配；计划不新增docs/plans；只有posting写账；源事务各自Outbox；仅装配最新积分实现；生产参数由审批创建；未完成退款/对账不开放新积分；job-worker不引业务模块；沿用pay-domain依赖，不新增模块或外部版本。
 
-#### voucher
+**Review Focus:** 退款关闭与prepare并发（T07/T10）；现金超时但外部成功（T06/T07）；输入相同幂等键却不同金额（T02/T07）；非1:1比例逐子单尾差（T05）；跨主体越权及积分Mapper误归平台事务（T01/T12）。对应测试在任务和§5列明。
 
-`VoucherFactory` 一个类、每种凭证一个方法（每个十来行，拆 19 个类反而难对照）：
+每个任务按下面步骤实施；“预期失败/通过”是执行指引，不是本次已运行结果。每任务提交前只stage列明且本人识别的文件，完整读diff；提交后做一次独立评审，修复阻塞项再开展依赖任务。
 
-```java
-Voucher topup(PointType t, long minor, long receiveBalance, String requestNo, Dims d);  // 接收户先流转，不足再发行
-Voucher withdraw(PointType t, long minor, String requestNo, Dims d);
-Voucher grant(PointType t, String subOrderNo, long pts, Dims d);                         // 发放户 → P；U → C
-Voucher activate(PointType t, GrantPosition g, Dims d);                                  // P → A
-Voucher hold(PointType t, String orderNo, List<HoldShare> shares, Dims d);              // A → H，逐子单开头寸
-Voucher release(PointType t, RedeemPosition p, Dims d);                                  // H → A
-Voucher paySettle(PointType t, RedeemPosition p, Dims d);                                // H → 门店 → 接收户；C → D
-Voucher payTransfer(PointType t, RedeemPosition p, Dims d);                              // H → 门店「待确认」
-Voucher storeConfirm(PointType t, RedeemPosition p, Dims d);                             // 门店 待确认 → 待结算
-Voucher storeSettle(PointType t, StoreStatement s, Dims d);                              // 门店 待结算 → 接收户；C → D
-Voucher payout(PointType t, long minor, String payoutRef, Dims d);                       // D −（出）
-Voucher reverse(PointType t, RedeemPosition p, long pts, String ref, Dims d);            // 按积分当前所在位置反转
-Voucher returnBack(PointType t, RedeemPosition p, long pts, boolean funded, String ref, Dims d);
-Voucher recover(PointType t, long minor, String ref, Dims d);                            // R → C（进）
-Voucher revoke(PointType t, GrantPosition g, RevokeSplit split, long receiveBalance, String ref, Dims d);
-Voucher expire(PointType t, AccountSnapshot a, Dims d);                                  // A → 接收户；C −（出）
-Voucher adjust(PointType t, String userNo, long signedPts, String requestNo, Dims d);
-```
+旧实现清理贯穿任务：T01登记旧引用和有价值的测试场景，T02建立最新账本，T04–T10直接替换原调用，T11改任务/巡检，T12同步三端，T13清理残留并验收首次上线。不增加旧数据迁移任务或新旧路由。
 
-#### policy（只算，不碰库）
+#### T01 pay内业务边界、契约与旧引用清单
 
-| 接口 | Default 规则 |
-|---|---|
-| `EarnPolicy` | 每行 `FIXED` = n × 件数、`RATIO` = 行实付 × 万分比；赠品 0；合计 `floorAligned` |
-| `CommissionCapPolicy` | 本期 `NoCap`；`commission_cap_bp` 非空时截断 |
-| `RedeemPolicy` | 上限 = Σ可受理子单金额 × `deductRatioBp`，与余额、意愿值取小；按金额分摊、余数给最后一家；`floorAligned`；兑付额 = 抵扣额（全额） |
-| `RefundRatioPolicy` | `target = floorAligned(base × refunded / payBasis)`，`delta = target − done`；全退取精确 |
-| `ExpiryPolicy` | `expireAt` = 区域本地日 23:59:59(now + idleDays)；`remindAt = expireAt − remindDays` |
-| `StatementPolicy` | 账期区间、出单日、自动确认日；金额 = 本期兑付 − 待追回冲减；为负结转 |
-| `PointsGate` | 依次判：总闸 → 全局 → 区域 → 种类 → 场景 → 端 → 商家 → 门店 → 用户；核销另判线下、**协议已签**；首个命中即拒 |
+依赖：无。
 
-#### posting
+**Files**
+- Create：`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/app/PointsSettlementHook.java`、`points/port/PointsFundsPort.java`、`points/port/PayPointsFundsAdapter.java`的纯契约与骨架；缩写points路径以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/`为根，只有本节采用此缩写。
+- Modify：`backend/shop-app/src/test/java/ai/neargo/shop/arch/PayTxManagerConventionTest.java`（扩大points覆盖）；不改pom.xml、不新建数据源配置。登记§1.1的所有写入口/读入口/任务与现有测试，区分沿用场景、替换断言和删除项。
+- Test：`backend/shop-app/src/test/java/ai/neargo/shop/arch/PointsArchitectureTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsPayTransactionTest.java`。
 
-```java
-public interface PointsPostingService {
-    /**
-     * 过账。同一事务内固定顺序：凭证头（抢 biz_ref）→ 头寸 → 用户 / 门店户 → 平台户 → 专户 → 流水。
-     * 任一条件更新 0 行 → PostingRejected(对象, 约束)，整张回滚；biz_ref 已存在 → 返回已有凭证。
-     */
-    PostingResult post(Voucher voucher);
-    record PostingResult(String voucherNo, boolean replayed) {}
-}
-```
+**Interfaces**：产生域内Hook/FundsPort纯契约；复用payTxManager/paySqlSessionFactory，T05消费资金能力测试适配，真实实现留T06；不产生引擎路由或兼容契约。
 
-平台户与专户行最热，放在最后，锁持有时间最短；固定顺序防死锁。
+- [ ] 写失败测试：PointsArchitectureTest#business_package_boundary：订单不依赖积分实现，结算不直写积分Store；PointsPayTransactionTest#settlement_and_points_roll_back_together：同pay事务回滚时结算与积分都回滚；#platform_rollback_does_not_rollback_pay_hold验证跨域占用补偿前提。所有积分Mapper均属于paySqlSessionFactory。
+- [ ] 跑红：`cd backend && mvn -pl shop-app -am test -Dtest="PointsArchitectureTest,PointsPayTransactionTest" -Dsurefire.failIfNoSpecifiedTests=false`；目标测试非零，失败来自边界或事务行为。
+- [ ] 运行PointsDeductFlowTest、PointsRuleFlowTest、PointsConfirmFlowTest、PointsRevokeFlowTest、PointsActivateFlowTest、PointsExpireFlowTest，记录现有行为参考：`cd backend && mvn -pl shop-app -am test -Dtest="PointsDeductFlowTest,PointsRuleFlowTest,PointsConfirmFlowTest,PointsRevokeFlowTest,PointsActivateFlowTest,PointsExpireFlowTest" -Dsurefire.failIfNoSpecifiedTests=false`；结果记录为行为参考；旧收费/负余额/旧接口断言不作为新实现必须通过的验收，替换为最新PRD测试。
+- [ ] 建立业务包与上述契约，限定写入口和依赖方向；不得新增JAR、连接池、事务管理器或默认成功的资金适配。
+- [ ] 跑绿：同命令，验证shop-app与pay-svc既有宿主装配均可加载points业务包；当前框架约定不能被新的包名漏扫。
+- [ ] 消融：将积分写切回平台工厂或绕过Hook，对应反例必须红，再恢复重跑。
+- [ ] 检查diff，仅stage本人确认的文件，提交`refactor(points): define business boundary inside pay`，偏差回写本文。
 
-#### store（写方法只被 posting 调）
+交付门：同pay事务内积分/结算同生共死，订单事务与pay仍有真实边界；没有新增物理模块。
 
-| 接口 | 写 | 读 |
+#### T02 数据模型与原子过账
+
+依赖：T01。
+
+**Files**
+- Create：backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/model/{RedeemRate,Voucher,PointsMove,FundMove,PositionMove}.java；posting/PointsPostingService.java；store/PostingStore.java；store/impl/MybatisPostingStore.java；backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/mapper/points/PointsPostingMapper.java；backend/shop-app/src/main/resources/db/migration/V<执行时分配>__points_v3_schema.sql。模块内缩写路径均以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/`为根。
+- Modify：backend/shop-app/src/test/java/ai/neargo/shop/arch/PayTxManagerConventionTest.java（增加points守卫或单独类）。
+- Test：`backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/points/RedeemRateTest.java`、`backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/points/VoucherInvariantTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PostingServiceTest.java`。
+
+**Interfaces**：产生post(Voucher):PostingResult(voucherNo,replayed,resultJson)；消费§2.11最新表字典；分阶段列可一次建齐但不给未完成功能开闸，不创建迁移或引擎归属表。
+
+- [ ] 写失败测试：VoucherInvariantTest#receivable_is_not_backing：C=0/R=100/USER=100必须拒绝；PostingServiceTest#replay_conflict_and_stable_lock_order：同bizRef改金额拒绝、并发跨门店锁序稳定。附加断言：目标MySQL上条件写0行整张回滚，不能只用H2证明。
+- [ ] 跑红：`cd backend && mvn -pl pay/pay-domain -am test -Dtest="RedeemRateTest,VoucherInvariantTest" -Dsurefire.failIfNoSpecifiedTests=false`；`cd backend && mvn -pl shop-app -am test -Dtest="PostingServiceTest" -Dsurefire.failIfNoSpecifiedTests=false`。所有指定类须有非零执行数；确认失败来自目标行为而非环境/编译故障。
+- [ ] 按上列接口/文件和对应设计节实施最小闭环；逐条实现 AC-PTS-04/38/39，不提前放开生产总闸。
+- [ ] 跑绿：同一命令的全部目标测试通过；条件写、隔离、并发及unique键同时在生产同版本MySQL测试库执行。目标库配置通过本地未入库配置注入，不复用生产凭证。
+- [ ] 消融：撤去本任务保护约束，对应反例必须失败，再恢复并重跑；把命令与结果记入§5，不能填写预计结果。
+- [ ] 检查diff、仅stage本任务认得的文件，提交 `feat(points): 数据模型与原子过账`；需求/接口偏差同步回本文，不把变更留在会话中。
+
+交付门：目标MySQL上条件写0行整张回滚，不能只用H2证明。
+
+#### T03 种类、备款、审批及内部调拨
+
+依赖：T02。
+
+**Files**
+- Create：backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/type/PointTypeService.java；pool/{PoolService,PoolRequestService}.java。模块内缩写路径均以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/`为根。
+- Modify：backend/shop-base/src/main/java/ai/neargo/shop/common/BizKey.java（注册新业务编号）。
+- Test：`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointTypeServiceTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PoolRequestServiceTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PoolServiceTest.java`。
+
+**Interfaces**：产生activate(type)、submit(PoolRequest)、approve(no,operator,evidence)、transferIssueToReserve(type,minor)；只由posting修改U/B及积分户。
+
+- [ ] 写失败测试：PoolServiceTest#reserve_funding_does_not_mint：补B100不改MINT；U100转B100同步ISSUE−100/RECEIVE自由+100；PoolRequestServiceTest#approval_and_evidence_are_unique。附加断言：自批、重复证据、已预留B提取全部拒绝。
+- [ ] 跑红：`cd backend && mvn -pl shop-app -am test -Dtest="PointTypeServiceTest,PoolRequestServiceTest,PoolServiceTest" -Dsurefire.failIfNoSpecifiedTests=false`。所有指定类须有非零执行数；确认失败来自目标行为而非环境/编译故障。
+- [ ] 按上列接口/文件和对应设计节实施最小闭环；逐条实现 AC-PTS-02/03/05，不提前放开生产总闸。
+- [ ] 跑绿：同一命令的全部目标测试通过；条件写、隔离、并发及unique键同时在生产同版本MySQL测试库执行。目标库配置通过本地未入库配置注入，不复用生产凭证。
+- [ ] 消融：撤去本任务保护约束，对应反例必须失败，再恢复并重跑；把命令与结果记入§5，不能填写预计结果。
+- [ ] 检查diff、仅stage本任务认得的文件，提交 `feat(points): 种类、备款、审批及内部调拨`；需求/接口偏差同步回本文，不把变更留在会话中。
+
+交付门：自批、重复证据、已预留B提取全部拒绝。
+
+#### T04 返分规则与发放头寸
+
+依赖：T03。
+
+**Files**
+- Create：backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/policy/EarnPolicy.java；earn/EarnService.java；port/PointsEarnPortImpl.java；backend/shop-base/src/main/java/ai/neargo/shop/spi/points/PointsEarnPort.java。模块内缩写路径均以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/`为根。
+- Modify：backend/shop-core/src/main/java/ai/neargo/shop/product/port/PointsRulePortImpl.java；backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/PointsRuleHandoff.java。
+- Test：`backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/points/EarnPolicyTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/EarnServiceTest.java`。
+
+**Interfaces**：消费post及规则快照；产生grant(GrantCommand):GrantOutcome及逐行发放头寸；源事件接线在T08。
+
+- [ ] 写失败测试：EarnPolicyTest#quantity_zero_cap_and_alignment：FIXED50×3=150，赠品0、明确0不下落、实付100则最高价值100；EarnServiceTest#race_for_last_budget_only_one_wins。附加断言：双线程抢最后100预算恰一发放一SKIPPED，流水无半笔。
+- [ ] 跑红：`cd backend && mvn -pl pay/pay-domain -am test -Dtest="EarnPolicyTest" -Dsurefire.failIfNoSpecifiedTests=false`；`cd backend && mvn -pl shop-app -am test -Dtest="EarnServiceTest" -Dsurefire.failIfNoSpecifiedTests=false`。所有指定类须有非零执行数；确认失败来自目标行为而非环境/编译故障。
+- [ ] 按上列接口/文件和对应设计节实施最小闭环；逐条实现 AC-PTS-06/07/08，不提前放开生产总闸。
+- [ ] 跑绿：同一命令的全部目标测试通过；条件写、隔离、并发及unique键同时在生产同版本MySQL测试库执行。目标库配置通过本地未入库配置注入，不复用生产凭证。
+- [ ] 消融：撤去本任务保护约束，对应反例必须失败，再恢复并重跑；把命令与结果记入§5，不能填写预计结果。
+- [ ] 检查diff、仅stage本任务认得的文件，提交 `feat(points): 返分规则与发放头寸`；需求/接口偏差同步回本文，不把变更留在会话中。
+
+交付门：双线程抢最后100预算恰一发放一SKIPPED，流水无半笔。
+
+#### T05 协议、试算、核销占用及释放
+
+依赖：T03,T04。
+
+**Files**
+- Create：backend/shop-base/src/main/java/ai/neargo/shop/spi/points/PointsRedeemPort.java；backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/agreement/AgreementService.java；policy/RedeemPolicy.java；redeem/RedeemService.java；port/PointsRedeemPortImpl.java。模块内缩写路径均以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/`为根。
+- Delete（T13统一完成）：旧`backend/shop-base/src/main/java/ai/neargo/shop/spi/settle/PointsPort.java`及`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/port/PointsPortImpl.java`；调用方T08改新SPI后清理，不保留兼容实现。
+- Test：`backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/points/RedeemPolicyTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/AgreementServiceTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/RedeemRaceTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/RedeemServiceTest.java`。
+
+**Interfaces**：产生quote/hold/release契约；消费T01的FundsCapabilities纯契约及posting；本任务用显式测试适配，T06真实能力完成前生产保持关闭；hold锁协议快照、用户积分和B，最终行金额由T08事实补入。
+
+- [ ] 写失败测试：RedeemServiceTest#termination_does_not_break_hold；RedeemPolicyTest#eligible_shares_are_aligned：3分=2最小单位时每个子单仍对齐；RedeemRaceTest#paid_vs_release_has_one_outcome。附加断言：B不足或门店不受理时无部分占用；不得静默提高支付金额。
+- [ ] 跑红：`cd backend && mvn -pl pay/pay-domain -am test -Dtest="RedeemPolicyTest" -Dsurefire.failIfNoSpecifiedTests=false`；`cd backend && mvn -pl shop-app -am test -Dtest="AgreementServiceTest,RedeemRaceTest,RedeemServiceTest" -Dsurefire.failIfNoSpecifiedTests=false`。所有指定类须有非零执行数；确认失败来自目标行为而非环境/编译故障。
+- [ ] 按上列接口/文件和对应设计节实施最小闭环；逐条实现 AC-PTS-10/11/12/13/15，不提前放开生产总闸。
+- [ ] 跑绿：同一命令的全部目标测试通过；条件写、隔离、并发及unique键同时在生产同版本MySQL测试库执行。目标库配置通过本地未入库配置注入，不复用生产凭证。
+- [ ] 消融：撤去本任务保护约束，对应反例必须失败，再恢复并重跑；把命令与结果记入§5，不能填写预计结果。
+- [ ] 检查diff、仅stage本任务认得的文件，提交 `feat(points): 协议、试算、核销占用及释放`；需求/接口偏差同步回本文，不把变更留在会话中。
+
+交付门：B不足或门店不受理时无部分占用；不得静默提高支付金额。
+
+#### T06 资金适配与随单两阶段兑付
+
+依赖：T05。
+
+**Files**
+- Create：`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/payout/PointsPayoutService.java`、`port/PointsSettlementHookImpl.java`。模块内缩写路径均以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/`为根。
+- Modify：T01已建立的`app/PointsSettlementHook.java`、`port/PointsFundsPort.java`和`port/PayPointsFundsAdapter.java`，补齐具体实现与契约测试。
+- Modify：backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/impl/{SettleServiceImpl,PayoutServiceImpl}.java；对应支付业务接口/资金证据及pay_outbox发布器；新增pay内SplitPreparationService和SplitResultService，把现有executeSplit的长事务拆成准备/外部调用/结果确认。
+- Test：`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PerOrderSettlementTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsFundsAdapterTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsPayoutRaceTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsSettlementBasisTest.java`。
+
+**Interfaces**：消费域内Hook的beginPayout/acceptResult、实现FundsPort能力/submit/query；短pay事务先提交结算与积分付款意图，无事务编排调通道，再用短pay事务一起确认结算与积分；归集专项回补和商家应付分开。
+
+原地替换：SettleServiceImpl/PayoutServiceImpl/BillRefundMapper统一使用最新积分口径，删除旧发分费和旧池写入。PerOrderSettlementTest新增#merchant_is_not_charged_earn_fee及#cash_payout_and_points_confirm_once，用本任务命令验证；保留货款、佣金及最新核销成本计算。
+
+- [ ] 写失败测试：PointsPayoutRaceTest#unknown_external_success_never_repays：外部已成功本地回执丢失重查只扣D一次；PointsSettlementBasisTest#periodic_excludes_points_but_commission_includes。附加断言：付款退款并发、通道明确不支持、同幂等号金额不可变；无远程适配的部署禁启用。
+- [ ] 跑红：`cd backend && mvn -pl shop-app -am test -Dtest="PerOrderSettlementTest,PointsFundsAdapterTest,PointsPayoutRaceTest,PointsSettlementBasisTest" -Dsurefire.failIfNoSpecifiedTests=false`。所有指定类须有非零执行数；确认失败来自目标行为而非环境/编译故障。
+- [ ] 按上列接口/文件和对应设计节实施最小闭环；逐条实现 AC-PTS-16/17/18/19，不提前放开生产总闸。
+- [ ] 跑绿：同一命令的全部目标测试通过；条件写、隔离、并发及unique键同时在生产同版本MySQL测试库执行。目标库配置通过本地未入库配置注入，不复用生产凭证。
+- [ ] 消融：撤去本任务保护约束，对应反例必须失败，再恢复并重跑；把命令与结果记入§5，不能填写预计结果。
+- [ ] 检查diff、仅stage本任务认得的文件，提交 `feat(points): 资金适配与随单两阶段兑付`；需求/接口偏差同步回本文，不把变更留在会话中。
+
+交付门：付款退款并发、通道明确不支持、同幂等号金额不可变；无远程适配的部署禁启用。
+
+#### T07 退款准备、确认、备付及现金补收
+
+依赖：T04,T05,T06。
+
+**Files**
+- Create：backend/shop-base/src/main/java/ai/neargo/shop/spi/points/PointsRefundPort.java；backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/refund/{PointsRefundService,RefundPreparation}.java；policy/RefundRatioPolicy.java。模块内缩写路径均以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/`为根。
+- Modify：backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/{AfterSaleRefundExecutor,RefundLedger}.java；backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/AfterSaleServiceImpl.java；退款执行阶段表迁移（执行时编号）。
+- Test：`backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/points/RefundRatioPolicyTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/CashClawbackTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsRefundRecoveryTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsRefundServiceTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/RefundBackingTest.java`。
+
+**Interfaces**：产生prepare/confirm/abort；消费资金结果与冻结RefundPlan；源账本成功才记已退，阶段结果持久化；cashOffset/净现金/承担额分列。
+
+原地替换：修改AfterSaleRefundExecutor、AfterSaleServiceImpl和积分退款份额策略，复用现金退款唯一执行器；删除旧returnBenefitsIfWholeOrderRefunded中的积分回调和refundMode=POINTS补偿分支。PointsRefundServiceTest新增#refund_confirms_points_once及#points_refund_mode_rejected，用本任务命令验证。
+
+- [ ] 写失败测试：RefundBackingTest#failed_recovery_returns_funded_points：B100→C100/R100后可用余额有钱；PointsRefundRecoveryTest#failed_cash_keeps_recoverable_preparation；CashClawbackTest#refund_nonnegative_and_collection_required；RefundRatioPolicyTest#late_grant_after_partial_refund_uses_remaining_basis断言先退50/后发50/再退25只收25，最后退满精确收完。附加断言：重复prepare输入不同拒绝；货款/运费/规则0行不混算；现金未到不得补U。
+- [ ] 跑红：`cd backend && mvn -pl pay/pay-domain -am test -Dtest="RefundRatioPolicyTest" -Dsurefire.failIfNoSpecifiedTests=false`；`cd backend && mvn -pl shop-app -am test -Dtest="CashClawbackTest,PointsRefundRecoveryTest,PointsRefundServiceTest,RefundBackingTest" -Dsurefire.failIfNoSpecifiedTests=false`。所有指定类须有非零执行数；确认失败来自目标行为而非环境/编译故障。
+- [ ] 按上列接口/文件和对应设计节实施最小闭环；逐条实现 AC-PTS-24/25/26/27/28，不提前放开生产总闸。
+- [ ] 跑绿：同一命令的全部目标测试通过；条件写、隔离、并发及unique键同时在生产同版本MySQL测试库执行。目标库配置通过本地未入库配置注入，不复用生产凭证。
+- [ ] 消融：撤去本任务保护约束，对应反例必须失败，再恢复并重跑；把命令与结果记入§5，不能填写预计结果。
+- [ ] 检查diff、仅stage本任务认得的文件，提交 `feat(points): 退款准备、确认、备付及现金补收`；需求/接口偏差同步回本文，不把变更留在会话中。
+
+交付门：重复prepare输入不同拒绝；货款/运费/规则0行不混算；现金未到不得补U。
+
+#### T08 源事实、可靠事件、订单与售后接线
+
+依赖：T04,T05,T06,T07。
+
+**Files**
+- Create：backend/shop-base/src/main/java/ai/neargo/shop/spi/points/{PointsFactPort,PointsSourceFactsPort}.java；backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/event/{PointsInboxConsumer,PointsOutboxPublisher}.java；lifecycle/PointsLifecycleService.java；backend/shop-app/src/main/java/ai/neargo/shop/payclient/OrderPointsSourceFactsAdapter.java。模块内缩写路径均以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/`为根。
+- Modify：backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java；订单/售后DomainEvent定义；支付/结算事实发布点。
+- Test：`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsInboxTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsLifecycleTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsOrderIntegrationTest.java`。
+
+**Interfaces**：消费LifecycleFact/SourcePage，订单/售后同源事务写Outbox；pay内事实经Hook同步，同pay事务更新fact/账/结算状态；跨域Inbox与post同pay事务，结果出站持久化。
+
+订单/售后统一调用新SPI，删除旧积分AfterCommit调用；可靠事件按源事实版本与幂等业务键处理。PointsOrderIntegrationTest新增#all_points_actions_use_new_ports及#duplicate_payment_does_not_double_grant，确保直接接入最新逻辑。
+
+- [ ] 写失败测试：PointsInboxTest#commit_then_crash_replays_once；PointsLifecycleTest#finalized_or_refunded_before_grant；PointsOrderIntegrationTest#failed_create_releases_hold_and_updates_price。附加断言：关闭即时泵再启动补扫不丢；重复支付/取消、晚到发放、平台回滚但占用已提交可补偿。
+- [ ] 跑红：`cd backend && mvn -pl shop-app -am test -Dtest="PointsInboxTest,PointsLifecycleTest,PointsOrderIntegrationTest" -Dsurefire.failIfNoSpecifiedTests=false`。所有指定类须有非零执行数；确认失败来自目标行为而非环境/编译故障。
+- [ ] 按上列接口/文件和对应设计节实施最小闭环；逐条实现 AC-PTS-09/14/33，不提前放开生产总闸。
+- [ ] 跑绿：同一命令的全部目标测试通过；条件写、隔离、并发及unique键同时在生产同版本MySQL测试库执行。目标库配置通过本地未入库配置注入，不复用生产凭证。
+- [ ] 消融：撤去本任务保护约束，对应反例必须失败，再恢复并重跑；把命令与结果记入§5，不能填写预计结果。
+- [ ] 检查diff、仅stage本任务认得的文件，提交 `feat(points): 源事实、可靠事件、订单与售后接线`；需求/接口偏差同步回本文，不把变更留在会话中。
+
+交付门：关闭即时泵再启动补扫不丢；重复支付/取消、晚到发放、平台回滚但占用已提交可补偿。
+
+#### T09 定期结算、修订、异议及抵销
+
+依赖：T06,T07,T08。
+
+**Files**
+- Create：backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/statement/{StoreStatementService,StatementPolicy}.java；payout/StatementPayoutService.java；store/StatementStore.java。模块内缩写路径均以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/`为根。
+- Modify：backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/impl/PayoutServiceImpl.java（新增应付来源与账单结果事件）。
+- Test：`backend/shop-app/src/test/java/ai/neargo/shop/scenario/StatementOffsetTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/StoreStatementRefundTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/StoreStatementServiceTest.java`。
+
+**Interfaces**：产生draftDue/confirm(no,revision,actor)/dispute/payout；消费ticket与R；积分付款服务命名PointsPayoutService，区分已有pay.PayoutService；账单明细固定ID，确认/撤销确认均经凭证，付款成功才确认抵销。
+
+- [ ] 写失败测试：StoreStatementServiceTest#candidate_set_is_fixed；#redraft_and_stale_confirmation；StoreStatementRefundTest#refund_at_every_statement_stage；StatementOffsetTest#cash_plus_offset_equals_gross。附加断言：同账期草稿重算不插第二逻辑单；两账单不能抵销同一R；100兑付/30抵销/70现金，D−100/B+30。
+- [ ] 跑红：`cd backend && mvn -pl shop-app -am test -Dtest="StatementOffsetTest,StoreStatementRefundTest,StoreStatementServiceTest" -Dsurefire.failIfNoSpecifiedTests=false`。所有指定类须有非零执行数；确认失败来自目标行为而非环境/编译故障。
+- [ ] 按上列接口/文件和对应设计节实施最小闭环；逐条实现 AC-PTS-20/21/22/23，不提前放开生产总闸。
+- [ ] 跑绿：同一命令的全部目标测试通过；条件写、隔离、并发及unique键同时在生产同版本MySQL测试库执行。目标库配置通过本地未入库配置注入，不复用生产凭证。
+- [ ] 消融：撤去本任务保护约束，对应反例必须失败，再恢复并重跑；把命令与结果记入§5，不能填写预计结果。
+- [ ] 检查diff、仅stage本任务认得的文件，提交 `feat(points): 定期结算、修订、异议及抵销`；需求/接口偏差同步回本文，不把变更留在会话中。
+
+交付门：同账期草稿重算不插第二逻辑单；两账单不能抵销同一R；100兑付/30抵销/70现金，D−100/B+30。
+
+#### T10 退款责任解除、回流、到期与暂停
+
+依赖：T07,T08,T09。
+
+**Files**
+- Create：backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/lifecycle/RefundClosureService.java；pool/ReceiveReserveService.java；lifecycle/ExpiryService.java；policy/ExpiryPolicy.java；pool/PointsSwitchService.java。模块内缩写路径均以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/`为根。
+- Modify：订单域退款窗口关闭事实生产点；用户站内通知适配（现有UserInboxPort）。
+- Test：`backend/shop-app/src/test/java/ai/neargo/shop/scenario/ExpiryServiceTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsPauseTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/ReceiveReserveTest.java`。
+
+**Interfaces**：消费权威REFUND_CLOSED及暂停区间；产生releaseRefundReserve/expire/提醒/收入划拨意图，结果确认后清积分和C；共享HELD需标来源。
+
+- [ ] 写失败测试：ReceiveReserveTest#topup_never_consumes_refundable_points：回流后历史退款仍可退；ExpiryServiceTest#expiry_only_available_and_remind_once；PointsPauseTest#overlap_extends_once_and_preserves_inflight。附加断言：prepare与closure同头寸竞态；延期区间并集、跨区域午夜、A/P/H各格、收入划拨UNKNOWN。
+- [ ] 跑红：`cd backend && mvn -pl shop-app -am test -Dtest="ExpiryServiceTest,PointsPauseTest,ReceiveReserveTest" -Dsurefire.failIfNoSpecifiedTests=false`。所有指定类须有非零执行数；确认失败来自目标行为而非环境/编译故障。
+- [ ] 按上列接口/文件和对应设计节实施最小闭环；逐条实现 AC-PTS-29/30/31，不提前放开生产总闸。
+- [ ] 跑绿：同一命令的全部目标测试通过；条件写、隔离、并发及unique键同时在生产同版本MySQL测试库执行。目标库配置通过本地未入库配置注入，不复用生产凭证。
+- [ ] 消融：撤去本任务保护约束，对应反例必须失败，再恢复并重跑；把命令与结果记入§5，不能填写预计结果。
+- [ ] 检查diff、仅stage本任务认得的文件，提交 `feat(points): 退款责任解除、回流、到期与暂停`；需求/接口偏差同步回本文，不把变更留在会话中。
+
+交付门：prepare与closure同头寸竞态；延期区间并集、跨区域午夜、A/P/H各格、收入划拨UNKNOWN。
+
+#### T11 事实补偿、对账、统计、任务和告警
+
+依赖：T08,T09,T10。
+
+**Files**
+- Create：backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/recon/{PointsReconService,PointsSourceReconciler}.java；query/PointsStatsService.java；job/PointsJobServices.java；backend/shop-app/src/main/java/ai/neargo/shop/pointsclient/PointsJobHandlers.java。模块内缩写路径均以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/`为根。
+- Modify：backend/shop-app/src/main/java/ai/neargo/shop/config/JobTargetConfig.java；OpsAlertPort及通知实现的积分告警动作；原PointsActivateJob/PointsIdentityJob/PointsPoolReconAxis注册，以及`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/FundInvariantServiceImpl.java`、`backend/shop-app/src/main/java/ai/neargo/shop/paybridge/FundInvariantReconciler.java`的积分查询/修复分支。
+- Test：`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsJobWiringTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsReconTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsStatsTest.java`。
+
+**Interfaces**：消费SourceFactsPort水位/凭证/头寸/资金证据；产生可定位差异及按原命令修复；调度宿主shop-app，worker不引pay-domain业务代码。
+
+PointsJobWiringTest新增#only_new_points_jobs_registered；PointsReconTest新增#source_recon_uses_new_positions：删除旧转正/到期/恒等式任务及旧账修复路径，现有跨域巡检改查新凭证/头寸，不再查询旧积分表。
+
+- [ ] 写失败测试：PointsReconTest#detect_missing_positions_and_orphan_hold；PointsStatsTest#rebuild_includes_skips_without_double_count；PointsJobWiringTest#jobs_registered_and_no_auto_money。附加断言：删除一个源动作而非改余额也须发现；只告警不自动假造资金；每周期事件/计划唯一。
+- [ ] 跑红：`cd backend && mvn -pl shop-app -am test -Dtest="PointsJobWiringTest,PointsReconTest,PointsStatsTest" -Dsurefire.failIfNoSpecifiedTests=false`。所有指定类须有非零执行数；确认失败来自目标行为而非环境/编译故障。
+- [ ] 按上列接口/文件和对应设计节实施最小闭环；逐条实现 AC-PTS-32/34/40，不提前放开生产总闸。
+- [ ] 跑绿：同一命令的全部目标测试通过；条件写、隔离、并发及unique键同时在生产同版本MySQL测试库执行。目标库配置通过本地未入库配置注入，不复用生产凭证。
+- [ ] 消融：撤去本任务保护约束，对应反例必须失败，再恢复并重跑；把命令与结果记入§5，不能填写预计结果。
+- [ ] 检查diff、仅stage本任务认得的文件，提交 `feat(points): 事实补偿、对账、统计、任务和告警`；需求/接口偏差同步回本文，不把变更留在会话中。
+
+交付门：删除一个源动作而非改余额也须发现；只告警不自动假造资金；每周期事件/计划唯一。
+
+#### T12 三端API、数据权限与体验
+
+依赖：T03至T11。
+
+**Files**
+- Move/Modify：现有`backend/shop-app/src/main/java/ai/neargo/shop/portal/{mp,biz,ops}/pay/*Points*Controller.java`及`payclient/*Points*`门面，移入points包或原地改接；每个现有URL只留一个Controller映射，不能复制一份再启用。
+- Create：新增种类/备款/协议/账单/对账Controller及门面；`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsApiContractTest.java`。
+- Modify：docs/api/openapi*.yaml；三端现有积分/结算/售后页面；backend/shop-app/src/main/java/ai/neargo/shop/config/DataScopeRegistration.java；权限/功能点/角色种子；三语词条；docs/technical/design/ui-catalog.json。
+- Test：`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsPermissionTest.java`。
+
+**Interfaces**：消费§2.11 HTTP与服务接口；产生有原因的不可用信息、余额各格、revision确认和异常处置；改界面时重跑gen-ui-catalog。
+
+契约测试PointsApiContractTest#each_url_has_one_handler、#all_clients_use_latest_dto、#quote_requires_item_candidates、#obsolete_policy_endpoints_absent：三端/OpenAPI统一最新接口，删除旧GET deductible及旧toggle/client-policy写端，不保留旧DTO转换。命令：`cd backend && mvn -pl shop-app -am test -Dtest="PointsApiContractTest" -Dsurefire.failIfNoSpecifiedTests=false`。
+
+- [ ] 写失败测试：PointsPermissionTest#cross_user_store_and_approver_denied；C端金额由实际hold更新；B非主账号签约拒绝；Ops自批/跨主体查询拒绝。附加断言：按功能落具体页面文件先rg当前路径，登记在本任务执行记录再编辑；前端vue-tsc及Ops契约闸门。
+- [ ] 跑红：`cd backend && mvn -pl shop-app -am test -Dtest="PointsPermissionTest" -Dsurefire.failIfNoSpecifiedTests=false`。所有指定类须有非零执行数；确认失败来自目标行为而非环境/编译故障。
+- [ ] 按上列接口/文件和对应设计节实施最小闭环；逐条实现 AC-PTS-35，不提前放开生产总闸。
+- [ ] 跑绿：同一命令的全部目标测试通过；条件写、隔离、并发及unique键同时在生产同版本MySQL测试库执行。目标库配置通过本地未入库配置注入，不复用生产凭证。
+- [ ] 消融：撤去本任务保护约束，对应反例必须失败，再恢复并重跑；把命令与结果记入§5，不能填写预计结果。
+- [ ] 检查diff、仅stage本任务认得的文件，提交 `feat(points): 三端API、数据权限与体验`；需求/接口偏差同步回本文，不把变更留在会话中。
+
+交付门：按功能落具体页面文件先rg当前路径，登记在本任务执行记录再编辑；前端vue-tsc及Ops契约闸门。
+
+#### T13 旧方案移除、全链路验收与首次上线
+
+依赖：T01至T12。
+
+**Files**
+- Delete：旧积分Java文件以`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/`为根：`PointsService.java`、`impl/PointsServiceImpl.java`、`PointsConfig.java`、`port/PointsPortImpl.java`、`entity/{PtsUserAccount,PtsUserLedger,StlPointsPool}.java`、`job/{PointsActivateJob,PointsIdentityJob}.java`、`service/recon/PointsPoolReconAxis.java`；以及`backend/shop-base/src/main/java/ai/neargo/shop/spi/settle/PointsPort.java`。前序已删除的文件本任务验证无残留。
+- Modify：SettleMappers.java的旧积分成员；FundInvariantServiceImpl/FundInvariantReconciler；配置与job注册、三端/OpenAPI/权限/i18n、旧测试/种子；新增Flyway脚本清理旧积分表与旧积分费字段，不修改已应用脚本。
+- Test：`backend/shop-app/src/test/java/ai/neargo/shop/arch/PointsRetirementTest.java`、`backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsLaunchTest.java`；最新模型的集成夹具。
+
+**Interfaces**：消费最新SPI/Hook/HTTP/任务及全链路测试；交付仅最新实现的应用构建、最新数据库结构和首次初始化流程，不交付数据搬迁、双引擎或旧兼容服务。
+
+- [ ] 写失败测试：PointsRetirementTest#obsolete_points_implementation_absent：无旧类引用/Bean/Mapper/任务注册、旧表SQL、points_fee_minor写入和旧配置读写；以明确的旧实现清单扫描生产源码和装配，排除不可修改的历史Flyway记录。
+- [ ] 写失败测试：PointsLaunchTest#latest_logic_only_and_inflight_survives_disable：用真实备款夹具完成发分→转正→核销→随单/定期兑付→部分/全退→关闭→回流/到期；关新增后已有付款/退款仍可完成；同幂等号只执行一次，UNKNOWN不重付。
+- [ ] 跑红：`cd backend && mvn -pl shop-app -am test -Dtest="PointsRetirementTest,PointsLaunchTest" -Dsurefire.failIfNoSpecifiedTests=false`；测试非零，失败来自目标行为。
+- [ ] 按§1.1/§2.12删除残留并重建测试夹具，逐条实现AC-PTS-36/37；运行前序金融并发/权限/事件测试及PRD容量基线验证，在首次上线前确认参数、预算和受理协议。
+- [ ] 跑绿：同命令及仓库相关闸门通过；目标MySQL上验证建表/旧结构清理，未改历史Flyway checksum，其他支付/结算/退款链路回归通过。
+- [ ] 消融：恢复一个旧积分装配/旧表访问，PointsRetirementTest必须红；关闭后错误阻断已有退款，PointsLaunchTest必须红，再恢复重跑。
+- [ ] 检查diff、仅stage本人文件，提交`refactor(points): retire obsolete design and verify first launch`；把真实输出写入§5/§6。
+
+交付门：旧方案退出运行，新方案形成完整可运营闭环；仅最新积分实现，首次上线前完成全链路与资金验证。
+
+#### 三端精确界面与契约文件清单（T12补充）
+
+以下为T12的具体落点，替代该任务Files中聚合路径的展开；新增文件以页面职责命名，不能未经设计另开平行入口。
+
+- C端修改：`c-app/src/pages/points/index.vue`、`c-app/src/pages/order-confirm/index.vue`、`c-app/src/pages/order/index.vue`、`c-app/src/pages/after-sale/index.vue`、`c-app/src/api/endpoints.ts`；显示实际应付、各格余额、准备中的退款和现金扣减。
+- B端修改：`b-app/src/pages/points/index.vue`、`b-app/src/pages/points-records/index.vue`、`b-app/src/pages/after-sale/index.vue`、`b-app/src/api/endpoints.ts`；新增`b-app/src/pages/points-statements/index.vue`与`points-statement/index.vue`，并登记`b-app/src/pages.json`。
+- Ops新增：`ops-web/app/points/page.tsx`及同目录`types-tab.tsx`、`pool-tab.tsx`、`requests-tab.tsx`、`merchants-tab.tsx`、`switches-tab.tsx`、`accounts-tab.tsx`、`stats-tab.tsx`；旧`ops-web/app/finance/points-tab.tsx`及`points-policy-tab.tsx`改入口提示/跳转，不保留第二套写配置。
+- 后端移动/改造现有MpPointsController、BizPointsController、OpsPointsController、OpsPointsPolicyController；目标包为`backend/shop-app/src/main/java/ai/neargo/shop/portal/{mp,biz,ops}/points/`，不重复注册既有URL。新增`portal/ops/points/`中的`OpsPointTypeController`、`OpsPointsPoolController`、`OpsPointsMerchantController`、`OpsPointsSwitchController`、`OpsPointsAccountController`、`OpsPointsStatsController`、`OpsPointsReconController`；对应应用门面位于`pointsclient/`。后端同根缩写路径不跨模块。
+- API修改：`docs/api/openapi.yaml`、`openapi-b.yaml`、`openapi-ops.yaml`、三端endpoints与契约适配；依仓库生成命令同步API清单/详情，手写JSON示例须覆盖revision及不可用原因。
+- 权限/配置修改：`ops-web/lib/nav.ts`、`backend/shop-app/src/main/java/ai/neargo/shop/config/DataScopeRegistration.java`、`backend/shop-base/src/main/java/ai/neargo/shop/common/ErrorCode.java`、`backend/shop-app/src/main/resources/i18n/messages.properties`及`messages_en.properties`、`messages_ar.properties`；实际端词条文件由T12首步按现有词条域定位并记录，三语同PR对齐。
+- 新页面先补界面/原型设计，再写UI；实现时登记导航及权限种子迁移，重跑`python3 scripts/gen-ui-catalog.py`并校验。未建立页面前不把规划路径写入ui-catalog生成物。
+
+#### 集成里程碑与开放条件
+
+| 里程碑 | 包含任务 | 开放状态 |
 |---|---|---|
-| `PointTypeStore` | `insert` · `activate` · `retire` · `updateDraft` | `find` · `activeOf(market)` |
-| `HolderAccountStore` | `ensure(holder, type)` · `apply(holder, type, dP, dA, dH, renew)` → boolean | `find` · `dueToExpire` · `dueToRemind` |
-| `PoolStore` | `apply(type, dU, dC, dD, dR, totals)` → boolean | `find` |
-| `PositionStore` | 发放：`open/skip/activate/revokePending/revokeAvailable/markFinalized`；核销：`hold/release/transfer/storeConfirm/attachStatement/detachStatement/beginPayout/confirmPayout/abortPayout/reverse/returnBack/markRefundFunded` | `grantOf` · `redeemOf` · `redeemsOfOrder` · `settleableOf(store, until)` · `stuckPaying` · `finalizedNotActivated` |
-| `AgreementStore` | `sign` · `changeMode` · `terminate` | `activeOf(entity, type)` |
-| `StatementStore` | `draft` · `confirm` · `dispute` · `voidDraft` · `beginPayout` · `markPaid` | `dueForAutoConfirm` · `ofStore` |
-| `ReceivableStore` | `open` · `recover` | `openOf(entity, type)` |
-| `VoucherStore` · `LedgerStore` · `PoolFlowStore` | `insertIfAbsent` · `append` | 分页明细 |
-| `SwitchStore` · `PoolRequestStore` · `TopupPlanStore` · `TransferOrderStore` · `StatStore` · `CursorStore` | 各自条件写 | 各自查询 |
+| M1 账本与规则 | T01–T05 | 建最新内核/契约，登记旧引用；仅离线验收 |
+| M2 随单与退款闭环 | T06–T08 | 现有交易接线直接替换，测试环境验证最新链路 |
+| M3 定期与生命周期 | T09–T10 | 测试账期、预留释放、到期与资金未知 |
+| M4 可运营与首次上线 | T11–T13 | 完成任务/对账/三端/旧代码清理及全链路验收后首次启用 |
 
-#### app（编排，不含规则）
+若只先开放随单，必须先完成T10–T13对随单所需部分，且PERIODIC签约硬禁；不能以T09延后为理由跳过退款责任解除/对账/三端说明。不存在仅发分先上线的生产里程碑。
 
-| 服务 | 方法 |
+## §3 选型与复议条件
+
+| 选择 | 采用理由 | 代价及复议条件 |
+|---|---|---|
+| pay-domain内独立业务包、复用pay事务 | 符合既有方案，职责与写入口清晰；结算和积分本地原子提交 | 包级依赖守卫及付款短事务；本期不拆JAR/库/进程 |
+| B退款备付、R独立应收 | 返分时即有实款，不以商家偿付能力影响用户 | 额外备款占用；不采用临时U垫付或追回后才给可用分 |
+| 接收户退款预留 | 补充回流不消耗仍可退款的积分 | 生命周期关闭事件及预留台账 |
+| prepared/refund-confirm | 跨域不假装同事务，未知状态可恢复 | 用户在处理中看到准备占用、售后多阶段 |
+| 原账期单修订 | 无VOID占用唯一键问题、确认可辨版本 | 增修订明细与重确认 |
+| Outbox/Inbox | 利用现有框架，重放与崩溃恢复可验证 | 订单与pay正确绑定各自事务，pay内Hook同步，积分出站与账同pay事务；不新建MQ |
+
+不可逆资金模型及发行例外见ADR-036。目标是可实施合同；本期不附预占迁移号的“完整DDL”，实际DDL在T02按目标库验证并生成ER。
+
+## §4 风险与边界
+
+| 风险 | 处理 |
 |---|---|
-| `PointTypeService` | `create` · `updateDraft` · `activate` · `retire` · `list` |
-| `PoolService` | `submit` · `approve` · `reject` · `runPlans(now)` · `watermark(type)`；`COMMISSION_RATIO` 计划经 `SettleStatsService`（接口，只读）取上月佣金 |
-| `AgreementService` | `sign(entity, type, mode, period, version, signer)` · `changeMode` · `terminate` · `current` —— 直连商家选 `PERIODIC` 时查 `StorePayoutExecutor#supports` |
-| `PointsSwitchService` | `set` · `list` · `logs`；恢复核销时 `ExpiryService#extendForPause` |
-| `EarnService` | `grant(GrantCommand)` · `activateFinalized(subOrderNo)` |
-| `RedeemService` | `quote` · `hold` · `release` · `onPaid(orderNo)`（按协议走 `paySettle` 或 `payTransfer`） |
-| `PointsRefundService` | `quote` · `apply(afterSaleNo, subOrderNo, refundedTotalAfter)` · `onSubsidyReturn` |
-| `StoreStatementService` | `draftDue(period)` · `confirm(no, by)` · `dispute(no, by, reason)` · `autoConfirmDue(now)` · `payout(no)` |
-| `ExpiryService` | `expireDue(type)` · `remindDue(type)` · `extendForPause(type, ms)` |
-| `TransferService` | `buildDaily(type, date)` · `execute(no)`（`TransferExecutor`，本期 `InternalBookingExecutor`） |
-| `PointsQueryService` · `PointsStatsService` | 只读 + `rollup()` |
-| `PointsSettlementHook` | `beginPayout` · `confirmPayout` · `abortPayout` · `onBillFinalized` · `onSubsidyReturn`（**域内**，结算直接注入） |
+| 专户热行与pay连接池争用 | 初始容量指标见PRD；积分与结算复用现有pay池，锁持有时间短、调用通道出事务；压测不足先限制新增，不直接引分片改守恒 |
+| B锁定占用较大 | hold即计算，局部退款/取消/责任解除释放；显示freeB与可用能力，不隐瞒平台额外预算成本 |
+| 直连不支持补收/补差 | 能力拒绝或承担不足；没有通道不得伪记入U |
+| 新独立边界使跨域操作不同步 | 准备/事件/资金ticket/inbox和事实补偿全链路；不靠回滚消除另一域提交 |
+| 生产调度未启用 | 启动检查任务声明/目标、真实触发一次无资金任务；不得以@Scheduled存在推定生产有运行 |
+| 停用种类存量未清 | DRAINING保留存量余额核销、退款、到期和查询且占区域有效种类键；完全清偿才停用，比例迁移不在本期 |
+| 源事实不完整/乱序 | 保留事实各自版本/准备单，进入可恢复待处理；不能把空默认实现当无退款 |
+| 金融图示过时 | 架构SVG为意图图；ER只从实施DDL生成；旧v2图不再作为新规格依据 |
 
-#### payout
+## §5 对账三 实现到需求测试计划
 
-```java
-/** 定期结算单的打款执行器。按商家资金路径选一个。 */
-public interface StorePayoutExecutor {
-    boolean supports(String fundsMode);              // AgreementService 签约时据此拦直连 + 定期
-    PayoutTicket submit(StoreStatement s);            // 归集：并入 PayoutService 打款单；直连：转账通道
-}
-```
+下表是将来必须执行的测试，不代表本次文档工作运行过产品测试。
 
-本期实现 `AggregatedPayoutExecutor`（并入现有打款单）；`DirectTransferExecutor` 只留类名，`supports` 返回 false。
-
-#### 写一笔随单兑付（说明各层分工）
-
-```java
-// app/RedeemService#onPaid —— 只编排
-for (RedeemPosition p : positions.redeemsOfOrder(orderNo)) {
-    Agreement a = agreements.activeOf(p.entityNo(), p.type()).orElseThrow();   // hold 时已判过，签约可能刚解约 → 仍按支付时的协议
-    Voucher v = a.mode() == PER_ORDER ? vouchers.paySettle(t, p, dims) : vouchers.payTransfer(t, p, dims);
-    posting.post(v);                                                            // 头寸 HELD → TRANSFERRED / IN_STORE，条件不满足即回滚
-}
-```
-
-### 2.3 依赖管理
-
-![积分域模块依赖](./diagrams/pts2-modules.svg)
-
-#### 跨模块
-
-| 调用方 | 被调 | 方式 | 事务 |
+| AC | 必须执行的测试方法 | 当前执行状态 | 消融要求 |
 |---|---|---|---|
-| trade 下单 / 未支付取消 | `PointsRedeemPort#hold/release` | spi 同步 | `payTxManager` 独立提交；下单失败由 I6 释放死单占用 |
-| trade 支付提交后 | `PointsRedeemPort#onPaid` · `PointsEarnPort#grant` | `AfterCommit` | 幂等由 `biz_ref` 保证 |
-| trade 售后退款 | `PointsRefundPort#apply` | 回退分账之后、退现金之前同步调用 | 积分先落定，返回现金抵扣额 |
-| trade → product | `PointsRulePort` | spi | 组成 `EarnLine` 传给 pay，pay 不回查 product |
-| settle（同模块） | `PointsSettlementHook` | 注入接口 | 与结算单同一 `payTxManager` 事务；`confirmPayout` 另经 outbox 兜底 |
-| points → payout | `PayoutService`（归集打款单） | 同模块接口 | 打款回执回调 `StoreStatementService#markPaid` |
-| points → `SettleStatsService` | 只读接口 | 同模块 | — |
-| points → notify | `OpsAlertPort#pointsAlert` · 到期提醒 `UserInboxPort` / `WxSubscribePort` | spi | 尽力而为，不抛 |
-| shop-app Controller | `payclient/*AppService` → `points.app.*` | 与现有 `BizPointsAppService` 同形 | — |
+| AC-PTS-01 | `PointsArchitectureTest#business_package_boundary` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T01 |
+| AC-PTS-02 | `PointTypeServiceTest#active_unique_rate_locked_and_drain` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T03 |
+| AC-PTS-03 | `PoolRequestServiceTest#approval_and_evidence_are_unique` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T03 |
+| AC-PTS-04 | `VoucherInvariantTest#receivable_is_not_backing` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T02 |
+| AC-PTS-05 | `PoolServiceTest#reserve_funding_does_not_mint` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T03 |
+| AC-PTS-06 | `EarnPolicyTest#quantity_zero_cap_and_alignment` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T04 |
+| AC-PTS-07 | `EarnServiceTest#race_for_last_budget_only_one_wins` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T04 |
+| AC-PTS-08 | `EarnServiceTest#offline_paused_frozen_zero_and_unsigned` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T04 |
+| AC-PTS-09 | `PointsLifecycleTest#finalized_or_refunded_before_grant` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T08 |
+| AC-PTS-10 | `AgreementServiceTest#authorized_signer_and_digest` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T05 |
+| AC-PTS-11 | `RedeemServiceTest#termination_does_not_break_hold` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T05 |
+| AC-PTS-12 | `RedeemPolicyTest#eligible_shares_are_aligned` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T05 |
+| AC-PTS-13 | `RedeemServiceTest#reserve_shortage_is_atomic` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T05 |
+| AC-PTS-14 | `PointsOrderIntegrationTest#failed_create_releases_hold_and_updates_price` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T08 |
+| AC-PTS-15 | `RedeemRaceTest#paid_vs_release_has_one_outcome` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T05 |
+| AC-PTS-16 | `PerOrderSettlementTest#payout_uses_current_payable` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T06 |
+| AC-PTS-17 | `PointsPayoutRaceTest#unknown_external_success_never_repays` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T06 |
+| AC-PTS-18 | `PointsFundsAdapterTest#capability_gates_before_acceptance` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T06 |
+| AC-PTS-19 | `PointsSettlementBasisTest#periodic_excludes_points_but_commission_includes` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T06 |
+| AC-PTS-20 | `StoreStatementServiceTest#candidate_set_is_fixed` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T09 |
+| AC-PTS-21 | `StoreStatementServiceTest#redraft_and_stale_confirmation` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T09 |
+| AC-PTS-22 | `StoreStatementRefundTest#refund_at_every_statement_stage` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T09 |
+| AC-PTS-23 | `StatementOffsetTest#cash_plus_offset_equals_gross` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T09 |
+| AC-PTS-24 | `RefundRatioPolicyTest#freight_does_not_distort_goods_ratio` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T07 |
+| AC-PTS-25 | `PointsRefundServiceTest#replay_returns_original_outcome` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T07 |
+| AC-PTS-26 | `CashClawbackTest#refund_nonnegative_and_collection_required` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T07 |
+| AC-PTS-27 | `PointsRefundRecoveryTest#failed_cash_keeps_recoverable_preparation` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T07 |
+| AC-PTS-28 | `RefundBackingTest#failed_recovery_returns_funded_points` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T07 |
+| AC-PTS-29 | `ReceiveReserveTest#topup_never_consumes_refundable_points` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T10 |
+| AC-PTS-30 | `ExpiryServiceTest#expiry_only_available_and_remind_once` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T10 |
+| AC-PTS-31 | `PointsPauseTest#overlap_extends_once_and_preserves_inflight` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T10 |
+| AC-PTS-32 | `PointsStatsTest#rebuild_includes_skips_without_double_count` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T11 |
+| AC-PTS-33 | `PointsInboxTest#commit_then_crash_replays_once` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T08 |
+| AC-PTS-34 | `PointsReconTest#detect_missing_positions_and_orphan_hold` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T11 |
+| AC-PTS-35 | `PointsPermissionTest#cross_user_store_and_approver_denied` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T12 |
+| AC-PTS-36 | `PointsRetirementTest#obsolete_points_implementation_absent` | 未实现、未运行 | 恢复旧装配/旧表访问必须红；正常输出记录在T13 |
+| AC-PTS-37 | `PointsLaunchTest#latest_logic_only_and_inflight_survives_disable` | 未实现、未运行 | 错误阻断已受理付款/退款必须红；正常输出记录在T13 |
+| AC-PTS-38 | `PostingServiceTest#replay_conflict_and_stable_lock_order` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T02 |
+| AC-PTS-39 | `RedeemRateTest#alignment_overflow_and_currency_rejected` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T02 |
+| AC-PTS-40 | `PointsJobWiringTest#jobs_registered_and_no_auto_money` | 未实现、未运行 | 去掉对应拒绝/状态/唯一约束，反例必须红；正常输出记录在T11 |
 
-**points 不依赖 settle 实现**：方向只有 settle → points（经钩子）。结算事实由 settle **推**进来（`onBillFinalized`、`onSubsidyReturn`），积分域落在头寸上，不反查结算单。
+补充：PointsPayoutRaceTest增加退款vs付款、成功后回执丢失；ReceiveReserveTest增加TOPUPvs退款；StoreStatementServiceTest增加草稿修订与同时入候选；PointsRefundServiceTest增加prepare/closure竞态及跨域回滚；PointsPayTransactionTest验证积分/结算同pay事务回滚，以及platform回滚不影响已提交pay占用。
 
-#### ArchUnit（新增）
+执行命令（创建模块及测试后）：
+- `cd backend && mvn -pl pay/pay-domain -am test -Dsurefire.failIfNoSpecifiedTests=false`
+- `cd backend && mvn -pl shop-app -am test -Dtest="Points*Test" -Dsurefire.failIfNoSpecifiedTests=false`（shell需按环境给通配参数加引号）
+- 目标MySQL版本集成测试同类目标，使用明确测试profile与隔离库；H2通过不计为生产库验证。
+- `cd b-app && npx vue-tsc --noEmit`；c-app同理；Ops按npm run check:p及五处契约检查。
+- `python3 scripts/gen-ui-catalog.py --check`、相关OpenAPI/i18n/权限闸门、全量架构及既有订单/支付/售后场景回归；只有新增失败或更改代码才追加重复验证。
 
-| # | 规则 | 防住什么 |
-|---|---|---|
-| A1 | `pay.points.model..` 不依赖 Spring、MyBatis、`pay.points` 其他包 | 值对象可纯单测 |
-| A2 | `voucher..`、`policy..` 只依赖 `model` | 策略不碰库 —— 先查后写从结构上写不出来 |
-| A3 | `store` 写方法只能被 `posting..` 调用 | 改了一边忘了另一边 |
-| A4 | `pay.mapper.points..` 只被 `pay.points.store.impl..` 引用 | 绕过 store 写表 |
-| A5 | `pay.points..` 不依赖 `pay.impl..` 的结算实现类（可依赖 `SettleStatsService`、`PayoutService` 接口） | 包级环 |
-| A6 | `shop-core` 只经 `spi.points.*` 调积分 | 跨域直连 |
-| A7 | 旧类删除后：不存在 `PointsService` / `spi.settle.PointsPort` | 旧入口复活 |
+## §6 对账二 设计到实现
 
-### 2.4 数据库
+当前只有规划文档及架构SVG，无业务代码交付，不记“已实现”。每个实施任务在此登记实际提交SHA、git show --stat、偏差及真实验证输出；不得用全工作区diff替代自己的提交范围。
 
-> 表关系图属于结构图，按[文档规范](../文档规范.md) §二 迁移落地后由 `npm run gen:erd` 生成，此处不手画。
-> 关系一句话：种类 1—1 专户、1—N 积分户；凭证 1—N 积分流水 / 专户流水，按 `sub_order_no` 关联头寸；
-> 协议按商家主体；门店积分结算单 1—N 核销头寸（`statement_no`）；补充单 → 凭证；划拨单 ← 专户流水。
+## §7 待确认与记录
 
-#### 表清单
+业务参数与外部条款见PRD §5。需评审的结构决策：pay内业务包/结算Hook/共享pay事务边界、B提前预留、R独立应收、现金补收允许有资金发行、退款成功前保持准备占用、账单修订。参数未确认时离线数据由测试夹具显式创建，不能在生产自动兜底。
 
-| 表 | 对象 | 写入者 |
-|---|---|---|
-| `pts_point_type` | 积分种类 | `PointTypeStore` |
-| `pts_fund_pool` | 平台积分专户（一种类一行，U / C / D / R） | posting |
-| `pts_pool_flow` | 专户流水 | posting |
-| `pts_account` | **积分户**（五类持有方统一一张表） | posting |
-| `pts_ledger_entry` | 积分流水 | posting |
-| `pts_voucher` | 凭证头（含全部统计维度） | posting |
-| `pts_grant_position` | 发放头寸（含停发记录） | posting |
-| `pts_redeem_position` | 核销头寸（随单 / 定期两条状态线） | posting |
-| `pts_merchant_agreement` | 受理协议 | `AgreementService` |
-| `pts_store_statement` | 门店积分结算单 | `StoreStatementService` + posting |
-| `pts_receivable` | 待追回（按商家） | posting |
-| `pts_pool_request` | 补充 / 提取 / 调账单 | `PoolService` |
-| `pts_topup_plan` | 定期补充计划 | `PoolService` |
-| `pts_switch` · `pts_switch_log` | 暂停开关与审计 | `PointsSwitchService` |
-| `pts_transfer_order` | 划拨单（到期转收入、归集回补、补充、提取） | `TransferService` |
-| `pts_stat_daily` · `pts_cursor` | 日汇总、任务水位 | 任务 |
-
-#### DDL（`V406__points_v2_schema.sql`；不写 ENGINE / CHARSET）
-
-审计列统一为：
-
-```sql
-tenant_no VARCHAR(32) DEFAULT NULL, created_at DATETIME DEFAULT NULL, created_by VARCHAR(64) DEFAULT NULL,
-updated_at DATETIME DEFAULT NULL, updated_by VARCHAR(64) DEFAULT NULL,
-version BIGINT(20) NOT NULL DEFAULT 0, deleted TINYINT(4) NOT NULL DEFAULT 0,
-```
-
-下面以 `/* 审计列 */` 代指（迁移里逐表写全）。
-
-```sql
--- 积分种类：一区域同时只有一种生效。active_market 只在 ACTIVE 时 = market，否则 NULL；
--- 唯一键对 NULL 不生效 —— 代替「UPDATE … WHERE NOT EXISTS(同表子查询)」（MySQL 1093）
-CREATE TABLE IF NOT EXISTS pts_point_type (
-    id                BIGINT(20)   NOT NULL AUTO_INCREMENT,
-    type_code         VARCHAR(32)  NOT NULL COMMENT '种类编码，如 CN_PLATFORM',
-    name              VARCHAR(64)  NOT NULL,
-    name_i18n         VARCHAR(512) DEFAULT NULL COMMENT '多语名称 JSON',
-    funder            VARCHAR(16)  NOT NULL DEFAULT 'PLATFORM',
-    market            VARCHAR(8)   NOT NULL,
-    currency          VARCHAR(8)   NOT NULL COMMENT '对标币种，创建时取区域币种，不可改',
-    currency_scale    INT(11)      NOT NULL,
-    rate_points       BIGINT(20)   NOT NULL COMMENT '兑换比例（既约）：rate_points 积分 = rate_minor 最小货币单位',
-    rate_minor        BIGINT(20)   NOT NULL,
-    deduct_ratio_bp   INT(11)      NOT NULL COMMENT '抵扣上限万分比',
-    idle_days         INT(11)      NOT NULL,
-    remind_days       INT(11)      NOT NULL DEFAULT 30,
-    commission_cap_bp INT(11)      DEFAULT NULL COMMENT 'NULL = 不封顶（本期）',
-    status            VARCHAR(12)  NOT NULL DEFAULT 'DRAFT' COMMENT 'DRAFT / ACTIVE / RETIRED；比例只在 DRAFT 可改',
-    active_market     VARCHAR(8)   DEFAULT NULL,
-    successor_code    VARCHAR(32)  DEFAULT NULL COMMENT '停用后余额迁往哪个种类',
-    activated_at      BIGINT(20)   DEFAULT NULL,
-    retired_at        BIGINT(20)   DEFAULT NULL,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_type_code (type_code),
-    UNIQUE KEY uk_pts_type_active_market (active_market)
-) COMMENT='积分种类';
-
--- 平台积分专户：一种类一行，四格各自条件更新不许为负
-CREATE TABLE IF NOT EXISTS pts_fund_pool (
-    id                   BIGINT(20)  NOT NULL AUTO_INCREMENT,
-    type_code            VARCHAR(32) NOT NULL,
-    currency             VARCHAR(8)  NOT NULL,
-    unallocated_minor    BIGINT(20)  NOT NULL DEFAULT 0 COMMENT 'U 未分配 == m(发放户)',
-    committed_minor      BIGINT(20)  NOT NULL DEFAULT 0 COMMENT 'C 已承诺：C 端户 + 门店户的分对应的钱（减去 R）',
-    payable_minor        BIGINT(20)  NOT NULL DEFAULT 0 COMMENT 'D 待付商家：已兑付、未付款',
-    receivable_minor     BIGINT(20)  NOT NULL DEFAULT 0 COMMENT 'R 待追回：已付给商家、应收回未收回',
-    topup_total_minor    BIGINT(20)  NOT NULL DEFAULT 0,
-    withdraw_total_minor BIGINT(20)  NOT NULL DEFAULT 0,
-    payout_total_minor   BIGINT(20)  NOT NULL DEFAULT 0,
-    expire_total_minor   BIGINT(20)  NOT NULL DEFAULT 0,
-    low_water_days       INT(11)     NOT NULL DEFAULT 7,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_pool_type (type_code)
-) COMMENT='平台积分专户（平台账户内专项）。U + C + D 与平台账户余额每日外部对账';
-
-CREATE TABLE IF NOT EXISTS pts_pool_flow (
-    id                BIGINT(20)  NOT NULL AUTO_INCREMENT,
-    flow_no           VARCHAR(40) NOT NULL,
-    voucher_no        VARCHAR(40) NOT NULL,
-    voucher_type      VARCHAR(16) NOT NULL,
-    type_code         VARCHAR(32) NOT NULL,
-    bucket            VARCHAR(4)  NOT NULL COMMENT 'U / C / D / R',
-    delta_minor       BIGINT(20)  NOT NULL,
-    after_minor       BIGINT(20)  NOT NULL,
-    counterparty_type VARCHAR(16) DEFAULT NULL COMMENT 'MERCHANT / PLATFORM / FINANCE',
-    counterparty_no   VARCHAR(64) DEFAULT NULL,
-    transfer_no       VARCHAR(40) DEFAULT NULL,
-    occurred_at       BIGINT(20)  NOT NULL,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_pool_flow_no (flow_no),
-    KEY idx_pts_pool_flow_type (type_code, id),
-    KEY idx_pts_pool_flow_voucher (voucher_no),
-    KEY idx_pts_pool_flow_transfer (transfer_no)
-) COMMENT='专户流水：只增不改';
-
--- 积分户：五类持有方一张表。三格的含义随 holder_type：
---   USER    pending=待生效 available=可用 held=占用
---   STORE   pending=待确认 available=待结算 held 不用
---   PLATFORM_ISSUE / PLATFORM_RECEIVE  只用 available
---   PLATFORM_MINT  只用 available，恒为负（累计发行）—— 条件更新对它不加 >= 0
-CREATE TABLE IF NOT EXISTS pts_account (
-    id                 BIGINT(20)  NOT NULL AUTO_INCREMENT,
-    holder_type        VARCHAR(20) NOT NULL COMMENT 'USER / STORE / PLATFORM_ISSUE / PLATFORM_RECEIVE / PLATFORM_MINT',
-    holder_no          VARCHAR(64) NOT NULL COMMENT '用户号 / 门店号；平台户为 *',
-    type_code          VARCHAR(32) NOT NULL,
-    entity_no          VARCHAR(64) DEFAULT NULL COMMENT 'STORE 户所属商家主体',
-    pending_points     BIGINT(20)  NOT NULL DEFAULT 0,
-    available_points   BIGINT(20)  NOT NULL DEFAULT 0,
-    held_points        BIGINT(20)  NOT NULL DEFAULT 0,
-    frozen             TINYINT(4)  NOT NULL DEFAULT 0 COMMENT '仅 USER：风控冻结',
-    last_active_at     BIGINT(20)  DEFAULT NULL COMMENT '仅 USER',
-    expire_at          BIGINT(20)  DEFAULT NULL COMMENT '仅 USER：区域本地日 23:59:59',
-    expire_notified_at BIGINT(20)  DEFAULT NULL COMMENT '仅 USER：提醒幂等位，续期时清空',
-    in_total           BIGINT(20)  NOT NULL DEFAULT 0 COMMENT '累计转入',
-    out_total          BIGINT(20)  NOT NULL DEFAULT 0 COMMENT '累计转出',
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_account_holder (holder_type, holder_no, type_code),
-    KEY idx_pts_account_expire (type_code, holder_type, expire_at)
-) COMMENT='积分户：平台发放户 / C 端户 / 门店户 / 平台接收户 / 发行登记';
-
-CREATE TABLE IF NOT EXISTS pts_ledger_entry (
-    id           BIGINT(20)  NOT NULL AUTO_INCREMENT,
-    entry_no     VARCHAR(40) NOT NULL,
-    voucher_no   VARCHAR(40) NOT NULL,
-    voucher_type VARCHAR(16) NOT NULL COMMENT '决定展示标题（i18n：points.voucher.{type}）',
-    type_code    VARCHAR(32) NOT NULL,
-    holder_type  VARCHAR(20) NOT NULL,
-    holder_no    VARCHAR(64) NOT NULL,
-    bucket       VARCHAR(12) NOT NULL,
-    delta_points BIGINT(20)  NOT NULL,
-    after_points BIGINT(20)  NOT NULL,
-    order_no     VARCHAR(40) DEFAULT NULL,
-    sub_order_no VARCHAR(40) DEFAULT NULL,
-    occurred_at  BIGINT(20)  NOT NULL,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_entry_no (entry_no),
-    KEY idx_pts_entry_holder (holder_type, holder_no, type_code, id),
-    KEY idx_pts_entry_voucher (voucher_no)
-) COMMENT='积分流水：只增不改';
-
-CREATE TABLE IF NOT EXISTS pts_voucher (
-    id             BIGINT(20)   NOT NULL AUTO_INCREMENT,
-    voucher_no     VARCHAR(40)  NOT NULL,
-    biz_ref        VARCHAR(96)  NOT NULL COMMENT '幂等键 = 凭证类型:业务单号',
-    voucher_type   VARCHAR(16)  NOT NULL,
-    type_code      VARCHAR(32)  NOT NULL,
-    market         VARCHAR(8)   NOT NULL,
-    currency       VARCHAR(8)   NOT NULL,
-    rate_points    BIGINT(20)   NOT NULL,
-    rate_minor     BIGINT(20)   NOT NULL,
-    points         BIGINT(20)   NOT NULL DEFAULT 0 COMMENT '主分数（绝对值）',
-    amount_minor   BIGINT(20)   NOT NULL DEFAULT 0,
-    external_minor BIGINT(20)   NOT NULL DEFAULT 0 COMMENT '进出专户的真钱：进正出负',
-    scene          VARCHAR(24)  NOT NULL,
-    settle_mode    VARCHAR(12)  DEFAULT NULL COMMENT '核销类凭证：PER_ORDER / PERIODIC',
-    user_no        VARCHAR(64)  DEFAULT NULL,
-    order_no       VARCHAR(40)  DEFAULT NULL,
-    sub_order_no   VARCHAR(40)  DEFAULT NULL,
-    entity_no      VARCHAR(64)  DEFAULT NULL COMMENT '发放侧 = 成交商家；核销侧 = 受理商家',
-    store_no       VARCHAR(64)  DEFAULT NULL,
-    statement_no   VARCHAR(40)  DEFAULT NULL,
-    request_no     VARCHAR(40)  DEFAULT NULL,
-    operator_no    VARCHAR(64)  DEFAULT NULL,
-    reason         VARCHAR(255) DEFAULT NULL,
-    occurred_at    BIGINT(20)   NOT NULL,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_voucher_no (voucher_no),
-    UNIQUE KEY uk_pts_voucher_biz_ref (biz_ref),
-    KEY idx_pts_voucher_type_time (type_code, occurred_at),
-    KEY idx_pts_voucher_store_time (store_no, occurred_at),
-    KEY idx_pts_voucher_user_time (user_no, occurred_at),
-    KEY idx_pts_voucher_sub (sub_order_no)
-) COMMENT='积分凭证：一次业务动作一张';
-
-CREATE TABLE IF NOT EXISTS pts_grant_position (
-    id                BIGINT(20)  NOT NULL AUTO_INCREMENT,
-    type_code         VARCHAR(32) NOT NULL,
-    sub_order_no      VARCHAR(40) NOT NULL,
-    order_no          VARCHAR(40) NOT NULL,
-    user_no           VARCHAR(64) NOT NULL,
-    entity_no         VARCHAR(64) DEFAULT NULL,
-    store_no          VARCHAR(64) DEFAULT NULL,
-    pay_basis_minor   BIGINT(20)  NOT NULL COMMENT '子单实付快照：退款比例分母',
-    status            VARCHAR(12) NOT NULL COMMENT 'GRANTED / SKIPPED',
-    skip_reason       VARCHAR(24) DEFAULT NULL,
-    skip_points       BIGINT(20)  NOT NULL DEFAULT 0 COMMENT '若不停发本应发多少',
-    granted_points    BIGINT(20)  NOT NULL DEFAULT 0,
-    activated_points  BIGINT(20)  NOT NULL DEFAULT 0,
-    revoked_pending   BIGINT(20)  NOT NULL DEFAULT 0,
-    revoked_available BIGINT(20)  NOT NULL DEFAULT 0,
-    finalized_at      BIGINT(20)  DEFAULT NULL,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_grant_sub (type_code, sub_order_no),
-    KEY idx_pts_grant_finalized (finalized_at)
-) COMMENT='发放头寸：granted = 待生效 + activated + revoked_pending';
-
-CREATE TABLE IF NOT EXISTS pts_redeem_position (
-    id                  BIGINT(20)  NOT NULL AUTO_INCREMENT,
-    type_code           VARCHAR(32) NOT NULL,
-    sub_order_no        VARCHAR(40) NOT NULL,
-    order_no            VARCHAR(40) NOT NULL,
-    user_no             VARCHAR(64) NOT NULL,
-    entity_no           VARCHAR(64) NOT NULL COMMENT '受理商家',
-    store_no            VARCHAR(64) NOT NULL COMMENT '受理门店',
-    settle_mode         VARCHAR(12) DEFAULT NULL COMMENT '支付时按协议落定：PER_ORDER / PERIODIC',
-    pay_basis_minor     BIGINT(20)  NOT NULL,
-    held_points         BIGINT(20)  NOT NULL,
-    released_points     BIGINT(20)  NOT NULL DEFAULT 0 COMMENT '未支付释放',
-    transferred_points  BIGINT(20)  NOT NULL DEFAULT 0 COMMENT '支付时转出（= held − released）',
-    reversed_points     BIGINT(20)  NOT NULL DEFAULT 0 COMMENT '付款前因退款反转回用户',
-    paid_points         BIGINT(20)  NOT NULL DEFAULT 0 COMMENT '已付款给商家的部分',
-    returned_points     BIGINT(20)  NOT NULL DEFAULT 0 COMMENT '付款后因退款退回用户',
-    refund_funded_minor BIGINT(20)  NOT NULL DEFAULT 0 COMMENT '结算域告知：补差已回退到账',
-    state               VARCHAR(14) NOT NULL DEFAULT 'HELD'
-                        COMMENT 'HELD / TRANSFERRED / PAYING / PAID / IN_STORE / SETTLEABLE / IN_STATEMENT / SETTLED / CLOSED',
-    statement_no        VARCHAR(40) DEFAULT NULL,
-    paying_since        BIGINT(20)  DEFAULT NULL,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_redeem_sub (type_code, sub_order_no),
-    KEY idx_pts_redeem_order (order_no),
-    KEY idx_pts_redeem_state (state, paying_since),
-    KEY idx_pts_redeem_store (store_no, state),
-    KEY idx_pts_redeem_statement (statement_no)
-) COMMENT='核销头寸：held = 在占 + released + transferred；transferred = 在途 + reversed + paid；returned ≤ paid';
-
-CREATE TABLE IF NOT EXISTS pts_merchant_agreement (
-    id               BIGINT(20)   NOT NULL AUTO_INCREMENT,
-    agreement_no     VARCHAR(40)  NOT NULL,
-    entity_no        VARCHAR(64)  NOT NULL COMMENT '商家主体',
-    type_code        VARCHAR(32)  NOT NULL,
-    doc_version      VARCHAR(16)  NOT NULL COMMENT '协议文本版本',
-    doc_digest       VARCHAR(64)  NOT NULL COMMENT '签署时文本摘要',
-    settle_mode      VARCHAR(12)  NOT NULL DEFAULT 'PER_ORDER' COMMENT 'PER_ORDER 随单（默认）/ PERIODIC 定期',
-    settle_period    VARCHAR(12)  DEFAULT NULL COMMENT 'PERIODIC 时：MONTH / HALF_MONTH / WEEK',
-    redeem_rate_bp   INT(11)      NOT NULL DEFAULT 10000 COMMENT '兑付价格万分比：本期恒 10000（全额）',
-    status           VARCHAR(12)  NOT NULL DEFAULT 'SIGNED' COMMENT 'SIGNED / TERMINATED',
-    active_key       VARCHAR(100) DEFAULT NULL COMMENT 'SIGNED 时 = entity_no:type_code，否则 NULL —— 一主体一种类只有一份生效',
-    signed_by        VARCHAR(64)  NOT NULL,
-    signed_at        BIGINT(20)   NOT NULL,
-    terminated_by    VARCHAR(64)  DEFAULT NULL,
-    terminated_at    BIGINT(20)   DEFAULT NULL,
-    terminate_reason VARCHAR(255) DEFAULT NULL,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_agreement_no (agreement_no),
-    UNIQUE KEY uk_pts_agreement_active (active_key),
-    KEY idx_pts_agreement_entity (entity_no, type_code)
-) COMMENT='积分受理协议：签了才能收积分；变更方式 = 终止旧的、签新的（留痕）';
-
-CREATE TABLE IF NOT EXISTS pts_store_statement (
-    id              BIGINT(20)  NOT NULL AUTO_INCREMENT,
-    statement_no    VARCHAR(40) NOT NULL,
-    type_code       VARCHAR(32) NOT NULL,
-    entity_no       VARCHAR(64) NOT NULL,
-    store_no        VARCHAR(64) NOT NULL,
-    pay_merchant_no VARCHAR(64) DEFAULT NULL COMMENT '打款收款账户快照',
-    funds_mode      VARCHAR(16) NOT NULL COMMENT 'AGGREGATED / DIRECT：决定打款执行器',
-    period_from     BIGINT(20)  NOT NULL,
-    period_to       BIGINT(20)  NOT NULL,
-    points          BIGINT(20)  NOT NULL COMMENT '本期兑付分数',
-    amount_minor    BIGINT(20)  NOT NULL COMMENT '本期兑付金额（全额）',
-    offset_minor    BIGINT(20)  NOT NULL DEFAULT 0 COMMENT '冲减的待追回',
-    payable_minor   BIGINT(20)  NOT NULL COMMENT '= amount − offset；为负时 0 并结转',
-    status          VARCHAR(12) NOT NULL DEFAULT 'DRAFT' COMMENT 'DRAFT / CONFIRMED / DISPUTED / PAYING / PAID / VOID',
-    auto_confirm_at BIGINT(20)  NOT NULL,
-    confirmed_by    VARCHAR(64) DEFAULT NULL COMMENT 'B 端操作人或 SYSTEM（超期自动）',
-    confirmed_at    BIGINT(20)  DEFAULT NULL,
-    dispute_reason  VARCHAR(255) DEFAULT NULL,
-    payout_ref      VARCHAR(64) DEFAULT NULL COMMENT '打款单号 / 通道流水号',
-    paid_at         BIGINT(20)  DEFAULT NULL,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_statement_no (statement_no),
-    UNIQUE KEY uk_pts_statement_period (type_code, store_no, period_from),
-    KEY idx_pts_statement_status (status, auto_confirm_at)
-) COMMENT='门店积分结算单（定期结算）';
-
-CREATE TABLE IF NOT EXISTS pts_receivable (
-    id              BIGINT(20)  NOT NULL AUTO_INCREMENT,
-    receivable_no   VARCHAR(40) NOT NULL,
-    type_code       VARCHAR(32) NOT NULL,
-    entity_no       VARCHAR(64) NOT NULL,
-    store_no        VARCHAR(64) DEFAULT NULL,
-    source_voucher  VARCHAR(40) NOT NULL COMMENT '产生它的 RETURN 凭证',
-    amount_minor    BIGINT(20)  NOT NULL,
-    recovered_minor BIGINT(20)  NOT NULL DEFAULT 0,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_receivable_no (receivable_no),
-    KEY idx_pts_receivable_entity (entity_no, type_code)
-) COMMENT='待追回：recovered ≤ amount；未结清的进下期结算单冲减';
-
-CREATE TABLE IF NOT EXISTS pts_pool_request (
-    id             BIGINT(20)   NOT NULL AUTO_INCREMENT,
-    request_no     VARCHAR(40)  NOT NULL,
-    kind           VARCHAR(12)  NOT NULL COMMENT 'TOPUP / WITHDRAW / ADJUST',
-    type_code      VARCHAR(32)  NOT NULL,
-    amount_minor   BIGINT(20)   NOT NULL DEFAULT 0,
-    adjust_user_no VARCHAR(64)  DEFAULT NULL,
-    adjust_points  BIGINT(20)   NOT NULL DEFAULT 0,
-    evidence_no    VARCHAR(64)  DEFAULT NULL COMMENT '打款回单号；TOPUP / WITHDRAW 必填',
-    reason         VARCHAR(255) NOT NULL,
-    plan_no        VARCHAR(40)  DEFAULT NULL,
-    status         VARCHAR(12)  NOT NULL DEFAULT 'SUBMITTED' COMMENT 'SUBMITTED / POSTED / REJECTED',
-    submitted_by   VARCHAR(64)  NOT NULL,
-    submitted_at   BIGINT(20)   NOT NULL,
-    decided_by     VARCHAR(64)  DEFAULT NULL,
-    decided_at     BIGINT(20)   DEFAULT NULL,
-    decide_remark  VARCHAR(255) DEFAULT NULL,
-    voucher_no     VARCHAR(40)  DEFAULT NULL,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_request_no (request_no),
-    KEY idx_pts_request_type (type_code, status)
-) COMMENT='补充 / 提取 / 调账单：一人提交、另一人审批';
-
-CREATE TABLE IF NOT EXISTS pts_topup_plan (
-    id              BIGINT(20)  NOT NULL AUTO_INCREMENT,
-    plan_no         VARCHAR(40) NOT NULL,
-    type_code       VARCHAR(32) NOT NULL,
-    mode            VARCHAR(20) NOT NULL COMMENT 'FIXED / COMMISSION_RATIO',
-    value           BIGINT(20)  NOT NULL,
-    day_of_month    INT(11)     NOT NULL DEFAULT 1,
-    enabled         TINYINT(4)  NOT NULL DEFAULT 1,
-    last_run_period VARCHAR(8)  DEFAULT NULL COMMENT 'yyyyMM，幂等',
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_plan_no (plan_no),
-    UNIQUE KEY uk_pts_plan_type (type_code)
-) COMMENT='定期补充计划：只生成待审批补充单';
-
-CREATE TABLE IF NOT EXISTS pts_switch (
-    id            BIGINT(20)   NOT NULL AUTO_INCREMENT,
-    scope_type    VARCHAR(16)  NOT NULL COMMENT 'GLOBAL / MARKET / TYPE / SCENE / CLIENT / MERCHANT / STORE / USER',
-    scope_id      VARCHAR(64)  NOT NULL,
-    issue_paused  TINYINT(4)   NOT NULL DEFAULT 0,
-    redeem_paused TINYINT(4)   NOT NULL DEFAULT 0,
-    paused_since  BIGINT(20)   DEFAULT NULL,
-    reason        VARCHAR(255) NOT NULL,
-    operator_no   VARCHAR(64)  NOT NULL,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_switch_scope (scope_type, scope_id)
-) COMMENT='积分暂停开关：没有行 = 放行';
-
-CREATE TABLE IF NOT EXISTS pts_switch_log (
-    id            BIGINT(20)   NOT NULL AUTO_INCREMENT,
-    scope_type    VARCHAR(16)  NOT NULL,
-    scope_id      VARCHAR(64)  NOT NULL,
-    issue_paused  TINYINT(4)   NOT NULL,
-    redeem_paused TINYINT(4)   NOT NULL,
-    reason        VARCHAR(255) NOT NULL,
-    operator_no   VARCHAR(64)  NOT NULL,
-    occurred_at   BIGINT(20)   NOT NULL,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    KEY idx_pts_switch_log_scope (scope_type, scope_id, id)
-) COMMENT='暂停开关审计';
-
-CREATE TABLE IF NOT EXISTS pts_transfer_order (
-    id           BIGINT(20)  NOT NULL AUTO_INCREMENT,
-    transfer_no  VARCHAR(40) NOT NULL,
-    type_code    VARCHAR(32) NOT NULL,
-    kind         VARCHAR(20) NOT NULL COMMENT 'TOPUP_IN / WITHDRAW_OUT / PAYOUT_COVER（归集随单回补）/ EXPIRE_INCOME / CASH_OFFSET_IN',
-    biz_date     VARCHAR(10) NOT NULL,
-    amount_minor BIGINT(20)  NOT NULL,
-    flow_count   INT(11)     NOT NULL,
-    executor     VARCHAR(20) NOT NULL DEFAULT 'INTERNAL_BOOKING',
-    status       VARCHAR(12) NOT NULL DEFAULT 'CREATED' COMMENT 'CREATED / EXECUTED / RECONCILED / MISMATCH',
-    evidence_no  VARCHAR(64) DEFAULT NULL,
-    executed_at  BIGINT(20)  DEFAULT NULL,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_transfer_no (transfer_no),
-    UNIQUE KEY uk_pts_transfer_day (type_code, kind, biz_date)
-) COMMENT='划拨单：按日汇总的内部真钱动作。直连补差逐单在 stl_split_log；定期打款在结算单';
-
-CREATE TABLE IF NOT EXISTS pts_stat_daily (
-    id           BIGINT(20)  NOT NULL AUTO_INCREMENT,
-    biz_date     VARCHAR(10) NOT NULL,
-    type_code    VARCHAR(32) NOT NULL,
-    scene        VARCHAR(24) NOT NULL,
-    voucher_type VARCHAR(16) NOT NULL,
-    settle_mode  VARCHAR(12) NOT NULL DEFAULT '',
-    entity_no    VARCHAR(64) NOT NULL DEFAULT '',
-    store_no     VARCHAR(64) NOT NULL DEFAULT '',
-    cnt          BIGINT(20)  NOT NULL DEFAULT 0,
-    points       BIGINT(20)  NOT NULL DEFAULT 0,
-    amount_minor BIGINT(20)  NOT NULL DEFAULT 0,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_stat_daily (biz_date, type_code, scene, voucher_type, settle_mode, entity_no, store_no)
-) COMMENT='积分日汇总：可从 pts_voucher 重算';
-
-CREATE TABLE IF NOT EXISTS pts_cursor (
-    id          BIGINT(20)  NOT NULL AUTO_INCREMENT,
-    cursor_name VARCHAR(32) NOT NULL,
-    last_id     BIGINT(20)  NOT NULL DEFAULT 0,
-    /* 审计列 */
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_pts_cursor_name (cursor_name)
-) COMMENT='积分任务水位';
-```
-
-#### 条件更新（每条都是一道「写不进去」的闸）
-
-```sql
--- 积分户：三格一起改，任一格为负即 0 行；发行登记由 #{allowNegative}=1 跳过下限
-UPDATE pts_account
-   SET pending_points = pending_points + #{dP}, available_points = available_points + #{dA},
-       held_points = held_points + #{dH},
-       in_total = in_total + #{in}, out_total = out_total + #{out},
-       last_active_at = COALESCE(#{activeAt}, last_active_at),
-       expire_at = COALESCE(#{expireAt}, expire_at),
-       expire_notified_at = CASE WHEN #{expireAt} IS NULL THEN expire_notified_at ELSE NULL END,
-       updated_at = NOW()
- WHERE holder_type = #{ht} AND holder_no = #{hn} AND type_code = #{type} AND deleted = 0
-   AND (#{allowNegative} = 1 OR (pending_points + #{dP} >= 0 AND available_points + #{dA} >= 0
-                                 AND held_points + #{dH} >= 0))
-   AND (#{checkFrozen} = 0 OR frozen = 0);
--- 到期再加：AND available_points = #{expectA} AND expire_at <= #{now}
-
--- 专户：发放户扣得动不代表 U 扣得动 —— 两者由 V2 绑定，但仍各自设下限
-UPDATE pts_fund_pool
-   SET unallocated_minor = unallocated_minor + #{dU}, committed_minor = committed_minor + #{dC},
-       payable_minor = payable_minor + #{dD}, receivable_minor = receivable_minor + #{dR}, …
- WHERE type_code = #{type}
-   AND unallocated_minor + #{dU} >= 0 AND committed_minor + #{dC} >= 0
-   AND payable_minor + #{dD} >= 0 AND receivable_minor + #{dR} >= 0;
-
--- 核销头寸：状态迁移只从规定前态出发
-UPDATE pts_redeem_position SET released_points = held_points, state = 'CLOSED'
- WHERE id = #{id} AND state = 'HELD';                                                       -- release（未支付）
-UPDATE pts_redeem_position SET transferred_points = held_points - released_points, settle_mode = #{mode},
-       state = CASE WHEN #{mode} = 'PER_ORDER' THEN 'TRANSFERRED' ELSE 'IN_STORE' END
- WHERE id = #{id} AND state = 'HELD';                                                       -- 支付
-UPDATE pts_redeem_position SET state = 'PAYING', paying_since = #{now}
- WHERE id = #{id} AND state = 'TRANSFERRED' AND transferred_points - reversed_points > 0;    -- beginPayout
-UPDATE pts_redeem_position SET state = 'PAID', paid_points = transferred_points - reversed_points
- WHERE id = #{id} AND state = 'PAYING';                                                     -- confirmPayout
-UPDATE pts_redeem_position SET state = 'TRANSFERRED', paying_since = NULL
- WHERE id = #{id} AND state = 'PAYING';                                                     -- abortPayout
-UPDATE pts_redeem_position SET reversed_points = reversed_points + #{r}
- WHERE id = #{id} AND state IN ('TRANSFERRED', 'IN_STORE', 'SETTLEABLE')
-   AND reversed_points + #{r} <= transferred_points;                                        -- reverse（付款前）
-UPDATE pts_redeem_position SET returned_points = returned_points + #{r}
- WHERE id = #{id} AND state IN ('PAID', 'SETTLED') AND returned_points + #{r} <= paid_points; -- return（付款后）
-UPDATE pts_redeem_position SET state = 'SETTLEABLE' WHERE id = #{id} AND state = 'IN_STORE';  -- storeConfirm
-UPDATE pts_redeem_position SET state = 'IN_STATEMENT', statement_no = #{no}
- WHERE store_no = #{store} AND type_code = #{type} AND state = 'SETTLEABLE' AND statement_no IS NULL; -- 出单锁定
-
--- 发放头寸
-UPDATE pts_grant_position SET activated_points = activated_points + #{d}
- WHERE id = #{id} AND activated_points + revoked_pending + #{d} <= granted_points;
-UPDATE pts_grant_position SET revoked_pending = revoked_pending + #{d}
- WHERE id = #{id} AND activated_points + revoked_pending + #{d} <= granted_points;
-UPDATE pts_grant_position SET revoked_available = revoked_available + #{d}
- WHERE id = #{id} AND revoked_available + #{d} <= activated_points;
-
--- 结算单：B 端确认只从 DRAFT / DISPUTED 出发；审批不许自批
-UPDATE pts_store_statement SET status = 'CONFIRMED', confirmed_by = #{by}, confirmed_at = #{now}
- WHERE statement_no = #{no} AND status IN ('DRAFT', 'DISPUTED');
-UPDATE pts_pool_request SET status = 'POSTED', decided_by = #{op}, decided_at = #{now}, voucher_no = #{vno}
- WHERE request_no = #{no} AND status = 'SUBMITTED' AND submitted_by <> #{op};
-```
-
-#### 既有表的变化
-
-| 表.列 | 变化 |
+| 日期 | 记录 |
 |---|---|
-| `ord_sub_order.points_deduct` / `points_deduct_minor` | 保留，下单时由 `hold` 的分摊结果写入 |
-| `ord_sub_order.points_granted` / `points_fee_minor` | 停写，注释标废弃 |
-| `stl_bill.points_fee_minor` | 停写 |
-| `stl_bill` 新增 `points_settle_mode` | 结算单生成时快照：决定基数是否含积分抵扣 |
-| `stl_bill.subsidy_minor` / `points_cost_minor` | 改为 `beginPayout` 时按返回值写入，不在生成时快照；定期结算的单恒为 0 |
-| `ord_after_sale.points_offset_minor` | 开始写：现金抵扣额 |
-| `ord_after_sale.refund_mode` | 新单只允许 `CASH` |
-| `mch_entity.points_enabled/forced` · `sys_industry.points_forced` · `cmt_community.points_enabled` | 停读，注释标废弃 |
-| `prd_category_points` | 不变；第二个区域开通时再加种类维度 |
-| `pts_user_account` · `pts_user_ledger` · `stl_points_pool` | 冻结只读，迁移验证后另开迁移删除 |
+| 2026-10-14 | v1/v2讨论平台出资、四类户与两种结算 |
+| 2026-10-14 | 方案review识别R备付、回流、协议、定期退款、事件、迁移及现金扣减缺口 |
+| 2026-10-14 | v3整理为独立业务模块，补独立PRD、技术契约、数据字典、13个开发任务及40条需求映射；待评审 |
 
-另需 `V407__points_v2_perms.sql`：权限码、功能点、角色授权种子（逐行 `INSERT … WHERE NOT EXISTS`）；ops 菜单经菜单生成器落迁移。
+2026-10-14 边界修订：按用户明确意见，积分集成pay-domain，业务独立而非独立JAR；取消新数据源/新事务/pom调整，复用payTxManager、paySqlSessionFactory，结算以域内Hook协作，订单跨域可靠性与资金优化继续适用。
 
-### 2.5 接口设计
-
-#### 2.5.1 spi（`shop-base/spi/points`，trade 调 pay）
-
-```java
-/** 发放侧。支付提交后调（AfterCommit）。幂等：GRANT:{subOrderNo} */
-public interface PointsEarnPort {
-    GrantOutcome grant(GrantCommand cmd);
-
-    record GrantCommand(String market, String userNo, String orderNo, String subOrderNo,
-                        String entityNo, String storeNo, String payChannel, String clientScene,
-                        long payBasisMinor, long commissionMinor, List<EarnLine> lines) {}
-    record EarnLine(String goodsNo, String categoryNo, int qty, long baseMinor, EarnRule rule, boolean gift) {}
-    record GrantOutcome(long points, String status, String skipReason) {}
-}
-
-/** 核销侧。 */
-public interface PointsRedeemPort {
-    /** 结算页试算。与 hold 用同一个 RedeemPolicy */
-    RedeemQuote quote(RedeemQuery q);
-    /** 下单占用。不可用返回 none()，不抛 —— 抵扣失败不挡成交。幂等：HOLD:{orderNo} */
-    HoldOutcome hold(HoldCommand cmd);
-    /** 支付提交后：按受理协议随单兑付或转入门店户。幂等：PAY:{subOrderNo} */
-    void onPaid(String orderNo);
-    /** 未支付取消 / 关单。幂等：RELEASE:{subOrderNo} */
-    void release(String orderNo, String reason);
-
-    record RedeemQuery(String market, String userNo, String payMode, String clientScene, List<Target> targets) {}
-    record HoldCommand(String market, String userNo, String orderNo, long wantPoints,
-                       String payMode, String clientScene, List<Target> targets) {}
-    record Target(String subOrderNo, String entityNo, String storeNo, long baseMinor, long payBasisMinor) {}
-    record RedeemQuote(String typeCode, long available, long maxPoints, long maxMinor, String denyReason) {}
-    record HoldOutcome(long points, long amountMinor, List<Share> shares) {}
-    record Share(String subOrderNo, long points, long amountMinor) {}
-}
-
-/** 退款。售后在「回退分账」之后、「退现金」之前调。幂等：REFUND:{afterSaleNo} */
-public interface PointsRefundPort {
-    RefundQuote quote(String subOrderNo, long refundedTotalAfterMinor);
-    RefundOutcome apply(String afterSaleNo, String subOrderNo, long refundedTotalAfterMinor);
-
-    /** @param cashOffsetMinor 收回不足、从本次退款现金里扣的金额 —— 退款单必须明示 */
-    record RefundOutcome(long returnedPoints, long revokedPoints, long cashOffsetMinor) {}
-    record RefundQuote(long returnedPoints, long revokedPoints, long cashOffsetMinor) {}
-}
-```
-
-`PointsRulePort#ruleFor` 签名不变；`FIXED` 语义改为「每件」。
-
-#### 2.5.2 域内（settle → points）
-
-```java
-public interface PointsSettlementHook {
-    /** 随单结算的补差前：TRANSFERRED → PAYING，返回此刻真实应付额（0 = 不补差）。结算单 subsidy_minor 以此为准 */
-    PayoutTicket beginPayout(String subOrderNo);
-    /** 补差成功（直连）/ 结算确认（归集）：过账 PAYOUT。幂等：PAYOUT:{subOrderNo} */
-    void confirmPayout(String subOrderNo, String settleNo);
-    void abortPayout(String subOrderNo, String error);
-    /** 子单结算终局：发放侧转正；定期结算的核销侧门店确认。幂等：ACTIVATE / STORE_CONFIRM:{subOrderNo} */
-    void onBillFinalized(String subOrderNo);
-    /** 补差回退结果 */
-    void onSubsidyReturn(String subOrderNo, long minor, boolean ok);
-    /** 结算单生成时取结算方式快照（决定基数是否含积分抵扣） */
-    String settleModeOf(String subOrderNo);
-
-    record PayoutTicket(long points, long amountMinor) {}
-}
-```
-
-#### 2.5.3 HTTP 端点
-
-**C 端 `/mp/points`**（当前登录人）
-
-| 方法 | 路径 | 返回 |
-|---|---|---|
-| GET | `/mp/points/account?market=` | `{typeCode, name, rate, available, pending, held, expireAt, expiringSoon}` |
-| GET | `/mp/points/records?page&size` | 按凭证聚合，一个动作一行：`{voucherNo, voucherType, title, deltaAvailable, deltaPending, orderNo, at}` |
-| GET | `/mp/points/quote` | 结算页试算（旧 `/deductible` 保留一个版本） |
-
-**B 端 `/biz/points`**（作用域取 `BizContext`）
-
-| 方法 | 路径 | 说明 | 权限 |
-|---|---|---|---|
-| GET | `/biz/points/agreement` | 当前协议（未签返回待签的协议文本与版本） | `FINANCE` |
-| POST | `/biz/points/agreement` | 签署：`{docVersion, settleMode, settlePeriod}` | `FINANCE`（主账号） |
-| PUT | `/biz/points/agreement/mode` | 改结算方式（终止旧的、签新的） | 同上 |
-| GET | `/biz/points/summary?storeNo&period` | 返出（平台出资）、受理分数、随单兑付额、待结算余额 | `FINANCE` |
-| GET | `/biz/points/records?storeNo&period&kind=ISSUE\|REDEEM&page` | 逐单明细 | `FINANCE` |
-| GET | `/biz/points/statements?storeNo&page` · `/statements/{no}` | 门店积分结算单与所含单据 | `FINANCE` |
-| POST | `/biz/points/statements/{no}/confirm` · `/dispute` | 确认 / 提异议 | `FINANCE` |
-| ~~POST~~ | ~~`/biz/points/toggle`~~ | **删除** | — |
-
-**运营 `/ops/points`**（每个控制器路径第一段 ≤ 3 种）
-
-| 控制器 | 路径 | 权限码 |
-|---|---|---|
-| `OpsPointTypeController` | `GET/POST /types` · `PUT /types/{code}` · `POST /types/{code}/activate\|retire` | `points:type:read/write` |
-| `OpsPointsPoolController` | `GET /pools/{code}`（U/C/D/R、四类平台户、可发天数）· `GET /pools/{code}/flows` · `GET/PUT /pools/{code}/plan` · `GET/POST /requests` · `POST /requests/{no}/approve\|reject` | `points:pool:read/submit/approve` |
-| `OpsPointsMerchantController` | `GET /agreements?entityNo` · `POST /agreements/{no}/terminate` · `GET /statements?status` · `POST /statements/{no}/confirm` · `GET /receivables` | `points:merchant:read/write` |
-| `OpsPointsSwitchController` | `GET/PUT /switches` · `GET /switches/logs` | `points:switch:read/write` |
-| `OpsPointsAccountController` | `GET /accounts?userNo=` · `GET /accounts/{userNo}/records` · `POST /accounts/{userNo}/freeze\|unfreeze` | `points:account:read/write` |
-| `OpsPointsStatsController` | `GET /stats/platform` · `GET /stats/stores` · `GET /stats/stores/{storeNo}/records` · `GET /stats/users` · `GET /recon` | `points:stats:read` |
-
-（路径均以 `/ops/points` 开头。）登记走「/ops 五处」（判据 `scripts/check-ops-contract.mjs`）；新权限码进种子与角色授权：`SUPER_ADMIN`、`FINANCE` 全部；`points:pool:approve` 只给 `FINANCE`。
-
-#### 2.5.4 界面（三端）
-
-| 端 | 页面 | 动作 |
-|---|---|---|
-| c-app | 我的积分 · 结算页积分行 · 订单详情积分明细 | 改接新接口 |
-| b-app | 售后核定面板 | **去掉「积分」退款形式** |
-| b-app | 积分页 | 改为：受理协议（签署 / 结算方式）· 本店统计 · 门店积分结算单（确认 / 异议）；去掉开关 |
-| ops-web | 积分种类 · 专户（流水、计划、四类平台户）· 补充 / 提取 / 调账审批 · 商家受理（协议、结算单、待追回）· 暂停开关 · 用户积分 · 积分统计 | 新增 7 页 → `nav.ts` → 菜单生成器落迁移 → `gen-ui-catalog.py` |
-
-#### 2.5.5 配置、错误码、i18n
-
-| 类别 | 项 |
-|---|---|
-| 配置 | `shop.points.enabled`（`@ConfigurationProperties`，硬总闸，上线前 false）；`features.points` 由后端闸门求值下发 |
-| 错误码 | `POINTS_TYPE_RATE_LOCKED` · `POINTS_TYPE_ACTIVE_EXISTS` · `POINTS_TYPE_NOT_FUNDED` · `POINTS_POOL_INSUFFICIENT` · `POINTS_REQUEST_SELF_APPROVE` · `POINTS_PAYOUT_IN_PROGRESS` · `POINTS_ACCOUNT_FROZEN` · `POINTS_AGREEMENT_REQUIRED` · `POINTS_SETTLE_MODE_UNSUPPORTED` · `POINTS_STATEMENT_STATE` · `AFTERSALE_REFUND_MODE_UNSUPPORTED`（各四处登记） |
-| i18n（端上） | `points.voucher.{type}` 流水标题；`points.skip.{reason}`；`points.deny.{reason}`；协议、结算单、ops 七页文案 |
-
-### 2.6 关键流程
-
-```text
-下单       trade ─▶ RedeemPort.hold：gate（含协议）→ RedeemPolicy → HOLD（A→H，逐子单开核销头寸）
-支付后     trade ─AfterCommit─▶ RedeemPort.onPaid
-              随单：PAY_SETTLE（H→门店→接收户；C→D；头寸 TRANSFERRED）
-              定期：PAY_TRANSFER（H→门店待确认；头寸 IN_STORE）
-           trade ─AfterCommit─▶ EarnPort.grant：gate → EarnPolicy → GRANT（发放户→P；U→C）/ SKIPPED
-结算单生成 settle 取 settleModeOf：随单基数含积分抵扣；定期不含；佣金基数都按全额
-分账（直连，随单）
-           settle ─▶ beginPayout（TRANSFERRED→PAYING，返回应付额）─▶ 通道补差
-                     成功 ─▶ confirmPayout（PAYOUT：D−，出）  失败 ─▶ abortPayout
-           回执 SPLIT_CONFIRMED ─▶ onBillFinalized（ACTIVATE；定期的 STORE_CONFIRM）
-结算确认（归集）  beginPayout + confirmPayout（D−，次日划拨单 PAYOUT_COVER）+ onBillFinalized
-积分账期（定期）
-           StatementJob ─▶ 出单（锁 SETTLEABLE 头寸，冲减待追回）─▶ B 端确认 / 超期自动
-                      ─▶ STORE_SETTLE（门店→接收户；C→D）─▶ 打款执行器 ─▶ 回执 ─▶ PAYOUT（D−，出）
-退款       afterSale ① reverseSplit（补差回退 → onSubsidyReturn）
-                     ② RefundPort.apply：按积分所在位置 RELEASE / REVERSE / RETURN；发放侧 REVOKE；返回 cashOffset
-                     ③ 退现金 = 退款额 − cashOffset
-到期       ExpiryJob ─▶ 每户一张 EXPIRE（A→接收户；C−，出）─▶ 次日划拨单 EXPIRE_INCOME
-补充（流转）审批通过 ─▶ TOPUP（接收户→发放户，不足部分发行登记→发放户；U+，进）
-```
-
-### 2.7 迁移与切换
-
-1. **先只读查生产存量**：旧三张表的账户数、`balance + pending_balance` 合计、PENDING 的 USE 合计、`AFTER_SALE_COMP` 行数。
-2. 几乎为空：建新表 → 新链路上线（`shop.points.enabled=false`）→ 运营建种类、补充、生效 → 商家签协议 → 开总闸。
-3. 有余额：先 `TOPUP` 存量负债等额资金 → 迁移脚本按 `ADJUST`（场景 `MIGRATION`）逐户迁入 A / P，PENDING 的 USE 迁成核销头寸（视为随单结算）→ 跑 I1–I4 → 开总闸。
-4. 旧表冻结；一个版本后删旧类、旧表，加 ArchUnit A7。
-
-### 2.8 实施分期（细化计划确认后由 writing-plans 写进本节）
-
-| 期 | 内容 | 可独立验证的产出 |
-|---|---|---|
-| 1 | 库表 + model + voucher + posting + store | 凭证四条守恒单测；真库并发：双发放、两笔发放抢发放户最后一分、释放 vs 支付 |
-| 2 | 种类 / 专户 / 审批 / 计划 / 开关 / 闸门 + ops 接口 | 运营建种类、补钱、暂停 |
-| 3 | 受理协议（B 端签约 + ops 查看） | 未签不能收积分 |
-| 4 | 发放链路（grant / skip / activate / sweeper） | 支付后待生效、终局后可用、发放户不足停发 |
-| 5 | 核销 · 随单结算（hold / release / onPaid / 两阶段付款）+ 结算单基数按方式 | 补差额以积分域为准 |
-| 6 | 核销 · 定期结算（门店户、结算单、确认、归集打款） | 结算单 B 端确认后打款 |
-| 7 | 退款链路 + 去掉积分退款形式 + 待追回冲减 | 部分退款按比例；待追回下期冲减 |
-| 8 | 到期 / 提醒 / 划拨单 | 到期进接收户、钱转收入 |
-| 9 | 统计 + C / B / ops 页面 + UI 清单 | 三视角 |
-| 10 | 对账 I1–I7、外部对账、告警 | 消融后对账能报出差异 |
-| 11 | 存量迁移、切换、删旧 | — |
-
----
-
-## §3 选型
-
-资金模型选型见[资金方案 §二](./design/积分资金方案-平台预存池.md)，不可逆部分见 [ADR-036](./ADR/ADR-036-积分改为平台出资预存池.md)。
-
-| 记账方式 | 优点 | 缺点 | 结论 |
-|---|---|---|---|
-| 三本账各自写 + 事后恒等式（现状） | 改动最小 | 每条新路径都可能只改一边 | ❌ |
-| **积分户流转 + 凭证过账** | 积分守恒与资金对应在写入时成立；积分去向任何时候说得清 | 多凭证、头寸、平台户三层 | ✅ |
-| 批次（FIFO） | 每一分可追溯到出资单 | V28 / V30 刚删掉；通用积分兑付不需要追溯 | ❌ |
-
-| 积分户建模 | 优点 | 缺点 | 结论 |
-|---|---|---|---|
-| **五类持有方一张 `pts_account`** | 一套条件更新、一套流水、I2 一条 SQL | 三格含义随类型变，要写清 | ✅ |
-| 每类一张表 | 列名即语义 | 五套 Mapper 与流水；过账要分支 | ❌ |
-
----
-
-## §4 风险
-
-| 风险 | 影响 | 缓解 |
-|---|---|---|
-| 发放户、专户两行是热点（每笔支付子单的 GRANT 都改） | 高峰期发放排队 | 发放在 `AfterCommit`、不在用户请求路径；锁顺序放最后；压测不够时按分片拆行，I1 按分片求和，接口不变 |
-| 结算终局事件丢失 | 不转正 / 门店不确认 | `ActivateSweeper` 每小时补；I5 核 |
-| 桩网关不产生 `SPLIT_CONFIRMED` | 测试环境永远不转正 | 场景测试用回执驱动 |
-| `PAYING` 卡住 | 退款被挡 | outbox 重投；`PayingSweeper` 查通道结果后确认或回滚；超 30 分钟告警 |
-| 定期结算单长期不确认 | 商家迟迟拿不到钱、D 长期挂账 | 出单后 N 天自动确认；异议进 ops 处理队列；超期告警 |
-| 直连商家需要定期打款 | 无通道 | 接通前协议层禁选；执行器接口已留 |
-| 结算方式在订单途中变更 | 一单两种口径 | 核销头寸在**支付时**落定 `settle_mode`，之后不随协议变；结算单从头寸取快照 |
-| 部分回退分账的补差回退额与积分比例不一致 | `RETURN` 判错 | 结算域按同一累计比例算、经 `onSubsidyReturn` 推入；I5 逐单核 |
-| 专户被挪用 | 账面有钱、实际没钱 | L3 每日校验余额，不足最高级告警 |
-| 运营误操作 | 资金或体验事故 | 双人复核；暂停必填原因 + 审计；比例生效后锁定；协议不可代签 |
-
----
-
-## §5 对账三 · 实现 → 需求（测试计划）
-
-| AC | 测试 | 类型 | 消融 |
-|---|---|---|---|
-| AC-P1/P2/P3 | `PointTypeServiceTest#rate_locked_after_activate` · `#second_active_in_market_rejected` · `#activate_requires_topup` | 真库 | 去 `active_market` 唯一键 → 红 |
-| AC-P4/P5 | `PoolServiceTest#self_approve_rejected` · `#withdraw_over_issue_balance_rejected` · `#topup_recirculates_receive_first` · `PointsTopupPlanJobTest#once_per_period` | 真库 | 去 `submitted_by <>` → 红 |
-| AC-P6 | `VoucherTest`：V1–V4、V8 各一条反例 | 单测 | — |
-| AC-P7/P8 | `EarnServiceTest#grant_moves_issue_to_pending` · **`#two_grants_race_for_last_point_only_one_wins`** · `#skipped_with_reason` · `#no_agreement_required_to_earn` | 真库 + 并发 | 去发放户 `>= 0` → 红 |
-| AC-P9 | `#activate_only_on_finalized` · `ActivateSweeperTest` | 真库 | — |
-| AC-P10/P11 | `AgreementServiceTest#unsigned_cannot_accept` · `#direct_periodic_rejected_without_executor` · `#terminate_affects_future_only` | 真库 | 去协议闸 → 红 |
-| AC-P12/P13 | `DefaultRedeemPolicyTest`（上限、分摊、余数、对齐、只在可受理门店）· `RedeemServiceTest#offline_denied` | 单测 | — |
-| AC-P14 | **`PayoutRaceTest#reverse_vs_beginPayout_exactly_one_wins`** · `#subsidy_uses_live_position_not_snapshot` · `#per_order_bill_base_includes_points` | 真库 + 并发 | 去 `state='TRANSFERRED'` → 红 |
-| AC-P15/P16 | `StoreStatementServiceTest#draft_locks_settleable` · `#confirm_moves_store_to_receive_and_C_to_D` · `#auto_confirm_after_due` · `#periodic_bill_base_excludes_points_but_commission_full` · `#full_face_redemption` | 真库 | 去出单锁定条件 → 同一头寸进两张单 → 红 |
-| AC-P17 | `RefundRatioPolicyTest` · `PointsRefundServiceTest`（五种积分位置各一） | 单测 + 真库 | — |
-| AC-P18 | `#shortfall_becomes_cash_offset_never_negative` | 真库 | 去 `available + dA >= 0` → 红 |
-| AC-P19 | `#return_after_failed_subsidy_return_opens_receivable` · `#next_statement_offsets_receivable` | 真库 | — |
-| AC-P20 | `ExpiryServiceTest#expire_moves_to_receive_and_income` · `#skip_if_available_changed` · `#remind_once` · `#pause_extends` | 真库 | 去 `available = expectA` → 红 |
-| AC-P21 | `PointsGateTest`（九个粒度 × 两个动作）· `#pause_does_not_break_in_flight` | 单测 + 真库 | — |
-| AC-P22 | `PoolWatermarkTest` | 单测 | — |
-| AC-P23 | `PointsStatsServiceTest#rollup_rebuildable_from_vouchers` | 真库 | — |
-| AC-P24 | `PointsReconServiceTest#detects_out_of_band_write`（直接改一个户 → I2 报出该户） | 真库 | 本身即消融 |
-| AC-P25 | `PostingServiceTest#replay_is_noop` · ArchUnit A1–A6 | 单测 + 架构 | 去 `biz_ref` 唯一 → 重放双写 → 红 |
-| AC-P26 | `AfterSaleServiceTest#points_refund_mode_rejected` | 场景 | — |
-
-并发测试照 `RefundLedgerStoreTest` 写法：两线程打同一行，断言恰好一笔成功；去掉条件即红。
-
----
-
-## §6 对账二 · 设计 → 实现
-
-（实现完成后填：`git show --stat` 与 §2.2 / §2.4 逐行比。）
-
-## §7 确认与完成
-
-| 日期 | 事件 |
-|---|---|
-| 2026-10-14 | 草稿 v1：平台出资预存池、凭证过账 |
-| 2026-10-14 | 草稿 v2：四类积分户流转、受理协议、随单 / 定期两种结算、全额兑付 |
+| 2026-10-14 | 用户确认积分尚未上线：撤回此前存量迁移/双引擎/兼容设计，直接替换旧实现；T13改为旧方案移除、全链路验收与首次上线。 |
