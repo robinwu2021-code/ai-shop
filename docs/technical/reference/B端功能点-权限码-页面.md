@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 227 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 228 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -30,8 +30,8 @@
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 21 | ✅ | — | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 6 | ✅ | ✅ | ✅ | — | ✅ | — |
+| `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 5 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 4 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 3 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 
@@ -347,6 +347,18 @@
 | 开始备货 | POST | `/biz/order/:orderNo/prepare` | `mPrepare` | order |
 | 快递发货 | POST | `/biz/order/:orderNo/ship` | `mShip` | order |
 
+### `biz:aftersale`　售后同意/驳回/收货
+
+**可用角色**：老板、店长、客服
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 待处理售后 | GET | `/biz/after-sale` | `mAfterSaleList` | after-sale、orders |
+| 同意售后 | POST | `/biz/after-sale/:afterSaleNo/approve` | `mApproveAfterSale` | after-sale |
+| 在途仅退款：商家确认退款 | POST | `/biz/after-sale/:afterSaleNo/confirm-refund` | `mConfirmRefund` | after-sale |
+| 确认收到退货 | POST | `/biz/after-sale/:afterSaleNo/receive` | `mConfirmReturn` | after-sale |
+| 驳回售后 | POST | `/biz/after-sale/:afterSaleNo/reject` | `mRejectAfterSale` | after-sale |
+
 ### `biz:receive`　到货登记、分拣单、短少上报
 
 **可用角色**：老板、店长、店员、理货员
@@ -357,17 +369,6 @@
 | 破损短少上报 | POST | `/biz/pickup/:orderNo/report` | `mReportShortage` | picking |
 | 标记到货 | POST | `/biz/pickup/arrived` | `mMarkArrived` | picking |
 | 分拣单 | GET | `/biz/pickup/picking` | `mPickingList` | picking |
-
-### `biz:aftersale`　售后同意/驳回/收货
-
-**可用角色**：老板、店长、客服
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 待处理售后 | GET | `/biz/after-sale` | `mAfterSaleList` | after-sale、orders |
-| 同意售后 | POST | `/biz/after-sale/:afterSaleNo/approve` | `mApproveAfterSale` | after-sale |
-| 确认收到退货 | POST | `/biz/after-sale/:afterSaleNo/receive` | `mConfirmReturn` | after-sale |
-| 驳回售后 | POST | `/biz/after-sale/:afterSaleNo/reject` | `mRejectAfterSale` | after-sale |
 
 ### `biz:order:view`　订单列表与详情、工作台待办
 

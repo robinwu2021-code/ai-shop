@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 830 个接口**：后端已实现 752（91%）· 前端在调 754
+**合计 831 个接口**：后端已实现 753（91%）· 前端在调 755
 
 ---
 
@@ -280,7 +280,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **297** 个接口 ｜ 后端已实现 **286**（96%）｜ 前端在调 **297**
+共 **298** 个接口 ｜ 后端已实现 **287**（96%）｜ 前端在调 **298**
 
 ### activities（4）
 
@@ -297,12 +297,13 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/biz/activity-conflicts` | 这些商品已经在哪些活动里 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### after-sale（4）
+### after-sale（5）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/after-sale` | 待处理售后 | — | `数组` | 🔒 | ✅ | ✅ |
 | POST | `/biz/after-sale/{afterSaleNo}/approve` | 同意售后 | `HandleAfterSaleReq` | `Order` | 🔒 | ✅ | ✅ |
+| POST | `/biz/after-sale/{afterSaleNo}/confirm-refund` | 在途仅退款：商家确认退款 | — | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/biz/after-sale/{afterSaleNo}/receive` | 确认收到退货 | — | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/biz/after-sale/{afterSaleNo}/reject` | 驳回售后 | `HandleAfterSaleReq` | `Order` | 🔒 | ✅ | ✅ |
 

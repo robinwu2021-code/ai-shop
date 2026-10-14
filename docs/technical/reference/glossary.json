@@ -706,10 +706,22 @@
           "ar": "رفض التاجر الطلب"
         },
         {
+          "key": "afterSale.status.RETURNING",
+          "zh-CN": "已寄回，等商家确认",
+          "en": "Sent back, awaiting the merchant",
+          "ar": "أُعيد المنتج، بانتظار التاجر"
+        },
+        {
           "key": "afterSale.status.WAIT_RECEIPT",
           "zh-CN": "等待签收后退款",
           "en": "Refund after delivery",
           "ar": "الاسترجاع بعد الاستلام"
+        },
+        {
+          "key": "afterSale.status.WAIT_RETURN",
+          "zh-CN": "请寄回商品",
+          "en": "Please send the item back",
+          "ar": "يرجى إعادة المنتج"
         },
         {
           "key": "afterSale.statusHint.APPLIED",
@@ -748,10 +760,22 @@
           "ar": "إذا لم توافق على النتيجة، يمكنك طلب تدخل المنصة."
         },
         {
+          "key": "afterSale.statusHint.RETURNING",
+          "zh-CN": "商家收到退货后会确认退款。迟迟没确认的话，可以申请平台介入。",
+          "en": "The merchant confirms the refund once the item arrives. If they take too long, you can ask the platform to step in.",
+          "ar": "يؤكد التاجر الاسترجاع بعد استلام المنتج. إذا تأخر، يمكنك طلب تدخل المنصة."
+        },
+        {
           "key": "afterSale.statusHint.WAIT_RECEIPT",
-          "zh-CN": "商家已同意，货还在路上。签收后自动退款。",
-          "en": "Approved. The parcel is still on its way; the refund is issued automatically once it is delivered.",
-          "ar": "تمت الموافقة، والشحنة ما زالت في الطريق؛ يُصرف الاسترجاع تلقائيًا بعد الاستلام."
+          "zh-CN": "商家已同意，货还在路上。签收后商家确认即退款。",
+          "en": "Approved. The parcel is still on its way; the merchant confirms the refund once it is delivered.",
+          "ar": "تمت الموافقة، والشحنة ما زالت في الطريق؛ يؤكد التاجر الاسترجاع بعد الاستلام."
+        },
+        {
+          "key": "afterSale.statusHint.WAIT_RETURN",
+          "zh-CN": "商家已同意退货。请寄回并填写运单号，逾期未寄回会关闭申请。",
+          "en": "Return approved. Ship the item back and add the tracking number; the request closes if it is not sent in time.",
+          "ar": "وافق التاجر على الإرجاع. أعد المنتج وأضف رقم التتبع، وإلا يُغلق الطلب عند انتهاء المهلة."
         },
         {
           "key": "afterSale.submit",
@@ -6812,6 +6836,12 @@
           "ar": "استُلم، استرجاع"
         },
         {
+          "key": "afterSale.confirmRefund",
+          "zh-CN": "确认退款",
+          "en": "Confirm refund",
+          "ar": "تأكيد الاسترجاع"
+        },
+        {
           "key": "afterSale.confirmReject",
           "zh-CN": "确认驳回",
           "en": "Confirm decline",
@@ -6914,6 +6944,12 @@
           "ar": "تم تأكيد الاستلام وبدء الاسترجاع"
         },
         {
+          "key": "afterSale.refundingHint",
+          "zh-CN": "退款处理中。",
+          "en": "Refund in progress.",
+          "ar": "جاري الاسترجاع."
+        },
+        {
           "key": "afterSale.reject",
           "zh-CN": "驳回",
           "en": "Decline",
@@ -6987,15 +7023,15 @@
         },
         {
           "key": "afterSale.waitReceiptHint",
-          "zh-CN": "已同意，货在途——买家签收后自动退款。",
-          "en": "Approved; the parcel is on the way — refund is issued automatically after the buyer confirms delivery.",
-          "ar": "تمت الموافقة، والطرد في الطريق — يتم الاسترجاع تلقائيًا بعد تأكيد المشتري الاستلام."
+          "zh-CN": "货在途。买家签收后请确认退款。",
+          "en": "In transit. Confirm the refund once the buyer receives it.",
+          "ar": "الطرد في الطريق. أكّد الاسترجاع بعد استلام المشتري."
         },
         {
           "key": "afterSale.waitReturn",
-          "zh-CN": "已同意，等待顾客寄回商品。收到后点击确认收货，届时退款。",
-          "en": "Approved. Awaiting the customer's return. Confirm receipt once it arrives; the refund is issued then.",
-          "ar": "تمت الموافقة؛ بانتظار إعادة العميل للمنتج. يتم الاسترجاع بعد تأكيد الاستلام."
+          "zh-CN": "已同意，等待顾客寄回商品。",
+          "en": "Approved. Awaiting the customer's return.",
+          "ar": "تمت الموافقة؛ بانتظار إعادة العميل للمنتج."
         },
         {
           "key": "apply.agreementAccept",
@@ -23178,8 +23214,8 @@
         },
         {
           "key": "afterSaleStatus.REFUNDING",
-          "zh-CN": "已同意待退款",
-          "en": "Approved, refund pending",
+          "zh-CN": "退款中",
+          "en": "Refunding",
           "ar": null
         },
         {
@@ -23189,9 +23225,21 @@
           "ar": null
         },
         {
+          "key": "afterSaleStatus.RETURNING",
+          "zh-CN": "已寄回待确认",
+          "en": "Returned, awaiting merchant",
+          "ar": null
+        },
+        {
           "key": "afterSaleStatus.WAIT_RECEIPT",
-          "zh-CN": "待收货后退款",
-          "en": "Refund after delivery",
+          "zh-CN": "在途待商家确认",
+          "en": "In transit, awaiting merchant",
+          "ar": null
+        },
+        {
+          "key": "afterSaleStatus.WAIT_RETURN",
+          "zh-CN": "待买家寄回",
+          "en": "Awaiting return",
           "ar": null
         },
         {
@@ -32973,6 +33021,20 @@
       },
       {
         "host": "OrdAfterSale",
+        "name": "WAIT_RETURN",
+        "value": "WAIT_RETURN",
+        "zh": "商家同意退货，待买家寄回（V403 起从 REFUNDING 拆出。",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdAfterSale",
+        "name": "RETURNING",
+        "value": "RETURNING",
+        "zh": "买家已寄回（填了退货运单），待商家确认收货",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdAfterSale",
         "name": "REFUND_MODE_CASH",
         "value": "CASH",
         "zh": "原路退现金（默认）。",
@@ -34812,6 +34874,17 @@
         "module": "shop-core"
       },
       {
+        "name": "Aggregate",
+        "values": [
+          "PAYMENT",
+          "ORDER",
+          "SHIPMENT",
+          "AFTER_SALE"
+        ],
+        "zh": "有状态机的四个聚合，以及它们的状态落在哪张表的哪一列（转换门按这里 CAS）。",
+        "module": "shop-core"
+      },
+      {
         "name": "BookOutcome",
         "values": [
           "BOOKED",
@@ -35463,6 +35536,8 @@
         "client": "ops-web",
         "values": [
           "APPLIED",
+          "WAIT_RETURN",
+          "RETURNING",
           "REFUNDING",
           "WAIT_RECEIPT",
           "ARBITRATING",
@@ -35477,6 +35552,8 @@
         "client": "shared",
         "values": [
           "APPLIED",
+          "WAIT_RETURN",
+          "RETURNING",
           "REFUNDING",
           "WAIT_RECEIPT",
           "REFUNDED",

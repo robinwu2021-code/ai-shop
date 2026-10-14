@@ -10033,3 +10033,16 @@ WHERE NOT EXISTS (SELECT 1
                     AND x.channel = t.channel);
 INSERT IGNORE INTO sys_sequence (seq_name, next_value)
 VALUES ('ord_main', 0);
+UPDATE ord_after_sale
+SET status = 'WAIT_RETURN'
+WHERE status = 'REFUNDING'
+  AND type = 'RETURN_REFUND'
+  AND liability IS NULL
+  AND (express_no IS NULL OR express_no = '');
+UPDATE ord_after_sale
+SET status = 'RETURNING'
+WHERE status = 'REFUNDING'
+  AND type = 'RETURN_REFUND'
+  AND liability IS NULL
+  AND express_no IS NOT NULL
+  AND express_no <> '';

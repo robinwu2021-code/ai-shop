@@ -4265,6 +4265,8 @@ components:
       type: "string"
       enum: 
         - "APPLIED"
+        - "WAIT_RETURN"
+        - "RETURNING"
         - "REFUNDING"
         - "WAIT_RECEIPT"
         - "ARBITRATING"

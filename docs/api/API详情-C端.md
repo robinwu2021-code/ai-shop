@@ -3135,6 +3135,7 @@
 | `approvedMinor` | `number,null` | 否 | 商家核定的退款额（分），部分退款时 < 申请额；未核定为空（= 全额）（AC9） |
 | `fulfillStage` | [`FulfillStage`](#fulfillstage) \| `null` | 否 | 申请当时的履约进度快照：未备货/备货中/已出单未揽收/已揽收/已签收。 B 端审核弹层显示实况，C 端据它给灰色档提示（AC13/AC15）。 |
 | `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
+| `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
@@ -3179,6 +3180,8 @@
 枚举取值：
 
 - `APPLIED`
+- `WAIT_RETURN`
+- `RETURNING`
 - `REFUNDING`
 - `WAIT_RECEIPT`
 - `REFUNDED`
