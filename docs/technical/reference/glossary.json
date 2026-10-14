@@ -706,6 +706,12 @@
           "ar": "رفض التاجر الطلب"
         },
         {
+          "key": "afterSale.status.WAIT_RECEIPT",
+          "zh-CN": "等待签收后退款",
+          "en": "Refund after delivery",
+          "ar": "الاسترجاع بعد الاستلام"
+        },
+        {
           "key": "afterSale.statusHint.APPLIED",
           "zh-CN": "商家会在 24 小时内处理，逾期未处理将自动同意。",
           "en": "The merchant replies within 24 hours; otherwise it is approved automatically.",
@@ -740,6 +746,12 @@
           "zh-CN": "如果不认可这个结果，可以申请平台介入。",
           "en": "If you disagree with this outcome, you can ask the platform to step in.",
           "ar": "إذا لم توافق على النتيجة، يمكنك طلب تدخل المنصة."
+        },
+        {
+          "key": "afterSale.statusHint.WAIT_RECEIPT",
+          "zh-CN": "商家已同意，货还在路上。签收后自动退款。",
+          "en": "Approved. The parcel is still on its way; the refund is issued automatically once it is delivered.",
+          "ar": "تمت الموافقة، والشحنة ما زالت في الطريق؛ يُصرف الاسترجاع تلقائيًا بعد الاستلام."
         },
         {
           "key": "afterSale.submit",
@@ -3904,16 +3916,16 @@
           "ar": "في الطريق — انتبه لإشعار الوصول"
         },
         {
+          "key": "order.next.PAID",
+          "zh-CN": "商家正在备货，发出后可以查看进度",
+          "en": "The seller is preparing your order",
+          "ar": "التاجر يجهّز طلبك"
+        },
+        {
           "key": "order.next.REFUNDED",
           "zh-CN": "钱已原路退回，到账时间以银行为准",
           "en": "Refunded to the original method",
           "ar": "تمت إعادة المبلغ بنفس طريقة الدفع"
-        },
-        {
-          "key": "order.next.WAIT_FULFILL",
-          "zh-CN": "商家正在备货，发出后可以查看进度",
-          "en": "The seller is preparing your order",
-          "ar": "التاجر يجهّز طلبك"
         },
         {
           "key": "order.next.WAIT_PAY",
@@ -4042,6 +4054,12 @@
           "ar": "تم الاسترجاع"
         },
         {
+          "key": "orderStatus.WAIT_OFFLINE_PAY",
+          "zh-CN": "待当面付款",
+          "en": "Pay in person",
+          "ar": "الدفع حضوريًا"
+        },
+        {
           "key": "orderStatus.WAIT_PAY",
           "zh-CN": "待付款",
           "en": "Awaiting payment",
@@ -4106,6 +4124,12 @@
           "zh-CN": "已退款",
           "en": "Refunded",
           "ar": "تم الاسترجاع"
+        },
+        {
+          "key": "orderView.WAIT_OFFLINE_PAY",
+          "zh-CN": "待当面付款",
+          "en": "Pay in person",
+          "ar": "الدفع حضوريًا"
         },
         {
           "key": "orderView.WAIT_PAY",
@@ -6774,6 +6798,12 @@
           "zh-CN": "顾客理由：",
           "en": "Customer's reason:",
           "ar": "سبب العميل: "
+        },
+        {
+          "key": "afterSale.closedHint",
+          "zh-CN": "售后已关闭。",
+          "en": "This case is closed.",
+          "ar": "أُغلقت هذه الحالة."
         },
         {
           "key": "afterSale.confirmReceived",
@@ -27082,6 +27112,13 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "ord_shipment",
+      "class": "OrdShipment",
+      "zh": "发货单（交易域，订单服务 2.0）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.order.entity"
+    },
+    {
       "table": "ord_status_log",
       "class": "OrdStatusLog",
       "zh": "订单状态时间线（C-OC-03 / C5）。",
@@ -33228,6 +33265,90 @@
         "name": "FAILED",
         "value": "FAILED",
         "zh": "不可重试的失败（参数错、未开通）。",
+        "module": "shop-core"
+      },
+      {
+        "host": "ContractOrderStatus",
+        "name": "WAIT_PAY",
+        "value": "WAIT_PAY",
+        "zh": "待付款",
+        "module": "shop-core"
+      },
+      {
+        "host": "ContractOrderStatus",
+        "name": "WAIT_OFFLINE_PAY",
+        "value": "WAIT_OFFLINE_PAY",
+        "zh": "待当面收款（线下支付，由主单状态推出。",
+        "module": "shop-core"
+      },
+      {
+        "host": "ContractOrderStatus",
+        "name": "PAID",
+        "value": "PAID",
+        "zh": "已付款、等交付方行动（库里子单叫 WAIT_FULFILL）",
+        "module": "shop-core"
+      },
+      {
+        "host": "ContractOrderStatus",
+        "name": "FULFILLING",
+        "value": "FULFILLING",
+        "zh": "交付方已行动、等交接完成（显示成「已发货/已到自提点/待服务」由履约方式派生）",
+        "module": "shop-core"
+      },
+      {
+        "host": "ContractOrderStatus",
+        "name": "COMPLETED",
+        "value": "COMPLETED",
+        "zh": "已完成",
+        "module": "shop-core"
+      },
+      {
+        "host": "ContractOrderStatus",
+        "name": "CANCELLED",
+        "value": "CANCELLED",
+        "zh": "已取消（含主单超时关闭 CLOSED 的对外口径，Q6）",
+        "module": "shop-core"
+      },
+      {
+        "host": "ContractOrderStatus",
+        "name": "REFUNDED",
+        "value": "REFUNDED",
+        "zh": "已退款",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdShipment",
+        "name": "CREATED",
+        "value": "CREATED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdShipment",
+        "name": "SHIPPED",
+        "value": "SHIPPED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdShipment",
+        "name": "DELIVERED",
+        "value": "DELIVERED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdShipment",
+        "name": "RECEIVED",
+        "value": "RECEIVED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdShipment",
+        "name": "VOIDED",
+        "value": "VOIDED",
+        "zh": "",
         "module": "shop-core"
       },
       {
@@ -39591,6 +39712,14 @@
       "type": "String",
       "value": "ai.neargo.shop.common.Fulfillments.STORE_VERIFY",
       "zh": "到店核销（服务品类）。",
+      "module": "shop-core"
+    },
+    {
+      "host": "ContractOrderStatus",
+      "name": "ALL",
+      "type": "Set<String>",
+      "value": "Set.of( WAIT_PAY, WAIT_OFFLINE_PAY, PAID, FULFILLING, COMPLETED, CANCELLED, REFUNDED)",
+      "zh": "全部契约状态。",
       "module": "shop-core"
     },
     {
