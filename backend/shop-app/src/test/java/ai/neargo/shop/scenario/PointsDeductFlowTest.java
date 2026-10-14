@@ -31,23 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * 积分抵扣接入下单。
- *
- * <p><b>这条链路此前整段空转</b>：{@code ord_sub_order.points_deduct_minor} 有列、
- * {@code OrderVO} 有字段、{@code /mp/points/deductible} 能算出「这单可抵 5 元」，
- * 而 {@code OrderServiceImpl} 里一次都没出现过 points——
- * c-app 甚至已经在传 {@code usePoints}，后端的 {@code CreateOrderReq} 没这个字段，
- * Jackson 静默丢掉。没人撞上只是因为 C 端的 {@code FEATURES.points} 关着。
- *
- * <p>所以这里守的不是「功能是否工作」，而是**钱是否对得上**，四条：
- * <ul>
- *   <li>试算说能抵多少，下单就真抵多少 —— 两处各算一次是这类缺陷的经典来源</li>
- *   <li>上限按整单算，不是逐个商家各算三成（否则拆单就能多抵一倍）</li>
- *   <li>意愿值超过余额时截断，而不是把余额扣成负数</li>
- *   <li>取消要退回，且退两次只退一次</li>
- * </ul>
- */
+/** Cash checkout rejects legacy points requests even when independent points capabilities are enabled. */
 @SpringBootTest
 @ActiveProfiles("test")
 class PointsDeductFlowTest {
@@ -103,8 +87,8 @@ class PointsDeductFlowTest {
     // ---------------------------------------------------------------- 核心：试算 == 实扣
 
     @Test
-    @DisplayName("★★★ 结算页说能抵多少，下单就抵多少 —— 两处算不出同一个数是最难查的一类")
-    void previewMatchesActualDeduction() throws Exception {
+    @DisplayName("独立积分试算保留，订单一期拒绝抵扣且不改余额")
+    void phaseOneRejectsDeductionDespiteIndependentQuote() throws Exception {
         String phone = "13700137001";
         openPointsSwitches();
         String token = login(phone);
@@ -117,36 +101,36 @@ class PointsDeductFlowTest {
         // 上限 = 9960 × 30% = 2988 分钱 = 2988 积分（perMinor = 1）
         assertThat(maxPoints).isEqualTo(2988L);
 
-        // 意愿值给满：服务端应当正好抵到上限
-        JsonNode order = placeOrder(token, 100_000L);
-        assertThat(order.get("amount").get("pointsDeductMinor").asLong())
-                .as("试算给的是 2988，实扣必须也是 2988")
-                .isEqualTo(2988L);
+        // 独立积分试算不会重新打开订单的抵扣能力
+        rejectPoints(token, 100_000L);
+        assertThat(balanceOf(userNoOf(token))).isEqualTo(100_000L);
+        assertThat(useLedgersOf(userNoOf(token))).isEmpty();
     }
 
     @Test
-    @DisplayName("★★ 抵扣从实付里扣，但不计进 discountAmount —— 那一列是营销优惠，混了会让分账拆错出资方")
-    void deductionIsNotCountedAsMarketingDiscount() throws Exception {
+    @DisplayName("现金订单不含积分抵扣或积分优惠")
+    void cashOrderNeverCountsPointsAsDiscount() throws Exception {
         openPointsSwitches();
         String token = login("13700137002");
         givePoints(userNoOf(token), 100_000L);
         addToCart(token, "G0001", "SK0001", 2);
 
-        JsonNode order = placeOrder(token, 1000L);
-        assertThat(order.get("amount").get("pointsDeductMinor").asLong()).isEqualTo(1000L);
+        rejectPoints(token, 1000L);
+        JsonNode order = placeOrder(token, 0L);
+        assertThat(order.get("amount").get("pointsDeductMinor").asLong()).isZero();
         assertThat(order.get("amount").get("discountMinor").asLong())
                 .as("积分不是营销优惠，不该出现在 discountAmount 里")
                 .isEqualTo(0L);
         assertThat(order.get("amount").get("payableMinor").asLong())
                 .as("实付 = 商品额 + 运费 − 优惠 − 积分抵扣")
-                .isEqualTo(9960L - 1000L);
+                .isEqualTo(9960L);
     }
 
     // ---------------------------------------------------------------- 四道闸
 
     @Test
-    @DisplayName("★★ 意愿值超过余额时截断，不会把余额扣成负数")
-    void wantMoreThanBalanceIsTruncated() throws Exception {
+    @DisplayName("超过余额的积分请求被拒绝且余额不变")
+    void excessiveRequestedPointsNeverChangeBalance() throws Exception {
         String phone = "13700137003";
         openPointsSwitches();
         String token = login(phone);
@@ -154,20 +138,21 @@ class PointsDeductFlowTest {
         givePoints(userNo, 500L);
         addToCart(token, "G0001", "SK0001", 2);
 
-        // 上限 2988，余额只有 500 —— 取小
-        JsonNode order = placeOrder(token, 99_999L);
-        assertThat(order.get("amount").get("pointsDeductMinor").asLong()).isEqualTo(500L);
-        assertThat(balanceOf(userNo)).isZero();
+        // 一期明确拒绝，不截断成实际扣减
+        rejectPoints(token, 99_999L);
+        assertThat(balanceOf(userNo)).isEqualTo(500L);
+        assertThat(useLedgersOf(userNo)).isEmpty();
     }
 
     @Test
-    @DisplayName("★★ 一分不剩时照常下单，只是不抵扣 —— 抵不了不该把一笔真实成交挡掉")
-    void zeroBalanceStillPlacesOrder() throws Exception {
+    @DisplayName("零积分余额可以正常下现金订单")
+    void zeroBalanceCashOrderStillPlaces() throws Exception {
         openPointsSwitches();
         String token = login("13700137004");
         addToCart(token, "G0001", "SK0001", 2);
 
-        JsonNode order = placeOrder(token, 5000L);
+        rejectPoints(token, 5000L);
+        JsonNode order = placeOrder(token, 0L);
         assertThat(order.get("amount").get("pointsDeductMinor").asLong()).isZero();
         assertThat(order.get("amount").get("payableMinor").asLong()).isEqualTo(9960L);
     }
@@ -190,8 +175,8 @@ class PointsDeductFlowTest {
     // ---------------------------------------------------------------- 退回
 
     @Test
-    @DisplayName("★★★ 取消订单退回积分，且退两次只退一次 —— 退款链路会对同一单调多次")
-    void cancelRefundsPointsIdempotently() throws Exception {
+    @DisplayName("现金订单取消和重复取消均不产生积分流水")
+    void cashCancellationNeverCreatesPointsRefund() throws Exception {
         String phone = "13700137006";
         openPointsSwitches();
         String token = login(phone);
@@ -199,44 +184,37 @@ class PointsDeductFlowTest {
         givePoints(userNo, 10_000L);
         addToCart(token, "G0001", "SK0001", 2);
 
-        JsonNode order = placeOrder(token, 1000L);
-        String orderNo = order.get("orderNo").asString();
-        assertThat(balanceOf(userNo)).isEqualTo(9000L);
+        rejectPoints(token, 1000L);
+        JsonNode order = placeOrder(token, 0L);
+        String orderNo = order.get("payOrderNo").asString();
+        assertThat(balanceOf(userNo)).isEqualTo(10_000L);
 
         cancel(token, orderNo);
         assertThat(balanceOf(userNo)).isEqualTo(10_000L);
 
-        // 再取消一次（幂等路径）：余额不能变成 11000
+        // 重复取消按旧合同拒绝状态，余额与流水仍不改变
         mvc().perform(post("/mp/order/" + orderNo + "/cancel")
-                .header("Authorization", "Bearer " + token));
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"repeat cash cancel\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.code").value(20004));
+        assertThat(useLedgersOf(userNo)).isEmpty();
         assertThat(balanceOf(userNo))
                 .as("重复退回等于凭空印钱")
                 .isEqualTo(10_000L);
     }
 
     @Test
-    @DisplayName("USE 流水落 PENDING，且带收单方 —— 池子将来要付钱给它")
-    void useLedgerCarriesAcceptor() throws Exception {
+    @DisplayName("被拒绝的积分请求不产生 USE 流水")
+    void rejectedDeductionNeverCreatesUseLedger() throws Exception {
         String phone = "13700137007";
         openPointsSwitches();
         String token = login(phone);
         String userNo = userNoOf(token);
         givePoints(userNo, 10_000L);
         addToCart(token, "G0001", "SK0001", 2);
-        placeOrder(token, 800L);
-
-        List<PtsUserLedger> uses = useLedgersOf(userNo);
-        assertThat(uses).hasSize(1);
-        PtsUserLedger use = uses.get(0);
-        assertThat(use.getPoints()).isEqualTo(-800L);
-        assertThat(use.getAmountMinor()).isEqualTo(800L);
-        assertThat(use.getStatus())
-                .as("PENDING = 预占：订单还可能取消，池子这时不该付钱")
-                .isEqualTo("PENDING");
-        assertThat(use.getAcceptorMerchantNo()).isNotBlank();
-        assertThat(use.getSubOrderNo())
-                .as("挂在子单上，否则三家里退了一家时不知道退多少")
-                .isNotBlank();
+        rejectPoints(token, 800L);
+        assertThat(useLedgersOf(userNo)).isEmpty();
+        assertThat(balanceOf(userNo)).isEqualTo(10_000L);
     }
 
     // ---------------------------------------------------------------- 助手
@@ -306,9 +284,18 @@ class PointsDeductFlowTest {
         return json.readTree(body).get("data");
     }
 
+    private void rejectPoints(String token, long usePoints) throws Exception {
+        mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\","
+                                + "\"usePoints\":" + usePoints + "}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
     private void cancel(String token, String orderNo) throws Exception {
         mvc().perform(post("/mp/order/" + orderNo + "/cancel")
-                        .header("Authorization", "Bearer " + token))
+                        .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"phase one cash cancel\"}"))
                 .andExpect(jsonPath("$.code").value(0));
     }
 }

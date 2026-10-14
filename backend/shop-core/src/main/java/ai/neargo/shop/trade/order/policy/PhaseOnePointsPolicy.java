@@ -23,10 +23,16 @@ public final class PhaseOnePointsPolicy {
 
     /** A historical liability requires manual resolution while automatic points reversal is unavailable. */
     public static void requireCashHistory(OrdSubOrder order) {
-        if (order != null && ((order.getPointsDeduct() != null && order.getPointsDeduct() > 0)
-                || (order.getPointsDeductMinor() != null && order.getPointsDeductMinor() > 0)
-                || Boolean.TRUE.equals(order.getPointsGranted()))) {
+        if (hasHistoricalPoints(order)) {
             throw BizException.of(ErrorCode.ORDER_POINTS_MANUAL_REQUIRED);
         }
+    }
+
+    /** Immutable snapshots select the historical read path without querying points for new cash orders. */
+    public static boolean hasHistoricalPoints(OrdSubOrder order) {
+        return order != null && ((order.getPointsDeduct() != null && order.getPointsDeduct() > 0)
+                || (order.getPointsDeductMinor() != null && order.getPointsDeductMinor() > 0)
+                || (order.getPointsFeeMinor() != null && order.getPointsFeeMinor() > 0)
+                || Boolean.TRUE.equals(order.getPointsGranted()));
     }
 }

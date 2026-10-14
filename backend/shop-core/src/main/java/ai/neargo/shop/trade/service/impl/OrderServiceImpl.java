@@ -1,6 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.trade.order.policy.PhaseOnePointsPolicy;
+import ai.neargo.shop.trade.order.service.create.OrderCreateRequestHasher;
 
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 
@@ -127,6 +128,9 @@ public class OrderServiceImpl implements OrderService {
     /** 店铺活动的自动优惠（满减）。此前 mkt_campaign 没有任何消费方 */
     private final CampaignPort campaignPort;
     private final PointsPort pointsPort;
+
+    @Autowired
+    private OrderCreateRequestHasher createRequestHasher;
     /** 取该商家按市场筛出的可用通道（S4）—— 下单要选通道 */
     private final ai.neargo.shop.spi.pay.PayChannelMasterPort payChannelMasterPort;
     /**
@@ -568,7 +572,7 @@ public class OrderServiceImpl implements OrderService {
             return null;
         }
         String title = couponPort.returnedTitleOf(sub.getOrderNo());
-        var pts = PhaseOnePointsPolicy.enabled()
+        var pts = PhaseOnePointsPolicy.hasHistoricalPoints(sub)
                 ? pointsPort.returnedOf(List.of(sub.getSubOrderNo())) : new PointsPort.PointsReturned(0L, 0L);
         return new OrderVO.Returned(title, pts.refunded(), pts.clawedBack());
     }
@@ -924,7 +928,7 @@ public class OrderServiceImpl implements OrderService {
                         g.merchantNo, g.goodsAmount(), g.goodsQty(), stores.get(g.key()),
                         // 逐件小计：平台活动只对报名的货生效，门槛按那几件货判（P3）
                         offline ? List.<CampaignPort.GoodsLine>of() : g.lines.stream().map(l -> new CampaignPort.GoodsLine(
-                                l.snapshot.goodsNo(), l.amount(), l.qty)).toList()))
+                                l.snapshot.goodsNo(), l.amount(), l.qty)).toList(), PhaseOnePointsPolicy.enabled()))
                 .toList();
     }
 
@@ -1162,7 +1166,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey,
                              Integer payMinutes) {
         PhaseOnePointsPolicy.validate(cmd.usePoints());
-        return idempotency.execute(idempotencyKey, "POST /mp/order", userNo, OrderVO.class,
+        return idempotency.execute(idempotencyKey, "POST /mp/order", userNo, createRequestHasher.hash(cmd), OrderVO.class,
                 () -> doCreate(cmd, userNo, payMinutes));
     }
 

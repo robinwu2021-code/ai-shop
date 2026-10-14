@@ -26,6 +26,9 @@ public class SysIdempotent {
 
     private String userNo;
 
+    /** Optional for legacy rows; order creation binds a stable key to the first validated request. */
+    private String requestHash;
+
     /** 首次成功的结果快照，重放时原样返回，保证「重复下单」拿到的是同一个订单号。 */
     private String resultJson;
 

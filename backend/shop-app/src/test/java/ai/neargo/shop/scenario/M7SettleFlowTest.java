@@ -340,14 +340,9 @@ class M7SettleFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 真链路：发分的费用金要真的从货款里扣走，并真的入池")
-    void pointsFeeIsDeductedAndPooled() throws Exception {
-        /*
-         * **必须显式打开积分开关**：mch_entity.points_enabled 默认 0。
-         * 不开的话 grant 走 pointsDenyReason 直接返回 none，费用金恒 0 ——
-         * 而断言会红在「fee 不是正数」上，看起来像费用金没算，
-         * 实际是这单根本没发分。本轮第四次踩「fixture 落在默认值上」。
-         */
+    @DisplayName("真链路：现金一期不收赠分费用金，商家实得仍满足分账恒等式")
+    void phaseOneCashOrderHasNoPointsFee() throws Exception {
+        // 旧积分开关打开也不能向一期现金订单收取赠分费用。
         setPoints("M0001", true);
         /*
          * **小区那一层也要开**：积分闸门「商家送得到的小区全关积分 → 判否」。
@@ -371,20 +366,14 @@ class M7SettleFlowTest {
         }
         assertThat(bill).as("这单没有结算单，后面每条断言都无从谈起").isNotNull();
 
-        /*
-         * 这两条一起断言才有意义：
-         *   · 扣了但没入池 → 商家少收了钱，而那笔钱不知去向
-         *   · 入池了但没扣 → 池子里凭空多出一笔平台没收到的钱
-         * 单独任何一条为真都不能说明链路是通的。
-         */
         long fee = bill.get("pointsFeeMinor").asLong();
-        assertThat(fee).as("发分费用金全库零写入 —— B 端「本期积分支出」因此永远是 0").isPositive();
+        assertThat(fee).as("一期不发积分，不能向商家收取赠分费用金").isZero();
 
         long gross = bill.get("grossMinor").asLong();
         long commission = bill.get("commissionMinor").asLong();
         long serviceFee = bill.get("serviceFeeMinor").asLong();
         assertThat(bill.get("netMinor").asLong())
-                .as("实得没扣掉费用金 = 商家白发了分，钱从平台出")
+                .as("现金实得 = 收款 − 佣金 − 服务费，赠分费用为零")
                 .isEqualTo(gross - commission - serviceFee - fee);
         } finally {
             /*

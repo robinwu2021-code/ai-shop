@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "baselineSha": "df2adc6412e081889cd3b20fd52aaa8c7b761572",
-  "plan": "docs/technical/TDD-订单重构修复与三端接线.md",
+  "plan": "docs/technical/TDD-订单一期主流程与基础退款.md",
   "targetPackage": "ai.neargo.shop.order",
-  "status": "implementation-started",
+  "status": "phase1-backend-in-progress",
   "counts": {
-    "coreProductionFiles": 135,
+    "coreProductionFiles": 137,
     "coreTestClasses": 27
   },
   "entries": [
@@ -4597,6 +4597,41 @@
       "beanNames": [
         "paymentImpactPolicy"
       ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/policy/PhaseOnePointsPolicy.java",
+      "sourceType": "ai.neargo.shop.trade.order.policy.PhaseOnePointsPolicy",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/policy/PhaseOnePointsPolicy.java",
+      "targetType": "ai.neargo.shop.order.policy.PhaseOnePointsPolicy",
+      "owner": "order",
+      "state": "phase1-core",
+      "tables": [],
+      "externalConsumers": [
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/AfterSaleServiceImpl.java",
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java"
+      ],
+      "publicMethods": [
+        "public static boolean enabled()",
+        "public static void validate(Long usePoints)",
+        "public static void requireCashHistory(OrdSubOrder order)",
+        "public static boolean hasHistoricalPoints(OrdSubOrder order)"
+      ]
+    },
+    {
+      "source": "backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/create/OrderCreateRequestHasher.java",
+      "sourceType": "ai.neargo.shop.trade.order.service.create.OrderCreateRequestHasher",
+      "target": "backend/shop-core/src/main/java/ai/neargo/shop/order/service/create/OrderCreateRequestHasher.java",
+      "targetType": "ai.neargo.shop.order.service.create.OrderCreateRequestHasher",
+      "owner": "order",
+      "state": "phase1-core",
+      "tables": [],
+      "externalConsumers": [
+        "backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java"
+      ],
+      "publicMethods": [
+        "public OrderCreateRequestHasher(ObjectMapper json)",
+        "public String hash(CreateOrderCommand command)"
+      ]
     }
   ],
   "mixedMapperSource": "backend/shop-core/src/main/java/ai/neargo/shop/trade/mapper/TradeMappers.java",
@@ -4634,5 +4669,7 @@
     "F03",
     "F05",
     "M01"
-  ]
+  ],
+  "previousPlan": "docs/technical/TDD-订单重构修复与三端接线.md",
+  "phase1BaseSha": "fdb3926e84a1fe11007bccde2f9c9a0dcb3e496d"
 }

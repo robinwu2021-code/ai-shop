@@ -26313,6 +26313,12 @@
           "ar": "استنفد هذا التاجر حد التحصيل لهذه الفترة."
         },
         {
+          "key": "err.trade.order_points_manual_required",
+          "zh-CN": "该订单包含历史积分，请联系平台人工处理",
+          "en": "This order contains historical points. Contact the platform for manual resolution.",
+          "ar": "يحتوي هذا الطلب على نقاط سابقة. يرجى التواصل مع المنصة للمعالجة اليدوية."
+        },
+        {
           "key": "err.trade.order_state_illegal",
           "zh-CN": "订单状态不允许该操作",
           "en": "Operation not allowed in current order state",
@@ -35083,6 +35089,7 @@
           "AFTERSALE_AMOUNT_INVALID",
           "AFTERSALE_WINDOW_CLOSED",
           "AFTERSALE_CHANNEL_PARTIAL_UNSUPPORTED",
+          "ORDER_POINTS_MANUAL_REQUIRED",
           "ALREADY_VERIFIED",
           "NOT_THIS_PICKUP_POINT",
           "ORDER_REFUNDED",

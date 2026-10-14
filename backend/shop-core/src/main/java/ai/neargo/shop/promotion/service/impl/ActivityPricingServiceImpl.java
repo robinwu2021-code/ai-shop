@@ -161,7 +161,8 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
                         continue;
                     }
                     ComboHit h = comboHit(a, g);
-                    if (h != null && (h.off() > 0 || h.points() > 0)) {
+                    if (h != null && (g.pointsRewardsEnabled() || h.points() == 0)
+                            && (h.off() > 0 || h.points() > 0)) {
                         out.add(new CampaignPort.AppliedActivity(a.getActivityNo(), g.merchantNo(),
                                 h.off(), 1, 0L, null, a.getName()).atStore(g.storeNo()));
                     }

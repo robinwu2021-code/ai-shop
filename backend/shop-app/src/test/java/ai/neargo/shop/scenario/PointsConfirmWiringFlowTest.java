@@ -116,7 +116,8 @@ class PointsConfirmWiringFlowTest {
         b.setCommissionRate(500);
         b.setFundsMode(fundsMode);
         b.setPayChannel("WECHAT");
-        b.setSubsidyMinor(0L);
+        b.setSubsidyMinor(MerchantQueryPort.FUNDS_DIRECT.equals(fundsMode) ? 300L : 0L);
+        b.setPointsCostMinor(MerchantQueryPort.FUNDS_AGGREGATED.equals(fundsMode) ? 300L : 0L);
         b.setStatus(status);
         b.setRetryCount(0);
         billMapper.insert(b);

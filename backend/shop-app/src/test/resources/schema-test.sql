@@ -1157,6 +1157,7 @@ CREATE TABLE IF NOT EXISTS sys_idempotent
     idem_key VARCHAR(128) NOT NULL,
     endpoint VARCHAR(128) NOT NULL,
     user_no VARCHAR(64) DEFAULT NULL,
+    request_hash VARCHAR(64) DEFAULT NULL,
     result_json TEXT DEFAULT NULL,
     created_at DATETIME NOT NULL,
     expire_at DATETIME NOT NULL,

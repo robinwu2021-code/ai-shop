@@ -1,11 +1,14 @@
 package ai.neargo.shop.idem;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
@@ -35,6 +38,12 @@ public class IdempotencyService {
     }
 
     public <T> T execute(String idemKey, String endpoint, String userNo, Class<T> type, Supplier<T> action) {
+        return execute(idemKey, endpoint, userNo, null, type, action);
+    }
+
+    /** Preserve old callers while allowing checkout to reject changed content under an existing key. */
+    public <T> T execute(String idemKey, String endpoint, String userNo, String requestHash,
+                         Class<T> type, Supplier<T> action) {
         if (idemKey == null || idemKey.isBlank()) {
             return action.get();   // 未带 key 的调用不做幂等，由调用方（前端）负责
         }
@@ -42,12 +51,13 @@ public class IdempotencyService {
         row.setIdemKey(idemKey);
         row.setEndpoint(endpoint);
         row.setUserNo(userNo);
+        row.setRequestHash(requestHash);
         row.setCreatedAt(LocalDateTime.now());
         row.setExpireAt(LocalDateTime.now().plusHours(TTL_HOURS));
         try {
             mapper.insert(row);
         } catch (DuplicateKeyException e) {
-            return replay(idemKey, endpoint, type);
+            return replay(idemKey, endpoint, userNo, requestHash, type);
         }
 
         T result = action.get();
@@ -56,11 +66,20 @@ public class IdempotencyService {
         return result;
     }
 
-    private <T> T replay(String idemKey, String endpoint, Class<T> type) {
+    private <T> T replay(String idemKey, String endpoint, String userNo, String requestHash, Class<T> type) {
         SysIdempotent existing = mapper.selectOne(Wrappers.<SysIdempotent>lambdaQuery()
                 .eq(SysIdempotent::getIdemKey, idemKey)
-                .eq(SysIdempotent::getEndpoint, endpoint));
-        if (existing == null || existing.getResultJson() == null) {
+                .eq(SysIdempotent::getEndpoint, endpoint).last("FOR UPDATE"));
+        if (existing == null) {
+            throw new ConcurrentRequestException();
+        }
+        if (!Objects.equals(existing.getUserNo(), userNo)) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (existing.getRequestHash() != null && !Objects.equals(existing.getRequestHash(), requestHash)) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if (existing.getResultJson() == null) {
             // 首次请求仍在执行中：告诉调用方稍后重试，绝不放行第二次执行
             throw new ConcurrentRequestException();
         }
