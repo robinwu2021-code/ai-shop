@@ -208,8 +208,8 @@ export const httpApi: ShopApi = {
   trackMine: (t) => call<TrackView>("trackMine", undefined, { t }),
   orderTrace: (orderNo) => call<ShipmentTrace | null>("orderTrace", { orderNo }),
   cancelOrder: (orderNo) => call<Order>("cancelOrder", { orderNo }),
-  applyAfterSale: (orderNo, reason, images, type) =>
-    call<AfterSale>("applyAfterSale", { orderNo }, { reason, images, type } satisfies AfterSaleReq),
+  applyAfterSale: (orderNo, reason, images, type, reasonCode) =>
+    call<AfterSale>("applyAfterSale", { orderNo }, { reason, images, type, reasonCode } satisfies AfterSaleReq),
 
   afterSaleReasons: () => call<AfterSaleReason[]>("afterSaleReasons"),
   afterSaleList: () => call<AfterSale[]>("afterSaleList"),
@@ -219,8 +219,9 @@ export const httpApi: ShopApi = {
   // ---- 营销
   fillReturnExpress: (afterSaleNo, expressNo) =>
     http.post<AfterSale>(buildPath(ENDPOINTS.fillReturnExpress.path, { afterSaleNo }), { expressNo }),
-  raiseDispute: (afterSaleNo, reason) =>
-    http.post<AfterSale>(buildPath(ENDPOINTS.raiseDispute.path, { afterSaleNo }), { reason }),
+  // 后端 EscalateReq 的字段叫 appeal —— 此前发 { reason }，申诉理由一直是 null
+  raiseDispute: (afterSaleNo, appeal) =>
+    http.post<AfterSale>(buildPath(ENDPOINTS.raiseDispute.path, { afterSaleNo }), { appeal }),
 
   couponList: () => call<Coupon[]>("couponList"),
   myCoupons: () => call<UserCoupon[]>("myCoupons"),

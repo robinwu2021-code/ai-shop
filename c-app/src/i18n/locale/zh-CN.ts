@@ -852,6 +852,7 @@ export default {
   orderStatus: {
     WAIT_PAY: "待付款",
     PAID: "已支付",
+    WAIT_OFFLINE_PAY: "待当面付款",
     FULFILLING: "履约中",
     COMPLETED: "已完成",
     CANCELLED: "已取消",
@@ -864,6 +865,7 @@ export default {
    */
   orderView: {
     WAIT_PAY: "待付款",
+    WAIT_OFFLINE_PAY: "待当面付款",
     PAID: "备货中",
     PAID_SHIP_TO_BUYER: "待发货",
     FULFILLING_SELF_PICKUP: "已到自提点",
@@ -898,7 +900,7 @@ export default {
     /** 状态下面那一句「接下来会发生什么」（原型 k07）。没写的状态不显示，不编话 */
     next: {
       WAIT_PAY: "付款后商家开始备货，超时未付会自动关闭",
-      WAIT_FULFILL: "商家正在备货，发出后可以查看进度",
+      PAID: "商家正在备货，发出后可以查看进度",
       FULFILLING: "商家已经发出，请留意到货通知",
       COMPLETED: "这一单已经完成，有问题可以申请售后",
       CANCELLED: "这一单已经关闭",
@@ -937,6 +939,7 @@ export default {
     status: {
       APPLIED: "等待商家处理",
       REFUNDING: "退款处理中",
+      WAIT_RECEIPT: "等待签收后退款",
       REFUNDED: "退款完成",
       REJECTED: "商家已驳回",
       ARBITRATING: "平台介入中",
@@ -946,6 +949,7 @@ export default {
       APPLIED: "商家会在 24 小时内处理，逾期未处理将自动同意。",
       REFUNDING: "退货退款请把商品寄回并填写运单号；仅退款一般 1-3 个工作日到账。",
       REFUNDED: "退款已原路返回。",
+      WAIT_RECEIPT: "商家已同意，货还在路上。签收后自动退款。",
       REJECTED: "如果不认可这个结果，可以申请平台介入。",
       ARBITRATING: "客服会联系双方核实，请留意站内消息。",
       CLOSED: "这张售后单已关闭。",

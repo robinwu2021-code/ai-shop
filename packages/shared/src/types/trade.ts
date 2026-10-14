@@ -442,6 +442,12 @@ export interface OrderStore {
 export interface Order {
   /** 订单单号 */
   orderNo: string;
+  /**
+   * 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。
+   * **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。
+   * 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。
+   */
+  payOrderNo?: string;
   /** 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 */
   store?: OrderStore | null;
   /** 订单状态。粗粒度；售后细节见 `afterSale` */

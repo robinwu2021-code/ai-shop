@@ -57,8 +57,12 @@ const approveAmount = ref("");
 const approveMode = ref<RefundMode>("CASH");
 const busy = ref(false);
 
-/** 这单的实付上限（分）：优先订单实付，退而取买家申请额（它已 ≤ 实付） */
-const paidMaxOf = (r: Row) => r.order?.amount.paidMinor || r.as.refundMinor;
+/**
+ * 核定上限（分）= **买家申请额**（后端入库时已保证 ≤ 实付）；老数据没有申请额才回落订单实付。
+ *
+ * ⚠️ 此前取的是订单实付：买家三件只申请退一件，面板却预填整单实付，商家直接点同意就退了整单。
+ */
+const capOf = (r: Row) => r.as.refundMinor || r.order?.amount.paidMinor || 0;
 
 /**
  * 老数据（以及后端补字段之前的数据）可能没有 `afterSale`。
@@ -113,7 +117,7 @@ async function agree(r: Row, refundMinor?: number, refundMode?: RefundMode) {
 function startApprove(r: Row) {
   if (r.as.fulfillStage === "RECEIVED") {
     approving.value = r.as.afterSaleNo;
-    approveAmount.value = (paidMaxOf(r) / 100).toFixed(2);
+    approveAmount.value = (capOf(r) / 100).toFixed(2);
     approveMode.value = "CASH";
   } else {
     void agree(r);
@@ -123,7 +127,7 @@ function startApprove(r: Row) {
 /** 确认核定：校验金额（>0 且 ≤实付），带金额与形式提交 */
 function confirmApprove(r: Row) {
   const minor = Math.round(Number(approveAmount.value) * 100);
-  if (!(minor > 0 && minor <= paidMaxOf(r))) {
+  if (!(minor > 0 && minor <= capOf(r))) {
     uni.showToast({ title: t("afterSale.amountInvalid"), icon: "none" });
     return;
   }
@@ -206,9 +210,17 @@ onShow(load);
       <view class="item__amount sh-row sh-row--between sh-row--baseline">
         <text class="sh-muted">{{ $t("afterSale.refundAmount") }}</text>
         <text class="txt-price sh-num is-danger">
-          {{ money(r.as.refundMinor, r.order?.amount.currency) }}
+          {{ money(r.as.approvedMinor ?? r.as.refundMinor, r.order?.amount.currency) }}
         </text>
       </view>
+
+      <!--
+        **同意之前说清会一并退回什么**（待办设计 P2c）。整单最后一笔才有；
+        券若是本店发的，退回等于少收一次核销 —— 要在点下去之前看见。
+        ⚠️ 它是**独立的一行**，不在下面那条 v-if 链里：此前它是链头，一出现就把同意/驳回/确认收货整块吞掉，
+        商家只能干等超时自动同意。
+      -->
+      <text v-if="impactText(r)" class="txt-caption sh-muted impact blk">{{ impactText(r) }}</text>
 
       <template v-if="rejecting === r.as.afterSaleNo">
         <textarea
@@ -225,11 +237,6 @@ onShow(load);
 
       <!-- 按售后状态给动作。后端没有独立的「等寄回 / 已收货」两态：
            同意即 REFUNDING，是否已寄回看 returnExpressNo 有没有值 -->
-      <!--
-        **同意之前说清会一并退回什么**（待办设计 P2c）。整单最后一笔才有；
-        券若是本店发的，退回等于少收一次核销 —— 要在点下去之前看见。
-      -->
-      <text v-if="impactText(r)" class="txt-caption sh-muted impact">{{ impactText(r) }}</text>
       <!-- 核定面板（仅已签收）：改金额 + 选现金/积分（AC9/AC10） -->
       <template v-else-if="approving === r.as.afterSaleNo">
         <view class="approve sh-mt-sm">
@@ -303,6 +310,10 @@ onShow(load);
 
       <view v-else-if="asStatus(r) === 'REJECTED'" class="waiting">
         <text class="sh-muted">{{ $t("afterSale.rejectedHint") }}</text>
+      </view>
+
+      <view v-else-if="asStatus(r) === 'CLOSED'" class="waiting">
+        <text class="sh-muted">{{ $t("afterSale.closedHint") }}</text>
       </view>
 
       <view v-else-if="asStatus(r) === 'ARBITRATING'" class="waiting">

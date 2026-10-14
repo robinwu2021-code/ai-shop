@@ -157,6 +157,7 @@ async function submit() {
       detail.value ? `${label}：${detail.value}` : label,
       images.value,
       type.value,
+      reason.value || undefined,
     );
     await load(o.orderNo);
     submitted.value = true;

@@ -335,11 +335,11 @@ export interface OrderListQuery {
 export interface AfterSaleReq {
   /** 仅退款 / 退货退款 —— 两者流程根本不同，不能合成一个 */
   type?: AfterSaleType;
-  /** 已拼好的原因文案（前端把 reason 枚举与补充说明合并后提交） */
+  /** 买家原话：原因文案 + 补充说明（商家/运营看这个） */
   reason: string;
   /** 举证图。破损/少件类售后没有图基本判不了 */
   images: string[];
-  /** 结构化原因，便于服务端统计与风控 */
+  /** 原因码：**后端按它判规则**（生鲜发货后只收质量类）。不发时后端拿 reason 当码 */
   reasonCode?: AfterSaleReason;
 }
 

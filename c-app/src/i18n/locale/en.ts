@@ -785,6 +785,7 @@ export default {
   orderStatus: {
     WAIT_PAY: "Awaiting payment",
     PAID: "Paid",
+    WAIT_OFFLINE_PAY: "Pay in person",
     FULFILLING: "In fulfilment",
     COMPLETED: "Completed",
     CANCELLED: "Cancelled",
@@ -792,6 +793,7 @@ export default {
   },
   orderView: {
     WAIT_PAY: "Awaiting payment",
+    WAIT_OFFLINE_PAY: "Pay in person",
     PAID: "Preparing",
     PAID_SHIP_TO_BUYER: "Awaiting dispatch",
     FULFILLING_SELF_PICKUP: "At pickup point",
@@ -825,7 +827,7 @@ export default {
     orderNo: "Order no.",
     next: {
       WAIT_PAY: "The seller starts preparing after payment; unpaid orders close automatically",
-      WAIT_FULFILL: "The seller is preparing your order",
+      PAID: "The seller is preparing your order",
       FULFILLING: "On its way — watch for the arrival notice",
       COMPLETED: "Completed. You can still request after-sales",
       CANCELLED: "This order is closed",
@@ -864,6 +866,7 @@ export default {
     status: {
       APPLIED: "Waiting for the merchant",
       REFUNDING: "Refund in progress",
+      WAIT_RECEIPT: "Refund after delivery",
       REFUNDED: "Refunded",
       REJECTED: "Rejected by the merchant",
       ARBITRATING: "Platform review",
@@ -873,6 +876,7 @@ export default {
       APPLIED: "The merchant replies within 24 hours; otherwise it is approved automatically.",
       REFUNDING: "For returns, ship the item back and add the tracking number. Refund-only usually lands in 1-3 business days.",
       REFUNDED: "The refund went back to the original payment method.",
+      WAIT_RECEIPT: "Approved. The parcel is still on its way; the refund is issued automatically once it is delivered.",
       REJECTED: "If you disagree with this outcome, you can ask the platform to step in.",
       ARBITRATING: "Support will contact both sides. Watch your messages.",
       CLOSED: "This after-sales request is closed.",

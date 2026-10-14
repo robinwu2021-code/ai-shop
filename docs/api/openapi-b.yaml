@@ -9662,6 +9662,9 @@ components:
         orderNo: 
           type: "string"
           description: "订单单号"
+        payOrderNo: 
+          type: "string"
+          description: "支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。\n**订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。"
         store: 
           anyOf: 
             - "$ref": "#/components/schemas/OrderStore"

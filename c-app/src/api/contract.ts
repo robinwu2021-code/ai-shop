@@ -454,6 +454,11 @@ export interface ShopApi {
     reason: string,
     images: string[],
     type?: AfterSaleType,
+    /**
+     * 原因码。**后端按它判规则**（生鲜发货后只收质量类），`reason` 只是给人看的原话。
+     * 此前只发 reason（翻译后的文案），后端拿文案当码判 → 生鲜发货后任何原因都被拒。
+     */
+    reasonCode?: AfterSaleReason,
   ): Promise<AfterSale>;
   /**
    * 退货退款：用户寄回后填运单号，商家据此收货。
@@ -474,7 +479,7 @@ export interface ShopApi {
   afterSaleList(): Promise<AfterSale[]>;
   fillReturnExpress(afterSaleNo: string, expressNo: string): Promise<AfterSale>;
   /** 商家驳回后上升平台裁决（B-7.4）—— 驳回不能是终点，否则用户没有退路 */
-  raiseDispute(afterSaleNo: string, reason: string): Promise<AfterSale>;
+  raiseDispute(afterSaleNo: string, appeal: string): Promise<AfterSale>;
 
   // ---- 营销
   couponList(): Promise<Coupon[]>;

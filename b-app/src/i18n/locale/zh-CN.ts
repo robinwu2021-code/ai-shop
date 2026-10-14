@@ -1527,6 +1527,7 @@ export default {
     confirmReceived: "确认收货并退款",
     refunded: "已确认收货，退款已发起",
     doneHint: "已退款，这一单结束了。",
+    closedHint: "售后已关闭。",
     donePointsHint: "已按约定折 {n} 积分退回买家，这一单结束了。",
     waitReceiptHint: "已同意，货在途——买家签收后自动退款。",
     approveAmount: "退款金额",

@@ -313,8 +313,21 @@ function batchTime(ms: number): string {
   return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} `
     + `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
+/*
+ * **支付视角（主单号打开、多店）不给售后入口**：售后是子单粒度，拿主单号提交必然「数据不存在」。
+ * 单店的支付视角在 load() 里已切成订单视角，到这里的支付视角一定是多店 —— 各店卡片自己进。
+ */
 const canAfterSale = computed(
-  () => !!order.value && AFTER_SALE_STATES.includes(order.value.status),
+  () => !!order.value && !order.value.subOrders?.length && AFTER_SALE_STATES.includes(order.value.status),
+);
+/**
+ * 能不能（再）发起售后：没申请过，或上一张已被驳回 / 已关闭（后端终态后允许再申请）。
+ * **已退款暂不放开**：后端对已退款子单再申请时上限仍是全额实付、且会被支付侧幂等吞掉 ——
+ * 等「部分退款记已退额」落地再开（TDD-订单售后三端断点修复 AC8）。
+ */
+const AFTER_SALE_REAPPLY: readonly string[] = ["REJECTED", "CLOSED"];
+const canApplyAfterSale = computed(
+  () => canAfterSale.value && (!order.value?.afterSale || AFTER_SALE_REAPPLY.includes(order.value.afterSale.status)),
 );
 const canReview = computed(
   () => order.value?.status === "COMPLETED" && !order.value?.reviewed,
@@ -337,10 +350,13 @@ const canInvoice = computed(
     (!invoice.value || invoice.value.status === "REJECTED"),
 );
 
+/** 发票按**主单**开：订单视角下 orderNo 是子单号，拿它去查/申请必然 NOT_FOUND */
+const invoiceOrderNo = computed(() => order.value?.payOrderNo || orderNo.value);
+
 async function loadInvoice() {
-  if (!orderNo.value) return;
+  if (!invoiceOrderNo.value) return;
   // 查不到是常态（这单还没申请过），后端返回 null 而不是报错
-  invoice.value = await api.invoiceOfOrder(orderNo.value);
+  invoice.value = await api.invoiceOfOrder(invoiceOrderNo.value);
 }
 
 async function applyInvoice() {
@@ -370,7 +386,7 @@ async function applyInvoice() {
     // 收不全就开不出票 —— 与其半途报错，不如这一版先只做个人抬头，
     // 单位抬头等专门的表单页
     invoice.value = await api.applyInvoice({
-      orderNo: orderNo.value,
+      orderNo: invoiceOrderNo.value,
       titleType: "PERSONAL",
       title: title.trim(),
       email: email.trim(),
@@ -414,9 +430,20 @@ async function load() {
   failed.value = false;
   failReason.value = "";
   try {
-    // 并行拉：开票状态与订单详情互不依赖，串行只会让页面多等一个来回
-    const [o] = await Promise.all([api.orderDetail(orderNo.value), loadInvoice()]);
+    let o = await api.orderDetail(orderNo.value);
+    /*
+     * **主单号打开、只有一家店 → 切到那张订单的视角**。收银台「查看订单」、微信购物订单都用主单号跳进来；
+     * 支付视角不挂售后、码与轨迹，售后入口拿主单号提交必然「数据不存在」。单店时两个视角是同一笔单，
+     * 直接换成订单视角，后续售后/评价/轨迹都按子单号走。多店留在支付视角（各店卡片自己进）。
+     */
+    const only = o.subOrders?.length === 1 ? (o.subOrders[0]?.orderNo ?? "") : "";
+    if (only && only !== o.orderNo) {
+      orderNo.value = only;
+      o = await api.orderDetail(only);
+    }
     order.value = o;
+    // 开票按主单号查，要等详情回来才知道主单号
+    await loadInvoice();
     grp.value = o.groupNo ? await api.groupBuyDetail(o.groupNo).catch(() => null) : null;
   } catch (e) {
     // 留着上一次的 `order`：从售后页返回时重拉失败，把已经看到的详情
@@ -751,7 +778,7 @@ onPullDownRefresh(async () => {
       它不上吸底条 —— 售后是例外路径，钉在常驻条上等于每单都在问「是不是有问题」；
       而且它有后续状态，申请之后这一行就被下面那张进行中的卡取代。
     -->
-    <view v-if="canAfterSale && !order.afterSale" class="sh-card as" @tap="afterSale">
+    <view v-if="canApplyAfterSale" class="sh-card as" @tap="afterSale">
       <view class="sh-row sh-row--between">
         <text class="sh-muted">{{ $t("afterSale.section") }}</text>
         <text class="txt-caption txt-primary">{{ $t("order.afterSale") }}</text>

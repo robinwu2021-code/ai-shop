@@ -168,7 +168,7 @@ public class MpTradeController {
     @PostMapping("/mp/order/{orderNo}/after-sale")
     public AfterSaleVO applyAfterSale(@PathVariable String orderNo, @RequestBody @Valid ApplyAfterSaleReq req) {
         return afterSaleService.apply(orderNo, new AfterSaleService.ApplyCommand(
-                req.type(), req.reason(), req.images(), req.refundMinor()));
+                req.type(), req.reason(), req.images(), req.refundMinor(), req.reasonCode()));
     }
 
     @GetMapping("/mp/after-sale/reasons")
@@ -201,8 +201,9 @@ public class MpTradeController {
         return afterSaleService.escalate(afterSaleNo, req.appeal());
     }
 
+    /** {@code reason} 是买家原话；{@code reasonCode} 是原因码（判生鲜等规则），可空 = 老客户端 */
     public record ApplyAfterSaleReq(@NotBlank String type, @NotBlank String reason,
-                                    List<String> images, Long refundMinor) {
+                                    List<String> images, Long refundMinor, String reasonCode) {
     }
 
     public record ShipBackReq(String expressCompany, @NotBlank String expressNo) {

@@ -9663,6 +9663,9 @@ components:
         orderNo: 
           type: "string"
           description: "订单单号"
+        payOrderNo: 
+          type: "string"
+          description: "支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。\n**订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。"
         store: 
           anyOf: 
             - "$ref": "#/components/schemas/OrderStore"
@@ -10906,7 +10909,7 @@ components:
           description: "仅退款 / 退货退款 —— 两者流程根本不同，不能合成一个"
         reason: 
           type: "string"
-          description: "已拼好的原因文案（前端把 reason 枚举与补充说明合并后提交）"
+          description: "买家原话：原因文案 + 补充说明（商家/运营看这个）"
         images: 
           type: "array"
           items: 
@@ -10914,7 +10917,7 @@ components:
           description: "举证图。破损/少件类售后没有图基本判不了"
         reasonCode: 
           "$ref": "#/components/schemas/AfterSaleReason"
-          description: "结构化原因，便于服务端统计与风控"
+          description: "原因码：**后端按它判规则**（生鲜发货后只收质量类）。不发时后端拿 reason 当码"
       required: 
         - "reason"
         - "images"

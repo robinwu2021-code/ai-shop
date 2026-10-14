@@ -77,7 +77,20 @@ public interface AfterSaleService {
      */
     void settleOnReceipt(String subOrderNo);
 
-    record ApplyCommand(String type, String reason, List<String> images, Long refundMinor) {
+    /**
+     * @param reason     买家原话（存库、给商家/运营看）
+     * @param reasonCode 原因码（{@code OrdAfterSale.REASONS} 之一），判生鲜等规则用；
+     *                   为空时回落把 {@code reason} 当码 —— 老客户端只发 reason
+     */
+    record ApplyCommand(String type, String reason, List<String> images, Long refundMinor, String reasonCode) {
+        public ApplyCommand(String type, String reason, List<String> images, Long refundMinor) {
+            this(type, reason, images, refundMinor, null);
+        }
+
+        /** 判规则用的码：有 reasonCode 用它，否则沿用 reason */
+        public String ruleReason() {
+            return reasonCode != null && !reasonCode.isBlank() ? reasonCode : reason;
+        }
     }
 
     /**

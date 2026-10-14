@@ -376,7 +376,7 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
                 <Textarea value={reason} onChange={setReason} placeholder={c.cancelReasonPlaceholder} rows={3} />
               </Field>
               <p className="txt-caption text-muted-foreground">
-                {cancelling.paidAt ? c.cancelRefundHint : c.cancelUnpaidHint}
+                {c.cancelUnpaidHint}
               </p>
             </DrawerSection>
           </div>

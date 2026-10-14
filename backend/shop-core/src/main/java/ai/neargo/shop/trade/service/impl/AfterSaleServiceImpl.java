@@ -211,6 +211,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 || cmd.type() == null || !AFTER_SALE_TYPES.contains(cmd.type())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        // 带了码就必须是认得的码：认不得时回落到 reason 会让规则判错方向，且无从察觉
+        if (cmd.reasonCode() != null && !cmd.reasonCode().isBlank()
+                && !OrdAfterSale.REASONS.contains(cmd.reasonCode())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
 
         // 未支付的单没有可退的钱 —— 直接取消订单即可，不该走售后
         if (OrdSubOrder.WAIT_PAY.equals(sub.getStatus()) || OrdSubOrder.CANCELLED.equals(sub.getStatus())) {
@@ -236,7 +241,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          */
         FulfillStage stage = stageOf(sub);
         boolean fresh = isFreshSub(subOrderNo);
-        AfterSaleRules.Gate gate = AfterSaleRules.applyGate(stage, fresh, cmd.reason());
+        AfterSaleRules.Gate gate = AfterSaleRules.applyGate(stage, fresh, cmd.ruleReason());
         if (!gate.allow()) {
             throw BizException.of(ErrorCode.AFTERSALE_FRESH_QUALITY_ONLY);
         }

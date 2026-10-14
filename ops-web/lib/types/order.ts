@@ -80,7 +80,9 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   // 与后端 OrderStateMachine 一致：**没有回到 WAIT_PAY 的边**。
   // 改主意想线上付要重新下单，否则「收没收到钱」有两个真源
   WAIT_OFFLINE_PAY: ["PAID", "CANCELLED"],
-  PAID: ["FULFILLING", "COMPLETED", "REFUNDED", "CANCELLED"],
+  // **没有 CANCELLED**：后端子单图里 WAIT_FULFILL（对外 PAID）到 CANCELLED 没有边。
+  // 此前列着它，代客取消对已付款单显示按钮、点下去必然报错。已付款要退钱走售后。
+  PAID: ["FULFILLING", "COMPLETED", "REFUNDED"],
   FULFILLING: ["COMPLETED", "REFUNDED"],
   COMPLETED: ["REFUNDED"],
   CANCELLED: [],

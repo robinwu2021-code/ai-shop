@@ -148,6 +148,11 @@ export function ExceptionTab({ c, canModify }: { c: OrdersCopy; canModify: boole
                   {nextStates.map((s) => <option key={s} value={s}>{statusMap[s].label}</option>)}
                 </Select>
                 <p className="txt-caption text-muted-foreground">{c.toHint}</p>
+                {/* 改到「已退款」、或从待付款类改到「已付款」：状态与钱会对不上，选中就明示 */}
+                {(form.to === "REFUNDED"
+                  || (form.to === "PAID" && (current.order.status === "WAIT_PAY" || current.order.status === "WAIT_OFFLINE_PAY"))) && (
+                  <p className="txt-caption text-destructive">{c.interveneMoneyWarn}</p>
+                )}
               </div>
               <Field className="mb-0" label={c.fieldRemark}>
                 <Textarea value={form.remark} onChange={(v) => setForm((p) => ({ ...p, remark: v }))}

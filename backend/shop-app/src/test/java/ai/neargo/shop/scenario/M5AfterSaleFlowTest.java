@@ -596,6 +596,36 @@ class M5AfterSaleFlowTest {
     }
 
     @Test
+    @DisplayName("★★★ reasonCode 判规则、reason 存买家原话：生鲜已签收 + 码 QUALITY + 中文说明 → 受理")
+    void fresh_received_reason_code_quality_with_text_allowed() throws Exception {
+        // 端上此前把翻译后的文案当 reason 发（「质量问题：…」），后端按码判 → 生鲜发货后任何原因都 20009。
+        // 撤掉 reasonCode 的判码，这条即红（消融判据）
+        Ordered o = placeAndPay("13200132690", 3980L);
+        setSubStage(o.subOrderNo, OrdSubOrder.COMPLETED, null);
+
+        String body = mvc().perform(post("/mp/order/" + o.subOrderNo + "/after-sale")
+                        .header("Authorization", "Bearer " + o.userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"REFUND_ONLY\",\"reasonCode\":\"QUALITY\","
+                                + "\"reason\":\"质量问题：果子烂了一半\",\"images\":[\"https://cdn/x.jpg\"]}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(body).get("data").get("reason").asString())
+                .as("商家/运营看的是 reason —— 必须是买家原话，不是码").isEqualTo("质量问题：果子烂了一半");
+    }
+
+    @Test
+    @DisplayName("reasonCode 不在 7 个原因码内 → 10400")
+    void unknown_reason_code_rejected() throws Exception {
+        Ordered o = placeAndPay("13200132691", 6980L);
+        mvc().perform(post("/mp/order/" + o.subOrderNo + "/after-sale")
+                        .header("Authorization", "Bearer " + o.userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"REFUND_ONLY\",\"reasonCode\":\"BOGUS\",\"reason\":\"x\",\"images\":[]}"))
+                .andExpect(jsonPath("$.code").value(10400));
+    }
+
+    @Test
     @DisplayName("★★★ 生鲜备货中（灰色）+ 非质量 → 可建单、不被拒（LABELED 同此结论）")
     void fresh_preparing_non_quality_allowed() throws Exception {
         // 备货中：货还拦得住，是灰色地带——建单成功（PREPARING / LABELED 同 Gate）
