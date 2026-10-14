@@ -4,7 +4,7 @@
 关联需求：[TDD-订单状态机 §2D](./TDD-订单状态机.md)、[订单状态机完整方案](../superpowers/specs/2026-10-14-订单状态机-完整方案.md)、[退货退款逻辑](../superpowers/specs/2026-10-14-退货退款逻辑.md)、[第 5 步对象模型](../superpowers/specs/2026-10-14-第5步-对象模型.md)。
 创建：2026-10-14 · 最后更新：2026-10-14
 
-用户补充的目录目标：已有订单2.0内核当前在 `ai.neargo.shop.trade.order`；将来迁到 `ai.neargo.shop.order`。现状核查已完成，本轮据此制定开发计划，不执行包迁移。当前实况及迁移边界见§1.3–§1.4，不能把“内核构件已建”记作“全链路重构完成”。
+用户补充的目录目标：已有订单2.0内核当前在 `ai.neargo.shop.trade.order`；将来迁到 `ai.neargo.shop.order`。现状核查已完成，本轮按开发计划逐批实施，包迁移在M02验收后完成。当前实况及迁移边界见§1.3–§1.4，不能把“内核构件已建”记作“全链路重构完成”。
 
 档位：2。本文是代码实施前的精确分批合同；总体计划、历史实现和历史测试结果仍在订单状态机 TDD。本轮基于实际接线核查重排开发顺序：§2.6是执行主线，§2.5的F01–F18为缺陷修复与业务合同的详细任务库，不重复实施。
 
@@ -182,7 +182,7 @@
 | F17 | 三端行级售后与协商/线下动作 | F11/F12/F15/F16；F18 的能力门槛先就绪 | D2/D6 |
 | F18 | 能力门槛、演练与发布包 | 能力门槛可提前；最终交付需 F01–F17 | 版本和恢复边界 |
 
-可先准备 F01/F02/F03/F05 的测试及精确修复；不把 F04 的授权变更或 F08 的用途重定义伪装成同一批无契约小修。本文仍未实施，所有批次实际启动需使用已评审的对应合同。
+可先准备 F01/F02/F03/F05 的测试及精确修复；不把 F04 的授权变更或 F08 的用途重定义伪装成同一批无契约小修。本文已进入实施，所有批次实际启动需使用已评审的对应合同。
 
 ### 2.4 验证方式
 
@@ -213,23 +213,23 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PA
 
 #### F02：自动收货按单事务
 
-**修改：** `T/service/impl/OrderServiceImpl.java#autoConfirmReceipt`、`T/job/OrderAutoReceiptJob.java`；**新增：** `T/order/service/receipt/OrderReceiptCompleter.java` 和 `impl/OrderReceiptCompleterImpl.java`；测试 `IT/OrderAutoReceiptFlowTest.java`。
+**修改：** `T/service/impl/OrderServiceImpl.java#autoConfirmReceipt`、`O/mapper/StatusCasMapper.java`；**新增：** `O/service/receipt/OrderReceiptCompleter.java` 和 `impl/OrderReceiptCompleterImpl.java`、`IT/OrderAutoReceiptTransactionFlowTest.java`；保留 `IT/OrderAutoReceiptFlowTest.java`。Job已调用真实三参入口，无需修改。
 
-**接口：** `completeAuto(subOrderNo,now,shippedDays,signedDays)` 在公共代理方法上声明事务；扫描器不包整轮长事务，也不自调用绕过代理。
+**接口：** `completeAuto(subOrderNo,now,shippedDays,signedDays)` 在公共代理方法上声明REQUIRES_NEW事务，调用方整轮事务回滚不撤销已成功的单笔；扫描器不包整轮长事务，也不自调用绕过代理。
 
-- [ ] 经真实 `OrderAutoReceiptJob.run` 入口注入流水写入失败，断言子单仍 FULFILLING、completed_at 未写、无半条完成流水；再构造两单，第一失败第二正常完成。
-- [ ] 运行 `OrderAutoReceiptFlowTest`，确认旧三参入口留下部分写入而失败。
-- [ ] 每单锁 Order 后重新读取到期事实与售后占位，状态、流水、时间和本地事件一次提交；失败记录单号并继续下一单。
-- [ ] 测试通过并消融事务，验证不会把模拟异常吞掉而算成功；精确提交。
+- [x] 经真实 `OrderAutoReceiptJob.run` 入口注入流水写入失败，断言子单仍 FULFILLING、completed_at 未写、无半条完成流水；再构造两单，第一失败第二正常完成。
+- [x] 运行 `OrderAutoReceiptFlowTest`，确认旧三参入口留下部分写入而失败。
+- [x] 每单锁 Order 后重新读取到期事实与售后占位，状态、流水、时间和本地事件一次提交；失败记录单号并继续下一单。
+- [x] 测试通过并消融事务，验证不会把模拟异常吞掉而算成功；精确提交。
 
 #### F03：备货事实与流水原子提交
 
-**修改：** `T/service/impl/MerchantOrderServiceImpl.java#prepare/save`、`T/order/mapper/StatusCasMapper.java`、`T/order/transition/TradeStatusWriter.java`；测试 `IT/TradeStatusGateFlowTest.java`，拟新增 `UT/transition/PrepareFactTest.java`。
+**修改：** `T/service/impl/MerchantOrderServiceImpl.java#prepare/save`、`T/order/mapper/StatusCasMapper.java`、`T/order/transition/TradeStatusWriter.java`；测试 `IT/TradeStatusGateFlowTest.java`，新增 `IT/PrepareFactFlowTest.java`。
 
 **接口：** `int prepareIfEligible(String no,long preparedAt)`；WHERE 同时约束 WAIT_FULFILL、prepared_at IS NULL、open_after_sale_no IS NULL，并递增 version。操作者使用现有流水的operatorNo，当前库没有prepared_by，不为这次确定性修复新增该列。门的原地事件只能在事实条件写成功后记流水，不能先记再忽略 0 行。
 
 - [ ] 用屏障控制两次备货，断言恰一次新事实/流水；已备货重放保留第一次时间且不重复流水；再验证售后先占槽时备货拒绝。
-- [ ] 运行 `TradeStatusGateFlowTest,PrepareFactTest`，确认旧实现能返回双成功或重复流水。
+- [ ] 运行 `TradeStatusGateFlowTest,PrepareFactFlowTest`，确认旧实现能返回双成功或重复流水。
 - [ ] 保留 PREPARE 为原地业务事件，条件写更新事实而不伪造状态迁移；如更新 0 行，重读区分已备货幂等与真实冲突。
 - [ ] 同测试通过，去掉条件/行数检查使并发用例变红；精确提交。不要一律把所有 stay 事件改成无条件增加版本。
 
@@ -564,19 +564,25 @@ ShipCommand改为`List<Long> itemIds`，查真实行ID且校验订单归属，�
 
 | 批次 | 实际验证 | 结果 | 范围 |
 |---|---|---|---|
-| F01 | PaymentLedgerRefundCallbackTest（3）+ChannelPayCallbackFlowTest（14）；初始业务红1/17，恢复修复后绿17/17；PAY方向消融红1/3 | 红→绿及消融通过，待独立review | 真实退款行、重复成功时间、未知/PAY拒认领、付款人写入方向 |
+| F01 | PaymentLedgerRefundCallbackTest（3）+ChannelPayCallbackFlowTest（14）；初始业务红1/17，恢复修复后绿17/17；PAY方向消融红1/3 | 红→绿及消融通过；独立review无Critical/Important | 真实退款行、重复成功时间、未知/PAY拒认领、付款人写入方向 |
+| F02 | 原收货7+新增故障/外层回滚/待签收售后/未知占槽4+Architecture16；流水故障红1/8；移除事务红1/1；外层回滚红1/2后改REQUIRES_NEW；最终相关集合38/38 | 红→绿及消融通过；独立review及复核无剩余问题 | 坏单回滚、好单继续、调用方回滚不撤销单笔完成 |
+| F03 | PrepareFactFlowTest2+TradeStatusGateFlowTest3；红2/5；PREPARE旁路消融红2/2；最终相关集合38/38 | 红→绿及消融通过；独立review及复核无剩余问题 | 双读者并发只一条流水/版本；重放不变；售后占槽拒绝 |
 | B00 | baseline-selectors.txt列出的37类；JDK21离线Maven -pl shop-app -am | 222条，失败0/错误0/跳过0；BUILD SUCCESS | df2adc641的订单内核与相关场景，不计作新修复验收 |
 
-RF01–RF20 的测试责任和具体反例映射到§2.5，DEV01–DEV08映射到§2.6。每批实施后追加测试方法、实际红/绿输出、消融结果、运行SHA及扫描范围；目前没有新增场景的通过记录。§1.3的222条是当前实现定向基线，不是开发批次的验收通过记录。
+RF01–RF20 的测试责任和具体反例映射到§2.5，DEV01–DEV08映射到§2.6。已完成批次的实际红/绿输出、消融结果和范围见上表；其他新增场景仍待执行。§1.3的222条是当前实现定向基线，不是开发批次的验收通过记录。
 
 ## §6 对账二 · 文件与实现偏差
 
-B00新增迁移归属JSON、ADR-037及执行状态；只复制本任务的订单文档修订，未复制共享主目录其他会话的积分/登录/原型/locale修改。暂无产品代码变更。
+B00新增迁移归属JSON、ADR-037及执行状态；只复制本任务的订单文档修订，未复制共享主目录其他会话的积分/登录/原型/locale修改。B00本身没有产品代码变更。
 
-本轮只有文档修订，没有Java/TS/Vue/SQL实现提交。实施时按批记录 `git show --stat`，与该批修改/新增文件逐项核对；新增辅助类、字段或接口先更新设计，不让实现与本篇悄悄分叉。
+F01提交`f031043f4`：PaymentLedgerServiceImpl方向查询重载、shop-app的PaymentLedgerRefundCallbackTest及本文验证记录。测试路径由计划的pay-domain单测调整到shop-app真实Spring/MyBatis/H2装配，没有mock方向查询，未改端点/库表。独立review仅指出文档记录未同步，现已修正。
+
+F02由独立真实装配故障测试补充旧收货场景；StatusCasMapper补锁当前订单/售后槽号查询。公共完成器使用REQUIRES_NEW而非默认REQUIRED，外层回滚反例已验证。独立review发现WAIT_RECEIPT被过宽阻断，新增Job回归后恢复原自动签收与商家提醒，保持售后状态且不自动退款；未知占槽仍阻断。严格占槽条件消融业务红1/4，恢复后38/38绿。F03使用真实事务屏障测试替代拟议纯内核测试，锁后重读事实、条件写成功才记流水，仅改变PREPARE路径，其他原地事件不受影响。
+
+后续按批记录 `git show --stat`，与修改/新增文件逐项核对；新增辅助类、字段或接口先更新设计，不让实现与本篇分叉。
 
 ## §7 本轮交付与下一步
 
-开发计划已基于代码现状重排为7阶段、26个唯一批次，B00已完成，其余待实施。首批由B00冻结实施基线，然后F01/F02/F03/F05；其后按§2.6完成资金闭环、业务接线、归属收口、M02包迁移及三端切换。D1–D6仍按各自范围待评审，不以文档修改或计划制定授权推定已允许实施代码。
+开发计划共7阶段、26个唯一批次，B00/F01已完成，F02/F03实施中，其余待实施。用户已授权基于本计划开发；未确定的供应商资金账户/权限及新积分能力保持关闭，新入口按批次验证和能力门槛启用。
 
-文档验证记录：先前方案修订的13份订单文档/索引检查通过；本轮开发计划涉及3份文档，551个本地链接、代码围栏和空白检查通过，7阶段/26个唯一批次、RF01–RF20与DEV01–DEV08完整，旧订单TDD的§5/§6记录保持原文。计划自检核对了字段/接口一致性及依赖无环；本轮未运行未来新增业务测试、未修改业务代码。
+计划制定时的文档验证：3份文档、551个本地链接、代码围栏和空白检查通过，7阶段/26个唯一批次、RF01–RF20与DEV01–DEV08完整，旧订单TDD的§5/§6记录保持原文。字段/接口一致性及依赖无环已核对；开发后的业务测试与实现证据追加到§5/§6。

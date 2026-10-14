@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.order.mapper;
 
+import ai.neargo.shop.trade.entity.OrdSubOrder;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -14,6 +15,13 @@ import java.time.LocalDateTime;
  */
 @Mapper
 public interface StatusCasMapper {
+
+    /** 单笔完成先锁当前事实，售后占位与同订单其他写入不能穿过该串行点。 */
+    @Select("SELECT * FROM ord_sub_order WHERE sub_order_no = #{no} AND deleted = 0 FOR UPDATE")
+    OrdSubOrder lockOrder(@Param("no") String no);
+
+    @Select("SELECT open_after_sale_no FROM ord_sub_order WHERE sub_order_no = #{no}")
+    String openAfterSaleNo(@Param("no") String no);
 
     @Select("SELECT status FROM ord_order WHERE order_no = #{no} LIMIT 1")
     String paymentStatus(@Param("no") String no);

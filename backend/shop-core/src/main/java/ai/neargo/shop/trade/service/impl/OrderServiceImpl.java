@@ -8,6 +8,8 @@ import ai.neargo.shop.trade.service.CloseRuleService;
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
+import ai.neargo.shop.trade.order.service.receipt.OrderReceiptCompleter;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.trade.service.OrderStatusView;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
@@ -169,6 +171,13 @@ public class OrderServiceImpl implements OrderService {
     @org.springframework.beans.factory.annotation.Autowired
     public void setStatusWriter(ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter) {
         this.statusWriter = statusWriter;
+    }
+
+    private OrderReceiptCompleter receiptCompleter;
+
+    @Autowired
+    public void setReceiptCompleter(OrderReceiptCompleter receiptCompleter) {
+        this.receiptCompleter = receiptCompleter;
     }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -2455,7 +2464,6 @@ public class OrderServiceImpl implements OrderService {
             ai.neargo.shop.trade.entity.OrdAfterSale.ARBITRATING);
 
     @Override
-    @Transactional
     public int autoConfirmReceipt(long now, int shippedDays) {
         return autoConfirmReceipt(now, shippedDays, 0);
     }
@@ -2539,14 +2547,14 @@ public class OrderServiceImpl implements OrderService {
             if (!bySigned && !byShipped) {
                 continue;
             }
-            // 理由写清按哪条到期的 —— 对账时「为什么这单这天完成」只能看这一行
-            statusWriter.order(sub, OrderEvent.RECEIPT_AUTO_CONFIRMED, Actor.SYSTEM, null,
-                    bySigned ? "签收满 " + signedDays + " 天自动确认收货"
-                            : "发货满 " + shippedDays + " 天自动确认收货",
-                    OrderContext.authorizedOnly().withAutoReceiptDue(true));
-            // 自动签收同样触发「待收货后退款」（AC7 出口①）
-            afterSaleService.settleOnReceipt(sub.getSubOrderNo());
-            n++;
+            try {
+                if (receiptCompleter.completeAuto(sub.getSubOrderNo(), now, shippedDays, signedDays)) {
+                    n++;
+                }
+            } catch (RuntimeException e) {
+                // 单笔代理事务已回滚；一张异常单不截断后续到期订单。
+                log.error("[order] 自动收货失败 subOrder={}", sub.getSubOrderNo(), e);
+            }
         }
         return n;
     }
