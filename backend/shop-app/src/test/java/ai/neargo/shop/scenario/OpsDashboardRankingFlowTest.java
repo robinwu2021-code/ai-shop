@@ -35,6 +35,9 @@ class OpsDashboardRankingFlowTest {
     private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
 
     @Autowired
@@ -162,6 +165,8 @@ class OpsDashboardRankingFlowTest {
         assertThat(before.get("orderCount").asLong()).isEqualTo(1);
         assertThat(before.get("afterSaleCount").asLong()).isZero();
 
+        // 商家同意只属于「直连」商家：新入驻默认归集（平台是卖家），售后进平台裁决（步 5.6 起由状态机挡商家同意）
+        jdbc.update("update mch_entity set funds_mode = 'DIRECT' where entity_no = ?", merchantNo);
         // 真的申请一次售后（不是造数据）
         String applyBody = mvc().perform(post("/mp/order/" + subOrderNo + "/after-sale")
                         .header("Authorization", "Bearer " + buyer)

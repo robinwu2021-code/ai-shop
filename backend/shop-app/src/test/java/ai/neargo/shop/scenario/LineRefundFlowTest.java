@@ -140,6 +140,36 @@ class LineRefundFlowTest {
         assertThat(refunds).isEqualTo(approved ? 1 : 0);
     }
 
+    @Test
+    @DisplayName("★★★ 同一订单两次申请同时到达：只建成一张（库内占位，不靠先查后插）；驳回后可再申请，旧单再介入即冲突")
+    void concurrentApplyOccupiesOnce() throws Exception {
+        String token = TestLogin.consumer(mvc(), json, otpStore, "13400155005");
+        String sub = buy(token, 2, "line-slot");
+        String body = "{\"type\":\"REFUND_ONLY\",\"reason\":\"不想要了\",\"reasonCode\":\"NOT_WANTED\"}";
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.Callable<Integer> task = () -> {
+            start.await();
+            return apply(token, sub, body).get("code").asInt();
+        };
+        var a = pool.submit(task);
+        var b = pool.submit(task);
+        start.countDown();
+        int ca = a.get();
+        int cb = b.get();
+        pool.shutdown();
+        assertThat((ca == 0) ^ (cb == 0)).as("必须恰一张建成：%s / %s", ca, cb).isTrue();
+        assertThat(jdbc.queryForObject("select count(*) from ord_after_sale where sub_order_no = ?", Integer.class, sub)).isOne();
+
+        String first = jdbc.queryForObject("select after_sale_no from ord_after_sale where sub_order_no = ?", String.class, sub);
+        afterSales.reject(entityOf(sub), first, "不符合");
+        assertThat(col(sub, "open_after_sale_no")).as("驳回即释放").isNull();
+        assertThat(apply(token, sub, body).get("code").asInt()).as("驳回后可再申请").isZero();
+        assertThat(mvc().perform(post("/mp/after-sale/" + first + "/escalate").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"appeal\":\"不服\"}"))
+                .andReturn().getResponse().getContentAsString()).as("新单进行中，旧单再介入 → 冲突").contains("\"code\":10409");
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private JsonNode apply(String token, String sub, String body) throws Exception {

@@ -90,6 +90,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     private final ai.neargo.shop.trade.order.refund.service.AfterSaleRefundExecutor refundExecutor;
     /** 订单状态经门（CAS + 流水） */
     private final ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter;
+    /** 一张订单同时只有一张进行中售后（V406 库内 CAS 占位） */
+    private final ai.neargo.shop.trade.order.aftersale.AfterSaleSlots slots;
     /**
      * 整单退款时把券退回券包（执行计划 B6）。
      * **setter 注入**：切片测试里没有它时，退款其余行为一字不差。
@@ -134,7 +136,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                                 AfterSaleRuleService ruleService,
                                 ai.neargo.shop.trade.order.refund.service.AfterSaleRequestPlanner requestPlanner,
                                 ai.neargo.shop.trade.order.refund.service.AfterSaleRefundExecutor refundExecutor,
-                                ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter) {
+                                ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter,
+                                ai.neargo.shop.trade.order.aftersale.AfterSaleSlots slots) {
+        this.slots = slots;
         this.requestPlanner = requestPlanner;
         this.refundExecutor = refundExecutor;
         this.statusWriter = statusWriter;
@@ -301,6 +305,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          * （自营单仍走 ARBITRATING 分支不变），退钱动作全部移到 approve / 签收触发那步。
          */
         as.setInstant(false);
+        // 库内占位：并发两次申请只一张成功（上面的 activeOf 是先查后插，挡不住两个实例同时到）
+        slots.occupy(subOrderNo, as.getAfterSaleNo());
         afterSaleMapper.insert(as);
         requestPlanner.save(as.getAfterSaleNo(), plan);
         // 日志要写**真实去向**：自营单没有「等商家处理」这一步，
@@ -353,6 +359,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         as.setStatus(OrdAfterSale.REFUNDING);
         as.setSplitReversed(false);
         as.setInstant(false);
+        if (!slots.tryOccupy(subOrderNo, as.getAfterSaleNo())) {
+            // 另一个实例刚建了一张：交给它，不建第二张（与上面「已有一张在路上」同一个口径）
+            return java.util.Optional.ofNullable(activeOf(subOrderNo)).map(this::detailOf);
+        }
         DataScopeContext.executeWithoutScope(() -> afterSaleMapper.insert(as));
         appendLog(subOrderNo, OrdAfterSale.REFUNDING, label, OrdStatusLog.BY_SYSTEM, null);
         doRefund(as, label, AfterSaleEvent.TRADE_VOID, Actor.SYSTEM, null);
@@ -1235,7 +1245,12 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      */
     private void transit(OrdAfterSale as, AfterSaleEvent event, Actor actor, String operatorNo, String label,
                          AfterSaleContext ctx) {
+        if (event == AfterSaleEvent.ESCALATE && OrdAfterSale.REJECTED.equals(as.getStatus())) {
+            // 被驳回时已释放占位；申请介入要重新占 —— 这期间买家若已另提一张，介入即冲突
+            slots.occupy(as.getSubOrderNo(), as.getAfterSaleNo());
+        }
         statusWriter.afterSale(as, event, actor, operatorNo, label, ctx);
+        slots.releaseIfDone(as);
         // 状态已经 CAS 写过（版本已同步）；这里写同一次动作改的其余字段（备注 / 核定额 / 运单号 / 责任方…）
         if (DataScopeContext.executeWithoutScope(() -> afterSaleMapper.updateById(as)) != 1) {
             throw BizException.of(ErrorCode.CONFLICT);   // R5：@Version 冲突写 0 行不报错，必须看返回值

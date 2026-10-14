@@ -671,6 +671,7 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     completed_at    BIGINT(20) DEFAULT NULL,
     refunded_minor  BIGINT(20) NOT NULL DEFAULT 0,
     refund_progress VARCHAR(8) NOT NULL DEFAULT 'NONE',
+    open_after_sale_no VARCHAR(40) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
     CONSTRAINT uk_verify_code UNIQUE (verify_code)
