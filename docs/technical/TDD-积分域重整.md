@@ -794,3 +794,12 @@ PointsJobWiringTest新增#only_new_points_jobs_registered；PointsReconTest新�
 - `PointsFundsAdapterTest` 放在 pay-domain 的测试目录，用原生网关测试替身验证适配和边界，不启动 shop-app；生产通道尚未声明/实现该扩展时能力保持关闭。具体通道资金接口认证与真实证据联调未完成不能宣称 T06 全部交付。
 
 T06.1 验证记录：轻量测试首次 RED 3 failures（适配器缺失，4.580 秒）；新增能力扩展/适配后 GREEN 3/0（7.002 秒）。去掉到账证据必填保护后，反例 RED（期待 UNKNOWN，实际 SUCCEEDED，6.128 秒）；恢复后适配 11 tests + 核销/架构 25 tests 全部通过，组合命令 36.811 秒，未超过 120 秒预算。实际生产通道尚未实现/认证资金能力扩展，保持关闭；资金意图、回执入账和结算接线仍属未完成 T06 小项。
+
+### T06.2 实施契约补充（2026-10-14）
+
+- 新增 `payout.PointsPayoutService` / `impl.PointsPayoutServiceImpl` / `PayoutSnapshot`。`beginPayout` 只处理已具备最终订单快照的随单 PAYABLE 头寸，冻结原用途/路径/币种/收款信息，头寸转 PAYING、ticket 转 READY；D 在真实成功前保持不变。定期付款须待 T09 的已确认账单入口，不能绕过确认直接付款。
+- 唯一 ticket 与 providerIdem 基于原业务键；位置排序归一化，重复位置拒绝，同业务键输入变化拒绝。`commandFor` 只返回冻结的原命令；资金执行及回执确认另在 T06.3。
+- financial projection `provider_idem/gross_minor/offset_minor/cash_minor/currency` 由 posting 写入已有 payout 表字段，保留唯一约束；无新 DDL。准备事务复用 payTxManager，随调用方结算事务一起回滚；准备服务无资金网关依赖。
+- 新测试 `PointsPayoutPreparationTest` 用最小 pay 上下文和独立 H2 库，使用实际 BillMapper、posting 及事务工厂；商家/订单和资金事实为明确测试夹具。
+
+T06.2 验证记录：首次 RED 3 failures（缺少付款准备服务，18.476 秒）；初步 GREEN 3/0（23.960 秒）。新增票据金额与资金命令不一致的反例 RED（19.680 秒），补齐金额/币种/票据/幂等号及原分数价值核对后，准备 4 + 原子过账 4 + 架构 20 = 28 tests 全部通过，组合命令 31.205 秒。回执确认及外部执行编排未实现，不将 READY 意图计为实际付款成功。

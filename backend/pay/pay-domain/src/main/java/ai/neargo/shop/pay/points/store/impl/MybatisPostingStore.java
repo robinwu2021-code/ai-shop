@@ -102,6 +102,24 @@ public class MybatisPostingStore implements PostingStore {
             }
             require(mapper.movePosition(move.kind().table(), type, move, revision) == 1,
                     "POINTS_POSITION_STATE_CONFLICT");
+            if (move.kind()==PositionMove.Kind.PAYOUT) {
+                var snapshot=json.readTree(move.payload());
+                var ticket=snapshot.path("ticket");
+                var command=snapshot.path("fundsCommand");
+                long gross=ticket.path("gross").longValue();
+                long offset=ticket.path("offset").longValue();
+                long cash=ticket.path("cash").longValue();
+                require(gross>0 && offset>=0 && cash>=0 && Math.addExact(offset,cash)==gross
+                        && voucher.currency().equals(command.path("currency").asText())
+                        && move.positionNo().equals(ticket.path("ticketNo").asText())
+                        && move.positionNo().equals(command.path("ticketNo").asText())
+                        && !ticket.path("providerIdem").asText().isBlank()
+                        && ticket.path("providerIdem").asText().equals(command.path("providerIdem").asText())
+                        && command.path("amountMinor").longValue()==cash
+                        && voucher.rate().toMinor(move.originalPoints())==gross,"POINTS_PAYOUT_SNAPSHOT_INVALID");
+                require(mapper.indexPayout(move.positionNo(),ticket.path("providerIdem").asText(),gross,offset,cash,
+                        command.path("currency").asText())==1,"POINTS_PAYOUT_SNAPSHOT_INVALID");
+            }
             if (move.kind()==PositionMove.Kind.GRANT || move.kind()==PositionMove.Kind.REDEEM) {
                 var payload=json.readTree(move.payload());
                 if (payload.hasNonNull("subOrderNo") && payload.hasNonNull("userNo")) {

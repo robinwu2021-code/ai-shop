@@ -1,0 +1,195 @@
+package ai.neargo.shop.scenario;
+
+import ai.neargo.shop.pay.entity.StlBill;
+import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
+import ai.neargo.shop.pay.points.app.PointsSettlementHook.PayoutCommand;
+import ai.neargo.shop.pay.points.app.PointsSettlementHook.PayoutTicket;
+import ai.neargo.shop.pay.points.model.AccountKey;
+import ai.neargo.shop.pay.points.model.AgreementSnapshot;
+import ai.neargo.shop.pay.points.model.Bucket;
+import ai.neargo.shop.pay.points.model.EvidenceRef;
+import ai.neargo.shop.pay.points.model.FundBucket;
+import ai.neargo.shop.pay.points.model.FundMove;
+import ai.neargo.shop.pay.points.model.HolderType;
+import ai.neargo.shop.pay.points.model.PointsKeys;
+import ai.neargo.shop.pay.points.model.PointsMove;
+import ai.neargo.shop.pay.points.model.PositionMove;
+import ai.neargo.shop.pay.points.model.RedeemRate;
+import ai.neargo.shop.pay.points.model.ReserveMove;
+import ai.neargo.shop.pay.points.model.Voucher;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsCommand;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsStatus;
+import ai.neargo.shop.pay.points.payout.PayoutSnapshot;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPath;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPurpose;
+import ai.neargo.shop.pay.points.posting.PointsPostingService;
+import ai.neargo.shop.pay.points.redeem.impl.RedeemServiceImpl.RedeemSnapshot;
+import ai.neargo.shop.pay.points.store.impl.MybatisPointsConfigurationStore;
+import ai.neargo.shop.pay.points.store.impl.MybatisPointsReadStore;
+import ai.neargo.shop.spi.points.PointsRedeemPort.Share;
+import ai.neargo.shop.spi.points.PointsRedeemPort.Target;
+import ai.neargo.shop.spi.points.PointsRedeemPort.Item;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.ObjectMapper;
+
+import javax.sql.DataSource;
+import java.lang.reflect.InvocationTargetException;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/** Isolated fixture facts use real pay posting, mapper, and transaction factory without booting the application. */
+@SpringJUnitConfig(PointsPayoutPreparationTest.Config.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@TestPropertySource(properties={
+        "spring.datasource.url=jdbc:h2:mem:points_payout_prepare;MODE=MySQL;DATABASE_TO_LOWER=TRUE",
+        "spring.datasource.username=sa", "spring.datasource.password=",
+        "spring.datasource.driver-class-name=org.h2.Driver"
+})
+class PointsPayoutPreparationTest {
+    @Autowired private ApplicationContext context;
+    @Autowired private PointsPostingService posting;
+    @Autowired private BillMapper bills;
+    @Autowired @Qualifier("payDataSource") private DataSource dataSource;
+    @Autowired @Qualifier("payTxManager") private PlatformTransactionManager txManager;
+    private final ObjectMapper json=new ObjectMapper();
+
+    @BeforeAll
+    void schema() {
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V407__points_v3_ledger.sql"))
+                .execute(dataSource);
+        jdbc().execute("CREATE TABLE stl_bill (id BIGINT AUTO_INCREMENT PRIMARY KEY,settle_no VARCHAR(64),"
+                + "sub_order_no VARCHAR(64),entity_no VARCHAR(64),status VARCHAR(24),tenant_no VARCHAR(32),"
+                + "created_at DATETIME,created_by VARCHAR(64),updated_at DATETIME,updated_by VARCHAR(64),"
+                + "version BIGINT,deleted TINYINT DEFAULT 0)");
+    }
+    @Test
+    void committed_intent_is_immutable_and_replays_without_spending_d() {
+        PayoutCommand command=fixture(true);
+        PayoutTicket ticket=begin(command);
+        assertThat(begin(command)).isEqualTo(ticket);
+        assertThat(ticket.gross()).isEqualTo(30);
+        assertThat(ticket.offset()).isZero();
+        assertThat(ticket.cash()).isEqualTo(30);
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",Long.class,
+                command.typeCode())).isEqualTo(30);
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_redeem_position WHERE position_no=?",String.class,
+                command.positionIds().getFirst())).isEqualTo("PAYING");
+        assertThat(jdbc().queryForObject("SELECT provider_idem FROM pts_payout_ticket WHERE position_no=?",String.class,
+                ticket.ticketNo())).isEqualTo(ticket.providerIdem());
+        var changed=new PayoutCommand(command.bizRef(),command.typeCode(),"DIFFERENT",command.positionIds(),
+                command.purpose(),command.context(),command.currency());
+        assertThatThrownBy(() -> begin(changed)).hasMessage("POINTS_IDEMPOTENCY_CONFLICT");
+    }
+    @Test
+    void incomplete_final_order_snapshot_cannot_enter_payout() {
+        PayoutCommand command=fixture(false);
+        assertThatThrownBy(() -> begin(command)).hasMessage("POINTS_FINAL_ORDER_SNAPSHOT_REQUIRED");
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_payout_ticket WHERE type_code=?",Long.class,
+                command.typeCode())).isZero();
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_redeem_position WHERE position_no=?",String.class,
+                command.positionIds().getFirst())).isEqualTo("PAYABLE");
+    }
+    @Test
+    void settlement_and_payout_intent_roll_back_in_the_same_pay_transaction() {
+        PayoutCommand command=fixture(true);
+        new TransactionTemplate(txManager).executeWithoutResult(status -> {
+            StlBill bill=new StlBill(); bill.setSettleNo("B:"+command.typeCode());
+            bill.setSubOrderNo(command.sourceRef()); bill.setEntityNo("M"); bill.setStatus("PENDING");
+            bills.insert(bill);
+            begin(command);
+            status.setRollbackOnly();
+        });
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM stl_bill WHERE settle_no=?",Long.class,
+                "B:"+command.typeCode())).isZero();
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_payout_ticket WHERE type_code=?",Long.class,
+                command.typeCode())).isZero();
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_redeem_position WHERE position_no=?",String.class,
+                command.positionIds().getFirst())).isEqualTo("PAYABLE");
+    }
+    @Test
+    void inconsistent_ticket_money_snapshot_rolls_back() {
+        PayoutCommand command=fixture(true);
+        String no=PointsKeys.position("Y",command.typeCode(),"BAD");
+        PayoutTicket ticket=new PayoutTicket(no,30,0,30,"BAD-IDEM",FundsStatus.UNKNOWN);
+        FundsCommand wrongAmount=new FundsCommand(no,"BAD-IDEM",command.purpose(),command.context(),"CNY",31);
+        var snapshot=new PayoutSnapshot(command,ticket,wrongAmount);
+        assertThatThrownBy(() -> posting.post(new Voucher("BAD:"+command.typeCode(),command.typeCode(),"CNY",
+                new RedeemRate(1,1),List.of(),List.of(),List.of(new PositionMove(PositionMove.Kind.PAYOUT,no,-1,
+                "NEW","READY",30,0,json.writeValueAsString(snapshot))),0,List.of(),"{}")))
+                .hasMessage("POINTS_PAYOUT_SNAPSHOT_INVALID");
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_payout_ticket WHERE position_no=?",Long.class,no))
+                .isZero();
+    }
+
+    private PayoutCommand fixture(boolean finalSnapshot) {
+        String type="PY"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
+        jdbc().update("INSERT INTO pts_point_type(type_code,market,currency,rate_points,rate_minor,status)"
+                + " VALUES(?,'CN','CNY',1,1,'ACTIVE')",type);
+        jdbc().update("INSERT INTO pts_fund_pool(type_code,currency) VALUES(?,'CNY')",type);
+        jdbc().update("INSERT INTO pts_fund_evidence(evidence_no,currency,external_minor,verified)"
+                + " VALUES(?,'CNY',200,1)","E:"+type);
+        posting.post(new Voucher("F:"+type,type,"CNY",new RedeemRate(1,1),List.of(
+                move(type,HolderType.MINT,"PLATFORM",Bucket.ISSUED,-100),
+                move(type,HolderType.ISSUE,"PLATFORM",Bucket.ISSUABLE,100)),List.of(
+                new FundMove(FundBucket.U,100),new FundMove(FundBucket.B,100)),List.of(),0,
+                List.of(new EvidenceRef("E:"+type,"CNY",200)),"{}"));
+        posting.post(new Voucher("G:"+type,type,"CNY",new RedeemRate(1,1),List.of(
+                move(type,HolderType.ISSUE,"PLATFORM",Bucket.ISSUABLE,-100),
+                move(type,HolderType.USER,"U",Bucket.AVAILABLE,70),
+                move(type,HolderType.USER,"U",Bucket.HELD,30)),List.of(
+                new FundMove(FundBucket.U,-100),new FundMove(FundBucket.C,100)),List.of(),0,List.of(),"{}"));
+        String sub="S:"+type;
+        String position=PointsKeys.position("R",type,sub);
+        FundsContext funds=new FundsContext(FundsPath.AGGREGATED,"TEST","M","A1","SM","TRADE",sub,100);
+        var agreement=new AgreementSnapshot("A:"+type,type,"M","STORE","OWNER","v1","HASH","TEST TERMS",
+                "PER_ORDER","AGGREGATED","TEST","A1","ACTIVE");
+        var snapshot=new RedeemSnapshot(sub,"U","O:"+type,new Share(sub,"M","STORE",30,30),
+                new Target(sub,"M","STORE",100,"AGGREGATED","TEST","A1","SM","TRADE",
+                        List.of(new Item("ITEM",100))),agreement,funds,finalSnapshot);
+        posting.post(new Voucher("P:"+type,type,"CNY",new RedeemRate(1,1),List.of(
+                move(type,HolderType.USER,"U",Bucket.HELD,-30),
+                move(type,HolderType.RECEIVE,"PLATFORM",Bucket.REFUND_RESERVED,30)),List.of(
+                new FundMove(FundBucket.C,-30),new FundMove(FundBucket.D,30)),List.of(
+                new PositionMove(PositionMove.Kind.REDEEM,position,-1,"NEW","PAYABLE",30,0,
+                        json.writeValueAsString(snapshot))),30,List.of(),"{}",
+                List.of(new ReserveMove(position,position,-1,30,30,0,0))));
+        return new PayoutCommand("PAY:"+type,type,sub,List.of(position),FundsPurpose.SUBSIDY,funds,"CNY");
+    }
+    private PayoutTicket begin(PayoutCommand command) {
+        try {
+            Class<?> type=Class.forName("ai.neargo.shop.pay.points.payout.PointsPayoutService");
+            return (PayoutTicket)type.getMethod("beginPayout",PayoutCommand.class)
+                    .invoke(context.getBean(type),command);
+        } catch (InvocationTargetException e) {
+            if (e.getCause() instanceof RuntimeException cause) { throw cause; }
+            throw new AssertionError(e.getCause());
+        } catch (ReflectiveOperationException e) { throw new AssertionError("Payout preparation service missing",e); }
+    }
+    private PointsMove move(String type,HolderType holder,String no,Bucket bucket,long points) {
+        return new PointsMove(new AccountKey(type,holder,no,bucket),points);
+    }
+    private JdbcTemplate jdbc() { return new JdbcTemplate(dataSource); }
+    @Configuration
+    @Import({PointsPostingDatabaseTest.Config.class,MybatisPointsReadStore.class,MybatisPointsConfigurationStore.class})
+    @ComponentScan(basePackages="ai.neargo.shop.pay.points.payout")
+    static class Config { }
+}

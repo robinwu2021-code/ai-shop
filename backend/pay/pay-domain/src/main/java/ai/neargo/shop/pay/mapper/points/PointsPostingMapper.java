@@ -89,6 +89,10 @@ public interface PointsPostingMapper {
     @Update("UPDATE ${table} SET sub_order_no=#{sub},user_no=#{user} WHERE position_no=#{no}")
     int indexOrderPosition(@Param("table") String table,@Param("no") String no,
                            @Param("sub") String sub,@Param("user") String user);
+    @Update("UPDATE pts_payout_ticket SET provider_idem=#{idem},gross_minor=#{gross},offset_minor=#{offset},"
+            + "cash_minor=#{cash},currency=#{currency} WHERE position_no=#{no}")
+    int indexPayout(@Param("no") String no,@Param("idem") String idem,@Param("gross") long gross,
+                    @Param("offset") long offset,@Param("cash") long cash,@Param("currency") String currency);
     @Update("UPDATE pts_account SET last_active_at=#{at},expire_at=#{expiry},expiry_revision=expiry_revision+1 "
             + "WHERE type_code=#{type} AND holder_type='USER' AND holder_no=#{user}")
     int renewUser(@Param("type") String type,@Param("user") String user,@Param("at") long at,
