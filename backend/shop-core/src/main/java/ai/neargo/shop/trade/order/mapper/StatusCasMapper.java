@@ -23,6 +23,12 @@ public interface StatusCasMapper {
     @Select("SELECT open_after_sale_no FROM ord_sub_order WHERE sub_order_no = #{no}")
     String openAfterSaleNo(@Param("no") String no);
 
+    /** 备货是原地事实：条件成功的一方才有资格记事件，不忽略0行。 */
+    @Update("UPDATE ord_sub_order SET prepared_at = #{at}, updated_at = CURRENT_TIMESTAMP, version = version + 1 "
+            + "WHERE sub_order_no = #{no} AND deleted = 0 AND status = 'WAIT_FULFILL' "
+            + "AND prepared_at IS NULL AND open_after_sale_no IS NULL")
+    int prepareIfEligible(@Param("no") String no, @Param("at") long preparedAt);
+
     @Select("SELECT status FROM ord_order WHERE order_no = #{no} LIMIT 1")
     String paymentStatus(@Param("no") String no);
 

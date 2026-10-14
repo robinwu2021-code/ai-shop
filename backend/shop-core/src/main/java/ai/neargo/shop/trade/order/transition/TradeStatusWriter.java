@@ -1,6 +1,9 @@
 package ai.neargo.shop.trade.order.transition;
 
 import ai.neargo.shop.common.BaseEntity;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleContext;
 import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleEvent;
 import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleMachine;
@@ -23,6 +26,9 @@ import ai.neargo.shop.trade.order.statemachine.Fired;
 import ai.neargo.shop.trade.order.transition.impl.MybatisStatusStore;
 import ai.neargo.shop.trade.order.transition.impl.StatusLogStore;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.BeanUtils;
+
+import java.util.List;
 
 /**
  * 业务服务用的状态写入口（TDD-订单状态机 §2B）：按实体执行一次迁移，经转换门 CAS 落库 + 记流水。
@@ -59,6 +65,9 @@ public class TradeStatusWriter {
     /** 订单（子单）迁移。流水锚在子单号上（进订单时间线） */
     public Fired<OrderStatus, OrderEvent> order(OrdSubOrder sub, OrderEvent event, Actor actor,
                                                 String operatorNo, String reason, OrderContext ctx) {
+        if (event == OrderEvent.PREPARE) {
+            return prepareOrder(sub, actor, operatorNo, reason, ctx);
+        }
         Fired<OrderStatus, OrderEvent> f = gate.apply(OrderMachine.MACHINE, OrderStatus.class,
                 new Command<>(Aggregate.ORDER, sub.getSubOrderNo(), sub.getSubOrderNo(), event, actor,
                         operatorNo, reason, ctx));
@@ -72,6 +81,37 @@ public class TradeStatusWriter {
             sub.setCompletedAt(now);
         }
         return f;
+    }
+
+    /** 调用方持事务；当前读与条件写先完成，门只为实际首次备货记一次流水。 */
+    private Fired<OrderStatus, OrderEvent> prepareOrder(OrdSubOrder sub, Actor actor,
+                                                       String operatorNo, String reason, OrderContext ctx) {
+        OrdSubOrder current = DataScopeContext.executeWithoutScope(
+                () -> casMapper.lockOrder(sub.getSubOrderNo()));
+        if (current == null) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (actor != Actor.MERCHANT || !ctx.authorized()) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        BeanUtils.copyProperties(current, sub);
+        OrderStatus status = OrderStatus.valueOf(current.getStatus());
+        if (current.getPreparedAt() != null) {
+            return new Fired<>(status, status, OrderEvent.PREPARE, actor, List.of());
+        }
+        OrderMachine.MACHINE.fire(status, OrderEvent.PREPARE, actor, ctx);
+        long at = System.currentTimeMillis();
+        int rows = DataScopeContext.executeWithoutScope(
+                () -> casMapper.prepareIfEligible(sub.getSubOrderNo(), at));
+        if (rows != 1) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        Fired<OrderStatus, OrderEvent> fired = gate.apply(OrderMachine.MACHINE, OrderStatus.class,
+                new Command<>(Aggregate.ORDER, sub.getSubOrderNo(), sub.getSubOrderNo(), OrderEvent.PREPARE,
+                        actor, operatorNo, reason, ctx));
+        sub.setPreparedAt(at);
+        sync(sub, true);
+        return fired;
     }
 
     /** 售后单迁移（步 5.6）。流水锚在子单号上（进订单时间线），取代手写的 setStatus + appendLog */

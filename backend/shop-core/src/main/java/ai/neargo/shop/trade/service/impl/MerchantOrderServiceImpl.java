@@ -254,8 +254,6 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         // 买家已经在申请退款了，此刻再点备货只会让那张申请多一层「已备货」的说法
         statusWriter.order(sub, OrderEvent.PREPARE, Actor.MERCHANT, merchantNo, "商家开始备货",
                 OrderContext.authorizedOnly().withOpenAfterSale(hasOpenAfterSale(sub.getSubOrderNo())));
-        sub.setPreparedAt(System.currentTimeMillis());
-        save(sub);
         return toVO(sub);
     }
 
