@@ -30,7 +30,16 @@ public class OrdStatusLog {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    /** 时间线锚点：订单 / 售后 / 发货单流水挂所属子单；支付单流水挂支付单号 */
     private String subOrderNo;
+    /** 聚合：PAYMENT / ORDER / SHIPMENT / AFTER_SALE（V402；存量为 ORDER） */
+    private String aggregateType;
+    /** 聚合单号（V402；存量为空 = 同 subOrderNo） */
+    private String aggregateNo;
+    /** 状态机事件名（V402；存量为空） */
+    private String event;
+    /** 迁移前状态（V402；创建迁移与存量为空） */
+    private String fromStatus;
     private String status;
     private String label;
     private String operatorType;

@@ -69,7 +69,9 @@ import java.util.List;
         // ReachMatchMapper（ADR-034）：可见范围的命中查询跨 mch_service_area 与 mch_service_area_cell
         // 两张表，绑不到单一实体，与 ArchiveMapper 同一处境。这个包里其余 Mapper 都是 BaseMapper
         // 子接口，由上面那个 scan 收；按 @Mapper 注解扫只会收到真正标注了的那个。
-        "ai.neargo.shop.merchant.mapper"},
+        "ai.neargo.shop.merchant.mapper",
+        // StatusCasMapper（订单状态机转换门）：四个聚合各一对读 / 条件写，跨四张表，绑不到单一实体
+        "ai.neargo.shop.trade.order.mapper"},
         annotationClass = org.apache.ibatis.annotations.Mapper.class,
         sqlSessionFactoryRef = "sqlSessionFactory")
 public class MybatisPlusConfig {

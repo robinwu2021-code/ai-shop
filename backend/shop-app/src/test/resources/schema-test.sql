@@ -497,7 +497,7 @@ CREATE TABLE IF NOT EXISTS ord_after_sale
     user_no VARCHAR(64) NOT NULL,
     entity_no VARCHAR(64) NOT NULL,
     type VARCHAR(16) NOT NULL,
-    status VARCHAR(16) NOT NULL DEFAULT 'APPLIED',
+    status VARCHAR(24) NOT NULL DEFAULT 'APPLIED',
     reason VARCHAR(255) NOT NULL,
     images TEXT DEFAULT NULL,
     refund_minor BIGINT(20) NOT NULL DEFAULT 0,
@@ -594,13 +594,17 @@ CREATE TABLE IF NOT EXISTS ord_status_log
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
     sub_order_no VARCHAR(64) NOT NULL,
-    status VARCHAR(16) NOT NULL,
+    status VARCHAR(24) NOT NULL,
     label VARCHAR(64) DEFAULT NULL,
     operator_type VARCHAR(16) NOT NULL DEFAULT 'SYSTEM',
     operator_no VARCHAR(64) DEFAULT NULL,
     at BIGINT(20) NOT NULL,
     tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
     created_at DATETIME NOT NULL,
+    aggregate_type VARCHAR(16) NOT NULL DEFAULT 'ORDER',
+    aggregate_no VARCHAR(64) DEFAULT NULL,
+    event VARCHAR(32) DEFAULT NULL,
+    from_status VARCHAR(24) DEFAULT NULL,
     PRIMARY KEY (id)
 );
 
