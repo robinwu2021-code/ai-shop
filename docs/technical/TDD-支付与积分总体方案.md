@@ -439,3 +439,7 @@ b-app 的确认收款页必须**大字显示应收金额**并标出「已抵扣 
 ---
 
 确认记录：待确认
+
+### T03 / T04 implementation evidence (2026-10-14)
+
+T03 funding/type/approval and architecture: 26 tests, zero failures. Withdrawals remain unavailable pending T06 committed intents/budget locking. T04 policy: 3 tests; application/architecture: 27 tests, zero failures. Source wiring and API/auth remain for T08/T12. EarnServiceTest uses an isolated H2 URL to avoid replaying legacy merchant seed UPDATE across contexts.

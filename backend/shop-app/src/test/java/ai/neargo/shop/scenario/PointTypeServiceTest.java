@@ -1,0 +1,46 @@
+package ai.neargo.shop.scenario;
+
+import ai.neargo.shop.pay.points.model.PointType;
+import ai.neargo.shop.pay.points.model.RedeemRate;
+import ai.neargo.shop.pay.points.store.PointsReadStore;
+import ai.neargo.shop.pay.points.type.PointTypeService;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+
+import java.util.UUID;
+import javax.sql.DataSource;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+@SpringBootTest
+@ActiveProfiles("test")
+class PointTypeServiceTest {
+    @Autowired private PointTypeService types;
+    @Autowired private PointsReadStore read;
+    @Autowired @Qualifier("payDataSource") private DataSource dataSource;
+
+    @Test
+    void active_unique_rate_locked_and_drain() {
+        String a = no(); String b = no();
+        types.create(new PointTypeService.CreateType(a,"CN",new RedeemRate(1,1),3000,365),"maker");
+        types.create(new PointTypeService.CreateType(b,"CN",new RedeemRate(3,2),3000,365),"maker");
+        try {
+            types.activate(a,"maker");
+            assertThatThrownBy(() -> types.activate(b,"maker")).isInstanceOf(IllegalArgumentException.class);
+            types.drain(a,"maker");
+            assertThat(read.activeType("CN").orElseThrow().status()).isEqualTo(PointType.Status.DRAINING);
+            assertThatThrownBy(() -> types.activate(b,"maker")).isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> types.create(new PointTypeService.CreateType(a,"CN",new RedeemRate(3,2),
+                    3000,365),"maker")).isInstanceOf(RuntimeException.class);
+            assertThat(read.type(a).orElseThrow().rate()).isEqualTo(new RedeemRate(1,1));
+        } finally {
+            new JdbcTemplate(dataSource).update("UPDATE pts_point_type SET active_market=NULL WHERE type_code IN (?,?)",a,b);
+        }
+    }
+    private String no() { return "TY"+UUID.randomUUID().toString().replace("-", "").substring(0,20); }
+}

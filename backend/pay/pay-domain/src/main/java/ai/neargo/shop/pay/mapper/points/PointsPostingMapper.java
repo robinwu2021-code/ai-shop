@@ -86,6 +86,14 @@ public interface PointsPostingMapper {
     int movePosition(@Param("table") String table, @Param("type") String type,
                      @Param("move") PositionMove move, @Param("revision") long revision);
 
+    @Update("UPDATE ${table} SET sub_order_no=#{sub},user_no=#{user} WHERE position_no=#{no}")
+    int indexOrderPosition(@Param("table") String table,@Param("no") String no,
+                           @Param("sub") String sub,@Param("user") String user);
+    @Update("UPDATE pts_account SET last_active_at=#{at},expire_at=#{expiry},expiry_revision=expiry_revision+1 "
+            + "WHERE type_code=#{type} AND holder_type='USER' AND holder_no=#{user}")
+    int renewUser(@Param("type") String type,@Param("user") String user,@Param("at") long at,
+                  @Param("expiry") long expiry);
+
     @Insert("INSERT INTO pts_refund_reserve(reserve_no,position_no,type_code,original_minor) "
             + "VALUES(#{move.reserveNo},#{move.positionNo},#{type},#{move.originalMinor})")
     int createReserve(@Param("type") String type, @Param("move") ReserveMove move);

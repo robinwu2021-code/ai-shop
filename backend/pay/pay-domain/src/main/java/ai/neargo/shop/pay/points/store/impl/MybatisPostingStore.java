@@ -2,6 +2,7 @@ package ai.neargo.shop.pay.points.store.impl;
 
 import ai.neargo.shop.pay.mapper.points.PointsPostingMapper;
 import ai.neargo.shop.pay.points.model.AccountKey;
+import ai.neargo.shop.pay.points.model.Bucket;
 import ai.neargo.shop.pay.points.model.FundBucket;
 import ai.neargo.shop.pay.points.model.FundMove;
 import ai.neargo.shop.pay.points.model.HolderType;
@@ -101,6 +102,13 @@ public class MybatisPostingStore implements PostingStore {
             }
             require(mapper.movePosition(move.kind().table(), type, move, revision) == 1,
                     "POINTS_POSITION_STATE_CONFLICT");
+            if (move.kind()==PositionMove.Kind.GRANT || move.kind()==PositionMove.Kind.REDEEM) {
+                var payload=json.readTree(move.payload());
+                if (payload.hasNonNull("subOrderNo") && payload.hasNonNull("userNo")) {
+                    mapper.indexOrderPosition(move.kind().table(),move.positionNo(),payload.get("subOrderNo").asText(),
+                            payload.get("userNo").asText());
+                }
+            }
         }
         for (ReserveMove move : voucher.reserveMoves().stream()
                 .sorted(Comparator.comparing(ReserveMove::reserveNo)).toList()) {
@@ -116,6 +124,15 @@ public class MybatisPostingStore implements PostingStore {
             require(mapper.moveReserve(type, move, revision) == 1, "POINTS_RESERVE_STATE_CONFLICT");
         }
         require(mapper.reserveTotal(type) == number(pool, "reserved_b_minor"), "POINTS_RESERVE_TOTAL_MISMATCH");
+        if (voucher.bizRef().startsWith("GRANT:") || voucher.bizRef().startsWith("HOLD:")) {
+            long at=System.currentTimeMillis();
+            long expiry=Math.addExact(at,Math.multiplyExact(number(definition,"idle_days"),86400000L));
+            for (AccountKey key:deltas.keySet().stream().filter(k -> k.holderType()==HolderType.USER)
+                    .map(k -> new AccountKey(k.typeCode(),k.holderType(),k.holderNo(),Bucket.AVAILABLE))
+                    .distinct().toList()) {
+                mapper.renewUser(type,key.holderNo(),at,expiry);
+            }
+        }
         checkBacking(voucher, pool);
         mapper.outbox(type, "POINTS:" + no,
                 json.writeValueAsString(Map.of("kind", "POINTS_POSTED", "voucherNo", no, "bizRef", voucher.bizRef())));
