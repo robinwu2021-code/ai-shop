@@ -813,3 +813,30 @@ T06.2 验证记录：首次 RED 3 failures（缺少付款准备服务，18.476 �
 T06.3 验证记录：首次 RED 2 failures（执行服务缺失，22.187 秒）；初步 GREEN 准备/执行 6 tests（21.575 秒）。错误票据回执反例 RED（错误进入另一票据确认入口，20.535 秒）；恢复为原票据 UNKNOWN 后，适配 11 + 准备/执行 7 + 过账 4 + 架构 20 = 42 tests 全部通过，组合命令 29.527 秒。证明外部调用无实际数据库事务、回执丢失后只查询原命令、D 只扣一次、明确失败保留 D 并释放付款锁、错误回执不触发资金确认。
 
 2026-10-14 执行预算检查点：T06 自 13:26:53 UTC 开始，本轮在接近 30 分钟上限时停止自动开发并请求用户批准下一轮预算。T06.1 已实现适配边界（生产通道认证尚未完成）；T06.2 已实现准备；T06.3 已实现上述基础成功/失败/未知恢复路径，完整付款/退款竞争需 T07 接线后验收。T06.4 结算 Hook/事务拆分/旧返分费清理与 T06.5 U/B 提取闭环尚未实施，不能将 T06 记为全部完成。无需真实商家、门店数据，继续使用隔离夹具。所有 Maven 命令已退出，无远程资金执行；下一步需批准新增执行预算，随后先处理 T06.4。
+
+### 执行工具：逐用例耗时与慢测试日志（2026-10-14）
+
+用户要求记录每条测试用例耗时，超过阈值写入慢日志；本项只改测试执行工具，不恢复已暂停的 T06 业务开发。
+
+- 新增 `scripts/run-backend-tests.py`，通过标准 Surefire/Failsafe XML 的 `testcase@time` 采集所有已完成用例（含失败、出错、跳过、参数化名称）。默认慢用例阈值为 ≥1 秒，CLI `--slow-seconds` 可覆盖。
+- 每轮生成独立目录 `backend/target/test-timings/<run-id>/`：`test-timings.log`（JSONL 全用例）、`slow-tests.log`（JSONL 仅慢用例）、`suite-timings.log`（测试类总时间、用例累计时间及未归属时间）、`summary.json`，执行模式另保存 `maven.log`。不记录 XML 中的环境属性、日志正文和凭据。
+- 正常模式包装明确给出的 Maven 命令；只采集本轮开始后生成/更新的报告，避免旧测试混入；保留原命令退出码。默认命令 120 秒截止，只终止自己启动的进程组，超时返回 124。测试未结束/未写出 XML 的用例不能伪记耗时或通过，汇总标记报告不完整。
+- `--collect-only` 可分析已有报告，不启动测试；标记为历史报告采集，不用其宣称本轮测试执行通过。可用 `--report` 指定报告避免扩大历史范围。
+- 测试类总耗时减去用例累计时间仅表示未归属到用例的时间，可能含初始化及生命周期；不直接将差值声称为 Spring 启动耗时。并行导致累计超过类时间时不计算该差值。
+- XML 日志在报告写出后生成，不是实时 JUnit 生命周期日志；卡住且尚无报告的用例需要依据 Maven 日志定位类，不能伪造精确方法时长。本项不增加逐用例强制中断，也不更改原测试语义。
+- 小项预算：13:57:57 UTC 起，14:07:57 预警，14:12:57 截止。先以标准库快速测试验证采集、慢阈值、失败状态、旧报告过滤、原退出码及命令超时，再跑一次小范围 Maven 验证自动产物；不跑全量应用回归。
+
+后续测试统一入口（沿用 JDK21，Maven 离线）：
+
+```bash
+JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/Home \
+python3 scripts/run-backend-tests.py --slow-seconds 1 --timeout 120 -- \
+mvn -o -f backend/pom.xml -pl pay/pay-domain -am test \
+-Dtest=PointsFundsAdapterTest -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+已有报告分析示例：`python3 scripts/run-backend-tests.py --collect-only --report backend/shop-app/target/surefire-reports/TEST-ai.neargo.shop.arch.ArchitectureTest.xml`。修改慢阈值只调整 `--slow-seconds`，不改变用例运行或断言。日志工具快速验证：`python3 scripts/test-test-timings.py`。
+
+验证记录：工具缺失 RED 5 failures；超时后忽略 SIGTERM 的子进程仍运行以及启动器先退出的两个反例分别 RED，修复进程组清理后工具 7 tests 全部通过（5.284 秒）。经新入口实际运行 `PointsFundsAdapterTest` 11 tests 全部通过，命令和采集总耗时 3.855 秒，自动生成 11 条用例日志，没有 ≥1 秒用例，旧报告未混入。单独分析此前付款/架构报告共 23 条，历史慢日志 2 条（1.499 / 1.013 秒）；不把历史采集标记为新一轮测试执行。
+
+本项产出：`scripts/run-backend-tests.py`、`scripts/test-test-timings.py` 和本节执行说明；未改 Maven 依赖/业务实现。测试报告及日志位于已忽略的 target 目录，不入库。T06 业务执行继续保持用户要求的暂停状态。
