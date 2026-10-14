@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
 import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestPlan;
@@ -187,7 +189,7 @@ class MultiStoreOrderScopeTest {
     // ---------------------------------------------------------------- 装配
 
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
 
     private String merchantNoOf(String token) throws Exception {
         String body = mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + token))

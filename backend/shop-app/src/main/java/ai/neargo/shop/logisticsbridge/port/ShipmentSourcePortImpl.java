@@ -1,5 +1,13 @@
 package ai.neargo.shop.logisticsbridge.port;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.ShippingUploadMapper;
+
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.logistics.ShipmentSourcePort;
@@ -7,7 +15,6 @@ import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.TrdShippingUpload;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import ai.neargo.shop.trade.port.FulfillmentStatsPortImpl;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
@@ -28,14 +35,14 @@ import java.util.Optional;
 @Component
 public class ShipmentSourcePortImpl implements ShipmentSourcePort {
 
-    private final TradeMappers.SubOrderMapper subOrders;
-    private final TradeMappers.OrderMapper orders;
-    private final TradeMappers.OrderItemMapper items;
-    private final TradeMappers.ShippingUploadMapper uploads;
+    private final StoreOrderMapper subOrders;
+    private final PaymentMapper orders;
+    private final OrderItemMapper items;
+    private final ShippingUploadMapper uploads;
     private final PaymentLedgerService ledger;
 
-    public ShipmentSourcePortImpl(TradeMappers.SubOrderMapper subOrders, TradeMappers.OrderMapper orders,
-                                  TradeMappers.OrderItemMapper items, TradeMappers.ShippingUploadMapper uploads,
+    public ShipmentSourcePortImpl(StoreOrderMapper subOrders, PaymentMapper orders,
+                                  OrderItemMapper items, ShippingUploadMapper uploads,
                                   PaymentLedgerService ledger) {
         this.subOrders = subOrders;
         this.orders = orders;

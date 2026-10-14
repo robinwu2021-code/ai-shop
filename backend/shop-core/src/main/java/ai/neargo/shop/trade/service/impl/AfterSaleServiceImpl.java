@@ -4,9 +4,9 @@ import ai.neargo.shop.trade.service.AfterSaleRuleService;
 import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleContext;
 import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleEvent;
 import ai.neargo.shop.trade.order.statemachine.Actor;
-import ai.neargo.shop.trade.service.AfterSaleRules;
+import ai.neargo.shop.trade.order.policy.AfterSaleRules;
 import ai.neargo.shop.trade.service.AfterSaleService;
-import ai.neargo.shop.trade.service.FulfillStage;
+import ai.neargo.shop.trade.order.policy.FulfillStage;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.settle.SettlePort;
@@ -25,10 +25,10 @@ import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -66,8 +66,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      */
 
     private final AfterSaleMapper afterSaleMapper;
-    private final SubOrderMapper subOrderMapper;
-    private final StatusLogMapper statusLogMapper;
+    private final StoreOrderMapper subOrderMapper;
+    private final OrderStatusLogMapper statusLogMapper;
     private final SettlePort settlePort;
     private final OutboxEventBus eventBus;
     private final ObjectMapper json;
@@ -128,8 +128,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         return switchPort == null || switchPort.bool(flag, true);
     }
 
-    public AfterSaleServiceImpl(AfterSaleMapper afterSaleMapper, SubOrderMapper subOrderMapper,
-                                StatusLogMapper statusLogMapper, SettlePort settlePort,
+    public AfterSaleServiceImpl(AfterSaleMapper afterSaleMapper, StoreOrderMapper subOrderMapper,
+                                OrderStatusLogMapper statusLogMapper, SettlePort settlePort,
                                 OutboxEventBus eventBus, ObjectMapper json,
                                 MerchantQueryPort merchantPort, UserQueryPort userPort,
                                 StockPort stockPort, OrderItemMapper orderItemMapper,

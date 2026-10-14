@@ -2,7 +2,7 @@ package ai.neargo.shop.trade.port;
 
 import ai.neargo.shop.spi.trade.PurchaseHistoryPort;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -21,9 +21,9 @@ import java.util.stream.Collectors;
 @Component
 public class PurchaseHistoryPortImpl implements PurchaseHistoryPort {
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
 
-    public PurchaseHistoryPortImpl(SubOrderMapper subOrderMapper) {
+    public PurchaseHistoryPortImpl(StoreOrderMapper subOrderMapper) {
         this.subOrderMapper = subOrderMapper;
     }
 

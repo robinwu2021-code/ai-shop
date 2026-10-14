@@ -1,8 +1,11 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import ai.neargo.shop.trade.service.OrderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,8 +31,8 @@ import static org.mockito.Mockito.when;
 class WxPushEventServiceTest {
 
     private final OrderService orderService = mock(OrderService.class);
-    private final TradeMappers.SubOrderMapper subOrderMapper = mock(TradeMappers.SubOrderMapper.class);
-    private final TradeMappers.OrderMapper orderMapper = mock(TradeMappers.OrderMapper.class);
+    private final StoreOrderMapper subOrderMapper = mock(StoreOrderMapper.class);
+    private final PaymentMapper orderMapper = mock(PaymentMapper.class);
 
     private WxPushEventService service() {
         return new WxPushEventService(orderService, subOrderMapper, orderMapper, new ObjectMapper());

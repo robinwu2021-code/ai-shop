@@ -13,8 +13,8 @@ import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.user.UserProvisionPort;
 import ai.neargo.shop.spi.user.UserQueryPort;
@@ -39,8 +39,8 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
     private static final java.util.Set<String> PROXY_FULFILLMENTS = java.util.Set.of(
             Fulfillments.STORE_PICKUP, Fulfillments.NEIGHBOR_PICKUP, Fulfillments.STORE_VERIFY);
 
-    private final SubOrderMapper subOrderMapper;
-    private final StatusLogMapper statusLogMapper;
+    private final StoreOrderMapper subOrderMapper;
+    private final OrderStatusLogMapper statusLogMapper;
     private final OrderService orderService;
     private final GoodsQueryPort goodsPort;
     private final UserQueryPort userPort;
@@ -60,7 +60,7 @@ public class PlatformOrderServiceImpl implements PlatformOrderService {
      */
     private static final int PROXY_PAY_MINUTES = 30;
 
-    public PlatformOrderServiceImpl(SubOrderMapper subOrderMapper, StatusLogMapper statusLogMapper,
+    public PlatformOrderServiceImpl(StoreOrderMapper subOrderMapper, OrderStatusLogMapper statusLogMapper,
                                     OrderService orderService, GoodsQueryPort goodsPort,
                                     UserQueryPort userPort, UserProvisionPort userProvisionPort,
                                     ProxyLimitService proxyLimitService) {

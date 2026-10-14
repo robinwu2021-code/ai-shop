@@ -6,8 +6,8 @@ import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.UserQueryPort;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
-import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
@@ -31,13 +31,13 @@ import java.util.stream.Collectors;
 public class RefundSplitBackPortImpl implements RefundSplitBackPort {
 
     private final AfterSaleMapper afterSaleMapper;
-    private final StatusLogMapper statusLogMapper;
+    private final OrderStatusLogMapper statusLogMapper;
     private final AfterSaleService afterSaleService;
     private final MerchantQueryPort merchantPort;
     private final UserQueryPort userPort;
     private final ObjectMapper json;
 
-    public RefundSplitBackPortImpl(AfterSaleMapper afterSaleMapper, StatusLogMapper statusLogMapper,
+    public RefundSplitBackPortImpl(AfterSaleMapper afterSaleMapper, OrderStatusLogMapper statusLogMapper,
                                    AfterSaleService afterSaleService, MerchantQueryPort merchantPort,
                                    UserQueryPort userPort, ObjectMapper json) {
         this.afterSaleMapper = afterSaleMapper;

@@ -6,8 +6,8 @@ import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.order.aftersale.AfterSaleSlots;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
@@ -28,13 +28,13 @@ import java.util.List;
 public class OrderReceiptCompleterImpl implements OrderReceiptCompleter {
 
     private final StatusCasMapper cas;
-    private final StatusLogMapper logs;
+    private final OrderStatusLogMapper logs;
     private final AfterSaleMapper afterSales;
     private final ShipmentTraceQueryPort traces;
     private final TradeStatusWriter writer;
     private final AfterSaleService afterSaleService;
 
-    public OrderReceiptCompleterImpl(StatusCasMapper cas, StatusLogMapper logs, AfterSaleMapper afterSales,
+    public OrderReceiptCompleterImpl(StatusCasMapper cas, OrderStatusLogMapper logs, AfterSaleMapper afterSales,
                                      ShipmentTraceQueryPort traces, TradeStatusWriter writer,
                                      AfterSaleService afterSaleService) {
         this.cas = cas;

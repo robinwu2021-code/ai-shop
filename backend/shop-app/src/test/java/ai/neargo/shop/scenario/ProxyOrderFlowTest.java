@@ -1,5 +1,11 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+
 import ai.neargo.shop.marketing.attribution.entity.MktAttribution;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
@@ -49,11 +55,11 @@ class ProxyOrderFlowTest {
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+    private PaymentMapper orderMapper;
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper statusLogMapper;
+    private OrderStatusLogMapper statusLogMapper;
     @Autowired
     private BaseMapper<MktAttribution> attributionMapper;
 

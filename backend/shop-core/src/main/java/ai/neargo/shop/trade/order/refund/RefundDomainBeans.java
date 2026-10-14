@@ -1,8 +1,8 @@
 package ai.neargo.shop.trade.order.refund;
 
 import ai.neargo.shop.spi.settle.SettlePort;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.mapper.AfterSaleItemMapper;
 import ai.neargo.shop.trade.order.mapper.RefundLedgerMapper;
 import ai.neargo.shop.trade.order.refund.policy.AfterSaleWindowPolicy;
@@ -43,7 +43,7 @@ public class RefundDomainBeans {
     }
 
     @Bean
-    public RefundableQuery refundableQuery(OrderItemMapper items, OrderMapper orders, AfterSaleWindowPolicy window) {
+    public RefundableQuery refundableQuery(OrderItemMapper items, PaymentMapper orders, AfterSaleWindowPolicy window) {
         return new RefundableQuery(new MybatisRefundSourceStore(items, orders),
                 new RefundableViewFactory(window, new DefaultChannelRefundCapability()));
     }

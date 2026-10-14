@@ -5,15 +5,15 @@ import ai.neargo.shop.spi.trade.SettleSourcePort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
-import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.entity.OrdExpressPickup;
-import ai.neargo.shop.trade.mapper.TradeMappers.ExpressPickupMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.ExpressPickupMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -24,10 +24,10 @@ import java.util.stream.Collectors;
 @Component
 public class SettleSourcePortImpl implements SettleSourcePort {
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
-    private final OrderMapper orderMapper;
-    private final StatusLogMapper statusLogMapper;
+    private final PaymentMapper orderMapper;
+    private final OrderStatusLogMapper statusLogMapper;
     private final AfterSaleMapper afterSaleMapper;
 
     /**
@@ -38,8 +38,8 @@ public class SettleSourcePortImpl implements SettleSourcePort {
      */
     private final ExpressPickupMapper expressPickupMapper;
 
-    public SettleSourcePortImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
-                                OrderMapper orderMapper, StatusLogMapper statusLogMapper,
+    public SettleSourcePortImpl(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+                                PaymentMapper orderMapper, OrderStatusLogMapper statusLogMapper,
                                 AfterSaleMapper afterSaleMapper,
                                 ExpressPickupMapper expressPickupMapper) {
         this.subOrderMapper = subOrderMapper;

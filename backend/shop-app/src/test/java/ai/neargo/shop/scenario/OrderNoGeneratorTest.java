@@ -9,7 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import ai.neargo.shop.trade.mapper.TradeMappers.SeqMapper;
+import ai.neargo.shop.trade.order.mapper.SeqMapper;
 
 import java.util.Collections;
 import java.util.HashSet;

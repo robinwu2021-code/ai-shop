@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.PayModes;
@@ -17,7 +19,6 @@ import ai.neargo.shop.pay.mapper.SettleMappers;
 import ai.neargo.shop.spi.user.QualificationPort;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.service.OrderService;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,7 +76,7 @@ class OfflineSettleFlowTest {
     @Autowired
     private SettleMappers.PaymentMapper paymentMapper;
     @Autowired
-    private TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
     @Autowired
     private ProductMappers.GoodsMapper goodsMapper;
     @Autowired

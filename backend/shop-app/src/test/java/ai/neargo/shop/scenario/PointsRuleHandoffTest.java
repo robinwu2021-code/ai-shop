@@ -1,10 +1,13 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.PointsService;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import ai.neargo.shop.spi.settle.PointsPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,9 +47,9 @@ class PointsRuleHandoffTest {
     @Autowired
     private PointsService points;
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+    private PaymentMapper orderMapper;
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
     @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper merchantMapper;
     @Autowired

@@ -11,7 +11,7 @@ import ai.neargo.shop.trade.order.machine.aftersale.AfterSaleStatus;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
 import ai.neargo.shop.trade.order.machine.order.OrderMachine;
@@ -45,7 +45,7 @@ public class TradeStatusWriter {
     private final StateTransitionGate gate;
     private final StatusCasMapper casMapper;
 
-    public TradeStatusWriter(StatusCasMapper casMapper, StatusLogMapper logMapper) {
+    public TradeStatusWriter(StatusCasMapper casMapper, OrderStatusLogMapper logMapper) {
         this.casMapper = casMapper;
         this.gate = new StateTransitionGate(new MybatisStatusStore(casMapper), new StatusLogStore(logMapper),
                 SignalPublisher.NONE);

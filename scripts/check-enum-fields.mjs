@@ -214,7 +214,7 @@ export const FIELDS = [
   {
     concept: "订单状态（下发口径）",
     field: "ord_sub_order.status → OrderStatusView",
-    backend: { javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/service/OrderStatusView.java" },
+    backend: { javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/order/policy/LegacyOrderStatusView.java" },
     clients: [
       { file: SHARED_TYPES, type: "OrderStatus" },
       { file: "ops-web/lib/types/order.ts", type: "OrderStatus" },

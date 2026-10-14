@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+
 import ai.neargo.shop.spi.fulfillment.FreightPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.PickupQueryPort;
@@ -46,10 +48,10 @@ import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.TrdCartItem;
 import ai.neargo.shop.trade.mapper.TradeMappers.CartItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.stereotype.Service;
@@ -97,8 +99,8 @@ public class OrderServiceImpl implements OrderService {
     private static final String CURRENCY_CNY = "CNY";
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    private final OrderMapper orderMapper;
-    private final SubOrderMapper subOrderMapper;
+    private final PaymentMapper orderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final ai.neargo.shop.spi.user.AdmissionPort admissionPort;
     private final OrderItemMapper itemMapper;
     /**
@@ -132,10 +134,10 @@ public class OrderServiceImpl implements OrderService {
      */
     private final ai.neargo.shop.spi.product.PointsRulePort pointsRulePort;
     private final SettlePort settlePort;
-    private final StatusLogMapper statusLogMapper;
+    private final OrderStatusLogMapper statusLogMapper;
 
     /** 自动确认收货要跳过争议中的单（AFTER_SALE_OPEN），判据与结算入批同一份。 */
-    private final ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper;
+    private final AfterSaleMapper afterSaleMapper;
     private final PickupQueryPort pickupPort;
     /** 自提点匹配的规则在聚落域一处（归属链 + 距离），这里只负责把商家的许可点喂进去 */
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
@@ -307,7 +309,7 @@ public class OrderServiceImpl implements OrderService {
                             ai.neargo.shop.spi.product.ReviewQueryPort reviewQueryPort,
                             AfterSaleService afterSaleService,
                             ai.neargo.shop.trade.service.AfterSaleRuleService afterSaleRuleService,
-                            OrderMapper orderMapper, SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+                            PaymentMapper orderMapper, StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                             ai.neargo.shop.spi.product.PayModePort payModeService,
                             CartItemMapper cartMapper, GoodsQueryPort goodsPort, StockPort stockPort,
                             MerchantQueryPort merchantPort,
@@ -317,8 +319,8 @@ public class OrderServiceImpl implements OrderService {
                             ai.neargo.shop.spi.pay.PayChannelMasterPort payChannelMasterPort,
                             ai.neargo.shop.spi.product.PointsRulePort pointsRulePort,
                             SettlePort settlePort,
-                            StatusLogMapper statusLogMapper,
-                            ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper,
+                            OrderStatusLogMapper statusLogMapper,
+                            AfterSaleMapper afterSaleMapper,
                             PickupQueryPort pickupPort,
                             ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                             ai.neargo.shop.spi.user.UserQueryPort userPort,

@@ -1,5 +1,11 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+
 import ai.neargo.shop.portal.internal.AiDataEndpoint;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
@@ -9,7 +15,6 @@ import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,11 +62,11 @@ class AiDataEndpointTest {
     @Autowired
     private ObjectMapper json;
     @Autowired
-    private TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
     @Autowired
-    private TradeMappers.OrderItemMapper itemMapper;
+    private OrderItemMapper itemMapper;
     @Autowired
-    private TradeMappers.AfterSaleMapper afterSaleMapper;
+    private AfterSaleMapper afterSaleMapper;
     @Autowired
     private ProductMappers.SkuMapper skuMapper;
     @Autowired

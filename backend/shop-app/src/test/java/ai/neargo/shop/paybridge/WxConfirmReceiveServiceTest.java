@@ -1,5 +1,9 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.ShippingUploadMapper;
+
 import ai.neargo.shop.fulfillment.service.LogisticsService;
 import ai.neargo.shop.fulfillment.service.LogisticsService.SignedShipment;
 import ai.neargo.shop.spi.trade.WxShippingPort;
@@ -7,7 +11,6 @@ import ai.neargo.shop.spi.trade.WxShippingPort.ConfirmCmd;
 import ai.neargo.shop.spi.trade.WxShippingPort.Result;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.TrdShippingUpload;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,8 +34,8 @@ class WxConfirmReceiveServiceTest {
 
     private final LogisticsService logistics = mock(LogisticsService.class);
     private final WxShippingPort shipping = mock(WxShippingPort.class);
-    private final TradeMappers.ShippingUploadMapper uploadMapper = mock(TradeMappers.ShippingUploadMapper.class);
-    private final TradeMappers.SubOrderMapper subOrderMapper = mock(TradeMappers.SubOrderMapper.class);
+    private final ShippingUploadMapper uploadMapper = mock(ShippingUploadMapper.class);
+    private final StoreOrderMapper subOrderMapper = mock(StoreOrderMapper.class);
 
     private WxConfirmReceiveService service() {
         return new WxConfirmReceiveService(logistics, shipping, uploadMapper, subOrderMapper);

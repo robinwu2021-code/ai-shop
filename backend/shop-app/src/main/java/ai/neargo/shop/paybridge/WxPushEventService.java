@@ -1,8 +1,11 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import ai.neargo.shop.trade.service.OrderService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -43,12 +46,12 @@ public class WxPushEventService {
             List.of("merchant_trade_no", "out_trade_no", "transaction_id");
 
     private final OrderService orderService;
-    private final TradeMappers.SubOrderMapper subOrderMapper;
-    private final TradeMappers.OrderMapper orderMapper;
+    private final StoreOrderMapper subOrderMapper;
+    private final PaymentMapper orderMapper;
     private final ObjectMapper json;
 
-    public WxPushEventService(OrderService orderService, TradeMappers.SubOrderMapper subOrderMapper,
-                              TradeMappers.OrderMapper orderMapper, ObjectMapper json) {
+    public WxPushEventService(OrderService orderService, StoreOrderMapper subOrderMapper,
+                              PaymentMapper orderMapper, ObjectMapper json) {
         this.orderService = orderService;
         this.subOrderMapper = subOrderMapper;
         this.orderMapper = orderMapper;

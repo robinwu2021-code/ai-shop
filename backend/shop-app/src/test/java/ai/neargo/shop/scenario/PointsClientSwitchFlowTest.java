@@ -1,5 +1,9 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.common.PayScenes;
@@ -13,7 +17,6 @@ import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,9 +72,9 @@ class PointsClientSwitchFlowTest {
     @Autowired
     private SettleMappers.PointsAccountMapper accountMapper;
     @Autowired
-    private TradeMappers.OrderMapper orderMapper;
+    private PaymentMapper orderMapper;
     @Autowired
-    private TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
     @Autowired
     private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapper;
     @Autowired

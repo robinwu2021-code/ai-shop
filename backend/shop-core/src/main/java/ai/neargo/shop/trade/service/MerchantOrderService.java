@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service;
 
+import ai.neargo.shop.trade.order.policy.FulfillStage;
+
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.OrderVO;
 

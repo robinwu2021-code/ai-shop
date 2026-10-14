@@ -1,12 +1,15 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.WxLogisticsTypes;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.TrdShippingUpload;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -30,12 +33,12 @@ import java.util.List;
 @Component
 public class WxShippingUploadResolver {
 
-    private final TradeMappers.SubOrderMapper subOrderMapper;
-    private final TradeMappers.OrderItemMapper itemMapper;
+    private final StoreOrderMapper subOrderMapper;
+    private final OrderItemMapper itemMapper;
     private final PaymentLedgerService ledger;
 
-    public WxShippingUploadResolver(TradeMappers.SubOrderMapper subOrderMapper,
-                                    TradeMappers.OrderItemMapper itemMapper,
+    public WxShippingUploadResolver(StoreOrderMapper subOrderMapper,
+                                    OrderItemMapper itemMapper,
                                     PaymentLedgerService ledger) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;

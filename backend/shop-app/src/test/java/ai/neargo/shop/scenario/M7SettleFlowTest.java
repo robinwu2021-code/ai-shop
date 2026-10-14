@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
 import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
@@ -221,7 +223,7 @@ class M7SettleFlowTest {
     }
 
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+    private PaymentMapper orderMapper;
 
     @Autowired
     private ai.neargo.shop.paybridge.OrderPaidReconciler reconciler;

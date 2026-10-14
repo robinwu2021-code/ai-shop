@@ -3,7 +3,7 @@ package ai.neargo.shop.scenario;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.service.OrderService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
@@ -52,7 +52,7 @@ class CloseRaceReleaseTest {
     @Autowired
     private OrderService orderService;
     @Autowired
-    private OrderMapper orderMapper;
+    private PaymentMapper orderMapper;
     @Autowired
     private JdbcTemplate jdbc;
     @MockitoSpyBean

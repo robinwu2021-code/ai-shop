@@ -1,13 +1,15 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
@@ -51,13 +53,13 @@ class SelfOperatedAfterSaleFlowTest {
     private MchEntityMapper entityMapper;
 
     @Autowired
-    private SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
 
     @Autowired
     private AfterSaleMapper afterSaleMapper;
 
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper itemMapper;
+    private OrderItemMapper itemMapper;
 
     @Test
     @DisplayName("★★ 归集（平台是销售主体）→ 直接 ARBITRATING")

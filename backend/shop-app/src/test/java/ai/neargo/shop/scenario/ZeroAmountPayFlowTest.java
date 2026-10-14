@@ -1,12 +1,15 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.PayChannels;
 import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.mapper.SettleMappers;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import ai.neargo.shop.trade.service.OrderService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
@@ -39,9 +42,9 @@ class ZeroAmountPayFlowTest {
     @Autowired
     private OrderService orderService;
     @Autowired
-    private TradeMappers.OrderMapper orderMapper;
+    private PaymentMapper orderMapper;
     @Autowired
-    private TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
     @Autowired
     private SettleMappers.PaymentMapper paymentMapper;
 

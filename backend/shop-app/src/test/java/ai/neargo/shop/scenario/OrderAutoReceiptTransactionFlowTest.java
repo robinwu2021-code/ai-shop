@@ -3,7 +3,7 @@ package ai.neargo.shop.scenario;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.job.OrderAutoReceiptJob;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,7 +36,7 @@ class OrderAutoReceiptTransactionFlowTest {
     @Autowired
     private JdbcTemplate jdbc;
     @MockitoSpyBean
-    private StatusLogMapper logs;
+    private OrderStatusLogMapper logs;
     @Autowired
     @Qualifier("transactionManager")
     private PlatformTransactionManager transactions;

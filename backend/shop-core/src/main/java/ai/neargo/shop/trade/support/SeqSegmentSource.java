@@ -1,6 +1,6 @@
 package ai.neargo.shop.trade.support;
 
-import ai.neargo.shop.trade.mapper.TradeMappers.SeqMapper;
+import ai.neargo.shop.trade.order.mapper.SeqMapper;
 import ai.neargo.common.data.scope.DataScopeContext;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;

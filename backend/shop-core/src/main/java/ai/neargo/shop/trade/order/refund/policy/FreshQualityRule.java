@@ -1,8 +1,8 @@
 package ai.neargo.shop.trade.order.refund.policy;
 
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.trade.service.AfterSaleRules;
-import ai.neargo.shop.trade.service.FulfillStage;
+import ai.neargo.shop.trade.order.policy.AfterSaleRules;
+import ai.neargo.shop.trade.order.policy.FulfillStage;
 
 import java.util.Optional;
 

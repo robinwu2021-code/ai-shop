@@ -6,7 +6,7 @@ import java.util.List;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.service.MerchantOrderService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -44,7 +44,7 @@ class OrderListDateRangeTest {
     private MerchantOrderService orders;
 
     @Autowired
-    private SubOrderMapper subOrders;
+    private StoreOrderMapper subOrders;
 
     private final List<Long> seeded = new ArrayList<>();
 

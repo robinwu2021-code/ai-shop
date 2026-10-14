@@ -1,5 +1,11 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.fulfillment.service.LogisticsService;
 import ai.neargo.shop.fulfillment.service.LogisticsService.WxBindTarget;
@@ -11,7 +17,6 @@ import ai.neargo.shop.spi.logistics.TraceDisplayPort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,15 +49,15 @@ public class WxWaybillBindService {
     private final LogisticsService logistics;
     private final TraceDisplayPort displayPort;
     private final PaymentLedgerService ledger;
-    private final TradeMappers.SubOrderMapper subOrderMapper;
-    private final TradeMappers.OrderMapper orderMapper;
-    private final TradeMappers.OrderItemMapper itemMapper;
+    private final StoreOrderMapper subOrderMapper;
+    private final PaymentMapper orderMapper;
+    private final OrderItemMapper itemMapper;
 
     public WxWaybillBindService(LogisticsService logistics, TraceDisplayPort displayPort,
                                 PaymentLedgerService ledger,
-                                TradeMappers.SubOrderMapper subOrderMapper,
-                                TradeMappers.OrderMapper orderMapper,
-                                TradeMappers.OrderItemMapper itemMapper) {
+                                StoreOrderMapper subOrderMapper,
+                                PaymentMapper orderMapper,
+                                OrderItemMapper itemMapper) {
         this.logistics = logistics;
         this.displayPort = displayPort;
         this.ledger = ledger;

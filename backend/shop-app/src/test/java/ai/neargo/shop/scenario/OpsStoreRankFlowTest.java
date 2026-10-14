@@ -2,7 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,7 +40,7 @@ class OpsStoreRankFlowTest {
     private ObjectMapper json;
 
     @Autowired
-    private SubOrderMapper subOrders;
+    private StoreOrderMapper subOrders;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

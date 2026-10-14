@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
 import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.entity.StlReconDiff;
 import ai.neargo.shop.pay.service.ReconService;
@@ -43,7 +45,7 @@ class ReconFlowTest {
     private ai.neargo.shop.pay.service.ReconService reconService;
 
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+    private PaymentMapper orderMapper;
 
     /** 本类造的订单：**共享种子，跑完要清** —— 不清的话后面的用例会读到它 */
     private final java.util.List<String> createdOrders = new java.util.ArrayList<>();

@@ -3,8 +3,8 @@ package ai.neargo.shop.trade.port;
 import ai.neargo.shop.spi.trade.ReviewableOrderPort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -21,10 +21,10 @@ import java.util.Optional;
 @Component
 public class ReviewableOrderPortImpl implements ReviewableOrderPort {
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
 
-    public ReviewableOrderPortImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper) {
+    public ReviewableOrderPortImpl(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;
     }

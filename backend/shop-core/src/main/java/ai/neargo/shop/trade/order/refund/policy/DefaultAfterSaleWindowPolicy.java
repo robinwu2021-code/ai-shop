@@ -1,6 +1,6 @@
 package ai.neargo.shop.trade.order.refund.policy;
 
-import ai.neargo.shop.trade.service.AfterSaleRules;
+import ai.neargo.shop.trade.order.policy.AfterSaleRules;
 
 /**
  * 完成后 {@code days} 天；质量类原因（损坏 / 质量 / 过期）{@code qualityDays} 天。

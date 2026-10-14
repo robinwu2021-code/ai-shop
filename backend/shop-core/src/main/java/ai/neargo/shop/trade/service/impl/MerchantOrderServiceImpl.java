@@ -1,5 +1,9 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+
 import ai.neargo.shop.trade.service.MerchantOrderService;
 import ai.neargo.shop.spi.user.UserQueryPort;
 
@@ -13,7 +17,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 import ai.neargo.shop.trade.service.OrderStatusView;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
@@ -21,8 +25,8 @@ import ai.neargo.shop.trade.order.machine.order.OrderEvent;
 import ai.neargo.shop.trade.order.machine.order.OrderStatus;
 import ai.neargo.shop.trade.order.statemachine.Actor;
 import org.springframework.transaction.annotation.Transactional;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -38,11 +42,11 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     private static final org.slf4j.Logger LOG =
             org.slf4j.LoggerFactory.getLogger(MerchantOrderServiceImpl.class);
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
-    private final StatusLogMapper statusLogMapper;
+    private final OrderStatusLogMapper statusLogMapper;
     /** 社区在**主单**上，子单没有 —— 运营按社区做数据域隔离，所以平台侧要 join 出来 */
-    private final ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+    private final PaymentMapper orderMapper;
     /**
      * 确认收款要复用它的 {@code markPaid}。
      *
@@ -57,7 +61,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     private final ShipmentTraceQueryPort shipmentTracePort;
 
     /** 日结的退款侧要它：退款按 refundedAt 归属，而那个时间只有售后单上有 */
-    private final ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper;
+    private final AfterSaleMapper afterSaleMapper;
 
     /**
      * 微信发货信息录入。setter 注入：{@code shop-core} 单独跑测试时没有 paybridge，
@@ -89,11 +93,11 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         this.statusWriter = statusWriter;
     }
 
-    public MerchantOrderServiceImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
-                                    ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper,
+    public MerchantOrderServiceImpl(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+                                    PaymentMapper orderMapper,
                                     ai.neargo.shop.trade.service.OrderService orderService,
-                                    StatusLogMapper statusLogMapper, UserQueryPort userPort,
-                                    ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper,
+                                    OrderStatusLogMapper statusLogMapper, UserQueryPort userPort,
+                                    AfterSaleMapper afterSaleMapper,
                                     ShipmentTraceQueryPort shipmentTracePort) {
         this.afterSaleMapper = afterSaleMapper;
         this.orderService = orderService;

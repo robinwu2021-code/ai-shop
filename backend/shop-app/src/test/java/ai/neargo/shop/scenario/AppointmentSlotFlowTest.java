@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -12,7 +14,6 @@ import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.spi.user.AppointmentSlotPort;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.user.entity.UsrAddress;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -80,7 +81,7 @@ class AppointmentSlotFlowTest {
     @Autowired
     private ProductMappers.GoodsMapper goodsMapper;
     @Autowired
-    private TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
     @Autowired
     private ai.neargo.shop.user.mapper.UserMappers.AddressMapper addressMapper;
 

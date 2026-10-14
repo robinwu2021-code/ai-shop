@@ -1,11 +1,12 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.trade.order.mapper.ShippingUploadMapper;
+
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import ai.neargo.shop.common.WxLogisticsTypes;
 import ai.neargo.shop.spi.trade.WxShippingPort;
 import ai.neargo.shop.trade.entity.TrdShippingUpload;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import ai.neargo.common.data.scope.DataScopeContext;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -40,13 +41,13 @@ public class WxShippingUploadService {
      */
     private static final int MAX_ATTEMPTS = 8;
 
-    private final TradeMappers.ShippingUploadMapper mapper;
+    private final ShippingUploadMapper mapper;
     private final WxShippingPort shipping;
 
     /** 上传成功后告诉物流（换 waybill_token 的前置条件之一，TDD-物流模块 §2.4.3） */
     private final OutboxEventBus events;
 
-    public WxShippingUploadService(TradeMappers.ShippingUploadMapper mapper, WxShippingPort shipping,
+    public WxShippingUploadService(ShippingUploadMapper mapper, WxShippingPort shipping,
                                    OutboxEventBus events) {
         this.mapper = mapper;
         this.shipping = shipping;

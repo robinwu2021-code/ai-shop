@@ -3,7 +3,7 @@ package ai.neargo.shop.trade.port;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.trade.GroupOrderPort;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -18,10 +18,10 @@ public class GroupOrderPortImpl implements GroupOrderPort {
 
     private static final Logger log = LoggerFactory.getLogger(GroupOrderPortImpl.class);
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final AfterSaleService afterSaleService;
 
-    public GroupOrderPortImpl(SubOrderMapper subOrderMapper, AfterSaleService afterSaleService) {
+    public GroupOrderPortImpl(StoreOrderMapper subOrderMapper, AfterSaleService afterSaleService) {
         this.subOrderMapper = subOrderMapper;
         this.afterSaleService = afterSaleService;
     }

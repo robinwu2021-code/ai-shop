@@ -1,4 +1,4 @@
-package ai.neargo.shop.trade.service;
+package ai.neargo.shop.trade.order.policy;
 
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 
