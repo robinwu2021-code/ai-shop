@@ -298,12 +298,9 @@ shop:
   # ⚠️ 别给它的 Map/List 字段（如 probe-surfaces）挂 ${ENV:} 空串：空串绑不进 Map，整个 context 起不来。
   logistics:
     wx-bind:
-      # 微信 waybill_token 什么时候换（TDD-物流模块 M6）：
-      #   on-picked-up（代码默认）= 已上报微信 ∧ 已揽收 才换。揽收前微信一定查不到（9300559），盲调只耗次数；
-      #   on-ship               = 发货上报后**立刻**换并可查。用户 2026-10-10：「B 端提交订单后应立即查一次物流单状态」。
-      # 代价写明白：商家在揽收前点发货的那些单，这一次调用必然 9300559 —— 不白丢，
-      # 揽收推送到达时 WaybillProgress 会再发一次 WxBindRequested 补上（有兜底，所以敢开）。
-      trigger: ${SHOP_LOGISTICS_WXBIND_TRIGGER:on-picked-up}
+      # 微信查询组件 token 在发货信息上报成功后立即尝试绑定；未收录（9300559）
+      # 保持 WAITING，后续揽收事件再触发。物流消息 follow_waybill 的 token 单独存放。
+      trigger: ${SHOP_LOGISTICS_WXBIND_TRIGGER:on-ship}
 
   # 发货触达收件人与免登录看件（TDD-收件人物流触达与分享裂变）。
   ship:

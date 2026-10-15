@@ -52,6 +52,9 @@ public class WxShippingUploadService {
             if (!Objects.equals(ShippingUploadSnapshot.parse(existing.getSourceSnapshot(), json), snapshot)) {
                 if (!queue.refresh(existing, frozen)) { throw BizException.of(ErrorCode.CONFLICT); }
             }
+            if (!TrdShippingUpload.SUCCESS.equals(existing.getStatus())) {
+                events.publish(new WxShippingUploadRequested(orderNo));
+            }
             return;
         }
         TrdShippingUpload row = new TrdShippingUpload();
@@ -62,6 +65,7 @@ public class WxShippingUploadService {
         row.setStatus(TrdShippingUpload.PENDING);
         row.setAttempts(0);
         queue.insert(row);
+        events.publish(new WxShippingUploadRequested(orderNo));
     }
 
     /** Explicit protected Ops retry retains the same payment row and refuses exhausted channel correction. */

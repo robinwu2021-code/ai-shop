@@ -104,7 +104,7 @@ public class LogisticsProperties {
          * {@code on-picked-up}（默认）：已上传微信 ∧ 已揽收 才换 —— 揽收前微信一定查不到（9300559），盲调只耗次数；
          * {@code on-ship}：上传了就换，留着验证「微信收录其实很快」。
          */
-        private String trigger = "on-picked-up";
+        private String trigger = "on-ship";
 
         public boolean onShip() {
             return "on-ship".equalsIgnoreCase(trigger);
