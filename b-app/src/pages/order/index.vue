@@ -83,6 +83,34 @@ const canCorrectWaybill = computed(() => order.value?.fulfillment === FULFILLMEN
 const carrierIdx = ref(-1);
 const carriers = EXPRESS_COMPANIES;
 const busy = ref(false);
+const refreshingTrace = ref(false);
+
+async function refreshTrace() {
+  const current = order.value;
+  if (!current?.expressNo || current.status !== "FULFILLING" || refreshingTrace.value || busy.value) return;
+  if (current.logisticsSync?.status === "DELIVERED") {
+    uni.showToast({ title: String(t("order.traceAlreadyDelivered")), icon: "none" });
+    return;
+  }
+  refreshingTrace.value = true;
+  busy.value = true;
+  try {
+    const trace = await api.mOrderTrace(current.orderNo, true);
+    const latest = await api.mOrderDetail(current.orderNo);
+    order.value = latest;
+    fullTrace.value = trace;
+    failed.value = false;
+    const key = latest.status !== current.status ? "order.traceOrderUpdated"
+      : latest.logisticsSync?.status !== current.logisticsSync?.status ? "order.traceWaybillUpdated"
+      : trace?.refreshable ? "order.traceRefreshUnchanged" : "order.traceRefreshUnavailable";
+    uni.showToast({ title: String(t(key)), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    refreshingTrace.value = false;
+    busy.value = false;
+  }
+}
 
 /** 快递单且已付款 → 该发货 */
 /*
@@ -721,6 +749,10 @@ onPullDownRefresh(async () => {
           {{ $t("order.logisticsStatus") }}：{{ currentSyncLabel }}{{ currentSync.pending && currentSync.status !== "PENDING" ? ` · ${$t("order.syncPending")}` : "" }}
           {{ currentSync.reason ? ` · ${currentSync.reason}` : "" }}
         </text>
+        <view v-if="order.fulfillment === FULFILLMENT.EXPRESS && order.status === 'FULFILLING'"
+          class="sh-btn sh-btn--muted sh-mt-sm" @tap="refreshTrace">
+          {{ $t(refreshingTrace ? "order.traceRefreshing" : "order.traceRefresh") }}
+        </view>
         <view v-if="canCorrectWaybill && !correctingWaybill" class="sh-btn sh-btn--muted sh-mt-sm" @tap="startWaybillCorrection">
           {{ $t("order.correctWaybill") }}
         </view>
