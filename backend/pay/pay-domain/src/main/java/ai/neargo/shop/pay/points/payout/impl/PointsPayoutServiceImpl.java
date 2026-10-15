@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** Locks each payable source once and persists the money intent without performing an external operation. */
 @Service
@@ -120,7 +121,9 @@ public class PointsPayoutServiceImpl implements PointsPayoutService {
         }
         String state=(String)head.get("state");
         if (terminal(state)) {
-            if (result.status()!=FundsStatus.UNKNOWN && result.status()!=old.result().status()) {
+            if (result.status()!=FundsStatus.UNKNOWN && (result.status()!=old.result().status()
+                    || (result.status()==FundsStatus.SUCCEEDED
+                    && !Objects.equals(result.evidenceNo(),old.result().evidenceNo())))) {
                 throw new IllegalArgumentException("POINTS_FUNDS_RESULT_CONFLICT");
             }
             return outcome(old,true);

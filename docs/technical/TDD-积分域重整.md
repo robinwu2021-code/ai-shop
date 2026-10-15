@@ -1161,3 +1161,9 @@ PointsFundsGateway和PayFundsOperations新增专用COLLECTION_REVERSAL及原补�
 设计→实现：4个新增补偿接口/impl；修改FundsGateway、native FundsOperations/Adapter、RefundSnapshot/Prepare与Abort；2个直接相关测试类；runner及工具测试；本文。没有新增DDL、运营端、订单调用或生产门店数据。SQL方言、设计图产物检查及diff检查通过。
 
 边界：源侧现金终态围栏和售后补偿接线仍在C阶段，内部查账不能替代源侧禁止新现金指令的并发控制；COMPENSATION_FAILED待办、审计与人工处置装配归A5/B4。A1.4付款/退款竞争、A2定期结算及B阶段仍未完成，不将A1或整个积分模块记为完成。
+
+### A1.4 第一检查点：付款成功回执的证据绑定（2026-10-15）
+
+已完成一项付款/退款竞争保护：同一付款ticket在SUCCEEDED终态重放时，除了状态和金额，还须保持证据编号一致；证据缺失也报POINTS_FUNDS_RESULT_CONFLICT。此保护防止后续退款依据已经支付的头寸处理时，同票据的不同成功证据被误认为同一笔实际付款。UNKNOWN重放和明确失败原逻辑不变。
+
+PointsPayoutPreparationTest#successful_payout_rejects_a_different_evidence_for_the_same_ticket先RED：不同证据被接受；补测缺失证据先RED：空指针错误，随后修正。最终仅付款测试类17/0，`20261015T102811Z-375cc18c`，timeout=0，慢用例0。首次编译因测试缺FundsResult import出错，没有计作业务RED。尚未覆盖付款与退款交错的所有顺序、不同支付状态下的冻结和崩溃恢复，A1.4保持开发中。

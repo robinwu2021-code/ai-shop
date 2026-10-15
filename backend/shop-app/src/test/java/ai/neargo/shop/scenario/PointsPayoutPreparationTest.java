@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsResult;
+
 import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.pay.points.app.PointsSettlementHook;
@@ -172,6 +174,24 @@ class PointsPayoutPreparationTest {
                 .isZero();
         assertThat(jdbc().queryForObject("SELECT state FROM pts_redeem_position WHERE position_no=?",String.class,
                 c.positionIds().getFirst())).isEqualTo("PAID");
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_fund_evidence WHERE evidence_no=?"
+                + " AND used_voucher_no IS NOT NULL",Long.class,"TEST-PAID:"+ticket.ticketNo())).isEqualTo(1);
+    }
+
+    @Test
+    void successful_payout_rejects_a_different_evidence_for_the_same_ticket() {
+        PayoutCommand c=fixture(true);
+        PayoutTicket ticket=begin(c);
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.UNKNOWN);
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.SUCCEEDED);
+        var changed=new FundsResult(ticket.ticketNo(),FundsStatus.SUCCEEDED,"OTHER_EVIDENCE",30,null);
+        assertThatThrownBy(() -> context.getBean(PointsPayoutService.class).acceptResult(changed))
+                .hasMessage("POINTS_FUNDS_RESULT_CONFLICT");
+        var missing=new FundsResult(ticket.ticketNo(),FundsStatus.SUCCEEDED,null,30,null);
+        assertThatThrownBy(() -> context.getBean(PointsPayoutService.class).acceptResult(missing))
+                .hasMessage("POINTS_FUNDS_RESULT_CONFLICT");
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",Long.class,
+                c.typeCode())).isZero();
         assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_fund_evidence WHERE evidence_no=?"
                 + " AND used_voucher_no IS NOT NULL",Long.class,"TEST-PAID:"+ticket.ticketNo())).isEqualTo(1);
     }
