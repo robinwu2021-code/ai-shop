@@ -50,6 +50,10 @@ const updateOutcome = (outcome: string) => String(t(outcome === "ADVANCED" ? "or
       : outcome === "NO_RESULT" ? "order.updateNoResult"
         : outcome === "THROTTLED" ? "order.updateThrottled" : "order.updateFailed"));
 const shownTrace = computed(() => fullTrace.value ?? order.value?.trace ?? null);
+const signedBeforeOrder = computed(() => order.value?.status === "FULFILLING"
+  && currentSync.value?.status === "DELIVERED"
+  && !!shownTrace.value?.signedAt && !!order.value?.createdAt
+  && shownTrace.value.signedAt < order.value.createdAt);
 /** 物流详情弹框。主页面只留一行摘要，这一行点开才是地图与全部节点 */
 const traceOpen = ref(false);
 /** 摘要行上的状态词。与步骤条共用 shared 里那一份判定，别在两处各写一个三分支 */
@@ -759,6 +763,10 @@ onPullDownRefresh(async () => {
         <text v-if="currentSync" class="txt-caption sh-muted sh-mt-sm">
           {{ $t("order.logisticsStatus") }}：{{ currentSyncLabel }}{{ currentSync.pending && currentSync.status !== "PENDING" ? ` · ${$t("order.syncPending")}` : "" }}
           {{ currentSync.reason ? ` · ${currentSync.reason}` : "" }}
+        </text>
+        <text v-if="order.status === 'FULFILLING' && currentSync?.status === 'DELIVERED'"
+          class="txt-caption sh-muted sh-mt-sm">
+          {{ $t(signedBeforeOrder ? "order.signedBeforeOrder" : "order.traceAwaitingProof") }}
         </text>
         <view v-if="order.fulfillment === FULFILLMENT.EXPRESS && order.status === 'FULFILLING'"
           class="sh-btn sh-btn--muted sh-mt-sm" @tap="refreshTrace">

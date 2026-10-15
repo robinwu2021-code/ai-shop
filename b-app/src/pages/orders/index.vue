@@ -67,6 +67,14 @@ function statusText(o: Order): string {
     // 自送单在路上说「配送中」更准；自提/到店核销说「待核销」；快递才是「已发货」
     if (f === FULFILLMENT.DELIVERY) return t("order.delivering");
     if (PICKUP_LIKE.has(f)) return t("home.cell.toVerify");
+    if (f === FULFILLMENT.EXPRESS) {
+      const progress = o.logisticsSync?.status;
+      if (progress === "DELIVERED") return t("order.signedPendingReview");
+      if (progress === "PICKED_UP" || progress === "IN_TRANSIT"
+          || progress === "DELIVERING" || progress === "EXCEPTION") {
+        return t(traceStatusKey({ status: progress, nodes: [] }));
+      }
+    }
     return t("order.statusSHIPPED");
   }
   return t(`order.status${o.status}`);

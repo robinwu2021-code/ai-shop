@@ -704,6 +704,8 @@ export default {
     statusWAIT_PAY: "待付款",
     statusPAID: "待发货",
     statusSHIPPED: "已发货",
+    signedPendingReview: "签收待核实",
+    signedBeforeOrder: "此运单在本单下单前已签收，不能自动完成交易；请核对并更正运单号。",
     delivering: "配送中",
     statusARRIVED: "待核销",
     statusCOMPLETED: "已完成",
