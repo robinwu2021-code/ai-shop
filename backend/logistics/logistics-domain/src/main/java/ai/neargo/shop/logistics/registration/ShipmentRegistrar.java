@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Isolation;
 import ai.neargo.shop.logistics.domain.WaybillStatus;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
 import ai.neargo.shop.logistics.entity.LgsWaybillNode;
-import ai.neargo.shop.logistics.event.WaybillRegistered;
+import ai.neargo.shop.logistics.wxbind.WxFollowRequested;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -94,14 +94,22 @@ public class ShipmentRegistrar implements OutboxConsumer {
         } else if (sourceNo != null && (!sourceNo.equals(w.getSourceShipmentNo())
                 || !Objects.equals(generation, w.getSourceShipmentVersion()))) {
             WaybillReplacement.reset(waybills, nodes, w, carrier, waybillNo, sourceNo, generation);
+            w.setSourceShipmentNo(sourceNo);
+            w.setSourceShipmentVersion(generation);
+            w.setCarrier(carrier);
+            w.setWaybillNo(waybillNo);
         } else if (sourceNo == null && w.getSourceShipmentNo() == null
                 && !Objects.equals(w.getWaybillNo(), waybillNo) && !WaybillStatus.isTerminal(w.getStatus())
                 && !hasManualCorrection(w)) {
             // Explicit legacy compatibility; modern mapped events never let legacy replay replace their source.
             WaybillReplacement.reset(waybills, nodes, w, carrier, waybillNo, null, null);
+            w.setCarrier(carrier);
+            w.setWaybillNo(waybillNo);
         }
         if (w != null) {
-            events.publish(new WaybillRegistered(w.getShipmentNo()));
+            String identity = ChannelSubscriptionStore.identityKey(w);
+            events.publish(new WxFollowRequested(w.getShipmentNo(), identity));
+            events.publish(new Kd100SubscribeRequested(w.getShipmentNo(), identity));
         }
     }
 

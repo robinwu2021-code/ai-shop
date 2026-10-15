@@ -29,6 +29,9 @@ public class LogisticsProperties {
      */
     private boolean subscribeEnabled = false;
 
+    /** Non-secret account label used for the Kuaidi100 monthly attempt ledger. */
+    private String kd100AccountRef = "default";
+
     /** 各能力的路由链 */
     private Routes routes = new Routes();
 
