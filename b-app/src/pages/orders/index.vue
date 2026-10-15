@@ -176,7 +176,7 @@ onShow(() => {
 
     <view v-for="o in list" :key="o.orderNo" class="sh-card sh-mb-sm" @tap="open(o)">
       <view class="row__head sh-row sh-row--between">
-        <text class="txt-caption sh-num">{{ o.orderNo }}</text>
+        <text class="txt-caption sh-num">{{ o.payOrderNo || o.orderNo }}</text>
         <!-- 行内显示的是**订单自己的状态**。原先拼的是 tab 的 key
              （`order.tab${PAID ? 'ToShip' : 'All'}`），于是除待发货外一律显示「全部」——
              一屏订单看下来全是「全部」，等于这一列没有信息 -->
