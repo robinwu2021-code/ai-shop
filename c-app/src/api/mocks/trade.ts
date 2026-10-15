@@ -474,7 +474,7 @@ export const tradeMock: Pick<ShopApi,
 
   async confirmReceipt(orderNo) {
     const o = findOrder(orderNo);
-    if (o.fulfillment !== "EXPRESS" || o.status !== "FULFILLING" || (o.afterSale && !["CLOSED", "REJECTED"].includes(o.afterSale.status))) throw new Error("当前订单不能确认收货");
+    if (o.fulfillment !== "EXPRESS" || o.status !== "FULFILLING") throw new Error("当前订单不能确认收货");
     o.status = "COMPLETED";
     pushTimeline(o, "买家已确认收到全部包裹");
     persist();

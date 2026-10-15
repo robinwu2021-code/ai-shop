@@ -100,7 +100,8 @@ public class MybatisStoreOrderReadStore implements StoreOrderReadStore {
                 : DataScopeContext.executeWithoutScope(() -> merchants.storeNames(stores));
         return owned.stream().map(row -> new StoreOrderMaterial(row, parents.get(row.getOrderNo()),
                 lines.getOrDefault(row.getSubOrderNo(), List.of()),
-                timeline.getOrDefault(row.getSubOrderNo(), List.of()), names.get(row.getStoreNo()),
+                timeline.getOrDefault(row.getSubOrderNo(), List.of()),
+                row.getStoreNo() == null ? null : names.get(row.getStoreNo()),
                 packages.getOrDefault(row.getSubOrderNo(), List.of()))).toList();
     }
 }

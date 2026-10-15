@@ -2189,9 +2189,12 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageData<OrderVO> list(String status, List<String> fulfillments, long page, long size) {
-        var result = storeQueries.materials(SecurityUtils.currentUserNo(),
-                new StoreOrderQuery(status, fulfillments), page, size);
-        return PageData.of(result.records().stream().map(this::orderView).toList(),
+        String buyerNo = SecurityUtils.currentUserNo();
+        var result = storeQueries.materials(buyerNo, new StoreOrderQuery(status, fulfillments), page, size);
+        List<String> payNos = result.records().stream().map(m -> m.payment().getOrderNo()).distinct().toList();
+        var conflicts = paymentResolutions.views(payNos, buyerNo);
+        return PageData.of(result.records().stream().map(m -> orderView(m)
+                        .withPaymentResolution(conflicts.get(m.payment().getOrderNo()))).toList(),
                 result.total(), result.page(), result.size());
     }
 

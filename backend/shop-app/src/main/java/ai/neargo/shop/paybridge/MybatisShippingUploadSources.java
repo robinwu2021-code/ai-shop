@@ -37,6 +37,14 @@ public class MybatisShippingUploadSources implements ShippingUploadSources {
         return DataScopeContext.executeWithoutScope(() -> capture(orderNo));
     }
 
+    @Override
+    public String paymentOfRefundedChild(String subOrderNo) {
+        var sub = DataScopeContext.executeWithoutScope(() -> orders.selectOne(
+                Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getSubOrderNo, subOrderNo)
+                        .eq(OrdSubOrder::getStatus, OrdSubOrder.REFUNDED).last("LIMIT 1")));
+        return sub == null ? null : sub.getOrderNo();
+    }
+
     private ShippingUploadSnapshot capture(String orderNo) {
         List<OrdSubOrder> required = orders.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
                 .eq(OrdSubOrder::getOrderNo, orderNo).orderByAsc(OrdSubOrder::getSubOrderNo)).stream()

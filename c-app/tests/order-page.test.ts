@@ -341,4 +341,13 @@ describe("一期收货与售后执行", () => {
     orderDetail.mockResolvedValue(order("REFUNDED", { afterSale:{status:"REFUNDED",refundExecution:{status:"SUCCEEDED",resourceStatus:"PENDING"}} as Order["afterSale"] }));
     const w=await render(); expect(w.text()).toContain("afterSale.execution.resourcesPending"); w.unmount();
   });
+  it("在途仅退款 WAIT_RECEIPT 仍可确认收到包裹，售后不自动到账", async () => {
+    const sale={afterSaleNo:"AS1",status:"WAIT_RECEIPT",type:"REFUND_ONLY"} as Order["afterSale"];
+    orderDetail.mockResolvedValue(order("FULFILLING",{fulfillment:"EXPRESS",afterSale:sale}));
+    confirmReceipt.mockImplementation(async()=>{orderDetail.mockResolvedValue(order("COMPLETED",{fulfillment:"EXPRESS",afterSale:sale}));return order("COMPLETED");});
+    const w=await render();const button=w.findAll("text").find(n=>n.text()==="order.confirmReceipt");
+    expect(button).toBeDefined();await button!.trigger("tap");for(let i=0;i<15;i++)await Promise.resolve();
+    expect(confirmReceipt).toHaveBeenCalledWith("O1");expect(w.text()).toContain("afterSale.status.WAIT_RECEIPT");expect(w.text()).not.toContain("afterSale.status.REFUNDED");w.unmount();
+  });
+
 });

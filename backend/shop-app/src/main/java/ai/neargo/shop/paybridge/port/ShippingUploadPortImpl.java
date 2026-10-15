@@ -68,11 +68,17 @@ public class ShippingUploadPortImpl implements ShippingUploadPort, OutboxConsume
     }
 
     @Override
-    public boolean supports(String type) { return "SUB_ORDER_SHIPPED".equals(type); }
+    public boolean supports(String type) {
+        return "SUB_ORDER_SHIPPED".equals(type) || "AFTER_SALE_REFUNDED".equals(type);
+    }
 
     @Override
     public void consume(SysOutbox event) {
         var p = json.readTree(event.getPayload());
+        if ("AFTER_SALE_REFUNDED".equals(event.getEventType())) {
+            refreshAfterRefund(p.path("subOrderNo").asString(""));
+            return;
+        }
         String orderNo = p.path("orderNo").asString("");
         String subOrderNo = p.path("subOrderNo").asString("");
         var current = sources.snapshotOf(orderNo);
@@ -84,6 +90,15 @@ public class ShippingUploadPortImpl implements ShippingUploadPort, OutboxConsume
                 .anyMatch(s -> Objects.equals(subOrderNo, s.subOrderNo()) && s.sourceShipmentNo() != null)) { return; }
         enqueueCommitted(p.path("orderNo").asString(""), p.path("subOrderNo").asString(""),
                 p.path("fulfillment").asString(""));
+    }
+
+    private void refreshAfterRefund(String subOrderNo) {
+        String paymentNo = sources.paymentOfRefundedChild(subOrderNo);
+        if (paymentNo == null) { return; }
+        var snapshot = sources.snapshotOf(paymentNo);
+        if (snapshot == null || snapshot.shipments().isEmpty()) { return; }
+        // Reuse the original row and its CAS/correction safeguards; never fabricate a new package.
+        enqueueCommitted(paymentNo, subOrderNo, "EXPRESS");
     }
 
     private void enqueueCommitted(String orderNo, String subOrderNo, String fulfillment) {

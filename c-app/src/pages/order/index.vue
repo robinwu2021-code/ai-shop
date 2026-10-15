@@ -488,8 +488,7 @@ function pay() {
 }
 
 const canReceive = computed(() => order.value?.status === "FULFILLING"
-  && order.value.fulfillment === "EXPRESS" && !order.value.subOrders?.length
-  && (!order.value.afterSale || ["CLOSED", "REJECTED"].includes(order.value.afterSale.status)));
+  && order.value.fulfillment === "EXPRESS" && !order.value.subOrders?.length);
 const receiptBusy = ref(false);
 async function receive() {
   const o = order.value;

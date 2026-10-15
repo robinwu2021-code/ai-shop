@@ -15,6 +15,10 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /** Own transaction has no order-row writes or locks, so a rejected projection cannot erase evidence. */
 @Service
 public class PaymentResolutionServiceImpl implements PaymentResolutionService {
@@ -69,4 +73,19 @@ public class PaymentResolutionServiceImpl implements PaymentResolutionService {
                         .orderByDesc(OrdPaymentResolution::getId).last("LIMIT 1")));
         return row == null ? null : new PaymentResolutionView(row.getStatus(), row.getReason(), row.getPaymentNo());
     }
+
+    @Override
+    public Map<String, PaymentResolutionView> views(List<String> payNos, String buyerNo) {
+        if (payNos.isEmpty()) { return Map.of(); }
+        var rows = DataScopeContext.executeWithoutScope(() -> resolutions.selectList(
+                Wrappers.<OrdPaymentResolution>lambdaQuery().in(OrdPaymentResolution::getPayNo, payNos)
+                        .eq(OrdPaymentResolution::getUserNo, buyerNo)
+                        .eq(OrdPaymentResolution::getStatus, OrdPaymentResolution.MANUAL_REQUIRED)
+                        .orderByDesc(OrdPaymentResolution::getId)));
+        Map<String, PaymentResolutionView> result = new HashMap<>();
+        rows.forEach(row -> result.putIfAbsent(row.getPayNo(),
+                new PaymentResolutionView(row.getStatus(), row.getReason(), row.getPaymentNo())));
+        return Map.copyOf(result);
+    }
+
 }
