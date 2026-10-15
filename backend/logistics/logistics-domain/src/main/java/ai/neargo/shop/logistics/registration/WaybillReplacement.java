@@ -21,6 +21,8 @@ public final class WaybillReplacement {
                 .set("source_shipment_no", sourceNo).set("source_shipment_version", generation)
                 .set("status", WaybillStatus.CREATED).set("sub_state", LgsWaybill.SUB_PENDING)
                 .set("sub_channel", null).set("sub_ref", null).set("sub_attempts", 0).set("sub_error", null)
+                // These legacy per-waybill fields describe only the current identity. V417's
+                // cross-order attempt ledger and both channel histories are deliberately retained.
                 .set("kd100_sub_month", null).set("kd100_sub_count", 0)
                 .set("bind_state", wx ? LgsWaybill.BIND_WAITING : LgsWaybill.BIND_NA)
                 .set("bind_error", null).set("display_token", null).set("wx_status_checked_at", null)
