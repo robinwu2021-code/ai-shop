@@ -28,6 +28,7 @@ export const orderMock: Pick<MerchantApi,
   | "mOrderDetail"
   | "mOrderTrace"
   | "mShip"
+  | "mCorrectWaybill"
   | "mDelivered"
   | "mPrepare"
   | "mConfirmOfflinePay"
@@ -134,6 +135,19 @@ export const orderMock: Pick<MerchantApi,
       `运单号 ${expressNo}，可在订单详情查看物流`,
       `/pages/order/index?orderNo=${o.orderNo}`,
     );
+    persist();
+    return delay(o);
+  },
+
+  async mCorrectWaybill(orderNo, expressNo, expressCompany, reason) {
+    const o = findOrder(orderNo);
+    if (o.status !== "FULFILLING" || o.fulfillment !== "EXPRESS" || !reason.trim()
+        || !expressNo.trim() || !EXPRESS_COMPANIES.some((c) => c.code === expressCompany)) {
+      throw new Error("运单信息不完整或订单不可更正");
+    }
+    o.expressNo = expressNo.trim();
+    o.expressCompany = expressCompany;
+    pushTimeline(o, "更正运单");
     persist();
     return delay(o);
   },

@@ -54,6 +54,12 @@ const returnedLines = computed(() => {
   return out;
 });
 const expressNo = ref("");
+const correctingWaybill = ref(false);
+const correctedNo = ref("");
+const correctedCarrierIdx = ref(-1);
+const correctionReason = ref("");
+const canCorrectWaybill = computed(() => order.value?.fulfillment === FULFILLMENT.EXPRESS
+  && order.value.status === "FULFILLING" && !!order.value.expressNo && merchant.can("biz:ship"));
 /**
  * 选中的快递公司下标。**默认 -1（未选）**，不默认第一家 ——
  * 默认一家的话，商家不点也「选」了顺丰，发出去的一半是错的快递公司，
@@ -192,6 +198,33 @@ async function ship() {
       order.value.orderNo, expressNo.value.trim(), carrier.code);
     await load(currentNo.value);
     uni.showToast({ title: t("order.shipped"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+function startWaybillCorrection() {
+  correctedNo.value = order.value?.expressNo ?? "";
+  correctedCarrierIdx.value = carriers.findIndex((c) => c.code === order.value?.expressCompany);
+  correctionReason.value = "";
+  correctingWaybill.value = true;
+}
+
+async function correctWaybill() {
+  if (!order.value || !canCorrectWaybill.value || busy.value || correctedCarrierIdx.value < 0
+      || !correctedNo.value.trim() || !correctionReason.value.trim()) return;
+  const carrier = carriers[correctedCarrierIdx.value];
+  if (!carrier || (carrier.code === order.value.expressCompany
+      && correctedNo.value.trim() === order.value.expressNo)) return;
+  busy.value = true;
+  try {
+    await api.mCorrectWaybill(order.value.orderNo, correctedNo.value.trim(), carrier.code,
+      correctionReason.value.trim());
+    correctingWaybill.value = false;
+    await load(currentNo.value);
+    uni.showToast({ title: String(t("order.waybillCorrected")), icon: "none" });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -648,6 +681,19 @@ onPullDownRefresh(async () => {
         <view class="line sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.expressNo") }}</text>
           <text class="sh-num">{{ order.expressNo }}</text>
+        </view>
+        <view v-if="canCorrectWaybill && !correctingWaybill" class="sh-btn sh-btn--muted sh-mt-sm" @tap="startWaybillCorrection">
+          {{ $t("order.correctWaybill") }}
+        </view>
+        <view v-if="canCorrectWaybill && correctingWaybill">
+          <view class="sh-wrap sh-mt-sm">
+            <text v-for="(c, i) in carriers" :key="c.code" class="carrier__chip txt-caption"
+              :class="{ 'carrier__chip--on': correctedCarrierIdx === i }" @tap="correctedCarrierIdx = i">{{ c.name }}</text>
+          </view>
+          <input v-model="correctedNo" maxlength="64" class="field__input sh-mt-sm" :placeholder="$t('order.expressNo')" />
+          <input v-model="correctionReason" maxlength="100" class="field__input sh-mt-sm" :placeholder="$t('order.waybillReason')" />
+          <view class="sh-btn sh-mt-sm" :class="{ 'sh-btn--muted': !correctedNo.trim() || !correctionReason.trim() || correctedCarrierIdx < 0 || busy }"
+            @tap="correctWaybill">{{ $t("order.saveWaybill") }}</view>
         </view>
       </view>
 

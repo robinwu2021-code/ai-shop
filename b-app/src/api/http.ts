@@ -489,6 +489,9 @@ export const httpApi: MerchantApi = {
   mShip: (orderNo, expressNo, expressCompany) =>
     http.post<Order>(buildPath(E.mShip.path, { orderNo }),
       { expressNo, expressCompany } satisfies ShipReq),
+  mCorrectWaybill: (orderNo, expressNo, expressCompany, reason) =>
+    http.post<Order>(buildPath(E.mCorrectWaybill.path, { orderNo }),
+      { expressNo, expressCompany, reason }),
   mDelivered: (orderNo) => http.post<Order>(buildPath(E.mDelivered.path, { orderNo }), {}),
   mPrepare: (orderNo) => http.post<Order>(buildPath(E.mPrepare.path, { orderNo }), {}),
   mConfirmOfflinePay: (subOrderNo) =>
