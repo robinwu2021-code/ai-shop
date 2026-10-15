@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="250" viewBox="0 0 980 250" role="img" aria-label="订单发货、物流、微信与两端展示的同步结构">
+  <style>
+    text{font-family:Arial,"PingFang SC","Microsoft YaHei",sans-serif;fill:#243047}
+    .box{fill:#f3f7ff;stroke:#7897d3;stroke-width:1.5;rx:10}
+    .side{fill:#f3fbf6;stroke:#6aaf83;stroke-width:1.5;rx:10}
+    .title{font-size:15px;font-weight:bold}.sub{font-size:12px;fill:#586579}
+    .line{stroke:#677d9f;stroke-width:2;fill:none;marker-end:url(#arrow)}
+  </style>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#677d9f"/></marker></defs>
+  <rect class="box" x="15" y="83" width="145" height="80"/><text class="title" x="30" y="110">B 端提交发货</text><text class="sub" x="30" y="135">本地事务 + outbox</text>
+  <rect class="box" x="205" y="83" width="165" height="80"/><text class="title" x="220" y="110">发货与上报任务</text><text class="sub" x="220" y="135">立即派发 · 失败重试</text>
+  <rect class="box" x="415" y="25" width="170" height="75"/><text class="title" x="430" y="52">微信发货 / token</text><text class="sub" x="430" y="75">状态查询</text>
+  <rect class="box" x="415" y="145" width="170" height="75"/><text class="title" x="430" y="172">快递 100 订阅</text><text class="sub" x="430" y="195">首查 · 推送 · 限频补偿</text>
+  <rect class="side" x="630" y="83" width="150" height="80"/><text class="title" x="645" y="110">物流状态真源</text><text class="sub" x="645" y="135">lgs_waybill + 节点</text>
+  <rect class="side" x="825" y="83" width="140" height="80"/><text class="title" x="840" y="110">C/B/H5 展示</text><text class="sub" x="840" y="135">批量摘要 + 详情</text>
+  <path class="line" d="M160 123 H205"/><path class="line" d="M370 108 L415 62"/><path class="line" d="M370 140 L415 182"/><path class="line" d="M585 62 L630 108"/><path class="line" d="M585 182 L630 138"/><path class="line" d="M780 123 H825"/>
+  <text class="sub" x="630" y="213">交易完成另走确认收货 / 有效微信事件 / 到期规则</text>
+</svg>
