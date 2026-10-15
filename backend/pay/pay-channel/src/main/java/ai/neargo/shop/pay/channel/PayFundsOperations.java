@@ -17,7 +17,7 @@ public interface PayFundsOperations {
     Receipt queryFunds(Request request);
 
     enum Path { DIRECT, AGGREGATED }
-    enum Operation { SUBSIDY, INTERNAL_REPLENISHMENT, TRANSFER, COLLECTION, EXPIRY_INCOME }
+    enum Operation { SUBSIDY, INTERNAL_REPLENISHMENT, TRANSFER, COLLECTION, EXPIRY_INCOME, COLLECTION_REVERSAL }
     enum Status { SUCCEEDED, REJECTED, UNKNOWN }
     record Context(Path path,String channel,String merchantNo,String storeNo,String accountVersion,String subMerchantId,
                    String tradeNo,String outTradeNo,long orderTotalMinor) { }
@@ -29,7 +29,12 @@ public interface PayFundsOperations {
         }
     }
     record Request(String ticketNo,String providerIdem,Operation operation,Context context,
-                   String currency,long amountMinor) { }
+                   String currency,long amountMinor,String originalTicketNo,String originalEvidenceNo) {
+        public Request(String ticketNo,String providerIdem,Operation operation,Context context,
+                       String currency,long amountMinor) {
+            this(ticketNo,providerIdem,operation,context,currency,amountMinor,null,null);
+        }
+    }
     /** SUCCEEDED means completed money movement with evidence; an accepted or pending request is UNKNOWN. */
     record Receipt(String providerIdem,Status status,String currency,long amountMinor,String evidenceNo,String reason) { }
 }

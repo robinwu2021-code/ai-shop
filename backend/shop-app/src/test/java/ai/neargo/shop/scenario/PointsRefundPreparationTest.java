@@ -32,6 +32,8 @@ import ai.neargo.shop.pay.points.refund.PointsRefundCollectionExecutionService;
 import ai.neargo.shop.pay.points.refund.PointsRefundCollectionService;
 import ai.neargo.shop.pay.points.refund.PointsRefundCashDecisionService;
 import ai.neargo.shop.pay.points.refund.PointsRefundZeroCashService;
+import ai.neargo.shop.pay.points.refund.PointsRefundCompensationService;
+import ai.neargo.shop.pay.points.refund.PointsRefundCompensationExecutionService;
 import ai.neargo.shop.spi.points.PointsRefundPort.ZeroCashCompletionFact;
 import ai.neargo.shop.spi.points.PointsRefundPort.ZeroCashReason;
 import tools.jackson.databind.node.ObjectNode;
@@ -106,6 +108,8 @@ class PointsRefundPreparationTest {
     @Autowired private PointsRefundCollectionService collectionDecisions;
     @Autowired private PointsRefundCashDecisionService cashDecisions;
     @Autowired private PointsRefundZeroCashService zeroCash;
+    @Autowired private PointsRefundCompensationService compensations;
+    @Autowired private PointsRefundCompensationExecutionService compensationExecution;
     @Autowired private TestFunds funds;
     @Autowired private PointsSettlementHook settlement;
     @Autowired private PointsReceivableRecoveryService recoveries;
@@ -794,6 +798,232 @@ class PointsRefundPreparationTest {
         assertThat(refundState(prepared)).isEqualTo("ZERO_AUTHORIZED");
     }
 
+    @Test void compensation_returns_only_the_collected_cash_before_restoring_original_freezes() {
+        String type=partlySpentGrant();
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        var abort=failedCollectedCash(type,prepared);
+        var reversal=compensations.prepare(abort,1);
+        assertThat(reversal).isNotNull();
+        assertThat(reversal.amountMinor()).isEqualTo(5);
+        assertThat(reversal.context().storeNo()).isEqualTo("STORE");
+        assertThat(reversal.context().accountVersion()).isEqualTo("V1");
+        assertThat(reversal.purpose()).isEqualTo(PointsFundsGateway.FundsPurpose.COLLECTION_REVERSAL);
+        assertThat(reversal.originalTicketNo()).isEqualTo(prepared.collectionTicket());
+        assertThat(reversal.originalEvidenceNo()).isEqualTo("COL:"+prepared.collectionTicket());
+        assertThat(compensations.prepare(abort,1)).isEqualTo(reversal);
+        assertThatThrownBy(() -> aborts.abort(abort)).hasMessage("POINTS_REFUND_ABORT_NOT_SAFE");
+        assertThat(compensationExecution.execute(prepared.preparationNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.UNKNOWN);
+        assertThat(balance(type,"held_points")).isEqualTo(20);
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+        assertThatThrownBy(() -> aborts.abort(abort)).hasMessage("POINTS_REFUND_ABORT_NOT_SAFE");
+        assertThat(compensationExecution.execute(prepared.preparationNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.SUCCEEDED);
+        assertThat(compensationExecution.execute(prepared.preparationNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.SUCCEEDED);
+        aborts.abort(abort); aborts.abort(abort);
+        assertThat(balance(type,"held_points")).isEqualTo(15);
+        assertThat(balance(type,"available_points")).isEqualTo(5);
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+        assertThat(pool(type,"c_minor")).isEqualTo(20);
+        assertThat(refundState(prepared)).isEqualTo("ABORTED");
+        assertThat(funds.sends.get(reversal.ticketNo())).isEqualTo(1);
+        assertThat(funds.queries.get(reversal.ticketNo())).isEqualTo(1);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_fund_evidence"
+                + " WHERE binding_ref=? AND used_voucher_no IS NOT NULL",Long.class,
+                prepared.preparationNo())).isEqualTo(2);
+    }
+
+    @Test void compensation_rejects_unknown_cash_wrong_revision_and_changed_binding() {
+        String type=partlySpentGrant();
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        var abort=failedCollectedCash(type,prepared);
+        assertThatThrownBy(() -> compensations.prepare(abort,2)).hasMessage("POINTS_REFUND_REVISION_CONFLICT");
+        assertThatThrownBy(() -> compensations.prepare(new RefundAbort(prepared.preparationNo(),"OTHER",
+                abort.cashRefundPaymentNo()),1)).hasMessage("POINTS_REFUND_INPUT_CONFLICT");
+        jdbc().update("UPDATE stl_payment SET status='PENDING' WHERE payment_no=?",abort.cashRefundPaymentNo());
+        assertThatThrownBy(() -> compensations.prepare(abort,1)).hasMessage("POINTS_REFUND_CASH_OUTCOME_UNKNOWN");
+        jdbc().update("UPDATE stl_payment SET status='FAILED',user_no='OTHER' WHERE payment_no=?",
+                abort.cashRefundPaymentNo());
+        assertThatThrownBy(() -> compensations.prepare(abort,1)).hasMessage("POINTS_CASH_REFUND_MISMATCH");
+        assertThat(refundState(prepared)).isEqualTo("CASH_AUTHORIZED");
+        assertThat(balance(type,"held_points")).isEqualTo(20);
+    }
+
+    @Test void compensation_definite_rejection_keeps_freezes_and_never_resends() {
+        String type=partlySpentGrant();
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        var abort=failedCollectedCash(type,prepared);
+        var reversal=compensations.prepare(abort,1);
+        assertThat(reversal).isNotNull();
+        funds.failTickets.add(reversal.ticketNo());
+        assertThat(compensationExecution.execute(prepared.preparationNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.FAILED);
+        assertThat(compensationExecution.execute(prepared.preparationNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.FAILED);
+        assertThatThrownBy(() -> aborts.abort(abort)).hasMessage("POINTS_REFUND_ABORT_NOT_SAFE");
+        assertThat(balance(type,"held_points")).isEqualTo(20);
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+        assertThat(funds.sends.get(reversal.ticketNo())).isEqualTo(1);
+        assertThat(refundState(prepared)).isEqualTo("COMPENSATION_FAILED");
+    }
+
+    @Test void compensation_requires_a_collected_offset_and_certified_original_reversal() {
+        String type=partlySpentGrant();
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        assertThatThrownBy(() -> compensations.prepare(new RefundAbort(prepared.preparationNo(),
+                prepared.inputHash(),"ABSENT"),1)).hasMessage("POINTS_REFUND_COMPENSATION_NOT_SAFE");
+        var abort=failedCollectedCash(type,prepared);
+        funds.reversalSupported=false;
+        try {
+            assertThatThrownBy(() -> compensations.prepare(abort,1))
+                    .hasMessage("POINTS_REFUND_COMPENSATION_CAPABILITY_UNSUPPORTED");
+            assertThat(refundState(prepared)).isEqualTo("CASH_AUTHORIZED");
+        } finally { funds.reversalSupported=true; }
+        jdbc().update("UPDATE stl_payment SET succeeded_at=1 WHERE payment_no=?",abort.cashRefundPaymentNo());
+        assertThatThrownBy(() -> compensations.prepare(abort,1)).hasMessage("POINTS_REFUND_CASH_OUTCOME_UNKNOWN");
+        String noOffset=fixture(false,true);
+        var noOffsetPrepared=refunds.prepare(command(noOffset,"AS:"+noOffset,50));
+        var cash=successfulCash(noOffset,noOffsetPrepared);
+        assertThatThrownBy(() -> compensations.prepare(new RefundAbort(noOffsetPrepared.preparationNo(),
+                noOffsetPrepared.inputHash(),cash.cashRefundPaymentNo()),1))
+                .hasMessage("POINTS_REFUND_COLLECTION_NOT_CONFIRMED");
+    }
+
+    @Test void compensation_blocks_confirmation_reauthorization_and_rebinding_of_a_frozen_decision() {
+        String type=partlySpentGrant();
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        var abort=failedCollectedCash(type,prepared);
+        compensations.prepare(abort,1);
+        assertThatThrownBy(() -> compensations.prepare(new RefundAbort(prepared.preparationNo(),
+                prepared.inputHash(),"OTHER_CASH"),1)).hasMessage("POINTS_REFUND_COMPENSATION_INPUT_CONFLICT");
+        assertThatThrownBy(() -> cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1))
+                .hasMessage("POINTS_REFUND_CASH_DECISION_NOT_READY");
+        assertThatThrownBy(() -> confirmations.confirm(new RefundConfirmation(prepared.preparationNo(),
+                prepared.inputHash(),abort.cashRefundPaymentNo(),prepared.collectionTicket(),null)))
+                .hasMessage("POINTS_REFUND_CASH_AUTHORIZATION_REQUIRED");
+        assertThat(refundState(prepared)).isEqualTo("COMPENSATION_REQUIRED");
+        assertThat(balance(type,"held_points")).isEqualTo(20);
+    }
+
+    @Test void compensation_bad_receipts_and_transport_uncertainty_query_original_without_unlocking() {
+        String type=partlySpentGrant();
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        var abort=failedCollectedCash(type,prepared);
+        var reversal=compensations.prepare(abort,1);
+        assertThatThrownBy(() -> compensations.accept(prepared.preparationNo(),new PointsFundsGateway.FundsResult(
+                reversal.ticketNo(),PointsFundsGateway.FundsStatus.SUCCEEDED,"EARLY",5,null)))
+                .hasMessage("POINTS_REFUND_COMPENSATION_NOT_DISPATCHED");
+        funds.throwTickets.add(reversal.ticketNo());
+        assertThat(compensationExecution.execute(prepared.preparationNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.UNKNOWN);
+        funds.throwTickets.remove(reversal.ticketNo());
+        funds.receipts.put(reversal.ticketNo(),new PointsFundsGateway.FundsResult("WRONG",
+                PointsFundsGateway.FundsStatus.SUCCEEDED,"BAD",5,null));
+        assertThat(compensationExecution.execute(prepared.preparationNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.UNKNOWN);
+        funds.receipts.remove(reversal.ticketNo());
+        assertThatThrownBy(() -> aborts.abort(abort)).hasMessage("POINTS_REFUND_ABORT_NOT_SAFE");
+        assertThat(compensationExecution.execute(prepared.preparationNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.SUCCEEDED);
+        aborts.abort(abort);
+        assertThat(funds.sends.get(reversal.ticketNo())).isEqualTo(1);
+        assertThat(funds.queries.get(reversal.ticketNo())).isEqualTo(2);
+        assertThat(balance(type,"available_points")).isEqualTo(5);
+    }
+
+    @Test void compensation_evidence_conflict_rolls_back_result_and_preserves_unconsumed_collection() {
+        String type=partlySpentGrant();
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        var abort=failedCollectedCash(type,prepared);
+        var reversal=compensations.prepare(abort,1);
+        compensationExecution.execute(prepared.preparationNo());
+        posting.recordEvidence(new EvidenceRef("COL:"+reversal.ticketNo(),"CNY",-5,
+                "REFUND_COMPENSATION","OTHER_PREPARATION"));
+        assertThatThrownBy(() -> compensationExecution.execute(prepared.preparationNo()))
+                .hasMessage("POINTS_EVIDENCE_CONFLICT");
+        assertThat(refundState(prepared)).isEqualTo("COMPENSATION_UNKNOWN");
+        assertThat(jdbc().queryForObject("SELECT used_voucher_no FROM pts_fund_evidence WHERE evidence_no=?",
+                String.class,"COL:"+prepared.collectionTicket())).isNull();
+        assertThat(balance(type,"held_points")).isEqualTo(20);
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+    }
+
+    @Test void compensation_claim_survives_restart_and_rejects_remote_calls_inside_a_transaction() {
+        String type=partlySpentGrant();
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        var abort=failedCollectedCash(type,prepared);
+        var reversal=compensations.prepare(abort,1);
+        var tx=new TransactionTemplate(payTransactions);
+        assertThatThrownBy(() -> tx.execute(status -> compensationExecution.execute(prepared.preparationNo())))
+                .hasMessage("POINTS_FUNDS_REQUIRES_NO_TRANSACTION");
+        assertThat(refundState(prepared)).isEqualTo("COMPENSATION_REQUIRED");
+        assertThat(compensations.claim(prepared.preparationNo()).submit()).isTrue();
+        funds.submit(reversal); // Simulate a remote send whose reply was lost before persistence.
+        assertThat(compensations.claim(prepared.preparationNo()).submit()).isFalse();
+        assertThat(compensationExecution.execute(prepared.preparationNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.SUCCEEDED);
+        aborts.abort(abort);
+        assertThat(funds.sends.get(reversal.ticketNo())).isEqualTo(1);
+        assertThat(funds.queries.get(reversal.ticketNo())).isEqualTo(1);
+    }
+
+    @Test void compensation_must_be_supported_before_promising_a_new_refund_collection() {
+        String type=partlySpentGrant();
+        funds.reversalSupported=false;
+        try {
+            var prepared=refunds.prepare(command(type,"AS:"+type,50));
+            assertThat(prepared.cashOffsetMinor()).isZero();
+            assertThat(prepared.collectionTicket()).isNull();
+            assertThat(prepared.netCashMinor()).isEqualTo(50);
+            assertThat(prepared.waivedPoints()).isEqualTo(5);
+            assertThat(balance(type,"held_points")).isEqualTo(20);
+            assertThat(pool(type,"u_minor")).isEqualTo(80);
+        } finally { funds.reversalSupported=true; }
+    }
+
+    @Test void compensation_result_and_both_evidence_uses_roll_back_with_the_enclosing_pay_transaction() {
+        String type=partlySpentGrant();
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        var abort=failedCollectedCash(type,prepared);
+        var reversal=compensations.prepare(abort,1);
+        compensationExecution.execute(prepared.preparationNo());
+        var result=new PointsFundsGateway.FundsResult(reversal.ticketNo(),PointsFundsGateway.FundsStatus.SUCCEEDED,
+                "ROLLBACK:"+type,5,null);
+        var tx=new TransactionTemplate(payTransactions);
+        assertThatThrownBy(() -> tx.execute(status -> {
+            compensations.accept(prepared.preparationNo(),result);
+            throw new IllegalStateException("TEST_PAY_ROLLBACK");
+        })).hasMessage("TEST_PAY_ROLLBACK");
+        assertThat(refundState(prepared)).isEqualTo("COMPENSATION_UNKNOWN");
+        assertThat(jdbc().queryForObject("SELECT used_voucher_no FROM pts_fund_evidence WHERE evidence_no=?",
+                String.class,"COL:"+prepared.collectionTicket())).isNull();
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_fund_evidence WHERE evidence_no=?",Long.class,
+                "ROLLBACK:"+type)).isZero();
+        assertThat(balance(type,"held_points")).isEqualTo(20);
+        compensations.accept(prepared.preparationNo(),result);
+        aborts.abort(abort);
+        assertThat(balance(type,"available_points")).isEqualTo(5);
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+    }
+
+    private String partlySpentGrant() {
+        String type=fixture(true,true);
+        posting.post(new Voucher("SPEND:"+type,type,"CNY",new RedeemRate(1,1),List.of(
+                move(type,Bucket.AVAILABLE,-15),move(type,Bucket.HELD,15)),List.of(),List.of(),0,List.of(),"{}"));
+        return type;
+    }
+
+    private RefundAbort failedCollectedCash(String type,RefundPreparation prepared) {
+        collections.execute(prepared.preparationNo());
+        collections.execute(prepared.preparationNo());
+        var confirmation=successfulCash(type,prepared);
+        jdbc().update("UPDATE stl_payment SET status='FAILED',trade_no=NULL,succeeded_at=NULL,"
+                + "refund_verified_minor=NULL,refund_verified_at=NULL,refund_verified_provider_no=NULL"
+                + " WHERE payment_no=?",confirmation.cashRefundPaymentNo());
+        return new RefundAbort(prepared.preparationNo(),prepared.inputHash(),confirmation.cashRefundPaymentNo());
+    }
+
     private RefundCommand zeroCommand(String type) {
         var original=command(type,"AS:"+type,50);
         return new RefundCommand(original.afterSaleNo(),type,"USER",type,"CNY",1,0,50,
@@ -948,16 +1178,20 @@ class PointsRefundPreparationTest {
     /** Synthetic lost replies; remote operations assert there is no active database transaction. */
     static class TestFunds implements PointsFundsGateway {
         boolean supported=true;
+        boolean reversalSupported=true;
         final Set<String> failTickets=new HashSet<>();
+        final Set<String> throwTickets=new HashSet<>();
+        final Map<String,FundsResult> receipts=new HashMap<>();
         final Map<String,Integer> sends=new HashMap<>();
         final Map<String,Integer> queries=new HashMap<>();
         final Map<String,FundsCommand> originals=new HashMap<>();
         public FundsCapabilities capabilities(FundsContext context) {
-            return new FundsCapabilities(true,true,true,supported);
+            return new FundsCapabilities(true,true,true,supported,reversalSupported);
         }
         public FundsResult submit(FundsCommand command) {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             sends.merge(command.ticketNo(),1,Integer::sum); originals.put(command.ticketNo(),command);
+            if (throwTickets.contains(command.ticketNo())) { throw new IllegalStateException("TEST_LOST_REPLY"); }
             if (failTickets.contains(command.ticketNo())) {
                 return new FundsResult(command.ticketNo(),FundsStatus.FAILED,null,command.amountMinor(),"REJECTED");
             }
@@ -967,6 +1201,7 @@ class PointsRefundPreparationTest {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             assertThat(command).isEqualTo(originals.get(command.ticketNo()));
             queries.merge(command.ticketNo(),1,Integer::sum);
+            if (receipts.containsKey(command.ticketNo())) { return receipts.get(command.ticketNo()); }
             return new FundsResult(command.ticketNo(),FundsStatus.SUCCEEDED,"COL:"+command.ticketNo(),
                     command.amountMinor(),null);
         }

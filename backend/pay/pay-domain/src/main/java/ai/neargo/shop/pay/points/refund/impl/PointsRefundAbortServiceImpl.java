@@ -8,6 +8,7 @@ import ai.neargo.shop.pay.points.model.PointsMove;
 import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.model.Voucher;
 import ai.neargo.shop.pay.points.posting.PointsPostingService;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsStatus;
 import ai.neargo.shop.pay.points.refund.PointsRefundAbortService;
 import ai.neargo.shop.pay.points.refund.impl.PointsRefundPreparationServiceImpl.RefundSnapshot;
 import ai.neargo.shop.pay.points.store.PointsCashRefundReadStore;
@@ -49,7 +50,10 @@ public class PointsRefundAbortServiceImpl implements PointsRefundAbortService {
             require(abort.equals(snapshot.abort()),"POINTS_REFUND_ABORT_CONFLICT");
             return;
         }
-        require("CASH_AUTHORIZED".equals(head.get("state")) && preparation.collectionTicket()==null,
+        boolean compensated="COMPENSATED".equals(head.get("state")) && snapshot.compensation()!=null
+                && abort.equals(snapshot.compensation().abort()) && snapshot.compensation().result()!=null
+                && snapshot.compensation().result().status()==FundsStatus.SUCCEEDED;
+        require(("CASH_AUTHORIZED".equals(head.get("state")) && preparation.collectionTicket()==null) || compensated,
                 "POINTS_REFUND_ABORT_NOT_SAFE");
         var payment=cash.refund(abort.cashRefundPaymentNo());
         require(payment!=null && Set.of("FAILED","CLOSED").contains(payment.status()),
@@ -67,9 +71,10 @@ public class PointsRefundAbortServiceImpl implements PointsRefundAbortService {
         restorePosition(positions,PositionMove.Kind.GRANT,"G",snapshot.grantState(),snapshot);
         restorePosition(positions,PositionMove.Kind.REDEEM,"R",snapshot.redeemState(),snapshot);
         var completed=new RefundSnapshot(command,preparation,snapshot.grantState(),snapshot.redeemState(),
-                snapshot.reclaimedByLine(),snapshot.collectionCommand(),null,abort,snapshot.collectionResult());
+                snapshot.reclaimedByLine(),snapshot.collectionCommand(),null,abort,snapshot.collectionResult(),
+                snapshot.zeroCashCompletion(),snapshot.compensation());
         positions.add(new PositionMove(PositionMove.Kind.REFUND,preparation.preparationNo(),number(head,"version"),
-                "CASH_AUTHORIZED","ABORTED",number(head,"original_points"),0,json.writeValueAsString(completed)));
+                (String)head.get("state"),"ABORTED",number(head,"original_points"),0,json.writeValueAsString(completed)));
         var type=read.type(command.typeCode()).orElseThrow();
         posting.post(new Voucher("REFUND_ABORT:"+preparation.preparationNo(),type.typeCode(),type.currency(),
                 type.rate(),points,List.of(),positions,0,List.of(),"{}"));

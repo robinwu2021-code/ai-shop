@@ -188,6 +188,35 @@ class PointsFundsAdapterTest {
         } catch (ReflectiveOperationException e) { throw new AssertionError("Explicit per-order funds routing missing",e); }
     }
 
+    @Test
+    void collection_reversal_preserves_original_receipt_and_requires_its_own_capability() {
+        NativeFixture f=nativeFixture();
+        var adapter=adapter(f.router(),f.master());
+        var command=new FundsCommand("TICKET","IDEM",FundsPurpose.COLLECTION_REVERSAL,context(),"CNY",30,
+                "ORIGINAL_COLLECTION","ORIGINAL_RECEIPT");
+        var request=new Request("TICKET","IDEM",Operation.COLLECTION_REVERSAL,nativeRequest().context(),"CNY",30,
+                "ORIGINAL_COLLECTION","ORIGINAL_RECEIPT");
+        when(f.operations().executeFunds(request)).thenReturn(receipt(Status.SUCCEEDED,"RETURN_RECEIPT"));
+        when(f.operations().queryFunds(request)).thenReturn(receipt(Status.SUCCEEDED,"RETURN_RECEIPT"));
+        assertThat(adapter.capabilities(context()).collectionReversal()).isTrue();
+        assertThat(adapter.submit(command).status()).isEqualTo(FundsStatus.SUCCEEDED);
+        when(f.operations().fundsCapabilities(any())).thenReturn(new PayFundsOperations.Capabilities(
+                Set.of(Operation.TRANSFER,Operation.COLLECTION),Set.of(Operation.TRANSFER,Operation.COLLECTION)));
+        assertThat(adapter.capabilities(context()).collectionReversal()).isFalse();
+        assertThat(adapter.submit(command).reason()).isEqualTo("POINTS_CAPABILITY_UNSUPPORTED");
+        // A disabled new-execution capability still permits recovery using the original reversal request.
+        assertThat(adapter.query(command).evidenceNo()).isEqualTo("RETURN_RECEIPT");
+    }
+
+    @Test
+    void collection_reversal_cannot_send_without_original_collection_references() {
+        NativeFixture f=nativeFixture();
+        var invalid=new FundsCommand("TICKET","IDEM",FundsPurpose.COLLECTION_REVERSAL,context(),"CNY",30);
+        assertThatThrownBy(() -> adapter(f.router(),f.master()).submit(invalid))
+                .hasMessage("POINTS_FUNDS_ORIGINAL_COLLECTION_REQUIRED");
+        verify(f.operations(),never()).executeFunds(any());
+    }
+
     private NativeFixture nativeFixture() {
         var router=mock(PayGatewayRouter.class);
         var master=mock(PayChannelMasterService.class);

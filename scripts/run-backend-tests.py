@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import json
 import math
 import os
+import re
 from pathlib import Path
 import signal
 import subprocess
@@ -123,12 +124,49 @@ def positive(value):
     return number
 
 
+def wait_with_progress(process, args, output, started, started_ns, backend_root):
+    """Show observed progress only; incomplete suites do not supply a reliable total or percentage."""
+    deadline = started + args.timeout if args.timeout else None
+    next_progress = started + args.progress_seconds if args.progress_seconds else None
+    while True:
+        now = time.monotonic()
+        wake = min([point for point in (deadline, next_progress) if point is not None], default=None)
+        try:
+            return process.wait(timeout=max(0, wake - now) if wake is not None else None)
+        except subprocess.TimeoutExpired:
+            now = time.monotonic()
+            if deadline is not None and now >= deadline:
+                raise
+            completed = 0
+            for report in backend_root.glob('**/target/surefire-reports/TEST-*.xml'):
+                try:
+                    if report.stat().st_mtime_ns >= started_ns:
+                        completed += len(list(ET.parse(report).getroot().iter('testcase')))
+                except (OSError, ET.ParseError):
+                    pass
+            with (output / 'maven.log').open('rb') as stream:
+                stream.seek(max(0, (output / 'maven.log').stat().st_size - 65536))
+                tail = stream.read().decode('utf-8', errors='replace')
+            classes = re.findall(r'\[INFO\] Running ([A-Za-z0-9_.$]+)', tail)
+            recent = classes[-1] if classes else 'build-or-context-startup'
+            phases = re.findall(r'\[INFO\] --- ([A-Za-z0-9_.:-]+) .* @ ([A-Za-z0-9_.-]+) ---', tail)
+            phase = '@'.join(phases[-1]) if phases else 'launch'
+            message = 'TEST_PROGRESS elapsed=%.1fs completed_cases=%s phase=%s recent=%s' % (
+                now - started, completed, phase, recent)
+            print(message, flush=True)
+            with (output / 'progress.log').open('a', encoding='utf-8') as stream:
+                stream.write(message + '\n')
+            next_progress = now + args.progress_seconds
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--backend-root', type=Path, default=ROOT / 'backend')
     parser.add_argument('--output', type=Path, help='Parent directory; each run creates a new child directory')
     parser.add_argument('--slow-seconds', type=nonnegative, default=1)
     parser.add_argument('--timeout', type=nonnegative, default=120, help='0 disables the automatic deadline')
+    parser.add_argument('--progress-seconds', type=nonnegative, default=15,
+                        help='Progress interval; 0 disables progress, without changing the deadline')
     parser.add_argument('--collect-only', action='store_true', help='Analyze existing reports without executing tests')
     parser.add_argument('--report', action='append', type=Path, help='Explicit report file; may be repeated')
     parser.add_argument('--since', type=nonnegative, help='Historical collection only: minimum report update epoch')
@@ -148,12 +186,14 @@ def main(argv=None):
     code, child_code, timed_out, interrupted = None, None, False, False
     launch_error = None
     if command:
+        print('TEST_START log_dir=%s progress_seconds=%s timeout=%s' % (
+            output, args.progress_seconds, args.timeout if args.timeout else 'disabled'), flush=True)
         with (output / 'maven.log').open('w', encoding='utf-8') as stream:
             try:
                 process = subprocess.Popen(command, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT,
                                            start_new_session=True)
                 try:
-                    child_code = process.wait(timeout=args.timeout if args.timeout else None)
+                    child_code = wait_with_progress(process, args, output, started, started_ns, backend_root)
                     code = child_code if child_code >= 0 else 128 - child_code
                 except subprocess.TimeoutExpired:
                     timed_out = True
@@ -177,6 +217,7 @@ def main(argv=None):
                     'child_exit_code': child_code, 'timed_out': timed_out, 'interrupted': interrupted,
                     'launch_error': launch_error, 'timeout_seconds': args.timeout if command else None,
                     'timeout_enabled': bool(command and args.timeout),
+                    'progress_seconds': args.progress_seconds if command else None,
                     'report_status': 'partial' if timed_out or interrupted or launch_error or summary['report_errors']
                     or summary['test_count'] == 0 else 'complete_for_available_reports'})
     (output / 'summary.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2, allow_nan=False) + '\n',

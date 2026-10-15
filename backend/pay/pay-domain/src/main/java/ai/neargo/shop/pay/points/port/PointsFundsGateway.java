@@ -13,7 +13,7 @@ public interface PointsFundsGateway {
 
     enum FundsPath { DIRECT, AGGREGATED }
     enum FundsPurpose {
-        SUBSIDY, INTERNAL_REPLENISHMENT, TRANSFER, COLLECTION, EXPIRY_INCOME;
+        SUBSIDY, INTERNAL_REPLENISHMENT, TRANSFER, COLLECTION, EXPIRY_INCOME, COLLECTION_REVERSAL;
         /** Direct orders need merchant subsidy; aggregated orders replenish the platform goods-funds allocation. */
         public static FundsPurpose forPerOrder(FundsPath path) {
             if (path==null) { throw new IllegalArgumentException("POINTS_FUNDS_PATH_REQUIRED"); }
@@ -25,8 +25,18 @@ public interface PointsFundsGateway {
     record FundsContext(FundsPath path, String channel, String merchantNo, String storeNo, String accountVersion,
                         String subMerchantId, String tradeNo, String outTradeNo, long orderTotalMinor) { }
     record FundsCapabilities(boolean subsidy, boolean transfer, boolean internalReplenishment,
-                             boolean collection) { }
+                             boolean collection, boolean collectionReversal) {
+        public FundsCapabilities(boolean subsidy, boolean transfer, boolean internalReplenishment,
+                                 boolean collection) {
+            this(subsidy,transfer,internalReplenishment,collection,false);
+        }
+    }
     record FundsCommand(String ticketNo, String providerIdem, FundsPurpose purpose, FundsContext context,
-                        String currency, long amountMinor) { }
+                        String currency, long amountMinor, String originalTicketNo, String originalEvidenceNo) {
+        public FundsCommand(String ticketNo, String providerIdem, FundsPurpose purpose, FundsContext context,
+                            String currency, long amountMinor) {
+            this(ticketNo,providerIdem,purpose,context,currency,amountMinor,null,null);
+        }
+    }
     record FundsResult(String ticketNo, FundsStatus status, String evidenceNo, long amountMinor, String reason) { }
 }

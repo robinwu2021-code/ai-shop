@@ -30,7 +30,8 @@ public class PayPointsFundsAdapter implements PointsFundsGateway {
             var caps=gateway.fundsCapabilities(nativeContext(context));
             if (caps==null) { return NONE; }
             return new FundsCapabilities(caps.supports(Operation.SUBSIDY),caps.supports(Operation.TRANSFER),
-                    caps.supports(Operation.INTERNAL_REPLENISHMENT),caps.supports(Operation.COLLECTION));
+                    caps.supports(Operation.INTERNAL_REPLENISHMENT),caps.supports(Operation.COLLECTION),
+                    caps.supports(Operation.COLLECTION_REVERSAL));
         } catch (RuntimeException e) { return NONE; }
     }
     @Override public FundsResult submit(FundsCommand command) {
@@ -89,7 +90,8 @@ public class PayPointsFundsAdapter implements PointsFundsGateway {
     }
     private Request nativeRequest(FundsCommand command) {
         return new Request(command.ticketNo(),command.providerIdem(),Operation.valueOf(command.purpose().name()),
-                nativeContext(command.context()),command.currency(),command.amountMinor());
+                nativeContext(command.context()),command.currency(),command.amountMinor(),
+                command.originalTicketNo(),command.originalEvidenceNo());
     }
     private PayFundsOperations.Context nativeContext(FundsContext c) {
         return new PayFundsOperations.Context(PayFundsOperations.Path.valueOf(c.path().name()),c.channel(),
@@ -103,6 +105,10 @@ public class PayPointsFundsAdapter implements PointsFundsGateway {
         if (c==null || blank(c.ticketNo()) || blank(c.providerIdem()) || c.purpose()==null || blank(c.currency())
                 || c.amountMinor()<=0 || !validContext(c.context())) {
             throw new IllegalArgumentException("POINTS_FUNDS_COMMAND_INVALID");
+        }
+        if (c.purpose()==FundsPurpose.COLLECTION_REVERSAL
+                && (blank(c.originalTicketNo()) || blank(c.originalEvidenceNo()))) {
+            throw new IllegalArgumentException("POINTS_FUNDS_ORIGINAL_COLLECTION_REQUIRED");
         }
     }
     private void requireOutsideTransaction() {

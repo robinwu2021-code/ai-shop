@@ -18,6 +18,7 @@ import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPurpose;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsResult;
 import ai.neargo.shop.pay.points.redeem.impl.RedeemServiceImpl.RedeemSnapshot;
 import ai.neargo.shop.pay.points.refund.PointsRefundPreparationService;
+import ai.neargo.shop.pay.points.refund.PointsRefundCompensationService.CompensationSnapshot;
 import ai.neargo.shop.pay.points.posting.PointsPostingService;
 import ai.neargo.shop.pay.points.store.PointsConfigurationStore;
 import ai.neargo.shop.pay.points.store.PointsReadStore;
@@ -144,8 +145,9 @@ public class PointsRefundPreparationServiceImpl implements PointsRefundPreparati
                 payment.merchantNo(),payment.storeNo(),payment.accountVersion(),payment.subMerchantId(),
                 payment.tradeNo(),payment.outTradeNo(),payment.orderTotalMinor());
         var gateway=funds.getIfAvailable();
+        var capabilities=gateway==null?null:gateway.capabilities(context);
         var cash=new CashClawbackPolicy().allocate(type.rate(),missing,command.businessCashMinor(),
-                gateway!=null && gateway.capabilities(context).collection());
+                capabilities!=null && capabilities.collection() && capabilities.collectionReversal());
         String hash=hash(json.writeValueAsString(command));
         String ticket=cash.cashOffsetMinor()==0?null:PointsKeys.position("K",command.typeCode(),command.afterSaleNo());
         var preparation=new RefundPreparation(no,command.typeCode(),1,hash,returned,pendingDue,available,missing,
@@ -210,8 +212,15 @@ public class PointsRefundPreparationServiceImpl implements PointsRefundPreparati
     public record RefundSnapshot(RefundCommand command,RefundPreparation preparation,String grantState,
                                  String redeemState,Map<String,Long> reclaimedByLine,FundsCommand collectionCommand,
                                  RefundConfirmation confirmation,RefundAbort abort,FundsResult collectionResult,
-                                 ZeroCashCompletionFact zeroCashCompletion) {
+                                 ZeroCashCompletionFact zeroCashCompletion,CompensationSnapshot compensation) {
         public RefundSnapshot { reclaimedByLine=Map.copyOf(reclaimedByLine); }
+        public RefundSnapshot(RefundCommand command,RefundPreparation preparation,String grantState,String redeemState,
+                              Map<String,Long> reclaimedByLine,FundsCommand collectionCommand,
+                              RefundConfirmation confirmation,RefundAbort abort,FundsResult collectionResult,
+                              ZeroCashCompletionFact zeroCashCompletion) {
+            this(command,preparation,grantState,redeemState,reclaimedByLine,collectionCommand,confirmation,abort,
+                    collectionResult,zeroCashCompletion,null);
+        }
         public RefundSnapshot(RefundCommand command,RefundPreparation preparation,String grantState,String redeemState,
                               Map<String,Long> reclaimedByLine,FundsCommand collectionCommand,
                               RefundConfirmation confirmation,RefundAbort abort,FundsResult collectionResult) {

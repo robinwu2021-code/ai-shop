@@ -85,6 +85,19 @@ class TimingLogTest(unittest.TestCase):
             self.assertFalse(summary['timed_out'])
             self.assertGreaterEqual(summary['wall_seconds'], 0.15)
 
+    def test_progress_is_visible_without_enabling_a_deadline(self):
+        with tempfile.TemporaryDirectory() as temp:
+            command = [sys.executable, str(SCRIPT), '--backend-root', temp, '--output', temp,
+                       '--timeout', '0', '--progress-seconds', '0.05', '--', sys.executable, '-c',
+                       "import time; print('[INFO] Running sample.RefundTest', flush=True); time.sleep(0.2)"]
+            run = subprocess.run(command, capture_output=True, text=True, timeout=5)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertIn('TEST_PROGRESS', run.stdout)
+            self.assertIn('sample.RefundTest', run.stdout)
+            output = next(Path(temp).glob('*/summary.json'))
+            self.assertFalse(json.loads(output.read_text())['timeout_enabled'])
+            self.assertIn('TEST_PROGRESS', (output.parent / 'progress.log').read_text())
+
     def test_command_failure_exit_code_is_preserved(self):
         self.load()
         with tempfile.TemporaryDirectory() as temp:

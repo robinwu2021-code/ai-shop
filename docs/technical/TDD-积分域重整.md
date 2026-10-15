@@ -60,7 +60,13 @@
 | C3 退款端到端与客户端 | 含积分退款源决策绑定、分账回退、现金/积分/补偿及源收尾恢复；同步C/B端实际应付和退款展示 | 原准备revision与现金指令一致；重复/乱序/崩溃不超退、不重复恢复库存/券 |
 | C4 旧方案退出与首次上线T13 | 完成订单切换后删除旧SPI/Bean/任务/表访问/POINTS退款选项；完整新链路、容量及真实通道验收 | 发布包只有最新积分逻辑；不迁移旧积分业务余额、不双引擎运行 |
 
-A1子项状态：A1.1正现金决策授权与防旧快照恢复、A1.2合法零现金内部完成证明已实现并验证；A1.3补收成功而退款失败的补偿、A1.4完整付款/退款竞争仍待完成，不能将A1整体记为完成。
+A1子项状态：A1.1正现金决策授权与防旧快照恢复、A1.2合法零现金内部完成证明、A1.3补收成功而退款失败的内部补偿已实现并验证；A1.4完整付款/退款竞争仍待完成，不能将A1整体记为完成。
+
+A1.3实施设计：仅pay内退款内核，订单源围栏后置。使用原准备单payload持久化补偿命令、原失败现金单与回执，不新增表。CASH_AUTHORIZED且补收实际成功、原现金退款明确FAILED/CLOSED时，建立COMPENSATION_REQUIRED；先提交COMPENSATING再事务外执行，未知进入COMPENSATION_UNKNOWN并只查原单；明确失败进入COMPENSATION_FAILED保持冻结待处理，成功进入COMPENSATED后允许原abort恢复冻结。原现金单与输入hash/revision必须匹配，补偿期间禁止原确认/授权。
+
+补偿使用专用COLLECTION_REVERSAL操作，绑定原补收ticket和实际证据，固定原门店/账户版本/币种/金额；不能当普通TRANSFER。未认证通道拒绝新执行并保留冻结。补收尚未计U，补偿成功时正补收与负退回证据在同一零净资金凭证消费，不增U、不减B、不发行积分。验证先新增补偿方法，再单个退款测试类和直接受影响资金适配测试，不跑全仓。runner增加周期进度（耗时、已完成用例数、最近测试类），保留慢日志，timeout=0，不推测百分比。
+
+新增退款补收承诺还须同时认证collection与collectionReversal；仅能补收而不能退回时，本次不扣减现金，缺分按原策略记waived，不能先承诺不可恢复的补收。已收款后能力关闭则保持冻结等待恢复，不把“不可执行”当作已补偿。COMPENSATION_FAILED不自动换号重试，异常待办和经授权处置归A5/B4。
 
 下一开发任务调整为 **A1内部缺口收口，随后A2定期账单**，不先改OrderService、不先合并订单分支。A阶段形成稳定服务后进入运营端B阶段；C端/B端交易接线随订单阶段处理。运营端可以在测试环境用隔离夹具验收，真实资金执行仍须能力认证与已核验账户/资金证据。
 
@@ -1139,3 +1145,19 @@ MariaDB12.2.2本机innodb_snapshot_isolation=ON：旧快照锁已变更行会报
 首条测试08:47:33至末条测试08:58:10 UTC（北京时间16:47:33–16:58:10）窗口636.341秒，不代表完整对话时长。6条Maven累计192.460秒，最长63.789秒；含重跑182次用例累计10.943秒，最长1.172秒，仅1条>=1秒慢日志。2条非零均为能力缺失RED和有效消融，未发生本轮编译/夹具/环境失败。timeout全部0，明细在忽略目录zero-cash-analysis.json及对应target测试日志中。单用例没有长期占用，命令耗时仍主要包含构建/上下文，窗口内其余时间包含代码实现与核对。
 
 A1.2仅完成模块内部事实接收、授权和确认；源侧事实生产者及现金决策接线保持最后处理。下一子项A1.3为补收成功但现金退款失败的内部补偿，随后A1.4付款退款竞争，仍未进入A2定期结算和运营端B阶段。
+
+### A1.3 实施记录：补收退回补偿与测试进度（2026-10-15）
+
+本批按已授权A1.3实施，未修改订单接线。新增PointsRefundCompensationService及ExecutionService（各接口/impl），复用pts_refund_preparation的payload/version持久化原失败现金单、补偿意图与回执。prepare核对原hash/revision、正现金授权、已核验补收及绑定现金退款FAILED/CLOSED，拒绝残留成功核验字段。claim提交COMPENSATING后才调用通道，UNKNOWN只查原指令。成功消费REFUND_COLLECTION正证据与REFUND_COMPENSATION负证据，净资金为零；COMPENSATED后由原abort恢复原积分冻结和来源头寸。拒绝/未知不解冻，不新增U/C/D/B或R，不发行积分。补偿期间原confirm/authorize拒绝，成功重放不重复发送/消费。
+
+PointsFundsGateway和PayFundsOperations新增专用COLLECTION_REVERSAL及原补收ticket/evidence字段，原六参数构造默认无引用。新能力默认false且独立认证，native适配保留原门店账户快照和收款引用；普通TRANSFER/COLLECTION能力不能代替原收款退回。PointsRefundPreparationService在承诺补收前同时检查补收及退回能力。尚未认证的生产通道仍保持关闭。
+
+需求→实现验收（AC-PTS-27及A1.3）：PointsRefundPreparationTest新增10项compensation_*，覆盖原冻结恢复、hash/revision/主体绑定、未知/拒绝、能力变更、原决策阻断、异常回执与丢失回复、重启后查询、事务外远程调用、证据冲突、外层pay事务回滚与重新确认。PointsFundsAdapterTest新增2项collection_reversal_*验证用途独立、原引用传递和查询恢复。初始3项RED均为业务断言失败；不可逆补收承诺单项RED（预期0、实际扣5）后修正。扩展测试一次失败源于把证据冲突预期为IllegalArgumentException，实际既有posting抛IllegalStateException，已按具体业务码修正，不能算作生产缺陷或有效RED。
+
+局部回归：`20261015T092202Z-a0a452a0`，仅PointsRefundPreparationTest 44项及PointsFundsAdapterTest 15项，共59/0，23.750006秒，慢用例0。消融去掉现金单user绑定后，`20261015T092241Z-9934ad4b`单项确实失败（错误主体未抛异常），恢复原实现。隔离MariaDB恢复后仅运行新增10项，`20261015T092316Z-a4e10d5b`，10/0；真实Mapper/事务、合成门店与模拟资金，不替代目标MySQL/真实通道验收。
+
+测试工具：run-backend-tests.py默认每15秒即时输出TEST_PROGRESS，包括耗时、已完成用例数、当前Maven阶段及最近测试类，并记录progress.log；开始即输出日志目录，原逐用例、>=1秒慢日志和退出码/超时语义保留，不推测百分比。Python工具9项通过，5.823秒。所有Maven仍为timeout=0。7次局部命令合计169.645256秒，最长27.501589秒；87次用例记录合计10.217秒，最大1.311秒，慢记录1条；4次非零分别为初始业务RED、扩展测试断言错误、能力门RED与消融RED。分析记录于忽略目录compensation-analysis.json，不把编译/上下文耗时归因单个用例。
+
+设计→实现：4个新增补偿接口/impl；修改FundsGateway、native FundsOperations/Adapter、RefundSnapshot/Prepare与Abort；2个直接相关测试类；runner及工具测试；本文。没有新增DDL、运营端、订单调用或生产门店数据。SQL方言、设计图产物检查及diff检查通过。
+
+边界：源侧现金终态围栏和售后补偿接线仍在C阶段，内部查账不能替代源侧禁止新现金指令的并发控制；COMPENSATION_FAILED待办、审计与人工处置装配归A5/B4。A1.4付款/退款竞争、A2定期结算及B阶段仍未完成，不将A1或整个积分模块记为完成。
