@@ -88,7 +88,7 @@ echo "✓ 已传服务器：/dl/$REMOTE"
 ssh "$SSH_HOST" "sudo ln -sfn '$REMOTE' /data/app/ai-shop/web/dl/hxmall-merchant-latest.apk"
 L_MD5=$(ssh "$SSH_HOST" "md5sum /data/app/ai-shop/web/dl/hxmall-merchant-latest.apk | cut -d' ' -f1")
 [ "$L_MD5" = "$MD5" ] || { echo "✗ latest 软链取到的不是这一版：$L_MD5"; exit 1; }
-echo "✓ latest 软链 → $REMOTE（md5 回读一致）"
+echo "✓ latest 软链 → ${REMOTE}（md5 回读一致）"
 
 # ── 3.6 版本清单 latest.json：**让「最新版是哪个」变成可查的，而不是抄来抄去** ──
 #
@@ -120,7 +120,7 @@ JSON
 # 回读：写进去了不等于取得到（nginx 的 alias、权限、缓存都可能拦在中间）
 J_VER=$(ssh "$SSH_HOST" "curl -sk --resolve www.hxmall.top:443:127.0.0.1 https://www.hxmall.top/dl/latest.json | sed -n 's/.*\"version\": \"\([^\"]*\)\".*/\1/p'")
 [ "$J_VER" = "$VNAME" ] || { echo "✗ latest.json 取回来的版本是「$J_VER」，不是 $VNAME"; exit 1; }
-echo "✓ latest.json → $VNAME（$VCODE），公网取回核对一致"
+echo "✓ latest.json → ${VNAME}（${VCODE}），公网取回核对一致"
 
 # ── 4. 官网那一行 ─────────────────────────────────────────────────────
 # **这一步是这个脚本存在的理由。** 前三步不做也看得出来，这一步漏了看不出来。
