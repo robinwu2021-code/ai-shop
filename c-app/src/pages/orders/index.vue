@@ -187,7 +187,7 @@ onShow(load);
     <view v-for="o in shown" :key="o.orderNo" class="sh-card card" @tap="open(o)">
       <text class="txt-caption sh-muted sh-num card__no">{{ $t("order.orderNo") }}：{{ o.payOrderNo || o.orderNo }}</text>
       <view class="card__head sh-row sh-row--between">
-        <text class="txt-caption card__pickup">
+        <text v-if="o.fulfillment !== 'EXPRESS'" class="txt-caption card__pickup">
           {{ o.pickupName || $t(`fulfillment.${o.fulfillment}`) }}
         </text>
         <!--
@@ -298,6 +298,7 @@ onShow(load);
    留在这里会把库件压掉 */
 .card__status {
   flex-shrink: 0;
+  margin-left: auto;
 }
 .row__right {
   text-align: end;
