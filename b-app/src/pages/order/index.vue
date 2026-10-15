@@ -32,7 +32,7 @@ const currentSyncLabel = computed(() => {
   if (!sync) return "";
   if (sync.status === "PENDING") return String(t("order.syncPending"));
   return String(t(traceStatusKey({ status: sync.status as NonNullable<Order["trace"]>["status"],
-    nodes: shownTrace.value?.nodes ?? [] })));
+    nodes: [] })));
 });
 /**
  * 物流轨迹那份（TDD-物流模块 B2）：比详情里的多承运商、单号、到柜。
@@ -43,7 +43,13 @@ const shownTrace = computed(() => fullTrace.value ?? order.value?.trace ?? null)
 /** 物流详情弹框。主页面只留一行摘要，这一行点开才是地图与全部节点 */
 const traceOpen = ref(false);
 /** 摘要行上的状态词。与步骤条共用 shared 里那一份判定，别在两处各写一个三分支 */
-const traceStep = computed(() => (shownTrace.value ? traceStatusKey(shownTrace.value) : "picked"));
+const traceStep = computed(() => {
+  const status = currentSync.value?.status ?? shownTrace.value?.status;
+  if (status === "PENDING") return "order.syncPending";
+  return status
+    ? traceStatusKey({ status: status as NonNullable<Order["trace"]>["status"], nodes: [] })
+    : "trace.awaitingPickup";
+});
 /** 摘要行上的最新一条。节点按时间倒序，第一条就是最新 */
 const traceLatest = computed(() => shownTrace.value?.nodes?.[0]?.text ?? "");
 /** 承运商显示名。拿不到译名就显示原码 —— 显示「STO」好过显示空白 */
@@ -712,7 +718,7 @@ onPullDownRefresh(async () => {
           <text class="sh-num">{{ order.expressNo }}</text>
         </view>
         <text v-if="currentSync" class="txt-caption sh-muted sh-mt-sm">
-          {{ $t("order.logisticsStatus") }}：{{ currentSyncLabel }}{{ currentSync.pending ? ` · ${$t("order.syncPending")}` : "" }}
+          {{ $t("order.logisticsStatus") }}：{{ currentSyncLabel }}{{ currentSync.pending && currentSync.status !== "PENDING" ? ` · ${$t("order.syncPending")}` : "" }}
           {{ currentSync.reason ? ` · ${currentSync.reason}` : "" }}
         </text>
         <view v-if="canCorrectWaybill && !correctingWaybill" class="sh-btn sh-btn--muted sh-mt-sm" @tap="startWaybillCorrection">

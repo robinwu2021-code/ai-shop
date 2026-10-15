@@ -20,7 +20,7 @@ function logisticsText(o: Order): string {
   if (!sync) return "";
   if (sync.status === "PENDING") return String(t("order.syncPending"));
   return String(t(traceStatusKey({ status: sync.status as NonNullable<Order["trace"]>["status"],
-    nodes: o.trace?.nodes ?? [] })));
+    nodes: [] })));
 }
 import {
   DELIVERY_SHAPE,
@@ -113,6 +113,7 @@ const TABS = computed(() => ALL_TABS.filter((t) => !t.perm || merchant.can(t.per
 const tab = ref("all");
 const list = ref<Order[]>([]);
 const loading = ref(false);
+const refreshingNo = ref("");
 
 const empty = computed(() => !loading.value && !list.value.length);
 
@@ -156,6 +157,27 @@ function open(o: Order) {
   uni.navigateTo({ url: `${ROUTES.order}?orderNo=${o.orderNo}` });
 }
 
+async function refreshTrace(o: Order) {
+  if (!o.expressNo || refreshingNo.value) return;
+  if (o.logisticsSync?.status === "DELIVERED") {
+    uni.showToast({ title: String(t("order.traceAlreadyDelivered")), icon: "none" });
+    return;
+  }
+  refreshingNo.value = o.orderNo;
+  try {
+    const trace = await api.mOrderTrace(o.orderNo, true);
+    await load();
+    uni.showToast({
+      title: String(t(trace?.refreshable ? "order.traceRefreshRequested" : "order.traceRefreshUnavailable")),
+      icon: "none",
+    });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    refreshingNo.value = "";
+  }
+}
+
 onShow(() => {
   void load();
   /*
@@ -194,8 +216,12 @@ onShow(() => {
         </text>
       </view>
       <text v-if="o.fulfillment === FULFILLMENT.EXPRESS && o.logisticsSync" class="txt-caption sh-muted">
-        {{ $t("order.logistics") }}：{{ logisticsText(o) }}{{ o.logisticsSync.pending ? ` · ${$t("order.syncPending")}` : "" }}
+        {{ $t("order.logistics") }}：{{ logisticsText(o) }}{{ o.logisticsSync.pending && o.logisticsSync.status !== "PENDING" ? ` · ${$t("order.syncPending")}` : "" }}
       </text>
+      <view v-if="o.fulfillment === FULFILLMENT.EXPRESS && o.expressNo && o.status === 'FULFILLING'"
+        class="trace-refresh sh-mt-sm" @tap.stop="refreshTrace(o)">
+        {{ $t(refreshingNo === o.orderNo ? "order.traceRefreshing" : "order.traceRefresh") }}
+      </view>
 
       <view v-for="it in o.items" :key="it.skuNo" class="sh-row item sh-mb-sm">
         <sh-cover class="item__cover" :src="it.cover" :w="200"></sh-cover>
@@ -219,6 +245,12 @@ onShow(() => {
 
 .row__head {
   margin-bottom: 20rpx;
+}
+
+.trace-refresh {
+  color: var(--sh-primary);
+  font-size: 24rpx;
+  align-self: flex-start;
 }
 
 .item {
