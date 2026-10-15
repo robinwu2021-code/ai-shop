@@ -9,7 +9,7 @@ const merchant = useMerchantStore();
 //
 // 另外：驳回**不改订单状态**。置回已完成就把「申请平台介入」的路堵死了，
 // 用户会以为售后已结束（ADR 里没写，但这是售后设计的常见坑）。
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -46,6 +46,10 @@ function impactText(r: Row): string {
 type Row = { as: AfterSale; order?: Order };
 
 const list = ref<Row[]>([]);
+const tab = ref<"pending" | "all">("pending");
+const pending = computed(() => list.value.filter((r) =>
+  ["APPLIED", "WAIT_RECEIPT", "RETURNING"].includes(r.as.status)));
+const visible = computed(() => tab.value === "pending" ? pending.value : list.value);
 /** 正在驳回的单号 —— 展开理由输入框 */
 const rejecting = ref("");
 const reason = ref("");
@@ -106,7 +110,7 @@ async function confirmReturn(r: Row) {
 }
 
 /**
- * 在途仅退款：签收后系统只提醒，**由商家点这一下才退**（退款永不自动，TDD-订单状态机 AC8）。
+ * 在途仅退款：签收后由商家确认；未备货的申请已在后端直接进入退款，不会出现在此处。
  * 不等签收也可以点 —— 商家判断不用等时自己决定。
  */
 async function confirmRefund(r: Row) {
@@ -154,9 +158,14 @@ onShow(load);
   <sh-scaffold title-key="afterSale.title" :denied="!merchant.can('biz:aftersale')">
     <text class="txt-display">{{ $t("afterSale.title") }}</text>
 
-    <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("afterSale.empty")'></sh-empty>
+    <view class="tabs sh-row">
+      <text class="sh-chip" :class="{ 'sh-chip--warning': tab === 'pending' }" @tap="tab = 'pending'">{{ $t("afterSale.pendingTab") }} ({{ pending.length }})</text>
+      <text class="sh-chip" :class="{ 'sh-chip--warning': tab === 'all' }" @tap="tab = 'all'">{{ $t("afterSale.allTab") }}</text>
+    </view>
 
-    <view v-for="r in list" :key="r.as.afterSaleNo" class="sh-card sh-mt-sm">
+    <sh-empty v-if="!visible.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("afterSale.empty")'></sh-empty>
+
+    <view v-for="r in visible" :key="r.as.afterSaleNo" class="sh-card sh-mt-sm">
       <view class="item__head sh-row sh-row--between sh-row--baseline">
         <text class="txt-body">{{ r.order?.buyerNickname || "—" }}</text>
         <text class="sh-muted">{{ datetime(r.as.updatedAt) }}</text>
@@ -276,11 +285,15 @@ onShow(load);
       </view>
     </view>
 
-    <text v-if="list.length" class="tip sh-hint">{{ $t("afterSale.hint") }}</text>
+    <text v-if="visible.length" class="tip sh-hint">{{ $t("afterSale.hint") }}</text>
   </sh-scaffold>
 </template>
 
 <style scoped>
+.tabs {
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
 .item__tags {
   gap: 12rpx;
 }

@@ -267,6 +267,8 @@ shop:
         # ⚠️ **只有 ${amt} 一个变量**：阿里云通知短信的变量只认语义类型（money/name/time…），
         #   订单号 SUB2026… 不符合任何一种，进不了模板。订单号在其余四条通道里有完整详情。
         order-paid: ${ALI_SMS_TPL_ORDER_PAID:}
+        # 售后待审核提醒。微信订阅与短信同时发送；未获批时记录 tpl_unconfigured。
+        after-sale-applied: ${ALI_SMS_TPL_MCH_AFTER_SALE:}
         # 发货触达收件人模板（TDD-收件人物流触达与分享裂变 §2.2）。**可选**，同 order-paid 的理由。
         # 模板形如「您的包裹已发货，物流进度查看 s.hxmall.top/${code}」——
         # ⚠️ 阿里云链接变量规则：域名是**固定文本**、变量只放路径段（link_param），

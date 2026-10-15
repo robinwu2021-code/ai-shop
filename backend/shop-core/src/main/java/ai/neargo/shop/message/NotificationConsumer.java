@@ -320,7 +320,8 @@ public class NotificationConsumer implements OutboxConsumer {
                     }
                 }
             }
-            case NotifyScene.AFTER_SALE_APPLIED -> fanOutToStaff(event, text(payload, "entityNo"),
+            case NotifyScene.AFTER_SALE_APPLIED -> {
+                fanOutToStaff(event, text(payload, "entityNo"),
                     text(payload, "storeNo"), AFTER_SALE_ROLES,
                     "新的售后申请", "买家提交了售后申请，尽早处理更容易协商解决",
                     "/pages/after-sale/index",
@@ -329,6 +330,12 @@ public class NotificationConsumer implements OutboxConsumer {
                             "status", "待处理",
                             "tip", "顾客申请了售后，请尽快处理",
                             "time", String.valueOf(System.currentTimeMillis())), true));
+                String entityNo = text(payload, "entityNo");
+                String storeNo = text(payload, "storeNo");
+                if (prefs.on(storeNo, scene, MchNotifyPref.CH_SMS)) {
+                    smsAfterSaleApplied(entityNo, storeNo, event.getAggregateId());
+                }
+            }
             case NotifyScene.REVIEW_CREATED -> {
                 int rating = payload.get("rating") == null ? 5 : payload.get("rating").asInt();
                 // 差评单独点名：混在普通评价里会被当成例行夸奖划掉
@@ -679,6 +686,24 @@ public class NotificationConsumer implements OutboxConsumer {
             } catch (RuntimeException e) {
                 // 一个号发不出去不该拖累其余的 —— 逐个 try，否则第一个号有问题后面都收不到
                 log.warn("[notify] 来单短信没发出去 subOrderNo={} {}", subOrderNo, e.toString());
+            }
+        }
+    }
+
+    private void smsAfterSaleApplied(String entityNo, String storeNo, String afterSaleNo) {
+        java.util.LinkedHashSet<String> to = new java.util.LinkedHashSet<>();
+        merchantStaffPort.ownerPhone(entityNo).ifPresent(to::add);
+        to.addAll(recipients.extraPhones(storeNo));
+        if (to.isEmpty()) {
+            logWriter.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, "-", null,
+                    "TPL_SMS_MCH_AFTER_SALE", SysNotifyLog.FAILED, "no_recipient", null, null);
+            return;
+        }
+        for (String phone : to) {
+            try {
+                smsPort.sendAfterSaleApplied(phone, afterSaleNo);
+            } catch (RuntimeException e) {
+                log.warn("[notify] 售后短信没发出去 afterSaleNo={} {}", afterSaleNo, e.toString());
             }
         }
     }

@@ -12,8 +12,8 @@ import static ai.neargo.shop.trade.order.statemachine.Actor.*;
 /**
  * 售后单状态机（订单状态机-完整方案 §5.2）。
  *
- * <p><b>退款永不自动</b>：进入「退钱」的迁移只由商家、平台、或买家接受商家的协商额触发；
- * 系统唯一的例外是 {@link AfterSaleEvent#TRADE_VOID}（交易不成立的原路退回）。由 {@code MachineInvariantsTest} 锁死。
+ * <p>系统只有交易不成立时能自行决定退款。付款后尚未备货的买家申请可直接进入退款执行；
+ * 备货后仍由商家审核。由 {@code MachineInvariantsTest} 锁死系统侧例外。
  */
 public final class AfterSaleMachine {
 
@@ -22,6 +22,9 @@ public final class AfterSaleMachine {
                     // A1 买家申请
                     .create().on(APPLY).by(BUYER).when(AUTHORIZED, IN_WINDOW, NO_OPEN, REFUNDABLE, REASON, APPLY_RULE)
                     .to(APPLIED).emit("AfterSaleApplied").add()
+                    .from(APPLIED).on(PREPARATION_NOT_STARTED_REFUND).by(BUYER)
+                    .when(AUTHORIZED, PREPARATION_NOT_STARTED, CHANNEL_OK)
+                    .to(REFUNDING).emit("BeforePreparationRefundRequested").add()
                     // A2 商家主动退款（缺货少发 / 称重差价 / 补偿 …）
                     .create().on(MERCHANT_INITIATE).by(MERCHANT).when(AUTHORIZED, REASON, REFUNDABLE, CHANNEL_OK)
                     .toOneOf(AfterSaleTargets.MONEY, AfterSaleTargets::moneyStep).emit("AfterSaleInitiated").add()

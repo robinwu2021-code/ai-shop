@@ -8,6 +8,7 @@
 # 用法（在生产机上，env 里有 ALI_SMS_AK/SK/SIGN）：
 #   set -a; . /data/app/ai-shop/shop-app/shop-app.env; set +a
 #   python3 ali-sms-ship-template.py create     # 提交模板，打印 TemplateCode（审核中）
+#   python3 ali-sms-ship-template.py create-after-sale  # 提交商家退款待审核短信模板
 #   python3 ali-sms-ship-template.py status SMS_xxx   # 查审核状态
 #
 # AK/SK 只从环境变量读，不写进脚本、不打印值。
@@ -39,12 +40,20 @@ CONTENT="您的包裹已发货，物流与签收进度请点击 s.hxmall.top/${c
 REMARK=("虹选商城电商订单：买家下单、商家发货后，系统给收货人发送一条物流进度短信，"
         "内含本商城已 ICP 备案域名 s.hxmall.top 的物流查询短链（302 跳转到小程序/H5 看件页）。"
         "可点击短链示例（真实、公网可打开）：https://s.hxmall.top/DEMO2025 ，点击 302 跳转到本商城 H5 物流查询页展示该订单的物流进度。")
+AFTER_SALE_CONTENT="您有新的退款申请，请登录虹选商家端查看并及时处理。"
+AFTER_SALE_REMARK="虹选商城买家在订单备货后申请退款时，通知该门店的店主登录商家端审核售后。订单详情在商家端查看。"
 
 if sys.argv[1]=="create":
     r=call("CreateSmsTemplate",{
         "TemplateType":"1","TemplateName":"虹选-发货物流触达",
         "TemplateContent":CONTENT,"TemplateRule":json.dumps({"code":"link_param"},ensure_ascii=False),
         "RelatedSignName":SIGN,"Remark":REMARK})
+    print(json.dumps(r,ensure_ascii=False))
+elif sys.argv[1]=="create-after-sale":
+    r=call("CreateSmsTemplate",{
+        "TemplateType":"1","TemplateName":"虹选-商家退款待审核",
+        "TemplateContent":AFTER_SALE_CONTENT,
+        "RelatedSignName":SIGN,"Remark":AFTER_SALE_REMARK})
     print(json.dumps(r,ensure_ascii=False))
 elif sys.argv[1]=="status":
     r=call("GetSmsTemplate",{"TemplateCode":sys.argv[2]})

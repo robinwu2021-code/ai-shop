@@ -1554,6 +1554,8 @@ export default {
     dictPicked: "已关联官方村：{s}",
   },
   afterSale: {
+    pendingTab: "待处理申请",
+    allTab: "全部售后",
     withdraw: "撤销申请",
     fullCash: "本期按本门店子单全额原路退回现金",
     historicalPoints: "此订单含历史积分，积分处理需人工核对",

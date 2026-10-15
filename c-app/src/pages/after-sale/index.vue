@@ -76,6 +76,7 @@ const refundedByPoints = computed(() => (order.value?.afterSale?.refundPoints ??
 const doneHintKey = computed(() => {
   if (order.value?.afterSale?.refundExecution) return refundProgressKey(order.value.afterSale);
   if (refundedByPoints.value) return "afterSale.refundedPoints";
+  if (asStatus.value === "REFUNDING") return "afterSale.refundingHint";
   if (asStatus.value === "WAIT_RECEIPT") return "afterSale.waitReceipt";
   return asStatus.value === "REFUNDED" ? "afterSale.refundedHint" : "afterSale.appliedHint";
 });

@@ -274,6 +274,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          * 可建单但要商家确认（needMerchant，归 approve 那步处理）。进度快照落库留痕。
          */
         FulfillStage stage = stageOf(sub);
+        // 行锁由 ownSubOrder 持有：与商家「开始备货」写入串行，不能用两次无锁查询做决定。
+        boolean beforePreparation = OrdSubOrder.WAIT_FULFILL.equals(sub.getStatus())
+                && sub.getPreparedAt() == null
+                && (sub.getExpressNo() == null || sub.getExpressNo().isBlank())
+                && stage == FulfillStage.NOT_PREPARED;
         boolean fresh = isFreshSub(subOrderNo);
         AfterSaleRules.Gate gate = AfterSaleRules.applyGate(stage, fresh, cmd.ruleReason());
         if (!gate.allow()) {
@@ -296,7 +301,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         as.setOrderNo(sub.getOrderNo());
         as.setUserNo(sub.getUserNo());
         as.setEntityNo(sub.getEntityNo());
-        as.setType(cmd.type());
+        // 货尚未动时无需买家寄回；即便端上误选「退货退款」，也按仅退款原路处理。
+        as.setType(beforePreparation ? OrdAfterSale.REFUND_ONLY : cmd.type());
         as.setReason(cmd.reason());
         as.setImages(writeJson(cmd.images()));
         as.setRefundMinor(refund);
@@ -317,16 +323,13 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          */
         boolean platformIsSeller = MerchantQueryPort.FUNDS_AGGREGATED
                 .equals(merchantPort.fundsModeOf(sub.getEntityNo()));
-        as.setStatus(platformIsSeller ? OrdAfterSale.ARBITRATING : OrdAfterSale.APPLIED);
+        as.setStatus(beforePreparation ? OrdAfterSale.APPLIED
+                : platformIsSeller ? OrdAfterSale.ARBITRATING : OrdAfterSale.APPLIED);
         as.setSplitReversed(false);
         // 申请当时的履约进度快照（审核、灰色地带判定、留痕都读它）
         as.setFulfillStage(stage.name());
 
-        /*
-         * **不再有极速退**（TDD-售后规则 §2.3）：退款一律先审核、收货后再退钱。
-         * 原先「仅退款 + 小额 + 时限内」会在这里直接 doRefund —— 现在状态恒 APPLIED
-         * （自营单仍走 ARBITRATING 分支不变），退钱动作全部移到 approve / 签收触发那步。
-         */
+        // 不是按金额/时限的旧「极速退」；仅凭尚未备货的履约事实决定免审核。
         as.setInstant(false);
         // 库内占位：并发两次申请只一张成功（上面的 activeOf 是先查后插，挡不住两个实例同时到）
         slots.occupy(subOrderNo, as.getAfterSaleNo());
@@ -335,12 +338,18 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         // 日志要写**真实去向**：自营单没有「等商家处理」这一步，
         // 写成一样的话，用户看时间线会以为在等商家，而实际在等平台
         appendLog(subOrderNo, as.getStatus(),
-                platformIsSeller ? "已申请售后，由平台直接处理" : "已申请售后",
+                beforePreparation ? "未备货，申请后直接发起原路退款"
+                        : platformIsSeller ? "已申请售后，由平台直接处理" : "已申请售后",
                 OrdStatusLog.BY_USER, sub.getUserNo());
 
-        // B-N-2：商家越早看到售后越可能协商解决。自营单也发 —— 收件的是平台商户的员工
-        eventBus.publish(new OrderEvents.AfterSaleApplied(as.getAfterSaleNo(), subOrderNo,
-                sub.getEntityNo(), sub.getStoreNo(), sub.getUserNo(), cmd.type(), refund));
+        if (beforePreparation) {
+            doRefund(as, "未备货，买家申请原路退款", AfterSaleEvent.PREPARATION_NOT_STARTED_REFUND,
+                    Actor.BUYER, sub.getUserNo());
+        } else {
+            // 只有真正需要商家处理的单才发「售后待处理」；自动退款走退款结果通知。
+            eventBus.publish(new OrderEvents.AfterSaleApplied(as.getAfterSaleNo(), subOrderNo,
+                    sub.getEntityNo(), sub.getStoreNo(), sub.getUserNo(), cmd.type(), refund));
+        }
 
         return detailOf(as);
     }
@@ -663,7 +672,12 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             return;
         }
         if (!OrdAfterSale.REFUNDING.equals(as.getStatus())) {
-            transit(as, event, actor, operatorNo, label, AfterSaleContext.builder().build());
+            AfterSaleContext.Builder context = AfterSaleContext.builder();
+            if (event == AfterSaleEvent.PREPARATION_NOT_STARTED_REFUND) {
+                // apply 已持有子单行锁并完成履约状态检查；这里把该判断传给状态机守卫。
+                context.preparationNotStarted(true);
+            }
+            transit(as, event, actor, operatorNo, label, context.build());
         }
         basicRefunds.prepare(as.getAfterSaleNo(), new OrderActor(as.getEntityNo(), null, operatorNo));
     }

@@ -73,6 +73,7 @@ class MachineTablesTest {
         String money = "REFUNDING", offline = "WAIT_OFFLINE_REFUND";
         EdgeTable t = new EdgeTable()
                 .row(List.of(E), "APPLY", List.of("BUYER"), "APPLIED")
+                .row(List.of("APPLIED"), "PREPARATION_NOT_STARTED_REFUND", List.of("BUYER"), money)
                 .row(List.of(E), "MERCHANT_INITIATE", List.of("MERCHANT"), money, offline)
                 .row(List.of(E), "TRADE_VOID", List.of("SYSTEM"), money)
                 .row(List.of("APPLIED"), "APPROVE", List.of("MERCHANT"), money, offline, "WAIT_RECEIPT", "WAIT_RETURN")

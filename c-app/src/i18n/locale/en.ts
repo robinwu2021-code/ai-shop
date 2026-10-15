@@ -937,6 +937,7 @@ export default {
     submit: "Submit",
     applied: "Request submitted",
     appliedHint: "The shop will respond shortly; track it in your order",
+    refundingHint: "Refund accepted; the payment will return to its original method. Track it in your order.",
     refunded: "Refunded",
     refundedHint: "Money returned to your original payment method; timing depends on your bank",
     freshQualityOnly: "After a fresh item ships, only quality issues (damaged/spoiled/expired) are refundable",

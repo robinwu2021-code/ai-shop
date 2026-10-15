@@ -34,6 +34,7 @@ public class NotifyLoggingSmsPort implements SmsPort {
     private static final String TPL_SMS_OTP = "TPL_SMS_OTP";
     /** 来单提醒（TDD-来单四渠道与商家通知设置）。第二条业务模板 */
     private static final String TPL_SMS_ORDER_PAID = "TPL_SMS_ORDER_PAID";
+    private static final String TPL_SMS_MCH_AFTER_SALE = "TPL_SMS_MCH_AFTER_SALE";
     /** 发货触达收件人（TDD-收件人物流触达与分享裂变）。第三条业务模板 */
     private static final String TPL_SMS_SHIP = "TPL_SMS_SHIP";
 
@@ -76,6 +77,20 @@ public class NotifyLoggingSmsPort implements SmsPort {
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, null,
                     TPL_SMS_ORDER_PAID, SysNotifyLog.FAILED, e.getMessage(), null, null);
+            throw e;
+        }
+    }
+
+    @Override
+    public SendResult sendAfterSaleApplied(String phone, String afterSaleNo) {
+        try {
+            SendResult r = delegate.sendAfterSaleApplied(phone, afterSaleNo);
+            writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, r.templateCode(),
+                    TPL_SMS_MCH_AFTER_SALE, SysNotifyLog.SENT, null, r.providerMsgId(), null);
+            return r;
+        } catch (RuntimeException e) {
+            writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, null,
+                    TPL_SMS_MCH_AFTER_SALE, SysNotifyLog.FAILED, e.getMessage(), null, null);
             throw e;
         }
     }

@@ -510,19 +510,31 @@ class M5AfterSaleFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 不再有极速退：小额仅退款也不自动退、等审核（TDD-售后规则 §2.3）")
-    void apply_never_auto_refunds() throws Exception {
-        // 3980（M0002）正是旧极速退会自动退的那种单（阈值内 + 仅退款 + 刚下单）——
-        // 恢复极速退分支时这单会变 REFUNDED，本用例即变红（消融判据）
-        Ordered o = placeAndPay("13200132600", 3980L);
+    @DisplayName("★★★ 支付后未备货：申请即进入原路退款，无需商家审核")
+    void apply_refunds_before_prepare() throws Exception {
+        Ordered o = placeAndPay("13200132600", 6980L, false);
         String asNo = applyAfterSale(o, "REFUND_ONLY", "买错了");
 
         JsonNode data = json.readTree(detail(o.userToken, asNo)).get("data");
         assertThat(data.get("status").asString())
-                .as("退款一律先审核、收货后再退钱——apply 里绝不能直接退成 REFUNDED")
-                .isNotEqualTo("REFUNDED");
-        assertThat(data.get("instant").asBoolean())
-                .as("极速退已删，instant 恒 false").isFalse();
+                .as("未备货应已进入支付退款执行，不应停在待商家审核")
+                .isIn("REFUNDING", "REFUNDED");
+        assertThat(jdbc.queryForObject("select count(*) from ord_refund_execution where after_sale_no=?",
+                Integer.class, asNo)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from sys_outbox where aggregate_id=? and event_type='AFTER_SALE_APPLIED'",
+                Integer.class, asNo)).as("无需商家审核的申请不应发送待处理提醒").isZero();
+    }
+
+    @Test
+    @DisplayName("★★★ 已进入备货：申请停在待商家审核，不发起支付退款")
+    void apply_waits_for_merchant_after_prepare() throws Exception {
+        Ordered o = placeAndPay("13200132604", 6980L);
+        setSubStage(o.subOrderNo, OrdSubOrder.WAIT_FULFILL, System.currentTimeMillis());
+        String asNo = applyAfterSale(o, "REFUND_ONLY", "买错了");
+        JsonNode data = json.readTree(detail(o.userToken, asNo)).get("data");
+        assertThat(data.get("status").asString()).isEqualTo("APPLIED");
+        assertThat(jdbc.queryForObject("select count(*) from ord_refund_execution where after_sale_no=?",
+                Integer.class, asNo)).isZero();
     }
 
     @Test
@@ -1163,6 +1175,10 @@ class M5AfterSaleFlowTest {
      *                   用金额挑商品是为了让用例读起来就知道走的是哪条分支
      */
     private Ordered placeAndPay(String phone, long amountHint) throws Exception {
+        return placeAndPay(phone, amountHint, true);
+    }
+
+    private Ordered placeAndPay(String phone, long amountHint, boolean prepared) throws Exception {
         String token = login(phone);
         String goods = amountHint <= 4000L ? "G0004" : "G0002";
         String sku = amountHint <= 4000L ? "SK0005" : "SK0003";
@@ -1182,6 +1198,8 @@ class M5AfterSaleFlowTest {
         String list = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
         String subOrderNo = json.readTree(list).get("data").get("records").get(0).get("orderNo").asString();
+        // 此测试类既有用例均验证商家审核路径；显式建立备货事实。未备货直退用例传 false。
+        if (prepared) setSubStage(subOrderNo, OrdSubOrder.WAIT_FULFILL, System.currentTimeMillis());
         return new Ordered(token, subOrderNo, payOrderNo);
     }
 

@@ -1323,6 +1323,8 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     dictPicked: "Linked to official village: {s}",
   },
   afterSale: {
+    pendingTab: "Pending requests",
+    allTab: "All after-sales",
     withdraw: "Withdraw request",
     fullCash: "Full cash refund for this store order to the original payment method",
     historicalPoints: "This order includes historical points requiring manual verification",

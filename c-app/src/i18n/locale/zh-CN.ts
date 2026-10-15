@@ -1010,6 +1010,7 @@ export default {
     submit: "提交申请",
     applied: "已提交申请",
     appliedHint: "商家会尽快处理，进度可在订单详情查看",
+    refundingHint: "退款已直接受理，款项将原路退回，请在订单详情查看进度",
     refunded: "退款已到账",
     refundedHint: "款项已原路退回，到账时间以支付渠道为准",
     freshQualityOnly: "生鲜发货后只支持损坏/变质/过期等质量问题的退款",
