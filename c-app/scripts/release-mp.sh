@@ -36,7 +36,7 @@ echo "▶ 目标小程序 AppID：$APPID"
 # 2026-09-04 实测：后台是 0.1.3，界面显示 0.1.0。
 if ! grep -q "\"versionName\"[[:space:]]*:[[:space:]]*\"$VERSION\"" "$HERE/src/manifest.json"; then
   perl -0pi -e "s/(\"versionName\"\s*:\s*\")[^\"]*(\")/\${1}$VERSION\${2}/" "$HERE/src/manifest.json"
-  echo "▶ 0/4 manifest.json 的 versionName 已更新为 $VERSION（记得随发布一起提交）"
+  echo "▶ 0/4 manifest.json 的 versionName 已更新为 ${VERSION}（记得随发布一起提交）"
 fi
 
 echo "▶ 1/4 构建"
@@ -97,7 +97,7 @@ echo "▶ 3/4 传到 $HOST"
 COPYFILE_DISABLE=1 tar czf /tmp/mp-weixin.tgz -C "$HERE/dist/build" mp-weixin 2>/dev/null
 scp -q /tmp/mp-weixin.tgz "$HOST:$REMOTE/mp-weixin.tgz"
 
-echo "▶ 4/4 上传（版本 $VERSION）"
+echo "▶ 4/4 上传（版本 ${VERSION}）"
 # **退出码要穿过来**：`node ... | grep` 的退出码是 grep 的，上传失败照样是 0，
 # 于是下面那句「传完了」会在失败时照常打印 —— 这正是本脚本第 2 步要防的那种错，
 # 别在自己身上再犯一遍。落盘再过滤，rc 单独取。
