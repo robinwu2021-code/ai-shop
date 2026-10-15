@@ -77,6 +77,14 @@
 
 H5 看件页保留免登录、安全收窄的物流信息；在 URL Link 真通道成功返回时显示按钮“**在微信小程序中查看完整物流**”，旁边说明“将打开微信，首次使用需登录并验证收件手机号”。不可生成 URL Link 时显示“**暂时无法跳转小程序，您可以先在本页查看物流**”，不展示无效按钮。先以体验/正式版可用性和微信接口返回实测验证，再单独开启 `SHOP_WX_URLLINK_STUB=false`；未发布的小程序或微信拒绝生成时，不把短信短链改为直跳小程序。H5 与短信仍共用现有短链及 5 天看件令牌有效期，文案不得承诺长期可用。
 
+**2026-10-15 H5 跳转补齐（P3）**：微信真接口对当前 `pages/track/index` 返回 `40165 invalid weapp pagepath`，对已存在的 `pages/home/index` 返回 `0 ok`（`trial`、`release` 均已实测；只验证生成，手机唤起仍须人工验）。因此 URL Link 的入口用首页 `pages/home/index?trackToken=<看件令牌>`，小程序首页在 `onLoad` 立即 `navigateTo` 看件页；看件页仍要求登录及收件手机号匹配。令牌只来自验签通过的 `/mp/track/mini-link`，不记录在日志。`SHOP_WX_URLLINK_ENV_VERSION` 与 `WX_MP_STATE` 对齐，当前体验版设 `trial`，正式发布后切 `release`。H5 获得 URL Link 才显示按钮与身份说明；空结果显示回退文案。短链仍落 H5，不强迫用户安装/登录微信才能看基本物流。
+
+| 验收项 | 定向证据 |
+|---|---|
+| 微信可生成入口且能传递令牌 | `MpTrackController` 测试断言 `pages/home/index + trackToken`；微信真接口实测返回 0 |
+| H5 有按钮、说明和失败回退 | `c-app/tests/track-phase1.test.ts` 可用/不可用两种响应 |
+| 小程序接续到看件页 | 首页入口路由单测 + 体验版上传后人工手机点击 |
+
 ## 四、执行顺序与验收
 
 | 批次 | 改动 | 验收证据 |

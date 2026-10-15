@@ -33,6 +33,8 @@ async function load() {
   notRecipient.value = false;
   failed.value = false;
   view.value = null;
+  miniLink.value = "";
+  miniLinkLoaded.value = false;
   try {
     // #ifdef MP-WEIXIN
     // 小程序：进来先绑手机号（走登录页），再按「本人」校验看件（TDD §3）。
@@ -64,9 +66,9 @@ async function load() {
   loadMiniLink();
 }
 
-// 「在小程序中打开」：仅 H5 端有意义（小程序里已经在小程序内了）。
-// 拿到 URL Link 才显示按钮——小程序未发布/未开通时后端返 null，不露点不动的按钮。
+// H5 用微信 URL Link 唤起小程序；微信拒绝生成时说明可留在本页查看。
 const miniLink = ref("");
+const miniLinkLoaded = ref(false);
 async function loadMiniLink() {
   // #ifdef H5
   try {
@@ -74,6 +76,8 @@ async function loadMiniLink() {
     miniLink.value = r?.url ?? "";
   } catch {
     miniLink.value = "";
+  } finally {
+    miniLinkLoaded.value = true;
   }
   // #endif
 }
@@ -121,10 +125,11 @@ onShareAppMessage(() => ({
           {{ view.storeName ? $t("track.shipFrom", { store: view.storeName }) : $t("track.shipFromDefault") }}
         </text>
         <!-- #ifdef H5 -->
-        <!-- 拿到 URL Link 才显示：小程序未发布/未开通时不露点不动的按钮 -->
         <view v-if="miniLink" class="sh-btn sh-btn--sm trk-mini" @tap="openInMini">
           {{ $t("track.openInMini") }}
         </view>
+        <text v-if="miniLink" class="txt-caption sh-muted trk-mini-hint">{{ $t("track.miniJumpHint") }}</text>
+        <text v-else-if="miniLinkLoaded" class="txt-caption sh-muted trk-mini-hint">{{ $t("track.miniUnavailable") }}</text>
         <!-- #endif -->
       </view>
 
@@ -177,6 +182,7 @@ onShareAppMessage(() => ({
 .block { margin-bottom: 16rpx; }
 .trk-store { display: block; margin-top: 8rpx; }
 .trk-mini { margin-top: 16rpx; }
+.trk-mini-hint { display: block; margin-top: 8rpx; }
 /* 字重交给字阶：这个元素挂的是 .txt-title，它本来就是 600，这一行是冗余的 */
 .prog__row { display: block; margin-top: 8rpx; }
 .prog__sec { margin-top: 16rpx; }

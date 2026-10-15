@@ -318,7 +318,7 @@ shop:
     # 短链域名前缀，不带尾斜杠。短信里拼的是 <base>/<code>
     short-link-base: ${SHIP_SHORT_LINK_BASE:https://s.hxmall.top}
     # 看件页在小程序里的路径（URL Link 用），不带前导斜杠
-    track-mini-path: ${SHIP_TRACK_MINI_PATH:pages/track/index}
+    track-mini-path: ${SHIP_TRACK_MINI_PATH:pages/home/index}
     # URL Link 生成不出来时退回的 H5 看件页前缀（hash 路由），token 以 ?t= 拼在后面
     track-h5-base: ${SHIP_TRACK_H5_BASE:https://www.hxmall.top/c/?t=}
 
@@ -366,7 +366,9 @@ shop:
     urllink:
       stub: ${SHOP_WX_URLLINK_STUB:${SHOP_WX_STUB:true}}
       # URL Link 有效期（天，≤30）。到期链接失效，与看件令牌同寿
-      expire-days: ${SHOP_WX_URLLINK_EXPIRE_DAYS:30}
+      expire-days: ${SHOP_WX_URLLINK_EXPIRE_DAYS:5}
+      # 体验版联调使用 trial；正式发布后随 WX_MP_STATE 切 release
+      env-version: ${SHOP_WX_URLLINK_ENV_VERSION:${WX_MP_STATE:release}}
     # 手机号快速验证（phonenumber.getPhoneNumber）。**要已认证 + 非个人主体，且按次计费** ——
     # 所以它默认关着，而验证码那条路必须一直在（端上按 /mp/user/phone/capable 决定显示哪个）
     phone:

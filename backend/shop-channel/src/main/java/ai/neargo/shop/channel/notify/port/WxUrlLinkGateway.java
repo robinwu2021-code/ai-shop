@@ -42,8 +42,9 @@ public class WxUrlLinkGateway implements WxUrlLinkPort {
     private final String host;
     private final String appid;
     private final String secret;
-    /** URL Link 有效期（天），到期后链接失效。默认 30，与看件令牌同寿 */
+    /** URL Link 有效期（天），由应用配置与看件令牌保持一致 */
     private final int expireDays;
+    private final String envVersion;
 
     private volatile String token;
     private volatile long tokenExpireAt;
@@ -51,11 +52,16 @@ public class WxUrlLinkGateway implements WxUrlLinkPort {
     public WxUrlLinkGateway(@Value("${shop.wx.host:https://api.weixin.qq.com}") String host,
                             @Value("${shop.wx.appid:}") String appid,
                             @Value("${shop.wx.secret:}") String secret,
-                            @Value("${shop.wx.urllink.expire-days:30}") int expireDays) {
+                            @Value("${shop.wx.urllink.expire-days:30}") int expireDays,
+                            @Value("${shop.wx.urllink.env-version:release}") String envVersion) {
         this.host = host;
         this.appid = appid;
         this.secret = secret;
         this.expireDays = expireDays > 0 && expireDays <= 30 ? expireDays : 30;
+        this.envVersion = switch (envVersion) {
+            case "trial", "develop" -> envVersion;
+            default -> "release";
+        };
         if (appid == null || appid.isBlank() || secret == null || secret.isBlank()) {
             throw new IllegalStateException(
                     "URL Link 已开启（shop.wx.urllink.stub=false）但缺少 WX_APPID / WX_SECRET");
@@ -70,6 +76,7 @@ public class WxUrlLinkGateway implements WxUrlLinkPort {
         }
         // expire_interval 单位是天，is_expire=true 时必填
         String body = "{\"path\":\"" + esc(path) + "\",\"query\":\"" + esc(query)
+                + "\",\"env_version\":\"" + envVersion
                 + "\",\"is_expire\":true,\"expire_type\":1,\"expire_interval\":" + expireDays + "}";
         try {
             HttpResponse<String> resp = http.send(
