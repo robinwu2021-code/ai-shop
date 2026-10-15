@@ -428,14 +428,14 @@ onPullDownRefresh(async () => {
         而混在订单信息那堆键值行里，它读起来像又一条属性，不像一件在变化的事。
         整卡可点 → 弹框里是全过程。
       -->
-      <view v-if="shownTrace && shownTrace.nodes.length" class="sh-card trace-card" @tap="traceOpen = true; loadTrace(currentNo)">
+      <view v-if="shownTrace" class="sh-card trace-card" @tap="traceOpen = true; loadTrace(currentNo)">
         <view class="sh-row sh-row--between">
           <text class="txt-strong trace-card__st">{{ $t(traceStep) }}</text>
           <sh-go :text="String($t('order.traceView'))"></sh-go>
         </view>
         <!-- 最新一条**最多两行**：一行截得太狠（「预计10月10日到达…」停在「两地」），
              两行能把「哪天到哪儿」说完；再多就该点进去看了 -->
-        <text class="txt-caption sh-muted trace-card__last">{{ traceLatest }}</text>
+        <text v-if="traceLatest" class="txt-caption sh-muted trace-card__last">{{ traceLatest }}</text>
         <text class="txt-caption sh-muted trace-card__no">
           {{ carrierLabel }} {{ order.expressNo }}
         </text>

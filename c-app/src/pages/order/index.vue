@@ -28,14 +28,14 @@ const traceStep = computed(() => (order.value?.trace ? traceStatusKey(order.valu
 const hasTrace = computed(() => !!order.value?.trace?.nodes?.length);
 
 /*
- * 状态文字：有物流轨迹就显示轨迹步骤；否则走**履约感知**的 orderView（与订单列表同一把尺）——
+ * 状态文字：物流已有状态就显示物流步骤（微信可能只给状态、不给轨迹节点）；否则走**履约感知**的 orderView ——
  * FULFILLING + 快递 → 「已发货」，自提 → 「已到自提点」。
  * 只有在既无轨迹、又拿不到履约方式（跨商家支付视角，fulfillment 为空）时，才回落到原始状态词条。
  */
 const statusLabel = computed(() => {
   const o = order.value;
   if (!o) return "";
-  if (hasTrace.value) return String(t(traceStep.value));
+  if (o.trace && o.trace.status !== "CREATED") return String(t(traceStep.value));
   if (o.fulfillment) {
     const v = orderView(o.status, o.fulfillment, { appointmentAt: o.appointmentAt });
     return String(v.needsTime ? t(v.labelKey, { t: datetime(o.appointmentAt!) }) : t(v.labelKey));

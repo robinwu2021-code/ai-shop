@@ -10,6 +10,7 @@ import ai.neargo.shop.logistics.domain.WaybillSourceIdentity;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
 import ai.neargo.shop.logistics.routing.CarrierCodeBook;
+import ai.neargo.shop.spi.logistics.LogisticsPort;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,9 +39,13 @@ public class WxBindExecutor implements OutboxConsumer {
     private final LogisticsProperties props;
     private final ObjectMapper json;
     private ShipmentSourcePort source;
+    private LogisticsPort logistics;
 
     @Autowired(required = false)
     public void sourcePort(ShipmentSourcePort source) { this.source = source; }
+
+    @Autowired(required = false)
+    public void logisticsPort(LogisticsPort logistics) { this.logistics = logistics; }
 
     private boolean currentSource(LgsWaybill waybill) {
         return waybill.getSourceShipmentNo() == null || (source != null
@@ -91,6 +96,16 @@ public class WxBindExecutor implements OutboxConsumer {
                 waybills.update(p, WaybillSourceIdentity.unchanged(w)
                         .set("display_channel", "wx-plugin").set("bind_error", null));
                 log.info("[lgs-wxbind] {} 换到 token", shipmentNo);
+                // 发货提交时还没有 token；拿到后立即校正一次微信状态。已结束的旧运单
+                // 可能不会再有订阅推送，否则要等买家打开物流页才会更新 C/B 的缓存。
+                // track 的微信 10 分钟闸负责限制重复查询；查询失败不影响已成功的绑定。
+                if (logistics != null) {
+                    try {
+                        logistics.track(LogisticsPort.TrackQuery.subOrder(w.getBizRef(), "MP", false));
+                    } catch (RuntimeException e) {
+                        log.warn("[lgs-wxbind] {} 绑定后状态校正失败：{}", shipmentNo, e.toString());
+                    }
+                }
             }
             case NOT_READY -> log.info("[lgs-wxbind] {} 微信还没收录（{}），等下一条推送", shipmentNo, r.code());
             case FATAL -> {

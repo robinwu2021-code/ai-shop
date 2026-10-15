@@ -182,6 +182,7 @@ onShow(load);
     ></sh-tabs>
 
     <view v-for="o in shown" :key="o.orderNo" class="sh-card card" @tap="open(o)">
+      <text class="txt-caption sh-muted sh-num card__no">{{ $t("order.orderNo") }}：{{ o.payOrderNo || o.orderNo }}</text>
       <view class="card__head sh-row sh-row--between">
         <text class="txt-caption card__pickup">
           {{ o.pickupName || $t(`fulfillment.${o.fulfillment}`) }}
@@ -277,6 +278,10 @@ onShow(load);
 }
 .card {
   margin-bottom: 20rpx;
+}
+.card__no {
+  display: block;
+  margin-bottom: 12rpx;
 }
 .card__head {
   gap: 20rpx;
