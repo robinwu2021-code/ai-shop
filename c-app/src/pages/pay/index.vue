@@ -63,6 +63,7 @@ const showCode = computed(() =>
  * 而端上要做的事正好相反。
  */
 const canPay = computed(() => {
+  if (order.value?.paymentResolution) return false;
   const list = methodList.value;
   if (!list || !list.configured) return true;
   return list.methods.some((m) => m.available);
@@ -70,6 +71,7 @@ const canPay = computed(() => {
 
 /** 拦住时要说明原因，别只给一个灰按钮 */
 const blockedReason = computed(() => {
+  if (order.value?.paymentResolution) return String(t("pay.manualRequired"));
   const list = methodList.value;
   if (!list || !list.configured || list.methods.some((m) => m.available)) return "";
   return String(t("pay.noUsableMethod"));
@@ -119,7 +121,7 @@ async function load(orderNo: string) {
     currentNo.value = payNo;
     order.value = detail;
     failed.value = false;
-    if (detail.status === "WAIT_PAY") {
+    if (detail.status === "WAIT_PAY" && !detail.paymentResolution) {
       try {
         const list = await api.payMethods(payNo);
         if (generation !== loadGeneration || !visible) return;
@@ -138,7 +140,8 @@ function acceptResult(value: Order): boolean {
     awaitingConfirmation.value = false;
     if (!checkoutCleared) { clearCheckoutKey(); checkoutCleared = true; }
   }
-  return value.status !== "WAIT_PAY";
+  if (value.paymentResolution) awaitingConfirmation.value = false;
+  return value.status !== "WAIT_PAY" || !!value.paymentResolution;
 }
 
 async function refreshResult() {
@@ -344,6 +347,7 @@ onUnmounted(() => { visible = false; resumePayment?.(false); resumePayment = und
          **不写在 `<sh-scaffold>` 上**：写在那儿的话，`order` 为空时连外壳都不渲染 ——
          没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
     <template v-if="order">
+        <text v-if="order.paymentResolution && phase !== 'waiting'" class="txt-caption block-reason">{{ $t("pay.manualRequired") }}</text>
         <!-- 待支付 -->
         <template v-if="phase === 'waiting'">
           <view class="sh-card hero">

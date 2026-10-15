@@ -422,6 +422,8 @@ export interface ShopApi {
    */
   orderTrace(orderNo: string): Promise<ShipmentTrace | null>;
   cancelOrder(orderNo: string): Promise<Order>;
+  /** 本人确认整张门店子单的全部有效包裹已收到。 */
+  confirmReceipt(orderNo: string): Promise<Order>;
   /**
    * 订单预览：**金额以后端算的为准**。
    *

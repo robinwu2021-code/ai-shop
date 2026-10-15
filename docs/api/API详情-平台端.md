@@ -62,6 +62,44 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原资金执行与独立资源恢复进度。 |
+| `afterSaleNo` | `string` | 是 | 售后单号 |
+| `subOrderNo` | `string` | 是 | 关联的子订单 |
+| `orderNo` | `string` | 是 | 关联的主订单 |
+| `merchantNo` | `string` | 是 | 涉事商家 |
+| `merchantName` | `string` | 是 | 商家名快照 |
+| `buyerNickname` | `string` | 是 | 申请人昵称 |
+| `type` | [`AfterSaleType`](#aftersaletype) | 是 | 售后类型：仅退款 / 退货退款 / 换货 |
+| `status` | [`AfterSaleStatus`](#aftersalestatus) | 是 | 售后单状态。允许的流转见 `AFTERSALE_TRANSITIONS` |
+| `refundMinor` | `number` | 是 | 申请退款金额（分）。裁决只决定退不退，不改这个数 |
+| `reason` | `string` | 是 | 用户填写的售后原因 |
+| `images` | `string`\[\] | 是 | 举证材料（照片） |
+| `liability` | [`Liability`](#liability) | 否 | 裁定的责任方。平台介入后才有值 |
+| `share` | [`LiabilityShare`](#liabilityshare) | 否 | 赔付出资比例。**仅 finance 域 mock 队列使用**，真实后端未接（见上方说明） |
+| `verdict` | `string` | 否 | 裁决说明：用户与商家都会看到 |
+| `refundSplitPending` | `boolean` | 否 | E4 退款回退分账待办：finance 域「退款回退分账」mock 队列专用字段， 真实后端未接（见上方说明），售后本身的裁决流程不读写它。 |
+| `createdAt` | `string` | 是 | 售后发起时间 |
+
+
+#### POST `/ops/after-sales/{afterSaleNo}/recover`
+
+仅恢复原执行，不确认资金成功、不新建退款
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `afterSaleNo` | path | `string` | 是 | 售后单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`AfterSale`](#aftersale)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原资金执行与独立资源恢复进度。 |
 | `afterSaleNo` | `string` | 是 | 售后单号 |
 | `subOrderNo` | `string` | 是 | 关联的子订单 |
 | `orderNo` | `string` | 是 | 关联的主订单 |
@@ -3010,6 +3048,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原资金执行与独立资源恢复进度。 |
 | `afterSaleNo` | `string` | 是 | 售后单号 |
 | `subOrderNo` | `string` | 是 | 关联的子订单 |
 | `orderNo` | `string` | 是 | 关联的主订单 |
@@ -10583,6 +10622,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原资金执行与独立资源恢复进度。 |
 | `afterSaleNo` | `string` | 是 | 售后单号 |
 | `subOrderNo` | `string` | 是 | 关联的子订单 |
 | `orderNo` | `string` | 是 | 关联的主订单 |
@@ -14243,6 +14283,22 @@ PENDING/REJECTED（P1）：商家自建点的审核态 —— 先审后用，地
 | `redeemed` | `number` | 是 | 已核销单数 |
 | `overdue` | `number` | 是 | 逾期未取单数 |
 | `rate` | `number` | 是 | 已核销 /（已核销 + 待核销 + 逾期），0–1 |
+
+### RefundExecutionProgress
+
+后端持久化的退款执行事实，资源恢复独立于资金结果。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `executionNo` | `string` | 是 | 原退款执行号 |
+| `paymentNo` | `string,null` | 否 | 资金退款单号 |
+| `status` | `string` | 是 | 资金执行状态 |
+| `phase` | `string` | 是 | 分账回退或现金退款阶段 |
+| `errorCode` | `string,null` | 否 | 资金执行错误码 |
+| `resourceStatus` | `string` | 是 | 库存及优惠恢复状态 |
+| `resourceErrorCode` | `string,null` | 否 | 资源恢复错误码 |
+| `succeededAt` | `number,null` | 否 | 可信现金成功时刻，毫秒 |
+| `nextAttemptAt` | `number,null` | 否 | 原执行下次可恢复时刻，毫秒 |
 
 ### Region
 

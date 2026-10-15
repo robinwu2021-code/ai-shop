@@ -8,7 +8,7 @@ import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
 import { statusTone } from "@shared/strategies/order-view";
-import { traceStepKey } from "@shared/strategies/trace-step";
+import { traceStatusKey } from "@shared/strategies/trace-step";
 import { api } from "@/api";
 import { ApiError } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
@@ -19,6 +19,7 @@ const { t } = useI18n();
 const token = ref("");
 const view = ref<TrackView | null>(null);
 const loaded = ref(false);
+const failed = ref(false);
 // 小程序侧：登录手机号≠收货号时为 true，页面提示「这单不是寄给你的」
 const notRecipient = ref(false);
 
@@ -30,6 +31,8 @@ onLoad((q) => {
 async function load() {
   loaded.value = false;
   notRecipient.value = false;
+  failed.value = false;
+  view.value = null;
   try {
     // #ifdef MP-WEIXIN
     // 小程序：进来先绑手机号（走登录页），再按「本人」校验看件（TDD §3）。
@@ -51,6 +54,8 @@ async function load() {
     // 403 = 登录号与收货号不一致（非本人）；其余当失效
     if (e instanceof ApiError && e.code === 80103) {
       notRecipient.value = true;
+    } else if (!(e instanceof ApiError && e.code === 10404)) {
+      failed.value = true;
     }
     view.value = null;
   } finally {
@@ -97,6 +102,12 @@ onShareAppMessage(() => ({
       :tip="String($t('track.notRecipientTip'))"
     ></sh-empty>
     <sh-empty
+      v-else-if="failed"
+      :failed="true"
+      :text="String($t('track.loadFailed'))"
+      @retry="load"
+    ></sh-empty>
+    <sh-empty
       v-else-if="loaded && !view"
       :text="String($t('track.invalidTitle'))"
       :tip="String($t('track.invalidTip'))"
@@ -121,7 +132,7 @@ onShareAppMessage(() => ({
       <view class="sh-card block prog">
         <view class="sh-row sh-row--between">
           <text class="txt-title status" :class="statusTone(view.status)">
-            {{ view.trace ? $t(`trace.step.${traceStepKey(view.trace)}`) : $t(`orderStatus.${view.status}`) }}
+            {{ view.trace ? $t(traceStatusKey(view.trace)) : $t(`orderStatus.${view.status}`) }}
           </text>
         </view>
         <text v-if="view.expressNo" class="txt-caption sh-muted prog__row sh-num">

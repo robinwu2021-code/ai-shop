@@ -13,7 +13,8 @@ import type { GroupBuy, InvoiceRequest, Order, OrderStatus } from "@shared/types
 import { confirm, prompt } from "@ai-shop/ui/prompt";
 import { orderNoOf } from "@/shared/order-no";
 import { openWxWaybillTracking } from "@/ports/wx-logistics";
-import { traceStepKey } from "@shared/strategies/trace-step";
+import { traceStatusKey } from "@shared/strategies/trace-step";
+import { refundProgressKey, canWithdrawAfterSale, hasHistoricalPoints } from "@shared/strategies/order-phase1";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 
 const { t } = useI18n();
@@ -22,7 +23,7 @@ const { t } = useI18n();
  * 只是没显示 —— 买家光看一串运单号，不知道该去哪家查。认不出的码原样显示，不吞掉。
  */
 /** 摘要行的状态词。与步骤条共用 shared 里那一份判定，别在两处各写一个三分支 */
-const traceStep = computed(() => (order.value?.trace ? traceStepKey(order.value.trace) : "picked"));
+const traceStep = computed(() => (order.value?.trace ? traceStatusKey(order.value.trace) : "picked"));
 /** 有没有轨迹。没有就不渲染轨迹那一段 */
 const hasTrace = computed(() => !!order.value?.trace?.nodes?.length);
 
@@ -34,7 +35,7 @@ const hasTrace = computed(() => !!order.value?.trace?.nodes?.length);
 const statusLabel = computed(() => {
   const o = order.value;
   if (!o) return "";
-  if (hasTrace.value) return String(t(`trace.step.${traceStep.value}`));
+  if (hasTrace.value) return String(t(traceStep.value));
   if (o.fulfillment) {
     const v = orderView(o.status, o.fulfillment, { appointmentAt: o.appointmentAt });
     return String(v.needsTime ? t(v.labelKey, { t: datetime(o.appointmentAt!) }) : t(v.labelKey));
@@ -82,7 +83,7 @@ const shopName = computed(() => order.value?.store?.storeName || order.value?.me
  */
 const primaryKey = computed<"pay" | "review" | "buyAgain">(() => {
   const o = order.value;
-  if (o?.status === "WAIT_PAY") return "pay";
+  if (o?.status === "WAIT_PAY" && !o.paymentResolution) return "pay";
   if (canReview.value) return "review";
   return "buyAgain";
 });
@@ -482,7 +483,32 @@ async function cancel() {
 }
 
 function pay() {
+  if (order.value?.paymentResolution) return;
   uni.navigateTo({ url: `${ROUTES.pay}?orderNo=${orderNo.value}` });
+}
+
+const canReceive = computed(() => order.value?.status === "FULFILLING"
+  && order.value.fulfillment === "EXPRESS" && !order.value.subOrders?.length
+  && (!order.value.afterSale || ["CLOSED", "REJECTED"].includes(order.value.afterSale.status)));
+const receiptBusy = ref(false);
+async function receive() {
+  const o = order.value;
+  if (!o || !canReceive.value || receiptBusy.value) return;
+  if (!await confirm({ title: String(t("order.confirmReceipt")), hint: String(t("order.receiptHint")) })) return;
+  receiptBusy.value = true;
+  try { await api.confirmReceipt(o.orderNo); await load(); }
+  catch (e) { uni.showToast({ title: (e as Error).message, icon: "none" }); }
+  finally { receiptBusy.value = false; }
+}
+const withdrawing = ref(false);
+async function withdrawAfterSale() {
+  const sale = order.value?.afterSale;
+  if (!sale || !canWithdrawAfterSale(sale) || withdrawing.value) return;
+  if (!await confirm({ title: String(t("afterSale.withdraw")) })) return;
+  withdrawing.value = true;
+  try { await api.cancelAfterSale(sale.afterSaleNo); await load(); }
+  catch (e) { uni.showToast({ title: (e as Error).message, icon: "none" }); }
+  finally { withdrawing.value = false; }
 }
 
 function afterSale() {
@@ -778,6 +804,9 @@ onPullDownRefresh(async () => {
       它不上吸底条 —— 售后是例外路径，钉在常驻条上等于每单都在问「是不是有问题」；
       而且它有后续状态，申请之后这一行就被下面那张进行中的卡取代。
     -->
+    <text v-if="order.paymentResolution" class="txt-caption">{{ $t("pay.manualRequired") }}</text>
+    <view v-if="canReceive" class="sh-card"><text class="sh-btn" @tap="receive">{{ $t("order.confirmReceipt") }}</text></view>
+    <text v-if="hasHistoricalPoints(order)" class="txt-caption">{{ $t("afterSale.historicalPoints") }}</text>
     <view v-if="canApplyAfterSale" class="sh-card as" @tap="afterSale">
       <view class="sh-row sh-row--between">
         <text class="sh-muted">{{ $t("afterSale.section") }}</text>
@@ -791,10 +820,11 @@ onPullDownRefresh(async () => {
       <text class="txt-body as__title">
         {{ $t(`afterSale.status.${order.afterSale.status}`) }}
       </text>
+      <text v-if="canWithdrawAfterSale(order.afterSale)" class="sh-link" @tap="withdrawAfterSale">{{ $t("afterSale.withdraw") }}</text>
       <text v-if="order.afterSale.merchantReply" class="as__reply">
         {{ $t("afterSale.merchantReply") }}{{ order.afterSale.merchantReply }}
       </text>
-      <text class="txt-caption as__hint">{{ $t(`afterSale.statusHint.${order.afterSale.status}`) }}</text>
+      <text class="txt-caption as__hint">{{ $t(refundProgressKey(order.afterSale)) }}</text>
       <view
         v-if="order.afterSale.status === 'WAIT_RETURN'"
         class="sh-btn as__btn"

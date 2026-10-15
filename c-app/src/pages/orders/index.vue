@@ -162,6 +162,7 @@ function open(o: Order) {
 }
 
 function pay(o: Order) {
+  if (o.paymentResolution) return;
   uni.navigateTo({ url: `${ROUTES.pay}?orderNo=${o.orderNo}` });
 }
 
@@ -229,7 +230,8 @@ onShow(load);
         </view>
       </view>
 
-      <view v-if="o.status === 'WAIT_PAY'" class="card__ops sh-row sh-row--between">
+      <text v-if="o.paymentResolution" class="txt-caption">{{ $t("pay.manualRequired") }}</text>
+      <view v-if="o.status === 'WAIT_PAY' && !o.paymentResolution" class="card__ops sh-row sh-row--between">
         <!-- 倒计时给在按钮旁边：不说的话他不知道这一单还等不等得起 -->
         <text v-if="payLeft(o)" class="txt-caption is-danger sh-num">
           {{ $t("orders.payLeft", { t: payLeft(o) }) }}

@@ -783,3 +783,9 @@ export interface StockOutboundReq {
   /** 明细行。空数组会被拒 —— 一张没有行的单据落库之后没人能解释它是什么 */
   lines: StockLineReq[];
 }
+
+/** 收妥退货不代表可以再次销售，缺省禁止自动回库。 */
+export interface ReceiveReturnReq {
+  /** 商家明确确认可再次销售；默认 false。 */
+  restockApproved: boolean;
+}

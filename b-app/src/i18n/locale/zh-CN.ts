@@ -2,6 +2,9 @@
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
   trace: {
+    awaitingPickup: "待揽收",
+    exception: "物流异常",
+    cancelled: "运单已作废",
     step: {
       picked: "已揽收",
       transit: "运输中",
@@ -1513,6 +1516,20 @@ export default {
     dictPicked: "已关联官方村：{s}",
   },
   afterSale: {
+    withdraw: "撤销申请",
+    fullCash: "本期按本门店子单全额原路退回现金",
+    historicalPoints: "此订单含历史积分，积分处理需人工核对",
+    restock: "退货可再次销售，同意回库（默认不回库）",
+    accepted: "已提交，请查看退款进度",
+    execution: {
+      processing: "退款已受理，等待资金结果",
+      failed: "退款失败，请联系客服核对原退款单",
+      unknown: "退款结果尚未确认，请勿重复申请",
+      manual: "退款需要人工核对，请联系客服",
+      resourcesPending: "现金已退，库存或优惠仍在恢复中",
+      resourcesFailed: "现金已退，库存或优惠恢复异常，请联系客服",
+      done: "退款与资源恢复已完成",
+    },
     impactReturn: "整单退款，将同时退回用户的{what}",
     impactCoupon: "券「{name}」",
     impactPoints: "{n} 积分",

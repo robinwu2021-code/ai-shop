@@ -9554,6 +9554,9 @@ components:
     CheckoutCapability:
       type: "object"
       properties:
+        pointsEnabled:
+          type: "boolean"
+          description: "一期固定关闭；旧接口缺字段也按关闭处理。"
         usablePayMethods:
           anyOf:
             - type: "array"
@@ -9666,6 +9669,11 @@ components:
         payOrderNo:
           type: "string"
           description: "支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。\n**订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。"
+        paymentResolution:
+          anyOf:
+            - "$ref": "#/components/schemas/PaymentResolution"
+            - type: "null"
+          description: "已确认收款但订单需人工处理；存在时禁止再次付款。"
         store:
           anyOf:
             - "$ref": "#/components/schemas/OrderStore"
@@ -9811,6 +9819,24 @@ components:
         - "createdAt"
         - "timeline"
       additionalProperties: false
+    PaymentResolution:
+      type: "object"
+      properties:
+        status:
+          type: "string"
+          description: "处理状态，例如 MANUAL_REQUIRED。"
+        reason:
+          type: "string"
+          description: "服务端记录的原因码，页面映射为可理解的提示。"
+        reference:
+          type: "string"
+          description: "原资金凭据引用。"
+      required:
+        - "status"
+        - "reason"
+        - "reference"
+      additionalProperties: false
+      description: "支付异常投影，不包含其他门店的现金明细。"
     OrderTimelineNode:
       type: "object"
       properties:
@@ -9834,6 +9860,11 @@ components:
         afterSaleNo:
           type: "string"
           description: "售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。"
+        refundExecution:
+          anyOf:
+            - "$ref": "#/components/schemas/RefundExecutionProgress"
+            - type: "null"
+          description: "原执行的资金进度和资源恢复结果；旧记录可缺省。"
         subOrderNo:
           type: "string"
           description: "所属**子订单**号（`SUB…`）。\n\n⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。"
@@ -9935,6 +9966,53 @@ components:
         - "refundMinor"
         - "updatedAt"
       additionalProperties: false
+    RefundExecutionProgress:
+      type: "object"
+      properties:
+        executionNo:
+          type: "string"
+          description: "原退款执行号；恢复仍使用同一执行。"
+        paymentNo:
+          type:
+            - "string"
+            - "null"
+          description: "资金流水号，尚未准备时可空。"
+        status:
+          type: "string"
+          description: "执行状态，以后端实际确认结果为准。"
+        phase:
+          type: "string"
+          description: "当前处理阶段。"
+        errorCode:
+          type:
+            - "string"
+            - "null"
+          description: "资金执行错误码。"
+        resourceStatus:
+          type: "string"
+          description: "原库存和优惠恢复状态，DONE 表示已恢复。"
+        resourceErrorCode:
+          type:
+            - "string"
+            - "null"
+          description: "资源恢复失败原因。"
+        succeededAt:
+          type:
+            - "number"
+            - "null"
+          description: "资金成功确认的毫秒时间戳。"
+        nextAttemptAt:
+          type:
+            - "number"
+            - "null"
+          description: "后端计划恢复的毫秒时间戳，不由客户端发起第二笔退款。"
+      required:
+        - "executionNo"
+        - "status"
+        - "phase"
+        - "resourceStatus"
+      additionalProperties: false
+      description: "资金执行与库存/优惠恢复是两个独立结果。"
     AfterSaleType:
       type: "string"
       enum:
@@ -12855,6 +12933,39 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/mp/order/{orderNo}/confirm-receipt":
+    post:
+      operationId: "confirmReceipt"
+      summary: "本人确认收货"
+      tags:
+        - "order"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/Order"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
   "/mp/order/{orderNo}/cancel":
     post:
       operationId: "cancelOrder"
@@ -13063,7 +13174,7 @@ paths:
                   msg:
                     type: "string"
                   data:
-                    "$ref": "#/components/schemas/Order"
+                    "$ref": "#/components/schemas/AfterSale"
                 required:
                   - "code"
                   - "msg"
@@ -13133,6 +13244,39 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/mp/after-sale/{afterSaleNo}/cancel":
+    post:
+      operationId: "cancelAfterSale"
+      summary: "撤销售后申请"
+      tags:
+        - "after-sale"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "afterSaleNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/AfterSale"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
   "/mp/after-sale/{afterSaleNo}/ship":
     post:
       operationId: "fillReturnExpress"
@@ -13161,7 +13305,7 @@ paths:
                   msg:
                     type: "string"
                   data:
-                    "$ref": "#/components/schemas/Order"
+                    "$ref": "#/components/schemas/AfterSale"
                 required:
                   - "code"
                   - "msg"
@@ -13194,7 +13338,7 @@ paths:
                   msg:
                     type: "string"
                   data:
-                    "$ref": "#/components/schemas/Order"
+                    "$ref": "#/components/schemas/AfterSale"
                 required:
                   - "code"
                   - "msg"

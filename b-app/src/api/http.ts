@@ -551,7 +551,9 @@ export const httpApi: MerchantApi = {
     } satisfies HandleAfterSaleReq),
 
   mConfirmReturn: (afterSaleNo, restockApproved = false) =>
-    http.post<AfterSale>(buildPath(E.mConfirmReturn.path, { afterSaleNo }), { restockApproved }),
+    http.post<AfterSale>(buildPath(E.mConfirmReturn.path, { afterSaleNo }), {
+      restockApproved,
+    } satisfies import("./requests").ReceiveReturnReq),
   mConfirmRefund: (afterSaleNo) =>
     http.post<AfterSale>(buildPath(E.mConfirmRefund.path, { afterSaleNo }), {}),
 

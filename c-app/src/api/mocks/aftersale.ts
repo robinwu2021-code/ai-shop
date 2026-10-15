@@ -33,6 +33,7 @@ export const aftersaleMock: Pick<ShopApi,
   // ---------------------------------------------------------------- 售后
   async applyAfterSale(orderNo, reason, images, type = "REFUND_ONLY") {
     const o = findOrder(orderNo);
+    if (!["PAID", "FULFILLING", "COMPLETED"].includes(o.status) || (o.afterSale && !["CLOSED", "REJECTED"].includes(o.afterSale.status))) throw new Error("当前订单不能重复申请退款");
     /*
      * **订单状态不动。** 售后是挂在订单上的另一张单，两者并存 ——
      * 一个「已完成」的订单照样能申请售后，把它改成「退款中」就丢失了
@@ -69,6 +70,7 @@ export const aftersaleMock: Pick<ShopApi,
   },
 
   async orderPreview(req) {
+    if ((req.usePoints ?? 0) !== 0) throw new Error("本期暂不支持积分抵扣");
     /*
      * mock 里没有服务端活动，沿用与下单同一套定价策略 —— 两者算出同一个数才是 mock 的价值。
      * **不扣库存**：预览是只读的，用户会在结算页反复改地址与履约方式。

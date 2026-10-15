@@ -4367,9 +4367,61 @@ components:
         - "pickup"
       additionalProperties: false
       description: "赔付出资比例，百分比，**三者之和必须为 100**。 ⚠️ 矩阵 M4「售后责任归属与出资方比例」口径未定，真实后端从没实现过这个概念—— `ord_after_sale` 上没有存它的列，裁决台曾经收集这三个数字一起提交， 点「确认裁决」时被后端静默丢弃，运营以为填了就生效。**只有 finance 域的 「退款回退分账」mock 队列还在用这两个字段**（`share`/`refundSplitPending`）， 而那条队列本身也是 mock-only——`/ops/refund-split-backs` 后端不存在。 M4 有结论、这两块真正接上后端之后再把类型收紧。"
+    RefundExecutionProgress:
+      type: "object"
+      properties:
+        executionNo:
+          type: "string"
+          description: "原退款执行号"
+        paymentNo:
+          type:
+            - "string"
+            - "null"
+          description: "资金退款单号"
+        status:
+          type: "string"
+          description: "资金执行状态"
+        phase:
+          type: "string"
+          description: "分账回退或现金退款阶段"
+        errorCode:
+          type:
+            - "string"
+            - "null"
+          description: "资金执行错误码"
+        resourceStatus:
+          type: "string"
+          description: "库存及优惠恢复状态"
+        resourceErrorCode:
+          type:
+            - "string"
+            - "null"
+          description: "资源恢复错误码"
+        succeededAt:
+          type:
+            - "number"
+            - "null"
+          description: "可信现金成功时刻，毫秒"
+        nextAttemptAt:
+          type:
+            - "number"
+            - "null"
+          description: "原执行下次可恢复时刻，毫秒"
+      required:
+        - "executionNo"
+        - "status"
+        - "phase"
+        - "resourceStatus"
+      additionalProperties: false
+      description: "后端持久化的退款执行事实，资源恢复独立于资金结果。"
     AfterSale:
       type: "object"
       properties:
+        refundExecution:
+          anyOf:
+            - "$ref": "#/components/schemas/RefundExecutionProgress"
+            - type: "null"
+          description: "原资金执行与独立资源恢复进度。"
         afterSaleNo:
           type: "string"
           description: "售后单号"
@@ -11389,6 +11441,44 @@ paths:
     post:
       operationId: "decideAfterSale"
       summary: "平台介入裁决（`ARBITRATING` 的唯一出口）"
+      tags:
+        - "aftersale"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/AfterSale"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "afterSaleNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/after-sales/{afterSaleNo}/recover":
+    post:
+      operationId: "recoverAfterSale"
+      summary: "仅恢复原执行，不确认资金成功、不新建退款"
       tags:
         - "aftersale"
       responses:

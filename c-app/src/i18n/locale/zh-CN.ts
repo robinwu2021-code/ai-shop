@@ -1,5 +1,8 @@
 export default {
   trace: {
+    awaitingPickup: "待揽收",
+    exception: "物流异常",
+    cancelled: "运单已作废",
     step: {
       picked: "已揽收",
       transit: "运输中",
@@ -16,6 +19,7 @@ export default {
     at: "{t}",
   },
   track: {
+    loadFailed: "物流加载失败，请重试",
     title: "物流详情",
     invalidTitle: "链接已失效",
     invalidTip: "这条物流链接可能已过期，请在最新的发货通知里打开。",
@@ -787,6 +791,7 @@ export default {
     submitting: "提交中…",
   },
   pay: {
+    manualRequired: "收款结果需要人工核对，请联系客服，勿重复付款",
     pendingOffline: "待商家确认收款",
     orderCancelled: "订单已取消",
     orderRefunded: "订单已退款",
@@ -885,6 +890,8 @@ export default {
     REFUNDED: "已退款",
   },
   order: {
+    confirmReceipt: "确认收货",
+    receiptHint: "请确认本订单的全部包裹均已收到",
     /** 没带单号就进了详情页（例如从外部链接）。短位：不解释、只说事实 */
     noOrderNo: "没有指定订单",
     /** 订单里的拼团进度卡（p08）*/
@@ -928,6 +935,20 @@ export default {
     buyAgain: "再来一单",
   },
   afterSale: {
+    withdraw: "撤销申请",
+    fullCash: "本期按本门店子单全额原路退回现金",
+    historicalPoints: "此订单含历史积分，积分处理需人工核对",
+    restock: "退货可再次销售，同意回库（默认不回库）",
+    accepted: "已提交，请查看退款进度",
+    execution: {
+      processing: "退款已受理，等待资金结果",
+      failed: "退款失败，请联系客服核对原退款单",
+      unknown: "退款结果尚未确认，请勿重复申请",
+      manual: "退款需要人工核对，请联系客服",
+      resourcesPending: "现金已退，库存或优惠仍在恢复中",
+      resourcesFailed: "现金已退，库存或优惠恢复异常，请联系客服",
+      done: "退款与资源恢复已完成",
+    },
     section: "退款 / 售后",
     pickType: "选择售后类型",
     typeREFUND_ONLY: "仅退款",

@@ -14,6 +14,8 @@ import {
 } from "@shared/strategies/after-sale";
 import type { AfterSaleReason, AfterSaleType, Order } from "@shared/types";
 
+import { refundProgressKey, hasHistoricalPoints } from "@shared/strategies/order-phase1";
+
 const { t } = useI18n();
 
 /**
@@ -72,6 +74,7 @@ const canSubmit = computed(() => !!reason.value && !submitting.value);
 const asStatus = computed(() => order.value?.afterSale?.status ?? null);
 const refundedByPoints = computed(() => (order.value?.afterSale?.refundPoints ?? 0) > 0);
 const doneHintKey = computed(() => {
+  if (order.value?.afterSale?.refundExecution) return refundProgressKey(order.value.afterSale);
   if (refundedByPoints.value) return "afterSale.refundedPoints";
   if (asStatus.value === "WAIT_RECEIPT") return "afterSale.waitReceipt";
   return asStatus.value === "REFUNDED" ? "afterSale.refundedHint" : "afterSale.appliedHint";
@@ -87,6 +90,7 @@ async function load(orderNo: string) {
   currentNo.value = orderNo;
   try {
     order.value = await api.orderDetail(orderNo);
+    submitted.value = !!order.value.afterSale && !["CLOSED", "REJECTED"].includes(order.value.afterSale.status);
     failed.value = false;
   } catch {
     failed.value = true;
@@ -193,6 +197,8 @@ onLoad((q) => {
          没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
     <template v-if="order">
       <!-- 已提交：展示进度 -->
+      <text class="txt-caption">{{ $t("afterSale.fullCash") }}</text>
+      <text v-if="hasHistoricalPoints(order)" class="txt-caption">{{ $t("afterSale.historicalPoints") }}</text>
       <template v-if="submitted">
         <view class="sh-card done">
           <text class="done__icon">✓</text>

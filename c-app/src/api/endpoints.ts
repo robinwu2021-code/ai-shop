@@ -230,6 +230,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   trackMiniLink: { method: "GET", path: "/mp/track/mini-link", auth: false, summary: "看件页跳小程序的 URL Link" },
   trackMine: { method: "GET", path: "/mp/track/mine", auth: true, summary: "小程序侧看件(本人)", clientTag: true },
   orderTrace: { method: "GET", path: "/mp/order/:orderNo/trace", auth: true, summary: "物流页（查看物流）", clientTag: true },
+  confirmReceipt: { method: "POST", path: "/mp/order/:orderNo/confirm-receipt", auth: true, summary: "本人确认收货" },
   cancelOrder: { method: "POST", path: "/mp/order/:orderNo/cancel", auth: true, summary: "取消订单" },
   orderPreview: { method: "POST", path: "/mp/order/preview", auth: true, summary: "订单预览（金额以后端为准）" },
   orderCapability: { method: "POST", path: "/mp/order/capability", auth: true, summary: "结算页能力提示（开票/支付方式/额度）" },

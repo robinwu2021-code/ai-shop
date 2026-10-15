@@ -13,6 +13,7 @@ export const afterSaleHttp: AfterSaleApi = {
     client.post(`/ops/after-sales/${v.afterSaleNo}/decide`, {
       refund: v.refund, liability: v.liability, verdict: v.verdict,
     }),
+  recoverAfterSale: (afterSaleNo) => client.post(`/ops/after-sales/${afterSaleNo}/recover`, {}),
   getFastRefundRule: () => client.get("/ops/after-sales/fast-refund-rule"),
   saveFastRefundRule: (v) => client.post("/ops/after-sales/fast-refund-rule", v),
 };

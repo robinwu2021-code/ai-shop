@@ -6,7 +6,7 @@
 import type { CreateOrderReq } from "../contract";
 import { allCommunitySeeds, assertTransition, db, delay, findGoodsSeed, merchantBrief, nextNo, paginate, persist, pick, pointBalance, pushMessage, pushPoint, toCommunity, toGoods } from "@shared/mock/db";
 import { fulfillmentFor } from "@shared/strategies/fulfillment";
-import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
+import { pricingFor } from "@shared/strategies/pricing";
 import type { Coupon, InvoiceRequest, Order, OrderItem, PageQuery, ShipmentTrace, TrackView } from "@shared/types";
 import { CATEGORY_TYPE, FULFILLMENT, TRADE_RULES } from "@shared/utils/constants";
 import { currentCurrency } from "@shared/utils/money";
@@ -79,10 +79,12 @@ export const tradeMock: Pick<ShopApi,
   | "track"
   | "trackMiniLink"
   | "trackMine"
+  | "confirmReceipt"
   | "cancelOrder"
 > = {
   // ---------------------------------------------------------------- 交易
   async createOrder(req: CreateOrderReq) {
+    if ((req.usePoints ?? 0) !== 0) throw new Error("本期暂不支持积分抵扣");
     // 幂等：同一 key 重复提交返回同一单
     const dup = db.orders.find((o) => o.idempotencyKey === req.idempotencyKey);
     if (dup) return delay(dup);
@@ -201,7 +203,7 @@ export const tradeMock: Pick<ShopApi,
         currency: currentCurrency(),
         coupon: isFirst ? coupon : undefined,
         usePoints: isFirst ? wantPoints : 0,
-        earnPoints: earnPointsFor(subItems),
+        earnPoints: 0,
       });
 
       const order: MockOrder = {
@@ -468,6 +470,15 @@ export const tradeMock: Pick<ShopApi,
 
   async payResult(orderNo) {
     return delay(paymentView(findPaymentOrder(orderNo)));
+  },
+
+  async confirmReceipt(orderNo) {
+    const o = findOrder(orderNo);
+    if (o.fulfillment !== "EXPRESS" || o.status !== "FULFILLING" || (o.afterSale && !["CLOSED", "REJECTED"].includes(o.afterSale.status))) throw new Error("当前订单不能确认收货");
+    o.status = "COMPLETED";
+    pushTimeline(o, "买家已确认收到全部包裹");
+    persist();
+    return delay(o);
   },
 
   async cancelOrder(orderNo) {

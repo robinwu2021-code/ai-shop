@@ -14,10 +14,10 @@ import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { askMchSubscribe } from "@/shared/mch-subscribe";
-import { approveCap } from "@/shared/approve-cap";
+import { refundProgressKey, hasHistoricalPoints } from "@shared/strategies/order-phase1";
 import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
-import type { AfterSale, Order, RefundMode } from "@shared/types";
+import type { AfterSale, Order } from "@shared/types";
 
 const { t } = useI18n();
 
@@ -30,10 +30,9 @@ function impactText(r: Row): string {
   if (!i) return "";
   const parts: string[] = [];
   if (i.couponTitle) parts.push(String(t("afterSale.impactCoupon", { name: i.couponTitle })));
-  if (i.pointsReturn) parts.push(String(t("afterSale.impactPoints", { n: i.pointsReturn })));
+  if (i.pointsReturn || i.pointsRevoke) parts.push(String(t("afterSale.historicalPoints")));
   const head = parts.length ? String(t("afterSale.impactReturn", { what: parts.join("、") })) : "";
-  const tail = i.pointsRevoke ? String(t("afterSale.impactRevoke", { n: i.pointsRevoke })) : "";
-  return [head, tail].filter(Boolean).join("；");
+  return head;
 }
 
 /**
@@ -50,16 +49,8 @@ const list = ref<Row[]>([]);
 /** 正在驳回的单号 —— 展开理由输入框 */
 const rejecting = ref("");
 const reason = ref("");
-/** 正在核定金额/形式的单号 —— 展开审核面板（仅已签收） */
-const approving = ref("");
-/** 核定退款额（元，字符串输入）；默认全额 */
-const approveAmount = ref("");
-/** 退款形式：现金 / 积分 */
-const approveMode = ref<RefundMode>("CASH");
+const restock = ref<Record<string, boolean>>({});
 const busy = ref(false);
-
-/** 核定上限：买家申请额（见 approveCap） */
-const capOf = (r: Row) => approveCap(r.as.refundMinor, r.order?.amount.paidMinor);
 
 /**
  * 老数据（以及后端补字段之前的数据）可能没有 `afterSale`。
@@ -77,7 +68,6 @@ async function load() {
   try {
     rejecting.value = "";
     reason.value = "";
-    approving.value = "";
     const [afterSales, orders] = await Promise.all([
       api.mAfterSaleList(),
       api.mOrderList({ size: 50 }),
@@ -91,13 +81,13 @@ async function load() {
   loaded.value = true;
 }
 
-async function agree(r: Row, refundMinor?: number, refundMode?: RefundMode) {
+async function agree(r: Row) {
   if (busy.value) return;
   // 小程序里顺带攒订阅额度（TDD-微信订阅消息优先 AC8）
   askMchSubscribe();
   busy.value = true;
   try {
-    await api.mApproveAfterSale(r.as.afterSaleNo, "", refundMinor, refundMode);
+    await api.mApproveAfterSale(r.as.afterSaleNo, "", undefined, "CASH");
     uni.showToast({ title: t("afterSale.agreed"), icon: "none" });
     await load();
   } catch (e) {
@@ -108,36 +98,11 @@ async function agree(r: Row, refundMinor?: number, refundMode?: RefundMode) {
 }
 
 /**
- * 点「同意」：已签收才展开核定面板（可改金额/形式，AC9/AC10）；
- * 未签收只能全额同意（商家看不到实物损坏比例，§2.4），直接提交。
- */
-function startApprove(r: Row) {
-  if (r.as.fulfillStage === "RECEIVED") {
-    approving.value = r.as.afterSaleNo;
-    approveAmount.value = (capOf(r) / 100).toFixed(2);
-    approveMode.value = "CASH";
-  } else {
-    void agree(r);
-  }
-}
-
-/** 确认核定：校验金额（>0 且 ≤实付），带金额与形式提交 */
-function confirmApprove(r: Row) {
-  const minor = Math.round(Number(approveAmount.value) * 100);
-  if (!(minor > 0 && minor <= capOf(r))) {
-    uni.showToast({ title: t("afterSale.amountInvalid"), icon: "none" });
-    return;
-  }
-  approving.value = "";
-  void agree(r, minor, approveMode.value);
-}
-
-/**
  * 确认收到退货 → 随即退款（B-7.3）。
  * 只对「已寄回」的退货单出现 —— 用户还没寄就点确认，多半是误操作。
  */
 async function confirmReturn(r: Row) {
-  await runRefund(() => api.mConfirmReturn(r.as.afterSaleNo));
+  await runRefund(() => api.mConfirmReturn(r.as.afterSaleNo, restock.value[r.as.afterSaleNo] === true));
 }
 
 /**
@@ -154,7 +119,7 @@ async function runRefund(call: () => Promise<unknown>) {
   busy.value = true;
   try {
     await call();
-    uni.showToast({ title: t("afterSale.refunded"), icon: "none" });
+    uni.showToast({ title: t("afterSale.accepted"), icon: "none" });
     await load();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -229,6 +194,9 @@ onShow(load);
         ⚠️ 它是**独立的一行**，不在下面那条 v-if 链里：此前它是链头，一出现就把同意/驳回/确认收货整块吞掉，
         商家只能干等超时自动同意。
       -->
+      <text class="txt-caption sh-muted blk">{{ $t("afterSale.fullCash") }}</text>
+      <text v-if="r.as.refundExecution" class="txt-caption blk">{{ $t(refundProgressKey(r.as)) }}</text>
+      <text v-if="r.order && hasHistoricalPoints(r.order)" class="txt-caption blk">{{ $t("afterSale.historicalPoints") }}</text>
       <text v-if="impactText(r)" class="txt-caption sh-muted impact blk">{{ impactText(r) }}</text>
 
       <template v-if="rejecting === r.as.afterSaleNo">
@@ -244,41 +212,11 @@ onShow(load);
         </view>
       </template>
 
-      <!-- 按售后状态给动作。后端没有独立的「等寄回 / 已收货」两态：
-           同意即 REFUNDING，是否已寄回看 returnExpressNo 有没有值 -->
-      <!-- 核定面板（仅已签收）：改金额 + 选现金/积分（AC9/AC10） -->
-      <template v-else-if="approving === r.as.afterSaleNo">
-        <view class="approve sh-mt-sm">
-          <view class="sh-row sh-row--between sh-row--baseline">
-            <text class="sh-muted">{{ $t("afterSale.approveAmount") }}</text>
-            <view class="sh-row amount-in sh-row--baseline">
-              <text class="sh-muted">¥</text>
-              <input v-model="approveAmount" type="digit" maxlength="9" class="field__input amount-field" />
-            </view>
-          </view>
-          <view class="sh-row modes sh-mt-sm">
-            <text
-              class="sh-seg sh-seg--fill"
-              :class="{ 'sh-seg--on': approveMode === 'CASH' }"
-              @tap="approveMode = 'CASH'"
-            >{{ $t("afterSale.refundModeCash") }}</text>
-            <text
-              class="sh-seg sh-seg--fill"
-              :class="{ 'sh-seg--on': approveMode === 'POINTS' }"
-              @tap="approveMode = 'POINTS'"
-            >{{ $t("afterSale.refundModePoints") }}</text>
-          </view>
-          <view class="btns sh-row sh-mt-sm">
-            <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="approving = ''">{{ $t("common.cancel") }}</text>
-            <text class="sh-btn sh-btn--sm txt-strong btn" @tap="confirmApprove(r)">{{ $t("afterSale.agree") }}</text>
-          </view>
-        </view>
-      </template>
       <view v-else-if="asStatus(r) === 'APPLIED'" class="btns sh-row">
         <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="rejecting = r.as.afterSaleNo">
           {{ $t("afterSale.reject") }}
         </text>
-        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="startApprove(r)">
+        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="agree(r)">
           {{ asType(r) === "RETURN_REFUND" ? $t("afterSale.agreeReturn") : $t("afterSale.agree") }}
         </text>
       </view>
@@ -300,7 +238,11 @@ onShow(load);
         <text class="sh-muted">{{ $t("afterSale.refundingHint") }}</text>
       </view>
 
-      <view v-else-if="asStatus(r) === 'RETURNING'" class="btns sh-row">
+      <view v-else-if="asStatus(r) === 'RETURNING'">
+        <sh-option class="restock-option sh-mt-sm" :selected="restock[r.as.afterSaleNo] === true" :disabled="busy" @tap="restock[r.as.afterSaleNo] = !restock[r.as.afterSaleNo]">
+          <text>{{ restock[r.as.afterSaleNo] ? '☑' : '☐' }} {{ $t("afterSale.restock") }}</text>
+        </sh-option>
+        <view class="btns sh-row">
         <view class="express sh-fill">
           <text class="sh-muted">{{ $t("afterSale.returnExpress") }}</text>
           <text class="sh-num">{{ r.as.returnExpressNo }}</text>
@@ -308,6 +250,7 @@ onShow(load);
         <text class="sh-btn sh-btn--sm txt-strong btn btn--auto" @tap="confirmReturn(r)">
           {{ $t("afterSale.confirmReceived") }}
         </text>
+        </view>
       </view>
 
       <!-- 已退款也要说一句。此前这一支没有分支，卡片下方是**一片空白** ——

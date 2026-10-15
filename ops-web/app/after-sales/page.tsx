@@ -8,6 +8,7 @@ import { Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
+import { canRecoverRefund, refundProgress } from "@/lib/refund-progress";
 import { AFTER_SALES_COPY } from "./copy";
 import { usePaging } from "@/lib/use-paging";
 import { usePageTab, useNavTabs } from "@/lib/use-page-tab";
@@ -80,6 +81,15 @@ function AfterSalesInner() {
     enabled: tab !== "fastrefund",
   });
   const rule = useQuery({ queryKey: ["fast-refund"], queryFn: () => api.getFastRefundRule(), enabled: tab === "fastrefund" });
+
+  const recover = useMutation({
+    mutationFn: (afterSaleNo: string) => api.recoverAfterSale(afterSaleNo),
+    onSuccess: (updated) => {
+      setCurrent((prior) => prior?.afterSaleNo === updated.afterSaleNo ? updated : prior);
+      qc.invalidateQueries({ queryKey: ["after-sales"] });
+      notify.success(c.refundRecoverSubmitted);
+    },
+  });
 
   const decide = useMutation({
     mutationFn: () =>
@@ -300,6 +310,17 @@ function AfterSalesInner() {
             </FieldGrid>
             <Field className="mb-0" label={c.fieldReason}><p className="whitespace-pre-wrap">{current.reason}</p></Field>
             </DrawerSection>
+
+            {current.refundExecution && (
+              <DrawerSection title={c.refundExecution}>
+                <p>{c[refundProgress(current)]}</p>
+                <p className="text-sm text-muted-foreground">{current.refundExecution.executionNo}</p>
+                <p className="text-sm text-muted-foreground">{[current.refundExecution.errorCode, current.refundExecution.resourceErrorCode].filter(Boolean).join(" · ")}</p>
+                {canHandle && canRecoverRefund(current) && (
+                  <Button disabled={recover.isPending} onClick={() => recover.mutate(current.afterSaleNo)}>{c.recoverRefund}</Button>
+                )}
+              </DrawerSection>
+            )}
 
             {current.status === "ARBITRATING" && canHandle ? (
               <DrawerSection title={c.secDecide} desc={c.secDecideDesc}>

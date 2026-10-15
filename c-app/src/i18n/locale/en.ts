@@ -1,5 +1,8 @@
 export default {
   trace: {
+    awaitingPickup: "Awaiting pickup",
+    exception: "Shipment exception",
+    cancelled: "Waybill cancelled",
     step: {
       picked: "Picked up",
       transit: "In transit",
@@ -16,6 +19,7 @@ export default {
     at: "{t}",
   },
   track: {
+    loadFailed: "Unable to load tracking. Please retry.",
     title: "Tracking",
     invalidTitle: "Link expired",
     invalidTip: "This tracking link may have expired. Open it from the latest shipping notice.",
@@ -724,6 +728,7 @@ export default {
     submitting: "Placing…",
   },
   pay: {
+    manualRequired: "Payment requires manual verification. Contact support and do not pay again.",
     pendingOffline: "Awaiting payment confirmation by the store",
     orderCancelled: "Order cancelled",
     orderRefunded: "Order refunded",
@@ -813,6 +818,8 @@ export default {
     REFUNDED: "Refunded",
   },
   order: {
+    confirmReceipt: "Confirm receipt",
+    receiptHint: "Confirm you have received every package in this store order.",
     /** Landed on the detail page with no order number (e.g. an external link) */
     noOrderNo: "No order specified",
     /** 订单里的拼团进度卡（p08）*/
@@ -855,6 +862,20 @@ export default {
     buyAgain: "Buy again",
   },
   afterSale: {
+    withdraw: "Withdraw request",
+    fullCash: "Full cash refund for this store order to the original payment method",
+    historicalPoints: "This order includes historical points requiring manual verification",
+    restock: "Returned goods can be resold; approve restocking (off by default)",
+    accepted: "Submitted. Check refund progress.",
+    execution: {
+      processing: "Refund accepted; awaiting payment result",
+      failed: "Refund failed. Contact support about this refund.",
+      unknown: "Refund result unconfirmed. Do not submit again.",
+      manual: "Refund requires manual verification. Contact support.",
+      resourcesPending: "Cash refunded; inventory or benefits recovery pending",
+      resourcesFailed: "Cash refunded; resource recovery needs support",
+      done: "Refund and resource recovery completed",
+    },
     section: "Refund / after-sales",
     pickType: "Type of request",
     typeREFUND_ONLY: "Refund only",

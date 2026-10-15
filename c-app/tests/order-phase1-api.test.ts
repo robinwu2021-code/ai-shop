@@ -4,6 +4,11 @@ vi.mock("@shared/net/http-client", () => ({ http: { post }, clientTag: () => "te
 import { httpApi } from "@/api/http";
 beforeEach(() => { post.mockReset(); });
 describe("基础售后 HTTP 合同", () => {
+  it("按门店子单确认收货", async () => {
+    post.mockResolvedValue({ orderNo: "SUB1", status: "COMPLETED" });
+    expect((await httpApi.confirmReceipt("SUB1")).status).toBe("COMPLETED");
+    expect(post).toHaveBeenCalledWith("/mp/order/SUB1/confirm-receipt", {});
+  });
   it("用售后号撤销，返回售后状态而非订单", async () => {
     post.mockResolvedValue({ afterSaleNo: "AS1", status: "CLOSED" });
     const result = await httpApi.cancelAfterSale("AS1");

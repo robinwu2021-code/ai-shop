@@ -345,6 +345,7 @@ const amountStale = ref(false);
  * 点了支付之后才知道，而那时候平台既解释不清也补救不了。
  */
 const capability = ref<CheckoutCapability | null>(null);
+const pointsEnabled = computed(() => FEATURES.points && capability.value?.pointsEnabled === true);
 
 /**
  * 这一单里**送不到这个地址**的商家。空数组 = 都送得到。
@@ -464,8 +465,8 @@ const localEstimate = computed(() => {
     fulfillment: fulfillment.value,
     currency: currentCurrency(),
     coupon: coupon.value,
-    usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
-    earnPoints: FEATURES.points ? earnPointsFor(orderItems.value) : 0,
+    usePoints: pointsEnabled.value && usePoints.value ? pointBalance.value : 0,
+    earnPoints: pointsEnabled.value ? earnPointsFor(orderItems.value) : 0,
   });
 });
 
@@ -688,7 +689,7 @@ async function refreshAmount() {
       addressChoices: needAddress.value ? addressChoicesPayload() : undefined,
       couponNo: couponNo.value || undefined,
       payMode: payMode.value,
-      usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
+      usePoints: pointsEnabled.value && usePoints.value ? pointBalance.value : 0,
       appointmentAt: appointmentAt.value,
       groupNo: groupNo.value || undefined,
       openGroup: openGroup.value || undefined,
@@ -788,7 +789,7 @@ async function refreshCapability() {
 let pointsSeq = 0;
 async function refreshPoints() {
   const merchantNo = items.value[0]?.merchantNo;
-  if (!FEATURES.points || !merchantNo) {
+  if (!pointsEnabled.value || !merchantNo) {
     pointsDeductible.value = null;
     return;
   }
@@ -1156,7 +1157,7 @@ async function submit() {
       addressChoices: needAddress.value ? addressChoicesPayload() : undefined,
       couponNo: couponNo.value || undefined,
       payMode: payMode.value,
-      usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
+      usePoints: pointsEnabled.value && usePoints.value ? pointBalance.value : 0,
       activityChoices: choicesPayload(),
       remark: remark.value || undefined,
       appointmentAt: appointmentAt.value,
@@ -1261,7 +1262,7 @@ onMounted(async () => {
    */
   const [c, a] = await Promise.allSettled([
     api.myCoupons(),
-    FEATURES.points ? api.pointAccount() : Promise.resolve(null),
+    pointsEnabled.value ? api.pointAccount() : Promise.resolve(null),
   ]);
   if (c.status === "fulfilled") coupons.value = c.value;
   couponFailed.value = c.status === "rejected";
@@ -1486,7 +1487,7 @@ onMounted(async () => {
       </view>
       <!-- 积分抵扣：上限是「券后金额」的固定比例，说清楚为什么抵不满 -->
       <view
-        v-if="FEATURES.points && pointBalance > 0"
+        v-if="pointsEnabled && pointBalance > 0"
         class="cell sh-row sh-row--between"
         @tap="pointsBlockedReason ? undefined : (usePoints = !usePoints)"
       >
@@ -1551,11 +1552,11 @@ onMounted(async () => {
           {{ offerSummary.text }}
         </text>
       </view>
-      <view v-if="amount.pointsDeductMinor" class="amt sh-row sh-row--between sh-row--top">
+      <view v-if="pointsEnabled && amount.pointsDeductMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption sh-num">{{ $t("confirm.pointsDeduct", { n: amount.pointsUsed }) }}</text>
         <text class="txt-caption amt__v sh-num is-danger">-{{ money(amount.pointsDeductMinor) }}</text>
       </view>
-      <view v-if="amount.pointsEarn" class="amt sh-row sh-row--between sh-row--top">
+      <view v-if="pointsEnabled && amount.pointsEarn" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.pointsEarn") }}</text>
         <text class="txt-caption amt__v amt__v--earn sh-num txt-ink txt-primary">+{{ amount.pointsEarn }}</text>
       </view>

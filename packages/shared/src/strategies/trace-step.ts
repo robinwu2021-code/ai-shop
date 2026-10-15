@@ -39,5 +39,13 @@ export function traceStepKey(trace: Pick<ShipmentTrace, "status" | "nodes">): Tr
  * 已取消同理 —— 那条线已经断了。
  */
 export function traceHasSteps(trace: Pick<ShipmentTrace, "status">): boolean {
-  return trace.status !== "EXCEPTION" && trace.status !== "CANCELLED";
+  return trace.status !== "CREATED" && trace.status !== "EXCEPTION" && trace.status !== "CANCELLED";
+}
+
+/** 摘要必须保留未揽收、异常和作废事实，不能投影成正常运输阶段。 */
+export function traceStatusKey(trace: Pick<ShipmentTrace, "status" | "nodes">): string {
+  if (trace.status === "CREATED") return "trace.awaitingPickup";
+  if (trace.status === "EXCEPTION") return "trace.exception";
+  if (trace.status === "CANCELLED") return "trace.cancelled";
+  return `trace.step.${traceStepKey(trace)}`;
 }

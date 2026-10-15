@@ -14,7 +14,8 @@ import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
 import { buildOrderCopyText } from "@/utils/order-copy";
 import { FULFILLMENT } from "@shared/utils/constants";
-import { traceStepKey } from "@shared/strategies/trace-step";
+import { traceStatusKey } from "@shared/strategies/trace-step";
+import { fulfillmentAllowed } from "@shared/strategies/order-phase1";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 import { confirm } from "@ai-shop/ui/prompt";
 import type { Order, ShipmentTrace } from "@shared/types";
@@ -33,7 +34,7 @@ const shownTrace = computed(() => fullTrace.value ?? order.value?.trace ?? null)
 /** 物流详情弹框。主页面只留一行摘要，这一行点开才是地图与全部节点 */
 const traceOpen = ref(false);
 /** 摘要行上的状态词。与步骤条共用 shared 里那一份判定，别在两处各写一个三分支 */
-const traceStep = computed(() => (shownTrace.value ? traceStepKey(shownTrace.value) : "picked"));
+const traceStep = computed(() => (shownTrace.value ? traceStatusKey(shownTrace.value) : "picked"));
 /** 摘要行上的最新一条。节点按时间倒序，第一条就是最新 */
 const traceLatest = computed(() => shownTrace.value?.nodes?.[0]?.text ?? "");
 /** 承运商显示名。拿不到译名就显示原码 —— 显示「STO」好过显示空白 */
@@ -68,13 +69,11 @@ const busy = ref(false);
  * 于是「发货」按钮画给了他，点下去 70006 —— 而他既不该发货，也没有任何办法拿到这个权限。
  */
 const canShip = computed(
-  () => order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value?.status === "PAID"
-    && merchant.can("biz:ship"),
+  () => order.value?.fulfillment === FULFILLMENT.EXPRESS && fulfillmentAllowed(order.value, merchant.can("biz:ship")),
 );
 /** 自送单且已付款 → 该送。同样两个都要判（见 {@link canShip}） */
 const canDeliver = computed(
-  () => order.value?.fulfillment === FULFILLMENT.DELIVERY && order.value?.status === "PAID"
-    && merchant.can("biz:ship"),
+  () => order.value?.fulfillment === FULFILLMENT.DELIVERY && fulfillmentAllowed(order.value, merchant.can("biz:ship")),
 );
 
 /**
@@ -83,16 +82,17 @@ const canDeliver = computed(
  * 用 `biz:ship` 权限（备货是发货前一步）。已备货仍显示这张卡（给「已备货」状态）。
  */
 const canPrepare = computed(
-  () => order.value?.status === "PAID" && merchant.can("biz:ship")
+  () => fulfillmentAllowed(order.value, merchant.can("biz:ship"))
     && (order.value?.fulfillment === FULFILLMENT.EXPRESS
       || order.value?.fulfillment === FULFILLMENT.DELIVERY),
 );
 
 async function prepare() {
-  if (!order.value || busy.value || order.value.preparedAt) return;
+  if (!order.value || !canPrepare.value || busy.value || order.value.preparedAt) return;
   busy.value = true;
   try {
-    order.value = await api.mPrepare(order.value.orderNo);
+    await api.mPrepare(order.value.orderNo);
+    await load(currentNo.value);
     uni.showToast({ title: t("order.prepared"), icon: "none" });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -149,7 +149,6 @@ async function load(orderNo: string) {
     order.value = await api.mOrderDetail(orderNo);
     failed.value = false;
     fullTrace.value = null;
-    if (order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value.expressNo) void loadTrace(orderNo);
     void loadPickup();
     if (order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value.status === "PAID") void loadShipDefaults();
   } catch {
@@ -180,7 +179,7 @@ function copyForSupplier() {
 }
 
 async function ship() {
-  if (!order.value || !expressNo.value || busy.value) return;
+  if (!order.value || !canShip.value || !expressNo.value.trim() || busy.value) return;
   const carrier = carriers[carrierIdx.value];
   if (!carrier) {
     uni.showToast({ title: t("order.pickCarrier"), icon: "none" });
@@ -190,7 +189,8 @@ async function ship() {
   busy.value = true;
   try {
     order.value = await api.mShip(
-      order.value.orderNo, expressNo.value, carrier.code);
+      order.value.orderNo, expressNo.value.trim(), carrier.code);
+    await load(currentNo.value);
     uni.showToast({ title: t("order.shipped"), icon: "none" });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -200,7 +200,7 @@ async function ship() {
 }
 
 async function delivered() {
-  if (!order.value || busy.value) return;
+  if (!order.value || !canDeliver.value || busy.value) return;
   askMchSubscribe();
   busy.value = true;
   try {
@@ -395,9 +395,9 @@ onPullDownRefresh(async () => {
         而混在订单信息那堆键值行里，它读起来像又一条属性，不像一件在变化的事。
         整卡可点 → 弹框里是全过程。
       -->
-      <view v-if="shownTrace && shownTrace.nodes.length" class="sh-card trace-card" @tap="traceOpen = true">
+      <view v-if="shownTrace && shownTrace.nodes.length" class="sh-card trace-card" @tap="traceOpen = true; loadTrace(currentNo)">
         <view class="sh-row sh-row--between">
-          <text class="txt-strong trace-card__st">{{ $t(`trace.step.${traceStep}`) }}</text>
+          <text class="txt-strong trace-card__st">{{ $t(traceStep) }}</text>
           <sh-go :text="String($t('order.traceView'))"></sh-go>
         </view>
         <!-- 最新一条**最多两行**：一行截得太狠（「预计10月10日到达…」停在「两地」），

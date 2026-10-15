@@ -1,5 +1,8 @@
 export default {
   trace: {
+    awaitingPickup: "Awaiting pickup",
+    exception: "Shipment exception",
+    cancelled: "Waybill cancelled",
     step: {
       picked: "Picked up",
       transit: "In transit",
@@ -1284,6 +1287,20 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     dictPicked: "Linked to official village: {s}",
   },
   afterSale: {
+    withdraw: "Withdraw request",
+    fullCash: "Full cash refund for this store order to the original payment method",
+    historicalPoints: "This order includes historical points requiring manual verification",
+    restock: "Returned goods can be resold; approve restocking (off by default)",
+    accepted: "Submitted. Check refund progress.",
+    execution: {
+      processing: "Refund accepted; awaiting payment result",
+      failed: "Refund failed. Contact support about this refund.",
+      unknown: "Refund result unconfirmed. Do not submit again.",
+      manual: "Refund requires manual verification. Contact support.",
+      resourcesPending: "Cash refunded; inventory or benefits recovery pending",
+      resourcesFailed: "Cash refunded; resource recovery needs support",
+      done: "Refund and resource recovery completed",
+    },
     impactReturn: "Full refund: the customer also gets back {what}",
     impactCoupon: "coupon “{name}”",
     impactPoints: "{n} points",
