@@ -9809,6 +9809,32 @@ components:
         trace: 
           "$ref": "#/components/schemas/ShipmentTrace"
           description: "物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。"
+        logisticsSync: 
+          anyOf: 
+            - type: "object"
+              properties: 
+                status: 
+                  type: "string"
+                source: 
+                  type: 
+                    - "string"
+                    - "null"
+                lastEventAt: 
+                  type: 
+                    - "number"
+                    - "null"
+                pending: 
+                  type: "boolean"
+                reason: 
+                  type: 
+                    - "string"
+                    - "null"
+              required: 
+                - "status"
+                - "pending"
+              additionalProperties: false
+            - type: "null"
+          description: "B 端提交发货后即时回显；渠道仍在补偿时 pending=true。"
       required: 
         - "orderNo"
         - "status"
@@ -10183,6 +10209,88 @@ components:
           description: "目的城市名"
       additionalProperties: false
       description: "城市路线：地图上「出发 / 当前 / 目的」三个标记。取不到时整个为空"
+    LogisticsUpdateRecord: 
+      type: "object"
+      properties: 
+        source: 
+          type: "string"
+          description: "更新渠道：wx、kuaidi100 等。"
+        mode: 
+          type: "string"
+          description: "QUERY 为主动查询，PUSH 为订阅推送。"
+        beforeStatus: 
+          type: 
+            - "string"
+            - "null"
+          description: "更新前的运单状态。"
+        afterStatus: 
+          type: 
+            - "string"
+            - "null"
+          description: "更新后的运单状态。"
+        nodesAdded: 
+          type: "number"
+          description: "本次新增的轨迹节点数。"
+        outcome: 
+          type: "string"
+          description: "更新结果：ADVANCED、NODES_ADDED、UNCHANGED、NO_RESULT、ERROR、THROTTLED 等。"
+        detail: 
+          type: 
+            - "string"
+            - "null"
+          description: "查询结果或最近节点摘要；不含收件人手机号。"
+        occurredAt: 
+          type: "number"
+          description: "更新时间，UTC 毫秒时间戳。"
+      required: 
+        - "source"
+        - "mode"
+        - "beforeStatus"
+        - "afterStatus"
+        - "nodesAdded"
+        - "outcome"
+        - "detail"
+        - "occurredAt"
+      additionalProperties: false
+      description: "物流刷新或订阅回调的渠道更新记录。"
+    ShipPrecheck: 
+      type: "object"
+      properties: 
+        verdict: 
+          type: "string"
+          enum: 
+            - "VALID"
+            - "INVALID"
+            - "UNKNOWN"
+            - "WARNING"
+          description: "提交前的运单有效性判断。"
+        source: 
+          type: 
+            - "string"
+            - "null"
+          description: "给出判断的物流渠道。"
+        status: 
+          type: 
+            - "string"
+            - "null"
+          description: "查询到的运单状态。"
+        checkedAt: 
+          type: "number"
+          description: "查询时间，UTC 毫秒时间戳。"
+        reason: 
+          type: 
+            - "string"
+            - "null"
+          description: "需要商家关注的判断说明。"
+        confirmationRequired: 
+          type: "boolean"
+          description: "是否需要商家确认后再发货。"
+      required: 
+        - "verdict"
+        - "checkedAt"
+        - "confirmationRequired"
+      additionalProperties: false
+      description: "商家提交运单前的渠道预检结果。"
     GoodsBatch: 
       type: "object"
       properties: 
@@ -11391,6 +11499,8 @@ components:
         expressCompany: 
           type: "string"
           description: "快递公司，取 `EXPRESS_COMPANIES` 里的码（微信 delivery_id，如 SF / ZTO）。\n\n**与运单号成对必填**：微信发货信息录入缺一就拒（268485226 / 268485227）， 而不报的后果是那笔订单的货款一直冻在微信那边 —— 买家无感，商家几天后才发现。"
+        confirmExistingTrace: 
+          type: "boolean"
       required: 
         - "expressNo"
         - "expressCompany"
@@ -15732,6 +15842,41 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/order/{orderNo}/logistics-updates": 
+    get: 
+      operationId: "mOrderUpdates"
+      summary: "物流更新记录"
+      tags: 
+        - "order"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/LogisticsUpdateRecord"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/order/{orderNo}/ship": 
     post: 
       operationId: "mShip"
@@ -15771,6 +15916,72 @@ paths:
           "application/json": 
             schema: 
               "$ref": "#/components/schemas/ShipReq"
+  "/biz/order/{orderNo}/ship/precheck": 
+    post: 
+      operationId: "mShipPrecheck"
+      summary: "运单预检"
+      tags: 
+        - "order"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/ShipPrecheck"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/order/{orderNo}/waybill": 
+    post: 
+      operationId: "mCorrectWaybill"
+      summary: "更正运单"
+      tags: 
+        - "order"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/Order"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/order/{orderNo}/delivered": 
     post: 
       operationId: "mDelivered"

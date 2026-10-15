@@ -35,4 +35,9 @@ public interface TraceProvider {
     default Optional<TraceResult> precheck(String carrier, String waybillNo, String phone) {
         return trace(carrier, waybillNo, phone);
     }
+
+    /** Short-budget live refresh from an order page. */
+    default Optional<TraceResult> refresh(String carrier, String waybillNo, String phone) {
+        return trace(carrier, waybillNo, phone);
+    }
 }

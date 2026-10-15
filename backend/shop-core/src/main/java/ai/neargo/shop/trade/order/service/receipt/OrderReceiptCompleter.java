@@ -7,5 +7,5 @@ public interface OrderReceiptCompleter {
     boolean completeAuto(String subOrderNo, long now, int shippedDays, int signedDays);
 
     /** Complete a current package on a trusted carrier signature in the caller's transaction. */
-    boolean completeSigned(String subOrderNo, String shipmentNo, long signedAt);
+    boolean completeSigned(String subOrderNo, String shipmentNo, long signedAt, String source);
 }

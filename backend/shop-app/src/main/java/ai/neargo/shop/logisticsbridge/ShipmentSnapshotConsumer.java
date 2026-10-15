@@ -27,6 +27,7 @@ public class ShipmentSnapshotConsumer implements OutboxConsumer {
         Long signedNodeAt = p.path("signedNodeAt").isNumber() ? p.path("signedNodeAt").asLong() : null;
         Long firstTraceAt = p.path("firstTraceAt").isNumber() ? p.path("firstTraceAt").asLong() : null;
         converger.converge(p.path("shipmentNo").asString(""), p.path("version").asLong(-1),
-                p.path("waybillNo").asString(""), p.path("status").asString(""), at, signedNodeAt, firstTraceAt);
+                p.path("waybillNo").asString(""), p.path("status").asString(""), at, signedNodeAt, firstTraceAt,
+                p.path("source").asString(""));
     }
 }

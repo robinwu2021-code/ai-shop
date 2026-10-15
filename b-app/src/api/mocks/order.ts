@@ -27,6 +27,7 @@ export const orderMock: Pick<MerchantApi,
   "mOrderList"
   | "mOrderDetail"
   | "mOrderTrace"
+  | "mOrderUpdates"
   | "mShipPrecheck"
   | "mShip"
   | "mCorrectWaybill"
@@ -114,6 +115,11 @@ export const orderMock: Pick<MerchantApi,
       waybillNo: o.expressNo,
       refreshable: false,
     });
+  },
+
+  async mOrderUpdates(orderNo) {
+    findOrder(orderNo);
+    return delay([]);
   },
 
   async mShipPrecheck(orderNo, expressNo, expressCompany) {

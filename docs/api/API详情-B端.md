@@ -4396,6 +4396,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/biz/order/{orderNo}/confirm-offline-pay`
@@ -4453,6 +4454,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/biz/order/{orderNo}/delivered`
@@ -4510,6 +4512,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/biz/order/{orderNo}/express`
@@ -4580,6 +4583,21 @@ _无字段_
 类型：[`ExpressQuote`](#expressquote)\[\]
 
 
+#### GET `/biz/order/{orderNo}/logistics-updates`
+
+物流更新记录　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`LogisticsUpdateRecord`](#logisticsupdaterecord)\[\]
+
+
 #### POST `/biz/order/{orderNo}/prepare`
 
 开始备货　🔒
@@ -4635,6 +4653,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/biz/order/{orderNo}/ship`
@@ -4653,6 +4672,7 @@ _无字段_
 |---|---|:---:|---|
 | `expressNo` | `string` | 是 | 快递单号。填了即视为已发货，订单流转到 SHIPPED |
 | `expressCompany` | `string` | 是 | 快递公司，取 `EXPRESS_COMPANIES` 里的码（微信 delivery_id，如 SF / ZTO）。 **与运单号成对必填**：微信发货信息录入缺一就拒（268485226 / 268485227）， 而不报的后果是那笔订单的货款一直冻在微信那边 —— 买家无感，商家几天后才发现。 |
+| `confirmExistingTrace` | `boolean` | 否 | — |
 
 **出参**（`data`）
 
@@ -4699,6 +4719,31 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
+
+
+#### POST `/biz/order/{orderNo}/ship/precheck`
+
+运单预检　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`ShipPrecheck`](#shipprecheck)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `verdict` | `VALID` \| `INVALID` \| `UNKNOWN` \| `WARNING` | 是 | 提交前的运单有效性判断。 |
+| `source` | `string,null` | 否 | 给出判断的物流渠道。 |
+| `status` | `string,null` | 否 | 查询到的运单状态。 |
+| `checkedAt` | `number` | 是 | 查询时间，UTC 毫秒时间戳。 |
+| `reason` | `string,null` | 否 | 需要商家关注的判断说明。 |
+| `confirmationRequired` | `boolean` | 是 | 是否需要商家确认后再发货。 |
 
 
 #### GET `/biz/order/{orderNo}/trace`
@@ -4728,6 +4773,64 @@ _无字段_
 | `atLocker` | `boolean` | 否 | 已放到驿站或快递柜 —— 取件码在节点原文里，渠道不给结构化的，不自己从文字里抠 |
 | `freshAt` | `number,null` | 否 | 最近一次有新进展的时刻（毫秒），显示「X 分钟前更新」用 |
 | `refreshable` | `boolean` | 否 | 这个界面的「刷新」能不能真的去问渠道 |
+
+
+#### POST `/biz/order/{orderNo}/waybill`
+
+更正运单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`Order`](#order)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单单号 |
+| `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
+| `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
+| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
+| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
+| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
+| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
+| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
+| `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
+| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
+| `offers` | [`CheckoutOffers`](#checkoutoffers) \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.offers`） |
+| `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
+| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
+| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `createdAt` | `number` | 是 | 下单时间 |
+| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
+| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
+| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
+| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
+| `reviewed` | `boolean` | 否 | 已评价 |
+| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
+| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
+| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
+| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
+| `merchantName` | `string` | 否 | 商家名快照 |
+| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
+| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
+| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
+| `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 ### payout-account
@@ -4946,6 +5049,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/biz/pickup/arrived`
@@ -5065,6 +5169,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/biz/pickup/verify/batch`
@@ -8466,6 +8571,21 @@ _无字段_
 - `STOCK`
 - `PER_USER`
 
+### LogisticsUpdateRecord
+
+物流刷新或订阅回调的渠道更新记录。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `source` | `string` | 是 | 更新渠道：wx、kuaidi100 等。 |
+| `mode` | `string` | 是 | QUERY 为主动查询，PUSH 为订阅推送。 |
+| `beforeStatus` | `string,null` | 是 | 更新前的运单状态。 |
+| `afterStatus` | `string,null` | 是 | 更新后的运单状态。 |
+| `nodesAdded` | `number` | 是 | 本次新增的轨迹节点数。 |
+| `outcome` | `string` | 是 | 更新结果：ADVANCED、NODES_ADDED、UNCHANGED、NO_RESULT、ERROR、THROTTLED 等。 |
+| `detail` | `string,null` | 是 | 查询结果或最近节点摘要；不含收件人手机号。 |
+| `occurredAt` | `number` | 是 | 更新时间，UTC 毫秒时间戳。 |
+
 ### MarkArrivedReq
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -9208,6 +9328,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 ### OrderAmount
 
@@ -10307,12 +10428,26 @@ _无字段_
 | `text` | `string` | 是 | 分享文案，已按当前语言与市场生成 |
 | `posterUrl` | `string` | 是 | 落地页链接，文案里已经拼过一次；未配对外域名时为空串。真正的海报图走  {@link  Poster } |
 
+### ShipPrecheck
+
+商家提交运单前的渠道预检结果。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `verdict` | `VALID` \| `INVALID` \| `UNKNOWN` \| `WARNING` | 是 | 提交前的运单有效性判断。 |
+| `source` | `string,null` | 否 | 给出判断的物流渠道。 |
+| `status` | `string,null` | 否 | 查询到的运单状态。 |
+| `checkedAt` | `number` | 是 | 查询时间，UTC 毫秒时间戳。 |
+| `reason` | `string,null` | 否 | 需要商家关注的判断说明。 |
+| `confirmationRequired` | `boolean` | 是 | 是否需要商家确认后再发货。 |
+
 ### ShipReq
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `expressNo` | `string` | 是 | 快递单号。填了即视为已发货，订单流转到 SHIPPED |
 | `expressCompany` | `string` | 是 | 快递公司，取 `EXPRESS_COMPANIES` 里的码（微信 delivery_id，如 SF / ZTO）。 **与运单号成对必填**：微信发货信息录入缺一就拒（268485226 / 268485227）， 而不报的后果是那笔订单的货款一直冻在微信那边 —— 买家无感，商家几天后才发现。 |
+| `confirmExistingTrace` | `boolean` | 否 | — |
 
 ### ShipmentStatus
 

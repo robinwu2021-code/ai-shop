@@ -8,6 +8,8 @@ import type {
   // 进销存（P-18）
   StockSummary,
   ShipmentTrace,
+  LogisticsUpdateRecord,
+  ShipPrecheck,
   ActivityConflict,
   AfterSale,
   AppointmentSlot,
@@ -165,6 +167,8 @@ import type {
  */
 /** 支付方式，与后端 PayModes 逐字一致。ONLINE 恒在，商家只决定要不要加 OFFLINE */
 export type PayMode = (typeof PAY_MODE)[keyof typeof PAY_MODE];
+
+export type { LogisticsUpdateRecord } from "@shared/types";
 
 /** 门店收款方式。与后端 StorePaySettingService.PaySettingVO 同形 */
 export interface StorePaySetting {
@@ -1541,12 +1545,9 @@ export interface MerchantApi {
    * `refresh` 只在后端配置放行时才真去问渠道（`refreshable` 说明这一单能不能）
    */
   mOrderTrace(orderNo: string, refresh?: boolean): Promise<ShipmentTrace | null>;
+  mOrderUpdates(orderNo: string): Promise<LogisticsUpdateRecord[]>;
   /** 快递发货：回填运单号 */
-  mShipPrecheck(orderNo: string, expressNo: string, expressCompany: string): Promise<{
-    verdict: "VALID" | "INVALID" | "UNKNOWN" | "WARNING";
-    source?: string | null; status?: string | null; checkedAt: number;
-    reason?: string | null; confirmationRequired: boolean;
-  }>;
+  mShipPrecheck(orderNo: string, expressNo: string, expressCompany: string): Promise<ShipPrecheck>;
   mShip(orderNo: string, expressNo: string, expressCompany: string,
         confirmExistingTrace?: boolean): Promise<Order>;
   mCorrectWaybill(orderNo: string, expressNo: string, expressCompany: string, reason: string): Promise<Order>;

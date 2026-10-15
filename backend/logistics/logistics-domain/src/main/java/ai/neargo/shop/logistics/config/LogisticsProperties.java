@@ -44,6 +44,9 @@ public class LogisticsProperties {
     /** 物流页读时校正的最短间隔（分钟） */
     private int readCacheMinutes = 10;
 
+    /** Explicit B/C refresh: 0 during manual testing; restore a positive interval after acceptance. */
+    private int manualRefreshCacheMinutes = 0;
+
     /** 微信换 waybill_token 的时机 */
     private WxBind wxBind = new WxBind();
 

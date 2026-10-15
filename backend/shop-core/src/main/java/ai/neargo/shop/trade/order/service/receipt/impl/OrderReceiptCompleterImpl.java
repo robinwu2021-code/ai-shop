@@ -68,7 +68,7 @@ public class OrderReceiptCompleterImpl implements OrderReceiptCompleter {
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY, isolation = Isolation.READ_COMMITTED)
-    public boolean completeSigned(String subOrderNo, String shipmentNo, long signedAt) {
+    public boolean completeSigned(String subOrderNo, String shipmentNo, long signedAt, String source) {
         OrdSubOrder order = read.findOrder(subOrderNo);
         if (order == null || !OrdSubOrder.FULFILLING.equals(order.getStatus())
                 || !OrdSubOrder.EXPRESS.equals(order.getFulfillment()) || !read.parentPaid(order)
@@ -85,7 +85,14 @@ public class OrderReceiptCompleterImpl implements OrderReceiptCompleter {
         if (dispatchedAt == null || signedAt < dispatchedAt - 1_000L) {
             return false;
         }
-        boolean completed = handler.confirm(subOrderNo, shipmentNo, Operator.system(), "物流签收后自动确认收货");
+        String channel = switch (source == null ? "" : source) {
+            case "wx", "wx-follow" -> "微信";
+            case "kuaidi100" -> "快递100";
+            case "yto" -> "圆通";
+            default -> "来源未标明";
+        };
+        boolean completed = handler.confirm(subOrderNo, shipmentNo, Operator.system(),
+                "物流签收后自动确认收货（" + channel + "）");
         if (completed) {
             afterSales.settleOnReceipt(subOrderNo);
         }

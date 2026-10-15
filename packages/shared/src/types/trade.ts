@@ -652,6 +652,42 @@ export interface ShipmentTrace {
   refreshable?: boolean;
 }
 
+/** 物流刷新或订阅回调的渠道更新记录。 */
+export interface LogisticsUpdateRecord {
+  /** 更新渠道：wx、kuaidi100 等。 */
+  source: string;
+  /** QUERY 为主动查询，PUSH 为订阅推送。 */
+  mode: string;
+  /** 更新前的运单状态。 */
+  beforeStatus: string | null;
+  /** 更新后的运单状态。 */
+  afterStatus: string | null;
+  /** 本次新增的轨迹节点数。 */
+  nodesAdded: number;
+  /** 更新结果：ADVANCED、NODES_ADDED、UNCHANGED、NO_RESULT、ERROR、THROTTLED 等。 */
+  outcome: string;
+  /** 查询结果或最近节点摘要；不含收件人手机号。 */
+  detail: string | null;
+  /** 更新时间，UTC 毫秒时间戳。 */
+  occurredAt: number;
+}
+
+/** 商家提交运单前的渠道预检结果。 */
+export interface ShipPrecheck {
+  /** 提交前的运单有效性判断。 */
+  verdict: "VALID" | "INVALID" | "UNKNOWN" | "WARNING";
+  /** 给出判断的物流渠道。 */
+  source?: string | null;
+  /** 查询到的运单状态。 */
+  status?: string | null;
+  /** 查询时间，UTC 毫秒时间戳。 */
+  checkedAt: number;
+  /** 需要商家关注的判断说明。 */
+  reason?: string | null;
+  /** 是否需要商家确认后再发货。 */
+  confirmationRequired: boolean;
+}
+
 /** 一个轨迹节点。`text` 原样来自承运商；`location` 城市/网点，可能没有 */
 export interface ShipmentTraceNode {
   /** 扫描时刻（毫秒时间戳） */

@@ -5,6 +5,7 @@ import ai.neargo.shop.trade.order.contract.PaymentResolutionView;
 
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.OrderVO;
+import ai.neargo.shop.spi.logistics.LogisticsPort;
 
 import java.util.List;
 
@@ -84,6 +85,9 @@ public interface MerchantOrderService {
      * @param refresh 只在配置对 {@code BIZ} 放行了某个探测渠道时才真去问（默认一个都不放行）
      */
     OrderVO.Trace trace(String merchantNo, String storeNo, String subOrderNo, boolean refresh);
+
+    /** Authorized, current-waybill-only channel update history. */
+    List<LogisticsPort.UpdateRecord> logisticsUpdates(String merchantNo, String storeNo, String subOrderNo);
 
     /**
      * 发货（EXPRESS 履约）。WAIT_FULFILL → FULFILLING，并记下快递单号。

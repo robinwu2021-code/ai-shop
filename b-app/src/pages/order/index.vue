@@ -19,7 +19,7 @@ import { fulfillmentAllowed } from "@shared/strategies/order-phase1";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 import { confirm } from "@ai-shop/ui/prompt";
 import type { Order, ShipmentTrace } from "@shared/types";
-import type { ExpressPickup, ExpressQuote } from "@/api/contract";
+import type { ExpressPickup, ExpressQuote, LogisticsUpdateRecord } from "@/api/contract";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -39,6 +39,16 @@ const currentSyncLabel = computed(() => {
  * 拿不到（老后端 / 网络）就用详情里带的那份 —— 两份读的是同一张运单，只是字段多少不同
  */
 const fullTrace = ref<ShipmentTrace | null>(null);
+const updateRecords = ref<LogisticsUpdateRecord[]>([]);
+const updateSource = (source: string) => String(t(source === "wx" || source === "wx-follow"
+  ? "order.updateSourceWx" : source === "kuaidi100" ? "order.updateSourceK100"
+    : source === "yto" ? "order.updateSourceYto" : "order.updateSourceOther"));
+const updateMode = (mode: string) => String(t(mode === "PUSH" ? "order.updateModePush" : "order.updateModeQuery"));
+const updateOutcome = (outcome: string) => String(t(outcome === "ADVANCED" ? "order.updateAdvanced"
+  : outcome === "NODES_ADDED" ? "order.updateNodesAdded"
+    : outcome === "UNCHANGED" ? "order.updateUnchanged"
+      : outcome === "NO_RESULT" ? "order.updateNoResult"
+        : outcome === "THROTTLED" ? "order.updateThrottled" : "order.updateFailed"));
 const shownTrace = computed(() => fullTrace.value ?? order.value?.trace ?? null);
 /** 物流详情弹框。主页面只留一行摘要，这一行点开才是地图与全部节点 */
 const traceOpen = ref(false);
@@ -95,6 +105,7 @@ async function refreshTrace() {
     const latest = await api.mOrderDetail(current.orderNo);
     order.value = latest;
     fullTrace.value = trace;
+    updateRecords.value = await api.mOrderUpdates(current.orderNo).catch(() => []);
     failed.value = false;
     const key = latest.status !== current.status ? "order.traceOrderUpdated"
       : latest.logisticsSync?.status === "DELIVERED" && latest.status === "FULFILLING"
@@ -196,6 +207,7 @@ async function load(orderNo: string) {
     order.value = await api.mOrderDetail(orderNo);
     failed.value = false;
     fullTrace.value = null;
+    updateRecords.value = [];
     void loadPickup();
     if (order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value.status === "PAID") void loadShipDefaults();
   } catch {
@@ -211,6 +223,7 @@ async function loadTrace(orderNo: string) {
   } catch {
     fullTrace.value = null;
   }
+  updateRecords.value = await api.mOrderUpdates(orderNo).catch(() => []);
 }
 
 /**
@@ -807,11 +820,21 @@ onPullDownRefresh(async () => {
       @close="traceOpen = false"
     >
       <sh-trace :trace="shownTrace" :fold-at="shownTrace.nodes.length" :show-map="false"></sh-trace>
+      <view class="sh-mt-md">
+        <text class="txt-strong">{{ $t("order.updateHistory") }}</text>
+        <text v-if="!updateRecords.length" class="txt-caption sh-muted">{{ $t("order.updateHistoryEmpty") }}</text>
+        <view v-for="(item, i) in updateRecords" :key="i" class="sh-mt-sm">
+          <text class="txt-caption update-record__line">{{ datetime(item.occurredAt) }} · {{ updateSource(item.source) }} · {{ updateMode(item.mode) }}</text>
+          <text class="txt-caption sh-muted update-record__line">{{ updateOutcome(item.outcome) }} · {{ item.beforeStatus || "—" }} → {{ item.afterStatus || "—" }}{{ item.nodesAdded ? ` · +${item.nodesAdded}` : "" }}</text>
+          <text v-if="item.detail" class="txt-caption sh-muted update-record__line">{{ item.detail }}</text>
+        </view>
+      </view>
     </sh-sheet>
   </sh-scaffold>
 </template>
 
 <style scoped>
+.update-record__line { display: block; }
 .returned__line {
   display: block;
   margin-top: 12rpx;

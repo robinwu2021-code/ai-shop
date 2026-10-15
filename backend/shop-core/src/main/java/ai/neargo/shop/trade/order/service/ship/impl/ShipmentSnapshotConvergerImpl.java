@@ -32,7 +32,7 @@ public class ShipmentSnapshotConvergerImpl implements ShipmentSnapshotConverger 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public void converge(String shipmentNo, long version, String waybillNo, String status,
-                         Long signedAt, Long signedNodeAt, Long firstTraceAt) {
+                         Long signedAt, Long signedNodeAt, Long firstTraceAt, String source) {
         if (shipmentNo == null || version != 0 || !MOVING.contains(status == null ? "" : status)) {
             return;
         }
@@ -55,11 +55,11 @@ public class ShipmentSnapshotConvergerImpl implements ShipmentSnapshotConverger 
             return;
         }
         if (OrdShipment.CREATED.equals(shipment.getStatus())) {
-            store.advance(shipment, ShipmentEvent.PICKED_UP);
+            store.advance(shipment, ShipmentEvent.PICKED_UP, source);
         }
         if ("DELIVERED".equals(status)) {
             if (OrdShipment.SHIPPED.equals(shipment.getStatus())) {
-                store.advance(shipment, ShipmentEvent.SIGNED);
+                store.advance(shipment, ShipmentEvent.SIGNED, source);
             }
             if (OrdShipment.DELIVERED.equals(shipment.getStatus())) {
                 long dispatchedAt = shipment.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
@@ -67,7 +67,7 @@ public class ShipmentSnapshotConvergerImpl implements ShipmentSnapshotConverger 
                         && firstTraceAt != null && firstTraceAt >= dispatchedAt - DATETIME_PRECISION_MS;
                 if (verified) {
                     store.verifiedSignedAt(shipment, signedNodeAt);
-                    receipts.completeSigned(facts.order().getSubOrderNo(), shipmentNo, signedNodeAt);
+                    receipts.completeSigned(facts.order().getSubOrderNo(), shipmentNo, signedNodeAt, source);
                 } else {
                     store.signedAt(shipment, signedAt);
                 }

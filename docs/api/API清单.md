@@ -8,21 +8,22 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 833 个接口**：后端已实现 755（91%）· 前端在调 757
+**合计 839 个接口**：后端已实现 758（90%）· 前端在调 763
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **118** 个接口 ｜ 后端已实现 **117**（99%）｜ 前端在调 **118**
+共 **120** 个接口 ｜ 后端已实现 **119**（99%）｜ 前端在调 **120**
 
-### after-sale（4）
+### after-sale（5）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/after-sale` | 我的售后单 | — | `数组` | 🔒 | ✅ | ✅ |
-| POST | `/mp/after-sale/{afterSaleNo}/escalate` | 上升平台裁决 | — | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/mp/after-sale/{afterSaleNo}/ship` | 填退货运单号 | — | `Order` | 🔒 | ✅ | ✅ |
+| POST | `/mp/after-sale/{afterSaleNo}/cancel` | 撤销售后申请 | — | `AfterSale` | 🔒 | ✅ | ✅ |
+| POST | `/mp/after-sale/{afterSaleNo}/escalate` | 上升平台裁决 | — | `AfterSale` | 🔒 | ✅ | ✅ |
+| POST | `/mp/after-sale/{afterSaleNo}/ship` | 填退货运单号 | — | `AfterSale` | 🔒 | ✅ | ✅ |
 | GET | `/mp/after-sale/reasons` | 售后原因清单 | — | `数组` | — | ✅ | ✅ |
 
 ### card（1）
@@ -170,15 +171,16 @@
 | GET | `/mp/my-memberships` | 我是哪几家店的会员 | — | `数组` | 🔒 | ✅ | ✅ |
 | PUT | `/mp/my-memberships/{entityNo}/reach` | 关掉/打开某家店的消息 | — | — | 🔒 | ✅ | ✅ |
 
-### order（12）
+### order（13）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/mp/order` | 下单（幂等） | `CreateOrderReqBody` | `Order` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order` | 订单列表 | — | `object` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}` | 订单详情 | — | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/mp/order/{orderNo}/after-sale` | 申请售后 | `AfterSaleReq` | `Order` | 🔒 | ✅ | ✅ |
+| POST | `/mp/order/{orderNo}/after-sale` | 申请售后 | `AfterSaleReq` | `AfterSale` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/cancel` | 取消订单 | — | `Order` | 🔒 | ✅ | ✅ |
+| POST | `/mp/order/{orderNo}/confirm-receipt` | 本人确认收货 | — | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/pay` | 支付 | — | `PayInit` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/pay-method` | 可用支付方式 | — | `PayMethodList` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/pay-result` | 支付结果 | — | `Order` | 🔒 | ✅ | ✅ |
@@ -281,7 +283,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **298** 个接口 ｜ 后端已实现 **287**（96%）｜ 前端在调 **298**
+共 **301** 个接口 ｜ 后端已实现 **287**（95%）｜ 前端在调 **301**
 
 ### activities（4）
 
@@ -303,10 +305,10 @@
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/after-sale` | 待处理售后 | — | `数组` | 🔒 | ✅ | ✅ |
-| POST | `/biz/after-sale/{afterSaleNo}/approve` | 同意售后 | `HandleAfterSaleReq` | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/biz/after-sale/{afterSaleNo}/confirm-refund` | 在途仅退款：商家确认退款 | — | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/biz/after-sale/{afterSaleNo}/receive` | 确认收到退货 | — | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/biz/after-sale/{afterSaleNo}/reject` | 驳回售后 | `HandleAfterSaleReq` | `Order` | 🔒 | ✅ | ✅ |
+| POST | `/biz/after-sale/{afterSaleNo}/approve` | 同意售后 | `HandleAfterSaleReq` | `AfterSale` | 🔒 | ✅ | ✅ |
+| POST | `/biz/after-sale/{afterSaleNo}/confirm-refund` | 在途仅退款：商家确认退款 | — | `AfterSale` | 🔒 | ✅ | ✅ |
+| POST | `/biz/after-sale/{afterSaleNo}/receive` | 确认收到退货 | `ReceiveReturnReq` | `AfterSale` | 🔒 | ✅ | ✅ |
+| POST | `/biz/after-sale/{afterSaleNo}/reject` | 驳回售后 | `HandleAfterSaleReq` | `AfterSale` | 🔒 | ✅ | ✅ |
 
 ### appointment-slots（1）
 
@@ -640,7 +642,7 @@
 | PUT | `/biz/notify/wecom` | 录入本店的企业微信群机器人地址 | — | `NotifySetting` | 🔒 | ✅ | ✅ |
 | POST | `/biz/notify/wecom/test` | 往本店的企微群发一条测试 | — | `boolean` | 🔒 | ✅ | ✅ |
 
-### order（11）
+### order（14）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -652,9 +654,12 @@
 | GET | `/biz/order/{orderNo}/express` | 取件单 | — | `ExpressPickup` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/express/cancel` | 取消取件 | — | `ExpressPickup` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/{orderNo}/express/quotes` | 快递报价 | — | `数组` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/order/{orderNo}/logistics-updates` | 物流更新记录 | — | `数组` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/prepare` | 开始备货 | — | `Order` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/ship` | 快递发货 | `ShipReq` | `Order` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/order/{orderNo}/ship/precheck` | 运单预检 | — | `ShipPrecheck` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/{orderNo}/trace` | 物流轨迹 | — | `ShipmentTrace` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/order/{orderNo}/waybill` | 更正运单 | — | `Order` | 🔒 | ⬜ | ✅ |
 
 ### payout-account（2）
 
@@ -918,14 +923,15 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **417** 个接口 ｜ 后端已实现 **351**（84%）｜ 前端在调 **341**
+共 **418** 个接口 ｜ 后端已实现 **352**（84%）｜ 前端在调 **342**
 
-### aftersale（4）
+### aftersale（5）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/after-sales` | listAfterSales | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/{afterSaleNo}/decide` | 平台介入裁决（`ARBITRATING` 的唯一出口） | — | `AfterSale` | — | ✅ | ✅ |
+| POST | `/ops/after-sales/{afterSaleNo}/recover` | 仅恢复原执行，不确认资金成功、不新建退款 | — | `AfterSale` | — | ✅ | ✅ |
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1 | — | `FastRefundRule` | — | ✅ | ✅ |
 

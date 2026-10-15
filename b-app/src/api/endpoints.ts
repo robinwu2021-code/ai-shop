@@ -192,6 +192,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mOrderList: { method: "GET", path: "/biz/order", auth: true, summary: "订单列表" },
   mOrderDetail: { method: "GET", path: "/biz/order/:orderNo", auth: true, summary: "订单详情" },
   mOrderTrace: { method: "GET", path: "/biz/order/:orderNo/trace", auth: true, summary: "物流轨迹" },
+  mOrderUpdates: { method: "GET", path: "/biz/order/:orderNo/logistics-updates", auth: true, summary: "物流更新记录" },
   mShip: { method: "POST", path: "/biz/order/:orderNo/ship", auth: true, summary: "快递发货" },
   mShipPrecheck: { method: "POST", path: "/biz/order/:orderNo/ship/precheck", auth: true, summary: "运单预检" },
   mCorrectWaybill: { method: "POST", path: "/biz/order/:orderNo/waybill", auth: true, summary: "更正运单" },

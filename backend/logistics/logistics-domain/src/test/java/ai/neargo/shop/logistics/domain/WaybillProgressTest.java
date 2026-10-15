@@ -89,6 +89,8 @@ class WaybillProgressTest {
     @Test
     @DisplayName("★★ 进入派件 → 事件带承运商与单号；承运商被这一次纠正了的话带纠正后的")
     void transitionCarriesCarrierAndNumber() {
+        WaybillUpdateAudit audit = mock(WaybillUpdateAudit.class);
+        progress.setAudit(audit);
         LgsWaybill patch = LgsWaybill.patch(7L);
         patch.setCarrier("STO");
         progress.apply(waybill(WaybillStatus.IN_TRANSIT, 0), trace(TraceStatus.DELIVERING, false),
@@ -101,6 +103,12 @@ class WaybillProgressTest {
             assertThat(e.atLocker()).isFalse();
             assertThat(e.carrier()).isEqualTo("STO");
         });
+        verify(audit).record(any(LgsWaybill.class), org.mockito.ArgumentMatchers.eq("kuaidi100"),
+                org.mockito.ArgumentMatchers.eq("PUSH"), org.mockito.ArgumentMatchers.eq(WaybillStatus.IN_TRANSIT),
+                org.mockito.ArgumentMatchers.eq(WaybillStatus.DELIVERING), org.mockito.ArgumentMatchers.eq(1),
+                org.mockito.ArgumentMatchers.eq("ADVANCED"),
+                org.mockito.ArgumentMatchers.argThat((String detail) -> detail.startsWith("DELIVERING · 1000")),
+                org.mockito.ArgumentMatchers.eq(2_000L));
     }
 
     @Test
@@ -132,6 +140,7 @@ class WaybillProgressTest {
                     LogisticsEvents.ShipmentSnapshot snapshot = (LogisticsEvents.ShipmentSnapshot) e;
                     assertThat(snapshot.signedNodeAt()).isEqualTo(1_000L);
                     assertThat(snapshot.firstTraceAt()).isEqualTo(1_000L);
+                    assertThat(snapshot.source()).isEqualTo("kuaidi100");
                 });
     }
 

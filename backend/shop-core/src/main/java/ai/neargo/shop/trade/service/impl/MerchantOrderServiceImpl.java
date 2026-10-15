@@ -186,7 +186,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
             logisticsPort.shipmentSnapshotOf(sub.getSubOrderNo()).ifPresent(snapshot ->
                     shipmentConverger.converge(snapshot.sourceShipmentNo(), snapshot.sourceShipmentVersion(),
                             snapshot.waybillNo(), snapshot.status(), snapshot.signedAt(),
-                            snapshot.signedNodeAt(), snapshot.firstTraceAt()));
+                            snapshot.signedNodeAt(), snapshot.firstTraceAt(), snapshot.source()));
         }
         return tracked
                 .map(v -> new OrderVO.Trace(v.status(),
@@ -195,6 +195,13 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                         "self-map", null, null,
                         v.carrier(), v.waybillNo(), v.signedAt(), v.atLocker(), v.freshAt(), v.refreshable()))
                 .orElse(null);
+    }
+
+    @Override
+    public List<LogisticsPort.UpdateRecord> logisticsUpdates(String merchantNo, String storeNo, String subOrderNo) {
+        OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        return logisticsPort == null || !OrdSubOrder.EXPRESS.equals(sub.getFulfillment())
+                ? List.of() : logisticsPort.updatesOf(sub.getSubOrderNo());
     }
 
     /**

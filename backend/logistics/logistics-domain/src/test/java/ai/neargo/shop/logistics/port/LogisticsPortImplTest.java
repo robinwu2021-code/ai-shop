@@ -5,6 +5,7 @@ import ai.neargo.shop.logistics.config.LogisticsProperties;
 import ai.neargo.shop.logistics.domain.PhoneCipher;
 import ai.neargo.shop.logistics.domain.WaybillProgress;
 import ai.neargo.shop.logistics.domain.WaybillStatus;
+import ai.neargo.shop.logistics.domain.WaybillUpdateAudit;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
 import ai.neargo.shop.logistics.entity.LgsWaybillNode;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
@@ -13,6 +14,7 @@ import ai.neargo.shop.logistics.routing.ChannelRouter;
 import ai.neargo.shop.spi.logistics.LogisticsPort.TrackQuery;
 import ai.neargo.shop.spi.logistics.LogisticsPort.TrackView;
 import ai.neargo.shop.spi.logistics.TraceResult;
+import ai.neargo.shop.spi.logistics.TraceProvider;
 import ai.neargo.shop.spi.logistics.TraceStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 /** 物流页读取：10 分钟读缓存、SELF 永不问微信、问失败照样返回（TDD-物流模块 AC6）。 */
 class LogisticsPortImplTest {
@@ -92,6 +95,36 @@ class LogisticsPortImplTest {
         now.addAndGet(2 * 60_000L);
         p.track(TrackQuery.subOrder("SUB1", "MP", false));
         assertThat(probes).hasSize(2);
+    }
+
+    @Test
+    void explicitRefreshBypassesWechatReadCacheDuringTesting() {
+        LgsWaybill w = wb(LgsWaybill.PROFILE_WX, "PICKED_UP");
+        w.setWxStatusCheckedAt(now.get());
+        wxProbe(null);
+        port().track(TrackQuery.subOrder("SUB1", "BIZ", true));
+        assertThat(probes).hasSize(1);
+    }
+
+    @Test
+    void deliveredStatusUsesK100ForDatedProofWhenRefreshIsRequested() {
+        LgsWaybill w = wb(LgsWaybill.PROFILE_SELF, WaybillStatus.DELIVERED);
+        TraceProvider kd100 = mock(TraceProvider.class);
+        when(kd100.name()).thenReturn("kuaidi100");
+        when(kd100.available()).thenReturn(true);
+        when(kd100.covers("STO")).thenReturn(true);
+        TraceResult proof = new TraceResult("773", "STO", TraceStatus.SIGNED, "kuaidi100",
+                List.of(new TraceResult.TraceNode(now.get() - 1_000, TraceStatus.SIGNED, "已签收", null)));
+        when(kd100.refresh("STO", "773", null)).thenReturn(Optional.of(proof));
+        WaybillUpdateAudit audit = mock(WaybillUpdateAudit.class);
+        when(audit.reserveK100(w, now.get())).thenReturn(true);
+        LogisticsPortImpl p = port();
+        p.setPrecheckProviders(List.of(kd100));
+        p.setAudit(audit);
+        p.track(TrackQuery.subOrder("SUB1", "BIZ", true));
+        verify(kd100).refresh("STO", "773", null);
+        verify(progress).apply(any(), any(), org.mockito.ArgumentMatchers.eq("kuaidi100"),
+                org.mockito.ArgumentMatchers.eq("QUERY"), any(), org.mockito.ArgumentMatchers.anyLong());
     }
 
     @Test

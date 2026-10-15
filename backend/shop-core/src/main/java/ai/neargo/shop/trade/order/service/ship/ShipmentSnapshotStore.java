@@ -7,7 +7,7 @@ import ai.neargo.shop.trade.order.machine.shipment.ShipmentEvent;
 /** Dedicated package fact adapter keeps source checks and canonical state writes under the child lock. */
 public interface ShipmentSnapshotStore {
     Facts currentLocked(String shipmentNo);
-    void advance(OrdShipment shipment, ShipmentEvent event);
+    void advance(OrdShipment shipment, ShipmentEvent event, String source);
     void signedAt(OrdShipment shipment, long at);
     /** Replace a status-only fallback timestamp when a dated carrier signature is verified. */
     void verifiedSignedAt(OrdShipment shipment, long at);

@@ -486,6 +486,8 @@ export const httpApi: MerchantApi = {
   mOrderDetail: (orderNo) => http.get<Order>(buildPath(E.mOrderDetail.path, { orderNo })),
   mOrderTrace: (orderNo, refresh) =>
     http.get<ShipmentTrace | null>(buildPath(E.mOrderTrace.path, { orderNo }), refresh ? { refresh: true } : undefined),
+  mOrderUpdates: (orderNo) =>
+    http.get<Awaited<ReturnType<MerchantApi["mOrderUpdates"]>>>(buildPath(E.mOrderUpdates.path, { orderNo })),
   mShipPrecheck: (orderNo, expressNo, expressCompany) =>
     http.post<Awaited<ReturnType<MerchantApi["mShipPrecheck"]>>>(
       buildPath(E.mShipPrecheck.path, { orderNo }), { expressNo, expressCompany } satisfies ShipReq),

@@ -34,6 +34,10 @@ public class WaybillProgress {
     private final WaybillNodeMapper nodes;
     private final OutboxEventBus events;
     private final LogisticsProperties props;
+    private WaybillUpdateAudit audit;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAudit(WaybillUpdateAudit audit) { this.audit = audit; }
 
     public WaybillProgress(WaybillMapper waybills, WaybillNodeMapper nodes, OutboxEventBus events,
                            LogisticsProperties props) {
@@ -102,7 +106,7 @@ public class WaybillProgress {
                 events.publish(new LogisticsEvents.ShipmentSnapshot(w.getSourceShipmentNo(),
                         w.getSourceShipmentVersion(), w.getWaybillNo(), t.next(), patch.getSignedAt(),
                         t.firstDelivered() ? signedNodeAt(trace, now) : null,
-                        t.firstDelivered() ? firstPersistedTraceAt(w.getShipmentNo(), now) : null));
+                        t.firstDelivered() ? firstPersistedTraceAt(w.getShipmentNo(), now) : null, channel));
             }
             publish(w, carrierOf(w, patch), t, trace,
                     patch.getSignedAt() == null ? now : patch.getSignedAt(), channel, now);
@@ -118,11 +122,16 @@ public class WaybillProgress {
             if (signedNode != null) {
                 events.publish(new LogisticsEvents.ShipmentSnapshot(w.getSourceShipmentNo(),
                         w.getSourceShipmentVersion(), w.getWaybillNo(), w.getStatus(), signedNode,
-                        signedNode, firstPersistedTraceAt(w.getShipmentNo(), now)));
+                        signedNode, firstPersistedTraceAt(w.getShipmentNo(), now), channel));
             }
         } else if (trace != null && WxBindPolicy.ready(w, props.getWxBind().onShip())) {
             // 状态没变但又来了一条推送：上次微信还没收录的，再试一次
             events.publish(new WxBindRequested(w.getShipmentNo()));
+        }
+        if (audit != null && trace != null) {
+            audit.record(w, channel, mode, w.getStatus(), t.next(), added,
+                    t.changed() ? "ADVANCED" : added > 0 ? "NODES_ADDED" : "UNCHANGED",
+                    auditDetail(trace), now);
         }
         return t;
     }
@@ -130,6 +139,16 @@ public class WaybillProgress {
     /** 这一次补丁纠正了承运商的话用纠正后的（快递100 自动识别会改它） */
     private static String carrierOf(LgsWaybill w, LgsWaybill patch) {
         return patch.getCarrier() != null ? patch.getCarrier() : w.getCarrier();
+    }
+
+    private static String auditDetail(TraceResult trace) {
+        String status = trace.status().name();
+        if (trace.nodes().isEmpty()) return status + "（渠道未提供轨迹节点）";
+        TraceResult.TraceNode latest = trace.nodes().stream()
+                .max(java.util.Comparator.comparingLong(TraceResult.TraceNode::at)).orElseThrow();
+        String info = latest.info() == null ? "" : latest.info().trim();
+        String detail = status + " · " + latest.at() + " · " + info;
+        return detail.length() > 255 ? detail.substring(0, 255) : detail;
     }
 
     private void publish(LgsWaybill w, String carrier, Transition t, TraceResult trace, long signedAt,

@@ -128,6 +128,13 @@ public class BizOrderController {
         return merchantOrderService.trace(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo, refresh);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
+    @GetMapping("/biz/order/{subOrderNo}/logistics-updates")
+    public java.util.List<LogisticsPort.UpdateRecord> logisticsUpdates(@PathVariable String subOrderNo) {
+        var ctx = BizContext.current();
+        return merchantOrderService.logisticsUpdates(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo);
+    }
+
     /**
      * 发货：快递单号与<b>快递公司</b>都必填。
      *

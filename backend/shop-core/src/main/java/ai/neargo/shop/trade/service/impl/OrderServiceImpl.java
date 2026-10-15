@@ -269,6 +269,12 @@ public class OrderServiceImpl implements OrderService {
 
     /** 物流页（TDD-物流模块 批 3）。setter 注入：存量手工构造本类的地方不用跟着改 */
     private ai.neargo.shop.spi.logistics.LogisticsPort logisticsPort;
+    private ai.neargo.shop.trade.order.service.ship.ShipmentSnapshotConverger shipmentConverger;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setShipmentConverger(ai.neargo.shop.trade.order.service.ship.ShipmentSnapshotConverger converger) {
+        this.shipmentConverger = converger;
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setLogisticsPort(ai.neargo.shop.spi.logistics.LogisticsPort port) {
@@ -2099,8 +2105,15 @@ public class OrderServiceImpl implements OrderService {
                 || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {
             return null;
         }
-        return logisticsPort.track(ai.neargo.shop.spi.logistics.LogisticsPort.TrackQuery.subOrder(
-                        sub.getSubOrderNo(), surfaceOf(client), refresh))
+        var tracked = logisticsPort.track(ai.neargo.shop.spi.logistics.LogisticsPort.TrackQuery.subOrder(
+                sub.getSubOrderNo(), surfaceOf(client), refresh));
+        if (refresh && shipmentConverger != null) {
+            logisticsPort.shipmentSnapshotOf(sub.getSubOrderNo()).ifPresent(snapshot ->
+                    shipmentConverger.converge(snapshot.sourceShipmentNo(), snapshot.sourceShipmentVersion(),
+                            snapshot.waybillNo(), snapshot.status(), snapshot.signedAt(),
+                            snapshot.signedNodeAt(), snapshot.firstTraceAt(), snapshot.source()));
+        }
+        return tracked
                 .map(OrderServiceImpl::toTraceVO)
                 .orElse(null);
     }

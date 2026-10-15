@@ -4,6 +4,7 @@ import ai.neargo.shop.logistics.capability.StatusProbe;
 import ai.neargo.shop.logistics.config.LogisticsProperties;
 import ai.neargo.shop.logistics.domain.PhoneCipher;
 import ai.neargo.shop.logistics.domain.WaybillProgress;
+import ai.neargo.shop.logistics.domain.WaybillUpdateAudit;
 import ai.neargo.shop.logistics.domain.WaybillStatus;
 import ai.neargo.shop.logistics.registration.ChannelSubscriptionStore;
 import ai.neargo.shop.logistics.registration.ShipmentRegistrar;
@@ -58,6 +59,8 @@ public class LogisticsPortImpl implements LogisticsPort {
     private final WaybillNodeMapper nodes;
     private final ChannelRouter router;
     private final WaybillProber prober;
+    private final WaybillProgress progress;
+    private final PhoneCipher phones;
     private final LogisticsProperties props;
     private final LongSupplier clock;
     private List<TraceProvider> precheckProviders = List.of();
@@ -68,6 +71,7 @@ public class LogisticsPortImpl implements LogisticsPort {
     private WxFollowExecutor followExecutor;
     private ChannelSubscriptionMapper channelRows;
     private JdbcTemplate precheckDb;
+    private WaybillUpdateAudit audit;
     private final ObjectMapper json = new ObjectMapper();
 
     @Autowired(required = false)
@@ -86,6 +90,11 @@ public class LogisticsPortImpl implements LogisticsPort {
     public void setChannelRows(ChannelSubscriptionMapper channelRows) { this.channelRows = channelRows; }
     @Autowired(required = false)
     public void setPrecheckDb(JdbcTemplate precheckDb) { this.precheckDb = precheckDb; }
+    @Autowired(required = false)
+    public void setAudit(WaybillUpdateAudit audit) {
+        this.audit = audit;
+        this.prober.setAudit(audit);
+    }
 
     @Autowired
     public LogisticsPortImpl(WaybillMapper waybills, WaybillNodeMapper nodes, ChannelRouter router,
@@ -100,6 +109,8 @@ public class LogisticsPortImpl implements LogisticsPort {
         this.router = router;
         this.props = props;
         this.clock = clock;
+        this.progress = progress;
+        this.phones = phones;
         this.prober = new WaybillProber(waybills, router, progress, phones);
     }
 
@@ -111,23 +122,40 @@ public class LogisticsPortImpl implements LogisticsPort {
             return Optional.empty();
         }
         long now = clock.getAsLong();
+        // 首次微信签收会清掉运单上的手机号；本次需要补查快递100时先短暂保存在请求栈里。
+        String queryPhone = q.refresh() ? phones.decrypt(w.getReceiverPhoneEnc()) : null;
         boolean wxPlugin = "MP".equals(q.surface()) && LgsWaybill.PROFILE_WX.equals(w.getProfile()) && notBlank(w.getDisplayToken());
         List<StatusProbe> allowed = router.probes(w.getStoreNo(), w.getCarrier()).stream()
                 .filter(p -> allowedOn(p.channel(), q.surface())).toList();
-        boolean changed = false;
-        if (!q.cacheOnly() && wxPlugin && !WaybillStatus.isTerminal(w.getStatus()) && due(w, now)) {
-            changed = allowed.stream().filter(p -> WX.equals(p.channel())).findFirst()
-                    .map(p -> probe(w, p, now)).orElse(false);
+        if (!q.cacheOnly() && !q.refresh() && wxPlugin && !WaybillStatus.isTerminal(w.getStatus()) && due(w, now)) {
+            allowed.stream().filter(p -> WX.equals(p.channel())).findFirst()
+                    .ifPresent(p -> prober.probe(w, p, now));
         }
-        if (!q.cacheOnly() && q.refresh() && !allowed.isEmpty() && !WaybillStatus.isTerminal(w.getStatus())) {
+        boolean answered = false;
+        if (!q.cacheOnly() && q.refresh() && !WaybillStatus.isTerminal(w.getStatus())) {
             for (StatusProbe p : allowed) {
-                if (WX.equals(p.channel()) && !due(w, now)) {
-                    continue;   // 刚问过微信，不再问
+                // 测试期为 0：每次手动刷新直接问微信；普通页面读取仍遵守 10 分钟节流。
+                if (WX.equals(p.channel()) && !manualDue(w, now)) {
+                    if (audit != null) audit.record(w, WX, "QUERY", w.getStatus(), w.getStatus(), 0,
+                            "THROTTLED", "手动刷新间隔未到", now);
+                    continue;
                 }
-                if (probe(w, p, now)) {
-                    changed = true;
+                WaybillProber.Outcome outcome = prober.probe(w, p, now);
+                if (outcome.answered()) {
+                    answered = true;
                     break;
                 }
+            }
+        }
+        if (!q.cacheOnly() && q.refresh()) {
+            LgsWaybill afterWx = find(q.bizType(), q.bizRef());
+            if (afterWx != null && !WaybillStatus.CANCELLED.equals(afterWx.getStatus())
+                    && (!answered || WaybillStatus.DELIVERED.equals(afterWx.getStatus()))) {
+                fallbackK100(afterWx, queryPhone, now);
+            }
+            if (afterWx != null && allowed.isEmpty() && !hasK100(afterWx) && audit != null) {
+                audit.record(afterWx, "system", "QUERY", afterWx.getStatus(), afterWx.getStatus(), 0,
+                        "NO_CHANNEL", "微信与快递100当前均不可主动查询", now);
             }
         }
         LgsWaybill cur = q.cacheOnly() ? w : waybills.selectOne(Wrappers.<LgsWaybill>query()
@@ -141,9 +169,40 @@ public class LogisticsPortImpl implements LogisticsPort {
         return Optional.of(new TrackView(cur.getShipmentNo(), cur.getCarrier(), cur.getWaybillNo(), cur.getStatus(),
                 cur.getSignedAt(), cur.getAtLocker() != null && cur.getAtLocker() == 1, list,
                 plugin ? "wx-plugin" : "self-map", plugin ? cur.getDisplayToken() : null,
-                cur.getLastEventAt(), !allowed.isEmpty(),
+                cur.getLastEventAt(), !allowed.isEmpty() || hasK100(cur),
                 cur.getCreatedAt() == null ? null
                         : cur.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()));
+    }
+
+    private boolean hasK100(LgsWaybill w) {
+        return precheckProviders.stream().anyMatch(p -> "kuaidi100".equals(p.name())
+                && p.available() && p.covers(w.getCarrier()));
+    }
+
+    private void fallbackK100(LgsWaybill w, String phone, long now) {
+        TraceProvider provider = precheckProviders.stream().filter(p -> "kuaidi100".equals(p.name())
+                && p.available() && p.covers(w.getCarrier())).findFirst().orElse(null);
+        if (provider == null || audit == null || !audit.reserveK100(w, now)) return;
+        Optional<TraceResult> result;
+        try {
+            result = provider.refresh(w.getCarrier(), w.getWaybillNo(), phone);
+        } catch (RuntimeException e) {
+            audit.record(w, "kuaidi100", "QUERY", w.getStatus(), w.getStatus(), 0,
+                    "ERROR", e.getClass().getSimpleName(), now);
+            return;
+        }
+        if (result.isPresent()) {
+            progress.apply(w, result.get(), "kuaidi100", "QUERY", LgsWaybill.patch(w.getId()), now);
+        } else {
+            audit.record(w, "kuaidi100", "QUERY", w.getStatus(), w.getStatus(), 0,
+                    "NO_RESULT", "快递100未返回可用轨迹", now);
+        }
+    }
+
+    @Override
+    public List<UpdateRecord> updatesOf(String subOrderNo) {
+        LgsWaybill w = find(LgsWaybill.BIZ_SUB_ORDER, subOrderNo);
+        return w == null || audit == null ? List.of() : audit.recent(w.getShipmentNo(), w.getWaybillNo(), 30);
     }
 
     @Override
@@ -163,7 +222,7 @@ public class LogisticsPortImpl implements LogisticsPort {
         // Status-only 微信查询没有签收节点，不能把查询时间冒充实际签收时间。
         Long signed = signedNode == null ? w.getSignedAt() : signedNode;
         return Optional.of(new ShipmentSnapshot(w.getSourceShipmentNo(), w.getSourceShipmentVersion(),
-                w.getWaybillNo(), w.getStatus(), signed, signedNode, first));
+                w.getWaybillNo(), w.getStatus(), signed, signedNode, first, w.getStatusSource()));
     }
 
     private static boolean signedNode(LgsWaybillNode node) {
@@ -347,14 +406,15 @@ public class LogisticsPortImpl implements LogisticsPort {
                 || "WAITING".equals(row.getState());
     }
 
-    /** @return 有没有带来新进展。问失败照样返回库里的 */
-    private boolean probe(LgsWaybill w, StatusProbe p, long now) {
-        return prober.probe(w, p, now).changed();
-    }
-
     private boolean due(LgsWaybill w, long now) {
         Long at = w.getWxStatusCheckedAt();
         return at == null || now - at >= props.getReadCacheMinutes() * 60_000L;
+    }
+
+    private boolean manualDue(LgsWaybill w, long now) {
+        int minutes = props.getManualRefreshCacheMinutes();
+        return minutes <= 0 || w.getWxStatusCheckedAt() == null
+                || now - w.getWxStatusCheckedAt() >= minutes * 60_000L;
     }
 
     /** 渠道在配置里没列 = 全部界面放行；列了 = 只放行列出的（快递100 默认一个都不放行） */

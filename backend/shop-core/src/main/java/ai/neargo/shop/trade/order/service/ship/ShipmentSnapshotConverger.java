@@ -4,5 +4,10 @@ package ai.neargo.shop.trade.order.service.ship;
 public interface ShipmentSnapshotConverger {
     /** Ignore superseded generations and mismatched waybills before any package transition. */
     void converge(String shipmentNo, long version, String waybillNo, String status, Long signedAt,
-                  Long signedNodeAt, Long firstTraceAt);
+                  Long signedNodeAt, Long firstTraceAt, String source);
+
+    default void converge(String shipmentNo, long version, String waybillNo, String status, Long signedAt,
+                          Long signedNodeAt, Long firstTraceAt) {
+        converge(shipmentNo, version, waybillNo, status, signedAt, signedNodeAt, firstTraceAt, null);
+    }
 }

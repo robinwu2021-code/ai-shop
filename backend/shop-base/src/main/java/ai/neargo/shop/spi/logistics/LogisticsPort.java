@@ -21,11 +21,17 @@ public interface LogisticsPort {
      */
     Optional<TrackView> track(TrackQuery q);
 
+    /** Most recent channel attempts for the current waybill; caller must authorize the order first. */
+    default List<UpdateRecord> updatesOf(String subOrderNo) { return List.of(); }
+
+    record UpdateRecord(String source, String mode, String beforeStatus, String afterStatus,
+                        int nodesAdded, String outcome, String detail, long occurredAt) { }
+
     /** Current immutable dispatch and dated carrier evidence for synchronous order convergence after a refresh. */
     default Optional<ShipmentSnapshot> shipmentSnapshotOf(String subOrderNo) { return Optional.empty(); }
 
     record ShipmentSnapshot(String sourceShipmentNo, long sourceShipmentVersion, String waybillNo,
-                            String status, Long signedAt, Long signedNodeAt, Long firstTraceAt) { }
+                            String status, Long signedAt, Long signedNodeAt, Long firstTraceAt, String source) { }
 
     /** 子单号 → 签收时间（毫秒）。没签收的不在结果里。自动确认收货与确认收货提醒用 */
     Map<String, Long> signedAtOf(Collection<String> subOrderNos);

@@ -34,9 +34,10 @@ class ShipmentSnapshotConvergerImplTest {
     void laterDatedProofReplacesStatusOnlyTimestampAndCompletesOrder() {
         long dispatched = shipment();
         long signed = dispatched + 120_000;
-        converger.converge("SRC1", 0, "WB1", "DELIVERED", signed, signed, dispatched + 30_000);
+        converger.converge("SRC1", 0, "WB1", "DELIVERED", signed, signed, dispatched + 30_000,
+                "kuaidi100");
         verify(store).verifiedSignedAt(any(OrdShipment.class), eq(signed));
-        verify(receipts).completeSigned("SUB1", "SRC1", signed);
+        verify(receipts).completeSigned("SUB1", "SRC1", signed, "kuaidi100");
     }
 
     @Test
@@ -45,6 +46,6 @@ class ShipmentSnapshotConvergerImplTest {
         long signed = dispatched + 120_000;
         converger.converge("SRC1", 0, "WB1", "DELIVERED", signed, signed, dispatched - 86_400_000);
         verify(store, never()).verifiedSignedAt(any(), anyLong());
-        verify(receipts, never()).completeSigned(any(), any(), anyLong());
+        verify(receipts, never()).completeSigned(any(), any(), anyLong(), any());
     }
 }

@@ -131,6 +131,11 @@ public class Kuaidi100TraceProvider implements TraceProvider {
         return query(carrier, waybillNo, phone, Duration.ofSeconds(3));
     }
 
+    @Override
+    public Optional<TraceResult> refresh(String carrier, String waybillNo, String phone) {
+        return query(carrier, waybillNo, phone, Duration.ofSeconds(3));
+    }
+
     private Optional<TraceResult> query(String carrier, String waybillNo, String phone, Duration timeout) {
         String com = carrier == null ? null : CODES.get(carrier);
         if (com == null || waybillNo == null || waybillNo.isBlank() || !available()) {

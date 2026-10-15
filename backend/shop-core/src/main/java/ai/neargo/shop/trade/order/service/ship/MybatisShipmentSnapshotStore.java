@@ -52,8 +52,18 @@ public class MybatisShipmentSnapshotStore implements ShipmentSnapshotStore {
     }
 
     @Override
-    public void advance(OrdShipment shipment, ShipmentEvent event) {
-        statuses.shipment(shipment, event, Actor.CHANNEL, null, "可信物流快照", ShipmentContext.ok());
+    public void advance(OrdShipment shipment, ShipmentEvent event, String source) {
+        statuses.shipment(shipment, event, Actor.CHANNEL, null,
+                "物流状态更新（" + sourceLabel(source) + "）", ShipmentContext.ok());
+    }
+
+    private static String sourceLabel(String source) {
+        return switch (source == null ? "" : source) {
+            case "wx", "wx-follow" -> "微信";
+            case "kuaidi100" -> "快递100";
+            case "yto" -> "圆通";
+            default -> "渠道未标明";
+        };
     }
 
     @Override
