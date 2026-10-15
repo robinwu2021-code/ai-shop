@@ -13,7 +13,7 @@ import type { GroupBuy, InvoiceRequest, Order, OrderStatus } from "@shared/types
 import { confirm, prompt } from "@ai-shop/ui/prompt";
 import { orderNoOf } from "@/shared/order-no";
 import { openWxWaybillTracking } from "@/ports/wx-logistics";
-import { traceStatusKey } from "@shared/strategies/trace-step";
+import { expressOrderStatusKey } from "@shared/strategies/trace-step";
 import { refundProgressKey, canWithdrawAfterSale, hasHistoricalPoints } from "@shared/strategies/order-phase1";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 
@@ -22,10 +22,12 @@ const { t } = useI18n();
  * 快递公司名（TDD-快递100商家寄件 §7 AC14）。订单一直带着 `expressCompany`（微信 delivery_id），
  * 只是没显示 —— 买家光看一串运单号，不知道该去哪家查。认不出的码原样显示，不吞掉。
  */
-/** 摘要行的状态词。与步骤条共用 shared 里那一份判定，别在两处各写一个三分支 */
-const traceStep = computed(() => (order.value?.trace ? traceStatusKey(order.value.trace) : "picked"));
 /** 有没有轨迹。没有就不渲染轨迹那一段 */
 const hasTrace = computed(() => !!order.value?.trace?.nodes?.length);
+const signedBeforeOrder = computed(() => order.value?.status === "FULFILLING"
+  && order.value?.logisticsSync?.status === "DELIVERED"
+  && !!order.value?.trace?.signedAt && !!order.value?.createdAt
+  && order.value.trace.signedAt < order.value.createdAt);
 
 /*
  * 状态文字：物流已有状态就显示物流步骤（微信可能只给状态、不给轨迹节点）；否则走**履约感知**的 orderView ——
@@ -35,11 +37,8 @@ const hasTrace = computed(() => !!order.value?.trace?.nodes?.length);
 const statusLabel = computed(() => {
   const o = order.value;
   if (!o) return "";
-  if (o.trace && o.trace.status !== "CREATED") return String(t(traceStep.value));
-  if (o.logisticsSync && o.logisticsSync.status !== "CREATED" && o.logisticsSync.status !== "PENDING") {
-    return String(t(traceStatusKey({ status: o.logisticsSync.status as NonNullable<Order["trace"]>["status"],
-      nodes: o.trace?.nodes ?? [] })));
-  }
+  const projected = expressOrderStatusKey(o);
+  if (projected) return String(t(projected));
   if (o.fulfillment) {
     const v = orderView(o.status, o.fulfillment, { appointmentAt: o.appointmentAt });
     return String(v.needsTime ? t(v.labelKey, { t: datetime(o.appointmentAt!) }) : t(v.labelKey));
@@ -628,10 +627,15 @@ onPullDownRefresh(async () => {
         </view>
         <!-- 有物流就说最新那条（比状态词具体）；没有就说「接下来会发生什么」 -->
         <text v-if="hasTrace" class="txt-caption ostat__sub">{{ traceLatest }}</text>
-        <text v-if="order.logisticsSync?.pending" class="txt-caption ostat__sub">
-          {{ $t("order.logistics") }}{{ $t("order.syncPending") }}{{ order.logisticsSync.reason ? ` · ${order.logisticsSync.reason}` : "" }}
+        <text v-if="order.status === 'FULFILLING' && order.logisticsSync?.status === 'DELIVERED'"
+          class="txt-caption ostat__sub">
+          {{ $t(signedBeforeOrder ? "order.signedBeforeOrder" : "order.signedPendingReviewHint") }}
         </text>
-        <text v-else-if="nextStepText" class="txt-caption ostat__sub">{{ nextStepText }}</text>
+        <text v-if="order.logisticsSync?.pending" class="txt-caption ostat__sub">
+          {{ $t("order.syncPending") }}{{ order.logisticsSync.reason ? ` · ${order.logisticsSync.reason}` : "" }}
+        </text>
+        <text v-else-if="nextStepText && !(order.status === 'FULFILLING' && order.logisticsSync?.status === 'DELIVERED')"
+          class="txt-caption ostat__sub">{{ nextStepText }}</text>
         <!-- 承运商 + 单号：已发货才有，点一下复制 -->
         <text v-if="order.expressNo" class="txt-caption ostat__sub sh-num" @tap="copyExpressNo">
           {{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}

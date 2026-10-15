@@ -12,16 +12,8 @@ import { useI18n } from "vue-i18n";
 import { money } from "@shared/utils/money";
 import { FULFILLMENT } from "@shared/utils/constants";
 import { datetime } from "@shared/utils/datetime";
-import { traceStatusKey } from "@shared/strategies/trace-step";
+import { expressOrderStatusKey } from "@shared/strategies/trace-step";
 import type { Order } from "@shared/types";
-
-function logisticsText(o: Order): string {
-  const sync = o.logisticsSync;
-  if (!sync) return "";
-  if (sync.status === "PENDING") return String(t("order.syncPending"));
-  return String(t(traceStatusKey({ status: sync.status as NonNullable<Order["trace"]>["status"],
-    nodes: [] })));
-}
 import {
   DELIVERY_SHAPE,
   fulfillmentsOf,
@@ -57,6 +49,8 @@ function statusChip(o: Order): string {
  * 只处理「还没交付」的两个状态，其余（已完成/已退款/待付款）与履约方式无关。
  */
 function statusText(o: Order): string {
+  const expressStatus = expressOrderStatusKey(o);
+  if (expressStatus) return String(t(expressStatus));
   const f = o.fulfillment;
   if (o.status === "PAID") {
     if (f === FULFILLMENT.PICKUP || f === FULFILLMENT.NEIGHBOR_PICKUP) return t("home.cell.toVerify");
@@ -67,14 +61,6 @@ function statusText(o: Order): string {
     // 自送单在路上说「配送中」更准；自提/到店核销说「待核销」；快递才是「已发货」
     if (f === FULFILLMENT.DELIVERY) return t("order.delivering");
     if (PICKUP_LIKE.has(f)) return t("home.cell.toVerify");
-    if (f === FULFILLMENT.EXPRESS) {
-      const progress = o.logisticsSync?.status;
-      if (progress === "DELIVERED") return t("order.signedPendingReview");
-      if (progress === "PICKED_UP" || progress === "IN_TRANSIT"
-          || progress === "DELIVERING" || progress === "EXCEPTION") {
-        return t(traceStatusKey({ status: progress, nodes: [] }));
-      }
-    }
     return t("order.statusSHIPPED");
   }
   return t(`order.status${o.status}`);
@@ -194,16 +180,13 @@ onShow(() => {
     <view v-for="o in list" :key="o.orderNo" class="sh-card sh-mb-sm" @tap="open(o)">
       <view class="row__head sh-row sh-row--between">
         <text class="txt-caption sh-num">{{ o.payOrderNo || o.orderNo }}</text>
-        <!-- 行内显示的是**订单自己的状态**。原先拼的是 tab 的 key
+        <!-- 快递履约中显示物流阶段，交易终态显示交易状态。原先拼的是 tab 的 key
              （`order.tab${PAID ? 'ToShip' : 'All'}`），于是除待发货外一律显示「全部」——
              一屏订单看下来全是「全部」，等于这一列没有信息 -->
         <text class="sh-chip" :class="statusChip(o)">
           {{ statusText(o) }}
         </text>
       </view>
-      <text v-if="o.fulfillment === FULFILLMENT.EXPRESS && o.logisticsSync" class="txt-caption sh-muted">
-        {{ $t("order.logistics") }}：{{ logisticsText(o) }}{{ o.logisticsSync.pending && o.logisticsSync.status !== "PENDING" ? ` · ${$t("order.syncPending")}` : "" }}
-      </text>
       <view v-for="it in o.items" :key="it.skuNo" class="sh-row item sh-mb-sm">
         <sh-cover class="item__cover" :src="it.cover" :w="200"></sh-cover>
         <view class="sh-fill">

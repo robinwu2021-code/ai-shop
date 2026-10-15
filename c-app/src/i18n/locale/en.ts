@@ -820,6 +820,9 @@ export default {
   order: {
     logistics: "Delivery",
     syncPending: "Syncing",
+    signedPendingReview: "Delivery needs review",
+    signedPendingReviewHint: "Tracking shows delivery; this shipment must be verified before the order is completed.",
+    signedBeforeOrder: "This tracking number was signed for before this order was placed. Contact the seller to check it.",
     confirmReceipt: "Confirm receipt",
     receiptHint: "Confirm you have received every package in this store order.",
     /** Landed on the detail page with no order number (e.g. an external link) */

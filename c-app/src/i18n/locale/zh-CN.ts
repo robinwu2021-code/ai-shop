@@ -892,6 +892,9 @@ export default {
   order: {
     logistics: "物流",
     syncPending: "同步中",
+    signedPendingReview: "签收待核实",
+    signedPendingReviewHint: "物流显示签收，待核实本次发货轨迹后完成订单",
+    signedBeforeOrder: "此运单在本单下单前已签收，请联系商家核对运单号",
     confirmReceipt: "确认收货",
     receiptHint: "请确认本订单的全部包裹均已收到",
     /** 没带单号就进了详情页（例如从外部链接）。短位：不解释、只说事实 */

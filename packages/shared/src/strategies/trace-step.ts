@@ -3,7 +3,7 @@
 // 两处各写一个三分支的下场在这个仓库里已经见过几次：一处改了另一处没改，
 // 而界面上两句话互相矛盾（步骤条停在「运输中」、摘要行写「派送中」），没有任何报错。
 
-import type { ShipmentTrace } from "../types";
+import type { Order, ShipmentTrace } from "../types";
 
 /** 四档步骤。顺序固定 —— 统一状态就这四个，EXCEPTION 不占一档（它可能之后又派送成功） */
 export const TRACE_STEPS = ["picked", "transit", "delivering", "signed"] as const;
@@ -48,4 +48,19 @@ export function traceStatusKey(trace: Pick<ShipmentTrace, "status" | "nodes">): 
   if (trace.status === "EXCEPTION") return "trace.exception";
   if (trace.status === "CANCELLED") return "trace.cancelled";
   return `trace.step.${traceStepKey(trace)}`;
+}
+
+/** 快递履约中的订单主状态位。交易终态优先，旧运单签收不能冒充交易完成。 */
+export function expressOrderStatusKey(order: Pick<Order,
+  "status" | "fulfillment" | "logisticsSync" | "trace">): string | null {
+  if (order.status !== "FULFILLING" || order.fulfillment !== "EXPRESS") return null;
+  const status = order.logisticsSync?.status ?? order.trace?.status;
+  if (!status) return null;
+  if (status === "PENDING") return "order.syncPending";
+  if (status === "DELIVERED") return "order.signedPendingReview";
+  if (status === "CREATED" || status === "PICKED_UP" || status === "IN_TRANSIT"
+      || status === "DELIVERING" || status === "EXCEPTION" || status === "CANCELLED") {
+    return traceStatusKey({ status, nodes: order.trace?.nodes ?? [] });
+  }
+  return null;
 }

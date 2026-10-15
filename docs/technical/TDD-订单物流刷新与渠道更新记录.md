@@ -1,6 +1,6 @@
 # TDD-订单物流刷新与渠道更新记录
 
-> 状态：已实现、待人工联调 · 关联需求：[物流功能清单](../requirements/物流-功能清单.md) L-AC-01～04 · 更新：2026-10-15
+> 状态：已实现、待人工联调 · 关联需求：[物流功能清单](../requirements/物流-功能清单.md) L-AC-01～05 · 更新：2026-10-15
 
 ## §0 对账一 · 需求 → 设计
 
@@ -10,6 +10,7 @@
 | L-AC-02 | 微信/快递100异步更新订单 | `WaybillProgress` 发 `LGS_SHIPMENT_SNAPSHOT`，`ShipmentSnapshotConsumer` 调同一收敛器 |
 | L-AC-03 | 测试期去掉手动查询缓存 | `manual-refresh-cache-minutes=0`；普通微信页面读仍为 10 分钟，快递100保留服务商限频 |
 | L-AC-04 | 记录渠道及更新细节 | `V421` 的 `lgs_update_log`、`LogisticsPort.updatesOf`、B 端详情更新记录；`ord_status_log.label` 写渠道 |
+| L-AC-05 | 两端主状态显示物流阶段 | 共享 `expressOrderStatusKey`；C/B 列表与详情状态位复用；删除独立物流状态行 |
 
 没有未落点 AC。新增审计表、查询端点和 i18n 均服务 L-AC-04。
 
@@ -28,6 +29,7 @@
 | 3 | 物流状态变更与新增轨迹在同一事务发含 `source` 的快照；异步消费者复用订单收敛器 | `WaybillProgress`、`ShipmentSnapshotConsumer` | 旧发货代际和旧轨迹均不能完成当前订单 |
 | 4 | B/C 刷新读取当前运单快照后在响应前同步收敛交易；有效签收自动完成 | `MerchantOrderServiceImpl`、`OrderServiceImpl`、`ShipmentSnapshotConvergerImpl` | B/C 下一次列表读取相同状态 |
 | 5 | 新增仅当前运单可见的更新记录，并在交易状态流水写中文来源 | `V421`、`WaybillUpdateAudit`、B 端 API/详情 | 显示时间、微信/快递100、查询/推送、前后状态、节点数、结果 |
+| 6 | 快递履约中的主状态展示物流阶段，终态以交易状态为准，签收未完成写“签收待核实” | `packages/shared/strategies/trace-step`、C/B 订单列表与详情 | 不再出现单独“物流：xxx”，两端对同一运单显示一致 |
 
 契约：新增 `GET /biz/order/{subOrderNo}/logistics-updates`（复用 `biz:order:view` 和门店归属）；响应为 `UpdateRecord[]`。新增表 `lgs_update_log` 为追加写，保留渠道、模式、状态前后、结果和时刻，不存手机号与原始回调。新增配置 `shop.logistics.manual-refresh-cache-minutes`，测试期默认 0，验收后可设 10。新增 B 端三语更新记录词条，不改权限码。旧出站事件没有 `source` 时仍可消费，流水标为“渠道未标明”。
 
@@ -59,6 +61,7 @@
 | L-AC-02 | `WaybillProgressTest#snapshotDistinguishesDatedSignatureFromStatusOnlySignature`、`ShipmentSnapshotConsumerTest#asyncSnapshotPassesKuaidi100SourceToOrderConvergence` | 通过 |
 | L-AC-03 | `LogisticsPortImplTest#explicitRefreshBypassesWechatReadCacheDuringTesting`、`#deliveredStatusUsesK100ForDatedProofWhenRefreshIsRequested` | 通过；消融时把刷新间隔临时改回 10 分钟，该用例按预期失败（Expected 1 but was 0），还原后通过 |
 | L-AC-04 | `WaybillProgressTest#transitionCarriesCarrierAndNumber`、B 端 `vue-tsc`、`SchemaGeneratorTest` | 通过 |
+| L-AC-05 | `trace-step.test.ts` 的快递履约与终态映射、B/C `vue-tsc`、C 端 `build:mp:with-biz` | 通过；新增映射在实现前先跑出 2 个预期失败，实现后 8/8 通过 |
 
 定向 Maven 用例、B 端 `vue-tsc`、界面清单和 SQL 方言扫描退出码均为 0；方言扫描提示既有 `V417` 两处待偿还欠账，本次 `V421` 未新增命中。`SchemaDriftTest` 的既有 `ord_shipment` 生成列解析误报 `GENERATED` 仍失败；HEAD 版 `schema-test.sql` 已含该列，本次迁移的 `SchemaGeneratorTest` 通过。按当前人工联调约束未跑全量或并发测试。
 
@@ -69,3 +72,5 @@
 ## §7 人工联调复盘（2026-10-15）
 
 最新两笔订单刷新后交易仍为 `FULFILLING`，但原因不同：`O261015090032` 的运单签收于 10 月 8 日，早于本单 10 月 15 日发货，旧运单保护按设计阻止自动完成；`O261015100041` 的运单仍为 `IN_TRANSIT`，尚无签收。B 端列表主标签原先只映射交易 `FULFILLING` 为“已发货”，即使物流栏已变化，也让人工误判为刷新无效。修正为列表主标签展示物流阶段，已签收但交易仍在途时显示“签收待核实”；详情对签收早于下单的运单明确提示核对和更正。交易状态及自动完成的可信签收校验不改变。
+
+进一步统一 C/B：快递履约中的列表与详情主状态位共用 `expressOrderStatusKey`；独立“物流：xxx”行移除，`COMPLETED`、退款、取消等交易终态优先显示交易状态。C 端也补上旧运单签收提示。`build:mp:with-biz` 通过并确认主包未引用商家分包；构建期间并行执行的一次 C 类型检查误扫临时生成的 `pkg-biz`，构建自动还原后重跑通过。

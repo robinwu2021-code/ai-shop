@@ -14,7 +14,7 @@ import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
 import { buildOrderCopyText } from "@/utils/order-copy";
 import { FULFILLMENT } from "@shared/utils/constants";
-import { traceStatusKey } from "@shared/strategies/trace-step";
+import { expressOrderStatusKey, traceStatusKey } from "@shared/strategies/trace-step";
 import { fulfillmentAllowed } from "@shared/strategies/order-phase1";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 import { confirm } from "@ai-shop/ui/prompt";
@@ -27,13 +27,6 @@ const merchant = useMerchantStore();
 const order = ref<Order | null>(null);
 const shipSync = ref<Order["logisticsSync"]>(null);
 const currentSync = computed(() => order.value?.logisticsSync ?? shipSync.value);
-const currentSyncLabel = computed(() => {
-  const sync = currentSync.value;
-  if (!sync) return "";
-  if (sync.status === "PENDING") return String(t("order.syncPending"));
-  return String(t(traceStatusKey({ status: sync.status as NonNullable<Order["trace"]>["status"],
-    nodes: [] })));
-});
 /**
  * 物流轨迹那份（TDD-物流模块 B2）：比详情里的多承运商、单号、到柜。
  * 拿不到（老后端 / 网络）就用详情里带的那份 —— 两份读的是同一张运单，只是字段多少不同
@@ -58,6 +51,13 @@ const signedBeforeOrder = computed(() => order.value?.status === "FULFILLING"
 const traceOpen = ref(false);
 /** 摘要行上的状态词。与步骤条共用 shared 里那一份判定，别在两处各写一个三分支 */
 const traceStep = computed(() => {
+  const current = order.value;
+  if (current) {
+    const projected = expressOrderStatusKey(current);
+    if (projected) return projected;
+    if (current.status === "COMPLETED" || current.status === "CANCELLED"
+        || current.status === "REFUNDED") return `order.status${current.status}`;
+  }
   const status = currentSync.value?.status ?? shownTrace.value?.status;
   if (status === "PENDING") return "order.syncPending";
   return status
@@ -506,7 +506,7 @@ onPullDownRefresh(async () => {
         而混在订单信息那堆键值行里，它读起来像又一条属性，不像一件在变化的事。
         整卡可点 → 弹框里是全过程。
       -->
-      <view v-if="shownTrace" class="sh-card trace-card" @tap="traceOpen = true; loadTrace(currentNo)">
+      <view v-if="shownTrace || currentSync" class="sh-card trace-card" @tap="traceOpen = true; loadTrace(currentNo)">
         <view class="sh-row sh-row--between">
           <text class="txt-strong trace-card__st">{{ $t(traceStep) }}</text>
           <sh-go :text="String($t('order.traceView'))"></sh-go>
@@ -760,9 +760,8 @@ onPullDownRefresh(async () => {
           <text class="sh-muted">{{ $t("order.expressNo") }}</text>
           <text class="sh-num">{{ order.expressNo }}</text>
         </view>
-        <text v-if="currentSync" class="txt-caption sh-muted sh-mt-sm">
-          {{ $t("order.logisticsStatus") }}：{{ currentSyncLabel }}{{ currentSync.pending && currentSync.status !== "PENDING" ? ` · ${$t("order.syncPending")}` : "" }}
-          {{ currentSync.reason ? ` · ${currentSync.reason}` : "" }}
+        <text v-if="currentSync?.pending || currentSync?.reason" class="txt-caption sh-muted sh-mt-sm">
+          {{ currentSync?.pending ? $t("order.syncPending") : "" }}{{ currentSync?.reason ? ` · ${currentSync.reason}` : "" }}
         </text>
         <text v-if="order.status === 'FULFILLING' && currentSync?.status === 'DELIVERED'"
           class="txt-caption sh-muted sh-mt-sm">
