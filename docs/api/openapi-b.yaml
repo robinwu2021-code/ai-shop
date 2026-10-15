@@ -10527,6 +10527,43 @@ components:
         - "token"
         - "user"
       additionalProperties: false
+    WxPhoneLoginReq: 
+      type: "object"
+      properties: 
+        phoneCode: 
+          type: "string"
+        inviterNo: 
+          type: "string"
+        merchantNo: 
+          type: "string"
+        agreed: 
+          type: "boolean"
+      required: 
+        - "phoneCode"
+      additionalProperties: false
+      description: "Phone authorization is verified on the server; new number registers, existing number logs in."
+    WxPhoneLoginResp: 
+      type: "object"
+      properties: 
+        token: 
+          type: "string"
+          description: "访问令牌。后续请求放 `Authorization: Bearer <token>`"
+        user: 
+          "$ref": "#/components/schemas/User"
+          description: "登录用户档案"
+        isNewUser: 
+          type: "boolean"
+        wxRelation: 
+          type: "string"
+          enum: 
+            - "linked"
+            - "pending"
+      required: 
+        - "isNewUser"
+        - "token"
+        - "user"
+        - "wxRelation"
+      additionalProperties: false
     AppointmentSlotOpenReq: 
       type: "object"
       properties: 

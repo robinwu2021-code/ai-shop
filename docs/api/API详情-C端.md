@@ -2878,6 +2878,33 @@
 | `user` | [`User`](#user) | 是 | 登录用户档案 |
 
 
+#### POST `/mp/user/login/phone`
+
+手机号授权注册或登录　🔒
+
+**入参**
+
+请求体：[`WxPhoneLoginReq`](#wxphoneloginreq)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phoneCode` | `string` | 是 | — |
+| `inviterNo` | `string` | 否 | — |
+| `merchantNo` | `string` | 否 | — |
+| `agreed` | `boolean` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`WxPhoneLoginResp`](#wxphoneloginresp)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `token` | `string` | 是 | 访问令牌。后续请求放 `Authorization: Bearer <token>` |
+| `user` | [`User`](#user) | 是 | 登录用户档案 |
+| `isNewUser` | `boolean` | 是 | — |
+| `wxRelation` | `linked` \| `pending` | 是 | — |
+
+
 #### POST `/mp/user/logout`
 
 登出（作废服务端会话）　🔒
@@ -5157,6 +5184,26 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 | `goods` | `number` | 是 | — |
 | `service` | `number` | 是 | — |
 | `speed` | `number` | 是 | — |
+
+### WxPhoneLoginReq
+
+Phone authorization is verified on the server; new number registers, existing number logs in.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phoneCode` | `string` | 是 | — |
+| `inviterNo` | `string` | 否 | — |
+| `merchantNo` | `string` | 否 | — |
+| `agreed` | `boolean` | 否 | — |
+
+### WxPhoneLoginResp
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `token` | `string` | 是 | 访问令牌。后续请求放 `Authorization: Bearer <token>` |
+| `user` | [`User`](#user) | 是 | 登录用户档案 |
+| `isNewUser` | `boolean` | 是 | — |
+| `wxRelation` | `linked` \| `pending` | 是 | — |
 
 ### WxPhoneReq
 

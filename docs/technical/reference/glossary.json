@@ -3143,9 +3143,9 @@
         },
         {
           "key": "login.byWxMini",
-          "zh-CN": "微信一键登录",
-          "en": "Continue with WeChat",
-          "ar": "المتابعة عبر وي تشات"
+          "zh-CN": "快捷登录",
+          "en": "Quick sign-in",
+          "ar": "الدخول السريع"
         },
         {
           "key": "login.navTitle",
@@ -4421,8 +4421,8 @@
         },
         {
           "key": "phoneGate.conflict",
-          "zh-CN": "这个手机号已经注册过。用它登录可以继续，但当前微信里的浏览记录与购物车不会带过去。",
-          "en": "This number is already registered. You can log in with it, but this WeChat account’s browsing history and cart will not carry over.",
+          "zh-CN": "这个手机号已经注册过。用它登录可以继续，但当前账号的浏览记录与购物车不会带过去。",
+          "en": "This number is already registered. You can log in with it, but this account’s browsing history and cart will not carry over.",
           "ar": "هذا الرقم مسجّل بالفعل. يمكنك الدخول به، لكن سجل التصفح وسلة هذا الحساب لن ينتقلا."
         },
         {
@@ -4445,9 +4445,9 @@
         },
         {
           "key": "phoneGate.oneTap",
-          "zh-CN": "用微信号码",
-          "en": "Use my WeChat number",
-          "ar": "استخدم رقم WeChat"
+          "zh-CN": "手机号快捷登录",
+          "en": "Quick sign-in with phone number",
+          "ar": "الدخول السريع برقم الهاتف"
         },
         {
           "key": "phoneGate.phonePlaceholder",
@@ -4493,9 +4493,39 @@
         },
         {
           "key": "phoneGate.wxFailed",
-          "zh-CN": "没从微信拿到手机号",
-          "en": "WeChat did not return a number",
-          "ar": "لم يُرجع WeChat رقماً"
+          "zh-CN": "未能获取手机号，请使用验证码",
+          "en": "Could not get your phone number. Please use a verification code.",
+          "ar": "تعذّر الحصول على رقم الهاتف. استخدم رمز التحقق."
+        },
+        {
+          "key": "phoneLogin.agreementPrefix",
+          "zh-CN": "继续即表示已阅读并同意",
+          "en": "Continuing means you agree to",
+          "ar": "بالمتابعة توافق على"
+        },
+        {
+          "key": "phoneLogin.processing",
+          "zh-CN": "正在登录，请稍候",
+          "en": "Signing in…",
+          "ar": "جارٍ تسجيل الدخول…"
+        },
+        {
+          "key": "phoneLogin.reviewOrder",
+          "zh-CN": "账号信息已更新，请确认订单后提交",
+          "en": "Account updated. Review your order before submitting.",
+          "ar": "تم تحديث الحساب. راجع الطلب قبل إرساله."
+        },
+        {
+          "key": "phoneLogin.tip",
+          "zh-CN": "用于注册或登录，未注册的手机号将自动创建账号",
+          "en": "Your authorized phone number signs you in or creates an account.",
+          "ar": "يُستخدم رقمك المصرّح به لتسجيل الدخول أو إنشاء حساب."
+        },
+        {
+          "key": "phoneLogin.title",
+          "zh-CN": "登录后继续",
+          "en": "Sign in to continue",
+          "ar": "سجّل الدخول للمتابعة"
         },
         {
           "key": "points.after",
@@ -26380,9 +26410,9 @@
         },
         {
           "key": "err.user.wx_phone_unavailable",
-          "zh-CN": "没能从微信获取手机号，请用验证码绑定",
-          "en": "Could not get your number from WeChat — use an SMS code instead",
-          "ar": "تعذّر جلب رقمك من WeChat — استخدم رمز التحقق"
+          "zh-CN": "手机号授权暂不可用，请稍后重试",
+          "en": "Phone authorization is unavailable. Please try again later.",
+          "ar": "تعذّر الحصول على رقم الهاتف. يرجى المحاولة لاحقًا."
         },
         {
           "key": "err.zip.too_large",
@@ -27868,6 +27898,13 @@
       "table": "usr_identity",
       "class": "UsrIdentity",
       "zh": "登录凭证。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.user.entity"
+    },
+    {
+      "table": "usr_mp_session",
+      "class": "UsrMpSession",
+      "zh": "Verified operator identity belongs to a session, independently of permanent account credentials.",
       "module": "shop-core",
       "package": "ai.neargo.shop.user.entity"
     },
@@ -36892,6 +36929,19 @@
           "FAILED"
         ],
         "zh": "只有一个方向。"
+      },
+      {
+        "name": "PhoneLoginPhase",
+        "client": "c-app",
+        "values": [
+          "preparing",
+          "ready",
+          "authorizing",
+          "submitting",
+          "authenticated",
+          "failed"
+        ],
+        "zh": ""
       },
       {
         "name": "PickupFeeMode",
