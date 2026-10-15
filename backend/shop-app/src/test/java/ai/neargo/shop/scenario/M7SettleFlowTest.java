@@ -12,6 +12,12 @@ import ai.neargo.shop.pay.entity.StlBill;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.jdbc.core.JdbcTemplate;
+import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.SettlePort.PaymentSettled;
+import ai.neargo.shop.trade.service.OrderService;
+import ai.neargo.shop.pay.channel.TestPayGateway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -68,6 +74,17 @@ class M7SettleFlowTest {
 
     @Autowired
     private ai.neargo.shop.pay.SettleService settleService;
+
+    @Autowired private JdbcTemplate fundingJdbc;
+    @Autowired private TestPayGateway fundingGateway;
+    @Autowired private SettlePort fundingSettle;
+    @Autowired private OrderService fundingOrders;
+    private VerifiedPaymentAccountFixture fundingFixture;
+
+    @AfterEach
+    void restoreOwnFundingFixture() {
+        if (fundingFixture != null) fundingFixture.close();
+    }
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -447,12 +464,12 @@ class M7SettleFlowTest {
     }
 
     @Test
-    @DisplayName("★ 退款先回退分账（真实实现下依然成立，M5 的顺序约束不因换实现而失效）")
+    @DisplayName("★ 分账指令未确认时阻断现金退款，不伪造已追回流水")
     void refundReversesSplitFirst() throws Exception {
         String token = login("12800128030");
-        buyAndPay(token, "G0002", "SK0003", null, "m7-refund");
-        // 商家同意 → 退款这条链只属于「直连」商家；归集（平台是卖家）的售后进平台裁决，商家同意不了（步 5.6 起由状态机挡）
         makeMerchantDirect("M0001");
+        buyAndPay(token, "G0002", "SK0003", null, "m7-refund", true);
+        // 商家同意 → 退款这条链只属于「直连」商家；归集（平台是卖家）的售后进平台裁决，商家同意不了（步 5.6 起由状态机挡）
         String biz = loginAsOwnerOf("M0001", "12800128031");
         String settleNo = firstBill(biz).get("settleNo").asString();
         settleService.executeSplit(settleNo);
@@ -461,21 +478,23 @@ class M7SettleFlowTest {
         String subOrderNo = firstSubOrderNo(token);
         String asNo = applyAfterSale(token, subOrderNo);
         mvc().perform(post("/biz/after-sale/" + asNo + "/approve").header("Authorization", "Bearer " + biz))
-                .andExpect(jsonPath("$.code").value(0));
+                .andExpect(jsonPath("$.code").value(50002));
 
         mvc().perform(get("/biz/settle/bills/" + settleNo).header("Authorization", "Bearer " + biz))
-                .andExpect(jsonPath("$.data.status").value("REVERSED"));
-        // 回退也要留痕：钱从商家账上收回来这件事必须可查
-        assertThat(settleService.splitLogCount(settleNo, "REVERSE")).isEqualTo(1);
+                .andExpect(jsonPath("$.data.status").value("MANUAL"));
+        // 未确认的分账不能伪造实际追回，F10资金协议完成后再启用。
+        assertThat(settleService.splitLogCount(settleNo, "REVERSE")).isZero();
+        assertThat(fundingJdbc.queryForObject("select count(*) from stl_payment where sub_order_no=?"
+                + " and direction='REFUND'", Long.class, subOrderNo)).isZero();
     }
 
     @Test
     @DisplayName("未分账的单退款：直接标记回退，不产生无谓的回退指令")
     void refundBeforeSplitNeedsNoReversal() throws Exception {
         String token = login("12800128032");
-        buyAndPay(token, "G0002", "SK0003", null, "m7-refund-early");
-        // 商家同意 → 退款这条链只属于「直连」商家；归集（平台是卖家）的售后进平台裁决，商家同意不了（步 5.6 起由状态机挡）
         makeMerchantDirect("M0001");
+        buyAndPay(token, "G0002", "SK0003", null, "m7-refund-early", true);
+        // 商家同意 → 退款这条链只属于「直连」商家；归集（平台是卖家）的售后进平台裁决，商家同意不了（步 5.6 起由状态机挡）
         String biz = loginAsOwnerOf("M0001", "12800128033");
         String settleNo = firstBill(biz).get("settleNo").asString();
 
@@ -596,6 +615,11 @@ class M7SettleFlowTest {
 
     private String buyAndPay(String token, String goodsNo, String skuNo,
                              String userCouponNo, String idemKey) throws Exception {
+        return buyAndPay(token, goodsNo, skuNo, userCouponNo, idemKey, false);
+    }
+
+    private String buyAndPay(String token, String goodsNo, String skuNo,
+                             String userCouponNo, String idemKey, boolean verified) throws Exception {
         mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":1}"));
@@ -614,13 +638,26 @@ class M7SettleFlowTest {
          * 必须先拿到支付参数才付得成，而那一步会在 stl_payment 落一行 PENDING。
          * 少了这一步，回调进来时没有起点行，测的就不是真实链路了。
          */
+        if (verified) {
+            String store = fundingJdbc.queryForObject("select store_no from ord_sub_order where order_no=?",
+                    String.class, payOrderNo);
+            fundingFixture = new VerifiedPaymentAccountFixture(fundingJdbc, store);
+        }
         mvc().perform(post("/mp/order/" + payOrderNo + "/pay")
                 .header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.code").value(0));
 
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey
-                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        if (verified) {
+            assertThat(fundingGateway.markPaid(payOrderNo)).isTrue();
+            var receipt = fundingGateway.query(payOrderNo);
+            String paidOrder = fundingSettle.settlePayment(new PaymentSettled(payOrderNo, "TEST", receipt.tradeNo(),
+                    receipt.amountMinor(), System.currentTimeMillis()));
+            fundingOrders.markPaid(paidOrder, "TEST", receipt.tradeNo());
+        } else {
+            mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey
+                            + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        }
         return payOrderNo;
     }
 

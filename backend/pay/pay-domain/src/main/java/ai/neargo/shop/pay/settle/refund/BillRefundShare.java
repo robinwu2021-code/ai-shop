@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.settle.refund;
 
+import java.util.Map;
+
 /**
  * 一次退款落在结算单上的份额（结算口径 A 算出来的结果，不可变）。
  *
@@ -16,12 +18,15 @@ package ai.neargo.shop.pay.settle.refund;
  * @param serviceFeeCutMinor  履约服务费扣减
  * @param pointsFeeCutMinor   积分服务费扣减
  * @param pointsCostCutMinor  归集路径下积分成本扣减
- * @param finalRefund         本次之后货款已全部退完 —— 结算单转 REVERSED
+ * @param finalRefund         本次之后商品现金已全部分配；财务结清由 FinancialClosure 单独判断
  */
 public record BillRefundShare(long goodsMinor, long freightMinor,
                               long merchantGoodsMinor, long freightReverseMinor, long subsidyReturnMinor,
                               long grossCutMinor, long commissionCutMinor, long serviceFeeCutMinor,
-                              long pointsFeeCutMinor, long pointsCostCutMinor, boolean finalRefund) {
+                              long pointsFeeCutMinor, long pointsCostCutMinor, boolean finalRefund,
+                              CashAllocation cashAllocation, boolean requiresReview) {
+
+    public enum CashAllocation { NONE, PROPORTIONAL }
 
     /** 商家本次要退回的所得合计 —— 分账后就是发给通道的回退金额。 */
     public long merchantReverseMinor() {
@@ -34,8 +39,8 @@ public record BillRefundShare(long goodsMinor, long freightMinor,
     }
 
     /** 分账前扣减结算单各列用的参数（键名与 {@code BillRefundMapper#adjustBeforeSplit} 一一对应）。 */
-    public java.util.Map<String, Long> billCuts() {
-        return java.util.Map.of("goods", goodsMinor, "gross", grossCutMinor, "commission", commissionCutMinor,
+    public Map<String, Long> billCuts() {
+        return Map.of("goods", goodsMinor, "gross", grossCutMinor, "commission", commissionCutMinor,
                 "serviceFee", serviceFeeCutMinor, "pointsFee", pointsFeeCutMinor, "subsidy", subsidyReturnMinor,
                 "pointsCost", pointsCostCutMinor, "freight", freightReverseMinor,
                 "platform", platformCutMinor(), "merchant", merchantReverseMinor());

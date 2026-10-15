@@ -34988,6 +34988,15 @@
         "module": "logistics"
       },
       {
+        "name": "CashAllocation",
+        "values": [
+          "NONE",
+          "PROPORTIONAL"
+        ],
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
         "name": "Cell",
         "values": [
           "ALLOW",
@@ -35449,6 +35458,18 @@
         ],
         "zh": "退款进度：与订单状态正交 —— 部分退款不改订单状态，只改它。",
         "module": "shop-core"
+      },
+      {
+        "name": "ReversalStage",
+        "values": [
+          "NOT_REQUIRED",
+          "ADJUSTED",
+          "CONFIRMED",
+          "PENDING",
+          "NEEDS_REVIEW"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "RevokeReason",

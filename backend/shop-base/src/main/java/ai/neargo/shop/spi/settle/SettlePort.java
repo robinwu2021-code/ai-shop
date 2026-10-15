@@ -153,6 +153,21 @@ public interface SettlePort {
      */
     boolean reverseSplit(SplitReversal cmd);
 
+    /** 明确回退阶段，不将无账单虚构成已追回。 */
+    ReversalResult reverseStage(SplitReversal cmd);
+
+    /** 由应用桥接层提供订单事实；支付域不查询交易域，不把未知当未付款。 */
+    record ReversalOrderFact(String payOrderNo, boolean billExpected, boolean unpaidVerified) { }
+
+    enum ReversalStage { NOT_REQUIRED, ADJUSTED, CONFIRMED, PENDING, NEEDS_REVIEW }
+
+    record ReversalResult(ReversalStage stage, String reason) {
+        public boolean permitsCashRefund() {
+            return stage == ReversalStage.NOT_REQUIRED || stage == ReversalStage.ADJUSTED
+                    || stage == ReversalStage.CONFIRMED;
+        }
+    }
+
     /**
      * @param afterSaleNo    售后单号（幂等键）
      * @param goodsMinor     本次退的货款（不含运费）

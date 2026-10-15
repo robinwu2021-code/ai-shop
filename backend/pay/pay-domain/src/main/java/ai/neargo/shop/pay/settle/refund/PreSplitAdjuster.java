@@ -18,21 +18,33 @@ public class PreSplitAdjuster {
 
     private final BillRefundMapper mapper;
     private final BillRefundJournal journal;
+    private final FinancialClosurePolicy closurePolicy;
 
-    public PreSplitAdjuster(BillRefundMapper mapper, BillRefundJournal journal) {
+    public PreSplitAdjuster(BillRefundMapper mapper, BillRefundJournal journal, FinancialClosurePolicy closurePolicy) {
+        this.closurePolicy = closurePolicy;
         this.mapper = mapper;
         this.journal = journal;
     }
 
-    public void adjust(StlBill bill, BillRefundShare share, String afterSaleNo) {
+    public boolean adjust(StlBill bill, BillRefundShare share, String afterSaleNo) {
+        long remaining = bill.getNetMinor() - share.merchantReverseMinor();
+        long retained = share.finalRefund() ? remaining : 0;
+        FinancialClosure closure = closurePolicy.evaluate(remaining, 0L, 0, retained, false, share.requiresReview());
+        if (closure.needsReview()) {
+            DataScopeContext.executeWithoutScope(() -> mapper.markManual(bill.getSettleNo(), bill.getStatus(),
+                    "REFUND_FINANCIAL_POSITION_NEEDS_REVIEW: " + afterSaleNo));
+            return false;
+        }
         journal.append(bill, share, afterSaleNo, true);
-        String next = share.finalRefund() ? StlBill.REVERSED : bill.getStatus();
+        String next = closure.fullyReversed() ? StlBill.REVERSED : bill.getStatus();
         long before = bill.getRefundedGoodsMinor() == null ? 0L : bill.getRefundedGoodsMinor();
         int rows = DataScopeContext.executeWithoutScope(() -> mapper.adjustBeforeSplit(
-                bill.getSettleNo(), share.billCuts(), before, bill.getStatus(), next));
+                bill.getSettleNo(), share.billCuts(), before, bill.getRefundedFreightMinor(),
+                share.freightMinor(), bill.getStatus(), next));
         if (rows != 1) {
             // 前值被并发改过（另一笔退款 / 分账任务）：份额是按旧前值算的，不能叠上去
             throw BizException.of(ErrorCode.CONFLICT);
         }
+        return true;
     }
 }

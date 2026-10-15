@@ -3,9 +3,11 @@ package ai.neargo.shop.paybridge.port;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.common.PayScenes;
 import ai.neargo.shop.paybridge.SettleGenerationOrchestrator;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.trade.SettleSourcePort;
 import ai.neargo.shop.spi.user.UserIdentityPort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -54,6 +56,7 @@ public class SettlePortImpl implements SettlePort {
 
     private final SettleService settleService;
     private final PaymentLedgerService paymentLedger;
+    private final SettleSourcePort settlementSource;
 
     private final SettleGenerationOrchestrator orchestrator;
     /** 向通道下单要它。**按 pay_channel 路由**，通道没接入时直接失败不回退 */
@@ -81,7 +84,9 @@ public class SettlePortImpl implements SettlePort {
                           ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter,
                           UserIdentityPort identityPort,
                           @Value("${shop.pay.wechat.appid:}") String wechatAppId,
-                          ai.neargo.shop.pay.settle.refund.SettlementRefundCoordinator settlementRefund) {
+                          ai.neargo.shop.pay.settle.refund.SettlementRefundCoordinator settlementRefund,
+                          SettleSourcePort settlementSource) {
+        this.settlementSource = settlementSource;
         this.settlementRefund = settlementRefund;
         this.settleService = settleService;
         this.paymentLedger = paymentLedger;
@@ -136,6 +141,10 @@ public class SettlePortImpl implements SettlePort {
          * 钱进平台商户号。收付通模式接上时它才有值，那时从主体属性里取。
          */
         String payerId = identityPort.wxOpenIdMp(cmd.userNo()).orElse(null);
+        // 实际接入固定JSAPI，金融场景来自通道请求；X-Client只用于平台权益策略。
+        String financialScene = "ALIPAY".equals(cmd.payChannel()) ? PayScenes.MP_ALIPAY : PayScenes.MP_WECHAT;
+        paymentLedger.recordPaymentContext(outTradeNo, financialScene, CURRENCY_CNY);
+        paymentLedger.recordPayer(outTradeNo, payerId, WECHAT.equals(cmd.payChannel()) ? wechatAppId : null);
         var r = gateway.prepay(new ai.neargo.shop.pay.channel.PayGateway.PrepayCommand(
                 // description 由交易域拼好带过来（只有那一层有订单明细）。
                 // 传 "订单 "+orderNo 的老写法会让用户在微信购物订单里认不出这一单
@@ -157,17 +166,6 @@ public class SettlePortImpl implements SettlePort {
             return new PayInitResult(false, outTradeNo, cmd.payChannel(),
                     java.util.Map.of(), r.message());
         }
-        /*
-         * **下单成功之后才记付款人。** 那两列从建表起就没被写过（见
-         * PaymentLedgerService#recordPayer）—— 用户报「我付了钱」时，
-         * 客服手上只有订单号，而要去微信商户平台对上那一笔靠的是 openid。
-         *
-         * 放在这里而不是开流水那一步：开流水**先于**取 openid（顺序不能反），
-         * 而下单失败的流水会被关掉，给关掉的流水记付款人没有意义。
-         */
-        paymentLedger.recordPayer(outTradeNo, payerId,
-                WECHAT.equals(cmd.payChannel()) ? wechatAppId : null);
-
         /*
          * **免支付通道：就地结清，不等回调。**
          *
@@ -201,7 +199,15 @@ public class SettlePortImpl implements SettlePort {
 
     @Override
     public boolean reverseSplit(SplitReversal cmd) {
-        return settlementRefund.reverse(cmd);
+        return reverseStage(cmd).permitsCashRefund();
+    }
+
+    @Override
+    public ReversalResult reverseStage(SplitReversal cmd) {
+        ReversalOrderFact fact = settlementSource.settlementOrderOf(cmd.subOrderNo())
+                .map(order -> new ReversalOrderFact(order.orderNo(), order.billExpected(), order.unpaidVerified()))
+                .orElse(null);
+        return settlementRefund.reverseStage(cmd, fact);
     }
 
     @Override

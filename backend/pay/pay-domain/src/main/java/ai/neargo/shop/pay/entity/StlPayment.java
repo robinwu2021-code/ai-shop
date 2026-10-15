@@ -69,6 +69,9 @@ public class StlPayment extends BaseEntity {
 
     /** 金额（分），**恒为正**。方向看 direction —— 负数金额在通道对账单上没有对应概念。 */
     private Long amountMinor;
+    /** 原路退款逐项现金金额；历史未保存时为null，不从比例猜测。 */
+    private Long refundGoodsMinor;
+    private Long refundFreightMinor;
 
     private String currency;
 

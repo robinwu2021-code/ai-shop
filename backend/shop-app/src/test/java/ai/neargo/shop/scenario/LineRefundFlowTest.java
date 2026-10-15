@@ -2,7 +2,12 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.service.AfterSaleService;
+import ai.neargo.shop.trade.service.OrderService;
+import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.SettlePort.PaymentSettled;
+import ai.neargo.shop.pay.channel.TestPayGateway;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,6 +41,14 @@ class LineRefundFlowTest {
     private JdbcTemplate jdbc;
     @Autowired
     private AfterSaleService afterSales;
+    @Autowired private OrderService orders;
+    @Autowired private SettlePort settle;
+    @Autowired private TestPayGateway gateway;
+
+    @AfterEach
+    void clearOwnPaymentFixture() {
+        jdbc.update("delete from mch_payment_merchant where pay_merchant_no='LINE-TEST-MCH'");
+    }
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -48,6 +61,9 @@ class LineRefundFlowTest {
     void partialThenRest() throws Exception {
         String token = TestLogin.consumer(mvc(), json, otpStore, "13400155001");
         String sub = buy(token, 3, "line-partial");
+        assertThat(jdbc.queryForMap("select status,review_reason,pay_scene,currency,fee_bearer,pay_merchant_no,pay_channel"
+                + " from stl_bill_refund_basis where sub_order_no=?", sub))
+                .containsEntry("STATUS", "READY").containsEntry("PAY_SCENE", "MP_WECHAT");
         long itemId = jdbc.queryForObject("select id from ord_item where sub_order_no = ?", Long.class, sub);
         long share = jdbc.queryForObject("select paid_share_minor from ord_item where id = ?", Long.class, itemId);
         String statusBefore = subStatus(sub);
@@ -192,19 +208,26 @@ class LineRefundFlowTest {
     /** 买 qty 件同一个 SKU、自提、付款，返回子单号。商家设为直连：售后由商家审（归集的进平台裁决） */
     private String buy(String token, int qty, String key) throws Exception {
         jdbc.update("update mch_entity set funds_mode = 'DIRECT' where entity_no = 'M0001'");
+        jdbc.update("delete from mch_payment_merchant where pay_merchant_no='LINE-TEST-MCH'");
+        jdbc.update("insert into mch_payment_merchant(entity_no,pay_merchant_no,pay_channel,apply_status,fee_bearer,"
+                + "tenant_no,created_at,updated_at,version,deleted) values('M0001','LINE-TEST-MCH','TEST','ACTIVE',"
+                + "'PLATFORM','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,0,0)");
         mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":%d}".formatted(qty)))
                 .andExpect(status().isOk());
         String body = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
-                        .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key", key).header("X-Client", "IOS").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
                 .andExpect(jsonPath("$.code").value(0)).andReturn().getResponse().getContentAsString();
         String payNo = json.readTree(body).get("data").get("payOrderNo").asString();
         mvc().perform(post("/mp/order/" + payNo + "/pay").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + payNo + "\",\"transactionId\":\"tx-" + key + "\",\"sign\":\"stub-secret\"}"))
-                .andExpect(status().isOk());
+        assertThat(gateway.markPaid(payNo)).isTrue();
+        var receipt = gateway.query(payNo);
+        assertThat(receipt.paid()).isTrue();
+        String paidOrder = settle.settlePayment(new PaymentSettled(payNo, "TEST", receipt.tradeNo(),
+                receipt.amountMinor(), System.currentTimeMillis()));
+        orders.markPaid(paidOrder, "TEST", receipt.tradeNo());
         return jdbc.queryForObject("select sub_order_no from ord_sub_order where order_no = ?", String.class, payNo);
     }
 }

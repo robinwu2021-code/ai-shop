@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="244" viewBox="0 0 980 244" role="img" aria-labelledby="title desc">
+  <title id="title">订单一期主流程与基础退款</title>
+  <desc id="desc">先完成无积分下单支付，再完成备货发货、物流和收货；基础退款支持未发全额退、退货确认后全额退。旧开发计划暂停，包迁移和复杂售后延期。</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#64748b"/></marker></defs>
+  <rect width="980" height="244" rx="12" fill="#f8fafc"/>
+  <g font-family="PingFang SC,Microsoft YaHei,sans-serif" text-anchor="middle">
+    <text x="490" y="29" font-size="16" fill="#0f172a">一期：无积分的正常订单链路，基础全额退款</text>
+    <g fill="#e0f2fe" stroke="#0284c7"><rect x="20" y="53" width="136" height="58" rx="8"/><rect x="180" y="53" width="136" height="58" rx="8"/><rect x="340" y="53" width="136" height="58" rx="8"/><rect x="500" y="53" width="136" height="58" rx="8"/><rect x="660" y="53" width="136" height="58" rx="8"/><rect x="820" y="53" width="136" height="58" rx="8"/></g>
+    <g font-size="14" fill="#0f172a"><text x="88" y="77">下单与现金定价</text><text x="88" y="98">N01–N02</text><text x="248" y="77">支付 / 取消 / 关单</text><text x="248" y="98">N03</text><text x="408" y="77">备货与整单发货</text><text x="408" y="98">N04</text><text x="568" y="77">运单与物流跟踪</text><text x="568" y="98">N05</text><text x="728" y="77">确认 / 自动收货</text><text x="728" y="98">N06</text><text x="888" y="77">三端贯通验收</text><text x="888" y="98">N08</text></g>
+    <g stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"><path d="M156 82 H177"/><path d="M316 82 H337"/><path d="M476 82 H497"/><path d="M636 82 H657"/><path d="M796 82 H817"/><path d="M248 111 V136 H330 V156"/><path d="M568 111 V136 H568 V156"/><path d="M710 182 H888 V114"/></g>
+    <rect x="240" y="159" width="470" height="45" rx="8" fill="#fef3c7" stroke="#d97706"/>
+    <text x="475" y="178" font-size="14" fill="#78350f">N07 基础退款：未发全额退 / 退货确认后全额退</text>
+    <text x="475" y="195" font-size="12" fill="#78350f">审核 → 原路退款 → 成功回执；未知按原请求号恢复</text>
+    <text x="490" y="230" font-size="12" fill="#475569">N00 先固定实施基线；积分接入、shop.order 迁包、部分退款和复杂追偿延期</text>
+  </g>
+</svg>

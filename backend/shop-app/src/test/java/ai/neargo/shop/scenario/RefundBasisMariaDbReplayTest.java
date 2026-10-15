@@ -74,9 +74,10 @@ class RefundBasisMariaDbReplayTest {
         assertThat(jdbc.queryForObject("select count(*) from stl_bill_refund_basis", Long.class)).isEqualTo(2L);
     }
 
-    private record Fixture(JdbcTemplate jdbc, BillMapper bills, RefundBasisStore store, TransactionTemplate tx) { }
+    record Fixture(JdbcTemplate jdbc, BillMapper bills, RefundBasisStore store, TransactionTemplate tx,
+                   SqlSessionTemplate session) { }
 
-    private static Fixture fixture() throws Exception {
+    static Fixture fixture() throws Exception {
         String url = System.getProperty("order.basis.mariadb.url");
         assertThat(url).matches("jdbc:mysql://(127\\.0\\.0\\.1|localhost):[0-9]+/codex_order_f06_[a-f0-9]+\\?.*");
         var ds = new DriverManagerDataSource(url,
@@ -107,7 +108,7 @@ class RefundBasisMariaDbReplayTest {
         proxy.addAdvice(advice);
         var store = (RefundBasisStore) proxy.getProxy();
         var tx = new TransactionTemplate(new DataSourceTransactionManager(ds));
-        return new Fixture(jdbc, bills, store, tx);
+        return new Fixture(jdbc, bills, store, tx, session);
     }
 
     private static void replay(JdbcTemplate jdbc, RefundBasisStore store, BillMapper bills,

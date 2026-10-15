@@ -1025,6 +1025,8 @@ CREATE TABLE IF NOT EXISTS stl_bill
     payout_no VARCHAR(64) DEFAULT NULL,
     refunded_goods_minor BIGINT(20) NOT NULL DEFAULT 0,
     reversed_minor       BIGINT(20) NOT NULL DEFAULT 0,
+    refunded_freight_minor BIGINT NOT NULL DEFAULT 0,
+    merchant_paid_minor BIGINT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
@@ -1065,6 +1067,8 @@ CREATE TABLE IF NOT EXISTS stl_payment
     entity_no VARCHAR(64) DEFAULT NULL,
     payer_openid VARCHAR(64) NULL,
     wx_appid     VARCHAR(32) NULL,
+    refund_goods_minor BIGINT NULL,
+    refund_freight_minor BIGINT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),
     CONSTRAINT uk_stl_payment_trade UNIQUE (pay_channel,trade_no)
@@ -4801,6 +4805,14 @@ CREATE TABLE IF NOT EXISTS stl_bill_refund
     at                     BIGINT(20)  NOT NULL,
     tenant_no              VARCHAR(32) DEFAULT NULL,
     created_at             DATETIME    DEFAULT NULL,
+    merchant_goods_minor BIGINT NULL,
+    gross_cut_minor BIGINT NULL,
+    commission_cut_minor BIGINT NULL,
+    service_fee_cut_minor BIGINT NULL,
+    points_fee_cut_minor BIGINT NULL,
+    points_cost_cut_minor BIGINT NULL,
+    freight_reverse_minor BIGINT NULL,
+    cash_allocation VARCHAR(24) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_bill_refund UNIQUE (after_sale_no)
 );

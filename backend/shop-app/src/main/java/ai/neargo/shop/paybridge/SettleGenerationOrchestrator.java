@@ -1,6 +1,8 @@
 package ai.neargo.shop.paybridge;
 
 import ai.neargo.shop.pay.SettleService;
+import ai.neargo.shop.pay.service.PaymentLedgerService;
+import ai.neargo.shop.pay.service.PaymentLedgerService.PaidPayment;
 import ai.neargo.shop.pay.SettleService.SettleInput;
 import ai.neargo.shop.spi.trade.SettleSourcePort;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
@@ -40,9 +42,11 @@ public class SettleGenerationOrchestrator {
     private final SettleSourcePort tradeSource;
     private final MerchantQueryPort merchants;
     private final SettleService settleService;
+    private final PaymentLedgerService paymentLedger;
 
     public SettleGenerationOrchestrator(SettleSourcePort tradeSource, MerchantQueryPort merchants,
-                                        SettleService settleService) {
+                                        SettleService settleService, PaymentLedgerService paymentLedger) {
+        this.paymentLedger = paymentLedger;
         this.tradeSource = tradeSource;
         this.merchants = merchants;
         this.settleService = settleService;
@@ -50,10 +54,21 @@ public class SettleGenerationOrchestrator {
 
     /** @return 生成了几张结算单。幂等：已有的不重复生成 */
     public int generateForOrder(String orderNo) {
+        PaidPayment paid = paymentLedger.paidPayment(orderNo).orElse(null);
         List<SettleInput> inputs = tradeSource.settleSourcesOf(orderNo).stream()
+                .map(src -> withPaymentSnapshot(src, paid))
                 .map(this::withMerchantSnapshot)
                 .toList();
         return settleService.generateForOrder(orderNo, inputs);
+    }
+
+    private static SettleSourcePort.SettleSource withPaymentSnapshot(SettleSourcePort.SettleSource src,
+                                                                    PaidPayment paid) {
+        if (paid == null) return src; // 线下单没有平台原收款，保留其真实源事实。
+        return new SettleSourcePort.SettleSource(src.subOrderNo(), src.merchantNo(), src.trafficSource(),
+                src.payAmount(), src.discountPlatform(), src.discountMerchant(), src.pickupNo(), src.itemCount(),
+                src.storeNo(), src.pointsDeductMinor(), src.pointsFeeMinor(), paid.payChannel(), paid.payScene(),
+                src.freightIncomeMinor(), src.freightCostMinor(), src.freightShipMode());
     }
 
     private SettleInput withMerchantSnapshot(SettleSourcePort.SettleSource src) {

@@ -137,7 +137,11 @@ public interface PaymentLedgerService {
      *                    V310 之前的存量流水没有这一列，调用方要当缺件处理而不是报空串
      * @param wxAppid     记下 openid 时那个 AppID。换过号时用它判「这个 openid 还能不能用」
      */
-    record PaidPayment(String outTradeNo, String payerOpenid, String wxAppid) {
+    record PaidPayment(String outTradeNo, String payerOpenid, String wxAppid,
+                       String payChannel, String payScene, String currency) {
+        public PaidPayment(String outTradeNo, String payerOpenid, String wxAppid) {
+            this(outTradeNo, payerOpenid, wxAppid, null, null, null);
+        }
     }
 
     /**
@@ -228,6 +232,9 @@ public interface PaymentLedgerService {
      *                非微信通道没有这个概念，传 null，那时只记 payerId
      */
     void recordPayer(String outTradeNo, String payerId, String appId);
+
+    /** 保存实际通道请求的场景与币种；与客户端策略头分开，首次请求后不能换口径。 */
+    void recordPaymentContext(String outTradeNo, String payScene, String currency);
 
     /**
      * 按<b>退款商户单号</b>确认到账。{@link #markRefundSettled} 的另一个入口 ——

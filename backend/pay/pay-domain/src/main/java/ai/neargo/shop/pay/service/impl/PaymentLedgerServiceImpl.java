@@ -3,6 +3,8 @@ package ai.neargo.shop.pay.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.pay.entity.StlPayment;
+import ai.neargo.shop.pay.settle.refund.PaymentSettlementSerialPoint;
+import ai.neargo.shop.pay.settle.refund.RefundReceiptMutation;
 import ai.neargo.shop.pay.mapper.SettleMappers;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.settle.SettlePort;
@@ -18,8 +20,14 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     private static final Logger log = LoggerFactory.getLogger(PaymentLedgerServiceImpl.class);
 
     private final SettleMappers.PaymentMapper paymentMapper;
+    private final PaymentSettlementSerialPoint refundSerial;
+    private final RefundReceiptMutation refundReceipt;
 
-    public PaymentLedgerServiceImpl(SettleMappers.PaymentMapper paymentMapper) {
+    public PaymentLedgerServiceImpl(SettleMappers.PaymentMapper paymentMapper,
+                                    PaymentSettlementSerialPoint refundSerial,
+                                    RefundReceiptMutation refundReceipt) {
+        this.refundSerial = refundSerial;
+        this.refundReceipt = refundReceipt;
         this.paymentMapper = paymentMapper;
     }
 
@@ -91,7 +99,8 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         return p == null
                 ? java.util.Optional.empty()
                 : java.util.Optional.of(new PaidPayment(
-                        p.getOutTradeNo(), p.getPayerOpenid(), p.getWxAppid()));
+                        p.getOutTradeNo(), p.getPayerOpenid(), p.getWxAppid(),
+                        p.getPayChannel(), p.getPayScene(), p.getCurrency()));
     }
 
     /** 这个订单未终态（INIT / PENDING）的收款 —— 有就复用，没有才开新的 */
@@ -109,6 +118,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Transactional("payTxManager")
     public String refund(String orderNo, String subOrderNo, String afterSaleNo,
                          long amountMinor, String reason) {
+        refundSerial.lock(orderNo);
         /*
          * **幂等按售后单号。**重试是常态 —— 分账回退失败会让整笔退款停在
          * REFUNDING 等续跑任务再来一次。不幂等的话每重试一次多一行退款流水，
@@ -162,6 +172,9 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         r.setUserNo(origin.getUserNo());
         r.setEntityNo(origin.getEntityNo());
         r.setPayChannel(origin.getPayChannel());
+        r.setPayScene(origin.getPayScene());
+        r.setWxAppid(origin.getWxAppid());
+        r.setPayerOpenid(origin.getPayerOpenid());
         r.setCurrency(origin.getCurrency());
         r.setAmountMinor(amountMinor);
         r.setErrMsg(reason);
@@ -248,33 +261,26 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     }
 
     @Override
-    @Transactional("payTxManager")
     public void markRefundSettled(String refundPaymentNo, String providerNo) {
-        StlPayment r = byPaymentNo(refundPaymentNo);
-        if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
-            log.warn("[payment-ledger] 确认退款到账时找不到退款流水 {}", refundPaymentNo);
-            return;
+        refundReceipt.confirm(refundPaymentNo);
+    }
+
+    @Override
+    @Transactional("payTxManager")
+    public void recordPaymentContext(String outTradeNo, String payScene, String currency) {
+        StlPayment row = byOutTradeNo(outTradeNo);
+        if (row == null || StlPayment.SUCCESS.equals(row.getStatus())) return;
+        if (row.getPayScene() != null && !row.getPayScene().equals(payScene)) {
+            throw new IllegalArgumentException("Existing payment has another financial scene");
         }
-        if (StlPayment.SUCCESS.equals(r.getStatus())) {
-            // **幂等**：不覆盖已有的成功时刻，否则对账查到的时刻会一轮一轮往后跳
-            return;
+        if (row.getCurrency() != null && !row.getCurrency().equals(currency)) {
+            throw new IllegalArgumentException("Existing payment has another currency");
         }
         StlPayment patch = new StlPayment();
-        patch.setId(r.getId());
-        patch.setStatus(StlPayment.SUCCESS);
-        patch.setSucceededAt(System.currentTimeMillis());
-        /*
-         * **不写 trade_no。**它在受理那一刻就由 markRefundSent 记下了
-         * （通道自己回的 refund_id），那个才是权威；回查只负责确认「退成功了没」。
-         *
-         * 覆盖它有实打实的代价：`stl_payment` 上有
-         * <b>UNIQUE (pay_channel, trade_no)</b>，而这个索引是<b>跨方向</b>的 ——
-         * 回查一旦给回一个别的行已经占着的号，插不进去的不是这一行，
-         * 是<b>整轮自查当场抛异常中断</b>，后面几百笔一笔都不查了。
-         * 用一个不带新信息的写，去换一条能炸掉整轮扫描的路径，不划算。
-         */
+        patch.setId(row.getId());
+        patch.setPayScene(payScene);
+        patch.setCurrency(currency);
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
-        log.info("[payment-ledger] 退款 {} 已确认到账（通道单号 {}）", refundPaymentNo, providerNo);
     }
 
     @Override
@@ -299,7 +305,6 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     }
 
     @Override
-    @Transactional("payTxManager")
     public String settleRefundByOutTradeNo(String outRefundNo, String providerNo) {
         StlPayment r = byOutTradeNo(outRefundNo, StlPayment.REFUND);
         if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {

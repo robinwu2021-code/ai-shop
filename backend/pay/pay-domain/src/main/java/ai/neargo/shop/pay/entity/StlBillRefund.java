@@ -29,6 +29,14 @@ public class StlBillRefund {
     private Long freightMinor;
     /** 商家所得回退额（分账后 = 发给通道的金额；分账前 = 结算单商家实得扣减额） */
     private Long merchantReverseMinor;
+    private Long merchantGoodsMinor;
+    private Long grossCutMinor;
+    private Long commissionCutMinor;
+    private Long serviceFeeCutMinor;
+    private Long pointsFeeCutMinor;
+    private Long pointsCostCutMinor;
+    private Long freightReverseMinor;
+    private String cashAllocation;
     private Long subsidyReturnMinor;
     /** 平台少收（佣金 + 服务费 + 积分服务费） */
     private Long platformCutMinor;

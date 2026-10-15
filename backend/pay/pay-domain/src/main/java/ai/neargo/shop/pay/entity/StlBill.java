@@ -247,6 +247,10 @@ public class StlBill extends BaseEntity {
      * 每笔退款都以它为 CAS 前值（V405，集群规则 R2）。
      */
     private Long refundedGoodsMinor;
+    /** 已退运费独立累计，不能在货款退完时隐式抹掉。 */
+    private Long refundedFreightMinor;
+    /** 回执确认的商家实际已付；null 表示历史资金位置未知。 */
+    private Long merchantPaidMinor;
 
     /** 已经经通道按额回退的商家所得累计（分）。分账前的部分退款只扣减金额，不计入这里。 */
     private Long reversedMinor;

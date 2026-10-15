@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Map;
 import ai.neargo.shop.pay.setting.PaySettingService;
 import ai.neargo.shop.pay.settle.refund.RefundBasisStore;
+import ai.neargo.shop.pay.settle.refund.PaymentSettlementSerialPoint;
+import ai.neargo.shop.pay.settle.refund.SettlementRefundInitializer;
 
 /**
  * 结算与分账（ADR-002）。**M7 起取代 {@code SettlePortStub}**。
@@ -55,6 +57,8 @@ public class SettleServiceImpl implements SettleService {
 
     private static final Logger log = LoggerFactory.getLogger(SettleServiceImpl.class);
     private final RefundBasisStore refundBases;
+    private final PaymentSettlementSerialPoint refundSerial;
+    private final SettlementRefundInitializer refundInitializer;
 
     /*
      * 费率来自 stl_fee_rule，不再来自 application.yml（P1-4）。
@@ -116,7 +120,10 @@ public class SettleServiceImpl implements SettleService {
                              ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger,
                              ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter,
                              ai.neargo.shop.pay.settle.SplitInstructionSender splitSender,
-                             RefundBasisStore refundBases) {
+                             RefundBasisStore refundBases, PaymentSettlementSerialPoint refundSerial,
+                             SettlementRefundInitializer refundInitializer) {
+        this.refundSerial = refundSerial;
+        this.refundInitializer = refundInitializer;
         this.refundBases = refundBases;
         this.splitSender = splitSender;
         this.gatewayRouter = gatewayRouter;
@@ -174,6 +181,7 @@ public class SettleServiceImpl implements SettleService {
     @Override
     @Transactional("payTxManager")
     public int generateForOrder(String orderNo, List<SettleService.SettleInput> inputs) {
+        refundSerial.lock(orderNo);
         int created = 0;
         /*
          * 费率一次取齐，不逐子单查库：一张订单跨 N 个商家就是 N 张结算单，
@@ -287,6 +295,7 @@ public class SettleServiceImpl implements SettleService {
              */
             long pointsFee = src.pointsFeeMinor();
             bill.setPointsFeeMinor(pointsFee);
+            bill.setSplitAmountMinor(Math.addExact(Math.addExact(commission, serviceFee), pointsFee));
             /*
              * ★ 商家实得要减掉**他自己承担的**那部分通道手续费。
              *
@@ -407,8 +416,13 @@ public class SettleServiceImpl implements SettleService {
                     : selfOperated ? StlBill.PENDING_RECON : StlBill.PENDING);
             bill.setInvoiceStatus(selfOperated ? StlBill.INV_PENDING : StlBill.INV_NONE);
             bill.setRetryCount(0);
+            bill.setRefundedGoodsMinor(0L);
+            bill.setRefundedFreightMinor(0L);
+            bill.setReversedMinor(0L);
             DataScopeContext.executeWithoutScope(() -> billMapper.insert(bill));
             refundBases.recordCreated(bill, src.payAmount() - src.freightIncomeMinor());
+            refundInitializer.reconcile(bill);
+            pointsFee = StlBill.MANUAL.equals(bill.getStatus()) ? 0 : bill.getPointsFeeMinor();
 
             /*
              * 费用金入池 —— **与货款扣减同一时刻**。
@@ -483,6 +497,7 @@ public class SettleServiceImpl implements SettleService {
         }
         bill.setStatus(StlBill.SPLIT_CONFIRMED);
         bill.setSplitConfirmedAt(System.currentTimeMillis());
+        bill.setMerchantPaidMinor(bill.getNetMinor());
         update(bill);
         /*
          * 留一条流水。**不走 callProvider** —— 那个方法会真的去调通道，

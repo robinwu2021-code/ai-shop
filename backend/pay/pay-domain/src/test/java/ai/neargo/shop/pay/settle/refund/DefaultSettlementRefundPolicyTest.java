@@ -32,6 +32,32 @@ class DefaultSettlementRefundPolicyTest {
     }
 
     @Test
+    void preSplitCutsStillSumToOriginalMerchantIncomeWhenBillShrinks() {
+        StlBill b = bill(SettleSourcePort.SHIP_MERCHANT_SELF);
+        b.setGrossMinor(300L);
+        b.setNetMinor(270L);
+        b.setCommissionMinor(30L);
+        b.setServiceFeeMinor(0L);
+        b.setPointsFeeMinor(0L);
+        b.setSubsidyMinor(0L);
+        b.setFreightIncomeMinor(0L);
+        b.setFreightCostMinor(0L);
+        SettlementRefundBasis original = basis(b, 300);
+        long sumMerchantCuts = 0;
+        for (int i = 0; i < 3; i++) {
+            BillRefundShare share = policy.share(original, new RefundPosition(b.getRefundedGoodsMinor(), 0), 100, 0);
+            sumMerchantCuts += share.merchantGoodsMinor();
+            b.setNetMinor(b.getNetMinor() - share.merchantGoodsMinor());
+            b.setGrossMinor(b.getGrossMinor() - share.grossCutMinor());
+            b.setCommissionMinor(b.getCommissionMinor() - share.commissionCutMinor());
+            b.setRefundedGoodsMinor(b.getRefundedGoodsMinor() + 100);
+        }
+        assertThat(sumMerchantCuts).isEqualTo(270L);
+        assertThat(b.getNetMinor()).isZero();
+        assertThat(b.getCommissionMinor()).isZero();
+    }
+
+    @Test
     @DisplayName("★★★ 三次分批退完：Σ 商家回退 = 商家货款所得、Σ 补贴 / 佣金 = 总额；最后一笔才是 final")
     void threeInstallmentsSumExactly() {
         StlBill b = bill(SettleSourcePort.SHIP_MERCHANT_SELF);
@@ -39,7 +65,8 @@ class DefaultSettlementRefundPolicyTest {
         long sumMerchant = 0, sumSubsidy = 0, sumCommission = 0, sumGross = 0;
         long[] parts = {3333, 3333, 3334};
         for (int i = 0; i < parts.length; i++) {
-            BillRefundShare s = policy.share(b, parts[i], 0, 10_000);
+            BillRefundShare s = policy.share(basis(b, 10_000),
+                    new RefundPosition(b.getRefundedGoodsMinor(), 0), parts[i], 0);
             assertThat(s.finalRefund()).isEqualTo(i == parts.length - 1);
             sumMerchant += s.merchantGoodsMinor();
             sumSubsidy += s.subsidyReturnMinor();
@@ -57,7 +84,7 @@ class DefaultSettlementRefundPolicyTest {
     @DisplayName("★★ 退 1/3：商家回退 = 商家货款所得 × 1/3（下取整），未退完")
     void oneThird() {
         StlBill b = bill(SettleSourcePort.SHIP_MERCHANT_SELF);
-        BillRefundShare s = policy.share(b, 3000, 0, 9000);
+        BillRefundShare s = policy.share(basis(b, 9000), new RefundPosition(0, 0), 3000, 0);
         assertThat(s.merchantGoodsMinor()).isEqualTo((b.getNetMinor() - 800) / 3);
         assertThat(s.finalRefund()).isFalse();
     }
@@ -65,9 +92,11 @@ class DefaultSettlementRefundPolicyTest {
     @Test
     @DisplayName("★★ 运费：商家自寄由商家回退（不超过收过的数）；平台代寄商家不回退")
     void freightByShipMode() {
-        assertThat(policy.share(bill(SettleSourcePort.SHIP_MERCHANT_SELF), 10_000, 900, 10_000)
+        assertThat(policy.share(basis(bill(SettleSourcePort.SHIP_MERCHANT_SELF), 10_000),
+                new RefundPosition(0, 0), 10_000, 800)
                 .freightReverseMinor()).isEqualTo(800);
-        assertThat(policy.share(bill(SettleSourcePort.SHIP_PLATFORM_CALL), 10_000, 800, 10_000)
+        assertThat(policy.share(basis(bill(SettleSourcePort.SHIP_PLATFORM_CALL), 10_000),
+                new RefundPosition(0, 0), 10_000, 800)
                 .freightReverseMinor()).isZero();
     }
 
@@ -75,16 +104,29 @@ class DefaultSettlementRefundPolicyTest {
     @DisplayName("★ 一次全退：商家回退 = 结算单商家所得全额（与旧的整单回退金额一致）")
     void fullRefundEqualsLegacy() {
         StlBill b = bill(SettleSourcePort.SHIP_MERCHANT_SELF);
-        assertThat(policy.share(b, 10_000, 800, 10_000).merchantReverseMinor()).isEqualTo(b.getNetMinor());
+        assertThat(policy.share(basis(b, 10_000),
+                new RefundPosition(0, 0), 10_000, 800).merchantReverseMinor()).isEqualTo(b.getNetMinor());
     }
 
     @Test
-    @DisplayName("★ 0 元单：分母为 0 视为一次退完，取全额")
+    void zeroCashDoesNotInventFullCashOrSubsidyCuts() {
+        BillRefundShare share = policy.share(basis(bill(SettleSourcePort.SHIP_MERCHANT_SELF), 0),
+                new RefundPosition(0, 0), 0, 0);
+        assertThat(share.merchantGoodsMinor()).isZero();
+        assertThat(share.subsidyReturnMinor()).isZero();
+        assertThat(share.grossCutMinor()).isZero();
+    }
+
+    @Test
+    @DisplayName("★ 0 商品现金：现金分配NONE，未知权益成本须核对")
     void zeroPaid() {
         StlBill b = bill(SettleSourcePort.SHIP_MERCHANT_SELF);
-        BillRefundShare s = policy.share(b, 0, 0, 0);
+        BillRefundShare s = policy.share(basis(b, 0),
+                new RefundPosition(0, 0), 0, 0);
         assertThat(s.finalRefund()).isTrue();
-        assertThat(s.subsidyReturnMinor()).isEqualTo(333);
+        assertThat(s.subsidyReturnMinor()).isZero();
+        assertThat(s.cashAllocation()).isEqualTo(BillRefundShare.CashAllocation.NONE);
+        assertThat(s.requiresReview()).isTrue();
     }
 
     @Test
@@ -92,6 +134,20 @@ class DefaultSettlementRefundPolicyTest {
     void overRefundRejected() {
         StlBill b = bill(SettleSourcePort.SHIP_MERCHANT_SELF);
         b.setRefundedGoodsMinor(9000L);
-        assertThatThrownBy(() -> policy.share(b, 1001, 0, 10_000)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> policy.share(basis(b, 10_000), new RefundPosition(9000, 0), 1001, 0))
+                .isInstanceOf(IllegalArgumentException.class);
     }
+    private static SettlementRefundBasis basis(StlBill bill, long goodsPaid) {
+        var row = RefundBasisSnapshots.base(bill, "ORIGINAL", null);
+        RefundBasisSnapshots.amounts(row, bill, goodsPaid);
+        return RefundBasisSnapshots.model(row);
+    }
+
+    @Test
+    void freightPositionCannotBeRefundedTwice() {
+        var original = basis(bill(SettleSourcePort.SHIP_MERCHANT_SELF), 10_000);
+        assertThatThrownBy(() -> policy.share(original, new RefundPosition(0, 500), 0, 301))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
 }

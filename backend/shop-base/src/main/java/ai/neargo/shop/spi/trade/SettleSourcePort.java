@@ -1,6 +1,7 @@
 package ai.neargo.shop.spi.trade;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * settle → trade：生成结算单需要的子单金额。
@@ -11,6 +12,11 @@ import java.util.List;
 public interface SettleSourcePort {
 
     List<SettleSource> settleSourcesOf(String orderNo);
+
+    /** 缺结算账单的子单归属核对；不存在返回empty，不把未知子单当作未付款。 */
+    Optional<SettlementOrder> settlementOrderOf(String subOrderNo);
+
+    record SettlementOrder(String orderNo, boolean billExpected, boolean unpaidVerified) { }
 
     /**
      * 这些子单<b>可结算了没有</b>：履约完成时刻，以及售后有没有闭环。

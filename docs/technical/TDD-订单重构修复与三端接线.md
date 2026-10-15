@@ -1,10 +1,14 @@
 # TDD-订单重构修复与三端接线
 
-状态：**实施中**（2026-10-14 用户「基于开发计划进行开发」授权按推荐设计推进；未确定的供应商资金来源/权限及新积分能力保持入口关闭）
-关联需求：[TDD-订单状态机 §2D](./TDD-订单状态机.md)、[订单状态机完整方案](../superpowers/specs/2026-10-14-订单状态机-完整方案.md)、[退货退款逻辑](../superpowers/specs/2026-10-14-退货退款逻辑.md)、[第 5 步对象模型](../superpowers/specs/2026-10-14-第5步-对象模型.md)。
-创建：2026-10-14 · 最后更新：2026-10-14
+状态：**暂时停止**（2026-10-15 用户明确要求停止旧开发计划，优先整理一期正常订单链路、暂不接积分、仅做基础退款）
 
-用户补充的目录目标：已有订单2.0内核当前在 `ai.neargo.shop.trade.order`；将来迁到 `ai.neargo.shop.order`。现状核查已完成，本轮按开发计划逐批实施，包迁移在M02验收后完成。当前实况及迁移边界见§1.3–§1.4，不能把“内核构件已建”记作“全链路重构完成”。
+> **执行入口已调整：** 新一期以 [TDD-订单一期主流程与基础退款](./TDD-订单一期主流程与基础退款.md) §2 为计划入口。本文保留完整方案与历史证据，以下未完成批次不再自动推进；恢复旧计划需要用户明确安排。
+>
+> 暂停点：B00/F01/F02/F03/F05/M01/F04/F06 共 8 批已提交，最近完成提交 `fdb3926e84a1fe11007bccde2f9c9a0dcb3e496d`。F07 仍为未完成、未提交改动，代码、测试、迁移及生成文档保留在隔离工作树，不回滚、不作为新一期默认实现基线。暂停前最后一次扩展测试为 pay 14 + shop-app 182，共 196 条通过，日志为 `.superpowers/sdd/TDD-订单重构修复与三端接线/F07-final-expanded.log`；这不代表 F07 已验收，也不代表生产支付/物流联调完成。
+关联需求：[TDD-订单状态机 §2D](./TDD-订单状态机.md)、[订单状态机完整方案](../superpowers/specs/2026-10-14-订单状态机-完整方案.md)、[退货退款逻辑](../superpowers/specs/2026-10-14-退货退款逻辑.md)、[第 5 步对象模型](../superpowers/specs/2026-10-14-第5步-对象模型.md)。
+创建：2026-10-14 · 最后更新：2026-10-15
+
+用户补充的目录目标：已有订单2.0内核当前在 `ai.neargo.shop.trade.order`；将来迁到 `ai.neargo.shop.order`。当前实况及迁移边界见§1.3–§1.4，不能把“内核构件已建”记作“全链路重构完成”。2026-10-15 起一期先完成业务链路，M02 包迁移延期；下文保留的原批次顺序仅作历史方案参考。
 
 档位：2。本文是代码实施前的精确分批合同；总体计划、历史实现和历史测试结果仍在订单状态机 TDD。本轮基于实际接线核查重排开发顺序：§2.6是执行主线，§2.5的F01–F18为缺陷修复与业务合同的详细任务库，不重复实施。
 
@@ -137,7 +141,7 @@
 | `S/settle/RefundDispatchResult.java`（新增） | `record RefundDispatchResult(String executionNo, String paymentNo, DispatchStatus status, String errorCode, boolean retryable, Long succeededAt)`；`DispatchStatus = ACCEPTED/SUCCEEDED/FAILED/UNKNOWN`，受理不等于到账 |
 | `T/order/refund/service/RefundExecutionService.java`（新增接口） | `String prepare(ApprovedRefund approved)`；`void dispatch(String executionNo)`；`void applyResult(RefundDispatchResult result)`；`void recover(String executionNo)`；实现放同包 `impl/RefundExecutionServiceImpl.java`，进一步分派到小对象 |
 | `P/settle/refund/SettlementRefundBasis.java`（新增） | 原始 `goodsPaidMinor/grossMinor/merchantGoodsMinor/commissionMinor/serviceFeeMinor/pointsFeeMinor/pointsCostMinor/subsidyMinor/freightIncomeMinor/freightCostMinor/freightShipMode`，另含 `paymentRoute/originPaymentNo/accountSnapshotRef`；全为批准结算时的不可变值，账户引用指向保留历史版本的收付账户快照，不随商家改账户变化 |
-| `P/settle/refund/SettlementRefundPolicy.java`（调整） | `BillRefundShare share(SettlementRefundBasis basis, long refundedGoodsBefore, long refundGoodsMinor, long refundFreightMinor)`；固定原始分母计算累计差，实际应付位置另存 |
+| `P/settle/refund/SettlementRefundPolicy.java`（调整） | `BillRefundShare share(SettlementRefundBasis basis, RefundPosition before, long refundGoodsMinor, long refundFreightMinor)`；RefundPosition含货款/运费两个累计前值，固定原始分母计算累计差，实际应付位置另存 |
 | `T/order/service/receipt/OrderReceiptCompleter.java`（新增接口） | `boolean completeAuto(String subOrderNo, long now, int shippedDays, int signedDays)`；公开代理方法每单事务，重新判断当前事实 |
 | `T/order/refund/service/AfterSalePreviewService.java`（新增接口） | `RefundableFacts facts(String subOrderNo)`；`AfterSalePreview preview(String subOrderNo, AfterSalePreviewRequest request)`；与最终申请共用 planner |
 
@@ -263,7 +267,7 @@ F04同时补齐F05所等待的运营影响抽屉：新增`ops-web/app/orders/pro
 
 **新增：** `P/settle/refund/SettlementRefundBasis.java`、`RefundBasisStore.java` 及数据库实现；增量迁移 `stl_bill_refund_basis`；**修改：** `P/impl/SettleServiceImpl.java` 的结算生成处。测试拟 `IT/SettlementRefundBasisFlowTest.java`。
 
-F06实施合同补充：账户历史版本随Basis保存在同一不可变行，`accountSnapshotRef=settleNo#1`指向该行的收款商户号/通道/场景/币种/手续费承担方/原收款AppID快照；不增加实时商家查询。新增`SettlementAccountSnapshot`、`StlBillRefundBasis`、`RefundBasisMapper`及`MybatisRefundBasisStore`，Mapper绑定paySqlSessionFactory。`status=READY/NEEDS_REVIEW`与source分开记录，原因可读；已有退款/回退痕迹的旧单不可从当前金额补原值。新账单与Basis同payTxManager事务；生成重放只给可信未退款旧单补录，既有Basis永不更新。缺唯一成功PAY/未知路径或缺收付账户事实时只记录待核对，不凭空给历史账户或流水。线下/零现金无需虚构原PAY。原退款策略本批不切读，结算创建前已现金退款的累计扣减仍归F07/F10实施。迁移新增V407，同步机械生成H2 schema；本地独立临时MariaDB库验证建表/唯一键/空值，未运行生产迁移。
+F06实施合同补充：账户历史版本随Basis保存在同一不可变行，`accountSnapshotRef=settleNo#1`指向该行的收款商户号/通道/场景/币种/手续费承担方/原收款AppID快照；不增加实时商家查询。新增`SettlementAccountSnapshot`、`StlBillRefundBasis`、`RefundBasisMapper`及`MybatisRefundBasisStore`，Mapper绑定paySqlSessionFactory。`status=READY/NEEDS_REVIEW`与source分开记录，原因可读；已有退款/回退痕迹的旧单不可从当前金额补原值。新账单与Basis同payTxManager事务；生成重放只给可信未退款旧单补录，既有Basis永不更新。缺唯一成功PAY/未知路径或缺收付账户事实时只记录待核对，不凭空给历史账户或流水。线下/零现金无需虚构原PAY。原退款策略本批不切读，结算创建前已现金退款的累计扣减仍归F07/F10实施。迁移新增V408，同步机械生成H2 schema；本地独立临时MariaDB库验证建表/唯一键/空值，未运行生产迁移。
 
 F06并发补录补充：新增`RefundBasisHistory`核对退款流水、分账回退/补差回退与未决资金意图。已提交旧账单的补录使用独立payTxManager事务（REQUIRES_NEW、READ_COMMITTED），先锁账单，再当前读核对Basis与历史；新账单的recordCreated仍加入生成事务，不能独立提交。实际MariaDB12.2启用innodb_snapshot_isolation，单纯在旧RR快照上FOR UPDATE会报1020；在独立事务补录避免沿用旧快照，不改变数据库全局设置。`RefundBasisMariaDbReplayTest`通过真实MyBatis Store/事务代理验证双方先建立旧快照、先后补录仍只有一行且其他新账单提交；仅显式传入独立测试URL启用。测试临时库与临时账户仅包含本批虚构数据，运行后移除；现有库/账号授权未变。参见[MariaDB快照隔离说明](https://mariadb.com/docs/server/server-usage/storage-engines/innodb/innodb-system-variables)。
 
@@ -280,6 +284,14 @@ F06并发补录补充：新增`RefundBasisHistory`核对退款流水、分账回
 **修改：** `P/settle/refund/{SettlementRefundPolicy,DefaultSettlementRefundPolicy,PreSplitAdjuster,PostSplitReverser,BillRefundShare}.java`、`P/mapper/BillRefundMapper.java`；**新增：** 同退款包 `FinancialClosurePolicy.java`。测试现有 `PU/settle/refund/DefaultSettlementRefundPolicyTest.java`、`IT/SettlementPartialReverseTest.java`。
 
 **合同：** 同一金额项的本次份额 = floor(original × after / originalGoodsPaid) − floor(original × before / originalGoodsPaid)。不能用已扣减的 current net/gross 做 original；运费单独计已退额与合法留存。
+
+版本对账：F06首次测试时文件名为V407；随后共享主目录另一任务新增V407会话迁移，尚未部署/未执行Flyway的本任务Basis迁移改为V408，SQL内容未变，不修改对方文件。F07使用V409。
+
+F07分两个内部步骤，仍作为一个验收批次：先切固定Basis和双累计位置，接FinancialClosure；再补首次结算前已有现金退款与无账单回退阶段。新增`RefundPosition`、`FinancialClosure`及policy；BillRefundShare声明现金分配NONE/PROPORTIONAL和需要权益核对。V409增加`stl_bill.refunded_freight_minor/merchant_paid_minor`，已追回保留reversed_minor；原货款位置继续原列。`stl_bill_refund`新增完整逐项cut、merchantGoods/freightReverse及cashAllocation，新流水均写完整值，旧值null不补造。纯现金为0时各现金cut为0；非现金成本仍有原值且未有规则时转可见核对。Closure分别计算剩余应付、未付、实际已付净额、待追回和留存，不能因货款全部退完就抹去剩余运费。新资金回执/发送仍在F10接入，未确认的付款意图不得当作实际已付。
+
+F07首次应付合同：V409同时增加`stl_payment.refund_goods_minor/refund_freight_minor`（历史未知null，不猜比例）。新账单保留全额Basis后，`SettlementRefundInitializer`按已成功原路退款的逐项金额和售后幂等键扣初始应付。历史无运费单可以明确全部属于货款；有运费且缺拆分、缺售后键、未决现金结果或通道/币种不匹配均保留MANUAL和原因，原始Basis不改。`PaymentSettlementSerialPoint`在原成功PAY行持支付域事务锁；生成、现金退款登记及到账确认共用它，网络发送不进入这个锁。成功回执早于生成由生成消费，生成先到则回执检查账单与已有退款流水，避免多扣。`RefundReceiptMutation`独立payTxManager READ_COMMITTED事务确认现金到账，不能沿用外层查单的旧RR快照；已确认资金事实不随外层订单投影失败回滚。真实MariaDB旧RR屏障回执重放已复现账单当前读1020，仅在同旧事务加FOR UPDATE不足以修复，因此修改事务整体新建。新增SPI `SettleSourcePort.settlementOrderOf`提供子单归属与明确的账单预期/已核实未付款事实；应用桥接层映射为SettlePort.ReversalOrderFact传给pay守卫，支付域不新增交易SPI反向引用；无账单显式返回`ReversalStage`，已支付应有账单但缺失、有历史Basis或分账/供应商付款意图时NEEDS_REVIEW，已核实未付款且没有资金意图时NOT_REQUIRED。旧boolean适配仅将明确允许后续退款的阶段映射true。
+
+现有SplitGateway.Result没有已到账/受理中的区分。在F10完成持久化发送/确认协议前，有实际回退金额的分账后路径暂留MANUAL/REVERSAL_RESULT_UNCONFIRMED，不调用网关、不生成虚构已追回或结清事实；F10负责启用。切读真实下单链路发现原收款未保存金融场景，测试商家也没有进件账户。已提前补F10所需的请求事实：固定JSAPI适配器在网络前保存实际MP_WECHAT/MP_ALIPAY场景、CNY币种和原请求付款人/AppID；生成从支付流水读取金融场景，客户端X-Client仍只用于权益策略，不能作为资金事实。未进件账户仍待核对；真实端点售后测试在付款前配置虚构ACTIVE测试商户，验证伪造IOS策略头不能改MP金融快照。PaidPayment增加通道/场景/币种读字段，旧三字段构造保留未知值，不伪造历史。退款登记同时复制原PAY的金融场景、AppID与付款人，实际ledger.refund→到账→重放验证已预调整账单保持可结算且不再扣减。新账单补齐预期splitAmount=commission+serviceFee+pointsFee；分账前CAS在费用列更新前从确定的费用余额扣platformCut，修复未初始化0被扣为负数的真实路径。这是预期指令金额，不作实际已付证明。M7的两个退款场景改用有原实收的TestPayGateway，在付款前配置自有门店账户并在测试后恢复；未确认分账的旧“退款即REVERSED”断言改为阻断现金及无伪造回退，实际发送确认仍待F10。此前把桩接受当作到账的测试改为明确阻断，原300/270三次实际扣减、运费保留、FinancialClosure资金位置仍独立验证。
 
 - [ ] 加入真实会更新结算金额的三次分账前退款；核心断言 `assertThat(sumMerchantCuts).isEqualTo(270L)`、`assertThat(remainingRefundableMerchantMinor).isZero()`。再加先退款后分账、尾差、重复执行和保留运费仍有应付。
 - [ ] 运行 `DefaultSettlementRefundPolicyTest,SettlementPartialReverseTest`，确认90/60/40的旧结果使新场景失败。
@@ -597,12 +609,12 @@ F05提交`90d8f68ed`。M01提取9个Mapper、4份政策及2个旧规则测试，
 
 F04新增完整取消影响政策/合同及真实身份集成测试、运营影响抽屉及挂载/产物引用测试；修改订单/平台服务、运营Controller、线下收款门槛与能力、运营API/HTTP/mock/文案/类型。新增门店名称和币种为可读影响预览所需；无完整授权只输出拒绝标志。运营OpenAPI生成器统一内部引用到components.schemas，保证新合同嵌套引用可解析；同时清除既有生成YAML行尾空白，语义差异已另以忽略空白方式检查。历史null门店与运营缓存失败/迟到取消/整页重挂反例已修复。每次打开使用UUID会话隔离缓存和旧请求。迁移清单当前内核135个生产文件/27个核心测试类。未修改其他运营T2写规则、数据库或旧订单TDD历史§5/§6。
 
-F06新增支付域Basis/账户不可变模型、实体、Mapper、Store及映射/历史核对助手；增量V407与机械H2 schema。结算生成处写快照，重放仅对缺Basis的已提交旧账单补录，当前事务已有快照直接跳过。三个真实场景测试类与SettlementBasisFixtures覆盖金额/账户/历史退款/同事务及真实MariaDB；补录独立事务的边界已单列说明。原退款消费者、分账策略、订单状态及HTTP没有切换。表/分层/词汇及ER生成清单同步本批及此前分支变化。额外schema-lineage检查发现两项既有元数据欠账（parent_no分类、生成器缺payout_no），移除V407仍复现；不是本批新增失败，在F18发布对账时处理，不把该扩展集合记为全绿。未修改已有迁移、已退款历史金额或其他账户授权。
+F06新增支付域Basis/账户不可变模型、实体、Mapper、Store及映射/历史核对助手；增量V408与机械H2 schema。结算生成处写快照，重放仅对缺Basis的已提交旧账单补录，当前事务已有快照直接跳过。三个真实场景测试类与SettlementBasisFixtures覆盖金额/账户/历史退款/同事务及真实MariaDB；补录独立事务的边界已单列说明。原退款消费者、分账策略、订单状态及HTTP没有切换。表/分层/词汇及ER生成清单同步本批及此前分支变化。额外schema-lineage检查发现两项既有元数据欠账（parent_no分类、生成器缺payout_no），移除V407仍复现；不是本批新增失败，在F18发布对账时处理，不把该扩展集合记为全绿。未修改已有迁移、已退款历史金额或其他账户授权。
 
 后续按批记录 `git show --stat`，与修改/新增文件逐项核对；新增辅助类、字段或接口先更新设计，不让实现与本篇分叉。
 
 ## §7 本轮交付与下一步
 
-开发计划共7阶段、26个唯一批次，B00/F01/F02/F03/F05/M01/F04/F06已完成，F07进入实施，其余待实施。用户已授权基于本计划开发；未确定的供应商资金账户/权限及新积分能力保持关闭，新入口按批次验证和能力门槛启用。
+旧开发计划共7阶段、26个唯一批次，B00/F01/F02/F03/F05/M01/F04/F06已完成，F07未完成、未提交，其余未实施。2026-10-15 用户暂时停止本计划；后续以 [一期主流程与基础退款 §2](./TDD-订单一期主流程与基础退款.md) 的 N00–N08 为计划入口，本文不再自动续跑。
 
 计划制定时的文档验证：3份文档、551个本地链接、代码围栏和空白检查通过，7阶段/26个唯一批次、RF01–RF20与DEV01–DEV08完整，旧订单TDD的§5/§6记录保持原文。字段/接口一致性及依赖无环已核对；开发后的业务测试与实现证据追加到§5/§6。

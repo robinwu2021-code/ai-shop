@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component
@@ -48,6 +49,23 @@ public class SettleSourcePortImpl implements SettleSourcePort {
         this.statusLogMapper = statusLogMapper;
         this.afterSaleMapper = afterSaleMapper;
         this.expressPickupMapper = expressPickupMapper;
+    }
+
+    @Override
+    public Optional<SettlementOrder> settlementOrderOf(String subOrderNo) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                    .eq(OrdSubOrder::getSubOrderNo, subOrderNo));
+            if (sub == null) return Optional.empty();
+            OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                    .eq(OrdOrder::getOrderNo, sub.getOrderNo()));
+            if (order == null) return Optional.empty();
+            boolean expected = order.getPaidAt() != null || OrdOrder.PAID.equals(order.getStatus())
+                    || (sub.getStatus() != null && OrdSubOrder.TRANSACTED.contains(sub.getStatus()));
+            boolean unpaid = !expected && (OrdSubOrder.WAIT_PAY.equals(sub.getStatus())
+                    || OrdSubOrder.CANCELLED.equals(sub.getStatus()));
+            return Optional.of(new SettlementOrder(sub.getOrderNo(), expected, unpaid));
+        });
     }
 
     /**
