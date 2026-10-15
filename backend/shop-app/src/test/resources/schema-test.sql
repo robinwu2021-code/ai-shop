@@ -1591,8 +1591,9 @@ CREATE TABLE IF NOT EXISTS usr_store_favorite
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_user_entity UNIQUE (user_no,entity_no)
+    store_no VARCHAR(64) DEFAULT NULL,
+    CONSTRAINT uk_user_store UNIQUE (user_no, store_no),
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS usr_account

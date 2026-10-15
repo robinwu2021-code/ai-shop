@@ -152,7 +152,7 @@ public class MpStoreController {
         var store = storeDirectory.resolve(no);
         if (store.isPresent()) {
             var s = store.get();
-            return storeService.homeOfStore(s, userNo, favoriteService.isFavorited(s.entityNo()), latE6, lngE6);
+            return storeService.homeOfStore(s, userNo, favoriteService.isFavorited(s.storeNo()), latE6, lngE6);
         }
         if (no.startsWith("M")) {
             return storeService.home(no, userNo, favoriteService.isFavorited(no));

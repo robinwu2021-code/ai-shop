@@ -7,6 +7,8 @@ import ai.neargo.shop.user.entity.UsrIdentity;
 import ai.neargo.shop.user.entity.UsrStoreFavorite;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * user 域的 Mapper 集合（嵌套接口，沿用 powerbank 的写法）。
@@ -95,6 +97,13 @@ public final class UserMappers {
      * {@code uk_user_entity(user_no, entity_no)} —— 同一家店取消后再收藏就撞（TDD-C端商品收藏与送达判断 §2）。
      */
     public interface StoreFavoriteMapper extends BaseMapper<UsrStoreFavorite> {
+        @Delete("DELETE FROM usr_store_favorite WHERE id = #{id}")
+        int purgeById(@Param("id") Long id);
+
+        @Select("SELECT COUNT(DISTINCT user_no) FROM usr_store_favorite "
+                + "WHERE entity_no = #{entityNo} AND deleted = 0")
+        int countUsers(@Param("entityNo") String entityNo);
+
 
         @org.apache.ibatis.annotations.Delete(
                 "DELETE FROM usr_store_favorite WHERE user_no = #{userNo} AND entity_no = #{entityNo}")
