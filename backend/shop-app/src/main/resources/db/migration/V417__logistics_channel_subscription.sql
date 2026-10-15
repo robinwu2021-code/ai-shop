@@ -71,7 +71,10 @@ FROM (
            MIN(w.shipment_no) AS shipment_no,
            LEAST(SUM(w.kd100_sub_count), 4) AS used_count
     FROM lgs_waybill w
-    JOIN lgs_carrier_code c ON c.carrier = w.carrier AND c.channel = 'kuaidi100'
+    -- These pre-existing columns have different utf8mb4 collations in production.
+    JOIN lgs_carrier_code c ON c.carrier COLLATE utf8mb4_0900_ai_ci =
+                               w.carrier COLLATE utf8mb4_0900_ai_ci
+                           AND c.channel = 'kuaidi100'
     WHERE w.kd100_sub_month IS NOT NULL AND w.kd100_sub_count > 0
     GROUP BY c.code, w.waybill_no, w.kd100_sub_month
 ) old
