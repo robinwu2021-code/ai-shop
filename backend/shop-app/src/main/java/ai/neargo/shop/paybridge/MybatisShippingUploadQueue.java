@@ -10,7 +10,6 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Component
@@ -51,7 +50,7 @@ public class MybatisShippingUploadQueue implements ShippingUploadQueue {
         boolean manual = WxShippingUploadService.hardCorrectionFailure(row);
         int attempts = manual && row.getAttempts() != null ? row.getAttempts() : 0;
         return DataScopeContext.executeWithoutScope(() -> mapper.update(null, revision(row)
-                .set("source_snapshot", snapshot == null ? null : snapshot.getBytes(StandardCharsets.UTF_8))
+                .set("source_snapshot", snapshot)
                 .set("status", manual ? TrdShippingUpload.FAILED : TrdShippingUpload.PENDING).set("attempts", attempts)
                 .set("err_code", manual ? row.getErrCode() : null)
                 .set("err_msg", manual ? row.getErrMsg() : null).set("uploaded_at", null))) == 1;

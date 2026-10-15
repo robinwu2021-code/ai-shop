@@ -3,8 +3,6 @@ package ai.neargo.shop.trade.entity;
 import ai.neargo.shop.common.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableField;
-import lombok.AccessLevel;
-import java.nio.charset.StandardCharsets;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -38,17 +36,7 @@ public class TrdShippingUpload extends BaseEntity {
 
     /** Exact ordered package set and completion flag; queue revision isolates responses to earlier requests. */
     @TableField("source_snapshot")
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
-    private byte[] sourceSnapshotJson;
-
-    public String getSourceSnapshot() {
-        return sourceSnapshotJson == null ? null : new String(sourceSnapshotJson, StandardCharsets.UTF_8);
-    }
-
-    public void setSourceSnapshot(String snapshot) {
-        sourceSnapshotJson = snapshot == null ? null : snapshot.getBytes(StandardCharsets.UTF_8);
-    }
+    private String sourceSnapshot;
 
     private String status;
 
