@@ -244,6 +244,7 @@ export const RULES = [
   ["GET", /^\/ops\/after-sales\/fast-refund-rule$/, "aftersale:refund:read"],
   ["POST", /^\/ops\/after-sales\/fast-refund-rule$/, "aftersale:refund:approve"],
   ["POST", /^\/ops\/after-sales\/[^/]+\/decide$/, "aftersale:ticket:handle"],
+  ["POST", /^\/ops\/after-sales\/[^/]+\/recover$/, "aftersale:ticket:handle"],
   ["GET", /^\/ops\/after-sales/, "aftersale:ticket:read"],
 
   // ── 经营看板 ───────────────────────────────────────────────────────────

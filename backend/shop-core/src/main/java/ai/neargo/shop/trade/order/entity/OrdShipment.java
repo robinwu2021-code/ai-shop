@@ -32,6 +32,8 @@ public class OrdShipment extends BaseEntity {
     @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
     private String activeWaybillNo;
     private String status;
+    /** Carrier signature is a delivery fact, separate from buyer receipt/completion. */
+    private Long signedAt;
     private Long voidedAt;
     private String voidReason;
     private String supersededBy;

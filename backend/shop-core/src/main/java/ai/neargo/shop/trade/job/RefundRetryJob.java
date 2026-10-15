@@ -6,6 +6,8 @@ import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.trade.service.AfterSaleService;
+import ai.neargo.shop.trade.order.refund.service.BasicRefundExecutionService;
+import org.springframework.beans.factory.annotation.Autowired;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +83,13 @@ public class RefundRetryJob implements JobHandler {
         this.jobs = jobs;
     }
 
+    private BasicRefundExecutionService executions;
+
+    @Autowired
+    public void setRefundExecutions(BasicRefundExecutionService executions) {
+        this.executions = executions;
+    }
+
     @Scheduled(cron = "${shop.job.refund-retry.cron:0 */10 * * * *}")
     // 10 分钟一次。锁 9 分钟（小于间隔）：真卡死时下一轮能接手，不至于整条退款重试停摆
     @SchedulerLock(name = "refund-retry", lockAtLeastFor = "PT30S", lockAtMostFor = "PT9M")
@@ -105,6 +114,9 @@ public class RefundRetryJob implements JobHandler {
     @Override
     public JobResult run(JobInvocation invocation) {
         long now = System.currentTimeMillis();
+        if (executions != null) {
+            executions.recoverDue(now, limit);
+        }
 
         /*
          * I4 先查再续跑，顺序是有意的：

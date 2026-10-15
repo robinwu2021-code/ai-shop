@@ -55,6 +55,9 @@ public interface AfterSaleService {
 
     List<AfterSaleVO> merchantList(String merchantNo, String status);
 
+    /** Current scoped case only: reuse its original execution, including resources after cash success. */
+    OpsAfterSaleVO recoverRefund(String afterSaleNo, String operatorNo);
+
     /**
      * 同意。**退货退款的「同意」不等于退钱** —— 要等收到货（见实现）。
      *
@@ -70,6 +73,11 @@ public interface AfterSaleService {
 
     /** 确认收到退货（只认 {@code RETURNING}：买家已寄回）→ 触发退款。 */
     AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo);
+
+    /** Receiving goods and approving their resale are separate decisions; omitted approval is false. */
+    default AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo, boolean restockApproved) {
+        return confirmReturn(merchantNo, afterSaleNo);
+    }
 
     /**
      * 在途仅退款（{@code WAIT_RECEIPT}）由商家确认退款（TDD-订单状态机 AC8）。

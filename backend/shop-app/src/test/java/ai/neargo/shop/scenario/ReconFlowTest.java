@@ -48,6 +48,7 @@ class ReconFlowTest {
     private PaymentMapper orderMapper;
 
     /** 本类造的订单：**共享种子，跑完要清** —— 不清的话后面的用例会读到它 */
+    private final java.util.List<String> createdPayments = new java.util.ArrayList<>();
     private final java.util.List<String> createdOrders = new java.util.ArrayList<>();
 
     @org.junit.jupiter.api.AfterEach
@@ -57,6 +58,11 @@ class ReconFlowTest {
                     .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, no));
         }
         createdOrders.clear();
+        for (String no : createdPayments) {
+            diffMapper.delete(Wrappers.<StlReconDiff>lambdaQuery().eq(StlReconDiff::getPaymentNo, no));
+            paymentMapper.delete(Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getPaymentNo, no));
+        }
+        createdPayments.clear();
     }
 
     /** 造一张指定状态的订单，用来模拟「差异记下之后，订单那边后来变成了什么」。 */
@@ -66,6 +72,8 @@ class ReconFlowTest {
         o.setUserNo("U-RECON");
         o.setStatus(status);
         o.setPayAmount(9900L);
+        o.setPayTradeNo("WX-HEAL-1");
+        o.setPayChannel("WECHAT");
         o.setCreatedAt(LocalDateTime.now());
         orderMapper.insert(o);
         createdOrders.add(orderNo);
@@ -104,12 +112,59 @@ class ReconFlowTest {
         p.setAmountMinor(9900L);
         p.setCreatedAt(LocalDateTime.now().minusMinutes(25));
         paymentMapper.insert(p);
+        createdPayments.add(p.getPaymentNo());
         return p;
     }
 
     private List<StlReconDiff> diffsOf(String paymentNo) {
         return diffMapper.selectList(Wrappers.<StlReconDiff>lambdaQuery()
                 .eq(StlReconDiff::getPaymentNo, paymentNo));
+    }
+
+    @Test
+    void longFailureNoteDoesNotAbortCashRecoveryRecording() {
+        StlPayment p = stalePayment();
+        ReconService.Finding finding = new ReconService.Finding(p.getPaymentNo(), p.getOrderNo(),
+                p.getPayChannel(), p.getOutTradeNo(), p.getDirection(), p.getAmountMinor(),
+                true, false, false, 9900L, "LONG-ERROR", "2026-10-15");
+        reconService.recordFinding(finding, StlReconDiff.PLATFORM_ONLY, "database failure ".repeat(40));
+        assertThat(diffsOf(p).getFirst().getResolution()).hasSize(255).startsWith("database failure");
+    }
+
+    @Test
+    void queriedAmountDifferenceRetainsOriginalExpectedAmount() {
+        StlPayment p = stalePayment();
+        fakeQuery.answer(new PayQueryPort.Result(true, true, true, 10900L, "AMOUNT-" + p.getPaymentNo()));
+        paymentRecon.scan(System.currentTimeMillis());
+        assertThat(diffsOf(p)).filteredOn(d -> StlReconDiff.AMOUNT_DIFF.equals(d.getDiffType()))
+                .singleElement().satisfies(d -> {
+                    assertThat(d.getChannelAmountMinor()).isEqualTo(10900L);
+                    assertThat(d.getPlatformAmountMinor()).isEqualTo(9900L);
+                });
+    }
+
+    @Test
+    void refundAmountMismatchCannotBecomeConfirmedCash() {
+        StlPayment p = stalRefund();
+        fakeQuery.answer(new PayQueryPort.Result(true, true, true, 3301L, "WRONG-" + p.getPaymentNo()));
+        paymentRecon.scan(System.currentTimeMillis());
+        assertThat(reload(p).getStatus()).isEqualTo(StlPayment.PENDING);
+    }
+
+    @Test
+    void refundForeignCurrencyCannotBecomeConfirmedCash() {
+        StlPayment p = stalRefund();
+        fakeQuery.answer(new PayQueryPort.Result(true, true, true, 3300L, "USD-" + p.getPaymentNo(), "USD"));
+        paymentRecon.scan(System.currentTimeMillis());
+        assertThat(reload(p).getStatus()).isEqualTo(StlPayment.PENDING);
+    }
+
+    @Test
+    void refundMissingProviderCannotBecomeConfirmedCash() {
+        StlPayment p = stalRefund();
+        fakeQuery.answer(new PayQueryPort.Result(true, true, true, 3300L, null));
+        paymentRecon.scan(System.currentTimeMillis());
+        assertThat(reload(p).getStatus()).isEqualTo(StlPayment.PENDING);
     }
 
     @Test
@@ -278,6 +333,7 @@ class ReconFlowTest {
         p.setAmountMinor(3300L);
         p.setCreatedAt(LocalDateTime.now().minusMinutes(25));
         paymentMapper.insert(p);
+        createdPayments.add(p.getPaymentNo());
         return p;
     }
 

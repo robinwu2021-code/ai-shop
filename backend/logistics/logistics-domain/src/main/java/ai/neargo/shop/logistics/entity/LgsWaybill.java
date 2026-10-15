@@ -34,6 +34,9 @@ public class LgsWaybill extends BaseEntity {
     public static final String BIND_FATAL = "FATAL";
 
     private String shipmentNo;
+    /** Immutable order dispatch generation; not BaseEntity's mutable CAS version. */
+    private String sourceShipmentNo;
+    private Long sourceShipmentVersion;
     private String bizType;
     private String bizRef;
     private String entityNo;

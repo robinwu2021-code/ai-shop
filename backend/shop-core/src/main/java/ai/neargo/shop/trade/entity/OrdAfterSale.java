@@ -137,4 +137,9 @@ public class OrdAfterSale extends BaseEntity {
      * 否则会多补一次，而多出来的那几件不会有任何地方报错。
      */
     private Integer stockRestored;
+
+    /** Receiving a return does not imply that the goods are fit to restock. */
+    private Boolean restockApproved;
+    /** Actual merchant receipt; tracking information cannot establish receipt. */
+    private Long returnReceivedAt;
 }

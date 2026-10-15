@@ -214,7 +214,16 @@ public interface PayGateway {
      * @param outTradeNo    我方商户订单号 —— 用户报障时报的是这个
      * @param totalMinor    订单总额（分），部分回退与比例上限都按它算
      */
-    record TxContext(String subMchId, String tradeNo, String outTradeNo, long totalMinor) {
+    record TxContext(String subMchId, String tradeNo, String outTradeNo, long totalMinor, String currency) {
+        /** Existing callers retain their documented domestic currency; new refunds pass the frozen receipt. */
+        public TxContext(String subMchId, String tradeNo, String outTradeNo, long totalMinor) {
+            this(subMchId, tradeNo, outTradeNo, totalMinor, "CNY");
+        }
+    }
+
+    /** Existing domestic refund routes must explicitly opt in before accepting another currency. */
+    default boolean supportsRefundCurrency(String currency) {
+        return "CNY".equals(currency);
     }
 
     /**

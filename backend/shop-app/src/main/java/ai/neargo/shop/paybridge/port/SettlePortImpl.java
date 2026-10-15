@@ -5,6 +5,13 @@ import org.slf4j.LoggerFactory;
 import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.paybridge.SettleGenerationOrchestrator;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
+import ai.neargo.shop.pay.service.RefundExecutionService;
+import ai.neargo.shop.spi.settle.RefundRequest;
+import ai.neargo.shop.spi.settle.RefundDispatchResult;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
+import ai.neargo.shop.trade.order.refund.service.BasicRefundExecutionService;
+import ai.neargo.shop.spi.settle.RefundDispatchResult.DispatchStatus;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.user.UserIdentityPort;
 import org.springframework.beans.factory.annotation.Value;
@@ -89,6 +96,63 @@ public class SettlePortImpl implements SettlePort {
         this.gatewayRouter = gatewayRouter;
         this.identityPort = identityPort;
         this.wechatAppId = wechatAppId;
+    }
+
+    private RefundExecutionService refunds;
+    private ObjectProvider<BasicRefundExecutionService> refundExecutions;
+
+    @Autowired
+    public void setRefundExecutionService(RefundExecutionService refunds) {
+        this.refunds = refunds;
+    }
+
+    @Autowired
+    public void setRefundExecutions(ObjectProvider<BasicRefundExecutionService> refundExecutions) {
+        this.refundExecutions = refundExecutions;
+    }
+
+    @Override
+    public RefundDispatchResult settleRefund(String no, String channel, long amount, String currency, String provider) {
+        RefundDispatchResult confirmed = refunds.confirm(no, channel, amount, currency, provider);
+        if (confirmed.status() == DispatchStatus.SUCCEEDED && confirmed.executionNo() != null) {
+            try {
+                refundExecutions.getObject().applyResult(confirmed);
+            } catch (RuntimeException projectionFailure) {
+                log.warn("refund {} cash confirmed; original execution awaits projection recovery",
+                        confirmed.executionNo(), projectionFailure);
+            }
+        }
+        return confirmed;
+    }
+
+    @Override
+    public PaymentReceipt refundOrigin(String orderNo, String tradeNo, String payChannel) {
+        return refunds.origin(orderNo, tradeNo, payChannel);
+    }
+
+    @Override
+    public boolean prepareRefundReversal(SplitReversal request) {
+        return refunds.reverseUnsplit(request);
+    }
+
+    @Override
+    public boolean prepareRefundReversal(SplitReversal request, boolean zeroLiability) {
+        return refunds.reverseUnsplit(request, zeroLiability);
+    }
+
+    @Override
+    public RefundDispatchResult requestRefund(RefundRequest request) {
+        return refunds.request(request);
+    }
+
+    @Override
+    public RefundDispatchResult queryRefundExecution(String executionNo) {
+        return refunds.query(executionNo);
+    }
+
+    @Override
+    public RefundDispatchResult queryRefundExecution(RefundRequest request) {
+        return refunds.query(request);
     }
 
     @Override
@@ -191,6 +255,11 @@ public class SettlePortImpl implements SettlePort {
     @Override
     public PaymentReceipt successPayment(String orderNo) {
         return paymentLedger.successPayment(orderNo);
+    }
+
+    @Override
+    public PaymentReceipt successPayment(String orderNo, String channel, String tradeNo) {
+        return paymentLedger.successPayment(orderNo, channel, tradeNo);
     }
 
     @Override

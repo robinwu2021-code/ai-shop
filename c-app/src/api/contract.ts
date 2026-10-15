@@ -479,6 +479,8 @@ export interface ShopApi {
    * 订单从来不会是这个值，于是页签只剩「已退款」一种，处理中的一条也看不到。
    */
   afterSaleList(): Promise<AfterSale[]>;
+  /** 撤销尚未进入退款执行的售后，按售后号寻址。 */
+  cancelAfterSale(afterSaleNo: string): Promise<AfterSale>;
   fillReturnExpress(afterSaleNo: string, expressNo: string): Promise<AfterSale>;
   /** 商家驳回后上升平台裁决（B-7.4）—— 驳回不能是终点，否则用户没有退路 */
   raiseDispute(afterSaleNo: string, appeal: string): Promise<AfterSale>;

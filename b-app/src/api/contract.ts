@@ -1660,7 +1660,7 @@ export interface MerchantApi {
   mAfterSaleList(): Promise<AfterSale[]>;
   /**
    * 同意。仅退款未发货/已签收直接退，已揽收在途转「待收货后退款」；退货退款等收货（见 mConfirmReturn）。
-   * 已签收可带核定金额 `refundMinor`（部分退，AC9）与形式 `refundMode`（现金/积分，AC10）。
+   * 兼容旧参数；一期页面省略自定义金额，只申请全额现金退款，资金成功需等待确认。
    */
   mApproveAfterSale(
     afterSaleNo: string, reply: string,
@@ -1669,10 +1669,10 @@ export interface MerchantApi {
   /** 驳回**必须给理由** —— 用户据此决定要不要上升平台，没理由就是把路堵死 */
   mRejectAfterSale(afterSaleNo: string, reply: string): Promise<AfterSale>;
   /**
-   * 确认收到退货 → 随即退款（B-7.3）。
+   * 确认收到退货并准备退款；restockApproved 缺省 false，明确同意才恢复库存。
    * **退款必须在这一步之后** —— 同意即退的话，货没回来钱先出去了。
    */
-  mConfirmReturn(afterSaleNo: string): Promise<AfterSale>;
+  mConfirmReturn(afterSaleNo: string, restockApproved?: boolean): Promise<AfterSale>;
   /**
    * 在途仅退款（WAIT_RECEIPT）由商家确认退款。系统签收后只提醒，**不自动退**（TDD-订单状态机 AC8）。
    */

@@ -26619,6 +26619,13 @@
       "package": "ai.neargo.shop.inventory.entity"
     },
     {
+      "table": "inv_refund_restore",
+      "class": "InvRefundRestore",
+      "zh": "Immutable claim on the quantity of one originally committed reservation line.",
+      "module": "shop-inventory",
+      "package": "ai.neargo.shop.inventory.entity"
+    },
+    {
       "table": "inv_reservation",
       "class": "InvReservation",
       "zh": "预留：占住一批货等人来取",
@@ -27235,6 +27242,13 @@
       "package": "ai.neargo.shop.trade.order.entity"
     },
     {
+      "table": "ord_refund_execution",
+      "class": "OrdRefundExecution",
+      "zh": "The immutable refund plan survives gateway ambiguity and independent resource recovery.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.order.entity"
+    },
+    {
       "table": "ord_shipment",
       "class": "OrdShipment",
       "zh": "发货单（交易域，订单服务 2.0）。",
@@ -27490,6 +27504,13 @@
       "table": "prd_stock_lock",
       "class": "PrdStockLock",
       "zh": "库存锁定明细。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
+      "table": "prd_stock_restore",
+      "class": "PrdStockRestore",
+      "zh": "An original deduction can be restored at most once per purpose and never beyond its deducted quantity.",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
     },
@@ -29055,6 +29076,13 @@
         "name": "RESTORE",
         "value": "INV_MIRROR_RESTORE",
         "zh": "售后退回 → 进销存回补库存。",
+        "module": "shop-app"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RESTORE_ORIGINAL",
+        "value": "INV_MIRROR_RESTORE_ORIGINAL",
+        "zh": "原退款执行恢复：原库存预留事实与目的号决定入库，不重新解析当前配置。",
         "module": "shop-app"
       },
       {
@@ -33552,6 +33580,69 @@
         "module": "shop-core"
       },
       {
+        "host": "OrdRefundExecution",
+        "name": "PREPARED",
+        "value": "PREPARED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdRefundExecution",
+        "name": "PROCESSING",
+        "value": "PROCESSING",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdRefundExecution",
+        "name": "UNKNOWN",
+        "value": "UNKNOWN",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdRefundExecution",
+        "name": "FAILED",
+        "value": "FAILED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdRefundExecution",
+        "name": "SUCCEEDED",
+        "value": "SUCCEEDED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdRefundExecution",
+        "name": "REVERSAL",
+        "value": "REVERSAL",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdRefundExecution",
+        "name": "CASH",
+        "value": "CASH",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdRefundExecution",
+        "name": "PENDING",
+        "value": "PENDING",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "host": "OrdRefundExecution",
+        "name": "DONE",
+        "value": "DONE",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "OrdShipment",
         "name": "CREATED",
         "value": "CREATED",
@@ -35107,6 +35198,17 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "DispatchStatus",
+        "values": [
+          "ACCEPTED",
+          "SUCCEEDED",
+          "FAILED",
+          "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "ErrorCode",
         "values": [
           "BAD_REQUEST",
@@ -35541,6 +35643,15 @@
         ],
         "zh": "退款进度：与订单状态正交 —— 部分退款不改订单状态，只改它。",
         "module": "shop-core"
+      },
+      {
+        "name": "RestoreResult",
+        "values": [
+          "COMPLETED",
+          "PENDING"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "RevokeReason",
@@ -38603,7 +38714,7 @@
       "host": "InvMirrorEvent",
       "name": "ALL",
       "type": "Set<String>",
-      "value": "Set.of(RESERVE, COMMIT, RELEASE, RESTORE, ADJUST)",
+      "value": "Set.of(RESERVE, COMMIT, RELEASE, RESTORE, RESTORE_ORIGINAL, ADJUST)",
       "zh": "全部镜像事件。",
       "module": "shop-app"
     },
@@ -40195,7 +40306,7 @@
       "host": "ShipmentMachine",
       "name": "MACHINE",
       "type": "StateMachine<ShipmentStatus, ShipmentEvent, ShipmentContext>",
-      "value": "StateMachine.<ShipmentStatus, ShipmentEvent, ShipmentContext>builder(\"shipment\") // H1 建发货单（录运单号） .create().on(CREATE).by(MERCHANT).when(AUTHORIZED, WAYBILL_VALID, WAYBILL_FREE).to(CREATED) .emit(\"ShipmentCreated\").add() // H2 揽收（轨迹） .from(CREATED).on(PICKED_UP).by(CHANNEL).to(SHIPPED).emit(\"ShipmentPickedUp\").add() // H3 承运商签收（轨迹） .from(SHIPPED).on(SIGNED).by(CHANNEL).to(DELIVERED).emit(\"ShipmentSigned\").add() // H4 买家确认 / 自动确认收货 .from(SHIPPED, DELIVERED).on(RECEIPT_CONFIRMED).by(BUYER, SYSTEM).to(RECEIVED) .emit(\"ShipmentReceived\").add() // H5 改单号：旧单作废（新号先过与建单相同的守卫） .from(CREATED, SHIPPED).on(CORRECT_WAYBILL).by(MERCHANT).when(AUTHORIZED, WAYBILL_VALID, WAYBILL_FREE) .to(VOIDED).emit(\"ShipmentVoided\").add() // H6 未揽收前取消 .from(CREATED).on(CANCEL).by(MERCHANT).when(AUTHORIZED).to(VOIDED).emit(\"ShipmentVoided\").add() .build()",
+      "value": "StateMachine.<ShipmentStatus, ShipmentEvent, ShipmentContext>builder(\"shipment\") // H1 建发货单（录运单号） .create().on(CREATE).by(MERCHANT).when(AUTHORIZED, WAYBILL_VALID, WAYBILL_FREE).to(CREATED) .emit(\"ShipmentCreated\").add() // H2 揽收（轨迹） .from(CREATED).on(PICKED_UP).by(CHANNEL).to(SHIPPED).emit(\"ShipmentPickedUp\").add() // H3 承运商签收（轨迹） .from(SHIPPED).on(SIGNED).by(CHANNEL).to(DELIVERED).emit(\"ShipmentSigned\").add() // Actual merchant dispatch can be confirmed before a carrier pickup callback arrives. .from(CREATED).on(RECEIPT_CONFIRMED).by(BUYER, SYSTEM).when(AUTHORIZED, DISPATCHED).to(RECEIVED) .emit(\"ShipmentReceived\").add() // H4 买家确认 / 自动确认收货 .from(SHIPPED, DELIVERED).on(RECEIPT_CONFIRMED).by(BUYER, SYSTEM).to(RECEIVED) .emit(\"ShipmentReceived\").add() // H5 改单号：旧单作废（新号先过与建单相同的守卫） .from(CREATED, SHIPPED).on(CORRECT_WAYBILL).by(MERCHANT, PLATFORM) .when(AUTHORIZED, WAYBILL_VALID, WAYBILL_FREE) .to(VOIDED).emit(\"ShipmentVoided\").add() // H6 未揽收前取消 .from(CREATED).on(CANCEL).by(MERCHANT).when(AUTHORIZED).to(VOIDED).emit(\"ShipmentVoided\").add() .build()",
       "zh": "",
       "module": "shop-core"
     },

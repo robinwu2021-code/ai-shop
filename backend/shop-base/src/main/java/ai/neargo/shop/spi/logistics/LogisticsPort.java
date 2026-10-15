@@ -29,7 +29,17 @@ public interface LogisticsPort {
      * @param surface  MP / APP / H5 / BIZ / OPS
      * @param refresh  界面上点了「刷新」
      */
-    record TrackQuery(String bizType, String bizRef, String surface, boolean refresh) {
+    record TrackQuery(String bizType, String bizRef, String surface, boolean refresh, boolean cacheOnly) {
+        /** Existing callers retain dedicated trace-page correction behavior. */
+        public TrackQuery(String bizType, String bizRef, String surface, boolean refresh) {
+            this(bizType, bizRef, surface, refresh, false);
+        }
+
+        /** Ordinary details must not spend external trace query quota. */
+        public static TrackQuery cachedSubOrder(String subOrderNo, String surface) {
+            return new TrackQuery("SUB_ORDER", subOrderNo, surface, false, true);
+        }
+
 
         public static TrackQuery subOrder(String subOrderNo, String surface, boolean refresh) {
             return new TrackQuery("SUB_ORDER", subOrderNo, surface, refresh);

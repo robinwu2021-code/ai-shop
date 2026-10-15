@@ -30,9 +30,9 @@ public final class PhaseOnePointsPolicy {
 
     /** Immutable snapshots select the historical read path without querying points for new cash orders. */
     public static boolean hasHistoricalPoints(OrdSubOrder order) {
-        return order != null && ((order.getPointsDeduct() != null && order.getPointsDeduct() > 0)
-                || (order.getPointsDeductMinor() != null && order.getPointsDeductMinor() > 0)
-                || (order.getPointsFeeMinor() != null && order.getPointsFeeMinor() > 0)
+        return order != null && ((order.getPointsDeduct() != null && order.getPointsDeduct() != 0)
+                || (order.getPointsDeductMinor() != null && order.getPointsDeductMinor() != 0)
+                || (order.getPointsFeeMinor() != null && order.getPointsFeeMinor() != 0)
                 || Boolean.TRUE.equals(order.getPointsGranted()));
     }
 }

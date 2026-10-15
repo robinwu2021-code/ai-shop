@@ -93,7 +93,7 @@ public class WechatPayGateway extends AbstractPayGateway {
         body.put("amount", Map.of(
                 "refund", amountMinor,
                 "total", ctx.totalMinor(),
-                "currency", "CNY"));
+                "currency", ctx.currency()));
         return new Call(WechatApis.REFUND, body, "refund_id");
     }
 

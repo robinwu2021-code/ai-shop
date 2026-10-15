@@ -2,6 +2,8 @@ package ai.neargo.shop.pay.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.mapper.SettleMappers;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
@@ -29,6 +31,9 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     @Transactional("payTxManager")
     public String open(SettlePort.PaymentOpen cmd) {
+        if (successPayment(cmd.orderNo()) != null) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         /*
          * **幂等的粒度是「这个订单有没有未终态的收款」**，不是「这个单号落过没有」。
          *
@@ -386,6 +391,17 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
                 Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getDirection, StlPayment.PAY)
                         .eq(StlPayment::getOrderNo, orderNo).eq(StlPayment::getStatus, StlPayment.SUCCESS)
                         .orderByDesc(StlPayment::getId).last("LIMIT 1")));
+        return receipt(p);
+    }
+
+    @Override
+    public SettlePort.PaymentReceipt successPayment(String orderNo, String channel, String tradeNo) {
+        if (tradeNo == null || tradeNo.isBlank()) { return null; }
+        StlPayment p = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getDirection, StlPayment.PAY)
+                        .eq(StlPayment::getOrderNo, orderNo).eq(StlPayment::getStatus, StlPayment.SUCCESS)
+                        .eq(channel != null, StlPayment::getPayChannel, channel)
+                        .eq(StlPayment::getTradeNo, tradeNo).last("LIMIT 1")));
         return receipt(p);
     }
 

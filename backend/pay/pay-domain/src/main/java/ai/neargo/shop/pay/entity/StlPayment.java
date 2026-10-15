@@ -55,6 +55,9 @@ public class StlPayment extends BaseEntity {
     /** 仅 REFUND：对应售后单。部分退款会有多条，各自一次通道调用。 */
     private String afterSaleNo;
 
+    private String refundExecutionNo;
+    private String originPaymentNo;
+
     private String userNo;
 
     /** 仅 PAYOUT：打给哪个商家。收款与退款的对手方是用户，不填。 */

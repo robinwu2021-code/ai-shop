@@ -3,6 +3,7 @@ package ai.neargo.shop.scenario;
 import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.CashReceiptFixture;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.product.entity.PrdSku;
@@ -40,8 +41,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @ActiveProfiles("test")
 class M5AfterSaleFlowTest {
-
-    private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
@@ -96,10 +95,6 @@ class M5AfterSaleFlowTest {
     @Autowired
     private ai.neargo.shop.pay.SettleService settleService;
 
-    /** M7 之后 SettlePort 是真实实现；失败注入下沉到**注定被替换的**通道桩上。 */
-    @Autowired
-    private ai.neargo.shop.pay.StubSplitGateway splitGateway;
-
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity())
@@ -144,6 +139,7 @@ class M5AfterSaleFlowTest {
         String biz = loginAsOwnerOf("M0001", "13200132002");
 
         approve(biz, asNo);
+        new CashReceiptFixture(context).confirmRefund(asNo);
 
         String body = detail(o.userToken, asNo);
         JsonNode data = json.readTree(body).get("data");
@@ -196,9 +192,7 @@ class M5AfterSaleFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(orderBody).get("data").get("payOrderNo").asString();
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-m5-refund\","
-                        + "\"sign\":\"" + STUB_SECRET + "\"}"));
+        new CashReceiptFixture(context).pay(token, payOrderNo);
         assertThat(couponStatusOf(token, userCouponNo)).isEqualTo("USED");
 
         String subNo = json.readTree(orderBody).get("data").get("subOrders").get(0)
@@ -206,6 +200,7 @@ class M5AfterSaleFlowTest {
         String asNo = mvcApply(token, subNo);
         String biz = loginAsOwnerOf("M0001", "13200132501");
         approve(biz, asNo);
+        new CashReceiptFixture(context).confirmRefund(asNo);
 
         /*
          * **整单退完，券要回到券包**（执行计划 B6，用户 2026-09-21 拍板）。
@@ -232,12 +227,19 @@ class M5AfterSaleFlowTest {
     @DisplayName("一期历史赠分订单退款待人工处理，不能伪造积分已清理")
     void historicalPointsRefundRequiresManualResolution() throws Exception {
         Ordered o = placeAndPay("13200132510", 6980L);
+        assertThat(jdbc.queryForObject("select status from stl_payment where order_no=? and direction='PAY'",
+                String.class, o.payOrderNo)).isEqualTo("SUCCESS");
         jdbc.update("update ord_sub_order set points_granted=true where sub_order_no=?", o.subOrderNo);
-        String asNo = applyAfterSale(o, "REFUND_ONLY", "历史赠分待核对");
-        String body = approveWith(loginAsOwnerOf("M0001", "13200132511"), asNo, "{}");
-        assertThat(json.readTree(body).get("code").asInt()).isEqualTo(20014);
-        assertThat(json.readTree(detail(o.userToken, asNo)).get("data").get("status").asString())
-                .isEqualTo(OrdAfterSale.APPLIED);
+        mvc().perform(post("/mp/order/" + o.subOrderNo + "/after-sale")
+                        .header("Authorization", "Bearer " + o.userToken).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"REFUND_ONLY\",\"reason\":\"历史赠分待核对\"}"))
+                .andExpect(jsonPath("$.code").value(20014));
+        assertThat(jdbc.queryForObject("select count(*) from ord_after_sale where sub_order_no=?",
+                Long.class, o.subOrderNo)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from ord_refund_execution where sub_order_no=?",
+                Long.class, o.subOrderNo)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from stl_payment where order_no=? and direction='REFUND'",
+                Long.class, o.payOrderNo)).isZero();
         assertThat(jdbc.queryForObject("select points_granted from ord_sub_order where sub_order_no=?",
                 Boolean.class, o.subOrderNo)).isTrue();
         assertThat(jdbc.queryForObject("select coalesce(refunded_minor,0) from ord_sub_order where sub_order_no=?",
@@ -371,9 +373,7 @@ class M5AfterSaleFlowTest {
                                 + "\"usePoints\":" + usePoints + "}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString()).get("data");
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + order.get("payOrderNo").asString()
-                        + "\",\"transactionId\":\"TX-" + idem + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        new CashReceiptFixture(context).pay(token, order.get("payOrderNo").asString());
         return order.get("subOrders").get(0).get("orderNo").asString();
     }
 
@@ -480,11 +480,14 @@ class M5AfterSaleFlowTest {
 
         // 让分账回退失败：此时**绝不能退款**
         prepareSplit(o.subOrderNo);
-        splitGateway.failNext(o.subOrderNo);
         mvc().perform(post("/biz/after-sale/" + asNo + "/approve").header("Authorization", "Bearer " + biz))
-                .andExpect(jsonPath("$.code").value(50002));
+                .andExpect(jsonPath("$.code").value(0));
 
-        // 停在 REFUNDING 等重试，而不是「退款成功」
+        assertThat(jdbc.queryForObject("select error_code from ord_refund_execution where after_sale_no=?",
+                String.class, asNo)).isEqualTo("REVERSE_UNCONFIRMED");
+        assertThat(jdbc.queryForObject("select count(*) from stl_payment where after_sale_no=?"
+                + " and direction='REFUND'", Integer.class, asNo)).isZero();
+        // 实际已分账但无已确认回退能力：保留原执行异常，不能伪造成功。
         assertThat(json.readTree(detail(o.userToken, asNo)).get("data").get("status").asString())
                 .isNotEqualTo("REFUNDED");
     }
@@ -603,12 +606,14 @@ class M5AfterSaleFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 未发货 / 已签收审核通过 → 立即退款（AC8）")
+    @DisplayName("未发货 / 已签收审核通过先受理，实际资金确认后完成")
     void approve_refunds_immediately_when_unshipped_or_signed() throws Exception {
         // 未发货（NOT_PREPARED）
         Ordered a = placeAndPay("13200132612", 6980L);
         String asA = applyAfterSale(a, "REFUND_ONLY", "不想要了");
         approve(loginAsOwnerOf("M0001", "13200132613"), asA);
+        assertThat(asStatus(a.userToken, asA)).isEqualTo(OrdAfterSale.REFUNDING);
+        new CashReceiptFixture(context).confirmRefund(asA);
         assertThat(asStatus(a.userToken, asA)).as("未发货，可直接退").isEqualTo(OrdAfterSale.REFUNDED);
 
         // 已签收（RECEIVED）
@@ -616,6 +621,8 @@ class M5AfterSaleFlowTest {
         String asB = applyAfterSale(b, "REFUND_ONLY", "不想要了");
         setSubStage(b.subOrderNo, OrdSubOrder.COMPLETED, null);
         approve(loginAsOwnerOf("M0001", "13200132615"), asB);
+        assertThat(asStatus(b.userToken, asB)).isEqualTo(OrdAfterSale.REFUNDING);
+        new CashReceiptFixture(context).confirmRefund(asB);
         assertThat(asStatus(b.userToken, asB)).as("已签收，货到手，可直接退").isEqualTo(OrdAfterSale.REFUNDED);
     }
 
@@ -636,7 +643,8 @@ class M5AfterSaleFlowTest {
 
         mvc().perform(post("/biz/after-sale/" + asNo + "/confirm-refund").header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.status").value("REFUNDED"));
+                .andExpect(jsonPath("$.data.status").value("REFUNDING"));
+        new CashReceiptFixture(context).confirmRefund(asNo);
     }
 
     @Test
@@ -794,7 +802,8 @@ class M5AfterSaleFlowTest {
                 .andExpect(jsonPath("$.data.returnExpressNo").value("SF123"));
 
         mvc().perform(post("/biz/after-sale/" + asNo + "/receive").header("Authorization", "Bearer " + biz))
-                .andExpect(jsonPath("$.data.status").value("REFUNDED"));
+                .andExpect(jsonPath("$.data.status").value("REFUNDING"));
+        new CashReceiptFixture(context).confirmRefund(asNo);
     }
 
     @Test
@@ -862,7 +871,7 @@ class M5AfterSaleFlowTest {
                         .header("Authorization", "Bearer " + o.userToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"type\":\"REFUND_ONLY\",\"reason\":\"多退点\",\"refundMinor\":999999}"))
-                .andExpect(jsonPath("$.code").value(10400));
+                .andExpect(jsonPath("$.code").value(20011));
     }
 
     @Test
@@ -1009,6 +1018,7 @@ class M5AfterSaleFlowTest {
         Ordered o = placeAndPay("13200132080", 6980L);
         assertThat(stockOf("SK0003")).as("支付成功先扣掉").isEqualTo(before - 1);
 
+        shipPickedUp(o.subOrderNo);
         String asNo = applyAfterSale(o, "RETURN_REFUND", "不合适");
         String biz = loginAsOwnerOf("M0001", "13200132081");
         approve(biz, asNo);
@@ -1017,8 +1027,10 @@ class M5AfterSaleFlowTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"expressCompany\":\"顺丰\",\"expressNo\":\"SF-RS-1\"}"));
         mvc().perform(post("/biz/after-sale/" + asNo + "/receive")
-                        .header("Authorization", "Bearer " + biz))
-                .andExpect(jsonPath("$.data.status").value("REFUNDED"));
+                        .header("Authorization", "Bearer " + biz).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"restockApproved\":true}"))
+                .andExpect(jsonPath("$.data.status").value("REFUNDING"));
+        new CashReceiptFixture(context).confirmRefund(asNo);
 
         /*
          * 货回到店里了，库存必须回到下单前。
@@ -1035,8 +1047,13 @@ class M5AfterSaleFlowTest {
         int before = stockOf("SK0003");
 
         Ordered o = placeAndPay("13200132082", 6980L);
+        shipPickedUp(o.subOrderNo);
         String asNo = applyAfterSale(o, "REFUND_ONLY", "不想要了");
-        approve(loginAsOwnerOf("M0001", "13200132083"), asNo);
+        String biz = loginAsOwnerOf("M0001", "13200132083");
+        approve(biz, asNo);
+        mvc().perform(post("/biz/after-sale/" + asNo + "/confirm-refund")
+                .header("Authorization", "Bearer " + biz)).andExpect(jsonPath("$.code").value(0));
+        new CashReceiptFixture(context).confirmRefund(asNo);
 
         assertThat(stockOf("SK0003")).as("仅退款不回补").isEqualTo(before - 1);
     }
@@ -1064,25 +1081,27 @@ class M5AfterSaleFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 已签收商家核定部分金额 → 退部分（AC9）")
+    @DisplayName("一期已签收也不接受新增部分退款")
     void merchant_partial_amount_after_receipt() throws Exception {
         Ordered o = placeAndPay("13200132620", 6980L);            // 实付 6980
         String asNo = applyAfterSale(o, "REFUND_ONLY", "少量破损");
         setSubStage(o.subOrderNo, OrdSubOrder.COMPLETED, null);    // 已签收
-        approveWith(loginAsOwnerOf("M0001", "13200132621"), asNo, "{\"refundMinor\":3000}");
+        String response = approveWith(loginAsOwnerOf("M0001", "13200132621"), asNo,
+                "{\"refundMinor\":3000}");
+        assertThat(json.readTree(response).path("code").asInt()).isEqualTo(20011);
 
         JsonNode data = json.readTree(detail(o.userToken, asNo)).get("data");
-        assertThat(data.get("status").asString()).isEqualTo("REFUNDED");
-        assertThat(data.get("approvedMinor").asLong()).as("核定额留痕").isEqualTo(3000L);
+        assertThat(data.get("status").asString()).isEqualTo("APPLIED");
+        assertThat(data.path("approvedMinor").isNull()).isTrue();
     }
 
     @Test
-    @DisplayName("★★★ 未签收不能核定部分金额（AFTERSALE_PARTIAL_NEED_RECEIPT 20010）")
+    @DisplayName("一期未签收不接受新增部分退款（20011）")
     void partial_before_receipt_rejected() throws Exception {
         Ordered o = placeAndPay("13200132622", 6980L);            // 未发货 NOT_PREPARED
         String asNo = applyAfterSale(o, "REFUND_ONLY", "不想要了");
         String body = approveWith(loginAsOwnerOf("M0001", "13200132623"), asNo, "{\"refundMinor\":3000}");
-        assertThat(json.readTree(body).get("code").asInt()).isEqualTo(20010);
+        assertThat(json.readTree(body).get("code").asInt()).isEqualTo(20011);
     }
 
     @Test
@@ -1158,9 +1177,7 @@ class M5AfterSaleFlowTest {
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
 
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-m5-" + phone
-                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        new CashReceiptFixture(context).pay(token, payOrderNo);
 
         String list = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();

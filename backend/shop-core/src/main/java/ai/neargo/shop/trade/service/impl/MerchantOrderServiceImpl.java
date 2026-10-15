@@ -208,7 +208,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                                     n.latE6(), n.lngE6())).toList()))
                     .orElse(null);
         }
-        return logisticsPort.track(LogisticsPort.TrackQuery.subOrder(sub.getSubOrderNo(), "BIZ", false))
+        return logisticsPort.track(LogisticsPort.TrackQuery.cachedSubOrder(sub.getSubOrderNo(), "BIZ"))
                 .map(v -> new OrderVO.Trace(v.status(),
                                 v.nodes().stream().map(n -> new OrderVO.Trace.Node(n.at(), n.text(),
                                         n.location(), n.latE6(), n.lngE6())).toList(),

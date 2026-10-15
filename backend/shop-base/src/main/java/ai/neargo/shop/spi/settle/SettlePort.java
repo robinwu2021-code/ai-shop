@@ -10,6 +10,46 @@ package ai.neargo.shop.spi.settle;
  * <p>因此这个 Port 刻意**不提供「一步退款」的方法**：调用方拿不到那个捷径。
  */
 public interface SettlePort {
+    /** Financial success is independent of whether an older refund has a trade execution reference. */
+    default RefundDispatchResult settleRefund(String outRefundNo, String payChannel, long amountMinor,
+                                              String currency, String providerNo) {
+        return new RefundDispatchResult(null, null, RefundDispatchResult.DispatchStatus.FAILED,
+                "REFUND_ADAPTER_UNAVAILABLE", false, null);
+    }
+
+    /** Refund-only lookup uses the cash receipt actually applied to the payment order. */
+    default PaymentReceipt refundOrigin(String orderNo, String tradeNo, String payChannel) {
+        return null;
+    }
+
+    /** Confirm a local, unsplit adjustment; an unconfirmed external reversal must return false. */
+    default boolean prepareRefundReversal(SplitReversal request) {
+        return false;
+    }
+
+    /** The trusted frozen child may prove zero liabilities; absence of a bill alone never proves that. */
+    default boolean prepareRefundReversal(SplitReversal request, boolean zeroLiability) {
+        return prepareRefundReversal(request);
+    }
+
+    /** Send or recover one durable instruction, never infer success from a returned number. */
+    default RefundDispatchResult requestRefund(RefundRequest request) {
+        return new RefundDispatchResult(request.executionNo(), null,
+                RefundDispatchResult.DispatchStatus.FAILED, "REFUND_ADAPTER_UNAVAILABLE", false, null);
+    }
+
+    /** Query the original refund instruction after a timeout or restart. */
+    default RefundDispatchResult queryRefundExecution(String executionNo) {
+        return new RefundDispatchResult(executionNo, null,
+                RefundDispatchResult.DispatchStatus.UNKNOWN, "REFUND_ADAPTER_UNAVAILABLE", false, null);
+    }
+
+    /** Verify the immutable original instruction before exposing any financial success to the order. */
+    default RefundDispatchResult queryRefundExecution(RefundRequest request) {
+        return new RefundDispatchResult(request.executionNo(), null,
+                RefundDispatchResult.DispatchStatus.UNKNOWN, "REFUND_ADAPTER_UNAVAILABLE", false, null);
+    }
+
 
     /**
      * 回退该子单的分账。
@@ -105,6 +145,9 @@ public interface SettlePort {
 
     /** Financial facts only; implementations must not infer success from an order projection. */
     default PaymentReceipt successPayment(String orderNo) { return null; }
+
+    /** Exact confirmed attempt; callbacks must not select another attempt's successful cash. */
+    default PaymentReceipt successPayment(String orderNo, String channel, String tradeNo) { return null; }
 
     /** Exact initiated channel reference, used by the explicitly enabled development callback. */
     default PaymentReceipt paymentByOutTradeNo(String outTradeNo) { return null; }

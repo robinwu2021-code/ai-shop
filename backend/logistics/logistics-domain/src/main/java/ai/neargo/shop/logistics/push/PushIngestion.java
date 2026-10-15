@@ -12,6 +12,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
+import ai.neargo.shop.spi.logistics.ShipmentSourcePort;
+import java.util.Objects;
+import ai.neargo.shop.logistics.domain.WaybillSourceIdentity;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,6 +41,10 @@ public class PushIngestion {
     private final ChannelRouter router;
     private final WaybillProgress progress;
     private final LongSupplier clock;
+    private ShipmentSourcePort source;
+
+    @Autowired
+    public void setShipmentSourcePort(ShipmentSourcePort source) { this.source = source; }
 
     @Autowired
     public PushIngestion(WaybillMapper waybills, ChannelRouter router, WaybillProgress progress) {
@@ -61,7 +69,7 @@ public class PushIngestion {
         }
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Outcome ingest(String channel, PushReceiver.Parsed p, String raw) {
         if (!p.verified()) {
             log.warn("[lgs-push] {} 验签失败，丢弃", channel);
@@ -75,11 +83,24 @@ public class PushIngestion {
             log.warn("[lgs-push] {} 推来的单号 {} 找不到（或不是在这家订阅的），丢弃", channel, p.waybillNo());
             return Outcome.UNKNOWN_WAYBILL;
         }
+        if (w.getSourceShipmentNo() != null && (source == null
+                || !WaybillSourceIdentity.matches(w, source.identityOf(w.getBizRef()).orElse(null)))) {
+            return Outcome.UNKNOWN_WAYBILL;
+        }
+        String incomingCarrier = router.carrierOf(channel, p.channelCarrierCode()).orElse(null);
+        if (incomingCarrier == null || !Objects.equals(incomingCarrier, w.getCarrier())) {
+            String correctedFrom = p.correctedFrom() == null ? null
+                    : router.carrierOf(channel, p.correctedFrom()).orElse(null);
+            if (incomingCarrier == null || !Objects.equals(w.getCarrier(), correctedFrom)) {
+                return Outcome.UNKNOWN_WAYBILL;
+            }
+        }
         LgsWaybill patch = LgsWaybill.patch(w.getId());
         if (p.correctedFrom() != null) {
             router.carrierOf(channel, p.channelCarrierCode()).filter(c -> !c.equals(w.getCarrier())).ifPresent(c -> {
                 log.info("[lgs-push] {} 渠道把承运商从 {} 纠正为 {}", w.getShipmentNo(), w.getCarrier(), c);
-                patch.setCarrierCorrectedFrom(w.getCarrier());
+                patch.setCarrierCorrectedFrom(w.getCarrierCorrectedFrom() == null
+                        ? w.getCarrier() : w.getCarrierCorrectedFrom());
                 patch.setCarrier(c);
             });
         }

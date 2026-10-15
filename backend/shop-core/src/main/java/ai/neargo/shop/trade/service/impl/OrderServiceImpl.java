@@ -21,6 +21,8 @@ import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
 import ai.neargo.shop.trade.order.service.receipt.OrderReceiptCompleter;
+import ai.neargo.shop.trade.order.service.OrderReceiptService;
+import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.contract.CancellationImpact;
 import ai.neargo.shop.trade.order.policy.PaymentImpactPolicy;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -197,6 +199,12 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderReceiptCompleter receiptCompleter;
+    private OrderReceiptService receipts;
+
+    @Autowired
+    public void setReceipts(OrderReceiptService receipts) {
+        this.receipts = receipts;
+    }
     private PaymentImpactPolicy paymentImpact;
 
     @Autowired
@@ -1693,6 +1701,10 @@ public class OrderServiceImpl implements OrderService {
         if (!OrdOrder.WAIT_PAY.equals(order.getStatus())) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
+        if (settlePort.successPayment(orderNo) != null
+                || paymentResolutions.view(orderNo, order.getUserNo()) != null) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         if (order.getPayDeadlineAt() != null && order.getPayDeadlineAt() < System.currentTimeMillis()) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
@@ -2107,7 +2119,7 @@ public class OrderServiceImpl implements OrderService {
          * 而接口全绿、日志干净。详情与 /trace 从此同源。
          *
          * refresh=false：**读路径不主动问渠道**，买家反复下拉打不穿配额、不花钱。
-         * （LogisticsPortImpl 内部对微信那条有 10 分钟 TTL 的自动校正，那是它的事。）
+         * 专门物流页仍保留微信 10 分钟 TTL 校正；普通详情只读缓存。
          * 端（MP / APP / H5）由 Controller 读 X-Client 传进来，不在这儿读 request。
          *
          * ful_shipment 那套保留给运营列表与兜底；logisticsPort 缺失的装配回落到它，
@@ -2117,7 +2129,7 @@ public class OrderServiceImpl implements OrderService {
             return legacyTraceOf(sub, surface);
         }
         return logisticsPort.track(ai.neargo.shop.spi.logistics.LogisticsPort.TrackQuery
-                        .subOrder(sub.getSubOrderNo(), surface, false))
+                        .cachedSubOrder(sub.getSubOrderNo(), surface))
                 .map(OrderServiceImpl::toTraceVO)
                 .orElse(null);
     }
@@ -2378,19 +2390,9 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderVO confirmReceipt(String subOrderNo) {
-        OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
-                .eq(OrdSubOrder::getSubOrderNo, subOrderNo)
-                .eq(OrdSubOrder::getUserNo, SecurityUtils.currentUserNo())
-                .last("limit 1"));
-        if (sub == null) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
-        statusWriter.order(sub, OrderEvent.RECEIPT_CONFIRMED, Actor.BUYER, SecurityUtils.currentUserNo(),
-                "已确认收货", OrderContext.authorizedOnly());
-        // 签收触发「待收货后退款」：货在途时审过的仅退款单，此刻按约定退（AC7 出口①）
-        afterSaleService.settleOnReceipt(subOrderNo);
+        receipts.confirmCurrent(subOrderNo, OrderActor.buyer(SecurityUtils.currentUserNo()));
         return detail(subOrderNo, null);
     }
 
@@ -2499,60 +2501,9 @@ public class OrderServiceImpl implements OrderService {
         if (shipped.isEmpty()) {
             return 0;
         }
-        List<String> subNos = shipped.stream().map(OrdSubOrder::getSubOrderNo).toList();
-
-        /*
-         * 发货时间取「进入 FULFILLING 那条流水的 at」——
-         * `ord_sub_order` 上**没有发货时间字段**（只有 created_at / updated_at），
-         * 而 updated_at 会被之后任何一次改动刷新，拿它当发货时间会让单子永远不到期。
-         */
-        Map<String, Long> shippedAt = DataScopeContext.executeWithoutScope(() ->
-                        statusLogMapper.selectList(Wrappers.<OrdStatusLog>lambdaQuery()
-                                .in(OrdStatusLog::getSubOrderNo, subNos)
-                                .eq(OrdStatusLog::getStatus, OrdSubOrder.FULFILLING)))
-                .stream()
-                .collect(Collectors.toMap(OrdStatusLog::getSubOrderNo,
-                        x -> x.getAt() == null ? Long.MAX_VALUE : x.getAt(),
-                        Math::max));
-
-        java.util.Set<String> blocked = DataScopeContext.executeWithoutScope(() ->
-                        afterSaleMapper.selectList(Wrappers.<ai.neargo.shop.trade.entity.OrdAfterSale>lambdaQuery()
-                                .in(ai.neargo.shop.trade.entity.OrdAfterSale::getSubOrderNo, subNos)
-                                .in(ai.neargo.shop.trade.entity.OrdAfterSale::getStatus, AFTER_SALE_OPEN)))
-                .stream()
-                .map(ai.neargo.shop.trade.entity.OrdAfterSale::getSubOrderNo)
-                .collect(Collectors.toSet());
-
-        /*
-         * ★ 判据从「发货后 N 天」扩成「**签收后 N 天 或 发货后 M 天，先到者为准**」（批 C）。
-         *
-         * 行业惯例（淘宝/拼多多）是签收后 7 天，而签收回传此前没有，所以上一版退到发货后 15 天。
-         * 现在 ful_shipment.signed_at 有了，但**不是直接换掉**：换掉的话
-         * 「第 10 天才签收」的单会从第 15 天推迟到第 17 天 —— 状态机的改动把某些单的
-         * 完成时间往后推，那是在动钱的到账时间。取先到者保证**没有任何一单比今天等得更久**。
-         *
-         * 查不到签收时间（自提已排除；快递里承运商没回传、或还没签收）一律走发货判据。
-         */
-        long shipDeadline = now - (long) shippedDays * 86_400_000L;
-        long signDeadline = signedDays > 0 ? now - (long) signedDays * 86_400_000L : Long.MIN_VALUE;
-        Map<String, Long> signedAt = signedDays > 0 && shipmentTracePort != null
-                ? shipmentTracePort.signedAtOf(subNos) : Map.of();
+        // Each child transaction re-reads all current package deadlines and after-sale facts.
         int n = 0;
         for (OrdSubOrder sub : shipped) {
-            if (blocked.contains(sub.getSubOrderNo())) {
-                continue;
-            }
-            /*
-             * 查不到发货流水的按 MAX_VALUE 处理 = 永不到期。
-             * 宁可多等：没有流水说明状态是被别的路径改的，那种单自动签收的风险更高。
-             */
-            Long at = shippedAt.get(sub.getSubOrderNo());
-            Long signed = signedAt.get(sub.getSubOrderNo());
-            boolean bySigned = signed != null && signed <= signDeadline;
-            boolean byShipped = at != null && at <= shipDeadline;
-            if (!bySigned && !byShipped) {
-                continue;
-            }
             try {
                 if (receiptCompleter.completeAuto(sub.getSubOrderNo(), now, shippedDays, signedDays)) {
                     n++;

@@ -2,7 +2,12 @@ package ai.neargo.shop.paybridge;
 
 import ai.neargo.shop.pay.entity.StlReconDiff;
 import ai.neargo.shop.pay.service.ReconService;
+import ai.neargo.shop.pay.service.RefundExecutionService;
 import ai.neargo.shop.spi.trade.OrderRepairPort;
+import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.RefundDispatchResult.DispatchStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.util.Objects;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -46,6 +51,12 @@ public class PaymentReconReconciler {
     private final OrderRepairPort orderRepair;
     /** 退款行的终态写在支付域自己的账上，不经订单域 */
     private final ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger;
+    private RefundExecutionService refunds;
+
+    @Autowired
+    public void setRefunds(RefundExecutionService refunds) {
+        this.refunds = refunds;
+    }
 
     /**
      * 「这个渠道全部判不了」持续期间，隔多久重述一次。
@@ -156,7 +167,15 @@ public class PaymentReconReconciler {
                 if (f.paidOnChannel()) {
                     // 钱确实退出去了 —— 把退款流水推到终态。这是这条轴唯一该对退款做的事
                     try {
-                        paymentLedger.markRefundSettled(f.paymentNo(), f.channelTradeNo());
+                        var confirmation = refunds.confirm(f.outTradeNo(), f.payChannel(),
+                                f.channelAmountMinor(), f.channelCurrency(), f.channelTradeNo());
+                        if (confirmation.status() != DispatchStatus.SUCCEEDED || confirmation.paymentNo() == null) {
+                            recon.recordFinding(f, StlReconDiff.PLATFORM_ONLY,
+                                    "退款回执与原冻结请求不符，需核对：" + confirmation.errorCode());
+                            deferred++;
+                            c[3]++;
+                            continue;
+                        }
                         repaired++;
                         c[1]++;
                     } catch (RuntimeException e) {
@@ -190,6 +209,12 @@ public class PaymentReconReconciler {
             if (f.paidOnChannel()) {
                 String note;
                 try {
+                    String settledOrder = paymentLedger.settle(new SettlePort.PaymentSettled(
+                            f.outTradeNo(), f.payChannel(), f.channelTradeNo(),
+                            f.channelAmountMinor(), now, f.channelCurrency()));
+                    if (!Objects.equals(f.orderNo(), settledOrder) || settledOrder == null) {
+                        throw new IllegalStateException("Original payment receipt could not be claimed");
+                    }
                     orderRepair.markPaid(f.orderNo(), f.payChannel(), f.channelTradeNo());
                     repaired++;
                     c[1]++;

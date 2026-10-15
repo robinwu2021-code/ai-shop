@@ -214,6 +214,7 @@ export const httpApi: ShopApi = {
 
   afterSaleReasons: () => call<AfterSaleReason[]>("afterSaleReasons"),
   afterSaleList: () => call<AfterSale[]>("afterSaleList"),
+  cancelAfterSale: (afterSaleNo) => call<AfterSale>("cancelAfterSale", { afterSaleNo }, {}),
   orderPreview: (req) => http.post<OrderPreview>(ENDPOINTS.orderPreview.path, req),
   orderCapability: (req) => http.post<CheckoutCapability>(ENDPOINTS.orderCapability.path, req),
 

@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.entity.OrdShipment;
 import ai.neargo.shop.trade.order.machine.shipment.ShipmentContext;
@@ -64,13 +65,18 @@ public class MybatisShipmentWriteStore implements ShipmentWriteStore {
 
     @Override
     public void supersede(OrdShipment old, String replacement, Operator operator) {
-        statuses.shipment(old, ShipmentEvent.CORRECT_WAYBILL, Actor.MERCHANT, operator.no(),
-                "商家改快递单号：" + old.getWaybillNo(), ShipmentContext.ok());
+        supersede(old, replacement, operator, "商家更正运单");
+    }
+
+    @Override
+    public void supersede(OrdShipment old, String replacement, Operator operator, String reason) {
+        Actor actor = OrdStatusLog.BY_PLATFORM.equals(operator.type()) ? Actor.PLATFORM : Actor.MERCHANT;
+        statuses.shipment(old, ShipmentEvent.CORRECT_WAYBILL, actor, operator.no(), reason, ShipmentContext.ok());
         requireOne(DataScopeContext.executeWithoutScope(() -> shipments.update(null,
                 Wrappers.<OrdShipment>lambdaUpdate().eq(OrdShipment::getId, old.getId())
                         .eq(OrdShipment::getVersion, old.getVersion())
                         .set(OrdShipment::getVoidedAt, System.currentTimeMillis())
-                        .set(OrdShipment::getVoidReason, "商家更正运单")
+                        .set(OrdShipment::getVoidReason, reason)
                         .set(OrdShipment::getSupersededBy, replacement))));
     }
 

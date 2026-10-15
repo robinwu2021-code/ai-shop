@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import ai.neargo.shop.logistics.domain.WaybillSourceIdentity;
 
 /**
  * 按一个探测渠道问一次运单、把答案应用到运单上 —— 物流页读时校正（M7）与补偿作业（M8）<b>共用这一份</b>。
@@ -63,7 +64,7 @@ public class WaybillProber {
             log.warn("[lgs-probe] {} 问 {} 失败：{}", w.getShipmentNo(), p.channel(), e.toString());
         }
         if (patch.getWxStatusCheckedAt() != null) {
-            waybills.updateById(patch);
+            waybills.update(patch, WaybillSourceIdentity.unchanged(w));
         }
         return new Outcome(false, false);
     }

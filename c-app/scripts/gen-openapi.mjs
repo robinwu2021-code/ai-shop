@@ -121,7 +121,8 @@ if (Object.keys(renamed).length) {
 /** 契约方法 → 响应类型名。手工维护，因为 TS 的返回类型没法在运行时反射出来 */
 const RESPONSE_TYPES = {
   confirmGroupBatch: "Order[]",
-  fillReturnExpress: "Order",
+  cancelAfterSale: "AfterSale",
+  fillReturnExpress: "AfterSale",
   frequentItems: "FrequentItem[]",
   groupPickupOrders: "Order[]",
   myHostedGroups: "GroupBuy[]",
@@ -133,7 +134,7 @@ const RESPONSE_TYPES = {
   payMethods: "PayMethodList",
   promotedGoods: "Goods[]",
   promotedMerchants: "Merchant[]",
-  raiseDispute: "Order",
+  raiseDispute: "AfterSale",
   reorderFrom: "ReorderResult",
   storeHome: "StoreHome",
   storeGoods: "PageResult<Goods>",
@@ -211,7 +212,7 @@ const RESPONSE_TYPES = {
   orderDetail: "Order",
   orderTrace: "ShipmentTrace",
   cancelOrder: "Order",
-  applyAfterSale: "Order",
+  applyAfterSale: "AfterSale",
   couponList: "Coupon[]",
   myCoupons: "UserCoupon[]",
   couponBest: "CouponBestResult",

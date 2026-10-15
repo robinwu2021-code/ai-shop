@@ -251,7 +251,10 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
             if (!"SUCCESS".equals(status)) {
                 return QueryResult.unpaid();
             }
-            return QueryResult.paid(refundAmountOf(resp), String.valueOf(resp.get("refund_id")));
+            String provider = resp.get("refund_id") instanceof String value ? value : null;
+            String currency = resp.get("amount") instanceof Map<?, ?> amount
+                    && amount.get("currency") instanceof String value ? value : null;
+            return new QueryResult(true, true, true, refundAmountOf(resp), provider, currency);
         } catch (ChannelClient.ChannelException e) {
             if (notExist(e.getMessage(), "RESOURCE_NOT_EXISTS")) {
                 return QueryResult.notFound();
@@ -322,7 +325,7 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
         body.put("amount", Map.of(
                 "refund", amountMinor,
                 "total", ctx.totalMinor(),
-                "currency", DEFAULT_CURRENCY));
+                "currency", ctx.currency()));
         return new Call(WechatDirectApis.REFUND, body, "refund_id");
     }
 

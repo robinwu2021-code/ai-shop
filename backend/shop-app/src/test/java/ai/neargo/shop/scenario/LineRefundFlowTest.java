@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.CashReceiptFixture;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,34 +45,32 @@ class LineRefundFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 3 件先退 1 件：订单状态不变、进度 PARTIAL、结算单仍待分账；再退剩下 2 件：REFUNDED、两笔退款流水各挂各的售后单")
-    void partialThenRest() throws Exception {
+    @DisplayName("一期拒绝新增部分退款；全子单退款确认到账后一次记完整件数")
+    void partialRejectedThenFullConfirmedOnce() throws Exception {
         String token = TestLogin.consumer(mvc(), json, otpStore, "13400155001");
-        String sub = buy(token, 3, "line-partial");
-        long itemId = jdbc.queryForObject("select id from ord_item where sub_order_no = ?", Long.class, sub);
-        long share = jdbc.queryForObject("select paid_share_minor from ord_item where id = ?", Long.class, itemId);
-        String statusBefore = subStatus(sub);
-
-        JsonNode first = apply(token, sub, "{\"type\":\"REFUND_ONLY\",\"reason\":\"不想要了\",\"reasonCode\":\"NOT_WANTED\","
-                + "\"items\":[{\"itemId\":" + itemId + ",\"qty\":1}]}");
-        assertThat(first.get("code").asInt()).isZero();
-        assertThat(first.get("data").get("refundMinor").asLong()).isEqualTo(share / 3);
-        afterSales.approve(entityOf(sub), first.get("data").get("afterSaleNo").asString(), null, null, null);
-
-        assertThat(subStatus(sub)).as("部分退款不改订单状态").isEqualTo(statusBefore);
-        assertThat(col(sub, "refund_progress")).isEqualTo("PARTIAL");
-        assertThat(jdbc.queryForObject("select refunded_qty from ord_item where id = ?", Integer.class, itemId)).isOne();
-        assertThat(jdbc.queryForObject("select status from stl_bill where sub_order_no = ?", String.class, sub))
-                .as("分账前部分退不能把结算单标 REVERSED").isNotEqualTo("REVERSED");
-
-        JsonNode rest = apply(token, sub, "{\"type\":\"REFUND_ONLY\",\"reason\":\"不想要了\",\"reasonCode\":\"NOT_WANTED\"}");
-        assertThat(rest.get("data").get("refundMinor").asLong()).as("不传行 = 剩余全部").isEqualTo(share - share / 3);
-        afterSales.approve(entityOf(sub), rest.get("data").get("afterSaleNo").asString(), null, null, null);
-
+        String sub = buy(token, 3, "line-full");
+        long itemId = jdbc.queryForObject("select id from ord_item where sub_order_no=?", Long.class, sub);
+        JsonNode partial = apply(token, sub, "{\"type\":\"REFUND_ONLY\",\"reason\":\"不想要了\","
+                + "\"reasonCode\":\"NOT_WANTED\",\"items\":[{\"itemId\":" + itemId + ",\"qty\":1}]}");
+        assertThat(partial.path("code").asInt()).isEqualTo(20011);
+        assertThat(jdbc.queryForObject("select count(*) from ord_after_sale where sub_order_no=?",
+                Integer.class, sub)).isZero();
+        JsonNode full = apply(token, sub, "{\"type\":\"REFUND_ONLY\",\"reason\":\"不想要了\","
+                + "\"reasonCode\":\"NOT_WANTED\"}");
+        assertThat(full.path("code").asInt()).isZero();
+        String no = full.path("data").path("afterSaleNo").asString();
+        afterSales.approve(entityOf(sub), no, null, null, null);
+        assertThat(jdbc.queryForObject("select refunded_qty from ord_item where id=?", Integer.class, itemId))
+                .isZero();
+        CashReceiptFixture receipts = new CashReceiptFixture(context);
+        receipts.confirmRefund(no);
+        receipts.confirmRefund(no);
         assertThat(subStatus(sub)).isEqualTo("REFUNDED");
         assertThat(col(sub, "refund_progress")).isEqualTo("FULL");
-        assertThat(jdbc.queryForObject("select count(distinct after_sale_no) from stl_payment where sub_order_no = ?"
-                + " and direction = 'REFUND'", Integer.class, sub)).as("第二笔退款没被第一笔的幂等键吞掉").isEqualTo(2);
+        assertThat(jdbc.queryForObject("select refunded_qty from ord_item where id=?", Integer.class, itemId))
+                .isEqualTo(3);
+        assertThat(jdbc.queryForObject("select count(*) from stl_payment where sub_order_no=?"
+                + " and direction='REFUND'", Integer.class, sub)).isOne();
     }
 
     @Test
@@ -136,7 +135,10 @@ class LineRefundFlowTest {
         String status = jdbc.queryForObject("select status from ord_after_sale where after_sale_no = ?", String.class, asNo);
         int refunds = jdbc.queryForObject("select count(*) from stl_payment where after_sale_no = ? and direction = 'REFUND'",
                 Integer.class, asNo);
-        assertThat(status).isEqualTo(approved ? "REFUNDED" : "REJECTED");
+        assertThat(status).isEqualTo(approved ? "REFUNDING" : "REJECTED");
+        if (approved) {
+            new CashReceiptFixture(context).confirmRefund(asNo);
+        }
         assertThat(refunds).isEqualTo(approved ? 1 : 0);
     }
 
@@ -201,10 +203,7 @@ class LineRefundFlowTest {
                         .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
                 .andExpect(jsonPath("$.code").value(0)).andReturn().getResponse().getContentAsString();
         String payNo = json.readTree(body).get("data").get("payOrderNo").asString();
-        mvc().perform(post("/mp/order/" + payNo + "/pay").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + payNo + "\",\"transactionId\":\"tx-" + key + "\",\"sign\":\"stub-secret\"}"))
-                .andExpect(status().isOk());
+        new CashReceiptFixture(context).pay(token, payNo);
         return jdbc.queryForObject("select sub_order_no from ord_sub_order where order_no = ?", String.class, payNo);
     }
 }

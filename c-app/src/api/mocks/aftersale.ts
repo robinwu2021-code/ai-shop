@@ -26,6 +26,7 @@ export const aftersaleMock: Pick<ShopApi,
   | "orderPreview"
   | "orderCapability"
   | "afterSaleList"
+  | "cancelAfterSale"
   | "fillReturnExpress"
   | "raiseDispute"
 > = {
@@ -214,11 +215,24 @@ export const aftersaleMock: Pick<ShopApi,
       || req.fulfillment === FULFILLMENT.STORE_VERIFY
       || req.fulfillment === FULFILLMENT.DELIVERY;
     return delay({
+      pointsEnabled: false,
       usablePayMethods: usable,
       anyNotInvoiceCapable: merchants.some((m) => !m.invoiceCapable),
       merchants,
       usablePayModes: offlineOk ? [PAY_MODE.ONLINE, PAY_MODE.OFFLINE] : [PAY_MODE.ONLINE],
     });
+  },
+
+  async cancelAfterSale(afterSaleNo) {
+    const o = findOrderByAfterSale(afterSaleNo);
+    if (!["APPLIED", "NEGOTIATING", "WAIT_RETURN", "REJECTED"].includes(o.afterSale!.status)) {
+      throw new Error("当前售后无法撤销");
+    }
+    o.afterSale!.status = "CLOSED";
+    o.afterSale!.updatedAt = Date.now();
+    pushTimeline(o, "买家撤销售后");
+    persist();
+    return delay(o.afterSale!);
   },
 
   async afterSaleList() {

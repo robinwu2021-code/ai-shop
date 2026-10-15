@@ -26,7 +26,8 @@ public class PaymentLifecycleServiceImpl implements PaymentLifecycleService {
         if (OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus()) && PayModes.OFFLINE.equals(channel)) {
             return new ConfirmedPayment(channel, tradeNo);
         }
-        var receipt = settlement.successPayment(order.getOrderNo());
+        var receipt = tradeNo == null ? settlement.successPayment(order.getOrderNo())
+                : settlement.successPayment(order.getOrderNo(), channel, tradeNo);
         if (receipt == null || !"SUCCESS".equals(receipt.status())
                 || !Objects.equals(order.getOrderNo(), receipt.orderNo())
                 || !Objects.equals(order.getUserNo(), receipt.userNo())

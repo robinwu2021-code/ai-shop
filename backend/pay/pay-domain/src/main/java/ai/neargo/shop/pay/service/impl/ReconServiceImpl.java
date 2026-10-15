@@ -142,8 +142,8 @@ public class ReconServiceImpl implements ReconService {
             return new ReconService.Finding(p.getPaymentNo(), p.getOrderNo(), p.getPayChannel(),
                     // **方向要带出去。**处置那一层要靠它分叉 —— 见 Finding#isRefund
                     p.getOutTradeNo(), p.getDirection(), p.getAmountMinor(),
-                    r.ok() && r.paid(), r.ok() && !r.paid() && !r.found(), !r.ok(),
-                    r.amountMinor(), r.tradeNo(), day);
+                    r.ok() && r.found() && r.paid(), r.ok() && !r.paid() && !r.found(), !r.ok(),
+                    r.amountMinor(), r.tradeNo(), day, r.currency());
         }).toList();
     }
 
@@ -159,8 +159,8 @@ public class ReconServiceImpl implements ReconService {
         }
         recordDiff(f.day(), p,
                 new PayQueryPort.Result(true, f.paidOnChannel(), !f.notFound(),
-                        f.channelAmountMinor(), f.channelTradeNo()),
-                diffType, note);
+                        f.channelAmountMinor(), f.channelTradeNo(), f.channelCurrency()),
+                diffType, note, f.ourAmountMinor());
     }
 
 
@@ -172,7 +172,7 @@ public class ReconServiceImpl implements ReconService {
      * 而运营要逐条点开才知道是同一笔。
      */
     private void recordDiff(String day, StlPayment p, PayQueryPort.Result r,
-                            String type, String note) {
+                            String type, String note, Long expectedAmount) {
         boolean exists = DataScopeContext.executeWithoutScope(() -> diffMapper.exists(
                 Wrappers.<StlReconDiff>lambdaQuery()
                         .eq(StlReconDiff::getBillDate, day)
@@ -192,9 +192,9 @@ public class ReconServiceImpl implements ReconService {
         d.setOrderNo(p.getOrderNo());
         d.setChannelTxnNo(r.tradeNo());
         d.setChannelAmountMinor(r.amountMinor());
-        d.setPlatformAmountMinor(p.getAmountMinor() == null ? 0L : p.getAmountMinor());
+        d.setPlatformAmountMinor(expectedAmount == null ? 0L : expectedAmount);
         d.setStatus(StlReconDiff.PENDING);
-        d.setResolution(note);
+        d.setResolution(note == null ? null : note.substring(0, Math.min(note.length(), 255)));
         DataScopeContext.executeWithoutScope(() -> diffMapper.insert(d));
     }
 

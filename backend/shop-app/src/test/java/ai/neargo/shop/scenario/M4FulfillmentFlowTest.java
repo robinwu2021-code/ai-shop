@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -340,9 +341,11 @@ class M4FulfillmentFlowTest {
     }
 
     @Test
-    @DisplayName("C 端确认收货：非自提线的终态出口")
+    @DisplayName("C 端确认收货：实际到货后的买家完成出口")
     void confirmReceipt() throws Exception {
         Ordered o = placeAndPay("13300133050", "G0002", "SK0003");
+        String biz = loginAsOwnerOf("M0001", "13300133051");
+        markArrived(biz, o.subOrderNo);
 
         mvc().perform(post("/mp/order/" + o.subOrderNo + "/confirm-receipt")
                         .header("Authorization", "Bearer " + o.userToken))
@@ -523,9 +526,12 @@ class M4FulfillmentFlowTest {
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
 
+        mvc().perform(post("/mp/order/" + payOrderNo + "/pay").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0));
         mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-m4-" + phone
-                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
+                .andExpect(content().string("SUCCESS"));
 
         String list = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();

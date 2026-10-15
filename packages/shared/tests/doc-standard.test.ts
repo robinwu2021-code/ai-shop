@@ -94,7 +94,8 @@ describe("文档规范", () => {
     expect(svgs.length).toBeGreaterThan(10);
     const bad = svgs.filter((f) => {
       const s = readFileSync(f, "utf8");
-      return !/<title>[^<]+<\/title>/.test(s) || !/<desc>[^<]+<\/desc>/.test(s);
+      return !/<title(?:\s[^>]*)?>[^<]+<\/title>/.test(s)
+        || !/<desc(?:\s[^>]*)?>[^<]+<\/desc>/.test(s);
     }).map(rel);
     expect(bad).toEqual([]);
   });

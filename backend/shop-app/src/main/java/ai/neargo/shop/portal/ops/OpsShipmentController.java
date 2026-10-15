@@ -131,7 +131,8 @@ public class OpsShipmentController {
                              String profile, String storeNo, String entityNo,
                              String subState, String subChannel, String subError, Integer subAttempts,
                              String bindState, String bindError, String signedAt, String lastEventAt,
-                             boolean atLocker, String carrierCorrectedFrom, String receiverPhoneLast4) {
+                             boolean atLocker, String carrierCorrectedFrom, String receiverPhoneLast4,
+                             String wxUploadStatus, String wxUploadError) {
 
         static ShipmentVO of(Shipment s) {
             boolean plugin = "DONE".equals(s.bindState());
@@ -142,7 +143,8 @@ public class OpsShipmentController {
                     s.profile(), s.storeNo(), s.entityNo(),
                     s.subState(), s.subChannel(), s.subError(), s.subAttempts(),
                     s.bindState(), s.bindError(), IsoTime.toIso(s.signedAt()), IsoTime.toIso(s.lastEventAt()),
-                    s.atLocker(), s.carrierCorrectedFrom(), s.receiverPhoneLast4());
+                    s.atLocker(), s.carrierCorrectedFrom(), s.receiverPhoneLast4(),
+                    s.wxUploadStatus(), s.wxUploadError());
         }
     }
 

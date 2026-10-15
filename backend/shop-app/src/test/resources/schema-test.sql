@@ -523,6 +523,8 @@ CREATE TABLE IF NOT EXISTS ord_after_sale
     refund_points  BIGINT     NULL,
     approved_minor BIGINT     NULL,
     fulfill_stage  VARCHAR(16) NULL,
+    restock_approved BOOLEAN NOT NULL DEFAULT FALSE,
+    return_received_at BIGINT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_after_sale_no UNIQUE (after_sale_no)
 );
@@ -1065,9 +1067,12 @@ CREATE TABLE IF NOT EXISTS stl_payment
     entity_no VARCHAR(64) DEFAULT NULL,
     payer_openid VARCHAR(64) NULL,
     wx_appid     VARCHAR(32) NULL,
+    refund_execution_no VARCHAR(64) NULL,
+    origin_payment_no VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),
-    CONSTRAINT uk_stl_payment_trade UNIQUE (pay_channel,trade_no)
+    CONSTRAINT uk_stl_payment_trade UNIQUE (pay_channel,trade_no),
+    CONSTRAINT uk_stl_refund_execution UNIQUE (refund_execution_no)
 );
 
 CREATE TABLE IF NOT EXISTS stl_points_pool
@@ -2683,6 +2688,8 @@ CREATE TABLE IF NOT EXISTS lgs_waybill
     bind_state VARCHAR(12) NOT NULL DEFAULT 'NA',
     bind_error VARCHAR(255) DEFAULT NULL,
     wx_status_checked_at BIGINT DEFAULT NULL,
+    source_shipment_no VARCHAR(64) NULL,
+    source_shipment_version BIGINT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_shipment_no UNIQUE (shipment_no),
     CONSTRAINT uk_shipment_sub_order UNIQUE (biz_ref)
@@ -4220,6 +4227,7 @@ CREATE TABLE IF NOT EXISTS trd_shipping_upload
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted INT(11) NOT NULL DEFAULT 0,
     confirm_notified_at BIGINT DEFAULT NULL,
+    source_snapshot JSON NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_shipping_order UNIQUE (order_no, tenant_no, deleted)
 );
@@ -4765,6 +4773,7 @@ CREATE TABLE IF NOT EXISTS ord_shipment
     deleted       TINYINT(4)  NOT NULL DEFAULT 0,
     active_waybill_no VARCHAR(64)
         GENERATED ALWAYS AS (CASE WHEN status <> 'VOIDED' AND deleted = 0 THEN waybill_no ELSE NULL END),
+    signed_at BIGINT NULL,
     CONSTRAINT uk_ord_shipment_active_waybill UNIQUE (carrier, active_waybill_no, tenant_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_shipment_no UNIQUE (shipment_no, tenant_no)
@@ -4894,6 +4903,61 @@ CREATE TABLE IF NOT EXISTS ord_payment_resolution
     deleted TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_payment_resolution UNIQUE (pay_no, payment_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_refund_execution
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    execution_no VARCHAR(64) NOT NULL,
+    after_sale_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    origin_payment_no VARCHAR(64) NULL,
+    pay_channel VARCHAR(32) NULL,
+    amount_minor BIGINT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    plan_json TEXT NOT NULL,
+    stock_needs_json TEXT NOT NULL,
+    stock_authority VARCHAR(16) NULL,
+    restore_stock BOOLEAN NOT NULL DEFAULT FALSE,
+    restock_approved BOOLEAN NOT NULL DEFAULT FALSE,
+    zero_liability BOOLEAN NOT NULL DEFAULT FALSE,
+    reason VARCHAR(500) NULL,
+    status VARCHAR(32) NOT NULL,
+    phase VARCHAR(32) NOT NULL,
+    payment_no VARCHAR(64) NULL,
+    next_attempt_at BIGINT NOT NULL,
+    error_code VARCHAR(64) NULL,
+    resource_status VARCHAR(32) NOT NULL,
+    resource_error_code VARCHAR(64) NULL,
+    succeeded_at BIGINT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_refund_execution UNIQUE (execution_no),
+    CONSTRAINT uk_ord_refund_after_sale UNIQUE (after_sale_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_restore
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    purpose_no VARCHAR(64) NOT NULL,
+    original_lock_id BIGINT NOT NULL,
+    qty INT NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_prd_restore_purpose_source UNIQUE (purpose_no, original_lock_id)
 );
 
 -- 种子数据

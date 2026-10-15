@@ -2,6 +2,9 @@ package ai.neargo.shop.trade.entity;
 
 import ai.neargo.shop.common.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
+import lombok.AccessLevel;
+import java.nio.charset.StandardCharsets;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,9 +15,7 @@ import lombok.Setter;
  * 用户端毫无感知，商家几天后才发现。没有这张表的话，那次失败不留任何痕迹，
  * 也没有任何东西会再提起它。
  *
- * <p>幂等靠<b>台账 + 「10060002 订单已发货当成功」</b>两者合起来：
- * 只有台账没有那个码的处理，重启后照样会重复调；
- * 只有那个码没有台账，就没法回答「这笔到底报过没有」。
+ * <p>支付单唯一行与精确来源快照的版本条件写隔离旧回执；映射包裹已发货码不可冒充成功。
  */
 @Getter
 @Setter
@@ -34,6 +35,20 @@ public class TrdShippingUpload extends BaseEntity {
 
     /** 微信四类。映射只在 {@code WxLogisticsTypes} 一处 */
     private Integer logisticsType;
+
+    /** Exact ordered package set and completion flag; queue revision isolates responses to earlier requests. */
+    @TableField("source_snapshot")
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    private byte[] sourceSnapshotJson;
+
+    public String getSourceSnapshot() {
+        return sourceSnapshotJson == null ? null : new String(sourceSnapshotJson, StandardCharsets.UTF_8);
+    }
+
+    public void setSourceSnapshot(String snapshot) {
+        sourceSnapshotJson = snapshot == null ? null : snapshot.getBytes(StandardCharsets.UTF_8);
+    }
 
     private String status;
 

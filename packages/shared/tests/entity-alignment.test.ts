@@ -69,11 +69,15 @@ function scanEntities(dir: string, out = new Map<string, { file: string; fields:
       if (!t) continue;
       // `private Long x;` / `private List<String> y;` / `private Map<String, X> z;`
       // `@TableField("col")` 显式映射优先 —— 全库改名（merchant_no→entity_no）后
-      // 字段名与列名分离是常态，对齐要按**实际映射到的列**算
+      // 字段名与列名分离是常态，对齐要按**实际映射到的列**算。
+      // Getter/Setter 等字段注解可以位于 TableField 与字段之间，必须整组读取。
       const fields = new Set(
         [...src.matchAll(
-          /(?:@TableField\("(\w+)"\)\s*)?private\s+[\w.]+(?:<[^>]*>)?(?:\[\])?\s+(\w+)\s*;/g,
-        )].map((m) => (m[1] ? camel(m[1]) : m[2]!)),
+          /((?:@[\w.]+(?:\([^)]*\))?\s*)*)private\s+[\w.]+(?:<[^>]*>)?(?:\[\])?\s+(\w+)\s*;/g,
+        )].map((m) => {
+          const column = m[1]!.match(/@TableField\(\s*"(\w+)"\s*\)/)?.[1];
+          return column ? camel(column) : m[2]!;
+        }),
       );
       /*
        * 同一张表可能有两个实体：过渡期老实体只改了表名、新实体在新模块里（TDD-物流模块 批 1：
@@ -101,6 +105,12 @@ const businessCols = (table: string) =>
     .filter((c) => !AUDIT.has(c) && !BASE_FIELDS.has(c));
 
 describe("Java 实体与库表对齐", () => {
+  it("多个字段注解之间的显式列映射仍优先于 Java 字段名", () => {
+    const fields = entities.get("trd_shipping_upload")?.fields;
+    expect(fields?.has("sourceSnapshot")).toBe(true);
+    expect(fields?.has("sourceSnapshotJson")).toBe(false);
+  });
+
   it("解析到了实体与表 —— 一个都没有多半是路径或注解写法变了", () => {
     expect(schema.size, "没解析到迁移").toBeGreaterThan(20);
     expect(entities.size, "没扫到 @TableName 实体").toBeGreaterThan(10);

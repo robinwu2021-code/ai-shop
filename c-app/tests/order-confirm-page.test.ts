@@ -222,4 +222,16 @@ describe("结算页", () => {
 
     expect(w.text()).toContain("confirm.estimateOnly");
   });
+  it.each([false, undefined])("一期能力 %s 不显示服务端遗留赠分承诺", async (pointsEnabled) => {
+    orderCapability.mockResolvedValue({ merchants: [], usablePayMethods: null, pointsEnabled });
+    orderPreview.mockResolvedValue({ ...amount(2980), amount: {
+      ...amount(2980).amount, pointsEarn: 100, pointsUsed: 20, pointsDeductMinor: 20,
+    } });
+    const w = await render([item()]);
+    expect(w.text()).not.toContain("confirm.pointsEarn");
+    expect(w.text()).not.toContain("confirm.pointsDeduct");
+    expect(orderPreview.mock.calls.every(([req]) => req.usePoints === 0)).toBe(true);
+    w.unmount();
+  });
+
 });

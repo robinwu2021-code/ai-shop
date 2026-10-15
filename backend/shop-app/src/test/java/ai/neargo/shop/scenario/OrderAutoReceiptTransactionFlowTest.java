@@ -1,9 +1,11 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.job.JobSupport;
+import ai.neargo.shop.support.OrderReceiptFixture;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.job.OrderAutoReceiptJob;
 import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.service.OrderShippingService;
 import ai.neargo.shop.trade.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,8 @@ class OrderAutoReceiptTransactionFlowTest {
     private OrderService orders;
     @Autowired
     private JobSupport jobs;
+    @Autowired
+    private OrderShippingService shipping;
     @Autowired
     private JdbcTemplate jdbc;
     @MockitoSpyBean
@@ -87,6 +91,8 @@ class OrderAutoReceiptTransactionFlowTest {
         Throwable failure = catchThrowable(() -> new OrderAutoReceiptJob(orders, jobs, 15, 0).run(null));
 
         assertThat(status(bad)).as("状态与流水必须在同一单事务中回滚").isEqualTo("FULFILLING");
+        assertThat(jdbc.queryForObject("select status from ord_shipment where sub_order_no = ?",
+                String.class, bad)).isEqualTo("CREATED");
         assertThat(jdbc.queryForObject("select completed_at from ord_sub_order where sub_order_no = ?",
                 Long.class, bad)).isNull();
         assertThat(jdbc.queryForObject("select count(*) from ord_status_log where sub_order_no = ? "
@@ -98,14 +104,9 @@ class OrderAutoReceiptTransactionFlowTest {
     }
 
     private String insertDueOrder() {
-        String no = "AR-" + UUID.randomUUID();
-        jdbc.update("insert into ord_sub_order (sub_order_no, order_no, user_no, entity_no, store_no, "
-                        + "status, fulfillment, pay_amount, goods_amount, tenant_no, version, deleted, "
-                        + "created_at, updated_at) values (?, ?, 'U-AUTO', 'M0001', 'ST0001', "
-                        + "'FULFILLING', 'EXPRESS', 1000, 1000, 'MAIN', 0, 0, now(), now())", no, "P-" + no);
-        jdbc.update("insert into ord_status_log (sub_order_no, status, label, operator_type, at, tenant_no, "
-                        + "created_at) values (?, 'FULFILLING', '商家发货', 'MERCHANT', ?, 'MAIN', now())",
-                no, System.currentTimeMillis() - 20L * 86_400_000L);
+        String no = OrderReceiptFixture.seed(jdbc, "U-AUTO");
+        OrderReceiptFixture.ship(shipping, no);
+        OrderReceiptFixture.due(jdbc, no, System.currentTimeMillis() - 20L * 86_400_000L);
         return no;
     }
 

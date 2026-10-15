@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Objects;
 
 /**
  * 把一次轨迹（推送来的、或主动查来的）应用到运单上 —— 推送入库、物流页读时校正、补偿作业三处<b>共用这一份</b>，
@@ -49,6 +50,14 @@ public class WaybillProgress {
      * @return 状态推进的结果
      */
     public Transition apply(LgsWaybill w, TraceResult trace, String channel, String mode, LgsWaybill patch, long now) {
+        LgsWaybill current = waybills.selectOne(Wrappers.<LgsWaybill>query().eq("id", w.getId())
+                .last("FOR UPDATE"));
+        if (current == null || !Objects.equals(w.getWaybillNo(), current.getWaybillNo())
+                || !Objects.equals(w.getSourceShipmentNo(), current.getSourceShipmentNo())
+                || !Objects.equals(w.getSourceShipmentVersion(), current.getSourceShipmentVersion())) {
+            return WaybillStatus.advance(w.getStatus(), null);
+        }
+        w = current;
         boolean dirty = patch.getCarrier() != null || patch.getSubState() != null || patch.getWxStatusCheckedAt() != null;
         Transition t = WaybillStatus.advance(w.getStatus(), trace == null ? null : trace.status());
         if (trace != null) {
@@ -87,6 +96,10 @@ public class WaybillProgress {
                     carrierOf(w, patch), w.getWaybillNo(), WaybillStatus.DELIVERING, true, now));
         }
         if (t.changed()) {
+            if (w.getSourceShipmentNo() != null && w.getSourceShipmentVersion() != null) {
+                events.publish(new LogisticsEvents.ShipmentSnapshot(w.getSourceShipmentNo(),
+                        w.getSourceShipmentVersion(), w.getWaybillNo(), t.next(), patch.getSignedAt()));
+            }
             publish(w, carrierOf(w, patch), t, trace,
                     patch.getSignedAt() == null ? now : patch.getSignedAt(), channel, now);
             // 进了揽收（或更后）之后再判一次换 token —— 上次 9300559 的，这一次自然重试

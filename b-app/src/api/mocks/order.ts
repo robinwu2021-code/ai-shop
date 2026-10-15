@@ -16,11 +16,11 @@ import {
   pickupView,
   pushTimeline,
   scopedToStore,
-  settleRefund,
   storeOfOrder,
   takePendingAfterSale,
 } from "./_shared";
 import type { ExpressPickup, MerchantApi } from "../contract";
+import { beginMockRefund } from "@shared/mock/refund";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 
 export const orderMock: Pick<MerchantApi,
@@ -555,6 +555,10 @@ export const orderMock: Pick<MerchantApi,
   async mApproveAfterSale(afterSaleNo, reply, refundMinor, refundMode) {
     const o = takePendingAfterSale(afterSaleNo);
     const as = o.afterSale!;
+    if (refundMode && refundMode !== "CASH") throw new Error("一期仅支持现金退款");
+    if (refundMinor != null && (refundMinor <= 0 || refundMinor !== as.refundMinor)) {
+      throw new Error("一期仅支持子单整单全额退款");
+    }
     as.merchantReply = reply;
     as.updatedAt = Date.now();
     // 核定金额 / 形式（AC9/AC10）：仅已签收能改金额，这里按后端一致存下
@@ -568,7 +572,7 @@ export const orderMock: Pick<MerchantApi,
      * 两者合成一条路的后果是「退款了货没回来」。
      */
     if (as.type === "RETURN_REFUND") {
-      as.status = "REFUNDING";
+      as.status = "WAIT_RETURN";
       pushTimeline(o, "商家已同意退货，等待寄回");
       pushMessage(
         "TRADE",
@@ -584,23 +588,13 @@ export const orderMock: Pick<MerchantApi,
     if (as.fulfillStage === "SHIPPED") {
       as.status = "WAIT_RECEIPT";
       as.waitReceipt = true;
-      pushTimeline(o, "商家已同意，货在途——签收后自动退款");
+      pushTimeline(o, "商家已同意，货在途——待商家确认退款");
       persist();
       return delay(o.afterSale!);
     }
 
-    // 积分形式：不退现金，按核定额折积分（mock perMinor=1）
-    if (refundMode === "POINTS") {
-      const amt = as.approvedMinor ?? as.refundMinor;
-      as.refundPoints = amt;
-      as.status = "REFUNDED";
-      as.updatedAt = Date.now();
-      pushTimeline(o, "商家已同意，按约定折积分退回");
-      persist();
-      return delay(o.afterSale!);
-    }
-
-    settleRefund(o, "商家已同意退款");
+    beginMockRefund(o);
+    pushTimeline(o, "商家已同意，退款处理中");
     persist();
     return delay(o.afterSale!);
   },
@@ -633,7 +627,7 @@ export const orderMock: Pick<MerchantApi,
     as.updatedAt = Date.now();
     pushTimeline(o, "商家已确认收到退货");
     // 确认收货与退款是同一个动作的两半，中间不留悬空态
-    settleRefund(o, "退款已发起");
+    beginMockRefund(o);
     persist();
     return delay(o.afterSale!);
   },
@@ -643,7 +637,7 @@ export const orderMock: Pick<MerchantApi,
     if (as.status !== "WAIT_RECEIPT") throw new Error("该售后已处理或状态不对");
     as.updatedAt = Date.now();
     pushTimeline(o, "商家确认退款");
-    settleRefund(o, "退款已发起");
+    beginMockRefund(o);
     persist();
     return delay(o.afterSale!);
   },

@@ -75,7 +75,14 @@ public interface ReconService {
     record Finding(String paymentNo, String orderNo, String payChannel, String outTradeNo,
                    String direction, Long ourAmountMinor, boolean paidOnChannel, boolean notFound,
                    boolean queryFailed, long channelAmountMinor, String channelTradeNo,
-                   String day) {
+                   String day, String channelCurrency) {
+
+        public Finding(String paymentNo, String orderNo, String payChannel, String outTradeNo,
+                       String direction, Long ourAmountMinor, boolean paidOnChannel, boolean notFound,
+                       boolean queryFailed, long channelAmountMinor, String channelTradeNo, String day) {
+            this(paymentNo, orderNo, payChannel, outTradeNo, direction, ourAmountMinor, paidOnChannel,
+                    notFound, queryFailed, channelAmountMinor, channelTradeNo, day, "CNY");
+        }
 
         /**
          * 这是一笔<b>退款</b>的自查结果。

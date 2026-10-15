@@ -19,6 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 /** 一次轨迹应用到运单上之后发出去的事件（TDD-物流模块 批 4：通知靠它们）。 */
 class WaybillProgressTest {
@@ -28,7 +30,7 @@ class WaybillProgressTest {
     private final OutboxEventBus events = mock(OutboxEventBus.class);
     private final WaybillProgress progress = new WaybillProgress(waybills, nodes, events, new LogisticsProperties());
 
-    private static LgsWaybill waybill(String status, Integer atLocker) {
+    private LgsWaybill waybill(String status, Integer atLocker) {
         LgsWaybill w = new LgsWaybill();
         w.setId(7L);
         w.setShipmentNo("SH7");
@@ -38,6 +40,7 @@ class WaybillProgressTest {
         w.setProfile(LgsWaybill.PROFILE_SELF);
         w.setStatus(status);
         w.setAtLocker(atLocker);
+        when(waybills.selectOne(any())).thenReturn(w);
         return w;
     }
 

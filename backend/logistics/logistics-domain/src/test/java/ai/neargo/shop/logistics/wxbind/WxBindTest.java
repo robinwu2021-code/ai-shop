@@ -88,7 +88,7 @@ class WxBindTest {
         when(binder.bind(any())).thenReturn(ChannelOutcome.ok("0", "tk-1"));
         x.consume(event());
         ArgumentCaptor<LgsWaybill> c = ArgumentCaptor.forClass(LgsWaybill.class);
-        verify(waybills).updateById(c.capture());
+        verify(waybills).update(c.capture(), any());
         assertThat(c.getValue().getDisplayToken()).isEqualTo("tk-1");
         assertThat(c.getValue().getBindState()).isEqualTo(LgsWaybill.BIND_DONE);
     }
@@ -100,7 +100,7 @@ class WxBindTest {
         WxBindExecutor x = executor();
         when(binder.bind(any())).thenReturn(ChannelOutcome.notReady("9300559", "运单不存在"));
         x.consume(event());   // 不抛
-        verify(waybills, never()).updateById(any(LgsWaybill.class));
+        verify(waybills, never()).update(any(LgsWaybill.class), any());
     }
 
     @Test
@@ -111,7 +111,7 @@ class WxBindTest {
         when(binder.bind(any())).thenReturn(ChannelOutcome.fatal("9300561", "收件人手机号错误"));
         x.consume(event());
         ArgumentCaptor<LgsWaybill> c = ArgumentCaptor.forClass(LgsWaybill.class);
-        verify(waybills).updateById(c.capture());
+        verify(waybills).update(c.capture(), any());
         assertThat(c.getValue().getBindState()).isEqualTo(LgsWaybill.BIND_FATAL);
         assertThat(c.getValue().getBindError()).contains("9300561");
 

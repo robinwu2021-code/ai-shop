@@ -39,10 +39,15 @@ class ReceiptHandlerTest {
         public OrdSubOrder findOrder(String subOrderNo) {
             return order;
         }
+
+        public boolean dispatched(OrdSubOrder order, OrdShipment shipment) {
+            return false;
+        }
     }
 
     static class FakeWrite implements ReceiptWriteStore {
-        public void saveShipment(OrdShipment shipment) {
+        public void receiveShipment(OrdShipment shipment, Operator operator, boolean dispatched) {
+            shipment.setStatus(OrdShipment.RECEIVED);
         }
     }
 
@@ -61,6 +66,8 @@ class ReceiptHandlerTest {
         OrdItem i = new OrdItem();
         i.setSkuNo(sku);
         i.setShipmentNo(shipmentNo);
+        i.setQty(1);
+        i.setShippedQty(shipmentNo == null ? 0 : 1);
         return i;
     }
 

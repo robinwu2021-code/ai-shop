@@ -51,7 +51,29 @@ public class ShipHandler {
         List<OrdItem> rows = items.stream().filter(i -> i.getShipmentNo() == null
                 || old != null && old.getShipmentNo().equals(i.getShipmentNo())).toList();
         requireWholeContent(rows, itemIds);
-        return create(order, carrier, waybill, rows, old, op);
+        return create(order, carrier, waybill, rows, old, op, "商家更正运单");
+    }
+
+    /** Ops correction reuses whole-order binding and uniqueness without impersonating a merchant. */
+    public String correct(String subOrderNo, String carrier, String waybillNo, Operator operator, String reason) {
+        OrdSubOrder order = read.findOrder(subOrderNo);
+        List<OrdShipment> active = read.activeOf(subOrderNo);
+        if (order == null || active.size() != 1) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        String normalized = WaybillNormalizer.normalize(waybillNo);
+        if (!WaybillFormat.isValid(normalized)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        OrdShipment duplicate = read.findActiveWaybill(carrier, normalized);
+        if (duplicate != null) {
+            return replay(subOrderNo, duplicate, read.itemsOf(subOrderNo), List.of());
+        }
+        OrdShipment old = active.getFirst();
+        List<OrdItem> rows = read.itemsOf(subOrderNo).stream()
+                .filter(i -> old.getShipmentNo().equals(i.getShipmentNo())).toList();
+        requireWholeContent(rows, List.of());
+        return create(order, carrier, normalized, rows, old, operator, reason);
     }
 
     private String replay(String subOrderNo, OrdShipment duplicate, List<OrdItem> items, List<Long> ids) {
@@ -68,7 +90,7 @@ public class ShipHandler {
     }
 
     private String create(OrdSubOrder order, String carrier, String waybill, List<OrdItem> rows,
-                          OrdShipment old, Operator operator) {
+                          OrdShipment old, Operator operator, String reason) {
         String no = shipmentNoGen.get();
         OrdShipment shipment = ShipmentDraftFactory.express(no, order.getSubOrderNo(), order.getStoreNo(),
                 carrier, waybill);
@@ -76,11 +98,13 @@ public class ShipHandler {
         shipment.setVersion(0L);
         write.saveShipment(shipment);
         if (old != null) {
-            write.supersede(old, no, operator);
+            write.supersede(old, no, operator, reason);
         }
         rows.forEach(item -> ShipmentDraftFactory.bind(item, no));
         write.bindItems(rows);
-        transitions.applyMerchantSub(order, OrdSubOrder.FULFILLING, operator, "商家发货：" + waybill);
+        if (!OrdSubOrder.FULFILLING.equals(order.getStatus())) {
+            transitions.applyMerchantSub(order, OrdSubOrder.FULFILLING, operator, "商家发货：" + waybill);
+        }
         write.saveLegacyFields(order, carrier, waybill);
         return no;
     }

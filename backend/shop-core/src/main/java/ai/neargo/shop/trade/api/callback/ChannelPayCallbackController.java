@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.RefundDispatchResult;
+import ai.neargo.shop.spi.settle.RefundDispatchResult.DispatchStatus;
 
 /**
  * 真通道的支付回调。**不走 Bearer**，靠验签。
@@ -235,8 +237,9 @@ public class ChannelPayCallbackController {
             return v.ackFail();
         }
 
-        String orderNo = settlePort.settleRefund(String.valueOf(outRefundNo), r.tradeNo());
-        if (orderNo == null) {
+        RefundDispatchResult confirmed = settlePort.settleRefund(String.valueOf(outRefundNo), channel,
+                r.amountMinor(), r.currency(), r.tradeNo());
+        if (confirmed == null || confirmed.status() != DispatchStatus.SUCCEEDED || confirmed.paymentNo() == null) {
             log.error("[callback] {} 收到无法认领的退款 out_refund_no={} —— 流水里没有这个单号",
                     channel, outRefundNo);
             payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,

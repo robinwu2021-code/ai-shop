@@ -17,6 +17,7 @@ public interface LogisticsAdminPort {
 
     String REPLAY_SUBSCRIBE = "SUBSCRIBE";
     String REPLAY_WX_BIND = "WX_BIND";
+    String REPLAY_WX_UPLOAD = "WX_UPLOAD";
 
     /**
      * @param keyword 匹配运单号、子单号
@@ -38,7 +39,19 @@ public interface LogisticsAdminPort {
                     List<Node> traces, String profile, String storeNo, String entityNo,
                     String subState, String subChannel, String subError, Integer subAttempts,
                     String bindState, String bindError, Long signedAt, Long lastEventAt, boolean atLocker,
-                    String carrierCorrectedFrom, String receiverPhoneLast4) {
+                    String carrierCorrectedFrom, String receiverPhoneLast4,
+                    String wxUploadStatus, String wxUploadError) {
+        public Shipment(String shipmentNo, String orderNo, String carrier, String waybillNo, String status,
+                        String receiver, String region, LocalDateTime createdAt, LocalDateTime updatedAt,
+                        List<Node> traces, String profile, String storeNo, String entityNo,
+                        String subState, String subChannel, String subError, Integer subAttempts,
+                        String bindState, String bindError, Long signedAt, Long lastEventAt, boolean atLocker,
+                        String carrierCorrectedFrom, String receiverPhoneLast4) {
+            this(shipmentNo, orderNo, carrier, waybillNo, status, receiver, region, createdAt, updatedAt,
+                    traces, profile, storeNo, entityNo, subState, subChannel, subError, subAttempts,
+                    bindState, bindError, signedAt, lastEventAt, atLocker, carrierCorrectedFrom,
+                    receiverPhoneLast4, null, null);
+        }
     }
 
     record Node(long at, String text, String location) {

@@ -58,6 +58,7 @@ public interface PaymentLedgerService {
     String settle(SettlePort.PaymentSettled cmd);
 
     SettlePort.PaymentReceipt successPayment(String orderNo);
+    SettlePort.PaymentReceipt successPayment(String orderNo, String channel, String tradeNo);
 
     SettlePort.PaymentReceipt paymentByOutTradeNo(String outTradeNo);
 

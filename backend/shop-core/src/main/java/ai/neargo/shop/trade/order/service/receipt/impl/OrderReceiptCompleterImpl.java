@@ -1,93 +1,103 @@
 package ai.neargo.shop.trade.order.service.receipt.impl;
 
-import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.spi.trade.ShipmentTraceQueryPort;
-import ai.neargo.shop.trade.entity.OrdAfterSale;
-import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
-import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
-import ai.neargo.shop.trade.order.aftersale.AfterSaleSlots;
+import ai.neargo.shop.trade.order.entity.OrdShipment;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
-import ai.neargo.shop.trade.order.mapper.StatusCasMapper;
+import ai.neargo.shop.trade.order.service.receipt.MybatisReceiptReadStore;
+import ai.neargo.shop.trade.order.service.receipt.MybatisReceiptWriteStore;
 import ai.neargo.shop.trade.order.service.receipt.OrderReceiptCompleter;
+import ai.neargo.shop.trade.order.service.receipt.ReceiptHandler;
+import ai.neargo.shop.trade.order.service.receipt.ReceiptDeadlines;
 import ai.neargo.shop.trade.order.statemachine.Actor;
+import ai.neargo.shop.trade.order.transition.Operator;
+import ai.neargo.shop.trade.order.transition.OrderTransitions;
 import ai.neargo.shop.trade.order.transition.TradeStatusWriter;
 import ai.neargo.shop.trade.service.AfterSaleService;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/** 状态、完成时间、流水及本地售后提醒共同提交；异常让整单回滚。 */
+/** Each child's current package receipts, completion and local reminder commit independently of the scanner. */
 @Service
 public class OrderReceiptCompleterImpl implements OrderReceiptCompleter {
-
-    private final StatusCasMapper cas;
-    private final OrderStatusLogMapper logs;
-    private final AfterSaleMapper afterSales;
+    private static final long DAY = 86_400_000L;
+    private final MybatisReceiptReadStore read;
+    private final ReceiptHandler handler;
     private final ShipmentTraceQueryPort traces;
     private final TradeStatusWriter writer;
-    private final AfterSaleService afterSaleService;
+    private final AfterSaleService afterSales;
 
-    public OrderReceiptCompleterImpl(StatusCasMapper cas, OrderStatusLogMapper logs, AfterSaleMapper afterSales,
+    public OrderReceiptCompleterImpl(MybatisReceiptReadStore read, MybatisReceiptWriteStore write,
                                      ShipmentTraceQueryPort traces, TradeStatusWriter writer,
-                                     AfterSaleService afterSaleService) {
-        this.cas = cas;
-        this.logs = logs;
-        this.afterSales = afterSales;
+                                     AfterSaleService afterSales) {
+        this.read = read;
+        this.handler = new ReceiptHandler(read, write, new OrderTransitions(writer));
         this.traces = traces;
         this.writer = writer;
-        this.afterSaleService = afterSaleService;
+        this.afterSales = afterSales;
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public boolean completeAuto(String subOrderNo, long now, int shippedDays, int signedDays) {
         if (shippedDays <= 0) {
             return false;
         }
-        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() -> cas.lockOrder(subOrderNo));
-        if (sub == null || !OrdSubOrder.FULFILLING.equals(sub.getStatus())
-                || Fulfillments.isPickup(sub.getFulfillment()) || hasOpenAfterSale(sub)) {
+        OrdSubOrder order = read.findOrder(subOrderNo);
+        if (order == null || !OrdSubOrder.FULFILLING.equals(order.getStatus())
+                || !read.parentPaid(order) || Fulfillments.isPickup(order.getFulfillment())
+                || read.openAfterSale(order)) {
             return false;
         }
-        String reason = dueReason(subOrderNo, now, shippedDays, signedDays);
-        if (reason == null) {
+        List<OrdShipment> shipments = read.shipmentsOf(subOrderNo);
+        Long shipped = read.shippedAt(subOrderNo);
+        boolean completed = shipments.isEmpty()
+                ? completeLegacy(order, now, shippedDays, signedDays, shipped)
+                : receiveDue(subOrderNo, shipments, now, shippedDays, signedDays);
+        if (completed) {
+            afterSales.settleOnReceipt(subOrderNo);
+        }
+        return completed;
+    }
+
+    private boolean completeLegacy(OrdSubOrder order, long now, int shippedDays, int signedDays, Long shipped) {
+        if (!read.legacyFulfilled(order)) {
             return false;
         }
-        writer.order(sub, OrderEvent.RECEIPT_AUTO_CONFIRMED, Actor.SYSTEM, null, reason,
-                OrderContext.authorizedOnly().withAutoReceiptDue(true));
-        afterSaleService.settleOnReceipt(subOrderNo);
-        return true;
+        Long signed = signedDays > 0
+                ? traces.signedAtOf(List.of(order.getSubOrderNo())).get(order.getSubOrderNo()) : null;
+        String reason = dueReason(now, shippedDays, signedDays, shipped, signed);
+        return reason != null && writer.order(order, OrderEvent.RECEIPT_AUTO_CONFIRMED, Actor.SYSTEM, null, reason,
+                OrderContext.authorizedOnly().withAutoReceiptDue(true)).changed();
     }
 
-    private boolean hasOpenAfterSale(OrdSubOrder sub) {
-        List<OrdAfterSale> tickets = DataScopeContext.executeWithoutScope(() -> afterSales.selectList(
-                Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getSubOrderNo, sub.getSubOrderNo())));
-        boolean disputed = tickets.stream().anyMatch(as -> !AfterSaleSlots.RELEASING.contains(as.getStatus())
-                && !OrdAfterSale.WAIT_RECEIPT.equals(as.getStatus()));
-        String slot = DataScopeContext.executeWithoutScope(() -> cas.openAfterSaleNo(sub.getSubOrderNo()));
-        boolean knownReceiptSlot = tickets.stream().anyMatch(as -> OrdAfterSale.WAIT_RECEIPT.equals(as.getStatus())
-                && as.getAfterSaleNo().equals(slot));
-        return disputed || slot != null && !knownReceiptSlot;
+    private boolean receiveDue(String no, List<OrdShipment> shipments, long now, int shippedDays,
+                               int signedDays) {
+        boolean completed = false;
+        for (OrdShipment shipment : shipments) {
+            if (OrdShipment.VOIDED.equals(shipment.getStatus()) || OrdShipment.RECEIVED.equals(shipment.getStatus())) {
+                continue;
+            }
+            String reason = dueReason(now, shippedDays, signedDays,
+                    ReceiptDeadlines.shippedAt(shipment, shipments), shipment.getSignedAt());
+            if (reason != null) {
+                completed |= handler.confirm(no, shipment.getShipmentNo(), Operator.system(), reason);
+            }
+        }
+        return completed;
     }
 
-    private String dueReason(String no, long now, int shippedDays, int signedDays) {
-        Long signed = signedDays > 0 ? traces.signedAtOf(List.of(no)).get(no) : null;
-        if (signed != null && signed <= now - (long) signedDays * 86_400_000L) {
+    private static String dueReason(long now, int shippedDays, int signedDays, Long shipped, Long signed) {
+        if (signedDays > 0 && signed != null && signed <= now - (long) signedDays * DAY) {
             return "签收满 " + signedDays + " 天自动确认收货";
         }
-        List<OrdStatusLog> shipped = DataScopeContext.executeWithoutScope(() -> logs.selectList(
-                Wrappers.<OrdStatusLog>lambdaQuery().eq(OrdStatusLog::getSubOrderNo, no)
-                        .eq(OrdStatusLog::getStatus, OrdSubOrder.FULFILLING)));
-        long last = shipped.stream().mapToLong(row -> row.getAt() == null ? Long.MAX_VALUE : row.getAt())
-                .max().orElse(Long.MAX_VALUE);
-        return last <= now - (long) shippedDays * 86_400_000L
+        return shipped != null && shipped <= now - (long) shippedDays * DAY
                 ? "发货满 " + shippedDays + " 天自动确认收货" : null;
     }
 }

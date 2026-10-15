@@ -2,6 +2,8 @@ package ai.neargo.shop.product.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.product.StockPort;
+import ai.neargo.shop.product.service.OriginalStockRestoreService;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.entity.PrdStoreStock;
@@ -44,6 +46,19 @@ public class StockPortImpl implements StockPort {
         this.lockMapper = lockMapper;
         this.storeStockMapper = storeStockMapper;
         this.storeStockReader = storeStockReader;
+    }
+
+    private OriginalStockRestoreService originalRestore;
+
+    @Autowired
+    public void setOriginalRestore(OriginalStockRestoreService originalRestore) {
+        this.originalRestore = originalRestore;
+    }
+
+    @Override
+    public RestoreResult restoreOriginal(String purposeNo, String originalLockNo, List<SkuQty> items) {
+        originalRestore.restore(purposeNo, originalLockNo, items);
+        return RestoreResult.COMPLETED;
     }
 
     @Override

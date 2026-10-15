@@ -1,6 +1,7 @@
 package ai.neargo.shop.spi.logistics;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -15,6 +16,33 @@ public interface ShipmentSourcePort {
 
     Optional<ShipmentSource> sourceOf(String subOrderNo);
 
+    /** Lightweight current identity checks do not reread receiver/payment snapshots on every callback. */
+    default Optional<ShipmentIdentity> identityOf(String subOrderNo) {
+        return sourceOf(subOrderNo).map(s -> new ShipmentIdentity(s.sourceShipmentNo(), s.sourceShipmentVersion(),
+                s.carrier(), s.waybillNo()));
+    }
+
+    /** Registration caller owns the primary transaction; implementations retain the child lock until its commit. */
+    default Optional<ShipmentIdentity> lockedIdentityOf(String subOrderNo) { return identityOf(subOrderNo); }
+
+    /** Existing protected Ops replay recovers the same queue row for the expected current source. */
+    default void retryUpload(String subOrderNo, String expectedShipmentNo, long generation) {
+        throw new UnsupportedOperationException("Upload recovery is not installed");
+    }
+
+    /** Read-only queue progress; callers first authorize their logistics resource scope. */
+    default Map<String, UploadState> uploadStatesOf(List<String> subOrderNos) { return Map.of(); }
+
+    record ShipmentIdentity(String sourceShipmentNo, Long sourceShipmentVersion, String carrier, String waybillNo) { }
+    record UploadState(String sourceShipmentNo, Long sourceShipmentVersion, String carrier, String waybillNo,
+                       String status, String error) { }
+
+    /** Mapped Ops correction shares the order package writer after the existing scope/terminal guards. */
+    default Optional<ShipmentSource> correctSource(String subOrderNo, String expectedShipmentNo, long generation,
+                                                   String carrier, String waybillNo, String reason) {
+        throw new UnsupportedOperationException("Source correction is not installed");
+    }
+
     /**
      * @param wx        微信支付键。<b>没有微信交易单号就是 null</b> → 物流把这单定为 SELF，不调任何微信物流接口
      * @param goods     商品（≤3 件）：微信 trace_waybill 必填
@@ -25,7 +53,15 @@ public interface ShipmentSourcePort {
     record ShipmentSource(String subOrderNo, String orderNo, String entityNo, String storeNo,
                           String carrier, String waybillNo,
                           String receiverName, String receiverPhone, String region,
-                          WxKey wx, List<GoodsBrief> goods, String orderPath, Long wxUploadedAt) {
+                          WxKey wx, List<GoodsBrief> goods, String orderPath, Long wxUploadedAt,
+                          String sourceShipmentNo, Long sourceShipmentVersion) {
+        /** Preserve explicit unmapped legacy snapshots without inventing a package. */
+        public ShipmentSource(String subOrderNo, String orderNo, String entityNo, String storeNo,
+                              String carrier, String waybillNo, String receiverName, String receiverPhone,
+                              String region, WxKey wx, List<GoodsBrief> goods, String orderPath, Long wxUploadedAt) {
+            this(subOrderNo, orderNo, entityNo, storeNo, carrier, waybillNo, receiverName, receiverPhone,
+                    region, wx, goods, orderPath, wxUploadedAt, null, null);
+        }
     }
 
     record WxKey(String transId, String outTradeNo, String openid) {

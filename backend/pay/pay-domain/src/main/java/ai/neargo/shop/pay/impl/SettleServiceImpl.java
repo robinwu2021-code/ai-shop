@@ -509,6 +509,7 @@ public class SettleServiceImpl implements SettleService {
     public void executeSplit(String settleNo) {
         StlBill bill = require(settleNo);
         if (StlBill.SPLIT.equals(bill.getStatus())
+                || StlBill.SPLITTING.equals(bill.getStatus())
                 || StlBill.SPLIT_CONFIRMED.equals(bill.getStatus())
                 || StlBill.REVERSED.equals(bill.getStatus())) {
             // 幂等：重复执行不会重复打款。**SPLIT_CONFIRMED 也要挡** ——
@@ -528,7 +529,9 @@ public class SettleServiceImpl implements SettleService {
         }
 
         bill.setStatus(StlBill.SPLITTING);
-        update(bill);
+        if (DataScopeContext.executeWithoutScope(() -> billMapper.updateById(bill)) != 1) {
+            return;
+        }
 
         /*
          * **先补差，再分账**。顺序不能反：

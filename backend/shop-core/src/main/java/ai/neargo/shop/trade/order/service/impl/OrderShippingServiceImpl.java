@@ -68,6 +68,30 @@ public class OrderShippingServiceImpl implements OrderShippingService {
         return new ShipResult(subOrderNo, shipmentNo, OrdSubOrder.FULFILLING);
     }
 
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ShipResult correctByPlatform(String subOrderNo, String expectedShipmentNo, ShipCommand command,
+                                        String operatorNo, String reason) {
+        OrdSubOrder order = read.findOrder(subOrderNo);
+        if (order == null || operatorNo == null || operatorNo.isBlank() || reason == null || reason.isBlank()) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        requireEligible(order, command);
+        List<OrdShipment> live = read.activeOf(subOrderNo);
+        if (!OrdSubOrder.FULFILLING.equals(order.getStatus()) || live.size() != 1
+                || !live.getFirst().getShipmentNo().equals(expectedShipmentNo)) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        String no = handler.correct(subOrderNo, command.carrier(), command.waybillNo(),
+                Operator.platform(operatorNo), reason);
+        if (!expectedShipmentNo.equals(no)) {
+            events.publish(new OrderEvents.SubOrderShipped(subOrderNo, order.getOrderNo(), order.getEntityNo(),
+                    order.getUserNo(), order.getFulfillment(), command.carrier(),
+                    WaybillNormalizer.normalize(command.waybillNo()), no, 0L));
+        }
+        return new ShipResult(subOrderNo, no, OrdSubOrder.FULFILLING);
+    }
+
     private void requireEligible(OrdSubOrder order, ShipCommand command) {
         if (command == null || !ExpressCompanies.isValid(command.carrier())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

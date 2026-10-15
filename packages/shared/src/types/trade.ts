@@ -214,6 +214,8 @@ export interface OrderPreview {
  * 平台放弱主体进来了，而结算页还没告诉买家这意味着什么。
  */
 export interface CheckoutCapability {
+  /** 一期固定关闭；旧接口缺字段也按关闭处理。 */
+  pointsEnabled?: boolean;
   /**
    * 整单可用的支付方式 = <b>各商家支持集合的交集</b>。
    *
@@ -448,6 +450,8 @@ export interface Order {
    * 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。
    */
   payOrderNo?: string;
+  /** 已确认收款但订单需人工处理；存在时禁止再次付款。 */
+  paymentResolution?: PaymentResolution | null;
   /** 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 */
   store?: OrderStore | null;
   /** 订单状态。粗粒度；售后细节见 `afterSale` */
@@ -734,6 +738,36 @@ export type AfterSaleStatus =
   | "REJECTED" // 商家驳回
   | "ARBITRATING" // 用户不服，已上升平台裁决
   | "CLOSED"; // 用户撤销，或超时关闭
+/** 支付异常投影，不包含其他门店的现金明细。 */
+export interface PaymentResolution {
+  /** 处理状态，例如 MANUAL_REQUIRED。 */
+  status: string;
+  /** 服务端记录的原因码，页面映射为可理解的提示。 */
+  reason: string;
+  /** 原资金凭据引用。 */
+  reference: string;
+}
+/** 资金执行与库存/优惠恢复是两个独立结果。 */
+export interface RefundExecutionProgress {
+  /** 原退款执行号；恢复仍使用同一执行。 */
+  executionNo: string;
+  /** 资金流水号，尚未准备时可空。 */
+  paymentNo?: string | null;
+  /** 执行状态，以后端实际确认结果为准。 */
+  status: string;
+  /** 当前处理阶段。 */
+  phase: string;
+  /** 资金执行错误码。 */
+  errorCode?: string | null;
+  /** 原库存和优惠恢复状态，DONE 表示已恢复。 */
+  resourceStatus: string;
+  /** 资源恢复失败原因。 */
+  resourceErrorCode?: string | null;
+  /** 资金成功确认的毫秒时间戳。 */
+  succeededAt?: number | null;
+  /** 后端计划恢复的毫秒时间戳，不由客户端发起第二笔退款。 */
+  nextAttemptAt?: number | null;
+}
 export interface AfterSale {
   /**
    * 售后单号。**售后是独立资源，不是订单上的一个字段** ——
@@ -742,6 +776,8 @@ export interface AfterSale {
    * 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。
    */
   afterSaleNo: string;
+  /** 原执行的资金进度和资源恢复结果；旧记录可缺省。 */
+  refundExecution?: RefundExecutionProgress | null;
   /**
    * 所属**子订单**号（`SUB…`）。
    *

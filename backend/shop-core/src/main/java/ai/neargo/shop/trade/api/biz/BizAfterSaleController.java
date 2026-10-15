@@ -68,8 +68,10 @@ public class BizAfterSaleController {
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
     @PostMapping("/biz/after-sale/{afterSaleNo}/receive")
-    public AfterSaleVO confirmReturn(@PathVariable String afterSaleNo) {
-        return afterSaleService.confirmReturn(BizContext.requireMerchantNo(), afterSaleNo);
+    public AfterSaleVO confirmReturn(@PathVariable String afterSaleNo,
+                                      @RequestBody(required = false) ReceiveReq request) {
+        return afterSaleService.confirmReturn(BizContext.requireMerchantNo(), afterSaleNo,
+                request != null && Boolean.TRUE.equals(request.restockApproved()));
     }
 
     /** 在途仅退款：签收后（或商家判断不必等）由商家确认退款。系统不再自动退（TDD-订单状态机 AC8） */
@@ -78,6 +80,8 @@ public class BizAfterSaleController {
     public AfterSaleVO confirmRefund(@PathVariable String afterSaleNo) {
         return afterSaleService.confirmRefund(BizContext.requireMerchantNo(), afterSaleNo);
     }
+
+    public record ReceiveReq(Boolean restockApproved) { }
 
     public record RejectReq(@NotBlank String remark) {
     }

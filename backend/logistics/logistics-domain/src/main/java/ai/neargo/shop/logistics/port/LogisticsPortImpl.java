@@ -16,6 +16,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -61,7 +62,7 @@ public class LogisticsPortImpl implements LogisticsPort {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Optional<TrackView> track(TrackQuery q) {
         LgsWaybill w = find(q.bizType(), q.bizRef());
         if (w == null) {
@@ -72,11 +73,11 @@ public class LogisticsPortImpl implements LogisticsPort {
         List<StatusProbe> allowed = router.probes(w.getStoreNo(), w.getCarrier()).stream()
                 .filter(p -> allowedOn(p.channel(), q.surface())).toList();
         boolean changed = false;
-        if (wxPlugin && !WaybillStatus.isTerminal(w.getStatus()) && due(w, now)) {
+        if (!q.cacheOnly() && wxPlugin && !WaybillStatus.isTerminal(w.getStatus()) && due(w, now)) {
             changed = allowed.stream().filter(p -> WX.equals(p.channel())).findFirst()
                     .map(p -> probe(w, p, now)).orElse(false);
         }
-        if (q.refresh() && !allowed.isEmpty() && !WaybillStatus.isTerminal(w.getStatus())) {
+        if (!q.cacheOnly() && q.refresh() && !allowed.isEmpty() && !WaybillStatus.isTerminal(w.getStatus())) {
             for (StatusProbe p : allowed) {
                 if (WX.equals(p.channel()) && !due(w, now)) {
                     continue;   // 刚问过微信，不再问
@@ -87,7 +88,9 @@ public class LogisticsPortImpl implements LogisticsPort {
                 }
             }
         }
-        LgsWaybill cur = changed ? find(q.bizType(), q.bizRef()) : w;
+        LgsWaybill cur = q.cacheOnly() ? w : waybills.selectOne(Wrappers.<LgsWaybill>query()
+                .eq("biz_type", q.bizType()).eq("biz_ref", q.bizRef()).last("LIMIT 1 FOR UPDATE"));
+        if (cur == null) { return Optional.empty(); }
         List<Node> list = nodes.selectList(Wrappers.<LgsWaybillNode>query()
                         .eq("shipment_no", cur.getShipmentNo()).orderByDesc("at")).stream()
                 .map(n -> new Node(n.getAt(), n.getText(), n.getLocation(), n.getLatE6(), n.getLngE6(), n.getStatusCode()))

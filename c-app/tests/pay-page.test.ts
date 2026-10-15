@@ -235,4 +235,15 @@ describe("收银台支付资源与真实结果", () => {
     expect(mock.result).toHaveBeenCalledWith("P1");
     expect(wrapper.text()).toContain("pay.done");
   });
+  it("已收款待人工核对时禁止再次发起支付", async () => {
+    mock.detail.mockResolvedValue(order("S1", "WAIT_PAY", 1000, {
+      paymentResolution: { status: "MANUAL_REQUIRED", reason: "LATE_PAYMENT", reference: "PM1" },
+    }));
+    const wrapper = await render("S1", true);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(wrapper.text()).toContain("pay.manualRequired");
+    expect(mock.init).not.toHaveBeenCalled();
+    expect(mock.payment).not.toHaveBeenCalled();
+  });
+
 });

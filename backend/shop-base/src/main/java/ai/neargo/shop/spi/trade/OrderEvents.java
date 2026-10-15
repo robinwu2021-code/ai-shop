@@ -85,7 +85,12 @@ public final class OrderEvents {
      *
      * @param outTradeNo 微信支付的商户单号。物流按它找运单（登记快照里存了同一个值），不必认识子单与支付单的对应
      */
-    public record WxShippingUploaded(String orderNo, String outTradeNo, long at) implements DomainEvent {
+    public record WxShippingUploaded(String orderNo, String outTradeNo, long at,
+                                     List<WxShippingPort.ShippingItem> shipments) implements DomainEvent {
+        /** Old events remain explicitly unmapped and cannot acknowledge a modern package. */
+        public WxShippingUploaded(String orderNo, String outTradeNo, long at) {
+            this(orderNo, outTradeNo, at, List.of());
+        }
         @Override
         public String aggregateType() {
             return "ORDER";

@@ -1,5 +1,6 @@
 package ai.neargo.shop.invbridge.port;
 
+import ai.neargo.shop.invbridge.OriginalInventoryRestoreAdapter;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -54,6 +56,12 @@ public class InventoryStockPort implements StockPort {
     private final ReservationService reservations;
     private final InventoryAclService acl;
     private final LocationService locations;
+    private OriginalInventoryRestoreAdapter originalRestores;
+
+    @Autowired
+    public void setOriginalRestores(OriginalInventoryRestoreAdapter originalRestores) {
+        this.originalRestores = originalRestores;
+    }
 
     public InventoryStockPort(StockCountService counts, ReservationService reservations, InventoryAclService acl,
                               LocationService locations) {
@@ -103,6 +111,12 @@ public class InventoryStockPort implements StockPort {
         }
         String owner = acl.ownerOfSku(items.get(0).skuNo());
         reservations.restore(owner, restoreNo, toLines(owner, items), "SYSTEM");
+    }
+
+    @Override
+    public RestoreResult restoreOriginal(String purpose, String originalRef, List<SkuQty> items) {
+        originalRestores.restore(purpose, originalRef, items);
+        return RestoreResult.COMPLETED;
     }
 
     /**

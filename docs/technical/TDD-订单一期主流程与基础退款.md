@@ -1,6 +1,6 @@
 # TDD-订单一期主流程与基础退款
 
-> 执行者使用 `superpowers:executing-plans` 逐任务实施；本文 §2 为唯一一期开发计划，步骤用复选框追踪。
+> 执行者使用 `superpowers:executing-plans` 逐任务实施；当前以“基础功能与 C/B 对接详细执行方案”B01–B07 为执行清单；后文 §2 保留原任务背景，步骤用复选框追踪。
 
 状态：**实施中 · 后端优先，随后对接 C/B**。创建/更新：2026-10-15。
 
@@ -11,6 +11,151 @@
 **技术栈：** Java 21、Spring Boot、MyBatis Plus、Flyway、MariaDB；C/B 为 Vue + uni-app，运营端为 Next.js + React；JUnit 与 Vitest。
 
 **需求/设计依据：** 用户 2026-10-15 的范围调整；[C端功能清单](../requirements/C端功能清单.md)、[B端功能清单](../requirements/B端功能清单.md)、[平台端功能清单](../requirements/平台端功能清单.md)、[支付域 PRD §S2/§S5](../requirements/PRD-支付域.md)、[物流功能清单](../requirements/物流-功能清单.md)、[订单状态与履约定义](./reference/订单状态与履约-定义整理.md)。原完整方案见 [旧开发计划](./TDD-订单重构修复与三端接线.md)，一期发生范围冲突时以本文为准；未纳入一期的需求保持延期，不能标成已完成。
+
+## 当前执行调整（2026-10-15，以本节优先）
+
+用户要求：停止并发测试，先完成基础功能并对接 C/B。既有实现与证据保留；暂停并发压测、连接池并发问题专项、并发消融以及全量旧测试夹具的批量整理，不再将这些工作作为 C/B 对接前置。本次全量后端测试已结束且未通过，不能据专项通过宣称整体通过；后续只运行直接覆盖本期基础行为的功能用例。
+
+当前事实：现金下单/支付、备货发货、物流与收货、基础退款已有后端实现和专项复核；真实 C/B HTTP 下单至收货、基础退款接口链路各有本地 MariaDB 通过记录。C/B 页面及共享 API 类型尚未对接。一期不接积分，新增订单代码继续位于 trade.order；shop.order 迁移及旧完整重构计划保持延期。
+
+| 顺序 | 接下来任务 | 完成标准 |
+|---|---|---|
+| 1 | 基础后端收口与合同冻结：核对 C/B 实际调用、主单/子单/包裹号、状态、动作、错误及支付/退款进度；仅修阻断基础功能的问题 | 单次下单付款→备货发货→物流展示→确认收货；未发全额退、退货收妥后全额退均有真实接口结果；受理不显示到账 |
+| 2 | 共享合同：补 pointsEnabled、paymentResolution、refundExecution 和实际物流字段；返回件确认增加 restockApproved，保留旧字段与路由 | C/B 类型与后端 JSON 一致；正常一期请求不含积分或部分退款指令 |
+| 3 | C 端接线：确认单/收银台/订单列表详情/物流/收货/售后 | 禁用积分试算和承诺；支付按主单、履约按子单；可申请撤销全额退款、寄回、查看处理中及失败；签收与收货完成分开 |
+| 4 | B 端接线：订单/备货/发货/物流/售后审核及退货收妥 | 门店子单正确，发货受付款守卫约束；整单全额现金退款，收妥时明确是否可回库；审核通过与退款到账分开 |
+| 5 | 基础联调与交付：按真实 C/B 接口走主流程和两个退款支线，核对权限与状态；仅补必要运营展示 | 相关页面测试、类型检查、小程序构建和基础接口用例通过；列明未做的并发、全量历史回归、真实渠道与上线验证 |
+
+后续验收不新增并发场景，不开展连接池专项，也不以调大测试池、改断言基线或跳过基础失败来制造通过。已经发现的并发问题保留为后续事项。已分账但通道无法确认回退的退款继续显示人工处理；本期不扩建分账回退能力。
+
+## 基础功能与 C/B 对接详细执行方案
+
+> 执行方式：沿用本任务逐项实施；先完成后端基础出口，再改共享合同和 C/B。以下 B01–B07 是当前执行清单，优先于后文旧任务中的并发、消融和全量回归步骤。
+
+**状态：** 待执行；仅细化计划，本轮不修改业务代码。已有代码和专项结果保留，不重新实现订单 2.0。
+
+### B01 基础后端收口与接口合同冻结
+
+**范围：** 现有 `MpTradeController`、`BizAfterSaleController`、商家订单接口及 `trade.order` 下付款、发货、收货、退款服务。先核对现有行为，发现基础阻断才修改相应实现；不预设新增 Controller 或整体提取旧服务。
+
+- [ ] 列出页面→API 方法→HTTP→后端入口的对照表；每条写明编号类型、请求字段、返回状态和可执行动作。
+- [ ] 固定三类编号：支付用 `payOrderNo`；列表、备货、发货、收货和申请售后用门店 `subOrderNo`；退货/审核等后续动作使用 `afterSaleNo`，包裹引用使用 `shipmentNo`。旧 JSON 的 `orderNo` 继续沿用原端点语义，不全局改名。
+- [ ] 核对付款发起与结果查询：`/mp/order/{orderNo}/pay`、`pay-result`；调用通道成功不能直接当成后端已付款，结果未确认显示处理中。
+- [ ] 核对备货/发货仅允许已付且无阻断售后；整张子单发货后能返回实际包裹、承运商、运单号。
+- [ ] 核对普通订单详情和物流摘要读库/缓存；没有轨迹、订阅失败和异常均显示实际状态，不能补造轨迹或主动消耗快递100查询额度。
+- [ ] 核对本人确认收货与既有自动收货：签收与完成分开，自动收货沿用签收7天/发货15天先到者，不新增定时器。
+- [ ] 核对未发全额退款、退货收妥后全额退款：批准后显示执行进度；现金成功后再展示退款到账；资源恢复状态独立展示。
+- [ ] 只修上述基础链路的阻断问题，更新必要错误码/字段说明。后端基础出口通过后立即进入 B02，不等待历史测试批量整理或并发专项。
+
+**基础验证：** 定向运行 `PhaseOneOrderEndToEndFlowTest`、`BasicReturnRefundFlowTest`、`StrictRefundCallbackFlowTest`；这些选择不包含并发类。若新增阻断修复，只补对应单次调用功能断言。
+
+**交付：** 页面接口对照表、请求/响应样例、基础未完成项清单；明确已由现有实现满足的项目，避免重复开发。
+
+### B02 同步共享类型和客户端适配层
+
+**文件：** `packages/shared/src/types/trade.ts`；C/B `src/api/contract.ts`、`http.ts`、`requests.ts`，以及对应订单/售后 mock。物流类型若定义于共享履约类型文件，按实际来源补齐，避免重复定义。
+
+- [ ] 给 `CheckoutCapability` 增加可选 `pointsEnabled`；页面仅在明确允许时才可视为开启，一期统一关闭，缺字段也关闭。
+- [ ] 对照实际后端 DTO 补 `Order.paymentResolution` 和 `AfterSale.refundExecution`，旧字段保留，不把父单金额复制为子单实付。
+- [ ] `refundExecution` 对齐实际字段：`executionNo/paymentNo/status/phase/errorCode/resourceStatus/resourceErrorCode/succeededAt/nextAttemptAt`。允许旧记录缺失，按原售后状态展示，不凭缺字段宣称成功。
+- [ ] 保留 `mApproveAfterSale` 原兼容签名；一期页面只提交现金全额决策，正常审核不传自定义 `refundMinor`，零现金子单也省略该字段，由后端核定。
+- [ ] 将 B 端 `mConfirmReturn(afterSaleNo)` 扩为兼容的 `mConfirmReturn(afterSaleNo, restockApproved?: boolean): Promise<AfterSale>`；HTTP `POST /biz/after-sale/{afterSaleNo}/receive` 发送 `{restockApproved: restockApproved === true}`，缺省为 false。
+- [ ] mock 同步“审核通过→处理中→明确成功”的区别，不在 approve/receive 返回时一律伪装 REFUNDED；保留可控失败、未知和资源待恢复样例。
+- [ ] 先写请求体和返回值适配测试，再修改适配层，确保 C/B 类型检查通过；生成 OpenAPI 时跟随合同修改，不人工改生成字段。
+
+**建议新增测试：** C/B `tests/order-phase1-api.test.ts`，覆盖缺少新字段兼容、确认退货 true/false、全额审核省略金额、售后受理仍处理中。
+
+**交付：** 共享类型和真实 HTTP 适配层一致，页面后续直接消费，不各自推断服务端状态。
+
+### B03 C 端下单、支付和订单主流程
+
+**文件：** `c-app/src/pages/order-confirm/index.vue`、`pay/index.vue`、`orders/index.vue`、`order/index.vue`，以及 C 端现有支付结果处理代码。
+
+- [ ] 确认页移除一期抵扣/预计赠分交互，不发积分试算；预览和创建均传 `usePoints=0`，保留商品实价、优惠、运费、地址及门店选择。
+- [ ] 收银台按父支付号发起/查询；支付取消和失败允许按现有规则重新操作，处理中不显示“支付成功”，支付异常人工处理状态禁止再次引导付款。
+- [ ] 订单列表继续按门店子单展示；从任一待付子单进入同一笔支付，详情保留门店实付及关联支付号。
+- [ ] 详情按实际状态显示取消、查看物流、确认收货和申请售后；未支付取消不显示退款，已付取消必须进入售后。
+- [ ] 普通详情物流摘要只读取后端事实。确认收货成功后重新获取订单、有效包裹和可执行动作，不能只在页面本地改“已完成”。
+- [ ] 补页面单次调用测试：能力缺失无积分调用；两店列表两行、支付同一父单；付款待确认；签收未确认仍可正确收货；取消未付单后状态刷新。
+
+**验证：** 扩展现有 `order-confirm-page/pay-page/one-tap-pay/orders-page/order-page` 测试；实际文件使用已有 `.test.ts`，不重复新建同类测试。
+
+**交付：** C 端可以真实下单付款、查看履约、取消未付订单和确认收货。
+
+### B04 C 端基础售后和物流页
+
+**文件：** `c-app/src/pages/after-sale/index.vue`、订单详情的售后入口、现有 `c-app/src/pages/track/index.vue`；新增 `c-app/tests/after-sale-phase1.test.ts` 和必要物流页面测试。
+
+- [ ] 仅提供子单整单全额现金退款；不显示商品勾选、数量/金额编辑、积分补偿或新协商入口。历史记录仍可查询。
+- [ ] 申请、详情、撤销和填写寄回单号沿用原路由，使用售后号寻址；可撤销/可介入等能力尊重后端返回与现有规则。
+- [ ] 分别展示待审核、待寄回、待商家收妥、退款处理中、退款失败/未知、现金已退，以及库存/优惠待恢复；退款失败不引导买家重复申请一笔退款。
+- [ ] 零现金子单不能被误当成未付款；历史积分订单显示人工核对提示，不把历史积分快照清零。
+- [ ] 物流页显示承运商、运单、节点、更新时间和异常；加载失败有重试入口，无轨迹与接口失败分开；不在前端虚构揽收、签收或订单完成。
+- [ ] 验证未发申请/撤销、退货填单、退款状态刷新、无轨迹、加载失败；不新增并发或压测用例。
+
+**交付：** 买家能够完成基础退款所需操作并看到真实进度。
+
+### B05 B 端订单、备货发货和物流
+
+**文件：** `b-app/src/pages/orders/index.vue`、`order/index.vue`、已有发货表单/物流展示组件；新增 `b-app/tests/order-phase1-flow.test.ts`。
+
+- [ ] 列表和详情按当前商家/门店子单展示金额、商品、付款、履约与售后状态，不显示其他门店商品和父单合计作为本店收入。
+- [ ] 已付款且允许履约时显示备货/发货动作；保留后端权限和售后守卫，不用页面开关替代服务端校验。
+- [ ] 一期整张子单发货，使用现有承运商编码和运单校验；成功后重新获取订单与包裹，失败保留表单内容及真实原因。
+- [ ] 展示实际运单、轨迹摘要、物流异常及必要的上传/订阅状态；物流签收显示为交付事实，不当作买家已确认收货。
+- [ ] 验证备货、整单发货、运单错误、无权限、售后阻断、物流状态刷新；只做单次操作功能验证。
+
+**交付：** 商家能把 C 端真实付款的订单完成备货和发货，C/B 展示同一包裹。
+
+### B06 B 端退款审核和退货收妥
+
+**文件：** `b-app/src/pages/after-sale/index.vue`、B 端售后 API 和 mock；扩展 `b-app/tests/after-sale-approve.test.ts`，新增 `b-app/tests/after-sale-return.test.ts`。
+
+- [ ] 审核页显示当前门店子单、申请原因、实际全额退款金额、履约阶段、原申请和当前退款进度。
+- [ ] 同意/拒绝沿用原接口；移除一期自定义少退和积分退款选择。审核通过后根据返回值显示等待寄回或退款处理中，不能直接弹“已退款到账”。
+- [ ] 对 RETURNING 显示“确认收到退货”，由商家明确选择是否可回库，默认否；发起 receive 时传入 `restockApproved`，不能根据运单存在或签收自动确认收到退货。
+- [ ] 已发仅退款不自动回库；确认收到退货也不自动等于可再次销售。
+- [ ] 分开显示资金执行和资源恢复状态；`REVERSE_UNCONFIRMED` 等无法自动完成的情况显示人工处理，不给 B 端“强制成功”按钮。
+- [ ] 验证审核后处理中、拒绝说明、退货收妥 true/false、零现金审核省略自定义金额、历史积分提示和退款失败展示。
+
+**交付：** 商家可完成审核、拒绝、退货收妥和可回库决定，C/B 对同一售后进度一致。
+
+### B07 基础联调、定向验证与交付
+
+按下面顺序逐条走通；每条记录支付号、子单号、包裹号/售后号、实际请求响应和两端结果。
+
+| 场景 | 验收结果 |
+|---|---|
+| 一店快递主流程 | C 创建并真实付款→B 备货发货→C/B 同一运单→物流签收→C 确认收货→双方完成 |
+| 两店合并付款 | 一笔付款两张门店单；各店履约独立；不可查看/处理其他门店订单 |
+| 未支付取消 | C 取消后订单关闭，原库存/优惠占用正确释放，无退款指令 |
+| 未发货全额退 | C 申请→B 同意→处理中→可信资金成功→全额现金退款；原库存一次恢复 |
+| 退货后全额退 | C 申请→B 审核→C 填寄回→B 收妥→资金成功；回库仅在明确同意时执行 |
+| 拒绝与撤销 | 原因和状态两端同步；未发生现金退款 |
+| 结果未确认/失败 | 不显示到账，不盲目重拍退款；保留原执行与人工处理出口 |
+| 积分关闭 | 全程无积分试算/抵扣/赠分承诺；历史积分快照只读与人工处理 |
+
+- [ ] 执行 B01 的基础后端选择和本次修改对应的 C/B 页面/API 测试；不选择带并发场景的整组后端类。
+- [ ] 执行 C/B `type-check` 与 `build:mp-weixin`；修复本次对接引入的错误，历史无关失败单独列明，不修改 known-* 或断言阈值。
+- [ ] 如基础失败需要运营处理，只补已有售后页的退款执行/资源错误展示与受权限保护的原执行恢复入口；不扩建运营订单工作台。
+- [ ] 按实际修改重生成 OpenAPI、API详情、必要字段/权限文档；对照当前 diff 审查权限、金额、编号和成功语义。
+- [ ] 每个可独立验收的批次精确提交；最终列出已完成基础功能、未完成事项及真实渠道联调边界，不将本地测试通道通过写成上线通过。
+
+**验证命令（在一期隔离树执行）：**
+
+```bash
+JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH mvn -o -B -f backend/pom.xml -pl shop-app -am -Dtest=PhaseOneOrderEndToEndFlowTest,BasicReturnRefundFlowTest,StrictRefundCallbackFlowTest -Dsurefire.failIfNoSpecifiedTests=false test
+npm --prefix c-app run test -- tests/order-confirm-page.test.ts tests/pay-page.test.ts tests/one-tap-pay.test.ts tests/orders-page.test.ts tests/order-page.test.ts tests/order-phase1-api.test.ts tests/after-sale-phase1.test.ts
+npm --prefix b-app run test -- tests/order-phase1-api.test.ts tests/order-phase1-flow.test.ts tests/after-sale-approve.test.ts tests/after-sale-return.test.ts
+npm --prefix c-app run type-check
+npm --prefix b-app run type-check
+npm --prefix c-app run build:mp-weixin
+npm --prefix b-app run build:mp-weixin
+```
+
+新增测试文件在对应批次创建后才加入实际执行命令；本轮仅保存执行方案，没有执行上述命令。
+
+**执行顺序与停止条件：** B01→B02→B03→B04→B05→B06→B07。每批先列出缺口与功能断言，再最小实现、定向验证、检查实际 diff 并提交。仅当前基础流程阻断才暂停进入下一批；已延期的并发、连接池、历史全量用例和包迁移不得重新变为前置任务。
 
 ## §0 范围与需求对账
 
@@ -130,6 +275,8 @@
 
 ### Task 2: N02 完整现金下单与门店查询接线
 
+**实施裁定（2026-10-15）：** 一期以真实现金下单和恢复能力为出口。现有生产定价、优惠、运费、门店/地址、预约和拼团规则保持同一路径；已新增稳定创建意图、严格库存协议及真实门店查询 Store。纯 `PreparedOrder` / 创建 Store 的整体提取移入后续结构重构，不用尚未承载完整商价规则的原价草稿替换生产下单。下列提取文件/接口保留为后续方向，不计入一期必做；本期仍必须通过原真实接口的价格、选择、幂等和恢复验收。代价是旧定价服务仍较大，后续提取需要独立回归。
+
 **文件：** 修改 `O/command/CreateOrderCommand.java`、`O/service/create/{CreateOrderHandler,PaymentDraftFactory,OrderDraftFactory,OrderPersister,OrderWriteStore}.java`、`T/service/impl/OrderServiceImpl.java`。新增 `O/command/OrderActor.java`、`O/service/create/{CheckoutPreparationService,PreparedOrder,MybatisOrderWriteStore,OrderCreateTransaction}.java` 及准备服务实现；新增 `O/service/{StoreOrderQueryService,impl/StoreOrderQueryServiceImpl}.java`、`O/service/query/{StoreOrderReadStore,MybatisStoreOrderReadStore,StoreOrderAssembler}.java`、`O/contract/{StoreOrderView,StoreOrderSummary,StoreOrderQuery}.java`。复用 `backend/shop-store-mybatis/src/main/java/ai/neargo/shop/idem/IdempotencyService.java`，只补真实订单缺口。
 
 **接口：** `PreparedOrder prepare(CreateOrderCommand command,OrderActor actor)`；`String create(PreparedOrder prepared,OrderActor actor,String idemKey)` 返回支付号；`StoreOrderView detail(String subOrderNo,String buyerNo)`、`PageData<StoreOrderSummary> list(String buyerNo,StoreOrderQuery query,long page,long size)`。OrderActor 的角色/属主/merchant/store 集合由认证或代客授权构造；B/运营继续用各自数据域，不能用 buyerNo 代替店权限。
@@ -150,10 +297,12 @@
 
 **接口：** `void markPaid(String payNo,String channel,String tradeNo)` 消费支付域已确认的收款；`void cancel(String payOrSubNo,String reason,OrderActor actor)` 消费完整影响集合授权；现有 `/mp/order/{orderNo}/pay-result` 保留。一笔支付合并展示/发起/回查，多店子单各自履约。零现金只按服务端实际结清处理；线下待确认不能显示已支付。
 
-- [ ] 新增 `IT/OrderPaymentLifecycleWiringFlowTest.java`：重复可信回调一次扣库存/建结算单；回调丢失回查补齐；`mismatchedPaymentNotApplied` 拒绝金额/币种/交易归属不符；`latePaymentHasRecoverableResolution` 保留真实收款并形成可恢复冲突，不盲目复活 CANCELLED。
-- [ ] 扩展关单/取消场景：支付与关单并发有一致胜者，取消/关单不重复释放；异店运营不能取消整笔支付；已付取消必须走售后。先跑新增断言定位当前缺口。
-- [ ] 将付款/取消/关单规则接同一写门；支付账确认在订单投影之前，库间中断由原流水回查恢复。保持实际付款账户/场景来源，不由调用端 header 伪造金融身份。
+- [x] 新增 `IT/OrderPaymentLifecycleWiringFlowTest.java`：重复可信回调一次扣库存/建结算单；回调丢失回查补齐；`mismatchedPaymentNotApplied` 拒绝金额/币种/交易归属不符；`latePaymentHasRecoverableResolution` 保留真实收款并形成可恢复冲突，不盲目复活 CANCELLED。
+- [x] 扩展关单/取消场景：支付与关单并发有一致胜者，取消/关单不重复释放；异店运营不能取消整笔支付；已付取消必须走售后。先跑新增断言定位当前缺口。
+- [x] 将付款/取消/关单规则接同一写门；支付账确认在订单投影之前，库间中断由原流水回查恢复。保持实际付款账户/场景来源，不由调用端 header 伪造金融身份。
 - [ ] 运行新测试及 `OrderPaidFourChannelsFlowTest,OrderCloseRuleFlowTest,MultiStoreOrderScopeTest`、C `pay-page.test.ts/one-tap-pay.test.ts`；真接口验证付款失败/用户取消/成功延迟回查。复核提交后交付里程碑 A。
+
+**后端复核：** 原收款匹配修复复核 ADDRESSED；收银台旧读并发守卫补充评审 Approved，无阻断项。支付相关 H2 52 条、MariaDB 14 条，以及新增实际付款后旧收银台请求 1 条分别通过；真实失败断言与持久冲突消融均已记录。C 付款页面留 N08，完整后端回归和跨端验收仍待统一完成。
 
 ### Task 4: N04 备货、整单发货和有效发货单
 
@@ -185,10 +334,12 @@
 
 **接口：** `void confirmReceipt(String subOrderNo,String shipmentNo,OrderActor actor)`；旧整单收货接口映射到该子单当前有效发货单。自动收货沿用 `boolean completeAuto(String subOrderNo,long now,int shippedDays,int signedDays)` 的每单公共事务代理，15/7 天取先到，售后等已有守卫保留。
 
-- [ ] 新增 `IT/OrderReceiptWiringFlowTest.java`：签收不自动变完成；本人确认一次、异买家拒绝；并发人工/自动收货只一条完成流水；流水写失败订单/包裹一起回滚；缺历史 Shipment 的旧单走明确兼容事实。
-- [ ] 在 `OrderAutoReceiptTransactionFlowTest/OrderAutoReceiptFlowTest` 保留一单失败不中断批次、当前事实重验及时间边界；历史多包裹最后两个并发收货也必须收敛，不因此新开部分发货产品入口。
-- [ ] 包裹更新按所属子单串行，再当前读重算完成；完成、退款终态不被迟到物流事件改回履约中；复用状态写门/通知，积分调用仍为 0。
+- [x] 新增 `IT/OrderReceiptWiringFlowTest.java`：签收不自动变完成；本人确认一次、异买家拒绝；并发人工/自动收货只一条完成流水；流水写失败订单/包裹一起回滚；缺历史 Shipment 的旧单走明确兼容事实。
+- [x] 在 `OrderAutoReceiptTransactionFlowTest/OrderAutoReceiptFlowTest` 保留一单失败不中断批次、当前事实重验及时间边界；历史多包裹最后两个并发收货也必须收敛，不因此新开部分发货产品入口。
+- [x] 包裹更新按所属子单串行，再当前读重算完成；完成、退款终态不被迟到物流事件改回履约中；复用状态写门/通知，积分调用仍为 0。
 - [ ] 跑新场景与 `OrderAutoReceiptFlowTest,BizOrderFulfillFlowTest`、C 收货页面测试；真接口完成普通快递订单。复核提交后交付里程碑 B。
+
+**后端复核：** N06 专项评审 Approved，无阻断项；收货相关 H2 77 条、真实 MariaDB 收货 16 条通过，实际写门消融先失败、恢复后重新编译通过。人工与自动收货均按当前子单事实串行，改单号保留原包裹期限。源码暂与 N05/N07 共享 schema 待统一提交；C 收货页面及跨物流完整链路仍留 N08，里程碑 B 尚不据本专项单独宣告完成。
 
 ### Task 7: N07 基础全额退款和必要恢复
 
@@ -273,12 +424,12 @@ git diff --check
 |---|---|---|
 | N00 | 已完成 | 干净一期基线/接线清单/旧改动保留 |
 | N01 | 后端已完成，C/B 待 N08 | 无积分依赖、端与服务端一致 |
-| N02 | 实施中，幂等子批已验证 | 现金下单/查询生产接线和幂等 |
-| N03 | 实施中 | 付款/取消/关单闭环，里程碑 A |
-| N04 | 实施中 | 商家备货/整单发货 |
-| N05 | 待实施 | 物流订阅/可信推送/三端查看 |
-| N06 | 待实施 | 收货与完成，里程碑 B |
-| N07 | 待实施 | 基础退款成功/失败/未知可恢复 |
+| N02 | 后端功能已验证，结构提取延期 | 现金下单/查询生产接线和幂等 |
+| N03 | 后端已验证及复核，C 待 N08 | 付款/取消/关单闭环，里程碑 A |
+| N04 | 后端已验证，N05/N08 继续接线 | 商家备货/整单发货 |
+| N05 | 实施中 | 物流订阅/可信推送/三端查看 |
+| N06 | 后端专项已验证及复核，C 待 N08 | 收货与完成，里程碑 B |
+| N07 | 实施中 | 基础退款成功/失败/未知可恢复 |
 | N08 | 待实施 | 三端贯通与交付证据，里程碑 C |
 
 计划自检：P01–P12 均有任务落点；Review 重点五项均指定反例测试；支付聚合与子单/Shipment 编号分开；新积分、复杂财务和迁包未作为主线前置；F07 保留未提交且未记完成。实现时用实际 diff 更新文件清单/偏差与测试结果，不能把本节规划自检写成代码通过。
@@ -309,4 +460,13 @@ N02-C 查询接线：真实门店分页及详情改由注册的 StoreOrderQueryS
 
 N03-A 可信收款：新增真实付款场景六条均先失败，包含未知流水被认领、无流水/金额不同/币种不同/付款属主不同仍推进，以及 stub 将 6980 分写为零元。SettlePort 增加精确发起流水及成功收款事实读取，支付域按原商户单号当前锁认领；未知号不退化成订单号，不接受通道不同或重复交易事实变化。实际到账金额仍留在支付流水，订单生产入口由 PaymentLifecycleService 与原应付快照核对后才经写门推进。启用开发回调时从真实发起流水取金额与通道，不在支付域特殊放行 STUB；零现金仍需成功结清事实，线下确认保持原授权商家入口。首轮相关19条通过，N03-payment-green.log；取消后到账持久化出口、竞态与完整回归尚未完成。
 
-N03-B 增量设计（实施前固定）：新增 V412 `ord_payment_resolution`，以原支付号/原收款流水号唯一登记到账冲突，冻结本订单买家、实收金额/币种/通道/交易号、原因及处理状态。记录使用独立主库事务，订单投影回滚不丢冲突；无外键或额外订单资源占用。已取消/关闭后到账登记 LATE_PAYMENT，真实金额/币种/属主不符登记 RECEIPT_MISMATCH，初始 MANUAL_REQUIRED，不自动复活订单、重建支付、释放已实扣库存或假定退款成功。既有详情/付款结果以可空 paymentResolution 展示处理状态、原冲突引用和实收金额，沿用原买家/门店访问授权，不新增匿名读取。后续 N07 仅在原收款退款确实成功后关闭记录；现阶段人工核对出口需保留真实金融证据。付款与关闭均采用当前锁/共同状态写门，支付域 close 不允许覆盖已成功的收款；重复回调/冲突记录不得重新写一次成功或处理记录。
+N03-B 增量设计（实施前固定）：新增 V412 `ord_payment_resolution`，以原支付号/原收款流水号唯一登记到账冲突，冻结本订单买家及来源收款的订单/付款属主、实收金额/币种/通道/交易号、原因及处理状态。记录使用独立主库事务，订单投影回滚不丢冲突；无外键或额外订单资源占用。已取消/关闭后到账登记 LATE_PAYMENT，真实金额/币种/属主不符登记 RECEIPT_MISMATCH，初始 MANUAL_REQUIRED，不自动复活订单、重建支付、释放已实扣库存或假定退款成功。既有详情/付款结果以可空 paymentResolution 展示处理状态及原冲突引用；金额事实留在金融记录，不在商家子单详情额外泄漏跨店支付汇总，沿用原买家/门店访问授权，不新增匿名读取。后续 N07 仅在原收款退款确实成功后关闭记录；现阶段人工核对出口需保留真实金融证据。付款与关闭均采用当前锁/共同状态写门，支付域 close 不允许覆盖已成功的收款；重复回调/冲突记录不得重新写一次成功或处理记录。
+
+N03-B 当前结果：V412 独立保存迟到/不匹配/重复收款的原支付号、原收款号、订单买家及来源属主、实际金额/币种/通道/交易号；唯一键保证重推不覆盖原处理记录。买家/B/运营的既有详情仅增加可空处理状态/原因/原引用，不额外公开跨店金额。真实迟到/金额反例先为记录0失败后通过；测试确认订单投影回滚仍保留记录、取消订单不复活。实际收款先落账，现金订单必须消费 SUCCESS；source Query/Settled 币种贯通，零元交易号由成功金融事实解析。H2 延迟关闭收款先复现旧 RR 死锁；金融关闭独立 RC 当前锁后不覆盖 SUCCESS。MariaDB 支付/到期竞争复现 ord_order1020，付款/取消/关单公共边界限定 RC，关闭数只计真实成功，服务器严格快照仍开启。
+
+N04 实施偏差：使用独立 OrderShippingService/Impl 接真实 B ship 路由，避免将尚不完整的通用 create 原型冒充生产门面；旧 create/markPaid/cancel 不另实现一套。Long 行 ID、整单绑定、父单支付/店权限/售后检查、包裹与状态审计及 Outbox 同事务。换号作废旧包裹并创建新包裹、重绑真实行；sourceShipmentNo/不可变 generation 与后续 lgs 标识映射分开。共享写门处理普通发货/换号，实际认证员工账号写入审计。V413 以 STORED 可空有效运单列唯一约束同租户承运商/运单，作废释放约束，别的约束错误不误译为重复运单。真实跨单竞态先2成功失败；实际 MariaDB 同子单重试先1020失败，入口当前锁及限定 RC 后通过。发货消融真实行绑定后5条失败，恢复原字节后8条通过。
+
+N03/N04 合并 H2 回归156条通过，覆盖原现金/线下/关单/门店范围、角色和审计、B/运营处理记录可见及 Architecture。真实 MariaDB 最终20条通过（收款关闭1、发货并发2、实际发货9、付款生命周期8）；早期70045仅因本地测试库未加载既有 TEST 通道补种，1901因夹具 CHECK 引用了自增主键。补种仅临时本地数据库，改夹具为目标子单第二行数量检查，并将每次运行运单样本加稳定随机后缀，没有清除有效运单或放宽唯一约束。N04 独立任务复核通过，一项重要夹具重复运行问题已修复并经范围复核确认；旧编译/动态代理提示列为非发货行为的小项。N05 仍需处理上传入队的 REQUIRED 事务故障及来源映射；N07 仍需修复售后申请在等待发货锁后使用旧阶段规划的反向竞态。N03 原流水回查仍继续接线，不能宣布全部后端或下单里程碑完成。
+
+N02 一期范围裁定：按 Task 2 的实施裁定，真实商业下单、门店查询、幂等和资源恢复为本期出口；纯创建草稿与 Store 提取延期。旧状态记录中“草稿仍待实施”仅代表当时进度，不表示现阶段仍将其作为主流程前置。
+N03 回调丢失修复：生产 PaymentReconReconciler 按原 outTradeNo 将通道实收金额/币种先记入金融账，再投影订单；找不到/未知查询不伪造收款。真实接口四条通过，包含 USD 与关单后迟到资金的可见人工核对。旧对账回归16条通过；新增长错误记录反例已复现，正在补齐字段长度保护。

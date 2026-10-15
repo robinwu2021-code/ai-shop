@@ -15,6 +15,11 @@ public interface ShipmentWriteStore {
     /** Retire an old package through the shared transition gate before rebinding its rows. */
     void supersede(OrdShipment old, String replacement, Operator operator);
 
+    /** Preserve the caller's real correction reason while old test adapters retain their original API. */
+    default void supersede(OrdShipment old, String replacement, Operator operator, String reason) {
+        supersede(old, replacement, operator);
+    }
+
     /** Maintain the existing HTTP/JSON shipping fields alongside package facts. */
     void saveLegacyFields(OrdSubOrder order, String carrier, String waybillNo);
 

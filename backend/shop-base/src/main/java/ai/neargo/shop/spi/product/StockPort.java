@@ -10,6 +10,13 @@ import java.util.List;
  * 就要反向依赖交易模块。
  */
 public interface StockPort {
+    enum RestoreResult { COMPLETED, PENDING }
+
+    /** The purpose key belongs to the destination inventory ledger, rather than a caller Boolean. */
+    default RestoreResult restoreOriginal(String purposeNo, String originalLockNo, List<SkuQty> items) {
+        throw new UnsupportedOperationException("original stock restore unavailable");
+    }
+
 
     /**
      * 锁定库存（下单时）。全部成功或全部失败，不允许部分锁定 ——

@@ -57,7 +57,24 @@ public record AfterSaleVO(String afterSaleNo,
                            * 买家此刻能否「申请平台介入」（后端按状态与商家是否超时判；TDD-订单状态机 AC10）。
                            * 端上按它画按钮，不再各端自己判状态。
                            */
-                          boolean canEscalate) {
+                          boolean canEscalate,
+                          RefundExecutionProgress refundExecution) {
+
+    /** Preserve existing producers while progress becomes available on the real refund execution path. */
+    public AfterSaleVO(String afterSaleNo, String subOrderNo, String orderNo, String type, String status,
+                       String reason, List<String> images, long refundMinor, boolean instant, String merchantReply,
+                       String returnExpressNo, String liability, long createdAt, long updatedAt,
+                       List<TimelineNode> timeline, RefundImpact impact, String refundMode, Long refundPoints,
+                       Long approvedMinor, String fulfillStage, boolean waitReceipt, boolean canEscalate) {
+        this(afterSaleNo, subOrderNo, orderNo, type, status, reason, images, refundMinor, instant, merchantReply,
+                returnExpressNo, liability, createdAt, updatedAt, timeline, impact, refundMode, refundPoints,
+                approvedMinor, fulfillStage, waitReceipt, canEscalate, null);
+    }
+
+    /** Original execution and independent resource recovery remain visible after cash confirmation. */
+    public record RefundExecutionProgress(String executionNo, String paymentNo, String status, String phase,
+                                          String errorCode, String resourceStatus, String resourceErrorCode,
+                                          Long succeededAt, Long nextAttemptAt) { }
 
     /** 整单退款会一并退回的券与积分；开关关掉的那一项为空 / 0 */
     public record RefundImpact(String couponTitle, long pointsReturn, long pointsRevoke) {
@@ -70,7 +87,7 @@ public record AfterSaleVO(String afterSaleNo,
         return new AfterSaleVO(afterSaleNo, subOrderNo, orderNo, type, status, reason, images,
                 refundMinor, instant, merchantReply, returnExpressNo, liability, createdAt,
                 updatedAt, timeline, i == null || i.isEmpty() ? null : i,
-                refundMode, refundPoints, approvedMinor, fulfillStage, waitReceipt, canEscalate);
+                refundMode, refundPoints, approvedMinor, fulfillStage, waitReceipt, canEscalate, refundExecution);
     }
 
     public record TimelineNode(String status, String label, long at) {

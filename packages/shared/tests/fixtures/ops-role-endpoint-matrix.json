@@ -636,6 +636,7 @@
     "PUT /ops/admission/policies/{legalForm}",
     "GET /ops/after-sales",
     "POST /ops/after-sales/{afterSaleNo}/decide",
+    "POST /ops/after-sales/{afterSaleNo}/recover",
     "GET /ops/after-sales/fast-refund-rule",
     "POST /ops/after-sales/fast-refund-rule",
     "GET /ops/appearance",
@@ -1052,6 +1053,7 @@
   "SUPPORT": [
     "GET /ops/after-sales",
     "POST /ops/after-sales/{afterSaleNo}/decide",
+    "POST /ops/after-sales/{afterSaleNo}/recover",
     "GET /ops/after-sales/fast-refund-rule",
     "POST /ops/after-sales/fast-refund-rule",
     "POST /ops/auth/forgot",

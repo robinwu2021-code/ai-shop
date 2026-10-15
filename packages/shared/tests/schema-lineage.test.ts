@@ -211,6 +211,12 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   payout_no: { table: "stl_payout" },
   after_sale_no: { table: "ord_after_sale" },
   payment_no: { table: "stl_payment" },
+  // 订单一期：恢复台账中的 pay_no 就是付款主单 order_no，允许主单投影尚未落库。
+  pay_no: { table: "ord_order", col: "order_no" },
+  origin_payment_no: { table: "stl_payment", col: "payment_no" },
+  // ORD 发货单来源与 LGS 独立运单号不可互换。
+  source_shipment_no: { table: "ord_shipment", col: "shipment_no" },
+  refund_execution_no: { table: "ord_refund_execution", col: "execution_no" },
   // 用户的 USE 流水。商家进账挂它 —— 一次使用一条进账，见 LINEAGE 里那一跳
   use_ledger_no: { table: "pts_user_ledger", col: "ledger_no" },
 
@@ -231,6 +237,14 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   merchant_no: { table: "mch_entity", col: "entity_no" },
 };
 
+/** 同名键只在已证明的来源表中指向对应业务域。 */
+const SCOPED_KEY_OWNERS: Record<string, Record<string, string>> = {
+  ord_item: { shipment_no: "ord_shipment" },
+  ord_shipment: { shipment_no: "ord_shipment" },
+  lgs_waybill: { shipment_no: "lgs_waybill" },
+  lgs_waybill_node: { shipment_no: "lgs_waybill" },
+};
+
 /**
  * 已登记的**同名不同义**列。
  *
@@ -239,6 +253,15 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  parent_no:
+    "cmt_community.parent_no 是社区树的父节点，prd_category.parent_no 是商品类目树的父节点。" +
+    "两个定义域独立，不能按同名连线；各自在自己的树内关联主键。",
+  shipment_no:
+    "ord_shipment 是订单发货单，lgs_waybill 是独立物流运单；两边独立发号。" +
+    "来源关系由 lgs_waybill.source_shipment_no → ord_shipment.shipment_no 表达，不能把 shipment_no 按同名连线。",
+  trade_no:
+    "stl_payment 与 ord_payment_resolution 保存的是通道提供的交易号；只在对应支付通道/提供方命名空间内识别。" +
+    "它不是平台全局业务键，不能仅按 trade_no join；关联必须同时证明 pay_channel 与原支付身份。",
   waybill_no:
     "两边是**同一个快递运单号**，但它**不是外键**：运单号只在承运商内唯一，lgs_waybill 按（承运商, 运单号）登记；" +
     "ord_shipment（订单服务 2.0 发货单，V401）记的是商家录入的号。\n" +
@@ -395,16 +418,32 @@ describe("对账血缘", () => {
     ).toEqual([]);
   });
 
+  it("同名发货键登记的来源列与目标列真实存在", () => {
+    for (const [from, owners] of Object.entries(SCOPED_KEY_OWNERS)) {
+      for (const [column, target] of Object.entries(owners)) {
+        expect(schema.get(from)?.has(column), `${from}.${column} 不存在`).toBe(true);
+        expect(schema.get(target)?.has(column), `${target}.${column} 不存在`).toBe(true);
+      }
+    }
+  });
+
   it("与 gen-erd.mjs 的键归属表一致 —— 两份分叉会让 ER 图连错线", async () => {
     // ER 图生成器要靠同一份归属画关系。两处各存一份必然漂移，
     // 而漂移的表现是「图上少了一条线」或「连到了错的表」—— 没人会发现。
     const gen = (await import("../../../scripts/gen-erd.mjs")) as {
       KEY_OWNERS: Record<string, string>;
+      KEY_OWNER_COLUMNS: Record<string, string>;
+      SCOPED_KEY_OWNERS: Record<string, Record<string, string>>;
     };
     const mine = Object.fromEntries(
       Object.entries(KEY_OWNERS).map(([k, v]) => [k, v.table]),
     );
     expect(gen.KEY_OWNERS, "gen-erd.mjs 与本文件的 KEY_OWNERS 不一致").toEqual(mine);
+    const targetColumns = Object.fromEntries(
+      Object.entries(KEY_OWNERS).filter(([, owner]) => owner.col).map(([key, owner]) => [key, owner.col]),
+    );
+    expect(gen.KEY_OWNER_COLUMNS, "角色化键必须指向同一实际列").toEqual(targetColumns);
+    expect(gen.SCOPED_KEY_OWNERS, "同名键的表内归属必须一致").toEqual(SCOPED_KEY_OWNERS);
   });
 
   it("登记的同名冲突仍然存在 —— 解决了要删登记", () => {
