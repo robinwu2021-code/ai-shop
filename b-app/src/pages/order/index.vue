@@ -234,18 +234,26 @@ function startWaybillCorrection() {
 }
 
 async function correctWaybill() {
-  if (!order.value || !canCorrectWaybill.value || busy.value || correctedCarrierIdx.value < 0
-      || !correctedNo.value.trim() || !correctionReason.value.trim()) return;
+  if (!order.value || !canCorrectWaybill.value || busy.value) return;
+  if (correctedCarrierIdx.value < 0 || !correctedNo.value.trim() || !correctionReason.value.trim()) {
+    uni.showToast({ title: String(t("order.waybillIncomplete")), icon: "none" });
+    return;
+  }
   const carrier = carriers[correctedCarrierIdx.value];
   if (!carrier || (carrier.code === order.value.expressCompany
-      && correctedNo.value.trim() === order.value.expressNo)) return;
+      && correctedNo.value.trim() === order.value.expressNo)) {
+    uni.showToast({ title: String(t("order.waybillUnchanged")), icon: "none" });
+    return;
+  }
   busy.value = true;
   try {
-    await api.mCorrectWaybill(order.value.orderNo, correctedNo.value.trim(), carrier.code,
+    const corrected = await api.mCorrectWaybill(order.value.orderNo, correctedNo.value.trim(), carrier.code,
       correctionReason.value.trim());
+    shipSync.value = corrected.logisticsSync;
+    order.value = corrected;
     correctingWaybill.value = false;
     await load(currentNo.value);
-    uni.showToast({ title: String(t("order.waybillCorrected")), icon: "none" });
+    uni.showToast({ title: String(t(shipSync.value?.pending ? "order.shippedSyncing" : "order.waybillCorrected")), icon: "none" });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {

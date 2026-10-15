@@ -39,7 +39,9 @@ public final class ShipmentMachine {
                     .from(SHIPPED, DELIVERED).on(RECEIPT_CONFIRMED).by(BUYER, SYSTEM).to(RECEIVED)
                     .emit("ShipmentReceived").add()
                     // H5 改单号：旧单作废（新号先过与建单相同的守卫）
-                    .from(CREATED, SHIPPED).on(CORRECT_WAYBILL).by(MERCHANT, PLATFORM)
+                    // A wrongly reused number can arrive already signed; while the trade order
+                    // still fulfills, replacing it must void that false carrier receipt too.
+                    .from(CREATED, SHIPPED, DELIVERED).on(CORRECT_WAYBILL).by(MERCHANT, PLATFORM)
                     .when(AUTHORIZED, WAYBILL_VALID, WAYBILL_FREE)
                     .to(VOIDED).emit("ShipmentVoided").add()
                     // H6 未揽收前取消

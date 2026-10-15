@@ -38,6 +38,37 @@ class OrderMappedOpsLogisticsFlowTest {
     @Autowired private WebApplicationContext context;
 
     @Test
+    void mistakenSignedWaybillCanBeCorrectedWhileTradeStillFulfilling() throws Exception {
+        String sub = OrderLogisticsFixture.seed(jdbc, ledger, false);
+        String oldNo = "STO" + sub.substring(2, 22).toUpperCase(Locale.ROOT) + "S";
+        String newNo = oldNo.substring(0, oldNo.length() - 1) + "T";
+        String sourceNo = shipping.ship(sub, new ShipCommand(List.of(), "STO", oldNo),
+                new OrderActor("LG-MERCHANT", "LG-STORE")).shipmentId();
+        drain();
+        String lgsNo = jdbc.queryForObject("SELECT shipment_no FROM lgs_waybill WHERE biz_ref=?", String.class, sub);
+        jdbc.update("UPDATE lgs_waybill SET status='DELIVERED',signed_at=? WHERE shipment_no=?",
+                System.currentTimeMillis(), lgsNo);
+        jdbc.update("UPDATE ord_shipment SET status='DELIVERED',signed_at=? WHERE shipment_no=?",
+                System.currentTimeMillis(), sourceNo);
+        MockMvc mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
+        String token = TestLogin.admin(mvc, json);
+
+        String body = mvc.perform(post("/ops/shipments/" + lgsNo + "/waybill")
+                .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"carrier\":\"STO\",\"waybillNo\":\"" + newNo
+                        + "\",\"reason\":\"原号码误签收\"}"))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(json.readTree(body).path("code").asInt(-1)).isZero();
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_shipment WHERE shipment_no=?",
+                String.class, sourceNo)).isEqualTo("VOIDED");
+        assertThat(jdbc.queryForObject("SELECT status FROM lgs_waybill WHERE shipment_no=?",
+                String.class, lgsNo)).isEqualTo("CREATED");
+        assertThat(jdbc.queryForObject("SELECT signed_at FROM lgs_waybill WHERE shipment_no=?",
+                Long.class, lgsNo)).isNull();
+    }
+
+    @Test
     void mappedOpsCorrectionUsesPlatformWriterAndNewPushConverges() throws Exception {
         String sub = OrderLogisticsFixture.seed(jdbc, ledger, false);
         String oldNo = "STO" + sub.substring(2, 22).toUpperCase(Locale.ROOT) + "A";

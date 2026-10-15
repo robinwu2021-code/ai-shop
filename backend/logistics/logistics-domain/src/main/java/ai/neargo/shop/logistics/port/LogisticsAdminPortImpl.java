@@ -132,7 +132,11 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         LgsWaybill w = require(shipmentNo, entityNos);
-        if (WaybillStatus.isTerminal(w.getStatus())) {
+        // A reused or mistyped number may already be marked delivered by the carrier.
+        // The source correction below still requires the trade order to be fulfilling;
+        // only then may the merchant replace that false terminal trace.
+        if (WaybillStatus.isTerminal(w.getStatus())
+                && !(WaybillStatus.DELIVERED.equals(w.getStatus()) && w.getSourceShipmentNo() != null)) {
             throw BizException.of(ErrorCode.WAYBILL_LOCKED);   // 等于把一条已完成的轨迹指向别处
         }
         String newCarrier = notBlank(carrier) ? carrier.trim() : w.getCarrier();

@@ -104,6 +104,9 @@ class OrderLogisticsFinalFlowTest {
                     .contains("500");
             jdbc.update("UPDATE sys_outbox SET next_retry_at=NULL WHERE aggregate_id=? "
                     + "AND event_type='LGS_KD100_SUBSCRIBE_REQUESTED' AND status='PENDING'", lgs);
+            // The channel ledger also enforces its own retry window; simulate that window elapsing.
+            jdbc.update("UPDATE lgs_channel_subscription SET next_retry_at=? WHERE shipment_no=? "
+                    + "AND channel='kuaidi100'", System.currentTimeMillis() - 1, lgs);
             drain();
             assertThat(calls.get()).isEqualTo(2);
             assertThat(jdbc.queryForObject("SELECT sub_state FROM lgs_waybill WHERE biz_ref=?", String.class, sub))

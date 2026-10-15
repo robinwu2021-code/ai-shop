@@ -62,7 +62,7 @@ class MachineTablesTest {
                 .row(List.of("CREATED"), "PICKED_UP", List.of("CHANNEL"), "SHIPPED")
                 .row(List.of("SHIPPED"), "SIGNED", List.of("CHANNEL"), "DELIVERED")
                 .row(List.of("CREATED", "SHIPPED", "DELIVERED"), "RECEIPT_CONFIRMED", List.of("BUYER", "SYSTEM"), "RECEIVED")
-                .row(List.of("CREATED", "SHIPPED"), "CORRECT_WAYBILL", List.of("MERCHANT", "PLATFORM"), "VOIDED")
+                .row(List.of("CREATED", "SHIPPED", "DELIVERED"), "CORRECT_WAYBILL", List.of("MERCHANT", "PLATFORM"), "VOIDED")
                 .row(List.of("CREATED"), "CANCEL", List.of("MERCHANT"), "VOIDED");
         assertThat(Invariants.edges(ShipmentMachine.MACHINE)).containsExactlyInAnyOrderElementsOf(t.edges());
     }

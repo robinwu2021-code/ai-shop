@@ -737,6 +737,8 @@ export default {
     waybillReason: "更正原因（必填）",
     saveWaybill: "保存新运单",
     waybillCorrected: "运单已更正",
+    waybillIncomplete: "请填写快递公司、新运单号和更正原因",
+    waybillUnchanged: "新运单与当前运单相同",
     trace: "物流轨迹",
     logistics: "物流",
     logisticsStatus: "物流状态",

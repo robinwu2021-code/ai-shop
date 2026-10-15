@@ -5,6 +5,7 @@ import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.logistics.LogisticsAdminPort;
+import ai.neargo.shop.spi.logistics.LogisticsPort;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.service.MerchantOrderService;
 import org.springframework.context.annotation.Profile;
@@ -23,10 +24,13 @@ import java.util.Set;
 public class BizWaybillCorrectionController {
     private final MerchantOrderService orders;
     private final LogisticsAdminPort logistics;
+    private final LogisticsPort logisticsPort;
 
-    public BizWaybillCorrectionController(MerchantOrderService orders, LogisticsAdminPort logistics) {
+    public BizWaybillCorrectionController(MerchantOrderService orders, LogisticsAdminPort logistics,
+                                          LogisticsPort logisticsPort) {
         this.orders = orders;
         this.logistics = logistics;
+        this.logisticsPort = logisticsPort;
     }
 
     public record Correction(String expressNo, String expressCompany, String reason) { }
@@ -49,6 +53,9 @@ public class BizWaybillCorrectionController {
                 .findFirst().orElseThrow(() -> BizException.of(ErrorCode.NOT_FOUND));
         logistics.changeWaybill(shipment.shipmentNo(), request.expressCompany(), request.expressNo(),
                 request.reason(), Set.of(merchantNo));
-        return orders.detail(merchantNo, storeNo, subOrderNo);
+        var sync = logisticsPort.syncAfterShip(subOrderNo);
+        return orders.detail(merchantNo, storeNo, subOrderNo)
+                .withLogisticsSync(new OrderVO.LogisticsSync(sync.status(), sync.source(),
+                        sync.lastEventAt(), sync.pending(), sync.reason()));
     }
 }
