@@ -1,10 +1,10 @@
-# 微信优先的发货物流同步与快递 100 补订 Implementation Plan
+# 微信优先、微信与快递 100 双渠道订阅 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** B 端提交快递发货后立即尝试取得微信运单 token、查到的状态在本次响应及 B/C 端一致展示；快递 100 补齐微信无法提供的完整轨迹和服务端推送，并安全支持同运单结束后的重复订阅。
+**Goal:** B 端提交快递发货后，同一笔发货同时建立微信物流关注与快递 100 轨迹订阅；立即尝试取得微信运单 token 并查询状态，B/C 端展示一致结果。快递 100 回调补齐微信未提供的商家服务端轨迹推送与完整节点。
 
-**Architecture:** 本地发货事务先提交，再在独立短预算内做微信传运单→查状态；失败由 outbox 补偿，绝不回滚已发货事实。所有渠道只写 `lgs_waybill` 统一真源。微信关注、微信查询组件绑定、微信发货上报与快递 100 补充订阅有独立台账；快递 100 的次数按账号+公司+单号+自然月跨订单计算。
+**Architecture:** 本地发货事务先提交，随后为微信关注和快递 100 订阅分别派发独立 outbox 任务；B 请求在短预算内先尝试微信传运单→查状态。两个订阅任务都要执行，任一成功、失败或超时均不得跳过另一渠道，也不得回滚已发货事实。微信状态查询优先、快递 100 回调补充轨迹；两者经 `WaybillProgress` 汇入 `lgs_waybill` 统一真源。微信关注、微信查询组件绑定、微信发货上报与快递 100 订阅各有独立台账和重试。
 
 **Tech Stack:** Java / Spring Boot / MyBatis / Flyway / Maven；UniApp + TypeScript（B App、C 小程序）；现有 `sys_outbox`、`WaybillProgress`、`LogisticsPort`。
 
@@ -13,6 +13,7 @@
 ## Global Constraints
 
 - 先微信、后其他渠道补足能力；微信物流消息只通知真实购买者，收件人短信是独立触达。
+- “双渠道订阅”特指同一发货身份分别调用微信 `follow_waybill` 和快递 100 `/poll`，两项独立记录与重试；不是对快递 100 同一单号重复调用 `/poll`。微信能力优先指状态判定与买家触达优先，不能据此省略快递 100 的订阅。
 - 微信 `waybill_token` 按当前发货身份持久化并复用；更正运单后旧 token 和旧回调不得更新新运单。
 - `DELIVERED` 只推进物流状态，不直接把交易改成 `COMPLETED`。
 - 微信接口或快递 100 失败不能使已提交发货返回“发货失败”；B 端明确显示“已发货、物流同步中”及原因。
@@ -21,10 +22,10 @@
 
 ## Review Focus
 
-1. 同一个发货按钮连续点击或网络重试：只产生一笔发货和一次有效渠道关注（任务 3、4）。
+1. 同一个发货按钮连续点击或网络重试：只产生一笔发货，以及微信、快递 100 各一项有效订阅（任务 1、3、4）。
 2. 微信返回 `9300559` 或状态 `0`：保持待核实并安排补查，不将号码判错（任务 2、3）。
-3. 快递 100 返回 `501` 但本地找不到属于当前发货身份的活动订阅：不能假定当前回调已生效（任务 4）。
-4. 更正单号或旧单号被其他订单复用：历史 token、推送和次数不能覆盖新运单或被清零（任务 1、4）。
+3. 微信成功、快递 100 失败，或相反：两个结果分别落库，失败渠道独立补偿，成功渠道继续更新物流（任务 1、2、4）。
+4. 更正单号或旧单号被其他订单复用：两渠道历史 token、推送和次数不能覆盖新运单或被清零（任务 1、4）。
 5. 微信已签收而快递 100 尚无节点：B/C 都显示物流已签收、轨迹待补，交易仍待确认收货（任务 2、5）。
 
 ## 文件与接口边界
@@ -37,13 +38,13 @@
 | 快递 100 订阅/回调 | `SubscribeExecutor.java`、`Kuaidi100Codes.java`、`Kuaidi100Subscriber.java`、`PushIngestion.java`、`LogisticsAdminPortImpl.java` |
 | B/C 一致展示 | `backend/shop-core/src/main/java/ai/neargo/shop/trade/dto/OrderVO.java`、`.../service/impl/MerchantOrderServiceImpl.java` 与 `OrderServiceImpl.java`；`b-app/src/pages/orders/index.vue`、`b-app/src/pages/order/index.vue`、`c-app/src/pages/orders/index.vue`、`c-app/src/pages/order/index.vue` 与两端 API contract |
 
-## Task 1: 渠道台账与全局订阅次数
+## Task 1: 双渠道台账与订阅尝试约束
 
 **Interfaces:** `ChannelSubscriptionStore` 按 `shipmentNo + sourceShipmentVersion + channel` 读写关注状态；`Kd100AttemptStore` 按 `accountRef + companyCode + waybillNo + yyyyMM` 统计已经发出的订阅尝试，提供 `reserveAttempt(...)`、`markResult(...)`、`markTerminal(...)`。账号用配置标识，不保存 API key 明文。
 
 **Files:** 新 `V417__logistics_channel_subscription.sql`、`ChannelSubscriptionStore.java`、`Kd100AttemptStore.java` 及对应实体/Mapper；修改 `WaybillReplacement.java`；测试 `SubscribeExecutorTest.java`。
 
-- [ ] 写迁移/领域测试：同一号码跨两张订单共享月度次数；更正运单不清除历史尝试；同一发货身份+渠道幂等；存量 `sub_channel=kuaidi100` 可回填活动台账。运行测试，确认新接口缺失导致失败。
+- [ ] 写迁移/领域测试：同一发货身份能同时保存微信和快递 100 两条订阅记录；一条失败不改变另一条；同一发货身份+渠道幂等；更正运单保留旧台账；存量 `sub_channel=kuaidi100` 可回填活动台账。快递 100 同号跨订单尝试次数仍受官方限制。运行测试，确认新接口缺失导致失败。
 - [ ] 建 `lgs_channel_subscription`（当前发货身份+渠道唯一，状态、token/ref、错误、最后查询时间）与 `lgs_kd100_sub_attempt`（账号/公司/号码/月、尝试时间、结果、callbackId、终止时间），增加必要索引并回填存量。保留旧 `lgs_waybill.sub_*` 供过渡读取，不让它代表微信和快递 100 的合并状态。
 - [ ] 实现持久化和唯一键约束；运行 `mvn -pl logistics/logistics-domain -am test -Dtest=SubscribeExecutorTest -Dsurefire.failIfNoSpecifiedTests=false`，确认通过；单独提交。
 
@@ -67,15 +68,15 @@
 - [ ] 将预检和提交接口落地。`MerchantOrderServiceImpl.ship()` 的事务保持只写本地数据；控制器调用返回后由 `ShipmentSyncFacade` 在独立短预算内执行微信传运单/查询并读取最新摘要，过预算立即返回 `pending=true`，outbox 接续。查询与落库均核对当前发货身份。
 - [ ] B 页面展示预检结果与“已签收旧号”明确确认；发货后用响应更新详情，并重新加载列表。运行对应 Java 定向测试和 `cd b-app && npm test -- --run`、`npm run build:app`；单独提交。
 
-## Task 4: 快递 100 兜底和安全重复订阅
+## Task 4: 双渠道独立派发与快递 100 轨迹回调
 
-**Interfaces:** 订阅身份为 `accountRef + companyCode + waybillNo + callbackId`；`requestResubscribe(shipmentNo, reason)` 只在当前订阅已 `abort/shutdown`、距终止至少 30 分钟、当月尝试少于 4 次且仍有业务需要时受理。重复点击/事件直接返回已有状态，不再对外调用。
+**Interfaces:** 发货 outbox 分别派发 `WX_FOLLOW_WAYBILL` 与 `KD100_SUBSCRIBE`，按 `shipmentNo + sourceShipmentVersion + channel` 幂等、分别记录结果与重试时间；即使微信即时查询成功，也必须派发快递 100 订阅。快递 100 外部订阅身份为 `accountRef + companyCode + waybillNo + callbackId`。重复点击/事件返回该渠道已有状态，不重复对外调用。
 
 **Files:** `SubscribeExecutor.java`、`Kuaidi100Subscriber.java`、`Kuaidi100Codes.java`、`Kuaidi100PushReceiver.java`、`PushReceiver.java`（`Parsed` 增 callbackId 与明确终止类型）、`PushIngestion.java`、`LogisticsAdminPortImpl.java`、`OpsShipmentController.java`；测试 `SubscribeExecutorTest.java`、`Kuaidi100PushTest.java`。
 
-- [ ] 写测试覆盖：`200` 新订、已活动时本地幂等、`501` 已知活动订阅复用、`501` 未知归属标 `CONFLICT`、`abort/shutdown` 前 30 分钟拒补订、30 分钟后且本月不足 4 次准许补订、跨订单仍计 4 次、超限不请求外部。先运行并确认失败。
-- [ ] 订阅前先在任务 1 台账登记一次尝试，网络结果不明也占尝试额度，避免超额；回调 URL 带不含个人信息的 `callbackId`。把 `501` 从无条件 `OK` 改为“确认本地活动订阅归属后复用；否则冲突待核”，因为它不能替新请求改写原回调地址。
-- [ ] `PushReceiver.Parsed` 增 callbackId 与 `polling/abort/shutdown/updateall` 监控状态；回调先验签并持久化原始事件，再按 callbackId、公司+单号、当前发货身份路由；旧回调仅留审计，不推进更正后的运单。`abort/shutdown` 记录终止时间；已签收的终态单不自动补订，仍需业务持续跟踪的单按规则重订。运营端 replay 增补订原因并展示最早可补订时间、月度余量及 `501` 冲突。
+- [ ] 写测试覆盖：一次发货分别创建微信与快递 100 任务；微信成功不跳过快递 100，快递 100 成功也不跳过微信；任一渠道失败只重试该渠道；重复发货事件不会重复调用已经成功的渠道。快递 100 `501` 未知归属标 `CONFLICT`，不伪装成已订阅。先运行并确认失败。
+- [ ] 将当前 `SubscribeExecutor` 的“路由链首个成功即返回”改为按渠道分别执行、分别确认；消费任务时校验当前发货版本。订阅前记录快递 100 尝试，网络结果不明也占尝试额度；回调 URL 带不含个人信息的 `callbackId`。`501` 仅在证明已有活动订阅属于当前发货身份时复用，否则进入冲突待核。
+- [ ] `PushReceiver.Parsed` 增 callbackId 与 `polling/abort/shutdown/updateall` 监控状态；回调先验签并持久化原始事件，再按 callbackId、公司+单号、当前发货身份路由；旧回调仅留审计，不推进更正后的运单。运营端展示两渠道各自状态、错误和重试时间。对快递 100 同号再次订阅，仅在其官方允许的 `abort/shutdown` 后至少 30 分钟、当月次数不足 4 次且确有继续跟踪需求时受理；这是接口防护，不是双渠道订阅的验收目标。
 - [ ] 运行 `mvn -pl logistics/logistics-domain,logistics/logistics-channel -am test -Dtest=SubscribeExecutorTest,Kuaidi100PushTest -Dsurefire.failIfNoSpecifiedTests=false`，确认通过；单独提交。
 
 ## Task 5: B/C 统一物流摘要与验收
@@ -91,5 +92,5 @@
 ## 发布与人工联调闸门
 
 - [ ] 先核实小程序“物流消息”“查询组件”权限、已发布条件、微信买家 openid/支付交易号及快递 100 回调可达；能力不具备则记录原因并保持兜底通道。
-- [ ] 只用新测试单人工覆盖：新号码、已有运输轨迹、已签收旧号码、`9300559`、快递 100 `501`、`abort` 后合法补订、号码更正、买家与收件人不同；对照 B/C/运营端和微信买家消息。遵照用户要求不做并发压力测试。
-- [ ] 灰度后按主订单号核对 `发货 → 微信关注/token → 微信首次查询 → 快递100补充订阅/回调 → B/C摘要`；发现旧回调污染、重复通知或月度计数异常即关闭对应渠道开关并修正，不回滚已提交订单状态。
+- [ ] 只用新测试单人工覆盖：同一笔发货两渠道均成功、微信成功/快递 100 失败、快递 100 成功/微信失败、已有运输轨迹、`9300559`、快递 100 `501`、号码更正、买家与收件人不同；对照 B/C/运营端和微信买家消息。遵照用户要求不做并发压力测试。
+- [ ] 灰度后按主订单号核对 `发货 → 微信关注/token 与快递100订阅各自回执 → 微信首次查询/快递100回调 → 统一状态 → B/C摘要`；任一渠道失败均能看到该渠道独立补偿，不能误报双渠道已成功。发现旧回调污染、重复通知或月度计数异常即关闭对应渠道开关并修正，不回滚已提交订单状态。
