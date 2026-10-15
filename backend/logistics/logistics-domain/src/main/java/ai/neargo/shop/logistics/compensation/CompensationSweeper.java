@@ -8,6 +8,9 @@ import ai.neargo.shop.logistics.config.LogisticsProperties;
 import ai.neargo.shop.logistics.domain.WaybillStatus;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
 import ai.neargo.shop.logistics.event.WaybillRegistered;
+import ai.neargo.shop.logistics.registration.ChannelSubscriptionStore;
+import ai.neargo.shop.logistics.registration.Kd100SubscribeRequested;
+import ai.neargo.shop.logistics.wxbind.WxFollowRequested;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
 import ai.neargo.shop.logistics.probe.WaybillProber;
 import ai.neargo.shop.logistics.routing.ChannelRouter;
@@ -121,7 +124,13 @@ public class CompensationSweeper {
                     .orderByAsc("id")
                     .last("limit " + limit));
             for (LgsWaybill w : pending) {
-                events.publish(new WaybillRegistered(w.getShipmentNo()));
+                if (w.getSourceShipmentNo() == null) {
+                    events.publish(new WaybillRegistered(w.getShipmentNo()));
+                } else {
+                    String identity = ChannelSubscriptionStore.identityKey(w);
+                    events.publish(new WxFollowRequested(w.getShipmentNo(), identity));
+                    events.publish(new Kd100SubscribeRequested(w.getShipmentNo(), identity));
+                }
             }
             return pending.size();
         });

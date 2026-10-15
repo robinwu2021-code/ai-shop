@@ -23,13 +23,20 @@ public final class OrderLogisticsFixture {
     }
 
     public static void push(MockMvc mvc, String number, String state, boolean valid, String company) throws Exception {
+        push(mvc, number, state, valid, company, null);
+    }
+
+    public static void push(MockMvc mvc, String number, String state, boolean valid, String company,
+                            String callbackId) throws Exception {
         String param = "{\"status\":\"polling\",\"lastResult\":{\"message\":\"ok\",\"state\":\""
                 + state + "\",\"com\":\"" + company + "\",\"nu\":\"" + number
                 + "\",\"data\":[{\"time\":\"2026-10-15 10:00:00\",\"context\":\"可信渠道节点\"}]}}";
         String sign = HexFormat.of().withUpperCase().formatHex(MessageDigest.getInstance("MD5")
                 .digest((param + "test-kuaidi100-salt").getBytes(StandardCharsets.UTF_8)));
-        mvc.perform(post("/callback/logistics/kuaidi100").contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .param("param", param).param("sign", valid ? sign : "WRONG"));
+        var request = post("/callback/logistics/kuaidi100").contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("param", param).param("sign", valid ? sign : "WRONG");
+        if (callbackId != null) request.param("callbackId", callbackId);
+        mvc.perform(request);
     }
 
     public static String seed(JdbcTemplate jdbc, PaymentLedgerService ledger, boolean paidLedger) {

@@ -4,7 +4,10 @@ import ai.neargo.shop.logistics.capability.PushReceiver;
 import ai.neargo.shop.logistics.domain.WaybillProgress;
 import ai.neargo.shop.logistics.domain.WaybillStatus;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
+import ai.neargo.shop.logistics.entity.LgsKd100SubAttempt;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
+import ai.neargo.shop.logistics.registration.ChannelSubscriptionStore;
+import ai.neargo.shop.logistics.registration.Kd100AttemptStore;
 import ai.neargo.shop.logistics.routing.ChannelRouter;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -42,6 +45,10 @@ public class PushIngestion {
     private final WaybillProgress progress;
     private final LongSupplier clock;
     private ShipmentSourcePort source;
+    private Kd100AttemptStore kd100Attempts;
+
+    @Autowired(required = false)
+    public void setKd100Attempts(Kd100AttemptStore kd100Attempts) { this.kd100Attempts = kd100Attempts; }
 
     @Autowired
     public void setShipmentSourcePort(ShipmentSourcePort source) { this.source = source; }
@@ -76,9 +83,24 @@ public class PushIngestion {
             return Outcome.REJECTED;
         }
         logFirst(channel, raw);
-        LgsWaybill w = waybills.selectOne(Wrappers.<LgsWaybill>query()
-                .eq("waybill_no", p.waybillNo()).eq("sub_channel", channel)
-                .ne("status", WaybillStatus.CANCELLED).orderByDesc("id").last("limit 1"));
+        LgsKd100SubAttempt attempt = null;
+        LgsWaybill w;
+        if ("kuaidi100".equals(channel) && p.callbackId() != null && !p.callbackId().isBlank()) {
+            attempt = kd100Attempts == null ? null : kd100Attempts.byCallbackId(p.callbackId()).orElse(null);
+            w = attempt == null ? null : waybills.selectOne(Wrappers.<LgsWaybill>query()
+                    .eq("shipment_no", attempt.getShipmentNo()).last("LIMIT 1"));
+            if (w == null || !Objects.equals(attempt.getIdentityKey(), ChannelSubscriptionStore.identityKey(w))
+                    || !Objects.equals(attempt.getWaybillNo(), p.waybillNo())
+                    || !Objects.equals(w.getWaybillNo(), p.waybillNo())) return Outcome.UNKNOWN_WAYBILL;
+        } else {
+            w = waybills.selectOne(Wrappers.<LgsWaybill>query()
+                    .eq("waybill_no", p.waybillNo()).eq("sub_channel", channel)
+                    .ne("status", WaybillStatus.CANCELLED).orderByDesc("id").last("limit 1"));
+            // New shipments always receive a callbackId. A bare legacy callback cannot claim a newer order.
+            if (w != null && w.getSourceShipmentNo() != null && "kuaidi100".equals(channel)) {
+                return Outcome.UNKNOWN_WAYBILL;
+            }
+        }
         if (w == null) {
             log.warn("[lgs-push] {} 推来的单号 {} 找不到（或不是在这家订阅的），丢弃", channel, p.waybillNo());
             return Outcome.UNKNOWN_WAYBILL;
@@ -106,6 +128,7 @@ public class PushIngestion {
         }
         if (p.trackingEnded() && !LgsWaybill.SUB_ENDED.equals(w.getSubState())) {
             patch.setSubState(LgsWaybill.SUB_ENDED);
+            if (attempt != null && kd100Attempts != null) kd100Attempts.markTerminal(attempt.getId(), clock.getAsLong());
         }
         progress.apply(w, p.trace(), channel, "PUSH", patch, clock.getAsLong());
         return Outcome.ACCEPTED;

@@ -6,7 +6,7 @@ import ai.neargo.shop.logistics.capability.ChannelOutcome;
 import ai.neargo.shop.logistics.capability.TrackingSubscriber;
 import ai.neargo.shop.logistics.config.LogisticsProperties;
 import ai.neargo.shop.logistics.registration.ShipmentRegistrar;
-import ai.neargo.shop.logistics.registration.SubscribeExecutor;
+import ai.neargo.shop.logistics.registration.Kd100SubscribeExecutor;
 import ai.neargo.shop.logistics.routing.ChannelRouter;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.trade.OrderEvents;
@@ -42,7 +42,7 @@ class OrderLogisticsFinalFlowTest {
     @Autowired private PaymentLedgerService ledger;
     @Autowired private OrderShippingService shipping;
     @Autowired private ShipmentRegistrar registrar;
-    @Autowired private SubscribeExecutor subscriber;
+    @Autowired private Kd100SubscribeExecutor subscriber;
     @Autowired private OutboxDispatcher dispatcher;
     @Autowired private ChannelRouter router;
     @Autowired private LogisticsProperties properties;
@@ -87,7 +87,7 @@ class OrderLogisticsFinalFlowTest {
             public ChannelOutcome subscribe(SubscribeCmd command) {
                 assertThat(command.waybillNo()).isEqualTo(number(sub, "C"));
                 return calls.incrementAndGet() == 1 ? ChannelOutcome.retryable("500", "暂时繁忙")
-                        : ChannelOutcome.ok("501", "same-accepted-waybill");
+                        : ChannelOutcome.ok("200", "accepted-waybill");
             }
         };
         TrackingSubscriber original = router.installedSubscribers().put("kuaidi100", fake);
@@ -99,15 +99,17 @@ class OrderLogisticsFinalFlowTest {
             String source = ship(sub, "C");
             drain();
             String lgs = lgs(sub);
-            assertThat(jdbc.queryForObject("SELECT sub_error FROM lgs_waybill WHERE biz_ref=?", String.class, sub))
+            assertThat(jdbc.queryForObject("SELECT error FROM lgs_channel_subscription "
+                    + "WHERE shipment_no=? AND channel='kuaidi100'", String.class, lgs))
                     .contains("500");
             jdbc.update("UPDATE sys_outbox SET next_retry_at=NULL WHERE aggregate_id=? "
-                    + "AND event_type='LGS_WAYBILL_REGISTERED' AND status='PENDING'", lgs);
+                    + "AND event_type='LGS_KD100_SUBSCRIBE_REQUESTED' AND status='PENDING'", lgs);
             drain();
             assertThat(calls.get()).isEqualTo(2);
             assertThat(jdbc.queryForObject("SELECT sub_state FROM lgs_waybill WHERE biz_ref=?", String.class, sub))
                     .isEqualTo("DONE");
-            assertThat(jdbc.queryForObject("SELECT sub_error FROM lgs_waybill WHERE biz_ref=?", String.class, sub))
+            assertThat(jdbc.queryForObject("SELECT error FROM lgs_channel_subscription "
+                    + "WHERE shipment_no=? AND channel='kuaidi100'", String.class, lgs))
                     .isNull();
             assertThat(jdbc.queryForObject("SELECT source_shipment_no FROM lgs_waybill WHERE biz_ref=?",
                     String.class, sub)).isEqualTo(source);
@@ -116,7 +118,9 @@ class OrderLogisticsFinalFlowTest {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox WHERE aggregate_id=? "
                     + "AND event_type='SUB_ORDER_SHIPPED'", Long.class, sub)).isEqualTo(1);
             SysOutbox replay = new SysOutbox();
-            replay.setPayload("{\"shipmentNo\":\"" + lgs + "\"}");
+            String identity = jdbc.queryForObject("SELECT identity_key FROM lgs_channel_subscription "
+                    + "WHERE shipment_no=? AND channel='kuaidi100'", String.class, lgs);
+            replay.setPayload("{\"shipmentNo\":\"" + lgs + "\",\"identityKey\":\"" + identity + "\"}");
             subscriber.consume(replay);
             assertThat(calls.get()).isEqualTo(2);
         } finally {
@@ -133,12 +137,21 @@ class OrderLogisticsFinalFlowTest {
         String source = ship(sub, "D");
         drain();
         jdbc.update("UPDATE lgs_waybill SET sub_channel='kuaidi100',sub_state='DONE' WHERE biz_ref=?", sub);
+        String lgs = lgs(sub);
+        String identity = jdbc.queryForObject("SELECT CONCAT(source_shipment_no, ':', source_shipment_version) "
+                + "FROM lgs_waybill WHERE shipment_no=?", String.class, lgs);
+        String callbackId = "cb-" + sub;
+        jdbc.update("INSERT INTO lgs_kd100_sub_attempt "
+                + "(account_ref,company_code,waybill_no,month_key,attempt_no,shipment_no,identity_key,"
+                + "callback_id,result,created_at,updated_at) VALUES "
+                + "('test','shentong',?,'202610',1,?,?,?,'OK',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                number(sub, "D"), lgs, identity, callbackId);
         MockMvc mvc = mvc();
-        OrderLogisticsFixture.push(mvc, number(sub, "D"), "3", true);
+        OrderLogisticsFixture.push(mvc, number(sub, "D"), "3", true, "shentong", callbackId);
         drain();
         Long at = jdbc.queryForObject("SELECT signed_at FROM ord_shipment WHERE shipment_no=?", Long.class, source);
-        OrderLogisticsFixture.push(mvc, number(sub, "D"), "3", true);
-        OrderLogisticsFixture.push(mvc, number(sub, "D"), "0", true);
+        OrderLogisticsFixture.push(mvc, number(sub, "D"), "3", true, "shentong", callbackId);
+        OrderLogisticsFixture.push(mvc, number(sub, "D"), "0", true, "shentong", callbackId);
         drain();
         assertThat(jdbc.queryForObject("SELECT status FROM ord_shipment WHERE shipment_no=?", String.class, source))
                 .isEqualTo("DELIVERED");

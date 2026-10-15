@@ -30,10 +30,15 @@ public interface PushReceiver extends ChannelCapability {
      * @param correctedFrom      渠道纠正承运商时的原编码（快递100 autoCheck=1 的 comOld），没纠正为 null
      */
     record Parsed(boolean verified, String channelCarrierCode, String waybillNo, TraceResult trace,
-                  boolean trackingEnded, String correctedFrom) {
+                  boolean trackingEnded, String correctedFrom, String callbackId) {
+
+        public Parsed(boolean verified, String channelCarrierCode, String waybillNo, TraceResult trace,
+                      boolean trackingEnded, String correctedFrom) {
+            this(verified, channelCarrierCode, waybillNo, trace, trackingEnded, correctedFrom, null);
+        }
 
         public static Parsed rejected() {
-            return new Parsed(false, null, null, null, false, null);
+            return new Parsed(false, null, null, null, false, null, null);
         }
     }
 }

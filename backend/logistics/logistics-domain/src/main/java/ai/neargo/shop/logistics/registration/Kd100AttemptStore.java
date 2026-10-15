@@ -57,4 +57,10 @@ public class Kd100AttemptStore {
         mapper.update(null, Wrappers.<LgsKd100SubAttempt>update().eq("id", attemptId)
                 .set("terminated_at", terminatedAt).set("updated_at", LocalDateTime.now()));
     }
+
+    public Optional<LgsKd100SubAttempt> byCallbackId(String callbackId) {
+        if (callbackId == null || callbackId.isBlank()) return Optional.empty();
+        return Optional.ofNullable(mapper.selectOne(Wrappers.<LgsKd100SubAttempt>query()
+                .eq("callback_id", callbackId).last("LIMIT 1")));
+    }
 }

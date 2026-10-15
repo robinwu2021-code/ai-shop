@@ -2712,6 +2712,47 @@ CREATE TABLE IF NOT EXISTS lgs_waybill_node
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS lgs_channel_subscription
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    shipment_no VARCHAR(64) NOT NULL,
+    identity_key VARCHAR(192) NOT NULL,
+    source_shipment_no VARCHAR(64) DEFAULT NULL,
+    source_shipment_version BIGINT DEFAULT NULL,
+    carrier VARCHAR(16) NOT NULL,
+    waybill_no VARCHAR(64) NOT NULL,
+    channel VARCHAR(32) NOT NULL,
+    state VARCHAR(20) NOT NULL,
+    ref VARCHAR(255) DEFAULT NULL,
+    error VARCHAR(255) DEFAULT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    last_attempt_at BIGINT DEFAULT NULL,
+    last_query_at BIGINT DEFAULT NULL,
+    next_retry_at BIGINT DEFAULT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    CONSTRAINT uk_lgs_channel_identity UNIQUE (shipment_no, identity_key, channel)
+);
+
+CREATE TABLE IF NOT EXISTS lgs_kd100_sub_attempt
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    account_ref VARCHAR(64) NOT NULL,
+    company_code VARCHAR(32) NOT NULL,
+    waybill_no VARCHAR(64) NOT NULL,
+    month_key CHAR(6) NOT NULL,
+    attempt_no TINYINT NOT NULL,
+    shipment_no VARCHAR(64) NOT NULL,
+    identity_key VARCHAR(192) NOT NULL,
+    callback_id VARCHAR(64) DEFAULT NULL,
+    result VARCHAR(20) NOT NULL,
+    result_code VARCHAR(32) DEFAULT NULL,
+    terminated_at BIGINT DEFAULT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    CONSTRAINT uk_lgs_kd100_month_slot UNIQUE (account_ref, company_code, waybill_no, month_key, attempt_no)
+);
+
 CREATE TABLE IF NOT EXISTS ful_freight_template
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,

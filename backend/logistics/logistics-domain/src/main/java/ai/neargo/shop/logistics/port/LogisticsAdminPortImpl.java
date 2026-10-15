@@ -15,6 +15,9 @@ import ai.neargo.shop.logistics.entity.LgsWaybill;
 import ai.neargo.shop.logistics.entity.LgsWaybillNode;
 import ai.neargo.shop.logistics.event.WaybillRegistered;
 import ai.neargo.shop.logistics.registration.WaybillReplacement;
+import ai.neargo.shop.logistics.registration.ChannelSubscriptionStore;
+import ai.neargo.shop.logistics.registration.Kd100SubscribeRequested;
+import ai.neargo.shop.logistics.wxbind.WxFollowRequested;
 import ai.neargo.shop.spi.logistics.ShipmentSourcePort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Isolation;
@@ -163,7 +166,12 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
         n.setTenantNo("MAIN");
         n.setCreatedAt(LocalDateTime.now());
         nodes.insert(n);
-        events.publish(new WaybillRegistered(shipmentNo));   // 按新号重新订阅（开关关着时停在 PENDING）
+        if (sourceNo == null) events.publish(new WaybillRegistered(shipmentNo));
+        else {
+            String identity = sourceNo + ":" + generation;
+            events.publish(new WxFollowRequested(shipmentNo, identity));
+            events.publish(new Kd100SubscribeRequested(shipmentNo, identity));
+        }
         LgsWaybill after = waybills.selectById(w.getId());
         return toShipment(after, tracesOf(List.of(shipmentNo)).getOrDefault(shipmentNo, List.of()),
                 source == null ? null : source.uploadStatesOf(List.of(after.getBizRef())).get(after.getBizRef()));
@@ -214,7 +222,16 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
         waybills.update(null, Wrappers.<LgsWaybill>update()
                 .set("sub_state", LgsWaybill.SUB_PENDING).set("sub_attempts", 0).set("sub_error", null)
                 .set("updated_at", LocalDateTime.now()).eq("id", w.getId()));
-        events.publish(new WaybillRegistered(shipmentNo, forced));
+        if (w.getSourceShipmentNo() == null) events.publish(new WaybillRegistered(shipmentNo, forced));
+        else if (forced == null) {
+            String identity = ChannelSubscriptionStore.identityKey(w);
+            events.publish(new WxFollowRequested(shipmentNo, identity));
+            events.publish(new Kd100SubscribeRequested(shipmentNo, identity));
+        } else if (KD100.equals(forced)) {
+            events.publish(new Kd100SubscribeRequested(shipmentNo, ChannelSubscriptionStore.identityKey(w)));
+        } else if ("wx-follow".equals(forced)) {
+            events.publish(new WxFollowRequested(shipmentNo, ChannelSubscriptionStore.identityKey(w)));
+        } else events.publish(new WaybillRegistered(shipmentNo, forced));
     }
 
     private static boolean kd100UsedUp(LgsWaybill w) {
