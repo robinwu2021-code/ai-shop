@@ -153,6 +153,16 @@ public class NotificationConsumer implements OutboxConsumer {
                         doneTitle, "订单已完成，欢迎评价", link, event.getEventNo());
                 cPush(scene, userNo, doneTitle, "订单已完成，欢迎评价", link);
             }
+            case NotifyScene.SUB_ORDER_FULFILLMENT_CHANGED -> {
+                String userNo = text(payload, "userNo");
+                String target = text(payload, "current");
+                String method = "EXPRESS".equals(target) ? "快递配送" : "商家自送";
+                String link = "/pages/order/index?orderNo=" + event.getAggregateId();
+                String body = "您购买的订单已改为" + method + "，订单金额和运费不变，请查看详情";
+                messageService.push(userNo, MessageService.TRADE,
+                        "配送方式已更新", body, link, event.getEventNo());
+                cPush(scene, userNo, "配送方式已更新", body, link);
+            }
             case NotifyScene.SUB_ORDER_SHIPPED -> {
                 String userNo = text(payload, "userNo");
                 String link = "/pages/order/index?orderNo=" + text(payload, "orderNo");
@@ -321,10 +331,13 @@ public class NotificationConsumer implements OutboxConsumer {
                 }
             }
             case NotifyScene.AFTER_SALE_APPLIED -> {
+                String afterSaleStore = text(payload, "storeNo");
+                String afterSaleLink = "/pages/after-sale/index?afterSaleNo=" + event.getAggregateId()
+                        + (afterSaleStore == null || afterSaleStore.isBlank() ? "" : "&store=" + afterSaleStore);
                 fanOutToStaff(event, text(payload, "entityNo"),
                     text(payload, "storeNo"), AFTER_SALE_ROLES,
                     "新的售后申请", "买家提交了售后申请，尽早处理更容易协商解决",
-                    "/pages/after-sale/index",
+                    afterSaleLink,
                     new WxStaff(WxSubscribePort.SCENE_MCH_AFTER_SALE, Map.of(
                             "orderNo", nz(text(payload, "subOrderNo"), ""),
                             "status", "待处理",

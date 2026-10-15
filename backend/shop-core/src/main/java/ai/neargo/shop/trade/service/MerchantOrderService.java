@@ -67,6 +67,13 @@ public interface MerchantOrderService {
                            java.time.LocalDate from, java.time.LocalDate to,
                            long page, long size);
 
+    record WorkItem(OrderVO order, String actionKind, int priority,
+                    String afterSaleNo, String afterSaleStatus) { }
+
+    /** One highest-priority action per child order, scoped before sorting and pagination. */
+    PageData<WorkItem> worklist(String merchantNo, java.util.Collection<String> storeNos,
+                                boolean includeAfterSale, long page, long size);
+
     /**
      * 订单详情（商家视角）。
      *

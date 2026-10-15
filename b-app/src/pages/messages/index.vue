@@ -5,22 +5,23 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
+import { ROUTES } from "@/shared/nav";
+import { useMerchantStore } from "@/stores/merchant";
 import { datetime } from "@shared/utils/format";
-import type { Message, MessageType } from "@shared/types";
+import type { Message } from "@shared/types";
 
-const TABS: { key: string; type: MessageType | null }[] = [
-  { key: "all", type: null },
-  { key: "TRADE", type: "TRADE" },
-  { key: "SYSTEM", type: "SYSTEM" },
-];
+const TABS = [{ key: "pending" }, { key: "progress" }, { key: "all" }];
 
-const tab = ref("all");
+const tab = ref("pending");
+const merchant = useMerchantStore();
 const messages = ref<Message[]>([]);
+const pendingTotal = ref(0);
 const loaded = ref(false);
 
 const shown = computed(() => {
-  const def = TABS.find((t) => t.key === tab.value);
-  return def?.type ? messages.value.filter((m) => m.type === def.type) : messages.value;
+  if (tab.value === "pending") return messages.value.filter((m) => m.actionPending);
+  if (tab.value === "progress") return messages.value.filter((m) => m.type === "TRADE" && !m.actionPending);
+  return messages.value;
 });
 const unread = computed(() => messages.value.filter((m) => !m.read).length);
 
@@ -30,6 +31,8 @@ const failed = ref(false);
 async function load() {
   try {
     messages.value = await api.mMessageList();
+    pendingTotal.value = merchant.can("biz:aftersale")
+      ? (await api.mAfterSaleWorklist({ pending: true, page: 1, size: 1 })).total : 0;
     failed.value = false;
   } catch {
     failed.value = true;
@@ -38,16 +41,24 @@ async function load() {
 }
 
 async function open(m: Message) {
-  if (!m.read) messages.value = await api.mMessageRead(m.messageNo);
+  if (!m.read) {
+    await api.mMessageRead(m.messageNo);
+    m.read = true;
+  }
   if (m.link) uni.navigateTo({ url: m.link });
 }
 
 async function readAll() {
   if (!unread.value) return;
-  messages.value = await api.mMessageReadAll();
+  await api.mMessageReadAll();
+  await load();
 }
 
 onShow(load);
+
+function openPending() {
+  uni.navigateTo({ url: ROUTES.afterSale });
+}
 </script>
 
 <template>
@@ -55,11 +66,18 @@ onShow(load);
     <view class="head sh-row">
       <sh-tabs
         class="sh-fill"
-        :items="TABS.map((t) => ({ key: t.key, label: String($t(`message.tab.${t.key}`)) }))"
+        :items="TABS.map((t) => ({ key: t.key, label: String($t(`message.tab.${t.key}`)) +
+          (t.key === 'pending' ? ` (${pendingTotal})` : '') }))"
         :active="tab"
         @change="(k: string) => (tab = k as typeof tab)"
       ></sh-tabs>
       <text v-if="unread" class="sh-link readall" @tap="readAll">{{ $t("message.readAll") }}</text>
+    </view>
+
+    <view v-if="tab === 'pending' && pendingTotal && merchant.can('biz:aftersale')"
+      class="sh-card sh-mt-sm sh-row sh-row--between" @tap="openPending">
+      <text class="txt-strong is-danger">{{ $t('message.pendingAfterSale', { n: pendingTotal }) }}</text>
+      <sh-go :text="String($t('message.view'))"></sh-go>
     </view>
 
     <view v-for="m in shown" :key="m.messageNo" class="sh-card msg" @tap="open(m)">

@@ -588,6 +588,24 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public java.util.OptionalLong merchantDeliveryFeeMinor(String merchantNo, String storeNo,
+                                                            long goodsAmountMinor) {
+        if (merchantNo == null || storeNo == null || storeNo.isBlank()) {
+            return java.util.OptionalLong.empty();
+        }
+        var store = DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
+                Wrappers.<MchStore>lambdaQuery().eq(MchStore::getEntityNo, merchantNo)
+                        .eq(MchStore::getStoreNo, storeNo).last("limit 1")));
+        if (store == null) return java.util.OptionalLong.empty();
+        long minOrder = store.getDeliveryMinOrderMinor() == null ? 0L : store.getDeliveryMinOrderMinor();
+        if (goodsAmountMinor < minOrder) return java.util.OptionalLong.empty();
+        long fee = store.getDeliveryFeeMinor() == null ? 0L : store.getDeliveryFeeMinor();
+        long freeAt = store.getDeliveryFreeThresholdMinor() == null
+                ? 0L : store.getDeliveryFreeThresholdMinor();
+        return java.util.OptionalLong.of(freeAt > 0 && goodsAmountMinor >= freeAt ? 0L : fee);
+    }
+
+    @Override
     public Optional<DeliveryOrigin> deliveryOrigin(String merchantNo) {
         if (merchantNo == null || merchantNo.isBlank()) {
             return Optional.empty();

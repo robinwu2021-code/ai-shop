@@ -10340,3 +10340,9 @@ WHERE status = 'REFUNDING'
   AND liability IS NULL
   AND express_no IS NOT NULL
   AND express_no <> '';
+INSERT IGNORE INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
+SELECT t.scene_code, t.audience, t.channel, 1, 'NORMAL', NOW(), NOW()
+FROM (SELECT 'SUB_ORDER_FULFILLMENT_CHANGED' AS scene_code, 'C_USER' AS audience, 'INAPP' AS channel
+      UNION ALL SELECT 'SUB_ORDER_FULFILLMENT_CHANGED', 'C_USER', 'PUSH') t
+WHERE NOT EXISTS (SELECT 1 FROM notify_scene_channel x
+                  WHERE x.scene_code = t.scene_code AND x.audience = t.audience AND x.channel = t.channel);

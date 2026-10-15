@@ -190,7 +190,10 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSaveSpecTemplate: { method: "POST", path: "/biz/spec-templates", auth: true, summary: "存为常用规格" },
 
   mOrderList: { method: "GET", path: "/biz/order", auth: true, summary: "订单列表" },
+  mOrderWorklist: { method: "GET", path: "/biz/order/worklist", auth: true, summary: "按优先级分页的订单待办" },
   mOrderDetail: { method: "GET", path: "/biz/order/:orderNo", auth: true, summary: "订单详情" },
+  mFulfillmentOptions: { method: "GET", path: "/biz/order/:orderNo/fulfillment-options", auth: true, summary: "配送方式切换资格" },
+  mChangeFulfillment: { method: "POST", path: "/biz/order/:orderNo/fulfillment-change", auth: true, summary: "配送方式切换" },
   mOrderTrace: { method: "GET", path: "/biz/order/:orderNo/trace", auth: true, summary: "物流轨迹" },
   mOrderUpdates: { method: "GET", path: "/biz/order/:orderNo/logistics-updates", auth: true, summary: "物流更新记录" },
   mShip: { method: "POST", path: "/biz/order/:orderNo/ship", auth: true, summary: "快递发货" },
@@ -244,6 +247,9 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSubmitPayoutAccount: { method: "POST", path: "/biz/payout-account", auth: true, summary: "提交收款账户" },
 
   mAfterSaleList: { method: "GET", path: "/biz/after-sale", auth: true, summary: "待处理售后" },
+  mAfterSaleWorklist: { method: "GET", path: "/biz/after-sale/worklist", auth: true, summary: "分页售后待办" },
+  mActiveAfterSaleForOrder: { method: "GET", path: "/biz/after-sale/by-order/:orderNo", auth: true, summary: "订单的当前售后" },
+  mAfterSaleDetail: { method: "GET", path: "/biz/after-sale/:afterSaleNo", auth: true, summary: "售后详情" },
   // 同意与驳回是**两个动词、两条路径**，不是一个布尔参数 ——
   // 与后端一致，也让「谁被调用了」在日志与权限里能分开看
   mApproveAfterSale: { method: "POST", path: "/biz/after-sale/:afterSaleNo/approve", auth: true, summary: "同意售后" },

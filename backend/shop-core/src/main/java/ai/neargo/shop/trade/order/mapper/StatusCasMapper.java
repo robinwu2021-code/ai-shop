@@ -20,6 +20,13 @@ public interface StatusCasMapper {
     @Select("SELECT * FROM ord_sub_order WHERE sub_order_no = #{no} AND deleted = 0 FOR UPDATE")
     OrdSubOrder lockOrder(@Param("no") String no);
 
+    @Update("UPDATE ord_sub_order SET fulfillment = #{target}, updated_at = CURRENT_TIMESTAMP, "
+            + "version = version + 1 WHERE sub_order_no = #{no} AND deleted = 0 "
+            + "AND version = #{expectedVersion} AND status = 'WAIT_FULFILL' "
+            + "AND open_after_sale_no IS NULL AND (express_no IS NULL OR express_no = '')")
+    int changeFulfillment(@Param("no") String no, @Param("target") String target,
+                          @Param("expectedVersion") long expectedVersion);
+
     @Select("SELECT open_after_sale_no FROM ord_sub_order WHERE sub_order_no = #{no}")
     String openAfterSaleNo(@Param("no") String no);
 

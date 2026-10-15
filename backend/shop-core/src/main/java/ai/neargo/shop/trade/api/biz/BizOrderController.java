@@ -11,6 +11,7 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.CourierOrderVO;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.service.MerchantOrderService;
+import ai.neargo.shop.trade.service.impl.FulfillmentChangeService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,10 +32,13 @@ public class BizOrderController {
 
     private final MerchantOrderService merchantOrderService;
     private final LogisticsPort logisticsPort;
+    private final FulfillmentChangeService fulfillmentChanges;
 
-    public BizOrderController(MerchantOrderService merchantOrderService, LogisticsPort logisticsPort) {
+    public BizOrderController(MerchantOrderService merchantOrderService, LogisticsPort logisticsPort,
+                              FulfillmentChangeService fulfillmentChanges) {
         this.merchantOrderService = merchantOrderService;
         this.logisticsPort = logisticsPort;
+        this.fulfillmentChanges = fulfillmentChanges;
     }
 
     /**
@@ -71,6 +75,24 @@ public class BizOrderController {
                 page, Math.min(size, 50));
         return ctx.courierOnlyOrderView() ? narrow(full) : full;
     }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.ORDER_VIEW + "')")
+    @GetMapping("/biz/order/worklist")
+    public PageData<?> worklist(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "20") long size) {
+        var ctx = BizContext.current();
+        PageData<MerchantOrderService.WorkItem> rows = merchantOrderService.worklist(ctx.requireMerchantNo(),
+                java.util.List.of(ctx.currentStoreNo() == null ? "" : ctx.currentStoreNo()),
+                ctx.can(BizPerms.AFTERSALE) && !ctx.courierOnlyOrderView(),
+                Math.max(page, 1), Math.max(1, Math.min(size, 50)));
+        if (!ctx.courierOnlyOrderView()) return rows;
+        return PageData.of(rows.records().stream().map(row -> new CourierWorkItem(
+                CourierOrderVO.of(row.order()), row.actionKind(), row.priority())).toList(),
+                rows.total(), rows.page(), rows.size());
+    }
+
+    public record CourierWorkItem(CourierOrderVO order, String actionKind, int priority) { }
 
     /**
      * 解析 {@code yyyy-MM-dd}。
@@ -115,6 +137,24 @@ public class BizOrderController {
                 ctx.currentStoreNo(), subOrderNo);
         return ctx.courierOnlyOrderView() ? CourierOrderVO.of(full) : full;
     }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.SHIP + "')")
+    @GetMapping("/biz/order/{subOrderNo}/fulfillment-options")
+    public FulfillmentChangeService.Options fulfillmentOptions(@PathVariable String subOrderNo) {
+        var ctx = BizContext.current();
+        return fulfillmentChanges.options(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo);
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.SHIP + "')")
+    @PostMapping("/biz/order/{subOrderNo}/fulfillment-change")
+    public FulfillmentChangeService.Changed changeFulfillment(@PathVariable String subOrderNo,
+                                                               @RequestBody FulfillmentChangeReq req) {
+        var ctx = BizContext.current();
+        return fulfillmentChanges.change(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo,
+                req.targetFulfillment(), req.reason(), req.expectedVersion(), SecurityUtils.currentUserNo());
+    }
+
+    public record FulfillmentChangeReq(String targetFulfillment, String reason, Long expectedVersion) { }
 
     /**
      * 物流页（TDD-物流模块 B2）：完整轨迹。看订单的人就能看物流（同详情的权限码与门店判法）。

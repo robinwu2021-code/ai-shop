@@ -58,7 +58,7 @@ public class SettleSourcePortImpl implements SettleSourcePort {
      */
     private static final java.util.Set<String> AFTER_SALE_OPEN = java.util.Set.of(
             OrdAfterSale.APPLIED, OrdAfterSale.WAIT_RETURN, OrdAfterSale.RETURNING,
-            OrdAfterSale.REFUNDING, OrdAfterSale.ARBITRATING);
+            OrdAfterSale.WAIT_RECEIPT, OrdAfterSale.REFUNDING, OrdAfterSale.ARBITRATING);
 
     @Override
     public List<SettleReadiness> settleReadiness(java.util.Collection<String> subOrderNos) {

@@ -42,6 +42,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class M5AfterSaleFlowTest {
 
+    @Test
+    void merchantWorklistReturnsPagedAfterSaleWithItsOrder() throws Exception {
+        Ordered order = placeAndPay("13200132970", 6980L);
+        String afterSaleNo = applyAfterSale(order, "REFUND_ONLY", "待审核列表定位");
+        String merchant = loginAsOwnerOf("M0001", "13200132971");
+        mvc().perform(get("/biz/after-sale/worklist?pending=true&page=1&size=1")
+                        .header("Authorization", "Bearer " + merchant))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.records[0].afterSale.afterSaleNo").value(afterSaleNo))
+                .andExpect(jsonPath("$.data.records[0].order.orderNo").value(order.subOrderNo))
+                .andExpect(jsonPath("$.data.size").value(1));
+        mvc().perform(get("/biz/after-sale/" + afterSaleNo)
+                        .header("Authorization", "Bearer " + merchant))
+                .andExpect(jsonPath("$.data.afterSale.afterSaleNo").value(afterSaleNo))
+                .andExpect(jsonPath("$.data.order.orderNo").value(order.subOrderNo));
+        mvc().perform(get("/biz/order/worklist?page=1&size=1")
+                        .header("Authorization", "Bearer " + merchant))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.records[0].order.orderNo").value(order.subOrderNo))
+                .andExpect(jsonPath("$.data.records[0].actionKind").value("AFTER_SALE"))
+                .andExpect(jsonPath("$.data.records[0].afterSaleNo").value(afterSaleNo));
+    }
+
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
 
@@ -615,6 +638,50 @@ class M5AfterSaleFlowTest {
         assertThat(asStatus(o.userToken, asNo))
                 .as("货在途审核通过不能立刻退钱，要等签收")
                 .isEqualTo(OrdAfterSale.WAIT_RECEIPT);
+        mvc().perform(post("/biz/after-sale/" + asNo + "/confirm-refund")
+                        .header("Authorization", "Bearer " + loginAsOwnerOf("M0001", "13200132611")))
+                .andExpect(jsonPath("$.code").value(10409));
+        mvc().perform(post("/biz/after-sale/" + asNo + "/confirm-refund")
+                        .header("Authorization", "Bearer " + loginAsOwnerOf("M0001", "13200132611"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"承运商确认货物遗失，商家承担风险\"}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("REFUNDING"));
+    }
+
+    @Test
+    void labeledWaybillRequiresSeparateGoodsCheckBeforeRefund() throws Exception {
+        Ordered o = placeAndPay("13200132618", 6980L);
+        String asNo = applyAfterSale(o, "REFUND_ONLY", "运单已录但货仍在店");
+        shipPickedUp(o.subOrderNo);
+        jdbc.update("UPDATE lgs_waybill SET status='CREATED' WHERE biz_ref=?", o.subOrderNo);
+        String biz = loginAsOwnerOf("M0001", "13200132619");
+
+        approve(biz, asNo);
+        assertThat(asStatus(o.userToken, asNo)).isEqualTo(OrdAfterSale.WAIT_RECEIPT);
+        mvc().perform(post("/biz/after-sale/" + asNo + "/confirm-refund")
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(10409));
+        mvc().perform(post("/biz/after-sale/" + asNo + "/confirm-refund")
+                        .header("Authorization", "Bearer " + biz)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"已联系快递取消取件，货仍在店\"}"))
+                .andExpect(jsonPath("$.data.status").value("REFUNDING"));
+    }
+
+    @Test
+    void missingLogisticsBindingCannotReleaseWaybillRefund() throws Exception {
+        Ordered o = placeAndPay("13200132620", 6980L);
+        String asNo = applyAfterSale(o, "REFUND_ONLY", "运单状态暂不可查");
+        shipPickedUp(o.subOrderNo);
+        jdbc.update("DELETE FROM lgs_waybill WHERE biz_ref=?", o.subOrderNo);
+        String biz = loginAsOwnerOf("M0001", "13200132621");
+
+        approve(biz, asNo);
+        assertThat(asStatus(o.userToken, asNo)).isEqualTo(OrdAfterSale.WAIT_RECEIPT);
+        mvc().perform(post("/biz/after-sale/" + asNo + "/confirm-refund")
+                        .header("Authorization", "Bearer " + biz))
+                .andExpect(jsonPath("$.code").value(10409));
     }
 
     @Test
@@ -648,7 +715,9 @@ class M5AfterSaleFlowTest {
         approve(biz, asNo);
         assertThat(asStatus(o.userToken, asNo)).isEqualTo(OrdAfterSale.WAIT_RECEIPT);
 
-        confirmReceipt(o.userToken, o.subOrderNo);
+        // shipPickedUp 只构造物流阶段，并未建立交易发货单；直接完成子单以模拟签收事件。
+        setSubStage(o.subOrderNo, OrdSubOrder.COMPLETED, null);
+        afterSaleService.settleOnReceipt(o.subOrderNo);
         assertThat(asStatus(o.userToken, asNo))
                 .as("★ 签收后系统自己把钱退了 —— 2026-10-14 前就是这样（撤掉改动即红）")
                 .isEqualTo(OrdAfterSale.WAIT_RECEIPT);
@@ -959,6 +1028,8 @@ class M5AfterSaleFlowTest {
     private StoreOrderMapper subOrderMapper;
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private ai.neargo.shop.trade.service.AfterSaleService afterSaleService;
 
     /** 把子单推到某个履约档：改状态 + 置/清备货时刻。直接改库，绕过业务流（只为摆出测试需要的档位）。 */
     private void setSubStage(String subOrderNo, String status, Long preparedAt) {

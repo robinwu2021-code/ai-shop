@@ -483,7 +483,15 @@ export const httpApi: MerchantApi = {
     http.post<SpecTemplate>(E.mSaveSpecTemplate.path, { ...payload } satisfies SaveSpecTemplateReq),
 
   mOrderList: (q) => http.get<PageResult<Order>>(E.mOrderList.path, { ...q } satisfies OrderListQuery),
+  mOrderWorklist: (q) => http.get<PageResult<{
+    order: Order; actionKind: "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
+    priority: number; afterSaleNo: string | null; afterSaleStatus: string | null;
+  }>>(E.mOrderWorklist.path, q),
   mOrderDetail: (orderNo) => http.get<Order>(buildPath(E.mOrderDetail.path, { orderNo })),
+  mFulfillmentOptions: (orderNo) => http.get<Awaited<ReturnType<MerchantApi["mFulfillmentOptions"]>>>(
+    buildPath(E.mFulfillmentOptions.path, { orderNo })),
+  mChangeFulfillment: (orderNo, req) => http.post<Awaited<ReturnType<MerchantApi["mChangeFulfillment"]>>>(
+    buildPath(E.mChangeFulfillment.path, { orderNo }), req),
   mOrderTrace: (orderNo, refresh) =>
     http.get<ShipmentTrace | null>(buildPath(E.mOrderTrace.path, { orderNo }), refresh ? { refresh: true } : undefined),
   mOrderUpdates: (orderNo) =>
@@ -549,6 +557,12 @@ export const httpApi: MerchantApi = {
   mPayoutAccounts: () => http.get<PayoutAccount[]>(E.mPayoutAccounts.path),
   mSubmitPayoutAccount: (v) => http.post<PayoutAccount>(E.mSubmitPayoutAccount.path, v),
   mAfterSaleList: () => http.get<AfterSale[]>(E.mAfterSaleList.path),
+  mAfterSaleWorklist: (q) => http.get<PageResult<{ afterSale: AfterSale; order: Order }>>(
+    E.mAfterSaleWorklist.path, q ?? { pending: true, page: 1, size: 20 }),
+  mActiveAfterSaleForOrder: (orderNo) => http.get<AfterSale | null>(
+    buildPath(E.mActiveAfterSaleForOrder.path, { orderNo })),
+  mAfterSaleDetail: (afterSaleNo) => http.get<{ afterSale: AfterSale; order: Order }>(
+    buildPath(E.mAfterSaleDetail.path, { afterSaleNo })),
   mApproveAfterSale: (afterSaleNo, reply, refundMinor, refundMode) =>
     http.post<AfterSale>(buildPath(E.mApproveAfterSale.path, { afterSaleNo }), {
       remark: reply, refundMinor, refundMode,
@@ -562,8 +576,8 @@ export const httpApi: MerchantApi = {
     http.post<AfterSale>(buildPath(E.mConfirmReturn.path, { afterSaleNo }), {
       restockApproved,
     } satisfies import("./requests").ReceiveReturnReq),
-  mConfirmRefund: (afterSaleNo) =>
-    http.post<AfterSale>(buildPath(E.mConfirmRefund.path, { afterSaleNo }), {}),
+  mConfirmRefund: (afterSaleNo, reason) =>
+    http.post<AfterSale>(buildPath(E.mConfirmRefund.path, { afterSaleNo }), { reason }),
 
   mGroupList: (status) => http.get<GroupBuy[]>(E.mGroupList.path, status ? { status } : undefined),
   mCreateGroup: (req) => http.post<GroupBuy>(E.mCreateGroup.path, req satisfies CreateGroupReq),

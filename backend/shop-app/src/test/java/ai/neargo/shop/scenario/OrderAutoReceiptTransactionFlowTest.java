@@ -2,6 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.support.OrderReceiptFixture;
+import ai.neargo.shop.spi.trade.SettleSourcePort;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.job.OrderAutoReceiptJob;
 import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
@@ -39,6 +40,8 @@ class OrderAutoReceiptTransactionFlowTest {
     private OrderShippingService shipping;
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private SettleSourcePort settleSource;
     @MockitoSpyBean
     private OrderStatusLogMapper logs;
     @Autowired
@@ -60,6 +63,10 @@ class OrderAutoReceiptTransactionFlowTest {
                 + "and event = 'REMIND_SIGNED_CONFIRM_REFUND'", Integer.class, as)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select status from ord_after_sale where after_sale_no = ?",
                 String.class, as)).isEqualTo("WAIT_RECEIPT");
+        assertThat(settleSource.settleReadiness(java.util.List.of(no))).singleElement()
+                .satisfies(readiness -> assertThat(readiness.afterSaleOpen())
+                        .as("在途仅退款待确认时，不得把订单视为可结算")
+                        .isTrue());
     }
 
     @Test

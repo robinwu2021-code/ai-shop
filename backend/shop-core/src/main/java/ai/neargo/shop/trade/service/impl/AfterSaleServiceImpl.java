@@ -197,17 +197,22 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      * 其余按子单状态 + 备货时刻判（{@link FulfillStage}）。
      */
     private FulfillStage stageOf(OrdSubOrder sub) {
+        return stageOf(sub, false);
+    }
+
+    private FulfillStage stageOf(OrdSubOrder sub, boolean refresh) {
         String waybillStatus = null;
         Long waybillCreatedAt = null;
-        if (logisticsPort != null && OrdSubOrder.EXPRESS.equals(sub.getFulfillment())
-                && sub.getExpressNo() != null && !sub.getExpressNo().isBlank()) {
-            var tv = logisticsPort.track(
+        boolean recordedWaybill = OrdSubOrder.EXPRESS.equals(sub.getFulfillment())
+                && sub.getExpressNo() != null && !sub.getExpressNo().isBlank();
+        if (recordedWaybill) {
+            var tv = logisticsPort == null ? null : logisticsPort.track(
                     ai.neargo.shop.spi.logistics.LogisticsPort.TrackQuery.subOrder(
-                            sub.getSubOrderNo(), "BIZ", false)).orElse(null);
-            if (tv != null) {
-                waybillStatus = tv.status();
-                waybillCreatedAt = tv.createdAt();
-            }
+                            sub.getSubOrderNo(), "BIZ", refresh)).orElse(null);
+            // An order-side waybill without a current logistics binding is not proof that goods stayed in store.
+            if (tv == null || tv.status() == null || tv.status().isBlank()) return FulfillStage.SHIPPED;
+            waybillStatus = tv.status();
+            waybillCreatedAt = tv.createdAt();
         }
         return FulfillStage.of(sub.getStatus(), sub.getPreparedAt(),
                 waybillStatus, waybillCreatedAt, System.currentTimeMillis());
@@ -481,6 +486,58 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 }).toList();
     }
 
+    @Override
+    public ai.neargo.shop.common.PageData<AfterSaleVO> merchantPage(String merchantNo, String storeNo,
+                                                                     boolean pending, long page, long size) {
+        if (storeNo == null || storeNo.isBlank()) {
+            return ai.neargo.shop.common.PageData.empty(page, size);
+        }
+        var query = Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getEntityNo, merchantNo)
+                .apply("EXISTS (SELECT 1 FROM ord_sub_order so WHERE so.sub_order_no = ord_after_sale.sub_order_no "
+                        + "AND so.store_no = {0} AND so.deleted = 0)", storeNo);
+        if (pending) {
+            query.in(OrdAfterSale::getStatus, OrdAfterSale.APPLIED, OrdAfterSale.WAIT_RECEIPT,
+                    OrdAfterSale.RETURNING);
+        }
+        query.orderByDesc(OrdAfterSale::getId);
+        var rows = DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectPage(
+                com.baomidou.mybatisplus.extension.plugins.pagination.Page.of(page, size), query));
+        return ai.neargo.shop.common.PageData.of(rows.getRecords().stream().map(as -> {
+            AfterSaleVO vo = detailOf(as);
+            return pending ? vo.withImpact(impactOf(as)) : vo;
+        }).toList(), rows.getTotal(), page, size);
+    }
+
+    @Override
+    public AfterSaleVO merchantDetail(String merchantNo, String storeNo, String afterSaleNo) {
+        OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectOne(
+                Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getAfterSaleNo, afterSaleNo)
+                        .eq(OrdAfterSale::getEntityNo, merchantNo).last("limit 1")));
+        OrdSubOrder sub = as == null ? null : subOrderOf(as.getSubOrderNo());
+        if (sub == null || storeNo == null || !storeNo.equals(sub.getStoreNo())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        AfterSaleVO vo = detailOf(as);
+        return OrdAfterSale.APPLIED.equals(as.getStatus()) || OrdAfterSale.RETURNING.equals(as.getStatus())
+                ? vo.withImpact(impactOf(as)) : vo;
+    }
+
+    @Override
+    public AfterSaleVO merchantActiveForOrder(String merchantNo, String storeNo, String subOrderNo) {
+        OrdSubOrder sub = subOrderOf(subOrderNo);
+        if (sub == null || storeNo == null || !storeNo.equals(sub.getStoreNo())
+                || !merchantNo.equals(sub.getEntityNo())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectOne(
+                Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getSubOrderNo, subOrderNo)
+                        .eq(OrdAfterSale::getEntityNo, merchantNo)
+                        .notIn(OrdAfterSale::getStatus, OrdAfterSale.REFUNDED,
+                                OrdAfterSale.REJECTED, OrdAfterSale.CLOSED)
+                        .orderByDesc(OrdAfterSale::getId).last("limit 1")));
+        return as == null ? null : detailOf(as);
+    }
+
     /**
      * 同意这一笔之后会一并退回什么（待办设计 P2c · B 端售后单）。
      *
@@ -529,7 +586,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         }
 
         OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
-        FulfillStage stage = stageOf(sub);
+        FulfillStage stage = stageOf(sub, true);
 
         /*
          * 核定金额（AC9，§2.4）：**只有已签收能定制金额** —— 未签收商家看不到实物损坏比例，
@@ -565,9 +622,13 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          * 等于钱货两失 —— 此时转「待收货后退款」WAIT_RECEIPT，等买家签收（或包裹退回商家）再退。
          * 未发货（可拦）或已签收（到手）则立即退（TDD-售后规则 §2.3）。
          */
-        if (OrdAfterSale.REFUND_ONLY.equals(as.getType()) && stage == FulfillStage.SHIPPED) {
+        if (OrdAfterSale.REFUND_ONLY.equals(as.getType())
+                && (stage == FulfillStage.SHIPPED || stage == FulfillStage.LABELED)) {
             transit(as, AfterSaleEvent.APPROVE, Actor.MERCHANT, merchantNo,
-                    "商家已同意，货在途——签收后由商家确认退款", AfterSaleContext.builder().inTransit(true).build());
+                    stage == FulfillStage.LABELED
+                            ? "商家已同意，已出单待核实货物仍在店或签收后确认退款"
+                            : "商家已同意，货在途——签收后由商家确认退款",
+                    AfterSaleContext.builder().inTransit(true).build());
             return detailOf(as);
         }
         doRefund(as, "商家同意退款", AfterSaleEvent.APPROVE, Actor.MERCHANT, merchantNo);
@@ -610,15 +671,32 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo) {
+        return confirmRefund(merchantNo, afterSaleNo, null);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo, String reason) {
         OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
-        doRefund(as, "商家确认退款", AfterSaleEvent.CONFIRM_REFUND, Actor.MERCHANT, merchantNo);
+        if (reason != null && reason.length() > 200) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
+        FulfillStage stage = stageOf(sub, true);
+        boolean needsException = stage == FulfillStage.SHIPPED || stage == FulfillStage.LABELED;
+        if (needsException && (reason == null || reason.isBlank())) {
+            throw BizException.of(ErrorCode.CONFLICT,
+                    "运单尚未签收，请升级商家端并填写货物处置说明后再确认退款");
+        }
+        String label = needsException ? "商家核实货物后例外确认退款：" + reason.trim() : "商家确认退款";
+        if (needsException) as.setMerchantRemark(reason.trim());
+        doRefund(as, label, AfterSaleEvent.CONFIRM_REFUND, Actor.MERCHANT, merchantNo);
         return detailOf(as);
     }
 
     /**
-     * 签收触发「待收货后退款」（AC7/AC8 出口①）：子单签收/完成时调用，把这单上处于
-     * {@link OrdAfterSale#WAIT_RECEIPT} 的仅退款单退掉。**幂等**（无 WAIT_RECEIPT 单就是空操作，
-     * Outbox/重试再调也只退一次 —— doRefund 自己也挡 REFUNDED）。系统身份调用，绕数据域。
+     * 签收触发「待商家确认退款」提醒：子单签收/完成时调用，提醒商家核对后确认。
+     * 无 WAIT_RECEIPT 售后单时为空操作。系统身份调用，绕数据域。
      */
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
@@ -998,11 +1076,38 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     @Override
     public int merchantPendingCount(String merchantNo) {
+        return merchantPendingCount(merchantNo, null);
+    }
+
+    @Override
+    public int merchantPendingCount(String merchantNo, String storeNo) {
+        var q = Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getEntityNo, merchantNo)
+                .in(OrdAfterSale::getStatus, OrdAfterSale.APPLIED, OrdAfterSale.RETURNING,
+                        OrdAfterSale.WAIT_RECEIPT);
+        if (storeNo != null && !storeNo.isBlank()) {
+            q.apply("EXISTS (SELECT 1 FROM ord_sub_order so WHERE so.sub_order_no = "
+                    + "ord_after_sale.sub_order_no AND so.store_no = {0} AND so.deleted = 0)", storeNo);
+        }
         Long n = DataScopeContext.executeWithoutScope(() ->
-                afterSaleMapper.selectCount(Wrappers.<OrdAfterSale>lambdaQuery()
-                        .eq(OrdAfterSale::getEntityNo, merchantNo)
-                        .in(OrdAfterSale::getStatus, OrdAfterSale.APPLIED, OrdAfterSale.RETURNING)));
+                afterSaleMapper.selectCount(q));
         return n == null ? 0 : n.intValue();
+    }
+
+    @Override
+    public java.util.Set<String> merchantPendingNos(String merchantNo, String storeNo,
+                                                     java.util.Collection<String> afterSaleNos) {
+        if (storeNo == null || storeNo.isBlank() || afterSaleNos == null || afterSaleNos.isEmpty()) {
+            return java.util.Set.of();
+        }
+        return DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectList(
+                Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getEntityNo, merchantNo)
+                        .in(OrdAfterSale::getAfterSaleNo, afterSaleNos)
+                        .in(OrdAfterSale::getStatus, OrdAfterSale.APPLIED,
+                                OrdAfterSale.RETURNING, OrdAfterSale.WAIT_RECEIPT)
+                        .apply("EXISTS (SELECT 1 FROM ord_sub_order so WHERE so.sub_order_no = "
+                                + "ord_after_sale.sub_order_no AND so.store_no = {0} AND so.deleted = 0)",
+                                storeNo)))
+                .stream().map(OrdAfterSale::getAfterSaleNo).collect(java.util.stream.Collectors.toSet());
     }
 
     // ---------------------------------------------------------------- 平台仲裁（P-6.1）

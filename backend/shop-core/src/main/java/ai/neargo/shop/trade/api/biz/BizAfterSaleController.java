@@ -5,6 +5,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.trade.dto.AfterSaleVO;
 import ai.neargo.shop.trade.service.AfterSaleService;
+import ai.neargo.shop.trade.service.MerchantOrderService;
+import ai.neargo.shop.trade.dto.OrderVO;
+import ai.neargo.shop.common.PageData;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
@@ -30,9 +33,45 @@ import java.util.List;
 public class BizAfterSaleController {
 
     private final AfterSaleService afterSaleService;
+    private final MerchantOrderService merchantOrderService;
 
-    public BizAfterSaleController(AfterSaleService afterSaleService) {
+    public BizAfterSaleController(AfterSaleService afterSaleService, MerchantOrderService merchantOrderService) {
         this.afterSaleService = afterSaleService;
+        this.merchantOrderService = merchantOrderService;
+    }
+
+    public record WorkRow(AfterSaleVO afterSale, OrderVO order) { }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
+    @GetMapping("/biz/after-sale/worklist")
+    public PageData<WorkRow> worklist(@RequestParam(defaultValue = "true") boolean pending,
+                                      @RequestParam(defaultValue = "1") long page,
+                                      @RequestParam(defaultValue = "20") long size) {
+        var ctx = BizContext.current();
+        long boundedPage = Math.max(1, page);
+        long boundedSize = Math.max(1, Math.min(size, 50));
+        PageData<AfterSaleVO> result = afterSaleService.merchantPage(ctx.requireMerchantNo(),
+                ctx.currentStoreNo(), pending, boundedPage, boundedSize);
+        return PageData.of(result.records().stream()
+                .map(as -> new WorkRow(as, merchantOrderService.detail(ctx.requireMerchantNo(),
+                        ctx.currentStoreNo(), as.subOrderNo())))
+                .toList(), result.total(), result.page(), result.size());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
+    @GetMapping("/biz/after-sale/{afterSaleNo}")
+    public WorkRow detail(@PathVariable String afterSaleNo) {
+        var ctx = BizContext.current();
+        AfterSaleVO as = afterSaleService.merchantDetail(ctx.requireMerchantNo(), ctx.currentStoreNo(), afterSaleNo);
+        return new WorkRow(as, merchantOrderService.detail(ctx.requireMerchantNo(), ctx.currentStoreNo(),
+                as.subOrderNo()));
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
+    @GetMapping("/biz/after-sale/by-order/{subOrderNo}")
+    public AfterSaleVO activeForOrder(@PathVariable String subOrderNo) {
+        var ctx = BizContext.current();
+        return afterSaleService.merchantActiveForOrder(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
@@ -77,9 +116,13 @@ public class BizAfterSaleController {
     /** 在途仅退款：签收后（或商家判断不必等）由商家确认退款。系统不再自动退（TDD-订单状态机 AC8） */
     @PreAuthorize("@perm.canBiz('" + BizPerms.AFTERSALE + "')")
     @PostMapping("/biz/after-sale/{afterSaleNo}/confirm-refund")
-    public AfterSaleVO confirmRefund(@PathVariable String afterSaleNo) {
-        return afterSaleService.confirmRefund(BizContext.requireMerchantNo(), afterSaleNo);
+    public AfterSaleVO confirmRefund(@PathVariable String afterSaleNo,
+                                     @RequestBody(required = false) ConfirmRefundReq req) {
+        return afterSaleService.confirmRefund(BizContext.requireMerchantNo(), afterSaleNo,
+                req == null ? null : req.reason());
     }
+
+    public record ConfirmRefundReq(String reason) { }
 
     public record ReceiveReq(Boolean restockApproved) { }
 

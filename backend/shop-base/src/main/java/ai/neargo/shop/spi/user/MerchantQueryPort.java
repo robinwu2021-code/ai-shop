@@ -218,6 +218,12 @@ public interface MerchantQueryPort {
      */
     java.util.Optional<String> expressTemplateNo(String merchantNo, String storeNo);
 
+    /** Current self-delivery fee for a store/order total; empty means pricing cannot be verified. */
+    default java.util.OptionalLong merchantDeliveryFeeMinor(String merchantNo, String storeNo,
+                                                             long goodsAmountMinor) {
+        return java.util.OptionalLong.empty();
+    }
+
     /**
      * 门店坐标健康度。**运营端唯一能看见「自送半径是不是哑的」的地方。**
      *

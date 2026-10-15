@@ -133,6 +133,15 @@ public final class OrderEvents {
         }
     }
 
+    /** Buyer promise changed before hand-off; order and freight amounts remain unchanged. */
+    public record SubOrderFulfillmentChanged(String subOrderNo, String orderNo, String userNo,
+                                             String merchantNo, String storeNo, String previous,
+                                             String current, String reason) implements DomainEvent {
+        @Override public String aggregateType() { return AGG_SUB_ORDER; }
+        @Override public String aggregateId() { return subOrderNo; }
+        @Override public String eventType() { return "SUB_ORDER_FULFILLMENT_CHANGED"; }
+    }
+
     public record SubOrderCompleted(String subOrderNo, String orderNo, String merchantNo,
                                     String userNo, String fulfillment)
             implements DomainEvent {

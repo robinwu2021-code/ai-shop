@@ -55,6 +55,14 @@ public interface AfterSaleService {
 
     List<AfterSaleVO> merchantList(String merchantNo, String status);
 
+    /** Merchant-scoped, server-paged action list; storeNo is the currently authorized store. */
+    ai.neargo.shop.common.PageData<AfterSaleVO> merchantPage(String merchantNo, String storeNo,
+                                                               boolean pending, long page, long size);
+
+    /** Merchant/store-scoped read for notification deep links. */
+    AfterSaleVO merchantDetail(String merchantNo, String storeNo, String afterSaleNo);
+    AfterSaleVO merchantActiveForOrder(String merchantNo, String storeNo, String subOrderNo);
+
     /** Current scoped case only: reuse its original execution, including resources after cash success. */
     OpsAfterSaleVO recoverRefund(String afterSaleNo, String operatorNo);
 
@@ -84,6 +92,11 @@ public interface AfterSaleService {
      * 签收后系统只提醒，<b>不自动退</b>；商家也可以不等签收直接确认。
      */
     AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo);
+
+    /** In-transit exception needs the merchant's explicit reason; signed goods need no reason. */
+    default AfterSaleVO confirmRefund(String merchantNo, String afterSaleNo, String reason) {
+        return confirmRefund(merchantNo, afterSaleNo);
+    }
 
     /**
      * 子单签收 / 完成时调用：该子单上有 {@code WAIT_RECEIPT} 的仅退款单时，<b>提醒商家确认退款</b>（不退钱）。
@@ -124,6 +137,9 @@ public interface AfterSaleService {
      * 而挂久了整块待办就没人看了。
      */
     int merchantPendingCount(String merchantNo);
+    int merchantPendingCount(String merchantNo, String storeNo);
+    java.util.Set<String> merchantPendingNos(String merchantNo, String storeNo,
+                                               java.util.Collection<String> afterSaleNos);
 
     // ---------------------------------------------------------------- 平台仲裁（P-6.1）
 

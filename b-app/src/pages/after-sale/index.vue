@@ -10,7 +10,7 @@ const merchant = useMerchantStore();
 // 另外：驳回**不改订单状态**。置回已完成就把「申请平台介入」的路堵死了，
 // 用户会以为售后已结束（ADR 里没写，但这是售后设计的常见坑）。
 import { computed, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { onLoad, onShow, onReachBottom } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { askMchSubscribe } from "@/shared/mch-subscribe";
@@ -47,14 +47,19 @@ type Row = { as: AfterSale; order?: Order };
 
 const list = ref<Row[]>([]);
 const tab = ref<"pending" | "all">("pending");
-const pending = computed(() => list.value.filter((r) =>
-  ["APPLIED", "WAIT_RECEIPT", "RETURNING"].includes(r.as.status)));
-const visible = computed(() => tab.value === "pending" ? pending.value : list.value);
+const pendingTotal = ref(0);
+const total = ref(0);
+const page = ref(1);
+const loading = ref(false);
+const visible = computed(() => list.value);
 /** 正在驳回的单号 —— 展开理由输入框 */
 const rejecting = ref("");
 const reason = ref("");
+const earlyRefunding = ref("");
+const earlyRefundReason = ref("");
 const restock = ref<Record<string, boolean>>({});
 const busy = ref(false);
+const targetAfterSaleNo = ref("");
 
 /**
  * 老数据（以及后端补字段之前的数据）可能没有 `afterSale`。
@@ -68,22 +73,40 @@ const loaded = ref(false);
 /** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
 const failed = ref(false);
 
-async function load() {
+async function load(next = false) {
+  if (loading.value || (next && list.value.length >= total.value)) return;
+  loading.value = true;
   try {
     rejecting.value = "";
     reason.value = "";
-    const [afterSales, orders] = await Promise.all([
-      api.mAfterSaleList(),
-      api.mOrderList({ size: 50 }),
-    ]);
-    const byNo = new Map(orders.records.map((o) => [o.orderNo, o]));
-    list.value = afterSales.map((as) => ({ as, order: byNo.get(as.subOrderNo) }));
+    const requestedPage = next ? page.value + 1 : 1;
+    const result = await api.mAfterSaleWorklist({ pending: tab.value === "pending", page: requestedPage, size: 20 });
+    const rows = result.records.map((r) => ({ as: r.afterSale, order: r.order }));
+    list.value = next ? [...list.value, ...rows] : rows;
+    if (!next && targetAfterSaleNo.value && !list.value.some((r) => r.as.afterSaleNo === targetAfterSaleNo.value)) {
+      const selected = await api.mAfterSaleDetail(targetAfterSaleNo.value).catch(() => null);
+      if (selected) list.value = [{ as: selected.afterSale, order: selected.order }, ...list.value];
+    }
+    page.value = requestedPage;
+    total.value = result.total;
+    if (tab.value === "pending") pendingTotal.value = result.total;
+    else pendingTotal.value = (await api.mAfterSaleWorklist({ pending: true, page: 1, size: 1 })).total;
     failed.value = false;
   } catch {
     failed.value = true;
+  } finally {
+    loading.value = false;
   }
   loaded.value = true;
 }
+
+function switchTab(value: "pending" | "all") {
+  if (tab.value === value) return;
+  tab.value = value;
+  void load();
+}
+
+onReachBottom(() => { void load(true); });
 
 async function agree(r: Row) {
   if (busy.value) return;
@@ -114,7 +137,19 @@ async function confirmReturn(r: Row) {
  * 不等签收也可以点 —— 商家判断不用等时自己决定。
  */
 async function confirmRefund(r: Row) {
-  await runRefund(() => api.mConfirmRefund(r.as.afterSaleNo));
+  const inTransit = r.order?.status !== "COMPLETED";
+  if (inTransit && earlyRefunding.value !== r.as.afterSaleNo) {
+    earlyRefunding.value = r.as.afterSaleNo;
+    earlyRefundReason.value = "";
+    return;
+  }
+  if (inTransit && !earlyRefundReason.value.trim()) {
+    uni.showToast({ title: t("afterSale.earlyRefundReasonRequired"), icon: "none" });
+    return;
+  }
+  await runRefund(() => api.mConfirmRefund(r.as.afterSaleNo,
+    inTransit ? earlyRefundReason.value.trim() : undefined));
+  earlyRefunding.value = "";
 }
 
 async function runRefund(call: () => Promise<unknown>) {
@@ -151,7 +186,18 @@ async function reject(r: Row) {
   }
 }
 
-onShow(load);
+onLoad(async (q) => {
+  targetAfterSaleNo.value = typeof q?.afterSaleNo === "string" ? q.afterSaleNo : "";
+  if (typeof q?.store === "string" && q.store && q.store !== merchant.storeNo) {
+    await merchant.switchStore(q.store);
+  }
+  if (targetAfterSaleNo.value) {
+    const selected = await api.mAfterSaleDetail(targetAfterSaleNo.value).catch(() => null);
+    if (selected && !["APPLIED", "WAIT_RECEIPT", "RETURNING"].includes(selected.afterSale.status)) tab.value = "all";
+    await load();
+  }
+});
+onShow(() => { if (!targetAfterSaleNo.value || loaded.value) void load(); });
 </script>
 
 <template>
@@ -159,8 +205,8 @@ onShow(load);
     <text class="txt-display">{{ $t("afterSale.title") }}</text>
 
     <view class="tabs sh-row">
-      <text class="sh-chip" :class="{ 'sh-chip--warning': tab === 'pending' }" @tap="tab = 'pending'">{{ $t("afterSale.pendingTab") }} ({{ pending.length }})</text>
-      <text class="sh-chip" :class="{ 'sh-chip--warning': tab === 'all' }" @tap="tab = 'all'">{{ $t("afterSale.allTab") }}</text>
+      <text class="sh-chip" :class="{ 'sh-chip--warning': tab === 'pending' }" @tap="switchTab('pending')">{{ $t("afterSale.pendingTab") }} ({{ pendingTotal }})</text>
+      <text class="sh-chip" :class="{ 'sh-chip--warning': tab === 'all' }" @tap="switchTab('all')">{{ $t("afterSale.allTab") }}</text>
     </view>
 
     <sh-empty v-if="!visible.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("afterSale.empty")'></sh-empty>
@@ -230,11 +276,13 @@ onShow(load);
         </text>
       </view>
 
-      <!-- 货在途已同意：签收后由商家确认退款（不自动退）；不等签收也可以直接确认 -->
+      <!-- 在途提前退款必须明确承担风险；签收后按正常确认路径退款。 -->
       <view v-else-if="asStatus(r) === 'WAIT_RECEIPT'" class="btns sh-row">
         <text class="sh-muted sh-fill">{{ $t("afterSale.waitReceiptHint") }}</text>
+        <textarea v-if="earlyRefunding === r.as.afterSaleNo" v-model="earlyRefundReason"
+          class="field__area" :placeholder="$t('afterSale.earlyRefundReasonPh')" maxlength="200" />
         <text class="sh-btn sh-btn--sm txt-strong btn btn--auto" @tap="confirmRefund(r)">
-          {{ $t("afterSale.confirmRefund") }}
+          {{ earlyRefunding === r.as.afterSaleNo ? $t("afterSale.confirmEarlyRefund") : $t("afterSale.confirmRefund") }}
         </text>
       </view>
 

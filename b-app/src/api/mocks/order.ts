@@ -25,7 +25,10 @@ import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 
 export const orderMock: Pick<MerchantApi,
   "mOrderList"
+  | "mOrderWorklist"
   | "mOrderDetail"
+  | "mFulfillmentOptions"
+  | "mChangeFulfillment"
   | "mOrderTrace"
   | "mOrderUpdates"
   | "mShipPrecheck"
@@ -57,6 +60,9 @@ export const orderMock: Pick<MerchantApi,
   | "mPayoutAccounts"
   | "mSubmitPayoutAccount"
   | "mAfterSaleList"
+  | "mAfterSaleWorklist"
+  | "mActiveAfterSaleForOrder"
+  | "mAfterSaleDetail"
   | "mApproveAfterSale"
   | "mRejectAfterSale"
   | "mConfirmReturn"
@@ -99,8 +105,46 @@ export const orderMock: Pick<MerchantApi,
     return delay(paginate(list, q.page, q.size));
   },
 
+  async mOrderWorklist(q) {
+    const merchantNo = db.merchant.merchantNo;
+    const orders = merchantNo ? scopedToStore(db.orders.filter((o) => belongsToMerchant(o, merchantNo))) : [];
+    const rows = orders.map((order) => {
+      const as = order.afterSale;
+      const afterSaleNo = as && ["APPLIED", "RETURNING", "WAIT_RECEIPT"].includes(as.status)
+        ? as.afterSaleNo : null;
+      const actionKind = afterSaleNo ? "AFTER_SALE" as const
+        : order.status === "WAIT_OFFLINE_PAY" ? "RECEIVE_PAYMENT" as const
+        : order.status === "PAID" ? "FULFILL" as const
+        : order.status === "FULFILLING" && ["STORE_PICKUP", "NEIGHBOR_PICKUP"].includes(order.fulfillment)
+          ? "VERIFY" as const : null;
+      return actionKind ? { order, actionKind, priority: afterSaleNo ? 0 : actionKind === "RECEIVE_PAYMENT" ? 1
+        : actionKind === "FULFILL" ? 2 : 3, afterSaleNo, afterSaleStatus: afterSaleNo ? as!.status : null } : null;
+    }).filter((row) => row !== null).sort((a, b) => a.priority - b.priority || a.order.createdAt - b.order.createdAt
+      || a.order.orderNo.localeCompare(b.order.orderNo));
+    return delay(paginate(rows, q.page, q.size));
+  },
+
   async mOrderDetail(orderNo) {
     return delay({ ...findOrder(orderNo) });
+  },
+
+  async mFulfillmentOptions(orderNo) {
+    const order = findOrder(orderNo);
+    const currentFulfillment = order.fulfillment;
+    const eligible = order.status === "PAID" && !order.expressNo && !order.afterSale;
+    return delay({ subOrderNo: orderNo, currentFulfillment, version: 0,
+      options: ["MERCHANT_DELIVERY", "EXPRESS"].map((fulfillment) => ({
+        fulfillment, allowed: fulfillment === currentFulfillment || eligible,
+        reason: fulfillment === currentFulfillment || eligible ? null : "此订单当前不可切换配送方式",
+      })) });
+  },
+  async mChangeFulfillment(orderNo, req) {
+    const order = findOrder(orderNo);
+    if (req.expectedVersion !== 0 || !req.reason.trim() || order.status !== "PAID"
+      || order.expressNo || order.afterSale) throw new Error("此订单当前不可切换配送方式");
+    order.fulfillment = req.targetFulfillment as typeof order.fulfillment;
+    persist();
+    return delay({ order: { ...order }, version: 1 });
   },
 
   async mOrderTrace(orderNo) {
@@ -583,6 +627,33 @@ export const orderMock: Pick<MerchantApi,
     );
   },
 
+  async mAfterSaleWorklist(q) {
+    const merchantNo = db.merchant.merchantNo;
+    const pending = q?.pending ?? true;
+    const page = q?.page ?? 1;
+    const size = q?.size ?? 20;
+    const rows = scopedToStore(db.orders.filter((o) => o.afterSale && belongsToMerchant(o, merchantNo)))
+      .filter((o) => !pending || ["APPLIED", "WAIT_RECEIPT", "RETURNING"].includes(o.afterSale!.status))
+      .sort((a, b) => (b.afterSale?.createdAt ?? 0) - (a.afterSale?.createdAt ?? 0))
+      .map((o) => ({ afterSale: o.afterSale!, order: o }));
+    return delay(paginate(rows, page, size));
+  },
+  async mActiveAfterSaleForOrder(orderNo) {
+    const order = findOrder(orderNo);
+    if (!belongsToMerchant(order, db.merchant.merchantNo) || !scopedToStore([order]).length) {
+      throw new Error("订单不存在");
+    }
+    const as = order.afterSale;
+    return delay(as && !["REFUNDED", "REJECTED", "CLOSED"].includes(as.status) ? as : null);
+  },
+
+  async mAfterSaleDetail(afterSaleNo) {
+    const order = findOrderByAfterSale(afterSaleNo);
+    if (!order || !belongsToMerchant(order, db.merchant.merchantNo)
+      || !scopedToStore([order]).length || !order.afterSale) throw new Error("售后单不存在");
+    return delay({ afterSale: order.afterSale, order });
+  },
+
   async mApproveAfterSale(afterSaleNo, reply, refundMinor, refundMode) {
     const o = takePendingAfterSale(afterSaleNo);
     const as = o.afterSale!;
@@ -662,10 +733,11 @@ export const orderMock: Pick<MerchantApi,
     persist();
     return delay(o.afterSale!);
   },
-  async mConfirmRefund(afterSaleNo) {
+  async mConfirmRefund(afterSaleNo, reason) {
     const o = findOrderByAfterSale(afterSaleNo);
     const as = o.afterSale!;
     if (as.status !== "WAIT_RECEIPT") throw new Error("该售后已处理或状态不对");
+    if (o.status !== "COMPLETED" && !reason?.trim()) throw new Error("货物仍在途，请说明提前退款原因");
     as.updatedAt = Date.now();
     pushTimeline(o, "商家确认退款");
     beginMockRefund(o);

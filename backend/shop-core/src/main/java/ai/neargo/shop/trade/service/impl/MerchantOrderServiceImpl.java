@@ -274,6 +274,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         if (shipped && no.equals(sub.getExpressNo()) && expressCompany.equals(sub.getExpressCompany())) {
             return toVO(sub);
         }
+        if (hasOpenAfterSale(sub.getSubOrderNo())) {
+            throw BizException.of(ErrorCode.CONFLICT, "订单存在进行中的售后，不能交运或更正运单");
+        }
         OrderStateMachine.assertMerchantSubOrderTransit(sub.getStatus(), OrdSubOrder.FULFILLING);
         String old = sub.getExpressNo();
         if (!shipped) {
@@ -344,6 +347,9 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     @Transactional
     public OrderVO delivered(String merchantNo, String storeNo, String subOrderNo) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
+        if (hasOpenAfterSale(subOrderNo)) {
+            throw BizException.of(ErrorCode.CONFLICT, "订单存在进行中的售后，不能标记送达");
+        }
         /*
          * 留痕写「商家标记送达」而不是「已完成」——
          * 买家自己确认收货也会把单推到 COMPLETED，纠纷时要能分清是谁点的。
@@ -531,6 +537,59 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         List<OrderVO> records = p.getRecords().stream().map(sub -> toVO(sub)
                 .withLogisticsSync(asSync(summaries.get(sub.getSubOrderNo())))).toList();
         return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
+    }
+
+    @Override
+    public PageData<WorkItem> worklist(String merchantNo, java.util.Collection<String> storeNos,
+                                       boolean includeAfterSale, long page, long size) {
+        if (storeNos != null && storeNos.isEmpty()) {
+            return PageData.of(List.of(), 0, page, size);
+        }
+        // Sort before LIMIT. Fetching a recent-orders page and sorting it in the app hides older refunds.
+        String active = "EXISTS (SELECT 1 FROM ord_after_sale a WHERE a.sub_order_no = "
+                + "ord_sub_order.sub_order_no AND a.deleted = 0 AND "
+                + "a.status IN ('APPLIED','RETURNING','WAIT_RECEIPT'))";
+        String offlineDue = "EXISTS (SELECT 1 FROM ord_order main WHERE main.order_no = "
+                + "ord_sub_order.order_no AND main.status = 'WAIT_OFFLINE_PAY' AND main.deleted = 0)";
+        var w = Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getEntityNo, merchantNo);
+        if (storeNos != null) w.in(OrdSubOrder::getStoreNo, storeNos);
+        w.and(actions -> {
+            actions.eq(OrdSubOrder::getStatus, OrdSubOrder.WAIT_FULFILL)
+                    .or().and(offline -> offline.eq(OrdSubOrder::getStatus, OrdSubOrder.WAIT_PAY)
+                            .apply(offlineDue));
+            if (includeAfterSale) actions.or().apply(active);
+        });
+        if (!includeAfterSale) w.apply("NOT " + active);
+        String rank = includeAfterSale ? "CASE WHEN " + active + " THEN 0 " : "CASE ";
+        w.last("ORDER BY " + rank + "WHEN ord_sub_order.status = 'WAIT_PAY' THEN 1 "
+                + "WHEN ord_sub_order.status = 'WAIT_FULFILL' THEN 2 ELSE 3 END, "
+                + "ord_sub_order.created_at ASC, ord_sub_order.sub_order_no ASC");
+        Page<OrdSubOrder> selected = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectPage(Page.of(page, size), w));
+        List<String> nos = selected.getRecords().stream().map(OrdSubOrder::getSubOrderNo).toList();
+        Map<String, ai.neargo.shop.trade.entity.OrdAfterSale> afterSales = new java.util.HashMap<>();
+        if (includeAfterSale && !nos.isEmpty()) {
+            DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectList(
+                    Wrappers.<ai.neargo.shop.trade.entity.OrdAfterSale>lambdaQuery()
+                            .in(ai.neargo.shop.trade.entity.OrdAfterSale::getSubOrderNo, nos)
+                            .in(ai.neargo.shop.trade.entity.OrdAfterSale::getStatus,
+                                    ai.neargo.shop.trade.entity.OrdAfterSale.APPLIED,
+                                    ai.neargo.shop.trade.entity.OrdAfterSale.RETURNING,
+                                    ai.neargo.shop.trade.entity.OrdAfterSale.WAIT_RECEIPT)
+                            .orderByDesc(ai.neargo.shop.trade.entity.OrdAfterSale::getId)))
+                    .forEach(as -> afterSales.putIfAbsent(as.getSubOrderNo(), as));
+        }
+        List<WorkItem> rows = selected.getRecords().stream().map(sub -> {
+            var as = afterSales.get(sub.getSubOrderNo());
+            String action = as != null ? "AFTER_SALE" : OrdSubOrder.WAIT_PAY.equals(sub.getStatus())
+                    ? "RECEIVE_PAYMENT" : OrdSubOrder.WAIT_FULFILL.equals(sub.getStatus())
+                    ? "FULFILL" : "VERIFY";
+            int priority = as != null ? 0 : "RECEIVE_PAYMENT".equals(action) ? 1
+                    : "FULFILL".equals(action) ? 2 : 3;
+            return new WorkItem(toVO(sub), action, priority,
+                    as == null ? null : as.getAfterSaleNo(), as == null ? null : as.getStatus());
+        }).toList();
+        return PageData.of(rows, selected.getTotal(), page, size);
     }
 
     private OrderVO.LogisticsSync syncOf(String subOrderNo) {

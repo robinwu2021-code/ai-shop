@@ -18,13 +18,19 @@ import { expressOrderStatusKey, traceStatusKey } from "@shared/strategies/trace-
 import { fulfillmentAllowed } from "@shared/strategies/order-phase1";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 import { confirm } from "@ai-shop/ui/prompt";
-import type { Order, ShipmentTrace } from "@shared/types";
-import type { ExpressPickup, ExpressQuote, LogisticsUpdateRecord } from "@/api/contract";
+import type { AfterSale, Order, ShipmentTrace } from "@shared/types";
+import type { ExpressPickup, LogisticsUpdateRecord } from "@/api/contract";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
 const order = ref<Order | null>(null);
+const activeAfterSale = ref<AfterSale | null>(null);
+type FulfillmentOptions = Awaited<ReturnType<typeof api.mFulfillmentOptions>>;
+const fulfillmentOptions = ref<FulfillmentOptions | null>(null);
+const changeReason = ref("");
+const alternative = computed(() => fulfillmentOptions.value?.options.find(
+  (option) => option.fulfillment !== order.value?.fulfillment));
 const shipSync = ref<Order["logisticsSync"]>(null);
 const currentSync = computed(() => order.value?.logisticsSync ?? shipSync.value);
 /**
@@ -88,7 +94,8 @@ const correctedNo = ref("");
 const correctedCarrierIdx = ref(-1);
 const correctionReason = ref("");
 const canCorrectWaybill = computed(() => order.value?.fulfillment === FULFILLMENT.EXPRESS
-  && order.value.status === "FULFILLING" && !!order.value.expressNo && merchant.can("biz:ship"));
+  && order.value.status === "FULFILLING" && !!order.value.expressNo && merchant.can("biz:ship")
+  && !activeAfterSale.value);
 /**
  * 选中的快递公司下标。**默认 -1（未选）**，不默认第一家 ——
  * 默认一家的话，商家不点也「选」了顺丰，发出去的一半是错的快递公司，
@@ -131,11 +138,13 @@ async function refreshTrace() {
  * 于是「发货」按钮画给了他，点下去 70006 —— 而他既不该发货，也没有任何办法拿到这个权限。
  */
 const canShip = computed(
-  () => order.value?.fulfillment === FULFILLMENT.EXPRESS && fulfillmentAllowed(order.value, merchant.can("biz:ship")),
+  () => !activeAfterSale.value && order.value?.fulfillment === FULFILLMENT.EXPRESS
+    && fulfillmentAllowed(order.value, merchant.can("biz:ship")),
 );
 /** 自送单且已付款 → 该送。同样两个都要判（见 {@link canShip}） */
 const canDeliver = computed(
-  () => order.value?.fulfillment === FULFILLMENT.DELIVERY && fulfillmentAllowed(order.value, merchant.can("biz:ship")),
+  () => !activeAfterSale.value && order.value?.fulfillment === FULFILLMENT.DELIVERY
+    && fulfillmentAllowed(order.value, merchant.can("biz:ship")),
 );
 
 /**
@@ -144,7 +153,7 @@ const canDeliver = computed(
  * 用 `biz:ship` 权限（备货是发货前一步）。已备货仍显示这张卡（给「已备货」状态）。
  */
 const canPrepare = computed(
-  () => fulfillmentAllowed(order.value, merchant.can("biz:ship"))
+  () => !activeAfterSale.value && fulfillmentAllowed(order.value, merchant.can("biz:ship"))
     && (order.value?.fulfillment === FULFILLMENT.EXPRESS
       || order.value?.fulfillment === FULFILLMENT.DELIVERY),
 );
@@ -209,6 +218,10 @@ async function load(orderNo: string) {
   currentNo.value = orderNo;
   try {
     order.value = await api.mOrderDetail(orderNo);
+    activeAfterSale.value = merchant.can("biz:aftersale")
+      ? await api.mActiveAfterSaleForOrder(orderNo).catch(() => null) : null;
+    fulfillmentOptions.value = merchant.can("biz:ship")
+      ? await api.mFulfillmentOptions(orderNo).catch(() => null) : null;
     failed.value = false;
     fullTrace.value = null;
     updateRecords.value = [];
@@ -219,6 +232,41 @@ async function load(orderNo: string) {
     // 界面上一个字都不说，整页停在空白
     failed.value = true;
   }
+}
+
+async function changeFulfillment() {
+  if (!order.value || !alternative.value?.allowed || !fulfillmentOptions.value
+      || !changeReason.value.trim() || busy.value) {
+    if (!changeReason.value.trim()) uni.showToast({ title: t("order.changeFulfillmentReasonRequired"), icon: "none" });
+    return;
+  }
+  const yes = await confirm({
+    title: String(t("order.changeFulfillmentConfirm")),
+    confirmText: String(t("order.changeFulfillmentAction")),
+    cancelText: String(t("common.cancel")),
+  });
+  if (!yes) return;
+  busy.value = true;
+  try {
+    await api.mChangeFulfillment(order.value.orderNo, {
+      targetFulfillment: alternative.value.fulfillment,
+      reason: changeReason.value.trim(),
+      expectedVersion: fulfillmentOptions.value.version,
+    });
+    changeReason.value = "";
+    await load(currentNo.value);
+    uni.showToast({ title: t("order.changeFulfillmentDone"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+    await load(currentNo.value);
+  } finally {
+    busy.value = false;
+  }
+}
+
+function openActiveAfterSale() {
+  if (!activeAfterSale.value) return;
+  uni.navigateTo({ url: `${ROUTES.afterSale}?afterSaleNo=${encodeURIComponent(activeAfterSale.value.afterSaleNo)}&store=${encodeURIComponent(merchant.storeNo || "")}` });
 }
 
 async function loadTrace(orderNo: string) {
@@ -328,19 +376,12 @@ async function delivered() {
 
 /** 最近一张取件单。叫过就显示它的进度，不再给表单 —— 同一单同时只能有一张进行中的 */
 const pickup = ref<ExpressPickup | null>(null);
-const weightKg = ref("");
-const quotes = ref<ExpressQuote[] | null>(null);
-const quoteIdx = ref(-1);
 const PICKUP_OPEN = ["CREATED", "ACCEPTED", "PICKED", "DONE"];
 /** 取消与失败之后可以重新叫：这时表单回来，上一张的原因留一行 */
 const pickupActive = computed(() => !!pickup.value && PICKUP_OPEN.includes(pickup.value.status));
 const canCancelPickup = computed(
   () => pickup.value?.status === "CREATED" || pickup.value?.status === "ACCEPTED",
 );
-const weightOk = computed(() => {
-  const w = Number(weightKg.value);
-  return w >= 0.1 && w <= 30;
-});
 
 /**
  * 买家付的运费与叫快递的实际运费之差（TDD-快递100商家寄件 §8 AC18）。取件后才有实际运费；测试单不算（运费是假的）。
@@ -355,18 +396,12 @@ const freightGap = computed(() => {
   return { subsidy: diff < 0, amount: Math.abs(diff) };
 });
 
-/** 发货方式：叫快递上门 / 自己发货。默认叫快递 —— 它是推荐路径（平台批量价、运单号自动回填） */
-const SHIP_MODES = ["PICKUP", "SELF"] as const;
-const shipMode = ref<(typeof SHIP_MODES)[number]>("PICKUP");
-/** 发货设置里的默认快递公司：查到价后先选中它；自己发货时也先选中它 */
-const defaultCarrier = ref<string | null>(null);
-
 function openShipSettings() {
   uni.navigateTo({ url: ROUTES.shipSettings });
 }
 
 /**
- * 带出发货设置的默认值（快递公司、重量）。**拉不到不挡发货** —— 那一页是方便，不是前提；
+ * 带出发货设置的默认快递公司。**拉不到不挡发货** —— 那一页是方便，不是前提；
  * 商家手动选一次照样能发。只在他还没动过的时候填，不覆盖手上的输入。
  */
 async function loadShipDefaults() {
@@ -375,8 +410,6 @@ async function loadShipDefaults() {
   if (!merchant.can("biz:store")) return;
   try {
     const s = await api.mShipSetting(merchant.storeNo || "default");
-    defaultCarrier.value = s.carrier;
-    if (!weightKg.value && s.weightG) weightKg.value = String(s.weightG / 1000);
     if (carrierIdx.value < 0 && s.carrier) carrierIdx.value = carriers.findIndex((c) => c.code === s.carrier);
   } catch {
     // 见上：不挡发货
@@ -390,42 +423,6 @@ async function loadPickup() {
   } catch {
     // 取件单拉不到不影响手填发货：那一块照常可用
     pickup.value = null;
-  }
-}
-
-async function fetchQuotes() {
-  if (!order.value || !weightOk.value || busy.value) return;
-  busy.value = true;
-  try {
-    quotes.value = await api.mExpressQuotes(order.value.orderNo, Number(weightKg.value));
-    // 发货设置里的默认快递在报价单里就先选中它；不在（这条线不接）就选最便宜的那家
-    const def = quotes.value.findIndex((q) => q.carrier === defaultCarrier.value);
-    quoteIdx.value = def >= 0 ? def : quotes.value.length ? 0 : -1;
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    busy.value = false;
-  }
-}
-
-async function bookExpress() {
-  const q = quotes.value?.[quoteIdx.value];
-  if (!order.value || !q || busy.value) return;
-  const ok = await confirm({
-    title: String(t("order.expressBook")),
-    hint: String(t("order.expressConfirm", { carrier: q.carrierName, price: money(q.priceMinor) })),
-    confirmText: String(t("order.expressBookBtn")),
-  });
-  if (!ok) return;
-  busy.value = true;
-  try {
-    pickup.value = await api.mBookExpress(order.value.orderNo, q.carrier, Number(weightKg.value));
-    quotes.value = null;
-    uni.showToast({ title: t("order.expressBooked"), icon: "none" });
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    busy.value = false;
   }
 }
 
@@ -500,6 +497,14 @@ onPullDownRefresh(async () => {
     @retry="() => load(currentNo)"
   >
     <template v-if="order">
+      <view v-if="activeAfterSale" class="sh-card sh-mb-sm sh-row sh-row--between" @tap="openActiveAfterSale">
+        <view>
+          <text class="txt-strong is-danger">{{ $t('order.tabAfterSale') }}</text>
+          <text class="txt-caption sh-muted">{{ activeAfterSale.afterSaleNo }}</text>
+        </view>
+        <sh-go :text="String($t('message.view'))"></sh-go>
+      </view>
+
       <!--
         物流一栏，**放在最顶上、独立成卡**（淘宝订单详情那种形态）。
         店主打开这一页最常问的就是「货到哪了」，它不该排在订单号、下单时间后面；
@@ -563,6 +568,22 @@ onPullDownRefresh(async () => {
         </view>
       </view>
 
+      <view v-if="alternative && ['EXPRESS', 'MERCHANT_DELIVERY'].includes(order.fulfillment)"
+        class="sh-card sh-mt-sm">
+        <text class="txt-title">{{ $t('order.changeFulfillmentTitle') }}</text>
+        <text class="txt-caption sh-muted blk">
+          {{ $t('order.changeFulfillmentTarget') }}{{ $t(`fulfillmentLabel.${alternative.fulfillment}`) }}
+        </text>
+        <text v-if="!alternative.allowed" class="txt-caption sh-muted blk">{{ alternative.reason }}</text>
+        <template v-else>
+          <textarea v-model="changeReason" class="field__area sh-mt-sm"
+            :placeholder="$t('order.changeFulfillmentReasonPh')" maxlength="200" />
+          <text class="sh-btn sh-btn--sm sh-mt-sm" @tap="changeFulfillment">
+            {{ $t('order.changeFulfillmentAction') }}
+          </text>
+        </template>
+      </view>
+
       <view class="sh-card sh-mt-sm">
         <text class="txt-title">{{ $t("order.items") }}</text>
         <view v-for="it in order.items" :key="it.skuNo" class="sh-row item sh-mt-sm">
@@ -616,12 +637,7 @@ onPullDownRefresh(async () => {
         <view class="sh-btn sh-mt-sm" @tap="offlineAsking = true">{{ $t("order.offlinePay") }}</view>
       </view>
 
-      <!--
-        发货（TDD-快递100商家寄件 §7 AC13）：一张卡、两种做法二选一 ——
-          · 叫快递上门：平台共用一个快递100 账号，小单量也拿得到批量价；取件后运单号自动回填
-          · 自己发货：已经交给快递了，填运单号（B-11.4.3；快递公司与运单号成对，微信发货信息录入要求）
-        默认值取「发货设置」（快递公司、重量），右上角直达那一页。叫过快递之后这张卡只显示进度。
-      -->
+      <!-- 快递订单录入公司与运单；历史已预约寄件单仍显示原预约进度和取消入口。 -->
       <!--
         开始备货（售后规则 §2.1）：只记时刻、不改状态。生鲜备货后非质量退款要商家确认。
         发货卡之上、与发货同一权限 —— 备货是发货前一步。
@@ -676,53 +692,6 @@ onPullDownRefresh(async () => {
           <text class="txt-title">{{ $t("order.ship") }}</text>
           <sh-go :text="String($t('home.shipEntry'))" @tap="openShipSettings"></sh-go>
         </view>
-        <view class="sh-row ship__modes sh-mt-sm">
-          <text
-            v-for="m in SHIP_MODES"
-            :key="m"
-            class="sh-seg sh-seg--fill"
-            :class="{ 'sh-seg--on': shipMode === m }"
-            @tap="shipMode = m"
-          >{{ $t(`order.shipMode.${m}`) }}</text>
-        </view>
-
-        <template v-if="shipMode === 'PICKUP'">
-          <text v-if="pickup?.failReason" class="txt-caption sh-muted sh-mt-sm express__last">
-            {{ $t(`order.expressStatus.${pickup.status}`) }}：{{ pickup.failReason }}
-          </text>
-          <view class="sh-row sh-mt-sm">
-            <input
-              v-model="weightKg"
-              type="digit"
-              maxlength="5"
-              class="field__input sh-fill"
-              :placeholder="$t('order.expressWeightPh')"
-              @input="quotes = null"
-            />
-            <view class="sh-btn sh-btn--sm" :class="{ 'sh-btn--muted': !weightOk }" @tap="fetchQuotes">
-              {{ $t("order.expressQuote") }}
-            </view>
-          </view>
-          <template v-if="quotes">
-            <text v-if="!quotes.length" class="txt-caption sh-muted sh-mt-sm express__last">{{ $t("order.expressNoQuote") }}</text>
-            <view
-              v-for="(q, i) in quotes"
-              :key="q.carrier"
-              class="quote sh-row sh-row--between"
-              :class="{ 'quote--on': quoteIdx === i }"
-              @tap="quoteIdx = i"
-            >
-              <text>{{ q.carrierName }}</text>
-              <view class="sh-row">
-                <text v-if="q.listPriceMinor > q.priceMinor" class="sh-was sh-num">{{ money(q.listPriceMinor) }}</text>
-                <text class="txt-strong sh-num">{{ money(q.priceMinor) }}</text>
-              </view>
-            </view>
-            <view v-if="quotes.length" class="sh-btn sh-mt-sm" @tap="bookExpress">{{ $t("order.expressBookBtn") }}</view>
-          </template>
-        </template>
-
-        <template v-else>
           <!-- 快递公司：横排可点的胶囊，选一个。picker 也行，但发货是高频动作，少一次弹层 -->
           <view class="sh-wrap sh-mt-sm">
             <text
@@ -746,7 +715,6 @@ onPullDownRefresh(async () => {
           >
             {{ $t("order.ship") }}
           </view>
-        </template>
       </view>
 
       <!-- 商家自送：老板点一下就是送到了，不做骑手轨迹（ADR-005 §5） -->
@@ -898,24 +866,6 @@ onPullDownRefresh(async () => {
 .due__hint {
   display: block;
   margin-top: 16rpx;
-}
-/* 发货方式两段：等分铺满，与商品编辑页「售卖方式」同一件（sh-seg--fill） */
-.ship__modes {
-  gap: 16rpx;
-}
-/* 报价行：一家一行，选中的那行描主色边。行高够一根手指 */
-.quote {
-  margin-top: 12rpx;
-  padding: 20rpx 24rpx;
-  border-radius: 16rpx;
-  border: var(--sh-hairline);
-}
-.quote--on {
-  border-color: var(--sh-primary);
-  background: var(--sh-primary-tint);
-}
-.express__last {
-  display: block;
 }
 .carrier__chip {
   padding: 8rpx 20rpx;

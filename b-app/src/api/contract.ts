@@ -1530,6 +1530,13 @@ export interface MerchantApi {
    * 非法日期服务端会报错而**不是静默忽略**：忽略的话拿到的是没筛过的全量列表，
    * 而调用方以为那就是那一天的单。
    */
+  mOrderWorklist(q: PageQuery): Promise<PageResult<{
+    order: Order;
+    actionKind: "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
+    priority: number;
+    afterSaleNo: string | null;
+    afterSaleStatus: string | null;
+  }>>;
   mOrderList(
     q: PageQuery & {
       status?: OrderStatus;
@@ -1540,6 +1547,13 @@ export interface MerchantApi {
     },
   ): Promise<PageResult<Order>>;
   mOrderDetail(orderNo: string): Promise<Order>;
+  mFulfillmentOptions(orderNo: string): Promise<{
+    subOrderNo: string; currentFulfillment: string; version: number;
+    options: { fulfillment: string; allowed: boolean; reason: string | null }[];
+  }>;
+  mChangeFulfillment(orderNo: string, req: {
+    targetFulfillment: string; reason: string; expectedVersion: number;
+  }): Promise<{ order: Order; version: number }>;
   /**
    * 物流轨迹（TDD-物流模块 B2）：比详情里的多承运商、单号、签收时间、到柜。不是快递 / 还没发货 → null。
    * `refresh` 只在后端配置放行时才真去问渠道（`refreshable` 说明这一单能不能）
@@ -1666,6 +1680,11 @@ export interface MerchantApi {
     accountNumber: string; bankName?: string; bankBranch?: string }): Promise<PayoutAccount>;
 
   mAfterSaleList(): Promise<AfterSale[]>;
+  /** 服务端按当前门店分页，订单摘要与售后同页返回，避免只关联前 50 笔订单。 */
+  mAfterSaleWorklist(q?: { pending?: boolean; page?: number; size?: number }):
+    Promise<PageResult<{ afterSale: AfterSale; order: Order }>>;
+  mAfterSaleDetail(afterSaleNo: string): Promise<{ afterSale: AfterSale; order: Order }>;
+  mActiveAfterSaleForOrder(orderNo: string): Promise<AfterSale | null>;
   /**
    * 同意。仅退款未发货/已签收直接退，已揽收在途转「待收货后退款」；退货退款等收货（见 mConfirmReturn）。
    * 兼容旧参数；一期页面省略自定义金额，只申请全额现金退款，资金成功需等待确认。
@@ -1684,7 +1703,7 @@ export interface MerchantApi {
   /**
    * 在途仅退款（WAIT_RECEIPT）由商家确认退款。系统签收后只提醒，**不自动退**（TDD-订单状态机 AC8）。
    */
-  mConfirmRefund(afterSaleNo: string): Promise<AfterSale>;
+  mConfirmRefund(afterSaleNo: string, reason?: string): Promise<AfterSale>;
 
   // ---- 团购与报价（B-11.6）
   /** 我的团（s09）。status：OPEN（含待审）/ FORMED / FAILED；不传给全部 */
