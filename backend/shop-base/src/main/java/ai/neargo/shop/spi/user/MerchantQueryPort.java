@@ -325,6 +325,21 @@ public interface MerchantQueryPort {
     java.util.Optional<String> payMerchantNoOf(String merchantNo, String storeNo);
 
     /**
+     * 交易快照专用：只解析指定门店显式绑定、同主体且已激活的指定通道收款号。
+     * 缺配置或配置失效返回空，不回退主体默认号。调用方应在支付发起时持久化结果，
+     * 退款不得重新查询当前配置替代交易时的快照。未实现此能力的适配器返回空。
+     */
+    default Optional<PaymentRoute> paymentRouteOf(String merchantNo, String storeNo, String channel) {
+        return Optional.empty();
+    }
+
+    /** 门店仍为业务维度；accountVersion 是实际收款档案业务键与行版本组成的保守版本。 */
+    record PaymentRoute(String merchantNo, String storeNo, String payMerchantNo, String channel,
+                        String subMerchantId, String accountVersion, String fundsPath) {
+    }
+
+
+    /**
      * 这个主体名下的全部门店号（含停用的）。
      *
      * <p>两个用途，都在「主体级 → 门店级」这条转换路径上：

@@ -44,6 +44,11 @@ public interface PaymentLedgerService {
      */
     String open(SettlePort.PaymentOpen cmd);
 
+    /** 原支付指令快照；缺失时不从当前商家配置合成。 */
+    default java.util.Optional<SettlePort.PaymentOpen> paymentRequest(String outTradeNo) {
+        return java.util.Optional.empty();
+    }
+
     /**
      * 收款成功，转 SUCCESS。
      *

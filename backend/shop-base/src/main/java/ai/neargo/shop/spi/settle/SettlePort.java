@@ -1,5 +1,9 @@
 package ai.neargo.shop.spi.settle;
 
+import ai.neargo.shop.spi.user.MerchantQueryPort.PaymentRoute;
+
+import java.util.List;
+
 /**
  * trade → settle：退款链路要用的两步。**顺序不可颠倒**（E4 / TDD-backend §7.2）。
  *
@@ -126,7 +130,21 @@ public interface SettlePort {
      *                    支付域拿不到商品名，编不出来。
      */
     record PaymentOpen(String orderNo, String userNo, String entityNo,
-                       String payChannel, long amountMinor, String subject) {
+                       String payChannel, long amountMinor, String subject,
+                       String currency, List<PaymentStore> stores) {
+        public PaymentOpen {
+            stores = stores == null ? List.of() : List.copyOf(stores);
+        }
+
+        /** 兼容普通现金支付调用；积分交易必须显式提供交易币种及门店路由。 */
+        public PaymentOpen(String orderNo, String userNo, String entityNo,
+                           String payChannel, long amountMinor, String subject) {
+            this(orderNo, userNo, entityNo, payChannel, amountMinor, subject, "CNY", List.of());
+        }
+    }
+
+    /** 支付发起时的子单与门店路由，缺失的路由不得作为积分交易事实。 */
+    record PaymentStore(String subOrderNo, PaymentRoute route) {
     }
 
     /**

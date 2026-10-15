@@ -1072,6 +1072,7 @@ CREATE TABLE IF NOT EXISTS stl_payment
     refund_verified_at BIGINT DEFAULT NULL,
     refund_dispatch_at BIGINT DEFAULT NULL,
     refund_request_json MEDIUMTEXT DEFAULT NULL,
+    payment_request_json MEDIUMTEXT DEFAULT NULL,
     CONSTRAINT uk_stl_payment_direction_after_sale_no UNIQUE (direction,after_sale_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),

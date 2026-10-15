@@ -13,6 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+
 @Service
 public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
@@ -38,8 +43,18 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
          */
         StlPayment open = openPaymentOf(cmd.orderNo());
         if (open != null) {
+            var original = paymentRequest(open.getOutTradeNo()).orElseThrow(
+                    () -> new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_REQUIRED"));
+            if (!Objects.equals(original.userNo(), cmd.userNo())
+                    || !Objects.equals(original.entityNo(), cmd.entityNo())
+                    || !Objects.equals(original.payChannel(), cmd.payChannel())
+                    || !Objects.equals(original.currency(), cmd.currency())
+                    || original.amountMinor() != cmd.amountMinor()) {
+                throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_CONFLICT");
+            }
             return open.getOutTradeNo();
         }
+        validateRequest(cmd);
         /*
          * **商户单号 = 订单号 + 尝试序号**（第一次就是订单号本身）。
          *
@@ -69,8 +84,65 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         p.setEntityNo(cmd.entityNo());
         p.setPayChannel(cmd.payChannel());
         p.setAmountMinor(cmd.amountMinor());
+        p.setCurrency(cmd.currency());
+        p.setPaymentRequestJson(json.writeValueAsString(cmd));
         DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
         return outTradeNo;
+    }
+
+    @Override
+    public Optional<SettlePort.PaymentOpen> paymentRequest(String outTradeNo) {
+        StlPayment row = byOutTradeNo(outTradeNo);
+        if (row == null || row.getPaymentRequestJson() == null) {
+            return Optional.empty();
+        }
+        var request = json.readValue(row.getPaymentRequestJson(), SettlePort.PaymentOpen.class);
+        validateRequest(request);
+        if (!Objects.equals(row.getOrderNo(), request.orderNo())
+                || !Objects.equals(row.getUserNo(), request.userNo())
+                || !Objects.equals(row.getEntityNo(), request.entityNo())
+                || !Objects.equals(row.getPayChannel(), request.payChannel())
+                || !Objects.equals(row.getCurrency(), request.currency())
+                || row.getAmountMinor() == null || row.getAmountMinor() != request.amountMinor()) {
+            throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_CONFLICT");
+        }
+        return Optional.of(request);
+    }
+
+    private static void validateRequest(SettlePort.PaymentOpen request) {
+        if (!nonblank(request.orderNo()) || !nonblank(request.userNo()) || !nonblank(request.payChannel())
+                || request.currency() == null || !request.currency().matches("[A-Z]{3}")
+                || request.amountMinor() < 0) {
+            throw new IllegalArgumentException("PAY_REQUEST_INVALID");
+        }
+        Set<String> subs = new HashSet<>();
+        String directAccount = null;
+        String path = null;
+        for (var store : request.stores()) {
+            var route = store.route();
+            if (!nonblank(store.subOrderNo()) || !subs.add(store.subOrderNo()) || route == null
+                    || !nonblank(route.merchantNo()) || !nonblank(route.storeNo())
+                    || !nonblank(route.payMerchantNo()) || !nonblank(route.subMerchantId())
+                    || !nonblank(route.accountVersion()) || !Objects.equals(route.channel(), request.payChannel())
+                    || !("DIRECT".equals(route.fundsPath()) || "AGGREGATED".equals(route.fundsPath()))) {
+                throw new IllegalArgumentException("PAY_STORE_ROUTE_INVALID");
+            }
+            if (path != null && !path.equals(route.fundsPath())) {
+                throw new IllegalArgumentException("PAY_MIXED_FUNDS_PATH_UNSUPPORTED");
+            }
+            path = route.fundsPath();
+            if ("DIRECT".equals(path)) {
+                String account = route.payMerchantNo() + ":" + route.subMerchantId() + ":" + route.accountVersion();
+                if (directAccount != null && !directAccount.equals(account)) {
+                    throw new IllegalArgumentException("PAY_MULTIPLE_DIRECT_ACCOUNTS_UNSUPPORTED");
+                }
+                directAccount = account;
+            }
+        }
+    }
+
+    private static boolean nonblank(String value) {
+        return value != null && !value.isBlank();
     }
 
     /** 这个订单已经向通道下过几次单 —— 决定下一个商户单号的后缀 */

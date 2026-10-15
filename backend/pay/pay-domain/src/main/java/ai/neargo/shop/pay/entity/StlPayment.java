@@ -72,6 +72,9 @@ public class StlPayment extends BaseEntity {
 
     private String currency;
 
+    /** 支付创建时固化的完整请求，包括币种、子单和门店账户版本。 */
+    private String paymentRequestJson;
+
     private String status;
 
     /** 我方给通道的商户订单号。**用户报障时报的是这个**。 */

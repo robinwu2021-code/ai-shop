@@ -47,7 +47,6 @@ public class SettlePortImpl implements SettlePort {
      * 而那天要改的地方必须只有一处。散成字面量的话，改漏一处的表现是
      * 「某个市场的单按 CNY 结算」—— 金额对、币种错，账面上看不出来。
      */
-    private static final String CURRENCY_CNY = "CNY";
     /** 一期只在小程序里收款。端形态扩到 App 时这里要按端传值，不能默认 */
     private static final String PAY_METHOD_JSAPI = "JSAPI";
     private static final String WECHAT = "WECHAT";
@@ -110,6 +109,8 @@ public class SettlePortImpl implements SettlePort {
          *    用户手上有一个能付的凭据而我方一无所知，那笔钱进来后没人认领它。
          */
         String outTradeNo = paymentLedger.open(cmd);
+        cmd = paymentLedger.paymentRequest(outTradeNo).orElseThrow(
+                () -> new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_REQUIRED"));
 
         /*
          * ② 通道没接入时**直接失败**，不回退到别的通道。
@@ -132,15 +133,18 @@ public class SettlePortImpl implements SettlePort {
          * 的 `payer.openid` 是必填。此前不炸只因为下单一直走 STUB/TEST，
          * 而它们不看这个字段 —— 桩把缺件盖住了，正是这个仓库反复吃过亏的那种绿。
          *
-         * `subMchId` 仍是 null：直连商户号（ADR-017 路径 A「归集」）没有二级商户，
-         * 钱进平台商户号。收付通模式接上时它才有值，那时从主体属性里取。
+         * 门店直连使用本次支付已固化的通道账户；归集支付仍由平台账户收款。
+         * paymentLedger 已拒绝同一支付指令覆盖多个直连账户或混合资金路径。
          */
         String payerId = identityPort.wxOpenIdMp(cmd.userNo()).orElse(null);
+        String subMchId = !cmd.stores().isEmpty()
+                && "DIRECT".equals(cmd.stores().getFirst().route().fundsPath())
+                ? cmd.stores().getFirst().route().subMerchantId() : null;
         var r = gateway.prepay(new ai.neargo.shop.pay.channel.PayGateway.PrepayCommand(
                 // description 由交易域拼好带过来（只有那一层有订单明细）。
                 // 传 "订单 "+orderNo 的老写法会让用户在微信购物订单里认不出这一单
-                outTradeNo, cmd.amountMinor(), CURRENCY_CNY, cmd.subject(),
-                PAY_METHOD_JSAPI, null, payerId));
+                outTradeNo, cmd.amountMinor(), cmd.currency(), cmd.subject(),
+                PAY_METHOD_JSAPI, subMchId, payerId));
 
         /*
          * ③ 下单失败就**关掉流水**，不留在 PENDING。
