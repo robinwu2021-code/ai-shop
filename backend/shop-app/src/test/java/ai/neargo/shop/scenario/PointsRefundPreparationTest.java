@@ -31,6 +31,10 @@ import ai.neargo.shop.pay.points.port.PointsRefundPortImpl;
 import ai.neargo.shop.pay.points.refund.PointsRefundCollectionExecutionService;
 import ai.neargo.shop.pay.points.refund.PointsRefundCollectionService;
 import ai.neargo.shop.pay.points.refund.PointsRefundCashDecisionService;
+import ai.neargo.shop.pay.points.refund.PointsRefundZeroCashService;
+import ai.neargo.shop.spi.points.PointsRefundPort.ZeroCashCompletionFact;
+import ai.neargo.shop.spi.points.PointsRefundPort.ZeroCashReason;
+import tools.jackson.databind.node.ObjectNode;
 import ai.neargo.shop.pay.points.refund.PointsReceivableRecoveryService;
 import ai.neargo.shop.pay.points.refund.PointsReceivableRecoveryExecutionService;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort;
@@ -101,6 +105,7 @@ class PointsRefundPreparationTest {
     @Autowired private PointsRefundCollectionExecutionService collections;
     @Autowired private PointsRefundCollectionService collectionDecisions;
     @Autowired private PointsRefundCashDecisionService cashDecisions;
+    @Autowired private PointsRefundZeroCashService zeroCash;
     @Autowired private TestFunds funds;
     @Autowired private PointsSettlementHook settlement;
     @Autowired private PointsReceivableRecoveryService recoveries;
@@ -573,6 +578,250 @@ class PointsRefundPreparationTest {
         assertThat(refundState(prepared)).isEqualTo("ABORTED");
         assertThat(balance(type,"pending_points")).isEqualTo(20);
         assertThat(balance(type,"held_points")).isZero();
+    }
+
+    @Test void zero_cash_without_bank_row_uses_a_persisted_source_fact_and_replays_once() {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(zeroCommand(type));
+        var fact=zeroFact(type,prepared,0,ZeroCashReason.NO_CASH_DUE);
+        assertThatCode(() -> zeroCash.accept(fact)).doesNotThrowAnyException();
+        assertThat(refundState(prepared)).isEqualTo("ZERO_AUTHORIZED");
+        assertThat(balance(type,"held_points")).isEqualTo(10);
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_inbox WHERE event_no=?",Long.class,
+                fact.eventNo())).isEqualTo(1);
+        var confirmation=zeroConfirmation(prepared,fact);
+        var result=confirmations.confirm(confirmation);
+        assertThat(result.reclaimedPoints()).isEqualTo(10);
+        assertThat(result.state()).isEqualTo("CONFIRMED");
+        assertThat(confirmations.confirm(confirmation).replayed()).isTrue();
+        zeroCash.accept(fact);
+        assertThat(balance(type,"held_points")).isZero();
+        assertThat(balance(type,"pending_points")).isEqualTo(10);
+        assertThat(pool(type,"u_minor")).isEqualTo(90);
+        assertThat(pool(type,"c_minor")).isEqualTo(10);
+        assertNoCashRefund(type);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_voucher WHERE biz_ref=?",Long.class,
+                "REFUND_ZERO_AUTHORIZE:"+prepared.preparationNo())).isEqualTo(1);
+    }
+
+    @Test void zero_cash_fact_must_match_the_original_store_revision_and_cash_decision() {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(zeroCommand(type));
+        var fact=zeroFact(type,prepared,0,ZeroCashReason.NO_CASH_DUE);
+        for (var change:List.of(Map.of("storeNo","OTHER"),Map.of("userNo","OTHER"),
+                Map.of("afterSaleNo","OTHER"),Map.of("subOrderNo","OTHER"),Map.of("typeCode","OTHER"),
+                Map.of("currency","KWD"),Map.of("revision",2),Map.of("sourceVersion",2),
+                Map.of("inputHash","WRONG"),Map.of("businessCashMinor",1),Map.of("cashOffsetMinor",1),
+                Map.of("netCashMinor",1))) {
+            var invalid=changedFact(fact,change);
+            assertThatThrownBy(() -> zeroCash.accept(invalid)).hasMessage("POINTS_ZERO_CASH_FACT_MISMATCH");
+        }
+        assertThat(refundState(prepared)).isEqualTo("PREPARED");
+        assertThat(balance(type,"held_points")).isEqualTo(10);
+        assertNoCashRefund(type);
+    }
+
+    @Test void zero_cash_cannot_authorize_a_positive_refund_or_replace_a_cash_receipt() {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        var fact=zeroFact(type,prepared,50,ZeroCashReason.NO_CASH_DUE);
+        assertThatThrownBy(() -> zeroCash.accept(fact)).hasMessage("POINTS_ZERO_CASH_NOT_ZERO");
+        var cash=successfulCash(type,prepared);
+        var mixed=new RefundConfirmation(prepared.preparationNo(),prepared.inputHash(),cash.cashRefundPaymentNo(),
+                null,null,fact.eventNo());
+        assertThatThrownBy(() -> confirmations.confirm(mixed))
+                .hasMessage("POINTS_REFUND_UNEXPECTED_ZERO_CASH_PROOF");
+        assertThat(confirmations.confirm(cash).reclaimedPoints()).isEqualTo(10);
+    }
+
+    @Test void zero_cash_full_offset_waits_for_collection_and_credits_real_collected_money_once() {
+        String type=spentGrant();
+        var original=command(type,"AS:"+type,50);
+        var command=new RefundCommand(original.afterSaleNo(),type,"USER",type,"CNY",1,10,50,
+                original.lines(),original.payment());
+        var prepared=refunds.prepare(command);
+        assertThat(prepared.netCashMinor()).isZero();
+        assertThat(prepared.cashOffsetMinor()).isEqualTo(10);
+        var fact=zeroFact(type,prepared,10,ZeroCashReason.COLLECTED_OFFSET);
+        assertThatThrownBy(() -> zeroCash.accept(fact)).hasMessage("POINTS_ZERO_CASH_DECISION_NOT_READY");
+        collections.execute(prepared.preparationNo());
+        assertThatThrownBy(() -> zeroCash.accept(fact)).hasMessage("POINTS_ZERO_CASH_DECISION_NOT_READY");
+        collections.execute(prepared.preparationNo());
+        zeroCash.accept(fact);
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+        var confirmation=zeroConfirmation(prepared,fact);
+        var result=confirmations.confirm(confirmation);
+        assertThat(result.collectedMinor()).isEqualTo(10);
+        assertThat(result.reclaimedPoints()).isZero();
+        assertThat(pool(type,"u_minor")).isEqualTo(90);
+        assertThat(pool(type,"c_minor")).isEqualTo(20);
+        assertThat(confirmations.confirm(confirmation).replayed()).isTrue();
+        assertThat(funds.sends.get(prepared.collectionTicket())).isEqualTo(1);
+        assertThat(funds.queries.get(prepared.collectionTicket())).isEqualTo(1);
+        assertNoCashRefund(type);
+    }
+
+    @Test void zero_cash_event_identity_cannot_be_rewritten_or_reused_for_another_preparation() {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(zeroCommand(type));
+        var fact=zeroFact(type,prepared,0,ZeroCashReason.NO_CASH_DUE);
+        zeroCash.accept(fact);
+        assertThatThrownBy(() -> zeroCash.accept(changedFact(fact,Map.of("eventNo","different-event"))))
+                .hasMessage("POINTS_ZERO_CASH_FACT_CONFLICT");
+        String other=fixture(false,true);
+        var otherPrepared=refunds.prepare(zeroCommand(other));
+        var reused=changedFact(zeroFact(other,otherPrepared,0,ZeroCashReason.NO_CASH_DUE),
+                Map.of("eventNo",fact.eventNo()));
+        assertThatThrownBy(() -> zeroCash.accept(reused)).hasMessage("POINTS_ZERO_CASH_EVENT_CONFLICT");
+        assertThat(refundState(otherPrepared)).isEqualTo("PREPARED");
+    }
+
+    @Test void zero_cash_confirmation_requires_the_authorized_event_and_no_payment_reference() {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(zeroCommand(type));
+        var fact=zeroFact(type,prepared,0,ZeroCashReason.NO_CASH_DUE);
+        assertThatThrownBy(() -> confirmations.confirm(zeroConfirmation(prepared,fact)))
+                .hasMessage("POINTS_ZERO_CASH_AUTHORIZATION_REQUIRED");
+        zeroCash.accept(fact);
+        assertThatThrownBy(() -> confirmations.confirm(new RefundConfirmation(prepared.preparationNo(),
+                prepared.inputHash(),null,null,null)))
+                .hasMessage("POINTS_ZERO_CASH_PROOF_REQUIRED");
+        assertThatThrownBy(() -> confirmations.confirm(new RefundConfirmation(prepared.preparationNo(),
+                prepared.inputHash(),null,null,null,"foreign-event")))
+                .hasMessage("POINTS_ZERO_CASH_PROOF_REQUIRED");
+        assertThatThrownBy(() -> confirmations.confirm(new RefundConfirmation(prepared.preparationNo(),
+                prepared.inputHash(),"FAKE-ZERO-PAYMENT",null,null,fact.eventNo())))
+                .hasMessage("POINTS_ZERO_CASH_PAYMENT_NOT_ALLOWED");
+        assertThat(confirmations.confirm(zeroConfirmation(prepared,fact)).state()).isEqualTo("CONFIRMED");
+        assertNoCashRefund(type);
+    }
+
+    @Test void zero_cash_existing_cash_intent_blocks_authorization_and_fact_writes() {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(zeroCommand(type));
+        var fact=zeroFact(type,prepared,0,ZeroCashReason.NO_CASH_DUE);
+        jdbc().update("INSERT INTO stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,"
+                + "amount_minor,status,pay_channel) VALUES(?,'REFUND',?,?,'USER','CNY',50,'PENDING','TEST')",
+                "EXISTING:"+type,"AS:"+type,type);
+        assertThatThrownBy(() -> zeroCash.accept(fact)).hasMessage("POINTS_ZERO_CASH_CASH_INTENT_EXISTS");
+        assertThat(refundState(prepared)).isEqualTo("PREPARED");
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_inbox WHERE event_no=?",Long.class,
+                fact.eventNo())).isZero();
+    }
+
+    @Test void zero_cash_fact_and_authorization_rollback_in_the_same_pay_transaction() {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(zeroCommand(type));
+        var fact=zeroFact(type,prepared,0,ZeroCashReason.NO_CASH_DUE);
+        assertThatThrownBy(() -> new TransactionTemplate(payTransactions).executeWithoutResult(status -> {
+            zeroCash.accept(fact);
+            throw new IllegalStateException("force rollback");
+        })).hasMessage("force rollback");
+        assertThat(refundState(prepared)).isEqualTo("PREPARED");
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_inbox WHERE event_no=?",Long.class,
+                fact.eventNo())).isZero();
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_voucher WHERE biz_ref=?",Long.class,
+                "REFUND_ZERO_AUTHORIZE:"+prepared.preparationNo())).isZero();
+        zeroCash.accept(fact);
+        assertThat(confirmations.confirm(zeroConfirmation(prepared,fact)).state()).isEqualTo("CONFIRMED");
+    }
+
+    @Test void zero_cash_paid_redemption_returns_funded_points_and_records_store_debt_without_bank_refund() {
+        String type=fixture(false,true);
+        addRedemption(type,true);
+        var prepared=refunds.prepare(zeroCommand(type));
+        var fact=zeroFact(type,prepared,0,ZeroCashReason.NO_CASH_DUE);
+        zeroCash.accept(fact);
+        var result=confirmations.confirm(zeroConfirmation(prepared,fact));
+        assertThat(result.returnedPoints()).isEqualTo(20);
+        assertThat(result.reclaimedPoints()).isEqualTo(10);
+        assertThat(result.receivableMinor()).isEqualTo(20);
+        assertThat(balance(type,"available_points")).isEqualTo(20);
+        assertThat(balance(type,"pending_points")).isEqualTo(10);
+        assertThat(pool(type,"u_minor")).isEqualTo(50);
+        assertThat(pool(type,"c_minor")).isEqualTo(30);
+        assertThat(pool(type,"b_minor")).isEqualTo(20);
+        assertThat(jdbc().queryForObject("SELECT original_minor FROM pts_receivable"
+                + " WHERE type_code=? AND store_no='STORE'",Long.class,type)).isEqualTo(20);
+        assertThat(confirmations.confirm(zeroConfirmation(prepared,fact)).replayed()).isTrue();
+        assertThat(pool(type,"b_minor")).isEqualTo(20);
+        assertNoCashRefund(type);
+    }
+
+    @Test void zero_cash_invalid_fact_or_wrong_completion_reason_does_not_change_the_preparation() {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(zeroCommand(type));
+        var fact=zeroFact(type,prepared,0,ZeroCashReason.NO_CASH_DUE);
+        assertThatThrownBy(() -> zeroCash.accept(null)).hasMessage("POINTS_ZERO_CASH_FACT_INVALID");
+        assertThatThrownBy(() -> zeroCash.accept(changedFact(fact,Map.of("eventNo"," "))))
+                .hasMessage("POINTS_ZERO_CASH_FACT_INVALID");
+        assertThatThrownBy(() -> zeroCash.accept(changedFact(fact,Map.of("occurredAt","1970-01-01T00:00:00Z"))))
+                .hasMessage("POINTS_ZERO_CASH_FACT_INVALID");
+        assertThatThrownBy(() -> zeroCash.accept(changedFact(fact,Map.of("reason","COLLECTED_OFFSET"))))
+                .hasMessage("POINTS_ZERO_CASH_REASON_MISMATCH");
+        assertThat(refundState(prepared)).isEqualTo("PREPARED");
+        assertThat(balance(type,"held_points")).isEqualTo(10);
+    }
+
+    @Test void zero_cash_confirmation_cannot_use_a_missing_durable_inbox_fact() {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(zeroCommand(type));
+        var fact=zeroFact(type,prepared,0,ZeroCashReason.NO_CASH_DUE);
+        zeroCash.accept(fact);
+        // Deliberately corrupt only this synthetic fact to prove the confirmer checks persisted evidence.
+        jdbc().update("DELETE FROM pts_inbox WHERE event_no=?",fact.eventNo());
+        assertThatThrownBy(() -> confirmations.confirm(zeroConfirmation(prepared,fact)))
+                .hasMessage("POINTS_ZERO_CASH_PROOF_REQUIRED");
+        assertThat(refundState(prepared)).isEqualTo("ZERO_AUTHORIZED");
+        assertThat(balance(type,"held_points")).isEqualTo(10);
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+        assertNoCashRefund(type);
+    }
+
+    @Test void zero_cash_confirmation_checks_again_if_a_cash_intent_appears_after_authorization() {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(zeroCommand(type));
+        var fact=zeroFact(type,prepared,0,ZeroCashReason.NO_CASH_DUE);
+        zeroCash.accept(fact);
+        jdbc().update("INSERT INTO stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,"
+                + "amount_minor,status,pay_channel) VALUES(?,'REFUND',?,?,'USER','CNY',50,'PENDING','TEST')",
+                "LATE_CASH:"+type,"AS:"+type,type);
+        assertThatThrownBy(() -> confirmations.confirm(zeroConfirmation(prepared,fact)))
+                .hasMessage("POINTS_ZERO_CASH_CASH_INTENT_EXISTS");
+        assertThat(balance(type,"held_points")).isEqualTo(10);
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+        assertThat(refundState(prepared)).isEqualTo("ZERO_AUTHORIZED");
+    }
+
+    private RefundCommand zeroCommand(String type) {
+        var original=command(type,"AS:"+type,50);
+        return new RefundCommand(original.afterSaleNo(),type,"USER",type,"CNY",1,0,50,
+                original.lines(),original.payment());
+    }
+
+    private ZeroCashCompletionFact zeroFact(String type,RefundPreparation prepared,long business,
+                                            ZeroCashReason reason) {
+        return new ZeroCashCompletionFact("ZERO:"+type,prepared.preparationNo(),prepared.inputHash(),
+                prepared.revision(),type,"AS:"+type,type,"USER","STORE","CNY",1,business,
+                prepared.cashOffsetMinor(),prepared.netCashMinor(),reason,Instant.parse("2026-10-15T08:00:00Z"));
+    }
+
+    private ZeroCashCompletionFact changedFact(ZeroCashCompletionFact fact,Map<String,?> changes) {
+        var mapper=new ObjectMapper();
+        ObjectNode tree=mapper.valueToTree(fact);
+        changes.forEach((key,value) -> tree.set(key,mapper.valueToTree(value)));
+        return mapper.treeToValue(tree,ZeroCashCompletionFact.class);
+    }
+
+    private RefundConfirmation zeroConfirmation(RefundPreparation prepared,ZeroCashCompletionFact fact) {
+        return new RefundConfirmation(prepared.preparationNo(),prepared.inputHash(),null,
+                prepared.collectionTicket(),null,fact.eventNo());
+    }
+
+    private void assertNoCashRefund(String type) {
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM stl_payment WHERE direction='REFUND'"
+                + " AND after_sale_no=?",Long.class,"AS:"+type)).isZero();
     }
 
     private boolean serializationConflict(Throwable failure) {

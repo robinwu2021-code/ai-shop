@@ -20,6 +20,8 @@ import ai.neargo.shop.pay.points.redeem.impl.RedeemServiceImpl.RedeemSnapshot;
 import ai.neargo.shop.pay.points.store.PointsCashRefundReadStore;
 import ai.neargo.shop.pay.points.store.PointsConfigurationStore;
 import ai.neargo.shop.pay.points.store.PointsReadStore;
+import ai.neargo.shop.pay.points.store.PointsFactStore;
+import ai.neargo.shop.spi.points.PointsRefundPort.ZeroCashCompletionFact;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundConfirmation;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundOutcome;
 import org.springframework.stereotype.Service;
@@ -42,10 +44,12 @@ public class PointsRefundConfirmationServiceImpl implements PointsRefundConfirma
     private final PointsConfigurationStore configuration;
     private final PointsCashRefundReadStore cash;
     private final PointsPostingService posting;
+    private final PointsFactStore facts;
     private final ObjectMapper json=new ObjectMapper();
     public PointsRefundConfirmationServiceImpl(PointsReadStore read,PointsConfigurationStore configuration,
-                                               PointsCashRefundReadStore cash,PointsPostingService posting) {
-        this.read=read; this.configuration=configuration; this.cash=cash; this.posting=posting;
+                                               PointsCashRefundReadStore cash,PointsPostingService posting,
+                                               PointsFactStore facts) {
+        this.read=read; this.configuration=configuration; this.cash=cash; this.posting=posting; this.facts=facts;
     }
     @Override public RefundOutcome confirm(RefundConfirmation confirmation) {
         require(confirmation!=null && confirmation.preparationNo()!=null,"POINTS_REFUND_CONFIRMATION_INVALID");
@@ -61,22 +65,28 @@ public class PointsRefundConfirmationServiceImpl implements PointsRefundConfirma
             require(confirmation.equals(snapshot.confirmation()),"POINTS_REFUND_CONFIRMATION_CONFLICT");
             return outcome(ref,true);
         }
-        require("CASH_AUTHORIZED".equals(head.get("state")),
-                "POINTS_REFUND_CASH_AUTHORIZATION_REQUIRED");
+        boolean zeroCash=preparation.netCashMinor()==0;
+        require((zeroCash?"ZERO_AUTHORIZED":"CASH_AUTHORIZED").equals(head.get("state")),
+                zeroCash?"POINTS_ZERO_CASH_AUTHORIZATION_REQUIRED":"POINTS_REFUND_CASH_AUTHORIZATION_REQUIRED");
         require(Objects.equals(confirmation.collectionTicket(),preparation.collectionTicket())
                 && confirmation.recoveryTicket()==null,
                 "POINTS_REFUND_UNEXPECTED_FUNDS_TICKET");
         var command=snapshot.command();
-        var payment=cash.refund(confirmation.cashRefundPaymentNo());
-        require(payment!=null && "SUCCESS".equals(payment.status()) && payment.succeededAt()!=null
-                && payment.providerNo()!=null && !payment.providerNo().isBlank() && payment.verifiedAt()!=null
-                && payment.verifiedMinor()!=null,"POINTS_CASH_REFUND_NOT_CONFIRMED");
-        require("REFUND".equals(payment.direction()) && command.afterSaleNo().equals(payment.afterSaleNo())
-                && command.subOrderNo().equals(payment.subOrderNo()) && command.userNo().equals(payment.userNo())
-                && command.currency().equals(payment.currency())
-                && command.payment().channel().equals(payment.channel())
-                && preparation.netCashMinor()==payment.amountMinor()
-                && preparation.netCashMinor()==payment.verifiedMinor(),"POINTS_CASH_REFUND_MISMATCH");
+        if (zeroCash) {
+            confirmZeroCash(snapshot,confirmation);
+        } else {
+            require(confirmation.zeroCashCompletionEventNo()==null,"POINTS_REFUND_UNEXPECTED_ZERO_CASH_PROOF");
+            var payment=cash.refund(confirmation.cashRefundPaymentNo());
+            require(payment!=null && "SUCCESS".equals(payment.status()) && payment.succeededAt()!=null
+                    && payment.providerNo()!=null && !payment.providerNo().isBlank() && payment.verifiedAt()!=null
+                    && payment.verifiedMinor()!=null,"POINTS_CASH_REFUND_NOT_CONFIRMED");
+            require("REFUND".equals(payment.direction()) && command.afterSaleNo().equals(payment.afterSaleNo())
+                    && command.subOrderNo().equals(payment.subOrderNo()) && command.userNo().equals(payment.userNo())
+                    && command.currency().equals(payment.currency())
+                    && command.payment().channel().equals(payment.channel())
+                    && preparation.netCashMinor()==payment.amountMinor()
+                    && preparation.netCashMinor()==payment.verifiedMinor(),"POINTS_CASH_REFUND_MISMATCH");
+        }
         PointType type=read.type(command.typeCode()).orElseThrow();
         List<PointsMove> points=new ArrayList<>();
         List<FundMove> funds=new ArrayList<>();
@@ -109,7 +119,8 @@ public class PointsRefundConfirmationServiceImpl implements PointsRefundConfirma
         var result=new RefundOutcome(preparation.preparationNo(),"CONFIRMED",preparation.returnedPoints(),reclaimed,
                 collected,preparation.waivedPoints(),receivable,null,false);
         var completed=new RefundSnapshot(command,preparation,snapshot.grantState(),snapshot.redeemState(),
-                snapshot.reclaimedByLine(),snapshot.collectionCommand(),confirmation,null,snapshot.collectionResult());
+                snapshot.reclaimedByLine(),snapshot.collectionCommand(),confirmation,null,snapshot.collectionResult(),
+                snapshot.zeroCashCompletion());
         positions.add(new PositionMove(PositionMove.Kind.REFUND,preparation.preparationNo(),number(head,"version"),
                 (String)head.get("state"),"CONFIRMED",number(head,"original_points"),number(head,"original_points"),
                 json.writeValueAsString(completed)));
@@ -118,6 +129,19 @@ public class PointsRefundConfirmationServiceImpl implements PointsRefundConfirma
                 evidence,json.writeValueAsString(result),reserves,List.of(),receivables));
         return outcome(ref,false);
     }
+    private void confirmZeroCash(RefundSnapshot snapshot,RefundConfirmation confirmation) {
+        require(confirmation.cashRefundPaymentNo()==null,"POINTS_ZERO_CASH_PAYMENT_NOT_ALLOWED");
+        var proof=snapshot.zeroCashCompletion();
+        require(proof!=null && proof.eventNo().equals(confirmation.zeroCashCompletionEventNo()),
+                "POINTS_ZERO_CASH_PROOF_REQUIRED");
+        var stored=facts.lockInbox(proof.eventNo());
+        require(stored!=null && "ZERO_CASH_AUTHORIZED".equals(stored.get("state"))
+                && snapshot.command().typeCode().equals(stored.get("type_code"))
+                && proof.equals(json.readValue((String)stored.get("payload_json"),ZeroCashCompletionFact.class)),
+                "POINTS_ZERO_CASH_PROOF_REQUIRED");
+        require(!cash.hasRefundForAfterSale(snapshot.command().afterSaleNo()),"POINTS_ZERO_CASH_CASH_INTENT_EXISTS");
+    }
+
     private void updateGrant(RefundSnapshot snapshot,List<PositionMove> positions) {
         if (snapshot.grantState()==null) { return; }
         var command=snapshot.command();

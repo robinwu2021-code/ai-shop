@@ -24,6 +24,7 @@ import ai.neargo.shop.pay.points.store.PointsReadStore;
 import ai.neargo.shop.spi.points.PointsFactPort.LifecycleFact;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundCommand;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundPreparation;
+import ai.neargo.shop.spi.points.PointsRefundPort.ZeroCashCompletionFact;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundConfirmation;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort;
 import org.springframework.beans.factory.ObjectProvider;
@@ -208,8 +209,15 @@ public class PointsRefundPreparationServiceImpl implements PointsRefundPreparati
     /** Original states and line deltas let confirmation or compensation restore the frozen decision. */
     public record RefundSnapshot(RefundCommand command,RefundPreparation preparation,String grantState,
                                  String redeemState,Map<String,Long> reclaimedByLine,FundsCommand collectionCommand,
-                                 RefundConfirmation confirmation,RefundAbort abort,FundsResult collectionResult) {
+                                 RefundConfirmation confirmation,RefundAbort abort,FundsResult collectionResult,
+                                 ZeroCashCompletionFact zeroCashCompletion) {
         public RefundSnapshot { reclaimedByLine=Map.copyOf(reclaimedByLine); }
+        public RefundSnapshot(RefundCommand command,RefundPreparation preparation,String grantState,String redeemState,
+                              Map<String,Long> reclaimedByLine,FundsCommand collectionCommand,
+                              RefundConfirmation confirmation,RefundAbort abort,FundsResult collectionResult) {
+            this(command,preparation,grantState,redeemState,reclaimedByLine,collectionCommand,confirmation,abort,
+                    collectionResult,null);
+        }
         public RefundSnapshot(RefundCommand command,RefundPreparation preparation,String grantState,String redeemState,
                               Map<String,Long> reclaimedByLine,FundsCommand collectionCommand) {
             this(command,preparation,grantState,redeemState,reclaimedByLine,collectionCommand,null,null,null);

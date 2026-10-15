@@ -46,6 +46,8 @@ public interface PointsConfigurationMapper {
     Map<String,Object> cashRefund(String no);
     @Select("SELECT * FROM pts_inbox WHERE event_no=#{event}")
     Map<String,Object> inbox(String event);
+    @Select("SELECT * FROM pts_inbox WHERE event_no=#{event} AND deleted=0 FOR UPDATE")
+    Map<String,Object> lockInbox(String event);
     @Insert("INSERT INTO pts_inbox(type_code,state,payload_json,event_no,payload_hash)"
             + " VALUES(#{type},#{state},#{payload},#{event},#{hash})")
     int inboxInsert(@Param("type") String type,@Param("state") String state,@Param("payload") String payload,

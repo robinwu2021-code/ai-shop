@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.mapper.points.PointsConfigurationMapper;
 import ai.neargo.shop.pay.points.store.PointsFactStore;
 import ai.neargo.shop.spi.points.PointsFactPort.LifecycleFact;
+import ai.neargo.shop.spi.points.PointsRefundPort.ZeroCashCompletionFact;
 import org.springframework.stereotype.Repository;
 import java.util.Map;
 
@@ -14,6 +15,14 @@ public class MybatisPointsFactStore implements PointsFactStore {
     public MybatisPointsFactStore(PointsConfigurationMapper mapper) { this.mapper = mapper; }
     @Override public Map<String,Object> inbox(String event) {
         return DataScopeContext.executeWithoutScope(() -> mapper.inbox(event));
+    }
+    @Override public Map<String,Object> lockInbox(String event) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.lockInbox(event));
+    }
+    @Override public void recordZeroCash(ZeroCashCompletionFact fact,String payload,String hash) {
+        int changed=DataScopeContext.executeWithoutScope(() -> mapper.inboxInsert(fact.typeCode(),
+                "ZERO_CASH_AUTHORIZED",payload,fact.eventNo(),hash));
+        if (changed!=1) { throw new IllegalStateException("POINTS_ZERO_CASH_EVENT_CONFLICT"); }
     }
     @Override public void record(LifecycleFact fact, String payload, String state) {
         DataScopeContext.executeWithoutScope(() -> mapper.inboxInsert(fact.typeCode(),state,payload,
