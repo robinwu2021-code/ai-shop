@@ -160,6 +160,23 @@ public class LogisticsPortImpl implements LogisticsPort {
     }
 
     @Override
+    public Map<String, Long> firstTraceAtOf(Collection<String> subOrderNos) {
+        Map<String, Long> out = new HashMap<>();
+        if (subOrderNos == null || subOrderNos.isEmpty()) {
+            return out;
+        }
+        for (LgsWaybill w : waybills.selectList(Wrappers.<LgsWaybill>query()
+                .eq("biz_type", LgsWaybill.BIZ_SUB_ORDER).in("biz_ref", subOrderNos))) {
+            LgsWaybillNode first = nodes.selectOne(Wrappers.<LgsWaybillNode>query()
+                    .eq("shipment_no", w.getShipmentNo()).orderByAsc("at").last("LIMIT 1"));
+            if (first != null) {
+                out.put(w.getBizRef(), first.getAt());
+            }
+        }
+        return out;
+    }
+
+    @Override
     public Precheck precheck(String subOrderNo, String carrier, String waybillNo, String receiverPhone) {
         long checkedAt = clock.getAsLong();
         if (carrier == null || waybillNo == null || waybillNo.isBlank()) {

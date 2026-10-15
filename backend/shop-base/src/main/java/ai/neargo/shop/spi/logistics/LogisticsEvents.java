@@ -16,7 +16,8 @@ public final class LogisticsEvents {
     }
 
     /** Trusted logistics fact freezes the source generation before a mutable logistics row is corrected. */
-    public record ShipmentSnapshot(String shipmentNo, long version, String waybillNo, String status, Long signedAt)
+    public record ShipmentSnapshot(String shipmentNo, long version, String waybillNo, String status,
+                                   Long signedAt, Long signedNodeAt, Long firstTraceAt)
             implements DomainEvent {
         @Override
         public String aggregateType() { return "SHIPMENT"; }

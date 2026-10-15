@@ -7,6 +7,7 @@ import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.command.ShipCommand;
 import ai.neargo.shop.trade.order.service.OrderShippingService;
+import ai.neargo.shop.trade.order.service.ship.ShipmentSnapshotConverger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,9 +34,79 @@ class OrderMappedOpsLogisticsFlowTest {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private PaymentLedgerService ledger;
     @Autowired private OrderShippingService shipping;
+    @Autowired private ShipmentSnapshotConverger snapshots;
     @Autowired private OutboxDispatcher dispatcher;
     @Autowired private ObjectMapper json;
     @Autowired private WebApplicationContext context;
+
+    @Test
+    void currentWaybillSignedAfterDispatchCompletesTradeButOldSignatureDoesNot() {
+        String sub = OrderLogisticsFixture.seed(jdbc, ledger, false);
+        String number = "STO" + sub.substring(2, 22).toUpperCase(Locale.ROOT) + "R";
+        String source = shipping.ship(sub, new ShipCommand(List.of(), "STO", number),
+                new OrderActor("LG-MERCHANT", "LG-STORE")).shipmentId();
+        drain();
+        long oldSignedAt = System.currentTimeMillis() - 86_400_000L;
+        snapshots.converge(source, 0, number, "DELIVERED", oldSignedAt, oldSignedAt, oldSignedAt);
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_sub_order WHERE sub_order_no=?", String.class, sub))
+                .isEqualTo("FULFILLING");
+        long signedAt = System.currentTimeMillis();
+        java.time.LocalDateTime sourceCreated = jdbc.queryForObject(
+                "SELECT created_at FROM ord_shipment WHERE shipment_no=?", java.time.LocalDateTime.class, source);
+        assertThat(signedAt).as("sourceCreated=%s zone=%s", sourceCreated, java.time.ZoneId.systemDefault())
+                .isGreaterThanOrEqualTo(sourceCreated.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        - 1_000L);
+        snapshots.converge(source, 0, number, "DELIVERED", signedAt, signedAt, signedAt);
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_shipment WHERE shipment_no=?", String.class, source))
+                .isEqualTo("RECEIVED");
+        assertThat(jdbc.queryForObject("SELECT shipped_qty FROM ord_item WHERE sub_order_no=?", Integer.class, sub))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_sub_order WHERE sub_order_no=?", String.class, sub))
+                .isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void signedStatusWithoutDatedSignatureNodeDoesNotCompleteTrade() throws Exception {
+        String sub = OrderLogisticsFixture.seed(jdbc, ledger, false);
+        String number = "STO" + sub.substring(2, 22).toUpperCase(Locale.ROOT) + "U";
+        shipping.ship(sub, new ShipCommand(List.of(), "STO", number),
+                new OrderActor("LG-MERCHANT", "LG-STORE"));
+        drain();
+        jdbc.update("UPDATE lgs_waybill SET sub_channel='kuaidi100',sub_state='DONE' WHERE biz_ref=?", sub);
+        MockMvc mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
+        OrderLogisticsFixture.pushForCurrentShipment(jdbc, mvc, number, "3", true, "shentong");
+        drain();
+        assertThat(jdbc.queryForObject("SELECT status FROM lgs_waybill WHERE biz_ref=?", String.class, sub))
+                .isEqualTo("DELIVERED");
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_sub_order WHERE sub_order_no=?", String.class, sub))
+                .isEqualTo("FULFILLING");
+    }
+
+    @Test
+    void statusOnlySignatureCannotCompleteTradeWithoutDatedNode() {
+        String sub = OrderLogisticsFixture.seed(jdbc, ledger, false);
+        String number = "STO" + sub.substring(2, 22).toUpperCase(Locale.ROOT) + "V";
+        String source = shipping.ship(sub, new ShipCommand(List.of(), "STO", number),
+                new OrderActor("LG-MERCHANT", "LG-STORE")).shipmentId();
+        drain();
+        snapshots.converge(source, 0, number, "DELIVERED", System.currentTimeMillis(), null, null);
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_sub_order WHERE sub_order_no=?", String.class, sub))
+                .isEqualTo("FULFILLING");
+    }
+
+    @Test
+    void reusedTrackingWithScansBeforeOrderCannotCompleteTrade() {
+        String sub = OrderLogisticsFixture.seed(jdbc, ledger, false);
+        String number = "STO" + sub.substring(2, 22).toUpperCase(Locale.ROOT) + "W";
+        String source = shipping.ship(sub, new ShipCommand(List.of(), "STO", number),
+                new OrderActor("LG-MERCHANT", "LG-STORE")).shipmentId();
+        drain();
+        long signedAt = System.currentTimeMillis();
+        snapshots.converge(source, 0, number, "DELIVERED", signedAt, signedAt,
+                signedAt - 86_400_000L);
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_sub_order WHERE sub_order_no=?", String.class, sub))
+                .isEqualTo("FULFILLING");
+    }
 
     @Test
     void mistakenSignedWaybillCanBeCorrectedWhileTradeStillFulfilling() throws Exception {
@@ -100,6 +171,12 @@ class OrderMappedOpsLogisticsFlowTest {
         OrderLogisticsFixture.push(mvc, oldNo, "3", true);
         OrderLogisticsFixture.pushForCurrentShipment(jdbc, mvc, newNo, "3", true, "shentong");
         drain();
+        assertThat(jdbc.queryForObject("SELECT status FROM lgs_waybill WHERE biz_ref=?", String.class, sub))
+                .isEqualTo("DELIVERED");
+        assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_type='LGS_SHIPMENT_SNAPSHOT' "
+                + "AND aggregate_id=(SELECT shipment_no FROM ord_shipment WHERE sub_order_no=? "
+                + "AND status<>'VOIDED') ORDER BY id DESC LIMIT 1", String.class, sub))
+                .isEqualTo("SENT");
         assertThat(jdbc.queryForObject("SELECT status FROM ord_shipment WHERE sub_order_no=? "
                 + "AND status<>'VOIDED'", String.class, sub)).isEqualTo("DELIVERED");
         assertThat(jdbc.queryForObject("SELECT status FROM ord_sub_order WHERE sub_order_no=?",
@@ -169,11 +246,15 @@ class OrderMappedOpsLogisticsFlowTest {
                 .isEqualTo("CREATED");
         OrderLogisticsFixture.pushForCurrentShipment(jdbc, mvc, number, "3", true, "yuantong");
         drain();
+        assertThat(jdbc.queryForObject("SELECT status FROM lgs_waybill WHERE biz_ref=?", String.class, sub))
+                .isEqualTo("DELIVERED");
         assertThat(jdbc.queryForObject("SELECT status FROM ord_shipment WHERE shipment_no=?", String.class, current))
                 .isEqualTo("DELIVERED");
     }
 
     private void drain() {
-        for (int i = 0; i < 8; i++) { dispatcher.dispatchPending(); }
+        for (int i = 0; i < 50 && dispatcher.pendingCount() > 0; i++) {
+            dispatcher.dispatchPending();
+        }
     }
 }

@@ -99,7 +99,9 @@ public class WaybillProgress {
         if (t.changed()) {
             if (w.getSourceShipmentNo() != null && w.getSourceShipmentVersion() != null) {
                 events.publish(new LogisticsEvents.ShipmentSnapshot(w.getSourceShipmentNo(),
-                        w.getSourceShipmentVersion(), w.getWaybillNo(), t.next(), patch.getSignedAt()));
+                        w.getSourceShipmentVersion(), w.getWaybillNo(), t.next(), patch.getSignedAt(),
+                        t.firstDelivered() ? signedNodeAt(trace, now) : null,
+                        t.firstDelivered() ? firstTraceAt(trace, now) : null));
             }
             publish(w, carrierOf(w, patch), t, trace,
                     patch.getSignedAt() == null ? now : patch.getSignedAt(), channel, now);
@@ -177,8 +179,20 @@ public class WaybillProgress {
      * 微信确认收货提醒要求签收时间晚于发货时间，早了是 10060029。
      */
     static long signedAt(TraceResult trace, long now) {
-        return trace.nodes().stream().filter(n -> n.status() == TraceStatus.SIGNED && n.at() > 0 && n.at() <= now)
-                .mapToLong(TraceResult.TraceNode::at).max().orElse(now);
+        Long actual = signedNodeAt(trace, now);
+        return actual == null ? now : actual;
+    }
+
+    private static Long signedNodeAt(TraceResult trace, long now) {
+        var signed = trace.nodes().stream().filter(n -> n.status() == TraceStatus.SIGNED && n.at() > 0 && n.at() <= now)
+                .mapToLong(TraceResult.TraceNode::at).max();
+        return signed.isPresent() ? signed.getAsLong() : null;
+    }
+
+    private static Long firstTraceAt(TraceResult trace, long now) {
+        var first = trace.nodes().stream().filter(n -> n.at() > 0 && n.at() <= now)
+                .mapToLong(TraceResult.TraceNode::at).min();
+        return first.isPresent() ? first.getAsLong() : null;
     }
 
     private static long firstAt(TraceResult trace, TraceStatus s, long now) {

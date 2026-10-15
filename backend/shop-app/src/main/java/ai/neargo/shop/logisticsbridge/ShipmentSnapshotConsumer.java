@@ -24,7 +24,9 @@ public class ShipmentSnapshotConsumer implements OutboxConsumer {
     public void consume(SysOutbox event) {
         var p = json.readTree(event.getPayload());
         Long at = p.path("signedAt").isNumber() ? p.path("signedAt").asLong() : null;
+        Long signedNodeAt = p.path("signedNodeAt").isNumber() ? p.path("signedNodeAt").asLong() : null;
+        Long firstTraceAt = p.path("firstTraceAt").isNumber() ? p.path("firstTraceAt").asLong() : null;
         converger.converge(p.path("shipmentNo").asString(""), p.path("version").asLong(-1),
-                p.path("waybillNo").asString(""), p.path("status").asString(""), at);
+                p.path("waybillNo").asString(""), p.path("status").asString(""), at, signedNodeAt, firstTraceAt);
     }
 }

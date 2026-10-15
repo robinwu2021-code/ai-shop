@@ -213,7 +213,9 @@ public class Kuaidi100TraceProvider implements TraceProvider {
                 String loc = d.path("areaName").asText(d.path("location").asText("")).trim();
                 int[] ll = parseCenter(d.path("areaCenter").asText(""));
                 String sc = d.path("statusCode").asText("").trim();
-                nodes.add(new TraceResult.TraceNode(at, nodeStatus(d.path("status").asText("")), text,
+                String statusName = d.path("status").asText("");
+                TraceStatus nodeState = statusName.isBlank() ? statusOf(sc) : nodeStatus(statusName);
+                nodes.add(new TraceResult.TraceNode(at, nodeState, text,
                         loc.isEmpty() ? null : loc,
                         ll == null ? null : ll[0], ll == null ? null : ll[1],
                         sc.isEmpty() ? null : sc));

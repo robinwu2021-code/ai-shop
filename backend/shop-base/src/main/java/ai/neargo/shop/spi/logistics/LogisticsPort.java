@@ -24,6 +24,9 @@ public interface LogisticsPort {
     /** 子单号 → 签收时间（毫秒）。没签收的不在结果里。自动确认收货与确认收货提醒用 */
     Map<String, Long> signedAtOf(Collection<String> subOrderNos);
 
+    /** Earliest carrier node; a reused tracking number can predate this order. */
+    default Map<String, Long> firstTraceAtOf(Collection<String> subOrderNos) { return Map.of(); }
+
     /** Read-only check before B submits a carrier and tracking number. UNKNOWN never means invalid. */
     default Precheck precheck(String subOrderNo, String carrier, String waybillNo, String receiverPhone) {
         return new Precheck("UNKNOWN", null, null, System.currentTimeMillis(), "物流渠道暂未返回结果", false);

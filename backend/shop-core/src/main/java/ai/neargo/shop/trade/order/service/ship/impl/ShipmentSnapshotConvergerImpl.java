@@ -6,6 +6,7 @@ import ai.neargo.shop.trade.order.machine.shipment.ShipmentEvent;
 import ai.neargo.shop.trade.order.service.ship.ShipmentSnapshotConverger;
 import ai.neargo.shop.trade.order.service.ship.ShipmentSnapshotStore;
 import ai.neargo.shop.trade.order.service.ship.WaybillNormalizer;
+import ai.neargo.shop.trade.order.service.receipt.OrderReceiptCompleter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
@@ -13,18 +14,25 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
 import java.util.Set;
+import java.time.ZoneId;
 
 /** Immutable dispatch generation and current normalized waybill are checked before the existing state gate. */
 @Service
 public class ShipmentSnapshotConvergerImpl implements ShipmentSnapshotConverger {
     private static final Set<String> MOVING = Set.of("PICKED_UP", "IN_TRANSIT", "DELIVERING", "DELIVERED");
+    private static final long DATETIME_PRECISION_MS = 1_000L;
     private final ShipmentSnapshotStore store;
+    private final OrderReceiptCompleter receipts;
 
-    public ShipmentSnapshotConvergerImpl(ShipmentSnapshotStore store) { this.store = store; }
+    public ShipmentSnapshotConvergerImpl(ShipmentSnapshotStore store, OrderReceiptCompleter receipts) {
+        this.store = store;
+        this.receipts = receipts;
+    }
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
-    public void converge(String shipmentNo, long version, String waybillNo, String status, Long signedAt) {
+    public void converge(String shipmentNo, long version, String waybillNo, String status,
+                         Long signedAt, Long signedNodeAt, Long firstTraceAt) {
         if (shipmentNo == null || version != 0 || !MOVING.contains(status == null ? "" : status)) {
             return;
         }
@@ -40,6 +48,12 @@ public class ShipmentSnapshotConvergerImpl implements ShipmentSnapshotConverger 
         if ("DELIVERED".equals(status) && (signedAt == null || signedAt <= 0)) {
             return;
         }
+        if ("DELIVERED".equals(status) && (shipment.getCreatedAt() == null
+                || signedAt < shipment.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        - DATETIME_PRECISION_MS)) {
+            // An old, already-finished tracking number is not proof that this order was received.
+            return;
+        }
         if (OrdShipment.CREATED.equals(shipment.getStatus())) {
             store.advance(shipment, ShipmentEvent.PICKED_UP);
         }
@@ -49,6 +63,11 @@ public class ShipmentSnapshotConvergerImpl implements ShipmentSnapshotConverger 
             }
             if (OrdShipment.DELIVERED.equals(shipment.getStatus())) {
                 store.signedAt(shipment, signedAt);
+                long dispatchedAt = shipment.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                if (signedNodeAt != null && signedNodeAt.equals(signedAt)
+                        && firstTraceAt != null && firstTraceAt >= dispatchedAt - DATETIME_PRECISION_MS) {
+                    receipts.completeSigned(facts.order().getSubOrderNo(), shipmentNo, signedNodeAt);
+                }
             }
         }
     }

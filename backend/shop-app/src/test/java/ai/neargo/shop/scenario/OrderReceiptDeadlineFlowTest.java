@@ -33,13 +33,27 @@ class OrderReceiptDeadlineFlowTest {
         String sub = OrderReceiptFixture.seed(jdbc, "RC-DEADLINE-BUYER");
         String shipment = OrderReceiptFixture.ship(shipping, sub);
         long now = System.currentTimeMillis() / 1000 * 1000;
-        OrderReceiptFixture.due(jdbc, sub, now - 3 * DAY);
+        OrderReceiptFixture.due(jdbc, sub, now - 8 * DAY);
         signed(shipment, now - 7 * DAY);
+        trace(sub, now - 8 * DAY + 60_000L, now - 7 * DAY);
         assertThat(auto.completeAuto(sub, now - 1, 15, 7)).isFalse();
         assertThat(status("ord_shipment", "shipment_no", shipment)).isEqualTo("DELIVERED");
         assertThat(auto.completeAuto(sub, now, 15, 7)).isTrue();
         assertThat(status("ord_shipment", "shipment_no", shipment)).isEqualTo("RECEIVED");
         assertThat(status("ord_sub_order", "sub_order_no", sub)).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void reusedWaybillCannotTriggerSignedDeadline() {
+        String sub = OrderReceiptFixture.seed(jdbc, "RC-DEADLINE-BUYER");
+        String shipment = OrderReceiptFixture.ship(shipping, sub);
+        long now = System.currentTimeMillis() / 1000 * 1000;
+        OrderReceiptFixture.due(jdbc, sub, now - 8 * DAY);
+        signed(shipment, now - 7 * DAY);
+        trace(sub, now - 9 * DAY, now - 7 * DAY);
+        assertThat(auto.completeAuto(sub, now, 15, 7)).isFalse();
+        assertThat(status("ord_shipment", "shipment_no", shipment)).isEqualTo("DELIVERED");
+        assertThat(status("ord_sub_order", "sub_order_no", sub)).isEqualTo("FULFILLING");
     }
 
     @Test
@@ -62,12 +76,17 @@ class OrderReceiptDeadlineFlowTest {
         String first = OrderReceiptFixture.ship(shipping, sub);
         String last = OrderReceiptFixture.extraPackage(jdbc, sub);
         long now = System.currentTimeMillis();
-        OrderReceiptFixture.due(jdbc, sub, now - 3 * DAY);
+        OrderReceiptFixture.due(jdbc, sub, now - 8 * DAY);
+        jdbc.update("UPDATE ord_shipment SET created_at=? WHERE shipment_no=?",
+                OrderReceiptFixture.physicalAt(now - 3 * DAY), last);
         signed(first, now - 7 * DAY);
+        trace(sub, now - 8 * DAY + 60_000L, now - 7 * DAY);
         assertThat(auto.completeAuto(sub, now, 15, 7)).isFalse();
         assertThat(status("ord_shipment", "shipment_no", first)).isEqualTo("RECEIVED");
         assertThat(status("ord_shipment", "shipment_no", last)).isEqualTo("SHIPPED");
         assertThat(status("ord_sub_order", "sub_order_no", sub)).isEqualTo("FULFILLING");
+        jdbc.update("UPDATE ord_shipment SET created_at=? WHERE shipment_no=?",
+                OrderReceiptFixture.physicalAt(now - 8 * DAY), last);
         signed(last, now - 7 * DAY);
         assertThat(auto.completeAuto(sub, now, 15, 7)).isTrue();
         assertThat(status("ord_sub_order", "sub_order_no", sub)).isEqualTo("COMPLETED");
@@ -119,8 +138,41 @@ class OrderReceiptDeadlineFlowTest {
                 Long.class, sub)).isZero();
     }
 
+    @Test
+    void legacySignatureBeforeDispatchCannotCompleteButLaterSignatureCan() {
+        String sub = OrderReceiptFixture.seed(jdbc, "RC-DEADLINE-BUYER");
+        long now = System.currentTimeMillis();
+        long shippedAt = now - 2 * DAY;
+        jdbc.update("UPDATE ord_sub_order SET created_at=? WHERE sub_order_no=?",
+                OrderReceiptFixture.physicalAt(now - 4 * DAY), sub);
+        jdbc.update("UPDATE ord_sub_order SET status='FULFILLING',express_company='STO',express_no=? "
+                + "WHERE sub_order_no=?", "STO" + sub.substring(2, 22), sub);
+        jdbc.update("INSERT INTO ord_status_log (sub_order_no,status,label,operator_type,at,created_at) "
+                + "VALUES (?,'FULFILLING','商家发货','MERCHANT',?,CURRENT_TIMESTAMP)", sub, shippedAt);
+        jdbc.update("INSERT INTO lgs_waybill (shipment_no,biz_ref,carrier,waybill_no,status,signed_at,"
+                + "created_at,updated_at) VALUES (?,?, 'STO',?,'DELIVERED',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                "LGS-" + sub, sub, "STO" + sub.substring(2, 22), now - 3 * DAY);
+        jdbc.update("INSERT INTO lgs_waybill_node (shipment_no,at,text,created_at) "
+                + "VALUES (?,?, '旧订单轨迹',CURRENT_TIMESTAMP)", "LGS-" + sub, now - 5 * DAY);
+        assertThat(auto.completeAuto(sub, now, 15, 1)).isFalse();
+        assertThat(status("ord_sub_order", "sub_order_no", sub)).isEqualTo("FULFILLING");
+        jdbc.update("UPDATE lgs_waybill SET signed_at=? WHERE biz_ref=?", now - DAY, sub);
+        assertThat(auto.completeAuto(sub, now, 15, 1)).isFalse();
+        jdbc.update("UPDATE lgs_waybill_node SET at=? WHERE shipment_no=?", now - DAY - 60_000L, "LGS-" + sub);
+        assertThat(auto.completeAuto(sub, now, 15, 1)).isTrue();
+        assertThat(status("ord_sub_order", "sub_order_no", sub)).isEqualTo("COMPLETED");
+    }
+
     private void signed(String shipment, long at) {
         jdbc.update("UPDATE ord_shipment SET status='DELIVERED',signed_at=? WHERE shipment_no=?", at, shipment);
+    }
+
+    private void trace(String sub, long firstAt, long signedAt) {
+        jdbc.update("INSERT INTO lgs_waybill (shipment_no,biz_ref,carrier,waybill_no,status,signed_at,"
+                + "created_at,updated_at) VALUES (?,?, 'SF',?,'DELIVERED',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                "LGS-" + sub, sub, "SF" + sub.substring(2, 22), signedAt);
+        jdbc.update("INSERT INTO lgs_waybill_node (shipment_no,at,text,created_at) "
+                + "VALUES (?,?, '已揽收',CURRENT_TIMESTAMP)", "LGS-" + sub, firstAt);
     }
 
     private String status(String table, String key, String no) {

@@ -113,4 +113,19 @@ class WaybillProgressTest {
                     assertThat(s.waybillNo()).isEqualTo("SF100");
                 });
     }
+
+    @Test
+    void snapshotDistinguishesDatedSignatureFromStatusOnlySignature() {
+        LgsWaybill dated = waybill(WaybillStatus.DELIVERING, 0);
+        dated.setSourceShipmentNo("SRC7");
+        dated.setSourceShipmentVersion(0L);
+        progress.apply(dated, trace(TraceStatus.SIGNED, false),
+                "kuaidi100", "PUSH", LgsWaybill.patch(7L), 2_000L);
+        assertThat(published()).filteredOn(e -> e instanceof LogisticsEvents.ShipmentSnapshot)
+                .singleElement().satisfies(e -> {
+                    LogisticsEvents.ShipmentSnapshot snapshot = (LogisticsEvents.ShipmentSnapshot) e;
+                    assertThat(snapshot.signedNodeAt()).isEqualTo(1_000L);
+                    assertThat(snapshot.firstTraceAt()).isEqualTo(1_000L);
+                });
+    }
 }
