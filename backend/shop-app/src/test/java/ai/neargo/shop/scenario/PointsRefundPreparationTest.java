@@ -30,6 +30,7 @@ import ai.neargo.shop.spi.points.PointsRefundPort;
 import ai.neargo.shop.pay.points.port.PointsRefundPortImpl;
 import ai.neargo.shop.pay.points.refund.PointsRefundCollectionExecutionService;
 import ai.neargo.shop.pay.points.refund.PointsRefundCollectionService;
+import ai.neargo.shop.pay.points.refund.PointsRefundCashDecisionService;
 import ai.neargo.shop.pay.points.refund.PointsReceivableRecoveryService;
 import ai.neargo.shop.pay.points.refund.PointsReceivableRecoveryExecutionService;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort;
@@ -68,8 +69,19 @@ import java.util.Set;
 import java.util.HashSet;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.dao.DataAccessException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** Uses the real pay writer and synthetic orders; preparing never credits points or real issuance money. */
@@ -88,11 +100,13 @@ class PointsRefundPreparationTest {
     @Autowired private PointsRefundPort aborts;
     @Autowired private PointsRefundCollectionExecutionService collections;
     @Autowired private PointsRefundCollectionService collectionDecisions;
+    @Autowired private PointsRefundCashDecisionService cashDecisions;
     @Autowired private TestFunds funds;
     @Autowired private PointsSettlementHook settlement;
     @Autowired private PointsReceivableRecoveryService recoveries;
     @Autowired private PointsReceivableRecoveryExecutionService recoveryExecution;
     @Autowired private PointsPostingService posting;
+    @Autowired @Qualifier("payTxManager") private PlatformTransactionManager payTransactions;
     @Autowired @Qualifier("payDataSource") private DataSource dataSource;
     @BeforeAll void schema() {
         PointsPostingDatabaseTest.initializeSchema(dataSource);
@@ -174,6 +188,7 @@ class PointsRefundPreparationTest {
     @Test void confirmation_requires_exact_successful_pay_ledger_binding_and_replays_once() {
         String type=fixture(false,true);
         var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),prepared.revision());
         String payment="CASH:"+type;
         jdbc().update("INSERT INTO stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,"
                 + "amount_minor,status,pay_channel) VALUES(?,'REFUND',?,?,'USER','CNY',50,'PENDING','TEST')",
@@ -241,6 +256,7 @@ class PointsRefundPreparationTest {
     @Test void cash_unknown_cannot_abort_and_definite_failure_restores_original_buckets() {
         String type=fixture(false,true);
         var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),prepared.revision());
         String payment="CASH:"+type;
         jdbc().update("INSERT INTO stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,"
                 + "amount_minor,status,pay_channel) VALUES(?,'REFUND',?,?,'USER','CNY',50,'PENDING','TEST')",
@@ -406,8 +422,189 @@ class PointsRefundPreparationTest {
         assertThat(pool(failedType,"u_minor")).isEqualTo(80);
     }
 
-    private RefundConfirmation successfulCash(String type,
-            RefundPreparation prepared) {
+    @Test void cash_authorization_freezes_revision_and_amount_without_moving_funds() {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        assertThatCode(() -> cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1))
+                .doesNotThrowAnyException();
+        var decision=cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1);
+        assertThat(decision.netCashMinor()).isEqualTo(50);
+        assertThat(decision.cashOffsetMinor()).isZero();
+        assertThat(decision.afterSaleNo()).isEqualTo("AS:"+type);
+        assertThat(decision.subOrderNo()).isEqualTo(type);
+        assertThat(decision.userNo()).isEqualTo("USER");
+        assertThat(decision.currency()).isEqualTo("CNY");
+        assertThat(decision.channel()).isEqualTo("TEST");
+        assertThat(decision.payment().storeNo()).isEqualTo("STORE");
+        assertThat(decision.payment().merchantNo()).isEqualTo("MERCHANT");
+        assertThat(decision.payment().accountVersion()).isEqualTo("V1");
+        assertThat(decision.payment().outTradeNo()).isEqualTo("OUT");
+        assertThat(refundState(prepared)).isEqualTo("CASH_AUTHORIZED");
+        assertThat(cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1)).isEqualTo(decision);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_voucher WHERE biz_ref=?",Long.class,
+                "REFUND_CASH_AUTHORIZE:"+prepared.preparationNo())).isEqualTo(1);
+        assertThat(balance(type,"held_points")).isEqualTo(10);
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+        assertThat(pool(type,"c_minor")).isEqualTo(20);
+        assertThatThrownBy(() -> cashDecisions.authorize(prepared.preparationNo(),"wrong-hash",1))
+                .hasMessage("POINTS_REFUND_INPUT_CONFLICT");
+        assertThatThrownBy(() -> cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),2))
+                .hasMessage("POINTS_REFUND_REVISION_CONFLICT");
+    }
+
+    @Test void cash_authorization_waits_for_verified_collection_before_exposing_net_cash() {
+        String type=spentGrant();
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        assertThatThrownBy(() -> cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1))
+                .hasMessage("POINTS_REFUND_CASH_DECISION_NOT_READY");
+        collections.execute(prepared.preparationNo());
+        assertThatThrownBy(() -> cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1))
+                .hasMessage("POINTS_REFUND_CASH_DECISION_NOT_READY");
+        collections.execute(prepared.preparationNo());
+        var decision=cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1);
+        assertThat(decision.netCashMinor()).isEqualTo(40);
+        assertThat(decision.cashOffsetMinor()).isEqualTo(10);
+        assertThat(decision.collectionTicket()).isEqualTo(prepared.collectionTicket());
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+        assertThat(refundState(prepared)).isEqualTo("CASH_AUTHORIZED");
+    }
+
+    @Test void cash_authorization_rejects_stale_revision_after_failed_collection_is_waived() {
+        String type=spentGrant();
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        funds.failTickets.add(prepared.collectionTicket());
+        collections.execute(prepared.preparationNo());
+        assertThatThrownBy(() -> cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1))
+                .hasMessage("POINTS_REFUND_CASH_DECISION_NOT_READY");
+        var revised=collectionDecisions.reviseFailed(prepared.preparationNo());
+        assertThatThrownBy(() -> cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1))
+                .hasMessage("POINTS_REFUND_REVISION_CONFLICT");
+        var decision=cashDecisions.authorize(revised.preparationNo(),revised.inputHash(),2);
+        assertThat(decision.revision()).isEqualTo(2);
+        assertThat(decision.netCashMinor()).isEqualTo(50);
+        assertThat(decision.cashOffsetMinor()).isZero();
+        assertThat(collectionDecisions.reviseFailed(prepared.preparationNo())).isEqualTo(revised);
+        assertThat(refundState(prepared)).isEqualTo("CASH_AUTHORIZED");
+    }
+
+    @Test void cash_authorization_is_required_even_when_a_successful_cash_row_already_exists() {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        var confirmation=successfulCash(type,prepared,false);
+        assertThatThrownBy(() -> confirmations.confirm(confirmation))
+                .hasMessage("POINTS_REFUND_CASH_AUTHORIZATION_REQUIRED");
+        assertThat(balance(type,"held_points")).isEqualTo(10);
+        assertThat(pool(type,"u_minor")).isEqualTo(80);
+        cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1);
+        assertThat(confirmations.confirm(confirmation).state()).isEqualTo("CONFIRMED");
+    }
+
+    @Test void cash_authorization_does_not_replace_authority_for_zero_cash_completion() {
+        String type=fixture(false,true);
+        var original=command(type,"AS:"+type,50);
+        var zero=new RefundCommand(original.afterSaleNo(),type,"USER",type,"CNY",1,0,50,
+                original.lines(),original.payment());
+        var prepared=refunds.prepare(zero);
+        assertThat(prepared.netCashMinor()).isZero();
+        assertThatThrownBy(() -> cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1))
+                .hasMessage("POINTS_REFUND_ZERO_CASH_PROOF_REQUIRED");
+        assertThat(refundState(prepared)).isEqualTo("PREPARED");
+    }
+
+    @Test void cash_authorization_has_one_durable_decision_under_repeatable_read_concurrency() throws Exception {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        var barrier=new CyclicBarrier(2);
+        var transaction=new TransactionTemplate(payTransactions);
+        transaction.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        try (var pool=Executors.newFixedThreadPool(2)) {
+            var call=(Callable<PointsRefundCashDecisionService.Decision>) () -> {
+                try {
+                    return transaction.execute(status -> {
+                        assertThat(refundState(prepared)).isEqualTo("PREPARED");
+                        try { barrier.await(10,TimeUnit.SECONDS); }
+                        catch (Exception failure) { throw new IllegalStateException(failure); }
+                        return cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1);
+                    });
+                } catch (DataAccessException serializationConflict) {
+                    // Retry only a recognized, fully rolled-back serialization conflict in a fresh transaction.
+                    if (!serializationConflict(serializationConflict)) { throw serializationConflict; }
+                    return transaction.execute(status ->
+                            cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1));
+                }
+            };
+            var first=pool.submit(call);
+            var second=pool.submit(call);
+            assertThat(first.get(15,TimeUnit.SECONDS)).isEqualTo(second.get(15,TimeUnit.SECONDS));
+        }
+        assertThat(refundState(prepared)).isEqualTo("CASH_AUTHORIZED");
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_voucher WHERE biz_ref=?",Long.class,
+                "REFUND_CASH_AUTHORIZE:"+prepared.preparationNo())).isEqualTo(1);
+        assertThat(balance(type,"held_points")).isEqualTo(10);
+    }
+
+    @Test void cash_authorization_cannot_revive_an_aborted_refund_from_an_old_snapshot() throws Exception {
+        String type=fixture(false,true);
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1);
+        String payment="FAILED_CASH:"+type;
+        jdbc().update("INSERT INTO stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,"
+                + "amount_minor,status,pay_channel) VALUES(?,'REFUND',?,?,'USER','CNY',50,'FAILED','TEST')",
+                payment,"AS:"+type,type);
+        var transaction=new TransactionTemplate(payTransactions);
+        transaction.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        try (var pool=Executors.newSingleThreadExecutor()) {
+            var failure=catchThrowable(() -> transaction.executeWithoutResult(status -> {
+                assertThat(refundState(prepared)).isEqualTo("CASH_AUTHORIZED");
+                var abort=pool.submit(() -> aborts.abort(new RefundAbort(
+                        prepared.preparationNo(),prepared.inputHash(),payment)));
+                try { abort.get(10,TimeUnit.SECONDS); }
+                catch (Exception problem) { throw new IllegalStateException(problem); }
+                cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1);
+            }));
+            if (serializationConflict(failure)) {
+                assertThatThrownBy(() -> cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),1))
+                        .hasMessage("POINTS_REFUND_CASH_DECISION_NOT_READY");
+            } else {
+                assertThat(failure).isInstanceOf(IllegalArgumentException.class)
+                        .hasMessage("POINTS_REFUND_CASH_DECISION_NOT_READY");
+            }
+        }
+        assertThat(refundState(prepared)).isEqualTo("ABORTED");
+        assertThat(balance(type,"pending_points")).isEqualTo(20);
+        assertThat(balance(type,"held_points")).isZero();
+    }
+
+    private boolean serializationConflict(Throwable failure) {
+        if (failure instanceof TransientDataAccessException) { return true; }
+        for (Throwable cause=failure;cause!=null;cause=cause.getCause()) {
+            // MariaDB 11.6.2+ snapshot isolation rolls back a changed-record locking read with ER_CHECKREAD.
+            if (cause instanceof SQLException sql && sql.getErrorCode()==1020
+                    && "HY000".equals(sql.getSQLState())) { return true; }
+        }
+        return false;
+    }
+
+    private String refundState(RefundPreparation prepared) {
+        return jdbc().queryForObject("SELECT state FROM pts_refund_preparation WHERE position_no=?",
+                String.class,prepared.preparationNo());
+    }
+
+    private String spentGrant() {
+        String type=fixture(true,true);
+        posting.post(new Voucher("SPEND:"+type,type,"CNY",new RedeemRate(1,1),List.of(
+                move(type,Bucket.AVAILABLE,-20),move(type,Bucket.HELD,20)),List.of(),List.of(),0,List.of(),"{}"));
+        return type;
+    }
+
+    private RefundConfirmation successfulCash(String type, RefundPreparation prepared) {
+        return successfulCash(type,prepared,true);
+    }
+
+    private RefundConfirmation successfulCash(String type, RefundPreparation prepared, boolean authorize) {
+        if (authorize) {
+            cashDecisions.authorize(prepared.preparationNo(),prepared.inputHash(),prepared.revision());
+        }
         String payment="CASH:"+type;
         jdbc().update("INSERT INTO stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,"
                 + "amount_minor,status,pay_channel,trade_no,succeeded_at,refund_verified_minor,refund_verified_at,"

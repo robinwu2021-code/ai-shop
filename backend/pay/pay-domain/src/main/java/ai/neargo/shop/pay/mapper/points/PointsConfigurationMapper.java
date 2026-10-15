@@ -26,6 +26,8 @@ public interface PointsConfigurationMapper {
     Map<String, Object> voucher(String biz);
     @Select("SELECT * FROM ${table} WHERE position_no=#{no}")
     Map<String, Object> position(@Param("table") String table, @Param("no") String no);
+    @Select("SELECT * FROM pts_refund_preparation WHERE position_no=#{no} AND deleted=0 FOR UPDATE")
+    Map<String, Object> lockRefundPreparation(String no);
     @Select("SELECT * FROM pts_receivable WHERE receivable_no=#{no} AND deleted=0")
     Map<String,Object> receivable(String no);
     @Select("SELECT * FROM pts_refund_reserve WHERE reserve_no=#{no}")

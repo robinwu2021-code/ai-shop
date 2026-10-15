@@ -41,7 +41,7 @@ public class PointsRefundAbortServiceImpl implements PointsRefundAbortService {
         var initial=read.position(PositionMove.Kind.REFUND.table(),abort.preparationNo());
         require(initial!=null,"POINTS_REFUND_PREPARATION_UNKNOWN");
         configuration.lockTypeAndPool((String)initial.get("type_code"));
-        var head=read.position(PositionMove.Kind.REFUND.table(),abort.preparationNo());
+        var head=configuration.lockRefundPreparation(abort.preparationNo());
         var snapshot=json.readValue((String)head.get("payload_json"),RefundSnapshot.class);
         var preparation=snapshot.preparation();
         require(preparation.inputHash().equals(abort.inputHash()),"POINTS_REFUND_INPUT_CONFLICT");
@@ -49,7 +49,7 @@ public class PointsRefundAbortServiceImpl implements PointsRefundAbortService {
             require(abort.equals(snapshot.abort()),"POINTS_REFUND_ABORT_CONFLICT");
             return;
         }
-        require("PREPARED".equals(head.get("state")) && preparation.collectionTicket()==null,
+        require("CASH_AUTHORIZED".equals(head.get("state")) && preparation.collectionTicket()==null,
                 "POINTS_REFUND_ABORT_NOT_SAFE");
         var payment=cash.refund(abort.cashRefundPaymentNo());
         require(payment!=null && Set.of("FAILED","CLOSED").contains(payment.status()),
@@ -69,7 +69,7 @@ public class PointsRefundAbortServiceImpl implements PointsRefundAbortService {
         var completed=new RefundSnapshot(command,preparation,snapshot.grantState(),snapshot.redeemState(),
                 snapshot.reclaimedByLine(),snapshot.collectionCommand(),null,abort,snapshot.collectionResult());
         positions.add(new PositionMove(PositionMove.Kind.REFUND,preparation.preparationNo(),number(head,"version"),
-                "PREPARED","ABORTED",number(head,"original_points"),0,json.writeValueAsString(completed)));
+                "CASH_AUTHORIZED","ABORTED",number(head,"original_points"),0,json.writeValueAsString(completed)));
         var type=read.type(command.typeCode()).orElseThrow();
         posting.post(new Voucher("REFUND_ABORT:"+preparation.preparationNo(),type.typeCode(),type.currency(),
                 type.rate(),points,List.of(),positions,0,List.of(),"{}"));

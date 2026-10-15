@@ -52,7 +52,7 @@ public class PointsRefundConfirmationServiceImpl implements PointsRefundConfirma
         var initial=read.position(PositionMove.Kind.REFUND.table(),confirmation.preparationNo());
         require(initial!=null,"POINTS_REFUND_PREPARATION_UNKNOWN");
         configuration.lockTypeAndPool((String)initial.get("type_code"));
-        var head=read.position(PositionMove.Kind.REFUND.table(),confirmation.preparationNo());
+        var head=configuration.lockRefundPreparation(confirmation.preparationNo());
         var snapshot=json.readValue((String)head.get("payload_json"),RefundSnapshot.class);
         var preparation=snapshot.preparation();
         require(preparation.inputHash().equals(confirmation.inputHash()),"POINTS_REFUND_INPUT_CONFLICT");
@@ -61,8 +61,8 @@ public class PointsRefundConfirmationServiceImpl implements PointsRefundConfirma
             require(confirmation.equals(snapshot.confirmation()),"POINTS_REFUND_CONFIRMATION_CONFLICT");
             return outcome(ref,true);
         }
-        require("PREPARED".equals(head.get("state")) || "COLLECTED".equals(head.get("state")),
-                "POINTS_REFUND_COLLECTION_NOT_CONFIRMED");
+        require("CASH_AUTHORIZED".equals(head.get("state")),
+                "POINTS_REFUND_CASH_AUTHORIZATION_REQUIRED");
         require(Objects.equals(confirmation.collectionTicket(),preparation.collectionTicket())
                 && confirmation.recoveryTicket()==null,
                 "POINTS_REFUND_UNEXPECTED_FUNDS_TICKET");
@@ -94,7 +94,7 @@ public class PointsRefundConfirmationServiceImpl implements PointsRefundConfirma
         long collected=preparation.cashOffsetMinor();
         if (collected>0) {
             var receipt=snapshot.collectionResult();
-            require("COLLECTED".equals(head.get("state")) && receipt!=null && receipt.status()==FundsStatus.SUCCEEDED
+            require(receipt!=null && receipt.status()==FundsStatus.SUCCEEDED
                     && receipt.amountMinor()==collected && receipt.evidenceNo()!=null,
                     "POINTS_REFUND_COLLECTION_NOT_CONFIRMED");
             long issued=type.rate().pointsForMinor(collected);

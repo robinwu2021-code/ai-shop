@@ -9,6 +9,8 @@ import java.util.Map;
 public interface PointsConfigurationStore {
     void createType(PointType type, String actor);
     void lockTypeAndPool(String typeCode);
+    /** Current locking read after the type/pool lock, including under repeatable-read isolation. */
+    Map<String, Object> lockRefundPreparation(String preparationNo);
     void changeTypeStatus(String typeCode, PointType.Status expected, PointType.Status next, String activeMarket, String actor);
     void submit(PoolRequest request, String json);
     Map<String, Object> lockRequest(String requestNo);

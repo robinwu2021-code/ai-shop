@@ -96,7 +96,7 @@ public class PointsRefundCollectionServiceImpl implements PointsRefundCollection
         var head=read.position(PositionMove.Kind.REFUND.table(),no);
         require(head!=null,"POINTS_REFUND_PREPARATION_UNKNOWN");
         configuration.lockTypeAndPool((String)head.get("type_code"));
-        return read.position(PositionMove.Kind.REFUND.table(),no);
+        return configuration.lockRefundPreparation(no);
     }
     private void transition(String no,Map<String,Object> head,RefundSnapshot snapshot,String next,String prefix) {
         var type=read.type((String)head.get("type_code")).orElseThrow();
