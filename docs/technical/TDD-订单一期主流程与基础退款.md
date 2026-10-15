@@ -2,7 +2,7 @@
 
 > 执行者使用 `superpowers:executing-plans` 逐任务实施；当前以“基础功能与 C/B 对接详细执行方案”B01–B07 为执行清单；后文 §2 保留原任务背景，步骤用复选框追踪。
 
-状态：**实施中 · 后端优先，随后对接 C/B**。创建/更新：2026-10-15。
+状态：**一期基础开发与本地定向验证完成 · 真实渠道/设备验收待执行**。创建/更新：2026-10-15。
 
 **目标：** C 端下单和支付、B 端备货发货、物流跟踪和收货、运营异常处理形成可验收的完整链路；一期不依赖积分，退款只完成基础流程。
 
@@ -32,7 +32,7 @@
 
 > 执行方式：沿用本任务逐项实施；先完成后端基础出口，再改共享合同和 C/B。以下 B01–B07 是当前执行清单，优先于后文旧任务中的并发、消融和全量回归步骤。
 
-**状态：** B01–B06 已完成基础开发与定向验证；B07 本地交付验证中，待最终复核。真实支付/退款渠道与设备验收另行记录。
+**状态：** B01–B07 基础开发及本地交付验证完成；整体验收复核发现的三项衔接问题已修复并通过定向回归。真实支付/退款渠道与设备验收另行执行。
 
 ### B01 基础后端收口与接口合同冻结
 
@@ -135,25 +135,25 @@
 | 结果未确认/失败 | 不显示到账，不盲目重拍退款；保留原执行与人工处理出口 |
 | 积分关闭 | 全程无积分试算/抵扣/赠分承诺；历史积分快照只读与人工处理 |
 
-- [ ] 执行 B01 的基础后端选择和本次修改对应的 C/B 页面/API 测试；不选择带并发场景的整组后端类。
-- [ ] 执行 C/B `type-check` 与 `build:mp-weixin`；修复本次对接引入的错误，历史无关失败单独列明，不修改 known-* 或断言阈值。
-- [ ] 如基础失败需要运营处理，只补已有售后页的退款执行/资源错误展示与受权限保护的原执行恢复入口；不扩建运营订单工作台。
-- [ ] 按实际修改重生成 OpenAPI、API详情、必要字段/权限文档；对照当前 diff 审查权限、金额、编号和成功语义。
-- [ ] 每个可独立验收的批次精确提交；最终列出已完成基础功能、未完成事项及真实渠道联调边界，不将本地测试通道通过写成上线通过。
+- [x] 执行 B01 的基础后端选择和本次修改对应的 C/B 页面/API 测试；不选择带并发场景的整组后端类。
+- [x] 执行 C/B `type-check` 与 `build:mp-weixin`；修复本次对接引入的错误，历史无关失败单独列明，不修改 known-* 或断言阈值。
+- [x] 如基础失败需要运营处理，只补已有售后页的退款执行/资源错误展示与受权限保护的原执行恢复入口；不扩建运营订单工作台。
+- [x] 按实际修改重生成 OpenAPI、API详情、必要字段/权限文档；对照当前 diff 审查权限、金额、编号和成功语义。
+- [x] 每个可独立验收的批次精确提交；最终列出已完成基础功能、未完成事项及真实渠道联调边界，不将本地测试通道通过写成上线通过。
 
 **验证命令（在一期隔离树执行）：**
 
 ```bash
-JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH mvn -o -B -f backend/pom.xml -pl shop-app -am -Dtest=PhaseOneOrderEndToEndFlowTest,BasicReturnRefundFlowTest,StrictRefundCallbackFlowTest -Dsurefire.failIfNoSpecifiedTests=false test
-npm --prefix c-app run test -- tests/order-confirm-page.test.ts tests/pay-page.test.ts tests/one-tap-pay.test.ts tests/orders-page.test.ts tests/order-page.test.ts tests/order-phase1-api.test.ts tests/after-sale-phase1.test.ts
-npm --prefix b-app run test -- tests/order-phase1-api.test.ts tests/order-phase1-flow.test.ts tests/after-sale-approve.test.ts tests/after-sale-return.test.ts
+JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH mvn -o -B -f backend/pom.xml -pl shop-app -am -Dtest=PhaseOneOrderEndToEndFlowTest,BasicReturnRefundFlowTest,StrictRefundCallbackFlowTest,BuyerPaymentListResolutionFlowTest,ShippingRefundSnapshotFlowTest -Dsurefire.failIfNoSpecifiedTests=false test
+npm --prefix c-app run test -- tests/order-confirm-page.test.ts tests/pay-page.test.ts tests/one-tap-pay.test.ts tests/orders-page.test.ts tests/order-page.test.ts tests/order-phase1-api.test.ts tests/after-sale-phase1.test.ts tests/track-phase1.test.ts -t '^(?!.*(迟到|竞态|并发|旧详情请求)).*$'
+npm --prefix b-app run test -- tests/order-phase1-api.test.ts tests/order-phase1-flow.test.ts tests/after-sale-approve.test.ts tests/after-sale-return.test.ts tests/after-sale-page-phase1.test.ts tests/after-sale-phase1-mock.test.ts
 npm --prefix c-app run type-check
 npm --prefix b-app run type-check
-npm --prefix c-app run build:mp-weixin
-npm --prefix b-app run build:mp-weixin
+VITE_USE_MOCK=0 npm --prefix c-app run build:mp-weixin
+VITE_USE_MOCK=0 npm --prefix b-app run build:mp-weixin
 ```
 
-新增测试文件在对应批次创建后才加入实际执行命令；本轮仅保存执行方案，没有执行上述命令。
+上述命令已在一期隔离树执行；最终后端 14/14、C 72、B 26 定向通过，3 个既有 C 竞态用例按范围排除。运营相关 21/21，三端类型检查及 C/B 小程序构建通过；未运行旧全量或并发测试。
 
 **执行顺序与停止条件：** B01→B02→B03→B04→B05→B06→B07。每批先列出缺口与功能断言，再最小实现、定向验证、检查实际 diff 并提交。仅当前基础流程阻断才暂停进入下一批；已延期的并发、连接池、历史全量用例和包迁移不得重新变为前置任务。
 
@@ -497,7 +497,55 @@ C/B `refundExecution` 与后端 `AfterSaleVO.RefundExecutionProgress` 同形；�
 ### 本地验证与验收边界
 
 - 后端真实 Controller/Store 的主流程、未发全额退、基础退货、严格资金回执：B01 三类 9/9 通过。`PhaseOneOrderEndToEndFlowTest` 断言 C/B 相同运单、ORD/LGS 实际包裹映射、可信签收后仍履约中、本人收货后双方完成；退款断言到账前不冒充成功、原退款及库存恢复仅一次。使用本地测试资金通道，不代表真实微信/支付宝退款验收。
-- C 页面/API 定向功能 71 通过，主动排除 3 个已有竞态/迟到请求用例；B 页面/API/mock/规则定向 26 通过。包含两店列表、统一父支付号、付款待确认、人工核对禁重付、收货回读、售后撤销、全额退款、寄回、回库 true/false、拒绝理由、发货失败保留输入、资金/资源进度以及物流失败重试与异常状态。
-- C/B 类型检查与关闭 mock 的小程序构建通过；运营定向合同/恢复测试 12 通过，类型检查通过。最终复核及最终源版本构建记录继续补入此节。
+- C 页面/API 定向功能 72 通过，主动排除 3 个已有竞态/迟到请求用例；B 页面/API/mock/规则定向 26 通过。包含两店列表、统一父支付号、付款待确认、人工核对禁重付、收货回读、售后撤销、全额退款、寄回、回库 true/false、拒绝理由、发货失败保留输入、资金/资源进度以及物流失败重试与异常状态。
+- C/B 类型检查与关闭 mock 的小程序构建通过；运营定向合同/恢复及词条测试 21 通过，类型检查通过。最后修复版本 C 类型与 mock 关闭的小程序构建再次通过；B 最终源版本构建通过。
 - 共享轨迹测试通过；全局三语一致性检查发现既有 B 端 `common.delete` 英文缺失（订单改动前已存在），未更改断言基线或扩展修复范围。B 端 OpenAPI 生成器沿用既有行尾空格格式。
 - 尚未执行真实支付/退款渠道、微信真机及生产部署验收；外部渠道请求与实际订单号须在环境验收时逐单记录，不能用测试通道编号冒充。暂停并发/连接池专项、旧全量失败整理、积分接入和迁至 `shop.order`。
+
+
+### 最终独立复核与修复（2026-10-15）
+
+一次只读整支复核覆盖 `fdb3926e8..4b0e08936`，未运行并发测试；没有 Critical 或 Minor，提出三项 Important。修复后按用户范围复验，不增加第二次复核或旧全量回归。
+
+| 复核发现 | 最终修复与证据 |
+|---|---|
+| C 在途仅退款 `WAIT_RECEIPT` 隐藏确认收货 | 删除客户端额外售后限制，保留快递/履约中/门店子单条件；组件真实失败后通过。收货后原售后仍 WAIT_RECEIPT，只提醒商家，不自动认定退款到账 |
+| C 列表漏传 `paymentResolution` | 按本人和当前页父支付号批量读取；只输出状态/原因/原资金参考号。真实 C HTTP 缺字段失败后通过；他人订单/他人回执不泄露 |
+| 两店合单一店退款后原微信上报快照停滞 | 消费持久化 `AFTER_SALE_REFUNDED`，从已退款子单找到原支付单并复用队列刷新。PENDING、已部分 SUCCESS、达到渠道修正限制三种单次场景均失败后通过；原行/支付号、当前包裹和硬限制保持 |
+
+另在复现列表问题时发现历史 `store_no=NULL` 会触发空键查询并让整页失败，单独构造历史行证实 10500，再补空值投影；同组测试通过。第一次新测试编译字段名误写、一次运单预期未遵守既有大写规范，均只修正测试夹具，不计作业务通过证据。
+
+最终后端五类 **14/14**（原基础 9 + 新列表 2 + 退款上报 3）通过，C **72**、B **26**、运营 **21** 定向功能通过；C/B/Ops 类型检查和 C/B 关闭 mock 的小程序构建通过。全局旧失败保持如实记录。代码未推送、合并或部署。
+
+真实渠道补充边界：现有微信直连支持退款查询；微信服务商/支付宝等部分既有适配器仍沿用不可查询的默认实现。可信回调可驱动资金完成，但丢回调后的查询恢复不能据此宣称全渠道支持；这些渠道的未知结果保留原执行与人工核对。已分账回退仍需可信资金确认。
+
+### 执行决策与延期代价
+
+本次复核按当前 B01–B07 范围判定。并发、连接池、旧全量回归、迁包、旧定价提取、积分、历史无可靠库存权威、既有渠道查询缺口和 null 幂等哈希均保持既有明确边界；手动收货遵守现有后端语义。延期会限制全量回归与真实渠道认证，不能据本地定向通过承诺上线安全。
+
+以下保存本计划账本中的全部决策，避免清理临时工作区后丢失取舍记录：
+
+- Ruling: 用户最新要求后端完成后才对接 C/B，N01–N07 前端步骤推迟到 N08；运营保留已有合同兼容 — 原计划顺序由用户最新指令覆盖 — 风险：需要后端真实契约测试防止晚联调发现丢字段。
+- Ruling: 原 F07 全部留在 order-refactor-plan 树；一期从完成的 F06 检查点起步。主目录 HEAD 仍 df2adc641，共享登录/积分未提交变动不复制 — 不复活暂停结算重构，不混入别人工作 — 风险：后续整合时需核对重叠 API 和迁移号。
+- Ruling: task-start 仅识别数字任务标题，文档标题改 Task 0..8 并保留 N00..N08 业务编号；不改开发范围或顺序。
+- Ruling: 扩展128条有3条旧积分订单/补偿验收失败，源于用户已延期的功能，改为同等入口的关闭与历史人工核对断言，不删除/跳过测试。独立积分域能力仍保留 — 新一期不允许旧开关重开积分 — 成本：未来积分接入时须重新启用并评审原积分生命周期验收。
+- Ruling: N00 source inspection corrected prior architectural assumption: legacy production C list already pages ord_sub_order and batches parent reads; OrderQueryService main-view is unregistered prototype. N02 must preserve existing child-list routes, not introduce unnecessary replacement endpoint or regress to pay-level paging. Need isolate its remaining per-row reads/production store, while retaining full JSON.
+- Ruling: switch subsequent disjoint backend work to subagent-driven-development; root owns N03 payment and existing OrderServiceImpl, fresh implementer owns N04 shipping/MerchantOrderServiceImpl and shipment folders, no overlapping file writes — current N02 cash creation contract is tested and is sufficient to begin independent shipment integration while pure quote extraction remains pending — cost: must coordinate shared Maven source/build snapshots and review the integrated contract. No C/B implementation before all backend exits. Old F07 remains untouched.
+- Ruling: N04 uses dedicated typed OrderShippingService instead of generic unimplemented create facade; actual production checkout stays intact until N02 frozen draft extraction — no invented raw-price create integration — cost: later unified command facade needs separate proof.
+- Ruling: public lifecycle transactions scoped RC after actual strict-Maria1020; financial close requires new current-read transaction to avoid inherited stale RR — no global option or CAS removal — cost: closure commits independently of a caller's outer transaction, justified by authoritative channel failure/success ordering.
+- Ruling: N02 purePreparedOrder/createStore extraction deferred to structuralrefactor — user stopped old refactor and prioritizes actualcashmainflow; current productioncommercialrules retained and creation/query/recovery exitsverified, neverrawCartLine — cost: legacypricing servicelarge, futureextractionneedsindependentregression. PlanTask2 explicitly updated, no prototypecompletionclaim.
+- Ruling: receivedreturnedgoods doesnot implyresaleable — additiveexplicitrestockApproved missing=false freezesexecutiondecision — cost: B/Ops mustexplicitlymarkstockreturn.
+- Ruling: alreadySPLIT cashrefund with onlyStub reversalacceptance cannotclaimconfirmed — supportedordinarypaidUNSPLITrefundcomplete; split routevisibleREVERSE_UNCONFIRMEDmanualexit untilrealcapability — cost: splitrefundrequiresmanualfinancialverification.
+- Ruling: legacywhole-orderreceiptconfirmsallcurrentlivepackages atomically underchildlock — preventsstrandinghistoricalmultiplepackages, explicitshipmentcommandremainsperpackage — cost: whole-button assertsbuyerreceivedallpackages, requiresUIwording.
+- Ruling: B05/B06 gain real Vue component tests with existing root Vue plugin/happy-dom and global shared UI registration — API/utility tests alone cannot prove merchant page actions — cost: modest B test configuration added; no new packages/lock changes.
+- Ruling: retain existing global B common.delete parity failure and OpenAPI-B generator whitespace rather than expand unrelated cleanup — cost: global parity/diff whitespace gate remains known debt; new order keys present in all languages.
+- Final: Ruling: preserve deferred concurrency/pool/global legacy suite work — user explicitly excluded it — cost: no concurrency/full-regression readiness claim.
+- Final: Ruling: preserve trade.order and large legacy pricing service — migration/extraction deferred by accepted plan — cost: future structural refactor still needed.
+- Final: Ruling: preserve REVERSE_UNCONFIRMED manual recovery — channel acceptance cannot prove reversal — cost: split refunds may need financial intervention.
+- Final: Ruling: retain preexisting non-direct channel refund-query capability debt — direct WX query implemented; authoritative TEST callback tested locally, other adapter defaults remain unavailable — cost: lost callback on those channels requires manual verification; no live certification.
+- Final: Ruling: preserve null idempotency hashes on legacy rows — migration compatibility intentional — cost: old replay cannot gain new hash comparison until separately migrated.
+- Final: Ruling: historical points / ambiguous original stock authority remain manual — cannot reconstruct absent reliable original facts — cost: historical refund may not auto-complete.
+- Final: Ruling: B global locale parity and generated whitespace remain baseline debt — unrelated to basic order scope — cost: global parity/diff-whitespace gate not clean.
+- Final: Ruling: manual receipt follows backend semantics across after-sale states — buyer receipt records physical fact, does not authorize cash refund — cost: a future product restriction must be designed/server-enforced separately.
+
+本轮交付提交：`4b0e08936`（C/B 基础接线及必要运营展示），`089e5021c`（最终复核修复）。隔离树及 `codex/order-phase1` 分支保留供后续设备/渠道验收。
