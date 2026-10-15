@@ -147,6 +147,39 @@ public class LogisticsPortImpl implements LogisticsPort {
     }
 
     @Override
+    public Optional<ShipmentSnapshot> shipmentSnapshotOf(String subOrderNo) {
+        LgsWaybill w = find(LgsWaybill.BIZ_SUB_ORDER, subOrderNo);
+        if (w == null || w.getSourceShipmentNo() == null || w.getSourceShipmentVersion() == null) {
+            return Optional.empty();
+        }
+        List<LgsWaybillNode> history = nodes.selectList(Wrappers.<LgsWaybillNode>query()
+                .eq("shipment_no", w.getShipmentNo()));
+        long now = clock.getAsLong();
+        Long first = history.stream().map(LgsWaybillNode::getAt)
+                .filter(at -> at != null && at > 0 && at <= now).min(Long::compareTo).orElse(null);
+        Long signedNode = history.stream().filter(LogisticsPortImpl::signedNode)
+                .map(LgsWaybillNode::getAt).filter(at -> at != null && at > 0 && at <= now)
+                .max(Long::compareTo).orElse(null);
+        // Status-only 微信查询没有签收节点，不能把查询时间冒充实际签收时间。
+        Long signed = signedNode == null ? w.getSignedAt() : signedNode;
+        return Optional.of(new ShipmentSnapshot(w.getSourceShipmentNo(), w.getSourceShipmentVersion(),
+                w.getWaybillNo(), w.getStatus(), signed, signedNode, first));
+    }
+
+    private static boolean signedNode(LgsWaybillNode node) {
+        String code = node.getStatusCode();
+        if (code == null) return false;
+        if ("TRACE_SIGNED".equals(code) || "SIGNED".equals(code)) return true;
+        if (!"kuaidi100".equals(node.getChannel())) return false;
+        try {
+            int state = Integer.parseInt(code.trim());
+            return state == 3 || state >= 300 && state < 400;
+        } catch (NumberFormatException ignored) {
+            return false;
+        }
+    }
+
+    @Override
     public Map<String, Long> signedAtOf(Collection<String> subOrderNos) {
         Map<String, Long> out = new HashMap<>();
         if (subOrderNos == null || subOrderNos.isEmpty()) {

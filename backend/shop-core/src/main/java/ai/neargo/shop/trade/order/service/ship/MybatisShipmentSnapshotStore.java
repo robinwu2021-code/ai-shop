@@ -70,4 +70,23 @@ public class MybatisShipmentSnapshotStore implements ShipmentSnapshotStore {
         }
         shipment.setSignedAt(at);
     }
+
+    @Override
+    public void verifiedSignedAt(OrdShipment shipment, long at) {
+        if (Long.valueOf(at).equals(shipment.getSignedAt())) {
+            return;
+        }
+        var update = Wrappers.<OrdShipment>lambdaUpdate().eq(OrdShipment::getId, shipment.getId())
+                .eq(OrdShipment::getStatus, OrdShipment.DELIVERED).set(OrdShipment::getSignedAt, at);
+        if (shipment.getSignedAt() == null) {
+            update.isNull(OrdShipment::getSignedAt);
+        } else {
+            update.eq(OrdShipment::getSignedAt, shipment.getSignedAt());
+        }
+        int rows = DataScopeContext.executeWithoutScope(() -> shipments.update(null, update));
+        if (rows != 1) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        shipment.setSignedAt(at);
+    }
 }

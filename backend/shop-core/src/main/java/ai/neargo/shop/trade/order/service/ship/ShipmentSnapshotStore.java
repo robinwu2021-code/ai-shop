@@ -9,6 +9,8 @@ public interface ShipmentSnapshotStore {
     Facts currentLocked(String shipmentNo);
     void advance(OrdShipment shipment, ShipmentEvent event);
     void signedAt(OrdShipment shipment, long at);
+    /** Replace a status-only fallback timestamp when a dated carrier signature is verified. */
+    void verifiedSignedAt(OrdShipment shipment, long at);
 
     record Facts(OrdSubOrder order, OrdShipment shipment) { }
 }

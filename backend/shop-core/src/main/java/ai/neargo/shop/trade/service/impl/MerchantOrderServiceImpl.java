@@ -162,6 +162,12 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
 
     /** 物流页（TDD-物流模块 B2）。setter 注入：存量手工构造本类的地方不用跟着改 */
     private LogisticsPort logisticsPort;
+    private ai.neargo.shop.trade.order.service.ship.ShipmentSnapshotConverger shipmentConverger;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setShipmentConverger(ai.neargo.shop.trade.order.service.ship.ShipmentSnapshotConverger converger) {
+        this.shipmentConverger = converger;
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setLogisticsPort(LogisticsPort port) {
@@ -175,7 +181,14 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {
             return null;
         }
-        return logisticsPort.track(LogisticsPort.TrackQuery.subOrder(sub.getSubOrderNo(), "BIZ", refresh))
+        var tracked = logisticsPort.track(LogisticsPort.TrackQuery.subOrder(sub.getSubOrderNo(), "BIZ", refresh));
+        if (refresh && shipmentConverger != null) {
+            logisticsPort.shipmentSnapshotOf(sub.getSubOrderNo()).ifPresent(snapshot ->
+                    shipmentConverger.converge(snapshot.sourceShipmentNo(), snapshot.sourceShipmentVersion(),
+                            snapshot.waybillNo(), snapshot.status(), snapshot.signedAt(),
+                            snapshot.signedNodeAt(), snapshot.firstTraceAt()));
+        }
+        return tracked
                 .map(v -> new OrderVO.Trace(v.status(),
                         v.nodes().stream().map(n -> new OrderVO.Trace.Node(n.at(), n.text(), n.location(),
                                 n.latE6(), n.lngE6())).toList(),

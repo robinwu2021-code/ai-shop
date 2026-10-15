@@ -4,6 +4,7 @@ import ai.neargo.shop.event.DomainEvent;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.logistics.config.LogisticsProperties;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
+import ai.neargo.shop.logistics.entity.LgsWaybillNode;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillNodeMapper;
 import ai.neargo.shop.spi.logistics.LogisticsEvents;
@@ -14,12 +15,14 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
+import java.util.ArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.ArgumentMatchers.any;
 
 /** 一次轨迹应用到运单上之后发出去的事件（TDD-物流模块 批 4：通知靠它们）。 */
@@ -116,6 +119,9 @@ class WaybillProgressTest {
 
     @Test
     void snapshotDistinguishesDatedSignatureFromStatusOnlySignature() {
+        List<LgsWaybillNode> saved = new ArrayList<>();
+        when(nodes.selectList(any())).thenAnswer(invocation -> saved);
+        doAnswer(invocation -> { saved.add(invocation.getArgument(0)); return 1; }).when(nodes).insert(any(LgsWaybillNode.class));
         LgsWaybill dated = waybill(WaybillStatus.DELIVERING, 0);
         dated.setSourceShipmentNo("SRC7");
         dated.setSourceShipmentVersion(0L);
@@ -126,6 +132,28 @@ class WaybillProgressTest {
                     LogisticsEvents.ShipmentSnapshot snapshot = (LogisticsEvents.ShipmentSnapshot) e;
                     assertThat(snapshot.signedNodeAt()).isEqualTo(1_000L);
                     assertThat(snapshot.firstTraceAt()).isEqualTo(1_000L);
+                });
+    }
+
+    @Test
+    void datedProofArrivingAfterStatusOnlySignatureReissuesSnapshotWithEarliestStoredTrace() {
+        List<LgsWaybillNode> saved = new ArrayList<>();
+        LgsWaybillNode old = new LgsWaybillNode();
+        old.setAt(500L);
+        old.setText("旧运单轨迹");
+        saved.add(old);
+        when(nodes.selectList(any())).thenAnswer(invocation -> saved);
+        doAnswer(invocation -> { saved.add(invocation.getArgument(0)); return 1; }).when(nodes).insert(any(LgsWaybillNode.class));
+        LgsWaybill delivered = waybill(WaybillStatus.DELIVERED, 0);
+        delivered.setSourceShipmentNo("SRC7");
+        delivered.setSourceShipmentVersion(0L);
+        progress.apply(delivered, trace(TraceStatus.SIGNED, false), "kuaidi100", "PUSH",
+                LgsWaybill.patch(7L), 2_000L);
+        assertThat(published()).filteredOn(e -> e instanceof LogisticsEvents.ShipmentSnapshot)
+                .singleElement().satisfies(e -> {
+                    LogisticsEvents.ShipmentSnapshot snapshot = (LogisticsEvents.ShipmentSnapshot) e;
+                    assertThat(snapshot.signedNodeAt()).isEqualTo(1_000L);
+                    assertThat(snapshot.firstTraceAt()).isEqualTo(500L);
                 });
     }
 }

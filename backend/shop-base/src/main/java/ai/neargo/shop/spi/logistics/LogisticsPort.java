@@ -21,6 +21,12 @@ public interface LogisticsPort {
      */
     Optional<TrackView> track(TrackQuery q);
 
+    /** Current immutable dispatch and dated carrier evidence for synchronous order convergence after a refresh. */
+    default Optional<ShipmentSnapshot> shipmentSnapshotOf(String subOrderNo) { return Optional.empty(); }
+
+    record ShipmentSnapshot(String sourceShipmentNo, long sourceShipmentVersion, String waybillNo,
+                            String status, Long signedAt, Long signedNodeAt, Long firstTraceAt) { }
+
     /** 子单号 → 签收时间（毫秒）。没签收的不在结果里。自动确认收货与确认收货提醒用 */
     Map<String, Long> signedAtOf(Collection<String> subOrderNos);
 

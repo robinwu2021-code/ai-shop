@@ -62,11 +62,14 @@ public class ShipmentSnapshotConvergerImpl implements ShipmentSnapshotConverger 
                 store.advance(shipment, ShipmentEvent.SIGNED);
             }
             if (OrdShipment.DELIVERED.equals(shipment.getStatus())) {
-                store.signedAt(shipment, signedAt);
                 long dispatchedAt = shipment.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
-                if (signedNodeAt != null && signedNodeAt.equals(signedAt)
-                        && firstTraceAt != null && firstTraceAt >= dispatchedAt - DATETIME_PRECISION_MS) {
+                boolean verified = signedNodeAt != null && signedNodeAt.equals(signedAt)
+                        && firstTraceAt != null && firstTraceAt >= dispatchedAt - DATETIME_PRECISION_MS;
+                if (verified) {
+                    store.verifiedSignedAt(shipment, signedNodeAt);
                     receipts.completeSigned(facts.order().getSubOrderNo(), shipmentNo, signedNodeAt);
+                } else {
+                    store.signedAt(shipment, signedAt);
                 }
             }
         }

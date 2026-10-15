@@ -60,8 +60,9 @@ public class WaybillProgress {
         w = current;
         boolean dirty = patch.getCarrier() != null || patch.getSubState() != null || patch.getWxStatusCheckedAt() != null;
         Transition t = WaybillStatus.advance(w.getStatus(), trace == null ? null : trace.status());
+        int added = 0;
         if (trace != null) {
-            int added = appendNodes(w.getShipmentNo(), trace.nodes(), channel, mode);
+            added = appendNodes(w.getShipmentNo(), trace.nodes(), channel, mode);
             if (t.changed()) {
                 patch.setStatus(t.next());
                 dirty = true;
@@ -101,7 +102,7 @@ public class WaybillProgress {
                 events.publish(new LogisticsEvents.ShipmentSnapshot(w.getSourceShipmentNo(),
                         w.getSourceShipmentVersion(), w.getWaybillNo(), t.next(), patch.getSignedAt(),
                         t.firstDelivered() ? signedNodeAt(trace, now) : null,
-                        t.firstDelivered() ? firstTraceAt(trace, now) : null));
+                        t.firstDelivered() ? firstPersistedTraceAt(w.getShipmentNo(), now) : null));
             }
             publish(w, carrierOf(w, patch), t, trace,
                     patch.getSignedAt() == null ? now : patch.getSignedAt(), channel, now);
@@ -109,6 +110,15 @@ public class WaybillProgress {
             LgsWaybill after = copyForPolicy(w, t.next());
             if (WxBindPolicy.ready(after, props.getWxBind().onShip())) {
                 events.publish(new WxBindRequested(w.getShipmentNo()));
+            }
+        } else if (added > 0 && trace != null && WaybillStatus.DELIVERED.equals(w.getStatus())
+                && w.getSourceShipmentNo() != null && w.getSourceShipmentVersion() != null) {
+            // 微信可能先只报“签收”状态，带时间的承运商轨迹随后才到；补发快照让交易域复核。
+            Long signedNode = signedNodeAt(trace, now);
+            if (signedNode != null) {
+                events.publish(new LogisticsEvents.ShipmentSnapshot(w.getSourceShipmentNo(),
+                        w.getSourceShipmentVersion(), w.getWaybillNo(), w.getStatus(), signedNode,
+                        signedNode, firstPersistedTraceAt(w.getShipmentNo(), now)));
             }
         } else if (trace != null && WxBindPolicy.ready(w, props.getWxBind().onShip())) {
             // 状态没变但又来了一条推送：上次微信还没收录的，再试一次
@@ -163,7 +173,8 @@ public class WaybillProgress {
             row.setLocation(n.location());
             row.setLatE6(n.latE6());
             row.setLngE6(n.lngE6());
-            row.setStatusCode(n.statusCode());
+            row.setStatusCode(n.statusCode() == null || n.statusCode().isBlank()
+                    ? "TRACE_" + n.status().name() : n.statusCode());
             row.setChannel(channel);
             row.setMode(mode);
             row.setTenantNo("MAIN");
@@ -189,10 +200,10 @@ public class WaybillProgress {
         return signed.isPresent() ? signed.getAsLong() : null;
     }
 
-    private static Long firstTraceAt(TraceResult trace, long now) {
-        var first = trace.nodes().stream().filter(n -> n.at() > 0 && n.at() <= now)
-                .mapToLong(TraceResult.TraceNode::at).min();
-        return first.isPresent() ? first.getAsLong() : null;
+    private Long firstPersistedTraceAt(String shipmentNo, long now) {
+        return nodes.selectList(Wrappers.<LgsWaybillNode>query().eq("shipment_no", shipmentNo)).stream()
+                .map(LgsWaybillNode::getAt).filter(at -> at != null && at > 0 && at <= now)
+                .min(Long::compareTo).orElse(null);
     }
 
     private static long firstAt(TraceResult trace, TraceStatus s, long now) {

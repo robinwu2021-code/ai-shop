@@ -88,10 +88,6 @@ const refreshingTrace = ref(false);
 async function refreshTrace() {
   const current = order.value;
   if (!current?.expressNo || current.status !== "FULFILLING" || refreshingTrace.value || busy.value) return;
-  if (current.logisticsSync?.status === "DELIVERED") {
-    uni.showToast({ title: String(t("order.traceAlreadyDelivered")), icon: "none" });
-    return;
-  }
   refreshingTrace.value = true;
   busy.value = true;
   try {
@@ -101,6 +97,8 @@ async function refreshTrace() {
     fullTrace.value = trace;
     failed.value = false;
     const key = latest.status !== current.status ? "order.traceOrderUpdated"
+      : latest.logisticsSync?.status === "DELIVERED" && latest.status === "FULFILLING"
+        ? "order.traceAwaitingProof"
       : latest.logisticsSync?.status !== current.logisticsSync?.status ? "order.traceWaybillUpdated"
       : trace?.refreshable ? "order.traceRefreshUnchanged" : "order.traceRefreshUnavailable";
     uni.showToast({ title: String(t(key)), icon: "none" });

@@ -754,6 +754,7 @@ export default {
     traceRefreshUnchanged: "当前状态未变化，请等待渠道更新",
     traceOrderUpdated: "订单状态已更新",
     traceWaybillUpdated: "运单已更新，订单状态未变化",
+    traceAwaitingProof: "物流显示签收，待核实本次发货轨迹后完成订单",
     traceRefreshUnavailable: "当前渠道无法主动查询，请等待物流订阅更新",
     traceAlreadyDelivered: "物流已显示签收；如运单有误，请进详情更正",
     pickCarrier: "请选择快递公司",

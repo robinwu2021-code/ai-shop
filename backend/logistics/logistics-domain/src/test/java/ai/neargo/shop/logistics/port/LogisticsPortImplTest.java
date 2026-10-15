@@ -6,6 +6,7 @@ import ai.neargo.shop.logistics.domain.PhoneCipher;
 import ai.neargo.shop.logistics.domain.WaybillProgress;
 import ai.neargo.shop.logistics.domain.WaybillStatus;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
+import ai.neargo.shop.logistics.entity.LgsWaybillNode;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillNodeMapper;
 import ai.neargo.shop.logistics.routing.ChannelRouter;
@@ -120,5 +121,25 @@ class LogisticsPortImplTest {
         TrackView v = port().track(TrackQuery.subOrder("SUB1", "MP", false)).orElseThrow();
         assertThat(v.displayMode()).isEqualTo("wx-plugin");
         assertThat(v.displayToken()).isEqualTo("tk");
+    }
+
+    @Test
+    void snapshotUsesDatedCarrierProofAndKeepsOldestTraceForStaleWaybillGuard() {
+        LgsWaybill w = wb(LgsWaybill.PROFILE_WX, WaybillStatus.DELIVERED);
+        w.setSourceShipmentNo("SRC1");
+        w.setSourceShipmentVersion(0L);
+        w.setSignedAt(now.get()); // 微信状态查询时间不是签收节点时间
+        LgsWaybillNode old = new LgsWaybillNode();
+        old.setAt(100L);
+        old.setStatusCode("TRACE_IN_TRANSIT");
+        LgsWaybillNode signed = new LgsWaybillNode();
+        signed.setAt(200L);
+        signed.setStatusCode("301");
+        signed.setChannel("kuaidi100");
+        when(nodes.selectList(any())).thenReturn(List.of(old, signed));
+        var snapshot = port().shipmentSnapshotOf("SUB1").orElseThrow();
+        assertThat(snapshot.signedAt()).isEqualTo(200L);
+        assertThat(snapshot.signedNodeAt()).isEqualTo(200L);
+        assertThat(snapshot.firstTraceAt()).isEqualTo(100L);
     }
 }
