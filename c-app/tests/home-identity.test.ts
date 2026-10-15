@@ -70,20 +70,4 @@ describe("首屏：只认人，不要东西", () => {
   });
 });
 
-/**
- * 手机号搬到了下单页，那里必须真的拦住 —— 否则这次改动就是**把功能弄丢了**。
- */
-describe("下单页：没手机号不许提交", () => {
-  const src = code(resolve(__dirname, "../src/pages/order-confirm/index.vue"));
-
-  it("★★★ 提交前判手机号，没有就弹绑定并**中断提交**", () => {
-    expect(src).toContain("phoneGate");
-    expect(src, "拦截必须发生在 submit 里，不是别处").toMatch(/if \(!user\.user\?\.phone\)/);
-    // `return` 是关键：只弹不返回的话，这一单会**带着空手机号提交出去**
-    expect(src).toMatch(/phoneGate\.value = true;\s*\n\s*return;/);
-  });
-
-  it("★★ 绑完自动继续提交 —— 多一次点击，人会以为刚才那下没生效", () => {
-    expect(src).toMatch(/@done="\(\(phoneGate = false\), submit\(\)\)"/);
-  });
-});
+// Native checkout authorization and continuation are exercised in order-confirm-page.test.ts.

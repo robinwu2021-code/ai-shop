@@ -8,6 +8,7 @@ import { defineStore } from "pinia";
 import { api } from "@/api";
 import { ApiError } from "@shared/net/http-client";
 import { getLocationDetailed } from "@shared/ports/location";
+import { useUserStore } from "./user";
 import { useCommunityStore } from "./community";
 import type { Address, ResolvedPlace } from "@shared/types";
 import { metersBetweenE6 } from "@shared/utils/geo";
@@ -351,12 +352,14 @@ export const useLocationStore = defineStore("location", {
     },
 
     async load() {
+      const token = useUserStore().token;
       this.loading = true;
       try {
         const [active, list] = await Promise.all([
           api.activeAddress().catch(() => null),
           api.addressList().catch(() => [] as Address[]),
         ]);
+        if (useUserStore().token !== token) return;
         this.active = active;
         this.list = list;
         /*
@@ -375,7 +378,7 @@ export const useLocationStore = defineStore("location", {
          */
         if (this.active && !this.transientAt) await this.syncCommunityFromActive();
       } finally {
-        this.loading = false;
+        if (useUserStore().token === token) this.loading = false;
       }
     },
 
@@ -533,6 +536,7 @@ export const useLocationStore = defineStore("location", {
      */
     /** @returns 归属有没有真的换过去。false = 这条地址没坐标，推不出聚落 */
     async syncCommunityFromActive(): Promise<boolean> {
+      const token = useUserStore().token;
       const a = this.active;
       if (!a || a.latE6 == null || a.lngE6 == null) return false;
       const community = useCommunityStore();
@@ -549,7 +553,9 @@ export const useLocationStore = defineStore("location", {
        * 解析失败（新城区、模糊坐标）时回落到最近的那一条 —— 与改造前一致，
        * 不因为多了一次请求就让人看不到货。
        */
+      if (useUserStore().token !== token || this.active?.addressId !== a.addressId) return false;
       const ctx = await api.resolveLocation(a.latE6, a.lngE6).catch(() => null);
+      if (useUserStore().token !== token || this.active?.addressId !== a.addressId) return false;
       const c = list.find((x) => x.communityNo === ctx?.innermostNo) ?? list[0];
       const p = c?.pickups?.[0];
       // 同上：有聚落就绑得上，点交给下单时匹配

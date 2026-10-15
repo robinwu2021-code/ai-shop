@@ -39,11 +39,12 @@ type Method = "GET" | "POST" | "PUT" | "DELETE";
  * 没有提示、没有跳转，刷新也一样，因为 token 还在存储里躺着。
  * B 端接过，但只接在 `ensureScope` 一处，别的请求上的 401 同样什么也不发生。
  */
-let onUnauthorized: (() => void) | null = null;
+export interface UnauthorizedContext { requestToken: string }
+let onUnauthorized: ((context: UnauthorizedContext) => void) | null = null;
 /** 同一轮里只触发一次：一屏并发三个请求就跳三次，会把提示刷掉、把路由搅乱 */
 let handling = false;
 
-export function setUnauthorizedHandler(fn: () => void): void {
+export function setUnauthorizedHandler(fn: (context: UnauthorizedContext) => void): void {
   onUnauthorized = fn;
 }
 
@@ -144,10 +145,11 @@ export function request<T>(
       success(res) {
         const body = res.data as Result<T>;
         if (res.statusCode === 401) {
-          uni.removeStorageSync(STORAGE.token);
-          if (onUnauthorized && !handling) {
+          const current = (uni.getStorageSync(STORAGE.token) as string) || "";
+          if (current === (token || "")) uni.removeStorageSync(STORAGE.token);
+          if (current === (token || "") && onUnauthorized && !handling) {
             handling = true;
-            onUnauthorized();
+            onUnauthorized({ requestToken: token || "" });
             // 下一轮宏任务放开：这一屏的并发请求算同一轮，用户下次点才是新一轮
             setTimeout(() => (handling = false), 0);
           }
@@ -232,10 +234,11 @@ export function uploadFile<T>(
           return;
         }
         if (res.statusCode === 401) {
-          uni.removeStorageSync(STORAGE.token);
-          if (onUnauthorized && !handling) {
+          const current = (uni.getStorageSync(STORAGE.token) as string) || "";
+          if (current === (token || "")) uni.removeStorageSync(STORAGE.token);
+          if (current === (token || "") && onUnauthorized && !handling) {
             handling = true;
-            onUnauthorized();
+            onUnauthorized({ requestToken: token || "" });
             setTimeout(() => (handling = false), 0);
           }
           reject(new ApiError(401, "登录已失效，请重新登录"));

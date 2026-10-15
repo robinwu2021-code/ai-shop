@@ -1,4 +1,11 @@
 export default {
+  phoneLogin: {
+    title: '登录后继续',
+    tip: '用于注册或登录，未注册的手机号将自动创建账号',
+    agreementPrefix: '继续即表示已阅读并同意',
+    processing: '正在登录，请稍候',
+    reviewOrder: '账号信息已更新，请确认订单后提交',
+  },
   trace: {
     step: {
       picked: "已揽收",
@@ -96,7 +103,7 @@ export default {
     later: "以后再说",
     title: "留个手机号",
     why: "下单后要联系你：自提点到货会发通知，配送要打电话。只用于这些。",
-    oneTap: "用微信号码",
+    oneTap: "手机号快捷登录",
     useCode: "用手机号验证码",
     phonePlaceholder: "手机号",
     codePlaceholder: "验证码",
@@ -105,8 +112,8 @@ export default {
     submit: "绑定",
     needPhone: "先填手机号",
     needBoth: "手机号和验证码都要填",
-    wxFailed: "没从微信拿到手机号",
-    conflict: "这个手机号已经注册过。用它登录可以继续，但当前微信里的浏览记录与购物车不会带过去。",
+    wxFailed: "未能获取手机号，请使用验证码",
+    conflict: "这个手机号已经注册过。用它登录可以继续，但当前账号的浏览记录与购物车不会带过去。",
   },
   community: {
     /** 精确定位到区 */
@@ -428,7 +435,7 @@ export default {
     resend: "{s} 秒后重发",
     title: "登录后即可下单",
     sub: "一次登录，订单、优惠券和自提点都跟着你",
-    byWxMini: "微信一键登录",
+    byWxMini: "快捷登录",
     orPhone: "或用手机号登录",
     phone: "手机号",
     otp: "验证码",

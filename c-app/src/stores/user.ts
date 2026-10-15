@@ -5,6 +5,8 @@ import { silentLoginPayload } from "@shared/ports/auth";
 import { STORAGE } from "@shared/utils/constants";
 import { getPushDevice } from "@shared/ports/push";
 import { useCommunityStore } from "./community";
+import { useCartStore } from "./cart";
+import { useLocationStore } from "./location";
 import type { LoginReq, User } from "@shared/types";
 
 /**
@@ -18,6 +20,9 @@ export const useUserStore = defineStore("user", {
   state: () => ({
     token: "" as string,
     user: null as User | null,
+    /** Last phone-verified account; a pending Wx relation must never silently restore a different account. */
+    phoneIdentityNo: "",
+    phoneLoginRequired: false,
     /**
      * 邀请链接带进来的邀请人，**暂存到登录那一刻**（§3.1）。
      *
@@ -35,6 +40,8 @@ export const useUserStore = defineStore("user", {
 
   getters: {
     isLogin: (s) => !!s.token,
+    isPhoneLogin: (s) => !s.phoneLoginRequired && !!s.token && !!s.user?.phone && (!s.phoneIdentityNo
+      || s.phoneIdentityNo === (s.user.userNo || s.user.cUserNo)),
 
   },
 
@@ -76,11 +83,18 @@ export const useUserStore = defineStore("user", {
        * 有了这个 promise，401 处理器就能先等一等再决定要不要跳。
        */
       if (silentInFlight) return silentInFlight;
+      const originalToken = this.token;
       silentInFlight = (async () => {
-        const payload = await silentLoginPayload();
-        if (!payload) return false;
         try {
-          await this.login(payload as LoginReq);
+          const payload = await silentLoginPayload();
+          if (!payload) return false;
+          const resp = await api.login(payload as LoginReq);
+          // A phone session may have won the race while wx.login was in flight.
+          if (this.token !== originalToken) return !!this.token;
+          this.token = resp.token;
+          this.user = resp.user;
+          uni.setStorageSync(STORAGE.token, resp.token);
+          void this.bindPushDevice();
           return true;
         } catch {
           return false;
@@ -110,6 +124,36 @@ export const useUserStore = defineStore("user", {
       return this.pendingInviter;
     },
 
+    /** Atomically accept the verified canonical account; no old private cache survives an account switch. */
+    async loginByWxPhone(phoneCode: string) {
+      const originalToken = this.token;
+      const previousNo = this.user?.userNo ?? this.user?.cUserNo;
+      const resp = await api.loginByWxPhone({ phoneCode,
+        ...(this.pendingInviter ? { inviterNo: this.pendingInviter } : {}), agreed: true });
+      if (this.token !== originalToken) throw new Error("会话已更新，请重试");
+      if (!resp.token || !resp.user?.phone || !resp.user.userNo) throw new Error("登录响应不完整，请重试");
+      const userChanged = previousNo !== resp.user.userNo;
+      this.token = resp.token;
+      this.user = resp.user;
+      this.phoneIdentityNo = resp.user.userNo;
+      this.phoneLoginRequired = false;
+      uni.setStorageSync(STORAGE.token, resp.token);
+      this.pendingInviter = "";
+      if (userChanged) this.clearAccountCaches();
+      void this.bindPushDevice();
+      return { userChanged };
+    },
+
+    clearAccountCaches() {
+      useCartStore().$reset();
+      useCommunityStore().clear();
+      const location = useLocationStore();
+      location.active = null;
+      location.list = [];
+      location.loading = false;
+      location.pickedByUser = false;
+    },
+
     async login(req: LoginReq) {
       const resp = await api.login(req);
       this.token = resp.token;
@@ -120,7 +164,11 @@ export const useUserStore = defineStore("user", {
        * 留着的话，这台设备上后来换个人登录也会被算成同一个人邀来的。
        * 清在这里而不是提交表单那一步：登录失败时它还得留着，供下一次重试用。
        */
-      this.pendingInviter = "";
+      if (req.grantType !== "WX_MINI") {
+        this.pendingInviter = "";
+        this.phoneLoginRequired = false;
+        this.phoneIdentityNo = resp.user.phone ? resp.user.userNo || resp.user.cUserNo : "";
+      }
       // 游客期间选的社区要补同步 —— 否则登录这一步反而把他刚做的选择丢了
       await useCommunityStore().syncBinding();
       // App 端绑定推送设备。**不 await**：拿 clientId 要等推送服务初始化，
@@ -142,7 +190,9 @@ export const useUserStore = defineStore("user", {
 
     async loadProfile() {
       if (!this.token) return null;
-      this.user = await api.profile();
+      const token = this.token;
+      const profile = await api.profile();
+      if (this.token === token) this.user = profile;
       return this.user;
     },
 
@@ -172,6 +222,7 @@ export const useUserStore = defineStore("user", {
       } catch {
         // 吞掉：本地必须清干净，理由见上
       }
+      this.phoneLoginRequired = true;
       this.clearSession();
     },
 
@@ -185,6 +236,7 @@ export const useUserStore = defineStore("user", {
     clearSession() {
       this.token = "";
       this.user = null;
+      this.clearAccountCaches();
       uni.removeStorageSync(STORAGE.token);
     },
   },
@@ -192,6 +244,6 @@ export const useUserStore = defineStore("user", {
   persist: {
     key: STORAGE.user,
     // pendingInviter 一并持久化：从落地到登录中间可能隔着一次冷启动
-    pick: ["user", "pendingInviter"],
+    pick: ["user", "pendingInviter", "phoneIdentityNo", "phoneLoginRequired"],
   },
 });

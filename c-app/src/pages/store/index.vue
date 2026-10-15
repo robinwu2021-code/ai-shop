@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BizLoginConsent from "@/components/biz/biz-login-consent.vue";
+import BizPhoneLoginButton from "@/components/biz/biz-phone-login-button.vue";
 // 门店门户（TDD-C端门店化与门店门户 s03–s07）。**单位是门店** —— 门头是门店名，
 // 主体名只在「店铺」页签最后一行「经营主体与资质」里露面（电商法 §15 要求亮照）。
 //
@@ -14,7 +16,6 @@
 // 不经过首页与选社区：扫码的人是来买东西的，游客可逛，加购时再引导登录。
 import { computed, ref } from "vue";
 import { onLoad, onPageScroll, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
-import { phoneRequired, withPhone, requirePhoneOnEnter, onPhoneBound, onPhoneGateClose } from "@/shared/phone-required";
 import { useI18n } from "vue-i18n";
 import { fromE6, openLocation } from "@shared/ports/location";
 import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
@@ -255,7 +256,6 @@ onLoad(async (q) => {
   }
   await load();
   // 进页即弹（2026-10-08 拍板）：没手机号就把授权层摆出来
-  void requirePhoneOnEnter();
 });
 
 /** scene 没编码过时 decodeURIComponent 会对「%」抛错 —— 解不开就用原样，别整页崩掉。 */
@@ -308,7 +308,7 @@ async function addGoods(g: Goods, e: unknown) {
 
 async function toggleFav() {
   // 走统一闸：没手机号先弹授权层，绑完自动把这次收藏补上（不用再点一次）
-  if (!(await withPhone(doToggleFav))) return;
+  if (useUserStore().isPhoneLogin) await doToggleFav();
 }
 
 async function doToggleFav() {
@@ -446,13 +446,11 @@ onShareTimeline(() =>
           <text v-if="solid" class="txt-title sh-fill topbar__title">{{ storeName }}</text>
           <template v-else>
             <view class="sh-fill"></view>
-            <view class="topbar__btn sh-center sh-hit" :style="btnStyle" @tap="toggleFav">
-              <sh-icon
-                :name="data.favorited ? 'starFilled' : 'star'"
-                :size="32"
-                :color="data.favorited ? 'var(--sh-star)' : iconColor"
-              ></sh-icon>
-            </view>
+            <biz-phone-login-button class="topbar__btn" :label="String($t(data.favorited ? 'goods.favorited' : 'goods.favorite'))"
+              :style="btnStyle" size="sm" tone="soft" @ready="doToggleFav">
+              <sh-icon :name="data.favorited ? 'starFilled' : 'star'" :size="32"
+                :color="data.favorited ? 'var(--sh-star)' : iconColor" />
+            </biz-phone-login-button>
             <!-- 分享：面板里「发给朋友」/「生成海报」（s08）。链接与海报码都带门店号 -->
             <biz-share-act
               :path="sharePath"
@@ -512,6 +510,10 @@ onShareTimeline(() =>
         一整块白面板：页签（文字 + 短线，与下面的分类 chip 分开两种样子）→ 当前页签的内容。
         「我常买」一栏 2026-09-29 用户要求去掉。
       -->
+      <view v-if="!user.isPhoneLogin" class="sh-block">
+        <text class="sh-hint">{{ $t('phoneLogin.tip') }}</text>
+        <biz-login-consent />
+      </view>
       <view class="sh-block panel">
         <view class="panel__tabs">
           <sh-tabs line :items="tabs" :active="tab" @change="switchTab"></sh-tabs>
@@ -578,8 +580,6 @@ onShareTimeline(() =>
         :store="{ storeNo, storeName, announcement: data.store.announcement }"
       ></biz-poster>
     </template>
-    <phone-gate :visible="phoneRequired.visible.value" :suggest="phoneRequired.suggest.value"
-    @done="onPhoneBound" @close="onPhoneGateClose" />
 </sh-scaffold>
 </template>
 

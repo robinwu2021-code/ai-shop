@@ -70,7 +70,8 @@ class ProfileAndPasswordTest {
         when(tokenStore.issue(any())).thenReturn("tk");
 
         AuthServiceImpl auth = new AuthServiceImpl(
-                userMapper, identityMapper, tokenStore,
+                userMapper, identityMapper, mock(ai.neargo.shop.spi.user.WxPhonePort.class),
+                mock(ai.neargo.shop.user.service.MpSessionService.class), tokenStore,
                 mock(ai.neargo.shop.common.OtpStore.class),
                 mock(ai.neargo.shop.common.ratelimit.OtpSendGuard.class),
                 mock(ai.neargo.shop.spi.notify.SmsPort.class),
@@ -216,7 +217,7 @@ class ProfileAndPasswordTest {
         org.springframework.security.core.context.SecurityContextHolder.getContext()
                 .setAuthentication(auth);
         return new UserServiceImpl(
-                userMapper, identityMapper,
+                userMapper, identityMapper, mock(ai.neargo.shop.user.service.MpSessionService.class),
                 mock(ai.neargo.shop.spi.user.PickupQueryPort.class),
                 mock(ai.neargo.shop.common.OtpStore.class),
                 mock(ai.neargo.shop.spi.trade.OpenOrderPort.class),

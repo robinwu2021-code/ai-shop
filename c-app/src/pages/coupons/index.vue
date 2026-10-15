@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BizLoginPanel from "@/components/biz/biz-login-panel.vue";
 /*
  * 我的券（原型 s24）。与 B 端券列表同一种卡：名称 + 状态 / 一行信息。
  * 买家那边的「状态」就是**还能不能用、还能用多久**：「7 天后过期」「剩 3 次」「可用」。
@@ -8,14 +9,16 @@
  *
  * 到店出示的券（次卡等）点进去是出示码（s25）；下单抵扣的券不用点，结算时自动减。
  */
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
+import { useUserStore } from "@/stores/user";
 import { api } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
 import { money } from "@shared/utils/format";
 import type { MyStoreCoupon, UserCoupon } from "@shared/types";
 
+const user = useUserStore();
 const { t } = useI18n();
 const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
 
@@ -34,6 +37,8 @@ const loaded = ref(false);
 const failed = ref(false);
 
 async function load() {
+  if (!user.isPhoneLogin) return;
+  const token = user.token;
   try {
     /*
      * **走「我的券」，不走领券中心**（TDD-C端我的券接真接口）。
@@ -47,6 +52,7 @@ async function load() {
       api.myStoreCoupons(),
       api.myCoupons().catch(() => [] as UserCoupon[]),
     ]);
+    if (user.token !== token || !user.isPhoneLogin) return;
     store.value = mine;
     /*
      * **按券号去重**（优惠券全链路梳理 批 1）：/mp/coupon/mine 现在也带上了新券表里
@@ -56,6 +62,7 @@ async function load() {
     mineCoupons.value = list.filter((u) => !seen.has(u.userCouponNo));
     failed.value = false;
   } catch {
+    if (user.token !== token || !user.isPhoneLogin) return;
     failed.value = true;
   }
   loaded.value = true;
@@ -138,10 +145,18 @@ function open(r: Row) {
 onShow(() => {
   void load();
 });
+// Covers both a native phone login and a known phone account restored silently after first onShow.
+watch(() => user.isPhoneLogin ? user.token : "", () => {
+  store.value = []; mineCoupons.value = [];
+  loaded.value = false; failed.value = false;
+  void load();
+});
 </script>
 
 <template>
   <sh-scaffold title-key="coupon.title" :failed="failed" @retry="load">
+    <biz-login-panel v-if="!user.isPhoneLogin" />
+    <template v-if="user.isPhoneLogin">
     <sh-tabs :items="TABS" :active="tab" @change="(k: string) => (tab = k as Tab)"></sh-tabs>
 
     <view v-for="r in shown" :key="r.key" class="sh-card card" @tap="open(r)">
@@ -153,6 +168,7 @@ onShow(() => {
     </view>
 
     <sh-empty v-if="!shown.length" :pending="!loaded" :text="tt('coupon.empty')" :tip="tt('coupon.emptyTip')"></sh-empty>
+      </template>
   </sh-scaffold>
 </template>
 

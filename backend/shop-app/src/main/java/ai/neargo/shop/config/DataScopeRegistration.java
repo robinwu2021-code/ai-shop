@@ -309,6 +309,8 @@ public class DataScopeRegistration implements DataScopeRegistrar {
          * `pmt_coupon_scope` 没有 entity_no（它挂在 coupon_no 上），
          * 因此**不登记**：它从不作为检索入口，总是随券模板一起查。
          */
+        // 小程序会话上下文只能被其消费者本人读取；token 哈希不能成为跨账号的查询捷径。
+        registry.register("usr_mp_session", Map.of(ScopeDim.SELF, "user_no"));
         registry.register("pmt_coupon", Map.of(ScopeDim.MERCHANT, "entity_no"));
 
         /*

@@ -9,9 +9,9 @@
 //   APPOINTMENT  → 无收货，展示已选预约时段
 //   INSTANT      → 无收货，发码到订单
 // 差异只在这一块，金额与提交是共用的 —— 与 strategies 的分层保持一致。
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { onLoad, onShow } from "@dcloudio/uni-app";
+import { onHide, onLoad, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { ApiError } from "@shared/net/http-client";
 import { checkoutKey, checkoutKeyBoundTo } from "@/shared/checkout-key";
@@ -19,7 +19,8 @@ import { segmentByMerchant, useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
 import { useLocationStore } from "@/stores/location";
 import { useUserStore } from "@/stores/user";
-import PhoneGate from "@/components/phone-gate.vue";
+import BizLoginConsent from "@/components/biz/biz-login-consent.vue";
+import BizPhoneLoginButton from "@/components/biz/biz-phone-login-button.vue";
 import { ACTIVITY_NONE, FEATURES, FULFILLMENT, PAY_MODE, PICKUP_FAR_M, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { datetime, distance as fmtDistance, money } from "@shared/utils/format";
 import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
@@ -36,8 +37,15 @@ const { t } = useI18n();
 const cart = useCartStore();
 const community = useCommunityStore();
 const user = useUserStore();
+const loginContinuation = ref(false);
+const revalidating = ref(false);
+let pageGeneration = 0;
+let pageActive = true;
+function cancelCheckoutContinuation() { pageActive = false; pageGeneration++; loginContinuation.value = false; revalidating.value = false; }
+onHide(cancelCheckoutContinuation);
+onBeforeUnmount(cancelCheckoutContinuation);
 /** 「先留个手机号」弹层。绑完自动继续提交，不用他再点一次 */
-const phoneGate = ref(false);
+
 
 const fulfillment = ref<FulfillmentType>(FULFILLMENT.PICKUP);
 const items = ref<CartItem[]>([]);
@@ -677,6 +685,7 @@ async function refreshAmount() {
     amountPending.value = false;
     return;
   }
+  const token = user.token;
   const seq = ++amountSeq;
   amountPending.value = true;
   try {
@@ -694,7 +703,7 @@ async function refreshAmount() {
       openGroup: openGroup.value || undefined,
       activityChoices: choicesPayload(),
     });
-    if (seq !== amountSeq) return;
+    if (seq !== amountSeq || user.token !== token) return;
     serverAmount.value = p.amount;
     endedNotice.value = endedActivities(discountLines.value, p.discountLines ?? []);
     discountLines.value = p.discountLines ?? [];
@@ -729,8 +738,9 @@ async function refreshAmount() {
     // 券的可用性跟着金额走（门槛按这一单的商品额算），所以预览成功就重算一次
     void loadCouponBest();
     applyPickupGroups(p.subOrders ?? []);
+    return true;
   } catch (e) {
-    if (seq !== amountSeq) return;
+    if (seq !== amountSeq || user.token !== token) return;
     /*
      * 他选的活动此刻不成立了（结束了、配额刚用完）：清掉选择、说一句、重新按最省组合问一次。
      * 不静默换 —— 后端也不会替他换（40035）。
@@ -760,6 +770,7 @@ async function refreshCapability() {
     capability.value = null;
     return;
   }
+  const token = user.token;
   const seq = ++capabilitySeq;
   try {
     const cap = await api.orderCapability({
@@ -770,10 +781,11 @@ async function refreshCapability() {
     });
     // 同 refreshAmount：过期响应整份丢掉，否则「改成快递」之后
     // 迟到的自提能力会把当面付那个选项又放回屏幕上
-    if (seq !== capabilitySeq) return;
+    if (seq !== capabilitySeq || user.token !== token) return;
     capability.value = cap;
+    return true;
   } catch {
-    if (seq !== capabilitySeq) return;
+    if (seq !== capabilitySeq || user.token !== token) return;
     // 拿不到就不提示，但**不拦下单**：接口挂了是我们的问题，不该变成他买不了
     capability.value = null;
   }
@@ -891,7 +903,7 @@ const submitBlockedReason = computed(() => {
   return "";
 });
 
-const canSubmit = computed(() => !submitBlockedReason.value && !submitting.value);
+const canSubmit = computed(() => !submitBlockedReason.value && !submitting.value && !revalidating.value);
 
 /** 地址簿这次没取到。**与「一条地址都没存过」是两件事** */
 const addressFailed = ref(false);
@@ -899,10 +911,13 @@ const addressFailed = ref(false);
 const couponFailed = ref(false);
 
 async function loadAddresses() {
+  const token = user.token;
   // 拉挂了 `addresses` 停在空，下面那个 `v-else` 就渲染成「选择收货地址 · 添加」——
   // 顾客会去新建一条，进去发现自己明明存过几条
   try {
-    addresses.value = await api.addressList();
+    const next = await api.addressList();
+    if (user.token !== token) return;
+    addresses.value = next;
     addressFailed.value = false;
   } catch {
     addressFailed.value = true;
@@ -914,6 +929,7 @@ async function loadAddresses() {
       addresses.value[0]?.addressId ??
       "";
   }
+  return true;
 }
 
 /** 金额卡里逐条列的只有活动 —— 券那一笔由券那一行自己说（见模板里的注释） */
@@ -1009,13 +1025,16 @@ function couponMeta(u: UserCoupon): string {
 }
 
 async function loadCouponBest() {
+  const token = user.token;
   try {
-    couponBest.value = await api.couponBest(
+    const best = await api.couponBest(
       items.value.map((it) => ({ goodsNo: it.goodsNo, skuNo: it.skuNo, qty: it.qty })),
     );
+    if (user.token !== token) return;
+    couponBest.value = best;
     couponFailed.value = false;
   } catch {
-    couponFailed.value = true;
+    if (user.token === token) couponFailed.value = true;
   }
 }
 
@@ -1076,8 +1095,13 @@ function submitFailText(e: unknown): string {
   return (e as Error).message;
 }
 
-async function submit() {
-  if (!canSubmit.value) return;
+async function submit(fromGesture = false) {
+  if (!user.isPhoneLogin || !canSubmit.value || !pageActive) return;
+  const generation = pageGeneration;
+  const token = user.token;
+  const current = () => pageActive && pageGeneration === generation && user.token === token;
+  submitting.value = true;
+  try {
   /*
    * **线下付款的单：就在这一次点击里问订阅授权**（TDD-物流模块 批 4 · TDD-微信订阅消息优先 AC7）。
    * 问哪几个按履约方式定（快递三个节点 / 开始配送 / 到货，拼团再加团结果）—— 见 orderSubscribeTmpls。
@@ -1086,7 +1110,7 @@ async function submit() {
    * （支付页原来就是这么失效的）。线上付款的单这里不问：支付页在支付回调那一刻问。
    * 不等它：授权框与下单各走各的，结果出来再上报；这一单没下成，额度留给下一单。
    */
-  if (payMode.value === PAY_MODE.OFFLINE) {
+  if (payMode.value === PAY_MODE.OFFLINE && fromGesture) {
     void requestSubscribe(orderSubscribeTmpls(fulfillment.value, { offline: true, grouped: grouped.value }))
       .then((r) => {
         if (r.accepted.length) void api.subscribeReport(r.accepted, true);
@@ -1120,7 +1144,7 @@ async function submit() {
    *
    * 拦但不禁止：说清楚再让他自己定。他可能就是要寄到公司。
    */
-  if (!(await confirmPlaceMismatch())) return;
+  if (!(await confirmPlaceMismatch()) || !current()) return;
   if (needPickup.value && pickupMissing.value.length) {
     uni.showToast({
       title: String(t("confirm.pickupNoneFor", { names: pickupMissing.value.join("、") })),
@@ -1138,12 +1162,6 @@ async function submit() {
    * 弹在这一刻而不是启动时：现在他手里有一车东西、正要付钱，
    * 「为什么要我的号」不用解释 —— 而启动时问是最典型的劝退。
    */
-  if (!user.user?.phone) {
-    phoneGate.value = true;
-    return;
-  }
-  submitting.value = true;
-  try {
     const body = {
       items: items.value.map((it) => ({
         goodsNo: it.goodsNo,
@@ -1174,7 +1192,9 @@ async function submit() {
     const fingerprint = JSON.stringify(body);
     const order = await api.createOrder({ ...body, idempotencyKey: checkoutKey(fingerprint) });
     checkoutKeyBoundTo(fingerprint, order.payDeadlineAt);
+    if (!current()) return;
     await cart.load();
+    if (!current()) return;
     /*
      * **线上支付：一次点击到微信面板**（执行计划 B3）。带 `auto=1` 过去，
      * 收银台页加载完直接拉起支付 —— 用户不必再点第二次「立即支付」。
@@ -1183,6 +1203,7 @@ async function submit() {
     const auto = payMode.value === PAY_MODE.ONLINE ? "&auto=1" : "";
     uni.redirectTo({ url: `${ROUTES.pay}?orderNo=${order.orderNo}${auto}` });
   } catch (e) {
+    if (!current()) return;
     uni.showToast({ title: submitFailText(e), icon: "none" });
     // 券出问题就当场摘掉并重算：留着那张券，他再点一次还是同样的错
     if (e instanceof ApiError && COUPON_ERRORS.has(e.code)) {
@@ -1235,6 +1256,7 @@ onLoad((q) => {
  * （那一页也是「从别处返回时状态会变，必须重新拉」）。
  */
 onShow(async () => {
+  pageActive = true;
   const picked = pickedAddress.take();
   await loadAddresses();
   // 放在 load 之后：新增的那条要先进 addresses，`address` 这个 computed 才找得到它
@@ -1248,7 +1270,8 @@ onShow(async () => {
   }
 });
 
-onMounted(async () => {
+async function loadAccountOffers() {
+  const token = user.token;
   /*
    * `allSettled` 而不是 `all`：此前任一挂掉两条都静默没了 ——
    * 券那一行显示「无可用券」，而顾客明明有券；积分抵扣那一行直接不出现。
@@ -1263,10 +1286,70 @@ onMounted(async () => {
     api.myCoupons(),
     FEATURES.points ? api.pointAccount() : Promise.resolve(null),
   ]);
+  if (user.token !== token) return;
   if (c.status === "fulfilled") coupons.value = c.value;
   couponFailed.value = c.status === "rejected";
   if (a.status === "fulfilled" && a.value) pointBalance.value = a.value.balance;
-});
+  return c.status === "fulfilled" && a.status === "fulfilled";
+}
+onMounted(loadAccountOffers);
+
+/** Authorization has finished; retain item intent, refresh every account-owned choice and server price. */
+async function onPhoneReady(result: { userChanged: boolean }) {
+  loginContinuation.value = false;
+  if (!user.isPhoneLogin || !pageActive || revalidating.value) return;
+  revalidating.value = true;
+  const generation = pageGeneration;
+  const token = user.token;
+  const current = () => pageActive && pageGeneration === generation && user.token === token;
+  try {
+  amountSeq++;
+  capabilitySeq++;
+  pointsSeq++;
+  const before = JSON.stringify({ amount: amount.value?.payableMinor, address: addressId.value,
+    fulfillment: fulfillment.value, choices: addressOverrides.value });
+  if (result.userChanged) {
+    addresses.value = [];
+    addressId.value = "";
+    addressOverrides.value = {};
+    coupons.value = [];
+    couponNo.value = "";
+    pointBalance.value = 0;
+    usePoints.value = false;
+    offers.value = null;
+    activityChoices.value = {};
+    suggestionApplied.value = false;
+    if (!(await cart.load().then(() => true, () => false))) {
+      if (current()) uni.showToast({ title: String(t("common.loadFailed")), icon: "none" });
+      return;
+    }
+  }
+  if (!current()) return;
+  const checks = await Promise.all([loadAddresses(), loadAccountOffers(), refreshCapability()]);
+  if (!current()) return;
+  const priced = await refreshAmount();
+  if (!current()) return;
+  if (!checks.every(Boolean) || !priced || amountStale.value || amountPending.value) {
+    uni.showToast({ title: String(t("common.loadFailed")), icon: "none" });
+    return;
+  }
+  const after = JSON.stringify({ amount: amount.value?.payableMinor, address: addressId.value,
+    fulfillment: fulfillment.value, choices: addressOverrides.value });
+  if (result.userChanged || before !== after || payMode.value === PAY_MODE.OFFLINE) {
+    uni.showToast({ title: String(t("phoneLogin.reviewOrder")), icon: "none" });
+    return;
+  }
+  revalidating.value = false;
+  await submit();
+  } finally {
+    if (pageGeneration === generation) revalidating.value = false;
+  }
+}
+function onSubmitReady(result: { userChanged: boolean }) {
+  // An ordinary tap already has a formal session and may ask for subscription in this user gesture.
+  if (result.userChanged || loginContinuation.value) return onPhoneReady(result);
+  return submit(true);
+}
 </script>
 
 <template>
@@ -1664,6 +1747,10 @@ onMounted(async () => {
       </view>
     </sh-sheet>
 
+    <view v-if="!user.isPhoneLogin" class="sh-block">
+      <text class="sh-hint">{{ $t('phoneLogin.tip') }}</text>
+      <biz-login-consent />
+    </view>
     <sh-actionbar pill="lead" :pad="200">
       <view class="sh-fill">
         <text class="sh-muted">{{ amountPending ? $t("confirm.calculating") : $t("confirm.payable") }}</text>
@@ -1675,17 +1762,13 @@ onMounted(async () => {
           {{ $t("confirm.savedTotal", { p: money(amount.discountMinor) }) }}
         </text>
       </view>
-      <view
-        class="txt-body sh-btn actionbar__btn"
-        :class="{ 'is-disabled': !canSubmit }"
-        @tap="submit"
-      >
-        {{ submitting
-          ? $t("confirm.submitting")
-          : payMode === PAY_MODE.ONLINE
-            ? $t("confirm.payNow", { p: money(amount?.payableMinor ?? 0) })
-            : $t("confirm.submit") }}
-      </view>
+      <biz-phone-login-button class="actionbar__btn" size="md"
+        :label="String(!user.isPhoneLogin ? $t('phoneGate.oneTap') : submitting ? $t('confirm.submitting')
+          : payMode === PAY_MODE.ONLINE ? $t('confirm.payNow', { p: money(amount?.payableMinor ?? 0) }) : $t('confirm.submit'))"
+        :disabled="user.isPhoneLogin ? !canSubmit : !items.length || submitting"
+        :loading="submitting || revalidating"
+        @authorize="loginContinuation = true" @ready="onSubmitReady"
+        @cancel="loginContinuation = false" @error="loginContinuation = false" />
     </sh-actionbar>
     </template>
 
@@ -1702,12 +1785,6 @@ onMounted(async () => {
       多那一次点击，人会以为刚才那下没生效。
     -->
     <!-- 所选地址上已有收货电话的话带进去：同一个号不让人输第二遍，只剩验证码 -->
-    <phone-gate
-      :visible="phoneGate"
-      :suggest="address?.phone"
-      @done="((phoneGate = false), submit())"
-      @close="phoneGate = false"
-    />
   </sh-scaffold>
 </template>
 
@@ -1815,7 +1892,6 @@ onMounted(async () => {
 }
 .actionbar__btn {
   flex: 0 0 auto;
-  padding-inline: 52rpx;
 }
 
 

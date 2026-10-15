@@ -503,3 +503,5 @@ export interface PointsDeductibleQuery {
    */
   payMode?: string;
 }
+
+export type { WxPhoneLoginReq } from "@shared/types";

@@ -30,6 +30,8 @@ vi.mock("@dcloudio/uni-app", () => ({
 
 const orderPreview = vi.fn();
 const orderCapability = vi.fn();
+const orderCalls = vi.hoisted(() => ({ create: vi.fn(), phone: vi.fn() }));
+vi.mock("@/ports/phone-login", () => ({ nativePhoneAuthorization: true }));
 vi.mock("@/api", () => ({
   api: {
     orderPreview: (...a: unknown[]) => orderPreview(...a),
@@ -42,7 +44,8 @@ vi.mock("@/api", () => ({
     couponBest: vi.fn(() => Promise.resolve({ discountMinor: 0, usable: [], unusable: [] })),
     pointAccount: vi.fn(() => Promise.resolve({ balance: 0 })),
     addressList: vi.fn(() => Promise.resolve([])),
-    createOrder: vi.fn(),
+    createOrder: orderCalls.create,
+    loginByWxPhone: orderCalls.phone,
     cartList: vi.fn(() => Promise.resolve([])),
   },
   idempotencyKey: () => "k1",
@@ -51,6 +54,9 @@ vi.mock("@/api", () => ({
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (k: string) => k }) }));
 vi.mock("@ai-shop/ui/prompt", () => ({ pick: vi.fn(), prompt: vi.fn(), confirm: vi.fn() }));
 
+import { api } from "@/api";
+import { onHide } from "@dcloudio/uni-app";
+import { useUserStore } from "@/stores/user";
 import ConfirmPage from "@/pages/order-confirm/index.vue";
 import { useCartStore } from "@/stores/cart";
 
@@ -119,8 +125,12 @@ async function settle(w: { vm: { $nextTick: () => Promise<unknown> } }) {
 describe("结算页", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+    useUserStore().token = "formal";
+    useUserStore().user = { userNo: "U1", phone: "13800138000" } as never;
     vi.clearAllMocks();
     query = {};
+    Object.assign(uni, { redirectTo: vi.fn() });
+    orderCalls.create.mockResolvedValue({ orderNo: "O1" });
     orderPreview.mockResolvedValue(amount(2980));
     orderCapability.mockResolvedValue({ merchants: [], usablePayMethods: null, usablePayModes: ["ONLINE"] });
   });
@@ -222,4 +232,78 @@ describe("结算页", () => {
 
     expect(w.text()).toContain("confirm.estimateOnly");
   });
+});
+
+
+describe("checkout phone authorization", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia()); vi.clearAllMocks();
+    useUserStore().token = "technical"; useUserStore().user = { userNo: "U1", phone: "" } as never;
+    query = { fulfillment: FULFILLMENT.STORE_VERIFY };
+    orderPreview.mockResolvedValue(amount(2980));
+    orderCapability.mockResolvedValue({ merchants: [], usablePayMethods: null, usablePayModes: ["ONLINE"] });
+    orderCalls.create.mockResolvedValue({ orderNo: "O1" });
+    orderCalls.phone.mockResolvedValue({ token: "formal", user: { userNo: "U1", phone: "13800138000" } });
+    Object.assign(uni, { redirectTo: vi.fn() });
+  });
+  const checkoutItem = () => item({ fulfillment: FULFILLMENT.STORE_VERIFY });
+  it("tap and cancel never create an order", async () => {
+    const w = await render([checkoutItem()]);
+    const button = w.get("button.actionbar__btn");
+    expect(button.attributes("open-type")).toBe("getPhoneNumber");
+    await button.trigger("tap");
+    await button.trigger("getphonenumber", { detail: { errMsg: "getPhoneNumber:fail user deny" } });
+    await settle(w); expect(orderCalls.create).not.toHaveBeenCalled(); w.unmount();
+  });
+  it("successful login resumes online checkout once after fresh preview", async () => {
+    const w = await render([checkoutItem()]);
+    await w.get("button.actionbar__btn").trigger("getphonenumber", { detail: { code: "fresh-phone" } });
+    await settle(w); await settle(w);
+    expect(orderCalls.phone).toHaveBeenCalledOnce(); expect(orderCalls.create).toHaveBeenCalledOnce();
+    expect(orderCalls.create.mock.calls[0][0].items).toEqual([{ goodsNo: "G1", skuNo: "S1", qty: 1 }]); w.unmount();
+  });
+  it("account switch preserves SKU intent and requires a new user review", async () => {
+    orderCalls.phone.mockResolvedValue({ token: "formal", user: { userNo: "OWNER", phone: "13800138000" } });
+    const w = await render([checkoutItem()]);
+    await w.get("button.actionbar__btn").trigger("getphonenumber", { detail: { code: "owner-phone" } });
+    await settle(w); await settle(w);
+    expect(orderCalls.create).not.toHaveBeenCalled(); expect(w.text()).toContain("米");
+    expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: "phoneLogin.reviewOrder" }));
+    w.unmount();
+  });
+  it("changed server price requires review instead of creating an order", async () => {
+    const w = await render([checkoutItem()]);
+    orderPreview.mockResolvedValue(amount(3990));
+    await w.get("button.actionbar__btn").trigger("getphonenumber", { detail: { code: "fresh-phone" } });
+    await settle(w); await settle(w); expect(orderCalls.create).not.toHaveBeenCalled(); w.unmount();
+  });  it("leaving checkout during post-login validation cancels the pending order", async () => {
+    const w = await render([checkoutItem()]);
+    let finish!: (value: unknown) => void;
+    orderPreview.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    await w.get("button.actionbar__btn").trigger("getphonenumber", { detail: { code: "fresh-phone" } });
+    await settle(w);
+    for (const [callback] of vi.mocked(onHide).mock.calls) callback();
+    finish(amount(2980)); await settle(w); await settle(w);
+    expect(orderCalls.create).not.toHaveBeenCalled(); w.unmount();
+  });
+  it("failed post-login preview cannot automatically submit a local estimate", async () => {
+    orderPreview.mockRejectedValue(new Error("offline"));
+    const w = await render([checkoutItem()]);
+    await w.get("button.actionbar__btn").trigger("getphonenumber", { detail: { code: "fresh-phone" } });
+    await settle(w); await settle(w); expect(orderCalls.create).not.toHaveBeenCalled(); w.unmount();
+  });
+  it("the submit button stays locked while post-login account choices refresh", async () => {
+    const w = await render([checkoutItem()]);
+    let finish!: (value: never[]) => void;
+    vi.mocked(api.addressList).mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    await w.get("button.actionbar__btn").trigger("getphonenumber", { detail: { code: "fresh-phone" } });
+    await settle(w);
+    try {
+      await w.get("button.actionbar__btn").trigger("tap"); await settle(w);
+      expect(orderCalls.create).not.toHaveBeenCalled();
+    } finally {
+      finish([]); await settle(w); await settle(w); w.unmount();
+    }
+  });
+
 });

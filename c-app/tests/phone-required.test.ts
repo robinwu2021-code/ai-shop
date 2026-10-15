@@ -84,12 +84,12 @@ describe("要手机号的统一闸", () => {
   });
 
   /** 进页即弹：没号就摆出来，有号什么也不做 */
-  it("★★ 进页即弹：没号才弹", async () => {
+  it("browse entry never opens phone authorization", async () => {
     const user = useUserStore();
     user.token = "ctk_x";
     user.user = { phone: "" } as never;
     await requirePhoneOnEnter();
-    expect(phoneRequired.visible.value).toBe(true);
+    expect(phoneRequired.visible.value).toBe(false);
 
     onPhoneGateClose();
     user.user = { phone: "13900000000" } as never;

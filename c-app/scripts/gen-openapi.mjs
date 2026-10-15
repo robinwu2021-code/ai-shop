@@ -163,6 +163,7 @@ const RESPONSE_TYPES = {
   logout: "void",
   sendOtp: "void",
   login: "LoginResp",
+  loginByWxPhone: "WxPhoneLoginResp",
   profile: "User",
   // C-AC-08 个人资料。改资料与传头像都回**整个 User** ——
   // 一个端点做完整件事（存字节 + 落到账号），端上拿到就能直接用
@@ -276,6 +277,7 @@ const RESPONSE_TYPES = {
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
   login: "LoginReqBody",
+  loginByWxPhone: "WxPhoneLoginReq",
   bindCommunity: "BindCommunityReq",
   bindPhone: "BindPhoneReq",
   updateProfile: "UpdateProfileReq",
@@ -514,7 +516,8 @@ function toYaml(value, indent = 0) {
       const v = toYaml(value[k], indent + 1);
       const inline = typeof value[k] !== "object" || value[k] === null;
       const isEmpty = v === "{}" || v === "[]";
-      return `\n${pad}${yamlKey(k)}: ${inline || isEmpty ? v : v.startsWith("\n") ? v : `\n${"  ".repeat(indent + 1)}${v}`}`;
+      const body = inline || isEmpty ? ` ${v}` : v.startsWith("\n") ? v : `\n${"  ".repeat(indent + 1)}${v}`;
+      return `\n${pad}${yamlKey(k)}:${body}`;
     })
     .join("");
 }

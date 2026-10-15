@@ -99,13 +99,16 @@ async function onSubmit() {
 }
 
 async function bind(run: () => Promise<unknown>) {
+  const token = user.token;
   busy.value = true;
   conflict.value = false;
   try {
     await run();
+    if (user.token !== token) return;
     await user.loadProfile();
-    emit("done");
+    if (user.token === token) emit("done");
   } catch (err) {
+    if (user.token !== token) return;
     const code2 = (err as { code?: number }).code;
     if (code2 === 10409) {
       /*

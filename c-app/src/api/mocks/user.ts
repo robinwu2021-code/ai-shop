@@ -17,6 +17,7 @@ export const userMock: Pick<ShopApi,
   | "pointsDeductible"
   | "sendOtp"
   | "login"
+  | "loginByWxPhone"
   | "profile"
   | "updateProfile"
   | "uploadAvatar"
@@ -69,6 +70,18 @@ export const userMock: Pick<ShopApi,
     // 它同时决定订单的 trafficSource 与费率档（ADR-004 §5.4 / §6）
     if (req.merchantNo) db.user.merchantNo = req.merchantNo;
     return delay({ token: `mock-token-${Date.now()}`, user: { ...db.user } });
+  },
+
+  async loginByWxPhone(req) {
+    // Explicit mock authorization fixture; an empty/expired authorization must never manufacture a session.
+    if (!req.phoneCode || req.phoneCode === "expired") throw new Error("授权已失效，请重试");
+    const isNewUser = !db.user.phone;
+    if (isNewUser && !req.agreed) throw new Error("请阅读服务协议与隐私政策");
+    db.user.phone ||= "13800138000";
+    if (req.merchantNo) db.user.merchantNo = req.merchantNo;
+    persist();
+    return delay({ token: `mock-phone-${nextNo("session")}`, user: { ...db.user }, isNewUser,
+      wxRelation: "linked" as const });
   },
 
   async profile() {

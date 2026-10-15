@@ -258,7 +258,7 @@
       },
       "usage": {
         "b-app": 526,
-        "c-app": 94
+        "c-app": 93
       }
     },
     {
@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 430,
-        "c-app": 86
+        "c-app": 85
       }
     },
     {
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 46,
-        "c-app": 51
+        "c-app": 50
       }
     },
     {
@@ -558,7 +558,7 @@
       },
       "usage": {
         "b-app": 9,
-        "c-app": 16
+        "c-app": 19
       }
     },
     {
@@ -868,7 +868,7 @@
       },
       "usage": {
         "b-app": 2,
-        "c-app": 0
+        "c-app": 1
       }
     },
     {
@@ -904,7 +904,7 @@
       },
       "usage": {
         "b-app": 55,
-        "c-app": 16
+        "c-app": 17
       }
     },
     {
@@ -922,7 +922,7 @@
       },
       "usage": {
         "b-app": 39,
-        "c-app": 11
+        "c-app": 12
       }
     },
     {
@@ -962,7 +962,7 @@
       },
       "usage": {
         "b-app": 71,
-        "c-app": 16
+        "c-app": 19
       }
     },
     {
@@ -1018,7 +1018,7 @@
       },
       "usage": {
         "b-app": 113,
-        "c-app": 14
+        "c-app": 19
       }
     },
     {
@@ -1386,7 +1386,7 @@
       },
       "usage": {
         "b-app": 29,
-        "c-app": 35
+        "c-app": 34
       }
     },
     {
@@ -1420,7 +1420,7 @@
       },
       "usage": {
         "b-app": 39,
-        "c-app": 17
+        "c-app": 16
       }
     },
     {
@@ -2078,7 +2078,7 @@
       ],
       "usage": {
         "b-app": 1,
-        "c-app": 0,
+        "c-app": 1,
         "lib": 1
       },
       "note": "居中对话框的外壳：遮罩 + 居中面板 + 可选标题 + 内容插槽 + 可选动作条",
@@ -2126,7 +2126,7 @@
       ],
       "usage": {
         "b-app": 61,
-        "c-app": 37,
+        "c-app": 38,
         "lib": 1
       },
       "note": "空态",
@@ -5174,7 +5174,7 @@
         "sh-sheet",
         "sh-stepper"
       ],
-      "libClassHits": 241,
+      "libClassHits": 240,
       "localSelectors": 80,
       "localCssLines": 333,
       "rolled": []
@@ -5276,7 +5276,7 @@
       "components": [
         "sh-scaffold"
       ],
-      "libClassHits": 25,
+      "libClassHits": 26,
       "localSelectors": 15,
       "localCssLines": 62,
       "rolled": []
@@ -5433,7 +5433,7 @@
       ],
       "libClassHits": 180,
       "localSelectors": 28,
-      "localCssLines": 111,
+      "localCssLines": 110,
       "rolled": []
     },
     {
@@ -5745,9 +5745,10 @@
       "key": "c-app/app-overlay",
       "file": "c-app/src/components/app-overlay.vue",
       "components": [
-        "sh-cover"
+        "sh-cover",
+        "sh-dialog"
       ],
-      "libClassHits": 1,
+      "libClassHits": 3,
       "localSelectors": 2,
       "localCssLines": 21,
       "rolled": []
@@ -5870,6 +5871,30 @@
     },
     {
       "app": "c-app",
+      "page": "biz-login-consent",
+      "key": "c-app/biz-login-consent",
+      "file": "c-app/src/components/biz/biz-login-consent.vue",
+      "components": [],
+      "libClassHits": 3,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-login-panel",
+      "key": "c-app/biz-login-panel",
+      "file": "c-app/src/components/biz/biz-login-panel.vue",
+      "components": [
+        "sh-empty"
+      ],
+      "libClassHits": 0,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
       "page": "biz-merchant-bar",
       "key": "c-app/biz-merchant-bar",
       "file": "c-app/src/components/biz/biz-merchant-bar.vue",
@@ -5880,6 +5905,17 @@
       "libClassHits": 7,
       "localSelectors": 5,
       "localCssLines": 19,
+      "rolled": []
+    },
+    {
+      "app": "c-app",
+      "page": "biz-phone-login-button",
+      "key": "c-app/biz-phone-login-button",
+      "file": "c-app/src/components/biz/biz-phone-login-button.vue",
+      "components": [],
+      "libClassHits": 4,
+      "localSelectors": 0,
+      "localCssLines": 0,
       "rolled": []
     },
     {
@@ -6056,7 +6092,7 @@
     "tokens": 16,
     "blocks": 81,
     "components": 40,
-    "pages": 159,
+    "pages": 162,
     "gapKinds": 2
   }
 }

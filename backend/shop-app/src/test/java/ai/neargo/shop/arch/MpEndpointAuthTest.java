@@ -66,6 +66,7 @@ class MpEndpointAuthTest {
 
     /** 匿名访问回 401，已逐条实弹验证。 */
     private static final Set<String> REQUIRES_LOGIN = Set.of(
+            "POST /mp/user/login/phone",
             "GET /mp/after-sale",
             "GET /mp/after-sale/{afterSaleNo}",
             "GET /mp/cart",

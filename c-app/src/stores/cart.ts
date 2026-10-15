@@ -1,10 +1,16 @@
 // 购物车：服务端为准，本地做乐观更新。按履约方式分组结算。
 import { defineStore } from "pinia";
+import { useUserStore } from "./user";
 import { api } from "@/api";
 import { STORAGE } from "@shared/utils/constants";
 import { inTimelineSinglePage } from "@shared/ports/share";
 import { singlePageBlockedMessage } from "@/shared/single-page";
 import type { CartItem, FulfillmentType } from "@shared/types";
+
+/** An old request may complete after phone login has rotated the session. Never accept its private snapshot. */
+function assertCartSession(token: string) {
+  if (useUserStore().token !== token) throw new Error("登录状态已更新，请重试");
+}
 
 /**
  * 履约组内的一段。一段 = 结算后的一笔子订单 = **一家门店**（ADR-031）。
@@ -190,13 +196,18 @@ export const useCartStore = defineStore("cart", {
 
   actions: {
     async load() {
+      const token = useUserStore().token;
       this.loading = true;
       try {
-        this.items = await api.cartList();
+        const items = await api.cartList();
+        if (useUserStore().token !== token) return;
+        this.items = items;
         this.loaded = true;
       } finally {
-        this.loading = false;
-        this.syncSelection();
+        if (useUserStore().token === token) {
+          this.loading = false;
+          this.syncSelection();
+        }
       }
     },
 
@@ -317,6 +328,7 @@ export const useCartStore = defineStore("cart", {
      *                不带 = 跨店目录里加的购，按主体口径判（与门店化之前相同）
      */
     async add(goodsNo: string, skuNo: string, qty = 1, storeNo?: string) {
+      const token = useUserStore().token;
       /*
        * 朋友圈单页模式里加购必然失败（没有登录态、也去不了登录页）。
        * 在请求之前就说清楚：调用方都会把 message toast 出来，不用各页各判一遍。
@@ -324,7 +336,9 @@ export const useCartStore = defineStore("cart", {
       if (inTimelineSinglePage()) {
         throw new Error(singlePageBlockedMessage());
       }
-      this.items = await api.cartAdd(goodsNo, skuNo, qty, storeNo);
+      const next = await api.cartAdd(goodsNo, skuNo, qty, storeNo);
+      assertCartSession(token);
+      this.items = next;
       this.selectAdded(skuNo);
     },
 
@@ -339,16 +353,21 @@ export const useCartStore = defineStore("cart", {
      * 拿过期的「车里没有」去 add，正是累加的来源。
      */
     async setForCheckout(goodsNo: string, skuNo: string, qty: number, storeNo?: string) {
+      const token = useUserStore().token;
       if (inTimelineSinglePage()) {
         throw new Error(singlePageBlockedMessage());
       }
       const want = Math.max(qty, 1);
-      this.items = await api.cartList();
+      const fresh = await api.cartList();
+      assertCartSession(token);
+      this.items = fresh;
       this.loaded = true;
       const existing = this.items.find((i) => i.skuNo === skuNo);
-      this.items = existing
+      const next = existing
         ? await api.cartUpdate(skuNo, want)
         : await api.cartAdd(goodsNo, skuNo, want, storeNo);
+      assertCartSession(token);
+      this.items = next;
       this.selectAdded(skuNo);
     },
 
@@ -368,11 +387,17 @@ export const useCartStore = defineStore("cart", {
       this.syncSelection();
     },
     async update(skuNo: string, qty: number) {
-      this.items = await api.cartUpdate(skuNo, qty);
+      const token = useUserStore().token;
+      const next = await api.cartUpdate(skuNo, qty);
+      assertCartSession(token);
+      this.items = next;
       this.syncSelection();
     },
     async remove(skuNos: string[]) {
-      this.items = await api.cartRemove(skuNos);
+      const token = useUserStore().token;
+      const next = await api.cartRemove(skuNos);
+      assertCartSession(token);
+      this.items = next;
       this.selected = this.selected.filter((no) => !skuNos.includes(no));
       this.syncSelection();
     },

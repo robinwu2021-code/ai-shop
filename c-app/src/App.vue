@@ -6,6 +6,7 @@ import { guardSinglePageNavigation } from "@/shared/single-page";
 import { configureShell } from "@ai-shop/ui/shell";
 import { ROUTES, TABS, TAB_ROUTES } from "@shared/utils/constants";
 import { initPush } from "@shared/ports/push";
+import { recoverSession } from "@/shared/session-recovery";
 import { setUnauthorizedHandler } from "@shared/net/http-client";
 import { flyState, registerCartAnchor } from "@/shared/fly";
 import { useThemeStore } from "@ai-shop/ui/stores/theme";
@@ -93,60 +94,10 @@ onLaunch(() => {
    * <p>取不到就返回空 —— 启动时那几个请求触发 401 时页面栈可能还是空的，
    * 那时没有「回得去的地方」，直接跳登录页才是对的。
    */
-  function currentRoute(): string {
-    const pages = getCurrentPages();
-    const top = pages[pages.length - 1] as undefined | { route?: string; options?: Record<string, string> };
-    if (!top?.route) return "";
-    const q = Object.entries(top.options ?? {})
-      .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&");
-    return `/${top.route}${q ? `?${q}` : ""}`;
-  }
-
-  setUnauthorizedHandler(async () => {
-    /*
-     * **先等一等还在飞的那次静默登录，再决定要不要把人踢去登录页。**
-     *
-     * 启动时的请求（购物车、资料）与静默登录是赛跑关系：先跑的那个会拿到 401。
-     * 不等的话，一次 401 就把人 reLaunch 到登录页 ——
-     * 而一秒之后静默登录成功了，**token 有了、账号也建了，他看着的却是登录页**。
-     * 真机实测就是这个样子（2026-08-22，automator 抓到：token 长度 36、
-     * 生产账号数 1→2，当前页却是 pages/login/index）。
-     *
-     * 等到了就当无事发生：调用方的那次请求确实失败了，但下一次点就是好的，
-     * 比把人扔去登录页强得多 —— 后者会让「打开即登录」这个功能整个看不见。
-     */
-    const user = useUserStore();
-    /*
-     * **401 意味着手里这个 token 已经死了 —— 先扔掉，再换一个。**
-     *
-     * 不先扔的话，`silentLogin()` 第一句 `if (this.token) return true` 会直接返回成功，
-     * 401 被当成「已经登录着」吞掉 —— 人就卡在一个拿着死令牌的假登录态里：
-     * 界面显示着旧账号，每个请求都 401，而没有任何提示、也不会去重登。
-     *
-     * 真机实测撞到过：注销之后旧 token 被服务端吊销，端上还留着，
-     * 于是重开小程序仍然「是」那个已注销的账号，**新账号根本没建**
-     * （生产库账号数纹丝不动，而按设计同一个微信此刻应当是全新用户）。
-     */
-    user.clearSession();
-    if (await user.silentLogin(true).catch(() => false)) {
-      return;
+  setUnauthorizedHandler(async (context) => {
+    if (!(await recoverSession(context))) {
+      uni.showToast({ title: String(t("phoneLogin.title")), icon: "none" });
     }
-    uni.showToast({ title: "登录已失效，请重新登录", icon: "none" });
-    /*
-     * **把当前这一页带过去，登录完要回得来。**
-     *
-     * 此前只跳 `ROUTES.login`，而登录页登完调的是 `navigateBack()` ——
-     * 我们这一跳用的是 `reLaunch`，**页面栈已经被清空了**，没有「上一页」，
-     * 于是那句 `navigateBack` 是空转：人登录成功了，却停在登录页。
-     *
-     * 这条路径不是边角：微信《小程序订单管理》要求「通过 path 进入订单中心，
-     * 检测到无登录态时引导登录，**登录后停留在订单中心页**」——
-     * 登完回不去正是平台点名要驳回的形态。
-     */
-    const back = currentRoute();
-    setTimeout(() => uni.reLaunch({
-      url: back ? `${ROUTES.login}?redirect=${encodeURIComponent(back)}` : ROUTES.login,
-    }), 0);
   });
 
   // 社区归属里存的是**绑定当时那门语言/那个市场**的文案快照。

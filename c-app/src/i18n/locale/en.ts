@@ -1,4 +1,11 @@
 export default {
+  phoneLogin: {
+    title: 'Sign in to continue',
+    tip: 'Your authorized phone number signs you in or creates an account.',
+    agreementPrefix: 'Continuing means you agree to',
+    processing: 'Signing in…',
+    reviewOrder: 'Account updated. Review your order before submitting.',
+  },
   trace: {
     step: {
       picked: "Picked up",
@@ -87,7 +94,7 @@ export default {
     later: "Later",
     title: "Leave a phone number",
     why: "We need it after you order: pickup points send arrival notices, couriers call. Nothing else.",
-    oneTap: "Use my WeChat number",
+    oneTap: "Quick sign-in with phone number",
     useCode: "Use an SMS code instead",
     phonePlaceholder: "Phone number",
     codePlaceholder: "Code",
@@ -96,8 +103,8 @@ export default {
     submit: "Bind",
     needPhone: "Enter your phone number first",
     needBoth: "Both phone and code are required",
-    wxFailed: "WeChat did not return a number",
-    conflict: "This number is already registered. You can log in with it, but this WeChat account\u2019s browsing history and cart will not carry over.",
+    wxFailed: "Could not get your phone number. Please use a verification code.",
+    conflict: "This number is already registered. You can log in with it, but this account\u2019s browsing history and cart will not carry over.",
   },
   community: {
     /** 精确定位到区 */
@@ -392,7 +399,7 @@ export default {
     resend: "Resend in {s}s",
     title: "Sign in to start ordering",
     sub: "Sign in once — orders, coupons and your pickup point follow you",
-    byWxMini: "Continue with WeChat",
+    byWxMini: "Quick sign-in",
     orPhone: "Or use your phone number",
     phone: "Phone number",
     otp: "Verification code",

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BizLoginPanel from "@/components/biz/biz-login-panel.vue";
 /*
  * 我的拼团（原型 p12 · TDD-C端拼团买家流程）。
  *
@@ -6,10 +7,9 @@
  * 拼团中 / 已成团 / 没凑齐。拼团中的点进团页就是「邀请」那一屏。
  * 「我发起的团」（邻里自提的签收、核销）收进页底一行，不再单独占「我的」一行。
  */
-import { computed, onUnmounted, ref } from "vue";
+import { computed, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
-import { phoneRequired, withPhone, onPhoneBound, onPhoneGateClose } from "@/shared/phone-required";
 import { api } from "@/api";
 import { useUserStore } from "@/stores/user";
 import { ROUTES } from "@shared/utils/constants";
@@ -44,14 +44,18 @@ const tabs = computed(() => [
 
 async function load() {
   // 统一闸：没手机号弹授权层，绑完自动把这次加载补上
-  if (!(await withPhone(doLoad))) return;
+  if (user.isPhoneLogin) await doLoad();
 }
 
 async function doLoad() {
+  const token = user.token;
   try {
-    groups.value = await api.myJoinedGroups();
+    const next = await api.myJoinedGroups();
+    if (user.token !== token || !user.isPhoneLogin) return;
+    groups.value = next;
     failed.value = false;
   } catch {
+    if (user.token !== token || !user.isPhoneLogin) return;
     failed.value = true;
   }
   loaded.value = true;
@@ -66,10 +70,18 @@ function gotoHosted() {
 }
 
 onShow(load);
+// Covers both a native phone login and a known phone account restored silently after first onShow.
+watch(() => user.isPhoneLogin ? user.token : "", () => {
+  groups.value = [];
+  loaded.value = false; failed.value = false;
+  void load();
+});
 </script>
 
 <template>
   <sh-scaffold title-key="myGroups.title">
+    <biz-login-panel v-if="!user.isPhoneLogin" />
+    <template v-if="user.isPhoneLogin">
     <sh-tabs :items="tabs" :active="tab" @change="(k: string) => (tab = k as Tab)"></sh-tabs>
 
     <view class="sh-block">
@@ -91,7 +103,6 @@ onShow(load);
         <text class="txt-caption">{{ $t("groupHost.entryHint") }}</text>
       </view>
     </view>
-    <phone-gate :visible="phoneRequired.visible.value" :suggest="phoneRequired.suggest.value"
-    @done="onPhoneBound" @close="onPhoneGateClose" />
-</sh-scaffold>
+    </template>
+  </sh-scaffold>
 </template>

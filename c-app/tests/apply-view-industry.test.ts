@@ -79,6 +79,7 @@ async function render() {
    * 把查看态那句 ensureMasterData 删掉，它照样通过。
    */
   useUserStore().token = "ctk_test";
+  useUserStore().user = { phone: "13800138000" } as never;
 
   const w = mount(MePage, {
     global: {

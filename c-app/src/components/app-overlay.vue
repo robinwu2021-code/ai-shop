@@ -11,6 +11,7 @@
 // 的行为差异较大），也不用 Web Animations API（小程序不支持）。
 // 飞行轨迹用两段 transition 拼出抛物线感：横向匀速 + 纵向先慢后快。
 import { computed } from "vue";
+import { phoneLoginState } from "@/shared/phone-login";
 import { flyState } from "@/shared/fly";
 
 const style = computed(() => {
@@ -28,6 +29,9 @@ const style = computed(() => {
   <view v-if="flyState.visible" class="sh-center fly" :style="style">
     <sh-cover class="fly__text" :src="flyState.emoji"></sh-cover>
   </view>
+  <sh-dialog :visible="phoneLoginState.phase === 'submitting'" :mask-closable="false">
+    <view class="sh-center sh-hint">{{ $t("phoneLogin.processing") }}</view>
+  </sh-dialog>
 </template>
 
 <style scoped>

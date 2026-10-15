@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import BizLoginPanel from "@/components/biz/biz-login-panel.vue";
 // 订单列表。tab 是「用户视角的下一步动作」，不是订单状态枚举 ——
 // 用户关心的是「我要去付钱 / 我要去取货」，不是 PAID 和 ARRIVED 的区别。
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
+import { useUserStore } from "@/stores/user";
 import { api } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
 import { countdown, datetime, money } from "@shared/utils/format";
@@ -62,6 +64,7 @@ const TABS: OrderTabSpec[] = [
  */
 const PAGE_SIZE = 50;
 
+const user = useUserStore();
 const { t } = useI18n();
 const tab = ref("all");
 const orders = ref<Order[]>([]);
@@ -120,6 +123,8 @@ const shown = computed(() =>
 const hiddenCount = ref(0);
 
 async function load() {
+  if (!user.isPhoneLogin) return;
+  const token = user.token;
   // 售后页签要在全量里找挂了售后单的那些，不能带筛选
   const spec = tab.value === "afterSale"
     ? undefined
@@ -133,11 +138,13 @@ async function load() {
       // 售后单独取。失败不该拖垮整个订单列表 —— 主列表是这一页的正事
       api.afterSaleList().catch(() => []),
     ]);
+    if (user.token !== token || !user.isPhoneLogin) return;
     orders.value = res.records;
     hiddenCount.value = Math.max(0, res.total - res.records.length);
     afterSaleOrderNos.value = new Set(afterSales.map((a) => a.subOrderNo));
     loaded.value = true;
   } catch (e) {
+    if (user.token !== token || !user.isPhoneLogin) return;
     /*
      * **失败要与「没有订单」分开**。两者在屏幕上都是「什么都没有」，
      * 而用户该做的事完全相反：一个是重试，一个是去逛逛。
@@ -170,10 +177,18 @@ function goShopping() {
 }
 
 onShow(load);
+// Covers both a native phone login and a known phone account restored silently after first onShow.
+watch(() => user.isPhoneLogin ? user.token : "", () => {
+  orders.value = []; afterSaleOrderNos.value = new Set(); hiddenCount.value = 0;
+  loaded.value = false; failed.value = false;
+  void load();
+});
 </script>
 
 <template>
   <sh-scaffold title-key="orders.title">
+    <biz-login-panel v-if="!user.isPhoneLogin" />
+    <template v-if="user.isPhoneLogin">
     <sh-tabs
       :items="TABS.map((tb) => ({ key: tb.key, label: String($t(`orders.tab.${tb.key}`)) }))"
       :active="tab"
@@ -266,6 +281,7 @@ onShow(load);
         <view class="sh-btn sh-btn--sm" @tap="goShopping">{{ $t("visited.go") }}</view>
       </template>
     </sh-empty>
+      </template>
   </sh-scaffold>
 </template>
 

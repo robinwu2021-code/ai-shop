@@ -3,6 +3,9 @@
 //
 // **页面渲染什么，取决于 `loginMethods()` 给了什么** —— 此前这里写死了手机号表单，
 // 而小程序上实际发出去的是微信 code，用户填的手机号被丢弃：界面与行为是两回事。
+import PhoneGate from "@/components/phone-gate.vue";
+import BizLoginPanel from "@/components/biz/biz-login-panel.vue";
+import { nativePhoneAuthorization } from "@/ports/phone-login";
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad } from "@dcloudio/uni-app";
@@ -83,8 +86,10 @@ const merchantNo = ref("");
  * <p>空的时候走 `navigateBack()` —— 那是用户自己点进登录页的情形，栈是好的。
  */
 const redirect = ref("");
+const bindMode = ref(false);
 
 onLoad((q) => {
+  bindMode.value = q?.bind === "1";
   /*
    * **query 没有就用暂存的**（§3.1）。邀请链接指向的是首页，
    * 而他从首页点到这里时那个参数不会跟过来 —— 不兜这一下，
@@ -187,6 +192,9 @@ async function doLogin(method: LoginMethod) {
 
 <template>
   <sh-scaffold title-key="login.navTitle">
+    <phone-gate v-if="bindMode" :visible="true" @done="goBackAfterLogin" @close="goBrowse" />
+    <biz-login-panel v-else-if="nativePhoneAuthorization" @ready="goBackAfterLogin" />
+    <template v-else>
     <view class="head">
       <text class="txt-display">{{ $t("login.title") }}</text>
       <text class="sh-muted head__sub">{{ $t("login.sub") }}</text>
@@ -286,6 +294,8 @@ async function doLogin(method: LoginMethod) {
       而商品、门店、团购本来就是游客可看的 —— 不给出口，登录就成了逛的前置条件。
     -->
     <text class="txt-sub browse" @tap="goBrowse">{{ $t("login.browseFirst") }}</text>
+    </template>
+    <view v-if="nativePhoneAuthorization && !bindMode" class="browse sh-link" @tap="goBrowse">{{ $t("login.browseFirst") }}</view>
   </sh-scaffold>
 </template>
 

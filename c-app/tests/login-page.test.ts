@@ -11,6 +11,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 
+const platform = vi.hoisted(() => ({ native: true }));
+vi.mock("@/ports/phone-login", () => ({ get nativePhoneAuthorization() { return platform.native; } }));
 const methods = vi.fn();
 vi.mock("@shared/ports/auth", () => ({ loginMethods: () => methods() }));
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (k: string) => k }) }));
@@ -19,6 +21,7 @@ vi.mock("@/api", () => ({ api: { sendOtp: vi.fn(), login: vi.fn() } }));
 const WX = { id: "WX_MINI", labelKey: "login.byWxMini", primary: true, needsPhone: false, acquire: vi.fn() };
 const OTP = { id: "PHONE_OTP", labelKey: "login.byPhone", primary: true, needsPhone: true, acquire: vi.fn() };
 
+import { useUserStore } from "@/stores/user";
 import LoginPage from "@/pages/login/index.vue";
 
 async function render() {
@@ -41,37 +44,37 @@ const switchTab = vi.fn();
 describe("登录页", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+    useUserStore().token = "technical";
+    platform.native = true;
     vi.clearAllMocks();
     Object.assign(globalThis.uni as Record<string, unknown>, { navigateTo, switchTab });
   });
 
-  it("★★★ 小程序：只有微信那一个主按钮，手机号收起成次要入口", async () => {
+  it("mini login link exposes native phone authorization without input", async () => {
     methods.mockReturnValue([WX, OTP]);
     const w = await render();
 
-    expect(w.text()).toContain("login.byWxMini");
-    expect(w.text()).toContain("login.orPhone");
+    expect(w.get("button").attributes("open-type")).toBe("getPhoneNumber");
+    expect(w.text()).toContain("phoneGate.oneTap");
+    expect(w.text()).not.toContain("login.orPhone");
     // 两个主按钮并排是这条用例要防的事
     expect(w.text()).not.toContain("login.submit");
     expect(w.findAll("input")).toHaveLength(0);
   });
 
-  it("★★ 点了「用手机号」才展开表单", async () => {
+  it("cancelling native authorization stays on the login link and exposes no OTP form", async () => {
     methods.mockReturnValue([WX, OTP]);
     const w = await render();
-
-    await w.find(".switch").trigger("tap");
-    await w.vm.$nextTick();
-
-    expect(w.findAll("input").length).toBeGreaterThan(0);
-    expect(w.text()).toContain("login.submit");
+    await w.get("button").trigger("getphonenumber", { detail: { errMsg: "getPhoneNumber:fail user deny" } });
+    expect(w.findAll("input")).toHaveLength(0);
+    expect(navigateTo).not.toHaveBeenCalled();
   });
 
   it("★★★ 协议必须能点开 —— 收手机号与位置的小程序，这是提审必查项", async () => {
     methods.mockReturnValue([WX, OTP]);
     const w = await render();
 
-    const links = w.findAll(".agree__link");
+    const links = w.findAll("text.sh-link");
     expect(links).toHaveLength(2);
     expect(w.text()).toContain("legal.terms");
     expect(w.text()).toContain("legal.privacy");
@@ -93,6 +96,7 @@ describe("登录页", () => {
   });
 
   it("★★ H5 / App（没有快捷方式）：直接给表单，不多一次点击", async () => {
+    platform.native = false;
     methods.mockReturnValue([OTP]);
     const w = await render();
 

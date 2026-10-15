@@ -3,12 +3,16 @@ package ai.neargo.shop.user.service.impl;
 import ai.neargo.shop.spi.notify.SmsPort;
 import ai.neargo.shop.common.ratelimit.OtpSendGuard;
 import ai.neargo.shop.user.service.AuthService;
+import ai.neargo.shop.user.service.MpSessionService;
+import ai.neargo.shop.spi.user.WxPhonePort;
+import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.user.service.OtpTestPhoneService;
 import ai.neargo.shop.common.OtpStore;
 
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.GlobalExceptionHandler.UnauthorizedException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.user.dto.UserVO;
@@ -63,6 +67,8 @@ public class AuthServiceImpl implements AuthService {
             new ai.neargo.shop.common.ratelimit.RateRule(
                     "pwd-login", java.time.Duration.ofMinutes(15), 10);
 
+    private final WxPhonePort wxPhonePort;
+    private final MpSessionService mpSessions;
     private final UserMapper userMapper;
     private final IdentityMapper identityMapper;
     private final TokenStore tokenStore;
@@ -108,6 +114,7 @@ public class AuthServiceImpl implements AuthService {
     private final ai.neargo.shop.spi.marketing.FissionPort fissionPort;
 
     public AuthServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
+                           WxPhonePort wxPhonePort, MpSessionService mpSessions,
                            TokenStore tokenStore, OtpStore otpStore,
                            OtpSendGuard sendGuard,
                            SmsPort smsPort,
@@ -119,6 +126,8 @@ public class AuthServiceImpl implements AuthService {
                                    "${shop.auth.otp.fixed:}") String fixedOtp,
                            ai.neargo.shop.spi.marketing.FissionPort fissionPort,
                            OtpTestPhoneService testPhoneService) {
+        this.wxPhonePort = wxPhonePort;
+        this.mpSessions = mpSessions;
         this.userMapper = userMapper;
         this.identityMapper = identityMapper;
         this.tokenStore = tokenStore;
@@ -227,13 +236,17 @@ public class AuthServiceImpl implements AuthService {
         }
         String fresh = tokenStore.issue(TokenStore.SessionData.of(
                 LoginUser.consumer(user.getUserNo(), user.getNickname())));
+        mpSessions.openid(currentToken, user.getUserNo())
+                .ifPresent(openid -> mpSessions.record(fresh, user.getUserNo(), openid));
         tokenStore.revoke(currentToken);   // 轮换：旧的立即作废
+        mpSessions.remove(currentToken);
         return new LoginResult(fresh, UserVO.of(user));
     }
 
     @Override
     public void logout(String currentToken) {
         tokenStore.revoke(currentToken);
+        mpSessions.remove(currentToken);
     }
 
     @Override
@@ -324,9 +337,10 @@ public class AuthServiceImpl implements AuthService {
          * 找不到人就建户。密码走它的话，输错手机号会**当场给他开一个空账号**，
          * 而用户看到的是「登录成功，但我的店没了」。
          */
+        List<Credential> credentials = GRANT_PASSWORD.equals(cmd.grantType()) ? List.of() : resolveCredentials(cmd);
         UsrAccount user = GRANT_PASSWORD.equals(cmd.grantType())
                 ? loginByPassword(cmd)
-                : findOrCreate(resolveCredentials(cmd), cmd);
+                : findOrCreate(credentials, cmd);
 
         if ("BANNED".equals(user.getStatus())) {
             throw BizException.of(ErrorCode.RISK_BLOCKED);
@@ -351,7 +365,76 @@ public class AuthServiceImpl implements AuthService {
 
         String token = tokenStore.issue(TokenStore.SessionData.of(
                 LoginUser.consumer(user.getUserNo(), user.getNickname())));
+        credentials.stream().filter(c -> IdentityType.WX_OPENID_MP.equals(c.type())).findFirst()
+                .ifPresent(c -> mpSessions.record(token, user.getUserNo(), c.value()));
         return new LoginResult(token, UserVO.of(user));
+    }
+
+    @Override
+    @Transactional
+    public WxPhoneLoginResult loginByWxPhone(String currentToken, WxPhoneLoginCommand req) {
+        var session = tokenStore.get(currentToken).filter(s -> s.user().realm() == Realm.CONSUMER)
+                .orElseThrow(UnauthorizedException::new);
+        String currentNo = session.user().userNo();
+        String openid = mpSessions.openid(currentToken, currentNo).orElse(null);
+        if (openid == null) {
+            throw new UnauthorizedException();
+        }
+        String phone = wxPhonePort.phoneOf(req.phoneCode());
+        if (phone == null || phone.isBlank()) {
+            throw BizException.of(ErrorCode.WX_PHONE_UNAVAILABLE);
+        }
+        UsrAccount current = userMapper.lockByUserNo(currentNo);
+        if (current == null || "BANNED".equals(current.getStatus())) {
+            throw BizException.of(ErrorCode.RISK_BLOCKED);
+        }
+        Credential phoneCredential = new Credential(IdentityType.PHONE, phone, "MP");
+        UsrIdentity phoneOwner = findIdentity(phoneCredential);
+        boolean isNew = phoneOwner == null;
+        if (isNew && !Boolean.TRUE.equals(req.agreed())) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        LoginCommand attribution = new LoginCommand(GRANT_PHONE_OTP, phone, null,
+                req.merchantNo(), req.inviterNo(), req.agreed());
+        UsrAccount user;
+        if (phoneOwner != null) {
+            user = userMapper.selectOne(Wrappers.<UsrAccount>lambdaQuery()
+                    .eq(UsrAccount::getUserNo, phoneOwner.getUserNo()).last("limit 1"));
+        } else if (phoneOf(currentNo) == null) {
+            user = current;
+        } else {
+            user = createAccount(new LoginCommand(GRANT_WX_MINI, null, null,
+                    req.merchantNo(), null, req.agreed()));
+        }
+        if (user == null || "BANNED".equals(user.getStatus())) {
+            throw BizException.of(ErrorCode.RISK_BLOCKED);
+        }
+        registerNewCredentials(user, List.of(phoneCredential));
+        if (req.merchantNo() != null && !req.merchantNo().isBlank()) {
+            user.setEntityNo(req.merchantNo());
+            userMapper.updateById(user);
+        }
+        Credential wxCredential = new Credential(IdentityType.WX_OPENID_MP, openid, "MP");
+        UsrIdentity wxOwner = findIdentity(wxCredential);
+        boolean linked = wxOwner == null || user.getUserNo().equals(wxOwner.getUserNo());
+        if (linked) {
+            registerNewCredentials(user, List.of(wxCredential));
+        }
+        if (isNew) {
+            fissionPort.onRegister(attribution.inviterNo(), user.getUserNo(), null, phoneTailOf(attribution));
+        }
+        try {
+            personService.bindOnLogin(user.getUserNo(), phone);
+        } catch (RuntimeException e) {
+            log.warn("[person] 手机号登录时绑定人档失败 user={}", user.getUserNo(), e);
+        }
+        String token = tokenStore.issue(TokenStore.SessionData.of(
+                LoginUser.consumer(user.getUserNo(), user.getNickname())));
+        mpSessions.record(token, user.getUserNo(), openid);
+        // Rotation is last: authorization/registration failure leaves the original browsing session usable.
+        tokenStore.revoke(currentToken);
+        mpSessions.remove(currentToken);
+        return new WxPhoneLoginResult(token, UserVO.of(user), isNew, linked ? "linked" : "pending");
     }
 
     /**
@@ -683,7 +766,9 @@ public class AuthServiceImpl implements AuthService {
          * 而那正是「配了哪些因子就用哪些」的正确降级：宁可少判一个维度，
          * 不可拿一个编出来的值去判。要用 DEVICE 因子，得先让端上把设备号送上来。
          */
-        fissionPort.onRegister(cmd.inviterNo(), user.getUserNo(), null, phoneTailOf(cmd));
+        if (!GRANT_WX_MINI.equals(cmd.grantType()) && !GRANT_WECHAT_MP.equals(cmd.grantType())) {
+            fissionPort.onRegister(cmd.inviterNo(), user.getUserNo(), null, phoneTailOf(cmd));
+        }
         return user;
     }
 

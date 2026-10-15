@@ -95,6 +95,9 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
     auth: true,
     summary: "绑定手机号（验证码）",
   },
+  loginByWxPhone: {
+    method: "POST", path: "/mp/user/login/phone", auth: true, summary: "手机号授权注册或登录",
+  },
   bindPhoneByWx: {
     method: "POST",
     path: "/mp/user/phone/wx",

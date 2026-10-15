@@ -114,7 +114,7 @@ def render_html(items: list[dict]) -> str:
   <p class="pcard__sum">{html.escape(p.get("summary", ""))}</p>
   {chips}
   <div class="pcard__links">{" ".join(links)}</div>
-  {sup}
+{"  " + sup if sup else ""}
 </article>'''
 
     groups = [("页面稿：每一屏长什么样", [p for p in live if p["kind"] in ("pages", "canvas")]),

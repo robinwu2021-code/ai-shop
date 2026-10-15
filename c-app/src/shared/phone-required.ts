@@ -47,7 +47,7 @@ export async function withPhone(
   if (!user.isLogin) {
     await user.silentLogin().catch(() => false);
   }
-  if (user.user?.phone) {
+  if (user.isPhoneLogin) {
     await action();
     return true;
   }
@@ -59,7 +59,7 @@ export async function withPhone(
 
 /** 进页即弹（分类页、店铺页用）：没号就摆出授权层，有号什么也不做 */
 export async function requirePhoneOnEnter(): Promise<void> {
-  await withPhone(() => {});
+  // Browsing never requests phone access. Business buttons own the native user gesture.
 }
 
 /** 弹层绑定成功 → 把拦下来的那个动作补上 */

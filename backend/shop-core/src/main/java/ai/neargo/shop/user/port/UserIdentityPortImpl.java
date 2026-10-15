@@ -1,6 +1,8 @@
 package ai.neargo.shop.user.port;
 
 import ai.neargo.shop.spi.user.UserIdentityPort;
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.user.service.MpSessionService;
 import ai.neargo.shop.user.IdentityType;
 import ai.neargo.shop.user.entity.UsrIdentity;
 import ai.neargo.shop.user.mapper.UserMappers.IdentityMapper;
@@ -13,9 +15,11 @@ import java.util.Optional;
 @Component
 public class UserIdentityPortImpl implements UserIdentityPort {
 
+    private final MpSessionService sessions;
     private final IdentityMapper identityMapper;
 
-    public UserIdentityPortImpl(IdentityMapper identityMapper) {
+    public UserIdentityPortImpl(IdentityMapper identityMapper, MpSessionService sessions) {
+        this.sessions = sessions;
         this.identityMapper = identityMapper;
     }
 
@@ -30,6 +34,17 @@ public class UserIdentityPortImpl implements UserIdentityPort {
                         // 同类型多条时取最近登记的那条 —— 老的可能来自换绑前的微信号
                         .orderByDesc(UsrIdentity::getId).last("limit 1")))
                 .map(UsrIdentity::getIdentityValue);
+    }
+
+    @Override
+    public Optional<String> wxPayerOpenIdMp(String userNo) {
+        if (SecurityUtils.currentUser().filter(u -> u.isConsumer() && u.userNo().equals(userNo)).isPresent()) {
+            Optional<String> current = SecurityUtils.currentToken().flatMap(t -> sessions.openid(t, userNo));
+            if (current.isPresent()) {
+                return current;
+            }
+        }
+        return wxOpenIdMp(userNo);
     }
 
     @Override

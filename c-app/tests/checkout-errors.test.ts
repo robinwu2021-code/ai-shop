@@ -21,7 +21,7 @@ const confirm = code("src/pages/order-confirm/index.vue");
 describe("失败要说清改什么", () => {
   const body = confirm.slice(
     confirm.indexOf("function submitFailText"),
-    confirm.indexOf("async function submit()"),
+    confirm.indexOf("async function submit("),
   );
 
   it("★★★ 三类错误各有各的一句话", () => {
@@ -36,7 +36,7 @@ describe("失败要说清改什么", () => {
   });
 
   it("★★★ 券失效时当场摘掉并重算 —— 留着它，再点一次还是同一个错", () => {
-    const submit = confirm.slice(confirm.indexOf("async function submit()"));
+    const submit = confirm.slice(confirm.indexOf("async function submit("));
     expect(submit).toContain("COUPON_ERRORS.has");
     expect(submit).toContain('couponNo.value = ""');
     expect(submit).toContain("refreshAmount()");

@@ -322,3 +322,15 @@ export interface LoginResp {
   /** 登录用户档案 */
   user: User;
 }
+
+/** Phone authorization is verified on the server; new number registers, existing number logs in. */
+export interface WxPhoneLoginReq {
+  phoneCode: string;
+  inviterNo?: string;
+  merchantNo?: string;
+  agreed?: boolean;
+}
+export interface WxPhoneLoginResp extends LoginResp {
+  isNewUser: boolean;
+  wxRelation: "linked" | "pending";
+}

@@ -5,6 +5,12 @@
 docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动）
 创建：2026-10-14 · 最后更新：2026-10-14
 
+本轮接续：§2D 为 2026-10-14 两轮 review 后的下一步计划，状态为**计划草稿、未实施**。原有已确认规则与历史验证记录保留；§2D 的业务建议不自动视为已确认，未执行测试不计入 §5 的既有通过记录。
+
+文档接续进度：用户已授权按计划修改文档，并要求依据实际代码制定开发计划。当前执行主线为 [TDD-订单重构修复与三端接线 §2.6](./TDD-订单重构修复与三端接线.md) 的7阶段、26批次：F01–F18修复任务，加B00/M01/M02与I01–I05基线、归属、接线及包迁移任务；全部代码批次未实施，业务修订仍待评审。
+
+订单2.0现状核查（2026-10-14）：内核当前位于`ai.neargo.shop.trade.order`，构件已建、部分接线，尚未全链路替换旧服务。用户期望将来迁到`ai.neargo.shop.order`；本轮先检查、不搬代码。当前完成矩阵、222条定向测试证据及未来迁移边界见详细计划§1.3–§1.4。
+
 档位：2（跨端、不可逆的规则改变：关掉自动退款；新增售后状态） · 本文覆盖完整方案 §13 的步 1–3
 
 ## §0 对账一 · 需求 → 设计
@@ -122,6 +128,245 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 
 5.5 剩余（下一段）：`GET /mp/order/{no}/refundable`、VO 加 `refundProgress` / `refundedMinor` / `afterSaleDeadlineAt` / `items`、
 抵扣积分按比例退（需积分域新增按额退回的接口；今天仍是整单退完才退）。
+
+## §2D 订单重构收口 · 下一步实施计划
+
+> **For agentic workers:** 实施时使用 `superpowers:executing-plans` 逐项执行；如用户选择代理执行，则使用 `superpowers:subagent-driven-development`。下面的复选框记录实际完成情况，不能仅因文档写完而勾选。
+
+**Goal:** 先闭合订单方案，再修复两轮 review 暴露的资金、履约和接口问题，最后完成三端适配及可回滚发布。
+
+**Architecture:** 保留 Payment → 门店 Order → Shipment，以及 Order → AfterSale → AfterSaleItem 的边界。退款决定、资金执行、商品履约和权益返还各自封装为对象；本地事务只保证本地原子性，外部资金操作由持久化执行记录、稳定幂等键、回执和回查恢复。
+
+**Tech Stack:** Java 21、Spring Boot、MyBatis-Plus、Flyway、数据库 CAS/条件更新、Outbox；C/B 端 Vue/uni-app，运营端 Next.js/TypeScript。
+
+**Spec:** 本 TDD 与 [订单状态机完整方案](../superpowers/specs/2026-10-14-订单状态机-完整方案.md)、[退货退款逻辑](../superpowers/specs/2026-10-14-退货退款逻辑.md)、[第 5 步对象模型](../superpowers/specs/2026-10-14-第5步-对象模型.md)。拆单基准为 [ADR-031](./ADR/ADR-031-子单按门店拆与运费按商品门店计算.md)。
+
+### 2D.1 范围与约束
+
+- 档位：2（最终实施涉及资金语义、库表、接口与三端）；本轮仅写计划。新增不可逆业务选择在任务 0 中形成 ADR，不能套用旧确认记录。
+- 一店一单；支付单可覆盖多笔订单；发货单和物流运单不是同一个资源。
+- 售后退款由人的决定触发；系统仅对已确认的交易不成立原因自动原路退回。重试执行已批准决定，不重新做决定。
+- 先抽象对象再编码；单类 ≤200 行、单方法 ≤50 行。旧大服务只保留编排，本轮不做无关的全仓拆分。
+- 数据库为一致性真源；数据库加本地缓存，暂不上 Redis；部署仍单点，逻辑必须满足集群并发要求。
+- 状态、流水、相关业务字段和本地 Outbox 同事务；CAS/条件更新影响 0 行必须处理。跨库和外部渠道不能假设共享本地事务。
+- 已应用 Flyway 迁移冻结。每个契约任务自己交付增量迁移、实体和生成物；迁移号在实施当天检查占用后分配。
+- 积分域重整仍为独立待确认项目。订单不得把真实已使用的权益交给空实现并当作返还成功；缺能力必须显式记录并提供恢复路径。
+- 本计划不包含直接部署、上线数据修复或生产写操作；这些属于任务 9 的独立交付。
+
+### 2D.2 优先级、依赖和对账一
+
+| 任务 | 可独立验收的交付 | 前置 | 对应 review 问题 |
+|---|---|---|---|
+| 0 | 当前有效方案与决策表，消除旧指令冲突 | 无 | 文档版本、拆单、命名、资金/结清语义缺口 |
+| 1 | 商品数量、金额调整、结清与零现金订单模型 | 0 的 D2/D3 | 少额退款耗尽件数、零元售后、积分补偿终态；方案金额/数量混用 |
+| 2 | 可恢复的异步退款与正确回执认领 | 1；0 的 D4 | 未到账即已退款、退款回调方向错误、未知结果及双重退款风险 |
+| 3 | 原始结算快照与跨分账阶段守恒 | 0 的 D5；1 的金额口径 | 分账前连续退款扣减不足、先退后分账口径 |
+| 4 | 按资金路径恢复追偿和权益返还 | 2、3；0 的 D5/D6 | 归集已付款后的追偿、积分补偿与现金终态冲突 |
+| 5 | 原子备货、完成与多包裹收敛 | 1；0 的 D3 | 备货无 CAS、自动收货缺事务；部分商品取消、并发收货、物流乱序 |
+| 6 | 支付影响集合、权限及线下收款边界 | 0 的 D1 | 运营取消级联不完整、取消影响范围、跨门店当面收款 |
+| 7 | 三端支付视图、结果和取消确认一致 | 6 | 子单显示金额与实际支付金额不一致、错误支付成功判据 |
+| 8 | 可退额、动作合同与三端行级售后 | 1、2、5、6；0 的 D6 | 可退额/原因/截止缺输入、allowedActions、三端适配未完成 |
+| 9 | 兼容矩阵、迁移演练、全链路验收和发布包 | 2–8 | 旧端新状态无入口、灰度启用和回滚边界 |
+
+执行顺序：**0 → 1 → 2/3 → 4；0 → 6 → 7；1 → 5；随后 8 → 9**。分支之间存在同文件和契约依赖时串行实施，不按这张表机械并发。任务 0 完成后，每个实施任务仍须先完成自身精确字段、签名及 AC 的 TDD 对账；本节不是未定业务语义的编码授权。
+
+### 2D.3 待统一的业务选择（任务 0 的交付）
+
+| 编号 | 建议选择 | 必须明确的边界 | 未闭合时暂停的任务 |
+|---|---|---|---|
+| D1 | 线上支付按支付单；第一期当面付款限制单门店；取消整笔支付前展示全部影响集合并检查授权 | 存量跨店线下单不能由任一家店单独确认全款，需明确对账处理；不得通过绕过数据域代替授权 | 6、7 |
+| D2 | 区分取消商品、退回商品、已交付免退回退款、金额调整；金额调整不消耗退件数量，也不回补库存 | 覆盖、关闭交易、实际退件、取消免履约件数分别记录；商家少退必须是买家接受的协议或平台裁决，不能单方核定 | 1、2 |
+| D3 | 现金退款进度与商品售后结清分开；全部商品免履约后退款结清则订单 REFUNDED，交付与取消混合结清则 COMPLETED | 保留运费/约定损耗不再作为无条件可再次申请的欠退额；零现金商品也能结束；券与积分按各自政策返还 | 1、5、8 |
+| D4 | 批准决定先持久化；预占、受理、到账分开；结果未知先回查原请求，再考虑补偿或替代渠道 | 同一个执行号下的金额不可被重试改写；成功回执幂等落实退账本；未知状态不允许另开线下退款 | 2、4 |
+| D5 | 不可变原始结算快照做累计切分；剩余应付、实际付款、累计回退、待追回分开 | 归集已付供应商时买家退款与供应商追偿分开记录；追偿责任、垫付来源、权限和失败处置形成单独决策 | 3、4 |
+| D6 | C/B/运营端共享资源与动作定义；原因和选行参与预览；新状态按客户端能力启用 | 积分补偿是否保留独立结案类型；新积分方案是否采用现金抵扣，尚未确认前不能混入订单现金退款口径 | 4、8、9 |
+
+这些是供下一步方案收口使用的**建议**。任务 0 要写清选项、取舍及确认记录，再将确定结果回写对应方案；不能把本表页眉改成“全部已确认”来跳过决策。
+
+### 2D.4 文件边界与拟定接口
+
+下面列出的新文件和新签名均为计划，不表示已经存在。业务依赖结论变化时先修订本表，再实施。
+
+| 文件/目录（仓库相对路径） | 职责与所属任务 |
+|---|---|
+| `docs/technical/TDD-订单状态机.md`；`docs/superpowers/specs/2026-10-14-订单状态机-完整方案.md`；`docs/superpowers/specs/2026-10-14-退货退款逻辑.md`；`docs/superpowers/specs/2026-10-14-第5步-对象模型.md` | 任务 0 统一当前有效规则；历史记录保留 |
+| `docs/superpowers/specs/2026-10-12-订单服务-核心逻辑与方法实现.md`；`docs/superpowers/specs/2026-10-12-订单领域模型-草案.md`；`docs/superpowers/specs/2026-10-11-订单服务-详细设计.md` | 任务 0 修正矛盾指令，标注被替代章节及接替者 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/model/` | 任务 1 扩展退款行；拟新增 `RefundPurpose.java`、`RefundClosure.java`，分别定义动作语义和结清结果 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/RefundPlanner.java`；`RefundLedger.java`（同目录） | 任务 1/2 分开预占与实退；拟新增 `trade/order/refund/policy/OrderClosurePolicy.java` |
+| `backend/shop-base/src/main/java/ai/neargo/shop/spi/settle/SettlePort.java` | 任务 2 拟新增 `requestRefund(RefundRequest request): RefundDispatchResult`；旧字符串接口只用于兼容，不能作为新流程的成功判据 |
+| `backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/PaymentLedgerServiceImpl.java`；`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/impl/SettleServiceImpl.java` | 任务 2 回执方向、请求认领、执行结果及恢复；资金流水复用，不创建第二套资金总账 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/AfterSaleRefundExecutor.java`；`backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/AfterSaleServiceImpl.java` | 任务 2/4 编排执行记录、成功回执及权益任务，原大服务不内嵌新政策 |
+| `backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/settle/refund/`；`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/mapper/BillRefundMapper.java` | 任务 3 原始快照、累计切分、分账前后位置；拟新增 `SettlementRefundBasis.java` |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java`；`MerchantOrderServiceImpl.java`（同目录）；`backend/shop-core/src/main/java/ai/neargo/shop/trade/order/transition/StateTransitionGate.java` | 任务 5/6 自动收货事务、条件备货、支付影响集合；不删除原地动作流水 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/receipt/OrderCompletion.java`；`ReceiptHandler.java`（同目录）；`backend/shop-core/src/main/java/ai/neargo/shop/trade/order/service/ship/` | 任务 5 免履约数量、订单级串行点、发货及收货接线 |
+| `backend/shop-core/src/main/java/ai/neargo/shop/trade/api/mp/MpTradeController.java`；`backend/shop-core/src/main/java/ai/neargo/shop/trade/dto/OrderVO.java`；`AfterSaleVO.java`（同目录） | 任务 8 可退额和动作合同；若控制器变大，按资源拆分 |
+| `c-app/src/pages/pay/index.vue`；`c-app/src/pages/order/index.vue`；`ops-web/app/orders/proxy-tab.tsx` | 任务 7 支付单金额/结果与整笔取消确认 |
+| `c-app/src/pages/after-sale/index.vue`；`b-app/src/pages/after-sale/index.vue`；`ops-web/app/orders/`；三端 API/类型与 locale | 任务 8 选行件数、金额预览、动作、退款进度及提示 |
+| `backend/shop-app/src/main/resources/db/migration/` | 各任务所需增量迁移随自身实现交付；任务 9 只做综合演练，不推迟基础数据结构 |
+
+拟定交接合同：
+
+- `RefundDispatchResult.status ∈ {ACCEPTED, SUCCEEDED, FAILED, UNKNOWN}`，含稳定执行号、资金流水号、错误分类及是否可重试；`ACCEPTED` 不代表到账。执行记录还需 `PREPARED`，让提交后发送可恢复。
+- `RefundClosure` 包含 `cashProgress`、`goodsClosed`、`orderTarget`；现金进度和商品结清不能共用一个布尔值。权益是否返还由独立政策决定。
+- `SettlementRefundBasis` 存原始商品实付、商家所得、佣金、服务费、补贴与运费归属快照；新累计政策消费原始快照和已退累计，不消费已扣减金额作为原始总额。
+- GET refundable 只读可退事实和普通/质量双窗口；`AfterSalePreviewRequest` 在新增只读 POST after-sale-preview 中消费订单 ID、`reasonCode`、售后类型与 `items[{itemId,qty}]`，输出逐行金额、运费、有效窗口、渠道能力、版本。预览不预占，提交必须用同一规则重新校验。
+- `ActionDescriptor` 定义所属资源、事件码、允许目标、金额/输入约束；事件到 HTTP 端点的映射放共享契约，按钮资格与提交校验分开。字段缺失表示旧合同，空集合表示当前确实无动作。
+
+### 2D.5 Review Focus（每项在所属任务中有验收）
+
+1. 请求超时但通道随后成功：不能重复退款，也不能提前启用线下兜底（任务 2）。
+2. 所有商品已退回，但有合法保留运费/损耗；或现金为 0：商品与权益应正确结清（任务 1/4）。
+3. 两线程确认最后两个包裹；已取消商品从未发货：订单必须收敛且不能漏结算（任务 5）。
+4. 跨门店主单、受限运营数据域、从子单进入支付：金额与全部副作用必须一致且获授权（任务 6/7）。
+5. 旧客户端读取协商或线下待确认状态，退款进行中回滚：必须仍有合法操作入口和恢复执行者（任务 8/9）。
+
+### 2D.6 逐项任务
+
+每个代码任务的标准周期：**失败测试 → 确认失败原因 → 最小实现 → 测试与相应守卫 → 独立 review → 精确文件提交**。代码实施时维护本 TDD §5/§6 的真实对账，不用计划中的期望输出冒充已运行结果。
+
+命令约定：本节 `mvn` 命令在 `backend/` 执行，使用 JDK 21；本机可设置 `JAVA_HOME=/opt/homebrew/opt/openjdk@21` 并将其 `bin` 加入 `PATH`。`npm -w` 命令在仓库根执行，Node ≥22，依赖按锁文件准备。缺依赖、构建未启动或没有执行目标测试属于环境失败，不能算作新增行为的失败证据。前端类型检查使用 `npm run type-check -w ai-shop-c-app`、`npm run type-check -w ai-shop-b-app`、`npm run typecheck -w ai-shop-ops-web`。
+
+#### 任务 0：统一文档真源及业务决策
+
+Files：2D.4 的四份当前方案、三份历史草案、`docs/technical/README.md`；涉及不可逆决定时新增 ADR（编号先查占用）。
+
+- [ ] 0.1 建立资源表：支付单、门店订单、发货单、物流运单、售后单；逐端点记录 ID 类型、金额与副作用粒度、权限覆盖集合及旧别名。
+- [ ] 0.2 将 D1–D6 各整理为一页对象职责、数据/状态、协作者和反例；明确采用结论与仍需决定的业务条件，不先写实现。
+- [ ] 0.3 回写已经确定的状态迁移、到账/账本顺序、数量/金额定义和累计算法；保留旧决定的日期与替代关系，修正按 `entityNo` 拆单残留。
+- [ ] 0.4 同步页眉与索引，逐条检查两轮 review 都映射到 2D.2 的任务。未确认的积分重整保持独立状态。
+- [ ] 0.5 验证 `git diff --check`、本节所有本地 Markdown 链接与文件路径；提交精确文档清单。退出条件：每个准备实施的任务，其前置 D 项有明确结论。
+
+#### 任务 1：分开退款数量、金额和商品结清
+
+Files：退款 model/policy/service（见 2D.4）、`ord_item`/售后行的增量数据合同。测试：现有 `backend/shop-app/src/test/java/ai/neargo/shop/scenario/LineRefundFlowTest.java`；拟新增同目录 `RefundClosureFlowTest.java`。
+
+Interfaces：生产 `RefundPurpose`、扩展后的退款行与 `RefundClosure`，后续任务 2/4/5/8 消费；金额调整不等于退件或取消履约。
+
+- [ ] 1.1 添加 `moneyAdjustmentDoesNotConsumeQty`：3 件实付 3000，调整 1000，断言 `closedQty == 0`、余款 2000 仍可售后；添加 `returnedGoodsWithAgreedLossCloseOnce`、`zeroCashOrderCanReturnBenefits`，同时断言真实库存与返还权益。
+- [ ] 1.2 运行：`mvn -o -B -pl shop-app -am -Dtest=LineRefundFlowTest,RefundClosureFlowTest -Dsurefire.failIfNoSpecifiedTests=false test`；预期相关新增断言失败，记录具体差异。
+- [ ] 1.3 按 D2/D3 实现覆盖数量、退件数量、免履约数量和现金额；约定损耗进入协议事实；零现金流程跳过现金通道而保留商品及权益处理。
+- [ ] 1.4 同命令验证；消融“金额调整不耗件”的实现应使新增场景变红。同步迁移/实体/契约生成物及 §5/§6。
+- [ ] 1.5 独立 review 后提交。退出条件：退件、金额调整、合法留存额和零现金四类场景有唯一结清规则。
+
+#### 任务 2：闭合退款执行、回执和重试协议
+
+Files：`SettlePort`、资金流水与退款编排（见 2D.4），`backend/shop-core/src/main/java/ai/neargo/shop/trade/job/RefundRetryJob.java`。测试：现有 `ChannelPayCallbackFlowTest.java`、`RefundReachesChannelTest.java`；拟新增同场景目录 `RefundExecutionRecoveryFlowTest.java`。
+
+Interfaces：消费任务 1 的退款方案，生产 `requestRefund(RefundRequest): RefundDispatchResult` 与稳定执行记录。一次人的批准只产生一个不可变金额的执行请求。
+
+- [ ] 2.1 添加 `refundCallbackClaimsRefundDirection`、`acceptedIsNotSettled`、`timeoutThenSuccessSettlesOnce`、`restartResumesApprovedDecision`：分别断言 REFUND 流水被认领、受理后售后仍 REFUNDING、成功仅记一次、重启后不丢决定。
+- [ ] 2.2 运行：`mvn -o -B -pl shop-app -am -Dtest=ChannelPayCallbackFlowTest,RefundReachesChannelTest,RefundExecutionRecoveryFlowTest -Dsurefire.failIfNoSpecifiedTests=false test`；预期新增恢复场景失败。
+- [ ] 2.3 在本地事务提交执行记录及预占，再发送外部指令；回执/回查按执行号幂等归并，成功才转实退及终态。永久失败、可重试失败和结果未知分别处理；查询退款必须使用 REFUND 方向。
+- [ ] 2.4 注入“回退已成功、请求超时、本地后续失败”及重复/乱序回执，同命令验证。无确定失败证据不得启用另一路退款；不同数据源的提交点逐项留证据。
+- [ ] 2.5 独立 review 后提交。退出条件：拒绝/受理/成功/未知四种结果均有恢复路径，无需客服猜测资金状态。
+
+#### 任务 3：结算快照与跨阶段累计守恒
+
+Files：结算退款包、`BillRefundMapper`、结算实体与增量迁移（见 2D.4）。测试：现有 `DefaultSettlementRefundPolicyTest.java`、`SettlementPartialReverseTest.java`。
+
+Interfaces：生产不可变 `SettlementRefundBasis`；策略按原始快照及退款前后累计算差，剩余应付与已付金额另记。
+
+- [ ] 3.1 添加 `threePreSplitRefundsClearOriginalBasis`：商品实付 300、商家所得 270，三次各退 100，断言累计扣减 270、余款 0；添加 `refundThenSplitThenRefundConservesShares`，覆盖佣金、服务费、补贴和尾差。
+- [ ] 3.2 运行：`mvn -o -B -pl shop-app -am -Dtest=DefaultSettlementRefundPolicyTest,SettlementPartialReverseTest -Dsurefire.failIfNoSpecifiedTests=false test`；预期新增分账前/跨阶段场景失败。
+- [ ] 3.3 保存原始金额快照或经确认的等价可恢复来源；累计切分固定使用该基数；更新剩余/已付/已回退位置保持 CAS，存量快照无法可信还原的单进入人工核对而非猜值。
+- [ ] 3.4 同命令验证三次分退、先退后分账、运费归属及重放；改回当前金额作原始基数应变红。同步迁移与 §5/§6。
+- [ ] 3.5 独立 review 后提交。退出条件：每条资金路径的原始金额与全部后续位置守恒。
+
+#### 任务 4：追偿、库存与权益的可靠收尾
+
+Files：退款编排、结算退款包；复用现有 coupon/stock/points 的 SPI 和持久化事件。拟新增测试 `backend/shop-app/src/test/java/ai/neargo/shop/scenario/RefundBenefitsRecoveryFlowTest.java`。
+
+Interfaces：消费成功执行记录与任务 1 的结清事实，生产按售后执行号幂等的权益/库存处理记录及追偿结果；不另造积分总账。
+
+- [ ] 4.1 添加 `aggregatedPaidSupplierCreatesReceivable`、`benefitFailureRetriesWithoutSecondCashRefund`、`compensationDoesNotRefundWholeOrder`；断言追偿与买家现金分别有状态、权益失败可恢复、补偿不误退整单券/抵扣积分。
+- [ ] 4.2 运行：`mvn -o -B -pl shop-app -am -Dtest=RefundBenefitsRecoveryFlowTest,LineRefundFlowTest -Dsurefire.failIfNoSpecifiedTests=false test`；预期新增跨域恢复断言失败。
+- [ ] 4.3 按 D5 的责任及垫付决策实现归集追偿；成功现金回执后可靠记录权益/库存工作，每项各自幂等。真实退货或取消免履约才影响库存；补偿独立结案，不冒用现金退款终态。
+- [ ] 4.4 同命令验证跨库失败、重复事件和重启；缺积分能力时保留可见未完成记录。新积分方案未确认时不得实现其扣现金或新户模型。
+- [ ] 4.5 独立 review 后提交。退出条件：现金、追偿、库存、券和积分均能定位自身结果及恢复责任方。
+
+#### 任务 5：原子履约与订单完成收敛
+
+Files：转换门、订单/商家服务、收货及发货内核（见 2D.4）。测试：现有 `OrderAutoReceiptFlowTest.java`、`TradeStatusGateFlowTest.java`；拟新增同场景目录 `OrderCompletionRaceFlowTest.java`。
+
+Interfaces：消费任务 1 的免履约数量；生产完整交付/取消闭合事实与 `completed_at`，供售后期、结算和动作计算使用。
+
+- [ ] 5.1 添加 `prepareRaceWritesOneFactAndLog`、`autoReceiptLogFailureRollsBackCompletion`、`cancelledItemAndDeliveredItemCompleteOrder`、`lastTwoShipmentsReceivedConcurrentlyCompleteOrder`、`signedSnapshotWithoutPickupConverges`。
+- [ ] 5.2 运行：`mvn -o -B -pl shop-app -am -Dtest=OrderAutoReceiptFlowTest,TradeStatusGateFlowTest,OrderCompletionRaceFlowTest -Dsurefire.failIfNoSpecifiedTests=false test`；预期新增故障/并发场景失败。
+- [ ] 5.3 备货条件更新同时校验首次、状态和售后占位；自动收货按订单独立事务写状态、流水、完成时刻。本地完成判断先取得订单级串行点，再用当前事实重算；不得用两次独立包裹 CAS 代替聚合协议。
+- [ ] 5.4 接入发货/收货内核；可信物流快照补齐缺失迁移，事件绑定运单/发货单版本，作废旧单不得推进替代单。验证接口完成后真实运行 B/C 页面，不能只看纯函数测试。
+- [ ] 5.5 同命令及相关页面检查通过、消融并发串行点后用例变红，再独立 review/提交。退出条件：所有已交付或取消免履约的订单最终必有正确终态。
+
+#### 任务 6：支付影响范围、取消权限与线下收款
+
+Files：`OrderServiceImpl`、`MerchantOrderServiceImpl`、对应支付/运营控制器。测试：`TradeStatusGateFlowTest.java`；拟新增同场景目录 `PaymentScopeFlowTest.java`。
+
+Interfaces：生产完整支付影响集合，包含支付单、门店订单、金额和可操作权限；资源范围来自服务端，不信任客户端声明的商家身份。
+
+- [ ] 6.1 添加 `restrictedOperatorCannotPartiallyCancelPayment`、`authorizedCancelClosesAllChildrenAndReleasesOnce`、`offlinePaymentRejectsMultiStoreBasket`；断言跨店集合完整、权限不足不写任何状态、资源只释放一次。
+- [ ] 6.2 运行：`mvn -o -B -pl shop-app -am -Dtest=TradeStatusGateFlowTest,PaymentScopeFlowTest -Dsurefire.failIfNoSpecifiedTests=false test`；预期新增受限数据域及线下场景失败。
+- [ ] 6.3 按 D1 先检查整个影响集合的授权，再在事务内执行完整级联；只在授权后的限定支付单范围内豁免数据域。新线下单单门店约束必须在建单入口执行，存量异常单按任务 0 明确的处理规则处置。
+- [ ] 6.4 同命令验证主/子单入口一致、取消撞付款及释放幂等，检查所有更新行数；同步 API 对账。
+- [ ] 6.5 独立 review 后提交。退出条件：任何成功响应的支付/取消动作，其全部影响集合都已授权并一致完成。
+
+#### 任务 7：三端支付视图与结果一致
+
+Files：2D.4 的支付/订单页和运营取消页；拟新增 `c-app/tests/pay-page.test.ts`，复用 `c-app/tests/orders-page.test.ts`，拟新增 `ops-web/app/orders/proxy-cancel.test.ts`。
+
+Interfaces：消费任务 6 的支付单视图与影响集合；三端跳转不得靠 `orderNo` 字符串形状猜资源粒度。
+
+- [ ] 7.1 添加 `subOrderEntryShowsWholePaymentAmount`：A 店 10 元/B 店 20 元，断言收银台展示及实际请求均覆盖 30 元和两家店；添加 `cancelledAndOfflinePendingAreNotPaid`、`delayedCallbackRefreshesToPaid`、`cancelConfirmationShowsAllAffectedOrders`。
+- [ ] 7.2 运行 `npm run test -w ai-shop-c-app -- tests/pay-page.test.ts tests/orders-page.test.ts` 与 `npm run test -w ai-shop-ops-web -- app/orders/proxy-cancel.test.ts`；预期新增金额/状态断言失败。
+- [ ] 7.3 子单入口解析后加载支付单视图；明确已收款、待收款、取消及未知结果；使用有界回查、重进页面刷新和可恢复提示。确认取消前展示完整影响集合。
+- [ ] 7.4 同测试验证，再分别运行 C 端 `vue-tsc` 与运营端类型检查；实际预览多门店、未收款、取消和回调延迟场景。
+- [ ] 7.5 独立 review 后提交。退出条件：页面金额、支付通道金额、状态文案和操作影响一致。
+
+#### 任务 8：可退额、动作合同与三端行级售后
+
+Files：订单/售后 DTO 和控制器、三端售后页面及 API/types/locale（见 2D.4）。拟新增 `backend/shop-app/src/test/java/ai/neargo/shop/scenario/RefundPreviewAndActionsFlowTest.java`、`c-app/tests/after-sale-preview.test.ts`；复用 `b-app/tests/after-sale-approve.test.ts`。
+
+Interfaces：生产 2D.4 的 `AfterSalePreviewRequest`、结果和 `ActionDescriptor`；与任务 1/2 共用金额、截止与执行结果语义。
+
+- [ ] 8.1 添加 `qualityReasonAtDayEightStillEligible`、`previewMatchesSubmittedPlan`、`interveneTargetsIntersectPermissionAndScope`、`oldContractMissingActionsDiffersFromEmptyActions`；前端测试选行/件数变化、核定上限与退款进度。
+- [ ] 8.2 运行 `mvn -o -B -pl shop-app -am -Dtest=RefundPreviewAndActionsFlowTest -Dsurefire.failIfNoSpecifiedTests=false test`、C/B 端对应测试；预期新增合同场景失败。
+- [ ] 8.3 接入带原因/类型/选行的预览；动作描述附在对应资源，显式目标/输入约束；提交重验权限与版本。C 端选行件数，B 端行明细与协商，运营端执行/退款进度沿同一合同展示。
+- [ ] 8.4 生成 OpenAPI/三端契约，跑 API 与 enum/i18n 守卫；两端 `vue-tsc`、运营端类型检查及真实页面预览通过后更新界面清单。
+- [ ] 8.5 独立 review 后提交。退出条件：相同事实在三端显示相同金额和阶段，按钮合法性与后端提交规则一致。
+
+#### 任务 9：综合验收、兼容与发布准备
+
+Files：上述 TDD/方案、现有部署与迁移说明；不直接进行生产写入或发布。
+
+- [ ] 9.1 形成客户端能力 × 状态/动作矩阵；定义每个新状态的创建门槛、旧端处理与最低版本。无法完成接受/确认动作的客户端不得收到新创建的等待状态。
+- [ ] 9.2 用代表性存量单演练增量迁移：已退款、进行中售后、零现金、多店及缺快照单；核对流水/库存/权益/结算守恒。不可可信还原的数据列出人工核对清单。
+- [ ] 9.3 补齐本节 Review Focus 的全链路场景，并在故障点前后模拟重启。保持稳定执行号，不因回滚应用代码丢失退款续跑者。
+- [ ] 9.4 在明确提交号的干净副本运行全量闸门、三端类型与测试、迁移/契约/生成物检查；记录实际输出及扫描范围，完成 §5/§6 对账。
+- [ ] 9.5 输出发布顺序、兼容期、可回滚版本、必须前向修复的数据边界、监控/人工处理入口。独立 review 后才形成发布交付；生产部署与数据修复另行执行。
+
+### 2D.7 验收证据与当前状态
+
+任务 0 的文档内容已整理为待评审修订，包括资源与用途定义、恢复边界及历史文档替代关系；不等同于所有 D 项已获确认，提交步骤也尚未执行。任务 1–9 全部**未实施**。两轮 review 中的现有测试通过和隔离算法复现是问题定位证据，不能作为上述新增场景通过的证据。实施时每个任务登记：新增测试方法、失败输出、通过输出、消融结果、提交号、实际文件清单及偏差；任务 9 另登记整套闸门与兼容演练。
+
+计划自检：两轮 review 的资金/数量/回执/结算问题映射到 1–4；事务/备货/完成/物流映射到 5；取消范围和线下权限映射到 6；收银台映射到 7；预览/动作/三端映射到 8；版本治理与上线回滚映射到 0/9。暂不交付 Redis、多实例部署、全仓重构或未确认积分域重整。
+
+## §2E 详细代码修复计划入口
+
+总体任务是范围与依赖概览。开发次序以 [TDD-订单重构修复与三端接线 §2.6](./TDD-订单重构修复与三端接线.md) 的7阶段、26批次为准；§2.5保留F01–F18详细修复清单，同一问题不重复执行两份清单。
+
+| 总体任务 | 详细批次 |
+|---|---|
+| 1 数量、金额与商品结清 | F08 |
+| 2 异步退款和回执 | F01、F09–F11 |
+| 3 结算守恒 | F06–F07 |
+| 4 权益、库存和追偿 | F12 |
+| 5 履约与发货收敛 | F02–F03、F13–F14 |
+| 6 支付影响及权限 | F04；线下单店门槛按 D1 合同落实 |
+| 7 三端支付视图 | F05（运营取消确认依赖 F04） |
+| 8 行级售后及动作 | F15–F17 |
+| 9 兼容和发布 | F18 |
+| 当前完成状态、归属与shop.order迁移 | B00、M01、M02；迁包前先完成I05收口 |
+| 原清单未覆盖的真实查询/下单/总入口接线 | I01–I05；复用已建Handler，补足现有业务字段、金额及生产Store |
+
+确定性修复、扩表捕获、新语义切读写、新端入口分别有验收。详细计划列明字段、方法、事务、错误分流、失败断言、迁移和回滚条件；本轮不勾选代码步骤，不改旧测试期待值，不修改生产迁移。
 
 ## §5 对账三 · 实现 → 需求（测试）
 

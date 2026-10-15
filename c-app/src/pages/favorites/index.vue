@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BizLoginPanel from "@/components/biz/biz-login-panel.vue";
 /*
  * 我的收藏（原型 g08 · TDD-C端商品收藏与送达判断）。
  *
@@ -6,10 +7,9 @@
  * 他收藏它是有原因的，自动消失会让人以为数据丢了，由他自己点「删除」。
  * 店铺只列收藏的，不混入「常去的店」（那是归因推出来的，不是他点的）。
  */
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { onReachBottom, onShow } from "@dcloudio/uni-app";
-import { phoneRequired, withPhone, onPhoneBound, onPhoneGateClose } from "@/shared/phone-required";
 import { api } from "@/api";
 import { useCartStore } from "@/stores/cart";
 import { useUserStore } from "@/stores/user";
@@ -39,27 +39,31 @@ const tabs = computed(() => [
 
 async function load() {
   // 统一闸：没手机号弹授权层，绑完自动把这次加载补上
-  if (!(await withPhone(doLoad))) return;
+  if (user.isPhoneLogin) await doLoad();
 }
 
 async function doLoad() {
+  const token = user.token;
   try {
     const [g, s] = await Promise.all([api.favoriteGoods(1, PAGE_SIZE), api.favoriteStores()]);
+    if (user.token !== token || !user.isPhoneLogin) return;
     goods.value = g.records;
     goodsTotal.value = g.total;
     page.value = 1;
     stores.value = s;
     failed.value = false;
   } catch {
+    if (user.token !== token || !user.isPhoneLogin) return;
     failed.value = true;
   }
   loaded.value = true;
 }
 
 async function more() {
+  const token = user.token;
   if (tab.value !== "goods" || goods.value.length >= goodsTotal.value) return;
   const next = await api.favoriteGoods(page.value + 1, PAGE_SIZE).catch(() => null);
-  if (!next) return;
+  if (!next || user.token !== token || !user.isPhoneLogin) return;
   page.value += 1;
   goods.value = [...goods.value, ...next.records];
 }
@@ -102,10 +106,18 @@ function openStore(m: Merchant) {
 
 onShow(load);
 onReachBottom(more);
+// Covers both a native phone login and a known phone account restored silently after first onShow.
+watch(() => user.isPhoneLogin ? user.token : "", () => {
+  goods.value = []; goodsTotal.value = 0; stores.value = []; page.value = 1;
+  loaded.value = false; failed.value = false;
+  void load();
+});
 </script>
 
 <template>
   <sh-scaffold title-key="favorites.title">
+    <biz-login-panel v-if="!user.isPhoneLogin" />
+    <template v-if="user.isPhoneLogin">
     <sh-tabs :items="tabs" :active="tab" @change="(k: string) => (tab = k as typeof tab)"></sh-tabs>
 
     <view v-if="tab === 'goods'" class="sh-block">
@@ -138,9 +150,8 @@ onReachBottom(more);
         :text="$t('favorites.emptyStores')"
       ></sh-empty>
     </view>
-    <phone-gate :visible="phoneRequired.visible.value" :suggest="phoneRequired.suggest.value"
-    @done="onPhoneBound" @close="onPhoneGateClose" />
-</sh-scaffold>
+    </template>
+  </sh-scaffold>
 </template>
 
 <style scoped>

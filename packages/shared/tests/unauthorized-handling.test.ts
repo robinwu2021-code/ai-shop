@@ -56,7 +56,8 @@ describe("登录失效的处理", () => {
         + "令牌过期后页面会渲染成空白或「这页不归你管」，而真相只是要重新登录一次。",
     ).toBe(true);
     // 跳登录本身要有：注册了却什么也不做，等于没注册
-    expect(/setUnauthorizedHandler\([\s\S]{0,600}reLaunch/.test(shell)).toBe(true);
+    if (app === "b-app") expect(/setUnauthorizedHandler\([\s\S]{0,600}reLaunch/.test(shell)).toBe(true);
+    else expect(shell).toContain("recoverSession(context)");
   });
 
   it("★★★ 传输层要有 403 回调 —— 后端判权是现算的，端上的 perms 是拉过一次的", () => {

@@ -36,7 +36,7 @@ echo "▶ 目标小程序 AppID：$APPID"
 # 2026-09-04 实测：后台是 0.1.3，界面显示 0.1.0。
 if ! grep -q "\"versionName\"[[:space:]]*:[[:space:]]*\"$VERSION\"" "$HERE/src/manifest.json"; then
   perl -0pi -e "s/(\"versionName\"\s*:\s*\")[^\"]*(\")/\${1}$VERSION\${2}/" "$HERE/src/manifest.json"
-  echo "▶ 0/4 manifest.json 的 versionName 已更新为 $VERSION（记得随发布一起提交）"
+  echo "▶ 0/4 manifest.json 的 versionName 已更新为 ${VERSION}（记得随发布一起提交）"
 fi
 
 echo "▶ 1/4 构建"

@@ -38,7 +38,7 @@ vi.mock("@shared/ports/share", () => ({
 vi.mock("vue-i18n", () => ({ useI18n: () => ({ t: (k: string) => k }) }));
 vi.mock("@dcloudio/uni-app", () => ({
   onLoad: (cb: (q: Record<string, string>) => unknown) => cb({ no: "ST1", from: "LIST" }),
-  onShow: vi.fn(), onShareAppMessage: vi.fn(), onShareTimeline: vi.fn(), onPageScroll: vi.fn(),
+  onShow: vi.fn(), onHide: vi.fn(), onShareAppMessage: vi.fn(), onShareTimeline: vi.fn(), onPageScroll: vi.fn(),
 }));
 vi.mock("@/shared/fly", () => ({ flyToCart: vi.fn(), tapPoint: () => ({ x: 0, y: 0 }) }));
 

@@ -69,6 +69,8 @@ import type {
   GroupRequest,
   LoginReq,
   LoginResp,
+  WxPhoneLoginReq,
+  WxPhoneLoginResp,
   FrequentItem,
   Merchant,
   ReorderResult,
@@ -118,6 +120,7 @@ export const httpApi: ShopApi = {
   // ---- 用户
   sendOtp: (phone: string) => call<void>("sendOtp", undefined, { phone }),
   login: (req: LoginReq) => call<LoginResp>("login", undefined, { ...req } satisfies LoginReqBody),
+  loginByWxPhone: (req) => call<WxPhoneLoginResp>("loginByWxPhone", undefined, { ...req } satisfies WxPhoneLoginReq),
   profile: () => call<User>("profile"),
   // 展开成字面量再 satisfies —— 与 login 同一个写法：
   // call() 收的是 Record<string, unknown>，而具名接口没有索引签名

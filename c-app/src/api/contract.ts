@@ -28,6 +28,8 @@ import type {
   GroupBuy,
   LoginReq,
   LoginResp,
+  WxPhoneLoginReq,
+  WxPhoneLoginResp,
   Order,
   ShipmentTrace,
   TrackView,
@@ -187,6 +189,7 @@ export interface ShopApi {
    */
   sendOtp(phone: string): Promise<void>;
   login(req: LoginReq): Promise<LoginResp>;
+  loginByWxPhone(req: WxPhoneLoginReq): Promise<WxPhoneLoginResp>;
   profile(): Promise<User>;
 
   /**

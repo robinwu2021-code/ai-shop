@@ -1,10 +1,12 @@
 package ai.neargo.shop.user.mapper;
 
 import ai.neargo.shop.user.entity.UsrAccount;
+import ai.neargo.shop.user.entity.UsrMpSession;
 import ai.neargo.shop.user.entity.UsrAddress;
 import ai.neargo.shop.user.entity.UsrIdentity;
 import ai.neargo.shop.user.entity.UsrStoreFavorite;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Select;
 
 /**
  * user 域的 Mapper 集合（嵌套接口，沿用 powerbank 的写法）。
@@ -20,6 +22,12 @@ public final class UserMappers {
     }
 
     public interface UserMapper extends BaseMapper<UsrAccount> {
+        /** Serialize first-phone registration against the technical account. */
+        @Select("SELECT * FROM usr_account WHERE user_no=#{userNo} AND deleted=0 FOR UPDATE")
+        UsrAccount lockByUserNo(String userNo);
+    }
+
+    public interface MpSessionMapper extends BaseMapper<UsrMpSession> {
     }
 
     /**

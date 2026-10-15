@@ -98,10 +98,12 @@ export const useCommunityStore = defineStore("community", {
      */
     async bind(community: Community, pickup?: Pickup | null) {
       const user = useUserStore();
+      const token = user.token;
       if (user.isLogin) {
         // 不传点：后端只写聚落，并**清掉**上一个聚落留下的点
         await api.bindCommunity(community.communityNo, pickup?.pickupNo);
       }
+      if (user.token !== token) return;
       this.community = community;
       this.pickup = pickup ?? null;
     },

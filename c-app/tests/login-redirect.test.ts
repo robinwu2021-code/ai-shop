@@ -15,10 +15,11 @@ const read = (p: string) => readFileSync(resolve(__dirname, "..", p), "utf8");
  * 登完回不去是会被驳回的。
  */
 describe("登录后回到来源页", () => {
-  it("401 处理器把当前页带进 redirect 参数", () => {
+  it("401 recovery preserves the current page", () => {
     const src = read("src/App.vue");
-    expect(src).toMatch(/redirect=\$\{encodeURIComponent\(back\)\}/);
-    expect(src).toMatch(/function currentRoute\(\)/);
+    const recovery = src.slice(src.indexOf("setUnauthorizedHandler("), src.indexOf("// 社区归属里存的是"));
+    expect(recovery).toContain("recoverSession(context)");
+    expect(recovery).not.toContain("reLaunch");
   });
 
   it("登录页读 redirect，并且登录成功后用它而不是 navigateBack", () => {

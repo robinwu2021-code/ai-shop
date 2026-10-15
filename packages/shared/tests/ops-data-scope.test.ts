@@ -462,6 +462,11 @@ const OWNER_COLUMNS = [
 ];
 
 const ANCHOR_WAIVED: Record<string, string> = {
+  // 这是消费者的私有会话操作者上下文，仅由 C 端认证/付款按 token 哈希读取；无运营查询入口。
+  // 保留 SELF 过滤。若运营将来直接读该表，下面三种会话应得到空集，不能按商家/片区公开。
+  "usr_mp_session:COMMUNITY": "没有运营页面读取；持社区域的运营直接查询应为空，消费者会话不能按社区公开",
+  "usr_mp_session:MERCHANT": "没有运营页面读取；持商家域的运营直接查询应为空，消费者会话不能按商家公开",
+  "usr_mp_session:PICKUP": "没有运营页面读取；持自提点域的运营直接查询应为空，消费者会话不能按自提点公开",
   /*
    * ── 2026-08-31 第三批登记（pmt_activity / mbr_reach_log）带来的锚点缺口 ──
    *

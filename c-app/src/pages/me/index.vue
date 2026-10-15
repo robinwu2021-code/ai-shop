@@ -2,10 +2,9 @@
 import type { MasterData, MerchantApplyStatus, MyFission } from "@shared/types";
 // 我的：登录入口 + 归属信息 + 外观与语言。
 // 列表项之间用间距分块，不用分隔线（扁平色块风格）。
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { onShow } from "@dcloudio/uni-app";
-import { phoneRequired, withPhone, requirePhoneOnEnter, onPhoneBound, onPhoneGateClose } from "@/shared/phone-required";
 import { merchantApplyVisible, openWxCustomerService } from "@shared/ports";
 import { requestSubscribe, SUBSCRIBE_TMPL } from "@shared/ports/push";
 import { api } from "@/api";
@@ -13,7 +12,7 @@ import { useUserStore } from "@/stores/user";
 import { useConfigStore } from "@/stores/config";
 // 小程序才有原生客服会话；借 canNativeShare 判端（两者的条件编译判据相同）
 import { canNativeShare } from "@shared/ports/share";
-import PhoneGate from "@/components/phone-gate.vue";
+import BizLoginPanel from "@/components/biz/biz-login-panel.vue";
 import { useCommunityStore } from "@/stores/community";
 import { useLocationStore } from "@/stores/location";
 import { FEATURES, ROUTES } from "@shared/utils/constants";
@@ -53,7 +52,7 @@ const unread = ref(0);
 
 function gotoLogin() {
   // 统一闸：这里要的其实是手机号（账号 openid 打开小程序就静默拿到了）
-  void withPhone(() => gotoProfile());
+  if (user.isPhoneLogin) gotoProfile();
 }
 /**
  * 商家运营入口。**只在「并进了 B 端分包」的那种构建里出现**
@@ -537,15 +536,16 @@ try {
   // 取不到就按安卓走 —— 安卓包是现在唯一真实存在的那一个
 }
 
-onShow(() => {
-  if (user.isLogin) {
+function refreshMe() {
+  const token = user.token;
+  if (user.isPhoneLogin) {
     user.loadProfile();
     // 没申请过返回 null，不是错误 —— 失败也不该影响整页
-    api.myMerchantApply().then((a) => (applyStatus.value = a)).catch(() => {});
+    api.myMerchantApply().then((a) => { if (user.token === token) applyStatus.value = a; }).catch(() => {});
     // 只取一个数 —— 拉整个列表数未读是把带宽当角标用
-    api.unreadMessages().then((n) => (unread.value = n)).catch(() => {});
+    api.unreadMessages().then((n) => { if (user.token === token) unread.value = n; }).catch(() => {});
     // 没有在跑的活动时后端返回 null，那条入口就整条不显示
-    api.myFission().then((f) => (fission.value = f)).catch(() => (fission.value = null));
+    api.myFission().then((f) => { if (user.token === token) fission.value = f; }).catch(() => { if (user.token === token) fission.value = null; });
   } else {
     /*
      * **未登录必须清零**：这一条此前写在 isLogin 块外面 ——
@@ -557,9 +557,12 @@ onShow(() => {
     // 登出之后不该还挂着别人的邀请进度
     fission.value = null;
   }
-  if (FEATURES.points) api.pointAccount().then((a) => (points.value = a.balance));
-  // 进页即弹（2026-10-08 拍板）
-  void requirePhoneOnEnter();
+  if (FEATURES.points && user.isPhoneLogin) api.pointAccount().then((a) => { if (user.token === token) points.value = a.balance; });
+}
+onShow(refreshMe);
+watch(() => user.isPhoneLogin ? user.token : "", () => {
+  applyStatus.value = null; unread.value = 0; fission.value = null; points.value = 0;
+  refreshMe();
 });
 </script>
 
@@ -570,7 +573,8 @@ onShow(() => {
       **此前登录后整张卡点了没反应** —— 而每个人的名字都是建户时给的占位名
       （线上 23/23），也就是说这个平台上没有任何人改过昵称：不是没人想改，是没有入口。
     -->
-    <view class="sh-card head sh-row" @tap="user.isLogin ? gotoProfile() : gotoLogin()">
+    <biz-login-panel v-if="!user.isPhoneLogin" />
+    <view v-if="user.isPhoneLogin" class="sh-card head sh-row" @tap="user.isPhoneLogin ? gotoProfile() : gotoLogin()">
       <!--
         头像可能是 URL、emoji 或空。三种都要显示得出来 ——
         把一个 emoji 喂给 <image> 的结果是一个碎图标，而不是一张头像。
@@ -584,14 +588,14 @@ onShow(() => {
       <text v-else class="head__avatar">{{ user.user?.avatar || "🙂" }}</text>
       <view class="sh-fill">
         <text class="txt-title head__name">
-          {{ user.isLogin ? displayName : $t("me.login") }}
+          {{ user.isPhoneLogin ? displayName : $t("me.login") }}
         </text>
         <!--
           静默登录之后**有账号但没手机号**是常态，此时旧写法显示的是一片空白 ——
           用户不知道那一行为什么空着，更不知道能点。
           现在空着的时候直接说「去绑定」，它就是入口。
         -->
-        <text v-if="!user.isLogin" class="txt-caption head__sub">{{ $t("me.loginHint") }}</text>
+        <text v-if="!user.isPhoneLogin" class="txt-caption head__sub">{{ $t("me.loginHint") }}</text>
         <text v-else-if="user.user?.phone" class="txt-caption head__sub">{{ user.user.phone }}</text>
         <text v-else class="txt-caption head__sub head__sub--action txt-primary" @tap.stop="phoneGate = true">
           {{ $t("me.bindPhone") }}
@@ -624,7 +628,7 @@ onShow(() => {
           它暗示这个人有消息且都读过了，而他还没登录，平台根本不知道他是谁。
           与上面「我的常去店」未登录时显示「—」是同一个口径。
         -->
-        <text v-if="user.isLogin" class="txt-caption cell__value sh-num">
+        <text v-if="user.isPhoneLogin" class="txt-caption cell__value sh-num">
           {{ unread ? $t("message.unread", { n: unread }) : $t("message.allRead") }}
         </text>
       </view>
@@ -799,7 +803,7 @@ onShow(() => {
       </view>
       <!-- 此前**整个 c-app 没有退出登录入口** —— store 里的 logout() 是死代码。
            没有入口意味着共用设备上无法结束会话，而令牌在服务端一直有效 -->
-      <view v-if="user.isLogin" class="sh-cell sh-row sh-row--between" @tap="onLogout">
+      <view v-if="user.isPhoneLogin" class="sh-cell sh-row sh-row--between" @tap="onLogout">
         <text class="txt-body cell__label">{{ $t("me.logout") }}</text>
       </view>
     </view>
@@ -809,7 +813,7 @@ onShow(() => {
       退出登录再登回来就是；注销之后同一个微信进来是一个全新账号。
       微信要求有这个入口（上架审核会查），但不该让它看起来像个常用操作。
     -->
-    <view v-if="user.isLogin" class="danger" @tap="onDeregister">
+    <view v-if="user.isPhoneLogin" class="danger" @tap="onDeregister">
       <text class="txt-sub">{{ $t("me.deregister") }}</text>
     </view>
 
@@ -890,9 +894,6 @@ onShow(() => {
       弹层文字直接浮在商品列表上，**看起来像页面串了行，而不像弹窗坏了**。
       H5 上不会露：浏览器里 `:root` 是匹配的。见 shared/tests/scaffold-scope.test.ts
     -->
-    <phone-gate :visible="phoneGate" @done="phoneGate = false" @close="phoneGate = false" />
-    <phone-gate :visible="phoneRequired.visible.value" :suggest="phoneRequired.suggest.value"
-    @done="onPhoneBound" @close="onPhoneGateClose" />
 </sh-scaffold>
 </template>
 

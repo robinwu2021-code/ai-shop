@@ -32,6 +32,7 @@ vi.mock("@dcloudio/uni-app", () => ({
   onShareTimeline: vi.fn(), onPageScroll: vi.fn(),
 }));
 
+import { useUserStore } from "@/stores/user";
 import OrdersPage from "@/pages/orders/index.vue";
 
 const ORDER = {
@@ -68,6 +69,8 @@ async function render() {
 describe("订单列表", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+    useUserStore().token = "formal";
+    useUserStore().user = { phone: "13800138000" } as never;
     vi.clearAllMocks();
     afterSaleList.mockResolvedValue([]);
   });
@@ -101,7 +104,7 @@ describe("订单列表", () => {
     // 按库件自己定义的插槽容器选（sh-empty 的 .empty__act），不按页面私有类名：
     // 重试按钮原来是 .empty__btn，收进 sh-empty 的 action 插槽之后那个类没了，
     // 而失败信息只说「在空 wrapper 上 trigger」，指不到「类名已经不存在」
-    await w.find(".empty__act .sh-btn").trigger("tap");
+    await w.findAll(".empty__act .sh-btn").find((button) => button.text().includes("common.retry"))!.trigger("tap");
     for (let i = 0; i < 8; i++) await w.vm.$nextTick();
 
     expect(orderList).toHaveBeenCalledTimes(2);

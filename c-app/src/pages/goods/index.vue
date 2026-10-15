@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BizLoginConsent from "@/components/biz/biz-login-consent.vue";
+import BizPhoneLoginButton from "@/components/biz/biz-phone-login-button.vue";
 // 商品详情（五态）：标品 / 生鲜 / 服务 / 虚拟 / 卡券。
 // 五态共用一套骨架，差异只落在「规格矩阵 → 事实区 → 底部条」三处，
 // 与 strategies（计价 + 履约）的分层保持一致。
@@ -12,7 +14,6 @@ import { computed, getCurrentInstance, nextTick, onUnmounted, ref, watch } from 
 import { useI18n } from "vue-i18n";
 import { thumb } from "@shared/utils/media-thumb";
 import { onLoad, onPageScroll, onShareAppMessage, onShareTimeline } from "@dcloudio/uni-app";
-import { phoneRequired, withPhone, onPhoneBound, onPhoneGateClose } from "@/shared/phone-required";
 import { api } from "@/api";
 import { prompt } from "@ai-shop/ui/prompt";
 import { useCartStore } from "@/stores/cart";
@@ -875,7 +876,7 @@ async function toggleFavorite() {
   const g = goods.value;
   if (!g || faving.value) return;
   // 统一闸：没手机号弹授权层，绑完自动把这次收藏补上
-  if (!(await withPhone(doToggleFavorite))) return;
+  if (useUserStore().isPhoneLogin) await doToggleFavorite();
 }
 
 async function doToggleFavorite() {
@@ -1145,10 +1146,12 @@ onShareTimeline(() =>
               <text v-if="goods.subtitle" class="sh-muted sub">{{ goods.subtitle }}</text>
             </view>
             <!-- 收藏（原型 g07）：空心 / 实心星 + 两个字，与分享并排 -->
-            <view class="titlerow__act sh-center" @tap="toggleFavorite">
-              <sh-icon :name="goods.favorited ? 'starFilled' : 'star'" :size="32" :color="goods.favorited ? 'var(--sh-primary)' : 'var(--sh-ink)'"></sh-icon>
-              <text class="txt-caption" :class="goods.favorited ? 'txt-primary' : 'sh-muted'">{{ $t(goods.favorited ? "goods.favorited" : "goods.favorite") }}</text>
-            </view>
+            <biz-phone-login-button class="titlerow__act" :label="String($t(goods.favorited ? 'goods.favorited' : 'goods.favorite'))"
+              size="sm" tone="soft" @ready="doToggleFavorite">
+              <sh-icon :name="goods.favorited ? 'starFilled' : 'star'" :size="32"
+                :color="goods.favorited ? 'var(--sh-primary)' : 'var(--sh-ink)'" />
+              <text class="txt-caption">{{ $t(goods.favorited ? "goods.favorited" : "goods.favorite") }}</text>
+            </biz-phone-login-button>
             <!--
               分享（§3.2；详情页 v4 第一条）：一颗「分享」，点开面板两条路 —— 发给朋友 / 生成海报。
               此前标题行并排「海报」「分享」两颗：同一件事的两条路并排摆，人不知道点哪个。
@@ -1574,7 +1577,11 @@ onShareTimeline(() =>
         </sh-sheet>
 
         <!-- dock：贴底通栏（2026-09-28 真机反馈浮动药丸滑动时与商品卡叠在一起看不清） -->
-        <sh-actionbar pill="plain" dock :pad="160">
+        <view v-if="!user.isPhoneLogin" class="sh-block">
+      <text class="sh-hint">{{ $t('phoneLogin.tip') }}</text>
+      <biz-login-consent />
+    </view>
+    <sh-actionbar pill="plain" dock :pad="160">
           <!-- 底栏：店铺 · 购物车 · 两颗按钮（v3，2026-09-28 用户拍板购物车回底栏）。分享仍在标题旁 -->
           <view class="actionbar__icon sh-center" @tap="openMerchant">
             <sh-icon name="store" :size="40" color="var(--sh-sub)"></sh-icon>
@@ -1610,8 +1617,6 @@ onShareTimeline(() =>
   
   
     </template>
-    <phone-gate :visible="phoneRequired.visible.value" :suggest="phoneRequired.suggest.value"
-    @done="onPhoneBound" @close="onPhoneGateClose" />
 </sh-scaffold>
 </template>
 
