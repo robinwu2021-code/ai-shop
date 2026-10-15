@@ -131,7 +131,10 @@ export function ExpressTab({ c, canEdit, canReplay }: { c: FulfillmentCopy; canE
     { header: c.colShipStatus, cell: (s) => <StatusBadge map={statusMap} value={s.status} /> },
     {
       header: c.colSubscribe,
-      cell: (s) => (s.subState ? <StatusBadge map={subStateMap} value={s.subState} /> : "—"),
+      cell: (s) => s.subscriptions?.length
+        ? <span className="flex flex-col txt-caption">{s.subscriptions.map((row) =>
+            <span key={row.channel}>{row.channel}：{row.state}</span>)}</span>
+        : (s.subState ? <StatusBadge map={subStateMap} value={s.subState} /> : "—"),
     },
     { header: c.colReceiver, cell: (s) => s.receiver },
     { header: c.colRegion, cell: (s) => s.region },
@@ -225,6 +228,15 @@ export function ExpressTab({ c, canEdit, canReplay }: { c: FulfillmentCopy; canE
                     </Field>
                   ) : null}
                 </FieldGrid>
+                {current.subscriptions?.map((row) => (
+                  <div key={row.channel} className="mb-2 txt-caption">
+                    <span>{row.channel}：{row.state}</span>
+                    {row.error ? <span className="ml-2 text-destructive">{row.error}</span> : null}
+                    {row.lastAttemptAt ? <span className="ml-2 text-muted-foreground">
+                      {fmtTime(row.lastAttemptAt)}
+                    </span> : null}
+                  </div>
+                ))}
                 {current.subError ? (
                   <p className="mb-2 txt-caption text-destructive">{c.fieldSubError}：{current.subError}</p>
                 ) : null}

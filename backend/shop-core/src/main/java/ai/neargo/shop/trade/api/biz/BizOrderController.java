@@ -4,6 +4,9 @@ import ai.neargo.shop.auth.BizPerms;
 import org.springframework.security.access.prepost.PreAuthorize;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.spi.logistics.LogisticsPort;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.CourierOrderVO;
 import ai.neargo.shop.trade.dto.OrderVO;
@@ -27,9 +30,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class BizOrderController {
 
     private final MerchantOrderService merchantOrderService;
+    private final LogisticsPort logisticsPort;
 
-    public BizOrderController(MerchantOrderService merchantOrderService) {
+    public BizOrderController(MerchantOrderService merchantOrderService, LogisticsPort logisticsPort) {
         this.merchantOrderService = merchantOrderService;
+        this.logisticsPort = logisticsPort;
     }
 
     /**
@@ -134,8 +139,32 @@ public class BizOrderController {
     @PostMapping("/biz/order/{subOrderNo}/ship")
     public OrderVO ship(@PathVariable String subOrderNo, @RequestBody ShipReq req) {
         var ctx = BizContext.current();
-        return merchantOrderService.ship(ctx.requireMerchantNo(), ctx.currentStoreNo(),
+        OrderVO before = merchantOrderService.detail(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo);
+        boolean sameCommittedShipment = "FULFILLING".equals(before.status())
+                && req.expressNo() != null && req.expressNo().trim().equals(before.expressNo())
+                && req.expressCompany() != null && req.expressCompany().equals(before.expressCompany());
+        if (!sameCommittedShipment) {
+            LogisticsPort.Precheck check = logisticsPort.precheck(subOrderNo, req.expressCompany(),
+                    req.expressNo(), before.receiver() == null ? null : before.receiver().phone());
+            if ("INVALID".equals(check.verdict()) || (check.confirmationRequired()
+                    && !Boolean.TRUE.equals(req.confirmExistingTrace()))) {
+                throw BizException.of(ErrorCode.CONFLICT, check.reason());
+            }
+        }
+        OrderVO committed = merchantOrderService.ship(ctx.requireMerchantNo(), ctx.currentStoreNo(),
                 subOrderNo, req.expressNo(), req.expressCompany(), SecurityUtils.currentUserNo());
+        LogisticsPort.SyncResult sync = logisticsPort.syncAfterShip(subOrderNo);
+        return committed.withLogisticsSync(new OrderVO.LogisticsSync(sync.status(), sync.source(),
+                sync.lastEventAt(), sync.pending(), sync.reason()));
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.SHIP + "')")
+    @PostMapping("/biz/order/{subOrderNo}/ship/precheck")
+    public LogisticsPort.Precheck precheck(@PathVariable String subOrderNo, @RequestBody ShipReq req) {
+        var ctx = BizContext.current();
+        OrderVO order = merchantOrderService.detail(ctx.requireMerchantNo(), ctx.currentStoreNo(), subOrderNo);
+        return logisticsPort.precheck(subOrderNo, req.expressCompany(), req.expressNo(),
+                order.receiver() == null ? null : order.receiver().phone());
     }
 
     /**
@@ -184,6 +213,6 @@ public class BizOrderController {
      *                       <b>原样是微信的 delivery_id</b>，上报时直接发过去 ——
      *                       中间再映射一次就多一处会错的地方
      */
-    public record ShipReq(String expressNo, String expressCompany) {
+    public record ShipReq(String expressNo, String expressCompany, Boolean confirmExistingTrace) {
     }
 }

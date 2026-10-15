@@ -73,6 +73,7 @@ public class WaybillProgress {
             }
             if (added > 0 || t.changed()) {
                 patch.setLastEventAt(now);
+                patch.setStatusSource(channel);
                 dirty = true;
             }
             if (t.firstPickedUp()) {

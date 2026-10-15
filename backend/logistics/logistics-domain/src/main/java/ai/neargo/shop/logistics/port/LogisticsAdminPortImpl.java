@@ -13,6 +13,7 @@ import ai.neargo.shop.logistics.domain.WaybillStatus;
 import ai.neargo.shop.logistics.entity.LgsCarrierCode;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
 import ai.neargo.shop.logistics.entity.LgsWaybillNode;
+import ai.neargo.shop.logistics.entity.LgsChannelSubscription;
 import ai.neargo.shop.logistics.event.WaybillRegistered;
 import ai.neargo.shop.logistics.registration.WaybillReplacement;
 import ai.neargo.shop.logistics.registration.ChannelSubscriptionStore;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Isolation;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.CarrierCodeMapper;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillNodeMapper;
+import ai.neargo.shop.logistics.mapper.LogisticsMappers.ChannelSubscriptionMapper;
 import ai.neargo.shop.logistics.routing.CarrierCodeBook;
 import ai.neargo.shop.logistics.routing.ChannelRouter;
 import ai.neargo.shop.logistics.wxbind.WxBindRequested;
@@ -65,6 +67,10 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
     private final LogisticsProperties props;
     private final OutboxEventBus events;
     private ShipmentSourcePort source;
+    private ChannelSubscriptionMapper channelRows;
+
+    @Autowired(required = false)
+    public void setChannelRows(ChannelSubscriptionMapper channelRows) { this.channelRows = channelRows; }
 
     @Autowired
     public void setShipmentSourcePort(ShipmentSourcePort source) { this.source = source; }
@@ -108,9 +114,10 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
         Map<String, List<Node>> traces = tracesOf(page.getRecords().stream().map(LgsWaybill::getShipmentNo).toList());
         Map<String, ShipmentSourcePort.UploadState> uploadStates = source == null ? Map.of()
                 : source.uploadStatesOf(page.getRecords().stream().map(LgsWaybill::getBizRef).toList());
+        Map<String, List<Subscription>> subscriptions = subscriptionsOf(page.getRecords());
         List<Shipment> rows = page.getRecords().stream()
                 .map(r -> toShipment(r, traces.getOrDefault(r.getShipmentNo(), List.of()),
-                        uploadStates.get(r.getBizRef()))).toList();
+                        uploadStates.get(r.getBizRef()), subscriptions.getOrDefault(r.getShipmentNo(), List.of()))).toList();
         return new ShipmentPage(rows, page.getTotal());
     }
 
@@ -174,7 +181,8 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
         }
         LgsWaybill after = waybills.selectById(w.getId());
         return toShipment(after, tracesOf(List.of(shipmentNo)).getOrDefault(shipmentNo, List.of()),
-                source == null ? null : source.uploadStatesOf(List.of(after.getBizRef())).get(after.getBizRef()));
+                source == null ? null : source.uploadStatesOf(List.of(after.getBizRef())).get(after.getBizRef()),
+                subscriptionsOf(List.of(after)).getOrDefault(shipmentNo, List.of()));
     }
 
     // ---------------------------------------------------------------- O3 重放
@@ -352,7 +360,24 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
         return out;
     }
 
-    private static Shipment toShipment(LgsWaybill w, List<Node> traces, ShipmentSourcePort.UploadState upload) {
+    private Map<String, List<Subscription>> subscriptionsOf(List<LgsWaybill> current) {
+        if (current.isEmpty() || channelRows == null) return Map.of();
+        List<LgsChannelSubscription> rows = channelRows.selectList(Wrappers.<LgsChannelSubscription>query()
+                .in("shipment_no", current.stream().map(LgsWaybill::getShipmentNo).toList()));
+        Map<String, String> identities = new LinkedHashMap<>();
+        current.forEach(w -> identities.put(w.getShipmentNo(), ChannelSubscriptionStore.identityKey(w)));
+        Map<String, List<Subscription>> out = new LinkedHashMap<>();
+        for (LgsChannelSubscription row : rows) {
+            if (!Objects.equals(identities.get(row.getShipmentNo()), row.getIdentityKey())) continue;
+            out.computeIfAbsent(row.getShipmentNo(), ignored -> new ArrayList<>())
+                    .add(new Subscription(row.getChannel(), row.getState(), row.getError(),
+                            row.getLastAttemptAt(), row.getNextRetryAt()));
+        }
+        return out;
+    }
+
+    private static Shipment toShipment(LgsWaybill w, List<Node> traces, ShipmentSourcePort.UploadState upload,
+                                       List<Subscription> subscriptions) {
         String sourceCarrier = w.getCarrierCorrectedFrom() == null ? w.getCarrier() : w.getCarrierCorrectedFrom();
         boolean current = upload != null && Objects.equals(w.getSourceShipmentNo(), upload.sourceShipmentNo())
                 && Objects.equals(w.getSourceShipmentVersion(), upload.sourceShipmentVersion())
@@ -365,7 +390,7 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
                 w.getBindState(), w.getBindError(), w.getSignedAt(), w.getLastEventAt(),
                 w.getAtLocker() != null && w.getAtLocker() == 1,
                 w.getCarrierCorrectedFrom(), w.getReceiverPhoneLast4(),
-                current ? upload.status() : null, current ? upload.error() : null);
+                current ? upload.status() : null, current ? upload.error() : null, subscriptions);
     }
 
     private static void eq(QueryWrapper<LgsWaybill> w, String col, String v) {

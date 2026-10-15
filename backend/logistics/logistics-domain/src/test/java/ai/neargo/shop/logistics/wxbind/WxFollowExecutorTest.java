@@ -54,6 +54,7 @@ class WxFollowExecutorTest {
         LgsChannelSubscription row = new LgsChannelSubscription();
         row.setState("PENDING");
         when(store.ensurePending(waybill, "wx-follow")).thenReturn(row);
+        when(store.claim("SH1", "OS1:1", "wx-follow")).thenReturn(true);
         when(codes.codeOf("YTO", "wx")).thenReturn(Optional.of("YTO"));
         when(gateway.available()).thenReturn(true);
     }

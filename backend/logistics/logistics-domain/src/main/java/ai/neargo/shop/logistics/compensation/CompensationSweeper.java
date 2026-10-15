@@ -7,11 +7,13 @@ import ai.neargo.shop.logistics.capability.StatusProbe;
 import ai.neargo.shop.logistics.config.LogisticsProperties;
 import ai.neargo.shop.logistics.domain.WaybillStatus;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
+import ai.neargo.shop.logistics.entity.LgsChannelSubscription;
 import ai.neargo.shop.logistics.event.WaybillRegistered;
 import ai.neargo.shop.logistics.registration.ChannelSubscriptionStore;
 import ai.neargo.shop.logistics.registration.Kd100SubscribeRequested;
 import ai.neargo.shop.logistics.wxbind.WxFollowRequested;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
+import ai.neargo.shop.logistics.mapper.LogisticsMappers.ChannelSubscriptionMapper;
 import ai.neargo.shop.logistics.probe.WaybillProber;
 import ai.neargo.shop.logistics.routing.ChannelRouter;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -54,6 +56,10 @@ public class CompensationSweeper {
     private final SysOutboxMapper outbox;
     private final TransactionTemplate tx;
     private final LongSupplier clock;
+    private ChannelSubscriptionMapper channelRows;
+
+    @Autowired(required = false)
+    public void setChannelRows(ChannelSubscriptionMapper channelRows) { this.channelRows = channelRows; }
 
     @Autowired
     public CompensationSweeper(WaybillMapper waybills, OutboxEventBus events, LogisticsProperties props,
@@ -92,6 +98,7 @@ public class CompensationSweeper {
     public Result sweep(int limit) {
         int n = Math.max(1, limit);
         int requeued = props.isSubscribeEnabled() ? requeuePending(n) : 0;
+        requeued += requeueChannelRetries(n);
         long now = clock.getAsLong();
         List<LgsWaybill> silent = silent(now, n);
         int answered = 0;
@@ -133,6 +140,34 @@ public class CompensationSweeper {
                 }
             }
             return pending.size();
+        });
+        return count == null ? 0 : count;
+    }
+
+    /** WX WAITING must be retried even after Kuaidi100 has changed legacy sub_state to DONE. */
+    private int requeueChannelRetries(int limit) {
+        if (channelRows == null) return 0;
+        Integer count = tx.execute(s -> {
+            List<LgsChannelSubscription> due = channelRows.selectList(Wrappers.<LgsChannelSubscription>query()
+                    .in("state", "WAITING", "RETRYABLE", "ATTEMPTING")
+                    .lt("updated_at", LocalDateTime.now().minusMinutes(PENDING_GRACE_MINUTES))
+                    .orderByAsc("id").last("LIMIT " + limit));
+            int published = 0;
+            for (LgsChannelSubscription row : due) {
+                LgsWaybill current = waybills.selectOne(Wrappers.<LgsWaybill>query()
+                        .eq("shipment_no", row.getShipmentNo()).last("LIMIT 1"));
+                if (current == null || WaybillStatus.isTerminal(current.getStatus())
+                        || !row.getIdentityKey().equals(ChannelSubscriptionStore.identityKey(current))) continue;
+                if ("wx-follow".equals(row.getChannel())) {
+                    events.publish(new WxFollowRequested(row.getShipmentNo(), row.getIdentityKey()));
+                } else if ("kuaidi100".equals(row.getChannel()) && props.isSubscribeEnabled()) {
+                    events.publish(new Kd100SubscribeRequested(row.getShipmentNo(), row.getIdentityKey()));
+                } else continue;
+                channelRows.update(null, Wrappers.<LgsChannelSubscription>update().eq("id", row.getId())
+                        .set("updated_at", LocalDateTime.now()));
+                published++;
+            }
+            return published;
         });
         return count == null ? 0 : count;
     }

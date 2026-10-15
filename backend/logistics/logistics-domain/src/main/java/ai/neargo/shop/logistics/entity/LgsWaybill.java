@@ -58,6 +58,7 @@ public class LgsWaybill extends BaseEntity {
     private Integer atLocker;
     private String carrierCorrectedFrom;
     private Long lastEventAt;
+    private String statusSource;
     private String subState;
     private String subChannel;
     private String subRef;

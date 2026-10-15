@@ -68,7 +68,8 @@ public class Kuaidi100PushReceiver implements PushReceiver {
                 trace = t.orElse(null);
             }
             return new Parsed(true, com, nu, trace, ended,
-                    corrected ? root.path("comOld").asText(null) : null, request.form().get("callbackId"));
+                    corrected ? root.path("comOld").asText(null) : null,
+                    request.form().get("callbackId"), pushStatus);
         } catch (Exception e) {
             log.warn("[lgs:kuaidi100] 推送报文解析失败：{}", e.toString());
             return new Parsed(true, null, null, null, false, null);

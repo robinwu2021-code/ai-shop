@@ -890,6 +890,8 @@ export default {
     REFUNDED: "已退款",
   },
   order: {
+    logistics: "物流",
+    syncPending: "同步中",
     confirmReceipt: "确认收货",
     receiptHint: "请确认本订单的全部包裹均已收到",
     /** 没带单号就进了详情页（例如从外部链接）。短位：不解释、只说事实 */

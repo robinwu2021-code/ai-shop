@@ -590,6 +590,9 @@ export interface Order {
    * 轨迹来自承运商、经缓存，不是平台编的。
    */
   trace?: ShipmentTrace;
+  /** B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 */
+  logisticsSync?: { status: string; source?: string | null; lastEventAt?: number | null;
+    pending: boolean; reason?: string | null } | null;
 }
 
 /** 运单状态（与后端 `lgs_waybill` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功 */

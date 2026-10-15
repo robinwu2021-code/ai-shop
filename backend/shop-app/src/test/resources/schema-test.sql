@@ -2677,6 +2677,7 @@ CREATE TABLE IF NOT EXISTS lgs_waybill
     at_locker TINYINT NOT NULL DEFAULT 0,
     carrier_corrected_from VARCHAR(16) DEFAULT NULL,
     last_event_at BIGINT DEFAULT NULL,
+    status_source VARCHAR(32) DEFAULT NULL,
     sub_state VARCHAR(12) NOT NULL DEFAULT 'PENDING',
     sub_channel VARCHAR(16) DEFAULT NULL,
     sub_ref VARCHAR(64) DEFAULT NULL,
@@ -2751,6 +2752,30 @@ CREATE TABLE IF NOT EXISTS lgs_kd100_sub_attempt
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     CONSTRAINT uk_lgs_kd100_month_slot UNIQUE (account_ref, company_code, waybill_no, month_key, attempt_no)
+);
+
+CREATE TABLE IF NOT EXISTS lgs_push_event
+(
+    event_no CHAR(36) NOT NULL PRIMARY KEY,
+    channel VARCHAR(32) NOT NULL,
+    callback_id VARCHAR(64),
+    push_status VARCHAR(32),
+    waybill_no VARCHAR(64),
+    payload CLOB NOT NULL,
+    outcome VARCHAR(32) NOT NULL,
+    shipment_no VARCHAR(64),
+    received_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS lgs_precheck_cache
+(
+    carrier VARCHAR(16) NOT NULL,
+    waybill_no VARCHAR(64) NOT NULL,
+    verdict VARCHAR(16) NOT NULL,
+    status VARCHAR(32),
+    reason VARCHAR(255),
+    checked_at BIGINT NOT NULL,
+    PRIMARY KEY (carrier, waybill_no)
 );
 
 CREATE TABLE IF NOT EXISTS ful_freight_template

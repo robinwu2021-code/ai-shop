@@ -67,7 +67,7 @@ class OrderMappedOpsLogisticsFlowTest {
                 .isEqualTo(newNo);
         jdbc.update("UPDATE lgs_waybill SET sub_channel='kuaidi100',sub_state='DONE' WHERE biz_ref=?", sub);
         OrderLogisticsFixture.push(mvc, oldNo, "3", true);
-        OrderLogisticsFixture.push(mvc, newNo, "3", true);
+        OrderLogisticsFixture.pushForCurrentShipment(jdbc, mvc, newNo, "3", true, "shentong");
         drain();
         assertThat(jdbc.queryForObject("SELECT status FROM ord_shipment WHERE sub_order_no=? "
                 + "AND status<>'VOIDED'", String.class, sub)).isEqualTo("DELIVERED");
@@ -136,7 +136,7 @@ class OrderMappedOpsLogisticsFlowTest {
         drain();
         assertThat(jdbc.queryForObject("SELECT status FROM ord_shipment WHERE shipment_no=?", String.class, current))
                 .isEqualTo("CREATED");
-        OrderLogisticsFixture.push(mvc, number, "3", true, "yuantong");
+        OrderLogisticsFixture.pushForCurrentShipment(jdbc, mvc, number, "3", true, "yuantong");
         drain();
         assertThat(jdbc.queryForObject("SELECT status FROM ord_shipment WHERE shipment_no=?", String.class, current))
                 .isEqualTo("DELIVERED");

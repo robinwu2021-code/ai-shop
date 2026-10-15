@@ -1542,7 +1542,13 @@ export interface MerchantApi {
    */
   mOrderTrace(orderNo: string, refresh?: boolean): Promise<ShipmentTrace | null>;
   /** 快递发货：回填运单号 */
-  mShip(orderNo: string, expressNo: string, expressCompany: string): Promise<Order>;
+  mShipPrecheck(orderNo: string, expressNo: string, expressCompany: string): Promise<{
+    verdict: "VALID" | "INVALID" | "UNKNOWN" | "WARNING";
+    source?: string | null; status?: string | null; checkedAt: number;
+    reason?: string | null; confirmationRequired: boolean;
+  }>;
+  mShip(orderNo: string, expressNo: string, expressCompany: string,
+        confirmExistingTrace?: boolean): Promise<Order>;
   mCorrectWaybill(orderNo: string, expressNo: string, expressCompany: string, reason: string): Promise<Order>;
   /** 商家自送：老板点一下「已送达」。不做骑手轨迹（ADR-005 §5） */
   mDelivered(orderNo: string): Promise<Order>;

@@ -40,7 +40,19 @@ public interface LogisticsAdminPort {
                     String subState, String subChannel, String subError, Integer subAttempts,
                     String bindState, String bindError, Long signedAt, Long lastEventAt, boolean atLocker,
                     String carrierCorrectedFrom, String receiverPhoneLast4,
-                    String wxUploadStatus, String wxUploadError) {
+                    String wxUploadStatus, String wxUploadError, List<Subscription> subscriptions) {
+        public Shipment(String shipmentNo, String orderNo, String carrier, String waybillNo, String status,
+                        String receiver, String region, LocalDateTime createdAt, LocalDateTime updatedAt,
+                        List<Node> traces, String profile, String storeNo, String entityNo,
+                        String subState, String subChannel, String subError, Integer subAttempts,
+                        String bindState, String bindError, Long signedAt, Long lastEventAt, boolean atLocker,
+                        String carrierCorrectedFrom, String receiverPhoneLast4,
+                        String wxUploadStatus, String wxUploadError) {
+            this(shipmentNo, orderNo, carrier, waybillNo, status, receiver, region, createdAt, updatedAt,
+                    traces, profile, storeNo, entityNo, subState, subChannel, subError, subAttempts,
+                    bindState, bindError, signedAt, lastEventAt, atLocker, carrierCorrectedFrom,
+                    receiverPhoneLast4, wxUploadStatus, wxUploadError, List.of());
+        }
         public Shipment(String shipmentNo, String orderNo, String carrier, String waybillNo, String status,
                         String receiver, String region, LocalDateTime createdAt, LocalDateTime updatedAt,
                         List<Node> traces, String profile, String storeNo, String entityNo,
@@ -50,9 +62,11 @@ public interface LogisticsAdminPort {
             this(shipmentNo, orderNo, carrier, waybillNo, status, receiver, region, createdAt, updatedAt,
                     traces, profile, storeNo, entityNo, subState, subChannel, subError, subAttempts,
                     bindState, bindError, signedAt, lastEventAt, atLocker, carrierCorrectedFrom,
-                    receiverPhoneLast4, null, null);
+                    receiverPhoneLast4, null, null, List.of());
         }
     }
+
+    record Subscription(String channel, String state, String error, Long lastAttemptAt, Long nextRetryAt) { }
 
     record Node(long at, String text, String location) {
     }

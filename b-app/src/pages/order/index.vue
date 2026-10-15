@@ -25,6 +25,15 @@ const { t } = useI18n();
 const merchant = useMerchantStore();
 
 const order = ref<Order | null>(null);
+const shipSync = ref<Order["logisticsSync"]>(null);
+const currentSync = computed(() => order.value?.logisticsSync ?? shipSync.value);
+const currentSyncLabel = computed(() => {
+  const sync = currentSync.value;
+  if (!sync) return "";
+  if (sync.status === "PENDING") return String(t("order.syncPending"));
+  return String(t(traceStatusKey({ status: sync.status as NonNullable<Order["trace"]>["status"],
+    nodes: shownTrace.value?.nodes ?? [] })));
+});
 /**
  * 物流轨迹那份（TDD-物流模块 B2）：比详情里的多承运商、单号、到柜。
  * 拿不到（老后端 / 网络）就用详情里带的那份 —— 两份读的是同一张运单，只是字段多少不同
@@ -191,13 +200,25 @@ async function ship() {
     uni.showToast({ title: t("order.pickCarrier"), icon: "none" });
     return;
   }
-  askMchSubscribe();
   busy.value = true;
   try {
-    order.value = await api.mShip(
-      order.value.orderNo, expressNo.value.trim(), carrier.code);
+    const check = await api.mShipPrecheck(order.value.orderNo, expressNo.value.trim(), carrier.code);
+    if (check.verdict === "INVALID") throw new Error(check.reason || String(t("order.invalidWaybill")));
+    let confirmed = false;
+    if (check.confirmationRequired) {
+      confirmed = await confirm({
+        title: String(t("order.waybillHistoryTitle")),
+        hint: check.reason || String(t("order.waybillHistoryHint")),
+        confirmText: String(t("order.confirmWaybill")),
+      });
+      if (!confirmed) return;
+    }
+    askMchSubscribe();
+    const committed = await api.mShip(order.value.orderNo, expressNo.value.trim(), carrier.code, confirmed);
+    shipSync.value = committed.logisticsSync;
+    order.value = committed;
     await load(currentNo.value);
-    uni.showToast({ title: t("order.shipped"), icon: "none" });
+    uni.showToast({ title: t(shipSync.value?.pending ? "order.shippedSyncing" : "order.shipped"), icon: "none" });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -682,6 +703,10 @@ onPullDownRefresh(async () => {
           <text class="sh-muted">{{ $t("order.expressNo") }}</text>
           <text class="sh-num">{{ order.expressNo }}</text>
         </view>
+        <text v-if="currentSync" class="txt-caption sh-muted sh-mt-sm">
+          {{ $t("order.logisticsStatus") }}：{{ currentSyncLabel }}{{ currentSync.pending ? ` · ${$t("order.syncPending")}` : "" }}
+          {{ currentSync.reason ? ` · ${currentSync.reason}` : "" }}
+        </text>
         <view v-if="canCorrectWaybill && !correctingWaybill" class="sh-btn sh-btn--muted sh-mt-sm" @tap="startWaybillCorrection">
           {{ $t("order.correctWaybill") }}
         </view>

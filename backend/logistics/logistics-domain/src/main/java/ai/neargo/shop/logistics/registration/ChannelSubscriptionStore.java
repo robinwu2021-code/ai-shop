@@ -59,9 +59,26 @@ public class ChannelSubscriptionStore {
                      String state, String ref, String error) {
         LgsChannelSubscription row = find(shipmentNo, identityKey, channel);
         if (row == null) throw new IllegalStateException("Missing channel subscription: " + shipmentNo + "/" + channel);
+        Long retryAt = null;
+        if ("WAITING".equals(state)) retryAt = System.currentTimeMillis() + 600_000L;
+        else if ("RETRYABLE".equals(state)) retryAt = System.currentTimeMillis() + 10_000L;
         mapper.update(null, Wrappers.<LgsChannelSubscription>update().eq("id", row.getId())
                 .eq("identity_key", identityKey).eq("channel", channel)
                 .set("state", state).set("ref", ref).set("error", error)
-                .set("updated_at", LocalDateTime.now()));
+                .set("next_retry_at", retryAt).set("updated_at", LocalDateTime.now()));
+    }
+
+    /** At most one external request per channel and identity during the short lease. */
+    public boolean claim(String shipmentNo, String identityKey, String channel) {
+        LocalDateTime now = LocalDateTime.now();
+        long leaseExpired = System.currentTimeMillis() - 60_000L;
+        return mapper.update(null, Wrappers.<LgsChannelSubscription>update()
+                .eq("shipment_no", shipmentNo).eq("identity_key", identityKey).eq("channel", channel)
+                .and(w -> w.nested(ready -> ready.in("state", "PENDING", "RETRYABLE", "WAITING")
+                                .and(due -> due.isNull("next_retry_at").or().le("next_retry_at", System.currentTimeMillis())))
+                        .or(x -> x.eq("state", "ATTEMPTING")
+                                .and(y -> y.isNull("last_attempt_at").or().lt("last_attempt_at", leaseExpired))))
+                .set("state", "ATTEMPTING").set("last_attempt_at", System.currentTimeMillis())
+                .setSql("attempts = attempts + 1").set("updated_at", now)) == 1;
     }
 }

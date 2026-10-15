@@ -84,6 +84,7 @@ public class Kd100SubscribeExecutor implements OutboxConsumer {
             subscriptions.mark(shipmentNo, expectedIdentity, CHANNEL, "FATAL", null, "快递公司没有快递100编码");
             return;
         }
+        if (!subscriptions.claim(shipmentNo, expectedIdentity, CHANNEL)) return;
         String callbackId = UUID.randomUUID().toString().replace("-", "");
         Optional<LgsKd100SubAttempt> reserved = attempts.reserveAttempt(props.getKd100AccountRef(), companyCode,
                 waybill.getWaybillNo(), YearMonth.now().format(MONTH), shipmentNo, expectedIdentity);

@@ -101,7 +101,7 @@ class OrderLogisticsReadFlowTest {
         for (int i = 0; i < 8; i++) { dispatcher.dispatchPending(); }
         jdbc.update("UPDATE lgs_waybill SET sub_channel='kuaidi100',sub_state='DONE',profile='WX',"
                 + "display_token='LOCAL-TOKEN',wx_status_checked_at=NULL WHERE biz_ref=?", sub);
-        OrderLogisticsFixture.push(mvc, number, "2", true);
+        OrderLogisticsFixture.pushForCurrentShipment(jdbc, mvc, number, "2", true, "shentong");
         for (int i = 0; i < 8; i++) { dispatcher.dispatchPending(); }
         AtomicInteger queries = new AtomicInteger();
         StatusProbe wx = countingProbe("wx", queries);

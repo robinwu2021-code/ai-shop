@@ -47,11 +47,15 @@ class PhaseOneOrderEndToEndFlowTest {
                     String.class, p.subNo())).isEqualTo(source);
             // The external subscription succeeds; the actual callback still verifies its signature and source.
             jdbc.update("update lgs_waybill set sub_channel='kuaidi100',sub_state='DONE' where biz_ref=?", p.subNo());
-            OrderLogisticsFixture.push(f.mvc(), number, "3", true);
+            OrderLogisticsFixture.pushForCurrentShipment(jdbc, f.mvc(), number, "3", true, "shentong");
             drain();
             assertThat(jdbc.queryForObject("select status from ord_shipment where shipment_no=?",
                     String.class, source)).isEqualTo("DELIVERED");
             assertThat(f.buyerDetail(p).path("status").asString()).isEqualTo("FULFILLING");
+            assertThat(f.buyerDetail(p).path("logisticsSync").path("status").asString()).isEqualTo("DELIVERED");
+            assertThat(f.merchantDetail(p).path("logisticsSync").path("status").asString()).isEqualTo("DELIVERED");
+            assertThat(f.buyerOrders().path("records").toString()).contains(p.subNo());
+            assertThat(f.merchantOrders().path("records").toString()).contains(p.subNo());
             f.receive(p);
             f.receive(p);
             assertThat(f.buyerDetail(p).path("status").asString()).isEqualTo("COMPLETED");

@@ -818,6 +818,8 @@ export default {
     REFUNDED: "Refunded",
   },
   order: {
+    logistics: "Delivery",
+    syncPending: "Syncing",
     confirmReceipt: "Confirm receipt",
     receiptHint: "Confirm you have received every package in this store order.",
     /** Landed on the detail page with no order number (e.g. an external link) */

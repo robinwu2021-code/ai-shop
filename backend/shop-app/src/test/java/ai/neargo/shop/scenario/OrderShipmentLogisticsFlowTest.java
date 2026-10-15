@@ -160,6 +160,7 @@ class OrderShipmentLogisticsFlowTest {
         for (int i = 0; i < 8; i++) { dispatcher.dispatchPending(); }
     }
     private void push(String number, String state, boolean valid) throws Exception {
-        OrderLogisticsFixture.push(MockMvcBuilders.webAppContextSetup(context).build(), number, state, valid);
+        OrderLogisticsFixture.pushForCurrentShipment(jdbc,
+                MockMvcBuilders.webAppContextSetup(context).build(), number, state, valid, "shentong");
     }
 }

@@ -159,6 +159,8 @@ class OrderLogisticsFinalFlowTest {
                 .isEqualTo(at);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_status_log WHERE aggregate_no=? "
                 + "AND status='DELIVERED'", Long.class, source)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM lgs_push_event "
+                + "WHERE callback_id=? AND outcome='ACCEPTED'", Long.class, callbackId)).isEqualTo(3);
         assertThat(jdbc.queryForObject("SELECT status FROM ord_sub_order WHERE sub_order_no=?", String.class, sub))
                 .isEqualTo("FULFILLING");
     }

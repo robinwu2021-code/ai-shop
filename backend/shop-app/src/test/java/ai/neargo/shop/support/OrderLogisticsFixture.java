@@ -13,6 +13,8 @@ import java.util.HexFormat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import java.util.UUID;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 
 /** Real persisted payment/child/item facts; production shipping creates the package and event. */
 public final class OrderLogisticsFixture {
@@ -37,6 +39,42 @@ public final class OrderLogisticsFixture {
                 .param("param", param).param("sign", valid ? sign : "WRONG");
         if (callbackId != null) request.param("callbackId", callbackId);
         mvc.perform(request);
+    }
+
+    /** Test-only accepted /poll identity; old-number or old-carrier pushes remain bare and are rejected. */
+    public static void pushForCurrentShipment(JdbcTemplate jdbc, MockMvc mvc, String number,
+                                              String state, boolean valid, String company) throws Exception {
+        String carrier = switch (company) {
+            case "shentong" -> "STO";
+            case "yuantong" -> "YTO";
+            default -> company;
+        };
+        var current = jdbc.queryForList("SELECT shipment_no,source_shipment_no,source_shipment_version "
+                + "FROM lgs_waybill WHERE waybill_no=? AND carrier=?", number, carrier);
+        if (current.isEmpty()) {
+            push(mvc, number, state, valid, company);
+            return;
+        }
+        var row = current.getFirst();
+        String shipmentNo = (String) row.get("shipment_no");
+        String identity = row.get("source_shipment_no") + ":" + row.get("source_shipment_version");
+        String month = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
+        String callbackId = jdbc.query("SELECT callback_id FROM lgs_kd100_sub_attempt "
+                + "WHERE shipment_no=? AND identity_key=? AND company_code=? AND waybill_no=? "
+                + "AND callback_id IS NOT NULL ORDER BY id DESC LIMIT 1",
+                rs -> rs.next() ? rs.getString(1) : null, shipmentNo, identity, company, number);
+        if (callbackId == null) {
+            callbackId = UUID.randomUUID().toString().replace("-", "");
+            Long used = jdbc.queryForObject("SELECT COUNT(*) FROM lgs_kd100_sub_attempt "
+                    + "WHERE account_ref='fixture' AND company_code=? AND waybill_no=? AND month_key=?",
+                    Long.class, company, number, month);
+            jdbc.update("INSERT INTO lgs_kd100_sub_attempt "
+                    + "(account_ref,company_code,waybill_no,month_key,attempt_no,shipment_no,identity_key,"
+                    + "callback_id,result,created_at,updated_at) VALUES "
+                    + "('fixture',?,?,?,?,?,?,?,'OK',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                    company, number, month, used.intValue() + 1, shipmentNo, identity, callbackId);
+        }
+        push(mvc, number, state, valid, company, callbackId);
     }
 
     public static String seed(JdbcTemplate jdbc, PaymentLedgerService ledger, boolean paidLedger) {

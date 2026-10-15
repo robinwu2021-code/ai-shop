@@ -91,6 +91,8 @@ class WaybillProgressTest {
         progress.apply(waybill(WaybillStatus.IN_TRANSIT, 0), trace(TraceStatus.DELIVERING, false),
                 "kuaidi100", "PUSH", patch, 2_000L);
 
+        assertThat(patch.getStatusSource()).isEqualTo("kuaidi100");
+
         assertThat(progressed()).singleElement().satisfies(e -> {
             assertThat(e.status()).isEqualTo(WaybillStatus.DELIVERING);
             assertThat(e.atLocker()).isFalse();

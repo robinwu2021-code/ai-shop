@@ -27,6 +27,7 @@ export const orderMock: Pick<MerchantApi,
   "mOrderList"
   | "mOrderDetail"
   | "mOrderTrace"
+  | "mShipPrecheck"
   | "mShip"
   | "mCorrectWaybill"
   | "mDelivered"
@@ -113,6 +114,16 @@ export const orderMock: Pick<MerchantApi,
       waybillNo: o.expressNo,
       refreshable: false,
     });
+  },
+
+  async mShipPrecheck(orderNo, expressNo, expressCompany) {
+    findOrder(orderNo);
+    if (!EXPRESS_COMPANIES.some((c) => c.code === expressCompany) || !expressNo.trim()) {
+      return delay({ verdict: "INVALID" as const, source: "LOCAL", status: null,
+        checkedAt: Date.now(), reason: "快递公司或运单号无效", confirmationRequired: false });
+    }
+    return delay({ verdict: "UNKNOWN" as const, source: null, status: null,
+      checkedAt: Date.now(), reason: "渠道尚无可核实的物流信息", confirmationRequired: false });
   },
 
   async mShip(orderNo, expressNo, expressCompany) {

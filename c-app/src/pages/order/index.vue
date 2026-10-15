@@ -36,6 +36,10 @@ const statusLabel = computed(() => {
   const o = order.value;
   if (!o) return "";
   if (o.trace && o.trace.status !== "CREATED") return String(t(traceStep.value));
+  if (o.logisticsSync && o.logisticsSync.status !== "CREATED" && o.logisticsSync.status !== "PENDING") {
+    return String(t(traceStatusKey({ status: o.logisticsSync.status as NonNullable<Order["trace"]>["status"],
+      nodes: o.trace?.nodes ?? [] })));
+  }
   if (o.fulfillment) {
     const v = orderView(o.status, o.fulfillment, { appointmentAt: o.appointmentAt });
     return String(v.needsTime ? t(v.labelKey, { t: datetime(o.appointmentAt!) }) : t(v.labelKey));
@@ -624,6 +628,9 @@ onPullDownRefresh(async () => {
         </view>
         <!-- 有物流就说最新那条（比状态词具体）；没有就说「接下来会发生什么」 -->
         <text v-if="hasTrace" class="txt-caption ostat__sub">{{ traceLatest }}</text>
+        <text v-if="order.logisticsSync?.pending" class="txt-caption ostat__sub">
+          {{ $t("order.logistics") }}{{ $t("order.syncPending") }}{{ order.logisticsSync.reason ? ` · ${order.logisticsSync.reason}` : "" }}
+        </text>
         <text v-else-if="nextStepText" class="txt-caption ostat__sub">{{ nextStepText }}</text>
         <!-- 承运商 + 单号：已发货才有，点一下复制 -->
         <text v-if="order.expressNo" class="txt-caption ostat__sub sh-num" @tap="copyExpressNo">

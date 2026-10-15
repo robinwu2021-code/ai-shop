@@ -45,6 +45,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class MerchantOrderServiceImpl implements MerchantOrderService {
@@ -154,7 +155,8 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
                 .withDiscountLines(orderService.discountLinesOf(sub))
                 .withReturned(orderService.returnedOf(sub))
                 .withTrace(traceOf(sub))
-                .withPaymentResolution(paymentResolutionOf(sub));
+                .withPaymentResolution(paymentResolutionOf(sub))
+                .withLogisticsSync(syncOf(sub.getSubOrderNo()));
     }
 
 
@@ -504,8 +506,21 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
          */
         Page<OrdSubOrder> p = DataScopeContext.executeWithoutScope(() ->
                 subOrderMapper.selectPage(Page.of(page, size), w));
-        List<OrderVO> records = p.getRecords().stream().map(this::toVO).toList();
+        Map<String, LogisticsPort.SyncResult> summaries = logisticsPort == null ? Map.of()
+                : logisticsPort.summariesOf(p.getRecords().stream().map(OrdSubOrder::getSubOrderNo).toList());
+        List<OrderVO> records = p.getRecords().stream().map(sub -> toVO(sub)
+                .withLogisticsSync(asSync(summaries.get(sub.getSubOrderNo())))).toList();
         return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
+    }
+
+    private OrderVO.LogisticsSync syncOf(String subOrderNo) {
+        return logisticsPort == null ? null
+                : asSync(logisticsPort.summariesOf(List.of(subOrderNo)).get(subOrderNo));
+    }
+
+    private static OrderVO.LogisticsSync asSync(LogisticsPort.SyncResult value) {
+        return value == null ? null : new OrderVO.LogisticsSync(value.status(), value.source(),
+                value.lastEventAt(), value.pending(), value.reason());
     }
 
     /**

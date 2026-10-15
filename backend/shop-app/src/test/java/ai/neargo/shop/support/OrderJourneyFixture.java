@@ -97,6 +97,9 @@ public final class OrderJourneyFixture implements AutoCloseable {
 
     public String ship(Purchase p) throws Exception {
         String number = "STO" + UUID.randomUUID().toString().replace("-", "").substring(0, 22).toUpperCase(Locale.ROOT);
+        JsonNode precheck = postData(merchant, "/biz/order/" + p.subNo() + "/ship/precheck",
+                Map.of("expressCompany", "STO", "expressNo", number));
+        assertThat(precheck.path("verdict").asString()).isNotEqualTo("INVALID");
         postData(merchant, "/biz/order/" + p.subNo() + "/ship",
                 Map.of("expressCompany", "STO", "expressNo", number));
         return number;
@@ -104,6 +107,8 @@ public final class OrderJourneyFixture implements AutoCloseable {
 
     public JsonNode buyerDetail(Purchase p) throws Exception { return getData(buyer, "/mp/order/" + p.subNo()); }
     public JsonNode merchantDetail(Purchase p) throws Exception { return getData(merchant, "/biz/order/" + p.subNo()); }
+    public JsonNode buyerOrders() throws Exception { return getData(buyer, "/mp/order?page=1&size=50"); }
+    public JsonNode merchantOrders() throws Exception { return getData(merchant, "/biz/order?page=1&size=50"); }
     public void receive(Purchase p) throws Exception {
         postData(buyer, "/mp/order/" + p.subNo() + "/confirm-receipt", Map.of());
     }

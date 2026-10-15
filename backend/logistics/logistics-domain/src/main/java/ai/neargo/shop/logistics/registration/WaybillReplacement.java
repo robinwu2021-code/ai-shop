@@ -27,7 +27,8 @@ public final class WaybillReplacement {
                 .set("bind_state", wx ? LgsWaybill.BIND_WAITING : LgsWaybill.BIND_NA)
                 .set("bind_error", null).set("display_token", null).set("wx_status_checked_at", null)
                 .set("picked_up_at", null).set("signed_at", null).set("at_locker", 0)
-                .set("carrier_corrected_from", null).set("last_event_at", null).set("wx_uploaded_at", null)
+                .set("carrier_corrected_from", null).set("last_event_at", null)
+                .set("status_source", null).set("wx_uploaded_at", null)
                 .set("updated_at", LocalDateTime.now()));
         nodes.delete(Wrappers.<LgsWaybillNode>query().eq("shipment_no", w.getShipmentNo()).ne("mode", "OPS"));
     }

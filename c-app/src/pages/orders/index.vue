@@ -7,7 +7,16 @@ import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
 import { countdown, datetime, money } from "@shared/utils/format";
+import { traceStatusKey } from "@shared/strategies/trace-step";
 import type { Order } from "@shared/types";
+
+function logisticsText(o: Order): string {
+  const sync = o.logisticsSync;
+  if (!sync) return "";
+  if (sync.status === "PENDING") return String(t("order.syncPending"));
+  return String(t(traceStatusKey({ status: sync.status as NonNullable<Order["trace"]>["status"],
+    nodes: o.trace?.nodes ?? [] })));
+}
 import {
   DELIVERY_SHAPE,
   orderView,
@@ -196,6 +205,9 @@ onShow(load);
           {{ statusText(o) }}
         </text>
       </view>
+      <text v-if="o.fulfillment === 'EXPRESS' && o.logisticsSync" class="txt-caption sh-muted">
+        {{ $t("order.logistics") }}：{{ logisticsText(o) }}{{ o.logisticsSync.pending ? ` · ${$t("order.syncPending")}` : "" }}
+      </text>
 
       <biz-sku-row
         v-for="(it, i) in o.items.slice(0, 3)"

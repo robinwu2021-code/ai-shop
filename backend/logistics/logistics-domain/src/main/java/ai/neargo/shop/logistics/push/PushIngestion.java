@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import ai.neargo.shop.spi.logistics.ShipmentSourcePort;
@@ -22,6 +23,7 @@ import ai.neargo.shop.logistics.domain.WaybillSourceIdentity;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.UUID;
 import java.util.function.LongSupplier;
 
 /**
@@ -46,9 +48,19 @@ public class PushIngestion {
     private final LongSupplier clock;
     private ShipmentSourcePort source;
     private Kd100AttemptStore kd100Attempts;
+    private ChannelSubscriptionStore channelSubscriptions;
+    private JdbcTemplate auditDb;
 
     @Autowired(required = false)
     public void setKd100Attempts(Kd100AttemptStore kd100Attempts) { this.kd100Attempts = kd100Attempts; }
+
+    @Autowired(required = false)
+    public void setChannelSubscriptions(ChannelSubscriptionStore channelSubscriptions) {
+        this.channelSubscriptions = channelSubscriptions;
+    }
+
+    @Autowired(required = false)
+    public void setAuditDb(JdbcTemplate auditDb) { this.auditDb = auditDb; }
 
     @Autowired
     public void setShipmentSourcePort(ShipmentSourcePort source) { this.source = source; }
@@ -83,6 +95,7 @@ public class PushIngestion {
             return Outcome.REJECTED;
         }
         logFirst(channel, raw);
+        String auditNo = audit(channel, p, raw);
         LgsKd100SubAttempt attempt = null;
         LgsWaybill w;
         if ("kuaidi100".equals(channel) && p.callbackId() != null && !p.callbackId().isBlank()) {
@@ -91,30 +104,31 @@ public class PushIngestion {
                     .eq("shipment_no", attempt.getShipmentNo()).last("LIMIT 1"));
             if (w == null || !Objects.equals(attempt.getIdentityKey(), ChannelSubscriptionStore.identityKey(w))
                     || !Objects.equals(attempt.getWaybillNo(), p.waybillNo())
-                    || !Objects.equals(w.getWaybillNo(), p.waybillNo())) return Outcome.UNKNOWN_WAYBILL;
+                    || !Objects.equals(w.getWaybillNo(), p.waybillNo()))
+                return audited(auditNo, Outcome.UNKNOWN_WAYBILL, null);
         } else {
             w = waybills.selectOne(Wrappers.<LgsWaybill>query()
                     .eq("waybill_no", p.waybillNo()).eq("sub_channel", channel)
                     .ne("status", WaybillStatus.CANCELLED).orderByDesc("id").last("limit 1"));
             // New shipments always receive a callbackId. A bare legacy callback cannot claim a newer order.
             if (w != null && w.getSourceShipmentNo() != null && "kuaidi100".equals(channel)) {
-                return Outcome.UNKNOWN_WAYBILL;
+                return audited(auditNo, Outcome.UNKNOWN_WAYBILL, null);
             }
         }
         if (w == null) {
             log.warn("[lgs-push] {} 推来的单号 {} 找不到（或不是在这家订阅的），丢弃", channel, p.waybillNo());
-            return Outcome.UNKNOWN_WAYBILL;
+            return audited(auditNo, Outcome.UNKNOWN_WAYBILL, null);
         }
         if (w.getSourceShipmentNo() != null && (source == null
                 || !WaybillSourceIdentity.matches(w, source.identityOf(w.getBizRef()).orElse(null)))) {
-            return Outcome.UNKNOWN_WAYBILL;
+            return audited(auditNo, Outcome.UNKNOWN_WAYBILL, w);
         }
         String incomingCarrier = router.carrierOf(channel, p.channelCarrierCode()).orElse(null);
         if (incomingCarrier == null || !Objects.equals(incomingCarrier, w.getCarrier())) {
             String correctedFrom = p.correctedFrom() == null ? null
                     : router.carrierOf(channel, p.correctedFrom()).orElse(null);
             if (incomingCarrier == null || !Objects.equals(w.getCarrier(), correctedFrom)) {
-                return Outcome.UNKNOWN_WAYBILL;
+                return audited(auditNo, Outcome.UNKNOWN_WAYBILL, w);
             }
         }
         LgsWaybill patch = LgsWaybill.patch(w.getId());
@@ -131,6 +145,28 @@ public class PushIngestion {
             if (attempt != null && kd100Attempts != null) kd100Attempts.markTerminal(attempt.getId(), clock.getAsLong());
         }
         progress.apply(w, p.trace(), channel, "PUSH", patch, clock.getAsLong());
-        return Outcome.ACCEPTED;
+        if (p.trackingEnded() && attempt != null && channelSubscriptions != null) {
+            String identity = ChannelSubscriptionStore.identityKey(w);
+            var row = channelSubscriptions.find(w.getShipmentNo(), identity, "kuaidi100");
+            if (row != null) channelSubscriptions.mark(w.getShipmentNo(), identity, "kuaidi100",
+                    "ENDED", row.getRef(), null);
+        }
+        return audited(auditNo, Outcome.ACCEPTED, w);
+    }
+
+    private String audit(String channel, PushReceiver.Parsed push, String raw) {
+        if (auditDb == null) return null;
+        String id = UUID.randomUUID().toString();
+        auditDb.update("INSERT INTO lgs_push_event "
+                        + "(event_no,channel,callback_id,push_status,waybill_no,payload,outcome,received_at) "
+                        + "VALUES (?,?,?,?,?,?,'RECEIVED',CURRENT_TIMESTAMP)",
+                id, channel, push.callbackId(), push.pushStatus(), push.waybillNo(), raw == null ? "" : raw);
+        return id;
+    }
+
+    private Outcome audited(String auditNo, Outcome outcome, LgsWaybill waybill) {
+        if (auditNo != null) auditDb.update("UPDATE lgs_push_event SET outcome=?,shipment_no=? WHERE event_no=?",
+                outcome.name(), waybill == null ? null : waybill.getShipmentNo(), auditNo);
+        return outcome;
     }
 }

@@ -178,7 +178,40 @@ public record OrderVO(String orderNo,
                        * B 端据它决定订单上显示「开始备货」还是「已备货」。
                        */
                       Long preparedAt,
-                      PaymentResolutionView paymentResolution) {
+                      PaymentResolutionView paymentResolution,
+                      LogisticsSync logisticsSync) {
+
+    public record LogisticsSync(String status, String source, Long lastEventAt,
+                                boolean pending, String reason) { }
+
+    /** Existing positional callers retain their pre-sync constructor. */
+    public OrderVO(String orderNo, String payOrderNo, String status, String fulfillment,
+                   String merchantNo, String merchantName, List<ItemVO> items, Amount amount,
+                   String verifyCode, String pickupNo, String pickupName, Long payDeadlineAt,
+                   long createdAt, Long paidAt, String expressNo, String trafficSource,
+                   Long appointmentAt, Receiver receiver, List<TimelineNode> timeline,
+                   List<OrderVO> subOrders, String buyerNickname, boolean reviewed,
+                   AfterSaleVO afterSale, int payGroupSize, String arriveDate,
+                   Long cancellableUntil, String groupNo, Integer pickupDistanceM,
+                   String expressCompany, List<DiscountLine> discountLines, Returned returned,
+                   List<String> outOfRange, Offers offers, Boolean instantRefundEligible, Trace trace,
+                   StoreBrief store, Long preparedAt, PaymentResolutionView paymentResolution) {
+        this(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items, amount,
+                verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
+                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname,
+                reviewed, afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo,
+                pickupDistanceM, expressCompany, discountLines, returned, outOfRange, offers,
+                instantRefundEligible, trace, store, preparedAt, paymentResolution, null);
+    }
+
+    public OrderVO withLogisticsSync(LogisticsSync sync) {
+        return new OrderVO(orderNo, payOrderNo, status, fulfillment, merchantNo, merchantName, items,
+                amount, verifyCode, pickupNo, pickupName, payDeadlineAt, createdAt, paidAt, expressNo,
+                trafficSource, appointmentAt, receiver, timeline, subOrders, buyerNickname, reviewed,
+                afterSale, payGroupSize, arriveDate, cancellableUntil, groupNo, pickupDistanceM,
+                expressCompany, discountLines, returned, outOfRange, offers, instantRefundEligible,
+                trace, store, preparedAt, paymentResolution, sync);
+    }
 
     /** Compatibility constructor for the complete pre-resolution JSON contract. */
     public OrderVO(String orderNo, String payOrderNo, String status, String fulfillment,

@@ -88,6 +88,9 @@ public class WxFollowExecutor implements OutboxConsumer {
             subscriptions.mark(shipmentNo, identity, "wx-follow", "NOT_ELIGIBLE", null, "微信物流消息能力未配置");
             return ChannelOutcome.fatal("NOT_ELIGIBLE", "微信物流消息能力未配置");
         }
+        if (!subscriptions.claim(shipmentNo, identity, "wx-follow")) {
+            return ChannelOutcome.notReady("IN_PROGRESS", "微信关注任务正在执行或已结束");
+        }
         String goods = json.writeValueAsString(shipment.goods() == null ? List.of() : shipment.goods().stream()
                 .limit(3).map(g -> Map.of("name", g.name(), "imageUrl", g.imageUrl() == null ? "" : g.imageUrl())).toList());
         ChannelOutcome outcome = gateway.follow(new WaybillFollower.FollowCmd(

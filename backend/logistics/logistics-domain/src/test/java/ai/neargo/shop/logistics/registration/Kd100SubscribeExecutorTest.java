@@ -54,6 +54,7 @@ class Kd100SubscribeExecutorTest {
         LgsChannelSubscription row = new LgsChannelSubscription();
         row.setState("PENDING");
         when(subscriptions.ensurePending(w, "kuaidi100")).thenReturn(row);
+        when(subscriptions.claim("SH1", "OS1:1", "kuaidi100")).thenReturn(true);
         LgsKd100SubAttempt attempt = new LgsKd100SubAttempt();
         attempt.setId(9L);
         when(attempts.reserveAttempt(eq("default"), eq("yuantong"), eq("YT1"), any(), eq("SH1"), eq("OS1:1")))

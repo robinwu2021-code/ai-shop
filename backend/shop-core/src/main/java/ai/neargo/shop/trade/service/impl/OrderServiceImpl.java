@@ -2057,7 +2057,8 @@ public class OrderServiceImpl implements OrderService {
                         ? null : periodPort.openUntil(sub.getPeriodNo(), System.currentTimeMillis());
                 vo = vo.withBatch(sub.getArriveDate(), until);
             }
-            return vo.withPaymentResolution(paymentResolutions.view(order.getOrderNo(), userNo));
+            return vo.withPaymentResolution(paymentResolutions.view(order.getOrderNo(), userNo))
+                    .withLogisticsSync(logisticsSyncOf(sub.getSubOrderNo()));
         }
         OrdOrder order = requireOwnOrder(orderNo, userNo);
         List<OrdSubOrder> subs = subOrders(orderNo);
@@ -2072,7 +2073,8 @@ public class OrderServiceImpl implements OrderService {
         if (subs.size() == 1) {
             vo = vo.withTrace(traceOf(subs.get(0), surface));
         }
-        return vo.withPaymentResolution(paymentResolutions.view(order.getOrderNo(), userNo));
+        return vo.withPaymentResolution(paymentResolutions.view(order.getOrderNo(), userNo))
+                .withLogisticsSync(subs.size() == 1 ? logisticsSyncOf(subs.get(0).getSubOrderNo()) : null);
     }
 
     /**
@@ -2193,9 +2195,24 @@ public class OrderServiceImpl implements OrderService {
         var result = storeQueries.materials(buyerNo, new StoreOrderQuery(status, fulfillments), page, size);
         List<String> payNos = result.records().stream().map(m -> m.payment().getOrderNo()).distinct().toList();
         var conflicts = paymentResolutions.views(payNos, buyerNo);
+        var summaries = logisticsPort == null ? java.util.Map.<String, ai.neargo.shop.spi.logistics.LogisticsPort.SyncResult>of()
+                : logisticsPort.summariesOf(result.records().stream()
+                        .map(m -> m.order().getSubOrderNo()).toList());
         return PageData.of(result.records().stream().map(m -> orderView(m)
-                        .withPaymentResolution(conflicts.get(m.payment().getOrderNo()))).toList(),
+                        .withPaymentResolution(conflicts.get(m.payment().getOrderNo()))
+                        .withLogisticsSync(asLogisticsSync(summaries.get(m.order().getSubOrderNo())))).toList(),
                 result.total(), result.page(), result.size());
+    }
+
+    private OrderVO.LogisticsSync logisticsSyncOf(String subOrderNo) {
+        return logisticsPort == null ? null
+                : asLogisticsSync(logisticsPort.summariesOf(List.of(subOrderNo)).get(subOrderNo));
+    }
+
+    private static OrderVO.LogisticsSync asLogisticsSync(
+            ai.neargo.shop.spi.logistics.LogisticsPort.SyncResult value) {
+        return value == null ? null : new OrderVO.LogisticsSync(value.status(), value.source(),
+                value.lastEventAt(), value.pending(), value.reason());
     }
 
     @Override

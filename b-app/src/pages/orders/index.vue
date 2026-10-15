@@ -12,7 +12,16 @@ import { useI18n } from "vue-i18n";
 import { money } from "@shared/utils/money";
 import { FULFILLMENT } from "@shared/utils/constants";
 import { datetime } from "@shared/utils/datetime";
+import { traceStatusKey } from "@shared/strategies/trace-step";
 import type { Order } from "@shared/types";
+
+function logisticsText(o: Order): string {
+  const sync = o.logisticsSync;
+  if (!sync) return "";
+  if (sync.status === "PENDING") return String(t("order.syncPending"));
+  return String(t(traceStatusKey({ status: sync.status as NonNullable<Order["trace"]>["status"],
+    nodes: o.trace?.nodes ?? [] })));
+}
 import {
   DELIVERY_SHAPE,
   fulfillmentsOf,
@@ -184,6 +193,9 @@ onShow(() => {
           {{ statusText(o) }}
         </text>
       </view>
+      <text v-if="o.fulfillment === FULFILLMENT.EXPRESS && o.logisticsSync" class="txt-caption sh-muted">
+        {{ $t("order.logistics") }}：{{ logisticsText(o) }}{{ o.logisticsSync.pending ? ` · ${$t("order.syncPending")}` : "" }}
+      </text>
 
       <view v-for="it in o.items" :key="it.skuNo" class="sh-row item sh-mb-sm">
         <sh-cover class="item__cover" :src="it.cover" :w="200"></sh-cover>

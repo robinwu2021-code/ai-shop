@@ -297,6 +297,9 @@ shop:
   # 物流（ADR-032 独立域）。**这里只显式暴露要改的那几项**，其余走 LogisticsProperties 的代码默认 ——
   # ⚠️ 别给它的 Map/List 字段（如 probe-surfaces）挂 ${ENV:} 空串：空串绑不进 Map，整个 context 起不来。
   logistics:
+    # 本期同一运单同时建立微信物流关注与快递100轨迹订阅；凭据/回调不可用时渠道独立记录原因。
+    subscribe-enabled: ${SHOP_LOGISTICS_SUBSCRIBE_ENABLED:true}
+    kd100-account-ref: ${SHOP_LOGISTICS_KD100_ACCOUNT_REF:default}
     wx-bind:
       # 微信查询组件 token 在发货信息上报成功后立即尝试绑定；未收录（9300559）
       # 保持 WAITING，后续揽收事件再触发。物流消息 follow_waybill 的 token 单独存放。
