@@ -4,6 +4,7 @@ import ai.neargo.shop.auth.TokenStore;
 import ai.neargo.shop.spi.trade.OpenOrderPort;
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.user.service.UserService;
+import ai.neargo.shop.user.service.MpSessionService;
 
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
@@ -32,6 +33,7 @@ public class UserServiceImpl implements UserService {
     /** 已注销。与 BANNED 分开：那是平台封的，这是他自己注销的，客服口径完全不同 */
     private static final String STATUS_DEREGISTERED = "DEREGISTERED";
 
+    private final MpSessionService mpSessions;
     private final UserMapper userMapper;
     private final IdentityMapper identityMapper;
     private final PickupQueryPort pickupQueryPort;
@@ -44,10 +46,11 @@ public class UserServiceImpl implements UserService {
     /** 注销要连人档一起解绑（P0）—— 与删凭证是同一件事的两半 */
     private final ai.neargo.shop.user.service.PersonService personService;
 
-    public UserServiceImpl(UserMapper userMapper, IdentityMapper identityMapper,
+    public UserServiceImpl(UserMapper userMapper, IdentityMapper identityMapper, MpSessionService mpSessions,
                            PickupQueryPort pickupQueryPort, OtpStore otpStore,
                            OpenOrderPort openOrderPort, TokenStore tokenStore, ai.neargo.shop.auth.TokenStores tokenStores, 
                            ai.neargo.shop.user.service.PersonService personService) {
+        this.mpSessions = mpSessions;
         this.identityMapper = identityMapper;
         this.userMapper = userMapper;
         this.pickupQueryPort = pickupQueryPort;
@@ -92,6 +95,7 @@ public class UserServiceImpl implements UserService {
          * 跟注销一点关系都看不出来。与上面删凭证是同一件事的两半。
          */
         personService.deregister(user.getUserNo());
+        mpSessions.removeUser(user.getUserNo());
 
         /*
          * **匿名化，不删行。** 订单、结算、发票有留存义务，

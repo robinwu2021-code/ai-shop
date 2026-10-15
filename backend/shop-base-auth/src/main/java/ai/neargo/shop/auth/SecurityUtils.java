@@ -23,6 +23,13 @@ public final class SecurityUtils {
         return Optional.empty();
     }
 
+    /** Token from the validated authentication only; no request header is trusted directly. */
+    public static Optional<String> currentToken() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getPrincipal() instanceof LoginUser && auth.getDetails() instanceof String token
+                ? Optional.of(token) : Optional.empty();
+    }
+
     /** 需要登录的场景：取不到直接 401，不返回 null 让调用方去判。 */
     public static LoginUser requireUser() {
         return currentUser().orElseThrow(GlobalExceptionHandler.UnauthorizedException::new);

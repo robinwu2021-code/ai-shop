@@ -90,8 +90,9 @@ public abstract class AbstractTokenAuthFilter extends OncePerRequestFilter {
             }
             if (d != null && d.user().realm() == realm) {
                 Authenticated a = authenticate(d.user());
-                SecurityContextHolder.getContext().setAuthentication(
-                        new UsernamePasswordAuthenticationToken(a.user(), null, a.authorities()));
+                var authentication = new UsernamePasswordAuthenticationToken(a.user(), null, a.authorities());
+                authentication.setDetails(token);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
                 DataScopeContext.set(a.user().dataScope());
                 scopeSet = true;
             }

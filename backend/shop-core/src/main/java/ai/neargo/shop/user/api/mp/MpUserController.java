@@ -1,6 +1,8 @@
 package ai.neargo.shop.user.api.mp;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.auth.SecurityUtils;
+import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.user.WxPhonePort;
 import ai.neargo.shop.user.dto.AddressVO;
@@ -72,6 +74,29 @@ public class MpUserController {
                     e.errorCode() == null ? "UNKNOWN" : e.errorCode().name());
             throw e;
         }
+    }
+
+    /** Phone verification logs into its existing account or registers once; binding endpoints stay separate. */
+    @PostMapping("/login/phone")
+    public AuthService.WxPhoneLoginResult loginByWxPhone(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestBody(required = false) WxPhoneLoginReq req) {
+        SecurityUtils.requireUser();
+        if (req == null || req.phoneCode() == null || req.phoneCode().isBlank()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        try {
+            AuthService.WxPhoneLoginResult result = authService.loginByWxPhone(bearer(authorization),
+                    new AuthService.WxPhoneLoginCommand(req.phoneCode(), req.inviterNo(), req.merchantNo(), req.agreed()));
+            auditor.succeeded(Realm.CONSUMER, result.user().userNo());
+            return result;
+        } catch (BizException e) {
+            auditor.failed(Realm.CONSUMER, "PHONE_AUTH", e.errorCode().name());
+            throw e;
+        }
+    }
+
+    public record WxPhoneLoginReq(@NotBlank String phoneCode, String inviterNo, String merchantNo, Boolean agreed) {
     }
 
     /**

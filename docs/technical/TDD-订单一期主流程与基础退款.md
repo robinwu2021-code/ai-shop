@@ -549,3 +549,16 @@ C/B `refundExecution` 与后端 `AfterSaleVO.RefundExecutionProgress` 同形；�
 - Final: Ruling: manual receipt follows backend semantics across after-sale states — buyer receipt records physical fact, does not authorize cash refund — cost: a future product restriction must be designed/server-enforced separately.
 
 本轮交付提交：`4b0e08936`（C/B 基础接线及必要运营展示），`089e5021c`（最终复核修复）。隔离树及 `codex/order-phase1` 分支保留供后续设备/渠道验收。
+
+
+## 2026-10-15 服务器与小程序部署准备
+
+用户已授权部署服务器并上传小程序进行测试。目标为现有 `soukmind-tx` / `https://www.hxmall.top`；小程序 `wx3201250c28393850` 使用既有 C/B 合包，B 无独立小程序 AppID。保留正常真实支付配置，不为联调开放假回调或修改用户积分。
+
+部署前核对发现：服务器运行标记为 `b3ff522dd-phone-login`，已应用 `V407__mp_session_operator.sql`（checksum `-276806239`）；该登录补丁此前未进入一期隔离分支。此次仅从主工作区已提交 `f07e28caf` 保留后端登录会话、手机号账号归属及付款 OpenID 选择相关代码，不复制积分开发或回退一期订单接线。既有登录、密码与订单定向测试通过：core 9、app 22；不选择并发用例。
+
+一期未上线的退款依据表迁移由 V407 改到 **V416**，SQL 内容保持不变；恢复线上 V407 的原始脚本，禁止 repair 或改写线上 checksum。原 V401–V406 在服务器尚未应用，但版本小于已应用 407，发布启动需要临时启用 Flyway out-of-order 来补齐；迁移完成后撤销这一临时启动覆盖。
+
+数据库及配置备份：服务器 `/data/app/ai-shop/shop-app/backup-order-phase1-20261015-090743/`，主库和库存库 SQL gzip 完整性校验通过，权限限于部署账号。原数据在独立 `ai_shop_order_release_20261015_091042` / `ai_shop_inv_order_release_20261015_091042` 副本中演练了 13 条主库增量和库存 V9，MySQL 9.7.2 执行通过；此演练未改生产数据。
+
+部署、健康检查、体验版上传及实际设备验证结果在操作完成后续记；上述准备不能写作已经上线或已完成真实支付验收。

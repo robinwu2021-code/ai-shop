@@ -4818,40 +4818,12 @@ CREATE TABLE IF NOT EXISTS stl_bill_refund
     CONSTRAINT uk_stl_bill_refund UNIQUE (after_sale_no)
 );
 
-CREATE TABLE IF NOT EXISTS stl_bill_refund_basis
+CREATE TABLE IF NOT EXISTS usr_mp_session
 (
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    settle_no VARCHAR(64) NOT NULL,
-    sub_order_no VARCHAR(64) NOT NULL,
-    basis_version INT NOT NULL,
-    source VARCHAR(32) NOT NULL,
-    status VARCHAR(32) NOT NULL,
-    review_reason VARCHAR(64) DEFAULT NULL,
-    goods_paid_minor BIGINT DEFAULT NULL,
-    gross_minor BIGINT DEFAULT NULL,
-    merchant_goods_minor BIGINT DEFAULT NULL,
-    commission_minor BIGINT DEFAULT NULL,
-    service_fee_minor BIGINT DEFAULT NULL,
-    points_fee_minor BIGINT DEFAULT NULL,
-    points_cost_minor BIGINT DEFAULT NULL,
-    subsidy_minor BIGINT DEFAULT NULL,
-    freight_income_minor BIGINT DEFAULT NULL,
-    freight_cost_minor BIGINT DEFAULT NULL,
-    freight_ship_mode VARCHAR(32) DEFAULT NULL,
-    payment_route VARCHAR(32) DEFAULT NULL,
-    origin_payment_no VARCHAR(64) DEFAULT NULL,
-    account_snapshot_ref VARCHAR(80) DEFAULT NULL,
-    pay_merchant_no VARCHAR(64) DEFAULT NULL,
-    pay_channel VARCHAR(32) DEFAULT NULL,
-    pay_scene VARCHAR(32) DEFAULT NULL,
-    currency VARCHAR(8) DEFAULT NULL,
-    fee_bearer VARCHAR(32) DEFAULT NULL,
-    wx_appid VARCHAR(64) DEFAULT NULL,
-    tenant_no VARCHAR(32) DEFAULT NULL,
-    created_at DATETIME NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_stl_refund_basis UNIQUE (settle_no),
-    CONSTRAINT uk_stl_refund_basis_account UNIQUE (account_snapshot_ref)
+    token_hash VARCHAR(64) NOT NULL PRIMARY KEY,
+    user_no VARCHAR(64) NOT NULL,
+    openid VARCHAR(128) NOT NULL,
+    created_at DATETIME NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS ord_create_intent
@@ -4958,6 +4930,42 @@ CREATE TABLE IF NOT EXISTS prd_stock_restore
     deleted TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_prd_restore_purpose_source UNIQUE (purpose_no, original_lock_id)
+);
+
+CREATE TABLE IF NOT EXISTS stl_bill_refund_basis
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    settle_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    basis_version INT NOT NULL,
+    source VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    review_reason VARCHAR(64) DEFAULT NULL,
+    goods_paid_minor BIGINT DEFAULT NULL,
+    gross_minor BIGINT DEFAULT NULL,
+    merchant_goods_minor BIGINT DEFAULT NULL,
+    commission_minor BIGINT DEFAULT NULL,
+    service_fee_minor BIGINT DEFAULT NULL,
+    points_fee_minor BIGINT DEFAULT NULL,
+    points_cost_minor BIGINT DEFAULT NULL,
+    subsidy_minor BIGINT DEFAULT NULL,
+    freight_income_minor BIGINT DEFAULT NULL,
+    freight_cost_minor BIGINT DEFAULT NULL,
+    freight_ship_mode VARCHAR(32) DEFAULT NULL,
+    payment_route VARCHAR(32) DEFAULT NULL,
+    origin_payment_no VARCHAR(64) DEFAULT NULL,
+    account_snapshot_ref VARCHAR(80) DEFAULT NULL,
+    pay_merchant_no VARCHAR(64) DEFAULT NULL,
+    pay_channel VARCHAR(32) DEFAULT NULL,
+    pay_scene VARCHAR(32) DEFAULT NULL,
+    currency VARCHAR(8) DEFAULT NULL,
+    fee_bearer VARCHAR(32) DEFAULT NULL,
+    wx_appid VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_stl_refund_basis UNIQUE (settle_no),
+    CONSTRAINT uk_stl_refund_basis_account UNIQUE (account_snapshot_ref)
 );
 
 -- 种子数据

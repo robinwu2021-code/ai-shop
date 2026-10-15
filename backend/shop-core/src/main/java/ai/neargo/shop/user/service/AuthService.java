@@ -42,6 +42,15 @@ public interface AuthService {
      */
     LoginResult login(LoginCommand req);
 
+    /** Verified phone chooses the canonical account; requires a valid mini session, never moves credentials/assets. */
+    WxPhoneLoginResult loginByWxPhone(String currentToken, WxPhoneLoginCommand req);
+
+    record WxPhoneLoginCommand(String phoneCode, String inviterNo, String merchantNo, Boolean agreed) {
+    }
+
+    record WxPhoneLoginResult(String token, UserVO user, boolean isNewUser, String wxRelation) {
+    }
+
     /** 发送短信验证码。返回是否发送成功；验证码本身<b>绝不回传</b>。 */
     void sendOtp(String phone);
 

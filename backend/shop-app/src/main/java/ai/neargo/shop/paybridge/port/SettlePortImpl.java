@@ -199,7 +199,7 @@ public class SettlePortImpl implements SettlePort {
          * `subMchId` 仍是 null：直连商户号（ADR-017 路径 A「归集」）没有二级商户，
          * 钱进平台商户号。收付通模式接上时它才有值，那时从主体属性里取。
          */
-        String payerId = identityPort.wxOpenIdMp(cmd.userNo()).orElse(null);
+        String payerId = identityPort.wxPayerOpenIdMp(cmd.userNo()).orElse(null);
         var r = gateway.prepay(new ai.neargo.shop.pay.channel.PayGateway.PrepayCommand(
                 // description 由交易域拼好带过来（只有那一层有订单明细）。
                 // 传 "订单 "+orderNo 的老写法会让用户在微信购物订单里认不出这一单

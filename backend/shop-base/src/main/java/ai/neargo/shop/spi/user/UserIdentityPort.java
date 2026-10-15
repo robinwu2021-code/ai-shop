@@ -22,6 +22,11 @@ public interface UserIdentityPort {
      */
     Optional<String> wxOpenIdMp(String userNo);
 
+    /** 当前请求付款身份；缺少会话上下文时兼容历史账号凭证，后台触达仍用 wxOpenIdMp。 */
+    default Optional<String> wxPayerOpenIdMp(String userNo) {
+        return wxOpenIdMp(userNo);
+    }
+
     /**
      * 用户<b>验证过</b>的手机号（验证码或微信一键绑定的那个），完整号码。
      *
