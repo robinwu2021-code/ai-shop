@@ -1167,3 +1167,7 @@ PointsFundsGateway和PayFundsOperations新增专用COLLECTION_REVERSAL及原补�
 已完成一项付款/退款竞争保护：同一付款ticket在SUCCEEDED终态重放时，除了状态和金额，还须保持证据编号一致；证据缺失也报POINTS_FUNDS_RESULT_CONFLICT。此保护防止后续退款依据已经支付的头寸处理时，同票据的不同成功证据被误认为同一笔实际付款。UNKNOWN重放和明确失败原逻辑不变。
 
 PointsPayoutPreparationTest#successful_payout_rejects_a_different_evidence_for_the_same_ticket先RED：不同证据被接受；补测缺失证据先RED：空指针错误，随后修正。最终仅付款测试类17/0，`20261015T102811Z-375cc18c`，timeout=0，慢用例0。首次编译因测试缺FundsResult import出错，没有计作业务RED。尚未覆盖付款与退款交错的所有顺序、不同支付状态下的冻结和崩溃恢复，A1.4保持开发中。
+
+### A1.4 第二检查点：付款在先时的退款等待（2026-10-15）
+
+PointsRefundPreparationTest#refund_waits_for_unknown_payout_then_uses_the_confirmed_paid_state用隔离门店、真实pay Mapper/事务及模拟通道验证：付款READY/UNKNOWN期间，退款准备均因PAYING来源状态拒绝；查询原付款指令成功后，退款按PAID头寸准备，D已扣且不重复发送。单项`20261015T103724Z-d9889327`为1/0，timeout=0；此为已有状态保护的独立实测，无生产逻辑改动。仍需覆盖退款准备在先、付款失败解锁、并发抢占与故障恢复等顺序，A1.4继续开发；A2–A6尚未完成。

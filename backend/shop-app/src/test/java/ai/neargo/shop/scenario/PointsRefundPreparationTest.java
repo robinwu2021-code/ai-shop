@@ -47,6 +47,8 @@ import ai.neargo.shop.pay.points.store.impl.MybatisPointsCashRefundReadStore;
 import ai.neargo.shop.pay.points.store.impl.MybatisPointsReadStore;
 import ai.neargo.shop.pay.points.store.impl.MybatisPointsFactStore;
 import ai.neargo.shop.pay.points.app.PointsSettlementHook;
+import ai.neargo.shop.pay.points.app.PointsSettlementHook.PayoutCommand;
+import ai.neargo.shop.pay.points.payout.PointsPayoutExecutionService;
 import ai.neargo.shop.spi.points.PointsEarnPort;
 import ai.neargo.shop.spi.points.PointsRefundPort.PaymentSnapshot;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundCommand;
@@ -112,6 +114,7 @@ class PointsRefundPreparationTest {
     @Autowired private PointsRefundCompensationExecutionService compensationExecution;
     @Autowired private TestFunds funds;
     @Autowired private PointsSettlementHook settlement;
+    @Autowired private PointsPayoutExecutionService payoutExecution;
     @Autowired private PointsReceivableRecoveryService recoveries;
     @Autowired private PointsReceivableRecoveryExecutionService recoveryExecution;
     @Autowired private PointsPostingService posting;
@@ -135,6 +138,29 @@ class PointsRefundPreparationTest {
                         .execute(dataSource);
             }
         } catch (SQLException failure) { throw new IllegalStateException("Refund schema fixture failed",failure); }
+    }
+
+    @Test void refund_waits_for_unknown_payout_then_uses_the_confirmed_paid_state() {
+        String type=fixture(false,true);
+        addRedemption(type,false);
+        var context=new PointsFundsGateway.FundsContext(PointsFundsGateway.FundsPath.DIRECT,"TEST","MERCHANT",
+                "STORE","V1","SUB","TRADE","OUT",100);
+        var payout=settlement.beginPayout(new PayoutCommand("BILL:"+type,type,type,
+                List.of(PointsKeys.position("R",type,type)),PointsFundsGateway.FundsPurpose.SUBSIDY,context,"CNY"));
+        assertThatThrownBy(() -> refunds.prepare(command(type,"AS:"+type,50)))
+                .hasMessage("POINTS_REFUND_SOURCE_BUSY");
+        assertThat(payoutExecution.execute(payout.ticketNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.UNKNOWN);
+        assertThatThrownBy(() -> refunds.prepare(command(type,"AS:"+type,50)))
+                .hasMessage("POINTS_REFUND_SOURCE_BUSY");
+        assertThat(payoutExecution.execute(payout.ticketNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.SUCCEEDED);
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        assertThat(prepared.returnedPoints()).isEqualTo(20);
+        assertThat(pool(type,"d_minor")).isZero();
+        assertThat(balance(type,"held_points")).isEqualTo(10);
+        assertThat(funds.sends.get(payout.ticketNo())).isEqualTo(1);
+        assertThat(funds.queries.get(payout.ticketNo())).isEqualTo(1);
     }
 
     @Test void pending_grants_are_frozen_once_with_immutable_input_and_no_early_return() {
