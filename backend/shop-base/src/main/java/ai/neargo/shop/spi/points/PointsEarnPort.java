@@ -38,9 +38,37 @@ public interface PointsEarnPort {
             long sourceVersion,
             List<EarnLine> lines,
             String merchantNo,
-            String clientType) {
+            String clientType,
+            PointsRefundPort.PaymentSnapshot payment) {
         public GrantCommand {
             lines = List.copyOf(lines);
+        }
+
+        public GrantCommand(
+                String eventNo,
+                String subOrderNo,
+                String userNo,
+                String typeCode,
+                String storeNo,
+                String payChannel,
+                String payScene,
+                long sourceVersion,
+                List<EarnLine> lines,
+                String merchantNo,
+                String clientType) {
+            this(
+                    eventNo,
+                    subOrderNo,
+                    userNo,
+                    typeCode,
+                    storeNo,
+                    payChannel,
+                    payScene,
+                    sourceVersion,
+                    lines,
+                    merchantNo,
+                    clientType,
+                    null);
         }
 
         public GrantCommand(

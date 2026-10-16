@@ -45,8 +45,8 @@
 <path d="M40 513H490" stroke="#0f766e" stroke-width="1"/>
 <text x="56" y="538" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">—</text>
 <path d="M40 554H490" stroke="#cbd5e1"/>
-<text x="56" y="578" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ draftDue(period)</text>
-<text x="56" y="600" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ confirm(no,revision,actor)</text>
+<text x="56" y="578" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ draftGroups(period,actor): List&lt;Snapshot&gt;</text>
+<text x="56" y="600" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ draft / confirm / dispute / redraft</text>
 <rect x="590" y="443" width="450" height="188" rx="8" fill="white" stroke="#0f766e" stroke-width="1.5"/>
 <text x="606" y="467" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«service»  pay.points.payout</text>
 <text x="606" y="496" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">PointsPayoutService</text>

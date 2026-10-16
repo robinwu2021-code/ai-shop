@@ -241,9 +241,15 @@ public interface PointsConfigurationMapper {
     Map<String, Object> lockStatementSource(String no);
 
     @Select(
+            "SELECT * FROM pts_store_statement WHERE type_code=#{type} AND store_no=#{store} AND"
+                + " period_from=#{from} AND deleted=0 ORDER BY route_key LIMIT 201 FOR UPDATE")
+    List<Map<String, Object>> statementsForPeriod(
+            @Param("type") String type, @Param("store") String store, @Param("from") long from);
+
+    @Select(
             "SELECT * FROM pts_redeem_position WHERE type_code=#{type} AND store_no=#{store} AND"
-                    + " deleted=0 AND state='SETTLEABLE' AND statement_no IS NULL AND"
-                    + " original_points>processed_points ORDER BY position_no FOR UPDATE")
+                + " deleted=0 AND state='SETTLEABLE' AND statement_no IS NULL AND"
+                + " original_points>processed_points ORDER BY position_no LIMIT 10001 FOR UPDATE")
     List<Map<String, Object>> statementCandidates(
             @Param("type") String type, @Param("store") String store);
 
@@ -263,8 +269,16 @@ public interface PointsConfigurationMapper {
 
     @Select(
             "SELECT * FROM pts_refund_preparation WHERE type_code=#{type} AND sub_order_no=#{sub}"
-                + " AND state NOT IN ('CONFIRMED','ABORTED') AND deleted=0 ORDER BY position_no")
+                + " AND state NOT IN ('CONFIRMED','ABORTED') AND deleted=0 ORDER BY position_no FOR"
+                + " UPDATE")
     List<Map<String, Object>> openRefunds(@Param("type") String type, @Param("sub") String sub);
+
+    @Select(
+            "SELECT * FROM pts_refund_preparation WHERE type_code=#{type} AND sub_order_no=#{sub}"
+                + " AND state='CONFIRMED' AND deleted=0 ORDER BY position_no LIMIT 10001 FOR"
+                + " UPDATE")
+    List<Map<String, Object>> confirmedRefunds(
+            @Param("type") String type, @Param("sub") String sub);
 
     @Select(
             "SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=#{afterSale} AND"

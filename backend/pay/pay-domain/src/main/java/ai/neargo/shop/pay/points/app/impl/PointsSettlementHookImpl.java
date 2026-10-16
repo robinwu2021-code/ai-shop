@@ -217,12 +217,17 @@ public class PointsSettlementHookImpl implements PointsSettlementHook {
                                 number(head, "original_points"), grant.activatedPoints()),
                         grant.reclaimedPending());
         require(remaining >= 0, "POINTS_GRANT_COUNTER_INVALID");
+        var applied = new java.util.HashMap<String, Long>(grant.refundedGoodsByLine());
+        for (var line : grant.decision().lines()) {
+            applied.merge(line.itemId(), line.refundedBeforeGrantMinor(), Math::max);
+        }
+        require(
+                fact.lines().size() == grant.decision().lines().size(),
+                "POINTS_REFUND_FACT_NOT_APPLIED");
+        requireRefundAmounts(fact, applied);
         if (remaining == 0) {
             return;
         }
-        require(
-                fact.refundedGoodsMinor() == 0 || grant.reclaimedPending() > 0,
-                "POINTS_REFUND_FACT_NOT_APPLIED");
         moves.add(move(type, HolderType.USER, grant.userNo(), Bucket.PENDING, -remaining));
         moves.add(move(type, HolderType.USER, grant.userNo(), Bucket.AVAILABLE, remaining));
         var next =
@@ -265,7 +270,23 @@ public class PointsSettlementHookImpl implements PointsSettlementHook {
         require(fact.userNo().equals(snapshot.userNo()), "POINTS_FACT_SUBJECT_MISMATCH");
         String state = (String) head.get("state");
         require(!"HELD".equals(state) && !"RELEASED".equals(state), "POINTS_PAYMENT_FACT_REQUIRED");
-        require(fact.refundedGoodsMinor() == 0, "POINTS_REFUND_FACT_NOT_APPLIED");
+        var applied = new java.util.HashMap<String, Long>();
+        var completed = read.confirmedRefunds(fact.typeCode(), fact.subOrderNo());
+        require(completed.size() <= 10000, "POINTS_REFUND_HISTORY_LIMIT");
+        for (var row : completed) {
+            var refund =
+                    json.readValue(
+                            (String) row.get("payload_json"),
+                            ai.neargo.shop.pay.points.refund.impl.PointsRefundPreparationServiceImpl
+                                    .RefundSnapshot.class);
+            require(
+                    fact.userNo().equals(refund.command().userNo()),
+                    "POINTS_FACT_SUBJECT_MISMATCH");
+            for (var line : refund.command().lines()) {
+                applied.merge(line.itemId(), line.cumulativeGoodsMinor(), Math::max);
+            }
+        }
+        requireRefundAmounts(fact, applied);
         if (snapshot.finalSnapshotReceived() && !"IN_STORE".equals(state)) {
             return;
         }
@@ -310,6 +331,29 @@ public class PointsSettlementHookImpl implements PointsSettlementHook {
                         number(head, "original_points"),
                         0,
                         json.writeValueAsString(next)));
+    }
+
+    private void requireRefundAmounts(LifecycleFact fact, Map<String, Long> applied) {
+        long total = 0;
+        for (var line : fact.lines()) {
+            long amount = applied.getOrDefault(line.itemId(), 0L);
+            require(amount == line.refundedGoodsMinor(), "POINTS_REFUND_FACT_NOT_APPLIED");
+            total = Math.addExact(total, amount);
+        }
+        require(
+                total == fact.refundedGoodsMinor()
+                        && applied.entrySet().stream()
+                                .filter(e -> e.getValue() > 0)
+                                .allMatch(
+                                        e ->
+                                                fact.lines().stream()
+                                                        .anyMatch(
+                                                                l ->
+                                                                        l.itemId()
+                                                                                .equals(
+                                                                                        e
+                                                                                                .getKey()))),
+                "POINTS_REFUND_FACT_NOT_APPLIED");
     }
 
     private void validate(LifecycleFact f) {

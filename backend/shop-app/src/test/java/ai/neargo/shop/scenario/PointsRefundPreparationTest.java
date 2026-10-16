@@ -360,6 +360,198 @@ class PointsRefundPreparationTest {
     }
 
     @Test
+    void grant_only_refund_rejects_another_stores_collection_route_before_freezing() {
+        String type = fixture(true, true);
+        var c = command(type, "FOREIGN:" + type, 50);
+        var p = c.payment();
+        var foreign =
+                new PaymentSnapshot(
+                        p.fundsPath(),
+                        p.channel(),
+                        "OTHER_MERCHANT",
+                        "OTHER_STORE",
+                        p.accountVersion(),
+                        p.subMerchantId(),
+                        p.tradeNo(),
+                        p.outTradeNo(),
+                        p.orderTotalMinor());
+        var changed =
+                new RefundCommand(
+                        c.afterSaleNo(),
+                        c.subOrderNo(),
+                        c.userNo(),
+                        c.typeCode(),
+                        c.currency(),
+                        c.sourceVersion(),
+                        c.businessCashMinor(),
+                        c.cumulativeGoodsMinor(),
+                        c.lines(),
+                        foreign);
+        assertThatThrownBy(() -> refunds.prepare(changed))
+                .hasMessage("POINTS_REFUND_STORE_MISMATCH");
+        assertThat(balance(type, "available_points")).isEqualTo(20);
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT COUNT(*) FROM pts_refund_preparation WHERE"
+                                                + " type_code=?",
+                                        Long.class,
+                                        type))
+                .isZero();
+    }
+
+    @Test
+    void grant_only_refund_requires_original_payment_snapshot_and_preserves_it_on_replay() {
+        var json = new ObjectMapper();
+        String type = fixture(true, true);
+        var c = command(type, "BANK:" + type, 50);
+        var p = c.payment();
+        var changed =
+                new RefundCommand(
+                        c.afterSaleNo(),
+                        c.subOrderNo(),
+                        c.userNo(),
+                        c.typeCode(),
+                        c.currency(),
+                        c.sourceVersion(),
+                        c.businessCashMinor(),
+                        c.cumulativeGoodsMinor(),
+                        c.lines(),
+                        new PaymentSnapshot(
+                                p.fundsPath(),
+                                p.channel(),
+                                p.merchantNo(),
+                                p.storeNo(),
+                                p.accountVersion(),
+                                "OTHER_SUB",
+                                p.tradeNo(),
+                                p.outTradeNo(),
+                                p.orderTotalMinor()));
+        assertThatThrownBy(() -> refunds.prepare(changed))
+                .hasMessage("POINTS_REFUND_STORE_MISMATCH");
+        // Only fixture metadata is altered to emulate an incomplete authoritative source contract.
+        String grantNo = PointsKeys.position("G", type, type);
+        var payload =
+                (tools.jackson.databind.node.ObjectNode)
+                        json.readTree(
+                                jdbc().queryForObject(
+                                                "SELECT payload_json FROM pts_grant_position WHERE"
+                                                        + " position_no=?",
+                                                String.class,
+                                                grantNo));
+        var original = json.treeToValue(payload.get("command"), PointsEarnPort.GrantCommand.class);
+        var replay =
+                new PointsEarnPort.GrantCommand(
+                        original.eventNo(),
+                        original.subOrderNo(),
+                        original.userNo(),
+                        original.typeCode(),
+                        original.storeNo(),
+                        original.payChannel(),
+                        original.payScene(),
+                        original.sourceVersion(),
+                        original.lines(),
+                        original.merchantNo(),
+                        original.clientType(),
+                        changed.payment());
+        assertThatThrownBy(() -> earn.grant(replay)).hasMessage("POINTS_IDEMPOTENCY_CONFLICT");
+        ((tools.jackson.databind.node.ObjectNode) payload.get("command")).remove("payment");
+        jdbc().update(
+                        "UPDATE pts_grant_position SET payload_json=? WHERE position_no=?",
+                        json.writeValueAsString(payload),
+                        grantNo);
+        assertThatThrownBy(() -> refunds.prepare(c))
+                .hasMessage("POINTS_REFUND_PAYMENT_SNAPSHOT_REQUIRED");
+        assertThat(balance(type, "available_points")).isEqualTo(20);
+    }
+
+    @Test
+    void redemption_refund_rejects_changed_original_bank_identifiers() {
+        for (int field = 0; field < 3; field++) {
+            String type = fixture(false, true);
+            addRedemption(type, false);
+            var c = command(type, "ROUTE:" + type, 50);
+            var p = c.payment();
+            var route =
+                    new PaymentSnapshot(
+                            p.fundsPath(),
+                            p.channel(),
+                            p.merchantNo(),
+                            p.storeNo(),
+                            p.accountVersion(),
+                            field == 0 ? "OTHER_SUB" : p.subMerchantId(),
+                            field == 1 ? "OTHER_TRADE" : p.tradeNo(),
+                            field == 2 ? "OTHER_OUT" : p.outTradeNo(),
+                            p.orderTotalMinor());
+            var changed =
+                    new RefundCommand(
+                            c.afterSaleNo(),
+                            c.subOrderNo(),
+                            c.userNo(),
+                            c.typeCode(),
+                            c.currency(),
+                            c.sourceVersion(),
+                            c.businessCashMinor(),
+                            c.cumulativeGoodsMinor(),
+                            c.lines(),
+                            route);
+            assertThatThrownBy(() -> refunds.prepare(changed))
+                    .hasMessage("POINTS_REFUND_STORE_MISMATCH");
+            assertThat(
+                            jdbc().queryForObject(
+                                            "SELECT COUNT(*) FROM pts_refund_preparation WHERE"
+                                                    + " type_code=?",
+                                            Long.class,
+                                            type))
+                    .isZero();
+        }
+    }
+
+    @Test
+    void activated_grant_still_rejects_a_final_fact_with_unapplied_refund() {
+        String type = fixture(true, true);
+        var fact =
+                new LifecycleFact(
+                        "UNAPPLIED_ACTIVE:" + type,
+                        "HASH",
+                        type,
+                        "USER",
+                        type,
+                        2,
+                        FactKind.FINALIZED,
+                        100,
+                        1,
+                        List.of(new LineSnapshot("ITEM", 1, 100, 1)),
+                        Instant.parse("2026-10-16T00:00:00Z"));
+        assertThatThrownBy(() -> settlement.onBillFinalized(fact))
+                .hasMessage("POINTS_REFUND_FACT_NOT_APPLIED");
+        assertThat(balance(type, "available_points")).isEqualTo(20);
+    }
+
+    @Test
+    void finalization_accepts_refunds_already_deducted_before_grant() {
+        String type = fixture(false, true, 50);
+        long pending = balance(type, "pending_points");
+        assertThat(pending).isPositive();
+        var fact =
+                new LifecycleFact(
+                        "LATE_FINAL:" + type,
+                        "HASH",
+                        type,
+                        "USER",
+                        type,
+                        2,
+                        FactKind.FINALIZED,
+                        100,
+                        50,
+                        List.of(new LineSnapshot("ITEM", 1, 100, 50)),
+                        Instant.parse("2026-10-16T00:00:00Z"));
+        settlement.onBillFinalized(fact);
+        settlement.onBillFinalized(fact);
+        assertThat(balance(type, "pending_points")).isZero();
+        assertThat(balance(type, "available_points")).isEqualTo(pending);
+    }
+
+    @Test
     void skipped_grants_do_not_claw_back_expected_but_unissued_points() {
         String type = fixture(false, false);
         var result = refunds.prepare(command(type, "AS:" + type, 100));
@@ -1984,6 +2176,10 @@ class PointsRefundPreparationTest {
     }
 
     private String fixture(boolean finalized, boolean funded) {
+        return fixture(finalized, funded, 0);
+    }
+
+    private String fixture(boolean finalized, boolean funded, long refundedBeforeGrant) {
         String type = "RP" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         jdbc().update(
                         "INSERT INTO"
@@ -2046,9 +2242,21 @@ class PointsRefundPreparationTest {
                                         "CAT",
                                         1,
                                         100,
-                                        0,
+                                        refundedBeforeGrant,
                                         new PointsEarnPort.EarnRule(
-                                                PointsEarnPort.RuleMode.FIXED, 20)))));
+                                                PointsEarnPort.RuleMode.FIXED, 20))),
+                        "MERCHANT",
+                        "APP",
+                        new PaymentSnapshot(
+                                "DIRECT",
+                                "TEST",
+                                "MERCHANT",
+                                "STORE",
+                                "V1",
+                                "SUB",
+                                "TRADE",
+                                "OUT",
+                                100)));
         return type;
     }
 

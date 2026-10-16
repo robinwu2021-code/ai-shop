@@ -826,6 +826,195 @@ class PointsPayoutPreparationTest {
     }
 
     @Test
+    void finalization_accepts_only_the_completed_partial_refund_and_settles_remaining_points() {
+        for (long refundedGoods : List.of(25L, 1L)) {
+            var c = fixture(false, false, true, 30);
+            paid(paidFact(c));
+            completeZeroRefund(c, "BEFORE_FINAL", refundedGoods);
+            var fact =
+                    new LifecycleFact(
+                            "FINAL_REFUND:" + c.typeCode(),
+                            "HASH",
+                            c.sourceRef(),
+                            "U",
+                            c.typeCode(),
+                            2,
+                            FactKind.FINALIZED,
+                            100,
+                            refundedGoods,
+                            List.of(new LineSnapshot("I", 1, 100, refundedGoods)),
+                            Instant.parse("2026-10-16T00:00:00Z"));
+            var hook = context.getBean(PointsSettlementHook.class);
+            var missing =
+                    new LifecycleFact(
+                            "UNAPPLIED:" + c.typeCode(),
+                            "HASH",
+                            c.sourceRef(),
+                            "U",
+                            c.typeCode(),
+                            2,
+                            FactKind.FINALIZED,
+                            100,
+                            refundedGoods + 1,
+                            List.of(new LineSnapshot("I", 1, 100, refundedGoods + 1)),
+                            fact.occurredAt());
+            assertThatThrownBy(() -> hook.onBillFinalized(missing))
+                    .hasMessage("POINTS_REFUND_FACT_NOT_APPLIED");
+            hook.onBillFinalized(fact);
+            hook.onBillFinalized(fact);
+            var statement =
+                    context.getBean(StoreStatementService.class)
+                            .draft(new Period(c.typeCode(), "STORE", 0, 4102444800000L), "OP");
+            assertThat(statement.current().points()).isEqualTo(30 - (30 * refundedGoods / 100));
+        }
+    }
+
+    @Test
+    void statement_remains_payable_when_store_re_signs_with_a_new_original_account()
+            throws Exception {
+        var c = fixture(false, false, true, 30);
+        var merchants = org.mockito.Mockito.mock(ai.neargo.shop.spi.user.MerchantQueryPort.class);
+        org.mockito.Mockito.when(merchants.ownerUserNoOf("M"))
+                .thenReturn(java.util.Optional.of("OWNER"));
+        var stores = org.mockito.Mockito.mock(ai.neargo.shop.spi.user.StoreDirectoryPort.class);
+        org.mockito.Mockito.when(stores.cards(List.of("STORE")))
+                .thenReturn(
+                        Map.of(
+                                "STORE",
+                                new ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard(
+                                        "STORE",
+                                        "Synthetic",
+                                        "M",
+                                        null,
+                                        "ACTIVE",
+                                        true,
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        0,
+                                        0)));
+        var agreements =
+                new ai.neargo.shop.pay.points.agreement.impl.AgreementServiceImpl(
+                        context.getBean(PointsConfigurationStore.class),
+                        context.getBean(PointsReadStore.class),
+                        merchants,
+                        stores,
+                        context.getBeanProvider(PointsFundsGateway.class));
+        var tx =
+                new TransactionTemplate(
+                        context.getBean("payTxManager", PlatformTransactionManager.class));
+        String terms = "SYNTHETIC REVIEW TERMS";
+        String hash =
+                java.util.HexFormat.of()
+                        .formatHex(
+                                java.security.MessageDigest.getInstance("SHA-256")
+                                        .digest(
+                                                terms.getBytes(
+                                                        java.nio.charset.StandardCharsets.UTF_8)));
+        var oldRoute = c.context();
+        tx.executeWithoutResult(
+                status -> {
+                    agreements.publishTerms(c.typeCode(), "V1", terms, "OP");
+                    agreements.sign(
+                            new ai.neargo.shop.pay.points.agreement.AgreementService.SignCommand(
+                                    c.typeCode(), "M", "STORE", "V1", hash, "PERIODIC", oldRoute),
+                            "OWNER");
+                });
+        paid(paidFact(c));
+        context.getBean(PointsSettlementHook.class)
+                .onBillFinalized(finalFact(c, "FIRST_FINAL:" + c.typeCode(), 2));
+        var newRoute =
+                new FundsContext(
+                        oldRoute.path(),
+                        oldRoute.channel(),
+                        "M",
+                        "STORE",
+                        "A2",
+                        "SM2",
+                        "TRADE2",
+                        "SECOND:" + c.typeCode(),
+                        100);
+        var signed =
+                tx.execute(
+                        status -> {
+                            agreements.terminate(c.typeCode(), "STORE", "OWNER");
+                            return agreements.sign(
+                                    new ai.neargo.shop.pay.points.agreement.AgreementService
+                                            .SignCommand(
+                                            c.typeCode(),
+                                            "M",
+                                            "STORE",
+                                            "V1",
+                                            hash,
+                                            "PERIODIC",
+                                            newRoute),
+                                    "OWNER");
+                        });
+        addPeriodicSource(c, newRoute, signed);
+        var statements = context.getBean(StoreStatementService.class);
+        seedDebt(c, 30);
+        var period = new Period(c.typeCode(), "STORE", 0, 4102444800000L);
+        assertThatThrownBy(() -> statements.draft(period, "OP"))
+                .hasMessage("POINTS_STATEMENT_ROUTE_GROUPS_REQUIRED");
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT COUNT(*) FROM pts_store_statement WHERE"
+                                            + " type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isZero();
+        var groups = statements.draftGroups(period, "OP");
+        assertThat(groups).hasSize(2);
+        assertThat(statements.draftGroups(period, "OP")).isEqualTo(groups);
+        long cash = 0;
+        long offset = 0;
+        Set<String> accountVersions = new java.util.HashSet<>();
+        for (var draft : groups) {
+            statements.confirm(draft.statementNo(), 1, "CHECKER");
+            var ticket =
+                    context.getBean(StatementPayoutService.class)
+                            .prepare("GROUP:" + draft.statementNo(), draft.statementNo(), 1, "OP");
+            var payout =
+                    json.readValue(
+                            jdbc().queryForObject(
+                                            "SELECT payload_json FROM pts_payout_ticket WHERE"
+                                                + " position_no=?",
+                                            String.class,
+                                            ticket.ticketNo()),
+                            ai.neargo.shop.pay.points.payout.PayoutSnapshot.class);
+            accountVersions.add(payout.command().context().accountVersion());
+            cash += ticket.cash();
+            offset += ticket.offset();
+            execute(ticket.ticketNo());
+            execute(ticket.ticketNo());
+            assertThat(
+                            jdbc().queryForObject(
+                                            "SELECT state FROM pts_store_statement WHERE"
+                                                + " position_no=?",
+                                            String.class,
+                                            draft.statementNo()))
+                    .isEqualTo("PAID");
+        }
+        assertThat(accountVersions).containsExactlyInAnyOrder("A1", "A2");
+        assertThat(cash).isEqualTo(30);
+        assertThat(offset).isEqualTo(30);
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT d_minor FROM pts_fund_pool WHERE type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isZero();
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT recovered_minor FROM pts_receivable WHERE"
+                                            + " type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isEqualTo(30);
+    }
+
+    @Test
     void statement_draft_fixes_candidates_and_confirmation_moves_store_backing_once() {
         var c = periodicStatementFixture();
         var statements = context.getBean(StoreStatementService.class);
@@ -1337,6 +1526,11 @@ class PointsPayoutPreparationTest {
     }
 
     private PayoutCommand addPeriodicSource(PayoutCommand first) {
+        return addPeriodicSource(first, null, null);
+    }
+
+    private PayoutCommand addPeriodicSource(
+            PayoutCommand first, FundsContext changed, AgreementSnapshot signed) {
         String type = first.typeCode();
         String sub = "SECOND:" + type;
         String no = PointsKeys.position("R", type, sub);
@@ -1351,6 +1545,9 @@ class PointsPayoutPreparationTest {
         var route =
                 new FundsContext(
                         FundsPath.AGGREGATED, "TEST", "M", "STORE", "A1", "SM", "TRADE", sub, 100);
+        if (changed != null) {
+            route = changed;
+        }
         var snapshot =
                 new RedeemSnapshot(
                         sub,
@@ -1364,11 +1561,11 @@ class PointsPayoutPreparationTest {
                                 100,
                                 "AGGREGATED",
                                 "TEST",
-                                "A1",
-                                "SM",
-                                "TRADE",
+                                route.accountVersion(),
+                                route.subMerchantId(),
+                                route.tradeNo(),
                                 List.of(new Item("ITEM", 100))),
-                        original.agreement(),
+                        signed == null ? original.agreement() : signed,
                         route,
                         false);
         posting.post(
@@ -2577,8 +2774,8 @@ class PointsPayoutPreparationTest {
         jdbc().update("INSERT INTO pts_fund_pool(type_code,currency) VALUES(?,'CNY')", type);
         jdbc().update(
                         "INSERT INTO"
-                            + " pts_fund_evidence(evidence_no,currency,external_minor,verified)"
-                            + " VALUES(?,'CNY',?,1)",
+                                + " pts_fund_evidence(evidence_no,currency,external_minor,verified)"
+                                + " VALUES(?,'CNY',?,1)",
                         "E:" + type,
                         100 + buffer);
         posting.post(

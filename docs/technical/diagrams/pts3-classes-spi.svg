@@ -13,9 +13,10 @@
 <text x="56" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#7c3aed" font-weight="400" text-anchor="start">«interface»  shop-base.spi.points</text>
 <text x="56" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">PointsEarnPort</text>
 <path d="M40 225H490" stroke="#7c3aed" stroke-width="1"/>
-<text x="56" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">DTO nested records / business keys</text>
-<path d="M40 266H490" stroke="#cbd5e1"/>
-<text x="56" y="290" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ grant(GrantCommand): GrantOutcome</text>
+<text x="56" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">immutable earning rules / store / source version</text>
+<text x="56" y="272" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">original payment snapshot for refund routing</text>
+<path d="M40 288H490" stroke="#cbd5e1"/>
+<text x="56" y="312" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ grant(GrantCommand): GrantOutcome</text>
 <rect x="590" y="155" width="450" height="210" rx="8" fill="white" stroke="#7c3aed" stroke-width="1.5"/>
 <text x="606" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#7c3aed" font-weight="400" text-anchor="start">«interface»  shop-base.spi.points</text>
 <text x="606" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">PointsRedeemPort</text>

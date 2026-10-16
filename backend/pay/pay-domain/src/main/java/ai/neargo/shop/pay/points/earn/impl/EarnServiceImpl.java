@@ -70,6 +70,13 @@ public class EarnServiceImpl implements EarnService {
                 || c.sourceVersion() < 0) {
             throw new IllegalArgumentException("POINTS_EARN_INPUT_INVALID");
         }
+        if (c.payment() != null
+                && (!c.storeNo().equals(c.payment().storeNo())
+                        || !Objects.equals(c.payChannel(), c.payment().channel())
+                        || (c.merchantNo() != null
+                                && !c.merchantNo().equals(c.payment().merchantNo())))) {
+            throw new IllegalArgumentException("POINTS_EARN_PAYMENT_MISMATCH");
+        }
         config.lockTypeAndPool(c.typeCode());
         String ref = "GRANT:" + c.subOrderNo();
         String position = PointsKeys.position("G", c.typeCode(), c.subOrderNo());
@@ -85,7 +92,8 @@ public class EarnServiceImpl implements EarnService {
                     || !Objects.equals(original.payChannel(), c.payChannel())
                     || !Objects.equals(original.payScene(), c.payScene())
                     || !Objects.equals(original.merchantNo(), c.merchantNo())
-                    || !Objects.equals(original.clientType(), c.clientType())) {
+                    || !Objects.equals(original.clientType(), c.clientType())
+                    || !Objects.equals(original.payment(), c.payment())) {
                 throw new IllegalArgumentException("POINTS_IDEMPOTENCY_CONFLICT");
             }
             return outcome(ref);

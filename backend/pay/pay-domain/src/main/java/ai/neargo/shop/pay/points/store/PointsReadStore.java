@@ -36,6 +36,8 @@ public interface PointsReadStore {
 
     List<Map<String, Object>> openRefunds(String typeCode, String subOrderNo);
 
+    List<Map<String, Object>> confirmedRefunds(String typeCode, String subOrderNo);
+
     Map<String, Object> lifecycle(String typeCode, String subOrderNo);
 
     boolean enabled(String typeCode, String userNo, String storeNo);

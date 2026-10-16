@@ -119,6 +119,21 @@ public class PointsRefundPreparationServiceImpl implements PointsRefundPreparati
                     json.readValue((String) grantHead.get("payload_json"), GrantSnapshot.class);
             require(command.userNo().equals(grant.userNo()), "POINTS_REFUND_SUBJECT_MISMATCH");
             require(
+                    grant.command().storeNo().equals(command.payment().storeNo())
+                            && (grant.command().merchantNo() == null
+                                    || grant.command()
+                                            .merchantNo()
+                                            .equals(command.payment().merchantNo())),
+                    "POINTS_REFUND_STORE_MISMATCH");
+            require(
+                    redeemHead != null || grant.command().payment() != null,
+                    "POINTS_REFUND_PAYMENT_SNAPSHOT_REQUIRED");
+            if (grant.command().payment() != null) {
+                require(
+                        grant.command().payment().equals(command.payment()),
+                        "POINTS_REFUND_STORE_MISMATCH");
+            }
+            require(
                     grant.decision().lines().size() == cumulative.size(),
                     "POINTS_REFUND_LINES_INVALID");
             grantState = (String) grantHead.get("state");
@@ -172,7 +187,12 @@ public class PointsRefundPreparationServiceImpl implements PointsRefundPreparati
                             && context.merchantNo().equals(payment.merchantNo())
                             && context.path().name().equals(payment.fundsPath())
                             && context.channel().equals(payment.channel())
-                            && context.accountVersion().equals(payment.accountVersion()),
+                            && context.accountVersion().equals(payment.accountVersion())
+                            && java.util.Objects.equals(
+                                    context.subMerchantId(), payment.subMerchantId())
+                            && java.util.Objects.equals(context.tradeNo(), payment.tradeNo())
+                            && java.util.Objects.equals(context.outTradeNo(), payment.outTradeNo())
+                            && context.orderTotalMinor() == payment.orderTotalMinor(),
                     "POINTS_REFUND_STORE_MISMATCH");
             redeemState = (String) redeemHead.get("state");
             require(

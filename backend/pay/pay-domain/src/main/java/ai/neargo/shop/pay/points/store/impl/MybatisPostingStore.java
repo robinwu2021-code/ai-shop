@@ -222,6 +222,7 @@ public class MybatisPostingStore implements PostingStore {
                                         period.storeNo(),
                                         period.fromMillis(),
                                         period.toMillis(),
+                                        period.routeKey() == null ? "DEFAULT" : period.routeKey(),
                                         statement.current().number())
                                 == 1,
                         "POINTS_STATEMENT_SNAPSHOT_INVALID");

@@ -668,14 +668,13 @@
       "kind": "service",
       "package": "pay.points.statement",
       "fields": [
-        "policy: StatementPolicy",
+        "fixed store / period / original route groups",
         "posting: PointsPostingService"
       ],
       "methods": [
-        "draftDue(period)",
-        "confirm(no,revision,actor)",
-        "dispute(no,revision,reason)",
-        "recompute(no)"
+        "draftGroups(period,actor): List<Snapshot>",
+        "draft / confirm / dispute / redraft",
+        "reopenForRefund(positionNo)"
       ],
       "source": "TDD §2.6",
       "status": "DESIGN",
@@ -968,7 +967,8 @@
       "kind": "interface",
       "package": "shop-base.spi.points",
       "fields": [
-        "DTO nested records / business keys"
+        "immutable earning rules / store / source version",
+        "original payment snapshot for refund routing"
       ],
       "methods": [
         "grant(GrantCommand): GrantOutcome"
