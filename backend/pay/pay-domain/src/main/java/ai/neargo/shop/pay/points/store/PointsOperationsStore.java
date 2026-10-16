@@ -39,6 +39,10 @@ public interface PointsOperationsStore {
 
     List<Map<String, Object>> receivables(String typeCode, String storeNo, long after, int limit);
 
+    List<Map<String, Object>> statements(String typeCode, String storeNo, long after, int limit);
+
+    Map<String, Object> lockEvent(long id);
+
     long outstandingReceivable(String typeCode);
 
     List<Map<String, Object>> switches(String typeCode, long after, int limit);

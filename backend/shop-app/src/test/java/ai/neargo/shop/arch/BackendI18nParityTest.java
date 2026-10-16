@@ -1,6 +1,9 @@
 package ai.neargo.shop.arch;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import ai.neargo.shop.common.ErrorCode;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -18,19 +21,14 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
  * 后端 i18n 三语一致性。
  *
- * <p>端上早有这条守卫（{@code packages/shared/tests/i18n-parity.test.ts}），
- * 漏的正是后端这一侧 —— 实测阿语请求收到的是<b>中文报错</b>：
- * 界面全套阿语、报错突然变中文，比英文兜底还糟，用户不知道那是不是出错了。
+ * <p>端上早有这条守卫（{@code packages/shared/tests/i18n-parity.test.ts}）， 漏的正是后端这一侧 ——
+ * 实测阿语请求收到的是<b>中文报错</b>： 界面全套阿语、报错突然变中文，比英文兜底还糟，用户不知道那是不是出错了。
  *
- * <p>还守一条更隐蔽的：<b>同一个 key 不能出现两次</b>。
- * properties 后者覆盖前者，于是文件里躺着一条永远不会生效的文案 ——
- * 改错了那条，改的人以为改好了，而线上一个字都没变。
- * {@code err.settle.receiver_not_ready} 就这么在中英两份里各重复了一次。
+ * <p>还守一条更隐蔽的：<b>同一个 key 不能出现两次</b>。 properties 后者覆盖前者，于是文件里躺着一条永远不会生效的文案 ——
+ * 改错了那条，改的人以为改好了，而线上一个字都没变。 {@code err.settle.receiver_not_ready} 就这么在中英两份里各重复了一次。
  */
 class BackendI18nParityTest {
 
@@ -49,15 +47,11 @@ class BackendI18nParityTest {
 
             Set<String> missing = new TreeSet<>(base);
             missing.removeAll(keys);
-            assertThat(missing)
-                    .as("%s 缺这些词条 —— 这些错误码会回落到中文，而界面是 %s 的", path, locale)
-                    .isEmpty();
+            assertThat(missing).as("%s 缺这些词条 —— 这些错误码会回落到中文，而界面是 %s 的", path, locale).isEmpty();
 
             Set<String> extra = new TreeSet<>(keys);
             extra.removeAll(base);
-            assertThat(extra)
-                    .as("%s 多出这些词条 —— 要么基准漏了，要么这几条是删剩的死文案", path)
-                    .isEmpty();
+            assertThat(extra).as("%s 多出这些词条 —— 要么基准漏了，要么这几条是删剩的死文案", path).isEmpty();
         }
     }
 
@@ -78,9 +72,7 @@ class BackendI18nParityTest {
                     dup.add(k);
                 }
             }
-            assertThat(dup)
-                    .as("%s 里这些 key 重复了：生效的是最后一条，前面那条是死的", path)
-                    .isEmpty();
+            assertThat(dup).as("%s 里这些 key 重复了：生效的是最后一条，前面那条是死的", path).isEmpty();
         }
     }
 
@@ -129,18 +121,33 @@ class BackendI18nParityTest {
          * {@code err.trade.proxy_amount_limit} 这串字符。零报错、零日志。
          */
         assertThat(missing)
-                .as("这些错误码在 %s 里没有文案，端上会直接看到 key：\n  %s",
-                        BASE, String.join("\n  ", missing))
+                .as("这些错误码在 %s 里没有文案，端上会直接看到 key：\n  %s", BASE, String.join("\n  ", missing))
                 .isEmpty();
     }
 
     @Test
-    @DisplayName("★ 每条文案都要有错误码指着它 —— 没人指的是死文案，三语对账还会逼着把它翻译出去")
+    @DisplayName("★ 每条文案必须由错误码或消息生产者引用")
     void everyMessageBelongsToAnErrorCode() throws IOException {
         Set<String> referenced = new LinkedHashSet<>();
         for (ErrorCode e : ErrorCode.values()) {
             referenced.add(e.msgKey());
         }
+
+        // Notifications are another real producer; discover actual literal calls, not an orphan
+        // allowlist.
+        Set<String> notificationKeys = new LinkedHashSet<>();
+        var calls = Pattern.compile("Messages\\.get\\(\\s*\"([^\"]+)\"");
+        try (var sources =
+                java.nio.file.Files.walk(
+                        java.nio.file.Path.of(
+                                "../shop-core/src/main/java/ai/neargo/shop/message"))) {
+            for (var source : sources.filter(p -> p.toString().endsWith(".java")).toList()) {
+                var matcher = calls.matcher(java.nio.file.Files.readString(source));
+                while (matcher.find()) notificationKeys.add(matcher.group(1));
+            }
+        }
+        assertThat(keysOf(BASE)).containsAll(notificationKeys);
+        referenced.addAll(notificationKeys);
 
         List<String> orphans = new ArrayList<>();
         for (String key : keysOf(BASE)) {
@@ -155,7 +162,7 @@ class BackendI18nParityTest {
          * err.settle.split_reverse_failed 就这样从初始提交一路被翻进阿语文件，
          * 从来没有任何一个 ErrorCode 指过它（2026-09-06 查出并删除）。
          *
-         * 所有取文案的路径都经 ErrorCode.msgKey()（主代码里没有字面量的 Messages.get 调用），
+         * 错误提示经 ErrorCode.msgKey()，消息通知经生产者的 Messages.get 字面量调用，
          * 所以这个反向集合没有误报来源；将来出现第二种键的生产者，改的是这里的 referenced。
          */
         assertThat(orphans)
@@ -175,8 +182,9 @@ class BackendI18nParityTest {
             for (var e : base.entrySet()) {
                 Set<String> other = keys.get(e.getKey());
                 if (other != null && !other.equals(e.getValue())) {
-                    bad.add("%s · %s：中文 %s，%s %s"
-                            .formatted(locale, e.getKey(), e.getValue(), locale, other));
+                    bad.add(
+                            "%s · %s：中文 %s，%s %s"
+                                    .formatted(locale, e.getKey(), e.getValue(), locale, other));
                 }
             }
         }
@@ -193,9 +201,7 @@ class BackendI18nParityTest {
          * 找不到下标 1 的实参，就把 `{1}` 原样留在结果里：阿语用户看到一句话里嵌着
          * 字面的 {1}。个数对不上与下标对不上，后果是同一种，判据不该只认前一种。
          */
-        assertThat(bad)
-                .as("这些词条的占位符个数与中文对不上，参数会被静默丢掉：\n  %s", String.join("\n  ", bad))
-                .isEmpty();
+        assertThat(bad).as("这些词条的占位符个数与中文对不上，参数会被静默丢掉：\n  %s", String.join("\n  ", bad)).isEmpty();
     }
 
     /** key → 文案里出现过的占位符下标集合（{@code {0}} → "0"） */
@@ -235,13 +241,14 @@ class BackendI18nParityTest {
     }
 
     private static List<String> linesOf(String path) throws IOException {
-        try (InputStream in = BackendI18nParityTest.class.getClassLoader().getResourceAsStream(path)) {
+        try (InputStream in =
+                BackendI18nParityTest.class.getClassLoader().getResourceAsStream(path)) {
             if (in == null) {
                 throw new IOException("找不到 " + path);
             }
             List<String> out = new ArrayList<>();
-            try (var reader = new java.io.BufferedReader(
-                    new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            try (var reader =
+                    new java.io.BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String t = line.trim();

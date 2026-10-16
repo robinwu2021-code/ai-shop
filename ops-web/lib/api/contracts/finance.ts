@@ -1,3 +1,4 @@
+import type { PointsStatementPage, PointsStatementDraft, PointsStatementChange, PointsReference, PointsRevision, PointsRefundView, PointsReceivableRecovery, PointsFundsReference, PointsFundsView, PointsRecovery, PointsRecoveryExecution, PointsEventPage, PointsEventRetry } from "@/lib/types";
 import type { PointsOperation, PointsSubmission, PointsRequestReview, PointsRequestPage, PointsPlanChange, PointsPlanGenerate, PointsPlanReceipt, PointsPlanCancellation, PointsPlanPage, PointsWithdrawal, PointsExecution } from "@/lib/types";
 import type { PointsTypeConfig, PointsChangeResult, PointsCreate, PointsTypeChange, PointsFallback, PointsFallbackChange, PointsCursor, PointsSwitchPage, PointsSwitchChange, PointsTerms, PointsTermsChange, PointsAgreementPage } from "@/lib/types";
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
@@ -41,6 +42,17 @@ export interface FinanceApi {
   declarePointsReceipt(v: PointsPlanReceipt): Promise<PointsOperation>;
   cancelPointsPeriod(v: PointsPlanCancellation): Promise<PointsOperation>;
   executePointsWithdrawal(v: PointsWithdrawal): Promise<PointsExecution>;
+
+  pointsStatements(q: PointsCursor & { storeNo: string }): Promise<PointsStatementPage>;
+  draftPointsStatements(v: PointsStatementDraft): Promise<PointsOperation>;
+  changePointsStatement(v: PointsStatementChange): Promise<PointsOperation>;
+  pointsRefund(q: PointsReference): Promise<PointsRefundView>;
+  revisePointsRefund(v: PointsRevision): Promise<PointsOperation>;
+  preparePointsReceivable(v: PointsReceivableRecovery): Promise<PointsOperation>;
+  pointsFunds(q: PointsFundsReference): Promise<PointsFundsView>;
+  recoverPointsFunds(v: PointsRecovery): Promise<PointsRecoveryExecution>;
+  pointsEvents(q: PointsCursor): Promise<PointsEventPage>;
+  retryPointsEvent(v: PointsEventRetry): Promise<PointsOperation>;
 
   /** 结算单列表。**自营与第三方都在这里** —— 不该因经营模式分成两个入口。 */
   /**

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 849 个接口**：后端已实现 771（91%）· 前端在调 775
+**合计 859 个接口**：后端已实现 781（91%）· 前端在调 785
 
 ---
 
@@ -917,7 +917,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **434** 个接口 ｜ 后端已实现 **368**（85%）｜ 前端在调 **360**
+共 **444** 个接口 ｜ 后端已实现 **378**（85%）｜ 前端在调 **370**
 
 ### aftersale（4）
 
@@ -998,7 +998,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（62）
+### finance（72）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1026,18 +1026,28 @@
 | POST | `/ops/payouts/{payoutNo}/fail` | 打款失败或退回 | — | `Payout` | — | ✅ | ✅ |
 | POST | `/ops/payouts/{payoutNo}/paid` | 登记凭证 | — | `Payout` | — | ✅ | ✅ |
 | GET | `/ops/points/agreements` | pointsAgreements | — | `PointsAgreementPage` | — | ✅ | ✅ |
+| POST | `/ops/points/event-retry` | retryPointsEvent | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/events` | pointsEvents | — | `PointsEventPage` | — | ✅ | ✅ |
 | GET | `/ops/points/fallback-rule` | pointsFallback | — | `PointsFallback` | — | ✅ | ✅ |
 | POST | `/ops/points/fallback-rule` | savePointsFallback | — | `PointsChangeResult` | — | ✅ | ✅ |
+| GET | `/ops/points/funds` | pointsFunds | — | `PointsFundsView` | — | ✅ | ✅ |
+| POST | `/ops/points/funds-recovery` | recoverPointsFunds | — | `PointsRecoveryExecution` | — | ✅ | ✅ |
 | GET | `/ops/points/overview` | 积分资金总览 | — | `PointsOverview` | — | ✅ | ✅ |
 | POST | `/ops/points/plan-cancel` | cancelPointsPeriod | — | `PointsOperation` | — | ✅ | ✅ |
 | POST | `/ops/points/plan-generate` | generatePointsPeriods | — | `PointsOperation` | — | ✅ | ✅ |
 | POST | `/ops/points/plan-receipt` | declarePointsReceipt | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/plans` | pointsPlans | — | `PointsPlanPage` | — | ✅ | ✅ |
 | POST | `/ops/points/plans` | savePointsPlan | — | `PointsOperation` | — | ✅ | ✅ |
+| POST | `/ops/points/receivable-recovery` | preparePointsReceivable | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/receivables` | 门店应收分页 | — | `PointsReceivablePage` | — | ✅ | ✅ |
+| GET | `/ops/points/refund` | pointsRefund | — | `PointsRefundView` | — | ✅ | ✅ |
+| POST | `/ops/points/refund-revise` | revisePointsRefund | — | `PointsOperation` | — | ✅ | ✅ |
 | POST | `/ops/points/request-review` | reviewPointsRequest | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/requests` | pointsRequests | — | `PointsRequestPage` | — | ✅ | ✅ |
 | POST | `/ops/points/requests` | submitPointsRequest | — | `PointsOperation` | — | ✅ | ✅ |
+| POST | `/ops/points/statement-change` | changePointsStatement | — | `PointsOperation` | — | ✅ | ✅ |
+| POST | `/ops/points/statement-draft` | draftPointsStatements | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/statements` | pointsStatements | — | `PointsStatementPage` | — | ✅ | ✅ |
 | GET | `/ops/points/switches` | pointsSwitches | — | `PointsSwitchPage` | — | ✅ | ✅ |
 | POST | `/ops/points/switches` | changePointsSwitch | — | `PointsChangeResult` | — | ✅ | ✅ |
 | GET | `/ops/points/terms` | pointsTerms | — | `object` | — | ✅ | ✅ |

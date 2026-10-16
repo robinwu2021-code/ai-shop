@@ -413,7 +413,7 @@ class PointsClientSwitchFlowTest {
         // 这个应用错误也返回 HTTP 200，业务码在响应体里
         assertThat(json.readTree(body).path("code").asInt())
                 .as("MP_WECHAT 写成 WECHAT_MP：运营会以为已经关掉了")
-                .isNotZero();
+                .isEqualTo(ai.neargo.shop.common.ErrorCode.POINTS_OPERATION_REJECTED.code());
     }
 
     // ── helpers ──────────────────────────────────────────────

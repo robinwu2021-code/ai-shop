@@ -12,6 +12,7 @@ import ai.neargo.shop.pay.points.admin.PointsTreasuryService.RequestPage;
 import ai.neargo.shop.pay.points.admin.PointsTreasuryService.Review;
 import ai.neargo.shop.pay.points.admin.PointsTreasuryService.Submission;
 import ai.neargo.shop.pay.points.admin.PointsTreasuryService.Withdrawal;
+import ai.neargo.shop.payclient.PointsOpsErrors;
 import ai.neargo.shop.payclient.PointsTreasuryAppService;
 
 import org.springframework.stereotype.Service;
@@ -26,46 +27,46 @@ public class PointsTreasuryAppServiceImpl implements PointsTreasuryAppService {
 
     @Override
     public OperatorResult submit(Submission request, String actor) {
-        return service.submit(request, actor);
+        return PointsOpsErrors.call(() -> service.submit(request, actor));
     }
 
     @Override
     public OperatorResult review(Review request, String actor) {
-        return service.review(request, actor);
+        return PointsOpsErrors.call(() -> service.review(request, actor));
     }
 
     @Override
     public RequestPage requests(String typeCode, long after, int limit) {
-        return service.requests(typeCode, after, limit);
+        return PointsOpsErrors.call(() -> service.requests(typeCode, after, limit));
     }
 
     @Override
     public OperatorResult savePlan(PlanChange request, String actor) {
-        return service.savePlan(request, actor);
+        return PointsOpsErrors.call(() -> service.savePlan(request, actor));
     }
 
     @Override
     public OperatorResult generatePeriods(GeneratePeriods request, String actor) {
-        return service.generatePeriods(request, actor);
+        return PointsOpsErrors.call(() -> service.generatePeriods(request, actor));
     }
 
     @Override
     public OperatorResult declareReceipt(PlanReceipt request, String actor) {
-        return service.declareReceipt(request, actor);
+        return PointsOpsErrors.call(() -> service.declareReceipt(request, actor));
     }
 
     @Override
     public OperatorResult cancelPeriod(PeriodCancellation request, String actor) {
-        return service.cancelPeriod(request, actor);
+        return PointsOpsErrors.call(() -> service.cancelPeriod(request, actor));
     }
 
     @Override
     public PlanPage plans(String typeCode, long after, int limit) {
-        return service.plans(typeCode, after, limit);
+        return PointsOpsErrors.call(() -> service.plans(typeCode, after, limit));
     }
 
     @Override
     public Execution executeWithdrawal(Withdrawal request, String actor) {
-        return service.executeWithdrawal(request, actor);
+        return PointsOpsErrors.call(() -> service.executeWithdrawal(request, actor));
     }
 }

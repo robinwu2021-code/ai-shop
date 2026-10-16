@@ -17,3 +17,10 @@ it("keeps maker/checker versions and original withdrawal identifiers on treasury
   await financeHttp.executePointsWithdrawal(execution);
   expect(client.post).toHaveBeenCalledWith("/ops/points/withdrawal-execute", execution);
 });
+it("retains store and revision when operating on one original statement route group", async () => {
+  const command = { requestId: "GROUP_A", typeCode: "T", storeNo: "STORE", statementNo: "ORIGINAL_A", revision: 4, action: "CONFIRM" as const, reason: "reviewed" };
+  await financeHttp.changePointsStatement(command);
+  expect(client.post).toHaveBeenCalledWith("/ops/points/statement-change", command);
+  await financeHttp.pointsStatements({ typeCode: "T", storeNo: "STORE", after: 10, limit: 1 });
+  expect(client.get).toHaveBeenCalledWith("/ops/points/statements", { typeCode: "T", storeNo: "STORE", after: 10, limit: 1 });
+});

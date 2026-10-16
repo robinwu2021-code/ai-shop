@@ -137,6 +137,68 @@ class PointsOpsPermissionTest {
         }
     }
 
+    @Test
+    void workbench_permissions_protect_all_queries_and_recovery_actions() throws Exception {
+        try (var context = new AnnotationConfigApplicationContext(Config.class)) {
+            var controller =
+                    context.getBean(
+                            ai.neargo.shop.portal.ops.pay.OpsPointsWorkbenchController.class);
+            for (var method :
+                    ai.neargo.shop.portal.ops.pay.OpsPointsWorkbenchController.class
+                            .getDeclaredMethods()) {
+                if (!method.isAnnotationPresent(GetMapping.class)
+                        && !method.isAnnotationPresent(PostMapping.class)) continue;
+                Object[] args =
+                        Arrays.stream(method.getParameterTypes())
+                                .map(
+                                        t ->
+                                                t == long.class
+                                                        ? (Object) 0L
+                                                        : t == int.class
+                                                                ? 50
+                                                                : t == String.class
+                                                                        ? "SYNTHETIC"
+                                                                        : t
+                                                                                        == ai.neargo
+                                                                                                .shop
+                                                                                                .pay
+                                                                                                .points
+                                                                                                .job
+                                                                                                .PointsRecoveryService
+                                                                                                .Operation
+                                                                                                .class
+                                                                                ? ai.neargo.shop.pay
+                                                                                        .points.job
+                                                                                        .PointsRecoveryService
+                                                                                        .Operation
+                                                                                        .PAYOUT
+                                                                                : null)
+                                .toArray();
+                String required =
+                        method.isAnnotationPresent(GetMapping.class)
+                                ? Perms.FINANCE_SETTLE_READ
+                                : method.getName().equals("executeRecovery")
+                                        ? Perms.FINANCE_PAYOUT_EXECUTE
+                                        : Perms.FINANCE_SETTLE_EXECUTE;
+                for (String permission :
+                        List.of(
+                                Perms.FINANCE_SETTLE_READ,
+                                Perms.FINANCE_SETTLE_EXECUTE,
+                                Perms.FINANCE_PAYOUT_EXECUTE)) {
+                    authenticate(permission);
+                    if (permission.equals(required)) method.invoke(controller, args);
+                    else
+                        assertThatThrownBy(() -> method.invoke(controller, args))
+                                .isInstanceOf(InvocationTargetException.class)
+                                .cause()
+                                .isInstanceOf(AccessDeniedException.class);
+                }
+            }
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
     private void authenticate(String permission) {
         SecurityContextHolder.getContext()
                 .setAuthentication(
@@ -166,6 +228,12 @@ class PointsOpsPermissionTest {
         @Bean
         PermissionCheck perm() {
             return new PermissionCheck();
+        }
+
+        @Bean
+        ai.neargo.shop.portal.ops.pay.OpsPointsWorkbenchController workbenchController() {
+            return new ai.neargo.shop.portal.ops.pay.OpsPointsWorkbenchController(
+                    org.mockito.Mockito.mock(PointsWorkbenchAppService.class));
         }
 
         @Bean

@@ -212,4 +212,15 @@ public class MybatisPointsOperationsStore implements PointsOperationsStore {
             throw new IllegalArgumentException(reason);
         }
     }
+
+    @Override
+    public List<Map<String, Object>> statements(String type, String store, long after, int limit) {
+        return DataScopeContext.executeWithoutScope(
+                () -> mapper.statements(type, store, after, limit));
+    }
+
+    @Override
+    public Map<String, Object> lockEvent(long id) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.lockEvent(id));
+    }
 }

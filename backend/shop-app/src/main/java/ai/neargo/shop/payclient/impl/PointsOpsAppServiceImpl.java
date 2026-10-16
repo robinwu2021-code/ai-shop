@@ -4,6 +4,7 @@ import ai.neargo.shop.pay.points.query.PointsOverviewService;
 import ai.neargo.shop.pay.points.query.PointsOverviewService.Overview;
 import ai.neargo.shop.pay.points.query.PointsOverviewService.ReceivablePage;
 import ai.neargo.shop.payclient.PointsOpsAppService;
+import ai.neargo.shop.payclient.PointsOpsErrors;
 
 import org.springframework.stereotype.Service;
 
@@ -17,11 +18,11 @@ public class PointsOpsAppServiceImpl implements PointsOpsAppService {
 
     @Override
     public ReceivablePage receivables(String typeCode, String storeNo, long after, int limit) {
-        return overview.receivables(typeCode, storeNo, after, limit);
+        return PointsOpsErrors.call(() -> overview.receivables(typeCode, storeNo, after, limit));
     }
 
     @Override
     public Overview overview(String typeCode, String market) {
-        return overview.overview(typeCode, market);
+        return PointsOpsErrors.call(() -> overview.overview(typeCode, market));
     }
 }

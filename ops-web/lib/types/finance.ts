@@ -1001,3 +1001,21 @@ export interface PointsPlanView extends PointsPlan { id: number; period: string;
 export interface PointsPlanPage { rows: PointsPlanView[]; next: number; hasMore: boolean }
 export interface PointsWithdrawal { requestId: string; typeCode: string; ticketNo: string; reason: string }
 export interface PointsExecution { ticketNo: string; status: "SUCCEEDED" | "FAILED" | "UNKNOWN"; confirmedMinor: number; replayed: boolean }
+
+export interface PointsStatementSnapshot { statementNo: string; period: { typeCode: string; storeNo: string; fromMillis: number; toMillis: number; routeKey: string | null }; positionIds: string[]; revisions: { number: number; lines: { positionNo: string; sourceVersion: number; points: number }[]; points: number; actor: string; reason: string | null }[]; state: string; disputeReason: string | null }
+export interface PointsStatementPage { rows: { id: number; snapshot: PointsStatementSnapshot; version: number }[]; next: number; hasMore: boolean }
+export interface PointsStatementDraft { requestId: string; typeCode: string; storeNo: string; fromMillis: number; toMillis: number; reason: string }
+export interface PointsStatementChange { requestId: string; typeCode: string; storeNo: string; statementNo: string; revision: number; action: "CONFIRM" | "DISPUTE" | "REDRAFT" | "PREPARE_PAYOUT"; reason: string }
+export interface PointsReference { typeCode: string; storeNo: string; reference: string }
+export interface PointsRevision extends PointsReference { requestId: string; expectedVersion: number; reason: string }
+export interface PointsRefundPreparation { preparationNo: string; typeCode: string; revision: number; inputHash: string; returnedPoints: number; reclaimedPending: number; reclaimedAvailable: number; expectedClawbackPoints: number; cashOffsetMinor: number; netCashMinor: number; waivedPoints: number; collectionTicket: string | null; state: string }
+export interface PointsRefundView { typeCode: string; storeNo: string; afterSaleNo: string; subOrderNo: string; state: string; version: number; preparation: PointsRefundPreparation }
+export interface PointsReceivableRecovery { requestId: string; typeCode: string; storeNo: string; receivableNo: string; expectedVersion: number; amountMinor: number; reason: string }
+export type PointsRecoveryOperation = "PAYOUT" | "TRANSFER" | "REFUND_COLLECTION" | "REFUND_COMPENSATION";
+export interface PointsFundsReference extends PointsReference { operation: PointsRecoveryOperation }
+export interface PointsFundsView extends PointsFundsReference { state: string; version: number; grossMinor: number; offsetMinor: number; cashMinor: number }
+export interface PointsRecovery extends PointsFundsReference { requestId: string; expectedVersion: number; reason: string }
+export interface PointsRecoveryExecution { reference: string; status: "SUCCEEDED" | "FAILED" | "UNKNOWN" }
+export interface PointsEventView { id: number; eventNo: string; kind: string; state: string; attempt: number; nextAttempt: number; version: number }
+export interface PointsEventPage { rows: PointsEventView[]; next: number; hasMore: boolean }
+export interface PointsEventRetry { requestId: string; typeCode: string; eventId: number; expectedVersion: number; reason: string }

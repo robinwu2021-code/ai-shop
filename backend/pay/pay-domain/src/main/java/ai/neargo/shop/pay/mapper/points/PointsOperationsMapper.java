@@ -15,8 +15,22 @@ import java.util.Map;
 @Mapper
 public interface PointsOperationsMapper {
     @Select(
+            "SELECT id,payload_json,version FROM pts_store_statement WHERE type_code=#{type} AND"
+                + " store_no=#{store} AND id>#{after} AND deleted=0 ORDER BY id LIMIT #{limit}")
+    List<Map<String, Object>> statements(
+            @Param("type") String type,
+            @Param("store") String store,
+            @Param("after") long after,
+            @Param("limit") int limit);
+
+    @Select(
+            "SELECT id,type_code,state,event_no,version FROM pts_outbox WHERE id=#{id} AND"
+                + " deleted=0 FOR UPDATE")
+    Map<String, Object> lockEvent(long id);
+
+    @Select(
             "SELECT id,payload_json FROM pts_switch WHERE (type_code=#{type} OR type_code='*') AND"
-                + " scope<>'FREEZE' AND id>#{after} AND deleted=0 ORDER BY id LIMIT #{limit}")
+                    + " scope<>'FREEZE' AND id>#{after} AND deleted=0 ORDER BY id LIMIT #{limit}")
     List<Map<String, Object>> switches(
             @Param("type") String type, @Param("after") long after, @Param("limit") int limit);
 
