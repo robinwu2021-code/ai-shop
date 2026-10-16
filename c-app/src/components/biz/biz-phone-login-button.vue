@@ -70,7 +70,7 @@ async function onPhone(event: { detail?: { code?: string; errMsg?: string } }) {
 <template>
   <button
     class="phone-button"
-    :class="{ 'sh-btn': !slots.default, 'phone-button--action': !!slots.default, 'sh-btn--soft': tone === 'soft', 'sh-btn--sm': size === 'sm', 'sh-btn--md': size === 'md', 'is-disabled': disabled || busy }"
+    :class="{ 'sh-btn': !slots.default, 'phone-button--action': !!slots.default, 'txt-caption': !!slots.default, 'sh-btn--soft': tone === 'soft', 'sh-btn--sm': size === 'sm', 'sh-btn--md': size === 'md', 'is-disabled': disabled || busy }"
     :open-type="nativeGuest ? 'getPhoneNumber' : undefined"
     :disabled="disabled || busy"
     :loading="busy"
@@ -101,6 +101,5 @@ async function onPhone(event: { detail?: { code?: string; errMsg?: string } }) {
   min-height: 88rpx;
   background: transparent;
   color: inherit;
-  line-height: 1.4;
 }
 </style>
