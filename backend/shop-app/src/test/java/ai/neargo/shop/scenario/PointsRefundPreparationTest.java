@@ -193,6 +193,35 @@ class PointsRefundPreparationTest {
         assertThat(funds.sends.get(ticket.ticketNo())).isEqualTo(1);
     }
 
+    @Test void concurrent_payout_and_refund_have_only_one_owner_of_the_redemption() throws Exception {
+        String type=fixture(false,true);
+        addRedemption(type,false);
+        var barrier=new CyclicBarrier(2);
+        try (var threads=Executors.newFixedThreadPool(2)) {
+            var payout=threads.submit(() -> {
+                barrier.await(10,TimeUnit.SECONDS);
+                return catchThrowable(() -> settlement.beginPayout(payoutCommand(type)));
+            });
+            var refund=threads.submit(() -> {
+                barrier.await(10,TimeUnit.SECONDS);
+                return catchThrowable(() -> refunds.prepare(command(type,"AS:"+type,50)));
+            });
+            var payoutFailure=payout.get(15,TimeUnit.SECONDS);
+            var refundFailure=refund.get(15,TimeUnit.SECONDS);
+            assertThat((payoutFailure==null?1:0)+(refundFailure==null?1:0)).isEqualTo(1);
+            if (payoutFailure!=null) {
+                assertThat(payoutFailure).hasMessage("POINTS_POSITION_NOT_PAYABLE");
+            } else {
+                assertThat(refundFailure).hasMessage("POINTS_REFUND_SOURCE_BUSY");
+            }
+            assertThat(jdbc().queryForObject("SELECT state FROM pts_redeem_position WHERE position_no=?",
+                    String.class,PointsKeys.position("R",type,type)))
+                    .isEqualTo(payoutFailure==null?"PAYING":"REFUND_PREPARED");
+            assertThat(balance(type,"held_points")).isEqualTo(payoutFailure==null?0:10);
+            assertThat(pool(type,"d_minor")).isEqualTo(40);
+        }
+    }
+
     private PayoutCommand payoutCommand(String type) {
         var context=new PointsFundsGateway.FundsContext(PointsFundsGateway.FundsPath.DIRECT,"TEST","MERCHANT",
                 "STORE","V1","SUB","TRADE","OUT",100);

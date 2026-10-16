@@ -22,6 +22,7 @@ import ai.neargo.shop.pay.points.refund.PointsRefundCompensationService.Compensa
 import ai.neargo.shop.pay.points.posting.PointsPostingService;
 import ai.neargo.shop.pay.points.store.PointsConfigurationStore;
 import ai.neargo.shop.pay.points.store.PointsReadStore;
+import ai.neargo.shop.pay.points.statement.StoreStatementService;
 import ai.neargo.shop.spi.points.PointsFactPort.LifecycleFact;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundCommand;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundPreparation;
@@ -51,13 +52,16 @@ public class PointsRefundPreparationServiceImpl implements PointsRefundPreparati
     private final PointsConfigurationStore configuration;
     private final PointsPostingService writer;
     private final ObjectProvider<PointsFundsGateway> funds;
+    private final ObjectProvider<StoreStatementService> statements;
     private final ObjectMapper json=new ObjectMapper();
     private final RefundRatioPolicy ratios=new RefundRatioPolicy();
 
     public PointsRefundPreparationServiceImpl(PointsReadStore read,PointsConfigurationStore configuration,
-            PointsPostingService posting,ObjectProvider<PointsFundsGateway> funds) {
+            PointsPostingService posting,ObjectProvider<PointsFundsGateway> funds,
+            ObjectProvider<StoreStatementService> statements) {
         this.read=read; this.configuration=configuration; this.writer=posting;
         this.funds=funds;
+        this.statements=statements;
     }
 
     @Override public RefundPreparation prepare(RefundCommand command) {
@@ -76,6 +80,12 @@ public class PointsRefundPreparationServiceImpl implements PointsRefundPreparati
         require(read.openRefunds(command.typeCode(),command.subOrderNo()).isEmpty(),"POINTS_REFUND_SOURCE_BUSY");
         String grantNo=PointsKeys.position("G",command.typeCode(),command.subOrderNo());
         String redeemNo=PointsKeys.position("R",command.typeCode(),command.subOrderNo());
+        var boundRedemption=read.position(PositionMove.Kind.REDEEM.table(),redeemNo);
+        if (boundRedemption!=null && boundRedemption.get("statement_no")!=null) {
+            var statementService=statements.getIfAvailable();
+            require(statementService!=null,"POINTS_STATEMENT_SERVICE_REQUIRED");
+            statementService.reopenForRefund(redeemNo);
+        }
         var grantHead=read.position(PositionMove.Kind.GRANT.table(),grantNo);
         var redeemHead=read.position(PositionMove.Kind.REDEEM.table(),redeemNo);
         require(grantHead!=null || redeemHead!=null,"POINTS_REFUND_SOURCE_UNKNOWN");

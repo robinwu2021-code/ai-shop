@@ -30,6 +30,14 @@ public interface PointsConfigurationMapper {
     Map<String, Object> lockRefundPreparation(String no);
     @Select("SELECT * FROM pts_payout_ticket WHERE position_no=#{no} AND deleted=0 FOR UPDATE")
     Map<String, Object> lockPayoutTicket(String no);
+    @Select("SELECT * FROM pts_store_statement WHERE position_no=#{no} AND deleted=0 FOR UPDATE")
+    Map<String, Object> lockStatement(String no);
+    @Select("SELECT * FROM pts_redeem_position WHERE position_no=#{no} AND deleted=0 FOR UPDATE")
+    Map<String, Object> lockStatementSource(String no);
+    @Select("SELECT * FROM pts_redeem_position WHERE type_code=#{type} AND store_no=#{store} AND deleted=0"
+            + " AND state='SETTLEABLE' AND statement_no IS NULL AND original_points>processed_points"
+            + " ORDER BY position_no FOR UPDATE")
+    List<Map<String, Object>> statementCandidates(@Param("type") String type, @Param("store") String store);
     @Select("SELECT * FROM pts_receivable WHERE receivable_no=#{no} AND deleted=0")
     Map<String,Object> receivable(String no);
     @Select("SELECT * FROM pts_refund_reserve WHERE reserve_no=#{no}")

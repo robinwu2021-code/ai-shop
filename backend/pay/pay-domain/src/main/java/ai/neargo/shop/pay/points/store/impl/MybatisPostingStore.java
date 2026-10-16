@@ -14,6 +14,7 @@ import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.model.Voucher;
 import ai.neargo.shop.pay.points.model.ReserveMove;
 import ai.neargo.shop.pay.points.model.ReceivableMove;
+import ai.neargo.shop.pay.points.statement.StoreStatementService.Snapshot;
 import ai.neargo.shop.pay.points.posting.PostingResult;
 import ai.neargo.shop.pay.points.store.PostingStore;
 import org.springframework.dao.DuplicateKeyException;
@@ -129,6 +130,19 @@ public class MybatisPostingStore implements PostingStore {
             }
             require(mapper.movePosition(move.kind().table(), type, move, revision) == 1,
                     "POINTS_POSITION_STATE_CONFLICT");
+            if (move.kind()==PositionMove.Kind.STATEMENT) {
+                var statement=json.readValue(move.payload(),Snapshot.class);
+                var period=statement.period();
+                require(move.positionNo().equals(statement.statementNo()) && type.equals(period.typeCode())
+                        && period.fromMillis()<period.toMillis() && statement.current().number()>0,
+                        "POINTS_STATEMENT_SNAPSHOT_INVALID");
+                require(mapper.indexStatement(move.positionNo(),type,period.storeNo(),period.fromMillis(),
+                        period.toMillis(),statement.current().number())==1,"POINTS_STATEMENT_SNAPSHOT_INVALID");
+                for (String source:statement.positionIds()) {
+                    require(mapper.bindStatement(source,type,period.storeNo(),move.positionNo())==1,
+                            "POINTS_STATEMENT_BINDING_CONFLICT");
+                }
+            }
             if (move.kind()==PositionMove.Kind.REFUND) {
                 var snapshot=json.readTree(move.payload());
                 var command=snapshot.path("command");

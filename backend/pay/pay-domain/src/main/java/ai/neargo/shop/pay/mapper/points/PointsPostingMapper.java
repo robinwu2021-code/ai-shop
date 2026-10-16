@@ -72,6 +72,15 @@ public interface PointsPostingMapper {
             + " WHERE position_no=#{no}")
     int indexWithdrawal(@Param("no") String no,@Param("bucket") String bucket,@Param("amount") long amount,
                         @Param("idem") String idem);
+    @Update("UPDATE pts_store_statement SET store_no=#{store},period_from=#{from},period_to=#{to},revision=#{revision}"
+            + " WHERE position_no=#{no} AND type_code=#{type}")
+    int indexStatement(@Param("no") String no, @Param("type") String type, @Param("store") String store,
+            @Param("from") long from, @Param("to") long to, @Param("revision") long revision);
+    @Update("UPDATE pts_redeem_position SET statement_no=#{statement} WHERE position_no=#{no}"
+            + " AND type_code=#{type} AND store_no=#{store} AND deleted=0"
+            + " AND (statement_no IS NULL OR statement_no=#{statement})")
+    int bindStatement(@Param("no") String no, @Param("type") String type, @Param("store") String store,
+            @Param("statement") String statement);
     @Select("SELECT COALESCE(SUM(amount_minor),0) FROM pts_fund_transfer WHERE type_code=#{type}"
             + " AND withdraw_bucket=#{bucket} AND state IN ('READY','DISPATCHING','UNKNOWN')")
     long lockedWithdrawalTotal(@Param("type") String type,@Param("bucket") String bucket);

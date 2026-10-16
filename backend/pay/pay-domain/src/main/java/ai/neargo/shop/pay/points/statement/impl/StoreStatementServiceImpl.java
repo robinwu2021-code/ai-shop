@@ -1,0 +1,222 @@
+package ai.neargo.shop.pay.points.statement.impl;
+
+import ai.neargo.shop.pay.points.statement.StoreStatementService;
+import ai.neargo.shop.pay.points.model.AccountKey;
+import ai.neargo.shop.pay.points.model.Bucket;
+import ai.neargo.shop.pay.points.model.FundBucket;
+import ai.neargo.shop.pay.points.model.FundMove;
+import ai.neargo.shop.pay.points.model.HolderType;
+import ai.neargo.shop.pay.points.model.PointsKeys;
+import ai.neargo.shop.pay.points.model.PointsMove;
+import ai.neargo.shop.pay.points.model.PositionMove;
+import ai.neargo.shop.pay.points.model.Voucher;
+import ai.neargo.shop.pay.points.posting.PointsPostingService;
+import ai.neargo.shop.pay.points.redeem.impl.RedeemServiceImpl.RedeemSnapshot;
+import ai.neargo.shop.pay.points.store.PointsConfigurationStore;
+import ai.neargo.shop.pay.points.store.PointsReadStore;
+import ai.neargo.shop.pay.points.store.StatementStore;
+import ai.neargo.shop.spi.points.PointsFactPort.LifecycleFact;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/** Statement metadata and financial confirmation share the pay transaction. */
+@Service
+@Transactional("payTxManager")
+public class StoreStatementServiceImpl implements StoreStatementService {
+    @Override public void reopenForRefund(String positionNo) {
+        var initial = read.position(PositionMove.Kind.REDEEM.table(), positionNo);
+        require(initial != null, "POINTS_STATEMENT_SOURCE_NOT_READY");
+        config.lockTypeAndPool((String) initial.get("type_code"));
+        var source = store.lockSource(positionNo);
+        String no = (String) source.get("statement_no");
+        if (no == null) { return; }
+        var head = store.lock(no);
+        var saved = snapshot(head);
+        require(saved.positionIds().contains(positionNo), "POINTS_STATEMENT_BINDING_CONFLICT");
+        if (Set.of("DRAFT", "DISPUTED", "PAID").contains(saved.state())) { return; }
+        require("CONFIRMED".equals(saved.state()), "POINTS_STATEMENT_PAYMENT_UNRESOLVED");
+        List<PositionMove> positions = new ArrayList<>();
+        List<Line> lines = new ArrayList<>();
+        long points = 0;
+        for (String id : saved.positionIds()) {
+            var row = store.lockSource(id);
+            require("PAYABLE".equals(row.get("state")), "POINTS_STATEMENT_PAYMENT_UNRESOLVED");
+            long remaining = Math.subtractExact(num(row, "original_points"), num(row, "processed_points"));
+            points = Math.addExact(points, remaining);
+            lines.add(new Line(id, Math.addExact(num(row, "version"), 1), remaining));
+            positions.add(new PositionMove(PositionMove.Kind.REDEEM, id, num(row, "version"), "PAYABLE",
+                    "SETTLEABLE", num(row, "original_points"), 0, (String) row.get("payload_json")));
+        }
+        require(points == saved.current().points(), "POINTS_STATEMENT_AMOUNT_CONFLICT");
+        String actor = "REFUND:" + positionNo;
+        var history = new ArrayList<>(saved.revisions());
+        history.add(new Revision(Math.addExact(saved.current().number(), 1), lines, points, actor, "REFUND_REOPEN"));
+        var next = new Snapshot(no, saved.period(), saved.positionIds(), history, "DRAFT", null);
+        String type = saved.period().typeCode();
+        long minor = read.type(type).orElseThrow().rate().toMinor(points);
+        post(head, next, List.of(new PointsMove(new AccountKey(type, HolderType.STORE,
+                        saved.period().storeNo(), Bucket.AVAILABLE), points),
+                new PointsMove(new AccountKey(type, HolderType.RECEIVE, "PLATFORM", Bucket.REFUND_RESERVED), -points)),
+                List.of(new FundMove(FundBucket.D, -minor), new FundMove(FundBucket.C, minor)), positions, actor);
+    }
+    private final PointsReadStore read;
+    private final PointsConfigurationStore config;
+    private final StatementStore store;
+    private final PointsPostingService posting;
+    private final ObjectMapper json = new ObjectMapper();
+
+    public StoreStatementServiceImpl(PointsReadStore read, PointsConfigurationStore config,
+                                     StatementStore store, PointsPostingService posting) {
+        this.read = read;
+        this.config = config;
+        this.store = store;
+        this.posting = posting;
+    }
+
+    @Override public Snapshot draft(Period period, String actor) {
+        require(period != null && nonblank(period.typeCode()) && nonblank(period.storeNo())
+                && period.fromMillis() >= 0 && period.fromMillis() < period.toMillis() && nonblank(actor),
+                "POINTS_STATEMENT_INPUT_INVALID");
+        config.lockTypeAndPool(period.typeCode());
+        String no = PointsKeys.position("S", period.typeCode(), period.storeNo() + ":" + period.fromMillis());
+        var head = store.lock(no);
+        if (head != null) {
+            var saved = snapshot(head);
+            require(period.equals(saved.period()), "POINTS_STATEMENT_PERIOD_CONFLICT");
+            return saved;
+        }
+        var sources = store.candidates(period.typeCode(), period.storeNo()).stream()
+                .filter(source -> belongsToPeriod(source, period)).toList();
+        require(!sources.isEmpty(), "POINTS_STATEMENT_EMPTY");
+        var ids = sources.stream().map(row -> (String) row.get("position_no")).toList();
+        var revision = revision(period, ids, 1, actor);
+        var saved = new Snapshot(no, period, ids, List.of(revision), "DRAFT", null);
+        post(null, saved, List.of(), List.of(), List.of(), actor);
+        return saved;
+    }
+
+    @Override public Snapshot redraft(String no, long revision, String actor) {
+        var head = locked(no, actor);
+        var saved = checked(head, revision);
+        require(Set.of("DRAFT", "DISPUTED").contains(saved.state()), "POINTS_STATEMENT_NOT_DRAFT");
+        var history = new ArrayList<>(saved.revisions());
+        history.add(revision(saved.period(), saved.positionIds(), Math.addExact(revision, 1), actor));
+        var next = new Snapshot(no, saved.period(), saved.positionIds(), history, "DRAFT", null);
+        post(head, next, List.of(), List.of(), List.of(), actor);
+        return next;
+    }
+
+    @Override public Snapshot confirm(String no, long revision, String actor) {
+        var head = locked(no, actor);
+        var saved = checked(head, revision);
+        if ("CONFIRMED".equals(saved.state())) { return saved; }
+        require("DRAFT".equals(saved.state()), "POINTS_STATEMENT_NOT_DRAFT");
+        require(saved.current().points() > 0, "POINTS_STATEMENT_EMPTY");
+        var actual = revision(saved.period(), saved.positionIds(), revision, actor);
+        require(actual.lines().equals(saved.current().lines()), "POINTS_STATEMENT_REDRAFT_REQUIRED");
+        List<PositionMove> positions = new ArrayList<>();
+        for (var line : actual.lines()) {
+            var source = store.lockSource(line.positionNo());
+            positions.add(new PositionMove(PositionMove.Kind.REDEEM, line.positionNo(), num(source, "version"),
+                    "SETTLEABLE", "PAYABLE", num(source, "original_points"), 0,
+                    (String) source.get("payload_json")));
+        }
+        String type = saved.period().typeCode();
+        long points = actual.points();
+        long minor = read.type(type).orElseThrow().rate().toMinor(points);
+        var next = new Snapshot(no, saved.period(), saved.positionIds(), saved.revisions(), "CONFIRMED", null);
+        post(head, next, List.of(new PointsMove(new AccountKey(type, HolderType.STORE,
+                        saved.period().storeNo(), Bucket.AVAILABLE), -points),
+                new PointsMove(new AccountKey(type, HolderType.RECEIVE, "PLATFORM", Bucket.REFUND_RESERVED), points)),
+                List.of(new FundMove(FundBucket.C, -minor), new FundMove(FundBucket.D, minor)), positions, actor);
+        return next;
+    }
+
+    @Override public Snapshot dispute(String no, long revision, String actor, String reason) {
+        require(nonblank(reason), "POINTS_STATEMENT_DISPUTE_REASON_REQUIRED");
+        var head = locked(no, actor);
+        var saved = checked(head, revision);
+        if ("DISPUTED".equals(saved.state())) {
+            require(reason.equals(saved.disputeReason()), "POINTS_STATEMENT_DISPUTE_CONFLICT");
+            return saved;
+        }
+        require("DRAFT".equals(saved.state()), "POINTS_STATEMENT_NOT_DRAFT");
+        var next = new Snapshot(no, saved.period(), saved.positionIds(), saved.revisions(), "DISPUTED", reason);
+        post(head, next, List.of(), List.of(), List.of(), actor);
+        return next;
+    }
+
+    private Revision revision(Period period, List<String> ids, long number, String actor) {
+        List<Line> lines = new ArrayList<>();
+        long points = 0;
+        for (String id : ids) {
+            var source = store.lockSource(id);
+            require(source != null && period.typeCode().equals(source.get("type_code"))
+                    && period.storeNo().equals(source.get("store_no")) && "SETTLEABLE".equals(source.get("state")),
+                    "POINTS_STATEMENT_SOURCE_NOT_READY");
+            var redemption = json.readValue((String) source.get("payload_json"), RedeemSnapshot.class);
+            require("PERIODIC".equals(redemption.agreement().settleMode()) && redemption.finalSnapshotReceived(),
+                    "POINTS_STATEMENT_SOURCE_NOT_READY");
+            long remaining = Math.subtractExact(num(source, "original_points"), num(source, "processed_points"));
+            lines.add(new Line(id, num(source, "version"), remaining));
+            points = Math.addExact(points, remaining);
+        }
+        return new Revision(number, lines, points, actor, null);
+    }
+
+    private boolean belongsToPeriod(Map<String, Object> source, Period period) {
+        var lifecycle = read.lifecycle(period.typeCode(), (String) source.get("sub_order_no"));
+        require(lifecycle != null, "POINTS_STATEMENT_FINAL_FACT_REQUIRED");
+        var node = json.readTree((String) lifecycle.get("payload_json")).get("finalFact");
+        require(node != null && node.isObject(), "POINTS_STATEMENT_FINAL_FACT_REQUIRED");
+        var fact = json.treeToValue(node, LifecycleFact.class);
+        require(fact.occurredAt() != null && period.typeCode().equals(fact.typeCode())
+                && source.get("sub_order_no").equals(fact.subOrderNo()), "POINTS_STATEMENT_FINAL_FACT_REQUIRED");
+        long at = fact.occurredAt().toEpochMilli();
+        return at >= period.fromMillis() && at < period.toMillis();
+    }
+
+    private Map<String, Object> locked(String no, String actor) {
+        require(nonblank(no) && nonblank(actor), "POINTS_STATEMENT_INPUT_INVALID");
+        var initial = read.position(PositionMove.Kind.STATEMENT.table(), no);
+        require(initial != null, "POINTS_STATEMENT_UNKNOWN");
+        config.lockTypeAndPool((String) initial.get("type_code"));
+        return store.lock(no);
+    }
+
+    private Snapshot checked(Map<String, Object> head, long revision) {
+        var saved = snapshot(head);
+        require(saved.current().number() == revision, "POINTS_STATEMENT_REVISION_CONFLICT");
+        return saved;
+    }
+
+    private Snapshot snapshot(Map<String, Object> head) {
+        return json.readValue((String) head.get("payload_json"), Snapshot.class);
+    }
+
+    private void post(Map<String, Object> head, Snapshot saved, List<PointsMove> points, List<FundMove> funds,
+                      List<PositionMove> sources, String actor) {
+        var type = read.type(saved.period().typeCode()).orElseThrow();
+        long version = head == null ? -1 : num(head, "version");
+        var positions = new ArrayList<>(sources);
+        positions.add(new PositionMove(PositionMove.Kind.STATEMENT, saved.statementNo(), version,
+                head == null ? "NEW" : (String) head.get("state"), saved.state(),
+                head == null ? saved.current().points() : num(head, "original_points"), 0,
+                json.writeValueAsString(saved)));
+        posting.post(new Voucher("STATEMENT:" + saved.statementNo() + ":" + version, type.typeCode(),
+                type.currency(), type.rate(), points, funds, positions, 0, List.of(),
+                json.writeValueAsString(Map.of("actor", actor, "statement", saved))));
+    }
+
+    private long num(Map<String, Object> row, String key) { return ((Number) row.get(key)).longValue(); }
+    private boolean nonblank(String value) { return value != null && !value.isBlank(); }
+    private void require(boolean condition, String reason) {
+        if (!condition) { throw new IllegalArgumentException(reason); }
+    }
+}

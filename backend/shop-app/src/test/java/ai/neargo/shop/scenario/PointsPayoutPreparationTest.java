@@ -1,6 +1,15 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsResult;
+import ai.neargo.shop.pay.points.statement.StoreStatementService;
+import ai.neargo.shop.pay.points.statement.StoreStatementService.Period;
+import ai.neargo.shop.pay.points.store.impl.MybatisStatementStore;
+import java.sql.Timestamp;
+import ai.neargo.shop.pay.points.refund.PointsRefundPreparationService;
+import ai.neargo.shop.pay.points.store.impl.MybatisPointsCashRefundReadStore;
+import ai.neargo.shop.spi.points.PointsRefundPort.RefundCommand;
+import ai.neargo.shop.spi.points.PointsRefundPort.RefundLine;
+import ai.neargo.shop.spi.points.PointsRefundPort.PaymentSnapshot;
 
 import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
@@ -72,14 +81,16 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 /** Isolated fixture facts use real pay posting, mapper, and transaction factory without booting the application. */
 @SpringJUnitConfig(PointsPayoutPreparationTest.Config.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(properties={
-        "spring.datasource.url=jdbc:h2:mem:points_payout_prepare;MODE=MySQL;DATABASE_TO_LOWER=TRUE",
-        "shop.points.enabled=true", "spring.datasource.username=sa", "spring.datasource.password=",
-        "spring.datasource.driver-class-name=org.h2.Driver"
+        "spring.datasource.url=${points.jdbc.url:jdbc:h2:mem:points_payout_prepare;MODE=MySQL;DATABASE_TO_LOWER=TRUE}",
+        "shop.points.enabled=true", "spring.datasource.username=${points.jdbc.user:sa}",
+        "spring.datasource.password=${points.jdbc.password:}",
+        "spring.datasource.driver-class-name=${points.jdbc.driver:org.h2.Driver}"
 })
 class PointsPayoutPreparationTest {
     @Autowired private ApplicationContext context;
@@ -93,7 +104,7 @@ class PointsPayoutPreparationTest {
     @BeforeAll
     void schema() {
         PointsPostingDatabaseTest.initializeSchema(dataSource);
-        jdbc().execute("CREATE TABLE stl_bill (id BIGINT AUTO_INCREMENT PRIMARY KEY,settle_no VARCHAR(64),"
+        jdbc().execute("CREATE TABLE IF NOT EXISTS stl_bill (id BIGINT AUTO_INCREMENT PRIMARY KEY,settle_no VARCHAR(64),"
                 + "sub_order_no VARCHAR(64),entity_no VARCHAR(64),status VARCHAR(24),tenant_no VARCHAR(32),"
                 + "created_at DATETIME,created_by VARCHAR(64),updated_at DATETIME,updated_by VARCHAR(64),"
                 + "version BIGINT,deleted TINYINT DEFAULT 0)");
@@ -419,6 +430,127 @@ class PointsPayoutPreparationTest {
         } catch (ReflectiveOperationException e) { throw new AssertionError("Payout execution service missing",e); }
     }
 
+    @Test void statement_draft_fixes_candidates_and_confirmation_moves_store_backing_once() {
+        var c=periodicStatementFixture();
+        var statements=context.getBean(StoreStatementService.class);
+        var period=new Period(c.typeCode(),"STORE",0,4102444800000L);
+        var draft=statements.draft(period,"OPERATOR");
+        assertThat(draft).isNotNull();
+        assertThat(draft.positionIds()).containsExactlyElementsOf(c.positionIds());
+        assertThat(draft.current().points()).isEqualTo(30);
+        assertThat(statements.draft(period,"OPERATOR")).isEqualTo(draft);
+        var confirmed=statements.confirm(draft.statementNo(),1,"REVIEWER");
+        assertThat(confirmed.state()).isEqualTo("CONFIRMED");
+        assertThat(statements.confirm(draft.statementNo(),1,"REVIEWER")).isEqualTo(confirmed);
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",Long.class,
+                c.typeCode())).isEqualTo(30);
+        assertThat(jdbc().queryForObject("SELECT available_points FROM pts_account WHERE type_code=?"
+                + " AND holder_type='STORE'",Long.class,c.typeCode())).isZero();
+    }
+
+    @Test void statement_revisions_and_disputes_prevent_stale_confirmation() {
+        var c=periodicStatementFixture();
+        var statements=context.getBean(StoreStatementService.class);
+        var draft=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OPERATOR");
+        assertThat(draft).isNotNull();
+        statements.dispute(draft.statementNo(),1,"STORE_REVIEWER","CHECK_AMOUNT");
+        assertThatThrownBy(() -> statements.confirm(draft.statementNo(),1,"REVIEWER"))
+                .hasMessage("POINTS_STATEMENT_NOT_DRAFT");
+        var revised=statements.redraft(draft.statementNo(),1,"OPERATOR");
+        assertThat(revised.current().number()).isEqualTo(2);
+        assertThat(revised.revisions()).hasSize(2);
+        assertThat(revised.positionIds()).isEqualTo(draft.positionIds());
+        assertThatThrownBy(() -> statements.confirm(draft.statementNo(),1,"REVIEWER"))
+                .hasMessage("POINTS_STATEMENT_REVISION_CONFLICT");
+        assertThat(statements.confirm(draft.statementNo(),2,"REVIEWER").state()).isEqualTo("CONFIRMED");
+    }
+
+    @Test void statement_period_binding_rejects_overlapping_source_reuse_and_changed_period_end() {
+        var c=periodicStatementFixture();
+        var statements=context.getBean(StoreStatementService.class);
+        var draft=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OPERATOR");
+        assertThat(draft).isNotNull();
+        assertThatThrownBy(() -> statements.draft(new Period(c.typeCode(),"STORE",0,4102444800001L),"OPERATOR"))
+                .hasMessage("POINTS_STATEMENT_PERIOD_CONFLICT");
+        assertThatThrownBy(() -> statements.draft(new Period(c.typeCode(),"STORE",1,4102444800000L),"OPERATOR"))
+                .hasMessage("POINTS_STATEMENT_EMPTY");
+        assertThat(jdbc().queryForObject("SELECT statement_no FROM pts_redeem_position WHERE position_no=?",
+                String.class,c.positionIds().getFirst())).isEqualTo(draft.statementNo());
+    }
+
+    @Test void statement_period_uses_the_final_fact_time_and_a_half_open_interval() {
+        var c=periodicStatementFixture();
+        var statements=context.getBean(StoreStatementService.class);
+        long finalizedAt=Instant.parse("2026-10-14T00:00:00Z").toEpochMilli();
+        jdbc().update("UPDATE pts_redeem_position SET created_at=? WHERE position_no=?",
+                Timestamp.from(Instant.parse("2026-10-16T00:00:00Z")),c.positionIds().getFirst());
+        assertThatThrownBy(() -> statements.draft(new Period(c.typeCode(),"STORE",finalizedAt-1,finalizedAt),"OP"))
+                .hasMessage("POINTS_STATEMENT_EMPTY");
+        assertThatCode(() -> statements.draft(new Period(c.typeCode(),"STORE",finalizedAt,finalizedAt+1),"OP"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test void statement_source_change_requires_redraft_without_replacing_the_original_revision() {
+        var c=periodicStatementFixture();
+        var statements=context.getBean(StoreStatementService.class);
+        var first=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        // Inject a new source revision in this isolated fixture; confirmation must observe the change.
+        jdbc().update("UPDATE pts_redeem_position SET version=version+1 WHERE position_no=?",
+                c.positionIds().getFirst());
+        assertThatThrownBy(() -> statements.confirm(first.statementNo(),1,"REVIEWER"))
+                .hasMessage("POINTS_STATEMENT_REDRAFT_REQUIRED");
+        var second=statements.redraft(first.statementNo(),1,"OP");
+        assertThat(second.revisions().getFirst()).isEqualTo(first.current());
+        assertThat(second.current().lines().getFirst().sourceVersion())
+                .isEqualTo(first.current().lines().getFirst().sourceVersion()+1);
+        assertThat(statements.confirm(first.statementNo(),2,"REVIEWER").state()).isEqualTo("CONFIRMED");
+    }
+
+    @Test void statement_confirmation_and_financial_moves_roll_back_as_one_pay_transaction() {
+        var c=periodicStatementFixture();
+        var statements=context.getBean(StoreStatementService.class);
+        var draft=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        new TransactionTemplate(txManager).executeWithoutResult(status -> {
+            statements.confirm(draft.statementNo(),1,"REVIEWER");
+            status.setRollbackOnly();
+        });
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_store_statement WHERE position_no=?",
+                String.class,draft.statementNo())).isEqualTo("DRAFT");
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",
+                Long.class,c.typeCode())).isZero();
+        assertThat(jdbc().queryForObject("SELECT available_points FROM pts_account WHERE type_code=?"
+                + " AND holder_type='STORE'",Long.class,c.typeCode())).isEqualTo(30);
+        assertThat(statements.confirm(draft.statementNo(),1,"REVIEWER").state()).isEqualTo("CONFIRMED");
+    }
+
+    @Test void statement_refund_reopens_unpaid_confirmation_before_freezing_the_source() {
+        var c=periodicStatementFixture();
+        var statements=context.getBean(StoreStatementService.class);
+        var draft=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        statements.confirm(draft.statementNo(),1,"REVIEWER");
+        var refund=new RefundCommand("AS:"+c.typeCode(),c.sourceRef(),"U",c.typeCode(),"CNY",1,50,50,
+                List.of(new RefundLine("I",50)),new PaymentSnapshot("AGGREGATED","TEST","M","STORE","A1",
+                "SM","TRADE",c.sourceRef(),100));
+        context.getBean(PointsRefundPreparationService.class).prepare(refund);
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_store_statement WHERE position_no=?",
+                String.class,draft.statementNo())).isEqualTo("DRAFT");
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",Long.class,
+                c.typeCode())).isZero();
+        assertThat(jdbc().queryForObject("SELECT available_points FROM pts_account WHERE type_code=?"
+                + " AND holder_type='STORE'",Long.class,c.typeCode())).isEqualTo(30);
+        assertThatThrownBy(() -> statements.confirm(draft.statementNo(),1,"REVIEWER"))
+                .hasMessage("POINTS_STATEMENT_REVISION_CONFLICT");
+        assertThatThrownBy(() -> statements.redraft(draft.statementNo(),2,"OP"))
+                .hasMessage("POINTS_STATEMENT_SOURCE_NOT_READY");
+    }
+
+    private PayoutCommand periodicStatementFixture() {
+        var c=fixture(false,false,true);
+        paid(paidFact(c));
+        context.getBean(PointsSettlementHook.class).onBillFinalized(finalFact(c,"FINAL:"+c.typeCode(),2));
+        return c;
+    }
+
     private PayoutCommand fixture(boolean finalSnapshot) { return fixture(finalSnapshot,true,false); }
     private PayoutCommand fixture(boolean finalSnapshot,boolean paid,boolean periodic) {
         String type="PY"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
@@ -470,8 +602,10 @@ class PointsPayoutPreparationTest {
     private JdbcTemplate jdbc() { return new JdbcTemplate(dataSource); }
     @Configuration
     @Import({PointsPostingDatabaseTest.Config.class,MybatisPointsReadStore.class,
-            MybatisPointsConfigurationStore.class,MybatisPointsFactStore.class,EarnServiceImpl.class})
-    @ComponentScan(basePackages={"ai.neargo.shop.pay.points.payout","ai.neargo.shop.pay.points.app.impl"})
+            MybatisPointsConfigurationStore.class,MybatisPointsFactStore.class,EarnServiceImpl.class,
+            MybatisStatementStore.class,MybatisPointsCashRefundReadStore.class})
+    @ComponentScan(basePackages={"ai.neargo.shop.pay.points.payout","ai.neargo.shop.pay.points.app.impl",
+            "ai.neargo.shop.pay.points.statement","ai.neargo.shop.pay.points.refund.impl"})
     static class Config {
         @Bean LostReplyFunds testFunds() { return new LostReplyFunds(); }
     }

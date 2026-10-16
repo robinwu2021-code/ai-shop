@@ -45,7 +45,7 @@
 | 阶段/子任务 | 开发目的与范围 | 完成标准 |
 |---|---|---|
 | A1 内核接口与缺口收口 | 对齐T03–T07已有种类/预算/协议/发放/核销/付款/退款服务；明确应用服务及事实契约，补足内部付款退款竞争、补收修订、零现金及补偿状态 | 依赖显式输入完成账务链；未知保留承诺，证据/修订不串用；不调用OrderService |
-| A2 定期结算T09 | 门店账期头寸集合固定、账单revision、草稿/确认/争议、退款重算、R抵销和付款恢复 | 旧修订不可确认；100应付=70现金+30抵销，D减100/B增30；退款覆盖各账单阶段 |
+| A2 定期结算T09（开发中） | 已实现固定头寸集合、revision、草稿/确认/异议、退款前撤销未付确认；仍需完整退款后重算、R抵销和付款恢复 | 旧修订不可确认；100应付=70现金+30抵销，D减100/B增30；退款覆盖各账单阶段 |
 | A3 生命周期T10 | 基于可信事实契约解除退款责任、回流积分与释放B；到期准备/收入划拨、暂停/续期、种类清偿退役 | 未完售后/未知资金不释放；到期不动退款HELD；未实际划拨不减资金 |
 | A4 模块事实与可靠事件 | 实现pay内Inbox/Outbox、事实版本/hash校验与重放、任务恢复入口，先完成积分侧处理器；源订单事实生产者后置 | 同事实只过账一次，乱序/迟到/崩溃可恢复；测试构造事实不能变成生产授权捷径 |
 | A5 对账、统计、任务T11 | 基于新凭证/头寸/证据定位差异，可重建统计，调度注册、重试退避、人工待办及告警 | 发现缺动作及孤立占用，不自动伪造资金、不直接改余额；任务不自动审批 |
@@ -61,6 +61,8 @@
 | C4 旧方案退出与首次上线T13 | 完成订单切换后删除旧SPI/Bean/任务/表访问/POINTS退款选项；完整新链路、容量及真实通道验收 | 发布包只有最新积分逻辑；不迁移旧积分业务余额、不双引擎运行 |
 
 A1子项状态：A1.1正现金决策授权与防旧快照恢复、A1.2合法零现金内部完成证明、A1.3补收成功而退款失败的内部补偿已实现并验证；A1.4完整付款/退款竞争仍待完成，不能将A1整体记为完成。
+
+A2本地设计补充（2026-10-16）：复用V408既有pts_store_statement及核销statement_no，唯一逻辑单为type/store/periodFrom；通过posting写账单索引及头寸绑定，不增加DDL。账期按可信finalFact.occurredAt归属半开区间，不能用数据库建行时间。draft固定有序ID集合，revision快照只追加，之后redraft只重读原集合；确认校验来源version和剩余积分，变化要求重算，异议阻断确认。确认将STORE.AVAILABLE转RECEIVE.REFUND_RESERVED、C转D。退款准备遇到已绑定账单时，同pay事务撤销尚未付款的整单确认、追加修订并恢复STORE/C，再冻结本次退款来源；任一来源PAYING等未明确状态则拒绝撤销。退款尚未收尾时不允许重算/再确认。此阶段不提供运营手工成功入口，定期付款/抵销、迟到事实补账和全部退款阶段仍需后续实现验收。
 
 A1.3实施设计：仅pay内退款内核，订单源围栏后置。使用原准备单payload持久化补偿命令、原失败现金单与回执，不新增表。CASH_AUTHORIZED且补收实际成功、原现金退款明确FAILED/CLOSED时，建立COMPENSATION_REQUIRED；先提交COMPENSATING再事务外执行，未知进入COMPENSATION_UNKNOWN并只查原单；明确失败进入COMPENSATION_FAILED保持冻结待处理，成功进入COMPENSATED后允许原abort恢复冻结。原现金单与输入hash/revision必须匹配，补偿期间禁止原确认/授权。
 
@@ -1179,3 +1181,17 @@ PointsRefundPreparationTest#refund_waits_for_unknown_payout_then_uses_the_confir
 生产修复：PointsPayoutServiceImpl.lockedTicket原先在type/pool锁后仍用普通快照读取；新增PointsConfigurationStore/Mapper.lockPayoutTicket（固定pts_payout_ticket、deleted=0、FOR UPDATE）并由Mybatis实现继承pay事务，回执接受和发送认领共用当前读。PointsPayoutCurrentStateTest用边界替身模拟旧DISPATCHING快照与已提交SUCCEEDED头，验证成功重放且不再posting/发送；原实现RED1（错误进入非终态分支），修复后GREEN。此单元测试验证状态读取决策；真实SQL由付款及退款场景验证，不冒充原生MySQL并发验收。
 
 最终仅PointsPayoutCurrentStateTest、PointsPayoutPreparationTest、PointsRefundPreparationTest，`20261016T050730Z-4460e5f0`共65/0，慢用例0，timeout=0。无DDL/订单/运营端修改。SQL方言与diff检查通过。A1.4剩余并发抢占、隔离回滚和故障恢复需进一步验证；A2–A6保持未完成。
+
+### A1.4 并发检查点与A2账单基础闭环（2026-10-16）
+
+A1.4新增concurrent_payout_and_refund_have_only_one_owner_of_the_redemption，两个线程同步竞争同一核销头寸，实测恰一方成功，另一方明确业务拒绝，D保持40，退款失败侧没有遗留冻结。单项`20261016T051128Z-0967de37`为1/0。此为已有保护的真实事务验证；其他故障恢复和原生隔离竞争仍需收口，不将A1整体记为完成。
+
+A2新增StoreStatementService接口/impl、StatementStore接口/Mybatis实现，扩展既有ConfigurationMapper、PostingMapper及MybatisPostingStore。复用现有账单表和绑定列；所有状态、索引、绑定、凭证及资金移动仍经posting写入同一pay事务。账单按类型/门店/账期起点唯一，原集合不被后续重算替换；快照追加revision。异议阻断确认；重新起草增加修订，旧修订拒绝；确认须核对当前来源版本与剩余积分。按finalFact.occurredAt选择半开区间，拒绝缺失可信终局事实，用例明确把数据库创建时间置于另一日，证明不是按建行时间选单。当前按门店读取未绑定候选并用可信事实筛选，候选扫描分页及迟到事实补账/结转仍需后续完善，不能将其视为容量验收已完成。
+
+退款接线仅在积分内部：PointsRefundPreparationService遇到已绑定账单，要求可用的StoreStatementService；已确认未付账单先全单撤销确认、D→C及RECEIVE→STORE，追加revision并回DRAFT，再准备本次退款。已进入付款的来源拒绝撤销；退款未收尾前不允许重算。该操作失败将原撤销/冻结一起回滚。尚未实现定期付款/应收抵销，尚未完成退款确认后剩余金额重新确认及各付款阶段退款的完整验收。
+
+AC-PTS-20/21及部分22验收：PointsPayoutPreparationTest新增7项statement_*，覆盖固定集合/同账期复用、异议及旧版拒绝、绑定不能重复使用、权威终局时间与半开边界、来源版本变化必须重算且历史保留、确认财务与外层pay事务一起回滚，以及退款前撤销确认。初始3项RED后GREEN；终局时间边界RED（按建行时间漏单）后修复；退款前撤销RED（账单仍CONFIRMED）后修复。消融去掉revision校验，`20261016T051716Z-fcc79b56`确实RED，恢复实现。隔离MariaDB先6/0，最终7/0为`20261016T052050Z-3d8fbc11`；合成门店与明确模拟通道，不替代目标MySQL或真实通道认证。
+
+最终局部回归只跑付款、退款两个测试类，`20261016T052113Z-8c8e9a49`共72/0。全批12次局部Maven共293.244017秒，最长39.027270秒；112次用例记录共13.034秒，最大1.095秒，慢记录1条（definitive_failure_releases_payment_lock_without_debiting_d）。4次非零均为上述预期RED/消融，无环境或编译失败；所有timeout=0，进度每15秒记录。分析为忽略目录statement-analysis.json。SQL方言、设计图产物及diff检查通过；自有隔离MariaDB已停止。没有全仓测试、订单接入、运营端、推送或部署。
+
+剩余：A1.4其余恢复验证；A2定期付款/R抵销、各退款阶段及补账；A3生命周期；A4可靠事件；A5对账统计/调度；A6独立完整验收。第一阶段尚未完成。
