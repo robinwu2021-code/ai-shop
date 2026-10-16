@@ -163,6 +163,43 @@ class PointsRefundPreparationTest {
         assertThat(funds.queries.get(payout.ticketNo())).isEqualTo(1);
     }
 
+    @Test void prepared_refund_prevents_a_new_payout_without_spending_d() {
+        String type=fixture(false,true);
+        addRedemption(type,false);
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        assertThatThrownBy(() -> settlement.beginPayout(payoutCommand(type)))
+                .hasMessage("POINTS_POSITION_NOT_PAYABLE");
+        assertThat(pool(type,"d_minor")).isEqualTo(40);
+        assertThat(refundState(prepared)).isEqualTo("PREPARED");
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_payout_ticket WHERE type_code=?",
+                Long.class,type)).isZero();
+        assertThat(balance(type,"held_points")).isEqualTo(10);
+    }
+
+    @Test void failed_payout_unlocks_refund_and_late_success_cannot_overwrite_the_failure() {
+        String type=fixture(false,true);
+        addRedemption(type,false);
+        var ticket=settlement.beginPayout(payoutCommand(type));
+        funds.failTickets.add(ticket.ticketNo());
+        assertThat(payoutExecution.execute(ticket.ticketNo()).status())
+                .isEqualTo(PointsFundsGateway.FundsStatus.FAILED);
+        var prepared=refunds.prepare(command(type,"AS:"+type,50));
+        assertThat(prepared.returnedPoints()).isEqualTo(20);
+        assertThatThrownBy(() -> settlement.acceptResult(new PointsFundsGateway.FundsResult(ticket.ticketNo(),
+                PointsFundsGateway.FundsStatus.SUCCEEDED,"LATE:"+type,40,null)))
+                .hasMessage("POINTS_FUNDS_RESULT_CONFLICT");
+        assertThat(pool(type,"d_minor")).isEqualTo(40);
+        assertThat(refundState(prepared)).isEqualTo("PREPARED");
+        assertThat(funds.sends.get(ticket.ticketNo())).isEqualTo(1);
+    }
+
+    private PayoutCommand payoutCommand(String type) {
+        var context=new PointsFundsGateway.FundsContext(PointsFundsGateway.FundsPath.DIRECT,"TEST","MERCHANT",
+                "STORE","V1","SUB","TRADE","OUT",100);
+        return new PayoutCommand("BILL:"+type,type,type,List.of(PointsKeys.position("R",type,type)),
+                PointsFundsGateway.FundsPurpose.SUBSIDY,context,"CNY");
+    }
+
     @Test void pending_grants_are_frozen_once_with_immutable_input_and_no_early_return() {
         String type=fixture(false,true);
         var command=command(type,"AS:"+type,50);

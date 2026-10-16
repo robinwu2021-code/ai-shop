@@ -31,6 +31,9 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
     @Override public Map<String, Object> lockRefundPreparation(String no) {
         return DataScopeContext.executeWithoutScope(() -> mapper.lockRefundPreparation(no));
     }
+    @Override public Map<String, Object> lockPayoutTicket(String no) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.lockPayoutTicket(no));
+    }
     @Override public void changeTypeStatus(String type, PointType.Status expected, PointType.Status next, String market, String actor) {
         DataScopeContext.executeWithoutScope(() -> {
             try {

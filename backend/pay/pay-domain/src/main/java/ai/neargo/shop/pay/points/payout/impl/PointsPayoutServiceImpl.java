@@ -167,7 +167,7 @@ public class PointsPayoutServiceImpl implements PointsPayoutService {
         var head=read.position(PositionMove.Kind.PAYOUT.table(),no);
         if (head==null) { throw new IllegalArgumentException("POINTS_PAYOUT_UNKNOWN"); }
         config.lockTypeAndPool((String)head.get("type_code"));
-        return read.position(PositionMove.Kind.PAYOUT.table(),no);
+        return config.lockPayoutTicket(no);
     }
     private boolean terminal(String state) { return "SUCCEEDED".equals(state) || "FAILED".equals(state); }
     private PayoutOutcome outcome(PayoutSnapshot snapshot,boolean replayed) {

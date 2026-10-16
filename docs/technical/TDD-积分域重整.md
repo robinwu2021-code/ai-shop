@@ -1171,3 +1171,11 @@ PointsPayoutPreparationTest#successful_payout_rejects_a_different_evidence_for_t
 ### A1.4 第二检查点：付款在先时的退款等待（2026-10-15）
 
 PointsRefundPreparationTest#refund_waits_for_unknown_payout_then_uses_the_confirmed_paid_state用隔离门店、真实pay Mapper/事务及模拟通道验证：付款READY/UNKNOWN期间，退款准备均因PAYING来源状态拒绝；查询原付款指令成功后，退款按PAID头寸准备，D已扣且不重复发送。单项`20261015T103724Z-d9889327`为1/0，timeout=0；此为已有状态保护的独立实测，无生产逻辑改动。仍需覆盖退款准备在先、付款失败解锁、并发抢占与故障恢复等顺序，A1.4继续开发；A2–A6尚未完成。
+
+### A1.4 第三检查点：退款在先、付款失败与票据当前读（2026-10-16）
+
+新增两个真实Mapper/事务场景：prepared_refund_prevents_a_new_payout_without_spending_d验证退款先冻结时不能创建新付款票据且D保持40；failed_payout_unlocks_refund_and_late_success_cannot_overwrite_the_failure验证明确失败恢复PAYABLE后可准备退款，迟到成功不能覆写原失败，D仍40且只发送一次。先单跑2/0，`20261016T050640Z-88a36bea`。
+
+生产修复：PointsPayoutServiceImpl.lockedTicket原先在type/pool锁后仍用普通快照读取；新增PointsConfigurationStore/Mapper.lockPayoutTicket（固定pts_payout_ticket、deleted=0、FOR UPDATE）并由Mybatis实现继承pay事务，回执接受和发送认领共用当前读。PointsPayoutCurrentStateTest用边界替身模拟旧DISPATCHING快照与已提交SUCCEEDED头，验证成功重放且不再posting/发送；原实现RED1（错误进入非终态分支），修复后GREEN。此单元测试验证状态读取决策；真实SQL由付款及退款场景验证，不冒充原生MySQL并发验收。
+
+最终仅PointsPayoutCurrentStateTest、PointsPayoutPreparationTest、PointsRefundPreparationTest，`20261016T050730Z-4460e5f0`共65/0，慢用例0，timeout=0。无DDL/订单/运营端修改。SQL方言与diff检查通过。A1.4剩余并发抢占、隔离回滚和故障恢复需进一步验证；A2–A6保持未完成。
