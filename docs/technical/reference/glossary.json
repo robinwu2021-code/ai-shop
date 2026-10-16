@@ -280,6 +280,30 @@
           "ar": "تغيير"
         },
         {
+          "key": "address.salutation",
+          "zh-CN": "称呼（选填）",
+          "en": "Salutation (optional)",
+          "ar": "اللقب (اختياري)"
+        },
+        {
+          "key": "address.salutationFallback",
+          "zh-CN": "先生/女士",
+          "en": "Mr./Ms.",
+          "ar": "السيد/السيدة"
+        },
+        {
+          "key": "address.salutationMr",
+          "zh-CN": "先生",
+          "en": "Mr.",
+          "ar": "السيد"
+        },
+        {
+          "key": "address.salutationMs",
+          "zh-CN": "女士",
+          "en": "Ms.",
+          "ar": "السيدة"
+        },
+        {
           "key": "address.saveAsAddress",
           "zh-CN": "存为收货地址",
           "en": "Save as address",
@@ -874,6 +898,12 @@
           "ar": "تم"
         },
         {
+          "key": "cart.editHint",
+          "zh-CN": "选择要删除的商品，不影响结算勾选",
+          "en": "Select items to remove; checkout selections stay unchanged",
+          "ar": "اختر المنتجات للحذف؛ لن يتغير اختيار الدفع"
+        },
+        {
           "key": "cart.empty",
           "zh-CN": "购物车还是空的",
           "en": "Your cart is empty",
@@ -1006,6 +1036,12 @@
           "ar": "الكل"
         },
         {
+          "key": "cart.selectGroup",
+          "zh-CN": "全选本组",
+          "en": "All in group",
+          "ar": "تحديد المجموعة"
+        },
+        {
           "key": "cart.splitNote",
           "zh-CN": "来自 {n} 家店，结算时会生成 {n} 笔订单，一次付清",
           "en": "From {n} shops — checkout creates {n} orders, paid in one go",
@@ -1034,6 +1070,12 @@
           "zh-CN": "其他",
           "en": "Other",
           "ar": "أخرى"
+        },
+        {
+          "key": "cart.updating",
+          "zh-CN": "更新中",
+          "en": "Updating",
+          "ar": "جارٍ التحديث"
         },
         {
           "key": "category.card",
@@ -5794,6 +5836,12 @@
           "ar": "تعذّر تحميل مكوّن التتبع، حاول لاحقًا"
         },
         {
+          "key": "track.goHome",
+          "zh-CN": "进入首页",
+          "en": "Go to home",
+          "ar": "الانتقال إلى الرئيسية"
+        },
+        {
           "key": "track.invalidTip",
           "zh-CN": "这条物流链接可能已过期，请在最新的发货通知里打开。",
           "en": "This tracking link may have expired. Open it from the latest shipping notice.",
@@ -5840,6 +5888,12 @@
           "zh-CN": "在小程序中打开",
           "en": "Open in Mini Program",
           "ar": "افتح في البرنامج المصغّر"
+        },
+        {
+          "key": "track.orderedBy",
+          "zh-CN": "下单人",
+          "en": "Ordered by",
+          "ar": "صاحب الطلب"
         },
         {
           "key": "track.receiverTitle",
@@ -7032,6 +7086,60 @@
           "zh-CN": "已揽收·在途",
           "en": "Picked up, in transit",
           "ar": "تم الاستلام وفي الطريق"
+        },
+        {
+          "key": "afterSale.status.APPLIED",
+          "zh-CN": "待商家处理",
+          "en": "Awaiting merchant",
+          "ar": "بانتظار التاجر"
+        },
+        {
+          "key": "afterSale.status.ARBITRATING",
+          "zh-CN": "平台介入中",
+          "en": "Platform review",
+          "ar": "مراجعة المنصة"
+        },
+        {
+          "key": "afterSale.status.CLOSED",
+          "zh-CN": "售后已关闭",
+          "en": "Closed",
+          "ar": "مغلق"
+        },
+        {
+          "key": "afterSale.status.REFUNDED",
+          "zh-CN": "已退款",
+          "en": "Refunded",
+          "ar": "تم الاسترداد"
+        },
+        {
+          "key": "afterSale.status.REFUNDING",
+          "zh-CN": "退款处理中",
+          "en": "Refund processing",
+          "ar": "الاسترداد قيد المعالجة"
+        },
+        {
+          "key": "afterSale.status.REJECTED",
+          "zh-CN": "已驳回",
+          "en": "Rejected",
+          "ar": "مرفوض"
+        },
+        {
+          "key": "afterSale.status.RETURNING",
+          "zh-CN": "退货运输中",
+          "en": "Return in transit",
+          "ar": "الإرجاع قيد النقل"
+        },
+        {
+          "key": "afterSale.status.WAIT_RECEIPT",
+          "zh-CN": "待收货后退款",
+          "en": "Awaiting receipt before refund",
+          "ar": "بانتظار الاستلام والاسترداد"
+        },
+        {
+          "key": "afterSale.status.WAIT_RETURN",
+          "zh-CN": "待寄回",
+          "en": "Awaiting return shipment",
+          "ar": "بانتظار الإرجاع"
         },
         {
           "key": "afterSale.title",
@@ -37298,6 +37406,16 @@
           "COUPON"
         ],
         "zh": "触达场景：`NOTICE` 店铺公告 / `WAKEUP` 唤回 / `COUPON` 发券通知。"
+      },
+      {
+        "name": "RecipientSalutation",
+        "client": "shared",
+        "values": [
+          "MR",
+          "MS",
+          "UNSPECIFIED"
+        ],
+        "zh": ""
       },
       {
         "name": "ReconDiffType",

@@ -657,7 +657,6 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     store_no VARCHAR(64) DEFAULT NULL,
     require_buyer_confirm TINYINT(4) NOT NULL DEFAULT 0,
     receiver_name VARCHAR(64) DEFAULT NULL,
-    receiver_salutation VARCHAR(16) DEFAULT NULL,
     receiver_phone VARCHAR(32) DEFAULT NULL,
     receiver_address VARCHAR(255) DEFAULT NULL,
     community_no VARCHAR(64) DEFAULT NULL,
@@ -673,6 +672,7 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     refunded_minor  BIGINT(20) NOT NULL DEFAULT 0,
     refund_progress VARCHAR(8) NOT NULL DEFAULT 'NONE',
     open_after_sale_no VARCHAR(40) DEFAULT NULL,
+    receiver_salutation VARCHAR(16) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_sub_order_no UNIQUE (sub_order_no),
     CONSTRAINT uk_verify_code UNIQUE (verify_code)
@@ -1308,7 +1308,6 @@ CREATE TABLE IF NOT EXISTS usr_address
     address_id VARCHAR(64) NOT NULL,
     user_no VARCHAR(64) NOT NULL,
     name VARCHAR(64) NOT NULL,
-    salutation VARCHAR(16) DEFAULT NULL,
     phone VARCHAR(32) NOT NULL,
     province VARCHAR(64) DEFAULT NULL,
     city VARCHAR(64) DEFAULT NULL,
@@ -1330,6 +1329,7 @@ CREATE TABLE IF NOT EXISTS usr_address
     country_code CHAR(2) NOT NULL DEFAULT 'CN',
     postal_code VARCHAR(16) DEFAULT NULL,
     phone_cc VARCHAR(8) NOT NULL DEFAULT '86',
+    salutation VARCHAR(16) DEFAULT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_address_id UNIQUE (address_id)
 );
