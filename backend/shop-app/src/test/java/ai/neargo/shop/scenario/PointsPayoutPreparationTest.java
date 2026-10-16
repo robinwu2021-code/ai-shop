@@ -82,6 +82,7 @@ import ai.neargo.shop.pay.points.event.impl.PointsFactPortImpl;
 import ai.neargo.shop.pay.points.lifecycle.ExpiryReminderService;
 import ai.neargo.shop.pay.points.lifecycle.PointsAccountControlService;
 import ai.neargo.shop.pay.points.recon.PointsSourceReconciler;
+import ai.neargo.shop.pay.points.recon.PointsReconService;
 import ai.neargo.shop.pay.points.store.PointsCursorStore;
 import ai.neargo.shop.pay.points.store.impl.MybatisPointsCursorStore;
 import ai.neargo.shop.spi.points.SourceFactsPort;
@@ -923,6 +924,24 @@ class PointsPayoutPreparationTest {
                 .isEqualTo("DONE");
     }
 
+    @Test void recon_tracks_unknown_payout_and_paid_refund_then_detects_deleted_payment_action() {
+        var c=fixture(false,false,false);
+        context.getBean(ai.neargo.shop.pay.points.app.PointsPaidFactService.class)
+                .onPaid(signedFact(c,"RECON_PAID",FactKind.PAID,1,"U"));
+        context.getBean(PointsSettlementHook.class).onBillFinalized(signedFact(c,"RECON_FINAL",FactKind.FINALIZED,2,"U"));
+        var recon=context.getBean(PointsReconService.class);
+        var ticket=begin(c);
+        assertThat(recon.scan(c.typeCode(),1000).differences()).isEmpty();
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.UNKNOWN);
+        assertThat(recon.scan(c.typeCode(),1001).differences()).isEmpty();
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.SUCCEEDED);
+        completeZeroRefund(c,"RECON_PARTIAL",50);
+        assertThat(recon.scan(c.typeCode(),1002).differences()).isEmpty();
+        jdbc().update("DELETE FROM pts_payout_ticket WHERE position_no=?",ticket.ticketNo());
+        assertThat(recon.scan(c.typeCode(),1003).differences())
+                .anyMatch(d -> d.code().equals("MISSING_PAYOUT_TICKET"));
+    }
+
     @Test void source_scan_advances_watermark_only_after_the_whole_page_is_durable() {
         var c=fixture(false,false,false);
         var source=context.getBean(TestSourceFacts.class);
@@ -1253,10 +1272,11 @@ class PointsPayoutPreparationTest {
             MybatisPointsConfigurationStore.class,MybatisPointsFactStore.class,EarnServiceImpl.class,
             MybatisStatementStore.class,MybatisPointsCashRefundReadStore.class,MybatisLifecycleStore.class,
             MybatisPointsCursorStore.class,
-            PointsSwitchServiceImpl.class})
+            ai.neargo.shop.pay.points.store.impl.MybatisPointsOperationsStore.class,
+            PointsSwitchServiceImpl.class,ai.neargo.shop.pay.points.pool.impl.TopupPlanServiceImpl.class})
     @ComponentScan(basePackages={"ai.neargo.shop.pay.points.payout","ai.neargo.shop.pay.points.app.impl",
             "ai.neargo.shop.pay.points.statement","ai.neargo.shop.pay.points.refund.impl",
-            "ai.neargo.shop.pay.points.lifecycle.impl","ai.neargo.shop.pay.points.event.impl","ai.neargo.shop.pay.points.recon.impl"})
+            "ai.neargo.shop.pay.points.lifecycle.impl","ai.neargo.shop.pay.points.event.impl","ai.neargo.shop.pay.points.recon.impl","ai.neargo.shop.pay.points.query.impl"})
     static class Config {
         @Bean TestUserInbox userInbox() { return new TestUserInbox(); }
         @Bean TestSourceFacts sourceFacts() { return new TestSourceFacts(); }

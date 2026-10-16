@@ -73,7 +73,7 @@ public interface PointsConfigurationMapper {
             + " AND state IN ('SUBMITTED','APPROVING') LIMIT 1 FOR UPDATE")
     Long liveApproval(String type);
     @Select("SELECT id FROM pts_topup_plan WHERE type_code=#{type} AND deleted=0"
-            + " AND state IN ('NEW','ACTIVE') LIMIT 1 FOR UPDATE")
+            + " AND state NOT IN ('PAUSED','CANCELLED','COMPLETED') LIMIT 1 FOR UPDATE")
     Long livePlan(String type);
     @Select("SELECT * FROM pts_merchant_agreement WHERE type_code=#{type} AND deleted=0"
             + " AND state IN ('ACTIVE','TERMINATED') ORDER BY id LIMIT 10001")
