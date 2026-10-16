@@ -25,6 +25,7 @@ const goods = ref<Goods[]>([]);
 const merchants = ref<StoreCard[]>([]);
 const searched = ref(false);
 const loaded = ref(false);
+let searchGeneration = 0;
 const history = ref<string[]>([]);
 
 const HISTORY_MAX = 10;
@@ -57,6 +58,12 @@ const failed = ref(false);
 async function search(k = keyword.value) {
   const q = k.trim();
   if (!q) return;
+  const generation = ++searchGeneration;
+  loaded.value = false;
+  failed.value = false;
+  searched.value = true;
+  goods.value = [];
+  merchants.value = [];
   keyword.value = q;
   pushHistory(q);
   // 两个域并行查，切 tab 时不用再等
@@ -74,16 +81,18 @@ async function search(k = keyword.value) {
       user.isLogin ? api.myStores(point) : Promise.resolve([] as StoreCard[]),
       api.storeNearby({ ...point, keyword: q, size: 50 }),
     ]);
+    if (generation !== searchGeneration) return;
     const k2 = q.toLowerCase();
     g = gr;
     m = [...mine.filter((s) => s.storeName.toLowerCase().includes(k2)), ...near.records];
     failed.value = false;
   } catch {
+    if (generation !== searchGeneration) return;
     // 搜挂了与「这个词搜不到东西」是两件事：后者该换个词，前者该重试。
     // 此前两者都显示「没有找到相关商品」，而用户会以为自己搜错了
     failed.value = true;
     searched.value = true;
-  loaded.value = true;
+    loaded.value = true;
     return;
   }
   goods.value = g.records;
@@ -185,7 +194,7 @@ onLoad((q) => {
         ></biz-goods-card>
         <sh-empty
           bare
-          v-if="loaded && !goods.length && !failed"
+          v-if="loaded && !empty && !goods.length && !failed"
           :text="$t('search.noGoods')"
         ></sh-empty>
       </template>
@@ -199,14 +208,15 @@ onLoad((q) => {
         ></biz-store-row>
         <sh-empty
           bare
-          v-if="loaded && !merchants.length && !failed"
+          v-if="loaded && !empty && !merchants.length && !failed"
           :text="$t('search.noMerchant')"
         ></sh-empty>
       </template>
 
       <sh-empty
         bare
-        v-if="loaded && empty"
+        v-if="!loaded || empty || failed"
+        :pending="!loaded"
           :failed="failed"
           @retry="() => search()"
         :text="$t('search.nothing', { k: keyword })"
