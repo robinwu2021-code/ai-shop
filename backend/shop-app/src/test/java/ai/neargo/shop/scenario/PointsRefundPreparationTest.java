@@ -1391,7 +1391,7 @@ class PointsRefundPreparationTest {
         assertThat(
                         jdbc().queryForObject(
                                         "SELECT COUNT(*) FROM pts_fund_evidence WHERE binding_ref=?"
-                                            + " AND used_voucher_no IS NOT NULL",
+                                                + " AND used_voucher_no IS NOT NULL",
                                         Long.class,
                                         prepared.preparationNo()))
                 .isEqualTo(2);
@@ -2098,6 +2098,8 @@ class PointsRefundPreparationTest {
         MybatisPointsReadStore.class,
         ai.neargo.shop.pay.points.store.impl.MybatisStatementStore.class,
         MybatisPointsConfigurationStore.class,
+        ai.neargo.shop.pay.points.store.impl.MybatisLifecycleStore.class,
+        ai.neargo.shop.pay.points.lifecycle.impl.AccountExpiryGuardImpl.class,
         EarnServiceImpl.class,
         MybatisPointsCashRefundReadStore.class,
         MybatisPointsFactStore.class,

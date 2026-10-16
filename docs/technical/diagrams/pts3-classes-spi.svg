@@ -2,7 +2,7 @@
 <defs><marker id="point" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker><marker id="money" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#c2410c"/></marker><marker id="dep" markerWidth="10" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9" fill="none" stroke="#64748b"/></marker><marker id="real" markerWidth="13" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0 0L12 6L0 12Z" fill="white" stroke="#475569"/></marker><marker id="diamond" markerWidth="15" markerHeight="10" refX="14" refY="5" orient="auto-start-reverse"><path d="M0 5L7 0L14 5L7 10Z" fill="#475569"/></marker></defs>
 <rect width="1660" height="1673" fill="#f8fafc"/>
 <text x="35" y="48" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="29" fill="#172554" font-weight="650" text-anchor="start">积分模块类图 · 订单SPI及域内结算Hook实现</text>
-<text x="35" y="80" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">v3 目标设计 · pay-domain内独立业务模块 · payTxManager · 尚未按此设计实现</text>
+<text x="35" y="80" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">v3 设计契约 · pay-domain内业务模块 · payTxManager · 实现与验收状态见 TDD</text>
 <text x="40" y="115" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">实线＝关联  ◆＝组合  虚线开放箭头＝依赖  空心三角＝接口实现；字段与方法为目标设计。</text>
 <path d="M1590,581.0 L1614,581.0 L1614,400 L265.0,400 L265.0,365" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#real)"/>
 <path d="M490,902.0 L524,902.0 L524,400 L815.0,400 L815.0,365" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#real)"/>
@@ -77,10 +77,10 @@
 <text x="606" y="954" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ confirm(RefundConfirmation): RefundOutcome</text>
 <text x="606" y="976" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ abort(RefundAbort): void</text>
 <rect x="1140" y="797" width="450" height="210" rx="8" fill="white" stroke="#0f766e" stroke-width="1.5"/>
-<text x="1156" y="821" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«adapter»  pay.points.port</text>
+<text x="1156" y="821" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«adapter»  pay.points.event.impl</text>
 <text x="1156" y="850" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">PointsFactPortImpl</text>
 <path d="M1140 867H1590" stroke="#0f766e" stroke-width="1"/>
-<text x="1156" y="892" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">service: PointsLifecycleService</text>
+<text x="1156" y="892" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">service: PointsEventWorker</text>
 <path d="M1140 908H1590" stroke="#cbd5e1"/>
 <text x="1156" y="932" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ accept(LifecycleFact): void</text>
 <rect x="40" y="1107" width="450" height="276" rx="8" fill="white" stroke="#0f766e" stroke-width="1.5"/>
@@ -88,7 +88,7 @@
 <text x="56" y="1160" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">PointsSettlementHookImpl</text>
 <path d="M40 1177H490" stroke="#0f766e" stroke-width="1"/>
 <text x="56" y="1202" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">payouts: PointsPayoutService</text>
-<text x="56" y="1224" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">lifecycle: PointsLifecycleService</text>
+<text x="56" y="1224" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">lifecycle: PointsEventWorker</text>
 <text x="56" y="1246" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">redeem: RedeemService</text>
 <path d="M40 1262H490" stroke="#cbd5e1"/>
 <text x="56" y="1286" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ beginPayout(PayoutCommand): PayoutTicket</text>

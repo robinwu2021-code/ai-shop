@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.points.earn.impl;
 
 import ai.neargo.shop.pay.points.earn.EarnService;
+import ai.neargo.shop.pay.points.lifecycle.AccountExpiryGuard;
 import ai.neargo.shop.pay.points.model.AccountKey;
 import ai.neargo.shop.pay.points.model.Bucket;
 import ai.neargo.shop.pay.points.model.FundBucket;
@@ -41,6 +42,7 @@ public class EarnServiceImpl implements EarnService {
     private final PointsConfigurationStore config;
     private final PointsPostingService posting;
     private final boolean enabled;
+    private final AccountExpiryGuard expiry;
     private final EarnPolicy policy = new DefaultEarnPolicy();
     private final ObjectMapper json = new ObjectMapper();
 
@@ -48,20 +50,23 @@ public class EarnServiceImpl implements EarnService {
             PointsReadStore read,
             PointsConfigurationStore config,
             PointsPostingService posting,
+            AccountExpiryGuard expiry,
             @Value("${shop.points.enabled:false}") boolean enabled) {
         this.read = read;
         this.config = config;
         this.posting = posting;
         this.enabled = enabled;
+        this.expiry = expiry;
     }
 
     @Override
     public PointsEarnPort.GrantOutcome grant(PointsEarnPort.GrantCommand c) {
-        if (c.subOrderNo() == null
-                || c.userNo() == null
-                || c.typeCode() == null
-                || c.storeNo() == null
-                || c.storeNo().isBlank()
+        if (c == null
+                || blank(c.eventNo())
+                || blank(c.subOrderNo())
+                || blank(c.userNo())
+                || blank(c.typeCode())
+                || blank(c.storeNo())
                 || c.sourceVersion() < 0) {
             throw new IllegalArgumentException("POINTS_EARN_INPUT_INVALID");
         }
@@ -105,7 +110,7 @@ public class EarnServiceImpl implements EarnService {
                         type.rate());
         String reason = null;
         boolean finalized = false;
-        var fact = read.lifecycle(type.typeCode(), c.subOrderNo());
+        var fact = config.lockLifecycle(type.typeCode(), c.subOrderNo());
         if (fact != null) {
             var state = json.readTree((String) fact.get("payload_json"));
             if (state.path("cancelled").asBoolean(false)) {
@@ -133,8 +138,12 @@ public class EarnServiceImpl implements EarnService {
         if (reason == null && ("OFFLINE".equals(c.payChannel()) || c.payChannel() == null)) {
             reason = "POINTS_OFFLINE";
         }
-        if (reason == null && read.account(c.typeCode(), HolderType.USER, c.userNo()).frozen()) {
+        var account = read.currentUser(c.typeCode(), c.userNo());
+        if (reason == null && account.frozen()) {
             reason = "POINTS_FROZEN";
+        }
+        if (reason == null && expiry.overdue(account, System.currentTimeMillis())) {
+            throw new IllegalArgumentException("POINTS_ACCOUNT_EXPIRY_PENDING");
         }
         if (reason == null && decision.grantedPoints() == 0) {
             reason = "POINTS_RULE_ZERO";
@@ -214,6 +223,10 @@ public class EarnServiceImpl implements EarnService {
                         List.of(),
                         resultJson));
         return outcome(ref);
+    }
+
+    private boolean blank(String value) {
+        return value == null || value.isBlank();
     }
 
     private PointsEarnPort.GrantOutcome outcome(String ref) {

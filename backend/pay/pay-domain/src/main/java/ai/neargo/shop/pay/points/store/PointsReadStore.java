@@ -20,6 +20,8 @@ public interface PointsReadStore {
 
     FundPool pool(String typeCode);
 
+    AccountSnapshot currentUser(String typeCode, String userNo);
+
     AccountSnapshot account(String typeCode, HolderType holder, String holderNo);
 
     Map<String, Object> voucher(String bizRef);

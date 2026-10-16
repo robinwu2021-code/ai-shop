@@ -1,7 +1,7 @@
 {
   "title": "积分模块图契约",
   "version": "v3",
-  "status": "DESIGN_NOT_IMPLEMENTED",
+  "status": "DESIGN_WITH_KERNEL_IMPLEMENTATION",
   "source": "docs/technical/TDD-积分域重整.md",
   "scope": "目标设计核心类；基础框架、DTO嵌套record及持久化元数据Store按接口目录引用，不伪称源码反射",
   "classes": [
@@ -748,7 +748,8 @@
       "kind": "service",
       "package": "pay.points.pool",
       "fields": [
-        "posting: PointsPostingService"
+        "posting: PointsPostingService",
+        "实现: PoolService补U只消费自由回流格"
       ],
       "methods": [
         "releaseRefundReserve(positionNo,version)"
@@ -776,35 +777,34 @@
     },
     {
       "name": "ExpiryPolicy",
-      "kind": "interface",
+      "kind": "value",
       "package": "pay.points.policy",
       "fields": [
-        "market timezone / pause intervals"
+        "pause union / market midnight"
       ],
       "methods": [
-        "dueAt(account)",
-        "extendByUnion(intervals)"
+        "extend(base, active, asOf, pauses)",
+        "regionalDeadline(activeAt, idleDays, zone)"
       ],
       "source": "TDD §2.9",
       "status": "DESIGN",
       "javaPackage": "ai.neargo.shop.pay.points.policy"
     },
     {
-      "name": "PointsLifecycleService",
-      "kind": "service",
-      "package": "pay.points.lifecycle",
+      "name": "PointsEventWorker",
+      "kind": "interface",
+      "package": "pay.points.event",
       "fields": [
-        "facts: LifecycleFactStore",
-        "earn: EarnService",
-        "redeem: RedeemService"
+        "source handlers / original funds executors",
+        "notifications outside pay transaction"
       ],
       "methods": [
-        "accept(LifecycleFact)",
-        "activateRemaining(subOrderNo)"
+        "process(type, limit, now): Outcome",
+        "drain(type, limit, now)"
       ],
       "source": "TDD §2.7",
-      "status": "DESIGN",
-      "javaPackage": "ai.neargo.shop.pay.points.lifecycle"
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.event"
     },
     {
       "name": "PointsPostingService",
@@ -821,100 +821,97 @@
       "javaPackage": "ai.neargo.shop.pay.points.posting"
     },
     {
-      "name": "PointsInboxConsumer",
-      "kind": "adapter",
+      "name": "PointsSourceFactHandler",
+      "kind": "interface",
       "package": "pay.points.event",
       "fields": [
-        "inbox: InboxStore",
-        "life: PointsLifecycleService"
+        "trusted paid / finalized / refund facts"
       ],
       "methods": [
-        "supports(eventType): boolean",
-        "consume(SysOutbox): void"
+        "apply(fact)",
+        "earn(command)",
+        "confirm(refundFact)"
       ],
       "source": "TDD §2.7",
-      "status": "DESIGN",
+      "status": "KERNEL_IMPLEMENTED",
       "javaPackage": "ai.neargo.shop.pay.points.event"
     },
     {
-      "name": "PointsOutboxPublisher",
-      "kind": "adapter",
+      "name": "PointsEventQueue",
+      "kind": "interface",
       "package": "pay.points.event",
       "fields": [
-        "outbox: PointsOutboxStore"
+        "pts_outbox / lease / retry / audit"
       ],
       "methods": [
-        "publish(resultEvent): void"
+        "enqueue(type, event, message)",
+        "claim(type, now)",
+        "complete(lease) / fail(lease)",
+        "retry(id, actor, reason)"
       ],
       "source": "TDD §2.7",
-      "status": "DESIGN",
+      "status": "KERNEL_IMPLEMENTED",
       "javaPackage": "ai.neargo.shop.pay.points.event"
     },
     {
       "name": "PointsReconService",
-      "kind": "service",
+      "kind": "interface",
       "package": "pay.points.recon",
       "fields": [
-        "funds evidence / account snapshots"
+        "read-only balances / positions / verified evidence"
       ],
       "methods": [
-        "reconcileLedger(type)",
-        "reconcileExternal(date)",
-        "repair(diffNo)"
+        "scan(type, now): Report"
       ],
       "source": "TDD §2.10",
-      "status": "DESIGN",
+      "status": "KERNEL_IMPLEMENTED",
       "javaPackage": "ai.neargo.shop.pay.points.recon"
     },
     {
       "name": "PointsSourceReconciler",
-      "kind": "adapter",
+      "kind": "interface",
       "package": "pay.points.recon",
       "fields": [
-        "facts: PointsSourceFactsPort",
-        "life: PointsLifecycleService"
+        "facts: SourceFactsPort",
+        "destination: PointsFactPort / durable cursor"
       ],
       "methods": [
-        "scanAndReplay(cursor)"
+        "scan(type, limit): Outcome"
       ],
       "source": "TDD §2.10",
-      "status": "DESIGN",
+      "status": "KERNEL_IMPLEMENTED",
       "javaPackage": "ai.neargo.shop.pay.points.recon"
     },
     {
       "name": "PointsStatsService",
-      "kind": "service",
+      "kind": "interface",
       "package": "pay.points.query",
       "fields": [
-        "vouchers / skipped / tickets"
+        "voucher results / immutable decisions",
+        "TOTAL / STORE / USER / skipped reasons"
       ],
       "methods": [
-        "rollup(cursor)",
-        "rebuild(period)",
-        "platform()",
-        "stores()",
-        "users()"
+        "rebuild(type, day): Snapshot",
+        "read(type, day, scope): Snapshot",
+        "project(type, limit)"
       ],
       "source": "TDD §2.10",
-      "status": "DESIGN",
+      "status": "KERNEL_IMPLEMENTED",
       "javaPackage": "ai.neargo.shop.pay.points.query"
     },
     {
       "name": "PointsJobServices",
-      "kind": "service",
+      "kind": "interface",
       "package": "pay.points.job",
       "fields": [
-        "application services / task cursors"
+        "8 tasks / bounded cursors",
+        "default disabled / no auto approval"
       ],
       "methods": [
-        "dispatchEvents()",
-        "queryUnknown()",
-        "reconcile()",
-        "expire()",
-        "draftStatements()"
+        "run(task, type, limit, now, day)"
       ],
       "source": "TDD §2.10",
-      "status": "DESIGN",
+      "status": "KERNEL_IMPLEMENTED",
       "javaPackage": "ai.neargo.shop.pay.points.job"
     },
     {
@@ -1060,14 +1057,14 @@
       "javaPackage": "ai.neargo.shop.pay.points.port"
     },
     {
-      "name": "PointsSourceFactsPort",
+      "name": "SourceFactsPort",
       "kind": "interface",
       "package": "shop-base.spi.points",
       "fields": [
         "DTO nested records / business keys"
       ],
       "methods": [
-        "scan(SourceCursor): SourcePage"
+        "scan(type, afterSequence, limit): Page"
       ],
       "source": "TDD §2.7",
       "status": "DESIGN",
@@ -1127,7 +1124,7 @@
         "order/after-sale API"
       ],
       "methods": [
-        "scan(SourceCursor): SourcePage"
+        "scan(type, afterSequence, limit): Page"
       ],
       "source": "TDD §2.1",
       "status": "DESIGN",
@@ -1152,16 +1149,16 @@
     {
       "name": "PointsFactPortImpl",
       "kind": "adapter",
-      "package": "pay.points.port",
+      "package": "pay.points.event.impl",
       "fields": [
-        "service: PointsLifecycleService"
+        "service: PointsEventWorker"
       ],
       "methods": [
         "accept(LifecycleFact): void"
       ],
       "source": "TDD §2.1 / §2.7",
       "status": "DESIGN",
-      "javaPackage": "ai.neargo.shop.pay.points.port"
+      "javaPackage": "ai.neargo.shop.pay.points.event.impl"
     },
     {
       "name": "PointsSettlementHookImpl",
@@ -1169,7 +1166,7 @@
       "package": "pay.points.port",
       "fields": [
         "payouts: PointsPayoutService",
-        "lifecycle: PointsLifecycleService",
+        "lifecycle: PointsEventWorker",
         "redeem: RedeemService"
       ],
       "methods": [
@@ -1181,6 +1178,79 @@
       "source": "TDD §2.1 / §2.7",
       "status": "DESIGN",
       "javaPackage": "ai.neargo.shop.pay.points.port"
+    },
+    {
+      "name": "AccountExpiryGuard",
+      "kind": "interface",
+      "package": "pay.points.lifecycle",
+      "fields": [
+        "current account / pause coverage"
+      ],
+      "methods": [
+        "overdue(account, now)"
+      ],
+      "source": "TDD A3-A6 2026-10-16",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.lifecycle"
+    },
+    {
+      "name": "ExpiryReminderService",
+      "kind": "interface",
+      "package": "pay.points.lifecycle",
+      "fields": [
+        "revision / durable reminder"
+      ],
+      "methods": [
+        "prepare(type, user, now, leadDays)",
+        "current(reminder, now)"
+      ],
+      "source": "TDD A3-A6 2026-10-16",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.lifecycle"
+    },
+    {
+      "name": "PointsRecoveryService",
+      "kind": "interface",
+      "package": "pay.points.job",
+      "fields": [
+        "original financial intent / category cursors"
+      ],
+      "methods": [
+        "discover(type, limit, now)",
+        "schedule(work)",
+        "execute(work)"
+      ],
+      "source": "TDD A3-A6 2026-10-16",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.job"
+    },
+    {
+      "name": "UserInboxPort",
+      "kind": "interface",
+      "package": "shop-base.spi.notify",
+      "javaPackage": "ai.neargo.shop.spi.notify",
+      "fields": [
+        "durable recipient dedup / no financial writes"
+      ],
+      "methods": [
+        "pointsExpiring(notice)"
+      ],
+      "source": "TDD A3-A6 2026-10-16",
+      "status": "KERNEL_IMPLEMENTED"
+    },
+    {
+      "name": "OpsAlertPort",
+      "kind": "interface",
+      "package": "shop-base.spi.notify",
+      "javaPackage": "ai.neargo.shop.spi.notify",
+      "fields": [
+        "durable recipient dedup / no financial writes"
+      ],
+      "methods": [
+        "pointsAttention(alert, receivers, link): boolean"
+      ],
+      "source": "TDD A3-A6 2026-10-16",
+      "status": "KERNEL_IMPLEMENTED"
     }
   ],
   "relationships": [
@@ -1500,13 +1570,6 @@
       "multiplicity": ""
     },
     {
-      "source": "PointsPostingService",
-      "target": "PointsOutboxPublisher",
-      "kind": "dependency",
-      "label": "uses",
-      "multiplicity": ""
-    },
-    {
       "source": "MybatisPostingStore",
       "target": "PointsPostingMapper",
       "kind": "dependency",
@@ -1514,36 +1577,8 @@
       "multiplicity": ""
     },
     {
-      "source": "PointsInboxConsumer",
-      "target": "PointsLifecycleService",
-      "kind": "dependency",
-      "label": "uses",
-      "multiplicity": ""
-    },
-    {
-      "source": "PointsLifecycleService",
-      "target": "EarnService",
-      "kind": "dependency",
-      "label": "uses",
-      "multiplicity": ""
-    },
-    {
-      "source": "PointsLifecycleService",
-      "target": "RedeemService",
-      "kind": "dependency",
-      "label": "uses",
-      "multiplicity": ""
-    },
-    {
       "source": "PointsSourceReconciler",
-      "target": "PointsSourceFactsPort",
-      "kind": "dependency",
-      "label": "uses",
-      "multiplicity": ""
-    },
-    {
-      "source": "PointsSourceReconciler",
-      "target": "PointsLifecycleService",
+      "target": "SourceFactsPort",
       "kind": "dependency",
       "label": "uses",
       "multiplicity": ""
@@ -1606,7 +1641,7 @@
     },
     {
       "source": "OrderPointsSourceFactsAdapter",
-      "target": "PointsSourceFactsPort",
+      "target": "SourceFactsPort",
       "kind": "realization",
       "label": "implements",
       "multiplicity": ""
@@ -1647,13 +1682,6 @@
       "multiplicity": ""
     },
     {
-      "source": "PointsFactPortImpl",
-      "target": "PointsLifecycleService",
-      "kind": "dependency",
-      "label": "delegates",
-      "multiplicity": ""
-    },
-    {
       "source": "PointsSettlementHookImpl",
       "target": "PointsSettlementHook",
       "kind": "realization",
@@ -1669,17 +1697,143 @@
     },
     {
       "source": "PointsSettlementHookImpl",
-      "target": "PointsLifecycleService",
-      "kind": "dependency",
-      "label": "onBillFinalized",
-      "multiplicity": ""
-    },
-    {
-      "source": "PointsSettlementHookImpl",
       "target": "RedeemService",
       "kind": "dependency",
       "label": "settleModeOf",
       "multiplicity": ""
+    },
+    {
+      "source": "EarnService",
+      "target": "AccountExpiryGuard",
+      "kind": "dependency",
+      "label": "禁止到期余额被迟到发放续活",
+      "multiplicity": "1"
+    },
+    {
+      "source": "RedeemService",
+      "target": "AccountExpiryGuard",
+      "kind": "dependency",
+      "label": "新占用核验有效到期时间",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsJobServices",
+      "target": "ExpiryReminderService",
+      "kind": "dependency",
+      "label": "按周期持久提醒",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsJobServices",
+      "target": "PointsRecoveryService",
+      "kind": "dependency",
+      "label": "有界轮换恢复原指令",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsRecoveryService",
+      "target": "PointsFundsGateway",
+      "kind": "dependency",
+      "label": "事务外执行或查询原号",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsFactPortImpl",
+      "target": "PointsEventQueue",
+      "kind": "dependency",
+      "label": "先持久化可信事实",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "PointsEventQueue",
+      "kind": "dependency",
+      "label": "租约 / 确认 / 退避",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "PointsSourceFactHandler",
+      "kind": "dependency",
+      "label": "分发来源事实",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "PointsRecoveryService",
+      "kind": "dependency",
+      "label": "原资金指令恢复",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "ExpiryReminderService",
+      "kind": "dependency",
+      "label": "投递前核验周期",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "RefundClosureService",
+      "kind": "dependency",
+      "label": "可信责任解除",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "UserInboxPort",
+      "kind": "dependency",
+      "label": "事务外生命周期通知",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "OpsAlertPort",
+      "kind": "dependency",
+      "label": "事务外权限接收人告警",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsSourceFactHandler",
+      "target": "EarnService",
+      "kind": "dependency",
+      "label": "应用支付快照",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsSourceFactHandler",
+      "target": "PointsSettlementHook",
+      "kind": "dependency",
+      "label": "终局转正",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsSourceFactHandler",
+      "target": "PointsRefundService",
+      "kind": "dependency",
+      "label": "核验资金后确认",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsSourceReconciler",
+      "target": "PointsFactPort",
+      "kind": "dependency",
+      "label": "整页持久后推进水位",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsJobServices",
+      "target": "PointsEventWorker",
+      "kind": "dependency",
+      "label": "限量处理 / 报告待办",
+      "multiplicity": "1"
+    },
+    {
+      "source": "ExpiryReminderService",
+      "target": "PointsEventQueue",
+      "kind": "dependency",
+      "label": "按活动周期幂等提醒",
+      "multiplicity": "1"
     }
   ],
   "groups": [
@@ -1696,8 +1850,8 @@
         "PointsPostingService",
         "Voucher",
         "PostingStore",
-        "PointsInboxConsumer",
-        "PointsLifecycleService",
+        "PointsSourceFactHandler",
+        "PointsEventWorker",
         "PointsReconService"
       ]
     },
@@ -1783,7 +1937,9 @@
         "RefundClosureService",
         "ReceiveReserveService",
         "ExpiryService",
-        "ExpiryPolicy"
+        "ExpiryPolicy",
+        "AccountExpiryGuard",
+        "ExpiryReminderService"
       ]
     },
     {
@@ -1794,13 +1950,14 @@
         "PostingStore",
         "MybatisPostingStore",
         "PointsPostingMapper",
-        "PointsInboxConsumer",
-        "PointsOutboxPublisher",
-        "PointsLifecycleService",
+        "PointsSourceFactHandler",
+        "PointsEventQueue",
+        "PointsEventWorker",
         "PointsReconService",
         "PointsSourceReconciler",
         "PointsStatsService",
-        "PointsJobServices"
+        "PointsJobServices",
+        "PointsRecoveryService"
       ]
     },
     {
@@ -1824,11 +1981,13 @@
       "title": "pay内资金接口与订单事实SPI",
       "classes": [
         "PointsFundsGateway",
-        "PointsSourceFactsPort",
+        "SourceFactsPort",
         "PayPointsFundsAdapter",
         "OrderPointsSourceFactsAdapter",
         "PointsPayoutService",
-        "PointsSourceReconciler"
+        "PointsSourceReconciler",
+        "UserInboxPort",
+        "OpsAlertPort"
       ]
     }
   ],

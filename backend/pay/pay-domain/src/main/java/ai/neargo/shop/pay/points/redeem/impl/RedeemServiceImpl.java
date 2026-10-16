@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.points.redeem.impl;
 
 import ai.neargo.shop.pay.points.agreement.AgreementService;
+import ai.neargo.shop.pay.points.lifecycle.AccountExpiryGuard;
 import ai.neargo.shop.pay.points.model.AccountKey;
 import ai.neargo.shop.pay.points.model.AgreementSnapshot;
 import ai.neargo.shop.pay.points.model.Bucket;
@@ -53,6 +54,7 @@ public class RedeemServiceImpl implements RedeemService {
     private final PointsPostingService posting;
     private final ObjectProvider<PointsFundsGateway> gateway;
     private final boolean enabled;
+    private final AccountExpiryGuard expiry;
     private final RedeemPolicy policy = new DefaultRedeemPolicy();
     private final ObjectMapper json = new ObjectMapper();
 
@@ -62,6 +64,7 @@ public class RedeemServiceImpl implements RedeemService {
             AgreementService agreements,
             PointsPostingService posting,
             ObjectProvider<PointsFundsGateway> gateway,
+            AccountExpiryGuard expiry,
             @Value("${shop.points.enabled:false}") boolean enabled) {
         this.read = read;
         this.config = config;
@@ -69,6 +72,7 @@ public class RedeemServiceImpl implements RedeemService {
         this.posting = posting;
         this.gateway = gateway;
         this.enabled = enabled;
+        this.expiry = expiry;
     }
 
     @Override
@@ -78,7 +82,7 @@ public class RedeemServiceImpl implements RedeemService {
         if (type == null) {
             return new RedeemQuote(null, 0, 0, 0, 0, "POINTS_TYPE_NOT_ACTIVE", List.of());
         }
-        return evaluate(q, type).quote();
+        return evaluate(q, type, false).quote();
     }
 
     @Override
@@ -106,7 +110,7 @@ public class RedeemServiceImpl implements RedeemService {
                     root, null, 0, 0, "SKIPPED", "POINTS_TYPE_NOT_ACTIVE", List.of());
         }
         config.lockTypeAndPool(type.typeCode());
-        prior = read.position(PositionMove.Kind.REDEEM.table(), root);
+        prior = config.lockRedeemPosition(root);
         if (prior != null) {
             HoldSnapshot old =
                     json.readValue((String) prior.get("payload_json"), HoldSnapshot.class);
@@ -116,7 +120,7 @@ public class RedeemServiceImpl implements RedeemService {
             return old.outcome();
         }
         type = read.type(type.typeCode()).orElseThrow();
-        Evaluation e = evaluate(q, type);
+        Evaluation e = evaluate(q, type, true);
         RedeemQuote quote = e.quote();
         HoldOutcome outcome =
                 new HoldOutcome(
@@ -204,7 +208,7 @@ public class RedeemServiceImpl implements RedeemService {
         }
         PointType type = read.type((String) head.get("type_code")).orElseThrow();
         config.lockTypeAndPool(type.typeCode());
-        head = read.position(PositionMove.Kind.REDEEM.table(), root);
+        head = config.lockRedeemPosition(root);
         HoldSnapshot held = json.readValue((String) head.get("payload_json"), HoldSnapshot.class);
         if (!"HELD".equals(head.get("state"))) {
             if ("SKIPPED".equals(head.get("state"))) {
@@ -214,9 +218,22 @@ public class RedeemServiceImpl implements RedeemService {
         }
         List<PositionMove> positions = new ArrayList<>();
         List<ReserveMove> reserves = new ArrayList<>();
+        long releasedPoints = 0, releasedMinor = 0;
         for (Share share : held.outcome().shares()) {
             String pos = PointsKeys.position("R", type.typeCode(), share.subOrderNo());
-            var child = read.position(PositionMove.Kind.REDEEM.table(), pos);
+            var child = config.lockRedeemPosition(pos);
+            if (child == null) {
+                throw new IllegalArgumentException("POINTS_HOLD_POSITION_MISSING");
+            }
+            var snapshot = json.readValue((String) child.get("payload_json"), RedeemSnapshot.class);
+            if (!held.command().userNo().equals(snapshot.userNo())
+                    || !c.orderNo().equals(snapshot.orderNo())
+                    || num(child, "original_points") != share.points()) {
+                throw new IllegalArgumentException("POINTS_HOLD_POSITION_MISMATCH");
+            }
+            if ("RELEASED".equals(child.get("state"))) {
+                continue;
+            }
             if (!"HELD".equals(child.get("state"))) {
                 throw new IllegalArgumentException("POINTS_HOLD_ALREADY_PAID");
             }
@@ -240,6 +257,8 @@ public class RedeemServiceImpl implements RedeemService {
                             -share.minor(),
                             0,
                             share.minor()));
+            releasedPoints = Math.addExact(releasedPoints, share.points());
+            releasedMinor = Math.addExact(releasedMinor, share.minor());
         }
         HoldOutcome result = releaseOutcome(held);
         positions.add(
@@ -250,35 +269,39 @@ public class RedeemServiceImpl implements RedeemService {
                         "HELD",
                         "RELEASED",
                         held.outcome().points(),
-                        held.outcome().points(),
+                        Math.subtractExact(held.outcome().points(), num(head, "processed_points")),
                         json.writeValueAsString(held)));
+        var moves =
+                releasedPoints == 0
+                        ? List.<PointsMove>of()
+                        : List.of(
+                                userMove(
+                                        type,
+                                        held.command().userNo(),
+                                        Bucket.HELD,
+                                        -releasedPoints),
+                                userMove(
+                                        type,
+                                        held.command().userNo(),
+                                        Bucket.AVAILABLE,
+                                        releasedPoints));
         posting.post(
                 new Voucher(
                         "RELEASE:" + c.orderNo(),
                         type.typeCode(),
                         type.currency(),
                         type.rate(),
-                        List.of(
-                                userMove(
-                                        type,
-                                        held.command().userNo(),
-                                        Bucket.HELD,
-                                        -held.outcome().points()),
-                                userMove(
-                                        type,
-                                        held.command().userNo(),
-                                        Bucket.AVAILABLE,
-                                        held.outcome().points())),
+                        moves,
                         List.of(),
                         positions,
-                        -held.outcome().minor(),
+                        -releasedMinor,
                         List.of(),
                         json.writeValueAsString(result),
                         reserves));
         return result;
     }
 
-    private Evaluation evaluate(RedeemQuery q, PointType type) {
+    private Evaluation evaluate(RedeemQuery q, PointType type, boolean authoritative) {
         String reason = null;
         if (!enabled || !read.enabled(type.typeCode(), q.userNo(), null)) {
             reason = "POINTS_DISABLED";
@@ -288,13 +311,35 @@ public class RedeemServiceImpl implements RedeemService {
         } else if ("OFFLINE".equals(q.payMode())) {
             reason = "POINTS_OFFLINE";
         }
-        var account = read.account(type.typeCode(), HolderType.USER, q.userNo());
+        var account =
+                authoritative
+                        ? read.currentUser(type.typeCode(), q.userNo())
+                        : read.account(type.typeCode(), HolderType.USER, q.userNo());
         if (reason == null && account.frozen()) {
             reason = "POINTS_FROZEN";
+        }
+        if (reason == null && expiry.overdue(account, System.currentTimeMillis())) {
+            reason = "POINTS_EXPIRED";
         }
         List<Accepted> accepted = new ArrayList<>();
         if (reason == null) {
             for (Target target : q.targets()) {
+                var lifecycle =
+                        authoritative
+                                ? config.lockLifecycle(type.typeCode(), target.subOrderNo())
+                                : read.lifecycle(type.typeCode(), target.subOrderNo());
+                if (lifecycle != null) {
+                    var state = json.readTree((String) lifecycle.get("payload_json"));
+                    if (state.path("cancelled").asBoolean(false)) {
+                        reason = "POINTS_ORDER_CANCELLED";
+                        break;
+                    }
+                    if (state.path("paid").asBoolean(false)
+                            || state.path("finalized").asBoolean(false)) {
+                        reason = "POINTS_SOURCE_ALREADY_PAID";
+                        break;
+                    }
+                }
                 if (!read.enabled(
                         new Availability(
                                 type.typeCode(),

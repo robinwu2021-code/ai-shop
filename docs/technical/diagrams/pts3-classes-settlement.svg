@@ -2,7 +2,7 @@
 <defs><marker id="point" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker><marker id="money" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#c2410c"/></marker><marker id="dep" markerWidth="10" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9" fill="none" stroke="#64748b"/></marker><marker id="real" markerWidth="13" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0 0L12 6L0 12Z" fill="white" stroke="#475569"/></marker><marker id="diamond" markerWidth="15" markerHeight="10" refX="14" refY="5" orient="auto-start-reverse"><path d="M0 5L7 0L14 5L7 10Z" fill="#475569"/></marker></defs>
 <rect width="1660" height="1651" fill="#f8fafc"/>
 <text x="35" y="48" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="29" fill="#172554" font-weight="650" text-anchor="start">积分模块类图 · 退款兑付与到期服务</text>
-<text x="35" y="80" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">v3 目标设计 · pay-domain内独立业务模块 · payTxManager · 尚未按此设计实现</text>
+<text x="35" y="80" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">v3 设计契约 · pay-domain内业务模块 · payTxManager · 实现与验收状态见 TDD</text>
 <text x="40" y="115" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">实线＝关联  ◆＝组合  虚线开放箭头＝依赖  空心三角＝接口实现；字段与方法为目标设计。</text>
 <path d="M490,282.0 L590,282.0" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#dep)"/>
 <path d="M1590,282.0 L1624,282.0 L1624,474 L265.0,474 L265.0,509" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#dep)"/>
@@ -76,8 +76,9 @@
 <text x="606" y="894" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">ReceiveReserveService</text>
 <path d="M590 911H1040" stroke="#0f766e" stroke-width="1"/>
 <text x="606" y="936" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">posting: PointsPostingService</text>
-<path d="M590 952H1040" stroke="#cbd5e1"/>
-<text x="606" y="976" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ releaseRefundReserve(positionNo,version)</text>
+<text x="606" y="958" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">实现: PoolService补U只消费自由回流格</text>
+<path d="M590 974H1040" stroke="#cbd5e1"/>
+<text x="606" y="998" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ releaseRefundReserve(positionNo,version)</text>
 <rect x="1140" y="841" width="450" height="232" rx="8" fill="white" stroke="#0f766e" stroke-width="1.5"/>
 <text x="1156" y="865" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«service»  pay.points.lifecycle</text>
 <text x="1156" y="894" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">ExpiryService</text>
@@ -88,14 +89,29 @@
 <text x="1156" y="998" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ prepareDue(type)</text>
 <text x="1156" y="1020" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ confirmIncome(result)</text>
 <text x="1156" y="1042" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ remindDue(type)</text>
-<rect x="40" y="1173" width="450" height="188" rx="8" fill="white" stroke="#7c3aed" stroke-width="1.5"/>
-<text x="56" y="1197" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#7c3aed" font-weight="400" text-anchor="start">«interface»  pay.points.policy</text>
-<text x="56" y="1226" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">ExpiryPolicy</text>
-<path d="M40 1243H490" stroke="#7c3aed" stroke-width="1"/>
-<text x="56" y="1268" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">market timezone / pause intervals</text>
+<rect x="40" y="1173" width="450" height="188" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="56" y="1197" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«value»  pay.points.policy</text>
+<text x="56" y="1226" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">ExpiryPolicy</text>
+<path d="M40 1243H490" stroke="#2563eb" stroke-width="1"/>
+<text x="56" y="1268" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">pause union / market midnight</text>
 <path d="M40 1284H490" stroke="#cbd5e1"/>
-<text x="56" y="1308" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ dueAt(account)</text>
-<text x="56" y="1330" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ extendByUnion(intervals)</text>
+<text x="56" y="1308" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ extend(base, active, asOf, pauses)</text>
+<text x="56" y="1330" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ regionalDeadline(activeAt, idleDays, zone)</text>
+<rect x="590" y="1173" width="450" height="188" rx="8" fill="white" stroke="#7c3aed" stroke-width="1.5"/>
+<text x="606" y="1197" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#7c3aed" font-weight="400" text-anchor="start">«interface»  pay.points.lifecycle</text>
+<text x="606" y="1226" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">AccountExpiryGuard</text>
+<path d="M590 1243H1040" stroke="#7c3aed" stroke-width="1"/>
+<text x="606" y="1268" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">current account / pause coverage</text>
+<path d="M590 1284H1040" stroke="#cbd5e1"/>
+<text x="606" y="1308" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ overdue(account, now)</text>
+<rect x="1140" y="1173" width="450" height="188" rx="8" fill="white" stroke="#7c3aed" stroke-width="1.5"/>
+<text x="1156" y="1197" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#7c3aed" font-weight="400" text-anchor="start">«interface»  pay.points.lifecycle</text>
+<text x="1156" y="1226" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">ExpiryReminderService</text>
+<path d="M1140 1243H1590" stroke="#7c3aed" stroke-width="1"/>
+<text x="1156" y="1268" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">revision / durable reminder</text>
+<path d="M1140 1284H1590" stroke="#cbd5e1"/>
+<text x="1156" y="1308" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ prepare(type, user, now, leadDays)</text>
+<text x="1156" y="1330" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ current(reminder, now)</text>
 <text x="40" y="1473" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="18" fill="#172554" font-weight="650" text-anchor="start">本图内关系（跨图关系及完整属性见图册与JSON契约）</text>
 <text x="40" y="1506" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">PointsRefundService - - &gt; RefundRatioPolicy   uses </text>
 <text x="40" y="1530" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">StoreStatementService - - &gt; StatementPolicy   uses </text>

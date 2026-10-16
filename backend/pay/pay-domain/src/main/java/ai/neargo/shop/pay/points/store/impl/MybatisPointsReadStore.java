@@ -101,25 +101,32 @@ public class MybatisPointsReadStore implements PointsReadStore {
     @Override
     public AccountSnapshot account(String type, HolderType holder, String no) {
         return DataScopeContext.executeWithoutScope(
-                () -> {
-                    Map<String, Object> row = mapper.account(type, holder.name(), no);
-                    Map<Bucket, Long> balances = new EnumMap<>(Bucket.class);
-                    if (row != null) {
-                        for (Bucket bucket : Bucket.values()) {
-                            balances.put(bucket, num(row, bucket.column()));
-                        }
-                    }
-                    return new AccountSnapshot(
-                            type,
-                            holder,
-                            no,
-                            balances,
-                            row != null && num(row, "frozen") == 1,
-                            row == null || row.get("expire_at") == null
-                                    ? null
-                                    : num(row, "expire_at"),
-                            row == null ? 0 : num(row, "expiry_revision"));
-                });
+                () -> account(type, holder, no, mapper.account(type, holder.name(), no)));
+    }
+
+    @Override
+    public AccountSnapshot currentUser(String type, String user) {
+        return DataScopeContext.executeWithoutScope(
+                () -> account(type, HolderType.USER, user, mapper.lockUser(type, user)));
+    }
+
+    private AccountSnapshot account(
+            String type, HolderType holder, String no, Map<String, Object> row) {
+        Map<Bucket, Long> balances = new EnumMap<>(Bucket.class);
+        if (row != null) {
+            for (Bucket bucket : Bucket.values()) {
+                balances.put(bucket, num(row, bucket.column()));
+            }
+        }
+        return new AccountSnapshot(
+                type,
+                holder,
+                no,
+                balances,
+                row != null && num(row, "frozen") == 1,
+                row == null || row.get("expire_at") == null ? null : num(row, "expire_at"),
+                row == null ? 0 : num(row, "expiry_revision"),
+                row == null || row.get("last_active_at") == null ? 0 : num(row, "last_active_at"));
     }
 
     @Override

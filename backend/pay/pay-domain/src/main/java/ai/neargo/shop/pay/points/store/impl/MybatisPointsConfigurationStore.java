@@ -21,6 +21,11 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
     }
 
     @Override
+    public Map<String, Object> lockRedeemPosition(String no) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.lockStatementSource(no));
+    }
+
+    @Override
     public void createType(PointType t, String actor) {
         DataScopeContext.executeWithoutScope(
                 () -> {

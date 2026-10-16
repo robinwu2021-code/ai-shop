@@ -23,6 +23,8 @@ public interface PointsConfigurationStore {
 
     Map<String, Object> lockLifecycle(String typeCode, String subOrderNo);
 
+    Map<String, Object> lockRedeemPosition(String positionNo);
+
     void changeTypeStatus(
             String typeCode,
             PointType.Status expected,

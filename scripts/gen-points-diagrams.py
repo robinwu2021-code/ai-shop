@@ -25,7 +25,7 @@ def text(x,y,s,size=17,color='#172554',weight='400',anchor='start'):
  return f'<text x="{x}" y="{y}" font-family="{FONT}" font-size="{size}" fill="{color}" font-weight="{weight}" text-anchor="{anchor}">{escape(s)}</text>'
 
 def begin(title,w,h,desc):
- return [f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}"><title>{escape(title)}</title><desc>{escape(desc)}</desc>',f'<defs><marker id="point" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker><marker id="money" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#c2410c"/></marker><marker id="dep" markerWidth="10" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9" fill="none" stroke="#64748b"/></marker><marker id="real" markerWidth="13" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0 0L12 6L0 12Z" fill="white" stroke="#475569"/></marker><marker id="diamond" markerWidth="15" markerHeight="10" refX="14" refY="5" orient="auto-start-reverse"><path d="M0 5L7 0L14 5L7 10Z" fill="#475569"/></marker></defs>',f'<rect width="{w}" height="{h}" fill="#f8fafc"/>',text(35,48,title,29,weight='650'),text(35,80,'v3 目标设计 · pay-domain内独立业务模块 · payTxManager · 尚未按此设计实现',15,color=COLORS['muted'])]
+ return [f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}"><title>{escape(title)}</title><desc>{escape(desc)}</desc>',f'<defs><marker id="point" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker><marker id="money" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#c2410c"/></marker><marker id="dep" markerWidth="10" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9" fill="none" stroke="#64748b"/></marker><marker id="real" markerWidth="13" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0 0L12 6L0 12Z" fill="white" stroke="#475569"/></marker><marker id="diamond" markerWidth="15" markerHeight="10" refX="14" refY="5" orient="auto-start-reverse"><path d="M0 5L7 0L14 5L7 10Z" fill="#475569"/></marker></defs>',f'<rect width="{w}" height="{h}" fill="#f8fafc"/>',text(35,48,title,29,weight='650'),text(35,80,'v3 设计契约 · pay-domain内业务模块 · payTxManager · 实现与验收状态见 TDD',15,color=COLORS['muted'])]
 
 def card(x,y,w,h,title,lines,color='point'):
  co=COLORS.get(color,color)
@@ -212,7 +212,7 @@ def main():
  flow_sheets=[('overview','完整积分流转总览'),('funding','备款发行回流与预算提取'),('settlement','下单核销与两种商家兑付'),('refund','核销退款与备付'),('clawback','购物返分收回与不足'),('lifecycle','责任解除与到期'),('governance','运营调账与可靠恢复')]
  doc='''# 积分模块完整流转图与类图
 
-状态：v3设计图册，待评审 · 更新：2026-10-14
+状态：v3设计契约，积分内核已实现并验收中；运营与订单接入后置 · 更新：2026-10-16
 
 积分流转图展示五种持有方及分格、两种兑付、退款、备付、回流、到期、调账和异常恢复；类图按模块协作、核心对象、应用服务、订单SPI/结算Hook与持久化拆分。蓝线为积分移动，资金动作另用橙色；R是应收，不充当现金。
 
@@ -227,6 +227,7 @@ def main():
 ## 一 完整积分流转
 
 '''
+ doc=doc.replace('类图是71个核心设计类',f'类图是{len(m["classes"])}个核心设计类')
  notes={
  'overview':'正常返分和核销构成主链；随单门店不留余额，定期门店先留分。退分从退款预留恢复，回流只用自由格，付款本身不移动积分。',
  'funding':'补U支持新增发行；补B不发行。U转B必须同时移动发放户积分。提取与内部调拨是不同动作，不能看见箭头就按同一笔顺序执行。',

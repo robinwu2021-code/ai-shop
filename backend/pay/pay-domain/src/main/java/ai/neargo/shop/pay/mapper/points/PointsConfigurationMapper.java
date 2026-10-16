@@ -123,13 +123,13 @@ public interface PointsConfigurationMapper {
 
     @Select(
             "SELECT * FROM pts_merchant_agreement WHERE type_code=#{type} AND deleted=0"
-                    + " AND state IN ('ACTIVE','TERMINATED') ORDER BY id LIMIT 10001")
+                    + " AND state IN ('ACTIVE','TERMINATED') ORDER BY id LIMIT 10001 FOR UPDATE")
     List<Map<String, Object>> acceptanceHistory(String type);
 
     @Select(
             "SELECT scope,scope_no,from_at,to_at FROM pts_pause_interval WHERE deleted=0"
                     + " AND (type_code=#{type} OR type_code='*') AND from_at<#{asOf}"
-                    + " AND (to_at IS NULL OR to_at>#{active}) ORDER BY id LIMIT 10001")
+                    + " AND (to_at IS NULL OR to_at>#{active}) ORDER BY id LIMIT 10001 FOR UPDATE")
     List<Map<String, Object>> acceptancePauses(
             @Param("type") String type, @Param("active") long active, @Param("asOf") long asOf);
 
@@ -146,7 +146,7 @@ public interface PointsConfigurationMapper {
             "<script>SELECT from_at,to_at FROM pts_pause_interval WHERE deleted=0 AND from_at &lt;"
                     + " #{asOf} AND (to_at IS NULL OR to_at &gt; #{active}) AND (<foreach"
                     + " collection='keys' item='k' separator=' OR '>(scope=#{k.scope} AND"
-                    + " scope_no=#{k.key})</foreach>) ORDER BY from_at</script>")
+                    + " scope_no=#{k.key})</foreach>) ORDER BY from_at FOR UPDATE</script>")
     List<Map<String, Object>> scopedPauses(
             @Param("keys") List<Key> keys, @Param("active") long active, @Param("asOf") long asOf);
 
@@ -348,7 +348,7 @@ public interface PointsConfigurationMapper {
             @Param("market") String activeMarket,
             @Param("actor") String actor);
 
-    @Select("SELECT * FROM pts_merchant_agreement WHERE active_key=#{key}")
+    @Select("SELECT * FROM pts_merchant_agreement WHERE active_key=#{key} FOR UPDATE")
     Map<String, Object> agreement(String key);
 
     @Insert(
