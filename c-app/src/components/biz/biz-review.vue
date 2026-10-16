@@ -21,7 +21,7 @@ defineEmits<{ (e: "like"): void }>();
 
     <text class="txt-body rv__content">{{ review.content }}</text>
 
-    <view v-if="review.images.length" class="rv__imgs">
+    <view v-if="review.images.length" class="sh-wrap rv__imgs">
       <sh-cover v-for="(img, i) in review.images" :key="i" class="rv__img" :src="img" :w="200"></sh-cover>
     </view>
 
@@ -81,8 +81,6 @@ defineEmits<{ (e: "like"): void }>();
   word-break: break-word;
 }
 .rv__imgs {
-  display: flex;
-  flex-wrap: wrap;
   gap: 12rpx;
   margin-top: 16rpx;
 }

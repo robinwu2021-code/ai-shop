@@ -1640,7 +1640,7 @@
       },
       "usage": {
         "b-app": 49,
-        "c-app": 18
+        "c-app": 19
       }
     },
     {
@@ -5974,18 +5974,10 @@
         "sh-cover",
         "sh-rating"
       ],
-      "libClassHits": 20,
+      "libClassHits": 21,
       "localSelectors": 17,
-      "localCssLines": 90,
-      "rolled": [
-        {
-          "id": "wraprow",
-          "label": "换行横排",
-          "lib": ".sh-wrap",
-          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
-          "gap": false
-        }
-      ]
+      "localCssLines": 88,
+      "rolled": []
     },
     {
       "app": "c-app",
@@ -6115,16 +6107,6 @@
       "rule": "pickImages\\(|chooseImages\\(",
       "pages": [
         "c-app/me/profile"
-      ]
-    },
-    {
-      "id": "wraprow",
-      "label": "换行横排",
-      "lib": ".sh-wrap",
-      "gap": false,
-      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
-      "pages": [
-        "c-app/biz-review"
       ]
     }
   ],
