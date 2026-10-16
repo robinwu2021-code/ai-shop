@@ -206,6 +206,19 @@ class PointsOpsConfigurationTest {
                                                 "TYPO"),
                                         "OPS"))
                 .hasMessage("POINTS_SWITCH_SUBJECT_INVALID");
+        assertThatThrownBy(
+                        () ->
+                                admin.changeSwitch(
+                                        new SwitchChange(
+                                                "BAD_SCENE:" + type,
+                                                Scope.SCENE,
+                                                type,
+                                                "ONLNE",
+                                                false,
+                                                Flow.EARN,
+                                                "TYPO"),
+                                        "OPS"))
+                .hasMessage("POINTS_SWITCH_SUBJECT_INVALID");
         admin.changeSwitch(
                 new SwitchChange(
                         "SCENE:" + type,

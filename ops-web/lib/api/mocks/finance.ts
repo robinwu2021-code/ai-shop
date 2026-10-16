@@ -9,6 +9,8 @@ import type { Payout } from "@/lib/types";
 
 /** 放款记录只活在内存里：mock 的批次放一次生成一条，刷新即清 —— 它不是演示数据的一部分 */
 const mockPayouts: Payout[] = [];
+import { pointsInspectionMock } from "./points-inspection";
+import { pointsWorkbenchMock } from "./points-workbench";
 import { pointsTreasuryMock } from "./points-treasury";
 import { pointsConfigurationMock } from "./points-configuration";
 import { fail, notFound } from "@/lib/biz-error";
@@ -38,12 +40,19 @@ function mustBill(settleNo: string) {
 export const financeMock: FinanceApi = {
   ...pointsConfigurationMock,
   ...pointsTreasuryMock,
+  ...pointsWorkbenchMock,
+  ...pointsInspectionMock,
   pointsReceivables: async (q) => wait({ typeCode: q.typeCode, currency: "CNY", scale: 2, rows: [], next: q.after ?? 0, hasMore: false }),
-  pointsOverview: async (market = "CN", typeCode = "POINTS_DEMO") => wait({
-    typeCode, market, currency: "CNY", scale: 2, ratePoints: 2, rateMinor: 1,
-    uMinor: 12000, cMinor: 8000, dMinor: 3000, bMinor: 5000,
-    reservedBMinor: 2000, lockedUMinor: 1000, lockedBMinor: 500, receivableMinor: 700,
-  }),
+  pointsOverview: async (market = "CN", typeCode) => {
+    const types = await pointsConfigurationMock.pointsTypes();
+    const type = typeCode ? types.find((t) => t.typeCode === typeCode) : types.find((t) => t.market === market && t.status === "ACTIVE");
+    if (!type) fail("积分类型不存在", "Points type not found");
+    const demo = type.typeCode === "POINTS_DEMO";
+    return wait({ typeCode: type.typeCode, market: type.market, currency: type.currency, scale: type.scale,
+      ratePoints: type.rate.pointsUnit, rateMinor: type.rate.minorUnit,
+      uMinor: demo ? 12000 : 0, cMinor: demo ? 8000 : 0, dMinor: demo ? 3000 : 0, bMinor: demo ? 5000 : 0,
+      reservedBMinor: demo ? 2000 : 0, lockedUMinor: demo ? 1000 : 0, lockedBMinor: demo ? 500 : 0, receivableMinor: demo ? 700 : 0 });
+  },
 
   /*
    * **返回分页包，与真后端同形**。

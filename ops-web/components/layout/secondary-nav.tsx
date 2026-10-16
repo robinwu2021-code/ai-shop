@@ -104,8 +104,9 @@ export function SecondaryNav() {
   const nav = useNavTree();
   const section = findActiveSection(pathname, perms, serverHrefs, nav);
   const leaves = section ? visibleLeaves(section, perms, serverHrefs) : [];
-  const activeIdx = section ? activeLeafIndex(leaves, pathname, tab, view) : -1;
   const segments = groupedLeaves(leaves);
+  // Highlight in the rendered group order, which can differ from the source leaf order.
+  const activeIdx = section ? activeLeafIndex(segments.flatMap((s) => s.leaves), pathname, tab, view) : -1;
 
   // 段的扁平起始下标（活跃叶属于哪一段 / 段内高亮换算）
   let acc = 0;

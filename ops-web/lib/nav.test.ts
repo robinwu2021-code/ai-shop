@@ -135,6 +135,10 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
      * 与分账明细同一个码，所以超管与财务两行各多出这一条。
      */
     "/finance?tab=settle-stats",
+    "/points?tab=configuration",
+    "/points?tab=treasury",
+    "/points?tab=queries",
+    "/points?tab=settlements",
     /*
      * 电子元器件（2026-09-30，P-19）。独立服务 elec-svc 的运营面，新的根菜单。
      * V370 只授超管；V371 按岗位分配（元器件负责人全部、商家运营询报价/供应商/料号、
@@ -161,7 +165,9 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
       const perms = backendPermsOf(role);
       const now = new Set<string>();
       for (const s of visibleSections(perms)) for (const l of visibleLeaves(s, perms)) now.add(l.href);
-      const was = new Set(baseline[role] ?? []);
+      // Points stage B moves these two existing authorizations without changing point codes.
+      const moved: Record<string, string> = { "/finance?tab=points": "/points?tab=overview", "/finance?tab=points-policy": "/points?tab=switches" };
+      const was = new Set((baseline[role] ?? []).map((href) => moved[href] ?? href));
       const lost = [...was].filter((h) => !now.has(h));
       const gained = [...now].filter((h) => !was.has(h) && !ADDED_SINCE_MERGE.has(h));
       if (lost.length) diffs.push(`${role} 少了：${lost.join(", ")}`);
@@ -852,4 +858,9 @@ it("已解锁的 ?tab= 叶子，页面必须真的认这个 tab —— 否则点
     }
   }
   expect(offenders, `要么把叶子标 soon，要么在页面里加上这个 tab：\n${offenders.join("\n")}`).toEqual([]);
+});
+
+it("keeps both finance and the points workspace assigned to the finance section", () => {
+  expect(findActiveSection("/finance")?.key).toBe("finance");
+  expect(findActiveSection("/points")?.key).toBe("finance");
 });

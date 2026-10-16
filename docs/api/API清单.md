@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 859 个接口**：后端已实现 781（91%）· 前端在调 785
+**合计 869 个接口**：后端已实现 791（91%）· 前端在调 795
 
 ---
 
@@ -917,7 +917,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **444** 个接口 ｜ 后端已实现 **378**（85%）｜ 前端在调 **370**
+共 **454** 个接口 ｜ 后端已实现 **388**（85%）｜ 前端在调 **380**
 
 ### aftersale（4）
 
@@ -998,7 +998,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（72）
+### finance（82）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1025,11 +1025,15 @@
 | GET | `/ops/payouts` | listPayouts | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/payouts/{payoutNo}/fail` | 打款失败或退回 | — | `Payout` | — | ✅ | ✅ |
 | POST | `/ops/payouts/{payoutNo}/paid` | 登记凭证 | — | `Payout` | — | ✅ | ✅ |
+| GET | `/ops/points/account` | pointsAccount | — | `PointsAccountView` | — | ✅ | ✅ |
+| POST | `/ops/points/account-freeze` | freezePointsAccount | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/agreements` | pointsAgreements | — | `PointsAgreementPage` | — | ✅ | ✅ |
+| GET | `/ops/points/entries` | pointsEntries | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/points/event-retry` | retryPointsEvent | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/events` | pointsEvents | — | `PointsEventPage` | — | ✅ | ✅ |
 | GET | `/ops/points/fallback-rule` | pointsFallback | — | `PointsFallback` | — | ✅ | ✅ |
 | POST | `/ops/points/fallback-rule` | savePointsFallback | — | `PointsChangeResult` | — | ✅ | ✅ |
+| GET | `/ops/points/flows` | pointsFlows | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/points/funds` | pointsFunds | — | `PointsFundsView` | — | ✅ | ✅ |
 | POST | `/ops/points/funds-recovery` | recoverPointsFunds | — | `PointsRecoveryExecution` | — | ✅ | ✅ |
 | GET | `/ops/points/overview` | 积分资金总览 | — | `PointsOverview` | — | ✅ | ✅ |
@@ -1038,8 +1042,11 @@
 | POST | `/ops/points/plan-receipt` | declarePointsReceipt | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/plans` | pointsPlans | — | `PointsPlanPage` | — | ✅ | ✅ |
 | POST | `/ops/points/plans` | savePointsPlan | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/position` | pointsPosition | — | `PointsPositionView` | — | ✅ | ✅ |
 | POST | `/ops/points/receivable-recovery` | preparePointsReceivable | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/receivables` | 门店应收分页 | — | `PointsReceivablePage` | — | ✅ | ✅ |
+| POST | `/ops/points/reconcile` | reconcilePoints | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/reconciliation` | pointsReconciliation | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/points/refund` | pointsRefund | — | `PointsRefundView` | — | ✅ | ✅ |
 | POST | `/ops/points/refund-revise` | revisePointsRefund | — | `PointsOperation` | — | ✅ | ✅ |
 | POST | `/ops/points/request-review` | reviewPointsRequest | — | `PointsOperation` | — | ✅ | ✅ |
@@ -1048,6 +1055,8 @@
 | POST | `/ops/points/statement-change` | changePointsStatement | — | `PointsOperation` | — | ✅ | ✅ |
 | POST | `/ops/points/statement-draft` | draftPointsStatements | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/statements` | pointsStatements | — | `PointsStatementPage` | — | ✅ | ✅ |
+| GET | `/ops/points/stats` | pointsStats | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/points/stats-rebuild` | rebuildPointsStats | — | `PointsOperation` | — | ✅ | ✅ |
 | GET | `/ops/points/switches` | pointsSwitches | — | `PointsSwitchPage` | — | ✅ | ✅ |
 | POST | `/ops/points/switches` | changePointsSwitch | — | `PointsChangeResult` | — | ✅ | ✅ |
 | GET | `/ops/points/terms` | pointsTerms | — | `object` | — | ✅ | ✅ |
@@ -1055,6 +1064,7 @@
 | POST | `/ops/points/type-state` | transitionPointsType | — | `PointsChangeResult` | — | ✅ | ✅ |
 | GET | `/ops/points/types` | pointsTypes | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/points/types` | createPointsType | — | `PointsChangeResult` | — | ✅ | ✅ |
+| GET | `/ops/points/vouchers` | pointsVouchers | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/points/withdrawal-execute` | executePointsWithdrawal | — | `PointsExecution` | — | ✅ | ✅ |
 | GET | `/ops/purchase-invoices` | listPurchaseInvoices | — | `数组` | — | ✅ | ⬜ |
 | POST | `/ops/purchase-invoices/{invoiceNo}/reject` | rejectPurchaseInvoice | — | `PurchaseInvoice` | — | ✅ | ⬜ |

@@ -223,4 +223,23 @@ public class MybatisPointsOperationsStore implements PointsOperationsStore {
     public Map<String, Object> lockEvent(long id) {
         return DataScopeContext.executeWithoutScope(() -> mapper.lockEvent(id));
     }
+
+    @Override
+    public Map<String, Object> accountHead(
+            String type, ai.neargo.shop.pay.points.model.HolderType holder, String subject) {
+        return DataScopeContext.executeWithoutScope(
+                () -> mapper.accountHead(type, holder, subject));
+    }
+
+    @Override
+    public List<Map<String, Object>> entries(
+            String type,
+            ai.neargo.shop.pay.points.model.HolderType holder,
+            String subject,
+            String voucher,
+            long after,
+            int limit) {
+        return DataScopeContext.executeWithoutScope(
+                () -> mapper.entries(type, holder, subject, voucher, after, limit));
+    }
 }

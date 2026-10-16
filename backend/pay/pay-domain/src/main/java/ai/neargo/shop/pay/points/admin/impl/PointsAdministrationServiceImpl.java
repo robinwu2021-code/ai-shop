@@ -1,5 +1,6 @@
 package ai.neargo.shop.pay.points.admin.impl;
 
+import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.common.PayScenes;
 import ai.neargo.shop.pay.points.admin.PointsAdministrationService;
 import ai.neargo.shop.pay.points.agreement.AgreementService;
@@ -164,6 +165,9 @@ public class PointsAdministrationServiceImpl implements PointsAdministrationServ
 
     @Override
     public ChangeResult changeSwitch(SwitchChange r, String actor) {
+        require(
+                r.scope() != PointsSwitchService.Scope.SCENE || PayModes.isValid(r.subjectNo()),
+                "POINTS_SWITCH_SUBJECT_INVALID");
         require(
                 r.scope() != PointsSwitchService.Scope.CLIENT || PayScenes.isValid(r.subjectNo()),
                 "POINTS_SWITCH_SUBJECT_INVALID");

@@ -1019,3 +1019,22 @@ export interface PointsRecoveryExecution { reference: string; status: "SUCCEEDED
 export interface PointsEventView { id: number; eventNo: string; kind: string; state: string; attempt: number; nextAttempt: number; version: number }
 export interface PointsEventPage { rows: PointsEventView[]; next: number; hasMore: boolean }
 export interface PointsEventRetry { requestId: string; typeCode: string; eventId: number; expectedVersion: number; reason: string }
+
+export type PointsHolder = "MINT" | "ISSUE" | "USER" | "STORE" | "RECEIVE";
+export type PointsBucket = "ISSUED" | "ISSUABLE" | "PENDING" | "AVAILABLE" | "HELD" | "REFUND_RESERVED" | "RECIRCULATABLE";
+export type PointsPositionKind = "GRANT" | "REDEEM" | "REFUND" | "PAYOUT" | "STATEMENT" | "TRANSFER";
+export interface PointsAccountQ { typeCode: string; holderType: PointsHolder; holderNo: string }
+export interface PointsAccountView { snapshot: PointsAccountQ & { buckets: Partial<Record<PointsBucket, number>>; frozen: boolean; expireAt: number | null; expiryRevision: number; lastActiveAt: number }; exists: boolean; version: number }
+export interface PointsFreeze { requestId: string; typeCode: string; userNo: string; expectedVersion: number; frozen: boolean; reason: string }
+export interface PointsVoucherView { id: number; voucherNo: string; bizRef: string; currency: string; ratePoints: number; rateMinor: number }
+export interface PointsCursorPage<T> { rows: T[]; next: number; hasMore: boolean }
+export interface PointsEntryView { id: number; entryNo: string; voucherNo: string; holderType: PointsHolder; holderNo: string; bucket: PointsBucket; deltaPoints: number; afterPoints: number }
+export interface PointsFlowView { id: number; flowNo: string; voucherNo: string; bucket: "U" | "C" | "D" | "B"; deltaMinor: number; afterMinor: number }
+export interface PointsPositionQ { typeCode: string; kind: PointsPositionKind; reference: string }
+export interface PointsPositionView extends PointsPositionQ { state: string; originalPoints: number; processedPoints: number; version: number }
+export interface PointsStatsQ { typeCode: string; day: string; scope?: "TOTAL" | "STORE" | "USER"; subjectNo?: string }
+export interface PointsStats { typeCode: string; day: string; scopeNo: string; metrics: Record<string, number>; skipReasons: Record<string, number>; throughVoucherId: number; rebuiltAt: number }
+export interface PointsStatsRebuild { requestId: string; typeCode: string; day: string; reason: string }
+export interface PointsReconRun { requestId: string; typeCode: string; reason: string }
+export interface PointsRecon { typeCode: string; checkedAt: number; complete: boolean; differences: { code: string; reference: string; expected: number; actual: number }[] }
+export type PointsEntriesQ = PointsCursor & ({ holderType: PointsHolder; holderNo: string; voucherNo?: never } | { voucherNo: string; holderType?: never; holderNo?: never });

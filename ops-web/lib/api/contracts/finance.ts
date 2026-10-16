@@ -1,3 +1,4 @@
+import type { PointsAccountQ, PointsAccountView, PointsFreeze, PointsCursorPage, PointsVoucherView, PointsEntriesQ, PointsEntryView, PointsFlowView, PointsPositionQ, PointsPositionView, PointsStatsQ, PointsStats, PointsStatsRebuild, PointsReconRun, PointsRecon } from "@/lib/types";
 import type { PointsStatementPage, PointsStatementDraft, PointsStatementChange, PointsReference, PointsRevision, PointsRefundView, PointsReceivableRecovery, PointsFundsReference, PointsFundsView, PointsRecovery, PointsRecoveryExecution, PointsEventPage, PointsEventRetry } from "@/lib/types";
 import type { PointsOperation, PointsSubmission, PointsRequestReview, PointsRequestPage, PointsPlanChange, PointsPlanGenerate, PointsPlanReceipt, PointsPlanCancellation, PointsPlanPage, PointsWithdrawal, PointsExecution } from "@/lib/types";
 import type { PointsTypeConfig, PointsChangeResult, PointsCreate, PointsTypeChange, PointsFallback, PointsFallbackChange, PointsCursor, PointsSwitchPage, PointsSwitchChange, PointsTerms, PointsTermsChange, PointsAgreementPage } from "@/lib/types";
@@ -53,6 +54,17 @@ export interface FinanceApi {
   recoverPointsFunds(v: PointsRecovery): Promise<PointsRecoveryExecution>;
   pointsEvents(q: PointsCursor): Promise<PointsEventPage>;
   retryPointsEvent(v: PointsEventRetry): Promise<PointsOperation>;
+
+  pointsAccount(q: PointsAccountQ): Promise<PointsAccountView>;
+  freezePointsAccount(v: PointsFreeze): Promise<PointsOperation>;
+  pointsVouchers(q: PointsCursor): Promise<PointsCursorPage<PointsVoucherView>>;
+  pointsEntries(q: PointsEntriesQ): Promise<PointsCursorPage<PointsEntryView>>;
+  pointsFlows(q: PointsCursor): Promise<PointsCursorPage<PointsFlowView>>;
+  pointsPosition(q: PointsPositionQ): Promise<PointsPositionView>;
+  pointsStats(q: PointsStatsQ): Promise<PointsStats | null>;
+  rebuildPointsStats(v: PointsStatsRebuild): Promise<PointsOperation>;
+  pointsReconciliation(q: { typeCode: string; day: string }): Promise<PointsRecon | null>;
+  reconcilePoints(v: PointsReconRun): Promise<PointsOperation>;
 
   /** 结算单列表。**自营与第三方都在这里** —— 不该因经营模式分成两个入口。 */
   /**

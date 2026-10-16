@@ -24,3 +24,10 @@ it("retains store and revision when operating on one original statement route gr
   await financeHttp.pointsStatements({ typeCode: "T", storeNo: "STORE", after: 10, limit: 1 });
   expect(client.get).toHaveBeenCalledWith("/ops/points/statements", { typeCode: "T", storeNo: "STORE", after: 10, limit: 1 });
 });
+it("uses exact account or voucher filters and treats reconciliation as an explicit command", async () => {
+  await financeHttp.pointsEntries({ typeCode: "T", holderType: "STORE", holderNo: "STORE", after: 0, limit: 20 });
+  expect(client.get).toHaveBeenCalledWith("/ops/points/entries", { typeCode: "T", holderType: "STORE", holderNo: "STORE", after: 0, limit: 20 });
+  const command = { requestId: "RECON", typeCode: "T", reason: "review" };
+  await financeHttp.reconcilePoints(command);
+  expect(client.post).toHaveBeenCalledWith("/ops/points/reconcile", command);
+});

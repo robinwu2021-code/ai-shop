@@ -15,8 +15,31 @@ import java.util.Map;
 @Mapper
 public interface PointsOperationsMapper {
     @Select(
+            "SELECT version FROM pts_account WHERE type_code=#{type} AND holder_type=#{holder} AND"
+                + " holder_no=#{subject} AND deleted=0")
+    Map<String, Object> accountHead(
+            @Param("type") String type,
+            @Param("holder") ai.neargo.shop.pay.points.model.HolderType holder,
+            @Param("subject") String subject);
+
+    @Select(
+            "<script>SELECT"
+                + " id,entry_no,voucher_no,holder_type,holder_no,bucket,delta_points,after_points"
+                + " FROM pts_ledger_entry WHERE type_code=#{type} AND deleted=0 AND"
+                + " id>#{after}<choose><when test='voucher != null'> AND"
+                + " voucher_no=#{voucher}</when><otherwise> AND holder_type=#{holder} AND"
+                + " holder_no=#{subject}</otherwise></choose> ORDER BY id LIMIT #{limit}</script>")
+    List<Map<String, Object>> entries(
+            @Param("type") String type,
+            @Param("holder") ai.neargo.shop.pay.points.model.HolderType holder,
+            @Param("subject") String subject,
+            @Param("voucher") String voucher,
+            @Param("after") long after,
+            @Param("limit") int limit);
+
+    @Select(
             "SELECT id,payload_json,version FROM pts_store_statement WHERE type_code=#{type} AND"
-                + " store_no=#{store} AND id>#{after} AND deleted=0 ORDER BY id LIMIT #{limit}")
+                    + " store_no=#{store} AND id>#{after} AND deleted=0 ORDER BY id LIMIT #{limit}")
     List<Map<String, Object>> statements(
             @Param("type") String type,
             @Param("store") String store,
@@ -25,7 +48,7 @@ public interface PointsOperationsMapper {
 
     @Select(
             "SELECT id,type_code,state,event_no,version FROM pts_outbox WHERE id=#{id} AND"
-                + " deleted=0 FOR UPDATE")
+                    + " deleted=0 FOR UPDATE")
     Map<String, Object> lockEvent(long id);
 
     @Select(

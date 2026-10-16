@@ -59,6 +59,7 @@ export const pointsConfigurationMock: Pick<FinanceApi,
   },
   changePointsSwitch: (v) => command("SWITCH", v, () => {
     if (v.typeCode !== "*") type(v.typeCode);
+    if ((v.scope === "CLIENT" && !["MP_WECHAT", "MP_ALIPAY", "IOS", "ANDROID", "H5"].includes(v.subjectNo)) || (v.scope === "SCENE" && !["ONLINE", "OFFLINE"].includes(v.subjectNo))) fail("范围对象无效", "Invalid scope subject");
     const old = switches.findIndex((x) => x.scope === v.scope && x.typeCode === v.typeCode && x.subjectNo === v.subjectNo && x.flow === v.flow);
     if (old >= 0) switches.splice(old, 1);
     switches.push({ ...v, id: Date.now(), actor: "DEMO_OPERATOR", at: Date.now() });

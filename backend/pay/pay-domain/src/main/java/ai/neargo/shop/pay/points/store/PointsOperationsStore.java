@@ -43,6 +43,19 @@ public interface PointsOperationsStore {
 
     Map<String, Object> lockEvent(long id);
 
+    Map<String, Object> accountHead(
+            String typeCode,
+            ai.neargo.shop.pay.points.model.HolderType holderType,
+            String holderNo);
+
+    List<Map<String, Object>> entries(
+            String typeCode,
+            ai.neargo.shop.pay.points.model.HolderType holderType,
+            String holderNo,
+            String voucherNo,
+            long after,
+            int limit);
+
     long outstandingReceivable(String typeCode);
 
     List<Map<String, Object>> switches(String typeCode, long after, int limit);

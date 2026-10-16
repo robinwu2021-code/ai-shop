@@ -63,7 +63,12 @@ const OVERLAY: Record<string, Record<string, string>> = {
   // 挡不住下一次漏登记，所以一并补上（只加行，不动既有行）。
   当面付禁用类目: { en: "Pay-on-site deny list" },
   "类目 × 积分": { en: "Category × points" },
-  积分端开关: { en: "Points switches" },
+  积分范围开关: { en: "Points availability switches" },
+  积分类型与协议: { en: "Points types and agreements" },
+  积分账单与退款: { en: "Points statements and refunds" },
+  积分账务与对账: { en: "Points ledger and reconciliation" },
+  积分资金工作台: { en: "Points treasury" },
+  积分运营: { en: "Points operations" },
   应付与发票: { en: "Payables & invoices" },
   自营应付账款: { en: "Self-operated payables" },
   经营统计: { en: "Settlement stats" },

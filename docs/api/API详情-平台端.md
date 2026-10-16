@@ -2834,6 +2834,59 @@ _无字段_
 | `settleNos` | `string`\[\] | 是 | 本笔包含的结算单 |
 
 
+#### GET `/ops/points/account`
+
+pointsAccount
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsAccountView`](#pointsaccountview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `snapshot` | `object`（见下） | 是 | — |
+| `exists` | `boolean` | 是 | — |
+| `version` | `number` | 是 | — |
+
+`snapshot` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `buckets` | [`#/definitions/Partial<Record<PointsBucket,number>>`](#definitionspartialrecordpointsbucketnumber) | 是 | — |
+| `frozen` | `boolean` | 是 | — |
+| `expireAt` | `number,null` | 是 | — |
+| `expiryRevision` | `number` | 是 | — |
+| `lastActiveAt` | `number` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `holderType` | [`#/definitions/PointsHolder`](#definitionspointsholder) | 是 | — |
+| `holderNo` | `string` | 是 | — |
+
+
+#### POST `/ops/points/account-freeze`
+
+freezePointsAccount
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
 #### GET `/ops/points/agreements`
 
 pointsAgreements
@@ -2860,6 +2913,19 @@ pointsAgreements
 | `agreement` | [`#/definitions/PointsAgreement`](#definitionspointsagreement) | 是 | — |
 | `state` | `string` | 是 | — |
 | `version` | `number` | 是 | — |
+
+
+#### GET `/ops/points/entries`
+
+pointsEntries
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### POST `/ops/points/event-retry`
@@ -2939,6 +3005,19 @@ _无字段_
 | `action` | `string` | 是 | — |
 | `typeCode` | `string` | 是 | — |
 | `at` | `number` | 是 | — |
+
+
+#### GET `/ops/points/flows`
+
+pointsFlows
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### GET `/ops/points/funds`
@@ -3117,6 +3196,29 @@ _无字段_
 | `at` | `number` | 是 | — |
 
 
+#### GET `/ops/points/position`
+
+pointsPosition
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsPositionView`](#pointspositionview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | — |
+| `kind` | [`#/definitions/PointsPositionKind`](#definitionspointspositionkind) | 是 | — |
+| `reference` | `string` | 是 | — |
+| `state` | `string` | 是 | — |
+| `originalPoints` | `number` | 是 | — |
+| `processedPoints` | `number` | 是 | — |
+| `version` | `number` | 是 | — |
+
+
 #### POST `/ops/points/receivable-recovery`
 
 preparePointsReceivable
@@ -3158,6 +3260,40 @@ _无字段_
 | `rows` | [`#/definitions/PointsReceivable`](#definitionspointsreceivable)\[\] | 是 | 当前门店的应收记录 |
 | `next` | `number` | 是 | 下一页游标 |
 | `hasMore` | `boolean` | 是 | 是否可能还有下一页 |
+
+
+#### POST `/ops/points/reconcile`
+
+reconcilePoints
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### GET `/ops/points/reconciliation`
+
+pointsReconciliation
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### GET `/ops/points/refund`
@@ -3334,6 +3470,40 @@ pointsStatements
 | `version` | `number` | 是 | — |
 
 
+#### GET `/ops/points/stats`
+
+pointsStats
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/points/stats-rebuild`
+
+rebuildPointsStats
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
 #### GET `/ops/points/switches`
 
 pointsSwitches
@@ -3457,6 +3627,19 @@ _无字段_
 | `action` | `string` | 是 | — |
 | `typeCode` | `string` | 是 | — |
 | `at` | `number` | 是 | — |
+
+
+#### GET `/ops/points/vouchers`
+
+pointsVouchers
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
 
 
 #### POST `/ops/points/withdrawal-execute`
@@ -13236,6 +13419,27 @@ KPI 卡（金额为最小货币单位整数）。
 | `entityNames` | `string`\[\] | 是 | 命中的商家名 |
 | `entityCount` | `number` | 是 | 命中几家 |
 
+### PointsAccountView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `snapshot` | `object`（见下） | 是 | — |
+| `exists` | `boolean` | 是 | — |
+| `version` | `number` | 是 | — |
+
+`snapshot` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `buckets` | [`#/definitions/Partial<Record<PointsBucket,number>>`](#definitionspartialrecordpointsbucketnumber) | 是 | — |
+| `frozen` | `boolean` | 是 | — |
+| `expireAt` | `number,null` | 是 | — |
+| `expiryRevision` | `number` | 是 | — |
+| `lastActiveAt` | `number` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `holderType` | [`#/definitions/PointsHolder`](#definitionspointsholder) | 是 | — |
+| `holderNo` | `string` | 是 | — |
+
 ### PointsAgreementPage
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -13339,6 +13543,18 @@ Four independent funding buckets, with non-cash store receivables reported separ
 | `rows` | [`#/definitions/PointsPlanView`](#definitionspointsplanview)\[\] | 是 | — |
 | `next` | `number` | 是 | — |
 | `hasMore` | `boolean` | 是 | — |
+
+### PointsPositionView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | — |
+| `kind` | [`#/definitions/PointsPositionKind`](#definitionspointspositionkind) | 是 | — |
+| `reference` | `string` | 是 | — |
+| `state` | `string` | 是 | — |
+| `originalPoints` | `number` | 是 | — |
+| `processedPoints` | `number` | 是 | — |
+| `version` | `number` | 是 | — |
 
 ### PointsReceivablePage
 

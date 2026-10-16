@@ -199,6 +199,123 @@ class PointsOpsPermissionTest {
         }
     }
 
+    @Test
+    void inspection_protects_read_freeze_and_reconciliation_permissions_independently()
+            throws Exception {
+        try (var context = new AnnotationConfigApplicationContext(Config.class)) {
+            var controller =
+                    context.getBean(
+                            ai.neargo.shop.portal.ops.pay.OpsPointsInspectionController.class);
+            for (var method :
+                    ai.neargo.shop.portal.ops.pay.OpsPointsInspectionController.class
+                            .getDeclaredMethods()) {
+                if (!method.isAnnotationPresent(GetMapping.class)
+                        && !method.isAnnotationPresent(PostMapping.class)) continue;
+                Object[] args =
+                        Arrays.stream(method.getParameterTypes())
+                                .map(
+                                        t ->
+                                                t == String.class
+                                                        ? "SYNTHETIC"
+                                                        : t == long.class
+                                                                ? (Object) 0L
+                                                                : t == int.class
+                                                                        ? 50
+                                                                        : t
+                                                                                        == java.time
+                                                                                                .LocalDate
+                                                                                                .class
+                                                                                ? java.time
+                                                                                        .LocalDate
+                                                                                        .of(
+                                                                                                2026,
+                                                                                                10,
+                                                                                                16)
+                                                                                : t
+                                                                                                == ai
+                                                                                                        .neargo
+                                                                                                        .shop
+                                                                                                        .pay
+                                                                                                        .points
+                                                                                                        .model
+                                                                                                        .HolderType
+                                                                                                        .class
+                                                                                        ? ai.neargo
+                                                                                                .shop
+                                                                                                .pay
+                                                                                                .points
+                                                                                                .model
+                                                                                                .HolderType
+                                                                                                .STORE
+                                                                                        : t
+                                                                                                        == ai
+                                                                                                                .neargo
+                                                                                                                .shop
+                                                                                                                .pay
+                                                                                                                .points
+                                                                                                                .model
+                                                                                                                .PositionMove
+                                                                                                                .Kind
+                                                                                                                .class
+                                                                                                ? ai
+                                                                                                        .neargo
+                                                                                                        .shop
+                                                                                                        .pay
+                                                                                                        .points
+                                                                                                        .model
+                                                                                                        .PositionMove
+                                                                                                        .Kind
+                                                                                                        .GRANT
+                                                                                                : t
+                                                                                                                == ai
+                                                                                                                        .neargo
+                                                                                                                        .shop
+                                                                                                                        .pay
+                                                                                                                        .points
+                                                                                                                        .admin
+                                                                                                                        .PointsInspectionService
+                                                                                                                        .StatsScope
+                                                                                                                        .class
+                                                                                                        ? ai
+                                                                                                                .neargo
+                                                                                                                .shop
+                                                                                                                .pay
+                                                                                                                .points
+                                                                                                                .admin
+                                                                                                                .PointsInspectionService
+                                                                                                                .StatsScope
+                                                                                                                .STORE
+                                                                                                        : null)
+                                .toArray();
+                String required =
+                        method.getName().equals("reconciliation")
+                                ? Perms.FINANCE_RECON_READ
+                                : method.getName().equals("reconcile")
+                                        ? Perms.FINANCE_RECON_RESOLVE
+                                        : method.isAnnotationPresent(GetMapping.class)
+                                                ? Perms.FINANCE_SETTLE_READ
+                                                : Perms.FINANCE_SETTLE_EXECUTE;
+                for (String permission :
+                        List.of(
+                                Perms.FINANCE_SETTLE_READ,
+                                Perms.FINANCE_SETTLE_EXECUTE,
+                                Perms.FINANCE_PAYOUT_EXECUTE,
+                                Perms.FINANCE_RECON_READ,
+                                Perms.FINANCE_RECON_RESOLVE)) {
+                    authenticate(permission);
+                    if (permission.equals(required)) method.invoke(controller, args);
+                    else
+                        assertThatThrownBy(() -> method.invoke(controller, args))
+                                .isInstanceOf(InvocationTargetException.class)
+                                .cause()
+                                .isInstanceOf(AccessDeniedException.class);
+                }
+            }
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
     private void authenticate(String permission) {
         SecurityContextHolder.getContext()
                 .setAuthentication(
@@ -228,6 +345,12 @@ class PointsOpsPermissionTest {
         @Bean
         PermissionCheck perm() {
             return new PermissionCheck();
+        }
+
+        @Bean
+        ai.neargo.shop.portal.ops.pay.OpsPointsInspectionController inspectionController() {
+            return new ai.neargo.shop.portal.ops.pay.OpsPointsInspectionController(
+                    org.mockito.Mockito.mock(PointsInspectionAppService.class));
         }
 
         @Bean
