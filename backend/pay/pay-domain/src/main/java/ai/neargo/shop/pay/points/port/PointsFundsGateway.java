@@ -11,36 +11,97 @@ public interface PointsFundsGateway {
     /** Resolves an unknown outcome using the original immutable command. */
     FundsResult query(FundsCommand command);
 
-    enum FundsPath { DIRECT, AGGREGATED }
-    enum FundsPurpose {
-        SUBSIDY, INTERNAL_REPLENISHMENT, TRANSFER, COLLECTION, EXPIRY_INCOME, COLLECTION_REVERSAL;
-        /** Direct orders need merchant subsidy; aggregated orders replenish the platform goods-funds allocation. */
-        public static FundsPurpose forPerOrder(FundsPath path) {
-            if (path==null) { throw new IllegalArgumentException("POINTS_FUNDS_PATH_REQUIRED"); }
-            return path==FundsPath.DIRECT?SUBSIDY:INTERNAL_REPLENISHMENT;
-        }
+    enum FundsPath {
+        DIRECT,
+        AGGREGATED
     }
-    enum FundsStatus { SUCCEEDED, FAILED, UNKNOWN }
 
-    record FundsContext(FundsPath path, String channel, String merchantNo, String storeNo, String accountVersion,
-                        String subMerchantId, String tradeNo, String outTradeNo, long orderTotalMinor) { }
-    record FundsCapabilities(boolean subsidy, boolean transfer, boolean internalReplenishment,
-                             boolean collection, boolean collectionReversal, boolean expiryIncome) {
-        public FundsCapabilities(boolean subsidy,boolean transfer,boolean internalReplenishment,
-                                 boolean collection,boolean collectionReversal) {
-            this(subsidy,transfer,internalReplenishment,collection,collectionReversal,false);
-        }
-        public FundsCapabilities(boolean subsidy, boolean transfer, boolean internalReplenishment,
-                                 boolean collection) {
-            this(subsidy,transfer,internalReplenishment,collection,false,false);
+    enum FundsPurpose {
+        SUBSIDY,
+        INTERNAL_REPLENISHMENT,
+        TRANSFER,
+        COLLECTION,
+        EXPIRY_INCOME,
+        COLLECTION_REVERSAL;
+
+        /**
+         * Direct orders need merchant subsidy; aggregated orders replenish the platform goods-funds
+         * allocation.
+         */
+        public static FundsPurpose forPerOrder(FundsPath path) {
+            if (path == null) {
+                throw new IllegalArgumentException("POINTS_FUNDS_PATH_REQUIRED");
+            }
+            return path == FundsPath.DIRECT ? SUBSIDY : INTERNAL_REPLENISHMENT;
         }
     }
-    record FundsCommand(String ticketNo, String providerIdem, FundsPurpose purpose, FundsContext context,
-                        String currency, long amountMinor, String originalTicketNo, String originalEvidenceNo) {
-        public FundsCommand(String ticketNo, String providerIdem, FundsPurpose purpose, FundsContext context,
-                            String currency, long amountMinor) {
-            this(ticketNo,providerIdem,purpose,context,currency,amountMinor,null,null);
+
+    enum FundsStatus {
+        SUCCEEDED,
+        FAILED,
+        UNKNOWN
+    }
+
+    record FundsContext(
+            FundsPath path,
+            String channel,
+            String merchantNo,
+            String storeNo,
+            String accountVersion,
+            String subMerchantId,
+            String tradeNo,
+            String outTradeNo,
+            long orderTotalMinor) {}
+
+    record FundsCapabilities(
+            boolean subsidy,
+            boolean transfer,
+            boolean internalReplenishment,
+            boolean collection,
+            boolean collectionReversal,
+            boolean expiryIncome) {
+        public FundsCapabilities(
+                boolean subsidy,
+                boolean transfer,
+                boolean internalReplenishment,
+                boolean collection,
+                boolean collectionReversal) {
+            this(subsidy, transfer, internalReplenishment, collection, collectionReversal, false);
+        }
+
+        public FundsCapabilities(
+                boolean subsidy,
+                boolean transfer,
+                boolean internalReplenishment,
+                boolean collection) {
+            this(subsidy, transfer, internalReplenishment, collection, false, false);
         }
     }
-    record FundsResult(String ticketNo, FundsStatus status, String evidenceNo, long amountMinor, String reason) { }
+
+    record FundsCommand(
+            String ticketNo,
+            String providerIdem,
+            FundsPurpose purpose,
+            FundsContext context,
+            String currency,
+            long amountMinor,
+            String originalTicketNo,
+            String originalEvidenceNo) {
+        public FundsCommand(
+                String ticketNo,
+                String providerIdem,
+                FundsPurpose purpose,
+                FundsContext context,
+                String currency,
+                long amountMinor) {
+            this(ticketNo, providerIdem, purpose, context, currency, amountMinor, null, null);
+        }
+    }
+
+    record FundsResult(
+            String ticketNo,
+            FundsStatus status,
+            String evidenceNo,
+            long amountMinor,
+            String reason) {}
 }
