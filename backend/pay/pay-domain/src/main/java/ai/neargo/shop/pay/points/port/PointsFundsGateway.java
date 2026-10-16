@@ -25,10 +25,14 @@ public interface PointsFundsGateway {
     record FundsContext(FundsPath path, String channel, String merchantNo, String storeNo, String accountVersion,
                         String subMerchantId, String tradeNo, String outTradeNo, long orderTotalMinor) { }
     record FundsCapabilities(boolean subsidy, boolean transfer, boolean internalReplenishment,
-                             boolean collection, boolean collectionReversal) {
+                             boolean collection, boolean collectionReversal, boolean expiryIncome) {
+        public FundsCapabilities(boolean subsidy,boolean transfer,boolean internalReplenishment,
+                                 boolean collection,boolean collectionReversal) {
+            this(subsidy,transfer,internalReplenishment,collection,collectionReversal,false);
+        }
         public FundsCapabilities(boolean subsidy, boolean transfer, boolean internalReplenishment,
                                  boolean collection) {
-            this(subsidy,transfer,internalReplenishment,collection,false);
+            this(subsidy,transfer,internalReplenishment,collection,false,false);
         }
     }
     record FundsCommand(String ticketNo, String providerIdem, FundsPurpose purpose, FundsContext context,

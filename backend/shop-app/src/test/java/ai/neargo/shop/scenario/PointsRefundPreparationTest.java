@@ -1236,7 +1236,7 @@ class PointsRefundPreparationTest {
             jdbc().update("INSERT INTO pts_lifecycle_fact(type_code,state,payload_json,sub_order_no,source_version)"
                     + " VALUES(?,'FINALIZED','{\"finalized\":true}',?,1)",type,type);
         }
-        earn.grant(new PointsEarnPort.GrantCommand("EARN:"+type,type,"USER",type,"TEST","APP",1,List.of(
+        earn.grant(new PointsEarnPort.GrantCommand("EARN:"+type,type,"USER",type,"STORE","TEST","APP",1,List.of(
                 new PointsEarnPort.EarnLine("ITEM","G","CAT",1,100,0,
                         new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.FIXED,20)))));
         return type;
@@ -1260,10 +1260,11 @@ class PointsRefundPreparationTest {
 
     @Configuration
     @Import({PointsPostingDatabaseTest.Config.class,MybatisPointsReadStore.class,
+            ai.neargo.shop.pay.points.store.impl.MybatisStatementStore.class,
             MybatisPointsConfigurationStore.class,EarnServiceImpl.class,
             MybatisPointsCashRefundReadStore.class,MybatisPointsFactStore.class,PointsRefundPortImpl.class})
     @ComponentScan({"ai.neargo.shop.pay.points.refund.impl","ai.neargo.shop.pay.points.app.impl",
-            "ai.neargo.shop.pay.points.payout.impl"})
+            "ai.neargo.shop.pay.points.payout.impl","ai.neargo.shop.pay.points.statement"})
     static class Config {
         @Bean TestFunds funds() { return new TestFunds(); }
     }

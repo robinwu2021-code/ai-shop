@@ -61,7 +61,7 @@ class EarnServiceTest {
         } finally { jdbc.update("UPDATE pts_point_type SET active_market=NULL WHERE type_code=?",type); }
     }
     private PointsEarnPort.GrantCommand command(String type,String sub) {
-        return new PointsEarnPort.GrantCommand("EV:"+type+":"+sub,type+sub,"U",type,"WECHAT","MP",1,
+        return new PointsEarnPort.GrantCommand("EV:"+type+":"+sub,type+sub,"U",type,"STORE","WECHAT","MP",1,
                 List.of(new PointsEarnPort.EarnLine("I", "G", "C",1,100,0,
                         new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.FIXED,100))));
     }

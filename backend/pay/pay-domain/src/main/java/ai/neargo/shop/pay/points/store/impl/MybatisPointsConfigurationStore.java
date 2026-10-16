@@ -40,6 +40,9 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
     @Override public Map<String, Object> lockReceivable(String no) {
         return DataScopeContext.executeWithoutScope(() -> mapper.lockReceivable(no));
     }
+    @Override public Map<String,Object> lockLifecycle(String type,String sub) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.lockLifecycle(type,sub));
+    }
     @Override public void changeTypeStatus(String type, PointType.Status expected, PointType.Status next, String market, String actor) {
         DataScopeContext.executeWithoutScope(() -> {
             try {
@@ -64,7 +67,17 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
         DataScopeContext.executeWithoutScope(() -> { mapper.terminateAgreement(key,actor); return null; });
     }
     @Override public void submit(PoolRequest r, String json) {
-        DataScopeContext.executeWithoutScope(() -> { mapper.submit(r,json); return null; });
+        lockTypeAndPool(r.typeCode());
+        DataScopeContext.executeWithoutScope(() -> {
+            if ("RETIRED".equals(mapper.typeStatusForUpdate(r.typeCode()))) {
+                if (mapper.lockRequest(r.requestNo())!=null) { throw new DuplicateKeyException("Existing request"); }
+                throw new IllegalArgumentException("POINTS_TYPE_RETIRED");
+            }
+            mapper.submit(r,json); return null;
+        });
+    }
+    @Override public Map<String,Object> request(String no) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.request(no));
     }
     @Override public Map<String, Object> lockRequest(String no) {
         return DataScopeContext.executeWithoutScope(() -> mapper.lockRequest(no));

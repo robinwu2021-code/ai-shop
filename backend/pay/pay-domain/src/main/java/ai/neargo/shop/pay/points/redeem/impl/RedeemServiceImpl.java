@@ -21,6 +21,8 @@ import ai.neargo.shop.pay.points.posting.PointsPostingService;
 import ai.neargo.shop.pay.points.redeem.RedeemService;
 import ai.neargo.shop.pay.points.store.PointsConfigurationStore;
 import ai.neargo.shop.pay.points.store.PointsReadStore;
+import ai.neargo.shop.pay.points.store.PointsReadStore.Availability;
+import ai.neargo.shop.pay.points.pool.PointsSwitchService.Flow;
 import ai.neargo.shop.spi.points.PointsRedeemPort.HoldCommand;
 import ai.neargo.shop.spi.points.PointsRedeemPort.HoldOutcome;
 import ai.neargo.shop.spi.points.PointsRedeemPort.RedeemQuery;
@@ -145,7 +147,7 @@ public class RedeemServiceImpl implements RedeemService {
     }
     private Evaluation evaluate(RedeemQuery q,PointType type) {
         String reason=null;
-        if (!enabled) { reason="POINTS_DISABLED"; }
+        if (!enabled || !read.enabled(type.typeCode(),q.userNo(),null)) { reason="POINTS_DISABLED"; }
         else if (type.status()!=PointType.Status.ACTIVE && type.status()!=PointType.Status.DRAINING) {
             reason="POINTS_TYPE_NOT_ACTIVE";
         }
@@ -155,6 +157,10 @@ public class RedeemServiceImpl implements RedeemService {
         List<Accepted> accepted=new ArrayList<>();
         if (reason==null) {
             for (Target target:q.targets()) {
+                if (!read.enabled(new Availability(type.typeCode(),q.userNo(),target.storeNo(),target.merchantNo(),
+                    type.market(),q.payMode(),q.clientType(),Flow.REDEEM))) {
+                    reason="POINTS_DISABLED"; break;
+                }
                 AgreementSnapshot agreement=agreements.active(type.typeCode(),target.storeNo());
                 if (agreement==null || !agreement.merchantNo().equals(target.merchantNo())) {
                     reason="POINTS_STORE_NOT_ACCEPTING"; break;

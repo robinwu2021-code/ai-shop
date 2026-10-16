@@ -8,5 +8,6 @@ public interface PointTypeService {
     PointType create(CreateType command, String actor);
     PointType activate(String typeCode, String actor);
     PointType drain(String typeCode, String actor);
+    PointType retire(String typeCode, String actor);
     record CreateType(String typeCode, String market, RedeemRate rate, int deductRatioBp, int idleDays) { }
 }

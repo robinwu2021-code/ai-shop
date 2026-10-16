@@ -38,6 +38,9 @@ public class PoolRequestServiceImpl implements PoolRequestService {
         }
     }
     @Override public PostingResult approve(String no, String actor) {
+        var hint=config.request(no);
+        if (hint==null) { throw new IllegalArgumentException("POINTS_REQUEST_UNKNOWN"); }
+        config.lockTypeAndPool((String)hint.get("type_code"));
         var row=config.lockRequest(no);
         if (row==null || actor==null || actor.isBlank()) { throw new IllegalArgumentException("POINTS_REQUEST_UNKNOWN"); }
         Envelope envelope=json.readValue((String)row.get("payload_json"),Envelope.class);

@@ -2,6 +2,9 @@ package ai.neargo.shop.pay.points.store.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.mapper.points.PointsConfigurationMapper;
+import ai.neargo.shop.pay.points.policy.SwitchPolicy;
+import ai.neargo.shop.pay.points.pool.PointsSwitchService.Flow;
+import org.springframework.beans.factory.annotation.Value;
 import ai.neargo.shop.pay.points.model.AccountSnapshot;
 import ai.neargo.shop.pay.points.model.Bucket;
 import ai.neargo.shop.pay.points.model.FundPool;
@@ -9,6 +12,7 @@ import ai.neargo.shop.pay.points.model.HolderType;
 import ai.neargo.shop.pay.points.model.PointType;
 import ai.neargo.shop.pay.points.model.RedeemRate;
 import ai.neargo.shop.pay.points.model.PositionMove;
+import ai.neargo.shop.pay.points.model.PointsKeys;
 import ai.neargo.shop.pay.points.store.PointsReadStore;
 import org.springframework.stereotype.Repository;
 
@@ -21,6 +25,17 @@ import java.util.Optional;
 /** Trusted business services authorize subjects; SQL projection code stays in the store adapter. */
 @Repository
 public class MybatisPointsReadStore implements PointsReadStore {
+    @Value("${shop.points.enabled:false}") private boolean enabled;
+    @Override public boolean enabled(String type,String user,String store) {
+        String market=type(type).orElseThrow().market();
+        var keys=SwitchPolicy.selectors(new Availability(type,user,store,null,market,null,null,Flow.REDEEM))
+                .stream().filter(k -> k.key()!=null).toList();
+        return enabled && DataScopeContext.executeWithoutScope(() -> mapper.disabledSwitches(type,keys).isEmpty());
+    }
+    @Override public boolean enabled(Availability context) {
+        return enabled && DataScopeContext.executeWithoutScope(() ->
+                mapper.disabledSwitches(context.typeCode(),SwitchPolicy.selectors(context)).isEmpty());
+    }
     private final PointsConfigurationMapper mapper;
     public MybatisPointsReadStore(PointsConfigurationMapper mapper) { this.mapper = mapper; }
     @Override public Optional<PointType> type(String no) {

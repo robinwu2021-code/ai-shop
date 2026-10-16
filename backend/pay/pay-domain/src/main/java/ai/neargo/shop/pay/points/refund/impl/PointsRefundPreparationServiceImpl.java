@@ -78,6 +78,9 @@ public class PointsRefundPreparationServiceImpl implements PointsRefundPreparati
             return saved.preparation();
         }
         require(read.openRefunds(command.typeCode(),command.subOrderNo()).isEmpty(),"POINTS_REFUND_SOURCE_BUSY");
+        var responsibility=configuration.lockLifecycle(command.typeCode(),command.subOrderNo());
+        require(responsibility==null || !json.readTree((String)responsibility.get("payload_json"))
+                .hasNonNull("refundClosedFact"),"POINTS_REFUND_RESPONSIBILITY_CLOSED");
         String grantNo=PointsKeys.position("G",command.typeCode(),command.subOrderNo());
         String redeemNo=PointsKeys.position("R",command.typeCode(),command.subOrderNo());
         var boundRedemption=read.position(PositionMove.Kind.REDEEM.table(),redeemNo);

@@ -47,6 +47,7 @@ public class PoolServiceImpl implements PoolService {
         }
         config.lockTypeAndPool(r.typeCode());
         PointType type = read.type(r.typeCode()).orElseThrow();
+        if (type.status()==PointType.Status.RETIRED) { throw new IllegalArgumentException("POINTS_TYPE_RETIRED"); }
         long amount=r.amountMinor();
         if (amount<=0 || (r.action()!=PoolRequest.Action.TOPUP_B && amount%type.rate().minorUnit()!=0)) {
             throw new IllegalArgumentException("POINTS_AMOUNT_NOT_ALIGNED");

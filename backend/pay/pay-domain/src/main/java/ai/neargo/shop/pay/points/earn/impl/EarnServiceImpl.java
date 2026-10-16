@@ -16,6 +16,8 @@ import ai.neargo.shop.pay.points.policy.EarnPolicy;
 import ai.neargo.shop.pay.points.posting.PointsPostingService;
 import ai.neargo.shop.pay.points.store.PointsConfigurationStore;
 import ai.neargo.shop.pay.points.store.PointsReadStore;
+import ai.neargo.shop.pay.points.store.PointsReadStore.Availability;
+import ai.neargo.shop.pay.points.pool.PointsSwitchService.Flow;
 import ai.neargo.shop.spi.points.PointsEarnPort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** Pool locking makes the last-budget decision and its entire grant atomic, with a recorded skipped result. */
 @Service
@@ -40,7 +43,8 @@ public class EarnServiceImpl implements EarnService {
         this.read=read; this.config=config; this.posting=posting; this.enabled=enabled;
     }
     @Override public PointsEarnPort.GrantOutcome grant(PointsEarnPort.GrantCommand c) {
-        if (c.subOrderNo()==null || c.userNo()==null || c.typeCode()==null || c.sourceVersion()<0) {
+        if (c.subOrderNo()==null || c.userNo()==null || c.typeCode()==null || c.storeNo()==null
+                || c.storeNo().isBlank() || c.sourceVersion()<0) {
             throw new IllegalArgumentException("POINTS_EARN_INPUT_INVALID");
         }
         config.lockTypeAndPool(c.typeCode());
@@ -51,7 +55,11 @@ public class EarnServiceImpl implements EarnService {
             var stored=json.readTree((String)prior.get("payload_json"));
             var original=json.treeToValue(stored.get("command"),PointsEarnPort.GrantCommand.class);
             if (!original.userNo().equals(c.userNo()) || !original.typeCode().equals(c.typeCode())
-                    || !original.lines().equals(c.lines()) || !java.util.Objects.equals(original.payChannel(),c.payChannel())) {
+                    || !Objects.equals(original.storeNo(),c.storeNo()) || !original.lines().equals(c.lines())
+                    || !Objects.equals(original.payChannel(),c.payChannel())
+                    || !Objects.equals(original.payScene(),c.payScene())
+                    || !Objects.equals(original.merchantNo(),c.merchantNo())
+                    || !Objects.equals(original.clientType(),c.clientType())) {
                 throw new IllegalArgumentException("POINTS_IDEMPOTENCY_CONFLICT");
             }
             return outcome(ref);
@@ -68,7 +76,10 @@ public class EarnServiceImpl implements EarnService {
             if (state.path("cancelled").asBoolean(false)) { reason="POINTS_ORDER_CANCELLED"; }
             finalized=state.path("finalized").asBoolean(false);
         }
-        if (reason==null && !enabled) { reason="POINTS_DISABLED"; }
+        if (reason==null && (!enabled || !read.enabled(new Availability(c.typeCode(),c.userNo(),c.storeNo(),c.merchantNo(),
+                type.market(),c.payScene(),c.clientType(),Flow.EARN)))) {
+            reason="POINTS_DISABLED";
+        }
         if (reason==null && !"ACTIVE".equals(type.status().name())) { reason="POINTS_TYPE_NOT_ACTIVE"; }
         if (reason==null && ("OFFLINE".equals(c.payChannel()) || c.payChannel()==null)) { reason="POINTS_OFFLINE"; }
         if (reason==null && read.account(c.typeCode(),HolderType.USER,c.userNo()).frozen()) { reason="POINTS_FROZEN"; }

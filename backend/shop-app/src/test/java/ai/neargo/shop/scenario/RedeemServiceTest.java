@@ -170,7 +170,7 @@ class RedeemServiceTest {
                     c.payMode(),c.clientType(),c.targets())).points()).isEqualTo(100);
             assertThat(redeem.hold(c).points()).isEqualTo(100);
             var skipped=earning.grant(new PointsEarnPort.GrantCommand("NEW:"+type,"NEW-S:"+type,"U",type,
-                    "TEST","MP",1,List.of(new PointsEarnPort.EarnLine("I","G","C",1,100,0,
+                    "STORE","TEST","MP",1,List.of(new PointsEarnPort.EarnLine("I","G","C",1,100,0,
                     new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.FIXED,100)))));
             assertThat(skipped.status()).isEqualTo(PointsEarnPort.GrantStatus.SKIPPED);
             assertThat(skipped.reason()).isEqualTo("POINTS_TYPE_NOT_ACTIVE");
@@ -197,7 +197,7 @@ class RedeemServiceTest {
         fund(type,"U",PoolRequest.Action.TOPUP_U);
         if (reserve) { fund(type,"B",PoolRequest.Action.TOPUP_B); }
         String sub="E:"+type;
-        earning.grant(new PointsEarnPort.GrantCommand("EV:"+type,sub,"U",type,"TEST","MP",1,
+        earning.grant(new PointsEarnPort.GrantCommand("EV:"+type,sub,"U",type,"STORE","TEST","MP",1,
                 List.of(new PointsEarnPort.EarnLine("I","G","C",1,100,0,
                         new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.FIXED,100)))));
         posting.post(new Voucher("ACT:"+type,type,"CNY",new RedeemRate(1,1),

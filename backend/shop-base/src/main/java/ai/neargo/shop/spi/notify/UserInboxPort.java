@@ -13,4 +13,9 @@ public interface UserInboxPort {
      * @return 进了消息列表 true；被平台营销日上限拦下或重复 false
      */
     boolean deliverMarketing(String userNo, String title, String body, String link, String dedupKey);
+    /** Financial lifecycle notice: durable deduplication, without a marketing frequency cap. */
+    default void pointsExpiring(PointsExpiry notice) {
+        throw new UnsupportedOperationException("POINTS_NOTIFICATION_UNAVAILABLE");
+    }
+    record PointsExpiry(String userNo,long points,long expireAt,String dedupKey) { }
 }

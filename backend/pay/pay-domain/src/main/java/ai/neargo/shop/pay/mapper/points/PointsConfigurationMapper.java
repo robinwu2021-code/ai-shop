@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.mapper.points;
 
+import ai.neargo.shop.pay.points.policy.SwitchPolicy.Key;
+
 import ai.neargo.shop.pay.points.model.PointType;
 import ai.neargo.shop.pay.points.model.PoolRequest;
 import org.apache.ibatis.annotations.Insert;
@@ -32,6 +34,104 @@ public interface PointsConfigurationMapper {
     Map<String, Object> lockPayoutTicket(String no);
     @Select("SELECT * FROM pts_store_statement WHERE position_no=#{no} AND deleted=0 FOR UPDATE")
     Map<String, Object> lockStatement(String no);
+    @Select("SELECT * FROM pts_lifecycle_fact WHERE type_code=#{type} AND sub_order_no=#{sub} AND deleted=0 FOR UPDATE")
+    Map<String,Object> lockLifecycle(@Param("type") String type,@Param("sub") String sub);
+    @Select("SELECT * FROM pts_account WHERE type_code=#{type} AND holder_type='USER' AND holder_no=#{user}"
+            + " AND deleted=0 FOR UPDATE")
+    Map<String,Object> lockUser(@Param("type") String type,@Param("user") String user);
+    @Select("SELECT * FROM pts_fund_transfer WHERE position_no=#{no} AND deleted=0 FOR UPDATE")
+    Map<String,Object> lockTransfer(String no);
+    @Select("SELECT status FROM pts_point_type WHERE type_code=#{type} AND deleted=0 FOR UPDATE")
+    String typeStatusForUpdate(String type);
+    @Select("SELECT * FROM pts_pool_request WHERE request_no=#{no} AND deleted=0")
+    Map<String,Object> request(String no);
+    @Select("SELECT * FROM pts_fund_pool WHERE type_code=#{type} AND deleted=0 FOR UPDATE")
+    Map<String,Object> lockPoolSnapshot(String type);
+    @Select("SELECT id FROM pts_account WHERE type_code=#{type} AND deleted=0"
+            + " AND pending_points+available_points+held_points+issuable_points+refund_reserved_points>0"
+            + " LIMIT 1 FOR UPDATE")
+    Long liveAccount(String type);
+    @Select("SELECT id FROM pts_redeem_position WHERE type_code=#{type} AND deleted=0 AND sub_order_no IS NOT NULL"
+            + " AND original_points>processed_points AND state NOT IN ('CLOSED','RELEASED') LIMIT 1 FOR UPDATE")
+    Long liveRedemption(String type);
+    @Select("SELECT id FROM pts_receivable WHERE type_code=#{type} AND deleted=0"
+            + " AND recovered_minor<original_minor LIMIT 1 FOR UPDATE")
+    Long liveDebt(String type);
+    @Select("SELECT id FROM pts_payout_ticket WHERE type_code=#{type} AND deleted=0"
+            + " AND state NOT IN ('SUCCEEDED','FAILED') LIMIT 1 FOR UPDATE")
+    Long livePayout(String type);
+    @Select("SELECT id FROM pts_refund_preparation WHERE type_code=#{type} AND deleted=0"
+            + " AND state NOT IN ('CONFIRMED','ABORTED') LIMIT 1 FOR UPDATE")
+    Long liveRefund(String type);
+    @Select("SELECT id FROM pts_store_statement WHERE type_code=#{type} AND deleted=0"
+            + " AND state NOT IN ('PAID','CLEARED') LIMIT 1 FOR UPDATE")
+    Long liveStatement(String type);
+    @Select("SELECT id FROM pts_fund_transfer WHERE type_code=#{type} AND deleted=0"
+            + " AND state NOT IN ('SUCCEEDED','FAILED') LIMIT 1 FOR UPDATE")
+    Long liveTransfer(String type);
+    @Select("SELECT id FROM pts_pool_request WHERE type_code=#{type} AND deleted=0"
+            + " AND state IN ('SUBMITTED','APPROVING') LIMIT 1 FOR UPDATE")
+    Long liveApproval(String type);
+    @Select("SELECT id FROM pts_topup_plan WHERE type_code=#{type} AND deleted=0"
+            + " AND state IN ('NEW','ACTIVE') LIMIT 1 FOR UPDATE")
+    Long livePlan(String type);
+    @Select("SELECT * FROM pts_merchant_agreement WHERE type_code=#{type} AND deleted=0"
+            + " AND state IN ('ACTIVE','TERMINATED') ORDER BY id LIMIT 10001")
+    List<Map<String,Object>> acceptanceHistory(String type);
+    @Select("SELECT scope,scope_no,from_at,to_at FROM pts_pause_interval WHERE deleted=0"
+            + " AND (type_code=#{type} OR type_code='*') AND from_at<#{asOf}"
+            + " AND (to_at IS NULL OR to_at>#{active}) ORDER BY id LIMIT 10001")
+    List<Map<String,Object>> acceptancePauses(@Param("type") String type,@Param("active") long active,
+                                             @Param("asOf") long asOf);
+    @Select("<script>SELECT * FROM pts_switch WHERE deleted=0 AND state='OFF'"
+            + " AND (type_code=#{type} OR type_code='*') AND ("
+            + "<foreach collection='keys' item='k' separator=' OR '>"
+            + "(scope=#{k.scope} AND (#{k.key,jdbcType=VARCHAR} IS NULL OR scope_no=#{k.key,jdbcType=VARCHAR}))"
+            + "</foreach>) ORDER BY scope,scope_no FOR UPDATE</script>")
+    List<Map<String,Object>> disabledSwitches(@Param("type") String type,
+            @Param("keys") List<Key> keys);
+    @Select("<script>SELECT from_at,to_at FROM pts_pause_interval WHERE deleted=0"
+            + " AND from_at &lt; #{asOf} AND (to_at IS NULL OR to_at &gt; #{active}) AND ("
+            + "<foreach collection='keys' item='k' separator=' OR '>"
+            + "(scope=#{k.scope} AND scope_no=#{k.key})</foreach>) ORDER BY from_at</script>")
+    List<Map<String,Object>> scopedPauses(@Param("keys") List<Key> keys,
+                                        @Param("active") long active,@Param("asOf") long asOf);
+    @Select("SELECT * FROM pts_switch WHERE ((scope='GLOBAL' AND scope_no='ALL')"
+            + " OR (scope='TYPE' AND scope_no=#{type}) OR (scope='USER' AND scope_no=#{user})"
+            + " OR (scope='STORE' AND scope_no=#{store})) AND deleted=0 ORDER BY scope,scope_no FOR UPDATE")
+    List<Map<String,Object>> switches(@Param("type") String type,@Param("user") String user,
+                                     @Param("store") String store);
+    @Select("SELECT * FROM pts_switch WHERE scope=#{scope} AND scope_no=#{no} AND deleted=0 FOR UPDATE")
+    Map<String,Object> lockSwitch(@Param("scope") String scope,@Param("no") String no);
+    @Insert("INSERT INTO pts_switch(type_code,state,payload_json,scope,scope_no) VALUES(#{type},#{state},"
+            + "#{payload},#{scope},#{no}) ON DUPLICATE KEY UPDATE state=VALUES(state),"
+            + "payload_json=VALUES(payload_json),version=version+1")
+    int saveSwitch(@Param("type") String type,@Param("state") String state,@Param("payload") String payload,
+                   @Param("scope") String scope,@Param("no") String no);
+    @Insert("INSERT INTO pts_switch_log(type_code,state,payload_json,scope,scope_no)"
+            + " VALUES(#{type},#{state},#{payload},#{scope},#{no})")
+    int logSwitch(@Param("type") String type,@Param("state") String state,@Param("payload") String payload,
+                  @Param("scope") String scope,@Param("no") String no);
+    @Insert("INSERT INTO pts_pause_interval(type_code,state,payload_json,scope,scope_no,from_at)"
+            + " VALUES(#{type},'OPEN',#{payload},#{scope},#{no},#{at})")
+    int openPause(@Param("type") String type,@Param("scope") String scope,@Param("no") String no,
+                  @Param("at") long at,@Param("payload") String payload);
+    @Update("UPDATE pts_pause_interval SET to_at=#{at},state='CLOSED',version=version+1"
+            + " WHERE scope=#{scope} AND scope_no=#{no} AND to_at IS NULL AND deleted=0")
+    int closePause(@Param("scope") String scope,@Param("no") String no,@Param("at") long at);
+    @Select("SELECT from_at,to_at FROM pts_pause_interval WHERE deleted=0"
+            + " AND ((scope='GLOBAL' AND scope_no='ALL') OR (scope='TYPE' AND scope_no=#{type})"
+            + " OR (scope='USER' AND scope_no=#{user})) AND from_at<#{asOf}"
+            + " AND (to_at IS NULL OR to_at>#{active}) ORDER BY from_at")
+    List<Map<String,Object>> pauses(@Param("type") String type,@Param("user") String user,
+                                   @Param("active") long active,@Param("asOf") long asOf);
+    @Update("UPDATE pts_account SET frozen=#{frozen},version=version+1 WHERE type_code=#{type}"
+            + " AND holder_type='USER' AND holder_no=#{user} AND version=#{version} AND deleted=0")
+    int freeze(@Param("type") String type,@Param("user") String user,@Param("version") long version,
+               @Param("frozen") int frozen);
+    @Update("UPDATE pts_account SET reminded_revision=#{revision},version=version+1 WHERE type_code=#{type}"
+            + " AND holder_type='USER' AND holder_no=#{user} AND expiry_revision=#{revision} AND deleted=0")
+    int markReminded(@Param("type") String type,@Param("user") String user,@Param("revision") long revision);
     @Select("SELECT * FROM pts_receivable WHERE receivable_no=#{no} AND deleted=0 FOR UPDATE")
     Map<String, Object> lockReceivable(String no);
     @Select("SELECT * FROM pts_receivable WHERE type_code=#{type} AND store_no=#{store} AND state='OPEN'"

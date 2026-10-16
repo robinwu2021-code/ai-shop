@@ -103,7 +103,7 @@ public class PointsSettlementHookImpl implements PointsSettlementHook {
                     "POINTS_FACT_CONFLICT");
             return;
         }
-        var lifecycle=read.lifecycle(fact.typeCode(),fact.subOrderNo());
+        var lifecycle=configuration.lockLifecycle(fact.typeCode(),fact.subOrderNo());
         var saved=lifecycle==null?null:json.readTree((String)lifecycle.get("payload_json")).path("finalFact");
         if (saved!=null && saved.isObject()) {
             long finalVersion=saved.path("sourceVersion").longValue();

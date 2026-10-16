@@ -12,4 +12,5 @@ public interface PointsFactStore {
     void recordZeroCash(ZeroCashCompletionFact fact, String payload, String payloadHash);
     void record(LifecycleFact fact, String payload, String state);
     void saveLifecycle(LifecycleFact fact, String payload, Long expectedVersion);
+    void recordEvent(String typeCode,String eventNo,String hash,String payload,String state);
 }

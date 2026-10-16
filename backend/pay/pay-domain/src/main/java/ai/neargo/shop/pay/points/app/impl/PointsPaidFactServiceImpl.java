@@ -50,7 +50,7 @@ public class PointsPaidFactServiceImpl implements PointsPaidFactService {
                     "POINTS_FACT_CONFLICT");
             return;
         }
-        var lifecycle=read.lifecycle(fact.typeCode(),fact.subOrderNo());
+        var lifecycle=configuration.lockLifecycle(fact.typeCode(),fact.subOrderNo());
         var state=lifecycle==null?json.createObjectNode():
                 (ObjectNode)json.readTree((String)lifecycle.get("payload_json"));
         if (state.hasNonNull("paidFact")) {

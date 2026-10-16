@@ -15,6 +15,8 @@ import ai.neargo.shop.pay.points.model.Voucher;
 import ai.neargo.shop.pay.points.model.ReserveMove;
 import ai.neargo.shop.pay.points.model.ReceivableMove;
 import ai.neargo.shop.pay.points.statement.StoreStatementService.Snapshot;
+import ai.neargo.shop.pay.points.policy.ExpiryPolicy;
+import java.time.ZoneId;
 import ai.neargo.shop.pay.points.posting.PostingResult;
 import ai.neargo.shop.pay.points.store.PostingStore;
 import org.springframework.dao.DuplicateKeyException;
@@ -242,7 +244,8 @@ public class MybatisPostingStore implements PostingStore {
         require(mapper.reserveTotal(type) == number(pool, "reserved_b_minor"), "POINTS_RESERVE_TOTAL_MISMATCH");
         if (voucher.bizRef().startsWith("GRANT:") || voucher.bizRef().startsWith("HOLD:")) {
             long at=System.currentTimeMillis();
-            long expiry=Math.addExact(at,Math.multiplyExact(number(definition,"idle_days"),86400000L));
+            long expiry=ExpiryPolicy.regionalDeadline(at,Math.toIntExact(number(definition,"idle_days")),
+                    ZoneId.of("Asia/Shanghai"));
             for (AccountKey key:deltas.keySet().stream().filter(k -> k.holderType()==HolderType.USER)
                     .map(k -> new AccountKey(k.typeCode(),k.holderType(),k.holderNo(),Bucket.AVAILABLE))
                     .distinct().toList()) {

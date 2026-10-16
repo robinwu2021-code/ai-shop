@@ -31,7 +31,7 @@ public class PayPointsFundsAdapter implements PointsFundsGateway {
             if (caps==null) { return NONE; }
             return new FundsCapabilities(caps.supports(Operation.SUBSIDY),caps.supports(Operation.TRANSFER),
                     caps.supports(Operation.INTERNAL_REPLENISHMENT),caps.supports(Operation.COLLECTION),
-                    caps.supports(Operation.COLLECTION_REVERSAL));
+                    caps.supports(Operation.COLLECTION_REVERSAL),caps.supports(Operation.EXPIRY_INCOME));
         } catch (RuntimeException e) { return NONE; }
     }
     @Override public FundsResult submit(FundsCommand command) {

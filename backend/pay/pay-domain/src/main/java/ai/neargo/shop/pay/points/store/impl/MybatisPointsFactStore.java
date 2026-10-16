@@ -11,6 +11,10 @@ import java.util.Map;
 /** Source metadata never increments accounts or changes funds. */
 @Repository
 public class MybatisPointsFactStore implements PointsFactStore {
+    @Override public void recordEvent(String type,String event,String hash,String payload,String state) {
+        int changed=DataScopeContext.executeWithoutScope(() -> mapper.inboxInsert(type,state,payload,event,hash));
+        if (changed!=1) { throw new IllegalStateException("POINTS_EVENT_CONFLICT"); }
+    }
     private final PointsConfigurationMapper mapper;
     public MybatisPointsFactStore(PointsConfigurationMapper mapper) { this.mapper = mapper; }
     @Override public Map<String,Object> inbox(String event) {

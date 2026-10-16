@@ -10,9 +10,14 @@ public interface PointsEarnPort {
     record EarnRule(RuleMode mode, long value) { }
     record EarnLine(String itemId, String goodsNo, String categoryNo, long quantity,
                     long goodsCashMinor, long refundedBeforeGrantMinor, EarnRule rule) { }
-    record GrantCommand(String eventNo, String subOrderNo, String userNo, String typeCode,
-                        String payChannel, String payScene, long sourceVersion, List<EarnLine> lines) {
+    record GrantCommand(String eventNo, String subOrderNo, String userNo, String typeCode, String storeNo,
+                        String payChannel, String payScene, long sourceVersion, List<EarnLine> lines,
+                        String merchantNo,String clientType) {
         public GrantCommand { lines=List.copyOf(lines); }
+        public GrantCommand(String eventNo,String subOrderNo,String userNo,String typeCode,String storeNo,
+                            String payChannel,String payScene,long sourceVersion,List<EarnLine> lines) {
+            this(eventNo,subOrderNo,userNo,typeCode,storeNo,payChannel,payScene,sourceVersion,lines,null,null);
+        }
     }
     record GrantOutcome(GrantStatus status, long grantedPoints, long expectedPoints, String reason, String voucherNo) { }
 }

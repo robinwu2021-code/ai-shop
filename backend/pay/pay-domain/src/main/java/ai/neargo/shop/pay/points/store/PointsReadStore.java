@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.points.store;
 
+import ai.neargo.shop.pay.points.pool.PointsSwitchService.Flow;
+
 import ai.neargo.shop.pay.points.model.AccountSnapshot;
 import ai.neargo.shop.pay.points.model.FundPool;
 import ai.neargo.shop.pay.points.model.HolderType;
@@ -23,4 +25,11 @@ public interface PointsReadStore {
     List<Map<String,Object>> redemptionsForSub(String subOrderNo);
     List<Map<String,Object>> openRefunds(String typeCode,String subOrderNo);
     Map<String, Object> lifecycle(String typeCode, String subOrderNo);
+    boolean enabled(String typeCode,String userNo,String storeNo);
+    default boolean enabled(Availability context) {
+        return enabled(context.typeCode(),context.userNo(),context.storeNo());
+    }
+    record Availability(String typeCode,String userNo,String storeNo,String merchantNo,String market,
+                        String scene,String client,Flow flow) { }
+
 }
