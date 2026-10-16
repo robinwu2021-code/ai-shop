@@ -1376,6 +1376,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeNo` | `string` | 否 | 收藏列表的实际门店号，主体编号仍为 merchantNo。 |
 | `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
 | `selfOperated` | `boolean` | 否 | 这单是不是**平台自营**（销售主体是平台）。 **必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务， 不得误导消费者。这是法定义务，不是产品选择。** 而它同时是资金模式合法性的一部分：归集路径下平台是销售主体， 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。 ⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）—— 要禁的是把销售方指给商家的**表述**，不是商家信息本身。 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。 |
 | `name` | `string` | 是 | 店铺名 |
@@ -2586,11 +2587,13 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `buyerNickname` | `string,null` | 否 | Only returned after verifying the recipient's phone; absent from the anonymous H5 view. |
 | `subOrderNo` | `string` | 是 | — |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
 | `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
 | `receiverName` | `string,null` | 否 | — |
+| `receiverSalutation` | `MR` \| `MS` \| `UNSPECIFIED` \| `null` | 否 | 看件页使用的订单称呼快照。 |
 | `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
 | `receiverAddress` | `string,null` | 否 | — |
 | `expressCompany` | `string,null` | 否 | — |
@@ -2611,11 +2614,13 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `buyerNickname` | `string,null` | 否 | Only returned after verifying the recipient's phone; absent from the anonymous H5 view. |
 | `subOrderNo` | `string` | 是 | — |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
 | `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
 | `receiverName` | `string,null` | 否 | — |
+| `receiverSalutation` | `MR` \| `MS` \| `UNSPECIFIED` \| `null` | 否 | 看件页使用的订单称呼快照。 |
 | `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
 | `receiverAddress` | `string,null` | 否 | — |
 | `expressCompany` | `string,null` | 否 | — |
@@ -2664,6 +2669,7 @@
 |---|---|:---:|---|
 | `addressId` | `string` | 是 | 地址 ID。这里是 `Id` 不是 `No` —— 它不是业务单号，是用户地址簿里的一条本地记录， 不跨端流转、不出现在订单快照里（下单时地址是**整体快照**进订单的） |
 | `name` | `string` | 是 | 收货人姓名 |
+| `salutation` | [`RecipientSalutation`](#recipientsalutation) \| `null` | 否 | 用户选定的称呼；旧地址为空，展示按未选择处理。 |
 | `phone` | `string` | 是 | 收货人手机号 |
 | `region` | `string` | 是 | 省市区，拼好给人看的一串 |
 | `province` | `string,null` | 否 | 省 / 市 / 区县，**分开的三个**。 与 `region` 并存不是冗余：`region` 是展示用的一串（存量地址、地图回填都只有它）， 这三列是**能拿来算的**那份 —— 按省算运费、按区派单、按市校经营范围。 后端 `usr_address` 一直有这三列，端上一直没填，于是那些规则全在 null 上求值， 一条都不命中，而页面上完全正常。 可能为空：存量地址是纯手填的，拆不出来。 |
@@ -2698,6 +2704,7 @@
 |---|---|:---:|---|
 | `addressId` | `string` | 是 | 地址 ID。这里是 `Id` 不是 `No` —— 它不是业务单号，是用户地址簿里的一条本地记录， 不跨端流转、不出现在订单快照里（下单时地址是**整体快照**进订单的） |
 | `name` | `string` | 是 | 收货人姓名 |
+| `salutation` | [`RecipientSalutation`](#recipientsalutation) \| `null` | 否 | 用户选定的称呼；旧地址为空，展示按未选择处理。 |
 | `phone` | `string` | 是 | 收货人手机号 |
 | `region` | `string` | 是 | 省市区，拼好给人看的一串 |
 | `province` | `string,null` | 否 | 省 / 市 / 区县，**分开的三个**。 与 `region` 并存不是冗余：`region` 是展示用的一串（存量地址、地图回填都只有它）， 这三列是**能拿来算的**那份 —— 按省算运费、按区派单、按市校经营范围。 后端 `usr_address` 一直有这三列，端上一直没填，于是那些规则全在 null 上求值， 一条都不命中，而页面上完全正常。 可能为空：存量地址是纯手填的，拆不出来。 |
@@ -2735,6 +2742,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `salutation` | `MR` \| `MS` \| `UNSPECIFIED` \| `null` | 否 | 不传保留已有称呼；UNSPECIFIED 显式取消。 |
 | `addressId` | `string` | 否 | 有值 = 编辑，无值 = 新增 |
 | `name` | `string` | 是 | 收货人姓名 |
 | `phone` | `string` | 是 | 收货人手机号 |
@@ -3128,6 +3136,7 @@
 |---|---|:---:|---|
 | `addressId` | `string` | 是 | 地址 ID。这里是 `Id` 不是 `No` —— 它不是业务单号，是用户地址簿里的一条本地记录， 不跨端流转、不出现在订单快照里（下单时地址是**整体快照**进订单的） |
 | `name` | `string` | 是 | 收货人姓名 |
+| `salutation` | [`RecipientSalutation`](#recipientsalutation) \| `null` | 否 | 用户选定的称呼；旧地址为空，展示按未选择处理。 |
 | `phone` | `string` | 是 | 收货人手机号 |
 | `region` | `string` | 是 | 省市区，拼好给人看的一串 |
 | `province` | `string,null` | 否 | 省 / 市 / 区县，**分开的三个**。 与 `region` 并存不是冗余：`region` 是展示用的一串（存量地址、地图回填都只有它）， 这三列是**能拿来算的**那份 —— 按省算运费、按区派单、按市校经营范围。 后端 `usr_address` 一直有这三列，端上一直没填，于是那些规则全在 null 上求值， 一条都不命中，而页面上完全正常。 可能为空：存量地址是纯手填的，拆不出来。 |
@@ -3969,6 +3978,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeNo` | `string` | 否 | 收藏列表的实际门店号，主体编号仍为 merchantNo。 |
 | `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
 | `selfOperated` | `boolean` | 否 | 这单是不是**平台自营**（销售主体是平台）。 **必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务， 不得误导消费者。这是法定义务，不是产品选择。** 而它同时是资金模式合法性的一部分：归集路径下平台是销售主体， 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。 ⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）—— 要禁的是把销售方指给商家的**表述**，不是商家信息本身。 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。 |
 | `name` | `string` | 是 | 店铺名 |
@@ -4066,6 +4076,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeNo` | `string` | 否 | 收藏列表的实际门店号，主体编号仍为 merchantNo。 |
 | `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
 | `selfOperated` | `boolean` | 否 | 这单是不是**平台自营**（销售主体是平台）。 **必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务， 不得误导消费者。这是法定义务，不是产品选择。** 而它同时是资金模式合法性的一部分：归集路径下平台是销售主体， 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。 ⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）—— 要禁的是把销售方指给商家的**表述**，不是商家信息本身。 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。 |
 | `name` | `string` | 是 | 店铺名 |
@@ -4310,6 +4321,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `salutation` | `MR` \| `MS` \| `UNSPECIFIED` \| `null` | 否 | 下单时保存的称呼快照，不随地址簿变化。 |
 | `name` | `string` | 否 | 收货人姓名。取不到时为空 —— 空就是空，不要回落成「顾客」 |
 | `phone` | `string` | 否 | 脱敏程度由后端定，见 `Order.receiver` 的说明 |
 | `address` | `string` | 否 | 省市区 + 详细，拼好的一行 |
@@ -4605,6 +4617,14 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 |---|---|:---:|---|
 | `counted` | `boolean` | 是 | 这一下有没有计入 |
 
+### RecipientSalutation
+
+枚举取值：
+
+- `MR`
+- `MS`
+- `UNSPECIFIED`
+
 ### Record_string_boolean
 
 类型：`object`
@@ -4770,6 +4790,7 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `salutation` | `MR` \| `MS` \| `UNSPECIFIED` \| `null` | 否 | 不传保留已有称呼；UNSPECIFIED 显式取消。 |
 | `addressId` | `string` | 否 | 有值 = 编辑，无值 = 新增 |
 | `name` | `string` | 是 | 收货人姓名 |
 | `phone` | `string` | 是 | 收货人手机号 |
@@ -5062,15 +5083,17 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 
 ### TrackView
 
-免登录看件视图（TDD-收件人物流触达与分享裂变 §3）。后端 `GET /mp/track?t=<token>` 返回。 <p>**这是一份删过的订单详情**：发给收件人的看件链接会被转发、截图， 所以只放物流 + 收货 + 店名 + 商品摘要 —— 价格、买家身份不下发（后端就不给）。 手机号是**掩码**的（后端出 `138****8000`）。 <p>令牌无效 / 过期时后端返回 `null`，端上据此显示「链接已失效」。
+免登录看件视图（TDD-收件人物流触达与分享裂变 §3）。后端 `GET /mp/track?t=<token>` 返回。 <p>**这是一份删过的订单详情**：发给收件人的看件链接会被转发、截图， 匿名视图只放物流 + 收货 + 店名 + 商品摘要；核验过收件手机号的视图可追加下单人昵称。 价格与支付信息不下发。 手机号是**掩码**的（后端出 `138****8000`）。 <p>令牌无效 / 过期时后端返回 `null`，端上据此显示「链接已失效」。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `buyerNickname` | `string,null` | 否 | Only returned after verifying the recipient's phone; absent from the anonymous H5 view. |
 | `subOrderNo` | `string` | 是 | — |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
 | `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
 | `receiverName` | `string,null` | 否 | — |
+| `receiverSalutation` | `MR` \| `MS` \| `UNSPECIFIED` \| `null` | 否 | 看件页使用的订单称呼快照。 |
 | `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
 | `receiverAddress` | `string,null` | 否 | — |
 | `expressCompany` | `string,null` | 否 | — |
@@ -5152,6 +5175,7 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `storeNo` | `string` | 否 | 收藏列表的实际门店号，主体编号仍为 merchantNo。 |
 | `merchantNo` | `string` | 是 | 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） |
 | `selfOperated` | `boolean` | 否 | 这单是不是**平台自营**（销售主体是平台）。 **必须显示出来 —— 电商法 §37 要求平台以显著方式区分标记自营业务， 不得误导消费者。这是法定义务，不是产品选择。** 而它同时是资金模式合法性的一部分：归集路径下平台是销售主体， 页面上却让消费者以为在跟商家交易，四流就不一致了（ADR-017 §3.4）。 ⚠️ 自营时**商家信息照常展示**（供货商、产地、门店、评分）—— 要禁的是把销售方指给商家的**表述**，不是商家信息本身。 见 `packages/shared/tests/seller-statement.test.ts` 的禁用词表。 |
 | `name` | `string` | 是 | 店铺名 |

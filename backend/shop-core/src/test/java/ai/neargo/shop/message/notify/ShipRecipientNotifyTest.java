@@ -40,7 +40,7 @@ class ShipRecipientNotifyTest {
         buyer = mock(SubOrderBuyerPort.class);
         when(shortLink.shorten(anyString(), anyString(), anyString(), any()))
                 .thenReturn("https://s.hxmall.top/ABC1234");
-        when(sms.sendShipToRecipient(anyString(), anyString())).thenReturn(SendResult.none());
+        when(sms.sendShipToRecipient(anyString(), anyString(), anyString())).thenReturn(SendResult.none());
         notify = new ShipRecipientNotify(new ShipTrackPortImpl(new ShipTrackToken("k", 30)),
                 shortLink, sms, buyer,
                 "https://www.hxmall.top/c/?t=", 30);
@@ -59,8 +59,25 @@ class ShipRecipientNotifyTest {
     @DisplayName("★ 有收件人 → 建短链并把短链发给收件人号")
     void sendsShortLinkToReceiver() {
         when(buyer.receiverPhoneOf("SUB-A")).thenReturn(Optional.of("13800000000"));
+        when(buyer.receiverNameOf("SUB-A")).thenReturn(Optional.of("王女士"));
         notify.notify("SUB-A");
-        verify(sms).sendShipToRecipient(eq("13800000000"), eq("https://s.hxmall.top/ABC1234"));
+        verify(sms).sendShipToRecipient(eq("13800000000"), eq("王女士"), eq("https://s.hxmall.top/ABC1234"));
+    }
+
+    @Test
+    void formatsNameUsingOrderSalutationSnapshot() {
+        when(buyer.receiverPhoneOf("SUB-A")).thenReturn(Optional.of("13800000000"));
+        when(buyer.receiverNameOf("SUB-A")).thenReturn(Optional.of("张"));
+        when(buyer.receiverSalutationOf("SUB-A")).thenReturn(Optional.of("MS"));
+        notify.notify("SUB-A");
+        verify(sms).sendShipToRecipient("13800000000", "张女士", "https://s.hxmall.top/ABC1234");
+    }
+
+    @Test
+    void missingNameUsesRecipientFallback() {
+        when(buyer.receiverPhoneOf("SUB-A")).thenReturn(Optional.of("13800000000"));
+        notify.notify("SUB-A");
+        verify(sms).sendShipToRecipient("13800000000", "收件人先生/女士", "https://s.hxmall.top/ABC1234");
     }
 
     @Test
@@ -78,9 +95,9 @@ class ShipRecipientNotifyTest {
     @DisplayName("★ 短信通道抛异常也吞掉 —— 不冒泡到 outbox 消费者")
     void swallowsSmsFailure() {
         when(buyer.receiverPhoneOf("SUB-A")).thenReturn(Optional.of("13800000000"));
-        when(sms.sendShipToRecipient(anyString(), anyString()))
+        when(sms.sendShipToRecipient(anyString(), anyString(), anyString()))
                 .thenThrow(new SmsPort.SmsException("boom", false));
         notify.notify("SUB-A");
-        verify(sms).sendShipToRecipient(anyString(), anyString());
+        verify(sms).sendShipToRecipient(anyString(), anyString(), anyString());
     }
 }

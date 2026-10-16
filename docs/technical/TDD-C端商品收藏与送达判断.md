@@ -6,6 +6,10 @@
 依据：用户 2026-09-19「详情页要增加一个收藏功能」「按照原型执行」
 创建日期：2026-09-19
 
+## 0. 本轮需求依据
+
+2026-10-15 用户反馈：商家售后／退款列表不应混入普通订单；我的收藏出现公司主体，需按实际门店展示、收藏及跳转。验收对应 §5。
+
 ## 1. 需求 → 落点
 
 | AC | 说的是什么 | 落点 | 测试 |
@@ -18,6 +22,15 @@
 | AC6 | 判据用**收货地址推出来的社区**，不用顶栏的模糊定位（只准到区，会误拦） | 端上只传 `community.community.communityNo`；不传 `regionCode`；没有社区号时 `deliverable = null`（不判） | 同上（null 那一支） |
 
 ## 2. 契约
+
+### 2026-10-15 门店收藏纠正（1 档，实施计划）
+
+用户反馈收藏中出现公司主体名。收藏新增可空 `store_no`（V422），唯一键改为 `(user_no, store_no)`；保留 `entity_no` 供主体统计。新操作按门店号保存，旧主体号兼容解析默认门店；历史空门店记录仅映射该主体的默认门店，不扩散到所有分店。主体停用或无有效门店不输出主体卡。
+
+三语新增 B 端 `afterSale.status.*`（9 个真实售后状态）；独立售后处理页明确展示该状态。
+
+返回 `StoreBriefVO.storeNo`，名称和评分来自 `StoreDirectoryPort`；C 端收藏按钮提交门店号，收藏行按门店号跳转。覆盖历史名称转换、同主体多店独立收藏、取消后再收藏及跳转。商家售后页签同时修复异步请求覆盖，只显示售后关联订单与售后状态。
+
 
 ### 表（V343）
 
@@ -87,3 +100,23 @@ prd_goods_favorite
 
 - 后端 `GoodsFavoriteFlowTest`：5 跑 / 0 红；消融（商品取消改回软删、店铺取消改回软删、`deliverableTo` 写死 true）→ 3 红。
 - 端上 `goods-favorite.test.ts`：4 跑 / 0 红；消融（`outOfScope` 写死 false）→ AC5 红。
+
+
+## 5. 2026-10-15 修复验收
+
+| AC | 验证 |
+|---|---|
+| 售后页签排除无售后单的普通订单，迟到响应不得覆盖当前页签 | `b-app/tests/orders-after-sale.test.ts`（两项）；旧实现出现 OTHER，修复后只剩 AS1 |
+| 独立售后处理页只枚举售后单 | 同文件第二项，普通 PAID/FULFILLING 不增加行 |
+| 收藏返回实际门店号及门店名 | `GoodsFavoriteFlowTest.favoritesUseStoreIdentityAndName`；旧实现 storeNo 为空（红），修复后通过 |
+| 同主体两店独立收藏，历史主体收藏兼容读取及取消 | `GoodsFavoriteFlowTest.siblingStoresAreIndependentAndLegacyFavoritesResolve` |
+| 收藏按门店号跳转，不按主体打开默认门店 | `c-app/tests/favorite-store-navigation.test.ts` |
+
+集成源保留 68733ba93 的订单/售后/物流改动及主工作区的手机号登录改动。已验证 C 端 88 文件 / 577 项，B 端 35 文件 / 212 项（随后新增独立售后页测试，再单跑 2 项通过）；两端 vue-tsc 通过。后端登录、收件人、收藏、架构共 35 项通过。
+
+## 6. 本轮实现范围
+
+`StoreFavoriteServiceImpl`、`UsrStoreFavorite`、`UserMappers`、`StoreBriefVO`、`MpStoreController`、V422 及生成 H2 schema；C 端 store/favorites/mocks 与 MerchantBrief 可选 storeNo；B 端 orders/after-sale 与三语状态词条；三份回归测试及生成 API 文档。实体收藏人数按用户去重，避免同一人收藏同主体两家店造成重复计数。历史无门店号的数据保留原记录，仅在读取时解析默认门店，未清理用户或收藏数据。
+
+
+上线验证：2026-10-15 后端 `68733ba93-store-favorite` 部署成功，内外网 health=UP；Flyway V422 成功，原 4 条收藏保留，新唯一键 `uk_user_store` 生效。小程序 `0.1.139 · 1015-1646` 已上传到 `wx3201250c28393850`（含商家分包），未提审或正式发布。真机交互待用户退出重进体验版验收。词条对账缺失键 0，孤儿键 57（原有欠账未增加）。

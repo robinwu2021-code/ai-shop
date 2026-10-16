@@ -312,7 +312,7 @@ async function toggleFav() {
 }
 
 async function doToggleFav() {
-  const { favorited: on } = await api.toggleFavoriteStore(entityNo.value);
+  const { favorited: on } = await api.toggleFavoriteStore(storeNo.value);
   if (data.value) data.value.favorited = on;
   uni.showToast({ title: on ? t("store.faved") : t("store.unfaved"), icon: "none" });
   /*
@@ -510,7 +510,7 @@ onShareTimeline(() =>
         一整块白面板：页签（文字 + 短线，与下面的分类 chip 分开两种样子）→ 当前页签的内容。
         「我常买」一栏 2026-09-29 用户要求去掉。
       -->
-      <view v-if="!user.isPhoneLogin" class="sh-block">
+      <view v-if="!user.isPhoneLogin" class="sh-card">
         <text class="sh-hint">{{ $t('phoneLogin.tip') }}</text>
         <biz-login-consent />
       </view>
@@ -542,7 +542,7 @@ onShareTimeline(() =>
         </view>
 
         <!-- 评价：这一家门店的，带上评的是哪件货（s05） -->
-        <view v-else-if="tab === 'reviews'" class="pane">
+        <view v-else-if="tab === 'reviews'" class="pane sh-block__body">
           <biz-review v-for="r in reviews" :key="r.reviewNo" :review="r"></biz-review>
           <sh-empty v-if="!reviews.length" :pending="!reviewsLoaded" :text="String($t('store.noReviews'))"></sh-empty>
         </view>

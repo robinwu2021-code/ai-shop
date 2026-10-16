@@ -21,7 +21,22 @@ const cart = useCartStore();
 
 /** 编辑态。进出都把上一次的标记清掉 —— 它是一次操作，不该留到下一次 */
 const editing = ref(false);
+const busy = ref(false);
+const failed = ref(false);
+async function mutate(action: () => Promise<unknown>) {
+  if (busy.value || cart.loading) return;
+  busy.value = true;
+  try { await action(); }
+  catch (err) { uni.showToast({ title: (err as Error).message || String(t("common.loadFailed")), icon: "none" }); }
+  finally { busy.value = false; }
+}
+async function reload() {
+  if (busy.value || cart.loading) return;
+  failed.value = false;
+  try { await cart.load(); } catch { failed.value = true; }
+}
 function toggleEdit() {
+  if (busy.value) return;
   cart.clearMarks();
   editing.value = !editing.value;
 }
@@ -73,6 +88,7 @@ function saySwitched(to: FulfillmentType) {
 }
 
 function tapItem(it: CartItem) {
+  if (busy.value || cart.loading) return;
   if (editing.value) {
     cart.toggleMark(it.skuNo);
     return;
@@ -80,6 +96,7 @@ function tapItem(it: CartItem) {
   if (cart.toggle(it.skuNo)) saySwitched(it.fulfillment);
 }
 function tapMerchant(g: CartGroup, m: MerchantSegment) {
+  if (busy.value || cart.loading) return;
   const on = !m.items.every((it) => cart.isSelected(it.skuNo));
   if (cart.setMerchant(g.fulfillment, m.merchantNo, on)) saySwitched(g.fulfillment);
 }
@@ -93,6 +110,7 @@ function merchantOn(m: MerchantSegment): boolean {
 
 const allOn = computed(() => (editing.value ? cart.allMarked : cart.allSelected));
 function tapAll() {
+  if (busy.value || cart.loading) return;
   if (editing.value) cart.setAllMarked(!cart.allMarked);
   else cart.setAllInActive(!cart.allSelected);
 }
@@ -101,14 +119,17 @@ function tapAll() {
 
 /** 点数字直接输入。一次买 20 件不该点 19 下加号 */
 async function askQty(it: CartItem) {
+  if (busy.value || cart.loading) return;
   const max = maxOf(it);
-  const v = await prompt({
+  busy.value = true;
+  let v: string | null;
+  try { v = await prompt({
     title: String(t("cart.qtyTitle")),
     hint: String(max !== null ? t("cart.qtyHint", { n: max }) : t("cart.qtyHintFree")),
     value: String(it.qty),
     type: "number",
     maxlength: 4,
-  });
+  }); } finally { busy.value = false; }
   if (v === null) return;
   const n = Math.floor(Number(v));
   // 乱输（负数/NaN）忽略；输 0 与减到 0 同义 —— 交给 changeQty 弹确认后删除
@@ -129,29 +150,16 @@ async function askQty(it: CartItem) {
  * 列表加载之后别人下单锁走了库存，他这一下才撞上。
  */
 async function changeQty(skuNo: string, n: number) {
-  /*
-   * **减到 0 就是删除，但先问一句。**
-   *
-   * 步进器的 min 本来是 1（减到 1 就减不动），当年那么定是因为「传 0 下去后端当删除、
-   * 商品当场消失，没有确认也没有撤销」。现在产品要「减到 0 即删除」—— 放开 min 的同时
-   * 把那句确认补上，既满足诉求，又不回到当年那种静默删除。
-   * 用 remove 而不是 update(0)：语义是删这一件，不是「把数量更新成 0」。
-   */
-  if (n <= 0) {
-    const ok = await confirm({
-      title: String(t("cart.removeTitle", { n: 1 })),
-      hint: String(t("cart.removeHint")),
-      confirmText: String(t("cart.remove")),
-      danger: true,
-    });
-    if (ok) await cart.remove([skuNo]);
-    return;
-  }
-  try {
-    await cart.update(skuNo, n);
-  } catch (err) {
-    uni.showToast({ title: (err as Error).message, icon: "none" });
-  }
+  await mutate(async () => {
+    if (n <= 0) {
+      const ok = await confirm({
+        title: String(t("cart.removeTitle", { n: 1 })),
+        hint: String(t("cart.removeHint")),
+        confirmText: String(t("cart.remove")), danger: true,
+      });
+      if (ok) await cart.remove([skuNo]);
+    } else await cart.update(skuNo, n);
+  });
 }
 
 // ── 删除 ──────────────────────────────────────────────────────────────
@@ -161,21 +169,23 @@ async function changeQty(skuNo: string, n: number) {
  * 用户可能只是想去掉其中一件、把别的留着等它恢复（换回原来的位置就又能买了）。
  */
 async function remove(skuNo: string) {
-  await cart.remove([skuNo]);
+  await mutate(() => cart.remove([skuNo]));
 }
 
 /** 一键清空所有失效件。**带确认** —— 别把他想留着等恢复的那几件一起扫掉 */
 async function clearInvalid() {
   const skus = cart.invalidItems.map((it) => it.skuNo);
   if (!skus.length) return;
-  const ok = await confirm({
-    title: String(t("cart.removeTitle", { n: skus.length })),
-    hint: String(t("cart.removeHint")),
-    confirmText: String(t("cart.clearInvalid")),
-    danger: true,
+  await mutate(async () => {
+    const ok = await confirm({
+      title: String(t("cart.removeTitle", { n: skus.length })),
+      hint: String(t("cart.removeHint")),
+      confirmText: String(t("cart.clearInvalid")),
+      danger: true,
   });
   if (!ok) return;
   await cart.remove(skus);
+  });
 }
 
 /** 下架件不是死路：拿标题去搜同类，给个替代品的出口 */
@@ -186,29 +196,21 @@ function findSimilar(it: CartItem) {
 /** 编辑态的批量删。**是他勾出来的，不是替他清理** */
 async function removeMarked() {
   const n = cart.marked.length;
-  /*
-   * **灰按钮也要说话。** 同一页的「去结算」在一件没勾时会 toast 一句，
-   * 这里此前是静默 return —— 同一个页面两套规矩，而规矩本身写在
-   * 交互清单 §七：灰按钮必须配一句话。
-   */
-  /*
-   * **灰按钮也要说话。** 同一页的「去结算」在一件没勾时会 toast 一句，
-   * 这里此前是静默 return —— 同一个页面两套规矩，而规矩本身写在
-   * 交互清单 §七：灰按钮必须配一句话。
-   */
   if (!n) {
     uni.showToast({ title: String(t("cart.pickToRemove")), icon: "none" });
     return;
   }
-  const ok = await confirm({
-    title: String(t("cart.removeTitle", { n })),
-    hint: String(t("cart.removeHint")),
-    confirmText: String(t("cart.remove")),
-    danger: true,
+  await mutate(async () => {
+    const ok = await confirm({
+      title: String(t("cart.removeTitle", { n })),
+      hint: String(t("cart.removeHint")),
+      confirmText: String(t("cart.remove")),
+      danger: true,
   });
   if (!ok) return;
   await cart.removeMarked();
   if (!cart.items.length) editing.value = false;
+  });
 }
 
 // ── 去结算 ────────────────────────────────────────────────────────────
@@ -221,6 +223,7 @@ async function removeMarked() {
  * **永远等于下一页的应付**。
  */
 function checkout() {
+  if (busy.value || cart.loading || failed.value) return;
   const items = cart.selectedItems;
   const fulfillment = cart.activeFulfillment;
   if (!items.length || !fulfillment) {
@@ -234,14 +237,19 @@ function checkout() {
 }
 
 function openGoods(it: CartItem) {
-  if (editing.value) return;
+  if (busy.value || cart.loading) return;
+  if (editing.value) { tapItem(it); return; }
   uni.navigateTo({ url: `${ROUTES.goods}?goodsNo=${it.goodsNo}` });
 }
 function goShopping() {
   uni.switchTab({ url: ROUTES.home });
 }
 
-onShow(() => cart.load());
+function openStore(m: MerchantSegment) {
+  const storeNo = m.items.find(it => it.storeNo)?.storeNo;
+  if (!editing.value && storeNo) uni.navigateTo({ url: `${ROUTES.store}?no=${encodeURIComponent(storeNo)}` });
+}
+onShow(reload);
 </script>
 
 <template>
@@ -254,6 +262,12 @@ onShow(() => cart.load());
       </text>
     </view>
 
+    <view v-if="failed" class="sh-notice sh-notice--warning sh-row sh-row--between">
+      <text class="txt-caption">{{ $t("common.loadFailed") }}</text>
+      <text class="sh-link" @tap="reload">{{ $t("common.retry") }}</text>
+    </view>
+    <view v-if="cart.loading && !cart.items.length" class="sh-hint">{{ $t("common.loading") }}</view>
+    <view v-if="editing" class="sh-notice"><text class="txt-caption">{{ $t("cart.editHint") }}</text></view>
     <!--
       **一次只结一种取货方式**：这句话此前挂在每个组头上，两组就说两遍。
       它说的是整页的规矩，不是某一组的属性 —— 所以移到这里，只说一次。
@@ -271,25 +285,28 @@ onShow(() => cart.load());
       <view class="ghead sh-row">
         <text class="sh-chip sh-chip--primary">{{ $t(`fulfillment.${g.fulfillment}`) }}</text>
         <!-- 底栏那个合计说的是哪一组，在组头上标出来 -->
-        <text v-if="selectedIn(g)" class="txt-caption ghead__note sh-num">
+        <text v-if="!editing && selectedIn(g)" class="txt-caption ghead__note sh-num">
           {{ $t("cart.groupSelected", { n: selectedIn(g) }) }}
         </text>
       </view>
 
       <!--
         商家段。**一段 = 结算后的一笔子订单** —— 用户要在提交前看见会拆成几单。
-        只有一家店时不画段头：一家店还套个分组框是纯噪音。
+        单店也保留门店归属与返回门店入口。
       -->
       <template v-for="m in g.merchants" :key="m.merchantNo">
-        <view v-if="g.merchants.length > 1" class="seg sh-row">
-          <view v-if="!editing" class="box sh-hit sh-center" @tap="tapMerchant(g, m)">
+        <view class="seg sh-row">
+          <view v-if="!editing" class="box sh-center" @tap="tapMerchant(g, m)">
             <sh-check :model-value="merchantOn(m)"></sh-check>
           </view>
-          <text class="txt-strong">{{ m.merchantName || $t("cart.unknownMerchant") }}</text>
+          <view class="seg__store sh-row sh-fill" @tap="openStore(m)">
+            <text class="txt-strong sh-fill">{{ m.merchantName || $t("cart.unknownMerchant") }}</text>
+            <sh-icon v-if="!editing && m.items.some(it => it.storeNo)" name="chevronRight" :size="22"></sh-icon>
+          </view>
         </view>
 
         <view v-for="it in m.items" :key="it.skuNo" class="line sh-row">
-          <view class="box sh-hit sh-center" @tap.stop="tapItem(it)">
+          <view class="box sh-center" @tap.stop="tapItem(it)">
             <sh-check :model-value="boxOn(it)"></sh-check>
           </view>
           <biz-sku-row
@@ -297,6 +314,7 @@ onShow(() => cart.load());
             :cover="it.cover"
             :title="it.title"
             :spec="it.spec"
+            :title-lines="2"
             size="lg"
             @tap="openGoods(it)"
           >
@@ -308,7 +326,7 @@ onShow(() => cart.load());
             </view>
 
             <view class="row__foot sh-row sh-row--between">
-              <view class="sh-fill">
+              <view class="row__price">
                 <text class="txt-price sh-num">{{ money(it.price) }}</text>
                 <!-- 库存快没了才说。有货时报数字是噪音 -->
                 <text v-if="lowStock(it)" class="txt-caption line__stock sh-num">
@@ -316,7 +334,10 @@ onShow(() => cart.load());
                 </text>
               </view>
               <!-- min=0：减到 0 就是删除（changeQty 里弹确认）。默认 min 是 1，这里显式放开 -->
+              <text v-if="editing" class="txt-caption sh-num">× {{ it.qty }}</text>
               <sh-stepper
+                v-else
+                :disabled="busy || cart.loading"
                 :model-value="it.qty"
                 :min="0"
                 :max="maxOf(it) ?? CART_RULES.maxQtyPerLine"
@@ -349,29 +370,28 @@ onShow(() => cart.load());
         <view class="sh-fill"></view>
         <text class="sh-link" @tap="clearInvalid">{{ $t("cart.clearInvalid") }}</text>
       </view>
-      <view v-for="it in cart.invalidItems" :key="it.skuNo" class="line sh-row is-invalid">
-        <view v-if="editing" class="box sh-hit sh-center" @tap.stop="cart.toggleMark(it.skuNo)">
-          <sh-check :model-value="cart.isMarked(it.skuNo)"></sh-check>
-        </view>
-        <biz-sku-row
-          class="sh-fill"
-          :cover="it.cover"
-          :title="it.title"
-          :spec="it.spec"
-          size="lg"
-        >
-          <view class="sh-notice sh-notice--warning invalid sh-row sh-row--between">
-            <text class="txt-caption txt-ink">{{ invalidText(it) }}</text>
-            <view class="sh-row invalid__acts">
-              <text class="sh-link" @tap.stop="findSimilar(it)">
-                {{ $t("cart.findSimilar") }}
-              </text>
-              <text class="sh-link" @tap.stop="remove(it.skuNo)">
-                {{ $t("cart.removeInvalid") }}
-              </text>
-            </view>
+      <view v-for="it in cart.invalidItems" :key="it.skuNo" class="line">
+        <view class="sh-row">
+          <view v-if="editing" class="box sh-center" @tap.stop="tapItem(it)">
+            <sh-check :model-value="cart.isMarked(it.skuNo)"></sh-check>
           </view>
-        </biz-sku-row>
+          <biz-sku-row
+            class="sh-fill invalid__goods"
+            @tap="editing && tapItem(it)"
+            :cover="it.cover"
+            :title="it.title"
+            :spec="it.spec"
+            :title-lines="2"
+            size="lg"
+          ></biz-sku-row>
+        </view>
+        <view class="sh-notice sh-notice--warning invalid sh-row sh-row--between">
+          <text class="txt-caption txt-ink">{{ invalidText(it) }}</text>
+          <view class="sh-row invalid__acts">
+            <text class="sh-link" @tap.stop="findSimilar(it)">{{ $t("cart.findSimilar") }}</text>
+            <text class="sh-link" @tap.stop="remove(it.skuNo)">{{ $t("cart.removeInvalid") }}</text>
+          </view>
+        </view>
       </view>
     </view>
 
@@ -380,7 +400,7 @@ onShow(() => cart.load());
       再被商品顶掉 —— 看起来像刚被谁清空了。
     -->
     <sh-empty
-      v-if="cart.loaded && !cart.items.length"
+      v-if="cart.loaded && !cart.loading && !failed && !cart.items.length"
       :text="String($t('cart.empty'))"
       :tip="String($t('cart.emptyHint'))"
     >
@@ -392,10 +412,10 @@ onShow(() => cart.load());
     <sh-actionbar v-if="cart.items.length" pill="lead" tabbar :pad="140">
       <!-- 光一个勾选框说不清它管的是什么，配一个字 —— 它离商品行有一段距离 -->
       <view class="bar__all sh-row" @tap="tapAll">
-        <view class="box sh-hit sh-center">
+        <view class="box sh-center">
           <sh-check :model-value="allOn"></sh-check>
         </view>
-        <text class="txt-caption">{{ $t("cart.selectAll") }}</text>
+        <text class="txt-caption">{{ $t(!editing && cart.groups.length > 1 ? "cart.selectGroup" : "cart.selectAll") }}</text>
       </view>
       <template v-if="editing">
         <view class="sh-fill">
@@ -403,10 +423,10 @@ onShow(() => cart.load());
         </view>
         <view
           class="txt-body sh-btn sh-btn--danger bar__btn"
-          :class="{ 'is-disabled': !cart.marked.length }"
+          :class="{ 'is-disabled': busy || cart.loading || !cart.marked.length }"
           @tap="removeMarked"
         >
-          {{ $t("cart.remove") }}
+          {{ $t(busy ? "cart.updating" : "cart.remove") }}
         </view>
       </template>
       <template v-else>
@@ -417,10 +437,10 @@ onShow(() => cart.load());
         </view>
         <view
           class="txt-body sh-btn bar__btn"
-          :class="{ 'is-disabled': !cart.selectedCount }"
+          :class="{ 'is-disabled': busy || cart.loading || failed || !cart.selectedCount }"
           @tap="checkout"
         >
-          {{ $t("cart.checkout") }}<text v-if="cart.selectedCount" class="sh-num"> ({{ cart.selectedCount }})</text>
+          {{ $t(busy ? "cart.updating" : "cart.checkout") }}<text v-if="cart.selectedCount" class="sh-num"> ({{ cart.selectedCount }})</text>
         </view>
       </template>
     </sh-actionbar>
@@ -433,12 +453,12 @@ onShow(() => cart.load());
 }
 
 /* 勾选框的点击区。**44rpx 的框只有 22px 见方，手指按不准** ——
-   外面套一个 72rpx 的透明区，画出来的还是那个框 */
+   外面套一个 88rpx 的透明区，画出来的还是那个框 */
 .box {
   flex: none;
-  width: 72rpx;
-  height: 72rpx;
-  margin-inline-start: -14rpx;
+  width: 88rpx;
+  height: 88rpx;
+  margin-inline-start: -16rpx;
 }
 
 .ghead {
@@ -475,14 +495,17 @@ onShow(() => cart.load());
   color: var(--sh-warning);
 }
 
-/* 不可售的整行压暗，但**不隐藏** —— 用户要能看见自己加过什么 */
-.is-invalid {
+/* 只弱化失效商品，原因、选择框与删除等可用动作保持清晰。 */
+.invalid__goods {
   opacity: 0.5;
 }
 .invalid {
+  flex-wrap: wrap;
+  gap: 12rpx;
   margin-top: 8rpx;
 }
 .invalid__acts {
+  margin-inline-start: auto;
   gap: 24rpx;
 }
 
@@ -506,7 +529,12 @@ onShow(() => cart.load());
 }
 .row__foot {
   margin-top: 20rpx;
+  gap: 12rpx;
+  flex-wrap: wrap;
 }
+.row__price { flex: none; }
+.seg__store { min-height: 88rpx; gap: 8rpx; }
+.seg__store .txt-strong { overflow-wrap: anywhere; }
 
 
 

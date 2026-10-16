@@ -12,7 +12,7 @@ import { useI18n } from "vue-i18n";
 import { money } from "@shared/utils/money";
 import { FULFILLMENT } from "@shared/utils/constants";
 import { datetime } from "@shared/utils/datetime";
-import type { Order } from "@shared/types";
+import type { AfterSale, Order } from "@shared/types";
 import {
   DELIVERY_SHAPE,
   fulfillmentsOf,
@@ -48,6 +48,10 @@ function statusChip(o: Order): string {
  * 只处理「还没交付」的两个状态，其余（已完成/已退款/待付款）与履约方式无关。
  */
 function statusText(o: Order): string {
+  if (tab.value === "afterSale") {
+    const status = afterSaleByOrder.value.get(o.orderNo)?.status;
+    return status ? t(`afterSale.status.${status}`) : "";
+  }
   const f = o.fulfillment;
   if (o.status === "PAID") {
     if (f === FULFILLMENT.PICKUP || f === FULFILLMENT.NEIGHBOR_PICKUP) return t("home.cell.toVerify");
@@ -103,6 +107,8 @@ const TABS = computed(() => ALL_TABS.filter((t) => !t.perm || merchant.can(t.per
 
 const tab = ref("all");
 const list = ref<Order[]>([]);
+const afterSaleByOrder = ref(new Map<string, AfterSale>());
+let loadSequence = 0;
 const loading = ref(false);
 
 const empty = computed(() => !loading.value && !list.value.length);
@@ -114,31 +120,43 @@ const failed = ref(false);
 
 async function load() {
   if (!merchant.canOperate) return;
+  const sequence = ++loadSequence;
+  const selectedTab = tab.value;
   loading.value = true;
   try {
     const scope = { size: 50 };
-    if (tab.value === "afterSale") {
+    if (selectedTab === "afterSale") {
       const afterSales = await api.mAfterSaleList();
       // 用 subOrderNo：列表一行是一张子订单，售后单的 orderNo 是主单号
       const nos = new Set(afterSales.map((a) => a.subOrderNo));
       const res = await api.mOrderList(scope);
+      if (sequence !== loadSequence) return;
+      const latest = new Map<string, AfterSale>();
+      for (const a of afterSales) {
+        if (!latest.has(a.subOrderNo)) latest.set(a.subOrderNo, a);
+      }
+      afterSaleByOrder.value = latest;
       list.value = res.records.filter((o) => nos.has(o.orderNo));
     } else {
-      const spec = ALL_TABS.find((t) => t.key === tab.value);
+      const spec = ALL_TABS.find((t) => t.key === selectedTab);
       const res = await api.mOrderList({ ...scope, ...(spec ? tabQuery(spec) : {}) });
+      if (sequence !== loadSequence) return;
       list.value = res.records;
     }
     failed.value = false;
   } catch {
     // 此前只有 finally，请求挂了没人接：单子列表空着，而商家以为今天没单
-    failed.value = true;
+    if (sequence === loadSequence) failed.value = true;
   } finally {
-    loading.value = false;
-    loaded.value = true;
+    if (sequence === loadSequence) {
+      loading.value = false;
+      loaded.value = true;
+    }
   }
 }
 
 function switchTab(key: string) {
+  list.value = [];
   tab.value = key;
   void load();
 }

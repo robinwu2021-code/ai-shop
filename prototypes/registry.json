@@ -2,6 +2,116 @@
  "_readme": "界面原型登记表（真源，手工维护）。每份原型一条；screens[].client/route 让界面清单（gen-ui-catalog.py）能从页面跳到那一屏，路由还不存在的屏会在清单里列成「原型」行；同一路由被多份登记时，排在前面的赢。status: 在建 | 已落地 | 参考 | 作废（作废要写 supersededBy）。生成总览：python3 scripts/gen-proto-index.py；screens[].pageTitle 是清单里那一行的页名（屏名与页名不同时才写）",
  "prototypes": [
   {
+   "slug": "beauty-stored-value",
+   "file": "beauty-stored-value.html",
+   "title": "美业储值：活动、发放、消费账单与通知",
+   "kind": "pages",
+   "clients": [
+    "b-app",
+    "c-app",
+    "ops-web"
+   ],
+   "status": "在建",
+   "date": "2026-10-16",
+   "summary": "14 屏三端原型。C 端默认展示本人有储值记录的门店，按最近成功储值或核销时间倒序；点击门店查看核销记录与详情。无线上退款，不展示本金赠金。",
+   "docs": [
+    {
+     "label": "美业储值需求",
+     "path": "docs/requirements/PRD-美业储值.md"
+    },
+    {
+     "label": "流转与通知设计",
+     "path": "docs/technical/TDD-美业储值流转与通知.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "储值经营",
+     "client": "b-app",
+     "route": "pages/stored-value/index"
+    },
+    {
+     "id": "s02",
+     "title": "充值活动",
+     "client": "b-app",
+     "route": "pages/stored-value-campaigns/index"
+    },
+    {
+     "id": "s03",
+     "title": "创建充值活动",
+     "client": "b-app",
+     "route": "pages/stored-value-campaign-edit/index"
+    },
+    {
+     "id": "s04",
+     "title": "活动发布预览",
+     "client": "b-app",
+     "route": "pages/stored-value-campaign-preview/index"
+    },
+    {
+     "id": "s10",
+     "title": "服务开单",
+     "client": "b-app",
+     "route": "pages/stored-value-service-create/index"
+    },
+    {
+     "id": "s13",
+     "title": "消费详情",
+     "client": "c-app",
+     "route": "pages/stored-value-consumption-detail/index"
+    },
+    {
+     "id": "s14",
+     "title": "我的储值门店",
+     "client": "c-app",
+     "route": "pages/stored-value-stores/index"
+    },
+    {
+     "id": "s20",
+     "title": "通知与账务异常",
+     "client": "ops-web",
+     "route": "/finance/stored-value"
+    },
+    {
+     "id": "s21",
+     "title": "线下充值确认",
+     "client": "b-app",
+     "route": "pages/stored-value-offline-review/index"
+    },
+    {
+     "id": "s23",
+     "title": "尚未开通商家储值",
+     "client": "c-app",
+     "route": "pages/stored-value-accounts/index"
+    },
+    {
+     "id": "s25",
+     "title": "我的统一入口",
+     "client": "c-app",
+     "route": "pages/me/index"
+    },
+    {
+     "id": "s26",
+     "title": "门店主页入口",
+     "client": "c-app",
+     "route": "pages/store/index"
+    },
+    {
+     "id": "s27",
+     "title": "统一会员码入口衔接",
+     "client": "c-app"
+    },
+    {
+     "id": "s28",
+     "title": "门店核销记录",
+     "client": "c-app",
+     "route": "pages/stored-value-ledger/index"
+    }
+   ]
+  },
+
+  {
    "slug": "c-mini-phone-login",
    "file": "c-mini-phone-login.html",
    "title": "C 端微信小程序：手机号注册登录与按需授权",

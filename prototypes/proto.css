@@ -227,6 +227,18 @@ a{color:inherit}
 /* 只画贴底段的手机框：贴底条方案稿用 */
 .ph.strip{aspect-ratio:auto}.ph.strip .scr{flex:0 0 auto}
 
+/* 可交互评审稿：复用屏内积木，按钮保持原生键盘操作；长屏可滚动。 */
+.proto-demo .scr{overflow-y:auto;min-height:0}
+.proto-demo .scr > *{flex-shrink:0}
+.proto-demo a{text-decoration:none}
+.proto-control{font:inherit;border:0;cursor:pointer}
+.proto-demo button:disabled{cursor:default;color:var(--sh-disabled);background:var(--sh-faint)}
+.proto-demo .tile.proto-control{text-align:left}
+.proto-demo :is(a,button,input):focus-visible{outline:2px solid var(--sh-primary);outline-offset:3px}
+.proto-demo input[type="checkbox"]{accent-color:var(--sh-primary);vertical-align:middle}
+.proto-demo .desk{min-height:390px}
+@media(max-width:640px){.proto-demo .desk .side{width:82px;padding:10px 5px}.proto-demo .desk .main{padding:8px}.proto-demo .desk td,.proto-demo .desk th{padding:6px 4px;white-space:normal}.proto-demo .desk .btn{padding:6px}}
+
 /* ── 总览页（index.html，由 gen-proto-index.py 生成）── */
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:22px}
 .pcard{border:1px solid var(--rule);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;scroll-margin-top:24px}

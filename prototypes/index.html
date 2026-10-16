@@ -11,14 +11,24 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">31 份有效稿子，其中页面稿 20 份、共 246 屏；3 份作废。
+  <p class="sub">32 份有效稿子，其中页面稿 21 份、共 260 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
 <section>
   <div class="sec-head"><span class="sec-num">01</span><h2>页面稿：每一屏长什么样</h2></div>
   <div class="pgrid">
-<article class="pcard" id="b-reports">
+<article class="pcard" id="beauty-stored-value">
+  <div class="pcard__hd">
+    <b>美业储值：活动、发放、消费账单与通知</b>
+    <span class="chip warn">在建</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 买家小程序 · 运营端 · 2026-10-16 · 14 屏</div>
+  <p class="pcard__sum">14 屏三端原型。C 端默认展示本人有储值记录的门店，按最近成功储值或核销时间倒序；点击门店查看核销记录与详情。无线上退款，不展示本金赠金。</p>
+  <div class="screens"><a class="scr" href="beauty-stored-value.html#s01" title="s01 储值经营">s01</a><a class="scr" href="beauty-stored-value.html#s02" title="s02 充值活动">s02</a><a class="scr" href="beauty-stored-value.html#s03" title="s03 创建充值活动">s03</a><a class="scr" href="beauty-stored-value.html#s04" title="s04 活动发布预览">s04</a><a class="scr" href="beauty-stored-value.html#s10" title="s10 服务开单">s10</a><a class="scr" href="beauty-stored-value.html#s13" title="s13 消费详情">s13</a><a class="scr" href="beauty-stored-value.html#s14" title="s14 我的储值门店">s14</a><a class="scr" href="beauty-stored-value.html#s20" title="s20 通知与账务异常">s20</a><a class="scr" href="beauty-stored-value.html#s21" title="s21 线下充值确认">s21</a><a class="scr" href="beauty-stored-value.html#s23" title="s23 尚未开通商家储值">s23</a><a class="scr" href="beauty-stored-value.html#s25" title="s25 我的统一入口">s25</a><a class="scr" href="beauty-stored-value.html#s26" title="s26 门店主页入口">s26</a><a class="scr" href="beauty-stored-value.html#s27" title="s27 统一会员码入口衔接">s27</a><a class="scr" href="beauty-stored-value.html#s28" title="s28 门店核销记录">s28</a></div>
+  <div class="pcard__links"><a href="beauty-stored-value.html">本地稿</a> <a href="../docs/requirements/PRD-美业储值.md">美业储值需求</a> <a href="../docs/technical/TDD-美业储值流转与通知.md">流转与通知设计</a></div>
+
+</article><article class="pcard" id="b-reports">
   <div class="pcard__hd">
     <b>B 端报表：近几日收入 / 按月营收 / 商品 TopN</b>
     <span class="chip warn">在建</span>

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="730" viewBox="0 0 1200 730" role="img" aria-labelledby="title desc">
+<title id="title">储值发放、核销、退款与通知</title><desc id="desc">商家制定活动，消费者充值后收款确认再发放余额；服务开单需消费者确认，储值预占后按现金结果确认或释放；通知只在事实提交后产生。</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#616874"/></marker></defs>
+<rect width="1200" height="730" rx="20" fill="#f5f5f3"/>
+<g font-family="PingFang SC,Microsoft YaHei,sans-serif" fill="#17181a">
+<text x="36" y="43" font-size="25" font-weight="600">美业储值：活动有版本，资金有来源，消费有明细</text>
+<text x="36" y="72" font-size="15" fill="#63676e">商家收款 · 平台管账户与账单 · 同主体同币种 · 本金与赠金按充值批次追溯</text>
+<g fill="#fff"><rect x="36" y="112" width="210" height="95" rx="12"/><rect x="302" y="112" width="230" height="95" rx="12"/><rect x="588" y="112" width="230" height="95" rx="12"/><rect x="874" y="112" width="290" height="95" rx="12"/></g>
+<text x="54" y="143" font-size="18" font-weight="600">① 商家发布活动</text><text x="54" y="172" font-size="14">档位、范围、规则版本</text><text x="54" y="194" font-size="14">锁定名额与赠金预算</text>
+<text x="320" y="143" font-size="18" font-weight="600">② 消费者充值</text><text x="320" y="172" font-size="14">确认规则 → 向商家付款</text><text x="320" y="194" font-size="14">通道回执 / 有权人工确认</text>
+<text x="606" y="143" font-size="18" font-weight="600">③ 确认收款</text><text x="606" y="172" font-size="14">已收款 ≠ 余额已到账</text><text x="606" y="194" font-size="14">未发放时持续恢复 / 建待办</text>
+<text x="892" y="143" font-size="18" font-weight="600">④ 发放本金与赠金</text><text x="892" y="172" font-size="14">账户 + 批次 + 凭证 + 出站事件</text><text x="892" y="194" font-size="14">同一 pay 事务提交，幂等一次入账</text>
+<g stroke="#616874" stroke-width="2" fill="none" marker-end="url(#arrow)"><path d="M246 160H300"/><path d="M532 160H586"/><path d="M818 160H872"/></g>
+<g fill="#fff"><rect x="36" y="278" width="210" height="108" rx="12"/><rect x="302" y="278" width="230" height="108" rx="12"/><rect x="588" y="278" width="230" height="108" rx="12"/><rect x="874" y="278" width="290" height="108" rx="12"/></g>
+<text x="54" y="309" font-size="18" font-weight="600">⑤ 服务开单</text><text x="54" y="339" font-size="14">项目、人员、原价和优惠</text><text x="54" y="362" font-size="14">消费者核对并授权</text>
+<text x="320" y="309" font-size="18" font-weight="600">⑥ 预占储值</text><text x="320" y="339" font-size="14">适用批次 → 本金 / 赠金拆分</text><text x="320" y="362" font-size="14">全储值直接确认；不足现金补款</text>
+<text x="606" y="309" font-size="18" font-weight="600">⑦ 判断现金结果</text><text x="606" y="339" font-size="14">成功 → 扣款；明确失败 → 释放</text><text x="606" y="362" font-size="14">未知 → 保留预占、查单</text>
+<text x="892" y="309" font-size="18" font-weight="600">⑧ 核销与消费账单</text><text x="892" y="339" font-size="14">按批次记录实际扣款与账后余额</text><text x="892" y="362" font-size="14">订单同步可恢复，服务履约单独记录</text>
+<g stroke="#616874" stroke-width="2" fill="none" marker-end="url(#arrow)"><path d="M246 332H300"/><path d="M532 332H586"/><path d="M818 332H872"/></g>
+<rect x="36" y="436" width="550" height="103" rx="12" fill="#fff"/><rect x="614" y="436" width="550" height="103" rx="12" fill="#fff"/>
+<text x="54" y="467" font-size="18" font-weight="600">服务退款：本金与赠金回原批次</text><text x="54" y="495" font-size="14">按原项目分摊，不超原扣款；现金部分独立跟踪退款结果</text><text x="54" y="519" font-size="14">已退清批次的历史回补 → 受限待退款 → 补充退款或人工待办</text>
+<text x="632" y="467" font-size="18" font-weight="600">退余额：预留 → 审核 → 原路退本金</text><text x="632" y="495" font-size="14">明确退款成功才终结本金与赠金；多来源逐笔跟踪</text><text x="632" y="519" font-size="14">未知结果不解冻、不宣布到账，成功不再退款</text>
+<rect x="36" y="590" width="1128" height="105" rx="12" fill="#fce9e7"/>
+<text x="54" y="620" font-size="19" font-weight="600">交易事实提交 → 持久事件 → 消息域幂等落站内信与发送任务</text><text x="54" y="650" font-size="15">交易结果：到账 / 扣款 / 回补 / 退款　　待办：确认 / 审核 / 异常　　账户提醒：冻结 / 解冻 / 低余额</text><text x="54" y="675" font-size="14">订阅消息与 PUSH 按模板、授权和设备能力发送；营销独立订阅；通知失败不回滚账务；外发未知不盲重发</text>
+<g stroke="#b31710" stroke-width="2" stroke-dasharray="5 5" fill="none" marker-end="url(#arrow)"><path d="M1144 208V274"/><path d="M1144 386V432"/><path d="M310 540V586"/><path d="M890 540V586"/></g>
+</g></svg>

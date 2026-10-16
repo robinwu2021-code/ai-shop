@@ -14,8 +14,8 @@ import { thumb, type ThumbWidth } from "@shared/utils/media-thumb";
 //   ① 按值分流：像 URL 就走 <image>，否则当 emoji 当文字排
 //   ② `overflow: hidden`：将来再有什么意外的值落进来，它也只能糊自己那一格
 //
-// 尺寸/圆角/底色仍由调用点的 class 决定（各处大小本就不同），这里只管
-// 「渲染成什么」。class 落在根 view 上，内层图片撑满即可。
+// 调用点决定尺寸与底色；组件统一负责媒体分流、裁切和圆角。
+// class 落在根 view 上，内层图片撑满即可。
 /** uni `<image>` 的裁剪模式。**收成联合类型而不是 string**：
  *  写错一个字母（`aspectfill`）时 image 会静默退回 `scaleToFill`，图被拉变形，
  *  而类型检查一声不吭 —— 这一族的值只有九个，没有理由让它是自由文本。 */

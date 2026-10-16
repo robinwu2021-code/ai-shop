@@ -207,15 +207,16 @@ export const userMock: Pick<ShopApi,
   },
 
   async saveAddress(payload) {
+    if (payload.salutation != null && !["MR", "MS", "UNSPECIFIED"].includes(payload.salutation)) throw new Error("称呼参数有误");
     // 与真后端同一条判据（`Phones.CN_MOBILE`）。**替身不能比正主松** ——
     // 收货人电话是履约那一端唯一的联系方式，mock 放行等于把这条链路的验收让过去了
     if (!isPhone(payload.phone ?? "")) throw new Error("手机号格式不对，应为 11 位大陆手机号");
     if (payload.addressId) {
       const i = db.addresses.findIndex((a) => a.addressId === payload.addressId);
       if (i < 0) throw new Error("地址不存在");
-      db.addresses[i] = { ...db.addresses[i]!, ...payload, addressId: payload.addressId };
+      db.addresses[i] = { ...db.addresses[i]!, ...payload, salutation: payload.salutation ?? db.addresses[i]!.salutation ?? "UNSPECIFIED", addressId: payload.addressId };
     } else {
-      db.addresses.push({ ...payload, addressId: nextNo("AD") });
+      db.addresses.push({ ...payload, salutation: payload.salutation ?? "UNSPECIFIED", addressId: nextNo("AD") });
     }
     // 设了默认就把别的取消 —— 默认地址只能有一个
     if (payload.isDefault) {

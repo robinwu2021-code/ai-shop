@@ -59,7 +59,16 @@ public interface AddressService {
                        String houseNo,
                        Boolean isDefault, String tag,
                        Integer latE6, Integer lngE6,
-                       String countryCode, String postalCode, String phoneCc) {
+                       String countryCode, String postalCode, String phoneCc, String salutation) {
+
+        /** 兼容未传称呼的旧调用。 */
+        public SaveCommand(String addressId, String name, String phone, String region,
+                           String province, String city, String district, String detail,
+                           String houseNo, Boolean isDefault, String tag, Integer latE6, Integer lngE6,
+                           String countryCode, String postalCode, String phoneCc) {
+            this(addressId, name, phone, region, province, city, district, detail, houseNo,
+                    isDefault, tag, latE6, lngE6, countryCode, postalCode, phoneCc, null);
+        }
 
         /** 不带坐标、也不带门牌的老形状 */
         public SaveCommand(String addressId, String name, String phone, String region,

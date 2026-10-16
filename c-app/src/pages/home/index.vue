@@ -307,7 +307,7 @@ onShareAppMessage(() =>
     -->
     <view v-if="invitedBy && !inviteTipClosed" class="sh-notice sh-row invtip">
       <text class="txt-caption sh-fill">{{ $t("home.invitedTip") }}</text>
-      <text class="txt-caption sh-muted invtip__x" @tap="inviteTipClosed = true">✕</text>
+      <text class="txt-caption sh-muted sh-hit invtip__x" @tap="inviteTipClosed = true">✕</text>
     </view>
     <!-- 页头两行，按**使用频次**排序：
          · 自提点是「装一次、几个月不动」的设置 —— 收成一行小字，能看见、能切换即可

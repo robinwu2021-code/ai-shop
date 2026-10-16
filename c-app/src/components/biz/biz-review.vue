@@ -12,30 +12,30 @@ defineEmits<{ (e: "like"): void }>();
     <view class="sh-row rv__head">
       <text class="rv__avatar">{{ review.avatar }}</text>
       <view class="sh-fill rv__who">
-        <text class="txt-sub txt-bold rv__name">{{ review.nickname }}</text>
+        <text class="txt-strong rv__name">{{ review.nickname }}</text>
         <!-- single-review：这是**某个人给的星数**，不是聚合评分，不需要 ratingCount 护栏 -->
         <sh-rating :value="review.rating" :size="22" :show-value="false"></sh-rating>
       </view>
       <text class="txt-caption txt-quiet rv__date sh-num">{{ monthDay(review.createdAt) }}</text>
     </view>
 
-    <text class="txt-sub rv__content">{{ review.content }}</text>
+    <text class="txt-body rv__content">{{ review.content }}</text>
 
     <view v-if="review.images.length" class="rv__imgs">
-      <view v-for="(img, i) in review.images" :key="i" class="sh-center rv__img">{{ img }}</view>
+      <sh-cover v-for="(img, i) in review.images" :key="i" class="rv__img" :src="img" :w="200"></sh-cover>
     </view>
 
     <text class="txt-caption txt-quiet rv__spec">{{ review.spec }}</text>
 
     <view v-if="review.reply" class="sh-notice sh-notice--muted rv__reply">
-      <text class="txt-caption txt-quiet sh-notice sh-notice--muted rv__reply-text">
-        <text class="txt-bold txt-primary sh-notice sh-notice--muted rv__reply-tag">{{ $t("merchant.reply") }}</text>
+      <text class="txt-caption txt-quiet rv__reply-text">
+        <text class="txt-bold txt-primary rv__reply-tag">{{ $t("merchant.reply") }}</text>
         {{ review.reply }}
       </text>
     </view>
 
     <view class="rv__foot">
-      <view class="sh-row like" :class="{ 'is-on': review.liked }" @tap="$emit('like')">
+      <view class="sh-row sh-hit like" :class="{ 'is-on': review.liked }" @tap="$emit('like')">
         <text class="like__icon">{{ review.liked ? "♥" : "♡" }}</text>
         <text class="txt-caption txt-quiet like__count sh-num">{{ review.likeCount }}</text>
       </view>
@@ -47,7 +47,12 @@ defineEmits<{ (e: "like"): void }>();
 .rv + .rv {
   margin-top: 32rpx;
 }
-.rv__head {
+.rv {
+  min-width: 0;
+}
+.rv__date {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .rv__avatar {
   width: 60rpx;
@@ -63,18 +68,26 @@ defineEmits<{ (e: "like"): void }>();
   display: block;
   color: var(--sh-ink);
   margin-bottom: 4rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .rv__content {
   display: block;
   color: var(--sh-ink);
   margin-top: 16rpx;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .rv__imgs {
   display: flex;
+  flex-wrap: wrap;
   gap: 12rpx;
   margin-top: 16rpx;
 }
 .rv__img {
+  flex-shrink: 0;
   width: 140rpx;
   height: 140rpx;
   border-radius: 24rpx;
@@ -88,6 +101,11 @@ defineEmits<{ (e: "like"): void }>();
 }
 .rv__reply {
   margin-top: 16rpx;
+}
+.rv__reply-text {
+  display: block;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .rv__foot {
   display: flex;

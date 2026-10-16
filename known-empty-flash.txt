@@ -15,7 +15,6 @@
 c-app/group-host
 c-app/order
 c-app/order-confirm
-c-app/search
 b-app/cross-store
 b-app/settle
 b-app/staff

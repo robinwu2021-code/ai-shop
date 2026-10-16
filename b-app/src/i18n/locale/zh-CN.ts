@@ -1513,6 +1513,17 @@ export default {
     dictPicked: "已关联官方村：{s}",
   },
   afterSale: {
+    status: {
+      APPLIED: "待商家处理",
+      WAIT_RETURN: "待寄回",
+      RETURNING: "退货运输中",
+      WAIT_RECEIPT: "待收货后退款",
+      REFUNDING: "退款处理中",
+      REFUNDED: "已退款",
+      REJECTED: "已驳回",
+      ARBITRATING: "平台介入中",
+      CLOSED: "售后已关闭",
+    },
     impactReturn: "整单退款，将同时退回用户的{what}",
     impactCoupon: "券「{name}」",
     impactPoints: "{n} 积分",

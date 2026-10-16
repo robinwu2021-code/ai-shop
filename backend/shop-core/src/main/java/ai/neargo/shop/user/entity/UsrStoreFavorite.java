@@ -14,4 +14,5 @@ public class UsrStoreFavorite extends BaseEntity {
 
     private String userNo;
     private String entityNo;
+    private String storeNo;
 }

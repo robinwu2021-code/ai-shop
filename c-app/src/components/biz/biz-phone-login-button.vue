@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onHide, onShow } from "@dcloudio/uni-app";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, useSlots } from "vue";
 import { useUserStore } from "@/stores/user";
 import { nativePhoneAuthorization } from "@/ports/phone-login";
 import { preparePhoneLogin, submitPhoneAuthorization, phoneLoginState } from "@/shared/phone-login";
@@ -14,6 +14,7 @@ const props = withDefaults(defineProps<{
   tone?: "primary" | "soft";
 }>(), { disabled: false, loading: false, size: "default", tone: "primary" });
 const emit = defineEmits<{ ready: [result: { userChanged: boolean }]; cancel: []; authorize: []; error: [error: unknown] }>();
+const slots = useSlots();
 const user = useUserStore();
 const preparing = ref(false);
 const submitting = ref(false);
@@ -68,8 +69,8 @@ async function onPhone(event: { detail?: { code?: string; errMsg?: string } }) {
 
 <template>
   <button
-    class="sh-btn"
-    :class="{ 'sh-btn--soft': tone === 'soft', 'sh-btn--sm': size === 'sm', 'sh-btn--md': size === 'md', 'is-disabled': disabled || busy }"
+    class="phone-button"
+    :class="{ 'sh-btn': !slots.default, 'phone-button--action': !!slots.default, 'sh-btn--soft': tone === 'soft', 'sh-btn--sm': size === 'sm', 'sh-btn--md': size === 'md', 'is-disabled': disabled || busy }"
     :open-type="nativeGuest ? 'getPhoneNumber' : undefined"
     :disabled="disabled || busy"
     :loading="busy"
@@ -77,3 +78,29 @@ async function onPhone(event: { detail?: { code?: string; errMsg?: string } }) {
     @getphonenumber="onPhone"
   ><slot>{{ label }}</slot></button>
 </template>
+
+<style scoped>
+.phone-button {
+  box-sizing: border-box;
+  margin: 0;
+  min-width: 0;
+  flex-shrink: 0;
+  border: 0;
+  white-space: nowrap;
+  overflow: visible;
+}
+.phone-button::after { border: 0; }
+.phone-button.phone-button--action {
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  min-width: 88rpx;
+  min-height: 88rpx;
+  background: transparent;
+  color: inherit;
+  line-height: 1.4;
+}
+</style>

@@ -1,5 +1,6 @@
 package ai.neargo.shop.message.notify;
 
+import ai.neargo.shop.common.RecipientSalutation;
 import ai.neargo.shop.link.ShortLinkService;
 import ai.neargo.shop.link.entity.ShortLink;
 import ai.neargo.shop.spi.notify.SmsPort;
@@ -77,7 +78,9 @@ public class ShipRecipientNotify {
             String target = h5Base + t;
             LocalDateTime expiresAt = LocalDateTime.now().plusDays(linkTtlDays);
             String shortUrl = shortLink.shorten(target, ShortLink.BIZ_SHIP_TRACK, subOrderNo, expiresAt);
-            smsPort.sendShipToRecipient(phone.get(), shortUrl);
+            smsPort.sendShipToRecipient(phone.get(),
+                    RecipientSalutation.format(buyerPort.receiverNameOf(subOrderNo).orElse(null),
+                            buyerPort.receiverSalutationOf(subOrderNo).orElse(null)), shortUrl);
         } catch (RuntimeException e) {
             // 发货短信失败不影响发货事件其余通道；留痕已在通道那层写，这里只补一条定位日志
             log.warn("[ship-notify] 发货短信发送失败 subOrderNo={} {}", subOrderNo, e.toString());

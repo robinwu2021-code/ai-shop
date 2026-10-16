@@ -58,7 +58,8 @@ PROTO_SKIN = "brand"
 BLOCK_NOTES = {
     ".sh-card": ("容器", "一条内容一张卡：列表行、表单分区、统计块", "块内还要分小节时用 .sh-block"),
     ".sh-block": ("容器", "标题与内容同属一个白块 —— 灰缝只剩块与块之间那一道", "只有内容没有标题时用 .sh-card"),
-    ".sh-block__head": ("容器", "块内标题行（横向留白 26rpx，列表行仍通铺到边）", "—"),
+    ".sh-block__body": ("容器", "白块中的无内边距正文：横向 24rpx，与块头对齐", "商品行、设置行已有留白时不要再套一层"),
+    ".sh-block__head": ("容器", "块内标题行（横向留白 24rpx，列表行仍通铺到边）", "—"),
     ".sh-card__head": ("容器", "卡内第一行：标题在左、动作在右，与下面内容隔一档",
                        "块（.sh-block）里的标题行用 .sh-block__head"),
     ".sh-chip": ("标签", "状态、分类、筛选项。tint 色块，不描边", "可点的主操作用 .sh-btn"),
@@ -1147,7 +1148,7 @@ def render(cat: dict, base: dict, comps: list[dict], dens: dict, icons: dict) ->
         f'<td><code>{t["weight"]}</code></td><td><code>{t["lineHeight"]}</code></td></tr>'
         for t in tok["type"])
     sec("字阶七档 · 字重三种",
-        "<b>700 只给价格，600 只给标题与按钮，其余一律 400。</b>"
+        "<b>700 用于价格、关键大数与评分，600 用于标题、强调行与按钮，其余一律 400。</b>"
         "层级改由颜色与留白承担。最小 24rpx = 12px —— 再小中文笔画糊。"
         "字阶里<b>不含 letter-spacing</b>：同一个类要同时承载中/英/阿三种文字。",
         f'<div class="scroll"><table class="ts"><thead><tr><th>类名</th><th>样张</th>'
@@ -1291,8 +1292,9 @@ def render(cat: dict, base: dict, comps: list[dict], dens: dict, icons: dict) ->
 
 BLOCK_DEMOS = {
     ".sh-card": '<div class="sh-card">一张卡</div>',
-    ".sh-block": '<div class="sh-block"><div class="sh-block__head"><span class="sh-h2">今日</span>'
-                 '</div><div style="padding:0 13px">块内内容通铺到边</div></div>',
+    ".sh-block": '<div class="sh-block"><div class="sh-block__head"><span class="txt-title">今日</span>'
+                 '</div><div class="sh-block__body">正文与块头对齐</div></div>',
+    ".sh-block__body": '<div class="sh-block"><div class="sh-block__body">段落与评价保留横向留白</div></div>',
     ".sh-block__head": '<div class="sh-block"><div class="sh-block__head">'
                        '<span class="sh-h2">标题</span><span class="sh-muted">副标</span></div></div>',
     ".sh-chip": '<span class="sh-chip">默认</span>',

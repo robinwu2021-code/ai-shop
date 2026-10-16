@@ -10,9 +10,15 @@ defineEmits<{ ready: [result: { userChanged: boolean }]; cancel: []; error: [err
 <template>
   <sh-empty :text="text || $t('phoneLogin.title')" :tip="tip || $t('phoneLogin.tip')" :compact="compact">
     <template #action>
+      <view class="login-panel__action">
       <biz-phone-login-button :label="label || $t('phoneGate.oneTap')"
         @ready="$emit('ready', $event)" @cancel="$emit('cancel')" @error="$emit('error', $event)" />
       <biz-login-consent />
+      </view>
     </template>
   </sh-empty>
 </template>
+
+<style scoped>
+.login-panel__action { width: 100%; min-width: 0; }
+</style>

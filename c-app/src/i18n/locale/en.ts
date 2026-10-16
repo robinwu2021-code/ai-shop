@@ -23,6 +23,8 @@ export default {
     at: "{t}",
   },
   track: {
+    goHome: "Go to home",
+    orderedBy: "Ordered by",
     title: "Tracking",
     invalidTitle: "Link expired",
     invalidTip: "This tracking link may have expired. Open it from the latest shipping notice.",
@@ -269,6 +271,9 @@ export default {
     splitNote: "From {n} shops — checkout creates {n} orders, paid in one go",
     edit: "Edit",
     editDone: "Done",
+    selectGroup: "All in group",
+    editHint: "Select items to remove; checkout selections stay unchanged",
+    updating: "Updating",
     selectAll: "All",
     itemsCount: "{n} items",
     remove: "Delete",
@@ -965,6 +970,11 @@ export default {
     manual: "Type it in",
   },
   address: {
+    salutation: "Salutation (optional)",
+    salutationMr: "Mr.",
+    salutationMs: "Ms.",
+    salutationFallback: "Mr./Ms.",
+
     /** 地址表单里没绑号时的入口：绑完回填到手机号栏 */
     bindPhone: "Link your phone to fill this in",
     /** 与「设为默认」是两个动作：这个管看货，那个管下单预填 */

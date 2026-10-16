@@ -127,7 +127,8 @@ function toPoster() {
 }
 .shareact.is-compact {
   gap: 2rpx;
-  width: 72rpx;
+  width: 88rpx;
+  min-height: 88rpx;
 }
 /* 压在图上：与门户顶部的返回键同一种圆钮，任何颜色的图上都看得清 */
 .shareact.is-on-image {

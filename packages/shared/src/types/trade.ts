@@ -383,6 +383,8 @@ export interface OrderAmount {
  * 三端共用：C 端订单详情、B 端配送/发货、平台端查单。
  */
 export interface OrderReceiver {
+  /** 下单时保存的称呼快照，不随地址簿变化。 */
+  salutation?: "MR" | "MS" | "UNSPECIFIED" | null;
   /** 收货人姓名。取不到时为空 —— 空就是空，不要回落成「顾客」 */
   name?: string;
   /** 脱敏程度由后端定，见 `Order.receiver` 的说明 */
@@ -835,12 +837,15 @@ export interface RefundImpact {
  * 免登录看件视图（TDD-收件人物流触达与分享裂变 §3）。后端 `GET /mp/track?t=<token>` 返回。
  *
  * <p>**这是一份删过的订单详情**：发给收件人的看件链接会被转发、截图，
- * 所以只放物流 + 收货 + 店名 + 商品摘要 —— 价格、买家身份不下发（后端就不给）。
+ * 匿名视图只放物流 + 收货 + 店名 + 商品摘要；核验过收件手机号的视图可追加下单人昵称。
+ * 价格与支付信息不下发。
  * 手机号是**掩码**的（后端出 `138****8000`）。
  *
  * <p>令牌无效 / 过期时后端返回 `null`，端上据此显示「链接已失效」。
  */
 export interface TrackView {
+  /** Only returned after verifying the recipient's phone; absent from the anonymous H5 view. */
+  buyerNickname?: string | null;
   subOrderNo: string;
   /** 契约抽象状态，与订单详情同口径 */
   status: OrderStatus;
@@ -848,6 +853,8 @@ export interface TrackView {
   /** 发货门店名。空 → 退化成「商家」 */
   storeName?: string | null;
   receiverName?: string | null;
+  /** 看件页使用的订单称呼快照。 */
+  receiverSalutation?: "MR" | "MS" | "UNSPECIFIED" | null;
   /** 已掩码，非明文 */
   receiverPhoneMasked?: string | null;
   receiverAddress?: string | null;

@@ -111,6 +111,8 @@ export type ExemptType = "AGRI" | "HANDCRAFT" | "SERVICE" | "PETTY";
 export type MerchantType = MerchantSubject;
 /** 商品卡/详情上挂的商家简要信息 */
 export interface MerchantBrief {
+  /** 收藏列表的实际门店号，主体编号仍为 merchantNo。 */
+  storeNo?: string;
   /** 商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001） */
   merchantNo: string;
   /**

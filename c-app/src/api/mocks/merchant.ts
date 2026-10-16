@@ -170,7 +170,7 @@ export const merchantMock: Pick<ShopApi,
       categories: [...counted.entries()]
         .map(([categoryNo, count]) => ({ categoryNo, name: catName(categoryNo), count }))
         .filter((c) => !!c.name),
-      favorited: db.favoriteStores.includes(merchantNo),
+      favorited: db.favoriteStores.some(no => toMerchantNo(no) === merchantNo),
       /*
        * 停业标志。mock 里由商家种子的 status 推出 —— **不能恒为 false**：
        * 恒 false 的话「已停业」这条分支在 mock 下永远走不到，
@@ -298,15 +298,16 @@ export const merchantMock: Pick<ShopApi,
   },
 
   async toggleFavoriteStore(merchantNo) {
-    const i = db.favoriteStores.indexOf(merchantNo);
+    const no = toStoreNo(toMerchantNo(merchantNo));
+    const i = db.favoriteStores.findIndex(n => toStoreNo(toMerchantNo(n)) === no);
     if (i >= 0) db.favoriteStores.splice(i, 1);
-    else db.favoriteStores.unshift(merchantNo);
+    else db.favoriteStores.unshift(no);
     persist();
     return delay({ favorited: i < 0 });
   },
 
   async favoriteStores() {
-    return delay(db.favoriteStores.map(toMerchant));
+    return delay(db.favoriteStores.map(no => ({ ...toMerchant(toMerchantNo(no)), storeNo: toStoreNo(toMerchantNo(no)) })));
   },
 
   async myStores() {

@@ -101,7 +101,7 @@ function openGoods(g: Goods) {
 }
 
 function openStore(m: Merchant) {
-  uni.navigateTo({ url: `${ROUTES.store}?merchantNo=${m.merchantNo}` });
+  uni.navigateTo({ url: `${ROUTES.store}?no=${m.storeNo || m.merchantNo}` });
 }
 
 onShow(load);
@@ -121,8 +121,8 @@ watch(() => user.isPhoneLogin ? user.token : "", () => {
     <sh-tabs :items="tabs" :active="tab" @change="(k: string) => (tab = k as typeof tab)"></sh-tabs>
 
     <view v-if="tab === 'goods'" class="sh-block">
-      <view v-for="g in goods" :key="g.goodsNo" class="item" :class="{ 'is-dead': dead(g) }">
-        <biz-goods-card :goods="g" @add="addToCart(g, $event)" @tap="openGoods(g)"></biz-goods-card>
+      <view v-for="g in goods" :key="g.goodsNo" class="item">
+        <biz-goods-card :goods="g" :class="{ 'is-dead': dead(g) }" @add="addToCart(g, $event)" @tap="openGoods(g)"></biz-goods-card>
         <view v-if="dead(g)" class="item__dead sh-row">
           <text class="txt-caption txt-quiet sh-fill">{{ $t("favorites.offShelf") }}</text>
           <text class="sh-link" @tap="remove(g)">{{ $t("favorites.remove") }}</text>
@@ -140,7 +140,7 @@ watch(() => user.isPhoneLogin ? user.token : "", () => {
     </view>
 
     <view v-else class="sh-block">
-      <biz-shop-row v-for="m in stores" :key="m.merchantNo" :merchant="m" @tap="openStore(m)"></biz-shop-row>
+      <biz-shop-row v-for="m in stores" :key="m.storeNo || m.merchantNo" :merchant="m" @tap="openStore(m)"></biz-shop-row>
       <sh-empty
         bare
         v-if="!stores.length"
@@ -155,8 +155,8 @@ watch(() => user.isPhoneLogin ? user.token : "", () => {
 </template>
 
 <style scoped>
-/* 下架的整行压淡：还在，但一眼看得出买不了 */
-.item.is-dead {
+/* 只弱化商品展示；下架原因与移除操作保持原有对比度。 */
+.is-dead {
   opacity: 0.55;
 }
 .item__dead {

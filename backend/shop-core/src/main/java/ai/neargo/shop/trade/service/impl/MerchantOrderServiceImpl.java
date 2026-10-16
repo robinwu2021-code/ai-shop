@@ -584,7 +584,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
         boolean needsContact = MERCHANT_DELIVERY.equals(s.getFulfillment())
                 || EXPRESS.equals(s.getFulfillment());
         return new OrderVO.Receiver(s.getReceiverName(),
-                needsContact ? phone : tail(phone), s.getReceiverAddress());
+                needsContact ? phone : tail(phone), s.getReceiverAddress(), s.getReceiverSalutation());
     }
 
     private static String tail(String phone) {

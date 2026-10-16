@@ -250,8 +250,13 @@ def typography() -> str:
         L.append(
             f"| `{x['class']}` | {x['size']} | {x['px']} | {x['weight']} | {x['lineHeight']} | {when[:46]} | {usage(blk.get('usage', {}))} |"
         )
+    L.append("\n## C 端文字职责\n")
+    L.append("评价正文、说明段落用 `txt-body`（28rpx / 1.5）；昵称或行标题用 `txt-strong`；")
+    L.append("规格等辅助信息用 `txt-sub`，日期、单位和脚注用 `txt-caption`。不要把正文降成小字来挤进卡片。")
+    L.append("文本字阶与控件分别按现有语义类取值；按钮、输入不因历史注释另造 30rpx 一档。")
+    L.append("用户输入的长段落要允许换行；日期、图标不被挤窄；昵称单行省略，不把日期推到边界外。\n")
     L.append("\n## 四条硬规矩\n")
-    L.append("1. **700 只给价格**，600 只给标题与按钮，其余一律 400。")
+    L.append("1. **700 用于价格、关键大数和评分读数**，600 用于标题、强调行与按钮，其余一律 400。")
     L.append("2. **行高按用途分档，不按语言分档。** 中文要 1.5 以上才不挤，拉丁 1.4 就够；")
     L.append("   取中文的下限对英文也不难看，而按语言切换行高会让同一个列表在中英文下高度不同，")
     L.append("   横滑卡、等高栅格全要跟着变。")
@@ -274,7 +279,7 @@ def typography() -> str:
             "--sh-pad-page": "页面左右/上内边距",
             "--sh-pad-empty": "空态上下留白",
             "--sh-gap-tabs": "筛选条间距",
-            "--sh-fs-sub": "次要文字字号",
+            "--sh-fs-sub": "sh-muted 次要说明字号（txt-sub 固定 26rpx）",
         }
         cvals, bvals = dens.get("c", {}), dens.get("b", {})
         L.append("| 变量 | C 端 | B 端 | 管什么 |")
@@ -347,6 +352,16 @@ def layout() -> str:
     L.append(f"\n提示条有 **{len(tones) + 1} 档**（主色 / "
              + " / ".join(x["class"].split("--")[1] for x in tones)
              + "），底与字成对翻 —— 只改底色会得到一段读不清的字。\n")
+    L.append("\n## 留白与边界由谁负责\n")
+    L.append("| 层 | 职责 | 禁止叠加 |")
+    L.append("|---|---|---|")
+    L.append("| `sh-scaffold` | 页面外边距、安全区、菜单占位；C 端页边距 28rpx | 不用卡片内边距代替页边距 |")
+    L.append("| `sh-card` | 自带四周内边距，默认 C 端 32rpx | 不再套白块正文留白 |")
+    L.append("| `sh-block` | 白底、圆角、上下留白；保留通铺列表的能力 | 不假定它自带左右留白 |")
+    L.append("| `sh-block__body` | 无留白的段落与评价，横向 24rpx，与块头对齐 | 自带内边距的商品行/设置行不再套它 |")
+    L.append("| `sh-notice` | 一段回复/提示只套一次容器，内部文本只负责字阶 | 不在内部 text 上重复挂容器类 |")
+    L.append("\n用户内容使用逻辑方向留白（`padding-inline`），长词可断行，配图允许换行；")
+    L.append("只弱化失效内容，删除、重试、失效原因等仍可用信息保持原有对比度。\n")
     L.append("\n## 行与列表\n")
     L.append("| 件 | 什么时候用 | 别拿它当 |")
     L.append("|---|---|---|")
@@ -516,6 +531,21 @@ def components() -> str:
     L.append(f"\n## 形态缺口\n\n{'**当前 0 类** —— 页面里出现的形状，库里都有对应的件。' if not gaps else ''}")
     for g in gaps:
         L.append(f"- **{g['label']}**：{len(g.get('pages', []))} 页各造一份")
+    L.append("\n## C 端组件整理与审查（2026-10-15）\n")
+    L.append("| 层 | 现有组件/原语 | 页面负责 |")
+    L.append("|---|---|---|")
+    L.append("| 页面框 | `sh-scaffold`、`sh-actionbar`、`sh-savebar`、`sh-tabbar` | 内容顺序、业务状态、动作 |")
+    L.append("| 内容容器 | `sh-card`、`sh-block`、`sh-cells`、`sh-notice` | 选择容器，不重画白底圆角 |")
+    L.append("| 基础控件 | `sh-tabs`、`sh-cover`、`sh-rating`、`sh-stepper` | 数据与事件，尺寸只用已有参数 |")
+    L.append("| C 端业务件 | `biz-review`、`biz-sku-row`、`biz-goods-card`、`biz-shop-row` | 列表查询与页面跳转，不复制组件内部样式 |")
+    L.append("\n本轮落地：门店评价正文留白、评价文字层级/长内容换行/单层回复框、失效购物车操作对比度、")
+    L.append("订单列表金额基线、首页邀请关闭按钮的命中区；订单状态标题/间距和物流缩略图圆角归入已有档位。评价配图复用 `sh-cover` 处理图片 URL 与占位。封面尺寸与底色归调用点，裁切/媒体分流/圆角归组件。\n")
+    L.append("审查范围：C 端首页、门店、商品/购物车、订单列表及共享基础件；这是一次定点审查，")
+    L.append("不是全量页面视觉验收。样式扫描不能替代真机命中验证。\n")
+    L.append("待专项验证：`sh-tabs` 横向滚动中的 88rpx 命中区与裁切；`sh-stepper` 加减热区与数字编辑区重叠；")
+    L.append("操作条在长英文/阿文换行后的占位。不得只加扩大伪元素就宣称解决，要检查相邻动作能否独立命中。\n")
+    L.append("\n验收清单：320/375/414 宽度下检查正文与容器边缘、长昵称/长词/多图、回复框层数、")
+    L.append("价格与辅助信息基线、可用动作对比度、底部安全区；触控区域另做微信小程序真机验证。\n")
     L += gate_section("组件")
     return "\n".join(L) + "\n"
 

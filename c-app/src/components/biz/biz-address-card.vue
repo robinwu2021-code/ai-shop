@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useRecipientName } from "@/shared/recipient-name";
+const recipientName = useRecipientName();
 /**
  * 一条收货地址长什么样 —— **三处共用的同一件**：
  * 收货地址页（带动作）、下单页（只读）、选择地点页。
@@ -44,7 +46,7 @@ const { t } = useI18n();
 <template>
   <view :class="bare ? 'card card--bare' : 'sh-card card'" @tap.stop="emit('tap')">
     <view class="card__head sh-wrap">
-      <text class="txt-strong">{{ address.name }}</text>
+      <text class="txt-strong">{{ recipientName(address.name, address.salutation) }}</text>
       <text class="txt-caption sh-num">{{ address.phone }}</text>
       <text v-if="address.tag" class="txt-caption sh-chip tiny">{{ address.tag }}</text>
       <text v-if="address.isDefault" class="txt-caption sh-chip sh-chip--primary tiny">
@@ -126,13 +128,22 @@ const { t } = useI18n();
    线用 --sh-line 不用 --sh-faint：原型上是 #DCDEE2，而 faint 比它更淡，
    淡到分不出「这条地址」与「对它的操作」是两段。 */
 .card__ops {
-  gap: 40rpx;
+  flex-wrap: wrap;
+  gap: 8rpx 16rpx;
   margin-top: 24rpx;
   padding-top: 24rpx;
   border-top: 2rpx solid var(--sh-line);
 }
 .op {
-  padding: 4rpx 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88rpx;
+  min-height: 88rpx;
+  padding: 0 12rpx;
+  box-sizing: border-box;
+  text-align: center;
+  flex-shrink: 0;
 }
 .tiny {
   transform: scale(0.9);

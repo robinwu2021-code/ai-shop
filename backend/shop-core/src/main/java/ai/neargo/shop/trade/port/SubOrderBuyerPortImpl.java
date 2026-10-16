@@ -67,4 +67,22 @@ public class SubOrderBuyerPortImpl implements SubOrderBuyerPort {
         return sub == null || sub.getReceiverPhone() == null || sub.getReceiverPhone().isBlank()
                 ? Optional.empty() : Optional.of(sub.getReceiverPhone());
     }
+    @Override
+    public Optional<String> receiverNameOf(String subOrderNo) {
+        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .select(OrdSubOrder::getReceiverName)
+                        .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("LIMIT 1")));
+        return sub == null ? Optional.empty() : Optional.ofNullable(sub.getReceiverName());
+    }
+
+    @Override
+    public Optional<String> receiverSalutationOf(String subOrderNo) {
+        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
+                subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                        .select(OrdSubOrder::getReceiverSalutation)
+                        .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("LIMIT 1")));
+        return sub == null ? Optional.empty() : Optional.ofNullable(sub.getReceiverSalutation());
+    }
+
 }

@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useRecipientName } from "@/shared/recipient-name";
+const recipientName = useRecipientName();
 // 免登录看件页（TDD-收件人物流触达与分享裂变 §3）。
 //
 // 这是发给**收件人**的页面：从发货短信的短链、或买家分享进来，不需要登录。
 // 鉴权靠 URL 里的看件令牌 `t`（后端 HMAC 验签）——令牌即授权。
-// 后端返回的是收窄视图：只有物流 + 收货 + 店名 + 商品摘要，没有价格、没有买家身份。
+// 匿名视图不含买家身份；手机号核验通过的小程序视图可展示下单人昵称，仍不含价格。
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
@@ -13,6 +15,7 @@ import { api } from "@/api";
 import { ApiError } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
 import { useUserStore } from "@/stores/user";
+import { openWxWaybillTracking } from "@/ports/wx-logistics";
 import type { TrackView } from "@shared/types";
 
 const { t } = useI18n();
@@ -34,7 +37,7 @@ async function load() {
     // #ifdef MP-WEIXIN
     // 小程序：进来先绑手机号（走登录页），再按「本人」校验看件（TDD §3）。
     const user = useUserStore();
-    if (!user.isLogin) {
+    if (!user.isPhoneLogin) {
       loaded.value = true;
       uni.redirectTo({
         url: `${ROUTES.login}?redirect=${encodeURIComponent(ROUTES.track + "?t=" + token.value)}`,
@@ -80,6 +83,18 @@ function openInMini() {
   // #endif
 }
 
+function goHome() {
+  uni.switchTab({ url: ROUTES.home });
+}
+
+function openWxTracking() {
+  const waybillToken = view.value?.trace?.displayToken;
+  // Call synchronously from the user's tap; awaiting a refresh here can lose the native gesture.
+  if (!waybillToken || !openWxWaybillTracking(waybillToken)) {
+    uni.showToast({ title: String(t("trace.wxUnavailable")), icon: "none" });
+  }
+}
+
 // 转发：原样带着令牌分享出去 —— 收件人可以再转给家人同住的人代收。
 // 一期不做激励，只让链接能传下去（§9）。
 onShareAppMessage(() => ({
@@ -109,6 +124,9 @@ onShareAppMessage(() => ({
         <text class="txt-strong trk-store">
           {{ view.storeName ? $t("track.shipFrom", { store: view.storeName }) : $t("track.shipFromDefault") }}
         </text>
+        <text v-if="view.buyerNickname" class="txt-caption sh-muted">
+          {{ $t("track.orderedBy") }}：{{ view.buyerNickname }}
+        </text>
         <!-- #ifdef H5 -->
         <!-- 拿到 URL Link 才显示：小程序未发布/未开通时不露点不动的按钮 -->
         <view v-if="miniLink" class="sh-btn sh-btn--sm trk-mini" @tap="openInMini">
@@ -127,8 +145,8 @@ onShareAppMessage(() => ({
         <text v-if="view.expressNo" class="txt-caption sh-muted prog__row sh-num">
           {{ view.expressCompany ? `${view.expressCompany} ${view.expressNo}` : view.expressNo }}
         </text>
-        <view v-if="view.trace && view.trace.nodes && view.trace.nodes.length" class="prog__sec">
-          <sh-trace :trace="view.trace" :show-map="false"></sh-trace>
+        <view v-if="view.trace && (view.trace.displayMode === 'wx-plugin' || view.trace.nodes?.length)" class="prog__sec">
+          <sh-trace :trace="view.trace" :show-map="false" @open-wx="openWxTracking"></sh-trace>
         </view>
         <text v-else class="txt-caption sh-muted prog__row">{{ $t("track.noTrace") }}</text>
       </view>
@@ -137,7 +155,7 @@ onShareAppMessage(() => ({
       <view v-if="view.receiverName || view.receiverAddress" class="sh-card block">
         <text class="txt-caption sh-muted">{{ $t("track.receiverTitle") }}</text>
         <view class="sh-row sh-row--between trk-recv">
-          <text class="txt-strong">{{ view.receiverName }}</text>
+          <text class="txt-strong">{{ recipientName(view.receiverName, view.receiverSalutation) }}</text>
           <text v-if="view.receiverPhoneMasked" class="txt-caption sh-muted sh-num">{{ view.receiverPhoneMasked }}</text>
         </view>
         <text v-if="view.receiverAddress" class="txt-caption sh-muted">{{ view.receiverAddress }}</text>
@@ -159,6 +177,9 @@ onShareAppMessage(() => ({
         </view>
       </view>
     </template>
+    <sh-actionbar>
+      <view class="sh-btn sh-fill" @tap="goHome">{{ $t("track.goHome") }}</view>
+    </sh-actionbar>
   </sh-scaffold>
 </template>
 
@@ -171,6 +192,6 @@ onShareAppMessage(() => ({
 .prog__sec { margin-top: 16rpx; }
 .trk-recv { margin-top: 8rpx; }
 .trk-item { gap: 16rpx; align-items: center; padding: 12rpx 0; }
-.trk-item__img { width: 96rpx; height: 96rpx; border-radius: 12rpx; flex: none; }
+.trk-item__img { width: 96rpx; height: 96rpx; border-radius: 16rpx; flex: none; }
 .trk-item__title { display: block; }
 </style>

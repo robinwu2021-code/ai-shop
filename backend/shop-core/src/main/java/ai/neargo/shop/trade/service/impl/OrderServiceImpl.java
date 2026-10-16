@@ -1485,6 +1485,7 @@ public class OrderServiceImpl implements OrderService {
              */
             userPort.receiverOf(userNo, subAddr).ifPresent(r -> {
                 sub.setReceiverName(r.name());
+                sub.setReceiverSalutation(r.salutation());
                 sub.setReceiverPhone(r.phone());
                 sub.setReceiverAddress(r.address());
             });
@@ -2406,7 +2407,7 @@ public class OrderServiceImpl implements OrderService {
                 sub.getExpressCompany(),
                 sub.getExpressNo(),
                 items,
-                traceOf(sub, surfaceOf(client)));
+                traceOf(sub, surfaceOf(client)), null, sub.getReceiverSalutation());
     }
 
     @Override
@@ -2422,7 +2423,11 @@ public class OrderServiceImpl implements OrderService {
         if (!samePhone(loginPhone, sub.getReceiverPhone())) {
             throw BizException.of(ErrorCode.TRACK_NOT_RECIPIENT);
         }
-        return trackBySubOrder(subOrderNo, client);
+        String buyerNickname = sub.getBuyerNickname();
+        if (buyerNickname == null || buyerNickname.isBlank()) {
+            buyerNickname = userPort.find(sub.getUserNo()).map(user -> user.nickname()).orElse(null);
+        }
+        return trackBySubOrder(subOrderNo, client).withBuyerNickname(buyerNickname);
     }
 
     /** 手机号比对：各取末 11 位数字再比。空、位数不足一律当不一致（宁可拒看也不错给） */
@@ -3107,7 +3112,7 @@ public class OrderServiceImpl implements OrderService {
             return null;
         }
         return new OrderVO.Receiver(s.getReceiverName(), s.getReceiverPhone(),
-                s.getReceiverAddress());
+                s.getReceiverAddress(), s.getReceiverSalutation());
     }
 
     /** 支付视角（Q6）：合计金额 + 各商家子单；**不给 fulfillment**，跨商家可能不同。 */

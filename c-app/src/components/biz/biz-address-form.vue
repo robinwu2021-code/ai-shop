@@ -53,9 +53,9 @@ function accountPhone(): string {
 const draft = ref<Omit<Address, "addressId"> & { addressId?: string }>(
   props.address
     // houseNo 存量为 null，直接绑到 input 上会显示 "null"
-    ? { ...props.address, houseNo: props.address.houseNo ?? "" }
+    ? { ...props.address, salutation: props.address.salutation ?? "UNSPECIFIED", houseNo: props.address.houseNo ?? "" }
     : {
-      name: "", phone: accountPhone(),
+      salutation: "UNSPECIFIED", name: "", phone: accountPhone(),
       region: props.place?.region ?? "",
       province: props.place?.province ?? "",
       city: props.place?.city ?? "",
@@ -451,6 +451,14 @@ function pickCountry(code: string, cc: string) {
         :placeholder="$t('address.phone')"
       />
     </view>
+    <view class="salutation sh-row sh-wrap">
+      <text class="txt-caption">{{ $t("address.salutation") }}</text>
+      <text v-for="value in (['MR', 'MS'] as const)" :key="value" class="sh-chip sh-center"
+        :data-salutation="value" :class="{ 'sh-chip--primary': draft.salutation === value }"
+        @tap="draft.salutation = draft.salutation === value ? 'UNSPECIFIED' : value">
+        {{ $t(value === 'MR' ? 'address.salutationMr' : 'address.salutationMs') }}
+      </text>
+    </view>
     <text v-if="!user.user?.phone" class="txt-caption txt-primary bindphone" @tap="phoneGate = true">
       {{ $t("address.bindPhone") }}
     </text>
@@ -587,4 +595,6 @@ function pickCountry(code: string, cc: string) {
 .form__save {
   margin-top: 36rpx;
 }
+.salutation { gap: 24rpx; margin-top: 16rpx; min-height: 88rpx; }
+.salutation .sh-chip { min-width: 88rpx; min-height: 88rpx; box-sizing: border-box; }
 </style>

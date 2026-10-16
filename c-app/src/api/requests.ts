@@ -105,6 +105,8 @@ export interface BindCommunityReq {
 // ---------------------------------------------------------------- 地址簿
 
 export interface SaveAddressReq {
+  /** 不传保留已有称呼；UNSPECIFIED 显式取消。 */
+  salutation?: "MR" | "MS" | "UNSPECIFIED" | null;
   /** 有值 = 编辑，无值 = 新增 */
   addressId?: string;
   /** 收货人姓名 */

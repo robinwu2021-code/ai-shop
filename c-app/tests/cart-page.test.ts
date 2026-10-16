@@ -18,7 +18,7 @@
  * 而「显示的是哪一种状态」不该随文案漂移。
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mount } from "@vue/test-utils";
+import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { uniMock } from "./setup";
 import { FULFILLMENT } from "@shared/utils/constants";
@@ -432,5 +432,61 @@ describe("购物车页", () => {
     await store.load();
 
     expect(store.selected).toEqual(["S1"]);
+  });
+});
+
+
+describe("购物车整体交互", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia()); vi.clearAllMocks(); confirmMock.mockResolvedValue(true);
+    cartList.mockResolvedValue([item()]); cartUpdate.mockResolvedValue([]); cartRemove.mockResolvedValue([]);
+  });
+  it("加载失败显示重试，重试成功后恢复商品", async () => {
+    const { onShow } = await import("@dcloudio/uni-app");
+    const {w,store} = await render();
+    const show = vi.mocked(onShow).mock.calls.at(-1)![0] as () => Promise<void>;
+    cartList.mockRejectedValueOnce(new Error("offline"));
+    await show(); await flushPromises();
+    expect(w.text()).toContain("common.loadFailed");
+    await w.find(".bar__btn").trigger("tap");
+    expect(uniMock.navigateTo).not.toHaveBeenCalled();
+    cartList.mockResolvedValueOnce([item({qty:3})]);
+    await w.findAll(".sh-link").find(el=>el.text().includes("common.retry"))!.trigger("tap");
+    await flushPromises();
+    expect(store.items[0]!.qty).toBe(3); expect(w.text()).not.toContain("common.loadFailed");
+  });
+  it("门店入口携带门店编号而非主体编号", async () => {
+    cartList.mockResolvedValueOnce([item({storeNo:"STORE1"})]);
+    const {w}=await render(); await w.find(".seg__store").trigger("tap");
+    expect(uniMock.navigateTo).toHaveBeenCalledWith({url:"/pages/store/index?no=STORE1"});
+  });
+  it("一家门店也展示门店名称", async () => {
+    const { w } = await render(); expect(w.find('.seg').text()).toContain('老张粮油店');
+  });
+  it("编辑态点击商品内容可标记，不改变结算选择", async () => {
+    const {w,store}=await render(); const selected=[...store.selected];
+    await w.find('.topbar .sh-link').trigger('tap'); await w.find('.row').trigger('tap');
+    expect(store.marked).toEqual(['S1']); expect(store.selected).toEqual(selected);
+    expect(w.findComponent({name:'sh-stepper'}).exists()).toBe(false);
+  });
+  it("编辑态点击失效商品内容也能标记", async () => {
+    cartList.mockResolvedValueOnce([item({invalid:true})]);
+    const {w,store}=await render(); await w.find(".topbar .sh-link").trigger("tap");
+    await w.find(".invalid__goods").trigger("tap"); expect(store.marked).toEqual(["S1"]);
+  });
+  it("更新数量期间不重复请求或进入结算", async () => {
+    let finish!: (items: CartItem[]) => void;
+    cartUpdate.mockImplementationOnce(() => new Promise(resolve => {finish=resolve;}));
+    const {w}=await render(); const stepper=w.findComponent({name:'sh-stepper'});
+    stepper.vm.$emit('change',2); stepper.vm.$emit('change',3); await w.vm.$nextTick();
+    await w.find('.bar__btn').trigger('tap'); expect(cartUpdate).toHaveBeenCalledTimes(1);
+    expect(uniMock.navigateTo).not.toHaveBeenCalled(); expect(stepper.props('disabled')).toBe(true);
+    finish([item({qty:2})]); await flushPromises(); expect(stepper.props('disabled')).toBe(false);
+  });
+  it("批量删除失败保留标记并显示错误", async () => {
+    cartRemove.mockRejectedValueOnce(new Error('删除失败，请重试'));
+    const {w,store}=await render(); await w.find('.topbar .sh-link').trigger('tap');
+    store.setAllMarked(true); await w.vm.$nextTick(); await w.find('.bar__btn').trigger('tap'); await flushPromises();
+    expect(store.marked).toEqual(['S1']); expect(uniMock.showToast).toHaveBeenCalledWith(expect.objectContaining({title:'删除失败，请重试'}));
   });
 });

@@ -1846,6 +1846,9 @@ components:
     MerchantBrief:
       type: "object"
       properties:
+        storeNo:
+          type: "string"
+          description: "收藏列表的实际门店号，主体编号仍为 merchantNo。"
         merchantNo:
           type: "string"
           description: "商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001）"
@@ -3775,6 +3778,9 @@ components:
     VisitedMerchant:
       type: "object"
       properties:
+        storeNo:
+          type: "string"
+          description: "收藏列表的实际门店号，主体编号仍为 merchantNo。"
         merchantNo:
           type: "string"
           description: "商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001）"
@@ -3887,6 +3893,9 @@ components:
     Merchant:
       type: "object"
       properties:
+        storeNo:
+          type: "string"
+          description: "收藏列表的实际门店号，主体编号仍为 merchantNo。"
         merchantNo:
           type: "string"
           description: "商家单号。贯穿商品/订单/评价/结算，是多商家模型的主线（ADR-001）"
@@ -9584,6 +9593,16 @@ components:
     OrderReceiver:
       type: "object"
       properties:
+        salutation:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "MR"
+            - "MS"
+            - "UNSPECIFIED"
+            - null
+          description: "下单时保存的称呼快照，不随地址簿变化。"
         name:
           type: "string"
           description: "收货人姓名。取不到时为空 —— 空就是空，不要回落成「顾客」"
@@ -10144,6 +10163,11 @@ components:
     TrackView:
       type: "object"
       properties:
+        buyerNickname:
+          type:
+            - "string"
+            - "null"
+          description: "Only returned after verifying the recipient's phone; absent from the anonymous H5 view."
         subOrderNo:
           type: "string"
         status:
@@ -10160,6 +10184,16 @@ components:
           type:
             - "string"
             - "null"
+        receiverSalutation:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "MR"
+            - "MS"
+            - "UNSPECIFIED"
+            - null
+          description: "看件页使用的订单称呼快照。"
         receiverPhoneMasked:
           type:
             - "string"
@@ -10192,7 +10226,7 @@ components:
         - "fulfillment"
         - "items"
       additionalProperties: false
-      description: "免登录看件视图（TDD-收件人物流触达与分享裂变 §3）。后端 `GET /mp/track?t=<token>` 返回。\n\n<p>**这是一份删过的订单详情**：发给收件人的看件链接会被转发、截图， 所以只放物流 + 收货 + 店名 + 商品摘要 —— 价格、买家身份不下发（后端就不给）。 手机号是**掩码**的（后端出 `138****8000`）。\n\n<p>令牌无效 / 过期时后端返回 `null`，端上据此显示「链接已失效」。"
+      description: "免登录看件视图（TDD-收件人物流触达与分享裂变 §3）。后端 `GET /mp/track?t=<token>` 返回。\n\n<p>**这是一份删过的订单详情**：发给收件人的看件链接会被转发、截图， 匿名视图只放物流 + 收货 + 店名 + 商品摘要；核验过收件手机号的视图可追加下单人昵称。 价格与支付信息不下发。 手机号是**掩码**的（后端出 `138****8000`）。\n\n<p>令牌无效 / 过期时后端返回 `null`，端上据此显示「链接已失效」。"
     TrackItem:
       type: "object"
       properties:
@@ -10378,6 +10412,12 @@ components:
         - "balance"
       additionalProperties: false
       description: "结算页的积分试算结果。**服务端算**，端上只负责显示。\n\n端上自己算的话，下单时服务端会再算一遍 —— 两处算法只要有一点不同 （券后金额口径、运费是否参与、开关判断顺序），用户就会看到 「结算页说能抵 30，下单后只抵了 25」，而这个差额没人解释得清。"
+    RecipientSalutation:
+      type: "string"
+      enum:
+        - "MR"
+        - "MS"
+        - "UNSPECIFIED"
     Address:
       type: "object"
       properties:
@@ -10387,6 +10427,11 @@ components:
         name:
           type: "string"
           description: "收货人姓名"
+        salutation:
+          anyOf:
+            - "$ref": "#/components/schemas/RecipientSalutation"
+            - type: "null"
+          description: "用户选定的称呼；旧地址为空，展示按未选择处理。"
         phone:
           type: "string"
           description: "收货人手机号"
@@ -10648,6 +10693,16 @@ components:
     SaveAddressReq:
       type: "object"
       properties:
+        salutation:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "MR"
+            - "MS"
+            - "UNSPECIFIED"
+            - null
+          description: "不传保留已有称呼；UNSPECIFIED 显式取消。"
         addressId:
           type: "string"
           description: "有值 = 编辑，无值 = 新增"

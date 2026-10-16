@@ -33,6 +33,9 @@
 | 5 | 短信含短链 → 订单详情 | 新**短链服务** + **微信 URL Link** → 免登录看件页 |
 | 6 | 买家分享订单详情给收件人（裂变） | 复用 `onShareAppMessage` + `withAttribution`（ADR-004 已有归因），落到看件页 |
 | 7 | 运营端查看推送详情 | 复用 `sys_notify_log` + 「发送记录」页，新 bizType |
+| 8 | 看件页明确进入首页 | 固定 sh-actionbar，正常/失效页面均可 switchTab 首页 |
+| 9 | 看件页打开物流插件 | 接收 sh-trace 的 open-wx，直接传当前 displayToken；无本地节点也保留插件入口 |
+| 10 | 展示下单人员 | 经收件手机号校验的 trackMine 返回 buyerNickname；匿名 track 不公开下单身份 |
 
 ---
 
@@ -82,6 +85,18 @@ GET /mp/track?t=<token>    （匿名，进 /mp 鉴权白名单）
 
 ## §2 发货触发给收件人发短信（需求 4）
 
+### 2026-10-15 收件人姓名参数（1 档）
+
+AC：发货短信使用订单收件人快照姓名，不取下单人或当前用户昵称；缺姓名回落“收件人”；保留短码及无电话不发送、失败不阻断发货规则。
+
+实施：SubOrderBuyerPort 增 receiverNameOf → 交易域按子单查询 receiverName；SmsPort.sendShipToRecipient 增 receiverName 参数，日志包装与桩透传；AliSmsGateway 以 JSON 序列化 name/code，模板固定文案 `${name}，您的商品已发货，物流详情请点击 s.hxmall.top/${code} 查看。`。无需迁移。外部短信模板必须同步包含 name/code 后再部署启用。
+
+验证：ShipRecipientNotifyTest 验证姓名/缺失回落与既有触达规则；短信参数测试验证特殊字符正确转义。实现对账包括 SPI、交易查询、编排、短信包装/适配与对应测试。
+
+验证记录（2026-10-15）：`mvn -o -f backend/pom.xml -pl shop-app -am test -Dtest=ShipRecipientNotifyTest,NotifyLoggingPortTest,ShipTemplateParamTest -Dsurefire.failIfNoSpecifiedTests=false` BUILD SUCCESS；10 项相关测试通过，包含 shop-app 测试源码编译。消融：将姓名固定回“收件人”后，`sendsShortLinkToReceiver` 失败（5 项中 1 项失败），恢复后通过。日志位于 `.superpowers/sdd/ship-recipient-name/`。代码已完成，未部署，短信平台模板 name/code 变量需同步确认。
+
+2026-10-15 称呼扩展：地址 salutation 经 UserQueryPort.Receiver 固化到 ord_sub_order.receiver_salutation；发货时统一格式化收件人姓名与 MR/MS/UNSPECIFIED，未选默认先生/女士，显式历史后缀不重复追加。短信 `${name}` 为组合后的完整称呼，模板中不再写固定称呼。详见地址 TDD 的当日实施计划。代码与相关测试已完成，用户已确认模板沿用 SMS_512500972，后端/H5 已部署并健康检查通过，数据库迁移至 V424；小程序体验版 0.1.145 · 1015-2000 已上传成功。
+
 ### 2.1 触发
 
 消费方在 `NotificationConsumer`，监听 **`SUB_ORDER_SHIPPED`**（已有事件）。
@@ -92,9 +107,9 @@ GET /mp/track?t=<token>    （匿名，进 /mp 鉴权白名单）
 - 收件人号：`order.receiver.phone`（订单里现成）。**发给收件人，不是买家**。
 - 新 Aliyun 模板 `SHIP_TO_RECIPIENT`（要报备，几小时）：
   ```
-  您有一个包裹已发出，点击查看物流 ${url}
+  ${name}，您的商品已发货，物流详情请点击 s.hxmall.top/${code} 查看。
   ```
-  `${url}` 是短链（§3）。⚠️ 短信里带链接，**链接域名要在阿里云短信后台报备白名单**，
+  `${name}` 为收件人快照姓名，`${code}` 为短码；完整短链见 §3。⚠️ 短信里带链接，**链接域名要在阿里云短信后台报备白名单**，
   否则模板审核不过（这是做短信带链最常卡的一关）。
 
 ### 2.3 与「来单给商家」的短信是两条独立场景
@@ -112,6 +127,19 @@ GET /mp/track?t=<token>    （匿名，进 /mp 鉴权白名单）
 `target = 收件人掩码号`。失败（模板审核中/号空）照 §来单的口径记 FAILED，不影响主流程。
 
 ---
+
+### 2.5 看件页增量修复计划（2026-10-15）
+
+用户要求小程序看件页有明确首页出口、可打开物流插件，并展示下单人员。复用现有 sh-actionbar、sh-trace 和物流 port；新字段 buyerNickname 仅在服务端验证收件手机号后返回，匿名 H5 保持不公开买家身份。
+
+- [x] 页面回归：有效、失效状态均可进入首页；物流插件按钮同步调用 port，失败明确提示；插件模式没有本地节点仍可打开。非本人状态复用无数据状态的同一固定出口。
+- [x] 修复 track 页遗漏的 open-wx 事件，首页使用 switchTab；保留原有分享令牌及收件人校验。
+- [x] TrackVO / TrackView 增加可选 buyerNickname；下单快照昵称优先，空昵称回查用户昵称；仅 trackForRecipient 填入，匿名 trackBySubOrder 留空。增加真实服务场景的公开/本人/非本人回归。
+- [x] 同步三语文案和 OpenAPI；运行相关 C 端测试、vue-tsc、后端场景与契约检查，并构建含商家分包的小程序。
+
+本轮不显示买家手机号、userNo、价格或支付信息。验收：首页按钮确实切到首页；查看物流详情确实调用插件并传当前 displayToken；收件人看到下单人昵称，匿名访问无该身份信息。
+
+自动化结果：本地 C 端 534 项通过；与线上 `68733ba93` 合并的发布快照 C 端 576 项通过、vue-tsc 通过，后端 shop-app 38 项及通道模块 1 项通过，包含收件人身份保护和手机号登录场景。页面 5 项、后端 2 项先失败后修复；发布快照保留最近订单/售后和此前手机号登录改动。小程序 `0.1.138` 已上传，原生插件实际弹层仍需真机复测。验收日志与可重建运行代码补丁在 `.superpowers/sdd/recipient-track/`。
 
 ## §3 短链 + 微信 URL Link（需求 5）
 

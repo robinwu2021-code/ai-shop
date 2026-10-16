@@ -23,6 +23,8 @@ export default {
     at: "{t}",
   },
   track: {
+    goHome: "الانتقال إلى الرئيسية",
+    orderedBy: "صاحب الطلب",
     title: "تتبّع الشحنة",
     invalidTitle: "انتهت صلاحية الرابط",
     invalidTip: "قد تكون صلاحية رابط التتبّع قد انتهت. افتحه من أحدث إشعار شحن.",
@@ -269,6 +271,9 @@ export default {
     splitNote: "من {n} متاجر — سيُنشأ {n} طلبات وتُدفع دفعة واحدة",
     edit: "تحرير",
     editDone: "تم",
+    selectGroup: "تحديد المجموعة",
+    editHint: "اختر المنتجات للحذف؛ لن يتغير اختيار الدفع",
+    updating: "جارٍ التحديث",
     selectAll: "الكل",
     itemsCount: "{n} قطعة",
     remove: "حذف",
@@ -965,6 +970,11 @@ export default {
     manual: "إدخال يدوي",
   },
   address: {
+    salutation: "اللقب (اختياري)",
+    salutationMr: "السيد",
+    salutationMs: "السيدة",
+    salutationFallback: "السيد/السيدة",
+
     /** 地址表单里没绑号时的入口：绑完回填到手机号栏 */
     bindPhone: "اربط رقم هاتفك لملء هذا تلقائيًا",
     /** 与「设为默认」是两个动作：这个管看货，那个管下单预填 */

@@ -62,7 +62,7 @@ public class UserQueryPortImpl implements UserQueryPort {
          */
         String full = nz(a.getProvince()) + nz(a.getCity()) + nz(a.getDistrict())
                 + nz(a.getDetail()) + houseSuffix(a.getHouseNo());
-        return Optional.of(new Receiver(a.getName(), a.getPhone(), full, a.getLatE6(), a.getLngE6()));
+        return Optional.of(new Receiver(a.getName(), a.getPhone(), full, a.getLatE6(), a.getLngE6(), a.getSalutation()));
     }
 
     @Override

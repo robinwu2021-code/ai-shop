@@ -41,8 +41,9 @@ const props = withDefaults(
      * 只在**接了 `@edit`** 的地方才可点，不然点上去没反应比不可点更糟。
      */
     editable?: boolean;
+    disabled?: boolean;
   }>(),
-  { min: 1, max: Number.POSITIVE_INFINITY, editable: false },
+  { min: 1, max: Number.POSITIVE_INFINITY, editable: false, disabled: false },
 );
 
 const emit = defineEmits<{
@@ -52,6 +53,7 @@ const emit = defineEmits<{
 }>();
 
 function step(d: number) {
+  if (props.disabled) return;
   const n = props.modelValue + d;
   if (n < props.min || n > props.max) return;
   emit("update:modelValue", n);
@@ -65,18 +67,18 @@ function step(d: number) {
   <view class="stepper sh-row" @tap.stop>
     <view
       class="stepper__btn sh-hit sh-center"
-      :class="{ 'is-off': modelValue <= min }"
+      :class="{ 'is-off': disabled || modelValue <= min }"
       @tap.stop="step(-1)"
     >
       <sh-icon name="minus" :size="26" color="var(--sh-ink)"></sh-icon>
     </view>
-    <text
-      class="txt-strong stepper__num sh-num"
-      @tap.stop="editable && emit('edit')"
-    >{{ modelValue }}</text>
+    <view class="stepper__num sh-center sh-hit" :class="{ 'stepper__num--editable': editable }"
+      @tap.stop="editable && !disabled && emit('edit')">
+      <text class="txt-strong sh-num">{{ modelValue }}</text>
+    </view>
     <view
       class="stepper__btn sh-hit sh-center"
-      :class="{ 'is-off': modelValue >= max }"
+      :class="{ 'is-off': disabled || modelValue >= max }"
       @tap.stop="step(1)"
     >
       <sh-icon name="plus" :size="26" color="var(--sh-ink)"></sh-icon>
@@ -106,6 +108,11 @@ function step(d: number) {
 /* 见类注释：64 是为了两位数时药丸不变宽，一列药丸才齐 */
 .stepper__num {
   min-width: 64rpx;
+  height: 56rpx;
   text-align: center;
 }
+.stepper__btn:first-child::after { inset-inline-end: -8rpx; }
+.stepper__btn:last-child::after { inset-inline-start: -8rpx; }
+.stepper__num--editable { min-width: 88rpx; }
+.stepper__num::after { inset: -16rpx 0; }
 </style>

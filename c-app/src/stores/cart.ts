@@ -316,7 +316,6 @@ export const useCartStore = defineStore("cart", {
     async removeMarked() {
       if (!this.marked.length) return;
       const nos = [...this.marked];
-      this.marked = [];
       await this.remove(nos);
     },
 

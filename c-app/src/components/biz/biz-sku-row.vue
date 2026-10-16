@@ -21,10 +21,11 @@ withDefaults(
     cover: string;
     title: string;
     spec?: string;
+    titleLines?: 1 | 2;
     /** md：已成交（订单/售后/评价）· lg：还在挑（购物车/确认页） */
     size?: "md" | "lg";
   }>(),
-  { spec: "", size: "md" },
+  { spec: "", size: "md", titleLines: 1 },
 );
 </script>
 
@@ -32,7 +33,7 @@ withDefaults(
   <view class="sh-row skurow" :class="`skurow--${size}`">
     <sh-cover class="sh-center skurow__cover" :src="cover" :w="200"></sh-cover>
     <view class="sh-fill skurow__main">
-      <text class="txt-strong skurow__title">{{ title }}</text>
+      <text class="txt-strong skurow__title" :class="{ 'skurow__title--wrap': titleLines === 2 }">{{ title }}</text>
       <text v-if="spec" class="sh-hint">{{ spec }}</text>
       <slot />
     </view>
@@ -72,5 +73,12 @@ withDefaults(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.skurow__title--wrap {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 </style>

@@ -198,6 +198,7 @@ onShow(load);
       </view>
       <view class="item__tags sh-row">
         <text class="sh-chip">{{ $t(`afterSale.type${asType(r)}`) }}</text>
+        <text class="sh-chip sh-chip--primary">{{ $t(`afterSale.status.${asStatus(r)}`) }}</text>
         <!-- 履约进度实况（AC15）：商家据此判断货还拦不拦得住、该不该全额退 -->
         <text v-if="r.as.fulfillStage" class="sh-chip sh-chip--warning">{{ stageText(r.as.fulfillStage) }}</text>
         <text class="txt-caption sh-muted sh-num item__no">{{ r.as.subOrderNo }}</text>

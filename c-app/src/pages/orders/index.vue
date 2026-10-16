@@ -231,9 +231,9 @@ watch(() => user.isPhoneLogin ? user.token : "", () => {
         {{ $t("orders.moreItems", { n: o.items.length - 3 }) }}
       </text>
 
-      <view class="card__foot sh-row sh-row--between">
+      <view class="card__foot sh-row sh-row--between sh-row--baseline">
         <text class="txt-caption sh-num">{{ datetime(o.createdAt) }}</text>
-        <view class="sh-row foot__right">
+        <view class="sh-row sh-row--baseline foot__right">
           <!-- 省了多少是他在列表里最想比的那个数（原型 k09） -->
           <text v-if="o.amount.discountMinor" class="txt-caption sh-muted sh-num">
             {{ $t("orders.saved", { p: money(o.amount.discountMinor) }) }}

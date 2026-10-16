@@ -70,7 +70,7 @@ onShow(load);
           <text class="txt-body msg__title" :class="{ 'is-unread': !m.read }">{{ m.title }}</text>
           <text class="txt-caption msg__at sh-num">{{ datetime(m.at) }}</text>
         </view>
-        <text class="txt-caption msg__body">{{ m.body }}</text>
+        <text class="txt-body msg__body">{{ m.body }}</text>
         <text v-if="m.link" class="txt-caption msg__more">{{ $t("message.view") }}</text>
       </view>
     </view>

@@ -151,15 +151,9 @@ onLoad((q) => {
 
         <!-- 星级：默认 5 星。默认 0 星会让人以为「必须选」，多一步操作 -->
         <view class="stars sh-row">
-          <text
-            v-for="i in 5"
-            :key="i"
-            class="star"
-            :class="{ 'is-on': i <= rating }"
-            @tap="setRating(i)"
-          >
-            ★
-          </text>
+          <view v-for="i in 5" :key="i" class="star__hit sh-center" @tap="setRating(i)">
+            <text class="star" :class="{ 'is-on': i <= rating }">★</text>
+          </view>
           <text class="txt-caption stars__label">{{ $t(`review.star${rating}`) }}</text>
         </view>
 
@@ -168,15 +162,9 @@ onLoad((q) => {
         <view v-for="d in DIMS" :key="d.key" class="dim sh-row sh-row--between">
           <text class="txt-sub">{{ $t(d.labelKey) }}</text>
           <view class="dim__stars">
-            <text
-              v-for="i in 5"
-              :key="i"
-              class="star star--sm"
-              :class="{ 'is-on': i <= scores[d.key] }"
-              @tap="setDim(d.key, i)"
-            >
-              ★
-            </text>
+            <view v-for="i in 5" :key="i" class="star__hit sh-center" @tap="setDim(d.key, i)">
+              <text class="star star--sm" :class="{ 'is-on': i <= scores[d.key] }">★</text>
+            </view>
           </view>
         </view>
       </view>
@@ -217,26 +205,36 @@ onLoad((q) => {
 }
 
 .dim {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8rpx;
   margin-top: 16rpx;
 }
 
 .dim__stars {
   display: flex;
-  gap: 8rpx;
-}
-.star--sm {
-  font-size: 34rpx;
+  gap: 0;
 }
 
+
 .stars {
-  gap: 12rpx;
+  flex-wrap: wrap;
+  gap: 0;
   margin-top: 32rpx;
   direction: ltr;
+}
+.star__hit {
+  flex: none;
+  width: 88rpx;
+  height: 88rpx;
 }
 .star {
   font-size: 48rpx;
   color: var(--sh-line);
   line-height: 1;
+}
+.star.star--sm {
+  font-size: 34rpx;
 }
 .star.is-on {
   /* 星标点亮色，不是告警色 —— 见 base.css 的 --sh-star */

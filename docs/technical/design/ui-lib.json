@@ -258,7 +258,7 @@
       },
       "usage": {
         "b-app": 526,
-        "c-app": 93
+        "c-app": 94
       }
     },
     {
@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 430,
-        "c-app": 85
+        "c-app": 87
       }
     },
     {
@@ -296,7 +296,7 @@
       },
       "usage": {
         "b-app": 20,
-        "c-app": 12
+        "c-app": 11
       }
     },
     {
@@ -318,7 +318,7 @@
       },
       "usage": {
         "b-app": 410,
-        "c-app": 285
+        "c-app": 289
       }
     },
     {
@@ -492,7 +492,7 @@
       },
       "usage": {
         "b-app": 138,
-        "c-app": 57
+        "c-app": 58
       }
     },
     {
@@ -514,7 +514,7 @@
       },
       "usage": {
         "b-app": 118,
-        "c-app": 84
+        "c-app": 82
       }
     },
     {
@@ -558,13 +558,31 @@
       },
       "usage": {
         "b-app": 9,
-        "c-app": 19
+        "c-app": 18
+      }
+    },
+    {
+      "class": ".sh-block__body",
+      "group": "容器",
+      "when": "白块中的无内边距正文：横向 24rpx，与块头对齐",
+      "avoid": "商品行、设置行已有留白时不要再套一层",
+      "decl": {
+        "padding-inline": "24rpx",
+        "min-width": "0"
+      },
+      "px": {
+        "padding-inline": "12px",
+        "min-width": "0"
+      },
+      "usage": {
+        "b-app": 0,
+        "c-app": 1
       }
     },
     {
       "class": ".sh-block__head",
       "group": "容器",
-      "when": "块内标题行（横向留白 26rpx，列表行仍通铺到边）",
+      "when": "块内标题行（横向留白 24rpx，列表行仍通铺到边）",
       "avoid": "—",
       "decl": {
         "display": "flex",
@@ -618,7 +636,7 @@
       },
       "usage": {
         "b-app": 231,
-        "c-app": 90
+        "c-app": 91
       }
     },
     {
@@ -742,7 +760,7 @@
       },
       "usage": {
         "b-app": 0,
-        "c-app": 8
+        "c-app": 6
       }
     },
     {
@@ -778,7 +796,7 @@
       },
       "usage": {
         "b-app": 14,
-        "c-app": 12
+        "c-app": 13
       }
     },
     {
@@ -810,7 +828,7 @@
       },
       "usage": {
         "b-app": 200,
-        "c-app": 75
+        "c-app": 76
       }
     },
     {
@@ -962,7 +980,7 @@
       },
       "usage": {
         "b-app": 71,
-        "c-app": 19
+        "c-app": 20
       }
     },
     {
@@ -1018,7 +1036,7 @@
       },
       "usage": {
         "b-app": 113,
-        "c-app": 19
+        "c-app": 20
       }
     },
     {
@@ -1078,7 +1096,7 @@
       },
       "usage": {
         "b-app": 349,
-        "c-app": 153
+        "c-app": 154
       }
     },
     {
@@ -1141,8 +1159,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 159,
-        "c-app": 56
+        "b-app": 160,
+        "c-app": 57
       }
     },
     {
@@ -1235,8 +1253,8 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 71,
-        "c-app": 25
+        "b-app": 72,
+        "c-app": 26
       }
     },
     {
@@ -1385,8 +1403,8 @@
         "justify-content": "center"
       },
       "usage": {
-        "b-app": 29,
-        "c-app": 34
+        "b-app": 30,
+        "c-app": 36
       }
     },
     {
@@ -1404,7 +1422,7 @@
       },
       "usage": {
         "b-app": 177,
-        "c-app": 92
+        "c-app": 94
       }
     },
     {
@@ -1419,8 +1437,8 @@
         "position": "relative"
       },
       "usage": {
-        "b-app": 39,
-        "c-app": 16
+        "b-app": 40,
+        "c-app": 14
       }
     },
     {
@@ -1440,7 +1458,7 @@
       },
       "usage": {
         "b-app": 592,
-        "c-app": 208
+        "c-app": 211
       }
     },
     {
@@ -1456,7 +1474,7 @@
       },
       "usage": {
         "b-app": 40,
-        "c-app": 9
+        "c-app": 11
       }
     },
     {
@@ -1472,7 +1490,7 @@
       },
       "usage": {
         "b-app": 325,
-        "c-app": 104
+        "c-app": 105
       }
     },
     {
@@ -1622,7 +1640,7 @@
       },
       "usage": {
         "b-app": 49,
-        "c-app": 17
+        "c-app": 18
       }
     },
     {
@@ -1880,7 +1898,7 @@
       ],
       "usage": {
         "b-app": 35,
-        "c-app": 16,
+        "c-app": 17,
         "lib": 0
       },
       "note": "悬浮内缩的贴底操作条 —— 第三种贴底形态，此前库里没有",
@@ -2042,7 +2060,7 @@
       ],
       "usage": {
         "b-app": 5,
-        "c-app": 11,
+        "c-app": 12,
         "lib": 3
       },
       "note": "商品封面",
@@ -2282,7 +2300,7 @@
       ],
       "usage": {
         "b-app": 130,
-        "c-app": 28,
+        "c-app": 29,
         "lib": 13
       },
       "note": "单色图标",
@@ -2704,12 +2722,13 @@
       "name": "sh-stepper",
       "file": "packages/ui/src/components/sh-stepper.vue",
       "scope": "跨端",
-      "lines": 111,
+      "lines": 118,
       "props": [
         "modelValue: number",
         "min?: number",
         "max?: number",
-        "editable?: boolean"
+        "editable?: boolean",
+        "disabled?: boolean"
       ],
       "usage": {
         "b-app": 0,
@@ -3590,7 +3609,7 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 93,
+      "libClassHits": 95,
       "localSelectors": 19,
       "localCssLines": 67,
       "rolled": []
@@ -5081,12 +5100,13 @@
         "sh-actionbar",
         "sh-check",
         "sh-empty",
+        "sh-icon",
         "sh-scaffold",
         "sh-stepper"
       ],
-      "libClassHits": 72,
-      "localSelectors": 21,
-      "localCssLines": 82,
+      "libClassHits": 81,
+      "localSelectors": 24,
+      "localCssLines": 90,
       "rolled": []
     },
     {
@@ -5176,7 +5196,7 @@
       ],
       "libClassHits": 240,
       "localSelectors": 80,
-      "localCssLines": 333,
+      "localCssLines": 335,
       "rolled": []
     },
     {
@@ -5237,7 +5257,7 @@
         "sh-icon",
         "sh-scaffold"
       ],
-      "libClassHits": 37,
+      "libClassHits": 38,
       "localSelectors": 15,
       "localCssLines": 77,
       "rolled": []
@@ -5446,7 +5466,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 43,
+      "libClassHits": 45,
       "localSelectors": 16,
       "localCssLines": 58,
       "rolled": []
@@ -5520,9 +5540,9 @@
         "sh-scaffold",
         "sh-uploader"
       ],
-      "libClassHits": 15,
-      "localSelectors": 12,
-      "localCssLines": 44,
+      "libClassHits": 17,
+      "localSelectors": 13,
+      "localCssLines": 53,
       "rolled": []
     },
     {
@@ -5551,7 +5571,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 56,
+      "libClassHits": 57,
       "localSelectors": 34,
       "localCssLines": 154,
       "rolled": []
@@ -5562,11 +5582,12 @@
       "key": "c-app/track",
       "file": "c-app/src/pages/track/index.vue",
       "components": [
+        "sh-actionbar",
         "sh-empty",
         "sh-scaffold",
         "sh-trace"
       ],
-      "libClassHits": 41,
+      "libClassHits": 45,
       "localSelectors": 9,
       "localCssLines": 9,
       "rolled": []
@@ -5761,7 +5782,7 @@
       "components": [],
       "libClassHits": 35,
       "localSelectors": 9,
-      "localCssLines": 34,
+      "localCssLines": 43,
       "rolled": []
     },
     {
@@ -5772,9 +5793,9 @@
       "components": [
         "sh-switch"
       ],
-      "libClassHits": 59,
-      "localSelectors": 21,
-      "localCssLines": 76,
+      "libClassHits": 65,
+      "localSelectors": 23,
+      "localCssLines": 78,
       "rolled": []
     },
     {
@@ -5889,8 +5910,8 @@
         "sh-empty"
       ],
       "libClassHits": 0,
-      "localSelectors": 0,
-      "localCssLines": 0,
+      "localSelectors": 1,
+      "localCssLines": 1,
       "rolled": []
     },
     {
@@ -5914,8 +5935,8 @@
       "file": "c-app/src/components/biz/biz-phone-login-button.vue",
       "components": [],
       "libClassHits": 4,
-      "localSelectors": 0,
-      "localCssLines": 0,
+      "localSelectors": 3,
+      "localCssLines": 23,
       "rolled": []
     },
     {
@@ -5950,12 +5971,21 @@
       "key": "c-app/biz-review",
       "file": "c-app/src/components/biz/biz-review.vue",
       "components": [
+        "sh-cover",
         "sh-rating"
       ],
-      "libClassHits": 25,
-      "localSelectors": 15,
-      "localCssLines": 72,
-      "rolled": []
+      "libClassHits": 20,
+      "localSelectors": 17,
+      "localCssLines": 90,
+      "rolled": [
+        {
+          "id": "wraprow",
+          "label": "换行横排",
+          "lib": ".sh-wrap",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "c-app",
@@ -5968,7 +5998,7 @@
       ],
       "libClassHits": 14,
       "localSelectors": 9,
-      "localCssLines": 44,
+      "localCssLines": 45,
       "rolled": []
     },
     {
@@ -6015,8 +6045,8 @@
         "sh-cover"
       ],
       "libClassHits": 5,
-      "localSelectors": 6,
-      "localCssLines": 27,
+      "localSelectors": 7,
+      "localCssLines": 34,
       "rolled": []
     },
     {
@@ -6086,11 +6116,21 @@
       "pages": [
         "c-app/me/profile"
       ]
+    },
+    {
+      "id": "wraprow",
+      "label": "换行横排",
+      "lib": ".sh-wrap",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
+      "pages": [
+        "c-app/biz-review"
+      ]
     }
   ],
   "counts": {
     "tokens": 16,
-    "blocks": 81,
+    "blocks": 82,
     "components": 40,
     "pages": 162,
     "gapKinds": 2

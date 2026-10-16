@@ -657,6 +657,7 @@ CREATE TABLE IF NOT EXISTS ord_sub_order
     store_no VARCHAR(64) DEFAULT NULL,
     require_buyer_confirm TINYINT(4) NOT NULL DEFAULT 0,
     receiver_name VARCHAR(64) DEFAULT NULL,
+    receiver_salutation VARCHAR(16) DEFAULT NULL,
     receiver_phone VARCHAR(32) DEFAULT NULL,
     receiver_address VARCHAR(255) DEFAULT NULL,
     community_no VARCHAR(64) DEFAULT NULL,
@@ -1307,6 +1308,7 @@ CREATE TABLE IF NOT EXISTS usr_address
     address_id VARCHAR(64) NOT NULL,
     user_no VARCHAR(64) NOT NULL,
     name VARCHAR(64) NOT NULL,
+    salutation VARCHAR(16) DEFAULT NULL,
     phone VARCHAR(32) NOT NULL,
     province VARCHAR(64) DEFAULT NULL,
     city VARCHAR(64) DEFAULT NULL,
@@ -1585,8 +1587,9 @@ CREATE TABLE IF NOT EXISTS usr_store_favorite
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
-    PRIMARY KEY (id),
-    CONSTRAINT uk_user_entity UNIQUE (user_no,entity_no)
+    store_no VARCHAR(64) DEFAULT NULL,
+    CONSTRAINT uk_user_store UNIQUE (user_no, store_no),
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS usr_account

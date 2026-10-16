@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useRecipientName } from "@/shared/recipient-name";
+const recipientName = useRecipientName();
 // 订单详情：码 → 状态时间线 → 商品 → 金额 → 履约信息 → 操作。
 // 码放最上面：待取货的用户打开订单，十有八九就是来看码的。
 import { computed, ref } from "vue";
@@ -633,7 +635,7 @@ onPullDownRefresh(async () => {
         </text>
       </view>
       <view v-if="order.receiver && (order.receiver.name || order.receiver.phone)" class="sh-row sh-row--between recv">
-        <text class="txt-strong">{{ order.receiver.name }}</text>
+        <text class="txt-strong">{{ recipientName(order.receiver.name, order.receiver.salutation) }}</text>
         <text v-if="order.receiver.phone" class="txt-caption sh-muted sh-num">{{ order.receiver.phone }}</text>
       </view>
       <text v-if="order.receiver?.address" class="txt-caption sh-muted">{{ order.receiver.address }}</text>
@@ -954,7 +956,7 @@ onPullDownRefresh(async () => {
   align-items: baseline;
 }
 .ostat__st {
-  font-size: 44rpx;
+  font-size: 40rpx;
   font-weight: 600;
   line-height: 1.25;
 }
@@ -963,7 +965,7 @@ onPullDownRefresh(async () => {
 }
 .ostat__sub {
   display: block;
-  margin-top: 10rpx;
+  margin-top: 12rpx;
 }
 .ostat__body {
   padding: 20rpx 24rpx;

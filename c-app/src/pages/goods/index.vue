@@ -1773,7 +1773,7 @@ onShareTimeline(() =>
   flex-shrink: 0;
   flex-direction: column;
   gap: 2rpx;
-  width: 72rpx;
+  width: 88rpx;
 }
 /* 顶部浮层：固定在屏顶。压在图上时透明，滑过主图后变实色 */
 .topbar {
@@ -1857,6 +1857,8 @@ onShareTimeline(() =>
 .dt__text {
   display: block;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 /* 段与段之间。此前是零 —— 商家按空行分的段，在买家这边又粘回了一坨；
    之前看不出来，是因为后面那张图的 margin 把最后一段顶开了，段间并没有距离 */

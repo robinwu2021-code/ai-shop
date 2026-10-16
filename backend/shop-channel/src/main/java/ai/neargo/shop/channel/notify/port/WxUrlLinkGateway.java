@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -31,7 +33,7 @@ import java.util.regex.Pattern;
 public class WxUrlLinkGateway implements WxUrlLinkPort {
 
     private static final Logger log = LoggerFactory.getLogger(WxUrlLinkGateway.class);
-    private static final Pattern LINK = Pattern.compile("\"url_link\"\\s*:\\s*\"([^\"]*)\"");
+    private static final ObjectMapper JSON = new ObjectMapper();
     private static final Pattern TOKEN = Pattern.compile("\"access_token\"\\s*:\\s*\"([^\"]*)\"");
     private static final Pattern EXPIRES = Pattern.compile("\"expires_in\"\\s*:\\s*(\\d+)");
     private static final Pattern ERRCODE = Pattern.compile("\"errcode\"\\s*:\\s*(-?\\d+)");
@@ -79,7 +81,8 @@ public class WxUrlLinkGateway implements WxUrlLinkPort {
                             .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
                             .build(),
                     HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-            String link = group(LINK, resp.body());
+            // WeChat may escape slashes in JSON. A regex preserves those escapes and breaks browser navigation.
+            String link = decodeLink(resp.body());
             if (link == null || link.isBlank()) {
                 log.warn("[wx-urllink] 生成失败，退回 H5：{}", resp.body());
                 return Optional.empty();
@@ -138,6 +141,15 @@ public class WxUrlLinkGateway implements WxUrlLinkPort {
         }
         Matcher m = p.matcher(s);
         return m.find() ? m.group(1) : null;
+    }
+
+    private static String decodeLink(String body) {
+        try {
+            JsonNode link = JSON.readTree(body).get("url_link");
+            return link != null && link.isString() ? link.asString() : null;
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private static String esc(String s) {

@@ -69,10 +69,11 @@ public interface SmsPort {
      * {@code tpl_unconfigured}，不去调阿里云。
      *
      * @param phone    收件人手机号（{@code OrdSubOrder.receiverPhone}）
+     * @param receiverName 下单时收件人姓名快照，缺失时由编排回落为“收件人”
      * @param trackUrl 完整短链（{@code https://s.hxmall.top/<code>}）。<b>通道负责把它塞进模板</b> ——
      *                 阿里云链接变量只放路径段，所以 Ali 实现从中抠出短码传 {@code ${code}}（域名在模板里是固定文本）
      */
-    SendResult sendShipToRecipient(String phone, String trackUrl);
+    SendResult sendShipToRecipient(String phone, String receiverName, String trackUrl);
 
 
     /** 通道发送失败。{@code retryable} 区分「重试可能成功」与「这条永远发不出去」。 */

@@ -96,7 +96,7 @@ class NotifyLoggingPortTest {
             }
 
             @Override
-            public SendResult sendShipToRecipient(String phone, String trackUrl) {
+            public SendResult sendShipToRecipient(String phone, String receiverName, String trackUrl) {
                 throw new UnsupportedOperationException("这个替身只管验证码");
             }
         };

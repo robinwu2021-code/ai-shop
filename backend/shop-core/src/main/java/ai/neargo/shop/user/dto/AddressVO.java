@@ -1,6 +1,7 @@
 package ai.neargo.shop.user.dto;
 
 import ai.neargo.shop.user.entity.UsrAddress;
+import ai.neargo.shop.common.RecipientSalutation;
 
 /**
  * 收货地址（对齐 c-app {@code Address}）。
@@ -29,7 +30,7 @@ public record AddressVO(String addressId,
                         String phoneCc,
                         /** 坐标（gcj02，E6）。可能为 null —— 存量地址是纯手填的，没有坐标 */
                         Integer latE6,
-                        Integer lngE6) {
+                        Integer lngE6, String salutation) {
 
     /** 属主视角：完整手机号。 */
     public static AddressVO forOwner(UsrAddress a) {
@@ -50,6 +51,7 @@ public record AddressVO(String addressId,
                 // **加了列要真的读出来**：只改写入的话这三列永远读回 null，
                 // 界面上看不出区别（海外地址会被当成 CN 渲染），闸门也全绿
                 a.getCountryCode(), a.getPostalCode(), a.getPhoneCc(),
-                a.getLatE6(), a.getLngE6());
+                a.getLatE6(), a.getLngE6(),
+                RecipientSalutation.normalize(a.getSalutation()));
     }
 }

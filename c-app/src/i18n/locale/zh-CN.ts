@@ -23,6 +23,8 @@ export default {
     at: "{t}",
   },
   track: {
+    goHome: "进入首页",
+    orderedBy: "下单人",
     title: "物流详情",
     invalidTitle: "链接已失效",
     invalidTip: "这条物流链接可能已过期，请在最新的发货通知里打开。",
@@ -283,6 +285,9 @@ export default {
     splitNote: "来自 {n} 家店，结算时会生成 {n} 笔订单，一次付清",
     edit: "编辑",
     editDone: "完成",
+    selectGroup: "全选本组",
+    editHint: "选择要删除的商品，不影响结算勾选",
+    updating: "更新中",
     selectAll: "全选",
     itemsCount: "共 {n} 件",
     remove: "删除",
@@ -1044,6 +1049,11 @@ export default {
     manual: "手动填写",
   },
   address: {
+    salutation: "称呼（选填）",
+    salutationMr: "先生",
+    salutationMs: "女士",
+    salutationFallback: "先生/女士",
+
     /** 地址表单里没绑号时的入口：绑完回填到手机号栏 */
     bindPhone: "绑定手机号，自动填入",
     /** 与「设为默认」是两个动作：这个管看货，那个管下单预填 */

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -44,6 +45,8 @@ class GoodsFavoriteFlowTest {
     private ObjectMapper json;
     @Autowired
     private OtpStore otpStore;
+    @Autowired
+    private JdbcTemplate jdbc;
 
     private static int seq;
     private String token;
@@ -112,6 +115,45 @@ class GoodsFavoriteFlowTest {
         JsonNode stores = data("GET", "/mp/favorite/store");
         assertThat(stores.size()).isEqualTo(1);
         assertThat(stores.get(0).get("merchantNo").asString()).isEqualTo(MERCHANT);
+    }
+
+    @Test
+    void favoritesUseStoreIdentityAndName() throws Exception {
+        String store = jdbc.queryForObject("SELECT store_no FROM mch_store WHERE entity_no=? AND deleted=0 ORDER BY is_default DESC, id LIMIT 1", String.class, MERCHANT);
+        String name = jdbc.queryForObject("SELECT name FROM mch_store WHERE store_no=?", String.class, store);
+        assertThat(data("POST", "/mp/favorite/store/" + MERCHANT).get("favorited").asBoolean()).isTrue();
+        JsonNode row = data("GET", "/mp/favorite/store").get(0);
+        assertThat(row.path("storeNo").asString()).isEqualTo(store);
+        assertThat(row.path("name").asString()).isEqualTo(name);
+        assertThat(data("POST", "/mp/favorite/store/" + store).get("favorited").asBoolean()).isFalse();
+        assertThat(data("POST", "/mp/favorite/store/" + store).get("favorited").asBoolean()).isTrue();
+    }
+
+    @Test
+    void siblingStoresAreIndependentAndLegacyFavoritesResolve() throws Exception {
+        String first = jdbc.queryForObject("SELECT store_no FROM mch_store WHERE entity_no=? AND deleted=0 ORDER BY is_default DESC, id LIMIT 1", String.class, MERCHANT);
+        String sibling = "ST-FAVORITE-SECOND";
+        jdbc.update("INSERT INTO mch_store (entity_no, store_no, name, status, is_default, tenant_no, created_at, updated_at, version, deleted) VALUES (?, ?, ?, 'ACTIVE', 0, 'MAIN', NOW(), NOW(), 0, 0)", MERCHANT, sibling, "收藏测试分店");
+        try {
+            data("POST", "/mp/favorite/store/" + first);
+            data("POST", "/mp/favorite/store/" + sibling);
+            assertThat(data("GET", "/mp/favorite/store").size()).isEqualTo(2);
+            data("POST", "/mp/favorite/store/" + first);
+            JsonNode remaining = data("GET", "/mp/favorite/store");
+            assertThat(remaining.size()).isEqualTo(1);
+            assertThat(remaining.get(0).path("storeNo").asString()).isEqualTo(sibling);
+            assertThat(remaining.get(0).path("name").asString()).isEqualTo("收藏测试分店");
+            // 旧记录没有门店号，读取和取消均须兼容，不能再输出公司主体名称。
+            String user = jdbc.queryForObject("SELECT user_no FROM usr_store_favorite WHERE store_no=?", String.class, sibling);
+            jdbc.update("INSERT INTO usr_store_favorite (user_no, entity_no, tenant_no, created_at, updated_at, version, deleted) VALUES (?, ?, 'MAIN', NOW(), NOW(), 0, 0)", user, MERCHANT);
+            JsonNode legacy = data("GET", "/mp/favorite/store");
+            assertThat(legacy.size()).isEqualTo(2);
+            data("POST", "/mp/favorite/store/" + first);
+            assertThat(data("GET", "/mp/favorite/store").size()).isEqualTo(1);
+        } finally {
+            jdbc.update("DELETE FROM usr_store_favorite WHERE store_no=?", sibling);
+            jdbc.update("DELETE FROM mch_store WHERE store_no=?", sibling);
+        }
     }
 
     @Test

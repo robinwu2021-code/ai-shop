@@ -184,7 +184,12 @@ export const tradeMock: Pick<ShopApi,
         earnPoints: earnPointsFor(subItems),
       });
 
+      const addressId = req.addressChoices?.find(choice => choice.merchantNo === merchantNo)?.addressId ?? req.addressId;
+      const address = db.addresses.find(a => a.addressId === addressId);
       const order: MockOrder = {
+        receiver: address ? { name: address.name, phone: address.phone,
+          salutation: address.salutation ?? "UNSPECIFIED",
+          address: [address.region, address.detail, address.houseNo].filter(Boolean).join(" ") } : undefined,
         orderNo: nextNo("SO"),
         status: "WAIT_PAY",
         fulfillment: req.fulfillment,
@@ -430,6 +435,7 @@ export const tradeMock: Pick<ShopApi,
       fulfillment: o.fulfillment,
       storeName: o.store?.storeName ?? null,
       receiverName: o.receiver?.name ?? null,
+      receiverSalutation: o.receiver?.salutation ?? null,
       receiverPhoneMasked: o.receiver?.phone ?? null,
       receiverAddress: o.receiver?.address ?? null,
       expressCompany: o.expressCompany ?? null,

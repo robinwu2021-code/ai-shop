@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useRecipientName } from "@/shared/recipient-name";
+const recipientName = useRecipientName();
 // 选择收货地址：**这一页存在的全部理由是让地址带上坐标。**
 //
 // 手打出来的地址只是一串字：商家的自送半径判不了（后端那条闸明写着「没坐标就放行」）、
@@ -467,7 +469,7 @@ onLoad((q?: Record<string, string>) => {
           @tap="pickAddress(a)"
         >
           <view class="sh-fill nb__body">
-            <text class="txt-body row__name">{{ a.tag || a.name }}</text>
+            <text class="txt-body row__name">{{ a.tag || recipientName(a.name, a.salutation) }}</text>
             <text class="txt-caption row__sub">{{ a.region }}{{ a.detail }}</text>
           </view>
           <sh-icon
