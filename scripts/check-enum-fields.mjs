@@ -67,6 +67,9 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  * 不当作缺陷报。**同物异名与「后端未实现」危害完全不同**，混在一起就没法自动判定。
  */
 export const FIELDS = [
+  { concept: "收件人显式称呼", field: "usr_address.salutation",
+    backend: { ddl: ["usr_address", "salutation"] },
+    clients: [{ file: "packages/shared/src/types/user.ts", type: "RecipientSalutation" }] },
   {
     concept: "门店怎么进入买家的「我的店」",
     field: "usr_store_view.first_source",

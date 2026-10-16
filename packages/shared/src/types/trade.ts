@@ -846,20 +846,27 @@ export interface RefundImpact {
 export interface TrackView {
   /** Only returned after verifying the recipient's phone; absent from the anonymous H5 view. */
   buyerNickname?: string | null;
+  /** 子订单号。 */
   subOrderNo: string;
   /** 契约抽象状态，与订单详情同口径 */
   status: OrderStatus;
+  /** 履约方式。 */
   fulfillment: FulfillmentType;
   /** 发货门店名。空 → 退化成「商家」 */
   storeName?: string | null;
+  /** 收件人姓名。 */
   receiverName?: string | null;
   /** 看件页使用的订单称呼快照。 */
   receiverSalutation?: "MR" | "MS" | "UNSPECIFIED" | null;
   /** 已掩码，非明文 */
   receiverPhoneMasked?: string | null;
+  /** 收件地址。 */
   receiverAddress?: string | null;
+  /** 快递公司。 */
   expressCompany?: string | null;
+  /** 快递单号。 */
   expressNo?: string | null;
+  /** 商品摘要，不含价格。 */
   items: TrackItem[];
   /** 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null */
   trace?: ShipmentTrace | null;

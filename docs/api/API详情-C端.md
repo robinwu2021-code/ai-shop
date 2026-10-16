@@ -2588,17 +2588,17 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `buyerNickname` | `string,null` | 否 | Only returned after verifying the recipient's phone; absent from the anonymous H5 view. |
-| `subOrderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | 子订单号。 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式。 |
 | `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
-| `receiverName` | `string,null` | 否 | — |
+| `receiverName` | `string,null` | 否 | 收件人姓名。 |
 | `receiverSalutation` | `MR` \| `MS` \| `UNSPECIFIED` \| `null` | 否 | 看件页使用的订单称呼快照。 |
 | `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
-| `receiverAddress` | `string,null` | 否 | — |
-| `expressCompany` | `string,null` | 否 | — |
-| `expressNo` | `string,null` | 否 | — |
-| `items` | [`TrackItem`](#trackitem)\[\] | 是 | — |
+| `receiverAddress` | `string,null` | 否 | 收件地址。 |
+| `expressCompany` | `string,null` | 否 | 快递公司。 |
+| `expressNo` | `string,null` | 否 | 快递单号。 |
+| `items` | [`TrackItem`](#trackitem)\[\] | 是 | 商品摘要，不含价格。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
 
 
@@ -2615,17 +2615,17 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `buyerNickname` | `string,null` | 否 | Only returned after verifying the recipient's phone; absent from the anonymous H5 view. |
-| `subOrderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | 子订单号。 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式。 |
 | `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
-| `receiverName` | `string,null` | 否 | — |
+| `receiverName` | `string,null` | 否 | 收件人姓名。 |
 | `receiverSalutation` | `MR` \| `MS` \| `UNSPECIFIED` \| `null` | 否 | 看件页使用的订单称呼快照。 |
 | `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
-| `receiverAddress` | `string,null` | 否 | — |
-| `expressCompany` | `string,null` | 否 | — |
-| `expressNo` | `string,null` | 否 | — |
-| `items` | [`TrackItem`](#trackitem)\[\] | 是 | — |
+| `receiverAddress` | `string,null` | 否 | 收件地址。 |
+| `expressCompany` | `string,null` | 否 | 快递公司。 |
+| `expressNo` | `string,null` | 否 | 快递单号。 |
+| `items` | [`TrackItem`](#trackitem)\[\] | 是 | 商品摘要，不含价格。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
 
 
@@ -5088,17 +5088,17 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `buyerNickname` | `string,null` | 否 | Only returned after verifying the recipient's phone; absent from the anonymous H5 view. |
-| `subOrderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | 子订单号。 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式。 |
 | `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
-| `receiverName` | `string,null` | 否 | — |
+| `receiverName` | `string,null` | 否 | 收件人姓名。 |
 | `receiverSalutation` | `MR` \| `MS` \| `UNSPECIFIED` \| `null` | 否 | 看件页使用的订单称呼快照。 |
 | `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
-| `receiverAddress` | `string,null` | 否 | — |
-| `expressCompany` | `string,null` | 否 | — |
-| `expressNo` | `string,null` | 否 | — |
-| `items` | [`TrackItem`](#trackitem)\[\] | 是 | — |
+| `receiverAddress` | `string,null` | 否 | 收件地址。 |
+| `expressCompany` | `string,null` | 否 | 快递公司。 |
+| `expressNo` | `string,null` | 否 | 快递单号。 |
+| `items` | [`TrackItem`](#trackitem)\[\] | 是 | 商品摘要，不含价格。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
 
 ### TrafficSource

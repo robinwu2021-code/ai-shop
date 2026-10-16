@@ -29875,6 +29875,27 @@
         "module": "shop-base"
       },
       {
+        "host": "RecipientSalutation",
+        "name": "MR",
+        "value": "MR",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "RecipientSalutation",
+        "name": "MS",
+        "value": "MS",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "RecipientSalutation",
+        "name": "UNSPECIFIED",
+        "value": "UNSPECIFIED",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "host": "ServiceScopes",
         "name": "COMMUNITY",
         "value": "COMMUNITY",

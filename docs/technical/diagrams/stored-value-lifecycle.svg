@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="730" viewBox="0 0 1200 730" role="img" aria-labelledby="title desc">
-<title id="title">储值发放、核销、退款与通知</title><desc id="desc">商家制定活动，消费者充值后收款确认再发放余额；服务开单需消费者确认，储值预占后按现金结果确认或释放；通知只在事实提交后产生。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="730" viewBox="0 0 1200 730" role="img" aria-label="储值发放、核销、退款与通知">
+<title>储值发放、核销、退款与通知</title><desc>商家制定活动，消费者充值后收款确认再发放余额；服务开单需消费者确认，储值预占后按现金结果确认或释放；通知只在事实提交后产生。</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#616874"/></marker></defs>
 <rect width="1200" height="730" rx="20" fill="#f5f5f3"/>
 <g font-family="PingFang SC,Microsoft YaHei,sans-serif" fill="#17181a">

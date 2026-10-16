@@ -72,6 +72,8 @@ export interface EnumEntry {
 }
 
 export const ENUM_REGISTRY: EnumEntry[] = [
+  { decl: "shared:RecipientSalutation", dom: "user", shape: "CLASS", verdict: "OK",
+    note: "收件人显式称呼，与后端 RecipientSalutation 和 usr_address.salutation 一致" },
   { decl: "shared:Scene", dom: "payment", shape: "CLASS", verdict: "OK",
     note: "MP_WECHAT/MP_ALIPAY/IOS/ANDROID/H5 与库 ord_order.pay_scene 的注释逐字一致" },
   { decl: "shared:PayChannel", dom: "payment", shape: "CLASS", verdict: "OK",

@@ -10169,11 +10169,13 @@ components:
           description: "Only returned after verifying the recipient's phone; absent from the anonymous H5 view."
         subOrderNo: 
           type: "string"
+          description: "子订单号。"
         status: 
           "$ref": "#/components/schemas/OrderStatus"
           description: "契约抽象状态，与订单详情同口径"
         fulfillment: 
           "$ref": "#/components/schemas/FulfillmentType"
+          description: "履约方式。"
         storeName: 
           type: 
             - "string"
@@ -10183,6 +10185,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "收件人姓名。"
         receiverSalutation: 
           type: 
             - "string"
@@ -10202,18 +10205,22 @@ components:
           type: 
             - "string"
             - "null"
+          description: "收件地址。"
         expressCompany: 
           type: 
             - "string"
             - "null"
+          description: "快递公司。"
         expressNo: 
           type: 
             - "string"
             - "null"
+          description: "快递单号。"
         items: 
           type: "array"
           items: 
             "$ref": "#/components/schemas/TrackItem"
+          description: "商品摘要，不含价格。"
         trace: 
           anyOf: 
             - "$ref": "#/components/schemas/ShipmentTrace"

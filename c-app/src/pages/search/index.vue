@@ -24,6 +24,7 @@ const tab = ref<"goods" | "merchants">("goods");
 const goods = ref<Goods[]>([]);
 const merchants = ref<StoreCard[]>([]);
 const searched = ref(false);
+const loaded = ref(false);
 const history = ref<string[]>([]);
 
 const HISTORY_MAX = 10;
@@ -82,11 +83,13 @@ async function search(k = keyword.value) {
     // 此前两者都显示「没有找到相关商品」，而用户会以为自己搜错了
     failed.value = true;
     searched.value = true;
+  loaded.value = true;
     return;
   }
   goods.value = g.records;
   merchants.value = m;
   searched.value = true;
+  loaded.value = true;
   // 哪边有结果就默认停在哪边，避免用户搜到了却看见一个空 tab
   if (!g.records.length && m.length) tab.value = "merchants";
   else tab.value = "goods";
@@ -182,7 +185,7 @@ onLoad((q) => {
         ></biz-goods-card>
         <sh-empty
           bare
-          v-if="!goods.length && !failed"
+          v-if="loaded && !goods.length && !failed"
           :text="$t('search.noGoods')"
         ></sh-empty>
       </template>
@@ -196,14 +199,14 @@ onLoad((q) => {
         ></biz-store-row>
         <sh-empty
           bare
-          v-if="!merchants.length && !failed"
+          v-if="loaded && !merchants.length && !failed"
           :text="$t('search.noMerchant')"
         ></sh-empty>
       </template>
 
       <sh-empty
         bare
-        v-if="empty"
+        v-if="loaded && empty"
           :failed="failed"
           @retry="() => search()"
         :text="$t('search.nothing', { k: keyword })"
