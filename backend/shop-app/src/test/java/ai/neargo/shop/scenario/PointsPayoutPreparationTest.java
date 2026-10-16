@@ -10,6 +10,13 @@ import ai.neargo.shop.pay.points.store.impl.MybatisPointsCashRefundReadStore;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundCommand;
 import ai.neargo.shop.spi.points.PointsRefundPort.RefundLine;
 import ai.neargo.shop.spi.points.PointsRefundPort.PaymentSnapshot;
+import ai.neargo.shop.pay.points.payout.StatementPayoutService;
+import ai.neargo.shop.pay.points.model.ReceivableMove;
+import ai.neargo.shop.pay.points.refund.PointsRefundZeroCashService;
+import ai.neargo.shop.pay.points.refund.PointsRefundConfirmationService;
+import ai.neargo.shop.spi.points.PointsRefundPort.ZeroCashCompletionFact;
+import ai.neargo.shop.spi.points.PointsRefundPort.ZeroCashReason;
+import ai.neargo.shop.spi.points.PointsRefundPort.RefundConfirmation;
 
 import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
@@ -104,6 +111,8 @@ class PointsPayoutPreparationTest {
     @BeforeAll
     void schema() {
         PointsPostingDatabaseTest.initializeSchema(dataSource);
+        jdbc().execute("CREATE TABLE IF NOT EXISTS stl_payment(payment_no VARCHAR(64) PRIMARY KEY,"
+                + "direction VARCHAR(24),after_sale_no VARCHAR(40),deleted TINYINT DEFAULT 0)");
         jdbc().execute("CREATE TABLE IF NOT EXISTS stl_bill (id BIGINT AUTO_INCREMENT PRIMARY KEY,settle_no VARCHAR(64),"
                 + "sub_order_no VARCHAR(64),entity_no VARCHAR(64),status VARCHAR(24),tenant_no VARCHAR(32),"
                 + "created_at DATETIME,created_by VARCHAR(64),updated_at DATETIME,updated_by VARCHAR(64),"
@@ -544,8 +553,230 @@ class PointsPayoutPreparationTest {
                 .hasMessage("POINTS_STATEMENT_SOURCE_NOT_READY");
     }
 
-    private PayoutCommand periodicStatementFixture() {
-        var c=fixture(false,false,true);
+    @Test void statement_payout_offsets_actual_store_debt_only_after_cash_is_confirmed() {
+        var c=periodicStatementFixture(100);
+        seedDebt(c,30);
+        var statements=context.getBean(StoreStatementService.class);
+        var statement=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        statements.confirm(statement.statementNo(),1,"REVIEWER");
+        var payout=context.getBean(StatementPayoutService.class).prepare("PERIOD:"+c.typeCode(),
+                statement.statementNo(),1,"OP");
+        assertThat(payout).isNotNull();
+        assertThat(payout.gross()).isEqualTo(100);
+        assertThat(payout.offset()).isEqualTo(30);
+        assertThat(payout.cash()).isEqualTo(70);
+        assertThat(execute(payout.ticketNo()).status()).isEqualTo(FundsStatus.UNKNOWN);
+        assertThat(jdbc().queryForObject("SELECT recovered_minor FROM pts_receivable WHERE type_code=?",
+                Long.class,c.typeCode())).isZero();
+        assertThat(jdbc().queryForObject("SELECT locked_minor FROM pts_receivable WHERE type_code=?",
+                Long.class,c.typeCode())).isEqualTo(30);
+        assertThat(execute(payout.ticketNo()).confirmedMinor()).isEqualTo(100);
+        assertThat(execute(payout.ticketNo()).replayed()).isTrue();
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",Long.class,
+                c.typeCode())).isZero();
+        assertThat(jdbc().queryForObject("SELECT b_minor FROM pts_fund_pool WHERE type_code=?",Long.class,
+                c.typeCode())).isEqualTo(200);
+        assertThat(jdbc().queryForObject("SELECT recovered_minor FROM pts_receivable WHERE type_code=?",
+                Long.class,c.typeCode())).isEqualTo(30);
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_store_statement WHERE position_no=?",
+                String.class,statement.statementNo())).isEqualTo("PAID");
+        assertThat(testFunds.sends.get(payout.ticketNo())).isEqualTo(1);
+    }
+
+    @Test void statement_full_offset_uses_no_gateway_and_leaves_excess_debt_open() {
+        var c=periodicStatementFixture(30);
+        seedDebt(c,40);
+        var statements=context.getBean(StoreStatementService.class);
+        var statement=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        statements.confirm(statement.statementNo(),1,"REVIEWER");
+        var payout=context.getBean(StatementPayoutService.class).prepare("PERIOD:"+c.typeCode(),
+                statement.statementNo(),1,"OP");
+        assertThat(payout).isNotNull();
+        assertThat(payout.cash()).isZero();
+        assertThat(execute(payout.ticketNo()).confirmedMinor()).isEqualTo(30);
+        assertThat(testFunds.sends).doesNotContainKey(payout.ticketNo());
+        assertThat(testFunds.queries).doesNotContainKey(payout.ticketNo());
+        assertThat(jdbc().queryForObject("SELECT recovered_minor FROM pts_receivable WHERE type_code=?",
+                Long.class,c.typeCode())).isEqualTo(30);
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_receivable WHERE type_code=?",
+                String.class,c.typeCode())).isEqualTo("OPEN");
+    }
+
+    @Test void statement_failed_payout_releases_offset_locks_and_retains_the_original_intent() {
+        var c=periodicStatementFixture(100);
+        seedDebt(c,30);
+        var statements=context.getBean(StoreStatementService.class);
+        var statement=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        statements.confirm(statement.statementNo(),1,"REVIEWER");
+        var payouts=context.getBean(StatementPayoutService.class);
+        var payout=payouts.prepare("PERIOD:"+c.typeCode(),statement.statementNo(),1,"OP");
+        assertThat(payout).isNotNull();
+        testFunds.rejections.add(payout.ticketNo());
+        assertThat(execute(payout.ticketNo()).status()).isEqualTo(FundsStatus.FAILED);
+        assertThat(jdbc().queryForObject("SELECT locked_minor FROM pts_receivable WHERE type_code=?",
+                Long.class,c.typeCode())).isZero();
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",
+                Long.class,c.typeCode())).isEqualTo(100);
+        assertThat(payouts.prepare("PERIOD:"+c.typeCode(),statement.statementNo(),1,"OP")).isEqualTo(payout);
+        assertThat(payouts.prepare("RETRY:"+c.typeCode(),statement.statementNo(),1,"OP").ticketNo())
+                .isNotEqualTo(payout.ticketNo());
+    }
+
+    @Test void statement_partial_refund_recalculates_and_reconfirms_only_the_remaining_points() {
+        var c=periodicStatementFixture();
+        var statements=context.getBean(StoreStatementService.class);
+        var statement=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        statements.confirm(statement.statementNo(),1,"REVIEWER");
+        completeZeroRefund(c,"PARTIAL",50);
+        var revised=statements.redraft(statement.statementNo(),2,"OP");
+        assertThat(revised.current().points()).isEqualTo(15);
+        statements.confirm(statement.statementNo(),3,"REVIEWER");
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",Long.class,
+                c.typeCode())).isEqualTo(15);
+        assertThat(jdbc().queryForObject("SELECT available_points FROM pts_account WHERE type_code=?"
+                + " AND holder_type='USER'",Long.class,c.typeCode())).isEqualTo(85);
+    }
+
+    @Test void statement_paid_refund_uses_buffer_and_opens_store_receivable_without_reopening_paid_bill() {
+        var c=periodicStatementFixture(100);
+        var statements=context.getBean(StoreStatementService.class);
+        var statement=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        statements.confirm(statement.statementNo(),1,"REVIEWER");
+        var ticket=context.getBean(StatementPayoutService.class).prepare("PERIOD:"+c.typeCode(),
+                statement.statementNo(),1,"OP");
+        execute(ticket.ticketNo()); execute(ticket.ticketNo());
+        assertThat(statements.confirm(statement.statementNo(),1,"REVIEWER").state()).isEqualTo("PAID");
+        completeZeroRefund(c,"PAID_REFUND",50);
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_store_statement WHERE position_no=?",
+                String.class,statement.statementNo())).isEqualTo("PAID");
+        assertThat(jdbc().queryForObject("SELECT b_minor FROM pts_fund_pool WHERE type_code=?",Long.class,
+                c.typeCode())).isEqualTo(150);
+        assertThat(jdbc().queryForObject("SELECT c_minor FROM pts_fund_pool WHERE type_code=?",Long.class,
+                c.typeCode())).isEqualTo(50);
+        assertThat(jdbc().queryForObject("SELECT original_minor FROM pts_receivable WHERE type_code=?",Long.class,
+                c.typeCode())).isEqualTo(50);
+    }
+
+    @Test void statement_carries_unbound_late_facts_to_the_next_period_once() {
+        var c=periodicStatementFixture();
+        long at=Instant.parse("2026-10-14T00:00:00Z").toEpochMilli();
+        var statements=context.getBean(StoreStatementService.class);
+        assertThatCode(() -> statements.draft(new Period(c.typeCode(),"STORE",at+1,at+2),"OP"))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> statements.draft(new Period(c.typeCode(),"STORE",at+2,at+3),"OP"))
+                .hasMessage("POINTS_STATEMENT_EMPTY");
+    }
+
+    @Test void statement_full_unpaid_refund_clears_the_zero_value_bill() {
+        var c=periodicStatementFixture();
+        var statements=context.getBean(StoreStatementService.class);
+        var statement=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        statements.confirm(statement.statementNo(),1,"REVIEWER");
+        completeZeroRefund(c,"FULL",100);
+        var revised=statements.redraft(statement.statementNo(),2,"OP");
+        assertThat(revised.state()).isEqualTo("CLEARED");
+        assertThat(revised.current().points()).isZero();
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",Long.class,
+                c.typeCode())).isZero();
+    }
+
+    @Test void statement_unknown_payment_blocks_refund_and_preserves_all_offset_reservations() {
+        var c=periodicStatementFixture(100);
+        seedDebt(c,30);
+        var statements=context.getBean(StoreStatementService.class);
+        var statement=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        statements.confirm(statement.statementNo(),1,"REVIEWER");
+        var ticket=context.getBean(StatementPayoutService.class).prepare("PERIOD:"+c.typeCode(),
+                statement.statementNo(),1,"OP");
+        execute(ticket.ticketNo());
+        assertThatThrownBy(() -> completeZeroRefund(c,"UNKNOWN",50))
+                .hasMessage("POINTS_STATEMENT_PAYMENT_UNRESOLVED");
+        assertThat(jdbc().queryForObject("SELECT locked_minor FROM pts_receivable WHERE type_code=?",Long.class,
+                c.typeCode())).isEqualTo(30);
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",Long.class,
+                c.typeCode())).isEqualTo(100);
+    }
+
+    @Test void statement_two_tickets_cannot_offset_the_same_receivable_twice() {
+        var c=periodicStatementFixture();
+        var statements=context.getBean(StoreStatementService.class);
+        var first=statements.draft(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        var secondSource=addPeriodicSource(c);
+        var second=statements.draft(new Period(c.typeCode(),"STORE",1,4102444800000L),"OP");
+        assertThat(second.positionIds()).containsExactlyElementsOf(secondSource.positionIds());
+        seedDebt(c,40);
+        statements.confirm(first.statementNo(),1,"REVIEWER");
+        statements.confirm(second.statementNo(),1,"REVIEWER");
+        var payouts=context.getBean(StatementPayoutService.class);
+        var firstTicket=payouts.prepare("FIRST:"+c.typeCode(),first.statementNo(),1,"OP");
+        var secondTicket=payouts.prepare("SECOND:"+c.typeCode(),second.statementNo(),1,"OP");
+        assertThat(firstTicket.offset()).isEqualTo(30);
+        assertThat(secondTicket.offset()).isEqualTo(10);
+        assertThat(secondTicket.cash()).isEqualTo(20);
+        assertThat(jdbc().queryForObject("SELECT locked_minor FROM pts_receivable WHERE type_code=?",Long.class,
+                c.typeCode())).isEqualTo(40);
+        execute(firstTicket.ticketNo()); execute(secondTicket.ticketNo()); execute(secondTicket.ticketNo());
+        assertThat(jdbc().queryForObject("SELECT recovered_minor FROM pts_receivable WHERE type_code=?",Long.class,
+                c.typeCode())).isEqualTo(40);
+        assertThat(jdbc().queryForObject("SELECT locked_minor FROM pts_receivable WHERE type_code=?",Long.class,
+                c.typeCode())).isZero();
+    }
+
+    private PayoutCommand addPeriodicSource(PayoutCommand first) {
+        String type=first.typeCode();
+        String sub="SECOND:"+type;
+        String no=PointsKeys.position("R",type,sub);
+        var original=json.readValue(jdbc().queryForObject("SELECT payload_json FROM pts_redeem_position"
+                + " WHERE position_no=?",String.class,first.positionIds().getFirst()),RedeemSnapshot.class);
+        var route=new FundsContext(FundsPath.AGGREGATED,"TEST","M","STORE","A1","SM","TRADE",sub,100);
+        var snapshot=new RedeemSnapshot(sub,"U","ORDER2:"+type,new Share(sub,"M","STORE",30,30),
+                new Target(sub,"M","STORE",100,"AGGREGATED","TEST","A1","SM","TRADE",
+                        List.of(new Item("ITEM",100))),original.agreement(),route,false);
+        posting.post(new Voucher("SECOND_HOLD:"+type,type,"CNY",new RedeemRate(1,1),List.of(
+                move(type,HolderType.USER,"U",Bucket.AVAILABLE,-30),move(type,HolderType.USER,"U",Bucket.HELD,30)),
+                List.of(),List.of(new PositionMove(PositionMove.Kind.REDEEM,no,-1,"NEW","HELD",30,0,
+                        json.writeValueAsString(snapshot))),30,List.of(),"{}",
+                List.of(new ReserveMove(no,no,-1,30,30,0,0))));
+        var c=new PayoutCommand("SECOND_PAY:"+type,type,sub,List.of(no),FundsPurpose.INTERNAL_REPLENISHMENT,route,"CNY");
+        var paid=paidFact(c);
+        paid(new LifecycleFact("SECOND_PAID:"+type,paid.payloadHash(),paid.subOrderNo(),paid.userNo(),paid.typeCode(),
+                paid.sourceVersion(),paid.kind(),paid.finalGoodsMinor(),paid.refundedGoodsMinor(),paid.lines(),
+                paid.occurredAt()));
+        context.getBean(PointsSettlementHook.class).onBillFinalized(finalFact(c,"SECOND_FINAL:"+type,2));
+        return c;
+    }
+
+    private void completeZeroRefund(PayoutCommand c,String suffix,long refundedGoods) {
+        String afterSale=suffix+":"+c.typeCode();
+        var command=new RefundCommand(afterSale,c.sourceRef(),"U",c.typeCode(),"CNY",1,0,refundedGoods,
+                List.of(new RefundLine("I",refundedGoods)),new PaymentSnapshot("AGGREGATED","TEST","M","STORE",
+                "A1","SM","TRADE",c.sourceRef(),100));
+        var preparation=context.getBean(PointsRefundPreparationService.class).prepare(command);
+        var proof=new ZeroCashCompletionFact("ZERO:"+afterSale,preparation.preparationNo(),preparation.inputHash(),1,
+                c.typeCode(),afterSale,c.sourceRef(),"U","STORE","CNY",1,0,0,0,ZeroCashReason.NO_CASH_DUE,
+                Instant.parse("2026-10-16T00:00:00Z"));
+        context.getBean(PointsRefundZeroCashService.class).accept(proof);
+        context.getBean(PointsRefundConfirmationService.class).confirm(new RefundConfirmation(
+                preparation.preparationNo(),preparation.inputHash(),null,null,null,proof.eventNo()));
+    }
+
+    private void seedDebt(PayoutCommand c,long amount) {
+        // A separate historical store receivable with an explicit synthetic outgoing cash receipt.
+        String evidence="DEBT_CASH:"+c.typeCode();
+        posting.recordEvidence(new EvidenceRef(evidence,"CNY",-amount));
+        var command=new RefundCommand("DEBT:"+c.typeCode(),c.sourceRef(),"U",c.typeCode(),"CNY",1,amount,amount,
+                List.of(new RefundLine("I",amount)),new PaymentSnapshot("AGGREGATED","TEST","M","STORE",
+                "A1","SM","TRADE",c.sourceRef(),100));
+        posting.post(new Voucher("DEBT:"+c.typeCode(),c.typeCode(),"CNY",new RedeemRate(1,1),List.of(),
+                List.of(new FundMove(FundBucket.B,-amount)),List.of(),0,
+                List.of(new EvidenceRef(evidence,"CNY",-amount)),"{}",List.of(),List.of(),
+                List.of(new ReceivableMove("DEBT:"+c.typeCode(),"STORE",-1,"NEW","OPEN",amount,0,0,
+                        json.writeValueAsString(command)))));
+    }
+
+    private PayoutCommand periodicStatementFixture() { return periodicStatementFixture(30); }
+    private PayoutCommand periodicStatementFixture(long points) {
+        var c=fixture(false,false,true,points);
         paid(paidFact(c));
         context.getBean(PointsSettlementHook.class).onBillFinalized(finalFact(c,"FINAL:"+c.typeCode(),2));
         return c;
@@ -553,37 +784,41 @@ class PointsPayoutPreparationTest {
 
     private PayoutCommand fixture(boolean finalSnapshot) { return fixture(finalSnapshot,true,false); }
     private PayoutCommand fixture(boolean finalSnapshot,boolean paid,boolean periodic) {
+        return fixture(finalSnapshot,paid,periodic,30);
+    }
+    private PayoutCommand fixture(boolean finalSnapshot,boolean paid,boolean periodic,long points) {
+        long buffer=points==100?200:100;
         String type="PY"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
         jdbc().update("INSERT INTO pts_point_type(type_code,market,currency,rate_points,rate_minor,status)"
                 + " VALUES(?,'CN','CNY',1,1,'ACTIVE')",type);
         jdbc().update("INSERT INTO pts_fund_pool(type_code,currency) VALUES(?,'CNY')",type);
         jdbc().update("INSERT INTO pts_fund_evidence(evidence_no,currency,external_minor,verified)"
-                + " VALUES(?,'CNY',200,1)","E:"+type);
+                + " VALUES(?,'CNY',?,1)","E:"+type,100+buffer);
         posting.post(new Voucher("F:"+type,type,"CNY",new RedeemRate(1,1),List.of(
                 move(type,HolderType.MINT,"PLATFORM",Bucket.ISSUED,-100),
                 move(type,HolderType.ISSUE,"PLATFORM",Bucket.ISSUABLE,100)),List.of(
-                new FundMove(FundBucket.U,100),new FundMove(FundBucket.B,100)),List.of(),0,
-                List.of(new EvidenceRef("E:"+type,"CNY",200)),"{}"));
+                new FundMove(FundBucket.U,100),new FundMove(FundBucket.B,buffer)),List.of(),0,
+                List.of(new EvidenceRef("E:"+type,"CNY",100+buffer)),"{}"));
         posting.post(new Voucher("G:"+type,type,"CNY",new RedeemRate(1,1),List.of(
                 move(type,HolderType.ISSUE,"PLATFORM",Bucket.ISSUABLE,-100),
-                move(type,HolderType.USER,"U",Bucket.AVAILABLE,70),
-                move(type,HolderType.USER,"U",Bucket.HELD,30)),List.of(
+                move(type,HolderType.USER,"U",Bucket.AVAILABLE,100-points),
+                move(type,HolderType.USER,"U",Bucket.HELD,points)),List.of(
                 new FundMove(FundBucket.U,-100),new FundMove(FundBucket.C,100)),List.of(),0,List.of(),"{}"));
         String sub="S:"+type;
         String position=PointsKeys.position("R",type,sub);
         FundsContext funds=new FundsContext(FundsPath.AGGREGATED,"TEST","M","STORE","A1","SM","TRADE",sub,100);
         var agreement=new AgreementSnapshot("A:"+type,type,"M","STORE","OWNER","v1","HASH","TEST TERMS",
                 periodic?"PERIODIC":"PER_ORDER","AGGREGATED","TEST","A1","ACTIVE");
-        var snapshot=new RedeemSnapshot(sub,"U","O:"+type,new Share(sub,"M","STORE",30,30),
+        var snapshot=new RedeemSnapshot(sub,"U","O:"+type,new Share(sub,"M","STORE",points,points),
                 new Target(sub,"M","STORE",100,"AGGREGATED","TEST","A1","SM","TRADE",
                         List.of(new Item("ITEM",100))),agreement,funds,finalSnapshot);
         posting.post(new Voucher("P:"+type,type,"CNY",new RedeemRate(1,1),paid?List.of(
-                move(type,HolderType.USER,"U",Bucket.HELD,-30),
-                move(type,HolderType.RECEIVE,"PLATFORM",Bucket.REFUND_RESERVED,30)):List.of(),paid?List.of(
-                new FundMove(FundBucket.C,-30),new FundMove(FundBucket.D,30)):List.of(),List.of(
-                new PositionMove(PositionMove.Kind.REDEEM,position,-1,"NEW",paid?"PAYABLE":"HELD",30,0,
-                        json.writeValueAsString(snapshot))),30,List.of(),"{}",
-                List.of(new ReserveMove(position,position,-1,30,30,0,0))));
+                move(type,HolderType.USER,"U",Bucket.HELD,-points),
+                move(type,HolderType.RECEIVE,"PLATFORM",Bucket.REFUND_RESERVED,points)):List.of(),paid?List.of(
+                new FundMove(FundBucket.C,-points),new FundMove(FundBucket.D,points)):List.of(),List.of(
+                new PositionMove(PositionMove.Kind.REDEEM,position,-1,"NEW",paid?"PAYABLE":"HELD",points,0,
+                        json.writeValueAsString(snapshot))),points,List.of(),"{}",
+                List.of(new ReserveMove(position,position,-1,points,points,0,0))));
         return new PayoutCommand("PAY:"+type,type,sub,List.of(position),FundsPurpose.INTERNAL_REPLENISHMENT,funds,"CNY");
     }
     private PayoutTicket begin(PayoutCommand command) {

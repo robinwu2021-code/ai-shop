@@ -32,6 +32,11 @@ public interface PointsConfigurationMapper {
     Map<String, Object> lockPayoutTicket(String no);
     @Select("SELECT * FROM pts_store_statement WHERE position_no=#{no} AND deleted=0 FOR UPDATE")
     Map<String, Object> lockStatement(String no);
+    @Select("SELECT * FROM pts_receivable WHERE receivable_no=#{no} AND deleted=0 FOR UPDATE")
+    Map<String, Object> lockReceivable(String no);
+    @Select("SELECT * FROM pts_receivable WHERE type_code=#{type} AND store_no=#{store} AND state='OPEN'"
+            + " AND deleted=0 AND recovered_minor+locked_minor<original_minor ORDER BY receivable_no FOR UPDATE")
+    List<Map<String, Object>> statementDebts(@Param("type") String type, @Param("store") String store);
     @Select("SELECT * FROM pts_redeem_position WHERE position_no=#{no} AND deleted=0 FOR UPDATE")
     Map<String, Object> lockStatementSource(String no);
     @Select("SELECT * FROM pts_redeem_position WHERE type_code=#{type} AND store_no=#{store} AND deleted=0"

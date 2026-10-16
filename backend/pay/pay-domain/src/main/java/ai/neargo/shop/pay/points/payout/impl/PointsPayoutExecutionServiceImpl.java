@@ -29,9 +29,14 @@ public class PointsPayoutExecutionServiceImpl implements PointsPayoutExecutionSe
             throw new IllegalStateException("POINTS_FUNDS_REQUIRES_NO_TRANSACTION");
         }
         PointsFundsGateway gateway=gateways.getIfAvailable();
-        if (gateway==null) { throw new IllegalStateException("POINTS_FUNDS_GATEWAY_REQUIRED"); }
+        if (gateway==null && preparation.commandFor(no).amountMinor()>0) {
+            throw new IllegalStateException("POINTS_FUNDS_GATEWAY_REQUIRED");
+        }
         var claim=preparation.claimDispatch(no);
         if (claim.completed()!=null) { return new DispatchResult(null, claim.completed()); }
+        if (claim.command().amountMinor()==0) {
+            return new DispatchResult(new FundsResult(no,FundsStatus.SUCCEEDED,null,0,"LOCAL_OFFSET"),null);
+        }
         FundsResult result;
         try { result=claim.submit()?gateway.submit(claim.command()):gateway.query(claim.command()); }
         catch (RuntimeException e) {

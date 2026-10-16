@@ -22,4 +22,7 @@ public class MybatisStatementStore implements StatementStore {
     @Override public List<Map<String, Object>> candidates(String type, String store) {
         return DataScopeContext.executeWithoutScope(() -> mapper.statementCandidates(type, store));
     }
+    @Override public List<Map<String, Object>> debts(String type, String store) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.statementDebts(type, store));
+    }
 }

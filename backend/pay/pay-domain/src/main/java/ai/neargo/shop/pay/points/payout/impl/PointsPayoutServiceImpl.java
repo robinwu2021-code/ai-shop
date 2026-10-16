@@ -11,6 +11,8 @@ import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsResult;
 import ai.neargo.shop.pay.points.model.PointsKeys;
 import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.model.Voucher;
+import ai.neargo.shop.pay.points.model.ReceivableMove;
+import ai.neargo.shop.pay.points.statement.StoreStatementService.Snapshot;
 import ai.neargo.shop.pay.points.payout.PayoutSnapshot;
 import ai.neargo.shop.pay.points.payout.PointsPayoutService;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsCommand;
@@ -133,10 +135,12 @@ public class PointsPayoutServiceImpl implements PointsPayoutService {
         }
         if (result.status()==FundsStatus.UNKNOWN && "UNKNOWN".equals(state)) { return outcome(old,true); }
         PointType type=read.type((String)head.get("type_code")).orElseThrow();
-        PayoutSnapshot next=new PayoutSnapshot(old.command(),old.ticket(),old.fundsCommand(),result);
+        PayoutSnapshot next=new PayoutSnapshot(old.command(),old.ticket(),old.fundsCommand(),result,
+                old.statementNo(),old.statementRevision(),old.offsets());
         List<PositionMove> positions=new ArrayList<>();
         List<FundMove> money=List.of();
         List<EvidenceRef> evidence=List.of();
+        List<ReceivableMove> debts=new ArrayList<>();
         if (result.status()!=FundsStatus.UNKNOWN) {
             for (String id:old.command().positionIds()) {
                 var source=read.position(PositionMove.Kind.REDEEM.table(),id);
@@ -149,18 +153,48 @@ public class PointsPayoutServiceImpl implements PointsPayoutService {
             }
         }
         if (result.status()==FundsStatus.SUCCEEDED) {
-            if (blank(result.evidenceNo())) { throw new IllegalArgumentException("POINTS_FUNDS_EVIDENCE_MISSING"); }
-            EvidenceRef proof=new EvidenceRef(result.evidenceNo(),type.currency(),
-                    Math.negateExact(result.amountMinor()));
-            posting.recordEvidence(proof);
-            money=List.of(new FundMove(FundBucket.D,-result.amountMinor()));
-            evidence=List.of(proof);
+            if (result.amountMinor()>0) {
+                if (blank(result.evidenceNo())) { throw new IllegalArgumentException("POINTS_FUNDS_EVIDENCE_MISSING"); }
+                EvidenceRef proof=new EvidenceRef(result.evidenceNo(),type.currency(),-result.amountMinor());
+                posting.recordEvidence(proof); evidence=List.of(proof);
+            } else if (old.statementNo()==null || old.ticket().offset()!=old.ticket().gross()
+                    || result.evidenceNo()!=null) {
+                throw new IllegalArgumentException("POINTS_ZERO_PAYOUT_NOT_AUTHORIZED");
+            }
+            money=old.ticket().offset()==0?List.of(new FundMove(FundBucket.D,-old.ticket().gross())):
+                    List.of(new FundMove(FundBucket.D,-old.ticket().gross()),
+                            new FundMove(FundBucket.B,old.ticket().offset()));
+        }
+        if (result.status()!=FundsStatus.UNKNOWN && old.statementNo()!=null) {
+            long offsetTotal=0;
+            for (var offset:old.offsets()) {
+                var debt=config.lockReceivable(offset.receivableNo());
+                boolean success=result.status()==FundsStatus.SUCCEEDED;
+                long recovered=success?offset.amountMinor():0;
+                boolean closed=Math.addExact(num(debt,"recovered_minor"),recovered)==num(debt,"original_minor");
+                debts.add(new ReceivableMove(offset.receivableNo(),(String)debt.get("store_no"),num(debt,"version"),
+                        (String)debt.get("state"),closed?"CLOSED":"OPEN",num(debt,"original_minor"),
+                        recovered,-offset.amountMinor(),(String)debt.get("payload_json")));
+                offsetTotal=Math.addExact(offsetTotal,offset.amountMinor());
+            }
+            if (offsetTotal!=old.ticket().offset()) { throw new IllegalArgumentException("POINTS_OFFSET_MISMATCH"); }
+            var statement=config.lockStatement(old.statementNo());
+            var saved=json.readValue((String)statement.get("payload_json"),Snapshot.class);
+            if (!"PAYING".equals(saved.state()) || saved.current().number()!=old.statementRevision()) {
+                throw new IllegalArgumentException("POINTS_STATEMENT_REVISION_CONFLICT");
+            }
+            String nextState=result.status()==FundsStatus.SUCCEEDED?"PAID":"CONFIRMED";
+            var updated=new Snapshot(saved.statementNo(),saved.period(),saved.positionIds(),saved.revisions(),
+                    nextState,saved.disputeReason());
+            positions.add(new PositionMove(PositionMove.Kind.STATEMENT,old.statementNo(),num(statement,"version"),
+                    "PAYING",nextState,num(statement,"original_points"),0,json.writeValueAsString(updated)));
         }
         positions.add(new PositionMove(PositionMove.Kind.PAYOUT,result.ticketNo(),num(head,"version"),state,
                 result.status().name(),num(head,"original_points"),0,json.writeValueAsString(next)));
         PayoutOutcome outcome=outcome(next,false);
         posting.post(new Voucher("PAYOUT_RESULT:"+result.ticketNo()+":"+result.status(),type.typeCode(),type.currency(),
-                type.rate(),List.of(),money,positions,0,evidence,json.writeValueAsString(outcome)));
+                type.rate(),List.of(),money,positions,0,evidence,json.writeValueAsString(outcome),
+                List.of(),List.of(),debts));
         return outcome;
     }
     private Map<String,Object> lockedTicket(String no) {
@@ -173,7 +207,7 @@ public class PointsPayoutServiceImpl implements PointsPayoutService {
     private PayoutOutcome outcome(PayoutSnapshot snapshot,boolean replayed) {
         FundsResult result=snapshot.result();
         return new PayoutOutcome(snapshot.ticket().ticketNo(),result.status(),
-                result.status()==FundsStatus.SUCCEEDED?result.amountMinor():0,replayed);
+                result.status()==FundsStatus.SUCCEEDED?snapshot.ticket().gross():0,replayed);
     }
 
     private PayoutCommand normalize(PayoutCommand c) {

@@ -57,7 +57,8 @@ public class StoreStatementServiceImpl implements StoreStatementService {
         String actor = "REFUND:" + positionNo;
         var history = new ArrayList<>(saved.revisions());
         history.add(new Revision(Math.addExact(saved.current().number(), 1), lines, points, actor, "REFUND_REOPEN"));
-        var next = new Snapshot(no, saved.period(), saved.positionIds(), history, "DRAFT", null);
+        var next = new Snapshot(no, saved.period(), saved.positionIds(), history,
+                history.getLast().points()==0?"CLEARED":"DRAFT", null);
         String type = saved.period().typeCode();
         long minor = read.type(type).orElseThrow().rate().toMinor(points);
         post(head, next, List.of(new PointsMove(new AccountKey(type, HolderType.STORE,
@@ -107,7 +108,8 @@ public class StoreStatementServiceImpl implements StoreStatementService {
         require(Set.of("DRAFT", "DISPUTED").contains(saved.state()), "POINTS_STATEMENT_NOT_DRAFT");
         var history = new ArrayList<>(saved.revisions());
         history.add(revision(saved.period(), saved.positionIds(), Math.addExact(revision, 1), actor));
-        var next = new Snapshot(no, saved.period(), saved.positionIds(), history, "DRAFT", null);
+        var next = new Snapshot(no, saved.period(), saved.positionIds(), history,
+                history.getLast().points()==0?"CLEARED":"DRAFT", null);
         post(head, next, List.of(), List.of(), List.of(), actor);
         return next;
     }
@@ -115,7 +117,7 @@ public class StoreStatementServiceImpl implements StoreStatementService {
     @Override public Snapshot confirm(String no, long revision, String actor) {
         var head = locked(no, actor);
         var saved = checked(head, revision);
-        if ("CONFIRMED".equals(saved.state())) { return saved; }
+        if (Set.of("CONFIRMED", "PAYING", "PAID", "CLEARED").contains(saved.state())) { return saved; }
         require("DRAFT".equals(saved.state()), "POINTS_STATEMENT_NOT_DRAFT");
         require(saved.current().points() > 0, "POINTS_STATEMENT_EMPTY");
         var actual = revision(saved.period(), saved.positionIds(), revision, actor);
@@ -155,6 +157,7 @@ public class StoreStatementServiceImpl implements StoreStatementService {
     private Revision revision(Period period, List<String> ids, long number, String actor) {
         List<Line> lines = new ArrayList<>();
         long points = 0;
+        boolean carryForward = false;
         for (String id : ids) {
             var source = store.lockSource(id);
             require(source != null && period.typeCode().equals(source.get("type_code"))
@@ -165,12 +168,18 @@ public class StoreStatementServiceImpl implements StoreStatementService {
                     "POINTS_STATEMENT_SOURCE_NOT_READY");
             long remaining = Math.subtractExact(num(source, "original_points"), num(source, "processed_points"));
             lines.add(new Line(id, num(source, "version"), remaining));
+            carryForward |= finalAt(source, period) < period.fromMillis();
             points = Math.addExact(points, remaining);
         }
-        return new Revision(number, lines, points, actor, null);
+        return new Revision(number, lines, points, actor, carryForward?"CARRY_FORWARD":null);
     }
 
     private boolean belongsToPeriod(Map<String, Object> source, Period period) {
+        // A previously unbound late fact must not be orphaned by an already frozen older statement.
+        return finalAt(source, period) < period.toMillis();
+    }
+
+    private long finalAt(Map<String, Object> source, Period period) {
         var lifecycle = read.lifecycle(period.typeCode(), (String) source.get("sub_order_no"));
         require(lifecycle != null, "POINTS_STATEMENT_FINAL_FACT_REQUIRED");
         var node = json.readTree((String) lifecycle.get("payload_json")).get("finalFact");
@@ -178,8 +187,7 @@ public class StoreStatementServiceImpl implements StoreStatementService {
         var fact = json.treeToValue(node, LifecycleFact.class);
         require(fact.occurredAt() != null && period.typeCode().equals(fact.typeCode())
                 && source.get("sub_order_no").equals(fact.subOrderNo()), "POINTS_STATEMENT_FINAL_FACT_REQUIRED");
-        long at = fact.occurredAt().toEpochMilli();
-        return at >= period.fromMillis() && at < period.toMillis();
+        return fact.occurredAt().toEpochMilli();
     }
 
     private Map<String, Object> locked(String no, String actor) {

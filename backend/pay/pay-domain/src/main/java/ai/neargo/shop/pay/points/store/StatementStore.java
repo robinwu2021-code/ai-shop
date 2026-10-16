@@ -8,4 +8,5 @@ public interface StatementStore {
     Map<String, Object> lock(String statementNo);
     Map<String, Object> lockSource(String positionNo);
     List<Map<String, Object>> candidates(String typeCode, String storeNo);
+    List<Map<String, Object>> debts(String typeCode, String storeNo);
 }

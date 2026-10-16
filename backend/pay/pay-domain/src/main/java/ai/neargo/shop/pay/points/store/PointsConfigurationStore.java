@@ -13,6 +13,8 @@ public interface PointsConfigurationStore {
     Map<String, Object> lockRefundPreparation(String preparationNo);
     /** Reads the committed payout outcome after acquiring the shared type/pool lock. */
     Map<String, Object> lockPayoutTicket(String ticketNo);
+    Map<String, Object> lockStatement(String statementNo);
+    Map<String, Object> lockReceivable(String receivableNo);
     void changeTypeStatus(String typeCode, PointType.Status expected, PointType.Status next, String activeMarket, String actor);
     void submit(PoolRequest request, String json);
     Map<String, Object> lockRequest(String requestNo);
