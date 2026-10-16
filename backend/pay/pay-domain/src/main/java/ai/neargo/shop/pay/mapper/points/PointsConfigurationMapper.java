@@ -17,6 +17,22 @@ import java.util.Map;
  * here.
  */
 public interface PointsConfigurationMapper {
+    @Select("SELECT fallback_rule_json FROM pts_point_type WHERE type_code=#{type} AND deleted=0")
+    String rules(String type);
+
+    @Select("SELECT * FROM pts_point_type WHERE type_code=#{type} AND deleted=0 FOR UPDATE")
+    Map<String, Object> lockRules(String type);
+
+    @Update(
+            "UPDATE pts_point_type SET"
+                + " fallback_rule_json=#{body},version=version+1,updated_at=CURRENT_TIMESTAMP,updated_by=#{actor}"
+                + " WHERE type_code=#{type} AND version=#{version} AND deleted=0")
+    int saveRules(
+            @Param("type") String type,
+            @Param("version") long version,
+            @Param("body") String body,
+            @Param("actor") String actor);
+
     @Select("SELECT * FROM pts_point_type WHERE type_code=#{type}")
     Map<String, Object> type(String type);
 
@@ -242,7 +258,7 @@ public interface PointsConfigurationMapper {
 
     @Select(
             "SELECT * FROM pts_store_statement WHERE type_code=#{type} AND store_no=#{store} AND"
-                + " period_from=#{from} AND deleted=0 ORDER BY route_key LIMIT 201 FOR UPDATE")
+                    + " period_from=#{from} AND deleted=0 ORDER BY route_key LIMIT 201 FOR UPDATE")
     List<Map<String, Object>> statementsForPeriod(
             @Param("type") String type, @Param("store") String store, @Param("from") long from);
 
@@ -275,8 +291,8 @@ public interface PointsConfigurationMapper {
 
     @Select(
             "SELECT * FROM pts_refund_preparation WHERE type_code=#{type} AND sub_order_no=#{sub}"
-                + " AND state='CONFIRMED' AND deleted=0 ORDER BY position_no LIMIT 10001 FOR"
-                + " UPDATE")
+                    + " AND state='CONFIRMED' AND deleted=0 ORDER BY position_no LIMIT 10001 FOR"
+                    + " UPDATE")
     List<Map<String, Object>> confirmedRefunds(
             @Param("type") String type, @Param("sub") String sub);
 

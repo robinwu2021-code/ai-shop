@@ -124,6 +124,20 @@ def positive(value):
     return number
 
 
+def find_reports(backend_root):
+    """Traverse modules, never Maven's transient target trees; disappearing reports are retryable."""
+    for directory, children, _ in os.walk(backend_root):
+        if 'target' not in children:
+            continue
+        children.remove('target')
+        target = Path(directory) / 'target'
+        for name in ('surefire-reports', 'failsafe-reports'):
+            try:
+                yield from (target / name).glob('TEST-*.xml')
+            except FileNotFoundError:
+                continue
+
+
 def wait_with_progress(process, args, output, started, started_ns, backend_root):
     """Show observed progress only; incomplete suites do not supply a reliable total or percentage."""
     deadline = started + args.timeout if args.timeout else None
@@ -138,7 +152,7 @@ def wait_with_progress(process, args, output, started, started_ns, backend_root)
             if deadline is not None and now >= deadline:
                 raise
             completed = 0
-            for report in backend_root.glob('**/target/surefire-reports/TEST-*.xml'):
+            for report in find_reports(backend_root):
                 try:
                     if report.stat().st_mtime_ns >= started_ns:
                         completed += len(list(ET.parse(report).getroot().iter('testcase')))
@@ -206,9 +220,7 @@ def main(argv=None):
             except OSError as error:
                 launch_error = str(error)
                 code = 127
-    reports = [path.resolve() for path in args.report] if args.report is not None else list(backend_root.glob('**/target/surefire-reports/TEST-*.xml'))
-    if args.report is None:
-        reports += list(backend_root.glob('**/target/failsafe-reports/TEST-*.xml'))
+    reports = [path.resolve() for path in args.report] if args.report is not None else list(find_reports(backend_root))
     since_ns = (int(args.since * 1_000_000_000) if args.since is not None else None) if args.collect_only else started_ns
     summary = collect_reports(reports, output, backend_root, args.slow_seconds, since_ns, run_id)
     summary.update({'source': 'existing_reports' if args.collect_only else 'current_command',

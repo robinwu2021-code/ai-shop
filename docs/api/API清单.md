@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 832 个接口**：后端已实现 754（91%）· 前端在调 756
+**合计 840 个接口**：后端已实现 762（91%）· 前端在调 766
 
 ---
 
@@ -917,7 +917,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **417** 个接口 ｜ 后端已实现 **351**（84%）｜ 前端在调 **341**
+共 **425** 个接口 ｜ 后端已实现 **359**（84%）｜ 前端在调 **351**
 
 ### aftersale（4）
 
@@ -998,7 +998,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（45）
+### finance（53）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1025,10 +1025,18 @@
 | GET | `/ops/payouts` | listPayouts | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/payouts/{payoutNo}/fail` | 打款失败或退回 | — | `Payout` | — | ✅ | ✅ |
 | POST | `/ops/payouts/{payoutNo}/paid` | 登记凭证 | — | `Payout` | — | ✅ | ✅ |
-| GET | `/ops/points/client-policy` | 积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣 | — | `ClientPointsPolicy` | — | ✅ | ⬜ |
-| POST | `/ops/points/client-policy` | savePointsClientPolicy | — | `ClientPointsPolicy` | — | ✅ | ⬜ |
+| GET | `/ops/points/agreements` | pointsAgreements | — | `PointsAgreementPage` | — | ✅ | ✅ |
+| GET | `/ops/points/fallback-rule` | pointsFallback | — | `PointsFallback` | — | ✅ | ✅ |
+| POST | `/ops/points/fallback-rule` | savePointsFallback | — | `PointsChangeResult` | — | ✅ | ✅ |
 | GET | `/ops/points/overview` | 积分资金总览 | — | `PointsOverview` | — | ✅ | ✅ |
 | GET | `/ops/points/receivables` | 门店应收分页 | — | `PointsReceivablePage` | — | ✅ | ✅ |
+| GET | `/ops/points/switches` | pointsSwitches | — | `PointsSwitchPage` | — | ✅ | ✅ |
+| POST | `/ops/points/switches` | changePointsSwitch | — | `PointsChangeResult` | — | ✅ | ✅ |
+| GET | `/ops/points/terms` | pointsTerms | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/points/terms` | publishPointsTerms | — | `PointsChangeResult` | — | ✅ | ✅ |
+| POST | `/ops/points/type-state` | transitionPointsType | — | `PointsChangeResult` | — | ✅ | ✅ |
+| GET | `/ops/points/types` | pointsTypes | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/points/types` | createPointsType | — | `PointsChangeResult` | — | ✅ | ✅ |
 | GET | `/ops/purchase-invoices` | listPurchaseInvoices | — | `数组` | — | ✅ | ⬜ |
 | POST | `/ops/purchase-invoices/{invoiceNo}/reject` | rejectPurchaseInvoice | — | `PurchaseInvoice` | — | ✅ | ⬜ |
 | POST | `/ops/purchase-invoices/{invoiceNo}/verify` | verifyPurchaseInvoice | — | `PurchaseInvoice` | — | ✅ | ⬜ |

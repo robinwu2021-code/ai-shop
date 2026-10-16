@@ -41,6 +41,10 @@ public interface PointsOperationsStore {
 
     long outstandingReceivable(String typeCode);
 
+    List<Map<String, Object>> switches(String typeCode, long after, int limit);
+
+    List<Map<String, Object>> agreements(String typeCode, String storeNo, long after, int limit);
+
     long manualEvents(String typeCode);
 
     Map<String, Object> plan(String planNo, String period);

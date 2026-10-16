@@ -125,6 +125,23 @@ class PointsPostingDatabaseTest {
                             .execute(dataSource);
                 }
             }
+            try (var ruleColumns =
+                    connection
+                            .getMetaData()
+                            .getColumns(connection.getCatalog(), null, "pts_point_type", null)) {
+                boolean ruleInstalled = false;
+                while (ruleColumns.next()) {
+                    ruleInstalled |=
+                            "fallback_rule_json"
+                                    .equalsIgnoreCase(ruleColumns.getString("COLUMN_NAME"));
+                }
+                if (!ruleInstalled) {
+                    new ResourceDatabasePopulator(
+                                    new ClassPathResource(
+                                            "db/migration/V425__points_type_fallback_rule.sql"))
+                            .execute(dataSource);
+                }
+            }
         } catch (SQLException failure) {
             throw new IllegalStateException("Points schema fixture failed", failure);
         }
@@ -193,8 +210,8 @@ class PointsPostingDatabaseTest {
         posting.post(topup(type, "F1:" + type));
         jdbc().update(
                         "INSERT INTO"
-                            + " pts_fund_evidence(evidence_no,currency,external_minor,verified)"
-                            + " VALUES(?,'CNY',100,1)",
+                                + " pts_fund_evidence(evidence_no,currency,external_minor,verified)"
+                                + " VALUES(?,'CNY',100,1)",
                         "E2:" + type);
         Voucher fund2 = topup(type, "F2:" + type);
         posting.post(
@@ -300,8 +317,8 @@ class PointsPostingDatabaseTest {
                         "{}"));
         jdbc().update(
                         "INSERT INTO"
-                            + " pts_fund_evidence(evidence_no,currency,external_minor,verified)"
-                            + " VALUES(?,'CNY',100,1)",
+                                + " pts_fund_evidence(evidence_no,currency,external_minor,verified)"
+                                + " VALUES(?,'CNY',100,1)",
                         "B:" + type);
         posting.post(
                 new Voucher(
@@ -344,7 +361,7 @@ class PointsPostingDatabaseTest {
         assertThat(
                         jdbc().queryForObject(
                                         "SELECT reserved_b_minor FROM pts_fund_pool WHERE"
-                                            + " type_code=?",
+                                                + " type_code=?",
                                         Long.class,
                                         type))
                 .isEqualTo(100L);
@@ -375,14 +392,14 @@ class PointsPostingDatabaseTest {
         assertThat(
                         jdbc().queryForObject(
                                         "SELECT reserved_b_minor FROM pts_fund_pool WHERE"
-                                            + " type_code=?",
+                                                + " type_code=?",
                                         Long.class,
                                         type))
                 .isZero();
         assertThat(
                         jdbc().queryForObject(
                                         "SELECT released_minor FROM pts_refund_reserve WHERE"
-                                            + " reserve_no=?",
+                                                + " reserve_no=?",
                                         Long.class,
                                         reserve))
                 .isEqualTo(100L);
@@ -425,8 +442,8 @@ class PointsPostingDatabaseTest {
         jdbc().update("INSERT INTO pts_fund_pool(type_code,currency) VALUES(?,'CNY')", type);
         jdbc().update(
                         "INSERT INTO"
-                            + " pts_fund_evidence(evidence_no,currency,external_minor,verified)"
-                            + " VALUES(?,'CNY',100,1)",
+                                + " pts_fund_evidence(evidence_no,currency,external_minor,verified)"
+                                + " VALUES(?,'CNY',100,1)",
                         "E:" + type);
         return type;
     }

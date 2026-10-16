@@ -1,126 +1,80 @@
 "use client";
 
-// 积分的端开关 —— 接 `/ops/points/client-policy`。
-//
-// 三件事：哪个端不发放、哪个端不核销、当面付能不能抵扣。
-//
-// ⚠️ **存的是禁用名单，不是允许名单。** `X-Client` 头今天还没有哪个端全量在发 ——
-// 用允许名单的话，没带头的请求一律落到「不在名单里」，开关一上线就把全站积分
-// 静默关掉了。禁用名单下一条策略只约束**自报家门的那些端**。
-//
-// ⚠️ **这不是合规硬闸。** 端标识来自客户端、天然可伪造。它能做到的是
-// 「让自报家门的那个端不发/不用积分」，做不到的是「保证某个端一定拿不到积分」。
-// 要后者得在端侧和签名上做文章 —— 这句必须写在界面上，否则会有人拿它当合规凭据。
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { pointsCommand } from "@/lib/points-command";
 import { api } from "@/lib/api";
-import type { ClientPointsPolicy } from "@/lib/types";
+import type { PointsScope, PointsFlow, PointsSwitchChange } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { Input, Select } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import { SectionHeader } from "@/components/ui/section-header";
+import { useLocaleStore } from "@/lib/stores/locale";
 import type { FinanceCopy } from "./copy";
 
-/** 与后端 `PayScenes` 逐字一致。多一个少一个都不会报错，只会静默不生效 */
-const CLIENTS = ["MP_WECHAT", "MP_ALIPAY", "IOS", "ANDROID", "H5"] as const;
-
+const CLIENTS = ["MP_WECHAT", "MP_ALIPAY", "IOS", "ANDROID", "H5"];
+const SCOPES: PointsScope[] = ["GLOBAL", "REGION", "TYPE", "SCENE", "CLIENT", "MERCHANT", "STORE", "USER"];
 export function PointsPolicyTab({ c, canEdit }: { c: FinanceCopy; canEdit: boolean }) {
+  const en = useLocaleStore((s) => s.locale) === "en";
+  const text = (zh: string, english: string) => en ? english : zh;
   const qc = useQueryClient();
-  const list = useQuery({
-    queryKey: ["points-client-policy"],
-    queryFn: () => api.pointsClientPolicy(),
-  });
-  const [draft, setDraft] = useState<ClientPointsPolicy | null>(null);
-  useEffect(() => {
-    if (list.data) setDraft(list.data);
-  }, [list.data]);
+  const intent = useRef<{ body: string; requestId: string } | undefined>(undefined);
+  const types = useQuery({ queryKey: ["points-types"], queryFn: () => api.pointsTypes() });
+  const [selected, setSelected] = useState("");
+  const typeCode = selected || types.data?.[0]?.typeCode || "";
+  const [scope, setScope] = useState<PointsScope>("STORE");
+  const [subject, setSubject] = useState("");
+  const [flow, setFlow] = useState<PointsFlow>("BOTH");
+  const [enabled, setEnabled] = useState(false);
+  const [reason, setReason] = useState("");
+  const [after, setAfter] = useState(0);
+  const list = useQuery({ queryKey: ["points-switches", typeCode, after], enabled: !!typeCode,
+    queryFn: () => api.pointsSwitches({ typeCode, after, limit: 50 }) });
+  const save = useMutation({ mutationFn: (v: PointsSwitchChange) => api.changePointsSwitch(v),
+    onSuccess: () => { setAfter(0); void qc.invalidateQueries({ queryKey: ["points-switches"] }); } });
+  const global = scope === "GLOBAL" || scope === "REGION";
+  const effectiveSubject = scope === "GLOBAL" ? "ALL" : scope === "TYPE" ? typeCode : scope === "CLIENT" ? subject || CLIENTS[0] : subject.trim();
 
-  const save = useMutation({
-    mutationFn: (v: ClientPointsPolicy) => api.savePointsClientPolicy(v),
-    onSuccess: (v) => qc.setQueryData(["points-client-policy"], v),
-  });
-
-  if (!draft) return <div className="txt-body text-muted-foreground">{c.ppLoading}</div>;
-
-  function toggle(list: string[], v: string) {
-    return list.includes(v) ? list.filter((x) => x !== v) : [...list, v];
-  }
-
-  /**
-   * 「能核销不能发放」是**合法组合**：某个端停止发分（比如 iOS 的虚拟支付规则），
-   * 但用户已有的分照样能在那儿花掉。所以这里**只提示、不禁止** ——
-   * 硬禁会挡住一个真实需要的配置，而运营没有别的地方能表达它。
-   */
-  const oddPairs = CLIENTS.filter(
-    (v) => draft!.earnDeny.includes(v) && !draft!.redeemDeny.includes(v),
-  );
-
-  return (
-    <>
-      <SectionHeader title={c.ppTitle} />
-      <Notice className="mb-3" tone="warning">{c.ppNotSecurityGate}</Notice>
-
-      <div className="space-y-4 rounded-card border border-border p-4">
-        <Row
-          label={c.ppEarnDeny} hint={c.ppEarnHint} clients={CLIENTS}
-          picked={draft.earnDeny} disabled={!canEdit}
-          onToggle={(v) => setDraft({ ...draft, earnDeny: toggle(draft.earnDeny, v) })}
-        />
-        <Row
-          label={c.ppRedeemDeny} hint={c.ppRedeemHint} clients={CLIENTS}
-          picked={draft.redeemDeny} disabled={!canEdit}
-          onToggle={(v) => setDraft({ ...draft, redeemDeny: toggle(draft.redeemDeny, v) })}
-        />
-
-        <label className="flex items-start gap-2 txt-body">
-          <input
-            type="checkbox" className="focus-ring mt-1" disabled={!canEdit}
-            checked={draft.offlineRedeem}
-            onChange={(e) => setDraft({ ...draft, offlineRedeem: e.target.checked })}
-          />
-          <span>
-            <span className="font-semibold">{c.ppOfflineRedeem}</span>
-            <span className="block txt-caption text-muted-foreground">{c.ppOfflineHint}</span>
-          </span>
+  return <div className="space-y-4">
+    <SectionHeader title={text("积分范围开关", "Points availability switches")} />
+    <Notice>{text("开关控制后续发放和核销。已受理交易继续按原快照结算；关闭不会修改账户余额。", "Switches control future earning and redemption. Accepted transactions retain their snapshots; balances are preserved.")}</Notice>
+    {types.isError && <Notice tone="warning">{types.error.message} <Button onClick={() => void types.refetch()}>{text("重试", "Retry")}</Button></Notice>}
+    {types.isPending && <p>{c.ppLoading}</p>}
+    {types.data?.length === 0 && <p>{text("尚未创建积分类型，请先在积分配置中创建。", "No points type exists. Create one in points configuration first.")}</p>}
+    {!!types.data?.length && <>
+      <label className="block">{text("积分类型", "Points type")} <Select value={typeCode} onChange={(e) => { setSelected(e.target.value); setAfter(0); save.reset(); }}>
+        {types.data.map((t) => <option key={t.typeCode} value={t.typeCode}>{t.typeCode} · {t.market} · {t.status}</option>)}
+      </Select></label>
+      <form className="grid gap-3 rounded-card border border-border p-4 md:grid-cols-2" onSubmit={(e) => {
+        e.preventDefault();
+        const next = pointsCommand({ typeCode: global ? "*" : typeCode, scope, subjectNo: effectiveSubject, flow, enabled, reason: reason.trim() }, intent.current);
+        intent.current = next.intent;
+        save.mutate(next.command);
+      }}>
+        <label>{text("范围", "Scope")} <Select className="w-full" disabled={!canEdit} value={scope} onChange={(e) => { setScope(e.target.value as PointsScope); setSubject(""); save.reset(); }}>
+          {SCOPES.map((s) => <option key={s}>{s}</option>)}
+        </Select></label>
+        <label>{text("范围对象编号（门店使用 storeNo）", "Subject ID (storeNo for a store)")}
+          {scope === "CLIENT" ? <Select className="w-full" value={effectiveSubject} disabled={!canEdit} onChange={(e) => setSubject(e.target.value)}>{CLIENTS.map((s) => <option key={s}>{s}</option>)}</Select>
+            : <Input required value={effectiveSubject} disabled={!canEdit || scope === "TYPE" || scope === "GLOBAL"} onChange={(e) => setSubject(e.target.value)} />}
         </label>
-
-        {oddPairs.length > 0 && (
-          <Notice tone="warning">
-            {c.ppOddPair.replace("{clients}", oddPairs.join("、"))}
-          </Notice>
-        )}
-
-        {canEdit && (
-          <Button disabled={save.isPending} onClick={() => save.mutate(draft)}>
-            {save.isPending ? c.ppSaving : c.ppSave}
-          </Button>
-        )}
-      </div>
-    </>
-  );
-}
-
-function Row({ label, hint, clients, picked, disabled, onToggle }: {
-  label: string; hint: string; clients: readonly string[];
-  picked: string[]; disabled: boolean; onToggle: (v: string) => void;
-}) {
-  return (
-    <div>
-      <div className="txt-heading">{label}</div>
-      <div className="mb-2 txt-caption text-muted-foreground">{hint}</div>
-      <div className="flex flex-wrap gap-1.5">
-        {clients.map((v) => (
-          <button
-            key={v} type="button" disabled={disabled} onClick={() => onToggle(v)}
-            className={`focus-ring rounded-chip border px-2.5 py-1 txt-caption ${
-              picked.includes(v)
-                ? "border-destructive bg-destructive-tint text-destructive-ink"
-                : "border-border hover:bg-muted"
-            }`}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+        <label>{text("方向", "Flow")} <Select className="w-full" disabled={!canEdit} value={flow} onChange={(e) => setFlow(e.target.value as PointsFlow)}>{["BOTH", "EARN", "REDEEM"].map((s) => <option key={s}>{s}</option>)}</Select></label>
+        <label>{text("状态", "Availability")} <Select className="w-full" disabled={!canEdit} value={String(enabled)} onChange={(e) => setEnabled(e.target.value === "true")}>
+          <option value="false">{text("关闭", "Disabled")}</option><option value="true">{text("开启（仍受其他范围限制）", "Enabled (other scope restrictions still apply)")}</option>
+        </Select></label>
+        <label>{text("操作原因", "Reason")} <Input required maxLength={1000} disabled={!canEdit} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
+        {canEdit && <Button type="submit" disabled={save.isPending || !reason.trim() || !effectiveSubject}>{save.isPending ? c.ppSaving : c.ppSave}</Button>}
+      </form>
+      {save.isError && <Notice tone="warning">{save.error.message}</Notice>}
+      {save.isSuccess && <Notice>{text("已保存，操作号：", "Saved, request ID: ")}{save.data.requestId}</Notice>}
+      {list.isPending && <p>{c.ppLoading}</p>}
+      {list.isError && <Notice tone="warning">{list.error.message} <Button onClick={() => void list.refetch()}>{text("重试", "Retry")}</Button></Notice>}
+      {list.data && <div className="overflow-x-auto"><table className="w-full text-start txt-body"><thead><tr>
+        {[text("范围", "Scope"), text("对象", "Subject"), text("方向", "Flow"), text("状态", "Availability"), text("操作人 / 原因", "Operator / reason"), text("服务端时间", "Server time")].map((h) => <th key={h} className="p-2 text-start">{h}</th>)}
+      </tr></thead><tbody>{list.data.rows.map((r) => <tr key={r.id} className="border-t border-border"><td className="p-2">{r.scope} · {r.typeCode}</td><td>{r.subjectNo}</td><td>{r.flow}</td><td>{r.enabled ? text("开启", "Enabled") : text("关闭", "Disabled")}</td><td>{r.actor} / {r.reason}</td><td>{new Date(r.at).toLocaleString(en ? "en" : "zh-CN")}</td></tr>)}</tbody></table>
+        {!list.data.rows.length && <p className="p-3">{text("此范围暂无开关记录；实际可用性还受类型状态、协议及资金限制。", "No switch records in this scope. Type state, agreement and funding still constrain availability.")}</p>}
+        <div className="flex gap-2"><Button disabled={!after} onClick={() => setAfter(0)}>{text("首页", "First page")}</Button><Button disabled={!list.data.hasMore || list.isFetching} onClick={() => setAfter(list.data.next)}>{text("下一页", "Next page")}</Button></div>
+      </div>}
+    </>}
+  </div>;
 }

@@ -21,6 +21,24 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
     }
 
     @Override
+    public String rules(String type) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.rules(type));
+    }
+
+    @Override
+    public Map<String, Object> lockRules(String type) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.lockRules(type));
+    }
+
+    @Override
+    public void saveRules(String type, long version, String body, String actor) {
+        if (DataScopeContext.executeWithoutScope(() -> mapper.saveRules(type, version, body, actor))
+                != 1) {
+            throw new IllegalArgumentException("POINTS_RULE_REVISION_CONFLICT");
+        }
+    }
+
+    @Override
     public Map<String, Object> lockRedeemPosition(String no) {
         return DataScopeContext.executeWithoutScope(() -> mapper.lockStatementSource(no));
     }

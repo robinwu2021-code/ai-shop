@@ -9,7 +9,7 @@ import type { Payout } from "@/lib/types";
 
 /** 放款记录只活在内存里：mock 的批次放一次生成一条，刷新即清 —— 它不是演示数据的一部分 */
 const mockPayouts: Payout[] = [];
-import type { ClientPointsPolicy } from "@/lib/types";
+import { pointsConfigurationMock } from "./points-configuration";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
@@ -27,9 +27,6 @@ function assertBalanced(s: Settlement) {
   }
 }
 
-/** mock 不落库，但改完要看得见变化，否则以为按钮没生效 */
-let mockClientPolicy: ClientPointsPolicy = { earnDeny: [], redeemDeny: [], offlineRedeem: true };
-
 /** 取一张应付单，找不到就报错 —— mock 里也要报，否则开发期点到不存在的单是静默的 */
 function mustBill(settleNo: string) {
   const b = db.settlements.find((x) => x.settleNo === settleNo);
@@ -38,30 +35,7 @@ function mustBill(settleNo: string) {
 }
 
 export const financeMock: FinanceApi = {
-  // 两条轨道都给：运营要回答的是「这家店的钱到哪一步了」，
-  // 分开查等于让一家同时有自营店和第三方店的商家在两个页面之间对照
-  /*
-   * ⚠️ mock 里**故意让两个数对得上**（流通 12800 分 == 池子 12800 分）。
-   * 这一页的用途就是发现失衡，而开发时看到的应该是「正常的样子」——
-   * 造一份天然不平的假数据，会让人误以为页面坏了。
-   * 真接口下这两个数由流水推出来，对不上才是真信号。
-   */
-  /*
-   * 端策略。mock 里**默认什么都不禁** —— 与后端默认值一致。
-   * 造一个「已经禁了两个端」的初值会让人以为线上就是那样，
-   * 而这一页的第一职责恰恰是「现在到底禁了谁」。
-   */
-  pointsClientPolicy: async () => wait({ ...mockClientPolicy }),
-
-  savePointsClientPolicy: async (v) => {
-    mockClientPolicy = {
-      earnDeny: [...v.earnDeny],
-      redeemDeny: [...v.redeemDeny],
-      offlineRedeem: v.offlineRedeem,
-    };
-    return wait({ ...mockClientPolicy });
-  },
-
+  ...pointsConfigurationMock,
   pointsReceivables: async (q) => wait({ typeCode: q.typeCode, currency: "CNY", scale: 2, rows: [], next: q.after ?? 0, hasMore: false }),
   pointsOverview: async (market = "CN", typeCode = "POINTS_DEMO") => wait({
     typeCode, market, currency: "CNY", scale: 2, ratePoints: 2, rateMinor: 1,

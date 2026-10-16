@@ -23,6 +23,19 @@ public class MybatisPointsOperationsStore implements PointsOperationsStore {
     }
 
     @Override
+    public List<Map<String, Object>> switches(String type, long after, int limit) {
+        require(after >= 0 && limit > 0 && limit <= 200, "POINTS_PAGE_INVALID");
+        return DataScopeContext.executeWithoutScope(() -> mapper.switches(type, after, limit));
+    }
+
+    @Override
+    public List<Map<String, Object>> agreements(String type, String store, long after, int limit) {
+        require(after >= 0 && limit > 0 && limit <= 200, "POINTS_PAGE_INVALID");
+        return DataScopeContext.executeWithoutScope(
+                () -> mapper.agreements(type, store, after, limit));
+    }
+
+    @Override
     public List<Map<String, Object>> receivables(String type, String store, long after, int limit) {
         require(
                 type != null

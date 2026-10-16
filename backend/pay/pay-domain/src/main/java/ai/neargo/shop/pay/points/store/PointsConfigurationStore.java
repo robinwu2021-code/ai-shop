@@ -7,6 +7,12 @@ import java.util.Map;
 
 /** Non-financial configuration/request writes are separate from the posting write port. */
 public interface PointsConfigurationStore {
+    String rules(String typeCode);
+
+    Map<String, Object> lockRules(String typeCode);
+
+    void saveRules(String typeCode, long expectedVersion, String body, String actor);
+
     void createType(PointType type, String actor);
 
     void lockTypeAndPool(String typeCode);

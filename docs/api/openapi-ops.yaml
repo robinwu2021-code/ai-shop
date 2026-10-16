@@ -7634,6 +7634,384 @@ components:
         - "DEPOSIT"
         - "WRITE_OFF"
       description: "欠款流水类型。<b>方向不由它推</b> —— amountMinor 自带符号，靠类型再推一次方向等于把同一件事表达两遍， 而两处迟早会不一致。"
+    PointsTypeConfig: 
+      type: "object"
+      properties: 
+        typeCode: 
+          type: "string"
+        market: 
+          type: "string"
+        currency: 
+          type: "string"
+        scale: 
+          type: "number"
+        rate: 
+          type: "object"
+          properties: 
+            pointsUnit: 
+              type: "number"
+            minorUnit: 
+              type: "number"
+          required: 
+            - "pointsUnit"
+            - "minorUnit"
+          additionalProperties: false
+        deductRatioBp: 
+          type: "number"
+        idleDays: 
+          type: "number"
+        status: 
+          type: "string"
+          enum: 
+            - "DRAFT"
+            - "ACTIVE"
+            - "DRAINING"
+            - "RETIRED"
+      required: 
+        - "typeCode"
+        - "market"
+        - "currency"
+        - "scale"
+        - "rate"
+        - "deductRatioBp"
+        - "idleDays"
+        - "status"
+      additionalProperties: false
+      description: "Points configuration commands carry stable intent IDs; identity and time come from the server."
+    PointsChangeResult: 
+      type: "object"
+      properties: 
+        requestId: 
+          type: "string"
+        action: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        at: 
+          type: "number"
+      required: 
+        - "requestId"
+        - "action"
+        - "typeCode"
+        - "at"
+      additionalProperties: false
+    PointsCreate: 
+      type: "object"
+      properties: 
+        requestId: 
+          type: "string"
+        command: 
+          type: "object"
+          properties: 
+            typeCode: 
+              type: "string"
+            market: 
+              type: "string"
+            rate: 
+              type: "object"
+              properties: 
+                pointsUnit: 
+                  type: "number"
+                minorUnit: 
+                  type: "number"
+              required: 
+                - "pointsUnit"
+                - "minorUnit"
+              additionalProperties: false
+            deductRatioBp: 
+              type: "number"
+            idleDays: 
+              type: "number"
+          required: 
+            - "typeCode"
+            - "market"
+            - "rate"
+            - "deductRatioBp"
+            - "idleDays"
+          additionalProperties: false
+        reason: 
+          type: "string"
+      required: 
+        - "requestId"
+        - "command"
+        - "reason"
+      additionalProperties: false
+    PointsTypeChange: 
+      type: "object"
+      properties: 
+        requestId: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        action: 
+          type: "string"
+          enum: 
+            - "ACTIVATE"
+            - "DRAIN"
+            - "RETIRE"
+        reason: 
+          type: "string"
+      required: 
+        - "requestId"
+        - "typeCode"
+        - "action"
+        - "reason"
+      additionalProperties: false
+    PointsFallback: 
+      type: "object"
+      properties: 
+        revision: 
+          type: "number"
+        mode: 
+          type: "string"
+          enum: 
+            - "FIXED"
+            - "RATIO"
+        value: 
+          type: "number"
+      required: 
+        - "revision"
+        - "mode"
+        - "value"
+      additionalProperties: false
+    PointsFallbackChange: 
+      type: "object"
+      properties: 
+        mode: 
+          type: "string"
+          enum: 
+            - "FIXED"
+            - "RATIO"
+        value: 
+          type: "number"
+        requestId: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        expectedRevision: 
+          type: "number"
+        reason: 
+          type: "string"
+      required: 
+        - "expectedRevision"
+        - "mode"
+        - "reason"
+        - "requestId"
+        - "typeCode"
+        - "value"
+      additionalProperties: false
+    PointsScope: 
+      type: "string"
+      enum: 
+        - "GLOBAL"
+        - "REGION"
+        - "TYPE"
+        - "SCENE"
+        - "CLIENT"
+        - "MERCHANT"
+        - "STORE"
+        - "USER"
+    PointsFlow: 
+      type: "string"
+      enum: 
+        - "EARN"
+        - "REDEEM"
+        - "BOTH"
+    PointsSwitchChange: 
+      type: "object"
+      properties: 
+        requestId: 
+          type: "string"
+        scope: 
+          "$ref": "#/definitions/PointsScope"
+        typeCode: 
+          type: "string"
+        subjectNo: 
+          type: "string"
+        enabled: 
+          type: "boolean"
+        flow: 
+          "$ref": "#/definitions/PointsFlow"
+        reason: 
+          type: "string"
+      required: 
+        - "requestId"
+        - "scope"
+        - "typeCode"
+        - "subjectNo"
+        - "enabled"
+        - "flow"
+        - "reason"
+      additionalProperties: false
+    PointsSwitchView: 
+      type: "object"
+      properties: 
+        scope: 
+          "$ref": "#/definitions/PointsScope"
+        typeCode: 
+          type: "string"
+        subjectNo: 
+          type: "string"
+        enabled: 
+          type: "boolean"
+        flow: 
+          "$ref": "#/definitions/PointsFlow"
+        reason: 
+          type: "string"
+        id: 
+          type: "number"
+        actor: 
+          type: "string"
+        at: 
+          type: "number"
+      required: 
+        - "actor"
+        - "at"
+        - "enabled"
+        - "flow"
+        - "id"
+        - "reason"
+        - "scope"
+        - "subjectNo"
+        - "typeCode"
+      additionalProperties: false
+    PointsCursor: 
+      type: "object"
+      properties: 
+        typeCode: 
+          type: "string"
+        after: 
+          type: "number"
+        limit: 
+          type: "number"
+      required: 
+        - "typeCode"
+      additionalProperties: false
+    PointsSwitchPage: 
+      type: "object"
+      properties: 
+        rows: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/PointsSwitchView"
+        next: 
+          type: "number"
+        hasMore: 
+          type: "boolean"
+      required: 
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    PointsTerms: 
+      type: "object"
+      properties: 
+        version: 
+          type: "string"
+        hash: 
+          type: "string"
+        text: 
+          type: "string"
+      required: 
+        - "version"
+        - "hash"
+        - "text"
+      additionalProperties: false
+    PointsTermsChange: 
+      type: "object"
+      properties: 
+        version: 
+          type: "string"
+        text: 
+          type: "string"
+        requestId: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        reason: 
+          type: "string"
+      required: 
+        - "reason"
+        - "requestId"
+        - "text"
+        - "typeCode"
+        - "version"
+      additionalProperties: false
+    PointsAgreement: 
+      type: "object"
+      properties: 
+        agreementNo: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        merchantNo: 
+          type: "string"
+        storeNo: 
+          type: "string"
+        signedBy: 
+          type: "string"
+        termsVersion: 
+          type: "string"
+        termsHash: 
+          type: "string"
+        termsText: 
+          type: "string"
+        settleMode: 
+          type: "string"
+        path: 
+          type: "string"
+        channel: 
+          type: "string"
+        accountVersion: 
+          type: "string"
+        state: 
+          type: "string"
+      required: 
+        - "agreementNo"
+        - "typeCode"
+        - "merchantNo"
+        - "storeNo"
+        - "signedBy"
+        - "termsVersion"
+        - "termsHash"
+        - "termsText"
+        - "settleMode"
+        - "path"
+        - "channel"
+        - "accountVersion"
+        - "state"
+      additionalProperties: false
+    PointsAgreementPage: 
+      type: "object"
+      properties: 
+        rows: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              id: 
+                type: "number"
+              agreement: 
+                "$ref": "#/definitions/PointsAgreement"
+              state: 
+                type: "string"
+              version: 
+                type: "number"
+            required: 
+              - "id"
+              - "agreement"
+              - "state"
+              - "version"
+            additionalProperties: false
+        next: 
+          type: "number"
+        hasMore: 
+          type: "boolean"
+      required: 
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
     Staff: 
       type: "object"
       properties: 
@@ -14302,10 +14680,10 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/points/client-policy": 
+  "/ops/points/types": 
     get: 
-      operationId: "pointsClientPolicy"
-      summary: "积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣"
+      operationId: "pointsTypes"
+      summary: "pointsTypes"
       tags: 
         - "finance"
       responses: 
@@ -14322,15 +14700,17 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/ClientPointsPolicy"
+                    type: "array"
+                    items: 
+                      "$ref": "#/components/schemas/PointsTypeConfig"
                 required: 
                   - "code"
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
     post: 
-      operationId: "savePointsClientPolicy"
-      summary: "savePointsClientPolicy"
+      operationId: "createPointsType"
+      summary: "createPointsType"
       tags: 
         - "finance"
       responses: 
@@ -14347,7 +14727,7 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/ClientPointsPolicy"
+                    "$ref": "#/components/schemas/PointsChangeResult"
                 required: 
                   - "code"
                   - "msg"
@@ -14359,6 +14739,235 @@ paths:
             schema: 
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/type-state": 
+    post: 
+      operationId: "transitionPointsType"
+      summary: "transitionPointsType"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsChangeResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/fallback-rule": 
+    get: 
+      operationId: "pointsFallback"
+      summary: "pointsFallback"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsFallback"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "savePointsFallback"
+      summary: "savePointsFallback"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsChangeResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/switches": 
+    get: 
+      operationId: "pointsSwitches"
+      summary: "pointsSwitches"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsSwitchPage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "changePointsSwitch"
+      summary: "changePointsSwitch"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsChangeResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/terms": 
+    get: 
+      operationId: "pointsTerms"
+      summary: "pointsTerms"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    type: "object"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "publishPointsTerms"
+      summary: "publishPointsTerms"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsChangeResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/agreements": 
+    get: 
+      operationId: "pointsAgreements"
+      summary: "pointsAgreements"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsAgreementPage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
   "/ops/payables": 
     get: 
       operationId: "listPayables"

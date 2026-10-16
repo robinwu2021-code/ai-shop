@@ -966,3 +966,21 @@ export type DebtTxnType =
   | "OFFSET"         // 货款抵扣（自动）
   | "DEPOSIT"        // 保证金抵扣（人工，ADR-022 §3.3）
   | "WRITE_OFF";     // 核销（需审批）
+
+/** Points configuration commands carry stable intent IDs; identity and time come from the server. */
+export interface PointsTypeConfig { typeCode: string; market: string; currency: string; scale: number; rate: { pointsUnit: number; minorUnit: number }; deductRatioBp: number; idleDays: number; status: "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED" }
+export interface PointsChangeResult { requestId: string; action: string; typeCode: string; at: number }
+export interface PointsCreate { requestId: string; command: { typeCode: string; market: string; rate: PointsTypeConfig["rate"]; deductRatioBp: number; idleDays: number }; reason: string }
+export interface PointsTypeChange { requestId: string; typeCode: string; action: "ACTIVATE" | "DRAIN" | "RETIRE"; reason: string }
+export interface PointsFallback { revision: number; mode: "FIXED" | "RATIO"; value: number }
+export interface PointsFallbackChange extends Omit<PointsFallback, "revision"> { requestId: string; typeCode: string; expectedRevision: number; reason: string }
+export type PointsScope = "GLOBAL" | "REGION" | "TYPE" | "SCENE" | "CLIENT" | "MERCHANT" | "STORE" | "USER";
+export type PointsFlow = "EARN" | "REDEEM" | "BOTH";
+export interface PointsSwitchChange { requestId: string; scope: PointsScope; typeCode: string; subjectNo: string; enabled: boolean; flow: PointsFlow; reason: string }
+export interface PointsSwitchView extends Omit<PointsSwitchChange, "requestId"> { id: number; actor: string; at: number }
+export interface PointsCursor { typeCode: string; after?: number; limit?: number }
+export interface PointsSwitchPage { rows: PointsSwitchView[]; next: number; hasMore: boolean }
+export interface PointsTerms { version: string; hash: string; text: string }
+export interface PointsTermsChange extends Omit<PointsTerms, "hash"> { requestId: string; typeCode: string; reason: string }
+export interface PointsAgreement { agreementNo: string; typeCode: string; merchantNo: string; storeNo: string; signedBy: string; termsVersion: string; termsHash: string; termsText: string; settleMode: string; path: string; channel: string; accountVersion: string; state: string }
+export interface PointsAgreementPage { rows: { id: number; agreement: PointsAgreement; state: string; version: number }[]; next: number; hasMore: boolean }

@@ -3,10 +3,12 @@ package ai.neargo.shop.payclient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.pay.points.query.PointsOverviewService.Overview;
 import ai.neargo.shop.pay.points.query.PointsOverviewService.ReceivablePage;
 import ai.neargo.shop.portal.ops.pay.OpsPointsController;
+import ai.neargo.shop.portal.ops.pay.OpsPointsPolicyController;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -17,7 +19,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 import java.util.List;
 
 class PointsOpsPermissionTest {
@@ -38,11 +44,59 @@ class PointsOpsPermissionTest {
         }
     }
 
+    @Test
+    void every_configuration_endpoint_checks_its_read_or_execute_permission() throws Exception {
+        try (var context = new AnnotationConfigApplicationContext(Config.class)) {
+            var controller = context.getBean(OpsPointsPolicyController.class);
+            for (var method : OpsPointsPolicyController.class.getDeclaredMethods()) {
+                if (!method.isAnnotationPresent(GetMapping.class)
+                        && !method.isAnnotationPresent(PostMapping.class)) continue;
+                Object[] args =
+                        Arrays.stream(method.getParameterTypes())
+                                .map(
+                                        t ->
+                                                t == long.class
+                                                        ? (Object) 0L
+                                                        : t == int.class
+                                                                ? 50
+                                                                : t == String.class
+                                                                        ? "SYNTHETIC"
+                                                                        : null)
+                                .toArray();
+                authenticate("customer:read");
+                assertThatThrownBy(() -> method.invoke(controller, args))
+                        .isInstanceOf(InvocationTargetException.class)
+                        .cause()
+                        .isInstanceOf(AccessDeniedException.class);
+                String required =
+                        method.isAnnotationPresent(GetMapping.class)
+                                ? Perms.FINANCE_SETTLE_READ
+                                : Perms.FINANCE_SETTLE_EXECUTE;
+                authenticate(required);
+                method.invoke(controller, args);
+                if (method.isAnnotationPresent(PostMapping.class)) {
+                    authenticate(Perms.FINANCE_SETTLE_READ);
+                    assertThatThrownBy(() -> method.invoke(controller, args))
+                            .isInstanceOf(InvocationTargetException.class)
+                            .cause()
+                            .isInstanceOf(AccessDeniedException.class);
+                }
+            }
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
     private void authenticate(String permission) {
         SecurityContextHolder.getContext()
                 .setAuthentication(
                         new UsernamePasswordAuthenticationToken(
-                                "SYNTHETIC_OPERATOR",
+                                LoginUser.operator(
+                                        "SYNTHETIC_OPERATOR",
+                                        "Synthetic",
+                                        List.of(),
+                                        List.of(),
+                                        null),
                                 "",
                                 List.of(new SimpleGrantedAuthority(permission))));
     }
@@ -62,6 +116,12 @@ class PointsOpsPermissionTest {
         @Bean
         PermissionCheck perm() {
             return new PermissionCheck();
+        }
+
+        @Bean
+        OpsPointsPolicyController policyController() {
+            return new OpsPointsPolicyController(
+                    org.mockito.Mockito.mock(PointsConfigurationAppService.class));
         }
 
         @Bean

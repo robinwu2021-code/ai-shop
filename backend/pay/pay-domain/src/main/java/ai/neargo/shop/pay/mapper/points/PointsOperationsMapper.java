@@ -15,6 +15,22 @@ import java.util.Map;
 @Mapper
 public interface PointsOperationsMapper {
     @Select(
+            "SELECT id,payload_json FROM pts_switch WHERE (type_code=#{type} OR type_code='*') AND"
+                + " scope<>'FREEZE' AND id>#{after} AND deleted=0 ORDER BY id LIMIT #{limit}")
+    List<Map<String, Object>> switches(
+            @Param("type") String type, @Param("after") long after, @Param("limit") int limit);
+
+    @Select(
+            "SELECT id,state,version,payload_json FROM pts_merchant_agreement WHERE"
+                + " type_code=#{type} AND store_no=#{store} AND id>#{after} AND deleted=0 ORDER BY"
+                + " id LIMIT #{limit}")
+    List<Map<String, Object>> agreements(
+            @Param("type") String type,
+            @Param("store") String store,
+            @Param("after") long after,
+            @Param("limit") int limit);
+
+    @Select(
             "SELECT"
                 + " id,receivable_no,store_no,state,original_minor,recovered_minor,locked_minor,version"
                 + " FROM pts_receivable WHERE type_code=#{type} AND store_no=#{store} AND"

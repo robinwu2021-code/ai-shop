@@ -3,7 +3,7 @@ import { client } from "../http-client";
 import type { FinanceApi } from "../contracts/finance";
 import type {
   PurchaseInvoice,
-  BuyerInvoiceRequest, Settlement, ClientPointsPolicy,
+  BuyerInvoiceRequest, Settlement,
   Page, PayoutAccount, PayoutList, SettleStatRow,
   BankFlowImportResult,
 } from "@/lib/types";
@@ -11,8 +11,16 @@ import type {
 export const financeHttp: FinanceApi = {
   pointsOverview: (market, typeCode) => client.get("/ops/points/overview", { market: market ?? "CN", typeCode }),
   pointsReceivables: (q) => client.get("/ops/points/receivables", q),
-  pointsClientPolicy: () => client.get<ClientPointsPolicy>("/ops/points/client-policy"),
-  savePointsClientPolicy: (v) => client.post<ClientPointsPolicy>("/ops/points/client-policy", v),
+  pointsTypes: () => client.get("/ops/points/types"),
+  createPointsType: (v) => client.post("/ops/points/types", v),
+  transitionPointsType: (v) => client.post("/ops/points/type-state", v),
+  pointsFallback: (typeCode) => client.get("/ops/points/fallback-rule", { typeCode }),
+  savePointsFallback: (v) => client.post("/ops/points/fallback-rule", v),
+  pointsSwitches: (q) => client.get("/ops/points/switches", q),
+  changePointsSwitch: (v) => client.post("/ops/points/switches", v),
+  pointsTerms: (typeCode) => client.get("/ops/points/terms", { typeCode }),
+  publishPointsTerms: (v) => client.post("/ops/points/terms", v),
+  pointsAgreements: (q) => client.get("/ops/points/agreements", q),
   // ── 自营应付账款（后端十个端点早已实现，此前运营端零入口）
   listPayables: (q) => client.get<Settlement[]>("/ops/payables", q),
   confirmPayable: (settleNo) => client.post<Settlement>(`/ops/payables/${settleNo}/confirm`),

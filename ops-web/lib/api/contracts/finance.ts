@@ -1,8 +1,9 @@
+import type { PointsTypeConfig, PointsChangeResult, PointsCreate, PointsTypeChange, PointsFallback, PointsFallbackChange, PointsCursor, PointsSwitchPage, PointsSwitchChange, PointsTerms, PointsTermsChange, PointsAgreementPage } from "@/lib/types";
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
 import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
   PurchaseInvoice,
   BuyerInvoiceRequest,
-  ClientPointsPolicy, PointsOverview, PointsReceivablePage, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Payout, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule,
+  PointsOverview, PointsReceivablePage, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Payout, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule,
   BankFlowImportResult,
 } from "@/lib/types";
 import type { PageQ, SettlementQ, PointsReceivableQ } from "../query";
@@ -19,14 +20,16 @@ export interface FinanceApi {
    */
   pointsReceivables(q: PointsReceivableQ): Promise<PointsReceivablePage>;
 
-  /**
-   * 积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣。
-   *
-   * ⚠️ 存的是**禁用名单**（`X-Client` 还没全量在发，允许名单会静默关掉全站积分），
-   * 而且**不是合规硬闸** —— 端标识来自客户端、可伪造。
-   */
-  pointsClientPolicy(): Promise<ClientPointsPolicy>;
-  savePointsClientPolicy(v: ClientPointsPolicy): Promise<ClientPointsPolicy>;
+  pointsTypes(): Promise<PointsTypeConfig[]>;
+  createPointsType(v: PointsCreate): Promise<PointsChangeResult>;
+  transitionPointsType(v: PointsTypeChange): Promise<PointsChangeResult>;
+  pointsFallback(typeCode: string): Promise<PointsFallback>;
+  savePointsFallback(v: PointsFallbackChange): Promise<PointsChangeResult>;
+  pointsSwitches(q: PointsCursor): Promise<PointsSwitchPage>;
+  changePointsSwitch(v: PointsSwitchChange): Promise<PointsChangeResult>;
+  pointsTerms(typeCode: string): Promise<PointsTerms | null>;
+  publishPointsTerms(v: PointsTermsChange): Promise<PointsChangeResult>;
+  pointsAgreements(q: PointsCursor & { storeNo: string }): Promise<PointsAgreementPage>;
 
   /** 结算单列表。**自营与第三方都在这里** —— 不该因经营模式分成两个入口。 */
   /**

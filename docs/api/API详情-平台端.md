@@ -2834,9 +2834,9 @@ _无字段_
 | `settleNos` | `string`\[\] | 是 | 本笔包含的结算单 |
 
 
-#### GET `/ops/points/client-policy`
+#### GET `/ops/points/agreements`
 
-积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣
+pointsAgreements
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -2844,18 +2844,46 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`ClientPointsPolicy`](#clientpointspolicy)
+类型：[`PointsAgreementPage`](#pointsagreementpage)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `earnDeny` | `string`\[\] | 是 | 这些端不发放积分 |
-| `redeemDeny` | `string`\[\] | 是 | 这些端不能用积分抵扣 |
-| `offlineRedeem` | `boolean` | 是 | 当面付能不能用积分抵扣。**默认开** —— 成本本来就在商家，线下反而比线上简单 |
+| `rows` | `object`（见下）\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `agreement` | [`#/definitions/PointsAgreement`](#definitionspointsagreement) | 是 | — |
+| `state` | `string` | 是 | — |
+| `version` | `number` | 是 | — |
 
 
-#### POST `/ops/points/client-policy`
+#### GET `/ops/points/fallback-rule`
 
-savePointsClientPolicy
+pointsFallback
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsFallback`](#pointsfallback)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `revision` | `number` | 是 | — |
+| `mode` | `FIXED` \| `RATIO` | 是 | — |
+| `value` | `number` | 是 | — |
+
+
+#### POST `/ops/points/fallback-rule`
+
+savePointsFallback
 
 **入参**
 
@@ -2863,13 +2891,14 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`ClientPointsPolicy`](#clientpointspolicy)
+类型：[`PointsChangeResult`](#pointschangeresult)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `earnDeny` | `string`\[\] | 是 | 这些端不发放积分 |
-| `redeemDeny` | `string`\[\] | 是 | 这些端不能用积分抵扣 |
-| `offlineRedeem` | `boolean` | 是 | 当面付能不能用积分抵扣。**默认开** —— 成本本来就在商家，线下反而比线上简单 |
+| `requestId` | `string` | 是 | — |
+| `action` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
 
 
 #### GET `/ops/points/overview`
@@ -2922,6 +2951,131 @@ _无字段_
 | `rows` | [`#/definitions/PointsReceivable`](#definitionspointsreceivable)\[\] | 是 | 当前门店的应收记录 |
 | `next` | `number` | 是 | 下一页游标 |
 | `hasMore` | `boolean` | 是 | 是否可能还有下一页 |
+
+
+#### GET `/ops/points/switches`
+
+pointsSwitches
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsSwitchPage`](#pointsswitchpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`#/definitions/PointsSwitchView`](#definitionspointsswitchview)\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+
+#### POST `/ops/points/switches`
+
+changePointsSwitch
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsChangeResult`](#pointschangeresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `action` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### GET `/ops/points/terms`
+
+pointsTerms
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/points/terms`
+
+publishPointsTerms
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsChangeResult`](#pointschangeresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `action` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### POST `/ops/points/type-state`
+
+transitionPointsType
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsChangeResult`](#pointschangeresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `action` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### GET `/ops/points/types`
+
+pointsTypes
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsTypeConfig`](#pointstypeconfig)\[\]
+
+
+#### POST `/ops/points/types`
+
+createPointsType
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsChangeResult`](#pointschangeresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `action` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
 
 
 #### GET `/ops/purchase-invoices`
@@ -10890,16 +11044,6 @@ _无字段_
 | `size` | `number` | 是 | — |
 | `note` | `string` | 是 | — |
 
-### ClientPointsPolicy
-
-积分的**端策略**。存的是**禁用名单，不是允许名单** —— `X-Client` 头今天还没有哪个端全量在发，用允许名单会让开关一上线就把全站积分静默关掉。 ⚠️ 它**不是合规硬闸**：端标识来自客户端、可伪造，只能用于平台策略。
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `earnDeny` | `string`\[\] | 是 | 这些端不发放积分 |
-| `redeemDeny` | `string`\[\] | 是 | 这些端不能用积分抵扣 |
-| `offlineRedeem` | `boolean` | 是 | 当面付能不能用积分抵扣。**默认开** —— 成本本来就在商家，线下反而比线上简单 |
-
 ### CloseRule
 
 关单策略（P-4.2.3）。 ⚠️ 这份配置与掉单**直接因果**：关单时限设得越短，"用户正在付款、订单已被关掉" 的窗口就越大，而那正是 CHANNEL_ONLY 差异的主要来源。所以两者放同一页。
@@ -12691,6 +12835,40 @@ KPI 卡（金额为最小货币单位整数）。
 | `entityNames` | `string`\[\] | 是 | 命中的商家名 |
 | `entityCount` | `number` | 是 | 命中几家 |
 
+### PointsAgreementPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `agreement` | [`#/definitions/PointsAgreement`](#definitionspointsagreement) | 是 | — |
+| `state` | `string` | 是 | — |
+| `version` | `number` | 是 | — |
+
+### PointsChangeResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `action` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+### PointsFallback
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `revision` | `number` | 是 | — |
+| `mode` | `FIXED` \| `RATIO` | 是 | — |
+| `value` | `number` | 是 | — |
+
 ### PointsOverview
 
 Four independent funding buckets, with non-cash store receivables reported separately.
@@ -12722,6 +12900,36 @@ Four independent funding buckets, with non-cash store receivables reported separ
 | `rows` | [`#/definitions/PointsReceivable`](#definitionspointsreceivable)\[\] | 是 | 当前门店的应收记录 |
 | `next` | `number` | 是 | 下一页游标 |
 | `hasMore` | `boolean` | 是 | 是否可能还有下一页 |
+
+### PointsSwitchPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`#/definitions/PointsSwitchView`](#definitionspointsswitchview)\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+### PointsTypeConfig
+
+Points configuration commands carry stable intent IDs; identity and time come from the server.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | — |
+| `market` | `string` | 是 | — |
+| `currency` | `string` | 是 | — |
+| `scale` | `number` | 是 | — |
+| `rate` | `object`（见下） | 是 | — |
+| `deductRatioBp` | `number` | 是 | — |
+| `idleDays` | `number` | 是 | — |
+| `status` | `DRAFT` \| `ACTIVE` \| `DRAINING` \| `RETIRED` | 是 | — |
+
+`rate` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `pointsUnit` | `number` | 是 | — |
+| `minorUnit` | `number` | 是 | — |
 
 ### Post
 
