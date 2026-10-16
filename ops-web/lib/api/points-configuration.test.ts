@@ -9,3 +9,11 @@ it("sends audited switch commands without client actor or timestamps to the new 
   await financeHttp.pointsAgreements({ typeCode: "T", storeNo: "S", after: 12, limit: 20 });
   expect(client.get).toHaveBeenCalledWith("/ops/points/agreements", { typeCode: "T", storeNo: "S", after: 12, limit: 20 });
 });
+it("keeps maker/checker versions and original withdrawal identifiers on treasury commands", async () => {
+  const review = { requestId: "REVIEW", typeCode: "T", requestNo: "ORIGINAL", expectedVersion: 2, approve: false, reason: "unverified" };
+  await financeHttp.reviewPointsRequest(review);
+  expect(client.post).toHaveBeenCalledWith("/ops/points/request-review", review);
+  const execution = { requestId: "EXEC", typeCode: "T", ticketNo: "ORIGINAL_TICKET", reason: "resolve" };
+  await financeHttp.executePointsWithdrawal(execution);
+  expect(client.post).toHaveBeenCalledWith("/ops/points/withdrawal-execute", execution);
+});

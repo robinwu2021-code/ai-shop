@@ -186,4 +186,14 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
                     return null;
                 });
     }
+
+    @Override
+    public void rejectRequest(String no, long version, String actor) {
+        DataScopeContext.executeWithoutScope(
+                () -> {
+                    if (mapper.rejectRequest(no, version, actor) != 1)
+                        throw new IllegalArgumentException("POINTS_REQUEST_STATE_CONFLICT");
+                    return null;
+                });
+    }
 }

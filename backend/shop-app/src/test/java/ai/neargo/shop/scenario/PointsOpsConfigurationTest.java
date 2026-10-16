@@ -99,7 +99,7 @@ class PointsOpsConfigurationTest {
                 type ->
                         jdbc().update(
                                         "UPDATE pts_point_type SET active_market=NULL WHERE"
-                                            + " type_code=?",
+                                                + " type_code=?",
                                         type));
         created.clear();
         SecurityContextHolder.clearContext();
@@ -254,7 +254,7 @@ class PointsOpsConfigurationTest {
         assertThat(
                         jdbc().queryForObject(
                                         "SELECT COUNT(*) FROM pts_inbox WHERE type_code=? AND"
-                                            + " state='CONFIG_APPLIED'",
+                                                + " state='CONFIG_APPLIED'",
                                         Long.class,
                                         type))
                 .isEqualTo(2);
@@ -323,6 +323,231 @@ class PointsOpsConfigurationTest {
                         "{}"));
     }
 
+    @Autowired ai.neargo.shop.pay.points.admin.PointsTreasuryService treasury;
+
+    @Test
+    void treasury_requires_a_distinct_checker_and_replays_the_original_review() {
+        String type = type();
+        fund(type);
+        var request =
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.Submission(
+                        "SUBMIT:" + type,
+                        "REQ:" + type,
+                        type,
+                        ai.neargo.shop.pay.points.model.PoolRequest.Action.TRANSFER_U_TO_B,
+                        40,
+                        null,
+                        null,
+                        "SYNTHETIC_MOVE");
+        treasury.submit(request, "MAKER");
+        var review =
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.Review(
+                        "APPROVE:" + type, type, request.requestNo(), 0, true, "CHECKED");
+        assertThatThrownBy(() -> treasury.review(review, "MAKER"))
+                .hasMessageContaining("SELF_APPROVE");
+        assertThatThrownBy(
+                        () ->
+                                treasury.review(
+                                        new ai.neargo.shop.pay.points.admin.PointsTreasuryService
+                                                .Review(
+                                                "STALE:" + type,
+                                                type,
+                                                request.requestNo(),
+                                                1,
+                                                true,
+                                                "STALE"),
+                                        "CHECKER"))
+                .hasMessageContaining("REVISION");
+        var result = treasury.review(review, "CHECKER");
+        assertThat(treasury.review(review, "CHECKER")).isEqualTo(result);
+        assertThat(read.pool(type).u()).isEqualTo(60);
+        assertThat(read.pool(type).b()).isEqualTo(140);
+        assertThat(treasury.requests(type, 0, 50).rows())
+                .singleElement()
+                .satisfies(
+                        r -> {
+                            assertThat(r.submittedBy()).isEqualTo("MAKER");
+                            assertThat(r.approvedBy()).isEqualTo("CHECKER");
+                            assertThat(r.state()).isEqualTo("APPROVED");
+                        });
+    }
+
+    @Test
+    void rejected_request_cannot_be_approved_or_change_any_money() {
+        String type = type();
+        var request =
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.Submission(
+                        "SUBMIT:" + type,
+                        "REQ:" + type,
+                        type,
+                        ai.neargo.shop.pay.points.model.PoolRequest.Action.TOPUP_U,
+                        40,
+                        "UNVERIFIED",
+                        null,
+                        "TEST");
+        treasury.submit(request, "MAKER");
+        assertThatThrownBy(
+                        () ->
+                                treasury.review(
+                                        new ai.neargo.shop.pay.points.admin.PointsTreasuryService
+                                                .Review(
+                                                "NO_PROOF:" + type,
+                                                type,
+                                                request.requestNo(),
+                                                0,
+                                                true,
+                                                "MISSING_PROOF"),
+                                        "CHECKER"))
+                .isInstanceOf(RuntimeException.class);
+        treasury.review(
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.Review(
+                        "REJECT:" + type, type, request.requestNo(), 0, false, "UNVERIFIED"),
+                "CHECKER");
+        assertThatThrownBy(
+                        () ->
+                                treasury.review(
+                                        new ai.neargo.shop.pay.points.admin.PointsTreasuryService
+                                                .Review(
+                                                "AFTER_REJECT:" + type,
+                                                type,
+                                                request.requestNo(),
+                                                1,
+                                                true,
+                                                "LATE"),
+                                        "CHECKER"))
+                .hasMessageContaining("STATE");
+        assertThat(read.pool(type).u()).isZero();
+    }
+
+    @Autowired PointsPayoutPreparationTest.LostReplyFunds funds;
+
+    @Test
+    void treasury_unknown_withdrawal_queries_the_original_ticket_outside_the_pay_transaction() {
+        String type = type();
+        fund(type);
+        var target =
+                new ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext(
+                        ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPath.DIRECT,
+                        "TEST",
+                        "PLATFORM",
+                        "PLATFORM",
+                        "TEST_V1",
+                        "TEST_PLATFORM",
+                        null,
+                        null,
+                        0);
+        var submit =
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.Submission(
+                        "SUBMIT:" + type,
+                        "REQ:" + type,
+                        type,
+                        ai.neargo.shop.pay.points.model.PoolRequest.Action.WITHDRAW_U,
+                        20,
+                        null,
+                        target,
+                        "TEST");
+        treasury.submit(submit, "MAKER");
+        treasury.review(
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.Review(
+                        "REVIEW:" + type, type, submit.requestNo(), 0, true, "TEST"),
+                "CHECKER");
+        String ticket = treasury.requests(type, 0, 50).rows().getFirst().ticketNo();
+        var command =
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.Withdrawal(
+                        "EXEC:" + type, type, ticket, "RESOLVE");
+        assertThat(treasury.executeWithdrawal(command, "CHECKER").status())
+                .isEqualTo(ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsStatus.UNKNOWN);
+        assertThat(read.pool(type).u()).isEqualTo(100);
+        assertThat(read.pool(type).lockedUMinor()).isEqualTo(20);
+        assertThat(treasury.executeWithdrawal(command, "CHECKER").status())
+                .isEqualTo(ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsStatus.SUCCEEDED);
+        assertThat(funds.sends.get(ticket)).isEqualTo(1);
+        assertThat(funds.queries.get(ticket)).isEqualTo(1);
+        assertThat(read.pool(type).u()).isEqualTo(80);
+        assertThat(read.pool(type).lockedUMinor()).isZero();
+    }
+
+    @Test
+    void treasury_plan_periods_wait_for_receipts_and_reject_stale_revisions() {
+        String type = type();
+        java.time.LocalDate day = java.time.LocalDate.of(2026, 10, 16);
+        clock.now =
+                day.atStartOfDay(java.time.ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli();
+        var plan =
+                new ai.neargo.shop.pay.points.pool.TopupPlanService.Plan(
+                        "PLAN:" + type,
+                        type,
+                        ai.neargo.shop.pay.points.model.PoolRequest.Action.TOPUP_B,
+                        20,
+                        day,
+                        1,
+                        true);
+        treasury.savePlan(
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.PlanChange(
+                        "PLAN_SAVE:" + type, plan, -1, "TEST"),
+                "MAKER");
+        assertThatThrownBy(
+                        () ->
+                                treasury.savePlan(
+                                        new ai.neargo.shop.pay.points.admin.PointsTreasuryService
+                                                .PlanChange("PLAN_STALE:" + type, plan, -1, "TEST"),
+                                        "MAKER"))
+                .hasMessageContaining("REVISION");
+        var generation =
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.GeneratePeriods(
+                        "GENERATE:" + type, type, 1, "TEST");
+        treasury.generatePeriods(generation, "MAKER");
+        treasury.generatePeriods(generation, "MAKER");
+        var period =
+                treasury.plans(type, 0, 50).rows().stream()
+                        .filter(p -> !"CONFIG".equals(p.period()))
+                        .findFirst()
+                        .orElseThrow();
+        assertThat(period.state()).isEqualTo("AWAITING_RECEIPT");
+        assertThat(treasury.requests(type, 0, 50).rows()).isEmpty();
+        var receipt =
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.PlanReceipt(
+                        "DECLARE:" + type,
+                        type,
+                        plan.planNo(),
+                        day,
+                        "UNVERIFIED",
+                        period.version(),
+                        "TEST");
+        var declared = treasury.declareReceipt(receipt, "MAKER");
+        assertThat(treasury.declareReceipt(receipt, "MAKER")).isEqualTo(declared);
+        assertThat(treasury.requests(type, 0, 50).rows()).hasSize(1);
+        assertThat(read.pool(type).b()).isZero();
+    }
+
+    @Test
+    void treasury_generates_due_periods_using_server_clock_in_the_types_market_zone() {
+        String type = type();
+        clock.now = java.time.Instant.parse("2099-01-01T16:30:00Z").toEpochMilli();
+        var day = java.time.LocalDate.of(2099, 1, 2);
+        var plan =
+                new ai.neargo.shop.pay.points.pool.TopupPlanService.Plan(
+                        "PLAN:" + type,
+                        type,
+                        ai.neargo.shop.pay.points.model.PoolRequest.Action.TOPUP_B,
+                        20,
+                        day,
+                        1,
+                        true);
+        treasury.savePlan(
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.PlanChange(
+                        "SAVE:" + type, plan, -1, "TEST"),
+                "MAKER");
+        treasury.generatePeriods(
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.GeneratePeriods(
+                        "GENERATE:" + type, type, 5, "TEST"),
+                "MAKER");
+        assertThat(treasury.plans(type, 0, 50).rows())
+                .filteredOn(p -> !"CONFIG".equals(p.period()))
+                .singleElement()
+                .satisfies(p -> assertThat(p.period()).isEqualTo("2099-01-02"));
+    }
+
     private JdbcTemplate jdbc() {
         return new JdbcTemplate(data);
     }
@@ -331,6 +556,10 @@ class PointsOpsConfigurationTest {
     @Import({
         PointsPayoutPreparationTest.Config.class,
         PointsAdministrationServiceImpl.class,
+        ai.neargo.shop.pay.points.admin.impl.PointsTreasuryServiceImpl.class,
+        ai.neargo.shop.pay.points.admin.PointsOperatorJournal.class,
+        ai.neargo.shop.pay.points.pool.impl.PoolServiceImpl.class,
+        ai.neargo.shop.pay.points.pool.impl.PoolRequestServiceImpl.class,
         PointsConfigurationAppServiceImpl.class,
         PointTypeServiceImpl.class,
         AgreementServiceImpl.class

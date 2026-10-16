@@ -1,3 +1,4 @@
+import type { PointsOperation, PointsSubmission, PointsRequestReview, PointsRequestPage, PointsPlanChange, PointsPlanGenerate, PointsPlanReceipt, PointsPlanCancellation, PointsPlanPage, PointsWithdrawal, PointsExecution } from "@/lib/types";
 import type { PointsTypeConfig, PointsChangeResult, PointsCreate, PointsTypeChange, PointsFallback, PointsFallbackChange, PointsCursor, PointsSwitchPage, PointsSwitchChange, PointsTerms, PointsTermsChange, PointsAgreementPage } from "@/lib/types";
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
 import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
@@ -30,6 +31,16 @@ export interface FinanceApi {
   pointsTerms(typeCode: string): Promise<PointsTerms | null>;
   publishPointsTerms(v: PointsTermsChange): Promise<PointsChangeResult>;
   pointsAgreements(q: PointsCursor & { storeNo: string }): Promise<PointsAgreementPage>;
+
+  pointsRequests(q: PointsCursor): Promise<PointsRequestPage>;
+  submitPointsRequest(v: PointsSubmission): Promise<PointsOperation>;
+  reviewPointsRequest(v: PointsRequestReview): Promise<PointsOperation>;
+  pointsPlans(q: PointsCursor): Promise<PointsPlanPage>;
+  savePointsPlan(v: PointsPlanChange): Promise<PointsOperation>;
+  generatePointsPeriods(v: PointsPlanGenerate): Promise<PointsOperation>;
+  declarePointsReceipt(v: PointsPlanReceipt): Promise<PointsOperation>;
+  cancelPointsPeriod(v: PointsPlanCancellation): Promise<PointsOperation>;
+  executePointsWithdrawal(v: PointsWithdrawal): Promise<PointsExecution>;
 
   /** 结算单列表。**自营与第三方都在这里** —— 不该因经营模式分成两个入口。 */
   /**

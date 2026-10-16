@@ -418,4 +418,12 @@ public interface PointsConfigurationMapper {
             "UPDATE pts_pool_request SET state='APPROVED',payload_json=#{json},version=version+1 "
                     + "WHERE request_no=#{no} AND state='APPROVING'")
     int approve(@Param("no") String no, @Param("json") String json);
+
+    @Update(
+            "UPDATE pts_pool_request SET"
+                + " state='REJECTED',approved_by=#{actor},updated_by=#{actor},updated_at=CURRENT_TIMESTAMP,version=version+1"
+                + " WHERE request_no=#{no} AND state='SUBMITTED' AND version=#{version} AND"
+                + " submitted_by<>#{actor}")
+    int rejectRequest(
+            @Param("no") String no, @Param("version") long version, @Param("actor") String actor);
 }

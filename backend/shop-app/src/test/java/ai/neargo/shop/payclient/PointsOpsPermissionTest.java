@@ -87,6 +87,56 @@ class PointsOpsPermissionTest {
         }
     }
 
+    @Test
+    void treasury_permissions_separate_making_checking_and_reading_at_every_endpoint()
+            throws Exception {
+        try (var context = new AnnotationConfigApplicationContext(Config.class)) {
+            var controller =
+                    context.getBean(
+                            ai.neargo.shop.portal.ops.pay.OpsPointsTreasuryController.class);
+            for (var method :
+                    ai.neargo.shop.portal.ops.pay.OpsPointsTreasuryController.class
+                            .getDeclaredMethods()) {
+                if (!method.isAnnotationPresent(GetMapping.class)
+                        && !method.isAnnotationPresent(PostMapping.class)) continue;
+                Object[] args =
+                        Arrays.stream(method.getParameterTypes())
+                                .map(
+                                        t ->
+                                                t == long.class
+                                                        ? (Object) 0L
+                                                        : t == int.class
+                                                                ? 50
+                                                                : t == String.class
+                                                                        ? "SYNTHETIC"
+                                                                        : null)
+                                .toArray();
+                String required =
+                        method.isAnnotationPresent(GetMapping.class)
+                                ? Perms.FINANCE_SETTLE_READ
+                                : java.util.Set.of("review", "executeWithdrawal")
+                                                .contains(method.getName())
+                                        ? Perms.FINANCE_PAYOUT_EXECUTE
+                                        : Perms.FINANCE_SETTLE_EXECUTE;
+                for (String permission :
+                        List.of(
+                                Perms.FINANCE_SETTLE_READ,
+                                Perms.FINANCE_SETTLE_EXECUTE,
+                                Perms.FINANCE_PAYOUT_EXECUTE)) {
+                    authenticate(permission);
+                    if (permission.equals(required)) method.invoke(controller, args);
+                    else
+                        assertThatThrownBy(() -> method.invoke(controller, args))
+                                .isInstanceOf(InvocationTargetException.class)
+                                .cause()
+                                .isInstanceOf(AccessDeniedException.class);
+                }
+            }
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
     private void authenticate(String permission) {
         SecurityContextHolder.getContext()
                 .setAuthentication(
@@ -116,6 +166,12 @@ class PointsOpsPermissionTest {
         @Bean
         PermissionCheck perm() {
             return new PermissionCheck();
+        }
+
+        @Bean
+        ai.neargo.shop.portal.ops.pay.OpsPointsTreasuryController treasuryController() {
+            return new ai.neargo.shop.portal.ops.pay.OpsPointsTreasuryController(
+                    org.mockito.Mockito.mock(PointsTreasuryAppService.class));
         }
 
         @Bean

@@ -2931,6 +2931,109 @@ _无字段_
 | `receivableMinor` | `number` | 是 | 门店未回收应收 R，不属于现金 |
 
 
+#### POST `/ops/points/plan-cancel`
+
+cancelPointsPeriod
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### POST `/ops/points/plan-generate`
+
+generatePointsPeriods
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### POST `/ops/points/plan-receipt`
+
+declarePointsReceipt
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### GET `/ops/points/plans`
+
+pointsPlans
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsPlanPage`](#pointsplanpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`#/definitions/PointsPlanView`](#definitionspointsplanview)\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+
+#### POST `/ops/points/plans`
+
+savePointsPlan
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
 #### GET `/ops/points/receivables`
 
 门店应收分页
@@ -2951,6 +3054,67 @@ _无字段_
 | `rows` | [`#/definitions/PointsReceivable`](#definitionspointsreceivable)\[\] | 是 | 当前门店的应收记录 |
 | `next` | `number` | 是 | 下一页游标 |
 | `hasMore` | `boolean` | 是 | 是否可能还有下一页 |
+
+
+#### POST `/ops/points/request-review`
+
+reviewPointsRequest
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### GET `/ops/points/requests`
+
+pointsRequests
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsRequestPage`](#pointsrequestpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`#/definitions/PointsRequestView`](#definitionspointsrequestview)\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+
+#### POST `/ops/points/requests`
+
+submitPointsRequest
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
 
 
 #### GET `/ops/points/switches`
@@ -3076,6 +3240,26 @@ _无字段_
 | `action` | `string` | 是 | — |
 | `typeCode` | `string` | 是 | — |
 | `at` | `number` | 是 | — |
+
+
+#### POST `/ops/points/withdrawal-execute`
+
+executePointsWithdrawal
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsExecution`](#pointsexecution)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `ticketNo` | `string` | 是 | — |
+| `status` | `SUCCEEDED` \| `FAILED` \| `UNKNOWN` | 是 | — |
+| `confirmedMinor` | `number` | 是 | — |
+| `replayed` | `boolean` | 是 | — |
 
 
 #### GET `/ops/purchase-invoices`
@@ -12861,6 +13045,15 @@ KPI 卡（金额为最小货币单位整数）。
 | `typeCode` | `string` | 是 | — |
 | `at` | `number` | 是 | — |
 
+### PointsExecution
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `ticketNo` | `string` | 是 | — |
+| `status` | `SUCCEEDED` \| `FAILED` \| `UNKNOWN` | 是 | — |
+| `confirmedMinor` | `number` | 是 | — |
+| `replayed` | `boolean` | 是 | — |
+
 ### PointsFallback
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -12868,6 +13061,16 @@ KPI 卡（金额为最小货币单位整数）。
 | `revision` | `number` | 是 | — |
 | `mode` | `FIXED` \| `RATIO` | 是 | — |
 | `value` | `number` | 是 | — |
+
+### PointsOperation
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
 
 ### PointsOverview
 
@@ -12890,6 +13093,14 @@ Four independent funding buckets, with non-cash store receivables reported separ
 | `lockedBMinor` | `number` | 是 | 待决提取占用的 B |
 | `receivableMinor` | `number` | 是 | 门店未回收应收 R，不属于现金 |
 
+### PointsPlanPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`#/definitions/PointsPlanView`](#definitionspointsplanview)\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
 ### PointsReceivablePage
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -12900,6 +13111,14 @@ Four independent funding buckets, with non-cash store receivables reported separ
 | `rows` | [`#/definitions/PointsReceivable`](#definitionspointsreceivable)\[\] | 是 | 当前门店的应收记录 |
 | `next` | `number` | 是 | 下一页游标 |
 | `hasMore` | `boolean` | 是 | 是否可能还有下一页 |
+
+### PointsRequestPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`#/definitions/PointsRequestView`](#definitionspointsrequestview)\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
 
 ### PointsSwitchPage
 

@@ -57,6 +57,8 @@ public interface PointsConfigurationStore {
 
     void terminateAgreement(String activeKey, String actor);
 
+    void rejectRequest(String requestNo, long expectedVersion, String actor);
+
     void beginApproval(String requestNo, String actor);
 
     void approve(String requestNo, String actor, String resultJson);

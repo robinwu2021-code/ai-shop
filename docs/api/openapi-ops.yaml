@@ -8012,6 +8012,406 @@ components:
         - "next"
         - "hasMore"
       additionalProperties: false
+    PointsOperation: 
+      type: "object"
+      properties: 
+        requestId: 
+          type: "string"
+        operation: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        reference: 
+          type: "string"
+        at: 
+          type: "number"
+      required: 
+        - "requestId"
+        - "operation"
+        - "typeCode"
+        - "reference"
+        - "at"
+      additionalProperties: false
+    PointsPoolAction: 
+      type: "string"
+      enum: 
+        - "TOPUP_U"
+        - "TOPUP_B"
+        - "TRANSFER_U_TO_B"
+        - "WITHDRAW_U"
+        - "WITHDRAW_B"
+    PointsFundsTarget: 
+      type: "object"
+      properties: 
+        path: 
+          type: "string"
+          enum: 
+            - "DIRECT"
+            - "AGGREGATED"
+        channel: 
+          type: "string"
+        merchantNo: 
+          type: "string"
+        storeNo: 
+          type: "string"
+        accountVersion: 
+          type: "string"
+        subMerchantId: 
+          type: "string"
+        tradeNo: 
+          type: 
+            - "string"
+            - "null"
+        outTradeNo: 
+          type: 
+            - "string"
+            - "null"
+        orderTotalMinor: 
+          type: "number"
+      required: 
+        - "path"
+        - "channel"
+        - "merchantNo"
+        - "storeNo"
+        - "accountVersion"
+        - "subMerchantId"
+        - "tradeNo"
+        - "outTradeNo"
+        - "orderTotalMinor"
+      additionalProperties: false
+    PointsSubmission: 
+      type: "object"
+      properties: 
+        requestId: 
+          type: "string"
+        requestNo: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        action: 
+          "$ref": "#/definitions/PointsPoolAction"
+        amountMinor: 
+          type: "number"
+        evidenceNo: 
+          type: 
+            - "string"
+            - "null"
+        fundsContext: 
+          anyOf: 
+            - "$ref": "#/definitions/PointsFundsTarget"
+            - type: "null"
+        reason: 
+          type: "string"
+      required: 
+        - "requestId"
+        - "requestNo"
+        - "typeCode"
+        - "action"
+        - "amountMinor"
+        - "evidenceNo"
+        - "fundsContext"
+        - "reason"
+      additionalProperties: false
+    PointsRequestReview: 
+      type: "object"
+      properties: 
+        requestId: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        requestNo: 
+          type: "string"
+        expectedVersion: 
+          type: "number"
+        approve: 
+          type: "boolean"
+        reason: 
+          type: "string"
+      required: 
+        - "requestId"
+        - "typeCode"
+        - "requestNo"
+        - "expectedVersion"
+        - "approve"
+        - "reason"
+      additionalProperties: false
+    PointsRequestView: 
+      type: "object"
+      properties: 
+        id: 
+          type: "number"
+        requestNo: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        action: 
+          "$ref": "#/definitions/PointsPoolAction"
+        amountMinor: 
+          type: "number"
+        state: 
+          type: "string"
+        submittedBy: 
+          type: "string"
+        approvedBy: 
+          type: 
+            - "string"
+            - "null"
+        hasEvidence: 
+          type: "boolean"
+        ticketNo: 
+          type: 
+            - "string"
+            - "null"
+        version: 
+          type: "number"
+      required: 
+        - "id"
+        - "requestNo"
+        - "typeCode"
+        - "action"
+        - "amountMinor"
+        - "state"
+        - "submittedBy"
+        - "approvedBy"
+        - "hasEvidence"
+        - "ticketNo"
+        - "version"
+      additionalProperties: false
+    PointsRequestPage: 
+      type: "object"
+      properties: 
+        rows: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/PointsRequestView"
+        next: 
+          type: "number"
+        hasMore: 
+          type: "boolean"
+      required: 
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    PointsPlan: 
+      type: "object"
+      properties: 
+        planNo: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        action: 
+          type: "string"
+          enum: 
+            - "TOPUP_U"
+            - "TOPUP_B"
+            - "TRANSFER_U_TO_B"
+        amountMinor: 
+          type: "number"
+        anchor: 
+          type: "string"
+        everyDays: 
+          type: "number"
+        enabled: 
+          type: "boolean"
+      required: 
+        - "planNo"
+        - "typeCode"
+        - "action"
+        - "amountMinor"
+        - "anchor"
+        - "everyDays"
+        - "enabled"
+      additionalProperties: false
+    PointsPlanChange: 
+      type: "object"
+      properties: 
+        requestId: 
+          type: "string"
+        plan: 
+          "$ref": "#/definitions/PointsPlan"
+        expectedVersion: 
+          type: "number"
+        reason: 
+          type: "string"
+      required: 
+        - "requestId"
+        - "plan"
+        - "expectedVersion"
+        - "reason"
+      additionalProperties: false
+    PointsPlanGenerate: 
+      type: "object"
+      properties: 
+        requestId: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        limit: 
+          type: "number"
+        reason: 
+          type: "string"
+      required: 
+        - "requestId"
+        - "typeCode"
+        - "limit"
+        - "reason"
+      additionalProperties: false
+    PointsPlanCancellation: 
+      type: "object"
+      properties: 
+        requestId: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        planNo: 
+          type: "string"
+        period: 
+          type: "string"
+        expectedVersion: 
+          type: "number"
+        reason: 
+          type: "string"
+      required: 
+        - "requestId"
+        - "typeCode"
+        - "planNo"
+        - "period"
+        - "expectedVersion"
+        - "reason"
+      additionalProperties: false
+    PointsPlanReceipt: 
+      type: "object"
+      properties: 
+        requestId: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        planNo: 
+          type: "string"
+        period: 
+          type: "string"
+        expectedVersion: 
+          type: "number"
+        reason: 
+          type: "string"
+        evidenceNo: 
+          type: "string"
+      required: 
+        - "evidenceNo"
+        - "expectedVersion"
+        - "period"
+        - "planNo"
+        - "reason"
+        - "requestId"
+        - "typeCode"
+      additionalProperties: false
+    PointsPlanView: 
+      type: "object"
+      properties: 
+        planNo: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        action: 
+          type: "string"
+          enum: 
+            - "TOPUP_U"
+            - "TOPUP_B"
+            - "TRANSFER_U_TO_B"
+        amountMinor: 
+          type: "number"
+        anchor: 
+          type: "string"
+        everyDays: 
+          type: "number"
+        enabled: 
+          type: "boolean"
+        id: 
+          type: "number"
+        period: 
+          type: "string"
+        nextPeriod: 
+          type: 
+            - "string"
+            - "null"
+        state: 
+          type: "string"
+        requestNo: 
+          type: 
+            - "string"
+            - "null"
+        version: 
+          type: "number"
+      required: 
+        - "action"
+        - "amountMinor"
+        - "anchor"
+        - "enabled"
+        - "everyDays"
+        - "id"
+        - "nextPeriod"
+        - "period"
+        - "planNo"
+        - "requestNo"
+        - "state"
+        - "typeCode"
+        - "version"
+      additionalProperties: false
+    PointsPlanPage: 
+      type: "object"
+      properties: 
+        rows: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/PointsPlanView"
+        next: 
+          type: "number"
+        hasMore: 
+          type: "boolean"
+      required: 
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    PointsWithdrawal: 
+      type: "object"
+      properties: 
+        requestId: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        ticketNo: 
+          type: "string"
+        reason: 
+          type: "string"
+      required: 
+        - "requestId"
+        - "typeCode"
+        - "ticketNo"
+        - "reason"
+      additionalProperties: false
+    PointsExecution: 
+      type: "object"
+      properties: 
+        ticketNo: 
+          type: "string"
+        status: 
+          type: "string"
+          enum: 
+            - "SUCCEEDED"
+            - "FAILED"
+            - "UNKNOWN"
+        confirmedMinor: 
+          type: "number"
+        replayed: 
+          type: "boolean"
+      required: 
+        - "ticketNo"
+        - "status"
+        - "confirmedMinor"
+        - "replayed"
+      additionalProperties: false
     Staff: 
       type: "object"
       properties: 
@@ -14968,6 +15368,280 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/requests": 
+    get: 
+      operationId: "pointsRequests"
+      summary: "pointsRequests"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsRequestPage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "submitPointsRequest"
+      summary: "submitPointsRequest"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsOperation"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/request-review": 
+    post: 
+      operationId: "reviewPointsRequest"
+      summary: "reviewPointsRequest"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsOperation"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/plans": 
+    get: 
+      operationId: "pointsPlans"
+      summary: "pointsPlans"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsPlanPage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "savePointsPlan"
+      summary: "savePointsPlan"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsOperation"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/plan-generate": 
+    post: 
+      operationId: "generatePointsPeriods"
+      summary: "generatePointsPeriods"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsOperation"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/plan-receipt": 
+    post: 
+      operationId: "declarePointsReceipt"
+      summary: "declarePointsReceipt"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsOperation"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/plan-cancel": 
+    post: 
+      operationId: "cancelPointsPeriod"
+      summary: "cancelPointsPeriod"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsOperation"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/withdrawal-execute": 
+    post: 
+      operationId: "executePointsWithdrawal"
+      summary: "executePointsWithdrawal"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsExecution"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/payables": 
     get: 
       operationId: "listPayables"

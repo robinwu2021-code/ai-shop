@@ -984,3 +984,20 @@ export interface PointsTerms { version: string; hash: string; text: string }
 export interface PointsTermsChange extends Omit<PointsTerms, "hash"> { requestId: string; typeCode: string; reason: string }
 export interface PointsAgreement { agreementNo: string; typeCode: string; merchantNo: string; storeNo: string; signedBy: string; termsVersion: string; termsHash: string; termsText: string; settleMode: string; path: string; channel: string; accountVersion: string; state: string }
 export interface PointsAgreementPage { rows: { id: number; agreement: PointsAgreement; state: string; version: number }[]; next: number; hasMore: boolean }
+
+export interface PointsOperation { requestId: string; operation: string; typeCode: string; reference: string; at: number }
+export type PointsPoolAction = "TOPUP_U" | "TOPUP_B" | "TRANSFER_U_TO_B" | "WITHDRAW_U" | "WITHDRAW_B";
+export interface PointsFundsTarget { path: "DIRECT" | "AGGREGATED"; channel: string; merchantNo: string; storeNo: string; accountVersion: string; subMerchantId: string; tradeNo: string | null; outTradeNo: string | null; orderTotalMinor: number }
+export interface PointsSubmission { requestId: string; requestNo: string; typeCode: string; action: PointsPoolAction; amountMinor: number; evidenceNo: string | null; fundsContext: PointsFundsTarget | null; reason: string }
+export interface PointsRequestReview { requestId: string; typeCode: string; requestNo: string; expectedVersion: number; approve: boolean; reason: string }
+export interface PointsRequestView { id: number; requestNo: string; typeCode: string; action: PointsPoolAction; amountMinor: number; state: string; submittedBy: string; approvedBy: string | null; hasEvidence: boolean; ticketNo: string | null; version: number }
+export interface PointsRequestPage { rows: PointsRequestView[]; next: number; hasMore: boolean }
+export interface PointsPlan { planNo: string; typeCode: string; action: "TOPUP_U" | "TOPUP_B" | "TRANSFER_U_TO_B"; amountMinor: number; anchor: string; everyDays: number; enabled: boolean }
+export interface PointsPlanChange { requestId: string; plan: PointsPlan; expectedVersion: number; reason: string }
+export interface PointsPlanGenerate { requestId: string; typeCode: string; limit: number; reason: string }
+export interface PointsPlanCancellation { requestId: string; typeCode: string; planNo: string; period: string; expectedVersion: number; reason: string }
+export interface PointsPlanReceipt extends PointsPlanCancellation { evidenceNo: string }
+export interface PointsPlanView extends PointsPlan { id: number; period: string; nextPeriod: string | null; state: string; requestNo: string | null; version: number }
+export interface PointsPlanPage { rows: PointsPlanView[]; next: number; hasMore: boolean }
+export interface PointsWithdrawal { requestId: string; typeCode: string; ticketNo: string; reason: string }
+export interface PointsExecution { ticketNo: string; status: "SUCCEEDED" | "FAILED" | "UNKNOWN"; confirmedMinor: number; replayed: boolean }

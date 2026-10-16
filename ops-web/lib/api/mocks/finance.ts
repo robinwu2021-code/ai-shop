@@ -9,6 +9,7 @@ import type { Payout } from "@/lib/types";
 
 /** 放款记录只活在内存里：mock 的批次放一次生成一条，刷新即清 —— 它不是演示数据的一部分 */
 const mockPayouts: Payout[] = [];
+import { pointsTreasuryMock } from "./points-treasury";
 import { pointsConfigurationMock } from "./points-configuration";
 import { fail, notFound } from "@/lib/biz-error";
 import { wait } from "./_wait";
@@ -36,6 +37,7 @@ function mustBill(settleNo: string) {
 
 export const financeMock: FinanceApi = {
   ...pointsConfigurationMock,
+  ...pointsTreasuryMock,
   pointsReceivables: async (q) => wait({ typeCode: q.typeCode, currency: "CNY", scale: 2, rows: [], next: q.after ?? 0, hasMore: false }),
   pointsOverview: async (market = "CN", typeCode = "POINTS_DEMO") => wait({
     typeCode, market, currency: "CNY", scale: 2, ratePoints: 2, rateMinor: 1,
