@@ -17,7 +17,6 @@ import ai.neargo.shop.pay.points.event.PointsAttentionService;
 import ai.neargo.shop.pay.points.event.PointsEventQueue;
 import ai.neargo.shop.pay.points.event.PointsEventWorker;
 import ai.neargo.shop.pay.points.event.PointsSourceFactHandler;
-import ai.neargo.shop.pay.points.event.impl.PointsFactPortImpl;
 import ai.neargo.shop.pay.points.job.PointsJobServices;
 import ai.neargo.shop.pay.points.job.PointsRecoveryService;
 import ai.neargo.shop.pay.points.lifecycle.ExpiryExecutionService;
@@ -53,6 +52,7 @@ import ai.neargo.shop.pay.points.pool.impl.PoolRequestServiceImpl.Envelope;
 import ai.neargo.shop.pay.points.pool.impl.TopupPlanServiceImpl;
 import ai.neargo.shop.pay.points.pool.withdrawal.impl.PoolWithdrawalExecutionServiceImpl;
 import ai.neargo.shop.pay.points.pool.withdrawal.impl.PoolWithdrawalServiceImpl;
+import ai.neargo.shop.pay.points.port.PointsFactPortImpl;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsCommand;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext;
@@ -960,7 +960,7 @@ class PointsPayoutPreparationTest {
         assertThat(
                         jdbc().queryForObject(
                                         "SELECT COUNT(*) FROM pts_store_statement WHERE"
-                                            + " type_code=?",
+                                                + " type_code=?",
                                         Long.class,
                                         c.typeCode()))
                 .isZero();
@@ -979,7 +979,7 @@ class PointsPayoutPreparationTest {
                     json.readValue(
                             jdbc().queryForObject(
                                             "SELECT payload_json FROM pts_payout_ticket WHERE"
-                                                + " position_no=?",
+                                                    + " position_no=?",
                                             String.class,
                                             ticket.ticketNo()),
                             ai.neargo.shop.pay.points.payout.PayoutSnapshot.class);
@@ -991,7 +991,7 @@ class PointsPayoutPreparationTest {
             assertThat(
                             jdbc().queryForObject(
                                             "SELECT state FROM pts_store_statement WHERE"
-                                                + " position_no=?",
+                                                    + " position_no=?",
                                             String.class,
                                             draft.statementNo()))
                     .isEqualTo("PAID");
@@ -1008,7 +1008,7 @@ class PointsPayoutPreparationTest {
         assertThat(
                         jdbc().queryForObject(
                                         "SELECT recovered_minor FROM pts_receivable WHERE"
-                                            + " type_code=?",
+                                                + " type_code=?",
                                         Long.class,
                                         c.typeCode()))
                 .isEqualTo(30);
@@ -2920,6 +2920,7 @@ class PointsPayoutPreparationTest {
 
     @Configuration
     @Import({
+        PointsFactPortImpl.class,
         PointsPostingDatabaseTest.Config.class,
         MybatisPointsReadStore.class,
         MybatisPointsConfigurationStore.class,

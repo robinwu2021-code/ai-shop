@@ -4,7 +4,7 @@
 > 完整交付、审查与执行裁决：[第一阶段验收记录](./积分第一阶段-验收记录.md)。
 
 
-2026-10-16 第二阶段已启动：第一阶段基线提交 `5d1e24be9`，工作区干净。现有运营 overview/client-policy 仍依赖旧服务，先执行 B1.1 新查询门面及看板替换，再 B1.2–B1.4、B2–B5。执行拆分见[第二阶段运营计划](../superpowers/plans/2026-10-16-points-ops-stage-b.md)。此项仅表示计划启动，不表示运营 API 或页面已完成。
+2026-10-16 第二阶段已启动：第一阶段基线提交 `5d1e24be9`，工作区干净。B1.1 新查询门面及看板替换已完成；client-policy 仍依赖旧服务，继续 B1.2–B1.4、B2–B5。执行拆分见[第二阶段运营计划](../superpowers/plans/2026-10-16-points-ops-stage-b.md)。B1.1 已验收；其余第二阶段接口与页面尚未完成。
 
 2026-10-16 A6 独立验收：完整链路以两个隔离门店验证发放、可信支付/完结、核销、随单与定期付款、退款恢复、同店 R 抵销、责任解除、RECI 回流再利用、到期收入、未知原号恢复、关闭新增业务后收尾以及全部清偿退役。门店 ST1 的应收不抵扣 ST2 付款；同门店全额抵销不发起零金额通道指令。备款计划声明回执不能替代真实核验，未处理计划仍阻止退役。
 
@@ -188,6 +188,8 @@ A1.3实施设计：仅pay内退款内核，订单源围栏后置。使用原准�
 | AC-PTS-40 | 运营任务 | §2.10 | T11 |
 
 没有未映射需求；付款意图、事件 Inbox/Outbox、接收户预留、账单修订、退款准备分别支撑 AC-17/33/29/21/25，不作为额外业务功能。
+
+B1.1 需求映射：AC-PTS-05/06 的独立资金与类型比例由 PointsOverviewService 满足；AC-PTS-35 由两端点服务端 FINANCE_SETTLE_READ 满足。R 独立应收，按门店过滤后分页，白名单 DTO 不暴露持久化正文。
 
 ## §1 现状与影响面
 
@@ -825,6 +827,14 @@ PointsJobWiringTest新增#only_new_points_jobs_registered；PointsReconTest新�
 
 若只先开放随单，必须先完成T10–T13对随单所需部分，且PERIODIC签约硬禁；不能以T09延后为理由跳过退款责任解除/对账/三端说明。不存在仅发分先上线的生产里程碑。
 
+### B1.1 运营查询契约（2026-10-16）
+
+GET /ops/points/overview：typeCode 可选，明确类型优先，否则按 market（默认CN）选生效类型；未配置/未知类型明确拒绝。返回类型、币种、scale、兑换比例、U/C/D/B、B预留、U/B提取锁定和独立R；不再返回旧单池/通道模型或声称平账。
+
+GET /ops/points/receivables：typeCode/storeNo必填，after>=0，limit=1–200（默认50）。SQL先过滤类型/门店再LIMIT，返回白名单应收、版本、下一游标及类型/币种/scale。锁定R仍计未回收。两端点要求FINANCE_SETTLE_READ；payclient只调新points查询服务，读取属于payTxManager。无写余额/手工成功端点。
+
+修正既有架构位置：Fact SPI实现移至points.port，任务宿主移至已注册payclient；业务任务标识不改。生产资金能力/任务仍默认关闭，订单SPI仍后置C，旧client-policy将在B1.2替换。
+
 ## §3 选型与复议条件
 
 | 选择 | 采用理由 | 代价及复议条件 |
@@ -907,9 +917,15 @@ PointsJobWiringTest新增#only_new_points_jobs_registered；PointsReconTest新�
 - `cd b-app && npx vue-tsc --noEmit`；c-app同理；Ops按npm run check:p及五处契约检查。
 - `python3 scripts/gen-ui-catalog.py --check`、相关OpenAPI/i18n/权限闸门、全量架构及既有订单/支付/售后场景回归；只有新增失败或更改代码才追加重复验证。
 
+B1.1 需求验收：PointsOpsOverviewContractTest 的旧服务/响应反例RED后GREEN；PointsKernelOperationsTest#overview_keeps_store_receivables_outside_cash_and_returns_the_original_rate 用真实posting/SQL和2:1比例，漏R消融RED（应30、实0）后恢复；#ops_receivables_endpoint_filters_store_before_paging_and_hides_internal_payload 先404 RED后GREEN，包含门店隔离、分页边界和正文排除；PointsOpsPermissionTest#both_queries_require_finance_read_permission_at_the_server 移除权限注解确实RED，恢复后拒绝无权且允许财务读。
+
+相关8类41条记录0失败/错误（3个原生RR用例在H2跳过），`20261016T093515Z-e5e94f50`；查询响应补足币种元数据后5类28/0，`20261016T093715Z-d4a600b6`。前端tsc及3类21项契约/权限映射测试通过。首次全局架构检查暴露2项旧包位置问题，修正位置后通过，未弱化守卫。所有runner timeout0、15秒进度，未跑全仓。最慢消融命令136.742秒，单用例8.235秒；编译/上下文和依赖安装不归为单用例耗时。
+
 ## §6 对账二 设计到实现
 
 当前汇总见本文开头“当前开发状态与后续顺序”：T01–T05已有内核实现，T06已有资金/结算/提现基础，T07完成部分退款内核与无积分现金入口，T08已有快照前置能力，T09–T13未整体完成。提现已有本地闭环，不再列为完全未实现；完整源接线、生产验证与统一订单底座仍待完成，不记“全部已实现”。每个实施任务在此登记实际提交SHA、git show --stat、偏差及真实验证输出；不得用全工作区diff替代自己的提交范围。
+
+B1.1 实现对账：新增域内PointsOverviewService/impl、payclient PointsOpsAppService/impl；Mapper/OperationsStore增加只读应收聚合与门店分页；替换OpsPointsController旧overview并新增receivables。前端types/HTTP/mock/copy/points-tab及OpenAPI/详情/索引同步；增加查询契约/权限测试，扩展隔离SQL场景。无新业务表或权限码，无真实门店/资金调用。
 
 ## §7 待确认与记录
 

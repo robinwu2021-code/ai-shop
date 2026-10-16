@@ -62,17 +62,12 @@ export const financeMock: FinanceApi = {
     return wait({ ...mockClientPolicy });
   },
 
-  pointsOverview: async (market = "CN") => {
-    return wait({
-      circulatingPoints: 12_800,
-      poolBalanceMinor: 12_800,
-      periodRedeemMinor: 3_400,
-      byChannel: [
-        { market, payChannel: "WECHAT", balanceMinor: 9_000 },
-        { market, payChannel: "ALIPAY", balanceMinor: 3_800 },
-      ],
-    });
-  },
+  pointsReceivables: async (q) => wait({ typeCode: q.typeCode, currency: "CNY", scale: 2, rows: [], next: q.after ?? 0, hasMore: false }),
+  pointsOverview: async (market = "CN", typeCode = "POINTS_DEMO") => wait({
+    typeCode, market, currency: "CNY", scale: 2, ratePoints: 2, rateMinor: 1,
+    uMinor: 12000, cMinor: 8000, dMinor: 3000, bMinor: 5000,
+    reservedBMinor: 2000, lockedUMinor: 1000, lockedBMinor: 500, receivableMinor: 700,
+  }),
 
   /*
    * **返回分页包，与真后端同形**。

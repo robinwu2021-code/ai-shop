@@ -1,4 +1,4 @@
-package ai.neargo.shop.pay.points.event.impl;
+package ai.neargo.shop.pay.points.port;
 
 import ai.neargo.shop.pay.points.event.PointsEventQueue;
 import ai.neargo.shop.pay.points.event.PointsEventQueue.Kind;

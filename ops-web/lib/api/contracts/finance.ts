@@ -2,10 +2,10 @@
 import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
   PurchaseInvoice,
   BuyerInvoiceRequest,
-  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Payout, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule,
+  ClientPointsPolicy, PointsOverview, PointsReceivablePage, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Payout, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule,
   BankFlowImportResult,
 } from "@/lib/types";
-import type { PageQ, SettlementQ } from "../query";
+import type { PageQ, SettlementQ, PointsReceivableQ } from "../query";
 
 export interface FinanceApi {
   /**
@@ -13,7 +13,11 @@ export interface FinanceApi {
    * 开一个「手工调整余额」的入口，等于允许在没有业务事件的情况下改账，
    * 而那之后恒等式失衡就再也说不清是哪一笔。
    */
-  pointsOverview(market?: string): Promise<PointsOverview>;
+  pointsOverview(market?: string, typeCode?: string): Promise<PointsOverview>;
+  /**
+   * 门店应收分页。R 不作为现金；必须明确积分类型和门店。
+   */
+  pointsReceivables(q: PointsReceivableQ): Promise<PointsReceivablePage>;
 
   /**
    * 积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣。

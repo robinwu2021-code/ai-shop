@@ -70,34 +70,73 @@ export const SETTLE_TRANSITIONS: Record<SettleStatus, SettleStatus[]> = {
  * 对齐方向是**改前端跟后端**：后端模型是钱真实的流向，
  * 周期汇总只是一个没被实现的设计稿。
  */
-/**
- * 积分资金总览。
- *
- * **三个数摆在一起是刻意的** —— 恒等式是「流通中的积分 == 池子里的钱」，
- * 分开看的话，失衡要等到有人主动比对才会发现。
- */
+/** Four independent funding buckets, with non-cash store receivables reported separately. */
 export interface PointsOverview {
-  /** 流通中的积分（用户可用 + 待生效） */
-  circulatingPoints: number;
-  /** 池子余额（分）。与上一个数对不上就是失衡 */
-  poolBalanceMinor: number;
-  /** 本期兑付（分）：补给商家的钱 */
-  periodRedeemMinor: number;
-  /**
-   * 按通道分的账本。**不能只看总数** ——
-   * 账面是一个池子，钱实际分散在两个通道账户；
-   * 一个溢一个空的时候，总数仍然是平的。
-   */
-  byChannel: PoolByChannel[];
-}
-
-export interface PoolByChannel {
+  /** 积分类型，不按不同类型合并余额 */
+  typeCode: string;
   /** 市场 */
   market: string;
-  /** 支付通道 */
-  payChannel: string;
-  /** 池子余额（分） */
-  balanceMinor: number;
+  /** ISO货币代码 */
+  currency: string;
+  /** 金额最小单位的小数位数 */
+  scale: number;
+  /** 兑换比例的积分单位 */
+  ratePoints: number;
+  /** 兑换比例的最小货币单位 */
+  rateMinor: number;
+  /** 发行备款 U，最小货币单位 */
+  uMinor: number;
+  /** 积分负债对应资金 C，最小货币单位 */
+  cMinor: number;
+  /** 待兑付资金 D，最小货币单位 */
+  dMinor: number;
+  /** 退款备付 B，最小货币单位 */
+  bMinor: number;
+  /** 已承诺退款的 B 预留 */
+  reservedBMinor: number;
+  /** 待决提取占用的 U */
+  lockedUMinor: number;
+  /** 待决提取占用的 B */
+  lockedBMinor: number;
+  /** Store receivables are independent claims, not available cash. */
+  /** 门店未回收应收 R，不属于现金 */
+  receivableMinor: number;
+}
+
+/** Explicit receivable fields; no original bank instructions or posting payloads. */
+export interface PointsReceivable {
+  /** 分页游标 ID */
+  id: number;
+  /** 应收编号 */
+  receivableNo: string;
+  /** 门店编号 */
+  storeNo: string;
+  /** 应收状态 */
+  state: string;
+  /** 原始应收金额 */
+  originalMinor: number;
+  /** 已回收金额 */
+  recoveredMinor: number;
+  /** 待决抵销占用，仍包含在未回收金额中 */
+  lockedMinor: number;
+  /** 未回收金额，原始减已回收 */
+  outstandingMinor: number;
+  /** 当前版本 */
+  version: number;
+}
+export interface PointsReceivablePage {
+  /** 积分类型，不按不同类型合并余额 */
+  typeCode: string;
+  /** ISO货币代码 */
+  currency: string;
+  /** 金额最小单位的小数位数 */
+  scale: number;
+  /** 当前门店的应收记录 */
+  rows: PointsReceivable[];
+  /** 下一页游标 */
+  next: number;
+  /** 是否可能还有下一页 */
+  hasMore: boolean;
 }
 
 export interface Settlement {

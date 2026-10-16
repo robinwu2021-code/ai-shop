@@ -2886,10 +2886,42 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `circulatingPoints` | `number` | 是 | 流通中的积分（用户可用 + 待生效） |
-| `poolBalanceMinor` | `number` | 是 | 池子余额（分）。与上一个数对不上就是失衡 |
-| `periodRedeemMinor` | `number` | 是 | 本期兑付（分）：补给商家的钱 |
-| `byChannel` | [`#/definitions/PoolByChannel`](#definitionspoolbychannel)\[\] | 是 | 按通道分的账本。**不能只看总数** —— 账面是一个池子，钱实际分散在两个通道账户； 一个溢一个空的时候，总数仍然是平的。 |
+| `typeCode` | `string` | 是 | 积分类型，不按不同类型合并余额 |
+| `market` | `string` | 是 | 市场 |
+| `currency` | `string` | 是 | ISO货币代码 |
+| `scale` | `number` | 是 | 金额最小单位的小数位数 |
+| `ratePoints` | `number` | 是 | 兑换比例的积分单位 |
+| `rateMinor` | `number` | 是 | 兑换比例的最小货币单位 |
+| `uMinor` | `number` | 是 | 发行备款 U，最小货币单位 |
+| `cMinor` | `number` | 是 | 积分负债对应资金 C，最小货币单位 |
+| `dMinor` | `number` | 是 | 待兑付资金 D，最小货币单位 |
+| `bMinor` | `number` | 是 | 退款备付 B，最小货币单位 |
+| `reservedBMinor` | `number` | 是 | 已承诺退款的 B 预留 |
+| `lockedUMinor` | `number` | 是 | 待决提取占用的 U |
+| `lockedBMinor` | `number` | 是 | 待决提取占用的 B |
+| `receivableMinor` | `number` | 是 | 门店未回收应收 R，不属于现金 |
+
+
+#### GET `/ops/points/receivables`
+
+门店应收分页
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsReceivablePage`](#pointsreceivablepage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型，不按不同类型合并余额 |
+| `currency` | `string` | 是 | ISO货币代码 |
+| `scale` | `number` | 是 | 金额最小单位的小数位数 |
+| `rows` | [`#/definitions/PointsReceivable`](#definitionspointsreceivable)\[\] | 是 | 当前门店的应收记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否可能还有下一页 |
 
 
 #### GET `/ops/purchase-invoices`
@@ -12661,14 +12693,35 @@ KPI 卡（金额为最小货币单位整数）。
 
 ### PointsOverview
 
-积分资金总览。 **三个数摆在一起是刻意的** —— 恒等式是「流通中的积分 == 池子里的钱」， 分开看的话，失衡要等到有人主动比对才会发现。
+Four independent funding buckets, with non-cash store receivables reported separately.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `circulatingPoints` | `number` | 是 | 流通中的积分（用户可用 + 待生效） |
-| `poolBalanceMinor` | `number` | 是 | 池子余额（分）。与上一个数对不上就是失衡 |
-| `periodRedeemMinor` | `number` | 是 | 本期兑付（分）：补给商家的钱 |
-| `byChannel` | [`#/definitions/PoolByChannel`](#definitionspoolbychannel)\[\] | 是 | 按通道分的账本。**不能只看总数** —— 账面是一个池子，钱实际分散在两个通道账户； 一个溢一个空的时候，总数仍然是平的。 |
+| `typeCode` | `string` | 是 | 积分类型，不按不同类型合并余额 |
+| `market` | `string` | 是 | 市场 |
+| `currency` | `string` | 是 | ISO货币代码 |
+| `scale` | `number` | 是 | 金额最小单位的小数位数 |
+| `ratePoints` | `number` | 是 | 兑换比例的积分单位 |
+| `rateMinor` | `number` | 是 | 兑换比例的最小货币单位 |
+| `uMinor` | `number` | 是 | 发行备款 U，最小货币单位 |
+| `cMinor` | `number` | 是 | 积分负债对应资金 C，最小货币单位 |
+| `dMinor` | `number` | 是 | 待兑付资金 D，最小货币单位 |
+| `bMinor` | `number` | 是 | 退款备付 B，最小货币单位 |
+| `reservedBMinor` | `number` | 是 | 已承诺退款的 B 预留 |
+| `lockedUMinor` | `number` | 是 | 待决提取占用的 U |
+| `lockedBMinor` | `number` | 是 | 待决提取占用的 B |
+| `receivableMinor` | `number` | 是 | 门店未回收应收 R，不属于现金 |
+
+### PointsReceivablePage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型，不按不同类型合并余额 |
+| `currency` | `string` | 是 | ISO货币代码 |
+| `scale` | `number` | 是 | 金额最小单位的小数位数 |
+| `rows` | [`#/definitions/PointsReceivable`](#definitionspointsreceivable)\[\] | 是 | 当前门店的应收记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否可能还有下一页 |
 
 ### Post
 

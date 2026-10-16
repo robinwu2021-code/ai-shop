@@ -9,7 +9,8 @@ import type {
 } from "@/lib/types";
 
 export const financeHttp: FinanceApi = {
-  pointsOverview: (market) => client.get("/ops/points/overview", { market: market ?? "CN" }),
+  pointsOverview: (market, typeCode) => client.get("/ops/points/overview", { market: market ?? "CN", typeCode }),
+  pointsReceivables: (q) => client.get("/ops/points/receivables", q),
   pointsClientPolicy: () => client.get<ClientPointsPolicy>("/ops/points/client-policy"),
   savePointsClientPolicy: (v) => client.post<ClientPointsPolicy>("/ops/points/client-policy", v),
   // ── 自营应付账款（后端十个端点早已实现，此前运营端零入口）

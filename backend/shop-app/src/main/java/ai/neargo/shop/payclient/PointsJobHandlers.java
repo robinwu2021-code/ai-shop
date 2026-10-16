@@ -1,4 +1,4 @@
-package ai.neargo.shop.pointsclient;
+package ai.neargo.shop.payclient;
 
 import ai.neargo.job.api.JobDeclaration;
 import ai.neargo.job.api.JobHandler;

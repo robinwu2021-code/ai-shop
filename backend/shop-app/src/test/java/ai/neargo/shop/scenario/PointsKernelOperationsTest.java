@@ -66,6 +66,117 @@ class PointsKernelOperationsTest {
     }
 
     @Test
+    void ops_receivables_endpoint_filters_store_before_paging_and_hides_internal_payload()
+            throws Exception {
+        String type = fixture();
+        jdbc().update(
+                        "INSERT INTO"
+                            + " pts_receivable(type_code,receivable_no,store_no,state,original_minor,recovered_minor,locked_minor,payload_json)"
+                            + " VALUES(?,?,'OTHER','OPEN',10,0,0,?)",
+                        type,
+                        "OTHER:" + type,
+                        "{\"bankSecret\":\"PRIVATE\"}");
+        jdbc().update(
+                        "INSERT INTO"
+                            + " pts_receivable(type_code,receivable_no,store_no,state,original_minor,recovered_minor,locked_minor,payload_json)"
+                            + " VALUES(?,?,'STORE','OPEN',20,3,2,?)",
+                        type,
+                        "TARGET:" + type,
+                        "{\"bankSecret\":\"PRIVATE\"}");
+        var query = context.getBean(ai.neargo.shop.pay.points.query.PointsOverviewService.class);
+        for (int limit : List.of(0, 201)) {
+            assertThatThrownBy(() -> query.receivables(type, "STORE", 0, limit))
+                    .hasMessage("POINTS_PAGE_INVALID");
+        }
+        assertThatThrownBy(() -> query.receivables(type, "", 0, 1))
+                .hasMessage("POINTS_PAGE_INVALID");
+        assertThatThrownBy(() -> query.receivables(type, "STORE", -1, 1))
+                .hasMessage("POINTS_PAGE_INVALID");
+        var page = query.receivables(type, "STORE", 0, 1);
+        assertThat(query.receivables(type, "STORE", page.next(), 200).rows()).isEmpty();
+        var app =
+                new ai.neargo.shop.payclient.impl.PointsOpsAppServiceImpl(
+                        context.getBean(
+                                ai.neargo.shop.pay.points.query.PointsOverviewService.class));
+        var mvc =
+                org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(
+                                new ai.neargo.shop.portal.ops.pay.OpsPointsController(app))
+                        .build();
+        mvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+                                        "/ops/points/receivables")
+                                .param("typeCode", type)
+                                .param("storeNo", "STORE")
+                                .param("after", "0")
+                                .param("limit", "1"))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                                .isOk())
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath(
+                                        "$.rows[0].storeNo")
+                                .value("STORE"))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath(
+                                        "$.rows[0].outstandingMinor")
+                                .value(17))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath(
+                                        "$.rows[0].lockedMinor")
+                                .value(2))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString("PRIVATE"))));
+    }
+
+    @Test
+    void overview_keeps_store_receivables_outside_cash_and_returns_the_original_rate() {
+        String type = fixture(new RedeemRate(2, 1));
+        String other = fixture();
+        var evidence = new EvidenceRef("OUT_OVERVIEW:" + type, "CNY", -30);
+        posting.recordEvidence(evidence);
+        posting.post(
+                new Voucher(
+                        "OVERVIEW_R:" + type,
+                        type,
+                        "CNY",
+                        new RedeemRate(2, 1),
+                        List.of(),
+                        List.of(new FundMove(FundBucket.B, -30)),
+                        List.of(),
+                        0,
+                        List.of(evidence),
+                        "{}",
+                        List.of(),
+                        List.of(),
+                        List.of(
+                                new ai.neargo.shop.pay.points.model.ReceivableMove(
+                                        "R:" + type,
+                                        "SYNTHETIC_STORE",
+                                        -1,
+                                        "NEW",
+                                        "OPEN",
+                                        30,
+                                        0,
+                                        0,
+                                        "{}"))));
+        var service = context.getBean(ai.neargo.shop.pay.points.query.PointsOverviewService.class);
+        var result = service.overview(type, "CN");
+        assertThat(result.uMinor()).isEqualTo(50);
+        assertThat(result.bMinor()).isEqualTo(170);
+        assertThat(result.cMinor()).isZero();
+        assertThat(result.dMinor()).isZero();
+        assertThat(result.ratePoints()).isEqualTo(2);
+        assertThat(result.rateMinor()).isEqualTo(1);
+        assertThat(result.receivableMinor()).isEqualTo(30);
+        assertThat(service.overview(other, "CN").receivableMinor()).isZero();
+        assertThatThrownBy(() -> service.overview("MISSING", "CN"))
+                .hasMessage("POINTS_TYPE_UNKNOWN");
+    }
+
+    @Test
     void recon_detects_a_missing_grant_action_even_when_money_and_account_totals_still_balance() {
         String type = fixture();
         var command = grant(type, "SOURCE", 20);
@@ -237,25 +348,33 @@ class PointsKernelOperationsTest {
     }
 
     private String fixture() {
+        return fixture(new RedeemRate(1, 1));
+    }
+
+    private String fixture(RedeemRate rate) {
         String type = "OP" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         jdbc().update(
                         "INSERT INTO"
                             + " pts_point_type(type_code,market,currency,rate_points,rate_minor,status,deduct_ratio_bp,idle_days)"
-                            + " VALUES(?,'CN','CNY',1,1,'ACTIVE',10000,30)",
-                        type);
+                            + " VALUES(?,'CN','CNY',?,?,'ACTIVE',10000,30)",
+                        type,
+                        rate.pointsUnit(),
+                        rate.minorUnit());
         jdbc().update("INSERT INTO pts_fund_pool(type_code,currency) VALUES(?,'CNY')", type);
-        var evidence = new EvidenceRef("OPS_FIXTURE:" + type, "CNY", 300);
+        var evidence = new EvidenceRef("OPS_FIXTURE:" + type, "CNY", rate.toMinor(100) + 200);
         posting.recordEvidence(evidence);
         posting.post(
                 new Voucher(
                         "OPS_FIXTURE:" + type,
                         type,
                         "CNY",
-                        new RedeemRate(1, 1),
+                        rate,
                         List.of(
                                 move(type, HolderType.MINT, "PLATFORM", Bucket.ISSUED, -100),
                                 move(type, HolderType.ISSUE, "PLATFORM", Bucket.ISSUABLE, 100)),
-                        List.of(new FundMove(FundBucket.U, 100), new FundMove(FundBucket.B, 200)),
+                        List.of(
+                                new FundMove(FundBucket.U, rate.toMinor(100)),
+                                new FundMove(FundBucket.B, 200)),
                         List.of(),
                         0,
                         List.of(evidence),

@@ -13,6 +13,7 @@ import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.model.ReserveMove;
 import ai.neargo.shop.pay.points.model.Voucher;
 import ai.neargo.shop.pay.points.policy.PointsDigests;
+import ai.neargo.shop.pay.points.port.PointsFactPortImpl;
 import ai.neargo.shop.pay.points.posting.PointsPostingService;
 import ai.neargo.shop.pay.points.redeem.impl.RedeemServiceImpl.RedeemSnapshot;
 import ai.neargo.shop.pay.points.refund.PointsRefundConfirmationService;

@@ -6129,43 +6129,137 @@ components:
     PointsOverview: 
       type: "object"
       properties: 
-        circulatingPoints: 
-          type: "number"
-          description: "流通中的积分（用户可用 + 待生效）"
-        poolBalanceMinor: 
-          type: "number"
-          description: "池子余额（分）。与上一个数对不上就是失衡"
-        periodRedeemMinor: 
-          type: "number"
-          description: "本期兑付（分）：补给商家的钱"
-        byChannel: 
-          type: "array"
-          items: 
-            "$ref": "#/definitions/PoolByChannel"
-          description: "按通道分的账本。**不能只看总数** —— 账面是一个池子，钱实际分散在两个通道账户； 一个溢一个空的时候，总数仍然是平的。"
-      required: 
-        - "circulatingPoints"
-        - "poolBalanceMinor"
-        - "periodRedeemMinor"
-        - "byChannel"
-      additionalProperties: false
-      description: "积分资金总览。\n\n**三个数摆在一起是刻意的** —— 恒等式是「流通中的积分 == 池子里的钱」， 分开看的话，失衡要等到有人主动比对才会发现。"
-    PoolByChannel: 
-      type: "object"
-      properties: 
+        typeCode: 
+          type: "string"
+          description: "积分类型，不按不同类型合并余额"
         market: 
           type: "string"
           description: "市场"
-        payChannel: 
+        currency: 
           type: "string"
-          description: "支付通道"
-        balanceMinor: 
+          description: "ISO货币代码"
+        scale: 
           type: "number"
-          description: "池子余额（分）"
+          description: "金额最小单位的小数位数"
+        ratePoints: 
+          type: "number"
+          description: "兑换比例的积分单位"
+        rateMinor: 
+          type: "number"
+          description: "兑换比例的最小货币单位"
+        uMinor: 
+          type: "number"
+          description: "发行备款 U，最小货币单位"
+        cMinor: 
+          type: "number"
+          description: "积分负债对应资金 C，最小货币单位"
+        dMinor: 
+          type: "number"
+          description: "待兑付资金 D，最小货币单位"
+        bMinor: 
+          type: "number"
+          description: "退款备付 B，最小货币单位"
+        reservedBMinor: 
+          type: "number"
+          description: "已承诺退款的 B 预留"
+        lockedUMinor: 
+          type: "number"
+          description: "待决提取占用的 U"
+        lockedBMinor: 
+          type: "number"
+          description: "待决提取占用的 B"
+        receivableMinor: 
+          type: "number"
+          description: "门店未回收应收 R，不属于现金"
       required: 
+        - "typeCode"
         - "market"
-        - "payChannel"
-        - "balanceMinor"
+        - "currency"
+        - "scale"
+        - "ratePoints"
+        - "rateMinor"
+        - "uMinor"
+        - "cMinor"
+        - "dMinor"
+        - "bMinor"
+        - "reservedBMinor"
+        - "lockedUMinor"
+        - "lockedBMinor"
+        - "receivableMinor"
+      additionalProperties: false
+      description: "Four independent funding buckets, with non-cash store receivables reported separately."
+    PointsReceivable: 
+      type: "object"
+      properties: 
+        id: 
+          type: "number"
+          description: "分页游标 ID"
+        receivableNo: 
+          type: "string"
+          description: "应收编号"
+        storeNo: 
+          type: "string"
+          description: "门店编号"
+        state: 
+          type: "string"
+          description: "应收状态"
+        originalMinor: 
+          type: "number"
+          description: "原始应收金额"
+        recoveredMinor: 
+          type: "number"
+          description: "已回收金额"
+        lockedMinor: 
+          type: "number"
+          description: "待决抵销占用，仍包含在未回收金额中"
+        outstandingMinor: 
+          type: "number"
+          description: "未回收金额，原始减已回收"
+        version: 
+          type: "number"
+          description: "当前版本"
+      required: 
+        - "id"
+        - "receivableNo"
+        - "storeNo"
+        - "state"
+        - "originalMinor"
+        - "recoveredMinor"
+        - "lockedMinor"
+        - "outstandingMinor"
+        - "version"
+      additionalProperties: false
+      description: "Explicit receivable fields; no original bank instructions or posting payloads."
+    PointsReceivablePage: 
+      type: "object"
+      properties: 
+        typeCode: 
+          type: "string"
+          description: "积分类型，不按不同类型合并余额"
+        currency: 
+          type: "string"
+          description: "ISO货币代码"
+        scale: 
+          type: "number"
+          description: "金额最小单位的小数位数"
+        rows: 
+          type: "array"
+          items: 
+            "$ref": "#/definitions/PointsReceivable"
+          description: "当前门店的应收记录"
+        next: 
+          type: "number"
+          description: "下一页游标"
+        hasMore: 
+          type: "boolean"
+          description: "是否可能还有下一页"
+      required: 
+        - "typeCode"
+        - "currency"
+        - "scale"
+        - "rows"
+        - "next"
+        - "hasMore"
       additionalProperties: false
     Settlement: 
       type: "object"
@@ -14177,6 +14271,32 @@ paths:
                     type: "string"
                   data: 
                     "$ref": "#/components/schemas/PointsOverview"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/receivables": 
+    get: 
+      operationId: "pointsReceivables"
+      summary: "门店应收分页"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/PointsReceivablePage"
                 required: 
                   - "code"
                   - "msg"

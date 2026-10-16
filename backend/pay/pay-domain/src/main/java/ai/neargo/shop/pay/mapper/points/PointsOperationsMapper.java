@@ -15,6 +15,22 @@ import java.util.Map;
 @Mapper
 public interface PointsOperationsMapper {
     @Select(
+            "SELECT"
+                + " id,receivable_no,store_no,state,original_minor,recovered_minor,locked_minor,version"
+                + " FROM pts_receivable WHERE type_code=#{type} AND store_no=#{store} AND"
+                + " id>#{after} AND deleted=0 ORDER BY id LIMIT #{limit}")
+    List<Map<String, Object>> receivables(
+            @Param("type") String type,
+            @Param("store") String store,
+            @Param("after") long after,
+            @Param("limit") int limit);
+
+    @Select(
+            "SELECT COALESCE(SUM(original_minor-recovered_minor),0) FROM pts_receivable"
+                    + " WHERE type_code=#{type} AND deleted=0")
+    long outstandingReceivable(@Param("type") String type);
+
+    @Select(
             "SELECT COUNT(*) FROM pts_outbox WHERE state='MANUAL' AND deleted=0 AND"
                     + " (#{type,jdbcType=VARCHAR} IS NULL OR type_code=#{type,jdbcType=VARCHAR})")
     long manualEvents(@Param("type") String type);

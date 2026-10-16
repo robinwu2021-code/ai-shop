@@ -21,11 +21,11 @@
 
 文件：新增 backend/shop-app/src/main/java/ai/neargo/shop/payclient/PointsOpsAppService.java 及专用 DTO；修改 portal/ops/pay/OpsPointsController.java；新增定向运营接入测试。
 
-- [ ] 先编写旧看板错误依赖的反例：新看板按 typeCode 返回 U/C/D/B、锁定额、退款预留、R 独立应收；不存在类型明确拒绝，不把 R 加入现金。
-- [ ] DTO 显式列出字段；日期/金额/比例不使用旧 1:1 假设。不直接暴露 PointsQueryService.Page.rows。
-- [ ] 接资金池/类型与门店筛选查询，验证分页 1–200 和非法游标。
-- [ ] 保留 /ops/points/overview 单一实现，FINANCE_SETTLE_READ 权限；同步 API 契约和受影响调用方，不提供旧模型兜底。
-- [ ] 验证无权限拒绝、门店条件不串数据、响应无 payload_json；运行本类和积分架构测试后提交。
+- [x] 先编写旧看板错误依赖的反例：新看板按 typeCode 返回 U/C/D/B、锁定额、退款预留、R 独立应收；不存在类型明确拒绝，不把 R 加入现金。
+- [x] DTO 显式列出字段；日期/金额/比例不使用旧 1:1 假设。不直接暴露 PointsQueryService.Page.rows。
+- [x] 接资金池/类型与门店筛选查询，验证分页 1–200 和非法游标。
+- [x] 保留 /ops/points/overview 单一实现，FINANCE_SETTLE_READ 权限；同步 API 契约和受影响调用方，不提供旧模型兜底。
+- [x] 验证无权限拒绝、门店条件不串数据、响应无 payload_json；运行本类和积分架构测试后提交。
 
 ## Task B1.2 配置、协议与开关 API
 
@@ -58,4 +58,4 @@
 
 Review Focus：运营权限不能仅靠前端；登录操作人不可伪造；付款证据与任意持久化正文不能泄露；同店多个原路由账单不可丢组；R 不能算现金；审批自批及 UNKNOWN 换号重付必须拒绝。
 
-状态：第二阶段已启动，入口盘点及实施拆分完成；B1.1 开始前，尚未宣称新运营 API/页面已实现。
+状态：第二阶段已启动，入口盘点及实施拆分完成；B1.1 已完成看板替换、门店应收查询和前后端契约；B1.2 继续配置/开关，B1.3–B5 未完成。

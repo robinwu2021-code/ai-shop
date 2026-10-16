@@ -10,7 +10,6 @@ import ai.neargo.shop.pay.points.app.PointsSettlementHook;
 import ai.neargo.shop.pay.points.app.PointsSettlementHook.PayoutCommand;
 import ai.neargo.shop.pay.points.earn.EarnService;
 import ai.neargo.shop.pay.points.event.PointsEventWorker;
-import ai.neargo.shop.pay.points.event.impl.PointsFactPortImpl;
 import ai.neargo.shop.pay.points.job.PointsJobServices;
 import ai.neargo.shop.pay.points.job.PointsRecoveryService;
 import ai.neargo.shop.pay.points.lifecycle.TypeRetirementService;
@@ -36,6 +35,7 @@ import ai.neargo.shop.pay.points.pool.PoolRequestService;
 import ai.neargo.shop.pay.points.pool.TopupPlanService;
 import ai.neargo.shop.pay.points.pool.impl.PoolRequestServiceImpl;
 import ai.neargo.shop.pay.points.pool.impl.PoolServiceImpl;
+import ai.neargo.shop.pay.points.port.PointsFactPortImpl;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPath;
 import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPurpose;
@@ -143,7 +143,7 @@ class PointsCoreAcceptanceTest {
                 type ->
                         jdbc().update(
                                         "UPDATE pts_point_type SET active_market=NULL WHERE"
-                                            + " type_code=?",
+                                                + " type_code=?",
                                         type));
         activeTypes.clear();
     }
@@ -170,7 +170,7 @@ class PointsCoreAcceptanceTest {
             assertThat(
                             jdbc().queryForObject(
                                             "SELECT original_minor FROM pts_receivable WHERE"
-                                                + " type_code=?",
+                                                    + " type_code=?",
                                             Long.class,
                                             f.type()))
                     .isEqualTo(15);
@@ -216,7 +216,7 @@ class PointsCoreAcceptanceTest {
             assertThat(
                             jdbc().queryForObject(
                                             "SELECT recovered_minor FROM pts_receivable WHERE"
-                                                + " type_code=?",
+                                                    + " type_code=?",
                                             Long.class,
                                             f.type()))
                     .isEqualTo(15);
@@ -253,8 +253,8 @@ class PointsCoreAcceptanceTest {
             // Explicit test clock fixture, not a product backdoor or a financial balance edit.
             jdbc().update(
                             "UPDATE pts_account SET"
-                                + " expire_at=1000,last_active_at=0,expiry_revision=7 WHERE"
-                                + " type_code=? AND holder_type='USER'",
+                                    + " expire_at=1000,last_active_at=0,expiry_revision=7 WHERE"
+                                    + " type_code=? AND holder_type='USER'",
                             f.type());
             var jobs = context.getBean(PointsJobServices.class);
             assertThat(
@@ -618,8 +618,8 @@ class PointsCoreAcceptanceTest {
         String key = PointsKeys.position("A", f.type(), store);
         jdbc().update(
                         "UPDATE pts_merchant_agreement SET"
-                            + " active_key=NULL,state='TERMINATED',updated_at=CURRENT_TIMESTAMP"
-                            + " WHERE active_key=?",
+                                + " active_key=NULL,state='TERMINATED',updated_at=CURRENT_TIMESTAMP"
+                                + " WHERE active_key=?",
                         key);
         var agreement =
                 new AgreementSnapshot(

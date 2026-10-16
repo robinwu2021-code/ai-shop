@@ -10,7 +10,7 @@ import ai.neargo.job.api.JobInvocation;
 import ai.neargo.job.api.JobStatus;
 import ai.neargo.job.api.TriggerType;
 import ai.neargo.shop.pay.points.job.PointsJobServices;
-import ai.neargo.shop.pointsclient.PointsJobHandlers;
+import ai.neargo.shop.payclient.PointsJobHandlers;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
