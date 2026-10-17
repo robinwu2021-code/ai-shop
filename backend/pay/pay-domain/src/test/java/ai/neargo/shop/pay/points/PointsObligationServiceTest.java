@@ -14,6 +14,51 @@ import java.util.*;
 import java.util.stream.LongStream;
 
 class PointsObligationServiceTest {
+    @Test
+    void root_hold_receipt_does_not_remain_an_unknown_obligation_after_child_closes() {
+        var root =
+                Map.<String, Object>of(
+                        "id",
+                        1L,
+                        "state",
+                        "HELD",
+                        "payload_json",
+                        "{\"command\":{\"targets\":[{\"subOrderNo\":\"S1\",\"storeNo\":\"ST1\",\"merchantNo\":\"M\"}]},\"outcome\":{\"points\":20,\"shares\":[{\"subOrderNo\":\"S1\",\"storeNo\":\"ST1\",\"merchantNo\":\"M\",\"points\":20}]}}");
+        when(store.page("T", Kind.REDEEM, 0, 200)).thenReturn(List.of(root));
+        var child =
+                Map.<String, Object>of(
+                        "state",
+                        "CLOSED",
+                        "original_points",
+                        20L,
+                        "payload_json",
+                        "{\"subOrderNo\":\"S1\",\"share\":{\"storeNo\":\"ST1\",\"merchantNo\":\"M\"}}");
+        when(read.position(PositionMove.Kind.REDEEM.table(), PointsKeys.position("R", "T", "S1")))
+                .thenReturn(child);
+        assertThat(new PointsObligationServiceImpl(read, store).inspect("ST1", null).clear())
+                .isTrue();
+        when(read.position(PositionMove.Kind.REDEEM.table(), PointsKeys.position("R", "T", "S1")))
+                .thenReturn(null);
+        assertThat(new PointsObligationServiceImpl(read, store).inspect("ST1", null).known())
+                .isFalse();
+    }
+
+    @Test
+    void positive_root_receipt_with_missing_shares_is_not_a_clearance_proof() {
+        when(store.page("T", Kind.REDEEM, 0, 200))
+                .thenReturn(
+                        List.of(
+                                Map.of(
+                                        "id",
+                                        1L,
+                                        "state",
+                                        "HELD",
+                                        "payload_json",
+                                        "{\"command\":{\"targets\":[]},\"outcome\":{\"points\":20,\"shares\":[]}}")));
+        assertThat(new PointsObligationServiceImpl(read, store).inspect("ST1", null).known())
+                .isFalse();
+    }
+
     final PointsReadStore read = mock(PointsReadStore.class);
     final PointsOperationsStore store = mock(PointsOperationsStore.class);
 

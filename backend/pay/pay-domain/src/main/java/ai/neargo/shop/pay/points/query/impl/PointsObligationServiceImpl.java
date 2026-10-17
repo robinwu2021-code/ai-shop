@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.points.query.impl;
 
+import ai.neargo.shop.pay.points.model.PointsKeys;
+import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.query.PointsObligationService;
 import ai.neargo.shop.pay.points.store.PointsOperationsStore;
 import ai.neargo.shop.pay.points.store.PointsOperationsStore.Kind;
@@ -47,6 +49,7 @@ public class PointsObligationServiceImpl implements PointsObligationService {
         long[] count = new long[6];
         int seen = 0;
         boolean known = true, terminalSource = false;
+        Set<String> countedRedemptions = new HashSet<>();
         for (var type : types) {
             if (!blank(subOrderNo) && closed(type.typeCode(), subOrderNo)) terminalSource = true;
             for (var kind : KINDS) {
@@ -70,6 +73,17 @@ public class PointsObligationServiceImpl implements PointsObligationService {
                             known = false;
                             continue;
                         }
+                        if (kind == Kind.REDEEM && body.has("command") && body.has("outcome")) {
+                            known &=
+                                    inspectRoot(
+                                            type.typeCode(),
+                                            body,
+                                            storeNo,
+                                            subOrderNo,
+                                            countedRedemptions,
+                                            count);
+                            continue;
+                        }
                         var owner = owner(kind, row, body);
                         String target = blank(storeNo) ? owner.sub() : owner.store();
                         if (blank(target)) {
@@ -82,7 +96,11 @@ public class PointsObligationServiceImpl implements PointsObligationService {
                                 if (blank(owner.sub()) || !closed(type.typeCode(), owner.sub()))
                                     count[1]++;
                             }
-                            case REDEEM -> count[0]++;
+                            case REDEEM -> {
+                                if (blank(owner.sub())) known = false;
+                                else if (countedRedemptions.add(
+                                        type.typeCode() + "/" + owner.sub())) count[0]++;
+                            }
                             case REFUND, RECEIVABLE -> count[2]++;
                             case STATEMENT -> count[3]++;
                             case PAYOUT, TRANSFER -> count[4]++;
@@ -108,6 +126,70 @@ public class PointsObligationServiceImpl implements PointsObligationService {
         if (row == null || row.get("payload_json") == null) return false;
         var body = json.readTree((String) row.get("payload_json"));
         return body.hasNonNull("cancelFact") || body.hasNonNull("refundClosedFact");
+    }
+
+    /**
+     * Root is an immutable idempotency receipt. Verify and count its children, never the receipt
+     * twice.
+     */
+    private boolean inspectRoot(
+            String type,
+            JsonNode body,
+            String storeNo,
+            String subOrderNo,
+            Set<String> seen,
+            long[] count) {
+        var targets = body.path("command").path("targets");
+        var shares = body.path("outcome").path("shares");
+        if (!targets.isArray()
+                || !shares.isArray()
+                || targets.size() > 200
+                || shares.size() > 200
+                || !body.path("outcome").path("points").isIntegralNumber()) return false;
+        long declared = body.path("outcome").path("points").longValue(), total = 0;
+        if (declared < 0) return false;
+        for (var share : shares) {
+            if (!share.path("points").isIntegralNumber() || share.path("points").longValue() < 0)
+                return false;
+            total = Math.addExact(total, share.path("points").longValue());
+        }
+        if (declared != total) return false;
+        Map<String, JsonNode> bySub = new HashMap<>();
+        for (var target : targets) {
+            String sub = text(target, "/subOrderNo");
+            if (blank(sub)
+                    || blank(text(target, "/storeNo"))
+                    || blank(text(target, "/merchantNo"))
+                    || bySub.put(sub, target) != null) return false;
+        }
+        Set<String> shareSubs = new HashSet<>();
+        for (var share : shares) {
+            String sub = text(share, "/subOrderNo");
+            var target = bySub.get(sub);
+            if (target == null
+                    || !shareSubs.add(sub)
+                    || !Objects.equals(text(target, "/storeNo"), text(share, "/storeNo"))
+                    || !Objects.equals(text(target, "/merchantNo"), text(share, "/merchantNo")))
+                return false;
+            if (!Objects.equals(
+                    blank(storeNo) ? subOrderNo : storeNo,
+                    blank(storeNo) ? sub : text(share, "/storeNo"))) continue;
+            var child =
+                    read.position(
+                            PositionMove.Kind.REDEEM.table(), PointsKeys.position("R", type, sub));
+            if (child == null
+                    || !(child.get("original_points") instanceof Number points)
+                    || !share.path("points").isIntegralNumber()
+                    || points.longValue() != share.path("points").longValue()) return false;
+            var frozen = json.readTree((String) child.get("payload_json"));
+            if (!Objects.equals(sub, text(frozen, "/subOrderNo"))
+                    || !Objects.equals(text(share, "/storeNo"), text(frozen, "/share/storeNo"))
+                    || !Objects.equals(
+                            text(share, "/merchantNo"), text(frozen, "/share/merchantNo")))
+                return false;
+            if (!terminal(Kind.REDEEM, child) && seen.add(type + "/" + sub)) count[0]++;
+        }
+        return true;
     }
 
     private Owner owner(Kind kind, Map<String, Object> row, JsonNode b) {
