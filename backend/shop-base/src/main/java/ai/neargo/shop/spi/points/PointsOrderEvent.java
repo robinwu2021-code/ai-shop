@@ -10,6 +10,7 @@ import java.util.Objects;
  * adapter.
  */
 public record PointsOrderEvent(
+        int schemaVersion,
         String orderNo,
         String subOrderNo,
         String merchantNo,
@@ -22,6 +23,7 @@ public record PointsOrderEvent(
         SourceFactsPort.Fact fact) {
 
     public PointsOrderEvent {
+        require(schemaVersion == 1, "POINTS_ORDER_EVENT_SCHEMA_UNSUPPORTED");
         require(
                 nonblank(orderNo)
                         && nonblank(subOrderNo)
@@ -148,6 +150,31 @@ public record PointsOrderEvent(
                     nonblank(f.eventNo()) && f.confirmation() != null,
                     "POINTS_REFUND_FACT_INVALID");
         }
+    }
+
+    public PointsOrderEvent(
+            String orderNo,
+            String subOrderNo,
+            String merchantNo,
+            String storeNo,
+            String userNo,
+            String typeCode,
+            String currency,
+            long sourceVersion,
+            Instant occurredAt,
+            SourceFactsPort.Fact fact) {
+        this(
+                1,
+                orderNo,
+                subOrderNo,
+                merchantNo,
+                storeNo,
+                userNo,
+                typeCode,
+                currency,
+                sourceVersion,
+                occurredAt,
+                fact);
     }
 
     public String eventNo() {
