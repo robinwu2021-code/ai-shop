@@ -151,6 +151,22 @@ class PointsCoreAcceptanceTest {
     }
 
     @Test
+    void admitted_price_mismatch_never_creates_an_unexpected_hold() {
+        var f=fixture(100,new RedeemRate(2,1));earnAvailable(f,"PRICE_SEED",100);
+        var old=hold(f,"PRICE_ORDER",f.s1(),f.s2(),20);
+        var quoted=redeem().quote(new PointsRedeemPort.RedeemQuery(old.market(),old.userNo(),10,old.payMode(),old.clientType(),old.targets()));
+        var accepted=new PointsRedeemPort.AcceptedPrice(quoted.typeCode(),quoted.pointsUnit(),quoted.minorUnit(),quoted.points(),quoted.minor(),quoted.shares());
+        var command=new PointsRedeemPort.HoldCommand(old.orderNo(),old.market(),old.userNo(),20,old.payMode(),old.clientType(),old.targets(),accepted);
+        assertThatThrownBy(()->redeem().hold(command)).hasMessageContaining("REQUOTE_REQUIRED");
+        assertThat(read.account(f.type(),HolderType.USER,"U").points(Bucket.HELD)).isZero();
+        assertThat(read.position(PositionMove.Kind.REDEEM.table(),PointsKeys.position("H","ORDER",old.orderNo()))).isNull();
+        var matching=new PointsRedeemPort.HoldCommand(old.orderNo(),old.market(),old.userNo(),10,old.payMode(),old.clientType(),old.targets(),accepted);
+        var held=redeem().hold(matching);
+        assertThat(held.points()).isEqualTo(10);assertThat(held.minor()).isEqualTo(5);
+        assertThat(redeem().hold(matching)).isEqualTo(held);
+    }
+
+    @Test
     void verified_paid_route_replaces_only_unassigned_receipt_fields_and_keeps_original_account() {
         var f=fixture(100);earnAvailable(f,"ROUTE_SEED",100);
         var original=hold(f,"ROUTE_ORDER",f.s1(),f.s2(),20);
@@ -610,26 +626,30 @@ class PointsCoreAcceptanceTest {
     }
 
     private Fixture fixture(long u) {
+        return fixture(u,new RedeemRate(1,1));
+    }
+
+    private Fixture fixture(long u,RedeemRate rate) {
         String type = "KA" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         jdbc().update(
                         "INSERT INTO"
                             + " pts_point_type(type_code,market,active_market,currency,rate_points,rate_minor,status,deduct_ratio_bp,idle_days)"
-                            + " VALUES(?,'CN','CN','CNY',1,1,'ACTIVE',10000,30)",
-                        type);
+                            + " VALUES(?,'CN','CN','CNY',?,?,'ACTIVE',10000,30)",
+                        type,rate.pointsUnit(),rate.minorUnit());
         activeTypes.add(type);
         jdbc().update("INSERT INTO pts_fund_pool(type_code,currency) VALUES(?,'CNY')", type);
-        var proof = new EvidenceRef("CORE_INIT:" + type, "CNY", u + 200);
+        var proof = new EvidenceRef("CORE_INIT:" + type, "CNY", rate.toMinor(u) + 200);
         posting.recordEvidence(proof);
         posting.post(
                 new Voucher(
                         "CORE_INIT:" + type,
                         type,
                         "CNY",
-                        new RedeemRate(1, 1),
+                        rate,
                         List.of(
                                 move(type, HolderType.MINT, "PLATFORM", Bucket.ISSUED, -u),
                                 move(type, HolderType.ISSUE, "PLATFORM", Bucket.ISSUABLE, u)),
-                        List.of(new FundMove(FundBucket.U, u), new FundMove(FundBucket.B, 200)),
+                        List.of(new FundMove(FundBucket.U, rate.toMinor(u)), new FundMove(FundBucket.B, 200)),
                         List.of(),
                         0,
                         List.of(proof),

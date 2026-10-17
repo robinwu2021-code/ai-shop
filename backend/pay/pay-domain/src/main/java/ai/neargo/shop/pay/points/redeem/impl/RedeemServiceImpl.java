@@ -106,6 +106,8 @@ public class RedeemServiceImpl implements RedeemService {
                         ? read.activeType(c.market()).orElse(null)
                         : read.type((String) prior.get("type_code")).orElseThrow();
         if (type == null) {
+            if (c.acceptedPrice() != null)
+                throw new IllegalArgumentException("POINTS_REQUOTE_REQUIRED");
             return new HoldOutcome(
                     root, null, 0, 0, "SKIPPED", "POINTS_TYPE_NOT_ACTIVE", List.of());
         }
@@ -122,6 +124,16 @@ public class RedeemServiceImpl implements RedeemService {
         type = read.type(type.typeCode()).orElseThrow();
         Evaluation e = evaluate(q, type, true);
         RedeemQuote quote = e.quote();
+        var acceptedPrice = c.acceptedPrice();
+        if (acceptedPrice != null
+                && (!java.util.Objects.equals(acceptedPrice.typeCode(), quote.typeCode())
+                        || acceptedPrice.pointsUnit() != quote.pointsUnit()
+                        || acceptedPrice.minorUnit() != quote.minorUnit()
+                        || acceptedPrice.points() != quote.points()
+                        || acceptedPrice.minor() != quote.minor()
+                        || !acceptedPrice.shares().equals(quote.shares()))) {
+            throw new IllegalArgumentException("POINTS_REQUOTE_REQUIRED");
+        }
         HoldOutcome outcome =
                 new HoldOutcome(
                         root,
