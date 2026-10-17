@@ -11,7 +11,13 @@ import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDeb
 } from "@/lib/types";
 import type { PageQ, SettlementQ, PointsReceivableQ } from "../query";
 
+import type { OrderPointsIntegrationQ, OrderPointsIntegrationPolicy, OrderPointsIntegrationChange } from "@/lib/types";
+
 export interface FinanceApi {
+  /** 订单积分动态接线策略，门店和支付场景精确查询。 */
+  orderPointsIntegration(q: OrderPointsIntegrationQ): Promise<OrderPointsIntegrationPolicy>;
+  /** 版本化接线变更，操作人和审计时间由服务端取得。 */
+  changeOrderPointsIntegration(v: OrderPointsIntegrationChange): Promise<OrderPointsIntegrationPolicy>;
   /**
    * 积分资金总览。**只读** —— 池子的钱是靠流水推出来的，不是靠人改的。
    * 开一个「手工调整余额」的入口，等于允许在没有业务事件的情况下改账，

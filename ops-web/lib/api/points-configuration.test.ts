@@ -2,6 +2,13 @@ import { expect, it, vi } from "vitest";
 const client = vi.hoisted(() => ({ get: vi.fn().mockResolvedValue({}), post: vi.fn().mockResolvedValue({}) }));
 vi.mock("./http-client", () => ({ client }));
 import { financeHttp } from "./https/finance";
+it("sends store scoped runtime integration changes without client operator", async () => {
+  const command = { requestId: "C1", storeNo: "ST1", scene: "ONLINE" as const, mode: "DRAINING" as const, earnEnabled: false, redeemEnabled: false, expectedVersion: 0, reason: "stop admission" };
+  await financeHttp.changeOrderPointsIntegration(command);
+  expect(client.post).toHaveBeenCalledWith("/ops/points/order-integration", command);
+  await financeHttp.orderPointsIntegration({ storeNo: "ST1", scene: "ONLINE" });
+  expect(client.get).toHaveBeenCalledWith("/ops/points/order-integration", { storeNo: "ST1", scene: "ONLINE" });
+});
 it("sends audited switch commands without client actor or timestamps to the new endpoint", async () => {
   const command = { requestId: "retry-stable", typeCode: "T", scope: "STORE" as const, subjectNo: "S", enabled: false, flow: "EARN" as const, reason: "pause" };
   await financeHttp.changePointsSwitch(command);

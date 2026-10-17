@@ -9079,6 +9079,99 @@ components:
         - "deltaMinor"
         - "afterMinor"
       additionalProperties: false
+    OrderPointsIntegrationQ: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+        scene: 
+          type: "string"
+          enum: 
+            - "ONLINE"
+            - "OFFLINE"
+      required: 
+        - "storeNo"
+        - "scene"
+      additionalProperties: false
+    OrderPointsIntegrationPolicy: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+        scene: 
+          type: "string"
+          enum: 
+            - "ONLINE"
+            - "OFFLINE"
+        mode: 
+          type: "string"
+          enum: 
+            - "DETACHED"
+            - "ACTIVE"
+            - "DRAINING"
+        earnEnabled: 
+          type: "boolean"
+        redeemEnabled: 
+          type: "boolean"
+        version: 
+          type: "number"
+        actor: 
+          type: 
+            - "string"
+            - "null"
+        reason: 
+          type: 
+            - "string"
+            - "null"
+        changedAt: 
+          type: "number"
+      required: 
+        - "actor"
+        - "changedAt"
+        - "earnEnabled"
+        - "mode"
+        - "reason"
+        - "redeemEnabled"
+        - "scene"
+        - "storeNo"
+        - "version"
+      additionalProperties: false
+    OrderPointsIntegrationChange: 
+      type: "object"
+      properties: 
+        storeNo: 
+          type: "string"
+        scene: 
+          type: "string"
+          enum: 
+            - "ONLINE"
+            - "OFFLINE"
+        requestId: 
+          type: "string"
+        mode: 
+          type: "string"
+          enum: 
+            - "DETACHED"
+            - "ACTIVE"
+            - "DRAINING"
+        earnEnabled: 
+          type: "boolean"
+        redeemEnabled: 
+          type: "boolean"
+        expectedVersion: 
+          type: "number"
+        reason: 
+          type: "string"
+      required: 
+        - "earnEnabled"
+        - "expectedVersion"
+        - "mode"
+        - "reason"
+        - "redeemEnabled"
+        - "requestId"
+        - "scene"
+        - "storeNo"
+      additionalProperties: false
     PointsPositionQ: 
       type: "object"
       properties: 
@@ -15871,6 +15964,63 @@ paths:
           required: true
           schema: 
             type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/order-integration": 
+    get: 
+      operationId: "orderPointsIntegration"
+      summary: "订单积分动态接线策略，门店和支付场景精确查询"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/OrderPointsIntegrationPolicy"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post: 
+      operationId: "changeOrderPointsIntegration"
+      summary: "版本化接线变更，操作人和审计时间由服务端取得"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/OrderPointsIntegrationPolicy"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
       requestBody: 
         required: true
         content: 

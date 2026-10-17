@@ -3063,6 +3063,56 @@ _无字段_
 | `status` | `SUCCEEDED` \| `FAILED` \| `UNKNOWN` | 是 | — |
 
 
+#### GET `/ops/points/order-integration`
+
+订单积分动态接线策略，门店和支付场景精确查询
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`OrderPointsIntegrationPolicy`](#orderpointsintegrationpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `scene` | `ONLINE` \| `OFFLINE` | 是 | — |
+| `mode` | `DETACHED` \| `ACTIVE` \| `DRAINING` | 是 | — |
+| `earnEnabled` | `boolean` | 是 | — |
+| `redeemEnabled` | `boolean` | 是 | — |
+| `version` | `number` | 是 | — |
+| `actor` | `string,null` | 是 | — |
+| `reason` | `string,null` | 是 | — |
+| `changedAt` | `number` | 是 | — |
+
+
+#### POST `/ops/points/order-integration`
+
+版本化接线变更，操作人和审计时间由服务端取得
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`OrderPointsIntegrationPolicy`](#orderpointsintegrationpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `scene` | `ONLINE` \| `OFFLINE` | 是 | — |
+| `mode` | `DETACHED` \| `ACTIVE` \| `DRAINING` | 是 | — |
+| `earnEnabled` | `boolean` | 是 | — |
+| `redeemEnabled` | `boolean` | 是 | — |
+| `version` | `number` | 是 | — |
+| `actor` | `string,null` | 是 | — |
+| `reason` | `string,null` | 是 | — |
+| `changedAt` | `number` | 是 | — |
+
+
 #### GET `/ops/points/overview`
 
 积分资金总览
@@ -13246,6 +13296,20 @@ KPI 卡（金额为最小货币单位整数）。
 | `remark` | `string` | 是 | 干预原因，必填 —— 改状态这件事必须说清楚为什么 |
 | `operator` | `string` | 是 | 操作人（STAFF 账号） |
 | `at` | `string` | 是 | 操作时间 |
+
+### OrderPointsIntegrationPolicy
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `scene` | `ONLINE` \| `OFFLINE` | 是 | — |
+| `mode` | `DETACHED` \| `ACTIVE` \| `DRAINING` | 是 | — |
+| `earnEnabled` | `boolean` | 是 | — |
+| `redeemEnabled` | `boolean` | 是 | — |
+| `version` | `number` | 是 | — |
+| `actor` | `string,null` | 是 | — |
+| `reason` | `string,null` | 是 | — |
+| `changedAt` | `number` | 是 | — |
 
 ### OtpTestPhone
 

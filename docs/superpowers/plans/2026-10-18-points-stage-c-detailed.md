@@ -90,10 +90,10 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **接口：**SourcePort提供`find(String eventNo)`返回Optional<PointsOrderEvent>和`scan(String typeCode,long after,int limit)`返回既有Page。业务eventNo与Outbox投递行号分离，JSON保留原occurredAt、sourceVersion、支付/行快照。
 
-- [ ] RED：新增序列化往返相等、空/多载荷拒绝、退款准备引用不变、同号改变正文冲突契约；先运行`PointsOrderEventSerializationTest`，确认具体失败原因。
-- [ ] 实现：确定序列化版本字段schemaVersion=1，未知版本拒绝；如加字段同步C1构造器和测试，不接受静默默认丢字段。
-- [ ] GREEN：运行新类及PointsOrderEventTest，预期全部通过；记录契约版本与兼容决策。
-- [ ] 提交：`feat(points): finalize durable order source contract`。
+- [x] RED：新增序列化往返相等、空/多载荷拒绝、退款准备引用不变、同号改变正文冲突契约；先运行`PointsOrderEventSerializationTest`，确认具体失败原因。
+- [x] 实现：确定序列化版本字段schemaVersion=1，未知版本拒绝；如加字段同步C1构造器和测试，不接受静默默认丢字段。
+- [x] GREEN：运行新类及PointsOrderEventTest，预期全部通过；记录契约版本与兼容决策。
+- [x] 提交：`feat(points): finalize durable order source contract`。
 
 ## Task T02：运行时接线策略与配置权限
 
@@ -103,10 +103,10 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **数据：**ord_points_integration_policy唯一键(store_no,scene)，mode默认DETACHED、earn/redeem默认false、version；审计/命令表保存requestId和正文摘要。缺配置即DETACHED，不自动按商家配置启用。GET/POST `/ops/points/order-integration`，分别FINANCE_SETTLE_READ/EXECUTE，沿用门店数据域校验。
 
-- [ ] RED：`PointsOrderIntegrationPolicyTest`：无配置DETACHED；ST1启用不影响同主体ST2；旧版本变更拒绝；重试幂等；未知场景拒绝。权限测试追加域外读写拒绝及操作人不可伪造。
-- [ ] 实现：短源事务CAS与审计同提交；关闭新增转DRAINING，有义务时禁止直接DETACHED（查询接口在T04补齐前保持保守拒绝）。
-- [ ] GREEN：本类+受影响权限类，Native验证策略并发CAS；生成对应API/权限资料。
-- [ ] 提交：`feat(points): add store scoped runtime integration policy`。
+- [x] RED：`PointsOrderIntegrationPolicyTest`：无配置DETACHED；ST1启用不影响同主体ST2；旧版本变更拒绝；重试幂等；未知场景拒绝。权限测试追加域外读写拒绝及操作人不可伪造。
+- [x] 实现：短源事务CAS与审计同提交；关闭新增转DRAINING，有义务时禁止直接DETACHED（查询接口在T04补齐前保持保守拒绝）。
+- [x] GREEN：本类+受影响权限类，Native验证策略并发CAS；生成对应API/权限资料。
+- [x] 提交：`feat(points): add store scoped runtime integration policy`。
 
 ## Task T03：参与绑定、受理锁与原快照
 
