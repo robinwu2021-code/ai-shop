@@ -25,7 +25,10 @@ public class OrderPointsTargetFactory {
             String stockStoreNo,
             long goodsMinor) {}
 
-    public record PlacementTarget(PointsRedeemPort.Target target, PaymentSnapshot payment) {}
+    public record PlacementTarget(
+            PointsRedeemPort.Target target,
+            PaymentSnapshot payment,
+            MerchantQueryPort.PaymentRoute acceptedRoute) {}
 
     public PlacementTarget build(
             String sub,
@@ -37,9 +40,7 @@ public class OrderPointsTargetFactory {
             long freight,
             List<PricedLine> lines) {
         require(nonblank(store), "POINTS_STORE_REQUIRED");
-        require(
-                nonblank(sub) && nonblank(merchant) && nonblank(channel) && nonblank(outTradeNo),
-                "POINTS_TARGET_INVALID");
+        require(nonblank(sub) && nonblank(merchant) && nonblank(channel), "POINTS_TARGET_INVALID");
         require(lines != null && !lines.isEmpty(), "POINTS_LINE_INVALID");
         require(
                 merchant.equals(merchants.entityOfStores(List.of(store)).get(store)),
@@ -71,7 +72,7 @@ public class OrderPointsTargetFactory {
                         && store.equals(route.storeNo())
                         && channel.equals(route.channel())
                         && nonblank(route.accountVersion())
-                                && Set.of("DIRECT", "AGGREGATED").contains(route.fundsPath()),
+                        && Set.of("DIRECT", "AGGREGATED").contains(route.fundsPath()),
                 "POINTS_PAYMENT_ROUTE_INVALID");
         long net = goods - discount;
         long[] amounts =
@@ -103,7 +104,7 @@ public class OrderPointsTargetFactory {
                         null,
                         outTradeNo,
                         Math.addExact(net, freight));
-        return new PlacementTarget(target, payment);
+        return new PlacementTarget(target, payment, route);
     }
 
     private static boolean nonblank(String v) {

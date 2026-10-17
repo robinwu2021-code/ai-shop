@@ -27,6 +27,7 @@ import tools.jackson.databind.node.ObjectNode;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Payment consumes H exactly once; store ownership and settlement mode come from the acceptance
@@ -76,7 +77,8 @@ public class PointsPaidFactServiceImpl implements PointsPaidFactService {
             require(
                     original.userNo().equals(fact.userNo())
                             && original.lines().equals(fact.lines())
-                            && original.finalGoodsMinor() == fact.finalGoodsMinor(),
+                            && original.finalGoodsMinor() == fact.finalGoodsMinor()
+                            && Objects.equals(original.payment(), fact.payment()),
                     "POINTS_PAID_SNAPSHOT_CONFLICT");
             facts.record(fact, payload, "REPLAYED");
             return;
@@ -108,7 +110,7 @@ public class PointsPaidFactServiceImpl implements PointsPaidFactService {
                             snapshot.share(),
                             snapshot.target(),
                             snapshot.agreement(),
-                            snapshot.fundsContext(),
+                            paidContext(fact, snapshot),
                             true);
             List<PointsMove> moves =
                     List.of(
@@ -162,6 +164,40 @@ public class PointsPaidFactServiceImpl implements PointsPaidFactService {
                 json.writeValueAsString(state),
                 lifecycle == null ? null : number(lifecycle, "version"));
         facts.record(fact, payload, "APPLIED");
+    }
+
+    private ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext paidContext(
+            LifecycleFact fact, RedeemSnapshot snapshot) {
+        var original = snapshot.fundsContext();
+        var proof = fact.payment();
+        if (proof == null) return original;
+        require(
+                original.path().name().equals(proof.fundsPath())
+                        && original.channel().equals(proof.channel())
+                        && original.merchantNo().equals(proof.merchantNo())
+                        && original.storeNo().equals(proof.storeNo())
+                        && original.accountVersion().equals(proof.accountVersion())
+                        && Objects.equals(original.subMerchantId(), proof.subMerchantId())
+                        && proof.tradeNo() != null
+                        && !proof.tradeNo().isBlank()
+                        && proof.outTradeNo() != null
+                        && !proof.outTradeNo().isBlank()
+                        && proof.orderTotalMinor() >= 0,
+                "POINTS_PAYMENT_ROUTE_MISMATCH");
+        require(
+                snapshot.target().tradeNo() == null
+                        || Objects.equals(snapshot.target().tradeNo(), proof.tradeNo()),
+                "POINTS_PAYMENT_ROUTE_MISMATCH");
+        return new ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext(
+                original.path(),
+                original.channel(),
+                original.merchantNo(),
+                original.storeNo(),
+                original.accountVersion(),
+                original.subMerchantId(),
+                proof.tradeNo(),
+                proof.outTradeNo(),
+                proof.orderTotalMinor());
     }
 
     private void validate(LifecycleFact fact) {

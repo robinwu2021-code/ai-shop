@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.pay.points.app.PointsPaidFactService;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -146,6 +148,30 @@ class PointsCoreAcceptanceTest {
                                                 + " type_code=?",
                                         type));
         activeTypes.clear();
+    }
+
+    @Test
+    void verified_paid_route_replaces_only_unassigned_receipt_fields_and_keeps_original_account() {
+        var f=fixture(100);earnAvailable(f,"ROUTE_SEED",100);
+        var original=hold(f,"ROUTE_ORDER",f.s1(),f.s2(),20);
+        var targets=original.targets().stream().map(t->new PointsRedeemPort.Target(t.subOrderNo(),t.merchantNo(),t.storeNo(),t.goodsMinor(),t.path(),t.channel(),t.accountVersion(),t.subMerchantId(),null,t.items())).toList();
+        var command=new PointsRedeemPort.HoldCommand(original.orderNo(),original.market(),original.userNo(),original.wantPoints(),original.payMode(),original.clientType(),targets);
+        assertThat(redeem().hold(command).points()).isEqualTo(20);
+        String sub=sub(f,"S1");var raw=fact(f,sub,FactKind.PAID,1,60);
+        var wrong=new ai.neargo.shop.spi.points.PointsRefundPort.PaymentSnapshot("AGGREGATED","TEST","M:"+f.s1(),f.s1(),"CHANGED","SM:"+f.s1(),"PROVIDER_TX","ROOT_PAY_NO",80);
+        var wrongFact=new LifecycleFact(raw.eventNo(),null,raw.subOrderNo(),raw.userNo(),raw.typeCode(),raw.sourceVersion(),raw.kind(),raw.finalGoodsMinor(),raw.refundedGoodsMinor(),raw.lines(),raw.occurredAt(),wrong);
+        var paid=context.getBean(PointsPaidFactService.class);
+        assertThatThrownBy(()->paid.onPaid(ai.neargo.shop.spi.points.PointsLifecycleFacts.sign(wrongFact,json::writeValueAsString))).hasMessageContaining("PAYMENT_ROUTE");
+        assertThat(read.account(f.type(),HolderType.USER,"U").points(Bucket.HELD)).isEqualTo(20);
+        var proof=new ai.neargo.shop.spi.points.PointsRefundPort.PaymentSnapshot("AGGREGATED","TEST","M:"+f.s1(),f.s1(),"A1","SM:"+f.s1(),"PROVIDER_TX","ROOT_PAY_NO",80);
+        var verified=new LifecycleFact(raw.eventNo(),null,raw.subOrderNo(),raw.userNo(),raw.typeCode(),raw.sourceVersion(),raw.kind(),raw.finalGoodsMinor(),raw.refundedGoodsMinor(),raw.lines(),raw.occurredAt(),proof);
+        paid.onPaid(ai.neargo.shop.spi.points.PointsLifecycleFacts.sign(verified,json::writeValueAsString));
+        var row=read.position(PositionMove.Kind.REDEEM.table(),PointsKeys.position("R",f.type(),sub));
+        var frozen=json.readValue((String)row.get("payload_json"),RedeemSnapshot.class);
+        assertThat(frozen.fundsContext().tradeNo()).isEqualTo("PROVIDER_TX");
+        assertThat(frozen.fundsContext().outTradeNo()).isEqualTo("ROOT_PAY_NO");
+        assertThat(frozen.fundsContext().orderTotalMinor()).isEqualTo(80);
+        assertThat(frozen.fundsContext().accountVersion()).isEqualTo("A1");
     }
 
     @Test
