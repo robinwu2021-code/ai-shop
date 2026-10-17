@@ -129,10 +129,10 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **接口：**Coordinator通过ObjectProvider取得既有points SPI；未参与返回BYPASS，已参与缺实现返回明确待处理业务错误。Obligations按门店汇总openHolds/pendingPromises/openRefunds/openStatements/unknownFunds/pendingEvents；不足以归店的积压或未完成查询标为UNKNOWN，禁止据此完全脱离。
 
-- [ ] RED：无实现/DETACHED纯现金不调用积分；BOUND缺实现拒绝退款和释放；任何一项义务>0或UNKNOWN拒绝完全脱离；全部清偿才允许DETACHED；重新接线原绑定和幂等号保持不变。
-- [ ] 实现：ACTIVE→DRAINING立即禁止新增，DRAINING→DETACHED在策略锁下核对源义务与pay义务；新受理被禁止期间允许收尾只减少义务，遇查询失败保留DRAINING。实现从未开启时允许空义务判定，但不能据“Bean缺失”推定无义务。
-- [ ] GREEN：本类及策略/绑定小集合；不用启动真实资金任务来证明脱离。
-- [ ] 提交：`feat(points): isolate optional order integration and draining`。
+- [x] RED：无实现/DETACHED纯现金不调用积分；BOUND缺实现拒绝退款和释放；任何一项义务>0或UNKNOWN拒绝完全脱离；全部清偿才允许DETACHED；重新接线原绑定和幂等号保持不变。
+- [x] 实现：ACTIVE→DRAINING立即禁止新增，DRAINING→DETACHED在策略锁下核对源义务与pay义务；新受理被禁止期间允许收尾只减少义务，遇查询失败保留DRAINING。实现从未开启时允许空义务判定，但不能据“Bean缺失”推定无义务。
+- [x] GREEN：本类及策略/绑定小集合；不用启动真实资金任务来证明脱离。
+- [x] 提交：`feat(points): isolate optional order integration and draining`。
 
 ## Task T05：门店、订单行与支付路由映射
 

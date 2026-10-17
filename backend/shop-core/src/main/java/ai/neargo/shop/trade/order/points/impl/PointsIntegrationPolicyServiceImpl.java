@@ -52,7 +52,8 @@ public class PointsIntegrationPolicyServiceImpl implements PointsIntegrationPoli
                 "POINTS_INTEGRATION_FLAGS_INVALID");
         return DataScopeContext.executeWithoutScope(
                 () -> {
-                    mapper.initializePolicy(c.storeNo(), c.scene());
+                    mapper.initializePolicy(c.storeNo(), PayModes.ONLINE);
+                    mapper.initializePolicy(c.storeNo(), PayModes.OFFLINE);
                     var row = mapper.lockPolicy(c.storeNo(), c.scene());
                     String body = json.writeValueAsString(new Intent(c, actor));
                     var prior = mapper.command(c.requestId());

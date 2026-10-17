@@ -33,7 +33,8 @@ public class OrderPointsBindingServiceImpl implements OrderPointsBindingService 
         validate(c);
         return DataScopeContext.executeWithoutScope(
                 () -> {
-                    mapper.initializePolicy(c.storeNo(), c.scene());
+                    mapper.initializePolicy(c.storeNo(), PayModes.ONLINE);
+                    mapper.initializePolicy(c.storeNo(), PayModes.OFFLINE);
                     var head = mapper.lockPolicy(c.storeNo(), c.scene());
                     var prior = mapper.existingBinding(c.requestId(), c.subOrderNo());
                     if (!prior.isEmpty()) {

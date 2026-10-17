@@ -7,6 +7,12 @@ import java.util.Map;
 /** All rows belong to the source transaction manager, never payTxManager. */
 @Mapper
 public interface OrderPointsBindingMapper {
+    @Select("SELECT COUNT(*) FROM ord_points_integration_policy WHERE store_no=#{store} AND mode='ACTIVE'")
+    long activePolicies(String store);
+    @Select("SELECT COUNT(*) FROM ord_points_binding WHERE store_no=#{store}")
+    long bindingCount(String store);
+    @Select("SELECT payload_json FROM ord_points_binding WHERE request_id=#{request}")
+    String bindingByRequest(String request);
     @Select("SELECT * FROM ord_points_binding WHERE sub_order_no=#{sub}")
     Map<String, Object> binding(String sub);
 

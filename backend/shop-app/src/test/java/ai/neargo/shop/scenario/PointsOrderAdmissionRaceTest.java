@@ -21,6 +21,24 @@ import javax.sql.DataSource;
 
 @SpringJUnitConfig(PointsOrderBindingTest.Config.class)
 class PointsOrderAdmissionRaceTest {
+    @Test void different_scenes_share_the_store_admission_fence() throws Exception {
+        var fixture=new PointsOrderBindingTest(); fixture.policies=policies; fixture.bindings=bindings;
+        String store=fixture.activate();
+        policies.change(new IntegrationPolicyChange("OFF:"+store,store,"OFFLINE",Mode.ACTIVE,true,true,-1,"QA"),"OPS");
+        var base=fixture.admission(store,"S:"+store);
+        var admission=new OrderPointsBindingService.Admission(base.requestId(),base.orderNo(),base.subOrderNo(),base.userNo(),base.merchantNo(),base.storeNo(),base.typeCode(),base.currency(),"OFFLINE",0,true,true,base.snapshot());
+        var pool=Executors.newSingleThreadExecutor();
+        var pending=new java.util.concurrent.atomic.AtomicReference<Future<OrderPointsBindingService.Binding>>();
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                mapper.lockPolicy(store,"ONLINE");
+                pending.set(pool.submit(() -> bindings.admit(admission)));
+                assertThatThrownBy(() -> pending.get().get(300,TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+                policies.change(new IntegrationPolicyChange("DRAIN:"+store,store,"ONLINE",Mode.DRAINING,false,false,0,"QA"),"OPS");
+            });
+            assertThat(pending.get().get(10,TimeUnit.SECONDS).admission().scene()).isEqualTo("OFFLINE");
+        } finally { pool.shutdownNow(); }
+    }
     @Autowired OrderPointsBindingService bindings;
     @Autowired PointsIntegrationPolicyService policies;
     @Autowired OrderPointsBindingMapper mapper;
