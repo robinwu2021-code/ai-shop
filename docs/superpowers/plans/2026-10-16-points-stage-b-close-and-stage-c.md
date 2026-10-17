@@ -59,6 +59,10 @@ Review 问题处理结果（均已关闭）：
 
 ### C1 订单积分事件契约
 
+状态：2026-10-18 契约定义与单元验收已完成。新增 `spi.points.PointsOrderEvent`，包装一个既有源事实并绑定订单/门店/商家/用户/币种/版本/时间；未接入真实生产者。详情见 `docs/technical/design/积分订单事件契约.md`。
+
+验证：`PointsOrderEventTest` 9/0，命令耗时3.949秒，无慢用例；日志 `backend/target/test-timings/20261017T225013Z-c5f0df89`。仅运行 shop-base 定向测试，无 Spring/数据库或全仓测试。
+
 目的：定义订单、支付、退款与积分之间唯一、可重放的事件边界。
 
 - 定义订单支付成功、取消、部分退款、全额退款、售后完成和异常关闭事件。
@@ -68,6 +72,8 @@ Review 问题处理结果（均已关闭）：
 - 先完成契约测试，再实现生产者和消费者。
 
 ### C2 订单与门店拆单映射
+
+状态：待开发。现有 OrderServiceImpl 已能从拆单组取得 storeNo，但调用的旧 `spi.settle.PointsPort.Target` 仅传 merchantNo/payableMinor/subOrderNo，门店维度在交接处丢失。下一步应从已验证拆单组构建新 `PointsRedeemPort.Target`，保留订单行、门店与可信原支付路由；不能通过主体默认门店补齐。
 
 目的：保证积分账务以门店为基本维度，并与订单拆单结果一致。
 
