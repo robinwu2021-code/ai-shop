@@ -1029,7 +1029,7 @@ export interface PointsFreeze { requestId: string; typeCode: string; userNo: str
 export interface PointsVoucherView { id: number; voucherNo: string; bizRef: string; currency: string; ratePoints: number; rateMinor: number }
 export interface PointsCursorPage<T> { rows: T[]; next: number; hasMore: boolean }
 export interface PointsEntryView { id: number; entryNo: string; voucherNo: string; holderType: PointsHolder; holderNo: string; bucket: PointsBucket; deltaPoints: number; afterPoints: number }
-export interface PointsFlowView { id: number; flowNo: string; voucherNo: string; bucket: "U" | "C" | "D" | "B"; deltaMinor: number; afterMinor: number }
+export interface PointsFlowView { id: number; flowNo: string; voucherNo: string; bucket: "U" | "C" | "D" | "B" | "RESERVED_B" | "LOCKED_U" | "LOCKED_B"; deltaMinor: number; afterMinor: number }
 export interface PointsPositionQ { typeCode: string; kind: PointsPositionKind; reference: string }
 export interface PointsPositionView extends PointsPositionQ { state: string; originalPoints: number; processedPoints: number; version: number }
 export interface PointsStatsQ { typeCode: string; day: string; scope?: "TOTAL" | "STORE" | "USER"; subjectNo?: string }

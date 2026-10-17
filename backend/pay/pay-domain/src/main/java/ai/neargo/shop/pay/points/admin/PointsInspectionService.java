@@ -3,7 +3,6 @@ package ai.neargo.shop.pay.points.admin;
 import ai.neargo.shop.pay.points.admin.PointsOperatorJournal.OperatorResult;
 import ai.neargo.shop.pay.points.model.AccountSnapshot;
 import ai.neargo.shop.pay.points.model.Bucket;
-import ai.neargo.shop.pay.points.model.FundBucket;
 import ai.neargo.shop.pay.points.model.HolderType;
 import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.query.PointsStatsService.Snapshot;
@@ -90,7 +89,7 @@ public interface PointsInspectionService {
             long id,
             String flowNo,
             String voucherNo,
-            FundBucket bucket,
+            String bucket,
             long deltaMinor,
             long afterMinor) {}
 

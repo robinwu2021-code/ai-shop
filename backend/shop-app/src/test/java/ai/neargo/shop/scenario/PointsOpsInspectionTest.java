@@ -142,6 +142,13 @@ class PointsOpsInspectionTest {
     }
 
     @Test
+    void flows_preserve_reserved_and_locked_bucket_names() {
+        assertThat(PointsInspectionServiceImpl.flowBucket("RESERVED_B")).isEqualTo("RESERVED_B");
+        assertThat(PointsInspectionServiceImpl.flowBucket("LOCKED_U")).isEqualTo("LOCKED_U");
+        assertThat(PointsInspectionServiceImpl.flowBucket("LOCKED_B")).isEqualTo("LOCKED_B");
+    }
+
+    @Test
     void queries_do_not_rebuild_statistics_or_reconciliation_and_refreshes_are_explicit() {
         String type = fundedType();
         clock.now = System.currentTimeMillis();

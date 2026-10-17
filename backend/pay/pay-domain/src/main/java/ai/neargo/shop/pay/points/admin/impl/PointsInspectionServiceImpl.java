@@ -5,7 +5,6 @@ import ai.neargo.shop.pay.points.admin.PointsOperatorJournal;
 import ai.neargo.shop.pay.points.admin.PointsOperatorJournal.OperatorResult;
 import ai.neargo.shop.pay.points.lifecycle.PointsAccountControlService;
 import ai.neargo.shop.pay.points.model.Bucket;
-import ai.neargo.shop.pay.points.model.FundBucket;
 import ai.neargo.shop.pay.points.model.HolderType;
 import ai.neargo.shop.pay.points.model.PointsKeys;
 import ai.neargo.shop.pay.points.model.PositionMove;
@@ -31,6 +30,9 @@ import java.util.Map;
 
 @Service
 public class PointsInspectionServiceImpl implements PointsInspectionService {
+    public static String flowBucket(String value) {
+        return value;
+    }
     private final PointsReadStore read;
     private final PointsOperationsStore store;
     private final PointsOperatorJournal journal;
@@ -154,7 +156,7 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
                                                 num(r, "id"),
                                                 text(r, "flow_no"),
                                                 text(r, "voucher_no"),
-                                                FundBucket.valueOf(text(r, "bucket")),
+                                                flowBucket(text(r, "bucket")),
                                                 num(r, "delta_minor"),
                                                 num(r, "after_minor")))
                         .toList();
