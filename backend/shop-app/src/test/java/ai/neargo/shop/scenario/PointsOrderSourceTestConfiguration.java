@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import javax.sql.DataSource;
 
-@Configuration(proxyBeanMethods = false)
+@org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
 @EnableTransactionManagement
 @MapperScan(
         basePackageClasses = OrderPointsBindingMapper.class,

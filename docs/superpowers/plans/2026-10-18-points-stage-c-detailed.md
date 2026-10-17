@@ -168,10 +168,10 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **数据：**ord_points_source_fact保存eventNo唯一、typeCode、sourceSequence、schemaVersion、正文/摘要和归属，唯一(typeCode,sourceSequence)；ord_points_source_counter按type串行分配序号。写业务事实、计数器更新、不可变正文与sys_outbox同源事务；系统Outbox随机投递行号不充当业务幂等键。
 
-- [ ] RED：订单事务回滚无日志/Outbox；相同事件正文重复返回原行，冲突拒绝；消费者成功但ACK丢失不重复记账；暂停消费者后补扫恢复；低序号事务阻塞、高序号不得越过形成永久空洞。
-- [ ] 实现：在事实追加短事务锁type计数器，分配序号并持锁至提交；回滚计数器一起回滚。draft的sequence固定0，append分配后持久化最终正文；幂等比较使用归一化sequence=0的摘要，重放返回原最终正文，不因传输序号变化误报冲突。相同事务有多事件按确定顺序追加；不扫描主表重建历史正文。scan只读已提交序列，limit1–200；adapter投递前校验冻结信封，再把原事实交给现有SourceFactsPort/PointsFactPort。
-- [ ] GREEN：`PointsOrderSourceOutboxTest`、Native `PointsOrderSourceScanConcurrencyTest`；检查所有Mapper确实参与源transactionManager。测计数器锁等待，记录每类型串行写的吞吐代价；超出实测需要时再设计分片水位，不能默默改为MAX(id)。
-- [ ] 提交：`feat(points): persist reliable ordered source facts for replay`。
+- [x] RED：订单事务回滚无日志/Outbox；相同事件正文重复返回原行，冲突拒绝；消费者成功但ACK丢失不重复记账；暂停消费者后补扫恢复；低序号事务阻塞、高序号不得越过形成永久空洞。
+- [x] 实现：在事实追加短事务锁type计数器，分配序号并持锁至提交；回滚计数器一起回滚。draft的sequence固定0，append分配后持久化最终正文；幂等比较使用归一化sequence=0的摘要，重放返回原最终正文，不因传输序号变化误报冲突。相同事务有多事件按确定顺序追加；不扫描主表重建历史正文。scan只读已提交序列，limit1–200；adapter投递前校验冻结信封，再把原事实交给现有SourceFactsPort/PointsFactPort。
+- [x] GREEN：`PointsOrderSourceOutboxTest`、Native `PointsOrderSourceScanConcurrencyTest`；检查所有Mapper确实参与源transactionManager。测计数器锁等待，记录每类型串行写的吞吐代价；超出实测需要时再设计分片水位，不能默默改为MAX(id)。
+- [x] 提交：`feat(points): persist reliable ordered source facts for replay`。
 
 ## Task T08：可信支付确认、返分及终局接线
 

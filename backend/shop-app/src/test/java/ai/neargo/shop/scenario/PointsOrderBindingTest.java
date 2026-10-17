@@ -166,7 +166,7 @@ class PointsOrderBindingTest {
                 .hasMessageContaining("HOLD");
     }
 
-    @org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
+    @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
     @Import({
         PointsOrderSourceTestConfiguration.class,
         ai.neargo.shop.trade.order.points.impl.OrderPointsBindingServiceImpl.class

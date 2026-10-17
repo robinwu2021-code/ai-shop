@@ -12,6 +12,11 @@ import org.junit.jupiter.api.Test;
 import java.util.*;
 
 class PointsOrderTargetMappingTest {
+    @Test void aggregated_route_is_a_valid_native_funds_path() {
+        route("ST1");
+        when(merchants.paymentRouteOf("M","ST1","TEST")).thenReturn(Optional.of(new PaymentRoute("M","ST1","PM","TEST","SM","V1","AGGREGATED")));
+        assertThat(factory.build("S","M","ST1","TEST","O",0,0,List.of(new PricedLine("I","M","ST1","ST1",100))).target().path()).isEqualTo("AGGREGATED");
+    }
     MerchantQueryPort merchants = mock(MerchantQueryPort.class);
     OrderPointsTargetFactory factory = new OrderPointsTargetFactory(merchants);
 

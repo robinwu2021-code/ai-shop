@@ -52,7 +52,7 @@ class PointsOrderDetachmentWiringTest {
         assertThat(policies.change(detach, "OPS").mode()).isEqualTo(Mode.DETACHED);
     }
 
-    @Configuration(proxyBeanMethods = false)
+    @org.springframework.boot.test.context.TestConfiguration(proxyBeanMethods = false)
     @Import({PointsOrderBindingTest.Config.class, OrderPointsCoordinatorImpl.class})
     static class Config {
         @Bean

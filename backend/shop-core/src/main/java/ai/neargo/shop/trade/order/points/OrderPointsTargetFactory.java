@@ -71,7 +71,7 @@ public class OrderPointsTargetFactory {
                         && store.equals(route.storeNo())
                         && channel.equals(route.channel())
                         && nonblank(route.accountVersion())
-                        && Set.of("DIRECT", "COLLECTED").contains(route.fundsPath()),
+                                && Set.of("DIRECT", "AGGREGATED").contains(route.fundsPath()),
                 "POINTS_PAYMENT_ROUTE_INVALID");
         long net = goods - discount;
         long[] amounts =
