@@ -116,10 +116,10 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **数据：**ord_points_binding唯一(sub_order_no)及唯一requestId；保存modeVersion、user/store/merchant/type/currency、参与项目EARN/REDEEM、原报价、规则/协议/路由正文摘要、holdNo、version和阶段。纯现金非参与订单不建绑定。PENDING为已受理但外部结果尚未确认，不能作为“没用积分”。
 
-- [ ] RED：同请求重放原绑定；同号改金额拒绝；同主体跨店拒绝；开关关闭前已受理继续、关闭后新增拒绝；旧快照不随规则变更。Native双连接验证受理/关闭竞争。
-- [ ] 实现：源短事务锁策略行，校验expectedVersion和门店，再持久化PENDING；释放策略锁后才访问pay。关闭同锁校验，避免报价查一次开关后无条件hold。
-- [ ] GREEN：两类定向测试；原子性失败不留下半个绑定；不跨源/pay事务持锁。
-- [ ] 提交：`feat(points): persist versioned order participation bindings`。
+- [x] RED：同请求重放原绑定；同号改金额拒绝；同主体跨店拒绝；开关关闭前已受理继续、关闭后新增拒绝；旧快照不随规则变更。Native双连接验证受理/关闭竞争。
+- [x] 实现：源短事务锁策略行，校验expectedVersion和门店，再持久化PENDING；释放策略锁后才访问pay。关闭同锁校验，避免报价查一次开关后无条件hold。
+- [x] GREEN：两类定向测试；原子性失败不留下半个绑定；不跨源/pay事务持锁。
+- [x] 提交：`feat(points): persist versioned order participation bindings`。
 
 ## Task T04：可选实现、统一门面和完全脱离门禁
 
