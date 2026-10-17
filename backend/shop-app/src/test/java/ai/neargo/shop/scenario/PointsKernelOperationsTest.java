@@ -53,6 +53,20 @@ import javax.sql.DataSource;
             "spring.datasource.driver-class-name=${points.jdbc.driver:org.h2.Driver}"
         })
 class PointsKernelOperationsTest {
+    @org.junit.jupiter.api.BeforeEach
+    void authenticate() {
+        var user = ai.neargo.shop.auth.LoginUser.operator("OPS_QA", "QA", List.of(), List.of());
+        org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .setAuthentication(
+                        new org.springframework.security.authentication
+                                .UsernamePasswordAuthenticationToken(user, null, List.of()));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void clear() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
+
     @Autowired ApplicationContext context;
     @Autowired PointsPostingService posting;
 

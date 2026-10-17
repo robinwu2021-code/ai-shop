@@ -55,7 +55,14 @@ public class OpsPointsWorkbenchController {
     }
 
     @PostMapping("/ops/points/statement-change")
-    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
+    @PreAuthorize(
+            "#request != null && #request.action() =="
+                + " T(ai.neargo.shop.pay.points.admin.PointsWorkbenchService.StatementAction).PREPARE_PAYOUT"
+                + " ? @perm.can('"
+                    + Perms.FINANCE_PAYOUT_EXECUTE
+                    + "') : @perm.can('"
+                    + Perms.FINANCE_SETTLE_EXECUTE
+                    + "')")
     public OperatorResult changeStatement(@Valid @RequestBody StatementChange request) {
         return service.changeStatement(request, SecurityUtils.currentUserNo());
     }

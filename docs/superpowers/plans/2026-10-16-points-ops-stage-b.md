@@ -1,6 +1,6 @@
 # 积分第二阶段运营接入实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 依据：docs/technical/TDD-积分域重整.md 的 B1–B5、docs/requirements/PRD-积分模块.md、第一阶段验收记录。用户已授权启动第二阶段；第一阶段基线 5d1e24be9。继续使用 codex/points-v3 隔离工作树。积分保持 pay 内业务模块、门店维度；订单 C 最后。
 
@@ -49,13 +49,13 @@
 
 ## Task B2–B5 页面与运营验收
 
-- [ ] B2 类型/规则/协议/资金池/开关基础页，门店筛选、三语及导航。
-- [ ] B3 备款/复核/计划/执行工作台，未决状态和原号回查。
-- [ ] B4 账单组、R、退款与异常工作台，界面操作符合可执行状态。
-- [ ] B5 账户分格、凭证、统计、对账及重试查询，清除被替换的旧运营入口。
-- [ ] 修改 ops-web 前读取其 AGENTS.md；按页面工作同步 UI 清单、权限和 OpenAPI，不登记尚未实现页面。
-- [ ] 每任务做局部验收，阶段末一次受影响运营/积分集合及独立 review；订单生产者仍不接入。
+- [x] B2 类型/规则/协议/资金池/开关基础页，门店筛选、三语及导航。
+- [x] B3 备款/复核/计划/执行工作台，未决状态和原号回查。
+- [x] B4 账单组、R、退款与异常工作台，界面操作符合可执行状态。
+- [x] B5 账户分格、凭证、统计、对账及重试查询，清除被替换的旧运营入口。
+- [x] 修改 ops-web 前读取其 AGENTS.md；按页面工作同步 UI 清单、权限和 OpenAPI，不登记尚未实现页面。
+- [x] 每任务做局部验收，阶段末一次受影响运营/积分集合及独立 review；订单生产者仍不接入。
 
 Review Focus：运营权限不能仅靠前端；登录操作人不可伪造；付款证据与任意持久化正文不能泄露；同店多个原路由账单不可丢组；R 不能算现金；审批自批及 UNKNOWN 换号重付必须拒绝。
 
-状态：第二阶段已启动，入口盘点及实施拆分完成；B1.1 已完成看板替换、门店应收查询和前后端契约；B1.2 已完成配置、开关及门店协议 API 和旧端策略页替换；B1.3 已完成资金申请/复核/驳回/周期 API；B1.4 已完成账单/应收/退款/异常 API；B2–B5 页面及查询继续。
+状态：第二阶段开发及最终 Review 修复已完成。2026-10-18 定向验证：H2 67/0、隔离 MySQL 19/0、前端 85/0，TypeScript 通过；契约生成后另外 10 项前端契约测试通过。完整处理结果见 docs/technical/积分第二阶段验收记录.md，运营流转与类图见 docs/technical/design/积分运营端-流转与类图.md。生产通道与任务保持关闭；第三阶段按独立清单继续。

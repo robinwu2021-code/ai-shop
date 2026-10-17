@@ -93,7 +93,7 @@ public class TopupPlanServiceImpl implements TopupPlanService {
                 plan.planNo(),
                 "CONFIG",
                 plan.enabled() ? "ACTIVE" : "PAUSED",
-                json.writeValueAsString(new Schedule(plan, next)),
+                json.writeValueAsString(new Schedule(plan, next, actor)),
                 row == null ? -1 : num(row, "version"));
         facts.recordEvent(plan.typeCode(), event, PointsDigests.sha256(body), body, "PLAN_CHANGED");
     }
@@ -127,7 +127,10 @@ public class TopupPlanServiceImpl implements TopupPlanService {
                     if (store.lockPlan(schedule.plan().planNo(), key) == null) {
                         PoolRequest request = null;
                         if (schedule.plan().action() == Action.TRANSFER_U_TO_B) {
-                            request = request(schedule.plan(), next, null, "SYSTEM:POINTS_PLAN");
+                            require(
+                                    schedule.maker() != null && !schedule.maker().isBlank(),
+                                    "POINTS_PLAN_MAKER_REQUIRED");
+                            request = request(schedule.plan(), next, null, schedule.maker());
                             config.submit(
                                     request, json.writeValueAsString(new Envelope(request, null)));
                         }
@@ -148,7 +151,8 @@ public class TopupPlanServiceImpl implements TopupPlanService {
                         schedule.plan().planNo(),
                         "CONFIG",
                         "ACTIVE",
-                        json.writeValueAsString(new Schedule(schedule.plan(), next)),
+                        json.writeValueAsString(
+                                new Schedule(schedule.plan(), next, schedule.maker())),
                         num(row, "version"));
                 if (created == limit) {
                     break;

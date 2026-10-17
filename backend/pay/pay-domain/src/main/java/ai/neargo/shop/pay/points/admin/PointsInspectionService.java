@@ -85,11 +85,21 @@ public interface PointsInspectionService {
         }
     }
 
+    enum FlowBucket {
+        U,
+        C,
+        D,
+        B,
+        RESERVED_B,
+        LOCKED_U,
+        LOCKED_B
+    }
+
     record FlowView(
             long id,
             String flowNo,
             String voucherNo,
-            String bucket,
+            FlowBucket bucket,
             long deltaMinor,
             long afterMinor) {}
 

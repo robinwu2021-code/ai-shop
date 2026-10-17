@@ -143,10 +143,63 @@ class PointsOpsInspectionTest {
 
     @Test
     void flows_preserve_reserved_and_locked_bucket_names() {
-        assertThat(PointsInspectionServiceImpl.flowBucket("RESERVED_B")).isEqualTo("RESERVED_B");
-        assertThat(PointsInspectionServiceImpl.flowBucket("LOCKED_U")).isEqualTo("LOCKED_U");
-        assertThat(PointsInspectionServiceImpl.flowBucket("LOCKED_B")).isEqualTo("LOCKED_B");
+        String type = fundedType();
+        var evidence = new EvidenceRef("BUFFER:" + type, "CNY", 100);
+        posting.recordEvidence(evidence);
+        posting.post(
+                new Voucher(
+                        "BUFFER:" + type,
+                        type,
+                        "CNY",
+                        new RedeemRate(2, 1),
+                        List.of(),
+                        List.of(new FundMove(FundBucket.B, 100)),
+                        List.of(),
+                        0,
+                        List.of(evidence),
+                        "{}"));
+        var target =
+                new ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsContext(
+                        ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsPath.DIRECT,
+                        "TEST",
+                        "PLATFORM",
+                        "PLATFORM",
+                        "V1",
+                        "SM",
+                        null,
+                        null,
+                        0);
+        var requests =
+                new ai.neargo.shop.pay.points.model.PoolRequest.Action[] {
+                    ai.neargo.shop.pay.points.model.PoolRequest.Action.WITHDRAW_U,
+                    ai.neargo.shop.pay.points.model.PoolRequest.Action.WITHDRAW_B
+                };
+        for (var action : requests) {
+            String no = action.name() + ":" + type;
+            treasury.submit(
+                    new ai.neargo.shop.pay.points.admin.PointsTreasuryService.Submission(
+                            "SUB:" + no, no, type, action, 20, null, target, "QA"),
+                    "MAKER");
+            treasury.review(
+                    new ai.neargo.shop.pay.points.admin.PointsTreasuryService.Review(
+                            "REVIEW:" + no, type, no, 0, true, "QA"),
+                    "CHECKER");
+        }
+        var buckets = new java.util.ArrayList<PointsInspectionService.FlowBucket>();
+        long after = 0;
+        PointsInspectionService.FlowPage page;
+        do {
+            page = inspection.flows(type, after, 1);
+            page.rows().forEach(r -> buckets.add(r.bucket()));
+            after = page.next();
+        } while (page.hasMore());
+        assertThat(buckets)
+                .contains(
+                        PointsInspectionService.FlowBucket.LOCKED_U,
+                        PointsInspectionService.FlowBucket.LOCKED_B);
     }
+
+    @Autowired ai.neargo.shop.pay.points.admin.PointsTreasuryService treasury;
 
     @Test
     void queries_do_not_rebuild_statistics_or_reconciliation_and_refreshes_are_explicit() {

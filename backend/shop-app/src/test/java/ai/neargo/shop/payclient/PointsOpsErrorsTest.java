@@ -12,6 +12,23 @@ import ai.neargo.shop.payclient.impl.PointsTreasuryAppServiceImpl;
 import org.junit.jupiter.api.Test;
 
 class PointsOpsErrorsTest {
+    @org.junit.jupiter.api.BeforeEach
+    void authenticate() {
+        var user =
+                ai.neargo.shop.auth.LoginUser.operator(
+                        "OPS_QA", "QA", java.util.List.of(), java.util.List.of());
+        org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .setAuthentication(
+                        new org.springframework.security.authentication
+                                .UsernamePasswordAuthenticationToken(
+                                user, null, java.util.List.of()));
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void clear() {
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
+
     @Test
     void expected_points_rejections_are_business_errors_and_internal_failures_stay_internal() {
         var domain = mock(PointsTreasuryService.class);

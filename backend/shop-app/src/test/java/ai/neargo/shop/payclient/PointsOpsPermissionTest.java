@@ -28,6 +28,32 @@ import java.util.List;
 
 class PointsOpsPermissionTest {
     @Test
+    void preparing_auto_executable_payout_requires_payout_permission() {
+        try (var context = new AnnotationConfigApplicationContext(Config.class)) {
+            var controller =
+                    context.getBean(
+                            ai.neargo.shop.portal.ops.pay.OpsPointsWorkbenchController.class);
+            var request =
+                    new ai.neargo.shop.pay.points.admin.PointsWorkbenchService.StatementChange(
+                            "QA",
+                            "T",
+                            "STORE",
+                            "S",
+                            1,
+                            ai.neargo.shop.pay.points.admin.PointsWorkbenchService.StatementAction
+                                    .PREPARE_PAYOUT,
+                            "QA");
+            authenticate(Perms.FINANCE_SETTLE_EXECUTE);
+            assertThatThrownBy(() -> controller.changeStatement(request))
+                    .isInstanceOf(AccessDeniedException.class);
+            authenticate(Perms.FINANCE_PAYOUT_EXECUTE);
+            controller.changeStatement(request);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
     void both_queries_require_finance_read_permission_at_the_server() {
         try (var context = new AnnotationConfigApplicationContext(Config.class)) {
             var controller = context.getBean(OpsPointsController.class);

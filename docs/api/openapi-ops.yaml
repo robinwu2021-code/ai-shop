@@ -9064,6 +9064,9 @@ components:
             - "C"
             - "D"
             - "B"
+            - "RESERVED_B"
+            - "LOCKED_U"
+            - "LOCKED_B"
         deltaMinor: 
           type: "number"
         afterMinor: 

@@ -565,6 +565,58 @@ class PointsOpsConfigurationTest {
         return new JdbcTemplate(data);
     }
 
+    @Test
+    void scheduled_transfer_preserves_business_maker_and_rejects_self_review() {
+        String type = type();
+        fund(type);
+        var day = java.time.LocalDate.of(2026, 10, 16);
+        clock.now =
+                day.atStartOfDay(java.time.ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli();
+        var plan =
+                new ai.neargo.shop.pay.points.pool.TopupPlanService.Plan(
+                        "PLAN:" + type,
+                        type,
+                        ai.neargo.shop.pay.points.model.PoolRequest.Action.TRANSFER_U_TO_B,
+                        20,
+                        day,
+                        1,
+                        true);
+        treasury.savePlan(
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.PlanChange(
+                        "SAVE:" + type, plan, -1, "QA"),
+                "MAKER");
+        treasury.generatePeriods(
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.GeneratePeriods(
+                        "GEN:" + type, type, 1, "QA"),
+                "MAKER");
+        var request = treasury.requests(type, 0, 10).rows().getFirst();
+        assertThatThrownBy(
+                        () ->
+                                treasury.review(
+                                        new ai.neargo.shop.pay.points.admin.PointsTreasuryService
+                                                .Review(
+                                                "REVIEW:" + type,
+                                                type,
+                                                request.requestNo(),
+                                                request.version(),
+                                                true,
+                                                "QA"),
+                                        "MAKER"))
+                .hasMessageContaining("SELF_APPROVE");
+        assertThat(request.submittedBy()).isEqualTo("MAKER");
+        treasury.review(
+                new ai.neargo.shop.pay.points.admin.PointsTreasuryService.Review(
+                        "OTHER_REVIEW:" + type,
+                        type,
+                        request.requestNo(),
+                        request.version(),
+                        true,
+                        "QA"),
+                "CHECKER");
+        assertThat(read.pool(type).u()).isEqualTo(80);
+        assertThat(read.pool(type).b()).isEqualTo(120);
+    }
+
     @TestConfiguration(proxyBeanMethods = false)
     @Import({
         PointsPayoutPreparationTest.Config.class,

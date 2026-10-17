@@ -25,7 +25,7 @@ public interface TopupPlanService {
             int everyDays,
             boolean enabled) {}
 
-    record Schedule(Plan plan, LocalDate nextPeriod) {}
+    record Schedule(Plan plan, LocalDate nextPeriod, String maker) {}
 
     record Period(Plan plan, LocalDate day, PoolRequest request, Decision decision) {}
 

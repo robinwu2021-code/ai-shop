@@ -642,6 +642,27 @@ class PointsPayoutPreparationTest {
                                 new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.FIXED, 20))));
     }
 
+    @Test
+    void inspection_reads_reserve_flow_created_by_redemption_hold() {
+        var c = fixture(false, false, false);
+        var inspection =
+                new ai.neargo.shop.pay.points.admin.impl.PointsInspectionServiceImpl(
+                        context.getBean(PointsReadStore.class),
+                        context.getBean(
+                                ai.neargo.shop.pay.points.store.PointsOperationsStore.class),
+                        null,
+                        null,
+                        null,
+                        null,
+                        context.getBeanProvider(Clock.class));
+        assertThat(inspection.flows(c.typeCode(), 0, 50).rows())
+                .extracting(
+                        ai.neargo.shop.pay.points.admin.PointsInspectionService.FlowView::bucket)
+                .contains(
+                        ai.neargo.shop.pay.points.admin.PointsInspectionService.FlowBucket
+                                .RESERVED_B);
+    }
+
     private void addEarnBudget(PayoutCommand c) {
         String evidence = "EXTRA:" + c.typeCode();
         posting.recordEvidence(new EvidenceRef(evidence, "CNY", 20));
