@@ -3,7 +3,6 @@ package ai.neargo.shop.pay.points.port;
 import ai.neargo.shop.pay.points.event.PointsEventQueue;
 import ai.neargo.shop.pay.points.event.PointsEventQueue.Kind;
 import ai.neargo.shop.pay.points.event.PointsEventQueue.Message;
-import ai.neargo.shop.pay.points.policy.PointsDigests;
 import ai.neargo.shop.spi.points.PointsEarnPort.GrantCommand;
 import ai.neargo.shop.spi.points.PointsFactPort;
 import ai.neargo.shop.spi.points.PointsRefundPort.ZeroCashCompletionFact;
@@ -52,20 +51,8 @@ public class PointsFactPortImpl implements PointsFactPort {
      * contract.
      */
     public static String digest(LifecycleFact fact) {
-        var unsigned =
-                new LifecycleFact(
-                        fact.eventNo(),
-                        null,
-                        fact.subOrderNo(),
-                        fact.userNo(),
-                        fact.typeCode(),
-                        fact.sourceVersion(),
-                        fact.kind(),
-                        fact.finalGoodsMinor(),
-                        fact.refundedGoodsMinor(),
-                        fact.lines(),
-                        fact.occurredAt());
-        return PointsDigests.sha256(new ObjectMapper().writeValueAsString(unsigned));
+        return ai.neargo.shop.spi.points.PointsLifecycleFacts.digest(
+                fact, new ObjectMapper()::writeValueAsString);
     }
 
     @Override

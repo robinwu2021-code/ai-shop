@@ -48,9 +48,37 @@ public interface PointsFactPort {
             long finalGoodsMinor,
             long refundedGoodsMinor,
             List<LineSnapshot> lines,
-            Instant occurredAt) {
+            Instant occurredAt,
+            PointsRefundPort.PaymentSnapshot payment) {
         public LifecycleFact {
             lines = List.copyOf(lines);
+        }
+
+        public LifecycleFact(
+                String eventNo,
+                String payloadHash,
+                String subOrderNo,
+                String userNo,
+                String typeCode,
+                long sourceVersion,
+                FactKind kind,
+                long finalGoodsMinor,
+                long refundedGoodsMinor,
+                List<LineSnapshot> lines,
+                Instant occurredAt) {
+            this(
+                    eventNo,
+                    payloadHash,
+                    subOrderNo,
+                    userNo,
+                    typeCode,
+                    sourceVersion,
+                    kind,
+                    finalGoodsMinor,
+                    refundedGoodsMinor,
+                    lines,
+                    occurredAt,
+                    null);
         }
     }
 
