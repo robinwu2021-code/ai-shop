@@ -5,7 +5,6 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.entitlement.EntitlementDefinition;
 import java.time.DateTimeException;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.util.Currency;
 import java.util.Set;
 import java.util.List;
@@ -61,25 +60,10 @@ public final class EntitlementRuleValidator {
             require(d.totalUnits() != null && d.totalUnits() > 0 && d.dailyUnits() == null);
         }
         var v = d.validity();
-        require(v != null && v.mode() != null && Set.of("ABSOLUTE", "RELATIVE").contains(v.mode()));
-        require(v.startBasis() != null && Set.of("GRANTED", "PAID", "FIRST_USE").contains(v.startBasis()));
-        require(v.periodBasis() != null && Set.of("ROLLING_DAYS", "CALENDAR_MONTH").contains(v.periodBasis()));
-        require(text(v.zone(), 64));
         try {
-            ZoneId.of(v.zone());
-        } catch (DateTimeException e) {
+            new EntitlementValidityPolicy().validate(v);
+        } catch (IllegalArgumentException | DateTimeException invalidValidity) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        if ("ABSOLUTE".equals(v.mode())) {
-            require(v.startAt() != null && v.endAt() != null && v.startAt().isBefore(v.endAt()));
-            require(v.validDays() == null && !"FIRST_USE".equals(v.startBasis()));
-        } else {
-            require(v.startAt() == null && v.endAt() == null);
-            if ("ROLLING_DAYS".equals(v.periodBasis())) {
-                require(v.validDays() != null && v.validDays() > 0);
-            } else {
-                require(v.validDays() == null);
-            }
         }
         if ("PAID_CARD".equals(d.kind())) {
             require(!"GRANTED".equals(v.startBasis()));

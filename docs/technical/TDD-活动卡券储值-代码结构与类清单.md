@@ -247,7 +247,7 @@ C端记录：MpStoredValueController→MpEntitlementAppService→StoredValueQuer
 ## §9 当前实际实现清单
 
 - shop-base：SourceRef、EntitlementDefinition（含Validity/RedemptionScope）、EntitlementCatalogPort（ReferenceQuery/PublishedDefinition）。JB-008新增EntitlementContext、DecisionRef、SourceDecisionPort、ActivityParticipationPort、EntitlementGrantPort、EntitlementUsePort、EntitlementQueryPort、StoredValuePort及嵌套DTO；均为协议，除原目录端口外尚未接业务实现。通用CursorPage只存不可变records与nextCursor。
-- pay-domain：CatalogScope、CatalogViews、EntTemplate、EntTemplateVersion、PayEntCommandDedup；EntitlementRuleValidator、UsageQuota；EntitlementCatalogService及Impl、EntitlementCatalogPortImpl。
+- pay-domain：CatalogScope、CatalogViews、EntTemplate、EntTemplateVersion、PayEntCommandDedup；EntitlementRuleValidator、UsageQuota、EntitlementValidityPolicy、CountUsagePolicy、PeriodCountUsagePolicy；EntitlementCatalogService及Impl、EntitlementCatalogPortImpl、EntitlementCommandDeduplicator。
 - pay-domain/pay/mapper/entitlement：EntTemplateMapper、EntTemplateVersionMapper、PayEntCommandDedupMapper，沿现有pay.mapper扫描根绑定。
 - shop-app：V425目录三表、生成H2 schema、EntitlementCatalogFlowTest。尚无新商家/C端/运营Controller或远程目录门面。
 

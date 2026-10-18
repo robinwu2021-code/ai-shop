@@ -417,3 +417,8 @@ EntitlementContractTest先观察缺类编译失败，再6项通过，扩展查�
 ### JB-013公共幂等验收
 
 EntitlementCommandDeduplicator.execute从目录内提取为唯一组件，保留原tenant+operation+大小写敏感requestKey、主体/操作者/命令指纹及稳定响应；明确MANDATORY payTxManager，不另开事务。目录四条写路径委派该组件，原生测试显式装配新组件。新增3项测试验证无事务拒绝、不同operation命名空间独立、业务和嵌套幂等一起回滚后可重试；原12项目录回归通过。真实MySQL的4线程同键、JSON回读、原响应重放及外层事务回滚检查1项通过、0跳过。移除MANDATORY后目标测试出现“Expecting code to raise a throwable”失败，恢复后整组通过。JB-013改DONE；未新增公开接口或资金流水。
+
+
+### JB-019规则验收
+
+EntitlementValidityPolicy共享发布校验与时间计算；CountUsagePolicy/PeriodCountUsagePolicy复用UsageQuota计数。5项纯规则测试通过，覆盖闰年2月本地月末、夏令时23小时日、首次使用待激活与可信首用时间、绝对期限和缺少源时间、新预占到期拒绝而旧预占仍可结算/释放。消融将until改为包含结束时刻后，paymentBasedCalendarMonthEndsAtLocalNextMonthBoundary失败；恢复后5项及原目录/协议/幂等/架构整组通过。JB-019改DONE，只是纯规则交付；没有宣称实例激活、数据库扣次或P16/P17已接通。
