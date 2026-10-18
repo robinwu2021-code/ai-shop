@@ -244,8 +244,8 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 - [x] 先跑最终受影响积分/订单集合，再仅对事务隔离与竞争方法跑Native MySQL；明确前端与Native重叠计数，不相加虚报。若失败，只重跑修复影响范围，必要时更新最终集合证据。
 - [x] 阶段末一次只读独立Review：范围本计划BASE至最终实现HEAD，关注前述五风险、后端权限与敏感字段。Critical/Important做一次RED→GREEN修复，Minor逐项记录，不反复整分支Review。
 - [x] 输出耗时分析：每命令/类/用例、慢日志、环境/夹具失败、有效RED、上下文开销；比较纯现金基线与接线关闭路径，不声称“零影响”。验证不访问积分实现/表的调用计数，不用不稳定毫秒断言当功能测试。
-- [ ] 检查生产开关保持关闭、DDL仅结构与权限元数据、没有业务余额迁移；提交代码和验收资料到codex/points-v3。保留分支/工作树，不自动推送或部署；归档自有测试证据并停止自建服务。
-- [ ] 提交：`docs(points): close stage C integration acceptance`（Review修复另列明确提交）。
+- [x] 检查生产开关保持关闭、DDL仅结构与权限元数据、没有业务余额迁移；提交代码和验收资料到codex/points-v3。保留分支/工作树，不自动推送或部署；归档自有测试证据并停止自建服务。
+- [x] 提交：`docs(points): close stage C integration acceptance`（Review修复另列明确提交）。
 
 
 ## 计划自检与完成定义
