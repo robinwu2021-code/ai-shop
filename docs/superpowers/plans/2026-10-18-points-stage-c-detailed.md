@@ -142,10 +142,10 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **接口：**PlacementSnapshot从服务器验证后的拆单组取得root/sub/user/store/merchant、券后商品额（不含运费）、逐行分摊、market和可信路由；构造既有Redeem Target，不读取当前商家默认店或用户指定金额。
 
-- [ ] RED：同主体ST1/ST2产生两组；参与积分但缺店明确拒绝，纯现金旧路径仍可用；商品/库存/结算归属不一致拒绝；商品1000、券100、运费50，积分目标基数900而非950/1000；行分摊整数求和无差额。
-- [ ] 实现：对参与者严格校验门店；旧OrderSplitter缺店回落主体不得进入积分目标；保留原outTradeNo、账户版本及每门店路径。尚未有支付tradeNo时不能伪造已付号，明确采用已有可占用的受理路由快照。
-- [ ] GREEN：新类+OrderSplitterTest，涉及数据库归属时另运行单个场景；确保不全局收紧未参与订单。
-- [ ] 提交：`feat(points): map order lines to store bound redemption targets`。
+- [x] RED：同主体ST1/ST2产生两组；参与积分但缺店明确拒绝，纯现金旧路径仍可用；商品/库存/结算归属不一致拒绝；商品1000、券100、运费50，积分目标基数900而非950/1000；行分摊整数求和无差额。
+- [x] 实现：对参与者严格校验门店；旧OrderSplitter缺店回落主体不得进入积分目标；保留原outTradeNo、账户版本及每门店路径。尚未有支付tradeNo时不能伪造已付号，明确采用已有可占用的受理路由快照。
+- [x] GREEN：新类+OrderSplitterTest，涉及数据库归属时另运行单个场景；确保不全局收紧未参与订单。
+- [x] 提交：`feat(points): map order lines to store bound redemption targets`。工厂在432f63ef6，真实订单入口随T06提交。
 
 ## Task T06：下单占用、确认价格、取消及崩溃恢复
 
@@ -155,9 +155,9 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **阶段：**源短事务保存积分参与受理及非可支付的创建阶段→事务外调用hold（pay内部短事务）→源短事务绑定hold结果/原积分分摊并发布正常可支付订单。未确认阶段不允许发起支付或触发“下单完成”通知；失败或超时由同一请求恢复，库存/券预占按原业务规则显式补偿。
 
-- [ ] RED：DETACHED和不使用积分原下单回归；政策改变导致应付变化返回RECONFIRM；hold成功后源提交失败可按原orderNo恢复；hold超时不切换纯现金；取消与支付竞争不重复释放；暂存订单失败不遗留库存/券占用。
-- [ ] 实现：复用现有创建/库存/券组件，禁止复制两套订单实现。参与分支移出长源事务；既有纯现金路径继续使用现有事务。源状态推进CAS，支付入口校验可支付状态。取消的权威未付事实持久化，远程/跨库调用不藏在AfterCommit不可恢复回调里。
-- [ ] GREEN：两类定向场景+既有下单/取消受影响类；Native只验证需要的竞争方法。记录跨域故障注入位置。
+- [x] RED：DETACHED和不使用积分原下单回归；政策改变导致应付变化返回RECONFIRM；hold成功后源提交失败可按原orderNo恢复；hold超时不切换纯现金；取消与支付竞争不重复释放；暂存订单失败不遗留库存/券占用。
+- [x] 实现：复用现有创建/库存/券组件，禁止复制两套订单实现。参与分支移出长源事务；既有纯现金路径继续使用现有事务。源状态推进CAS，支付入口校验可支付状态。取消的权威未付事实持久化，远程/跨库调用不藏在AfterCommit不可恢复回调里。
+- [x] GREEN：两类定向场景+既有下单/取消受影响类；Native只验证需要的竞争方法。记录跨域故障注入位置。最终整单Native竞争并入T13验收。
 - [ ] 提交：`feat(points): wire recoverable order redemption admission`。
 
 ## Task T07：源事实日志、Outbox与有序补扫
@@ -190,7 +190,7 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **目的/依赖：**依赖T08；扩展现有纯现金退款状态机，禁止直接删除保护条件放行。
 
-**Files：**新增OrderPointsRefundCoordinator；修改`trade/order/refund/service/impl/RefundExecutionServiceImpl.java`、对应RefundExecutionService/Mapper、AfterSaleServiceImpl；必要新增V430__order_points_refund_binding.sql；测试`PointsOrderRefundExecutionTest`。
+**Files：**新增OrderPointsRefundCoordinator；修改`trade/order/refund/service/impl/RefundExecutionServiceImpl.java`、对应RefundExecutionService/Mapper、AfterSaleServiceImpl；必要新增V432__order_points_refund_binding.sql（V430已用于下单状态，V431为源订单标记）；测试`PointsOrderRefundExecutionTest`。
 
 **阶段：**源锁定并冻结原RefundCommand/版本→pay.prepare→持久化准备号/revision/inputHash→必要补收或失败修订→建立当前净现金退款意图→原资金执行/核验→可信退款完成事件/pay.confirm→源账本commit。资金调用均在事务外；offset、零现金、补偿分别保留证据。
 

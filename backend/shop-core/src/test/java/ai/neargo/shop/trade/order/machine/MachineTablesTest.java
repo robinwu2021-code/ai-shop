@@ -27,10 +27,12 @@ class MachineTablesTest {
     void payment() {
         EdgeTable t = new EdgeTable()
                 .row(List.of(E), "PLACE", List.of("BUYER", "PLATFORM"), "WAIT_PAY", "WAIT_OFFLINE_PAY")
+                .row(List.of(E), "POINTS_STAGE", List.of("BUYER", "PLATFORM"), "POINTS_PENDING")
+                .row(List.of("POINTS_PENDING"), "POINTS_READY", List.of("SYSTEM"), "WAIT_PAY", "WAIT_OFFLINE_PAY")
                 .row(List.of("WAIT_PAY"), "PAY_SUCCEEDED", List.of("CHANNEL"), "PAID")
                 .row(List.of("WAIT_OFFLINE_PAY"), "OFFLINE_CONFIRMED", List.of("MERCHANT"), "PAID")
-                .row(List.of("WAIT_PAY", "WAIT_OFFLINE_PAY"), "CANCEL", List.of("BUYER", "PLATFORM"), "CANCELLED")
-                .row(List.of("WAIT_PAY"), "PAY_TIMEOUT", List.of("SYSTEM"), "CLOSED")
+                .row(List.of("POINTS_PENDING", "WAIT_PAY", "WAIT_OFFLINE_PAY"), "CANCEL", List.of("BUYER", "PLATFORM"), "CANCELLED")
+                .row(List.of("POINTS_PENDING", "WAIT_PAY"), "PAY_TIMEOUT", List.of("SYSTEM"), "CLOSED")
                 .stay(List.of("CLOSED", "CANCELLED"), "LATE_PAY_SUCCEEDED", List.of("CHANNEL"));
         assertThat(Invariants.edges(PaymentMachine.MACHINE)).containsExactlyInAnyOrderElementsOf(t.edges());
     }

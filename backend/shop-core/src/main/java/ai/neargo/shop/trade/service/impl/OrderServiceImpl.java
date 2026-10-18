@@ -119,6 +119,28 @@ public class OrderServiceImpl implements OrderService {
     /** 店铺活动的自动优惠（满减）。此前 mkt_campaign 没有任何消费方 */
     private final CampaignPort campaignPort;
     private final PointsPort pointsPort;
+    private ai.neargo.shop.trade.order.points.OrderPointsCoordinator pointsCoordinator;
+    private ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator pointsPlacement;
+    private ai.neargo.shop.trade.order.points.OrderPointsTargetFactory pointsTargets;
+    private org.springframework.transaction.support.TransactionTemplate sourceTransactions;
+    @org.springframework.beans.factory.annotation.Value("${shop.points.enabled:false}")
+    private boolean pointsEnabled;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPointsIntegration(ai.neargo.shop.trade.order.points.OrderPointsCoordinator coordinator,
+            ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator placement,
+            ai.neargo.shop.trade.order.points.OrderPointsTargetFactory targets) {
+        this.pointsCoordinator = coordinator;
+        this.pointsPlacement = placement;
+        this.pointsTargets = targets;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSourceTransactionManager(
+            @org.springframework.beans.factory.annotation.Qualifier("transactionManager")
+            org.springframework.transaction.PlatformTransactionManager manager) {
+        this.sourceTransactions = new org.springframework.transaction.support.TransactionTemplate(manager);
+    }
     /** 取该商家按市场筛出的可用通道（S4）—— 下单要选通道 */
     private final ai.neargo.shop.spi.pay.PayChannelMasterPort payChannelMasterPort;
     /**
@@ -1117,23 +1139,40 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
     public OrderVO create(CreateOrderCommand cmd, String idempotencyKey) {
         return createFor(SecurityUtils.currentUserNo(), cmd, idempotencyKey);
     }
 
     @Override
-    @Transactional
     public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey) {
         return createFor(userNo, cmd, idempotencyKey, null);
     }
 
     @Override
-    @Transactional
     public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey,
                              Integer payMinutes) {
-        return idempotency.execute(idempotencyKey, "POST /mp/order", userNo, OrderVO.class,
+        boolean callerTransaction = org.springframework.transaction.support.TransactionSynchronizationManager
+                .isActualTransactionActive();
+        java.util.function.Supplier<OrderVO> create = () -> idempotency.execute(
+                idempotencyKey, "POST /mp/order", userNo, OrderVO.class,
                 () -> doCreate(cmd, userNo, payMinutes));
+        OrderVO initial = sourceTransactions == null ? create.get() : sourceTransactions.execute(s -> create.get());
+        if (!ai.neargo.shop.trade.order.contract.ContractOrderStatus.POINTS_PROCESSING.equals(initial.status())) {
+            return initial;
+        }
+        String root = initial.payOrderNo();
+        var staged = pointsPlacement.inspect(root);
+        if (staged == null || !staged.draft().requestHash().equals(pointsRequestHash(userNo, cmd))) {
+            throw new IllegalArgumentException("POINTS_PLACEMENT_REPLAY_CONFLICT");
+        }
+        if (callerTransaction) return initial;
+        try {
+            pointsPlacement.resume(root);
+        } catch (RuntimeException pending) {
+            log.warn("[points] placement awaiting recovery order={} cause={}", root,
+                    pending.getClass().getSimpleName());
+        }
+        return detailOf(root, userNo, "MP");
     }
 
     /**
@@ -1188,6 +1227,33 @@ public class OrderServiceImpl implements OrderService {
          * 不是「在它中间插一脚」。
          */
         String payMode = requirePayModeSupported(cmd, split, storeOfMerchant);
+        String clientScene = ai.neargo.shop.common.PayScenes.normalize(cmd.payScene());
+        Map<String, ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Decision> pointDecisions =
+                new LinkedHashMap<>();
+        boolean wantsPoints = cmd.usePoints() != null && cmd.usePoints() > 0;
+        if (pointsEnabled && pointsCoordinator != null && clientScene != null) {
+            for (Group g : split.groups) {
+                String store = storeOfMerchant.get(g.key());
+                if (store == null || store.isBlank()) continue;
+                var decision = pointsCoordinator.decide(
+                        new ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Context(
+                                store, payMode, wantsPoints, true, wantsPoints));
+                if (decision.action() == ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Action.RECONFIRM) {
+                    throw new IllegalArgumentException(decision.reason());
+                }
+                if (decision.action() == ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Action.READY) {
+                    pointDecisions.put(g.key(), decision);
+                }
+            }
+        }
+        if (wantsPoints && pointDecisions.values().stream().noneMatch(
+                ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Decision::redemption)) {
+            throw new IllegalArgumentException("POINTS_REQUOTE_REQUIRED");
+        }
+        boolean pointsStaged = !pointDecisions.isEmpty();
+        if (pointsStaged && (pointsPlacement == null || pointsTargets == null)) {
+            throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
+        }
         if (purchaseLimit != null) {
             // 每人限购：只读、在锁库存之前（与上面几道校验同一个姿势）
             purchaseLimit.require(userNo, split.qtyByGoods(), split.limitsByGoods());
@@ -1292,19 +1358,7 @@ public class OrderServiceImpl implements OrderService {
          * 抵不了就是不抵（返回零值），**不抛异常** —— 为了抵扣失败把一笔真实成交挡掉，
          * 代价与收益完全不成比例，与买赠缺货少送是同一条原则。
          */
-        PointsPort.Deduction points = cmd.usePoints() == null || cmd.usePoints() <= 0
-                ? PointsPort.Deduction.none()
-                : pointsPort.deduct(userNo, cmd.usePoints(), split.groups.stream()
-                        .map(g -> new PointsPort.Target(g.merchantNo,
-                                g.goodsAmount() - discounts.of(g.merchantNo, g.storeNo()),
-                                subOrderNoOf.get(g.key())))
-                        /*
-                         * 端与支付方式一起传进去：能不能用积分抵扣是平台策略，
-                         * 判定收在积分域一处。**传的是本次请求的端**（cmd.payScene()
-                         * 来自 X-Client），核销判定的对象就是当前端 ——
-                         * 发放那边恰好相反，读的是订单快照，别把两者写混。
-                         */
-                        .toList(), payMode, cmd.payScene());
+        PointsPort.Deduction points = PointsPort.Deduction.none();
 
         /*
          * 线下支付**不能用平台券** —— 券要按出资方拆开看：
@@ -1336,14 +1390,15 @@ public class OrderServiceImpl implements OrderService {
          * 直接落 PAID 的话，商家一旦收不到钱，退款链路要去退一笔平台从没收过的钱。
          * 库存照常锁（下面 confirm 之后才转实扣），与线上单一致。
          */
-        order.setStatus(PayModes.OFFLINE.equals(payMode)
-                ? OrdOrder.WAIT_OFFLINE_PAY : OrdOrder.WAIT_PAY);
+        order.setStatus(pointsStaged ? OrdOrder.POINTS_PENDING
+                : PayModes.OFFLINE.equals(payMode) ? OrdOrder.WAIT_OFFLINE_PAY : OrdOrder.WAIT_PAY);
         /*
          * 下单端快照。**列从 V1 baseline 就有，缺的一直是这一行写入。**
          * 积分发放的端判定读它 —— 发放发生时可能没有任何「当前端」
          * （超时自动完成是系统动作），只有下单这一刻的端是确定的。
          */
-        order.setPayScene(cmd.payScene());
+        order.setPayScene(clientScene);
+        order.setPointsIntegrated(pointsStaged);
         /*
          * 社区固化到主单上。**运营按社区做数据域隔离** —— 不写的话，
          * 平台端按社区筛订单永远是空的，而列表本身是好的，看起来只是「这个社区没单」。
@@ -1418,6 +1473,10 @@ public class OrderServiceImpl implements OrderService {
         orderMapper.insert(order);
 
         List<String> subOrderNos = new ArrayList<>();
+        Map<String, List<ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine>> pointLines =
+                new LinkedHashMap<>();
+        Map<String, List<ai.neargo.shop.spi.points.PointsEarnPort.EarnLine>> pointRules =
+                new LinkedHashMap<>();
         for (Group g : split.groups) {
             String subOrderNo = subOrderNoOf.get(g.key());
             subOrderNos.add(subOrderNo);
@@ -1541,7 +1600,20 @@ public class OrderServiceImpl implements OrderService {
                 item.setCategoryType(line.snapshot.categoryType());
                 // 二级类目快照：积分按类目发放时读它，不现查商品（商品可以改类目）
                 item.setCategoryNo(line.snapshot.categoryNo());
+                item.setSupplyStoreNo(line.snapshot.storeNo());
                 itemMapper.insert(item);
+                if (pointDecisions.containsKey(g.key())) {
+                    pointLines.computeIfAbsent(g.key(), k -> new ArrayList<>()).add(
+                            new ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine(
+                                    String.valueOf(item.getId()), g.merchantNo(),
+                                    line.snapshot.storeNo(), storeOfMerchant.get(g.key()), line.amount()));
+                    pointRules.computeIfAbsent(g.key(), k -> new ArrayList<>()).add(
+                            new ai.neargo.shop.spi.points.PointsEarnPort.EarnLine(
+                                    String.valueOf(item.getId()), item.getGoodsNo(), item.getCategoryNo(),
+                                    item.getQty(), 0, 0,
+                                    PointsRuleHandoff.toNewRule(pointsRulePort.ruleFor(
+                                            item.getGoodsNo(), item.getCategoryNo()))));
+                }
 
                 int giftQty = gifts.getOrDefault(line.snapshot.skuNo(), 0);
                 if (giftQty > 0) {
@@ -1563,6 +1635,7 @@ public class OrderServiceImpl implements OrderService {
                     gift.setAmount(0L);
                     gift.setCategoryType(line.snapshot.categoryType());
                     gift.setCategoryNo(line.snapshot.categoryNo());
+                    gift.setSupplyStoreNo(line.snapshot.storeNo());
                     gift.setIsGift(true);
                     itemMapper.insert(gift);
                 }
@@ -1591,12 +1664,81 @@ public class OrderServiceImpl implements OrderService {
         campaignPort.commit(userNo, orderNo, discounts.auto());
 
         // ⑦ 发事件（只写 outbox，与业务同事务）
-        eventBus.publish(new OrderEvents.OrderCreated(orderNo, userNo, subOrderNos, split.payAmount()));
+        if (pointsStaged) {
+            var draft = pointsPlacementDraft(orderNo, userNo, cmd, payMode, split, discounts,
+                    pointDecisions, pointLines, pointRules, subOrderNoOf, subOrderNos,
+                    nz(order.getPayAmount()));
+            pointsPlacement.stage(draft);
+            eventBus.publish(new ai.neargo.shop.spi.points.OrderPointsPlacementWakeEvent(orderNo));
+        } else {
+            eventBus.publish(new OrderEvents.OrderCreated(orderNo, userNo, subOrderNos, order.getPayAmount()));
+        }
 
         // 下单返回支付视角：端上下一步就是去收银台。**按下单归属的那个人查**，
         // 代客下单时下单的是客服、属主是顾客。此刻还没有运单，traceOf 必然为 null，
         // 展示渠道传什么都不影响 —— 给 MP 占位
         return detailOf(orderNo, userNo, "MP");
+    }
+
+    private ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Draft pointsPlacementDraft(
+            String orderNo, String userNo, CreateOrderCommand cmd, String payMode, Split split,
+            Discounts discounts,
+            Map<String, ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Decision> decisions,
+            Map<String, List<ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine>> lines,
+            Map<String, List<ai.neargo.shop.spi.points.PointsEarnPort.EarnLine>> rules,
+            Map<String, String> subOrderNoOf, List<String> subOrderNos, long basePayMinor) {
+        String market = null;
+        for (Group g : split.groups) {
+            if (!decisions.containsKey(g.key())) continue;
+            String next = merchantPort.marketOf(g.merchantNo());
+            if (next == null || next.isBlank() || (market != null && !market.equals(next))) {
+                throw new IllegalArgumentException("POINTS_MARKET_CONFLICT");
+            }
+            market = next;
+        }
+        if (market == null) throw new IllegalArgumentException("POINTS_MARKET_REQUIRED");
+        String chosenMarket = market;
+        String channel = payChannelMasterPort.payableChannels(chosenMarket).stream()
+                .filter(ch -> split.groups.stream().filter(g -> decisions.containsKey(g.key()))
+                        .allMatch(g -> merchantPort.activeChannelsOf(g.merchantNo(), g.storeNo()).contains(ch)))
+                .sorted().findFirst().orElseThrow(
+                        () -> new IllegalArgumentException("POINTS_PAYMENT_ROUTE_REQUIRED"));
+        List<ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Candidate> candidates =
+                new ArrayList<>();
+        for (Group g : split.groups) {
+            var decision = decisions.get(g.key());
+            if (decision == null) continue;
+            var target = pointsTargets.build(subOrderNoOf.get(g.key()), g.merchantNo(), g.storeNo(),
+                    channel, null, discounts.of(g.merchantNo(), g.storeNo()), g.freight(),
+                    lines.getOrDefault(g.key(), List.of()));
+            Map<String, ai.neargo.shop.spi.points.PointsEarnPort.EarnLine> raw = new HashMap<>();
+            for (var rule : rules.getOrDefault(g.key(), List.of())) raw.put(rule.itemId(), rule);
+            var frozen = target.target().items().stream().map(item -> {
+                var rule = raw.get(item.itemId());
+                if (rule == null) throw new IllegalArgumentException("POINTS_PLACEMENT_LINES_INVALID");
+                return new ai.neargo.shop.spi.points.PointsEarnPort.EarnLine(
+                        rule.itemId(), rule.goodsNo(), rule.categoryNo(), rule.quantity(),
+                        item.goodsMinor(), 0, rule.rule());
+            }).toList();
+            candidates.add(new ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Candidate(
+                    target, decision.policyVersion(), decision.earning(), decision.redemption(), frozen));
+        }
+        long wanted = cmd.usePoints() == null ? 0 : cmd.usePoints();
+        return new ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Draft(
+                orderNo, userNo, market, CURRENCY_CNY, payMode,
+                ai.neargo.shop.common.PayScenes.normalize(cmd.payScene()), wanted,
+                basePayMinor, pointsRequestHash(userNo, cmd), candidates, subOrderNos);
+    }
+
+    private static String pointsRequestHash(String userNo, CreateOrderCommand cmd) {
+        try {
+            byte[] body = new tools.jackson.databind.ObjectMapper().writeValueAsBytes(
+                    java.util.List.of(userNo, cmd));
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(body);
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
     }
 
     // ---------------------------------------------------------------- 支付
@@ -2224,6 +2366,7 @@ public class OrderServiceImpl implements OrderService {
     /** 取消一次支付（未付款 / 待当面收款）：支付单 CANCELLED + 其下订单 CANCELLED + 释放占用 */
     /** 不返回详情：详情按买家身份取，平台调用会 NOT_FOUND 并把整个取消回滚掉 */
     private void cancelPayment(OrdOrder order, String reason, Actor actor, String operatorNo, String label) {
+        boolean pointsIntegrated = Boolean.TRUE.equals(order.getPointsIntegrated());
         statusWriter.payment(order, PaymentEvent.CANCEL, actor, operatorNo, label,
                 new PaymentContext(OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus()), true, true, false));
         order.setCancelReason(reason);
@@ -2246,10 +2389,16 @@ public class OrderServiceImpl implements OrderService {
          */
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
             final String subNo = sub.getSubOrderNo();
-            AfterCommit.run("退回积分 subOrderNo=" + subNo,
-                    () -> pointsPort.reverse(subNo, "订单已取消"));
+            if (!pointsIntegrated) {
+                AfterCommit.run("退回积分 subOrderNo=" + subNo,
+                        () -> pointsPort.reverse(subNo, "订单已取消"));
+            }
             // 名额还回去。幂等标记在子单上 —— 与超时关闭那条路同时到达也只还一次
             releaseAppointmentSlot(sub);
+        }
+        if (pointsIntegrated) {
+            pointsPlacement.recordCancellation(order.getOrderNo());
+            eventBus.publish(new ai.neargo.shop.spi.points.OrderPointsPlacementWakeEvent(order.getOrderNo()));
         }
     }
 
@@ -2288,7 +2437,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public int closeExpiredOrders(long now) {
         List<OrdOrder> expired = orderMapper.selectList(Wrappers.<OrdOrder>lambdaQuery()
-                .eq(OrdOrder::getStatus, OrdOrder.WAIT_PAY)
+                .in(OrdOrder::getStatus, OrdOrder.WAIT_PAY, OrdOrder.POINTS_PENDING)
                 .le(OrdOrder::getPayDeadlineAt, now));
 
         for (OrdOrder order : expired) {
@@ -2305,6 +2454,7 @@ public class OrderServiceImpl implements OrderService {
      * 各写一遍的话，漏掉的那一项会让库存或券一直占着，而没有任何报错。
      */
     void closeOne(OrdOrder order, String reason) {
+        boolean pointsIntegrated = Boolean.TRUE.equals(order.getPointsIntegrated());
         /*
          * 状态先改再释放：**改失败（并发下已被支付）就不该释放**。
          * 此前这里是无条件 updateById —— 与付款回调同时到达时会把已付款的单写回 CLOSED，
@@ -2344,9 +2494,15 @@ public class OrderServiceImpl implements OrderService {
         // reverse 只认 PENDING 的 USE 流水，重复跑不会退两次 —— 幂等在数据里，不在标记上
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
             final String subNo = sub.getSubOrderNo();
-            AfterCommit.run("退回积分 subOrderNo=" + subNo,
-                    () -> pointsPort.reverse(subNo, reason + "，订单关闭"));
+            if (!pointsIntegrated) {
+                AfterCommit.run("退回积分 subOrderNo=" + subNo,
+                        () -> pointsPort.reverse(subNo, reason + "，订单关闭"));
+            }
             releaseAppointmentSlot(sub);
+        }
+        if (pointsIntegrated) {
+            pointsPlacement.recordCancellation(order.getOrderNo());
+            eventBus.publish(new ai.neargo.shop.spi.points.OrderPointsPlacementWakeEvent(order.getOrderNo()));
         }
     }
 
@@ -2356,7 +2512,8 @@ public class OrderServiceImpl implements OrderService {
     public void closeUnpaid(String orderNo, String reason) {
         OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));
-        if (order == null || !OrdOrder.WAIT_PAY.equals(order.getStatus())) {
+        if (order == null || !(OrdOrder.WAIT_PAY.equals(order.getStatus())
+                || OrdOrder.POINTS_PENDING.equals(order.getStatus()))) {
             return;
         }
         closeOne(order, reason);

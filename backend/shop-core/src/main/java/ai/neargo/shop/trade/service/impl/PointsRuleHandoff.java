@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.spi.product.PointsRulePort;
 import ai.neargo.shop.spi.settle.PointsPort;
+import ai.neargo.shop.spi.points.PointsEarnPort;
 
 import java.util.Optional;
 
@@ -45,5 +46,11 @@ public final class PointsRuleHandoff {
         return configured
                 .map(r -> new PointsPort.EarnRule(r.mode(), r.value()))
                 .orElse(null);
+    }
+
+    /** Null is an explicit request for the frozen platform fallback; FIXED 0 remains distinct. */
+    public static PointsEarnPort.EarnRule toNewRule(Optional<PointsRulePort.EarnRule> configured) {
+        return configured.map(r -> new PointsEarnPort.EarnRule(
+                PointsEarnPort.RuleMode.valueOf(r.mode()), r.value())).orElse(null);
     }
 }

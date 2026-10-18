@@ -28,6 +28,11 @@ public final class PaymentMachine {
                     .create().on(PLACE).by(BUYER, PLATFORM).when(AUTHORIZED)
                     .toOneOf(Set.of(WAIT_PAY, WAIT_OFFLINE_PAY), (f, c) -> c.offlinePay() ? WAIT_OFFLINE_PAY : WAIT_PAY)
                     .emit("PaymentPlaced").add()
+                    .create().on(POINTS_STAGE).by(BUYER, PLATFORM).when(AUTHORIZED)
+                    .to(POINTS_PENDING).emit("PaymentPlacementPending").add()
+                    .from(POINTS_PENDING).on(POINTS_READY).by(SYSTEM)
+                    .toOneOf(Set.of(WAIT_PAY, WAIT_OFFLINE_PAY), (f, c) -> c.offlinePay() ? WAIT_OFFLINE_PAY : WAIT_PAY)
+                    .emit("PaymentPlaced").add()
                     // P2 通道回调付款成功
                     .from(WAIT_PAY).on(PAY_SUCCEEDED).by(CHANNEL).when(AMOUNT_MATCHES).to(PAID)
                     .emit("PaymentPaid").add()
@@ -35,10 +40,10 @@ public final class PaymentMachine {
                     .from(WAIT_OFFLINE_PAY).on(OFFLINE_CONFIRMED).by(MERCHANT).when(AUTHORIZED).to(PAID)
                     .emit("PaymentPaid").add()
                     // P4 买家 / 平台取消
-                    .from(WAIT_PAY, WAIT_OFFLINE_PAY).on(CANCEL).by(BUYER, PLATFORM).when(AUTHORIZED).to(CANCELLED)
+                    .from(POINTS_PENDING, WAIT_PAY, WAIT_OFFLINE_PAY).on(CANCEL).by(BUYER, PLATFORM).when(AUTHORIZED).to(CANCELLED)
                     .emit("PaymentCancelled").add()
                     // P5 超时关闭（与 P2 并发时由 CAS 决出一方）
-                    .from(WAIT_PAY).on(PAY_TIMEOUT).by(SYSTEM).when(DEADLINE_PASSED).to(CLOSED)
+                    .from(POINTS_PENDING, WAIT_PAY).on(PAY_TIMEOUT).by(SYSTEM).when(DEADLINE_PASSED).to(CLOSED)
                     .emit("PaymentClosed").add()
                     // P6 关单后才到账：交易不成立，原路退回（售后 TRADE_VOID）
                     .from(CLOSED, CANCELLED).on(LATE_PAY_SUCCEEDED).by(CHANNEL).stay()

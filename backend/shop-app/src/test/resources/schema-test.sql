@@ -589,6 +589,7 @@ CREATE TABLE IF NOT EXISTS ord_order
     pay_scene VARCHAR(16) DEFAULT NULL,
     offline_confirmed_by VARCHAR(64) DEFAULT NULL,
     offline_confirmed_at BIGINT DEFAULT NULL,
+    points_integrated TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_order_no UNIQUE (order_no)
 );
@@ -4827,6 +4828,7 @@ CREATE TABLE IF NOT EXISTS pts_point_type
     idle_days INT NOT NULL DEFAULT 365,
     status VARCHAR(16) NOT NULL DEFAULT 'DRAFT',
     active_market VARCHAR(16) DEFAULT NULL,
+    fallback_rule_json MEDIUMTEXT DEFAULT NULL,
     CONSTRAINT uk_pts_type UNIQUE (type_code),
     CONSTRAINT uk_pts_active_market UNIQUE (active_market),
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -5108,12 +5110,12 @@ CREATE TABLE IF NOT EXISTS pts_store_statement
     original_points BIGINT NOT NULL DEFAULT 0,
     processed_points BIGINT NOT NULL DEFAULT 0,
     payload_json MEDIUMTEXT NOT NULL,
+    route_key VARCHAR(64) NOT NULL DEFAULT 'DEFAULT',
     CONSTRAINT uk_pts_store_statement_position UNIQUE (position_no),
     store_no VARCHAR(40) DEFAULT NULL,
     period_from BIGINT DEFAULT NULL,
     period_to BIGINT DEFAULT NULL,
     revision BIGINT NOT NULL DEFAULT 0,
-    CONSTRAINT uk_pts_statement_period UNIQUE (type_code,store_no,period_from),
     id BIGINT NOT NULL AUTO_INCREMENT,
     tenant_no VARCHAR(32) DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -5122,7 +5124,8 @@ CREATE TABLE IF NOT EXISTS pts_store_statement
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pts_statement_route_period UNIQUE (type_code,store_no,period_from,route_key)
 );
 
 CREATE TABLE IF NOT EXISTS pts_fund_transfer
@@ -5539,6 +5542,81 @@ CREATE TABLE IF NOT EXISTS ord_refund_execution
     PRIMARY KEY (id),
     CONSTRAINT uk_refund_execution_as UNIQUE (after_sale_no),
     CONSTRAINT uk_refund_execution_cash UNIQUE (cash_payment_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_integration_policy
+(
+    store_no VARCHAR(64) NOT NULL,
+    scene VARCHAR(16) NOT NULL,
+    mode VARCHAR(16) NOT NULL DEFAULT 'DETACHED',
+    payload_json LONGTEXT NULL,
+    version BIGINT NOT NULL DEFAULT -1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (store_no,scene)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_command
+(
+    request_id VARCHAR(120) NOT NULL,
+    command_json LONGTEXT NOT NULL,
+    result_json LONGTEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (request_id)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_binding
+(
+    binding_no VARCHAR(40) NOT NULL,
+    request_id VARCHAR(120) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    phase VARCHAR(16) NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    last_transition_json LONGTEXT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (binding_no),
+    CONSTRAINT uk_ord_points_request UNIQUE (request_id),
+    CONSTRAINT uk_ord_points_sub UNIQUE (sub_order_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_source_counter
+(
+    type_code VARCHAR(64) NOT NULL,
+    last_sequence BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY(type_code)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_source_fact
+(
+    event_no VARCHAR(120) NOT NULL,
+    type_code VARCHAR(64) NOT NULL,
+    source_sequence BIGINT NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    schema_version INT NOT NULL,
+    normalized_hash VARCHAR(64) NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    terminal_source TINYINT NOT NULL DEFAULT 0,
+    delivered TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    delivered_at DATETIME NULL,
+    PRIMARY KEY(event_no),
+    CONSTRAINT uk_ord_points_source_sequence UNIQUE (type_code,source_sequence)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_placement
+(
+    order_no VARCHAR(64) NOT NULL,
+    phase VARCHAR(24) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    payload_json LONGTEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(order_no)
 );
 
 -- 种子数据
@@ -10830,3 +10908,31 @@ WHERE status = 'REFUNDING'
   AND liability IS NULL
   AND express_no IS NOT NULL
   AND express_no <> '';
+UPDATE sys_function_point SET href='/points?tab=overview',group_name='积分运营',updated_at=CURRENT_TIMESTAMP WHERE point_code='OPS_FINANCE__TAB_POINTS';
+UPDATE sys_function_point SET href='/points?tab=switches',name='积分范围开关',group_name='积分运营',updated_at=CURRENT_TIMESTAMP WHERE point_code='OPS_FINANCE__TAB_POINTS_POLICY';
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'OPS_POINTS__TAB_CONFIGURATION','OPS_FINANCE','积分类型与协议','积分运营','/points?tab=configuration','finance:settle:read','finance:settle:read','IMPLEMENTED',1,'P-12.1','MENU',52,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code='OPS_POINTS__TAB_CONFIGURATION');
+INSERT IGNORE INTO sys_role_point (role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
+SELECT DISTINCT source.role_code,'OPS_POINTS__TAB_CONFIGURATION',source.end_code,source.entity_no,source.tenant_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source
+WHERE source.point_code='OPS_FINANCE__TAB_POINTS' AND source.end_code='OPS' AND source.deleted=0 AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_CONFIGURATION');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'OPS_POINTS__TAB_TREASURY','OPS_FINANCE','积分资金工作台','积分运营','/points?tab=treasury','finance:settle:read','finance:settle:read','IMPLEMENTED',1,'P-12.1','MENU',53,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code='OPS_POINTS__TAB_TREASURY');
+INSERT IGNORE INTO sys_role_point (role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
+SELECT DISTINCT source.role_code,'OPS_POINTS__TAB_TREASURY',source.end_code,source.entity_no,source.tenant_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source
+WHERE source.point_code='OPS_FINANCE__TAB_POINTS' AND source.end_code='OPS' AND source.deleted=0 AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_TREASURY');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'OPS_POINTS__TAB_SETTLEMENTS','OPS_FINANCE','积分账单与退款','积分运营','/points?tab=settlements','finance:settle:read','finance:settle:read','IMPLEMENTED',1,'P-12.1','MENU',54,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code='OPS_POINTS__TAB_SETTLEMENTS');
+INSERT IGNORE INTO sys_role_point (role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
+SELECT DISTINCT source.role_code,'OPS_POINTS__TAB_SETTLEMENTS',source.end_code,source.entity_no,source.tenant_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source
+WHERE source.point_code='OPS_FINANCE__TAB_POINTS' AND source.end_code='OPS' AND source.deleted=0 AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_SETTLEMENTS');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'OPS_POINTS__TAB_QUERIES','OPS_FINANCE','积分账务与对账','积分运营','/points?tab=queries','finance:settle:read','finance:settle:read','IMPLEMENTED',1,'P-12.1','MENU',55,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code='OPS_POINTS__TAB_QUERIES');
+INSERT IGNORE INTO sys_role_point (role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
+SELECT DISTINCT source.role_code,'OPS_POINTS__TAB_QUERIES',source.end_code,source.entity_no,source.tenant_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source
+WHERE source.point_code='OPS_FINANCE__TAB_POINTS' AND source.end_code='OPS' AND source.deleted=0 AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_QUERIES');
+UPDATE sys_function_point SET ui_perm_code='finance:recon:resolve',ui_ready=1,group_name='积分运营',name='积分对账快照核对',updated_at=CURRENT_TIMESTAMP
+WHERE point_code='ACT__FINANCE_RECON_RESOLVE' AND function_code='OPS_FINANCE' AND deleted=0;
