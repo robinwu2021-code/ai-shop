@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="590" viewBox="0 0 1120 590" role="img" aria-labelledby="title desc">
+  <title>活动与权益模块所有权</title>
+  <desc>核心服务拥有活动规则和商品订单，支付服务拥有券卡储值资产。应用层通过内部接口及可靠事件协调两个独立事务域，消息模块发送通知。</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0L8 4L0 8" fill="none" stroke="#64748b"/></marker></defs>
+  <rect width="1120" height="590" rx="16" fill="#f8fafc"/>
+  <g font-family="sans-serif" fill="#0f172a">
+    <text x="36" y="42" font-size="24" font-weight="700">统一活动入口 · 分域持有规则与权益</text>
+    <text x="36" y="72" font-size="15" fill="#475569">商家端配置与核销 / C端查看权益和消费记录 / 运营端治理与异常处理</text>
+    <rect x="36" y="104" width="330" height="332" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="56" y="140" font-size="21" font-weight="700">核心服务 core</text>
+    <g font-size="17">
+      <text x="56" y="180">promotion：活动 / 版本 / 预置目录</text>
+      <text x="56" y="215">资格 / 营销预算 / 参与预留</text>
+      <text x="56" y="250">product：卡商品 / SKU / 售价</text>
+      <text x="56" y="285">trade：订单 / 授权 / 预约履约</text>
+      <text x="56" y="320">member：会员关系 / 统一会员码</text>
+      <text x="56" y="366" fill="#1d4ed8">本域事务 + Outbox / Inbox</text>
+      <text x="56" y="402" font-size="15">引用已发布权益版本，不保存余次余额</text>
+    </g>
+    <rect x="402" y="152" width="250" height="244" rx="12" fill="#fff" stroke="#cbd5e1"/>
+    <text x="423" y="188" font-size="20" font-weight="700">shop-app 应用编排</text>
+    <g font-size="16">
+      <text x="423" y="227">三端 API / 主体与门店鉴权</text>
+      <text x="423" y="263">资格 → 发放 → 事实确认</text>
+      <text x="423" y="299">授权 → 预占 → 使用确认</text>
+      <text x="423" y="335">查询恢复 / 幂等 / 版本快照</text>
+      <text x="423" y="371" fill="#475569">不直写另一服务数据库</text>
+    </g>
+    <rect x="688" y="104" width="396" height="332" rx="12" fill="#f0fdf4" stroke="#86efac"/>
+    <text x="708" y="140" font-size="21" font-weight="700">支付服务 pay</text>
+    <g font-size="17">
+      <text x="708" y="180">entitlement：券 / 兑换券 / 次卡 / 月卡</text>
+      <text x="708" y="215">权益版本 / 发放 / 实例 / 总次与日额度</text>
+      <text x="708" y="250">storedvalue：实收 / 储值账户 / 批次</text>
+      <text x="708" y="285">预占 / 核销 / 账务 / 对账 / 异常</text>
+      <text x="708" y="320">points 与现金支付沿各自既有账务</text>
+      <text x="708" y="366" fill="#15803d">本域事务 + Outbox / Inbox</text>
+      <text x="708" y="402" font-size="15">权益权威账，不复制活动规则和商品售价</text>
+    </g>
+    <path d="M367 260H401M653 260H687" stroke="#64748b" stroke-width="2" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+    <rect x="235" y="478" width="650" height="72" rx="12" fill="#fff7ed" stroke="#fdba74"/>
+    <text x="260" y="507" font-size="18" font-weight="700">消息模块：消费权威业务事件，按事件身份去重发送通知</text>
+    <text x="260" y="533" font-size="15">到账 / 核销 / 到期提醒 / 异常待办；发送失败不回滚权益账</text>
+    <path d="M201 437V463H300V477M886 437V463H820V477" fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+    <text x="454" y="574" font-size="14" fill="#475569">各模块独立事务，跨模块使用可信接口与可靠事件</text>
+  </g>
+</svg>

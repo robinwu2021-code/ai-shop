@@ -671,3 +671,5 @@ a{color:inherit}
 .card.ostat.done{background:var(--sh-success-tint)}
 .card.ostat.done .k b{color:var(--sh-success-text)}
 .card.ostat .v.go{color:var(--sh-primary-text);font-weight:600}
+
+.proto-demo [hidden] { display: none !important; }

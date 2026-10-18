@@ -11,7 +11,7 @@
 <header class="top">
   <div class="eyebrow">ai-shop · 三端界面原型 · 唯一入口 · 由登记表生成</div>
   <h1>界面原型总览</h1>
-  <p class="sub">32 份有效稿子，其中页面稿 21 份、共 260 屏；3 份作废。
+  <p class="sub">33 份有效稿子，其中页面稿 22 份、共 289 屏；3 份作废。
   真源在仓库 <code>prototypes/</code>，claude.ai 上的是发布副本；样式只有一份 <code>proto.css</code>，
   屏内用的就是产品的令牌。点屏号跳到那一屏；<a href="../docs/technical/design/ui-catalog.json">界面清单</a>反过来从页面跳到原型。</p>
 </header>
@@ -227,6 +227,16 @@
   <p class="pcard__sum">重排买家订单详情页（v2）。恒定骨架：状态头（大字状态+一句接下来+有运单恒给「查看物流」）→ 收货/自提 → 店铺+商品 → 金额 → 订单信息 → 吸底操作条。v2 修两件真机才看出来的事：① 「查看物流」入口条件写窄了——只有微信插件可用时才给，而非微信支付单/H5/App 恒不可用，那几种情况一个入口都没有；改成只要有运单就给，插件可用开插件、不可用就地展开（不自建物流详情页，那等于把插件那一屏再抄一遍）。② 吸底条与页尾按钮重复（「再来一单/申请售后」两处都有，某些状态吸底条自己两颗同名）——改成页内不排按钮、吸底条是唯一操作区、主次必须不同、只有一颗时占满宽；有后续状态的事（发票/售后）做成会回读状态的卡片行。</p>
   <div class="screens"><a class="scr" href="c-order-detail.html#s01" title="s01 待付款">s01</a><a class="scr" href="c-order-detail.html#s02" title="s02 待发货">s02</a><a class="scr" href="c-order-detail.html#s03" title="s03 运输中(状态+物流合并)">s03</a><a class="scr" href="c-order-detail.html#s04" title="s04 已完成">s04</a><a class="scr" href="c-order-detail.html#s05" title="s05 微信支付单→插件">s05</a><a class="scr" href="c-order-detail.html#s06" title="s06 非微信单→就地展开">s06</a></div>
   <div class="pcard__links"><a href="c-order-detail.html">本地稿</a> <a href="../docs/technical/TDD-收件人物流触达与分享裂变.md">TDD-收件人物流触达与分享裂变</a></div>
+
+</article><article class="pcard" id="marketing-assets-unified">
+  <div class="pcard__hd">
+    <b>活动卡券储值统一入口：三端功能矩阵与原型</b>
+    <span class="chip warn">在建</span>
+  </div>
+  <div class="pcard__meta">页面稿 · 商家 App · 买家小程序 · 运营端 · 2026-10-18 · 29 屏</div>
+  <p class="pcard__sum">29屏，先定义24项功能矩阵。统一商家活动中心，购物与储值模板、卡券发放核销、线下储值办理、C端权益与门店核销记录、运营治理和资金/通知异常。功能复用与拟新增边界明确。</p>
+  <div class="screens"><a class="scr" href="marketing-assets-unified.html#s01" title="s01 活动中心">s01</a><a class="scr" href="marketing-assets-unified.html#s02" title="s02 全部活动">s02</a><a class="scr" href="marketing-assets-unified.html#s03" title="s03 选择活动玩法">s03</a><a class="scr" href="marketing-assets-unified.html#s04" title="s04 填写活动规则">s04</a><a class="scr" href="marketing-assets-unified.html#s05" title="s05 确认活动发布">s05</a><a class="scr" href="marketing-assets-unified.html#s06" title="s06 活动详情">s06</a><a class="scr" href="marketing-assets-unified.html#s07" title="s07 卡券管理">s07</a><a class="scr" href="marketing-assets-unified.html#s08" title="s08 创建券模板">s08</a><a class="scr" href="marketing-assets-unified.html#s09" title="s09 选择适用人群">s09</a><a class="scr" href="marketing-assets-unified.html#s10" title="s10 发放结果">s10</a><a class="scr" href="marketing-assets-unified.html#s11" title="s11 券核销预览">s11</a><a class="scr" href="marketing-assets-unified.html#s12" title="s12 办理储值">s12</a><a class="scr" href="marketing-assets-unified.html#s13" title="s13 服务开单">s13</a><a class="scr" href="marketing-assets-unified.html#s14" title="s14 经营效果">s14</a><a class="scr" href="marketing-assets-unified.html#s15" title="s15 团与集单待办">s15</a><a class="scr" href="marketing-assets-unified.html#s16" title="s16 活动已暂停">s16</a><a class="scr" href="marketing-assets-unified.html#s17" title="s17 办理与核销结果">s17</a><a class="scr" href="marketing-assets-unified.html#s18" title="s18 我的">s18</a><a class="scr" href="marketing-assets-unified.html#s19" title="s19 我的卡券">s19</a><a class="scr" href="marketing-assets-unified.html#s20" title="s20 卡券详情">s20</a><a class="scr" href="marketing-assets-unified.html#s21" title="s21 我的储值门店">s21</a><a class="scr" href="marketing-assets-unified.html#s22" title="s22 核销记录">s22</a><a class="scr" href="marketing-assets-unified.html#s23" title="s23 核销详情">s23</a><a class="scr" href="marketing-assets-unified.html#s24" title="s24 门店主页">s24</a><a class="scr" href="marketing-assets-unified.html#s25" title="s25 统一会员码">s25</a><a class="scr" href="marketing-assets-unified.html#s26" title="s26 统一活动中心">s26</a><a class="scr" href="marketing-assets-unified.html#s27" title="s27 活动治理与暂停">s27</a><a class="scr" href="marketing-assets-unified.html#s28" title="s28 支付异常处理">s28</a><a class="scr" href="marketing-assets-unified.html#s29" title="s29 通知记录">s29</a></div>
+  <div class="pcard__links"><a href="marketing-assets-unified.html">本地稿</a> <a href="../docs/requirements/活动卡券储值-统一入口功能矩阵.md">功能清单矩阵</a> <a href="../docs/technical/TDD-储值活动-统一活动模型扩展.md">储值活动统一模型扩展</a></div>
 
 </article>
   </div>

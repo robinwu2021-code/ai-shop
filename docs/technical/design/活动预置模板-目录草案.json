@@ -1,0 +1,2030 @@
+{
+  "schemaVersion": 1,
+  "status": "DESIGN_DRAFT",
+  "createdOn": "2026-10-18",
+  "taxonomyNote": "industryTags为推荐标签，不是入驻行业枚举；requiredCapabilities为待映射的能力契约",
+  "executionPolicy": "NO_AUTO_PUBLISH",
+  "templates": [
+    {
+      "templateCode": "AP001",
+      "templateVersion": 1,
+      "name": "新客首单立减",
+      "category": "成交优惠",
+      "baseTemplate": "A01",
+      "industryTags": [
+        "通用"
+      ],
+      "goalTags": [
+        "获客"
+      ],
+      "scenario": "首次有效交易",
+      "scene": "ORDER",
+      "effect": "CUT",
+      "family": "ORDER_DISCOUNT",
+      "exampleText": "满100减10",
+      "priority": "P1",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "ORDER_PRICING",
+        "AUDIENCE",
+        "ATOMIC_QUOTA"
+      ],
+      "constraints": [
+        "推荐给适配商家，不代表所有行业均可用"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP002",
+      "templateVersion": 1,
+      "name": "会员满额优惠",
+      "category": "成交优惠",
+      "baseTemplate": "A01",
+      "industryTags": [
+        "通用"
+      ],
+      "goalTags": [
+        "复购"
+      ],
+      "scenario": "会员复购",
+      "scene": "ORDER",
+      "effect": "CUT",
+      "family": "ORDER_DISCOUNT",
+      "exampleText": "满200减20",
+      "priority": "P1",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "ORDER_PRICING",
+        "AUDIENCE",
+        "ATOMIC_QUOTA"
+      ],
+      "constraints": [
+        "推荐给适配商家，不代表所有行业均可用"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP003",
+      "templateVersion": 1,
+      "name": "周末限时特价",
+      "category": "成交优惠",
+      "baseTemplate": "A03",
+      "industryTags": [
+        "通用"
+      ],
+      "goalTags": [
+        "转化"
+      ],
+      "scenario": "指定商品周末促销",
+      "scene": "ORDER",
+      "effect": "PRICE",
+      "family": "GOODS_PRICE",
+      "exampleText": "指定商品活动价59",
+      "priority": "P1",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "GOODS_SCOPE",
+        "SKU_PRICE_VALIDATION",
+        "AUDIENCE",
+        "ATOMIC_QUOTA"
+      ],
+      "constraints": [
+        "推荐给适配商家，不代表所有行业均可用"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP004",
+      "templateVersion": 1,
+      "name": "进店领券",
+      "category": "权益发放",
+      "baseTemplate": "A09",
+      "industryTags": [
+        "通用"
+      ],
+      "goalTags": [
+        "获客"
+      ],
+      "scenario": "顾客主动领取",
+      "scene": "COUPON_DISTRIBUTION",
+      "effect": "COUPON",
+      "family": "COUPON_RECEIVE",
+      "exampleText": "满100减10，每人1张",
+      "priority": "P1",
+      "capabilityAssessment": "已有服务基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "COUPON_RECEIVE",
+        "COUPON_BUDGET",
+        "PER_USER_LIMIT"
+      ],
+      "constraints": [
+        "推荐给适配商家，不代表所有行业均可用"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.entitlement"
+    },
+    {
+      "templateCode": "AP005",
+      "templateVersion": 1,
+      "name": "沉睡客户唤醒券",
+      "category": "权益发放",
+      "baseTemplate": "A09",
+      "industryTags": [
+        "通用"
+      ],
+      "goalTags": [
+        "召回"
+      ],
+      "scenario": "已保存的未消费人群",
+      "scene": "COUPON_DISTRIBUTION",
+      "effect": "COUPON",
+      "family": "COUPON_ISSUE",
+      "exampleText": "满200减30，7天有效",
+      "priority": "P1",
+      "capabilityAssessment": "已有服务基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "AUDIENCE",
+        "COUPON_ISSUE",
+        "COUPON_BUDGET"
+      ],
+      "constraints": [
+        "推荐给适配商家，不代表所有行业均可用"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.entitlement"
+    },
+    {
+      "templateCode": "AP006",
+      "templateVersion": 1,
+      "name": "会员生日礼券",
+      "category": "权益发放",
+      "baseTemplate": "A09",
+      "industryTags": [
+        "通用"
+      ],
+      "goalTags": [
+        "关怀"
+      ],
+      "scenario": "有生日资料的本人自愿提供人群",
+      "scene": "COUPON_DISTRIBUTION",
+      "effect": "COUPON",
+      "family": "COUPON_ISSUE",
+      "exampleText": "商品兑换1次，生日月有效",
+      "priority": "P1",
+      "capabilityAssessment": "已有服务基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "AUDIENCE",
+        "COUPON_ISSUE",
+        "COUPON_BUDGET"
+      ],
+      "constraints": [
+        "推荐给适配商家，不代表所有行业均可用",
+        "仅使用本人自愿提供资料，不推断生日，不默认自动群发"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.entitlement"
+    },
+    {
+      "templateCode": "AP007",
+      "templateVersion": 1,
+      "name": "两人成团优惠",
+      "category": "协同成交",
+      "baseTemplate": "A11",
+      "industryTags": [
+        "通用"
+      ],
+      "goalTags": [
+        "拉新"
+      ],
+      "scenario": "分享拉新",
+      "scene": "ORDER",
+      "effect": "PRICE",
+      "family": "GROUP_PRICE",
+      "exampleText": "2人，24小时，团购价79",
+      "priority": "P2",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "GROUP_INSTANCE",
+        "GROUP_CLOSE",
+        "ORDER_REFUND",
+        "FULFILLMENT"
+      ],
+      "constraints": [
+        "推荐给适配商家，不代表所有行业均可用"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP008",
+      "templateVersion": 1,
+      "name": "普通储值",
+      "category": "储值激励",
+      "baseTemplate": "A14",
+      "industryTags": [
+        "通用"
+      ],
+      "goalTags": [
+        "储值"
+      ],
+      "scenario": "无需额外赠送的充值",
+      "scene": "RECHARGE",
+      "effect": "STORED_VALUE_BONUS",
+      "family": "RECHARGE_BONUS",
+      "exampleText": "充500到账500",
+      "priority": "P2",
+      "capabilityAssessment": "拟新增能力",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "ACTIVITY_VERSION",
+        "MARKETING_RESERVATION",
+        "PAY_CREDIT",
+        "MEMBER_IDENTITY",
+        "STORED_VALUE_REDEEM"
+      ],
+      "constraints": [
+        "推荐给适配商家，不代表所有行业均可用",
+        "商家出资、线下实收",
+        "不叠券或积分",
+        "无线上退款",
+        "普通充值赠送为0"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.storedvalue"
+    },
+    {
+      "templateCode": "AP009",
+      "templateVersion": 1,
+      "name": "全店满额立减",
+      "category": "成交优惠",
+      "baseTemplate": "A01",
+      "industryTags": [
+        "零售"
+      ],
+      "goalTags": [
+        "客单"
+      ],
+      "scenario": "日常客单提升",
+      "scene": "ORDER",
+      "effect": "CUT",
+      "family": "ORDER_DISCOUNT",
+      "exampleText": "满199减20",
+      "priority": "P1",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "ORDER_PRICING",
+        "AUDIENCE",
+        "ATOMIC_QUOTA"
+      ],
+      "constraints": [],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP010",
+      "templateVersion": 1,
+      "name": "满件优惠",
+      "category": "成交优惠",
+      "baseTemplate": "A02",
+      "industryTags": [
+        "零售"
+      ],
+      "goalTags": [
+        "连带"
+      ],
+      "scenario": "多件商品连带购买",
+      "scene": "ORDER",
+      "effect": "CUT",
+      "family": "ORDER_DISCOUNT",
+      "exampleText": "满3件减15",
+      "priority": "P1",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "ORDER_PRICING",
+        "AUDIENCE",
+        "ATOMIC_QUOTA"
+      ],
+      "constraints": [],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP011",
+      "templateVersion": 1,
+      "name": "第二件优惠",
+      "category": "成交优惠",
+      "baseTemplate": "A05",
+      "industryTags": [
+        "零售"
+      ],
+      "goalTags": [
+        "连带"
+      ],
+      "scenario": "同款多件购买",
+      "scene": "ORDER",
+      "effect": "NTH_ITEM_DISCOUNT",
+      "family": "NTH_ITEM",
+      "exampleText": "第二件5折，按规则限定商品",
+      "priority": "P3",
+      "capabilityAssessment": "分摊规则待验收",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "NTH_ITEM_ALLOCATION",
+        "DISCOUNT_CAP",
+        "REFUND_ALLOCATION"
+      ],
+      "constraints": [],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP012",
+      "templateVersion": 1,
+      "name": "换季指定商品特价",
+      "category": "成交优惠",
+      "baseTemplate": "A03",
+      "industryTags": [
+        "零售"
+      ],
+      "goalTags": [
+        "清货"
+      ],
+      "scenario": "指定库存商品",
+      "scene": "ORDER",
+      "effect": "PRICE",
+      "family": "GOODS_PRICE",
+      "exampleText": "指定SKU活动价39",
+      "priority": "P1",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "GOODS_SCOPE",
+        "SKU_PRICE_VALIDATION",
+        "AUDIENCE",
+        "ATOMIC_QUOTA"
+      ],
+      "constraints": [],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP013",
+      "templateVersion": 1,
+      "name": "满额赠小样",
+      "category": "权益发放",
+      "baseTemplate": "A07",
+      "industryTags": [
+        "零售"
+      ],
+      "goalTags": [
+        "客单"
+      ],
+      "scenario": "购买后附赠实物",
+      "scene": "ORDER",
+      "effect": "GIFT",
+      "family": "GOODS_GIFT",
+      "exampleText": "满299赠指定小样1件",
+      "priority": "P2",
+      "capabilityAssessment": "赠品履约待验收",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "GIFT_STOCK",
+        "GIFT_FULFILLMENT",
+        "GIFT_AFTER_SALE"
+      ],
+      "constraints": [],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP014",
+      "templateVersion": 1,
+      "name": "老客回购券",
+      "category": "权益发放",
+      "baseTemplate": "A09",
+      "industryTags": [
+        "零售"
+      ],
+      "goalTags": [
+        "复购"
+      ],
+      "scenario": "买过指定类目的客户",
+      "scene": "COUPON_DISTRIBUTION",
+      "effect": "COUPON",
+      "family": "COUPON_ISSUE",
+      "exampleText": "满150减15，14天有效",
+      "priority": "P1",
+      "capabilityAssessment": "已有服务基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "AUDIENCE",
+        "COUPON_ISSUE",
+        "COUPON_BUDGET"
+      ],
+      "constraints": [],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.entitlement"
+    },
+    {
+      "templateCode": "AP015",
+      "templateVersion": 1,
+      "name": "每日社区集单",
+      "category": "协同成交",
+      "baseTemplate": "A12",
+      "industryTags": [
+        "生鲜社区"
+      ],
+      "goalTags": [
+        "集采"
+      ],
+      "scenario": "按期收单后采购",
+      "scene": "ORDER",
+      "effect": "PRICE",
+      "family": "CUTOFF_PRICE",
+      "exampleText": "每日20:00截单，次日提货",
+      "priority": "P2",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "PERIOD_INSTANCE",
+        "CUTOFF_JOB",
+        "MIN_QTY_DECISION",
+        "ORDER_REFUND",
+        "FULFILLMENT"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP016",
+      "templateVersion": 1,
+      "name": "当季鲜果拼团",
+      "category": "协同成交",
+      "baseTemplate": "A11",
+      "industryTags": [
+        "生鲜社区"
+      ],
+      "goalTags": [
+        "拉新"
+      ],
+      "scenario": "同一提货范围团购",
+      "scene": "ORDER",
+      "effect": "PRICE",
+      "family": "GROUP_PRICE",
+      "exampleText": "3人团，24小时，指定商品团价",
+      "priority": "P2",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "GROUP_INSTANCE",
+        "GROUP_CLOSE",
+        "ORDER_REFUND",
+        "FULFILLMENT"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP017",
+      "templateVersion": 1,
+      "name": "当日限时特价",
+      "category": "成交优惠",
+      "baseTemplate": "A06",
+      "industryTags": [
+        "生鲜社区"
+      ],
+      "goalTags": [
+        "清货"
+      ],
+      "scenario": "明确可售批次及库存",
+      "scene": "ORDER",
+      "effect": "PRICE",
+      "family": "FLASH_STOCK",
+      "exampleText": "指定时段，限量30份",
+      "priority": "P3",
+      "capabilityAssessment": "库存并发待验收",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "SKU_PRICE_VALIDATION",
+        "FLASH_STOCK",
+        "ATOMIC_QUOTA"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP018",
+      "templateVersion": 1,
+      "name": "多件装优惠",
+      "category": "成交优惠",
+      "baseTemplate": "A02",
+      "industryTags": [
+        "生鲜社区"
+      ],
+      "goalTags": [
+        "连带"
+      ],
+      "scenario": "同类商品组合购买",
+      "scene": "ORDER",
+      "effect": "CUT",
+      "family": "ORDER_DISCOUNT",
+      "exampleText": "满3件减5",
+      "priority": "P1",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "ORDER_PRICING",
+        "AUDIENCE",
+        "ATOMIC_QUOTA"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP019",
+      "templateVersion": 1,
+      "name": "买菜复购券",
+      "category": "权益发放",
+      "baseTemplate": "A09",
+      "industryTags": [
+        "生鲜社区"
+      ],
+      "goalTags": [
+        "复购"
+      ],
+      "scenario": "近期开单客户",
+      "scene": "COUPON_DISTRIBUTION",
+      "effect": "COUPON",
+      "family": "COUPON_ISSUE",
+      "exampleText": "满59减5，7天有效",
+      "priority": "P1",
+      "capabilityAssessment": "已有服务基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "AUDIENCE",
+        "COUPON_ISSUE",
+        "COUPON_BUDGET"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.entitlement"
+    },
+    {
+      "templateCode": "AP020",
+      "templateVersion": 1,
+      "name": "非高峰时段优惠",
+      "category": "成交优惠",
+      "baseTemplate": "A04",
+      "industryTags": [
+        "餐饮茶饮"
+      ],
+      "goalTags": [
+        "错峰"
+      ],
+      "scenario": "指定门店与非高峰时段",
+      "scene": "ORDER",
+      "effect": "PERCENT",
+      "family": "PERCENT_CAP",
+      "exampleText": "8折，单笔最多减20",
+      "priority": "P2",
+      "capabilityAssessment": "组合折扣待验收",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "COMBO_RULE",
+        "DISCOUNT_CAP",
+        "REFUND_ALLOCATION"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP021",
+      "templateVersion": 1,
+      "name": "饮品买二赠一",
+      "category": "权益发放",
+      "baseTemplate": "A08",
+      "industryTags": [
+        "餐饮茶饮"
+      ],
+      "goalTags": [
+        "连带"
+      ],
+      "scenario": "指定饮品",
+      "scene": "ORDER",
+      "effect": "GIFT",
+      "family": "GOODS_GIFT",
+      "exampleText": "买2件送指定饮品1件",
+      "priority": "P2",
+      "capabilityAssessment": "赠品履约待验收",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "GIFT_STOCK",
+        "GIFT_FULFILLMENT",
+        "GIFT_AFTER_SALE"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP022",
+      "templateVersion": 1,
+      "name": "到店饮品体验券",
+      "category": "权益发放",
+      "baseTemplate": "A09",
+      "industryTags": [
+        "餐饮茶饮"
+      ],
+      "goalTags": [
+        "体验"
+      ],
+      "scenario": "新客到店兑换",
+      "scene": "COUPON_DISTRIBUTION",
+      "effect": "COUPON",
+      "family": "STORE_COUPON",
+      "exampleText": "指定饮品1杯，每人1次",
+      "priority": "P1",
+      "capabilityAssessment": "已有服务基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "COUPON_ISSUE",
+        "STORE_CODE_REDEEM",
+        "AUDIENCE"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.entitlement"
+    },
+    {
+      "templateCode": "AP023",
+      "templateVersion": 1,
+      "name": "工作日团购套餐",
+      "category": "协同成交",
+      "baseTemplate": "A11",
+      "industryTags": [
+        "餐饮茶饮"
+      ],
+      "goalTags": [
+        "拉新"
+      ],
+      "scenario": "现有商品套餐成团",
+      "scene": "ORDER",
+      "effect": "PRICE",
+      "family": "GROUP_PRICE",
+      "exampleText": "2人团，指定套餐团价",
+      "priority": "P2",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "GROUP_INSTANCE",
+        "GROUP_CLOSE",
+        "ORDER_REFUND",
+        "FULFILLMENT"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP024",
+      "templateVersion": 1,
+      "name": "门店储值充赠",
+      "category": "储值激励",
+      "baseTemplate": "A13",
+      "industryTags": [
+        "餐饮茶饮"
+      ],
+      "goalTags": [
+        "储值"
+      ],
+      "scenario": "门店现金或转账储值",
+      "scene": "RECHARGE",
+      "effect": "STORED_VALUE_BONUS",
+      "family": "RECHARGE_BONUS",
+      "exampleText": "充300送30，充500送60",
+      "priority": "P2",
+      "capabilityAssessment": "拟新增能力",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "ACTIVITY_VERSION",
+        "MARKETING_RESERVATION",
+        "PAY_CREDIT",
+        "MEMBER_IDENTITY",
+        "STORED_VALUE_REDEEM"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放",
+        "商家出资、线下实收",
+        "不叠券或积分",
+        "无线上退款",
+        "普通充值赠送为0"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.storedvalue"
+    },
+    {
+      "templateCode": "AP025",
+      "templateVersion": 1,
+      "name": "新客护理体验价",
+      "category": "成交优惠",
+      "baseTemplate": "A03",
+      "industryTags": [
+        "美业"
+      ],
+      "goalTags": [
+        "体验"
+      ],
+      "scenario": "新客指定护理项目",
+      "scene": "ORDER",
+      "effect": "PRICE",
+      "family": "GOODS_PRICE",
+      "exampleText": "指定项目体验价99，每人1次",
+      "priority": "P1",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "GOODS_SCOPE",
+        "SKU_PRICE_VALIDATION",
+        "AUDIENCE",
+        "ATOMIC_QUOTA"
+      ],
+      "constraints": [],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP026",
+      "templateVersion": 1,
+      "name": "护理满额优惠",
+      "category": "成交优惠",
+      "baseTemplate": "A01",
+      "industryTags": [
+        "美业"
+      ],
+      "goalTags": [
+        "客单"
+      ],
+      "scenario": "同次购买指定服务",
+      "scene": "ORDER",
+      "effect": "CUT",
+      "family": "ORDER_DISCOUNT",
+      "exampleText": "满500减50",
+      "priority": "P1",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "ORDER_PRICING",
+        "AUDIENCE",
+        "ATOMIC_QUOTA"
+      ],
+      "constraints": [],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP027",
+      "templateVersion": 1,
+      "name": "老客护理复购券",
+      "category": "权益发放",
+      "baseTemplate": "A09",
+      "industryTags": [
+        "美业"
+      ],
+      "goalTags": [
+        "复购"
+      ],
+      "scenario": "近期到店客户",
+      "scene": "COUPON_DISTRIBUTION",
+      "effect": "COUPON",
+      "family": "COUPON_ISSUE",
+      "exampleText": "满300减30，30天有效",
+      "priority": "P1",
+      "capabilityAssessment": "已有服务基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "AUDIENCE",
+        "COUPON_ISSUE",
+        "COUPON_BUDGET"
+      ],
+      "constraints": [],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.entitlement"
+    },
+    {
+      "templateCode": "AP028",
+      "templateVersion": 1,
+      "name": "沉睡会员唤醒体验券",
+      "category": "权益发放",
+      "baseTemplate": "A09",
+      "industryTags": [
+        "美业"
+      ],
+      "goalTags": [
+        "召回"
+      ],
+      "scenario": "90天未消费人群",
+      "scene": "COUPON_DISTRIBUTION",
+      "effect": "COUPON",
+      "family": "STORE_COUPON",
+      "exampleText": "指定护理兑换1次",
+      "priority": "P1",
+      "capabilityAssessment": "已有服务基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "COUPON_ISSUE",
+        "STORE_CODE_REDEEM",
+        "AUDIENCE"
+      ],
+      "constraints": [],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.entitlement"
+    },
+    {
+      "templateCode": "AP029",
+      "templateVersion": 1,
+      "name": "双人护理拼团",
+      "category": "协同成交",
+      "baseTemplate": "A11",
+      "industryTags": [
+        "美业"
+      ],
+      "goalTags": [
+        "拉新"
+      ],
+      "scenario": "两名不同客户参与",
+      "scene": "ORDER",
+      "effect": "PRICE",
+      "family": "GROUP_PRICE",
+      "exampleText": "2人团，24小时，限定护理商品",
+      "priority": "P2",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "GROUP_INSTANCE",
+        "GROUP_CLOSE",
+        "ORDER_REFUND",
+        "FULFILLMENT"
+      ],
+      "constraints": [],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP030",
+      "templateVersion": 1,
+      "name": "护理储值充赠",
+      "category": "储值激励",
+      "baseTemplate": "A13",
+      "industryTags": [
+        "美业"
+      ],
+      "goalTags": [
+        "储值"
+      ],
+      "scenario": "商家确认实收后到账",
+      "scene": "RECHARGE",
+      "effect": "STORED_VALUE_BONUS",
+      "family": "RECHARGE_BONUS",
+      "exampleText": "充1000送200，充2000送600",
+      "priority": "P1-重点补齐",
+      "capabilityAssessment": "拟新增能力",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "ACTIVITY_VERSION",
+        "MARKETING_RESERVATION",
+        "PAY_CREDIT",
+        "MEMBER_IDENTITY",
+        "STORED_VALUE_REDEEM"
+      ],
+      "constraints": [
+        "商家出资、线下实收",
+        "不叠券或积分",
+        "无线上退款",
+        "普通充值赠送为0"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.storedvalue"
+    },
+    {
+      "templateCode": "AP031",
+      "templateVersion": 1,
+      "name": "护理多次兑换券",
+      "category": "权益发放",
+      "baseTemplate": "A09",
+      "industryTags": [
+        "美业"
+      ],
+      "goalTags": [
+        "留存"
+      ],
+      "scenario": "商家赠送的多次服务权益",
+      "scene": "COUPON_DISTRIBUTION",
+      "effect": "COUPON",
+      "family": "MULTI_USE_COUPON",
+      "exampleText": "指定项目5次，限制有效期",
+      "priority": "P2",
+      "capabilityAssessment": "多次核销需联调",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "COUPON_ISSUE",
+        "MULTI_USE_REDEEM",
+        "SERVICE_SCOPE"
+      ],
+      "constraints": [
+        "赠送兑换券，不是付费疗程卡或期限会籍",
+        "预约与可约资源需单独验收"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.entitlement"
+    },
+    {
+      "templateCode": "AP032",
+      "templateVersion": 1,
+      "name": "新客体验兑换券",
+      "category": "权益发放",
+      "baseTemplate": "A09",
+      "industryTags": [
+        "健身运动"
+      ],
+      "goalTags": [
+        "体验"
+      ],
+      "scenario": "首次体验指定项目",
+      "scene": "COUPON_DISTRIBUTION",
+      "effect": "COUPON",
+      "family": "STORE_COUPON",
+      "exampleText": "体验课1次，7天有效",
+      "priority": "P1",
+      "capabilityAssessment": "已有服务基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "COUPON_ISSUE",
+        "STORE_CODE_REDEEM",
+        "AUDIENCE"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.entitlement"
+    },
+    {
+      "templateCode": "AP033",
+      "templateVersion": 1,
+      "name": "双人体验拼团",
+      "category": "协同成交",
+      "baseTemplate": "A11",
+      "industryTags": [
+        "健身运动"
+      ],
+      "goalTags": [
+        "拉新"
+      ],
+      "scenario": "两名不同客户",
+      "scene": "ORDER",
+      "effect": "PRICE",
+      "family": "GROUP_PRICE",
+      "exampleText": "指定体验商品，2人成团",
+      "priority": "P2",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "GROUP_INSTANCE",
+        "GROUP_CLOSE",
+        "ORDER_REFUND",
+        "FULFILLMENT"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP034",
+      "templateVersion": 1,
+      "name": "运动服务储值充赠",
+      "category": "储值激励",
+      "baseTemplate": "A13",
+      "industryTags": [
+        "健身运动"
+      ],
+      "goalTags": [
+        "储值"
+      ],
+      "scenario": "商家实收后按项目消费",
+      "scene": "RECHARGE",
+      "effect": "STORED_VALUE_BONUS",
+      "family": "RECHARGE_BONUS",
+      "exampleText": "充1000送100",
+      "priority": "P2",
+      "capabilityAssessment": "拟新增能力",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "ACTIVITY_VERSION",
+        "MARKETING_RESERVATION",
+        "PAY_CREDIT",
+        "MEMBER_IDENTITY",
+        "STORED_VALUE_REDEEM"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放",
+        "商家出资、线下实收",
+        "不叠券或积分",
+        "无线上退款",
+        "普通充值赠送为0"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.storedvalue"
+    },
+    {
+      "templateCode": "AP035",
+      "templateVersion": 1,
+      "name": "首次洗护体验价",
+      "category": "成交优惠",
+      "baseTemplate": "A03",
+      "industryTags": [
+        "宠物服务"
+      ],
+      "goalTags": [
+        "体验"
+      ],
+      "scenario": "首次消费指定洗护项目",
+      "scene": "ORDER",
+      "effect": "PRICE",
+      "family": "GOODS_PRICE",
+      "exampleText": "指定项目体验价79",
+      "priority": "P1",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "GOODS_SCOPE",
+        "SKU_PRICE_VALIDATION",
+        "AUDIENCE",
+        "ATOMIC_QUOTA"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP036",
+      "templateVersion": 1,
+      "name": "宠物用品满额赠品",
+      "category": "权益发放",
+      "baseTemplate": "A07",
+      "industryTags": [
+        "宠物服务"
+      ],
+      "goalTags": [
+        "客单"
+      ],
+      "scenario": "用品购买",
+      "scene": "ORDER",
+      "effect": "GIFT",
+      "family": "GOODS_GIFT",
+      "exampleText": "满199赠指定用品1件",
+      "priority": "P2",
+      "capabilityAssessment": "赠品履约待验收",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "GIFT_STOCK",
+        "GIFT_FULFILLMENT",
+        "GIFT_AFTER_SALE"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP037",
+      "templateVersion": 1,
+      "name": "洗护储值充赠",
+      "category": "储值激励",
+      "baseTemplate": "A13",
+      "industryTags": [
+        "宠物服务"
+      ],
+      "goalTags": [
+        "储值"
+      ],
+      "scenario": "限定洗护服务",
+      "scene": "RECHARGE",
+      "effect": "STORED_VALUE_BONUS",
+      "family": "RECHARGE_BONUS",
+      "exampleText": "充500送50",
+      "priority": "P2",
+      "capabilityAssessment": "拟新增能力",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "ACTIVITY_VERSION",
+        "MARKETING_RESERVATION",
+        "PAY_CREDIT",
+        "MEMBER_IDENTITY",
+        "STORED_VALUE_REDEEM"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放",
+        "商家出资、线下实收",
+        "不叠券或积分",
+        "无线上退款",
+        "普通充值赠送为0"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.storedvalue"
+    },
+    {
+      "templateCode": "AP038",
+      "templateVersion": 1,
+      "name": "新客上门服务券",
+      "category": "权益发放",
+      "baseTemplate": "A09",
+      "industryTags": [
+        "家政生活服务"
+      ],
+      "goalTags": [
+        "获客"
+      ],
+      "scenario": "指定服务和可达区域",
+      "scene": "COUPON_DISTRIBUTION",
+      "effect": "COUPON",
+      "family": "COUPON_ISSUE",
+      "exampleText": "满200减20",
+      "priority": "P1",
+      "capabilityAssessment": "已有服务基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "AUDIENCE",
+        "COUPON_ISSUE",
+        "COUPON_BUDGET"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.entitlement"
+    },
+    {
+      "templateCode": "AP039",
+      "templateVersion": 1,
+      "name": "老客服务满额优惠",
+      "category": "成交优惠",
+      "baseTemplate": "A01",
+      "industryTags": [
+        "家政生活服务"
+      ],
+      "goalTags": [
+        "复购"
+      ],
+      "scenario": "指定家政服务",
+      "scene": "ORDER",
+      "effect": "CUT",
+      "family": "ORDER_DISCOUNT",
+      "exampleText": "满400减40",
+      "priority": "P1",
+      "capabilityAssessment": "已有模型基础",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "ORDER_PRICING",
+        "AUDIENCE",
+        "ATOMIC_QUOTA"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "core.trade/product"
+    },
+    {
+      "templateCode": "AP040",
+      "templateVersion": 1,
+      "name": "周期服务兑换券",
+      "category": "权益发放",
+      "baseTemplate": "A09",
+      "industryTags": [
+        "家政生活服务"
+      ],
+      "goalTags": [
+        "留存"
+      ],
+      "scenario": "商家赠送的指定服务权益",
+      "scene": "COUPON_DISTRIBUTION",
+      "effect": "COUPON",
+      "family": "MULTI_USE_COUPON",
+      "exampleText": "保洁兑换3次，预约后履约",
+      "priority": "P2",
+      "capabilityAssessment": "多次核销需联调",
+      "requiredCapabilities": [
+        "MERCHANT_ACTIVE",
+        "INDUSTRY_ADMISSION",
+        "STORE_PERMISSION",
+        "COUPON_ISSUE",
+        "MULTI_USE_REDEEM",
+        "SERVICE_SCOPE"
+      ],
+      "constraints": [
+        "该业态须按实际入驻范围与履约能力开放",
+        "赠送兑换券，不是付费疗程卡或期限会籍",
+        "预约与可约资源需单独验收"
+      ],
+      "editableFields": [
+        "name",
+        "schedule",
+        "storeScope",
+        "audience",
+        "rule",
+        "quota",
+        "budget",
+        "perUserLimit"
+      ],
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiresMerchantReview": true,
+      "activityOwner": "core.promotion",
+      "benefitExecutor": "pay.entitlement"
+    }
+  ],
+  "paidEntitlementProductPresets": [
+    {
+      "templateCode": "EP001",
+      "templateVersion": 1,
+      "name": "30次餐卡",
+      "industryTags": [
+        "餐饮"
+      ],
+      "catalogKind": "PAID_ENTITLEMENT_PRODUCT",
+      "usageModel": "COUNT",
+      "exampleTotalUses": 30,
+      "priceMinor": null,
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiredCapabilities": [
+        "CARD_PRODUCT",
+        "PAID_ORDER",
+        "IDEMPOTENT_CARD_ISSUE",
+        "ENTITLEMENT_LEDGER",
+        "ATOMIC_USE_DEDUCT",
+        "VALIDITY_POLICY"
+      ],
+      "capabilityAssessment": "规划待补，非已实现活动能力",
+      "productOwner": "core.product",
+      "entitlementDefinitionOwner": "pay.entitlement",
+      "instanceAndUsageOwner": "pay.entitlement"
+    },
+    {
+      "templateCode": "EP002",
+      "templateVersion": 1,
+      "name": "30天30次餐卡",
+      "industryTags": [
+        "餐饮"
+      ],
+      "catalogKind": "PAID_ENTITLEMENT_PRODUCT",
+      "usageModel": "PERIOD_COUNT",
+      "exampleTotalUses": 30,
+      "priceMinor": null,
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiredCapabilities": [
+        "CARD_PRODUCT",
+        "PAID_ORDER",
+        "IDEMPOTENT_CARD_ISSUE",
+        "ENTITLEMENT_LEDGER",
+        "ATOMIC_USE_DEDUCT",
+        "VALIDITY_POLICY"
+      ],
+      "capabilityAssessment": "规划待补，非已实现活动能力",
+      "productOwner": "core.product",
+      "entitlementDefinitionOwner": "pay.entitlement",
+      "instanceAndUsageOwner": "pay.entitlement"
+    },
+    {
+      "templateCode": "EP003",
+      "templateVersion": 1,
+      "name": "每日一餐月卡",
+      "industryTags": [
+        "餐饮"
+      ],
+      "catalogKind": "PAID_ENTITLEMENT_PRODUCT",
+      "usageModel": "PERIOD_DAILY",
+      "exampleTotalUses": null,
+      "priceMinor": null,
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiredCapabilities": [
+        "CARD_PRODUCT",
+        "PAID_ORDER",
+        "IDEMPOTENT_CARD_ISSUE",
+        "ENTITLEMENT_LEDGER",
+        "ATOMIC_USE_DEDUCT",
+        "VALIDITY_POLICY"
+      ],
+      "capabilityAssessment": "规划待补，非已实现活动能力",
+      "productOwner": "core.product",
+      "entitlementDefinitionOwner": "pay.entitlement",
+      "instanceAndUsageOwner": "pay.entitlement"
+    },
+    {
+      "templateCode": "EP004",
+      "templateVersion": 1,
+      "name": "30次游泳卡",
+      "industryTags": [
+        "游泳运动"
+      ],
+      "catalogKind": "PAID_ENTITLEMENT_PRODUCT",
+      "usageModel": "COUNT",
+      "exampleTotalUses": 30,
+      "priceMinor": null,
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiredCapabilities": [
+        "CARD_PRODUCT",
+        "PAID_ORDER",
+        "IDEMPOTENT_CARD_ISSUE",
+        "ENTITLEMENT_LEDGER",
+        "ATOMIC_USE_DEDUCT",
+        "VALIDITY_POLICY"
+      ],
+      "capabilityAssessment": "规划待补，非已实现活动能力",
+      "productOwner": "core.product",
+      "entitlementDefinitionOwner": "pay.entitlement",
+      "instanceAndUsageOwner": "pay.entitlement"
+    },
+    {
+      "templateCode": "EP005",
+      "templateVersion": 1,
+      "name": "限次游泳月卡",
+      "industryTags": [
+        "游泳运动"
+      ],
+      "catalogKind": "PAID_ENTITLEMENT_PRODUCT",
+      "usageModel": "PERIOD_COUNT",
+      "exampleTotalUses": null,
+      "priceMinor": null,
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiredCapabilities": [
+        "CARD_PRODUCT",
+        "PAID_ORDER",
+        "IDEMPOTENT_CARD_ISSUE",
+        "ENTITLEMENT_LEDGER",
+        "ATOMIC_USE_DEDUCT",
+        "VALIDITY_POLICY"
+      ],
+      "capabilityAssessment": "规划待补，非已实现活动能力",
+      "productOwner": "core.product",
+      "entitlementDefinitionOwner": "pay.entitlement",
+      "instanceAndUsageOwner": "pay.entitlement"
+    },
+    {
+      "templateCode": "EP006",
+      "templateVersion": 1,
+      "name": "指定服务次卡",
+      "industryTags": [
+        "生活服务"
+      ],
+      "catalogKind": "PAID_ENTITLEMENT_PRODUCT",
+      "usageModel": "COUNT",
+      "exampleTotalUses": null,
+      "priceMinor": null,
+      "seedEnabled": false,
+      "publishOnCreate": false,
+      "requiredCapabilities": [
+        "CARD_PRODUCT",
+        "PAID_ORDER",
+        "IDEMPOTENT_CARD_ISSUE",
+        "ENTITLEMENT_LEDGER",
+        "ATOMIC_USE_DEDUCT",
+        "VALIDITY_POLICY"
+      ],
+      "capabilityAssessment": "规划待补，非已实现活动能力",
+      "productOwner": "core.product",
+      "entitlementDefinitionOwner": "pay.entitlement",
+      "instanceAndUsageOwner": "pay.entitlement"
+    }
+  ],
+  "moduleOwnershipRevision": "2026-10-18 core activity / pay entitlement"
+}
