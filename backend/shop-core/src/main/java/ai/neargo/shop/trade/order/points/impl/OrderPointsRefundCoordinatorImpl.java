@@ -9,6 +9,7 @@ import ai.neargo.shop.trade.order.mapper.OrderPointsRefundBindingMapper;
 import ai.neargo.shop.trade.order.points.*;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionService;
+import ai.neargo.shop.spi.settle.SettlePort;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
@@ -29,6 +30,7 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
     private final AfterSaleMapper afterSales;
     private final OrderPointsBindingService bindings;
     private final RefundExecutionService executions;
+    private final OrderPointsFactService facts;
     private final ObjectMapper json = new ObjectMapper();
 
     public OrderPointsRefundCoordinatorImpl(
@@ -38,7 +40,8 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
             OrderItemMapper items,
             AfterSaleMapper afterSales,
             OrderPointsBindingService bindings,
-            RefundExecutionService executions) {
+            RefundExecutionService executions,
+            OrderPointsFactService facts) {
         this.mapper = mapper;
         this.orders = orders;
         this.subs = subs;
@@ -46,6 +49,7 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
         this.afterSales = afterSales;
         this.bindings = bindings;
         this.executions = executions;
+        this.facts = facts;
     }
 
     @Override
@@ -207,6 +211,188 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
     }
 
     @Override
+    @Transactional(value = "transactionManager")
+    public Binding acceptPreparation(String afterSaleNo, PointsRefundPort.RefundPreparation preparation) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var row=locked(afterSaleNo);
+            var current=decode(row);
+            require(preparation!=null && preparation.preparationNo()!=null
+                    && preparation.typeCode().equals(current.command().typeCode())
+                    && preparation.inputHash()!=null && !preparation.inputHash().isBlank()
+                    && preparation.revision()>0 && preparation.cashOffsetMinor()>=0
+                    && preparation.netCashMinor()>=0
+                    && Math.addExact(preparation.cashOffsetMinor(),preparation.netCashMinor())
+                    ==current.command().businessCashMinor(),"POINTS_REFUND_PREPARATION_MISMATCH");
+            if(current.preparation()!=null) {
+                require(current.preparation().equals(preparation),"POINTS_REFUND_PREPARATION_CONFLICT");
+                return current;
+            }
+            require(current.phase()==Phase.STAGED,"POINTS_REFUND_PHASE_CONFLICT");
+            require(mapper.change(afterSaleNo,current.version(),current.phase().name(),
+                    Phase.PREPARED.name(),json.writeValueAsString(preparation),null)==1,
+                    "POINTS_REFUND_PHASE_CONFLICT");
+            return inspect(afterSaleNo);
+        });
+    }
+
+    @Override
+    @Transactional(value = "transactionManager")
+    public Binding authorizeCash(String afterSaleNo, PointsRefundPort.CashDecision decision) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var row=locked(afterSaleNo);
+            var current=decode(row);
+            var prep=current.preparation();
+            require(prep!=null && decision!=null && prep.netCashMinor()>0
+                    && prep.preparationNo().equals(decision.preparationNo())
+                    && prep.inputHash().equals(decision.inputHash())
+                    && prep.revision()==decision.revision()
+                    && prep.netCashMinor()==decision.netCashMinor()
+                    && prep.cashOffsetMinor()==decision.cashOffsetMinor()
+                    && Objects.equals(prep.collectionTicket(),decision.collectionTicket())
+                    && current.command().afterSaleNo().equals(decision.afterSaleNo())
+                    && current.command().subOrderNo().equals(decision.subOrderNo())
+                    && current.command().userNo().equals(decision.userNo())
+                    && current.command().currency().equals(decision.currency())
+                    && current.command().payment().channel().equals(decision.channel())
+                    && current.command().payment().equals(decision.payment()),
+                    "POINTS_REFUND_CASH_DECISION_MISMATCH");
+            if(Set.of(Phase.CASH_AUTHORIZED,Phase.CASH_CONFIRMED,
+                    Phase.POINTS_CONFIRMED,Phase.COMMITTED).contains(current.phase())) return current;
+            require(current.phase()==Phase.PREPARED,"POINTS_REFUND_PHASE_CONFLICT");
+            require(mapper.change(afterSaleNo,current.version(),current.phase().name(),
+                    Phase.CASH_AUTHORIZED.name(),json.writeValueAsString(prep),null)==1,
+                    "POINTS_REFUND_PHASE_CONFLICT");
+            return inspect(afterSaleNo);
+        });
+    }
+
+    @Override
+    @Transactional(value = "transactionManager", propagation = Propagation.MANDATORY)
+    public Binding recordCashSuccess(String afterSaleNo, SettlePort.RefundEvidence proof) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var row=locked(afterSaleNo);
+            var current=decode(row);
+            var prep=current.preparation();
+            var command=current.command();
+            require(prep!=null && prep.netCashMinor()>0 && proof!=null
+                    && "REFUND".equals(proof.direction()) && "SUCCESS".equals(proof.status())
+                    && proof.verifiedAt()!=null && proof.verifiedAt()>0
+                    && proof.providerNo()!=null && !proof.providerNo().isBlank()
+                    && proof.verifiedMinor()!=null && proof.verifiedMinor()==prep.netCashMinor()
+                    && proof.amountMinor()==prep.netCashMinor()
+                    && afterSaleNo.equals(proof.afterSaleNo())
+                    && command.subOrderNo().equals(proof.subOrderNo())
+                    && command.userNo().equals(proof.userNo())
+                    && command.currency().equals(proof.currency()),
+                    "POINTS_REFUND_CASH_EVIDENCE_MISMATCH");
+            if(current.phase()==Phase.CASH_CONFIRMED || current.phase()==Phase.POINTS_CONFIRMED
+                    || current.phase()==Phase.COMMITTED) {
+                require(proof.paymentNo().equals(current.cashPaymentNo()),
+                        "POINTS_REFUND_CASH_EVIDENCE_MISMATCH");
+                return current;
+            }
+            require(current.phase()==Phase.CASH_AUTHORIZED,
+                    "POINTS_REFUND_PHASE_CONFLICT");
+            var execution=executions.inspect(afterSaleNo);
+            require(execution!=null && "CASH_CONFIRMED".equals(execution.preparation().state())
+                    && proof.paymentNo().equals(execution.cashPaymentNo()),
+                    "POINTS_REFUND_CASH_EVIDENCE_MISMATCH");
+            var original=bindings.find(command.subOrderNo());
+            require(original!=null && original.phase()==OrderPointsBindingService.Phase.BOUND,
+                    "POINTS_REFUND_BINDING_MISSING");
+            var at=java.time.Instant.ofEpochMilli(proof.verifiedAt());
+            String eventNo="ORDER:REFUND_CONFIRM:"+afterSaleNo;
+            var confirmation=new PointsRefundPort.RefundConfirmation(prep.preparationNo(),
+                    prep.inputHash(),proof.paymentNo(),prep.collectionTicket(),null);
+            var fact=new PointsFactPort.RefundConfirmationFact(eventNo,command.typeCode(),
+                    command.subOrderNo(),command.userNo(),command.sourceVersion(),at,confirmation);
+            facts.append(new PointsOrderEvent(original.admission().orderNo(),command.subOrderNo(),
+                    original.admission().merchantNo(),original.admission().storeNo(),command.userNo(),
+                    command.typeCode(),command.currency(),command.sourceVersion(),at,
+                    new SourceFactsPort.Fact(0,null,null,null,null,fact)));
+            require(mapper.change(afterSaleNo,current.version(),current.phase().name(),
+                    Phase.CASH_CONFIRMED.name(),json.writeValueAsString(prep),proof.paymentNo())==1,
+                    "POINTS_REFUND_PHASE_CONFLICT");
+            return inspect(afterSaleNo);
+        });
+    }
+
+    @Override
+    @Transactional(value = "transactionManager", propagation = Propagation.MANDATORY)
+    public Binding recordZeroCash(String afterSaleNo) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var current=decode(locked(afterSaleNo));
+            var prep=current.preparation();
+            var command=current.command();
+            require(prep!=null && prep.netCashMinor()==0,
+                    "POINTS_ZERO_CASH_NOT_ZERO");
+            if(Set.of(Phase.ZERO_AUTHORIZED,Phase.POINTS_CONFIRMED,Phase.COMMITTED)
+                    .contains(current.phase())) return current;
+            require(current.phase()==Phase.PREPARED,"POINTS_REFUND_PHASE_CONFLICT");
+            var original=bindings.find(command.subOrderNo());
+            require(original!=null && original.phase()==OrderPointsBindingService.Phase.BOUND,
+                    "POINTS_REFUND_BINDING_MISSING");
+            var reason=command.businessCashMinor()==0 && prep.collectionTicket()==null
+                    ? PointsRefundPort.ZeroCashReason.NO_CASH_DUE
+                    : PointsRefundPort.ZeroCashReason.COLLECTED_OFFSET;
+            require(reason==PointsRefundPort.ZeroCashReason.NO_CASH_DUE
+                    || (prep.collectionTicket()!=null
+                    && prep.cashOffsetMinor()==command.businessCashMinor()),
+                    "POINTS_ZERO_CASH_REASON_MISMATCH");
+            String eventNo="ORDER:ZERO_CASH:"+afterSaleNo;
+            var at=java.time.Instant.now();
+            var fact=new PointsRefundPort.ZeroCashCompletionFact(eventNo,prep.preparationNo(),
+                    prep.inputHash(),prep.revision(),command.typeCode(),afterSaleNo,
+                    command.subOrderNo(),command.userNo(),original.admission().storeNo(),
+                    command.currency(),command.sourceVersion(),command.businessCashMinor(),
+                    prep.cashOffsetMinor(),0,reason,at);
+            facts.append(new PointsOrderEvent(original.admission().orderNo(),command.subOrderNo(),
+                    original.admission().merchantNo(),original.admission().storeNo(),command.userNo(),
+                    command.typeCode(),command.currency(),command.sourceVersion(),at,
+                    new SourceFactsPort.Fact(0,null,null,null,fact,null)));
+            require(mapper.change(afterSaleNo,current.version(),current.phase().name(),
+                    Phase.ZERO_AUTHORIZED.name(),json.writeValueAsString(prep),null)==1,
+                    "POINTS_REFUND_PHASE_CONFLICT");
+            return inspect(afterSaleNo);
+        });
+    }
+
+    @Override
+    @Transactional(value = "transactionManager")
+    public Binding acceptPointsConfirmation(String afterSaleNo, PointsRefundPort.RefundOutcome outcome) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var current=decode(locked(afterSaleNo));
+            require(outcome!=null && current.preparation()!=null
+                    && current.preparation().preparationNo().equals(outcome.preparationNo())
+                    && "CONFIRMED".equals(outcome.state()),"POINTS_REFUND_CONFIRMATION_MISMATCH");
+            if(current.phase()==Phase.POINTS_CONFIRMED || current.phase()==Phase.COMMITTED) return current;
+            require(current.phase()==Phase.CASH_CONFIRMED
+                    || current.phase()==Phase.ZERO_AUTHORIZED,"POINTS_REFUND_PHASE_CONFLICT");
+            require(mapper.change(afterSaleNo,current.version(),current.phase().name(),
+                    Phase.POINTS_CONFIRMED.name(),json.writeValueAsString(current.preparation()),
+                    current.cashPaymentNo())==1,"POINTS_REFUND_PHASE_CONFLICT");
+            return inspect(afterSaleNo);
+        });
+    }
+
+    @Override
+    @Transactional(value = "transactionManager", propagation = Propagation.MANDATORY)
+    public Binding commit(String afterSaleNo) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var current=decode(locked(afterSaleNo));
+            if(current.phase()==Phase.COMMITTED) return current;
+            require(current.phase()==Phase.POINTS_CONFIRMED,"POINTS_REFUND_PHASE_CONFLICT");
+            var execution=executions.inspect(afterSaleNo);
+            require(execution!=null && "COMMITTED".equals(execution.preparation().state()),
+                    "POINTS_REFUND_SOURCE_NOT_COMMITTED");
+            require(mapper.change(afterSaleNo,current.version(),current.phase().name(),
+                    Phase.COMMITTED.name(),json.writeValueAsString(current.preparation()),
+                    current.cashPaymentNo())==1,"POINTS_REFUND_PHASE_CONFLICT");
+            return inspect(afterSaleNo);
+        });
+    }
+
+    @Override
     @Transactional(value = "transactionManager", readOnly = true)
     public Binding inspect(String afterSaleNo) {
         return DataScopeContext.executeWithoutScope(() -> decode(mapper.find(afterSaleNo)));
@@ -234,6 +420,14 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
                                 (String) row.get("preparation_json"),
                                 PointsRefundPort.RefundPreparation.class),
                 (String) row.get("cash_payment_no"));
+    }
+
+    private Map<String,Object> locked(String no) {
+        var first=mapper.find(no);
+        require(first!=null,"POINTS_REFUND_BINDING_UNKNOWN");
+        subs.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                .eq(OrdSubOrder::getSubOrderNo,(String)first.get("sub_order_no")).last("FOR UPDATE"));
+        return mapper.lock(no);
     }
 
     private static long value(Long x) {

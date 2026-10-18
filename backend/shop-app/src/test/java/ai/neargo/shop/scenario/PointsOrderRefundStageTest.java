@@ -30,6 +30,7 @@ import java.util.UUID;
 @ActiveProfiles("test")
 class PointsOrderRefundStageTest {
     @Autowired OrderPointsRefundCoordinator refunds;
+    @Autowired ai.neargo.shop.trade.order.points.OrderPointsFactService journal;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager sourceTx;
     @MockitoBean OrderPointsBindingService bindings;
@@ -80,6 +81,62 @@ class PointsOrderRefundStageTest {
                                         .execute(s -> refunds.stage(f.as, f.plan, wrong)))
                 .hasMessageContaining("POINTS_REFUND_PAYMENT_MISMATCH");
         assertThat(refunds.inspect(f.as)).isNull();
+    }
+
+    @Test void only_matching_pay_preparation_and_authorized_revision_open_cash() {
+        var f=fixture();
+        var stage=new TransactionTemplate(sourceTx).execute(s -> refunds.stage(f.as,f.plan,f.proof));
+        var prep=new PointsRefundPort.RefundPreparation("PREP:"+f.as,"TYPE",1,"HASH",0,0,0,
+                0,0,45,0,null,"PREPARED");
+        assertThatThrownBy(() -> refunds.acceptPreparation(f.as,new PointsRefundPort.RefundPreparation(
+                "PREP:"+f.as,"TYPE",1,"HASH",0,0,0,0,0,46,0,null,"PREPARED")))
+                .hasMessageContaining("POINTS_REFUND_PREPARATION_MISMATCH");
+        var accepted=refunds.acceptPreparation(f.as,prep);
+        assertThat(accepted.phase()).isEqualTo(OrderPointsRefundCoordinator.Phase.PREPARED);
+        assertThat(refunds.acceptPreparation(f.as,prep)).isEqualTo(accepted);
+        var wrong=new PointsRefundPort.CashDecision(prep.preparationNo(),prep.inputHash(),2,f.as,f.sub,
+                "U","CNY","TEST",45,0,null,stage.command().payment());
+        assertThatThrownBy(() -> refunds.authorizeCash(f.as,wrong))
+                .hasMessageContaining("POINTS_REFUND_CASH_DECISION_MISMATCH");
+        var authorized=refunds.authorizeCash(f.as,new PointsRefundPort.CashDecision(
+                prep.preparationNo(),prep.inputHash(),1,f.as,f.sub,"U","CNY","TEST",45,0,
+                null,stage.command().payment()));
+        assertThat(authorized.phase()).isEqualTo(OrderPointsRefundCoordinator.Phase.CASH_AUTHORIZED);
+        String cashNo="CASH:"+f.as;
+        when(executions.inspect(f.as)).thenReturn(new RefundExecutionService.Execution(
+                new RefundExecutionService.Preparation(f.as,f.sub,"H","CASH_CONFIRMED",45),
+                f.plan,cashNo));
+        var proof=new ai.neargo.shop.spi.settle.SettlePort.RefundEvidence(cashNo,"REFUND",f.as,f.sub,
+                "U","CNY",45,"SUCCESS",45L,1000L,"PROVIDER:"+f.as);
+        var confirmedCash=new TransactionTemplate(sourceTx).execute(s -> refunds.recordCashSuccess(f.as,proof));
+        assertThat(confirmedCash.phase()).isEqualTo(OrderPointsRefundCoordinator.Phase.CASH_CONFIRMED);
+        assertThat(journal.find("ORDER:REFUND_CONFIRM:"+f.as)).isPresent();
+        assertThat(refunds.acceptPointsConfirmation(f.as,new PointsRefundPort.RefundOutcome(
+                prep.preparationNo(),"CONFIRMED",0,0,0,0,0,null,false)).phase())
+                .isEqualTo(OrderPointsRefundCoordinator.Phase.POINTS_CONFIRMED);
+        when(executions.inspect(f.as)).thenReturn(new RefundExecutionService.Execution(
+                new RefundExecutionService.Preparation(f.as,f.sub,"H","COMMITTED",45),
+                f.plan,cashNo));
+        assertThat(new TransactionTemplate(sourceTx).execute(s -> refunds.commit(f.as)).phase())
+                .isEqualTo(OrderPointsRefundCoordinator.Phase.COMMITTED);
+    }
+
+    @Test void zero_cash_completion_is_a_stable_source_fact_before_points_confirmation() {
+        var f=fixture();
+        new TransactionTemplate(sourceTx).execute(s -> refunds.stage(f.as,f.plan,f.proof));
+        var prep=new PointsRefundPort.RefundPreparation("ZERO:"+f.as,"TYPE",1,"ZERO-HASH",
+                0,0,0,0,45,0,0,"COLLECT:"+f.as,"COLLECTED");
+        refunds.acceptPreparation(f.as,prep);
+        var first=new TransactionTemplate(sourceTx).execute(s -> refunds.recordZeroCash(f.as));
+        assertThat(first.phase()).isEqualTo(OrderPointsRefundCoordinator.Phase.ZERO_AUTHORIZED);
+        var event="ORDER:ZERO_CASH:"+f.as;
+        assertThat(journal.find(event)).isPresent();
+        OrderPointsRefundCoordinator.Binding replay=
+                new TransactionTemplate(sourceTx).execute(s -> refunds.recordZeroCash(f.as));
+        assertThat(replay).isEqualTo(first);
+        assertThat(refunds.acceptPointsConfirmation(f.as,new PointsRefundPort.RefundOutcome(
+                prep.preparationNo(),"CONFIRMED",0,0,45,0,0,null,false)).phase())
+                .isEqualTo(OrderPointsRefundCoordinator.Phase.POINTS_CONFIRMED);
     }
 
     private Fixture fixture() {

@@ -9,6 +9,8 @@ import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import ai.neargo.shop.trade.order.mapper.RefundExecutionMapper;
+import ai.neargo.shop.trade.order.mapper.OrderPointsRefundBindingMapper;
+import ai.neargo.shop.spi.points.PointsRefundPort;
 import ai.neargo.shop.trade.order.mapper.RefundLedgerMapper;
 import ai.neargo.shop.trade.order.refund.model.LedgerResult;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
@@ -36,11 +38,13 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
     private final RefundExecutionMapper store;
     private final RefundLedgerMapper ledgerStore;
     private final OrderMapper orders;
+    private final OrderPointsRefundBindingMapper pointsRefunds;
     private final SettlePort settle;
     private final ObjectMapper json=new ObjectMapper();
     public RefundExecutionServiceImpl(RefundExecutionMapper store,RefundLedgerMapper mapper,SettlePort settle,
-                                      OrderMapper orders) {
+                                      OrderMapper orders,OrderPointsRefundBindingMapper pointsRefunds) {
         this.store=store; this.ledgerStore=mapper; this.settle=settle; this.orders=orders;
+        this.pointsRefunds=pointsRefunds;
     }
     @Override public Execution inspect(String as) {
         return DataScopeContext.executeWithoutScope(() -> {
@@ -97,40 +101,89 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             var saved=snapshot(head);
             if ("PREPARED".equals(head.get("state"))) {
                 var sub=store.lockSub(saved.plan().subOrderNo());
-                require(nz(sub.getPointsDeduct())==0 && nz(sub.getPointsDeductMinor())==0
-                        && !Boolean.TRUE.equals(sub.getPointsGranted()),
-                        "REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
-                change(head,"CASH_OPENING",null,saved.plan().totalMinor(),null);
+                long net=saved.plan().totalMinor();
+                if(pointsIntegrated(sub)) {
+                    var binding=pointsDecision(as,saved.plan().subOrderNo());
+                    require("CASH_AUTHORIZED".equals(binding.get("phase")),
+                            "REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+                    var prep=pointsPreparation(binding);
+                    require(prep!=null && prep.netCashMinor()>0
+                            && pointsCommand(binding).businessCashMinor()==saved.plan().totalMinor(),
+                            "REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+                    net=prep.netCashMinor();
+                } else {
+                    require(nz(sub.getPointsDeduct())==0 && nz(sub.getPointsDeductMinor())==0
+                            && !Boolean.TRUE.equals(sub.getPointsGranted()),
+                            "REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+                }
+                change(head,"CASH_OPENING",null,net,null);
             }
-            return new CashIntent(as,saved.plan().subOrderNo(),saved.plan().totalMinor());
+            return new CashIntent(as,saved.plan().subOrderNo(),number(store.execution(as),"net_cash_minor"));
         });
     }
     @Override public void bindCash(String as,String payment,long net) {
+        bindCash(as,payment,net,null);
+    }
+    @Override public void bindCash(String as,String payment,long net,RefundEvidence evidence) {
         DataScopeContext.executeWithoutScope(() -> {
             var head=locked(as);
             require(payment!=null && !payment.isBlank(),"REFUND_EXECUTION_CASH_REQUIRED");
             // Offset/zero-cash plans need their points revision and completion evidence in the subsequent wiring task.
-            require(net==snapshot(head).plan().totalMinor() && net>0,"REFUND_EXECUTION_CASH_PLAN_UNSUPPORTED");
+            var saved=snapshot(head);
+            var sub=store.lockSub(saved.plan().subOrderNo());
+            if(pointsIntegrated(sub)) {
+                var binding=pointsDecision(as,saved.plan().subOrderNo());
+                require("CASH_AUTHORIZED".equals(binding.get("phase"))
+                        && pointsPreparation(binding)!=null
+                        && net==pointsPreparation(binding).netCashMinor(),
+                        "REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+            } else {
+                require(net==saved.plan().totalMinor(),"REFUND_EXECUTION_CASH_PLAN_UNSUPPORTED");
+            }
+            require(net>0,"REFUND_EXECUTION_CASH_PLAN_UNSUPPORTED");
             if (head.get("cash_payment_no")!=null) {
                 require(payment.equals(head.get("cash_payment_no")) && net==number(head,"net_cash_minor"),
                         "REFUND_EXECUTION_CASH_CONFLICT");
                 return null;
             }
             require("CASH_OPENING".equals(head.get("state")),"REFUND_EXECUTION_PHASE_CONFLICT");
-            matchingIntent(head,settle.refundEvidence(payment),net);
+            matchingIntent(head,evidence==null?settle.refundEvidence(payment):evidence,net);
             change(head,"CASH_PENDING",payment,net,null);
             return null;
         });
     }
-    @Override public void confirmCash(String as) {
+    @Override public void confirmCash(String as) { confirmCash(as,null); }
+    @Override public void confirmCash(String as,RefundEvidence evidence) {
         DataScopeContext.executeWithoutScope(() -> {
             var head=locked(as);
             require(List.of("CASH_PENDING","CASH_CONFIRMED","COMMITTED").contains(head.get("state")),
                     "REFUND_EXECUTION_PHASE_CONFLICT");
-            verified(head);
+            verified(head,evidence);
             if ("CASH_PENDING".equals(head.get("state"))) {
                 change(head,"CASH_CONFIRMED",(String)head.get("cash_payment_no"),number(head,"net_cash_minor"),null);
             }
+            return null;
+        });
+    }
+    @Override public void completeZeroCash(String as) {
+        DataScopeContext.executeWithoutScope(() -> {
+            var head=locked(as);
+            var saved=snapshot(head);
+            var sub=store.lockSub(saved.plan().subOrderNo());
+            require(pointsIntegrated(sub),"REFUND_EXECUTION_ZERO_CASH_NOT_POINTS");
+            var binding=pointsDecision(as,saved.plan().subOrderNo());
+            var prep=pointsPreparation(binding);
+            require(prep!=null && prep.netCashMinor()==0
+                    && pointsCommand(binding).businessCashMinor()==saved.plan().totalMinor()
+                    && "POINTS_CONFIRMED".equals(binding.get("phase"))
+                    && head.get("cash_payment_no")==null,
+                    "REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+            if("CASH_CONFIRMED".equals(head.get("state")) || "COMMITTED".equals(head.get("state"))) {
+                require(number(head,"net_cash_minor")==0,"REFUND_EXECUTION_CASH_CONFLICT");
+                return null;
+            }
+            require("PREPARED".equals(head.get("state")),"REFUND_EXECUTION_PHASE_CONFLICT");
+            change(head,"CASH_CONFIRMED",null,0L,null);
             return null;
         });
     }
@@ -141,11 +194,16 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
                 return json.readValue((String)head.get("result_json"),LedgerResult.class);
             }
             require("CASH_CONFIRMED".equals(head.get("state")),"REFUND_EXECUTION_NOT_CONFIRMED");
-            verified(head);
             var sub=store.lockSub((String)head.get("sub_order_no"));
-            require(nz(sub.getPointsDeduct())==0 && nz(sub.getPointsDeductMinor())==0
-                    && !Boolean.TRUE.equals(sub.getPointsGranted()),
-                    "REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+            if(pointsIntegrated(sub)) {
+                require("POINTS_CONFIRMED".equals(pointsDecision(as,sub.getSubOrderNo()).get("phase")),
+                        "REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+            } else {
+                verified(head,null);
+                require(nz(sub.getPointsDeduct())==0 && nz(sub.getPointsDeductMinor())==0
+                        && !Boolean.TRUE.equals(sub.getPointsGranted()),
+                        "REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+            }
             var result=new RefundLedger(new MybatisRefundLedgerStore(ledgerStore,as)).record(snapshot(head).plan());
             change(head,"COMMITTED",(String)head.get("cash_payment_no"),number(head,"net_cash_minor"),
                     json.writeValueAsString(result));
@@ -157,6 +215,8 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             var head=locked(as);
             if ("ABORTED".equals(head.get("state"))) { return null; }
             require("PREPARED".equals(head.get("state")) && head.get("cash_payment_no")==null,
+                    "REFUND_EXECUTION_RELEASE_UNSAFE");
+            require(pointsRefunds.find(as)==null || "ABORTED".equals(pointsRefunds.find(as).get("phase")),
                     "REFUND_EXECUTION_RELEASE_UNSAFE");
             require(!settle.hasRefundForAfterSale(as),"REFUND_EXECUTION_RELEASE_UNSAFE");
             change(head,"ABORTED",null,null,null);
@@ -197,8 +257,8 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
         require(Math.addExact(Math.addExact(nz(sub.getRefundedMinor()),reservedTotal),plan.totalMinor())
                 <=nz(sub.getPayAmount()),"REFUND_EXECUTION_CAPACITY_EXCEEDED");
     }
-    private void verified(Map<String,Object> head) {
-        var proof=settle.refundEvidence((String)head.get("cash_payment_no"));
+    private void verified(Map<String,Object> head,RefundEvidence supplied) {
+        var proof=supplied==null?settle.refundEvidence((String)head.get("cash_payment_no")):supplied;
         require(proof!=null && "SUCCESS".equals(proof.status()) && proof.verifiedAt()!=null
                 && proof.verifiedMinor()!=null && proof.providerNo()!=null,"REFUND_CASH_NOT_CONFIRMED");
         long net=number(head,"net_cash_minor");
@@ -230,6 +290,24 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
         var saved=snapshot(row);
         return new Preparation(saved.afterSaleNo(),saved.plan().subOrderNo(),(String)row.get("input_hash"),
                 (String)row.get("state"),saved.plan().totalMinor());
+    }
+    private boolean pointsIntegrated(OrdSubOrder sub) {
+        var root=orders.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                .eq(OrdOrder::getOrderNo,sub.getOrderNo()).last("LIMIT 1"));
+        return root!=null && Boolean.TRUE.equals(root.getPointsIntegrated());
+    }
+    private Map<String,Object> pointsDecision(String afterSaleNo,String subOrderNo) {
+        var row=pointsRefunds.find(afterSaleNo);
+        require(row!=null && subOrderNo.equals(row.get("sub_order_no")),
+                "REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+        return row;
+    }
+    private PointsRefundPort.RefundPreparation pointsPreparation(Map<String,Object> row) {
+        return row.get("preparation_json")==null?null:json.readValue((String)row.get("preparation_json"),
+                PointsRefundPort.RefundPreparation.class);
+    }
+    private PointsRefundPort.RefundCommand pointsCommand(Map<String,Object> row) {
+        return json.readValue((String)row.get("command_json"),PointsRefundPort.RefundCommand.class);
     }
     private String hash(String value) {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")

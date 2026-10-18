@@ -6,6 +6,7 @@ import java.time.Instant;
 /** Frozen business refunds prepare rights first and confirm them only from trusted pay evidence. */
 public interface PointsRefundPort {
     RefundPreparation prepare(RefundCommand command);
+    CashDecision authorizeCash(String preparationNo,String inputHash,long revision);
     RefundOutcome confirm(RefundConfirmation confirmation);
     void abort(RefundAbort abort);
 
@@ -21,6 +22,10 @@ public interface PointsRefundPort {
                              long returnedPoints,long reclaimedPending,long reclaimedAvailable,
                              long expectedClawbackPoints,long cashOffsetMinor,long netCashMinor,
                              long waivedPoints,String collectionTicket,String state) { }
+    record CashDecision(String preparationNo,String inputHash,long revision,String afterSaleNo,
+                        String subOrderNo,String userNo,String currency,String channel,
+                        long netCashMinor,long cashOffsetMinor,String collectionTicket,
+                        PaymentSnapshot payment) { }
     record RefundConfirmation(String preparationNo,String inputHash,String cashRefundPaymentNo,
                               String collectionTicket,String recoveryTicket,String zeroCashCompletionEventNo) {
         public RefundConfirmation(String preparationNo,String inputHash,String cashRefundPaymentNo,

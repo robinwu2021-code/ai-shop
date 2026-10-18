@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.order.refund.service;
 import ai.neargo.shop.trade.order.refund.model.LedgerResult;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import java.util.List;
+import ai.neargo.shop.spi.settle.SettlePort;
 
 /** Source reservations survive retries; confirmed refunded counters change only after trusted cash evidence. */
 public interface RefundExecutionService {
@@ -14,7 +15,10 @@ public interface RefundExecutionService {
     /** Freeze the decision before a pay-domain cash intent can exist. Points plans require their own proof. */
     CashIntent beginCash(String afterSaleNo);
     void bindCash(String afterSaleNo,String paymentNo,long netCashMinor);
+    void bindCash(String afterSaleNo,String paymentNo,long netCashMinor,SettlePort.RefundEvidence evidence);
     void confirmCash(String afterSaleNo);
+    void confirmCash(String afterSaleNo,SettlePort.RefundEvidence evidence);
+    void completeZeroCash(String afterSaleNo);
     LedgerResult commit(String afterSaleNo);
     void release(String afterSaleNo);
     record Execution(Preparation preparation,RefundPlan plan,String cashPaymentNo) { }

@@ -171,6 +171,42 @@ class RefundExecutionTest {
         executions.release(f.as());
     }
 
+    @Test void points_cash_uses_only_the_authorized_net_and_waits_for_points_confirmation() {
+        var f=fixture();
+        jdbc.update("INSERT INTO ord_order(order_no,user_no,status,currency,pay_amount,points_integrated,"
+                + "created_at,updated_at) VALUES(?,'USER','PAID','CNY',110,1,NOW(),NOW())",f.sub());
+        var plan=new RefundPlan(f.sub(),List.of(new RefundLine(f.item(),1,50)),10);
+        executions.prepare(f.as(),plan);
+        jdbc.update("UPDATE ord_sub_order SET points_deduct=10 WHERE sub_order_no=?",f.sub());
+        assertThatThrownBy(() -> executions.beginCash(f.as()))
+                .hasMessage("REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+        var payment=new ai.neargo.shop.spi.points.PointsRefundPort.PaymentSnapshot(
+                "DIRECT","TEST","MERCHANT","STORE","V1","SM","TR","OUT",110);
+        var command=new ai.neargo.shop.spi.points.PointsRefundPort.RefundCommand(
+                f.as(),f.sub(),"USER","TYPE","CNY",0,60,50,
+                List.of(new ai.neargo.shop.spi.points.PointsRefundPort.RefundLine(String.valueOf(f.item()),50)),
+                payment);
+        var prep=new ai.neargo.shop.spi.points.PointsRefundPort.RefundPreparation(
+                "PREP","TYPE",1,"HASH",0,0,0,0,10,50,0,"COLLECTION","COLLECTED");
+        var json=new tools.jackson.databind.ObjectMapper();
+        jdbc.update("INSERT INTO ord_points_refund_binding(after_sale_no,sub_order_no,phase,source_version,"
+                + "command_json,preparation_json) VALUES(?,?,'CASH_AUTHORIZED',0,?,?)",
+                f.as(),f.sub(),json.writeValueAsString(command),json.writeValueAsString(prep));
+        var intent=executions.beginCash(f.as());
+        assertThat(intent.netCashMinor()).isEqualTo(50);
+        cash("P:"+f.as(),f,50,"PENDING");
+        executions.bindCash(f.as(),"P:"+f.as(),50);
+        jdbc.update("UPDATE stl_payment SET status='SUCCESS',succeeded_at=1,refund_verified_at=1,"
+                + "refund_verified_minor=50,refund_verified_provider_no=? WHERE payment_no=?",
+                "V:"+f.as(),"P:"+f.as());
+        executions.confirmCash(f.as());
+        assertThatThrownBy(() -> executions.commit(f.as()))
+                .hasMessage("REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
+        jdbc.update("UPDATE ord_points_refund_binding SET phase='POINTS_CONFIRMED' WHERE after_sale_no=?",f.as());
+        executions.commit(f.as());
+        assertThat(refunded(f.sub())).isEqualTo(60);
+    }
+
     @Test void cash_binding_rejects_a_foreign_after_sale_intent_before_sending() {
         var f=fixture();
         executions.prepare(f.as(),new RefundPlan(f.sub(),List.of(new RefundLine(f.item(),1,50)),10));
