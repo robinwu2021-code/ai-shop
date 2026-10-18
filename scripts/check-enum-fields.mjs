@@ -535,7 +535,10 @@ export const FIELDS = [
   {
     concept: "对账差异类型",
     field: "stl_recon_diff.diff_type",
-    backend: { ddl: ["stl_recon_diff", "diff_type"] },
+    backend: {
+      javaConst: "pay/pay-domain/src/main/java/ai/neargo/shop/pay/entity/StlReconDiff.java",
+      only: ["CHANNEL_ONLY", "PLATFORM_ONLY", "AMOUNT_DIFF", "REFUND_ABNORMAL", "REFUND_LATE_SUCCESS", "REFUND_CLOSED"],
+    },
     clients: [{ file: "ops-web/lib/types/payment.ts", type: "ReconDiffType" }],
   },
   {

@@ -30,6 +30,7 @@ const failed = ref(false);
 
 async function load() {
   try {
+    await merchant.ensureScope();
     messages.value = await api.mMessageList();
     pendingTotal.value = merchant.can("biz:aftersale")
       ? (await api.mAfterSaleWorklist({ pending: true, page: 1, size: 1 })).total : 0;

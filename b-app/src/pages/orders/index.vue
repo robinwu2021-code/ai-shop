@@ -182,7 +182,15 @@ function openAfterSale() {
   uni.navigateTo({ url: ROUTES.afterSale });
 }
 
-onShow(() => {
+onShow(async () => {
+  try {
+    await Promise.all([merchant.ensureScope(), merchant.ensureProfile()]);
+  } catch {
+    failed.value = true;
+    loaded.value = true;
+    return;
+  }
+  if (tab.value === "afterSale" && !merchant.can("biz:aftersale")) tab.value = "todo";
   void load();
   if (merchant.can("biz:aftersale")) {
     void api.mAfterSaleWorklist({ pending: true, page: 1, size: 1 })

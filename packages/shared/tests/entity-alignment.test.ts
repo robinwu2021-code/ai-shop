@@ -38,6 +38,7 @@ const camel = (s: string) =>
  * 删不掉说明还没做完。
  */
 const NO_ENTITY_YET: Record<string, string> = {
+  pts_availability_projection: "可重建的版本水位派生投影，由PointsAvailabilityMapper与AcceptanceAvailabilityProjection读写不可变快照，不是独立业务聚合，按现有积分SQL mapper方案不设ORM实体。",
   prd_category_points: "旧版类目积分规则表；生产只读审计为空，新积分方案不再读取，由 points integration policy 按门店×场景控制；不迁移、不删除历史表。",
   ord_points_refund_execution: "SQL mapper 由 RefundExecutionMapper/RefundLedgerMapper 直接访问，事务与恢复队列共用投影，无独立 ORM 实体。",
   lgs_push_event: "物流推送审计由 PushIngestion 通过 JdbcTemplate 追加与回写，按事件号定点读取，不使用 ORM 实体。",

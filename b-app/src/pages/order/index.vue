@@ -217,6 +217,7 @@ async function confirmOffline() {
 async function load(orderNo: string) {
   currentNo.value = orderNo;
   try {
+    await merchant.ensureScope();
     order.value = await api.mOrderDetail(orderNo);
     activeAfterSale.value = merchant.can("biz:aftersale")
       ? await api.mActiveAfterSaleForOrder(orderNo).catch(() => null) : null;
