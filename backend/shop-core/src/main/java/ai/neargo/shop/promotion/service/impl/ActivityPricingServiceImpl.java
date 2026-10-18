@@ -676,7 +676,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (a.getStoreNo() != null && !a.getStoreNo().equals(storeNo)) {
                 continue;
             }
-            if (!a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
+            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
                 continue;
             }
             out.add(a);
@@ -700,7 +700,7 @@ public class ActivityPricingServiceImpl implements ActivityPricingService {
             if (a == null || !benefitType.equals(a.getBenefitType())) {
                 continue;
             }
-            if (!a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
+            if (a.getDraftSnapshot() != null || !a.isActiveAt(now, MARKET_ZONE) || !a.hasQuotaLeft()) {
                 continue;
             }
             out.add(a);

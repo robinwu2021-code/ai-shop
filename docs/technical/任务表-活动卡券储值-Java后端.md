@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：15项DONE、2项DOING、38项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
+本表共55项：15项DONE、4项DOING、36项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序（2026-10-19用户调整）：第一阶段完成core活动自身能力，第二阶段完成pay权益、卡券、储值及活动权益联动。具体任务分组、跨阶段子项与验收见[两阶段执行方案](./开发计划-活动优先与权益两阶段.md)。已完成的权益公共基础直接保留；JB-015尚未开始Java实现，移至第二阶段。原任务编号与整体依赖保留，跨阶段任务仅完成活动部分不能标记整项DONE。
 
@@ -103,9 +103,9 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-028 | D04.1/D06.1 | DOING | 008 | core.promotion | ActivityPresetService/Impl、BizActivityPresetController；40AP+6EP目录、分类/业态、能力过滤；C01/C02 | ActivityPresetFlowTest：46条唯一稳定编号、默认禁用、缺能力不推荐发布；不创建46个Service |
 | JB-029 | D04.1 | DOING | 006,008,009,028 | core.promotion | ActivityService/Impl、ActivityVersionService/Impl、ActivityRuleValidator；草稿/发布/范围/受众/储值档位 | ActivityVersionFlowTest：发布不可变、ORDER/RECHARGE隔离、档位金额服务端固定、暂停不撤销原参与 |
 | JB-030 | D04.1/4.3 | TODO | 029 | core.promotion/trade | ActivityPricingService/Impl、PlatformActivityService/Impl及现有团期/赠品适配 | ActivitySceneIsolationTest：ORDER定价不混储值，现有团/期/库存/履约兼容；未实现玩法不可执行 |
-| JB-031 | D04.2 | TODO | 008,011,014,016,029 | core.promotion | ActivityParticipationService/Impl、PortImpl、EligibilityPolicy；reserve/confirm/release/query | ActivityParticipationFlowTest：预算/名额/个人限购同事务，跨版本累计；未知pay状态不按TTL释放；原生并发不超卖 |
+| JB-031 | D04.2 | DOING | 008,011,014,016,029 | core.promotion | ActivityParticipationService/Impl、PortImpl、EligibilityPolicy；reserve/confirm/release/query | ActivityParticipationFlowTest：预算/名额/个人限购同事务，跨版本累计；未知pay状态不按TTL释放；原生并发不超卖 |
 | JB-032 | D04.3 | TODO | 016,031 | app paybridge | ActivityBenefitCoordinator；core reserve→pay prepare/commit→core confirm | ActivityBenefitCoordinatorTest：失败补偿、事件重复/乱序、远程超时、原业务号恢复；营销占用不提前释放 |
-| JB-033 | D04.1/4.4 | TODO | 029,030,031,041 | app HTTP | BizActivityController扩展C03–C06、OpsPromotionController活动治理 | ActivityManagementApiTest：旧URL兼容、新筛选/发布/结束、主体与运营数据域隔离 |
+| JB-033 | D04.1/4.4 | DOING | 029,030,031,041 | app HTTP | BizActivityController扩展C03–C06、OpsPromotionController活动治理 | ActivityManagementApiTest：旧URL兼容、新筛选/发布/结束、主体与运营数据域隔离 |
 
 ### 2.5 储值、付费卡和跨服务接线
 
@@ -448,7 +448,7 @@ JB-010历史全量证据：ecfda1ebd干净编译及3582项/20模块全绿。JB-0
 
 实现提交：`d1e260aba`。Java 21 `mvn -o -f backend/pom.xml clean test`：27模块BUILD SUCCESS；Surefire报告合计3,604项、0失败、0错误、4跳过（shop-app模块汇总2,782项）；独立隔离MySQL场景4项通过、0跳过。24个文档生成器、V2 66份文档守卫、SQL可移植性（0新增方言欠账）及`git diff --check`通过。只读代码复核无可执行问题。未推送、部署或访问生产数据库。
 
-当前任务计数：15 DONE / 2 DOING / 38 TODO。JB-028/029编码中；JB-015排入第二阶段。
+当前任务计数：15 DONE / 4 DOING / 36 TODO。JB-028/029编码中；JB-015排入第二阶段。
 
 
 ### 第一阶段连续编码记录（2026-10-19，未验收）
@@ -458,3 +458,13 @@ JB-010历史全量证据：ecfda1ebd干净编译及3582项/20模块全绿。JB-0
 - JB-028：已写V430目录及46条默认禁用预置、PmtPresetTemplate/Mapper、ActivityPresetService/Impl与C01/C02商家入口，支持分类/场景/业态及分页。能力readiness接线仍待阶段内后续工作；现阶段全部保守不可执行。
 - JB-029：已写统一类型化定义与ActivityRuleValidator；V431准备不可变版本、范围、档位、预算/个人参与、参与凭证、统计投影与core命令幂等存储；对应实体/Mapper已创建。发布/状态服务、参与逻辑及HTTP接线尚未完成。
 - 全阶段仍编码中，JB-030/031/033及活动侧收口子项尚未完成；所有本批验证均待执行。
+
+
+### 第一阶段连续编码记录二（2026-10-19，未编译/未测试）
+
+- JB-029：新增ActivityActor、ActivityVersionService/Impl、core ActivityCommandDeduplicator；草稿写入、持久幂等、发布不可变快照、scope/tier/budget同事务保存、暂停/结束与门店子集可见性已编码。发布版本保存人群条件快照，引用pay定义通过SPI校验。
+- JB-033：新增BizVersionedActivityController。C03/C04/C06及既有详情URL通过`model=unified`明确选择新模型；原调用不带参数仍走原Handler；C05显式发布使用原计划URL。用户/主体/租户/门店权限来自服务端会话。
+- JB-030：旧活动列表、详情和定价路径隔离新统一模型；新模型尚未接订单执行，不能因此宣称新ORDER玩法已可交易。
+- JB-031：已编码预算/个人参与条件预留与结算、参与凭证CAS Mapper；业务编排、可信决定查询及恢复尚未接齐。
+- 新增ActivityCapabilityEvidence是服务端能力证据扩展点；目前尚无已验收provider，预置及发布保持保守关闭，不以Bean存在宣称READY。
+- 所有本批代码尚未编译或执行测试。尚需完成参与Service/Port、core内部HTTP、活动统计/恢复、运营治理、目录实例化、能力接线与生成物同步后，才进入统一测试。

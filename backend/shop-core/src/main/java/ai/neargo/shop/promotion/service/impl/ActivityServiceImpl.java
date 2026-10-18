@@ -67,6 +67,7 @@ public class ActivityServiceImpl implements ActivityService {
         return DataScopeContext.executeWithoutScope(() ->
                         activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
                                 .eq(PmtActivity::getEntityNo, entityNo)
+                                .isNull(PmtActivity::getDraftSnapshot)
                                 .ne(!includeEnded, PmtActivity::getStatus, PmtActivity.ENDED)
                                 .isNull(PmtActivity::getArchivedAt)
                                 .orderByDesc(PmtActivity::getId)))
@@ -683,7 +684,7 @@ public class ActivityServiceImpl implements ActivityService {
                 activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
                 .eq(PmtActivity::getEntityNo, entityNo)
                 .eq(PmtActivity::getActivityNo, activityNo).last("limit 1")));
-        if (a == null) {
+        if (a == null || a.getDraftSnapshot() != null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         return a;

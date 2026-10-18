@@ -52,13 +52,13 @@ public class BizActivityController {
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
-    @GetMapping("/biz/activities")
+    @GetMapping(value = "/biz/activities", params = "model!=unified")
     public List<ActivityVO> activities(@RequestParam(defaultValue = "false") boolean includeEnded) {
         return activityService.list(BizContext.requireMerchantNo(), includeEnded);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
-    @GetMapping("/biz/activities/{activityNo}")
+    @GetMapping(value = "/biz/activities/{activityNo}", params = "model!=unified")
     public ActivityVO activity(@PathVariable String activityNo) {
         return activityService.detail(BizContext.requireMerchantNo(), activityNo);
     }
@@ -68,7 +68,7 @@ public class BizActivityController {
      * 改价与送商品必须限量且必须选商品。
      */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
-    @PostMapping("/biz/activities")
+    @PostMapping(value = "/biz/activities", params = "model!=unified")
     public ActivityVO save(@RequestBody ActivityDraft draft,
                            @RequestParam(defaultValue = "false") boolean riskConfirmed) {
         if (!riskConfirmed && alwaysOnCut(draft) && switchPort.bool(FLAG_ALWAYS_ON_CUT_CONFIRM, true)) {
@@ -80,7 +80,7 @@ public class BizActivityController {
 
     /** 启停。**已结束的不能复活** —— ended_reason 被覆盖就再也查不到当初为什么停 */
     @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
-    @PutMapping("/biz/activities/{activityNo}/status")
+    @PutMapping(value = "/biz/activities/{activityNo}/status", params = "model!=unified")
     public ActivityVO setStatus(@PathVariable String activityNo, @RequestBody StatusReq req) {
         return activityService.setStatus(BizContext.requireMerchantNo(), activityNo, req.status());
     }
