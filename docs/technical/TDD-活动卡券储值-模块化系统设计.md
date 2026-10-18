@@ -574,3 +574,10 @@ C11登录分类修复定向：MpEndpointAuthTest 7项（含真实匿名401）、
 第二轮干净6156975bb编译及全量3581项/20模块通过（600秒、0失败/错误，原有条件1跳过）。后续目标门店校验已由新增用例先RED code=0→恢复GREEN code=70006；最终定向53项通过（HTTP5、身份7、C登录7、B权限4、架构16、i18n6、范围事实7、schema1）。最终代码还需以修正后的提交进行干净全量，不拿615旧快照冒充最终验证。
 
 最终门店权限修正同12项身份/HTTP测试在standalone配置下全部通过（HTTP5、身份7），退出0；24生成器/66份V2及源码diff检查无新增问题。
+
+
+### JB-010最终干净交付证据
+
+实际测试SHA ecfda1ebd0fd589e445aee751ef61f36e2d19bb7，Java21离线`bash scripts/check-head-compiles.sh HEAD`：干净test-compile通过，全量3582项/20模块、0失败/错误，608秒、退出0；原有原生条件1项跳过。最后门店权限修正stat为4 files changed/40 insertions/3 deletions（Controller3行、HTTP回归及契约/本记录）。测试读取的SHA与最后业务提交完全一致，后续仅文档状态回填。此前6156975bb的3581项通过不用于冒充本次结果。
+
+JB-010按AC及实际文件完成，独立任务表更新12 DONE/0 DOING/43 TODO；正式表/两条HTTP路由同步DONE。保留既有共享Vitest命名失败及模型对齐阻断的独立报告，不宣称所有仓库闸门全绿。下一项JB-011仍TODO，财务本人授权、发行/核销/储值账及远程身份Handler尚未交付；本批无push/部署/生产操作。
