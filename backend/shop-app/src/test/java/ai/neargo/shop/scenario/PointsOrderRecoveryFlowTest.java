@@ -169,7 +169,8 @@ class PointsOrderRecoveryFlowTest {
         assertThat(inspection.originalHoldNo()).isEqualTo("H");
         assertThat(inspection.pendingSourceEvents()).isEqualTo(2);
         assertThat(inspection.differences())
-                .containsExactly("PLACEMENT_MISSING", "SOURCE_EVENT_PENDING", "REFUND_PENDING");
+                .containsExactly("PLACEMENT_MISSING", "SOURCE_EVENT_PENDING", "REFUND_PENDING",
+                        "REFUND_COMPENSATION_PENDING");
     }
 
     @Test

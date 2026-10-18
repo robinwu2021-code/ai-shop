@@ -160,6 +160,8 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
         if (pending > 0) differences.add("SOURCE_EVENT_PENDING");
         if (refundPhases.stream().anyMatch(x -> !"COMMITTED".equals(x)))
             differences.add("REFUND_PENDING");
+        if (refundPhases.contains("COMPENSATING"))
+            differences.add("REFUND_COMPENSATION_PENDING");
         boolean verified = false;
         try {
             verified = payments.verified(binding.admission().orderNo()).isPresent();
