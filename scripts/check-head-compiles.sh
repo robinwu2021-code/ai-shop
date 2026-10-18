@@ -96,7 +96,7 @@ LOG="$(mktemp "${TMPDIR:-/tmp}/head-test.XXXXXX")"
 echo "→ mvn test（全量，约 3 分钟）"
 START=$(date +%s)
 set +e
-(cd "$WT/backend" && mvn -o -B test) > "$LOG" 2>&1
+(cd "$WT/backend" && mvn -o -B -fae test) > "$LOG" 2>&1
 set -e
 echo "  用时 $(( $(date +%s) - START )) 秒"
 
