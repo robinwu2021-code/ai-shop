@@ -2,6 +2,7 @@ package ai.neargo.shop.pay;
 
 import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCatalogService;
+import ai.neargo.shop.pay.entitlement.service.EntitlementCommandDeduplicator;
 import ai.neargo.shop.pay.entitlement.service.impl.EntitlementCatalogServiceImpl;
 import ai.neargo.shop.pay.mapper.entitlement.EntTemplateMapper;
 import ai.neargo.shop.pay.mapper.entitlement.EntTemplateVersionMapper;
@@ -64,7 +65,7 @@ class EntitlementCatalogNativeMysqlTest {
         factory.setPlugins(interceptor);
         SqlSessionFactory sessions = factory.getObject();
         try (var context = new AnnotationConfigApplicationContext()) {
-            context.register(Transactions.class, EntitlementCatalogServiceImpl.class);
+            context.register(Transactions.class, EntitlementCatalogServiceImpl.class, EntitlementCommandDeduplicator.class);
             context.registerBean("payTxManager", PlatformTransactionManager.class,
                     () -> new DataSourceTransactionManager(ds));
             context.registerBean(ObjectMapper.class, () -> JsonMapper.builder().build());

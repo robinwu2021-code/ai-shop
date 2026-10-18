@@ -251,4 +251,4 @@ C端记录：MpStoredValueController→MpEntitlementAppService→StoredValueQuer
 - pay-domain/pay/mapper/entitlement：EntTemplateMapper、EntTemplateVersionMapper、PayEntCommandDedupMapper，沿现有pay.mapper扫描根绑定。
 - shop-app：V425目录三表、生成H2 schema、EntitlementCatalogFlowTest。尚无新商家/C端/运营Controller或远程目录门面。
 
-幂等在目录服务内通过私有通用方法复用，后续多服务使用时抽成设计中的EntitlementCommandDeduplicator，不保留两套算法。新范围字段目前结构校验通过，对外开放前仍需core事实预检与权限接线。本清单不改变未实现类的状态。
+目录已委派EntitlementCommandDeduplicator唯一实现；该组件要求已有pay事务，后续发放/核销/充值复用，不保留目录私有第二套算法。新范围字段目前结构校验通过，对外开放前仍需core事实预检与权限接线。本清单不改变未实现类的状态。

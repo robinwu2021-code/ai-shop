@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：7项DONE、3项DOING、45项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不代表系统已完成7/55的工作量。已完成项的证据来自既有提交，本轮仅核对源码并整理任务，未重跑Java业务测试。
+本表共55项：8项DONE、2项DOING、45项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不代表系统已完成7/55的工作量。已完成项的证据来自既有提交，本轮仅核对源码并整理任务，未重跑Java业务测试。
 
 优先顺序：JB-008–JB-014补齐后端契约与可信事实；发行/使用及core活动底座随后实施；再完成储值、付费卡、HTTP和远程适配，最后兼容、恢复、权限及后端整体收口。每个领域的Controller可随服务同步开发，DONE需本地和远程两种模式验收。生产操作另列，不阻塞可独立开展的代码开发。
 
@@ -73,7 +73,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-010 | D01.3 | TODO | 008,009 | core.member/app | MemberCodeResolveService/Impl、BizMemberCodeController；C08 | MemberCodeResolveFlowTest：过期/伪造码拒绝；customerRef绑定主体/门店/用户且短期有效；日志不含明码 |
 | JB-011 | D01.3 | TODO | 008,010 | core.trade/app | EntitlementAuthorizationService/Impl、MpEntitlementAuthorizationController；持久本人意图与源决策 | EntitlementAuthorizationFlowTest：改价失效、他人拒绝、重复确认同意图、支付/取消唯一决策；重启可查询 |
 | JB-012 | D01.3/D06.2 | TODO | 008,011 | core.trade | CardSaleSnapshotService/Impl；补订单行/单件/件内权益、版本、付款时间快照 | CardSaleSnapshotTest：2件×2权益得到4个稳定来源；重投不变、迟到事件不改真实付款时间 |
-| JB-013 | D02.1 | DOING | 005 | pay.entitlement | 提取EntitlementCommandDeduplicator，目录切到唯一共用实现 | EntitlementCommandDeduplicatorTest：同键同参重放、异参冲突、大小写区分、原生并发、业务异常不留PENDING |
+| JB-013 | D02.1 | DONE | 005 | pay.entitlement | 提取EntitlementCommandDeduplicator，目录切到唯一共用实现 | EntitlementCommandDeduplicatorTest：同键同参重放、异参冲突、大小写区分、原生并发、业务异常不留PENDING |
 | JB-014 | D02.1/D04.2 | TODO | 008,013 | pay事件/core适配 | PayEntitlementEventPublisher、pay_ent_outbox/inbox与既有投递机制适配 | EntitlementEventFlowTest：提交后才投递、回滚无事件、eventNo去重、重启重试；事件载荷白名单 |
 
 ### 2.3 支付权益发行、使用、查询及HTTP
@@ -383,3 +383,5 @@ Java后端开发完成须满足：本表48项TODO全部按真实交付改DONE；
 2026-10-18：对实际任务文档运行独立静态核对，55个编号唯一、7 DONE/48 TODO，依赖无循环且全部可追溯至JB-055；38张目标表、47条外部/12项内部操作及U01–U30均有责任任务；表格列数及本地链接通过。`node scripts/check-v2-docs.mjs`通过66份受管文档，`git diff --check`通过。本轮没有修改Java、SQL迁移或运行配置，因此没有重跑业务回归；既有全量结果仍只对应代码提交815c12c2b。
 
 执行裁定：JB-013公共幂等实际只依赖JB-005已有CatalogScope和目录命令语义，不消耗JB-008新增SPI；移除对008整体的过度依赖，先提取已验证逻辑。新增MANDATORY要求调用方已有pay事务，不改变目录公开行为。JB-008其余协议/存储/权限部分仍DOING，未借此标记完成。
+
+JB-013验收：公共组件与目录委派已经落地；EntitlementCommandDeduplicatorTest 3项、原目录12项通过，原生MySQL 1项实际运行0跳过；移除MANDATORY后requiresAnExistingPayTransaction失败，恢复后通过。命令摘要仍由owner重算，不信任外部payloadHash。提交号在总TDD后续批次记录，不改变JB-008未完成状态。

@@ -10,12 +10,11 @@ import ai.neargo.shop.pay.entitlement.dto.CatalogViews.PublishedVersionView;
 import ai.neargo.shop.pay.entitlement.dto.CatalogViews.TemplateView;
 import ai.neargo.shop.pay.entitlement.entity.EntTemplate;
 import ai.neargo.shop.pay.entitlement.entity.EntTemplateVersion;
-import ai.neargo.shop.pay.entitlement.entity.PayEntCommandDedup;
 import ai.neargo.shop.pay.entitlement.policy.EntitlementRuleValidator;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCatalogService;
+import ai.neargo.shop.pay.entitlement.service.EntitlementCommandDeduplicator;
 import ai.neargo.shop.pay.mapper.entitlement.EntTemplateMapper;
 import ai.neargo.shop.pay.mapper.entitlement.EntTemplateVersionMapper;
-import ai.neargo.shop.pay.mapper.entitlement.PayEntCommandDedupMapper;
 import ai.neargo.shop.spi.entitlement.EntitlementDefinition;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -28,7 +27,6 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.function.Supplier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -38,15 +36,15 @@ import tools.jackson.databind.ObjectMapper;
 public class EntitlementCatalogServiceImpl implements EntitlementCatalogService {
     private final EntTemplateMapper heads;
     private final EntTemplateVersionMapper versions;
-    private final PayEntCommandDedupMapper commands;
+    private final EntitlementCommandDeduplicator deduplicator;
     private final ObjectMapper json;
     private final EntitlementRuleValidator rules = new EntitlementRuleValidator();
 
     public EntitlementCatalogServiceImpl(EntTemplateMapper heads, EntTemplateVersionMapper versions,
-                                         PayEntCommandDedupMapper commands, ObjectMapper json) {
+                                         EntitlementCommandDeduplicator deduplicator, ObjectMapper json) {
         this.heads = heads;
         this.versions = versions;
-        this.commands = commands;
+        this.deduplicator = deduplicator;
         this.json = json;
     }
 
@@ -55,7 +53,7 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
     public TemplateView create(CatalogScope scope, EntitlementDefinition draft, String requestKey) {
         validate(scope, draft);
         String no = BizKey.next(BizKey.ENTITLEMENT_TEMPLATE);
-        return command(scope, "CATALOG_CREATE", requestKey, draft, no, TemplateView.class, () -> {
+        return deduplicator.execute(scope, "CATALOG_CREATE", requestKey, draft, no, TemplateView.class, () -> {
             EntTemplate head = new EntTemplate();
             audit(head, scope);
             head.setTemplateNo(no);
@@ -75,7 +73,7 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
     public TemplateView saveDraft(CatalogScope scope, String templateNo, long expectedRevision,
                                    EntitlementDefinition draft, String requestKey) {
         validate(scope, draft);
-        return command(scope, "CATALOG_DRAFT", requestKey, List.of(templateNo, expectedRevision, draft),
+        return deduplicator.execute(scope, "CATALOG_DRAFT", requestKey, List.of(templateNo, expectedRevision, draft),
                 templateNo, TemplateView.class, () -> {
                     EntTemplate head = locked(scope, templateNo, expectedRevision);
                     if (!head.getKind().equals(draft.kind()) || !head.getFunder().equals(draft.funder())) {
@@ -95,7 +93,7 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
     @Transactional("payTxManager")
     public PublishedVersionView publish(CatalogScope scope, String templateNo, long expectedRevision,
                                          String requestKey) {
-        return command(scope, "CATALOG_PUBLISH", requestKey, List.of(templateNo, expectedRevision), templateNo,
+        return deduplicator.execute(scope, "CATALOG_PUBLISH", requestKey, List.of(templateNo, expectedRevision), templateNo,
                 PublishedVersionView.class, () -> {
                     EntTemplate head = locked(scope, templateNo, expectedRevision);
                     EntitlementDefinition definition = view(head).draft();
@@ -116,7 +114,7 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
         if (status == null || !List.of("ACTIVE", "PAUSED", "ENDED").contains(status)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        return command(scope, "CATALOG_STATUS", requestKey, List.of(templateNo, expectedRevision, status), templateNo,
+        return deduplicator.execute(scope, "CATALOG_STATUS", requestKey, List.of(templateNo, expectedRevision, status), templateNo,
                 TemplateView.class, () -> {
                     EntTemplate head = locked(scope, templateNo, expectedRevision);
                     if (head.getCurrentVersionNo() == null && !"ENDED".equals(status)) {
@@ -159,38 +157,6 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
                 .eq(kind != null, EntTemplate::getKind, kind).eq(status != null, EntTemplate::getStatus, status)
                 .isNull(EntTemplate::getArchivedAt).orderByDesc(EntTemplate::getId));
         return PageData.of(result.getRecords().stream().map(this::view).toList(), result.getTotal(), page, size);
-    }
-
-    private <T> T command(CatalogScope scope, String operation, String key, Object payload, String resourceNo,
-                           Class<T> responseType, Supplier<T> work) {
-        if (key == null || key.isBlank() || key.length() > 64 || !key.equals(key.strip())) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);
-        }
-        String hash = sha256(json.writeValueAsString(List.of(scope.entityNo(), scope.actorNo(),
-                scope.platformActor(), payload)));
-        PayEntCommandDedup row = new PayEntCommandDedup();
-        audit(row, scope);
-        row.setOperationKind(operation);
-        row.setRequestKey(key);
-        row.setPayloadHash(hash);
-        row.setResourceNo(resourceNo);
-        row.setResultStatus("PENDING");
-        commands.claim(row);
-        PayEntCommandDedup original = commands.lock(scope.tenantNo(), operation, key);
-        if (original == null || !hash.equals(original.getPayloadHash())) {
-            throw BizException.of(ErrorCode.CONFLICT);
-        }
-        if ("COMPLETED".equals(original.getResultStatus())) {
-            return json.readValue(original.getResponseSnapshot(), responseType);
-        }
-        // A PENDING row cannot outlive this transaction: every successful write completes it below.
-        if (!"PENDING".equals(original.getResultStatus())) {
-            throw BizException.of(ErrorCode.CONFLICT);
-        }
-        T response = work.get();
-        changed(commands.complete(original.getId(), scope.tenantNo(), json.writeValueAsString(response),
-                scope.actorNo(), now()));
-        return response;
     }
 
     private EntTemplate locked(CatalogScope scope, String no, long revision) {

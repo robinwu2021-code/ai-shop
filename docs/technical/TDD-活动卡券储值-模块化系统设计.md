@@ -412,3 +412,8 @@ Native MySQL catalog service: 1 test passed, 0 skipped
 ### Java优先批次：JB-008协议子项
 
 EntitlementContractTest先观察缺类编译失败，再6项通过，扩展查询/储值边界后9项通过。已加入可信内部上下文、决策类型、来源事实/授权查询，以及活动参与、发放、使用、权益查询、储值端口的record命令和响应；列表防御性复制，查询分页1–100，未知状态不得带成功事实。PAID_ORDER要求单件身份及付款事实引用；金额账户与实例次数互斥，I11拒绝储值退款。源码仍无新HTTP Handler、端口业务实现或远程适配。JB-008仅协议子项落地，剩余完整query/报价/预览、权限/能力码和补充持久模型未完成，不标DONE。
+
+
+### JB-013公共幂等验收
+
+EntitlementCommandDeduplicator.execute从目录内提取为唯一组件，保留原tenant+operation+大小写敏感requestKey、主体/操作者/命令指纹及稳定响应；明确MANDATORY payTxManager，不另开事务。目录四条写路径委派该组件，原生测试显式装配新组件。新增3项测试验证无事务拒绝、不同operation命名空间独立、业务和嵌套幂等一起回滚后可重试；原12项目录回归通过。真实MySQL的4线程同键、JSON回读、原响应重放及外层事务回滚检查1项通过、0跳过。移除MANDATORY后目标测试出现“Expecting code to raise a throwable”失败，恢复后整组通过。JB-013改DONE；未新增公开接口或资金流水。
