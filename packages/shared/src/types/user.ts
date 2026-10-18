@@ -184,6 +184,9 @@ export interface PointsDeductible {
 }
 // ---------------------------------------------------------------- 地址簿
 
+/** 收件人称呼，与地址簿字段及订单收件人快照共用。 */
+export type RecipientSalutation = "MR" | "MS" | "UNSPECIFIED";
+
 export interface Address {
   /**
    * 地址 ID。这里是 `Id` 不是 `No` —— 它不是业务单号，是用户地址簿里的一条本地记录，
@@ -192,6 +195,8 @@ export interface Address {
   addressId: string;
   /** 收货人姓名 */
   name: string;
+  /** 收件人称呼；缺省表示用户未选择。 */
+  salutation?: RecipientSalutation | null;
   /** 收货人手机号 */
   phone: string;
   /** 省市区，拼好给人看的一串 */

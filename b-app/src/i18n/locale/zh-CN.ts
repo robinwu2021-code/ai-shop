@@ -779,7 +779,7 @@ export default {
     updateNoResult: "渠道暂无结果",
     updateThrottled: "快递100查询限频",
     updateFailed: "更新失败",
-    traceRefreshUnavailable: "当前渠道无法主动查询，请等待物流订阅更新",
+    traceRefreshUnavailable: "渠道暂不支持查询，请等待物流更新",
 
     pickCarrier: "请选择快递公司",
 
@@ -1585,7 +1585,7 @@ export default {
       unknown: "退款结果尚未确认，请勿重复申请",
       manual: "退款需要人工核对，请联系客服",
       resourcesPending: "现金已退，库存或优惠仍在恢复中",
-      resourcesFailed: "现金已退，库存或优惠恢复异常，请联系客服",
+      resourcesFailed: "已退现金，资源恢复异常请联系客服",
       done: "退款与资源恢复已完成",
     },
     impactReturn: "整单退款，将同时退回用户的{what}",

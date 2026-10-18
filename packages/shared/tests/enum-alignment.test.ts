@@ -38,6 +38,9 @@ const KNOWN_SHARED: Record<string, string> = {
     "是另一个端点，接 App 时再补。两者接通时删掉本条对应的半句",
   MerchantTier:
     "MEDIUM/LARGE 是分层费率的预留档，后端目前只产出 SMALL —— 分层上线时后端补齐",
+  RecipientSalutation:
+    "收件人称谓是地址簿的展示字段，不是服务端业务枚举；MR/MS/UNSPECIFIED 由地址接口原样保存并返回，" +
+    "字段约束由 V424 salutation 列与 check-enum-fields 守卫核对",
   FULFILLMENT:
     "**STORE_VERIFY 与 APPOINTMENT 已接通**（2026-08-17，服务履约一、二期）：后端取值域、" +
     "支付后落 FULFILLING（不经「待发货」，因为没有东西要发）、预约时段与上门地址两道必填闸、核销全链路。" +

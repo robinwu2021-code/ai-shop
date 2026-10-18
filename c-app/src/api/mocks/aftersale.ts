@@ -91,7 +91,7 @@ export const aftersaleMock: Pick<ShopApi,
       return {
         goodsNo: g.goodsNo, merchantNo: g.merchant.merchantNo, skuNo: sku.skuNo,
         title: g.title, cover: g.cover, spec: sku.spec, price: sku.price, qty: it.qty,
-        type: g.type, nominalGram: sku.nominalGram, weighed: g.weighed, points: g.points,
+        type: g.type, nominalGram: sku.nominalGram, weighed: g.weighed,
       };
     });
     if (!items.length) throw new Error("订单商品为空");

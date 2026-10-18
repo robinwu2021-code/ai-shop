@@ -18,7 +18,6 @@ import type { Goods } from "./product";
 import type { Review } from "./review";
 import type { Store, StoreRole, StoreStatus } from "./store";
 import type { AfterSaleStatus, AfterSaleType, Order } from "./trade";
-import type { GrantType } from "./user";
 
 /** Pay ledger views are scoped to the authenticated current store and one points type. */
 export interface StorePointType {
@@ -650,7 +649,6 @@ export interface MerchantProfile {
    */
   favoriteCount?: number;
   /** 本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号 */
-  loginBy?: GrantType;
   /**
    * 资金路径。**B 端价格字段叫什么由它决定** ——
    * 归集（钱进平台账户）下平台是销售主体、最终售价平台定，商家填的是「期望收购价」；

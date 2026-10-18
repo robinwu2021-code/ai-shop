@@ -13,7 +13,6 @@ import { currentCurrency } from "@shared/utils/money";
 import { buyNGetM, giftQtyFor } from "@shared/utils/promotion";
 import {
   findOrder,
-  grantPointsOnComplete,
   issueCard,
   pushTimeline,
   requireWithinLimit,
@@ -146,7 +145,6 @@ export const tradeMock: Pick<ShopApi,
         type: g.type,
         nominalGram: sku.nominalGram,
         weighed: g.weighed,
-        points: g.points,
       };
     });
 
@@ -307,7 +305,6 @@ export const tradeMock: Pick<ShopApi,
         assertTransition(o.status, "COMPLETED");
         o.status = "COMPLETED";
         pushTimeline(o, "已发放");
-        grantPointsOnComplete(o);
         continue;
       }
 

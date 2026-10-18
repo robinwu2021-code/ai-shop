@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **206** 张表、**328** 条引用关系，分 **16** 个域。
+全库 **258** 张表、**381** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -13,28 +13,28 @@
 
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
-| 消费者账号 | `usr_*` | 10 | 14 |
+| 消费者账号 | `usr_*` | 11 | 14 |
 | 商家主体与门店 | `mch_*` | 31 | 13 |
 | 社区与自提点 | `cmt_*` | 3 | 7 |
 | 商品与类目 | `prd_*` | 28 | 8 |
 | 购物车 | `trd_*` | 2 | 0 |
-| 交易 | `ord_*` | 12 | 8 |
+| 交易 | `ord_*` | 23 | 8 |
 | 履约 | `ful_*` | 5 | 0 |
 | 营销与团购 | `mkt_*` | 17 | 4 |
-| 积分 | `pts_*` | 2 | 0 |
-| 结算 | `stl_*` | 15 | 2 |
+| 积分 | `pts_*` | 34 | 0 |
+| 结算 | `stl_*` | 18 | 2 |
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 1 | 0 |
 | 内容 | `cnt_*` | 4 | 0 |
 | 会员 | `mbr_*` | 10 | 1 |
 | 券与活动 | `pmt_*` | 12 | 3 |
-| 系统 | `sys_*` | 27 | 0 |
+| 系统 | `sys_*` | 27 | 3 |
 
 > `usr` 被 14 个域引用 —— 它是全库的锚点。改它的主键或语义，影响面是全局的。
 
 ## 二、分域
 
-### 消费者账号 `usr_*`（10 张）
+### 消费者账号 `usr_*`（11 张）
 
 ![消费者账号表关系](../diagrams/db-usr.svg)
 
@@ -50,8 +50,9 @@
 | `usr_login_log` | C端登录审计。保留 90 天。IP/UA 记这里不记会话表 |
 | `usr_otp_test_phone` | 测试号固定验证码白名单（苹果审核演示账号用） |
 | `usr_store_view` | 用户逛过的门店（我的店 · 分享效果） |
+| `usr_mp_session` | — |
 
-**跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`、`usr_store_view.store_no` → `mch_store`、`usr_store_view.entity_no` → `mch_entity`
+**跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_store_favorite.store_no` → `mch_store`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`、`usr_store_view.store_no` → `mch_store`、`usr_store_view.entity_no` → `mch_entity`
 
 ### 商家主体与门店 `mch_*`（31 张）
 
@@ -153,7 +154,7 @@
 
 **跨域引用**：`trd_cart_item.user_no` → `usr_account`、`trd_cart_item.goods_no` → `prd_goods`、`trd_cart_item.sku_no` → `prd_sku`、`trd_shipping_upload.order_no` → `ord_order`、`trd_shipping_upload.out_trade_no` → `stl_payment`
 
-### 交易 `ord_*`（12 张）
+### 交易 `ord_*`（23 张）
 
 ![交易表关系](../diagrams/db-ord.svg)
 
@@ -171,8 +172,19 @@
 | `ord_create_intent` | — |
 | `ord_payment_resolution` | — |
 | `ord_refund_execution` | — |
+| `ord_points_refund_execution` | Immutable source refund preparation and execution phase |
+| `ord_points_integration_policy` | — |
+| `ord_points_command` | — |
+| `ord_points_binding` | — |
+| `ord_points_source_counter` | — |
+| `ord_points_source_fact` | — |
+| `ord_points_placement` | — |
+| `ord_points_refund_binding` | — |
+| `ord_points_recovery_cursor` | — |
+| `ord_points_refund_retry` | — |
+| `ord_points_work_cursor` | — |
 
-**跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_item.category_no` → `prd_category`、`ord_item.shipment_no` → `lgs_waybill`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`、`ord_sub_order.community_no` → `cmt_community`、`ord_sub_order.period_no` → `pmt_period`、`ord_invoice_request.user_no` → `usr_account`、`ord_express_pickup.pickup_no` → `cmt_pickup_point`、`ord_express_pickup.entity_no` → `mch_entity`、`ord_express_pickup.store_no` → `mch_store`、`ord_shipment.shipment_no` → `lgs_waybill`、`ord_create_intent.user_no` → `usr_account`、`ord_payment_resolution.payment_no` → `stl_payment`、`ord_payment_resolution.user_no` → `usr_account`、`ord_refund_execution.payment_no` → `stl_payment`
+**跨域引用**：`ord_after_sale.user_no` → `usr_account`、`ord_after_sale.entity_no` → `mch_entity`、`ord_item.goods_no` → `prd_goods`、`ord_item.sku_no` → `prd_sku`、`ord_item.category_no` → `prd_category`、`ord_item.shipment_no` → `lgs_waybill`、`ord_order.user_no` → `usr_account`、`ord_order.community_no` → `cmt_community`、`ord_sub_order.user_no` → `usr_account`、`ord_sub_order.entity_no` → `mch_entity`、`ord_sub_order.pickup_no` → `cmt_pickup_point`、`ord_sub_order.group_no` → `mkt_group_buy`、`ord_sub_order.store_no` → `mch_store`、`ord_sub_order.community_no` → `cmt_community`、`ord_sub_order.period_no` → `pmt_period`、`ord_invoice_request.user_no` → `usr_account`、`ord_express_pickup.pickup_no` → `cmt_pickup_point`、`ord_express_pickup.entity_no` → `mch_entity`、`ord_express_pickup.store_no` → `mch_store`、`ord_shipment.shipment_no` → `lgs_waybill`、`ord_create_intent.user_no` → `usr_account`、`ord_payment_resolution.payment_no` → `stl_payment`、`ord_payment_resolution.user_no` → `usr_account`、`ord_refund_execution.origin_payment_no` → `stl_payment`、`ord_refund_execution.payment_no` → `stl_payment`、`ord_points_refund_execution.cash_payment_no` → `stl_payment`、`ord_points_integration_policy.store_no` → `mch_store`、`ord_points_binding.store_no` → `mch_store`、`ord_points_source_fact.event_no` → `sys_outbox`、`ord_points_source_fact.store_no` → `mch_store`、`ord_points_refund_binding.cash_payment_no` → `stl_payment`
 
 ### 履约 `ful_*`（5 张）
 
@@ -214,7 +226,7 @@
 
 **跨域引用**：`mkt_attribution.user_no` → `usr_account`、`mkt_attribution.entity_no` → `mch_entity`、`mkt_attribution.inviter_no` → `usr_account`、`mkt_attribution_log.user_no` → `usr_account`、`mkt_attribution_log.entity_no` → `mch_entity`、`mkt_attribution_log.inviter_no` → `usr_account`、`mkt_attribution_log.order_no` → `ord_order`、`mkt_attribution_log.store_no` → `mch_store`、`mkt_campaign.entity_no` → `mch_entity`、`mkt_campaign.store_no` → `mch_store`、`mkt_coupon.entity_no` → `mch_entity`、`mkt_group_buy.goods_no` → `prd_goods`、`mkt_group_buy.sku_no` → `prd_sku`、`mkt_group_buy.entity_no` → `mch_entity`、`mkt_group_buy.pickup_no` → `cmt_pickup_point`、`mkt_group_buy.activity_no` → `pmt_activity`、`mkt_group_member.user_no` → `usr_account`、`mkt_group_member.sub_order_no` → `ord_sub_order`、`mkt_quote.entity_no` → `mch_entity`、`mkt_quote_revision.entity_no` → `mch_entity`、`mkt_request.pickup_no` → `cmt_pickup_point`、`mkt_request_interest.user_no` → `usr_account`、`mkt_user_coupon.user_no` → `usr_account`、`mkt_user_coupon.order_no` → `ord_order`、`mkt_coupon_issue.user_no` → `usr_account`、`mkt_fission_invite.inviter_no` → `usr_account`、`mkt_fission_invite.order_no` → `ord_order`、`mkt_store_visit.entity_no` → `mch_entity`、`mkt_store_visit.store_no` → `mch_store`、`mkt_store_visit.user_no` → `usr_account`
 
-### 积分 `pts_*`（2 张）
+### 积分 `pts_*`（34 张）
 
 ![积分表关系](../diagrams/db-pts.svg)
 
@@ -222,10 +234,42 @@
 |---|---|
 | `pts_user_account` | 用户积分账户（锁行 + 派生余额） |
 | `pts_user_ledger` | 用户积分流水（真源）。EARN/USE/REFUND/EXPIRE/REVOKE 五种行，**没有批次概念**（V30 起按账户滚动到期） |
+| `pts_point_type` | Points v3 pts_point_type |
+| `pts_fund_pool` | Points v3 pts_fund_pool |
+| `pts_account` | Points v3 pts_account |
+| `pts_voucher` | Points v3 pts_voucher |
+| `pts_ledger_entry` | Points v3 pts_ledger_entry |
+| `pts_pool_flow` | Points v3 pts_pool_flow |
+| `pts_fund_evidence` | Points v3 pts_fund_evidence |
+| `pts_refund_reserve` | Points v3 pts_refund_reserve |
+| `pts_grant_position` | Points v3 pts_grant_position |
+| `pts_redeem_position` | Points v3 pts_redeem_position |
+| `pts_refund_preparation` | Points v3 pts_refund_preparation |
+| `pts_payout_ticket` | Points v3 pts_payout_ticket |
+| `pts_store_statement` | Points v3 pts_store_statement |
+| `pts_fund_transfer` | Points v3 pts_fund_transfer |
+| `pts_grant_line` | Points v3 pts_grant_line |
+| `pts_redeem_line` | Points v3 pts_redeem_line |
+| `pts_merchant_agreement` | Points v3 pts_merchant_agreement |
+| `pts_statement_revision` | Points v3 pts_statement_revision |
+| `pts_statement_line` | Points v3 pts_statement_line |
+| `pts_receivable` | Points v3 pts_receivable |
+| `pts_receivable_allocation` | Points v3 pts_receivable_allocation |
+| `pts_refund_preparation_line` | Points v3 pts_refund_preparation_line |
+| `pts_pool_request` | Points v3 pts_pool_request |
+| `pts_topup_plan` | Points v3 pts_topup_plan |
+| `pts_switch` | Points v3 pts_switch |
+| `pts_switch_log` | Points v3 pts_switch_log |
+| `pts_pause_interval` | Points v3 pts_pause_interval |
+| `pts_lifecycle_fact` | Points v3 pts_lifecycle_fact |
+| `pts_inbox` | Points v3 pts_inbox |
+| `pts_outbox` | Points v3 pts_outbox |
+| `pts_stat_daily` | Points v3 pts_stat_daily |
+| `pts_cursor` | Points v3 pts_cursor |
 
-**跨域引用**：`pts_user_account.user_no` → `usr_account`、`pts_user_ledger.user_no` → `usr_account`、`pts_user_ledger.issuer_merchant_no` → `mch_entity`、`pts_user_ledger.sub_order_no` → `ord_sub_order`
+**跨域引用**：`pts_user_account.user_no` → `usr_account`、`pts_user_ledger.user_no` → `usr_account`、`pts_user_ledger.issuer_merchant_no` → `mch_entity`、`pts_user_ledger.sub_order_no` → `ord_sub_order`、`pts_grant_position.sub_order_no` → `ord_sub_order`、`pts_grant_position.user_no` → `usr_account`、`pts_redeem_position.sub_order_no` → `ord_sub_order`、`pts_redeem_position.order_no` → `ord_order`、`pts_redeem_position.user_no` → `usr_account`、`pts_redeem_position.store_no` → `mch_store`、`pts_refund_preparation.after_sale_no` → `ord_after_sale`、`pts_refund_preparation.sub_order_no` → `ord_sub_order`、`pts_store_statement.store_no` → `mch_store`、`pts_merchant_agreement.store_no` → `mch_store`、`pts_receivable.store_no` → `mch_store`、`pts_lifecycle_fact.sub_order_no` → `ord_sub_order`、`pts_inbox.event_no` → `sys_outbox`、`pts_outbox.event_no` → `sys_outbox`
 
-### 结算 `stl_*`（15 张）
+### 结算 `stl_*`（18 张）
 
 ![结算表关系](../diagrams/db-stl.svg)
 
@@ -246,8 +290,11 @@
 | `stl_payout` | 放款记录：账期批次 × 收款号一笔，凭证号与银行流水都挂在它上面 |
 | `stl_bill_refund` | 结算单退款流水：一张售后单在结算单上扣了 / 回退了多少 |
 | `stl_bill_refund_basis` | Immutable original settlement refund basis and retained account version |
+| `stl_split_intent` | Committed settlement split instruction and outcome recovery |
+| `stl_points_refund_hold` | — |
+| `stl_cash_refund_reverse` | Original cash refund split reversal and outcome recovery |
 
-**跨域引用**：`stl_bill.sub_order_no` → `ord_sub_order`、`stl_bill.order_no` → `ord_order`、`stl_bill.entity_no` → `mch_entity`、`stl_bill.store_no` → `mch_store`、`stl_bill.pay_merchant_no` → `mch_payment_merchant`、`stl_payment.order_no` → `ord_order`、`stl_payment.sub_order_no` → `ord_sub_order`、`stl_payment.after_sale_no` → `ord_after_sale`、`stl_payment.user_no` → `usr_account`、`stl_payment.entity_no` → `mch_entity`、`stl_points_pool.entity_no` → `mch_entity`、`stl_split_log.sub_order_no` → `ord_sub_order`、`stl_purchase_invoice.entity_no` → `mch_entity`、`stl_recon_diff.order_no` → `ord_order`、`stl_withdraw.entity_no` → `mch_entity`、`stl_settle_invoice.entity_no` → `mch_entity`、`stl_settle_batch.entity_no` → `mch_entity`、`stl_payout.entity_no` → `mch_entity`、`stl_payout.pay_merchant_no` → `mch_payment_merchant`、`stl_bill_refund.sub_order_no` → `ord_sub_order`、`stl_bill_refund.after_sale_no` → `ord_after_sale`、`stl_bill_refund_basis.sub_order_no` → `ord_sub_order`、`stl_bill_refund_basis.pay_merchant_no` → `mch_payment_merchant`
+**跨域引用**：`stl_bill.sub_order_no` → `ord_sub_order`、`stl_bill.order_no` → `ord_order`、`stl_bill.entity_no` → `mch_entity`、`stl_bill.store_no` → `mch_store`、`stl_bill.pay_merchant_no` → `mch_payment_merchant`、`stl_payment.order_no` → `ord_order`、`stl_payment.sub_order_no` → `ord_sub_order`、`stl_payment.after_sale_no` → `ord_after_sale`、`stl_payment.user_no` → `usr_account`、`stl_payment.entity_no` → `mch_entity`、`stl_points_pool.entity_no` → `mch_entity`、`stl_split_log.sub_order_no` → `ord_sub_order`、`stl_purchase_invoice.entity_no` → `mch_entity`、`stl_recon_diff.order_no` → `ord_order`、`stl_withdraw.entity_no` → `mch_entity`、`stl_settle_invoice.entity_no` → `mch_entity`、`stl_settle_batch.entity_no` → `mch_entity`、`stl_payout.entity_no` → `mch_entity`、`stl_payout.pay_merchant_no` → `mch_payment_merchant`、`stl_bill_refund.sub_order_no` → `ord_sub_order`、`stl_bill_refund.after_sale_no` → `ord_after_sale`、`stl_bill_refund_basis.sub_order_no` → `ord_sub_order`、`stl_bill_refund_basis.pay_merchant_no` → `mch_payment_merchant`、`stl_points_refund_hold.after_sale_no` → `ord_after_sale`、`stl_points_refund_hold.sub_order_no` → `ord_sub_order`、`stl_cash_refund_reverse.after_sale_no` → `ord_after_sale`
 
 ### 评价 `rvw_*`（3 张）
 
@@ -369,6 +416,13 @@ Markdown 里铺开会有近两千行，那不是给人读的。
 
 | 列 | 为什么 |
 |---|---|
+| `parent_no` | 不同层级树的父节点，必须结合所属树。 |
+| `provider_no` | 通道回执需结合通道、资金方向与原请求。 |
+| `scope_no` | 角色授权范围与积分开关统计范围，须按各自范围类型解释。 |
+| `revision_no` | 商品版本与积分账单版本，各自独立。 |
+| `holder_no` | 积分持有人多态编号，必须结合 holder_type。 |
+| `position_no` | 不同种类积分持仓的多态编号，必须结合持仓类型。 |
+| `ticket_no` | 积分资金指令与客服工单的独立编号，不可直接关联。 |
 | `request_no` | `mkt_request` 是求团需求单号；`stl_split_log` 是分账幂等号 |
 | `express_no` | `ord_sub_order` 是发货单号；`ord_after_sale` 是退货单号，**方向相反** |
 | `operator_no` | 各表各自记录操作人，不是外键 |

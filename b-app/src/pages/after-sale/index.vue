@@ -395,7 +395,6 @@ onShow(() => { if (!targetAfterSaleNo.value || loaded.value) void load(); });
 <style scoped>
 .tabs {
   gap: 16rpx;
-  margin-top: 20rpx;
 }
 .item__tags {
   gap: 12rpx;

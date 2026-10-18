@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1100" height="320" viewBox="0 0 1100 320" role="img" aria-label="B 端发货同步预检、双渠道关注、物流状态真源与 C B 端展示">
+  <title>订单发货、物流订阅与状态同步</title>
+  <desc>商家预检后提交发货，微信与快递 100 两个渠道同步物流事件到状态真源，再由 C、B 和 H5 共用订单物流摘要。</desc>
   <style>
     text{font-family:Arial,"PingFang SC","Microsoft YaHei",sans-serif;fill:#243047}
     .box{fill:#f3f7ff;stroke:#7897d3;stroke-width:1.5;rx:10}

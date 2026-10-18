@@ -1,5 +1,4 @@
 // 计价策略的接口与共用计算。独立成文件，避免 index ↔ 实现 的循环依赖。
-import { POINTS } from "@shared/utils/constants";
 import type {
   Coupon,
   CurrencyCode,
@@ -101,15 +100,6 @@ export function baseAmount(
     paidMinor: 0,
     currency: ctx.currency,
   };
-}
-
-/** 本单可获得的积分：商品单独配了就按配的，没配按成交额比例 */
-export function earnPointsFor(items: OrderItem[]): number {
-  return items.reduce((sum, it) => {
-    if (it.isGift) return sum; // 赠品不送积分，否则「买赠 + 积分」可以叠出套利
-    const per = it.points ?? Math.round(it.price * POINTS.defaultEarnRatio);
-    return sum + per * it.qty;
-  }, 0);
 }
 
 /** 无运费、无履约后差价的品类共用实现（服务 / 虚拟 / 卡券） */

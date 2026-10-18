@@ -1,5 +1,7 @@
 # 商家 App · 功能矩阵
 
+状态：现状矩阵；页面、权限和端点数以生成目录与当前代码为准。
+
 > 生成于 2026-08-28 · **本文的每一列都是从代码里读出来的**，不是照着记忆写的：
 > 页面与域取自 [`ui-catalog.json`](./ui-catalog.json)（由 `scripts/gen-ui-catalog.py` 生成），
 > 权限门取自各页 `<sh-scaffold :denied="!merchant.can('…')">`，

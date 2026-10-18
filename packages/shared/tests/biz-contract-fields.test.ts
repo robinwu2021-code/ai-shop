@@ -57,6 +57,14 @@ const APPS = [
   { app: "c-app", prefix: "/mp", fn: "" },
 ];
 
+/** Types whose response deliberately selects a documented subset of a wider backend DTO. */
+const INTENTIONAL_RESPONSE_SUBSETS = new Map<string, string>([
+  [
+    "OrderPreview",
+    "`OrderPreview` intentionally selects checkout fields from the full `OrderVO`; order-detail-only fields are outside the preview contract.",
+  ],
+]);
+
 /**
  * 端点名 → `"METHOD 路径"`。
  *
@@ -431,6 +439,15 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
       if (!hit) continue;
       const comps = javaComponents(hit.ret, hit.file, hit.pkg);
       if (!comps) continue;
+
+      if (INTENTIONAL_RESPONSE_SUBSETS.has(path)) {
+        const declaredDoc = sharedTypesSrc(ROOT);
+        expect(
+          declaredDoc,
+          `${path} is exempt as a response subset only while its source documents that boundary`,
+        ).toContain("后端返的是完整 OrderVO，这里只声明端上要用的那部分");
+        continue;
+      }
 
       const declared = new Set(tsFields(path).map((f) => f.name));
       if (!declared.size) continue; // 契约类型解析不到，别假装比过

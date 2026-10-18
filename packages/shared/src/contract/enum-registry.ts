@@ -72,6 +72,12 @@ export interface EnumEntry {
 }
 
 export const ENUM_REGISTRY: EnumEntry[] = [
+  { decl: "shared:RecipientSalutation", dom: "user", shape: "CLASS", verdict: "OK",
+    note: "地址簿与订单收件人快照的称呼码；usr_address.salutation 注释给出完整值域。" },
+  { decl: "shared:ShipPrecheckVerdict", dom: "fulfillment", shape: "CLASS", verdict: "OK",
+    note: "商家提交运单前的渠道预检结论，与 ShipPrecheck.verdict 字段逐字对应。" },
+  { decl: "b-app:MerchantOrderActionKind", dom: "trade", shape: "CLASS", verdict: "OK",
+    note: "商家订单待办行的动作类型，驱动售后、收款、履约或核销入口。" },
   { decl: "shared:FulfillStage", dom: "trade", shape: "CLASS", verdict: "OK", words: ["NOT_PREPARED", "PREPARING", "LABELED", "SHIPPED", "RECEIVED"],
     note: "订单投影的履约阶段，与资金状态分离。" },
   { decl: "shared:StorePointTypeStatus", dom: "finance", shape: "STATUS", verdict: "OK", words: ["DRAINING", "RETIRED"],

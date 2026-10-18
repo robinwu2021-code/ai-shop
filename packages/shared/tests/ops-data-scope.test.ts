@@ -315,6 +315,12 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   "MerchantOrderServiceImpl#toOpsVO":
     "按子单主键回捞主单（ord_order）补社区字段。行级可见性已由上一步的子单查询判定；"
     + "这里再判一次的效果是「单查得到、社区列是空的」——把一次拒绝变成一处脏数据",
+  "MerchantOrderServiceImpl#paymentResolutionOf":
+    "ops 单详情先经 requireInScope(subOrderNo) 授权，再按该子单的 orderNo/userNo 回捞一条支付核验信息作详情补充；不建立列表或扩大订单范围",
+  "PaymentImpactPolicy#load":
+    "取消影响预览先读取完整支付单及子单集合，随后 authorized() 用正常数据域逐个校验；任一子单越域即拒绝且不返回金额，绕过只为完整构造待校验集合",
+  "MybatisShippingUploadProgress#statesOf":
+    "仅对运营域已筛选的 subOrderNos 回捞上传状态，快照再按输入子单号过滤输出；只补状态，不扩展到其他门店运单",
 
   // ── B 端与 ops 共用同一个方法，**不能只看 ops 一侧就把绕过去掉** ──
   // B 端会话带的是 SELF 维度（买家 user_no），而 ord_sub_order 的 SELF 锚点正是 user_no：
@@ -1095,6 +1101,8 @@ describe("运营端数据域接入", () => {
    */
   const OPS_READS_UNREGISTERED_OK: Record<string, string> = {
     stl_payment: "源检查先从原绑定验证 PointsOpsAccess.store，再按原支付号核验；不提供无范围支付列表。",
+    ord_payment_resolution:
+      "ops 单详情先由 requireInScope 授权子单，再按子单对应主单号与买家号读取单条待核验记录；仅用于已授权详情补充，不作为行级授权或运营列表入口。",
     /*
      * 2026-10-09 · V387 给运单加了归属列（entity_no / store_no 快照），G4 才第一次认出它（改名前的
      * ful_shipment 没有归属列，所以从没报过）。

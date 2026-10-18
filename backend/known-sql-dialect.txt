@@ -88,3 +88,7 @@ backend/shop-app/src/main/resources/db/migration/V288__market_and_test_channel.s
 # 所以只能记账。**这两行不是「批准」，是「跑掉了」** —— 收尾见头部那份 §3。
 backend/shop-app/src/main/resources/db/migration/V312__banned_word.sql	uca1400-collation
 backend/shop-app/src/main/resources/db/migration/V323__wx_shipping_upload.sql	uca1400-collation
+
+# V417 已在现网成功应用，Flyway checksum 不可更改；保留其已存在的 MySQL 0900 排序规则。
+# 只有将来新建的迁移禁止引入相同规则，此项等待独立的新迁移修复数据库排序规则后再移除。
+backend/shop-app/src/main/resources/db/migration/V417__logistics_channel_subscription.sql	mysql-0900-collation

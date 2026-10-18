@@ -302,7 +302,7 @@ onShow(load);
    留在这里会把库件压掉 */
 .card__status {
   flex-shrink: 0;
-  margin-left: auto;
+  margin-inline-start: auto;
 }
 .row__right {
   text-align: end;

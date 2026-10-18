@@ -195,7 +195,7 @@ public class BizOrderController {
                     req.expressNo(), before.receiver() == null ? null : before.receiver().phone());
             if ("INVALID".equals(check.verdict()) || (check.confirmationRequired()
                     && !Boolean.TRUE.equals(req.confirmExistingTrace()))) {
-                throw BizException.of(ErrorCode.CONFLICT, check.reason());
+                throw BizException.of(ErrorCode.CONFLICT_DETAIL, check.reason());
             }
         }
         OrderVO committed = merchantOrderService.ship(ctx.requireMerchantNo(), ctx.currentStoreNo(),

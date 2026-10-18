@@ -38,6 +38,11 @@ const camel = (s: string) =>
  * 删不掉说明还没做完。
  */
 const NO_ENTITY_YET: Record<string, string> = {
+  prd_category_points: "旧版类目积分规则表；生产只读审计为空，新积分方案不再读取，由 points integration policy 按门店×场景控制；不迁移、不删除历史表。",
+  ord_points_refund_execution: "SQL mapper 由 RefundExecutionMapper/RefundLedgerMapper 直接访问，事务与恢复队列共用投影，无独立 ORM 实体。",
+  lgs_push_event: "物流推送审计由 PushIngestion 通过 JdbcTemplate 追加与回写，按事件号定点读取，不使用 ORM 实体。",
+  lgs_precheck_cache: "渠道预检缓存由 LogisticsPortImpl 通过 JdbcTemplate 读写，按运单身份定点读取，不使用 ORM 实体。",
+  lgs_update_log: "物流更新审计由 WaybillUpdateAudit 通过 JdbcTemplate 追加并按运单查询，不使用 ORM 实体。",
   pts_point_type: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
   pts_fund_pool: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
   pts_account: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsOperationsMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
@@ -71,7 +76,6 @@ const NO_ENTITY_YET: Record<string, string> = {
   pts_stat_daily: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsOperationsMapper 维护，无独立 ORM 实体。",
   pts_cursor: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsEventMapper 维护，无独立 ORM 实体。",
   stl_split_intent: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 SplitIntentMapper 维护，无独立 ORM 实体。",
-  ord_refund_execution: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 RefundExecutionMapper, RefundLedgerMapper 维护，无独立 ORM 实体。",
   ord_points_integration_policy: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 OrderPointsBindingMapper 维护，无独立 ORM 实体。",
   ord_points_command: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 OrderPointsBindingMapper 维护，无独立 ORM 实体。",
   ord_points_binding: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 OrderPointsFactMapper, OrderPointsBindingMapper 维护，无独立 ORM 实体。",
@@ -172,16 +176,20 @@ describe("Java 实体与库表对齐", () => {
  * 这张表上任何真正的漏字段都不会再报。
  */
 const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
+  prd_goods: {
+    pointsConfig: "旧版商品积分配置列保留在已应用 schema；新积分方案不按商品写配置，避免 MyBatis updateById 覆盖遗留值。",
+  },
+  ord_sub_order: {
+    pointsGranted: "旧版积分发放标记保留在已应用 schema；新积分方案以 points voucher 与订单绑定事实实现幂等，不读写该列。",
+    openAfterSaleNo:
+      "V406 售后占位（一张订单同时只有一张进行中售后，库内 CAS）。只由 AfterSaleSlotMapper 的专用 SQL 读写 ——" +
+      "订单流程会先读子单再 updateById，实体若映射它，会把读到的旧占位原样写回，占位就再也释放不掉。",
+  },
   sys_pay_channel: {
     markets:
       "V295 起通道×市场在 sys_pay_channel_market 关系表。这一列还在库里（已应用的迁移是冻结的，" +
       "且留着才有回滚余地），但不再被写入 —— 映射它就会有人读到陈旧值，" +
       "那正是「运营改了一张表、领域读另一张，保存成功而改动不生效且不报错」的形状。",
-  },
-  ord_sub_order: {
-    openAfterSaleNo:
-      "V406 售后占位（一张订单同时只有一张进行中售后，库内 CAS）。只由 AfterSaleSlotMapper 的专用 SQL 读写 ——" +
-      "订单流程会先读子单再 updateById，实体若映射它，会把读到的旧占位原样写回，占位就再也释放不掉。",
   },
 };
 

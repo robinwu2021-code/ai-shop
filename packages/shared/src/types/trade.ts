@@ -5,6 +5,7 @@
 import type { CategoryType, CurrencyCode, FulfillmentType, TrafficSource } from "./core";
 import type { MerchantCapability } from "./merchant";
 import type { CouponFunder } from "./marketing";
+import type { RecipientSalutation } from "./user";
 // FulfillStage 定义在策略层（售后规则矩阵与它同处）；契约类型按名引用，type-only 导入，编译期擦除不成环
 import type { FulfillStage } from "../strategies/after-sale";
 
@@ -271,8 +272,6 @@ export interface OrderItem {
   weighed?: boolean;
   /** 赠品行：价格为 0，不参与计价，履约时随单发出 */
   isGift?: boolean;
-  /** 该商品每件赠送的积分 */
-  points?: number;
   /**
    * 这一行最多还能买几件。**只有下单页那一次预览有值**，历史订单为空。
    *
@@ -389,6 +388,8 @@ export interface OrderAmount {
 export interface OrderReceiver {
   /** 收货人姓名。取不到时为空 —— 空就是空，不要回落成「顾客」 */
   name?: string;
+  /** 收件人称呼快照；老订单或用户未选择时为空。 */
+  salutation?: RecipientSalutation | null;
   /** 脱敏程度由后端定，见 `Order.receiver` 的说明 */
   phone?: string;
   /** 省市区 + 详细，拼好的一行 */
@@ -541,8 +542,6 @@ export interface Order {
   receiver?: OrderReceiver;
   /** 已评价 */
   reviewed?: boolean;
-  /** 积分是否已发放（幂等标记，防止重复核销重复发分） */
-  pointsGranted?: boolean;
   /**
    * 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户
    * 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。
@@ -674,10 +673,13 @@ export interface LogisticsUpdateRecord {
   occurredAt: number;
 }
 
+/** 商家提交运单前的渠道预检结论。 */
+export type ShipPrecheckVerdict = "VALID" | "INVALID" | "UNKNOWN" | "WARNING";
+
 /** 商家提交运单前的渠道预检结果。 */
 export interface ShipPrecheck {
   /** 提交前的运单有效性判断。 */
-  verdict: "VALID" | "INVALID" | "UNKNOWN" | "WARNING";
+  verdict: ShipPrecheckVerdict;
   /** 给出判断的物流渠道。 */
   source?: string | null;
   /** 查询到的运单状态。 */

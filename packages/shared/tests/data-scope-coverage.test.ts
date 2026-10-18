@@ -56,6 +56,9 @@ const OWNER_COLUMNS = [
  * 业务数据的答案永远是会。
  */
 const EXEMPT: Record<string, string> = {
+  pts_user_account: "旧积分方案的空表；生产只读审计为 0 行，新方案无代码读取，保留表结构不做数据迁移或删除。",
+  pts_user_ledger: "旧积分方案的空表；生产只读审计为 0 行，新方案无代码读取，保留表结构不做数据迁移或删除。",
+  stl_points_pool: "旧积分方案的空表；生产只读审计为 0 行，新方案改由 pts_fund_pool/pts_pool_flow 记账，保留表结构不做数据迁移或删除。",
   ord_points_binding: "源绑定按原子单读取；运营经 PointsOpsAccess.store 校验冻结门店后访问，恢复不受调用人过滤。",
   ord_points_integration_policy: "门店×场景主键策略配置；运营先校验门店数据域，准入按原门店锁定读取。",
   ord_points_source_fact: "原事实与恢复队列，运营经已授权绑定读取，不提供无门店全量列表。",

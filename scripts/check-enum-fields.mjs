@@ -68,6 +68,12 @@ const SHARED_CONST = "packages/shared/src/utils/constants/index.ts";
  */
 export const FIELDS = [
   {
+    concept: "收件人称呼",
+    field: "usr_address.salutation",
+    backend: { ddl: ["usr_address", "salutation"] },
+    clients: [{ file: "packages/shared/src/types/user.ts", type: "RecipientSalutation" }],
+  },
+  {
     concept: "门店怎么进入买家的「我的店」",
     field: "usr_store_view.first_source",
     backend: {

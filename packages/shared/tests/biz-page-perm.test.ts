@@ -85,9 +85,6 @@ const EXEMPT: Record<string, string> = {
     + "客服与配送员看不到它，也就不会去调",
   "order/biz:ship":
     "详情页门禁是 biz:order:view；发货/送达按钮 canShip/canDeliver 里带 can('biz:ship')",
-  "orders/biz:aftersale":
-    "「售后」tab 按 perm 从 TABS 里过滤掉，店员与配送员看不到它，也就不会去调 mAfterSaleList",
-
   // ② 调用点自己 catch + UI 判空
   "delivery/biz:store":
     "规则卡片用 can('biz:store') 包住并单独 catch；配送员只拿待送列表与「已送达」，两个码他都有",

@@ -1,11 +1,13 @@
 import type { AfterSale, Order } from "@shared/types";
 
+export type MerchantOrderActionKind = "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
+
 /** 商家订单待办行；订单事实与需要执行的动作同时返回。 */
 export interface MerchantOrderWorkItem {
   /** 订单摘要 */
   order: Order;
   /** 当前订单待办动作 */
-  actionKind: "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
+  actionKind: MerchantOrderActionKind;
   /** 待办优先级 */
   priority: number;
   /** 关联售后单号 */

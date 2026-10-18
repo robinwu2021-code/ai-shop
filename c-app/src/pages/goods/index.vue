@@ -400,8 +400,8 @@ const detailParas = computed(() =>
 /*
  * 参数卡有没有内容。
  *
- * <p><b>不再判 card / virtual</b>（§3.2 收尾）：`Goods.card`、`Goods.virtual`、
- * `Goods.points` 这三样端上声明了、而 `GoodsVO` 里<b>一个组件都没有</b> ——
+ * <p><b>不再判 card / virtual</b>（§3.2 收尾）：`Goods.card`、`Goods.virtual`
+ * 端上曾声明、而 `GoodsVO` 里<b>一个组件都没有</b> ——
  * 后端从来没发过，那几段 `v-if` 是死代码。留着的代价不是多几行，
  * 是让人以为卡券与虚拟商品的详情页「已经做好了」。
  */

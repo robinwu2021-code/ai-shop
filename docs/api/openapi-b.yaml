@@ -1886,6 +1886,9 @@ components:
         requestNo:
           type: "string"
           description: "求团需求单号"
+        ownerId:
+          type: "string"
+          description: "求团发起人用户号；服务端用于区分发起人与参与邻居。"
         initiatorNickname:
           type: "string"
           description: "发起人昵称"
@@ -1955,14 +1958,9 @@ components:
         lockedPriceMinor:
           type: "number"
           description: "选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。"
-        confirmed:
-          type: "boolean"
-          description: "我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认"
-        confirmedCount:
-          type: "number"
-          description: "已确认下单的人数"
       required:
         - "requestNo"
+        - "ownerId"
         - "initiatorNickname"
         - "initiatorAvatar"
         - "pickupNo"
@@ -4526,9 +4524,6 @@ components:
         favoriteCount:
           type: "number"
           description: "被顾客收藏的次数。后端一直在发（`MerchantProfileVO`），契约此前没接 —— 数据到端上就没了，而且不报错。店主看得见这个数才知道「关注我的人」在涨。"
-        loginBy:
-          "$ref": "#/components/schemas/GrantType"
-          description: "本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号"
         fundsMode:
           "$ref": "#/components/schemas/FundsMode"
           description: "资金路径。**B 端价格字段叫什么由它决定** —— 归集（钱进平台账户）下平台是销售主体、最终售价平台定，商家填的是「期望收购价」； 直连下他自己就是销售主体，那就是「售价」。\n\n判据用它而不是门店的 `businessMode`：与积分能力同一根轴 —— **责任跟着钱走**。\n\n还没进件的申请人为空：那时资金路径尚未确定， 猜一个默认值会让他在入驻页看到一个还轮不到他的字段名。"
@@ -4546,16 +4541,6 @@ components:
         - "isPickupPoint"
       additionalProperties: false
       description: "登录后的商家会话"
-    GrantType:
-      type: "string"
-      enum:
-        - "WX_MINI"
-        - "WX_PHONE"
-        - "WX_OPEN"
-        - "PHONE_OTP"
-        - "APPLE"
-        - "PASSWORD"
-      description: "登录方式。 · WX_MINI  小程序静默登录（只拿 openid，拿不到手机号） · WX_PHONE 小程序一键取手机号（推荐：一次授权直接拿到号，省掉短信） · WX_OPEN  App 微信开放平台 · APPLE    Apple 登录（iOS 上架硬要求） · PHONE_OTP 手机号 + 短信验证码（全端兜底，也是商家账号的主标识） · PASSWORD  手机号 + 密码（**只有 B 端有**）。商家一天开好几次 App，   每次等一条短信是实打实的摩擦；而它与其它方式最本质的差别是**不建户** ——   能用密码登录的前提是他已经设过密码，而设密码本身要先登录。"
     MerchantLoginResp:
       type: "object"
       properties:
@@ -6685,9 +6670,6 @@ components:
             - "price"
           additionalProperties: false
           description: "商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团"
-        points:
-          type: "number"
-          description: "本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。"
         limitPerUser:
           type: "number"
           description: "每人限购，0 = 不限"
@@ -9614,9 +9596,6 @@ components:
         isGift:
           type: "boolean"
           description: "赠品行：价格为 0，不参与计价，履约时随单发出"
-        points:
-          type: "number"
-          description: "该商品每件赠送的积分"
         maxQty:
           type:
             - "number"
@@ -9828,6 +9807,11 @@ components:
         name:
           type: "string"
           description: "收货人姓名。取不到时为空 —— 空就是空，不要回落成「顾客」"
+        salutation:
+          anyOf:
+            - "$ref": "#/components/schemas/RecipientSalutation"
+            - type: "null"
+          description: "收件人称呼快照；老订单或用户未选择时为空。"
         phone:
           type: "string"
           description: "脱敏程度由后端定，见 `Order.receiver` 的说明"
@@ -9836,6 +9820,13 @@ components:
           description: "省市区 + 详细，拼好的一行"
       additionalProperties: false
       description: "收件人。下单时固化在子订单上，**不是用户当前的地址簿条目**。\n\n三端共用：C 端订单详情、B 端配送/发货、平台端查单。"
+    RecipientSalutation:
+      type: "string"
+      enum:
+        - "MR"
+        - "MS"
+        - "UNSPECIFIED"
+      description: "收件人称呼，与地址簿字段及订单收件人快照共用。"
     InvoiceRequestStatus:
       type: "string"
       enum:
@@ -10009,9 +10000,6 @@ components:
         reviewed:
           type: "boolean"
           description: "已评价"
-        pointsGranted:
-          type: "boolean"
-          description: "积分是否已发放（幂等标记，防止重复核销重复发分）"
         trafficSource:
           "$ref": "#/components/schemas/TrafficSource"
           description: "客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。"
@@ -10492,16 +10480,19 @@ components:
         - "occurredAt"
       additionalProperties: false
       description: "物流刷新或订阅回调的渠道更新记录。"
+    ShipPrecheckVerdict:
+      type: "string"
+      enum:
+        - "VALID"
+        - "INVALID"
+        - "UNKNOWN"
+        - "WARNING"
+      description: "商家提交运单前的渠道预检结论。"
     ShipPrecheck:
       type: "object"
       properties:
         verdict:
-          type: "string"
-          enum:
-            - "VALID"
-            - "INVALID"
-            - "UNKNOWN"
-            - "WARNING"
+          "$ref": "#/components/schemas/ShipPrecheckVerdict"
           description: "提交前的运单有效性判断。"
         source:
           type:
@@ -10834,6 +10825,11 @@ components:
         name:
           type: "string"
           description: "收货人姓名"
+        salutation:
+          anyOf:
+            - "$ref": "#/components/schemas/RecipientSalutation"
+            - type: "null"
+          description: "收件人称呼；缺省表示用户未选择。"
         phone:
           type: "string"
           description: "收货人手机号"
@@ -10937,6 +10933,16 @@ components:
         - "expireAt"
         - "currency"
       additionalProperties: false
+    GrantType:
+      type: "string"
+      enum:
+        - "WX_MINI"
+        - "WX_PHONE"
+        - "WX_OPEN"
+        - "PHONE_OTP"
+        - "APPLE"
+        - "PASSWORD"
+      description: "登录方式。 · WX_MINI  小程序静默登录（只拿 openid，拿不到手机号） · WX_PHONE 小程序一键取手机号（推荐：一次授权直接拿到号，省掉短信） · WX_OPEN  App 微信开放平台 · APPLE    Apple 登录（iOS 上架硬要求） · PHONE_OTP 手机号 + 短信验证码（全端兜底，也是商家账号的主标识） · PASSWORD  手机号 + 密码（**只有 B 端有**）。商家一天开好几次 App，   每次等一条短信是实打实的摩擦；而它与其它方式最本质的差别是**不建户** ——   能用密码登录的前提是他已经设过密码，而设密码本身要先登录。"
     LoginReq:
       type: "object"
       properties:
@@ -12183,6 +12189,13 @@ components:
       required:
         - "typeCode"
       additionalProperties: false
+    MerchantOrderActionKind:
+      type: "string"
+      enum:
+        - "AFTER_SALE"
+        - "RECEIVE_PAYMENT"
+        - "FULFILL"
+        - "VERIFY"
     MerchantOrderWorkItem:
       type: "object"
       properties:
@@ -12190,12 +12203,7 @@ components:
           "$ref": "#/components/schemas/Order"
           description: "订单摘要"
         actionKind:
-          type: "string"
-          enum:
-            - "AFTER_SALE"
-            - "RECEIVE_PAYMENT"
-            - "FULFILL"
-            - "VERIFY"
+          "$ref": "#/components/schemas/MerchantOrderActionKind"
           description: "当前订单待办动作"
         priority:
           type: "number"

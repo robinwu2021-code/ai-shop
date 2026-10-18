@@ -996,7 +996,7 @@ onPullDownRefresh(async () => {
 }
 .ostat__sub {
   display: block;
-  margin-top: 10rpx;
+  margin-top: 12rpx;
 }
 .ostat__body {
   padding: 20rpx 24rpx;
