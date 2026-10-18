@@ -32,6 +32,10 @@ export const settleMock: Pick<MerchantApi,
   | "mStorePointTypes"
   | "mStorePointAccount"
   | "mStorePointEntries"
+  | "mStorePointTerms"
+  | "mStorePointAgreement"
+  | "mSignStorePointAgreement"
+  | "mTerminateStorePointAgreement"
 > = {
   // ---------------------------------------------------------------- 结算
   /**
@@ -415,4 +419,8 @@ export const settleMock: Pick<MerchantApi,
   async mStorePointTypes() { return delay([]); },
   async mStorePointAccount() { throw new Error("请连接积分账本后端"); },
   async mStorePointEntries() { throw new Error("请连接积分账本后端"); },
+  async mStorePointTerms() { return delay(null); },
+  async mStorePointAgreement() { return delay(null); },
+  async mSignStorePointAgreement() { throw new Error("请连接积分签约后端"); },
+  async mTerminateStorePointAgreement() { throw new Error("请连接积分签约后端"); },
 };

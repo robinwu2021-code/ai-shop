@@ -32,6 +32,20 @@ export interface StorePointEntryPage {
   next: number; hasMore: boolean;
 }
 
+/** Current store's published acceptance terms. */
+export interface StorePointTerms { version: string; hash: string; text: string }
+/** Frozen, store-scoped acceptance. Route fields are read-only server snapshots. */
+export interface StorePointAgreement {
+  agreementNo: string; typeCode: string; merchantNo: string; storeNo: string;
+  signedBy: string; termsVersion: string; termsHash: string; termsText: string;
+  settleMode: "PER_ORDER" | "PERIODIC"; path: "DIRECT" | "AGGREGATED";
+  channel: string; accountVersion: string; state: string;
+}
+export interface StorePointSignRequest {
+  typeCode: string; termsVersion: string; termsHash: string;
+  settleMode: "PER_ORDER" | "PERIODIC"; channel: string;
+}
+
 // ---------------------------------------------------------------- 商家
 //
 // 数据模型从一开始就按**多商家**建：merchantNo 贯穿商品/订单/评价/结算。

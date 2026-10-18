@@ -834,6 +834,19 @@ export default {
 
   points: {
 
+    agreement: "门店积分协议",
+    activeAgreement: "协议已生效",
+    terminate: "终止协议",
+    termsVersion: "条款版本",
+    signHint: "请选择当前门店已开通的收款通道与结算方式；最终路由由服务端核验。",
+    perOrder: "随单结算",
+    periodic: "定期结算",
+    acceptTerms: "我已阅读并同意以上条款",
+    sign: "签署协议",
+    noTerms: "平台尚未发布此类型的协议条款",
+    signConfirm: "确认以当前门店签署这份积分协议？",
+    terminateConfirm: "确认终止此门店协议？存量积分义务仍需继续处理。",
+    actionFailed: "操作失败，请刷新后重试",
     storeLedger: "门店积分账本",
     storeLedgerHint: "按当前门店与积分类型查看，金额和积分以支付账本为准。",
     noTypes: "暂无积分类型",

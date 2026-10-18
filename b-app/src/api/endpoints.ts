@@ -331,6 +331,10 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mStorePointTypes: { method: "GET", path: "/biz/points/store-types", auth: true, summary: "当前门店可见的积分类型" },
   mStorePointAccount: { method: "GET", path: "/biz/points/store-account", auth: true, summary: "当前门店积分账本" },
   mStorePointEntries: { method: "GET", path: "/biz/points/store-entries", auth: true, summary: "当前门店积分流水" },
+  mStorePointTerms: { method: "GET", path: "/biz/points/store-terms", auth: true, summary: "当前积分签约条款" },
+  mStorePointAgreement: { method: "GET", path: "/biz/points/store-agreement", auth: true, summary: "当前门店有效积分签约" },
+  mSignStorePointAgreement: { method: "POST", path: "/biz/points/store-agreement/sign", auth: true, summary: "主体属主签署当前门店积分协议" },
+  mTerminateStorePointAgreement: { method: "POST", path: "/biz/points/store-agreement/terminate", auth: true, summary: "主体属主终止当前门店积分协议" },
 
   // ---------------------------------------------------------------- 消息（二期）
   mMessageList: { method: "GET", path: "/biz/message", auth: true, summary: "商家消息列表" },

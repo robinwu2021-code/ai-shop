@@ -79,6 +79,9 @@ import type {
   StorePointType,
   StorePointAccount,
   StorePointEntryPage,
+  StorePointTerms,
+  StorePointAgreement,
+  StorePointSignRequest,
   MerchantProfile,
   MerchantRole,
   MerchantSpecDim,
@@ -1991,6 +1994,10 @@ export interface MerchantApi {
   mStorePointTypes(): Promise<StorePointType[]>;
   mStorePointAccount(typeCode: string): Promise<StorePointAccount>;
   mStorePointEntries(typeCode: string, after?: number, limit?: number): Promise<StorePointEntryPage>;
+  mStorePointTerms(typeCode: string): Promise<StorePointTerms | null>;
+  mStorePointAgreement(typeCode: string): Promise<StorePointAgreement | null>;
+  mSignStorePointAgreement(request: StorePointSignRequest): Promise<StorePointAgreement>;
+  mTerminateStorePointAgreement(typeCode: string): Promise<void>;
 
   // ---- 消息（新订单/售后/评价的落点；推送与响铃是三期的加速通道，这里是事实记录）
   mMessageList(): Promise<Message[]>;

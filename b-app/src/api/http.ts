@@ -121,6 +121,8 @@ import type {
   StorePointType,
   StorePointAccount,
   StorePointEntryPage,
+  StorePointTerms,
+  StorePointAgreement,
   MerchantProfile,
   MerchantRole,
   MerchantSpecDim,
@@ -688,6 +690,10 @@ export const httpApi: MerchantApi = {
   mStorePointAccount: (typeCode) => http.get<StorePointAccount>(E.mStorePointAccount.path, { typeCode }),
   mStorePointEntries: (typeCode, after = 0, limit = 20) =>
     http.get<StorePointEntryPage>(E.mStorePointEntries.path, { typeCode, after, limit }),
+  mStorePointTerms: (typeCode) => http.get<StorePointTerms | null>(E.mStorePointTerms.path, { typeCode }),
+  mStorePointAgreement: (typeCode) => http.get<StorePointAgreement | null>(E.mStorePointAgreement.path, { typeCode }),
+  mSignStorePointAgreement: (request) => http.post<StorePointAgreement>(E.mSignStorePointAgreement.path, request),
+  mTerminateStorePointAgreement: (typeCode) => http.post<void>(E.mTerminateStorePointAgreement.path, { typeCode }),
 
   // ---- 消息
   mMessageList: () => http.get<Message[]>(E.mMessageList.path),

@@ -12,6 +12,10 @@ describe("buildPath", () => {
     expect(ENDPOINTS.mStorePointAccount.path).toBe("/biz/points/store-account");
     expect(ENDPOINTS.mStorePointEntries.path).toBe("/biz/points/store-entries");
     expect(ENDPOINTS.mStorePointEntries.method).toBe("GET");
+    expect(ENDPOINTS.mStorePointTerms.path).toBe("/biz/points/store-terms");
+    expect(ENDPOINTS.mStorePointAgreement.path).toBe("/biz/points/store-agreement");
+    expect(ENDPOINTS.mSignStorePointAgreement.method).toBe("POST");
+    expect(ENDPOINTS.mTerminateStorePointAgreement.method).toBe("POST");
   });
   it("两种占位写法都换掉", () => {
     expect(buildPath("/biz/members/{memberNo}", { memberNo: "MB1" })).toBe("/biz/members/MB1");
