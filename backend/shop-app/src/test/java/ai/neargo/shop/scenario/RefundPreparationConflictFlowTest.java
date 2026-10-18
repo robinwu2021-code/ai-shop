@@ -42,6 +42,7 @@ class RefundPreparationConflictFlowTest {
     void knownUndispatchedFullRefundCapConflictIsFailedRatherThanUnknown() throws Exception {
         try (var f = new BasicRefundFixture(context)) {
             var purchase = f.purchase("13207071801");
+            f.prepare(purchase);
             String no = f.apply(purchase, "REFUND_ONLY");
             historical(purchase, no);
             f.approve(purchase, no);
@@ -59,6 +60,7 @@ class RefundPreparationConflictFlowTest {
     void legacySameCaseForbidsNewExecutionEvenWhenOriginalPaymentHasRemainingCapacity() throws Exception {
         try (var f = new BasicRefundFixture(context)) {
             var purchase = f.purchase("13207071802");
+            f.prepare(purchase);
             String no = f.apply(purchase, "REFUND_ONLY");
             StlPayment origin = historical(purchase, no);
             var result = refunds.request(new RefundRequest("RF-" + no, no, purchase.subNo(), origin.getPaymentNo(),

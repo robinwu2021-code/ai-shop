@@ -1506,3 +1506,18 @@
 | POST | `/ops/test-phones` | 录一条或改一条（按手机号认，不按 id） | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/test-phones/{id}/enabled` | 开 / 关 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/test-phones/{id}/remove` | 删 | — | `数组` | — | ✅ | ✅ |
+
+## 2026-10-18 退款结果与人工重试契约补充
+
+URL沿用现有退款恢复、运营close/retry接口；新增内部RefundQueryResult保留SUCCEEDED/PROCESSING/TERMINAL_FAILED/MANUAL_REQUIRED/UNKNOWN，不再从paid=false推断失败。PayGateway.Result.definitiveRejection只表示可信拒绝/发前失败；fatal或retryable=false不自动构成可释放证明。未知、异常及处理中不得开启另一支付路径。运营重试仍以旧售后号幂等生成新售后；新现金执行依据原收款容量守卫。B端积分账户/流水固定来自BizContext当前门店，不接受请求覆盖holder。
+
+积分新建/核销仍受独立接线开关控制；既有源事实履约及退款恢复不因关闭新增而丢失。投影水位落后返回POINTS_AVAILABILITY_PROJECTION_PENDING并等待恢复任务，不据此清零或报告余额为0。
+
+
+### 2026-10-18 退款安全恢复与运营对账补充
+
+- 内部 `SettlePort.RefundEvidence` / `PointsCashRefundReadStore.CashRefund` 增加 `safety`：outcome、terminalVerified、originFrozen、errorCode。旧构造缺证据一律 UNKNOWN，FAILED/CLOSED 显示状态不能独立授权补偿、abort 或容量释放。
+- LATE_SUCCESS 对外保持待人工及冻结；已发补偿仍查询原号，未发送但已观察 PROCESSING/MANUAL_REQUIRED 的退款不得再认领发送。
+- 现有 `/ops/payments/recon-diffs`、`/{diffNo}/resolve`、`/{diffNo}/ignore` URL 与权限不变。新增 diffType：REFUND_ABNORMAL（渠道异常/查询坐标缺失）、REFUND_LATE_SUCCESS（与终止事实矛盾的迟到成功）、REFUND_CLOSED（可信终止待运营处理）。各类型独立去重，旧已解决差异不遮盖新的迟到成功。
+- 退款差异不得走自动补支付收口；resolve/ignore 仅记录处置结论，不解冻、不释放、不退款。
+- 后端 DTO 仍使用 payChannel、diffType、channelAmountMinor、platformAmountMinor 和毫秒时间戳；ops-web 的 HTTP adapter 映射到现有显示字段 channel、type、channelAmount、platformAmount 和 ISO 时间，金额单位保持分。

@@ -33,6 +33,7 @@ import java.util.List;
 @Service
 public class PointsRecoveryServiceImpl implements PointsRecoveryService {
     private final PointsOperationsStore store;
+    private final ai.neargo.shop.pay.points.store.impl.AcceptanceAvailabilityProjection availability;
     private final PointsReadStore read;
     private final PointsCursorStore cursors;
     private final PointsEventQueue queue;
@@ -56,7 +57,9 @@ public class PointsRecoveryServiceImpl implements PointsRecoveryService {
             PointsReceivableRecoveryExecutionService recoveries,
             PointsRefundCollectionExecutionService collections,
             PointsRefundCompensationExecutionService compensations,
-            PointsRefundAbortService aborts) {
+            PointsRefundAbortService aborts,
+            ai.neargo.shop.pay.points.store.impl.AcceptanceAvailabilityProjection availability) {
+        this.availability = availability;
         this.store = store;
         this.read = read;
         this.cursors = cursors;
@@ -91,6 +94,7 @@ public class PointsRecoveryServiceImpl implements PointsRecoveryService {
                 !TransactionSynchronizationManager.isActualTransactionActive(),
                 "POINTS_RECOVERY_REQUIRES_NO_TRANSACTION");
         require(limit > 0 && limit <= 200 && now >= 0, "POINTS_BATCH_INVALID");
+        availability.repair(type);
         String task = "PTS_RECOVER:" + type;
         var state = cursors.state(task);
         var positions = List.of(Kind.PAYOUT, Kind.TRANSFER, Kind.REFUND);

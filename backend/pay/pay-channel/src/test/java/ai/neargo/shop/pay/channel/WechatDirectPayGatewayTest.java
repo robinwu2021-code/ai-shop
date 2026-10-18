@@ -214,15 +214,15 @@ class WechatDirectPayGatewayTest {
     }
 
     @Test
-    @DisplayName("★★ 查退款的「不存在」是另一个码：RESOURCE_NOT_EXISTS（同日实测）")
-    void 退款单不存在可关单() throws Exception {
+    @DisplayName("退款未找到不能证明从未受理，不自动关单")
+    void 退款单不存在保持未知() throws Exception {
         RecordingClient client = new RecordingClient();
         client.boom = new ChannelClient.ChannelException(
                 "微信 /v3/refund/domestic/refunds/R1 HTTP 404：RESOURCE_NOT_EXISTS（退款单不存在）", false);
 
         var r = gateway(client).queryRefund("R1");
 
-        assertThat(r.ok()).isTrue();
+        assertThat(r.ok()).isFalse();
         assertThat(r.found()).isFalse();
     }
 
@@ -271,6 +271,18 @@ class WechatDirectPayGatewayTest {
         assertThat(client.body).containsEntry("amount",
                 Map.of("refund", 30L, "total", 100L, "currency", "CNY"));
         assertThat(client.body).doesNotContainKey("sub_mchid");
+    }
+
+    @Test
+    void acceptedResponseWithoutProviderIsUnknownNotARejectionProof() throws Exception {
+        RecordingClient client = new RecordingClient();
+        client.reply = Map.of("status", "PROCESSING");
+        var result = gateway(client).refund(new PayGateway.TxContext(null,"T","O",100),30,"R","refund");
+        assertThat(client.calls).isGreaterThan(0);
+        assertThat(result.success()).isFalse();
+        assertThat(result.retryable()).isTrue();
+        assertThat(result.definitiveRejection()).isFalse();
+        assertThat(PayGateway.Result.fatal("unproven").definitiveRejection()).isFalse();
     }
 
     @Test

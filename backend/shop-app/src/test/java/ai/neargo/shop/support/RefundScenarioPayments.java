@@ -5,7 +5,7 @@ import ai.neargo.shop.pay.service.PaymentLedgerService;
 import ai.neargo.shop.spi.settle.SettlePort;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-/** Adds an actual in-memory TEST-bank counterpart to old order fixtures that only sent stateless stub callbacks. */
+/** Establishes the TEST-bank payment before an order fixture sends its stub callback. */
 public final class RefundScenarioPayments {
     private RefundScenarioPayments() { }
 
@@ -15,15 +15,15 @@ public final class RefundScenarioPayments {
         receivedForOrder(jdbc,ledger,channel,(String) source.get("order_no"));
     }
 
-    public static void receivedForOrder(JdbcTemplate jdbc, PaymentLedgerService ledger, TestPayGateway channel, String order) {
+    public static String receivedForOrder(JdbcTemplate jdbc, PaymentLedgerService ledger, TestPayGateway channel, String order) {
         var source=jdbc.queryForMap("SELECT order_no,user_no,pay_amount FROM ord_order WHERE order_no=?",order);
         var existing = jdbc.queryForList("SELECT out_trade_no FROM stl_payment WHERE order_no=?"
                 + " AND direction='PAY' AND status='SUCCESS' AND pay_channel='TEST' ORDER BY id DESC",
                 String.class, order);
         if (!existing.isEmpty()) {
-            // These fixtures reported success through the stateless stub; mirror the receipt in the TEST bank too.
+            // A replay uses the original bank receipt and provider transaction number.
             channel.markPaid(existing.getFirst());
-            return;
+            return channel.query(existing.getFirst()).tradeNo();
         }
         var unfinished = jdbc.queryForList("SELECT out_trade_no FROM stl_payment WHERE order_no=?"
                 + " AND direction='PAY' AND status IN ('INIT','PENDING')", String.class, order);
@@ -36,5 +36,6 @@ public final class RefundScenarioPayments {
         ledger.settle(new SettlePort.PaymentSettled(out, "TEST", trade, amount, System.currentTimeMillis()));
         jdbc.update("UPDATE ord_order SET pay_channel='TEST' WHERE order_no=?", order);
         jdbc.update("UPDATE stl_bill SET pay_channel='TEST' WHERE order_no=?", order);
+        return trade;
     }
 }

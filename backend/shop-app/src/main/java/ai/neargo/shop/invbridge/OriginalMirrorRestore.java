@@ -4,6 +4,7 @@ import ai.neargo.shop.event.DomainEvent;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.event.SysOutboxMapper;
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.product.port.StockPortImpl;
 import ai.neargo.shop.spi.product.StockPort.RestoreResult;
 import ai.neargo.shop.spi.product.StockPort.SkuQty;
@@ -22,6 +23,7 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Platform restore and one durable mirror instruction commit together; inventory completion is separate. */
 @Component
+@ConditionalOnInventory
 @ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "DUAL")
 public class OriginalMirrorRestore {
     private final StockPortImpl platform;

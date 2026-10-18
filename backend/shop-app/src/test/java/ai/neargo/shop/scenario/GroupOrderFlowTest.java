@@ -368,11 +368,13 @@ class GroupOrderFlowTest {
     }
 
     private void pay(String orderNo, String tx) throws Exception {
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"" + tx
+        String trade=ai.neargo.shop.support.RefundScenarioPayments.receivedForOrder(
+                jdbc,ledger,bank,orderNo);
+        String ack=mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"" + trade
                                 + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
-                .andExpect(status().isOk());
-        ai.neargo.shop.support.RefundScenarioPayments.receivedForOrder(jdbc,ledger,bank,orderNo);
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(ack).as(tx).isEqualTo("SUCCESS");
     }
 
     private Map<String, Object> subOf(String orderNo) {

@@ -27,6 +27,14 @@ public interface PayQueryPort {
      */
     Result queryRefund(String payChannel, String outTradeNo);
 
+    default RefundQueryResult queryRefundOutcome(String channel, String no) {
+        Result r = queryRefund(channel, no);
+        if (r == null || !r.ok() || !r.found()) return RefundQueryResult.unknown(no);
+        return new RefundQueryResult(r.paid() ? RefundQueryResult.Status.SUCCEEDED
+                : RefundQueryResult.Status.PROCESSING, null, no, r.amountMinor(), r.tradeNo(),
+                r.currency(), System.currentTimeMillis());
+    }
+
     /**
      * @param ok    查询本身是否成功。<b>false 时其余字段不可信</b>，
      *              而且<b>绝不能据此关单</b> —— 查询失败与「通道没有这笔」是两件事，

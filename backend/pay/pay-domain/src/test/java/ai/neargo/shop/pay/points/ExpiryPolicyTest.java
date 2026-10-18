@@ -12,6 +12,12 @@ import java.time.ZoneId;
 import java.util.List;
 
 class ExpiryPolicyTest {
+    @Test void coverageMergesStoresAndSubtractsAnOutageSpanningMultipleAcceptances() {
+        assertThat(ExpiryPolicy.coverage(List.of(new Interval(100,200),new Interval(150,300),
+                new Interval(400,500)),List.of(new Interval(180,450))))
+                .containsExactly(new Interval(100,180),new Interval(450,500));
+    }
+
     @Test
     void overlapping_pauses_extend_once_and_a_later_pause_cannot_revive_an_expired_right() {
         var pauses =

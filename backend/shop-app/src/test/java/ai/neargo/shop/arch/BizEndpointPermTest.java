@@ -228,6 +228,10 @@ class BizEndpointPermTest {
         put("/biz/pickup/overview", BizPerms.VERIFY);
         put("/biz/order/{subOrderNo}/ship", BizPerms.SHIP);
         put("/biz/order/{subOrderNo}/prepare", BizPerms.SHIP);
+        put("/biz/order/{subOrderNo}/fulfillment-options", BizPerms.SHIP);
+        put("/biz/order/{subOrderNo}/fulfillment-change", BizPerms.SHIP);
+        put("/biz/order/{subOrderNo}/ship/precheck", BizPerms.SHIP);
+        put("/biz/order/{subOrderNo}/waybill", BizPerms.SHIP);
         put("/biz/order/{subOrderNo}/delivered", BizPerms.SHIP);
         // 快递代下单（TDD-快递100商家寄件）：叫快递就是发货的另一种做法，与发货同一个权限
         put("/biz/order/{subOrderNo}/express", BizPerms.SHIP);
@@ -240,6 +244,8 @@ class BizEndpointPermTest {
         put("/biz/order/{subOrderNo}", BizPerms.ORDER_VIEW);
         // 物流轨迹（TDD-物流模块 B2）：看订单的人就能看物流
         put("/biz/order/{subOrderNo}/trace", BizPerms.ORDER_VIEW);
+        put("/biz/order/worklist", BizPerms.ORDER_VIEW);
+        put("/biz/order/{subOrderNo}/logistics-updates", BizPerms.ORDER_VIEW);
         put("/biz/dashboard/stats", BizPerms.CUSTOMER);
         put("/biz/customers", BizPerms.CUSTOMER);
         // 跨店总览与对比（B-11.12.5/6）：同样是经营数据，与 /biz/dashboard/stats 同一档。
@@ -345,6 +351,9 @@ class BizEndpointPermTest {
         put("/biz/review/{reviewNo}/reply", BizPerms.REVIEW);
         put("/biz/review/{reviewNo}/appeal", BizPerms.REVIEW);
         put("/biz/after-sale", BizPerms.AFTERSALE);
+        put("/biz/after-sale/worklist", BizPerms.AFTERSALE);
+        put("/biz/after-sale/{afterSaleNo}", BizPerms.AFTERSALE);
+        put("/biz/after-sale/by-order/{subOrderNo}", BizPerms.AFTERSALE);
         put("/biz/after-sale/{afterSaleNo}/approve", BizPerms.AFTERSALE);
         put("/biz/after-sale/{afterSaleNo}/reject", BizPerms.AFTERSALE);
         put("/biz/after-sale/{afterSaleNo}/receive", BizPerms.AFTERSALE);

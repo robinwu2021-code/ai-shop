@@ -48,6 +48,7 @@ public class PointsRefundCompensationServiceImpl implements PointsRefundCompensa
     @Override public FundsCommand prepare(RefundAbort abort, long revision) {
         require(abort != null && abort.preparationNo() != null && abort.cashRefundPaymentNo() != null,
                 "POINTS_REFUND_ABORT_INVALID");
+        cash.lockRefund(abort.cashRefundPaymentNo());
         var head = locked(abort.preparationNo());
         var saved = snapshot(head);
         require(saved.preparation().inputHash().equals(abort.inputHash()), "POINTS_REFUND_INPUT_CONFLICT");
@@ -78,6 +79,9 @@ public class PointsRefundCompensationServiceImpl implements PointsRefundCompensa
     }
 
     @Override public Dispatch claim(String no) {
+        var initial = snapshot(read.position(PositionMove.Kind.REFUND.table(), no));
+        require(initial.compensation() != null, "POINTS_REFUND_COMPENSATION_REQUIRED");
+        cash.lockRefund(initial.compensation().abort().cashRefundPaymentNo());
         var head = locked(no);
         var saved = snapshot(head);
         var compensation = saved.compensation();
@@ -88,8 +92,8 @@ public class PointsRefundCompensationServiceImpl implements PointsRefundCompensa
         String state = (String) head.get("state");
         require(Set.of("COMPENSATION_REQUIRED", "COMPENSATING", "COMPENSATION_UNKNOWN").contains(state),
                 "POINTS_REFUND_COMPENSATION_STATE_CONFLICT");
-        verifyCashFailure(saved, compensation.abort());
         boolean submit = "COMPENSATION_REQUIRED".equals(state);
+        if (submit) verifyCashFailure(saved, compensation.abort());
         if (submit) { transition(head, saved, compensation, "COMPENSATING", List.of()); }
         return new Dispatch(compensation.command(), submit, null);
     }
@@ -128,8 +132,8 @@ public class PointsRefundCompensationServiceImpl implements PointsRefundCompensa
     }
 
     private void verifyCashFailure(RefundSnapshot saved, RefundAbort abort) {
-        var payment = cash.refund(abort.cashRefundPaymentNo());
-        require(payment != null && Set.of("FAILED", "CLOSED").contains(payment.status())
+        var payment = cash.lockRefund(abort.cashRefundPaymentNo());
+        require(payment != null && payment.safety() != null && payment.safety().safeToRecover()
                 && payment.succeededAt() == null && payment.verifiedMinor() == null && payment.verifiedAt() == null,
                 "POINTS_REFUND_CASH_OUTCOME_UNKNOWN");
         var command = saved.command();

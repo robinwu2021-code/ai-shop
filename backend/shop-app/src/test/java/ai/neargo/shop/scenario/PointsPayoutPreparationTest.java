@@ -1808,6 +1808,22 @@ class PointsPayoutPreparationTest {
     }
 
     @Test
+    void source_paid_earning_survives_store_switch_off_after_acceptance() {
+        var c = fixture(false, false, false);
+        addEarnBudget(c);
+        var handler = context.getBean(PointsSourceFactHandler.class);
+        handler.apply(signedFact(c, "ACCEPTED_PAID", FactKind.PAID, 1, "U"));
+        context.getBean(PointsSwitchService.class).change(
+                new PointsSwitchService.Command("OFF:" + c.typeCode(), Scope.STORE,
+                        c.typeCode(), "STORE", false, 100, "OP", "DRAINING"));
+        handler.earn(earnCommand(c));
+        assertThat(jdbc().queryForObject(
+                "SELECT pending_points FROM pts_account WHERE type_code=?"
+                        + " AND holder_type='USER' AND holder_no='U'",
+                Long.class, c.typeCode())).isEqualTo(20L);
+    }
+
+    @Test
     void expiry_uses_union_of_type_and_user_pauses_without_extending_twice() {
         var c = expiryFixture();
         var switches = context.getBean(PointsSwitchService.class);
@@ -2944,7 +2960,7 @@ class PointsPayoutPreparationTest {
         PointsFactPortImpl.class,
         PointsPostingDatabaseTest.Config.class,
         MybatisPointsReadStore.class,
-        MybatisPointsConfigurationStore.class,
+        MybatisPointsConfigurationStore.class, ai.neargo.shop.pay.points.store.impl.AcceptanceAvailabilityProjection.class,
         MybatisPointsFactStore.class,
         EarnServiceImpl.class,
         MybatisStatementStore.class,

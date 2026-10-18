@@ -353,7 +353,7 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
             var prep=current.preparation();
             var command=current.command();
             require(prep!=null && prep.netCashMinor()>0 && prep.collectionTicket()!=null
-                    && proof!=null && Set.of("FAILED","CLOSED").contains(proof.status())
+                    && proof!=null && proof.safety()!=null && proof.safety().safeToRecover()
                     && "REFUND".equals(proof.direction()) && proof.paymentNo()!=null
                     && afterSaleNo.equals(proof.afterSaleNo())
                     && command.subOrderNo().equals(proof.subOrderNo())
@@ -389,7 +389,7 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
             var prep = current.preparation();
             var command = current.command();
             require(prep != null && prep.netCashMinor() > 0 && prep.collectionTicket() == null
-                    && proof != null && Set.of("FAILED", "CLOSED").contains(proof.status())
+                    && proof != null && proof.safety()!=null && proof.safety().safeToRecover()
                     && "REFUND".equals(proof.direction()) && proof.paymentNo() != null
                     && afterSaleNo.equals(proof.afterSaleNo())
                     && command.subOrderNo().equals(proof.subOrderNo())

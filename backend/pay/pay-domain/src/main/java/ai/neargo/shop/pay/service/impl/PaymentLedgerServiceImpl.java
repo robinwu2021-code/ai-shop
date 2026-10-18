@@ -30,7 +30,9 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     private final SettleMappers.PaymentMapper paymentMapper;
     private final ObjectMapper json = new ObjectMapper();
 
-    public PaymentLedgerServiceImpl(SettleMappers.PaymentMapper paymentMapper) {
+    private final RefundCapacityLedger capacity;
+    public PaymentLedgerServiceImpl(SettleMappers.PaymentMapper paymentMapper, RefundCapacityLedger capacity) {
+        this.capacity = capacity;
         this.paymentMapper = paymentMapper;
     }
 
@@ -190,13 +192,18 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     }
 
     @Override
-    @Transactional("payTxManager")
+    @Transactional(value="payTxManager", isolation=Isolation.READ_COMMITTED)
     public String refund(String orderNo, String subOrderNo, String afterSaleNo,
                          long amountMinor, String reason) {
         if (amountMinor <= 0 || afterSaleNo == null || afterSaleNo.isBlank()) {
             throw new IllegalArgumentException("PAY_REFUND_INPUT_INVALID");
         }
-        StlPayment origin = DataScopeContext.executeWithoutScope(() -> paymentMapper.lockPaidForRefund(orderNo));
+        var candidate = successPayment(orderNo);
+        StlPayment origin = candidate == null ? null : DataScopeContext.executeWithoutScope(() ->
+                paymentMapper.selectOne(Wrappers.<StlPayment>lambdaQuery()
+                        .eq(StlPayment::getPaymentNo,candidate.paymentNo())
+                        .eq(StlPayment::getDirection,StlPayment.PAY)
+                        .eq(StlPayment::getStatus,StlPayment.SUCCESS).last("FOR UPDATE")));
         if (origin == null) {
             return null;
         }
@@ -209,6 +216,8 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             }
             return exist.getPaymentNo();
         }
+
+        capacity.check(origin, amountMinor);
 
         // 商户单号 = 原单号-R序号。客服按前缀能把一笔单的收与退一次找全
         long times = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectCount(
@@ -235,6 +244,8 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         r.setCurrency(origin.getCurrency());
         r.setAmountMinor(amountMinor);
         r.setErrMsg(reason);
+        r.setOriginPaymentNo(origin.getPaymentNo());
+        r.setRefundCapacityState("RESERVED");
         r.setRefundRequestJson(json.writeValueAsString(new RefundTicket(origin.getPayChannel(), origin.getTradeNo(),
                 origin.getOutTradeNo(), r.getOutTradeNo(), nz(origin.getAmountMinor()), amountMinor, reason)));
         DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(r));
@@ -246,11 +257,15 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Override
     @Transactional("payTxManager")
     public boolean claimRefundDispatch(String refundPaymentNo) {
+        var origin = capacity.lockOriginal(byPaymentNo(refundPaymentNo));
+        if (origin != null && "FROZEN".equals(origin.getRefundCapacityState())) return false;
         StlPayment refund = DataScopeContext.executeWithoutScope(
                 () -> paymentMapper.lockRefundEvidence(refundPaymentNo));
         if (refund == null) {
             throw new IllegalArgumentException("PAY_REFUND_UNKNOWN");
         }
+        if (java.util.Set.of("PROCESSING","MANUAL_REQUIRED","LATE_SUCCESS","TERMINAL_FAILED")
+                .contains(refund.getRefundQueryState()==null?"":refund.getRefundQueryState())) return false;
         if (!StlPayment.PENDING.equals(refund.getStatus()) || refund.getRefundDispatchAt() != null) {
             return false;
         }
@@ -329,7 +344,19 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     @Override
     @Transactional("payTxManager")
+    public void markRefundRejected(String paymentNo, String reason) {
+        var row = DataScopeContext.executeWithoutScope(() -> paymentMapper.lockRefundEvidence(paymentNo));
+        if (row == null) throw new IllegalArgumentException("PAY_REFUND_UNKNOWN");
+        if (StlPayment.SUCCESS.equals(row.getStatus())) return;
+        capacity.rejected(row, reason);
+        markRefundSent(paymentNo, false, false, null, reason);
+    }
+
+    @Override
+    @Transactional("payTxManager")
     public void markRefundSettled(String refundPaymentNo,String providerNo,long verifiedMinor) {
+        var candidate = byPaymentNo(refundPaymentNo);
+        if (candidate != null) capacity.lockOriginal(candidate);
         StlPayment refund=DataScopeContext.executeWithoutScope(() -> paymentMapper.lockRefundEvidence(refundPaymentNo));
         if (refund==null) { throw new IllegalArgumentException("PAY_REFUND_UNKNOWN"); }
         if (verifiedMinor<=0 || refund.getAmountMinor()==null || refund.getAmountMinor()!=verifiedMinor) {
@@ -338,6 +365,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         if (providerNo==null || providerNo.isBlank() || providerNo.length()>128) {
             throw new IllegalArgumentException("PAY_REFUND_VERIFIED_RECEIPT_REQUIRED");
         }
+        if (!capacity.consume(refund, providerNo, verifiedMinor)) return;
         if (refund.getRefundVerifiedAt()!=null) {
             if (!StlPayment.SUCCESS.equals(refund.getStatus())
                     || refund.getRefundVerifiedMinor()==null || refund.getRefundVerifiedMinor()!=verifiedMinor) {
@@ -346,7 +374,8 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             // A later verified replay must not replace the first receipt or success time.
             return;
         }
-        if (!StlPayment.PENDING.equals(refund.getStatus()) && !StlPayment.SUCCESS.equals(refund.getStatus())) {
+        if (!StlPayment.PENDING.equals(refund.getStatus()) && !StlPayment.SUCCESS.equals(refund.getStatus())
+                && !StlPayment.FAILED.equals(refund.getStatus())) {
             throw new IllegalStateException("PAY_REFUND_STATE_CONFLICT");
         }
         long now=System.currentTimeMillis();
@@ -398,7 +427,9 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             return null;
         }
         markRefundSettled(r.getPaymentNo(),providerNo,verifiedMinor);
-        return r.getOrderNo();
+        var settled = byPaymentNo(r.getPaymentNo());
+        return settled != null && StlPayment.SUCCESS.equals(settled.getStatus())
+                && settled.getRefundVerifiedAt() != null ? r.getOrderNo() : null;
     }
 
     private StlPayment byPaymentNo(String paymentNo) {
@@ -511,12 +542,19 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
                         .eq(StlPayment::getOutTradeNo, outTradeNo)
                         .last("LIMIT 1")));
     }
+    @Override public java.util.Optional<RefundQueryCoordinates> refundQueryCoordinates(String no) {
+        var row=byPaymentNo(no);
+        if(row==null || !StlPayment.REFUND.equals(row.getDirection()) || row.getPayChannel()==null
+                || row.getPayChannel().isBlank() || row.getOutTradeNo()==null || row.getOutTradeNo().isBlank())
+            return java.util.Optional.empty();
+        return java.util.Optional.of(new RefundQueryCoordinates(row.getPayChannel(),row.getOutTradeNo()));
+    }
     @Override public SettlePort.RefundEvidence refundEvidence(String no) {
         var row=byPaymentNo(no);
         if (row==null) { return null; }
         return new SettlePort.RefundEvidence(row.getPaymentNo(),row.getDirection(),row.getAfterSaleNo(),
                 row.getSubOrderNo(),row.getUserNo(),row.getCurrency(),row.getAmountMinor(),row.getStatus(),
-                row.getRefundVerifiedMinor(),row.getRefundVerifiedAt(),row.getRefundVerifiedProviderNo());
+                row.getRefundVerifiedMinor(),row.getRefundVerifiedAt(),row.getRefundVerifiedProviderNo(),capacity.safety(row));
     }
     @Override public boolean hasRefundForAfterSale(String no) {
         return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectCount(Wrappers.<StlPayment>lambdaQuery()

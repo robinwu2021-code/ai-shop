@@ -50,9 +50,19 @@ class AfterSaleRefundExecutionTest {
     @MockitoBean private OrderPointsOutboxConsumer pointsDelivery;
     @MockitoBean private OrderPointsClosureFlowService pointsClosure;
 
-    @Test void integrated_refund_waits_for_verified_net_cash_and_points_confirmation() {
+    @Test void detached_child_of_points_root_keeps_original_refund_route() {
         var f=fixture();
         jdbc.update("UPDATE ord_order SET points_integrated=1,currency='CNY' WHERE order_no=?",f.sub());
+        jdbc.update("UPDATE ord_after_sale SET status='REFUNDING' WHERE after_sale_no=?",f.as());
+        afterSales.resumeRefund(f.as(),"SYSTEM");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_points_refund_binding WHERE after_sale_no=?",
+                Long.class,f.as())).isZero();
+        assertThat(status(f.as())).isEqualTo("REFUNDING");
+    }
+
+    @Test void integrated_refund_waits_for_verified_net_cash_and_points_confirmation() {
+        var f=fixture();
+        markPoints(f);
         var route=new PaymentRoute("MERCHANT","STORE","PM-TEST","TEST","SM","PM:1","DIRECT");
         var proof=new PointsPaymentSnapshotPort.VerifiedPayment(f.sub(),"USER","CNY",110,"TEST",
                 "OUT:"+f.sub(),"TRADE",Instant.ofEpochMilli(1000),List.of(new PaymentStore(f.sub(),route)));
@@ -93,7 +103,7 @@ class AfterSaleRefundExecutionTest {
 
     @Test void integrated_zero_cash_refund_uses_source_completion_fact_without_payment() {
         var f=fixture();
-        jdbc.update("UPDATE ord_order SET points_integrated=1,currency='CNY' WHERE order_no=?",f.sub());
+        markPoints(f);
         var route=new PaymentRoute("MERCHANT","STORE","PM-TEST","TEST","SM","PM:1","DIRECT");
         var proof=new PointsPaymentSnapshotPort.VerifiedPayment(f.sub(),"USER","CNY",110,"TEST",
                 "OUT:"+f.sub(),"TRADE",Instant.ofEpochMilli(1000),List.of(new PaymentStore(f.sub(),route)));
@@ -128,7 +138,7 @@ class AfterSaleRefundExecutionTest {
 
     @Test void failed_source_delivery_retries_original_cash_refund_without_repaying() {
         var f = fixture();
-        jdbc.update("UPDATE ord_order SET points_integrated=1,currency='CNY' WHERE order_no=?", f.sub());
+        markPoints(f);
         var route = new PaymentRoute("MERCHANT", "STORE", "PM-TEST", "TEST", "SM", "PM:1", "DIRECT");
         var proof = new PointsPaymentSnapshotPort.VerifiedPayment(f.sub(), "USER", "CNY", 110, "TEST",
                 "OUT:" + f.sub(), "TRADE", Instant.ofEpochMilli(1000), List.of(new PaymentStore(f.sub(), route)));
@@ -272,6 +282,20 @@ class AfterSaleRefundExecutionTest {
                 .doesNotContain(f.as());
     }
 
+    @Test void lateCashSuccessNeverStartsCompensationOrAbort() {
+        for(boolean collected : new boolean[]{true,false}) {
+            var f=cashFailureFixture(collected,true);
+            jdbc.update("update stl_payment set status='FAILED',refund_query_state='LATE_SUCCESS',err_code='REFUND_LATE_SUCCESS_FROZEN' where after_sale_no=?",f.as());
+            jdbc.update("update stl_payment set refund_capacity_state='FROZEN' where payment_no=?","ORIG:"+f.sub());
+            org.mockito.Mockito.clearInvocations(pointsRefunds,channel);
+            afterSales.resumeRefund(f.as(),"SYSTEM");
+            verify(pointsRefunds,never()).requestCompensation(any(),anyLong());
+            verify(pointsRefunds,never()).abort(any());
+            verify(channel,never()).refund(any(),anyLong(),anyString(),anyString());
+            assertThat(status(f.as())).isEqualTo("REFUNDING");
+        }
+    }
+
     private Fixture compensatedFixture() {
         return cashFailureFixture(true);
     }
@@ -282,7 +306,7 @@ class AfterSaleRefundExecutionTest {
 
     private Fixture cashFailureFixture(boolean collected, boolean unknown) {
         var f=fixture();
-        jdbc.update("UPDATE ord_order SET points_integrated=1,currency='CNY' WHERE order_no=?",f.sub());
+        markPoints(f);
         var route=new PaymentRoute("MERCHANT","STORE","PM-TEST","TEST","SM","PM:1","DIRECT");
         var proof=new PointsPaymentSnapshotPort.VerifiedPayment(f.sub(),"USER","CNY",110,"TEST",
                 "OUT:"+f.sub(),"TRADE",Instant.ofEpochMilli(1000),List.of(new PaymentStore(f.sub(),route)));
@@ -302,7 +326,7 @@ class AfterSaleRefundExecutionTest {
                 f.sub(),"USER","CNY","TEST",50,10,prep.collectionTicket(),payment))
                 .when(pointsRefunds).authorizeCash(prep.preparationNo(),prep.inputHash(),1);
         doReturn(unknown ? ai.neargo.shop.pay.channel.PayGateway.Result.retry("uncertain")
-                : ai.neargo.shop.pay.channel.PayGateway.Result.fatal("rejected"))
+                : ai.neargo.shop.pay.channel.PayGateway.Result.rejected("rejected"))
                 .when(channel).refund(any(),anyLong(),anyString(),anyString());
         afterSales.approve("MERCHANT",f.as(),"approved",null,"CASH");
         afterSales.resumeRefund(f.as(),"SYSTEM");
@@ -358,6 +382,12 @@ class AfterSaleRefundExecutionTest {
                 + "gross_minor,commission_minor,service_fee_minor,net_minor,status,funds_mode,created_at,updated_at)"
                 + " VALUES(?,?,?,'MERCHANT','STORE','PM-TEST',110,0,0,110,'PENDING','DIRECT',NOW(),NOW())",sub,sub,sub);
         return new Fixture(sub,as,item);
+    }
+    private void markPoints(Fixture f) {
+        jdbc.update("UPDATE ord_order SET points_integrated=1,currency='CNY' WHERE order_no=?",f.sub());
+        jdbc.update("INSERT INTO ord_points_binding(binding_no,request_id,order_no,sub_order_no,"
+                        + "store_no,phase,payload_json) VALUES(?,?,?,?,?,'BOUND','{}')",
+                "B:"+f.sub(),"R:"+f.sub(),f.sub(),f.sub(),"STORE");
     }
     private String afterSale(String sub,long amount) {
         String as="A"+UUID.randomUUID().toString().replace("-", "");

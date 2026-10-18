@@ -2,6 +2,7 @@ package ai.neargo.shop.invbridge.port;
 
 import ai.neargo.shop.invbridge.InvMirrorEvent;
 import ai.neargo.shop.invbridge.OriginalMirrorRestore;
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.event.DomainEvent;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.product.port.StockPortImpl;
@@ -49,6 +50,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 @Component
 @Primary
+@ConditionalOnInventory
 @ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "DUAL")
 public class DualWriteStockPort implements StockPort {
 

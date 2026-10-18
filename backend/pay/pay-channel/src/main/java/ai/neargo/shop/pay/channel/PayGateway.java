@@ -60,6 +60,17 @@ public interface PayGateway {
         return new QueryResult(false, false, false, 0L, null);
     }
 
+    /** Legacy gateways may prove success but cannot prove safe terminal failure. */
+    default ai.neargo.shop.spi.pay.RefundQueryResult queryRefundOutcome(String no) {
+        QueryResult result = queryRefund(no);
+        if (result == null || !result.ok() || !result.found())
+            return ai.neargo.shop.spi.pay.RefundQueryResult.unknown(no);
+        return new ai.neargo.shop.spi.pay.RefundQueryResult(
+                result.paid() ? ai.neargo.shop.spi.pay.RefundQueryResult.Status.SUCCEEDED
+                        : ai.neargo.shop.spi.pay.RefundQueryResult.Status.PROCESSING,
+                null, no, result.amountMinor(), result.tradeNo(), result.currency(), System.currentTimeMillis());
+    }
+
     /**
      * <b>向通道下单，拿回端上唤起收银台所需的参数。</b>
      *
@@ -233,7 +244,14 @@ public interface PayGateway {
      *                  网络超时要重试，参数错误重试一万次也是错 ——
      *                  不区分的话失败会一直占着重试队列，而真正该人工介入的单没人看
      */
-    record Result(boolean success, String providerNo, String message, boolean retryable) {
+    record Result(boolean success, String providerNo, String message, boolean retryable, boolean definitiveRejection) {
+        public Result(boolean success, String providerNo, String message, boolean retryable) {
+            this(success, providerNo, message, retryable, false);
+        }
+        /** Only for a verified rejection or a failure known to occur before the request was sent. */
+        public static Result rejected(String message) {
+            return new Result(false, null, message, false, true);
+        }
 
         public static Result ok(String providerNo) {
             return new Result(true, providerNo, null, false);

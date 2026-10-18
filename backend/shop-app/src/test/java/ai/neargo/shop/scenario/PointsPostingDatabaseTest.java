@@ -142,6 +142,13 @@ class PointsPostingDatabaseTest {
                             .execute(dataSource);
                 }
             }
+            try (var projected = connection.getMetaData().getTables(
+                    connection.getCatalog(), null, "pts_availability_projection", null)) {
+                if (!projected.next()) {
+                    new ResourceDatabasePopulator(new ClassPathResource(
+                            "db/migration/V466__points_availability_projection.sql")).execute(dataSource);
+                }
+            }
         } catch (SQLException failure) {
             throw new IllegalStateException("Points schema fixture failed", failure);
         }

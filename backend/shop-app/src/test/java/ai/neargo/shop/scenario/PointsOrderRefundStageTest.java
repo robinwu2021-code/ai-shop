@@ -201,7 +201,9 @@ class PointsOrderRefundStageTest {
                 prep.inputHash(),1,f.as,f.sub,"U","CNY","TEST",35,10,prep.collectionTicket(),
                 stage.command().payment()));
         var failed=new ai.neargo.shop.spi.settle.SettlePort.RefundEvidence("CASH:"+f.as,
-                "REFUND",f.as,f.sub,"U","CNY",35,"FAILED",null,null,null);
+                "REFUND",f.as,f.sub,"U","CNY",35,"FAILED",null,null,null,
+                new ai.neargo.shop.spi.settle.RefundSafety(ai.neargo.shop.spi.pay.RefundQueryResult.Status.TERMINAL_FAILED,
+                        true,false,"REFUND_TERMINAL_CLOSED"));
         when(executions.inspect(f.as)).thenReturn(new RefundExecutionService.Execution(
                 new RefundExecutionService.Preparation(f.as,f.sub,"H","CASH_PENDING",45),
                 f.plan,failed.paymentNo()));

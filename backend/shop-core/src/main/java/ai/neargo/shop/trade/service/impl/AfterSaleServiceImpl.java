@@ -109,25 +109,23 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     private final ai.neargo.shop.trade.order.refund.service.AfterSaleRefundExecutor refundExecutor;
     private final RefundExecutionService refundExecutions;
     private final ai.neargo.shop.trade.order.mapper.OrderPointsRefundRetryMapper retryRows;
+    private final ai.neargo.shop.trade.order.mapper.OrderPointsBindingMapper pointsBindings;
     private final TransactionTemplate refundTransactions;
     private ai.neargo.shop.spi.points.PointsPaymentSnapshotPort pointsPayments;
     private ai.neargo.shop.spi.points.PointsRefundPort pointsRefunds;
     private ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator pointsRefundSource;
     private ai.neargo.shop.trade.order.points.OrderPointsOutboxConsumer pointsSourceDelivery;
     private ai.neargo.shop.trade.order.points.OrderPointsClosureFlowService pointsClosure;
-    private ai.neargo.shop.trade.order.mapper.PaymentMapper orderMapper;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setPointsRefundIntegration(ai.neargo.shop.spi.points.PointsPaymentSnapshotPort payments,
             ai.neargo.shop.spi.points.PointsRefundPort refunds,
             ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator source,
-            ai.neargo.shop.trade.order.points.OrderPointsOutboxConsumer delivery,
-            ai.neargo.shop.trade.order.mapper.PaymentMapper orders) {
+            ai.neargo.shop.trade.order.points.OrderPointsOutboxConsumer delivery) {
         this.pointsPayments=payments;
         this.pointsRefunds=refunds;
         this.pointsRefundSource=source;
         this.pointsSourceDelivery=delivery;
-        this.orderMapper=orders;
     }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -176,9 +174,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                                 ai.neargo.shop.trade.order.aftersale.AfterSaleSlots slots,
                                 RefundExecutionService refundExecutions,
                                 ai.neargo.shop.trade.order.mapper.OrderPointsRefundRetryMapper retryRows,
+                                ai.neargo.shop.trade.order.mapper.OrderPointsBindingMapper pointsBindings,
                                 @Qualifier("transactionManager") PlatformTransactionManager sourceTransactions) {
         this.refundExecutions = refundExecutions;
         this.retryRows = retryRows;
+        this.pointsBindings = pointsBindings;
         this.refundTransactions = new TransactionTemplate(sourceTransactions);
         this.slots = slots;
         this.requestPlanner = requestPlanner;
@@ -756,12 +756,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     // ---------------------------------------------------------------- 退款（唯一入口）
 
     private boolean pointsIntegrated(OrdSubOrder sub) {
-        if (sub == null || orderMapper == null || sub.getOrderNo() == null) return false;
-        var root = DataScopeContext.executeWithoutScope(() -> orderMapper.selectOne(
-                Wrappers.<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
-                        .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, sub.getOrderNo())
-                        .last("LIMIT 1")));
-        return root != null && Boolean.TRUE.equals(root.getPointsIntegrated());
+        // Refund participation is frozen on each child, not on the mixed-store root.
+        return sub != null && sub.getSubOrderNo() != null
+                && DataScopeContext.executeWithoutScope(
+                        () -> pointsBindings.binding(sub.getSubOrderNo()) != null);
     }
 
     /** Decision transaction only: authorize REFUNDING and persist an immutable capacity reservation. */
@@ -1505,7 +1503,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         settlePort.dispatchRefund(paymentNo);
         settlePort.refreshRefund(paymentNo);
         var evidence=settlePort.refundEvidence(paymentNo);
-        if(evidence!=null && ("FAILED".equals(evidence.status()) || "CLOSED".equals(evidence.status()))) {
+        if(evidence!=null && evidence.safety()!=null && evidence.safety().safeToRecover()) {
             if(preparation.collectionTicket()==null) {
                 pointsRefunds.abort(new ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort(
                         preparation.preparationNo(),preparation.inputHash(),paymentNo));

@@ -54,5 +54,28 @@ class ProgressDirectoryRaceTest(unittest.TestCase):
             self.assertEqual(2, child.wait.call_count)
 
 
+class ReportSnapshotTest(unittest.TestCase):
+    def test_current_report_is_copied_and_old_report_is_excluded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reports = root / 'module/target/surefire-reports'
+            reports.mkdir(parents=True)
+            old = reports / 'TEST-old.xml'
+            old.write_text('<testsuite name="old" time="1"><testcase name="old" time="1"/></testsuite>')
+            cutoff = time.time_ns()
+            fresh = reports / 'TEST-new.xml'
+            fresh.write_text('<testsuite name="new" time="1"><testcase name="new" time="1"/></testsuite>')
+            os.utime(old, ns=(cutoff - 10000000, cutoff - 10000000))
+            os.utime(fresh, ns=(cutoff + 10000000, cutoff + 10000000))
+            output = root / 'run'
+            result = runner.collect_reports([old, fresh], output, root, 5, cutoff, 'run')
+            self.assertEqual(1, result['test_count'])
+            snapshot = output / 'reports/module/target/surefire-reports/TEST-new.xml'
+            self.assertTrue(snapshot.exists())
+            fresh.write_text('overwritten by next run')
+            self.assertIn('testcase', snapshot.read_text())
+            self.assertFalse((output / 'reports/module/target/surefire-reports/TEST-old.xml').exists())
+
+
 if __name__ == '__main__':
     unittest.main()

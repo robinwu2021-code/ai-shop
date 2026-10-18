@@ -38,6 +38,7 @@ public class ReconServiceImpl implements ReconService {
     private final SettleMappers.PaymentMapper paymentMapper;
     private final SettleMappers.ReconDiffMapper diffMapper;
     private final PayQueryPort payQueryPort;
+    private final RefundCapacityLedger capacity;
     /**
      * 所有对账轴。
      *
@@ -62,7 +63,8 @@ public class ReconServiceImpl implements ReconService {
                             SettleMappers.ReconDiffMapper diffMapper,
                             PayQueryPort payQueryPort,
                             org.springframework.beans.factory.ObjectProvider<ReconAxis> axes,
-                            @Value("${shop.recon.stale-minutes:20}") int staleMinutes) {
+                            @Value("${shop.recon.stale-minutes:20}") int staleMinutes, RefundCapacityLedger capacity) {
+        this.capacity = capacity;
         this.paymentMapper = paymentMapper;
         this.diffMapper = diffMapper;
         this.payQueryPort = payQueryPort;
@@ -101,50 +103,96 @@ public class ReconServiceImpl implements ReconService {
         long cutoff = now - staleMinutes * 60_000L;
         List<StlPayment> stale = DataScopeContext.executeWithoutScope(() ->
                 paymentMapper.selectList(Wrappers.<StlPayment>lambdaQuery()
-                        /*
-                         * **收款与退款一起扫**（S8 · 2026-09-02）。
-                         *
-                         * 此前只扫 PAY —— 而退款流水从 2026-09-02 起才开始落，
-                         * 在那之前「只扫 PAY」与「扫全部」结果一样，
-                         * 所以这个限制<b>看起来一直是对的</b>。
-                         *
-                         * 现在退款有流水了：一笔停在 PENDING 的退款
-                         * 意味着「钱可能已经退出去而我方不知道」，
-                         * 与掉单同样严重，而且方向相反 —— 掉单是钱没进来，
-                         * 这是钱可能出去了。两者都要回查通道。
-                         *
-                         * 其余三个方向（补差 / 补差回退 / 打款）还没有流水，
-                         * 等它们开始落时，这里的清单要跟着加 ——
-                         * 而<b>覆盖范围那句话必须同步改</b>，否则「零差异」是句假话。
-                         */
-                        .in(StlPayment::getDirection, StlPayment.PAY, StlPayment.REFUND)
-                        .in(StlPayment::getStatus, StlPayment.INIT, StlPayment.PENDING)
-                        .le(StlPayment::getCreatedAt,
-                                java.time.LocalDateTime.ofInstant(
-                                        Instant.ofEpochMilli(cutoff), ZoneId.systemDefault()))));
-        String day = DAY.format(Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()));
+                    .and(q -> q.eq(StlPayment::getDirection,StlPayment.PAY)
+                            .in(StlPayment::getStatus,StlPayment.INIT,StlPayment.PENDING)
+                        .or(r -> r.eq(StlPayment::getDirection,StlPayment.REFUND)
+                            .and(t -> t.in(StlPayment::getStatus,StlPayment.INIT,StlPayment.PENDING)
+                                .or(u -> u.eq(StlPayment::getStatus,StlPayment.FAILED)
+                                    .and(v -> v.isNull(StlPayment::getRefundTerminalProof)
+                                        .or().eq(StlPayment::getRefundTerminalProof,"")))
+                                .or().in(StlPayment::getRefundQueryState,"MANUAL_REQUIRED","LATE_SUCCESS","TERMINAL_FAILED"))))
+                    .le(StlPayment::getCreatedAt,java.time.LocalDateTime.ofInstant(
+                            Instant.ofEpochMilli(cutoff),ZoneId.systemDefault()))));
+        String day=DAY.format(Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()));
+        var findings=new java.util.ArrayList<ReconService.Finding>();
+        for(var payment:stale) {
+            ReconService.Finding finding;
+            try { finding=checkOne(payment,day); }
+            catch(RuntimeException invalid) {
+                String error=invalid instanceof IllegalArgumentException
+                        ? "REFUND_RECON_RECEIPT_INVALID" : "REFUND_RECON_WRITE_FAILED";
+                log.warn("[recon] 单笔核对失败 payment={} outRefundNo={} error={} exception={}",
+                        payment.getPaymentNo(),payment.getOutTradeNo(),error,invalid.getClass().getSimpleName());
+                finding=new ReconService.Finding(payment.getPaymentNo(),payment.getOrderNo(),payment.getPayChannel(),
+                        payment.getOutTradeNo(),payment.getDirection(),payment.getAmountMinor(),false,false,true,
+                        0,null,day,payment.getCurrency(),null,error);
+            }
+            if(finding.isRefund() && (finding.requiresManual() || finding.queryFailed())) {
+                try { recordFinding(finding,refundIssueType(finding),
+                        (finding.errorCode()==null?"REFUND_MANUAL_REQUIRED":finding.errorCode())
+                                + " 原退款号="+finding.outTradeNo()+"，需人工核对；不得自动释放或重新付款"); }
+                catch(RuntimeException archiveFailure) {
+                    log.error("[recon] 异常归档失败 payment={} exception={}",
+                            payment.getPaymentNo(),archiveFailure.getClass().getSimpleName());
+                    finding=new ReconService.Finding(finding.paymentNo(),finding.orderNo(),finding.payChannel(),
+                            finding.outTradeNo(),finding.direction(),finding.ourAmountMinor(),false,false,true,
+                            finding.channelAmountMinor(),finding.channelTradeNo(),finding.day(),finding.channelCurrency(),
+                            finding.refundOutcome(),"REFUND_RECON_ARCHIVE_FAILED");
+                }
+            }
+            findings.add(finding);
+        }
+        return findings;
+    }
 
-        return stale.stream().map(p -> {
-            /*
-             * **按方向选查询接口。**收款查收款单，退款查退款单 ——
-             * 通道侧这是两套单据（微信查退款用 refund_id，路径都不同）。
-             *
-             * 混用的后果是单向的、且很重：拿退款单号去查收款接口，
-             * 通道会说「没有这笔」，而对账把「通道说没有」当作
-             * <b>可以安全关单</b>的依据 —— 于是待确认的退款被批量关掉，
-             * 而钱可能真的已经退出去了。
-             *
-             * 反过来（拿收款单号查退款接口）也一样错，只是今天不会发生。
-             */
-            PayQueryPort.Result r = StlPayment.REFUND.equals(p.getDirection())
-                    ? payQueryPort.queryRefund(p.getPayChannel(), p.getOutTradeNo())
-                    : payQueryPort.query(p.getPayChannel(), p.getOutTradeNo());
-            return new ReconService.Finding(p.getPaymentNo(), p.getOrderNo(), p.getPayChannel(),
-                    // **方向要带出去。**处置那一层要靠它分叉 —— 见 Finding#isRefund
-                    p.getOutTradeNo(), p.getDirection(), p.getAmountMinor(),
-                    r.ok() && r.found() && r.paid(), r.ok() && !r.paid() && !r.found(), !r.ok(),
-                    r.amountMinor(), r.tradeNo(), day, r.currency());
-        }).toList();
+    private String refundIssueType(ReconService.Finding finding) {
+        if("REFUND_LATE_SUCCESS_FROZEN".equals(finding.errorCode())) return StlReconDiff.REFUND_LATE_SUCCESS;
+        if(finding.refundOutcome()==ai.neargo.shop.spi.pay.RefundQueryResult.Status.TERMINAL_FAILED) return StlReconDiff.REFUND_CLOSED;
+        if(finding.refundOutcome()==ai.neargo.shop.spi.pay.RefundQueryResult.Status.MANUAL_REQUIRED) return StlReconDiff.REFUND_ABNORMAL;
+        return StlReconDiff.PLATFORM_ONLY;
+    }
+
+    private ReconService.Finding checkOne(StlPayment p,String day) {
+        PayQueryPort.Result r;
+        ai.neargo.shop.spi.pay.RefundQueryResult.Status status=null;
+        String error=null;
+        if(StlPayment.REFUND.equals(p.getDirection())) {
+            var stored=capacity.safety(p);
+            if("LATE_SUCCESS".equals(p.getRefundQueryState())) {
+                status=ai.neargo.shop.spi.pay.RefundQueryResult.Status.MANUAL_REQUIRED;
+                error="REFUND_LATE_SUCCESS_FROZEN";
+                r=new PayQueryPort.Result(true,false,true,0,null,p.getCurrency());
+            } else if(stored!=null && stored.terminalVerified()) {
+                status=ai.neargo.shop.spi.pay.RefundQueryResult.Status.TERMINAL_FAILED;
+                error="REFUND_TERMINAL_CLOSED";
+                r=new PayQueryPort.Result(true,false,true,0,p.getTradeNo(),p.getCurrency());
+            } else if(p.getPayChannel()==null || p.getPayChannel().isBlank()
+                    || p.getOutTradeNo()==null || p.getOutTradeNo().isBlank()) {
+                status=ai.neargo.shop.spi.pay.RefundQueryResult.Status.MANUAL_REQUIRED;
+                error="REFUND_QUERY_COORDINATES_REQUIRED";
+                r=new PayQueryPort.Result(true,false,true,0,null,p.getCurrency());
+            } else {
+                var outcome=payQueryPort.queryRefundOutcome(p.getPayChannel(),p.getOutTradeNo());
+                if(outcome==null)outcome=ai.neargo.shop.spi.pay.RefundQueryResult.unknown(p.getOutTradeNo());
+                if(!java.util.Objects.equals(p.getOutTradeNo(),outcome.outRefundNo()))
+                    throw new IllegalArgumentException("REFUND_QUERY_IDENTITY_MISMATCH");
+                capacity.observe(p.getPaymentNo(),outcome);
+                status=outcome.status();
+                if(stored!=null && stored.outcome()==ai.neargo.shop.spi.pay.RefundQueryResult.Status.MANUAL_REQUIRED
+                        && status!=ai.neargo.shop.spi.pay.RefundQueryResult.Status.SUCCEEDED
+                        && status!=ai.neargo.shop.spi.pay.RefundQueryResult.Status.TERMINAL_FAILED)
+                    status=ai.neargo.shop.spi.pay.RefundQueryResult.Status.MANUAL_REQUIRED;
+                if(status==ai.neargo.shop.spi.pay.RefundQueryResult.Status.MANUAL_REQUIRED)error="REFUND_MANUAL_REQUIRED";
+                if(status==ai.neargo.shop.spi.pay.RefundQueryResult.Status.TERMINAL_FAILED)error="REFUND_TERMINAL_CLOSED";
+                r=new PayQueryPort.Result(status!=ai.neargo.shop.spi.pay.RefundQueryResult.Status.UNKNOWN,
+                        status==ai.neargo.shop.spi.pay.RefundQueryResult.Status.SUCCEEDED,true,
+                        outcome.amountMinor(),outcome.providerNo(),outcome.currency());
+            }
+        } else r=payQueryPort.query(p.getPayChannel(),p.getOutTradeNo());
+        if(r==null)r=new PayQueryPort.Result(false,false,false,0,null,p.getCurrency());
+        return new ReconService.Finding(p.getPaymentNo(),p.getOrderNo(),p.getPayChannel(),p.getOutTradeNo(),
+                p.getDirection(),p.getAmountMinor(),r.ok()&&r.found()&&r.paid(),r.ok()&&!r.paid()&&!r.found(),
+                !r.ok(),r.amountMinor(),r.tradeNo(),day,r.currency(),status,error);
     }
 
     @Override
@@ -196,6 +244,13 @@ public class ReconServiceImpl implements ReconService {
         d.setStatus(StlReconDiff.PENDING);
         d.setResolution(note == null ? null : note.substring(0, Math.min(note.length(), 255)));
         DataScopeContext.executeWithoutScope(() -> diffMapper.insert(d));
+    }
+
+    @Override public boolean isPayPayment(String no) {
+        if(no==null)return false;
+        var row=DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getPaymentNo,no)));
+        return row!=null && StlPayment.PAY.equals(row.getDirection());
     }
 
     @Override

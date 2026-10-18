@@ -69,6 +69,29 @@ public final class ExpiryPolicy {
         return List.copyOf(gaps);
     }
 
+    /** Sorted interval sweep; avoids comparing every acceptance against every historic pause. */
+    public static List<Interval> coverage(List<Interval> acceptances, List<Interval> outages) {
+        var accepted = unavailable(0, Long.MAX_VALUE, unavailable(0, Long.MAX_VALUE, acceptances));
+        var paused = unavailable(0, Long.MAX_VALUE, unavailable(0, Long.MAX_VALUE, outages));
+        var result = new ArrayList<Interval>();
+        int index = 0;
+        for (var interval : accepted) {
+            long at = interval.from();
+            while (index < paused.size() && paused.get(index).to() <= at) index++;
+            int scan = index;
+            while (scan < paused.size() && paused.get(scan).from() < interval.to()) {
+                var pause = paused.get(scan);
+                if (pause.from() > at) result.add(new Interval(at, Math.min(interval.to(), pause.from())));
+                at = Math.max(at, pause.to());
+                if (at >= interval.to()) break;
+                scan++;
+            }
+            if (at < interval.to()) result.add(new Interval(at, interval.to()));
+            index = scan;
+        }
+        return List.copyOf(result);
+    }
+
     /** Remove outages from one acceptance interval. */
     public static List<Interval> usable(Interval acceptance, List<Interval> outages) {
         return unavailable(acceptance.from(), acceptance.to(), outages);

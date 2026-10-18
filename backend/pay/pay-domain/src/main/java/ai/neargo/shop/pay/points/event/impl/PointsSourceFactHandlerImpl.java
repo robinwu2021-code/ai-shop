@@ -36,6 +36,7 @@ import tools.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @Transactional("payTxManager")
@@ -127,12 +128,15 @@ public class PointsSourceFactHandlerImpl implements PointsSourceFactHandler {
         var paidFact = json.treeToValue(state.get("paidFact"), LifecycleFact.class);
         require(
                 paidFact.userNo().equals(command.userNo())
-                        && paidFact.sourceVersion() == command.sourceVersion(),
+                        && paidFact.subOrderNo().equals(command.subOrderNo())
+                        && paidFact.typeCode().equals(command.typeCode())
+                        && paidFact.sourceVersion() == command.sourceVersion()
+                        && Objects.equals(paidFact.payment(), command.payment()),
                 "POINTS_EARNING_SOURCE_MISMATCH");
         require(
                 read.openRefunds(command.typeCode(), command.subOrderNo()).isEmpty(),
                 "POINTS_REFUND_SOURCE_BUSY");
-        earning.grant(command);
+        earning.grantAccepted(command);
         facts.recordEvent(
                 command.typeCode(), event, PointsDigests.sha256(body), body, "EARN_APPLIED");
     }

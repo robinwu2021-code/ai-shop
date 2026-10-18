@@ -11,7 +11,7 @@ import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.CourierOrderVO;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.service.MerchantOrderService;
-import ai.neargo.shop.trade.service.impl.FulfillmentChangeService;
+import ai.neargo.shop.trade.service.FulfillmentChangeService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;

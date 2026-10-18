@@ -98,7 +98,7 @@ class CashRefundSplitNativeRaceTest {
         @Bean SettlementRefundCoordinator coordinator(BillMapper bills,BillRefundJournal journal,SettlementRefundPolicy policy,
                 PointsSettlementRefundHoldMapper holds,CashRefundSplitMapper intents) {
             return new SettlementRefundCoordinator(bills,journal,policy,mock(PreSplitAdjuster.class),mock(PostSplitReverser.class),
-                    holds,mock(PointsRefundPort.class),intents);
+                    holds,mock(PointsRefundPort.class),intents, mock(ai.neargo.shop.pay.service.impl.RefundCapacityLedger.class));
         }
     }
 }

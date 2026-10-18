@@ -58,6 +58,8 @@ import ai.neargo.shop.pay.settle.refund.RefundBasisStore;
  */
 @Service
 public class SettleServiceImpl implements SettleService {
+    private final ai.neargo.shop.pay.service.impl.RefundCapacityLedger refundCapacity;
+
 
     private static final Logger log = LoggerFactory.getLogger(SettleServiceImpl.class);
     private final RefundBasisStore refundBases;
@@ -130,7 +132,9 @@ public class SettleServiceImpl implements SettleService {
                              ai.neargo.shop.pay.settle.SplitInstructionSender splitSender,
                              RefundBasisStore refundBases, SplitPreparationService splitPreparation,
                              SplitResultService splitResults, PointsPayoutExecutionService pointsExecution,
-                             SplitGateway splitGateway, PointsSettlementHook pointsHook) {
+                             SplitGateway splitGateway, PointsSettlementHook pointsHook,
+                             ai.neargo.shop.pay.service.impl.RefundCapacityLedger refundCapacity) {
+        this.refundCapacity = refundCapacity;
         this.refundBases = refundBases;
         this.pointsHook = pointsHook;
         this.splitPreparation = splitPreparation;
@@ -685,23 +689,31 @@ public class SettleServiceImpl implements SettleService {
         if (evidence == null) {
             throw new IllegalArgumentException("PAY_REFUND_UNKNOWN");
         }
-        if (evidence.verifiedAt() != null || (!"PENDING".equals(evidence.status())
-                && !"SUCCESS".equals(evidence.status()))) {
+        if (evidence.verifiedAt() != null || (evidence.safety()!=null && evidence.safety().terminalVerified())
+                || (evidence.safety()!=null && "REFUND_LATE_SUCCESS_FROZEN".equals(evidence.safety().errorCode()))) return;
+        var coordinates = paymentLedger.refundQueryCoordinates(paymentNo);
+        if (coordinates.isEmpty()) {
+            log.error("[settle] 历史退款缺回查坐标，转人工 paymentNo={}",paymentNo);
             return;
         }
-        var ticket = paymentLedger.refundTicket(paymentNo)
-                .orElseThrow(() -> new IllegalStateException("PAY_REFUND_REQUEST_SNAPSHOT_REQUIRED"));
-        QueryResult result;
+        var ticket = coordinates.get();
+        ai.neargo.shop.spi.pay.RefundQueryResult result;
         try {
-            result = gatewayRouter.of(ticket.payChannel()).queryRefund(ticket.outRefundNo());
+            result = gatewayRouter.of(ticket.payChannel()).queryRefundOutcome(ticket.outRefundNo());
         } catch (RuntimeException uncertain) {
             log.warn("[settle] 退款回查未知 paymentNo={} exception={}", paymentNo,
                     uncertain.getClass().getSimpleName());
             return;
         }
-        if (result != null && result.ok() && result.found() && result.paid()) {
-            paymentLedger.markRefundSettled(paymentNo, result.tradeNo(), result.amountMinor());
-        }
+        if (result == null) return;
+        if (result.status() == ai.neargo.shop.spi.pay.RefundQueryResult.Status.SUCCEEDED) {
+            if (!ticket.outRefundNo().equals(result.outRefundNo()))
+                throw new IllegalArgumentException("PAY_REFUND_QUERY_IDENTITY_MISMATCH");
+            var stored = paymentLedger.refundEvidence(paymentNo);
+            if (!java.util.Objects.equals(stored.currency(), result.currency()))
+                throw new IllegalArgumentException("PAY_REFUND_QUERY_CURRENCY_MISMATCH");
+            paymentLedger.markRefundSettled(paymentNo, result.providerNo(), result.amountMinor());
+        } else refundCapacity.observe(paymentNo, result);
     }
 
     /**
@@ -731,7 +743,7 @@ public class SettleServiceImpl implements SettleService {
         }
         var ticket = paymentLedger.refundTicket(refundNo);
         if (ticket.isEmpty()) {
-            paymentLedger.markRefundSent(refundNo, false, false, null,
+            paymentLedger.markRefundRejected(refundNo,
                     "取不到原收款在通道侧的坐标");
             return;
         }
@@ -741,7 +753,7 @@ public class SettleServiceImpl implements SettleService {
             channel = gatewayRouter.of(t.payChannel());
         } catch (RuntimeException e) {
             // 通道未接入**不可重试** —— 重试一万次它也不会自己接上
-            paymentLedger.markRefundSent(refundNo, false, false, null,
+            paymentLedger.markRefundRejected(refundNo,
                     "支付通道未接入：" + t.payChannel());
             return;
         }
@@ -753,7 +765,9 @@ public class SettleServiceImpl implements SettleService {
                 null, t.originTradeNo(), t.originOutTradeNo(), t.originTotalMinor());
         try {
             var r = channel.refund(ctx, t.amountMinor(), t.outRefundNo(), t.reason());
-            paymentLedger.markRefundSent(refundNo, r.success(), r.retryable(), r.providerNo(), r.message());
+            if (!r.success() && r.definitiveRejection())
+                paymentLedger.markRefundRejected(refundNo, r.message());
+            else paymentLedger.markRefundSent(refundNo, r.success(), !r.success(), r.providerNo(), r.message());
         } catch (RuntimeException e) {
             paymentLedger.markRefundSent(refundNo, false, true, null, "退款发送结果未知，等待原单回查");
             log.warn("[settle] 退款结果未知 paymentNo={} exception={}", refundNo, e.getClass().getSimpleName());

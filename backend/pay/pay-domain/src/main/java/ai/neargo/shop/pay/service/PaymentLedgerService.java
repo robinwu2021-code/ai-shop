@@ -199,7 +199,14 @@ public interface PaymentLedgerService {
      * Confirms a refund only when the trusted query amount exactly matches the immutable payment amount.
      * Stores query evidence separately from the original acceptance trade number; replay retains timestamps.
      */
+    void markRefundRejected(String refundPaymentNo, String reason);
+
     void markRefundSettled(String refundPaymentNo,String providerNo,long verifiedMinor);
+
+    /** Read-only coordinates survive historical missing send snapshots. Never used to send. */
+    java.util.Optional<RefundQueryCoordinates> refundQueryCoordinates(String paymentNo);
+    record RefundQueryCoordinates(String payChannel, String outRefundNo) { }
+
 
     /**
      * 记下这笔收款的<b>付款人</b>（{@code stl_payment.payer_openid} / {@code wx_appid}）。

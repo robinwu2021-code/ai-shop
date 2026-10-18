@@ -98,7 +98,8 @@ public class PaymentReconReconciler {
         int still = 0;
         for (ReconService.ReconDiffVO d : recon.diffs(StlReconDiff.PENDING)) {
             if (d.orderNo() == null || d.orderNo().isBlank()
-                    || !StlReconDiff.PLATFORM_ONLY.equals(d.diffType())) {
+                    || !StlReconDiff.PLATFORM_ONLY.equals(d.diffType())
+                    || !recon.isPayPayment(d.paymentNo())) {
                 still++;
                 continue;
             }
@@ -164,6 +165,9 @@ public class PaymentReconReconciler {
              * 永远查不到。退款接上通道的那一刻它就在线了。
              */
             if (f.isRefund()) {
+                if (f.requiresManual()) {
+                    deferred++; c[3]++; continue;
+                }
                 if (f.paidOnChannel()) {
                     // 钱确实退出去了 —— 把退款流水推到终态。这是这条轴唯一该对退款做的事
                     try {

@@ -57,6 +57,13 @@ public class StlPayment extends BaseEntity {
 
     private String refundExecutionNo;
     private String originPaymentNo;
+    /** Null historical rows conservatively reserve capacity. */
+    private String refundCapacityState;
+    private String refundQueryState;
+    private String refundQueryRaw;
+    private Long refundQueryAt;
+    private String refundTerminalProof;
+    private String refundRecoveryProof;
 
     private String userNo;
 

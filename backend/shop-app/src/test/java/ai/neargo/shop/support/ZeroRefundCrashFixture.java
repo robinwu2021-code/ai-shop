@@ -17,14 +17,15 @@ public final class ZeroRefundCrashFixture {
         refunds = context.getBean(BasicRefundExecutionService.class);
     }
 
-    public void approveWithInterruptedCompletion(BasicRefundFixture fixture, BasicRefundFixture.Purchase purchase,
-                                                String afterSale) {
-        assertThat(afterSale).matches("[A-Za-z0-9-]+");
+    public String applyWithInterruptedCompletion(BasicRefundFixture fixture,
+                                                 BasicRefundFixture.Purchase purchase) throws Exception {
+        assertThat(purchase.payNo()).matches("[A-Za-z0-9-]+");
         String constraint = "ck_zero_crash_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        jdbc.execute("alter table stl_payment add constraint " + constraint + " check (after_sale_no <> '"
-                + afterSale + "' or direction <> 'REFUND' or amount_minor <> 0 or status <> 'SUCCESS')");
+        jdbc.execute("alter table stl_payment add constraint " + constraint + " check (order_no <> '"
+                + purchase.payNo() + "' or direction <> 'REFUND' or amount_minor <> 0 or status <> 'SUCCESS')");
+        String afterSale;
         try {
-            fixture.approve(purchase, afterSale);
+            afterSale=fixture.apply(purchase,"REFUND_ONLY");
         } finally {
             jdbc.execute("alter table stl_payment drop constraint " + constraint);
         }
@@ -42,6 +43,7 @@ public final class ZeroRefundCrashFixture {
                 String.class, afterSale)).isEqualTo("UNKNOWN");
         assertThat(jdbc.queryForObject("select status from ord_after_sale where after_sale_no=?",
                 String.class, afterSale)).isEqualTo("REFUNDING");
+        return afterSale;
     }
 
     public void recoverAndAssert(String afterSale, long quantity) {

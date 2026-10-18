@@ -10,6 +10,7 @@ import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import ai.neargo.shop.trade.order.mapper.RefundExecutionMapper;
 import ai.neargo.shop.trade.order.mapper.OrderPointsRefundBindingMapper;
+import ai.neargo.shop.trade.order.mapper.OrderPointsBindingMapper;
 import ai.neargo.shop.spi.points.PointsRefundPort;
 import ai.neargo.shop.trade.order.mapper.RefundLedgerMapper;
 import ai.neargo.shop.trade.order.refund.model.LedgerResult;
@@ -39,12 +40,15 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
     private final RefundLedgerMapper ledgerStore;
     private final PaymentMapper orders;
     private final OrderPointsRefundBindingMapper pointsRefunds;
+    private final OrderPointsBindingMapper pointsBindings;
     private final SettlePort settle;
     private final ObjectMapper json=new ObjectMapper();
     public RefundExecutionServiceImpl(RefundExecutionMapper store,RefundLedgerMapper mapper,SettlePort settle,
-                                      PaymentMapper orders,OrderPointsRefundBindingMapper pointsRefunds) {
+                                      PaymentMapper orders,OrderPointsRefundBindingMapper pointsRefunds,
+                                      OrderPointsBindingMapper pointsBindings) {
         this.store=store; this.ledgerStore=mapper; this.settle=settle; this.orders=orders;
         this.pointsRefunds=pointsRefunds;
+        this.pointsBindings=pointsBindings;
     }
     @Override public Execution inspect(String as) {
         return DataScopeContext.executeWithoutScope(() -> {
@@ -83,7 +87,7 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             capacity(sub,store.items(plan.subOrderNo()),plan);
             var root=orders.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                     .eq(OrdOrder::getOrderNo,sub.getOrderNo()).last("LIMIT 1"));
-            String currency=root!=null && Boolean.TRUE.equals(root.getPointsIntegrated())
+            String currency=pointsIntegrated(sub)
                     ? root.getCurrency() : settle.paymentCurrency(sub.getOrderNo());
             require(currency!=null && !currency.isBlank(),"REFUND_EXECUTION_CURRENCY_UNKNOWN");
             require(sub.getStoreNo()!=null && !sub.getStoreNo().isBlank(),"REFUND_EXECUTION_STORE_REQUIRED");
@@ -313,9 +317,9 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
                 (String)row.get("state"),saved.plan().totalMinor());
     }
     private boolean pointsIntegrated(OrdSubOrder sub) {
-        var root=orders.selectOne(Wrappers.<OrdOrder>lambdaQuery()
-                .eq(OrdOrder::getOrderNo,sub.getOrderNo()).last("LIMIT 1"));
-        return root!=null && Boolean.TRUE.equals(root.getPointsIntegrated());
+        // A mixed-store root can contain both participating and detached children.
+        return sub!=null && sub.getSubOrderNo()!=null
+                && pointsBindings.binding(sub.getSubOrderNo())!=null;
     }
     private Map<String,Object> pointsDecision(String afterSaleNo,String subOrderNo) {
         var row=pointsRefunds.find(afterSaleNo);

@@ -96,12 +96,13 @@ class RefundMultiStoreFlowTest {
             Pair pair = purchase(journey.mvc(), f, f.login("13207072302"), "13207072312", null, true);
             assertThat(paid(pair.first().subNo())).isZero();
             assertThat(paid(pair.second().subNo())).isPositive();
-            String no = f.apply(pair.first(), "REFUND_ONLY");
+            String no;
             if (interrupted) {
                 ZeroRefundCrashFixture crash = new ZeroRefundCrashFixture(context);
-                crash.approveWithInterruptedCompletion(f, pair.first(), no);
+                no = crash.applyWithInterruptedCompletion(f, pair.first());
                 crash.recoverAndAssert(no, 2);
             } else {
+                no = f.apply(pair.first(), "REFUND_ONLY");
                 f.approve(pair.first(), no);
             }
             assertThat(status(pair.first().subNo())).isEqualTo("REFUNDED");

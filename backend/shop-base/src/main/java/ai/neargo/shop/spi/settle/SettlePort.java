@@ -290,5 +290,10 @@ public interface SettlePort {
     boolean hasRefundForAfterSale(String afterSaleNo);
     record RefundEvidence(String paymentNo,String direction,String afterSaleNo,String subOrderNo,String userNo,
                           String currency,long amountMinor,String status,Long verifiedMinor,Long verifiedAt,
-                          String providerNo) { }
+                          String providerNo, RefundSafety safety) {
+        public RefundEvidence(String paymentNo,String direction,String afterSaleNo,String subOrderNo,String userNo,
+                              String currency,long amountMinor,String status,Long verifiedMinor,Long verifiedAt,String providerNo) {
+            this(paymentNo,direction,afterSaleNo,subOrderNo,userNo,currency,amountMinor,status,verifiedMinor,verifiedAt,providerNo,RefundSafety.unknown());
+        }
+    }
 }

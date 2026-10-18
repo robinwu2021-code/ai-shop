@@ -119,6 +119,9 @@ public class RedeemServiceImpl implements RedeemService {
             if (!old.command().equals(c)) {
                 throw new IllegalArgumentException("POINTS_IDEMPOTENCY_CONFLICT");
             }
+            if ("RELEASED".equals(prior.get("state"))) {
+                return releaseOutcome(old);
+            }
             return old.outcome();
         }
         type = read.type(type.typeCode()).orElseThrow();
@@ -330,8 +333,13 @@ public class RedeemServiceImpl implements RedeemService {
         if (reason == null && account.frozen()) {
             reason = "POINTS_FROZEN";
         }
-        if (reason == null && expiry.overdue(account, System.currentTimeMillis())) {
-            reason = "POINTS_EXPIRED";
+        if (reason == null) {
+            try {
+                if (expiry.overdue(account, System.currentTimeMillis())) reason = "POINTS_EXPIRED";
+            } catch (IllegalStateException pending) {
+                if (!"POINTS_AVAILABILITY_PROJECTION_PENDING".equals(pending.getMessage())) throw pending;
+                reason = pending.getMessage();
+            }
         }
         List<Accepted> accepted = new ArrayList<>();
         if (reason == null) {

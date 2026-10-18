@@ -2595,6 +2595,7 @@ public class OrderServiceImpl implements OrderService {
         }
         stockPort.release(order.getOrderNo());
         couponPort.release(order.getOrderNo());
+        campaignPort.release(order.getOrderNo());
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
             // 名额还回去。幂等标记在子单上 —— 与超时关闭那条路同时到达也只还一次
             releaseAppointmentSlot(sub);

@@ -128,13 +128,16 @@ class RefundDispatchBoundaryTest {
 
     @Test
     void cash_intent_keeps_original_payment_coordinates_when_a_new_payment_arrives() {
-        Fixture f = paidOrderWithBill("TEST");
+        Fixture f = paidOrderWithBill("TEST", true);
         String no = settleService.prepareRefund(f.subOrderNo, "AS-" + f.subOrderNo, 1000, "original reason");
         var frozen = ledger.refundTicket(no).orElseThrow();
-        String next = ledger.open(new SettlePort.PaymentOpen(f.orderNo, "U-RC", null, "TEST", 20000, "retry"));
-        String trade = testChannel.placeOrder(next, 20000);
-        testChannel.markPaid(next);
-        ledger.settle(new SettlePort.PaymentSettled(next, "TEST", trade, 20000, System.currentTimeMillis()));
+        assertThatThrownBy(() -> ledger.open(new SettlePort.PaymentOpen(
+                f.orderNo, "U-RC", null, "TEST", 20000, "retry"))).hasMessage("CONFLICT");
+        // A previously closed attempt can arrive late; opening another payment after success is forbidden.
+        String older = f.orderNo;
+        testChannel.markPaid(older);
+        String trade = testChannel.query(older).tradeNo();
+        ledger.settle(new SettlePort.PaymentSettled(older, "TEST", trade, 20000, System.currentTimeMillis()));
         assertThat(ledger.refundTicket(no)).contains(frozen);
     }
 
@@ -158,9 +161,20 @@ class RefundDispatchBoundaryTest {
 
     /** 一笔已成功的收款 + 挂在同一子单上的结算单 —— 退款要两样都在才走得通 */
     private Fixture paidOrderWithBill(String payChannel) {
+        return paidOrderWithBill(payChannel, false);
+    }
+
+    private Fixture paidOrderWithBill(String payChannel, boolean olderAttempt) {
         int n = ++seq;
         String orderNo = "ODRC" + n + System.nanoTime() % 1_000_000;
         String subOrderNo = "SUBRC" + n + System.nanoTime() % 1_000_000;
+
+        if (olderAttempt) {
+            String older = ledger.open(new SettlePort.PaymentOpen(
+                    orderNo, "U-RC", null, payChannel, 20_000L, "测试商品"));
+            testChannel.placeOrder(older, 20_000L);
+            ledger.close(older, "initial acknowledgement timed out");
+        }
 
         String out = ledger.open(new SettlePort.PaymentOpen(
                 orderNo, "U-RC", null, payChannel, 20_000L, "测试商品"));

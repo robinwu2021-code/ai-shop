@@ -136,14 +136,13 @@ class PointsRefundPreparationTest {
     private DataSource dataSource;
 
     @BeforeAll
-    void schema() {
+    void schema() throws Exception {
         PointsPostingDatabaseTest.initializeSchema(dataSource);
-        jdbc().execute(
-                        "CREATE TABLE IF NOT EXISTS stl_payment(payment_no VARCHAR(64) PRIMARY"
-                            + " KEY,direction VARCHAR(24),after_sale_no VARCHAR(40),sub_order_no"
-                            + " VARCHAR(40),user_no VARCHAR(40),currency VARCHAR(8),amount_minor"
-                            + " BIGINT,status VARCHAR(24),pay_channel VARCHAR(32),trade_no"
-                            + " VARCHAR(64),succeeded_at BIGINT,deleted TINYINT DEFAULT 0)");
+        String paymentSchema=new ClassPathResource("schema-test.sql").getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        var paymentTable=java.util.regex.Pattern.compile("CREATE TABLE IF NOT EXISTS stl_payment\\b.*?;",java.util.regex.Pattern.DOTALL).matcher(paymentSchema);
+        if(!paymentTable.find())throw new IllegalStateException("payment schema fixture missing");
+        jdbc().execute(paymentTable.group().replace("created_at DATETIME NOT NULL,","created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,")
+                .replace("updated_at DATETIME NOT NULL,","updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"));
         try (var connection = dataSource.getConnection();
                 var columns =
                         connection
@@ -606,10 +605,11 @@ class PointsRefundPreparationTest {
         String payment = "CASH:" + type;
         jdbc().update(
                         "INSERT INTO"
-                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,amount_minor,status,pay_channel)"
-                            + " VALUES(?,'REFUND',?,?,'USER','CNY',50,'PENDING','TEST')",
+                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,order_no,user_no,currency,amount_minor,status,pay_channel)"
+                            + " VALUES(?,'REFUND',?,?,?,'USER','CNY',50,'PENDING','TEST')",
                         payment,
                         "AS:" + type,
+                        type,
                         type);
         var confirmation =
                 new RefundConfirmation(
@@ -619,7 +619,7 @@ class PointsRefundPreparationTest {
         assertThat(balance(type, "held_points")).isEqualTo(10);
         assertThat(pool(type, "u_minor")).isEqualTo(80);
         jdbc().update(
-                        "UPDATE stl_payment SET status='SUCCESS',trade_no='RECEIPT',succeeded_at=1,"
+                        "UPDATE stl_payment SET status='SUCCESS',trade_no=payment_no,succeeded_at=1,"
                                 + "after_sale_no='OTHER' WHERE payment_no=?",
                         payment);
         assertThatThrownBy(() -> confirmations.confirm(confirmation))
@@ -715,16 +715,17 @@ class PointsRefundPreparationTest {
         String payment = "CASH:" + type;
         jdbc().update(
                         "INSERT INTO"
-                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,amount_minor,status,pay_channel)"
-                            + " VALUES(?,'REFUND',?,?,'USER','CNY',50,'PENDING','TEST')",
+                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,order_no,user_no,currency,amount_minor,status,pay_channel)"
+                            + " VALUES(?,'REFUND',?,?,?,'USER','CNY',50,'PENDING','TEST')",
                         payment,
                         "AS:" + type,
+                        type,
                         type);
         var abort = new RefundAbort(prepared.preparationNo(), prepared.inputHash(), payment);
         assertThatThrownBy(() -> aborts.abort(abort))
                 .hasMessage("POINTS_REFUND_CASH_OUTCOME_UNKNOWN");
         assertThat(balance(type, "held_points")).isEqualTo(10);
-        jdbc().update("UPDATE stl_payment SET status='FAILED' WHERE payment_no=?", payment);
+        verifiedCashFailure(payment);
         aborts.abort(abort);
         aborts.abort(abort);
         var proof = refunds.recoveryStatus(prepared.preparationNo(), prepared.inputHash());
@@ -965,8 +966,8 @@ class PointsRefundPreparationTest {
         collections.execute(failed.preparationNo());
         jdbc().update(
                         "INSERT INTO"
-                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,amount_minor,status,pay_channel)"
-                            + " VALUES(?,'REFUND',?,?,'USER','CNY',40,'PENDING','TEST')",
+                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,order_no,user_no,currency,amount_minor,status,pay_channel)"
+                            + " VALUES(?,'REFUND',?,?,?,'USER','CNY',40,'PENDING','TEST')",
                         "CASH:" + failedType,
                         "AS:" + failedType,
                         failedType);
@@ -1170,11 +1171,13 @@ class PointsRefundPreparationTest {
         String payment = "FAILED_CASH:" + type;
         jdbc().update(
                         "INSERT INTO"
-                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,amount_minor,status,pay_channel)"
-                            + " VALUES(?,'REFUND',?,?,'USER','CNY',50,'FAILED','TEST')",
+                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,order_no,user_no,currency,amount_minor,status,pay_channel)"
+                            + " VALUES(?,'REFUND',?,?,?,'USER','CNY',50,'FAILED','TEST')",
                         payment,
                         "AS:" + type,
+                        type,
                         type);
+        verifiedCashFailure(payment);
         var transaction = new TransactionTemplate(payTransactions);
         transaction.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
         try (var pool = Executors.newSingleThreadExecutor()) {
@@ -1422,10 +1425,11 @@ class PointsRefundPreparationTest {
         var fact = zeroFact(type, prepared, 0, ZeroCashReason.NO_CASH_DUE);
         jdbc().update(
                         "INSERT INTO"
-                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,amount_minor,status,pay_channel)"
-                            + " VALUES(?,'REFUND',?,?,'USER','CNY',50,'PENDING','TEST')",
+                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,order_no,user_no,currency,amount_minor,status,pay_channel)"
+                            + " VALUES(?,'REFUND',?,?,?,'USER','CNY',50,'PENDING','TEST')",
                         "EXISTING:" + type,
                         "AS:" + type,
+                        type,
                         type);
         assertThatThrownBy(() -> zeroCash.accept(fact))
                 .hasMessage("POINTS_ZERO_CASH_CASH_INTENT_EXISTS");
@@ -1549,10 +1553,11 @@ class PointsRefundPreparationTest {
         zeroCash.accept(fact);
         jdbc().update(
                         "INSERT INTO"
-                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,amount_minor,status,pay_channel)"
-                            + " VALUES(?,'REFUND',?,?,'USER','CNY',50,'PENDING','TEST')",
+                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,order_no,user_no,currency,amount_minor,status,pay_channel)"
+                            + " VALUES(?,'REFUND',?,?,?,'USER','CNY',50,'PENDING','TEST')",
                         "LATE_CASH:" + type,
                         "AS:" + type,
+                        type,
                         type);
         assertThatThrownBy(() -> confirmations.confirm(zeroConfirmation(prepared, fact)))
                 .hasMessage("POINTS_ZERO_CASH_CASH_INTENT_EXISTS");
@@ -1912,8 +1917,15 @@ class PointsRefundPreparationTest {
                             + "refund_verified_minor=NULL,refund_verified_at=NULL,refund_verified_provider_no=NULL"
                             + " WHERE payment_no=?",
                         confirmation.cashRefundPaymentNo());
+        verifiedCashFailure(confirmation.cashRefundPaymentNo());
         return new RefundAbort(
                 prepared.preparationNo(), prepared.inputHash(), confirmation.cashRefundPaymentNo());
+    }
+
+    /** A trusted terminal receipt, not a naked legacy FAILED display status. */
+    private void verifiedCashFailure(String payment) {
+        jdbc().update("UPDATE stl_payment SET status='FAILED',refund_query_state='TERMINAL_FAILED',"
+                + "refund_terminal_proof='{\"source\":\"FIXTURE_VERIFIED_CLOSED\"}' WHERE payment_no=?",payment);
     }
 
     private RefundCommand zeroCommand(String type) {
@@ -2034,14 +2046,16 @@ class PointsRefundPreparationTest {
         String payment = "CASH:" + type;
         jdbc().update(
                         "INSERT INTO"
-                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,user_no,currency,"
+                            + " stl_payment(payment_no,direction,after_sale_no,sub_order_no,order_no,user_no,currency,"
                             + "amount_minor,status,pay_channel,trade_no,succeeded_at,refund_verified_minor,refund_verified_at,"
                             + "refund_verified_provider_no)"
-                            + " VALUES(?,'REFUND',?,?,'USER','CNY',?,'SUCCESS','TEST','RECEIPT',1,?,1,?)",
+                            + " VALUES(?,'REFUND',?,?,?,'USER','CNY',?,'SUCCESS','TEST',?,1,?,1,?)",
                         payment,
                         "AS:" + type,
                         type,
+                        type,
                         prepared.netCashMinor(),
+                        "RECEIPT:" + type,
                         prepared.netCashMinor(),
                         "VERIFIED:" + type);
         return new RefundConfirmation(
@@ -2326,7 +2340,7 @@ class PointsRefundPreparationTest {
         PointsPostingDatabaseTest.Config.class,
         MybatisPointsReadStore.class,
         ai.neargo.shop.pay.points.store.impl.MybatisStatementStore.class,
-        MybatisPointsConfigurationStore.class,
+        MybatisPointsConfigurationStore.class, ai.neargo.shop.pay.points.store.impl.AcceptanceAvailabilityProjection.class,
         ai.neargo.shop.pay.points.store.impl.MybatisLifecycleStore.class,
         ai.neargo.shop.pay.points.lifecycle.impl.AccountExpiryGuardImpl.class,
         EarnServiceImpl.class,

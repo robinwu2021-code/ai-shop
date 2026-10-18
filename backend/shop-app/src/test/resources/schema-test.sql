@@ -1073,6 +1073,12 @@ CREATE TABLE IF NOT EXISTS stl_payment
     wx_appid     VARCHAR(32) NULL,
     refund_execution_no VARCHAR(64) NULL,
     origin_payment_no VARCHAR(64) NULL,
+    refund_capacity_state VARCHAR(16) DEFAULT NULL,
+    refund_query_state VARCHAR(32) DEFAULT NULL,
+    refund_query_raw VARCHAR(64) DEFAULT NULL,
+    refund_query_at BIGINT DEFAULT NULL,
+    refund_terminal_proof LONGTEXT DEFAULT NULL,
+    refund_recovery_proof LONGTEXT DEFAULT NULL,
     refund_verified_minor BIGINT DEFAULT NULL,
     refund_verified_provider_no VARCHAR(128) DEFAULT NULL,
     refund_verified_at BIGINT DEFAULT NULL,
@@ -1080,6 +1086,7 @@ CREATE TABLE IF NOT EXISTS stl_payment
     refund_request_json MEDIUMTEXT DEFAULT NULL,
     payment_request_json MEDIUMTEXT DEFAULT NULL,
     CONSTRAINT uk_stl_payment_direction_after_sale_no UNIQUE (direction,after_sale_no),
+    KEY idx_stl_refund_order_capacity (order_no, direction, origin_payment_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),
     CONSTRAINT uk_stl_payment_trade UNIQUE (pay_channel,trade_no),
@@ -11279,3 +11286,15 @@ WHERE point_code = 'OPS_PRODUCT__TAB_CATEGORY_POINTS';
 DELETE FROM sys_function_point
 WHERE point_code = 'OPS_PRODUCT__TAB_CATEGORY_POINTS'
    OR href = '/products?tab=category-points';
+
+-- Derived, rebuildable interval projection; never a financial truth source.
+CREATE TABLE IF NOT EXISTS pts_availability_projection (
+    type_code VARCHAR(40) NOT NULL,
+    source_version BIGINT NOT NULL,
+    projected_version BIGINT NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (type_code)
+);
+CREATE INDEX IF NOT EXISTS idx_pts_acceptance_history ON pts_merchant_agreement(type_code,id);
+CREATE INDEX IF NOT EXISTS idx_pts_pause_history ON pts_pause_interval(type_code,id);

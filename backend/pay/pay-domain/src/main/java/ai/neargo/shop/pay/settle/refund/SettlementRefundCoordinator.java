@@ -29,6 +29,7 @@ public class SettlementRefundCoordinator {
     private static final Set<String> SPLIT_DONE = Set.of(StlBill.SPLIT, StlBill.SPLIT_CONFIRMED);
 
     private final BillMapper billMapper;
+    private final ai.neargo.shop.pay.service.impl.RefundCapacityLedger capacity;
     private final BillRefundJournal journal;
     private final SettlementRefundPolicy policy;
     private final PreSplitAdjuster preSplit;
@@ -40,7 +41,9 @@ public class SettlementRefundCoordinator {
     public SettlementRefundCoordinator(BillMapper billMapper, BillRefundJournal journal, SettlementRefundPolicy policy,
                                    PreSplitAdjuster preSplit, PostSplitReverser postSplit,
                                    PointsSettlementRefundHoldMapper holds, PointsRefundPort pointsRefunds,
-                                   ai.neargo.shop.pay.mapper.CashRefundSplitMapper cashReversals) {
+                                   ai.neargo.shop.pay.mapper.CashRefundSplitMapper cashReversals,
+                                   ai.neargo.shop.pay.service.impl.RefundCapacityLedger capacity) {
+        this.capacity = capacity;
         this.billMapper = billMapper;
         this.journal = journal;
         this.policy = policy;
@@ -123,11 +126,12 @@ public class SettlementRefundCoordinator {
                 || proof.cashRefundPaymentNo() == null)
             throw new IllegalArgumentException("SETTLEMENT_REFUND_COMPENSATION_REQUIRED");
         StlBill bill = lockBill(cmd.subOrderNo());
-        if (bill == null) return true;
+        if (bill == null) { capacity.releaseAfterRecovery(proof); return true; }
         var hold = hold(cmd, bill);
         if (hold == null) throw new IllegalArgumentException("SETTLEMENT_REFUND_HOLD_MISSING");
         if ("CANCELLED".equals(hold.get("status"))) {
             requireProofNo(hold, preparationNo);
+            capacity.releaseAfterRecovery(proof);
             return true;
         }
         if (!"PENDING".equals(hold.get("status")) || journal.recorded(cmd.afterSaleNo()))
@@ -136,6 +140,7 @@ public class SettlementRefundCoordinator {
             throw new IllegalStateException("SETTLEMENT_REFUND_HOLD_VIOLATED");
         if (holds.finish(cmd.afterSaleNo(), "CANCELLED", preparationNo) != 1)
             throw new IllegalStateException("SETTLEMENT_REFUND_HOLD_CONFLICT");
+        capacity.releaseAfterRecovery(proof);
         return true;
     }
 

@@ -43,9 +43,8 @@ class BasicZeroRefundFlowTest {
             var purchase = f.purchase("13207071302");
             assertThat(jdbc.queryForObject("select pay_amount from ord_order where order_no=?",
                     Long.class, purchase.payNo())).isZero();
-            String no = f.apply(purchase, "REFUND_ONLY");
             ZeroRefundCrashFixture crash = new ZeroRefundCrashFixture(context);
-            crash.approveWithInterruptedCompletion(f, purchase, no);
+            String no = crash.applyWithInterruptedCompletion(f, purchase);
             crash.recoverAndAssert(no, 1);
             verify(free, never()).refund(any(), anyLong(), anyString(), anyString());
             verify(free, never()).queryRefund(anyString());

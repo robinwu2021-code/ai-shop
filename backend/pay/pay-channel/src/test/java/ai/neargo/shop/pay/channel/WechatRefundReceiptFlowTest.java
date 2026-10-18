@@ -40,7 +40,25 @@ class WechatRefundReceiptFlowTest {
         assertThat(receipt.currency()).isNull();
     }
 
+    @Test
+    void closedRefundIsTerminalButAbnormalAndProcessingKeepCapacity() throws Exception {
+        assertThat(queryOutcome("{\"status\":\"CLOSED\",\"refund_id\":\"provider\","
+                + "\"amount\":{\"refund\":125,\"currency\":\"CNY\"}}"
+        ).status()).isEqualTo(ai.neargo.shop.spi.pay.RefundQueryResult.Status.TERMINAL_FAILED);
+        assertThat(queryOutcome("{\"status\":\"ABNORMAL\"}").status())
+                .isEqualTo(ai.neargo.shop.spi.pay.RefundQueryResult.Status.MANUAL_REQUIRED);
+        assertThat(queryOutcome("{\"status\":\"PROCESSING\"}").status())
+                .isEqualTo(ai.neargo.shop.spi.pay.RefundQueryResult.Status.PROCESSING);
+        assertThat(queryOutcome("{\"status\":\"FUTURE_STATUS\"}").status())
+                .isEqualTo(ai.neargo.shop.spi.pay.RefundQueryResult.Status.UNKNOWN);
+    }
+
     private PayGateway.QueryResult query(String body) throws Exception {
+        var r = queryOutcome(body);
+        return PayGateway.QueryResult.paid(r.amountMinor(), r.providerNo(), r.currency());
+    }
+
+    private ai.neargo.shop.spi.pay.RefundQueryResult queryOutcome(String body) throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
         server.createContext("/v3/refund/domestic/refunds/RF-ORIGINAL", exchange -> {
@@ -54,7 +72,7 @@ class WechatRefundReceiptFlowTest {
         try {
             ChannelClient client = new LocalHttpChannel(server.getAddress().getPort());
             return new WechatDirectPayGateway(client, null, null, null, "merchant", "app", null)
-                    .queryRefund("RF-ORIGINAL");
+                    .queryRefundOutcome("RF-ORIGINAL");
         } finally {
             server.stop(0);
         }

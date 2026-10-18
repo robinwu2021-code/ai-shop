@@ -185,6 +185,33 @@ class PointsOrderPlacementFlowTest {
     }
 
     @Test
+    void released_hold_cannot_make_the_discounted_order_payable() {
+        var d = draft();
+        stage(d);
+        doAnswer(inv -> {
+            var original = held(inv.getArgument(0));
+            return new PointsRedeemPort.HoldOutcome(original.holdNo(), original.typeCode(),
+                    original.points(), original.minor(), "RELEASED", null, original.shares());
+        }).when(redeem).hold(any());
+        assertThat(placement.resume(d.orderNo()).phase()).isEqualTo(Phase.RECONFIRM);
+        assertThat(orders.roots.get(d.orderNo()).status()).isEqualTo("POINTS_PENDING");
+        assertThat(orders.roots.get(d.orderNo()).payMinor()).isEqualTo(100);
+    }
+
+    @Test
+    void uncertain_hold_response_keeps_the_original_order_pending() {
+        var d = draft();
+        stage(d);
+        doAnswer(inv -> {
+            var original = held(inv.getArgument(0));
+            return new PointsRedeemPort.HoldOutcome(original.holdNo(), original.typeCode(),
+                    original.points(), original.minor(), "UNKNOWN", "POINTS_HOLD_UNKNOWN", original.shares());
+        }).when(redeem).hold(any());
+        assertThat(placement.resume(d.orderNo()).phase()).isEqualTo(Phase.UNKNOWN);
+        assertThat(orders.roots.get(d.orderNo()).status()).isEqualTo("POINTS_PENDING");
+    }
+
+    @Test
     void hold_success_source_failure_recovers_original_order_and_command() {
         var d = draft();
         stage(d);

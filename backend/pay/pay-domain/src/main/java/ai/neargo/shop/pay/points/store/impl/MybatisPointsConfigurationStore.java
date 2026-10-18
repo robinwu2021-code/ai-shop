@@ -16,7 +16,9 @@ import java.util.Map;
 public class MybatisPointsConfigurationStore implements PointsConfigurationStore {
     private final PointsConfigurationMapper mapper;
 
-    public MybatisPointsConfigurationStore(PointsConfigurationMapper mapper) {
+    private final AcceptanceAvailabilityProjection availability;
+    public MybatisPointsConfigurationStore(PointsConfigurationMapper mapper, AcceptanceAvailabilityProjection availability) {
+        this.availability = availability;
         this.mapper = mapper;
     }
 
@@ -110,6 +112,7 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional("payTxManager")
     public void putAgreement(
             String no,
             String type,
@@ -121,6 +124,7 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
         DataScopeContext.executeWithoutScope(
                 () -> {
                     mapper.putAgreement(no, type, store, key, state, payload, actor);
+                    if ("ACTIVE".equals(state)) availability.changed(type);
                     return null;
                 });
     }
@@ -131,10 +135,14 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional("payTxManager")
     public void terminateAgreement(String key, String actor) {
         DataScopeContext.executeWithoutScope(
                 () -> {
+                    var prior = mapper.agreement(key);
                     mapper.terminateAgreement(key, actor);
+                    if (prior != null && "ACTIVE".equals(prior.get("state")))
+                        availability.changed((String)prior.get("type_code"));
                     return null;
                 });
     }

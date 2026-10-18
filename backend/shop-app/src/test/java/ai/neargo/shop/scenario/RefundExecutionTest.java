@@ -166,6 +166,7 @@ class RefundExecutionTest {
         var f=fixture();
         jdbc.update("INSERT INTO ord_order(order_no,user_no,status,currency,pay_amount,points_integrated,"
                 + "created_at,updated_at) VALUES(?,'USER','PAID','CNY',110,1,NOW(),NOW())",f.sub());
+        bindPoints(f.sub());
         executions.prepare(f.as(),new RefundPlan(f.sub(),List.of(new RefundLine(f.item(),1,50)),10));
         jdbc.update("UPDATE ord_sub_order SET points_deduct=10 WHERE sub_order_no=?",f.sub());
         assertThatThrownBy(() -> executions.beginCash(f.as()))
@@ -177,6 +178,7 @@ class RefundExecutionTest {
         var f=fixture();
         jdbc.update("INSERT INTO ord_order(order_no,user_no,status,currency,pay_amount,points_integrated,"
                 + "created_at,updated_at) VALUES(?,'USER','PAID','CNY',110,1,NOW(),NOW())",f.sub());
+        bindPoints(f.sub());
         var plan=new RefundPlan(f.sub(),List.of(new RefundLine(f.item(),1,50)),10);
         executions.prepare(f.as(),plan);
         jdbc.update("UPDATE ord_sub_order SET points_deduct=10 WHERE sub_order_no=?",f.sub());
@@ -233,6 +235,29 @@ class RefundExecutionTest {
                 + "pay_channel,created_at,updated_at) VALUES(?,'PAY',?,'USER',110,'CNY','SUCCESS','TEST',NOW(),NOW())",
                 "ORIG:"+sub,sub);
         return new Fixture(sub,afterSale(sub,60),item);
+    }
+    @Test void detached_child_of_points_root_uses_original_cash_path() {
+        var f=fixture();
+        String integratedSibling="SIB:"+f.sub();
+        jdbc.update("INSERT INTO ord_sub_order(sub_order_no,order_no,user_no,entity_no,store_no,"
+                        + "status,fulfillment,pay_amount,goods_amount,freight_amount,created_at,updated_at)"
+                        + " SELECT ?,order_no,user_no,entity_no,'OTHER_STORE',status,fulfillment,"
+                        + "pay_amount,goods_amount,freight_amount,NOW(),NOW()"
+                        + " FROM ord_sub_order WHERE sub_order_no=?",integratedSibling,f.sub());
+        bindPoints(f.sub(),integratedSibling);
+        jdbc.update("INSERT INTO ord_order(order_no,user_no,status,currency,pay_amount,points_integrated,"
+                + "created_at,updated_at) VALUES(?,'USER','PAID','CNY',110,1,NOW(),NOW())",f.sub());
+        jdbc.update("UPDATE stl_payment SET currency='KWD' WHERE direction='PAY' AND order_no=?",f.sub());
+        executions.prepare(f.as(),new RefundPlan(f.sub(),List.of(new RefundLine(f.item(),1,50)),10));
+        assertThat(executions.beginCash(f.as()).netCashMinor()).isEqualTo(60);
+    }
+    private void bindPoints(String sub) {
+        bindPoints(sub,sub);
+    }
+    private void bindPoints(String order,String sub) {
+        jdbc.update("INSERT INTO ord_points_binding(binding_no,request_id,order_no,sub_order_no,"
+                        + "store_no,phase,payload_json) VALUES(?,?,?,?,?,'BOUND','{}')",
+                "B:"+sub,"R:"+sub,order,sub,"STORE");
     }
     private String afterSale(String sub,long amount) {
         String as="A"+UUID.randomUUID().toString().replace("-", "");

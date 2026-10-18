@@ -351,11 +351,13 @@ class PeriodFlowTest {
         JsonNode r = json.readTree(body);
         assertThat(r.get("code").asInt()).as("下单失败：" + body).isEqualTo(0);
         String orderNo = r.get("data").get("payOrderNo").asString();
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"TX-P" + (++seq)
+        String trade=ai.neargo.shop.support.RefundScenarioPayments.receivedForOrder(
+                jdbc,ledger,bank,orderNo);
+        String ack=mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"" + trade
                         + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
-                .andExpect(status().isOk());
-        ai.neargo.shop.support.RefundScenarioPayments.receivedForOrder(jdbc,ledger,bank,orderNo);
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(ack).isEqualTo("SUCCESS");
         return orderNo;
     }
 

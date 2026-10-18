@@ -21,7 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class RefundPaymentStore {
     private final PaymentMapper payments;
 
-    public RefundPaymentStore(PaymentMapper payments) {
+    private final RefundCapacityLedger capacity;
+    public RefundPaymentStore(PaymentMapper payments, RefundCapacityLedger capacity) {
+        this.capacity = capacity;
         this.payments = payments;
     }
 
@@ -67,13 +69,7 @@ public class RefundPaymentStore {
                 .eq(StlPayment::getAfterSaleNo, request.afterSaleNo()))) > 0) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
-        long reserved = DataScopeContext.executeWithoutScope(() -> payments.selectList(
-                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getDirection, StlPayment.REFUND)
-                        .eq(StlPayment::getOrderNo, origin.getOrderNo())))
-                .stream().mapToLong(p -> p.getAmountMinor() == null ? 0 : p.getAmountMinor()).sum();
-        if (reserved + request.amountMinor() > origin.getAmountMinor()) {
-            throw BizException.of(ErrorCode.CONFLICT);
-        }
+        capacity.check(origin, request.amountMinor());
         StlPayment row = row(origin, request);
         DataScopeContext.executeWithoutScope(() -> payments.insert(row));
         return row;
@@ -87,6 +83,10 @@ public class RefundPaymentStore {
 
     private RefundDispatchResult confirmCurrent(String no, String channel, long amount,
                                                 String currency, String provider) {
+        StlPayment candidate = DataScopeContext.executeWithoutScope(() -> payments.selectOne(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getOutTradeNo, no)
+                        .eq(StlPayment::getDirection, StlPayment.REFUND)));
+        if (candidate != null) capacity.lockOriginal(candidate);
         StlPayment row = payments.selectOne(Wrappers.<StlPayment>lambdaQuery()
                 .eq(StlPayment::getOutTradeNo, no).eq(StlPayment::getDirection, StlPayment.REFUND).last("FOR UPDATE"));
         if (row == null) {
@@ -98,6 +98,9 @@ public class RefundPaymentStore {
             return new RefundDispatchResult(row.getRefundExecutionNo(), row.getPaymentNo(), DispatchStatus.FAILED,
                     "REFUND_RECEIPT_MISMATCH", false, null);
         }
+        if (!capacity.consume(row, provider, amount))
+            return new RefundDispatchResult(row.getRefundExecutionNo(), row.getPaymentNo(),
+                    DispatchStatus.UNKNOWN, "REFUND_LATE_SUCCESS_FROZEN", false, null);
         if (!StlPayment.SUCCESS.equals(row.getStatus())) {
             long now = System.currentTimeMillis();
             int changed = payments.update(null, Wrappers.<StlPayment>lambdaUpdate()
@@ -121,6 +124,7 @@ public class RefundPaymentStore {
         row.setStatus(StlPayment.INIT);
         row.setRefundExecutionNo(request.executionNo());
         row.setOriginPaymentNo(origin.getPaymentNo());
+        row.setRefundCapacityState("RESERVED");
         row.setOutTradeNo(request.executionNo());
         row.setOrderNo(origin.getOrderNo());
         row.setSubOrderNo(request.subOrderNo());
@@ -165,18 +169,30 @@ public class RefundPaymentStore {
 
     @Transactional(value = "payTxManager", propagation = Propagation.REQUIRES_NEW)
     public boolean claim(String no) {
+        var origin = capacity.lockOriginal(byExecution(no));
+        if (origin != null && "FROZEN".equals(origin.getRefundCapacityState())) return false;
         return DataScopeContext.executeWithoutScope(() -> payments.update(null,
                 Wrappers.<StlPayment>lambdaUpdate().eq(StlPayment::getRefundExecutionNo, no)
                         .eq(StlPayment::getDirection, StlPayment.REFUND).eq(StlPayment::getStatus, StlPayment.INIT)
+                        .and(q -> q.isNull(StlPayment::getRefundQueryState).or()
+                                .notIn(StlPayment::getRefundQueryState,"PROCESSING","MANUAL_REQUIRED","LATE_SUCCESS","TERMINAL_FAILED"))
                         .set(StlPayment::getStatus, StlPayment.PENDING).set(StlPayment::getErrCode, "DISPATCHING")
                         .setSql("version = version + 1"))) == 1;
+    }
+
+    @Transactional(value = "payTxManager", propagation = Propagation.REQUIRES_NEW)
+    public void reject(String no, String error) {
+        var row = byExecution(no);
+        if (row == null) throw new IllegalArgumentException("PAY_REFUND_UNKNOWN");
+        capacity.rejected(row, error);
+        result(no, StlPayment.FAILED, error, null);
     }
 
     @Transactional(value = "payTxManager", propagation = Propagation.REQUIRES_NEW)
     public void result(String no, String status, String error, String provider) {
         DataScopeContext.executeWithoutScope(() -> payments.update(null, Wrappers.<StlPayment>lambdaUpdate()
                 .eq(StlPayment::getRefundExecutionNo, no).eq(StlPayment::getDirection, StlPayment.REFUND)
-                .ne(StlPayment::getStatus, StlPayment.SUCCESS).set(StlPayment::getStatus, status)
+                .in(StlPayment::getStatus, StlPayment.INIT, StlPayment.PENDING).set(StlPayment::getStatus, status)
                 .set(StlPayment::getErrCode, error).set(provider != null, StlPayment::getTradeNo, provider)
                 .set(StlPayment.SUCCESS.equals(status), StlPayment::getSucceededAt, System.currentTimeMillis())
                 .setSql("version = version + 1")));

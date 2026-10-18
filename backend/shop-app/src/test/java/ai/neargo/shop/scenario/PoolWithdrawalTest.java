@@ -183,7 +183,7 @@ class PoolWithdrawalTest {
     private JdbcTemplate jdbc() { return new JdbcTemplate(dataSource); }
     @Configuration
     @Import({PointsPostingDatabaseTest.Config.class,MybatisPointsReadStore.class,
-            MybatisPointsConfigurationStore.class,PoolServiceImpl.class,PoolRequestServiceImpl.class})
+            MybatisPointsConfigurationStore.class, ai.neargo.shop.pay.points.store.impl.AcceptanceAvailabilityProjection.class,PoolServiceImpl.class,PoolRequestServiceImpl.class})
     @ComponentScan(basePackages="ai.neargo.shop.pay.points.pool.withdrawal")
     static class Config { @Bean TestFunds testFunds() { return new TestFunds(); } }
     /** Bank evidence is simulated here only; never deployed as an enabled gateway. */

@@ -38,6 +38,7 @@ class RefundOriginalExecutionRecoveryFlowTest {
     void externalSuccessLocalFailureRecoversSameExecution() throws Exception {
         try (var f = new BasicRefundFixture(context)) {
             var p = f.purchase("13207071401");
+            f.prepare(p);
             String no = f.apply(p, "REFUND_ONLY");
             doAnswer(call -> {
                 call.callRealMethod();

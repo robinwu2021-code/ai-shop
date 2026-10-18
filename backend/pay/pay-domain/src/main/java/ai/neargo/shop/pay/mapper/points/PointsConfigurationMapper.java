@@ -138,18 +138,6 @@ public interface PointsConfigurationMapper {
     Long livePlan(String type);
 
     @Select(
-            "SELECT * FROM pts_merchant_agreement WHERE type_code=#{type} AND deleted=0"
-                    + " AND state IN ('ACTIVE','TERMINATED') ORDER BY id LIMIT 10001 FOR UPDATE")
-    List<Map<String, Object>> acceptanceHistory(String type);
-
-    @Select(
-            "SELECT scope,scope_no,from_at,to_at FROM pts_pause_interval WHERE deleted=0"
-                    + " AND (type_code=#{type} OR type_code='*') AND from_at<#{asOf}"
-                    + " AND (to_at IS NULL OR to_at>#{active}) ORDER BY id LIMIT 10001 FOR UPDATE")
-    List<Map<String, Object>> acceptancePauses(
-            @Param("type") String type, @Param("active") long active, @Param("asOf") long asOf);
-
-    @Select(
             "<script>SELECT * FROM pts_switch WHERE deleted=0 AND state='OFF' AND"
                 + " (type_code=#{type} OR type_code='*') AND (<foreach collection='keys' item='k'"
                 + " separator=' OR '>(scope=#{k.scope} AND (#{k.key,jdbcType=VARCHAR} IS NULL OR"

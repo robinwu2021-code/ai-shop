@@ -6,6 +6,7 @@ import json
 import math
 import os
 import re
+import hashlib
 from pathlib import Path
 import signal
 import subprocess
@@ -44,7 +45,15 @@ def collect_reports(reports, output, backend_root, slow_seconds, since_ns, run_i
             stamp = report.stat().st_mtime_ns
             if since_ns is not None and stamp < since_ns:
                 continue
-            root = ET.parse(report).getroot()
+            content = report.read_bytes()
+            root = ET.fromstring(content)
+            try:
+                relative = report.resolve().relative_to(backend_root.resolve())
+            except ValueError:
+                relative = Path(hashlib.sha256(str(report).encode()).hexdigest()[:16]) / report.name
+            snapshot = output / 'reports' / relative
+            snapshot.parent.mkdir(parents=True, exist_ok=True)
+            snapshot.write_bytes(content)
         except (OSError, ET.ParseError) as error:
             errors.append({'report': str(report), 'error': str(error)})
             continue
@@ -66,7 +75,7 @@ def collect_reports(reports, output, backend_root, slow_seconds, since_ns, run_i
                 row = {'run_id': run_id, 'module': module, 'class_name': case.get('classname', suite_name),
                        'test_name': name, 'duration_seconds': elapsed, 'status': status,
                        'slow': elapsed is not None and elapsed >= slow_seconds,
-                       'report': str(report), 'report_updated_ns': stamp}
+                       'report': str(snapshot), 'source_report': str(report), 'report_updated_ns': stamp}
                 cases.append(row)
                 children.append(row)
             valid = all(case['duration_seconds'] is not None for case in children)
@@ -199,6 +208,11 @@ def main(argv=None):
     output.mkdir(parents=True)
     code, child_code, timed_out, interrupted = None, None, False, False
     launch_error = None
+    try:
+        revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+        dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip())
+    except (OSError, subprocess.SubprocessError):
+        revision, dirty = None, None
     if command:
         print('TEST_START log_dir=%s progress_seconds=%s timeout=%s' % (
             output, args.progress_seconds, args.timeout if args.timeout else 'disabled'), flush=True)
@@ -223,8 +237,9 @@ def main(argv=None):
     reports = [path.resolve() for path in args.report] if args.report is not None else list(find_reports(backend_root))
     since_ns = (int(args.since * 1_000_000_000) if args.since is not None else None) if args.collect_only else started_ns
     summary = collect_reports(reports, output, backend_root, args.slow_seconds, since_ns, run_id)
-    summary.update({'source': 'existing_reports' if args.collect_only else 'current_command',
+    summary.update({'command': command, 'revision': revision, 'dirty': dirty, 'workspace': str(ROOT), 'source': 'existing_reports' if args.collect_only else 'current_command',
                     'started_at': datetime.fromtimestamp(started_ns / 1_000_000_000, timezone.utc).isoformat(),
+                    'ended_at': datetime.now(timezone.utc).isoformat(),
                     'wall_seconds': round(time.monotonic() - started, 6), 'command_exit_code': code,
                     'child_exit_code': child_code, 'timed_out': timed_out, 'interrupted': interrupted,
                     'launch_error': launch_error, 'timeout_seconds': args.timeout if command else None,

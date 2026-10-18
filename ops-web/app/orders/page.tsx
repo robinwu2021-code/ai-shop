@@ -51,6 +51,9 @@ const useDiffTypeMap = (c: Copy): StatusMap<ReconDiffType> => ({
   CHANNEL_ONLY: { label: c.diffChannelOnly, tone: "danger" },
   PLATFORM_ONLY: { label: c.diffPlatformOnly, tone: "warning" },
   AMOUNT_DIFF: { label: c.diffAmount, tone: "info" },
+  REFUND_ABNORMAL: { label: c.diffRefundAbnormal, tone: "danger" },
+  REFUND_LATE_SUCCESS: { label: c.diffRefundLateSuccess, tone: "danger" },
+  REFUND_CLOSED: { label: c.diffRefundClosed, tone: "warning" },
 });
 
 const useReconStatusMap = (c: Copy): StatusMap<ReconStatus> => ({

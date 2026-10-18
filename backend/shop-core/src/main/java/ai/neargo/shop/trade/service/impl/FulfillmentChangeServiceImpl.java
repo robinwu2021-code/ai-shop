@@ -38,10 +38,7 @@ import java.util.Objects;
 
 /** Paid but not handed-off express/self-delivery changes, with price and promise checks. */
 @Service
-public class FulfillmentChangeService {
-    public record Option(String fulfillment, boolean allowed, String reason) { }
-    public record Options(String subOrderNo, String currentFulfillment, long version, List<Option> options) { }
-    public record Changed(OrderVO order, long version) { }
+public class FulfillmentChangeServiceImpl implements ai.neargo.shop.trade.service.FulfillmentChangeService {
 
     private final StatusCasMapper locks;
     private final StoreOrderMapper storeOrders;
@@ -57,7 +54,7 @@ public class FulfillmentChangeService {
     private final FreightPort freight;
     private final OutboxEventBus events;
 
-    public FulfillmentChangeService(StatusCasMapper locks, StoreOrderMapper storeOrders,
+    public FulfillmentChangeServiceImpl(StatusCasMapper locks, StoreOrderMapper storeOrders,
                                     OrderItemMapper items, AfterSaleMapper afterSales,
                                     ShipmentMapper shipments, ExpressPickupMapper pickups,
                                     OrderStatusLogMapper logs, MerchantOrderService orders,

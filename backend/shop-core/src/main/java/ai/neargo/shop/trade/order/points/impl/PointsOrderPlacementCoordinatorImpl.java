@@ -156,6 +156,16 @@ public class PointsOrderPlacementCoordinatorImpl implements PointsOrderPlacement
                 return mark(order, Phase.UNKNOWN, "POINTS_HOLD_UNKNOWN", null);
             }
         }
+        if (resolved.command() != null) {
+            if (outcome == null || !"HELD".equals(outcome.state())) {
+                boolean released = outcome != null && "RELEASED".equals(outcome.state());
+                return mark(order, released ? Phase.RECONFIRM : Phase.UNKNOWN,
+                        released ? "POINTS_REQUOTE_REQUIRED" : "POINTS_HOLD_UNKNOWN", outcome);
+            }
+            if (outcome.holdNo() == null || outcome.holdNo().isBlank()) {
+                return mark(order, Phase.UNKNOWN, "POINTS_HOLD_UNKNOWN", outcome);
+            }
+        }
         var quote = resolved.quote();
         if (outcome == null
                 || !Objects.equals(outcome.typeCode(), quote.typeCode())

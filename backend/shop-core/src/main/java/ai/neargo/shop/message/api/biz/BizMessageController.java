@@ -5,7 +5,7 @@ import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.message.MessageService;
 import ai.neargo.shop.message.dto.MessageVOs.MessageVO;
 import ai.neargo.shop.message.entity.MsgMessage;
-import ai.neargo.shop.trade.service.AfterSaleService;
+import ai.neargo.shop.spi.trade.AfterSalePendingQueryPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,9 +27,9 @@ import java.util.List;
 public class BizMessageController {
 
     private final MessageService messageService;
-    private final AfterSaleService afterSales;
+    private final AfterSalePendingQueryPort afterSales;
 
-    public BizMessageController(MessageService messageService, AfterSaleService afterSales) {
+    public BizMessageController(MessageService messageService, AfterSalePendingQueryPort afterSales) {
         this.messageService = messageService;
         this.afterSales = afterSales;
     }
@@ -53,7 +53,7 @@ public class BizMessageController {
             if (store != null && !store.isBlank()) stores.put(m.messageNo(), store);
         }
         java.util.Set<String> pending = ctx.can(BizPerms.AFTERSALE) && ctx.merchantNo() != null
-                ? afterSales.merchantPendingNos(ctx.merchantNo(), ctx.currentStoreNo(), ids.values())
+                ? afterSales.pending(ctx.merchantNo(), ctx.currentStoreNo(), ids.values())
                 : java.util.Set.of();
         return messages.stream().map(m -> new BizMessageVO(m.messageNo(), m.type(), m.title(),
                 m.body(), m.link(), m.read(), m.at(), ids.containsKey(m.messageNo())

@@ -61,6 +61,15 @@ public class EarnServiceImpl implements EarnService {
 
     @Override
     public PointsEarnPort.GrantOutcome grant(PointsEarnPort.GrantCommand c) {
+        return grant(c, false);
+    }
+
+    @Override
+    public PointsEarnPort.GrantOutcome grantAccepted(PointsEarnPort.GrantCommand c) {
+        return grant(c, true);
+    }
+
+    private PointsEarnPort.GrantOutcome grant(PointsEarnPort.GrantCommand c, boolean accepted) {
         if (c == null
                 || blank(c.eventNo())
                 || blank(c.subOrderNo())
@@ -127,6 +136,7 @@ public class EarnServiceImpl implements EarnService {
             finalized = state.path("finalized").asBoolean(false);
         }
         if (reason == null
+                && !accepted
                 && (!enabled
                         || !read.enabled(
                                 new Availability(

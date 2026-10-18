@@ -17,11 +17,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class RefundExecutionServiceImpl implements RefundExecutionService {
     private final RefundPaymentStore store;
+    private final RefundCapacityLedger capacity;
     private final PayGatewayRouter gateways;
     private final UnsplitRefundAdjustment adjustment;
 
     public RefundExecutionServiceImpl(RefundPaymentStore store, PayGatewayRouter gateways,
-                                      UnsplitRefundAdjustment adjustment) {
+                                      UnsplitRefundAdjustment adjustment, RefundCapacityLedger capacity) {
+        this.capacity = capacity;
         this.store = store;
         this.gateways = gateways;
         this.adjustment = adjustment;
@@ -80,7 +82,8 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
                 return unknown(row, "REFUND_SEND_UNKNOWN");
             }
             if (!sent.success()) {
-                return failed(row, "REFUND_REJECTED");
+                return sent.definitiveRejection() ? failed(row, "REFUND_REJECTED")
+                        : unknown(row, "REFUND_SEND_UNPROVEN");
             }
             store.result(row.getRefundExecutionNo(), StlPayment.PENDING, null, sent.providerNo());
             return result(row, DispatchStatus.ACCEPTED, null, true);
@@ -113,39 +116,57 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             return new RefundDispatchResult(executionNo, null, DispatchStatus.UNKNOWN,
                     "REFUND_NOT_PREPARED", true, null);
         }
+        var safety = capacity.safety(row);
+        if ("REFUND_LATE_SUCCESS_FROZEN".equals(safety.errorCode())
+                || "REFUND_QUERY_COORDINATES_REQUIRED".equals(safety.errorCode()))
+            return result(row, DispatchStatus.UNKNOWN, safety.errorCode(), false);
         if (StlPayment.SUCCESS.equals(row.getStatus())) {
             return result(row, DispatchStatus.SUCCEEDED, null, false);
         }
-        if (StlPayment.FAILED.equals(row.getStatus())) {
+        if (safety.terminalVerified()) {
             return result(row, DispatchStatus.FAILED, row.getErrCode(), false);
         }
         if (StlPayment.INIT.equals(row.getStatus())) {
-            return result(row, DispatchStatus.UNKNOWN, "REFUND_NOT_DISPATCHED", true);
+            if(safety.outcome()==ai.neargo.shop.spi.pay.RefundQueryResult.Status.MANUAL_REQUIRED)
+                return result(row,DispatchStatus.UNKNOWN,safety.errorCode(),false);
+            if(safety.outcome()!=ai.neargo.shop.spi.pay.RefundQueryResult.Status.PROCESSING)
+                return result(row, DispatchStatus.UNKNOWN, "REFUND_NOT_DISPATCHED", true);
         }
         if (Long.valueOf(0).equals(row.getAmountMinor())) {
             return result(row, DispatchStatus.UNKNOWN, "REFUND_ZERO_CONFIRMATION_REQUIRED", false);
         }
         try {
-            PayGateway.QueryResult found = gateways.of(row.getPayChannel()).queryRefund(row.getOutTradeNo());
-            if (found == null || !found.ok() || !found.found()) {
-                return unknown(row, "REFUND_QUERY_UNKNOWN");
-            }
-            if (!found.paid()) {
-                return result(row, DispatchStatus.ACCEPTED, null, true);
-            }
-            return confirm(row.getOutTradeNo(), row.getPayChannel(), found.amountMinor(),
-                    found.currency(), found.tradeNo());
+            var found = gateways.of(row.getPayChannel()).queryRefundOutcome(row.getOutTradeNo());
+            if (found == null) return unknown(row, "REFUND_QUERY_UNKNOWN");
+            if (!row.getOutTradeNo().equals(found.outRefundNo()))
+                return result(row, DispatchStatus.UNKNOWN, "REFUND_QUERY_IDENTITY_MISMATCH", false);
+            if (found.status() == ai.neargo.shop.spi.pay.RefundQueryResult.Status.SUCCEEDED)
+                return confirm(row.getOutTradeNo(), row.getPayChannel(), found.amountMinor(),
+                        found.currency(), found.providerNo());
+            capacity.observe(row.getPaymentNo(), found);
+            var current = capacity.safety(store.byExecution(executionNo));
+            if (current.outcome() == ai.neargo.shop.spi.pay.RefundQueryResult.Status.MANUAL_REQUIRED)
+                return result(row, DispatchStatus.UNKNOWN, current.errorCode(), false);
+            return switch (found.status()) {
+                case TERMINAL_FAILED -> result(row, DispatchStatus.FAILED, "REFUND_TERMINAL_CLOSED", false);
+                case PROCESSING -> result(row, DispatchStatus.ACCEPTED, null, true);
+                case MANUAL_REQUIRED -> result(row, DispatchStatus.UNKNOWN, "REFUND_MANUAL_REQUIRED", false);
+                default -> unknown(row, "REFUND_QUERY_UNKNOWN");
+            };
         } catch (RuntimeException unknown) {
             return unknown(row, "REFUND_QUERY_UNKNOWN");
         }
     }
 
     private RefundDispatchResult failed(StlPayment row, String error) {
-        store.result(row.getRefundExecutionNo(), StlPayment.FAILED, error, null);
+        store.reject(row.getRefundExecutionNo(), error);
         return result(row, DispatchStatus.FAILED, error, false);
     }
 
     private RefundDispatchResult unknown(StlPayment row, String error) {
+        var safety=capacity.safety(store.byExecution(row.getRefundExecutionNo()));
+        if(safety!=null && safety.outcome()==ai.neargo.shop.spi.pay.RefundQueryResult.Status.MANUAL_REQUIRED)
+            return result(row,DispatchStatus.UNKNOWN,safety.errorCode(),false);
         store.result(row.getRefundExecutionNo(), StlPayment.PENDING, error, null);
         return result(row, DispatchStatus.UNKNOWN, error, true);
     }

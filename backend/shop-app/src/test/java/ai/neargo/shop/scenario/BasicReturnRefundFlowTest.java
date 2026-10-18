@@ -24,12 +24,15 @@ class BasicReturnRefundFlowTest {
     @Autowired private WebApplicationContext context;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private AfterSaleService afterSales;
+    @Autowired private ai.neargo.shop.trade.service.MerchantOrderService merchantOrders;
     @Autowired private ObjectMapper json;
 
     @Test
     void platformDecisionCannotTreatTrackingNumberAsMerchantReceipt() throws Exception {
         try (var f = new BasicRefundFixture(context)) {
             var p = f.purchase("13207071201");
+            merchantOrders.prepare(f.merchant(p), jdbc.queryForObject(
+                    "select store_no from ord_sub_order where sub_order_no=?", String.class, p.subNo()), p.subNo());
             String no = f.apply(p, "RETURN_REFUND");
             f.approve(p, no);
             assertThat(f.request(p.token(), "/mp/after-sale/" + no + "/ship",
@@ -57,8 +60,10 @@ class BasicReturnRefundFlowTest {
     void merchantListExposesOriginalExecutionFailureForRecovery() throws Exception {
         try (var f = new BasicRefundFixture(context)) {
             var p = f.purchase("13207071202");
-            String no = f.apply(p, "REFUND_ONLY");
+            merchantOrders.prepare(f.merchant(p), jdbc.queryForObject(
+                    "select store_no from ord_sub_order where sub_order_no=?", String.class, p.subNo()), p.subNo());
             jdbc.update("update stl_payment set status='CLOSED' where order_no=? and direction='PAY'", p.payNo());
+            String no = f.apply(p, "REFUND_ONLY");
             f.approve(p, no);
             var view = afterSales.merchantList(f.merchant(p), null).stream()
                     .filter(as -> no.equals(as.afterSaleNo())).findFirst().orElseThrow();

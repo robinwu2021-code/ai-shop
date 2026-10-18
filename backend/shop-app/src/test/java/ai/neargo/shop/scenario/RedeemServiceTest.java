@@ -150,6 +150,8 @@ class RedeemServiceTest {
                     .hasMessage("POINTS_IDEMPOTENCY_CONFLICT");
             var release = new PointsRedeemPort.ReleaseCommand(c.orderNo(), "C1", 2);
             assertThat(redeem.release(release)).isEqualTo(redeem.release(release));
+            assertThat(redeem.hold(c).state()).as("replayed hold reports the released reservation")
+                    .isEqualTo("RELEASED");
             assertThat(read.pool(type).reservedBMinor()).isZero();
             assertThat(read.account(type, HolderType.USER, "U").points(Bucket.AVAILABLE))
                     .isEqualTo(100);

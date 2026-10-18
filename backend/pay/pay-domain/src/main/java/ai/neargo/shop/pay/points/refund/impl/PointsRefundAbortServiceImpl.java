@@ -39,6 +39,7 @@ public class PointsRefundAbortServiceImpl implements PointsRefundAbortService {
     }
     @Override public void abort(RefundAbort abort) {
         require(abort!=null && abort.preparationNo()!=null,"POINTS_REFUND_ABORT_INVALID");
+        cash.lockRefund(abort.cashRefundPaymentNo());
         var initial=read.position(PositionMove.Kind.REFUND.table(),abort.preparationNo());
         require(initial!=null,"POINTS_REFUND_PREPARATION_UNKNOWN");
         configuration.lockTypeAndPool((String)initial.get("type_code"));
@@ -55,8 +56,8 @@ public class PointsRefundAbortServiceImpl implements PointsRefundAbortService {
                 && snapshot.compensation().result().status()==FundsStatus.SUCCEEDED;
         require(("CASH_AUTHORIZED".equals(head.get("state")) && preparation.collectionTicket()==null) || compensated,
                 "POINTS_REFUND_ABORT_NOT_SAFE");
-        var payment=cash.refund(abort.cashRefundPaymentNo());
-        require(payment!=null && Set.of("FAILED","CLOSED").contains(payment.status()),
+        var payment=cash.lockRefund(abort.cashRefundPaymentNo());
+        require(payment!=null && payment.safety()!=null && payment.safety().safeToRecover(),
                 "POINTS_REFUND_CASH_OUTCOME_UNKNOWN");
         var command=snapshot.command();
         require("REFUND".equals(payment.direction()) && command.afterSaleNo().equals(payment.afterSaleNo())

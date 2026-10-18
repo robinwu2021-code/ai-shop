@@ -402,6 +402,7 @@ class PointsCoreAcceptanceTest {
                                                 500,
                                                 "OP",
                                                 "RECOVERED"));
+                                context.getBean(ai.neargo.shop.pay.points.store.impl.AcceptanceAvailabilityProjection.class).repair(f.type());
                             });
                     assertThatThrownBy(
                                     () ->
@@ -455,7 +456,8 @@ class PointsCoreAcceptanceTest {
     private void mysqlOnly() throws Exception {
         try (var connection = dataSource.getConnection()) {
             Assumptions.assumeTrue(
-                    connection.getMetaData().getDatabaseProductName().equals("MySQL"));
+                    connection.getMetaData().getDatabaseProductName().equals("MySQL")
+                            && !connection.getMetaData().getDatabaseProductVersion().contains("MariaDB"));
         }
     }
 
@@ -693,6 +695,7 @@ class PointsCoreAcceptanceTest {
                         key,
                         Timestamp.from(Instant.EPOCH),
                         Timestamp.from(Instant.EPOCH));
+        context.getBean(ai.neargo.shop.pay.points.store.impl.AcceptanceAvailabilityProjection.class).rebuild(f.type());
     }
 
     private void earnAvailable(Fixture f, String suffix, long points) {

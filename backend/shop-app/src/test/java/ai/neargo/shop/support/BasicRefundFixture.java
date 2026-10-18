@@ -28,8 +28,10 @@ public final class BasicRefundFixture implements AutoCloseable {
     private final AfterSaleService afterSales;
     private final FakePayQueryPort query;
     private final String fundsMode;
+    private final ai.neargo.shop.trade.service.MerchantOrderService merchantOrders;
 
     public BasicRefundFixture(WebApplicationContext context) {
+        merchantOrders = context.getBean(ai.neargo.shop.trade.service.MerchantOrderService.class);
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         json = context.getBean(ObjectMapper.class);
         otp = context.getBean(OtpStore.class);
@@ -91,6 +93,11 @@ public final class BasicRefundFixture implements AutoCloseable {
                 "{\"type\":\"" + type + "\",\"reason\":\"不想要了\",\"reasonCode\":\"NOT_WANTED\"}");
         assertThat(response.path("code").asInt()).as(response.toString()).isZero();
         return response.path("data").path("afterSaleNo").asString();
+    }
+
+    public void prepare(Purchase p) {
+        merchantOrders.prepare(merchant(p), jdbc.queryForObject(
+                "select store_no from ord_sub_order where sub_order_no=?", String.class, p.subNo()), p.subNo());
     }
 
     public void approve(Purchase p, String no) {

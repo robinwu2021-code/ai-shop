@@ -81,12 +81,12 @@ class BasicRefundRecoveryFlowTest {
     @Test
     void missingOriginDoesNotBecomeSuccessfulRefund() throws Exception {
         Purchase p = purchase("13207071002");
-        String afterSale = apply(p);
         new JdbcTemplate(payDataSource).update(
                 "update stl_payment set status='CLOSED' where order_no=? and direction='PAY'", p.payNo());
         assertThat(new JdbcTemplate(payDataSource).queryForObject(
                 "select status from stl_payment where order_no=? and direction='PAY'", String.class, p.payNo()))
                 .isEqualTo("CLOSED");
+        String afterSale = apply(p);
         try {
             approve(p, afterSale);
         } catch (RuntimeException expectedValidation) {

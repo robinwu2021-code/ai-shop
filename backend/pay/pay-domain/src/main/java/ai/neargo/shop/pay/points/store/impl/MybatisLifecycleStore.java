@@ -3,24 +3,17 @@ package ai.neargo.shop.pay.points.store.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.mapper.points.PointsConfigurationMapper;
 import ai.neargo.shop.pay.points.lifecycle.PointsAccountControlService;
-import ai.neargo.shop.pay.points.model.AgreementSnapshot;
 import ai.neargo.shop.pay.points.policy.ExpiryPolicy;
 import ai.neargo.shop.pay.points.policy.ExpiryPolicy.Interval;
 import ai.neargo.shop.pay.points.policy.SwitchPolicy;
 import ai.neargo.shop.pay.points.policy.SwitchPolicy.Key;
 import ai.neargo.shop.pay.points.pool.PointsSwitchService.Command;
-import ai.neargo.shop.pay.points.pool.PointsSwitchService.Flow;
 import ai.neargo.shop.pay.points.pool.PointsSwitchService.Scope;
 import ai.neargo.shop.pay.points.store.LifecycleStore;
-import ai.neargo.shop.pay.points.store.PointsReadStore.Availability;
 
 import org.springframework.stereotype.Repository;
 
-import tools.jackson.databind.ObjectMapper;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +25,9 @@ import java.util.Map;
 public class MybatisLifecycleStore implements LifecycleStore {
     private final PointsConfigurationMapper mapper;
 
-    public MybatisLifecycleStore(PointsConfigurationMapper mapper) {
+    private final AcceptanceAvailabilityProjection availability;
+    public MybatisLifecycleStore(PointsConfigurationMapper mapper, AcceptanceAvailabilityProjection availability) {
+        this.availability = availability;
         this.mapper = mapper;
     }
 
@@ -57,6 +52,7 @@ public class MybatisLifecycleStore implements LifecycleStore {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional("payTxManager")
     public void saveSwitch(Command c, String key, String payload, boolean previous) {
         DataScopeContext.executeWithoutScope(
                 () -> {
@@ -80,6 +76,7 @@ public class MybatisLifecycleStore implements LifecycleStore {
                             && mapper.closePause(SwitchPolicy.scope(c), key, c.at()) != 1) {
                         throw new IllegalStateException("POINTS_PAUSE_STATE_CONFLICT");
                     }
+                    if (c.scope() != Scope.USER) availability.changed(c.typeCode());
                     return null;
                 });
     }
@@ -110,81 +107,13 @@ public class MybatisLifecycleStore implements LifecycleStore {
                                                                                     .longValue()))
                                             .toList());
                     pauses.addAll(
-                            unavailable(type, user, (String) typeRow.get("market"), active, asOf));
+                            unavailable(type, active, asOf));
                     return List.copyOf(pauses);
                 });
     }
 
-    private List<Interval> unavailable(
-            String type, String user, String market, long active, long asOf) {
-        var agreements = mapper.acceptanceHistory(type);
-        var history = mapper.acceptancePauses(type, active, asOf);
-        if (agreements.size() > 10000 || history.size() > 10000) {
-            throw new IllegalStateException("POINTS_AVAILABILITY_SCAN_LIMIT");
-        }
-        var available = new ArrayList<Interval>();
-        var json = new ObjectMapper();
-        for (var row : agreements) {
-            var body = json.readTree((String) row.get("payload_json"));
-            if (!body.hasNonNull("agreementNo")) {
-                continue;
-            }
-            var agreement = json.treeToValue(body, AgreementSnapshot.class);
-            long from = Math.max(active, time(row.get("created_at")));
-            long to =
-                    "ACTIVE".equals(row.get("state"))
-                            ? asOf
-                            : Math.min(asOf, time(row.get("updated_at")));
-            if (from >= to) {
-                continue;
-            }
-            var selectors =
-                    SwitchPolicy.selectors(
-                            new Availability(
-                                    type,
-                                    user,
-                                    agreement.storeNo(),
-                                    agreement.merchantNo(),
-                                    market,
-                                    null,
-                                    null,
-                                    Flow.REDEEM));
-            var outages =
-                    history.stream()
-                            .filter(
-                                    p ->
-                                            selectors.stream()
-                                                    .anyMatch(
-                                                            k ->
-                                                                    k.scope().equals(p.get("scope"))
-                                                                            && (k.key() == null
-                                                                                    || k.key()
-                                                                                            .equals(
-                                                                                                    p
-                                                                                                            .get(
-                                                                                                                    "scope_no")))))
-                            .map(
-                                    p ->
-                                            new Interval(
-                                                    ((Number) p.get("from_at")).longValue(),
-                                                    p.get("to_at") == null
-                                                            ? asOf
-                                                            : ((Number) p.get("to_at"))
-                                                                    .longValue()))
-                            .toList();
-            available.addAll(ExpiryPolicy.usable(new Interval(from, to), outages));
-        }
-        return ExpiryPolicy.unavailable(active, asOf, available);
-    }
-
-    private long time(Object value) {
-        if (value instanceof Timestamp stamp) {
-            return stamp.toInstant().toEpochMilli();
-        }
-        if (value instanceof LocalDateTime local) {
-            return local.atZone(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli();
-        }
-        throw new IllegalStateException("POINTS_ACCEPTANCE_TIME_UNKNOWN");
+    private List<Interval> unavailable(String type, long active, long asOf) {
+        return ExpiryPolicy.unavailable(active, asOf, availability.current(type));
     }
 
     @Override
