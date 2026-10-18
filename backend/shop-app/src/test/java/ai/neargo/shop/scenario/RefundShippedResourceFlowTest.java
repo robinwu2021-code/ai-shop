@@ -69,7 +69,7 @@ class RefundShippedResourceFlowTest {
             f.approve(p, no);
             if ("WAIT_RECEIPT".equals(jdbc.queryForObject(
                     "select status from ord_after_sale where after_sale_no=?", String.class, no))) {
-                afterSales.confirmRefund(f.merchant(p), no);
+                afterSales.confirmRefund(f.merchant(p), no, "确认退款并核实货物处置");
             }
             f.confirmCash(no);
             refunds.recover("RF-" + no);

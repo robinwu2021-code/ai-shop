@@ -715,8 +715,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         FulfillStage stage = stageOf(sub, true);
         boolean needsException = stage == FulfillStage.SHIPPED || stage == FulfillStage.LABELED;
         if (needsException && (reason == null || reason.isBlank())) {
-            throw BizException.of(ErrorCode.CONFLICT,
-                    "运单尚未签收，请升级商家端并填写货物处置说明后再确认退款");
+            throw BizException.of(ErrorCode.CONFLICT);
         }
         String label = needsException ? "商家核实货物后例外确认退款：" + reason.trim() : "商家确认退款";
         if (needsException) as.setMerchantRemark(reason.trim());

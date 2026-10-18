@@ -275,7 +275,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
             return toVO(sub);
         }
         if (hasOpenAfterSale(sub.getSubOrderNo())) {
-            throw BizException.of(ErrorCode.CONFLICT, "订单存在进行中的售后，不能交运或更正运单");
+            throw BizException.of(ErrorCode.CONFLICT);
         }
         OrderStateMachine.assertMerchantSubOrderTransit(sub.getStatus(), OrdSubOrder.FULFILLING);
         String old = sub.getExpressNo();
@@ -348,7 +348,7 @@ public class MerchantOrderServiceImpl implements MerchantOrderService {
     public OrderVO delivered(String merchantNo, String storeNo, String subOrderNo) {
         OrdSubOrder sub = require(merchantNo, storeNo, subOrderNo);
         if (hasOpenAfterSale(subOrderNo)) {
-            throw BizException.of(ErrorCode.CONFLICT, "订单存在进行中的售后，不能标记送达");
+            throw BizException.of(ErrorCode.CONFLICT);
         }
         /*
          * 留痕写「商家标记送达」而不是「已完成」——
