@@ -205,3 +205,5 @@ P12 preview得到无副作用短期报价；P13调用应用协调层建立意图
 内部SourceDecision状态UNKNOWN/PENDING/COMMITTED/CANCELLED；UNKNOWN不带已决策事实，COMMITTED/CANCELLED必须带持久DecisionRef及用户、主体、币种、金额和快照摘要。未查到返回UNKNOWN，不伪造取消。内部端口方法统一显式传EntitlementContext；恢复query按来源或原业务号，不新建操作。协议record置于端口内或同SPI包，禁止数据库实体透传。
 
 GrantCommand补entityNo用于权限和受益主体交叉核实；PAID_ORDER必须有订单行、单件、件内权益索引和paidFactRef。UseCommand的assetKind为枚举，STORED_VALUE只能accountNo+正金额，券/卡只能instanceNo+正次数，PAID_CARD不带消费金额；itemsSnapshot为不可变类型化条目。取消请求不接受提交决策，I11仅ORDER_COUPON可用。以上是结构校验，不能取代JB-011可信本人授权/源事实校验。
+
+JB-008分页对齐：内部consumer查询沿C端size 1–50，B/O普通分页仍1–100；CursorPage显式records/nextCursor/hasMore，hasMore与是否存在nextCursor保持一致。源码核对新增边界测试已先复现51未拒绝及hasMore缺失，再修复，未将新协议直接开放为HTTP。

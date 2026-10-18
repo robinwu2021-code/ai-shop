@@ -422,3 +422,16 @@ EntitlementCommandDeduplicator.execute从目录内提取为唯一组件，保留
 ### JB-019规则验收
 
 EntitlementValidityPolicy共享发布校验与时间计算；CountUsagePolicy/PeriodCountUsagePolicy复用UsageQuota计数。5项纯规则测试通过，覆盖闰年2月本地月末、夏令时23小时日、首次使用待激活与可信首用时间、绝对期限和缺少源时间、新预占到期拒绝而旧预占仍可结算/释放。消融将until改为包含结束时刻后，paymentBasedCalendarMonthEndsAtLocalNextMonthBoundary失败；恢复后5项及原目录/协议/幂等/架构整组通过。JB-019改DONE，只是纯规则交付；没有宣称实例激活、数据库扣次或P16/P17已接通。
+
+
+### 本批提交与定向证据
+
+| 提交 | 交付 | 当前证据 |
+|---|---|---|
+| 50f1c32c4 | JB-008共享协议子项，15文件815增/5删 | 首批9项协议回归通过；整个JB-008未完成 |
+| 855afc35e | JB-013公共幂等，7文件204增/46删 | 新增3项、原目录12项、原生MySQL1项通过；MANDATORY消融红后恢复绿 |
+| 685a15805 | JB-019时间和计数策略，8文件220增/21删 | 5项纯规则、结束时刻消融红后恢复绿；无状态激活/扣次落库 |
+
+后续协议复核发现并修复C端页上限51仍接受、CursorPage缺hasMore，新增失败边界后修正为1–50及一致性约束。恢复后的定向命令包含EntitlementContractTest、EntitlementCommandDeduplicatorTest、EntitlementValidityPolicyTest、EntitlementCatalogFlowTest、SourceRefTest、UsageQuotaTest、ArchitectureTest、PayTxManagerConventionTest：共56项、0失败/错误/跳过。隔离原生MySQL服务检查另1项实际通过、0跳过。新枚举词汇表已重新生成；文档66份、SQL方言无新增欠账、git diff --check通过。
+
+全量干净副本正在单独验证685a15805，结果以随后记录为准；此定向证据不冒充全量。当前9 DONE/1 DOING/45 TODO；发放、核销、储值账务和三端HTTP尚未完成。

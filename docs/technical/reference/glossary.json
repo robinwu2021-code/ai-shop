@@ -35100,6 +35100,41 @@
         "module": "shop-core"
       },
       {
+        "name": "AssetKind",
+        "values": [
+          "ORDER_COUPON",
+          "STORE_EXCHANGE",
+          "PAID_CARD",
+          "STORED_VALUE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "AssetState",
+        "values": [
+          "PENDING_ACTIVATION",
+          "ACTIVE",
+          "FROZEN",
+          "EXHAUSTED",
+          "EXPIRED",
+          "REVOKED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "AuthorizationState",
+        "values": [
+          "UNKNOWN",
+          "AUTHORIZED",
+          "CANCELLED",
+          "EXPIRED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "BookOutcome",
         "values": [
           "BOOKED",
@@ -35142,6 +35177,15 @@
         "module": "shop-merchant"
       },
       {
+        "name": "CollectionMethod",
+        "values": [
+          "CASH",
+          "TRANSFER"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "Decision",
         "values": [
           "CANCEL",
@@ -35149,6 +35193,19 @@
         ],
         "zh": "s33 的两个选择",
         "module": "shop-core"
+      },
+      {
+        "name": "DecisionType",
+        "values": [
+          "GRANT_COMMIT",
+          "GRANT_ABORT",
+          "USE_COMMIT",
+          "USE_CANCEL",
+          "ORDER_REVERSE",
+          "RECHARGE_RECEIVED"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "Dim",
@@ -35585,6 +35642,20 @@
         "module": "shop-base-auth"
       },
       {
+        "name": "RechargeState",
+        "values": [
+          "NOT_FOUND",
+          "WAIT_COLLECTION",
+          "SUBMITTED",
+          "RECEIVED",
+          "CREDITED",
+          "CANCELLED",
+          "REJECTED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "RefundProgress",
         "values": [
           "NONE",
@@ -35630,6 +35701,65 @@
         ],
         "zh": "发货单（ord_shipment）状态。",
         "module": "shop-core"
+      },
+      {
+        "name": "State",
+        "values": [
+          "NOT_FOUND",
+          "PREPARED",
+          "COMMITTED",
+          "ABORTED",
+          "PROCESSING",
+          "EXCEPTION"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "NOT_FOUND",
+          "WAIT_AUTH",
+          "HELD",
+          "COMMITTED",
+          "RELEASED",
+          "PROCESSING",
+          "EXCEPTION"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "UNKNOWN",
+          "PENDING",
+          "COMMITTED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "NOT_FOUND",
+          "RESERVED",
+          "CONFIRMED",
+          "RELEASED",
+          "EXCEPTION"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "StoreActivityType",
+        "values": [
+          "RECHARGE",
+          "CONSUMPTION"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "SubjectKind",

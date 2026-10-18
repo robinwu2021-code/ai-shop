@@ -83,7 +83,7 @@ public interface EntitlementQueryPort {
 
     /** Opaque cursors are bounded independently of business IDs; implementations verify their signature/scope. */
     static void checkPage(String cursor, int size) {
-        ContractChecks.require(size >= 1 && size <= 100);
+        ContractChecks.require(size >= 1 && size <= 50);
         ContractChecks.require(cursor == null || (!cursor.isBlank() && cursor.length() <= 512));
     }
 }

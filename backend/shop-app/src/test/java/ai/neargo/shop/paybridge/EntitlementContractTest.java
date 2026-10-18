@@ -1,5 +1,6 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.common.CursorPage;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.DecisionRef.DecisionType;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -126,6 +127,8 @@ class EntitlementContractTest {
         roundTrip(query, EntitlementQueryPort.AssetQuery.class);
         assertThatThrownBy(() -> new EntitlementQueryPort.AssetQuery("u1", "m1", null, null, null, 101))
                 .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new EntitlementQueryPort.AssetQuery("u1", "m1", null, null, null, 51))
+                .isInstanceOf(IllegalArgumentException.class);
         var day = new EntitlementQueryPort.AllowanceQuery("u1", "m1", "card1", LocalDate.of(2026, 10, 18));
         roundTrip(day, EntitlementQueryPort.AllowanceQuery.class);
     }
@@ -135,6 +138,21 @@ class EntitlementContractTest {
         assertThatThrownBy(() -> new SourceDecisionPort.SourceDecision(source, SourceDecisionPort.State.UNKNOWN,
                 null, "u1", "m1", "s1", "CNY", 100L, digest))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void cursorPageHasMoreMatchesItsNextCursorAndCopiesRecords() {
+        var rows = new ArrayList<>(List.of("record1"));
+        var page = new CursorPage<>(rows, "cursor1");
+        rows.clear();
+        assertThat(page.records()).containsExactly("record1");
+        var tree = json.readTree(json.writeValueAsString(page));
+        assertThat(tree.has("hasMore")).isTrue();
+        assertThat(tree.get("hasMore").asBoolean()).isTrue();
+        assertThatThrownBy(() -> new CursorPage<>(List.of("row"), "cursor", false))
+                .isInstanceOf(IllegalArgumentException.class);
+        var last = new CursorPage<>(List.of("row"), null);
+        assertThat(last.hasMore()).isFalse();
     }
 
     private <T> void roundTrip(T value, Class<T> type) {
