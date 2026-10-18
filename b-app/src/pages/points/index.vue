@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { confirm as confirmDialog } from "@ai-shop/ui/prompt";
 import { useMerchantStore } from "@/stores/merchant";
 import type { PaymentApplyment, StorePointAccount, StorePointAgreement, StorePointTerms, StorePointType } from "@shared/types";
 
@@ -63,8 +64,7 @@ async function load() {
 }
 
 function confirm(content: string): Promise<boolean> {
-  return new Promise((resolve) => uni.showModal({ title: String(t("points.title")), content,
-    success: (result) => resolve(result.confirm), fail: () => resolve(false) }));
+  return confirmDialog({ title: String(t("points.title")), hint: content });
 }
 
 async function sign() {
@@ -109,7 +109,7 @@ onShow(() => { void load(); });
     <sh-empty v-if="!loading && !types.length" :text="$t('points.noTypes')" />
     <view v-if="types.length" class="sh-card sh-mt-sm">
       <text class="sh-muted">{{ $t("points.type") }}</text>
-      <view class="choices">
+      <view class="sh-wrap sh-mt-xs">
         <view v-for="p in types" :key="p.typeCode" class="sh-chip"
           :class="{ 'sh-chip--primary': selected === p.typeCode }" @tap="selectType(p.typeCode)">
           {{ p.typeCode }} · {{ p.market }}
@@ -123,7 +123,7 @@ onShow(() => { void load(); });
     <view v-if="account" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("points.accountBuckets") }}</text>
       <text v-if="!account.exists" class="sh-muted note">{{ $t("points.emptyAccount") }}</text>
-      <view v-for="[bucket, value] in buckets" :key="bucket" class="sh-row sh-row--between row">
+      <view v-for="[bucket, value] in buckets" :key="bucket" class="sh-row sh-row--between sh-mt-xs">
         <text class="sh-muted">{{ bucket }}</text><text class="sh-num">{{ value }}</text>
       </view>
       <view class="sh-btn sh-btn--muted sh-mt-sm" @tap="openEntries">{{ $t("points.records") }}</view>
@@ -140,11 +140,11 @@ onShow(() => { void load(); });
         <view class="terms">{{ terms.text }}</view>
         <template v-if="isOwner && current.status === 'ACTIVE'">
           <text class="txt-caption sh-muted note">{{ $t("points.signHint") }}</text>
-          <view class="choices">
+          <view class="sh-wrap sh-mt-xs">
             <view v-for="[code, name] in channels" :key="code" class="sh-chip"
               :class="{ 'sh-chip--primary': channel === code }" @tap="channel = code">{{ name }}</view>
           </view>
-          <view class="choices">
+          <view class="sh-wrap sh-mt-xs">
             <view class="sh-chip" :class="{ 'sh-chip--primary': settleMode === 'PER_ORDER' }"
               @tap="settleMode = 'PER_ORDER'">{{ $t("points.perOrder") }}</view>
             <view class="sh-chip" :class="{ 'sh-chip--primary': settleMode === 'PERIODIC' }"
@@ -162,8 +162,6 @@ onShow(() => { void load(); });
 
 <style scoped>
 .note { display: block; margin-top: 12rpx; }
-.choices { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx; }
-.row { margin-top: 12rpx; }
 .terms { white-space: pre-wrap; margin-top: 16rpx; }
 .is-dim { opacity: 0.45; }
 </style>

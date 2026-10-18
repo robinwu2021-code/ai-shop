@@ -86,14 +86,14 @@ onShow(load);
       <text class="txt-caption hero__label">{{ $t("points.balance") }}</text>
       <text class="txt-hero hero__v sh-num">{{ account.balance }}</text>
       <text class="txt-caption hero__scope">{{ account.market }} · {{ account.typeCode }} · {{ account.currency }}</text>
-      <text v-if="account.pendingBalance" class="txt-caption hero__pending sh-num">
+      <text v-if="account.pendingBalance" class="txt-caption hero__pending txt-primary sh-num">
         {{ $t("points.pendingCount", { n: account.pendingBalance }) }}
       </text>
-      <text v-if="account.heldBalance" class="txt-caption hero__pending sh-num">
+      <text v-if="account.heldBalance" class="txt-caption hero__pending txt-primary sh-num">
         {{ $t("points.held", { n: account.heldBalance }) }}
       </text>
-      <text v-if="account.frozen" class="txt-caption hero__pending">{{ $t("points.frozen") }}</text>
-      <text v-if="account.status !== 'ACTIVE'" class="txt-caption hero__pending">
+      <text v-if="account.frozen" class="txt-caption hero__pending txt-primary">{{ $t("points.frozen") }}</text>
+      <text v-if="account.status !== 'ACTIVE'" class="txt-caption hero__pending txt-primary">
         {{ $t("points.notActive") }}
       </text>
     </view>
@@ -139,7 +139,6 @@ onShow(load);
 .hero { text-align: center; padding-top: 44rpx; padding-bottom: 36rpx; }
 .hero__label, .hero__v, .hero__scope, .hero__pending { display: block; }
 .hero__v, .hero__scope, .hero__pending { margin-top: 8rpx; }
-.hero__pending { color: var(--sh-primary-text); }
 .rules__title { display: block; margin-bottom: 16rpx; }
 .rules__t { display: block; }
 .rec { gap: 24rpx; margin-top: 28rpx; }
