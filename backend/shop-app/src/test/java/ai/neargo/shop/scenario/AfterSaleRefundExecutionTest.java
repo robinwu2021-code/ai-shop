@@ -253,11 +253,38 @@ class AfterSaleRefundExecutionTest {
                 .isEqualTo(executions.inspect(f.as()).plan());
     }
 
+    @Test void unknown_cash_refund_keeps_original_ticket_and_waits_for_verified_result() {
+        var f = cashFailureFixture(true, true);
+        String paymentNo = jdbc.queryForObject(
+                "SELECT payment_no FROM stl_payment WHERE after_sale_no=?", String.class, f.as());
+        assertThat(jdbc.queryForObject("SELECT status FROM stl_payment WHERE payment_no=?",
+                String.class, paymentNo)).isEqualTo("PENDING");
+        assertThat(jdbc.queryForObject("SELECT phase FROM ord_points_refund_binding WHERE after_sale_no=?",
+                String.class, f.as())).isEqualTo("CASH_AUTHORIZED");
+        assertThat(jdbc.queryForObject("SELECT status FROM stl_points_refund_hold WHERE after_sale_no=?",
+                String.class, f.as())).isEqualTo("PENDING");
+        afterSales.resumeRefund(f.as(), "SYSTEM");
+        assertThat(status(f.as())).isEqualTo("REFUNDING");
+        assertThat(jdbc.queryForObject("SELECT payment_no FROM stl_payment WHERE after_sale_no=?",
+                String.class, f.as())).isEqualTo(paymentNo);
+        verify(channel,times(1)).refund(any(),anyLong(),anyString(),anyString());
+        verify(pointsRefunds,never()).abort(any());
+        verify(pointsRefunds,never()).requestCompensation(any(),anyLong());
+        verify(pointsRefunds,never()).confirm(any());
+        assertThat(pointsRefundSource.manualForStore("STORE", "", 20).rows())
+                .extracting(ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.ManualRefund::afterSaleNo)
+                .doesNotContain(f.as());
+    }
+
     private Fixture compensatedFixture() {
         return cashFailureFixture(true);
     }
 
     private Fixture cashFailureFixture(boolean collected) {
+        return cashFailureFixture(collected, false);
+    }
+
+    private Fixture cashFailureFixture(boolean collected, boolean unknown) {
         var f=fixture();
         jdbc.update("UPDATE ord_order SET points_integrated=1,currency='CNY' WHERE order_no=?",f.sub());
         var route=new PaymentRoute("MERCHANT","STORE","PM-TEST","TEST","SM","PM:1","DIRECT");
@@ -278,10 +305,12 @@ class AfterSaleRefundExecutionTest {
         doReturn(new PointsRefundPort.CashDecision(prep.preparationNo(),prep.inputHash(),1,f.as(),
                 f.sub(),"USER","CNY","TEST",50,10,prep.collectionTicket(),payment))
                 .when(pointsRefunds).authorizeCash(prep.preparationNo(),prep.inputHash(),1);
-        doReturn(ai.neargo.shop.pay.channel.PayGateway.Result.fatal("rejected"))
+        doReturn(unknown ? ai.neargo.shop.pay.channel.PayGateway.Result.retry("uncertain")
+                : ai.neargo.shop.pay.channel.PayGateway.Result.fatal("rejected"))
                 .when(channel).refund(any(),anyLong(),anyString(),anyString());
         afterSales.approve("MERCHANT",f.as(),"approved",null,"CASH");
         afterSales.resumeRefund(f.as(),"SYSTEM");
+        if (unknown) return f;
         if (!collected) doReturn(new PointsRefundPort.RefundRecoveryStatus(prep.preparationNo(), f.as(), f.sub(),
                 "ABORTED", 50, jdbc.queryForObject(
                         "SELECT payment_no FROM stl_payment WHERE after_sale_no=?", String.class, f.as()), false, false))
