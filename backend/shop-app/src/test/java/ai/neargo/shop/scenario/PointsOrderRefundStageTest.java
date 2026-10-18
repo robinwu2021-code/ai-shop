@@ -83,6 +83,31 @@ class PointsOrderRefundStageTest {
         assertThat(refunds.inspect(f.as)).isNull();
     }
 
+    @Test
+    void second_open_refund_includes_reserved_cash_in_cumulative_goods() {
+        var f = fixture();
+        new TransactionTemplate(sourceTx).execute(s -> refunds.stage(f.as, f.plan, f.proof));
+        String next = "A" + UUID.randomUUID().toString().replace("-", "");
+        long item = f.plan.lines().getFirst().itemId();
+        var second = new RefundPlan(f.sub, List.of(new RefundLine(item, 0, 25)), 0);
+        jdbc.update(
+                "INSERT INTO ord_after_sale(after_sale_no,sub_order_no,order_no,user_no,entity_no,type,status,"
+                        + "refund_mode,refund_minor,approved_minor,reason,created_at,updated_at)"
+                        + " VALUES(?,?,(SELECT order_no FROM ord_sub_order WHERE sub_order_no=?),"
+                        + "'U','M','REFUND_ONLY','REFUNDING','CASH',25,25,'OTHER',NOW(),NOW())",
+                next, f.sub, f.sub);
+        when(executions.inspect(next)).thenReturn(new RefundExecutionService.Execution(
+                new RefundExecutionService.Preparation(next, f.sub, "H2", "PREPARED", 25),
+                second, null));
+
+        var staged = new TransactionTemplate(sourceTx)
+                .execute(s -> refunds.stage(next, second, f.proof));
+        assertThat(staged.command().lines())
+                .filteredOn(line -> line.itemId().equals(String.valueOf(item)))
+                .extracting(PointsRefundPort.RefundLine::cumulativeGoodsMinor)
+                .containsExactly(77L);
+    }
+
     @Test void only_matching_pay_preparation_and_authorized_revision_open_cash() {
         var f=fixture();
         var stage=new TransactionTemplate(sourceTx).execute(s -> refunds.stage(f.as,f.plan,f.proof));

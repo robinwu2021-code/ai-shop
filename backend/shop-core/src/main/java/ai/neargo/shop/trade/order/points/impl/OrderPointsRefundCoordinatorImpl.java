@@ -153,6 +153,27 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
                                                 == null
                                         && byItem.containsKey(String.valueOf(line.itemId())),
                                 "POINTS_REFUND_LINES_INVALID");
+                    Map<String, Long> reservedCash = new HashMap<>();
+                    Map<String, Long> reservedQty = new HashMap<>();
+                    for (var row : mapper.forSubOrder(plan.subOrderNo())) {
+                        String phase = (String) row.get("phase");
+                        if ("COMMITTED".equals(phase) || "ABORTED".equals(phase)) continue;
+                        String priorNo = (String) row.get("after_sale_no");
+                        var reserved = executions.inspect(priorNo);
+                        require(
+                                reserved != null
+                                        && reserved.preparation() != null
+                                        && reserved.plan() != null
+                                        && plan.subOrderNo().equals(reserved.plan().subOrderNo())
+                                        && !"ABORTED".equals(reserved.preparation().state()),
+                                "POINTS_REFUND_SOURCE_CONFLICT");
+                        for (var line : reserved.plan().lines()) {
+                            String id = String.valueOf(line.itemId());
+                            require(byItem.containsKey(id), "POINTS_REFUND_LINES_INVALID");
+                            reservedCash.merge(id, line.amountMinor(), Math::addExact);
+                            reservedQty.merge(id, (long) line.qty(), Math::addExact);
+                        }
+                    }
                     List<PointsRefundPort.RefundLine> lines = new ArrayList<>();
                     long cumulative = 0;
                     for (var id : original.keySet().stream().sorted().toList()) {
@@ -163,7 +184,9 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
                         long refunded =
                                 Math.addExact(
                                         value(item.getRefundedMinor()),
-                                        newCash.getOrDefault(id, 0L));
+                                        Math.addExact(
+                                                reservedCash.getOrDefault(id, 0L),
+                                                newCash.getOrDefault(id, 0L)));
                         require(refunded <= cashOriginal, "POINTS_REFUND_CAPACITY_EXCEEDED");
                         long gross = original.get(id);
                         long share =
@@ -172,6 +195,7 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
                                         : Math.multiplyExact(
                                                         gross,
                                                         value(item.getRefundedQty())
+                                                                + reservedQty.getOrDefault(id, 0L)
                                                                 + plan.lines().stream()
                                                                         .filter(
                                                                                 l ->
