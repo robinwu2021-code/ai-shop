@@ -569,7 +569,7 @@
             {
               "app": "b-app",
               "route": "/pages/points-records/index",
-              "title": "积分发放明细",
+              "title": "门店积分流水",
               "domain": "钱",
               "tab": false,
               "status": "已实现",
