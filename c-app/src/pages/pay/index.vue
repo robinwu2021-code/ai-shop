@@ -382,6 +382,26 @@ onUnmounted(() => { visible = false; resumePayment?.(false); resumePayment = und
          **不写在 `<sh-scaffold>` 上**：写在那儿的话，`order` 为空时连外壳都不渲染 ——
          没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
     <template v-if="order">
+      <template v-if="processing">
+        <view class="sh-card points-processing">
+          <text class="txt-display">
+            {{ $t(reconfirm ? "pay.pointsReconfirmTitle" : "pay.pointsProcessing") }}
+          </text>
+          <text class="txt-caption points-processing__hint">
+            {{ $t(reconfirm ? "pay.pointsReconfirmHint" : "pay.pointsProcessingHint") }}
+          </text>
+        </view>
+        <sh-actionbar class="bar-center" :pad="220">
+          <view v-if="reconfirm" class="sh-btn" @tap="cancelForReconfirm">
+            {{ $t("pay.pointsReconfirmAction") }}
+          </view>
+          <template v-else>
+            <view class="sh-btn" @tap="load(currentNo)">{{ $t("pay.refreshResult") }}</view>
+            <text class="sh-link sh-hit" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</text>
+          </template>
+        </sh-actionbar>
+      </template>
+      <template v-else>
         <text v-if="order.paymentResolution && phase !== 'waiting'" class="txt-caption block-reason">{{ $t("pay.manualRequired") }}</text>
         <!-- 待支付 -->
 
@@ -490,6 +510,7 @@ onUnmounted(() => { visible = false; resumePayment?.(false); resumePayment = und
             <text class="sh-link sh-hit" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</text>
           </sh-actionbar>
         </template>
+      </template>
     </template>
   </sh-scaffold>
 </template>

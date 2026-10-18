@@ -830,7 +830,7 @@ export default {
     REFUNDED: "Refunded",
   },
   order: {
-    logistics: "Delivery",
+
     syncPending: "Syncing",
     signedPendingReview: "Delivery needs review",
     signedPendingReviewHint: "Tracking shows delivery; this shipment must be verified before the order is completed.",
@@ -881,8 +881,8 @@ export default {
   afterSale: {
     withdraw: "Withdraw request",
     fullCash: "Full cash refund for this store order to the original payment method",
-    restock: "Returned goods can be resold; approve restocking (off by default)",
-    accepted: "Submitted. Check refund progress.",
+
+
     execution: {
       processing: "Refund accepted; awaiting payment result",
       failed: "Refund failed. Contact support about this refund.",

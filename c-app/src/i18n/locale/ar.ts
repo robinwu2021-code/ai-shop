@@ -830,7 +830,7 @@ export default {
     REFUNDED: "تم الاسترجاع",
   },
   order: {
-    logistics: "التوصيل",
+
     syncPending: "جارٍ المزامنة",
     signedPendingReview: "التسليم يحتاج إلى مراجعة",
     signedPendingReviewHint: "يظهر التتبع أن الشحنة سُلّمت؛ يجب التحقق منها قبل إكمال الطلب.",
@@ -881,8 +881,8 @@ export default {
   afterSale: {
     withdraw: "سحب الطلب",
     fullCash: "استرداد نقدي كامل لطلب المتجر إلى وسيلة الدفع الأصلية",
-    restock: "البضاعة المرتجعة قابلة للبيع؛ الموافقة على إعادة التخزين",
-    accepted: "تم الإرسال. راجع تقدم الاسترداد.",
+
+
     execution: {
       processing: "تم قبول الاسترداد وبانتظار نتيجة الدفع",
       failed: "فشل الاسترداد. تواصل مع الدعم.",

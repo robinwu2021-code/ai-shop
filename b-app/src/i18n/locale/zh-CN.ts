@@ -750,8 +750,8 @@ export default {
     waybillIncomplete: "请填写快递公司、新运单号和更正原因",
     waybillUnchanged: "新运单与当前运单相同",
     trace: "物流轨迹",
-    logistics: "物流",
-    logisticsStatus: "物流状态",
+
+
     syncPending: "同步中",
     shippedSyncing: "已发货，物流同步中",
     invalidWaybill: "运单信息无效",
@@ -780,18 +780,18 @@ export default {
     updateThrottled: "快递100查询限频",
     updateFailed: "更新失败",
     traceRefreshUnavailable: "当前渠道无法主动查询，请等待物流订阅更新",
-    traceAlreadyDelivered: "物流已显示签收；如运单有误，请进详情更正",
+
     pickCarrier: "请选择快递公司",
-    expressBook: "叫快递上门",
+
     expressSandbox: "测试",
-    shipMode: { PICKUP: "叫快递上门", SELF: "自己发货" },
-    expressBookBtn: "叫快递",
+
+
     expressWeight: "重量",
-    expressWeightPh: "重量（公斤）",
-    expressQuote: "查价",
-    expressNoQuote: "这条线路暂无快递可接",
-    expressConfirm: "{carrier}，运费约 {price}。快递员上门取件后，运费记入本店欠款。",
-    expressBooked: "已叫快递",
+
+
+
+
+
     expressCancel: "取消取件",
     expressCancelAsk: "取消这次取件？",
     expressKeep: "保留",
@@ -1575,7 +1575,7 @@ export default {
   afterSale: {
     pendingTab: "待处理申请",
     allTab: "全部售后",
-    withdraw: "撤销申请",
+
     fullCash: "本期按本门店子单全额原路退回现金",
     restock: "退货可再次销售，同意回库（默认不回库）",
     accepted: "已提交，请查看退款进度",
@@ -1590,8 +1590,8 @@ export default {
     },
     impactReturn: "整单退款，将同时退回用户的{what}",
     impactCoupon: "券「{name}」",
-    impactPoints: "{n} 积分",
-    impactRevoke: "并收回本单赠送的 {n} 积分",
+
+
     agreeReturn: "同意退货",
     buyerReason: "顾客理由：",
     rejectedHint: "已驳回，等待顾客确认或申请平台介入。",
@@ -1605,7 +1605,7 @@ export default {
     earlyRefundReasonRequired: "请先说明在途提前退款原因",
     returnExpress: "退货运单号",
     confirmReceived: "确认收货并退款",
-    refunded: "已确认收货，退款已发起",
+
     doneHint: "已退款，这一单结束了。",
     closedHint: "售后已关闭。",
     donePointsHint: "已按约定折 {n} 积分退回买家，这一单结束了。",

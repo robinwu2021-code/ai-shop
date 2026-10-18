@@ -4,14 +4,14 @@ import type { Order, OrderStatus } from "@shared/types";
 
 const mock = vi.hoisted(() => ({
   detail: vi.fn(), result: vi.fn(), methods: vi.fn(), init: vi.fn(), payment: vi.fn(),
-  subscribe: vi.fn(), clear: vi.fn(),
+  pointsState: vi.fn(), cancel: vi.fn(), subscribe: vi.fn(), clear: vi.fn(),
   load: undefined as undefined | ((query: Record<string, string>) => void),
   hide: undefined as undefined | (() => void),
   show: undefined as undefined | (() => void),
 }));
 vi.mock("@/api", () => ({ api: {
   orderDetail: mock.detail, payResult: mock.result, payMethods: mock.methods, payOrder: mock.init,
-  subscribeReport: vi.fn(), cancelOrder: vi.fn(),
+  orderPointsState: mock.pointsState, subscribeReport: vi.fn(), cancelOrder: mock.cancel,
 } }));
 vi.mock("@shared/ports/payment", () => ({ requestPayment: mock.payment }));
 vi.mock("@shared/ports/push", () => ({ orderSubscribeTmpls: () => [], requestSubscribe: mock.subscribe }));
@@ -25,6 +25,7 @@ vi.mock("@dcloudio/uni-app", () => ({
 }));
 
 import PayPage from "@/pages/pay/index.vue";
+import { uniMock } from "./setup";
 
 function order(no: string, status: OrderStatus, minor = 1000, extra: Partial<Order> = {}): Order {
   return {
@@ -64,6 +65,7 @@ describe("收银台支付资源与真实结果", () => {
     vi.useFakeTimers();
     vi.clearAllMocks();
     mock.detail.mockResolvedValue(order("S1", "WAIT_PAY"));
+    mock.pointsState.mockResolvedValue({ phase: "UNKNOWN", reason: null });
     mock.result.mockResolvedValue(order("S1", "PAID"));
     mock.methods.mockResolvedValue({ configured: true, methods: [{ payChannel: "WECHAT", available: true }] });
     mock.init.mockResolvedValue({ orderNo: "P1", settled: false, payParams: { token: "provider" } });
@@ -92,6 +94,33 @@ describe("收银台支付资源与真实结果", () => {
     const wrapper = await render("S1", true);
     expect(wrapper.text()).not.toContain("pay.done");
     expect(mock.init).not.toHaveBeenCalled();
+  });
+
+  it("积分处理中展示核验状态而不是通用未知结果或支付入口", async () => {
+    mock.detail.mockResolvedValue(order("S1", "POINTS_PROCESSING"));
+    mock.pointsState.mockResolvedValue({ phase: "UNKNOWN", reason: null });
+    const wrapper = await render();
+    expect(mock.pointsState).toHaveBeenCalledWith("S1");
+    expect(wrapper.text()).toContain("pay.pointsProcessing");
+    expect(wrapper.text()).toContain("pay.pointsProcessingHint");
+    expect(wrapper.text()).not.toContain("pay.payNow");
+    expect(wrapper.text()).not.toContain("pay.unknownResult");
+    expect(mock.methods).not.toHaveBeenCalled();
+  });
+
+  it("积分报价需要重确认时显示返回购物车动作", async () => {
+    mock.detail.mockResolvedValue(order("S1", "POINTS_PROCESSING"));
+    mock.pointsState.mockResolvedValue({ phase: "RECONFIRM", reason: "QUOTE_CHANGED" });
+    const wrapper = await render();
+    expect(wrapper.text()).toContain("pay.pointsReconfirmTitle");
+    expect(wrapper.text()).toContain("pay.pointsReconfirmHint");
+    expect(wrapper.text()).toContain("pay.pointsReconfirmAction");
+    expect(wrapper.text()).not.toContain("pay.payNow");
+    await wrapper.findAll(".sh-btn").find((node) => node.text() === "pay.pointsReconfirmAction")!.trigger("tap");
+    await flush();
+    expect(mock.cancel).toHaveBeenCalledWith("S1");
+    expect(mock.clear).toHaveBeenCalledOnce();
+    expect(uniMock.switchTab).toHaveBeenCalledOnce();
   });
 
   it("发起及回查统一主单号，订阅授权仍先于回查", async () => {

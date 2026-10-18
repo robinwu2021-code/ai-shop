@@ -902,7 +902,7 @@ export default {
     REFUNDED: "已退款",
   },
   order: {
-    logistics: "物流",
+
     syncPending: "同步中",
     signedPendingReview: "签收待核实",
     signedPendingReviewHint: "物流显示签收，待核实本次发货轨迹后完成订单",
@@ -954,8 +954,8 @@ export default {
   afterSale: {
     withdraw: "撤销申请",
     fullCash: "本期按本门店子单全额原路退回现金",
-    restock: "退货可再次销售，同意回库（默认不回库）",
-    accepted: "已提交，请查看退款进度",
+
+
     execution: {
       processing: "退款已受理，等待资金结果",
       failed: "退款失败，请联系客服核对原退款单",
