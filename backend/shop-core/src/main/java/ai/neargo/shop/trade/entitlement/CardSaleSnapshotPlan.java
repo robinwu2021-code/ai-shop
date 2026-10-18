@@ -18,7 +18,8 @@ public final class CardSaleSnapshotPlan {
         var result = new ArrayList<Snapshot>();
         for (SaleLine line : lines) {
             if (line == null || blank(line.orderLineNo()) || blank(line.subOrderNo()) || blank(line.goodsNo())
-                    || blank(line.skuNo()) || line.unitPriceMinor() < 0 || line.quantity() <= 0
+                    || blank(line.entityNo()) || blank(line.storeNo()) || blank(line.skuNo())
+                    || line.unitPriceMinor() < 0 || line.quantity() <= 0
                     || line.entitlements() == null || line.entitlements().isEmpty()) {
                 throw new IllegalArgumentException("Sale line facts are incomplete");
             }
@@ -30,7 +31,7 @@ public final class CardSaleSnapshotPlan {
                     }
                     var source = new SourceRef("CORE", "PAID_CARD_ORDER", order.orderNo(), line.orderLineNo(),
                             unit, index + 1, 0);
-                    String hash = sha256(order.orderNo(), order.userNo(), order.entityNo(), order.storeNo(),
+                    String hash = sha256(order.orderNo(), order.userNo(), line.entityNo(), line.storeNo(),
                             order.currency(), line.orderLineNo(), line.subOrderNo(), line.goodsNo(), line.skuNo(),
                             Integer.toString(unit), Integer.toString(index + 1), rule.templateVersionNo(),
                             Long.toString(line.unitPriceMinor()), rule.ruleType(), rule.ruleSnapshot());
@@ -61,13 +62,14 @@ public final class CardSaleSnapshotPlan {
         catch (NoSuchAlgorithmException e) { throw new IllegalStateException("SHA-256 is required", e); }
     }
 
-    public record OrderFacts(String orderNo, String userNo, String entityNo, String storeNo, String currency) {
+    public record OrderFacts(String orderNo, String userNo, String currency) {
         public OrderFacts {
-            if (blank(orderNo) || blank(userNo) || blank(entityNo) || blank(storeNo) || blank(currency))
+            if (blank(orderNo) || blank(userNo) || blank(currency))
                 throw new IllegalArgumentException("Order identity is incomplete");
         }
     }
-    public record SaleLine(String orderLineNo, String subOrderNo, String goodsNo, String skuNo,
+    public record SaleLine(String orderLineNo, String subOrderNo, String entityNo, String storeNo,
+                           String goodsNo, String skuNo,
                            long unitPriceMinor, int quantity, List<EntitlementRule> entitlements) { }
     public record EntitlementRule(String templateVersionNo, String ruleType, String ruleSnapshot) { }
     public record Snapshot(SourceRef source, OrderFacts order, SaleLine line, int unitIndex,

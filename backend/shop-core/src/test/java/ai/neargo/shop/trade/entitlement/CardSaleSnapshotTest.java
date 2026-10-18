@@ -26,10 +26,10 @@ class CardSaleSnapshotTest {
 
     @Test
     void expandsPurchasedUnitsIntoStablePerEntitlementSources() {
-        var facts = new CardSaleSnapshotPlan.OrderFacts("SO20261018001", "U1", "E1", "ST1", "CNY");
+        var facts = new CardSaleSnapshotPlan.OrderFacts("SO20261018001", "U1", "CNY");
         var entitlementA = new CardSaleSnapshotPlan.EntitlementRule("ETV1", "COUNT", "{\"total\":10}");
         var entitlementB = new CardSaleSnapshotPlan.EntitlementRule("ETV2", "COUNT", "{\"total\":2}");
-        var line = new CardSaleSnapshotPlan.SaleLine("OL1", "SUB1", "G1", "SK1", 12000L, 2,
+        var line = new CardSaleSnapshotPlan.SaleLine("OL1", "SUB1", "E1", "ST1", "G1", "SK1", 12000L, 2,
                 List.of(entitlementA, entitlementB));
 
         List<CardSaleSnapshotPlan.Snapshot> first = CardSaleSnapshotPlan.expand(facts, List.of(line));
@@ -53,14 +53,14 @@ class CardSaleSnapshotTest {
 
     @Test
     void rejectsAmbiguousOrIncompleteSaleFacts() {
-        var facts = new CardSaleSnapshotPlan.OrderFacts("SO1", "U1", "E1", "ST1", "CNY");
+        var facts = new CardSaleSnapshotPlan.OrderFacts("SO1", "U1", "CNY");
         var rule = new CardSaleSnapshotPlan.EntitlementRule("ETV1", "COUNT", "{\"total\":10}");
 
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> CardSaleSnapshotPlan.expand(facts, List.of(
-                new CardSaleSnapshotPlan.SaleLine("OL1", "SUB1", "G1", "SK1", 1000L, 0, List.of(rule)))))
+                new CardSaleSnapshotPlan.SaleLine("OL1", "SUB1", "E1", "ST1", "G1", "SK1", 1000L, 0, List.of(rule)))))
                 .isInstanceOf(IllegalArgumentException.class);
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> CardSaleSnapshotPlan.expand(facts, List.of(
-                new CardSaleSnapshotPlan.SaleLine("OL1", "SUB1", "G1", "SK1", 1000L, 1, List.of()))))
+                new CardSaleSnapshotPlan.SaleLine("OL1", "SUB1", "E1", "ST1", "G1", "SK1", 1000L, 1, List.of()))))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -75,13 +75,13 @@ class CardSaleSnapshotTest {
 
     @Test
     void snapshotHashUsesUnambiguousFieldBoundaries() {
-        var firstOrder = new CardSaleSnapshotPlan.OrderFacts("SO\nU1", "U2", "E1", "ST1", "CNY");
-        var secondOrder = new CardSaleSnapshotPlan.OrderFacts("SO", "U1\nU2", "E1", "ST1", "CNY");
+        var firstOrder = new CardSaleSnapshotPlan.OrderFacts("SO\nU1", "U2", "CNY");
+        var secondOrder = new CardSaleSnapshotPlan.OrderFacts("SO", "U1\nU2", "CNY");
         var rule = new CardSaleSnapshotPlan.EntitlementRule("ETV1", "COUNT", "{\"total\":10}");
         var first = CardSaleSnapshotPlan.expand(firstOrder, List.of(
-                new CardSaleSnapshotPlan.SaleLine("OL1", "SUB1", "G1", "SK1", 1000, 1, List.of(rule))));
+                new CardSaleSnapshotPlan.SaleLine("OL1", "SUB1", "E1", "ST1", "G1", "SK1", 1000, 1, List.of(rule))));
         var second = CardSaleSnapshotPlan.expand(secondOrder, List.of(
-                new CardSaleSnapshotPlan.SaleLine("OL1", "SUB1", "G1", "SK1", 1000, 1, List.of(rule))));
+                new CardSaleSnapshotPlan.SaleLine("OL1", "SUB1", "E1", "ST1", "G1", "SK1", 1000, 1, List.of(rule))));
 
         assertThat(first.getFirst().snapshotHash()).isNotEqualTo(second.getFirst().snapshotHash());
     }
@@ -98,9 +98,9 @@ class CardSaleSnapshotTest {
         when(snapshotMapper.findBySource(eq("MAIN"), anyString())).thenAnswer(invocation ->
                 stored.get(invocation.getArgument(1)));
         var service = new CardSaleSnapshotServiceImpl(snapshotMapper, orderMapper);
-        var order = new CardSaleSnapshotPlan.OrderFacts("SO-REPLAY", "U1", "E1", "ST1", "CNY");
+        var order = new CardSaleSnapshotPlan.OrderFacts("SO-REPLAY", "U1", "CNY");
         var rule = new CardSaleSnapshotPlan.EntitlementRule("ETV1", "COUNT", "{\"total\":10}");
-        var line = new CardSaleSnapshotPlan.SaleLine("OL-1", "SUB-1", "G-1", "SK-1", 12000, 2,
+        var line = new CardSaleSnapshotPlan.SaleLine("OL-1", "SUB-1", "E1", "ST1", "G-1", "SK-1", 12000, 2,
                 List.of(rule, new CardSaleSnapshotPlan.EntitlementRule("ETV2", "COUNT", "{\"total\":1}")));
 
         var first = service.capture(order, List.of(line));
@@ -110,9 +110,34 @@ class CardSaleSnapshotTest {
         assertThat(first).extracting(CardSaleSnapshotPlan.Snapshot::snapshotHash)
                 .containsExactlyElementsOf(replay.stream().map(CardSaleSnapshotPlan.Snapshot::snapshotHash).toList());
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.capture(order, List.of(new CardSaleSnapshotPlan.SaleLine("OL-1", "SUB-1",
-                "G-1", "SK-1", 13000, 2, line.entitlements()))))
+                "E1", "ST1", "G-1", "SK-1", 13000, 2, line.entitlements()))))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("different immutable facts");
         assertThat(stored).hasSize(4);
+    }
+
+    @Test
+    void snapshotsKeepMerchantAndStoreOwnershipPerSubOrderLine() {
+        CardSaleSnapshotMapper snapshotMapper = mock(CardSaleSnapshotMapper.class);
+        OrderMapper orderMapper = mock(OrderMapper.class);
+        Map<String, ai.neargo.shop.trade.entitlement.entity.OrdCardSaleSnapshot> stored = new ConcurrentHashMap<>();
+        when(snapshotMapper.insertIfAbsent(any())).thenAnswer(invocation -> {
+            var row = (ai.neargo.shop.trade.entitlement.entity.OrdCardSaleSnapshot) invocation.getArgument(0);
+            return stored.putIfAbsent(row.getSourceKey(), row) == null ? 1 : 0;
+        });
+        when(snapshotMapper.findBySource(eq("MAIN"), anyString())).thenAnswer(invocation ->
+                stored.get(invocation.getArgument(1)));
+        var service = new CardSaleSnapshotServiceImpl(snapshotMapper, orderMapper);
+        var order = new CardSaleSnapshotPlan.OrderFacts("SO-MIXED", "U1", "CNY");
+        var rule = new CardSaleSnapshotPlan.EntitlementRule("ETV1", "COUNT", "{\"total\":10}");
+
+        service.capture(order, List.of(
+                new CardSaleSnapshotPlan.SaleLine("OL-1", "SUB-1", "E1", "ST1", "G-1", "SK-1", 12000, 1, List.of(rule)),
+                new CardSaleSnapshotPlan.SaleLine("OL-2", "SUB-2", "E2", "ST2", "G-2", "SK-2", 15000, 1, List.of(rule))));
+
+        assertThat(stored.values()).extracting(ai.neargo.shop.trade.entitlement.entity.OrdCardSaleSnapshot::getEntityNo)
+                .containsExactlyInAnyOrder("E1", "E2");
+        assertThat(stored.values()).extracting(ai.neargo.shop.trade.entitlement.entity.OrdCardSaleSnapshot::getStoreNo)
+                .containsExactlyInAnyOrder("ST1", "ST2");
     }
 
     @Test

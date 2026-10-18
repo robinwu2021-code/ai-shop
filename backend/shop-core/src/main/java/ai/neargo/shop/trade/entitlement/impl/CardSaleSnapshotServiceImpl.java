@@ -74,8 +74,8 @@ public class CardSaleSnapshotServiceImpl implements CardSaleSnapshotService {
         row.setUnitIndex(snapshot.unitIndex());
         row.setEntitlementIndex(snapshot.entitlementIndex());
         row.setUserNo(snapshot.order().userNo());
-        row.setEntityNo(snapshot.order().entityNo());
-        row.setStoreNo(snapshot.order().storeNo());
+        row.setEntityNo(snapshot.line().entityNo());
+        row.setStoreNo(snapshot.line().storeNo());
         row.setGoodsNo(snapshot.line().goodsNo());
         row.setSkuNo(snapshot.line().skuNo());
         row.setTemplateVersionNo(snapshot.rule().templateVersionNo());
