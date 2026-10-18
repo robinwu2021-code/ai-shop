@@ -6,6 +6,12 @@ import static org.mockito.Mockito.when;
 import ai.neargo.shop.spi.points.*;
 import ai.neargo.shop.trade.order.points.*;
 import ai.neargo.shop.trade.order.refund.service.RefundExecutionService;
+import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.order.transition.TradeStatusWriter;
+import ai.neargo.shop.trade.order.machine.order.OrderEvent;
+import ai.neargo.shop.trade.order.machine.order.OrderContext;
+import ai.neargo.shop.trade.order.statemachine.Actor;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +38,8 @@ class PointsOrderClosureFlowTest {
     @Autowired OrderPointsFactService facts;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager tx;
+    @Autowired TradeStatusWriter statusWriter;
+    @Autowired SubOrderMapper subs;
     @MockitoBean OrderPointsBindingService bindings;
     @MockitoBean RefundExecutionService executions;
     private final ObjectMapper json = new ObjectMapper();
@@ -131,6 +139,20 @@ class PointsOrderClosureFlowTest {
 
         assertThat(flow.finalizeSubOrder(f.sub())).isTrue();
         assertThat(flow.closeRefundResponsibility(f.sub())).isTrue();
+    }
+
+    @Test
+    void normal_completion_writes_the_final_fact_in_the_same_source_flow() {
+        var f = fixture(System.currentTimeMillis() - 8L * 86_400_000L);
+        jdbc.update("DELETE FROM ord_status_log WHERE sub_order_no=? AND status='COMPLETED'", f.sub());
+        jdbc.update("UPDATE ord_sub_order SET status='FULFILLING',completed_at=NULL WHERE sub_order_no=?", f.sub());
+        new TransactionTemplate(tx).executeWithoutResult(s -> {
+            OrdSubOrder sub = subs.selectOne(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<OrdSubOrder>()
+                    .eq("sub_order_no", f.sub()));
+            statusWriter.order(sub, OrderEvent.DELIVERED_BY_MERCHANT, Actor.MERCHANT,
+                    "M", "delivered", OrderContext.authorizedOnly());
+        });
+        assertThat(facts.find("ORDER:FINALIZED:" + f.sub())).isPresent();
     }
 
     private Fixture fixture(long completedAt) {
