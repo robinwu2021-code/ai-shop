@@ -230,7 +230,7 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
                             sourceVersion,
                             json.writeValueAsString(command));
                     return new Binding(
-                            afterSaleNo, plan.subOrderNo(), Phase.STAGED, 0, command, null, null);
+                            afterSaleNo, plan.subOrderNo(), Phase.STAGED, 0, command, null, null, null);
                 });
     }
 
@@ -424,12 +424,21 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
             require(outcome!=null && current.preparation()!=null
                     && current.preparation().preparationNo().equals(outcome.preparationNo())
                     && "CONFIRMED".equals(outcome.state()),"POINTS_REFUND_CONFIRMATION_MISMATCH");
-            if(current.phase()==Phase.POINTS_CONFIRMED || current.phase()==Phase.COMMITTED) return current;
+            if(current.phase()==Phase.POINTS_CONFIRMED || current.phase()==Phase.COMMITTED) {
+                require(current.outcome()!=null
+                        && current.outcome().returnedPoints()==outcome.returnedPoints()
+                        && current.outcome().reclaimedPoints()==outcome.reclaimedPoints()
+                        && current.outcome().collectedMinor()==outcome.collectedMinor()
+                        && current.outcome().waivedPoints()==outcome.waivedPoints()
+                        && current.outcome().receivableMinor()==outcome.receivableMinor()
+                        && Objects.equals(current.outcome().voucherNo(),outcome.voucherNo()),
+                        "POINTS_REFUND_CONFIRMATION_MISMATCH");
+                return current;
+            }
             require(current.phase()==Phase.CASH_CONFIRMED
                     || current.phase()==Phase.ZERO_AUTHORIZED,"POINTS_REFUND_PHASE_CONFLICT");
-            require(mapper.change(afterSaleNo,current.version(),current.phase().name(),
-                    Phase.POINTS_CONFIRMED.name(),json.writeValueAsString(current.preparation()),
-                    current.cashPaymentNo())==1,"POINTS_REFUND_PHASE_CONFLICT");
+            require(mapper.confirm(afterSaleNo,current.version(),current.phase().name(),
+                    json.writeValueAsString(outcome))==1,"POINTS_REFUND_PHASE_CONFLICT");
             return inspect(afterSaleNo);
         });
     }
@@ -459,6 +468,23 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
 
     @Override
     @Transactional(value = "transactionManager", readOnly = true)
+    public ConfirmedTotals confirmedTotals(String subOrderNo) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            long returned=0, reclaimed=0;
+            for (var row : mapper.forSubOrder(subOrderNo)) {
+                if (!Set.of("POINTS_CONFIRMED","COMMITTED").contains(row.get("phase"))) continue;
+                Object body=row.get("outcome_json");
+                require(body!=null,"POINTS_REFUND_CONFIRMATION_MISSING");
+                var outcome=json.readValue((String)body,PointsRefundPort.RefundOutcome.class);
+                returned=Math.addExact(returned,outcome.returnedPoints());
+                reclaimed=Math.addExact(reclaimed,outcome.reclaimedPoints());
+            }
+            return new ConfirmedTotals(returned,reclaimed);
+        });
+    }
+
+    @Override
+    @Transactional(value = "transactionManager", readOnly = true)
     public List<String> pending(int limit) {
         require(limit >= 1 && limit <= 200, "POINTS_REFUND_LIMIT_INVALID");
         return DataScopeContext.executeWithoutScope(() -> mapper.pending(limit));
@@ -478,7 +504,9 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
                         : json.readValue(
                                 (String) row.get("preparation_json"),
                                 PointsRefundPort.RefundPreparation.class),
-                (String) row.get("cash_payment_no"));
+                (String) row.get("cash_payment_no"),
+                row.get("outcome_json") == null ? null : json.readValue(
+                        (String) row.get("outcome_json"), PointsRefundPort.RefundOutcome.class));
     }
 
     private Map<String,Object> locked(String no) {

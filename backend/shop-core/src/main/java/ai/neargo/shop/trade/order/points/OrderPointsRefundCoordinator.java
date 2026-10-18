@@ -27,6 +27,10 @@ public interface OrderPointsRefundCoordinator {
 
     Binding inspect(String afterSaleNo);
 
+    ConfirmedTotals confirmedTotals(String subOrderNo);
+
+    record ConfirmedTotals(long returnedPoints, long reclaimedPoints) {}
+
     List<String> pending(int limit);
 
     enum Phase {
@@ -50,5 +54,6 @@ public interface OrderPointsRefundCoordinator {
             long version,
             PointsRefundPort.RefundCommand command,
             PointsRefundPort.RefundPreparation preparation,
-            String cashPaymentNo) {}
+            String cashPaymentNo,
+            PointsRefundPort.RefundOutcome outcome) {}
 }

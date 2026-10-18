@@ -30,6 +30,7 @@ import java.util.UUID;
 @ActiveProfiles("test")
 class PointsOrderRefundStageTest {
     @Autowired OrderPointsRefundCoordinator refunds;
+    @Autowired ai.neargo.shop.trade.service.OrderService orders;
     @Autowired ai.neargo.shop.trade.order.points.OrderPointsFactService journal;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager sourceTx;
@@ -111,13 +112,15 @@ class PointsOrderRefundStageTest {
     @Test void only_matching_pay_preparation_and_authorized_revision_open_cash() {
         var f=fixture();
         var stage=new TransactionTemplate(sourceTx).execute(s -> refunds.stage(f.as,f.plan,f.proof));
-        var prep=new PointsRefundPort.RefundPreparation("PREP:"+f.as,"TYPE",1,"HASH",0,0,0,
+        var prep=new PointsRefundPort.RefundPreparation("PREP:"+f.as,"TYPE",1,"HASH",7,3,0,
                 0,0,45,0,null,"PREPARED");
         assertThatThrownBy(() -> refunds.acceptPreparation(f.as,new PointsRefundPort.RefundPreparation(
                 "PREP:"+f.as,"TYPE",1,"HASH",0,0,0,0,0,46,0,null,"PREPARED")))
                 .hasMessageContaining("POINTS_REFUND_PREPARATION_MISMATCH");
         var accepted=refunds.acceptPreparation(f.as,prep);
         assertThat(accepted.phase()).isEqualTo(OrderPointsRefundCoordinator.Phase.PREPARED);
+        assertThat(refunds.confirmedTotals(f.sub)).isEqualTo(
+                new OrderPointsRefundCoordinator.ConfirmedTotals(0,0));
         assertThat(refunds.acceptPreparation(f.as,prep)).isEqualTo(accepted);
         var wrong=new PointsRefundPort.CashDecision(prep.preparationNo(),prep.inputHash(),2,f.as,f.sub,
                 "U","CNY","TEST",45,0,null,stage.command().payment());
@@ -136,14 +139,28 @@ class PointsOrderRefundStageTest {
         var confirmedCash=new TransactionTemplate(sourceTx).execute(s -> refunds.recordCashSuccess(f.as,proof));
         assertThat(confirmedCash.phase()).isEqualTo(OrderPointsRefundCoordinator.Phase.CASH_CONFIRMED);
         assertThat(journal.find("ORDER:REFUND_CONFIRM:"+f.as)).isPresent();
-        assertThat(refunds.acceptPointsConfirmation(f.as,new PointsRefundPort.RefundOutcome(
-                prep.preparationNo(),"CONFIRMED",0,0,0,0,0,null,false)).phase())
+        var outcome=new PointsRefundPort.RefundOutcome(
+                prep.preparationNo(),"CONFIRMED",7,3,0,0,0,"VOUCHER:"+f.as,false);
+        assertThat(refunds.acceptPointsConfirmation(f.as,outcome).phase())
                 .isEqualTo(OrderPointsRefundCoordinator.Phase.POINTS_CONFIRMED);
+        assertThat(refunds.confirmedTotals(f.sub)).isEqualTo(
+                new OrderPointsRefundCoordinator.ConfirmedTotals(7,3));
+        var refundedSub=new ai.neargo.shop.trade.entity.OrdSubOrder();
+        refundedSub.setSubOrderNo(f.sub);
+        refundedSub.setOrderNo(f.proof.orderNo());
+        refundedSub.setStatus(ai.neargo.shop.trade.entity.OrdSubOrder.REFUNDED);
+        assertThat(orders.returnedOf(refundedSub).pointsReturned()).isEqualTo(7);
+        assertThat(orders.returnedOf(refundedSub).pointsClawedBack()).isEqualTo(3);
+        assertThatThrownBy(() -> refunds.acceptPointsConfirmation(f.as,new PointsRefundPort.RefundOutcome(
+                prep.preparationNo(),"CONFIRMED",8,3,0,0,0,"VOUCHER:"+f.as,false)))
+                .hasMessageContaining("POINTS_REFUND_CONFIRMATION_MISMATCH");
         when(executions.inspect(f.as)).thenReturn(new RefundExecutionService.Execution(
                 new RefundExecutionService.Preparation(f.as,f.sub,"H","COMMITTED",45),
                 f.plan,cashNo));
         assertThat(new TransactionTemplate(sourceTx).execute(s -> refunds.commit(f.as)).phase())
                 .isEqualTo(OrderPointsRefundCoordinator.Phase.COMMITTED);
+        assertThat(refunds.confirmedTotals(f.sub)).isEqualTo(
+                new OrderPointsRefundCoordinator.ConfirmedTotals(7,3));
     }
 
     @Test void zero_cash_completion_is_a_stable_source_fact_before_points_confirmation() {

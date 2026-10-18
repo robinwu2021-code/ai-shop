@@ -38,6 +38,12 @@ public interface OrderPointsRefundBindingMapper {
             @Param("preparation") String preparation,
             @Param("cash") String cash);
 
+    @Update("UPDATE ord_points_refund_binding SET phase='POINTS_CONFIRMED',outcome_json=#{outcome},"
+            + "version=version+1,updated_at=CURRENT_TIMESTAMP WHERE after_sale_no=#{no}"
+            + " AND phase=#{from} AND version=#{version}")
+    int confirm(@Param("no") String no, @Param("version") long version,
+            @Param("from") String from, @Param("outcome") String outcome);
+
     @Select(
             "SELECT after_sale_no FROM ord_points_refund_binding WHERE phase NOT IN"
                 + " ('COMMITTED','ABORTED') ORDER BY updated_at,after_sale_no LIMIT #{limit}")

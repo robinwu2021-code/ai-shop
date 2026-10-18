@@ -118,7 +118,13 @@ public class OrderServiceImpl implements OrderService {
     private final CouponPort couponPort;
     /** 店铺活动的自动优惠（满减）。此前 mkt_campaign 没有任何消费方 */
     private final CampaignPort campaignPort;
-    private final PointsPort pointsPort;
+    private ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator pointsRefundSource;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPointsRefundSource(
+            ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator refundSource) {
+        this.pointsRefundSource = refundSource;
+    }
     private ai.neargo.shop.trade.order.points.OrderPointsCoordinator pointsCoordinator;
     private ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator pointsPlacement;
     private ai.neargo.shop.trade.order.points.OrderPointsTargetFactory pointsTargets;
@@ -335,7 +341,7 @@ public class OrderServiceImpl implements OrderService {
                             MerchantQueryPort merchantPort,
                             ai.neargo.shop.spi.user.MerchantAdminPort merchantAdminPort,
                             AttributionPort attributionPort,
-                            CouponPort couponPort, CampaignPort campaignPort, PointsPort pointsPort,
+                            CouponPort couponPort, CampaignPort campaignPort,
                             ai.neargo.shop.spi.pay.PayChannelMasterPort payChannelMasterPort,
                             ai.neargo.shop.spi.product.PointsRulePort pointsRulePort,
                             SettlePort settlePort,
@@ -371,7 +377,6 @@ public class OrderServiceImpl implements OrderService {
         this.merchantAdminPort = merchantAdminPort;
         this.attributionPort = attributionPort;
         this.couponPort = couponPort;
-        this.pointsPort = pointsPort;
         this.payChannelMasterPort = payChannelMasterPort;
         this.pointsRulePort = pointsRulePort;
         this.campaignPort = campaignPort;
@@ -571,8 +576,15 @@ public class OrderServiceImpl implements OrderService {
             return null;
         }
         String title = couponPort.returnedTitleOf(sub.getOrderNo());
-        var pts = pointsPort.returnedOf(List.of(sub.getSubOrderNo()));
-        return new OrderVO.Returned(title, pts.refunded(), pts.clawedBack());
+        var root=orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                .eq(OrdOrder::getOrderNo,sub.getOrderNo()).last("LIMIT 1"));
+        if (root != null && Boolean.TRUE.equals(root.getPointsIntegrated())) {
+            if (pointsRefundSource == null)
+                throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
+            var totals=pointsRefundSource.confirmedTotals(sub.getSubOrderNo());
+            return new OrderVO.Returned(title,totals.returnedPoints(),totals.reclaimedPoints());
+        }
+        return new OrderVO.Returned(title,0,0);
     }
 
     /** 一件货的限购与已买量 */

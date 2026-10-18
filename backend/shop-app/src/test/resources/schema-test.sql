@@ -5631,6 +5631,7 @@ CREATE TABLE IF NOT EXISTS ord_points_refund_binding
     version BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    outcome_json LONGTEXT NULL,
     PRIMARY KEY (after_sale_no)
 );
 
