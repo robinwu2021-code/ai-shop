@@ -29,7 +29,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.function.Supplier;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -176,18 +175,20 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
         row.setPayloadHash(hash);
         row.setResourceNo(resourceNo);
         row.setResultStatus("PENDING");
-        try {
-            commands.insert(row);
-        } catch (DuplicateKeyException duplicate) {
-            PayEntCommandDedup original = commands.lock(scope.tenantNo(), operation, key);
-            if (original == null || !hash.equals(original.getPayloadHash())
-                    || !"COMPLETED".equals(original.getResultStatus())) {
-                throw BizException.of(ErrorCode.CONFLICT);
-            }
+        commands.claim(row);
+        PayEntCommandDedup original = commands.lock(scope.tenantNo(), operation, key);
+        if (original == null || !hash.equals(original.getPayloadHash())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        if ("COMPLETED".equals(original.getResultStatus())) {
             return json.readValue(original.getResponseSnapshot(), responseType);
         }
+        // A PENDING row cannot outlive this transaction: every successful write completes it below.
+        if (!"PENDING".equals(original.getResultStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         T response = work.get();
-        changed(commands.complete(row.getId(), scope.tenantNo(), json.writeValueAsString(response),
+        changed(commands.complete(original.getId(), scope.tenantNo(), json.writeValueAsString(response),
                 scope.actorNo(), now()));
         return response;
     }

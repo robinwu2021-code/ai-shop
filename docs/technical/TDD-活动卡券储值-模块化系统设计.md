@@ -343,3 +343,14 @@ EntitlementCatalogFlowTest本批12项通过，覆盖持久回读、稳定幂等/
 生成物同步：schema-test.sql、ER图/词汇；ER补ent/pay前缀及表级模板引用，避免与商品/消息template_no误连。实体字段与血缘检查20项通过。原有gen-model-align被MemberSetting错误字段映射阻塞，未修改生成器或伪造模型报告；在未修改基线00d04e580复现同样错误。spec-completeness有3项字段说明失败，基线与本分支相同（C/B/运营字段JSDoc），未加入豁免或改失败清单；本批未改变TS运行契约。
 
 正式迁移版本号V425在本隔离分支分配，集成时须再次检查其他分支版本号占用。绝对期限在发布和新引用时验证未过期；历史读取继续保留，不自动撤销已取得权益。
+
+
+### 原生事务补充验证（2026-10-18）
+
+提交9ab17b5a1的干净副本已完成test-compile及20模块全量回归：3525项、0失败，耗时586秒。该结果对应修复下述原生死锁前的提交，不把它记为后续提交的全量证据。
+
+新增可选原生服务检查：`JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH node scripts/verify-entitlement-mysql.mjs`。脚本仅连接自己创建的临时MySQL 9.7.2，端口绑定127.0.0.1，库名固定为entitlement_native_fixture，退出清理容器；不会读取业务数据库配置。未设置专用环境变量时JUnit默认跳过，脚本要求实际运行1项、失败0且跳过0，避免把未运行误记为通过。
+
+原生检查先复现4线程同键的InnoDB死锁：普通重复INSERT取得共享锁，随后FOR UPDATE升级相互等待；[MySQL官方锁说明](https://dev.mysql.com/doc/refman/8.4/en/innodb-locks-set.html)描述了该模式。改为`INSERT ... ON DUPLICATE KEY UPDATE id=id`先取得排他锁，再读取稳定响应；不改原命令参数、审计及响应。新行PENDING与业务及COMPLETED同事务，异常整体回滚，不允许独立提交PENDING。原生Java服务检查修复后通过，覆盖真实JSON回读、4线程仅创建一份、历史幂等响应不变及外层pay事务回滚后可重试；H2目录12项和SourceRef/UsageQuota共9项通过，SQL可移植性扫描无新增方言欠账。
+
+本阶段仍为目录内核，不包含权益发行/核销、储值资金账或公开HTTP接口；D01.4的独立pay远程业务接线与生产环境版本核实也未完成。
