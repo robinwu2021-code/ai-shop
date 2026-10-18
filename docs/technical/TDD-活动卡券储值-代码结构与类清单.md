@@ -2,6 +2,8 @@
 
 状态：目标代码设计，待评审 · 2026-10-18
 
+执行状态与先后顺序见[Java后端独立任务表](./任务表-活动卡券储值-Java后端.md)，已实现目录内核直接复用，其余目标设计不视为已完成。
+
 本文细化[系统总设计](./TDD-活动卡券储值-模块化系统设计.md)，与[功能矩阵](../requirements/活动卡券储值-模块功能矩阵.md)、[API契约](./TDD-活动卡券储值-API契约.md)、[数据库设计](./TDD-活动卡券储值-数据库设计.md)配套。除下方实施清单外，类名为实施建议，不表示已创建Java文件。标记“现有改造/复用”的类已在本地源码核对；其他均为拟新增。最终迁移需继续盘点旧marketing/mkt实现，不能只迁promotion。
 
 ## §0 设计约束
@@ -185,8 +187,8 @@ HTTP请求类、响应类的完整清单以API契约§6/§7的schema为准；Jav
 | promotion | pmt_effect_projection | PmtEffectProjection | PmtEffectProjectionMapper | 拟新增；同名存量实施前核对 |
 | promotion | pmt_command_dedup | PmtCommandDedup | PmtCommandDedupMapper | 拟新增；同名存量实施前核对 |
 | product | prd_entitlement_binding | PrdEntitlementBinding | PrdEntitlementBindingMapper | 拟新增；同名存量实施前核对 |
-| pay.entitlement | ent_template | EntTemplate | EntTemplateMapper | 拟新增；同名存量实施前核对 |
-| pay.entitlement | ent_template_version | EntTemplateVersion | EntTemplateVersionMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_template | EntTemplate | EntTemplateMapper | 已实现；V425及实体Mapper，见JB-004 |
+| pay.entitlement | ent_template_version | EntTemplateVersion | EntTemplateVersionMapper | 已实现；V425及实体Mapper，见JB-004 |
 | pay.entitlement | ent_issue_policy | EntIssuePolicy | EntIssuePolicyMapper | 拟新增；同名存量实施前核对 |
 | pay.entitlement | ent_issue_recipient | EntIssueRecipient | EntIssueRecipientMapper | 拟新增；同名存量实施前核对 |
 | pay.entitlement | ent_issue_batch | EntIssueBatch | EntIssueBatchMapper | 拟新增；同名存量实施前核对 |
@@ -209,7 +211,7 @@ HTTP请求类、响应类的完整清单以API契约§6/§7的schema为准；Jav
 | pay.entitlement | pay_ent_outbox | PayEntOutbox | PayEntOutboxMapper | 拟新增；同名存量实施前核对 |
 | pay.entitlement | pay_ent_inbox | PayEntInbox | PayEntInboxMapper | 拟新增；同名存量实施前核对 |
 | pay.entitlement | pay_ent_exception | PayEntException | PayEntExceptionMapper | 拟新增；同名存量实施前核对 |
-| pay.entitlement | pay_ent_command_dedup | PayEntCommandDedup | PayEntCommandDedupMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | pay_ent_command_dedup | PayEntCommandDedup | PayEntCommandDedupMapper | 已实现；V425及实体Mapper，见JB-004 |
 | pay.entitlement | ent_use_reversal | EntUseReversal | EntUseReversalMapper | 拟新增；同名存量实施前核对 |
 
 核心预算/幂等Mapper只被对应参与服务使用；pay Mapper只被支付业务/记账/查询服务使用。迁移工具不得成为日常发券入口，历史导入不能调用发放Service导致再次发行。

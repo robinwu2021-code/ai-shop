@@ -2,6 +2,8 @@
 
 状态：目标契约草案，待评审 · 2026-10-18
 
+执行状态与先后顺序见[Java后端独立任务表](./任务表-活动卡券储值-Java后端.md)，已实现目录内核直接复用，其余目标设计不视为已完成。
+
 [系统入口](./TDD-活动卡券储值-模块化系统设计.md) · [功能矩阵](../requirements/活动卡券储值-模块功能矩阵.md) · [数据库](./TDD-活动卡券储值-数据库设计.md)。以下为目标接口，不代表已实现；没有修改运行OpenAPI。沿用接口必须先校验当前DTO兼容，已有URL由原Controller改委派，不能重复注册Handler。
 
 ## 一、通用契约
@@ -181,19 +183,16 @@ ID/版本号均非空字符串≤64，名称≤100；以下?表示可选，非?�
 
 契约验收至少包含：所有C查询越权与DTO字段白名单、同键异参409、预占未知结果查询、老URL兼容、币种/服务日校验、同订单行多件唯一发卡、储值赠金不进入订单discount，以及预置模板不自动发布。
 
-
 ## 十、权限落点与可信执行
 
 表中pay:*及ops:pay:*均为拟新增权限；沿用biz:campaign等已有权限时仍须主体/门店守卫。迁移旧券接口使用明确角色映射，不给所有客户查询员自动授予发券/冻结权。P20实收确认人和经办人是否允许同人由商家策略决定，默认独立权限，不能由请求传用户号绕过。请求的customerRef/previewRef/quoteRef均是短期不透明引用，绑定主体、用户、店、版本与调用上下文；服务端来源事实校验不以字符串存在为已授权。
 
 P12 preview得到无副作用短期报价；P13调用应用协调层建立意图，再按具体券/卡/储值规则取得可信确认，不能仅提交expectedAssetRevision就任意扣款。P30券码与统一会员码两套用途分别鉴权，禁止使用一个资产码访问账户全部权益。
 
-
 原活动PUT status的DRAFT→RUNNING兼容调用必须委派同一publish校验和版本生成逻辑，不允许绕过C05直接改状态。批量发券plannedCount先完成资格预检，再原子预留全部可发行容量；容量不足整批拒绝，不从第一个客户开始随机发到耗尽。发放已开始的异常逐项重试原grantNo，批次可以暂时PARTIAL/PROCESSING，但不得为未发用户伪造成功。
 
 ### 支付目录内部实现映射
 
 本批EntitlementCatalogService提供create/saveDraft/publish/changeStatus/get/getVersion/list，内部使用EntitlementDefinition和CatalogScope，尚未注册P01–P05的HTTP Handler。CatalogScope必须由可信应用身份构造，不能直接绑定公开请求。EntitlementCatalogPort本地实现支持getPublishedVersion与validateReference；引用用途ACTIVITY_GRANT禁止PAID_CARD，PAID_PRODUCT仅允许PAID_CARD，并核实主体、币种、发布状态及发行途径。暂停后的历史版本仍可读，但拒绝建立新引用。独立pay的远程适配在D02.6接通前不开放此能力。
-
 
 实施对照（2026-10-18）：上述表为目标HTTP契约，目录内核当前仅以可信服务调用和本地SPI提供，未开放P01–P06。内部TemplateView持有完整draft和currentVersionNo，PublishedVersionView持有definition及snapshotHash，不作为公网JSON直接返回；后续门面须映射为本文的管理DTO、核实scope.refs归属及权限。FREE_SHIP保留既有券类型语义，当前目录支持保存/发布不代表已接入免运费计价核销。
