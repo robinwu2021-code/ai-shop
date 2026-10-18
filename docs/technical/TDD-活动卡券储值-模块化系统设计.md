@@ -353,7 +353,7 @@ COUNT以整数totalUnits计数，可有期限；PERIOD_COUNT同时限制有效�
 |---|---|---|---|
 | D01.1 | 源码盘点DONE | design/活动权益-D01-现状盘点.md；包括mkt/pmt、活动/邀请奖励/交易/售后与旧URL | 生产存量核查留到迁移前，不宣称已查 |
 | D01.2 | DOING | shop-base/spi/entitlement/SourceRef；4条测试RED→GREEN | 其他SPI/DTO、权限/i18n与OpenAPI尚未接通 |
-| D01.3 | DOING | 确认OrderServiceImpl用事务Outbox发布OrderPaid | 本人授权、售卡快照、源决策query待实现 |
+| D01.3 | DOING | 确认OrderServiceImpl用事务Outbox发布OrderPaid | JB-011本人授权/源决策已完成；售卡快照待JB-012，支付后业务决策调用待订单权益链路接通 |
 | D01.4 | DOING | JDK21离线pay-domain及依赖test-compile退出0；编译闸门变量展开回归1条RED→GREEN | 完整后端闸门与双部署验收未完成 |
 | D02基础规则预研 | 纯规则已实现 | UsageQuota.Count/Daily；5条测试RED→GREEN | 未接数据库状态机/接口，不代表D02完成 |
 
@@ -582,10 +582,10 @@ C11登录分类修复定向：MpEndpointAuthTest 7项（含真实匿名401）、
 
 JB-010按AC及实际文件完成，独立任务表更新12 DONE/0 DOING/43 TODO；正式表/两条HTTP路由同步DONE。保留既有共享Vitest命名失败及模型对齐阻断的独立报告，不宣称所有仓库闸门全绿。下一项JB-011仍TODO，财务本人授权、发行/核销/储值账及远程身份Handler尚未交付；本批无push/部署/生产操作。
 
-### JB-011当前开发记录（DOING）
+### JB-011最终交付记录（DONE）
 
 从干净基线9eb06ccaa开始，新增C09本人确认Controller、可信core报价意图staging service、授权/源决策实体Mapper、SourceDecisionPort持久查询与源owner终态决策写入service；V427创建`ord_ent_authorization`和`ord_ent_source_decision`。订单确认期间锁定主单/子单/明细，校验当前消费者、WAIT_PAY、订单修订、支付币种/金额边界、pay quoteRef/selectionDigest、完整序列化订单快照摘要和意图过期时刻。PENDING没有authorizationRef/authorizedAt；同本人requestKey只回放原授权，换请求键冲突。`SHOP_ENTITLEMENT_AUTHORIZATION_ENABLED`默认false。
 
 RED：初始AuthorizationFlowTest因缺少状态类无法编译，预期退出1；状态模型完成后4个规则用例GREEN。第一次H2持久集成RED：测试schema未含V427表；运行官方`backend/scripts/gen-test-schema.py`更新生成schema后恢复。干净全量78f430311跑3590项/20模块，635秒，3项失败：BizKeyConventionTest捕获本批UUID拼号，改用BizKey.next并补EA/EI/ED前缀；MediaRefCoverageTest被“意图”注释中的“图”误判，改为“预确认记录键”；OtpTestPhoneFlowTest随后独立8/8通过。之后定向持久/规则/Preview/MP鉴权/schema/BizKey/MediaRef/OTP共34项0失败/错误/跳过（退出0）。覆盖订单行改价失效、他人确认拒绝、同意图同键重启实例回放、旧修订取消→新修订成功、跨修订成功源唯一及成功源回退查询。Disposable MySQL9.7.2最终V427原生DDL及唯一键/CHECK场景2项通过，0跳过。
 
-JB-011仍DOING：契约/SQL/24文档生成器/V2 66份守卫已通过；需修正提交后重新跑干净HEAD全量门禁，再核实stageTrustedIntent接入真实core checkout quote生产者的调用点。并发确认/同报价staging行为依数据库行锁与唯一键保护，后续继续补并发验收。未部署、未写生产库、未push。
+JB-011按验收完成。最终干净HEAD f116a02ab1cb68dd0148a8270c3cfbdf918edb5f通过test-compile及20模块3590项全量测试，0红、约9分钟、退出0；V427原生MySQL9.7.2 DDL/唯一键/CHECK 2项通过；聚焦34项、24生成器、V2 66份、SQL方言、C/B API契约守卫通过。第一次全量暴露的BizKey内联UUID与MediaRef注释假阳性已修复；OTP 8项独立复测通过。当前任务表13 DONE/0 DOING/42 TODO。功能开关`SHOP_ENTITLEMENT_AUTHORIZATION_ENABLED`默认false；真实pay报价生产者仍待权益报价任务接入`stageTrustedIntent`，接通并完成部署配置前不会开放C09。未部署、未写生产库、未push。

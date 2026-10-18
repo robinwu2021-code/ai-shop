@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：12项DONE、1项DOING、42项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
+本表共55项：13项DONE、0项DOING、42项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序：JB-008–JB-014补齐后端契约与可信事实；发行/使用及core活动底座随后实施；再完成储值、付费卡、HTTP和远程适配，最后兼容、恢复、权限及后端整体收口。每个领域的Controller可随服务同步开发，DONE需本地和远程两种模式验收。生产操作另列，不阻塞可独立开展的代码开发。
 
@@ -71,7 +71,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-008 | D01.2/1.3/1.4 | DONE | 001,006,007 | shop-base/契约 | 冻结所有SPI/命令/响应/query、错误码三语、权限与能力开关；补缺失DDL设计 | f16cfff0d；Contract10/Preview7；门禁10+目录关闭2；总定向88项、原生MySQL1项及create门禁消融通过；API§11–13/支撑5表已冻结，HTTP/角色接线仍归后续任务 |
 | JB-009 | D01.2 | DONE | 006 | core/app | core范围事实预检：门店/商品归属、类目有效性；可信CatalogScope构造 | c29c4fe4a；EntitlementScopeValidationTest 7项：会话身份、门店子集、跨租户门店/商品、赠品归属及201条分批；门店子集消融RED→恢复GREEN；HTTP仍归025 |
 | JB-010 | D01.3 | DONE | 008,009 | core.member/app | MemberCodeResolveService/Impl、BizMemberCodeController、MpMemberCodeController；C08/C11 | 51d10402b/6156975bb/ecfda1ebd；身份7+HTTP5，目标门店借权及actor消融RED→GREEN；定向53/standalone12通过；干净3582项、原生DDL通过 |
-| JB-011 | D01.3 | DOING | 008,010 | core.trade/app | EntitlementAuthorizationService/Impl、MpEntitlementAuthorizationController、EntitlementSourceDecisionPortImpl；V427持久本人意图与源决策 | EntitlementAuthorizationPersistenceFlowTest：改价失效、他人拒绝、重复确认同意图、支付/取消唯一决策；重启可查询（聚焦场景进行中） |
+| JB-011 | D01.3 | DONE | 008,010 | core.trade/app | EntitlementAuthorizationService/Impl、MpEntitlementAuthorizationController、EntitlementSourceDecisionPortImpl；V427持久本人意图与源决策 | EntitlementAuthorizationPersistenceFlowTest：改价失效、他人拒绝、重复确认同意图、支付/取消唯一决策；重建服务后持久查询；78f430311/f116a02ab，干净3590项全绿 |
 | JB-012 | D01.3/D06.2 | TODO | 008,011 | core.trade | CardSaleSnapshotService/Impl；补订单行/单件/件内权益、版本、付款时间快照 | CardSaleSnapshotTest：2件×2权益得到4个稳定来源；重投不变、迟到事件不改真实付款时间 |
 | JB-013 | D02.1 | DONE | 005 | pay.entitlement | 提取EntitlementCommandDeduplicator，目录切到唯一共用实现 | EntitlementCommandDeduplicatorTest：同键同参重放、异参冲突、大小写区分、原生并发、业务异常不留PENDING |
 | JB-014 | D02.1/D04.2 | TODO | 008,013 | pay事件/core适配 | PayEntitlementEventPublisher、pay_ent_outbox/inbox与既有投递机制适配 | EntitlementEventFlowTest：提交后才投递、回滚无事件、eventNo去重、重启重试；事件载荷白名单 |
@@ -212,8 +212,8 @@ git diff --check
 | 模块 | 支撑表 | 计划实体 / Mapper | 责任任务 | 状态 |
 |---|---|---|---|---|
 | core.member | mbr_identity_ticket | MbrIdentityTicket / MemberIdentityTicketMapper | JB-010 | DONE，V426 |
-| core.trade | ord_ent_authorization | OrdEntAuthorization / TradeMappers.EntitlementAuthorizationMapper | JB-011 | DOING，V427 |
-| core.trade | ord_ent_source_decision | OrdEntSourceDecision / TradeMappers.EntitlementSourceDecisionMapper | JB-011 | DOING，V427 |
+| core.trade | ord_ent_authorization | OrdEntAuthorization / TradeMappers.EntitlementAuthorizationMapper | JB-011 | DONE，V427 |
+| core.trade | ord_ent_source_decision | OrdEntSourceDecision / TradeMappers.EntitlementSourceDecisionMapper | JB-011 | DONE，V427 |
 | core.trade | ord_card_sale_snapshot | OrdCardSaleSnapshot / OrdCardSaleSnapshotMapper | JB-012 | 设计，未迁移 |
 | pay.entitlement | pay_ent_recon_run | PayEntReconRun / PayEntReconRunMapper | JB-046 | 设计，未迁移 |
 | pay.entitlement | pay_ent_recon_diff | PayEntReconDiff / PayEntReconDiffMapper | JB-046 | 设计，未迁移 |
@@ -232,7 +232,7 @@ git diff --check
 | C06 | PUT /biz/activities/{activityNo}/status | JB-033 | TODO |
 | C07 | POST /biz/card-product-bindings | JB-039 | TODO |
 | C08 | POST /biz/member-code/resolve | JB-010 | DONE |
-| C09 | POST /mp/orders/{orderNo}/entitlement-authorizations | JB-011 | DOING |
+| C09 | POST /mp/orders/{orderNo}/entitlement-authorizations | JB-011 | DONE |
 | C10 | GET /biz/marketing-summary | JB-044 | TODO |
 | C11 | POST /mp/member-code | JB-010 | DONE |
 | P01 | GET /biz/entitlement-templates | JB-025 | TODO |
@@ -431,4 +431,4 @@ JB-008最终代码提交f16cfff0d403d8775a0efbfa3a1cdd95ef1f2019：24文件725�
 
 定向53项、standalone身份12项通过；actor隔离消融及目标门店不同角色借权均先RED后GREEN，日志不含原文。V426在隔离MySQL的唯一键/用途/范围/期限CHECK通过，API/数据库/类清单/U22/ADR及生成物同步。C/B vue-tsc通过；24生成器及66份V2文档通过；共享Vitest仍有api-path-naming的1项既有失败（5条旧路径，本次新增0），模型对齐仍受既有MemberSetting阻断；未增加豁免。
 
-最终ecfda1ebd干净编译及全量3582项/20模块、0失败/错误，608秒、退出0。原有原生条件测试1项跳过，V426原生DDL已另实跑；不将H2或条件跳过当原生通过。前两轮证据与C登录分类遗漏修复见主TDD §6。以上是JB-010历史证据，不能代替JB-011。当前12 DONE /1 DOING /42 TODO；JB-011聚焦结果与剩余集成点见主TDD §6最新记录。整体Java后端仍未完成；未push、部署或连接生产数据库。
+JB-010历史全量证据：ecfda1ebd干净编译及3582项/20模块全绿。JB-011最终干净HEAD f116a02ab1cb68dd0148a8270c3cfbdf918edb5f：test-compile通过，全量3590项/20模块，0红，约9分钟，退出0；另有V427原生MySQL9.7.2两项通过、聚焦34项全绿及24生成器/V2 66份/SQL守卫全绿。第一次全量暴露的UUID编号和媒体注释假阳性已修复，OTP测试独立8/8通过。当前13 DONE /0 DOING /42 TODO。授权开关默认关闭，真实pay报价生成器尚未接入，后续由订单权益报价链路调用`stageTrustedIntent`后启用；整体Java后端仍未完成。未push、部署或连接生产数据库。
