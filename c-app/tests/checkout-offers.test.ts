@@ -3,7 +3,7 @@
  *
  * 守四件事：
  * ① 没动过 → 套用后端建议的组合（进来先看到最低价）；动过 → 不再替他改；
- * ② 选择在预览和下单两处都带上 —— 只带一处，确认页与实付就是两个数；
+ * ② 选择在现金预览、积分报价和下单三处都带上 —— 只带一处，确认页与实付就是两个数；
  * ③ 选的活动不成立（40035）→ 清掉选择、说一句，不装作没事；
  * ④ mock 里「不参加」真的不减 —— 否则本机替一个没接上的开关背书。
  */
@@ -43,9 +43,13 @@ describe("默认最省、动过不改", () => {
   });
 });
 
-describe("预览与下单都带上选择", () => {
-  it("★★★ 两处都传 activityChoices", () => {
-    expect(code.split("activityChoices: choicesPayload()").length - 1).toBe(2);
+describe("现金预览、积分报价与下单都带上选择", () => {
+  it.each([
+    ["api.orderPreview({", 1200],
+    ["api.orderPointsQuote({", 1200],
+    ["const body = {", 1800],
+  ] as const)("★★★ %s 携带相同活动选择", (marker, length) => {
+    expect(body(marker, length)).toContain("activityChoices: choicesPayload()");
   });
 });
 
