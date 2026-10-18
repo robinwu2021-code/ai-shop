@@ -70,7 +70,10 @@ public class PointsRefundPortImpl implements PointsRefundPort {
         boolean succeeded = compensation != null && compensation.result() != null
                 && compensation.result().status() == FundsStatus.SUCCEEDED
                 && saved.abort() != null && saved.abort().equals(compensation.abort());
-        return new RefundRecoveryStatus(preparationNo, (String) row.get("state"),
-                saved.abort() == null ? null : saved.abort().cashRefundPaymentNo(), succeeded);
+        String cashNo = saved.abort() != null ? saved.abort().cashRefundPaymentNo()
+                : saved.confirmation() == null ? null : saved.confirmation().cashRefundPaymentNo();
+        return new RefundRecoveryStatus(preparationNo, saved.command().afterSaleNo(),
+                saved.command().subOrderNo(), (String) row.get("state"),
+                saved.preparation().netCashMinor(), cashNo, succeeded);
     }
 }

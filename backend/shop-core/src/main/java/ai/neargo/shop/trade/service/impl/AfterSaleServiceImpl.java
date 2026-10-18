@@ -999,6 +999,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         List<String> older = DataScopeContext.executeWithoutScope(() ->
                 afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
                                 .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
+                                .notInSql(OrdAfterSale::getAfterSaleNo,
+                                        "SELECT after_sale_no FROM ord_points_refund_binding"
+                                        + " WHERE phase='COMPENSATED_PENDING_OPERATOR'")
                                 .lt(OrdAfterSale::getUpdatedAt, cutoff)
                                 .orderByAsc(OrdAfterSale::getUpdatedAt)
                                 .last("limit " + Math.max(1, limit)))
@@ -1111,7 +1114,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         });
         if(execution==null) return;
         var binding=pointsRefundSource.inspect(afterSaleNo);
-        var preparation=pointsRefunds.prepare(binding.command());
+        if(binding.phase()==ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATED_PENDING_OPERATOR)
+            return;
+        var preparation=binding.preparation()!=null ? binding.preparation()
+                : pointsRefunds.prepare(binding.command());
         binding=pointsRefundSource.acceptPreparation(afterSaleNo,preparation);
         if(preparation.netCashMinor()==0) {
             var plan=execution.plan();
@@ -1127,6 +1133,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                     preparation.preparationNo(),preparation.inputHash(),null,
                     preparation.collectionTicket(),null,zeroEvent));
             pointsRefundSource.acceptPointsConfirmation(afterSaleNo,zeroConfirmed);
+            if(!settlePort.confirmPreparedRefund(new SettlePort.SplitReversal(plan.subOrderNo(),afterSaleNo,
+                    plan.goodsMinor(),plan.freightMinor(),LineShares.goodsPaid(sub)),
+                    preparation.preparationNo(),preparation.inputHash()))
+                throw BizException.of(ErrorCode.SPLIT_EXPIRED);
             refundTransactions.executeWithoutResult(status -> {
                 refundExecutions.completeZeroCash(afterSaleNo);
                 var result=refundExecutions.commit(afterSaleNo);
@@ -1142,6 +1152,17 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             return;
         }
         if(binding.phase()==ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATING) {
+            var status=pointsRefunds.recoveryStatus(preparation.preparationNo(),preparation.inputHash());
+            if("ABORTED".equals(status.state()) && status.compensationSucceeded()) {
+                var plan=execution.plan();
+                var sub=subOrderOf(plan.subOrderNo());
+                if(!settlePort.cancelPreparedRefund(new SettlePort.SplitReversal(plan.subOrderNo(),afterSaleNo,
+                        plan.goodsMinor(),plan.freightMinor(),LineShares.goodsPaid(sub)),
+                        preparation.preparationNo(),preparation.inputHash()))
+                    throw BizException.of(ErrorCode.SPLIT_EXPIRED);
+                pointsRefundSource.recordCompensated(afterSaleNo,status);
+                return;
+            }
             pointsRefunds.requestCompensation(new ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort(
                     preparation.preparationNo(),preparation.inputHash(),binding.cashPaymentNo()),
                     preparation.revision());
@@ -1189,6 +1210,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 preparation.preparationNo(),preparation.inputHash(),paymentNo,
                 preparation.collectionTicket(),null));
         pointsRefundSource.acceptPointsConfirmation(afterSaleNo,confirmed);
+        if(!settlePort.confirmPreparedRefund(new SettlePort.SplitReversal(plan.subOrderNo(),afterSaleNo,
+                plan.goodsMinor(),plan.freightMinor(),LineShares.goodsPaid(sub)),
+                preparation.preparationNo(),preparation.inputHash()))
+            throw BizException.of(ErrorCode.SPLIT_EXPIRED);
         final String cashPaymentNo=paymentNo;
         refundTransactions.executeWithoutResult(status -> {
             var result=refundExecutions.commit(afterSaleNo);

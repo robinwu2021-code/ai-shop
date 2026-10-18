@@ -19,6 +19,8 @@ public interface OrderPointsRefundCoordinator {
 
     Binding recordCashFailure(String afterSaleNo, SettlePort.RefundEvidence evidence);
 
+    Binding recordCompensated(String afterSaleNo, PointsRefundPort.RefundRecoveryStatus status);
+
     Binding recordZeroCash(String afterSaleNo);
 
     Binding acceptPointsConfirmation(String afterSaleNo, PointsRefundPort.RefundOutcome outcome);
@@ -44,6 +46,7 @@ public interface OrderPointsRefundCoordinator {
         POINTS_CONFIRMED,
         COMMITTED,
         COMPENSATING,
+        COMPENSATED_PENDING_OPERATOR,
         ABORTED
     }
 

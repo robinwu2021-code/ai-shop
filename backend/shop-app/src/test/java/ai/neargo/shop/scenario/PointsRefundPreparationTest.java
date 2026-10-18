@@ -639,6 +639,12 @@ class PointsRefundPreparationTest {
                 .hasMessage("POINTS_CASH_REFUND_MISMATCH");
         jdbc().update("UPDATE stl_payment SET amount_minor=50 WHERE payment_no=?", payment);
         var outcome = confirmations.confirm(confirmation);
+        var recovery = refunds.recoveryStatus(prepared.preparationNo(), prepared.inputHash());
+        assertThat(recovery.state()).isEqualTo("CONFIRMED");
+        assertThat(recovery.afterSaleNo()).isEqualTo("AS:" + type);
+        assertThat(recovery.subOrderNo()).isEqualTo(type);
+        assertThat(recovery.cashRefundPaymentNo()).isEqualTo(payment);
+        assertThat(recovery.netCashMinor()).isEqualTo(50);
         assertThat(outcome.reclaimedPoints()).isEqualTo(10);
         assertThat(outcome.replayed()).isFalse();
         assertThat(confirmations.confirm(confirmation).replayed()).isTrue();
@@ -1228,6 +1234,10 @@ class PointsRefundPreparationTest {
                 .isEqualTo(1);
         var confirmation = zeroConfirmation(prepared, fact);
         var result = confirmations.confirm(confirmation);
+        var recovery = refunds.recoveryStatus(prepared.preparationNo(), prepared.inputHash());
+        assertThat(recovery.state()).isEqualTo("CONFIRMED");
+        assertThat(recovery.cashRefundPaymentNo()).isNull();
+        assertThat(recovery.netCashMinor()).isZero();
         assertThat(result.reclaimedPoints()).isEqualTo(10);
         assertThat(result.state()).isEqualTo("CONFIRMED");
         assertThat(confirmations.confirm(confirmation).replayed()).isTrue();

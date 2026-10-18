@@ -4816,6 +4816,20 @@ CREATE TABLE IF NOT EXISTS stl_bill_refund
     CONSTRAINT uk_stl_bill_refund UNIQUE (after_sale_no)
 );
 
+CREATE TABLE IF NOT EXISTS stl_points_refund_hold
+(
+    after_sale_no VARCHAR(40) NOT NULL PRIMARY KEY,
+    settle_no VARCHAR(40) NOT NULL,
+    sub_order_no VARCHAR(40) NOT NULL,
+    goods_minor BIGINT NOT NULL,
+    freight_minor BIGINT NOT NULL,
+    goods_paid_minor BIGINT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    proof_no VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS pts_point_type
 (
     type_code VARCHAR(40) NOT NULL,

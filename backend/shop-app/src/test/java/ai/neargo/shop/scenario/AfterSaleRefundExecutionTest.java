@@ -43,6 +43,8 @@ import static org.mockito.ArgumentMatchers.eq;
 class AfterSaleRefundExecutionTest {
     @Autowired private AfterSaleService afterSales;
     @Autowired private RefundExecutionService executions;
+    @Autowired private OrderPointsRecoveryService pointsRecovery;
+    @Autowired private OrderPointsRefundCoordinator pointsRefundSource;
     @Autowired private SettleService settle;
     @Autowired private JdbcTemplate jdbc;
     @MockitoSpyBean private TestPayGateway channel;
@@ -77,11 +79,17 @@ class AfterSaleRefundExecutionTest {
                 null,false)).when(pointsRefunds).confirm(any());
         afterSales.approve("MERCHANT",f.as(),"approved",null,"CASH");
         afterSales.resumeRefund(f.as(),"SYSTEM");
+        doReturn(new PointsRefundPort.RefundRecoveryStatus(prep.preparationNo(), f.as(), f.sub(),
+                "CONFIRMED", 50, jdbc.queryForObject(
+                        "SELECT payment_no FROM stl_payment WHERE after_sale_no=?", String.class, f.as()), false))
+                .when(pointsRefunds).recoveryStatus(prep.preparationNo(), prep.inputHash());
         assertThat(refunded(f.sub())).isZero();
         assertThat(jdbc.queryForObject("SELECT amount_minor FROM stl_payment WHERE after_sale_no=?",
                 Long.class,f.as())).isEqualTo(50);
         afterSales.resumeRefund(f.as(),"SYSTEM");
         assertThat(status(f.as())).isEqualTo("REFUNDED");
+        assertThat(jdbc.queryForObject("SELECT status FROM stl_points_refund_hold WHERE after_sale_no=?",
+                String.class, f.as())).isEqualTo("CONFIRMED");
         assertThat(refunded(f.sub())).isEqualTo(60);
         verify(pointsRefunds,times(1)).confirm(any());
         verify(pointsClosure).finalizeSubOrder(f.sub());
@@ -107,9 +115,14 @@ class AfterSaleRefundExecutionTest {
         doReturn(prep).when(pointsRefunds).prepare(any());
         doReturn(new PointsRefundPort.RefundOutcome(prep.preparationNo(),"CONFIRMED",0,0,60,0,0,
                 null,false)).when(pointsRefunds).confirm(any());
+        doReturn(new PointsRefundPort.RefundRecoveryStatus(prep.preparationNo(), f.as(), f.sub(),
+                "CONFIRMED", 0, null, false))
+                .when(pointsRefunds).recoveryStatus(prep.preparationNo(), prep.inputHash());
         afterSales.approve("MERCHANT",f.as(),"approved",null,"CASH");
         afterSales.resumeRefund(f.as(),"SYSTEM");
         assertThat(status(f.as())).isEqualTo("REFUNDED");
+        assertThat(jdbc.queryForObject("SELECT status FROM stl_points_refund_hold WHERE after_sale_no=?",
+                String.class, f.as())).isEqualTo("CONFIRMED");
         assertThat(refunded(f.sub())).isEqualTo(60);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=?",
                 Long.class,f.as())).isZero();
@@ -149,8 +162,23 @@ class AfterSaleRefundExecutionTest {
                 String.class,f.as())).isEqualTo("COMPENSATING");
         verify(pointsRefunds).requestCompensation(any(),eq(1L));
         verify(pointsRefunds,never()).confirm(any());
+        doReturn(new PointsRefundPort.RefundRecoveryStatus(prep.preparationNo(), f.as(), f.sub(),
+                "ABORTED", 50, jdbc.queryForObject(
+                        "SELECT payment_no FROM stl_payment WHERE after_sale_no=?", String.class, f.as()), true))
+                .when(pointsRefunds).recoveryStatus(prep.preparationNo(), prep.inputHash());
         afterSales.resumeRefund(f.as(),"SYSTEM");
-        verify(pointsRefunds,times(2)).requestCompensation(any(),eq(1L));
+        assertThat(jdbc.queryForObject("SELECT phase FROM ord_points_refund_binding WHERE after_sale_no=?",
+                String.class, f.as())).isEqualTo("COMPENSATED_PENDING_OPERATOR");
+        assertThat(jdbc.queryForObject("SELECT status FROM stl_points_refund_hold WHERE after_sale_no=?",
+                String.class, f.as())).isEqualTo("CANCELLED");
+        assertThat(status(f.as())).isEqualTo("REFUNDING");
+        assertThat(afterSales.stuckRefundNos(System.currentTimeMillis() + 1000, 20))
+                .doesNotContain(f.as());
+        assertThat(pointsRefundSource.pending(20)).doesNotContain(f.as());
+        assertThat(pointsRecovery.inspect(f.sub()).differences())
+                .contains("REFUND_OPERATOR_ACTION_REQUIRED");
+        afterSales.resumeRefund(f.as(), "SYSTEM");
+        verify(pointsRefunds,times(1)).requestCompensation(any(),eq(1L));
         verify(channel,times(1)).refund(any(),anyLong(),anyString(),anyString());
     }
 

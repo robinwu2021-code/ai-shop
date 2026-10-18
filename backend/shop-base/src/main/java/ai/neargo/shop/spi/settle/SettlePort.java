@@ -174,6 +174,12 @@ public interface SettlePort {
     /** Source workflow gate: post-split reversal waits for its durable financial preparation. */
     boolean reversePreparedRefund(SplitReversal cmd);
 
+    /** Apply a held pre-split adjustment only after pay has confirmed the original refund. */
+    boolean confirmPreparedRefund(SplitReversal cmd, String preparationNo, String inputHash);
+
+    /** Release a held adjustment after verified cash failure and successful collection reversal. */
+    boolean cancelPreparedRefund(SplitReversal cmd, String preparationNo, String inputHash);
+
     /**
      * @param afterSaleNo    售后单号（幂等键）
      * @param goodsMinor     本次退的货款（不含运费）

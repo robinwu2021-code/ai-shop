@@ -46,10 +46,11 @@ public interface OrderPointsRefundBindingMapper {
 
     @Select(
             "SELECT after_sale_no FROM ord_points_refund_binding WHERE phase NOT IN"
-                + " ('COMMITTED','ABORTED') ORDER BY updated_at,after_sale_no LIMIT #{limit}")
+                + " ('COMMITTED','ABORTED','COMPENSATED_PENDING_OPERATOR')"
+                + " ORDER BY updated_at,after_sale_no LIMIT #{limit}")
     List<String> pending(int limit);
 
     @Select("SELECT COUNT(*) AS total,MIN(created_at) AS oldest FROM ord_points_refund_binding"
-            + " WHERE phase NOT IN ('COMMITTED','ABORTED')")
+            + " WHERE phase NOT IN ('COMMITTED','ABORTED','COMPENSATED_PENDING_OPERATOR')")
     Map<String,Object> pendingSummary();
 }

@@ -377,6 +377,36 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
     }
 
     @Override
+    @Transactional(value = "transactionManager")
+    public Binding recordCompensated(String afterSaleNo,
+                                     PointsRefundPort.RefundRecoveryStatus status) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var current = decode(locked(afterSaleNo));
+            var prep = current.preparation();
+            require(prep != null && status != null
+                    && prep.preparationNo().equals(status.preparationNo())
+                    && afterSaleNo.equals(status.afterSaleNo())
+                    && current.subOrderNo().equals(status.subOrderNo())
+                    && prep.netCashMinor() == status.netCashMinor()
+                    && Objects.equals(current.cashPaymentNo(), status.cashRefundPaymentNo())
+                    && "ABORTED".equals(status.state()) && status.compensationSucceeded(),
+                    "POINTS_REFUND_COMPENSATION_PROOF_INVALID");
+            if (current.phase() == Phase.COMPENSATED_PENDING_OPERATOR) return current;
+            require(current.phase() == Phase.COMPENSATING,
+                    "POINTS_REFUND_PHASE_CONFLICT");
+            var execution = executions.inspect(afterSaleNo);
+            require(execution != null && "CASH_PENDING".equals(execution.preparation().state())
+                    && current.cashPaymentNo().equals(execution.cashPaymentNo()),
+                    "POINTS_REFUND_COMPENSATION_SOURCE_CONFLICT");
+            require(mapper.change(afterSaleNo, current.version(), current.phase().name(),
+                    Phase.COMPENSATED_PENDING_OPERATOR.name(),
+                    json.writeValueAsString(prep), current.cashPaymentNo()) == 1,
+                    "POINTS_REFUND_PHASE_CONFLICT");
+            return inspect(afterSaleNo);
+        });
+    }
+
+    @Override
     @Transactional(value = "transactionManager", propagation = Propagation.MANDATORY)
     public Binding recordZeroCash(String afterSaleNo) {
         return DataScopeContext.executeWithoutScope(() -> {

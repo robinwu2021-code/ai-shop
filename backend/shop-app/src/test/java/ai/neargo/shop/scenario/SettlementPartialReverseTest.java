@@ -2,6 +2,8 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.pay.StubSplitGateway;
+import ai.neargo.shop.pay.settle.SplitPreparationService;
+import ai.neargo.shop.spi.points.PointsRefundPort;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.settle.SettlePort.SplitReversal;
 import org.junit.jupiter.api.DisplayName;
@@ -10,10 +12,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 
 /**
  * 5.3 分账按退款金额回退（口径 A）· 真库。
@@ -27,6 +32,10 @@ class SettlementPartialReverseTest {
 
     @Autowired
     private SettlePort settlePort;
+    @Autowired
+    private SplitPreparationService splits;
+    @MockitoBean
+    private PointsRefundPort pointsRefunds;
     @Autowired
     private StubSplitGateway gateway;
     @Autowired
@@ -76,6 +85,57 @@ class SettlementPartialReverseTest {
                 .containsEntry("NET_MINOR", 8460L - 2820L).containsEntry("COMMISSION_MINOR", 300L)
                 .containsEntry("REFUNDED_GOODS_MINOR", 3000L).containsEntry("REVERSED_MINOR", 0L);
         assertThat(reversedViaChannel("SPR-2")).as("分账前不发通道指令").isZero();
+    }
+
+    @Test
+    void prepared_refund_holds_split_without_changing_bill_before_cash_success() {
+        givenBill("SPR-HOLD", "PENDING");
+        SplitReversal cmd = new SplitReversal("SPR-HOLD", "AS-SPR-HOLD", 3000, 0, 9000);
+        assertThat(settlePort.reversePreparedRefund(cmd)).isTrue();
+        assertThat(settlePort.reversePreparedRefund(cmd)).isTrue();
+        assertThat(bill("SPR-HOLD")).containsEntry("STATUS", "PENDING")
+                .containsEntry("NET_MINOR", 8460L)
+                .containsEntry("REFUNDED_GOODS_MINOR", 0L);
+        assertThatThrownBy(() -> splits.prepare("STL-SPR-HOLD"))
+                .hasMessage("SETTLEMENT_REFUND_PENDING");
+    }
+
+    @Test
+    void prepared_refund_adjusts_only_after_confirmed_pay_proof() {
+        givenBill("SPR-CONFIRM", "PENDING");
+        SplitReversal cmd = new SplitReversal("SPR-CONFIRM", "AS-SPR-CONFIRM", 3000, 0, 9000);
+        assertThat(settlePort.reversePreparedRefund(cmd)).isTrue();
+        when(pointsRefunds.recoveryStatus("PREP", "HASH"))
+                .thenReturn(new PointsRefundPort.RefundRecoveryStatus("PREP", cmd.afterSaleNo(),
+                        cmd.subOrderNo(), "CONFIRMED", 50, "PAY", false));
+        assertThat(settlePort.confirmPreparedRefund(cmd, "PREP", "HASH")).isTrue();
+        assertThat(settlePort.confirmPreparedRefund(cmd, "PREP", "HASH")).isTrue();
+        assertThat(bill("SPR-CONFIRM")).containsEntry("NET_MINOR", 5640L)
+                .containsEntry("REFUNDED_GOODS_MINOR", 3000L);
+        assertThat(jdbc.queryForObject("SELECT status FROM stl_points_refund_hold WHERE after_sale_no=?",
+                String.class, cmd.afterSaleNo())).isEqualTo("CONFIRMED");
+    }
+
+    @Test
+    void compensated_cash_failure_releases_hold_without_changing_bill() {
+        givenBill("SPR-CANCEL", "PENDING");
+        SplitReversal cmd = new SplitReversal("SPR-CANCEL", "AS-SPR-CANCEL", 3000, 0, 9000);
+        assertThat(settlePort.reversePreparedRefund(cmd)).isTrue();
+        when(pointsRefunds.recoveryStatus("PREP", "HASH"))
+                .thenReturn(new PointsRefundPort.RefundRecoveryStatus("PREP", cmd.afterSaleNo(),
+                        cmd.subOrderNo(), "ABORTED", 50, "FAILED-PAY", false));
+        assertThatThrownBy(() -> settlePort.cancelPreparedRefund(cmd, "PREP", "HASH"))
+                .hasMessage("SETTLEMENT_REFUND_COMPENSATION_REQUIRED");
+        assertThat(bill("SPR-CANCEL")).containsEntry("NET_MINOR", 8460L);
+        when(pointsRefunds.recoveryStatus("PREP", "HASH"))
+                .thenReturn(new PointsRefundPort.RefundRecoveryStatus("PREP", cmd.afterSaleNo(),
+                        cmd.subOrderNo(), "ABORTED", 50, "FAILED-PAY", true));
+        assertThat(settlePort.cancelPreparedRefund(cmd, "PREP", "HASH")).isTrue();
+        assertThat(settlePort.cancelPreparedRefund(cmd, "PREP", "HASH")).isTrue();
+        assertThat(bill("SPR-CANCEL")).containsEntry("NET_MINOR", 8460L)
+                .containsEntry("REFUNDED_GOODS_MINOR", 0L);
+        assertThat(jdbc.queryForObject("SELECT status FROM stl_points_refund_hold WHERE after_sale_no=?",
+                String.class, cmd.afterSaleNo())).isEqualTo("CANCELLED");
     }
 
     @Test

@@ -17,7 +17,9 @@ import java.util.Map;
 public interface RefundExecutionMapper {
     @Select("SELECT e.after_sale_no FROM ord_refund_execution e"
             + " JOIN ord_after_sale a ON a.after_sale_no=e.after_sale_no AND a.deleted=0 AND a.status='REFUNDING'"
-            + " WHERE e.deleted=0 AND e.state<>'ABORTED'"
+            + " LEFT JOIN ord_points_refund_binding p ON p.after_sale_no=e.after_sale_no"
+            + " AND p.phase='COMPENSATED_PENDING_OPERATOR'"
+            + " WHERE e.deleted=0 AND e.state<>'ABORTED' AND p.after_sale_no IS NULL"
             + " ORDER BY COALESCE(e.last_attempt_at,0),e.id LIMIT #{limit} FOR UPDATE")
     List<String> pendingNos(int limit);
     @Update("UPDATE ord_refund_execution SET last_attempt_at=#{at} WHERE after_sale_no=#{as}")
