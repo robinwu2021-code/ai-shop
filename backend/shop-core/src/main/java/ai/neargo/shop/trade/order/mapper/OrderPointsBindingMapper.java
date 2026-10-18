@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.order.mapper;
 import org.apache.ibatis.annotations.*;
 
 import java.util.Map;
+import java.util.List;
 
 /** All rows belong to the source transaction manager, never payTxManager. */
 @Mapper
@@ -15,6 +16,10 @@ public interface OrderPointsBindingMapper {
     String bindingByRequest(String request);
     @Select("SELECT * FROM ord_points_binding WHERE sub_order_no=#{sub}")
     Map<String, Object> binding(String sub);
+
+    @Select("SELECT sub_order_no FROM ord_points_binding WHERE sub_order_no>#{after}"
+            + " ORDER BY sub_order_no LIMIT #{limit}")
+    List<String> scanSubOrders(@Param("after") String after,@Param("limit") int limit);
 
     @Select(
             "SELECT * FROM ord_points_binding WHERE request_id=#{request} OR sub_order_no=#{sub}"

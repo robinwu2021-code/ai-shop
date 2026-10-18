@@ -13,6 +13,9 @@ public interface OrderPointsRefundBindingMapper {
     @Select("SELECT * FROM ord_points_refund_binding WHERE after_sale_no=#{no} FOR UPDATE")
     Map<String, Object> lock(String no);
 
+    @Select("SELECT * FROM ord_points_refund_binding WHERE sub_order_no=#{sub} ORDER BY after_sale_no")
+    List<Map<String, Object>> forSubOrder(String sub);
+
     @Insert(
             "INSERT INTO"
                 + " ord_points_refund_binding(after_sale_no,sub_order_no,phase,source_version,command_json)"
