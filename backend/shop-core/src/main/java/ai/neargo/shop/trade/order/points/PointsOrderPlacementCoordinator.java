@@ -49,10 +49,39 @@ public interface PointsOrderPlacementCoordinator {
             long basePayMinor,
             String requestHash,
             List<Candidate> candidates,
-            List<String> allSubOrderNos) {
+            List<String> allSubOrderNos,
+            List<ai.neargo.shop.spi.settle.SettlePort.PaymentStore> paymentStores) {
         public Draft {
             candidates = List.copyOf(candidates);
             allSubOrderNos = List.copyOf(allSubOrderNos);
+            paymentStores = paymentStores == null ? List.of() : List.copyOf(paymentStores);
+        }
+
+        public Draft(
+                String orderNo,
+                String userNo,
+                String market,
+                String currency,
+                String scene,
+                String client,
+                long wantPoints,
+                long basePayMinor,
+                String requestHash,
+                List<Candidate> candidates,
+                List<String> allSubOrderNos) {
+            this(
+                    orderNo,
+                    userNo,
+                    market,
+                    currency,
+                    scene,
+                    client,
+                    wantPoints,
+                    basePayMinor,
+                    requestHash,
+                    candidates,
+                    allSubOrderNos,
+                    List.of());
         }
     }
 

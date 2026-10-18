@@ -51,6 +51,7 @@ class PointsOrderLiveCreationTest {
     @Autowired PointsIntegrationPolicyService policies;
     @Autowired PointsOrderPlacementCoordinator placement;
     @Autowired ai.neargo.shop.trade.service.OrderService orderService;
+    @Autowired ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger;
     @Autowired ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper plans;
     @MockitoBean PointsRedeemPort redeem;
     @MockitoBean PointsOrderTermsPort terms;
@@ -161,12 +162,112 @@ class PointsOrderLiveCreationTest {
         assertThat(
                         jdbc.queryForObject(
                                 "select count(*) from ord_item where order_no=? and"
-                                    + " supply_store_no=?",
+                                        + " supply_store_no=?",
                                 Long.class,
                                 root,
                                 f.store))
                 .isEqualTo(1);
         verify(redeem).hold(any());
+    }
+
+    @Test
+    void payment_open_uses_the_route_accepted_with_the_original_store() throws Exception {
+        var f = fixture("12600349013", "13000349013", "payment-route");
+        when(redeem.hold(any()))
+                .thenAnswer(
+                        call -> {
+                            var h = call.<PointsRedeemPort.HoldCommand>getArgument(0);
+                            var price = h.acceptedPrice();
+                            return new PointsRedeemPort.HoldOutcome(
+                                    "QA:" + h.orderNo(),
+                                    price.typeCode(),
+                                    price.points(),
+                                    price.minor(),
+                                    "HELD",
+                                    null,
+                                    price.shares());
+                        });
+        String root = create(f, "live-route").get("payOrderNo").asString();
+        var accepted =
+                placement.inspect(root).draft().candidates().getFirst().target().acceptedRoute();
+        String pay =
+                mvc().perform(
+                                post("/mp/order/" + root + "/pay")
+                                        .header("Authorization", "Bearer " + f.buyer)
+                                        .param("payChannel", "TEST"))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
+        assertThat(dataRoot(pay).get("code").asInt()).as(pay).isZero();
+        String out =
+                jdbc.queryForObject(
+                        "SELECT out_trade_no FROM stl_payment WHERE order_no=?",
+                        String.class,
+                        root);
+        assertThat(paymentLedger.paymentRequest(out)).isPresent();
+        assertThat(paymentLedger.paymentRequest(out).orElseThrow().stores().getFirst().route())
+                .isEqualTo(accepted);
+    }
+
+    @Test
+    void only_a_verified_payment_creates_paid_and_earning_source_facts() throws Exception {
+        var f = fixture("12600349014", "13000349014", "paid-fact");
+        when(redeem.hold(any()))
+                .thenAnswer(
+                        call -> {
+                            var h = call.<PointsRedeemPort.HoldCommand>getArgument(0);
+                            var price = h.acceptedPrice();
+                            return new PointsRedeemPort.HoldOutcome(
+                                    "QA:" + h.orderNo(),
+                                    price.typeCode(),
+                                    price.points(),
+                                    price.minor(),
+                                    "HELD",
+                                    null,
+                                    price.shares());
+                        });
+        String root = create(f, "live-paid").get("payOrderNo").asString();
+        String pay =
+                mvc().perform(
+                                post("/mp/order/" + root + "/pay")
+                                        .header("Authorization", "Bearer " + f.buyer)
+                                        .param("payChannel", "TEST"))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
+        assertThat(dataRoot(pay).get("code").asInt()).as(pay).isZero();
+        String out =
+                jdbc.queryForObject(
+                        "SELECT out_trade_no FROM stl_payment WHERE order_no=?",
+                        String.class,
+                        root);
+        assertThatThrownBy(() -> orderService.markPaid(root, "TEST", "client-claimed-trade"))
+                .isInstanceOf(RuntimeException.class);
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT status FROM ord_order WHERE order_no=?",
+                                String.class,
+                                root))
+                .isEqualTo("WAIT_PAY");
+        paymentLedger.settle(
+                new ai.neargo.shop.spi.settle.SettlePort.PaymentSettled(
+                        out, "TEST", "verified-" + root, 990, System.currentTimeMillis()));
+        assertThatThrownBy(() -> orderService.markPaid(root, "TEST", "forged-trade"))
+                .hasMessageContaining("POINTS_PAYMENT_PROOF_MISMATCH");
+        orderService.markPaid(root, null, null);
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT status FROM ord_order WHERE order_no=?",
+                                String.class,
+                                root))
+                .isEqualTo("PAID");
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM ord_points_source_fact WHERE sub_order_no IN"
+                                    + " (SELECT sub_order_no FROM ord_sub_order WHERE order_no=?)",
+                                Long.class,
+                                root))
+                .isEqualTo(2);
     }
 
     @Test
@@ -196,7 +297,7 @@ class PointsOrderLiveCreationTest {
         assertThat(
                         jdbc.queryForObject(
                                 "select count(*) from prd_stock_lock where lock_no=? and"
-                                    + " status='LOCKED'",
+                                        + " status='LOCKED'",
                                 Long.class,
                                 root))
                 .isPositive();
@@ -219,7 +320,7 @@ class PointsOrderLiveCreationTest {
         assertThat(
                         jdbc.queryForObject(
                                 "select count(*) from prd_stock_lock where lock_no=? and"
-                                    + " status='LOCKED'",
+                                        + " status='LOCKED'",
                                 Long.class,
                                 root))
                 .isZero();
@@ -254,7 +355,7 @@ class PointsOrderLiveCreationTest {
         assertThat(
                         jdbc.queryForObject(
                                 "select count(*) from prd_stock_lock where lock_no=? and"
-                                    + " status='LOCKED'",
+                                        + " status='LOCKED'",
                                 Long.class,
                                 root))
                 .isZero();

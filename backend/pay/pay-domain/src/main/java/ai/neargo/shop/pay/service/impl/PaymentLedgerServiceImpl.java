@@ -123,7 +123,10 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             if (!nonblank(store.subOrderNo()) || !subs.add(store.subOrderNo()) || route == null
                     || !nonblank(route.merchantNo()) || !nonblank(route.storeNo())
                     || !nonblank(route.payMerchantNo()) || !nonblank(route.subMerchantId())
-                    || !nonblank(route.accountVersion()) || !Objects.equals(route.channel(), request.payChannel())
+                    || !nonblank(route.accountVersion())
+                    || !(Objects.equals(route.channel(), request.payChannel())
+                            || ("FREE".equals(request.payChannel()) && request.amountMinor() == 0
+                                    && nonblank(route.channel())))
                     || !("DIRECT".equals(route.fundsPath()) || "AGGREGATED".equals(route.fundsPath()))) {
                 throw new IllegalArgumentException("PAY_STORE_ROUTE_INVALID");
             }

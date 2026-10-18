@@ -122,6 +122,8 @@ public class OrderServiceImpl implements OrderService {
     private ai.neargo.shop.trade.order.points.OrderPointsCoordinator pointsCoordinator;
     private ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator pointsPlacement;
     private ai.neargo.shop.trade.order.points.OrderPointsTargetFactory pointsTargets;
+    private ai.neargo.shop.spi.points.PointsPaymentSnapshotPort pointsPaymentSnapshots;
+    private ai.neargo.shop.trade.order.points.OrderPointsPaidFactService pointsPaidFacts;
     private org.springframework.transaction.support.TransactionTemplate sourceTransactions;
     @org.springframework.beans.factory.annotation.Value("${shop.points.enabled:false}")
     private boolean pointsEnabled;
@@ -133,6 +135,13 @@ public class OrderServiceImpl implements OrderService {
         this.pointsCoordinator = coordinator;
         this.pointsPlacement = placement;
         this.pointsTargets = targets;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPointsPaidIntegration(ai.neargo.shop.spi.points.PointsPaymentSnapshotPort snapshots,
+            ai.neargo.shop.trade.order.points.OrderPointsPaidFactService facts) {
+        this.pointsPaymentSnapshots = snapshots;
+        this.pointsPaidFacts = facts;
     }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -1699,18 +1708,25 @@ public class OrderServiceImpl implements OrderService {
         if (market == null) throw new IllegalArgumentException("POINTS_MARKET_REQUIRED");
         String chosenMarket = market;
         String channel = payChannelMasterPort.payableChannels(chosenMarket).stream()
-                .filter(ch -> split.groups.stream().filter(g -> decisions.containsKey(g.key()))
+                .filter(ch -> split.groups.stream()
                         .allMatch(g -> merchantPort.activeChannelsOf(g.merchantNo(), g.storeNo()).contains(ch)))
                 .sorted().findFirst().orElseThrow(
                         () -> new IllegalArgumentException("POINTS_PAYMENT_ROUTE_REQUIRED"));
         List<ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Candidate> candidates =
                 new ArrayList<>();
+        List<SettlePort.PaymentStore> paymentStores = new ArrayList<>();
         for (Group g : split.groups) {
             var decision = decisions.get(g.key());
-            if (decision == null) continue;
+            if (decision == null) {
+                var route = merchantPort.paymentRouteOf(g.merchantNo(), g.storeNo(), channel)
+                        .orElseThrow(() -> new IllegalArgumentException("POINTS_PAYMENT_ROUTE_REQUIRED"));
+                paymentStores.add(new SettlePort.PaymentStore(subOrderNoOf.get(g.key()), route));
+                continue;
+            }
             var target = pointsTargets.build(subOrderNoOf.get(g.key()), g.merchantNo(), g.storeNo(),
                     channel, null, discounts.of(g.merchantNo(), g.storeNo()), g.freight(),
                     lines.getOrDefault(g.key(), List.of()));
+            paymentStores.add(new SettlePort.PaymentStore(subOrderNoOf.get(g.key()), target.acceptedRoute()));
             Map<String, ai.neargo.shop.spi.points.PointsEarnPort.EarnLine> raw = new HashMap<>();
             for (var rule : rules.getOrDefault(g.key(), List.of())) raw.put(rule.itemId(), rule);
             var frozen = target.target().items().stream().map(item -> {
@@ -1727,7 +1743,7 @@ public class OrderServiceImpl implements OrderService {
         return new ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Draft(
                 orderNo, userNo, market, CURRENCY_CNY, payMode,
                 ai.neargo.shop.common.PayScenes.normalize(cmd.payScene()), wanted,
-                basePayMinor, pointsRequestHash(userNo, cmd), candidates, subOrderNos);
+                basePayMinor, pointsRequestHash(userNo, cmd), candidates, subOrderNos, paymentStores);
     }
 
     private static String pointsRequestHash(String userNo, CreateOrderCommand cmd) {
@@ -1850,10 +1866,27 @@ public class OrderServiceImpl implements OrderService {
          * 而那是最不该第一次执行它的时候。
          */
         String channel = resolvePayChannel(order, payChannel);
-        var init = settlePort.initPayment(new SettlePort.PaymentOpen(
-                orderNo, order.getUserNo(), null, channel,
-                order.getPayAmount() == null ? 0L : order.getPayAmount(),
-                payDescription(orderNo)));
+        SettlePort.PaymentOpen open;
+        if (Boolean.TRUE.equals(order.getPointsIntegrated())) {
+            var accepted = pointsPlacement.inspect(orderNo);
+            if (accepted == null || accepted.phase() !=
+                    ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Phase.READY
+                    || accepted.draft().paymentStores().size() != accepted.draft().allSubOrderNos().size()
+                    || accepted.draft().paymentStores().stream().anyMatch(s ->
+                    !channel.equals(s.route().channel())
+                            && !(ai.neargo.shop.common.PayChannels.FREE.equals(channel)
+                                    && Long.valueOf(0).equals(order.getPayAmount())))) {
+                throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+            }
+            open = new SettlePort.PaymentOpen(orderNo, order.getUserNo(), null, channel,
+                    order.getPayAmount() == null ? 0L : order.getPayAmount(),
+                    payDescription(orderNo), accepted.draft().currency(),
+                    accepted.draft().paymentStores());
+        } else {
+            open = new SettlePort.PaymentOpen(orderNo, order.getUserNo(), null, channel,
+                    order.getPayAmount() == null ? 0L : order.getPayAmount(), payDescription(orderNo));
+        }
+        var init = settlePort.initPayment(open);
 
         if (!init.success()) {
             /*
@@ -1890,8 +1923,41 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
     public void markPaid(String orderNo, String payChannel, String payTradeNo) {
+        OrdOrder source = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));
+        if (source == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        ai.neargo.shop.spi.points.PointsPaymentSnapshotPort.VerifiedPayment proof = null;
+        if (Boolean.TRUE.equals(source.getPointsIntegrated()) && !OrdOrder.PAID.equals(source.getStatus())) {
+            if (org.springframework.transaction.support.TransactionSynchronizationManager
+                    .isActualTransactionActive()) {
+                throw new IllegalArgumentException("POINTS_SOURCE_TRANSACTION_OPEN");
+            }
+            if (pointsPaymentSnapshots == null || pointsPaidFacts == null || sourceTransactions == null) {
+                throw new IllegalArgumentException("POINTS_IMPLEMENTATION_REQUIRED");
+            }
+            proof = pointsPaymentSnapshots.verified(orderNo).orElseThrow(
+                    () -> new IllegalArgumentException("POINTS_PAYMENT_NOT_VERIFIED"));
+            if (!source.getUserNo().equals(proof.userNo())
+                    || !source.getCurrency().equals(proof.currency())
+                    || source.getPayAmount() == null || source.getPayAmount() != proof.amountMinor()
+                    || (payChannel != null && !proof.channel().equals(payChannel))
+                    || (payTradeNo != null && !proof.tradeNo().equals(payTradeNo))) {
+                throw new IllegalArgumentException("POINTS_PAYMENT_PROOF_MISMATCH");
+            }
+        }
+        var verified = proof;
+        String settledChannel = proof == null ? payChannel : proof.channel();
+        String settledTrade = proof == null ? payTradeNo : proof.tradeNo();
+        if (sourceTransactions != null) {
+            sourceTransactions.execute(s -> { markPaidSource(orderNo, settledChannel, settledTrade, verified); return null; });
+        } else {
+            markPaidSource(orderNo, settledChannel, settledTrade, verified);
+        }
+    }
+
+    private void markPaidSource(String orderNo, String payChannel, String payTradeNo,
+                                ai.neargo.shop.spi.points.PointsPaymentSnapshotPort.VerifiedPayment proof) {
         OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));
         if (order == null) {
@@ -1899,6 +1965,9 @@ public class OrderServiceImpl implements OrderService {
         }
         if (OrdOrder.PAID.equals(order.getStatus())) {
             return;   // 幂等：回调会重发，重复到达不能重复扣库存、重复发事件
+        }
+        if (Boolean.TRUE.equals(order.getPointsIntegrated()) && proof == null) {
+            throw new IllegalArgumentException("POINTS_PAYMENT_NOT_VERIFIED");
         }
         // 经门：WAIT_PAY → 通道回调；WAIT_OFFLINE_PAY → 商家确认当面收款。与超时关单并发时 CAS 决出一方
         boolean offline = OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus());
@@ -2003,7 +2072,8 @@ public class OrderServiceImpl implements OrderService {
             merchantAdminPort.accruePayQuota(sub.getEntityNo(), sub.getStoreNo(),
                     sub.getPayAmount() == null ? 0L : sub.getPayAmount());
 
-            if (!Boolean.TRUE.equals(sub.getPointsGranted())) {
+            if (!Boolean.TRUE.equals(order.getPointsIntegrated())
+                    && !Boolean.TRUE.equals(sub.getPointsGranted())) {
                 /*
                  * 发积分**在支付状态提交之后**做，与生成结算单同一条理由：
                  * 支付域独立成进程后就没有共享事务了，而这里后面还有事件发布 ——
@@ -2026,6 +2096,10 @@ public class OrderServiceImpl implements OrderService {
                 AfterCommit.run("发放积分 subOrderNo=" + subNo,
                         () -> grantPointsAfterPay(subNo, userNo, entityNo, base, payChannel, scene, bonus));
             }
+        }
+
+        if (Boolean.TRUE.equals(order.getPointsIntegrated())) {
+            pointsPaidFacts.recordPaid(orderNo, proof);
         }
 
         /*

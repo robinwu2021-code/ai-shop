@@ -25,6 +25,9 @@ public class OrderPointsOutboxConsumer implements OutboxConsumer {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(
+            value = "transactionManager",
+            propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public void consume(SysOutbox transport) {
         var reference = json.readValue(transport.getPayload(), OrderPointsSourceEvent.class);
         deliver(reference.eventNo(), reference.subOrderNo());

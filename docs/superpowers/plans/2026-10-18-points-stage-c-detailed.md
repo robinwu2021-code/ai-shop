@@ -158,7 +158,7 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 - [x] RED：DETACHED和不使用积分原下单回归；政策改变导致应付变化返回RECONFIRM；hold成功后源提交失败可按原orderNo恢复；hold超时不切换纯现金；取消与支付竞争不重复释放；暂存订单失败不遗留库存/券占用。
 - [x] 实现：复用现有创建/库存/券组件，禁止复制两套订单实现。参与分支移出长源事务；既有纯现金路径继续使用现有事务。源状态推进CAS，支付入口校验可支付状态。取消的权威未付事实持久化，远程/跨库调用不藏在AfterCommit不可恢复回调里。
 - [x] GREEN：两类定向场景+既有下单/取消受影响类；Native只验证需要的竞争方法。记录跨域故障注入位置。最终整单Native竞争并入T13验收。
-- [ ] 提交：`feat(points): wire recoverable order redemption admission`。
+- [x] 提交：`feat(points): wire recoverable order redemption admission`（3a1e44563）。
 
 ## Task T07：源事实日志、Outbox与有序补扫
 
