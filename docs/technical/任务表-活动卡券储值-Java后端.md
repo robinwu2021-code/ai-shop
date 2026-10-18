@@ -23,11 +23,11 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：15项DONE、0项DOING、40项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
+本表共55项：15项DONE、2项DOING、38项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序（2026-10-19用户调整）：第一阶段完成core活动自身能力，第二阶段完成pay权益、卡券、储值及活动权益联动。具体任务分组、跨阶段子项与验收见[两阶段执行方案](./开发计划-活动优先与权益两阶段.md)。已完成的权益公共基础直接保留；JB-015尚未开始Java实现，移至第二阶段。原任务编号与整体依赖保留，跨阶段任务仅完成活动部分不能标记整项DONE。
 
-测试节奏：开发小阶段只执行受影响模块编译和关键定向用例；数据库并发/事务等验证集中到对应能力批次完成后执行。每个大阶段结束做一次阶段范围的合并回归；全量后端测试集中到JB-055最终收口，除非出现跨模块故障需要扩大排查。每项记录实际已验证和延后验证项，不能将未运行的验收记为通过。
+测试节奏（2026-10-19最新用户指示）：先整体完成第一阶段编码，再统一编译、执行阶段测试并修复。编码过程中暂不执行测试；测试用例与验收仍按原要求保留，执行顺序后置。全量后端测试留在JB-055最终收口。每项分别记录编码进展和验证结果，未验收不得标DONE。
 
 ### 1.1 全局约束
 
@@ -100,8 +100,8 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 
 | ID | 原任务 | 状态 | 依赖 | 模块 | 交付内容/Java类 | 验收条件/测试 |
 |---|---|---|---|---|---|---|
-| JB-028 | D04.1/D06.1 | TODO | 008 | core.promotion | ActivityPresetService/Impl、BizActivityPresetController；40AP+6EP目录、分类/业态、能力过滤；C01/C02 | ActivityPresetFlowTest：46条唯一稳定编号、默认禁用、缺能力不推荐发布；不创建46个Service |
-| JB-029 | D04.1 | TODO | 006,008,009,028 | core.promotion | ActivityService/Impl、ActivityVersionService/Impl、ActivityRuleValidator；草稿/发布/范围/受众/储值档位 | ActivityVersionFlowTest：发布不可变、ORDER/RECHARGE隔离、档位金额服务端固定、暂停不撤销原参与 |
+| JB-028 | D04.1/D06.1 | DOING | 008 | core.promotion | ActivityPresetService/Impl、BizActivityPresetController；40AP+6EP目录、分类/业态、能力过滤；C01/C02 | ActivityPresetFlowTest：46条唯一稳定编号、默认禁用、缺能力不推荐发布；不创建46个Service |
+| JB-029 | D04.1 | DOING | 006,008,009,028 | core.promotion | ActivityService/Impl、ActivityVersionService/Impl、ActivityRuleValidator；草稿/发布/范围/受众/储值档位 | ActivityVersionFlowTest：发布不可变、ORDER/RECHARGE隔离、档位金额服务端固定、暂停不撤销原参与 |
 | JB-030 | D04.1/4.3 | TODO | 029 | core.promotion/trade | ActivityPricingService/Impl、PlatformActivityService/Impl及现有团期/赠品适配 | ActivitySceneIsolationTest：ORDER定价不混储值，现有团/期/库存/履约兼容；未实现玩法不可执行 |
 | JB-031 | D04.2 | TODO | 008,011,014,016,029 | core.promotion | ActivityParticipationService/Impl、PortImpl、EligibilityPolicy；reserve/confirm/release/query | ActivityParticipationFlowTest：预算/名额/个人限购同事务，跨版本累计；未知pay状态不按TTL释放；原生并发不超卖 |
 | JB-032 | D04.3 | TODO | 016,031 | app paybridge | ActivityBenefitCoordinator；core reserve→pay prepare/commit→core confirm | ActivityBenefitCoordinatorTest：失败补偿、事件重复/乱序、远程超时、原业务号恢复；营销占用不提前释放 |
@@ -448,4 +448,13 @@ JB-010历史全量证据：ecfda1ebd干净编译及3582项/20模块全绿。JB-0
 
 实现提交：`d1e260aba`。Java 21 `mvn -o -f backend/pom.xml clean test`：27模块BUILD SUCCESS；Surefire报告合计3,604项、0失败、0错误、4跳过（shop-app模块汇总2,782项）；独立隔离MySQL场景4项通过、0跳过。24个文档生成器、V2 66份文档守卫、SQL可移植性（0新增方言欠账）及`git diff --check`通过。只读代码复核无可执行问题。未推送、部署或访问生产数据库。
 
-当前任务计数：15 DONE / 0 DOING / 40 TODO。下一项JB-028：活动预置目录、分类与能力过滤；JB-015排入第二阶段。
+当前任务计数：15 DONE / 2 DOING / 38 TODO。JB-028/029编码中；JB-015排入第二阶段。
+
+
+### 第一阶段连续编码记录（2026-10-19，未验收）
+
+用户要求：整体编码完成后再测试，覆盖本表先前逐项RED/GREEN及小阶段验证执行顺序。当前不运行编译、Java测试或数据库测试，不将此批改动宣称可运行。
+
+- JB-028：已写V430目录及46条默认禁用预置、PmtPresetTemplate/Mapper、ActivityPresetService/Impl与C01/C02商家入口，支持分类/场景/业态及分页。能力readiness接线仍待阶段内后续工作；现阶段全部保守不可执行。
+- JB-029：已写统一类型化定义与ActivityRuleValidator；V431准备不可变版本、范围、档位、预算/个人参与、参与凭证、统计投影与core命令幂等存储；对应实体/Mapper已创建。发布/状态服务、参与逻辑及HTTP接线尚未完成。
+- 全阶段仍编码中，JB-030/031/033及活动侧收口子项尚未完成；所有本批验证均待执行。

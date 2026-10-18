@@ -85,6 +85,10 @@ public class PmtActivity extends BaseEntity {
     /** 商家手动停的 */
     public static final String ENDED_MANUAL = "MANUAL";
 
+    private String scene;
+    private String currentVersionNo;
+    private String draftSnapshot;
+
     private String activityNo;
     private String entityNo;
     private String storeNo;
