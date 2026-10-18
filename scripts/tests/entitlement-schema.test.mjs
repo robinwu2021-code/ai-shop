@@ -30,7 +30,7 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '38');
         assert.ok(sql("SHOW COLUMNS FROM ent_template LIKE 'draft_snapshot'"), 'template draft needs persisted editable rules');
         sql(readFileSync(new URL('../../docs/technical/design/活动权益-support-schema.sql', import.meta.url), 'utf8'));
-        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '43');
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '44');
         const supportAudit = "created_at,updated_at,created_by,updated_by";
         const supportValues = "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'TEST','TEST'";
         const decision = (no, key, settled, status, type, revision = 1, tenant = 'MAIN') =>
@@ -52,12 +52,33 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         sql('CREATE DATABASE entitlement_runtime_test');
         sql(migration, 'entitlement_runtime_test');
         sql(migration, 'entitlement_runtime_test');
-        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_runtime_test'"), '3');
-        for (const table of ['ent_template', 'ent_template_version', 'pay_ent_command_dedup']) {
+        const memberMigration = readFileSync(new URL(
+            '../../backend/shop-app/src/main/resources/db/migration/V426__member_identity_ticket.sql', import.meta.url), 'utf8');
+        sql(memberMigration, 'entitlement_runtime_test');
+        sql(memberMigration, 'entitlement_runtime_test');
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_runtime_test'"), '4');
+        for (const table of ['ent_template', 'ent_template_version', 'pay_ent_command_dedup', 'mbr_identity_ticket']) {
             const columns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns
                 WHERE table_schema='${database}' AND table_name='${table}' ORDER BY ordinal_position`);
             assert.equal(columns('entitlement_runtime_test'), columns('entitlement_test'), table);
         }
+        const ticket = (hash, tenant = 'MAIN', purpose = 'MEMBER_CODE', scope = 'NULL,NULL,NULL,NULL',
+            expiry = 'DATE_ADD(UTC_TIMESTAMP(3), INTERVAL 60 SECOND)') =>
+            `INSERT INTO mbr_identity_ticket(tenant_no,ticket_hash,purpose,user_no,entity_no,store_no,actor_no,`
+            + `source_ticket_hash,issued_at,expires_at,created_at,updated_at,created_by,updated_by) VALUES `
+            + `('${tenant}',REPEAT('${hash}',64),'${purpose}','u1',${scope},UTC_TIMESTAMP(3),${expiry},`
+            + `UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'u1','u1')`;
+        sql(ticket('a'), 'entitlement_runtime_test');
+        assert.throws(() => sql(ticket('a'), 'entitlement_runtime_test'), /Duplicate entry/);
+        sql(ticket('a', 'OTHER'), 'entitlement_runtime_test');
+        assert.throws(() => sql(ticket('b', 'MAIN', 'CUSTOMER_REFERENCE'), 'entitlement_runtime_test'),
+            /Check constraint/, 'customer refs require all bound scope columns');
+        sql(ticket('b', 'MAIN', 'CUSTOMER_REFERENCE', "'m1','s1','actor1',REPEAT('a',64)"), 'entitlement_runtime_test');
+        assert.throws(() => sql(ticket('c', 'MAIN', 'MEMBER_CODE', "'m1',NULL,NULL,NULL"),
+            'entitlement_runtime_test'), /Check constraint/, 'unified codes must not carry a merchant scope');
+        assert.throws(() => sql(ticket('c', 'MAIN', 'LOGIN_TOKEN'), 'entitlement_runtime_test'), /Check constraint/);
+        assert.throws(() => sql(ticket('c', 'MAIN', 'MEMBER_CODE', 'NULL,NULL,NULL,NULL',
+            'DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 SECOND)'), 'entitlement_runtime_test'), /Check constraint/);
         const dedup = key => `INSERT INTO pay_ent_command_dedup
             (tenant_no,operation_kind,request_key,payload_hash,resource_no,result_status,
              created_at,updated_at,created_by,updated_by)

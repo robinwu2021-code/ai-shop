@@ -356,6 +356,7 @@ class BizEndpointPermTest {
         put("/biz/store/scope-preview", BizPerms.STORE);
         // 会员（P1）：沿用客户资产那个码 —— 会员就是「我的客户」那一页的升级版
         put("/biz/members", BizPerms.CUSTOMER);
+        put("/biz/member-code/resolve", BizPerms.CUSTOMER);
         put("/biz/members/stats", BizPerms.CUSTOMER);
         put("/biz/members/{memberNo}", BizPerms.CUSTOMER);
         // 录入与标签（P2）：同一屏、同一批人、同一个码

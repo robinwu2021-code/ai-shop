@@ -4901,6 +4901,31 @@ CREATE TABLE IF NOT EXISTS pay_ent_command_dedup
     CONSTRAINT uk_command UNIQUE (tenant_no,operation_kind,request_key)
 );
 
+CREATE TABLE IF NOT EXISTS mbr_identity_ticket
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    ticket_hash CHAR(64) NOT NULL,
+    purpose VARCHAR(24) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NULL,
+    store_no VARCHAR(64) NULL,
+    actor_no VARCHAR(64) NULL,
+    source_ticket_hash CHAR(64) NULL,
+    issued_at DATETIME(3) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_member_identity_hash UNIQUE (tenant_no,ticket_hash),
+    CHECK (expires_at>issued_at),
+    CHECK ((purpose='MEMBER_CODE' AND entity_no IS NULL AND store_no IS NULL AND actor_no IS NULL AND source_ticket_hash IS NULL) OR (purpose='CUSTOMER_REFERENCE' AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL))
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

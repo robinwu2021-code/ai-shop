@@ -25767,6 +25767,12 @@
           "ar": "اختر المستلمين"
         },
         {
+          "key": "err.member.code_invalid",
+          "zh-CN": "会员码无效或已过期，请刷新后重试",
+          "en": "Member code is invalid or expired. Refresh and try again.",
+          "ar": "رمز العضوية غير صالح أو منتهي الصلاحية. يرجى التحديث والمحاولة مجدداً."
+        },
+        {
           "key": "err.member.phone_required",
           "zh-CN": "加入会员需要先绑定手机号",
           "en": "Add your phone number to join",
@@ -26838,6 +26844,13 @@
       "zh": "短链（TDD-收件人物流触达与分享裂变 §4.2）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.link.entity"
+    },
+    {
+      "table": "mbr_identity_ticket",
+      "class": "MbrIdentityTicket",
+      "zh": "Durable hash-only credentials allow multiple application nodes without persisting bearer secrets.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.member.entity"
     },
     {
       "table": "mbr_member",
@@ -35392,6 +35405,7 @@
           "ENROLLMENT_CLOSED",
           "ENROLLMENT_OVER_BUDGET",
           "ENTITLEMENT_FEATURE_UNAVAILABLE",
+          "MEMBER_CODE_INVALID",
           "SPLIT_RECEIVER_NOT_READY",
           "SPLIT_EXPIRED",
           "WITHDRAW_STATE_ILLEGAL",

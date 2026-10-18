@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 228 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 229 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -24,7 +24,7 @@
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 44 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 36 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
-| `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 27 | ✅ | ✅ | — | — | — | — |
+| `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 21 | ✅ | — | — | — | — | — |
 | `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 21 | ✅ | — | — | — | — | — |
@@ -195,6 +195,7 @@
 | 经营数据 | GET | `/biz/dashboard/stats` | `mStats` | home、stats |
 | 进销存月报 | GET | `/biz/inventory/report/monthly` | `mStockMonthly` | stock-report |
 | 动销/滞销榜 | GET | `/biz/inventory/report/ranking` | `mStockRanking` | stock-report |
+| 识别统一会员码 | POST | `/biz/member-code/resolve` | `mResolveMemberCode` | — |
 | 群发试算：能发多少、跳过多少 | POST | `/biz/member-reach/plan` | `mPlanReach` | member-reach |
 | 发出去的消息（批次列表） | GET | `/biz/member-reach/task` | `mReachTasks` | reach-tasks |
 | 一次触达的效果 | GET | `/biz/member-reach/task/{taskNo}` | `mReachTask` | reach-task |
@@ -515,6 +516,7 @@
 | 压缩包服务端解压（小程序端没有本地解压能力） | `/biz/goods/zip-import` | `mZipImport` | `biz:goods` |
 | 拨一个品类记不记库存（有在途拒绝、有库存要确认） | `/biz/inventory/category-setting/:categoryNo` | `mInvSetCategory` | `biz:goods` |
 | 改进货草稿 | `/biz/inventory/inbounds/:no` | `mInboundUpdate` | `biz:stock` |
+| 识别统一会员码 | `/biz/member-code/resolve` | `mResolveMemberCode` | `biz:customer` |
 | 改备注 / 拉黑 | `/biz/members/{memberNo}` | `mPatchMember` | `biz:customer` |
 | 批量打/去一个标签（confirm=false 只试算） | `/biz/members/tags/batch` | `mBatchTagMembers` | `biz:customer` |
 | 停用/启用自建维度 | `/biz/my-spec-dims/{dimNo}/archive` | `mArchiveSpecDim` | `biz:goods` |

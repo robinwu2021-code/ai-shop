@@ -30,6 +30,7 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | C08 | POST | /biz/member-code/resolve | MemberResolveCommand | CustomerReference | biz:customer | 统一会员域接入契约，若已有等价URL则复用 |
 | C09 | POST | /mp/orders/{orderNo}/entitlement-authorizations | AuthorizationCommand | AuthorizationView | 登录本人 | 目标通用本人确认，核对既有order路由后冻结，不增储值码 |
 | C10 | GET | /biz/marketing-summary | storeNo?,from,to | MarketingSummary | biz:campaign | 目标统一看板，迁移已有摘要入口时保留别名 |
+| C11 | POST | /mp/member-code | 无，C会话本人 | MemberCodeView | 消费者登录 | JB-010统一会员码签发，不是储值专用码 |
 
 ## 三、支付服务权益与储值入口
 
@@ -215,20 +216,21 @@ JB-008分页对齐：内部consumer查询沿C端size 1–50，B/O普通分页仍
 
 P12补assetRevision及snapshotHash，供P13提供expectedAssetRevision；内部UseCommand同步带expectedAssetRevision、previewRef?/quoteRef?。ORDER_COUPON要求quoteRef，兑换券/付费卡要求previewRef；储值不签独立资产码，不混入券报价。短期引用由pay验证绑定用户/主体/门店/资产/版本/数量/金额和过期时间，再核实core持久本人授权。UNKNOWN授权响应不得带用户等业务事实，HELD响应必须有holdNo和业务时间。
 
-P06发行控制跨版本、跨allowedIssueModes合并计数，删除重复且无表对应的issueMode；模板allowedIssueModes是唯一途径约束，不新增分途径库存。P01授权管理列表包含完整draft/currentVersionNo及可选issuePolicy；首次配置expectedRevision=0，发布响应P04包含不可变definition/snapshotHash。已知版本历史由现有内部目录端口读取，不新增外部详情路由，外部接口总数保持47。
+P06发行控制跨版本、跨allowedIssueModes合并计数，删除重复且无表对应的issueMode；模板allowedIssueModes是唯一途径约束，不新增分途径库存。P01授权管理列表包含完整draft/currentVersionNo及可选issuePolicy；首次配置expectedRevision=0，发布响应P04包含不可变definition/snapshotHash。已知版本历史由现有内部目录端口读取，不新增外部详情路由，外部接口总数为48。
 
 
 JB-009范围预检落点：EntitlementScopeValidationService通过ProductScopeFactsPort与MerchantScopeFactsPort查询owner事实（显式tenant，分批200条）；门店/商品须属于该主体，类目为有效平台类目。EntitlementScopeResolver从MERCHANT会话/BizContext构造CatalogScope，platformActor固定false；有限门店员工只允许授权STORES子集。完整模板写入必须用resolveDefinition，额外核实GIFT.benefitRef商品归属；仅scope校验不能代替完整定义校验。P01–P05仍未开放，新HTTP实现须调用此守卫，不接受客户端owner/actor字段。配置允许READONLY门店及未上架商品，不代表允许实时交易，核销另查时点状态。
 
-C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的read/update子权限。其余新增pay权限仍属拟登记清单，必须与真实Handler及角色测试同时交付，不提前给现有角色增权。此调整不增加47条目标外部路由。
+C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的read/update子权限。其余新增pay权限仍属拟登记清单，必须与真实Handler及角色测试同时交付，不提前给现有角色增权。此调整不增加48条目标外部路由。
 
 
 ## 十一、内部事实查询与传输约定（JB-008设计冻结子项）
 
-以下是待JB-041接线的内部路由，不是已注册Handler，不计入47条外部路由。全部POST、JSON，正文为{context,...args}；context为EntitlementContext，其余属性名与SPI方法参数一致。query/quote/preview虽用POST承载带身份范围的正文，仍只读，不能被通用POST重试器当作写命令。返回直接解SPI record，沿既有/internal路径跳过公网ApiResponse包装。目录既有两个方法不改Java签名，远程适配器先验证调用context，再向本地端口传tenant/entity。
+以下是待JB-041接线的内部路由，不是已注册Handler，不计入48条外部路由。全部POST、JSON，正文为{context,...args}；context为EntitlementContext，其余属性名与SPI方法参数一致。query/quote/preview虽用POST承载带身份范围的正文，仍只读，不能被通用POST重试器当作写命令。返回直接解SPI record，沿既有/internal路径跳过公网ApiResponse包装。目录既有两个方法不改Java签名，远程适配器先验证调用context，再向本地端口传tenant/entity。
 
 | 所有者 | 路径 | 对应Java方法 | 参数（除context） |
 |---|---|---|---|
+| core | /internal/core/member/customer-reference/query | CustomerIdentityPort.resolveReference | query(entityNo,storeNo,customerRef) |
 | core | /internal/core/entitlement/source/query | SourceDecisionPort.query | source |
 | core | /internal/core/entitlement/authorization/query | SourceDecisionPort.authorization | authorizationRef |
 | core | /internal/core/promotion/participation/reserve | ActivityParticipationPort.reserve | command |
@@ -350,6 +352,15 @@ pay的catalog/issue/use/stored-value/paid-card由PayEntitlementFeatureGate提供
 
 通用码沿既有ErrorCode及三份messages资源，40040已新增三语并经BackendI18nParityTest验证。未来owner实现若需要细化余额不足等提示，须在该业务任务同步变更契约、枚举、三语与真实失败测试，不自行将异常字符串当用户文案。无码无接口的储值/新付费卡线上退款仍保持禁止，不为它建立可调用公网路由。I11已有券售后受原使用事实白名单控制。
 
-权限码以本文件C01–C10/P01–P30/O01–O07表逐条冻结：新增pay/ops:pay码仅随真实Handler登记，JB-025/026/027/033/038等负责门面，JB-053核对角色与运营五处登记；当前不向Perms及角色表写死权限，避免给没有实现的路由授权。公共DTO不接受tenant/actor/entity/platformActor作为本人身份；service token只证明服务调用方，不能替代业务范围与持久授权。
+权限码以本文件C01–C11/P01–P30/O01–O07表逐条冻结：新增pay/ops:pay码仅随真实Handler登记，JB-025/026/027/033/038等负责门面，JB-053核对角色与运营五处登记；当前不向Perms及角色表写死权限，避免给没有实现的路由授权。公共DTO不接受tenant/actor/entity/platformActor作为本人身份；service token只证明服务调用方，不能替代业务范围与持久授权。
 
-JB-008是协议/配置门禁基础交付。33条内部传输Handler/代理由JB-041实现，47条外部Handler由各业务任务实现；5张支撑设计表的正式迁移/Mapper由JB-011/JB-012/JB-046实现。不能把这些后续运行实现反向作为008的完成条件形成依赖循环，也不能因008完成而宣称它们已可用。统一会员码当前无可复用后端，JB-010仍须提供可信解析及短期customerRef，不能拿登录token或客户端用户号充当会员码。
+JB-008是协议/配置门禁基础交付。34条内部传输Handler/代理由JB-041实现，48条外部Handler由各业务任务实现；5张支撑设计表的正式迁移/Mapper由JB-011/JB-012/JB-046实现。不能把这些后续运行实现反向作为008的完成条件形成依赖循环，也不能因008完成而宣称它们已可用。JB-010补充统一会员码签发与解析；不能拿登录token或客户端用户号充当会员码。
+
+
+## JB-010统一会员凭证契约
+
+C11由core.member签发，tenant/user仅来自可信C会话；响应`{memberCode,expiresAt}`，expiresAt为ISO UTC。码为mc1_前缀的256位随机值，有效60秒。C08沿用biz:customer，输入`{memberCode,storeNo}`，tenant/entity/actor来自商家会话，并验证店员门店子集；响应`{customerRef,maskedName,expiresAt}`。引用有效120秒，绑定租户、主体、门店、操作人和顾客，顾客/商家/门店每次重验有效性，不返回手机或用户号。
+
+码和引用仅保存SHA-256摘要，禁止请求体/凭证原文日志；DTO toString脱敏，不走URL/query。非法/过期码40041，跨范围或过期引用10404；开关关闭40040。shop.member-code.enabled缺省false，仅控制新签发/扫码，既有引用查询仍按原到期时刻执行。统一码在60秒内可重复识别，扫码不产生财务效果，不替代JB-011本人确认。会员码到期不使已签发引用提前过期；引用到期不得刷新原引用，应重新扫码。重试签发得到新凭证，不缓存秘密原文为幂等响应。
+
+CustomerIdentityPort本地实现归member，向源业务只返回userNo；远程传输路由列入JB-041，当前不创建内部HTTP Handler。C端确认时必须由源业务使用冻结的原B操作人范围查询引用，不能改成C操作人，也不能将操作者直接当顾客。引用用于建立源意图，消费者确认与持久授权依JB-011另行处理。目标48条之外的旧会员接口保持兼容，不新增单独储值核销码。

@@ -783,3 +783,9 @@ export interface StockOutboundReq {
   /** 明细行。空数组会被拒 —— 一张没有行的单据落库之后没人能解释它是什么 */
   lines: StockLineReq[];
 }
+
+/** 身份/主体由会话解析，端上只提交扫描凭证和门店。 */
+export interface MemberResolveReq {
+  memberCode: string;
+  storeNo: string;
+}

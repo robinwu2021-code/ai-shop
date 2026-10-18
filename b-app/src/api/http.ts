@@ -1,3 +1,5 @@
+import type { CustomerReference } from "@shared/types";
+import type { MemberResolveReq } from "./requests";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 取。
 // 迁移时这个文件基本不用改，改的是 .env 里的开关。
 import { http } from "@shared/net/http-client";
@@ -596,6 +598,8 @@ export const httpApi: MerchantApi = {
   mCustomers: () => http.get<MerchantCustomer[]>(E.mCustomers.path),
   mMembers: (q) => http.get<PageResult<Member>>(E.mMembers.path, { ...(q ?? {}) }),
   mMemberStats: (storeNo) => http.get<MemberStats>(E.mMemberStats.path, { storeNo }),
+  mResolveMemberCode: (payload) =>
+    http.post<CustomerReference>(E.mResolveMemberCode.path, payload satisfies MemberResolveReq),
   mMemberDetail: (memberNo) =>
     http.get<MemberDetail>(buildPath(E.mMemberDetail.path, { memberNo })),
   mEnrollMember: (payload) => http.post<Member>(E.mEnrollMember.path, payload),

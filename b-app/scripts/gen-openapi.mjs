@@ -151,6 +151,7 @@ if (Object.keys(renamed).length) {
 
 /** 契约方法 → 响应类型名 */
 const RESPONSE_TYPES = {
+  mResolveMemberCode: "CustomerReference",
   /*
    * 2026-08-28 一次补齐 **97 条**。它们是逐批加进契约的，谁都没回来登记这张表 ——
    * 而漏一条整份 spec 就不生成（硬失败），于是 `openapi-b.yaml` 停在原地，
@@ -479,6 +480,7 @@ const RESPONSE_TYPES = {
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mResolveMemberCode: "MemberResolveReq",
   mCrossStoreCompare: "CrossStoreCompareQuery",
   mLogin: "MerchantLoginReqBody",
   mStaffLogin: "StaffLoginReq",

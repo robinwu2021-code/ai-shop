@@ -467,3 +467,16 @@ export interface MerchantCustomer {
   /** 客流来源：他是你自己带来的，还是平台分配的 */
   source: TrafficSource;
 }
+
+/** 统一会员身份凭证，ISO UTC截止时间；与登录令牌不同，不代表扣款同意。 */
+export interface MemberCodeView {
+  memberCode: string;
+  expiresAt: string;
+}
+
+/** 商家扫码得到的短期顾客引用，只在原主体、门店和操作人范围内可用。 */
+export interface CustomerReference {
+  customerRef: string;
+  maskedName: string;
+  expiresAt: string;
+}

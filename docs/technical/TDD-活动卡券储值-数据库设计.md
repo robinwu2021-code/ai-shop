@@ -10,7 +10,7 @@
 
 每表id为内部自增主键，tenant_no参与业务唯一性；version条件更新（对外expectedRevision映射此列）；created/updated_at用UTC DATETIME(3)，created/updated_by留操作人。资金/核销事实不可物理删除；模板归档不删除历史。沿现有BaseEntity实际审计列对齐后再生成正式迁移，不借设计重命名所有现存列。
 
-公共字段适用于基础38张及新增5张支撑表，DDL逐表展开：
+公共字段适用于基础38张及新增6张支撑表，DDL逐表展开：
 
 | 字段 | 类型及空值 | 含义 |
 |---|---|---|
@@ -36,7 +36,7 @@
 - 一个操作多张券的分配可有多行，但全部同pay事务过账；允许组合由业务白名单决定，首期储值不叠券/积分。
 - MySQL唯一键对NULL允许多行，因此settled_source_key仅成功核销时赋值，不能用空串表示未成功。
 
-基础目标逻辑表38张（核心12、支付26），补充支撑表5张（核心3、支付2），合计43张（核心15、支付28）。包含现有表重构和拟新增表，不表示已创建43张生产表；当前正式V425仍仅目录三表。支撑表字典见第七节。
+基础目标逻辑表38张（核心12、支付26），补充支撑表6张（核心4、支付2），合计44张（核心16、支付28）。包含现有表重构和拟新增表，不表示已创建44张生产表；正式V425为目录三表，JB-010新增V426身份凭证一表。支撑表字典见第七节。
 
 ## 二、核心服务完整数据字典
 
@@ -790,7 +790,7 @@ AuditMetaObjectHandler当前使用LocalDateTime.now，不能直接宣称其符�
 
 ## 七、授权、售卡与对账支撑存储
 
-[支撑DDL](./design/活动权益-support-schema.sql)独立于基础38表，仅用于设计与隔离MySQL验证；不是Flyway迁移。公共字段沿第一节。core三表仅core事务写，pay两表仅pay事务写；无跨库外键。正式实体、Mapper和迁移分别归JB-011/JB-012/JB-046。
+[支撑DDL](./design/活动权益-support-schema.sql)独立于基础38表，仅用于设计与隔离MySQL验证；不是Flyway迁移。公共字段沿第一节。core四表仅core事务写，pay两表仅pay事务写；无跨库外键。正式实体、Mapper和迁移分别归JB-011/JB-012/JB-046。
 
 ### ord_ent_authorization
 
@@ -943,3 +943,10 @@ KEY ix_ent_recon_diff_query (tenant_no,entity_no,recon_no,status),
 - 售卡规则与单件售价在下单时固化。paid_fact_no/paid_at仅在真实支付成功时单向关联，迟到事件不得替换付款时间。同一件多个权益行重复保存单价只为追溯，不得累加为收入。
 - 对账按ISSUANCE/RIGHTS/HOLD/MONEY分量纲；MONEY必须指定币种。批次游标可续扫、差异唯一，RUNNING→COMPLETED/FAILED；差异OPEN→ACKNOWLEDGED→RESOLVED。受控重试仍作用于原异常/原操作，不开放自动调平余额。ALL主体仅授权全域运营可用。内部expected/actual快照不得直接返回页面。
 - 恢复任务全局租约复用既有V91的shedlock；单操作沿既有Outbox租约及状态CAS。租约过期仅允许接管查询，UNKNOWN/PENDING不得推断取消；无需新增通用租约表。JB-051落实任务与多节点验证。
+
+
+### 7.6 core.member：mbr_identity_ticket（JB-010，V426）
+
+统一身份凭证，非余额表。ticket_hash为唯一查询摘要（tenant_no,ticket_hash），原文永不落库；purpose区分MEMBER_CODE/CUSTOMER_REFERENCE，user_no为可信顾客。MEMBER_CODE的entity_no/store_no/actor_no/source_ticket_hash必须全部为空；CUSTOMER_REFERENCE必须全部非空，分别绑定商家/门店/B操作人及来源会员码摘要。issued_at/expires_at为UTC DATETIME(3)，CHECK expires_at>issued_at，半开有效期60/120秒。公共审计字段齐全，version/deleted沿第一节。
+
+索引tenant/purpose/expires_at供未来JB-051批量清理过期记录；tenant/user/purpose供账号审计和撤销。来源摘要不设跨行FK，引用具有独立截止时间；清理父码不改变引用。禁止把此表当作消费授权，源意图和本人授权仍归ord_ent_authorization。V426在统一Flyway下归核心数据源，实体MbrIdentityTicket和MemberIdentityTicketMapper；DataScopeRegistration登记SELF:user_no和MERCHANT:entity_no，服务所有读写显式tenant/purpose且在可信owner内绕过环境scope。

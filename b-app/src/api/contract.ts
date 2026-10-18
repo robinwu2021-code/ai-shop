@@ -1,3 +1,5 @@
+import type { MemberResolveReq } from "./requests";
+import type { CustomerReference } from "@shared/types";
 // B 端唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 B 端 BFF `/mb/**`（C 端是 `/mp/**`）。
 //
@@ -1742,6 +1744,8 @@ export interface MerchantApi {
 
   /** 四层人数 + 可触达 + 本月新增 + **未绑手机号因此未计入的买家数** */
   mMemberStats(storeNo?: string): Promise<MemberStats>;
+
+  mResolveMemberCode(payload: MemberResolveReq): Promise<CustomerReference>;
 
   mMemberDetail(memberNo: string): Promise<MemberDetail>;
 

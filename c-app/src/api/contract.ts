@@ -1,3 +1,4 @@
+import type { MemberCodeView } from "@shared/types";
 // 唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
 import type {
@@ -511,6 +512,8 @@ export interface ShopApi {
    * 我是哪几家店的会员。**这是退订入口的前提** ——
    * 不知道自己是谁的会员，就无从关掉它。
    */
+  issueMemberCode(): Promise<MemberCodeView>;
+
   myMemberships(): Promise<MyMembership[]>;
   /** 关掉/打开某一家店的消息。**只有本人能改**，后端按登录人反查会员号 */
   setMembershipReach(entityNo: string, optOut: boolean): Promise<void>;

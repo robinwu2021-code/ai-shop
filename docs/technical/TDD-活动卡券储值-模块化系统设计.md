@@ -17,12 +17,15 @@
 - [功能矩阵](../requirements/活动卡券储值-模块功能矩阵.md)：三端、模块、模板、接口及数据映射。
 - [数据库设计](./TDD-活动卡券储值-数据库设计.md)：核心/支付分别拥有的数据字典、约束、迁移。
 - [API契约](./TDD-活动卡券储值-API契约.md)：沿用接口和新增接口、请求响应、权限与内部协议。
-- [核心建表草案](./design/活动权益-core-schema.sql)、[支付建表草案](./design/活动权益-pay-schema.sql)、[支撑表草案](./design/活动权益-support-schema.sql)：合计43张设计DDL，不是Flyway迁移。
+- [核心建表草案](./design/活动权益-core-schema.sql)、[支付建表草案](./design/活动权益-pay-schema.sql)、[支撑表草案](./design/活动权益-support-schema.sql)：合计44张设计DDL，不是Flyway迁移。
 - [ADR-038](./ADR/ADR-038-活动归核心权益归支付.md)。
 - [40项活动及6项产品模板](../requirements/预期活动预置清单.md)、[预置JSON](./design/活动预置模板-目录草案.json)。
 - [统一UI功能矩阵](../requirements/活动卡券储值-统一入口功能矩阵.md)、[29屏原型](../../prototypes/marketing-assets-unified.html)。原型未覆盖6项付费卡完整购买/激活/核销界面，其页面补齐列为设计交付后的独立工作，不冒充已画完。
 
 ## §0 现状核对
+
+JB-010需求对账：[PRD-美业储值 §4.1/入口补充](../requirements/PRD-美业储值.md)要求复用统一会员码、扫码不直接扣款；功能矩阵U22对应C08/C11、core.member凭证表及JB-011本人授权。原型只是会员码占位，不能作为可信码来源；本批补真实签发，页面仍后置。
+
 
 | 当前源码/契约 | 当前职责 | 目标处理 |
 |---|---|---|
@@ -227,6 +230,14 @@ model/policy无Spring/MyBatis；业务接口与实现分开；资金/余次变�
 
 测试先缺类型RED→实现GREEN，另移除目录create门禁观察用例RED后恢复。目录既有测试明确开启catalog能力，原生MySQL夹具亦显式注册门禁；不能给全局test profile开总开关掩盖缺省关闭行为。008只交付契约/门禁基础，不把后续HTTP、远程、会员码、发放及核销owner实现计作已完成。已有成功请求的恢复不能在幂等缓存读取之前被新开关误拦，门禁置于幂等工作回调内。
 
+### JB-010统一会员凭证实施补充（2026-10-18）
+
+档位2。当前无可信会员码签发者，新增C11 POST /mp/member-code，C会话取本人；C08商家解析统一会员码。沿用biz:customer权限与门店子集，不创建储值专用码。核心会员域新增mbr_identity_ticket（V426计划），目的MEMBER_CODE与CUSTOMER_REFERENCE隔离，256位随机原文只返回当次调用，数据库仅SHA-256摘要。码60秒、引用120秒、UTC半开有效期。引用绑定租户、主体、门店、商家操作人及顾客；识别不是扣款授权，仍须JB-011持久本人确认。
+
+新增UserScopeFactsPort查用户有效状态；CustomerIdentityPort向其他领域提供受范围限制的引用查询。新签发/解析受shop.member-code.enabled控制且默认关闭，既有引用只读查询不受新发行开关影响，但每次重验有效顾客/商家/门店。正式内部HTTP代理仍由JB-041接线。目标外部接口增至48，内部传输目标增至34，设计表增至44（core16/pay28，基础38+支撑6）；实际迁移交付分别登记。无资金表变更，不部署、不接生产库。
+
+验证：真实H2持久签发/解析与SPI查询，伪造/过期/跨租户主体门店操作人/失效顾客拒绝，默认关闭及关闭后引用读取，HTTP会话与权限；关键操作人隔离消融；新增迁移另在隔离原生MySQL验证，生成schema/ERD/OpenAPI按仓库守卫对账。
+
 ## §3 完整调用流程
 
 ### 3.1 活动配置与发券
@@ -310,6 +321,19 @@ COUNT以整数totalUnits计数，可有期限；PERIOD_COUNT同时限制有效�
 6. 回退只能在目标无新写且可证明一致时切回；pay已经产生新承诺/核销后不能直接翻开关回旧表，要以前滚修复或可审计迁移处理。
 
 未应用的sv_campaign草案取消；已应用Flyway不修改。权益模板管理API运行入口仍可保留，内部owner改为pay；不要把重命名包当作完成资金迁移。
+
+### JB-010身份验收映射
+
+| AC | 真实测试方法 | 实现落点 |
+|---|---|---|
+| C本人统一码，无储值专用码 | MemberCodeHttpFlowTest.consumerIssuesCodeAndMerchantResolvesWithoutLeakingAccountIdentifiers | C11/C08、core.member |
+| 伪造/过期/用途混用拒绝 | MemberCodeResolveFlowTest.rejectsForgedCodesUserNumbersReferencesAndExpiredCodes / expiredReferencesFailEvenWithValidScope | ticket hash/purpose/UTC半开有效期 |
+| 引用绑定租户/主体/门店/B操作人/顾客 | MemberCodeResolveFlowTest.referenceBindingIncludesTenantEntityStoreAndActor / rechecksLiveUserForIssueScanAndReferenceReads | requireReference + 用户有效事实SPI |
+| 店员仅可在授权门店识别，权限实时生效 | MemberCodeHttpFlowTest.staffNeedsLiveCustomerPermissionAndCannotScanForAnotherStore | BizContext门店子集 + biz:customer |
+| 原文不持久化、不记日志 | MemberCodeResolveFlowTest.issuesUnifiedCodeAndResolvesDurableReferenceWithOnlyMaskedIdentity / MemberCodeHttpFlowTest.successAndValidationErrorsDoNotWriteRawCredentialsToLogs | hash-only表、脱敏DTO、既有安全日志 |
+| 缺省关闭，停止新签发不破坏在途引用查询 | MemberCodeResolveFlowTest.disabledFeatureBlocksNewCredentialsButAllowsExistingReferenceQuery | MemberCodeProperties |
+
+以上仅证明身份识别，扣款本人授权验收仍归JB-011，未提前声明已完成。
 
 ## §6 验收与交付边界
 
@@ -519,3 +543,17 @@ c29之后仅修改API内部33路由/35能力及7个默认关闭开关的设计�
 `bash scripts/check-head-compiles.sh HEAD`实际固定f16cfff0d403d8775a0efbfa3a1cdd95ef1f2019，干净test-compile及全量20模块3570项0失败，605秒、退出0，失败基线保持0条。默认原生MySQL条件用例仍跳过；单独Java21运行`node scripts/verify-entitlement-mysql.mjs`已真实1项通过0跳过。定向88项、Node2项、35能力对46预置要求一致、V2受管66份文档及SQL无新增方言债务分别通过。后续提交仅文档证据，不把它写成又一次全量。
 
 008已完成契约/门禁基础，独立任务表11 DONE/0 DOING/44 TODO；010会员码及短期customerRef是下一执行项。只读核对发现旧MpMyMemberController仅有会员关系/消息开关，TokenStore为登录凭证，均不能直接充当会员码；下一项须补可信统一会员凭证来源，不新增储值专用二维码。完整交易链路、三端HTTP、远程及恢复仍未完成。当前只本地提交，无部署或生产迁移。
+
+
+### JB-010实现与阶段验证（2026-10-18）
+
+按上述JB-010计划实现，新增16个Java源/测试文件及V426一表；修改核心数据域登记、ErrorCode及三语；C/B端仅增加接口类型、HTTP绑定、拒绝伪造身份的演示占位和OpenAPI，无页面开发。数据库、API（48外部/34内部目标）、类清单、功能矩阵U22和ADR-038同步；生成schema/ERD/词典/端点与权限清单。不变更旧Flyway、旧支付业务或已有角色权限。
+
+RED：MemberCodeResolveFlowTest因缺新Service/SPI无法编译；HTTP新路径无Handler而失败。GREEN：Java21离线Maven定向45项通过（身份7、HTTP4、范围事实7、架构16、权限4、i18n6、schema1）；首次过期夹具错误使用本地CURRENT_TIMESTAMP，改显式UTC后过期拒绝通过。HTTP最初缺mch_account关系导致10403，补真实关系后成功；架构要求Impl分包，已移至service.impl；权限守卫要求注解置Mapping之前，按既有样式调整且登记REQUIRED，不修改扫描器或豁免权限。
+
+消融：临时移除requireReference的actor绑定条件，referenceBindingIncludesTenantEntityStoreAndActor一项失败（Expecting code to raise a throwable，退出1）；恢复后7项身份测试全部通过。另用有效的其他主体/同主体第二门店测试引用范围，避免在前置商家不存在处假失败。新Service对象可读取同一持久引用，证明不依赖原实例内存。
+
+隔离MySQL9.7.2设计验证1项通过：44张目标表、V425/V426重复应用、正式/设计字段逐列一致；会员凭证租户唯一键、未知用途、过期先于签发、引用缺范围及统一码携带商家范围的CHECK均拒绝。C/B vue-tsc通过；API契约无新增缺口（旧myCards/fulfillmentImpact两项基线保留）；SQL无新增方言债务；V2受管66份及24个生成器通过。source git diff --check通过（排除既有B OpenAPI序列化器生成的尾空格，未改变其生成风格）。尚需本次提交干净HEAD全量回归，JB-010保持DOING直到回归证据补齐。财务本人确认仍未实现，归JB-011；内部远程身份Handler仍归JB-041。
+
+
+补充验证：同11项身份/HTTP测试在-Dshop.pay.deployment=standalone下全部通过，Surefire系统属性确认实际为standalone；此为核心身份在两种pay配置下装配，不代替JB-041远程RPC往返。共享Vitest三文件13项：12通过、1失败。失败为api-path-naming.test.ts的“新端点必须跟随本域约定”，命中既有/biz/inventory/transfers/{no}/void、/ops/banned-word/{id}/remove、/ops/merchant/{entityNo}/nudge、/ops/merchant/{entityNo}/stock-doubt、/ops/product/{goodsNo}/chain五条；对比a51244cd3的三份OpenAPI，违规集合完全相同，本批新增违规0。未修改线上旧路径或增加豁免；biz-contract-fields与message-placeholder通过。启动命令首次误写.mts配置、第二次从错误cwd未发现测试，均非通过证据；实际运行采用npm test --workspace @ai-shop/shared。上述遗留失败与Java全量分开报告。

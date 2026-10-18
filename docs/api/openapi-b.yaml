@@ -3689,6 +3689,33 @@ components:
         - "silent"
         - "source"
       additionalProperties: false
+    MemberCodeView: 
+      type: "object"
+      properties: 
+        memberCode: 
+          type: "string"
+        expiresAt: 
+          type: "string"
+      required: 
+        - "memberCode"
+        - "expiresAt"
+      additionalProperties: false
+      description: "统一会员身份凭证，ISO UTC截止时间；与登录令牌不同，不代表扣款同意。"
+    CustomerReference: 
+      type: "object"
+      properties: 
+        customerRef: 
+          type: "string"
+        maskedName: 
+          type: "string"
+        expiresAt: 
+          type: "string"
+      required: 
+        - "customerRef"
+        - "maskedName"
+        - "expiresAt"
+      additionalProperties: false
+      description: "商家扫码得到的短期顾客引用，只在原主体、门店和操作人范围内可用。"
     MerchantPointsRecord: 
       type: "object"
       properties: 
@@ -11810,6 +11837,18 @@ components:
         - "purpose"
         - "lines"
       additionalProperties: false
+    MemberResolveReq: 
+      type: "object"
+      properties: 
+        memberCode: 
+          type: "string"
+        storeNo: 
+          type: "string"
+      required: 
+        - "memberCode"
+        - "storeNo"
+      additionalProperties: false
+      description: "身份/主体由会话解析，端上只提交扫描凭证和门店。"
     Record_Lang_string: 
       type: "object"
       properties: 
@@ -17671,6 +17710,40 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/member-code/resolve": 
+    post: 
+      operationId: "mResolveMemberCode"
+      summary: "识别统一会员码"
+      tags: 
+        - "member-code"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/CustomerReference"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/MemberResolveReq"
   "/biz/members/{memberNo}": 
     get: 
       operationId: "mMemberDetail"

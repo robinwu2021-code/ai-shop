@@ -69,7 +69,7 @@ pay新增Mapper物理位置为pay/mapper/entitlement和pay/mapper/storedvalue，
 | CardProductBindingService / Impl | product/service及impl | 新增 | bind、validatePublishedVersion；售价仍用原商品能力 | prd_entitlement_binding；C07 |
 | CardSaleSnapshotService / Impl | trade/service及impl | 新增 | 固化订单行/件/件内权益序号、模板版本与付款事实 | 既有订单行扩展；售卡流程 |
 | EntitlementAuthorizationService / Impl | trade/service及impl | 新增 | authorize、getDecision、cancelDecision；绑定本人、订单版本、资产选择 | 源订单意图；C09 |
-| MemberCodeResolveService / Impl | 既有会员域service及impl | 接入待核对 | 验签、短期顾客引用；若已有等价服务则扩展 | 既有凭证；C08 |
+| MemberCodeResolveService / Impl | core.member.service及impl | JB-010实施 | 随机凭证摘要校验、短期顾客引用；不复用登录token | mbr_identity_ticket；C08/C11 |
 
 ActivityVersionService只负责版本快照，ActivityService负责管理入口；参与服务不再次实现活动发布。订单意图、订单Outbox优先沿现有持久机制，若缺失需补充正式DDL与契约后实施，不允许用本地Map保存授权决策。
 
@@ -142,7 +142,7 @@ SourceRef在shop-base/spi/entitlement，生成稳定来源键，不代替身份�
 | BizActivityController | portal/biz | 现有改造 | C03–C06及既有详情/冲突，委派core |
 | BizActivityPresetController | portal/biz | 新增 | C01/C02，能力筛选目录 |
 | BizCardProductBindingController | portal/biz | 新增 | C07 |
-| BizMemberCodeController | portal/biz | 拟新增或复用等价入口 | C08；实施前核实统一会员码能力 |
+| BizMemberCodeController / MpMemberCodeController | portal/biz、mp | JB-010实施 | C08商家识别 / C11本人签发 |
 | MpEntitlementAuthorizationController | portal/mp | 新增 | C09，本人确认 |
 | BizMarketingSummaryController | portal/biz | 新增或兼容既有摘要入口 | C10 |
 | BizEntitlementTemplateController | portal/biz | 新增 | P01–P06 |
@@ -260,3 +260,20 @@ JB-008协议补充：EntitlementUsePort提供QuoteCommand/QuoteView/CouponAlloca
 
 
 JB-008门禁基础：pay.entitlement.config.PayEntitlementProperties与policy.PayEntitlementFeatureGate；core promotion.config.PromotionFeatureProperties与policy.PromotionFeatureGate；shop-base spi.promotion.ActivityCapability。7个开关默认关闭、35个能力码仅定义词汇不宣称就绪。目录写入/新引用已调用门禁，幂等响应回放及历史读取不受阻，其他消费者按所属任务实现；未新增公开Controller或实际远程调用。ErrorCode增加40040及三语消息。
+
+
+### JB-010落地类（2026-10-18）
+
+| 模块/包 | 类清单 | 职责 |
+|---|---|---|
+| shop-base/spi.member | CustomerIdentityPort、ReferenceQuery、ResolvedCustomer | 跨域最小身份事实，不含实体/余额 |
+| shop-base/spi.user | UserScopeFactsPort、ActiveUser | 显式租户及有效消费者事实 |
+| core.user.port | UserScopeFactsPortImpl | 用户owner查询有效账户 |
+| core.member.config/dto | MemberCodeProperties、MemberCodeScope、MemberCodeViews、MemberResolveCommand | 缺省关闭、可信作用域、脱敏响应/请求 |
+| core.member.entity/mapper | MbrIdentityTicket、MemberIdentityTicketMapper | V426核心持久摘要凭证 |
+| core.member.service/impl | MemberCodeResolveService、MemberCodeResolveServiceImpl | 统一码签发60秒、解析及绑定引用120秒 |
+| core.member.port | MemberCustomerIdentityPortImpl | 本地SPI委派；远程HTTP由JB-041实现 |
+| app.portal.mp/biz | MpMemberCodeController、BizMemberCodeController | C11本人签发、C08带权限和门店子集解析 |
+| app测试 | MemberCodeResolveFlowTest、MemberCodeHttpFlowTest | 数据库隔离/TTL/会话/角色/门店子集 |
+
+识别成功不是扣款授权，后续消费者本人确认依JB-011。活动与权益owner不因统一会员码而改变；pay不存会员码、登录token或core用户实体。
