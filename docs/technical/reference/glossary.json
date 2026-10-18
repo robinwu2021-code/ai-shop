@@ -27399,6 +27399,20 @@
       "package": "ai.neargo.shop.pay.entitlement.entity"
     },
     {
+      "table": "pay_ent_inbox",
+      "class": "PayEntInbox",
+      "zh": "Idempotency ledger for committed cross-domain events applied by pay.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "pay_ent_outbox",
+      "class": "PayEntOutbox",
+      "zh": "Pay-owned durable source event; system outbox is only the delivery adapter.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
       "table": "pay_risk_shadow_log",
       "class": "PayRiskShadowLog",
       "zh": "资金风控 · 影子期日志。",

@@ -47,8 +47,21 @@ public class OutboxEventBus {
     }
 
     public void publish(DomainEvent event) {
+        publishInternal(BizKey.next(BizKey.EVENT), event, false);
+    }
+
+    /** Publish with a caller-owned stable key so a domain-owned outbox can bridge safely on retries. */
+    public void publish(String eventNo, DomainEvent event) {
+        publishInternal(eventNo, event, true);
+    }
+
+    private void publishInternal(String eventNo, DomainEvent event, boolean idempotent) {
+        if (eventNo == null || eventNo.isBlank() || event == null || blank(event.aggregateType())
+                || blank(event.aggregateId()) || blank(event.eventType())) {
+            throw new IllegalArgumentException("event identity and payload are required");
+        }
         SysOutbox row = new SysOutbox();
-        row.setEventNo(BizKey.next(BizKey.EVENT));
+        row.setEventNo(eventNo);
         row.setAggregateType(event.aggregateType());
         row.setAggregateId(event.aggregateId());
         row.setEventType(event.eventType());
@@ -56,9 +69,27 @@ public class OutboxEventBus {
         row.setStatus(PENDING);
         row.setRetryCount(0);
         row.setCreatedAt(LocalDateTime.now());
-        mapper.insert(row);
+        if (idempotent) {
+            mapper.insertIfAbsent(row);
+            SysOutbox persisted = mapper.findByEventNo(eventNo);
+            if (persisted == null || !sameFacts(row, persisted)) {
+                throw new IllegalStateException("Outbox event number already exists with different immutable facts");
+            }
+            row = persisted;
+        } else {
+            mapper.insert(row);
+        }
         pumpAfterCommit(row);
     }
+
+    private static boolean sameFacts(SysOutbox expected, SysOutbox actual) {
+        return expected.getAggregateType().equals(actual.getAggregateType())
+                && expected.getAggregateId().equals(actual.getAggregateId())
+                && expected.getEventType().equals(actual.getEventType())
+                && expected.getPayload().equals(actual.getPayload());
+    }
+
+    private static boolean blank(String value) { return value == null || value.isBlank(); }
 
     /**
      * 事务**提交之后**把这条交给投递泵，让它立刻发（用户 2026-10-10：

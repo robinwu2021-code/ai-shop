@@ -74,7 +74,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-011 | D01.3 | DONE | 008,010 | core.trade/app | EntitlementAuthorizationService/Impl、MpEntitlementAuthorizationController、EntitlementSourceDecisionPortImpl；V427持久本人意图与源决策 | EntitlementAuthorizationPersistenceFlowTest：改价失效、他人拒绝、重复确认同意图、支付/取消唯一决策；重建服务后持久查询；78f430311/f116a02ab，干净3590项全绿 |
 | JB-012 | D01.3/D06.2 | DONE | 008,011 | core.trade | CardSaleSnapshotPlan、CardSaleSnapshotService/Impl；按订单行/单件/件内权益、模板版本生成不可变售卡快照 | 111856a96 + cb0bf9bf0；CardSaleSnapshotTest 7项；clean test 27模块3598项0失败/错误；V425/V427/V428原生MySQL检查3项0跳过；详见JB-012验收记录 |
 | JB-013 | D02.1 | DONE | 005 | pay.entitlement | 提取EntitlementCommandDeduplicator，目录切到唯一共用实现 | EntitlementCommandDeduplicatorTest：同键同参重放、异参冲突、大小写区分、原生并发、业务异常不留PENDING |
-| JB-014 | D02.1/D04.2 | TODO | 008,013 | pay事件/core适配 | PayEntitlementEventPublisher、pay_ent_outbox/inbox与既有投递机制适配 | EntitlementEventFlowTest：提交后才投递、回滚无事件、eventNo去重、重启重试；事件载荷白名单 |
+| JB-014 | D02.1/D04.2 | DONE | 008,013 | pay事件/core适配 | PayEntitlementEventPublisher、PayEntitlementOutboxRelay、PayEntitlementInboxProcessor；pay事件表提交后桥接既有sys_outbox | `EntitlementEventFlowTest`4项；共享OutboxEventBus稳定eventNo测试；隔离MySQL4项通过：回滚、重放/冲突、恢复、inbox去重/冲突；完整验收记录见本表末 |
 
 ### 2.3 支付权益发行、使用、查询及HTTP
 
@@ -201,8 +201,8 @@ git diff --check
 | pay.storedvalue | sv_entry | SvEntry / SvEntryMapper | JB-035 | TODO，设计表/已有表待改造 |
 | pay.storedvalue | sv_user_store_index | SvUserStoreIndex / SvUserStoreIndexMapper | JB-037 | TODO，设计表/已有表待改造 |
 | pay.entitlement | ent_owner_registry | EntOwnerRegistry / EntOwnerRegistryMapper | JB-048 | TODO，设计表/已有表待改造 |
-| pay.entitlement | pay_ent_outbox | PayEntOutbox / PayEntOutboxMapper | JB-014 | TODO，设计表/已有表待改造 |
-| pay.entitlement | pay_ent_inbox | PayEntInbox / PayEntInboxMapper | JB-014 | TODO，设计表/已有表待改造 |
+| pay.entitlement | pay_ent_outbox | PayEntOutbox / PayEntOutboxMapper | JB-014 | DONE；V429，提交后桥接sys_outbox；SENT=统一箱已接管 |
+| pay.entitlement | pay_ent_inbox | PayEntInbox / PayEntInboxMapper | JB-014 | DONE；V429，pay端计算摘要，唯一消费键同事务去重 |
 | pay.entitlement | pay_ent_exception | PayEntException / PayEntExceptionMapper | JB-045 | TODO，设计表/已有表待改造 |
 | pay.entitlement | pay_ent_command_dedup | PayEntCommandDedup / PayEntCommandDedupMapper | JB-004 | DONE，V425 |
 | pay.entitlement | ent_use_reversal | EntUseReversal / EntUseReversalMapper | JB-022 | TODO，设计表/已有表待改造 |
@@ -442,4 +442,10 @@ JB-010历史全量证据：ecfda1ebd干净编译及3582项/20模块全绿。JB-0
 
 实现提交：`111856a96d5238e989a1130ce7d9b7e21aea543c`；跨商家/门店归属修正提交：`cb0bf9bf0`。主体与门店从整单事实下沉到每行可信订单事实，并参与快照摘要；7项`CardSaleSnapshotTest`覆盖2件×2权益、稳定来源键、重试唯一落库、异参冲突、ID派生、真实订单`paidAt`重放、摘要字段边界及跨子单归属。Java 21 `mvn -o -f backend/pom.xml clean test`：27模块3598项、0失败、0错误（Surefire报告0跳过）；V425/V427/V428隔离MySQL原生检查3项通过、0跳过。24个生成器、V2 66份文档、SQL可移植性扫描（0新增方言欠账）、`git diff --check`通过。全Java后端未完成；未推送、部署或操作生产数据库。
 
-当前任务计数：14 DONE / 0 DOING / 41 TODO。下一项JB-014：权益事件Outbox/inbox及现有投递机制接线。
+### JB-014完成：支付权益事件Outbox/inbox（2026-10-18）
+
+完成pay侧版本化事件SPI、`pay_ent_outbox`/`pay_ent_inbox`和V429；发布器要求处于pay业务事务内，校验事件类型与字段后持久化，按事件号重放须事实一致，否则拒绝。提交后异步桥接到已有`sys_outbox`，桥接写失败采用退避重试，启动与周期扫描恢复崩溃窗口；两套数据源事务管理器不伪装成分布式原子提交。Inbox在pay事务内从可信载荷计算SHA-256，唯一键锁定后再执行业务回调，重复消息不重复应用，同号异参拒绝。`SENT`含义为统一投递箱已持久接管，之后仍由现有投递泵负责最终重试。已验证`EntitlementEventFlowTest`4项、`OutboxEventBusPumpTest`3项及隔离MySQL原生4项（回滚、稳定重放/冲突、桥接恢复、inbox去重/冲突）。业务发行、核销和储值服务的发布器调用仍归后续业务任务，不据此宣称整体业务闭环完成。
+
+实现提交：待本轮提交。Java 21 `mvn -o -f backend/pom.xml clean test`：27模块BUILD SUCCESS；Surefire报告合计3,604项、0失败、0错误、4跳过（shop-app模块汇总2,782项）；独立隔离MySQL场景4项通过、0跳过。24个文档生成器、V2 66份文档守卫、SQL可移植性（0新增方言欠账）及`git diff --check`通过。只读代码复核无可执行问题。未推送、部署或访问生产数据库。
+
+当前任务计数：15 DONE / 0 DOING / 40 TODO。下一项JB-015：权益发行容量及敞口原子限制。

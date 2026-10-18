@@ -269,6 +269,18 @@ C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的re
 
 服务端沿InternalHttp.TOKEN_HEADER（X-Internal-Token）与shop.services.internal-token，常量时间比较，未配置/缺失/不匹配均拒绝；公网反代不开放/internal/**。传输参数不是外部用户身份凭证；接收方仍按tenant/源类型/主体与持久事实核实，不能把context.actorNo直接当作拥有全部pay权限的用户。源查询返回的本人、主体、金额、修订、快照摘要都须与原命令匹配。跨租户或不可见引用不返回别人的事实。JB-041须复用InternalHttp/ServiceCalls、连接超时3秒、读超时5秒及既有服务解析，不另起无鉴权HTTP客户端；上述约定与真实双部署测试同时落地。
 
+### 11.1 pay权益事件（JB-014内部SPI）
+
+事件使用shop-base的版本化record，仅由pay在权益/储值事实事务内写入`pay_ent_outbox`，提交后以相同`eventNo`桥接到共享`sys_outbox`。当前已具备持久化、稳定重放、恢复桥接和inbox处理基础；具体发行/核销/储值业务服务在JB-016/020/034–038中逐步接入发布器。载荷字段严格限于：
+
+| eventType | 允许字段 |
+|---|---|
+| ENTITLEMENT_GRANTED | eventNo, grantNo, userNo, entityNo, templateVersionNo, sourceType, sourceNo, occurredAt |
+| ENTITLEMENT_USED | eventNo, usageNo, userNo, entityNo, storeNo, assetKind, assetNo, amountMinor或units（二选一）, occurredAt |
+| STORED_VALUE_CREDITED | eventNo, rechargeNo, accountNo, userNo, entityNo, storeNo, paidAmountMinor, creditedAmountMinor, currency, occurredAt |
+
+载荷不得包含会员码、核销码、访问token或完整支付凭据。pay与共享outbox属于不同事务管理器，因此通过稳定事件号、重复事实校验及恢复扫描实现至少一次传递；pay行`SENT`只代表统一outbox已持久接管，不代表最终消费者已处理。当前不开放外部HTTP事件接口。
+
 网络不可达、超时、5xx、解析失败均为传输失败，不得伪造UNKNOWN或CANCELLED；原操作保持待查询/PROCESSING，由恢复任务查原编号。UNKNOWN仅表示查询成功且没有可见持久事实，PENDING表示已有意图但未决定，两者都不能release。授权EXPIRED不等于源取消，必须先查询源决策。写请求不自动换编号重试，合法重投须同业务编号、原摘要及原幂等键；只读查询可有界重试，所有重试不打印码、token或请求正文。内部裸commit不向公网开放。
 
 传输实际Handler、共享HTTP接口/路径常量及拒绝测试由JB-041交付；本节只冻结路由与语义，不将本地接口声明计作远程可用。

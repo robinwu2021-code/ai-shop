@@ -105,7 +105,7 @@ ActivityVersionService只负责版本快照，ActivityService负责管理入口�
 | EntitlementReconciliationService / Impl | entitlement/service及impl | 新增 | 次数、冻结、发行与储值分录分别对账；不跨量纲相加 | O05 |
 | EntitlementExceptionService / Impl | entitlement/service及impl | 新增 | 列表、证据、查源、恢复原grant；不任意调余额 | pay_ent_exception；O01–O04 |
 | EntitlementCommandDeduplicator | entitlement/service | 新增 | 幂等键/payloadHash、稳定响应同业务事务 | pay_ent_command_dedup |
-| PayEntitlementEventPublisher | entitlement/event | 新增适配 | 同事务写出站；复用已有投递机制，失败重试 | pay_ent_outbox/inbox |
+| PayEntitlementEventPublisher / PayEntitlementOutboxRelay / PayEntitlementInboxProcessor | entitlement/event | JB-014已实现 | payTx同事务写类型白名单事件；提交后稳定eventNo幂等桥接至sys_outbox，启动/周期扫描恢复；inbox按tenant+consumer+eventNo锁定去重并同业务事务应用 | pay_ent_outbox/inbox、sys_outbox |
 | EntitlementRecoveryJob | entitlement/job | 新增 | 查源决策恢复发放/预占/充值，持久租约防重复执行 | 在途业务/异常 |
 | EntitlementExpiryJob | entitlement/job | 新增 | 到期状态与提醒事件；查询也校验真实期限 | ent_instance/事件 |
 | EntitlementMigrationService / Impl | entitlement/migration | 新增 | 批次导入、对账、owner切换；不触发新发行通知 | ent_owner_registry |

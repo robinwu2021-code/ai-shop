@@ -5038,6 +5038,50 @@ CREATE TABLE IF NOT EXISTS ord_card_sale_snapshot
     CHECK ((paid_fact_no IS NULL AND paid_at IS NULL) OR (paid_fact_no IS NOT NULL AND paid_at IS NOT NULL))
 );
 
+CREATE TABLE IF NOT EXISTS pay_ent_outbox
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    event_no VARCHAR(64) NOT NULL,
+    event_type VARCHAR(64) NOT NULL,
+    schema_version INT NOT NULL,
+    aggregate_no VARCHAR(64) NOT NULL,
+    payload TEXT NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    next_attempt_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_event UNIQUE (tenant_no,event_no),
+    CHECK (schema_version > 0 AND attempts >= 0),
+    CHECK (status IN ('PENDING','SENT','DEAD'))
+);
+
+CREATE TABLE IF NOT EXISTS pay_ent_inbox
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    consumer VARCHAR(64) NOT NULL,
+    event_no VARCHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    processed_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_inbox UNIQUE (tenant_no,consumer,event_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

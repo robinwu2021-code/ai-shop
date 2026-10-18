@@ -672,13 +672,12 @@ CARD商品SKU引用支付权益版本，不重复保存余次规则。
 | aggregate_no | VARCHAR(64) NOT NULL | 聚合号 |
 | payload | JSON NOT NULL | 不含明码/完整凭据 |
 | occurred_at | DATETIME(3) NOT NULL | 业务时间 |
-| status | VARCHAR(16) NOT NULL | PENDING/SENDING/SENT/DEAD |
-| attempts | INT NOT NULL DEFAULT 0 | 尝试次数 |
-| next_attempt_at | DATETIME(3) NOT NULL | 退避时刻 |
-| lease_until | DATETIME(3) NULL | 租约 |
-| lease_owner | VARCHAR(64) NULL | 发送worker |
+| payload_hash | CHAR(64) NOT NULL | 事件类型/版本/聚合/载荷的稳定摘要 |
+| status | VARCHAR(16) NOT NULL | PENDING/SENT/DEAD；SENT表示已写入统一sys_outbox |
+| attempts | INT NOT NULL DEFAULT 0 | 桥接到统一投递箱的失败次数 |
+| next_attempt_at | DATETIME(3) NOT NULL | 下次桥接时刻；启动及周期扫描恢复 |
 
-索引：`UNIQUE KEY uk_pay_event (tenant_no,event_no)`；`KEY ix_pay_dispatch (status,next_attempt_at,lease_until)`。
+索引：`UNIQUE KEY uk_pay_event (tenant_no,event_no)`；`KEY ix_pay_dispatch (status,next_attempt_at)`。支付事务内先持久化事件，提交后以稳定eventNo桥接至共享`sys_outbox`；pay与平台使用不同事务管理器，桥接通过幂等和恢复扫描处理崩溃窗口。`SENT`只表示共享投递箱已持久接管，最终投递、重试和消费确认仍由共享投递机制负责；达到10次桥接失败进入`DEAD`并告警处理。载荷由版本化白名单record生成，不含会员码或凭据。
 ### pay_ent_inbox
 
 跨域事件消费防重，同账提交。

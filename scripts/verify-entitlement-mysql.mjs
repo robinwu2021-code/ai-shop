@@ -28,13 +28,15 @@ try {
         `${root}backend/shop-app/target/surefire-reports/ai.neargo.shop.pay.EntitlementCatalogNativeMysqlTest.txt`,
         `${root}backend/shop-app/target/surefire-reports/ai.neargo.shop.trade.EntitlementAuthorizationNativeMysqlTest.txt`,
         `${root}backend/shop-app/target/surefire-reports/ai.neargo.shop.trade.CardSaleSnapshotNativeMysqlTest.txt`,
+        `${root}backend/shop-app/target/surefire-reports/ai.neargo.shop.pay.PayEntitlementEventNativeMysqlTest.txt`,
     ];
     reports.forEach(report => rmSync(report, { force: true }));
     const result = spawnSync('mvn', ['-o', '-q', '-f', 'backend/pom.xml', '-pl', 'shop-app', '-am',
-        '-Dtest=EntitlementCatalogNativeMysqlTest,EntitlementAuthorizationNativeMysqlTest,CardSaleSnapshotNativeMysqlTest',
+        '-Dtest=EntitlementCatalogNativeMysqlTest,EntitlementAuthorizationNativeMysqlTest,CardSaleSnapshotNativeMysqlTest,PayEntitlementEventNativeMysqlTest',
         '-Dsurefire.failIfNoSpecifiedTests=false', 'test'], {
         cwd: root, env: { ...process.env, ENTITLEMENT_NATIVE_MYSQL_URL: url,
-            ENTITLEMENT_AUTH_NATIVE_MYSQL_URL: url, CARD_SNAPSHOT_NATIVE_MYSQL_URL: url }, stdio: 'inherit',
+            ENTITLEMENT_AUTH_NATIVE_MYSQL_URL: url, CARD_SNAPSHOT_NATIVE_MYSQL_URL: url,
+            PAY_EVENT_NATIVE_MYSQL_URL: url }, stdio: 'inherit',
     });
     if (result.error) throw result.error;
     if (result.status !== 0) throw new Error(`Native catalog verification exited ${result.status}`);
@@ -44,7 +46,7 @@ try {
             throw new Error(`Native verification must execute its test without skipping: ${report}`);
         }
     }
-    console.log('Native MySQL catalog + authorization + card snapshot DDL: 3 tests passed, 0 skipped');
+    console.log('Native MySQL catalog + authorization + card snapshot + entitlement events: 4 tests passed, 0 skipped');
 } finally {
     docker(['rm', '--force', name]);
 }

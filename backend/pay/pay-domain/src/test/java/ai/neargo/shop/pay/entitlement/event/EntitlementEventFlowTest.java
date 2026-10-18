@@ -1,0 +1,117 @@
+package ai.neargo.shop.pay.entitlement.event;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import ai.neargo.shop.pay.entitlement.entity.PayEntInbox;
+import ai.neargo.shop.pay.entitlement.entity.PayEntOutbox;
+import ai.neargo.shop.pay.mapper.entitlement.PayEntInboxMapper;
+import ai.neargo.shop.pay.mapper.entitlement.PayEntOutboxMapper;
+import ai.neargo.shop.spi.entitlement.EntitlementEvents;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import tools.jackson.databind.ObjectMapper;
+
+class EntitlementEventFlowTest {
+
+    @Test
+    void payEventRemainsDurableAndOnlyEnqueuesAfterCommit() {
+        PayEntOutboxMapper mapper = mock(PayEntOutboxMapper.class);
+        PayEntitlementOutboxRelay relay = mock(PayEntitlementOutboxRelay.class);
+        ObjectProvider<PayEntitlementOutboxRelay> relayProvider = provider(relay);
+        Map<String, PayEntOutbox> stored = new ConcurrentHashMap<>();
+        when(mapper.insertIfAbsent(any())).thenAnswer(invocation -> {
+            PayEntOutbox row = invocation.getArgument(0);
+            row.setId(1L);
+            stored.putIfAbsent(row.getEventNo(), row);
+            return 1;
+        });
+        when(mapper.findByEventNo(eq("MAIN"), any())).thenAnswer(invocation -> stored.get(invocation.getArgument(1)));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            var publisher = new PayEntitlementEventPublisher(mapper, new ObjectMapper(), relayProvider);
+            publisher.publish(new EntitlementEvents.EntitlementGranted("EVT-1", "G-1", "U-1", "E-1",
+                    "ETV-1", "PAID_ORDER", "SO-1", 1_797_000_000_000L));
+
+            assertThat(stored).containsKey("EVT-1");
+            verify(relay, org.mockito.Mockito.never()).submit("EVT-1");
+            TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+            verify(relay).submit("EVT-1");
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void sameEventNumberWithChangedFactsIsRejected() {
+        PayEntOutboxMapper mapper = mock(PayEntOutboxMapper.class);
+        var original = new PayEntOutbox();
+        original.setId(3L);
+        original.setEventNo("EVT-1");
+        original.setEventType("ENTITLEMENT_GRANTED");
+        original.setSchemaVersion(1);
+        original.setAggregateNo("G-2");
+        original.setPayload("original");
+        original.setPayloadHash("original");
+        original.setOccurredAt(java.time.LocalDateTime.ofInstant(
+                java.time.Instant.ofEpochMilli(1_797_000_000_000L), java.time.ZoneOffset.UTC));
+        when(mapper.insertIfAbsent(any())).thenReturn(0);
+        when(mapper.findByEventNo("MAIN", "EVT-1")).thenReturn(original);
+        ObjectProvider<PayEntitlementOutboxRelay> relayProvider = provider(null);
+        var publisher = new PayEntitlementEventPublisher(mapper, new ObjectMapper(), relayProvider);
+
+        assertThatThrownBy(() -> publisher.publish(new EntitlementEvents.EntitlementGranted("EVT-1", "G-2", "U-1",
+                "E-1", "ETV-1", "PAID_ORDER", "SO-1", 1_797_000_000_000L)))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("immutable facts");
+    }
+
+    @Test
+    void payloadContainsOnlyTheTypedEntitlementEventFields() {
+        var event = new EntitlementEvents.EntitlementGranted("EVT-2", "G-2", "U-2", "E-2",
+                "ETV-2", "ACTIVITY", "ACT-2", 1_797_000_000_000L);
+        String payload = new ObjectMapper().writeValueAsString(event);
+
+        assertThat(payload).contains("grantNo", "userNo", "entityNo", "templateVersionNo", "sourceType", "sourceNo");
+        assertThat(payload).doesNotContain("code", "token", "credential", "principal", "bonus");
+    }
+
+    @Test
+    void inboxReplayCallsTheBusinessActionOnlyOnce() {
+        PayEntInboxMapper mapper = mock(PayEntInboxMapper.class);
+        PayEntitlementInboxProcessor processor = new PayEntitlementInboxProcessor(mapper, new ObjectMapper());
+        Map<String, PayEntInbox> stored = new ConcurrentHashMap<>();
+        when(mapper.insertIfAbsent(any())).thenAnswer(invocation -> {
+            PayEntInbox row = invocation.getArgument(0);
+            return stored.putIfAbsent(row.getConsumer() + ":" + row.getEventNo(), row) == null ? 1 : 0;
+        });
+        when(mapper.lock("MAIN", "CORE_ACTIVITY", "EVT-3")).thenAnswer(invocation ->
+                stored.get("CORE_ACTIVITY:EVT-3"));
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+
+        assertThat(processor.process("MAIN", "CORE_ACTIVITY", "EVT-3", "activity:3",
+                () -> calls.incrementAndGet())).isTrue();
+        assertThat(processor.process("MAIN", "CORE_ACTIVITY", "EVT-3", "activity:3",
+                () -> calls.incrementAndGet())).isFalse();
+        assertThat(calls).hasValue(1);
+        assertThatThrownBy(() -> processor.process("MAIN", "CORE_ACTIVITY", "EVT-3", "activity:changed",
+                () -> calls.incrementAndGet()))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("payload conflict");
+    }
+
+    private static ObjectProvider<PayEntitlementOutboxRelay> provider(PayEntitlementOutboxRelay relay) {
+        @SuppressWarnings("unchecked")
+        ObjectProvider<PayEntitlementOutboxRelay> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(relay);
+        return provider;
+    }
+}
