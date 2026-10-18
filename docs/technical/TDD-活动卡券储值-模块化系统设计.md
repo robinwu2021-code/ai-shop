@@ -318,3 +318,11 @@ SourceRef提供grantKey/useIntentKey/settledKey，按长度前缀SHA256编码，
 ### 对齐补充
 
 已用失败检查复现模板无草稿持久字段与公共version列缺失，再补齐ent_template.draft_snapshot及全部目标表version/deleted。MySQL目标表检查恢复通过。数据库设计中的version/deleted对齐已完成；正式增量迁移、领域审计UTC/actor填充和实体Mapper集成仍待D02.1实现。SourceRef消融验证：临时忽略useIntent修订号后用例失败，恢复实现后4项通过；Count/Daily另5项通过。
+
+### 编译与全量回归结果
+
+验证代码提交97dc22b22：`bash scripts/check-head-compiles.sh HEAD`从干净副本test-compile成功；全量20模块3513用例，9项失败，退出1。失败为M6bCouponFlowTest.funderIsRecordedSeparately及ProxyOrderFlowTest的8项，均返回FULFILLMENT_NOT_SUPPORTED(70013)，不能宣称全量通过。
+
+在未修改基线00d04e580隔离工作区复跑`mvn -o -q -f backend/pom.xml -pl shop-app -am -Dtest=M6bCouponFlowTest,ProxyOrderFlowTest -Dsurefire.failIfNoSpecifiedTests=false test`：27+10=37项全部通过。说明单独执行可通过，组合执行状态污染仍待定位；未把这9项加入known-failures，未修改其他业务功能。D01.4继续DOING。后续3e58086fe仅调整设计DDL及对应独立数据库检查，Node两项回归已通过。
+
+实际交付为源码盘点、SourceRef协议身份、UsageQuota纯规则、闸门修复及设计对齐；运行API、正式增量迁移、余额/次数持久账与三端功能均尚未完成。下一实施点仍是D01.2/1.3/1.4和D02.1，不跳过可信授权、存量核对或幂等持久化。
