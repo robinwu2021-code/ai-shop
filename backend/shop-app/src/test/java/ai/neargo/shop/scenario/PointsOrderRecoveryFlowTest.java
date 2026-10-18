@@ -174,6 +174,19 @@ class PointsOrderRecoveryFlowTest {
     }
 
     @Test
+    void inspection_does_not_report_closed_or_aborted_refunds_as_pending() {
+        var admission = new OrderPointsBindingService.Admission(
+                "REQ", "O", "S", "U", "M", "ST", "TYPE", "CNY", "ONLINE", 0, true, true, null);
+        when(bindings.find("S")).thenReturn(new OrderPointsBindingService.Binding(
+                "B", admission, OrderPointsBindingService.Phase.BOUND, 2, "H"));
+        when(refundRows.forSubOrder("S")).thenReturn(List.of(
+                java.util.Map.of("phase", "ABORTED"), java.util.Map.of("phase", "COMMITTED")));
+        when(payments.verified("O")).thenReturn(Optional.of(mock(
+                PointsPaymentSnapshotPort.VerifiedPayment.class)));
+        assertThat(service.inspect("S").differences()).doesNotContain("REFUND_PENDING");
+    }
+
+    @Test
     void backlog_reports_pending_counts_and_oldest_age_without_payloads() {
         var old=Timestamp.from(Instant.ofEpochMilli(1_000));
         when(placementRows.pendingSummary()).thenReturn(java.util.Map.of("total",2L,"oldest",old));

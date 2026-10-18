@@ -158,7 +158,7 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
         List<String> differences = new ArrayList<>();
         if (placement == null) differences.add("PLACEMENT_MISSING");
         if (pending > 0) differences.add("SOURCE_EVENT_PENDING");
-        if (refundPhases.stream().anyMatch(x -> !"COMMITTED".equals(x)))
+        if (refundPhases.stream().anyMatch(x -> !Set.of("COMMITTED", "ABORTED").contains(x)))
             differences.add("REFUND_PENDING");
         if (refundPhases.contains("COMPENSATING"))
             differences.add("REFUND_COMPENSATION_PENDING");
