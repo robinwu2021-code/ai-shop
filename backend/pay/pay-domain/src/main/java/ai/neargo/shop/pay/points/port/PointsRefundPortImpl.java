@@ -74,6 +74,7 @@ public class PointsRefundPortImpl implements PointsRefundPort {
                 : saved.confirmation() == null ? null : saved.confirmation().cashRefundPaymentNo();
         return new RefundRecoveryStatus(preparationNo, saved.command().afterSaleNo(),
                 saved.command().subOrderNo(), (String) row.get("state"),
-                saved.preparation().netCashMinor(), cashNo, succeeded);
+                saved.preparation().netCashMinor(), cashNo, succeeded,
+                saved.preparation().collectionTicket() != null);
     }
 }

@@ -15,7 +15,7 @@ export function ManualPointsRefunds({ storeNo, canEdit }: { storeNo: string; can
     queryFn: () => api.manualOrderPointsRefunds(storeNo, after, 20), enabled: !!storeNo });
   return <div className="space-y-3 rounded-card border border-border p-4">
     <h3 className="txt-heading">{t("积分退款人工待处理", "Points refunds awaiting operator")}</h3>
-    <p dir="auto">{t("只显示当前门店补收已回退、现金退款失败的售后。关闭保留原单；重试会关闭原单并创建新的退款尝试。", "Shows this store's compensated refunds after a failed cash refund. Close keeps the original case; retry closes it and creates a new attempt.")}</p>
+    <p dir="auto">{t("只显示当前门店现金退款明确失败、积分准备已安全中止的售后。关闭保留原单；重试会关闭原单并创建新的退款尝试。", "Shows this store's failed cash refunds after the points preparation was safely aborted. Close keeps the original case; retry closes it and creates a new attempt.")}</p>
     {!storeNo && <p>{t("先查询门店接线策略。", "Select a store above first.")}</p>}
     {query.isFetching && <p>{t("加载中…", "Loading…")}</p>}
     {query.error && <p role="alert" className="text-destructive">{query.error.message}</p>}

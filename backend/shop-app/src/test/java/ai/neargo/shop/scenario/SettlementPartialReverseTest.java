@@ -139,6 +139,19 @@ class SettlementPartialReverseTest {
     }
 
     @Test
+    void failed_cash_without_collection_releases_hold_from_aborted_pay_proof() {
+        givenBill("SPR-NO-COLLECTION", "PENDING");
+        SplitReversal cmd = new SplitReversal("SPR-NO-COLLECTION", "AS-SPR-NO-COLLECTION", 3000, 0, 9000);
+        assertThat(settlePort.reversePreparedRefund(cmd)).isTrue();
+        when(pointsRefunds.recoveryStatus("PREP", "HASH"))
+                .thenReturn(new PointsRefundPort.RefundRecoveryStatus("PREP", cmd.afterSaleNo(),
+                        cmd.subOrderNo(), "ABORTED", 50, "FAILED-PAY", false, false));
+        assertThat(settlePort.cancelPreparedRefund(cmd, "PREP", "HASH")).isTrue();
+        assertThat(bill("SPR-NO-COLLECTION")).containsEntry("NET_MINOR", 8460L)
+                .containsEntry("REFUNDED_GOODS_MINOR", 0L);
+    }
+
+    @Test
     @DisplayName("★★ 通道回退失败 → false 且转人工、不记账；修好后同一售后单可重试成功")
     void channelFailureStopsRefund() {
         givenBill("SPR-3", "SPLIT");

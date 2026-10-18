@@ -230,10 +230,13 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             var saved = snapshot(head);
             var binding = pointsDecision(as, saved.plan().subOrderNo());
             require(proof != null && "ABORTED".equals(proof.state())
-                    && proof.compensationSucceeded()
                     && as.equals(proof.afterSaleNo())
                     && saved.plan().subOrderNo().equals(proof.subOrderNo())
-                    && "COMPENSATED_PENDING_OPERATOR".equals(binding.get("phase"))
+                    && ("COMPENSATED_PENDING_OPERATOR".equals(binding.get("phase"))
+                        || "CASH_FAILED_PENDING_OPERATOR".equals(binding.get("phase")))
+                    && proof.collectionRequired()
+                        == "COMPENSATED_PENDING_OPERATOR".equals(binding.get("phase"))
+                    && proof.compensationSucceeded() == proof.collectionRequired()
                     && "CASH_PENDING".equals(head.get("state"))
                     && proof.cashRefundPaymentNo() != null
                     && proof.cashRefundPaymentNo().equals(head.get("cash_payment_no"))

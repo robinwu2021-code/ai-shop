@@ -18,7 +18,8 @@ public interface OrderPointsRefundBindingMapper {
 
     @Select("SELECT r.after_sale_no,r.sub_order_no,r.created_at FROM ord_points_refund_binding r"
             + " JOIN ord_sub_order s ON s.sub_order_no=r.sub_order_no"
-            + " WHERE s.store_no=#{store} AND r.phase='COMPENSATED_PENDING_OPERATOR'"
+            + " WHERE s.store_no=#{store} AND r.phase IN"
+            + " ('COMPENSATED_PENDING_OPERATOR','CASH_FAILED_PENDING_OPERATOR')"
             + " AND r.after_sale_no>#{after} ORDER BY r.after_sale_no LIMIT #{limit}")
     List<Map<String, Object>> manualForStore(@Param("store") String store,
             @Param("after") String after, @Param("limit") int limit);
@@ -53,11 +54,12 @@ public interface OrderPointsRefundBindingMapper {
 
     @Select(
             "SELECT after_sale_no FROM ord_points_refund_binding WHERE phase NOT IN"
-                + " ('COMMITTED','ABORTED','COMPENSATED_PENDING_OPERATOR')"
+                + " ('COMMITTED','ABORTED','COMPENSATED_PENDING_OPERATOR','CASH_FAILED_PENDING_OPERATOR')"
                 + " ORDER BY updated_at,after_sale_no LIMIT #{limit}")
     List<String> pending(int limit);
 
     @Select("SELECT COUNT(*) AS total,MIN(created_at) AS oldest FROM ord_points_refund_binding"
-            + " WHERE phase NOT IN ('COMMITTED','ABORTED','COMPENSATED_PENDING_OPERATOR')")
+            + " WHERE phase NOT IN ('COMMITTED','ABORTED','COMPENSATED_PENDING_OPERATOR',"
+            + " 'CASH_FAILED_PENDING_OPERATOR')")
     Map<String,Object> pendingSummary();
 }

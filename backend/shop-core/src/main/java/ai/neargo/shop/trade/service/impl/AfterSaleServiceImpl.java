@@ -1004,7 +1004,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                                 .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
                                 .notInSql(OrdAfterSale::getAfterSaleNo,
                                         "SELECT after_sale_no FROM ord_points_refund_binding"
-                                        + " WHERE phase='COMPENSATED_PENDING_OPERATOR'")
+                                        + " WHERE phase IN ('COMPENSATED_PENDING_OPERATOR',"
+                                        + " 'CASH_FAILED_PENDING_OPERATOR')")
                                 .lt(OrdAfterSale::getUpdatedAt, cutoff)
                                 .orderByAsc(OrdAfterSale::getUpdatedAt)
                                 .last("limit " + Math.max(1, limit)))
@@ -1116,7 +1117,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 throw new IllegalStateException("POINTS_OPERATOR_CLOSE_INCOMPLETE");
             return opsDetailOf(closed);
         }
-        if (binding.phase() != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATED_PENDING_OPERATOR)
+        if (binding.phase() != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATED_PENDING_OPERATOR
+                && binding.phase() != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.CASH_FAILED_PENDING_OPERATOR)
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         var prep = binding.preparation();
         var proof = pointsRefunds.recoveryStatus(prep.preparationNo(), prep.inputHash());
@@ -1158,7 +1160,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
             return opsDetailOf(refundAfterSale((String) prior.get("new_after_sale_no"), false));
         }
-        if (binding.phase() != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATED_PENDING_OPERATOR)
+        if (binding.phase() != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATED_PENDING_OPERATOR
+                && binding.phase() != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.CASH_FAILED_PENDING_OPERATOR)
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         var prep = binding.preparation();
         var proof = pointsRefunds.recoveryStatus(prep.preparationNo(), prep.inputHash());
@@ -1186,6 +1189,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             }
             if (pointsRefundSource.inspect(afterSaleNo).phase()
                     != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATED_PENDING_OPERATOR
+                    && pointsRefundSource.inspect(afterSaleNo).phase()
+                    != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.CASH_FAILED_PENDING_OPERATOR
                     || !OrdAfterSale.REFUNDING.equals(original.getStatus()))
                 throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
             var active = activeOf(sub.getSubOrderNo());
@@ -1249,7 +1254,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         });
         if(execution==null) return;
         var binding=pointsRefundSource.inspect(afterSaleNo);
-        if(binding.phase()==ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATED_PENDING_OPERATOR)
+        if(binding.phase()==ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATED_PENDING_OPERATOR
+                || binding.phase()==ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.CASH_FAILED_PENDING_OPERATOR)
             return;
         var preparation=binding.preparation()!=null ? binding.preparation()
                 : pointsRefunds.prepare(binding.command());
@@ -1327,8 +1333,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         settlePort.refreshRefund(paymentNo);
         var evidence=settlePort.refundEvidence(paymentNo);
         if(evidence!=null && ("FAILED".equals(evidence.status()) || "CLOSED".equals(evidence.status()))) {
-            if(preparation.collectionTicket()==null)
-                throw new IllegalArgumentException("POINTS_REFUND_CASH_FAILED_MANUAL_ACTION_REQUIRED");
+            if(preparation.collectionTicket()==null) {
+                pointsRefunds.abort(new ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort(
+                        preparation.preparationNo(),preparation.inputHash(),paymentNo));
+                var status=pointsRefunds.recoveryStatus(preparation.preparationNo(),preparation.inputHash());
+                refundTransactions.executeWithoutResult(tx ->
+                        pointsRefundSource.recordNoCollectionCashFailure(afterSaleNo,evidence,status));
+                return;
+            }
             refundTransactions.executeWithoutResult(status -> pointsRefundSource.recordCashFailure(afterSaleNo,evidence));
             pointsRefunds.requestCompensation(new ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort(
                     preparation.preparationNo(),preparation.inputHash(),paymentNo),preparation.revision());

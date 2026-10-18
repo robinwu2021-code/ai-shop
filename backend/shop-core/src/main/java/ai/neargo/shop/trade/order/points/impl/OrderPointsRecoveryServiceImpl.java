@@ -162,7 +162,8 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
             differences.add("REFUND_PENDING");
         if (refundPhases.contains("COMPENSATING"))
             differences.add("REFUND_COMPENSATION_PENDING");
-        if (refundPhases.contains("COMPENSATED_PENDING_OPERATOR"))
+        if (refundPhases.contains("COMPENSATED_PENDING_OPERATOR")
+                || refundPhases.contains("CASH_FAILED_PENDING_OPERATOR"))
             differences.add("REFUND_OPERATOR_ACTION_REQUIRED");
         boolean verified = false;
         try {

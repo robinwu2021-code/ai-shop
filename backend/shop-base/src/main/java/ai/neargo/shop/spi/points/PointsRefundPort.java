@@ -10,12 +10,19 @@ public interface PointsRefundPort {
     RefundOutcome confirm(RefundConfirmation confirmation);
     void requestCompensation(RefundAbort abort,long revision);
     void abort(RefundAbort abort);
-    /** Internal recovery proof; only an aborted preparation with a successful collection reversal is settled. */
+    /** Internal recovery proof; collection reversal is required only when collection occurred. */
     RefundRecoveryStatus recoveryStatus(String preparationNo, String inputHash);
 
     record RefundRecoveryStatus(String preparationNo, String afterSaleNo, String subOrderNo,
                                 String state, long netCashMinor, String cashRefundPaymentNo,
-                                boolean compensationSucceeded) { }
+                                boolean compensationSucceeded, boolean collectionRequired) {
+        public RefundRecoveryStatus(String preparationNo, String afterSaleNo, String subOrderNo,
+                                    String state, long netCashMinor, String cashRefundPaymentNo,
+                                    boolean compensationSucceeded) {
+            this(preparationNo, afterSaleNo, subOrderNo, state, netCashMinor,
+                    cashRefundPaymentNo, compensationSucceeded, true);
+        }
+    }
 
     record RefundLine(String itemId,long cumulativeGoodsMinor) { }
     record PaymentSnapshot(String fundsPath,String channel,String merchantNo,String storeNo,String accountVersion,

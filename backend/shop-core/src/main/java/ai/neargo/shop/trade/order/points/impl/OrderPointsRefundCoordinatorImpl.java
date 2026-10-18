@@ -378,6 +378,48 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
 
     @Override
     @Transactional(value = "transactionManager")
+    public Binding recordNoCollectionCashFailure(String afterSaleNo,
+            SettlePort.RefundEvidence proof, PointsRefundPort.RefundRecoveryStatus status) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var current = decode(locked(afterSaleNo));
+            var prep = current.preparation();
+            var command = current.command();
+            require(prep != null && prep.netCashMinor() > 0 && prep.collectionTicket() == null
+                    && proof != null && Set.of("FAILED", "CLOSED").contains(proof.status())
+                    && "REFUND".equals(proof.direction()) && proof.paymentNo() != null
+                    && afterSaleNo.equals(proof.afterSaleNo())
+                    && command.subOrderNo().equals(proof.subOrderNo())
+                    && command.userNo().equals(proof.userNo())
+                    && command.currency().equals(proof.currency())
+                    && proof.amountMinor() == prep.netCashMinor()
+                    && proof.verifiedAt() == null && proof.verifiedMinor() == null
+                    && status != null && "ABORTED".equals(status.state())
+                    && !status.collectionRequired() && !status.compensationSucceeded()
+                    && prep.preparationNo().equals(status.preparationNo())
+                    && afterSaleNo.equals(status.afterSaleNo())
+                    && command.subOrderNo().equals(status.subOrderNo())
+                    && status.netCashMinor() == prep.netCashMinor()
+                    && proof.paymentNo().equals(status.cashRefundPaymentNo()),
+                    "POINTS_REFUND_CASH_FAILURE_MISMATCH");
+            if (current.phase() == Phase.CASH_FAILED_PENDING_OPERATOR) {
+                require(proof.paymentNo().equals(current.cashPaymentNo()),
+                        "POINTS_REFUND_CASH_FAILURE_MISMATCH");
+                return current;
+            }
+            require(current.phase() == Phase.CASH_AUTHORIZED, "POINTS_REFUND_PHASE_CONFLICT");
+            var execution = executions.inspect(afterSaleNo);
+            require(execution != null && "CASH_PENDING".equals(execution.preparation().state())
+                    && proof.paymentNo().equals(execution.cashPaymentNo()),
+                    "POINTS_REFUND_CASH_FAILURE_MISMATCH");
+            require(mapper.change(afterSaleNo, current.version(), current.phase().name(),
+                    Phase.CASH_FAILED_PENDING_OPERATOR.name(), json.writeValueAsString(prep),
+                    proof.paymentNo()) == 1, "POINTS_REFUND_PHASE_CONFLICT");
+            return inspect(afterSaleNo);
+        });
+    }
+
+    @Override
+    @Transactional(value = "transactionManager")
     public Binding recordCompensated(String afterSaleNo,
                                      PointsRefundPort.RefundRecoveryStatus status) {
         return DataScopeContext.executeWithoutScope(() -> {
@@ -389,7 +431,8 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
                     && current.subOrderNo().equals(status.subOrderNo())
                     && prep.netCashMinor() == status.netCashMinor()
                     && Objects.equals(current.cashPaymentNo(), status.cashRefundPaymentNo())
-                    && "ABORTED".equals(status.state()) && status.compensationSucceeded(),
+                    && "ABORTED".equals(status.state()) && status.compensationSucceeded()
+                    && status.collectionRequired(),
                     "POINTS_REFUND_COMPENSATION_PROOF_INVALID");
             if (current.phase() == Phase.COMPENSATED_PENDING_OPERATOR) return current;
             require(current.phase() == Phase.COMPENSATING,
@@ -419,10 +462,13 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
                     && current.subOrderNo().equals(status.subOrderNo())
                     && prep.netCashMinor() == status.netCashMinor()
                     && Objects.equals(current.cashPaymentNo(), status.cashRefundPaymentNo())
-                    && "ABORTED".equals(status.state()) && status.compensationSucceeded(),
+                    && "ABORTED".equals(status.state())
+                    && status.collectionRequired() == (prep.collectionTicket() != null)
+                    && status.compensationSucceeded() == status.collectionRequired(),
                     "POINTS_REFUND_COMPENSATION_PROOF_INVALID");
             if (current.phase() == Phase.ABORTED) return current;
-            require(current.phase() == Phase.COMPENSATED_PENDING_OPERATOR,
+            require(current.phase() == Phase.COMPENSATED_PENDING_OPERATOR
+                    || current.phase() == Phase.CASH_FAILED_PENDING_OPERATOR,
                     "POINTS_REFUND_PHASE_CONFLICT");
             executions.abortCompensated(afterSaleNo, status);
             require(mapper.change(afterSaleNo, current.version(), current.phase().name(),

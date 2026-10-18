@@ -180,7 +180,39 @@ class AfterSaleRefundExecutionTest {
                 Long.class, f.as())).isEqualTo(1);
     }
 
+    @Test void cash_failure_without_collection_reaches_operator_queue_after_pay_abort() {
+        var f = cashFailureFixture(false);
+        assertThat(status(f.as())).isEqualTo("REFUNDING");
+        assertThat(jdbc.queryForObject("SELECT phase FROM ord_points_refund_binding WHERE after_sale_no=?",
+                String.class, f.as())).isEqualTo("CASH_FAILED_PENDING_OPERATOR");
+        assertThat(pointsRefundSource.manualForStore("STORE", "", 20).rows())
+                .extracting(ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.ManualRefund::afterSaleNo)
+                .contains(f.as());
+        assertThat(pointsRecovery.inspect(f.sub()).differences())
+                .contains("REFUND_OPERATOR_ACTION_REQUIRED");
+        assertThat(afterSales.stuckRefundNos(System.currentTimeMillis() + 1000, 20))
+                .doesNotContain(f.as());
+        assertThat(pointsRefundSource.pending(20)).doesNotContain(f.as());
+        afterSales.closeCompensatedRefund(f.as(), "OPS-1", "现金退款失败且没有补收，关闭原售后");
+        assertThat(status(f.as())).isEqualTo("CLOSED");
+        assertThat(refunded(f.sub())).isZero();
+    }
+
+    @Test void cash_failure_without_collection_can_retry_with_a_new_frozen_attempt() {
+        var f = cashFailureFixture(false);
+        var retried = afterSales.retryCompensatedRefund(f.as(), "OPS-1", "重新发起未补收退款");
+        assertThat(status(f.as())).isEqualTo("CLOSED");
+        assertThat(retried.status()).isEqualTo("REFUNDING");
+        assertThat(retried.afterSaleNo()).isNotEqualTo(f.as());
+        assertThat(executions.inspect(retried.afterSaleNo()).plan())
+                .isEqualTo(executions.inspect(f.as()).plan());
+    }
+
     private Fixture compensatedFixture() {
+        return cashFailureFixture(true);
+    }
+
+    private Fixture cashFailureFixture(boolean collected) {
         var f=fixture();
         jdbc.update("UPDATE ord_order SET points_integrated=1,currency='CNY' WHERE order_no=?",f.sub());
         var route=new PaymentRoute("MERCHANT","STORE","PM-TEST","TEST","SM","PM:1","DIRECT");
@@ -196,7 +228,7 @@ class AfterSaleRefundExecutionTest {
         doReturn(new OrderPointsBindingService.Binding("B",admission,
                 OrderPointsBindingService.Phase.BOUND,0,"H")).when(pointsBindings).find(f.sub());
         var prep=new PointsRefundPort.RefundPreparation("PREP:"+f.as(),"TYPE",1,"HASH",0,0,0,0,
-                10,50,0,"COLLECT:"+f.as(),"COLLECTED");
+                10,50,0,collected ? "COLLECT:"+f.as() : null,collected ? "COLLECTED" : "PREPARED");
         doReturn(prep).when(pointsRefunds).prepare(any());
         doReturn(new PointsRefundPort.CashDecision(prep.preparationNo(),prep.inputHash(),1,f.as(),
                 f.sub(),"USER","CNY","TEST",50,10,prep.collectionTicket(),payment))
@@ -205,18 +237,27 @@ class AfterSaleRefundExecutionTest {
                 .when(channel).refund(any(),anyLong(),anyString(),anyString());
         afterSales.approve("MERCHANT",f.as(),"approved",null,"CASH");
         afterSales.resumeRefund(f.as(),"SYSTEM");
+        if (!collected) doReturn(new PointsRefundPort.RefundRecoveryStatus(prep.preparationNo(), f.as(), f.sub(),
+                "ABORTED", 50, jdbc.queryForObject(
+                        "SELECT payment_no FROM stl_payment WHERE after_sale_no=?", String.class, f.as()), false, false))
+                .when(pointsRefunds).recoveryStatus(prep.preparationNo(), prep.inputHash());
         afterSales.resumeRefund(f.as(),"SYSTEM");
         assertThat(status(f.as())).isEqualTo("REFUNDING");
         assertThat(refunded(f.sub())).isZero();
         assertThat(jdbc.queryForObject("SELECT phase FROM ord_points_refund_binding WHERE after_sale_no=?",
-                String.class,f.as())).isEqualTo("COMPENSATING");
-        verify(pointsRefunds).requestCompensation(any(),eq(1L));
+                String.class,f.as())).isEqualTo(collected ? "COMPENSATING" : "CASH_FAILED_PENDING_OPERATOR");
+        if (collected) verify(pointsRefunds).requestCompensation(any(),eq(1L));
+        else verify(pointsRefunds, never()).requestCompensation(any(), anyLong());
         verify(pointsRefunds,never()).confirm(any());
+        if (!collected) {
+            verify(pointsRefunds).abort(any());
+            return f;
+        }
         assertThatThrownBy(() -> afterSales.closeCompensatedRefund(f.as(), "OPS-1", "too early"))
                 .hasMessageContaining("ORDER_STATE_ILLEGAL");
         doReturn(new PointsRefundPort.RefundRecoveryStatus(prep.preparationNo(), f.as(), f.sub(),
                 "ABORTED", 50, jdbc.queryForObject(
-                        "SELECT payment_no FROM stl_payment WHERE after_sale_no=?", String.class, f.as()), true))
+                        "SELECT payment_no FROM stl_payment WHERE after_sale_no=?", String.class, f.as()), collected, collected))
                 .when(pointsRefunds).recoveryStatus(prep.preparationNo(), prep.inputHash());
         afterSales.resumeRefund(f.as(),"SYSTEM");
         return f;

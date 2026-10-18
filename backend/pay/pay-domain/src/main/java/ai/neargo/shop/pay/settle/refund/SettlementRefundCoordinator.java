@@ -116,7 +116,8 @@ public class SettlementRefundCoordinator {
     public boolean cancelPrepared(SplitReversal cmd, String preparationNo, String inputHash) {
         var proof = pointsRefunds.recoveryStatus(preparationNo, inputHash);
         requireProof(cmd, proof, "ABORTED");
-        if (!proof.compensationSucceeded() || proof.cashRefundPaymentNo() == null)
+        if ((proof.collectionRequired() && !proof.compensationSucceeded())
+                || proof.cashRefundPaymentNo() == null)
             throw new IllegalArgumentException("SETTLEMENT_REFUND_COMPENSATION_REQUIRED");
         StlBill bill = lockBill(cmd.subOrderNo());
         if (bill == null) return true;

@@ -727,6 +727,11 @@ class PointsRefundPreparationTest {
         jdbc().update("UPDATE stl_payment SET status='FAILED' WHERE payment_no=?", payment);
         aborts.abort(abort);
         aborts.abort(abort);
+        var proof = refunds.recoveryStatus(prepared.preparationNo(), prepared.inputHash());
+        assertThat(proof.state()).isEqualTo("ABORTED");
+        assertThat(proof.cashRefundPaymentNo()).isEqualTo(payment);
+        assertThat(proof.collectionRequired()).isFalse();
+        assertThat(proof.compensationSucceeded()).isFalse();
         assertThat(balance(type, "pending_points")).isEqualTo(20);
         assertThat(balance(type, "held_points")).isZero();
         assertThat(pool(type, "u_minor")).isEqualTo(80);
