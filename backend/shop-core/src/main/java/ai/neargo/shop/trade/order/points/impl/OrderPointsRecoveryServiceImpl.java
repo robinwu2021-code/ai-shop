@@ -1,7 +1,6 @@
 package ai.neargo.shop.trade.order.points.impl;
 
 import ai.neargo.shop.spi.points.PointsPaymentSnapshotPort;
-import ai.neargo.shop.trade.order.mapper.OrderPointsBindingMapper;
 import ai.neargo.shop.trade.order.mapper.OrderPointsFactMapper;
 import ai.neargo.shop.trade.order.mapper.OrderPointsPlacementMapper;
 import ai.neargo.shop.trade.order.mapper.OrderPointsRefundBindingMapper;
@@ -15,7 +14,6 @@ import java.util.*;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Each item uses its original identity; a failed item is reported and cannot hide the next item.
@@ -28,13 +26,12 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
     private final OrderPointsOutboxConsumer delivery;
     private final OrderPointsClosureFlowService closure;
     private final OrderPointsBindingService bindings;
-    private final OrderPointsBindingMapper bindingRows;
+    private final OrderPointsClosureScan closureScan;
     private final OrderPointsPlacementMapper placementRows;
     private final OrderPointsFactMapper factRows;
     private final OrderPointsRefundBindingMapper refundRows;
     private final AfterSaleService afterSales;
     private final PointsPaymentSnapshotPort payments;
-    private final AtomicReference<String> cursor = new AtomicReference<>("");
     private final AtomicInteger nextQueue = new AtomicInteger();
 
     public OrderPointsRecoveryServiceImpl(
@@ -44,7 +41,7 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
             OrderPointsOutboxConsumer delivery,
             OrderPointsClosureFlowService closure,
             OrderPointsBindingService bindings,
-            OrderPointsBindingMapper bindingRows,
+            OrderPointsClosureScan closureScan,
             OrderPointsPlacementMapper placementRows,
             OrderPointsFactMapper factRows,
             OrderPointsRefundBindingMapper refundRows,
@@ -56,7 +53,7 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
         this.delivery = delivery;
         this.closure = closure;
         this.bindings = bindings;
-        this.bindingRows = bindingRows;
+        this.closureScan = closureScan;
         this.placementRows = placementRows;
         this.factRows = factRows;
         this.refundRows = refundRows;
@@ -119,18 +116,11 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
                                     }));
             }
             case 3 -> {
-                String after = cursor.get();
-                var subs = bindingRows.scanSubOrders(after, limit);
-                if (subs.isEmpty() && !after.isEmpty()) {
-                    cursor.set("");
-                    subs = bindingRows.scanSubOrders("", limit);
-                }
-                for (var sub : subs)
+                for (var sub : closureScan.next(limit))
                     result.add(
                             new RecoveryItem(
                                     "SUB:" + sub,
                                     () -> {
-                                        cursor.set(sub);
                                         closure.finalizeSubOrder(sub);
                                         closure.closeRefundResponsibility(sub);
                                     }));

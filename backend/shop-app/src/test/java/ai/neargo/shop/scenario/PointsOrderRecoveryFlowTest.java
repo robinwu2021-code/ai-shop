@@ -24,7 +24,7 @@ class PointsOrderRecoveryFlowTest {
     private final OrderPointsOutboxConsumer delivery = mock(OrderPointsOutboxConsumer.class);
     private final OrderPointsClosureFlowService closure = mock(OrderPointsClosureFlowService.class);
     private final OrderPointsBindingService bindings = mock(OrderPointsBindingService.class);
-    private final OrderPointsBindingMapper bindingRows = mock(OrderPointsBindingMapper.class);
+    private final OrderPointsClosureScan closureScan = mock(OrderPointsClosureScan.class);
     private final OrderPointsPlacementMapper placementRows = mock(OrderPointsPlacementMapper.class);
     private final OrderPointsFactMapper factRows = mock(OrderPointsFactMapper.class);
     private final OrderPointsRefundBindingMapper refundRows =
@@ -39,7 +39,7 @@ class PointsOrderRecoveryFlowTest {
                     delivery,
                     closure,
                     bindings,
-                    bindingRows,
+                    closureScan,
                     placementRows,
                     factRows,
                     refundRows,
@@ -51,7 +51,7 @@ class PointsOrderRecoveryFlowTest {
         when(placements.pending(1)).thenReturn(List.of("O"));
         when(refunds.pending(1)).thenReturn(List.of("A"));
         when(facts.pending(1)).thenReturn(List.of("E"));
-        when(bindingRows.scanSubOrders("", 1)).thenReturn(List.of("S"));
+        when(closureScan.next(1)).thenReturn(List.of("S"));
         doThrow(new IllegalArgumentException("POINTS_HOLD_UNKNOWN")).when(placements).resume("O");
         var at = Instant.ofEpochMilli(1000);
         var lifecycle =
@@ -101,7 +101,7 @@ class PointsOrderRecoveryFlowTest {
         assertThat(report.attempted()).isEqualTo(1);
         verify(refunds, never()).pending(anyInt());
         verify(facts, never()).pending(anyInt());
-        verify(bindingRows, never()).scanSubOrders(anyString(), anyInt());
+        verify(closureScan, never()).next(anyInt());
     }
 
     @Test
@@ -109,7 +109,7 @@ class PointsOrderRecoveryFlowTest {
         when(placements.pending(1)).thenReturn(List.of("O"));
         when(refunds.pending(1)).thenReturn(List.of("A"));
         when(facts.pending(1)).thenReturn(List.of("E"));
-        when(bindingRows.scanSubOrders("", 1)).thenReturn(List.of("S"));
+        when(closureScan.next(1)).thenReturn(List.of("S"));
         when(facts.find("E"))
                 .thenReturn(
                         Optional.of(
