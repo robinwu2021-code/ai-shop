@@ -4816,29 +4816,6 @@ CREATE TABLE IF NOT EXISTS stl_bill_refund
     CONSTRAINT uk_stl_bill_refund UNIQUE (after_sale_no)
 );
 
-CREATE TABLE IF NOT EXISTS stl_points_refund_hold
-(
-    after_sale_no VARCHAR(40) NOT NULL PRIMARY KEY,
-    settle_no VARCHAR(40) NOT NULL,
-    sub_order_no VARCHAR(40) NOT NULL,
-    goods_minor BIGINT NOT NULL,
-    freight_minor BIGINT NOT NULL,
-    goods_paid_minor BIGINT NOT NULL,
-    status VARCHAR(16) NOT NULL,
-    proof_no VARCHAR(64) DEFAULT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS ord_points_refund_retry
-(
-    old_after_sale_no VARCHAR(64) NOT NULL PRIMARY KEY,
-    new_after_sale_no VARCHAR(64) NOT NULL UNIQUE,
-    operator_no VARCHAR(64) NOT NULL,
-    reason VARCHAR(500) NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS pts_point_type
 (
     type_code VARCHAR(40) NOT NULL,
@@ -5662,6 +5639,40 @@ CREATE TABLE IF NOT EXISTS ord_points_recovery_cursor
 (
     queue_name VARCHAR(32) NOT NULL,
     after_sub_order_no VARCHAR(64) NOT NULL DEFAULT '',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(queue_name)
+);
+
+CREATE TABLE IF NOT EXISTS stl_points_refund_hold
+(
+    after_sale_no VARCHAR(40) NOT NULL,
+    settle_no VARCHAR(40) NOT NULL,
+    sub_order_no VARCHAR(40) NOT NULL,
+    goods_minor BIGINT NOT NULL,
+    freight_minor BIGINT NOT NULL,
+    goods_paid_minor BIGINT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    proof_no VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (after_sale_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_refund_retry
+(
+    old_after_sale_no VARCHAR(64) NOT NULL,
+    new_after_sale_no VARCHAR(64) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (old_after_sale_no),
+    CONSTRAINT uk_ord_points_refund_retry_new UNIQUE (new_after_sale_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_work_cursor
+(
+    queue_name VARCHAR(32) NOT NULL,
+    after_reference VARCHAR(200) NOT NULL DEFAULT '',
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(queue_name)
 );

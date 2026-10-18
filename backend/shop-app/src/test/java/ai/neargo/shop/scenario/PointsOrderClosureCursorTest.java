@@ -19,6 +19,7 @@ import java.util.UUID;
 @ActiveProfiles("test")
 class PointsOrderClosureCursorTest {
     @Autowired OrderPointsClosureScan scan;
+    @Autowired ai.neargo.shop.trade.order.points.OrderPointsPendingScan pending;
     @Autowired JdbcTemplate jdbc;
 
     @Test
@@ -45,5 +46,24 @@ class PointsOrderClosureCursorTest {
                 .isEqualTo(first);
         assertThat(scan.next(1)).containsExactly(second);
         assertThat(scan.next(1)).containsExactly(first);
+    }
+
+    @Test
+    void failed_front_rows_do_not_starve_later_work_and_each_queue_wraps() {
+        String suffix=UUID.randomUUID().toString().replace("-", "").substring(0,16);
+        var refs=List.of("A"+suffix,"B"+suffix,"C"+suffix);
+        for (int i=0;i<refs.size();i++) {
+            String ref=refs.get(i);
+            jdbc.update("INSERT INTO ord_points_placement(order_no,phase,payload_json) VALUES(?,'UNKNOWN','{}')",ref);
+            jdbc.update("INSERT INTO ord_points_refund_binding(after_sale_no,sub_order_no,phase,source_version,command_json) VALUES(?,?,'STAGED',0,'{}')",ref,ref);
+            jdbc.update("INSERT INTO ord_points_source_fact(event_no,type_code,source_sequence,store_no,sub_order_no,schema_version,normalized_hash,payload_json) VALUES(?,?,?,?,?,1,'HASH','{}')",ref,suffix,i,"ST",ref);
+        }
+        for(String queue:List.of("PLACEMENT","REFUND","EVENT")) {
+            assertThat(pending.next(queue,2)).containsExactly(refs.get(0),refs.get(1));
+            // Simulate repeated failure: leave those rows pending and unchanged.
+            assertThat(pending.next(queue,2)).containsExactly(refs.get(2));
+            assertThat(jdbc.queryForObject("SELECT after_reference FROM ord_points_work_cursor WHERE queue_name=?",String.class,queue)).isEqualTo(refs.get(2));
+            assertThat(pending.next(queue,2)).containsExactly(refs.get(0),refs.get(1));
+        }
     }
 }

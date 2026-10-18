@@ -249,15 +249,31 @@ public class OrderPointsClosureFlowServiceImpl implements OrderPointsClosureFlow
             } else if (!OrdAfterSale.REJECTED.equals(as.getStatus())
                     && !OrdAfterSale.CLOSED.equals(as.getStatus())) return false;
         }
-        for (var row : refunds.forSubOrder(no))
+        for (var row : refunds.forSubOrder(no)) {
+            if (closedAbortedRefund(row)) continue;
             if (!"COMMITTED".equals(row.get("phase"))
                     || !completed.contains(row.get("after_sale_no"))) return false;
+        }
         return true;
+    }
+
+    private boolean closedAbortedRefund(Map<String, Object> row) {
+        if (!"ABORTED".equals(row.get("phase"))) return false;
+        String no = (String) row.get("after_sale_no");
+        var as = afterSales.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+                .eq(OrdAfterSale::getAfterSaleNo, no));
+        var execution = executions.inspect(no);
+        return as != null && OrdAfterSale.CLOSED.equals(as.getStatus())
+                && Objects.equals(as.getSubOrderNo(), row.get("sub_order_no"))
+                && execution != null && execution.preparation() != null
+                && "ABORTED".equals(execution.preparation().state())
+                && Objects.equals(execution.preparation().subOrderNo(), row.get("sub_order_no"));
     }
 
     private Map<String, Long> returnedGoods(String no) {
         Map<String, Long> result = new HashMap<>();
         for (var row : refunds.forSubOrder(no)) {
+            if (closedAbortedRefund(row)) continue;
             require("COMMITTED".equals(row.get("phase")), "POINTS_REFUND_SOURCE_BUSY");
             var command =
                     json.readValue(

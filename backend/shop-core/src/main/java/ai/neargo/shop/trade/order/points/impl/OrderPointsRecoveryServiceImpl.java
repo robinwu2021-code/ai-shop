@@ -27,6 +27,7 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
     private final OrderPointsClosureFlowService closure;
     private final OrderPointsBindingService bindings;
     private final OrderPointsClosureScan closureScan;
+    private final OrderPointsPendingScan pendingScan;
     private final OrderPointsPlacementMapper placementRows;
     private final OrderPointsFactMapper factRows;
     private final OrderPointsRefundBindingMapper refundRows;
@@ -42,6 +43,7 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
             OrderPointsClosureFlowService closure,
             OrderPointsBindingService bindings,
             OrderPointsClosureScan closureScan,
+            OrderPointsPendingScan pendingScan,
             OrderPointsPlacementMapper placementRows,
             OrderPointsFactMapper factRows,
             OrderPointsRefundBindingMapper refundRows,
@@ -54,6 +56,7 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
         this.closure = closure;
         this.bindings = bindings;
         this.closureScan = closureScan;
+        this.pendingScan = pendingScan;
         this.placementRows = placementRows;
         this.factRows = factRows;
         this.refundRows = refundRows;
@@ -90,18 +93,18 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
         List<RecoveryItem> result = new ArrayList<>();
         switch (queue) {
             case 0 -> {
-                for (var no : placements.pending(limit))
+                for (var no : pendingScan.next("PLACEMENT",limit))
                     result.add(new RecoveryItem("ORDER:" + no, () -> placements.resume(no)));
             }
             case 1 -> {
-                for (var no : refunds.pending(limit))
+                for (var no : pendingScan.next("REFUND",limit))
                     result.add(
                             new RecoveryItem(
                                     "AFTER_SALE:" + no,
                                     () -> afterSales.resumeRefund(no, "SYSTEM")));
             }
             case 2 -> {
-                for (var event : facts.pending(limit))
+                for (var event : pendingScan.next("EVENT",limit))
                     result.add(
                             new RecoveryItem(
                                     "EVENT:" + event,

@@ -74,4 +74,6 @@ public interface OrderPointsFactMapper {
     @Select("SELECT COUNT(*) AS total,MIN(created_at) AS oldest FROM ord_points_source_fact"
             + " WHERE delivered=0")
     Map<String,Object> pendingSummary();
+    @Select("SELECT event_no FROM ord_points_source_fact WHERE delivered=0 AND event_no>#{after} ORDER BY event_no LIMIT #{limit}")
+    List<String> pendingAfter(@Param("after") String after,@Param("limit") int limit);
 }

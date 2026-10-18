@@ -24,6 +24,7 @@ class PointsOrderRecoveryFlowTest {
     private final OrderPointsOutboxConsumer delivery = mock(OrderPointsOutboxConsumer.class);
     private final OrderPointsClosureFlowService closure = mock(OrderPointsClosureFlowService.class);
     private final OrderPointsBindingService bindings = mock(OrderPointsBindingService.class);
+    private final OrderPointsPendingScan pendingScan = mock(OrderPointsPendingScan.class);
     private final OrderPointsClosureScan closureScan = mock(OrderPointsClosureScan.class);
     private final OrderPointsPlacementMapper placementRows = mock(OrderPointsPlacementMapper.class);
     private final OrderPointsFactMapper factRows = mock(OrderPointsFactMapper.class);
@@ -40,6 +41,7 @@ class PointsOrderRecoveryFlowTest {
                     closure,
                     bindings,
                     closureScan,
+                    pendingScan,
                     placementRows,
                     factRows,
                     refundRows,
@@ -48,9 +50,9 @@ class PointsOrderRecoveryFlowTest {
 
     @Test
     void each_queue_retries_original_identity_and_one_failure_does_not_starve_the_rest() {
-        when(placements.pending(1)).thenReturn(List.of("O"));
-        when(refunds.pending(1)).thenReturn(List.of("A"));
-        when(facts.pending(1)).thenReturn(List.of("E"));
+        when(pendingScan.next("PLACEMENT",1)).thenReturn(List.of("O"));
+        when(pendingScan.next("REFUND",1)).thenReturn(List.of("A"));
+        when(pendingScan.next("EVENT",1)).thenReturn(List.of("E"));
         when(closureScan.next(1)).thenReturn(List.of("S"));
         doThrow(new IllegalArgumentException("POINTS_HOLD_UNKNOWN")).when(placements).resume("O");
         var at = Instant.ofEpochMilli(1000);
@@ -96,19 +98,19 @@ class PointsOrderRecoveryFlowTest {
 
     @Test
     void run_is_bounded_even_with_all_queues_backlogged() {
-        when(placements.pending(1)).thenReturn(List.of("O"));
+        when(pendingScan.next("PLACEMENT",1)).thenReturn(List.of("O"));
         var report = service.recover(1);
         assertThat(report.attempted()).isEqualTo(1);
-        verify(refunds, never()).pending(anyInt());
-        verify(facts, never()).pending(anyInt());
+        verify(pendingScan, never()).next(eq("REFUND"),anyInt());
+        verify(pendingScan, never()).next(eq("EVENT"),anyInt());
         verify(closureScan, never()).next(anyInt());
     }
 
     @Test
     void repeated_single_item_runs_visit_every_recovery_queue() {
-        when(placements.pending(1)).thenReturn(List.of("O"));
-        when(refunds.pending(1)).thenReturn(List.of("A"));
-        when(facts.pending(1)).thenReturn(List.of("E"));
+        when(pendingScan.next("PLACEMENT",1)).thenReturn(List.of("O"));
+        when(pendingScan.next("REFUND",1)).thenReturn(List.of("A"));
+        when(pendingScan.next("EVENT",1)).thenReturn(List.of("E"));
         when(closureScan.next(1)).thenReturn(List.of("S"));
         when(facts.find("E"))
                 .thenReturn(

@@ -36,4 +36,6 @@ public interface OrderPointsPlacementMapper {
     @Select("SELECT COUNT(*) AS total,MIN(created_at) AS oldest FROM ord_points_placement"
             + " WHERE phase NOT IN ('READY','CANCELLED')")
     Map<String,Object> pendingSummary();
+    @Select("SELECT order_no FROM ord_points_placement WHERE phase NOT IN ('READY','CANCELLED') AND order_no>#{after} ORDER BY order_no LIMIT #{limit}")
+    List<String> pendingAfter(@Param("after") String after,@Param("limit") int limit);
 }

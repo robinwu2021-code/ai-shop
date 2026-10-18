@@ -137,8 +137,30 @@ class PointsOrderClosureFlowTest {
                                 null,
                                 null));
 
+        abortedRefund(f); // The replaced original attempt is closed; only its successor refunded goods.
         assertThat(flow.finalizeSubOrder(f.sub())).isTrue();
         assertThat(flow.closeRefundResponsibility(f.sub())).isTrue();
+    }
+
+    @Test
+    void manually_closed_aborted_refund_does_not_block_normal_completion() {
+        var f = fixture(System.currentTimeMillis() - 16L * 86_400_000L);
+        String as = abortedRefund(f);
+        jdbc.update("UPDATE ord_after_sale SET status='REFUNDING' WHERE after_sale_no=?", as);
+        assertThat(flow.finalizeSubOrder(f.sub())).isFalse();
+        jdbc.update("UPDATE ord_after_sale SET status='CLOSED' WHERE after_sale_no=?", as);
+        assertThat(flow.finalizeSubOrder(f.sub())).isTrue();
+        assertThat(flow.closeRefundResponsibility(f.sub())).isTrue();
+    }
+
+    private String abortedRefund(Fixture f) {
+        String as = "A" + UUID.randomUUID().toString().replace("-", "");
+        jdbc.update("INSERT INTO ord_after_sale(after_sale_no,sub_order_no,order_no,user_no,entity_no,type,status,refund_minor,reason,created_at,updated_at)"
+                + " VALUES(?,?,?,'U','M','REFUND_ONLY','CLOSED',100,'OTHER',NOW(),NOW())", as, f.sub(), f.sub());
+        jdbc.update("INSERT INTO ord_points_refund_binding(after_sale_no,sub_order_no,phase,source_version,command_json) VALUES(?,?,'ABORTED',0,'{}')", as, f.sub());
+        when(executions.inspect(as)).thenReturn(new RefundExecutionService.Execution(
+                new RefundExecutionService.Preparation(as,f.sub(),"HASH","ABORTED",100),null,null));
+        return as;
     }
 
     @Test
