@@ -43,7 +43,6 @@ import type {
   ReviewListQuery,
   SaveAddressReq,
   VerifyPickupReq,
-  PointsDeductibleQuery,
   MyStoresQuery,
   StoreNearbyQuery,
   StoreEnterReq,
@@ -81,9 +80,6 @@ import type {
   TrackView,
   PageQuery,
   PageResult,
-  PointAccount,
-  PointsDeductible,
-  PointRecord,
   Review,
   MerchantApplyReq,
   MasterData,
@@ -334,9 +330,6 @@ export const httpApi: ShopApi = {
   pointsAccounts: () => call<BuyerPointsAccount[]>("pointsAccounts"),
   pointsEntries: (typeCode, after = 0) => call<BuyerPointsEntryPage>(
     "pointsEntries", undefined, { typeCode, after, limit: 20 }),
-  pointAccount: () => call<PointAccount>("pointAccount"),
-  pointRecords: () => call<PointRecord[]>("pointRecords"),
-  pointsDeductible: (q) => call<PointsDeductible>("pointsDeductible", undefined, { ...q } satisfies PointsDeductibleQuery),
 
   // ---- 卡包
   myCards: () => call<UserCard[]>("myCards"),

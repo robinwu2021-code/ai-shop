@@ -44,9 +44,6 @@ import type {
   StoreCodeImage,
   StoreChoice,
   Message,
-  PointAccount,
-  PointsDeductible,
-  PointRecord,
   Review,
   VisitedMerchant,
   User,
@@ -215,7 +212,7 @@ export interface CreateOrderReq {
   appointmentSlotNo?: string;
 }
 
-import type { PointsDeductibleQuery, MyStoresQuery, StoreNearbyQuery, StoreEnterReq, StoreGoodsQuery,
+import type { MyStoresQuery, StoreNearbyQuery, StoreEnterReq, StoreGoodsQuery,
   UpdateProfileReq } from "./requests";
 
 /** 预览的入参 = 下单入参**去掉幂等键** —— 预览不创建任何东西，不需要它 */
@@ -739,16 +736,6 @@ export interface ShopApi {
   // ---- 积分（C 端账户）
   pointsAccounts(): Promise<BuyerPointsAccount[]>;
   pointsEntries(typeCode: string, after?: number): Promise<BuyerPointsEntryPage>;
-  pointAccount(): Promise<PointAccount>;
-  pointRecords(): Promise<PointRecord[]>;
-  /**
-   * 结算页试算：本单最多能抵多少。
-   *
-   * **服务端算而不是端上算**：抵扣上限依赖券后金额、运费拆分与四级开关，
-   * 端上算一遍、服务端下单时再算一遍，两次算法只要有一点不同，
-   * 用户就会看到「结算页说能抵 30，下单后只抵了 25」。
-   */
-  pointsDeductible(q: PointsDeductibleQuery): Promise<PointsDeductible>;
 
   // ---- 卡包（CARD 品类购买后入包）
   myCards(): Promise<UserCard[]>;

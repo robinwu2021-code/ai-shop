@@ -14,9 +14,6 @@ import type { ShopApi } from "../contract";
 export const userMock: Pick<ShopApi,
   "pointsAccounts"
   | "pointsEntries"
-  | "pointAccount"
-  | "pointRecords"
-  | "pointsDeductible"
   | "sendOtp"
   | "login"
   | "profile"
@@ -55,26 +52,6 @@ export const userMock: Pick<ShopApi,
     }));
     const next = after + page.length;
     return delay({ rows: page, next, hasMore: next < rows.length });
-  },
-
-  async pointAccount() {
-    return delay(buildAccount(db.points));
-  },
-
-  async pointRecords() {
-    return delay([...db.points]);
-  },
-
-  async pointsDeductible(q) {
-    // 与服务端同一套判据：四级开关 → 上限 → 余额，三者取小
-    const acc = buildAccount(db.points);
-    const cap = Math.floor(q.payableMinor * POINTS.maxDeductRatio) * POINTS.perMinor;
-    const maxPoints = Math.min(acc.balance, cap);
-    return delay({
-      maxPoints,
-      maxAmountMinor: Math.floor(maxPoints / POINTS.perMinor),
-      balance: acc.balance,
-    });
   },
 
   // ---------------------------------------------------------------- 用户

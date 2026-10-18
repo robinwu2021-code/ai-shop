@@ -387,16 +387,8 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   // 路径用**复数** `points`：与设计文档、B 端 `/biz/points/**` 一致。
   // 商家侧的两条已迁到 b-app —— ADR-007 §3「contract 层不共享」，
   // 它们挂在 C 端是契约写在 b-app 拆分之前留下的。
-  pointAccount: { method: "GET", path: "/mp/points/account", auth: true, summary: "积分账户" },
-  pointRecords: { method: "GET", path: "/mp/points/records", auth: true, summary: "积分流水" },
   pointsAccounts: { method: "GET", path: "/mp/points/accounts", auth: true, summary: "本人按类型积分账户" },
   pointsEntries: { method: "GET", path: "/mp/points/entries", auth: true, summary: "本人按类型积分流水" },
-  pointsDeductible: {
-    method: "GET",
-    path: "/mp/points/deductible",
-    auth: true,
-    summary: "结算页试算：本单最多可抵多少",
-  },
 
   // ---------------------------------------------------------------- 卡包
   myCards: { method: "GET", path: "/mp/card/mine", auth: true, summary: "我的卡包" },

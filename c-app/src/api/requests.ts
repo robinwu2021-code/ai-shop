@@ -489,17 +489,3 @@ export interface MarkArrivedReq {
   /** 要标记到货的订单。**批量**：一次到货通常是一整批，逐单调用会把通知发成 N 条 */
   orderNos: string[];
 }
-
-// ---------------------------------------------------------------- 积分
-
-export interface PointsDeductibleQuery {
-  /** 试算哪个商家的单 —— 开关是按商家判的，不同店结果不同 */
-  merchantNo: string;
-  /** 券后金额（分）。抵扣上限按它算，**运费不参与** */
-  payableMinor: number;
-  /**
-   * 支付方式（`PAY_MODE`）。线下能否用积分由平台一个开关控制 ——
-   * 不传的话试算按线上算，而下单时按真实支付方式算，两处会给出不同的数。
-   */
-  payMode?: string;
-}
