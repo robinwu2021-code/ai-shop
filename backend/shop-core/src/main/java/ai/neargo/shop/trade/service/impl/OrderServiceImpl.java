@@ -1983,7 +1983,6 @@ public class OrderServiceImpl implements OrderService {
         // 锁定转实扣
         stockPort.confirm(orderNo);
 
-        java.util.Set<String> bonusGranted = new java.util.HashSet<>();
         for (OrdSubOrder sub : subOrders(orderNo)) {
             /*
              * **支付成功后落哪个状态，由履约方式决定**（《订单状态-统一整理》§2.2）。
@@ -2052,17 +2051,6 @@ public class OrderServiceImpl implements OrderService {
             }
 
             /*
-             * 发分。**基数是实付金额**（已扣券与积分），不含运费 ——
-             * 拿运费也计分的话，一单加一次运费就能多赚一笔分。
-             *
-             * 进的是 pending_balance（待生效）而不是 balance：售后期内退款要把分收回，
-             * 而已经花出去的分收不回来。转正任务本批不做。
-             *
-             * points_granted 是幂等标记：支付回调会重发，这个方法开头的
-             * 「已 PAID 直接返回」挡掉大部分，但并发回调仍可能同时进来，
-             * 所以这里再挡一层 —— 重复发分是**凭空印钱**，比重复扣库存严重。
-             */
-            /*
              * 累加收款额度用量（P2-3）。
              *
              * 放在这个循环里而不是主单上：额度是**按商家**算的，
@@ -2072,30 +2060,7 @@ public class OrderServiceImpl implements OrderService {
             merchantAdminPort.accruePayQuota(sub.getEntityNo(), sub.getStoreNo(),
                     sub.getPayAmount() == null ? 0L : sub.getPayAmount());
 
-            if (!Boolean.TRUE.equals(order.getPointsIntegrated())
-                    && !Boolean.TRUE.equals(sub.getPointsGranted())) {
-                /*
-                 * 发积分**在支付状态提交之后**做，与生成结算单同一条理由：
-                 * 支付域独立成进程后就没有共享事务了，而这里后面还有事件发布 ——
-                 * 中间任何一处抛异常，今天会把积分一起回滚，独立之后会留下
-                 * 「用户拿到了分、而订单回滚了」。
-                 *
-                 * <p>推到提交之后，两种失败方向都是安全的：业务回滚 → 根本没发；
-                 * 业务提交而发分失败 → 用户这次没拿到分，标记也没写上，
-                 * <b>而 grantOnPay 现在自己按 EARN 流水幂等</b>，重试不会多发。
-                 */
-                final String subNo = sub.getSubOrderNo();
-                final String userNo = order.getUserNo();
-                final String entityNo = sub.getEntityNo();
-                final long base = sub.getPayAmount() == null ? 0L
-                        : sub.getPayAmount() - (sub.getFreightAmount() == null ? 0L : sub.getFreightAmount());
-                final String scene = order.getPayScene();
-                // 自己组合的「送积分」：随常规积分一起发（同一次发放幂等、同一笔费用金）
-                // 活动赠积分按主体记（pmt_apply 没有门店维度）：同主体多张子单只发一次（ADR-031 §2.7）
-                final long bonus = bonusGranted.add(entityNo) ? campaignPort.bonusPoints(orderNo, entityNo) : 0L;
-                AfterCommit.run("发放积分 subOrderNo=" + subNo,
-                        () -> grantPointsAfterPay(subNo, userNo, entityNo, base, payChannel, scene, bonus));
-            }
+
         }
 
         if (Boolean.TRUE.equals(order.getPointsIntegrated())) {
@@ -2129,57 +2094,6 @@ public class OrderServiceImpl implements OrderService {
                     sub.getEntityNo(), sub.getStoreNo(), order.getUserNo(),
                     sub.getPayAmount() == null ? 0L : sub.getPayAmount()));
         }
-    }
-
-    /**
-     * 支付提交后发放积分，并把结果写回子单。
-     *
-     * <p><b>重新读一次子单</b>，不用外面那个对象：那是提交之前读出来的，
-     * 而这里已经在事务之外 —— 拿旧对象 updateById 会把它当时的全部字段
-     * 原样写回去，覆盖掉这中间别处（比如履约）刚改的列。
-     *
-     * <p>失败不上抛：调用方是 {@link AfterCommit}，它会记 error。
-     * 用户这次没拿到分而标记也没写上，重试由 {@code grantOnPay} 自己的
-     * 流水幂等保证不会多发。
-     */
-    private void grantPointsAfterPay(String subOrderNo, String userNo, String entityNo, long base,
-                                     String payChannel, String payScene, long bonusPoints) {
-        /*
-         * 通道与场景**传进去**，不让支付域回查订单（2026-09-01）。
-         * 它们是支付那一刻的事实，这边本来就拿着：payChannel 是 markPaid 的参数，
-         * payScene 在 ord_order 上。
-         */
-        List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines = new ArrayList<>(earnLines(subOrderNo, base));
-        if (bonusPoints > 0) {
-            /*
-             * 活动送的积分作为**一行定额**并进同一次发放：FIXED 规则按值原样发（基数只要 > 0），
-             * 费用金照常按分数向商家收 —— 活动由商家出资，送的积分也是。
-             * 不单独调一次 grant：发放按子单幂等，第二次调用会被当成重复回调吞掉。
-             */
-            lines.add(new ai.neargo.shop.spi.settle.PointsPort.EarnLine(null, null, 1L,
-                    new ai.neargo.shop.spi.settle.PointsPort.EarnRule(
-                            ai.neargo.shop.spi.settle.PointsPort.FIXED, bonusPoints)));
-        }
-        var g = pointsPort.grant(userNo, entityNo, lines, subOrderNo, payChannel, payScene);
-        if (g.points() <= 0) {
-            return;
-        }
-        OrdSubOrder fresh = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
-                .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1"));
-        if (fresh == null) {
-            return;
-        }
-        fresh.setPointsGranted(true);
-        /*
-         * 费用金落在子单上，**结算时才真的扣**（发分即付，从货款里出）。
-         *
-         * 此前这一列全库零写入 —— 于是 stl_bill 也拿不到值，
-         * B 端「本期积分支出」永远是 0，而池子只出不进：
-         * 用户花分时 MERCHANT_PAY 出账，发分时却没有对应的入账，
-         * 恒等式 2 会随发放量单调失衡。
-         */
-        fresh.setPointsFeeMinor(g.feeMinor());
-        subOrderMapper.updateById(fresh);
     }
 
     // ---------------------------------------------------------------- 查询与取消
@@ -2452,21 +2366,7 @@ public class OrderServiceImpl implements OrderService {
         }
         stockPort.release(order.getOrderNo());
         couponPort.release(order.getOrderNo());
-        /*
-         * 积分按子单退。券是整单一张、积分是每个子单一条 ——
-         * 所以这里逐个子单退，而不是像券那样传 orderNo。
-         *
-         * <p><b>推迟到提交之后</b>：退分是跨域写，理由与生成结算单、发放积分同一条。
-         * 这一处推迟起来最省心 —— {@code reverse} 的幂等<b>在数据本身</b>：
-         * 它只认状态为 PENDING 的 USE 流水，翻成 REVERSED 之后第二次进来就找不到了。
-         * 不像 {@code grant} 那样靠调用方事务里的标记，所以移出事务不会让幂等失效。
-         */
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
-            final String subNo = sub.getSubOrderNo();
-            if (!pointsIntegrated) {
-                AfterCommit.run("退回积分 subOrderNo=" + subNo,
-                        () -> pointsPort.reverse(subNo, "订单已取消"));
-            }
             // 名额还回去。幂等标记在子单上 —— 与超时关闭那条路同时到达也只还一次
             releaseAppointmentSlot(sub);
         }
@@ -2564,14 +2464,7 @@ public class OrderServiceImpl implements OrderService {
          * 有几份从来没成交，而库存、券、积分三样都退了，唯独它不退。
          */
         campaignPort.release(order.getOrderNo());
-        // 同上，积分逐子单退，并同样推迟到提交之后。
-        // reverse 只认 PENDING 的 USE 流水，重复跑不会退两次 —— 幂等在数据里，不在标记上
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
-            final String subNo = sub.getSubOrderNo();
-            if (!pointsIntegrated) {
-                AfterCommit.run("退回积分 subOrderNo=" + subNo,
-                        () -> pointsPort.reverse(subNo, reason + "，订单关闭"));
-            }
             releaseAppointmentSlot(sub);
         }
         if (pointsIntegrated) {
@@ -3961,44 +3854,6 @@ public class OrderServiceImpl implements OrderService {
      * <p>分摊余数补给<b>金额最大的那一行</b>，保证各行之和恰好等于子单基数：
      * 逐行 floor 会少掉几分，而积分要与结算对账，差几分就是账对不平。
      */
-    private List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> earnLines(
-            String subOrderNo, long base) {
-        List<OrdItem> items = DataScopeContext.executeWithoutScope(() ->
-                        itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
-                                .eq(OrdItem::getSubOrderNo, subOrderNo)))
-                .stream().filter(i -> !Boolean.TRUE.equals(i.getIsGift())).toList();
-        long total = items.stream().mapToLong(i -> nz(i.getAmount())).sum();
-        if (items.isEmpty() || total <= 0 || base <= 0) {
-            return List.of();
-        }
-        int biggest = 0;
-        for (int i = 1; i < items.size(); i++) {
-            if (nz(items.get(i).getAmount()) > nz(items.get(biggest).getAmount())) {
-                biggest = i;
-            }
-        }
-        List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> out = new ArrayList<>();
-        long allocated = 0;
-        for (int i = 0; i < items.size(); i++) {
-            OrdItem it = items.get(i);
-            long share = i == biggest ? 0 : base * nz(it.getAmount()) / total;
-            allocated += share;
-            out.add(new ai.neargo.shop.spi.settle.PointsPort.EarnLine(
-                    it.getGoodsNo(), it.getCategoryNo(), share,
-                    ruleOf(it.getGoodsNo(), it.getCategoryNo())));
-        }
-        OrdItem big = items.get(biggest);
-        out.set(biggest, new ai.neargo.shop.spi.settle.PointsPort.EarnLine(
-                big.getGoodsNo(), big.getCategoryNo(), base - allocated,
-                ruleOf(big.getGoodsNo(), big.getCategoryNo())));
-        return out;
-    }
-
-    /** 见 {@link PointsRuleHandoff} —— 转换单独成类是因为它是这条链上唯一会静默出错的一步 */
-    private ai.neargo.shop.spi.settle.PointsPort.EarnRule ruleOf(String goodsNo, String categoryNo) {
-        return PointsRuleHandoff.toPayRule(pointsRulePort.ruleFor(goodsNo, categoryNo));
-    }
-
     private static long nz(Long v) {
         return v == null ? 0L : v;
     }
