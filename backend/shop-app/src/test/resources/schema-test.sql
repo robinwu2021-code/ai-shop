@@ -5619,6 +5619,21 @@ CREATE TABLE IF NOT EXISTS ord_points_placement
     PRIMARY KEY(order_no)
 );
 
+CREATE TABLE IF NOT EXISTS ord_points_refund_binding
+(
+    after_sale_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    phase VARCHAR(32) NOT NULL,
+    source_version BIGINT NOT NULL,
+    command_json LONGTEXT NOT NULL,
+    preparation_json LONGTEXT NULL,
+    cash_payment_no VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (after_sale_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

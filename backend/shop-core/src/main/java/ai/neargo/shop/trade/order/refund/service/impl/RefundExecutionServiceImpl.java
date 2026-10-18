@@ -5,6 +5,9 @@ import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.settle.SettlePort.RefundEvidence;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.entity.OrdOrder;
+import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import ai.neargo.shop.trade.order.mapper.RefundExecutionMapper;
 import ai.neargo.shop.trade.order.mapper.RefundLedgerMapper;
 import ai.neargo.shop.trade.order.refund.model.LedgerResult;
@@ -32,10 +35,12 @@ import java.util.Map;
 public class RefundExecutionServiceImpl implements RefundExecutionService {
     private final RefundExecutionMapper store;
     private final RefundLedgerMapper ledgerStore;
+    private final OrderMapper orders;
     private final SettlePort settle;
     private final ObjectMapper json=new ObjectMapper();
-    public RefundExecutionServiceImpl(RefundExecutionMapper store,RefundLedgerMapper mapper,SettlePort settle) {
-        this.store=store; this.ledgerStore=mapper; this.settle=settle;
+    public RefundExecutionServiceImpl(RefundExecutionMapper store,RefundLedgerMapper mapper,SettlePort settle,
+                                      OrderMapper orders) {
+        this.store=store; this.ledgerStore=mapper; this.settle=settle; this.orders=orders;
     }
     @Override public Execution inspect(String as) {
         return DataScopeContext.executeWithoutScope(() -> {
@@ -72,7 +77,10 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             long approved=afterSale.getApprovedMinor()==null?afterSale.getRefundMinor():afterSale.getApprovedMinor();
             require(plan.totalMinor()==approved,"REFUND_EXECUTION_APPROVAL_MISMATCH");
             capacity(sub,store.items(plan.subOrderNo()),plan);
-            String currency=settle.paymentCurrency(sub.getOrderNo());
+            var root=orders.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                    .eq(OrdOrder::getOrderNo,sub.getOrderNo()).last("LIMIT 1"));
+            String currency=root!=null && Boolean.TRUE.equals(root.getPointsIntegrated())
+                    ? root.getCurrency() : settle.paymentCurrency(sub.getOrderNo());
             require(currency!=null && !currency.isBlank(),"REFUND_EXECUTION_CURRENCY_UNKNOWN");
             require(sub.getStoreNo()!=null && !sub.getStoreNo().isBlank(),"REFUND_EXECUTION_STORE_REQUIRED");
             var frozen=new Snapshot(as,sub.getOrderNo(),sub.getUserNo(),sub.getStoreNo(),currency,plan);
