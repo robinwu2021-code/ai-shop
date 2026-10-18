@@ -6,7 +6,7 @@
 
 ## 一、共同约定与关系
 
-每表id为内部自增主键，tenant_no参与业务唯一性；revision条件更新；created/updated_at用UTC DATETIME(3)，created/updated_by留操作人。资金/核销事实不可物理删除；模板归档不删除历史。沿现有BaseEntity实际审计列对齐后再生成正式迁移，不借设计重命名所有现存列。
+每表id为内部自增主键，tenant_no参与业务唯一性；version条件更新（对外expectedRevision映射此列）；created/updated_at用UTC DATETIME(3)，created/updated_by留操作人。资金/核销事实不可物理删除；模板归档不删除历史。沿现有BaseEntity实际审计列对齐后再生成正式迁移，不借设计重命名所有现存列。
 
 公共字段适用于下列全部38张表，DDL逐表展开：
 
@@ -14,7 +14,8 @@
 |---|---|---|
 | id | BIGINT NOT NULL AUTO_INCREMENT | 内部主键，不能作为跨服务身份 |
 | tenant_no | VARCHAR(32) NOT NULL | 租户隔离，所有业务唯一键含租户 |
-| revision | INT NOT NULL DEFAULT 0 | 条件更新版本 |
+| version | BIGINT NOT NULL DEFAULT 0 | 对齐BaseEntity乐观锁 |
+| deleted | TINYINT NOT NULL DEFAULT 0 | 兼容BaseEntity；账务事实禁止删除 |
 | created_at | DATETIME(3) NOT NULL | UTC创建时间 |
 | updated_at | DATETIME(3) NOT NULL | UTC更新时间 |
 | created_by | VARCHAR(64) NOT NULL | 创建操作者/系统任务 |
@@ -249,6 +250,7 @@ CARD商品SKU引用支付权益版本，不重复保存余次规则。
 | funder | VARCHAR(16) NOT NULL | MERCHANT/PLATFORM |
 | status | VARCHAR(16) NOT NULL | DRAFT/ACTIVE/PAUSED/ENDED |
 | current_version_no | VARCHAR(64) NULL | 当前发布版本 |
+| draft_snapshot | JSON NOT NULL | 可编辑草稿规则，发布时复制为不可变版本 |
 | archived_at | DATETIME(3) NULL | 归档时间 |
 
 索引：`UNIQUE KEY uk_template (tenant_no,template_no)`；`KEY ix_ent_templates (tenant_no,entity_no,kind,status,id)`。
@@ -773,3 +775,11 @@ ent_use_reversal仅用于原订单券受限内部补偿，累计恢复次数/优
 prd_entitlement_binding售价沿既有商品SKU，不复制资金账。每件unitsPerItem个实例时，来源唯一键包含订单行、销售单件序号及件内权益序号。pmt_effect_projection的activityNo属于幂等键，一个事件可以分别更新多个活动效果。
 
 旧券UNUSED/USED分别按规则映射ACTIVE/PENDING_ACTIVATION/EXHAUSTED，状态变换保留源审计；绝对有效期若原来是毫秒闭区间，迁移到半开区间须按原精度转换（截止+1ms），不能提前失效。自然月/每日额度的时区和服务日起算写进实例快照。
+
+### 实施前对齐决定（2026-10-18）
+
+目标公共字段按现有BaseEntity采用version BIGINT和deleted TINYINT，替代早期草案revision列；API的expectedRevision/revision仍是契约名，由映射层转换为实体version，不改sourceRevision等来源修订号。所有财务/使用事实禁止删除，模板用archived_at归档，不能调用通用deleteById删除历史。
+
+ent_template新增draft_snapshot保存完整可编辑草稿，避免把尚未发布规则写进不可变版本。发布事务核对head版本，写version快照再推进current_version_no。停发与保存草稿分别控制，不改已发布规则。
+
+AuditMetaObjectHandler当前使用LocalDateTime.now，不能直接宣称其符合本设计UTC约定。新表插入由领域工厂显式填UTC时间和可信actor（已有strictInsertFill保留非空值）；状态/计数CAS使用显式SQL记录UTC更新时间、操作者与version，不通过会覆盖操作者/时区的通用updateById。此决定需在后续Mapper集成用例验证，禁止为新模块修改全局历史时间语义。

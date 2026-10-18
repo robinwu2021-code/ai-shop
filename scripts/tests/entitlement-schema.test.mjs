@@ -28,13 +28,14 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
             sql(readFileSync(new URL(`../../docs/technical/design/活动权益-${owner}-schema.sql`, import.meta.url), 'utf8'));
         }
         assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '38');
+        assert.ok(sql("SHOW COLUMNS FROM ent_template LIKE 'draft_snapshot'"), 'template draft needs persisted editable rules');
         const bucket = tenant => `INSERT INTO ent_period_bucket
             (tenant_no,instance_no,period_key,service_day,limit_units,created_at,updated_at,created_by,updated_by)
             VALUES ('${tenant}','instance1','period1','2026-10-18',1,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'SYSTEM','SYSTEM')`;
         sql(bucket('MAIN'));
         assert.throws(() => sql(bucket('MAIN')), error => /1062/.test(error.stderr.toString()));
         sql(bucket('OTHER'));
-        const hold = `UPDATE ent_period_bucket SET reserved_units=reserved_units+1,revision=revision+1
+        const hold = `UPDATE ent_period_bucket SET reserved_units=reserved_units+1,version=version+1
             WHERE tenant_no='MAIN' AND instance_no='instance1' AND period_key='period1'
             AND service_day='2026-10-18' AND reserved_units+used_units<limit_units; SELECT ROW_COUNT();`;
         assert.equal(sql(hold), '1');

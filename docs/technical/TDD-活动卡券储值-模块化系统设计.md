@@ -314,3 +314,7 @@ SourceRef提供grantKey/useIntentKey/settledKey，按长度前缀SHA256编码，
 目标38张设计表已在隔离MySQL 9.7.2新库执行成功，不代表存量增量升级完成。正式迁移前仍需对齐BaseEntity的version/deleted与目标revision、审计时区及主体数据域登记。
 
 数据库约束自动回归：`node --test scripts/tests/entitlement-schema.test.mjs scripts/tests/head-compiles-ref.test.mjs`通过2项检查；验证日额度CHECK、租户复合唯一、条件预占返回1后0、非法JSON拒绝，以及闸门变量展开。容器每次独立创建并清理，不连接已配置业务数据库。
+
+### 对齐补充
+
+已用失败检查复现模板无草稿持久字段与公共version列缺失，再补齐ent_template.draft_snapshot及全部目标表version/deleted。MySQL目标表检查恢复通过。数据库设计中的version/deleted对齐已完成；正式增量迁移、领域审计UTC/actor填充和实体Mapper集成仍待D02.1实现。SourceRef消融验证：临时忽略useIntent修订号后用例失败，恢复实现后4项通过；Count/Daily另5项通过。
