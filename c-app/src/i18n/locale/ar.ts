@@ -1047,6 +1047,8 @@ export default {
     pending: "و{n} نقطة قيد التفعيل، متاحة في {d}",
     title: "نقاطي",
     entryHint: "{n} نقطة",
+    viewLedger: "عرض سجل النقاط",
+    typeCount: "{n} أنواع من النقاط",
     balance: "النقاط المتاحة",
     worth: "تعادل نحو {p}",
     totalEarned: "إجمالي المكتسب",

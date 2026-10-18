@@ -1047,6 +1047,8 @@ export default {
     pending: "{n} more pending, available {d}",
     title: "My points",
     entryHint: "{n} pts",
+    viewLedger: "View points ledger",
+    typeCount: "{n} points types",
     balance: "Available points",
     worth: "Worth about {p}",
     totalEarned: "Total earned",

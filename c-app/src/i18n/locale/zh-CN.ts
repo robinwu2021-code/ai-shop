@@ -1133,6 +1133,8 @@ export default {
     pending: "另有 {n} 分待生效，{d} 可用",
     title: "我的积分",
     entryHint: "{n} 分",
+    viewLedger: "查看积分账本",
+    typeCount: "{n} 种积分类型",
     balance: "可用积分",
     worth: "约可抵扣 {p}",
     totalEarned: "累计获得",
