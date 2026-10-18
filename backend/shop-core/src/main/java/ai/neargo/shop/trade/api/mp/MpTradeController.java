@@ -123,6 +123,11 @@ public class MpTradeController {
         return orderService.payResult(orderNo);
     }
 
+    @GetMapping("/mp/order/{orderNo}/points-state")
+    public OrderService.PointsState pointsState(@PathVariable String orderNo) {
+        return orderService.pointsState(orderNo);
+    }
+
     @GetMapping("/mp/order")
     public PageData<OrderVO> orderList(@RequestParam(required = false) String status,
                                        // 与 status 正交：页签是「状态 + 履约集合」的谓词，不是一个状态值

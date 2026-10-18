@@ -15,6 +15,11 @@ public interface OrderService {
      */
     OrderVO preview(CreateOrderCommand cmd);
 
+    /** Buyer-scoped status of the optional points placement; only bounded phase/code is exposed. */
+    PointsState pointsState(String orderNo);
+
+    record PointsState(String phase, String reason) {}
+
     /** 下单。幂等由 {@code Idempotency-Key} 保证；库存在此锁定，支付成功才实扣。 */
     OrderVO create(CreateOrderCommand cmd, String idempotencyKey);
 

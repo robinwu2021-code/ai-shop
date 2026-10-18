@@ -4,7 +4,7 @@
 // 迁移到真实后端时这个文件基本不用改 —— 改的是 `.env` 里的开关。
 import { clientTag, http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
-import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList} from "./contract";
+import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList, PointsOrderState} from "./contract";
 import type { InvoiceRequest, MyMembership, ReachOpened, MyStoreCoupon, PlaceSearchHit, RegionNode, RegionOption,
   PasswordState,
   PhoneCapable,
@@ -203,6 +203,7 @@ export const httpApi: ShopApi = {
   myInvoices: () => call<InvoiceRequest[]>("myInvoices"),
   invoiceOfOrder: (orderNo) => call<InvoiceRequest | null>("invoiceOfOrder", { orderNo }),
   orderDetail: (orderNo) => call<Order>("orderDetail", { orderNo }),
+  orderPointsState: (orderNo) => call<PointsOrderState>("orderPointsState", { orderNo }),
   track: (t) => call<TrackView | null>("track", undefined, { t }),
   trackMiniLink: (t) => call<{ url: string } | null>("trackMiniLink", undefined, { t }),
   trackMine: (t) => call<TrackView>("trackMine", undefined, { t }),

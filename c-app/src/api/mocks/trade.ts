@@ -55,6 +55,7 @@ export const tradeMock: Pick<ShopApi,
   | "myInvoices"
   | "invoiceOfOrder"
   | "orderDetail"
+  | "orderPointsState"
   | "orderTrace"
   | "track"
   | "trackMiniLink"
@@ -459,6 +460,11 @@ export const tradeMock: Pick<ShopApi,
      */
     const withFlag = { ...o, instantRefundEligible: mockInstantEligible(o) };
     return delay(siblings.length > 1 ? { ...withFlag, subOrders: siblings } : withFlag);
+  },
+
+  async orderPointsState(orderNo) {
+    const o=findOrder(orderNo);
+    return delay({ phase: o.status === "POINTS_PROCESSING" ? "UNKNOWN" : "NONE", reason: null });
   },
 
   async cancelOrder(orderNo) {

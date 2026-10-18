@@ -344,6 +344,28 @@ class PointsOrderLiveCreationTest {
     }
 
     @Test
+    void changed_hold_price_exposes_reconfirm_phase_only_to_order_owner() throws Exception {
+        var f=fixture("12600349015","13000349015","reconfirm");
+        when(redeem.hold(any())).thenAnswer(call -> {
+            var h=call.<PointsRedeemPort.HoldCommand>getArgument(0);
+            return new PointsRedeemPort.HoldOutcome("QA:"+h.orderNo(),"TYPE",18,9,
+                    "HELD",null,List.of(new PointsRedeemPort.Share(
+                    h.targets().getFirst().subOrderNo(),h.targets().getFirst().merchantNo(),
+                    h.targets().getFirst().storeNo(),18,9)));
+        });
+        var response=create(f,"live-reconfirm");
+        assertThat(response.get("status").asString()).isEqualTo("POINTS_PROCESSING");
+        String root=response.get("payOrderNo").asString();
+        String body=mvc().perform(get("/mp/order/"+root+"/points-state")
+                .header("Authorization","Bearer "+f.buyer)).andReturn().getResponse().getContentAsString();
+        assertThat(dataRoot(body).get("data").get("phase").asString()).isEqualTo("RECONFIRM");
+        String stranger=TestLogin.consumer(mvc(),json,otp,"13000349016");
+        String denied=mvc().perform(get("/mp/order/"+root+"/points-state")
+                .header("Authorization","Bearer "+stranger)).andReturn().getResponse().getContentAsString();
+        assertThat(dataRoot(denied).get("code").asInt()).isNotZero();
+    }
+
+    @Test
     void pending_hold_timeout_closes_the_original_order_and_releases_stock() throws Exception {
         var f = fixture("12600349012", "13000349012", "timeout");
         when(redeem.hold(any())).thenThrow(new IllegalStateException("SIMULATED_TIMEOUT"));

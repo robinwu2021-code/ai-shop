@@ -799,6 +799,9 @@ export default {
     paying: "支付中…",
     pointsProcessing: "积分处理中",
     pointsProcessingHint: "正在核验本次积分抵扣，请稍后查看订单结果",
+    pointsReconfirmTitle: "积分抵扣金额已变化",
+    pointsReconfirmHint: "请取消这笔未付款订单，返回购物车重新确认金额与积分后再下单。",
+    pointsReconfirmAction: "取消并返回购物车",
     recheck: "刷新状态",
     cancelled: "已取消支付",
     /** 应付 0 元，无需付款。短位：只说结果 */

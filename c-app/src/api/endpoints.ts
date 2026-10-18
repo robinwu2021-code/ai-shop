@@ -225,6 +225,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   promotedGoods: { method: "GET", path: "/mp/goods/promoted", auth: false, summary: "推荐商品（运营位）" },
   promotedMerchants: { method: "GET", path: "/mp/merchant/promoted", auth: false, summary: "推荐门店（运营位）" },
   orderDetail: { method: "GET", path: "/mp/order/:orderNo", auth: true, summary: "订单详情", clientTag: true },
+  orderPointsState: { method: "GET", path: "/mp/order/:orderNo/points-state", auth: true, summary: "本人订单积分接线阶段" },
   track: { method: "GET", path: "/mp/track", auth: false, summary: "免登录看件（令牌即授权）", clientTag: true },
   trackMiniLink: { method: "GET", path: "/mp/track/mini-link", auth: false, summary: "看件页跳小程序的 URL Link" },
   trackMine: { method: "GET", path: "/mp/track/mine", auth: true, summary: "小程序侧看件(本人)", clientTag: true },

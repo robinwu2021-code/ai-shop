@@ -14,13 +14,14 @@ import { orderSubscribeTmpls, requestSubscribe } from "@shared/ports/push";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
 import type { Order } from "@shared/types";
-import type { PayMethodItem, PayMethodList } from "@/api/contract";
+import type { PayMethodItem, PayMethodList, PointsOrderState } from "@/api/contract";
 import { confirm } from "@ai-shop/ui/prompt";
 import { clearCheckoutKey } from "@/shared/checkout-key";
 
 const { t } = useI18n();
 
 const order = ref<Order | null>(null);
+const pointsState = ref<PointsOrderState | null>(null);
 const paying = ref(false);
 /** 可用支付方式。null = 还没拉到 */
 const methodList = ref<PayMethodList | null>(null);
@@ -30,6 +31,10 @@ const now = ref(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
 
 const processing = computed(() => order.value?.status === "POINTS_PROCESSING");
+const reconfirm = computed(() => {
+  const phase = pointsState.value?.phase;
+  return processing.value && phase === "RECONFIRM";
+});
 const paid = computed(() => !!order.value && order.value.status !== "WAIT_PAY" && !processing.value);
 
 /** 那串码叫什么。与订单详情共用一份判据，别在两处各写一个三分支 */
@@ -87,9 +92,13 @@ async function load(orderNo: string) {
   currentNo.value = orderNo;
   try {
     order.value = await api.orderDetail(orderNo);
+    pointsState.value = order.value?.status === "POINTS_PROCESSING"
+      ? await api.orderPointsState(orderNo) : null;
     failed.value = false;
   } catch {
-    failed.value = true;
+    // 订单已读到时，阶段接口失败只影响提示；支付仍由处理态拦住。
+    failed.value = order.value == null;
+    pointsState.value = null;
     return;
   }
   if (order.value?.status === "WAIT_PAY") {
@@ -231,6 +240,21 @@ async function cancel() {
   uni.redirectTo({ url: `${ROUTES.orders}` });
 }
 
+async function cancelForReconfirm() {
+  const o=order.value;
+  if (!o || !reconfirm.value) return;
+  const ok=await confirm({ title: String(t("pay.pointsReconfirmTitle")),
+    hint: String(t("pay.pointsReconfirmHint")) });
+  if (!ok) return;
+  try {
+    await api.cancelOrder(o.orderNo);
+    clearCheckoutKey();
+    uni.switchTab({ url: ROUTES.cart });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
 /** 这笔支付里参团的那一单的团号。支付视角下团号挂在子单上 */
 function groupNoOf(o: typeof order.value): string {
   if (!o) return "";
@@ -287,9 +311,10 @@ onUnmounted(() => clearInterval(timer));
         <!-- 待支付 -->
         <template v-if="processing">
           <view class="sh-card done">
-            <text class="txt-display done__title">{{ $t("pay.pointsProcessing") }}</text>
-            <text class="txt-caption done__hint">{{ $t("pay.pointsProcessingHint") }}</text>
-            <view class="sh-btn" @tap="load(currentNo)">{{ $t("pay.recheck") }}</view>
+            <text class="txt-display done__title">{{ $t(reconfirm ? "pay.pointsReconfirmTitle" : "pay.pointsProcessing") }}</text>
+            <text class="txt-caption done__hint">{{ $t(reconfirm ? "pay.pointsReconfirmHint" : "pay.pointsProcessingHint") }}</text>
+            <view v-if="reconfirm" class="sh-btn" @tap="cancelForReconfirm">{{ $t("pay.pointsReconfirmAction") }}</view>
+            <view v-else class="sh-btn" @tap="load(currentNo)">{{ $t("pay.recheck") }}</view>
           </view>
         </template>
         <template v-else-if="!paid">

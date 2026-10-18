@@ -530,6 +530,16 @@ public class OrderServiceImpl implements OrderService {
                 .withOutOfRange(outOfRangeMerchants(cmd, split, userNo));
     }
 
+    @Override
+    public PointsState pointsState(String orderNo) {
+        var order=requireOwnOrder(orderNo);
+        if (!Boolean.TRUE.equals(order.getPointsIntegrated())) return new PointsState("NONE",null);
+        if (pointsPlacement==null) throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
+        var placement=pointsPlacement.inspect(order.getOrderNo());
+        if (placement==null) throw new IllegalStateException("POINTS_PLACEMENT_MISSING");
+        return new PointsState(placement.phase().name(),placement.reason());
+    }
+
     /**
      * 预览用：每件设了限购的货的限购数与已买量。
      * 开关关着时返回空 —— 步进器只按库存，与「只显示不拦」一致。

@@ -736,6 +736,9 @@ export default {
     paying: "جارٍ الدفع…",
     pointsProcessing: "تجري معالجة النقاط",
     pointsProcessingHint: "نتحقق من خصم النقاط. تحقق من حالة الطلب بعد قليل.",
+    pointsReconfirmTitle: "تغيّر مبلغ خصم النقاط",
+    pointsReconfirmHint: "ألغِ هذا الطلب غير المدفوع، ثم راجع المبلغ والنقاط مجددًا من السلة.",
+    pointsReconfirmAction: "إلغاء والعودة إلى السلة",
     recheck: "تحديث الحالة",
     cancelled: "أُلغي الدفع",
     /** لا شيء للدفع (الإجمالي صفر) */

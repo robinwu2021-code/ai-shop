@@ -736,6 +736,9 @@ export default {
     paying: "Paying…",
     pointsProcessing: "Processing points",
     pointsProcessingHint: "We are confirming your points deduction. Check the order status shortly.",
+    pointsReconfirmTitle: "Points price changed",
+    pointsReconfirmHint: "Cancel this unpaid order, then review the price and points again from your cart.",
+    pointsReconfirmAction: "Cancel and return to cart",
     recheck: "Refresh status",
     cancelled: "Payment cancelled",
     /** Nothing to pay (total is 0) */

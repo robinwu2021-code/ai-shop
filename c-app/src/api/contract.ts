@@ -73,6 +73,11 @@ export interface PayMethodList {
   methods: PayMethodItem[];
 }
 
+export interface PointsOrderState {
+  phase: "NONE" | "RAW" | "ADMITTED" | "UNKNOWN" | "READY" | "RECONFIRM" | "CANCEL_REQUESTED" | "CANCELLED";
+  reason: string | null;
+}
+
 export interface PayMethodItem {
   methodCode: string;
   payChannel: string;
@@ -399,6 +404,7 @@ export interface ShopApi {
   /** 某单的开票状态。**没申请过返回 null 而不是报错** —— 那是常态不是错误 */
   invoiceOfOrder(orderNo: string): Promise<InvoiceRequest | null>;
   orderDetail(orderNo: string): Promise<Order>;
+  orderPointsState(orderNo: string): Promise<PointsOrderState>;
   /**
    * 免登录看件（TDD-收件人物流触达与分享裂变 §3）。发货短信/分享链接里的 `t` 是看件令牌。
    * **匿名可调** —— 令牌即授权。令牌无效 / 过期返回 null，端上显示「链接已失效」。
