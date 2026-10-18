@@ -435,3 +435,10 @@ EntitlementValidityPolicy共享发布校验与时间计算；CountUsagePolicy/Pe
 后续协议复核发现并修复C端页上限51仍接受、CursorPage缺hasMore，新增失败边界后修正为1–50及一致性约束。恢复后的定向命令包含EntitlementContractTest、EntitlementCommandDeduplicatorTest、EntitlementValidityPolicyTest、EntitlementCatalogFlowTest、SourceRefTest、UsageQuotaTest、ArchitectureTest、PayTxManagerConventionTest：共56项、0失败/错误/跳过。隔离原生MySQL服务检查另1项实际通过、0跳过。新枚举词汇表已重新生成；文档66份、SQL方言无新增欠账、git diff --check通过。
 
 全量干净副本正在单独验证685a15805，结果以随后记录为准；此定向证据不冒充全量。当前9 DONE/1 DOING/45 TODO；发放、核销、储值账务和三端HTTP尚未完成。
+
+
+### 本批最终验证边界
+
+`bash scripts/check-head-compiles.sh HEAD`对685a15805的干净副本完成test-compile与全量测试：20模块3543项、0失败/错误，耗时618秒；原生MySQL条件测试1项默认跳过，该项由独立隔离脚本实际通过。此后244ee7f4c修正C端50条上限及CursorPage.hasMore，并更新生成词典；最新功能代码定向56项通过、原生1项实际通过。244ee7f4c另以`SKIP_TEST_GATE=1 bash scripts/check-head-compiles.sh HEAD`验证干净副本test-compile，明确仅编译，不宣称它重跑全量。两组证据分别记录，不将3543项冒认为后续提交的全量结果。
+
+后续Java差异仅将4处长行换行至120列内；逐文件去除空白比较与244ee7f4c相同，没有逻辑变化。文档守卫66份及diff检查通过，工作区验证产生的原生容器/干净编译副本已清理。本轮本地提交，未推送、部署或执行生产迁移。全Java后端仍未完成：JB-008其余契约/权限/持久模型继续DOING，发放、核销、储值账及三端接口等45项仍TODO。

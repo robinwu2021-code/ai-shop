@@ -93,7 +93,8 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
     @Transactional("payTxManager")
     public PublishedVersionView publish(CatalogScope scope, String templateNo, long expectedRevision,
                                          String requestKey) {
-        return deduplicator.execute(scope, "CATALOG_PUBLISH", requestKey, List.of(templateNo, expectedRevision), templateNo,
+        return deduplicator.execute(scope, "CATALOG_PUBLISH", requestKey,
+                List.of(templateNo, expectedRevision), templateNo,
                 PublishedVersionView.class, () -> {
                     EntTemplate head = locked(scope, templateNo, expectedRevision);
                     EntitlementDefinition definition = view(head).draft();
@@ -114,7 +115,8 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
         if (status == null || !List.of("ACTIVE", "PAUSED", "ENDED").contains(status)) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        return deduplicator.execute(scope, "CATALOG_STATUS", requestKey, List.of(templateNo, expectedRevision, status), templateNo,
+        return deduplicator.execute(scope, "CATALOG_STATUS", requestKey,
+                List.of(templateNo, expectedRevision, status), templateNo,
                 TemplateView.class, () -> {
                     EntTemplate head = locked(scope, templateNo, expectedRevision);
                     if (head.getCurrentVersionNo() == null && !"ENDED".equals(status)) {

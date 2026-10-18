@@ -67,7 +67,8 @@ public interface StoredValuePort {
     record CancelRecharge(String rechargeNo, long expectedRevision, String reason) {
         public CancelRecharge {
             ContractChecks.id(rechargeNo);
-            ContractChecks.require(expectedRevision >= 0 && reason != null && !reason.isBlank() && reason.length() <= 500);
+            ContractChecks.require(expectedRevision >= 0 && reason != null
+                    && !reason.isBlank() && reason.length() <= 500);
         }
     }
 

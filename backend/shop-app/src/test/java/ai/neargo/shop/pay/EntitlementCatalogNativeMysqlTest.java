@@ -65,7 +65,8 @@ class EntitlementCatalogNativeMysqlTest {
         factory.setPlugins(interceptor);
         SqlSessionFactory sessions = factory.getObject();
         try (var context = new AnnotationConfigApplicationContext()) {
-            context.register(Transactions.class, EntitlementCatalogServiceImpl.class, EntitlementCommandDeduplicator.class);
+            context.register(Transactions.class, EntitlementCatalogServiceImpl.class,
+                    EntitlementCommandDeduplicator.class);
             context.registerBean("payTxManager", PlatformTransactionManager.class,
                     () -> new DataSourceTransactionManager(ds));
             context.registerBean(ObjectMapper.class, () -> JsonMapper.builder().build());
