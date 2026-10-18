@@ -172,6 +172,34 @@ class PointsOrderLiveCreationTest {
     }
 
     @Test
+    void preview_points_quote_uses_store_route_and_non_unit_rate() throws Exception {
+        var f = fixture("12600349017", "13000349017", "quote");
+        String raw =
+                mvc().perform(
+                                post("/mp/order/points-quote")
+                                        .header("Authorization", "Bearer " + f.buyer)
+                                        .header("X-Client", "H5")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(
+                                                "{\"items\":[{\"goodsNo\":\""
+                                                        + f.goods
+                                                        + "\",\"skuNo\":\""
+                                                        + f.sku
+                                                        + "\",\"qty\":1}],\"fulfillment\":\"STORE_PICKUP\","
+                                                        + "\"pickupNo\":\"PP0001\",\"usePoints\":20}"))
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString();
+        var quote = dataRoot(raw).get("data");
+        assertThat(quote.get("state").asString()).isEqualTo("AVAILABLE");
+        assertThat(quote.get("pointsUsed").asLong()).isEqualTo(20);
+        assertThat(quote.get("deductMinor").asLong()).isEqualTo(10);
+        assertThat(quote.get("ratePoints").asLong()).isEqualTo(2);
+        assertThat(quote.get("rateMinor").asLong()).isEqualTo(1);
+        assertThat(quote.get("stores").get(0).get("storeNo").asString()).isEqualTo(f.store);
+    }
+
+    @Test
     void payment_open_uses_the_route_accepted_with_the_original_store() throws Exception {
         var f = fixture("12600349013", "13000349013", "payment-route");
         when(redeem.hold(any()))

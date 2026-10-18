@@ -64,6 +64,13 @@ public class MpTradeController {
 
     // ---- 交易
 
+    @PostMapping("/mp/order/points-quote")
+    public OrderService.PointsQuote pointsQuote(
+            @RequestBody CreateOrderReq req,
+            @RequestHeader(value = "X-Client", required = false) String client) {
+        return orderService.quotePoints(req.toCommand(client));
+    }
+
     @PostMapping("/mp/order/preview")
     public OrderVO preview(@RequestBody CreateOrderReq req) {
         return orderService.preview(req.toCommand(null));

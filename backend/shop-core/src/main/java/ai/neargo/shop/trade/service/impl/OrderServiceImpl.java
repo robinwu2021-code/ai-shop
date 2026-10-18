@@ -127,6 +127,8 @@ public class OrderServiceImpl implements OrderService {
     private ai.neargo.shop.trade.order.points.OrderPointsCoordinator pointsCoordinator;
     private ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator pointsPlacement;
     private ai.neargo.shop.trade.order.points.OrderPointsTargetFactory pointsTargets;
+    private ai.neargo.shop.spi.points.PointsRedeemPort pointsQuoteRedeem;
+    private ai.neargo.shop.spi.points.PointsOrderTermsPort pointsQuoteTerms;
     private ai.neargo.shop.spi.points.PointsPaymentSnapshotPort pointsPaymentSnapshots;
     private ai.neargo.shop.trade.order.points.OrderPointsPaidFactService pointsPaidFacts;
     private org.springframework.transaction.support.TransactionTemplate sourceTransactions;
@@ -140,6 +142,14 @@ public class OrderServiceImpl implements OrderService {
         this.pointsCoordinator = coordinator;
         this.pointsPlacement = placement;
         this.pointsTargets = targets;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPointsQuotePorts(
+            ai.neargo.shop.spi.points.PointsRedeemPort redeem,
+            ai.neargo.shop.spi.points.PointsOrderTermsPort terms) {
+        this.pointsQuoteRedeem = redeem;
+        this.pointsQuoteTerms = terms;
     }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -528,6 +538,181 @@ public class OrderServiceImpl implements OrderService {
                 .withOffers(offersOf(cmd, split, userNo, discounts))
                 // 超出配送范围：预览给标记不拦（P6），建单时 requireWithinDeliveryRadius 才拦
                 .withOutOfRange(outOfRangeMerchants(cmd, split, userNo));
+    }
+
+    @Override
+    public PointsQuote quotePoints(CreateOrderCommand cmd) {
+        String userNo = SecurityUtils.currentUserNo();
+        Split raw = split(cmd);
+        Split priced = repriced(raw, groupQuoteOf(cmd, raw, userNo));
+        Split split = withFreight(priced, cmd, storesOf(cmd, priced), userNo);
+        Discounts discounts = discountsOf(cmd, split, userNo);
+        long base = split.payAmount() - discounts.total();
+        if (!pointsEnabled
+                || pointsCoordinator == null
+                || pointsTargets == null
+                || pointsQuoteRedeem == null
+                || pointsQuoteTerms == null) {
+            return new PointsQuote(
+                    "UNAVAILABLE", "POINTS_INTEGRATION_DETACHED", 0, 0, 0, 0, base, List.of());
+        }
+        String client = ai.neargo.shop.common.PayScenes.normalize(cmd.payScene());
+        if (client == null || cmd.usePoints() == null || cmd.usePoints() <= 0) {
+            return new PointsQuote(
+                    "UNAVAILABLE", "POINTS_REQUOTE_REQUIRED", 0, 0, 0, 0, base, List.of());
+        }
+        Map<String, String> stores = storesOf(cmd, split);
+        String payMode = requirePayModeSupported(cmd, split, stores);
+        String market = null;
+        Map<String, ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Decision> decisions =
+                new LinkedHashMap<>();
+        for (Group g : split.groups) {
+            String store = stores.get(g.key());
+            if (store == null || store.isBlank()) continue;
+            var decision =
+                    pointsCoordinator.decide(
+                            new ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Context(
+                                    store, payMode, true, true, true));
+            if (decision.action()
+                    == ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Action.RECONFIRM)
+                return new PointsQuote(
+                        "UNAVAILABLE", decision.reason(), 0, 0, 0, 0, base, List.of());
+            if (!decision.redemption()) continue;
+            String next = merchantPort.marketOf(g.merchantNo());
+            if (next == null || next.isBlank() || (market != null && !market.equals(next)))
+                return new PointsQuote(
+                        "UNAVAILABLE", "POINTS_MARKET_CONFLICT", 0, 0, 0, 0, base, List.of());
+            market = next;
+            decisions.put(g.key(), decision);
+        }
+        if (decisions.isEmpty())
+            return new PointsQuote(
+                    "UNAVAILABLE", "POINTS_REQUOTE_REQUIRED", 0, 0, 0, 0, base, List.of());
+        String chosenMarket = market;
+        String channel =
+                payChannelMasterPort.payableChannels(chosenMarket).stream()
+                        .filter(
+                                ch ->
+                                        split.groups.stream()
+                                                .allMatch(
+                                                        g ->
+                                                                merchantPort
+                                                                        .activeChannelsOf(
+                                                                                g.merchantNo(),
+                                                                                g.storeNo())
+                                                                        .contains(ch)))
+                        .sorted()
+                        .findFirst()
+                        .orElse(null);
+        if (channel == null)
+            return new PointsQuote(
+                    "UNAVAILABLE", "POINTS_PAYMENT_ROUTE_REQUIRED", 0, 0, 0, 0, base, List.of());
+        List<ai.neargo.shop.spi.points.PointsRedeemPort.Target> targets = new ArrayList<>();
+        ai.neargo.shop.spi.points.PointsOrderTermsPort.Terms first = null;
+        int index = 0;
+        for (Group g : split.groups) {
+            if (!decisions.containsKey(g.key())) continue;
+            String store = stores.get(g.key());
+            var term =
+                    pointsQuoteTerms
+                            .resolve(chosenMarket, userNo, g.merchantNo(), store, payMode, client)
+                            .orElse(null);
+            if (term == null
+                    || !term.redemptionAllowed()
+                    || !CURRENCY_CNY.equals(term.currency())
+                    || (first != null
+                            && (!first.typeCode().equals(term.typeCode())
+                                    || first.ratePoints() != term.ratePoints()
+                                    || first.rateMinor() != term.rateMinor())))
+                return new PointsQuote(
+                        "UNAVAILABLE", "POINTS_TERMS_CHANGED", 0, 0, 0, 0, base, List.of());
+            if (first == null) first = term;
+            List<ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine> lines =
+                    new ArrayList<>();
+            for (Line line : g.lines) {
+                lines.add(
+                        new ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine(
+                                "Q" + (++index),
+                                g.merchantNo(),
+                                line.snapshot.storeNo(),
+                                store,
+                                line.amount()));
+            }
+            targets.add(
+                    pointsTargets
+                            .build(
+                                    "Q" + index,
+                                    g.merchantNo(),
+                                    store,
+                                    channel,
+                                    null,
+                                    discounts.of(g.merchantNo(), store),
+                                    g.freight(),
+                                    lines)
+                            .target());
+        }
+        var quote =
+                pointsQuoteRedeem.quote(
+                        new ai.neargo.shop.spi.points.PointsRedeemPort.RedeemQuery(
+                                chosenMarket, userNo, cmd.usePoints(), payMode, client, targets));
+        if (quote == null
+                || first == null
+                || !first.typeCode().equals(quote.typeCode())
+                || first.ratePoints() != quote.pointsUnit()
+                || first.rateMinor() != quote.minorUnit()
+                || quote.points() <= 0
+                || quote.minor() <= 0
+                || quote.minor() > base)
+            return new PointsQuote(
+                    "UNAVAILABLE", "POINTS_REQUOTE_REQUIRED", 0, 0, 0, 0, base, List.of());
+        List<StorePointsQuote> shares = new ArrayList<>();
+        long points = 0, minor = 0;
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (var share : quote.shares()) {
+            var target =
+                    targets.stream()
+                            .filter(t -> t.subOrderNo().equals(share.subOrderNo()))
+                            .findFirst()
+                            .orElse(null);
+            if (target == null
+                    || !seen.add(share.subOrderNo())
+                    || !target.storeNo().equals(share.storeNo())
+                    || !target.merchantNo().equals(share.merchantNo())
+                    || share.points() < 0
+                    || share.minor() < 0
+                    || share.minor() > target.goodsMinor())
+                return new PointsQuote(
+                        "UNAVAILABLE", "POINTS_REQUOTE_REQUIRED", 0, 0, 0, 0, base, List.of());
+            points = Math.addExact(points, share.points());
+            minor = Math.addExact(minor, share.minor());
+            var group =
+                    split.groups.stream()
+                            .filter(
+                                    g ->
+                                            g.merchantNo().equals(target.merchantNo())
+                                                    && g.storeNo().equals(target.storeNo()))
+                            .findFirst()
+                            .orElseThrow();
+            shares.add(
+                    new StorePointsQuote(
+                            target.storeNo(),
+                            target.merchantNo(),
+                            decisions.get(group.key()).policyVersion(),
+                            share.points(),
+                            share.minor()));
+        }
+        if (points != quote.points() || minor != quote.minor())
+            return new PointsQuote(
+                    "UNAVAILABLE", "POINTS_REQUOTE_REQUIRED", 0, 0, 0, 0, base, List.of());
+        return new PointsQuote(
+                "AVAILABLE",
+                null,
+                points,
+                minor,
+                quote.pointsUnit(),
+                quote.minorUnit(),
+                base,
+                shares);
     }
 
     @Override
