@@ -13,7 +13,8 @@ public interface OrderPointsRecoveryService {
 
     record QueueBacklog(long count, long oldestSeconds) {}
 
-    record Backlog(QueueBacklog placements, QueueBacklog refunds, QueueBacklog events) {}
+    record Backlog(QueueBacklog placements, QueueBacklog refunds,
+                   QueueBacklog manualRefunds, QueueBacklog events) {}
 
     record Failure(String reference, String code) {}
 

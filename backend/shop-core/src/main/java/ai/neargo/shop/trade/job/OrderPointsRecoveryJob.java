@@ -71,11 +71,12 @@ public class OrderPointsRecoveryJob implements JobHandler {
         var result = recovery.recover(limit);
         var backlog = recovery.backlog(java.time.Instant.now());
         String detail =
-                "扫描 %d 项，推进 %d 项，失败 %d 项；积压 下单 %d/%ds 售后 %d/%ds 事件 %d/%ds"
+                "扫描 %d 项，推进 %d 项，失败 %d 项；积压 下单 %d/%ds 售后 %d/%ds 人工售后 %d/%ds 事件 %d/%ds"
                         .formatted(
                                 result.attempted(), result.completed(), result.failures().size(),
                                 backlog.placements().count(), backlog.placements().oldestSeconds(),
                                 backlog.refunds().count(), backlog.refunds().oldestSeconds(),
+                                backlog.manualRefunds().count(), backlog.manualRefunds().oldestSeconds(),
                                 backlog.events().count(), backlog.events().oldestSeconds());
         if (!result.failures().isEmpty())
             return JobResult.failed(detail, result.failures().getFirst().code());

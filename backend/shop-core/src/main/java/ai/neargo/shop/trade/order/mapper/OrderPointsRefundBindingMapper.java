@@ -62,4 +62,8 @@ public interface OrderPointsRefundBindingMapper {
             + " WHERE phase NOT IN ('COMMITTED','ABORTED','COMPENSATED_PENDING_OPERATOR',"
             + " 'CASH_FAILED_PENDING_OPERATOR')")
     Map<String,Object> pendingSummary();
+
+    @Select("SELECT COUNT(*) AS total,MIN(created_at) AS oldest FROM ord_points_refund_binding"
+            + " WHERE phase IN ('COMPENSATED_PENDING_OPERATOR','CASH_FAILED_PENDING_OPERATOR')")
+    Map<String,Object> manualSummary();
 }

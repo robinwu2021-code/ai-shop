@@ -192,7 +192,8 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
     public Backlog backlog(Instant now) {
         Objects.requireNonNull(now,"now");
         return new Backlog(queue(placementRows.pendingSummary(),now),
-                queue(refundRows.pendingSummary(),now),queue(factRows.pendingSummary(),now));
+                queue(refundRows.pendingSummary(),now),queue(refundRows.manualSummary(),now),
+                queue(factRows.pendingSummary(),now));
     }
 
     private static QueueBacklog queue(Map<String,Object> row, Instant now) {

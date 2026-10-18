@@ -191,10 +191,12 @@ class PointsOrderRecoveryFlowTest {
         var old=Timestamp.from(Instant.ofEpochMilli(1_000));
         when(placementRows.pendingSummary()).thenReturn(java.util.Map.of("total",2L,"oldest",old));
         when(refundRows.pendingSummary()).thenReturn(java.util.Map.of("total",1L,"oldest",old));
+        when(refundRows.manualSummary()).thenReturn(java.util.Map.of("total",2L,"oldest",old));
         when(factRows.pendingSummary()).thenReturn(java.util.Map.of("total",3L,"oldest",old));
         var report=service.backlog(Instant.ofEpochMilli(11_000));
         assertThat(report.placements()).isEqualTo(new OrderPointsRecoveryService.QueueBacklog(2,10));
         assertThat(report.refunds()).isEqualTo(new OrderPointsRecoveryService.QueueBacklog(1,10));
+        assertThat(report.manualRefunds()).isEqualTo(new OrderPointsRecoveryService.QueueBacklog(2,10));
         assertThat(report.events()).isEqualTo(new OrderPointsRecoveryService.QueueBacklog(3,10));
     }
 }
