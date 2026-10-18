@@ -47,7 +47,10 @@ public interface SourceDecisionPort {
         public AuthorizationDecision {
             ContractChecks.id(authorizationRef);
             ContractChecks.present(status);
-            if (status != AuthorizationState.UNKNOWN) {
+            if (status == AuthorizationState.UNKNOWN) {
+                ContractChecks.require(source == null && userNo == null && entityNo == null && storeNo == null
+                        && currency == null && amountMinor == null && selectionDigest == null && expiresAt == null);
+            } else {
                 ContractChecks.present(source);
                 ContractChecks.id(userNo);
                 ContractChecks.id(entityNo);

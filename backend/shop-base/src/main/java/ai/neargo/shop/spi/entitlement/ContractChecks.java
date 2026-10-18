@@ -40,6 +40,16 @@ public final class ContractChecks {
         return value;
     }
 
+    /** Monetary sums reject negative values and overflow instead of silently wrapping. */
+    public static long addAmounts(long left, long right) {
+        require(left >= 0 && right >= 0);
+        try {
+            return Math.addExact(left, right);
+        } catch (ArithmeticException overflow) {
+            throw new IllegalArgumentException("Monetary amount exceeds supported range", overflow);
+        }
+    }
+
     /** Reject invalid combinations uniformly, without leaking supplied secrets in exception messages. */
     public static void require(boolean valid) {
         if (!valid) {

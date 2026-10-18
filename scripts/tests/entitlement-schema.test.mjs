@@ -29,6 +29,24 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         }
         assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '38');
         assert.ok(sql("SHOW COLUMNS FROM ent_template LIKE 'draft_snapshot'"), 'template draft needs persisted editable rules');
+        sql(readFileSync(new URL('../../docs/technical/design/活动权益-support-schema.sql', import.meta.url), 'utf8'));
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '43');
+        const supportAudit = "created_at,updated_at,created_by,updated_by";
+        const supportValues = "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'TEST','TEST'";
+        const decision = (no, key, settled, status, type, revision = 1, tenant = 'MAIN') =>
+            `INSERT INTO ord_ent_source_decision(tenant_no,decision_no,purpose,source_key,source_snapshot,`
+            + `settled_source_key,source_revision,decision_type,status,user_no,entity_no,store_no,currency,amount_minor,`
+            + `snapshot_hash,occurred_at,${supportAudit}) VALUES ('${tenant}','${no}','USE','${key}','{}',`
+            + `${settled === null ? 'NULL' : "'" + settled + "'"},${revision},'${type}','${status}','u1','m1','s1',`
+            + `'CNY',100,'${'a'.repeat(64)}',UTC_TIMESTAMP(3),${supportValues})`;
+        sql(decision('cancel1', '1'.repeat(64), null, 'CANCELLED', 'USE_CANCEL'));
+        sql(decision('success2', '2'.repeat(64), 'f'.repeat(64), 'COMMITTED', 'USE_COMMIT', 2));
+        assert.throws(() => sql(decision('success3', '3'.repeat(64), 'f'.repeat(64), 'COMMITTED', 'USE_COMMIT', 3)),
+            /Duplicate entry/, 'one successful settlement across revisions');
+        sql(decision('other-tenant', '2'.repeat(64), 'f'.repeat(64), 'COMMITTED', 'USE_COMMIT', 2, 'OTHER'));
+        assert.throws(() => sql(decision('bad-cancel', '4'.repeat(64), null, 'CANCELLED', 'USE_COMMIT')),
+            /Check constraint/, 'a cancellation cannot assert a commit decision');
+
         const migration = readFileSync(new URL(
             '../../backend/shop-app/src/main/resources/db/migration/V425__entitlement_catalog.sql', import.meta.url), 'utf8');
         sql('CREATE DATABASE entitlement_runtime_test');

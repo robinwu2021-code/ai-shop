@@ -15,7 +15,7 @@
 | 真源 | 本表使用方式 |
 |---|---|
 | [总设计及原D01–D07计划](./TDD-活动卡券储值-模块化系统设计.md) | 保留原任务归属，本表将其拆成可独立验证的Java任务 |
-| [数据库设计](./TDD-活动卡券储值-数据库设计.md)及core/pay设计DDL | 38张目标逻辑表逐一指定迁移负责人；目标表不等于全新生产表 |
+| [数据库设计](./TDD-活动卡券储值-数据库设计.md)及core/pay设计DDL | 基础38张及支撑5张目标逻辑表逐一指定迁移负责人；目标表不等于已建生产表 |
 | [API契约](./TDD-活动卡券储值-API契约.md) | 47条外部、12项内部写操作逐一登记，另补内部恢复query |
 | [Java代码结构与类清单](./TDD-活动卡券储值-代码结构与类清单.md) | 类/接口/Controller/实体Mapper落到任务；已实现项以源码及提交核实 |
 | [U01–U30功能矩阵](../requirements/活动卡券储值-模块功能矩阵.md) | 后端验收逐项关联；40AP和6EP目录不冒充已具备执行能力 |
@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：9项DONE、1项DOING、45项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不代表系统已完成7/55的工作量。已完成项的证据来自既有提交，本轮仅核对源码并整理任务，未重跑Java业务测试。
+本表共55项：10项DONE、1项DOING、44项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序：JB-008–JB-014补齐后端契约与可信事实；发行/使用及core活动底座随后实施；再完成储值、付费卡、HTTP和远程适配，最后兼容、恢复、权限及后端整体收口。每个领域的Controller可随服务同步开发，DONE需本地和远程两种模式验收。生产操作另列，不阻塞可独立开展的代码开发。
 
@@ -69,7 +69,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | ID | 原任务 | 状态 | 依赖 | 模块 | 交付内容/Java类 | 验收条件/测试 |
 |---|---|---|---|---|---|---|
 | JB-008 | D01.2/1.3/1.4 | DOING | 001,006,007 | shop-base/契约 | 冻结所有SPI/命令/响应/query、错误码三语、权限与能力开关；补缺失DDL设计 | EntitlementContractTest：序列化往返、必填/枚举拒绝；所有待决项形成明确契约 |
-| JB-009 | D01.2 | TODO | 008 | core/app | core范围事实预检：门店/商品归属、类目有效性；可信CatalogScope构造 | EntitlementScopeValidationTest：伪造entity/actor、跨租户门店商品拒绝，平台类目不误拒 |
+| JB-009 | D01.2 | DONE | 006 | core/app | core范围事实预检：门店/商品归属、类目有效性；可信CatalogScope构造 | EntitlementScopeValidationTest 7项：会话身份、门店子集、跨租户门店/商品、赠品归属及201条分批；门店子集消融RED→恢复GREEN；HTTP仍归025 |
 | JB-010 | D01.3 | TODO | 008,009 | core.member/app | MemberCodeResolveService/Impl、BizMemberCodeController；C08 | MemberCodeResolveFlowTest：过期/伪造码拒绝；customerRef绑定主体/门店/用户且短期有效；日志不含明码 |
 | JB-011 | D01.3 | TODO | 008,010 | core.trade/app | EntitlementAuthorizationService/Impl、MpEntitlementAuthorizationController；持久本人意图与源决策 | EntitlementAuthorizationFlowTest：改价失效、他人拒绝、重复确认同意图、支付/取消唯一决策；重启可查询 |
 | JB-012 | D01.3/D06.2 | TODO | 008,011 | core.trade | CardSaleSnapshotService/Impl；补订单行/单件/件内权益、版本、付款时间快照 | CardSaleSnapshotTest：2件×2权益得到4个稳定来源；重投不变、迟到事件不改真实付款时间 |
@@ -207,7 +207,15 @@ git diff --check
 | pay.entitlement | pay_ent_command_dedup | PayEntCommandDedup / PayEntCommandDedupMapper | JB-004 | DONE，V425 |
 | pay.entitlement | ent_use_reversal | EntUseReversal / EntUseReversalMapper | JB-022 | TODO，设计表/已有表待改造 |
 
-这38张只覆盖既定目标逻辑模型。订单意图/授权决策、售卡订单快照、对账批次与结果、恢复任务租约等支撑持久化仍需在JB-008/JB-011/JB-012/JB-046/JB-051确认复用或补充设计，不能宣称“建完38张就完成全部数据库”。优先复用既有订单Outbox、通知任务和调度租约；确认缺失后补设计及正式迁移，并更新本表对账。
+基础38张之外，支撑DDL与数据库字典第七节新增以下5张，目标合计43张（core15/pay28）；当前正式迁移仍仅V425三张。恢复租约复用既有V91 shedlock，不另建空壳表。
+
+| 模块 | 支撑表 | 计划实体 / Mapper | 责任任务 | 状态 |
+|---|---|---|---|---|
+| core.trade | ord_ent_authorization | OrdEntAuthorization / OrdEntAuthorizationMapper | JB-011 | 设计，未迁移 |
+| core.trade | ord_ent_source_decision | OrdEntSourceDecision / OrdEntSourceDecisionMapper | JB-011 | 设计，未迁移 |
+| core.trade | ord_card_sale_snapshot | OrdCardSaleSnapshot / OrdCardSaleSnapshotMapper | JB-012 | 设计，未迁移 |
+| pay.entitlement | pay_ent_recon_run | PayEntReconRun / PayEntReconRunMapper | JB-046 | 设计，未迁移 |
+| pay.entitlement | pay_ent_recon_diff | PayEntReconDiff / PayEntReconDiffMapper | JB-046 | 设计，未迁移 |
 
 ### 3.2 API到任务
 
@@ -371,7 +379,7 @@ git diff --check
 
 ### 4.3 后端完成标准与后置事项
 
-Java后端开发完成须满足：本表所有开发任务均按真实交付改DONE；38表及补充存储的增量迁移/实体Mapper对齐；47条外部及内部写/query全部具备真实Handler/实现/权限/DTO；本地与远程两种部署均通过；美业储值、旧券、售卡、次卡/月卡端到端及故障恢复通过；生成物、架构、i18n及干净提交全量回归有证据。目录可见、编译成功、H2通过或仅有Service接口都不代表后端完成。
+Java后端开发完成须满足：本表所有开发任务均按真实交付改DONE；43张目标逻辑表及复用存储的增量迁移/实体Mapper对齐；47条外部及内部写/query全部具备真实Handler/实现/权限/DTO；本地与远程两种部署均通过；美业储值、旧券、售卡、次卡/月卡端到端及故障恢复通过；生成物、架构、i18n及干净提交全量回归有证据。目录可见、编译成功、H2通过或仅有Service接口都不代表后端完成。
 
 前端页面、UI原型、真人通道授权/经营条款验收、线上存量盘点、生产切owner和灰度部署另列后置操作，不把代码开发与生产上线混为一谈。D03.3生产切换需现场确认水位/写入冻结/对账，当前任务只交付可演练工具。生产目标引擎若不同于已验证的MySQL 9.7.2，发布前需在真实版本补验证，不能外推MariaDB或其他MySQL版本结果。
 
@@ -390,3 +398,12 @@ JB-019验收：EntitlementValidityPolicy、CountUsagePolicy、PeriodCountUsagePo
 
 
 本批提交证据：JB-008协议子项50f1c32c4，JB-013完成855afc35e，JB-019完成685a15805；分页修正244ee7f4c。685a15805干净全量3543项/20模块0失败（原生条件1跳过，独立已实跑通过）；244ee7f4c定向56项/原生1项通过且干净test-compile通过，未将它写成全量通过。当前仍9 DONE、1 DOING、45 TODO。已完成任务的后续消费者尚未实现时保持能力关闭，不将接口声明当作可调用业务。
+
+执行裁定：JB-009只消耗已完成的EntitlementDefinition/CatalogScope，不消耗JB-008未完成的报价、授权持久化或发行协议，依赖收窄为JB-006。通过两个事实SPI在商品和商家owner内显式校验tenant/主体/状态；不把消费目录或SKU展示查询当归属证明。B门面从MERCHANT会话和BizContext构造scope，platformActor固定false；有限门店员工只能配置已授权STORES范围，主体级ALL/GOODS/CATEGORIES需属主语义。READONLY可保留在配置中，真正交易时再校验实时可用性；暂停/删除主体或门店不纳入新配置。新HTTP接线仍需JB-025，运营目标主体授权仍由运营门面另验。
+
+
+本批验收（2026-10-18）：JB-009完成，新增两个owner事实SPI及本地实现、core范围服务与可信商家scope解析器；7个集成方法覆盖平台类目、缺失/停用/删除、跨主体/租户、商家会话、员工门店、赠品商品和分批末项。临时去除员工门店子集判断时limitedStaffCannotConfigureOtherStoresOrAllMerchantStores实际失败，恢复后通过。该守卫为应用适配器组件；尚无新HTTP路由，不将未来HTTP/远程实现计入完成范围。
+
+JB-008补充quote/preview/activation协议及只读约束，新增EntitlementPreviewContractTest 7项；原契约10项继续通过。IssuePolicy不再单列issueMode，目录完整草稿/版本返回及首配revision=0规则已在API确定。基础38表之外补core3/pay2支撑表，数据库第七节及support-schema.sql完整列字段与唯一键；原生MySQL验证取消后新修订成功、跨修订重复成功拒绝、跨租户独立及非法决策CHECK。合计43张设计表，正式运行迁移仍只有V425三张。JB-008仍DOING：内部鉴权路由、权限/能力门禁及完整错误语义收口尚未完成。
+
+本批命令：Java21离线Maven定向运行Scope7、Preview7、Contract10、Catalog12、Validity5、Dedup3、Source4、Quota5、Architecture16、PayTx1，共70项，0失败/错误/跳过；Node隔离schema/ER/编译闸门测试3项通过；词典重新生成，V2受管文档66份通过，SQL无新增方言债务，git diff --check通过。额外静态核对本任务表55唯一编号、设计43唯一表及更新文档本地链接。这里的定向结果不代替后续干净HEAD全量回归。

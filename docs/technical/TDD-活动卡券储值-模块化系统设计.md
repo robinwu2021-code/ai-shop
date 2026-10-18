@@ -17,7 +17,7 @@
 - [功能矩阵](../requirements/活动卡券储值-模块功能矩阵.md)：三端、模块、模板、接口及数据映射。
 - [数据库设计](./TDD-活动卡券储值-数据库设计.md)：核心/支付分别拥有的数据字典、约束、迁移。
 - [API契约](./TDD-活动卡券储值-API契约.md)：沿用接口和新增接口、请求响应、权限与内部协议。
-- [核心建表草案](./design/活动权益-core-schema.sql)、[支付建表草案](./design/活动权益-pay-schema.sql)：仅设计DDL，不是Flyway迁移。
+- [核心建表草案](./design/活动权益-core-schema.sql)、[支付建表草案](./design/活动权益-pay-schema.sql)、[支撑表草案](./design/活动权益-support-schema.sql)：合计43张设计DDL，不是Flyway迁移。
 - [ADR-038](./ADR/ADR-038-活动归核心权益归支付.md)。
 - [40项活动及6项产品模板](../requirements/预期活动预置清单.md)、[预置JSON](./design/活动预置模板-目录草案.json)。
 - [统一UI功能矩阵](../requirements/活动卡券储值-统一入口功能矩阵.md)、[29屏原型](../../prototypes/marketing-assets-unified.html)。原型未覆盖6项付费卡完整购买/激活/核销界面，其页面补齐列为设计交付后的独立工作，不冒充已画完。
@@ -207,7 +207,7 @@ model/policy无Spring/MyBatis；业务接口与实现分开；资金/余次变�
 
 ### 2.7 Java后端优先执行台账（2026-10-18）
 
-用户要求先完成全部Java后端，并将任务整理为独立表。执行入口为[任务表-活动卡券储值-Java后端](./任务表-活动卡券储值-Java后端.md)：55个交付单元，7个已有验收证据、48个待开发；覆盖38张目标逻辑表、47条外部及12项内部写操作，并登记恢复query与类清单。计数是任务拆分结果，不是工作量完成率。
+用户要求先完成全部Java后端，并将任务整理为独立表。执行入口为[任务表-活动卡券储值-Java后端](./任务表-活动卡券储值-Java后端.md)：55个交付单元，当前10 DONE/1 DOING/44 TODO；覆盖基础38张及支撑5张目标逻辑表、47条外部及12项内部写操作，并登记恢复query与类清单。计数是任务拆分结果，不是工作量完成率。
 
 保留D01–D07作为设计阶段归属；JB-001–055为叶子任务唯一执行状态。§6只记录实际提交和验证证据。原UI同步开发建议由本次Java优先要求替代；经营规则、HTTP契约、权限和真实后端测试仍必须同步。首批从JB-008协议/持久模型缺口、JB-009范围事实、JB-010/011本人身份与授权，以及JB-013/014幂等/事件基础继续，既有目录底座直接复用。
 
@@ -442,3 +442,24 @@ EntitlementValidityPolicy共享发布校验与时间计算；CountUsagePolicy/Pe
 `bash scripts/check-head-compiles.sh HEAD`对685a15805的干净副本完成test-compile与全量测试：20模块3543项、0失败/错误，耗时618秒；原生MySQL条件测试1项默认跳过，该项由独立隔离脚本实际通过。此后244ee7f4c修正C端50条上限及CursorPage.hasMore，并更新生成词典；最新功能代码定向56项通过、原生1项实际通过。244ee7f4c另以`SKIP_TEST_GATE=1 bash scripts/check-head-compiles.sh HEAD`验证干净副本test-compile，明确仅编译，不宣称它重跑全量。两组证据分别记录，不将3543项冒认为后续提交的全量结果。
 
 后续Java差异仅将4处长行换行至120列内；逐文件去除空白比较与244ee7f4c相同，没有逻辑变化。文档守卫66份及diff检查通过，工作区验证产生的原生容器/干净编译副本已清理。本轮本地提交，未推送、部署或执行生产迁移。全Java后端仍未完成：JB-008其余契约/权限/持久模型继续DOING，发放、核销、储值账及三端接口等45项仍TODO。
+
+
+### 6.16 JB-009范围事实预检与JB-008补充协议
+
+档位1，继续依据本TDD §2及Java独立任务表。未改既有迁移或生产环境。新增实现按owner落位：shop-base ProductScopeFactsPort/MerchantScopeFactsPort；shop-core product.port.ProductScopeFactsPortImpl及promotion.service.EntitlementScopeValidationService/Impl；shop-merchant merchant.port.MerchantScopeFactsPortImpl；shop-app paybridge.EntitlementScopeResolver。测试均在shop-app/paybridge；没有新增HTTP Controller。
+
+| 验收目标 | 真实测试方法（EntitlementScopeValidationTest） |
+|---|---|
+| 平台类目与本主体资源有效，READONLY可保留配置 | acceptsOwnedStoreGoodsAndPlatformCategoryWithoutInventingCategoryOwner |
+| 跨商家/租户门店、商品、类目拒绝 | rejectsCrossEntityAndCrossTenantFactsEvenWhenBusinessNumbersExist |
+| 软删除/停用/重复/不合结构范围拒绝 | rejectsMissingInactiveDeletedAndMalformedScope |
+| 从商家会话取得身份，不能伪造平台执行者 | trustedMerchantScopeUsesAuthenticatedIdentityAndNeverElevatesPlatformActor |
+| 员工仅可配置分配门店 | limitedStaffCannotConfigureOtherStoresOrAllMerchantStores |
+| 赠品商品不能绕过范围归属 | giftGoodsMustBelongToTheSameMerchantEvenWithAllStoreScope |
+| 201条分批末项也必须校验 | validatesEveryBatchIncludingTheLastReference |
+
+上述范围测试7项先缺类RED再GREEN；赠品新增方法另有缺方法RED。移除员工门店子集判断，消融测试1失败（Expecting code to raise a throwable），恢复后定向70项全部通过。70项含Scope7、Preview7、Contract10、Catalog12、Validity5、Dedup3、Source4、Quota5、Architecture16、PayTx1。quote/preview/activation相关record及UseCommand引用修订同步落入shop-base三个端口与ContractChecks；SourceDecisionPort未知授权不得携带业务事实。词典生成物同步更新，未将SPI声明记为业务实现。
+
+新增support-schema.sql仅补充设计存储，core授权/源决策/售卡快照3表、pay对账批次/差异2表；数据库字典、API及类清单/任务表已对齐。Node隔离MySQL原生约束/ER/构建闸门3项通过，V2既有66份受管文档守卫及SQL可移植性通过；额外核对本批文档本地链接、55任务及43表唯一性。原生检查证明取消修订不阻塞下一修订成功，但同一成功源跨修订只能成功一次。
+
+JB-009只依赖006已有定义，不受008剩余协议收口阻塞；事实预检使用显式tenant与分批200查询，配置时允许READONLY门店和未上架商品，实际交易另查实时状态。售卡/本人授权/对账支撑表正式实体与迁移仍归011/012/046；恢复租约复用shedlock，禁止未知事实按超时猜取消。JB-008仍DOING，剩余鉴权路由、权限/能力门禁及完整错误语义未关闭；其他交易链路、HTTP与远程适配未完成，整体Java后端不宣称完成。

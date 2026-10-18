@@ -35029,6 +35029,15 @@
     ],
     "javaEnums": [
       {
+        "name": "ActivationAction",
+        "values": [
+          "NONE",
+          "ON_FIRST_COMMIT"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "Actor",
         "values": [
           "BUYER",
@@ -35630,6 +35639,20 @@
         ],
         "zh": "支付单（ord_order）状态。",
         "module": "shop-core"
+      },
+      {
+        "name": "PreviewReason",
+        "values": [
+          "OK",
+          "NOT_ACTIVE",
+          "NOT_STARTED",
+          "EXPIRED",
+          "FROZEN",
+          "INSUFFICIENT_UNITS",
+          "OUT_OF_SCOPE"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "Realm",

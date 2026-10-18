@@ -10,7 +10,7 @@
 
 每表id为内部自增主键，tenant_no参与业务唯一性；version条件更新（对外expectedRevision映射此列）；created/updated_at用UTC DATETIME(3)，created/updated_by留操作人。资金/核销事实不可物理删除；模板归档不删除历史。沿现有BaseEntity实际审计列对齐后再生成正式迁移，不借设计重命名所有现存列。
 
-公共字段适用于下列全部38张表，DDL逐表展开：
+公共字段适用于基础38张及新增5张支撑表，DDL逐表展开：
 
 | 字段 | 类型及空值 | 含义 |
 |---|---|---|
@@ -36,7 +36,7 @@
 - 一个操作多张券的分配可有多行，但全部同pay事务过账；允许组合由业务白名单决定，首期储值不叠券/积分。
 - MySQL唯一键对NULL允许多行，因此settled_source_key仅成功核销时赋值，不能用空串表示未成功。
 
-最终目标逻辑表共38张：核心12张、支付26张。包含现有表的目标重构和拟新增表，不表示需全新创建38张生产表。
+基础目标逻辑表38张（核心12、支付26），补充支撑表5张（核心3、支付2），合计43张（核心15、支付28）。包含现有表重构和拟新增表，不表示已创建43张生产表；当前正式V425仍仅目录三表。支撑表字典见第七节。
 
 ## 二、核心服务完整数据字典
 
@@ -786,3 +786,160 @@ ent_template新增draft_snapshot保存完整可编辑草稿，避免把尚未发
 AuditMetaObjectHandler当前使用LocalDateTime.now，不能直接宣称其符合本设计UTC约定。新表插入由领域工厂显式填UTC时间和可信actor（已有strictInsertFill保留非空值）；状态/计数CAS使用显式SQL记录UTC更新时间、操作者与version，不通过会覆盖操作者/时区的通用updateById。此决定需在后续Mapper集成用例验证，禁止为新模块修改全局历史时间语义。
 
 幂等request_key采用utf8mb4_bin，区分大小写；应用拒绝首尾空白，避免PAD SPACE比较合并不同请求。正式V425仅创建ent_template、ent_template_version和pay_ent_command_dedup，不切换旧券归属，也不创建余额或使用账。逻辑模型中的FREE_SHIP保留旧包邮券定义，消费/报价仍须后续能力接通。
+
+
+## 七、授权、售卡与对账支撑存储
+
+[支撑DDL](./design/活动权益-support-schema.sql)独立于基础38表，仅用于设计与隔离MySQL验证；不是Flyway迁移。公共字段沿第一节。core三表仅core事务写，pay两表仅pay事务写；无跨库外键。正式实体、Mapper和迁移分别归JB-011/JB-012/JB-046。
+
+### ord_ent_authorization
+
+| 字段 | 类型与约束 | 含义 |
+|---|---|---|
+| authorization_no | VARCHAR(64) NOT NULL | 本人授权引用 |
+| request_key | VARCHAR(64) COLLATE utf8mb4_bin NOT NULL | 本人确认幂等键 |
+| payload_hash | CHAR(64) NOT NULL | owner重算请求指纹 |
+| source_key | CHAR(64) NOT NULL | 含修订号的使用意图键 |
+| source_snapshot | JSON NOT NULL | 完整SourceRef及原订单定位 |
+| source_revision | BIGINT NOT NULL | 源意图修订 |
+| user_no | VARCHAR(64) NOT NULL | 本人消费者 |
+| entity_no | VARCHAR(64) NOT NULL | 资产承担主体 |
+| store_no | VARCHAR(64) NOT NULL | 真实履约门店 |
+| quote_ref | VARCHAR(64) NULL | pay短期报价或预览引用 |
+| selection_digest | CHAR(64) NOT NULL | 绑定资产及版本金额次数服务日 |
+| order_snapshot_hash | CHAR(64) NOT NULL | 可信源价格明细摘要 |
+| amount_minor | BIGINT NOT NULL | 本次确认金额可为零 |
+| currency | VARCHAR(8) NOT NULL | 币种 |
+| status | VARCHAR(16) NOT NULL | AUTHORIZED/CANCELLED/EXPIRED |
+| authorized_at | DATETIME(3) NOT NULL | 真实本人确认时刻 |
+| expires_at | DATETIME(3) NOT NULL | 授权截止半开区间 |
+
+索引：
+
+```sql
+UNIQUE KEY uk_order_auth (tenant_no,authorization_no),
+UNIQUE KEY uk_order_auth_request (tenant_no,user_no,request_key),
+KEY ix_order_auth_source (tenant_no,source_key,user_no,status),
+```
+
+### ord_ent_source_decision
+
+| 字段 | 类型与约束 | 含义 |
+|---|---|---|
+| decision_no | VARCHAR(64) NOT NULL | 持久源决策引用 |
+| purpose | VARCHAR(16) NOT NULL | USE/GRANT/REVERSE |
+| source_key | CHAR(64) NOT NULL | USE用useIntentKey；发放用grantKey |
+| source_snapshot | JSON NOT NULL | 完整SourceRef |
+| settled_source_key | CHAR(64) NULL | 仅成功时写稳定成功键，取消为NULL |
+| source_revision | BIGINT NOT NULL | 本次决策源修订 |
+| decision_type | VARCHAR(24) NOT NULL | GRANT_COMMIT/GRANT_ABORT/USE_COMMIT/USE_CANCEL/ORDER_REVERSE |
+| status | VARCHAR(16) NOT NULL | COMMITTED/CANCELLED |
+| authorization_ref | VARCHAR(64) NULL | 使用决策绑定原本人授权 |
+| paid_fact_ref | VARCHAR(64) NULL | 售卡真实付款事实引用 |
+| user_no | VARCHAR(64) NOT NULL | 受益或使用本人 |
+| entity_no | VARCHAR(64) NOT NULL | 资产主体 |
+| store_no | VARCHAR(64) NULL | 真实门店 |
+| currency | VARCHAR(8) NOT NULL | 币种 |
+| amount_minor | BIGINT NOT NULL | 源真实金额非客户端报价 |
+| snapshot_hash | CHAR(64) NOT NULL | 被冻结源事实摘要 |
+| occurred_at | DATETIME(3) NOT NULL | 真实成功或取消时刻 |
+
+索引：
+
+```sql
+UNIQUE KEY uk_source_decision (tenant_no,decision_no),
+UNIQUE KEY uk_source_intent (tenant_no,purpose,source_key),
+UNIQUE KEY uk_source_settled (tenant_no,purpose,settled_source_key),
+```
+
+### ord_card_sale_snapshot
+
+| 字段 | 类型与约束 | 含义 |
+|---|---|---|
+| snapshot_no | VARCHAR(64) NOT NULL | 单件权益快照号 |
+| source_key | CHAR(64) NOT NULL | SourceRef.grantKey |
+| order_no | VARCHAR(64) NOT NULL | 主订单 |
+| sub_order_no | VARCHAR(64) NOT NULL | 本主体子单 |
+| order_line_no | VARCHAR(64) NOT NULL | 原订单行 |
+| unit_index | INT NOT NULL | 从1开始的单件序号 |
+| entitlement_index | INT NOT NULL | 从1开始的件内权益序号 |
+| user_no | VARCHAR(64) NOT NULL | 消费者 |
+| entity_no | VARCHAR(64) NOT NULL | 售价及资产主体 |
+| store_no | VARCHAR(64) NOT NULL | 销售门店 |
+| goods_no | VARCHAR(64) NOT NULL | 原商品 |
+| sku_no | VARCHAR(64) NOT NULL | 原SKU |
+| template_version_no | VARCHAR(64) NOT NULL | 固定pay定义版本 |
+| unit_price_minor | BIGINT NOT NULL | 原单件售价；多权益行不得重复统计收入 |
+| currency | VARCHAR(8) NOT NULL | 币种 |
+| rule_snapshot | JSON NOT NULL | 原权益定义 |
+| snapshot_hash | CHAR(64) NOT NULL | 固定定义摘要 |
+| paid_fact_no | VARCHAR(64) NULL | 真实支付事实后仅单向固化 |
+| paid_at | DATETIME(3) NULL | 真实付款时间，不用事件到达时间 |
+
+索引：
+
+```sql
+UNIQUE KEY uk_card_sale_snapshot (tenant_no,snapshot_no),
+UNIQUE KEY uk_card_sale_source (tenant_no,source_key),
+UNIQUE KEY uk_card_sale_unit (tenant_no,order_line_no,unit_index,entitlement_index),
+KEY ix_card_sale_order (tenant_no,order_no),
+```
+
+### pay_ent_recon_run
+
+| 字段 | 类型与约束 | 含义 |
+|---|---|---|
+| recon_no | VARCHAR(64) NOT NULL | 对账批次号 |
+| request_key | VARCHAR(64) COLLATE utf8mb4_bin NOT NULL | 调度或人工发起幂等键 |
+| payload_hash | CHAR(64) NOT NULL | 对账参数指纹 |
+| entity_no | VARCHAR(64) NOT NULL | 授权商家；ALL仅全域运营可用 |
+| axis | VARCHAR(16) NOT NULL | ISSUANCE/RIGHTS/HOLD/MONEY |
+| currency | VARCHAR(8) NULL | MONEY必须分币种 |
+| biz_date | DATE NOT NULL | 本地市场日 |
+| market_zone | VARCHAR(64) NOT NULL | IANA时区 |
+| status | VARCHAR(16) NOT NULL | RUNNING/COMPLETED/FAILED |
+| scan_cursor | VARCHAR(512) NULL | 重启续扫游标 |
+| checked_count | BIGINT NOT NULL DEFAULT 0 | 已检查量 |
+| diff_count | BIGINT NOT NULL DEFAULT 0 | 差异量 |
+| started_at | DATETIME(3) NOT NULL | UTC开始 |
+| completed_at | DATETIME(3) NULL | UTC完成 |
+
+索引：
+
+```sql
+UNIQUE KEY uk_ent_recon_no (tenant_no,recon_no),
+UNIQUE KEY uk_ent_recon_request (tenant_no,request_key),
+KEY ix_ent_recon_query (tenant_no,entity_no,biz_date,axis,id),
+```
+
+### pay_ent_recon_diff
+
+| 字段 | 类型与约束 | 含义 |
+|---|---|---|
+| diff_no | VARCHAR(64) NOT NULL | 差异号 |
+| recon_no | VARCHAR(64) NOT NULL | 同域批次号 |
+| entity_no | VARCHAR(64) NOT NULL | 实际差异主体 |
+| resource_no | VARCHAR(64) NOT NULL | 账户或权益业务号 |
+| diff_kind | VARCHAR(32) NOT NULL | 差异原因码 |
+| expected_snapshot | JSON NOT NULL | 内部应有事实，不能直接回传页面 |
+| actual_snapshot | JSON NOT NULL | 内部实有事实，不能直接回传页面 |
+| exception_no | VARCHAR(64) NULL | 受控恢复关联原异常 |
+| status | VARCHAR(16) NOT NULL | OPEN/ACKNOWLEDGED/RESOLVED |
+| resolution_note | VARCHAR(500) NULL | 处理证据，不允许余额调平 |
+
+索引：
+
+```sql
+UNIQUE KEY uk_ent_recon_diff (tenant_no,diff_no),
+UNIQUE KEY uk_ent_recon_resource (tenant_no,recon_no,resource_no,diff_kind),
+KEY ix_ent_recon_diff_query (tenant_no,entity_no,recon_no,status),
+```
+
+### 并发、状态与恢复裁定
+
+- 授权按tenant/user/requestKey幂等；同键重放返回原结果，已过期也不刷新期限。重新确认使用新requestKey，core锁定真实源订单并同事务取消旧授权、插入新授权；不设sourceKey唯一，避免禁止合法重确认。修改价格、资产选择或源修订使旧授权失效，expiresAt为半开区间。
+- 源决策的USE source_key使用useIntentKey（含修订），成功settled_source_key使用settledKey（不含修订）；取消必须NULL，不能用空串。因此允许修订1取消后修订2成功，同时阻止修订3重复成功。GRANT固定grantKey；用途隔离，取消不能携带提交decisionType。决策与源成功/取消在同core事务落库，pay只通过可信SPI/query核实，不以请求引用为凭据。
+- 多商家订单按真实子单划分SUB_ORDER_USE，sourceNo为subOrderNo，不能把主单号作为不同商家的共同成功源。可多次履约的服务以真实履约单号作来源；来源由core推导。售卡保留订单行、unitIndex、entitlementIndex，2件×2权益产生4个稳定来源。
+- 售卡规则与单件售价在下单时固化。paid_fact_no/paid_at仅在真实支付成功时单向关联，迟到事件不得替换付款时间。同一件多个权益行重复保存单价只为追溯，不得累加为收入。
+- 对账按ISSUANCE/RIGHTS/HOLD/MONEY分量纲；MONEY必须指定币种。批次游标可续扫、差异唯一，RUNNING→COMPLETED/FAILED；差异OPEN→ACKNOWLEDGED→RESOLVED。受控重试仍作用于原异常/原操作，不开放自动调平余额。ALL主体仅授权全域运营可用。内部expected/actual快照不得直接返回页面。
+- 恢复任务全局租约复用既有V91的shedlock；单操作沿既有Outbox租约及状态CAS。租约过期仅允许接管查询，UNKNOWN/PENDING不得推断取消；无需新增通用租约表。JB-051落实任务与多节点验证。

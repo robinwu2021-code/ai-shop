@@ -63,15 +63,15 @@ class EntitlementContractTest {
     void useSeparatesMoneyAndUnitsAndDefensivelyCopiesItemSnapshot() {
         var items = new ArrayList<>(List.of(new UseItem("l1", "service1", "护理", 1, 3000)));
         var use = new UseCommand("op1", source, "u1", "m1", "s1", "CNY", AssetKind.STORED_VALUE,
-                null, "account1", null, null, 3000L, items, "auth1", null);
+                null, "account1", null, null, 3000L, items, "auth1", null, 0, null, null);
         items.clear();
         assertThat(use.itemsSnapshot()).hasSize(1);
         roundTrip(use, UseCommand.class);
         assertThatThrownBy(() -> new UseCommand("op1", source, "u1", "m1", "s1", "CNY", AssetKind.STORED_VALUE,
-                "instance1", "account1", null, null, 3000L, use.itemsSnapshot(), "auth1", null))
+                "instance1", "account1", null, null, 3000L, use.itemsSnapshot(), "auth1", null, 0, null, null))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new UseCommand("op1", source, "u1", "m1", "s1", "CNY", AssetKind.PAID_CARD,
-                "instance1", null, LocalDate.of(2026, 10, 18), 0, null, use.itemsSnapshot(), "auth1", null))
+                "instance1", null, LocalDate.of(2026, 10, 18), 0, null, use.itemsSnapshot(), "auth1", null, 0, "preview1", null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

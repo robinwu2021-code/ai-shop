@@ -251,4 +251,9 @@ C端记录：MpStoredValueController→MpEntitlementAppService→StoredValueQuer
 - pay-domain/pay/mapper/entitlement：EntTemplateMapper、EntTemplateVersionMapper、PayEntCommandDedupMapper，沿现有pay.mapper扫描根绑定。
 - shop-app：V425目录三表、生成H2 schema、EntitlementCatalogFlowTest。尚无新商家/C端/运营Controller或远程目录门面。
 
-目录已委派EntitlementCommandDeduplicator唯一实现；该组件要求已有pay事务，后续发放/核销/充值复用，不保留目录私有第二套算法。新范围字段目前结构校验通过，对外开放前仍需core事实预检与权限接线。本清单不改变未实现类的状态。
+目录已委派EntitlementCommandDeduplicator唯一实现；该组件要求已有pay事务，后续发放/核销/充值复用，不保留目录私有第二套算法。范围事实预检现已由core EntitlementScopeValidationService/Impl、product ProductScopeFactsPortImpl及merchant MerchantScopeFactsPortImpl提供；shop-base持有两个事实SPI，shop-app EntitlementScopeResolver从商家会话构造可信范围，完整定义另核实赠品归属。对外开放前仍需HTTP权限接线。本清单不改变未实现类的状态。
+
+
+JB-008协议补充：EntitlementUsePort提供QuoteCommand/QuoteView/CouponAllocation、PreviewQuery/PreviewView；UseCommand绑定expectedAssetRevision及previewRef/quoteRef。EntitlementQueryPort提供ActivationQuote；预览不激活或扣减。对应EntitlementPreviewContractTest，尚无业务实现。
+
+支撑持久化类（计划，非已实现）：core.trade增加OrdEntAuthorization/Mapper、OrdEntSourceDecision/Mapper（JB-011）、OrdCardSaleSnapshot/Mapper（JB-012）；pay增加PayEntReconRun/Mapper、PayEntReconDiff/Mapper（JB-046）。字段与唯一键见数据库第七节及support-schema.sql；恢复租约复用shedlock（JB-051），无新增通用租约实体。

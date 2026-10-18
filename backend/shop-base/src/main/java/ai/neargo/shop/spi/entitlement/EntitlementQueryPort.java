@@ -6,6 +6,7 @@ import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseItem;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 /** Payment-owned, scoped consumer projections; no principal/bonus pools, tokens or authorization references. */
 public interface EntitlementQueryPort {
@@ -16,6 +17,28 @@ public interface EntitlementQueryPort {
     UsageDetail usage(EntitlementContext context, UsageQuery query);
 
     AllowanceView allowances(EntitlementContext context, AllowanceQuery query);
+
+    /** Preview only; the first successful use transaction persists activation. */
+    ActivationQuote activationQuote(EntitlementContext context, DetailQuery query);
+
+    enum ActivationAction { NONE, ON_FIRST_COMMIT }
+
+    record ActivationQuote(String instanceNo, String startBasis, String periodBasis, Instant effectiveFrom,
+                           Instant effectiveUntil, ActivationAction activationAction) {
+        public ActivationQuote {
+            ContractChecks.id(instanceNo);
+            ContractChecks.require(startBasis != null
+                    && Set.of("PAID", "GRANTED", "FIRST_USE").contains(startBasis));
+            ContractChecks.require(periodBasis != null
+                    && Set.of("ROLLING_DAYS", "CALENDAR_MONTH").contains(periodBasis));
+            ContractChecks.present(activationAction);
+            ContractChecks.require("FIRST_USE".equals(startBasis)
+                    == (activationAction == ActivationAction.ON_FIRST_COMMIT));
+            ContractChecks.require((effectiveFrom == null) == (effectiveUntil == null));
+            ContractChecks.require(effectiveFrom == null ? "FIRST_USE".equals(startBasis)
+                    : effectiveFrom.isBefore(effectiveUntil));
+        }
+    }
 
     enum AssetState { PENDING_ACTIVATION, ACTIVE, FROZEN, EXHAUSTED, EXPIRED, REVOKED }
 

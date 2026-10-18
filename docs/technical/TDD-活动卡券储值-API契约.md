@@ -21,12 +21,12 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | ID | 方法 | 路径 | query或body | 业务响应 | 权限 | 说明 |
 |---|---|---|---|---|---|---|
 | C01 | GET | /biz/activity-presets | scene?,category?,industryTag? | PresetPage | biz:campaign | 目录，仅可用能力推荐 |
-| C02 | GET | /biz/card-product-presets | industryTag? | PresetPage | biz:goods:read | 6产品模板，非已发布商品 |
+| C02 | GET | /biz/card-product-presets | industryTag? | PresetPage | biz:goods | 6产品模板，非已发布商品 |
 | C03 | GET | /biz/activities | scene?,status?,page,size | Page<ActivityView> | biz:campaign | 沿用，扩筛选 |
 | C04 | POST | /biz/activities | ActivityDraft | ActivityView | biz:campaign | 沿用保存；只可修改草稿 |
 | C05 | POST | /biz/activities/{activityNo}/publish | PublishCommand | ActivityVersionView | biz:campaign | 新增显式发布/规则版本 |
 | C06 | PUT | /biz/activities/{activityNo}/status | StatusCommand | ActivityView | biz:campaign | 沿用，暂停/结束不撤销参与 |
-| C07 | POST | /biz/card-product-bindings | ProductEntitlementBinding | BindingView | biz:goods:update | 引用已发布pay模板，商品售价仍由商品API保存 |
+| C07 | POST | /biz/card-product-bindings | ProductEntitlementBinding | BindingView | biz:goods | 引用已发布pay模板，商品售价仍由商品API保存 |
 | C08 | POST | /biz/member-code/resolve | MemberResolveCommand | CustomerReference | biz:customer | 统一会员域接入契约，若已有等价URL则复用 |
 | C09 | POST | /mp/orders/{orderNo}/entitlement-authorizations | AuthorizationCommand | AuthorizationView | 登录本人 | 目标通用本人确认，核对既有order路由后冻结，不增储值码 |
 | C10 | GET | /biz/marketing-summary | storeNo?,from,to | MarketingSummary | biz:campaign | 目标统一看板，迁移已有摘要入口时保留别名 |
@@ -116,7 +116,7 @@ ID/版本号均非空字符串≤64，名称≤100；以下?表示可选，非?�
 | MemberResolveCommand | memberCode,storeNo；不记录明码日志，不将token永久绑定用户 |
 | AuthorizationCommand | orderRevision,quoteRef,selectionDigest；服务端返回本人意图，过期/改价需重确认 |
 | TemplateDraft | templateNo?,expectedRevision?,title,kind=ORDER_COUPON/STORE_EXCHANGE/PAID_CARD,benefitMode=CASH/PERCENT/FREE_SHIP/GIFT/SERVICE_UNITS,benefitValue?,benefitCapMinor?,benefitRef?,currency,minAmountMinor?,minQty?,usageModel=COUNT/PERIOD_COUNT/PERIOD_DAILY,totalUnits?,dailyUnits?,validity{mode=ABSOLUTE/RELATIVE,startAt?,endAt?,validDays?,startBasis=GRANTED/PAID/FIRST_USE,periodBasis=ROLLING_DAYS/CALENDAR_MONTH,zone},redemptionScope,allowedIssueModes[],funder；折扣benefitValue为应付比例bp，8500=支付85%，cap为减免上限 |
-| IssuePolicyCommand | expectedRevision,limitCount?,maxExposureMinor?,perUserLimit,issueMode,enabled；限额不得小于held+used。maxExposure是授权发行敞口，不虚构现金备付 |
+| IssuePolicyCommand | expectedRevision,limitCount?,maxExposureMinor?,perUserLimit,enabled；限额不得小于held+used。maxExposure是授权发行敞口，不虚构现金备付 |
 | IssueBatchCommand | templateVersionNo,segmentRef?/recipientRefs[],activityNo?,activityVersionNo?,storeNo；至少一种受众来源，由core生成受控用户列表快照，不接受任意外部用户号批量灌入 |
 | ClaimCommand | templateVersionNo,activityNo?,activityVersionNo?；非CENTER/未获资格拒绝，PAID_CARD不可通过claim领取 |
 | UsePreviewCommand | code?/customerRef?,instanceNo?,orderRef?,storeNo,serviceDate?,units?；身份路径互斥且须绑定具体权益，STORE_CODE只定位对应券 |
@@ -141,11 +141,11 @@ ID/版本号均非空字符串≤64，名称≤100；以下?表示可选，非?�
 | BindingView | goodsNo,skuNo,templateVersionNo,unitsPerItem,status |
 | CustomerReference | customerRef,maskedName,expiresAt；短期主体门店绑定，不返明文手机 |
 | AuthorizationView | intentNo,orderNo,revision,amountMinor,currency,status,expiresAt；私有授权引用不放列表/通知 |
-| IssuePolicyView | limit/held/issued数量、maxExposure/held/used、mode,revision |
+| IssuePolicyView | limit/held/issued数量、maxExposure/held/used、revision |
 | IssueBatchView | batchNo,status,planned/issued/skipped/failed/pendingCount,skipReasons[{code,count}],itemStatusQueryRef；未完成返回PROCESSING |
 | GrantView | grantNo,status,instanceNos[],sourceRef,occurredAt；同源重投返回同一实例集合 |
 | EntitlementItem/Detail | instanceNo,title,kind,status,remainingUnits?,dailyRemaining?,effectiveFrom,effectiveUntil,scopeSummary,sourceLabel；Detail加用法和记录入口。COUNT剩余和日额度分开，不传内部双池 |
-| UsePreview | previewRef,instanceNo,title,maskedHolder,redeemable,reason,unitsToUse,remainingAfter?,expiresAt |
+| UsePreview | previewRef,instanceNo,title,maskedHolder,redeemable,reason,unitsToUse,remainingAfter?,assetRevision,snapshotHash,expiresAt |
 | OperationView/HoldView/UseReceipt | operationNo,status=WAIT_AUTH/HELD/COMMITTED/RELEASED/PROCESSING/EXCEPTION,usageNo?,holdNo?,occurredAt?,nextAction；COMMITTED后不得显示可重试扣款 |
 | QuoteView | quoteRef,orderRevision,selectionDigest,discountMinor,currency,allocations[{instanceNo,orderLineNo,discountMinor}],expiresAt；quote不占权益 |
 | ActivationQuote | instanceNo,startBasis,periodBasis,effectiveFrom?,effectiveUntil?,activationAction；FIRST_USE只预览，不能由GET激活 |
@@ -207,3 +207,17 @@ P12 preview得到无副作用短期报价；P13调用应用协调层建立意图
 GrantCommand补entityNo用于权限和受益主体交叉核实；PAID_ORDER必须有订单行、单件、件内权益索引和paidFactRef。UseCommand的assetKind为枚举，STORED_VALUE只能accountNo+正金额，券/卡只能instanceNo+正次数，PAID_CARD不带消费金额；itemsSnapshot为不可变类型化条目。取消请求不接受提交决策，I11仅ORDER_COUPON可用。以上是结构校验，不能取代JB-011可信本人授权/源事实校验。
 
 JB-008分页对齐：内部consumer查询沿C端size 1–50，B/O普通分页仍1–100；CursorPage显式records/nextCursor/hasMore，hasMore与是否存在nextCursor保持一致。源码核对新增边界测试已先复现51未拒绝及hasMore缺失，再修复，未将新协议直接开放为HTTP。
+
+
+### JB-008报价/预览补齐
+
+内部quote/preview/activationQuote均为只读协议，不预占、不激活。QuoteCommand由core冻结单主体门店订单行、活动后商品总额及运费；UseItem.amountMinor为行总额，不再乘quantity；行号与选择的实例去重，行总额精确等于商品总额，金额求和溢出拒绝。QuoteView分摊按(instanceNo,orderLineNo)唯一，合计等于discountMinor。优惠是否适用、折扣封顶和分摊算法仍由JB-021实现。
+
+P12补assetRevision及snapshotHash，供P13提供expectedAssetRevision；内部UseCommand同步带expectedAssetRevision、previewRef?/quoteRef?。ORDER_COUPON要求quoteRef，兑换券/付费卡要求previewRef；储值不签独立资产码，不混入券报价。短期引用由pay验证绑定用户/主体/门店/资产/版本/数量/金额和过期时间，再核实core持久本人授权。UNKNOWN授权响应不得带用户等业务事实，HELD响应必须有holdNo和业务时间。
+
+P06发行控制跨版本、跨allowedIssueModes合并计数，删除重复且无表对应的issueMode；模板allowedIssueModes是唯一途径约束，不新增分途径库存。P01授权管理列表包含完整draft/currentVersionNo及可选issuePolicy；首次配置expectedRevision=0，发布响应P04包含不可变definition/snapshotHash。已知版本历史由现有内部目录端口读取，不新增外部详情路由，外部接口总数保持47。
+
+
+JB-009范围预检落点：EntitlementScopeValidationService通过ProductScopeFactsPort与MerchantScopeFactsPort查询owner事实（显式tenant，分批200条）；门店/商品须属于该主体，类目为有效平台类目。EntitlementScopeResolver从MERCHANT会话/BizContext构造CatalogScope，platformActor固定false；有限门店员工只允许授权STORES子集。完整模板写入必须用resolveDefinition，额外核实GIFT.benefitRef商品归属；仅scope校验不能代替完整定义校验。P01–P05仍未开放，新HTTP实现须调用此守卫，不接受客户端owner/actor字段。配置允许READONLY门店及未上架商品，不代表允许实时交易，核销另查时点状态。
+
+C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的read/update子权限。其余新增pay权限仍属拟登记清单，必须与真实Handler及角色测试同时交付，不提前给现有角色增权。此调整不增加47条目标外部路由。
