@@ -10,6 +10,11 @@ public interface PointsRefundPort {
     RefundOutcome confirm(RefundConfirmation confirmation);
     void requestCompensation(RefundAbort abort,long revision);
     void abort(RefundAbort abort);
+    /** Internal recovery proof; only an aborted preparation with a successful collection reversal is settled. */
+    RefundRecoveryStatus recoveryStatus(String preparationNo, String inputHash);
+
+    record RefundRecoveryStatus(String preparationNo, String state,
+                                String cashRefundPaymentNo, boolean compensationSucceeded) { }
 
     record RefundLine(String itemId,long cumulativeGoodsMinor) { }
     record PaymentSnapshot(String fundsPath,String channel,String merchantNo,String storeNo,String accountVersion,

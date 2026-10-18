@@ -4,8 +4,14 @@ import ai.neargo.shop.pay.points.refund.PointsRefundAbortService;
 import ai.neargo.shop.pay.points.refund.PointsRefundConfirmationService;
 import ai.neargo.shop.pay.points.refund.PointsRefundPreparationService;
 import ai.neargo.shop.pay.points.refund.PointsRefundCashDecisionService;
+import ai.neargo.shop.pay.points.model.PositionMove;
+import ai.neargo.shop.pay.points.store.PointsReadStore;
+import ai.neargo.shop.pay.points.refund.impl.PointsRefundPreparationServiceImpl.RefundSnapshot;
+import ai.neargo.shop.pay.points.port.PointsFundsGateway.FundsStatus;
 import ai.neargo.shop.spi.points.PointsRefundPort;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /** The order domain exchanges frozen DTOs; pay retains all points and financial mutations. */
 @Component
@@ -15,16 +21,20 @@ public class PointsRefundPortImpl implements PointsRefundPort {
     private final PointsRefundAbortService aborts;
     private final org.springframework.beans.factory.ObjectProvider<PointsRefundCashDecisionService> cashDecisions;
     private final org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.pay.points.refund.PointsRefundCompensationService> compensations;
+    private final PointsReadStore read;
+    private final ObjectMapper json = new ObjectMapper();
 
     public PointsRefundPortImpl(PointsRefundPreparationService preparations,
                                 PointsRefundConfirmationService confirmations, PointsRefundAbortService aborts,
                                 org.springframework.beans.factory.ObjectProvider<PointsRefundCashDecisionService> cashDecisions,
-                                org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.pay.points.refund.PointsRefundCompensationService> compensations) {
+                                org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.pay.points.refund.PointsRefundCompensationService> compensations,
+                                PointsReadStore read) {
         this.preparations = preparations;
         this.confirmations = confirmations;
         this.aborts = aborts;
         this.cashDecisions = cashDecisions;
         this.compensations = compensations;
+        this.read = read;
     }
 
     @Override public RefundPreparation prepare(RefundCommand command) { return preparations.prepare(command); }
@@ -45,5 +55,22 @@ public class PointsRefundPortImpl implements PointsRefundPort {
         var service=compensations.getIfAvailable();
         if(service==null) throw new IllegalArgumentException("POINTS_REFUND_COMPENSATION_REQUIRED");
         service.prepare(abort,revision);
+    }
+    @Override
+    @Transactional(value = "payTxManager", readOnly = true)
+    public RefundRecoveryStatus recoveryStatus(String preparationNo, String inputHash) {
+        if (preparationNo == null || inputHash == null || inputHash.isBlank())
+            throw new IllegalArgumentException("POINTS_REFUND_STATUS_INVALID");
+        var row = read.position(PositionMove.Kind.REFUND.table(), preparationNo);
+        if (row == null) throw new IllegalArgumentException("POINTS_REFUND_PREPARATION_UNKNOWN");
+        var saved = json.readValue((String) row.get("payload_json"), RefundSnapshot.class);
+        if (!inputHash.equals(saved.preparation().inputHash()))
+            throw new IllegalArgumentException("POINTS_REFUND_INPUT_CONFLICT");
+        var compensation = saved.compensation();
+        boolean succeeded = compensation != null && compensation.result() != null
+                && compensation.result().status() == FundsStatus.SUCCEEDED
+                && saved.abort() != null && saved.abort().equals(compensation.abort());
+        return new RefundRecoveryStatus(preparationNo, (String) row.get("state"),
+                saved.abort() == null ? null : saved.abort().cashRefundPaymentNo(), succeeded);
     }
 }

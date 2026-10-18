@@ -1745,6 +1745,12 @@ class PointsRefundPreparationTest {
         assertThat(compensationExecution.execute(prepared.preparationNo()).status())
                 .isEqualTo(PointsFundsGateway.FundsStatus.SUCCEEDED);
         aborts.abort(abort);
+        var status = refunds.recoveryStatus(prepared.preparationNo(), prepared.inputHash());
+        assertThat(status.state()).isEqualTo("ABORTED");
+        assertThat(status.compensationSucceeded()).isTrue();
+        assertThat(status.cashRefundPaymentNo()).isEqualTo(abort.cashRefundPaymentNo());
+        assertThatThrownBy(() -> refunds.recoveryStatus(prepared.preparationNo(), "WRONG"))
+                .hasMessage("POINTS_REFUND_INPUT_CONFLICT");
         assertThat(funds.sends.get(reversal.ticketNo())).isEqualTo(1);
         assertThat(funds.queries.get(reversal.ticketNo())).isEqualTo(2);
         assertThat(balance(type, "available_points")).isEqualTo(5);
