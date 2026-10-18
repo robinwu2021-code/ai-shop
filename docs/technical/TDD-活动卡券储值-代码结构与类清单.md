@@ -2,7 +2,7 @@
 
 状态：目标代码设计，待评审 · 2026-10-18
 
-本文细化[系统总设计](./TDD-活动卡券储值-模块化系统设计.md)，与[功能矩阵](../requirements/活动卡券储值-模块功能矩阵.md)、[API契约](./TDD-活动卡券储值-API契约.md)、[数据库设计](./TDD-活动卡券储值-数据库设计.md)配套。类名为实施建议，不表示已创建Java文件。标记“现有改造/复用”的类已在本地源码核对；其他均为拟新增。最终迁移需继续盘点旧marketing/mkt实现，不能只迁promotion。
+本文细化[系统总设计](./TDD-活动卡券储值-模块化系统设计.md)，与[功能矩阵](../requirements/活动卡券储值-模块功能矩阵.md)、[API契约](./TDD-活动卡券储值-API契约.md)、[数据库设计](./TDD-活动卡券储值-数据库设计.md)配套。除下方实施清单外，类名为实施建议，不表示已创建Java文件。标记“现有改造/复用”的类已在本地源码核对；其他均为拟新增。最终迁移需继续盘点旧marketing/mkt实现，不能只迁promotion。
 
 ## §0 设计约束
 
@@ -241,3 +241,12 @@ C端记录：MpStoredValueController→MpEntitlementAppService→StoredValueQuer
 落地依序：共享契约/Mapper归属→pay权益模板发行账→旧券迁移与兼容→core活动参与协议→储值闭环→付费卡与专用UI→三端权限/通知/对账。任务边界沿总设计D01–D07，不能先接UI后补幂等与余额约束。
 
 本轮交付仅代码设计文档及索引关联；具体Java实现、正式迁移与运行契约仍需按任务逐步落地。
+
+## §9 当前实际实现清单
+
+- shop-base：SourceRef、EntitlementDefinition（含Validity/RedemptionScope）、EntitlementCatalogPort（ReferenceQuery/PublishedDefinition）。
+- pay-domain：CatalogScope、CatalogViews、EntTemplate、EntTemplateVersion、PayEntCommandDedup；EntitlementRuleValidator、UsageQuota；EntitlementCatalogService及Impl、EntitlementCatalogPortImpl。
+- pay-domain/pay/mapper/entitlement：EntTemplateMapper、EntTemplateVersionMapper、PayEntCommandDedupMapper，沿现有pay.mapper扫描根绑定。
+- shop-app：V425目录三表、生成H2 schema、EntitlementCatalogFlowTest。尚无新商家/C端/运营Controller或远程目录门面。
+
+幂等在目录服务内通过私有通用方法复用，后续多服务使用时抽成设计中的EntitlementCommandDeduplicator，不保留两套算法。新范围字段目前结构校验通过，对外开放前仍需core事实预检与权限接线。本清单不改变未实现类的状态。

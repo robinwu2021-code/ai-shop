@@ -55,6 +55,9 @@ public final class BizKey {
     public static final String REACH = "RC";
     /** 内容位（首页楼层/轮播/频道）。与预约时段 APS 分开：那是时间段，这是版位 */
     public static final String CONTENT_SLOT = "SL";
+    /** Payment-owned rights template and immutable definition version. */
+    public static final String ENTITLEMENT_TEMPLATE = "ETP";
+    public static final String ENTITLEMENT_VERSION = "ETV";
     public static final String ADDRESS = "AD";
     public static final String TICKET = "TK";
     public static final String MESSAGE = "MSG";

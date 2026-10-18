@@ -4816,6 +4816,91 @@ CREATE TABLE IF NOT EXISTS usr_mp_session
     created_at DATETIME NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS ent_template
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    template_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    kind VARCHAR(24) NOT NULL,
+    funder VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    current_version_no VARCHAR(64) NULL,
+    draft_snapshot TEXT NOT NULL,
+    archived_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_template UNIQUE (tenant_no,template_no)
+);
+
+CREATE TABLE IF NOT EXISTS ent_template_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    version_no VARCHAR(64) NOT NULL,
+    template_no VARCHAR(64) NOT NULL,
+    version_index INT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    benefit_mode VARCHAR(24) NOT NULL,
+    benefit_value BIGINT NULL,
+    benefit_cap_minor BIGINT NULL,
+    min_amount_minor BIGINT NULL,
+    usage_model VARCHAR(24) NOT NULL,
+    total_units INT NULL,
+    daily_units INT NULL,
+    validity_mode VARCHAR(16) NOT NULL,
+    valid_from DATETIME(3) NULL,
+    valid_until DATETIME(3) NULL,
+    valid_days INT NULL,
+    start_basis VARCHAR(16) NOT NULL,
+    period_basis VARCHAR(24) NOT NULL,
+    market_zone VARCHAR(64) NOT NULL,
+    redemption_scope TEXT NOT NULL,
+    allowed_issue_modes TEXT NOT NULL,
+    policy_snapshot TEXT NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    published_by VARCHAR(64) NOT NULL,
+    published_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ent_version UNIQUE (tenant_no,version_no),
+    CONSTRAINT uk_ent_version_seq UNIQUE (tenant_no,template_no,version_index),
+    CHECK (total_units IS NULL OR total_units>0),
+    CHECK (daily_units IS NULL OR daily_units>0),
+    CHECK (benefit_cap_minor IS NULL OR benefit_cap_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS pay_ent_command_dedup
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    operation_kind VARCHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    resource_no VARCHAR(64) NOT NULL,
+    result_status VARCHAR(24) NOT NULL,
+    response_snapshot TEXT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_command UNIQUE (tenant_no,operation_kind,request_key)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

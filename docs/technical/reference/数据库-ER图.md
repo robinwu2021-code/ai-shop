@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **202** 张表、**319** 条引用关系，分 **16** 个域。
+全库 **205** 张表、**324** 条引用关系，分 **18** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -14,7 +14,7 @@
 | 域 | 前缀 | 表数 | 被几个域引用 |
 |---|---|---:|---:|
 | 消费者账号 | `usr_*` | 11 | 14 |
-| 商家主体与门店 | `mch_*` | 31 | 13 |
+| 商家主体与门店 | `mch_*` | 31 | 14 |
 | 社区与自提点 | `cmt_*` | 3 | 7 |
 | 商品与类目 | `prd_*` | 27 | 8 |
 | 购物车 | `trd_*` | 2 | 0 |
@@ -23,6 +23,8 @@
 | 营销与团购 | `mkt_*` | 17 | 4 |
 | 积分 | `pts_*` | 2 | 0 |
 | 结算 | `stl_*` | 14 | 1 |
+| 支付权益 | `ent_*` | 2 | 0 |
+| 支付基础与可靠命令 | `pay_*` | 3 | 0 |
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 1 | 0 |
 | 内容 | `cnt_*` | 4 | 0 |
@@ -52,7 +54,7 @@
 | `usr_store_view` | 用户逛过的门店（我的店 · 分享效果） |
 | `usr_mp_session` | — |
 
-**跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`、`usr_store_view.store_no` → `mch_store`、`usr_store_view.entity_no` → `mch_entity`
+**跨域引用**：`usr_store_favorite.entity_no` → `mch_entity`、`usr_store_favorite.store_no` → `mch_store`、`usr_account.community_no` → `cmt_community`、`usr_account.pickup_no` → `cmt_pickup_point`、`usr_account.entity_no` → `mch_entity`、`usr_store_view.store_no` → `mch_store`、`usr_store_view.entity_no` → `mch_entity`
 
 ### 商家主体与门店 `mch_*`（31 张）
 
@@ -244,6 +246,29 @@
 | `stl_bill_refund` | 结算单退款流水：一张售后单在结算单上扣了 / 回退了多少 |
 
 **跨域引用**：`stl_bill.sub_order_no` → `ord_sub_order`、`stl_bill.order_no` → `ord_order`、`stl_bill.entity_no` → `mch_entity`、`stl_bill.store_no` → `mch_store`、`stl_bill.pay_merchant_no` → `mch_payment_merchant`、`stl_payment.order_no` → `ord_order`、`stl_payment.sub_order_no` → `ord_sub_order`、`stl_payment.after_sale_no` → `ord_after_sale`、`stl_payment.user_no` → `usr_account`、`stl_payment.entity_no` → `mch_entity`、`stl_points_pool.entity_no` → `mch_entity`、`stl_split_log.sub_order_no` → `ord_sub_order`、`stl_purchase_invoice.entity_no` → `mch_entity`、`stl_recon_diff.order_no` → `ord_order`、`stl_withdraw.entity_no` → `mch_entity`、`stl_settle_invoice.entity_no` → `mch_entity`、`stl_settle_batch.entity_no` → `mch_entity`、`stl_payout.entity_no` → `mch_entity`、`stl_payout.pay_merchant_no` → `mch_payment_merchant`、`stl_bill_refund.sub_order_no` → `ord_sub_order`、`stl_bill_refund.after_sale_no` → `ord_after_sale`
+
+### 支付权益 `ent_*`（2 张）
+
+![支付权益表关系](../diagrams/db-ent.svg)
+
+| 表 | 说明 |
+|---|---|
+| `ent_template` | 支付权益模板管理头 |
+| `ent_template_version` | 发布权益不可变版本，券和付费卡都在pay |
+
+**跨域引用**：`ent_template.entity_no` → `mch_entity`
+
+### 支付基础与可靠命令 `pay_*`（3 张）
+
+![支付基础与可靠命令表关系](../diagrams/db-pay.svg)
+
+| 表 | 说明 |
+|---|---|
+| `pay_risk_shadow_log` | 资金风控影子期日志。影子期专用，定阈值后可删 |
+| `pay_setting` | 支付域设置。归 pay —— D2 拆库时跟着支付域走 |
+| `pay_ent_command_dedup` | 写接口幂等结果，与本域业务变更同事务 |
+
+**跨域引用**：`pay_risk_shadow_log.entity_no` → `mch_entity`
 
 ### 评价 `rvw_*`（3 张）
 

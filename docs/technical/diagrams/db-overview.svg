@@ -35,30 +35,36 @@
 <text class="l" x="348" y="216">依赖</text>
 <line x1="36" y1="222" x2="644" y2="222" stroke="#D8DEE6"/>
 <text class="b" x="36" y="236">派生与记账</text>
-<rect x="39" y="246" width="58" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="68" y="266" text-anchor="middle" font-size="13">结算</text>
-<text class="s" x="68" y="281" text-anchor="middle">stl_*…</text>
-<rect x="107" y="246" width="58" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="136" y="266" text-anchor="middle" font-size="13">会员</text>
-<text class="s" x="136" y="281" text-anchor="middle">mbr_*…</text>
-<rect x="175" y="246" width="58" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="204" y="266" text-anchor="middle" font-size="13">购物车</text>
-<text class="s" x="204" y="281" text-anchor="middle">trd_*…</text>
-<rect x="243" y="246" width="58" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="272" y="266" text-anchor="middle" font-size="13">履约</text>
-<text class="s" x="272" y="281" text-anchor="middle">ful_*…</text>
-<rect x="311" y="246" width="58" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="340" y="266" text-anchor="middle" font-size="13">积分</text>
-<text class="s" x="340" y="281" text-anchor="middle">pts_*…</text>
-<rect x="379" y="246" width="58" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="408" y="266" text-anchor="middle" font-size="13">评价</text>
-<text class="s" x="408" y="281" text-anchor="middle">rvw_*…</text>
-<rect x="447" y="246" width="58" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="476" y="266" text-anchor="middle" font-size="9.5">消息与客服</text>
-<text class="s" x="476" y="281" text-anchor="middle">msg_*…</text>
-<rect x="515" y="246" width="58" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="544" y="266" text-anchor="middle" font-size="13">内容</text>
-<text class="s" x="544" y="281" text-anchor="middle">cnt_*…</text>
-<rect x="583" y="246" width="58" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
-<text class="n" x="612" y="266" text-anchor="middle" font-size="13">系统</text>
-<text class="s" x="612" y="281" text-anchor="middle">sys_*…</text></svg>
+<rect x="37" y="246" width="46" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="60" y="266" text-anchor="middle" font-size="13">结算</text>
+<text class="s" x="60" y="281" text-anchor="middle">stl_…</text>
+<rect x="93" y="246" width="46" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="116" y="266" text-anchor="middle" font-size="13">会员</text>
+<text class="s" x="116" y="281" text-anchor="middle">mbr_…</text>
+<rect x="149" y="246" width="46" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="172" y="266" text-anchor="middle" font-size="11">购物车</text>
+<text class="s" x="172" y="281" text-anchor="middle">trd_…</text>
+<rect x="205" y="246" width="46" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="228" y="266" text-anchor="middle" font-size="13">履约</text>
+<text class="s" x="228" y="281" text-anchor="middle">ful_…</text>
+<rect x="261" y="246" width="46" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="284" y="266" text-anchor="middle" font-size="13">积分</text>
+<text class="s" x="284" y="281" text-anchor="middle">pts_…</text>
+<rect x="317" y="246" width="46" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="340" y="266" text-anchor="middle" font-size="9.5">支付权益</text>
+<text class="s" x="340" y="281" text-anchor="middle">ent_…</text>
+<rect x="373" y="246" width="46" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="396" y="266" text-anchor="middle" font-size="9.5">支付基础与可靠命令</text>
+<text class="s" x="396" y="281" text-anchor="middle">pay_…</text>
+<rect x="429" y="246" width="46" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="452" y="266" text-anchor="middle" font-size="13">评价</text>
+<text class="s" x="452" y="281" text-anchor="middle">rvw_…</text>
+<rect x="485" y="246" width="46" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="508" y="266" text-anchor="middle" font-size="9.5">消息与客服</text>
+<text class="s" x="508" y="281" text-anchor="middle">msg_…</text>
+<rect x="541" y="246" width="46" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="564" y="266" text-anchor="middle" font-size="13">内容</text>
+<text class="s" x="564" y="281" text-anchor="middle">cnt_…</text>
+<rect x="597" y="246" width="46" height="46" rx="6" fill="#E6F2F0" stroke="#8FC2BA"/>
+<text class="n" x="620" y="266" text-anchor="middle" font-size="13">系统</text>
+<text class="s" x="620" y="281" text-anchor="middle">sys_…</text></svg>

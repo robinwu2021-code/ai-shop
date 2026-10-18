@@ -10,7 +10,7 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 
 响应沿项目ApiResponse包装；普通分页沿PageData {records,total,page,size}；CursorPage {records,nextCursor,hasMore}。C页size默认20最大50，B/O默认20最大100。查询状态UNKNOWN不是FAILED；POST返回资源和当前状态，不保证异步完成。未登录401，越权资源404，语义冲突409，业务校验按现有错误包装返回；不临时改变全局响应结构。
 
-写请求必须Idempotency-Key，最大64字符，作用域tenant+操作+key；服务端持久关联payloadHash及资源号，同键异参409。接口body中的revision必须匹配草稿/状态CAS。UTC ISO8601输出、金额为币种最小单位整数、数量正整数，任何浮点金额拒绝。手机号脱敏，凭据用私有mediaRef；券码不进普通日志。
+写请求必须Idempotency-Key，最大64字符、大小写敏感且无首尾空白，作用域tenant+操作+key；服务端持久关联payloadHash及资源号，同键异参409。接口body中的revision必须匹配草稿/状态CAS。UTC ISO8601输出、金额为币种最小单位整数、数量正整数，任何浮点金额拒绝。手机号脱敏，凭据用私有mediaRef；券码不进普通日志。
 
 目录游标用签名filterHash/snapshotAt/末项时间与编号，绑定本人、门店/筛选；每次首次请求固化snapshotAt。活动时序按业务时间GREATEST更新；分页期间变更的目录允许刷新重取，不声称完整历史快照。记录不可变流水同时间用usageNo稳定排序，详情用发生时门店/服务快照。
 
@@ -190,3 +190,7 @@ P12 preview得到无副作用短期报价；P13调用应用协调层建立意图
 
 
 原活动PUT status的DRAFT→RUNNING兼容调用必须委派同一publish校验和版本生成逻辑，不允许绕过C05直接改状态。批量发券plannedCount先完成资格预检，再原子预留全部可发行容量；容量不足整批拒绝，不从第一个客户开始随机发到耗尽。发放已开始的异常逐项重试原grantNo，批次可以暂时PARTIAL/PROCESSING，但不得为未发用户伪造成功。
+
+### 支付目录内部实现映射
+
+本批EntitlementCatalogService提供create/saveDraft/publish/changeStatus/get/getVersion/list，内部使用EntitlementDefinition和CatalogScope，尚未注册P01–P05的HTTP Handler。CatalogScope必须由可信应用身份构造，不能直接绑定公开请求。EntitlementCatalogPort本地实现支持getPublishedVersion与validateReference；引用用途ACTIVITY_GRANT禁止PAID_CARD，PAID_PRODUCT仅允许PAID_CARD，并核实主体、币种、发布状态及发行途径。暂停后的历史版本仍可读，但拒绝建立新引用。独立pay的远程适配在D02.6接通前不开放此能力。

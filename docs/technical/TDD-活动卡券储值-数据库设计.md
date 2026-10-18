@@ -211,7 +211,7 @@
 | 字段 | 类型及空值 | 含义 |
 |---|---|---|
 | operation_kind | VARCHAR(64) NOT NULL | 接口/动作命名空间 |
-| request_key | VARCHAR(64) NOT NULL | Idempotency-Key |
+| request_key | VARCHAR(64) COLLATE utf8mb4_bin NOT NULL | Idempotency-Key |
 | payload_hash | CHAR(64) NOT NULL | 同键异参检测 |
 | resource_no | VARCHAR(64) NOT NULL | 原资源或操作号 |
 | result_status | VARCHAR(24) NOT NULL | PENDING/COMPLETED |
@@ -264,7 +264,7 @@ CARD商品SKU引用支付权益版本，不重复保存余次规则。
 | template_no | VARCHAR(64) NOT NULL | 模板头 |
 | version_index | INT NOT NULL | 版本序号 |
 | currency | VARCHAR(8) NOT NULL | 金额/商品售价需兼容 |
-| benefit_mode | VARCHAR(24) NOT NULL | CASH/PERCENT/GIFT/SERVICE_UNITS |
+| benefit_mode | VARCHAR(24) NOT NULL | CASH/PERCENT/FREE_SHIP/GIFT/SERVICE_UNITS |
 | benefit_value | BIGINT NULL | 面额或应付比例bp |
 | benefit_cap_minor | BIGINT NULL | 折扣减免上限 |
 | min_amount_minor | BIGINT NULL | 门槛 |
@@ -713,7 +713,7 @@ CARD商品SKU引用支付权益版本，不重复保存余次规则。
 | 字段 | 类型及空值 | 含义 |
 |---|---|---|
 | operation_kind | VARCHAR(64) NOT NULL | 接口/动作命名空间 |
-| request_key | VARCHAR(64) NOT NULL | Idempotency-Key |
+| request_key | VARCHAR(64) COLLATE utf8mb4_bin NOT NULL | Idempotency-Key |
 | payload_hash | CHAR(64) NOT NULL | 同键异参检测 |
 | resource_no | VARCHAR(64) NOT NULL | 原资源或操作号 |
 | result_status | VARCHAR(24) NOT NULL | PENDING/COMPLETED |
@@ -754,7 +754,7 @@ CARD商品SKU引用支付权益版本，不重复保存余次规则。
 
 切换遵循总设计§5：清点→冻结精确批次/水位→迁移→核对→更新唯一owner→目标唯一写。迁移后不能按新表查不到就回旧表；历史使用码需要摘要映射到目标实例，原码可用性按已承诺规则迁移，不重新生成而让旧用户失效。
 
-不在本稿分配Flyway版本号。正式迁移先取当前最大版本，保留已应用脚本checksum；现有同名表用ALTER/回填，不执行本稿CREATE覆盖。新版本与源老列共存期，必须明确每列哪个写路径，禁止双向同步成为永久状态。
+设计阶段不分配Flyway版本号；本批已新增V425，仅目录三表。后续正式迁移继续先取当前最大版本，保留已应用脚本checksum；现有同名表用ALTER/回填，不执行本稿CREATE覆盖。新版本与源老列共存期，必须明确每列哪个写路径，禁止双向同步成为永久状态。
 
 ## 五、查询、对账与生命周期
 
@@ -783,3 +783,5 @@ prd_entitlement_binding售价沿既有商品SKU，不复制资金账。每件uni
 ent_template新增draft_snapshot保存完整可编辑草稿，避免把尚未发布规则写进不可变版本。发布事务核对head版本，写version快照再推进current_version_no。停发与保存草稿分别控制，不改已发布规则。
 
 AuditMetaObjectHandler当前使用LocalDateTime.now，不能直接宣称其符合本设计UTC约定。新表插入由领域工厂显式填UTC时间和可信actor（已有strictInsertFill保留非空值）；状态/计数CAS使用显式SQL记录UTC更新时间、操作者与version，不通过会覆盖操作者/时区的通用updateById。此决定需在后续Mapper集成用例验证，禁止为新模块修改全局历史时间语义。
+
+幂等request_key采用utf8mb4_bin，区分大小写；应用拒绝首尾空白，避免PAD SPACE比较合并不同请求。正式V425仅创建ent_template、ent_template_version和pay_ent_command_dedup，不切换旧券归属，也不创建余额或使用账。逻辑模型中的FREE_SHIP保留旧包邮券定义，消费/报价仍须后续能力接通。

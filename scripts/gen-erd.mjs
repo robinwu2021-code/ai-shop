@@ -48,6 +48,8 @@ const DOMAINS = [
   ["mkt", "营销与团购"],
   ["pts", "积分"],
   ["stl", "结算"],
+  ["ent", "支付权益"],
+  ["pay", "支付基础与可靠命令"],
   ["rvw", "评价"],
   ["msg", "消息与客服"],
   ["cnt", "内容"],
@@ -115,6 +117,7 @@ export const KEY_OWNERS = {
   settle_no: "stl_bill",
   after_sale_no: "ord_after_sale",
   payment_no: "stl_payment",
+  payout_no: "stl_payout",
   // 商家进账挂用户的 USE 流水：一次使用一条进账。积分发出后与发放方脱钩（V28）
   use_ledger_no: "pts_user_ledger",
   inviter_no: "usr_account",
@@ -212,6 +215,12 @@ const AUDIT = new Set([
   "id", "tenant_no", "created_at", "created_by", "updated_at", "updated_by", "version", "deleted",
 ]);
 
+// Table-qualified references: template_no also names message/spec templates in unrelated domains.
+const TABLE_KEY_OWNERS = {
+  ent_template: { current_version_no: "ent_template_version" },
+  ent_template_version: { template_no: "ent_template" },
+};
+
 // ---------------------------------------------------------------- 关系
 /** 表 A 的某列是表 B 的主键 → A 引用 B */
 function relations(tables) {
@@ -219,7 +228,7 @@ function relations(tables) {
   for (const [table, def] of tables) {
     for (const c of def.cols) {
       if (AUDIT.has(c.name) || NAME_COLLISIONS.has(c.name)) continue;
-      const owner = KEY_OWNERS[c.name];
+      const owner = TABLE_KEY_OWNERS[table]?.[c.name] ?? KEY_OWNERS[c.name];
       if (!owner || owner === table || !tables.has(owner)) continue;
       out.push({ from: table, to: owner, col: c.name });
     }

@@ -229,7 +229,7 @@ CREATE TABLE pmt_command_dedup (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
     tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
     operation_kind VARCHAR(64) NOT NULL COMMENT '接口/动作命名空间',
-    request_key VARCHAR(64) NOT NULL COMMENT 'Idempotency-Key',
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL COMMENT 'Idempotency-Key',
     payload_hash CHAR(64) NOT NULL COMMENT '同键异参检测',
     resource_no VARCHAR(64) NOT NULL COMMENT '原资源或操作号',
     result_status VARCHAR(24) NOT NULL COMMENT 'PENDING/COMPLETED',

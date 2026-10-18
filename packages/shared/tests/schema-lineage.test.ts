@@ -239,6 +239,7 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  parent_no: "cmt_community.parent_no是社区层级，prd_category.parent_no是商品类目层级；各自树内引用，不能按全局名字连线。",
   waybill_no:
     "两边是**同一个快递运单号**，但它**不是外键**：运单号只在承运商内唯一，lgs_waybill 按（承运商, 运单号）登记；" +
     "ord_shipment（订单服务 2.0 发货单，V401）记的是商家录入的号。\n" +
@@ -309,8 +310,8 @@ const NAME_COLLISIONS: Record<string, string> = {
     "所以谁都不能登记成外键，按名字 join 必然连错，且不报错。",
   operator_no: "ord_status_log 与 ful_verify_log 各自记录操作人，不是同一张表的外键。",
   template_no:
-    "**同一个列名下其实是两族**：notify_template 是消息模板，notify_message.template_no 引用它；" +
-    "prd_spec_template.template_no 是商品规格模板（颜色/尺码那套），与消息毫无关系。\n" +
+    "**同一个列名下有独立的模板族**：notify_template 是消息模板，notify_message.template_no 引用它；" +
+    "prd_spec_template.template_no 是商品规格模板，ent_template/ent_template_version是支付权益模板；三族互不相干。\n" +
     "  按名字 join 会把「发过哪条推送」连到「用了哪个规格模板」上 —— 两边都有值，不报错。\n" +
     "  没改名是因为两族在各自的域里都叫得通；登记在这里，是为了让下一个人先看到这句话。\n" +
     "  注意 notify_message → notify_template 这一跳**没有守卫** —— LINEAGE 只管资金账与积分账，" +

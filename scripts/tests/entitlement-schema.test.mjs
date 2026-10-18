@@ -22,13 +22,33 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
             }
         }
         assert.ok(ready, 'isolated database did not become ready');
-        const sql = value => execFileSync('docker', ['exec', '-i', name, 'mysql', '-uroot', '-N',
-            'entitlement_test'], { input: value, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+        const sql = (value, database = 'entitlement_test') => execFileSync('docker', ['exec', '-i', name, 'mysql', '-uroot', '-N',
+            database], { input: value, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
         for (const owner of ['core', 'pay']) {
             sql(readFileSync(new URL(`../../docs/technical/design/活动权益-${owner}-schema.sql`, import.meta.url), 'utf8'));
         }
         assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '38');
         assert.ok(sql("SHOW COLUMNS FROM ent_template LIKE 'draft_snapshot'"), 'template draft needs persisted editable rules');
+        const migration = readFileSync(new URL(
+            '../../backend/shop-app/src/main/resources/db/migration/V425__entitlement_catalog.sql', import.meta.url), 'utf8');
+        sql('CREATE DATABASE entitlement_runtime_test');
+        sql(migration, 'entitlement_runtime_test');
+        sql(migration, 'entitlement_runtime_test');
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_runtime_test'"), '3');
+        for (const table of ['ent_template', 'ent_template_version', 'pay_ent_command_dedup']) {
+            const columns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns
+                WHERE table_schema='${database}' AND table_name='${table}' ORDER BY ordinal_position`);
+            assert.equal(columns('entitlement_runtime_test'), columns('entitlement_test'), table);
+        }
+        const dedup = key => `INSERT INTO pay_ent_command_dedup
+            (tenant_no,operation_kind,request_key,payload_hash,resource_no,result_status,
+             created_at,updated_at,created_by,updated_by)
+            VALUES ('MAIN','KEY_CASE','${key}',REPEAT('a',64),'r','PENDING',
+             UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'SYSTEM','SYSTEM')`;
+        sql(dedup('KeyA'), 'entitlement_runtime_test');
+        sql(dedup('keya'), 'entitlement_runtime_test');
+        assert.equal(sql("SELECT COUNT(*) FROM pay_ent_command_dedup WHERE operation_kind='KEY_CASE'",
+            'entitlement_runtime_test'), '2');
         const bucket = tenant => `INSERT INTO ent_period_bucket
             (tenant_no,instance_no,period_key,service_day,limit_units,created_at,updated_at,created_by,updated_by)
             VALUES ('${tenant}','instance1','period1','2026-10-18',1,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'SYSTEM','SYSTEM')`;
