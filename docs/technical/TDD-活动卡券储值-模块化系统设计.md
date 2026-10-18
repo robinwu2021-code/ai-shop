@@ -510,3 +510,12 @@ c29之后仅修改API内部33路由/35能力及7个默认关闭开关的设计�
 生成词典同步；V2受管66份文档、SQL方言无新增欠账通过，ER/构建闸门Node2项通过，额外核对35能力码与46预置要求一致及文档本地链接。没有新增数据库迁移，因此不虚称正式表已扩至43张。API§11–13冻结内部传输、门禁与错误/权限边界，数据库支撑表设计及IssuePolicy/目录详情歧义已在前批收口。
 
 执行裁定：008完成指协议/门禁基础验收，不等待消费者任务的HTTP/远程代理、真实交易、正式持久化和角色登记；这些本来依赖008，反向等待会阻塞开发队列。新权限只随真实Handler登记，避免空授权。业务细分错误如需扩充，由相应owner任务同步API/枚举/三语和真实失败测试。独立任务表008改DONE，整体后端仍未完成，接下来按依赖推进010。
+
+
+### f16cfff0d最终验证与设计实现对账
+
+`git show --stat f16cfff0d`：24 files changed，725 insertions，25 deletions。新增7个Java文件为PayEntitlementProperties、PayEntitlementFeatureGate、PromotionFeatureProperties、PromotionFeatureGate、ActivityCapability、EntitlementFeatureGateTest、EntitlementCatalogGateFlowTest；其余Java修改为目录Service/Port接线、既有目录/幂等/原生夹具与ErrorCode，三份messages及词典生成物同步，文件落点与§2.5一致。无新公网Handler、Flyway或角色授权变更。
+
+`bash scripts/check-head-compiles.sh HEAD`实际固定f16cfff0d403d8775a0efbfa3a1cdd95ef1f2019，干净test-compile及全量20模块3570项0失败，605秒、退出0，失败基线保持0条。默认原生MySQL条件用例仍跳过；单独Java21运行`node scripts/verify-entitlement-mysql.mjs`已真实1项通过0跳过。定向88项、Node2项、35能力对46预置要求一致、V2受管66份文档及SQL无新增方言债务分别通过。后续提交仅文档证据，不把它写成又一次全量。
+
+008已完成契约/门禁基础，独立任务表11 DONE/0 DOING/44 TODO；010会员码及短期customerRef是下一执行项。只读核对发现旧MpMyMemberController仅有会员关系/消息开关，TokenStore为登录凭证，均不能直接充当会员码；下一项须补可信统一会员凭证来源，不新增储值专用二维码。完整交易链路、三端HTTP、远程及恢复仍未完成。当前只本地提交，无部署或生产迁移。

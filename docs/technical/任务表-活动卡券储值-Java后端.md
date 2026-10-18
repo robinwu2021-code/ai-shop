@@ -68,7 +68,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 
 | ID | 原任务 | 状态 | 依赖 | 模块 | 交付内容/Java类 | 验收条件/测试 |
 |---|---|---|---|---|---|---|
-| JB-008 | D01.2/1.3/1.4 | DONE | 001,006,007 | shop-base/契约 | 冻结所有SPI/命令/响应/query、错误码三语、权限与能力开关；补缺失DDL设计 | Contract10/Preview7；门禁10+目录关闭2；总定向88项、原生MySQL1项及create门禁消融通过；API§11–13/支撑5表已冻结，HTTP/角色接线仍归后续任务 |
+| JB-008 | D01.2/1.3/1.4 | DONE | 001,006,007 | shop-base/契约 | 冻结所有SPI/命令/响应/query、错误码三语、权限与能力开关；补缺失DDL设计 | f16cfff0d；Contract10/Preview7；门禁10+目录关闭2；总定向88项、原生MySQL1项及create门禁消融通过；API§11–13/支撑5表已冻结，HTTP/角色接线仍归后续任务 |
 | JB-009 | D01.2 | DONE | 006 | core/app | core范围事实预检：门店/商品归属、类目有效性；可信CatalogScope构造 | c29c4fe4a；EntitlementScopeValidationTest 7项：会话身份、门店子集、跨租户门店/商品、赠品归属及201条分批；门店子集消融RED→恢复GREEN；HTTP仍归025 |
 | JB-010 | D01.3 | TODO | 008,009 | core.member/app | MemberCodeResolveService/Impl、BizMemberCodeController；C08 | MemberCodeResolveFlowTest：过期/伪造码拒绝；customerRef绑定主体/门店/用户且短期有效；日志不含明码 |
 | JB-011 | D01.3 | TODO | 008,010 | core.trade/app | EntitlementAuthorizationService/Impl、MpEntitlementAuthorizationController；持久本人意图与源决策 | EntitlementAuthorizationFlowTest：改价失效、他人拒绝、重复确认同意图、支付/取消唯一决策；重启可查询 |
@@ -418,3 +418,6 @@ JB-008收口裁定：本任务交付共享协议、API/权限/能力/错误契�
 本批验收：7项默认关闭配置已真实绑定；ActivityCapability为35码，已独立核对与46项预置要求一致。FeatureGate10、CatalogGate2、目录12、幂等3、原契约10、预览7、范围7、有效期5、Source4、Quota5、i18n6、架构16、PayTx1合计88项0失败/错误/跳过。目录create门禁消融1项实际失败，恢复后通过；原生MySQL1项实际运行、0跳过，验证关闭后原请求回放与新请求claim回滚。默认JDK运行原生脚本曾被Java21构建约束拒绝，指定Java21重跑通过，没有跳过约束。
 
 测试环境偏差：不同开关配置的Spring上下文必须用独立H2库；首次组合回归因重复初始化mch_admission_policy而失败，已按已有隔离夹具惯例修复，未修改schema或失败基线。词典重新生成，V2受管66文档及SQL无新增方言债务通过。当前11 DONE/0 DOING/44 TODO，下一项JB-010会员码/短期customerRef，完整后端仍未完成。最终代码提交及干净全量证据另在总TDD回填。
+
+
+JB-008最终代码提交f16cfff0d403d8775a0efbfa3a1cdd95ef1f2019：24文件725新增/25删除。干净提交test-compile通过，全量20模块3570项0失败，605秒、退出0；原生MySQL条件用例默认跳过，该项已由独立隔离运行器实际执行1项通过0跳过。此前88项定向、Node2项、i18n6项及文档/SQL检查证据见上。f16之后仅回填文档，未改Java/资源/迁移/运行配置，不重复宣称后续文档提交重新跑过全量。整体仍11 DONE/0 DOING/44 TODO。
