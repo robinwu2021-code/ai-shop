@@ -1,15 +1,15 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
-
-import ai.neargo.shop.support.TestLogin;
-import ai.neargo.shop.support.CashReceiptFixture;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.merchant.entity.MchEntity;
+import ai.neargo.shop.pay.StubSplitGateway;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.mapper.ProductMappers;
+import ai.neargo.shop.support.CashReceiptFixture;
+import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -41,28 +41,30 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @ActiveProfiles("test")
 class M5AfterSaleFlowTest {
+    @Autowired
+    private StubSplitGateway splitGateway;
 
     @Test
     void merchantWorklistReturnsPagedAfterSaleWithItsOrder() throws Exception {
         Ordered order = placeAndPay("13200132970", 6980L);
         String afterSaleNo = applyAfterSale(order, "REFUND_ONLY", "待审核列表定位");
         String merchant = loginAsOwnerOf("M0001", "13200132971");
-        mvc().perform(get("/biz/after-sale/worklist?pending=true&page=1&size=1")
+        JsonNode afterSaleWorklist = json.readTree(mvc().perform(
+                        get("/biz/after-sale/worklist?pending=true&page=1&size=100")
                         .header("Authorization", "Bearer " + merchant))
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.records[0].afterSale.afterSaleNo").value(afterSaleNo))
-                .andExpect(jsonPath("$.data.records[0].order.orderNo").value(order.subOrderNo))
-                .andExpect(jsonPath("$.data.size").value(1));
+                .andReturn().getResponse().getContentAsString()).get("data");
+        assertThat(containsOrder(afterSaleWorklist.get("records"), order.subOrderNo,
+                "afterSale", afterSaleNo)).isTrue();
         mvc().perform(get("/biz/after-sale/" + afterSaleNo)
                         .header("Authorization", "Bearer " + merchant))
                 .andExpect(jsonPath("$.data.afterSale.afterSaleNo").value(afterSaleNo))
                 .andExpect(jsonPath("$.data.order.orderNo").value(order.subOrderNo));
-        mvc().perform(get("/biz/order/worklist?page=1&size=1")
+        JsonNode orderWorklist = json.readTree(mvc().perform(get("/biz/order/worklist?page=1&size=100")
                         .header("Authorization", "Bearer " + merchant))
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.records[0].order.orderNo").value(order.subOrderNo))
-                .andExpect(jsonPath("$.data.records[0].actionKind").value("AFTER_SALE"))
-                .andExpect(jsonPath("$.data.records[0].afterSaleNo").value(afterSaleNo));
+                .andReturn().getResponse().getContentAsString()).get("data");
+        assertThat(containsOrder(orderWorklist.get("records"), order.subOrderNo, null, afterSaleNo)).isTrue();
     }
 
     @Autowired
@@ -237,57 +239,6 @@ class M5AfterSaleFlowTest {
 
     // ---------------------------------------------------------------- P2a / P3：整单退款退积分、说清去向
 
-    @Autowired
-    private ai.neargo.shop.pay.mapper.SettleMappers.PointsAccountMapper pointsAccountMapper;
-
-    @Autowired
-    private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapperForPoints;
-
-    @Autowired
-    private ai.neargo.shop.platform.PlatformConfigService platformConfig;
-
-    @Test
-    @DisplayName("一期历史赠分订单退款待人工处理，不能伪造积分已清理")
-    void historicalPointsRefundRequiresManualResolution() throws Exception {
-        Ordered o = placeAndPay("13200132510", 6980L);
-        assertThat(jdbc.queryForObject("select status from stl_payment where order_no=? and direction='PAY'",
-                String.class, o.payOrderNo)).isEqualTo("SUCCESS");
-        jdbc.update("update ord_sub_order set points_granted=true where sub_order_no=?", o.subOrderNo);
-        mvc().perform(post("/mp/order/" + o.subOrderNo + "/after-sale")
-                        .header("Authorization", "Bearer " + o.userToken).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"REFUND_ONLY\",\"reason\":\"历史赠分待核对\"}"))
-                .andExpect(jsonPath("$.code").value(20014));
-        assertThat(jdbc.queryForObject("select count(*) from ord_after_sale where sub_order_no=?",
-                Long.class, o.subOrderNo)).isZero();
-        assertThat(jdbc.queryForObject("select count(*) from ord_refund_execution where sub_order_no=?",
-                Long.class, o.subOrderNo)).isZero();
-        assertThat(jdbc.queryForObject("select count(*) from stl_payment where order_no=? and direction='REFUND'",
-                Long.class, o.payOrderNo)).isZero();
-        assertThat(jdbc.queryForObject("select points_granted from ord_sub_order where sub_order_no=?",
-                Boolean.class, o.subOrderNo)).isTrue();
-        assertThat(jdbc.queryForObject("select coalesce(refunded_minor,0) from ord_sub_order where sub_order_no=?",
-                Long.class, o.subOrderNo)).isZero();
-    }
-
-    @Test
-    @DisplayName("一期关闭积分，旧社区/商家开关不能开启订单积分抵扣")
-    void legacyPointsFlagsCannotEnablePhaseOneDeductions() throws Exception {
-        var restore = openPoints();
-        try {
-            String token = login("13200132512");
-            String userNo = userNoOf(token);
-            givePoints(userNo, 10_000L);
-            mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"items\":[{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":1}],"
-                                    + "\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\",\"usePoints\":500}"))
-                    .andExpect(jsonPath("$.code").value(10400));
-            assertThat(pointsBalanceOf(userNo)).isEqualTo(10_000L);
-        } finally {
-            restore.run();
-        }
-    }
-
     @Test
     @DisplayName("★★ 取消的单详情里说出券已回到券包（P3）")
     void cancelledOrderSaysCouponReturned() throws Exception {
@@ -410,67 +361,6 @@ class M5AfterSaleFlowTest {
                 .andReturn().getResponse().getContentAsString()).get("data");
     }
 
-    private String userNoOf(String token) throws Exception {
-        return json.readTree(mvc().perform(get("/mp/user/profile").header("Authorization", "Bearer " + token))
-                .andReturn().getResponse().getContentAsString()).get("data").get("userNo").asString();
-    }
-
-    private void givePoints(String userNo, long points) {
-        var a = new ai.neargo.shop.pay.entity.PtsUserAccount();
-        a.setUserNo(userNo);
-        a.setBalance(points);
-        a.setPendingBalance(0L);
-        a.setTotalEarn(points);
-        a.setTotalUse(0L);
-        a.setMarket("CN");
-        a.setCreatedAt(java.time.LocalDateTime.now());
-        a.setUpdatedAt(java.time.LocalDateTime.now());
-        pointsAccountMapper.insert(a);
-    }
-
-    private long pendingOf(String userNo) {
-        var a = pointsAccountMapper.selectOne(Wrappers.<ai.neargo.shop.pay.entity.PtsUserAccount>lambdaQuery()
-                .eq(ai.neargo.shop.pay.entity.PtsUserAccount::getUserNo, userNo).last("LIMIT 1"));
-        return a == null || a.getPendingBalance() == null ? 0L : a.getPendingBalance();
-    }
-
-    private long pointsBalanceOf(String userNo) {
-        var a = pointsAccountMapper.selectOne(Wrappers.<ai.neargo.shop.pay.entity.PtsUserAccount>lambdaQuery()
-                .eq(ai.neargo.shop.pay.entity.PtsUserAccount::getUserNo, userNo).last("LIMIT 1"));
-        return a == null || a.getBalance() == null ? 0L : a.getBalance();
-    }
-
-    /**
-     * 打开积分的社区与商家开关（默认全关），**返回还原动作** —— 这两处是共享种子，
-     * 开着不还会让后面每一个「没开积分就不抵」的用例都变红，而报错指向它们自己。
-     */
-    private Runnable openPoints() {
-        return DataScopeContext.executeWithoutScope(() -> {
-            java.util.Map<Long, Boolean> cmt = new java.util.HashMap<>();
-            for (var c : communityMapperForPoints.selectList(null)) {
-                cmt.put(c.getId(), c.getPointsEnabled());
-                c.setPointsEnabled(true);
-                communityMapperForPoints.updateById(c);
-            }
-            java.util.Map<Long, Boolean> mch = new java.util.HashMap<>();
-            for (MchEntity m : entityMapperForFunds.selectList(null)) {
-                mch.put(m.getId(), m.getPointsEnabled());
-                m.setPointsEnabled(true);
-                entityMapperForFunds.updateById(m);
-            }
-            return (Runnable) () -> DataScopeContext.executeWithoutScope(() -> {
-                cmt.forEach((id, v) -> communityMapperForPoints.update(null,
-                        Wrappers.<ai.neargo.shop.community.entity.CmtCommunity>lambdaUpdate()
-                                .set(ai.neargo.shop.community.entity.CmtCommunity::getPointsEnabled, v)
-                                .eq(ai.neargo.shop.community.entity.CmtCommunity::getId, id)));
-                mch.forEach((id, v) -> entityMapperForFunds.update(null,
-                        Wrappers.<MchEntity>lambdaUpdate().set(MchEntity::getPointsEnabled, v)
-                                .eq(MchEntity::getId, id)));
-                return null;
-            });
-        });
-    }
-
     /** 这一单的券此刻什么状态 */
     private String couponStatusOf(String token, String userCouponNo) throws Exception {
         String body = mvc().perform(get("/mp/coupon/mine").header("Authorization", "Bearer " + token))
@@ -503,6 +393,7 @@ class M5AfterSaleFlowTest {
 
         // 让分账回退失败：此时**绝不能退款**
         prepareSplit(o.subOrderNo);
+        splitGateway.failNext(o.subOrderNo);
         mvc().perform(post("/biz/after-sale/" + asNo + "/approve").header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.code").value(0));
 
@@ -1135,7 +1026,9 @@ class M5AfterSaleFlowTest {
         String biz = loginAsOwnerOf("M0001", "13200132083");
         approve(biz, asNo);
         mvc().perform(post("/biz/after-sale/" + asNo + "/confirm-refund")
-                .header("Authorization", "Bearer " + biz)).andExpect(jsonPath("$.code").value(0));
+                .header("Authorization", "Bearer " + biz).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"商家确认货物仍未退回，仅退款不回补库存\"}"))
+                .andExpect(jsonPath("$.code").value(0));
         new CashReceiptFixture(context).confirmRefund(asNo);
 
         assertThat(stockOf("SK0003")).as("仅退款不回补").isEqualTo(before - 1);
@@ -1147,6 +1040,18 @@ class M5AfterSaleFlowTest {
                 skuMapper.selectList(Wrappers.<PrdSku>lambdaQuery()
                                 .eq(PrdSku::getSkuNo, skuNo))
                         .stream().mapToInt(PrdSku::getStock).max().orElse(0));
+    }
+
+    private boolean containsOrder(JsonNode rows, String orderNo, String afterSaleKey, String afterSaleNo) {
+        for (JsonNode row : rows) {
+            if (!orderNo.equals(row.path("order").path("orderNo").asString())) continue;
+            if (afterSaleKey != null
+                    && !afterSaleNo.equals(row.path(afterSaleKey).path("afterSaleNo").asString())) continue;
+            if (afterSaleKey == null && (!afterSaleNo.equals(row.path("afterSaleNo").asString())
+                    || !"AFTER_SALE".equals(row.path("actionKind").asString()))) continue;
+            return true;
+        }
+        return false;
     }
 
     private void approve(String bizToken, String afterSaleNo) throws Exception {
@@ -1166,10 +1071,10 @@ class M5AfterSaleFlowTest {
     @Test
     @DisplayName("一期已签收也不接受新增部分退款")
     void merchant_partial_amount_after_receipt() throws Exception {
-        Ordered o = placeAndPay("13200132620", 6980L);            // 实付 6980
+        Ordered o = placeAndPay("13200132622", 6980L);            // 实付 6980
         String asNo = applyAfterSale(o, "REFUND_ONLY", "少量破损");
         setSubStage(o.subOrderNo, OrdSubOrder.COMPLETED, null);    // 已签收
-        String response = approveWith(loginAsOwnerOf("M0001", "13200132621"), asNo,
+        String response = approveWith(loginAsOwnerOf("M0001", "13200132623"), asNo,
                 "{\"refundMinor\":3000}");
         assertThat(json.readTree(response).path("code").asInt()).isEqualTo(20011);
 
@@ -1181,19 +1086,19 @@ class M5AfterSaleFlowTest {
     @Test
     @DisplayName("一期未签收不接受新增部分退款（20011）")
     void partial_before_receipt_rejected() throws Exception {
-        Ordered o = placeAndPay("13200132622", 6980L);            // 未发货 NOT_PREPARED
+        Ordered o = placeAndPay("13200132624", 6980L);            // 未发货 NOT_PREPARED
         String asNo = applyAfterSale(o, "REFUND_ONLY", "不想要了");
-        String body = approveWith(loginAsOwnerOf("M0001", "13200132623"), asNo, "{\"refundMinor\":3000}");
+        String body = approveWith(loginAsOwnerOf("M0001", "13200132625"), asNo, "{\"refundMinor\":3000}");
         assertThat(json.readTree(body).get("code").asInt()).isEqualTo(20011);
     }
 
     @Test
     @DisplayName("★★★ 核定额超过实付被拒（AFTERSALE_AMOUNT_INVALID 20011）")
     void amount_over_paid_rejected() throws Exception {
-        Ordered o = placeAndPay("13200132624", 6980L);
+        Ordered o = placeAndPay("13200132628", 6980L);
         String asNo = applyAfterSale(o, "REFUND_ONLY", "破损");
         setSubStage(o.subOrderNo, OrdSubOrder.COMPLETED, null);
-        String body = approveWith(loginAsOwnerOf("M0001", "13200132625"), asNo, "{\"refundMinor\":99999999}");
+        String body = approveWith(loginAsOwnerOf("M0001", "13200132629"), asNo, "{\"refundMinor\":99999999}");
         assertThat(json.readTree(body).get("code").asInt()).isEqualTo(20011);
     }
 

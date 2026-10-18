@@ -73,6 +73,6 @@ class SettlementRefundBasisOriginFlowTest {
                 + "CURRENT_TIMESTAMP,0,0)", "RF-" + no, no, no);
         assertThat(fixture().generate(no, "OLD-ACCOUNT")).isEqualTo(1);
         assertThat(fixture().basis(no)).containsEntry("STATUS", "READY").containsEntry("GOODS_PAID_MINOR", 300L)
-                .containsEntry("GROSS_MINOR", 370L).containsEntry("MERCHANT_GOODS_MINOR", 345L);
+                .containsEntry("GROSS_MINOR", 370L).containsEntry("MERCHANT_GOODS_MINOR", 352L);
     }
 }

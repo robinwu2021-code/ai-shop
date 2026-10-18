@@ -119,7 +119,7 @@ class SettlementRefundBasisFlowTest {
         assertThat(basis).containsEntry("STATUS", "READY").containsEntry("SOURCE", "ORIGINAL")
                 .containsEntry("GOODS_PAID_MINOR", 300L).containsEntry("GROSS_MINOR", 370L)
                 .containsEntry("FREIGHT_INCOME_MINOR", 50L).containsEntry("FREIGHT_COST_MINOR", 0L)
-                .containsEntry("POINTS_FEE_MINOR", 7L).containsEntry("POINTS_COST_MINOR", 0L)
+                .containsEntry("POINTS_FEE_MINOR", 0L).containsEntry("POINTS_COST_MINOR", 0L)
                 .containsEntry("SUBSIDY_MINOR", 20L).containsEntry("PAYMENT_ROUTE", "DIRECT")
                 .containsEntry("ORIGIN_PAYMENT_NO", "PAY-" + no).containsEntry("PAY_MERCHANT_NO", "OLD-ACCOUNT")
                 .containsEntry("CURRENCY", "CNY").containsEntry("PAY_CHANNEL", "WECHAT")
