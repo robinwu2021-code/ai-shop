@@ -106,7 +106,7 @@ model/policy无Spring/MyBatis；业务接口与实现分开；资金/余次变�
 
 ### 2.2 执行基线与已核实落点
 
-计划状态：可分解执行，业务代码尚未实施。独立开发分支为codex/stored-value-entitlement-dev，工作区为/Users/robin/.codex/worktrees/stored-value-entitlement-dev，基线00d04e580。需求/设计文档目前在原工作区有未提交文件；启动代码任务前须把本方案与关联文档同步至开发分支，核对差异并提交限定范围的设计基线，不夹带原工作区其他修改。
+计划状态：执行中，已完成源码盘点及支付权益目录内核，任务级状态与验收见§6。独立开发分支为codex/stored-value-entitlement-dev，工作区为/Users/robin/.codex/worktrees/stored-value-entitlement-dev，基线00d04e580。需求/设计文档已以d0b199bb6同步并提交至开发分支；原工作区的其他未提交修改未带入。
 
 档位：2；依据为本TDD、ADR-038与U01–U30。计划不预分配Flyway版本，也不将线上数据盘点视为已完成。
 
@@ -354,3 +354,42 @@ EntitlementCatalogFlowTest本批12项通过，覆盖持久回读、稳定幂等/
 原生检查先复现4线程同键的InnoDB死锁：普通重复INSERT取得共享锁，随后FOR UPDATE升级相互等待；[MySQL官方锁说明](https://dev.mysql.com/doc/refman/8.4/en/innodb-locks-set.html)描述了该模式。改为`INSERT ... ON DUPLICATE KEY UPDATE id=id`先取得排他锁，再读取稳定响应；不改原命令参数、审计及响应。新行PENDING与业务及COMPLETED同事务，异常整体回滚，不允许独立提交PENDING。原生Java服务检查修复后通过，覆盖真实JSON回读、4线程仅创建一份、历史幂等响应不变及外层pay事务回滚后可重试；H2目录12项和SourceRef/UsageQuota共9项通过，SQL可移植性扫描无新增方言欠账。
 
 本阶段仍为目录内核，不包含权益发行/核销、储值资金账或公开HTTP接口；D01.4的独立pay远程业务接线与生产环境版本核实也未完成。
+
+
+### 本批验收映射与下一执行点
+
+下表仅覆盖已实现的目录内核；U01–U30整体功能仍按原阶段逐项验收，不能用目录测试替代发行或核销验收。方法均位于EntitlementCatalogFlowTest，原生项另列。
+
+| 已实现条件 | 测试方法 |
+|---|---|
+| 草稿持久化、重放原始响应、异参冲突 | persistsDraftAndReplaysOriginalResultEvenAfterStateChanges |
+| 发布版本不可改、旧修订拒绝 | publishesImmutableVersionsAndRejectsStaleWrites |
+| 跨租户/主体隔离 | cannotReadOrMutateAnotherOwnerOrTenant |
+| 暂停可查历史、结束不可恢复 | pausingDoesNotDestroyPublishedRightsAndEndedIsTerminal |
+| 业务和幂等同pay事务回滚 | payTransactionRollsBackBusinessAndIdempotencyTogether |
+| 可信操作者、UTC与数据库分页 | auditUsesTrustedActorAndUtcAndListIsDatabasePaginated |
+| 三类卡模型、付费卡不能免费领取 | acceptsThreeCardModelsButCannotClaimPaidCardsForFree |
+| 同键四线程只产生一份 | concurrentIdenticalRequestsProduceOnePersistedTemplate |
+| 商户不能操作平台出资模板 | merchantCannotEndAPlatformFundedTemplate |
+| 本地SPI的用途/币种/主体校验与历史读取 | coreReferencesValidateKindCurrencyAndIssuanceWithoutLosingHistory |
+| 不透明键区分大小写、拒绝首尾空白 | opaqueIdempotencyKeysKeepCaseAndRejectPadding |
+| 过期草稿可编辑、禁止新发布 | expiredAbsoluteDraftCanBeEditedButCannotBePublished |
+| 原生MySQL并发幂等、JSON快照、外层事务回滚 | EntitlementCatalogNativeMysqlTest.realMysqlPreservesSnapshotsConcurrentIdempotencyAndRollback |
+
+本批代码对账：9ab17b5a1为37文件、1476增/106删，落在共享定义/SPI、pay目录实体/Mapper/服务、三表正式迁移、生成物及对应检查；815c12c2b为5文件、194增/11删，落在同目录幂等锁修复、原生Java测试、隔离MySQL运行器与本记录。没有新增三端可点击入口、Controller或旧券数据写入。
+
+后续仍按D01.2/D01.3→D02推进：先明确core门店/项目范围核实与可信本人授权/源决策契约，再接公开模板门面及独立pay远程适配；发行控制P06需补ent_issue_policy与recipient的正式迁移、原子额度条件更新及真实并发验证，才能进入prepare/commit/abort发放。活动发布和储值到账不得绕过该依赖直接写实例或余额。每个步骤沿用当前分支与既有任务编号，不把尚未实现的设计表登记为已部署表。
+
+
+### 最新提交验证结论
+
+验证代码提交815c12c2b：`bash scripts/check-head-compiles.sh HEAD`从干净副本编译成功；20模块共3526项、失败0、错误0，耗时586秒。含1项未设专用数据库变量的原生检查条件跳过；同项已经由隔离MySQL脚本独立实际运行两次，均为1项通过、0跳过。日志摘要：
+
+```text
+✓ HEAD 从干净副本可以编译
+全量 3526 跑（20 个模块）/ 0 红（基线 0 条）
+✓ 没有新增失败（基线 0 条一条没多）
+Native MySQL catalog service: 1 test passed, 0 skipped
+```
+
+另有数据库/生成图/闸门回归3项通过、V2文档守卫66份通过、SQL方言扫描无新增欠账、git diff --check通过。此后仅更新本次验收对照与API/盘点文档，未改Java或迁移。全部为本地验证和提交，未推送、部署或执行生产迁移；整体D01–D07未完成。
