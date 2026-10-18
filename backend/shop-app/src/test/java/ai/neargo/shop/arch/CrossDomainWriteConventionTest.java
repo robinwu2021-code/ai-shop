@@ -43,8 +43,7 @@ class CrossDomainWriteConventionTest {
      */
     private static final Map<String, List<String>> DEFERRED = Map.of(
             "shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
-            List.of("settlePort.generateForOrder", "grantPointsAfterPay",
-                    "pointsPort.reverse"));
+            List.of("settlePort.generateForOrder"));
 
     /**
      * <b>还没改的六处</b>，按方向分类（见 TDD-支付域拆分-最终一致性与补偿 §二）：
@@ -127,6 +126,15 @@ class CrossDomainWriteConventionTest {
                         + "  → 用 AfterCommit.run(label, () -> ...) 包起来。",
                         violations)
                 .isEmpty();
+    }
+
+    @Test
+    void retired_points_writes_cannot_reappear_in_order_or_refund_sources() throws IOException {
+        for(String file: List.of("OrderServiceImpl.java","AfterSaleServiceImpl.java")) {
+            String source=stripComments(Files.readString(BACKEND.resolve(
+                    "shop-core/src/main/java/ai/neargo/shop/trade/service/impl/"+file),StandardCharsets.UTF_8));
+            assertThat(source).doesNotContain("pointsPort.","grantPointsAfterPay");
+        }
     }
 
     @Test

@@ -74,14 +74,17 @@ public class SettlePortImpl implements SettlePort {
     private final String wechatAppId;
     /** 退款时的结算侧编排（按额回退分账，口径 A） */
     private final ai.neargo.shop.pay.settle.refund.SettlementRefundCoordinator settlementRefund;
+    private final ai.neargo.shop.pay.settle.refund.CashRefundSplitService cashRefundSplit;
 
     public SettlePortImpl(SettleService settleService, PaymentLedgerService paymentLedger,
                           SettleGenerationOrchestrator orchestrator,
                           ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter,
                           UserIdentityPort identityPort,
                           @Value("${shop.pay.wechat.appid:}") String wechatAppId,
-                          ai.neargo.shop.pay.settle.refund.SettlementRefundCoordinator settlementRefund) {
+                          ai.neargo.shop.pay.settle.refund.SettlementRefundCoordinator settlementRefund,
+                          ai.neargo.shop.pay.settle.refund.CashRefundSplitService cashRefundSplit) {
         this.settlementRefund = settlementRefund;
+        this.cashRefundSplit = cashRefundSplit;
         this.settleService = settleService;
         this.paymentLedger = paymentLedger;
         this.orchestrator = orchestrator;
@@ -206,6 +209,11 @@ public class SettlePortImpl implements SettlePort {
     @Override
     public boolean reverseSplit(SplitReversal cmd) {
         return settlementRefund.reverse(cmd);
+    }
+
+    @Override
+    public boolean reverseCashRefund(SplitReversal cmd) {
+        return cashRefundSplit.reverse(cmd);
     }
 
     @Override

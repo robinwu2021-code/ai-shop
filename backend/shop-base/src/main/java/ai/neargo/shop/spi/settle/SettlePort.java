@@ -171,6 +171,9 @@ public interface SettlePort {
      */
     boolean reverseSplit(SplitReversal cmd);
 
+    /** Durable ordinary-cash reversal. Must be called outside source/pay transactions. */
+    boolean reverseCashRefund(SplitReversal cmd);
+
     /** Source workflow gate: post-split reversal waits for its durable financial preparation. */
     boolean reversePreparedRefund(SplitReversal cmd);
 

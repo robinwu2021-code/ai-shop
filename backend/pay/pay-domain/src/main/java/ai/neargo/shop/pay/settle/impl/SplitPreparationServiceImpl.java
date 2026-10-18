@@ -25,15 +25,19 @@ public class SplitPreparationServiceImpl implements SplitPreparationService {
     private final BillMapper bills;
     private final PointsSettlementHook points;
     private final PointsSettlementRefundHoldMapper refundHolds;
+    private final ai.neargo.shop.pay.mapper.CashRefundSplitMapper cashReversals;
     private final ObjectMapper json=new ObjectMapper();
     public SplitPreparationServiceImpl(SplitIntentMapper intents,BillMapper bills,PointsSettlementHook points,
-                                       PointsSettlementRefundHoldMapper refundHolds) {
+                                       PointsSettlementRefundHoldMapper refundHolds,
+                                       ai.neargo.shop.pay.mapper.CashRefundSplitMapper cashReversals) {
+        this.cashReversals=cashReversals;
         this.intents=intents; this.bills=bills; this.points=points; this.refundHolds=refundHolds;
     }
     @Override public Plan prepare(String settleNo) {
         return DataScopeContext.executeWithoutScope(() -> {
             StlBill bill=intents.lockBill(settleNo);
             require(bill!=null,"SETTLEMENT_BILL_NOT_FOUND");
+            require(cashReversals.pending(settleNo)==0,"SETTLEMENT_CASH_REVERSAL_PENDING");
             require(refundHolds.pendingForBill(settleNo)==0,"SETTLEMENT_REFUND_PENDING");
             if (terminal(bill.getStatus())) { return new Plan(null,null,true); }
             var prior=intents.latest(settleNo);
@@ -73,6 +77,7 @@ public class SplitPreparationServiceImpl implements SplitPreparationService {
         return DataScopeContext.executeWithoutScope(() -> {
             StlBill bill=intents.lockBill(settleNo);
             require(bill!=null,"SETTLEMENT_BILL_NOT_FOUND");
+            if(cashReversals.pending(settleNo)>0) return null;
             var head=intents.latest(settleNo);
             if (head!=null && !"ACCEPTED".equals(head.get("state")) && !"FAILED".equals(head.get("state"))) {
                 return null;

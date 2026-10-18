@@ -50,6 +50,20 @@ public interface SplitGateway {
      */
     Result reverse(String subOrderNo, String payMerchantNo, long amountMinor, String requestNo);
 
+    /** Full immutable route for source refunds. A successful reverse/query result must verify
+     * completion of this exact command; acceptance-only or mismatched responses remain unknown. */
+    default Result reverse(ai.neargo.shop.pay.settle.SplitCommand command) {
+        return reverse(command.subOrderNo(),command.payMerchantNo(),command.amountMinor(),command.requestNo());
+    }
+    default Result queryReverse(ai.neargo.shop.pay.settle.SplitCommand command) {
+        return queryReverse(command.subOrderNo(),command.payMerchantNo(),command.amountMinor(),command.requestNo());
+    }
+
+    /** Query the original reversal only. Unsupported providers keep the source refund pending. */
+    default Result queryReverse(String subOrderNo,String payMerchantNo,long amountMinor,String requestNo) {
+        return Result.fail("REVERSAL_QUERY_NOT_SUPPORTED");
+    }
+
     /**
      * 积分补差：平台把买家用积分抵掉的那部分<b>补进</b>二级商户账户。
      *

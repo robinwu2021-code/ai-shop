@@ -181,10 +181,10 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **接口：**支付快照读取接口按orderNo返回原资金路径、商户单、实际交易、币种、金额、核验状态及分店路由。引用现有stl_payment与V418请求快照，不从客户端或当前账户生成。配置规则的“无配置”和“固定零”保持区别。
 
-- [ ] RED：仅前端支付成功不发分；金额/币种/子单路由错配拒绝；真实已核验成功写PAID和earning两个稳定事件；消费者失败现金订单仍已付、承诺待处理；停接线后旧承诺继续，新纯现金单不追补；规则变更不改变重试结果。
-- [ ] 实现：订单源事务记支付事实与冻结承诺，异步消费；支付结果UNKNOWN继续原单核验。每个参与子单冻结券后行金额与原规则版本，FINALIZED保留原范围，不能提前当REFUND_CLOSED。
-- [ ] GREEN：新类+既有支付核验/规则交接受影响测试；不在源事务调用银行。
-- [ ] 提交：`feat(points): connect verified payments and deferred earning facts`。
+- [x] RED：仅前端支付成功不发分；金额/币种/子单路由错配拒绝；真实已核验成功写PAID和earning两个稳定事件；消费者失败现金订单仍已付、承诺待处理；停接线后旧承诺继续，新纯现金单不追补；规则变更不改变重试结果。
+- [x] 实现：订单源事务记支付事实与冻结承诺，异步消费；支付结果UNKNOWN继续原单核验。每个参与子单冻结券后行金额与原规则版本，FINALIZED保留原范围，不能提前当REFUND_CLOSED。
+- [x] GREEN：新类+既有支付核验/规则交接受影响测试；不在源事务调用银行。
+- [x] 提交：`feat(points): connect verified payments and deferred earning facts`。
 
 ## Task T09：部分/全额售后退款执行阶段
 
@@ -194,10 +194,10 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **阶段：**源锁定并冻结原RefundCommand/版本→pay.prepare→持久化准备号/revision/inputHash→必要补收或失败修订→建立当前净现金退款意图→原资金执行/核验→可信退款完成事件/pay.confirm→源账本commit。资金调用均在事务外；offset、零现金、补偿分别保留证据。
 
-- [ ] RED：同店两行100/200，部分退第一行50仅影响对应累计范围；重复退款不重复扣回；两售后竞争不超原现金/积分额度；UNKNOWN不可修订或换号；补收成功现金失败进入补偿；有绑定但缺实现不能当纯现金成功。
-- [ ] 实现：原beginCash/commit的POINTS_CONFIRMATION_REQUIRED只在保存并验证当前准备/确认结果后替换为阶段条件；纯现金条件保留。净现金0走ZeroCashCompletionFact，不伪造退款支付号；现金SUCCESS必须核验金额/币种/原单及版本。保留同店R、B垫付、原路由分组，不拿当前账户覆盖。
-- [ ] GREEN：新类+RefundExecutionTest/AfterSaleRefundExecutionTest的受影响方法；Native单方法验证累计额度竞争。失败保留原事件和当前阶段。
-- [ ] 提交：`feat(points): integrate revision bound after sale refund execution`。
+- [x] RED：同店两行100/200，部分退第一行50仅影响对应累计范围；重复退款不重复扣回；两售后竞争不超原现金/积分额度；UNKNOWN不可修订或换号；补收成功现金失败进入补偿；有绑定但缺实现不能当纯现金成功。
+- [x] 实现：原beginCash/commit的POINTS_CONFIRMATION_REQUIRED只在保存并验证当前准备/确认结果后替换为阶段条件；纯现金条件保留。净现金0走ZeroCashCompletionFact，不伪造退款支付号；现金SUCCESS必须核验金额/币种/原单及版本。保留同店R、B垫付、原路由分组，不拿当前账户覆盖。
+- [x] GREEN：新类+RefundExecutionTest/AfterSaleRefundExecutionTest的受影响方法；Native单方法验证累计额度竞争。失败保留原事件和当前阶段。
+- [x] 提交：`feat(points): integrate revision bound after sale refund execution`。
 
 ## Task T10：责任关闭、原承诺生命周期与结算关联
 
@@ -205,10 +205,10 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **Files：**修改源售后关闭/终局事件发布点，接既有PointsFactPort.acceptClosure、PointsSettlementHook；新增源闭合证明服务于order/points包；测试`PointsOrderClosureFlowTest`。
 
-- [ ] RED：订单FINALIZED但售后窗口未关不释放退款责任；还有OPEN售后或UNKNOWN资金拒绝closure；合法关闭重放幂等；停接线后的旧分仍正常激活/回流/退款/结算；ST1债务不抵ST2账单。
-- [ ] 实现：从权威源窗口与未结售后、真实资金终态组成closure，原发生时间/版本固定。沿用内核生命周期、两种门店结算与R抵销，不在订单侧写积分账户。
-- [ ] GREEN：新类+所改settlement hook方法；不重跑全部第一阶段验收。
-- [ ] 提交：`feat(points): connect source closure and settlement obligations`。
+- [x] RED：订单FINALIZED但售后窗口未关不释放退款责任；还有OPEN售后或UNKNOWN资金拒绝closure；合法关闭重放幂等；停接线后的旧分仍正常激活/回流/退款/结算；ST1债务不抵ST2账单。
+- [x] 实现：从权威源窗口与未结售后、真实资金终态组成closure，原发生时间/版本固定。沿用内核生命周期、两种门店结算与R抵销，不在订单侧写积分账户。
+- [x] GREEN：新类+所改settlement hook方法；不重跑全部第一阶段验收。
+- [x] 提交：`feat(points): connect source closure and settlement obligations`。
 
 ## Task T11：跨域一致性检查、恢复和告警
 
@@ -218,10 +218,10 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **接口：**`recover(int limit)`有界扫描；`inspect(String subOrderNo)`返回源版本/绑定/原hold/事件/支付核验及差异代码，不返回任意payload或银行正文。恢复只重投原始命令、原事件与原票。
 
-- [ ] RED：每个T06/T09边界崩溃一次后恢复到正确状态；漏事件补扫、冲突事件留痕、版本旧记录不覆盖；缺实现时纯现金正常但存量告警；消费者恢复不重复付款。
-- [ ] 实现：源任务只推进源阶段，资金仍交现有pay恢复；停新增不关收尾能力。运行默认关闭、单轮最多200、并发租约、失败带明确分类；不吞异常返回成功。
-- [ ] GREEN：本类+有改动的job/DTO权限测试，记录队列积压/最老未决时长、无敏感正文日志。
-- [ ] 提交：`feat(points): add bounded order integration recovery and inspection`。
+- [x] RED：每个T06/T09边界崩溃一次后恢复到正确状态；漏事件补扫、冲突事件留痕、版本旧记录不覆盖；缺实现时纯现金正常但存量告警；消费者恢复不重复付款。
+- [x] 实现：源任务只推进源阶段，资金仍交现有pay恢复；停新增不关收尾能力。运行默认关闭、单轮最多200、并发租约、失败带明确分类；不吞异常返回成功。
+- [x] GREEN：本类+有改动的job/DTO权限测试，记录队列积压/最老未决时长、无敏感正文日志。
+- [x] 提交：`feat(points): add bounded order integration recovery and inspection`。
 
 ## Task T12：前端接线体验、联调与旧路径清理
 
@@ -229,10 +229,10 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 
 **Files：**修改`ops-web/app/points/types-tab.tsx`及`ops-web/lib/api/contracts/finance.ts`、`https/finance.ts`、mock/types/三语；C端修改`c-app/src/pages/order-confirm/index.vue`、`c-app/src/pages/orders/index.vue`、`c-app/src/pages/points/index.vue`、`c-app/src/pages/after-sale/index.vue`；B端修改`b-app/src/pages/after-sale/index.vue`；共享模型修改`packages/shared/src/types/user.ts`、`packages/shared/src/strategies/pricing/types.ts`及其调用方。实施前读各端AGENTS。后端修改MpPointsController、BizPointsController、BizPointsAppService；删除已无调用的旧PointsPolicyAppService、旧spi.settle.PointsPort/适配及PointsService旧引擎实现。
 
-- [ ] RED：默认未接线下单全额现金无积分请求；开启ST1不影响ST2；价格变更显式重确认；处理中不展示“已退”；Ops关开关须权限/原因/版本并显示存量义务，三语文案一致。共享pricing不得再自行使用固定POINTS.perMinor/maxDeductRatio推导权威金额：2分=1最小货币单位、使用20分时抵10货币单位，最终以服务端报价为准。
-- [ ] 实现：先替换C/B的读/写和售后补偿入口，报价DTO携带参与状态、服务端金额、汇率与版本，客户端估算不能决定支付金额；再用rg核对旧接口调用数归零后删除。旧种子/测试迁移到新语义而非直接删保护测试。禁止把未覆盖的compensate/revoke/refundConfirmed等旧路径悄悄丢弃；纳入新准备/调账权限流程。
-- [ ] GREEN：前端受影响Vitest+tsc，合成端到端场景（无实现、DETACHED、ACTIVE、DRAINING、重接、UNKNOWN）；源码架构/SQL/API守卫，三端浏览器局部验收。旧订单相关用例保持原业务断言。
-- [ ] 提交：`feat(points): complete detachable client integration and retire legacy paths`。
+- [x] RED：默认未接线下单全额现金无积分请求；开启ST1不影响ST2；价格变更显式重确认；处理中不展示“已退”；Ops关开关须权限/原因/版本并显示存量义务，三语文案一致。共享pricing不得再自行使用固定POINTS.perMinor/maxDeductRatio推导权威金额：2分=1最小货币单位、使用20分时抵10货币单位，最终以服务端报价为准。
+- [x] 实现：先替换C/B的读/写和售后补偿入口，报价DTO携带参与状态、服务端金额、汇率与版本，客户端估算不能决定支付金额；再用rg核对旧接口调用数归零后删除。旧种子/测试迁移到新语义而非直接删保护测试。禁止把未覆盖的compensate/revoke/refundConfirmed等旧路径悄悄丢弃；纳入新准备/调账权限流程。
+- [x] GREEN：前端受影响Vitest+tsc，合成端到端场景（无实现、DETACHED、ACTIVE、DRAINING、重接、UNKNOWN）；源码架构/SQL/API守卫，三端浏览器局部验收。旧订单相关用例保持原业务断言。
+- [x] 提交：`feat(points): complete detachable client integration and retire legacy paths`。
 
 ## Task T13：第三阶段验收、一次独立Review与交付
 
@@ -264,3 +264,10 @@ JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.11/libexec/openjdk.jdk/Contents/H
 - [ ] 记录生产结果与时间、实际版本及回滚方法；异常按脚本支持的方式回滚并核验。
 
 本次部署授权替代此前计划“仅本地提交、不部署”的交付限制。发布代码不自动为任何门店签协议、制造积分余额或开启业务接线。
+
+
+## T09 发布验收补充：普通现金已分账退款
+
+全量闸门暴露出普通现金续跑仍需持久分账回退。已补齐：V438 `stl_cash_refund_reverse` 保存原请求、完整路由、金额和份额；原分账缺少证明时不发起回退。回退调用及回查均在源/pay 事务外，UNKNOWN 只查询原请求，成功回执与结算调整同事务提交后才允许源打开现金退款。待定回退阻止同账单并发新退款和旧回退入口绕行；SPLIT→SPLIT_CONFIRMED 的合法进展不改变冻结命令。
+
+证据：CashRefundSplitExecutionTest、AfterSaleRefundExecutionTest、OpsFinanceGovernFlowTest；Native CashRefundSplitNativeRaceTest 单方法 1 项通过、0 跳过，验证外部等待期间账单锁已释放、并发续跑只回查、只提交一次。通道不支持原回退查询时保留 UNKNOWN 给人工处置，不自动重发资金命令。

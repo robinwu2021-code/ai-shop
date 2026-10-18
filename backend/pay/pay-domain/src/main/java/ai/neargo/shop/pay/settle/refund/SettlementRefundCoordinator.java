@@ -35,10 +35,12 @@ public class SettlementRefundCoordinator {
     private final PostSplitReverser postSplit;
     private final PointsSettlementRefundHoldMapper holds;
     private final PointsRefundPort pointsRefunds;
+    private final ai.neargo.shop.pay.mapper.CashRefundSplitMapper cashReversals;
 
     public SettlementRefundCoordinator(BillMapper billMapper, BillRefundJournal journal, SettlementRefundPolicy policy,
                                    PreSplitAdjuster preSplit, PostSplitReverser postSplit,
-                                   PointsSettlementRefundHoldMapper holds, PointsRefundPort pointsRefunds) {
+                                   PointsSettlementRefundHoldMapper holds, PointsRefundPort pointsRefunds,
+                                   ai.neargo.shop.pay.mapper.CashRefundSplitMapper cashReversals) {
         this.billMapper = billMapper;
         this.journal = journal;
         this.policy = policy;
@@ -46,6 +48,7 @@ public class SettlementRefundCoordinator {
         this.postSplit = postSplit;
         this.holds = holds;
         this.pointsRefunds = pointsRefunds;
+        this.cashReversals = cashReversals;
     }
 
     /** @return false = 回退没做成，调用方<b>必须停止退款</b>（钱还在商家那边） */
@@ -173,6 +176,7 @@ public class SettlementRefundCoordinator {
             // 没有结算单（未支付即取消）/ 已全部回退 / 本售后单已处理过（重放）：都视为成功
             return true;
         }
+        if (cashReversals.pending(bill.getSettleNo())>0) return false;
         if (!allowHeld && holds.pendingForBill(bill.getSettleNo()) > 0) return false;
         if (StlBill.REVERSED.equals(bill.getStatus())) return !allowHeld;
         if (StlBill.SPLITTING.equals(bill.getStatus())) {
@@ -188,7 +192,7 @@ public class SettlementRefundCoordinator {
     }
 
     /** Reverse the original split command, not the merchant net payable (different money directions). */
-    private long splitReturn(StlBill bill,SplitReversal cmd) {
+    public long splitReturn(StlBill bill,SplitReversal cmd) {
         Long amount=bill.getSplitAmountMinor();
         if(amount==null || amount<0) throw new IllegalStateException("SETTLEMENT_SPLIT_AMOUNT_REQUIRED");
         long alreadyBeforeSplit=journal.preSplitGoods(bill.getSettleNo());

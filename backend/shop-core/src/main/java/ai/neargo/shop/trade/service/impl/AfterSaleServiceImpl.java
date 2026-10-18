@@ -1070,7 +1070,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         var intent = refundExecutions.beginCash(afterSaleNo);
         var plan = execution.plan();
         var sub = subOrderOf(plan.subOrderNo());
-        if (!settlePort.reverseSplit(new SettlePort.SplitReversal(plan.subOrderNo(), afterSaleNo,
+        if (!settlePort.reverseCashRefund(new SettlePort.SplitReversal(plan.subOrderNo(), afterSaleNo,
                 plan.goodsMinor(), plan.freightMinor(), LineShares.goodsPaid(sub)))) {
             throw BizException.of(ErrorCode.SPLIT_EXPIRED);
         }

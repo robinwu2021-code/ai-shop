@@ -55,6 +55,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class OfflineSettleFlowTest {
 
+    private void splitWithFixtureRecipient(StlBill bill) {
+        DataScopeContext.executeWithoutScope(() -> {
+            var current=reload(bill.getSettleNo());
+            current.setPayMerchantNo("SYNTHETIC-OFFLINE-SETTLEMENT");
+            return billMapper.updateById(current);
+        });
+        settleService.executeSplit(bill.getSettleNo());
+    }
+
     private static final String SEED_ENTITY = "M0001";
     private static final String STAFF_PHONE = "13100888021";
     /** 种子费率：THIRD_PARTY × PLATFORM = 500bp（schema-test.sql 的 FR-INIT-TP-PLAT） */
@@ -229,7 +238,7 @@ class OfflineSettleFlowTest {
     void splitLeavesOfflineBillUntouched() throws Exception {
         StlBill bill = billOfOfflineOrder("13400288003", "settle-offline-2");
 
-        settleService.executeSplit(bill.getSettleNo());
+        splitWithFixtureRecipient(bill);
 
         StlBill after = reload(bill.getSettleNo());
         assertThat(after.getStatus())
@@ -257,14 +266,10 @@ class OfflineSettleFlowTest {
             String payOrderNo = create(token, "settle-fee-1", "");
             String subOrderNo = subOrderNoOf(token, payOrderNo);
 
-            /*
-             * 直接改子单的积分抵扣，**不跑整条积分链路**：这里要验的是
-             * 「基数取哪一个数」，而 gross = 实付 + 平台优惠 + 积分抵扣。
-             * 不制造这个差额的话，gross 与实付相等 ——
-             * 那样写出来的断言两种实现都能通过，**等于什么也没验**。
-             */
+            // A platform coupon creates a genuine gross-versus-cash difference without
+            // fabricating a new points position (validated separately by points settlement tests).
             DataScopeContext.executeWithoutScope(() -> jdbc.update(
-                    "UPDATE ord_sub_order SET points_deduct_minor = 500 WHERE sub_order_no = ?",
+                    "UPDATE ord_sub_order SET discount_platform = 500 WHERE sub_order_no = ?",
                     subOrderNo));
             long paid = DataScopeContext.executeWithoutScope(() ->
                     subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
@@ -497,7 +502,7 @@ class OfflineSettleFlowTest {
             return billMapper.updateById(b);
         });
 
-        settleService.executeSplit(bill.getSettleNo());
+        splitWithFixtureRecipient(bill);
 
         StlBill after = reload(bill.getSettleNo());
         assertThat(after.getStatus())
@@ -520,7 +525,7 @@ class OfflineSettleFlowTest {
             b.setStatus(StlBill.PENDING);
             return billMapper.updateById(b);
         });
-        settleService.executeSplit(bill.getSettleNo());
+        splitWithFixtureRecipient(bill);
 
         assertThat(settleService.confirmSplit(bill.getSettleNo(), "CH-001")).isTrue();
         StlBill first = reload(bill.getSettleNo());
@@ -560,7 +565,7 @@ class OfflineSettleFlowTest {
                 x.setStatus(StlBill.PENDING);
                 return billMapper.updateById(x);
             });
-            settleService.executeSplit(b.getSettleNo());
+            splitWithFixtureRecipient(b);
         }
         settleService.confirmSplit(received.getSettleNo(), "CH-INCOME");
 

@@ -5677,6 +5677,26 @@ CREATE TABLE IF NOT EXISTS ord_points_work_cursor
     PRIMARY KEY(queue_name)
 );
 
+CREATE TABLE IF NOT EXISTS stl_cash_refund_reverse
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    after_sale_no VARCHAR(64) NOT NULL,
+    settle_no VARCHAR(64) NOT NULL,
+    request_no VARCHAR(64) NOT NULL,
+    command_json MEDIUMTEXT NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    provider_no VARCHAR(64) DEFAULT NULL,
+    last_error VARCHAR(512) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_cash_refund_reverse_as UNIQUE (after_sale_no),
+    CONSTRAINT uk_cash_refund_reverse_request UNIQUE (request_no),
+    CONSTRAINT uk_cash_refund_reverse_receipt UNIQUE (pay_channel,provider_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
