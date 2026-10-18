@@ -130,6 +130,51 @@ class AfterSaleRefundExecutionTest {
         verify(channel,never()).refund(any(),anyLong(),anyString(),anyString());
     }
 
+    @Test void failed_source_delivery_retries_original_cash_refund_without_repaying() {
+        var f = fixture();
+        jdbc.update("UPDATE ord_order SET points_integrated=1,currency='CNY' WHERE order_no=?", f.sub());
+        var route = new PaymentRoute("MERCHANT", "STORE", "PM-TEST", "TEST", "SM", "PM:1", "DIRECT");
+        var proof = new PointsPaymentSnapshotPort.VerifiedPayment(f.sub(), "USER", "CNY", 110, "TEST",
+                "OUT:" + f.sub(), "TRADE", Instant.ofEpochMilli(1000), List.of(new PaymentStore(f.sub(), route)));
+        doReturn(java.util.Optional.of(proof)).when(pointsPayments).verified(f.sub());
+        var payment = new PointsRefundPort.PaymentSnapshot("DIRECT", "TEST", "MERCHANT", "STORE",
+                "PM:1", "SM", "TRADE", "OUT:" + f.sub(), 110);
+        var snapshot = new OrderPointsBindingService.Snapshot(100, 0, 0, 1, 1, "{}", "{}", payment,
+                List.of(new PointsRedeemPort.Item(String.valueOf(f.item()), 100)));
+        var admission = new OrderPointsBindingService.Admission("REQ", f.sub(), f.sub(), "USER", "MERCHANT",
+                "STORE", "TYPE", "CNY", "ONLINE", 0, true, true, snapshot);
+        doReturn(new OrderPointsBindingService.Binding("B", admission,
+                OrderPointsBindingService.Phase.BOUND, 0, "H")).when(pointsBindings).find(f.sub());
+        var prep = new PointsRefundPort.RefundPreparation("PREP:" + f.as(), "TYPE", 1, "HASH",
+                0, 0, 0, 0, 10, 50, 0, null, "PREPARED");
+        doReturn(prep).when(pointsRefunds).prepare(any());
+        doReturn(new PointsRefundPort.CashDecision(prep.preparationNo(), prep.inputHash(), 1,
+                f.as(), f.sub(), "USER", "CNY", "TEST", 50, 10, null, payment))
+                .when(pointsRefunds).authorizeCash(prep.preparationNo(), prep.inputHash(), 1);
+        doReturn(new PointsRefundPort.RefundOutcome(prep.preparationNo(), "CONFIRMED", 0, 0, 0, 0, 0,
+                null, false)).when(pointsRefunds).confirm(any());
+        var attempts = new java.util.concurrent.atomic.AtomicInteger();
+        doAnswer(call -> {
+            if (attempts.getAndIncrement() == 0) throw new IllegalStateException("POINTS_EVENT_DELIVERY_FAILED");
+            return null;
+        }).when(pointsDelivery).deliver("ORDER:REFUND_CONFIRM:" + f.as(), f.sub());
+        afterSales.approve("MERCHANT", f.as(), "approved", null, "CASH");
+        afterSales.resumeRefund(f.as(), "SYSTEM");
+        doReturn(new PointsRefundPort.RefundRecoveryStatus(prep.preparationNo(), f.as(), f.sub(),
+                "CONFIRMED", 50, jdbc.queryForObject(
+                        "SELECT payment_no FROM stl_payment WHERE after_sale_no=?", String.class, f.as()), false))
+                .when(pointsRefunds).recoveryStatus(prep.preparationNo(), prep.inputHash());
+        assertThatThrownBy(() -> afterSales.resumeRefund(f.as(), "SYSTEM"))
+                .hasMessage("POINTS_EVENT_DELIVERY_FAILED");
+        assertThat(status(f.as())).isEqualTo("REFUNDING");
+        assertThat(refunded(f.sub())).isZero();
+        afterSales.resumeRefund(f.as(), "SYSTEM");
+        assertThat(status(f.as())).isEqualTo("REFUNDED");
+        assertThat(refunded(f.sub())).isEqualTo(60);
+        assertThat(attempts.get()).isEqualTo(2);
+        verify(channel, times(1)).refund(any(), anyLong(), anyString(), anyString());
+    }
+
     @Test void definitive_cash_failure_after_collection_requests_original_compensation() {
         var f=compensatedFixture();
         assertThat(status(f.as())).isEqualTo("REFUNDING");
