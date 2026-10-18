@@ -52,4 +52,4 @@
 
 **Implementation notes:** Relay code lives in pay-domain under `pay.entitlement.event`. Bridge status `SENT` means durable insertion into shared `sys_outbox`; the shared pump owns final delivery. Inbox payload hash is computed from the received typed data inside pay, never accepted as a caller-provided digest. Design/code review found no actionable findings.
 
-**Commit:** recorded in the JB-014 task table after commit.
+**Implementation commit:** `d1e260aba` (task-table evidence commit follows).

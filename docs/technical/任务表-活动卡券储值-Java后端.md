@@ -446,6 +446,6 @@ JB-010历史全量证据：ecfda1ebd干净编译及3582项/20模块全绿。JB-0
 
 完成pay侧版本化事件SPI、`pay_ent_outbox`/`pay_ent_inbox`和V429；发布器要求处于pay业务事务内，校验事件类型与字段后持久化，按事件号重放须事实一致，否则拒绝。提交后异步桥接到已有`sys_outbox`，桥接写失败采用退避重试，启动与周期扫描恢复崩溃窗口；两套数据源事务管理器不伪装成分布式原子提交。Inbox在pay事务内从可信载荷计算SHA-256，唯一键锁定后再执行业务回调，重复消息不重复应用，同号异参拒绝。`SENT`含义为统一投递箱已持久接管，之后仍由现有投递泵负责最终重试。已验证`EntitlementEventFlowTest`4项、`OutboxEventBusPumpTest`3项及隔离MySQL原生4项（回滚、稳定重放/冲突、桥接恢复、inbox去重/冲突）。业务发行、核销和储值服务的发布器调用仍归后续业务任务，不据此宣称整体业务闭环完成。
 
-实现提交：待本轮提交。Java 21 `mvn -o -f backend/pom.xml clean test`：27模块BUILD SUCCESS；Surefire报告合计3,604项、0失败、0错误、4跳过（shop-app模块汇总2,782项）；独立隔离MySQL场景4项通过、0跳过。24个文档生成器、V2 66份文档守卫、SQL可移植性（0新增方言欠账）及`git diff --check`通过。只读代码复核无可执行问题。未推送、部署或访问生产数据库。
+实现提交：`d1e260aba`。Java 21 `mvn -o -f backend/pom.xml clean test`：27模块BUILD SUCCESS；Surefire报告合计3,604项、0失败、0错误、4跳过（shop-app模块汇总2,782项）；独立隔离MySQL场景4项通过、0跳过。24个文档生成器、V2 66份文档守卫、SQL可移植性（0新增方言欠账）及`git diff --check`通过。只读代码复核无可执行问题。未推送、部署或访问生产数据库。
 
 当前任务计数：15 DONE / 0 DOING / 40 TODO。下一项JB-015：权益发行容量及敞口原子限制。
