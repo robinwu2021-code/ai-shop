@@ -589,3 +589,24 @@ JB-010按AC及实际文件完成，独立任务表更新12 DONE/0 DOING/43 TODO�
 RED：初始AuthorizationFlowTest因缺少状态类无法编译，预期退出1；状态模型完成后4个规则用例GREEN。第一次H2持久集成RED：测试schema未含V427表；运行官方`backend/scripts/gen-test-schema.py`更新生成schema后恢复。干净全量78f430311跑3590项/20模块，635秒，3项失败：BizKeyConventionTest捕获本批UUID拼号，改用BizKey.next并补EA/EI/ED前缀；MediaRefCoverageTest被“意图”注释中的“图”误判，改为“预确认记录键”；OtpTestPhoneFlowTest随后独立8/8通过。之后定向持久/规则/Preview/MP鉴权/schema/BizKey/MediaRef/OTP共34项0失败/错误/跳过（退出0）。覆盖订单行改价失效、他人确认拒绝、同意图同键重启实例回放、旧修订取消→新修订成功、跨修订成功源唯一及成功源回退查询。Disposable MySQL9.7.2最终V427原生DDL及唯一键/CHECK场景2项通过，0跳过。
 
 JB-011按验收完成。最终干净HEAD f116a02ab1cb68dd0148a8270c3cfbdf918edb5f通过test-compile及20模块3590项全量测试，0红、约9分钟、退出0；V427原生MySQL9.7.2 DDL/唯一键/CHECK 2项通过；聚焦34项、24生成器、V2 66份、SQL方言、C/B API契约守卫通过。第一次全量暴露的BizKey内联UUID与MediaRef注释假阳性已修复；OTP 8项独立复测通过。当前任务表13 DONE/0 DOING/42 TODO。功能开关`SHOP_ENTITLEMENT_AUTHORIZATION_ENABLED`默认false；真实pay报价生产者仍待权益报价任务接入`stageTrustedIntent`，接通并完成部署配置前不会开放C09。未部署、未写生产库、未push。
+
+
+### 第一阶段设计与实现对账（2026-10-19）
+
+本批按既有两阶段方案实现A1–A6的core活动子集；完整权益/储值阶段仍未完成。模块、API、正式迁移与能力限制同步到[交付报告](./活动第一阶段-交付与验收.md)、API契约、数据库设计和类清单。Service接口/Impl、核心SqlSessionFactory、Port只在共享SPI、源事实owner读取均沿既有架构。
+
+| 阶段验收条件 | 具体验证落点 |
+|---|---|
+| 目录不冒充可执行能力 | ActivityPresetServiceImplTest、ActivityPresetExecutionPolicyTest；ActivityPhaseOneNativeMysqlTest核对46项默认禁用 |
+| 草稿修改/空字段清除、发布冻结、状态与重放 | UnifiedActivityManagementFlowTest.draftNullClearPublishPauseResumeAndEndPersistAndReplay |
+| 同一发布机制与运营停止、数据范围 | UnifiedActivityManagementFlowTest.statusPublicationAndOperationsStopSharePersistentVersionAndRevision、UnifiedActivityHttpContractTest |
+| 订单固定CUT、金额门槛/件数/上限、取消 | UnifiedOrderActivityPricingServiceTest、UnifiedOrderActivityAccountingTest、UnifiedOrderActivityTransactionTest |
+| 参与名额预算个人限购的原子性、可信终态与未知保持 | ActivityParticipationTransactionTest、ActivityParticipationServiceImplTest、ActivityPhaseOneNativeMysqlTest |
+| 内部鉴权 | InternalActivityParticipationEndpointTest |
+| 统计币种及员工门店隔离、事实去重 | ActivityMarketingSummaryServiceTest、MarketingEffectProjectorTest、UnifiedOrderActivityTransactionTest |
+| 旧团购/集单/赠品/排期兼容 | ActivityGroupBuyTest、ActivityCutTriggerFlowTest、GoodsActivityOnlyFlowTest、ComboActivityFlowTest、ActivityScheduleTest及同批活动场景 |
+| 架构与三语约束 | ArchitectureTest、BackendI18nParityTest |
+
+偏差说明：统一执行器首批仅AP009/AP010、MAIN/CNY固定CUT；其余预置明确显示缺失能力，旧玩法保留原执行链路，不为46项目录制造46个空Service。pay来源适配器由第二阶段提供，缺失时拒绝新参与；超时不能伪造失败并释放资源。跨阶段父任务只验活动子项。
+
+集中验收发现两个聚合Mapper需要显式@Mapper和定向扫描，已补齐；新增ALTER JSON字段暴露测试schema类型转换和跨表同名约束的H2差异，在生成器最终输出阶段修复，保留所有已应用迁移不变。新开关/源提供者的集成用例使用独立H2库，避免旧种子重复UPDATE污染。最终实际命令和结果以交付报告为准，不用历史全量结果代替本批定向结果。

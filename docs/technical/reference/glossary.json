@@ -27441,9 +27441,30 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "pmt_activity_budget",
+      "class": "PmtActivityBudget",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
       "table": "pmt_activity_goods",
       "class": "PmtActivityGoods",
       "zh": "活动作用在哪些商品上。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_activity_participant",
+      "class": "PmtActivityParticipant",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_activity_reservation",
+      "class": "PmtActivityReservation",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
       "module": "shop-core",
       "package": "ai.neargo.shop.promotion.entity"
     },
@@ -27455,9 +27476,30 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "pmt_activity_scope",
+      "class": "PmtActivityScope",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_activity_version",
+      "class": "PmtActivityVersion",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
       "table": "pmt_apply",
       "class": "PmtApply",
       "zh": "优惠发生记录：一单命中了什么、一张券被用了第几次。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_command_dedup",
+      "class": "PmtCommandDedup",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
       "module": "shop-core",
       "package": "ai.neargo.shop.promotion.entity"
     },
@@ -27483,6 +27525,13 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "pmt_effect_projection",
+      "class": "PmtEffectProjection",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
       "table": "pmt_enrollment",
       "class": "PmtEnrollment",
       "zh": "平台活动报名单（详细设计 §1.6）：一个商家对一个平台活动的一次报名。",
@@ -27500,6 +27549,20 @@
       "table": "pmt_period",
       "class": "PmtPeriod",
       "zh": "社区集单的一期：一个集单活动在一个截单日的全部订单（ADR-024）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_preset_template",
+      "class": "PmtPresetTemplate",
+      "zh": "A recommendation is configuration; its existence never enables an execution capability.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_recharge_tier",
+      "class": "PmtRechargeTier",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
       "module": "shop-core",
       "package": "ai.neargo.shop.promotion.entity"
     },
@@ -35892,6 +35955,16 @@
       {
         "name": "State",
         "values": [
+          "UNKNOWN",
+          "COMMITTED",
+          "ABORTED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
           "NOT_FOUND",
           "RESERVED",
           "CONFIRMED",
@@ -39187,6 +39260,14 @@
       "type": "int",
       "value": "4",
       "zh": "用户自提",
+      "module": "shop-base"
+    },
+    {
+      "host": "ActivityParticipationInternal",
+      "name": "BASE",
+      "type": "String",
+      "value": "\"/internal/core/promotion/participation\"",
+      "zh": "",
       "module": "shop-base"
     },
     {

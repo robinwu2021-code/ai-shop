@@ -40,6 +40,7 @@ public class BizVersionedActivityController {
     private final ActivityVersionService activities;
     public BizVersionedActivityController(ActivityVersionService activities) { this.activities = activities; }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @GetMapping(value = "/biz/activities", params = "model=unified")
     public PageData<ActivityView> list(@RequestParam(required = false) String scene,
             @RequestParam(required = false) String status, @RequestParam(defaultValue = "1") long page,
@@ -47,9 +48,11 @@ public class BizVersionedActivityController {
         return activities.list(actor(), scene, status, page, size);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @GetMapping(value = "/biz/activities/{activityNo}", params = "model=unified")
     public ActivityView detail(@PathVariable String activityNo) { return activities.get(actor(), activityNo); }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @PostMapping(value = "/biz/activities", params = "model=unified")
     public ActivityView save(@RequestBody @Valid DraftRequest command,
                             @RequestHeader("Idempotency-Key") String key) {
@@ -57,12 +60,14 @@ public class BizVersionedActivityController {
                 command.definition()), key);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @PostMapping("/biz/activities/{activityNo}/publish")
     public VersionView publish(@PathVariable String activityNo, @RequestBody @Valid PublishRequest command,
                                @RequestHeader("Idempotency-Key") String key) {
         return activities.publish(actor(), activityNo, command.expectedRevision(), key);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.CAMPAIGN + "')")
     @PutMapping(value = "/biz/activities/{activityNo}/status", params = "model=unified")
     public ActivityView status(@PathVariable String activityNo, @RequestBody @Valid StatusRequest command,
                                @RequestHeader("Idempotency-Key") String key) {
@@ -78,7 +83,7 @@ public class BizVersionedActivityController {
     }
 
     public record DraftRequest(@Size(max = 64) String activityNo, @PositiveOrZero Long expectedRevision,
-            @NotBlank @Size(max = 100) String name, @NotBlank String scene,
+            @Size(max = 100) String name, String scene,
             @NotBlank String templateCode, int templateVersion, @NotNull RedemptionScope storeParticipationScope,
             String audienceRef, @NotNull @Valid UnifiedActivityDefinition.Schedule schedule,
             @NotNull @Valid UnifiedActivityDefinition.Rule rule, Long quotaLimit, Long budgetLimitMinor,

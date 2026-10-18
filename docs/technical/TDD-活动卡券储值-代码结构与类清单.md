@@ -278,3 +278,20 @@ JB-008门禁基础：pay.entitlement.config.PayEntitlementProperties与policy.Pa
 | app测试 | MemberCodeResolveFlowTest、MemberCodeHttpFlowTest | 数据库隔离/TTL/会话/角色/门店子集 |
 
 识别成功不是扣款授权，后续消费者本人确认依JB-011。活动与权益owner不因统一会员码而改变；pay不存会员码、登录token或core用户实体。
+
+
+## 第一阶段实际落地补充（2026-10-19）
+
+| 模块 | 新增或接入的实现 |
+|---|---|
+| shop-base/spi.promotion | ActivityParticipationInternal共享传输DTO；ActivityParticipationOutcomePort可信来源终态扩展点 |
+| shop-base/spi.marketing | ActivityOrderFactsPort真实订单事实契约 |
+| core.promotion | ActivityPresetService/Impl；ActivityVersionService/Impl；ActivityGovernanceService/Impl；ActivityParticipationService/Impl与ActivityParticipationPortImpl；ActivityEligibilityPolicy、ActivityPresetExecutionPolicy |
+| core.promotion定价 | UnifiedOrderActivityPricingService/Impl、UnifiedOrderActivityCapabilityEvidence；既有ActivityPricingServiceImpl调用新执行器并保留旧路径 |
+| core.promotion统计恢复 | MarketingEffectProjector；ActivityMarketingSummaryService/Impl；ActivityReservationRecoveryJob复用ShedLock |
+| core.promotion持久化 | Pmt预置/版本/范围/受众/档位/预算/参与者/参与凭证/投影/幂等实体Mapper；UnifiedActivityManagementMapper显式CAS；UnifiedOrderActivityAccountingMapper条件返还 |
+| core.trade | ActivityOrderFactsPortImpl由交易owner读取；OrderServiceImpl取消后释放活动使用资源 |
+| core/merchant/platform | MerchantActivityCapabilityEvidence经MerchantScopeFactsPort及MasterDataPort核验持久主体、行业注册与资质事实 |
+| app.portal | BizActivityPresetController、BizVersionedActivityController、BizActivityMarketingSummaryController；OpsVersionedActivityController；InternalActivityParticipationEndpoint |
+
+Service遵循接口/Impl分层，跨域Port仅在shop-base SPI，聚合更新Mapper显式@Mapper并绑核心SqlSessionFactory。无真实pay来源提供者时拒绝新增参与，不注册假成功适配器。完整测试、迁移及阶段边界见[第一阶段交付报告](./活动第一阶段-交付与验收.md)。

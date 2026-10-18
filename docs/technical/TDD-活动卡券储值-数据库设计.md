@@ -199,13 +199,14 @@
 | source_event_no | VARCHAR(64) NOT NULL | pay/core源事件号 |
 | activity_no | VARCHAR(64) NOT NULL | 活动号 |
 | entity_no | VARCHAR(64) NOT NULL | 商家 |
+| store_no | VARCHAR(64) NULL | 源事实门店；历史未知不猜测，受限员工不可见未知门店 |
 | effect_kind | VARCHAR(32) NOT NULL | ORDER_DISCOUNT/COUPON_ISSUED/RECHARGE/CONSUMED |
 | amount_minor | BIGINT NULL | 金额类事实 |
 | currency | VARCHAR(8) NULL | 金额币种 |
 | units | BIGINT NULL | 数量类事实 |
 | occurred_at | DATETIME(3) NOT NULL | 业务发生UTC |
 
-索引：`UNIQUE KEY uk_effect (tenant_no,source_event_no,activity_no,effect_kind)`；`KEY ix_effect_summary (tenant_no,entity_no,effect_kind,occurred_at)`。
+索引：`UNIQUE KEY uk_effect (tenant_no,source_event_no,activity_no,effect_kind)`；`KEY ix_effect_summary (tenant_no,entity_no,effect_kind,occurred_at)`；`KEY ix_effect_store_time (tenant_no,entity_no,store_no,occurred_at)`。
 ### pmt_command_dedup
 
 写接口幂等结果，与本域业务变更同事务。
@@ -954,3 +955,10 @@ KEY ix_ent_recon_diff_query (tenant_no,entity_no,recon_no,status),
 统一身份凭证，非余额表。ticket_hash为唯一查询摘要（tenant_no,ticket_hash），原文永不落库；purpose区分MEMBER_CODE/CUSTOMER_REFERENCE，user_no为可信顾客。MEMBER_CODE的entity_no/store_no/actor_no/source_ticket_hash必须全部为空；CUSTOMER_REFERENCE必须全部非空，分别绑定商家/门店/B操作人及来源会员码摘要。issued_at/expires_at为UTC DATETIME(3)，CHECK expires_at>issued_at，半开有效期60/120秒。公共审计字段齐全，version/deleted沿第一节。
 
 索引tenant/purpose/expires_at供未来JB-051批量清理过期记录；tenant/user/purpose供账号审计和撤销。来源摘要不设跨行FK，引用具有独立截止时间；清理父码不改变引用。禁止把此表当作消费授权，源意图和本人授权仍归ord_ent_authorization。V426在统一Flyway下归核心数据源，实体MbrIdentityTicket和MemberIdentityTicketMapper；DataScopeRegistration登记SELF:user_no和MERCHANT:entity_no，服务所有读写显式tenant/purpose且在可信owner内绕过环境scope。
+
+
+## 第一阶段正式迁移与事实边界（2026-10-19）
+
+V430创建统一预置目录并插入40AP+6EP（全部默认禁用）；V431扩展pmt_activity并创建版本、范围、受众、储值档位、预算、参与者、参与凭证、效果投影与core命令幂等表；V432补投影store_no及门店时间索引。归core数据源，沿主应用统一Flyway，不修改已应用脚本。目标pay表不因此视为已交付。
+
+订单优惠的预算/个人计数/pmt_apply/效果投影必须在同一core事务；取消仅返还已使用且尚未撤销的原事实。统计按币种分组，关联原pmt_apply排除已撤销；投影不充当资金账。活动预算按活动号累计而非版本重置。参与超时只触发可信来源核查，UNKNOWN保持占用并延期重查。

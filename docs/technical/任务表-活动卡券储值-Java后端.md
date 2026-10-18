@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：15项DONE、4项DOING、36项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
+本表共55项：18项DONE、7项DOING、30项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序（2026-10-19用户调整）：第一阶段完成core活动自身能力，第二阶段完成pay权益、卡券、储值及活动权益联动。具体任务分组、跨阶段子项与验收见[两阶段执行方案](./开发计划-活动优先与权益两阶段.md)。已完成的权益公共基础直接保留；JB-015尚未开始Java实现，移至第二阶段。原任务编号与整体依赖保留，跨阶段任务仅完成活动部分不能标记整项DONE。
 
@@ -100,9 +100,9 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 
 | ID | 原任务 | 状态 | 依赖 | 模块 | 交付内容/Java类 | 验收条件/测试 |
 |---|---|---|---|---|---|---|
-| JB-028 | D04.1/D06.1 | DOING | 008 | core.promotion | ActivityPresetService/Impl、BizActivityPresetController；40AP+6EP目录、分类/业态、能力过滤；C01/C02 | ActivityPresetFlowTest：46条唯一稳定编号、默认禁用、缺能力不推荐发布；不创建46个Service |
-| JB-029 | D04.1 | DOING | 006,008,009,028 | core.promotion | ActivityService/Impl、ActivityVersionService/Impl、ActivityRuleValidator；草稿/发布/范围/受众/储值档位 | ActivityVersionFlowTest：发布不可变、ORDER/RECHARGE隔离、档位金额服务端固定、暂停不撤销原参与 |
-| JB-030 | D04.1/4.3 | TODO | 029 | core.promotion/trade | ActivityPricingService/Impl、PlatformActivityService/Impl及现有团期/赠品适配 | ActivitySceneIsolationTest：ORDER定价不混储值，现有团/期/库存/履约兼容；未实现玩法不可执行 |
+| JB-028 | D04.1/D06.1 | DONE | 008 | core.promotion | ActivityPresetService/Impl、BizActivityPresetController；40AP+6EP目录、分类/业态、能力过滤；C01/C02 | ActivityPresetServiceImplTest/ActivityPresetExecutionPolicyTest及原生MySQL：46项稳定编号、默认禁用、真实缺失能力；见第一阶段交付报告 |
+| JB-029 | D04.1 | DONE | 006,008,009,028 | core.promotion | ActivityService/Impl、ActivityVersionService/Impl、ActivityRuleValidator；草稿/发布/范围/受众/储值档位 | ActivityVersionManagementTest及UnifiedActivityManagementFlowTest：冻结发布、CAS/字段清空、状态/重放与数据域；见第一阶段交付报告 |
+| JB-030 | D04.1/4.3 | DONE | 029 | core.promotion/trade | ActivityPricingService/Impl、PlatformActivityService/Impl及现有团期/赠品适配 | UnifiedOrderActivityTransactionTest及旧活动/退券场景：ORDER隔离、真实订单记账与取消返还；未实现玩法拒绝；见第一阶段交付报告 |
 | JB-031 | D04.2 | DOING | 008,011,014,016,029 | core.promotion | ActivityParticipationService/Impl、PortImpl、EligibilityPolicy；reserve/confirm/release/query | ActivityParticipationFlowTest：预算/名额/个人限购同事务，跨版本累计；未知pay状态不按TTL释放；原生并发不超卖 |
 | JB-032 | D04.3 | TODO | 016,031 | app paybridge | ActivityBenefitCoordinator；core reserve→pay prepare/commit→core confirm | ActivityBenefitCoordinatorTest：失败补偿、事件重复/乱序、远程超时、原业务号恢复；营销占用不提前释放 |
 | JB-033 | D04.1/4.4 | DOING | 029,030,031,041 | app HTTP | BizActivityController扩展C03–C06、OpsPromotionController活动治理 | ActivityManagementApiTest：旧URL兼容、新筛选/发布/结束、主体与运营数据域隔离 |
@@ -118,7 +118,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-038 | D05.1–5.4 | TODO | 009,034,035,036,037,041 | app HTTP | BizStoredValueController、MpStoredValueController；P18–P24/P27/P28 | StoredValueApiTest：办理/到账/核销/本人记录闭环；无本金赠金字段、无线上退款/购买入口、统一会员码 |
 | JB-039 | D06.1 | TODO | 006,009,028 | core.product/app | CardProductBindingService/Impl、BizCardProductBindingController；C07 | CardProductBindingFlowTest：只绑已发布PAID_CARD、主体/币种一致；售价沿商品SKU，旧版绑定不随模板草稿改变 |
 | JB-040 | D06.2 | TODO | 012,016,039,042 | app/core.trade | CardSaleCoordinator与支付/取消Outbox订阅，按订单行/件/件内权益发卡 | PaidCardSaleFlowTest：2×2权益不漏不重发、付款/取消竞争、迟到付款起算正确；不以储值扣款冒充现金付款 |
-| JB-041 | D02.6 | TODO | 008,016,017,020,021,022,023,024,031,034,035,036,037,040 | payclient/pay-svc/core内部适配 | AppService本地/Remote承载底座、PayInternalApi/Paths、内部Endpoint及core反向适配；已实现业务完整query | EntitlementInternalApiRoundTripTest：真实HTTP DTO无wrapper嵌套、签名身份、超时/失联可查、两种部署同语义且Bean互斥 |
+| JB-041 | D02.6 | DOING | 008,016,017,020,021,022,023,024,031,034,035,036,037,040 | payclient/pay-svc/core内部适配 | AppService本地/Remote承载底座、PayInternalApi/Paths、内部Endpoint及core反向适配；已实现业务完整query | EntitlementInternalApiRoundTripTest：真实HTTP DTO无wrapper嵌套、签名身份、超时/失联可查、两种部署同语义且Bean互斥 |
 | JB-042 | D06.3 | TODO | 019,020 | pay.entitlement | EntitlementLifecycleService/Impl、PeriodDailyUsagePolicy、ent_period_bucket；首用激活/日限/到期 | PaidCardAllowanceFlowTest：并发首用仅激活一次、指定服务日、跨日释放回原bucket、不结转、月末与时区边界 |
 
 ### 2.6 通知、运营、兼容及后端收口
@@ -126,16 +126,16 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | ID | 原任务 | 状态 | 依赖 | 模块 | 交付内容/Java类 | 验收条件/测试 |
 |---|---|---|---|---|---|---|
 | JB-043 | D05.5 | TODO | 014,020,035,040 | app/message | EntitlementNotificationSubscriber，复用MessageService与O06日志 | EntitlementNotificationFlowTest：提交后发到账/核销/异常通知，去重、失败仅重试消息、收件人校验、无内部双池/明码 |
-| JB-044 | D04.4 | TODO | 014,020,029,035,040 | core.promotion/app | MarketingEffectProjector、MarketingSummaryService/Impl、BizMarketingSummaryController；C10 | MarketingSummaryFlowTest：事件幂等乱序、按币种、折扣/发行/实收/消费分项；禁止相加重复统计 |
+| JB-044 | D04.4 | DOING | 014,020,029,035,040 | core.promotion/app | MarketingEffectProjector、MarketingSummaryService/Impl、BizMarketingSummaryController；C10 | MarketingSummaryFlowTest：事件幂等乱序、按币种、折扣/发行/实收/消费分项；禁止相加重复统计 |
 | JB-045 | D02.5 | TODO | 014,016,020,035,036,041 | pay/app ops | EntitlementExceptionService/Impl、OpsEntitlementController；O01–O04 | EntitlementExceptionFlowTest：证据脱敏、并发恢复原grant/operation、查源不改余额、越权与版本冲突拒绝 |
 | JB-046 | D02.5/D05 | TODO | 016,020,035,036 | pay.entitlement | EntitlementReconciliationService/Impl；O05，对账任务/差异结果持久化按008补设计 | EntitlementReconciliationFlowTest：发行/余次/冻结/分录各自核对，重复跑幂等、不跨量纲相加、不自动调平 |
 | JB-047 | D02.5/D06.3 | TODO | 024,042 | pay/app ops | EntitlementLifecycleService冻结/解冻、OpsEntitlementController；O07及原因审计 | EntitlementFreezeFlowTest：受限权限、同请求幂等、不清余额、不绕过原预占终态/已承诺交易 |
 | JB-048 | D03.1 | TODO | 004,008 | pay.migration | EntOwnerRegistry/Mapper；旧mkt/pmt逐实例owner及精确映射 | EntitlementOwnerRegistryTest：同号不同来源可区分、无owner不猜测回退、唯一写者约束 |
 | JB-049 | D03.2 | TODO | 016,020,021,022,041,048 | app/旧core券 | LegacyCouponCompatibilityService、CouponPort路由及旧券Controller/服务适配 | EntitlementLegacyCompatibilityTest：旧DTO/URL/券码/报价/售后结果一致；原markUsed时点核对、已迁实例不双写双扣 |
 | JB-050 | D03.1/3.3工具 | TODO | 046,048,049 | pay.migration | EntitlementMigrationService/Impl；导入、对账、断点、冻结/排空/切owner工具与离线演练 | EntitlementMigrationFlowTest：mkt/pmt样本总量/余次/冻结/流水一致、重跑幂等、导入不发新通知；不执行生产切换 |
-| JB-051 | D02.5/D04.2/7 | TODO | 014,031,035,041,042,045 | core/pay jobs | ActivityReservationRecoveryJob、EntitlementRecoveryJob、EntitlementExpiryJob；持久租约与恢复 | EntitlementRecoveryFlowTest：重启/重复任务安全、未知不释放、取消确认竞争、到期与提醒去重、死信入异常 |
-| JB-052 | D04/D06能力验收 | TODO | 028,030,032,035,040,041 | core/pay集成 | 40AP/6EP逐项能力映射；既有团期/赠品/积分接口复用与限制 | PresetCapabilityAcceptanceTest：逐模板证明可执行或明确缺能力；未验收关闭，付费产品无无限次/自动续费 |
-| JB-053 | D01.2/D07后端 | TODO | 010,011,017,025,026,027,033,038,039,043,044,045,046,047 | API/权限/生成物 | 48条外部及内部写/query的OpenAPI、权限、三语、BeanValidation、运营五处登记总对账 | EntitlementApiContractCoverageTest：每条路由真实Handler、权限拒绝用例、DTO一致；生成物无新增失配 |
+| JB-051 | D02.5/D04.2/7 | DOING | 014,031,035,041,042,045 | core/pay jobs | ActivityReservationRecoveryJob、EntitlementRecoveryJob、EntitlementExpiryJob；持久租约与恢复 | EntitlementRecoveryFlowTest：重启/重复任务安全、未知不释放、取消确认竞争、到期与提醒去重、死信入异常 |
+| JB-052 | D04/D06能力验收 | DOING | 028,030,032,035,040,041 | core/pay集成 | 40AP/6EP逐项能力映射；既有团期/赠品/积分接口复用与限制 | PresetCapabilityAcceptanceTest：逐模板证明可执行或明确缺能力；未验收关闭，付费产品无无限次/自动续费 |
+| JB-053 | D01.2/D07后端 | DOING | 010,011,017,025,026,027,033,038,039,043,044,045,046,047 | API/权限/生成物 | 48条外部及内部写/query的OpenAPI、权限、三语、BeanValidation、运营五处登记总对账 | EntitlementApiContractCoverageTest：每条路由真实Handler、权限拒绝用例、DTO一致；生成物无新增失配 |
 | JB-054 | D01.4/D02.6/D07.2 | TODO | 041,049,050,051,052,053 | 部署/验证 | 本地pay与独立pay后端装配、真实目标数据库版本适配、升级/回退演练 | EntitlementDeploymentAcceptanceTest：生产profile关开组合、增量升级/新库、JSON/CHECK/锁/时区/字符集；不等于部署生产 |
 | JB-055 | D07.2后端收口 | TODO | 054 | 全Java后端 | U01–U30后端映射、场景链路、故障恢复、全量回归与代码审查收口 | 美业充值→到账→核销→本人明细，餐卡/游泳卡购买→发卡→扣次/日限；无未解决严重缺陷 |
 
@@ -169,17 +169,17 @@ git diff --check
 
 | 模块 | 目标表 | 实体 / Mapper | 主要任务 | 当前状态 |
 |---|---|---|---|---|
-| promotion | pmt_preset_template | PmtPresetTemplate / PmtPresetTemplateMapper | JB-028 | TODO，设计表/已有表待改造 |
-| promotion | pmt_activity | PmtActivity / PmtActivityMapper | JB-029 | TODO，设计表/已有表待改造 |
-| promotion | pmt_activity_version | PmtActivityVersion / PmtActivityVersionMapper | JB-029 | TODO，设计表/已有表待改造 |
-| promotion | pmt_activity_scope | PmtActivityScope / PmtActivityScopeMapper | JB-029 | TODO，设计表/已有表待改造 |
-| promotion | pmt_activity_audience | PmtActivityAudience / PmtActivityAudienceMapper | JB-029 | TODO，设计表/已有表待改造 |
-| promotion | pmt_recharge_tier | PmtRechargeTier / PmtRechargeTierMapper | JB-029 | TODO，设计表/已有表待改造 |
-| promotion | pmt_activity_budget | PmtActivityBudget / PmtActivityBudgetMapper | JB-031 | TODO，设计表/已有表待改造 |
-| promotion | pmt_activity_participant | PmtActivityParticipant / PmtActivityParticipantMapper | JB-031 | TODO，设计表/已有表待改造 |
-| promotion | pmt_activity_reservation | PmtActivityReservation / PmtActivityReservationMapper | JB-031 | TODO，设计表/已有表待改造 |
-| promotion | pmt_effect_projection | PmtEffectProjection / PmtEffectProjectionMapper | JB-044 | TODO，设计表/已有表待改造 |
-| promotion | pmt_command_dedup | PmtCommandDedup / PmtCommandDedupMapper | JB-031 | TODO，设计表/已有表待改造 |
+| promotion | pmt_preset_template | PmtPresetTemplate / PmtPresetTemplateMapper | JB-028 | DONE（core实体/Mapper及V430/V431/V432；不代表pay联动完成） |
+| promotion | pmt_activity | PmtActivity / PmtActivityMapper | JB-029 | DONE（core实体/Mapper及V430/V431/V432；不代表pay联动完成） |
+| promotion | pmt_activity_version | PmtActivityVersion / PmtActivityVersionMapper | JB-029 | DONE（core实体/Mapper及V430/V431/V432；不代表pay联动完成） |
+| promotion | pmt_activity_scope | PmtActivityScope / PmtActivityScopeMapper | JB-029 | DONE（core实体/Mapper及V430/V431/V432；不代表pay联动完成） |
+| promotion | pmt_activity_audience | PmtActivityAudience / PmtActivityAudienceMapper | JB-029 | DONE（core实体/Mapper及V430/V431/V432；不代表pay联动完成） |
+| promotion | pmt_recharge_tier | PmtRechargeTier / PmtRechargeTierMapper | JB-029 | DONE（core实体/Mapper及V430/V431/V432；不代表pay联动完成） |
+| promotion | pmt_activity_budget | PmtActivityBudget / PmtActivityBudgetMapper | JB-031 | DONE（core实体/Mapper及V430/V431/V432；不代表pay联动完成） |
+| promotion | pmt_activity_participant | PmtActivityParticipant / PmtActivityParticipantMapper | JB-031 | DONE（core实体/Mapper及V430/V431/V432；不代表pay联动完成） |
+| promotion | pmt_activity_reservation | PmtActivityReservation / PmtActivityReservationMapper | JB-031 | DONE（core实体/Mapper及V430/V431/V432；不代表pay联动完成） |
+| promotion | pmt_effect_projection | PmtEffectProjection / PmtEffectProjectionMapper | JB-044 | DONE（core实体/Mapper及V430/V431/V432；不代表pay联动完成） |
+| promotion | pmt_command_dedup | PmtCommandDedup / PmtCommandDedupMapper | JB-031 | DONE（core实体/Mapper及V430/V431/V432；不代表pay联动完成） |
 | product | prd_entitlement_binding | PrdEntitlementBinding / PrdEntitlementBindingMapper | JB-039 | TODO，设计表/已有表待改造 |
 | pay.entitlement | ent_template | EntTemplate / EntTemplateMapper | JB-004 | DONE，V425 |
 | pay.entitlement | ent_template_version | EntTemplateVersion / EntTemplateVersionMapper | JB-004 | DONE，V425 |
@@ -225,16 +225,16 @@ git diff --check
 
 | ID | 目标接口/操作 | 交付任务 | 状态 |
 |---|---|---|---|
-| C01 | GET /biz/activity-presets | JB-028 | TODO |
-| C02 | GET /biz/card-product-presets | JB-028 | TODO |
-| C03 | GET /biz/activities | JB-033 | TODO |
-| C04 | POST /biz/activities | JB-033 | TODO |
-| C05 | POST /biz/activities/{activityNo}/publish | JB-033 | TODO |
-| C06 | PUT /biz/activities/{activityNo}/status | JB-033 | TODO |
+| C01 | GET /biz/activity-presets | JB-028 | DONE（统一模型；C03/C04/C06须model=unified） |
+| C02 | GET /biz/card-product-presets | JB-028 | DONE（统一模型；C03/C04/C06须model=unified） |
+| C03 | GET /biz/activities | JB-033 | DONE（统一模型；C03/C04/C06须model=unified） |
+| C04 | POST /biz/activities | JB-033 | DONE（统一模型；C03/C04/C06须model=unified） |
+| C05 | POST /biz/activities/{activityNo}/publish | JB-033 | DONE（统一模型；C03/C04/C06须model=unified） |
+| C06 | PUT /biz/activities/{activityNo}/status | JB-033 | DONE（统一模型；C03/C04/C06须model=unified） |
 | C07 | POST /biz/card-product-bindings | JB-039 | TODO |
 | C08 | POST /biz/member-code/resolve | JB-010 | DONE |
 | C09 | POST /mp/orders/{orderNo}/entitlement-authorizations | JB-011 | DONE |
-| C10 | GET /biz/marketing-summary | JB-044 | TODO |
+| C10 | GET /biz/marketing-summary | JB-044 | DOING（ORDER分币种统计已完成；pay统计待第二阶段） |
 | C11 | POST /mp/member-code | JB-010 | DONE |
 | P01 | GET /biz/entitlement-templates | JB-025 | TODO |
 | P02 | POST /biz/entitlement-templates | JB-025 | TODO |
@@ -273,10 +273,10 @@ git diff --check
 | O05 | GET /ops/pay/entitlement-reconciliations | JB-046 | TODO |
 | O06 | GET /ops/notify-logs | JB-043 | TODO（O06复用既有日志入口） |
 | O07 | POST /ops/pay/entitlements/{instanceNo}/freeze | JB-047 | TODO |
-| I01 | ActivityParticipationPort.reserve(ReserveActivity) | JB-031 | TODO |
-| I02 | ActivityParticipationPort.confirm(ConfirmParticipation) | JB-031 | TODO |
-| I03 | ActivityParticipationPort.release(ReleaseParticipation) | JB-031 | TODO |
-| I04 | ActivityParticipationPort.query(SourceRef) | JB-031 | TODO |
+| I01 | ActivityParticipationPort.reserve(ReserveActivity) | JB-031 | DOING（core实现及内部HTTP已完成；真实pay源适配待第二阶段） |
+| I02 | ActivityParticipationPort.confirm(ConfirmParticipation) | JB-031 | DOING（core实现及内部HTTP已完成；真实pay源适配待第二阶段） |
+| I03 | ActivityParticipationPort.release(ReleaseParticipation) | JB-031 | DOING（core实现及内部HTTP已完成；真实pay源适配待第二阶段） |
+| I04 | ActivityParticipationPort.query(SourceRef) | JB-031 | DOING（core实现及内部HTTP已完成；真实pay源适配待第二阶段） |
 | I05 | EntitlementGrantPort.prepare(GrantCommand) | JB-016 | TODO |
 | I06 | EntitlementGrantPort.commit(GrantDecision) | JB-016 | TODO |
 | I07 | EntitlementGrantPort.abort(AbortGrant) | JB-016 | TODO |
@@ -448,7 +448,7 @@ JB-010历史全量证据：ecfda1ebd干净编译及3582项/20模块全绿。JB-0
 
 实现提交：`d1e260aba`。Java 21 `mvn -o -f backend/pom.xml clean test`：27模块BUILD SUCCESS；Surefire报告合计3,604项、0失败、0错误、4跳过（shop-app模块汇总2,782项）；独立隔离MySQL场景4项通过、0跳过。24个文档生成器、V2 66份文档守卫、SQL可移植性（0新增方言欠账）及`git diff --check`通过。只读代码复核无可执行问题。未推送、部署或访问生产数据库。
 
-当前任务计数：15 DONE / 4 DOING / 36 TODO。JB-028/029编码中；JB-015排入第二阶段。
+此前连续编码时计数：15 DONE / 4 DOING / 36 TODO；最新状态见下方第一阶段统一验收。JB-015排入第二阶段。
 
 
 ### 第一阶段连续编码记录（2026-10-19，未验收）
@@ -468,3 +468,22 @@ JB-010历史全量证据：ecfda1ebd干净编译及3582项/20模块全绿。JB-0
 - JB-031：已编码预算/个人参与条件预留与结算、参与凭证CAS Mapper；业务编排、可信决定查询及恢复尚未接齐。
 - 新增ActivityCapabilityEvidence是服务端能力证据扩展点；目前尚无已验收provider，预置及发布保持保守关闭，不以Bean存在宣称READY。
 - 所有本批代码尚未编译或执行测试。尚需完成参与Service/Port、core内部HTTP、活动统计/恢复、运营治理、目录实例化、能力接线与生成物同步后，才进入统一测试。
+
+
+### 第一阶段统一验收完成（2026-10-19）
+
+A1–A6的活动侧任务已完成，完整边界、代码落点、命令与结果见[第一阶段交付与验收](./活动第一阶段-交付与验收.md)。本批实现提交待紧随提交记录补录。JB-028/029/030已DONE；JB-031/033/041/044/051/052/053仅活动侧子项完成，父任务保持DOING。当前55项为18 DONE / 7 DOING / 30 TODO，无BLOCKED。
+
+| 跨阶段父任务 | 第一阶段已完成 | 第二阶段仍需完成 |
+|---|---|---|
+| 031（跨阶段） | 参与预留/确认/释放/query、可信绑定、名额预算个人限购与安全恢复 | 真实pay grant/recharge来源终态适配和跨服务恢复 |
+| 033（跨阶段） | 商家统一版本管理、运营治理与旧URL互斥 | pay联动后的完整管理场景验收 |
+| 041（跨阶段） | core活动内部4端点、共享DTO、服务token鉴权 | pay全量路由/远程代理、双部署真实往返 |
+| 044（跨阶段） | ORDER优惠事实、分币种/门店汇总、取消剔除 | 发放/充值/消费pay事实 |
+| 051（跨阶段） | 活动在途扫描、ShedLock、未知延期不释放 | pay发行/核销/到期恢复与异常闭环 |
+| 052（跨阶段） | 46预置真实能力诊断，统一AP009/AP010就绪，旧玩法兼容 | pay执行器及其余明确缺失能力逐项验收 |
+| 053（跨阶段） | 活动接口权限/类分层/三语/schema/生成清单对账 | 剩余权益储值API和运营登记总对账 |
+
+统一验证：Java21离线Maven定向151项（core25/app126），0失败/错误/跳过，21项目BUILD SUCCESS；原生MySQL9.7.2独立1项实际运行、0跳过，100次并发中20次成功、每人2次、总预算2000分无超额；生成器回归1项及消融RED→GREEN；24生成器、V2 66份文档、SQL无新增方言债务、Controller聚合守卫与diff检查通过。未运行后端全量；未推送、部署或访问生产数据库。
+
+下一执行项为第二阶段B1：JB-015发行容量与个人限额，其后JB-016 prepare/commit/abort及JB-017批量发行。沿既有任务依赖继续，权益归pay，不在core复制余额或发行账。

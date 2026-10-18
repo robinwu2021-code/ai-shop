@@ -12,6 +12,9 @@ package ai.neargo.shop.spi.platform;
  * 入驻校验一次。判错一次的后果不是显示错误，是商家进件被通道拒。
  */
 public interface MasterDataPort {
+    /** Existing merchants retain admitted industries when onboarding disables an industry. Missing facts close. */
+    default boolean industryKnown(String tenantNo, String industry) { return false; }
+
 
     /**
      * 把任意主体取值翻译成权威码（通道口径 MICRO / INDIVIDUAL / ENTERPRISE）。

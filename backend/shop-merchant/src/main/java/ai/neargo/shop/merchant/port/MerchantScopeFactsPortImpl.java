@@ -11,6 +11,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.springframework.stereotype.Component;
+import ai.neargo.shop.spi.platform.MasterDataPort;
+import ai.neargo.shop.merchant.mapper.MerchantMappers.QualificationMapper;
+import ai.neargo.shop.merchant.entity.MchQualification;
+import org.springframework.beans.factory.annotation.Autowired;
+
 
 /** Merchant ownership is checked inside the owner domain, without leaking merchant entities to core or pay. */
 @Component
@@ -22,6 +27,34 @@ public class MerchantScopeFactsPortImpl implements MerchantScopeFactsPort {
     public MerchantScopeFactsPortImpl(MchEntityMapper entities, MchStoreMapper stores) {
         this.entities = entities;
         this.stores = stores;
+    }
+
+    private MasterDataPort masterData;
+    private QualificationMapper qualifications;
+
+    @Autowired
+    public void setPromotionAdmissionFacts(MasterDataPort masterData,
+            QualificationMapper qualifications) {
+        this.masterData = masterData; this.qualifications = qualifications;
+    }
+
+    @Override
+    public boolean promotionIndustryAdmitted(String tenantNo, String entityNo) {
+        if (masterData == null || qualifications == null) return false;
+        var entity = DataScopeContext.executeWithoutScope(() -> entities.selectOne(
+                Wrappers.<MchEntity>lambdaQuery().eq(MchEntity::getTenantNo, tenantNo)
+                        .eq(MchEntity::getEntityNo, entityNo).eq(MchEntity::getStatus, MchEntity.ACTIVE)
+                        .isNull(MchEntity::getArchivedAt)));
+        // Industry.enabled controls new onboarding, not revocation of existing merchant admission.
+        if (entity == null || !masterData.industryKnown(tenantNo, entity.getIndustry())) return false;
+        // Compute expiry from time; worker-updated EXPIRED status may lag behind actual expiry.
+        return DataScopeContext.executeWithoutScope(() -> qualifications.selectCount(
+                Wrappers.<MchQualification>lambdaQuery()
+                        .eq(MchQualification::getTenantNo, tenantNo)
+                        .eq(MchQualification::getEntityNo, entityNo)
+                        .and(q -> q.in(MchQualification::getStatus, "EXPIRED", "REVOKED")
+                                .or().le(MchQualification::getExpireAt,
+                                        System.currentTimeMillis())))) == 0;
     }
 
     @Override

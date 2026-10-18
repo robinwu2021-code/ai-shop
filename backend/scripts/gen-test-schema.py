@@ -92,10 +92,25 @@ def main():
                     key=lambda p: int(re.match(r"V(\d+)", p.name).group(1))):
         replay(f.read_text(), tables, order, seeds, renames, altered)
 
+    # MySQL scopes index names to a table; H2 scopes named constraints to the schema.
+    # Rename only collisions in the generated fixture, preserving production migrations.
+    constraint_names = {}
+    for cols in tables.values():
+        for col in cols:
+            match = re.match(r"\s*CONSTRAINT\s+(\w+)\b", col, re.I)
+            if match:
+                key = match.group(1).lower()
+                constraint_names[key] = constraint_names.get(key, 0) + 1
     out = [HEADER]
     for name in order:
+        cols = []
+        for col in tables[name]:
+            match = re.match(r"(\s*CONSTRAINT\s+)(\w+)\b", col, re.I)
+            if match and constraint_names[match.group(2).lower()] > 1:
+                col = col[:match.start(2)] + name + "_" + col[match.start(2):]
+            cols.append(_h2_type(col))
         out.append(f"CREATE TABLE IF NOT EXISTS {name}\n(\n"
-                   + ",\n".join(tables[name]) + "\n);\n")
+                   + ",\n".join(cols) + "\n);\n")
     if seeds:
         # 种子里的旧表名回填成改名后的新名（见 alter_table 里 RENAME TO 那段）
         fixed = []

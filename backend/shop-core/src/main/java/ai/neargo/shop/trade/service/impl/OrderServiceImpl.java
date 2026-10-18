@@ -2247,6 +2247,8 @@ public class OrderServiceImpl implements OrderService {
         }
         stockPort.release(order.getOrderNo());
         couponPort.release(order.getOrderNo());
+        // All suborders are durably CANCELLED in this transaction before marketing returns its capacity.
+        campaignPort.release(order.getOrderNo());
         /*
          * 积分按子单退。券是整单一张、积分是每个子单一条 ——
          * 所以这里逐个子单退，而不是像券那样传 orderNo。

@@ -28,7 +28,7 @@ public class BizActivityPresetController {
             @RequestParam(required = false) String category, @RequestParam(required = false) String industryTag,
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size) {
         BizContext.requireMerchantNo();
-        return presets.list(SecurityUtils.requireUser().tenantNo(), "ACTIVITY", scene, category,
+        return presets.list(actor(), "ACTIVITY", scene, category,
                 industryTag, page, size);
     }
 
@@ -37,7 +37,15 @@ public class BizActivityPresetController {
     public PageData<PresetView> products(@RequestParam(required = false) String industryTag,
             @RequestParam(defaultValue = "1") long page, @RequestParam(defaultValue = "20") long size) {
         BizContext.requireMerchantNo();
-        return presets.list(SecurityUtils.requireUser().tenantNo(), "PAID_PRODUCT", null, null,
+        return presets.list(actor(), "PAID_PRODUCT", null, null,
                 industryTag, page, size);
+    }
+    private static ai.neargo.shop.promotion.dto.ActivityActor actor() {
+        var user = SecurityUtils.requireUser();
+        if (user.realm() != ai.neargo.shop.auth.Realm.MERCHANT) {
+            throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.FORBIDDEN);
+        }
+        return new ai.neargo.shop.promotion.dto.ActivityActor(user.tenantNo(), BizContext.requireMerchantNo(),
+                user.userNo(), BizContext.current().allowedStoresOrAll());
     }
 }

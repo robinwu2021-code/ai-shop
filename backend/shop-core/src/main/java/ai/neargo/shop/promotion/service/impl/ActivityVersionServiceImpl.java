@@ -3,6 +3,7 @@ package ai.neargo.shop.promotion.service.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.promotion.policy.ActivityPresetExecutionPolicy;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
@@ -23,6 +24,7 @@ import ai.neargo.shop.promotion.mapper.PmtActivityScopeMapper;
 import ai.neargo.shop.promotion.mapper.PmtActivityVersionMapper;
 import ai.neargo.shop.promotion.mapper.PmtPresetTemplateMapper;
 import ai.neargo.shop.promotion.mapper.PmtRechargeTierMapper;
+import ai.neargo.shop.promotion.mapper.UnifiedActivityManagementMapper;
 import ai.neargo.shop.promotion.policy.ActivityRuleValidator;
 import ai.neargo.shop.promotion.policy.PromotionFeatureGate;
 import ai.neargo.shop.promotion.service.ActivityCapabilityEvidence;
@@ -52,6 +54,7 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class ActivityVersionServiceImpl implements ActivityVersionService {
     private final ActivityMapper heads;
+    private final UnifiedActivityManagementMapper writes;
     private final PmtActivityVersionMapper versions;
     private final PmtActivityBudgetMapper budgets;
     private final PmtActivityScopeMapper scopes;
@@ -67,13 +70,13 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
     private final ObjectProvider<ActivityCapabilityEvidence> evidence;
     private final ObjectMapper json;
 
-    public ActivityVersionServiceImpl(ActivityMapper heads, PmtActivityVersionMapper versions,
+    public ActivityVersionServiceImpl(ActivityMapper heads, UnifiedActivityManagementMapper writes, PmtActivityVersionMapper versions,
             PmtActivityBudgetMapper budgets, PmtActivityScopeMapper scopes, PmtRechargeTierMapper tiers,
             PmtPresetTemplateMapper presets, ActivityCommandDeduplicator commands, ActivityRuleValidator validator,
             EntitlementScopeValidationService scopeValidation, ObjectProvider<EntitlementCatalogPort> catalog,
             ProductScopeFactsPort products, MemberQueryPort members, PromotionFeatureGate features,
             ObjectProvider<ActivityCapabilityEvidence> evidence, ObjectMapper json) {
-        this.heads = heads; this.versions = versions; this.budgets = budgets; this.scopes = scopes;
+        this.heads = heads; this.writes = writes; this.versions = versions; this.budgets = budgets; this.scopes = scopes;
         this.tiers = tiers; this.presets = presets; this.commands = commands; this.validator = validator;
         this.scopeValidation = scopeValidation; this.catalog = catalog; this.products = products;
         this.members = members; this.features = features; this.evidence = evidence; this.json = json;
@@ -83,13 +86,14 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
     @Transactional("transactionManager")
     public ActivityView saveDraft(ActivityActor actor, SaveDraft command, String requestKey) {
         if (command == null) throw BizException.of(ErrorCode.BAD_REQUEST);
-        validator.validate(command.definition());
         var replay = commands.replay(actor, "ACTIVITY_DRAFT", requestKey, command, ActivityView.class);
         if (replay.isPresent()) {
             if (!visible(actor, replay.get().definition())) throw BizException.of(ErrorCode.NOT_FOUND);
             return replay.get();
         }
-        references(actor, command.definition());
+        var resolved = defaults(actor, command.definition());
+        validator.validate(resolved);
+        references(actor, resolved);
         String no = command.activityNo() == null ? BizKey.next(BizKey.PROMO_ACTIVITY) : command.activityNo();
         return commands.execute(actor, "ACTIVITY_DRAFT", requestKey, command, no, ActivityView.class, () -> {
             features.requireActivity();
@@ -106,16 +110,16 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
                 row = owned(actor, no, true);
                 revision(row, command.expectedRevision());
                 if (!"DRAFT".equals(row.getStatus())) throw BizException.of(ErrorCode.CONFLICT);
-                if (!row.getScene().equals(command.definition().scene())) throw BizException.of(ErrorCode.CONFLICT);
+                if (!row.getScene().equals(resolved.scene())) throw BizException.of(ErrorCode.CONFLICT);
             }
-            var d = command.definition();
+            var d = resolved;
             row.setName(d.name()); row.setScene(d.scene());
             row.setScheduleType(d.schedule().type()); row.setStartAt(d.schedule().startAt().toEpochMilli());
             row.setEndAt(d.schedule().endAt() == null ? null : d.schedule().endAt().toEpochMilli());
             row.setDraftSnapshot(json.writeValueAsString(d));
             row.setUpdatedAt(now()); row.setUpdatedBy(actor.actorNo());
             if (command.activityNo() == null) changed(heads.insert(row));
-            else changed(DataScopeContext.executeWithoutScope(() -> heads.updateById(row)));
+            else persist(row);
             return view(row);
         });
     }
@@ -134,6 +138,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
         references(actor, definition);
         String audience = definition.audienceRef() == null ? null
                 : members.segmentSnapshot(actor.entityNo(), definition.audienceRef());
+        requireReady(actor, definition);
         return commands.execute(actor, "ACTIVITY_PUBLISH", requestKey, List.of(activityNo, expectedRevision),
                 activityNo, VersionView.class, () -> {
             features.requireActivity();
@@ -143,10 +148,10 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
                     || !candidate.getDraftSnapshot().equals(row.getDraftSnapshot())) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
-            requireReady(actor, definition);
             var version = new PmtActivityVersion(); audit(version, actor);
             version.setVersionNo("AV" + UUID.randomUUID().toString().replace("-", ""));
-            version.setActivityNo(activityNo); version.setVersionIndex(1); version.setSchemaVersion(1);
+            int versionIndex = versions.lastIndex(actor.tenantNo(), activityNo) + 1;
+            version.setActivityNo(activityNo); version.setVersionIndex(versionIndex); version.setSchemaVersion(1);
             version.setCurrency(definition.currency()); version.setScheduleType(definition.schedule().type());
             version.setStartsAt(utc(definition.schedule().startAt()));
             version.setEndsAt(definition.schedule().endAt() == null ? null : utc(definition.schedule().endAt()));
@@ -161,11 +166,13 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
             budget.setQuotaLimit(definition.quotaLimit()); budget.setQuotaHeld(0L); budget.setQuotaUsed(0L);
             budget.setBudgetLimitMinor(definition.budgetLimitMinor()); budget.setBudgetHeldMinor(0L);
             budget.setBudgetUsedMinor(0L); budget.setPerUserLimit(definition.perUserLimit());
+            // Initial publication creates one lifetime budget. Never reset accumulated exposure.
+            if (budgets.lock(actor.tenantNo(), activityNo) != null) throw BizException.of(ErrorCode.CONFLICT);
             changed(budgets.insert(budget));
             row.setCurrentVersionNo(version.getVersionNo()); row.setStatus("RUNNING");
             row.setUpdatedAt(now()); row.setUpdatedBy(actor.actorNo());
-            changed(DataScopeContext.executeWithoutScope(() -> heads.updateById(row)));
-            return new VersionView(activityNo, version.getVersionNo(), 1, version.getRuleHash(),
+            persist(row);
+            return new VersionView(activityNo, version.getVersionNo(), versionIndex, version.getRuleHash(),
                     version.getPublishedAt().toInstant(ZoneOffset.UTC), definition);
         });
     }
@@ -182,20 +189,30 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
         var replay = commands.replay(actor, "ACTIVITY_STATUS", requestKey,
                 List.of(activityNo, expectedRevision, status, reason), ActivityView.class);
         if (replay.isPresent()) return replay.get();
+        var candidate = owned(actor, activityNo, false);
+        boolean publishDraft = "DRAFT".equals(candidate.getStatus()) && "RUNNING".equals(status);
+        if (publishDraft) {
+            // Same resource/transaction as explicit publish; the status command has its own stable reply.
+            publish(actor, activityNo, expectedRevision, "PUB" + ActivityCommandDeduplicator.hash(requestKey).substring(0, 48));
+        } else if ("RUNNING".equals(status)) {
+            features.requireActivity();
+            validator.validatePublication(definition(candidate), Instant.now());
+            references(actor, definition(candidate));
+            requireReady(actor, definition(candidate));
+        }
         return commands.execute(actor, "ACTIVITY_STATUS", requestKey,
                 List.of(activityNo, expectedRevision, status, reason), activityNo, ActivityView.class, () -> {
-            var row = owned(actor, activityNo, true); revision(row, expectedRevision);
+            var row = owned(actor, activityNo, true); revision(row, publishDraft ? expectedRevision + 1 : expectedRevision);
+            if (publishDraft) return view(row);
             if ("ENDED".equals(row.getStatus()) || ("DRAFT".equals(row.getStatus()) && !"ENDED".equals(status))) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
-            if ("RUNNING".equals(status)) {
-                features.requireActivity();
-                validator.validatePublication(definition(row), Instant.now());
-                requireReady(actor, definition(row));
+            if (!publishDraft && !candidate.getVersion().equals(row.getVersion())) {
+                throw BizException.of(ErrorCode.CONFLICT);
             }
             row.setStatus(status); row.setUpdatedAt(now()); row.setUpdatedBy(actor.actorNo());
             if ("ENDED".equals(status)) row.setEndedReason("MANUAL");
-            changed(DataScopeContext.executeWithoutScope(() -> heads.updateById(row)));
+            persist(row);
             return view(row);
         });
     }
@@ -260,6 +277,13 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
 
     private void requireReady(ActivityActor actor, UnifiedActivityDefinition d) {
         var preset = preset(actor, d);
+        if (!new ActivityPresetExecutionPolicy().missing(actor, d).isEmpty()) {
+            throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        }
+        // Phase one does not publish rules for executors which have not implemented this schema.
+        if ("ORDER".equals(d.scene()) && !UnifiedOrderActivityPricingServiceImpl.supportsDefinition(d)) {
+            throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        }
         Set<ActivityCapability> ready = new HashSet<>();
         evidence.orderedStream().forEach(provider -> ready.addAll(provider.verifiedFor(actor)));
         List<String> required = new ArrayList<>();
@@ -270,13 +294,37 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
         }
     }
 
+    /** Seed metadata supplies defaults only; prices, benefits, scope and schedules are merchant inputs. */
+    private UnifiedActivityDefinition defaults(ActivityActor actor, UnifiedActivityDefinition d) {
+        if (d == null || d.templateCode() == null) throw BizException.of(ErrorCode.BAD_REQUEST);
+        var preset = presets.catalog(actor.tenantNo(), "ACTIVITY").stream()
+                .filter(row -> d.templateCode().equals(row.getTemplateCode()))
+                .filter(row -> d.templateVersion() == 0 || d.templateVersion() == row.getTemplateVersion())
+                .findFirst().orElseThrow(() -> BizException.of(ErrorCode.BAD_REQUEST));
+        var schema = json.readTree(preset.getDraftSchema());
+        String scene = schema.path("scene").asText();
+        if ("COUPON_DISTRIBUTION".equals(scene)) scene = "ENTITLEMENT_GRANT";
+        return new UnifiedActivityDefinition(d.name() == null ? preset.getName() : d.name(),
+                d.scene() == null ? scene : d.scene(), preset.getTemplateCode(), preset.getTemplateVersion(),
+                d.storeParticipationScope(), d.audienceRef(), d.schedule(), d.rule(), d.quotaLimit(),
+                d.budgetLimitMinor(), d.perUserLimit(), d.currency());
+    }
+
     private PmtPresetTemplate preset(ActivityActor actor, UnifiedActivityDefinition d) {
         return presets.catalog(actor.tenantNo(), "ACTIVITY").stream()
                 .filter(row -> row.getTemplateCode().equals(d.templateCode())
                         && row.getTemplateVersion() == d.templateVersion())
                 .filter(row -> {
                     String scene = json.readTree(row.getDraftSchema()).path("scene").asText();
-                    return d.scene().equals("COUPON_DISTRIBUTION".equals(scene) ? "ENTITLEMENT_GRANT" : scene);
+                    var schema = json.readTree(row.getDraftSchema());
+                    if (!d.scene().equals("COUPON_DISTRIBUTION".equals(scene) ? "ENTITLEMENT_GRANT" : scene)) return false;
+                    String base = schema.path("baseTemplate").asText();
+                    if ("A01".equals(base) && !"AMOUNT".equals(d.rule().trigger().type())) return false;
+                    if ("A02".equals(base) && !"QTY".equals(d.rule().trigger().type())) return false;
+                    String effect = schema.path("effect").asText();
+                    if ("RECHARGE".equals(d.scene())) return "STORED_VALUE_BONUS".equals(effect);
+                    String expected = "COUPON".equals(effect) ? "ENTITLEMENT" : effect;
+                    return d.rule().benefits().stream().allMatch(benefit -> expected.equals(benefit.kind()));
                 }).findFirst().orElseThrow(() -> BizException.of(ErrorCode.BAD_REQUEST));
     }
 
@@ -301,6 +349,10 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
     private ActivityView view(PmtActivity row) {
         return new ActivityView(row.getActivityNo(), row.getVersion(), row.getStatus(),
                 row.getCurrentVersionNo(), definition(row));
+    }
+    private void persist(PmtActivity row) {
+        changed(DataScopeContext.executeWithoutScope(() -> writes.update(row)));
+        row.setVersion(row.getVersion() + 1);
     }
     private static void revision(PmtActivity row, Long revision) {
         if (revision == null || !revision.equals(row.getVersion())) throw BizException.of(ErrorCode.CONFLICT);

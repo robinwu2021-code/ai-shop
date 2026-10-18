@@ -209,6 +209,7 @@ CREATE TABLE pmt_effect_projection (
     source_event_no VARCHAR(64) NOT NULL COMMENT 'pay/core源事件号',
     activity_no VARCHAR(64) NOT NULL COMMENT '活动号',
     entity_no VARCHAR(64) NOT NULL COMMENT '商家',
+    store_no VARCHAR(64) NULL COMMENT '源事实门店；未知不猜测',
     effect_kind VARCHAR(32) NOT NULL COMMENT 'ORDER_DISCOUNT/COUPON_ISSUED/RECHARGE/CONSUMED',
     amount_minor BIGINT NULL COMMENT '金额类事实',
     currency VARCHAR(8) NULL COMMENT '金额币种',
@@ -222,7 +223,8 @@ CREATE TABLE pmt_effect_projection (
     updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
     PRIMARY KEY (id),
     UNIQUE KEY uk_effect (tenant_no,source_event_no,activity_no,effect_kind),
-    KEY ix_effect_summary (tenant_no,entity_no,effect_kind,occurred_at)
+    KEY ix_effect_summary (tenant_no,entity_no,effect_kind,occurred_at),
+    KEY ix_effect_store_time (tenant_no,entity_no,store_no,occurred_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='非权威可重建营销统计，量纲分开';
 
 CREATE TABLE pmt_command_dedup (

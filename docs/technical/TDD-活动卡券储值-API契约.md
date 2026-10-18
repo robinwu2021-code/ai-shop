@@ -381,6 +381,14 @@ C11由core.member签发，tenant/user仅来自可信C会话；响应`{memberCode
 CustomerIdentityPort本地实现归member，向源业务只返回userNo；远程传输路由列入JB-041，当前不创建内部HTTP Handler。C端确认时必须由源业务使用冻结的原B操作人范围查询引用，不能改成C操作人，也不能将操作者直接当顾客。引用用于建立源意图，消费者确认与持久授权依JB-011另行处理。目标48条之外的旧会员接口保持兼容，不新增单独储值核销码。
 
 
-## 第一阶段编码中的兼容选择（2026-10-19，尚未验收）
+## 第一阶段运行契约（2026-10-19）
 
-C03/C04/C06与既有活动详情URL保留历史请求和响应；新统一模型显式增加查询参数`model=unified`选择，Handler条件互斥。C04仍采用本文ActivityDraft扁平字段，内部转换为UnifiedActivityDefinition；新管理响应当前以`definition`提供完整规则，最终字段映射在阶段验收统一对账。C05新增显式发布路由，不改变旧保存即运行的存量模型。统一模型暂仅允许DRAFT通过C05发布；统一状态接口的DRAFT→RUNNING兼容委派仍待后续接线，当前安全拒绝，不能将此子项记为已完成。编码期间不运行验证，OpenAPI及客户端生成物在第一阶段代码接齐后统一更新。
+C03/C04/C06及活动详情沿原URL，以`model=unified`选择新Handler；缺省仍为旧契约，双方条件互斥。C04请求保持ActivityDraft扁平字段，响应ActivityView包含activityNo/status/revision/currentVersionNo/definition；definition为统一类型化规则。C05 POST `/biz/activities/{activityNo}/publish`请求`{expectedRevision}`返回VersionView。状态请求`{expectedRevision,status,reason}`；DRAFT→RUNNING委派同一发布校验及持久幂等。所有写操作必传Idempotency-Key；同键异参拒绝，成功重放不受后来开关/状态变化影响，但仍校验当前调用人的数据范围。B端沿biz:campaign，身份从MERCHANT会话与门店授权推导。
+
+运营GET `/ops/promotion/activities?model=unified`、POST `/ops/promotion/activities/{activityNo}/stop?model=unified`复用既有运营读/改权限；强停请求包含expectedRevision/reason，数据域在查询和写入前校验，不让旧stop绕过版本规则。
+
+core内部POST `/internal/core/promotion/participation/{reserve,confirm,release,query}`使用ActivityParticipationInternal共享DTO和X-Internal-Token；未配置或错误token拒绝。context不是业务凭据，reserve核验来源拥有者事实，confirm/release核验可信终态、同租户及完整原命令绑定。未接pay来源提供者明确不可用；UNKNOWN不按TTL释放。此为JB-041的core子集，不代表pay远程协议已完成。
+
+GET `/biz/marketing-summary?from=ISO-UTC&to=ISO-UTC&storeNo=...`返回币种分组及ORDER优惠额/事件数，最长366天，按可信员工门店过滤。旧`/biz/marketing/summary`保留，不把缺币种历史金额混合统计。C端账单/核销与pay业务接口留在第二阶段。
+
+46项预置目录展示真实readiness与missingCapabilities；统一可执行预置仅AP009/AP010、MAIN/CNY固定CUT。其他预置返回PRESET_EXECUTOR等诊断；仅开部署开关或目录行不能绕过执行器校验。服务端资格证据核验商家、行业、门店，冻结人群条件与规则随已发布版本读取。

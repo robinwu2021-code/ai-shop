@@ -201,6 +201,8 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         DataScopeContext.executeWithoutScope(() -> applyMapper.update(null,
                 Wrappers.<PmtApply>lambdaUpdate()
                         .eq(PmtApply::getOrderNo, orderNo)
+                        // Coupon reversal must not preempt activity capacity reversal on the same order.
+                        .eq(PmtApply::getPromoType, PmtApply.COUPON)
                         .isNull(PmtApply::getRevertedAt)
                         .set(PmtApply::getRevertedAt, now)));
     }
