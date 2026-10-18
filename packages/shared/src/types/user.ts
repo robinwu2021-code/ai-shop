@@ -137,6 +137,12 @@ export interface PointRecord {
 }
 /** 用户积分账户。**单位是积分个数** —— 商家侧是钱，用 {@link MerchantPointAccount} */
 export interface PointAccount {
+  /** 服务端积分类型的兑换比例；未配置时不展示折算价值。 */
+  ratePoints?: number;
+  rateMinor?: number;
+  /** 当前类型的规则由服务端提供，未给时不展示旧规则常量。 */
+  maxDeductRatio?: number;
+  inactiveDays?: number;
   /** 当前可用余额。**只含能花的分**，待生效的在 pendingBalance */
   balance: number;
   /**

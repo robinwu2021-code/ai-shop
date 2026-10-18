@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { PointsCreate, PointsFallbackChange, PointsTermsChange, PointsTypeChange } from "@/lib/types";
+import type { OrderPointsIntegrationChange, PointsCreate, PointsFallbackChange, PointsTermsChange, PointsTypeChange } from "@/lib/types";
 import { pointsCommand } from "@/lib/points-command";
 import { usePointsText } from "@/lib/points-i18n";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,18 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
   const [storeInput, setStoreInput] = useState("");
   const [store, setStore] = useState("");
   const [after, setAfter] = useState(0);
+  const [integrationInput, setIntegrationInput] = useState("");
+  const [integrationStore, setIntegrationStore] = useState("");
+  const [integrationScene, setIntegrationScene] = useState<"ONLINE" | "OFFLINE">("ONLINE");
+  const integration = useQuery({ queryKey: ["points-order-integration", integrationStore, integrationScene],
+    queryFn: () => api.orderPointsIntegration({ storeNo: integrationStore, scene: integrationScene }),
+    enabled: !!integrationStore });
+  const integrationIntent = useRef<{ body: string; requestId: string } | undefined>(undefined);
+  const integrationSave = useMutation({ mutationFn: (draft: OrderPointsIntegrationChange) => {
+    const next = pointsCommand({ ...draft, requestId: "" }, integrationIntent.current);
+    integrationIntent.current = next.intent;
+    return api.changeOrderPointsIntegration({ ...draft, requestId: next.command.requestId });
+  }, onSuccess: () => { integrationIntent.current = undefined; void qc.invalidateQueries({ queryKey: ["points-order-integration", integrationStore, integrationScene] }); } });
   const agreements = useQuery({ queryKey: ["points-agreements", code, store, after], queryFn: () => api.pointsAgreements({ typeCode: code, storeNo: store, after, limit: 50 }), enabled: !!code && !!store });
   const intent = useRef<{ body: string; requestId: string } | undefined>(undefined);
   const save = useMutation({ mutationFn: (command: Command) => {
@@ -42,6 +54,7 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
     save.mutate({ ...command, value: { ...command.value, requestId: next.command.requestId } } as Command);
   }
   const error = types.error || rule.error || terms.error || agreements.error;
+  const integrationError = integration.error || integrationSave.error;
   const card = "space-y-3 rounded-card border border-border p-4";
   return <div className="space-y-4">
     <SectionHeader title={t("积分类型、规则与门店协议", "Points types, rules and store agreements")} />
@@ -88,6 +101,33 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
       {agreements.data?.rows.map((r) => <div key={r.id} className="border-t border-border py-2"><p dir="auto">{r.agreement.storeNo} · {r.agreement.agreementNo} · {r.state} · v{r.version}</p><p dir="auto">{t("签署人 / 条款版本 / 结算方式", "Signer / terms version / settlement mode")}: {r.agreement.signedBy} / {r.agreement.termsVersion} / {r.agreement.settleMode}</p></div>)}
       {agreements.data?.rows.length === 0 && <p dir="auto">{t("此门店无协议记录。", "No agreement records for this store.")}</p>}
       {agreements.data && <div className="flex gap-2"><Button disabled={!after} onClick={() => setAfter(0)}>{t("首页", "First page")}</Button><Button disabled={!agreements.data.hasMore || agreements.isFetching} onClick={() => setAfter(agreements.data.next)}>{t("下一页", "Next page")}</Button></div>}
+    </div>
+    <div className={card}>
+      <h3 className="txt-heading">{t("订单积分按门店接线", "Order points by store")}</h3>
+      <p dir="auto">{t("默认脱离。停新增保留旧单清偿；完全脱离须服务端确认没有存量义务。", "Detached by default. Draining stops new orders while existing obligations finish; full detachment requires server proof of clearance.")}</p>
+      <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); setIntegrationStore(integrationInput.trim()); }}>
+        <label>{t("门店编号", "Store ID")}<Input dir="auto" required value={integrationInput} onChange={(e) => setIntegrationInput(e.target.value)} /></label>
+        <label>{t("场景", "Scene")}<Select value={integrationScene} onChange={(e) => setIntegrationScene(e.target.value as "ONLINE" | "OFFLINE")}><option value="ONLINE">ONLINE</option><option value="OFFLINE">OFFLINE</option></Select></label>
+        <Button type="submit">{t("查询", "Search")}</Button>
+      </form>
+      {integration.isFetching && <p dir="auto">{t("加载中…", "Loading…")}</p>}
+      {integration.data && <form key={`${integrationStore}:${integrationScene}:${integration.data.version}`} className="space-y-3" onSubmit={(e) => {
+        e.preventDefault(); const d = new FormData(e.currentTarget);
+        integrationSave.mutate({ requestId: "", storeNo: integrationStore, scene: integrationScene,
+          mode: String(d.get("mode")) as OrderPointsIntegrationChange["mode"],
+          earnEnabled: d.get("earnEnabled") === "on", redeemEnabled: d.get("redeemEnabled") === "on",
+          expectedVersion: integration.data.version, reason: String(d.get("reason")) });
+      }}>
+        <p dir="auto">{integration.data.mode} · v{integration.data.version} · {integration.data.actor ?? "—"} · {integration.data.reason ?? "—"}</p>
+        <div className="flex flex-wrap gap-3">
+          <label>{t("模式", "Mode")}<Select name="mode" defaultValue={integration.data.mode} disabled={!canEdit}><option>DETACHED</option><option>ACTIVE</option><option>DRAINING</option></Select></label>
+          <label><input type="checkbox" name="earnEnabled" defaultChecked={integration.data.earnEnabled} disabled={!canEdit} /> {t("返分", "Earning")}</label>
+          <label><input type="checkbox" name="redeemEnabled" defaultChecked={integration.data.redeemEnabled} disabled={!canEdit} /> {t("抵扣", "Redemption")}</label>
+          <label>{t("原因", "Reason")}<Input dir="auto" name="reason" required disabled={!canEdit} /></label>
+        </div>
+        {canEdit && <Button type="submit" disabled={integrationSave.isPending}>{t("提交版本化变更", "Save versioned change")}</Button>}
+      </form>}
+      {integrationError && <p role="alert" className="text-destructive">{integrationError instanceof Error ? integrationError.message : String(integrationError)}</p>}
     </div>
   </div>;
 }

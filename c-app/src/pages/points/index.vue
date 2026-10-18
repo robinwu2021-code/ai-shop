@@ -6,7 +6,6 @@
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
-import { POINTS } from "@shared/utils/constants";
 import { datetime, isoDate, money } from "@shared/utils/format";
 import type { PointAccount, PointRecord } from "@shared/types";
 
@@ -14,9 +13,12 @@ const account = ref<PointAccount | null>(null);
 const records = ref<PointRecord[]>([]);
 
 /** 余额折算成钱，让用户知道这些积分到底值多少 */
-const worthMinor = computed(() =>
-  Math.floor((account.value?.balance ?? 0) / POINTS.perMinor),
-);
+const worthMinor = computed(() => {
+  const ratePoints = account.value?.ratePoints;
+  const rateMinor = account.value?.rateMinor;
+  if (!ratePoints || !rateMinor) return null;
+  return Math.floor((account.value?.balance ?? 0) * rateMinor / ratePoints);
+});
 
 /** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
 const loaded = ref(false);
@@ -44,7 +46,7 @@ onShow(load);
     <view class="sh-card hero">
       <text class="txt-caption hero__label">{{ $t("points.balance") }}</text>
       <text class="txt-hero hero__v sh-num">{{ account?.balance ?? 0 }}</text>
-      <text class="txt-caption hero__worth sh-num">{{ $t("points.worth", { p: money(worthMinor) }) }}</text>
+      <text v-if="worthMinor !== null" class="txt-caption hero__worth sh-num">{{ $t("points.worth", { p: money(worthMinor) }) }}</text>
 
       <!-- 待生效必须单独显示：合进余额的话，用户会看到「我有 500 分」却只能用 400 -->
       <text v-if="account?.pendingBalance" class="txt-caption hero__pending sh-num">
@@ -69,17 +71,17 @@ onShow(load);
     <!-- 规则：积分能抵钱，规则必须写在明面上 -->
     <view class="sh-card block rules">
       <text class="txt-caption txt-bold rules__title">{{ $t("points.rules") }}</text>
-      <text class="txt-caption rules__t">
-        {{ $t("points.ruleRate", { n: POINTS.perMinor * 100 }) }}
+      <text v-if="account?.ratePoints && account?.rateMinor" class="txt-caption rules__t">
+        {{ $t("points.ruleRate", { n: account.ratePoints * 100 / account.rateMinor }) }}
       </text>
-      <text class="txt-caption rules__t">
-        {{ $t("points.ruleCap", { n: Math.round(POINTS.maxDeductRatio * 100) }) }}
+      <text v-if="account?.maxDeductRatio != null" class="txt-caption rules__t">
+        {{ $t("points.ruleCap", { n: Math.round(account.maxDeductRatio * 100) }) }}
       </text>
       <text class="txt-caption rules__t">
         {{ $t("points.ruleGrant") }}
       </text>
-      <text class="txt-caption rules__t">
-        {{ $t("points.ruleExpire", { n: POINTS.inactiveDays }) }}
+      <text v-if="account?.inactiveDays != null" class="txt-caption rules__t">
+        {{ $t("points.ruleExpire", { n: account.inactiveDays }) }}
       </text>
       <text v-if="account?.expiringSoon" class="txt-caption rules__warn sh-num">
         {{ $t("points.expiring", {
