@@ -157,7 +157,7 @@ class PointsRefundPreparationTest {
             if (!installed) {
                 new ResourceDatabasePopulator(
                                 new ClassPathResource(
-                                        "db/migration/V413__refund_verified_cash_evidence.sql"))
+                                        "db/migration/V443__refund_verified_cash_evidence.sql"))
                         .execute(dataSource);
             }
         } catch (SQLException failure) {

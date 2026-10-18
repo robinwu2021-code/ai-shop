@@ -60,7 +60,8 @@ class SchemaDriftTest {
     private static final Pattern TABLE = Pattern.compile(
             "CREATE TABLE\\s+(?:IF NOT EXISTS\\s+)?(\\w+)\\s*\\((.*?)\\n\\)", Pattern.DOTALL);
     private static final Pattern COLUMN = Pattern.compile("^\\s{2,}(\\w+)\\s+[A-Z]", Pattern.MULTILINE);
-    private static final Set<String> NOT_COLUMNS = Set.of("UNIQUE", "KEY", "CONSTRAINT", "PRIMARY", "INDEX");
+    private static final Set<String> NOT_COLUMNS = Set.of(
+            "UNIQUE", "KEY", "CONSTRAINT", "PRIMARY", "INDEX", "GENERATED");
     private static final Pattern RENAME = Pattern.compile(
             "ALTER TABLE\\s+(\\w+)\\s+RENAME COLUMN\\s+(\\w+)\\s+TO\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
     /**

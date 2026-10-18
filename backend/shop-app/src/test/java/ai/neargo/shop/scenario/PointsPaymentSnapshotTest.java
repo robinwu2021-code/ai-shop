@@ -32,7 +32,7 @@ class PointsPaymentSnapshotTest {
         var cmd = request();
         String out = ledger.open(cmd);
         assertThat(proofs.verified(cmd.orderNo())).isEmpty();
-        ledger.settle(new SettlePort.PaymentSettled(out, "TEST", "trusted-" + out, 1234, 123456L));
+        ledger.settle(new SettlePort.PaymentSettled(out, "TEST", "trusted-" + out, 1234, 123456L, "KWD"));
         var proof = proofs.verified(cmd.orderNo()).orElseThrow();
         assertThat(proof.userNo()).isEqualTo(cmd.userNo());
         assertThat(proof.currency()).isEqualTo("KWD");
@@ -46,7 +46,7 @@ class PointsPaymentSnapshotTest {
     void mismatched_verified_cash_or_missing_original_request_fails_closed() {
         var cmd = request();
         String out = ledger.open(cmd);
-        ledger.settle(new SettlePort.PaymentSettled(out, "TEST", "trusted-" + out, 1235, 123456L));
+        ledger.settle(new SettlePort.PaymentSettled(out, "TEST", "trusted-" + out, 1235, 123456L, "KWD"));
         assertThatThrownBy(() -> proofs.verified(cmd.orderNo()))
                 .hasMessageContaining("POINTS_PAYMENT_AMOUNT_MISMATCH");
         jdbc.update("UPDATE stl_payment SET payment_request_json=NULL WHERE out_trade_no=?", out);
@@ -68,7 +68,7 @@ class PointsPaymentSnapshotTest {
                         original.currency(),
                         original.stores());
         String out = ledger.open(cmd);
-        ledger.settle(new SettlePort.PaymentSettled(out, "FREE", "FREE:" + out, 0, 123456L));
+        ledger.settle(new SettlePort.PaymentSettled(out, "FREE", "FREE:" + out, 0, 123456L, "KWD"));
         var proof = proofs.verified(cmd.orderNo()).orElseThrow();
         assertThat(proof.channel()).isEqualTo("FREE");
         assertThat(proof.forSubOrder(cmd.stores().getFirst().subOrderNo()).channel())

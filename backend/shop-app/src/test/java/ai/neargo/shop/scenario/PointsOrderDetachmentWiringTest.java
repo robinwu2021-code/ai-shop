@@ -28,8 +28,8 @@ class PointsOrderDetachmentWiringTest {
     @Test
     void wired_guard_keeps_draining_until_pay_proves_clear() {
         new ResourceDatabasePopulator(
-                        new ClassPathResource("db/migration/V427__order_points_integration.sql"),
-                        new ClassPathResource("db/migration/V428__order_points_binding.sql"))
+                        new ClassPathResource("db/migration/V452__order_points_integration.sql"),
+                        new ClassPathResource("db/migration/V453__order_points_binding.sql"))
                 .execute(data);
         String st = "ST_" + UUID.randomUUID().toString().substring(0, 12);
         policies.change(

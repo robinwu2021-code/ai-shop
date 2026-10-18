@@ -71,7 +71,7 @@ class PointsOrderIntegrationPolicyTest {
     @BeforeAll
     void schema() {
         new ResourceDatabasePopulator(
-                        new ClassPathResource("db/migration/V427__order_points_integration.sql"))
+                        new ClassPathResource("db/migration/V452__order_points_integration.sql"))
                 .execute(data);
     }
 

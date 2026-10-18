@@ -35,9 +35,9 @@ class PointsOrderSourceOutboxTest {
     @BeforeAll
     void schema() {
         new ResourceDatabasePopulator(
-                        new ClassPathResource("db/migration/V427__order_points_integration.sql"),
-                        new ClassPathResource("db/migration/V428__order_points_binding.sql"),
-                        new ClassPathResource("db/migration/V429__order_points_source_facts.sql"))
+                        new ClassPathResource("db/migration/V452__order_points_integration.sql"),
+                        new ClassPathResource("db/migration/V453__order_points_binding.sql"),
+                        new ClassPathResource("db/migration/V454__order_points_source_facts.sql"))
                 .execute(data);
     }
 

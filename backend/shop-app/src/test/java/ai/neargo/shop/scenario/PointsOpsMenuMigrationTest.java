@@ -64,7 +64,7 @@ class PointsOpsMenuMigrationTest {
         grant(jdbc, "REVOKED", "OPS", 1);
         grant(jdbc, "OTHER_END", "BIZ", 0);
         var migration =
-                new ClassPathResource("db/migration/V426__points_operations_workspace_menu.sql");
+                new ClassPathResource("db/migration/V451__points_operations_workspace_menu.sql");
         new ResourceDatabasePopulator(migration).execute(data);
         assertThat(
                         jdbc.queryForObject(

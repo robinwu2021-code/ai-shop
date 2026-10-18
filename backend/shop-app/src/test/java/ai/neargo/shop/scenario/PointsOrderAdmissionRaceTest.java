@@ -51,8 +51,8 @@ class PointsOrderAdmissionRaceTest {
             Assumptions.assumeTrue(c.getMetaData().getDatabaseProductName().contains("MySQL"));
         }
         new ResourceDatabasePopulator(
-                        new ClassPathResource("db/migration/V427__order_points_integration.sql"),
-                        new ClassPathResource("db/migration/V428__order_points_binding.sql"))
+                        new ClassPathResource("db/migration/V452__order_points_integration.sql"),
+                        new ClassPathResource("db/migration/V453__order_points_binding.sql"))
                 .execute(data);
     }
 
