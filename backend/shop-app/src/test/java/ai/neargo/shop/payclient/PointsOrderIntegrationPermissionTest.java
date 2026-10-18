@@ -10,6 +10,8 @@ import ai.neargo.shop.portal.ops.pay.OpsOrderPointsIntegrationController;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 import ai.neargo.shop.trade.order.points.PointsIntegrationPolicyService;
 import ai.neargo.shop.trade.order.points.PointsIntegrationPolicyService.*;
+import ai.neargo.shop.trade.order.points.OrderPointsBindingService;
+import ai.neargo.shop.trade.order.points.OrderPointsRecoveryService;
 
 import org.junit.jupiter.api.*;
 import org.springframework.context.annotation.*;
@@ -69,6 +71,34 @@ class PointsOrderIntegrationPermissionTest {
         }
     }
 
+    @Test
+    void source_inspection_requires_read_permission_and_original_store_scope() {
+        try (var ctx = new AnnotationConfigApplicationContext(Config.class)) {
+            var controller = ctx.getBean(OpsOrderPointsIntegrationController.class);
+            var bindings = ctx.getBean(OrderPointsBindingService.class);
+            var recovery = ctx.getBean(OrderPointsRecoveryService.class);
+            when(bindings.find("S_A")).thenReturn(binding("S_A", "ST_A"));
+            when(bindings.find("S_B")).thenReturn(binding("S_B", "ST_B"));
+            auth(Perms.FINANCE_SETTLE_READ);
+            controller.inspect("S_A");
+            assertThatThrownBy(() -> controller.inspect("S_B"))
+                    .isInstanceOf(AccessDeniedException.class);
+            auth(Perms.FINANCE_SETTLE_EXECUTE);
+            assertThatThrownBy(() -> controller.inspect("S_A"))
+                    .isInstanceOf(AccessDeniedException.class);
+            verify(recovery).inspect("S_A");
+            verifyNoMoreInteractions(recovery);
+        }
+    }
+
+    private OrderPointsBindingService.Binding binding(String sub, String store) {
+        var admission = new OrderPointsBindingService.Admission(
+                "REQ", "O", sub, "U", "M_A", store, "TYPE", "CNY", "ONLINE", 0,
+                true, true, null);
+        return new OrderPointsBindingService.Binding(
+                "B", admission, OrderPointsBindingService.Phase.BOUND, 0, "H");
+    }
+
     @Configuration(proxyBeanMethods = false)
     @EnableMethodSecurity
     static class Config {
@@ -80,6 +110,16 @@ class PointsOrderIntegrationPermissionTest {
         @Bean
         PointsIntegrationPolicyService policy() {
             return mock(PointsIntegrationPolicyService.class);
+        }
+
+        @Bean
+        OrderPointsBindingService bindings() {
+            return mock(OrderPointsBindingService.class);
+        }
+
+        @Bean
+        OrderPointsRecoveryService recovery() {
+            return mock(OrderPointsRecoveryService.class);
         }
 
         @Bean
@@ -97,9 +137,10 @@ class PointsOrderIntegrationPermissionTest {
 
         @Bean
         OpsOrderPointsIntegrationController controller(
-                PointsIntegrationPolicyService policy, StoreDirectoryPort stores) {
+                PointsIntegrationPolicyService policy, StoreDirectoryPort stores,
+                OrderPointsBindingService bindings, OrderPointsRecoveryService recovery) {
             return new OpsOrderPointsIntegrationController(
-                    new OrderPointsIntegrationAppServiceImpl(policy, stores));
+                    new OrderPointsIntegrationAppServiceImpl(policy, stores, bindings, recovery));
         }
     }
 }
