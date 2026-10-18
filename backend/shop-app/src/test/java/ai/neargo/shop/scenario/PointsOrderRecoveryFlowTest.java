@@ -102,6 +102,52 @@ class PointsOrderRecoveryFlowTest {
     }
 
     @Test
+    void repeated_single_item_runs_visit_every_recovery_queue() {
+        when(placements.pending(1)).thenReturn(List.of("O"));
+        when(refunds.pending(1)).thenReturn(List.of("A"));
+        when(facts.pending(1)).thenReturn(List.of("E"));
+        when(bindingRows.scanSubOrders("", 1)).thenReturn(List.of("S"));
+        when(facts.find("E"))
+                .thenReturn(
+                        Optional.of(
+                                new PointsOrderEvent(
+                                        "O",
+                                        "S",
+                                        "M",
+                                        "ST",
+                                        "U",
+                                        "TYPE",
+                                        "CNY",
+                                        0,
+                                        Instant.ofEpochMilli(1000),
+                                        new SourceFactsPort.Fact(
+                                                1,
+                                                new PointsFactPort.LifecycleFact(
+                                                        "E",
+                                                        "HASH",
+                                                        "S",
+                                                        "U",
+                                                        "TYPE",
+                                                        0,
+                                                        PointsFactPort.FactKind.CANCELLED,
+                                                        0,
+                                                        0,
+                                                        List.of(),
+                                                        Instant.ofEpochMilli(1000)),
+                                                null,
+                                                null,
+                                                null,
+                                                null))));
+
+        for (int i = 0; i < 4; i++) assertThat(service.recover(1).attempted()).isEqualTo(1);
+
+        verify(placements).resume("O");
+        verify(afterSales).resumeRefund("A", "SYSTEM");
+        verify(delivery).deliver("E", "S");
+        verify(closure).finalizeSubOrder("S");
+    }
+
+    @Test
     void inspection_reports_versions_original_hold_and_pending_codes_without_payloads() {
         var admission =
                 new OrderPointsBindingService.Admission(

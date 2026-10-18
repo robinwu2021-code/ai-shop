@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.spi.points.*;
 import ai.neargo.shop.trade.order.points.*;
+import ai.neargo.shop.trade.order.refund.service.RefundExecutionService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,7 @@ class PointsOrderClosureFlowTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager tx;
     @MockitoBean OrderPointsBindingService bindings;
+    @MockitoBean RefundExecutionService executions;
     private final ObjectMapper json = new ObjectMapper();
 
     @Test
@@ -72,6 +74,63 @@ class PointsOrderClosureFlowTest {
                                 Long.class,
                                 f.sub()))
                 .isEqualTo(3);
+    }
+
+    @Test
+    void full_refund_before_completion_can_finalize_from_verified_refund_terminal() {
+        long refundedAt = System.currentTimeMillis() - 16L * 86_400_000L;
+        var f = fixture(refundedAt);
+        jdbc.update(
+                "DELETE FROM ord_status_log WHERE sub_order_no=? AND status='COMPLETED'", f.sub());
+        jdbc.update(
+                "UPDATE ord_sub_order SET status='REFUNDED',completed_at=NULL WHERE sub_order_no=?",
+                f.sub());
+        jdbc.update(
+                "INSERT INTO ord_status_log(sub_order_no,status,at,created_at)"
+                    + " VALUES(?,'REFUNDED',?,NOW())",
+                f.sub(),
+                refundedAt);
+        String as = "A" + UUID.randomUUID().toString().replace("-", "");
+        jdbc.update(
+                "INSERT INTO ord_after_sale(after_sale_no,sub_order_no,order_no,user_no,entity_no,"
+                        + "type,status,refund_minor,reason,created_at,updated_at)"
+                        + " VALUES(?,?,?,'U','M','REFUND_ONLY','REFUNDED',100,'OTHER',NOW(),NOW())",
+                as,
+                f.sub(),
+                f.sub());
+        long id =
+                jdbc.queryForObject(
+                        "SELECT id FROM ord_item WHERE sub_order_no=?", Long.class, f.sub());
+        var command =
+                new PointsRefundPort.RefundCommand(
+                        as,
+                        f.sub(),
+                        "U",
+                        "TYPE",
+                        "CNY",
+                        0,
+                        100,
+                        100,
+                        List.of(new PointsRefundPort.RefundLine(String.valueOf(id), 100)),
+                        new PointsRefundPort.PaymentSnapshot(
+                                "DIRECT", "TEST", "M", "ST", "PM:1", "SM", "TRADE", "OUT", 100));
+        jdbc.update(
+                "INSERT INTO"
+                    + " ord_points_refund_binding(after_sale_no,sub_order_no,phase,source_version,command_json)"
+                    + " VALUES(?,?,'COMMITTED',0,?)",
+                as,
+                f.sub(),
+                json.writeValueAsString(command));
+        when(executions.inspect(as))
+                .thenReturn(
+                        new RefundExecutionService.Execution(
+                                new RefundExecutionService.Preparation(
+                                        as, f.sub(), "HASH", "COMMITTED", 100),
+                                null,
+                                null));
+
+        assertThat(flow.finalizeSubOrder(f.sub())).isTrue();
+        assertThat(flow.closeRefundResponsibility(f.sub())).isTrue();
     }
 
     private Fixture fixture(long completedAt) {

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -30,6 +31,7 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
     private final AfterSaleService afterSales;
     private final PointsPaymentSnapshotPort payments;
     private final AtomicReference<String> cursor = new AtomicReference<>("");
+    private final AtomicInteger nextQueue = new AtomicInteger();
 
     public OrderPointsRecoveryServiceImpl(
             PointsOrderPlacementCoordinator placements,
@@ -65,63 +67,74 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
         int quota = Math.max(1, limit / 4);
         List<Failure> failures = new ArrayList<>();
         int attempted = 0, completed = 0;
-        for (var no : placements.pending(Math.min(quota, limit - attempted))) {
-            attempted++;
-            try {
-                placements.resume(no);
-                completed++;
-            } catch (RuntimeException e) {
-                failures.add(failure("ORDER:" + no, e));
-            }
-        }
-        if (attempted < limit)
-            for (var no : refunds.pending(Math.min(quota, limit - attempted))) {
+        int start = nextQueue.getAndUpdate(current -> (current + 1) % 4);
+        for (int offset = 0; offset < 4 && attempted < limit; offset++) {
+            int queue = (start + offset) % 4;
+            for (var item : pending(queue, Math.min(quota, limit - attempted))) {
                 attempted++;
                 try {
-                    afterSales.resumeRefund(no, "SYSTEM");
+                    item.action().run();
                     completed++;
                 } catch (RuntimeException e) {
-                    failures.add(failure("AFTER_SALE:" + no, e));
-                }
-            }
-        if (attempted < limit)
-            for (var event : facts.pending(Math.min(quota, limit - attempted))) {
-                attempted++;
-                try {
-                    var source =
-                            facts.find(event)
-                                    .orElseThrow(
-                                            () ->
-                                                    new IllegalArgumentException(
-                                                            "POINTS_SOURCE_EVENT_UNKNOWN"));
-                    delivery.deliver(event, source.subOrderNo());
-                    completed++;
-                } catch (RuntimeException e) {
-                    failures.add(failure("EVENT:" + event, e));
-                }
-            }
-        int remainder = limit - attempted;
-        if (remainder > 0) {
-            String after = cursor.get();
-            var subs = bindingRows.scanSubOrders(after, remainder);
-            if (subs.isEmpty() && !after.isEmpty()) {
-                cursor.set("");
-                subs = bindingRows.scanSubOrders("", remainder);
-            }
-            for (var sub : subs) {
-                cursor.set(sub);
-                attempted++;
-                try {
-                    closure.finalizeSubOrder(sub);
-                    closure.closeRefundResponsibility(sub);
-                    completed++;
-                } catch (RuntimeException e) {
-                    failures.add(failure("SUB:" + sub, e));
+                    failures.add(failure(item.reference(), e));
                 }
             }
         }
         return new Report(attempted, completed, failures);
     }
+
+    private List<RecoveryItem> pending(int queue, int limit) {
+        List<RecoveryItem> result = new ArrayList<>();
+        switch (queue) {
+            case 0 -> {
+                for (var no : placements.pending(limit))
+                    result.add(new RecoveryItem("ORDER:" + no, () -> placements.resume(no)));
+            }
+            case 1 -> {
+                for (var no : refunds.pending(limit))
+                    result.add(
+                            new RecoveryItem(
+                                    "AFTER_SALE:" + no,
+                                    () -> afterSales.resumeRefund(no, "SYSTEM")));
+            }
+            case 2 -> {
+                for (var event : facts.pending(limit))
+                    result.add(
+                            new RecoveryItem(
+                                    "EVENT:" + event,
+                                    () -> {
+                                        var source =
+                                                facts.find(event)
+                                                        .orElseThrow(
+                                                                () ->
+                                                                        new IllegalArgumentException(
+                                                                                "POINTS_SOURCE_EVENT_UNKNOWN"));
+                                        delivery.deliver(event, source.subOrderNo());
+                                    }));
+            }
+            case 3 -> {
+                String after = cursor.get();
+                var subs = bindingRows.scanSubOrders(after, limit);
+                if (subs.isEmpty() && !after.isEmpty()) {
+                    cursor.set("");
+                    subs = bindingRows.scanSubOrders("", limit);
+                }
+                for (var sub : subs)
+                    result.add(
+                            new RecoveryItem(
+                                    "SUB:" + sub,
+                                    () -> {
+                                        cursor.set(sub);
+                                        closure.finalizeSubOrder(sub);
+                                        closure.closeRefundResponsibility(sub);
+                                    }));
+            }
+            default -> throw new IllegalArgumentException("POINTS_RECOVERY_QUEUE_INVALID");
+        }
+        return result;
+    }
+
+    private record RecoveryItem(String reference, Runnable action) {}
 
     @Override
     public Inspection inspect(String subOrderNo) {

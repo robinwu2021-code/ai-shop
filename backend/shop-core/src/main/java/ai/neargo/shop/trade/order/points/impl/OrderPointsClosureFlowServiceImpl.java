@@ -66,8 +66,11 @@ public class OrderPointsClosureFlowServiceImpl implements OrderPointsClosureFlow
                     if (binding == null) return false;
                     String event = "ORDER:FINALIZED:" + subOrderNo;
                     if (facts.find(event).isPresent()) return true;
-                    Long completedAt = completedAt(subOrderNo);
-                    if (completedAt == null
+                    Long terminalAt = completedAt(subOrderNo);
+                    boolean refundedBeforeCompletion =
+                            terminalAt == null && OrdSubOrder.REFUNDED.equals(sub.getStatus());
+                    if (refundedBeforeCompletion) terminalAt = refundedAt(subOrderNo);
+                    if (terminalAt == null
                             || !(OrdSubOrder.COMPLETED.equals(sub.getStatus())
                                     || OrdSubOrder.REFUNDED.equals(sub.getStatus()))
                             || facts.find("ORDER:PAID:" + subOrderNo).isEmpty()
@@ -113,8 +116,9 @@ public class OrderPointsClosureFlowServiceImpl implements OrderPointsClosureFlow
                     require(
                             goods == binding.admission().snapshot().goodsMinor(),
                             "POINTS_FINAL_LINES_CONFLICT");
+                    if (refundedBeforeCompletion && refunded != goods) return false;
                     long version = sub.getVersion() == null ? 0 : sub.getVersion();
-                    Instant at = Instant.ofEpochMilli(completedAt);
+                    Instant at = Instant.ofEpochMilli(terminalAt);
                     var signed =
                             PointsLifecycleFacts.sign(
                                     new PointsFactPort.LifecycleFact(
@@ -151,12 +155,11 @@ public class OrderPointsClosureFlowServiceImpl implements OrderPointsClosureFlow
                     if (binding == null) return false;
                     String event = "ORDER:REFUND_CLOSED:" + subOrderNo;
                     if (facts.find(event).isPresent()) return true;
-                    if (facts.find("ORDER:FINALIZED:" + subOrderNo).isEmpty()
-                            || !refundsFinal(subOrderNo)) return false;
-                    Long completedAt = completedAt(subOrderNo);
-                    if (completedAt == null) return false;
-                    Long standard = window.deadlineAt(completedAt, OrdAfterSale.REASON_OTHER);
-                    Long quality = window.deadlineAt(completedAt, OrdAfterSale.REASON_QUALITY);
+                    var finalized = facts.find("ORDER:FINALIZED:" + subOrderNo);
+                    if (finalized.isEmpty() || !refundsFinal(subOrderNo)) return false;
+                    long terminalAt = finalized.orElseThrow().occurredAt().toEpochMilli();
+                    Long standard = window.deadlineAt(terminalAt, OrdAfterSale.REASON_OTHER);
+                    Long quality = window.deadlineAt(terminalAt, OrdAfterSale.REASON_QUALITY);
                     if (standard == null || quality == null) return false;
                     long deadline = Math.max(standard, quality);
                     long now = System.currentTimeMillis();
@@ -209,11 +212,19 @@ public class OrderPointsClosureFlowServiceImpl implements OrderPointsClosureFlow
     }
 
     private Long completedAt(String no) {
+        return statusAt(no, OrdSubOrder.COMPLETED);
+    }
+
+    private Long refundedAt(String no) {
+        return statusAt(no, OrdSubOrder.REFUNDED);
+    }
+
+    private Long statusAt(String no, String status) {
         return logs
                 .selectList(
                         Wrappers.<OrdStatusLog>lambdaQuery()
                                 .eq(OrdStatusLog::getSubOrderNo, no)
-                                .eq(OrdStatusLog::getStatus, OrdSubOrder.COMPLETED))
+                                .eq(OrdStatusLog::getStatus, status))
                 .stream()
                 .map(OrdStatusLog::getAt)
                 .filter(Objects::nonNull)
