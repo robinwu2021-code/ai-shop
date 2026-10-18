@@ -138,14 +138,6 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         this.couponPort = couponPort;
     }
 
-    /** 整单退款退抵扣积分（待办设计 P2a）。setter 注入，理由同 couponPort */
-    private ai.neargo.shop.spi.settle.PointsPort pointsPort;
-
-    @org.springframework.beans.factory.annotation.Autowired(required = false)
-    public void setPointsPort(ai.neargo.shop.spi.settle.PointsPort pointsPort) {
-        this.pointsPort = pointsPort;
-    }
-
     /** 退券 / 退积分 / 收回赠送积分各一个开关（运营端功能开关，默认开） */
     private ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort;
 
@@ -155,8 +147,6 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     static final String FLAG_RETURN_COUPON = "refund.return-coupon";
-    static final String FLAG_RETURN_POINTS = "refund.return-points";
-    static final String FLAG_CLAWBACK_EARNED = "refund.clawback-earned";
 
     /** 开关取不到按默认开 —— 这几条是本次拍板的口径，关掉才是例外 */
     private boolean on(String flag) {
@@ -492,7 +482,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
      *
      * <p>判据与真正退的那一刻（{@link #returnBenefitsIfWholeOrderRefunded}）同一条：
      * 这是主单下<b>最后一笔</b>还在履约中的子单才算整单退；开关关掉的那一项不说。
-     * 从现状查：券看它此刻是不是还占在这一单上，分看流水。
+     * 券看它此刻是不是还占在这一单上。积分金额必须等新退款确认结果，
+     * 审批前不从旧流水猜测可退或可收回数量。
      */
     private AfterSaleVO.RefundImpact impactOf(OrdAfterSale as) {
         OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
@@ -509,15 +500,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         }
         String coupon = couponPort != null && on(FLAG_RETURN_COUPON)
                 ? couponPort.usedTitleOf(sub.getOrderNo()) : null;
-        long ret = 0L;
-        long revoke = 0L;
-        if (pointsPort != null) {
-            var impact = pointsPort.pendingImpactOf(
-                    siblings.stream().map(OrdSubOrder::getSubOrderNo).toList());
-            ret = on(FLAG_RETURN_POINTS) ? impact.refunded() : 0L;
-            revoke = on(FLAG_CLAWBACK_EARNED) ? impact.clawedBack() : 0L;
-        }
-        return new AfterSaleVO.RefundImpact(coupon, ret, revoke);
+        return new AfterSaleVO.RefundImpact(coupon, 0, 0);
     }
 
     @Override

@@ -54,8 +54,6 @@ const reason = ref("");
 const approving = ref("");
 /** 核定退款额（元，字符串输入）；默认全额 */
 const approveAmount = ref("");
-/** 退款形式：现金 / 积分 */
-const approveMode = ref<RefundMode>("CASH");
 const busy = ref(false);
 
 /** 核定上限：买家申请额（见 approveCap） */
@@ -108,20 +106,19 @@ async function agree(r: Row, refundMinor?: number, refundMode?: RefundMode) {
 }
 
 /**
- * 点「同意」：已签收才展开核定面板（可改金额/形式，AC9/AC10）；
+ * 点「同意」：已签收才展开核定面板（可改金额，AC9/AC10）；
  * 未签收只能全额同意（商家看不到实物损坏比例，§2.4），直接提交。
  */
 function startApprove(r: Row) {
   if (r.as.fulfillStage === "RECEIVED") {
     approving.value = r.as.afterSaleNo;
     approveAmount.value = (capOf(r) / 100).toFixed(2);
-    approveMode.value = "CASH";
   } else {
     void agree(r);
   }
 }
 
-/** 确认核定：校验金额（>0 且 ≤实付），带金额与形式提交 */
+/** 确认核定：校验金额（>0 且 ≤实付），现金退款中的积分返还由后端处理 */
 function confirmApprove(r: Row) {
   const minor = Math.round(Number(approveAmount.value) * 100);
   if (!(minor > 0 && minor <= capOf(r))) {
@@ -129,7 +126,7 @@ function confirmApprove(r: Row) {
     return;
   }
   approving.value = "";
-  void agree(r, minor, approveMode.value);
+  void agree(r, minor, "CASH");
 }
 
 /**
@@ -246,7 +243,7 @@ onShow(load);
 
       <!-- 按售后状态给动作。后端没有独立的「等寄回 / 已收货」两态：
            同意即 REFUNDING，是否已寄回看 returnExpressNo 有没有值 -->
-      <!-- 核定面板（仅已签收）：改金额 + 选现金/积分（AC9/AC10） -->
+      <!-- 核定面板（仅已签收）：改金额（AC9/AC10） -->
       <template v-else-if="approving === r.as.afterSaleNo">
         <view class="approve sh-mt-sm">
           <view class="sh-row sh-row--between sh-row--baseline">
@@ -255,18 +252,6 @@ onShow(load);
               <text class="sh-muted">¥</text>
               <input v-model="approveAmount" type="digit" maxlength="9" class="field__input amount-field" />
             </view>
-          </view>
-          <view class="sh-row modes sh-mt-sm">
-            <text
-              class="sh-seg sh-seg--fill"
-              :class="{ 'sh-seg--on': approveMode === 'CASH' }"
-              @tap="approveMode = 'CASH'"
-            >{{ $t("afterSale.refundModeCash") }}</text>
-            <text
-              class="sh-seg sh-seg--fill"
-              :class="{ 'sh-seg--on': approveMode === 'POINTS' }"
-              @tap="approveMode = 'POINTS'"
-            >{{ $t("afterSale.refundModePoints") }}</text>
           </view>
           <view class="btns sh-row sh-mt-sm">
             <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="approving = ''">{{ $t("common.cancel") }}</text>
@@ -421,8 +406,5 @@ onShow(load);
 .amount-field {
   width: 180rpx;
   text-align: end;
-}
-.modes {
-  gap: 16rpx;
 }
 </style>

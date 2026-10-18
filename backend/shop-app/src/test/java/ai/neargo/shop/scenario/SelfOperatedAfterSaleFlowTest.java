@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,6 +24,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * 自营单的售后**直接进平台仲裁**，不派给商家。
@@ -46,6 +50,9 @@ class SelfOperatedAfterSaleFlowTest {
 
     @Autowired
     private AfterSaleService afterSaleService;
+
+    @MockitoSpyBean
+    private ai.neargo.shop.spi.settle.PointsPort legacyPoints;
 
     @Autowired
     private MchEntityMapper entityMapper;
@@ -79,6 +86,8 @@ class SelfOperatedAfterSaleFlowTest {
         // 钱在商家账户、票是商家开的，那么先由他处理是对的 ——
         // 这条不能一起改掉，否则平台在替一个不该他负责的关系担责
         assertThat(latest(sub).getStatus()).isEqualTo(OrdAfterSale.APPLIED);
+        afterSaleService.merchantList(latest(sub).getEntityNo(), OrdAfterSale.APPLIED);
+        verify(legacyPoints, never()).pendingImpactOf(anyList());
     }
 
     @Test
