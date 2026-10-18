@@ -17,6 +17,7 @@ import { ApiError } from "@shared/net/http-client";
 import { checkoutKey, checkoutKeyBoundTo } from "@/shared/checkout-key";
 import { segmentByMerchant, useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
+import { useConfigStore } from "@/stores/config";
 import { useLocationStore } from "@/stores/location";
 import { useUserStore } from "@/stores/user";
 import PhoneGate from "@/components/phone-gate.vue";
@@ -36,6 +37,7 @@ import { orderSubscribeTmpls, requestSubscribe } from "@shared/ports/push";
 const { t } = useI18n();
 const cart = useCartStore();
 const community = useCommunityStore();
+const config = useConfigStore();
 const user = useUserStore();
 /** 「先留个手机号」弹层。绑完自动继续提交，不用他再点一次 */
 const phoneGate = ref(false);
@@ -795,8 +797,10 @@ async function refreshCapability() {
  */
 let pointsSeq = 0;
 async function refreshPoints() {
-  if (!items.value.length) {
+  if (!config.flag("points", false) || !items.value.length) {
     pointsQuote.value = null;
+    pointBalance.value = 0;
+    usePoints.value = false;
     return;
   }
   const seq = ++pointsSeq;
@@ -879,7 +883,7 @@ watch(
 
 // 积分试算跟支付方式与券走 —— 线下能否抵是平台开关，上限按券后金额算
 watch(
-  () => [items.value.map((it) => `${it.skuNo}x${it.qty}`).join(","), fulfillment.value,
+  () => [config.flag("points", false), items.value.map((it) => `${it.skuNo}x${it.qty}`).join(","), fulfillment.value,
     payMode.value, couponNo.value, addressId.value, appointmentAt.value,
     JSON.stringify(activityChoices.value), JSON.stringify(addressOverrides.value)].join("|"),
   () => void refreshPoints(),

@@ -55,6 +55,7 @@ vi.mock("@ai-shop/ui/prompt", () => ({ pick: vi.fn(), prompt: vi.fn(), confirm: 
 
 import ConfirmPage from "@/pages/order-confirm/index.vue";
 import { useCartStore } from "@/stores/cart";
+import { useConfigStore } from "@/stores/config";
 
 function item(over: Partial<CartItem> = {}): CartItem {
   return {
@@ -228,6 +229,7 @@ describe("结算页", () => {
   });
 
   it("门店积分报价按服务端的 2:1 比例显示，提交意愿取已报价积分", async () => {
+    useConfigStore().features.points = true;
     orderPointsQuote.mockResolvedValue({ state: "AVAILABLE", reason: null,
       pointsUsed: 20, deductMinor: 10, ratePoints: 2, rateMinor: 1, basePayMinor: 2980,
       stores: [{ storeNo: "ST1", merchantNo: "M1", policyVersion: 3, pointsUsed: 20, deductMinor: 10 }] });
@@ -237,5 +239,11 @@ describe("结算页", () => {
     await w.find(".pointsline").trigger("tap");
     await settle(w);
     expect(w.find(".actionbar__total").text()).toBe("¥29.70");
+  });
+
+  it("全局未接线时不请求积分报价，纯现金结算保留原路径", async () => {
+    const w = await render([item()]);
+    expect(orderPointsQuote).not.toHaveBeenCalled();
+    expect(w.find(".actionbar__total").text()).toBe("¥29.80");
   });
 });

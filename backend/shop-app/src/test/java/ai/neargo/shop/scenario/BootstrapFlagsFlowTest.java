@@ -43,12 +43,17 @@ class BootstrapFlagsFlowTest {
 
     /** 开关是**共享配置**：改了不还原，后面的用例读到的是我改过的值 */
     private Boolean original;
+    private Boolean originalPoints;
 
     @AfterEach
     void restore() {
         if (original != null) {
             platformConfig.saveFeatureFlag(FLAG, original, 0, "TEST");
             original = null;
+        }
+        if (originalPoints != null) {
+            platformConfig.saveFeatureFlag("points", originalPoints, 0, "TEST");
+            originalPoints = null;
         }
     }
 
@@ -82,6 +87,13 @@ class BootstrapFlagsFlowTest {
     void ymlFlagsStillThere() throws Exception {
         assertThat(bootstrap().get("features").has("points"))
                 .as("合流把 yml 那几个挤掉了").isTrue();
+    }
+
+    @Test
+    void client_points_flag_cannot_override_disabled_source_integration() throws Exception {
+        originalPoints = bootstrap().get("features").get("points").asBoolean();
+        platformConfig.saveFeatureFlag("points", true, 0, "TEST");
+        assertThat(bootstrap().get("features").get("points").asBoolean()).isFalse();
     }
 
     @Test
