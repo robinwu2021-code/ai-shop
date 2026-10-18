@@ -1180,7 +1180,7 @@ async function submit() {
      * 收银台页加载完直接拉起支付 —— 用户不必再点第二次「立即支付」。
      * 当面付没有「拉起」这一步，照旧落到收银台页让他看单。
      */
-    const auto = payMode.value === PAY_MODE.ONLINE ? "&auto=1" : "";
+    const auto = payMode.value === PAY_MODE.ONLINE && order.status === "WAIT_PAY" ? "&auto=1" : "";
     uni.redirectTo({ url: `${ROUTES.pay}?orderNo=${order.orderNo}${auto}` });
   } catch (e) {
     uni.showToast({ title: submitFailText(e), icon: "none" });

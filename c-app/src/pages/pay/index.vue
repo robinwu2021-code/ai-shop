@@ -29,7 +29,8 @@ const chosen = ref<string>("");
 const now = ref(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
 
-const paid = computed(() => !!order.value && order.value.status !== "WAIT_PAY");
+const processing = computed(() => order.value?.status === "POINTS_PROCESSING");
+const paid = computed(() => !!order.value && order.value.status !== "WAIT_PAY" && !processing.value);
 
 /** 那串码叫什么。与订单详情共用一份判据，别在两处各写一个三分支 */
 const codeLabel = computed(() =>
@@ -113,7 +114,7 @@ async function loadMethods(orderNo: string) {
 
 async function pay() {
   const o = order.value;
-  if (!o || paying.value || expired.value) return;
+  if (!o || o.status !== "WAIT_PAY" || paying.value || expired.value) return;
   paying.value = true;
   try {
     /*
@@ -284,7 +285,14 @@ onUnmounted(() => clearInterval(timer));
          没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
     <template v-if="order">
         <!-- 待支付 -->
-        <template v-if="!paid">
+        <template v-if="processing">
+          <view class="sh-card done">
+            <text class="txt-display done__title">{{ $t("pay.pointsProcessing") }}</text>
+            <text class="txt-caption done__hint">{{ $t("pay.pointsProcessingHint") }}</text>
+            <view class="sh-btn" @tap="load(currentNo)">{{ $t("pay.recheck") }}</view>
+          </view>
+        </template>
+        <template v-else-if="!paid">
           <view class="sh-card hero">
             <text class="txt-hero hero__amount sh-num">{{ money(order.amount.payableMinor) }}</text>
             <text class="txt-caption hero__label">{{ $t("pay.payable") }}</text>

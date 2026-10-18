@@ -734,6 +734,9 @@ export default {
     expired: "انتهت مهلة الدفع",
     payNow: "ادفع الآن",
     paying: "جارٍ الدفع…",
+    pointsProcessing: "تجري معالجة النقاط",
+    pointsProcessingHint: "نتحقق من خصم النقاط. تحقق من حالة الطلب بعد قليل.",
+    recheck: "تحديث الحالة",
     cancelled: "أُلغي الدفع",
     /** لا شيء للدفع (الإجمالي صفر) */
     freeSettled: "لا حاجة للدفع — تم",
@@ -763,6 +766,7 @@ export default {
     saved: "وفّرت {p}",
     payLeft: "يُغلق خلال {t}",
     pay: "ادفع",
+    pointsProcessing: "التحقق من خصم النقاط جارٍ، والدفع غير متاح الآن",
     moreItems: "و{n} منتجات أخرى",
     empty: "لا توجد طلبات بعد",
   },
@@ -784,6 +788,7 @@ export default {
   },
   orderStatus: {
     WAIT_PAY: "بانتظار الدفع",
+    POINTS_PROCESSING: "تجري معالجة النقاط",
     PAID: "مدفوع",
     WAIT_OFFLINE_PAY: "الدفع حضوريًا",
     FULFILLING: "قيد التنفيذ",
@@ -793,6 +798,7 @@ export default {
   },
   orderView: {
     WAIT_PAY: "بانتظار الدفع",
+    POINTS_PROCESSING: "تجري معالجة النقاط",
     WAIT_OFFLINE_PAY: "الدفع حضوريًا",
     PAID: "قيد التجهيز",
     PAID_SHIP_TO_BUYER: "بانتظار الشحن",

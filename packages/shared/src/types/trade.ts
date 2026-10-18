@@ -103,6 +103,8 @@ export interface CartItem {
 }
 export type OrderStatus =
   | "WAIT_PAY"
+  /** 积分原号受理中；此时不能付款，继续核验或显式重新确认。 */
+  | "POINTS_PROCESSING"
   /**
    * 等商家当面收款（线下支付）。
    *

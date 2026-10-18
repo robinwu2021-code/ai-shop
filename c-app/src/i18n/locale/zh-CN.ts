@@ -797,6 +797,9 @@ export default {
     expired: "支付超时，订单已关闭",
     payNow: "立即支付",
     paying: "支付中…",
+    pointsProcessing: "积分处理中",
+    pointsProcessingHint: "正在核验本次积分抵扣，请稍后查看订单结果",
+    recheck: "刷新状态",
     cancelled: "已取消支付",
     /** 应付 0 元，无需付款。短位：只说结果 */
     freeSettled: "无需付款，已完成",
@@ -830,6 +833,7 @@ export default {
     saved: "已优惠 {p}",
     payLeft: "{t} 后关闭",
     pay: "去支付",
+    pointsProcessing: "积分抵扣核验中，暂不可支付",
     moreItems: "等共 {n} 件其他商品",
     empty: "还没有订单",
   },
@@ -851,6 +855,7 @@ export default {
   },
   orderStatus: {
     WAIT_PAY: "待付款",
+    POINTS_PROCESSING: "积分处理中",
     PAID: "已支付",
     WAIT_OFFLINE_PAY: "待当面付款",
     FULFILLING: "履约中",
@@ -865,6 +870,7 @@ export default {
    */
   orderView: {
     WAIT_PAY: "待付款",
+    POINTS_PROCESSING: "积分处理中",
     WAIT_OFFLINE_PAY: "待当面付款",
     PAID: "备货中",
     PAID_SHIP_TO_BUYER: "待发货",

@@ -734,6 +734,9 @@ export default {
     expired: "Payment window closed",
     payNow: "Pay now",
     paying: "Paying…",
+    pointsProcessing: "Processing points",
+    pointsProcessingHint: "We are confirming your points deduction. Check the order status shortly.",
+    recheck: "Refresh status",
     cancelled: "Payment cancelled",
     /** Nothing to pay (total is 0) */
     freeSettled: "Nothing to pay — done",
@@ -763,6 +766,7 @@ export default {
     saved: "Saved {p}",
     payLeft: "Closes in {t}",
     pay: "Pay",
+    pointsProcessing: "Points deduction pending; payment is unavailable",
     moreItems: "and {n} more items",
     empty: "No orders yet",
   },
@@ -784,6 +788,7 @@ export default {
   },
   orderStatus: {
     WAIT_PAY: "Awaiting payment",
+    POINTS_PROCESSING: "Processing points",
     PAID: "Paid",
     WAIT_OFFLINE_PAY: "Pay in person",
     FULFILLING: "In fulfilment",
@@ -793,6 +798,7 @@ export default {
   },
   orderView: {
     WAIT_PAY: "Awaiting payment",
+    POINTS_PROCESSING: "Processing points",
     WAIT_OFFLINE_PAY: "Pay in person",
     PAID: "Preparing",
     PAID_SHIP_TO_BUYER: "Awaiting dispatch",
