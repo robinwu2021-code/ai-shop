@@ -25647,12 +25647,6 @@
           "ar": "تعارض في البيانات، يرجى التحديث وإعادة المحاولة"
         },
         {
-          "key": "err.conflict.detail",
-          "zh-CN": "操作未完成：{0}",
-          "en": "Operation could not be completed: {0}",
-          "ar": "تعذر إكمال العملية: {0}"
-        },
-        {
           "key": "err.content.already_answered",
           "zh-CN": "该提问已回答。要修改请先隐藏，再重新回答",
           "en": "This question is already answered. Hide it first, then answer again",
@@ -35875,7 +35869,6 @@
           "FORBIDDEN",
           "NOT_FOUND",
           "CONFLICT",
-          "CONFLICT_DETAIL",
           "TOO_MANY_REQUESTS",
           "GEO_UNAVAILABLE",
           "OTP_TOO_FREQUENT",

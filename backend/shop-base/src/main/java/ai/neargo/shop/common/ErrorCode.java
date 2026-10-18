@@ -27,7 +27,6 @@ public enum ErrorCode {
     FORBIDDEN(10403, "err.forbidden"),
     NOT_FOUND(10404, "err.not_found"),
     CONFLICT(10409, "err.conflict"),
-    CONFLICT_DETAIL(10410, "err.conflict.detail"),
     TOO_MANY_REQUESTS(10429, "err.too_many_requests"),
     /** 逆地理编码没配地图厂商密钥：端上据此**藏掉**「定位取地址」按钮，而不是报错 */
     GEO_UNAVAILABLE(10503, "err.geo.unavailable"),

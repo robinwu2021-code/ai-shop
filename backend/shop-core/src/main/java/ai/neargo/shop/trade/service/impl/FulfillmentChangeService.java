@@ -93,18 +93,18 @@ public class FulfillmentChangeService {
         }
         OrdSubOrder sub = scoped(merchantNo, storeNo, subOrderNo, true);
         if (!Objects.equals(sub.getVersion(), expectedVersion)) {
-            throw BizException.of(ErrorCode.CONFLICT_DETAIL, "订单已更新，请刷新后重试");
+            throw BizException.of(ErrorCode.CONFLICT, "订单已更新，请刷新后重试");
         }
         Option option = optionsOf(sub).options().stream()
                 .filter(o -> o.fulfillment().equals(target)).findFirst()
                 .orElseThrow(() -> BizException.of(ErrorCode.BAD_REQUEST));
         if (!option.allowed() || target.equals(sub.getFulfillment())) {
-            throw BizException.of(ErrorCode.CONFLICT_DETAIL, option.reason() == null ? "请选择新的配送方式" : option.reason());
+            throw BizException.of(ErrorCode.CONFLICT, option.reason() == null ? "请选择新的配送方式" : option.reason());
         }
         String previous = sub.getFulfillment();
         int changed = DataScopeContext.executeWithoutScope(() ->
                 locks.changeFulfillment(subOrderNo, target, expectedVersion));
-        if (changed != 1) throw BizException.of(ErrorCode.CONFLICT_DETAIL, "订单已更新，请刷新后重试");
+        if (changed != 1) throw BizException.of(ErrorCode.CONFLICT, "订单已更新，请刷新后重试");
         OrdStatusLog log = new OrdStatusLog();
         log.setSubOrderNo(subOrderNo);
         log.setAggregateType("ORDER");
