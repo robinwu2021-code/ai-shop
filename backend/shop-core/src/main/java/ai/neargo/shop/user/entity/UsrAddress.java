@@ -20,6 +20,8 @@ public class UsrAddress extends BaseEntity {
     private String userNo;
 
     private String name;
+    /** MR / MS / UNSPECIFIED，存量为空。 */
+    private String salutation;
 
     /** 收件人手机号。一期明文存储，**出参按视角脱敏**（db-design §6）。 */
     private String phone;

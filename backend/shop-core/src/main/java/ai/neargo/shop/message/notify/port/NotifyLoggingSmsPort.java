@@ -100,9 +100,9 @@ public class NotifyLoggingSmsPort implements SmsPort {
      * 运营端据此把发货短信与交易通知分开统计（见 {@link NotifyBizType#SHIP_NOTIFY}）。
      */
     @Override
-    public SendResult sendShipToRecipient(String phone, String trackUrl) {
+    public SendResult sendShipToRecipient(String phone, String receiverName, String trackUrl) {
         try {
-            SendResult r = delegate.sendShipToRecipient(phone, trackUrl);
+            SendResult r = delegate.sendShipToRecipient(phone, receiverName, trackUrl);
             writer.write(SysNotifyLog.SMS, NotifyBizType.SHIP_NOTIFY, phone, r.templateCode(),
                     TPL_SMS_SHIP, SysNotifyLog.SENT, null, r.providerMsgId(), null);
             return r;

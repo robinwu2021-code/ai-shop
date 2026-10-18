@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class AddressServiceImpl implements AddressService {
@@ -70,6 +71,12 @@ public class AddressServiceImpl implements AddressService {
             throw BizException.of(ErrorCode.ADDRESS_PHONE_FORMAT);
         }
 
+        if (cmd.salutation() != null) {
+            if (!Set.of("MR", "MS", "UNSPECIFIED").contains(cmd.salutation())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            row.setSalutation(cmd.salutation());
+        }
         row.setName(cmd.name());
         row.setPhone(cmd.phone());
         row.setRegion(cmd.region());

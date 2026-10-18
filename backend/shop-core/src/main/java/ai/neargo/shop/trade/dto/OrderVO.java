@@ -726,7 +726,10 @@ public record OrderVO(String orderNo,
      *              <b>这条规则写在装配的地方，不写在这里</b> ——
      *              record 只是形状，谁能看到多少是那一处的判断
      */
-    public record Receiver(String name, String phone, String address) {
+    public record Receiver(String name, String phone, String address, String salutation) {
+        public Receiver(String name, String phone, String address) {
+            this(name, phone, address, null);
+        }
     }
 
     public record TimelineNode(String status, String label, long at) {

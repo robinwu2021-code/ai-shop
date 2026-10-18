@@ -12,6 +12,7 @@ import ai.neargo.shop.user.service.AuthService;
 import ai.neargo.shop.user.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -341,7 +342,7 @@ public class MpUserController {
                 req.addressId(), req.name(), req.phone(), req.region(), req.province(), req.city(),
                 req.district(), req.detail(), req.houseNo(), req.isDefault(), req.tag(),
                 req.latE6(), req.lngE6(),
-                req.countryCode(), req.postalCode(), req.phoneCc()));
+                req.countryCode(), req.postalCode(), req.phoneCc(), req.salutation()));
     }
 
     @PostMapping("/address/{addressId}/archive")
@@ -395,7 +396,9 @@ public class MpUserController {
                                   */
                                  String countryCode,
                                  String postalCode,
-                                 String phoneCc) {
+                                 String phoneCc,
+                                 @Pattern(regexp = "MR|MS|UNSPECIFIED")
+                                 String salutation) {
     }
 
     public record LoginReq(@NotBlank String grantType, @NotBlank String principal, String credential,

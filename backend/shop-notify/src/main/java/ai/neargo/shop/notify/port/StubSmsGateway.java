@@ -99,7 +99,7 @@ public class StubSmsGateway implements SmsPort {
      * 测试据此断言「发给了收件人、带的是哪条短链」。
      */
     @Override
-    public SendResult sendShipToRecipient(String phone, String trackUrl) {
+    public SendResult sendShipToRecipient(String phone, String receiverName, String trackUrl) {
         synchronized (sent) {
             sent.addLast(new Sent(phone, trackUrl));
             while (sent.size() > KEEP) {

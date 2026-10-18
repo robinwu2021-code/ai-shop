@@ -140,6 +140,8 @@ public class OrdSubOrder extends BaseEntity {
      * <p>与上面 {@link #pickupName} 是同一个道理。
      */
     private String receiverName;
+    /** 下单时称呼快照，后续改地址不改变。 */
+    private String receiverSalutation;
 
     /**
      * 收件人手机号，<b>库里存完整号</b>。

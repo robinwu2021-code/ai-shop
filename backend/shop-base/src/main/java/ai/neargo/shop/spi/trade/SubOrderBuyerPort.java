@@ -37,6 +37,12 @@ public interface SubOrderBuyerPort {
      */
     Optional<String> receiverPhoneOf(String subOrderNo);
 
+    /** 收件人姓名快照，用于发货通知称呼；旧订单没有姓名时为空。 */
+    Optional<String> receiverNameOf(String subOrderNo);
+
+    /** 订单收件人称呼快照，存量为空。 */
+    Optional<String> receiverSalutationOf(String subOrderNo);
+
     record Buyer(String userNo, String orderNo) {
     }
 

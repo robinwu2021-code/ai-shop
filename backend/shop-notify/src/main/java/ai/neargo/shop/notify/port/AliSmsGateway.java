@@ -2,6 +2,7 @@ package ai.neargo.shop.notify.port;
 
 import ai.neargo.shop.spi.notify.SendResult;
 import ai.neargo.shop.spi.notify.SmsPort;
+import tools.jackson.databind.json.JsonMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -249,11 +250,11 @@ public class AliSmsGateway implements SmsPort {
      * 发货触达收件人。形状同 {@link #sendOrderPaid}：**不抛给 outbox**（调用方吞）、
      * 模板没报备（空）时直接失败不调阿里云。
      *
-     * <p>模板带一个 {@code ${url}} 变量，值是完整短链 {@code https://s.hxmall.top/<code>}。
+     * <p>模板包含 {@code ${name}} 姓名与 {@code ${code}} 短码，域名固定为 s.hxmall.top。
      * <b>短链域名要在阿里云短信后台报白名单</b>，否则带链接的模板审核不过（部署步骤，见设计 §8 决策 D）。
      */
     @Override
-    public SendResult sendShipToRecipient(String phone, String trackUrl) {
+    public SendResult sendShipToRecipient(String phone, String receiverName, String trackUrl) {
         if (shipTemplate.isBlank()) {
             log.warn("[sms] 发货短信发不出去：ALI_SMS_TPL_SHIP 未配（阿里云模板还没报备）");
             throw new SmsException("tpl_unconfigured", false);
@@ -267,7 +268,7 @@ public class AliSmsGateway implements SmsPort {
          * （`s.hxmall.top/${code}`），变量只认链接的路径段，且「不支持全变量链接」。
          * 所以这里从短链里抠出最后一段短码（BizKey.shortCode 保证首字母是字母、≤8 位）。
          */
-        p.put("TemplateParam", "{\"code\":\"" + shortCodeOf(trackUrl) + "\"}");
+        p.put("TemplateParam", shipTemplateParam(receiverName, trackUrl));
         p.put("Signature", sign("POST&%2F&" + enc(canonicalize(p))));
         try {
             HttpResponse<String> resp = post(p);
@@ -358,4 +359,11 @@ public class AliSmsGateway implements SmsPort {
         Matcher m = Pattern.compile(FIELD.pattern().formatted(name)).matcher(json);
         return m.find() ? m.group(1) : null;
     }
+    /** 姓名允许引号等字符，参数必须经 JSON 序列化，避免拼接损坏模板报文。 */
+    static String shipTemplateParam(String receiverName, String trackUrl) {
+        return JsonMapper.builder().build().writeValueAsString(
+                Map.of("name", receiverName, "code", shortCodeOf(trackUrl)));
+    }
+
+
 }

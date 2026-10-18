@@ -42,7 +42,11 @@ public interface UserQueryPort {
      * @param address 省市区 + 详细，拼好的一行
      */
     /** @param latE6 收货点坐标（gcj02，E6）。手填的地址没有坐标，为 null —— 自送范围判定据此放行 */
-    record Receiver(String name, String phone, String address, Integer latE6, Integer lngE6) {
+    record Receiver(String name, String phone, String address, Integer latE6, Integer lngE6, String salutation) {
+        /** 兼容旧调用，未选择称呼。 */
+        public Receiver(String name, String phone, String address, Integer latE6, Integer lngE6) {
+            this(name, phone, address, latE6, lngE6, null);
+        }
 
         /** 不带坐标的老形状 */
         public Receiver(String name, String phone, String address) {
