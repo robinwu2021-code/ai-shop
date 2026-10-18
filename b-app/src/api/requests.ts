@@ -590,22 +590,6 @@ export interface ToggleCampaignReq {
   running: boolean;
 }
 
-// ---------------------------------------------------------------- 积分
-
-export interface PointsRecordQuery {
-  /** 账期 `YYYYMM`，不传为当期 */
-  period?: string;
-  /** 页码，从 1 起 */
-  page?: number;
-  /** 每页条数 */
-  size?: number;
-}
-
-export interface TogglePointsReq {
-  /** 目标状态。**关闭只影响将来** —— 已发出的分仍有效，已扣的服务费不退 */
-  enabled: boolean;
-}
-
 /**
  * 提交收款进件。
  *

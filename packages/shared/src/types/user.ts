@@ -4,7 +4,6 @@
 
 import type { CurrencyCode } from "./core";
 import type { Coupon } from "./marketing";
-import type { MerchantPointAccount } from "./merchant";
 
 // ---------------------------------------------------------------- 用户与归属
 
@@ -135,7 +134,7 @@ export interface PointRecord {
   /** 变动后余额，用于对账 —— 只存变动量的话，一条记录出错后面全错 */
   balanceAfter: number;
 }
-/** 用户积分账户。**单位是积分个数** —— 商家侧是钱，用 {@link MerchantPointAccount} */
+/** 用户积分账户，单位是积分个数。 */
 export interface PointAccount {
   /** 服务端积分类型的兑换比例；未配置时不展示折算价值。 */
   ratePoints?: number;

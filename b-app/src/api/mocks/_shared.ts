@@ -39,7 +39,6 @@ import { ApiError } from "@shared/net/http-client";
 import {
   CATEGORY_TYPE,
   MARKETS,
-  POINTS,
   SETTLE,
   REVIEW_RULES,
   TEMPLATE_TO_TYPE,
@@ -62,8 +61,6 @@ export const PICKUP_LIKE = new Set<string>(
 );
 import type { GoodsDraft, MerchantApi, PublishPreview } from "../contract";
 
-/** 本店积分开关。mock 内存态，真实实现在 usr_merchant.points_enabled */
-
 
 /**
  * 发布重入标志（双版本）。mPublishGoods 复用 mSaveGoods 的整条落库路径 ——
@@ -77,31 +74,6 @@ export function withDraftFlag(g: Goods): Goods {
   return { ...g, hasDraft: !!db.goodsDrafts[g.goodsNo] };
 }
 
-/**
- * 发分服务费明细：一单一条，真实数据来自 `stl_bill.points_fee_minor`。
- * mock 里按已有订单折算，让 B 端能看到「一单一条」的形状。
- */
-export function pointsFeeRecords() {
-  return db.orders.slice(0, 8).map((o) => ({
-    settleNo: `ST${o.orderNo.slice(-8)}`,
-    subOrderNo: o.orderNo,
-    points: Math.round((o.amount?.payableMinor ?? 0) * POINTS.defaultEarnRatio),
-    feeMinor: Math.round((o.amount?.payableMinor ?? 0) * POINTS.defaultEarnRatio / POINTS.perMinor),
-    period: "202608",
-    at: o.createdAt,
-  }));
-}
-
-export function pointsAccount() {
-  const expense = pointsFeeRecords().reduce((s, r) => s + r.feeMinor, 0);
-  return {
-    periodExpenseMinor: expense,
-    period: "2026-08",
-    enabled: mockState.pointsEnabled,
-    disabledReason: mockState.pointsEnabled ? undefined : "本店未开启积分",
-    forced: false,
-  };
-}
 import type { StaffLogRow } from "@shared/mock/db";
 import type {
   MyDebt,
@@ -1141,16 +1113,14 @@ export const mockSuppliers: Supplier[] = [
 ];
 
 /**
- * <b>跨域可变的三个开关</b>。
+ * <b>跨域可变的演示状态</b>。
  *
  * <p>原来是三个模块级 `let`（同一个文件里随手改）。拆成多文件之后，
  * 别的域**改不了 import 进来的绑定** —— 所以收进一个对象：
  * 谁都能读、谁都能改，而且只有这一份。复制成两份的话，
- * 「关了积分，另一处仍按开着算」这类事不会有任何报错。
+ * 发布重入等状态会悄悄不一致。
  */
 export const mockState = {
-  /** 积分开关（商家侧只感知发分服务费与开关，V34） */
-  pointsEnabled: true,
   /** 双版本发布的重入标志：换版时复用 mSaveGoods 的整条落库路径 */
   publishingDraft: false,
   /** 演示用的登录密码。空 = 还没设过 */

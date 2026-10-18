@@ -7,6 +7,12 @@ import { buildPath, ENDPOINTS } from "@/api/endpoints";
  * 而 mock 不走路径，演示时一切正常（2026-09-19 真机发现，线上日志 `/biz/activities/%7BactivityNo%7D`）。
  */
 describe("buildPath", () => {
+  it("uses store-scoped read endpoints for the new points ledger", () => {
+    expect(ENDPOINTS.mStorePointTypes.path).toBe("/biz/points/store-types");
+    expect(ENDPOINTS.mStorePointAccount.path).toBe("/biz/points/store-account");
+    expect(ENDPOINTS.mStorePointEntries.path).toBe("/biz/points/store-entries");
+    expect(ENDPOINTS.mStorePointEntries.method).toBe("GET");
+  });
   it("两种占位写法都换掉", () => {
     expect(buildPath("/biz/members/{memberNo}", { memberNo: "MB1" })).toBe("/biz/members/MB1");
     expect(buildPath("/biz/period/:periodNo/cutoff", { periodNo: "P1" })).toBe("/biz/period/P1/cutoff");

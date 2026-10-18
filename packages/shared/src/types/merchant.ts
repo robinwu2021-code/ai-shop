@@ -14,47 +14,24 @@ import type { Store, StoreRole, StoreStatus } from "./store";
 import type { AfterSaleStatus, AfterSaleType, Order } from "./trade";
 import type { GrantType } from "./user";
 
-/** 商家的一条发分服务费记录：一单一条，来自 `stl_bill.points_fee_minor` */
-export interface MerchantPointsRecord {
-  /** 结算单号 */
-  settleNo: string;
-  /** 关联子单，商家据此对到具体订单 */
-  subOrderNo: string;
-  /** 本单发放的积分数 */
-  points: number;
-  /** 本单的发分服务费（分）。**这是商家唯一感知到的积分成本** */
-  feeMinor: number;
-  /** 账期 `YYYYMM` */
-  period: string;
-  /** 计提时间（支付成功时），不是分账时间 —— 两者相差一个售后期 */
-  at: number;
+/** Pay ledger views are scoped to the authenticated current store and one points type. */
+export interface StorePointType {
+  typeCode: string; market: string; currency: string; scale: number;
+  rate: { pointsUnit: number; minorUnit: number };
+  status: "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
 }
-/**
- * 商家的积分成本视图。**单位是钱，不是分**。
- *
- * 商家只感知**一件事**：开了积分，每笔订单要付一笔发分服务费。
- * 他**看不到**用户抵了多少分、平台补了多少、资金池 —— 对他而言订单就是全额，
- * 收到的是「订单金额 − 各项费用」（V34）。
- *
- * 所以这里没有 income/net：商家侧不存在「积分兑付进账」这个概念。
- */
-export interface MerchantPointAccount {
-  /** 本期发分服务费支出（分）。**商家唯一感知到的积分成本** */
-  periodExpenseMinor: number;
-  /** 当前账期标识，如 `2026-08` */
-  period: string;
-  /** 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 */
-  enabled: boolean;
-  /**
-   * 不生效的原因，直接展示给商家。
-   *
-   * 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」——
-   * 后者会让商家去开一个他根本开不了的开关。
-   */
-  disabledReason?: string;
-  /** 平台按行业强制开，商家不可自行关闭 */
-  forced: boolean;
+export interface StorePointAccount {
+  snapshot: { typeCode: string; holderType: "STORE"; holderNo: string;
+    buckets: Record<string, number>; frozen: boolean; expireAt: number | null;
+    expiryRevision: number; lastActiveAt: number };
+  exists: boolean; version: number;
 }
+export interface StorePointEntryPage {
+  rows: { id: number; entryNo: string; voucherNo: string; holderType: "STORE";
+    holderNo: string; bucket: string; deltaPoints: number; afterPoints: number; at: number }[];
+  next: number; hasMore: boolean;
+}
+
 // ---------------------------------------------------------------- 商家
 //
 // 数据模型从一开始就按**多商家**建：merchantNo 贯穿商品/订单/评价/结算。

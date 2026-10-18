@@ -36,7 +36,6 @@ import type {
   OpenFromMapReq,
   OrderListQuery,
   PickupSelfBuildReq,
-  PointsRecordQuery,
   QuoteReq,
   RecognizeGoodsReq,
   ReplyReviewReq,
@@ -57,7 +56,6 @@ import type {
   SubmitPaymentReq,
   ToggleCampaignReq,
   ToggleGoodsReq,
-  TogglePointsReq,
   VerifyBatchReq,
   VerifyReq,
 } from "./requests";
@@ -120,8 +118,9 @@ import type {
   MerchantCustomer,
   MerchantLoginResp,
   MerchantPlan,
-  MerchantPointAccount,
-  MerchantPointsRecord,
+  StorePointType,
+  StorePointAccount,
+  StorePointEntryPage,
   MerchantProfile,
   MerchantRole,
   MerchantSpecDim,
@@ -685,11 +684,10 @@ export const httpApi: MerchantApi = {
     } satisfies ReportShortageReq),
 
   // ---- 积分
-  mPointsAccount: () => http.get<MerchantPointAccount>(E.mPointsAccount.path),
-  mPointsRecords: (q) =>
-    http.get<MerchantPointsRecord[]>(E.mPointsRecords.path, { ...q } satisfies PointsRecordQuery),
-  mPointsToggle: (req) =>
-    http.post<MerchantPointAccount>(E.mPointsToggle.path, { ...req } satisfies TogglePointsReq),
+  mStorePointTypes: () => http.get<StorePointType[]>(E.mStorePointTypes.path),
+  mStorePointAccount: (typeCode) => http.get<StorePointAccount>(E.mStorePointAccount.path, { typeCode }),
+  mStorePointEntries: (typeCode, after = 0, limit = 20) =>
+    http.get<StorePointEntryPage>(E.mStorePointEntries.path, { typeCode, after, limit }),
 
   // ---- 消息
   mMessageList: () => http.get<Message[]>(E.mMessageList.path),

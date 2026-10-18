@@ -23,7 +23,7 @@ import java.util.List;
  * 和设计文档一致。契约里曾是单数 {@code /mp/point/**}，已随本次对齐改掉。
  *
  * <p><b>用户号从鉴权上下文取，不收 {@code X-User-No} 头</b> ——
- * 与 {@code BizPointsController} 里那条「商家号从 BizContext 取」是同一条规矩。
+ * 与 B 端按 BizContext 取当前门店的鉴权规矩一致。
  *
  * <p>这三个端点此前<b>真的收这个头</b>，而 {@code /mp/**} 在安全层是 permitAll
  * （游客要能逛商品），两者叠在一起的后果是：<b>任何人不用登录，

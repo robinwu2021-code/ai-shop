@@ -76,8 +76,9 @@ import type {
   MerchantCustomer,
   MerchantLoginResp,
   MerchantPlan,
-  MerchantPointAccount,
-  MerchantPointsRecord,
+  StorePointType,
+  StorePointAccount,
+  StorePointEntryPage,
   MerchantProfile,
   MerchantRole,
   MerchantSpecDim,
@@ -793,12 +794,10 @@ import type {
   ZipPlanReq,
   ZipImported,
   PickupSelfBuildReq,
-  PointsRecordQuery,
   StaffLoginReq,
   StoreEditReq,
   StoreFulfillmentSaveReq,
   SubmitPaymentReq,
-  TogglePointsReq,
   OpenFromMapReq,
   StockInboundReq, StockOutboundReq,
   SaveShipSettingReq,
@@ -1977,7 +1976,7 @@ export interface MerchantApi {
     payload: { skuNo: string; kind: ArrivalIssueKind; qty: number; note: string },
   ): Promise<PickupOrder>;
 
-  // ---- 积分（商家侧只有成本与开关，看不到抵扣与补差）
+  // ---- 当前门店积分账本
   /** 收入按状态汇总（四个数）。**门店收窄与 mSettleBills 逐字一致** —— 否则总览与明细对不上 */
   mIncomeSummary(allStores?: boolean): Promise<IncomeSummary>;
 
@@ -1989,16 +1988,9 @@ export interface MerchantApi {
    */
   mDailyFlow(q?: { from?: string; to?: string; allStores?: boolean }): Promise<DailyFlowPage>;
 
-  mPointsAccount(): Promise<MerchantPointAccount>;
-  /** 发分服务费明细：一单一条，数据来自 stl_bill.points_fee_minor */
-  mPointsRecords(q?: PointsRecordQuery): Promise<MerchantPointsRecord[]>;
-  /**
-   * 开/关本店积分。
-   *
-   * **关闭只影响将来** —— 已发出的分仍有效、已扣的服务费不退，
-   * 否则关一次开关就是一次资金事故。
-   */
-  mPointsToggle(req: TogglePointsReq): Promise<MerchantPointAccount>;
+  mStorePointTypes(): Promise<StorePointType[]>;
+  mStorePointAccount(typeCode: string): Promise<StorePointAccount>;
+  mStorePointEntries(typeCode: string, after?: number, limit?: number): Promise<StorePointEntryPage>;
 
   // ---- 消息（新订单/售后/评价的落点；推送与响铃是三期的加速通道，这里是事实记录）
   mMessageList(): Promise<Message[]>;

@@ -834,39 +834,37 @@ export default {
 
   points: {
 
+    storeLedger: "门店积分账本",
+    storeLedgerHint: "按当前门店与积分类型查看，金额和积分以支付账本为准。",
+    noTypes: "暂无积分类型",
+    type: "积分类型",
+    pointsUnit: "积分",
+    minorUnit: "最小货币单位",
+    accountBuckets: "账户分桶",
+    emptyAccount: "当前门店在此类型下暂无账本记录",
+    balanceAfter: "变动后余额",
+    loadMore: "加载更多",
+
     title: "积分",
 
-    periodExpense: "本期发放服务费",
 
-    periodHint: "{p} · 结算时从货款里扣",
 
-    switch: "本店积分",
 
-    switchHint: "开启后顾客在本店消费可获得积分，商家按发放额支付服务费",
 
-    closeOnlyFuture: "关闭只影响将来：已发出的分仍然有效，已扣的服务费不退",
 
-    forced: "平台已强制开启本店积分，不能关闭",
 
-    rule: "发放规则",
 
-    rulePlatform: "平台统一",
 
-    ruleHint: "按类目统一设置，商家不单独配置。具体比例见平台公布的类目规则。",
 
-    records: "查看发放明细",
+    records: "查看积分流水",
 
-    recordsTitle: "积分发放明细",
+    recordsTitle: "门店积分流水",
 
-    periodTotal: "本期合计",
 
-    recordsEmpty: "本期暂无发放记录",
+    recordsEmpty: "暂无积分流水",
 
-    granted: "发放 {n} 分",
 
-    notGranted: "未发放",
 
-    notGrantedWhy: "当面付款的订单不发放积分",
 
   },
 
@@ -1827,20 +1825,6 @@ export default {
     batchStatusRECONCILED: "待放款",
     batchStatusRELEASED: "已放款",
     rateTitle: "费率说明",
-    pointsTitle: "本店积分",
-    pointsOn: "已开启",
-    pointsOff: "已关闭",
-    pointsForced: "平台已开启",
-    pointsExpense: "{period} 积分发放服务费",
-    pointsHint: "顾客使用积分抵扣的金额由平台承担，商家仅支付发放服务费。",
-    pointsDetail: "查看明细",
-    pointsFold: "收起明细",
-    pointsEmpty: "本期暂无积分发放服务费",
-    pointsQty: "{n} 分",
-    pointsOnTitle: "开启本店积分",
-    pointsOnHint: "开启后每笔订单按规则发放积分，并产生发放服务费。",
-    pointsOffTitle: "关闭本店积分",
-    pointsOffHint: "关闭只影响将来：已发出的分仍然有效，已扣的服务费不退。",
 
     title: "结算单",
     empty: "还没有可结算的订单",
