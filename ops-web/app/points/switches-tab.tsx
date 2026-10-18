@@ -72,7 +72,7 @@ export function PointsPolicyTab({ c, canEdit }: { c: FinanceCopy; canEdit: boole
       {list.isPending && <p dir="auto">{c.ppLoading}</p>}
       {list.isError && <Notice tone="warning">{list.error.message} <Button onClick={() => void list.refetch()}>{text("重试", "Retry")}</Button></Notice>}
       {list.data && <div className="overflow-x-auto"><DataTable rows={list.data.rows} error={list.error} onRetry={() => void list.refetch()}
-          empty={text("此范围尚无开关记录。", "No switch records in this scope.")} rowKey={(r) => String(r.id)} columns={[
+          empty={text("此范围暂无开关记录；实际可用性还受类型状态、协议及资金限制。", "No switch records in this scope. Type state, agreement and funding still constrain availability.")} rowKey={(r) => String(r.id)} columns={[
           { header: text("范围", "Scope"), cell: (r) => `${r.scope} · ${r.typeCode}` },
           { header: text("对象", "Subject"), cell: (r) => r.subjectNo },
           { header: text("方向", "Flow"), cell: (r) => r.flow },
