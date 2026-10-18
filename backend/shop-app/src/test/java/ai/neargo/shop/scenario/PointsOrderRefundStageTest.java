@@ -30,6 +30,7 @@ import java.util.UUID;
 @ActiveProfiles("test")
 class PointsOrderRefundStageTest {
     @Autowired OrderPointsRefundCoordinator refunds;
+    @Autowired OrderPointsRecoveryService recovery;
     @Autowired ai.neargo.shop.trade.service.OrderService orders;
     @Autowired ai.neargo.shop.trade.order.points.OrderPointsFactService journal;
     @Autowired JdbcTemplate jdbc;
@@ -59,6 +60,15 @@ class PointsOrderRefundStageTest {
                                 Long.class,
                                 f.as))
                 .isEqualTo(1);
+    }
+
+    @Test
+    void real_source_queue_summary_counts_open_refund_without_leaking_payload() {
+        var f=fixture();
+        new TransactionTemplate(sourceTx).execute(s -> refunds.stage(f.as,f.plan,f.proof));
+        var backlog=recovery.backlog(Instant.now());
+        assertThat(backlog.refunds().count()).isGreaterThanOrEqualTo(1);
+        assertThat(backlog.refunds().oldestSeconds()).isGreaterThanOrEqualTo(0);
     }
 
     @Test

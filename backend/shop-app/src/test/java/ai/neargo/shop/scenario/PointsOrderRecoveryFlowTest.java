@@ -12,6 +12,7 @@ import ai.neargo.shop.trade.service.AfterSaleService;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +25,7 @@ class PointsOrderRecoveryFlowTest {
     private final OrderPointsClosureFlowService closure = mock(OrderPointsClosureFlowService.class);
     private final OrderPointsBindingService bindings = mock(OrderPointsBindingService.class);
     private final OrderPointsBindingMapper bindingRows = mock(OrderPointsBindingMapper.class);
+    private final OrderPointsPlacementMapper placementRows = mock(OrderPointsPlacementMapper.class);
     private final OrderPointsFactMapper factRows = mock(OrderPointsFactMapper.class);
     private final OrderPointsRefundBindingMapper refundRows =
             mock(OrderPointsRefundBindingMapper.class);
@@ -38,6 +40,7 @@ class PointsOrderRecoveryFlowTest {
                     closure,
                     bindings,
                     bindingRows,
+                    placementRows,
                     factRows,
                     refundRows,
                     afterSales,
@@ -167,5 +170,17 @@ class PointsOrderRecoveryFlowTest {
         assertThat(inspection.pendingSourceEvents()).isEqualTo(2);
         assertThat(inspection.differences())
                 .containsExactly("PLACEMENT_MISSING", "SOURCE_EVENT_PENDING", "REFUND_PENDING");
+    }
+
+    @Test
+    void backlog_reports_pending_counts_and_oldest_age_without_payloads() {
+        var old=Timestamp.from(Instant.ofEpochMilli(1_000));
+        when(placementRows.pendingSummary()).thenReturn(java.util.Map.of("total",2L,"oldest",old));
+        when(refundRows.pendingSummary()).thenReturn(java.util.Map.of("total",1L,"oldest",old));
+        when(factRows.pendingSummary()).thenReturn(java.util.Map.of("total",3L,"oldest",old));
+        var report=service.backlog(Instant.ofEpochMilli(11_000));
+        assertThat(report.placements()).isEqualTo(new OrderPointsRecoveryService.QueueBacklog(2,10));
+        assertThat(report.refunds()).isEqualTo(new OrderPointsRecoveryService.QueueBacklog(1,10));
+        assertThat(report.events()).isEqualTo(new OrderPointsRecoveryService.QueueBacklog(3,10));
     }
 }

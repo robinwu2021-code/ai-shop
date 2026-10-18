@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.order.mapper;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface OrderPointsPlacementMapper {
@@ -31,4 +32,8 @@ public interface OrderPointsPlacementMapper {
             "SELECT order_no FROM ord_points_placement WHERE phase NOT IN ('READY','CANCELLED')"
                 + " ORDER BY updated_at,order_no LIMIT #{limit}")
     List<String> pending(int limit);
+
+    @Select("SELECT COUNT(*) AS total,MIN(created_at) AS oldest FROM ord_points_placement"
+            + " WHERE phase NOT IN ('READY','CANCELLED')")
+    Map<String,Object> pendingSummary();
 }

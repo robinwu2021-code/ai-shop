@@ -1,12 +1,19 @@
 package ai.neargo.shop.trade.order.points;
 
 import java.util.List;
+import java.time.Instant;
 
 /** Bounded source-side recovery; money execution remains with the pay-domain workers. */
 public interface OrderPointsRecoveryService {
     Report recover(int limit);
 
     Inspection inspect(String subOrderNo);
+
+    Backlog backlog(Instant now);
+
+    record QueueBacklog(long count, long oldestSeconds) {}
+
+    record Backlog(QueueBacklog placements, QueueBacklog refunds, QueueBacklog events) {}
 
     record Failure(String reference, String code) {}
 

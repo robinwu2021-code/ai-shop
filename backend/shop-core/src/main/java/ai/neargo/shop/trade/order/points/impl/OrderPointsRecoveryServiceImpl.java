@@ -3,6 +3,7 @@ package ai.neargo.shop.trade.order.points.impl;
 import ai.neargo.shop.spi.points.PointsPaymentSnapshotPort;
 import ai.neargo.shop.trade.order.mapper.OrderPointsBindingMapper;
 import ai.neargo.shop.trade.order.mapper.OrderPointsFactMapper;
+import ai.neargo.shop.trade.order.mapper.OrderPointsPlacementMapper;
 import ai.neargo.shop.trade.order.mapper.OrderPointsRefundBindingMapper;
 import ai.neargo.shop.trade.order.points.*;
 import ai.neargo.shop.trade.service.AfterSaleService;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.*;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -26,6 +29,7 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
     private final OrderPointsClosureFlowService closure;
     private final OrderPointsBindingService bindings;
     private final OrderPointsBindingMapper bindingRows;
+    private final OrderPointsPlacementMapper placementRows;
     private final OrderPointsFactMapper factRows;
     private final OrderPointsRefundBindingMapper refundRows;
     private final AfterSaleService afterSales;
@@ -41,6 +45,7 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
             OrderPointsClosureFlowService closure,
             OrderPointsBindingService bindings,
             OrderPointsBindingMapper bindingRows,
+            OrderPointsPlacementMapper placementRows,
             OrderPointsFactMapper factRows,
             OrderPointsRefundBindingMapper refundRows,
             AfterSaleService afterSales,
@@ -52,6 +57,7 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
         this.closure = closure;
         this.bindings = bindings;
         this.bindingRows = bindingRows;
+        this.placementRows = placementRows;
         this.factRows = factRows;
         this.refundRows = refundRows;
         this.afterSales = afterSales;
@@ -185,6 +191,21 @@ public class OrderPointsRecoveryServiceImpl implements OrderPointsRecoveryServic
                 pending,
                 verified,
                 differences);
+    }
+
+    @Override
+    public Backlog backlog(Instant now) {
+        Objects.requireNonNull(now,"now");
+        return new Backlog(queue(placementRows.pendingSummary(),now),
+                queue(refundRows.pendingSummary(),now),queue(factRows.pendingSummary(),now));
+    }
+
+    private static QueueBacklog queue(Map<String,Object> row, Instant now) {
+        long count=((Number)row.get("total")).longValue();
+        Object oldest=row.get("oldest");
+        long age=oldest==null ? 0 : Math.max(0,
+                java.time.Duration.between(((Timestamp)oldest).toInstant(),now).getSeconds());
+        return new QueueBacklog(count,age);
     }
 
     private static Failure failure(String ref, RuntimeException cause) {
