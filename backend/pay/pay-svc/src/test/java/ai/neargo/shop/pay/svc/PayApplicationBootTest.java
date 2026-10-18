@@ -41,6 +41,7 @@ class PayApplicationBootTest {
     @Test
     @DisplayName("★★★ 独立进程的上下文装得起来 —— 此前这件事只有部署那刻才知道")
     void contextLoads() {
+        assertThat(ctx.getBean("payTxManager")).isSameAs(ctx.getBean("transactionManager"));
         assertThat(ctx.getBeanDefinitionCount())
                 .as("上下文是空的 —— 那说明扫描包压根没生效，这条冒烟什么都没验")
                 .isGreaterThan(50);
