@@ -72,7 +72,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-009 | D01.2 | DONE | 006 | core/app | core范围事实预检：门店/商品归属、类目有效性；可信CatalogScope构造 | c29c4fe4a；EntitlementScopeValidationTest 7项：会话身份、门店子集、跨租户门店/商品、赠品归属及201条分批；门店子集消融RED→恢复GREEN；HTTP仍归025 |
 | JB-010 | D01.3 | DONE | 008,009 | core.member/app | MemberCodeResolveService/Impl、BizMemberCodeController、MpMemberCodeController；C08/C11 | 51d10402b/6156975bb/ecfda1ebd；身份7+HTTP5，目标门店借权及actor消融RED→GREEN；定向53/standalone12通过；干净3582项、原生DDL通过 |
 | JB-011 | D01.3 | DONE | 008,010 | core.trade/app | EntitlementAuthorizationService/Impl、MpEntitlementAuthorizationController、EntitlementSourceDecisionPortImpl；V427持久本人意图与源决策 | EntitlementAuthorizationPersistenceFlowTest：改价失效、他人拒绝、重复确认同意图、支付/取消唯一决策；重建服务后持久查询；78f430311/f116a02ab，干净3590项全绿 |
-| JB-012 | D01.3/D06.2 | DONE | 008,011 | core.trade | CardSaleSnapshotPlan、CardSaleSnapshotService/Impl；按订单行/单件/件内权益、模板版本生成不可变售卡快照 | CardSaleSnapshotTest 6项；clean test 20模块2781项0失败/错误；V428原生MySQL检查3项0跳过；详见JB-012验收记录 |
+| JB-012 | D01.3/D06.2 | DONE | 008,011 | core.trade | CardSaleSnapshotPlan、CardSaleSnapshotService/Impl；按订单行/单件/件内权益、模板版本生成不可变售卡快照 | 111856a96；CardSaleSnapshotTest 6项；clean test 20模块2781项0失败/错误；V428原生MySQL检查3项0跳过；详见JB-012验收记录 |
 | JB-013 | D02.1 | DONE | 005 | pay.entitlement | 提取EntitlementCommandDeduplicator，目录切到唯一共用实现 | EntitlementCommandDeduplicatorTest：同键同参重放、异参冲突、大小写区分、原生并发、业务异常不留PENDING |
 | JB-014 | D02.1/D04.2 | TODO | 008,013 | pay事件/core适配 | PayEntitlementEventPublisher、pay_ent_outbox/inbox与既有投递机制适配 | EntitlementEventFlowTest：提交后才投递、回滚无事件、eventNo去重、重启重试；事件载荷白名单 |
 
@@ -440,6 +440,6 @@ JB-010历史全量证据：ecfda1ebd干净编译及3582项/20模块全绿。JB-0
 
 **裁定：**不在通用`ord_item`表新增必填行号；调用链和多组现有SQL/实体写入会因新列被迫同步改造，超出本任务且造成向后兼容破坏。使用已落库`ord_item.id`派生仅限core内部的稳定行身份，并持久化在快照`order_line_no`列；该值不会返回API。若此裁定不适用于将来分库/订单行ID重建场景，成本是历史来源身份需迁移映射，因此跨库前必须保留稳定业务行号。
 
-验证：`CardSaleSnapshotTest` 6项通过，覆盖2件×2权益、稳定来源键、重试唯一落库、异参冲突、ID派生、真实订单`paidAt`重放和摘要字段边界。Java 21 `mvn -o -f backend/pom.xml clean test`：20模块2781项，0失败、0错误、3跳过；native专用检查已补跑并通过V425/V427/V428共3项，0跳过。24个生成器、V2 66份文档、SQL可移植性扫描（0新增方言欠账）、test schema生成器及`git diff --check`通过。全Java后端未完成；未推送、部署或操作生产数据库。
+实现提交：`111856a96d5238e989a1130ce7d9b7e21aea543c`。验证：`CardSaleSnapshotTest` 6项通过，覆盖2件×2权益、稳定来源键、重试唯一落库、异参冲突、ID派生、真实订单`paidAt`重放和摘要字段边界。Java 21 `mvn -o -f backend/pom.xml clean test`：20模块2781项，0失败、0错误、3跳过；native专用检查已补跑并通过V425/V427/V428共3项，0跳过。24个生成器、V2 66份文档、SQL可移植性扫描（0新增方言欠账）、test schema生成器及`git diff --check`通过。全Java后端未完成；未推送、部署或操作生产数据库。
 
 当前任务计数：14 DONE / 0 DOING / 41 TODO。下一项JB-014：权益事件Outbox/inbox及现有投递机制接线。
