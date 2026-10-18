@@ -1,17 +1,18 @@
 package ai.neargo.shop.trade.entitlement;
 
+import ai.neargo.shop.common.BizKey;
 import java.time.Instant;
 import java.util.Objects;
 
 /** A server-created, durable source intent. PENDING is deliberately not consumer authorization. */
-public record AuthorizationIntent(String intentNo, String tenantNo, String userNo, String orderNo,
+public record AuthorizationIntent(String intentRef, String tenantNo, String userNo, String orderNo,
                                   long orderRevision, String quoteRef, String selectionDigest,
                                   String orderSnapshotHash, Instant expiresAt, State state,
                                   String requestKey, String authorizationNo, Instant authorizedAt) {
     public enum State { PENDING, AUTHORIZED, CANCELLED, EXPIRED }
 
     public AuthorizationIntent {
-        requireText(intentNo); requireText(tenantNo); requireText(userNo); requireText(orderNo);
+        requireText(intentRef); requireText(tenantNo); requireText(userNo); requireText(orderNo);
         requireText(quoteRef); requireHash(selectionDigest); requireHash(orderSnapshotHash);
         Objects.requireNonNull(expiresAt); Objects.requireNonNull(state);
         if (orderRevision < 0) throw new IllegalArgumentException("negative order revision");
@@ -25,10 +26,10 @@ public record AuthorizationIntent(String intentNo, String tenantNo, String userN
         }
     }
 
-    public static AuthorizationIntent pending(String intentNo, String tenantNo, String userNo, String orderNo,
+    public static AuthorizationIntent pending(String intentRef, String tenantNo, String userNo, String orderNo,
                                                long orderRevision, String quoteRef, String selectionDigest,
                                                String orderSnapshotHash, Instant expiresAt) {
-        return new AuthorizationIntent(intentNo, tenantNo, userNo, orderNo, orderRevision, quoteRef,
+        return new AuthorizationIntent(intentRef, tenantNo, userNo, orderNo, orderRevision, quoteRef,
                 selectionDigest, orderSnapshotHash, expiresAt, State.PENDING, null, null, null);
     }
 
@@ -43,8 +44,8 @@ public record AuthorizationIntent(String intentNo, String tenantNo, String userN
             throw new IllegalStateException("intent unavailable");
         }
         requireText(idempotencyKey);
-        String authNo = "EA" + java.util.UUID.randomUUID().toString().replace("-", "");
-        return new AuthorizationIntent(intentNo, tenantNo, userNo, orderNo, orderRevision, quoteRef,
+        String authNo = BizKey.next(BizKey.ENTITLEMENT_AUTHORIZATION);
+        return new AuthorizationIntent(intentRef, tenantNo, userNo, orderNo, orderRevision, quoteRef,
                 selectionDigest, orderSnapshotHash, expiresAt, State.AUTHORIZED, idempotencyKey, authNo, now);
     }
 

@@ -586,6 +586,6 @@ JB-010按AC及实际文件完成，独立任务表更新12 DONE/0 DOING/43 TODO�
 
 从干净基线9eb06ccaa开始，新增C09本人确认Controller、可信core报价意图staging service、授权/源决策实体Mapper、SourceDecisionPort持久查询与源owner终态决策写入service；V427创建`ord_ent_authorization`和`ord_ent_source_decision`。订单确认期间锁定主单/子单/明细，校验当前消费者、WAIT_PAY、订单修订、支付币种/金额边界、pay quoteRef/selectionDigest、完整序列化订单快照摘要和意图过期时刻。PENDING没有authorizationRef/authorizedAt；同本人requestKey只回放原授权，换请求键冲突。`SHOP_ENTITLEMENT_AUTHORIZATION_ENABLED`默认false。
 
-RED：初始AuthorizationFlowTest因缺少状态类无法编译，预期退出1；状态模型完成后4个规则用例GREEN。第一次H2持久集成RED：测试schema未含V427表；运行官方`backend/scripts/gen-test-schema.py`更新生成schema后恢复。之后定向`EntitlementAuthorizationPersistenceFlowTest,EntitlementAuthorizationFlowTest,EntitlementPreviewContractTest,MpEndpointAuthTest,SchemaGeneratorTest`共通过，0失败/错误/跳过（实际输出退出0）。场景覆盖订单行改价失效、他人确认拒绝、同意图同键回放、旧修订取消→新修订成功、跨修订成功源唯一及成功源回退查询；MP探针已验证未登录拒绝。Disposable MySQL9.7.2执行V427授权/决策原生DDL及唯一键/CHECK场景2项通过，0跳过；最终DDL调整后待重跑。
+RED：初始AuthorizationFlowTest因缺少状态类无法编译，预期退出1；状态模型完成后4个规则用例GREEN。第一次H2持久集成RED：测试schema未含V427表；运行官方`backend/scripts/gen-test-schema.py`更新生成schema后恢复。干净全量78f430311跑3590项/20模块，635秒，3项失败：BizKeyConventionTest捕获本批UUID拼号，改用BizKey.next并补EA/EI/ED前缀；MediaRefCoverageTest被“意图”注释中的“图”误判，改为“预确认记录键”；OtpTestPhoneFlowTest随后独立8/8通过。之后定向持久/规则/Preview/MP鉴权/schema/BizKey/MediaRef/OTP共34项0失败/错误/跳过（退出0）。覆盖订单行改价失效、他人确认拒绝、同意图同键重启实例回放、旧修订取消→新修订成功、跨修订成功源唯一及成功源回退查询。Disposable MySQL9.7.2最终V427原生DDL及唯一键/CHECK场景2项通过，0跳过。
 
-JB-011仍DOING：完成原生MySQL复跑、并发确认/同报价staging唯一性与重复请求恢复测试、契约/SQL/文档生成器守卫及本任务干净HEAD全量门禁；并核实stageTrustedIntent接入真实core checkout quote生产者的调用点。未部署、未写生产库、未push。
+JB-011仍DOING：契约/SQL/24文档生成器/V2 66份守卫已通过；需修正提交后重新跑干净HEAD全量门禁，再核实stageTrustedIntent接入真实core checkout quote生产者的调用点。并发确认/同报价staging行为依数据库行锁与唯一键保护，后续继续补并发验收。未部署、未写生产库、未push。

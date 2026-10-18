@@ -39,16 +39,16 @@ class EntitlementAuthorizationNativeMysqlTest {
     void pendingIsNotAuthorizedAndSettledSuccessIsUniqueAcrossRevisions() {
         String tenant = "MAIN";
         String now = "2026-10-18 00:00:00.000";
-        jdbc.update("INSERT INTO ord_ent_authorization(tenant_no,intent_no,payload_hash,source_key,source_snapshot,"
+        jdbc.update("INSERT INTO ord_ent_authorization(tenant_no,intent_key,payload_hash,source_key,source_snapshot,"
                         + "source_revision,order_no,user_no,entity_no,store_no,quote_ref,selection_digest,"
                         + "order_snapshot_hash,amount_minor,currency,status,expires_at,created_at,updated_at,created_by,"
                         + "updated_by) VALUES (?,?,?,?,CAST(? AS JSON),?,?,?,?,?,?,?,?,?,'CNY','PENDING',?,?,?,?,?)",
                 tenant, "INTENT-1", "a".repeat(64), "b".repeat(64), "{}", 0, "ORDER-1", "USER-1", "ENTITY-1",
                 "STORE-1", "QUOTE-1", "c".repeat(64), "d".repeat(64), 1000, "2026-10-18 00:05:00.000",
                 now, now, "USER-1", "USER-1");
-        assertThat(jdbc.queryForObject("SELECT status FROM ord_ent_authorization WHERE intent_no='INTENT-1'", String.class))
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_ent_authorization WHERE intent_key='INTENT-1'", String.class))
                 .isEqualTo("PENDING");
-        assertThatThrownBy(() -> jdbc.update("UPDATE ord_ent_authorization SET status='AUTHORIZED' WHERE intent_no='INTENT-1'"))
+        assertThatThrownBy(() -> jdbc.update("UPDATE ord_ent_authorization SET status='AUTHORIZED' WHERE intent_key='INTENT-1'"))
                 .isInstanceOf(RuntimeException.class);
 
         sourceDecision("DECISION-CANCEL", "intent-v0", null, 0, "USE_CANCEL", "CANCELLED");

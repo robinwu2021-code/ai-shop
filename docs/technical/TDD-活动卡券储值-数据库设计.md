@@ -810,7 +810,7 @@ AuditMetaObjectHandler当前使用LocalDateTime.now，不能直接宣称其符�
 | order_snapshot_hash | CHAR(64) NOT NULL | 可信源价格明细摘要 |
 | amount_minor | BIGINT NOT NULL | 本次确认金额可为零 |
 | currency | VARCHAR(8) NOT NULL | 币种 |
-| intent_no | VARCHAR(64) NOT NULL | 服务端预确认意图号 |
+| intent_key | VARCHAR(64) NOT NULL | 服务端预确认记录键 |
 | order_no | VARCHAR(64) NOT NULL | 被确认的真实订单 |
 | status | VARCHAR(16) NOT NULL | PENDING/AUTHORIZED/CANCELLED/EXPIRED |
 | authorized_at | DATETIME(3) NULL | 仅本人确认后写入；PENDING不能视为授权 |
@@ -819,7 +819,7 @@ AuditMetaObjectHandler当前使用LocalDateTime.now，不能直接宣称其符�
 索引：
 
 ```sql
-UNIQUE KEY uk_order_auth_intent (tenant_no,intent_no),
+UNIQUE KEY uk_order_auth_intent (tenant_no,intent_key),
 UNIQUE KEY uk_order_auth_no (tenant_no,authorization_no),
 UNIQUE KEY uk_order_auth_request (tenant_no,user_no,request_key),
 KEY ix_order_auth_source (tenant_no,source_key,user_no,status),

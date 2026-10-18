@@ -2,7 +2,7 @@
 CREATE TABLE ord_ent_authorization (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
     tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
-    intent_no VARCHAR(64) NOT NULL COMMENT '服务端预确认意图号',
+    intent_key VARCHAR(64) NOT NULL COMMENT '服务端预确认记录键',
     authorization_no VARCHAR(64) NULL COMMENT '本人授权引用；仅确认后生成',
     request_key VARCHAR(64) COLLATE utf8mb4_bin NULL COMMENT '本人确认幂等键',
     payload_hash CHAR(64) NOT NULL COMMENT '源端请求指纹',
@@ -28,7 +28,7 @@ CREATE TABLE ord_ent_authorization (
     created_by VARCHAR(64) NOT NULL COMMENT '可信操作者',
     updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_order_auth_intent (tenant_no,intent_no),
+    UNIQUE KEY uk_order_auth_intent (tenant_no,intent_key),
     UNIQUE KEY uk_order_auth_no (tenant_no,authorization_no),
     UNIQUE KEY uk_order_auth_request (tenant_no,user_no,request_key),
     UNIQUE KEY uk_order_auth_quote (tenant_no,quote_ref),

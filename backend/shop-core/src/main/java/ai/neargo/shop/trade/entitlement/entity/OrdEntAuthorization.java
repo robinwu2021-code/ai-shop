@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 @TableName("ord_ent_authorization")
 public class OrdEntAuthorization extends BaseEntity {
-    private String intentNo;
+    private String intentKey;
     private String authorizationNo;
     private String requestKey;
     private String payloadHash;

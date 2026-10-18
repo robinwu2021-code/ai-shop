@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.trade.entitlement.config.EntitlementAuthorizationProperties;
@@ -26,7 +27,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -90,7 +90,7 @@ public class EntitlementAuthorizationServiceImpl implements EntitlementAuthoriza
         }
         var row = new OrdEntAuthorization();
         row.setTenantNo(tenantNo);
-        row.setIntentNo("EI" + UUID.randomUUID().toString().replace("-", ""));
+        row.setIntentKey(BizKey.next(BizKey.ENTITLEMENT_INTENT));
         row.setPayloadHash(payloadHash);
         row.setSourceKey(source.useIntentKey());
         row.setSourceSnapshot(writeSource(source));
@@ -150,7 +150,7 @@ public class EntitlementAuthorizationServiceImpl implements EntitlementAuthoriza
         Instant now = Instant.now();
         Instant expires = row.getExpiresAt().toInstant(ZoneOffset.UTC);
         if (!now.isBefore(expires)) throw BizException.of(ErrorCode.CONFLICT);
-        String authorizationNo = "EA" + UUID.randomUUID().toString().replace("-", "");
+        String authorizationNo = BizKey.next(BizKey.ENTITLEMENT_AUTHORIZATION);
         row.setAuthorizationNo(authorizationNo);
         row.setRequestKey(command.requestKey());
         row.setStatus("AUTHORIZED");

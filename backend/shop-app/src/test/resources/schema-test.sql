@@ -4930,7 +4930,7 @@ CREATE TABLE IF NOT EXISTS ord_ent_authorization
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
     tenant_no VARCHAR(32) NOT NULL,
-    intent_no VARCHAR(64) NOT NULL,
+    intent_key VARCHAR(64) NOT NULL,
     authorization_no VARCHAR(64) NULL,
     request_key VARCHAR(64) COLLATE utf8mb4_bin NULL,
     payload_hash CHAR(64) NOT NULL,
@@ -4956,7 +4956,7 @@ CREATE TABLE IF NOT EXISTS ord_ent_authorization
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_order_auth_intent UNIQUE (tenant_no,intent_no),
+    CONSTRAINT uk_order_auth_intent UNIQUE (tenant_no,intent_key),
     CONSTRAINT uk_order_auth_no UNIQUE (tenant_no,authorization_no),
     CONSTRAINT uk_order_auth_request UNIQUE (tenant_no,user_no,request_key),
     CONSTRAINT uk_order_auth_quote UNIQUE (tenant_no,quote_ref),

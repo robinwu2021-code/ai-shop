@@ -2,6 +2,7 @@ package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.SourceRef;
@@ -12,7 +13,6 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -68,7 +68,7 @@ public class EntitlementSourceDecisionServiceImpl implements EntitlementSourceDe
         String sourceSnapshot;
         try { sourceSnapshot = json.writeValueAsString(source); }
         catch (Exception e) { throw new IllegalStateException("Could not serialize source reference", e); }
-        String decisionNo = "ED" + UUID.randomUUID().toString().replace("-", "");
+        String decisionNo = BizKey.next(BizKey.ENTITLEMENT_DECISION);
         var row = new OrdEntSourceDecision();
         row.setTenantNo(tenantNo);
         row.setDecisionNo(decisionNo);

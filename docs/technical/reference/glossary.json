@@ -29419,6 +29419,27 @@
       },
       {
         "host": "BizKey",
+        "name": "ENTITLEMENT_INTENT",
+        "value": "EI",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "ENTITLEMENT_AUTHORIZATION",
+        "value": "EA",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "ENTITLEMENT_DECISION",
+        "value": "ED",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "ADDRESS",
         "value": "AD",
         "zh": "",

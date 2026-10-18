@@ -58,6 +58,9 @@ public final class BizKey {
     /** Payment-owned rights template and immutable definition version. */
     public static final String ENTITLEMENT_TEMPLATE = "ETP";
     public static final String ENTITLEMENT_VERSION = "ETV";
+    public static final String ENTITLEMENT_INTENT = "EI";
+    public static final String ENTITLEMENT_AUTHORIZATION = "EA";
+    public static final String ENTITLEMENT_DECISION = "ED";
     public static final String ADDRESS = "AD";
     public static final String TICKET = "TK";
     public static final String MESSAGE = "MSG";
