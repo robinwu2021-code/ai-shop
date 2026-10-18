@@ -59,17 +59,27 @@ class AddressSalutationTest {
     void orderKeepsSalutationSnapshotAfterAddressChanges() throws Exception {
         String token = TestLogin.consumer(mvc(), json, otpStore, "13900000672");
         String id = save(token, null, ",\"salutation\":\"MS\"").path("addressId").asText();
-        jdbc.update("UPDATE prd_goods SET fulfillments = ? WHERE goods_no = ?", "[\"EXPRESS\"]", "G0001");
-        String body = "{\"items\":[{\"goodsNo\":\"G0001\",\"skuNo\":\"SK0001\",\"qty\":1}],"
-                + "\"fulfillment\":\"EXPRESS\",\"addressId\":\"" + id
-                + "\",\"idempotencyKey\":\"salutation-snapshot\"}";
-        mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(jsonPath("$.code").value(0));
-        assertThat(jdbc.queryForList("SELECT receiver_salutation FROM ord_sub_order WHERE address_id = ?", String.class, id))
-                .containsExactly("MS");
-        save(token, id, ",\"salutation\":\"MR\"");
-        assertThat(jdbc.queryForList("SELECT receiver_salutation FROM ord_sub_order WHERE address_id = ?", String.class, id))
-                .containsExactly("MS");
+        String originalFulfillments = jdbc.queryForObject(
+                "SELECT fulfillments FROM prd_goods WHERE goods_no = ?", String.class, "G0001");
+        try {
+            jdbc.update("UPDATE prd_goods SET fulfillments = ? WHERE goods_no = ?", "[\"EXPRESS\"]", "G0001");
+            String body = "{\"items\":[{\"goodsNo\":\"G0001\",\"skuNo\":\"SK0001\",\"qty\":1}],"
+                    + "\"fulfillment\":\"EXPRESS\",\"addressId\":\"" + id
+                    + "\",\"idempotencyKey\":\"salutation-snapshot\"}";
+            mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(jsonPath("$.code").value(0));
+            assertThat(jdbc.queryForList(
+                    "SELECT receiver_salutation FROM ord_sub_order WHERE address_id = ?", String.class, id))
+                    .containsExactly("MS");
+            save(token, id, ",\"salutation\":\"MR\"");
+            assertThat(jdbc.queryForList(
+                    "SELECT receiver_salutation FROM ord_sub_order WHERE address_id = ?", String.class, id))
+                    .containsExactly("MS");
+        } finally {
+            // The seed is shared with pickup-order tests; restore even if a snapshot assertion fails.
+            jdbc.update("UPDATE prd_goods SET fulfillments = ? WHERE goods_no = ?",
+                    originalFulfillments, "G0001");
+        }
     }
     @Test
     void legacyAddressDefaultsAndInvalidSalutationIsRejected() throws Exception {
