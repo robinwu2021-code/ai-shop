@@ -41,6 +41,9 @@ public class BizMemberCodeController {
         if (allowedStores != null && !allowedStores.contains(request.storeNo())) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        if (!BizContext.current().withStore(request.storeNo()).can(BizPerms.CUSTOMER)) {
+            throw BizException.of(ErrorCode.BIZ_ROLE_FORBIDDEN, BizPerms.labelOf(BizPerms.CUSTOMER));
+        }
         return service.resolve(new MemberCodeScope(user.tenantNo(), entityNo, request.storeNo(), user.userNo()),
                 request.memberCode());
     }

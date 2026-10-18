@@ -232,7 +232,7 @@ model/policy无Spring/MyBatis；业务接口与实现分开；资金/余次变�
 
 ### JB-010统一会员凭证实施补充（2026-10-18）
 
-档位2。当前无可信会员码签发者，新增C11 POST /mp/member-code，C会话取本人；C08商家解析统一会员码。沿用biz:customer权限与门店子集，不创建储值专用码。核心会员域新增mbr_identity_ticket（V426计划），目的MEMBER_CODE与CUSTOMER_REFERENCE隔离，256位随机原文只返回当次调用，数据库仅SHA-256摘要。码60秒、引用120秒、UTC半开有效期。引用绑定租户、主体、门店、商家操作人及顾客；识别不是扣款授权，仍须JB-011持久本人确认。
+档位2。当前无可信会员码签发者，新增C11 POST /mp/member-code，C会话取本人；C08商家解析统一会员码。沿用biz:customer权限与门店子集，并核实目标门店功能权限，不创建储值专用码。核心会员域新增mbr_identity_ticket（V426计划），目的MEMBER_CODE与CUSTOMER_REFERENCE隔离，256位随机原文只返回当次调用，数据库仅SHA-256摘要。码60秒、引用120秒、UTC半开有效期。引用绑定租户、主体、门店、商家操作人及顾客；识别不是扣款授权，仍须JB-011持久本人确认。
 
 新增UserScopeFactsPort查用户有效状态；CustomerIdentityPort向其他领域提供受范围限制的引用查询。新签发/解析受shop.member-code.enabled控制且默认关闭，既有引用只读查询不受新发行开关影响，但每次重验有效顾客/商家/门店。正式内部HTTP代理仍由JB-041接线。目标外部接口增至48，内部传输目标增至34，设计表增至44（core16/pay28，基础38+支撑6）；实际迁移交付分别登记。无资金表变更，不部署、不接生产库。
 
@@ -329,7 +329,7 @@ COUNT以整数totalUnits计数，可有期限；PERIOD_COUNT同时限制有效�
 | C本人统一码，无储值专用码 | MemberCodeHttpFlowTest.consumerIssuesCodeAndMerchantResolvesWithoutLeakingAccountIdentifiers | C11/C08、core.member |
 | 伪造/过期/用途混用拒绝 | MemberCodeResolveFlowTest.rejectsForgedCodesUserNumbersReferencesAndExpiredCodes / expiredReferencesFailEvenWithValidScope | ticket hash/purpose/UTC半开有效期 |
 | 引用绑定租户/主体/门店/B操作人/顾客 | MemberCodeResolveFlowTest.referenceBindingIncludesTenantEntityStoreAndActor / rechecksLiveUserForIssueScanAndReferenceReads | requireReference + 用户有效事实SPI |
-| 店员仅可在授权门店识别，权限实时生效 | MemberCodeHttpFlowTest.staffNeedsLiveCustomerPermissionAndCannotScanForAnotherStore | BizContext门店子集 + biz:customer |
+| 店员仅可在授权门店识别，权限实时生效 | MemberCodeHttpFlowTest.staffNeedsLiveCustomerPermissionAndCannotScanForAnotherStore / customerPermissionAtOneStoreCannotBeBorrowedForAnotherAssignedStore | BizContext门店子集 + biz:customer |
 | 原文不持久化、不记日志 | MemberCodeResolveFlowTest.issuesUnifiedCodeAndResolvesDurableReferenceWithOnlyMaskedIdentity / MemberCodeHttpFlowTest.successAndValidationErrorsDoNotWriteRawCredentialsToLogs | hash-only表、脱敏DTO、既有安全日志 |
 | 缺省关闭，停止新签发不破坏在途引用查询 | MemberCodeResolveFlowTest.disabledFeatureBlocksNewCredentialsButAllowsExistingReferenceQuery | MemberCodeProperties |
 
@@ -567,3 +567,10 @@ RED：MemberCodeResolveFlowTest因缺新Service/SPI无法编译；HTTP新路径�
 第一次干净51d10402b全量：编译通过，20模块3581项，605秒，1项失败MpEndpointAuthTest.everyMpEndpointIsClassified，原因C11尚未登记C端登录分类；其余无失败/错误，原有原生条件1跳过。按守卫要求将POST /mp/member-code登记到REQUIRES_LOGIN（不是匿名/免检），让既有守卫实际匿名请求验证401；不改守卫逻辑或SecurityConfig。修复后另跑定向和干净全量，不将首次结果写成全绿。
 
 C11登录分类修复定向：MpEndpointAuthTest 7项（含真实匿名401）、MemberCodeHttpFlowTest 4项、MemberCodeResolveFlowTest 7项，共18项0失败/错误/跳过，退出0。24受管生成器及V2 66份再次通过。该次修改仅分类登记一行及对账文档，不变更业务实现；提交后重新跑干净全量。
+
+
+门店权限补充回归：核对BizContext.can仅判断当前请求头门店，MemberCodeHttpFlowTest.customerPermissionAtOneStoreCannotBeBorrowedForAnotherAssignedStore新增真实两个已授权门店的不同角色（A为biz:customer、B仅biz:goods），头固定A、正文选B。RED实际code=0，预期70006，说明门店子集不能替代目标门店功能权限。C08在子集校验后另用BizContext.withStore(targetStore).can(biz:customer)校验目标店；所有者仍可跨本主体店操作，普通员工不能借A店权限识别B店顾客。不改权限码、源边界或其他接口。此项仍属于U22门店隔离，补入验收，修复后必须再验证。
+
+第二轮干净6156975bb编译及全量3581项/20模块通过（600秒、0失败/错误，原有条件1跳过）。后续目标门店校验已由新增用例先RED code=0→恢复GREEN code=70006；最终定向53项通过（HTTP5、身份7、C登录7、B权限4、架构16、i18n6、范围事实7、schema1）。最终代码还需以修正后的提交进行干净全量，不拿615旧快照冒充最终验证。
+
+最终门店权限修正同12项身份/HTTP测试在standalone配置下全部通过（HTTP5、身份7），退出0；24生成器/66份V2及源码diff检查无新增问题。

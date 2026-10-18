@@ -135,6 +135,32 @@ class MemberCodeHttpFlowTest {
     }
 
     @Test
+    void customerPermissionAtOneStoreCannotBeBorrowedForAnotherAssignedStore() throws Exception {
+        String other = "MC-HTTP-S-" + UUID.randomUUID();
+        jdbc.update("INSERT INTO mch_store(store_no,entity_no,name,status,tenant_no,created_at,updated_at) "
+                + "VALUES (?,?,'assigned second store','ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                other, entity);
+        jdbc.update("UPDATE mch_account SET is_owner=0 WHERE mch_account_no=?", account);
+        jdbc.update("INSERT INTO mch_role(entity_no,role_code,name,perms,tenant_no,created_at,updated_at) "
+                + "VALUES (?,'CODE_CUSTOMER','code customer','[\"biz:customer\"]','MAIN',"
+                + "CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", entity);
+        jdbc.update("INSERT INTO mch_role(entity_no,role_code,name,perms,tenant_no,created_at,updated_at) "
+                + "VALUES (?,'CODE_GOODS','code goods','[\"biz:goods\"]','MAIN',"
+                + "CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", entity);
+        jdbc.update("INSERT INTO mch_store_role(mch_account_no,store_no,role,tenant_no,created_at,updated_at) "
+                + "VALUES (?,?,'CODE_CUSTOMER','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", account, store);
+        jdbc.update("INSERT INTO mch_store_role(mch_account_no,store_no,role,tenant_no,created_at,updated_at) "
+                + "VALUES (?,?,'CODE_GOODS','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", account, other);
+        String code = call("/mp/member-code", consumer, null).path("data").path("memberCode").asString();
+        assertThat(call("/biz/member-code/resolve", merchant,
+                json.writeValueAsString(new ResolveBody(code, store))).path("code").asInt()).isZero();
+        // Both stores are assigned, and the active header store has customer permission.
+        // Only target-store permission can reject this request.
+        assertThat(call("/biz/member-code/resolve", merchant,
+                json.writeValueAsString(new ResolveBody(code, other))).path("code").asInt()).isEqualTo(70006);
+    }
+
+    @Test
     void successAndValidationErrorsDoNotWriteRawCredentialsToLogs() throws Exception {
         var logger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
         var capture = new ListAppender<ILoggingEvent>();
@@ -159,6 +185,7 @@ class MemberCodeHttpFlowTest {
 
     private JsonNode call(String path, String token, String body) throws Exception {
         var request = post(path).header("Authorization", "Bearer " + token);
+        if (path.startsWith("/biz/")) { request.header("X-Store-No", store); }
         if (body != null) { request.contentType(MediaType.APPLICATION_JSON).content(body); }
         var response = mvc.perform(request).andReturn().getResponse();
         assertThat(response.getContentType()).as("registered handler or JSON authentication rejection")

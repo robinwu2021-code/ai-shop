@@ -360,7 +360,7 @@ JB-008是协议/配置门禁基础交付。34条内部传输Handler/代理由JB-
 
 ## JB-010统一会员凭证契约
 
-C11由core.member签发，tenant/user仅来自可信C会话；响应`{memberCode,expiresAt}`，expiresAt为ISO UTC。码为mc1_前缀的256位随机值，有效60秒。C08沿用biz:customer，输入`{memberCode,storeNo}`，tenant/entity/actor来自商家会话，并验证店员门店子集；响应`{customerRef,maskedName,expiresAt}`。引用有效120秒，绑定租户、主体、门店、操作人和顾客，顾客/商家/门店每次重验有效性，不返回手机或用户号。
+C11由core.member签发，tenant/user仅来自可信C会话；响应`{memberCode,expiresAt}`，expiresAt为ISO UTC。码为mc1_前缀的256位随机值，有效60秒。C08沿用biz:customer，输入`{memberCode,storeNo}`，tenant/entity/actor来自商家会话，并验证店员门店子集及目标门店的biz:customer权限（不得借用请求头另一家店的角色）；响应`{customerRef,maskedName,expiresAt}`。引用有效120秒，绑定租户、主体、门店、操作人和顾客，顾客/商家/门店每次重验有效性，不返回手机或用户号。
 
 码和引用仅保存SHA-256摘要，禁止请求体/凭证原文日志；DTO toString脱敏，不走URL/query。非法/过期码40041，跨范围或过期引用10404；开关关闭40040。shop.member-code.enabled缺省false，仅控制新签发/扫码，既有引用查询仍按原到期时刻执行。统一码在60秒内可重复识别，扫码不产生财务效果，不替代JB-011本人确认。会员码到期不使已签发引用提前过期；引用到期不得刷新原引用，应重新扫码。重试签发得到新凭证，不缓存秘密原文为幂等响应。
 
