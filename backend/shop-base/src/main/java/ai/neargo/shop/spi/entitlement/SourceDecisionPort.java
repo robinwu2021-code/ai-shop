@@ -43,13 +43,14 @@ public interface SourceDecisionPort {
 
     record AuthorizationDecision(String authorizationRef, AuthorizationState status, SourceRef source,
                                  String userNo, String entityNo, String storeNo, String currency,
-                                 Long amountMinor, String selectionDigest, Instant expiresAt) {
+                                 Long amountMinor, String selectionDigest, String orderSnapshotHash, Instant expiresAt) {
         public AuthorizationDecision {
             ContractChecks.id(authorizationRef);
             ContractChecks.present(status);
             if (status == AuthorizationState.UNKNOWN) {
                 ContractChecks.require(source == null && userNo == null && entityNo == null && storeNo == null
-                        && currency == null && amountMinor == null && selectionDigest == null && expiresAt == null);
+                        && currency == null && amountMinor == null && selectionDigest == null
+                        && orderSnapshotHash == null && expiresAt == null);
             } else {
                 ContractChecks.present(source);
                 ContractChecks.id(userNo);
@@ -58,6 +59,7 @@ public interface SourceDecisionPort {
                 ContractChecks.currency(currency);
                 ContractChecks.require(amountMinor != null && amountMinor >= 0);
                 ContractChecks.hash(selectionDigest);
+                ContractChecks.hash(orderSnapshotHash);
                 ContractChecks.present(expiresAt);
             }
         }

@@ -581,3 +581,11 @@ C11登录分类修复定向：MpEndpointAuthTest 7项（含真实匿名401）、
 实际测试SHA ecfda1ebd0fd589e445aee751ef61f36e2d19bb7，Java21离线`bash scripts/check-head-compiles.sh HEAD`：干净test-compile通过，全量3582项/20模块、0失败/错误，608秒、退出0；原有原生条件1项跳过。最后门店权限修正stat为4 files changed/40 insertions/3 deletions（Controller3行、HTTP回归及契约/本记录）。测试读取的SHA与最后业务提交完全一致，后续仅文档状态回填。此前6156975bb的3581项通过不用于冒充本次结果。
 
 JB-010按AC及实际文件完成，独立任务表更新12 DONE/0 DOING/43 TODO；正式表/两条HTTP路由同步DONE。保留既有共享Vitest命名失败及模型对齐阻断的独立报告，不宣称所有仓库闸门全绿。下一项JB-011仍TODO，财务本人授权、发行/核销/储值账及远程身份Handler尚未交付；本批无push/部署/生产操作。
+
+### JB-011当前开发记录（DOING）
+
+从干净基线9eb06ccaa开始，新增C09本人确认Controller、可信core报价意图staging service、授权/源决策实体Mapper、SourceDecisionPort持久查询与源owner终态决策写入service；V427创建`ord_ent_authorization`和`ord_ent_source_decision`。订单确认期间锁定主单/子单/明细，校验当前消费者、WAIT_PAY、订单修订、支付币种/金额边界、pay quoteRef/selectionDigest、完整序列化订单快照摘要和意图过期时刻。PENDING没有authorizationRef/authorizedAt；同本人requestKey只回放原授权，换请求键冲突。`SHOP_ENTITLEMENT_AUTHORIZATION_ENABLED`默认false。
+
+RED：初始AuthorizationFlowTest因缺少状态类无法编译，预期退出1；状态模型完成后4个规则用例GREEN。第一次H2持久集成RED：测试schema未含V427表；运行官方`backend/scripts/gen-test-schema.py`更新生成schema后恢复。之后定向`EntitlementAuthorizationPersistenceFlowTest,EntitlementAuthorizationFlowTest,EntitlementPreviewContractTest,MpEndpointAuthTest,SchemaGeneratorTest`共通过，0失败/错误/跳过（实际输出退出0）。场景覆盖订单行改价失效、他人确认拒绝、同意图同键回放、旧修订取消→新修订成功、跨修订成功源唯一及成功源回退查询；MP探针已验证未登录拒绝。Disposable MySQL9.7.2执行V427授权/决策原生DDL及唯一键/CHECK场景2项通过，0跳过；最终DDL调整后待重跑。
+
+JB-011仍DOING：完成原生MySQL复跑、并发确认/同报价staging唯一性与重复请求恢复测试、契约/SQL/文档生成器守卫及本任务干净HEAD全量门禁；并核实stageTrustedIntent接入真实core checkout quote生产者的调用点。未部署、未写生产库、未push。

@@ -36,7 +36,7 @@
 - 一个操作多张券的分配可有多行，但全部同pay事务过账；允许组合由业务白名单决定，首期储值不叠券/积分。
 - MySQL唯一键对NULL允许多行，因此settled_source_key仅成功核销时赋值，不能用空串表示未成功。
 
-基础目标逻辑表38张（核心12、支付26），补充支撑表6张（核心4、支付2），合计44张（核心16、支付28）。包含现有表重构和拟新增表，不表示已创建44张生产表；正式V425为目录三表，JB-010新增V426身份凭证一表。支撑表字典见第七节。
+基础目标逻辑表38张（核心12、支付26），补充支撑表6张（核心4、支付2），合计44张（核心16、支付28）。包含现有表重构和拟新增表，不表示已创建44张生产表；正式V425为目录三表，JB-010新增V426身份凭证一表，JB-011新增V427授权与源决策两表。支撑表字典见第七节。
 
 ## 二、核心服务完整数据字典
 
@@ -805,19 +805,22 @@ AuditMetaObjectHandler当前使用LocalDateTime.now，不能直接宣称其符�
 | user_no | VARCHAR(64) NOT NULL | 本人消费者 |
 | entity_no | VARCHAR(64) NOT NULL | 资产承担主体 |
 | store_no | VARCHAR(64) NOT NULL | 真实履约门店 |
-| quote_ref | VARCHAR(64) NULL | pay短期报价或预览引用 |
+| quote_ref | VARCHAR(64) NOT NULL | 服务端可信pay报价引用，tenant内唯一 |
 | selection_digest | CHAR(64) NOT NULL | 绑定资产及版本金额次数服务日 |
 | order_snapshot_hash | CHAR(64) NOT NULL | 可信源价格明细摘要 |
 | amount_minor | BIGINT NOT NULL | 本次确认金额可为零 |
 | currency | VARCHAR(8) NOT NULL | 币种 |
-| status | VARCHAR(16) NOT NULL | AUTHORIZED/CANCELLED/EXPIRED |
-| authorized_at | DATETIME(3) NOT NULL | 真实本人确认时刻 |
+| intent_no | VARCHAR(64) NOT NULL | 服务端预确认意图号 |
+| order_no | VARCHAR(64) NOT NULL | 被确认的真实订单 |
+| status | VARCHAR(16) NOT NULL | PENDING/AUTHORIZED/CANCELLED/EXPIRED |
+| authorized_at | DATETIME(3) NULL | 仅本人确认后写入；PENDING不能视为授权 |
 | expires_at | DATETIME(3) NOT NULL | 授权截止半开区间 |
 
 索引：
 
 ```sql
-UNIQUE KEY uk_order_auth (tenant_no,authorization_no),
+UNIQUE KEY uk_order_auth_intent (tenant_no,intent_no),
+UNIQUE KEY uk_order_auth_no (tenant_no,authorization_no),
 UNIQUE KEY uk_order_auth_request (tenant_no,user_no,request_key),
 KEY ix_order_auth_source (tenant_no,source_key,user_no,status),
 ```
@@ -934,6 +937,8 @@ UNIQUE KEY uk_ent_recon_diff (tenant_no,diff_no),
 UNIQUE KEY uk_ent_recon_resource (tenant_no,recon_no,resource_no,diff_kind),
 KEY ix_ent_recon_diff_query (tenant_no,entity_no,recon_no,status),
 ```
+
+正式增量迁移为V427；订单确认前由可信core业务流将已核验的订单快照与pay报价引用写成PENDING意图。确认时锁定订单、子单、行与意图，比较订单修订、订单快照摘要、报价引用和选择摘要，再写入授权号、本人requestKey与authorizedAt。API只接收修订、报价引用、选择摘要和幂等键，用户号取登录态，金额/商家/门店来自已冻结服务端事实。`shop.core.entitlement.authorization.enabled` 默认关闭。数据库允许PENDING的授权字段为空，防止把意图误读为消费授权。
 
 ### 并发、状态与恢复裁定
 

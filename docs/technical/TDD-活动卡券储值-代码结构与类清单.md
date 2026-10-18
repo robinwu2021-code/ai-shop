@@ -68,7 +68,8 @@ pay新增Mapper物理位置为pay/mapper/entitlement和pay/mapper/storedvalue，
 | ActivityReservationRecoveryJob | promotion/job | 新增 | 查询pay终态，确认或释放；未知不释放 | pmt_activity_reservation |
 | CardProductBindingService / Impl | product/service及impl | 新增 | bind、validatePublishedVersion；售价仍用原商品能力 | prd_entitlement_binding；C07 |
 | CardSaleSnapshotService / Impl | trade/service及impl | 新增 | 固化订单行/件/件内权益序号、模板版本与付款事实 | 既有订单行扩展；售卡流程 |
-| EntitlementAuthorizationService / Impl | trade/service及impl | 新增 | authorize、getDecision、cancelDecision；绑定本人、订单版本、资产选择 | 源订单意图；C09 |
+| EntitlementAuthorizationService / Impl | trade/service及impl | 新增 | stageTrustedIntent、confirm；订单+明细快照重验及本人幂等授权 | C09；V427 |
+| EntitlementSourceDecisionService / Impl、EntitlementSourceDecisionPortImpl | trade/service及impl、trade/entitlement/port | 新增 | 源事务内持久终态决策、按SourceRef/authorizationRef反查 | pay恢复查询；V427 |
 | MemberCodeResolveService / Impl | core.member.service及impl | JB-010实施 | 随机凭证摘要校验、短期顾客引用；不复用登录token | mbr_identity_ticket；C08/C11 |
 
 ActivityVersionService只负责版本快照，ActivityService负责管理入口；参与服务不再次实现活动发布。订单意图、订单Outbox优先沿现有持久机制，若缺失需补充正式DDL与契约后实施，不允许用本地Map保存授权决策。

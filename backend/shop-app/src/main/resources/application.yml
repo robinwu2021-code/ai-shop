@@ -100,6 +100,11 @@ management:
       enabled: false   # token-store=memory 时没有 Redis，开着会让 readiness 常绿变常红
 
 shop:
+  core:
+    entitlement:
+      authorization:
+        # C09 and trusted intent staging stay closed until all quote/source owners are wired.
+        enabled: ${SHOP_ENTITLEMENT_AUTHORIZATION_ENABLED:false}
   # 接口耗时与慢日志（TDD-接口耗时与慢日志）。
   # 键名必须与 ObsConfig 的 @Value 占位符**逐字一致** —— @Value 不做松绑定，
   # 写成 slowMs 配了等于没配，而且不报错。

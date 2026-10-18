@@ -4926,6 +4926,81 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket
     CHECK ((purpose='MEMBER_CODE' AND entity_no IS NULL AND store_no IS NULL AND actor_no IS NULL AND source_ticket_hash IS NULL) OR (purpose='CUSTOMER_REFERENCE' AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL))
 );
 
+CREATE TABLE IF NOT EXISTS ord_ent_authorization
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    intent_no VARCHAR(64) NOT NULL,
+    authorization_no VARCHAR(64) NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    payload_hash CHAR(64) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    source_revision BIGINT NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    quote_ref VARCHAR(64) NOT NULL,
+    selection_digest CHAR(64) NOT NULL,
+    order_snapshot_hash CHAR(64) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    authorized_at DATETIME(3) NULL,
+    expires_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_order_auth_intent UNIQUE (tenant_no,intent_no),
+    CONSTRAINT uk_order_auth_no UNIQUE (tenant_no,authorization_no),
+    CONSTRAINT uk_order_auth_request UNIQUE (tenant_no,user_no,request_key),
+    CONSTRAINT uk_order_auth_quote UNIQUE (tenant_no,quote_ref),
+    CHECK (source_revision>=0 AND amount_minor>=0),
+    CHECK (expires_at>created_at),
+    CHECK ((status='PENDING' AND authorization_no IS NULL AND request_key IS NULL AND authorized_at IS NULL) OR (status='AUTHORIZED' AND authorization_no IS NOT NULL AND request_key IS NOT NULL AND authorized_at IS NOT NULL AND authorized_at<expires_at) OR (status IN ('CANCELLED','EXPIRED'))),
+    CHECK (status IN ('PENDING','AUTHORIZED','CANCELLED','EXPIRED'))
+);
+
+CREATE TABLE IF NOT EXISTS ord_ent_source_decision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    decision_no VARCHAR(64) NOT NULL,
+    purpose VARCHAR(16) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    settled_source_key CHAR(64) NULL,
+    source_revision BIGINT NOT NULL,
+    decision_type VARCHAR(24) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    authorization_ref VARCHAR(64) NULL,
+    paid_fact_ref VARCHAR(64) NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NULL,
+    currency VARCHAR(8) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_source_decision UNIQUE (tenant_no,decision_no),
+    CONSTRAINT uk_source_intent UNIQUE (tenant_no,purpose,source_key),
+    CONSTRAINT uk_source_settled UNIQUE (tenant_no,purpose,settled_source_key),
+    CHECK (source_revision>=0 AND amount_minor>=0),
+    CHECK ((status='CANCELLED' AND settled_source_key IS NULL AND ((purpose='USE' AND decision_type='USE_CANCEL') OR (purpose='GRANT' AND decision_type='GRANT_ABORT'))) OR (status='COMMITTED' AND settled_source_key IS NOT NULL AND ((purpose='USE' AND decision_type='USE_COMMIT') OR (purpose='GRANT' AND decision_type='GRANT_COMMIT') OR (purpose='REVERSE' AND decision_type='ORDER_REVERSE'))))
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

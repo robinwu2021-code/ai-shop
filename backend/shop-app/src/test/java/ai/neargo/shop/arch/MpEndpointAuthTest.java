@@ -67,6 +67,7 @@ class MpEndpointAuthTest {
     /** 匿名访问回 401，已逐条实弹验证。 */
     private static final Set<String> REQUIRES_LOGIN = Set.of(
             "POST /mp/member-code",
+            "POST /mp/orders/{orderNo}/entitlement-authorizations",
             "POST /mp/user/login/phone",
             "GET /mp/after-sale",
             "GET /mp/after-sale/{afterSaleNo}",
@@ -519,6 +520,8 @@ class MpEndpointAuthTest {
      */
     private static final java.util.Map<String, String> PROBE_BODY = java.util.Map.of(
             "POST /mp/push-token", "{\"platform\":\"ANDROID\",\"clientId\":\"PROBE\"}",
+            "POST /mp/orders/{orderNo}/entitlement-authorizations",
+                    "{\"orderRevision\":0,\"quoteRef\":\"PROBE-QUOTE\",\"selectionDigest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"requestKey\":\"PROBE-REQUEST\"}",
             "POST /mp/ticket", "{\"subject\":\"探针\",\"content\":\"探针\"}",
             "POST /mp/order/{orderNo}/after-sale", "{\"type\":\"REFUND\",\"reason\":\"探针\"}",
             "POST /mp/after-sale/{afterSaleNo}/ship", "{\"expressNo\":\"PROBE1\"}",

@@ -9,6 +9,8 @@ import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.SysSequence;
 import ai.neargo.shop.trade.entity.TrdCartItem;
+import ai.neargo.shop.trade.entitlement.entity.OrdEntAuthorization;
+import ai.neargo.shop.trade.entitlement.entity.OrdEntSourceDecision;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Insert;
@@ -50,6 +52,12 @@ public final class TradeMappers {
     }
 
     public interface OrderItemMapper extends BaseMapper<OrdItem> {
+    }
+
+    public interface EntitlementAuthorizationMapper extends BaseMapper<OrdEntAuthorization> {
+    }
+
+    public interface EntitlementSourceDecisionMapper extends BaseMapper<OrdEntSourceDecision> {
     }
 
     public interface StatusLogMapper extends BaseMapper<OrdStatusLog> {

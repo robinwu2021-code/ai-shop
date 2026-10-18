@@ -27322,6 +27322,20 @@
       "package": "ai.neargo.shop.trade.order.entity"
     },
     {
+      "table": "ord_ent_authorization",
+      "class": "OrdEntAuthorization",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
+      "table": "ord_ent_source_decision",
+      "class": "OrdEntSourceDecision",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
       "table": "ord_express_pickup",
       "class": "OrdExpressPickup",
       "zh": "快递代下单的取件单（TDD-快递100商家寄件）。",
@@ -35837,6 +35851,26 @@
         ],
         "zh": "",
         "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "PENDING",
+          "AUTHORIZED",
+          "CANCELLED",
+          "EXPIRED"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "name": "Status",
+        "values": [
+          "COMMITTED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "shop-core"
       },
       {
         "name": "StoreActivityType",

@@ -24,19 +24,26 @@ try {
     const address = docker(['port', name, '3306/tcp']);
     if (!/^127\.0\.0\.1:\d+$/.test(address)) throw new Error('Unexpected database port binding');
     const url = `jdbc:mysql://${address}/entitlement_native_fixture?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC`;
-    const report = `${root}backend/shop-app/target/surefire-reports/ai.neargo.shop.pay.EntitlementCatalogNativeMysqlTest.txt`;
-    rmSync(report, { force: true });
+    const reports = [
+        `${root}backend/shop-app/target/surefire-reports/ai.neargo.shop.pay.EntitlementCatalogNativeMysqlTest.txt`,
+        `${root}backend/shop-app/target/surefire-reports/ai.neargo.shop.trade.EntitlementAuthorizationNativeMysqlTest.txt`,
+    ];
+    reports.forEach(report => rmSync(report, { force: true }));
     const result = spawnSync('mvn', ['-o', '-q', '-f', 'backend/pom.xml', '-pl', 'shop-app', '-am',
-        '-Dtest=EntitlementCatalogNativeMysqlTest', '-Dsurefire.failIfNoSpecifiedTests=false', 'test'], {
-        cwd: root, env: { ...process.env, ENTITLEMENT_NATIVE_MYSQL_URL: url }, stdio: 'inherit',
+        '-Dtest=EntitlementCatalogNativeMysqlTest,EntitlementAuthorizationNativeMysqlTest',
+        '-Dsurefire.failIfNoSpecifiedTests=false', 'test'], {
+        cwd: root, env: { ...process.env, ENTITLEMENT_NATIVE_MYSQL_URL: url,
+            ENTITLEMENT_AUTH_NATIVE_MYSQL_URL: url }, stdio: 'inherit',
     });
     if (result.error) throw result.error;
     if (result.status !== 0) throw new Error(`Native catalog verification exited ${result.status}`);
-    const summary = readFileSync(report, 'utf8');
-    if (!/Tests run: 1, Failures: 0, Errors: 0, Skipped: 0/.test(summary)) {
-        throw new Error('Native verification must execute its test without skipping');
+    for (const report of reports) {
+        const summary = readFileSync(report, 'utf8');
+        if (!/Tests run: 1, Failures: 0, Errors: 0, Skipped: 0/.test(summary)) {
+            throw new Error(`Native verification must execute its test without skipping: ${report}`);
+        }
     }
-    console.log('Native MySQL catalog service: 1 test passed, 0 skipped');
+    console.log('Native MySQL catalog + authorization DDL: 2 tests passed, 0 skipped');
 } finally {
     docker(['rm', '--force', name]);
 }

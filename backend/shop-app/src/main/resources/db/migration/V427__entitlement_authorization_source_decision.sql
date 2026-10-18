@@ -1,0 +1,82 @@
+-- Durable consumer confirmation and terminal source decisions (JB-011).
+CREATE TABLE ord_ent_authorization (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    intent_no VARCHAR(64) NOT NULL COMMENT '服务端预确认意图号',
+    authorization_no VARCHAR(64) NULL COMMENT '本人授权引用；仅确认后生成',
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NULL COMMENT '本人确认幂等键',
+    payload_hash CHAR(64) NOT NULL COMMENT '源端请求指纹',
+    source_key CHAR(64) NOT NULL COMMENT '含修订号的使用意图键',
+    source_snapshot JSON NOT NULL COMMENT '完整SourceRef及原订单定位',
+    source_revision BIGINT NOT NULL COMMENT '源意图修订',
+    order_no VARCHAR(64) NOT NULL COMMENT '真实源订单',
+    user_no VARCHAR(64) NOT NULL COMMENT '授权消费者',
+    entity_no VARCHAR(64) NOT NULL COMMENT '资产承担主体',
+    store_no VARCHAR(64) NOT NULL COMMENT '真实履约门店',
+    quote_ref VARCHAR(64) NOT NULL COMMENT '服务端可信pay报价引用',
+    selection_digest CHAR(64) NOT NULL COMMENT '绑定资产与规则版本',
+    order_snapshot_hash CHAR(64) NOT NULL COMMENT '可信源订单摘要',
+    amount_minor BIGINT NOT NULL COMMENT '真实来源分币金额',
+    currency VARCHAR(8) NOT NULL COMMENT '币种',
+    status VARCHAR(16) NOT NULL COMMENT 'PENDING/AUTHORIZED/CANCELLED/EXPIRED',
+    authorized_at DATETIME(3) NULL COMMENT '真实本人确认时刻',
+    expires_at DATETIME(3) NOT NULL COMMENT '意图/授权截止半开区间',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '事实禁止删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC创建时间',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC更新时间',
+    created_by VARCHAR(64) NOT NULL COMMENT '可信操作者',
+    updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_order_auth_intent (tenant_no,intent_no),
+    UNIQUE KEY uk_order_auth_no (tenant_no,authorization_no),
+    UNIQUE KEY uk_order_auth_request (tenant_no,user_no,request_key),
+    UNIQUE KEY uk_order_auth_quote (tenant_no,quote_ref),
+    KEY ix_order_auth_source (tenant_no,source_key,user_no,status),
+    CHECK (source_revision>=0 AND amount_minor>=0),
+    CHECK (expires_at>created_at),
+    CHECK ((status='PENDING' AND authorization_no IS NULL AND request_key IS NULL AND authorized_at IS NULL)
+        OR (status='AUTHORIZED' AND authorization_no IS NOT NULL AND request_key IS NOT NULL
+            AND authorized_at IS NOT NULL AND authorized_at<expires_at)
+        OR (status IN ('CANCELLED','EXPIRED'))),
+    CHECK (status IN ('PENDING','AUTHORIZED','CANCELLED','EXPIRED'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='core本人消费授权及其待确认意图';
+
+CREATE TABLE ord_ent_source_decision (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    decision_no VARCHAR(64) NOT NULL COMMENT '持久源决策引用',
+    purpose VARCHAR(16) NOT NULL COMMENT 'USE/GRANT/REVERSE',
+    source_key CHAR(64) NOT NULL COMMENT '修订来源键',
+    source_snapshot JSON NOT NULL COMMENT '完整SourceRef',
+    settled_source_key CHAR(64) NULL COMMENT '仅成功时写稳定成功键',
+    source_revision BIGINT NOT NULL COMMENT '决策源修订',
+    decision_type VARCHAR(24) NOT NULL COMMENT '成功/取消决策类型',
+    status VARCHAR(16) NOT NULL COMMENT 'COMMITTED/CANCELLED',
+    authorization_ref VARCHAR(64) NULL COMMENT '使用决策绑定本人授权',
+    paid_fact_ref VARCHAR(64) NULL COMMENT '售卡付款事实引用',
+    user_no VARCHAR(64) NOT NULL COMMENT '受益或使用本人',
+    entity_no VARCHAR(64) NOT NULL COMMENT '资产主体',
+    store_no VARCHAR(64) NULL COMMENT '真实门店',
+    currency VARCHAR(8) NOT NULL COMMENT '币种',
+    amount_minor BIGINT NOT NULL COMMENT '源真实金额',
+    snapshot_hash CHAR(64) NOT NULL COMMENT '冻结源事实摘要',
+    occurred_at DATETIME(3) NOT NULL COMMENT '真实成功或取消时刻',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '事实禁止删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC创建时间',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC更新时间',
+    created_by VARCHAR(64) NOT NULL COMMENT '可信操作者',
+    updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_source_decision (tenant_no,decision_no),
+    UNIQUE KEY uk_source_intent (tenant_no,purpose,source_key),
+    UNIQUE KEY uk_source_settled (tenant_no,purpose,settled_source_key),
+    KEY ix_source_decision_lookup (tenant_no,purpose,source_key),
+    CHECK (source_revision>=0 AND amount_minor>=0),
+    CHECK ((status='CANCELLED' AND settled_source_key IS NULL
+        AND ((purpose='USE' AND decision_type='USE_CANCEL') OR (purpose='GRANT' AND decision_type='GRANT_ABORT')))
+        OR (status='COMMITTED' AND settled_source_key IS NOT NULL
+        AND ((purpose='USE' AND decision_type='USE_COMMIT') OR (purpose='GRANT' AND decision_type='GRANT_COMMIT')
+        OR (purpose='REVERSE' AND decision_type='ORDER_REVERSE'))))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='core成功/取消唯一决策；同成功源跨修订不可重复';

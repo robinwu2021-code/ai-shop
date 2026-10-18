@@ -88,7 +88,7 @@ class EntitlementPreviewContractTest {
     void unknownAuthorizationCannotCarryAnotherUsersDetails() {
         assertThatThrownBy(() -> new SourceDecisionPort.AuthorizationDecision("auth1",
                 SourceDecisionPort.AuthorizationState.UNKNOWN, source, "u1", "m1", "s1", "CNY", 1L,
-                hash, expires)).isInstanceOf(IllegalArgumentException.class);
+                hash, hash, expires)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
