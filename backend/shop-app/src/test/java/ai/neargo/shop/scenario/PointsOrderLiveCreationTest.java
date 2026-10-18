@@ -52,6 +52,7 @@ class PointsOrderLiveCreationTest {
     @Autowired PointsOrderPlacementCoordinator placement;
     @Autowired ai.neargo.shop.trade.service.OrderService orderService;
     @Autowired ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger;
+    @Autowired ai.neargo.shop.trade.order.points.OrderPointsOutboxConsumer sourceFactsConsumer;
     @Autowired ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper plans;
     @MockitoBean PointsRedeemPort redeem;
     @MockitoBean PointsOrderTermsPort terms;
@@ -268,6 +269,12 @@ class PointsOrderLiveCreationTest {
                                 Long.class,
                                 root))
                 .isEqualTo(2);
+        String sub = jdbc.queryForObject("SELECT sub_order_no FROM ord_sub_order WHERE order_no=?",
+                String.class, root);
+        assertThatThrownBy(() -> sourceFactsConsumer.deliver("ORDER:PAID:" + sub, sub))
+                .isInstanceOf(RuntimeException.class);
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_order WHERE order_no=?", String.class, root))
+                .isEqualTo("PAID");
     }
 
     @Test
