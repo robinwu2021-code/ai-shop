@@ -50,6 +50,7 @@ class AfterSaleRefundExecutionTest {
     @MockitoBean private PointsRefundPort pointsRefunds;
     @MockitoBean private OrderPointsBindingService pointsBindings;
     @MockitoBean private OrderPointsOutboxConsumer pointsDelivery;
+    @MockitoBean private OrderPointsClosureFlowService pointsClosure;
 
     @Test void integrated_refund_waits_for_verified_net_cash_and_points_confirmation() {
         var f=fixture();
@@ -83,6 +84,7 @@ class AfterSaleRefundExecutionTest {
         assertThat(status(f.as())).isEqualTo("REFUNDED");
         assertThat(refunded(f.sub())).isEqualTo(60);
         verify(pointsRefunds,times(1)).confirm(any());
+        verify(pointsClosure).finalizeSubOrder(f.sub());
     }
 
     @Test void integrated_zero_cash_refund_uses_source_completion_fact_without_payment() {

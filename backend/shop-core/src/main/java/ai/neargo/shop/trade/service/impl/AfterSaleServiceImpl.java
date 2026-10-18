@@ -103,6 +103,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     private ai.neargo.shop.spi.points.PointsRefundPort pointsRefunds;
     private ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator pointsRefundSource;
     private ai.neargo.shop.trade.order.points.OrderPointsOutboxConsumer pointsSourceDelivery;
+    private ai.neargo.shop.trade.order.points.OrderPointsClosureFlowService pointsClosure;
     private ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -116,6 +117,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         this.pointsRefundSource=source;
         this.pointsSourceDelivery=delivery;
         this.orderMapper=orders;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPointsClosure(ai.neargo.shop.trade.order.points.OrderPointsClosureFlowService closure) {
+        this.pointsClosure = closure;
     }
     /** 订单状态经门（CAS + 流水） */
     private final ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter;
@@ -1105,7 +1111,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     private void resumePointsRefund(String afterSaleNo,String orderNo) {
         if(pointsPayments==null || pointsRefunds==null || pointsRefundSource==null
-                || pointsSourceDelivery==null) {
+                || pointsSourceDelivery==null || pointsClosure==null) {
             throw new IllegalArgumentException("POINTS_IMPLEMENTATION_REQUIRED");
         }
         var payment=pointsPayments.verified(orderNo).orElseThrow(
@@ -1148,6 +1154,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 settleRefundTerminal(as,"积分退款已确认",0,
                         result.progress()==RefundProgress.FULL);
                 pointsRefundSource.commit(afterSaleNo);
+                pointsClosure.finalizeSubOrder(plan.subOrderNo());
             });
             return;
         }
@@ -1210,6 +1217,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             settleRefundTerminal(as,"退款到账已核验",intent.netCashMinor(),
                     result.progress()==RefundProgress.FULL);
             pointsRefundSource.commit(afterSaleNo);
+            pointsClosure.finalizeSubOrder(plan.subOrderNo());
         });
     }
 
