@@ -18,7 +18,6 @@ import ai.neargo.shop.trade.order.statemachine.Actor;
 import ai.neargo.shop.spi.marketing.AttributionPort;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
-import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.settle.SettlePort;
@@ -1368,18 +1367,7 @@ public class OrderServiceImpl implements OrderService {
             subOrderNoOf.put(g.key(), orderNoGenerator.subOrderNo(orderNo, ++subIdx));
         }
 
-        /*
-         * 积分抵扣。**券之后、运费之外**：
-         *
-         * · 券先抵 —— 反过来的话积分把金额压低，券的满减门槛就达不到了，
-         *   用户会发现「用了积分反而更贵」
-         * · 运费不参与 —— 含运费的话一单全靠积分抵掉，商家一分收不到
-         *
-         * 端上传的 usePoints 只是意愿值，积分域按四道闸截断。
-         * 抵不了就是不抵（返回零值），**不抛异常** —— 为了抵扣失败把一笔真实成交挡掉，
-         * 代价与收益完全不成比例，与买赠缺货少送是同一条原则。
-         */
-        PointsPort.Deduction points = PointsPort.Deduction.none();
+        // 原积分引擎已退出下单事务；新积分占用在源单落库后的独立阶段确认。
 
         /*
          * 线下支付**不能用平台券** —— 券要按出资方拆开看：
@@ -1401,7 +1389,7 @@ public class OrderServiceImpl implements OrderService {
         order.setUserNo(userNo);
         // 积分抵扣计入实付，但**不计入 discountAmount** —— 那一列是营销优惠，
         // 混进去会让「这单让了多少利」算错，而分账要按它拆出资方
-        order.setPayAmount(split.payAmount() - discounts.total() - points.amountMinor());
+        order.setPayAmount(split.payAmount() - discounts.total());
         order.setGoodsAmount(split.goodsAmount());
         order.setFreightAmount(split.freightAmount());
         order.setDiscountAmount(discounts.total());
@@ -1577,11 +1565,10 @@ public class OrderServiceImpl implements OrderService {
             // 出资方分列（Q9）：合成一列的话 M7 分账无法判断该扣谁的钱
             sub.setDiscountPlatform(discounts.platformFunded(g.merchantNo, g.storeNo()));
             sub.setDiscountMerchant(discounts.merchantFunded(g.merchantNo, g.storeNo()));
-            // 积分快照：结算与售后直接读这两列，不用回查积分流水
-            long pointsAmount = points.amountOf(subOrderNo);
-            sub.setPointsDeduct((int) points.pointsOf(subOrderNo));
-            sub.setPointsDeductMinor(pointsAmount);
-            sub.setPayAmount(g.goodsAmount() + g.freight - discount - pointsAmount);
+            // 先落全额现金源单；新积分 hold 确认后再写冻结的抵扣快照。
+            sub.setPointsDeduct(0);
+            sub.setPointsDeductMinor(0L);
+            sub.setPayAmount(g.goodsAmount() + g.freight - discount);
             sub.setRequireBuyerConfirm(
                     Boolean.TRUE.equals(needsConfirm.get(g.key())) ? 1 : 0);
             sub.setStatus(OrdSubOrder.WAIT_PAY);
