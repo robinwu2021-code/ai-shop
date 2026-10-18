@@ -9,6 +9,11 @@ it("sends store scoped runtime integration changes without client operator", asy
   await financeHttp.orderPointsIntegration({ storeNo: "ST1", scene: "ONLINE" });
   expect(client.get).toHaveBeenCalledWith("/ops/points/order-integration", { storeNo: "ST1", scene: "ONLINE" });
 });
+it("inspects the original sub-order through the scoped read endpoint", async () => {
+  await financeHttp.inspectOrderPoints("S1");
+  expect(client.get).toHaveBeenCalledWith(
+    "/ops/points/order-integration/inspection", { subOrderNo: "S1" });
+});
 it("sends audited switch commands without client actor or timestamps to the new endpoint", async () => {
   const command = { requestId: "retry-stable", typeCode: "T", scope: "STORE" as const, subjectNo: "S", enabled: false, flow: "EARN" as const, reason: "pause" };
   await financeHttp.changePointsSwitch(command);

@@ -11,6 +11,7 @@ import type {
 export const financeHttp: FinanceApi = {
   orderPointsIntegration: (q) => client.get("/ops/points/order-integration", q),
   changeOrderPointsIntegration: (v) => client.post("/ops/points/order-integration", v),
+  inspectOrderPoints: (subOrderNo) => client.get("/ops/points/order-integration/inspection", { subOrderNo }),
   pointsOverview: (market, typeCode) => client.get("/ops/points/overview", { market: market ?? "CN", typeCode }),
   pointsReceivables: (q) => client.get("/ops/points/receivables", q),
   pointsTypes: () => client.get("/ops/points/types"),

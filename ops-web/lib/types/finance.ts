@@ -1033,6 +1033,12 @@ export interface PointsFlowView { id: number; flowNo: string; voucherNo: string;
 export interface OrderPointsIntegrationQ { storeNo: string; scene: "ONLINE" | "OFFLINE" }
 export interface OrderPointsIntegrationPolicy extends OrderPointsIntegrationQ { mode: "DETACHED" | "ACTIVE" | "DRAINING"; earnEnabled: boolean; redeemEnabled: boolean; version: number; actor: string | null; reason: string | null; changedAt: number }
 export interface OrderPointsIntegrationChange extends OrderPointsIntegrationQ { requestId: string; mode: "DETACHED" | "ACTIVE" | "DRAINING"; earnEnabled: boolean; redeemEnabled: boolean; expectedVersion: number; reason: string }
+export interface OrderPointsInspection {
+  subOrderNo: string; bindingPhase: string | null; bindingVersion: number;
+  placementPhase: string | null; placementVersion: number; originalHoldNo: string | null;
+  refundPhases: string[]; pendingSourceEvents: number; paymentVerified: boolean;
+  differences: string[];
+}
 export interface PointsPositionQ { typeCode: string; kind: PointsPositionKind; reference: string }
 export interface PointsPositionView extends PointsPositionQ { state: string; originalPoints: number; processedPoints: number; version: number }
 export interface PointsStatsQ { typeCode: string; day: string; scope?: "TOTAL" | "STORE" | "USER"; subjectNo?: string }

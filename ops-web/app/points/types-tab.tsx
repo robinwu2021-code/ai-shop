@@ -29,6 +29,10 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
   const [integrationInput, setIntegrationInput] = useState("");
   const [integrationStore, setIntegrationStore] = useState("");
   const [integrationScene, setIntegrationScene] = useState<"ONLINE" | "OFFLINE">("ONLINE");
+  const [inspectionInput, setInspectionInput] = useState("");
+  const [inspectionSub, setInspectionSub] = useState("");
+  const inspection = useQuery({ queryKey: ["points-order-inspection", inspectionSub],
+    queryFn: () => api.inspectOrderPoints(inspectionSub), enabled: !!inspectionSub });
   const integration = useQuery({ queryKey: ["points-order-integration", integrationStore, integrationScene],
     queryFn: () => api.orderPointsIntegration({ storeNo: integrationStore, scene: integrationScene }),
     enabled: !!integrationStore });
@@ -128,6 +132,26 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
         {canEdit && <Button type="submit" disabled={integrationSave.isPending}>{t("提交版本化变更", "Save versioned change")}</Button>}
       </form>}
       {integrationError && <p role="alert" className="text-destructive">{integrationError instanceof Error ? integrationError.message : String(integrationError)}</p>}
+    </div>
+    <div className={card}>
+      <h3 className="txt-heading">{t("原订单积分核验", "Original order points inspection")}</h3>
+      <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => {
+        e.preventDefault(); const sub = inspectionInput.trim();
+        if (sub === inspectionSub) void inspection.refetch(); else setInspectionSub(sub);
+      }}>
+        <label>{t("子单号", "Sub-order ID")}<Input dir="auto" required value={inspectionInput} onChange={(e) => setInspectionInput(e.target.value)} /></label>
+        <Button type="submit">{t("查询", "Search")}</Button>
+      </form>
+      {inspection.isFetching && <p dir="auto">{t("加载中…", "Loading…")}</p>}
+      {inspection.data && <div className="space-y-1" dir="auto">
+        <p>{t("源绑定 / 下单阶段", "Source binding / placement")}: {inspection.data.bindingPhase ?? "—"} v{inspection.data.bindingVersion} / {inspection.data.placementPhase ?? "—"} v{inspection.data.placementVersion}</p>
+        <p>{t("原占用号", "Original hold ID")}: {inspection.data.originalHoldNo ?? "—"}</p>
+        <p>{t("退款阶段", "Refund phases")}: {inspection.data.refundPhases.join(", ") || "—"}</p>
+        <p>{t("待投递源事件", "Pending source events")}: {inspection.data.pendingSourceEvents}</p>
+        <p>{t("支付已核验", "Payment verified")}: {inspection.data.paymentVerified ? t("是", "Yes") : t("否", "No")}</p>
+        <p>{t("差异代码", "Difference codes")}: {inspection.data.differences.join(", ") || "—"}</p>
+      </div>}
+      {inspection.error && <p role="alert" className="text-destructive">{inspection.error instanceof Error ? inspection.error.message : String(inspection.error)}</p>}
     </div>
   </div>;
 }

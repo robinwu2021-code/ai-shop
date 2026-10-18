@@ -1,5 +1,15 @@
 // Arabic copy scoped to the points workspace; technical identifiers retain their original values.
 export const POINTS_AR: Record<string,string> = {
+  "Original order points inspection": "فحص نقاط الطلب الأصلي",
+  "Sub-order ID": "معرّف الطلب الفرعي",
+  "Source binding / placement": "الربط الأصلي / مرحلة إنشاء الطلب",
+  "Original hold ID": "معرّف الحجز الأصلي",
+  "Refund phases": "مراحل الاسترداد",
+  "Pending source events": "أحداث المصدر المعلّقة",
+  "Payment verified": "تم التحقق من الدفع",
+  "Difference codes": "رموز الاختلاف",
+  "Yes": "نعم",
+  "No": "لا",
   "Acceptance terms": "شروط قبول النقاط",
   "Account": "الحساب",
   "Accounting date": "التاريخ المحاسبي",
