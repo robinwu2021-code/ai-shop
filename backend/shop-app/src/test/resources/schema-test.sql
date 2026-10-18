@@ -11274,3 +11274,8 @@ SELECT DISTINCT source.role_code,'OPS_POINTS__TAB_QUERIES',source.end_code,sourc
 WHERE source.point_code='OPS_FINANCE__TAB_POINTS' AND source.end_code='OPS' AND source.deleted=0 AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_QUERIES');
 UPDATE sys_function_point SET ui_perm_code='finance:recon:resolve',ui_ready=1,group_name='积分运营',name='积分对账快照核对',updated_at=CURRENT_TIMESTAMP
 WHERE point_code='ACT__FINANCE_RECON_RESOLVE' AND function_code='OPS_FINANCE' AND deleted=0;
+DELETE FROM sys_role_point
+WHERE point_code = 'OPS_PRODUCT__TAB_CATEGORY_POINTS';
+DELETE FROM sys_function_point
+WHERE point_code = 'OPS_PRODUCT__TAB_CATEGORY_POINTS'
+   OR href = '/products?tab=category-points';

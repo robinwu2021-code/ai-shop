@@ -551,7 +551,7 @@
         },
         {
           "key": "afterSale.execution.resourcesFailed",
-          "zh-CN": "现金已退，库存或优惠恢复异常，请联系客服",
+          "zh-CN": "已退现金，资源恢复异常请联系客服",
           "en": "Cash refunded; resource recovery needs support",
           "ar": "تم رد المبلغ؛ تتطلب استعادة الموارد مساعدة الدعم"
         },
@@ -5081,21 +5081,9 @@
         },
         {
           "key": "request.confirm",
-          "zh-CN": "确认下单",
-          "en": "Confirm my order",
-          "ar": "أكّد طلبي"
-        },
-        {
-          "key": "request.confirmed",
-          "zh-CN": "已确认",
-          "en": "Confirmed",
-          "ar": "تم التأكيد"
-        },
-        {
-          "key": "request.confirmedCount",
-          "zh-CN": "{n}/{t} 人已确认",
-          "en": "{n}/{t} confirmed",
-          "ar": "{n}/{t} أكّدوا"
+          "zh-CN": "确认并结束需求",
+          "en": "Confirm and close request",
+          "ar": "تأكيد الطلب وإغلاقه"
         },
         {
           "key": "request.confirmedOk",
@@ -5171,9 +5159,9 @@
         },
         {
           "key": "request.matchedHint",
-          "zh-CN": "价格已锁定。+1 只是意向，想要的邻居需要各自确认下单才算数。",
-          "en": "Price is locked. A +1 was only interest — each neighbour still confirms their own order.",
-          "ar": "السعر مثبَّت. الانضمام كان اهتمامًا فقط؛ على كل جار تأكيد طلبه."
+          "zh-CN": "价格已锁定。由发起人确认后收口需求单。",
+          "en": "Price is locked. The request owner confirms to close the request.",
+          "ar": "السعر مثبَّت. يؤكد صاحب الطلب لإغلاق الطلب."
         },
         {
           "key": "request.matchedTitle",
@@ -6053,7 +6041,7 @@
         },
         {
           "key": "track.miniUnavailable",
-          "zh-CN": "暂时无法跳转小程序，您可以先在本页查看物流",
+          "zh-CN": "暂不能跳转小程序，请在本页查看",
           "en": "Unable to open the Mini Program right now. You can view tracking on this page.",
           "ar": "يتعذر فتح البرنامج المصغّر الآن. يمكنك متابعة الشحنة في هذه الصفحة."
         },
@@ -7203,7 +7191,7 @@
         },
         {
           "key": "afterSale.execution.resourcesFailed",
-          "zh-CN": "现金已退，库存或优惠恢复异常，请联系客服",
+          "zh-CN": "已退现金，资源恢复异常请联系客服",
           "en": "Cash refunded; resource recovery needs support",
           "ar": "تم رد المبلغ؛ تتطلب استعادة الموارد مساعدة الدعم"
         },
@@ -15417,7 +15405,7 @@
         },
         {
           "key": "order.traceRefreshUnavailable",
-          "zh-CN": "当前渠道无法主动查询，请等待物流订阅更新",
+          "zh-CN": "渠道暂不支持查询，请等待物流更新",
           "en": "Live lookup is unavailable; waiting for tracking updates",
           "ar": "الاستعلام المباشر غير متاح؛ انتظر تحديثات الشحن"
         },
@@ -25659,6 +25647,12 @@
           "ar": "تعارض في البيانات، يرجى التحديث وإعادة المحاولة"
         },
         {
+          "key": "err.conflict.detail",
+          "zh-CN": "操作未完成：{0}",
+          "en": "Operation could not be completed: {0}",
+          "ar": "تعذر إكمال العملية: {0}"
+        },
+        {
           "key": "err.content.already_answered",
           "zh-CN": "该提问已回答。要修改请先隐藏，再重新回答",
           "en": "This question is already answered. Hide it first, then answer again",
@@ -35881,6 +35875,7 @@
           "FORBIDDEN",
           "NOT_FOUND",
           "CONFLICT",
+          "CONFLICT_DETAIL",
           "TOO_MANY_REQUESTS",
           "GEO_UNAVAILABLE",
           "OTP_TOO_FREQUENT",
@@ -37893,6 +37888,17 @@
         "zh": "卡点。"
       },
       {
+        "name": "MerchantOrderActionKind",
+        "client": "b-app",
+        "values": [
+          "AFTER_SALE",
+          "RECEIVE_PAYMENT",
+          "FULFILL",
+          "VERIFY"
+        ],
+        "zh": ""
+      },
+      {
         "name": "MerchantStatus",
         "client": "ops-web",
         "values": [
@@ -38795,6 +38801,16 @@
         "zh": "触达场景：`NOTICE` 店铺公告 / `WAKEUP` 唤回 / `COUPON` 发券通知。"
       },
       {
+        "name": "RecipientSalutation",
+        "client": "shared",
+        "values": [
+          "MR",
+          "MS",
+          "UNSPECIFIED"
+        ],
+        "zh": "收件人称呼，与地址簿字段及订单收件人快照共用。"
+      },
+      {
         "name": "ReconDiffType",
         "client": "ops-web",
         "values": [
@@ -39114,6 +39130,17 @@
           "VILLAGE"
         ],
         "zh": "聚落类型。"
+      },
+      {
+        "name": "ShipPrecheckVerdict",
+        "client": "shared",
+        "values": [
+          "VALID",
+          "INVALID",
+          "UNKNOWN",
+          "WARNING"
+        ],
+        "zh": "商家提交运单前的渠道预检结论。"
       },
       {
         "name": "ShipmentProfile",
