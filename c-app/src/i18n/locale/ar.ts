@@ -674,6 +674,8 @@ export default {
     capQuotaBlocked: "{names} لا يقبل الطلبات حاليًا (بلغ حد التحصيل)",
     points: "الدفع بالنقاط",
     pointsHave: "{n} نقطة متاحة",
+    pointsApplicable: "يمكن استخدام ما يصل إلى {n} نقطة في هذا الطلب",
+    pointsUnavailable: "النقاط غير متاحة الآن. أوقف استخدامها للمتابعة.",
     pointsUsed: "استُخدمت {n} نقطة، خصم {p}",
     pointsDeduct: "النقاط ({n})",
     pointsEarn: "النقاط التي ستكسبها",

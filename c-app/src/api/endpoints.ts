@@ -216,7 +216,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   cartRemove: { method: "POST", path: "/mp/cart/remove", auth: true, summary: "移除商品" },
 
   // ---------------------------------------------------------------- 交易
-  createOrder: { method: "POST", path: "/mp/order", auth: true, summary: "下单（幂等）" },
+  createOrder: { method: "POST", path: "/mp/order", auth: true, clientTag: true, summary: "下单（幂等）" },
   // 收银台先问「能用哪些方式」，再带着选中的通道去发起 —— 两步，不是一步。
   // 后端算好了交集（市场 × 各商家进件 × 网关有没有实现），端上直接渲染。
   payMethods: { method: "GET", path: "/mp/order/:orderNo/pay-method", auth: true, summary: "可用支付方式" },
@@ -232,6 +232,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   orderTrace: { method: "GET", path: "/mp/order/:orderNo/trace", auth: true, summary: "物流页（查看物流）", clientTag: true },
   cancelOrder: { method: "POST", path: "/mp/order/:orderNo/cancel", auth: true, summary: "取消订单" },
   orderPreview: { method: "POST", path: "/mp/order/preview", auth: true, summary: "订单预览（金额以后端为准）" },
+  orderPointsQuote: { method: "POST", path: "/mp/order/points-quote", auth: true, clientTag: true, summary: "按门店的积分抵扣报价" },
   orderCapability: { method: "POST", path: "/mp/order/capability", auth: true, summary: "结算页能力提示（开票/支付方式/额度）" },
   // 开票（ADR-017 §3.4 条件 2）。此前 C 端零入口 —— 只有下单前一句「本商家无法开票」，
   // 连申请的地方都没有。归集路径下开票的是平台，不是商家

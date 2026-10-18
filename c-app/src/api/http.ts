@@ -4,7 +4,7 @@
 // 迁移到真实后端时这个文件基本不用改 —— 改的是 `.env` 里的开关。
 import { clientTag, http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
-import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList, PointsOrderState} from "./contract";
+import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList, PointsOrderState, OrderPointsQuote} from "./contract";
 import type { InvoiceRequest, MyMembership, ReachOpened, MyStoreCoupon, PlaceSearchHit, RegionNode, RegionOption,
   PasswordState,
   PhoneCapable,
@@ -111,7 +111,8 @@ function call<T>(
   if (ep.method === "GET") {
     return http.get<T>(url, d, ep.clientTag ? { "X-Client": clientTag() } : undefined);
   }
-  return ep.method === "PUT" ? http.put<T>(url, d) : http.post<T>(url, d);
+  return ep.method === "PUT" ? http.put<T>(url, d)
+    : http.post<T>(url, d, ep.clientTag ? { "X-Client": clientTag() } : undefined);
 }
 
 export const httpApi: ShopApi = {
@@ -215,6 +216,7 @@ export const httpApi: ShopApi = {
   afterSaleReasons: () => call<AfterSaleReason[]>("afterSaleReasons"),
   afterSaleList: () => call<AfterSale[]>("afterSaleList"),
   orderPreview: (req) => http.post<OrderPreview>(ENDPOINTS.orderPreview.path, req),
+  orderPointsQuote: (req) => call<OrderPointsQuote>("orderPointsQuote", undefined, { ...req }),
   orderCapability: (req) => http.post<CheckoutCapability>(ENDPOINTS.orderCapability.path, req),
 
   // ---- 营销

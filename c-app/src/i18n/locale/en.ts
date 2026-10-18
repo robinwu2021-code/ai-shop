@@ -674,6 +674,8 @@ export default {
     capQuotaBlocked: "{names} can't accept orders now (payment limit reached)",
     points: "Pay with points",
     pointsHave: "{n} points available",
+    pointsApplicable: "Up to {n} points on this order",
+    pointsUnavailable: "Points are unavailable. Turn them off to continue.",
     pointsUsed: "{n} points used, {p} off",
     pointsDeduct: "Points ({n})",
     pointsEarn: "Points you'll earn",

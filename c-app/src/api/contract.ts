@@ -78,6 +78,18 @@ export interface PointsOrderState {
   reason: string | null;
 }
 
+export interface OrderPointsQuote {
+  state: "AVAILABLE" | "UNAVAILABLE";
+  reason: string | null;
+  pointsUsed: number;
+  deductMinor: number;
+  ratePoints: number;
+  rateMinor: number;
+  basePayMinor: number;
+  stores: { storeNo: string; merchantNo: string; policyVersion: number;
+    pointsUsed: number; deductMinor: number }[];
+}
+
 export interface PayMethodItem {
   methodCode: string;
   payChannel: string;
@@ -439,6 +451,7 @@ export interface ShopApi {
    * 端上永远只能算出一个乐观的近似值。
    */
   orderPreview(req: PreviewOrderReq): Promise<OrderPreview>;
+  orderPointsQuote(req: PreviewOrderReq): Promise<OrderPointsQuote>;
 
   /**
    * 结算页能力提示。与 {@link orderPreview} 分开：那个回答「多少钱」，

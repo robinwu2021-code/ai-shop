@@ -727,6 +727,8 @@ export default {
     capQuotaBlocked: "{names} 暂无法下单（收款额度不足）",
     points: "积分抵扣",
     pointsHave: "有 {n} 积分可用",
+    pointsApplicable: "本单最多可用 {n} 积分",
+    pointsUnavailable: "积分抵扣暂不可用，可关闭后继续下单",
     pointsUsed: "已用 {n} 积分，抵 {p}",
     pointsDeduct: "积分抵扣（{n} 分）",
     pointsEarn: "本单可得积分",
