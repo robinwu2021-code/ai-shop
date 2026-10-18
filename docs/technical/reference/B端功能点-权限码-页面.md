@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 228 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 232 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -25,9 +25,9 @@
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 36 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 27 | ✅ | ✅ | — | — | — | — |
+| `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 25 | ✅ | — | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 21 | ✅ | — | — | — | — | — |
-| `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 21 | ✅ | — | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 6 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 5 | ✅ | ✅ | — | — | — | ✅ |
@@ -221,6 +221,41 @@
 | 按月营收 | GET | `/biz/report/monthly` | `mMonthlyReport` | — |
 | —（b-app 未接） | — | `/biz/inventory/export` | — | — |
 
+### `biz:finance`　结算账单、费率卡、收款进件、积分开关
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 保证金账户 | GET | `/biz/deposit` | `mDeposit` | deposit |
+| 保证金流水 | GET | `/biz/deposit/txns` | `mDepositTxns` | deposit |
+| 我的欠款与流水 | GET | `/biz/merchant/debt` | `mMyDebt` | income |
+| 本店能开的收款通道（含没开的） | GET | `/biz/merchant/pay-channel` | `mPayChannels` | payment |
+| 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、payment、points、stores |
+| 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
+| 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
+| 为门店单独开通收款 | POST | `/biz/merchant/payment/store/:storeNo` | `mOpenStorePayment` | payment |
+| 我的收款账户 | GET | `/biz/payout-account` | `mPayoutAccounts` | home、payout-account |
+| 提交收款账户 | POST | `/biz/payout-account` | `mSubmitPayoutAccount` | payout-account |
+| 当前门店积分账本 | GET | `/biz/points/store-account` | `mStorePointAccount` | points |
+| 当前门店有效积分签约 | GET | `/biz/points/store-agreement` | `mStorePointAgreement` | points |
+| 主体属主签署当前门店积分协议 | POST | `/biz/points/store-agreement/sign` | `mSignStorePointAgreement` | points |
+| 主体属主终止当前门店积分协议 | POST | `/biz/points/store-agreement/terminate` | `mTerminateStorePointAgreement` | points |
+| 当前门店积分流水 | GET | `/biz/points/store-entries` | `mStorePointEntries` | points-records |
+| 当前积分签约条款 | GET | `/biz/points/store-terms` | `mStorePointTerms` | points |
+| 当前门店可见的积分类型 | GET | `/biz/points/store-types` | `mStorePointTypes` | points、points-records |
+| 我的账期批次 | GET | `/biz/settle/batch` | `mSettleBatches` | income |
+| 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
+| 每日流水 | GET | `/biz/settle/daily-flow` | `mDailyFlow` | income |
+| 收入按状态汇总 | GET | `/biz/settle/income` | `mIncomeSummary` | income |
+| 待开票摘要 | GET | `/biz/settle/invoice-pending` | `mPendingInvoice` | invoice |
+| 平台开票信息 | GET | `/biz/settle/invoice-title` | `mInvoiceTitle` | invoice |
+| 我提交的票 | GET | `/biz/settle/invoices` | `mMyInvoices` | invoice |
+| 提交进项票 | POST | `/biz/settle/invoices` | `mSubmitInvoice` | invoice |
+| 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
+| 对账单 | GET | `/biz/settle/statement` | `mStatement` | statement |
+| —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
+
 ### `biz:store`　门店经营面：装修、配送规则、店铺码、分享物料
 
 **可用角色**：老板、店长
@@ -287,37 +322,6 @@
 | 停用/启用门店 | POST | `/biz/store/:storeNo/status` | `mSetStoreStatus` | stores |
 | 确认期初对齐（以商城为准 / 已实地盘点） | POST | `/biz/store/:storeNo/stock-alignment/confirm` | `mConfirmAlignment` | stock-align |
 | 新建门店 | POST | `/biz/store/create` | `mCreateStore` | stores |
-
-### `biz:finance`　结算账单、费率卡、收款进件、积分开关
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 保证金账户 | GET | `/biz/deposit` | `mDeposit` | deposit |
-| 保证金流水 | GET | `/biz/deposit/txns` | `mDepositTxns` | deposit |
-| 我的欠款与流水 | GET | `/biz/merchant/debt` | `mMyDebt` | income |
-| 本店能开的收款通道（含没开的） | GET | `/biz/merchant/pay-channel` | `mPayChannels` | payment |
-| 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、payment、stores |
-| 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
-| 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
-| 为门店单独开通收款 | POST | `/biz/merchant/payment/store/:storeNo` | `mOpenStorePayment` | payment |
-| 我的收款账户 | GET | `/biz/payout-account` | `mPayoutAccounts` | home、payout-account |
-| 提交收款账户 | POST | `/biz/payout-account` | `mSubmitPayoutAccount` | payout-account |
-| 本期发分服务费与开关状态 | GET | `/biz/points/account` | `mPointsAccount` | points、settle |
-| 发分服务费明细（按单） | GET | `/biz/points/records` | `mPointsRecords` | points-records、settle |
-| 开/关本店积分 | POST | `/biz/points/toggle` | `mPointsToggle` | points、settle |
-| 我的账期批次 | GET | `/biz/settle/batch` | `mSettleBatches` | income |
-| 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
-| 每日流水 | GET | `/biz/settle/daily-flow` | `mDailyFlow` | income |
-| 收入按状态汇总 | GET | `/biz/settle/income` | `mIncomeSummary` | income |
-| 待开票摘要 | GET | `/biz/settle/invoice-pending` | `mPendingInvoice` | invoice |
-| 平台开票信息 | GET | `/biz/settle/invoice-title` | `mInvoiceTitle` | invoice |
-| 我提交的票 | GET | `/biz/settle/invoices` | `mMyInvoices` | invoice |
-| 提交进项票 | POST | `/biz/settle/invoices` | `mSubmitInvoice` | invoice |
-| 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
-| 对账单 | GET | `/biz/settle/statement` | `mStatement` | statement |
-| —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
 
 ### `biz:verify`　核销、批量核销、按码搜索
 

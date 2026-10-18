@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 526,
+        "b-app": 528,
         "c-app": 94
       }
     },
@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 430,
-        "c-app": 86
+        "c-app": 84
       }
     },
     {
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 410,
-        "c-app": 285
+        "b-app": 412,
+        "c-app": 288
       }
     },
     {
@@ -340,7 +340,7 @@
       },
       "usage": {
         "b-app": 37,
-        "c-app": 7
+        "c-app": 8
       }
     },
     {
@@ -377,7 +377,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 5,
+        "b-app": 4,
         "c-app": 12
       }
     },
@@ -415,7 +415,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 7,
+        "b-app": 6,
         "c-app": 0
       }
     },
@@ -437,7 +437,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 17,
+        "b-app": 16,
         "c-app": 13
       }
     },
@@ -513,8 +513,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 118,
-        "c-app": 84
+        "b-app": 117,
+        "c-app": 85
       }
     },
     {
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 123,
+        "b-app": 125,
         "c-app": 32
       }
     },
@@ -617,8 +617,8 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 231,
-        "c-app": 90
+        "b-app": 232,
+        "c-app": 91
       }
     },
     {
@@ -809,8 +809,8 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 200,
-        "c-app": 75
+        "b-app": 203,
+        "c-app": 78
       }
     },
     {
@@ -885,7 +885,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 64,
+        "b-app": 66,
         "c-app": 7
       }
     },
@@ -961,7 +961,7 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 71,
+        "b-app": 70,
         "c-app": 16
       }
     },
@@ -1077,8 +1077,8 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 349,
-        "c-app": 153
+        "b-app": 343,
+        "c-app": 150
       }
     },
     {
@@ -1235,7 +1235,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 71,
+        "b-app": 73,
         "c-app": 25
       }
     },
@@ -1439,8 +1439,8 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 592,
-        "c-app": 208
+        "b-app": 586,
+        "c-app": 209
       }
     },
     {
@@ -1455,7 +1455,7 @@
         "align-items": "baseline"
       },
       "usage": {
-        "b-app": 40,
+        "b-app": 36,
         "c-app": 9
       }
     },
@@ -1471,8 +1471,8 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 325,
-        "c-app": 104
+        "b-app": 320,
+        "c-app": 105
       }
     },
     {
@@ -1547,7 +1547,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 10,
+        "b-app": 8,
         "c-app": 4
       }
     },
@@ -1565,7 +1565,7 @@
         "text-align": "center"
       },
       "usage": {
-        "b-app": 5,
+        "b-app": 3,
         "c-app": 0
       }
     },
@@ -1601,7 +1601,7 @@
         "font-weight": "600"
       },
       "usage": {
-        "b-app": 10,
+        "b-app": 8,
         "c-app": 4
       }
     },
@@ -1845,7 +1845,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 102,
+        "b-app": 105,
         "c-app": 3
       }
     },
@@ -2753,7 +2753,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 11,
+        "b-app": 10,
         "c-app": 2,
         "lib": 0
       },
@@ -2839,7 +2839,7 @@
       ],
       "usage": {
         "b-app": 16,
-        "c-app": 13,
+        "c-app": 14,
         "lib": 0
       },
       "note": "筛选条",
@@ -3590,9 +3590,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 93,
-      "localSelectors": 19,
-      "localCssLines": 67,
+      "libClassHits": 85,
+      "localSelectors": 18,
+      "localCssLines": 64,
       "rolled": []
     },
     {
@@ -4398,13 +4398,42 @@
       "key": "b-app/points",
       "file": "b-app/src/pages/points/index.vue",
       "components": [
-        "sh-scaffold",
-        "sh-switch"
+        "sh-empty",
+        "sh-scaffold"
       ],
-      "libClassHits": 27,
-      "localSelectors": 3,
-      "localCssLines": 13,
-      "rolled": []
+      "libClassHits": 42,
+      "localSelectors": 5,
+      "localCssLines": 5,
+      "rolled": [
+        {
+          "id": "sysmodal",
+          "label": "系统弹框",
+          "lib": "sh-sheet",
+          "rule": "showModal\\(|showActionSheet\\(",
+          "gap": false
+        },
+        {
+          "id": "wraprow",
+          "label": "换行横排",
+          "lib": ".sh-wrap",
+          "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
+          "gap": false
+        },
+        {
+          "id": "listgap",
+          "label": "列表间距不在档上",
+          "lib": ".sh-mt-* / .sh-mb-*",
+          "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*margin-(?:top|bottom):",
+          "gap": false
+        },
+        {
+          "id": "switchctl",
+          "label": "开关",
+          "lib": null,
+          "rule": "名册：points .sw（逐处核过）",
+          "gap": true
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -4415,9 +4444,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 22,
-      "localSelectors": 2,
-      "localCssLines": 2,
+      "libClassHits": 19,
+      "localSelectors": 0,
+      "localCssLines": 0,
       "rolled": []
     },
     {
@@ -4553,9 +4582,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 119,
-      "localSelectors": 15,
-      "localCssLines": 55,
+      "libClassHits": 100,
+      "localSelectors": 13,
+      "localCssLines": 48,
       "rolled": []
     },
     {
@@ -5446,7 +5475,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 43,
+      "libClassHits": 48,
       "localSelectors": 16,
       "localCssLines": 58,
       "rolled": []
@@ -5460,7 +5489,7 @@
         "sh-actionbar",
         "sh-scaffold"
       ],
-      "libClassHits": 39,
+      "libClassHits": 44,
       "localSelectors": 26,
       "localCssLines": 113,
       "rolled": []
@@ -5472,12 +5501,21 @@
       "file": "c-app/src/pages/points/index.vue",
       "components": [
         "sh-empty",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-tabs"
       ],
-      "libClassHits": 35,
-      "localSelectors": 19,
-      "localCssLines": 75,
-      "rolled": []
+      "libClassHits": 31,
+      "localSelectors": 13,
+      "localCssLines": 13,
+      "rolled": [
+        {
+          "id": "primover",
+          "label": "主色文字自写",
+          "lib": ".txt-primary（可点的次要动作用 .sh-link）",
+          "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "c-app",
@@ -6010,6 +6048,16 @@
   ],
   "gaps": [
     {
+      "id": "switchctl",
+      "label": "开关",
+      "lib": null,
+      "gap": true,
+      "rule": "名册：points .sw（逐处核过）",
+      "pages": [
+        "b-app/points"
+      ]
+    },
+    {
       "id": "optcard",
       "label": "选项卡片",
       "lib": null,
@@ -6037,8 +6085,29 @@
       "rule": "showModal\\(|showActionSheet\\(",
       "pages": [
         "b-app/goods-edit",
+        "b-app/points",
         "b-app/store-scope-polygon",
         "c-app/after-sale"
+      ]
+    },
+    {
+      "id": "wraprow",
+      "label": "换行横排",
+      "lib": ".sh-wrap",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]+\\s*\\{[^}]*display:\\s*flex;[^}]*flex-wrap:\\s*wrap",
+      "pages": [
+        "b-app/points"
+      ]
+    },
+    {
+      "id": "listgap",
+      "label": "列表间距不在档上",
+      "lib": ".sh-mt-* / .sh-mb-*",
+      "gap": false,
+      "rule": "^\\s*\\.(?:row|item)\\s*\\{(?:(?!display:)[^}])*margin-(?:top|bottom):",
+      "pages": [
+        "b-app/points"
       ]
     },
     {
@@ -6050,6 +6119,16 @@
       "pages": [
         "c-app/me/profile"
       ]
+    },
+    {
+      "id": "primover",
+      "label": "主色文字自写",
+      "lib": ".txt-primary（可点的次要动作用 .sh-link）",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*(?:\\.[\\w-]+)?\\s*\\{\\s*color:\\s*var\\(--sh-primary-text\\);?\\s*\\}",
+      "pages": [
+        "c-app/points"
+      ]
     }
   ],
   "counts": {
@@ -6057,6 +6136,6 @@
     "blocks": 81,
     "components": 40,
     "pages": 159,
-    "gapKinds": 2
+    "gapKinds": 3
   }
 }

@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**118 个功能点**，其中 **36 个游客可用**；**8 个没有任何页面调用**。
+统计：**119 个功能点**，其中 **36 个游客可用**；**8 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -103,14 +103,15 @@
 | `cancelOrder` | `POST /mp/order/:orderNo/cancel` | 是 | order · pay | — |
 | `payOrder` | `POST /mp/order/:orderNo/pay` | 是 | pay | — |
 | `payMethods` | `GET /mp/order/:orderNo/pay-method` | 是 | pay | — |
+| `orderPointsState` | `GET /mp/order/:orderNo/points-state` | 是 | pay | — |
 | `reorderFrom` | `POST /mp/order/:orderNo/reorder` | 是 | **无** | — |
 | `orderTrace` | `GET /mp/order/:orderNo/trace` | 是 | order | — |
 | `orderCapability` | `POST /mp/order/capability` | 是 | order-confirm | — |
+| `orderPointsQuote` | `POST /mp/order/points-quote` | 是 | order-confirm | — |
 | `orderPreview` | `POST /mp/order/preview` | 是 | order-confirm | — |
 | `searchPlaces` | `GET /mp/place/search` | 游客 | address-pick | — |
-| `pointAccount` | `GET /mp/points/account` | 是 | me · order-confirm · points | — |
-| `pointsDeductible` | `GET /mp/points/deductible` | 是 | order-confirm | — |
-| `pointRecords` | `GET /mp/points/records` | 是 | points | — |
+| `pointsAccounts` | `GET /mp/points/accounts` | 是 | me · points | — |
+| `pointsEntries` | `GET /mp/points/entries` | 是 | points | — |
 | `registerPushToken` | `POST /mp/push-token` | 是 | (stores) | — |
 | `unregisterPushToken` | `POST /mp/push-token/unregister` | 是 | (stores) | — |
 | `askQuestion` | `POST /mp/question` | 是 | goods | — |
