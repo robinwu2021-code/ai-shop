@@ -32,7 +32,7 @@
 - 商家收款，平台管理账户；不实现平台资金托管或自动结算。
 - 新权益Mapper放pay/mapper/entitlement或pay/mapper/storedvalue，绑定paySqlSessionFactory；写服务显式payTxManager，posting不使用REQUIRES_NEW。
 - 跨域只经shop-base SPI；core不读pay实体/Mapper，pay不查core业务库；远程调用不放进持锁事务。
-- 所有写入持久幂等；同键异参冲突、同源不重发/重扣。原生MySQL重复插入加锁问题沿用已验证的排他claim方案。
+- 所有财务/资源写入持久幂等；短期身份凭证按需新签发，不缓存原文或产生财务效果；同键异参冲突、同源不重发/重扣。原生MySQL重复插入加锁问题沿用已验证的排他claim方案。
 - 统一会员码；P30兑换券短期码保留用途限制，不创建储值专用码。C DTO/通知不展示本金赠金拆分；无储值或新付费卡线上退款。
 - C门店目录默认仅成功储值历史门店，以最后成功充值/核销的最大时间倒序；余额耗尽仍保留，同时间有稳定次级排序。
 - 模板/活动版本不可变；COUNT、PERIOD_COUNT、PERIOD_DAILY共用规则，服务日/时区/自然月与滚动天数明确；无无限次、自动续费。
@@ -207,10 +207,11 @@ git diff --check
 | pay.entitlement | pay_ent_command_dedup | PayEntCommandDedup / PayEntCommandDedupMapper | JB-004 | DONE，V425 |
 | pay.entitlement | ent_use_reversal | EntUseReversal / EntUseReversalMapper | JB-022 | TODO，设计表/已有表待改造 |
 
-基础38张之外，支撑DDL与数据库字典第七节新增以下5张，目标合计43张（core15/pay28）；当前正式迁移仍仅V425三张。恢复租约复用既有V91 shedlock，不另建空壳表。
+基础38张之外，支撑DDL与数据库字典第七节新增以下6张，目标合计44张（core16/pay28）；正式迁移V425为目录三张、V426为会员凭证一张。恢复租约复用既有V91 shedlock，不另建空壳表。
 
 | 模块 | 支撑表 | 计划实体 / Mapper | 责任任务 | 状态 |
 |---|---|---|---|---|
+| core.member | mbr_identity_ticket | MbrIdentityTicket / MemberIdentityTicketMapper | JB-010 | DOING，V426 |
 | core.trade | ord_ent_authorization | OrdEntAuthorization / OrdEntAuthorizationMapper | JB-011 | 设计，未迁移 |
 | core.trade | ord_ent_source_decision | OrdEntSourceDecision / OrdEntSourceDecisionMapper | JB-011 | 设计，未迁移 |
 | core.trade | ord_card_sale_snapshot | OrdCardSaleSnapshot / OrdCardSaleSnapshotMapper | JB-012 | 设计，未迁移 |

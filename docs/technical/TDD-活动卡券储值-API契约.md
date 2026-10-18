@@ -274,10 +274,11 @@ C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的re
 
 ## 十二、能力门禁配置契约（JB-008基础实现）
 
-默认值全部false；PayEntitlementProperties与PromotionFeatureProperties已按下列名称绑定运行配置。已实现的目录写入、新引用委派门禁，其余业务入口尚未实现，随责任任务逐项接线。开关由服务端部署配置控制，HTTP请求或预置模板不能打开。实际available须同时满足开关、owner实现就绪、行业准入、主体状态、门店权限及所需能力集合；缺失项明确返回missingCapabilities，未知能力也按缺失处理。不能以类存在、目录seed存在或单体能编译作为READY证据。JB-032实现目录筛选，JB-053完成权限及配置拒绝验证。
+默认值全部false；PayEntitlementProperties、PromotionFeatureProperties及JB-010的MemberCodeProperties按下列名称绑定运行配置。已实现的目录写入、新引用委派门禁，其余业务入口尚未实现，随责任任务逐项接线。开关由服务端部署配置控制，HTTP请求或预置模板不能打开。实际available须同时满足开关、owner实现就绪、行业准入、主体状态、门店权限及所需能力集合；缺失项明确返回missingCapabilities，未知能力也按缺失处理。不能以类存在、目录seed存在或单体能编译作为READY证据。JB-032实现目录筛选，JB-053完成权限及配置拒绝验证。
 
 | 配置名 | 控制的新业务 | 实施任务 |
 |---|---|---|
+| shop.member-code.enabled | 统一会员码新签发/扫码解析；已有顾客引用查询仍校验原期限 | JB-010 |
 | shop.promotion.presets.enabled | 新预置目录推荐/创建草稿 | JB-032/JB-033 |
 | shop.promotion.activity.enabled | 新活动发布/参与预留 | JB-029/JB-031/JB-033 |
 | shop.pay.entitlement.catalog.enabled | 新权益定义写入/发布/引用 | JB-025 |

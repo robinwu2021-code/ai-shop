@@ -557,3 +557,13 @@ RED：MemberCodeResolveFlowTest因缺新Service/SPI无法编译；HTTP新路径�
 
 
 补充验证：同11项身份/HTTP测试在-Dshop.pay.deployment=standalone下全部通过，Surefire系统属性确认实际为standalone；此为核心身份在两种pay配置下装配，不代替JB-041远程RPC往返。共享Vitest三文件13项：12通过、1失败。失败为api-path-naming.test.ts的“新端点必须跟随本域约定”，命中既有/biz/inventory/transfers/{no}/void、/ops/banned-word/{id}/remove、/ops/merchant/{entityNo}/nudge、/ops/merchant/{entityNo}/stock-doubt、/ops/product/{goodsNo}/chain五条；对比a51244cd3的三份OpenAPI，违规集合完全相同，本批新增违规0。未修改线上旧路径或增加豁免；biz-contract-fields与message-placeholder通过。启动命令首次误写.mts配置、第二次从错误cwd未发现测试，均非通过证据；实际运行采用npm test --workspace @ai-shop/shared。上述遗留失败与Java全量分开报告。
+
+
+设计→实现对账：git show --stat 51d10402b：63 files changed，1393 insertions，89 deletions。16个新增Java文件由2个Controller、2个FlowTest、2个SPI、core.member的config1/dto3/entity1/mapper1/port1/service1/impl1及core.user.port1构成，与JB-010计划/类清单一致；正式迁移为V426，生成H2 schema同步。其余文件为ErrorCode/i18n、数据域与权限登记、三端共享类型/两端接口绑定、既有生成器登记及文档生成物，没有新页面。
+
+额外模型对齐生成器仍被既有MemberSetting→mbr_setting映射阻断（6字段只对上2字段，与先前批次同一问题）；它不是“24个受管生成器通过”的一部分。未放宽模型守卫。短期身份凭证的新签发不保存原文幂等结果，允许重试得到新码/引用，是所有财务/资源命令持久幂等要求的明确非财务例外。
+
+
+第一次干净51d10402b全量：编译通过，20模块3581项，605秒，1项失败MpEndpointAuthTest.everyMpEndpointIsClassified，原因C11尚未登记C端登录分类；其余无失败/错误，原有原生条件1跳过。按守卫要求将POST /mp/member-code登记到REQUIRES_LOGIN（不是匿名/免检），让既有守卫实际匿名请求验证401；不改守卫逻辑或SecurityConfig。修复后另跑定向和干净全量，不将首次结果写成全绿。
+
+C11登录分类修复定向：MpEndpointAuthTest 7项（含真实匿名401）、MemberCodeHttpFlowTest 4项、MemberCodeResolveFlowTest 7项，共18项0失败/错误/跳过，退出0。24受管生成器及V2 66份再次通过。该次修改仅分类登记一行及对账文档，不变更业务实现；提交后重新跑干净全量。
