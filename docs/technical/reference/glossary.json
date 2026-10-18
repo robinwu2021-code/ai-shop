@@ -29351,6 +29351,27 @@
       },
       {
         "host": "StlReconDiff",
+        "name": "REFUND_ABNORMAL",
+        "value": "REFUND_ABNORMAL",
+        "zh": "Separate semantic keys prevent an older resolved issue hiding a new refund anomaly.",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlReconDiff",
+        "name": "REFUND_LATE_SUCCESS",
+        "value": "REFUND_LATE_SUCCESS",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlReconDiff",
+        "name": "REFUND_CLOSED",
+        "value": "REFUND_CLOSED",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "StlReconDiff",
         "name": "SELF_CHECK",
         "value": "SELF_CHECK",
         "zh": "平台侧自查：扫我方的 PENDING 流水，逐笔向通道查单",
@@ -36675,6 +36696,18 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "Status",
+        "values": [
+          "SUCCEEDED",
+          "PROCESSING",
+          "TERMINAL_FAILED",
+          "MANUAL_REQUIRED",
+          "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "SubjectKind",
         "values": [
           "USR",
@@ -38809,7 +38842,10 @@
         "values": [
           "CHANNEL_ONLY",
           "PLATFORM_ONLY",
-          "AMOUNT_DIFF"
+          "AMOUNT_DIFF",
+          "REFUND_ABNORMAL",
+          "REFUND_LATE_SUCCESS",
+          "REFUND_CLOSED"
         ],
         "zh": "对账差异类型。"
       },

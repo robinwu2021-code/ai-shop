@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 232 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 241 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -23,11 +23,11 @@
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 25 | ✅ | — | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 21 | ✅ | — | — | — | — | — |
+| `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
+| `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
-| `SHIP` | 发货、标记自送送达 | 6 | ✅ | ✅ | ✅ | — | ✅ | — |
-| `AFTERSALE` | 售后同意/驳回/收货 | 5 | ✅ | ✅ | — | — | — | ✅ |
+| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 5 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 3 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 
 **只有 OWNER 能碰的 2 项**：`FINANCE`、`STORE_ADMIN`
@@ -260,6 +260,30 @@
 - `/biz/store/{storeNo}/status`
 - `/biz/store/{storeNo}/stock-alignment/confirm`
 
+### `SHIP`　（OWNER、MANAGER、CLERK、COURIER）
+
+- `/biz/order/{subOrderNo}/delivered`
+- `/biz/order/{subOrderNo}/express`
+- `/biz/order/{subOrderNo}/express/cancel`
+- `/biz/order/{subOrderNo}/express/quotes`
+- `/biz/order/{subOrderNo}/fulfillment-change`
+- `/biz/order/{subOrderNo}/fulfillment-options`
+- `/biz/order/{subOrderNo}/prepare`
+- `/biz/order/{subOrderNo}/ship`
+- `/biz/order/{subOrderNo}/ship/precheck`
+- `/biz/order/{subOrderNo}/waybill`
+
+### `AFTERSALE`　（OWNER、MANAGER、CS）
+
+- `/biz/after-sale`
+- `/biz/after-sale/by-order/{subOrderNo}`
+- `/biz/after-sale/worklist`
+- `/biz/after-sale/{afterSaleNo}`
+- `/biz/after-sale/{afterSaleNo}/approve`
+- `/biz/after-sale/{afterSaleNo}/confirm-refund`
+- `/biz/after-sale/{afterSaleNo}/receive`
+- `/biz/after-sale/{afterSaleNo}/reject`
+
 ### `VERIFY`　（OWNER、MANAGER、CLERK）
 
 - `/biz/coupon-redeem`
@@ -270,22 +294,13 @@
 - `/biz/pickup/verify/batch`
 - `/biz/pickup/verify/search`
 
-### `SHIP`　（OWNER、MANAGER、CLERK、COURIER）
+### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
 
-- `/biz/order/{subOrderNo}/delivered`
-- `/biz/order/{subOrderNo}/express`
-- `/biz/order/{subOrderNo}/express/cancel`
-- `/biz/order/{subOrderNo}/express/quotes`
-- `/biz/order/{subOrderNo}/prepare`
-- `/biz/order/{subOrderNo}/ship`
-
-### `AFTERSALE`　（OWNER、MANAGER、CS）
-
-- `/biz/after-sale`
-- `/biz/after-sale/{afterSaleNo}/approve`
-- `/biz/after-sale/{afterSaleNo}/confirm-refund`
-- `/biz/after-sale/{afterSaleNo}/receive`
-- `/biz/after-sale/{afterSaleNo}/reject`
+- `/biz/order`
+- `/biz/order/worklist`
+- `/biz/order/{subOrderNo}`
+- `/biz/order/{subOrderNo}/logistics-updates`
+- `/biz/order/{subOrderNo}/trace`
 
 ### `RECEIVE`　（OWNER、MANAGER、CLERK、PICKER）
 
@@ -293,12 +308,6 @@
 - `/biz/pickup/arrived`
 - `/biz/pickup/picking`
 - `/biz/pickup/{orderNo}/report`
-
-### `ORDER_VIEW`　（OWNER、MANAGER、CLERK、COURIER、CS）
-
-- `/biz/order`
-- `/biz/order/{subOrderNo}`
-- `/biz/order/{subOrderNo}/trace`
 
 ### `REVIEW`　（OWNER、MANAGER、CS）
 

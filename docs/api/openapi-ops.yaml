@@ -1457,6 +1457,9 @@ components:
         - "CHANNEL_ONLY"
         - "PLATFORM_ONLY"
         - "AMOUNT_DIFF"
+        - "REFUND_ABNORMAL"
+        - "REFUND_LATE_SUCCESS"
+        - "REFUND_CLOSED"
       description: "对账差异类型。\n\n⚠️ 这三类的**处置方式完全不同**，所以必须分开而不是笼统叫\"异常\"：\n- `CHANNEL_ONLY`：渠道有、平台无 —— 用户付了钱但订单没落库，要**补单或退款**\n- `PLATFORM_ONLY`：平台有、渠道无 —— 平台记了收款但渠道查无此笔，多半是误记，要**冲正**\n- `AMOUNT_DIFF`：两边都有但金额不符 —— 要人去查是折扣算错还是重复扣款"
     ReconStatus:
       type: "string"
@@ -1488,7 +1491,7 @@ components:
           description: "平台订单号；CHANNEL_ONLY 时为空（平台没落库）"
         type:
           "$ref": "#/components/schemas/ReconDiffType"
-          description: "差异类型。**三类的处置方式完全不同**，见上方注释"
+          description: "差异类型。退款异常仅用于人工核对，处置不自动解冻或付款，见上方注释"
         channelAmount:
           type: "number"
           description: "渠道侧金额，最小货币单位（分）。PLATFORM_ONLY 为 0"
