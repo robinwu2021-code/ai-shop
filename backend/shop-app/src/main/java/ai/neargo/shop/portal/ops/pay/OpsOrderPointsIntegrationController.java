@@ -27,6 +27,12 @@ public class OpsOrderPointsIntegrationController {
         return service.policy(storeNo, scene);
     }
 
+    @GetMapping("/ops/points/order-integration/obligations")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
+    public ai.neargo.shop.trade.order.points.OrderPointsCoordinator.StoreObligations obligations(@RequestParam String storeNo) {
+        return service.obligations(storeNo);
+    }
+
     @PostMapping("/ops/points/order-integration")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
     public IntegrationPolicy change(@RequestBody IntegrationPolicyChange request) {

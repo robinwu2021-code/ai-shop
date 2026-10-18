@@ -7,6 +7,8 @@ import ai.neargo.shop.trade.dto.OpsAfterSaleVO;
 import ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.ManualPage;
 
 public interface OrderPointsIntegrationAppService {
+    ai.neargo.shop.trade.order.points.OrderPointsCoordinator.StoreObligations obligations(String storeNo);
+
     IntegrationPolicy policy(String store, String scene);
 
     IntegrationPolicy change(IntegrationPolicyChange change, String actor);

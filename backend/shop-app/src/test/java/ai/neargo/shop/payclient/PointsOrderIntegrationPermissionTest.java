@@ -55,11 +55,14 @@ class PointsOrderIntegrationPermissionTest {
             var domain = ctx.getBean(PointsIntegrationPolicyService.class);
             auth(Perms.FINANCE_SETTLE_READ);
             controller.policy("ST_A", "ONLINE");
+            controller.obligations("ST_A");
             assertThatThrownBy(() -> controller.change(request("ST_A")))
                     .isInstanceOf(AccessDeniedException.class);
             assertThatThrownBy(() -> controller.policy("ST_B", "ONLINE"))
                     .isInstanceOf(AccessDeniedException.class);
+            assertThatThrownBy(() -> controller.obligations("ST_B")).isInstanceOf(AccessDeniedException.class);
             auth(Perms.FINANCE_SETTLE_EXECUTE);
+            assertThatThrownBy(() -> controller.obligations("ST_A")).isInstanceOf(AccessDeniedException.class);
             assertThatThrownBy(() -> controller.policy("ST_A", "ONLINE"))
                     .isInstanceOf(AccessDeniedException.class);
             assertThatThrownBy(() -> controller.change(request("ST_B")))
@@ -155,7 +158,8 @@ class PointsOrderIntegrationPermissionTest {
             return new OpsOrderPointsIntegrationController(
                     new OrderPointsIntegrationAppServiceImpl(policy, stores, bindings, recovery,
                             refunds,
-                            mock(ai.neargo.shop.trade.service.AfterSaleService.class)));
+                            mock(ai.neargo.shop.trade.service.AfterSaleService.class),
+                            mock(ai.neargo.shop.trade.order.points.OrderPointsCoordinator.class)));
         }
     }
 }

@@ -17,6 +17,9 @@ public interface BillRefundMapper extends BaseMapper<StlBillRefund> {
     @Select("SELECT COUNT(*) FROM stl_bill_refund WHERE after_sale_no = #{afterSaleNo}")
     long countByAfterSale(@Param("afterSaleNo") String afterSaleNo);
 
+    @Select("SELECT COALESCE(SUM(goods_minor),0) FROM stl_bill_refund WHERE settle_no=#{settleNo} AND pre_split=1")
+    long preSplitGoods(@Param("settleNo") String settleNo);
+
     /**
      * 分账前：各项金额按份额扣减，状态 old → next（未退完时 next = old）。
      * 参数逐项展开而不传 record —— MyBatis 取 record 字段依赖访问器约定，写错名只会在运行时报。

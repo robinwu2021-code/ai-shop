@@ -151,5 +151,8 @@ class PointsOrderSourceBootTest {
                                 Long.class,
                                 event.subOrderNo()))
                 .isEqualTo(1);
+        // This test verifies atomic persistence only; its deliberately unsigned envelope must
+        // not leak into another scenario's real dispatcher on the shared H2 database.
+        sql.update("DELETE FROM sys_outbox WHERE aggregate_id=? AND event_type='ORDER_POINTS_SOURCE_FACT'",event.subOrderNo());
     }
 }

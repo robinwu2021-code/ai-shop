@@ -66,6 +66,19 @@ class M7SettleFlowTest {
 
     @Autowired
     private ai.neargo.shop.pay.SettleService settleService;
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired private ai.neargo.shop.trade.service.AfterSaleService afterSales;
+    @Autowired private ai.neargo.shop.pay.service.PaymentLedgerService ledger;
+    @Autowired private ai.neargo.shop.pay.channel.TestPayGateway bank;
+
+    private void finishRefund(String as) {
+        afterSales.resumeRefund(as,"SYSTEM");
+        afterSales.resumeRefund(as,"SYSTEM");
+    }
+    private void splitWithFixtureRecipient(String settleNo) {
+        jdbc.update("UPDATE stl_bill SET pay_merchant_no='SYNTHETIC-SETTLE-ACCOUNT' WHERE settle_no=?",settleNo);
+        settleService.executeSplit(settleNo);
+    }
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -314,7 +327,7 @@ class M7SettleFlowTest {
         String biz = loginAsOwnerOf("M0001", "12800128021");
         String settleNo = firstBill(biz).get("settleNo").asString();
 
-        settleService.executeSplit(settleNo);
+        splitWithFixtureRecipient(settleNo);
 
         mvc().perform(get("/biz/settle/bills/" + settleNo).header("Authorization", "Bearer " + biz))
                 .andExpect(status().isOk())
@@ -330,16 +343,16 @@ class M7SettleFlowTest {
         String biz = loginAsOwnerOf("M0001", "12800128023");
         String settleNo = firstBill(biz).get("settleNo").asString();
 
-        settleService.executeSplit(settleNo);
-        settleService.executeSplit(settleNo);
+        splitWithFixtureRecipient(settleNo);
+        splitWithFixtureRecipient(settleNo);
 
         // 分账日志只应有一条 SPLIT —— 两条意味着给商家打了两次钱
         assertThat(settleService.splitLogCount(settleNo, "SPLIT")).isEqualTo(1);
     }
 
     @Test
-    @DisplayName("★★★ 真链路：发分的费用金要真的从货款里扣走，并真的入池")
-    void pointsFeeIsDeductedAndPooled() throws Exception {
+    @DisplayName("★★★ 新方案：旧积分开关不再产生返分费或资金池写入")
+    void legacyEarnFeeIsNeverChargedOrPooled() throws Exception {
         /*
          * **必须显式打开积分开关**：mch_entity.points_enabled 默认 0。
          * 不开的话 grant 走 pointsDenyReason 直接返回 none，费用金恒 0 ——
@@ -376,7 +389,9 @@ class M7SettleFlowTest {
          * 单独任何一条为真都不能说明链路是通的。
          */
         long fee = bill.get("pointsFeeMinor").asLong();
-        assertThat(fee).as("发分费用金全库零写入 —— B 端「本期积分支出」因此永远是 0").isPositive();
+        assertThat(fee).as("新方案不向商家收取旧返分费").isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_points_pool WHERE ref_no=?",Long.class,
+                bill.get("settleNo").asString())).isZero();
 
         long gross = bill.get("grossMinor").asLong();
         long commission = bill.get("commissionMinor").asLong();
@@ -453,13 +468,14 @@ class M7SettleFlowTest {
         makeMerchantDirect("M0001");
         String biz = loginAsOwnerOf("M0001", "12800128031");
         String settleNo = firstBill(biz).get("settleNo").asString();
-        settleService.executeSplit(settleNo);
+        splitWithFixtureRecipient(settleNo);
 
         // 申请售后并同意 → 触发退款
         String subOrderNo = firstSubOrderNo(token);
         String asNo = applyAfterSale(token, subOrderNo);
         mvc().perform(post("/biz/after-sale/" + asNo + "/approve").header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.code").value(0));
+        finishRefund(asNo);
 
         mvc().perform(get("/biz/settle/bills/" + settleNo).header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.data.status").value("REVERSED"));
@@ -480,6 +496,7 @@ class M7SettleFlowTest {
         String asNo = applyAfterSale(token, firstSubOrderNo(token));
         mvc().perform(post("/biz/after-sale/" + asNo + "/approve").header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.code").value(0));
+        finishRefund(asNo);
 
         mvc().perform(get("/biz/settle/bills/" + settleNo).header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.data.status").value("REVERSED"));
@@ -561,7 +578,9 @@ class M7SettleFlowTest {
                         .content("{\"type\":\"REFUND_ONLY\",\"reason\":\"质量问题\"}"))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data").get("afterSaleNo").asString();
+        String as=json.readTree(body).get("data").get("afterSaleNo").asString();
+        ai.neargo.shop.support.RefundScenarioPayments.received(jdbc,ledger,bank,as);
+        return as;
     }
 
     private void enterStore(String token, String merchantNo) throws Exception {

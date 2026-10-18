@@ -38,6 +38,8 @@ function mustBill(settleNo: string) {
 }
 
 export const financeMock: FinanceApi = {
+  orderPointsObligations: async () => wait({ known: false, activePolicies: -1, openBindings: -1, sourceSettled: false,
+    pay: { known: false, openHolds: 0, pendingPromises: 0, openRefunds: 0, openStatements: 0, unknownFunds: 0, pendingEvents: 0 } }),
   orderPointsIntegration: async (q) => wait({ ...q, mode: "DETACHED", earnEnabled: false, redeemEnabled: false, version: -1, actor: null, reason: null, changedAt: 0 }),
   changeOrderPointsIntegration: async () => { fail("请连接隔离后端验证订单积分接线", "Verify order points integration with an isolated backend"); },
   inspectOrderPoints: async () => { fail("请连接隔离后端查询原订单积分状态", "Connect an isolated backend to inspect the original order points state"); },

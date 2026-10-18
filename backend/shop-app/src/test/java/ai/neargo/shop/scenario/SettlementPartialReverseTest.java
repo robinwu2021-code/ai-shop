@@ -47,7 +47,7 @@ class SettlementPartialReverseTest {
                         + " gross_minor, commission_minor, service_fee_minor, net_minor, split_amount_minor,"
                         + " freight_income_minor, freight_cost_minor, freight_ship_mode, accrued_at,"
                         + " tenant_no, created_at, updated_at, version, deleted)"
-                        + " VALUES (?, ?, ?, 'M0001', 'WECHAT', ?, 9000, 450, 90, 8460, 540, 0, 0, 'MERCHANT_SELF', ?,"
+                        + " VALUES (?, ?, ?, 'M0001', 'WECHAT', ?, 9000, 450, 90, 8460, 8460, 0, 0, 'MERCHANT_SELF', ?,"
                         + " 'MAIN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0)",
                 "STL-" + sub, sub, "P-" + sub, status, System.currentTimeMillis()));
     }
@@ -72,6 +72,31 @@ class SettlementPartialReverseTest {
         assertThat(settlePort.reverseSplit(new SplitReversal("SPR-1", "AS-SPR-1c", 3000, 0, 9000))).isTrue();
         assertThat(bill("SPR-1")).containsEntry("STATUS", "REVERSED").containsEntry("REFUNDED_GOODS_MINOR", 9000L);
         assertThat(reversedViaChannel("SPR-1")).isEqualTo(8460L);
+    }
+
+    @Test
+    void pre_split_partial_refund_then_split_returns_the_entire_remaining_original_command() {
+        givenBill("SPR-MIX","PENDING");
+        jdbc.update("UPDATE stl_bill SET funds_mode='DIRECT',split_amount_minor=540 WHERE sub_order_no='SPR-MIX'");
+        assertThat(settlePort.reverseSplit(new SplitReversal("SPR-MIX","AS-SPR-MIX-0",3000,0,9000))).isTrue();
+        assertThat(jdbc.queryForObject("SELECT split_amount_minor FROM stl_bill WHERE sub_order_no='SPR-MIX'",Long.class)).isEqualTo(360);
+        // The remaining frozen cash command was accepted after that first refund.
+        jdbc.update("UPDATE stl_bill SET status='SPLIT',split_at=1 WHERE sub_order_no='SPR-MIX'");
+        assertThat(settlePort.reverseSplit(new SplitReversal("SPR-MIX","AS-SPR-MIX-1",3000,0,9000))).isTrue();
+        assertThat(reversedViaChannel("SPR-MIX")).isEqualTo(180);
+        assertThat(settlePort.reverseSplit(new SplitReversal("SPR-MIX","AS-SPR-MIX-2",3000,0,9000))).isTrue();
+        assertThat(reversedViaChannel("SPR-MIX")).isEqualTo(360);
+    }
+
+    @Test
+    void direct_fee_split_returns_only_original_split_amount_across_partial_refunds() {
+        givenBill("SPR-DIRECT","SPLIT");
+        jdbc.update("UPDATE stl_bill SET funds_mode='DIRECT',split_amount_minor=540 WHERE sub_order_no='SPR-DIRECT'");
+        for(int i=0;i<3;i++) {
+            assertThat(settlePort.reverseSplit(new SplitReversal("SPR-DIRECT","AS-SPR-DIRECT-"+i,3000,0,9000))).isTrue();
+            assertThat(reversedViaChannel("SPR-DIRECT")).isEqualTo(180L*(i+1));
+        }
+        assertThat(bill("SPR-DIRECT")).containsEntry("STATUS","REVERSED").containsEntry("REVERSED_MINOR",540L);
     }
 
     @Test

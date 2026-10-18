@@ -69,18 +69,30 @@ public class SplitResultServiceImpl implements SplitResultService {
             var command=json.readValue((String)head.get("command_json"),SplitCommand.class);
             if (result==null || !result.success() || result.providerNo()==null || result.providerNo().isBlank()) {
                 intents.state(request,(String)head.get("state"),"UNKNOWN");
+                recordCash(command,"UNKNOWN",result==null?null:result.providerNo(),
+                        result==null?"SPLIT_OUTCOME_UNKNOWN":result.message());
                 retry(bill,"SPLIT_OUTCOME_UNKNOWN"); return null;
             }
             require(intents.state(request,(String)head.get("state"),"ACCEPTED")==1,"SETTLEMENT_RESULT_CONFLICT");
             bill.setStatus(StlBill.SPLIT); bill.setSplitAt(System.currentTimeMillis());
             bill.setSplitAmountMinor(command.amountMinor()); bills.updateById(bill);
-            StlSplitLog log=new StlSplitLog(); log.setSettleNo(command.settleNo());
-            log.setSubOrderNo(command.subOrderNo()); log.setSplitAction(StlSplitLog.SPLIT);
-            log.setAmountMinor(command.amountMinor()); log.setRequestNo(request); log.setResult("SUCCESS");
-            log.setProviderNo(result.providerNo()); log.setAt(System.currentTimeMillis());
-            log.setTenantNo("MAIN"); log.setCreatedAt(LocalDateTime.now()); logs.insert(log);
+            recordCash(command,"SUCCESS",result.providerNo(),null);
             return null;
         });
+    }
+    private void recordCash(SplitCommand command,String status,String provider,String message) {
+        var row=logs.selectOne(com.baomidou.mybatisplus.core.toolkit.Wrappers.<StlSplitLog>lambdaQuery()
+                .eq(StlSplitLog::getRequestNo,command.requestNo()).last("LIMIT 1"));
+        boolean fresh=row==null;
+        if (fresh) {
+            row=new StlSplitLog(); row.setSettleNo(command.settleNo());
+            row.setSubOrderNo(command.subOrderNo()); row.setSplitAction(StlSplitLog.SPLIT);
+            row.setAmountMinor(command.amountMinor()); row.setRequestNo(command.requestNo());
+            row.setTenantNo("MAIN"); row.setCreatedAt(LocalDateTime.now());
+        }
+        row.setResult(status); row.setProviderNo(provider); row.setAt(System.currentTimeMillis());
+        if(message!=null) row.setMessage(message.substring(0,Math.min(message.length(),512)));
+        if(fresh) logs.insert(row); else logs.updateById(row);
     }
     private void retry(StlBill bill,String reason) {
         bill.setStatus(StlBill.RETRYING); bill.setRetryCount(bill.getRetryCount()==null?1:bill.getRetryCount()+1);

@@ -14,6 +14,23 @@ import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 class PointsOrderDetachmentTest {
     @Test
+    void store_inspection_displays_source_and_pay_obligations_and_never_reports_unknown_as_clear() {
+        assertThat(coordinator().inspectStore("ST").known()).isFalse();
+        var pay=mock(PointsObligationPort.class);
+        var source=mock(OrderPointsSourcePort.class);
+        optional.addBean("pay",pay); optional.addBean("source",source);
+        when(mapper.openBindings("ST")).thenReturn(3L);
+        when(mapper.bindingCount("ST")).thenReturn(4L);
+        when(source.settled("ST")).thenReturn(false);
+        when(pay.inspect("ST")).thenReturn(new PointsObligationPort.Obligations(true,1,2,3,4,5,6));
+        var result=coordinator().inspectStore("ST");
+        assertThat(result.known()).isTrue(); assertThat(result.openBindings()).isEqualTo(3);
+        assertThat(result.sourceSettled()).isFalse(); assertThat(result.pay().unknownFunds()).isEqualTo(5);
+        when(pay.inspect("ST")).thenThrow(new IllegalStateException("UNAVAILABLE"));
+        assertThat(coordinator().inspectStore("ST").known()).isFalse();
+    }
+
+    @Test
     void another_active_scene_prevents_whole_store_detachment() {
         var pay = mock(PointsObligationPort.class);
         optional.addBean("pay", pay);

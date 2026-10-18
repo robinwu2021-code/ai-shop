@@ -31,6 +31,9 @@ public class FakePayQueryPort implements PayQueryPort {
     /** 按通道分别作答。<b>比 {@link #answer} 优先</b> —— 用来造「一家挂了、一家正常」 */
     private final java.util.Map<String, Result> byChannel = new java.util.HashMap<>();
 
+    private final java.util.Map<String,Result> byRefund = new java.util.HashMap<>();
+    public void refundAnswer(String out,Result r) { byRefund.put(out,r); }
+
     public void answer(Result r) {
         this.next = r;
     }
@@ -52,6 +55,7 @@ public class FakePayQueryPort implements PayQueryPort {
     public void reset() {
         asked.clear();
         askedRefund.clear();
+        byRefund.clear();
         byChannel.clear();
         next = new Result(true, false, false, 0, null);
     }
@@ -79,6 +83,6 @@ public class FakePayQueryPort implements PayQueryPort {
     @Override
     public Result queryRefund(String payChannel, String outTradeNo) {
         askedRefund.add(outTradeNo);
-        return byChannel.getOrDefault(payChannel, next);
+        return byRefund.getOrDefault(outTradeNo, byChannel.getOrDefault(payChannel, next));
     }
 }

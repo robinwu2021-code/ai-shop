@@ -21,17 +21,26 @@ public class OrderPointsIntegrationAppServiceImpl implements OrderPointsIntegrat
     private final OrderPointsRecoveryService recovery;
     private final OrderPointsRefundCoordinator refunds;
     private final AfterSaleService afterSales;
+    private final ai.neargo.shop.trade.order.points.OrderPointsCoordinator coordinator;
 
     public OrderPointsIntegrationAppServiceImpl(
             PointsIntegrationPolicyService service, StoreDirectoryPort stores,
             OrderPointsBindingService bindings, OrderPointsRecoveryService recovery,
-            OrderPointsRefundCoordinator refunds, AfterSaleService afterSales) {
+            OrderPointsRefundCoordinator refunds, AfterSaleService afterSales,
+            ai.neargo.shop.trade.order.points.OrderPointsCoordinator coordinator) {
         this.service = service;
         this.stores = stores;
         this.bindings = bindings;
         this.recovery = recovery;
         this.refunds = refunds;
         this.afterSales = afterSales;
+        this.coordinator = coordinator;
+    }
+
+    @Override
+    public ai.neargo.shop.trade.order.points.OrderPointsCoordinator.StoreObligations obligations(String store) {
+        PointsOpsAccess.store(stores,store);
+        return PointsOpsErrors.call(() -> coordinator.inspectStore(store));
     }
 
     @Override

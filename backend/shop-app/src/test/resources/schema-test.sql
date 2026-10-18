@@ -5845,7 +5845,7 @@ VALUES
      'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0),
     ('INDIVIDUAL', 0, 0, 0, 0, NULL, 1, 'S2：能追到人、赔付能力弱；先不设限，观察后再调',
      'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0),
-    ('MICRO', 200000, 50000, 500000, 1, NULL, 1,
+    ('NATURAL_PERSON', 200000, 50000, 500000, 1, NULL, 1,
      'S3：几乎追不到人，平台是唯一被追的一方；保证金+限额+限品类三样同时生效',
      'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0);
 INSERT IGNORE INTO stl_fee_rule

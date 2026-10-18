@@ -6,6 +6,11 @@ import ai.neargo.shop.trade.order.points.OrderPointsBindingService.*;
 public interface OrderPointsCoordinator {
     Decision decide(Context context);
 
+    StoreObligations inspectStore(String storeNo);
+
+    record StoreObligations(boolean known,long activePolicies,long openBindings,boolean sourceSettled,
+            ai.neargo.shop.spi.points.PointsObligationPort.Obligations pay) {}
+
     Binding admit(Admission command);
 
     Binding resume(String requestId);

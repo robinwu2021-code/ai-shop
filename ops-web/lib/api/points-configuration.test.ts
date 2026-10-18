@@ -54,3 +54,7 @@ it("uses exact account or voucher filters and treats reconciliation as an explic
   await financeHttp.reconcilePoints(command);
   expect(client.post).toHaveBeenCalledWith("/ops/points/reconcile", command);
 });
+it("queries store obligations independently of scene without sending merchant identity", async () => {
+  await financeHttp.orderPointsObligations("ST1");
+  expect(client.get).toHaveBeenCalledWith("/ops/points/order-integration/obligations", { storeNo: "ST1" });
+});

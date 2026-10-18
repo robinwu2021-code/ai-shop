@@ -9,6 +9,7 @@ import type {
 } from "@/lib/types";
 
 export const financeHttp: FinanceApi = {
+  orderPointsObligations: (storeNo) => client.get("/ops/points/order-integration/obligations", { storeNo }),
   orderPointsIntegration: (q) => client.get("/ops/points/order-integration", q),
   changeOrderPointsIntegration: (v) => client.post("/ops/points/order-integration", v),
   inspectOrderPoints: (subOrderNo) => client.get("/ops/points/order-integration/inspection", { subOrderNo }),

@@ -112,6 +112,26 @@ public class OrderPointsCoordinatorImpl
     }
 
     @Override
+    public StoreObligations inspectStore(String store) {
+        if(store==null || store.isBlank()) throw new IllegalArgumentException("POINTS_STORE_REQUIRED");
+        try {
+            long active=DataScopeContext.executeWithoutScope(() -> mapper.activePolicies(store));
+            long open=DataScopeContext.executeWithoutScope(() -> mapper.openBindings(store));
+            long count=DataScopeContext.executeWithoutScope(() -> mapper.bindingCount(store));
+            var pay=obligations.getIfAvailable();
+            var proof=pay==null?PointsObligationPort.Obligations.unknown():pay.inspect(store);
+            var journal=source.getIfAvailable();
+            boolean sourceKnown=count==0 || journal!=null;
+            boolean settled=count==0 || (journal!=null && journal.settled(store));
+            if(proof==null) proof=PointsObligationPort.Obligations.unknown();
+            return new StoreObligations(sourceKnown && proof.known(),active,open,settled,proof);
+        } catch(RuntimeException unavailable) {
+            log.warn("Points store inspection unavailable: {}",unavailable.getClass().getSimpleName());
+            return new StoreObligations(false,-1,-1,false,PointsObligationPort.Obligations.unknown());
+        }
+    }
+
+    @Override
     public boolean canDetach(String store) {
         try {
             if (DataScopeContext.executeWithoutScope(() -> mapper.activePolicies(store)) != 0)

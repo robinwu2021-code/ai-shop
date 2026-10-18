@@ -1053,3 +1053,9 @@ export interface PointsStatsRebuild { requestId: string; typeCode: string; day: 
 export interface PointsReconRun { requestId: string; typeCode: string; reason: string }
 export interface PointsRecon { typeCode: string; checkedAt: number; complete: boolean; differences: { code: string; reference: string; expected: number; actual: number }[] }
 export type PointsEntriesQ = PointsCursor & ({ holderType: PointsHolder; holderNo: string; voucherNo?: never } | { voucherNo: string; holderType?: never; holderNo?: never });
+
+export interface OrderPointsStoreObligations {
+  known: boolean; activePolicies: number; openBindings: number; sourceSettled: boolean;
+  pay: { known: boolean; openHolds: number; pendingPromises: number; openRefunds: number;
+    openStatements: number; unknownFunds: number; pendingEvents: number };
+}

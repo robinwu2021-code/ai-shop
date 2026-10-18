@@ -295,6 +295,8 @@ class PointsOrderLiveCreationTest {
         assertThatThrownBy(() -> orderService.markPaid(root, "TEST", "forged-trade"))
                 .hasMessageContaining("POINTS_PAYMENT_PROOF_MISMATCH");
         orderService.markPaid(root, null, null);
+        assertThat(placement.inspect(root).draft().client()).isEqualTo("H5");
+        assertThat(jdbc.queryForObject("SELECT pay_scene FROM ord_order WHERE order_no=?",String.class,root)).isEqualTo("H5");
         assertThat(
                         jdbc.queryForObject(
                                 "SELECT status FROM ord_order WHERE order_no=?",

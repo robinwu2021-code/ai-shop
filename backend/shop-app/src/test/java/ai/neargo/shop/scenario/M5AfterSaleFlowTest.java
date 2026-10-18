@@ -250,50 +250,33 @@ class M5AfterSaleFlowTest {
     private ai.neargo.shop.platform.PlatformConfigService platformConfig;
 
     @Test
-    @DisplayName("旧积分订单缺少新准备时保持退款中，不得用旧整单回调退分或退现金")
-    void legacy_points_require_the_new_refund_decision_before_cash() throws Exception {
+    @DisplayName("旧 usePoints 协议缺少新报价必须拒绝，不扣积分、不创建订单或现金流水")
+    void legacy_points_request_requires_new_quote() throws Exception {
         var restore=openPoints();
         try {
             String token=login("13200132510");
             String user=userNoOf(token);
             givePoints(user,10000);
-            String sub=payWithPoints(token,800,"m5-refund-points");
-            long earned=pendingOf(user);
-            String as=mvcApply(token,sub);
-            approve(loginAsOwnerOf("M0001","13200132511"),as);
-            assertThat(asStatus(token,as)).isEqualTo("REFUNDING");
-            assertThatThrownBy(() -> afterSales.resumeRefund(as,"SYSTEM"))
-                    .hasMessage("REFUND_EXECUTION_POINTS_CONFIRMATION_REQUIRED");
-            assertThat(pointsBalanceOf(user)).isEqualTo(9200);
-            assertThat(pendingOf(user)).isEqualTo(earned);
-            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=?",
-                    Long.class,as)).isZero();
+            rejectLegacyPoints(token,800,"m5-refund-points");
+            assertThat(pointsBalanceOf(user)).isEqualTo(10000);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_order WHERE user_no=?",Long.class,user)).isZero();
         } finally { restore.run(); }
     }
 
     @Test
-    @DisplayName("★★ 开关 refund.return-points 关掉 = 不退分（关着的那一半也要测）")
-    void pointsKeptWhenSwitchOff() throws Exception {
-        var restore = openPoints();
-        platformConfig.saveFeatureFlag("refund.return-points", false, 0, "TEST");
+    @DisplayName("旧退款开关不能重新启用已下线的 usePoints 抵扣协议")
+    void old_refund_switch_does_not_enable_legacy_points_protocol() throws Exception {
+        var restore=openPoints();
+        platformConfig.saveFeatureFlag("refund.return-points",false,0,"TEST");
         try {
-            String token = login("13200132512");
-            String userNo = userNoOf(token);
-            givePoints(userNo, 10_000L);
-            String subNo = payWithPoints(token, 500L, "m5-refund-points-off");
-
-            approve(loginAsOwnerOf("M0001", "13200132513"), mvcApply(token, subNo));
-
-            assertThat(pointsBalanceOf(userNo)).isEqualTo(9_500L);
-            /*
-             * 没退就不说 —— 「已退回」若不成立比什么都不说更糟。
-             * 只看「退回」这一项：赠送分的收回是另一个开关，此时照常发生，去向块里会有它。
-             */
-            JsonNode returned = orderDetail(token, subNo).get("returned");
-            assertThat(absent(returned) || returned.get("pointsReturned").asLong() == 0L)
-                    .as("开关关着却说「已退回」").isTrue();
+            String token=login("13200132512");
+            String user=userNoOf(token);
+            givePoints(user,10000);
+            rejectLegacyPoints(token,500,"m5-refund-points-off");
+            assertThat(pointsBalanceOf(user)).isEqualTo(10000);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE user_no=?",Long.class,user)).isZero();
         } finally {
-            platformConfig.saveFeatureFlag("refund.return-points", true, 0, "TEST");
+            platformConfig.saveFeatureFlag("refund.return-points",true,0,"TEST");
             restore.run();
         }
     }
@@ -394,22 +377,14 @@ class M5AfterSaleFlowTest {
         return null;
     }
 
-    /** 付款：带抵扣下单 + 回调，返回子单号 */
-    private String payWithPoints(String token, long usePoints, String idem) throws Exception {
-        mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
+    private void rejectLegacyPoints(String token,long usePoints,String idem) throws Exception {
+        mvc().perform(post("/mp/cart/add").header("Authorization","Bearer "+token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"goodsNo\":\"G0002\",\"skuNo\":\"SK0003\",\"qty\":1}"));
-        JsonNode order = json.readTree(mvc().perform(post("/mp/order").header("Authorization", "Bearer " + token)
-                        .header("Idempotency-Key", idem)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\","
-                                + "\"usePoints\":" + usePoints + "}"))
-                .andExpect(jsonPath("$.code").value(0))
-                .andReturn().getResponse().getContentAsString()).get("data");
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + order.get("payOrderNo").asString()
-                        + "\",\"transactionId\":\"TX-" + idem + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
-        return order.get("subOrders").get(0).get("orderNo").asString();
+        mvc().perform(post("/mp/order").header("Authorization","Bearer "+token)
+                .header("Idempotency-Key",idem).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\",\"usePoints\":"+usePoints+"}"))
+                .andExpect(jsonPath("$.code").value(org.hamcrest.Matchers.not(0)));
     }
 
     private static boolean absent(JsonNode n) {
@@ -512,6 +487,7 @@ class M5AfterSaleFlowTest {
         Ordered o=placeAndPay("13200132003",6980);
         String asNo=applyAfterSale(o,"REFUND_ONLY","等待持久化回退证明");
         jdbc.update("UPDATE stl_bill SET status='SPLIT_CONFIRMED',split_at=1 WHERE sub_order_no=?",o.subOrderNo);
+        context.getBean(ai.neargo.shop.pay.StubSplitGateway.class).failNext(o.subOrderNo);
         approve(loginAsOwnerOf("M0001","13200132004"),asNo);
         assertThatThrownBy(() -> afterSales.resumeRefund(asNo,"SYSTEM"))
                 .isInstanceOf(BizException.class);

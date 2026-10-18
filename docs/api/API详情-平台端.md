@@ -3065,7 +3065,7 @@ _无字段_
 
 #### GET `/ops/points/order-integration`
 
-订单积分动态接线策略，门店和支付场景精确查询
+orderPointsIntegration
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -3137,6 +3137,39 @@ inspectOrderPoints
 | `pendingSourceEvents` | `number` | 是 | — |
 | `paymentVerified` | `boolean` | 是 | — |
 | `differences` | `string`\[\] | 是 | — |
+
+
+#### GET `/ops/points/order-integration/obligations`
+
+订单积分动态接线策略，门店和支付场景精确查询
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`OrderPointsStoreObligations`](#orderpointsstoreobligations)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `known` | `boolean` | 是 | — |
+| `activePolicies` | `number` | 是 | — |
+| `openBindings` | `number` | 是 | — |
+| `sourceSettled` | `boolean` | 是 | — |
+| `pay` | `object`（见下） | 是 | — |
+
+`pay` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `known` | `boolean` | 是 | — |
+| `openHolds` | `number` | 是 | — |
+| `pendingPromises` | `number` | 是 | — |
+| `openRefunds` | `number` | 是 | — |
+| `openStatements` | `number` | 是 | — |
+| `unknownFunds` | `number` | 是 | — |
+| `pendingEvents` | `number` | 是 | — |
 
 
 #### POST `/ops/points/order-integration/refunds/{afterSaleNo}/close`
@@ -13448,6 +13481,28 @@ KPI 卡（金额为最小货币单位整数）。
 | `afterSaleNo` | `string` | 是 | — |
 | `subOrderNo` | `string` | 是 | — |
 | `status` | `string` | 是 | — |
+
+### OrderPointsStoreObligations
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `known` | `boolean` | 是 | — |
+| `activePolicies` | `number` | 是 | — |
+| `openBindings` | `number` | 是 | — |
+| `sourceSettled` | `boolean` | 是 | — |
+| `pay` | `object`（见下） | 是 | — |
+
+`pay` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `known` | `boolean` | 是 | — |
+| `openHolds` | `number` | 是 | — |
+| `pendingPromises` | `number` | 是 | — |
+| `openRefunds` | `number` | 是 | — |
+| `openStatements` | `number` | 是 | — |
+| `unknownFunds` | `number` | 是 | — |
+| `pendingEvents` | `number` | 是 | — |
 
 ### OtpTestPhone
 

@@ -53,8 +53,7 @@ public class OrderPointsRecoveryJob implements JobHandler {
 
     @Bean
     public JobDeclaration orderPointsRecoveryDeclaration() {
-        return new JobDeclaration(
-                name(),
+        return new JobDeclaration("order-points-recovery",
                 "积分订单源恢复",
                 "有界重试原积分接线命令、源事件、售后与责任关闭；资金由支付域恢复",
                 "shop-core",

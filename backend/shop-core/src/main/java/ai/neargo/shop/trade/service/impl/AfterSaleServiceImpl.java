@@ -381,6 +381,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         as.setUserNo(sub.getUserNo());
         as.setEntityNo(sub.getEntityNo());
         as.setType(OrdAfterSale.REFUND_ONLY);
+        as.setRefundMode(OrdAfterSale.REFUND_MODE_CASH);
         as.setReason(reason);
         as.setImages(writeJson(null));
         as.setRefundMinor(sub.getPayAmount() == null ? 0L : sub.getPayAmount());
@@ -1069,7 +1070,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         var intent = refundExecutions.beginCash(afterSaleNo);
         var plan = execution.plan();
         var sub = subOrderOf(plan.subOrderNo());
-        if (!settlePort.reversePreparedRefund(new SettlePort.SplitReversal(plan.subOrderNo(), afterSaleNo,
+        if (!settlePort.reverseSplit(new SettlePort.SplitReversal(plan.subOrderNo(), afterSaleNo,
                 plan.goodsMinor(), plan.freightMinor(), LineShares.goodsPaid(sub)))) {
             throw BizException.of(ErrorCode.SPLIT_EXPIRED);
         }

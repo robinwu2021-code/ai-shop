@@ -181,10 +181,25 @@ public class SettlementRefundCoordinator {
         }
         BillRefundShare share = policy.share(bill, cmd.goodsMinor(), cmd.freightMinor(), cmd.goodsPaidMinor());
         if (splitDone(bill)) {
-            return postSplit.reverse(bill, share, cmd.afterSaleNo());
+            return postSplit.reverse(bill, share, cmd.afterSaleNo(), splitReturn(bill,cmd));
         }
         preSplit.adjust(bill, share, cmd.afterSaleNo());
         return true;
+    }
+
+    /** Reverse the original split command, not the merchant net payable (different money directions). */
+    private long splitReturn(StlBill bill,SplitReversal cmd) {
+        Long amount=bill.getSplitAmountMinor();
+        if(amount==null || amount<0) throw new IllegalStateException("SETTLEMENT_SPLIT_AMOUNT_REQUIRED");
+        long alreadyBeforeSplit=journal.preSplitGoods(bill.getSettleNo());
+        long before=Math.subtractExact(bill.getRefundedGoodsMinor()==null?0:bill.getRefundedGoodsMinor(),alreadyBeforeSplit);
+        long remainingBase=Math.subtractExact(cmd.goodsPaidMinor(),alreadyBeforeSplit);
+        if(before<0 || remainingBase<0) throw new IllegalStateException("SETTLEMENT_SPLIT_REFUND_BASIS_INVALID");
+        if(remainingBase==0) return amount;
+        var total=java.math.BigInteger.valueOf(amount);
+        var base=java.math.BigInteger.valueOf(remainingBase);
+        return total.multiply(java.math.BigInteger.valueOf(Math.addExact(before,cmd.goodsMinor()))).divide(base)
+                .subtract(total.multiply(java.math.BigInteger.valueOf(before)).divide(base)).longValueExact();
     }
 
     /** 转人工的单要看分账发过没有：发过（splitAt 有值）就是钱已动过，同样经通道回退。 */

@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 880 个接口**：后端已实现 802（91%）· 前端在调 804
+**合计 881 个接口**：后端已实现 803（91%）· 前端在调 805
 
 ---
 
@@ -922,7 +922,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **460** 个接口 ｜ 后端已实现 **394**（86%）｜ 前端在调 **384**
+共 **461** 个接口 ｜ 后端已实现 **395**（86%）｜ 前端在调 **385**
 
 ### aftersale（4）
 
@@ -1003,7 +1003,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（88）
+### finance（89）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1041,9 +1041,10 @@
 | GET | `/ops/points/flows` | pointsFlows | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/points/funds` | pointsFunds | — | `PointsFundsView` | — | ✅ | ✅ |
 | POST | `/ops/points/funds-recovery` | recoverPointsFunds | — | `PointsRecoveryExecution` | — | ✅ | ✅ |
-| GET | `/ops/points/order-integration` | 订单积分动态接线策略，门店和支付场景精确查询 | — | `OrderPointsIntegrationPolicy` | — | ✅ | ✅ |
+| GET | `/ops/points/order-integration` | orderPointsIntegration | — | `OrderPointsIntegrationPolicy` | — | ✅ | ✅ |
 | POST | `/ops/points/order-integration` | 版本化接线变更，操作人和审计时间由服务端取得 | — | `OrderPointsIntegrationPolicy` | — | ✅ | ✅ |
 | GET | `/ops/points/order-integration/inspection` | inspectOrderPoints | — | `OrderPointsInspection` | — | ✅ | ✅ |
+| GET | `/ops/points/order-integration/obligations` | 订单积分动态接线策略，门店和支付场景精确查询 | — | `OrderPointsStoreObligations` | — | ✅ | ✅ |
 | POST | `/ops/points/order-integration/refunds/{afterSaleNo}/close` | closeOrderPointsRefund | — | `OrderPointsRefundActionResult` | — | ✅ | ⬜ |
 | POST | `/ops/points/order-integration/refunds/{afterSaleNo}/retry` | retryOrderPointsRefund | — | `OrderPointsRefundActionResult` | — | ✅ | ⬜ |
 | GET | `/ops/points/order-integration/refunds/manual` | manualOrderPointsRefunds | — | `OrderPointsManualRefundPage` | — | ✅ | ✅ |

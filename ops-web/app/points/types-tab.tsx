@@ -37,12 +37,14 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
   const integration = useQuery({ queryKey: ["points-order-integration", integrationStore, integrationScene],
     queryFn: () => api.orderPointsIntegration({ storeNo: integrationStore, scene: integrationScene }),
     enabled: !!integrationStore });
+  const obligations = useQuery({ queryKey: ["points-store-obligations", integrationStore],
+    queryFn: () => api.orderPointsObligations(integrationStore), enabled: !!integrationStore });
   const integrationIntent = useRef<{ body: string; requestId: string } | undefined>(undefined);
   const integrationSave = useMutation({ mutationFn: (draft: OrderPointsIntegrationChange) => {
     const next = pointsCommand({ ...draft, requestId: "" }, integrationIntent.current);
     integrationIntent.current = next.intent;
     return api.changeOrderPointsIntegration({ ...draft, requestId: next.command.requestId });
-  }, onSuccess: () => { integrationIntent.current = undefined; void qc.invalidateQueries({ queryKey: ["points-order-integration", integrationStore, integrationScene] }); } });
+  }, onSuccess: () => { integrationIntent.current = undefined; void qc.invalidateQueries({ queryKey: ["points-store-obligations", integrationStore] }); void qc.invalidateQueries({ queryKey: ["points-order-integration", integrationStore, integrationScene] }); } });
   const agreements = useQuery({ queryKey: ["points-agreements", code, store, after], queryFn: () => api.pointsAgreements({ typeCode: code, storeNo: store, after, limit: 50 }), enabled: !!code && !!store });
   const intent = useRef<{ body: string; requestId: string } | undefined>(undefined);
   const save = useMutation({ mutationFn: (command: Command) => {
@@ -110,12 +112,24 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
     <div className={card}>
       <h3 className="txt-heading">{t("订单积分按门店接线", "Order points by store")}</h3>
       <p dir="auto">{t("默认脱离。停新增保留旧单清偿；完全脱离须服务端确认没有存量义务。", "Detached by default. Draining stops new orders while existing obligations finish; full detachment requires server proof of clearance.")}</p>
-      <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); setIntegrationStore(integrationInput.trim()); }}>
+      <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); const next=integrationInput.trim(); if(next===integrationStore) { void integration.refetch(); void obligations.refetch(); } else setIntegrationStore(next); }}>
         <label>{t("门店编号", "Store ID")}<Input dir="auto" required value={integrationInput} onChange={(e) => setIntegrationInput(e.target.value)} /></label>
         <label>{t("场景", "Scene")}<Select value={integrationScene} onChange={(e) => setIntegrationScene(e.target.value as "ONLINE" | "OFFLINE")}><option value="ONLINE">ONLINE</option><option value="OFFLINE">OFFLINE</option></Select></label>
         <Button type="submit">{t("查询", "Search")}</Button>
       </form>
       {integration.isFetching && <p dir="auto">{t("加载中…", "Loading…")}</p>}
+      {integrationStore && <div className="space-y-1 border-t border-border py-2" dir="auto">
+        <h4>{t("门店存量义务", "Existing store obligations")}</h4>
+        {obligations.isFetching && <p>{t("加载中…", "Loading…")}</p>}
+        {obligations.data?.known && <>
+          <p>{t("启用场景 / 未关闭绑定", "Active scenes / open bindings")}: {obligations.data.activePolicies} / {obligations.data.openBindings}</p>
+          <p>{t("源事件全部确认", "Source events acknowledged")}: {obligations.data.sourceSettled ? t("是", "Yes") : t("否", "No")}</p>
+          <p>{t("占用 / 待兑现承诺 / 退款", "Holds / pending promises / refunds")}: {obligations.data.pay.openHolds} / {obligations.data.pay.pendingPromises} / {obligations.data.pay.openRefunds}</p>
+          <p>{t("未结算单 / 未知资金 / 待处理事件", "Open statements / unknown funds / pending events")}: {obligations.data.pay.openStatements} / {obligations.data.pay.unknownFunds} / {obligations.data.pay.pendingEvents}</p>
+        </>}
+        {(obligations.error || obligations.data && !obligations.data.known) && <p role="alert">{t("义务核验不可用，不能据此判定可完全脱离。", "Obligation inspection unavailable; full detachment cannot be inferred.")}</p>}
+        <p>{t("此处为查询快照，完全脱离仍由服务端重新核验。", "This is a read snapshot; the server rechecks before full detachment.")}</p>
+      </div>}
       {integration.data && <form key={`${integrationStore}:${integrationScene}:${integration.data.version}`} className="space-y-3" onSubmit={(e) => {
         e.preventDefault(); const d = new FormData(e.currentTarget);
         integrationSave.mutate({ requestId: "", storeNo: integrationStore, scene: integrationScene,

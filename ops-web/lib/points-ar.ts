@@ -1,5 +1,12 @@
 // Arabic copy scoped to the points workspace; technical identifiers retain their original values.
 export const POINTS_AR: Record<string,string> = {
+  "Existing store obligations": "الالتزامات الحالية للمتجر",
+  "Active scenes / open bindings": "السيناريوهات النشطة / الارتباطات المفتوحة",
+  "Source events acknowledged": "تم تأكيد أحداث المصدر",
+  "Holds / pending promises / refunds": "الحجوزات / الوعود المعلقة / المبالغ المستردة",
+  "Open statements / unknown funds / pending events": "الكشوف المفتوحة / الأموال غير المؤكدة / الأحداث المعلقة",
+  "Obligation inspection unavailable; full detachment cannot be inferred.": "فحص الالتزامات غير متاح؛ لا يمكن استنتاج إمكانية الفصل الكامل.",
+  "This is a read snapshot; the server rechecks before full detachment.": "هذه لقطة للقراءة؛ يعيد الخادم التحقق قبل الفصل الكامل.",
   "Original order points inspection": "فحص نقاط الطلب الأصلي",
   "Sub-order ID": "معرّف الطلب الفرعي",
   "Source binding / placement": "الربط الأصلي / مرحلة إنشاء الطلب",

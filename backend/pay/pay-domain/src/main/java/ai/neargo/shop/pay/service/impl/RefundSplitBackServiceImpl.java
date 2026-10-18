@@ -1,33 +1,22 @@
 package ai.neargo.shop.pay.service.impl;
 
-import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.dto.FinanceVOs.RefundSplitBackVO;
-import ai.neargo.shop.pay.entity.StlBill;
-import ai.neargo.shop.pay.mapper.SettleMappers.BillMapper;
 import ai.neargo.shop.pay.service.RefundSplitBackService;
 import ai.neargo.shop.spi.trade.RefundSplitBackPort;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /** {@link RefundSplitBackService} 实现。「先回退、后退款」的顺序由售后续跑（AfterSaleRefundExecutor）保证。 */
 @Service
 public class RefundSplitBackServiceImpl implements RefundSplitBackService {
 
     private final RefundSplitBackPort backPort;
-    private final BillMapper billMapper;
 
-    public RefundSplitBackServiceImpl(RefundSplitBackPort backPort,
-                                      BillMapper billMapper) {
+    public RefundSplitBackServiceImpl(RefundSplitBackPort backPort) {
         this.backPort = backPort;
-        this.billMapper = billMapper;
     }
 
     @Override
@@ -36,27 +25,13 @@ public class RefundSplitBackServiceImpl implements RefundSplitBackService {
         if (cases.isEmpty()) {
             return List.of();
         }
-        /*
-         * 与结算单求交集：已经 REVERSED 的单没有可回退的分账，留在队列里只会被反复点。
-         * 没有结算单的子单**也留下** —— reverseSplit 对它是无害的（直接判成功），
-         * 而把它踢出队列等于让那笔售后永远没有出口。
-         */
-        Set<String> subOrderNos = cases.stream()
-                .map(RefundSplitBackPort.PendingBack::subOrderNo).collect(Collectors.toSet());
-        Map<String, String> billStatus = DataScopeContext.executeWithoutScope(() ->
-                        billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
-                                .in(StlBill::getSubOrderNo, subOrderNos))).stream()
-                .collect(Collectors.toMap(StlBill::getSubOrderNo, StlBill::getStatus,
-                        (a, b) -> a));
-
+        // A reversed split does not prove cash arrival. Keep the source case until refund finalization.
         return cases.stream()
-                .filter(c -> !StlBill.REVERSED.equals(billStatus.get(c.subOrderNo())))
                 .map(RefundSplitBackServiceImpl::toVO)
                 .toList();
     }
 
     @Override
-    @Transactional("payTxManager")
     public RefundSplitBackVO execute(String afterSaleNo, String operatorNo) {
         RefundSplitBackPort.PendingBack target = backPort.pendingSplitBacks().stream()
                 .filter(c -> c.afterSaleNo().equals(afterSaleNo))

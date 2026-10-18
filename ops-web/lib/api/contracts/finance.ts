@@ -11,10 +11,11 @@ import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDeb
 } from "@/lib/types";
 import type { PageQ, SettlementQ, PointsReceivableQ } from "../query";
 
-import type { OrderPointsIntegrationQ, OrderPointsIntegrationPolicy, OrderPointsIntegrationChange, OrderPointsInspection, OrderPointsManualRefundPage, OrderPointsRefundActionResult } from "@/lib/types";
+import type { OrderPointsStoreObligations, OrderPointsIntegrationQ, OrderPointsIntegrationPolicy, OrderPointsIntegrationChange, OrderPointsInspection, OrderPointsManualRefundPage, OrderPointsRefundActionResult } from "@/lib/types";
 
 export interface FinanceApi {
   /** 订单积分动态接线策略，门店和支付场景精确查询。 */
+  orderPointsObligations(storeNo: string): Promise<OrderPointsStoreObligations>;
   orderPointsIntegration(q: OrderPointsIntegrationQ): Promise<OrderPointsIntegrationPolicy>;
   /** 版本化接线变更，操作人和审计时间由服务端取得。 */
   changeOrderPointsIntegration(v: OrderPointsIntegrationChange): Promise<OrderPointsIntegrationPolicy>;
