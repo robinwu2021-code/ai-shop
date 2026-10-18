@@ -1313,8 +1313,6 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     donePointsHint: "Refunded as {n} points to the buyer per agreement — this case is closed.",
     waitReceiptHint: "In transit. Confirm the refund once the buyer receives it.",
     approveAmount: "Refund amount",
-    refundModeCash: "Cash",
-    refundModePoints: "Points",
     amountInvalid: "Refund amount must be >0 and not exceed the amount paid",
     stage: {
       NOT_PREPARED: "Not prepared",

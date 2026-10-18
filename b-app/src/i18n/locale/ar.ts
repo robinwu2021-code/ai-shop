@@ -1311,8 +1311,6 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
     donePointsHint: "تم الاسترجاع كـ {n} نقطة للمشتري حسب الاتفاق؛ أُغلقت هذه الحالة.",
     waitReceiptHint: "الطرد في الطريق. أكّد الاسترجاع بعد استلام المشتري.",
     approveAmount: "مبلغ الاسترداد",
-    refundModeCash: "نقدًا",
-    refundModePoints: "نقاط",
     amountInvalid: "يجب أن يكون المبلغ أكبر من 0 ولا يتجاوز المدفوع",
     stage: {
       NOT_PREPARED: "لم يُجهّز",

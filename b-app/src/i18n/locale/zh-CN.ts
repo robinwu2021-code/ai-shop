@@ -1544,8 +1544,6 @@ export default {
     donePointsHint: "已按约定折 {n} 积分退回买家，这一单结束了。",
     waitReceiptHint: "货在途。买家签收后请确认退款。",
     approveAmount: "退款金额",
-    refundModeCash: "退现金",
-    refundModePoints: "退积分",
     amountInvalid: "退款金额需大于 0 且不超过实付",
     stage: {
       NOT_PREPARED: "未备货",
