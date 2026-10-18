@@ -389,6 +389,8 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   // 它们挂在 C 端是契约写在 b-app 拆分之前留下的。
   pointAccount: { method: "GET", path: "/mp/points/account", auth: true, summary: "积分账户" },
   pointRecords: { method: "GET", path: "/mp/points/records", auth: true, summary: "积分流水" },
+  pointsAccounts: { method: "GET", path: "/mp/points/accounts", auth: true, summary: "本人按类型积分账户" },
+  pointsEntries: { method: "GET", path: "/mp/points/entries", auth: true, summary: "本人按类型积分流水" },
   pointsDeductible: {
     method: "GET",
     path: "/mp/points/deductible",

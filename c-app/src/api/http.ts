@@ -4,7 +4,7 @@
 // 迁移到真实后端时这个文件基本不用改 —— 改的是 `.env` 里的开关。
 import { clientTag, http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
-import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList, PointsOrderState, OrderPointsQuote} from "./contract";
+import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList, PointsOrderState, OrderPointsQuote, BuyerPointsAccount, BuyerPointsEntryPage} from "./contract";
 import type { InvoiceRequest, MyMembership, ReachOpened, MyStoreCoupon, PlaceSearchHit, RegionNode, RegionOption,
   PasswordState,
   PhoneCapable,
@@ -331,6 +331,9 @@ export const httpApi: ShopApi = {
   toggleReviewLike: (reviewNo) => call<Review>("toggleReviewLike", { reviewNo }),
 
   // ---- 积分
+  pointsAccounts: () => call<BuyerPointsAccount[]>("pointsAccounts"),
+  pointsEntries: (typeCode, after = 0) => call<BuyerPointsEntryPage>(
+    "pointsEntries", undefined, { typeCode, after, limit: 20 }),
   pointAccount: () => call<PointAccount>("pointAccount"),
   pointRecords: () => call<PointRecord[]>("pointRecords"),
   pointsDeductible: (q) => call<PointsDeductible>("pointsDeductible", undefined, { ...q } satisfies PointsDeductibleQuery),

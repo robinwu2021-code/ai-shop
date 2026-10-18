@@ -12,7 +12,9 @@ import {
 import type { ShopApi } from "../contract";
 
 export const userMock: Pick<ShopApi,
-  "pointAccount"
+  "pointsAccounts"
+  | "pointsEntries"
+  | "pointAccount"
   | "pointRecords"
   | "pointsDeductible"
   | "sendOtp"
@@ -37,6 +39,24 @@ export const userMock: Pick<ShopApi,
   | "setDefaultAddress"
 > = {
   // ---------------------------------------------------------------- 积分
+  async pointsAccounts() {
+    const account = buildAccount(db.points);
+    return delay([{ typeCode: "CN", market: "CN", currency: "CNY", status: "ACTIVE" as const,
+      balance: account.balance, pendingBalance: account.pendingBalance, heldBalance: 0,
+      ratePoints: 2, rateMinor: 1, deductRatioBp: 3000, idleDays: POINTS.inactiveDays,
+      frozen: false, expireAt: account.expiringAt ?? null }]);
+  },
+
+  async pointsEntries(typeCode, after = 0) {
+    const rows = typeCode === "CN" ? db.points : [];
+    const page = rows.slice(after, after + 20).map((row) => ({
+      entryNo: row.recordNo, bucket: "AVAILABLE" as const,
+      points: row.points, balanceAfter: row.balanceAfter, at: row.at,
+    }));
+    const next = after + page.length;
+    return delay({ rows: page, next, hasMore: next < rows.length });
+  },
+
   async pointAccount() {
     return delay(buildAccount(db.points));
   },

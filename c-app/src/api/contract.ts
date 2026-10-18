@@ -90,6 +90,36 @@ export interface OrderPointsQuote {
     pointsUsed: number; deductMinor: number }[];
 }
 
+export interface BuyerPointsAccount {
+  typeCode: string;
+  market: string;
+  currency: string;
+  status: "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
+  balance: number;
+  pendingBalance: number;
+  heldBalance: number;
+  ratePoints: number;
+  rateMinor: number;
+  deductRatioBp: number;
+  idleDays: number;
+  frozen: boolean;
+  expireAt: number | null;
+}
+
+export interface BuyerPointsEntry {
+  entryNo: string;
+  bucket: "AVAILABLE" | "PENDING" | "HELD";
+  points: number;
+  balanceAfter: number;
+  at: number;
+}
+
+export interface BuyerPointsEntryPage {
+  rows: BuyerPointsEntry[];
+  next: number;
+  hasMore: boolean;
+}
+
 export interface PayMethodItem {
   methodCode: string;
   payChannel: string;
@@ -707,6 +737,8 @@ export interface ShopApi {
   }): Promise<Review>;
 
   // ---- 积分（C 端账户）
+  pointsAccounts(): Promise<BuyerPointsAccount[]>;
+  pointsEntries(typeCode: string, after?: number): Promise<BuyerPointsEntryPage>;
   pointAccount(): Promise<PointAccount>;
   pointRecords(): Promise<PointRecord[]>;
   /**

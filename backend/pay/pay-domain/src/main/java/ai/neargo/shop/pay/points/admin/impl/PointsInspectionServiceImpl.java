@@ -136,7 +136,8 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
                                                 text(r, "holder_no"),
                                                 Bucket.valueOf(text(r, "bucket")),
                                                 num(r, "delta_points"),
-                                                num(r, "after_points")))
+                                                num(r, "after_points"),
+                                                time(r, "created_at")))
                         .toList();
         return new EntryPage(
                 rows, rows.isEmpty() ? after : rows.getLast().id(), rows.size() == limit);
@@ -250,6 +251,14 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
 
     private long num(Map<String, Object> row, String field) {
         return ((Number) row.get(field)).longValue();
+    }
+
+    private long time(Map<String, Object> row, String field) {
+        Object value = row.get(field);
+        if (value instanceof java.util.Date date) return date.getTime();
+        if (value instanceof java.time.LocalDateTime local)
+            return local.atZone(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli();
+        throw new IllegalStateException("POINTS_ENTRY_TIME_MISSING");
     }
 
     private String text(Map<String, Object> row, String field) {

@@ -1,40 +1,79 @@
 <script setup lang="ts">
-// 我的积分。**只有用户侧** —— 商家侧的积分视图随契约迁到了 b-app（ADR-007 §3）。
-//
-// 页面上要分开显示「可用」与「待生效」：合成一个数的话，用户看到「我有 500 分」
-// 却只能用 400，没有任何办法解释这个差额（V25 拆出 pending_balance 就是为了这个）。
 import { computed, ref } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
-import { datetime, isoDate, money } from "@shared/utils/format";
-import type { PointAccount, PointRecord } from "@shared/types";
+import { datetime, isoDate } from "@shared/utils/format";
+import type { BuyerPointsAccount, BuyerPointsEntry } from "@/api/contract";
 
-const account = ref<PointAccount | null>(null);
-const records = ref<PointRecord[]>([]);
-
-/** 余额折算成钱，让用户知道这些积分到底值多少 */
-const worthMinor = computed(() => {
-  const ratePoints = account.value?.ratePoints;
-  const rateMinor = account.value?.rateMinor;
-  if (!ratePoints || !rateMinor) return null;
-  return Math.floor((account.value?.balance ?? 0) * rateMinor / ratePoints);
-});
-
-/** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
+const accounts = ref<BuyerPointsAccount[]>([]);
+const typeCode = ref("");
+const records = ref<BuyerPointsEntry[]>([]);
+const nextCursor = ref(0);
+const hasMore = ref(false);
+const moreLoading = ref(false);
 const loaded = ref(false);
-/** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
 const failed = ref(false);
+let requestNo = 0;
 
-async function load() {
+const account = computed(() => accounts.value.find((a) => a.typeCode === typeCode.value));
+const tabs = computed(() => accounts.value.map((a) => ({
+  key: a.typeCode, label: `${a.market} · ${a.typeCode}`,
+})));
+
+async function selectType(next: string) {
+  typeCode.value = next;
+  records.value = [];
+  nextCursor.value = 0;
+  hasMore.value = false;
+  loaded.value = false;
+  const current = ++requestNo;
   try {
-    const [a, r] = await Promise.all([api.pointAccount(), api.pointRecords()]);
-    account.value = a;
-    records.value = r;
+    const page = await api.pointsEntries(next);
+    if (current !== requestNo) return;
+    records.value = page.rows;
+    nextCursor.value = page.next;
+    hasMore.value = page.hasMore;
     failed.value = false;
   } catch {
+    if (current !== requestNo) return;
     failed.value = true;
   }
   loaded.value = true;
+}
+
+async function loadMore() {
+  if (!typeCode.value || !hasMore.value || moreLoading.value) return;
+  const current = requestNo;
+  moreLoading.value = true;
+  try {
+    const page = await api.pointsEntries(typeCode.value, nextCursor.value);
+    if (current !== requestNo) return;
+    records.value = [...records.value, ...page.rows];
+    nextCursor.value = page.next;
+    hasMore.value = page.hasMore;
+  } catch {
+    if (current === requestNo) failed.value = true;
+  } finally {
+    moreLoading.value = false;
+  }
+}
+
+async function load() {
+  try {
+    accounts.value = await api.pointsAccounts();
+    const next = accounts.value.some((a) => a.typeCode === typeCode.value)
+      ? typeCode.value : accounts.value[0]?.typeCode;
+    if (next) await selectType(next);
+    else {
+      typeCode.value = "";
+      records.value = [];
+      loaded.value = true;
+      failed.value = false;
+    }
+  } catch {
+    loaded.value = true;
+    failed.value = true;
+  }
 }
 
 onShow(load);
@@ -42,61 +81,42 @@ onShow(load);
 
 <template>
   <sh-scaffold :title-key="'points.title'">
-    <!-- 用户侧：单位是分 -->
-    <view class="sh-card hero">
+    <sh-tabs v-if="tabs.length > 1" :items="tabs" :active="typeCode" @change="selectType"></sh-tabs>
+    <view v-if="account" class="sh-card hero">
       <text class="txt-caption hero__label">{{ $t("points.balance") }}</text>
-      <text class="txt-hero hero__v sh-num">{{ account?.balance ?? 0 }}</text>
-      <text v-if="worthMinor !== null" class="txt-caption hero__worth sh-num">{{ $t("points.worth", { p: money(worthMinor) }) }}</text>
-
-      <!-- 待生效必须单独显示：合进余额的话，用户会看到「我有 500 分」却只能用 400 -->
-      <text v-if="account?.pendingBalance" class="txt-caption hero__pending sh-num">
-        {{ $t("points.pending", {
-          n: account.pendingBalance,
-          d: account.pendingActivateAt ? isoDate(account.pendingActivateAt) : "",
-        }) }}
+      <text class="txt-hero hero__v sh-num">{{ account.balance }}</text>
+      <text class="txt-caption hero__scope">{{ account.market }} · {{ account.typeCode }} · {{ account.currency }}</text>
+      <text v-if="account.pendingBalance" class="txt-caption hero__pending sh-num">
+        {{ $t("points.pendingCount", { n: account.pendingBalance }) }}
       </text>
-
-      <view class="sums">
-        <view class="sum">
-          <text class="txt-body sum__v sh-num">{{ account?.totalEarned ?? 0 }}</text>
-          <text class="txt-caption sum__k">{{ $t("points.totalEarned") }}</text>
-        </view>
-        <view class="sum">
-          <text class="txt-body sum__v sh-num">{{ account?.totalUsed ?? 0 }}</text>
-          <text class="txt-caption sum__k">{{ $t("points.totalUsed") }}</text>
-        </view>
-      </view>
+      <text v-if="account.heldBalance" class="txt-caption hero__pending sh-num">
+        {{ $t("points.held", { n: account.heldBalance }) }}
+      </text>
+      <text v-if="account.frozen" class="txt-caption hero__pending">{{ $t("points.frozen") }}</text>
+      <text v-if="account.status !== 'ACTIVE'" class="txt-caption hero__pending">
+        {{ $t("points.notActive") }}
+      </text>
     </view>
 
-    <!-- 规则：积分能抵钱，规则必须写在明面上 -->
-    <view class="sh-card block rules">
+    <view v-if="account" class="sh-card block rules">
       <text class="txt-caption txt-bold rules__title">{{ $t("points.rules") }}</text>
-      <text v-if="account?.ratePoints && account?.rateMinor" class="txt-caption rules__t">
-        {{ $t("points.ruleRate", { n: account.ratePoints * 100 / account.rateMinor }) }}
+      <text v-if="account.ratePoints && account.rateMinor" class="txt-caption rules__t">
+        {{ $t("points.ruleRateRaw", { n: account.ratePoints, m: account.rateMinor, c: account.currency }) }}
       </text>
-      <text v-if="account?.maxDeductRatio != null" class="txt-caption rules__t">
-        {{ $t("points.ruleCap", { n: Math.round(account.maxDeductRatio * 100) }) }}
+      <text class="txt-caption rules__t">{{ $t("points.ruleCap", { n: account.deductRatioBp / 100 }) }}</text>
+      <text v-if="account.idleDays" class="txt-caption rules__t">
+        {{ $t("points.idleRule", { n: account.idleDays }) }}
       </text>
-      <text class="txt-caption rules__t">
-        {{ $t("points.ruleGrant") }}
-      </text>
-      <text v-if="account?.inactiveDays != null" class="txt-caption rules__t">
-        {{ $t("points.ruleExpire", { n: account.inactiveDays }) }}
-      </text>
-      <text v-if="account?.expiringSoon" class="txt-caption rules__warn sh-num">
-        {{ $t("points.expiring", {
-          n: account.expiringSoon,
-          d: account.expiringAt ? isoDate(account.expiringAt) : "",
-        }) }}
+      <text v-if="account.expireAt" class="txt-caption rules__t">
+        {{ $t("points.expiresAt", { d: isoDate(account.expireAt) }) }}
       </text>
     </view>
 
-    <!-- 流水：带变动后余额，方便对账 -->
     <view class="sh-card block">
       <text class="txt-title">{{ $t("points.records") }}</text>
-      <view v-for="r in records" :key="r.recordNo" class="rec sh-row">
+      <view v-for="r in records" :key="r.entryNo" class="rec sh-row">
         <view class="sh-fill">
-          <text class="txt-sub rec__title">{{ r.title }}</text>
+          <text class="txt-sub rec__title">{{ $t(`points.bucket${r.bucket}`) }}</text>
           <text class="txt-caption rec__at sh-num">{{ datetime(r.at) }}</text>
         </view>
         <view class="rec__right">
@@ -106,86 +126,27 @@ onShow(load);
           <text class="txt-caption rec__bal sh-num">{{ $t("points.after", { n: r.balanceAfter }) }}</text>
         </view>
       </view>
-      <sh-empty bare v-if="!records.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("points.empty")'></sh-empty>
+      <sh-empty bare v-if="!records.length" :pending="!loaded" :failed="failed"
+        @retry="load" :text='$t("points.empty")'></sh-empty>
+      <view v-if="records.length && hasMore" class="more txt-caption" @tap="loadMore">
+        {{ $t(moreLoading ? "points.loadingMore" : "points.loadMore") }}
+      </view>
     </view>
   </sh-scaffold>
 </template>
 
 <style scoped>
-.hero {
-  text-align: center;
-  padding-top: 44rpx;
-  padding-bottom: 36rpx;
-}
-.hero__label {
-  display: block;
-}
-.hero__v {
-  display: block;
-  margin-top: 8rpx;
-}
-.hero__pending {
-  display: block;
-  color: var(--sh-primary-text);
-  margin-top: 8rpx;
-}
-.hero__off {
-  display: block;
-  color: var(--sh-warning);
-  margin-top: 16rpx;
-}
-.hero__worth {
-  display: block;
-  margin-top: 8rpx;
-}
-.sums {
-  display: flex;
-  margin-top: 36rpx;
-}
-.sum {
-  flex: 1;
-}
-.sum__v {
-  display: block;
-}
-.sum__k {
-  display: block;
-  margin-top: 8rpx;
-}
-.rules__title {
-  display: block;
-  margin-bottom: 16rpx;
-}
-.rules__t {
-  display: block;
-}
-.rules__warn {
-  display: block;
-  color: var(--sh-warning);
-  margin-top: 8rpx;
-}
-.rec {
-  gap: 24rpx;
-  margin-top: 28rpx;
-}
-
-.rec__title {
-  display: block;
-  color: var(--sh-ink);
-}
-.rec__at {
-  display: block;
-  margin-top: 4rpx;
-}
-.rec__right {
-  text-align: end;
-  flex-shrink: 0;
-}
-.rec__v {
-  display: block;
-}
-.rec__bal {
-  display: block;
-  margin-top: 4rpx;
-}
+.hero { text-align: center; padding-top: 44rpx; padding-bottom: 36rpx; }
+.hero__label, .hero__v, .hero__scope, .hero__pending { display: block; }
+.hero__v, .hero__scope, .hero__pending { margin-top: 8rpx; }
+.hero__pending { color: var(--sh-primary-text); }
+.rules__title { display: block; margin-bottom: 16rpx; }
+.rules__t { display: block; }
+.rec { gap: 24rpx; margin-top: 28rpx; }
+.rec__title { display: block; color: var(--sh-ink); }
+.rec__at { display: block; margin-top: 4rpx; }
+.rec__right { text-align: end; flex-shrink: 0; }
+.rec__v, .rec__bal { display: block; }
+.rec__bal { margin-top: 4rpx; }
+.more { margin-top: 28rpx; text-align: center; color: var(--sh-primary-text); }
 </style>

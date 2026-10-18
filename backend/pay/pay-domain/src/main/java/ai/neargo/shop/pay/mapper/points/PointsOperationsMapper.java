@@ -24,7 +24,7 @@ public interface PointsOperationsMapper {
 
     @Select(
             "<script>SELECT"
-                + " id,entry_no,voucher_no,holder_type,holder_no,bucket,delta_points,after_points"
+                + " id,entry_no,voucher_no,holder_type,holder_no,bucket,delta_points,after_points,created_at"
                 + " FROM pts_ledger_entry WHERE type_code=#{type} AND deleted=0 AND"
                 + " id>#{after}<choose><when test='voucher != null'> AND"
                 + " voucher_no=#{voucher}</when><otherwise> AND holder_type=#{holder} AND"

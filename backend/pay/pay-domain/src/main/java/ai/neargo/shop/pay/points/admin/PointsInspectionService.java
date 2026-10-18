@@ -77,7 +77,8 @@ public interface PointsInspectionService {
             String holderNo,
             Bucket bucket,
             long deltaPoints,
-            long afterPoints) {}
+            long afterPoints,
+            long at) {}
 
     record EntryPage(List<EntryView> rows, long next, boolean hasMore) {
         public EntryPage {
