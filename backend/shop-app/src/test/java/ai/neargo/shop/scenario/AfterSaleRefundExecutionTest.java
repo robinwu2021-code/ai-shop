@@ -34,6 +34,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 
 /** Exercises the real merchant entry and durable recovery, with synthetic store subjects and a test bank. */
 @SpringBootTest(properties="spring.datasource.url=jdbc:h2:mem:refund-entry;"
@@ -112,6 +113,43 @@ class AfterSaleRefundExecutionTest {
                 Long.class,f.as())).isZero();
         verify(pointsDelivery).deliver("ORDER:ZERO_CASH:"+f.as(),f.sub());
         verify(channel,never()).refund(any(),anyLong(),anyString(),anyString());
+    }
+
+    @Test void definitive_cash_failure_after_collection_requests_original_compensation() {
+        var f=fixture();
+        jdbc.update("UPDATE ord_order SET points_integrated=1,currency='CNY' WHERE order_no=?",f.sub());
+        var route=new PaymentRoute("MERCHANT","STORE","PM-TEST","TEST","SM","PM:1","DIRECT");
+        var proof=new PointsPaymentSnapshotPort.VerifiedPayment(f.sub(),"USER","CNY",110,"TEST",
+                "OUT:"+f.sub(),"TRADE",Instant.ofEpochMilli(1000),List.of(new PaymentStore(f.sub(),route)));
+        doReturn(java.util.Optional.of(proof)).when(pointsPayments).verified(f.sub());
+        var payment=new PointsRefundPort.PaymentSnapshot("DIRECT","TEST","MERCHANT","STORE",
+                "PM:1","SM","TRADE","OUT:"+f.sub(),110);
+        var snapshot=new OrderPointsBindingService.Snapshot(100,0,0,1,1,"{}","{}",payment,
+                List.of(new PointsRedeemPort.Item(String.valueOf(f.item()),100)));
+        var admission=new OrderPointsBindingService.Admission("REQ",f.sub(),f.sub(),"USER","MERCHANT",
+                "STORE","TYPE","CNY","ONLINE",0,true,true,snapshot);
+        doReturn(new OrderPointsBindingService.Binding("B",admission,
+                OrderPointsBindingService.Phase.BOUND,0,"H")).when(pointsBindings).find(f.sub());
+        var prep=new PointsRefundPort.RefundPreparation("PREP:"+f.as(),"TYPE",1,"HASH",0,0,0,0,
+                10,50,0,"COLLECT:"+f.as(),"COLLECTED");
+        doReturn(prep).when(pointsRefunds).prepare(any());
+        doReturn(new PointsRefundPort.CashDecision(prep.preparationNo(),prep.inputHash(),1,f.as(),
+                f.sub(),"USER","CNY","TEST",50,10,prep.collectionTicket(),payment))
+                .when(pointsRefunds).authorizeCash(prep.preparationNo(),prep.inputHash(),1);
+        doReturn(ai.neargo.shop.pay.channel.PayGateway.Result.fatal("rejected"))
+                .when(channel).refund(any(),anyLong(),anyString(),anyString());
+        afterSales.approve("MERCHANT",f.as(),"approved",null,"CASH");
+        afterSales.resumeRefund(f.as(),"SYSTEM");
+        afterSales.resumeRefund(f.as(),"SYSTEM");
+        assertThat(status(f.as())).isEqualTo("REFUNDING");
+        assertThat(refunded(f.sub())).isZero();
+        assertThat(jdbc.queryForObject("SELECT phase FROM ord_points_refund_binding WHERE after_sale_no=?",
+                String.class,f.as())).isEqualTo("COMPENSATING");
+        verify(pointsRefunds).requestCompensation(any(),eq(1L));
+        verify(pointsRefunds,never()).confirm(any());
+        afterSales.resumeRefund(f.as(),"SYSTEM");
+        verify(pointsRefunds,times(2)).requestCompensation(any(),eq(1L));
+        verify(channel,times(1)).refund(any(),anyLong(),anyString(),anyString());
     }
 
     @Test void approval_reserves_then_worker_sends_outside_transactions_and_verified_query_finishes_once() {

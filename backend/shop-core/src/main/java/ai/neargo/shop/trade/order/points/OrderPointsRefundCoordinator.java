@@ -17,6 +17,8 @@ public interface OrderPointsRefundCoordinator {
 
     Binding recordCashSuccess(String afterSaleNo, SettlePort.RefundEvidence evidence);
 
+    Binding recordCashFailure(String afterSaleNo, SettlePort.RefundEvidence evidence);
+
     Binding recordZeroCash(String afterSaleNo);
 
     Binding acceptPointsConfirmation(String afterSaleNo, PointsRefundPort.RefundOutcome outcome);

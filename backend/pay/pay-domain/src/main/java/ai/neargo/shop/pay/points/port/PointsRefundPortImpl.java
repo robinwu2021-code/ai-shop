@@ -14,14 +14,17 @@ public class PointsRefundPortImpl implements PointsRefundPort {
     private final PointsRefundConfirmationService confirmations;
     private final PointsRefundAbortService aborts;
     private final org.springframework.beans.factory.ObjectProvider<PointsRefundCashDecisionService> cashDecisions;
+    private final org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.pay.points.refund.PointsRefundCompensationService> compensations;
 
     public PointsRefundPortImpl(PointsRefundPreparationService preparations,
                                 PointsRefundConfirmationService confirmations, PointsRefundAbortService aborts,
-                                org.springframework.beans.factory.ObjectProvider<PointsRefundCashDecisionService> cashDecisions) {
+                                org.springframework.beans.factory.ObjectProvider<PointsRefundCashDecisionService> cashDecisions,
+                                org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.pay.points.refund.PointsRefundCompensationService> compensations) {
         this.preparations = preparations;
         this.confirmations = confirmations;
         this.aborts = aborts;
         this.cashDecisions = cashDecisions;
+        this.compensations = compensations;
     }
 
     @Override public RefundPreparation prepare(RefundCommand command) { return preparations.prepare(command); }
@@ -38,4 +41,9 @@ public class PointsRefundPortImpl implements PointsRefundPort {
         return confirmations.confirm(confirmation);
     }
     @Override public void abort(RefundAbort abort) { aborts.abort(abort); }
+    @Override public void requestCompensation(RefundAbort abort,long revision) {
+        var service=compensations.getIfAvailable();
+        if(service==null) throw new IllegalArgumentException("POINTS_REFUND_COMPENSATION_REQUIRED");
+        service.prepare(abort,revision);
+    }
 }

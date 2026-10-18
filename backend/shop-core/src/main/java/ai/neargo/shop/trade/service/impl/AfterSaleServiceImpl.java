@@ -1151,9 +1151,17 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             });
             return;
         }
-        var decision=pointsRefunds.authorizeCash(preparation.preparationNo(),
-                preparation.inputHash(),preparation.revision());
-        binding=pointsRefundSource.authorizeCash(afterSaleNo,decision);
+        if(binding.phase()==ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATING) {
+            pointsRefunds.requestCompensation(new ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort(
+                    preparation.preparationNo(),preparation.inputHash(),binding.cashPaymentNo()),
+                    preparation.revision());
+            return;
+        }
+        if(binding.phase()==ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.PREPARED) {
+            var decision=pointsRefunds.authorizeCash(preparation.preparationNo(),
+                    preparation.inputHash(),preparation.revision());
+            binding=pointsRefundSource.authorizeCash(afterSaleNo,decision);
+        }
         var intent=refundExecutions.beginCash(afterSaleNo);
         var plan=execution.plan();
         var sub=subOrderOf(plan.subOrderNo());
@@ -1172,6 +1180,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         settlePort.dispatchRefund(paymentNo);
         settlePort.refreshRefund(paymentNo);
         var evidence=settlePort.refundEvidence(paymentNo);
+        if(evidence!=null && ("FAILED".equals(evidence.status()) || "CLOSED".equals(evidence.status()))) {
+            if(preparation.collectionTicket()==null)
+                throw new IllegalArgumentException("POINTS_REFUND_CASH_FAILED_MANUAL_ACTION_REQUIRED");
+            refundTransactions.executeWithoutResult(status -> pointsRefundSource.recordCashFailure(afterSaleNo,evidence));
+            pointsRefunds.requestCompensation(new ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort(
+                    preparation.preparationNo(),preparation.inputHash(),paymentNo),preparation.revision());
+            return;
+        }
         if(evidence==null || !"SUCCESS".equals(evidence.status()) || evidence.verifiedAt()==null) return;
         refundTransactions.executeWithoutResult(status -> {
             refundExecutions.confirmCash(afterSaleNo,evidence);

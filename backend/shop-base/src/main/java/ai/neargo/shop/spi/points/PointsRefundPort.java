@@ -8,6 +8,7 @@ public interface PointsRefundPort {
     RefundPreparation prepare(RefundCommand command);
     CashDecision authorizeCash(String preparationNo,String inputHash,long revision);
     RefundOutcome confirm(RefundConfirmation confirmation);
+    void requestCompensation(RefundAbort abort,long revision);
     void abort(RefundAbort abort);
 
     record RefundLine(String itemId,long cumulativeGoodsMinor) { }

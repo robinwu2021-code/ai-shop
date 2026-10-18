@@ -319,6 +319,41 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
 
     @Override
     @Transactional(value = "transactionManager", propagation = Propagation.MANDATORY)
+    public Binding recordCashFailure(String afterSaleNo, SettlePort.RefundEvidence proof) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var current=decode(locked(afterSaleNo));
+            var prep=current.preparation();
+            var command=current.command();
+            require(prep!=null && prep.netCashMinor()>0 && prep.collectionTicket()!=null
+                    && proof!=null && Set.of("FAILED","CLOSED").contains(proof.status())
+                    && "REFUND".equals(proof.direction()) && proof.paymentNo()!=null
+                    && afterSaleNo.equals(proof.afterSaleNo())
+                    && command.subOrderNo().equals(proof.subOrderNo())
+                    && command.userNo().equals(proof.userNo())
+                    && command.currency().equals(proof.currency())
+                    && proof.amountMinor()==prep.netCashMinor()
+                    && proof.verifiedAt()==null && proof.verifiedMinor()==null,
+                    "POINTS_REFUND_CASH_FAILURE_MISMATCH");
+            if(current.phase()==Phase.COMPENSATING) {
+                require(proof.paymentNo().equals(current.cashPaymentNo()),
+                        "POINTS_REFUND_CASH_FAILURE_MISMATCH");
+                return current;
+            }
+            require(current.phase()==Phase.CASH_AUTHORIZED,
+                    "POINTS_REFUND_PHASE_CONFLICT");
+            var execution=executions.inspect(afterSaleNo);
+            require(execution!=null && proof.paymentNo().equals(execution.cashPaymentNo())
+                    && "CASH_PENDING".equals(execution.preparation().state()),
+                    "POINTS_REFUND_CASH_FAILURE_MISMATCH");
+            require(mapper.change(afterSaleNo,current.version(),current.phase().name(),
+                    Phase.COMPENSATING.name(),json.writeValueAsString(prep),proof.paymentNo())==1,
+                    "POINTS_REFUND_PHASE_CONFLICT");
+            return inspect(afterSaleNo);
+        });
+    }
+
+    @Override
+    @Transactional(value = "transactionManager", propagation = Propagation.MANDATORY)
     public Binding recordZeroCash(String afterSaleNo) {
         return DataScopeContext.executeWithoutScope(() -> {
             var current=decode(locked(afterSaleNo));

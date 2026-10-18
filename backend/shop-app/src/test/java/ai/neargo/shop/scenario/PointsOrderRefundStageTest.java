@@ -139,6 +139,25 @@ class PointsOrderRefundStageTest {
                 .isEqualTo(OrderPointsRefundCoordinator.Phase.POINTS_CONFIRMED);
     }
 
+    @Test void definitive_cash_failure_with_collected_offset_enters_compensation_without_refund_commit() {
+        var f=fixture();
+        var stage=new TransactionTemplate(sourceTx).execute(s -> refunds.stage(f.as,f.plan,f.proof));
+        var prep=new PointsRefundPort.RefundPreparation("PREP:"+f.as,"TYPE",1,"HASH",
+                0,0,0,0,10,35,0,"COLLECT:"+f.as,"COLLECTED");
+        refunds.acceptPreparation(f.as,prep);
+        refunds.authorizeCash(f.as,new PointsRefundPort.CashDecision(prep.preparationNo(),
+                prep.inputHash(),1,f.as,f.sub,"U","CNY","TEST",35,10,prep.collectionTicket(),
+                stage.command().payment()));
+        var failed=new ai.neargo.shop.spi.settle.SettlePort.RefundEvidence("CASH:"+f.as,
+                "REFUND",f.as,f.sub,"U","CNY",35,"FAILED",null,null,null);
+        when(executions.inspect(f.as)).thenReturn(new RefundExecutionService.Execution(
+                new RefundExecutionService.Preparation(f.as,f.sub,"H","CASH_PENDING",45),
+                f.plan,failed.paymentNo()));
+        assertThat(new TransactionTemplate(sourceTx).execute(s -> refunds.recordCashFailure(f.as,failed))
+                .phase()).isEqualTo(OrderPointsRefundCoordinator.Phase.COMPENSATING);
+        assertThat(journal.find("ORDER:REFUND_CONFIRM:"+f.as)).isEmpty();
+    }
+
     private Fixture fixture() {
         String suffix = UUID.randomUUID().toString().replace("-", "");
         String root = "R" + suffix, sub = "S" + suffix, as = "A" + suffix;
