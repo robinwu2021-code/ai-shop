@@ -1,13 +1,12 @@
 package ai.neargo.shop.trade.service.impl;
 
 import ai.neargo.shop.spi.product.PointsRulePort;
-import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.spi.points.PointsEarnPort;
 
 import java.util.Optional;
 
 /**
- * 把 product 域的积分规则翻成支付域的形状（M9 · 2026-09-01）。
+ * 把 product 域的积分规则翻成当前支付积分模块的形状。
  *
  * <h2>为什么这么一行代码值得单独一个类</h2>
  * 因为它是<b>整条交接上唯一会静默出错的一步</b>，而且错法只有一种：
@@ -35,17 +34,6 @@ import java.util.Optional;
 public final class PointsRuleHandoff {
 
     private PointsRuleHandoff() {
-    }
-
-    /**
-     * @param configured {@link PointsRulePort#ruleFor} 的原样返回
-     * @return 支付域用的规则；<b>{@code null} 表示「两层都没配」</b>，
-     *         由支付域落到平台兜底比例
-     */
-    public static PointsPort.EarnRule toPayRule(Optional<PointsRulePort.EarnRule> configured) {
-        return configured
-                .map(r -> new PointsPort.EarnRule(r.mode(), r.value()))
-                .orElse(null);
     }
 
     /** Null is an explicit request for the frozen platform fallback; FIXED 0 remains distinct. */

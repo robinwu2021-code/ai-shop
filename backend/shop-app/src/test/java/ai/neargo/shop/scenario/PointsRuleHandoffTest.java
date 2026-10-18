@@ -213,7 +213,7 @@ class PointsRuleHandoffTest {
     @DisplayName("★★★ 「没配」翻成 null，不能翻成 FIXED 0 —— 两者含义相反")
     void handoffKeepsNotConfiguredDistinct() {
         assertThat(ai.neargo.shop.trade.service.impl.PointsRuleHandoff
-                .toPayRule(java.util.Optional.empty()))
+                .toNewRule(java.util.Optional.empty()))
                 .as("「两层都没配」被翻成了一个规则 —— 支付域就再也落不到平台兜底了。"
                         + "写成 orElse(new EarnRule(FIXED, 0)) 看着更安全（少一个 null），"
                         + "实际是把两种相反的含义合成了一个")
@@ -223,23 +223,23 @@ class PointsRuleHandoffTest {
     @Test
     @DisplayName("★★ 「明确配 0」原样翻过去 —— 上一条不能靠「什么都翻成 null」通过")
     void handoffKeepsExplicitZero() {
-        var out = ai.neargo.shop.trade.service.impl.PointsRuleHandoff.toPayRule(
+        var out = ai.neargo.shop.trade.service.impl.PointsRuleHandoff.toNewRule(
                 java.util.Optional.of(new ai.neargo.shop.spi.product.PointsRulePort
                         .EarnRule(ai.neargo.shop.spi.product.PointsRulePort.FIXED, 0)));
 
         assertThat(out).isNotNull();
-        assertThat(out.mode()).isEqualTo(PointsPort.FIXED);
+        assertThat(out.mode()).isEqualTo(ai.neargo.shop.spi.points.PointsEarnPort.RuleMode.FIXED);
         assertThat(out.value()).isZero();
     }
 
     @Test
     @DisplayName("★ 比例值原样带过去 —— 万分比在两边是同一个口径")
     void handoffKeepsRatioValue() {
-        var out = ai.neargo.shop.trade.service.impl.PointsRuleHandoff.toPayRule(
+        var out = ai.neargo.shop.trade.service.impl.PointsRuleHandoff.toNewRule(
                 java.util.Optional.of(new ai.neargo.shop.spi.product.PointsRulePort
                         .EarnRule(ai.neargo.shop.spi.product.PointsRulePort.RATIO, 10)));
 
-        assertThat(out.mode()).isEqualTo(PointsPort.RATIO);
+        assertThat(out.mode()).isEqualTo(ai.neargo.shop.spi.points.PointsEarnPort.RuleMode.RATIO);
         assertThat(out.value()).isEqualTo(10);
     }
 }
