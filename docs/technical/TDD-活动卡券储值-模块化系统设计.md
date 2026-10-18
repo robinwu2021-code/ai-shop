@@ -444,7 +444,7 @@ EntitlementValidityPolicy共享发布校验与时间计算；CountUsagePolicy/Pe
 后续Java差异仅将4处长行换行至120列内；逐文件去除空白比较与244ee7f4c相同，没有逻辑变化。文档守卫66份及diff检查通过，工作区验证产生的原生容器/干净编译副本已清理。本轮本地提交，未推送、部署或执行生产迁移。全Java后端仍未完成：JB-008其余契约/权限/持久模型继续DOING，发放、核销、储值账及三端接口等45项仍TODO。
 
 
-### 6.16 JB-009范围事实预检与JB-008补充协议
+### JB-009范围事实预检与JB-008补充协议
 
 档位1，继续依据本TDD §2及Java独立任务表。未改既有迁移或生产环境。新增实现按owner落位：shop-base ProductScopeFactsPort/MerchantScopeFactsPort；shop-core product.port.ProductScopeFactsPortImpl及promotion.service.EntitlementScopeValidationService/Impl；shop-merchant merchant.port.MerchantScopeFactsPortImpl；shop-app paybridge.EntitlementScopeResolver。测试均在shop-app/paybridge；没有新增HTTP Controller。
 
@@ -463,3 +463,15 @@ EntitlementValidityPolicy共享发布校验与时间计算；CountUsagePolicy/Pe
 新增support-schema.sql仅补充设计存储，core授权/源决策/售卡快照3表、pay对账批次/差异2表；数据库字典、API及类清单/任务表已对齐。Node隔离MySQL原生约束/ER/构建闸门3项通过，V2既有66份受管文档守卫及SQL可移植性通过；额外核对本批文档本地链接、55任务及43表唯一性。原生检查证明取消修订不阻塞下一修订成功，但同一成功源跨修订只能成功一次。
 
 JB-009只依赖006已有定义，不受008剩余协议收口阻塞；事实预检使用显式tenant与分批200查询，配置时允许READONLY门店和未上架商品，实际交易另查实时状态。售卡/本人授权/对账支撑表正式实体与迁移仍归011/012/046；恢复租约复用shedlock，禁止未知事实按超时猜取消。JB-008仍DOING，剩余鉴权路由、权限/能力门禁及完整错误语义未关闭；其他交易链路、HTTP与远程适配未完成，整体Java后端不宣称完成。
+
+
+后续契约核对：API第十一节列出33项内部传输路由，含pay反查core授权/源事实及全部恢复query；正文context与SPI参数、共享密钥、超时、未知/传输失败区别已明确。仍是设计，Handler/HTTP代理/双部署拒绝测试由JB-041实现，不将此项记录为已开放服务。
+
+
+### c29c4fe4a干净提交最终验证
+
+实际代码提交c29c4fe4a：23 files changed，1152 insertions，22 deletions；新增两个owner事实SPI及实现、core范围服务/Impl、app可信scope解析器、Scope与Preview测试、支撑设计DDL，其余为协议和设计/生成物对齐，文件归属与上方清单一致。
+
+`bash scripts/check-head-compiles.sh HEAD`固定c29c4fe4a8c4edad9de6a07fcf8fbbe83d5056fe，从干净副本test-compile通过，全量20模块3558项、0失败，耗时617秒，退出码0；未修改失败基线。默认全量中的原生MySQL条件用例仍跳过，不能将此写成Java业务已在原生库全量通过；本批隔离MySQL设计DDL约束实际通过。此前定向70项、standalone范围7项（报告确认JVM deployment=standalone）及Node3项分别通过。standalone范围守卫测试没有调用尚未实现的权益RPC。
+
+c29之后仅修改API内部33路由/35能力及7个默认关闭开关的设计登记、任务状态证据与本段；Java/正式迁移/运行配置未改，未重复运行同一全量。V2受管文档66份守卫、本文档包本地链接及git diff --check通过。JB-009已完成；JB-008及其余44个TODO仍按独立任务表执行，整体后端未完成。本批仅本地提交，无部署或生产迁移。

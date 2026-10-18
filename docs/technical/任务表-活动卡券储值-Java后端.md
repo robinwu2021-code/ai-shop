@@ -69,7 +69,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | ID | 原任务 | 状态 | 依赖 | 模块 | 交付内容/Java类 | 验收条件/测试 |
 |---|---|---|---|---|---|---|
 | JB-008 | D01.2/1.3/1.4 | DOING | 001,006,007 | shop-base/契约 | 冻结所有SPI/命令/响应/query、错误码三语、权限与能力开关；补缺失DDL设计 | EntitlementContractTest：序列化往返、必填/枚举拒绝；所有待决项形成明确契约 |
-| JB-009 | D01.2 | DONE | 006 | core/app | core范围事实预检：门店/商品归属、类目有效性；可信CatalogScope构造 | EntitlementScopeValidationTest 7项：会话身份、门店子集、跨租户门店/商品、赠品归属及201条分批；门店子集消融RED→恢复GREEN；HTTP仍归025 |
+| JB-009 | D01.2 | DONE | 006 | core/app | core范围事实预检：门店/商品归属、类目有效性；可信CatalogScope构造 | c29c4fe4a；EntitlementScopeValidationTest 7项：会话身份、门店子集、跨租户门店/商品、赠品归属及201条分批；门店子集消融RED→恢复GREEN；HTTP仍归025 |
 | JB-010 | D01.3 | TODO | 008,009 | core.member/app | MemberCodeResolveService/Impl、BizMemberCodeController；C08 | MemberCodeResolveFlowTest：过期/伪造码拒绝；customerRef绑定主体/门店/用户且短期有效；日志不含明码 |
 | JB-011 | D01.3 | TODO | 008,010 | core.trade/app | EntitlementAuthorizationService/Impl、MpEntitlementAuthorizationController；持久本人意图与源决策 | EntitlementAuthorizationFlowTest：改价失效、他人拒绝、重复确认同意图、支付/取消唯一决策；重启可查询 |
 | JB-012 | D01.3/D06.2 | TODO | 008,011 | core.trade | CardSaleSnapshotService/Impl；补订单行/单件/件内权益、版本、付款时间快照 | CardSaleSnapshotTest：2件×2权益得到4个稳定来源；重投不变、迟到事件不改真实付款时间 |
@@ -407,3 +407,7 @@ JB-019验收：EntitlementValidityPolicy、CountUsagePolicy、PeriodCountUsagePo
 JB-008补充quote/preview/activation协议及只读约束，新增EntitlementPreviewContractTest 7项；原契约10项继续通过。IssuePolicy不再单列issueMode，目录完整草稿/版本返回及首配revision=0规则已在API确定。基础38表之外补core3/pay2支撑表，数据库第七节及support-schema.sql完整列字段与唯一键；原生MySQL验证取消后新修订成功、跨修订重复成功拒绝、跨租户独立及非法决策CHECK。合计43张设计表，正式运行迁移仍只有V425三张。JB-008仍DOING：内部鉴权路由、权限/能力门禁及完整错误语义收口尚未完成。
 
 本批命令：Java21离线Maven定向运行Scope7、Preview7、Contract10、Catalog12、Validity5、Dedup3、Source4、Quota5、Architecture16、PayTx1，共70项，0失败/错误/跳过；Node隔离schema/ER/编译闸门测试3项通过；词典重新生成，V2受管文档66份通过，SQL无新增方言债务，git diff --check通过。额外静态核对本任务表55唯一编号、设计43唯一表及更新文档本地链接。这里的定向结果不代替后续干净HEAD全量回归。
+
+部署补充验收：同一范围集成套件用-Dshop.pay.deployment=standalone另跑7项，0失败/错误/跳过；Surefire JVM属性确认standalone实际生效。该验证覆盖core/app范围守卫在独立pay配置下的装配与拒绝行为，没有调用尚未交付的远程权益RPC，不代替JB-041双部署协议验收。API第十一节固定33条内部传输路径，第十二节登记7个默认关闭开关及预置实际35个能力码归属；均明确未接运行配置，JB-008不因此提前改DONE。
+
+最终全量证据：c29c4fe4a8c4edad9de6a07fcf8fbbe83d5056fe，干净test-compile及20模块3558项0失败，617秒、退出0；原生MySQL条件检查默认跳过，本批设计DDL原生验证另跑通过。c29之后仅文档设计/证据变更，未冒称后续文档提交重新全量。代码提交统计23文件、1152新增/22删除，见总TDD最新验收记录。

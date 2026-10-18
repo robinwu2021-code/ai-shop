@@ -221,3 +221,109 @@ P06发行控制跨版本、跨allowedIssueModes合并计数，删除重复且无
 JB-009范围预检落点：EntitlementScopeValidationService通过ProductScopeFactsPort与MerchantScopeFactsPort查询owner事实（显式tenant，分批200条）；门店/商品须属于该主体，类目为有效平台类目。EntitlementScopeResolver从MERCHANT会话/BizContext构造CatalogScope，platformActor固定false；有限门店员工只允许授权STORES子集。完整模板写入必须用resolveDefinition，额外核实GIFT.benefitRef商品归属；仅scope校验不能代替完整定义校验。P01–P05仍未开放，新HTTP实现须调用此守卫，不接受客户端owner/actor字段。配置允许READONLY门店及未上架商品，不代表允许实时交易，核销另查时点状态。
 
 C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的read/update子权限。其余新增pay权限仍属拟登记清单，必须与真实Handler及角色测试同时交付，不提前给现有角色增权。此调整不增加47条目标外部路由。
+
+
+## 十一、内部事实查询与传输约定（JB-008设计冻结子项）
+
+以下是待JB-041接线的内部路由，不是已注册Handler，不计入47条外部路由。全部POST、JSON，正文为{context,...args}；context为EntitlementContext，其余属性名与SPI方法参数一致。query/quote/preview虽用POST承载带身份范围的正文，仍只读，不能被通用POST重试器当作写命令。返回直接解SPI record，沿既有/internal路径跳过公网ApiResponse包装。目录既有两个方法不改Java签名，远程适配器先验证调用context，再向本地端口传tenant/entity。
+
+| 所有者 | 路径 | 对应Java方法 | 参数（除context） |
+|---|---|---|---|
+| core | /internal/core/entitlement/source/query | SourceDecisionPort.query | source |
+| core | /internal/core/entitlement/authorization/query | SourceDecisionPort.authorization | authorizationRef |
+| core | /internal/core/promotion/participation/reserve | ActivityParticipationPort.reserve | command |
+| core | /internal/core/promotion/participation/confirm | ActivityParticipationPort.confirm | command |
+| core | /internal/core/promotion/participation/release | ActivityParticipationPort.release | command |
+| core | /internal/core/promotion/participation/query | ActivityParticipationPort.query | source |
+| pay | /internal/pay/entitlement/catalog/version | EntitlementCatalogPort.getPublishedVersion | entityNo,versionNo；tenant来自context |
+| pay | /internal/pay/entitlement/catalog/validate-reference | EntitlementCatalogPort.validateReference | query；query.tenantNo必须与context一致 |
+| pay | /internal/pay/entitlement/grant/prepare | EntitlementGrantPort.prepare | command |
+| pay | /internal/pay/entitlement/grant/commit | EntitlementGrantPort.commit | command |
+| pay | /internal/pay/entitlement/grant/abort | EntitlementGrantPort.abort | command |
+| pay | /internal/pay/entitlement/grant/query | EntitlementGrantPort.query | entityNo,grantNo |
+| pay | /internal/pay/entitlement/use/quote | EntitlementUsePort.quote | command |
+| pay | /internal/pay/entitlement/use/preview | EntitlementUsePort.preview | query |
+| pay | /internal/pay/entitlement/use/prepare | EntitlementUsePort.prepare | command |
+| pay | /internal/pay/entitlement/use/commit | EntitlementUsePort.commit | command |
+| pay | /internal/pay/entitlement/use/release | EntitlementUsePort.release | command |
+| pay | /internal/pay/entitlement/use/reverse | EntitlementUsePort.reverse | command |
+| pay | /internal/pay/entitlement/use/query | EntitlementUsePort.query | entityNo,operationNo |
+| pay | /internal/pay/entitlement/query/mine | EntitlementQueryPort.mine | query |
+| pay | /internal/pay/entitlement/query/detail | EntitlementQueryPort.detail | query |
+| pay | /internal/pay/entitlement/query/usage | EntitlementQueryPort.usage | query |
+| pay | /internal/pay/entitlement/query/allowances | EntitlementQueryPort.allowances | query |
+| pay | /internal/pay/entitlement/query/activation | EntitlementQueryPort.activationQuote | query |
+| pay | /internal/pay/stored-value/recharge/create | StoredValuePort.createRecharge | command |
+| pay | /internal/pay/stored-value/recharge/submit | StoredValuePort.submit | command |
+| pay | /internal/pay/stored-value/recharge/receive | StoredValuePort.receive | command |
+| pay | /internal/pay/stored-value/recharge/cancel | StoredValuePort.cancel | command |
+| pay | /internal/pay/stored-value/recharge/credit | StoredValuePort.credit | command |
+| pay | /internal/pay/stored-value/recharge/query | StoredValuePort.queryRecharge | entityNo,rechargeNo |
+| pay | /internal/pay/stored-value/query/balance | StoredValuePort.balance | query |
+| pay | /internal/pay/stored-value/query/stores | StoredValuePort.stores | query |
+| pay | /internal/pay/stored-value/query/consumptions | StoredValuePort.consumptions | query |
+
+服务端沿InternalHttp.TOKEN_HEADER（X-Internal-Token）与shop.services.internal-token，常量时间比较，未配置/缺失/不匹配均拒绝；公网反代不开放/internal/**。传输参数不是外部用户身份凭证；接收方仍按tenant/源类型/主体与持久事实核实，不能把context.actorNo直接当作拥有全部pay权限的用户。源查询返回的本人、主体、金额、修订、快照摘要都须与原命令匹配。跨租户或不可见引用不返回别人的事实。JB-041须复用InternalHttp/ServiceCalls、连接超时3秒、读超时5秒及既有服务解析，不另起无鉴权HTTP客户端；上述约定与真实双部署测试同时落地。
+
+网络不可达、超时、5xx、解析失败均为传输失败，不得伪造UNKNOWN或CANCELLED；原操作保持待查询/PROCESSING，由恢复任务查原编号。UNKNOWN仅表示查询成功且没有可见持久事实，PENDING表示已有意图但未决定，两者都不能release。授权EXPIRED不等于源取消，必须先查询源决策。写请求不自动换编号重试，合法重投须同业务编号、原摘要及原幂等键；只读查询可有界重试，所有重试不打印码、token或请求正文。内部裸commit不向公网开放。
+
+传输实际Handler、共享HTTP接口/路径常量及拒绝测试由JB-041交付；本节只冻结路由与语义，不将本地接口声明计作远程可用。
+
+
+## 十二、能力门禁配置契约（JB-008设计子项，未接运行配置）
+
+默认值全部false；以下名称为待实现契约，不是已经生效的配置。开关由服务端部署配置控制，HTTP请求或预置模板不能打开。实际available须同时满足开关、owner实现就绪、行业准入、主体状态、门店权限及所需能力集合；缺失项明确返回missingCapabilities，未知能力也按缺失处理。不能以类存在、目录seed存在或单体能编译作为READY证据。JB-032实现目录筛选，JB-053完成权限及配置拒绝验证。
+
+| 配置名 | 控制的新业务 | 实施任务 |
+|---|---|---|
+| shop.promotion.presets.enabled | 新预置目录推荐/创建草稿 | JB-032/JB-033 |
+| shop.promotion.activity.enabled | 新活动发布/参与预留 | JB-029/JB-031/JB-033 |
+| shop.pay.entitlement.catalog.enabled | 新权益定义写入/发布/引用 | JB-025 |
+| shop.pay.entitlement.issue.enabled | 新领券、批量发行与发放prepare | JB-016/JB-017/JB-018/JB-026 |
+| shop.pay.entitlement.use.enabled | 新券/兑换权益使用意图 | JB-020/JB-026 |
+| shop.pay.stored-value.enabled | 新储值办理及核销意图 | JB-034–038 |
+| shop.pay.paid-card.enabled | 新付费卡商品绑定/销售/使用意图 | JB-039/JB-040/JB-042 |
+
+开关关闭不阻断已存在资产的本人历史查询、已承诺源决策的commit/release、合法原券回补或恢复任务；这些操作仍按原事实及状态机执行，不能形成有扣款无权益。开关不能切换owner或回写旧表。付费卡同时要求权益发行/使用开关和商品、收款、履约、条款验收，不因打开paid-card就跳过底座。运行的本地/远程选择沿既有shop.pay.deployment=embedded/standalone，不能再造第三套部署模式。
+
+预置JSON当前实际引用35个不同能力码；下表固定其归属与验收落点。有关拼团/秒杀/赠品完整履约的额外引擎不因列入目录自动列为本批已交付，未实现时一律保持不可用。
+
+| 能力码 | owner与验收落点 |
+|---|---|
+| ACTIVITY_VERSION | core.promotion；JB-029 |
+| ATOMIC_QUOTA | core活动预算JB-030、pay发行额度JB-015，各自原子 |
+| AUDIENCE | core人群/活动；JB-029/JB-017 |
+| COMBO_RULE | core计价；对应组合引擎未验收前保持缺失 |
+| COUPON_BUDGET | core营销预算JB-030及pay发行敞口JB-015，非同一账 |
+| COUPON_ISSUE | pay；JB-016/JB-017 |
+| COUPON_RECEIVE | pay；JB-018 |
+| CUTOFF_JOB | core/pay各自截止任务；JB-051 |
+| DISCOUNT_CAP | pay订单券计价；JB-021 |
+| FLASH_STOCK | core库存/活动秒杀；额外引擎未验收前缺失 |
+| FULFILLMENT | core履约事实；JB-040/JB-042 |
+| GIFT_AFTER_SALE | core赠品售后；额外流程未验收前缺失 |
+| GIFT_FULFILLMENT | core赠品履约；额外流程未验收前缺失 |
+| GIFT_STOCK | core赠品库存；额外流程未验收前缺失 |
+| GOODS_SCOPE | core商品归属JB-009；pay使用时重验JB-020/JB-021 |
+| GROUP_CLOSE | core拼团关团；额外引擎未验收前缺失 |
+| GROUP_INSTANCE | core拼团实例；额外引擎未验收前缺失 |
+| INDUSTRY_ADMISSION | core既有行业准入；JB-032/JB-053实连接线 |
+| MARKETING_RESERVATION | core参与协议；JB-031 |
+| MEMBER_IDENTITY | core会员码/本人授权；JB-010/JB-011 |
+| MERCHANT_ACTIVE | merchant；JB-009事实校验，新交易仍重查状态 |
+| MIN_QTY_DECISION | core价格事实/pay券门槛；JB-021/JB-029 |
+| MULTI_USE_REDEEM | pay多次权益使用；JB-020/JB-042 |
+| NTH_ITEM_ALLOCATION | core计价分摊；JB-029；具体玩法缺分摊验收时不可用 |
+| ORDER_PRICING | core可信计价；JB-021/JB-029接线及回归 |
+| ORDER_REFUND | core售后决策/pay旧券回补；JB-022，仅ORDER_COUPON |
+| PAY_CREDIT | pay储值到账；JB-035 |
+| PERIOD_INSTANCE | pay周期权益实例；JB-040/JB-042 |
+| PER_USER_LIMIT | core参与次数JB-030、pay发行个人额度JB-015 |
+| REFUND_ALLOCATION | pay原券受限回补分摊；JB-022，不开放储值退款 |
+| SERVICE_SCOPE | core服务商品事实JB-009、pay使用范围JB-042 |
+| SKU_PRICE_VALIDATION | core付费商品绑定；JB-039 |
+| STORED_VALUE_REDEEM | pay储值使用；JB-036 |
+| STORE_CODE_REDEEM | pay既有券码JB-023；不能替代统一会员码或查全账户 |
+| STORE_PERMISSION | app/merchant；JB-009及JB-053 |
+
+预置默认seedEnabled=false、publishOnCreate=false、requiresMerchantReview=true；AP/EP清单只说明期望玩法。能力快照由可信owner提供，门禁失败不静默降级为另一种权益或计价规则。实际配置绑定与逐项发布拒绝测试仍未交付；JB-008保持DOING，后续不能直接声称这些配置已经控制运行。
