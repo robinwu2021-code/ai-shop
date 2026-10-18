@@ -163,6 +163,15 @@ public class OrderServiceImpl implements OrderService {
      */
     private ai.neargo.shop.spi.marketing.PeriodPort periodPort;
 
+    /** Pay facts for paid-card sale snapshots; optional until the paid-card product flow is wired. */
+    private ai.neargo.shop.trade.entitlement.CardSaleSnapshotService cardSaleSnapshotService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setCardSaleSnapshotService(
+            ai.neargo.shop.trade.entitlement.CardSaleSnapshotService cardSaleSnapshotService) {
+        this.cardSaleSnapshotService = cardSaleSnapshotService;
+    }
+
     /** 状态写入口（TDD-订单状态机 §2B）：支付单 / 订单状态一律经它 CAS 落库 + 记流水 */
     private ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter;
 
@@ -1757,6 +1766,7 @@ public class OrderServiceImpl implements OrderService {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         if (OrdOrder.PAID.equals(order.getStatus())) {
+            if (cardSaleSnapshotService != null) cardSaleSnapshotService.recordPaidFromOrder(orderNo);
             return;   // 幂等：回调会重发，重复到达不能重复扣库存、重复发事件
         }
         // 经门：WAIT_PAY → 通道回调；WAIT_OFFLINE_PAY → 商家确认当面收款。与超时关单并发时 CAS 决出一方
@@ -1769,6 +1779,7 @@ public class OrderServiceImpl implements OrderService {
         order.setPayTradeNo(payTradeNo);
         order.setPaidAt(System.currentTimeMillis());
         orderMapper.updateById(order);
+        if (cardSaleSnapshotService != null) cardSaleSnapshotService.recordPaidFromOrder(orderNo);
 
         // 锁定转实扣
         stockPort.confirm(orderNo);

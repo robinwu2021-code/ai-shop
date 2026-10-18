@@ -11,6 +11,7 @@ import ai.neargo.shop.trade.entity.SysSequence;
 import ai.neargo.shop.trade.entity.TrdCartItem;
 import ai.neargo.shop.trade.entitlement.entity.OrdEntAuthorization;
 import ai.neargo.shop.trade.entitlement.entity.OrdEntSourceDecision;
+import ai.neargo.shop.trade.entitlement.entity.OrdCardSaleSnapshot;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Insert;
@@ -58,6 +59,19 @@ public final class TradeMappers {
     }
 
     public interface EntitlementSourceDecisionMapper extends BaseMapper<OrdEntSourceDecision> {
+    }
+
+    public interface CardSaleSnapshotMapper extends BaseMapper<OrdCardSaleSnapshot> {
+        @Insert("INSERT IGNORE INTO ord_card_sale_snapshot (tenant_no,snapshot_no,source_key,order_no,sub_order_no,order_line_no,unit_index,entitlement_index,user_no,entity_no,store_no,goods_no,sku_no,template_version_no,unit_price_minor,currency,rule_snapshot,snapshot_hash,paid_fact_no,paid_at,version,deleted,created_at,updated_at,created_by,updated_by) VALUES (#{tenantNo},#{snapshotNo},#{sourceKey},#{orderNo},#{subOrderNo},#{orderLineNo},#{unitIndex},#{entitlementIndex},#{userNo},#{entityNo},#{storeNo},#{goodsNo},#{skuNo},#{templateVersionNo},#{unitPriceMinor},#{currency},#{ruleSnapshot},#{snapshotHash},NULL,NULL,0,0,#{createdAt},#{updatedAt},#{createdBy},#{updatedBy})")
+        int insertIfAbsent(OrdCardSaleSnapshot row);
+
+        @Update("UPDATE ord_card_sale_snapshot SET paid_fact_no=#{paidFactNo},paid_at=#{paidAt},updated_at=#{updatedAt},updated_by=#{updatedBy},version=version+1 WHERE tenant_no=#{tenantNo} AND order_no=#{orderNo} AND paid_fact_no IS NULL AND deleted=0")
+        int markPaidOnce(@Param("tenantNo") String tenantNo, @Param("orderNo") String orderNo,
+                         @Param("paidFactNo") String paidFactNo, @Param("paidAt") java.time.LocalDateTime paidAt,
+                         @Param("updatedAt") java.time.LocalDateTime updatedAt, @Param("updatedBy") String updatedBy);
+
+        @Select("SELECT * FROM ord_card_sale_snapshot WHERE tenant_no=#{tenantNo} AND source_key=#{sourceKey} AND deleted=0 LIMIT 1")
+        OrdCardSaleSnapshot findBySource(@Param("tenantNo") String tenantNo, @Param("sourceKey") String sourceKey);
     }
 
     public interface StatusLogMapper extends BaseMapper<OrdStatusLog> {

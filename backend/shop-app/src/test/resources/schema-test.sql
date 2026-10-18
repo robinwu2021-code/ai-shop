@@ -5001,6 +5001,43 @@ CREATE TABLE IF NOT EXISTS ord_ent_source_decision
     CHECK ((status='CANCELLED' AND settled_source_key IS NULL AND ((purpose='USE' AND decision_type='USE_CANCEL') OR (purpose='GRANT' AND decision_type='GRANT_ABORT'))) OR (status='COMMITTED' AND settled_source_key IS NOT NULL AND ((purpose='USE' AND decision_type='USE_COMMIT') OR (purpose='GRANT' AND decision_type='GRANT_COMMIT') OR (purpose='REVERSE' AND decision_type='ORDER_REVERSE'))))
 );
 
+CREATE TABLE IF NOT EXISTS ord_card_sale_snapshot
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    snapshot_no VARCHAR(64) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    order_line_no VARCHAR(64) NOT NULL,
+    unit_index INT NOT NULL,
+    entitlement_index INT NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    goods_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) NOT NULL,
+    template_version_no VARCHAR(64) NOT NULL,
+    unit_price_minor BIGINT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    rule_snapshot TEXT NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    paid_fact_no VARCHAR(64) NULL,
+    paid_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_card_sale_snapshot UNIQUE (tenant_no, snapshot_no),
+    CONSTRAINT uk_card_sale_source UNIQUE (tenant_no, source_key),
+    CONSTRAINT uk_card_sale_unit UNIQUE (tenant_no, order_line_no, unit_index, entitlement_index),
+    CHECK (unit_index > 0 AND entitlement_index > 0 AND unit_price_minor >= 0),
+    CHECK ((paid_fact_no IS NULL AND paid_at IS NULL) OR (paid_fact_no IS NOT NULL AND paid_at IS NOT NULL))
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

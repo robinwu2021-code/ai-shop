@@ -27322,6 +27322,13 @@
       "package": "ai.neargo.shop.trade.order.entity"
     },
     {
+      "table": "ord_card_sale_snapshot",
+      "class": "OrdCardSaleSnapshot",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
       "table": "ord_ent_authorization",
       "class": "OrdEntAuthorization",
       "zh": "",
@@ -29436,6 +29443,13 @@
         "name": "ENTITLEMENT_DECISION",
         "value": "ED",
         "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "CARD_SALE_SNAPSHOT",
+        "value": "CSS",
+        "zh": "One immutable entitlement unit issued by a paid card order.",
         "module": "shop-base"
       },
       {

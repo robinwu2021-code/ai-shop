@@ -61,6 +61,8 @@ public final class BizKey {
     public static final String ENTITLEMENT_INTENT = "EI";
     public static final String ENTITLEMENT_AUTHORIZATION = "EA";
     public static final String ENTITLEMENT_DECISION = "ED";
+    /** One immutable entitlement unit issued by a paid card order. */
+    public static final String CARD_SALE_SNAPSHOT = "CSS";
     public static final String ADDRESS = "AD";
     public static final String TICKET = "TK";
     public static final String MESSAGE = "MSG";
