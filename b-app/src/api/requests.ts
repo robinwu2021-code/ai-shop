@@ -767,3 +767,6 @@ export interface StockOutboundReq {
   /** 明细行。空数组会被拒 —— 一张没有行的单据落库之后没人能解释它是什么 */
   lines: StockLineReq[];
 }
+
+export interface StorePointsTypeQuery { typeCode: string }
+export interface StorePointsEntriesQuery { typeCode: string; after?: number; limit?: number }

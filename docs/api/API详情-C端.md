@@ -2068,6 +2068,26 @@
 类型：[`PayMethodList`](#paymethodlist)
 
 
+#### GET `/mp/order/{orderNo}/points-state`
+
+本人订单积分接线阶段　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`PointsOrderState`](#pointsorderstate)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `phase` | `NONE` \| `RAW` \| `ADMITTED` \| `UNKNOWN` \| `READY` \| `RECONFIRM` \| `CANCEL_REQUESTED` \| `CANCELLED` | 是 | — |
+| `reason` | `string,null` | 是 | — |
+
+
 #### POST `/mp/order/{orderNo}/reorder`
 
 一键再来一单　🔒
@@ -2136,6 +2156,75 @@
 | `usablePayModes` | `string`\[\] | 是 | 整单可用的**支付方式**（`PAY_MODE`：ONLINE / OFFLINE）。 ⚠️ **与 `usablePayMethods` 是两根轴，别混**：那个是**通道** （WECHAT / ALIPAY / H5…），这个是**线上付还是当面付**。 一笔订单要同时确定两者。 同样取交集（一笔支付覆盖整单）。**ONLINE 永远在里面**， 所以不会是空集，也就不需要 `null` 那一档 —— 与 `usablePayMethods` 的取舍不同，因为那边真的可能「没配过」。 |
 
 
+#### POST `/mp/order/points-quote`
+
+按门店的积分抵扣报价　🔒
+
+**入参**
+
+请求体：[`CreateOrderReqBody`](#createorderreqbody)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `items` | `object`（见下）\[\] | 是 | 下单行。跨商家时服务端**拆成多笔子订单**，共享一个 payGroupNo（E3） |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式。决定下面 pickupNo / addressId / appointmentAt 哪个必填 |
+| `pickupNo` | `string` | 否 | PICKUP 必填：自提点单号 |
+| `addressId` | `string` | 否 | EXPRESS / 自送必填：收货地址。下单时地址整体**快照**进订单 |
+| `couponNo` | `string` | 否 | 使用的优惠券 |
+| `usePoints` | `number` | 否 | 使用的积分数。服务端按抵扣上限与账户余额截断，端上传的只是意愿 |
+| `remark` | `string` | 否 | 买家留言 |
+| `groupNo` | `string` | 否 | 参团：团号。按团价收，付款成功才算成员（TDD-营销域-详细设计 §1.4）。与 openGroup 二选一 |
+| `openGroup` | `boolean` | 否 | 开团：按这件货在跑的拼团活动开一个新团，下单人即发起人 |
+| `activityChoices` | [`ActivityChoice`](#activitychoice)\[\] | 否 | 对活动的选择（优惠券全链路梳理 批 2）：每家店参加哪个活动，或 `ACTIVITY_NONE`（不参加）。 不传 = 全部按最优；选的那个此刻不成立时后端回 40035，不会偷偷换成别的 |
+| `storeChoices` | [`StoreChoice`](#storechoice)\[\] | 否 | 这个主体我在逛哪家店（TDD-C端门店化与门店门户 §2.7）：在 B 店门户里挑的货由 B 店履约。 不传 = 与改造前相同；指定的店暂停营业时回 20008 |
+| `addressChoices` | `object`（见下）\[\] | 否 | 逐商家覆盖收货地址（TDD-多地址下单）：不出现 = 全部用 addressId |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `payMode` | `string` | 否 | 支付方式（`PAY_MODE`）。**不传按 ONLINE** —— 存量端上没有这个字段， 不能因为补了它就让老版本下不了单。 能不能选 OFFLINE 由 `orderCapability` 的 `usablePayModes` 说了算， 而后端在 create 里会**再判一次**：端上不该是唯一的闸。 |
+| `appointmentSlotNo` | `string` | 否 | APPOINTMENT：选定的**预约时段**。这家店开了时段就必填 —— 没开则忽略，走 `appointmentAt` 那条旧路（兼容期）。 |
+| `idempotencyKey` | `string` | 是 | 幂等 key，防重复提交 |
+
+`items[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `goodsNo` | `string` | 是 | 商品单号 |
+| `skuNo` | `string` | 是 | SKU 单号 |
+| `qty` | `number` | 是 | 件数 |
+
+`addressChoices[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `merchantNo` | `string` | 是 | — |
+| `addressId` | `string` | 是 | — |
+| `storeNo` | `string` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`OrderPointsQuote`](#orderpointsquote)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `state` | `AVAILABLE` \| `UNAVAILABLE` | 是 | — |
+| `reason` | `string,null` | 是 | — |
+| `pointsUsed` | `number` | 是 | — |
+| `deductMinor` | `number` | 是 | — |
+| `ratePoints` | `number` | 是 | — |
+| `rateMinor` | `number` | 是 | — |
+| `basePayMinor` | `number` | 是 | — |
+| `stores` | `object`（见下）\[\] | 是 | — |
+
+`stores[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `merchantNo` | `string` | 是 | — |
+| `policyVersion` | `number` | 是 | — |
+| `pointsUsed` | `number` | 是 | — |
+| `deductMinor` | `number` | 是 | — |
+
+
 #### POST `/mp/order/preview`
 
 订单预览（金额以后端为准）　🔒
@@ -2187,54 +2276,38 @@
 
 ### points
 
-#### GET `/mp/points/account`
+#### GET `/mp/points/accounts`
 
-积分账户　🔒
+本人按类型积分账户　🔒
 
 **入参**：无
 
 **出参**（`data`）
 
-类型：[`PointAccount`](#pointaccount)
+类型：[`BuyerPointsAccount`](#buyerpointsaccount)\[\]
+
+
+#### GET `/mp/points/entries`
+
+本人按类型积分流水　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+| `after` | query | `number` | 否 | — |
+| `limit` | query | `number` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`BuyerPointsEntryPage`](#buyerpointsentrypage)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `balance` | `number` | 是 | 当前可用余额。**只含能花的分**，待生效的在 pendingBalance |
-| `pendingBalance` | `number` | 是 | 待生效积分：已发放但未过售后期，**不计入 balance**。 两个数必须分开展示（「可用 400 / 待生效 100」）。合成一个的话， 用户看到「我有 500 分」却只能用 400，没有任何办法解释这个差额。 |
-| `pendingActivateAt` | `number` | 否 | 最近一批待生效积分的可用时间。`pendingBalance=0` 时为空 |
-| `totalEarned` | `number` | 是 | 累计获得（含已用、已过期），只增不减 |
-| `totalUsed` | `number` | 是 | 累计已抵扣 |
-| `expiringSoon` | `number` | 是 | 30 天内将过期的积分 |
-| `expiringAt` | `number` | 否 | 最近一批积分的过期时间。`expiringSoon=0` 时为空 |
-
-
-#### GET `/mp/points/deductible`
-
-结算页试算：本单最多可抵多少　🔒
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`PointsDeductible`](#pointsdeductible)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `maxPoints` | `number` | 是 | 本单最多可抵扣的积分数。已扣掉四级开关与上限，端上直接用 |
-| `maxAmountMinor` | `number` | 是 | 对应金额（分） |
-| `balance` | `number` | 是 | 用户当前可用余额，用于展示「你有 X 分」 |
-| `disabledReason` | `string` | 否 | 不可用时的原因，直接展示。可用时为空 |
-
-
-#### GET `/mp/points/records`
-
-积分流水　🔒
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`PointRecord`](#pointrecord)\[\]
+| `rows` | [`BuyerPointsEntry`](#buyerpointsentry)\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
 
 
 ### push-token
@@ -3258,6 +3331,42 @@
 | `corpId` | `string` | 是 | 企业微信 CorpID。**同主体还不够，必须在小程序后台绑过** —— 没绑的表现是 `errCode 6`，而界面上看着仍然只是「点了没反应」。 |
 | `url` | `string` | 是 | 客服接入链接（企微后台 → 应用管理 → 微信客服 → 客服账号详情） |
 
+### BuyerPointsAccount
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | — |
+| `market` | `string` | 是 | — |
+| `currency` | `string` | 是 | — |
+| `status` | `DRAFT` \| `ACTIVE` \| `DRAINING` \| `RETIRED` | 是 | — |
+| `balance` | `number` | 是 | — |
+| `pendingBalance` | `number` | 是 | — |
+| `heldBalance` | `number` | 是 | — |
+| `ratePoints` | `number` | 是 | — |
+| `rateMinor` | `number` | 是 | — |
+| `deductRatioBp` | `number` | 是 | — |
+| `idleDays` | `number` | 是 | — |
+| `frozen` | `boolean` | 是 | — |
+| `expireAt` | `number,null` | 是 | — |
+
+### BuyerPointsEntry
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `entryNo` | `string` | 是 | — |
+| `bucket` | `AVAILABLE` \| `PENDING` \| `HELD` | 是 | — |
+| `points` | `number` | 是 | — |
+| `balanceAfter` | `number` | 是 | — |
+| `at` | `number` | 是 | — |
+
+### BuyerPointsEntryPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`BuyerPointsEntry`](#buyerpointsentry)\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
 ### CardSpec
 
 卡券属性（CARD）
@@ -4248,6 +4357,29 @@
 | `limitPerUser` | `number,null` | 否 | 每人限购（只在设了限购且平台开关开着时给） |
 | `boughtQty` | `number,null` | 否 | 该用户已买量（未取消、未退款的单里的件数）。与 `limitPerUser` 同时出现 |
 
+### OrderPointsQuote
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `state` | `AVAILABLE` \| `UNAVAILABLE` | 是 | — |
+| `reason` | `string,null` | 是 | — |
+| `pointsUsed` | `number` | 是 | — |
+| `deductMinor` | `number` | 是 | — |
+| `ratePoints` | `number` | 是 | — |
+| `rateMinor` | `number` | 是 | — |
+| `basePayMinor` | `number` | 是 | — |
+| `stores` | `object`（见下）\[\] | 是 | — |
+
+`stores[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `merchantNo` | `string` | 是 | — |
+| `policyVersion` | `number` | 是 | — |
+| `pointsUsed` | `number` | 是 | — |
+| `deductMinor` | `number` | 是 | — |
+
 ### OrderPreview
 
 订单预览的返回。**后端返的是完整 OrderVO，这里只声明端上要用的那部分** —— 预览页只关心金额与行，声明全套会让每次后端加字段都得改端上类型。
@@ -4302,6 +4434,7 @@
 枚举取值：
 
 - `WAIT_PAY`
+- `POINTS_PROCESSING`
 - `WAIT_OFFLINE_PAY`
 - `PAID`
 - `FULFILLING`
@@ -4447,53 +4580,12 @@
 - `MAP`
 - `PLACE_DB_STALE`
 
-### PointAccount
-
-用户积分账户。**单位是积分个数** —— 商家侧是钱，用  {@link  MerchantPointAccount }
+### PointsOrderState
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `balance` | `number` | 是 | 当前可用余额。**只含能花的分**，待生效的在 pendingBalance |
-| `pendingBalance` | `number` | 是 | 待生效积分：已发放但未过售后期，**不计入 balance**。 两个数必须分开展示（「可用 400 / 待生效 100」）。合成一个的话， 用户看到「我有 500 分」却只能用 400，没有任何办法解释这个差额。 |
-| `pendingActivateAt` | `number` | 否 | 最近一批待生效积分的可用时间。`pendingBalance=0` 时为空 |
-| `totalEarned` | `number` | 是 | 累计获得（含已用、已过期），只增不减 |
-| `totalUsed` | `number` | 是 | 累计已抵扣 |
-| `expiringSoon` | `number` | 是 | 30 天内将过期的积分 |
-| `expiringAt` | `number` | 否 | 最近一批积分的过期时间。`expiringSoon=0` 时为空 |
-
-### PointRecord
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `recordNo` | `string` | 是 | 流水单号。积分是平台负债，每一笔变动都要可追溯（ADR-006） |
-| `type` | [`PointRecordType`](#pointrecordtype) | 是 | 变动类型，决定这笔是增是减 |
-| `points` | `number` | 是 | 变动量，正=增加 负=减少 |
-| `title` | `string` | 是 | 流水标题，如「订单消费获得」「过期作废」。展示用 |
-| `orderNo` | `string` | 否 | 关联订单。消费/退款类必有，过期/结算类为空 |
-| `at` | `number` | 是 | 发生时间 |
-| `balanceAfter` | `number` | 是 | 变动后余额，用于对账 —— 只存变动量的话，一条记录出错后面全错 |
-
-### PointRecordType
-
-枚举取值：
-
-- `EARN`
-- `USE`
-- `REFUND`
-- `EXPIRE`
-- `RECEIVE`
-- `SETTLE`
-
-### PointsDeductible
-
-结算页的积分试算结果。**服务端算**，端上只负责显示。 端上自己算的话，下单时服务端会再算一遍 —— 两处算法只要有一点不同 （券后金额口径、运费是否参与、开关判断顺序），用户就会看到 「结算页说能抵 30，下单后只抵了 25」，而这个差额没人解释得清。
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `maxPoints` | `number` | 是 | 本单最多可抵扣的积分数。已扣掉四级开关与上限，端上直接用 |
-| `maxAmountMinor` | `number` | 是 | 对应金额（分） |
-| `balance` | `number` | 是 | 用户当前可用余额，用于展示「你有 X 分」 |
-| `disabledReason` | `string` | 否 | 不可用时的原因，直接展示。可用时为空 |
+| `phase` | `NONE` \| `RAW` \| `ADMITTED` \| `UNKNOWN` \| `READY` \| `RECONFIRM` \| `CANCEL_REQUESTED` \| `CANCELLED` | 是 | — |
+| `reason` | `string,null` | 是 | — |
 
 ### Promotion
 

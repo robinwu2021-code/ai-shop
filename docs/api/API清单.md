@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 871 个接口**：后端已实现 793（91%）· 前端在调 797
+**合计 880 个接口**：后端已实现 802（91%）· 前端在调 804
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **117** 个接口 ｜ 后端已实现 **116**（99%）｜ 前端在调 **117**
+共 **118** 个接口 ｜ 后端已实现 **117**（99%）｜ 前端在调 **118**
 
 ### after-sale（4）
 
@@ -170,7 +170,7 @@
 | GET | `/mp/my-memberships` | 我是哪几家店的会员 | — | `数组` | 🔒 | ✅ | ✅ |
 | PUT | `/mp/my-memberships/{entityNo}/reach` | 关掉/打开某家店的消息 | — | — | 🔒 | ✅ | ✅ |
 
-### order（11）
+### order（13）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -181,9 +181,11 @@
 | POST | `/mp/order/{orderNo}/cancel` | 取消订单 | — | `Order` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/pay` | 支付 | — | `Order` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/pay-method` | 可用支付方式 | — | `PayMethodList` | 🔒 | ✅ | ✅ |
+| GET | `/mp/order/{orderNo}/points-state` | 本人订单积分接线阶段 | — | `PointsOrderState` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/reorder` | 一键再来一单 | — | `ReorderResult` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/trace` | 物流页（查看物流） | — | `ShipmentTrace` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/capability` | 结算页能力提示（开票/支付方式/额度） | — | `CheckoutCapability` | 🔒 | ✅ | ✅ |
+| POST | `/mp/order/points-quote` | 按门店的积分抵扣报价 | `CreateOrderReqBody` | `OrderPointsQuote` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/preview` | 订单预览（金额以后端为准） | — | `OrderPreview` | 🔒 | ✅ | ✅ |
 
 ### place（1）
@@ -192,13 +194,12 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/place/search` | 按名字找地方（本地优先，地图是补充） | — | `数组` | — | ✅ | ✅ |
 
-### points（3）
+### points（2）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/mp/points/account` | 积分账户 | — | `PointAccount` | 🔒 | ✅ | ✅ |
-| GET | `/mp/points/deductible` | 结算页试算：本单最多可抵多少 | — | `PointsDeductible` | 🔒 | ✅ | ✅ |
-| GET | `/mp/points/records` | 积分流水 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/points/accounts` | 本人按类型积分账户 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/points/entries` | 本人按类型积分流水 | — | `BuyerPointsEntryPage` | 🔒 | ✅ | ✅ |
 
 ### push-token（2）
 
@@ -280,7 +281,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **298** 个接口 ｜ 后端已实现 **287**（96%）｜ 前端在调 **298**
+共 **302** 个接口 ｜ 后端已实现 **291**（96%）｜ 前端在调 **302**
 
 ### activities（4）
 
@@ -714,13 +715,17 @@
 | POST | `/biz/platform-activity/{activityNo}/enrollment` | 报名平台活动（审核前可改） | `EnrollReq` | `PlatformEnrollment` | 🔒 | ✅ | ✅ |
 | POST | `/biz/platform-activity/{activityNo}/withdraw` | 撤回待审的报名 | — | `PlatformEnrollment` | 🔒 | ✅ | ✅ |
 
-### points（3）
+### points（7）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/biz/points/account` | 本期发分服务费与开关状态 | — | `MerchantPointAccount` | 🔒 | ✅ | ✅ |
-| GET | `/biz/points/records` | 发分服务费明细（按单） | — | `数组` | 🔒 | ✅ | ✅ |
-| POST | `/biz/points/toggle` | 开/关本店积分 | — | `MerchantPointAccount` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-account` | 当前门店积分账本 | — | `StorePointAccount` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-agreement` | 当前门店有效积分签约 | — | `StorePointAgreement` | 🔒 | ✅ | ✅ |
+| POST | `/biz/points/store-agreement/sign` | 主体属主签署当前门店积分协议 | `StorePointSignRequest` | `StorePointAgreement` | 🔒 | ✅ | ✅ |
+| POST | `/biz/points/store-agreement/terminate` | 主体属主终止当前门店积分协议 | `StorePointsTypeQuery` | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-entries` | 当前门店积分流水 | — | `StorePointEntryPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-terms` | 当前积分签约条款 | — | `StorePointTerms` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-types` | 当前门店可见的积分类型 | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### push-token（2）
 
@@ -917,7 +922,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **456** 个接口 ｜ 后端已实现 **390**（86%）｜ 前端在调 **382**
+共 **460** 个接口 ｜ 后端已实现 **394**（86%）｜ 前端在调 **384**
 
 ### aftersale（4）
 
@@ -998,7 +1003,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（84）
+### finance（88）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1038,6 +1043,10 @@
 | POST | `/ops/points/funds-recovery` | recoverPointsFunds | — | `PointsRecoveryExecution` | — | ✅ | ✅ |
 | GET | `/ops/points/order-integration` | 订单积分动态接线策略，门店和支付场景精确查询 | — | `OrderPointsIntegrationPolicy` | — | ✅ | ✅ |
 | POST | `/ops/points/order-integration` | 版本化接线变更，操作人和审计时间由服务端取得 | — | `OrderPointsIntegrationPolicy` | — | ✅ | ✅ |
+| GET | `/ops/points/order-integration/inspection` | inspectOrderPoints | — | `OrderPointsInspection` | — | ✅ | ✅ |
+| POST | `/ops/points/order-integration/refunds/{afterSaleNo}/close` | closeOrderPointsRefund | — | `OrderPointsRefundActionResult` | — | ✅ | ⬜ |
+| POST | `/ops/points/order-integration/refunds/{afterSaleNo}/retry` | retryOrderPointsRefund | — | `OrderPointsRefundActionResult` | — | ✅ | ⬜ |
+| GET | `/ops/points/order-integration/refunds/manual` | manualOrderPointsRefunds | — | `OrderPointsManualRefundPage` | — | ✅ | ✅ |
 | GET | `/ops/points/overview` | 积分资金总览 | — | `PointsOverview` | — | ✅ | ✅ |
 | POST | `/ops/points/plan-cancel` | cancelPointsPeriod | — | `PointsOperation` | — | ✅ | ✅ |
 | POST | `/ops/points/plan-generate` | generatePointsPeriods | — | `PointsOperation` | — | ✅ | ✅ |

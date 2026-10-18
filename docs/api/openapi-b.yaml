@@ -616,6 +616,7 @@ components:
       type: "string"
       enum: 
         - "WAIT_PAY"
+        - "POINTS_PROCESSING"
         - "WAIT_OFFLINE_PAY"
         - "PAID"
         - "FULFILLING"
@@ -3686,61 +3687,224 @@ components:
         - "silent"
         - "source"
       additionalProperties: false
-    MerchantPointsRecord: 
+    StorePointType: 
       type: "object"
       properties: 
-        settleNo: 
+        typeCode: 
           type: "string"
-          description: "结算单号"
-        subOrderNo: 
+        market: 
           type: "string"
-          description: "关联子单，商家据此对到具体订单"
-        points: 
-          type: "number"
-          description: "本单发放的积分数"
-        feeMinor: 
-          type: "number"
-          description: "本单的发分服务费（分）。**这是商家唯一感知到的积分成本**"
-        period: 
+        currency: 
           type: "string"
-          description: "账期 `YYYYMM`"
-        at: 
+        scale: 
           type: "number"
-          description: "计提时间（支付成功时），不是分账时间 —— 两者相差一个售后期"
+        rate: 
+          type: "object"
+          properties: 
+            pointsUnit: 
+              type: "number"
+            minorUnit: 
+              type: "number"
+          required: 
+            - "pointsUnit"
+            - "minorUnit"
+          additionalProperties: false
+        status: 
+          type: "string"
+          enum: 
+            - "DRAFT"
+            - "ACTIVE"
+            - "DRAINING"
+            - "RETIRED"
       required: 
-        - "settleNo"
-        - "subOrderNo"
-        - "points"
-        - "feeMinor"
-        - "period"
-        - "at"
+        - "typeCode"
+        - "market"
+        - "currency"
+        - "scale"
+        - "rate"
+        - "status"
       additionalProperties: false
-      description: "商家的一条发分服务费记录：一单一条，来自 `stl_bill.points_fee_minor`"
-    MerchantPointAccount: 
+      description: "Pay ledger views are scoped to the authenticated current store and one points type."
+    StorePointAccount: 
       type: "object"
       properties: 
-        periodExpenseMinor: 
+        snapshot: 
+          type: "object"
+          properties: 
+            typeCode: 
+              type: "string"
+            holderType: 
+              type: "string"
+              const: "STORE"
+            holderNo: 
+              type: "string"
+            buckets: 
+              "$ref": "#/components/schemas/Record_string_number"
+            frozen: 
+              type: "boolean"
+            expireAt: 
+              type: 
+                - "number"
+                - "null"
+            expiryRevision: 
+              type: "number"
+            lastActiveAt: 
+              type: "number"
+          required: 
+            - "typeCode"
+            - "holderType"
+            - "holderNo"
+            - "buckets"
+            - "frozen"
+            - "expireAt"
+            - "expiryRevision"
+            - "lastActiveAt"
+          additionalProperties: false
+        exists: 
+          type: "boolean"
+        version: 
           type: "number"
-          description: "本期发分服务费支出（分）。**商家唯一感知到的积分成本**"
-        period: 
-          type: "string"
-          description: "当前账期标识，如 `2026-08`"
-        enabled: 
-          type: "boolean"
-          description: "本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关"
-        disabledReason: 
-          type: "string"
-          description: "不生效的原因，直接展示给商家。\n\n小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。"
-        forced: 
-          type: "boolean"
-          description: "平台按行业强制开，商家不可自行关闭"
       required: 
-        - "periodExpenseMinor"
-        - "period"
-        - "enabled"
-        - "forced"
+        - "snapshot"
+        - "exists"
+        - "version"
       additionalProperties: false
-      description: "商家的积分成本视图。**单位是钱，不是分**。\n\n商家只感知**一件事**：开了积分，每笔订单要付一笔发分服务费。 他**看不到**用户抵了多少分、平台补了多少、资金池 —— 对他而言订单就是全额， 收到的是「订单金额 − 各项费用」（V34）。\n\n所以这里没有 income/net：商家侧不存在「积分兑付进账」这个概念。"
+    StorePointEntryPage: 
+      type: "object"
+      properties: 
+        rows: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              id: 
+                type: "number"
+              entryNo: 
+                type: "string"
+              voucherNo: 
+                type: "string"
+              holderType: 
+                type: "string"
+                const: "STORE"
+              holderNo: 
+                type: "string"
+              bucket: 
+                type: "string"
+              deltaPoints: 
+                type: "number"
+              afterPoints: 
+                type: "number"
+              at: 
+                type: "number"
+            required: 
+              - "id"
+              - "entryNo"
+              - "voucherNo"
+              - "holderType"
+              - "holderNo"
+              - "bucket"
+              - "deltaPoints"
+              - "afterPoints"
+              - "at"
+            additionalProperties: false
+        next: 
+          type: "number"
+        hasMore: 
+          type: "boolean"
+      required: 
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    StorePointTerms: 
+      type: "object"
+      properties: 
+        version: 
+          type: "string"
+        hash: 
+          type: "string"
+        text: 
+          type: "string"
+      required: 
+        - "version"
+        - "hash"
+        - "text"
+      additionalProperties: false
+      description: "Current store's published acceptance terms."
+    StorePointAgreement: 
+      type: "object"
+      properties: 
+        agreementNo: 
+          type: "string"
+        typeCode: 
+          type: "string"
+        merchantNo: 
+          type: "string"
+        storeNo: 
+          type: "string"
+        signedBy: 
+          type: "string"
+        termsVersion: 
+          type: "string"
+        termsHash: 
+          type: "string"
+        termsText: 
+          type: "string"
+        settleMode: 
+          type: "string"
+          enum: 
+            - "PER_ORDER"
+            - "PERIODIC"
+        path: 
+          type: "string"
+          enum: 
+            - "DIRECT"
+            - "AGGREGATED"
+        channel: 
+          type: "string"
+        accountVersion: 
+          type: "string"
+        state: 
+          type: "string"
+      required: 
+        - "agreementNo"
+        - "typeCode"
+        - "merchantNo"
+        - "storeNo"
+        - "signedBy"
+        - "termsVersion"
+        - "termsHash"
+        - "termsText"
+        - "settleMode"
+        - "path"
+        - "channel"
+        - "accountVersion"
+        - "state"
+      additionalProperties: false
+      description: "Frozen, store-scoped acceptance. Route fields are read-only server snapshots."
+    StorePointSignRequest: 
+      type: "object"
+      properties: 
+        typeCode: 
+          type: "string"
+        termsVersion: 
+          type: "string"
+        termsHash: 
+          type: "string"
+        settleMode: 
+          type: "string"
+          enum: 
+            - "PER_ORDER"
+            - "PERIODIC"
+        channel: 
+          type: "string"
+      required: 
+        - "typeCode"
+        - "termsVersion"
+        - "termsHash"
+        - "settleMode"
+        - "channel"
+      additionalProperties: false
     FundsMode: 
       type: "string"
       enum: 
@@ -10327,6 +10491,16 @@ components:
     PointAccount: 
       type: "object"
       properties: 
+        ratePoints: 
+          type: "number"
+          description: "服务端积分类型的兑换比例；未配置时不展示折算价值。"
+        rateMinor: 
+          type: "number"
+        maxDeductRatio: 
+          type: "number"
+          description: "当前类型的规则由服务端提供，未给时不展示旧规则常量。"
+        inactiveDays: 
+          type: "number"
         balance: 
           type: "number"
           description: "当前可用余额。**只含能花的分**，待生效的在 pendingBalance"
@@ -10355,7 +10529,7 @@ components:
         - "totalUsed"
         - "expiringSoon"
       additionalProperties: false
-      description: "用户积分账户。**单位是积分个数** —— 商家侧是钱，用  {@link  MerchantPointAccount }"
+      description: "用户积分账户，单位是积分个数。"
     PointsDeductible: 
       type: "object"
       properties: 
@@ -11495,28 +11669,6 @@ components:
       required: 
         - "running"
       additionalProperties: false
-    PointsRecordQuery: 
-      type: "object"
-      properties: 
-        period: 
-          type: "string"
-          description: "账期 `YYYYMM`，不传为当期"
-        page: 
-          type: "number"
-          description: "页码，从 1 起"
-        size: 
-          type: "number"
-          description: "每页条数"
-      additionalProperties: false
-    TogglePointsReq: 
-      type: "object"
-      properties: 
-        enabled: 
-          type: "boolean"
-          description: "目标状态。**关闭只影响将来** —— 已发出的分仍有效，已扣的服务费不退"
-      required: 
-        - "enabled"
-      additionalProperties: false
     SubmitPaymentReq: 
       type: "object"
       properties: 
@@ -11721,6 +11873,26 @@ components:
         - "purpose"
         - "lines"
       additionalProperties: false
+    StorePointsTypeQuery: 
+      type: "object"
+      properties: 
+        typeCode: 
+          type: "string"
+      required: 
+        - "typeCode"
+      additionalProperties: false
+    StorePointsEntriesQuery: 
+      type: "object"
+      properties: 
+        typeCode: 
+          type: "string"
+        after: 
+          type: "number"
+        limit: 
+          type: "number"
+      required: 
+        - "typeCode"
+      additionalProperties: false
     Record_Lang_string: 
       type: "object"
       properties: 
@@ -11739,14 +11911,14 @@ components:
       type: "object"
       additionalProperties: 
         type: "boolean"
-    Record_string_string: 
-      type: "object"
-      additionalProperties: 
-        type: "string"
     Record_string_number: 
       type: "object"
       additionalProperties: 
         type: "number"
+    Record_string_string: 
+      type: "object"
+      additionalProperties: 
+        type: "string"
     Partial_Record_MarketId_number: 
       type: "object"
       properties: 
@@ -18927,38 +19099,10 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/points/account": 
+  "/biz/points/store-types": 
     get: 
-      operationId: "mPointsAccount"
-      summary: "本期发分服务费与开关状态"
-      tags: 
-        - "points"
-      security: 
-        - bearerAuth: []
-      parameters: []
-      responses: 
-        "200": 
-          description: "OK"
-          content: 
-            "application/json": 
-              schema: 
-                type: "object"
-                properties: 
-                  code: 
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg: 
-                    type: "string"
-                  data: 
-                    "$ref": "#/components/schemas/MerchantPointAccount"
-                required: 
-                  - "code"
-                  - "msg"
-                  - "data"
-  "/biz/points/records": 
-    get: 
-      operationId: "mPointsRecords"
-      summary: "发分服务费明细（按单）"
+      operationId: "mStorePointTypes"
+      summary: "当前门店可见的积分类型"
       tags: 
         - "points"
       security: 
@@ -18980,15 +19124,157 @@ paths:
                   data: 
                     type: "array"
                     items: 
-                      "$ref": "#/components/schemas/MerchantPointsRecord"
+                      "$ref": "#/components/schemas/StorePointType"
                 required: 
                   - "code"
                   - "msg"
                   - "data"
-  "/biz/points/toggle": 
+  "/biz/points/store-account": 
+    get: 
+      operationId: "mStorePointAccount"
+      summary: "当前门店积分账本"
+      tags: 
+        - "points"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "typeCode"
+          in: "query"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StorePointAccount"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/points/store-entries": 
+    get: 
+      operationId: "mStorePointEntries"
+      summary: "当前门店积分流水"
+      tags: 
+        - "points"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "typeCode"
+          in: "query"
+          required: true
+          schema: 
+            type: "string"
+        - name: "after"
+          in: "query"
+          required: false
+          schema: 
+            type: "number"
+        - name: "limit"
+          in: "query"
+          required: false
+          schema: 
+            type: "number"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StorePointEntryPage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/points/store-terms": 
+    get: 
+      operationId: "mStorePointTerms"
+      summary: "当前积分签约条款"
+      tags: 
+        - "points"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "typeCode"
+          in: "query"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StorePointTerms"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/points/store-agreement": 
+    get: 
+      operationId: "mStorePointAgreement"
+      summary: "当前门店有效积分签约"
+      tags: 
+        - "points"
+      security: 
+        - bearerAuth: []
+      parameters: 
+        - name: "typeCode"
+          in: "query"
+          required: true
+          schema: 
+            type: "string"
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/StorePointAgreement"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/points/store-agreement/sign": 
     post: 
-      operationId: "mPointsToggle"
-      summary: "开/关本店积分"
+      operationId: "mSignStorePointAgreement"
+      summary: "主体属主签署当前门店积分协议"
       tags: 
         - "points"
       security: 
@@ -19008,11 +19294,52 @@ paths:
                   msg: 
                     type: "string"
                   data: 
-                    "$ref": "#/components/schemas/MerchantPointAccount"
+                    "$ref": "#/components/schemas/StorePointAgreement"
                 required: 
                   - "code"
                   - "msg"
                   - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/StorePointSignRequest"
+  "/biz/points/store-agreement/terminate": 
+    post: 
+      operationId: "mTerminateStorePointAgreement"
+      summary: "主体属主终止当前门店积分协议"
+      tags: 
+        - "points"
+      security: 
+        - bearerAuth: []
+      parameters: []
+      responses: 
+        "200": 
+          description: "OK"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    description: "无返回体（data 恒为 null）"
+                    nullable: true
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              "$ref": "#/components/schemas/StorePointsTypeQuery"
   "/biz/message": 
     get: 
       operationId: "mMessageList"

@@ -38,7 +38,7 @@ const body = epSrc.slice(
 
 const endpoints = {};
 const re =
-  /(\w+):\s*\{\s*method:\s*"(GET|POST|PUT)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
+  /(\w+):\s*\{\s*method:\s*"(GET|POST|PUT)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*(?:clientTag:\s*(?:true|false),\s*)?summary:\s*"([^"]*)"/g;
 let m;
 while ((m = re.exec(body))) {
   endpoints[m[1]] = { method: m[2], path: m[3], auth: m[4] === "true", summary: m[5] };
@@ -70,7 +70,7 @@ function generatorFor(file) {
   });
 }
 
-let schemas = { ...collectAll(typesFile), ...collectAll(reqFile) };
+let schemas = { ...collectAll(typesFile), ...collectAll(reqFile), ...collectAll(path.resolve(root, "src/api/points-types.ts")) };
 
 if (!Object.keys(schemas).length) {
   console.error("没有抽出任何 schema，检查类型文件路径");
@@ -234,9 +234,10 @@ const RESPONSE_TYPES = {
   askQuestion: "Question",
   createReview: "Review",
   toggleReviewLike: "Review",
-  pointAccount: "PointAccount",
-  pointRecords: "PointRecord[]",
-  pointsDeductible: "PointsDeductible",
+  pointsAccounts: "BuyerPointsAccount[]",
+  pointsEntries: "BuyerPointsEntryPage",
+  orderPointsQuote: "OrderPointsQuote",
+  orderPointsState: "PointsOrderState",
   myCards: "UserCard[]",
   messageList: "Message[]",
   readMessage: "Message[]",
@@ -275,6 +276,8 @@ const RESPONSE_TYPES = {
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  pointsEntries: "PointsEntriesQuery",
+  orderPointsQuote: "CreateOrderReqBody",
   login: "LoginReqBody",
   bindCommunity: "BindCommunityReq",
   bindPhone: "BindPhoneReq",

@@ -471,14 +471,24 @@ const RESPONSE_TYPES = {
   mRateCard: "RateCard",
   mSettleBatches: "MySettleBatch[]",
   mMyDebt: "MyDebt",
-  mPointsAccount: "MerchantPointAccount",
-  mPointsRecords: "MerchantPointsRecord[]",
-  mPointsToggle: "MerchantPointAccount",
+  mStorePointTypes: "StorePointType[]",
+  mStorePointAccount: "StorePointAccount",
+  mStorePointEntries: "StorePointEntryPage",
+  mStorePointTerms: "StorePointTerms",
+  mStorePointAgreement: "StorePointAgreement",
+  mSignStorePointAgreement: "StorePointAgreement",
+  mTerminateStorePointAgreement: "void",
   mReportShortage: "Order",
 };
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mStorePointAccount: "StorePointsTypeQuery",
+  mStorePointTerms: "StorePointsTypeQuery",
+  mStorePointAgreement: "StorePointsTypeQuery",
+  mStorePointEntries: "StorePointsEntriesQuery",
+  mSignStorePointAgreement: "StorePointSignRequest",
+  mTerminateStorePointAgreement: "StorePointsTypeQuery",
   mCrossStoreCompare: "CrossStoreCompareQuery",
   mLogin: "MerchantLoginReqBody",
   mStaffLogin: "StaffLoginReq",

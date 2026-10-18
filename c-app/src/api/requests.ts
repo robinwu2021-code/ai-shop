@@ -489,3 +489,5 @@ export interface MarkArrivedReq {
   /** 要标记到货的订单。**批量**：一次到货通常是一整批，逐单调用会把通知发成 N 条 */
   orderNos: string[];
 }
+
+export interface PointsEntriesQuery { typeCode: string; after?: number; limit?: number }

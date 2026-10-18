@@ -3113,6 +3113,105 @@ _无字段_
 | `changedAt` | `number` | 是 | — |
 
 
+#### GET `/ops/points/order-integration/inspection`
+
+inspectOrderPoints
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`OrderPointsInspection`](#orderpointsinspection)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `subOrderNo` | `string` | 是 | — |
+| `bindingPhase` | `string,null` | 是 | — |
+| `bindingVersion` | `number` | 是 | — |
+| `placementPhase` | `string,null` | 是 | — |
+| `placementVersion` | `number` | 是 | — |
+| `originalHoldNo` | `string,null` | 是 | — |
+| `refundPhases` | `string`\[\] | 是 | — |
+| `pendingSourceEvents` | `number` | 是 | — |
+| `paymentVerified` | `boolean` | 是 | — |
+| `differences` | `string`\[\] | 是 | — |
+
+
+#### POST `/ops/points/order-integration/refunds/{afterSaleNo}/close`
+
+closeOrderPointsRefund
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `afterSaleNo` | path | `string` | 是 | 售后单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`OrderPointsRefundActionResult`](#orderpointsrefundactionresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+
+
+#### POST `/ops/points/order-integration/refunds/{afterSaleNo}/retry`
+
+retryOrderPointsRefund
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `afterSaleNo` | path | `string` | 是 | 售后单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`OrderPointsRefundActionResult`](#orderpointsrefundactionresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+
+
+#### GET `/ops/points/order-integration/refunds/manual`
+
+manualOrderPointsRefunds
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`OrderPointsManualRefundPage`](#orderpointsmanualrefundpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | — |
+| `next` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | — |
+| `createdAt` | `number` | 是 | — |
+
+
 #### GET `/ops/points/overview`
 
 积分资金总览
@@ -13297,6 +13396,21 @@ KPI 卡（金额为最小货币单位整数）。
 | `operator` | `string` | 是 | 操作人（STAFF 账号） |
 | `at` | `string` | 是 | 操作时间 |
 
+### OrderPointsInspection
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `subOrderNo` | `string` | 是 | — |
+| `bindingPhase` | `string,null` | 是 | — |
+| `bindingVersion` | `number` | 是 | — |
+| `placementPhase` | `string,null` | 是 | — |
+| `placementVersion` | `number` | 是 | — |
+| `originalHoldNo` | `string,null` | 是 | — |
+| `refundPhases` | `string`\[\] | 是 | — |
+| `pendingSourceEvents` | `number` | 是 | — |
+| `paymentVerified` | `boolean` | 是 | — |
+| `differences` | `string`\[\] | 是 | — |
+
 ### OrderPointsIntegrationPolicy
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -13310,6 +13424,30 @@ KPI 卡（金额为最小货币单位整数）。
 | `actor` | `string,null` | 是 | — |
 | `reason` | `string,null` | 是 | — |
 | `changedAt` | `number` | 是 | — |
+
+### OrderPointsManualRefundPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | — |
+| `next` | `string,null` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | — |
+| `createdAt` | `number` | 是 | — |
+
+### OrderPointsRefundActionResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
 
 ### OtpTestPhone
 

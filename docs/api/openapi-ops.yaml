@@ -9172,6 +9172,95 @@ components:
         - "scene"
         - "storeNo"
       additionalProperties: false
+    OrderPointsInspection: 
+      type: "object"
+      properties: 
+        subOrderNo: 
+          type: "string"
+        bindingPhase: 
+          type: 
+            - "string"
+            - "null"
+        bindingVersion: 
+          type: "number"
+        placementPhase: 
+          type: 
+            - "string"
+            - "null"
+        placementVersion: 
+          type: "number"
+        originalHoldNo: 
+          type: 
+            - "string"
+            - "null"
+        refundPhases: 
+          type: "array"
+          items: 
+            type: "string"
+        pendingSourceEvents: 
+          type: "number"
+        paymentVerified: 
+          type: "boolean"
+        differences: 
+          type: "array"
+          items: 
+            type: "string"
+      required: 
+        - "subOrderNo"
+        - "bindingPhase"
+        - "bindingVersion"
+        - "placementPhase"
+        - "placementVersion"
+        - "originalHoldNo"
+        - "refundPhases"
+        - "pendingSourceEvents"
+        - "paymentVerified"
+        - "differences"
+      additionalProperties: false
+    OrderPointsManualRefundPage: 
+      type: "object"
+      properties: 
+        rows: 
+          type: "array"
+          items: 
+            type: "object"
+            properties: 
+              afterSaleNo: 
+                type: "string"
+              subOrderNo: 
+                type: "string"
+              createdAt: 
+                type: "number"
+            required: 
+              - "afterSaleNo"
+              - "subOrderNo"
+              - "createdAt"
+            additionalProperties: false
+        next: 
+          type: 
+            - "string"
+            - "null"
+        hasMore: 
+          type: "boolean"
+      required: 
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    OrderPointsRefundActionResult: 
+      type: "object"
+      properties: 
+        afterSaleNo: 
+          type: "string"
+        subOrderNo: 
+          type: "string"
+        status: 
+          type: "string"
+      required: 
+        - "afterSaleNo"
+        - "subOrderNo"
+        - "status"
+      additionalProperties: false
     PointsPositionQ: 
       type: "object"
       properties: 
@@ -16021,6 +16110,134 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/order-integration/inspection": 
+    get: 
+      operationId: "inspectOrderPoints"
+      summary: "inspectOrderPoints"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/OrderPointsInspection"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/order-integration/refunds/manual": 
+    get: 
+      operationId: "manualOrderPointsRefunds"
+      summary: "manualOrderPointsRefunds"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/OrderPointsManualRefundPage"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/order-integration/refunds/{afterSaleNo}/close": 
+    post: 
+      operationId: "closeOrderPointsRefund"
+      summary: "closeOrderPointsRefund"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/OrderPointsRefundActionResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "afterSaleNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
+      requestBody: 
+        required: true
+        content: 
+          "application/json": 
+            schema: 
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/order-integration/refunds/{afterSaleNo}/retry": 
+    post: 
+      operationId: "retryOrderPointsRefund"
+      summary: "retryOrderPointsRefund"
+      tags: 
+        - "finance"
+      responses: 
+        "200": 
+          description: "成功"
+          content: 
+            "application/json": 
+              schema: 
+                type: "object"
+                properties: 
+                  code: 
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg: 
+                    type: "string"
+                  data: 
+                    "$ref": "#/components/schemas/OrderPointsRefundActionResult"
+                required: 
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters: 
+        - name: "afterSaleNo"
+          in: "path"
+          required: true
+          schema: 
+            type: "string"
       requestBody: 
         required: true
         content: 

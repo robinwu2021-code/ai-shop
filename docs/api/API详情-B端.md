@@ -5339,53 +5339,192 @@ _无字段_
 
 ### points
 
-#### GET `/biz/points/account`
+#### GET `/biz/points/store-account`
 
-本期发分服务费与开关状态　🔒
+当前门店积分账本　🔒
 
-**入参**：无
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
 
 **出参**（`data`）
 
-类型：[`MerchantPointAccount`](#merchantpointaccount)
+类型：[`StorePointAccount`](#storepointaccount)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `periodExpenseMinor` | `number` | 是 | 本期发分服务费支出（分）。**商家唯一感知到的积分成本** |
-| `period` | `string` | 是 | 当前账期标识，如 `2026-08` |
-| `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
-| `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
-| `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
+| `snapshot` | `object`（见下） | 是 | — |
+| `exists` | `boolean` | 是 | — |
+| `version` | `number` | 是 | — |
 
-
-#### GET `/biz/points/records`
-
-发分服务费明细（按单）　🔒
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`MerchantPointsRecord`](#merchantpointsrecord)\[\]
-
-
-#### POST `/biz/points/toggle`
-
-开/关本店积分　🔒
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`MerchantPointAccount`](#merchantpointaccount)
+`snapshot` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `periodExpenseMinor` | `number` | 是 | 本期发分服务费支出（分）。**商家唯一感知到的积分成本** |
-| `period` | `string` | 是 | 当前账期标识，如 `2026-08` |
-| `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
-| `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
-| `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
+| `typeCode` | `string` | 是 | — |
+| `holderType` | `string` | 是 | — |
+| `holderNo` | `string` | 是 | — |
+| `buckets` | [`Record_string_number`](#record_string_number) | 是 | — |
+| `frozen` | `boolean` | 是 | — |
+| `expireAt` | `number,null` | 是 | — |
+| `expiryRevision` | `number` | 是 | — |
+| `lastActiveAt` | `number` | 是 | — |
+
+
+#### GET `/biz/points/store-agreement`
+
+当前门店有效积分签约　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointAgreement`](#storepointagreement)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `agreementNo` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `merchantNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `signedBy` | `string` | 是 | — |
+| `termsVersion` | `string` | 是 | — |
+| `termsHash` | `string` | 是 | — |
+| `termsText` | `string` | 是 | — |
+| `settleMode` | `PER_ORDER` \| `PERIODIC` | 是 | — |
+| `path` | `DIRECT` \| `AGGREGATED` | 是 | — |
+| `channel` | `string` | 是 | — |
+| `accountVersion` | `string` | 是 | — |
+| `state` | `string` | 是 | — |
+
+
+#### POST `/biz/points/store-agreement/sign`
+
+主体属主签署当前门店积分协议　🔒
+
+**入参**
+
+请求体：[`StorePointSignRequest`](#storepointsignrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | — |
+| `termsVersion` | `string` | 是 | — |
+| `termsHash` | `string` | 是 | — |
+| `settleMode` | `PER_ORDER` \| `PERIODIC` | 是 | — |
+| `channel` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointAgreement`](#storepointagreement)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `agreementNo` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `merchantNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `signedBy` | `string` | 是 | — |
+| `termsVersion` | `string` | 是 | — |
+| `termsHash` | `string` | 是 | — |
+| `termsText` | `string` | 是 | — |
+| `settleMode` | `PER_ORDER` \| `PERIODIC` | 是 | — |
+| `path` | `DIRECT` \| `AGGREGATED` | 是 | — |
+| `channel` | `string` | 是 | — |
+| `accountVersion` | `string` | 是 | — |
+| `state` | `string` | 是 | — |
+
+
+#### POST `/biz/points/store-agreement/terminate`
+
+主体属主终止当前门店积分协议　🔒
+
+**入参**
+
+请求体：[`StorePointsTypeQuery`](#storepointstypequery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### GET `/biz/points/store-entries`
+
+当前门店积分流水　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+| `after` | query | `number` | 否 | — |
+| `limit` | query | `number` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointEntryPage`](#storepointentrypage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `entryNo` | `string` | 是 | — |
+| `voucherNo` | `string` | 是 | — |
+| `holderType` | `string` | 是 | — |
+| `holderNo` | `string` | 是 | — |
+| `bucket` | `string` | 是 | — |
+| `deltaPoints` | `number` | 是 | — |
+| `afterPoints` | `number` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### GET `/biz/points/store-terms`
+
+当前积分签约条款　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointTerms`](#storepointterms)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `version` | `string` | 是 | — |
+| `hash` | `string` | 是 | — |
+| `text` | `string` | 是 | — |
+
+
+#### GET `/biz/points/store-types`
+
+当前门店可见的积分类型　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StorePointType`](#storepointtype)\[\]
 
 
 ### push-token
@@ -8899,31 +9038,6 @@ _无字段_
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
 
-### MerchantPointAccount
-
-商家的积分成本视图。**单位是钱，不是分**。 商家只感知**一件事**：开了积分，每笔订单要付一笔发分服务费。 他**看不到**用户抵了多少分、平台补了多少、资金池 —— 对他而言订单就是全额， 收到的是「订单金额 − 各项费用」（V34）。 所以这里没有 income/net：商家侧不存在「积分兑付进账」这个概念。
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `periodExpenseMinor` | `number` | 是 | 本期发分服务费支出（分）。**商家唯一感知到的积分成本** |
-| `period` | `string` | 是 | 当前账期标识，如 `2026-08` |
-| `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
-| `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
-| `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
-
-### MerchantPointsRecord
-
-商家的一条发分服务费记录：一单一条，来自 `stl_bill.points_fee_minor`
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `settleNo` | `string` | 是 | 结算单号 |
-| `subOrderNo` | `string` | 是 | 关联子单，商家据此对到具体订单 |
-| `points` | `number` | 是 | 本单发放的积分数 |
-| `feeMinor` | `number` | 是 | 本单的发分服务费（分）。**这是商家唯一感知到的积分成本** |
-| `period` | `string` | 是 | 账期 `YYYYMM` |
-| `at` | `number` | 是 | 计提时间（支付成功时），不是分账时间 —— 两者相差一个售后期 |
-
 ### MerchantProfile
 
 登录后的商家会话
@@ -9280,6 +9394,7 @@ _无字段_
 枚举取值：
 
 - `WAIT_PAY`
+- `POINTS_PROCESSING`
 - `WAIT_OFFLINE_PAY`
 - `PAID`
 - `FULFILLING`
@@ -10964,6 +11079,115 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `locked` | `boolean` | 否 | 运营锁路（P2）：置灰不可改，文案「平台已暂停，联系运营」 |
 | `scopeMode` | `string` | 否 | ALL / SUBSET（P2）：这一路只送经营范围的一个子集 |
 | `areaNos` | `string`\[\] | 否 | SUBSET 时适用的范围项 area_no |
+
+### StorePointAccount
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `snapshot` | `object`（见下） | 是 | — |
+| `exists` | `boolean` | 是 | — |
+| `version` | `number` | 是 | — |
+
+`snapshot` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | — |
+| `holderType` | `string` | 是 | — |
+| `holderNo` | `string` | 是 | — |
+| `buckets` | [`Record_string_number`](#record_string_number) | 是 | — |
+| `frozen` | `boolean` | 是 | — |
+| `expireAt` | `number,null` | 是 | — |
+| `expiryRevision` | `number` | 是 | — |
+| `lastActiveAt` | `number` | 是 | — |
+
+### StorePointAgreement
+
+Frozen, store-scoped acceptance. Route fields are read-only server snapshots.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `agreementNo` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `merchantNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `signedBy` | `string` | 是 | — |
+| `termsVersion` | `string` | 是 | — |
+| `termsHash` | `string` | 是 | — |
+| `termsText` | `string` | 是 | — |
+| `settleMode` | `PER_ORDER` \| `PERIODIC` | 是 | — |
+| `path` | `DIRECT` \| `AGGREGATED` | 是 | — |
+| `channel` | `string` | 是 | — |
+| `accountVersion` | `string` | 是 | — |
+| `state` | `string` | 是 | — |
+
+### StorePointEntryPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `entryNo` | `string` | 是 | — |
+| `voucherNo` | `string` | 是 | — |
+| `holderType` | `string` | 是 | — |
+| `holderNo` | `string` | 是 | — |
+| `bucket` | `string` | 是 | — |
+| `deltaPoints` | `number` | 是 | — |
+| `afterPoints` | `number` | 是 | — |
+| `at` | `number` | 是 | — |
+
+### StorePointSignRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | — |
+| `termsVersion` | `string` | 是 | — |
+| `termsHash` | `string` | 是 | — |
+| `settleMode` | `PER_ORDER` \| `PERIODIC` | 是 | — |
+| `channel` | `string` | 是 | — |
+
+### StorePointTerms
+
+Current store's published acceptance terms.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `version` | `string` | 是 | — |
+| `hash` | `string` | 是 | — |
+| `text` | `string` | 是 | — |
+
+### StorePointType
+
+Pay ledger views are scoped to the authenticated current store and one points type.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | — |
+| `market` | `string` | 是 | — |
+| `currency` | `string` | 是 | — |
+| `scale` | `number` | 是 | — |
+| `rate` | `object`（见下） | 是 | — |
+| `status` | `DRAFT` \| `ACTIVE` \| `DRAINING` \| `RETIRED` | 是 | — |
+
+`rate` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `pointsUnit` | `number` | 是 | — |
+| `minorUnit` | `number` | 是 | — |
+
+### StorePointsTypeQuery
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | — |
 
 ### StoreProfile
 
