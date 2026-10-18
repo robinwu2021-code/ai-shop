@@ -142,6 +142,12 @@ public interface AfterSaleService {
      */
     void resumeRefund(String afterSaleNo, String operatorNo);
 
+    /** Platform decision after verified collection compensation and definitive cash failure. */
+    OpsAfterSaleVO closeCompensatedRefund(String afterSaleNo, String operatorNo, String reason);
+
+    /** Close the failed case and queue one new immutable attempt with the same frozen refund plan. */
+    OpsAfterSaleVO retryCompensatedRefund(String afterSaleNo, String operatorNo, String reason);
+
     /**
      * 卡在 {@code REFUNDING} 的售后单号（不变式 I5）。
      *

@@ -98,6 +98,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     /** Source plans reserve capacity before the durable worker starts any money operation. */
     private final ai.neargo.shop.trade.order.refund.service.AfterSaleRefundExecutor refundExecutor;
     private final RefundExecutionService refundExecutions;
+    private final ai.neargo.shop.trade.order.mapper.OrderPointsRefundRetryMapper retryRows;
     private final TransactionTemplate refundTransactions;
     private ai.neargo.shop.spi.points.PointsPaymentSnapshotPort pointsPayments;
     private ai.neargo.shop.spi.points.PointsRefundPort pointsRefunds;
@@ -164,8 +165,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                                 ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter,
                                 ai.neargo.shop.trade.order.aftersale.AfterSaleSlots slots,
                                 RefundExecutionService refundExecutions,
+                                ai.neargo.shop.trade.order.mapper.OrderPointsRefundRetryMapper retryRows,
                                 @Qualifier("transactionManager") PlatformTransactionManager sourceTransactions) {
         this.refundExecutions = refundExecutions;
+        this.retryRows = retryRows;
         this.refundTransactions = new TransactionTemplate(sourceTransactions);
         this.slots = slots;
         this.requestPlanner = requestPlanner;
@@ -1093,6 +1096,138 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             settleRefundTerminal(as, "退款到账已核验", intent.netCashMinor(),
                     result.progress() == RefundProgress.FULL);
         });
+    }
+
+    @Override
+    public OpsAfterSaleVO closeCompensatedRefund(String afterSaleNo, String operatorNo,
+                                                  String reason) {
+        if (TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("POINTS_OPERATOR_CLOSE_REQUIRES_NO_TRANSACTION");
+        if (afterSaleNo == null || afterSaleNo.isBlank() || operatorNo == null
+                || operatorNo.isBlank() || reason == null || reason.isBlank())
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (pointsRefunds == null || pointsRefundSource == null)
+            throw new IllegalArgumentException("POINTS_IMPLEMENTATION_REQUIRED");
+        var binding = pointsRefundSource.inspect(afterSaleNo);
+        if (binding == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        if (binding.phase() == ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.ABORTED) {
+            var closed = refundAfterSale(afterSaleNo, false);
+            if (!OrdAfterSale.CLOSED.equals(closed.getStatus()))
+                throw new IllegalStateException("POINTS_OPERATOR_CLOSE_INCOMPLETE");
+            return opsDetailOf(closed);
+        }
+        if (binding.phase() != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATED_PENDING_OPERATOR)
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        var prep = binding.preparation();
+        var proof = pointsRefunds.recoveryStatus(prep.preparationNo(), prep.inputHash());
+        var execution = refundExecutions.inspect(afterSaleNo);
+        if (execution == null) throw new IllegalStateException("POINTS_OPERATOR_REFUND_SOURCE_MISSING");
+        var plan = execution.plan();
+        var sub = subOrderOf(plan.subOrderNo());
+        if (!settlePort.cancelPreparedRefund(new SettlePort.SplitReversal(plan.subOrderNo(),
+                afterSaleNo, plan.goodsMinor(), plan.freightMinor(), LineShares.goodsPaid(sub)),
+                prep.preparationNo(), prep.inputHash()))
+            throw BizException.of(ErrorCode.SPLIT_EXPIRED);
+        refundTransactions.executeWithoutResult(status -> {
+            pointsRefundSource.closeCompensated(afterSaleNo, proof);
+            var as = refundAfterSale(afterSaleNo, true);
+            if (!OrdAfterSale.REFUNDING.equals(as.getStatus()))
+                throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+            transit(as, AfterSaleEvent.COMPENSATED_CLOSE, Actor.PLATFORM, operatorNo,
+                    "补收回退后人工关闭：" + reason.trim(), AfterSaleContext.builder().build());
+        });
+        return opsDetailOf(refundAfterSale(afterSaleNo, false));
+    }
+
+    @Override
+    public OpsAfterSaleVO retryCompensatedRefund(String afterSaleNo, String operatorNo,
+                                                  String reason) {
+        if (TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("POINTS_OPERATOR_RETRY_REQUIRES_NO_TRANSACTION");
+        if (afterSaleNo == null || afterSaleNo.isBlank() || operatorNo == null
+                || operatorNo.isBlank() || reason == null || reason.isBlank() || reason.length() > 500)
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        if (pointsRefunds == null || pointsRefundSource == null)
+            throw new IllegalArgumentException("POINTS_IMPLEMENTATION_REQUIRED");
+        var binding = pointsRefundSource.inspect(afterSaleNo);
+        if (binding == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        if (binding.phase() == ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.ABORTED) {
+            var prior = retryRows.find(afterSaleNo);
+            if (prior == null || !operatorNo.equals(prior.get("operator_no"))
+                    || !reason.trim().equals(prior.get("reason")))
+                throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+            return opsDetailOf(refundAfterSale((String) prior.get("new_after_sale_no"), false));
+        }
+        if (binding.phase() != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATED_PENDING_OPERATOR)
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        var prep = binding.preparation();
+        var proof = pointsRefunds.recoveryStatus(prep.preparationNo(), prep.inputHash());
+        var execution = refundExecutions.inspect(afterSaleNo);
+        if (execution == null) throw new IllegalStateException("POINTS_OPERATOR_REFUND_SOURCE_MISSING");
+        var plan = execution.plan();
+        var subForHold = subOrderOf(plan.subOrderNo());
+        if (!settlePort.cancelPreparedRefund(new SettlePort.SplitReversal(plan.subOrderNo(),
+                afterSaleNo, plan.goodsMinor(), plan.freightMinor(), LineShares.goodsPaid(subForHold)),
+                prep.preparationNo(), prep.inputHash()))
+            throw BizException.of(ErrorCode.SPLIT_EXPIRED);
+        String next = refundTransactions.execute(status -> DataScopeContext.executeWithoutScope(() -> {
+            var original = refundAfterSale(afterSaleNo, false);
+            var sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                    .eq(OrdSubOrder::getSubOrderNo, original.getSubOrderNo())
+                    .last("LIMIT 1 FOR UPDATE"));
+            if (sub == null)
+                throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+            var prior = retryRows.find(afterSaleNo);
+            if (prior != null) {
+                if (!operatorNo.equals(prior.get("operator_no"))
+                        || !reason.trim().equals(prior.get("reason")))
+                    throw new IllegalArgumentException("POINTS_REFUND_RETRY_CONFLICT");
+                return (String) prior.get("new_after_sale_no");
+            }
+            if (pointsRefundSource.inspect(afterSaleNo).phase()
+                    != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATED_PENDING_OPERATOR
+                    || !OrdAfterSale.REFUNDING.equals(original.getStatus()))
+                throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+            var active = activeOf(sub.getSubOrderNo());
+            if (active != null && !afterSaleNo.equals(active.getAfterSaleNo()))
+                throw BizException.of(ErrorCode.CONFLICT);
+            var frozen = refundExecutions.inspect(afterSaleNo);
+            if (frozen == null || !"CASH_PENDING".equals(frozen.preparation().state())
+                    || !plan.equals(frozen.plan()))
+                throw new IllegalStateException("POINTS_REFUND_RETRY_SOURCE_CONFLICT");
+            pointsRefundSource.closeCompensated(afterSaleNo, proof);
+            transit(original, AfterSaleEvent.COMPENSATED_CLOSE, Actor.PLATFORM, operatorNo,
+                    "补收回退后人工重试：" + reason.trim(), AfterSaleContext.builder().build());
+            var retried = new OrdAfterSale();
+            retried.setAfterSaleNo(BizKey.next(BizKey.AFTER_SALE));
+            retried.setSubOrderNo(original.getSubOrderNo());
+            retried.setOrderNo(original.getOrderNo());
+            retried.setUserNo(original.getUserNo());
+            retried.setEntityNo(original.getEntityNo());
+            retried.setType(original.getType());
+            retried.setReason(original.getReason());
+            retried.setImages(original.getImages());
+            retried.setRefundMinor(plan.totalMinor());
+            retried.setApprovedMinor(plan.totalMinor());
+            retried.setRefundMode(OrdAfterSale.REFUND_MODE_CASH);
+            retried.setStatus(OrdAfterSale.REFUNDING);
+            retried.setSplitReversed(false);
+            retried.setInstant(false);
+            retried.setLiability(original.getLiability());
+            retried.setFulfillStage(original.getFulfillStage());
+            retried.setExpressCompany(original.getExpressCompany());
+            retried.setExpressNo(original.getExpressNo());
+            slots.occupy(sub.getSubOrderNo(), retried.getAfterSaleNo());
+            afterSaleMapper.insert(retried);
+            requestPlanner.save(retried.getAfterSaleNo(), plan);
+            refundExecutor.prepare(retried, sub);
+            retryRows.create(afterSaleNo, retried.getAfterSaleNo(), operatorNo, reason.trim());
+            appendLog(sub.getSubOrderNo(), OrdAfterSale.REFUNDING,
+                    "运营重新发起退款（原售后 " + afterSaleNo + "）：" + reason.trim(),
+                    OrdStatusLog.BY_PLATFORM, operatorNo);
+            return retried.getAfterSaleNo();
+        }));
+        return opsDetailOf(refundAfterSale(next, false));
     }
 
     private void resumePointsRefund(String afterSaleNo,String orderNo) {

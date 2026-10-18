@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Notice } from "@/components/ui/notice";
 import { SectionHeader } from "@/components/ui/section-header";
+import { ManualPointsRefunds } from "./manual-refunds";
 
 type Command = { kind: "CREATE"; value: PointsCreate } | { kind: "STATE"; value: PointsTypeChange } |
   { kind: "RULE"; value: PointsFallbackChange } | { kind: "TERMS"; value: PointsTermsChange };
@@ -153,5 +154,6 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
       </div>}
       {inspection.error && <p role="alert" className="text-destructive">{inspection.error instanceof Error ? inspection.error.message : String(inspection.error)}</p>}
     </div>
+    <ManualPointsRefunds key={integrationStore} storeNo={integrationStore} canEdit={canEdit} />
   </div>;
 }

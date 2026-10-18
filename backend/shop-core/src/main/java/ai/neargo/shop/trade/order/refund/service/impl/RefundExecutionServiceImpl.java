@@ -223,6 +223,31 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             return null;
         });
     }
+    @Override public void abortCompensated(String as, PointsRefundPort.RefundRecoveryStatus proof) {
+        DataScopeContext.executeWithoutScope(() -> {
+            var head = locked(as);
+            if ("ABORTED".equals(head.get("state"))) return null;
+            var saved = snapshot(head);
+            var binding = pointsDecision(as, saved.plan().subOrderNo());
+            require(proof != null && "ABORTED".equals(proof.state())
+                    && proof.compensationSucceeded()
+                    && as.equals(proof.afterSaleNo())
+                    && saved.plan().subOrderNo().equals(proof.subOrderNo())
+                    && "COMPENSATED_PENDING_OPERATOR".equals(binding.get("phase"))
+                    && "CASH_PENDING".equals(head.get("state"))
+                    && proof.cashRefundPaymentNo() != null
+                    && proof.cashRefundPaymentNo().equals(head.get("cash_payment_no"))
+                    && proof.netCashMinor() == number(head, "net_cash_minor"),
+                    "REFUND_EXECUTION_COMPENSATION_PROOF_INVALID");
+            var cash = settle.refundEvidence(proof.cashRefundPaymentNo());
+            require(cash != null && List.of("FAILED", "CLOSED").contains(cash.status())
+                    && cash.verifiedAt() == null && cash.verifiedMinor() == null,
+                    "REFUND_EXECUTION_CASH_OUTCOME_UNKNOWN");
+            matchingIntent(head, cash, proof.netCashMinor());
+            change(head, "ABORTED", proof.cashRefundPaymentNo(), proof.netCashMinor(), null);
+            return null;
+        });
+    }
     private void capacity(OrdSubOrder sub,List<OrdItem> items,RefundPlan plan) {
         require(plan.freightMinor()>=0 && plan.totalMinor()>0,"REFUND_EXECUTION_INPUT_INVALID");
         var shares=LineShares.of(sub,items);

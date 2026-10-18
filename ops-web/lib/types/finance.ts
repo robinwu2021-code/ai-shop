@@ -1039,6 +1039,12 @@ export interface OrderPointsInspection {
   refundPhases: string[]; pendingSourceEvents: number; paymentVerified: boolean;
   differences: string[];
 }
+export interface OrderPointsManualRefundPage {
+  rows: { afterSaleNo: string; subOrderNo: string; createdAt: number }[];
+  next: string | null;
+  hasMore: boolean;
+}
+export interface OrderPointsRefundActionResult { afterSaleNo: string; subOrderNo: string; status: string }
 export interface PointsPositionQ { typeCode: string; kind: PointsPositionKind; reference: string }
 export interface PointsPositionView extends PointsPositionQ { state: string; originalPoints: number; processedPoints: number; version: number }
 export interface PointsStatsQ { typeCode: string; day: string; scope?: "TOTAL" | "STORE" | "USER"; subjectNo?: string }

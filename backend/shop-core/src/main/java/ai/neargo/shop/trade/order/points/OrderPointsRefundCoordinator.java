@@ -21,6 +21,8 @@ public interface OrderPointsRefundCoordinator {
 
     Binding recordCompensated(String afterSaleNo, PointsRefundPort.RefundRecoveryStatus status);
 
+    Binding closeCompensated(String afterSaleNo, PointsRefundPort.RefundRecoveryStatus status);
+
     Binding recordZeroCash(String afterSaleNo);
 
     Binding acceptPointsConfirmation(String afterSaleNo, PointsRefundPort.RefundOutcome outcome);
@@ -30,6 +32,11 @@ public interface OrderPointsRefundCoordinator {
     Binding inspect(String afterSaleNo);
 
     ConfirmedTotals confirmedTotals(String subOrderNo);
+
+    ManualPage manualForStore(String storeNo, String after, int limit);
+
+    record ManualRefund(String afterSaleNo, String subOrderNo, long createdAt) {}
+    record ManualPage(List<ManualRefund> rows, String next, boolean hasMore) {}
 
     record ConfirmedTotals(long returnedPoints, long reclaimedPoints) {}
 

@@ -16,6 +16,13 @@ public interface OrderPointsRefundBindingMapper {
     @Select("SELECT * FROM ord_points_refund_binding WHERE sub_order_no=#{sub} ORDER BY after_sale_no")
     List<Map<String, Object>> forSubOrder(String sub);
 
+    @Select("SELECT r.after_sale_no,r.sub_order_no,r.created_at FROM ord_points_refund_binding r"
+            + " JOIN ord_sub_order s ON s.sub_order_no=r.sub_order_no"
+            + " WHERE s.store_no=#{store} AND r.phase='COMPENSATED_PENDING_OPERATOR'"
+            + " AND r.after_sale_no>#{after} ORDER BY r.after_sale_no LIMIT #{limit}")
+    List<Map<String, Object>> manualForStore(@Param("store") String store,
+            @Param("after") String after, @Param("limit") int limit);
+
     @Insert(
             "INSERT INTO"
                 + " ord_points_refund_binding(after_sale_no,sub_order_no,phase,source_version,command_json)"

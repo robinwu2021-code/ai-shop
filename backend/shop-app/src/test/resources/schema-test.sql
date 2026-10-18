@@ -4830,6 +4830,15 @@ CREATE TABLE IF NOT EXISTS stl_points_refund_hold
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS ord_points_refund_retry
+(
+    old_after_sale_no VARCHAR(64) NOT NULL PRIMARY KEY,
+    new_after_sale_no VARCHAR(64) NOT NULL UNIQUE,
+    operator_no VARCHAR(64) NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS pts_point_type
 (
     type_code VARCHAR(40) NOT NULL,

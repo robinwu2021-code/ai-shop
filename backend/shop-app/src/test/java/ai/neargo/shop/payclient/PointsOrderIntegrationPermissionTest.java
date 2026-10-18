@@ -77,16 +77,23 @@ class PointsOrderIntegrationPermissionTest {
             var controller = ctx.getBean(OpsOrderPointsIntegrationController.class);
             var bindings = ctx.getBean(OrderPointsBindingService.class);
             var recovery = ctx.getBean(OrderPointsRecoveryService.class);
+            var refunds = ctx.getBean(ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.class);
             when(bindings.find("S_A")).thenReturn(binding("S_A", "ST_A"));
             when(bindings.find("S_B")).thenReturn(binding("S_B", "ST_B"));
             auth(Perms.FINANCE_SETTLE_READ);
             controller.inspect("S_A");
+            controller.manualRefunds("ST_A", "", 20);
             assertThatThrownBy(() -> controller.inspect("S_B"))
+                    .isInstanceOf(AccessDeniedException.class);
+            assertThatThrownBy(() -> controller.manualRefunds("ST_B", "", 20))
                     .isInstanceOf(AccessDeniedException.class);
             auth(Perms.FINANCE_SETTLE_EXECUTE);
             assertThatThrownBy(() -> controller.inspect("S_A"))
                     .isInstanceOf(AccessDeniedException.class);
+            assertThatThrownBy(() -> controller.manualRefunds("ST_A", "", 20))
+                    .isInstanceOf(AccessDeniedException.class);
             verify(recovery).inspect("S_A");
+            verify(refunds).manualForStore("ST_A", "", 20);
             verifyNoMoreInteractions(recovery);
         }
     }
@@ -123,6 +130,11 @@ class PointsOrderIntegrationPermissionTest {
         }
 
         @Bean
+        ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator refunds() {
+            return mock(ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.class);
+        }
+
+        @Bean
         StoreDirectoryPort stores() {
             var port = mock(StoreDirectoryPort.class);
             when(port.cards(List.of("ST_A")))
@@ -138,9 +150,12 @@ class PointsOrderIntegrationPermissionTest {
         @Bean
         OpsOrderPointsIntegrationController controller(
                 PointsIntegrationPolicyService policy, StoreDirectoryPort stores,
-                OrderPointsBindingService bindings, OrderPointsRecoveryService recovery) {
+                OrderPointsBindingService bindings, OrderPointsRecoveryService recovery,
+                ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator refunds) {
             return new OpsOrderPointsIntegrationController(
-                    new OrderPointsIntegrationAppServiceImpl(policy, stores, bindings, recovery));
+                    new OrderPointsIntegrationAppServiceImpl(policy, stores, bindings, recovery,
+                            refunds,
+                            mock(ai.neargo.shop.trade.service.AfterSaleService.class)));
         }
     }
 }

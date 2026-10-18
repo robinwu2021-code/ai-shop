@@ -408,6 +408,32 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
 
     @Override
     @Transactional(value = "transactionManager", propagation = Propagation.MANDATORY)
+    public Binding closeCompensated(String afterSaleNo,
+                                   PointsRefundPort.RefundRecoveryStatus status) {
+        return DataScopeContext.executeWithoutScope(() -> {
+            var current = decode(locked(afterSaleNo));
+            var prep = current.preparation();
+            require(prep != null && status != null
+                    && prep.preparationNo().equals(status.preparationNo())
+                    && afterSaleNo.equals(status.afterSaleNo())
+                    && current.subOrderNo().equals(status.subOrderNo())
+                    && prep.netCashMinor() == status.netCashMinor()
+                    && Objects.equals(current.cashPaymentNo(), status.cashRefundPaymentNo())
+                    && "ABORTED".equals(status.state()) && status.compensationSucceeded(),
+                    "POINTS_REFUND_COMPENSATION_PROOF_INVALID");
+            if (current.phase() == Phase.ABORTED) return current;
+            require(current.phase() == Phase.COMPENSATED_PENDING_OPERATOR,
+                    "POINTS_REFUND_PHASE_CONFLICT");
+            executions.abortCompensated(afterSaleNo, status);
+            require(mapper.change(afterSaleNo, current.version(), current.phase().name(),
+                    Phase.ABORTED.name(), json.writeValueAsString(prep),
+                    current.cashPaymentNo()) == 1, "POINTS_REFUND_PHASE_CONFLICT");
+            return inspect(afterSaleNo);
+        });
+    }
+
+    @Override
+    @Transactional(value = "transactionManager", propagation = Propagation.MANDATORY)
     public Binding recordZeroCash(String afterSaleNo) {
         return DataScopeContext.executeWithoutScope(() -> {
             var current=decode(locked(afterSaleNo));
@@ -510,6 +536,21 @@ public class OrderPointsRefundCoordinatorImpl implements OrderPointsRefundCoordi
                 reclaimed=Math.addExact(reclaimed,outcome.reclaimedPoints());
             }
             return new ConfirmedTotals(returned,reclaimed);
+        });
+    }
+
+    @Override
+    @Transactional(value = "transactionManager", readOnly = true)
+    public ManualPage manualForStore(String storeNo, String after, int limit) {
+        require(storeNo != null && !storeNo.isBlank() && limit >= 1 && limit <= 100,
+                "POINTS_REFUND_MANUAL_QUERY_INVALID");
+        return DataScopeContext.executeWithoutScope(() -> {
+            var found = mapper.manualForStore(storeNo, after == null ? "" : after, limit + 1);
+            boolean more = found.size() > limit;
+            var rows = found.stream().limit(limit).map(row -> new ManualRefund(
+                    (String) row.get("after_sale_no"), (String) row.get("sub_order_no"),
+                    ((java.util.Date) row.get("created_at")).getTime())).toList();
+            return new ManualPage(rows, rows.isEmpty() ? after : rows.get(rows.size() - 1).afterSaleNo(), more);
         });
     }
 

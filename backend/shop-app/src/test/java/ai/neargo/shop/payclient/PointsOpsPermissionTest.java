@@ -28,6 +28,33 @@ import java.util.List;
 
 class PointsOpsPermissionTest {
     @Test
+    void compensated_refund_close_requires_settlement_execute_permission() {
+        try (var context = new AnnotationConfigApplicationContext(Config.class)) {
+            var controller = context.getBean(
+                    ai.neargo.shop.portal.ops.pay.OpsOrderPointsIntegrationController.class);
+            var req = new ai.neargo.shop.portal.ops.pay.OpsOrderPointsIntegrationController.CloseRefundReq(
+                    "reviewed compensation");
+            authenticate(Perms.FINANCE_SETTLE_READ);
+            assertThatThrownBy(() -> controller.closeRefund("AS-1", req))
+                    .isInstanceOf(AccessDeniedException.class);
+            authenticate(Perms.FINANCE_SETTLE_EXECUTE);
+            controller.closeRefund("AS-1", req);
+            var retry = new ai.neargo.shop.portal.ops.pay.OpsOrderPointsIntegrationController.RetryRefundReq(
+                    "retry with new attempt");
+            authenticate(Perms.FINANCE_SETTLE_READ);
+            assertThatThrownBy(() -> controller.retryRefund("AS-1", retry))
+                    .isInstanceOf(AccessDeniedException.class);
+            authenticate(Perms.FINANCE_SETTLE_EXECUTE);
+            controller.retryRefund("AS-1", retry);
+            assertThatThrownBy(() -> controller.manualRefunds("ST_A", "", 20))
+                    .isInstanceOf(AccessDeniedException.class);
+            authenticate(Perms.FINANCE_SETTLE_READ);
+            controller.manualRefunds("ST_A", "", 20);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+    @Test
     void preparing_auto_executable_payout_requires_payout_permission() {
         try (var context = new AnnotationConfigApplicationContext(Config.class)) {
             var controller =
@@ -371,6 +398,12 @@ class PointsOpsPermissionTest {
         @Bean
         PermissionCheck perm() {
             return new PermissionCheck();
+        }
+
+        @Bean
+        ai.neargo.shop.portal.ops.pay.OpsOrderPointsIntegrationController integrationController() {
+            return new ai.neargo.shop.portal.ops.pay.OpsOrderPointsIntegrationController(
+                    org.mockito.Mockito.mock(OrderPointsIntegrationAppService.class));
         }
 
         @Bean

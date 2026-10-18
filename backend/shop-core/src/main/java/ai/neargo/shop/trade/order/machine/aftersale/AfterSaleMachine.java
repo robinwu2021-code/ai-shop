@@ -55,6 +55,8 @@ public final class AfterSaleMachine {
                     // A13 / A14 退款回执（执行结果，不是决定）
                     .from(REFUNDING).on(REFUND_SUCCEEDED).by(CHANNEL, SYSTEM).to(REFUNDED).emit("AfterSaleRefunded").add()
                     .from(REFUNDING).on(REFUND_FAILED).by(CHANNEL).stay().emit("AfterSaleRefundFailed").add()
+                    .from(REFUNDING).on(COMPENSATED_CLOSE).by(PLATFORM).when(AUTHORIZED, REMARK)
+                    .to(CLOSED).emit("AfterSaleCompensatedClosed").add()
                     // A15 申请平台介入（只能由买家 / 商家发起，系统不自动转入）
                     .from(APPLIED, NEGOTIATING, WAIT_RETURN, RETURNING, WAIT_RECEIPT, REJECTED,
                             WAIT_OFFLINE_REFUND, OFFLINE_REFUNDED)

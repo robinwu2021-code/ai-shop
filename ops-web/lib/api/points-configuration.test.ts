@@ -14,6 +14,17 @@ it("inspects the original sub-order through the scoped read endpoint", async () 
   expect(client.get).toHaveBeenCalledWith(
     "/ops/points/order-integration/inspection", { subOrderNo: "S1" });
 });
+it("uses the store scoped manual queue and distinct close or retry commands", async () => {
+  await financeHttp.manualOrderPointsRefunds("ST1", "AS0", 20);
+  expect(client.get).toHaveBeenCalledWith(
+    "/ops/points/order-integration/refunds/manual", { storeNo: "ST1", after: "AS0", limit: 20 });
+  await financeHttp.closeOrderPointsRefund("AS/1", "reviewed");
+  expect(client.post).toHaveBeenCalledWith(
+    "/ops/points/order-integration/refunds/AS%2F1/close", { reason: "reviewed" });
+  await financeHttp.retryOrderPointsRefund("AS/1", "retry");
+  expect(client.post).toHaveBeenCalledWith(
+    "/ops/points/order-integration/refunds/AS%2F1/retry", { reason: "retry" });
+});
 it("sends audited switch commands without client actor or timestamps to the new endpoint", async () => {
   const command = { requestId: "retry-stable", typeCode: "T", scope: "STORE" as const, subjectNo: "S", enabled: false, flow: "EARN" as const, reason: "pause" };
   await financeHttp.changePointsSwitch(command);
