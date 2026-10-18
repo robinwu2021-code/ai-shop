@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：10项DONE、1项DOING、44项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
+本表共55项：11项DONE、0项DOING、44项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序：JB-008–JB-014补齐后端契约与可信事实；发行/使用及core活动底座随后实施；再完成储值、付费卡、HTTP和远程适配，最后兼容、恢复、权限及后端整体收口。每个领域的Controller可随服务同步开发，DONE需本地和远程两种模式验收。生产操作另列，不阻塞可独立开展的代码开发。
 
@@ -68,7 +68,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 
 | ID | 原任务 | 状态 | 依赖 | 模块 | 交付内容/Java类 | 验收条件/测试 |
 |---|---|---|---|---|---|---|
-| JB-008 | D01.2/1.3/1.4 | DOING | 001,006,007 | shop-base/契约 | 冻结所有SPI/命令/响应/query、错误码三语、权限与能力开关；补缺失DDL设计 | EntitlementContractTest：序列化往返、必填/枚举拒绝；所有待决项形成明确契约 |
+| JB-008 | D01.2/1.3/1.4 | DONE | 001,006,007 | shop-base/契约 | 冻结所有SPI/命令/响应/query、错误码三语、权限与能力开关；补缺失DDL设计 | Contract10/Preview7；门禁10+目录关闭2；总定向88项、原生MySQL1项及create门禁消融通过；API§11–13/支撑5表已冻结，HTTP/角色接线仍归后续任务 |
 | JB-009 | D01.2 | DONE | 006 | core/app | core范围事实预检：门店/商品归属、类目有效性；可信CatalogScope构造 | c29c4fe4a；EntitlementScopeValidationTest 7项：会话身份、门店子集、跨租户门店/商品、赠品归属及201条分批；门店子集消融RED→恢复GREEN；HTTP仍归025 |
 | JB-010 | D01.3 | TODO | 008,009 | core.member/app | MemberCodeResolveService/Impl、BizMemberCodeController；C08 | MemberCodeResolveFlowTest：过期/伪造码拒绝；customerRef绑定主体/门店/用户且短期有效；日志不含明码 |
 | JB-011 | D01.3 | TODO | 008,010 | core.trade/app | EntitlementAuthorizationService/Impl、MpEntitlementAuthorizationController；持久本人意图与源决策 | EntitlementAuthorizationFlowTest：改价失效、他人拒绝、重复确认同意图、支付/取消唯一决策；重启可查询 |
@@ -370,12 +370,12 @@ git diff --check
 
 | 缺口 | 本次处理要求 |
 |---|---|
-| 授权意图/源决策、售卡快照未列入38表 | 核实既有订单扩展/Outbox后补正式持久设计、读写/query、唯一键和修订约束；本地Map不算实现 |
-| O05对账结果、恢复租约缺少完整存储模型 | 优先复用现有任务/对账能力；没有等价机制则扩充数据库设计，不虚构目标表已经存在 |
-| IssuePolicyCommand.issueMode与表字段对应不完整 | 明确是模板allowedIssueModes的限制还是独立发行控制维度，修订API/DDL/类签名后实施JB-015 |
-| 目录编辑完整详情与历史版本读取的外部契约未完全明确 | 明确沿列表返回完整管理草稿还是增加只读详情；需要新端点时更新API编号/权限/生成契约，不默增本表47条统计 |
-| 独立pay反向核实core本人授权/源事实的内部路由与鉴权 | 定义query及服务身份、超时/未知语义；不能只传decisionNo就视为可信 |
-| 新售卡经营条款、冻结/到期剩余处理与真实支付能力 | 后端按明确规则开发并加能力门禁；生产销售在条款/通道验收前保持关闭 |
+| 授权意图/源决策、售卡快照未列入38表 | 已补core三张支撑表、查询/状态与唯一键；正式实体/Mapper/迁移归JB-011/JB-012 |
+| O05对账结果、恢复租约缺少完整存储模型 | 已补pay两张对账支撑表；恢复租约复用V91 shedlock，JB-046/JB-051实施 |
+| IssuePolicyCommand.issueMode与表字段对应不完整 | 已删除多余issueMode，模板allowedIssueModes决定合法途径；共享跨版本发行授权由JB-015实现 |
+| 目录编辑完整详情与历史版本读取的外部契约未完全明确 | P01完整草稿/currentVersionNo、P04定义/hash、内部历史版本读取已冻结；仍47条外部路由 |
+| 独立pay反向核实core本人授权/源事实的内部路由与鉴权 | API§11已冻结33条内部路由、上下文、共享密钥及未知/失败语义；Handler/代理由JB-041实现 |
+| 新售卡经营条款、冻结/到期剩余处理与真实支付能力 | 有限次/周期、首用/付款有效期、禁止新权益线上退款和自动续费已冻结；冻结/到期保留账与历史，不自动退款；销售须能力和经营条款验收后开放，JB-039/JB-040/JB-042 |
 
 ### 4.3 后端完成标准与后置事项
 
@@ -411,3 +411,10 @@ JB-008补充quote/preview/activation协议及只读约束，新增EntitlementPre
 部署补充验收：同一范围集成套件用-Dshop.pay.deployment=standalone另跑7项，0失败/错误/跳过；Surefire JVM属性确认standalone实际生效。该验证覆盖core/app范围守卫在独立pay配置下的装配与拒绝行为，没有调用尚未交付的远程权益RPC，不代替JB-041双部署协议验收。API第十一节固定33条内部传输路径，第十二节登记7个默认关闭开关及预置实际35个能力码归属；均明确未接运行配置，JB-008不因此提前改DONE。
 
 最终全量证据：c29c4fe4a8c4edad9de6a07fcf8fbbe83d5056fe，干净test-compile及20模块3558项0失败，617秒、退出0；原生MySQL条件检查默认跳过，本批设计DDL原生验证另跑通过。c29之后仅文档设计/证据变更，未冒称后续文档提交重新全量。代码提交统计23文件、1152新增/22删除，见总TDD最新验收记录。
+
+
+JB-008收口裁定：本任务交付共享协议、API/权限/能力/错误契约及门禁基础；后续041的真实HTTP代理、053的角色登记、011/012/046的正式持久化不能反向阻塞008，否则形成依赖循环。当前真实目录消费者已接入门禁；未实现消费者仍由其owner任务接线，不以008 DONE冒充整体业务可用。无新公网接口，未为不存在的Handler增权。
+
+本批验收：7项默认关闭配置已真实绑定；ActivityCapability为35码，已独立核对与46项预置要求一致。FeatureGate10、CatalogGate2、目录12、幂等3、原契约10、预览7、范围7、有效期5、Source4、Quota5、i18n6、架构16、PayTx1合计88项0失败/错误/跳过。目录create门禁消融1项实际失败，恢复后通过；原生MySQL1项实际运行、0跳过，验证关闭后原请求回放与新请求claim回滚。默认JDK运行原生脚本曾被Java21构建约束拒绝，指定Java21重跑通过，没有跳过约束。
+
+测试环境偏差：不同开关配置的Spring上下文必须用独立H2库；首次组合回归因重复初始化mch_admission_policy而失败，已按已有隔离夹具惯例修复，未修改schema或失败基线。词典重新生成，V2受管66文档及SQL无新增方言债务通过。当前11 DONE/0 DOING/44 TODO，下一项JB-010会员码/短期customerRef，完整后端仍未完成。最终代码提交及干净全量证据另在总TDD回填。

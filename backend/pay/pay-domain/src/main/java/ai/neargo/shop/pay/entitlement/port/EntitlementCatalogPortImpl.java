@@ -6,6 +6,7 @@ import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
 import ai.neargo.shop.pay.entitlement.dto.CatalogViews.PublishedVersionView;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCatalogService;
 import ai.neargo.shop.pay.entitlement.policy.EntitlementRuleValidator;
+import ai.neargo.shop.pay.entitlement.policy.PayEntitlementFeatureGate;
 import java.time.Instant;
 import ai.neargo.shop.spi.entitlement.EntitlementCatalogPort;
 import org.springframework.stereotype.Component;
@@ -14,10 +15,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class EntitlementCatalogPortImpl implements EntitlementCatalogPort {
     private final EntitlementCatalogService catalog;
+    private final PayEntitlementFeatureGate features;
     private final EntitlementRuleValidator rules = new EntitlementRuleValidator();
 
-    public EntitlementCatalogPortImpl(EntitlementCatalogService catalog) {
+    public EntitlementCatalogPortImpl(EntitlementCatalogService catalog, PayEntitlementFeatureGate features) {
         this.catalog = catalog;
+        this.features = features;
     }
 
     @Override
@@ -31,6 +34,7 @@ public class EntitlementCatalogPortImpl implements EntitlementCatalogPort {
         if (query == null || query.currency() == null || query.purpose() == null) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        features.requireCatalog();
         var scope = new CatalogScope(query.tenantNo(), query.entityNo(), "SYSTEM", false);
         var version = catalog.getVersion(scope, query.versionNo());
         var head = catalog.get(scope, version.templateNo());

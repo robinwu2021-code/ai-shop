@@ -25305,6 +25305,12 @@
           "ar": "لا يمكن استخدام قسائم المنصة مع الدفع غير المتصل"
         },
         {
+          "key": "err.entitlement.feature_unavailable",
+          "zh-CN": "此权益功能暂未开放，请稍后再试",
+          "en": "This benefits feature is not available yet. Please try again later.",
+          "ar": "ميزة المزايا هذه غير متاحة حاليًا. يرجى المحاولة لاحقًا."
+        },
+        {
           "key": "err.express.channel_off",
           "zh-CN": "平台快递代下单还没开通，请先自己叫快递并填写运单号",
           "en": "Courier booking is not available yet. Book a courier yourself and enter the tracking number",
@@ -35038,6 +35044,48 @@
         "module": "shop-base"
       },
       {
+        "name": "ActivityCapability",
+        "values": [
+          "ACTIVITY_VERSION",
+          "ATOMIC_QUOTA",
+          "AUDIENCE",
+          "COMBO_RULE",
+          "COUPON_BUDGET",
+          "COUPON_ISSUE",
+          "COUPON_RECEIVE",
+          "CUTOFF_JOB",
+          "DISCOUNT_CAP",
+          "FLASH_STOCK",
+          "FULFILLMENT",
+          "GIFT_AFTER_SALE",
+          "GIFT_FULFILLMENT",
+          "GIFT_STOCK",
+          "GOODS_SCOPE",
+          "GROUP_CLOSE",
+          "GROUP_INSTANCE",
+          "INDUSTRY_ADMISSION",
+          "MARKETING_RESERVATION",
+          "MEMBER_IDENTITY",
+          "MERCHANT_ACTIVE",
+          "MIN_QTY_DECISION",
+          "MULTI_USE_REDEEM",
+          "NTH_ITEM_ALLOCATION",
+          "ORDER_PRICING",
+          "ORDER_REFUND",
+          "PAY_CREDIT",
+          "PERIOD_INSTANCE",
+          "PER_USER_LIMIT",
+          "REFUND_ALLOCATION",
+          "SERVICE_SCOPE",
+          "SKU_PRICE_VALIDATION",
+          "STORED_VALUE_REDEEM",
+          "STORE_CODE_REDEEM",
+          "STORE_PERMISSION"
+        ],
+        "zh": "Shared requirement vocabulary, not a declaration that any listed workflow is already implemented or enabled.",
+        "module": "shop-base"
+      },
+      {
         "name": "Actor",
         "values": [
           "BUYER",
@@ -35343,6 +35391,7 @@
           "ACTIVITY_CHOICE_UNAVAILABLE",
           "ENROLLMENT_CLOSED",
           "ENROLLMENT_OVER_BUDGET",
+          "ENTITLEMENT_FEATURE_UNAVAILABLE",
           "SPLIT_RECEIVER_NOT_READY",
           "SPLIT_EXPIRED",
           "WITHDRAW_STATE_ILLEGAL",

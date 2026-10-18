@@ -24,7 +24,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** Shared command handling must participate in the owner transaction, never commit a PENDING row alone. */
-@SpringBootTest
+@SpringBootTest(properties = {
+        "shop.pay.entitlement.catalog.enabled=true",
+        "spring.datasource.url=jdbc:h2:mem:ent-catalog-on;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"
+})
 @ActiveProfiles("test")
 class EntitlementCommandDeduplicatorTest {
     @Autowired private EntitlementCommandDeduplicator commands;

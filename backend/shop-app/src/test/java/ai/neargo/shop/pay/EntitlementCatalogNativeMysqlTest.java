@@ -1,6 +1,10 @@
 package ai.neargo.shop.pay;
 
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
+import ai.neargo.shop.pay.entitlement.config.PayEntitlementProperties;
+import ai.neargo.shop.pay.entitlement.policy.PayEntitlementFeatureGate;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCatalogService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCommandDeduplicator;
 import ai.neargo.shop.pay.entitlement.service.impl.EntitlementCatalogServiceImpl;
@@ -66,7 +70,12 @@ class EntitlementCatalogNativeMysqlTest {
         SqlSessionFactory sessions = factory.getObject();
         try (var context = new AnnotationConfigApplicationContext()) {
             context.register(Transactions.class, EntitlementCatalogServiceImpl.class,
-                    EntitlementCommandDeduplicator.class);
+                    EntitlementCommandDeduplicator.class, PayEntitlementFeatureGate.class);
+            context.registerBean(PayEntitlementProperties.class, () -> {
+                var properties = new PayEntitlementProperties();
+                properties.getEntitlement().getCatalog().setEnabled(true);
+                return properties;
+            });
             context.registerBean("payTxManager", PlatformTransactionManager.class,
                     () -> new DataSourceTransactionManager(ds));
             context.registerBean(ObjectMapper.class, () -> JsonMapper.builder().build());
@@ -109,6 +118,16 @@ class EntitlementCatalogNativeMysqlTest {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_command_dedup WHERE request_key=?",
                     Long.class, rollback)).isZero();
             assertThat(catalog.create(scope, definition, rollback).revision()).isZero();
+            context.getBean(PayEntitlementProperties.class).getEntitlement().getCatalog().setEnabled(false);
+            assertThat(catalog.create(scope, definition, key).revision()).isZero();
+            assertThat(catalog.getVersion(scope, published.versionNo())).isEqualTo(published);
+            String blocked = UUID.randomUUID().toString();
+            assertThatThrownBy(() -> catalog.create(scope, definition, blocked))
+                    .isInstanceOfSatisfying(BizException.class,
+                            error -> assertThat(error.errorCode())
+                                    .isEqualTo(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_command_dedup WHERE request_key=?",
+                    Long.class, blocked)).isZero();
         }
     }
 

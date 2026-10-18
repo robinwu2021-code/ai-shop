@@ -11,6 +11,7 @@ import ai.neargo.shop.pay.entitlement.dto.CatalogViews.TemplateView;
 import ai.neargo.shop.pay.entitlement.entity.EntTemplate;
 import ai.neargo.shop.pay.entitlement.entity.EntTemplateVersion;
 import ai.neargo.shop.pay.entitlement.policy.EntitlementRuleValidator;
+import ai.neargo.shop.pay.entitlement.policy.PayEntitlementFeatureGate;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCatalogService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCommandDeduplicator;
 import ai.neargo.shop.pay.mapper.entitlement.EntTemplateMapper;
@@ -38,14 +39,17 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
     private final EntTemplateVersionMapper versions;
     private final EntitlementCommandDeduplicator deduplicator;
     private final ObjectMapper json;
+    private final PayEntitlementFeatureGate features;
     private final EntitlementRuleValidator rules = new EntitlementRuleValidator();
 
     public EntitlementCatalogServiceImpl(EntTemplateMapper heads, EntTemplateVersionMapper versions,
-                                         EntitlementCommandDeduplicator deduplicator, ObjectMapper json) {
+                                         EntitlementCommandDeduplicator deduplicator, ObjectMapper json,
+                                         PayEntitlementFeatureGate features) {
         this.heads = heads;
         this.versions = versions;
         this.deduplicator = deduplicator;
         this.json = json;
+        this.features = features;
     }
 
     @Override
@@ -54,6 +58,7 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
         validate(scope, draft);
         String no = BizKey.next(BizKey.ENTITLEMENT_TEMPLATE);
         return deduplicator.execute(scope, "CATALOG_CREATE", requestKey, draft, no, TemplateView.class, () -> {
+            features.requireCatalog();
             EntTemplate head = new EntTemplate();
             audit(head, scope);
             head.setTemplateNo(no);
@@ -75,6 +80,7 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
         validate(scope, draft);
         return deduplicator.execute(scope, "CATALOG_DRAFT", requestKey, List.of(templateNo, expectedRevision, draft),
                 templateNo, TemplateView.class, () -> {
+                    features.requireCatalog();
                     EntTemplate head = locked(scope, templateNo, expectedRevision);
                     if (!head.getKind().equals(draft.kind()) || !head.getFunder().equals(draft.funder())) {
                         throw BizException.of(ErrorCode.CONFLICT);
@@ -96,6 +102,7 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
         return deduplicator.execute(scope, "CATALOG_PUBLISH", requestKey,
                 List.of(templateNo, expectedRevision), templateNo,
                 PublishedVersionView.class, () -> {
+                    features.requireCatalog();
                     EntTemplate head = locked(scope, templateNo, expectedRevision);
                     EntitlementDefinition definition = view(head).draft();
                     validate(scope, definition);
@@ -118,6 +125,9 @@ public class EntitlementCatalogServiceImpl implements EntitlementCatalogService 
         return deduplicator.execute(scope, "CATALOG_STATUS", requestKey,
                 List.of(templateNo, expectedRevision, status), templateNo,
                 TemplateView.class, () -> {
+                    if ("ACTIVE".equals(status)) {
+                        features.requireCatalog();
+                    }
                     EntTemplate head = locked(scope, templateNo, expectedRevision);
                     if (head.getCurrentVersionNo() == null && !"ENDED".equals(status)) {
                         throw BizException.of(ErrorCode.CONFLICT);

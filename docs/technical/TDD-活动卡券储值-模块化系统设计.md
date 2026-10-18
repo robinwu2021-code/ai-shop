@@ -207,10 +207,25 @@ model/policy无Spring/MyBatis；业务接口与实现分开；资金/余次变�
 
 ### 2.7 Java后端优先执行台账（2026-10-18）
 
-用户要求先完成全部Java后端，并将任务整理为独立表。执行入口为[任务表-活动卡券储值-Java后端](./任务表-活动卡券储值-Java后端.md)：55个交付单元，当前10 DONE/1 DOING/44 TODO；覆盖基础38张及支撑5张目标逻辑表、47条外部及12项内部写操作，并登记恢复query与类清单。计数是任务拆分结果，不是工作量完成率。
+用户要求先完成全部Java后端，并将任务整理为独立表。执行入口为[任务表-活动卡券储值-Java后端](./任务表-活动卡券储值-Java后端.md)：55个交付单元，当前11 DONE/0 DOING/44 TODO；覆盖基础38张及支撑5张目标逻辑表、47条外部及12项内部写操作，并登记恢复query与类清单。计数是任务拆分结果，不是工作量完成率。
 
 保留D01–D07作为设计阶段归属；JB-001–055为叶子任务唯一执行状态。§6只记录实际提交和验证证据。原UI同步开发建议由本次Java优先要求替代；经营规则、HTTP契约、权限和真实后端测试仍必须同步。首批从JB-008协议/持久模型缺口、JB-009范围事实、JB-010/011本人身份与授权，以及JB-013/014幂等/事件基础继续，既有目录底座直接复用。
 
+
+### 2.5 JB-008运行门禁与错误契约收口批次（2026-10-18）
+
+基于API第十二节及独立任务表008，在既有隔离工作区执行；不修改旧活动/券通道。新增pay配置PayEntitlementProperties与PayEntitlementFeatureGate，绑定catalog/issue/use/stored-value/paid-card五个默认false开关；新增core PromotionFeatureProperties/Gate绑定presets/activity。ActivityCapability固定预置实际35码，core门禁仅接受可信owner给出的就绪集合，未知要求仍报缺失，不因开关打开自动READY。运行消费者先接已完成的目录写入及新引用；其余消费者随016/020/025/029/032等任务接线。
+
+| AC/实现步骤 | 预期验证 |
+|---|---|
+| 缺省关闭、7开关真实绑定且互不串开 | EntitlementFeatureGateTest默认拒绝/全开/单开隔离 |
+| 付费卡须catalog+issue+use+paid-card全就绪开关 | paid-card单开拒绝及组合开启允许 |
+| 仅打开推荐开关不能抹掉缺失或未知能力 | 预置能力缺失/未知/重复排序及不可变快照 |
+| 目录新写入/新引用受门禁，读历史和暂停/结束不阻断 | EntitlementCatalogGateFlowTest，实际Mapper行数与版本验证 |
+| 原幂等成功请求在关闭后仍回放，不产生新写 | 关闭后原create/publish请求重放；新键拒绝且无PENDING残留 |
+| 关闭功能与没有角色权限有不同用户反馈 | 专用ErrorCode及中文/英语/阿语；BackendI18nParityTest |
+
+测试先缺类型RED→实现GREEN，另移除目录create门禁观察用例RED后恢复。目录既有测试明确开启catalog能力，原生MySQL夹具亦显式注册门禁；不能给全局test profile开总开关掩盖缺省关闭行为。008只交付契约/门禁基础，不把后续HTTP、远程、会员码、发放及核销owner实现计作已完成。已有成功请求的恢复不能在幂等缓存读取之前被新开关误拦，门禁置于幂等工作回调内。
 
 ## §3 完整调用流程
 
@@ -475,3 +490,23 @@ JB-009只依赖006已有定义，不受008剩余协议收口阻塞；事实预�
 `bash scripts/check-head-compiles.sh HEAD`固定c29c4fe4a8c4edad9de6a07fcf8fbbe83d5056fe，从干净副本test-compile通过，全量20模块3558项、0失败，耗时617秒，退出码0；未修改失败基线。默认全量中的原生MySQL条件用例仍跳过，不能将此写成Java业务已在原生库全量通过；本批隔离MySQL设计DDL约束实际通过。此前定向70项、standalone范围7项（报告确认JVM deployment=standalone）及Node3项分别通过。standalone范围守卫测试没有调用尚未实现的权益RPC。
 
 c29之后仅修改API内部33路由/35能力及7个默认关闭开关的设计登记、任务状态证据与本段；Java/正式迁移/运行配置未改，未重复运行同一全量。V2受管文档66份守卫、本文档包本地链接及git diff --check通过。JB-009已完成；JB-008及其余44个TODO仍按独立任务表执行，整体后端未完成。本批仅本地提交，无部署或生产迁移。
+
+
+### JB-008门禁基础与协议冻结收口（2026-10-18）
+
+档位1，依据§2.5执行。shop-base新增spi.promotion.ActivityCapability（35码）及ErrorCode 40040；pay新增config.PayEntitlementProperties与policy.PayEntitlementFeatureGate，目录Service/Port委派新业务门禁；core新增promotion.config.PromotionFeatureProperties与policy.PromotionFeatureGate。7个开关缺省关闭，不能用开关充当实现/商家/行业/门店就绪事实。已有卡新使用只要求use，不依赖仍可新发行或销售；实际业务接线随所属任务实施。没有改变旧营销/券入口和正式迁移。
+
+| AC | 真实测试与结果 |
+|---|---|
+| 缺省关闭、全开、独立开关不串开 | EntitlementFeatureGateTest.defaultsRejectNewWorkEvenWithEveryCapabilityPresent / allSevenExplicitFlagsPermitTheirOwnNewWork / enablingCatalogDoesNotEnableOtherBusinessOrPromotionFlags |
+| 付费卡各前置开关必须分别满足 | everyPaidCardFoundationIsRequiredIndependently（三组）及paidCardFlagCannotBypassItsCatalogIssuanceAndUsageDependencies |
+| 停止发行/销售不撤回已有卡的新使用能力 | stoppingNewIssuanceAndCardSalesDoesNotDisableUseOfExistingAssets |
+| 缺失/未知能力、输入快照不可变、结构拒绝 | anOpenFlagStillReportsMissingAndUnknownCapabilitiesWithoutAcceptingThemAsReady / malformedRequirementsCannotBecomeAnEmptyReadyPreset |
+| 目录关闭不留claim；历史/暂停/结束/原幂等可用、新工作拒绝 | EntitlementCatalogGateFlowTest.disabledCatalogRejectsCreateAndRollsBackTheCommandClaim / closingCatalogPreservesHistoryAndExactRepliesButBlocksNewWork |
+| 新消息码三语与既有架构约束 | BackendI18nParityTest 6项、ArchitectureTest 16项、PayTxManagerConventionTest 1项 |
+
+测试先观察缺类型RED；目录接线前2项预期失败，随后恢复GREEN；immutable Set.of输入暴露contains(null)会抛NPE，改为流式检查null后通过。不同开关上下文首次共用H2导致初始化唯一键冲突，已隔离ent-catalog-on/off，未修改历史迁移、schema或known-failures。去除create门禁，消融1项失败；恢复后88项定向全部通过。原生Java/MySQL1项实际通过0跳过，包含关闭后缓存回放与失败claim回滚；首次默认JDK被构建约束拒绝，指定Java21后重跑通过。
+
+生成词典同步；V2受管66份文档、SQL方言无新增欠账通过，ER/构建闸门Node2项通过，额外核对35能力码与46预置要求一致及文档本地链接。没有新增数据库迁移，因此不虚称正式表已扩至43张。API§11–13冻结内部传输、门禁与错误/权限边界，数据库支撑表设计及IssuePolicy/目录详情歧义已在前批收口。
+
+执行裁定：008完成指协议/门禁基础验收，不等待消费者任务的HTTP/远程代理、真实交易、正式持久化和角色登记；这些本来依赖008，反向等待会阻塞开发队列。新权限只随真实Handler登记，避免空授权。业务细分错误如需扩充，由相应owner任务同步API/枚举/三语和真实失败测试。独立任务表008改DONE，整体后端仍未完成，接下来按依赖推进010。

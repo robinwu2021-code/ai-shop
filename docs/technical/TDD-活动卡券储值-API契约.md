@@ -270,9 +270,9 @@ C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的re
 传输实际Handler、共享HTTP接口/路径常量及拒绝测试由JB-041交付；本节只冻结路由与语义，不将本地接口声明计作远程可用。
 
 
-## 十二、能力门禁配置契约（JB-008设计子项，未接运行配置）
+## 十二、能力门禁配置契约（JB-008基础实现）
 
-默认值全部false；以下名称为待实现契约，不是已经生效的配置。开关由服务端部署配置控制，HTTP请求或预置模板不能打开。实际available须同时满足开关、owner实现就绪、行业准入、主体状态、门店权限及所需能力集合；缺失项明确返回missingCapabilities，未知能力也按缺失处理。不能以类存在、目录seed存在或单体能编译作为READY证据。JB-032实现目录筛选，JB-053完成权限及配置拒绝验证。
+默认值全部false；PayEntitlementProperties与PromotionFeatureProperties已按下列名称绑定运行配置。已实现的目录写入、新引用委派门禁，其余业务入口尚未实现，随责任任务逐项接线。开关由服务端部署配置控制，HTTP请求或预置模板不能打开。实际available须同时满足开关、owner实现就绪、行业准入、主体状态、门店权限及所需能力集合；缺失项明确返回missingCapabilities，未知能力也按缺失处理。不能以类存在、目录seed存在或单体能编译作为READY证据。JB-032实现目录筛选，JB-053完成权限及配置拒绝验证。
 
 | 配置名 | 控制的新业务 | 实施任务 |
 |---|---|---|
@@ -282,7 +282,7 @@ C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的re
 | shop.pay.entitlement.issue.enabled | 新领券、批量发行与发放prepare | JB-016/JB-017/JB-018/JB-026 |
 | shop.pay.entitlement.use.enabled | 新券/兑换权益使用意图 | JB-020/JB-026 |
 | shop.pay.stored-value.enabled | 新储值办理及核销意图 | JB-034–038 |
-| shop.pay.paid-card.enabled | 新付费卡商品绑定/销售/使用意图 | JB-039/JB-040/JB-042 |
+| shop.pay.paid-card.enabled | 新付费卡商品绑定/销售；已有卡的使用另受use控制 | JB-039/JB-040/JB-042 |
 
 开关关闭不阻断已存在资产的本人历史查询、已承诺源决策的commit/release、合法原券回补或恢复任务；这些操作仍按原事实及状态机执行，不能形成有扣款无权益。开关不能切换owner或回写旧表。付费卡同时要求权益发行/使用开关和商品、收款、履约、条款验收，不因打开paid-card就跳过底座。运行的本地/远程选择沿既有shop.pay.deployment=embedded/standalone，不能再造第三套部署模式。
 
@@ -326,4 +326,30 @@ C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的re
 | STORE_CODE_REDEEM | pay既有券码JB-023；不能替代统一会员码或查全账户 |
 | STORE_PERMISSION | app/merchant；JB-009及JB-053 |
 
-预置默认seedEnabled=false、publishOnCreate=false、requiresMerchantReview=true；AP/EP清单只说明期望玩法。能力快照由可信owner提供，门禁失败不静默降级为另一种权益或计价规则。实际配置绑定与逐项发布拒绝测试仍未交付；JB-008保持DOING，后续不能直接声称这些配置已经控制运行。
+预置默认seedEnabled=false、publishOnCreate=false、requiresMerchantReview=true；AP/EP清单只说明期望玩法。能力快照由可信owner提供，门禁失败不静默降级为另一种权益或计价规则。配置绑定、独立开关与付费卡组合依赖已由EntitlementFeatureGateTest验证；目录关闭拒绝、幂等重放及历史读取由EntitlementCatalogGateFlowTest验证。core PromotionFeatureGate只接受可信owner提供的ActivityCapability就绪集合，未知要求始终保留在missingCapabilities中，不能把配置值用作就绪事实。预置目录、真实发布/交易门面的接线仍由JB-029/JB-032/JB-033等交付，未实现入口不能宣称已受门禁保护。
+
+
+### 12.1 已实现门禁的调用位置与关闭语义
+
+pay的catalog/issue/use/stored-value/paid-card由PayEntitlementFeatureGate提供，core的presets/activity由PromotionFeatureGate提供，均为owner内组件，不增加HTTP接口。新发行需要catalog+issue开关；已有权益的新使用只要求use开关，不依赖仍可发行。新付费卡销售须catalog+issue+use+paid-card四开关，且core另核实支付、商品、履约、条款和范围；已有付费权益的使用不能因为停止新销售而被撤回。储值办理用stored-value开关，储值新使用同时要求stored-value和use；已有承诺的后续过账与恢复不调用新增业务门禁。
+
+目录create/saveDraft/publish及恢复ACTIVE在EntitlementCommandDeduplicator的work回调内requireCatalog，已成功命令先重放原响应；新命令关闭则同事务回滚命令claim，不留下PENDING。get/list/getVersion/getPublishedVersion不受开关阻断；PAUSED/ENDED允许执行以停止现有发行。validateReference用于建立新活动/商品引用，受catalog门禁；恢复原承诺必须读取原历史版本，不能重新validateReference制造新的资格要求。开关不替代角色、租户、主体、门店或源决策核实。
+
+## 十三、错误、状态与权限冻结边界（JB-008）
+
+| 情形 | 对外业务码 / 消息键 | 处置 |
+|---|---|---|
+| 格式/枚举/金额次数单位不合法 | BAD_REQUEST 10400 / err.bad_request | 拒绝命令，不入账 |
+| 未认证 / 会话过期 | UNAUTHORIZED 10401 / TOKEN_EXPIRED 10402 | 沿既有HTTP401及登录语义，不用功能开关码冒充 |
+| 角色、realm或门店范围不允许 | FORBIDDEN 10403 / err.forbidden | 作用域取可信会话，拒绝越权 |
+| 不存在或对当前租户/主体/本人不可见 | NOT_FOUND 10404 / err.not_found | 不泄露其他主体事实 |
+| 旧revision、同键异参、终态矛盾、失效模板引用 | CONFLICT 10409 / err.conflict | 不换业务号盲重试，先刷新或查询原操作 |
+| 新能力开关关闭 | ENTITLEMENT_FEATURE_UNAVAILABLE 40040 / err.entitlement.feature_unavailable | 中文“此权益功能暂未开放，请稍后再试”；英文和阿语同键，不能误作缺少员工角色而跳登录 |
+| 源UNKNOWN/PENDING、超时后提交结果未定 | 对应业务响应PROCESSING或原query状态 | 未决不伪造取消/成功；传输失败沿ServiceCalls分类，不吞成业务终态 |
+| 预览不可用 | PreviewReason枚举 | 明确NOT_ACTIVE/NOT_STARTED/EXPIRED/FROZEN/INSUFFICIENT_UNITS/OUT_OF_SCOPE，只读不扣减 |
+
+通用码沿既有ErrorCode及三份messages资源，40040已新增三语并经BackendI18nParityTest验证。未来owner实现若需要细化余额不足等提示，须在该业务任务同步变更契约、枚举、三语与真实失败测试，不自行将异常字符串当用户文案。无码无接口的储值/新付费卡线上退款仍保持禁止，不为它建立可调用公网路由。I11已有券售后受原使用事实白名单控制。
+
+权限码以本文件C01–C10/P01–P30/O01–O07表逐条冻结：新增pay/ops:pay码仅随真实Handler登记，JB-025/026/027/033/038等负责门面，JB-053核对角色与运营五处登记；当前不向Perms及角色表写死权限，避免给没有实现的路由授权。公共DTO不接受tenant/actor/entity/platformActor作为本人身份；service token只证明服务调用方，不能替代业务范围与持久授权。
+
+JB-008是协议/配置门禁基础交付。33条内部传输Handler/代理由JB-041实现，47条外部Handler由各业务任务实现；5张支撑设计表的正式迁移/Mapper由JB-011/JB-012/JB-046实现。不能把这些后续运行实现反向作为008的完成条件形成依赖循环，也不能因008完成而宣称它们已可用。统一会员码当前无可复用后端，JB-010仍须提供可信解析及短期customerRef，不能拿登录token或客户端用户号充当会员码。

@@ -530,6 +530,9 @@ public enum ErrorCode {
      */
     ENROLLMENT_OVER_BUDGET(40032, "err.marketing.enrollment_over_budget"),
 
+    /** A disabled new rights workflow is not a missing staff permission and must not trigger a login redirect. */
+    ENTITLEMENT_FEATURE_UNAVAILABLE(40040, "err.entitlement.feature_unavailable"),
+
     // ---- 5xxxx 资金 ----
     SPLIT_RECEIVER_NOT_READY(50001, "err.settle.receiver_not_ready"),
     SPLIT_EXPIRED(50002, "err.settle.split_expired"),

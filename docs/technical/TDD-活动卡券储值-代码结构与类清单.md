@@ -257,3 +257,6 @@ C端记录：MpStoredValueController→MpEntitlementAppService→StoredValueQuer
 JB-008协议补充：EntitlementUsePort提供QuoteCommand/QuoteView/CouponAllocation、PreviewQuery/PreviewView；UseCommand绑定expectedAssetRevision及previewRef/quoteRef。EntitlementQueryPort提供ActivationQuote；预览不激活或扣减。对应EntitlementPreviewContractTest，尚无业务实现。
 
 支撑持久化类（计划，非已实现）：core.trade增加OrdEntAuthorization/Mapper、OrdEntSourceDecision/Mapper（JB-011）、OrdCardSaleSnapshot/Mapper（JB-012）；pay增加PayEntReconRun/Mapper、PayEntReconDiff/Mapper（JB-046）。字段与唯一键见数据库第七节及support-schema.sql；恢复租约复用shedlock（JB-051），无新增通用租约实体。
+
+
+JB-008门禁基础：pay.entitlement.config.PayEntitlementProperties与policy.PayEntitlementFeatureGate；core promotion.config.PromotionFeatureProperties与policy.PromotionFeatureGate；shop-base spi.promotion.ActivityCapability。7个开关默认关闭、35个能力码仅定义词汇不宣称就绪。目录写入/新引用已调用门禁，幂等响应回放及历史读取不受阻，其他消费者按所属任务实现；未新增公开Controller或实际远程调用。ErrorCode增加40040及三语消息。
