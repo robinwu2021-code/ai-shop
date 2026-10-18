@@ -9000,7 +9000,7 @@ _无字段_
 | `channel` | [`PayChannel`](#paychannel) | 是 | 支付渠道 |
 | `channelTxnNo` | `string,null` | 否 | 渠道流水号；PLATFORM_ONLY 时为空（渠道根本没有这笔） |
 | `orderNo` | `string,null` | 否 | 平台订单号；CHANNEL_ONLY 时为空（平台没落库） |
-| `type` | [`ReconDiffType`](#recondifftype) | 是 | 差异类型。**三类的处置方式完全不同**，见上方注释 |
+| `type` | [`ReconDiffType`](#recondifftype) | 是 | 差异类型。退款异常仅用于人工核对，处置不自动解冻或付款，见上方注释 |
 | `channelAmount` | `number` | 是 | 渠道侧金额，最小货币单位（分）。PLATFORM_ONLY 为 0 |
 | `platformAmount` | `number` | 是 | 平台侧金额（分）。CHANNEL_ONLY 为 0 |
 | `status` | [`ReconStatus`](#reconstatus) | 是 | 处置状态 |
@@ -9034,7 +9034,7 @@ _无字段_
 | `channel` | [`PayChannel`](#paychannel) | 是 | 支付渠道 |
 | `channelTxnNo` | `string,null` | 否 | 渠道流水号；PLATFORM_ONLY 时为空（渠道根本没有这笔） |
 | `orderNo` | `string,null` | 否 | 平台订单号；CHANNEL_ONLY 时为空（平台没落库） |
-| `type` | [`ReconDiffType`](#recondifftype) | 是 | 差异类型。**三类的处置方式完全不同**，见上方注释 |
+| `type` | [`ReconDiffType`](#recondifftype) | 是 | 差异类型。退款异常仅用于人工核对，处置不自动解冻或付款，见上方注释 |
 | `channelAmount` | `number` | 是 | 渠道侧金额，最小货币单位（分）。PLATFORM_ONLY 为 0 |
 | `platformAmount` | `number` | 是 | 平台侧金额（分）。CHANNEL_ONLY 为 0 |
 | `status` | [`ReconStatus`](#reconstatus) | 是 | 处置状态 |
@@ -15697,7 +15697,7 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 | `channel` | [`PayChannel`](#paychannel) | 是 | 支付渠道 |
 | `channelTxnNo` | `string,null` | 否 | 渠道流水号；PLATFORM_ONLY 时为空（渠道根本没有这笔） |
 | `orderNo` | `string,null` | 否 | 平台订单号；CHANNEL_ONLY 时为空（平台没落库） |
-| `type` | [`ReconDiffType`](#recondifftype) | 是 | 差异类型。**三类的处置方式完全不同**，见上方注释 |
+| `type` | [`ReconDiffType`](#recondifftype) | 是 | 差异类型。退款异常仅用于人工核对，处置不自动解冻或付款，见上方注释 |
 | `channelAmount` | `number` | 是 | 渠道侧金额，最小货币单位（分）。PLATFORM_ONLY 为 0 |
 | `platformAmount` | `number` | 是 | 平台侧金额（分）。CHANNEL_ONLY 为 0 |
 | `status` | [`ReconStatus`](#reconstatus) | 是 | 处置状态 |
@@ -15716,6 +15716,9 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 - `CHANNEL_ONLY`
 - `PLATFORM_ONLY`
 - `AMOUNT_DIFF`
+- `REFUND_ABNORMAL`
+- `REFUND_LATE_SUCCESS`
+- `REFUND_CLOSED`
 
 ### ReconScope
 
