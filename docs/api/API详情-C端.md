@@ -2084,8 +2084,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `phase` | `NONE` \| `RAW` \| `ADMITTED` \| `UNKNOWN` \| `READY` \| `RECONFIRM` \| `CANCEL_REQUESTED` \| `CANCELLED` | 是 | — |
-| `reason` | `string,null` | 是 | — |
+| `phase` | [`PointsOrderStatePhase`](#pointsorderstatephase) | 是 | 源下单处理阶段 |
+| `reason` | `string,null` | 是 | 服务端不可用原因或操作审计原因 |
 
 
 #### POST `/mp/order/{orderNo}/reorder`
@@ -2205,24 +2205,24 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `state` | `AVAILABLE` \| `UNAVAILABLE` | 是 | — |
-| `reason` | `string,null` | 是 | — |
-| `pointsUsed` | `number` | 是 | — |
-| `deductMinor` | `number` | 是 | — |
-| `ratePoints` | `number` | 是 | — |
-| `rateMinor` | `number` | 是 | — |
-| `basePayMinor` | `number` | 是 | — |
-| `stores` | `object`（见下）\[\] | 是 | — |
+| `state` | [`OrderPointsQuoteState`](#orderpointsquotestate) | 是 | 服务端处理状态 |
+| `reason` | `string,null` | 是 | 服务端不可用原因或操作审计原因 |
+| `pointsUsed` | `number` | 是 | 按服务端报价使用的积分数量 |
+| `deductMinor` | `number` | 是 | 积分抵扣金额，最小货币单位 |
+| `ratePoints` | `number` | 是 | 换算比例的积分数量 |
+| `rateMinor` | `number` | 是 | 换算比例的最小货币单位数量 |
+| `basePayMinor` | `number` | 是 | 积分抵扣前的应付金额，最小货币单位 |
+| `stores` | `object`（见下）\[\] | 是 | 按门店拆分的服务端报价 |
 
 `stores[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `merchantNo` | `string` | 是 | — |
-| `policyVersion` | `number` | 是 | — |
-| `pointsUsed` | `number` | 是 | — |
-| `deductMinor` | `number` | 是 | — |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `policyVersion` | `number` | 是 | 报价所绑定的门店策略版本 |
+| `pointsUsed` | `number` | 是 | 按服务端报价使用的积分数量 |
+| `deductMinor` | `number` | 是 | 积分抵扣金额，最小货币单位 |
 
 
 #### POST `/mp/order/preview`
@@ -2305,9 +2305,9 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rows` | [`BuyerPointsEntry`](#buyerpointsentry)\[\] | 是 | — |
-| `next` | `number` | 是 | — |
-| `hasMore` | `boolean` | 是 | — |
+| `rows` | [`BuyerPointsEntry`](#buyerpointsentry)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
 
 
 ### push-token
@@ -2659,16 +2659,16 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `subOrderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式编码 |
 | `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
-| `receiverName` | `string,null` | 否 | — |
+| `receiverName` | `string,null` | 否 | 收货人展示名称 |
 | `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
-| `receiverAddress` | `string,null` | 否 | — |
-| `expressCompany` | `string,null` | 否 | — |
-| `expressNo` | `string,null` | 否 | — |
-| `items` | [`TrackItem`](#trackitem)\[\] | 是 | — |
+| `receiverAddress` | `string,null` | 否 | 收货地址 |
+| `expressCompany` | `string,null` | 否 | 承运商名称 |
+| `expressNo` | `string,null` | 否 | 承运商运单号 |
+| `items` | [`TrackItem`](#trackitem)\[\] | 是 | 本次履约的商品明细 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
 
 
@@ -2684,16 +2684,16 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `subOrderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式编码 |
 | `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
-| `receiverName` | `string,null` | 否 | — |
+| `receiverName` | `string,null` | 否 | 收货人展示名称 |
 | `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
-| `receiverAddress` | `string,null` | 否 | — |
-| `expressCompany` | `string,null` | 否 | — |
-| `expressNo` | `string,null` | 否 | — |
-| `items` | [`TrackItem`](#trackitem)\[\] | 是 | — |
+| `receiverAddress` | `string,null` | 否 | 收货地址 |
+| `expressCompany` | `string,null` | 否 | 承运商名称 |
+| `expressNo` | `string,null` | 否 | 承运商运单号 |
+| `items` | [`TrackItem`](#trackitem)\[\] | 是 | 本次履约的商品明细 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
 
 
@@ -3335,37 +3335,58 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `typeCode` | `string` | 是 | — |
-| `market` | `string` | 是 | — |
-| `currency` | `string` | 是 | — |
-| `status` | `DRAFT` \| `ACTIVE` \| `DRAINING` \| `RETIRED` | 是 | — |
-| `balance` | `number` | 是 | — |
-| `pendingBalance` | `number` | 是 | — |
-| `heldBalance` | `number` | 是 | — |
-| `ratePoints` | `number` | 是 | — |
-| `rateMinor` | `number` | 是 | — |
-| `deductRatioBp` | `number` | 是 | — |
-| `idleDays` | `number` | 是 | — |
-| `frozen` | `boolean` | 是 | — |
-| `expireAt` | `number,null` | 是 | — |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `market` | `string` | 是 | 市场代码 |
+| `currency` | `string` | 是 | ISO 货币代码 |
+| `status` | [`BuyerPointsAccountStatus`](#buyerpointsaccountstatus) | 是 | 服务端业务状态 |
+| `balance` | `number` | 是 | 可用积分余额 |
+| `pendingBalance` | `number` | 是 | 待激活积分余额 |
+| `heldBalance` | `number` | 是 | 当前占用积分余额 |
+| `ratePoints` | `number` | 是 | 换算比例的积分数量 |
+| `rateMinor` | `number` | 是 | 换算比例的最小货币单位数量 |
+| `deductRatioBp` | `number` | 是 | 最大抵扣比例，万分比 |
+| `idleDays` | `number` | 是 | 账户无活动失效天数 |
+| `frozen` | `boolean` | 是 | 是否冻结该账户新增使用 |
+| `expireAt` | `number,null` | 是 | 服务端计算的过期时间，Unix 毫秒；无则为空 |
+
+### BuyerPointsAccountStatus
+
+BuyerPointsAccount 的 status 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `DRAFT`
+- `ACTIVE`
+- `DRAINING`
+- `RETIRED`
 
 ### BuyerPointsEntry
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entryNo` | `string` | 是 | — |
-| `bucket` | `AVAILABLE` \| `PENDING` \| `HELD` | 是 | — |
-| `points` | `number` | 是 | — |
-| `balanceAfter` | `number` | 是 | — |
-| `at` | `number` | 是 | — |
+| `entryNo` | `string` | 是 | 不可变积分分录编号 |
+| `bucket` | [`BuyerPointsEntryBucket`](#buyerpointsentrybucket) | 是 | 积分账本或资金池分桶 |
+| `points` | `number` | 是 | 积分数量 |
+| `balanceAfter` | `number` | 是 | 该分录完成后的账本余额 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+### BuyerPointsEntryBucket
+
+BuyerPointsEntry 的 bucket 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `AVAILABLE`
+- `PENDING`
+- `HELD`
 
 ### BuyerPointsEntryPage
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rows` | [`BuyerPointsEntry`](#buyerpointsentry)\[\] | 是 | — |
-| `next` | `number` | 是 | — |
-| `hasMore` | `boolean` | 是 | — |
+| `rows` | [`BuyerPointsEntry`](#buyerpointsentry)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
 
 ### CardSpec
 
@@ -4361,24 +4382,33 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `state` | `AVAILABLE` \| `UNAVAILABLE` | 是 | — |
-| `reason` | `string,null` | 是 | — |
-| `pointsUsed` | `number` | 是 | — |
-| `deductMinor` | `number` | 是 | — |
-| `ratePoints` | `number` | 是 | — |
-| `rateMinor` | `number` | 是 | — |
-| `basePayMinor` | `number` | 是 | — |
-| `stores` | `object`（见下）\[\] | 是 | — |
+| `state` | [`OrderPointsQuoteState`](#orderpointsquotestate) | 是 | 服务端处理状态 |
+| `reason` | `string,null` | 是 | 服务端不可用原因或操作审计原因 |
+| `pointsUsed` | `number` | 是 | 按服务端报价使用的积分数量 |
+| `deductMinor` | `number` | 是 | 积分抵扣金额，最小货币单位 |
+| `ratePoints` | `number` | 是 | 换算比例的积分数量 |
+| `rateMinor` | `number` | 是 | 换算比例的最小货币单位数量 |
+| `basePayMinor` | `number` | 是 | 积分抵扣前的应付金额，最小货币单位 |
+| `stores` | `object`（见下）\[\] | 是 | 按门店拆分的服务端报价 |
 
 `stores[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `merchantNo` | `string` | 是 | — |
-| `policyVersion` | `number` | 是 | — |
-| `pointsUsed` | `number` | 是 | — |
-| `deductMinor` | `number` | 是 | — |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `policyVersion` | `number` | 是 | 报价所绑定的门店策略版本 |
+| `pointsUsed` | `number` | 是 | 按服务端报价使用的积分数量 |
+| `deductMinor` | `number` | 是 | 积分抵扣金额，最小货币单位 |
+
+### OrderPointsQuoteState
+
+OrderPointsQuote 的 state 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `AVAILABLE`
+- `UNAVAILABLE`
 
 ### OrderPreview
 
@@ -4584,8 +4614,23 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `phase` | `NONE` \| `RAW` \| `ADMITTED` \| `UNKNOWN` \| `READY` \| `RECONFIRM` \| `CANCEL_REQUESTED` \| `CANCELLED` | 是 | — |
-| `reason` | `string,null` | 是 | — |
+| `phase` | [`PointsOrderStatePhase`](#pointsorderstatephase) | 是 | 源下单处理阶段 |
+| `reason` | `string,null` | 是 | 服务端不可用原因或操作审计原因 |
+
+### PointsOrderStatePhase
+
+PointsOrderState 的 phase 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `NONE`
+- `RAW`
+- `ADMITTED`
+- `UNKNOWN`
+- `READY`
+- `RECONFIRM`
+- `CANCEL_REQUESTED`
+- `CANCELLED`
 
 ### Promotion
 
@@ -5120,10 +5165,10 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `title` | `string` | 否 | — |
-| `cover` | `string` | 否 | — |
-| `spec` | `string` | 否 | — |
-| `qty` | `number` | 是 | — |
+| `title` | `string` | 否 | 商品或规格展示标题 |
+| `cover` | `string` | 否 | 商品封面地址 |
+| `spec` | `string` | 否 | 已选规格描述 |
+| `qty` | `number` | 是 | 履约商品数量 |
 
 ### TrackView
 
@@ -5131,16 +5176,16 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `subOrderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式编码 |
 | `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
-| `receiverName` | `string,null` | 否 | — |
+| `receiverName` | `string,null` | 否 | 收货人展示名称 |
 | `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
-| `receiverAddress` | `string,null` | 否 | — |
-| `expressCompany` | `string,null` | 否 | — |
-| `expressNo` | `string,null` | 否 | — |
-| `items` | [`TrackItem`](#trackitem)\[\] | 是 | — |
+| `receiverAddress` | `string,null` | 否 | 收货地址 |
+| `expressCompany` | `string,null` | 否 | 承运商名称 |
+| `expressNo` | `string,null` | 否 | 承运商运单号 |
+| `items` | [`TrackItem`](#trackitem)\[\] | 是 | 本次履约的商品明细 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
 
 ### TrafficSource

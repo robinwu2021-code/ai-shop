@@ -48,8 +48,8 @@ function seededPoints() {
       const payload = sql.slice(from, stmtEnd < 0 ? sql.length : stmtEnd);
       // SELECT 形式只有一组值，且后面跟着 FROM DUAL WHERE …；截到 FROM 为止
       const body = head[1] === "SELECT"
-        ? "(" + payload.slice(0, payload.search(/\bFROM\b/) < 0 ? payload.length
-                                : payload.search(/\bFROM\b/)) + ")"
+        ? "(" + payload.slice(0, payload.search(/\b(?:FROM|WHERE)\b/) < 0 ? payload.length
+                                : payload.search(/\b(?:FROM|WHERE)\b/)) + ")"
         : payload;
       // **先把 NOW() 换掉再切元组**：它自带一对括号，不换的话
       // `\(([^()]*)\)` 会先匹配上 `NOW()` 的那对，整条语句一个元组都切不出来。
@@ -75,6 +75,17 @@ function seededPoints() {
    * 认 `DELETE FROM sys_function_point WHERE point_code = '…'` 这一种写法；
    * 撤点一律写成这个形状，别写 IN (…) 或拼条件，否则这里认不到、守卫照红。
    */
+  // Existing menu points may move without losing role grants (V426).
+  // Apply literal href updates to the original point, rather than pretending
+  // INSERT is the only way a menu can change.
+  for (const f of readdirSync(MIGRATION_DIR).sort()) {
+    if (!f.endsWith(".sql")) continue;
+    const sql = readFileSync(join(MIGRATION_DIR, f), "utf8");
+    for (const m of sql.matchAll(/UPDATE\s+sys_function_point\s+SET\s+([^;]+?)\s+WHERE\s+point_code\s*=\s*'([^']+)'/g)) {
+      const href = /\bhref\s*=\s*'([^']+)'/.exec(m[1]!);
+      if (href) for (const p of out) if (p.pointCode === m[2]) p.href = href[1]!;
+    }
+  }
   const removed = new Set<string>();
   for (const f of readdirSync(MIGRATION_DIR).sort()) {
     if (!f.endsWith(".sql")) continue;

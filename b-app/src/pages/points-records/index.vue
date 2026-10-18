@@ -15,6 +15,7 @@ const failed = ref(false);
 const busy = ref(false);
 
 async function load(more = false) {
+  await merchant.ensureStores();
   if (!canView.value || !typeCode.value || busy.value) return;
   busy.value = true;
   try {

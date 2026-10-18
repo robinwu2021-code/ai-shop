@@ -1,3 +1,9 @@
+/** StorePointType 的 status 取值域，按服务端契约校验。 */
+export type StorePointTypeStatus = "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
+
+/** StorePointAgreement 的 settleMode 取值域，按服务端契约校验。 */
+export type StorePointAgreementSettleMode = "PER_ORDER" | "PERIODIC";
+
 // 商家主体：证照与进件、员工与角色、套餐、结算与欠款、跨店汇总
 //
 // 三端共用的契约镜像，按域切开的一份 —— 口径与切开之前逐字相同，见 `index.ts`。
@@ -16,34 +22,130 @@ import type { GrantType } from "./user";
 
 /** Pay ledger views are scoped to the authenticated current store and one points type. */
 export interface StorePointType {
-  typeCode: string; market: string; currency: string; scale: number;
-  rate: { pointsUnit: number; minorUnit: number };
-  status: "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
+  /** 最大抵扣比例，万分比 */
+  deductRatioBp: number;
+  /** 无活动失效天数 */
+  idleDays: number;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 市场代码 */
+  market: string;
+  /** ISO 货币代码 */
+  currency: string;
+  /** 货币最小单位精度 */
+  scale: number;
+  /** 积分与最小货币单位的换算比例 */
+  rate: {
+    /** 换算比例中的积分数量 */
+    pointsUnit: number;
+    /** 换算比例中的最小货币单位数量 */
+    minorUnit: number;
+  };
+  /** 服务端业务状态 */
+  status: StorePointTypeStatus;
 }
 export interface StorePointAccount {
-  snapshot: { typeCode: string; holderType: "STORE"; holderNo: string;
-    buckets: Record<string, number>; frozen: boolean; expireAt: number | null;
-    expiryRevision: number; lastActiveAt: number };
-  exists: boolean; version: number;
+  /** 服务端冻结的账务或准备快照 */
+  snapshot: {
+    /** 积分类型唯一编码 */
+    typeCode: string;
+    /** 账本持有人类型 */
+    holderType: "STORE";
+    /** 账本持有人编号，与持有人类型联合定位 */
+    holderNo: string;
+    /** 按账本分桶保存的积分余额 */
+    buckets: Record<string, number>;
+    /** 是否冻结该账户新增使用 */
+    frozen: boolean;
+    /** 服务端计算的过期时间，Unix 毫秒；无则为空 */
+    expireAt: number | null;
+    /** 账户失效计划修订号 */
+    expiryRevision: number;
+    /** 最近有效账务活动时间，Unix 毫秒 */
+    lastActiveAt: number;
+  };
+  /** 账户是否已经创建，未创建不代表查询失败 */
+  exists: boolean;
+  /** 当前版本号，变更按版本校验 */
+  version: number;
 }
 export interface StorePointEntryPage {
-  rows: { id: number; entryNo: string; voucherNo: string; holderType: "STORE";
-    holderNo: string; bucket: string; deltaPoints: number; afterPoints: number; at: number }[];
-  next: number; hasMore: boolean;
+  /** 本页记录 */
+  rows: {
+    /** 持久记录主键 */
+    id: number;
+    /** 不可变积分分录编号 */
+    entryNo: string;
+    /** 原记账凭证编号 */
+    voucherNo: string;
+    /** 账本持有人类型 */
+    holderType: "STORE";
+    /** 账本持有人编号，与持有人类型联合定位 */
+    holderNo: string;
+    /** 积分账本或资金池分桶 */
+    bucket: string;
+    /** 该分录积分变化，负值表示扣减 */
+    deltaPoints: number;
+    /** 该分录完成后的积分余额 */
+    afterPoints: number;
+    /** 服务端事件时间，Unix 毫秒 */
+    at: number;
+  }[];
+  /** 下一页游标 */
+  next: number;
+  /** 是否还有后续记录 */
+  hasMore: boolean;
 }
 
 /** Current store's published acceptance terms. */
-export interface StorePointTerms { version: string; hash: string; text: string }
+export interface StorePointTerms {
+  /** 当前版本号，变更按版本校验 */
+  version: string;
+  /** 发布条款的内容摘要 */
+  hash: string;
+  /** 发布条款正文 */
+  text: string;
+}
 /** Frozen, store-scoped acceptance. Route fields are read-only server snapshots. */
 export interface StorePointAgreement {
-  agreementNo: string; typeCode: string; merchantNo: string; storeNo: string;
-  signedBy: string; termsVersion: string; termsHash: string; termsText: string;
-  settleMode: "PER_ORDER" | "PERIODIC"; path: "DIRECT" | "AGGREGATED";
-  channel: string; accountVersion: string; state: string;
+  /** 门店接受协议编号 */
+  agreementNo: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 门店归属主体编号，不作为积分隔离维度 */
+  merchantNo: string;
+  /** 积分业务隔离的门店编号 */
+  storeNo: string;
+  /** 签署该门店协议的主体属主 */
+  signedBy: string;
+  /** 接受的条款版本 */
+  termsVersion: string;
+  /** 接受条款的内容摘要 */
+  termsHash: string;
+  /** 接受时冻结的条款正文 */
+  termsText: string;
+  /** 门店按单或按期结算方式 */
+  settleMode: StorePointAgreementSettleMode;
+  /** 冻结的直连或归集资金路径 */
+  path: FundsMode;
+  /** 冻结的支付通道编码 */
+  channel: string;
+  /** 冻结的收款账户版本 */
+  accountVersion: string;
+  /** 服务端处理状态 */
+  state: string;
 }
 export interface StorePointSignRequest {
-  typeCode: string; termsVersion: string; termsHash: string;
-  settleMode: "PER_ORDER" | "PERIODIC"; channel: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 接受的条款版本 */
+  termsVersion: string;
+  /** 接受条款的内容摘要 */
+  termsHash: string;
+  /** 门店按单或按期结算方式 */
+  settleMode: StorePointAgreementSettleMode;
+  /** 冻结的支付通道编码 */
+  channel: string;
 }
 
 // ---------------------------------------------------------------- 商家

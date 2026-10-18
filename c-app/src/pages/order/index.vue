@@ -925,12 +925,6 @@ onPullDownRefresh(async () => {
   display: block;
   margin-top: 16rpx;
 }
-/* 只留版面。**颜色交给库件**（.txt-primary / .is-warning / .txt-quiet，
-   由 statusTone 给）—— 页内 scoped 选择器带 [data-v-x]，权重比全局库件高，
-   这里留一条 color 就会把库件那条压掉，而闸门看不出来。 */
-.status {
-  display: block;
-}
 /* 状态头（原型 c-order-detail）：**满宽**大字 + 按状态档的底色，像京东/淘宝那张醒目的头。
    卡自己 padding 归零，头与身各自留白，底色才能铺满整张卡宽。
    只给背景与字号，字色仍交给 statusTone 库件（见上面那条注释的理由）。 */
@@ -989,34 +983,6 @@ onPullDownRefresh(async () => {
 .obar__price {
   line-height: 1.2;
 }
-.timeline {
-  margin-top: 28rpx;
-}
-.node {
-  display: flex;
-  gap: 20rpx;
-  padding-bottom: 24rpx;
-}
-.node__dot {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 9999px;
-  background: var(--sh-line);
-  margin-top: 8rpx;
-  flex-shrink: 0;
-}
-.node__dot.is-last {
-  background: var(--sh-primary);
-}
-
-.node__label {
-  display: block;
-  color: var(--sh-ink);
-}
-.node__at {
-  display: block;
-  margin-top: 4rpx;
-}
 .row__right {
   text-align: end;
   flex-shrink: 0;
@@ -1049,30 +1015,5 @@ onPullDownRefresh(async () => {
 .fact__v {
   color: var(--sh-ink);
   text-align: end;
-}
-.spacer {
-  height: 60rpx;
-}
-
-/* 进度区域：状态 → 履约落点 → 轨迹 → 订单进度，分段之间一条细线 */
-.prog__next {
-  display: block;
-  margin-top: 8rpx;
-}
-.prog__sec {
-  margin-top: 20rpx;
-  padding-top: 20rpx;
-  border-top: 1rpx solid var(--sh-line);
-}
-.prog__row {
-  display: block;
-  margin-top: 8rpx;
-}
-.prog__row:first-child {
-  margin-top: 0;
-}
-.prog__cap {
-  display: block;
-  margin-bottom: 12rpx;
 }
 </style>

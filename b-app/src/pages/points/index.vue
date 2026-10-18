@@ -44,6 +44,7 @@ async function selectType(typeCode: string) {
 }
 
 async function load() {
+  await merchant.ensureStores();
   if (!canView.value || !merchant.storeNo) return;
   loading.value = true;
   try {

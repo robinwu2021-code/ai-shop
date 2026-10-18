@@ -490,4 +490,11 @@ export interface MarkArrivedReq {
   orderNos: string[];
 }
 
-export interface PointsEntriesQuery { typeCode: string; after?: number; limit?: number }
+export interface PointsEntriesQuery {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 上一页返回的游标，首次为零 */
+  after?: number;
+  /** 本次请求记录上限 */
+  limit?: number;
+}

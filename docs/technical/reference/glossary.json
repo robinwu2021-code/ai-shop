@@ -24365,6 +24365,12 @@
           "ar": null
         },
         {
+          "key": "orderStatus.POINTS_PROCESSING",
+          "zh-CN": "积分处理中",
+          "en": "Points processing",
+          "ar": null
+        },
+        {
           "key": "orderStatus.REFUNDED",
           "zh-CN": "已退款",
           "en": "Refunded",
@@ -36284,6 +36290,27 @@
         "zh": "门店经营模式。"
       },
       {
+        "name": "BuyerPointsAccountStatus",
+        "client": "c-app",
+        "values": [
+          "DRAFT",
+          "ACTIVE",
+          "DRAINING",
+          "RETIRED"
+        ],
+        "zh": "BuyerPointsAccount 的 status 取值域，按服务端契约校验。"
+      },
+      {
+        "name": "BuyerPointsEntryBucket",
+        "client": "c-app",
+        "values": [
+          "AVAILABLE",
+          "PENDING",
+          "HELD"
+        ],
+        "zh": "BuyerPointsEntry 的 bucket 取值域，按服务端契约校验。"
+      },
+      {
         "name": "CATEGORY_TYPE",
         "client": "shared",
         "values": [
@@ -37297,6 +37324,34 @@
         "zh": "进件（收款开户）状态：占位 / 审核中 / 已开通 / 被拒 / 冻结。"
       },
       {
+        "name": "OrderPointsIntegrationPolicyMode",
+        "client": "ops-web",
+        "values": [
+          "DETACHED",
+          "ACTIVE",
+          "DRAINING"
+        ],
+        "zh": "OrderPointsIntegrationPolicy 的 mode 取值域，按服务端契约校验。"
+      },
+      {
+        "name": "OrderPointsIntegrationQScene",
+        "client": "ops-web",
+        "values": [
+          "ONLINE",
+          "OFFLINE"
+        ],
+        "zh": "OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。"
+      },
+      {
+        "name": "OrderPointsQuoteState",
+        "client": "c-app",
+        "values": [
+          "AVAILABLE",
+          "UNAVAILABLE"
+        ],
+        "zh": "OrderPointsQuote 的 state 取值域，按服务端契约校验。"
+      },
+      {
         "name": "OutOfRangeAction",
         "client": "ops-web",
         "values": [
@@ -37587,6 +37642,25 @@
         "zh": ""
       },
       {
+        "name": "PointsExecutionStatus",
+        "client": "ops-web",
+        "values": [
+          "SUCCEEDED",
+          "FAILED",
+          "UNKNOWN"
+        ],
+        "zh": "PointsExecution 的 status 取值域，按服务端契约校验。"
+      },
+      {
+        "name": "PointsFallbackMode",
+        "client": "ops-web",
+        "values": [
+          "FIXED",
+          "RATIO"
+        ],
+        "zh": "PointsFallback 的 mode 取值域，按服务端契约校验。"
+      },
+      {
         "name": "PointsFlow",
         "client": "ops-web",
         "values": [
@@ -37595,6 +37669,29 @@
           "BOTH"
         ],
         "zh": ""
+      },
+      {
+        "name": "PointsFlowViewBucket",
+        "client": "ops-web",
+        "values": [
+          "U",
+          "C",
+          "D",
+          "B",
+          "RESERVED_B",
+          "LOCKED_U",
+          "LOCKED_B"
+        ],
+        "zh": "PointsFlowView 的 bucket 取值域，按服务端契约校验。"
+      },
+      {
+        "name": "PointsFundsTargetPath",
+        "client": "ops-web",
+        "values": [
+          "DIRECT",
+          "AGGREGATED"
+        ],
+        "zh": "PointsFundsTarget 的 path 取值域，按服务端契约校验。"
       },
       {
         "name": "PointsHolder",
@@ -37617,6 +37714,31 @@
           "ar"
         ],
         "zh": ""
+      },
+      {
+        "name": "PointsOrderStatePhase",
+        "client": "c-app",
+        "values": [
+          "NONE",
+          "RAW",
+          "ADMITTED",
+          "UNKNOWN",
+          "READY",
+          "RECONFIRM",
+          "CANCEL_REQUESTED",
+          "CANCELLED"
+        ],
+        "zh": "PointsOrderState 的 phase 取值域，按服务端契约校验。"
+      },
+      {
+        "name": "PointsPlanAction",
+        "client": "ops-web",
+        "values": [
+          "TOPUP_U",
+          "TOPUP_B",
+          "TRANSFER_U_TO_B"
+        ],
+        "zh": "PointsPlan 的 action 取值域，按服务端契约校验。"
       },
       {
         "name": "PointsPoolAction",
@@ -37668,6 +37790,48 @@
           "USER"
         ],
         "zh": ""
+      },
+      {
+        "name": "PointsStatementChangeAction",
+        "client": "ops-web",
+        "values": [
+          "CONFIRM",
+          "DISPUTE",
+          "REDRAFT",
+          "PREPARE_PAYOUT"
+        ],
+        "zh": "PointsStatementChange 的 action 取值域，按服务端契约校验。"
+      },
+      {
+        "name": "PointsStatsQScope",
+        "client": "ops-web",
+        "values": [
+          "TOTAL",
+          "STORE",
+          "USER"
+        ],
+        "zh": "PointsStatsQ 的 scope 取值域，按服务端契约校验。"
+      },
+      {
+        "name": "PointsTypeChangeAction",
+        "client": "ops-web",
+        "values": [
+          "ACTIVATE",
+          "DRAIN",
+          "RETIRE"
+        ],
+        "zh": "PointsTypeChange 的 action 取值域，按服务端契约校验。"
+      },
+      {
+        "name": "PointsTypeConfigStatus",
+        "client": "ops-web",
+        "values": [
+          "DRAFT",
+          "ACTIVE",
+          "DRAINING",
+          "RETIRED"
+        ],
+        "zh": "PointsTypeConfig 的 status 取值域，按服务端契约校验。"
       },
       {
         "name": "PostAuthorType",
@@ -38390,6 +38554,26 @@
           "SUSPENDED"
         ],
         "zh": "门店经营状态。"
+      },
+      {
+        "name": "StorePointAgreementSettleMode",
+        "client": "shared",
+        "values": [
+          "PER_ORDER",
+          "PERIODIC"
+        ],
+        "zh": "StorePointAgreement 的 settleMode 取值域，按服务端契约校验。"
+      },
+      {
+        "name": "StorePointTypeStatus",
+        "client": "shared",
+        "values": [
+          "DRAFT",
+          "ACTIVE",
+          "DRAINING",
+          "RETIRED"
+        ],
+        "zh": "StorePointType 的 status 取值域，按服务端契约校验。"
       },
       {
         "name": "StoreStatus",

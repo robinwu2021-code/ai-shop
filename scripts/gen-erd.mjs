@@ -67,6 +67,12 @@ const DOMAINS = [
  * 与 packages/shared/tests/schema-lineage.test.ts 的同名表保持一致（有断言校验）。
  */
 export const KEY_OWNERS = {
+  payout_no: "stl_payout",
+  voucher_no: "pts_voucher",
+  evidence_no: "pts_fund_evidence",
+  receivable_no: "pts_receivable",
+  statement_no: "pts_store_statement",
+  cash_payment_no: "stl_payment",
   /*
    * ── 2026-08-29 补齐的十三个 ──
    * 与 packages/shared/tests/schema-lineage.test.ts 的 KEY_OWNERS **必须逐条相等**
@@ -201,6 +207,13 @@ const TOPICS = [
  * 而守卫只查集合不查文档，漏了两天没人发现。
  */
 const NAME_COLLISIONS_WHY = {
+  parent_no: "不同层级树的父节点，必须结合所属树。",
+  provider_no: "通道回执需结合通道、资金方向与原请求。",
+  scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
+  revision_no: "商品版本与积分账单版本，各自独立。",
+  holder_no: "积分持有人多态编号，必须结合 holder_type。",
+  position_no: "不同种类积分持仓的多态编号，必须结合持仓类型。",
+  ticket_no: "积分资金指令与客服工单的独立编号，不可直接关联。",
   request_no: "`mkt_request` 是求团需求单号；`stl_split_log` 是分账幂等号",
   express_no: "`ord_sub_order` 是发货单号；`ord_after_sale` 是退货单号，**方向相反**",
   operator_no: "各表各自记录操作人，不是外键",

@@ -98,7 +98,7 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
     {code && !terms.isPending && !terms.isError && <form key={`${code}:${terms.data?.version ?? "none"}`} className={card} onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); send({ kind: "TERMS", value: { requestId: "", typeCode: code, version: String(d.get("version")), text: String(d.get("text")), reason: String(d.get("reason")) } }); }}>
       <h3 className="txt-heading">{t("受理协议文本", "Acceptance terms")}</h3><p dir="auto">{t("发布文本不代表门店已签署。签署及解除由商家主账号办理。", "Publishing terms does not sign for a store. Signing and termination require the merchant owner.")}</p>
       <label className="block">{t("版本", "Version")}<Input dir="auto" name="version" required defaultValue={terms.data?.version ?? ""} disabled={!canEdit} /></label>
-      <label className="block">{t("正文", "Text")}<textarea dir="auto" name="text" className="min-h-40 w-full rounded-field border border-border p-3" required defaultValue={terms.data?.text ?? ""} disabled={!canEdit} /></label>
+      <label className="block">{t("正文", "Text")}<textarea dir="auto" name="text" className="focus-ring min-h-40 w-full rounded-field border border-border p-3" required defaultValue={terms.data?.text ?? ""} disabled={!canEdit} /></label>
       <p dir="auto" className="break-all txt-caption">{terms.data?.hash}</p><label className="block">{t("原因", "Reason")}<Input dir="auto" name="reason" required disabled={!canEdit} /></label>
       {canEdit && <Button disabled={save.isPending} type="submit">{t("发布版本", "Publish version")}</Button>}
     </form>}
@@ -140,8 +140,8 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
         <p dir="auto">{integration.data.mode} · v{integration.data.version} · {integration.data.actor ?? "—"} · {integration.data.reason ?? "—"}</p>
         <div className="flex flex-wrap gap-3">
           <label>{t("模式", "Mode")}<Select name="mode" defaultValue={integration.data.mode} disabled={!canEdit}><option>DETACHED</option><option>ACTIVE</option><option>DRAINING</option></Select></label>
-          <label><input type="checkbox" name="earnEnabled" defaultChecked={integration.data.earnEnabled} disabled={!canEdit} /> {t("返分", "Earning")}</label>
-          <label><input type="checkbox" name="redeemEnabled" defaultChecked={integration.data.redeemEnabled} disabled={!canEdit} /> {t("抵扣", "Redemption")}</label>
+          <label><input className="focus-ring" type="checkbox" name="earnEnabled" defaultChecked={integration.data.earnEnabled} disabled={!canEdit} /> {t("返分", "Earning")}</label>
+          <label><input className="focus-ring" type="checkbox" name="redeemEnabled" defaultChecked={integration.data.redeemEnabled} disabled={!canEdit} /> {t("抵扣", "Redemption")}</label>
           <label>{t("原因", "Reason")}<Input dir="auto" name="reason" required disabled={!canEdit} /></label>
         </div>
         {canEdit && <Button type="submit" disabled={integrationSave.isPending}>{t("提交版本化变更", "Save versioned change")}</Button>}

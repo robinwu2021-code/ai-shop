@@ -3688,36 +3688,61 @@ components:
         - "silent"
         - "source"
       additionalProperties: false
+    StorePointTypeStatus: 
+      type: "string"
+      enum: 
+        - "DRAFT"
+        - "ACTIVE"
+        - "DRAINING"
+        - "RETIRED"
+      description: "StorePointType 的 status 取值域，按服务端契约校验。"
+    StorePointAgreementSettleMode: 
+      type: "string"
+      enum: 
+        - "PER_ORDER"
+        - "PERIODIC"
+      description: "StorePointAgreement 的 settleMode 取值域，按服务端契约校验。"
     StorePointType: 
       type: "object"
       properties: 
+        deductRatioBp: 
+          type: "number"
+          description: "最大抵扣比例，万分比"
+        idleDays: 
+          type: "number"
+          description: "无活动失效天数"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         market: 
           type: "string"
+          description: "市场代码"
         currency: 
           type: "string"
+          description: "ISO 货币代码"
         scale: 
           type: "number"
+          description: "货币最小单位精度"
         rate: 
           type: "object"
           properties: 
             pointsUnit: 
               type: "number"
+              description: "换算比例中的积分数量"
             minorUnit: 
               type: "number"
+              description: "换算比例中的最小货币单位数量"
           required: 
             - "pointsUnit"
             - "minorUnit"
           additionalProperties: false
+          description: "积分与最小货币单位的换算比例"
         status: 
-          type: "string"
-          enum: 
-            - "DRAFT"
-            - "ACTIVE"
-            - "DRAINING"
-            - "RETIRED"
+          "$ref": "#/components/schemas/StorePointTypeStatus"
+          description: "服务端业务状态"
       required: 
+        - "deductRatioBp"
+        - "idleDays"
         - "typeCode"
         - "market"
         - "currency"
@@ -3734,23 +3759,31 @@ components:
           properties: 
             typeCode: 
               type: "string"
+              description: "积分类型唯一编码"
             holderType: 
               type: "string"
               const: "STORE"
+              description: "账本持有人类型"
             holderNo: 
               type: "string"
+              description: "账本持有人编号，与持有人类型联合定位"
             buckets: 
               "$ref": "#/components/schemas/Record_string_number"
+              description: "按账本分桶保存的积分余额"
             frozen: 
               type: "boolean"
+              description: "是否冻结该账户新增使用"
             expireAt: 
               type: 
                 - "number"
                 - "null"
+              description: "服务端计算的过期时间，Unix 毫秒；无则为空"
             expiryRevision: 
               type: "number"
+              description: "账户失效计划修订号"
             lastActiveAt: 
               type: "number"
+              description: "最近有效账务活动时间，Unix 毫秒"
           required: 
             - "typeCode"
             - "holderType"
@@ -3761,10 +3794,13 @@ components:
             - "expiryRevision"
             - "lastActiveAt"
           additionalProperties: false
+          description: "服务端冻结的账务或准备快照"
         exists: 
           type: "boolean"
+          description: "账户是否已经创建，未创建不代表查询失败"
         version: 
           type: "number"
+          description: "当前版本号，变更按版本校验"
       required: 
         - "snapshot"
         - "exists"
@@ -3780,23 +3816,32 @@ components:
             properties: 
               id: 
                 type: "number"
+                description: "持久记录主键"
               entryNo: 
                 type: "string"
+                description: "不可变积分分录编号"
               voucherNo: 
                 type: "string"
+                description: "原记账凭证编号"
               holderType: 
                 type: "string"
                 const: "STORE"
+                description: "账本持有人类型"
               holderNo: 
                 type: "string"
+                description: "账本持有人编号，与持有人类型联合定位"
               bucket: 
                 type: "string"
+                description: "积分账本或资金池分桶"
               deltaPoints: 
                 type: "number"
+                description: "该分录积分变化，负值表示扣减"
               afterPoints: 
                 type: "number"
+                description: "该分录完成后的积分余额"
               at: 
                 type: "number"
+                description: "服务端事件时间，Unix 毫秒"
             required: 
               - "id"
               - "entryNo"
@@ -3808,10 +3853,13 @@ components:
               - "afterPoints"
               - "at"
             additionalProperties: false
+          description: "本页记录"
         next: 
           type: "number"
+          description: "下一页游标"
         hasMore: 
           type: "boolean"
+          description: "是否还有后续记录"
       required: 
         - "rows"
         - "next"
@@ -3822,10 +3870,13 @@ components:
       properties: 
         version: 
           type: "string"
+          description: "当前版本号，变更按版本校验"
         hash: 
           type: "string"
+          description: "发布条款的内容摘要"
         text: 
           type: "string"
+          description: "发布条款正文"
       required: 
         - "version"
         - "hash"
@@ -3837,36 +3888,43 @@ components:
       properties: 
         agreementNo: 
           type: "string"
+          description: "门店接受协议编号"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         merchantNo: 
           type: "string"
+          description: "门店归属主体编号，不作为积分隔离维度"
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         signedBy: 
           type: "string"
+          description: "签署该门店协议的主体属主"
         termsVersion: 
           type: "string"
+          description: "接受的条款版本"
         termsHash: 
           type: "string"
+          description: "接受条款的内容摘要"
         termsText: 
           type: "string"
+          description: "接受时冻结的条款正文"
         settleMode: 
-          type: "string"
-          enum: 
-            - "PER_ORDER"
-            - "PERIODIC"
+          "$ref": "#/components/schemas/StorePointAgreementSettleMode"
+          description: "门店按单或按期结算方式"
         path: 
-          type: "string"
-          enum: 
-            - "DIRECT"
-            - "AGGREGATED"
+          "$ref": "#/components/schemas/FundsMode"
+          description: "冻结的直连或归集资金路径"
         channel: 
           type: "string"
+          description: "冻结的支付通道编码"
         accountVersion: 
           type: "string"
+          description: "冻结的收款账户版本"
         state: 
           type: "string"
+          description: "服务端处理状态"
       required: 
         - "agreementNo"
         - "typeCode"
@@ -3883,22 +3941,30 @@ components:
         - "state"
       additionalProperties: false
       description: "Frozen, store-scoped acceptance. Route fields are read-only server snapshots."
+    FundsMode: 
+      type: "string"
+      enum: 
+        - "AGGREGATED"
+        - "DIRECT"
+      description: "资金路径：**钱先进谁的账户**。与 `mch_entity.funds_mode` 同值。\n\n⚠️ **与「经营模式」（谁是销售主体）正交，不要合并** —— 合成一个枚举后，「直连 + 自营」（钱进商家户却说平台是卖方） 这种非法组合在类型上就是可表达的（同 ADR-013 教训）。\n\n结算侧「要不要给积分补差」判的是**这一个**： 钱在商家二级户才需要补进去，钱在平台户是平台自己少收。"
     StorePointSignRequest: 
       type: "object"
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         termsVersion: 
           type: "string"
+          description: "接受的条款版本"
         termsHash: 
           type: "string"
+          description: "接受条款的内容摘要"
         settleMode: 
-          type: "string"
-          enum: 
-            - "PER_ORDER"
-            - "PERIODIC"
+          "$ref": "#/components/schemas/StorePointAgreementSettleMode"
+          description: "门店按单或按期结算方式"
         channel: 
           type: "string"
+          description: "冻结的支付通道编码"
       required: 
         - "typeCode"
         - "termsVersion"
@@ -3906,12 +3972,6 @@ components:
         - "settleMode"
         - "channel"
       additionalProperties: false
-    FundsMode: 
-      type: "string"
-      enum: 
-        - "AGGREGATED"
-        - "DIRECT"
-      description: "资金路径：**钱先进谁的账户**。与 `mch_entity.funds_mode` 同值。\n\n⚠️ **与「经营模式」（谁是销售主体）正交，不要合并** —— 合成一个枚举后，「直连 + 自营」（钱进商家户却说平台是卖方） 这种非法组合在类型上就是可表达的（同 ADR-013 教训）。\n\n结算侧「要不要给积分补差」判的是**这一个**： 钱在商家二级户才需要补进去，钱在平台户是平台自己少收。"
     MerchantSubject: 
       type: "string"
       enum: 
@@ -10310,11 +10370,13 @@ components:
       properties: 
         subOrderNo: 
           type: "string"
+          description: "门店子订单编号"
         status: 
           "$ref": "#/components/schemas/OrderStatus"
           description: "契约抽象状态，与订单详情同口径"
         fulfillment: 
           "$ref": "#/components/schemas/FulfillmentType"
+          description: "履约方式编码"
         storeName: 
           type: 
             - "string"
@@ -10324,6 +10386,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "收货人展示名称"
         receiverPhoneMasked: 
           type: 
             - "string"
@@ -10333,18 +10396,22 @@ components:
           type: 
             - "string"
             - "null"
+          description: "收货地址"
         expressCompany: 
           type: 
             - "string"
             - "null"
+          description: "承运商名称"
         expressNo: 
           type: 
             - "string"
             - "null"
+          description: "承运商运单号"
         items: 
           type: "array"
           items: 
             "$ref": "#/components/schemas/TrackItem"
+          description: "本次履约的商品明细"
         trace: 
           anyOf: 
             - "$ref": "#/components/schemas/ShipmentTrace"
@@ -10362,12 +10429,16 @@ components:
       properties: 
         title: 
           type: "string"
+          description: "商品或规格展示标题"
         cover: 
           type: "string"
+          description: "商品封面地址"
         spec: 
           type: "string"
+          description: "已选规格描述"
         qty: 
           type: "number"
+          description: "履约商品数量"
       required: 
         - "qty"
       additionalProperties: false
@@ -10497,11 +10568,13 @@ components:
           description: "服务端积分类型的兑换比例；未配置时不展示折算价值。"
         rateMinor: 
           type: "number"
+          description: "换算比例中的最小货币单位数量"
         maxDeductRatio: 
           type: "number"
           description: "当前类型的规则由服务端提供，未给时不展示旧规则常量。"
         inactiveDays: 
           type: "number"
+          description: "无活动账户失效天数"
         balance: 
           type: "number"
           description: "当前可用余额。**只含能花的分**，待生效的在 pendingBalance"
@@ -11319,31 +11392,60 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         after: 
           type: "number"
+          description: "上一页返回的游标，首次为零"
         limit: 
           type: "number"
+          description: "本次请求记录上限"
       required: 
         - "typeCode"
       additionalProperties: false
+    PointsOrderStatePhase: 
+      type: "string"
+      enum: 
+        - "NONE"
+        - "RAW"
+        - "ADMITTED"
+        - "UNKNOWN"
+        - "READY"
+        - "RECONFIRM"
+        - "CANCEL_REQUESTED"
+        - "CANCELLED"
+      description: "PointsOrderState 的 phase 取值域，按服务端契约校验。"
+    OrderPointsQuoteState: 
+      type: "string"
+      enum: 
+        - "AVAILABLE"
+        - "UNAVAILABLE"
+      description: "OrderPointsQuote 的 state 取值域，按服务端契约校验。"
+    BuyerPointsAccountStatus: 
+      type: "string"
+      enum: 
+        - "DRAFT"
+        - "ACTIVE"
+        - "DRAINING"
+        - "RETIRED"
+      description: "BuyerPointsAccount 的 status 取值域，按服务端契约校验。"
+    BuyerPointsEntryBucket: 
+      type: "string"
+      enum: 
+        - "AVAILABLE"
+        - "PENDING"
+        - "HELD"
+      description: "BuyerPointsEntry 的 bucket 取值域，按服务端契约校验。"
     PointsOrderState: 
       type: "object"
       properties: 
         phase: 
-          type: "string"
-          enum: 
-            - "NONE"
-            - "RAW"
-            - "ADMITTED"
-            - "UNKNOWN"
-            - "READY"
-            - "RECONFIRM"
-            - "CANCEL_REQUESTED"
-            - "CANCELLED"
+          "$ref": "#/components/schemas/PointsOrderStatePhase"
+          description: "源下单处理阶段"
         reason: 
           type: 
             - "string"
             - "null"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "phase"
         - "reason"
@@ -11352,24 +11454,28 @@ components:
       type: "object"
       properties: 
         state: 
-          type: "string"
-          enum: 
-            - "AVAILABLE"
-            - "UNAVAILABLE"
+          "$ref": "#/components/schemas/OrderPointsQuoteState"
+          description: "服务端处理状态"
         reason: 
           type: 
             - "string"
             - "null"
+          description: "服务端不可用原因或操作审计原因"
         pointsUsed: 
           type: "number"
+          description: "按服务端报价使用的积分数量"
         deductMinor: 
           type: "number"
+          description: "积分抵扣金额，最小货币单位"
         ratePoints: 
           type: "number"
+          description: "换算比例的积分数量"
         rateMinor: 
           type: "number"
+          description: "换算比例的最小货币单位数量"
         basePayMinor: 
           type: "number"
+          description: "积分抵扣前的应付金额，最小货币单位"
         stores: 
           type: "array"
           items: 
@@ -11377,14 +11483,19 @@ components:
             properties: 
               storeNo: 
                 type: "string"
+                description: "积分业务隔离的门店编号"
               merchantNo: 
                 type: "string"
+                description: "门店归属主体编号，不作为积分隔离维度"
               policyVersion: 
                 type: "number"
+                description: "报价所绑定的门店策略版本"
               pointsUsed: 
                 type: "number"
+                description: "按服务端报价使用的积分数量"
               deductMinor: 
                 type: "number"
+                description: "积分抵扣金额，最小货币单位"
             required: 
               - "storeNo"
               - "merchantNo"
@@ -11392,6 +11503,7 @@ components:
               - "pointsUsed"
               - "deductMinor"
             additionalProperties: false
+          description: "按门店拆分的服务端报价"
       required: 
         - "state"
         - "reason"
@@ -11407,37 +11519,45 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         market: 
           type: "string"
+          description: "市场代码"
         currency: 
           type: "string"
+          description: "ISO 货币代码"
         status: 
-          type: "string"
-          enum: 
-            - "DRAFT"
-            - "ACTIVE"
-            - "DRAINING"
-            - "RETIRED"
+          "$ref": "#/components/schemas/BuyerPointsAccountStatus"
+          description: "服务端业务状态"
         balance: 
           type: "number"
+          description: "可用积分余额"
         pendingBalance: 
           type: "number"
+          description: "待激活积分余额"
         heldBalance: 
           type: "number"
+          description: "当前占用积分余额"
         ratePoints: 
           type: "number"
+          description: "换算比例的积分数量"
         rateMinor: 
           type: "number"
+          description: "换算比例的最小货币单位数量"
         deductRatioBp: 
           type: "number"
+          description: "最大抵扣比例，万分比"
         idleDays: 
           type: "number"
+          description: "账户无活动失效天数"
         frozen: 
           type: "boolean"
+          description: "是否冻结该账户新增使用"
         expireAt: 
           type: 
             - "number"
             - "null"
+          description: "服务端计算的过期时间，Unix 毫秒；无则为空"
       required: 
         - "typeCode"
         - "market"
@@ -11458,18 +11578,19 @@ components:
       properties: 
         entryNo: 
           type: "string"
+          description: "不可变积分分录编号"
         bucket: 
-          type: "string"
-          enum: 
-            - "AVAILABLE"
-            - "PENDING"
-            - "HELD"
+          "$ref": "#/components/schemas/BuyerPointsEntryBucket"
+          description: "积分账本或资金池分桶"
         points: 
           type: "number"
+          description: "积分数量"
         balanceAfter: 
           type: "number"
+          description: "该分录完成后的账本余额"
         at: 
           type: "number"
+          description: "服务端事件时间，Unix 毫秒"
       required: 
         - "entryNo"
         - "bucket"
@@ -11484,10 +11605,13 @@ components:
           type: "array"
           items: 
             "$ref": "#/components/schemas/BuyerPointsEntry"
+          description: "本页记录"
         next: 
           type: "number"
+          description: "下一页游标"
         hasMore: 
           type: "boolean"
+          description: "是否还有后续记录"
       required: 
         - "rows"
         - "next"
@@ -15312,16 +15436,19 @@ paths:
           required: true
           schema: 
             type: "string"
+            description: "积分类型唯一编码"
         - name: "after"
           in: "query"
           required: false
           schema: 
             type: "number"
+            description: "上一页返回的游标，首次为零"
         - name: "limit"
           in: "query"
           required: false
           schema: 
             type: "number"
+            description: "本次请求记录上限"
       responses: 
         "200": 
           description: "OK"

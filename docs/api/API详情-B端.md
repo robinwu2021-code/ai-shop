@@ -5355,22 +5355,22 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `snapshot` | `object`（见下） | 是 | — |
-| `exists` | `boolean` | 是 | — |
-| `version` | `number` | 是 | — |
+| `snapshot` | `object`（见下） | 是 | 服务端冻结的账务或准备快照 |
+| `exists` | `boolean` | 是 | 账户是否已经创建，未创建不代表查询失败 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
 
 `snapshot` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `typeCode` | `string` | 是 | — |
-| `holderType` | `string` | 是 | — |
-| `holderNo` | `string` | 是 | — |
-| `buckets` | [`Record_string_number`](#record_string_number) | 是 | — |
-| `frozen` | `boolean` | 是 | — |
-| `expireAt` | `number,null` | 是 | — |
-| `expiryRevision` | `number` | 是 | — |
-| `lastActiveAt` | `number` | 是 | — |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `holderType` | `string` | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+| `buckets` | [`Record_string_number`](#record_string_number) | 是 | 按账本分桶保存的积分余额 |
+| `frozen` | `boolean` | 是 | 是否冻结该账户新增使用 |
+| `expireAt` | `number,null` | 是 | 服务端计算的过期时间，Unix 毫秒；无则为空 |
+| `expiryRevision` | `number` | 是 | 账户失效计划修订号 |
+| `lastActiveAt` | `number` | 是 | 最近有效账务活动时间，Unix 毫秒 |
 
 
 #### GET `/biz/points/store-agreement`
@@ -5389,19 +5389,19 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `agreementNo` | `string` | 是 | — |
-| `typeCode` | `string` | 是 | — |
-| `merchantNo` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `signedBy` | `string` | 是 | — |
-| `termsVersion` | `string` | 是 | — |
-| `termsHash` | `string` | 是 | — |
-| `termsText` | `string` | 是 | — |
-| `settleMode` | `PER_ORDER` \| `PERIODIC` | 是 | — |
-| `path` | `DIRECT` \| `AGGREGATED` | 是 | — |
-| `channel` | `string` | 是 | — |
-| `accountVersion` | `string` | 是 | — |
-| `state` | `string` | 是 | — |
+| `agreementNo` | `string` | 是 | 门店接受协议编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `signedBy` | `string` | 是 | 签署该门店协议的主体属主 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `termsText` | `string` | 是 | 接受时冻结的条款正文 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `path` | [`FundsMode`](#fundsmode) | 是 | 冻结的直连或归集资金路径 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+| `accountVersion` | `string` | 是 | 冻结的收款账户版本 |
+| `state` | `string` | 是 | 服务端处理状态 |
 
 
 #### POST `/biz/points/store-agreement/sign`
@@ -5414,11 +5414,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `typeCode` | `string` | 是 | — |
-| `termsVersion` | `string` | 是 | — |
-| `termsHash` | `string` | 是 | — |
-| `settleMode` | `PER_ORDER` \| `PERIODIC` | 是 | — |
-| `channel` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
 
 **出参**（`data`）
 
@@ -5426,19 +5426,19 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `agreementNo` | `string` | 是 | — |
-| `typeCode` | `string` | 是 | — |
-| `merchantNo` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `signedBy` | `string` | 是 | — |
-| `termsVersion` | `string` | 是 | — |
-| `termsHash` | `string` | 是 | — |
-| `termsText` | `string` | 是 | — |
-| `settleMode` | `PER_ORDER` \| `PERIODIC` | 是 | — |
-| `path` | `DIRECT` \| `AGGREGATED` | 是 | — |
-| `channel` | `string` | 是 | — |
-| `accountVersion` | `string` | 是 | — |
-| `state` | `string` | 是 | — |
+| `agreementNo` | `string` | 是 | 门店接受协议编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `signedBy` | `string` | 是 | 签署该门店协议的主体属主 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `termsText` | `string` | 是 | 接受时冻结的条款正文 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `path` | [`FundsMode`](#fundsmode) | 是 | 冻结的直连或归集资金路径 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+| `accountVersion` | `string` | 是 | 冻结的收款账户版本 |
+| `state` | `string` | 是 | 服务端处理状态 |
 
 
 #### POST `/biz/points/store-agreement/terminate`
@@ -5451,7 +5451,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `typeCode` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
 
 **出参**（`data`）
 
@@ -5476,23 +5476,23 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rows` | `object`（见下）\[\] | 是 | — |
-| `next` | `number` | 是 | — |
-| `hasMore` | `boolean` | 是 | — |
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
 
 `rows[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `id` | `number` | 是 | — |
-| `entryNo` | `string` | 是 | — |
-| `voucherNo` | `string` | 是 | — |
-| `holderType` | `string` | 是 | — |
-| `holderNo` | `string` | 是 | — |
-| `bucket` | `string` | 是 | — |
-| `deltaPoints` | `number` | 是 | — |
-| `afterPoints` | `number` | 是 | — |
-| `at` | `number` | 是 | — |
+| `id` | `number` | 是 | 持久记录主键 |
+| `entryNo` | `string` | 是 | 不可变积分分录编号 |
+| `voucherNo` | `string` | 是 | 原记账凭证编号 |
+| `holderType` | `string` | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+| `bucket` | `string` | 是 | 积分账本或资金池分桶 |
+| `deltaPoints` | `number` | 是 | 该分录积分变化，负值表示扣减 |
+| `afterPoints` | `number` | 是 | 该分录完成后的积分余额 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
 
 
 #### GET `/biz/points/store-terms`
@@ -5511,9 +5511,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `version` | `string` | 是 | — |
-| `hash` | `string` | 是 | — |
-| `text` | `string` | 是 | — |
+| `version` | `string` | 是 | 当前版本号，变更按版本校验 |
+| `hash` | `string` | 是 | 发布条款的内容摘要 |
+| `text` | `string` | 是 | 发布条款正文 |
 
 
 #### GET `/biz/points/store-types`
@@ -11084,22 +11084,22 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `snapshot` | `object`（见下） | 是 | — |
-| `exists` | `boolean` | 是 | — |
-| `version` | `number` | 是 | — |
+| `snapshot` | `object`（见下） | 是 | 服务端冻结的账务或准备快照 |
+| `exists` | `boolean` | 是 | 账户是否已经创建，未创建不代表查询失败 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
 
 `snapshot` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `typeCode` | `string` | 是 | — |
-| `holderType` | `string` | 是 | — |
-| `holderNo` | `string` | 是 | — |
-| `buckets` | [`Record_string_number`](#record_string_number) | 是 | — |
-| `frozen` | `boolean` | 是 | — |
-| `expireAt` | `number,null` | 是 | — |
-| `expiryRevision` | `number` | 是 | — |
-| `lastActiveAt` | `number` | 是 | — |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `holderType` | `string` | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+| `buckets` | [`Record_string_number`](#record_string_number) | 是 | 按账本分桶保存的积分余额 |
+| `frozen` | `boolean` | 是 | 是否冻结该账户新增使用 |
+| `expireAt` | `number,null` | 是 | 服务端计算的过期时间，Unix 毫秒；无则为空 |
+| `expiryRevision` | `number` | 是 | 账户失效计划修订号 |
+| `lastActiveAt` | `number` | 是 | 最近有效账务活动时间，Unix 毫秒 |
 
 ### StorePointAgreement
 
@@ -11107,51 +11107,60 @@ Frozen, store-scoped acceptance. Route fields are read-only server snapshots.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `agreementNo` | `string` | 是 | — |
-| `typeCode` | `string` | 是 | — |
-| `merchantNo` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `signedBy` | `string` | 是 | — |
-| `termsVersion` | `string` | 是 | — |
-| `termsHash` | `string` | 是 | — |
-| `termsText` | `string` | 是 | — |
-| `settleMode` | `PER_ORDER` \| `PERIODIC` | 是 | — |
-| `path` | `DIRECT` \| `AGGREGATED` | 是 | — |
-| `channel` | `string` | 是 | — |
-| `accountVersion` | `string` | 是 | — |
-| `state` | `string` | 是 | — |
+| `agreementNo` | `string` | 是 | 门店接受协议编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `signedBy` | `string` | 是 | 签署该门店协议的主体属主 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `termsText` | `string` | 是 | 接受时冻结的条款正文 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `path` | [`FundsMode`](#fundsmode) | 是 | 冻结的直连或归集资金路径 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+| `accountVersion` | `string` | 是 | 冻结的收款账户版本 |
+| `state` | `string` | 是 | 服务端处理状态 |
+
+### StorePointAgreementSettleMode
+
+StorePointAgreement 的 settleMode 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `PER_ORDER`
+- `PERIODIC`
 
 ### StorePointEntryPage
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rows` | `object`（见下）\[\] | 是 | — |
-| `next` | `number` | 是 | — |
-| `hasMore` | `boolean` | 是 | — |
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
 
 `rows[]` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `id` | `number` | 是 | — |
-| `entryNo` | `string` | 是 | — |
-| `voucherNo` | `string` | 是 | — |
-| `holderType` | `string` | 是 | — |
-| `holderNo` | `string` | 是 | — |
-| `bucket` | `string` | 是 | — |
-| `deltaPoints` | `number` | 是 | — |
-| `afterPoints` | `number` | 是 | — |
-| `at` | `number` | 是 | — |
+| `id` | `number` | 是 | 持久记录主键 |
+| `entryNo` | `string` | 是 | 不可变积分分录编号 |
+| `voucherNo` | `string` | 是 | 原记账凭证编号 |
+| `holderType` | `string` | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+| `bucket` | `string` | 是 | 积分账本或资金池分桶 |
+| `deltaPoints` | `number` | 是 | 该分录积分变化，负值表示扣减 |
+| `afterPoints` | `number` | 是 | 该分录完成后的积分余额 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
 
 ### StorePointSignRequest
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `typeCode` | `string` | 是 | — |
-| `termsVersion` | `string` | 是 | — |
-| `termsHash` | `string` | 是 | — |
-| `settleMode` | `PER_ORDER` \| `PERIODIC` | 是 | — |
-| `channel` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
 
 ### StorePointTerms
 
@@ -11159,9 +11168,9 @@ Current store's published acceptance terms.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `version` | `string` | 是 | — |
-| `hash` | `string` | 是 | — |
-| `text` | `string` | 是 | — |
+| `version` | `string` | 是 | 当前版本号，变更按版本校验 |
+| `hash` | `string` | 是 | 发布条款的内容摘要 |
+| `text` | `string` | 是 | 发布条款正文 |
 
 ### StorePointType
 
@@ -11169,25 +11178,38 @@ Pay ledger views are scoped to the authenticated current store and one points ty
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `typeCode` | `string` | 是 | — |
-| `market` | `string` | 是 | — |
-| `currency` | `string` | 是 | — |
-| `scale` | `number` | 是 | — |
-| `rate` | `object`（见下） | 是 | — |
-| `status` | `DRAFT` \| `ACTIVE` \| `DRAINING` \| `RETIRED` | 是 | — |
+| `deductRatioBp` | `number` | 是 | 最大抵扣比例，万分比 |
+| `idleDays` | `number` | 是 | 无活动失效天数 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `market` | `string` | 是 | 市场代码 |
+| `currency` | `string` | 是 | ISO 货币代码 |
+| `scale` | `number` | 是 | 货币最小单位精度 |
+| `rate` | `object`（见下） | 是 | 积分与最小货币单位的换算比例 |
+| `status` | [`StorePointTypeStatus`](#storepointtypestatus) | 是 | 服务端业务状态 |
 
 `rate` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `pointsUnit` | `number` | 是 | — |
-| `minorUnit` | `number` | 是 | — |
+| `pointsUnit` | `number` | 是 | 换算比例中的积分数量 |
+| `minorUnit` | `number` | 是 | 换算比例中的最小货币单位数量 |
+
+### StorePointTypeStatus
+
+StorePointType 的 status 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `DRAFT`
+- `ACTIVE`
+- `DRAINING`
+- `RETIRED`
 
 ### StorePointsTypeQuery
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `typeCode` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
 
 ### StoreProfile
 

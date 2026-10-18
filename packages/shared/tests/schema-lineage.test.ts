@@ -137,6 +137,11 @@ const LINEAGE: Hop[] = [
  * 例如「发放方商家」`issuer_merchant_no` 指向 `usr_merchant.merchant_no`。
  */
 const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
+  voucher_no: { table: "pts_voucher" },
+  evidence_no: { table: "pts_fund_evidence" },
+  receivable_no: { table: "pts_receivable" },
+  statement_no: { table: "pts_store_statement", col: "position_no" },
+  cash_payment_no: { table: "stl_payment", col: "payment_no" },
   /*
    * ── 2026-08-29 补齐的十三个 ──
    * 归属判据不是靠猜：**看哪张表把它建成了唯一键**（schema-test.sql 里逐个查过），
@@ -239,6 +244,13 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  parent_no: "不同层级树的父节点，必须结合所属树。",
+  provider_no: "通道回执需结合通道、资金方向与原请求。",
+  scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
+  revision_no: "商品版本与积分账单版本，各自独立。",
+  holder_no: "积分持有人多态编号，必须结合 holder_type。",
+  position_no: "不同种类积分持仓的多态编号，必须结合持仓类型。",
+  ticket_no: "积分资金指令与客服工单的独立编号，不可直接关联。",
   waybill_no:
     "两边是**同一个快递运单号**，但它**不是外键**：运单号只在承运商内唯一，lgs_waybill 按（承运商, 运单号）登记；" +
     "ord_shipment（订单服务 2.0 发货单，V401）记的是商家录入的号。\n" +

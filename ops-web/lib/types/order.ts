@@ -51,6 +51,7 @@ export type TrafficSource = "MERCHANT_OWNED" | "PLATFORM";
  * （见《订单状态-统一整理》与 shared 的 `orderView`）。
  */
 export type OrderStatus =
+  | "POINTS_PROCESSING" // 积分受理/恢复未完成，暂不可支付
   | "WAIT_PAY"
   /**
    * 等商家当面收款（线下支付）。**库里没有这个子单状态** ——
@@ -81,6 +82,7 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
    * 改到「已付款 / 已退款 / 已取消」此前也列着 —— 后端只改状态字段、不收款不退款，钱和状态就对不上了。
    * 收款走对账处置，退款走售后裁决，取消未付款单走「代客取消」（PROXY_CANCELLABLE）。
    */
+  POINTS_PROCESSING: [], // 原受理流程推进，运营不能人工跳过资金准备
   WAIT_PAY: [],
   WAIT_OFFLINE_PAY: [],
   PAID: ["FULFILLING", "COMPLETED"],

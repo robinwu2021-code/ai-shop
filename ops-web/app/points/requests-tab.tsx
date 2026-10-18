@@ -99,7 +99,7 @@ export function PointsTreasuryTab({ canMake, canCheck }: { canMake: boolean; can
         <label>{t("金额（最小货币单位）", "Amount (minor currency units)")}<Input dir="auto" name="amount" type="number" min={1} max={Number.MAX_SAFE_INTEGER} step={1} required defaultValue={old?.amountMinor} /></label>
         <label>{t("起始日（区域当地日期）", "Anchor date (market local date)")}<Input dir="auto" name="anchor" type="date" required readOnly={!!old} defaultValue={old?.anchor} /></label>
         <label>{t("间隔天数（创建后固定）", "Interval days (immutable)")}<Input dir="auto" name="cadence" type="number" required min={1} max={365} step={1} readOnly={!!old} defaultValue={old?.everyDays ?? 1} /></label>
-        <label className="flex items-center gap-2"><input name="enabled" type="checkbox" defaultChecked={old?.enabled ?? true} />{t("启用", "Enabled")}</label>
+        <label className="flex items-center gap-2"><input className="focus-ring" name="enabled" type="checkbox" defaultChecked={old?.enabled ?? true} />{t("启用", "Enabled")}</label>
       </div>; })()}
       <div className="flex gap-2"><Button type="submit" disabled={disabled || IS_MOCK}>{t("保存计划", "Save plan")}</Button>{editingPlan && <Button type="button" onClick={() => setEditingPlan(null)}>{t("改为新建", "Create another")}</Button>}</div>
     </form>}

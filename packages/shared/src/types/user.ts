@@ -135,12 +135,15 @@ export interface PointRecord {
   balanceAfter: number;
 }
 /** 用户积分账户，单位是积分个数。 */
+/** 用户积分账户，单位是积分个数。 */
 export interface PointAccount {
   /** 服务端积分类型的兑换比例；未配置时不展示折算价值。 */
   ratePoints?: number;
+  /** 换算比例中的最小货币单位数量 */
   rateMinor?: number;
   /** 当前类型的规则由服务端提供，未给时不展示旧规则常量。 */
   maxDeductRatio?: number;
+  /** 无活动账户失效天数 */
   inactiveDays?: number;
   /** 当前可用余额。**只含能花的分**，待生效的在 pendingBalance */
   balance: number;

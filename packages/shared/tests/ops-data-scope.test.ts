@@ -408,11 +408,6 @@ const SCOPE_BYPASS_OK: Record<string, string> = {
   // 接上的四条不在这张表里了：SettleServiceImpl#opsBills / #opsPayables、
   // FulfillmentStatsPortImpl#openPickupOrders / #expressOrders。
   // 剩下这两条是**永久豁免**：
-  "RefundSplitBackServiceImpl#pending":
-    "按已取到的 subOrderNo 集合回捞结算单状态，用来把已 REVERSED 的从队列里剔掉。"
-    + "⚠️ 这条队列真正的边界在 ord_after_sale 上，而**那张表还没登记数据域**（未注册 = 放行）—— "
-    + "也就是说配了商家域的财务在这个待办里仍看得到全量。把 bill 这一步接上域并不能修好它，"
-    + "只会让行上的状态变成空。要修得先给 ord_after_sale 定锚点，那是独立一步",
   "SelfOperatedExposurePortImpl#selfOperatedExposure":
     "装饰性回填：入参 entityNos 来自已授权的主查询（无照自营风险清单，批② 已接域），"
     + "这里只是按这批主体号求敞口金额",
@@ -1099,6 +1094,7 @@ describe("运营端数据域接入", () => {
    *   · 接上会打断 C 端 —— 买家会话在这张表上没有锚点，fail-closed 变空白
    */
   const OPS_READS_UNREGISTERED_OK: Record<string, string> = {
+    stl_payment: "源检查先从原绑定验证 PointsOpsAccess.store，再按原支付号核验；不提供无范围支付列表。",
     /*
      * 2026-10-09 · V387 给运单加了归属列（entity_no / store_no 快照），G4 才第一次认出它（改名前的
      * ful_shipment 没有归属列，所以从没报过）。

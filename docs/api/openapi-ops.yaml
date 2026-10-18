@@ -1082,10 +1082,12 @@ components:
       properties: 
         entityNo: 
           type: "string"
+          description: "商家主体编号"
         merchantName: 
           type: 
             - "string"
             - "null"
+          description: "商家展示名称"
         goods: 
           type: "number"
           description: "建了几个 SPU"
@@ -1184,6 +1186,7 @@ components:
     OrderStatus: 
       type: "string"
       enum: 
+        - "POINTS_PROCESSING"
         - "WAIT_PAY"
         - "WAIT_OFFLINE_PAY"
         - "PAID"
@@ -1739,14 +1742,17 @@ components:
       properties: 
         storeNo: 
           type: "string"
+          description: "门店编号"
         storeName: 
           type: 
             - "string"
             - "null"
+          description: "门店展示名称"
         merchantNo: 
           type: 
             - "string"
             - "null"
+          description: "归属商家主体编号"
         merchantName: 
           type: 
             - "string"
@@ -1754,12 +1760,16 @@ components:
           description: "门店属于谁。**两家都在垫底时，是不是同一个老板该做的事完全不同**"
         gmv: 
           type: "number"
+          description: "成交金额，最小货币单位"
         orderCount: 
           type: "number"
+          description: "订单数量"
         avgOrderValue: 
           type: "number"
+          description: "平均订单金额，最小货币单位"
         refundedCount: 
           type: "number"
+          description: "已退款订单数量"
         refundedRate: 
           type: "number"
           description: "退款率 0–1。分母是总成交单数（在售的 + 已退的）"
@@ -1927,6 +1937,7 @@ components:
           type: 
             - "number"
             - "null"
+          description: "经度乘以一百万的整数"
       required: 
         - "communityNo"
         - "name"
@@ -2344,6 +2355,7 @@ components:
             - "withCoords"
             - "missing"
           additionalProperties: false
+          description: "门店统计摘要"
         addresses: 
           type: "object"
           properties: 
@@ -2382,6 +2394,7 @@ components:
             - "withCoords"
             - "missing"
           additionalProperties: false
+          description: "社区统计摘要"
       required: 
         - "stores"
         - "addresses"
@@ -2393,12 +2406,16 @@ components:
       properties: 
         currentRadiusM: 
           type: "number"
+          description: "当前服务半径，米"
         previewRadiusM: 
           type: "number"
+          description: "预览服务半径，米"
         currentInside: 
           type: "number"
+          description: "当前半径内对象数"
         previewInside: 
           type: "number"
+          description: "预览半径内对象数"
         addressesWithCoords: 
           type: "number"
           description: "有坐标的收货地址总数。**分母要给** —— 「多进来 0 户」在一个没几条地址有坐标的库里说明不了任何事"
@@ -2428,6 +2445,7 @@ components:
           description: "全局四桶计数 + 买家总数"
         unattributable: 
           "$ref": "#/definitions/Unattributable"
+          description: "无法归属覆盖片区的数量"
       required: 
         - "regions"
         - "supplyGaps"
@@ -3503,12 +3521,15 @@ components:
           type: "array"
           items: 
             "$ref": "#/definitions/CoverageArea"
+          description: "明确纳入的服务范围"
         excludes: 
           type: "array"
           items: 
             "$ref": "#/definitions/CoverageArea"
+          description: "明确排除的服务范围"
         reachableCount: 
           type: "number"
+          description: "当前可触达对象数量"
         reachableSample: 
           type: "array"
           items: 
@@ -3529,6 +3550,7 @@ components:
           description: "COMMUNITY / STREET / DISTRICT / CITY / PROVINCE"
         refCode: 
           type: "string"
+          description: "范围所引用的行政或业务编码"
         name: 
           type: "string"
           description: "取不到名就给号，**不留空** —— 空会被读成「没有这一条」"
@@ -5567,11 +5589,13 @@ components:
       properties: 
         categories: 
           type: "number"
+          description: "分类数量"
         categoriesUsed: 
           type: "number"
           description: "至少被一个商品用过的类目数"
         skus: 
           type: "number"
+          description: "SKU 数量"
         skusWithBarcode: 
           type: "number"
           description: "填了条码的。**扫码功能的天花板就是这个数**"
@@ -5580,20 +5604,25 @@ components:
           description: "填了商家货号的"
         specDims: 
           type: "number"
+          description: "规格维度数量"
         specDimsBound: 
           type: "number"
           description: "至少挂到一个类目上的维度数。规格库只增不减，没挂上的是清理依据"
         auditApproved: 
           type: "number"
+          description: "审核通过商品数量"
         auditRejected: 
           type: "number"
+          description: "审核驳回商品数量"
         auditPending: 
           type: "number"
+          description: "待审核商品数量"
         auditActions: 
           type: "number"
           description: "最近 N 天的审核动作数 —— **吞吐**，与上面三个累计数不是一回事"
         auditDays: 
           type: "number"
+          description: "审核统计窗口天数"
       required: 
         - "categories"
         - "categoriesUsed"
@@ -5614,29 +5643,38 @@ components:
       properties: 
         goodsNo: 
           type: "string"
+          description: "商品编号"
         title: 
           type: 
             - "string"
             - "null"
+          description: "商品或规格展示标题"
         entityNo: 
           type: "string"
+          description: "商家主体编号"
         auditStatus: 
           type: 
             - "string"
             - "null"
+          description: "商品审核状态"
         onSale: 
           type: "boolean"
+          description: "是否上架销售"
         skuCount: 
           type: "number"
+          description: "SKU 数量"
         bookedSkus: 
           type: "number"
           description: "其中在进销存里建了账的。**少于 skuCount 就是投影没搬全** —— 商家端的表现是「有些规格盘得着、有些盘不着」，极难自查"
         onHand: 
           type: "number"
+          description: "账面库存数量"
         available: 
           type: "number"
+          description: "当前可售库存数量"
         soldCount: 
           type: "number"
+          description: "累计销售数量"
         stuckAt: 
           anyOf: 
             - "$ref": "#/definitions/MerchantChainStuck"
@@ -5661,6 +5699,7 @@ components:
       properties: 
         id: 
           type: "number"
+          description: "持久记录主键"
         word: 
           type: "string"
           description: "词。**存的是小写**，匹配时两边都转小写"
@@ -5671,6 +5710,7 @@ components:
           description: "为什么禁。**会原样出现在给商家的报错里**，所以要写成他看得懂的一句话"
         enabled: 
           type: "boolean"
+          description: "是否启用该配置"
       required: 
         - "id"
         - "word"
@@ -5987,6 +6027,7 @@ components:
       properties: 
         channel: 
           "$ref": "#/definitions/InvLinkChannel"
+          description: "通道编码"
         pending: 
           type: "number"
           description: "积压总数"
@@ -6008,6 +6049,7 @@ components:
           description: "最近一次成功投递。null = 从没成功过"
         maxRetry: 
           type: "number"
+          description: "允许的最大重试次数"
         lastError: 
           type: 
             - "string"
@@ -6015,6 +6057,7 @@ components:
           description: "最近一条错误摘要，只在 retrying > 0 时有意义"
         verdict: 
           "$ref": "#/definitions/InvLinkVerdict"
+          description: "服务端健康检查结论"
       required: 
         - "channel"
         - "pending"
@@ -6046,16 +6089,19 @@ components:
       properties: 
         scannedSkus: 
           type: "number"
+          description: "本次扫描 SKU 数量"
         moved: 
           type: "number"
           description: "真搬了几条。**试算时恒为 0** —— 不传 apply 就一条都不该动"
         skipped: 
           type: "number"
+          description: "本次跳过的记录数量"
         pending: 
           type: "number"
           description: "仍待搬的"
         clean: 
           type: "boolean"
+          description: "未发现投影差异的数量"
       required: 
         - "scannedSkus"
         - "moved"
@@ -6069,15 +6115,19 @@ components:
       properties: 
         entityNo: 
           type: "string"
+          description: "商家主体编号"
         ownerId: 
           type: "string"
+          description: "主体属主用户编号"
         itemCount: 
           type: "number"
           description: "建了几条账（物料）"
         shortageCount: 
           type: "number"
+          description: "库存不足记录数量"
         staleCount: 
           type: "number"
+          description: "投影过期记录数量"
         ledgerCount: 
           type: "number"
           description: "累计流水笔数。**0 = 建了账但一次都没记过**"
@@ -6085,6 +6135,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "最近库存账务记录时间，Unix 毫秒"
         openCountNo: 
           type: 
             - "string"
@@ -6111,6 +6162,86 @@ components:
         - "reconCleanStreakRequired"
       additionalProperties: false
       description: "进销存平台规则（M7）。今天只有一条 —— 见后端那个控制器的类注释： 其余几条查下来多数不该按原样做（有的本来就在拦，有的会拆掉模块边界）。"
+    PointsTypeConfigStatus: 
+      type: "string"
+      enum: 
+        - "DRAFT"
+        - "ACTIVE"
+        - "DRAINING"
+        - "RETIRED"
+      description: "PointsTypeConfig 的 status 取值域，按服务端契约校验。"
+    PointsTypeChangeAction: 
+      type: "string"
+      enum: 
+        - "ACTIVATE"
+        - "DRAIN"
+        - "RETIRE"
+      description: "PointsTypeChange 的 action 取值域，按服务端契约校验。"
+    PointsFallbackMode: 
+      type: "string"
+      enum: 
+        - "FIXED"
+        - "RATIO"
+      description: "PointsFallback 的 mode 取值域，按服务端契约校验。"
+    PointsFundsTargetPath: 
+      type: "string"
+      enum: 
+        - "DIRECT"
+        - "AGGREGATED"
+      description: "PointsFundsTarget 的 path 取值域，按服务端契约校验。"
+    PointsPlanAction: 
+      type: "string"
+      enum: 
+        - "TOPUP_U"
+        - "TOPUP_B"
+        - "TRANSFER_U_TO_B"
+      description: "PointsPlan 的 action 取值域，按服务端契约校验。"
+    PointsExecutionStatus: 
+      type: "string"
+      enum: 
+        - "SUCCEEDED"
+        - "FAILED"
+        - "UNKNOWN"
+      description: "PointsExecution 的 status 取值域，按服务端契约校验。"
+    PointsStatementChangeAction: 
+      type: "string"
+      enum: 
+        - "CONFIRM"
+        - "DISPUTE"
+        - "REDRAFT"
+        - "PREPARE_PAYOUT"
+      description: "PointsStatementChange 的 action 取值域，按服务端契约校验。"
+    PointsFlowViewBucket: 
+      type: "string"
+      enum: 
+        - "U"
+        - "C"
+        - "D"
+        - "B"
+        - "RESERVED_B"
+        - "LOCKED_U"
+        - "LOCKED_B"
+      description: "PointsFlowView 的 bucket 取值域，按服务端契约校验。"
+    OrderPointsIntegrationQScene: 
+      type: "string"
+      enum: 
+        - "ONLINE"
+        - "OFFLINE"
+      description: "OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。"
+    OrderPointsIntegrationPolicyMode: 
+      type: "string"
+      enum: 
+        - "DETACHED"
+        - "ACTIVE"
+        - "DRAINING"
+      description: "OrderPointsIntegrationPolicy 的 mode 取值域，按服务端契约校验。"
+    PointsStatsQScope: 
+      type: "string"
+      enum: 
+        - "TOTAL"
+        - "STORE"
+        - "USER"
+      description: "PointsStatsQ 的 scope 取值域，按服务端契约校验。"
     SettleStatus: 
       type: "string"
       enum: 
@@ -6834,8 +6965,10 @@ components:
       properties: 
         messageNo: 
           type: "string"
+          description: "通道报文编号"
         payChannel: 
           type: "string"
+          description: "支付通道编码"
         msgType: 
           type: "string"
           description: "CALLBACK 通道推给我方 / SEND 我方发给通道"
@@ -6851,6 +6984,7 @@ components:
           type: 
             - "string"
             - "null"
+          description: "原支付指令编号"
         outcome: 
           type: "string"
           description: "RECEIVED / ACCEPTED / REJECTED / OK / FAILED"
@@ -6868,10 +7002,12 @@ components:
           type: 
             - "string"
             - "null"
+          description: "按接口权限返回的报文头信息"
         createdAt: 
           type: 
             - "number"
             - "null"
+          description: "服务端创建时间，Unix 毫秒"
       required: 
         - "messageNo"
         - "payChannel"
@@ -7133,14 +7269,19 @@ components:
           type: "array"
           items: 
             "$ref": "#/definitions/ChannelMessage"
+          description: "本页记录"
         total: 
           type: "number"
+          description: "符合条件的记录总数"
         pageNo: 
           type: "number"
+          description: "页码，从一开始"
         size: 
           type: "number"
+          description: "本页最大记录数"
         note: 
           type: "string"
+          description: "服务端补充说明"
       required: 
         - "records"
         - "total"
@@ -7639,34 +7780,39 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         market: 
           type: "string"
+          description: "市场代码"
         currency: 
           type: "string"
+          description: "ISO 货币代码"
         scale: 
           type: "number"
+          description: "货币最小单位精度"
         rate: 
           type: "object"
           properties: 
             pointsUnit: 
               type: "number"
+              description: "换算比例中的积分数量"
             minorUnit: 
               type: "number"
+              description: "换算比例中的最小货币单位数量"
           required: 
             - "pointsUnit"
             - "minorUnit"
           additionalProperties: false
+          description: "积分与最小货币单位的换算比例"
         deductRatioBp: 
           type: "number"
+          description: "最大抵扣比例，万分比"
         idleDays: 
           type: "number"
+          description: "账户无活动失效天数"
         status: 
-          type: "string"
-          enum: 
-            - "DRAFT"
-            - "ACTIVE"
-            - "DRAINING"
-            - "RETIRED"
+          "$ref": "#/definitions/PointsTypeConfigStatus"
+          description: "服务端业务状态"
       required: 
         - "typeCode"
         - "market"
@@ -7683,12 +7829,16 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         action: 
           type: "string"
+          description: "请求执行的业务动作"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         at: 
           type: "number"
+          description: "服务端事件时间，Unix 毫秒"
       required: 
         - "requestId"
         - "action"
@@ -7700,28 +7850,36 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         command: 
           type: "object"
           properties: 
             typeCode: 
               type: "string"
+              description: "积分类型唯一编码"
             market: 
               type: "string"
+              description: "市场代码"
             rate: 
               type: "object"
               properties: 
                 pointsUnit: 
                   type: "number"
+                  description: "换算比例中的积分数量"
                 minorUnit: 
                   type: "number"
+                  description: "换算比例中的最小货币单位数量"
               required: 
                 - "pointsUnit"
                 - "minorUnit"
               additionalProperties: false
+              description: "积分与最小货币单位的换算比例"
             deductRatioBp: 
               type: "number"
+              description: "最大抵扣比例，万分比"
             idleDays: 
               type: "number"
+              description: "账户无活动失效天数"
           required: 
             - "typeCode"
             - "market"
@@ -7729,8 +7887,10 @@ components:
             - "deductRatioBp"
             - "idleDays"
           additionalProperties: false
+          description: "类型创建参数，服务端校验"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "command"
@@ -7741,16 +7901,16 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         action: 
-          type: "string"
-          enum: 
-            - "ACTIVATE"
-            - "DRAIN"
-            - "RETIRE"
+          "$ref": "#/definitions/PointsTypeChangeAction"
+          description: "请求执行的业务动作"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "typeCode"
@@ -7762,13 +7922,13 @@ components:
       properties: 
         revision: 
           type: "number"
+          description: "不可变修订版本"
         mode: 
-          type: "string"
-          enum: 
-            - "FIXED"
-            - "RATIO"
+          "$ref": "#/definitions/PointsFallbackMode"
+          description: "服务端参与模式或已发布回退规则模式"
         value: 
           type: "number"
+          description: "回退规则配置值"
       required: 
         - "revision"
         - "mode"
@@ -7778,20 +7938,23 @@ components:
       type: "object"
       properties: 
         mode: 
-          type: "string"
-          enum: 
-            - "FIXED"
-            - "RATIO"
+          "$ref": "#/definitions/PointsFallbackMode"
+          description: "服务端参与模式或已发布回退规则模式"
         value: 
           type: "number"
+          description: "回退规则配置值"
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         expectedRevision: 
           type: "number"
+          description: "调用方预期修订号"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "expectedRevision"
         - "mode"
@@ -7822,18 +7985,25 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         scope: 
           "$ref": "#/definitions/PointsScope"
+          description: "开关或统计的作用范围"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         subjectNo: 
           type: "string"
+          description: "范围对象编号，门店范围使用 storeNo"
         enabled: 
           type: "boolean"
+          description: "是否允许新增对应业务"
         flow: 
           "$ref": "#/definitions/PointsFlow"
+          description: "控制积分发放、核销或两个方向"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "scope"
@@ -7848,22 +8018,31 @@ components:
       properties: 
         scope: 
           "$ref": "#/definitions/PointsScope"
+          description: "开关或统计的作用范围"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         subjectNo: 
           type: "string"
+          description: "范围对象编号，门店范围使用 storeNo"
         enabled: 
           type: "boolean"
+          description: "是否允许新增对应业务"
         flow: 
           "$ref": "#/definitions/PointsFlow"
+          description: "控制积分发放、核销或两个方向"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
         id: 
           type: "number"
+          description: "持久记录主键"
         actor: 
           type: "string"
+          description: "服务端取得的操作人编号"
         at: 
           type: "number"
+          description: "服务端事件时间，Unix 毫秒"
       required: 
         - "actor"
         - "at"
@@ -7880,10 +8059,13 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         after: 
           type: "number"
+          description: "起始游标，首次为零"
         limit: 
           type: "number"
+          description: "本次请求的记录上限"
       required: 
         - "typeCode"
       additionalProperties: false
@@ -7894,10 +8076,13 @@ components:
           type: "array"
           items: 
             "$ref": "#/definitions/PointsSwitchView"
+          description: "本页记录"
         next: 
           type: "number"
+          description: "下一页游标"
         hasMore: 
           type: "boolean"
+          description: "是否还有后续记录"
       required: 
         - "rows"
         - "next"
@@ -7908,10 +8093,13 @@ components:
       properties: 
         version: 
           type: "string"
+          description: "当前版本号，变更按版本校验"
         hash: 
           type: "string"
+          description: "发布条款的内容摘要"
         text: 
           type: "string"
+          description: "发布条款正文"
       required: 
         - "version"
         - "hash"
@@ -7922,14 +8110,19 @@ components:
       properties: 
         version: 
           type: "string"
+          description: "当前版本号，变更按版本校验"
         text: 
           type: "string"
+          description: "发布条款正文"
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "reason"
         - "requestId"
@@ -7942,30 +8135,43 @@ components:
       properties: 
         agreementNo: 
           type: "string"
+          description: "门店接受协议编号"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         merchantNo: 
           type: "string"
+          description: "门店归属主体编号，不作为积分隔离维度"
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         signedBy: 
           type: "string"
+          description: "签署该门店协议的主体属主"
         termsVersion: 
           type: "string"
+          description: "接受的条款版本"
         termsHash: 
           type: "string"
+          description: "接受条款的内容摘要"
         termsText: 
           type: "string"
+          description: "接受时冻结的条款正文"
         settleMode: 
           type: "string"
+          description: "门店按单或按期结算方式"
         path: 
           type: "string"
+          description: "冻结的直连或归集资金路径"
         channel: 
           type: "string"
+          description: "冻结的支付通道编码"
         accountVersion: 
           type: "string"
+          description: "冻结的收款账户版本"
         state: 
           type: "string"
+          description: "服务端处理状态"
       required: 
         - "agreementNo"
         - "typeCode"
@@ -7991,22 +8197,29 @@ components:
             properties: 
               id: 
                 type: "number"
+                description: "持久记录主键"
               agreement: 
                 "$ref": "#/definitions/PointsAgreement"
+                description: "服务端冻结的门店协议快照"
               state: 
                 type: "string"
+                description: "服务端处理状态"
               version: 
                 type: "number"
+                description: "当前版本号，变更按版本校验"
             required: 
               - "id"
               - "agreement"
               - "state"
               - "version"
             additionalProperties: false
+          description: "本页记录"
         next: 
           type: "number"
+          description: "下一页游标"
         hasMore: 
           type: "boolean"
+          description: "是否还有后续记录"
       required: 
         - "rows"
         - "next"
@@ -8017,14 +8230,19 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         operation: 
           type: "string"
+          description: "服务端接受的操作类型"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         reference: 
           type: "string"
+          description: "原业务引用编号"
         at: 
           type: "number"
+          description: "服务端事件时间，Unix 毫秒"
       required: 
         - "requestId"
         - "operation"
@@ -8044,30 +8262,36 @@ components:
       type: "object"
       properties: 
         path: 
-          type: "string"
-          enum: 
-            - "DIRECT"
-            - "AGGREGATED"
+          "$ref": "#/definitions/PointsFundsTargetPath"
+          description: "冻结的直连或归集资金路径"
         channel: 
           type: "string"
+          description: "冻结的支付通道编码"
         merchantNo: 
           type: "string"
+          description: "门店归属主体编号，不作为积分隔离维度"
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         accountVersion: 
           type: "string"
+          description: "冻结的收款账户版本"
         subMerchantId: 
           type: "string"
+          description: "原资金路由的通道子商户号"
         tradeNo: 
           type: 
             - "string"
             - "null"
+          description: "核验后的通道交易号"
         outTradeNo: 
           type: 
             - "string"
             - "null"
+          description: "原商户支付请求号"
         orderTotalMinor: 
           type: "number"
+          description: "订单金额，最小货币单位"
       required: 
         - "path"
         - "channel"
@@ -8084,24 +8308,32 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         requestNo: 
           type: "string"
+          description: "原资金或申请请求号"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         action: 
           "$ref": "#/definitions/PointsPoolAction"
+          description: "请求执行的业务动作"
         amountMinor: 
           type: "number"
+          description: "本次资金金额，最小货币单位"
         evidenceNo: 
           type: 
             - "string"
             - "null"
+          description: "已核验的资金证据编号"
         fundsContext: 
           anyOf: 
             - "$ref": "#/definitions/PointsFundsTarget"
             - type: "null"
+          description: "冻结的原交易及资金路由"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "requestNo"
@@ -8117,16 +8349,22 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         requestNo: 
           type: "string"
+          description: "原资金或申请请求号"
         expectedVersion: 
           type: "number"
+          description: "调用方预期版本号"
         approve: 
           type: "boolean"
+          description: "是否批准原申请"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "typeCode"
@@ -8140,30 +8378,41 @@ components:
       properties: 
         id: 
           type: "number"
+          description: "持久记录主键"
         requestNo: 
           type: "string"
+          description: "原资金或申请请求号"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         action: 
           "$ref": "#/definitions/PointsPoolAction"
+          description: "请求执行的业务动作"
         amountMinor: 
           type: "number"
+          description: "本次资金金额，最小货币单位"
         state: 
           type: "string"
+          description: "服务端处理状态"
         submittedBy: 
           type: "string"
+          description: "原申请人编号"
         approvedBy: 
           type: 
             - "string"
             - "null"
+          description: "服务端审核人编号"
         hasEvidence: 
           type: "boolean"
+          description: "是否已有合格资金证据"
         ticketNo: 
           type: 
             - "string"
             - "null"
+          description: "持久资金指令编号"
         version: 
           type: "number"
+          description: "当前版本号，变更按版本校验"
       required: 
         - "id"
         - "requestNo"
@@ -8184,10 +8433,13 @@ components:
           type: "array"
           items: 
             "$ref": "#/definitions/PointsRequestView"
+          description: "本页记录"
         next: 
           type: "number"
+          description: "下一页游标"
         hasMore: 
           type: "boolean"
+          description: "是否还有后续记录"
       required: 
         - "rows"
         - "next"
@@ -8198,22 +8450,25 @@ components:
       properties: 
         planNo: 
           type: "string"
+          description: "周期计划编号"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         action: 
-          type: "string"
-          enum: 
-            - "TOPUP_U"
-            - "TOPUP_B"
-            - "TRANSFER_U_TO_B"
+          "$ref": "#/definitions/PointsPlanAction"
+          description: "请求执行的业务动作"
         amountMinor: 
           type: "number"
+          description: "本次资金金额，最小货币单位"
         anchor: 
           type: "string"
+          description: "计划锚点时间，Unix 毫秒"
         everyDays: 
           type: "number"
+          description: "周期天数"
         enabled: 
           type: "boolean"
+          description: "是否允许新增对应业务"
       required: 
         - "planNo"
         - "typeCode"
@@ -8228,12 +8483,16 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         plan: 
           "$ref": "#/definitions/PointsPlan"
+          description: "周期计划配置"
         expectedVersion: 
           type: "number"
+          description: "调用方预期版本号"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "plan"
@@ -8245,12 +8504,16 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         limit: 
           type: "number"
+          description: "本次请求的记录上限"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "typeCode"
@@ -8262,16 +8525,22 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         planNo: 
           type: "string"
+          description: "周期计划编号"
         period: 
           type: "string"
+          description: "本次生成的周期序号"
         expectedVersion: 
           type: "number"
+          description: "调用方预期版本号"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "typeCode"
@@ -8285,18 +8554,25 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         planNo: 
           type: "string"
+          description: "周期计划编号"
         period: 
           type: "string"
+          description: "本次生成的周期序号"
         expectedVersion: 
           type: "number"
+          description: "调用方预期版本号"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
         evidenceNo: 
           type: "string"
+          description: "已核验的资金证据编号"
       required: 
         - "evidenceNo"
         - "expectedVersion"
@@ -8311,38 +8587,47 @@ components:
       properties: 
         planNo: 
           type: "string"
+          description: "周期计划编号"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         action: 
-          type: "string"
-          enum: 
-            - "TOPUP_U"
-            - "TOPUP_B"
-            - "TRANSFER_U_TO_B"
+          "$ref": "#/definitions/PointsPlanAction"
+          description: "请求执行的业务动作"
         amountMinor: 
           type: "number"
+          description: "本次资金金额，最小货币单位"
         anchor: 
           type: "string"
+          description: "计划锚点时间，Unix 毫秒"
         everyDays: 
           type: "number"
+          description: "周期天数"
         enabled: 
           type: "boolean"
+          description: "是否允许新增对应业务"
         id: 
           type: "number"
+          description: "持久记录主键"
         period: 
           type: "string"
+          description: "本次生成的周期序号"
         nextPeriod: 
           type: 
             - "string"
             - "null"
+          description: "下一待生成周期序号"
         state: 
           type: "string"
+          description: "服务端处理状态"
         requestNo: 
           type: 
             - "string"
             - "null"
+          description: "原资金或申请请求号"
         version: 
           type: "number"
+          description: "当前版本号，变更按版本校验"
       required: 
         - "action"
         - "amountMinor"
@@ -8365,10 +8650,13 @@ components:
           type: "array"
           items: 
             "$ref": "#/definitions/PointsPlanView"
+          description: "本页记录"
         next: 
           type: "number"
+          description: "下一页游标"
         hasMore: 
           type: "boolean"
+          description: "是否还有后续记录"
       required: 
         - "rows"
         - "next"
@@ -8379,12 +8667,16 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         ticketNo: 
           type: "string"
+          description: "持久资金指令编号"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "typeCode"
@@ -8396,16 +8688,16 @@ components:
       properties: 
         ticketNo: 
           type: "string"
+          description: "持久资金指令编号"
         status: 
-          type: "string"
-          enum: 
-            - "SUCCEEDED"
-            - "FAILED"
-            - "UNKNOWN"
+          "$ref": "#/definitions/PointsExecutionStatus"
+          description: "服务端业务状态"
         confirmedMinor: 
           type: "number"
+          description: "已核验入账金额，最小货币单位"
         replayed: 
           type: "boolean"
+          description: "是否返回原请求的幂等结果"
       required: 
         - "ticketNo"
         - "status"
@@ -8417,21 +8709,27 @@ components:
       properties: 
         statementNo: 
           type: "string"
+          description: "门店结算单编号"
         period: 
           type: "object"
           properties: 
             typeCode: 
               type: "string"
+              description: "积分类型唯一编码"
             storeNo: 
               type: "string"
+              description: "积分业务隔离的门店编号"
             fromMillis: 
               type: "number"
+              description: "统计或结算起始时间，Unix 毫秒"
             toMillis: 
               type: "number"
+              description: "统计或结算截止时间，Unix 毫秒"
             routeKey: 
               type: 
                 - "string"
                 - "null"
+              description: "原资金路由唯一键"
           required: 
             - "typeCode"
             - "storeNo"
@@ -8439,10 +8737,12 @@ components:
             - "toMillis"
             - "routeKey"
           additionalProperties: false
+          description: "本次生成的周期序号"
         positionIds: 
           type: "array"
           items: 
             type: "string"
+          description: "本次结算引用的原持仓编号集合"
         revisions: 
           type: "array"
           items: 
@@ -8450,6 +8750,7 @@ components:
             properties: 
               number: 
                 type: "number"
+                description: "修订序号"
               lines: 
                 type: "array"
                 items: 
@@ -8457,23 +8758,30 @@ components:
                   properties: 
                     positionNo: 
                       type: "string"
+                      description: "原持仓编号"
                     sourceVersion: 
                       type: "number"
+                      description: "引用的原持仓版本"
                     points: 
                       type: "number"
+                      description: "积分数量"
                   required: 
                     - "positionNo"
                     - "sourceVersion"
                     - "points"
                   additionalProperties: false
+                description: "本修订包含的原持仓结算行"
               points: 
                 type: "number"
+                description: "积分数量"
               actor: 
                 type: "string"
+                description: "服务端取得的操作人编号"
               reason: 
                 type: 
                   - "string"
                   - "null"
+                description: "服务端不可用原因或操作审计原因"
             required: 
               - "number"
               - "lines"
@@ -8481,12 +8789,15 @@ components:
               - "actor"
               - "reason"
             additionalProperties: false
+          description: "结算单不可变修订记录"
         state: 
           type: "string"
+          description: "服务端处理状态"
         disputeReason: 
           type: 
             - "string"
             - "null"
+          description: "争议原因，未争议时为空"
       required: 
         - "statementNo"
         - "period"
@@ -8505,19 +8816,25 @@ components:
             properties: 
               id: 
                 type: "number"
+                description: "持久记录主键"
               snapshot: 
                 "$ref": "#/definitions/PointsStatementSnapshot"
+                description: "服务端冻结的账务或准备快照"
               version: 
                 type: "number"
+                description: "当前版本号，变更按版本校验"
             required: 
               - "id"
               - "snapshot"
               - "version"
             additionalProperties: false
+          description: "本页记录"
         next: 
           type: "number"
+          description: "下一页游标"
         hasMore: 
           type: "boolean"
+          description: "是否还有后续记录"
       required: 
         - "rows"
         - "next"
@@ -8528,16 +8845,22 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         fromMillis: 
           type: "number"
+          description: "统计或结算起始时间，Unix 毫秒"
         toMillis: 
           type: "number"
+          description: "统计或结算截止时间，Unix 毫秒"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "typeCode"
@@ -8551,23 +8874,25 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         statementNo: 
           type: "string"
+          description: "门店结算单编号"
         revision: 
           type: "number"
+          description: "不可变修订版本"
         action: 
-          type: "string"
-          enum: 
-            - "CONFIRM"
-            - "DISPUTE"
-            - "REDRAFT"
-            - "PREPARE_PAYOUT"
+          "$ref": "#/definitions/PointsStatementChangeAction"
+          description: "请求执行的业务动作"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "typeCode"
@@ -8582,10 +8907,13 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         reference: 
           type: "string"
+          description: "原业务引用编号"
       required: 
         - "typeCode"
         - "storeNo"
@@ -8596,16 +8924,22 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         reference: 
           type: "string"
+          description: "原业务引用编号"
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         expectedVersion: 
           type: "number"
+          description: "调用方预期版本号"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "expectedVersion"
         - "reason"
@@ -8619,32 +8953,45 @@ components:
       properties: 
         preparationNo: 
           type: "string"
+          description: "退款准备编号"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         revision: 
           type: "number"
+          description: "不可变修订版本"
         inputHash: 
           type: "string"
+          description: "原准备输入的不可变摘要"
         returnedPoints: 
           type: "number"
+          description: "本次退回已使用积分"
         reclaimedPending: 
           type: "number"
+          description: "本次收回待激活积分"
         reclaimedAvailable: 
           type: "number"
+          description: "本次收回可用积分"
         expectedClawbackPoints: 
           type: "number"
+          description: "原承诺要求收回的积分总数"
         cashOffsetMinor: 
           type: "number"
+          description: "现金退款中抵销的金额，最小货币单位"
         netCashMinor: 
           type: "number"
+          description: "最终需退现金金额，最小货币单位"
         waivedPoints: 
           type: "number"
+          description: "按授权豁免的补收积分"
         collectionTicket: 
           type: 
             - "string"
             - "null"
+          description: "原补收资金指令，未生成时为空"
         state: 
           type: "string"
+          description: "服务端处理状态"
       required: 
         - "preparationNo"
         - "typeCode"
@@ -8665,18 +9012,25 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         afterSaleNo: 
           type: "string"
+          description: "原售后尝试编号"
         subOrderNo: 
           type: "string"
+          description: "门店子订单编号"
         state: 
           type: "string"
+          description: "服务端处理状态"
         version: 
           type: "number"
+          description: "当前版本号，变更按版本校验"
         preparation: 
           "$ref": "#/definitions/PointsRefundPreparation"
+          description: "本次售后冻结的退款准备"
       required: 
         - "typeCode"
         - "storeNo"
@@ -8691,18 +9045,25 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         receivableNo: 
           type: "string"
+          description: "门店应收责任编号"
         expectedVersion: 
           type: "number"
+          description: "调用方预期版本号"
         amountMinor: 
           type: "number"
+          description: "本次资金金额，最小货币单位"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "typeCode"
@@ -8724,12 +9085,16 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         reference: 
           type: "string"
+          description: "原业务引用编号"
         operation: 
           "$ref": "#/definitions/PointsRecoveryOperation"
+          description: "服务端接受的操作类型"
       required: 
         - "operation"
         - "reference"
@@ -8741,22 +9106,31 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         reference: 
           type: "string"
+          description: "原业务引用编号"
         operation: 
           "$ref": "#/definitions/PointsRecoveryOperation"
+          description: "服务端接受的操作类型"
         state: 
           type: "string"
+          description: "服务端处理状态"
         version: 
           type: "number"
+          description: "当前版本号，变更按版本校验"
         grossMinor: 
           type: "number"
+          description: "原退款金额，最小货币单位"
         offsetMinor: 
           type: "number"
+          description: "已抵销金额，最小货币单位"
         cashMinor: 
           type: "number"
+          description: "实际现金退款金额，最小货币单位"
       required: 
         - "cashMinor"
         - "grossMinor"
@@ -8773,18 +9147,25 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         reference: 
           type: "string"
+          description: "原业务引用编号"
         operation: 
           "$ref": "#/definitions/PointsRecoveryOperation"
+          description: "服务端接受的操作类型"
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         expectedVersion: 
           type: "number"
+          description: "调用方预期版本号"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "expectedVersion"
         - "operation"
@@ -8799,12 +9180,10 @@ components:
       properties: 
         reference: 
           type: "string"
+          description: "原业务引用编号"
         status: 
-          type: "string"
-          enum: 
-            - "SUCCEEDED"
-            - "FAILED"
-            - "UNKNOWN"
+          "$ref": "#/definitions/PointsExecutionStatus"
+          description: "服务端业务状态"
       required: 
         - "reference"
         - "status"
@@ -8814,18 +9193,25 @@ components:
       properties: 
         id: 
           type: "number"
+          description: "持久记录主键"
         eventNo: 
           type: "string"
+          description: "源事实事件编号"
         kind: 
           type: "string"
+          description: "原业务持仓或事件种类"
         state: 
           type: "string"
+          description: "服务端处理状态"
         attempt: 
           type: "number"
+          description: "原事件投递次数"
         nextAttempt: 
           type: "number"
+          description: "下一允许重试时间，Unix 毫秒"
         version: 
           type: "number"
+          description: "当前版本号，变更按版本校验"
       required: 
         - "id"
         - "eventNo"
@@ -8842,10 +9228,13 @@ components:
           type: "array"
           items: 
             "$ref": "#/definitions/PointsEventView"
+          description: "本页记录"
         next: 
           type: "number"
+          description: "下一页游标"
         hasMore: 
           type: "boolean"
+          description: "是否还有后续记录"
       required: 
         - "rows"
         - "next"
@@ -8856,14 +9245,19 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         eventId: 
           type: "number"
+          description: "持久源事件主键"
         expectedVersion: 
           type: "number"
+          description: "调用方预期版本号"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "typeCode"
@@ -8903,10 +9297,13 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         holderType: 
           "$ref": "#/definitions/PointsHolder"
+          description: "账本持有人类型"
         holderNo: 
           type: "string"
+          description: "账本持有人编号，与持有人类型联合定位"
       required: 
         - "typeCode"
         - "holderType"
@@ -8921,22 +9318,30 @@ components:
           properties: 
             buckets: 
               "$ref": "#/definitions/Partial%3CRecord%3CPointsBucket%2Cnumber%3E%3E"
+              description: "按账本分桶保存的积分余额"
             frozen: 
               type: "boolean"
+              description: "是否冻结该账户新增使用"
             expireAt: 
               type: 
                 - "number"
                 - "null"
+              description: "服务端计算的过期时间，Unix 毫秒；无则为空"
             expiryRevision: 
               type: "number"
+              description: "账户失效计划修订号"
             lastActiveAt: 
               type: "number"
+              description: "最近有效账务活动时间，Unix 毫秒"
             typeCode: 
               type: "string"
+              description: "积分类型唯一编码"
             holderType: 
               "$ref": "#/definitions/PointsHolder"
+              description: "账本持有人类型"
             holderNo: 
               type: "string"
+              description: "账本持有人编号，与持有人类型联合定位"
           required: 
             - "buckets"
             - "expireAt"
@@ -8946,10 +9351,13 @@ components:
             - "holderType"
             - "lastActiveAt"
             - "typeCode"
+          description: "服务端冻结的账务或准备快照"
         exists: 
           type: "boolean"
+          description: "账户是否已经创建，未创建不代表查询失败"
         version: 
           type: "number"
+          description: "当前版本号，变更按版本校验"
       required: 
         - "snapshot"
         - "exists"
@@ -8978,16 +9386,22 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         userNo: 
           type: "string"
+          description: "被操作用户编号"
         expectedVersion: 
           type: "number"
+          description: "调用方预期版本号"
         frozen: 
           type: "boolean"
+          description: "是否冻结该账户新增使用"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "typeCode"
@@ -9001,16 +9415,22 @@ components:
       properties: 
         id: 
           type: "number"
+          description: "持久记录主键"
         voucherNo: 
           type: "string"
+          description: "原记账凭证编号"
         bizRef: 
           type: "string"
+          description: "原业务引用号"
         currency: 
           type: "string"
+          description: "ISO 货币代码"
         ratePoints: 
           type: "number"
+          description: "换算比例的积分数量"
         rateMinor: 
           type: "number"
+          description: "换算比例的最小货币单位数量"
       required: 
         - "id"
         - "voucherNo"
@@ -9024,20 +9444,28 @@ components:
       properties: 
         id: 
           type: "number"
+          description: "持久记录主键"
         entryNo: 
           type: "string"
+          description: "不可变积分分录编号"
         voucherNo: 
           type: "string"
+          description: "原记账凭证编号"
         holderType: 
           "$ref": "#/definitions/PointsHolder"
+          description: "账本持有人类型"
         holderNo: 
           type: "string"
+          description: "账本持有人编号，与持有人类型联合定位"
         bucket: 
           "$ref": "#/definitions/PointsBucket"
+          description: "积分账本或资金池分桶"
         deltaPoints: 
           type: "number"
+          description: "该分录积分变化，负值表示扣减"
         afterPoints: 
           type: "number"
+          description: "该分录完成后的积分余额"
       required: 
         - "id"
         - "entryNo"
@@ -9053,24 +9481,22 @@ components:
       properties: 
         id: 
           type: "number"
+          description: "持久记录主键"
         flowNo: 
           type: "string"
+          description: "不可变资金池流水号"
         voucherNo: 
           type: "string"
+          description: "原记账凭证编号"
         bucket: 
-          type: "string"
-          enum: 
-            - "U"
-            - "C"
-            - "D"
-            - "B"
-            - "RESERVED_B"
-            - "LOCKED_U"
-            - "LOCKED_B"
+          "$ref": "#/definitions/PointsFlowViewBucket"
+          description: "积分账本或资金池分桶"
         deltaMinor: 
           type: "number"
+          description: "该流水金额变化，最小货币单位"
         afterMinor: 
           type: "number"
+          description: "该流水完成后金额，最小货币单位"
       required: 
         - "id"
         - "flowNo"
@@ -9084,11 +9510,10 @@ components:
       properties: 
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         scene: 
-          type: "string"
-          enum: 
-            - "ONLINE"
-            - "OFFLINE"
+          "$ref": "#/definitions/OrderPointsIntegrationQScene"
+          description: "线上或线下交易场景"
       required: 
         - "storeNo"
         - "scene"
@@ -9098,33 +9523,35 @@ components:
       properties: 
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         scene: 
-          type: "string"
-          enum: 
-            - "ONLINE"
-            - "OFFLINE"
+          "$ref": "#/definitions/OrderPointsIntegrationQScene"
+          description: "线上或线下交易场景"
         mode: 
-          type: "string"
-          enum: 
-            - "DETACHED"
-            - "ACTIVE"
-            - "DRAINING"
+          "$ref": "#/definitions/OrderPointsIntegrationPolicyMode"
+          description: "服务端参与模式或已发布回退规则模式"
         earnEnabled: 
           type: "boolean"
+          description: "是否接收新的返分承诺"
         redeemEnabled: 
           type: "boolean"
+          description: "是否接收新的抵扣承诺"
         version: 
           type: "number"
+          description: "当前版本号，变更按版本校验"
         actor: 
           type: 
             - "string"
             - "null"
+          description: "服务端取得的操作人编号"
         reason: 
           type: 
             - "string"
             - "null"
+          description: "服务端不可用原因或操作审计原因"
         changedAt: 
           type: "number"
+          description: "服务端配置变更时间，Unix 毫秒"
       required: 
         - "actor"
         - "changedAt"
@@ -9141,27 +9568,28 @@ components:
       properties: 
         storeNo: 
           type: "string"
+          description: "积分业务隔离的门店编号"
         scene: 
-          type: "string"
-          enum: 
-            - "ONLINE"
-            - "OFFLINE"
+          "$ref": "#/definitions/OrderPointsIntegrationQScene"
+          description: "线上或线下交易场景"
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         mode: 
-          type: "string"
-          enum: 
-            - "DETACHED"
-            - "ACTIVE"
-            - "DRAINING"
+          "$ref": "#/definitions/OrderPointsIntegrationPolicyMode"
+          description: "服务端参与模式或已发布回退规则模式"
         earnEnabled: 
           type: "boolean"
+          description: "是否接收新的返分承诺"
         redeemEnabled: 
           type: "boolean"
+          description: "是否接收新的抵扣承诺"
         expectedVersion: 
           type: "number"
+          description: "调用方预期版本号"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "earnEnabled"
         - "expectedVersion"
@@ -9177,34 +9605,44 @@ components:
       properties: 
         subOrderNo: 
           type: "string"
+          description: "门店子订单编号"
         bindingPhase: 
           type: 
             - "string"
             - "null"
+          description: "源绑定当前阶段，无绑定为空"
         bindingVersion: 
           type: "number"
+          description: "源绑定版本，无绑定为空"
         placementPhase: 
           type: 
             - "string"
             - "null"
+          description: "下单工作流阶段，无记录为空"
         placementVersion: 
           type: "number"
+          description: "下单工作流版本，无记录为空"
         originalHoldNo: 
           type: 
             - "string"
             - "null"
+          description: "原积分占用编号，不生成新编号替换"
         refundPhases: 
           type: "array"
           items: 
             type: "string"
+          description: "该子单所有售后执行阶段"
         pendingSourceEvents: 
           type: "number"
+          description: "尚未确认送达的源事实数量"
         paymentVerified: 
           type: "boolean"
+          description: "原支付证据是否核验成功"
         differences: 
           type: "array"
           items: 
             type: "string"
+          description: "只读一致性差异项，不返回敏感正文"
       required: 
         - "subOrderNo"
         - "bindingPhase"
@@ -9227,21 +9665,27 @@ components:
             properties: 
               afterSaleNo: 
                 type: "string"
+                description: "原售后尝试编号"
               subOrderNo: 
                 type: "string"
+                description: "门店子订单编号"
               createdAt: 
                 type: "number"
+                description: "服务端创建时间，Unix 毫秒"
             required: 
               - "afterSaleNo"
               - "subOrderNo"
               - "createdAt"
             additionalProperties: false
+          description: "本页记录"
         next: 
           type: 
             - "string"
             - "null"
+          description: "下一页游标"
         hasMore: 
           type: "boolean"
+          description: "是否还有后续记录"
       required: 
         - "rows"
         - "next"
@@ -9252,10 +9696,13 @@ components:
       properties: 
         afterSaleNo: 
           type: "string"
+          description: "原售后尝试编号"
         subOrderNo: 
           type: "string"
+          description: "门店子订单编号"
         status: 
           type: "string"
+          description: "服务端业务状态"
       required: 
         - "afterSaleNo"
         - "subOrderNo"
@@ -9266,10 +9713,13 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         kind: 
           "$ref": "#/definitions/PointsPositionKind"
+          description: "原业务持仓或事件种类"
         reference: 
           type: "string"
+          description: "原业务引用编号"
       required: 
         - "typeCode"
         - "kind"
@@ -9280,18 +9730,25 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         kind: 
           "$ref": "#/definitions/PointsPositionKind"
+          description: "原业务持仓或事件种类"
         reference: 
           type: "string"
+          description: "原业务引用编号"
         state: 
           type: "string"
+          description: "服务端处理状态"
         originalPoints: 
           type: "number"
+          description: "原持仓积分总数"
         processedPoints: 
           type: "number"
+          description: "该持仓已处理积分数"
         version: 
           type: "number"
+          description: "当前版本号，变更按版本校验"
       required: 
         - "kind"
         - "originalPoints"
@@ -9306,16 +9763,16 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         day: 
           type: "string"
+          description: "业务统计日期，YYYY-MM-DD"
         scope: 
-          type: "string"
-          enum: 
-            - "TOTAL"
-            - "STORE"
-            - "USER"
+          "$ref": "#/definitions/PointsStatsQScope"
+          description: "开关或统计的作用范围"
         subjectNo: 
           type: "string"
+          description: "范围对象编号，门店范围使用 storeNo"
       required: 
         - "typeCode"
         - "day"
@@ -9325,18 +9782,25 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         day: 
           type: "string"
+          description: "业务统计日期，YYYY-MM-DD"
         scopeNo: 
           type: "string"
+          description: "统计范围对象编号"
         metrics: 
           "$ref": "#/definitions/Record%3Cstring%2Cnumber%3E"
+          description: "服务端账本计算的指标值"
         skipReasons: 
           "$ref": "#/definitions/Record%3Cstring%2Cnumber%3E"
+          description: "本轮跳过原因及数量"
         throughVoucherId: 
           type: "number"
+          description: "统计已处理的最大凭证主键"
         rebuiltAt: 
           type: "number"
+          description: "服务端统计重建时间，Unix 毫秒"
       required: 
         - "typeCode"
         - "day"
@@ -9351,12 +9815,16 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         day: 
           type: "string"
+          description: "业务统计日期，YYYY-MM-DD"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "typeCode"
@@ -9368,10 +9836,13 @@ components:
       properties: 
         requestId: 
           type: "string"
+          description: "幂等操作请求号，重试必须复用"
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         reason: 
           type: "string"
+          description: "服务端不可用原因或操作审计原因"
       required: 
         - "requestId"
         - "typeCode"
@@ -9382,10 +9853,13 @@ components:
       properties: 
         typeCode: 
           type: "string"
+          description: "积分类型唯一编码"
         checkedAt: 
           type: "number"
+          description: "服务端一致性检查时间，Unix 毫秒"
         complete: 
           type: "boolean"
+          description: "本轮有界检查是否完整"
         differences: 
           type: "array"
           items: 
@@ -9393,18 +9867,23 @@ components:
             properties: 
               code: 
                 type: "string"
+                description: "服务端差异分类代码"
               reference: 
                 type: "string"
+                description: "原业务引用编号"
               expected: 
                 type: "number"
+                description: "按原承诺计算的预期数量"
               actual: 
                 type: "number"
+                description: "实际已记录数量"
             required: 
               - "code"
               - "reference"
               - "expected"
               - "actual"
             additionalProperties: false
+          description: "只读一致性差异项，不返回敏感正文"
       required: 
         - "typeCode"
         - "checkedAt"
@@ -9422,10 +9901,13 @@ components:
               type: "string"
             typeCode: 
               type: "string"
+              description: "积分类型唯一编码"
             after: 
               type: "number"
+              description: "起始游标，首次为零"
             limit: 
               type: "number"
+              description: "本次请求的记录上限"
           required: 
             - "holderNo"
             - "holderType"
@@ -9437,10 +9919,13 @@ components:
               type: "string"
             typeCode: 
               type: "string"
+              description: "积分类型唯一编码"
             after: 
               type: "number"
+              description: "起始游标，首次为零"
             limit: 
               type: "number"
+              description: "本次请求的记录上限"
           required: 
             - "typeCode"
             - "voucherNo"
@@ -9449,29 +9934,40 @@ components:
       properties: 
         known: 
           type: "boolean"
+          description: "核验是否完整可用；false 时禁止按零义务判断"
         activePolicies: 
           type: "number"
+          description: "仍处于 ACTIVE 的场景策略数量"
         openBindings: 
           type: "number"
+          description: "尚未关闭的源订单绑定数量"
         sourceSettled: 
           type: "boolean"
+          description: "源端义务是否全部结清"
         pay: 
           type: "object"
           properties: 
             known: 
               type: "boolean"
+              description: "核验是否完整可用；false 时禁止按零义务判断"
             openHolds: 
               type: "number"
+              description: "未释放的原占用数量"
             pendingPromises: 
               type: "number"
+              description: "未完成的原承诺数量"
             openRefunds: 
               type: "number"
+              description: "未完成的原退款数量"
             openStatements: 
               type: "number"
+              description: "未完成的门店结算单数量"
             unknownFunds: 
               type: "number"
+              description: "资金结果未知的原指令数量"
             pendingEvents: 
               type: "number"
+              description: "未处理完的原事件数量"
           required: 
             - "known"
             - "openHolds"
@@ -9481,6 +9977,7 @@ components:
             - "unknownFunds"
             - "pendingEvents"
           additionalProperties: false
+          description: "支付侧义务摘要，不可用时为 null"
       required: 
         - "known"
         - "activePolicies"

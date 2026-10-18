@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import type { PointsScope, PointsFlow, PointsSwitchChange } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
+import { DataTable } from "@/components/ui/data-table";
 import { Notice } from "@/components/ui/notice";
 import { SectionHeader } from "@/components/ui/section-header";
 import { usePointsText } from "@/lib/points-i18n";
@@ -70,9 +71,15 @@ export function PointsPolicyTab({ c, canEdit }: { c: FinanceCopy; canEdit: boole
       {save.isSuccess && <Notice>{text("已保存，操作号：", "Saved, request ID: ")}{save.data.requestId}</Notice>}
       {list.isPending && <p dir="auto">{c.ppLoading}</p>}
       {list.isError && <Notice tone="warning">{list.error.message} <Button onClick={() => void list.refetch()}>{text("重试", "Retry")}</Button></Notice>}
-      {list.data && <div className="overflow-x-auto"><table className="w-full text-start txt-body"><thead><tr>
-        {[text("范围", "Scope"), text("对象", "Subject"), text("方向", "Flow"), text("状态", "Availability"), text("操作人 / 原因", "Operator / reason"), text("服务端时间", "Server time")].map((h) => <th key={h} className="p-2 text-start">{h}</th>)}
-      </tr></thead><tbody>{list.data.rows.map((r) => <tr key={r.id} className="border-t border-border"><td className="p-2">{r.scope} · {r.typeCode}</td><td>{r.subjectNo}</td><td>{r.flow}</td><td>{r.enabled ? text("开启", "Enabled") : text("关闭", "Disabled")}</td><td>{r.actor} / {r.reason}</td><td>{new Date(r.at).toLocaleString(locale === "ar" ? "ar" : en ? "en" : "zh-CN")}</td></tr>)}</tbody></table>
+      {list.data && <div className="overflow-x-auto"><DataTable rows={list.data.rows} error={list.error} onRetry={() => void list.refetch()}
+          empty={text("此范围尚无开关记录。", "No switch records in this scope.")} rowKey={(r) => String(r.id)} columns={[
+          { header: text("范围", "Scope"), cell: (r) => `${r.scope} · ${r.typeCode}` },
+          { header: text("对象", "Subject"), cell: (r) => r.subjectNo },
+          { header: text("方向", "Flow"), cell: (r) => r.flow },
+          { header: text("状态", "Availability"), cell: (r) => r.enabled ? text("开启", "Enabled") : text("关闭", "Disabled") },
+          { header: text("操作人 / 原因", "Operator / reason"), cell: (r) => `${r.actor} / ${r.reason}` },
+          { header: text("服务端时间", "Server time"), cell: (r) => new Date(r.at).toLocaleString(locale === "ar" ? "ar" : en ? "en" : "zh-CN") },
+        ]} />
         {!list.data.rows.length && <p dir="auto" className="p-3">{text("此范围暂无开关记录；实际可用性还受类型状态、协议及资金限制。", "No switch records in this scope. Type state, agreement and funding still constrain availability.")}</p>}
         <div className="flex gap-2"><Button disabled={!after} onClick={() => setAfter(0)}>{text("首页", "First page")}</Button><Button disabled={!list.data.hasMore || list.isFetching} onClick={() => setAfter(list.data.next)}>{text("下一页", "Next page")}</Button></div>
       </div>}

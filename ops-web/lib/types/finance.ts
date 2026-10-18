@@ -1,3 +1,36 @@
+/** PointsTypeConfig 的 status 取值域，按服务端契约校验。 */
+export type PointsTypeConfigStatus = "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
+
+/** PointsTypeChange 的 action 取值域，按服务端契约校验。 */
+export type PointsTypeChangeAction = "ACTIVATE" | "DRAIN" | "RETIRE";
+
+/** PointsFallback 的 mode 取值域，按服务端契约校验。 */
+export type PointsFallbackMode = "FIXED" | "RATIO";
+
+/** PointsFundsTarget 的 path 取值域，按服务端契约校验。 */
+export type PointsFundsTargetPath = "DIRECT" | "AGGREGATED";
+
+/** PointsPlan 的 action 取值域，按服务端契约校验。 */
+export type PointsPlanAction = "TOPUP_U" | "TOPUP_B" | "TRANSFER_U_TO_B";
+
+/** PointsExecution 的 status 取值域，按服务端契约校验。 */
+export type PointsExecutionStatus = "SUCCEEDED" | "FAILED" | "UNKNOWN";
+
+/** PointsStatementChange 的 action 取值域，按服务端契约校验。 */
+export type PointsStatementChangeAction = "CONFIRM" | "DISPUTE" | "REDRAFT" | "PREPARE_PAYOUT";
+
+/** PointsFlowView 的 bucket 取值域，按服务端契约校验。 */
+export type PointsFlowViewBucket = "U" | "C" | "D" | "B" | "RESERVED_B" | "LOCKED_U" | "LOCKED_B";
+
+/** OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。 */
+export type OrderPointsIntegrationQScene = "ONLINE" | "OFFLINE";
+
+/** OrderPointsIntegrationPolicy 的 mode 取值域，按服务端契约校验。 */
+export type OrderPointsIntegrationPolicyMode = "DETACHED" | "ACTIVE" | "DRAINING";
+
+/** PointsStatsQ 的 scope 取值域，按服务端契约校验。 */
+export type PointsStatsQScope = "TOTAL" | "STORE" | "USER";
+
 // 结算与资金域（矩阵 P-12）。它是「按商家拆单 + 分账」链路的收口：
 // 把商家的 settleAccountReady、自提点的 serviceFeeRate、订单的 trafficSource、
 // 售后的 refundSplitPending 这四个**已存在的字段**接起来。
@@ -54,6 +87,23 @@ export const SETTLE_TRANSITIONS: Record<SettleStatus, SettleStatus[]> = {
   PAID: [],
 };
 
+/**
+ * 结算单：一个商家一个周期一张。
+ * ⚠️ **对账恒等式**：gross = platformFee + serviceFee + net。
+ * 这三个数分别来自三处（费率表、自提点配置、余数），不校验就会出现"分完了还差几分钱"。
+ */
+/**
+ * 结算单 = <b>一个子订单一张</b>（后端 `stl_bill`）。
+ *
+ * ⚠️ 与旧类型的形状不同，是有意的。旧那个是**周期汇总**
+ * （`period` / `orderCount` / 汇总金额），而后端从来就不是那么结算的 ——
+ * 它是「订单成交即生成一张结算单」的即时模型，`/ops/settlements` 也从未实现过。
+ * 页面按周期汇总的样子做了很久，而它对不上任何真实数据。
+ *
+ * 对齐方向是**改前端跟后端**：后端模型是钱真实的流向，
+ * 周期汇总只是一个没被实现的设计稿。
+ */
+/** Four independent funding buckets, with non-cash store receivables reported separately. */
 /**
  * 结算单：一个商家一个周期一张。
  * ⚠️ **对账恒等式**：gross = platformFee + serviceFee + net。
@@ -533,8 +583,29 @@ export interface BuyerInvoiceRequest {
  * 页面必须显示 —— 不显示的话，第一个拿它去核签名的人会得出
  * 「我们的验签实现有 bug」这个结论。
  */
+/**
+ * 对账的**覆盖范围说明**。
+ *
+ * ⚠️ 它存在的理由只有一个：**不说的话「今天没有差异」是句假话。**
+ * 一期只有平台侧自查（扫我方停在 PENDING 的收款逐笔查单），
+ * 渠道账单比对要等通道能力 —— 也就是说「渠道扣了钱而我方没记录」
+ * 那一整类差异**现在根本看不见**。
+ *
+ * `note` **直接展示，不在端上写死** —— 写死的话，后端接上渠道账单之后，
+ * 页面还在说「看不见」。
+ */
+/**
+ * 渠道报文一条（`stl_channel_message`，V286 起在落数据）。
+ *
+ * ⚠️ **报文已脱敏**：签名、证书序列号、Authorization 都不入库，
+ * 所以它<b>不能拿去重放验签</b>。列表响应里带着这句话（`note`），
+ * 页面必须显示 —— 不显示的话，第一个拿它去核签名的人会得出
+ * 「我们的验签实现有 bug」这个结论。
+ */
 export interface ChannelMessage {
+  /** 通道报文编号 */
   messageNo: string;
+  /** 支付通道编码 */
   payChannel: string;
   /** CALLBACK 通道推给我方 / SEND 我方发给通道 */
   msgType: string;
@@ -545,6 +616,7 @@ export interface ChannelMessage {
    * 所以按单号筛会把最该看的那几行滤掉
    */
   bizNo?: string | null;
+  /** 原支付指令编号 */
   paymentNo?: string | null;
   /** RECEIVED / ACCEPTED / REJECTED / OK / FAILED */
   outcome: string;
@@ -552,7 +624,9 @@ export interface ChannelMessage {
   reason?: string | null;
   /** 脱敏并截断后的报文 */
   payload?: string | null;
+  /** 按接口权限返回的报文头信息 */
   headers?: string | null;
+  /** 服务端创建时间，Unix 毫秒 */
   createdAt?: number | null;
 }
 
@@ -706,11 +780,17 @@ export interface PayoutAccount {
 }
 
 /** 报文分页。`note` 是固定口径，**端上必须显示** */
+/** 报文分页。`note` 是固定口径，**端上必须显示** */
 export interface ChannelMessagePage {
+  /** 本页记录 */
   records: ChannelMessage[];
+  /** 符合条件的记录总数 */
   total: number;
+  /** 页码，从一开始 */
   pageNo: number;
+  /** 本页最大记录数 */
   size: number;
+  /** 服务端补充说明 */
   note: string;
 }
 
@@ -968,94 +1048,902 @@ export type DebtTxnType =
   | "WRITE_OFF";     // 核销（需审批）
 
 /** Points configuration commands carry stable intent IDs; identity and time come from the server. */
-export interface PointsTypeConfig { typeCode: string; market: string; currency: string; scale: number; rate: { pointsUnit: number; minorUnit: number }; deductRatioBp: number; idleDays: number; status: "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED" }
-export interface PointsChangeResult { requestId: string; action: string; typeCode: string; at: number }
-export interface PointsCreate { requestId: string; command: { typeCode: string; market: string; rate: PointsTypeConfig["rate"]; deductRatioBp: number; idleDays: number }; reason: string }
-export interface PointsTypeChange { requestId: string; typeCode: string; action: "ACTIVATE" | "DRAIN" | "RETIRE"; reason: string }
-export interface PointsFallback { revision: number; mode: "FIXED" | "RATIO"; value: number }
-export interface PointsFallbackChange extends Omit<PointsFallback, "revision"> { requestId: string; typeCode: string; expectedRevision: number; reason: string }
+export interface PointsTypeConfig {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 市场代码 */
+  market: string;
+  /** ISO 货币代码 */
+  currency: string;
+  /** 货币最小单位精度 */
+  scale: number;
+  /** 积分与最小货币单位的换算比例 */
+  rate: {
+    /** 换算比例中的积分数量 */
+    pointsUnit: number;
+    /** 换算比例中的最小货币单位数量 */
+    minorUnit: number;
+  };
+  /** 最大抵扣比例，万分比 */
+  deductRatioBp: number;
+  /** 账户无活动失效天数 */
+  idleDays: number;
+  /** 服务端业务状态 */
+  status: PointsTypeConfigStatus;
+}
+export interface PointsChangeResult {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 请求执行的业务动作 */
+  action: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 服务端事件时间，Unix 毫秒 */
+  at: number;
+}
+export interface PointsCreate {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 类型创建参数，服务端校验 */
+  command: {
+    /** 积分类型唯一编码 */
+    typeCode: string;
+    /** 市场代码 */
+    market: string;
+    /** 积分与最小货币单位的换算比例 */
+    rate: PointsTypeConfig["rate"];
+    /** 最大抵扣比例，万分比 */
+    deductRatioBp: number;
+    /** 账户无活动失效天数 */
+    idleDays: number;
+  };
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsTypeChange {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 请求执行的业务动作 */
+  action: PointsTypeChangeAction;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsFallback {
+  /** 不可变修订版本 */
+  revision: number;
+  /** 服务端参与模式或已发布回退规则模式 */
+  mode: PointsFallbackMode;
+  /** 回退规则配置值 */
+  value: number;
+}
+export interface PointsFallbackChange extends Omit<PointsFallback, "revision"> {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 调用方预期修订号 */
+  expectedRevision: number;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
 export type PointsScope = "GLOBAL" | "REGION" | "TYPE" | "SCENE" | "CLIENT" | "MERCHANT" | "STORE" | "USER";
 export type PointsFlow = "EARN" | "REDEEM" | "BOTH";
-export interface PointsSwitchChange { requestId: string; scope: PointsScope; typeCode: string; subjectNo: string; enabled: boolean; flow: PointsFlow; reason: string }
-export interface PointsSwitchView extends Omit<PointsSwitchChange, "requestId"> { id: number; actor: string; at: number }
-export interface PointsCursor { typeCode: string; after?: number; limit?: number }
-export interface PointsSwitchPage { rows: PointsSwitchView[]; next: number; hasMore: boolean }
-export interface PointsTerms { version: string; hash: string; text: string }
-export interface PointsTermsChange extends Omit<PointsTerms, "hash"> { requestId: string; typeCode: string; reason: string }
-export interface PointsAgreement { agreementNo: string; typeCode: string; merchantNo: string; storeNo: string; signedBy: string; termsVersion: string; termsHash: string; termsText: string; settleMode: string; path: string; channel: string; accountVersion: string; state: string }
-export interface PointsAgreementPage { rows: { id: number; agreement: PointsAgreement; state: string; version: number }[]; next: number; hasMore: boolean }
+export interface PointsSwitchChange {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 开关或统计的作用范围 */
+  scope: PointsScope;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 范围对象编号，门店范围使用 storeNo */
+  subjectNo: string;
+  /** 是否允许新增对应业务 */
+  enabled: boolean;
+  /** 控制积分发放、核销或两个方向 */
+  flow: PointsFlow;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsSwitchView extends Omit<PointsSwitchChange, "requestId"> {
+  /** 持久记录主键 */
+  id: number;
+  /** 服务端取得的操作人编号 */
+  actor: string;
+  /** 服务端事件时间，Unix 毫秒 */
+  at: number;
+}
+export interface PointsCursor {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 起始游标，首次为零 */
+  after?: number;
+  /** 本次请求的记录上限 */
+  limit?: number;
+}
+export interface PointsSwitchPage {
+  /** 本页记录 */
+  rows: PointsSwitchView[];
+  /** 下一页游标 */
+  next: number;
+  /** 是否还有后续记录 */
+  hasMore: boolean;
+}
+export interface PointsTerms {
+  /** 当前版本号，变更按版本校验 */
+  version: string;
+  /** 发布条款的内容摘要 */
+  hash: string;
+  /** 发布条款正文 */
+  text: string;
+}
+export interface PointsTermsChange extends Omit<PointsTerms, "hash"> {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsAgreement {
+  /** 门店接受协议编号 */
+  agreementNo: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 门店归属主体编号，不作为积分隔离维度 */
+  merchantNo: string;
+  /** 积分业务隔离的门店编号 */
+  storeNo: string;
+  /** 签署该门店协议的主体属主 */
+  signedBy: string;
+  /** 接受的条款版本 */
+  termsVersion: string;
+  /** 接受条款的内容摘要 */
+  termsHash: string;
+  /** 接受时冻结的条款正文 */
+  termsText: string;
+  /** 门店按单或按期结算方式 */
+  settleMode: string;
+  /** 冻结的直连或归集资金路径 */
+  path: string;
+  /** 冻结的支付通道编码 */
+  channel: string;
+  /** 冻结的收款账户版本 */
+  accountVersion: string;
+  /** 服务端处理状态 */
+  state: string;
+}
+export interface PointsAgreementPage {
+  /** 本页记录 */
+  rows: {
+    /** 持久记录主键 */
+    id: number;
+    /** 服务端冻结的门店协议快照 */
+    agreement: PointsAgreement;
+    /** 服务端处理状态 */
+    state: string;
+    /** 当前版本号，变更按版本校验 */
+    version: number;
+  }[];
+  /** 下一页游标 */
+  next: number;
+  /** 是否还有后续记录 */
+  hasMore: boolean;
+}
 
-export interface PointsOperation { requestId: string; operation: string; typeCode: string; reference: string; at: number }
+export interface PointsOperation {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 服务端接受的操作类型 */
+  operation: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 原业务引用编号 */
+  reference: string;
+  /** 服务端事件时间，Unix 毫秒 */
+  at: number;
+}
 export type PointsPoolAction = "TOPUP_U" | "TOPUP_B" | "TRANSFER_U_TO_B" | "WITHDRAW_U" | "WITHDRAW_B";
-export interface PointsFundsTarget { path: "DIRECT" | "AGGREGATED"; channel: string; merchantNo: string; storeNo: string; accountVersion: string; subMerchantId: string; tradeNo: string | null; outTradeNo: string | null; orderTotalMinor: number }
-export interface PointsSubmission { requestId: string; requestNo: string; typeCode: string; action: PointsPoolAction; amountMinor: number; evidenceNo: string | null; fundsContext: PointsFundsTarget | null; reason: string }
-export interface PointsRequestReview { requestId: string; typeCode: string; requestNo: string; expectedVersion: number; approve: boolean; reason: string }
-export interface PointsRequestView { id: number; requestNo: string; typeCode: string; action: PointsPoolAction; amountMinor: number; state: string; submittedBy: string; approvedBy: string | null; hasEvidence: boolean; ticketNo: string | null; version: number }
-export interface PointsRequestPage { rows: PointsRequestView[]; next: number; hasMore: boolean }
-export interface PointsPlan { planNo: string; typeCode: string; action: "TOPUP_U" | "TOPUP_B" | "TRANSFER_U_TO_B"; amountMinor: number; anchor: string; everyDays: number; enabled: boolean }
-export interface PointsPlanChange { requestId: string; plan: PointsPlan; expectedVersion: number; reason: string }
-export interface PointsPlanGenerate { requestId: string; typeCode: string; limit: number; reason: string }
-export interface PointsPlanCancellation { requestId: string; typeCode: string; planNo: string; period: string; expectedVersion: number; reason: string }
-export interface PointsPlanReceipt extends PointsPlanCancellation { evidenceNo: string }
-export interface PointsPlanView extends PointsPlan { id: number; period: string; nextPeriod: string | null; state: string; requestNo: string | null; version: number }
-export interface PointsPlanPage { rows: PointsPlanView[]; next: number; hasMore: boolean }
-export interface PointsWithdrawal { requestId: string; typeCode: string; ticketNo: string; reason: string }
-export interface PointsExecution { ticketNo: string; status: "SUCCEEDED" | "FAILED" | "UNKNOWN"; confirmedMinor: number; replayed: boolean }
+export interface PointsFundsTarget {
+  /** 冻结的直连或归集资金路径 */
+  path: PointsFundsTargetPath;
+  /** 冻结的支付通道编码 */
+  channel: string;
+  /** 门店归属主体编号，不作为积分隔离维度 */
+  merchantNo: string;
+  /** 积分业务隔离的门店编号 */
+  storeNo: string;
+  /** 冻结的收款账户版本 */
+  accountVersion: string;
+  /** 原资金路由的通道子商户号 */
+  subMerchantId: string;
+  /** 核验后的通道交易号 */
+  tradeNo: string | null;
+  /** 原商户支付请求号 */
+  outTradeNo: string | null;
+  /** 订单金额，最小货币单位 */
+  orderTotalMinor: number;
+}
+export interface PointsSubmission {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 原资金或申请请求号 */
+  requestNo: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 请求执行的业务动作 */
+  action: PointsPoolAction;
+  /** 本次资金金额，最小货币单位 */
+  amountMinor: number;
+  /** 已核验的资金证据编号 */
+  evidenceNo: string | null;
+  /** 冻结的原交易及资金路由 */
+  fundsContext: PointsFundsTarget | null;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsRequestReview {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 原资金或申请请求号 */
+  requestNo: string;
+  /** 调用方预期版本号 */
+  expectedVersion: number;
+  /** 是否批准原申请 */
+  approve: boolean;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsRequestView {
+  /** 持久记录主键 */
+  id: number;
+  /** 原资金或申请请求号 */
+  requestNo: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 请求执行的业务动作 */
+  action: PointsPoolAction;
+  /** 本次资金金额，最小货币单位 */
+  amountMinor: number;
+  /** 服务端处理状态 */
+  state: string;
+  /** 原申请人编号 */
+  submittedBy: string;
+  /** 服务端审核人编号 */
+  approvedBy: string | null;
+  /** 是否已有合格资金证据 */
+  hasEvidence: boolean;
+  /** 持久资金指令编号 */
+  ticketNo: string | null;
+  /** 当前版本号，变更按版本校验 */
+  version: number;
+}
+export interface PointsRequestPage {
+  /** 本页记录 */
+  rows: PointsRequestView[];
+  /** 下一页游标 */
+  next: number;
+  /** 是否还有后续记录 */
+  hasMore: boolean;
+}
+export interface PointsPlan {
+  /** 周期计划编号 */
+  planNo: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 请求执行的业务动作 */
+  action: PointsPlanAction;
+  /** 本次资金金额，最小货币单位 */
+  amountMinor: number;
+  /** 计划锚点时间，Unix 毫秒 */
+  anchor: string;
+  /** 周期天数 */
+  everyDays: number;
+  /** 是否允许新增对应业务 */
+  enabled: boolean;
+}
+export interface PointsPlanChange {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 周期计划配置 */
+  plan: PointsPlan;
+  /** 调用方预期版本号 */
+  expectedVersion: number;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsPlanGenerate {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 本次请求的记录上限 */
+  limit: number;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsPlanCancellation {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 周期计划编号 */
+  planNo: string;
+  /** 本次生成的周期序号 */
+  period: string;
+  /** 调用方预期版本号 */
+  expectedVersion: number;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsPlanReceipt extends PointsPlanCancellation {
+  /** 已核验的资金证据编号 */
+  evidenceNo: string;
+}
+export interface PointsPlanView extends PointsPlan {
+  /** 持久记录主键 */
+  id: number;
+  /** 本次生成的周期序号 */
+  period: string;
+  /** 下一待生成周期序号 */
+  nextPeriod: string | null;
+  /** 服务端处理状态 */
+  state: string;
+  /** 原资金或申请请求号 */
+  requestNo: string | null;
+  /** 当前版本号，变更按版本校验 */
+  version: number;
+}
+export interface PointsPlanPage {
+  /** 本页记录 */
+  rows: PointsPlanView[];
+  /** 下一页游标 */
+  next: number;
+  /** 是否还有后续记录 */
+  hasMore: boolean;
+}
+export interface PointsWithdrawal {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 持久资金指令编号 */
+  ticketNo: string;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsExecution {
+  /** 持久资金指令编号 */
+  ticketNo: string;
+  /** 服务端业务状态 */
+  status: PointsExecutionStatus;
+  /** 已核验入账金额，最小货币单位 */
+  confirmedMinor: number;
+  /** 是否返回原请求的幂等结果 */
+  replayed: boolean;
+}
 
-export interface PointsStatementSnapshot { statementNo: string; period: { typeCode: string; storeNo: string; fromMillis: number; toMillis: number; routeKey: string | null }; positionIds: string[]; revisions: { number: number; lines: { positionNo: string; sourceVersion: number; points: number }[]; points: number; actor: string; reason: string | null }[]; state: string; disputeReason: string | null }
-export interface PointsStatementPage { rows: { id: number; snapshot: PointsStatementSnapshot; version: number }[]; next: number; hasMore: boolean }
-export interface PointsStatementDraft { requestId: string; typeCode: string; storeNo: string; fromMillis: number; toMillis: number; reason: string }
-export interface PointsStatementChange { requestId: string; typeCode: string; storeNo: string; statementNo: string; revision: number; action: "CONFIRM" | "DISPUTE" | "REDRAFT" | "PREPARE_PAYOUT"; reason: string }
-export interface PointsReference { typeCode: string; storeNo: string; reference: string }
-export interface PointsRevision extends PointsReference { requestId: string; expectedVersion: number; reason: string }
-export interface PointsRefundPreparation { preparationNo: string; typeCode: string; revision: number; inputHash: string; returnedPoints: number; reclaimedPending: number; reclaimedAvailable: number; expectedClawbackPoints: number; cashOffsetMinor: number; netCashMinor: number; waivedPoints: number; collectionTicket: string | null; state: string }
-export interface PointsRefundView { typeCode: string; storeNo: string; afterSaleNo: string; subOrderNo: string; state: string; version: number; preparation: PointsRefundPreparation }
-export interface PointsReceivableRecovery { requestId: string; typeCode: string; storeNo: string; receivableNo: string; expectedVersion: number; amountMinor: number; reason: string }
+export interface PointsStatementSnapshot {
+  /** 门店结算单编号 */
+  statementNo: string;
+  /** 本次生成的周期序号 */
+  period: {
+    /** 积分类型唯一编码 */
+    typeCode: string;
+    /** 积分业务隔离的门店编号 */
+    storeNo: string;
+    /** 统计或结算起始时间，Unix 毫秒 */
+    fromMillis: number;
+    /** 统计或结算截止时间，Unix 毫秒 */
+    toMillis: number;
+    /** 原资金路由唯一键 */
+    routeKey: string | null;
+  };
+  /** 本次结算引用的原持仓编号集合 */
+  positionIds: string[];
+  /** 结算单不可变修订记录 */
+  revisions: {
+    /** 修订序号 */
+    number: number;
+    /** 本修订包含的原持仓结算行 */
+    lines: {
+      /** 原持仓编号 */
+      positionNo: string;
+      /** 引用的原持仓版本 */
+      sourceVersion: number;
+      /** 积分数量 */
+      points: number;
+    }[];
+    /** 积分数量 */
+    points: number;
+    /** 服务端取得的操作人编号 */
+    actor: string;
+    /** 服务端不可用原因或操作审计原因 */
+    reason: string | null;
+  }[];
+  /** 服务端处理状态 */
+  state: string;
+  /** 争议原因，未争议时为空 */
+  disputeReason: string | null;
+}
+export interface PointsStatementPage {
+  /** 本页记录 */
+  rows: {
+    /** 持久记录主键 */
+    id: number;
+    /** 服务端冻结的账务或准备快照 */
+    snapshot: PointsStatementSnapshot;
+    /** 当前版本号，变更按版本校验 */
+    version: number;
+  }[];
+  /** 下一页游标 */
+  next: number;
+  /** 是否还有后续记录 */
+  hasMore: boolean;
+}
+export interface PointsStatementDraft {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 积分业务隔离的门店编号 */
+  storeNo: string;
+  /** 统计或结算起始时间，Unix 毫秒 */
+  fromMillis: number;
+  /** 统计或结算截止时间，Unix 毫秒 */
+  toMillis: number;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsStatementChange {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 积分业务隔离的门店编号 */
+  storeNo: string;
+  /** 门店结算单编号 */
+  statementNo: string;
+  /** 不可变修订版本 */
+  revision: number;
+  /** 请求执行的业务动作 */
+  action: PointsStatementChangeAction;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsReference {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 积分业务隔离的门店编号 */
+  storeNo: string;
+  /** 原业务引用编号 */
+  reference: string;
+}
+export interface PointsRevision extends PointsReference {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 调用方预期版本号 */
+  expectedVersion: number;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsRefundPreparation {
+  /** 退款准备编号 */
+  preparationNo: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 不可变修订版本 */
+  revision: number;
+  /** 原准备输入的不可变摘要 */
+  inputHash: string;
+  /** 本次退回已使用积分 */
+  returnedPoints: number;
+  /** 本次收回待激活积分 */
+  reclaimedPending: number;
+  /** 本次收回可用积分 */
+  reclaimedAvailable: number;
+  /** 原承诺要求收回的积分总数 */
+  expectedClawbackPoints: number;
+  /** 现金退款中抵销的金额，最小货币单位 */
+  cashOffsetMinor: number;
+  /** 最终需退现金金额，最小货币单位 */
+  netCashMinor: number;
+  /** 按授权豁免的补收积分 */
+  waivedPoints: number;
+  /** 原补收资金指令，未生成时为空 */
+  collectionTicket: string | null;
+  /** 服务端处理状态 */
+  state: string;
+}
+export interface PointsRefundView {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 积分业务隔离的门店编号 */
+  storeNo: string;
+  /** 原售后尝试编号 */
+  afterSaleNo: string;
+  /** 门店子订单编号 */
+  subOrderNo: string;
+  /** 服务端处理状态 */
+  state: string;
+  /** 当前版本号，变更按版本校验 */
+  version: number;
+  /** 本次售后冻结的退款准备 */
+  preparation: PointsRefundPreparation;
+}
+export interface PointsReceivableRecovery {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 积分业务隔离的门店编号 */
+  storeNo: string;
+  /** 门店应收责任编号 */
+  receivableNo: string;
+  /** 调用方预期版本号 */
+  expectedVersion: number;
+  /** 本次资金金额，最小货币单位 */
+  amountMinor: number;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
 export type PointsRecoveryOperation = "PAYOUT" | "TRANSFER" | "REFUND_COLLECTION" | "REFUND_COMPENSATION";
-export interface PointsFundsReference extends PointsReference { operation: PointsRecoveryOperation }
-export interface PointsFundsView extends PointsFundsReference { state: string; version: number; grossMinor: number; offsetMinor: number; cashMinor: number }
-export interface PointsRecovery extends PointsFundsReference { requestId: string; expectedVersion: number; reason: string }
-export interface PointsRecoveryExecution { reference: string; status: "SUCCEEDED" | "FAILED" | "UNKNOWN" }
-export interface PointsEventView { id: number; eventNo: string; kind: string; state: string; attempt: number; nextAttempt: number; version: number }
-export interface PointsEventPage { rows: PointsEventView[]; next: number; hasMore: boolean }
-export interface PointsEventRetry { requestId: string; typeCode: string; eventId: number; expectedVersion: number; reason: string }
+export interface PointsFundsReference extends PointsReference {
+  /** 服务端接受的操作类型 */
+  operation: PointsRecoveryOperation;
+}
+export interface PointsFundsView extends PointsFundsReference {
+  /** 服务端处理状态 */
+  state: string;
+  /** 当前版本号，变更按版本校验 */
+  version: number;
+  /** 原退款金额，最小货币单位 */
+  grossMinor: number;
+  /** 已抵销金额，最小货币单位 */
+  offsetMinor: number;
+  /** 实际现金退款金额，最小货币单位 */
+  cashMinor: number;
+}
+export interface PointsRecovery extends PointsFundsReference {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 调用方预期版本号 */
+  expectedVersion: number;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsRecoveryExecution {
+  /** 原业务引用编号 */
+  reference: string;
+  /** 服务端业务状态 */
+  status: PointsExecutionStatus;
+}
+export interface PointsEventView {
+  /** 持久记录主键 */
+  id: number;
+  /** 源事实事件编号 */
+  eventNo: string;
+  /** 原业务持仓或事件种类 */
+  kind: string;
+  /** 服务端处理状态 */
+  state: string;
+  /** 原事件投递次数 */
+  attempt: number;
+  /** 下一允许重试时间，Unix 毫秒 */
+  nextAttempt: number;
+  /** 当前版本号，变更按版本校验 */
+  version: number;
+}
+export interface PointsEventPage {
+  /** 本页记录 */
+  rows: PointsEventView[];
+  /** 下一页游标 */
+  next: number;
+  /** 是否还有后续记录 */
+  hasMore: boolean;
+}
+export interface PointsEventRetry {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 持久源事件主键 */
+  eventId: number;
+  /** 调用方预期版本号 */
+  expectedVersion: number;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
 
 export type PointsHolder = "MINT" | "ISSUE" | "USER" | "STORE" | "RECEIVE";
 export type PointsBucket = "ISSUED" | "ISSUABLE" | "PENDING" | "AVAILABLE" | "HELD" | "REFUND_RESERVED" | "RECIRCULATABLE";
 export type PointsPositionKind = "GRANT" | "REDEEM" | "REFUND" | "PAYOUT" | "STATEMENT" | "TRANSFER";
-export interface PointsAccountQ { typeCode: string; holderType: PointsHolder; holderNo: string }
-export interface PointsAccountView { snapshot: PointsAccountQ & { buckets: Partial<Record<PointsBucket, number>>; frozen: boolean; expireAt: number | null; expiryRevision: number; lastActiveAt: number }; exists: boolean; version: number }
-export interface PointsFreeze { requestId: string; typeCode: string; userNo: string; expectedVersion: number; frozen: boolean; reason: string }
-export interface PointsVoucherView { id: number; voucherNo: string; bizRef: string; currency: string; ratePoints: number; rateMinor: number }
-export interface PointsCursorPage<T> { rows: T[]; next: number; hasMore: boolean }
-export interface PointsEntryView { id: number; entryNo: string; voucherNo: string; holderType: PointsHolder; holderNo: string; bucket: PointsBucket; deltaPoints: number; afterPoints: number }
-export interface PointsFlowView { id: number; flowNo: string; voucherNo: string; bucket: "U" | "C" | "D" | "B" | "RESERVED_B" | "LOCKED_U" | "LOCKED_B"; deltaMinor: number; afterMinor: number }
-export interface OrderPointsIntegrationQ { storeNo: string; scene: "ONLINE" | "OFFLINE" }
-export interface OrderPointsIntegrationPolicy extends OrderPointsIntegrationQ { mode: "DETACHED" | "ACTIVE" | "DRAINING"; earnEnabled: boolean; redeemEnabled: boolean; version: number; actor: string | null; reason: string | null; changedAt: number }
-export interface OrderPointsIntegrationChange extends OrderPointsIntegrationQ { requestId: string; mode: "DETACHED" | "ACTIVE" | "DRAINING"; earnEnabled: boolean; redeemEnabled: boolean; expectedVersion: number; reason: string }
+export interface PointsAccountQ {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 账本持有人类型 */
+  holderType: PointsHolder;
+  /** 账本持有人编号，与持有人类型联合定位 */
+  holderNo: string;
+}
+export interface PointsAccountView {
+  /** 服务端冻结的账务或准备快照 */
+  snapshot: PointsAccountQ & {
+    /** 按账本分桶保存的积分余额 */
+    buckets: Partial<Record<PointsBucket, number>>;
+    /** 是否冻结该账户新增使用 */
+    frozen: boolean;
+    /** 服务端计算的过期时间，Unix 毫秒；无则为空 */
+    expireAt: number | null;
+    /** 账户失效计划修订号 */
+    expiryRevision: number;
+    /** 最近有效账务活动时间，Unix 毫秒 */
+    lastActiveAt: number;
+  };
+  /** 账户是否已经创建，未创建不代表查询失败 */
+  exists: boolean;
+  /** 当前版本号，变更按版本校验 */
+  version: number;
+}
+export interface PointsFreeze {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 被操作用户编号 */
+  userNo: string;
+  /** 调用方预期版本号 */
+  expectedVersion: number;
+  /** 是否冻结该账户新增使用 */
+  frozen: boolean;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsVoucherView {
+  /** 持久记录主键 */
+  id: number;
+  /** 原记账凭证编号 */
+  voucherNo: string;
+  /** 原业务引用号 */
+  bizRef: string;
+  /** ISO 货币代码 */
+  currency: string;
+  /** 换算比例的积分数量 */
+  ratePoints: number;
+  /** 换算比例的最小货币单位数量 */
+  rateMinor: number;
+}
+export interface PointsCursorPage<T> {
+  /** 本页记录 */
+  rows: T[];
+  /** 下一页游标 */
+  next: number;
+  /** 是否还有后续记录 */
+  hasMore: boolean;
+}
+export interface PointsEntryView {
+  /** 持久记录主键 */
+  id: number;
+  /** 不可变积分分录编号 */
+  entryNo: string;
+  /** 原记账凭证编号 */
+  voucherNo: string;
+  /** 账本持有人类型 */
+  holderType: PointsHolder;
+  /** 账本持有人编号，与持有人类型联合定位 */
+  holderNo: string;
+  /** 积分账本或资金池分桶 */
+  bucket: PointsBucket;
+  /** 该分录积分变化，负值表示扣减 */
+  deltaPoints: number;
+  /** 该分录完成后的积分余额 */
+  afterPoints: number;
+}
+export interface PointsFlowView {
+  /** 持久记录主键 */
+  id: number;
+  /** 不可变资金池流水号 */
+  flowNo: string;
+  /** 原记账凭证编号 */
+  voucherNo: string;
+  /** 积分账本或资金池分桶 */
+  bucket: PointsFlowViewBucket;
+  /** 该流水金额变化，最小货币单位 */
+  deltaMinor: number;
+  /** 该流水完成后金额，最小货币单位 */
+  afterMinor: number;
+}
+export interface OrderPointsIntegrationQ {
+  /** 积分业务隔离的门店编号 */
+  storeNo: string;
+  /** 线上或线下交易场景 */
+  scene: OrderPointsIntegrationQScene;
+}
+export interface OrderPointsIntegrationPolicy extends OrderPointsIntegrationQ {
+  /** 服务端参与模式或已发布回退规则模式 */
+  mode: OrderPointsIntegrationPolicyMode;
+  /** 是否接收新的返分承诺 */
+  earnEnabled: boolean;
+  /** 是否接收新的抵扣承诺 */
+  redeemEnabled: boolean;
+  /** 当前版本号，变更按版本校验 */
+  version: number;
+  /** 服务端取得的操作人编号 */
+  actor: string | null;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string | null;
+  /** 服务端配置变更时间，Unix 毫秒 */
+  changedAt: number;
+}
+export interface OrderPointsIntegrationChange extends OrderPointsIntegrationQ {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 服务端参与模式或已发布回退规则模式 */
+  mode: OrderPointsIntegrationPolicyMode;
+  /** 是否接收新的返分承诺 */
+  earnEnabled: boolean;
+  /** 是否接收新的抵扣承诺 */
+  redeemEnabled: boolean;
+  /** 调用方预期版本号 */
+  expectedVersion: number;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
 export interface OrderPointsInspection {
-  subOrderNo: string; bindingPhase: string | null; bindingVersion: number;
-  placementPhase: string | null; placementVersion: number; originalHoldNo: string | null;
-  refundPhases: string[]; pendingSourceEvents: number; paymentVerified: boolean;
+  /** 门店子订单编号 */
+  subOrderNo: string;
+  /** 源绑定当前阶段，无绑定为空 */
+  bindingPhase: string | null;
+  /** 源绑定版本，无绑定为空 */
+  bindingVersion: number;
+  /** 下单工作流阶段，无记录为空 */
+  placementPhase: string | null;
+  /** 下单工作流版本，无记录为空 */
+  placementVersion: number;
+  /** 原积分占用编号，不生成新编号替换 */
+  originalHoldNo: string | null;
+  /** 该子单所有售后执行阶段 */
+  refundPhases: string[];
+  /** 尚未确认送达的源事实数量 */
+  pendingSourceEvents: number;
+  /** 原支付证据是否核验成功 */
+  paymentVerified: boolean;
+  /** 只读一致性差异项，不返回敏感正文 */
   differences: string[];
 }
 export interface OrderPointsManualRefundPage {
-  rows: { afterSaleNo: string; subOrderNo: string; createdAt: number }[];
+  /** 本页记录 */
+  rows: {
+    /** 原售后尝试编号 */
+    afterSaleNo: string;
+    /** 门店子订单编号 */
+    subOrderNo: string;
+    /** 服务端创建时间，Unix 毫秒 */
+    createdAt: number;
+  }[];
+  /** 下一页游标 */
   next: string | null;
+  /** 是否还有后续记录 */
   hasMore: boolean;
 }
-export interface OrderPointsRefundActionResult { afterSaleNo: string; subOrderNo: string; status: string }
-export interface PointsPositionQ { typeCode: string; kind: PointsPositionKind; reference: string }
-export interface PointsPositionView extends PointsPositionQ { state: string; originalPoints: number; processedPoints: number; version: number }
-export interface PointsStatsQ { typeCode: string; day: string; scope?: "TOTAL" | "STORE" | "USER"; subjectNo?: string }
-export interface PointsStats { typeCode: string; day: string; scopeNo: string; metrics: Record<string, number>; skipReasons: Record<string, number>; throughVoucherId: number; rebuiltAt: number }
-export interface PointsStatsRebuild { requestId: string; typeCode: string; day: string; reason: string }
-export interface PointsReconRun { requestId: string; typeCode: string; reason: string }
-export interface PointsRecon { typeCode: string; checkedAt: number; complete: boolean; differences: { code: string; reference: string; expected: number; actual: number }[] }
+export interface OrderPointsRefundActionResult {
+  /** 原售后尝试编号 */
+  afterSaleNo: string;
+  /** 门店子订单编号 */
+  subOrderNo: string;
+  /** 服务端业务状态 */
+  status: string;
+}
+export interface PointsPositionQ {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 原业务持仓或事件种类 */
+  kind: PointsPositionKind;
+  /** 原业务引用编号 */
+  reference: string;
+}
+export interface PointsPositionView extends PointsPositionQ {
+  /** 服务端处理状态 */
+  state: string;
+  /** 原持仓积分总数 */
+  originalPoints: number;
+  /** 该持仓已处理积分数 */
+  processedPoints: number;
+  /** 当前版本号，变更按版本校验 */
+  version: number;
+}
+export interface PointsStatsQ {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 业务统计日期，YYYY-MM-DD */
+  day: string;
+  /** 开关或统计的作用范围 */
+  scope?: PointsStatsQScope;
+  /** 范围对象编号，门店范围使用 storeNo */
+  subjectNo?: string;
+}
+export interface PointsStats {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 业务统计日期，YYYY-MM-DD */
+  day: string;
+  /** 统计范围对象编号 */
+  scopeNo: string;
+  /** 服务端账本计算的指标值 */
+  metrics: Record<string, number>;
+  /** 本轮跳过原因及数量 */
+  skipReasons: Record<string, number>;
+  /** 统计已处理的最大凭证主键 */
+  throughVoucherId: number;
+  /** 服务端统计重建时间，Unix 毫秒 */
+  rebuiltAt: number;
+}
+export interface PointsStatsRebuild {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 业务统计日期，YYYY-MM-DD */
+  day: string;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsReconRun {
+  /** 幂等操作请求号，重试必须复用 */
+  requestId: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 服务端不可用原因或操作审计原因 */
+  reason: string;
+}
+export interface PointsRecon {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 服务端一致性检查时间，Unix 毫秒 */
+  checkedAt: number;
+  /** 本轮有界检查是否完整 */
+  complete: boolean;
+  /** 只读一致性差异项，不返回敏感正文 */
+  differences: {
+    /** 服务端差异分类代码 */
+    code: string;
+    /** 原业务引用编号 */
+    reference: string;
+    /** 按原承诺计算的预期数量 */
+    expected: number;
+    /** 实际已记录数量 */
+    actual: number;
+  }[];
+}
 export type PointsEntriesQ = PointsCursor & ({ holderType: PointsHolder; holderNo: string; voucherNo?: never } | { voucherNo: string; holderType?: never; holderNo?: never });
 
 export interface OrderPointsStoreObligations {
-  known: boolean; activePolicies: number; openBindings: number; sourceSettled: boolean;
-  pay: { known: boolean; openHolds: number; pendingPromises: number; openRefunds: number;
-    openStatements: number; unknownFunds: number; pendingEvents: number };
+  /** 核验是否完整可用；false 时禁止按零义务判断 */
+  known: boolean;
+  /** 仍处于 ACTIVE 的场景策略数量 */
+  activePolicies: number;
+  /** 尚未关闭的源订单绑定数量 */
+  openBindings: number;
+  /** 源端义务是否全部结清 */
+  sourceSettled: boolean;
+  /** 支付侧义务摘要，不可用时为 null */
+  pay: {
+    /** 核验是否完整可用；false 时禁止按零义务判断 */
+    known: boolean;
+    /** 未释放的原占用数量 */
+    openHolds: number;
+    /** 未完成的原承诺数量 */
+    pendingPromises: number;
+    /** 未完成的原退款数量 */
+    openRefunds: number;
+    /** 未完成的门店结算单数量 */
+    openStatements: number;
+    /** 资金结果未知的原指令数量 */
+    unknownFunds: number;
+    /** 未处理完的原事件数量 */
+    pendingEvents: number;
+  };
 }

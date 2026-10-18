@@ -768,5 +768,15 @@ export interface StockOutboundReq {
   lines: StockLineReq[];
 }
 
-export interface StorePointsTypeQuery { typeCode: string }
-export interface StorePointsEntriesQuery { typeCode: string; after?: number; limit?: number }
+export interface StorePointsTypeQuery {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+}
+export interface StorePointsEntriesQuery {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 上一页返回的游标，首次为零 */
+  after?: number;
+  /** 本次请求记录上限 */
+  limit?: number;
+}
