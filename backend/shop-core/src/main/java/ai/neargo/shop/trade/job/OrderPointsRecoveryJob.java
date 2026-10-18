@@ -34,7 +34,7 @@ public class OrderPointsRecoveryJob implements JobHandler {
     }
 
     @Scheduled(cron = "${shop.points.order-recovery.cron:0 */2 * * * *}")
-    @SchedulerLock(name = "order-points-recovery", lockAtMostFor = "PT5M")
+    @SchedulerLock(name = "order-points-recovery", lockAtMostFor = "PT10M")
     public void scan() {
         jobs.run(
                 name(),
@@ -61,7 +61,7 @@ public class OrderPointsRecoveryJob implements JobHandler {
                 "0 */2 * * * *",
                 true,
                 480,
-                300,
+                600,
                 true,
                 true);
     }
