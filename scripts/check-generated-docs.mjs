@@ -44,6 +44,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
  * 就红的闸门等于没有闸门（同 `check-new-test-failures.mjs` 的口径）。
  */
 const GENERATORS = [
+  ["scripts/gen-points-integration-diagrams.mjs", ["docs/technical/diagrams/points-operations-1.svg", "docs/technical/diagrams/points-operations-2.svg", "docs/technical/diagrams/points-order-integration-1.svg"]],
   /*
    * ⚠️ 这里原先写着三个产物，而 `gen-api-index.mjs` **只写一个**（`docs/api/API清单.md`）。
    * `openapi-b.yaml` 是它的**输入**，`openapi-c.yaml` 更是**从来不存在**——

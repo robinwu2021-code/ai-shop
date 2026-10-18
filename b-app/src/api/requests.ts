@@ -591,22 +591,6 @@ export interface ToggleCampaignReq {
   running: boolean;
 }
 
-// ---------------------------------------------------------------- 积分
-
-export interface PointsRecordQuery {
-  /** 账期 `YYYYMM`，不传为当期 */
-  period?: string;
-  /** 页码，从 1 起 */
-  page?: number;
-  /** 每页条数 */
-  size?: number;
-}
-
-export interface TogglePointsReq {
-  /** 目标状态。**关闭只影响将来** —— 已发出的分仍有效，已扣的服务费不退 */
-  enabled: boolean;
-}
-
 /**
  * 提交收款进件。
  *
@@ -785,8 +769,23 @@ export interface StockOutboundReq {
   lines: StockLineReq[];
 }
 
+
 /** 收妥退货不代表可以再次销售，缺省禁止自动回库。 */
 export interface ReceiveReturnReq {
   /** 商家明确确认可再次销售；默认 false。 */
   restockApproved: boolean;
+}
+
+export interface StorePointsTypeQuery {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+}
+export interface StorePointsEntriesQuery {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 上一页返回的游标，首次为零 */
+  after?: number;
+  /** 本次请求记录上限 */
+  limit?: number;
+
 }

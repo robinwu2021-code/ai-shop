@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1660" height="1291" viewBox="0 0 1660 1291"><title>积分模块类图 · 种类发放与核销服务</title><desc>由积分模块图契约JSON生成，UML组合/关联/依赖/接口实现，目标设计非Java源码反射。</desc>
+<defs><marker id="point" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker><marker id="money" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#c2410c"/></marker><marker id="dep" markerWidth="10" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9" fill="none" stroke="#64748b"/></marker><marker id="real" markerWidth="13" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0 0L12 6L0 12Z" fill="white" stroke="#475569"/></marker><marker id="diamond" markerWidth="15" markerHeight="10" refX="14" refY="5" orient="auto-start-reverse"><path d="M0 5L7 0L14 5L7 10Z" fill="#475569"/></marker></defs>
+<rect width="1660" height="1291" fill="#f8fafc"/>
+<text x="35" y="48" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="29" fill="#172554" font-weight="650" text-anchor="start">积分模块类图 · 种类发放与核销服务</text>
+<text x="35" y="80" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">v3 设计契约 · pay-domain内业务模块 · payTxManager · 实现与验收状态见 TDD</text>
+<text x="40" y="115" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">实线＝关联  ◆＝组合  虚线开放箭头＝依赖  空心三角＝接口实现；字段与方法为目标设计。</text>
+<path d="M1040,625.0 L1064,625.0 L1064,828 L265.0,828 L265.0,863" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#dep)"/>
+<path d="M1590,625.0 L1624,625.0 L1624,828 L815.0,828 L815.0,863" fill="none" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#dep)"/>
+<rect x="40" y="155" width="450" height="232" rx="8" fill="white" stroke="#0f766e" stroke-width="1.5"/>
+<text x="56" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«service»  pay.points.type</text>
+<text x="56" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">PointTypeService</text>
+<path d="M40 225H490" stroke="#0f766e" stroke-width="1"/>
+<text x="56" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">types: PointTypeStore</text>
+<path d="M40 266H490" stroke="#cbd5e1"/>
+<text x="56" y="290" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ create(cmd)</text>
+<text x="56" y="312" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ activate(type)</text>
+<text x="56" y="334" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ startDrain(type)</text>
+<text x="56" y="356" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ retire(type)</text>
+<rect x="590" y="155" width="450" height="232" rx="8" fill="white" stroke="#0f766e" stroke-width="1.5"/>
+<text x="606" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«service»  pay.points.pool</text>
+<text x="606" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">PoolService</text>
+<path d="M590 225H1040" stroke="#0f766e" stroke-width="1"/>
+<text x="606" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">posting: PointsPostingService</text>
+<path d="M590 266H1040" stroke="#cbd5e1"/>
+<text x="606" y="290" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ transferIssueToReserve(type,minor)</text>
+<text x="606" y="312" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ withdraw(request)</text>
+<text x="606" y="334" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ watermark(type)</text>
+<rect x="1140" y="155" width="450" height="232" rx="8" fill="white" stroke="#0f766e" stroke-width="1.5"/>
+<text x="1156" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«service»  pay.points.pool</text>
+<text x="1156" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">PoolRequestService</text>
+<path d="M1140 225H1590" stroke="#0f766e" stroke-width="1"/>
+<text x="1156" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">requests: PoolRequestStore</text>
+<text x="1156" y="272" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">posting: PointsPostingService</text>
+<path d="M1140 288H1590" stroke="#cbd5e1"/>
+<text x="1156" y="312" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ submit(request)</text>
+<text x="1156" y="334" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ approve(no,operator,evidence)</text>
+<text x="1156" y="356" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ reject(no,reason)</text>
+<rect x="40" y="487" width="450" height="276" rx="8" fill="white" stroke="#0f766e" stroke-width="1.5"/>
+<text x="56" y="511" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«service»  pay.points.agreement</text>
+<text x="56" y="540" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">AgreementService</text>
+<path d="M40 557H490" stroke="#0f766e" stroke-width="1"/>
+<text x="56" y="582" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">agreements: AgreementStore</text>
+<text x="56" y="604" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">funds: PointsFundsGateway</text>
+<path d="M40 620H490" stroke="#cbd5e1"/>
+<text x="56" y="644" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ sign(command)</text>
+<text x="56" y="666" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ changeMode(command)</text>
+<text x="56" y="688" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ terminate(no,reason)</text>
+<rect x="590" y="487" width="450" height="276" rx="8" fill="white" stroke="#0f766e" stroke-width="1.5"/>
+<text x="606" y="511" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«service»  pay.points.earn</text>
+<text x="606" y="540" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">EarnService</text>
+<path d="M590 557H1040" stroke="#0f766e" stroke-width="1"/>
+<text x="606" y="582" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">policy: EarnPolicy</text>
+<text x="606" y="604" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">posting: PointsPostingService</text>
+<path d="M590 620H1040" stroke="#cbd5e1"/>
+<text x="606" y="644" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ grant(GrantCommand): GrantOutcome</text>
+<rect x="1140" y="487" width="450" height="276" rx="8" fill="white" stroke="#0f766e" stroke-width="1.5"/>
+<text x="1156" y="511" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«service»  pay.points.redeem</text>
+<text x="1156" y="540" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">RedeemService</text>
+<path d="M1140 557H1590" stroke="#0f766e" stroke-width="1"/>
+<text x="1156" y="582" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">policy: RedeemPolicy</text>
+<text x="1156" y="604" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">funds: PointsFundsGateway</text>
+<text x="1156" y="626" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">posting: PointsPostingService</text>
+<path d="M1140 642H1590" stroke="#cbd5e1"/>
+<text x="1156" y="666" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ quote(RedeemQuery): RedeemQuote</text>
+<text x="1156" y="688" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ hold(HoldCommand): HoldOutcome</text>
+<text x="1156" y="710" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ release(ReleaseCommand): HoldOutcome</text>
+<text x="1156" y="732" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ settleModeOf(subOrderNo): SettleMode</text>
+<rect x="40" y="863" width="450" height="210" rx="8" fill="white" stroke="#7c3aed" stroke-width="1.5"/>
+<text x="56" y="887" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#7c3aed" font-weight="400" text-anchor="start">«interface»  pay.points.policy</text>
+<text x="56" y="916" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">EarnPolicy</text>
+<path d="M40 933H490" stroke="#7c3aed" stroke-width="1"/>
+<text x="56" y="958" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">rule snapshots / integer rate</text>
+<path d="M40 974H490" stroke="#cbd5e1"/>
+<text x="56" y="998" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ calculate(lines,fact): EarnDecision</text>
+<rect x="590" y="863" width="450" height="210" rx="8" fill="white" stroke="#7c3aed" stroke-width="1.5"/>
+<text x="606" y="887" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#7c3aed" font-weight="400" text-anchor="start">«interface»  pay.points.policy</text>
+<text x="606" y="916" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">RedeemPolicy</text>
+<path d="M590 933H1040" stroke="#7c3aed" stroke-width="1"/>
+<text x="606" y="958" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">eligible targets / integer rate</text>
+<path d="M590 974H1040" stroke="#cbd5e1"/>
+<text x="606" y="998" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ quote(query,snapshots): RedeemDecision</text>
+<rect x="1140" y="863" width="450" height="210" rx="8" fill="white" stroke="#0f766e" stroke-width="1.5"/>
+<text x="1156" y="887" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#0f766e" font-weight="400" text-anchor="start">«service»  pay.points.pool</text>
+<text x="1156" y="916" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#0f766e" font-weight="650" text-anchor="start">PointsSwitchService</text>
+<path d="M1140 933H1590" stroke="#0f766e" stroke-width="1"/>
+<text x="1156" y="958" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">switches / intervals</text>
+<text x="1156" y="980" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">expiry: ExpiryService</text>
+<path d="M1140 996H1590" stroke="#cbd5e1"/>
+<text x="1156" y="1020" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ pause(command)</text>
+<text x="1156" y="1042" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ resume(command)</text>
+<text x="40" y="1185" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="18" fill="#172554" font-weight="650" text-anchor="start">本图内关系（跨图关系及完整属性见图册与JSON契约）</text>
+<text x="40" y="1218" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">EarnService - - &gt; EarnPolicy   uses </text>
+<text x="40" y="1242" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">RedeemService - - &gt; RedeemPolicy   uses </text>
+</svg>

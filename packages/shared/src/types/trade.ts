@@ -103,6 +103,8 @@ export interface CartItem {
 }
 export type OrderStatus =
   | "WAIT_PAY"
+  /** 积分原号受理中；此时不能付款，继续核验或显式重新确认。 */
+  | "POINTS_PROCESSING"
   /**
    * 等商家当面收款（线下支付）。
    *
@@ -915,28 +917,49 @@ export interface RefundImpact {
  *
  * <p>令牌无效 / 过期时后端返回 `null`，端上据此显示「链接已失效」。
  */
+/**
+ * 免登录看件视图（TDD-收件人物流触达与分享裂变 §3）。后端 `GET /mp/track?t=<token>` 返回。
+ *
+ * <p>**这是一份删过的订单详情**：发给收件人的看件链接会被转发、截图，
+ * 所以只放物流 + 收货 + 店名 + 商品摘要 —— 价格、买家身份不下发（后端就不给）。
+ * 手机号是**掩码**的（后端出 `138****8000`）。
+ *
+ * <p>令牌无效 / 过期时后端返回 `null`，端上据此显示「链接已失效」。
+ */
 export interface TrackView {
+  /** 门店子订单编号 */
   subOrderNo: string;
   /** 契约抽象状态，与订单详情同口径 */
   status: OrderStatus;
+  /** 履约方式编码 */
   fulfillment: FulfillmentType;
   /** 发货门店名。空 → 退化成「商家」 */
   storeName?: string | null;
+  /** 收货人展示名称 */
   receiverName?: string | null;
   /** 已掩码，非明文 */
   receiverPhoneMasked?: string | null;
+  /** 收货地址 */
   receiverAddress?: string | null;
+  /** 承运商名称 */
   expressCompany?: string | null;
+  /** 承运商运单号 */
   expressNo?: string | null;
+  /** 本次履约的商品明细 */
   items: TrackItem[];
   /** 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null */
   trace?: ShipmentTrace | null;
 }
 
 /** 看件页的商品摘要 —— **不含价格**。 */
+/** 看件页的商品摘要 —— **不含价格**。 */
 export interface TrackItem {
+  /** 商品或规格展示标题 */
   title?: string;
+  /** 商品封面地址 */
   cover?: string;
+  /** 已选规格描述 */
   spec?: string;
+  /** 履约商品数量 */
   qty: number;
 }

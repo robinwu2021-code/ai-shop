@@ -1,10 +1,8 @@
 package ai.neargo.shop.trade.order.refund;
 
-import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
 import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.mapper.AfterSaleItemMapper;
-import ai.neargo.shop.trade.order.mapper.RefundLedgerMapper;
 import ai.neargo.shop.trade.order.refund.policy.AfterSaleWindowPolicy;
 import ai.neargo.shop.trade.order.refund.policy.ApprovedAmountAllocator;
 import ai.neargo.shop.trade.order.refund.policy.DefaultAfterSaleWindowPolicy;
@@ -14,11 +12,10 @@ import ai.neargo.shop.trade.order.refund.policy.DefaultFreightRefundPolicy;
 import ai.neargo.shop.trade.order.refund.policy.DefaultLineAmountPolicy;
 import ai.neargo.shop.trade.order.refund.port.AfterSaleLineStore;
 import ai.neargo.shop.trade.order.refund.port.impl.MybatisAfterSaleLineStore;
-import ai.neargo.shop.trade.order.refund.port.impl.MybatisRefundLedgerStore;
 import ai.neargo.shop.trade.order.refund.port.impl.MybatisRefundSourceStore;
 import ai.neargo.shop.trade.order.refund.service.AfterSaleRefundExecutor;
 import ai.neargo.shop.trade.order.refund.service.AfterSaleRequestPlanner;
-import ai.neargo.shop.trade.order.refund.service.RefundLedger;
+import ai.neargo.shop.trade.order.refund.service.RefundExecutionService;
 import ai.neargo.shop.trade.order.refund.service.RefundPlanner;
 import ai.neargo.shop.trade.order.refund.service.RefundableQuery;
 import ai.neargo.shop.trade.order.refund.service.RefundableViewFactory;
@@ -67,9 +64,10 @@ public class RefundDomainBeans {
 
     @Bean
     public AfterSaleRefundExecutor afterSaleRefundExecutor(RefundableQuery query, RefundPlanner planner,
-                                                           ApprovedAmountAllocator allocator, RefundLedgerMapper ledger,
-                                                           AfterSaleLineStore lines, SettlePort settle) {
+                                                           ApprovedAmountAllocator allocator,
+                                                           RefundExecutionService executions,
+                                                           AfterSaleLineStore lines) {
         return new AfterSaleRefundExecutor(query, planner, allocator,
-                new RefundLedger(new MybatisRefundLedgerStore(ledger)), lines, settle);
+                executions, lines);
     }
 }

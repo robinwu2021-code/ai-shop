@@ -38,7 +38,7 @@ const body = epSrc.slice(
 
 const endpoints = {};
 const re =
-  /(\w+):\s*\{\s*method:\s*"(GET|POST|PUT)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),\s*summary:\s*"([^"]*)"/g;
+  /(\w+):\s*\{\s*method:\s*"(GET|POST|PUT)",\s*path:\s*"([^"]+)",\s*auth:\s*(true|false),(?:\s*clientTag:\s*(?:true|false),)?\s*summary:\s*"([^"]*)"/g;
 let m;
 while ((m = re.exec(body))) {
   endpoints[m[1]] = { method: m[2], path: m[3], auth: m[4] === "true", summary: m[5] };
@@ -163,6 +163,10 @@ const RESPONSE_TYPES = {
   // 生成器于是拒绝输出（见下方 missingResp 守卫）。结果是**契约里没有它们**，
   // 而后端明明实现了 —— 所有按契约算的覆盖率都因此低估后端。
   orderPreview: "OrderPreview",
+  orderPointsState: "PointsOrderState",
+  orderPointsQuote: "OrderPointsQuote",
+  pointsAccounts: "BuyerPointsAccount[]",
+  pointsEntries: "BuyerPointsEntryPage",
   orderCapability: "CheckoutCapability",
   afterSaleReasons: "AfterSaleReason[]",
   afterSaleList: "AfterSale[]",
@@ -242,9 +246,6 @@ const RESPONSE_TYPES = {
   askQuestion: "Question",
   createReview: "Review",
   toggleReviewLike: "Review",
-  pointAccount: "PointAccount",
-  pointRecords: "PointRecord[]",
-  pointsDeductible: "PointsDeductible",
   myCards: "UserCard[]",
   messageList: "Message[]",
   readMessage: "Message[]",
@@ -522,7 +523,8 @@ function toYaml(value, indent = 0) {
       const v = toYaml(value[k], indent + 1);
       const inline = typeof value[k] !== "object" || value[k] === null;
       const isEmpty = v === "{}" || v === "[]";
-      return `\n${pad}${yamlKey(k)}: ${inline || isEmpty ? v : v.startsWith("\n") ? v : `\n${"  ".repeat(indent + 1)}${v}`}`;
+      const suffix = inline || isEmpty ? ` ${v}` : v.startsWith("\n") ? v : `\n${"  ".repeat(indent + 1)}${v}`;
+      return `\n${pad}${yamlKey(k)}:${suffix}`;
     })
     .join("");
 }

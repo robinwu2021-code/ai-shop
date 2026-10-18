@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OrderStatusProjectorTest {
 
     private static final List<String> MAIN = List.of(
-            OrdOrder.WAIT_PAY, OrdOrder.PAID, OrdOrder.WAIT_OFFLINE_PAY,
+            OrdOrder.POINTS_PENDING, OrdOrder.WAIT_PAY, OrdOrder.PAID, OrdOrder.WAIT_OFFLINE_PAY,
             OrdOrder.CANCELLED, OrdOrder.CLOSED);
 
     private static final List<String> SUB = Arrays.asList(
@@ -105,6 +105,10 @@ class OrderStatusProjectorTest {
     @Test
     @DisplayName("付款前跟主单：WAIT_PAY / WAIT_OFFLINE_PAY / CANCELLED / CLOSED→CANCELLED")
     void beforePaidFollowsMain() {
+        assertThat(OrderStatusProjector.aggregate(OrdOrder.POINTS_PENDING, List.of(OrdSubOrder.WAIT_PAY)))
+                .isEqualTo(ContractOrderStatus.POINTS_PROCESSING);
+        assertThat(OrderStatusProjector.contract(OrdSubOrder.WAIT_PAY, OrdOrder.POINTS_PENDING))
+                .isEqualTo(ContractOrderStatus.POINTS_PROCESSING);
         assertThat(OrderStatusProjector.aggregate(OrdOrder.WAIT_PAY, List.of(OrdSubOrder.WAIT_PAY)))
                 .isEqualTo(ContractOrderStatus.WAIT_PAY);
         assertThat(OrderStatusProjector.aggregate(OrdOrder.WAIT_OFFLINE_PAY, List.of(OrdSubOrder.WAIT_PAY)))

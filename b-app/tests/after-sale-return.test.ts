@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AfterSale, Order } from "@shared/types";
-import { refundProgressKey, canWithdrawAfterSale, fulfillmentAllowed, hasHistoricalPoints } from "@shared/strategies/order-phase1";
+import { refundProgressKey, canWithdrawAfterSale, fulfillmentAllowed } from "@shared/strategies/order-phase1";
 import { beginMockRefund, setMockRefundResult } from "@shared/mock/refund";
 const sale = (execution = {}): AfterSale => ({ status: "REFUNDING", refundExecution: { status: "PROCESSING", resourceStatus: "PENDING", ...execution } } as AfterSale);
 describe("基础退款真实进度", () => {
@@ -18,10 +18,6 @@ describe("基础退款真实进度", () => {
   it("仅允许未进入退款或退货执行的申请撤销", () => {
     for (const status of ["APPLIED", "NEGOTIATING", "WAIT_RETURN", "REJECTED"]) expect(canWithdrawAfterSale({ status } as AfterSale)).toBe(true);
     for (const status of ["REFUNDING", "RETURNING", "REFUNDED"]) expect(canWithdrawAfterSale({ status } as AfterSale)).toBe(false);
-  });
-  it("历史非零积分包括负数保持人工提示", () => {
-    expect(hasHistoricalPoints({ amount: { pointsUsed: -1 } } as Order)).toBe(true);
-    expect(hasHistoricalPoints({ amount: { pointsEarn: 0 } } as Order)).toBe(false);
   });
   it("模拟受理不自动到账；显式回执也保留资源进度", () => {
     const order = { status: "PAID", afterSale: { afterSaleNo: "AF1" } } as Order;

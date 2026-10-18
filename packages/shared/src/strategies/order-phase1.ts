@@ -24,10 +24,3 @@ export function fulfillmentAllowed(order: Order | null, permitted: boolean): boo
   return !!order && permitted && order.status === "PAID" && !order.paymentResolution
     && (!order.afterSale || ["CLOSED", "REJECTED"].includes(order.afterSale.status));
 }
-
-/** 历史积分只读，任何非零快照都不能承诺自动处理成功。 */
-export function hasHistoricalPoints(order: Order): boolean {
-  return [order.amount.pointsUsed, order.amount.pointsEarn, order.amount.pointsDeductMinor,
-    order.afterSale?.refundPoints, order.afterSale?.impact?.pointsReturn,
-    order.afterSale?.impact?.pointsRevoke].some((n) => !!n);
-}

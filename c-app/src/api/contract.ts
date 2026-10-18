@@ -44,9 +44,6 @@ import type {
   StoreCodeImage,
   StoreChoice,
   Message,
-  PointAccount,
-  PointsDeductible,
-  PointRecord,
   Review,
   VisitedMerchant,
   User,
@@ -72,6 +69,9 @@ export interface PayMethodList {
   configured: boolean;
   methods: PayMethodItem[];
 }
+
+import type { PointsOrderState, OrderPointsQuote, BuyerPointsAccount, BuyerPointsEntry, BuyerPointsEntryPage } from "./points-types";
+export type { PointsOrderState, OrderPointsQuote, BuyerPointsAccount, BuyerPointsEntry, BuyerPointsEntryPage } from "./points-types";
 
 export interface PayMethodItem {
   methodCode: string;
@@ -168,7 +168,7 @@ export interface CreateOrderReq {
   appointmentSlotNo?: string;
 }
 
-import type { PointsDeductibleQuery, MyStoresQuery, StoreNearbyQuery, StoreEnterReq, StoreGoodsQuery,
+import type { MyStoresQuery, StoreNearbyQuery, StoreEnterReq, StoreGoodsQuery,
   UpdateProfileReq } from "./requests";
 
 /** 预览的入参 = 下单入参**去掉幂等键** —— 预览不创建任何东西，不需要它 */
@@ -401,6 +401,7 @@ export interface ShopApi {
   /** 某单的开票状态。**没申请过返回 null 而不是报错** —— 那是常态不是错误 */
   invoiceOfOrder(orderNo: string): Promise<InvoiceRequest | null>;
   orderDetail(orderNo: string): Promise<Order>;
+  orderPointsState(orderNo: string): Promise<PointsOrderState>;
   /**
    * 免登录看件（TDD-收件人物流触达与分享裂变 §3）。发货短信/分享链接里的 `t` 是看件令牌。
    * **匿名可调** —— 令牌即授权。令牌无效 / 过期返回 null，端上显示「链接已失效」。
@@ -437,6 +438,7 @@ export interface ShopApi {
    * 端上永远只能算出一个乐观的近似值。
    */
   orderPreview(req: PreviewOrderReq): Promise<OrderPreview>;
+  orderPointsQuote(req: PreviewOrderReq): Promise<OrderPointsQuote>;
 
   /**
    * 结算页能力提示。与 {@link orderPreview} 分开：那个回答「多少钱」，
@@ -694,16 +696,8 @@ export interface ShopApi {
   }): Promise<Review>;
 
   // ---- 积分（C 端账户）
-  pointAccount(): Promise<PointAccount>;
-  pointRecords(): Promise<PointRecord[]>;
-  /**
-   * 结算页试算：本单最多能抵多少。
-   *
-   * **服务端算而不是端上算**：抵扣上限依赖券后金额、运费拆分与四级开关，
-   * 端上算一遍、服务端下单时再算一遍，两次算法只要有一点不同，
-   * 用户就会看到「结算页说能抵 30，下单后只抵了 25」。
-   */
-  pointsDeductible(q: PointsDeductibleQuery): Promise<PointsDeductible>;
+  pointsAccounts(): Promise<BuyerPointsAccount[]>;
+  pointsEntries(typeCode: string, after?: number): Promise<BuyerPointsEntryPage>;
 
   // ---- 卡包（CARD 品类购买后入包）
   myCards(): Promise<UserCard[]>;

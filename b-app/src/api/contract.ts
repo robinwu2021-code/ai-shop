@@ -5,6 +5,12 @@
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type { PAY_MODE } from "@shared/utils/constants";
 import type {
+  MerchantAfterSaleWorkItem,
+  MerchantFulfillmentChange,
+  MerchantFulfillmentOptions,
+  MerchantOrderWorkItem,
+} from "./response-types";
+import type {
   // 进销存（P-18）
   StockSummary,
   ShipmentTrace,
@@ -78,8 +84,12 @@ import type {
   MerchantCustomer,
   MerchantLoginResp,
   MerchantPlan,
-  MerchantPointAccount,
-  MerchantPointsRecord,
+  StorePointType,
+  StorePointAccount,
+  StorePointEntryPage,
+  StorePointTerms,
+  StorePointAgreement,
+  StorePointSignRequest,
   MerchantProfile,
   MerchantRole,
   MerchantSpecDim,
@@ -797,12 +807,10 @@ import type {
   ZipPlanReq,
   ZipImported,
   PickupSelfBuildReq,
-  PointsRecordQuery,
   StaffLoginReq,
   StoreEditReq,
   StoreFulfillmentSaveReq,
   SubmitPaymentReq,
-  TogglePointsReq,
   OpenFromMapReq,
   StockInboundReq, StockOutboundReq,
   SaveShipSettingReq,
@@ -1530,13 +1538,7 @@ export interface MerchantApi {
    * 非法日期服务端会报错而**不是静默忽略**：忽略的话拿到的是没筛过的全量列表，
    * 而调用方以为那就是那一天的单。
    */
-  mOrderWorklist(q: PageQuery): Promise<PageResult<{
-    order: Order;
-    actionKind: "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
-    priority: number;
-    afterSaleNo: string | null;
-    afterSaleStatus: string | null;
-  }>>;
+  mOrderWorklist(q: PageQuery): Promise<PageResult<MerchantOrderWorkItem>>;
   mOrderList(
     q: PageQuery & {
       status?: OrderStatus;
@@ -1547,13 +1549,10 @@ export interface MerchantApi {
     },
   ): Promise<PageResult<Order>>;
   mOrderDetail(orderNo: string): Promise<Order>;
-  mFulfillmentOptions(orderNo: string): Promise<{
-    subOrderNo: string; currentFulfillment: string; version: number;
-    options: { fulfillment: string; allowed: boolean; reason: string | null }[];
-  }>;
+  mFulfillmentOptions(orderNo: string): Promise<MerchantFulfillmentOptions>;
   mChangeFulfillment(orderNo: string, req: {
     targetFulfillment: string; reason: string; expectedVersion: number;
-  }): Promise<{ order: Order; version: number }>;
+  }): Promise<MerchantFulfillmentChange>;
   /**
    * 物流轨迹（TDD-物流模块 B2）：比详情里的多承运商、单号、签收时间、到柜。不是快递 / 还没发货 → null。
    * `refresh` 只在后端配置放行时才真去问渠道（`refreshable` 说明这一单能不能）
@@ -1682,8 +1681,8 @@ export interface MerchantApi {
   mAfterSaleList(): Promise<AfterSale[]>;
   /** 服务端按当前门店分页，订单摘要与售后同页返回，避免只关联前 50 笔订单。 */
   mAfterSaleWorklist(q?: { pending?: boolean; page?: number; size?: number }):
-    Promise<PageResult<{ afterSale: AfterSale; order: Order }>>;
-  mAfterSaleDetail(afterSaleNo: string): Promise<{ afterSale: AfterSale; order: Order }>;
+    Promise<PageResult<MerchantAfterSaleWorkItem>>;
+  mAfterSaleDetail(afterSaleNo: string): Promise<MerchantAfterSaleWorkItem>;
   mActiveAfterSaleForOrder(orderNo: string): Promise<AfterSale | null>;
   /**
    * 同意。仅退款未发货/已签收直接退，已揽收在途转「待收货后退款」；退货退款等收货（见 mConfirmReturn）。
@@ -2004,7 +2003,7 @@ export interface MerchantApi {
     payload: { skuNo: string; kind: ArrivalIssueKind; qty: number; note: string },
   ): Promise<PickupOrder>;
 
-  // ---- 积分（商家侧只有成本与开关，看不到抵扣与补差）
+  // ---- 当前门店积分账本
   /** 收入按状态汇总（四个数）。**门店收窄与 mSettleBills 逐字一致** —— 否则总览与明细对不上 */
   mIncomeSummary(allStores?: boolean): Promise<IncomeSummary>;
 
@@ -2016,16 +2015,13 @@ export interface MerchantApi {
    */
   mDailyFlow(q?: { from?: string; to?: string; allStores?: boolean }): Promise<DailyFlowPage>;
 
-  mPointsAccount(): Promise<MerchantPointAccount>;
-  /** 发分服务费明细：一单一条，数据来自 stl_bill.points_fee_minor */
-  mPointsRecords(q?: PointsRecordQuery): Promise<MerchantPointsRecord[]>;
-  /**
-   * 开/关本店积分。
-   *
-   * **关闭只影响将来** —— 已发出的分仍有效、已扣的服务费不退，
-   * 否则关一次开关就是一次资金事故。
-   */
-  mPointsToggle(req: TogglePointsReq): Promise<MerchantPointAccount>;
+  mStorePointTypes(): Promise<StorePointType[]>;
+  mStorePointAccount(typeCode: string): Promise<StorePointAccount>;
+  mStorePointEntries(typeCode: string, after?: number, limit?: number): Promise<StorePointEntryPage>;
+  mStorePointTerms(typeCode: string): Promise<StorePointTerms | null>;
+  mStorePointAgreement(typeCode: string): Promise<StorePointAgreement | null>;
+  mSignStorePointAgreement(request: StorePointSignRequest): Promise<StorePointAgreement>;
+  mTerminateStorePointAgreement(typeCode: string): Promise<void>;
 
   // ---- 消息（新订单/售后/评价的落点；推送与响铃是三期的加速通道，这里是事实记录）
   mMessageList(): Promise<Message[]>;

@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 228 个受控功能点**
+统计：**13 个权限码 × 6 个角色 × 232 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -25,9 +25,9 @@
 | `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 36 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 27 | ✅ | ✅ | — | — | — | — |
+| `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 25 | ✅ | — | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 21 | ✅ | — | — | — | — | — |
-| `biz:finance` | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 21 | ✅ | — | — | — | — | — |
 | `biz:verify` | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 6 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 5 | ✅ | ✅ | — | — | — | ✅ |
@@ -221,6 +221,41 @@
 | 按月营收 | GET | `/biz/report/monthly` | `mMonthlyReport` | — |
 | —（b-app 未接） | — | `/biz/inventory/export` | — | — |
 
+### `biz:finance`　结算账单、费率卡、收款进件、积分开关
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| 保证金账户 | GET | `/biz/deposit` | `mDeposit` | deposit |
+| 保证金流水 | GET | `/biz/deposit/txns` | `mDepositTxns` | deposit |
+| 我的欠款与流水 | GET | `/biz/merchant/debt` | `mMyDebt` | income |
+| 本店能开的收款通道（含没开的） | GET | `/biz/merchant/pay-channel` | `mPayChannels` | payment |
+| 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、payment、points、stores |
+| 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
+| 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
+| 为门店单独开通收款 | POST | `/biz/merchant/payment/store/:storeNo` | `mOpenStorePayment` | payment |
+| 我的收款账户 | GET | `/biz/payout-account` | `mPayoutAccounts` | home、payout-account |
+| 提交收款账户 | POST | `/biz/payout-account` | `mSubmitPayoutAccount` | payout-account |
+| 当前门店积分账本 | GET | `/biz/points/store-account` | `mStorePointAccount` | points |
+| 当前门店有效积分签约 | GET | `/biz/points/store-agreement` | `mStorePointAgreement` | points |
+| 主体属主签署当前门店积分协议 | POST | `/biz/points/store-agreement/sign` | `mSignStorePointAgreement` | points |
+| 主体属主终止当前门店积分协议 | POST | `/biz/points/store-agreement/terminate` | `mTerminateStorePointAgreement` | points |
+| 当前门店积分流水 | GET | `/biz/points/store-entries` | `mStorePointEntries` | points-records |
+| 当前积分签约条款 | GET | `/biz/points/store-terms` | `mStorePointTerms` | points |
+| 当前门店可见的积分类型 | GET | `/biz/points/store-types` | `mStorePointTypes` | points、points-records |
+| 我的账期批次 | GET | `/biz/settle/batch` | `mSettleBatches` | income |
+| 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
+| 每日流水 | GET | `/biz/settle/daily-flow` | `mDailyFlow` | income |
+| 收入按状态汇总 | GET | `/biz/settle/income` | `mIncomeSummary` | income |
+| 待开票摘要 | GET | `/biz/settle/invoice-pending` | `mPendingInvoice` | invoice |
+| 平台开票信息 | GET | `/biz/settle/invoice-title` | `mInvoiceTitle` | invoice |
+| 我提交的票 | GET | `/biz/settle/invoices` | `mMyInvoices` | invoice |
+| 提交进项票 | POST | `/biz/settle/invoices` | `mSubmitInvoice` | invoice |
+| 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
+| 对账单 | GET | `/biz/settle/statement` | `mStatement` | statement |
+| —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
+
 ### `biz:store`　门店经营面：装修、配送规则、店铺码、分享物料
 
 **可用角色**：老板、店长
@@ -288,37 +323,6 @@
 | 确认期初对齐（以商城为准 / 已实地盘点） | POST | `/biz/store/:storeNo/stock-alignment/confirm` | `mConfirmAlignment` | stock-align |
 | 新建门店 | POST | `/biz/store/create` | `mCreateStore` | stores |
 
-### `biz:finance`　结算账单、费率卡、收款进件、积分开关
-
-**可用角色**：老板
-
-| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
-|---|---|---|---|---|
-| 保证金账户 | GET | `/biz/deposit` | `mDeposit` | deposit |
-| 保证金流水 | GET | `/biz/deposit/txns` | `mDepositTxns` | deposit |
-| 我的欠款与流水 | GET | `/biz/merchant/debt` | `mMyDebt` | income |
-| 本店能开的收款通道（含没开的） | GET | `/biz/merchant/pay-channel` | `mPayChannels` | payment |
-| 收款进件状态 | GET | `/biz/merchant/payment` | `mPayments` | entity-detail、home、payment、stores |
-| 补交资料并提交进件 | POST | `/biz/merchant/payment` | `mSubmitPayment` | payment |
-| 回查进件结果 | POST | `/biz/merchant/payment/:payChannel/refresh` | `mRefreshPayment` | payment |
-| 为门店单独开通收款 | POST | `/biz/merchant/payment/store/:storeNo` | `mOpenStorePayment` | payment |
-| 我的收款账户 | GET | `/biz/payout-account` | `mPayoutAccounts` | home、payout-account |
-| 提交收款账户 | POST | `/biz/payout-account` | `mSubmitPayoutAccount` | payout-account |
-| 本期发分服务费与开关状态 | GET | `/biz/points/account` | `mPointsAccount` | points、settle |
-| 发分服务费明细（按单） | GET | `/biz/points/records` | `mPointsRecords` | points-records、settle |
-| 开/关本店积分 | POST | `/biz/points/toggle` | `mPointsToggle` | points、settle |
-| 我的账期批次 | GET | `/biz/settle/batch` | `mSettleBatches` | income |
-| 结算单列表 | GET | `/biz/settle/bills` | `mSettleList` | settle |
-| 每日流水 | GET | `/biz/settle/daily-flow` | `mDailyFlow` | income |
-| 收入按状态汇总 | GET | `/biz/settle/income` | `mIncomeSummary` | income |
-| 待开票摘要 | GET | `/biz/settle/invoice-pending` | `mPendingInvoice` | invoice |
-| 平台开票信息 | GET | `/biz/settle/invoice-title` | `mInvoiceTitle` | invoice |
-| 我提交的票 | GET | `/biz/settle/invoices` | `mMyInvoices` | invoice |
-| 提交进项票 | POST | `/biz/settle/invoices` | `mSubmitInvoice` | invoice |
-| 费率卡 | GET | `/biz/settle/rate-card` | `mRateCard` | settle |
-| 对账单 | GET | `/biz/settle/statement` | `mStatement` | statement |
-| —（b-app 未接） | — | `/biz/settle/bills/{}` | — | — |
-
 ### `biz:verify`　核销、批量核销、按码搜索
 
 **可用角色**：老板、店长、店员
@@ -340,10 +344,10 @@
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
 | 自送已送达 | POST | `/biz/order/:orderNo/delivered` | `mDelivered` | delivery、order |
-| 叫快递上门取件 | POST | `/biz/order/:orderNo/express` | `mBookExpress` | order |
+| 叫快递上门取件 | POST | `/biz/order/:orderNo/express` | `mBookExpress` | — |
 | 取件单 | GET | `/biz/order/:orderNo/express` | `mExpressPickup` | order |
 | 取消取件 | POST | `/biz/order/:orderNo/express/cancel` | `mCancelExpress` | order |
-| 快递报价 | GET | `/biz/order/:orderNo/express/quotes` | `mExpressQuotes` | order |
+| 快递报价 | GET | `/biz/order/:orderNo/express/quotes` | `mExpressQuotes` | — |
 | 开始备货 | POST | `/biz/order/:orderNo/prepare` | `mPrepare` | order |
 | 快递发货 | POST | `/biz/order/:orderNo/ship` | `mShip` | order |
 
@@ -353,7 +357,7 @@
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| 待处理售后 | GET | `/biz/after-sale` | `mAfterSaleList` | after-sale、orders |
+| 待处理售后 | GET | `/biz/after-sale` | `mAfterSaleList` | — |
 | 同意售后 | POST | `/biz/after-sale/:afterSaleNo/approve` | `mApproveAfterSale` | after-sale |
 | 在途仅退款：商家确认退款 | POST | `/biz/after-sale/:afterSaleNo/confirm-refund` | `mConfirmRefund` | after-sale |
 | 确认收到退货 | POST | `/biz/after-sale/:afterSaleNo/receive` | `mConfirmReturn` | after-sale |
@@ -376,7 +380,7 @@
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| 订单列表 | GET | `/biz/order` | `mOrderList` | after-sale、delivery、orders |
+| 订单列表 | GET | `/biz/order` | `mOrderList` | delivery、orders |
 | 订单详情 | GET | `/biz/order/:orderNo` | `mOrderDetail` | order |
 | 物流轨迹 | GET | `/biz/order/:orderNo/trace` | `mOrderTrace` | order |
 
@@ -402,7 +406,7 @@
 |---|---|---|---|---|
 | `activities` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `activity-edit` | `biz:campaign` | `biz:stock`、`biz:campaign`、`biz:customer` | 老板、店长 | — |
-| `after-sale` | `biz:aftersale` | `biz:aftersale`、`biz:order:view` | 老板、店长、客服 | — |
+| `after-sale` | `biz:aftersale` | `biz:aftersale` | 老板、店长、客服 | — |
 | `coupon` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `coupon-edit` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
 | `coupon-issues` | `biz:campaign` | `biz:campaign`、`biz:customer` | 老板、店长 | — |
@@ -438,8 +442,8 @@
 | `member-tags` | `biz:customer` | `biz:customer` | 老板、店长 | — |
 | `my-specs` | `biz:goods` | `biz:goods` | 老板、店长 | — |
 | `offline-sale` | `biz:stock` | `biz:stock` | 老板、店长、店员、理货员 | — |
-| `order` | `biz:order:view` | `biz:ship`、`biz:receive`、`biz:order:view`、`biz:store` | 老板、店长、店员、配送员、客服 | 店员（缺 biz:store）　配送员（缺 biz:receive、biz:store）　客服（缺 biz:ship、biz:receive、biz:store） |
-| `orders` | `biz:order:view` | `biz:aftersale`、`biz:order:view` | 老板、店长、店员、配送员、客服 | 店员（缺 biz:aftersale）　配送员（缺 biz:aftersale） |
+| `order` | `biz:order:view` | `biz:order:view`、`biz:ship`、`biz:receive`、`biz:store` | 老板、店长、店员、配送员、客服 | 店员（缺 biz:store）　配送员（缺 biz:receive、biz:store）　客服（缺 biz:ship、biz:receive、biz:store） |
+| `orders` | `biz:order:view` | `biz:order:view` | 老板、店长、店员、配送员、客服 | — |
 | `payment` | `biz:finance` | `biz:finance` | 老板 | — |
 | `payout-account` | `biz:finance` | `biz:finance` | 老板 | — |
 | `period` | `biz:campaign` | `biz:campaign` | 老板、店长 | — |
@@ -505,6 +509,7 @@
 
 | 功能点 | 端点 | 契约方法 | 权限码 |
 |---|---|---|---|
+| 待处理售后 | `/biz/after-sale` | `mAfterSaleList` | `biz:aftersale` |
 | 营销活动列表 | `/biz/campaign` | `mCampaignList` | `biz:campaign` |
 | 新建/编辑活动 | `/biz/campaign` | `mSaveCampaign` | `biz:campaign` |
 | 活动启停 | `/biz/campaign/:campaignNo/toggle` | `mToggleCampaign` | `biz:campaign` |
@@ -519,6 +524,8 @@
 | 批量打/去一个标签（confirm=false 只试算） | `/biz/members/tags/batch` | `mBatchTagMembers` | `biz:customer` |
 | 停用/启用自建维度 | `/biz/my-spec-dims/{dimNo}/archive` | `mArchiveSpecDim` | `biz:goods` |
 | 给自建维度改名 | `/biz/my-spec-dims/{dimNo}/rename` | `mRenameSpecDim` | `biz:goods` |
+| 叫快递上门取件 | `/biz/order/:orderNo/express` | `mBookExpress` | `biz:ship` |
+| 快递报价 | `/biz/order/:orderNo/express/quotes` | `mExpressQuotes` | `biz:ship` |
 | 自建自提点（待运营核实） | `/biz/pickup-points` | `mSelfBuildPickup` | `biz:store` |
 | 门店可引用的取货点候选 | `/biz/pickup-points/candidates` | `mPickupCandidates` | `biz:store` |
 | 近几日报表 | `/biz/report/daily` | `mDailyReport` | `biz:customer` |

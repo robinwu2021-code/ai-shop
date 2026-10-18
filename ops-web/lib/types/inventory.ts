@@ -190,7 +190,16 @@ export type InvDocKind = "IN" | "OUT";
  * 它们被混成了一个数 —— 「待搬 1 个」看起来像一条数据要补，
  * 实际是整条投递链停了六个小时。
  */
+/**
+ * 一条投影方向的健康度（M3）。
+ *
+ * <p>与 {@link InvReconReport} **不是同一件事**：那一页读的是数据（账上有多少、
+ * 实际有多少），这一条读的是链路（事件投出去了没有）。2026-09-02 的教训正是
+ * 它们被混成了一个数 —— 「待搬 1 个」看起来像一条数据要补，
+ * 实际是整条投递链停了六个小时。
+ */
 export interface InvLinkHealth {
+  /** 通道编码 */
   channel: InvLinkChannel;
   /** 积压总数 */
   pending: number;
@@ -205,9 +214,11 @@ export interface InvLinkHealth {
   oldestPendingAt: string | null;
   /** 最近一次成功投递。null = 从没成功过 */
   lastSentAt: string | null;
+  /** 允许的最大重试次数 */
   maxRetry: number;
   /** 最近一条错误摘要，只在 retrying > 0 时有意义 */
   lastError: string | null;
+  /** 服务端健康检查结论 */
   verdict: InvLinkVerdict;
 }
 
@@ -222,13 +233,17 @@ export type InvLinkVerdict =
   | "CONSUMER_FAILING";
 
 /** 手动补投影的结果（M2）。字段与 `InvReconReport` 同源（后端同一个 Report） */
+/** 手动补投影的结果（M2）。字段与 `InvReconReport` 同源（后端同一个 Report） */
 export interface InvRepairResult {
+  /** 本次扫描 SKU 数量 */
   scannedSkus: number;
   /** 真搬了几条。**试算时恒为 0** —— 不传 apply 就一条都不该动 */
   moved: number;
+  /** 本次跳过的记录数量 */
   skipped: number;
   /** 仍待搬的 */
   pending: number;
+  /** 未发现投影差异的数量 */
   clean: boolean;
 }
 
@@ -241,15 +256,29 @@ export interface InvRepairResult {
  * <p>**不含账实差**：那是平台侧 vs 进销存侧的逐条比对，按商家拆要重扫全平台，
  * 而「库存对差」那一页本来就是按商家列差异行的。一个数放两处算，迟早两种说法。
  */
+/**
+ * 单商家进销存概况（M5）。
+ *
+ * <p>库存流水那一页能按商家翻明细，但翻之前答不出「这家到底在不在用」——
+ * 线上 6 家商家里只有 2 家真在记账，那 4 家在流水页上的样子与「今天恰好没动」一模一样。
+ *
+ * <p>**不含账实差**：那是平台侧 vs 进销存侧的逐条比对，按商家拆要重扫全平台，
+ * 而「库存对差」那一页本来就是按商家列差异行的。一个数放两处算，迟早两种说法。
+ */
 export interface InvMerchantDigest {
+  /** 商家主体编号 */
   entityNo: string;
+  /** 主体属主用户编号 */
   ownerId: string;
   /** 建了几条账（物料） */
   itemCount: number;
+  /** 库存不足记录数量 */
   shortageCount: number;
+  /** 投影过期记录数量 */
   staleCount: number;
   /** 累计流水笔数。**0 = 建了账但一次都没记过** */
   ledgerCount: number;
+  /** 最近库存账务记录时间，Unix 毫秒 */
   lastLedgerAt: string | null;
   /** 还开着的盘点单号 */
   openCountNo: string | null;

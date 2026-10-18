@@ -116,6 +116,7 @@ export interface Community extends Archivable {
    * 必须分开说：前者是待办，后者是事实。
    */
   latE6?: number | null;
+  /** 经度乘以一百万的整数 */
   lngE6?: number | null;
 }
 
@@ -381,7 +382,15 @@ export type RegionMatchSource = "ADDRESS" | "COORDS";
  * 代价是商家以为自己限了三公里、实际多远的单都进来，等他要送货才发现送不到，
  * 那时钱已经收了。而这件事此前在任何界面上都看不见 —— 商家看不见，运营也看不见。
  */
+/**
+ * 坐标健康度 —— **整个位置模块的分母**。
+ *
+ * 门店没标点时后端那条自送半径的闸**直接放行**（缺数据不该拦正常订单，这是对的）。
+ * 代价是商家以为自己限了三公里、实际多远的单都进来，等他要送货才发现送不到，
+ * 那时钱已经收了。而这件事此前在任何界面上都看不见 —— 商家看不见，运营也看不见。
+ */
 export interface CoverageHealth {
+  /** 门店统计摘要 */
   stores: {
     total: number;
     withCoords: number;
@@ -396,12 +405,19 @@ export interface CoverageHealth {
     }[];
   };
   /** 地址**只给聚合数**：那是个人信息，看总数就够判断分母有多脏 */
-  addresses: { total: number; withCoords: number };
+  addresses: {
+    total: number;
+    withCoords: number;
+  };
+  /** 社区统计摘要 */
   communities: {
     total: number;
     withCoords: number;
     /** 没坐标的聚落**谁也匹配不到** —— 而它看起来一切正常：建档成功、列表里有 */
-    missing: { communityNo: string; name: string }[];
+    missing: {
+      communityNo: string;
+      name: string;
+    }[];
   };
 }
 
@@ -411,15 +427,32 @@ export interface CoverageHealth {
  * 只给「当前半径」没用 —— 运营要回答的是「改成 1500 会多进来几户」，
  * 而这件事此前在任何界面上都算不出来，只能改完再等有人投诉。
  */
+/**
+ * 围栏改动的影响预览。
+ *
+ * 只给「当前半径」没用 —— 运营要回答的是「改成 1500 会多进来几户」，
+ * 而这件事此前在任何界面上都算不出来，只能改完再等有人投诉。
+ */
 export interface FenceImpact {
+  /** 当前服务半径，米 */
   currentRadiusM: number;
+  /** 预览服务半径，米 */
   previewRadiusM: number;
+  /** 当前半径内对象数 */
   currentInside: number;
+  /** 预览半径内对象数 */
   previewInside: number;
   /** 有坐标的收货地址总数。**分母要给** —— 「多进来 0 户」在一个没几条地址有坐标的库里说明不了任何事 */
   addressesWithCoords: number;
 }
 
+/**
+ * 位置分布：聚落 × 买家 × 商家 × 商品。
+ *
+ * **最要紧的不是那几行，是 `unattributable`。** 把算不了的静默丢掉，
+ * 这张表就会把「缺数据」说成「缺需求」—— 而运营会据此去撤一个其实有人的片区的商家。
+ * 分母写错的分析比没有分析更危险：没有分析时人会去查，有一张看起来完整的表时，人会直接照着做。
+ */
 /**
  * 位置分布：聚落 × 买家 × 商家 × 商品。
  *
@@ -434,6 +467,7 @@ export interface CoverageDistribution {
   supplyGaps: DistributionRow[];
   /** 全局四桶计数 + 买家总数 */
   totals: DistributionTotals;
+  /** 无法归属覆盖片区的数量 */
   unattributable: Unattributable;
 }
 

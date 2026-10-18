@@ -90,7 +90,10 @@ ok "已拿到 $APP 的部署锁"
 WT="$(mktemp -d)/fe-head"
 git worktree add -q --detach "$WT" "$REF"
 say "准备依赖（拷不软链）…"
-cp -Rc "$ROOT/node_modules" "$WT/node_modules" 2>/dev/null || cp -R "$ROOT/node_modules" "$WT/node_modules"
+# A workspace root may itself symlink node_modules. Resolve the source so cp copies
+# the actual directory rather than preserving an out-of-worktree symlink.
+MODULES_SOURCE="$(cd "$ROOT/node_modules" && pwd -P)"
+cp -Rc "$MODULES_SOURCE" "$WT/node_modules" 2>/dev/null || cp -R "$MODULES_SOURCE" "$WT/node_modules"
 [ -d "$ROOT/$APP/node_modules" ] && { cp -Rc "$ROOT/$APP/node_modules" "$WT/$APP/node_modules" 2>/dev/null \
     || cp -R "$ROOT/$APP/node_modules" "$WT/$APP/node_modules"; }
 [ "$APP" = "ops-web" ] && [ -d "$ROOT/ops-web/.next" ] && { cp -Rc "$ROOT/ops-web/.next" "$WT/ops-web/.next" 2>/dev/null \

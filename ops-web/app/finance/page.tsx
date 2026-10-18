@@ -5,7 +5,7 @@
 // **已存在的字段**接起来。不接上，前面几个域的那些字段就是死的。
 //
 // 提现与税（P-12.2）矩阵标 P1 二期，本批不做，导航里保持待建。
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { fill, useCopy } from "@/lib/use-copy";
@@ -30,8 +30,7 @@ import { DebtTab } from "./debt-tab";
 import { ChannelMessageTab } from "./channel-message-tab";
 import { PayoutAccountTab } from "./payout-account-tab";
 import { SettleStatsTab } from "./settle-stats-tab";
-import { PointsTab } from "./points-tab";
-import { PointsPolicyTab } from "./points-policy-tab";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PayablesTab } from "./payables-tab";
 import { PurchaseInvoiceTab } from "./purchase-invoice-tab";
 import { BuyerInvoiceTab } from "./buyer-invoice-tab";
@@ -52,7 +51,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 type Copy = (typeof FINANCE_COPY)["zh"];
 const TAB_KEYS = ["settlements", "settle-batches", "splits", "refund-back", "payables",
   "purchase-invoices", "buyer-invoices", "rates", "pay-channels", "debts",
-  "points", "points-policy", "invoice", "channel-messages",
+  "invoice", "channel-messages",
   "payout-accounts", "settle-stats"] as const;
 
 const TRAFFIC_LABEL = (c: Copy): Record<TrafficSource, string> => ({
@@ -64,7 +63,15 @@ const TRAFFIC_LABEL = (c: Copy): Record<TrafficSource, string> => ({
 const pct = (bp: number) => `${(bp / 100).toFixed(2)}%`;
 
 export default function FinancePage() {
-  return <Suspense fallback={null}><FinanceInner /></Suspense>;
+  return <Suspense fallback={null}><FinanceRoute /></Suspense>;
+}
+
+function FinanceRoute() {
+  const router = useRouter();
+  const tab = useSearchParams().get("tab");
+  const target = tab === "points" ? "/points?tab=overview" : tab === "points-policy" ? "/points?tab=switches" : null;
+  useEffect(() => { if (target) router.replace(target); }, [router, target]);
+  return target ? null : <FinanceInner />;
 }
 
 function FinanceInner() {
@@ -321,11 +328,9 @@ function FinanceInner() {
         <BuyerInvoiceTab c={c} canIssue={allow("finance:invoice:verify")} />
       )}
 
-      {tab === "points" && <PointsTab c={c} />}
 
       {/* 端开关。**写权限用 settle:execute** —— 它决定用户在某个端能不能拿到/用掉积分，
           而积分是平台对用户的负债，不是营销活动 */}
-      {tab === "points-policy" && <PointsPolicyTab c={c} canEdit={allow("finance:settle:execute")} />}
 
       {dialog}
     </div>

@@ -25,7 +25,7 @@ UPDATE sys_pay_channel SET enabled = 1 WHERE pay_channel = 'TEST';
 -- 下面这两行是**生产库当场查出来的回填结果**（2026-09-02）：
 --   WECHAT ["CN"] · ALIPAY ["CN"] · TEST NULL（不限市场，V288 刻意留空）
 -- 回填逻辑一改，这里对不上就该有用例变红。
-INSERT INTO sys_pay_channel_market
+INSERT IGNORE INTO sys_pay_channel_market
     (pay_channel, market, tenant_no, created_at, created_by, updated_at, updated_by, version, deleted)
 VALUES
     ('WECHAT', 'CN', 'MAIN', '2026-09-02 00:00:00', 'SYSTEM', '2026-09-02 00:00:00', 'SYSTEM', 0, 0),

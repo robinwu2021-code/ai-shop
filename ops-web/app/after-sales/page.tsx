@@ -314,8 +314,8 @@ function AfterSalesInner() {
             {current.refundExecution && (
               <DrawerSection title={c.refundExecution}>
                 <p>{c[refundProgress(current)]}</p>
-                <p className="text-sm text-muted-foreground">{current.refundExecution.executionNo}</p>
-                <p className="text-sm text-muted-foreground">{[current.refundExecution.errorCode, current.refundExecution.resourceErrorCode].filter(Boolean).join(" · ")}</p>
+                <p className="txt-caption text-muted-foreground">{current.refundExecution.executionNo}</p>
+                <p className="txt-caption text-muted-foreground">{[current.refundExecution.errorCode, current.refundExecution.resourceErrorCode].filter(Boolean).join(" · ")}</p>
                 {canHandle && canRecoverRefund(current) && (
                   <Button disabled={recover.isPending} onClick={() => recover.mutate(current.afterSaleNo)}>{c.recoverRefund}</Button>
                 )}

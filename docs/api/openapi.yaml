@@ -617,6 +617,7 @@ components:
       type: "string"
       enum:
         - "WAIT_PAY"
+        - "POINTS_PROCESSING"
         - "WAIT_OFFLINE_PAY"
         - "PAID"
         - "FULFILLING"
@@ -3687,67 +3688,290 @@ components:
         - "silent"
         - "source"
       additionalProperties: false
-    MerchantPointsRecord:
+    StorePointTypeStatus:
+      type: "string"
+      enum:
+        - "DRAFT"
+        - "ACTIVE"
+        - "DRAINING"
+        - "RETIRED"
+      description: "StorePointType 的 status 取值域，按服务端契约校验。"
+    StorePointAgreementSettleMode:
+      type: "string"
+      enum:
+        - "PER_ORDER"
+        - "PERIODIC"
+      description: "StorePointAgreement 的 settleMode 取值域，按服务端契约校验。"
+    StorePointType:
       type: "object"
       properties:
-        settleNo:
-          type: "string"
-          description: "结算单号"
-        subOrderNo:
-          type: "string"
-          description: "关联子单，商家据此对到具体订单"
-        points:
+        deductRatioBp:
           type: "number"
-          description: "本单发放的积分数"
-        feeMinor:
+          description: "最大抵扣比例，万分比"
+        idleDays:
           type: "number"
-          description: "本单的发分服务费（分）。**这是商家唯一感知到的积分成本**"
-        period:
+          description: "无活动失效天数"
+        typeCode:
           type: "string"
-          description: "账期 `YYYYMM`"
-        at:
+          description: "积分类型唯一编码"
+        market:
+          type: "string"
+          description: "市场代码"
+        currency:
+          type: "string"
+          description: "ISO 货币代码"
+        scale:
           type: "number"
-          description: "计提时间（支付成功时），不是分账时间 —— 两者相差一个售后期"
+          description: "货币最小单位精度"
+        rate:
+          type: "object"
+          properties:
+            pointsUnit:
+              type: "number"
+              description: "换算比例中的积分数量"
+            minorUnit:
+              type: "number"
+              description: "换算比例中的最小货币单位数量"
+          required:
+            - "pointsUnit"
+            - "minorUnit"
+          additionalProperties: false
+          description: "积分与最小货币单位的换算比例"
+        status:
+          "$ref": "#/components/schemas/StorePointTypeStatus"
+          description: "服务端业务状态"
       required:
-        - "settleNo"
-        - "subOrderNo"
-        - "points"
-        - "feeMinor"
-        - "period"
-        - "at"
+        - "deductRatioBp"
+        - "idleDays"
+        - "typeCode"
+        - "market"
+        - "currency"
+        - "scale"
+        - "rate"
+        - "status"
       additionalProperties: false
-      description: "商家的一条发分服务费记录：一单一条，来自 `stl_bill.points_fee_minor`"
-    MerchantPointAccount:
+      description: "Pay ledger views are scoped to the authenticated current store and one points type."
+    StorePointAccount:
       type: "object"
       properties:
-        periodExpenseMinor:
+        snapshot:
+          type: "object"
+          properties:
+            typeCode:
+              type: "string"
+              description: "积分类型唯一编码"
+            holderType:
+              type: "string"
+              const: "STORE"
+              description: "账本持有人类型"
+            holderNo:
+              type: "string"
+              description: "账本持有人编号，与持有人类型联合定位"
+            buckets:
+              "$ref": "#/components/schemas/Record_string_number"
+              description: "按账本分桶保存的积分余额"
+            frozen:
+              type: "boolean"
+              description: "是否冻结该账户新增使用"
+            expireAt:
+              type:
+                - "number"
+                - "null"
+              description: "服务端计算的过期时间，Unix 毫秒；无则为空"
+            expiryRevision:
+              type: "number"
+              description: "账户失效计划修订号"
+            lastActiveAt:
+              type: "number"
+              description: "最近有效账务活动时间，Unix 毫秒"
+          required:
+            - "typeCode"
+            - "holderType"
+            - "holderNo"
+            - "buckets"
+            - "frozen"
+            - "expireAt"
+            - "expiryRevision"
+            - "lastActiveAt"
+          additionalProperties: false
+          description: "服务端冻结的账务或准备快照"
+        exists:
+          type: "boolean"
+          description: "账户是否已经创建，未创建不代表查询失败"
+        version:
           type: "number"
-          description: "本期发分服务费支出（分）。**商家唯一感知到的积分成本**"
-        period:
-          type: "string"
-          description: "当前账期标识，如 `2026-08`"
-        enabled:
-          type: "boolean"
-          description: "本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关"
-        disabledReason:
-          type: "string"
-          description: "不生效的原因，直接展示给商家。\n\n小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。"
-        forced:
-          type: "boolean"
-          description: "平台按行业强制开，商家不可自行关闭"
+          description: "当前版本号，变更按版本校验"
       required:
-        - "periodExpenseMinor"
-        - "period"
-        - "enabled"
-        - "forced"
+        - "snapshot"
+        - "exists"
+        - "version"
       additionalProperties: false
-      description: "商家的积分成本视图。**单位是钱，不是分**。\n\n商家只感知**一件事**：开了积分，每笔订单要付一笔发分服务费。 他**看不到**用户抵了多少分、平台补了多少、资金池 —— 对他而言订单就是全额， 收到的是「订单金额 − 各项费用」（V34）。\n\n所以这里没有 income/net：商家侧不存在「积分兑付进账」这个概念。"
+    StorePointEntryPage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "number"
+                description: "持久记录主键"
+              entryNo:
+                type: "string"
+                description: "不可变积分分录编号"
+              voucherNo:
+                type: "string"
+                description: "原记账凭证编号"
+              holderType:
+                type: "string"
+                const: "STORE"
+                description: "账本持有人类型"
+              holderNo:
+                type: "string"
+                description: "账本持有人编号，与持有人类型联合定位"
+              bucket:
+                type: "string"
+                description: "积分账本或资金池分桶"
+              deltaPoints:
+                type: "number"
+                description: "该分录积分变化，负值表示扣减"
+              afterPoints:
+                type: "number"
+                description: "该分录完成后的积分余额"
+              at:
+                type: "number"
+                description: "服务端事件时间，Unix 毫秒"
+            required:
+              - "id"
+              - "entryNo"
+              - "voucherNo"
+              - "holderType"
+              - "holderNo"
+              - "bucket"
+              - "deltaPoints"
+              - "afterPoints"
+              - "at"
+            additionalProperties: false
+          description: "本页记录"
+        next:
+          type: "number"
+          description: "下一页游标"
+        hasMore:
+          type: "boolean"
+          description: "是否还有后续记录"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    StorePointTerms:
+      type: "object"
+      properties:
+        version:
+          type: "string"
+          description: "当前版本号，变更按版本校验"
+        hash:
+          type: "string"
+          description: "发布条款的内容摘要"
+        text:
+          type: "string"
+          description: "发布条款正文"
+      required:
+        - "version"
+        - "hash"
+        - "text"
+      additionalProperties: false
+      description: "Current store's published acceptance terms."
+    StorePointAgreement:
+      type: "object"
+      properties:
+        agreementNo:
+          type: "string"
+          description: "门店接受协议编号"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        merchantNo:
+          type: "string"
+          description: "门店归属主体编号，不作为积分隔离维度"
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        signedBy:
+          type: "string"
+          description: "签署该门店协议的主体属主"
+        termsVersion:
+          type: "string"
+          description: "接受的条款版本"
+        termsHash:
+          type: "string"
+          description: "接受条款的内容摘要"
+        termsText:
+          type: "string"
+          description: "接受时冻结的条款正文"
+        settleMode:
+          "$ref": "#/components/schemas/StorePointAgreementSettleMode"
+          description: "门店按单或按期结算方式"
+        path:
+          "$ref": "#/components/schemas/FundsMode"
+          description: "冻结的直连或归集资金路径"
+        channel:
+          type: "string"
+          description: "冻结的支付通道编码"
+        accountVersion:
+          type: "string"
+          description: "冻结的收款账户版本"
+        state:
+          type: "string"
+          description: "服务端处理状态"
+      required:
+        - "agreementNo"
+        - "typeCode"
+        - "merchantNo"
+        - "storeNo"
+        - "signedBy"
+        - "termsVersion"
+        - "termsHash"
+        - "termsText"
+        - "settleMode"
+        - "path"
+        - "channel"
+        - "accountVersion"
+        - "state"
+      additionalProperties: false
+      description: "Frozen, store-scoped acceptance. Route fields are read-only server snapshots."
     FundsMode:
       type: "string"
       enum:
         - "AGGREGATED"
         - "DIRECT"
       description: "资金路径：**钱先进谁的账户**。与 `mch_entity.funds_mode` 同值。\n\n⚠️ **与「经营模式」（谁是销售主体）正交，不要合并** —— 合成一个枚举后，「直连 + 自营」（钱进商家户却说平台是卖方） 这种非法组合在类型上就是可表达的（同 ADR-013 教训）。\n\n结算侧「要不要给积分补差」判的是**这一个**： 钱在商家二级户才需要补进去，钱在平台户是平台自己少收。"
+    StorePointSignRequest:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        termsVersion:
+          type: "string"
+          description: "接受的条款版本"
+        termsHash:
+          type: "string"
+          description: "接受条款的内容摘要"
+        settleMode:
+          "$ref": "#/components/schemas/StorePointAgreementSettleMode"
+          description: "门店按单或按期结算方式"
+        channel:
+          type: "string"
+          description: "冻结的支付通道编码"
+      required:
+        - "typeCode"
+        - "termsVersion"
+        - "termsHash"
+        - "settleMode"
+        - "channel"
+      additionalProperties: false
     MerchantSubject:
       type: "string"
       enum:
@@ -5963,6 +6187,21 @@ components:
         link:
           type: "string"
           description: "点进去要跳哪（订单详情/商品/团），已是完整页面路径带参"
+        bizType:
+          type:
+            - "string"
+            - "null"
+          description: "B inbox projection; business action state is independent of read/unread."
+        bizNo:
+          type:
+            - "string"
+            - "null"
+        storeNo:
+          type:
+            - "string"
+            - "null"
+        actionPending:
+          type: "boolean"
         read:
           type: "boolean"
           description: "是否已读。未读数按 type 分别统计"
@@ -9810,6 +10049,32 @@ components:
         trace:
           "$ref": "#/components/schemas/ShipmentTrace"
           description: "物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。"
+        logisticsSync:
+          anyOf:
+            - type: "object"
+              properties:
+                status:
+                  type: "string"
+                source:
+                  type:
+                    - "string"
+                    - "null"
+                lastEventAt:
+                  type:
+                    - "number"
+                    - "null"
+                pending:
+                  type: "boolean"
+                reason:
+                  type:
+                    - "string"
+                    - "null"
+              required:
+                - "status"
+                - "pending"
+              additionalProperties: false
+            - type: "null"
+          description: "B 端提交发货后即时回显；渠道仍在补偿时 pending=true。"
       required:
         - "orderNo"
         - "status"
@@ -10184,6 +10449,88 @@ components:
           description: "目的城市名"
       additionalProperties: false
       description: "城市路线：地图上「出发 / 当前 / 目的」三个标记。取不到时整个为空"
+    LogisticsUpdateRecord:
+      type: "object"
+      properties:
+        source:
+          type: "string"
+          description: "更新渠道：wx、kuaidi100 等。"
+        mode:
+          type: "string"
+          description: "QUERY 为主动查询，PUSH 为订阅推送。"
+        beforeStatus:
+          type:
+            - "string"
+            - "null"
+          description: "更新前的运单状态。"
+        afterStatus:
+          type:
+            - "string"
+            - "null"
+          description: "更新后的运单状态。"
+        nodesAdded:
+          type: "number"
+          description: "本次新增的轨迹节点数。"
+        outcome:
+          type: "string"
+          description: "更新结果：ADVANCED、NODES_ADDED、UNCHANGED、NO_RESULT、ERROR、THROTTLED 等。"
+        detail:
+          type:
+            - "string"
+            - "null"
+          description: "查询结果或最近节点摘要；不含收件人手机号。"
+        occurredAt:
+          type: "number"
+          description: "更新时间，UTC 毫秒时间戳。"
+      required:
+        - "source"
+        - "mode"
+        - "beforeStatus"
+        - "afterStatus"
+        - "nodesAdded"
+        - "outcome"
+        - "detail"
+        - "occurredAt"
+      additionalProperties: false
+      description: "物流刷新或订阅回调的渠道更新记录。"
+    ShipPrecheck:
+      type: "object"
+      properties:
+        verdict:
+          type: "string"
+          enum:
+            - "VALID"
+            - "INVALID"
+            - "UNKNOWN"
+            - "WARNING"
+          description: "提交前的运单有效性判断。"
+        source:
+          type:
+            - "string"
+            - "null"
+          description: "给出判断的物流渠道。"
+        status:
+          type:
+            - "string"
+            - "null"
+          description: "查询到的运单状态。"
+        checkedAt:
+          type: "number"
+          description: "查询时间，UTC 毫秒时间戳。"
+        reason:
+          type:
+            - "string"
+            - "null"
+          description: "需要商家关注的判断说明。"
+        confirmationRequired:
+          type: "boolean"
+          description: "是否需要商家确认后再发货。"
+      required:
+        - "verdict"
+        - "checkedAt"
+        - "confirmationRequired"
+      additionalProperties: false
+      description: "商家提交运单前的渠道预检结果。"
     GoodsBatch:
       type: "object"
       properties:
@@ -10224,11 +10571,13 @@ components:
       properties:
         subOrderNo:
           type: "string"
+          description: "门店子订单编号"
         status:
           "$ref": "#/components/schemas/OrderStatus"
           description: "契约抽象状态，与订单详情同口径"
         fulfillment:
           "$ref": "#/components/schemas/FulfillmentType"
+          description: "履约方式编码"
         storeName:
           type:
             - "string"
@@ -10238,6 +10587,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "收货人展示名称"
         receiverPhoneMasked:
           type:
             - "string"
@@ -10247,18 +10597,22 @@ components:
           type:
             - "string"
             - "null"
+          description: "收货地址"
         expressCompany:
           type:
             - "string"
             - "null"
+          description: "承运商名称"
         expressNo:
           type:
             - "string"
             - "null"
+          description: "承运商运单号"
         items:
           type: "array"
           items:
             "$ref": "#/components/schemas/TrackItem"
+          description: "本次履约的商品明细"
         trace:
           anyOf:
             - "$ref": "#/components/schemas/ShipmentTrace"
@@ -10276,12 +10630,16 @@ components:
       properties:
         title:
           type: "string"
+          description: "商品或规格展示标题"
         cover:
           type: "string"
+          description: "商品封面地址"
         spec:
           type: "string"
+          description: "已选规格描述"
         qty:
           type: "number"
+          description: "履约商品数量"
       required:
         - "qty"
       additionalProperties: false
@@ -10406,6 +10764,18 @@ components:
     PointAccount:
       type: "object"
       properties:
+        ratePoints:
+          type: "number"
+          description: "服务端积分类型的兑换比例；未配置时不展示折算价值。"
+        rateMinor:
+          type: "number"
+          description: "换算比例中的最小货币单位数量"
+        maxDeductRatio:
+          type: "number"
+          description: "当前类型的规则由服务端提供，未给时不展示旧规则常量。"
+        inactiveDays:
+          type: "number"
+          description: "无活动账户失效天数"
         balance:
           type: "number"
           description: "当前可用余额。**只含能花的分**，待生效的在 pendingBalance"
@@ -10434,7 +10804,7 @@ components:
         - "totalUsed"
         - "expiringSoon"
       additionalProperties: false
-      description: "用户积分账户。**单位是积分个数** —— 商家侧是钱，用  {@link  MerchantPointAccount }"
+      description: "用户积分账户，单位是积分个数。"
     PointsDeductible:
       type: "object"
       properties:
@@ -11218,21 +11588,20 @@ components:
       required:
         - "orderNos"
       additionalProperties: false
-    PointsDeductibleQuery:
+    PointsEntriesQuery:
       type: "object"
       properties:
-        merchantNo:
+        typeCode:
           type: "string"
-          description: "试算哪个商家的单 —— 开关是按商家判的，不同店结果不同"
-        payableMinor:
+          description: "积分类型唯一编码"
+        after:
           type: "number"
-          description: "券后金额（分）。抵扣上限按它算，**运费不参与**"
-        payMode:
-          type: "string"
-          description: "支付方式（`PAY_MODE`）。线下能否用积分由平台一个开关控制 —— 不传的话试算按线上算，而下单时按真实支付方式算，两处会给出不同的数。"
+          description: "上一页返回的游标，首次为零"
+        limit:
+          type: "number"
+          description: "本次请求记录上限"
       required:
-        - "merchantNo"
-        - "payableMinor"
+        - "typeCode"
       additionalProperties: false
     PayInit:
       type: "object"
@@ -11313,14 +11682,14 @@ components:
       type: "object"
       additionalProperties:
         type: "boolean"
-    Record_string_string:
-      type: "object"
-      additionalProperties:
-        type: "string"
     Record_string_number:
       type: "object"
       additionalProperties:
         type: "number"
+    Record_string_string:
+      type: "object"
+      additionalProperties:
+        type: "string"
 paths:
   "/mp/user/otp/send":
     post:
@@ -12818,6 +13187,39 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/mp/order/{orderNo}/points-state":
+    get:
+      operationId: "orderPointsState"
+      summary: "本人订单积分接线阶段"
+      tags:
+        - "order"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOrderState"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
   "/mp/track":
     get:
       operationId: "track"
@@ -13023,6 +13425,34 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/OrderPreview"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/mp/order/points-quote":
+    post:
+      operationId: "orderPointsQuote"
+      summary: "按门店的积分抵扣报价"
+      tags:
+        - "order"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OrderPointsQuote"
                 required:
                   - "code"
                   - "msg"
@@ -15102,38 +15532,10 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
-  "/mp/points/account":
+  "/mp/points/accounts":
     get:
-      operationId: "pointAccount"
-      summary: "积分账户"
-      tags:
-        - "points"
-      security:
-        - bearerAuth: []
-      parameters: []
-      responses:
-        "200":
-          description: "OK"
-          content:
-            "application/json":
-              schema:
-                type: "object"
-                properties:
-                  code:
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg:
-                    type: "string"
-                  data:
-                    "$ref": "#/components/schemas/PointAccount"
-                required:
-                  - "code"
-                  - "msg"
-                  - "data"
-  "/mp/points/records":
-    get:
-      operationId: "pointRecords"
-      summary: "积分流水"
+      operationId: "pointsAccounts"
+      summary: "本人按类型积分账户"
       tags:
         - "points"
       security:
@@ -15155,15 +15557,15 @@ paths:
                   data:
                     type: "array"
                     items:
-                      "$ref": "#/components/schemas/PointRecord"
+                      "$ref": "#/components/schemas/BuyerPointsAccount"
                 required:
                   - "code"
                   - "msg"
                   - "data"
-  "/mp/points/deductible":
+  "/mp/points/entries":
     get:
-      operationId: "pointsDeductible"
-      summary: "结算页试算：本单最多可抵多少"
+      operationId: "pointsEntries"
+      summary: "本人按类型积分流水"
       tags:
         - "points"
       security:
@@ -15183,7 +15585,7 @@ paths:
                   msg:
                     type: "string"
                   data:
-                    "$ref": "#/components/schemas/PointsDeductible"
+                    "$ref": "#/components/schemas/BuyerPointsEntryPage"
                 required:
                   - "code"
                   - "msg"

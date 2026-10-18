@@ -12,9 +12,8 @@ import {
 import type { ShopApi } from "../contract";
 
 export const userMock: Pick<ShopApi,
-  "pointAccount"
-  | "pointRecords"
-  | "pointsDeductible"
+  "pointsAccounts"
+  | "pointsEntries"
   | "sendOtp"
   | "login"
   | "profile"
@@ -37,24 +36,22 @@ export const userMock: Pick<ShopApi,
   | "setDefaultAddress"
 > = {
   // ---------------------------------------------------------------- 积分
-  async pointAccount() {
-    return delay(buildAccount(db.points));
+  async pointsAccounts() {
+    const account = buildAccount(db.points);
+    return delay([{ typeCode: "CN", market: "CN", currency: "CNY", status: "ACTIVE" as const,
+      balance: account.balance, pendingBalance: account.pendingBalance, heldBalance: 0,
+      ratePoints: 2, rateMinor: 1, deductRatioBp: 3000, idleDays: POINTS.inactiveDays,
+      frozen: false, expireAt: account.expiringAt ?? null }]);
   },
 
-  async pointRecords() {
-    return delay([...db.points]);
-  },
-
-  async pointsDeductible(q) {
-    // 与服务端同一套判据：四级开关 → 上限 → 余额，三者取小
-    const acc = buildAccount(db.points);
-    const cap = Math.floor(q.payableMinor * POINTS.maxDeductRatio) * POINTS.perMinor;
-    const maxPoints = Math.min(acc.balance, cap);
-    return delay({
-      maxPoints,
-      maxAmountMinor: Math.floor(maxPoints / POINTS.perMinor),
-      balance: acc.balance,
-    });
+  async pointsEntries(typeCode, after = 0) {
+    const rows = typeCode === "CN" ? db.points : [];
+    const page = rows.slice(after, after + 20).map((row) => ({
+      entryNo: row.recordNo, bucket: "AVAILABLE" as const,
+      points: row.points, balanceAfter: row.balanceAfter, at: row.at,
+    }));
+    const next = after + page.length;
+    return delay({ rows: page, next, hasMore: next < rows.length });
   },
 
   // ---------------------------------------------------------------- 用户

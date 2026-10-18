@@ -14,7 +14,7 @@ import {
 } from "@shared/strategies/after-sale";
 import type { AfterSaleReason, AfterSaleType, Order } from "@shared/types";
 
-import { refundProgressKey, hasHistoricalPoints } from "@shared/strategies/order-phase1";
+import { refundProgressKey } from "@shared/strategies/order-phase1";
 
 const { t } = useI18n();
 
@@ -199,7 +199,6 @@ onLoad((q) => {
     <template v-if="order">
       <!-- 已提交：展示进度 -->
       <text class="txt-caption">{{ $t("afterSale.fullCash") }}</text>
-      <text v-if="hasHistoricalPoints(order)" class="txt-caption">{{ $t("afterSale.historicalPoints") }}</text>
       <template v-if="submitted">
         <view class="sh-card done">
           <text class="done__icon">✓</text>

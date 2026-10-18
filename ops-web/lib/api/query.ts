@@ -183,3 +183,16 @@ export type TicketQ = PageQ & { status?: string; assignee?: string };
 
 /** 素材：类型 + 可见范围 + 上架状态（P-15.1）。 */
 export type MaterialQ = PageQ & { kind?: string; scope?: string; published?: string };
+
+/** 积分应收按门店过滤后分页。 */
+export interface PointsReceivableQ {
+  typeCode: string;
+  storeNo: string;
+  after?: number;
+  limit?: number;
+}
+/** 明确类型优先，否则选择市场生效类型。 */
+export interface PointsOverviewQ {
+  typeCode?: string;
+  market?: string;
+}

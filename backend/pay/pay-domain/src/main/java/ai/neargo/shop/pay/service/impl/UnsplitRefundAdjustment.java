@@ -43,11 +43,15 @@ public class UnsplitRefundAdjustment {
                         && previous.getGoodsMinor() == request.goodsMinor()
                         && previous.getFreightMinor() == request.freightMinor();
             }
-            if (bill.getSplitAt() != null || bill.getPaidAt() != null
-                    || bill.getPayoutNo() != null || StlBill.PAID.equals(bill.getStatus())
+            boolean splitDispatched = bill.getSplitAt() != null
                     || StlBill.SPLITTING.equals(bill.getStatus())
-                    || StlBill.SPLIT.equals(bill.getStatus()) || StlBill.SPLIT_CONFIRMED.equals(bill.getStatus())
-                    || StlBill.REVERSED.equals(bill.getStatus())) {
+                    || StlBill.SPLIT.equals(bill.getStatus())
+                    || StlBill.SPLIT_CONFIRMED.equals(bill.getStatus())
+                    || StlBill.MANUAL.equals(bill.getStatus()) && bill.getSplitAt() != null;
+            if (splitDispatched) {
+                return coordinator.reverse(request);
+            }
+            if (bill.getPaidAt() != null || bill.getPayoutNo() != null || StlBill.REVERSED.equals(bill.getStatus())) {
                 return false;
             }
             return coordinator.reverse(request);

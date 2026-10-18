@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1640" height="1355" viewBox="0 0 1640 1355"><title>备款发行回流与预算提取</title><desc>补U/补B、发行与优先回流、内部U转B以及提取预算，各自伴随的积分/资金动作。</desc>
+<defs><marker id="point" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker><marker id="money" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#c2410c"/></marker><marker id="dep" markerWidth="10" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9" fill="none" stroke="#64748b"/></marker><marker id="real" markerWidth="13" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0 0L12 6L0 12Z" fill="white" stroke="#475569"/></marker><marker id="diamond" markerWidth="15" markerHeight="10" refX="14" refY="5" orient="auto-start-reverse"><path d="M0 5L7 0L14 5L7 10Z" fill="#475569"/></marker></defs>
+<rect width="1640" height="1355" fill="#f8fafc"/>
+<text x="35" y="48" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="29" fill="#172554" font-weight="650" text-anchor="start">备款发行回流与预算提取</text>
+<text x="35" y="80" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">v3 设计契约 · pay-domain内业务模块 · payTxManager · 实现与验收状态见 TDD</text>
+<text x="35" y="138" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="22" fill="#172554" font-weight="650" text-anchor="start">补U与发行</text>
+<rect x="35.0" y="150" width="356.0" height="170" rx="12" fill="white" stroke="#7c3aed" stroke-width="1.8"/>
+<rect x="35.0" y="150" width="6" height="170" rx="3" fill="#7c3aed"/>
+<text x="51.0" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">真实备款核验</text>
+<text x="51.0" y="205" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">两人审批＋唯一证据</text>
+<rect x="433.0" y="150" width="356.0" height="170" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="433.0" y="150" width="6" height="170" rx="3" fill="#2563eb"/>
+<text x="449.0" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">优先自由接收分</text>
+<text x="449.0" y="205" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">退款预留格不得用</text>
+<path d="M391.0,235 L433.0,235" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="831.0" y="150" width="356.0" height="170" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="831.0" y="150" width="6" height="170" rx="3" fill="#2563eb"/>
+<text x="847.0" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">不足部分登记发行</text>
+<text x="847.0" y="205" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">MINT减少，等额分到ISSUE</text>
+<path d="M789.0,235 L831.0,235" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="1229.0" y="150" width="356.0" height="170" rx="12" fill="white" stroke="#c2410c" stroke-width="1.8"/>
+<rect x="1229.0" y="150" width="6" height="170" rx="3" fill="#c2410c"/>
+<text x="1245.0" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#c2410c" font-weight="650" text-anchor="start">ISSUE与U一起增加</text>
+<text x="1245.0" y="205" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">ΔU=m(ΔISSUE)</text>
+<path d="M1187.0,235 L1229.0,235" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<text x="35" y="355" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="17" fill="#526277" font-weight="400" text-anchor="start">自由分与新发行分合计等于本次备款对应积分，不能各发行一遍。</text>
+<text x="35" y="423" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="22" fill="#172554" font-weight="650" text-anchor="start">补B：独立备款路径</text>
+<rect x="35.0" y="435" width="754.0" height="170" rx="12" fill="white" stroke="#7c3aed" stroke-width="1.8"/>
+<rect x="35.0" y="435" width="6" height="170" rx="3" fill="#7c3aed"/>
+<text x="51.0" y="464" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">真实资金核验</text>
+<text x="51.0" y="490" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">双人复核、唯一证据</text>
+<rect x="831.0" y="435" width="754.0" height="170" rx="12" fill="white" stroke="#c2410c" stroke-width="1.8"/>
+<rect x="831.0" y="435" width="6" height="170" rx="3" fill="#c2410c"/>
+<text x="847.0" y="464" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#c2410c" font-weight="650" text-anchor="start">B增加</text>
+<text x="847.0" y="490" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">不发行积分</text>
+<text x="847.0" y="513" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">hold只增加预留数</text>
+<path d="M789.0,520 L831.0,520" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<text x="35" y="640" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="17" fill="#526277" font-weight="400" text-anchor="start">补B与下面U转B是两种独立操作，不串行执行。</text>
+<text x="35" y="708" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="22" fill="#172554" font-weight="650" text-anchor="start">U转B：内部预算调拨</text>
+<rect x="35.0" y="720" width="754.0" height="170" rx="12" fill="white" stroke="#7c3aed" stroke-width="1.8"/>
+<rect x="35.0" y="720" width="6" height="170" rx="3" fill="#7c3aed"/>
+<text x="51.0" y="749" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">内部调拨批准</text>
+<text x="51.0" y="775" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">不产生外部现金</text>
+<rect x="831.0" y="720" width="754.0" height="170" rx="12" fill="white" stroke="#c2410c" stroke-width="1.8"/>
+<rect x="831.0" y="720" width="6" height="170" rx="3" fill="#c2410c"/>
+<text x="847.0" y="749" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#c2410c" font-weight="650" text-anchor="start">同凭证调分与钱</text>
+<text x="847.0" y="775" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">U−/B+</text>
+<text x="847.0" y="798" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">ISSUE→RECEIVE自由</text>
+<path d="M789.0,805 L831.0,805" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<text x="35" y="925" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="17" fill="#526277" font-weight="400" text-anchor="start">发放预算降低、退款备付增加；不能只调整资金而漏掉发放户积分。</text>
+<text x="35" y="993" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="22" fill="#172554" font-weight="650" text-anchor="start">提取与审批</text>
+<rect x="35.0" y="1005" width="488.6666666666667" height="170" rx="12" fill="white" stroke="#c2410c" stroke-width="1.8"/>
+<rect x="35.0" y="1005" width="6" height="170" rx="3" fill="#c2410c"/>
+<text x="51.0" y="1034" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#c2410c" font-weight="650" text-anchor="start">提取U</text>
+<text x="51.0" y="1060" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">ISSUE→接收户自由</text>
+<text x="51.0" y="1083" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">U按实际划出减少</text>
+<rect x="565.6666666666667" y="1005" width="488.6666666666667" height="170" rx="12" fill="white" stroke="#c2410c" stroke-width="1.8"/>
+<rect x="565.6666666666667" y="1005" width="6" height="170" rx="3" fill="#c2410c"/>
+<text x="581.6666666666667" y="1034" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#c2410c" font-weight="650" text-anchor="start">提取B</text>
+<text x="581.6666666666667" y="1060" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">只能提freeB</text>
+<text x="581.6666666666667" y="1083" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">不能动已锁退款额度</text>
+<rect x="1096.3333333333335" y="1005" width="488.6666666666667" height="170" rx="12" fill="white" stroke="#7c3aed" stroke-width="1.8"/>
+<rect x="1096.3333333333335" y="1005" width="6" height="170" rx="3" fill="#7c3aed"/>
+<text x="1112.3333333333335" y="1034" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">双人复核与回执</text>
+<text x="1112.3333333333335" y="1060" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">未知资金保持原意图</text>
+<text x="1112.3333333333335" y="1083" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">确认后完成专项变动</text>
+<text x="35" y="1210" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="17" fill="#526277" font-weight="400" text-anchor="start">提取U与提取B是独立分支，均须双人审批与明确资金证据，不按三卡顺序串行执行。</text>
+<text x="35" y="1331" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#be123c" font-weight="400" text-anchor="start">资金证据不明确时保留原意图/占用；不假记到账、不改同一幂等请求金额。</text>
+</svg>

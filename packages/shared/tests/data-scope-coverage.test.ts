@@ -56,6 +56,14 @@ const OWNER_COLUMNS = [
  * 业务数据的答案永远是会。
  */
 const EXEMPT: Record<string, string> = {
+  ord_points_binding: "源绑定按原子单读取；运营经 PointsOpsAccess.store 校验冻结门店后访问，恢复不受调用人过滤。",
+  ord_points_integration_policy: "门店×场景主键策略配置；运营先校验门店数据域，准入按原门店锁定读取。",
+  ord_points_source_fact: "原事实与恢复队列，运营经已授权绑定读取，不提供无门店全量列表。",
+  pts_grant_position: "原承诺快照，恢复按原号读取；运营持仓入口先校验平台级或门店权限。",
+  pts_merchant_agreement: "门店冻结协议，B 从当前门店取号，Ops 明确校验该门店授权。",
+  pts_receivable: "门店应收，运营先验证门店；清偿不得按当前请求线程的数据域截断原责任。",
+  pts_redeem_position: "用户及接收门店原使用快照，运营查询先校验对应边界，恢复按原持仓。",
+  pts_store_statement: "原门店及路线结算持仓，运营先校验门店，账务恢复不能隐藏原责任。",
   /*
    * ── 2026-08-31：入驻申请单 —— **登记它反而会造出一片空白** ──
    *

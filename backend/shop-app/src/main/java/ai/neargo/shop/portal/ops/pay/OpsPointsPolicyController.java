@@ -2,48 +2,109 @@ package ai.neargo.shop.portal.ops.pay;
 
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
-import ai.neargo.shop.payclient.PointsPolicyAppService;
-import ai.neargo.shop.pay.PointsService.ClientPointsPolicy;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.AgreementPage;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.ChangeResult;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.Create;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.FallbackChange;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.FallbackRule;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.SwitchChange;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.SwitchPage;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.Terms;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TermsChange;
+import ai.neargo.shop.pay.points.admin.PointsAdministrationService.TypeChange;
+import ai.neargo.shop.pay.points.model.PointType;
+import ai.neargo.shop.payclient.PointsConfigurationAppService;
+
+import jakarta.validation.Valid;
+
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
- * 平台端 · 端积分策略（哪些端不发分 / 不给核销）。
- *
- * <p><b>这个 controller 只做 HTTP 的事</b>：路径、权限注解、参数绑定、取当前操作人。
- * 校验、读写设置、留痕都在 {@link PointsPolicyAppService} 里 ——
- * 那是支付域拆分后 controller 与领域之间的那一层。
- *
- * <p>此前它自己拿着 {@code ObjectMapper} 解析 JSON、自己校验端名、自己记审计，
- * 而那些在支付域里时没人管得着（既有的
- * {@code ArchitectureTest#controllersMustNotTouchMappers} 只盯 {@code portal..} 包）。
- * <b>搬到主应用侧的第一分钟它就红了</b> —— 搬家没制造这个问题，只是让它被看见。
+ * Configure future promises; neither operator identity nor pause timestamps come from the client.
  */
 @Profile("ops")
 @RestController
 @Validated
 public class OpsPointsPolicyController {
+    private final PointsConfigurationAppService configuration;
 
-    private final PointsPolicyAppService policyService;
-
-    public OpsPointsPolicyController(PointsPolicyAppService policyService) {
-        this.policyService = policyService;
+    public OpsPointsPolicyController(PointsConfigurationAppService configuration) {
+        this.configuration = configuration;
     }
 
-    @GetMapping("/ops/points/client-policy")
+    @GetMapping("/ops/points/types")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
-    public ClientPointsPolicy policy() {
-        return policyService.policy();
+    public List<PointType> types() {
+        return configuration.types();
     }
 
-    @PostMapping("/ops/points/client-policy")
+    @PostMapping("/ops/points/types")
     @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
-    public ClientPointsPolicy save(@RequestBody ClientPointsPolicy req) {
-        return policyService.save(req, SecurityUtils.currentUserNo());
+    public ChangeResult create(@Valid @RequestBody Create request) {
+        return configuration.create(request, SecurityUtils.currentUserNo());
+    }
+
+    @PostMapping("/ops/points/type-state")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
+    public ChangeResult transition(@Valid @RequestBody TypeChange request) {
+        return configuration.transition(request, SecurityUtils.currentUserNo());
+    }
+
+    @GetMapping("/ops/points/fallback-rule")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
+    public FallbackRule fallback(@RequestParam String typeCode) {
+        return configuration.fallback(typeCode);
+    }
+
+    @PostMapping("/ops/points/fallback-rule")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
+    public ChangeResult saveFallback(@Valid @RequestBody FallbackChange request) {
+        return configuration.saveFallback(request, SecurityUtils.currentUserNo());
+    }
+
+    @GetMapping("/ops/points/switches")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
+    public SwitchPage switches(
+            @RequestParam String typeCode,
+            @RequestParam(defaultValue = "0") long after,
+            @RequestParam(defaultValue = "50") int limit) {
+        return configuration.switches(typeCode, after, limit);
+    }
+
+    @PostMapping("/ops/points/switches")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
+    public ChangeResult changeSwitch(@Valid @RequestBody SwitchChange request) {
+        return configuration.changeSwitch(request, SecurityUtils.currentUserNo());
+    }
+
+    @GetMapping("/ops/points/terms")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
+    public Terms terms(@RequestParam String typeCode) {
+        return configuration.terms(typeCode);
+    }
+
+    @PostMapping("/ops/points/terms")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_EXECUTE + "')")
+    public ChangeResult publishTerms(@Valid @RequestBody TermsChange request) {
+        return configuration.publishTerms(request, SecurityUtils.currentUserNo());
+    }
+
+    @GetMapping("/ops/points/agreements")
+    @PreAuthorize("@perm.can('" + Perms.FINANCE_SETTLE_READ + "')")
+    public AgreementPage agreements(
+            @RequestParam String typeCode,
+            @RequestParam String storeNo,
+            @RequestParam(defaultValue = "0") long after,
+            @RequestParam(defaultValue = "50") int limit) {
+        return configuration.agreements(typeCode, storeNo, after, limit);
     }
 }

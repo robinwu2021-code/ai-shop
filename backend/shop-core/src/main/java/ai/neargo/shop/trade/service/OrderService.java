@@ -17,6 +17,21 @@ public interface OrderService {
      */
     OrderVO preview(CreateOrderCommand cmd);
 
+    /** Read-only buyer quote using the same store, discount and payment route as placement. */
+    PointsQuote quotePoints(CreateOrderCommand cmd);
+
+    record PointsQuote(String state, String reason, long pointsUsed, long deductMinor,
+                       long ratePoints, long rateMinor, long basePayMinor,
+                       List<StorePointsQuote> stores) {}
+
+    record StorePointsQuote(String storeNo, String merchantNo, long policyVersion,
+                            long pointsUsed, long deductMinor) {}
+
+    /** Buyer-scoped status of the optional points placement; only bounded phase/code is exposed. */
+    PointsState pointsState(String orderNo);
+
+    record PointsState(String phase, String reason) {}
+
     /** 下单。幂等由 {@code Idempotency-Key} 保证；库存在此锁定，支付成功才实扣。 */
     OrderVO create(CreateOrderCommand cmd, String idempotencyKey);
 

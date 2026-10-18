@@ -17,6 +17,9 @@ import ai.neargo.shop.trade.order.machine.shipment.ShipmentMachine;
 import ai.neargo.shop.trade.order.machine.shipment.ShipmentStatus;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+import ai.neargo.shop.trade.order.points.OrderPointsClosureFlowService;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
 import ai.neargo.shop.trade.order.machine.order.OrderMachine;
@@ -49,11 +52,19 @@ public class TradeStatusWriter {
 
     private final StateTransitionGate gate;
     private final StatusCasMapper casMapper;
+    private PaymentMapper orderMapper;
+    private OrderPointsClosureFlowService pointsClosure;
 
     public TradeStatusWriter(StatusCasMapper casMapper, OrderStatusLogMapper logMapper) {
         this.casMapper = casMapper;
         this.gate = new StateTransitionGate(new MybatisStatusStore(casMapper), new StatusLogStore(logMapper),
                 SignalPublisher.NONE);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPointsClosure(PaymentMapper orders, OrderPointsClosureFlowService closure) {
+        this.orderMapper = orders;
+        this.pointsClosure = closure;
     }
 
     /** 支付单迁移。流水锚在支付单号上（不进子单时间线） */
@@ -84,6 +95,12 @@ public class TradeStatusWriter {
             ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(
                     () -> casMapper.markOrderCompleted(sub.getSubOrderNo(), now));
             sub.setCompletedAt(now);
+            if (orderMapper != null && pointsClosure != null && sub.getOrderNo() != null) {
+                var root = DataScopeContext.executeWithoutScope(() -> orderMapper.selectOne(
+                        Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo, sub.getOrderNo())));
+                if (root != null && Boolean.TRUE.equals(root.getPointsIntegrated()))
+                    pointsClosure.finalizeSubOrder(sub.getSubOrderNo());
+            }
         }
         return f;
     }

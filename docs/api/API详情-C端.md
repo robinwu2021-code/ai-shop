@@ -961,6 +961,7 @@
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### GET `/mp/group-buy/hosted`
@@ -1834,6 +1835,7 @@
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### GET `/mp/order`
@@ -1915,6 +1917,7 @@
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/mp/order/{orderNo}/after-sale`
@@ -2031,6 +2034,7 @@
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/mp/order/{orderNo}/confirm-receipt`
@@ -2088,6 +2092,7 @@
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/mp/order/{orderNo}/pay`
@@ -2188,6 +2193,22 @@
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
+
+
+#### GET `/mp/order/{orderNo}/points-state`
+
+本人订单积分接线阶段　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`PointsOrderState`](#pointsorderstate)
 
 
 #### POST `/mp/order/{orderNo}/reorder`
@@ -2259,6 +2280,17 @@
 | `usablePayModes` | `string`\[\] | 是 | 整单可用的**支付方式**（`PAY_MODE`：ONLINE / OFFLINE）。 ⚠️ **与 `usablePayMethods` 是两根轴，别混**：那个是**通道** （WECHAT / ALIPAY / H5…），这个是**线上付还是当面付**。 一笔订单要同时确定两者。 同样取交集（一笔支付覆盖整单）。**ONLINE 永远在里面**， 所以不会是空集，也就不需要 `null` 那一档 —— 与 `usablePayMethods` 的取舍不同，因为那边真的可能「没配过」。 |
 
 
+#### POST `/mp/order/points-quote`
+
+按门店的积分抵扣报价　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`OrderPointsQuote`](#orderpointsquote)
+
+
 #### POST `/mp/order/preview`
 
 订单预览（金额以后端为准）　🔒
@@ -2310,54 +2342,26 @@
 
 ### points
 
-#### GET `/mp/points/account`
+#### GET `/mp/points/accounts`
 
-积分账户　🔒
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`PointAccount`](#pointaccount)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `balance` | `number` | 是 | 当前可用余额。**只含能花的分**，待生效的在 pendingBalance |
-| `pendingBalance` | `number` | 是 | 待生效积分：已发放但未过售后期，**不计入 balance**。 两个数必须分开展示（「可用 400 / 待生效 100」）。合成一个的话， 用户看到「我有 500 分」却只能用 400，没有任何办法解释这个差额。 |
-| `pendingActivateAt` | `number` | 否 | 最近一批待生效积分的可用时间。`pendingBalance=0` 时为空 |
-| `totalEarned` | `number` | 是 | 累计获得（含已用、已过期），只增不减 |
-| `totalUsed` | `number` | 是 | 累计已抵扣 |
-| `expiringSoon` | `number` | 是 | 30 天内将过期的积分 |
-| `expiringAt` | `number` | 否 | 最近一批积分的过期时间。`expiringSoon=0` 时为空 |
-
-
-#### GET `/mp/points/deductible`
-
-结算页试算：本单最多可抵多少　🔒
+本人按类型积分账户　🔒
 
 **入参**：无
 
 **出参**（`data`）
 
-类型：[`PointsDeductible`](#pointsdeductible)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `maxPoints` | `number` | 是 | 本单最多可抵扣的积分数。已扣掉四级开关与上限，端上直接用 |
-| `maxAmountMinor` | `number` | 是 | 对应金额（分） |
-| `balance` | `number` | 是 | 用户当前可用余额，用于展示「你有 X 分」 |
-| `disabledReason` | `string` | 否 | 不可用时的原因，直接展示。可用时为空 |
+类型：[`BuyerPointsAccount`](#buyerpointsaccount)\[\]
 
 
-#### GET `/mp/points/records`
+#### GET `/mp/points/entries`
 
-积分流水　🔒
+本人按类型积分流水　🔒
 
 **入参**：无
 
 **出参**（`data`）
 
-类型：[`PointRecord`](#pointrecord)\[\]
+类型：[`BuyerPointsEntryPage`](#buyerpointsentrypage)
 
 
 ### push-token
@@ -2709,16 +2713,16 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `subOrderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式编码 |
 | `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
-| `receiverName` | `string,null` | 否 | — |
+| `receiverName` | `string,null` | 否 | 收货人展示名称 |
 | `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
-| `receiverAddress` | `string,null` | 否 | — |
-| `expressCompany` | `string,null` | 否 | — |
-| `expressNo` | `string,null` | 否 | — |
-| `items` | [`TrackItem`](#trackitem)\[\] | 是 | — |
+| `receiverAddress` | `string,null` | 否 | 收货地址 |
+| `expressCompany` | `string,null` | 否 | 承运商名称 |
+| `expressNo` | `string,null` | 否 | 承运商运单号 |
+| `items` | [`TrackItem`](#trackitem)\[\] | 是 | 本次履约的商品明细 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
 
 
@@ -2734,16 +2738,16 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `subOrderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式编码 |
 | `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
-| `receiverName` | `string,null` | 否 | — |
+| `receiverName` | `string,null` | 否 | 收货人展示名称 |
 | `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
-| `receiverAddress` | `string,null` | 否 | — |
-| `expressCompany` | `string,null` | 否 | — |
-| `expressNo` | `string,null` | 否 | — |
-| `items` | [`TrackItem`](#trackitem)\[\] | 是 | — |
+| `receiverAddress` | `string,null` | 否 | 收货地址 |
+| `expressCompany` | `string,null` | 否 | 承运商名称 |
+| `expressNo` | `string,null` | 否 | 承运商运单号 |
+| `items` | [`TrackItem`](#trackitem)\[\] | 是 | 本次履约的商品明细 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
 
 
@@ -4227,6 +4231,10 @@
 | `title` | `string` | 是 | 标题（列表页展示） |
 | `body` | `string` | 是 | 正文 |
 | `link` | `string` | 否 | 点进去要跳哪（订单详情/商品/团），已是完整页面路径带参 |
+| `bizType` | `string,null` | 否 | B inbox projection; business action state is independent of read/unread. |
+| `bizNo` | `string,null` | 否 | — |
+| `storeNo` | `string,null` | 否 | — |
+| `actionPending` | `boolean` | 否 | — |
 | `read` | `boolean` | 是 | 是否已读。未读数按 type 分别统计 |
 | `at` | `number` | 是 | 消息产生时间 |
 
@@ -4336,6 +4344,7 @@
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 ### OrderAmount
 
@@ -4428,6 +4437,7 @@
 枚举取值：
 
 - `WAIT_PAY`
+- `POINTS_PROCESSING`
 - `WAIT_OFFLINE_PAY`
 - `PAID`
 - `FULFILLING`
@@ -4609,54 +4619,6 @@
 - `PLACE_DB`
 - `MAP`
 - `PLACE_DB_STALE`
-
-### PointAccount
-
-用户积分账户。**单位是积分个数** —— 商家侧是钱，用  {@link  MerchantPointAccount }
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `balance` | `number` | 是 | 当前可用余额。**只含能花的分**，待生效的在 pendingBalance |
-| `pendingBalance` | `number` | 是 | 待生效积分：已发放但未过售后期，**不计入 balance**。 两个数必须分开展示（「可用 400 / 待生效 100」）。合成一个的话， 用户看到「我有 500 分」却只能用 400，没有任何办法解释这个差额。 |
-| `pendingActivateAt` | `number` | 否 | 最近一批待生效积分的可用时间。`pendingBalance=0` 时为空 |
-| `totalEarned` | `number` | 是 | 累计获得（含已用、已过期），只增不减 |
-| `totalUsed` | `number` | 是 | 累计已抵扣 |
-| `expiringSoon` | `number` | 是 | 30 天内将过期的积分 |
-| `expiringAt` | `number` | 否 | 最近一批积分的过期时间。`expiringSoon=0` 时为空 |
-
-### PointRecord
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `recordNo` | `string` | 是 | 流水单号。积分是平台负债，每一笔变动都要可追溯（ADR-006） |
-| `type` | [`PointRecordType`](#pointrecordtype) | 是 | 变动类型，决定这笔是增是减 |
-| `points` | `number` | 是 | 变动量，正=增加 负=减少 |
-| `title` | `string` | 是 | 流水标题，如「订单消费获得」「过期作废」。展示用 |
-| `orderNo` | `string` | 否 | 关联订单。消费/退款类必有，过期/结算类为空 |
-| `at` | `number` | 是 | 发生时间 |
-| `balanceAfter` | `number` | 是 | 变动后余额，用于对账 —— 只存变动量的话，一条记录出错后面全错 |
-
-### PointRecordType
-
-枚举取值：
-
-- `EARN`
-- `USE`
-- `REFUND`
-- `EXPIRE`
-- `RECEIVE`
-- `SETTLE`
-
-### PointsDeductible
-
-结算页的积分试算结果。**服务端算**，端上只负责显示。 端上自己算的话，下单时服务端会再算一遍 —— 两处算法只要有一点不同 （券后金额口径、运费是否参与、开关判断顺序），用户就会看到 「结算页说能抵 30，下单后只抵了 25」，而这个差额没人解释得清。
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `maxPoints` | `number` | 是 | 本单最多可抵扣的积分数。已扣掉四级开关与上限，端上直接用 |
-| `maxAmountMinor` | `number` | 是 | 对应金额（分） |
-| `balance` | `number` | 是 | 用户当前可用余额，用于展示「你有 X 分」 |
-| `disabledReason` | `string` | 否 | 不可用时的原因，直接展示。可用时为空 |
 
 ### Promotion
 
@@ -5207,10 +5169,10 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `title` | `string` | 否 | — |
-| `cover` | `string` | 否 | — |
-| `spec` | `string` | 否 | — |
-| `qty` | `number` | 是 | — |
+| `title` | `string` | 否 | 商品或规格展示标题 |
+| `cover` | `string` | 否 | 商品封面地址 |
+| `spec` | `string` | 否 | 已选规格描述 |
+| `qty` | `number` | 是 | 履约商品数量 |
 
 ### TrackView
 
@@ -5218,16 +5180,16 @@ C 端门店卡片（TDD-C端门店化与门店门户）。**单位是门店，�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `subOrderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 契约抽象状态，与订单详情同口径 |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | — |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式编码 |
 | `storeName` | `string,null` | 否 | 发货门店名。空 → 退化成「商家」 |
-| `receiverName` | `string,null` | 否 | — |
+| `receiverName` | `string,null` | 否 | 收货人展示名称 |
 | `receiverPhoneMasked` | `string,null` | 否 | 已掩码，非明文 |
-| `receiverAddress` | `string,null` | 否 | — |
-| `expressCompany` | `string,null` | 否 | — |
-| `expressNo` | `string,null` | 否 | — |
-| `items` | [`TrackItem`](#trackitem)\[\] | 是 | — |
+| `receiverAddress` | `string,null` | 否 | 收货地址 |
+| `expressCompany` | `string,null` | 否 | 承运商名称 |
+| `expressNo` | `string,null` | 否 | 承运商运单号 |
+| `items` | [`TrackItem`](#trackitem)\[\] | 是 | 本次履约的商品明细 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) \| `null` | 否 | 物流轨迹，复用订单详情那套渲染；非快递/无单号时为 null |
 
 ### TrafficSource

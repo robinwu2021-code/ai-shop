@@ -67,6 +67,12 @@ const DOMAINS = [
  * 与 packages/shared/tests/schema-lineage.test.ts 的同名表保持一致（有断言校验）。
  */
 export const KEY_OWNERS = {
+  payout_no: "stl_payout",
+  voucher_no: "pts_voucher",
+  evidence_no: "pts_fund_evidence",
+  receivable_no: "pts_receivable",
+  statement_no: "pts_store_statement",
+  cash_payment_no: "stl_payment",
   /*
    * ── 2026-08-29 补齐的十三个 ──
    * 与 packages/shared/tests/schema-lineage.test.ts 的 KEY_OWNERS **必须逐条相等**
@@ -113,40 +119,14 @@ export const KEY_OWNERS = {
   review_no: "rvw_review",
   staff_no: "sys_ops_staff",
   settle_no: "stl_bill",
-  payout_no: "stl_payout",
   after_sale_no: "ord_after_sale",
   payment_no: "stl_payment",
-  // 订单一期恢复台账与原支付、原 ORD 发货单、退款执行的血缘。
-  pay_no: "ord_order",
-  origin_payment_no: "stl_payment",
-  source_shipment_no: "ord_shipment",
-  refund_execution_no: "ord_refund_execution",
   // 商家进账挂用户的 USE 流水：一次使用一条进账。积分发出后与发放方脱钩（V28）
   use_ledger_no: "pts_user_ledger",
   inviter_no: "usr_account",
   issuer_merchant_no: "mch_entity",
   // 保证金账户/流水按商家挂；命名欠账见 schema-lineage.test.ts 里的说明
   merchant_no: "mch_entity",
-};
-
-/** 同名键的表内归属；碰撞键只在已证明的表内画关系。 */
-export const SCOPED_KEY_OWNERS = {
-  ord_item: { shipment_no: "ord_shipment" },
-  ord_shipment: { shipment_no: "ord_shipment" },
-  lgs_waybill: { shipment_no: "lgs_waybill" },
-  lgs_waybill_node: { shipment_no: "lgs_waybill" },
-};
-
-/** 角色化键指向的实际列；未登记的同名键仍使用键名本身。 */
-export const KEY_OWNER_COLUMNS = {
-  pay_no: "order_no",
-  origin_payment_no: "payment_no",
-  source_shipment_no: "shipment_no",
-  refund_execution_no: "execution_no",
-  use_ledger_no: "ledger_no",
-  inviter_no: "user_no",
-  issuer_merchant_no: "entity_no",
-  merchant_no: "entity_no",
 };
 
 /**
@@ -227,9 +207,13 @@ const TOPICS = [
  * 而守卫只查集合不查文档，漏了两天没人发现。
  */
 const NAME_COLLISIONS_WHY = {
-  parent_no: "cmt_community 与 prd_category 各自树的父节点编号，两个定义域不能按同名连线",
-  trade_no: "支付通道提供的外部交易号，只在对应支付通道/提供方内识别；不能按 trade_no 全局连线",
-  shipment_no: "ord_shipment 是订单发货单；lgs_waybill 是独立物流运单；来源关系使用 source_shipment_no → ord_shipment.shipment_no",
+  parent_no: "不同层级树的父节点，必须结合所属树。",
+  provider_no: "通道回执需结合通道、资金方向与原请求。",
+  scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
+  revision_no: "商品版本与积分账单版本，各自独立。",
+  holder_no: "积分持有人多态编号，必须结合 holder_type。",
+  position_no: "不同种类积分持仓的多态编号，必须结合持仓类型。",
+  ticket_no: "积分资金指令与客服工单的独立编号，不可直接关联。",
   request_no: "`mkt_request` 是求团需求单号；`stl_split_log` 是分账幂等号",
   express_no: "`ord_sub_order` 是发货单号；`ord_after_sale` 是退货单号，**方向相反**",
   operator_no: "各表各自记录操作人，不是外键",
@@ -247,13 +231,10 @@ function relations(tables) {
   const out = [];
   for (const [table, def] of tables) {
     for (const c of def.cols) {
-      if (AUDIT.has(c.name)) continue;
-      const owner = SCOPED_KEY_OWNERS[table]?.[c.name]
-        ?? (NAME_COLLISIONS.has(c.name) ? undefined : KEY_OWNERS[c.name]);
+      if (AUDIT.has(c.name) || NAME_COLLISIONS.has(c.name)) continue;
+      const owner = KEY_OWNERS[c.name];
       if (!owner || owner === table || !tables.has(owner)) continue;
-      const targetCol = KEY_OWNER_COLUMNS[c.name] ?? c.name;
-      if (!tables.get(owner).cols.some((target) => target.name === targetCol)) continue;
-      out.push({ from: table, to: owner, col: c.name, toCol: targetCol });
+      out.push({ from: table, to: owner, col: c.name });
     }
   }
   return out;

@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 228 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 232 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -20,9 +20,9 @@
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 36 | ✅ | ✅ | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 27 | ✅ | ✅ | — | — | — | — |
+| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 25 | ✅ | — | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 21 | ✅ | — | — | — | — | — |
-| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 21 | ✅ | — | — | — | — | — |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
 | `SHIP` | 发货、标记自送送达 | 6 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 5 | ✅ | ✅ | — | — | — | ✅ |
@@ -30,7 +30,7 @@
 | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 3 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
 
-**只有 OWNER 能碰的 2 项**：`STORE_ADMIN`、`FINANCE`
+**只有 OWNER 能碰的 2 项**：`FINANCE`、`STORE_ADMIN`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -183,6 +183,34 @@
 - `/biz/report/goods`
 - `/biz/report/monthly`
 
+### `FINANCE`　（OWNER）
+
+- `/biz/deposit`
+- `/biz/deposit/txns`
+- `/biz/merchant/debt`
+- `/biz/merchant/pay-channel`
+- `/biz/merchant/payment`
+- `/biz/merchant/payment/store/{storeNo}`
+- `/biz/merchant/payment/{payChannel}/refresh`
+- `/biz/payout-account`
+- `/biz/points/store-account`
+- `/biz/points/store-agreement`
+- `/biz/points/store-agreement/sign`
+- `/biz/points/store-agreement/terminate`
+- `/biz/points/store-entries`
+- `/biz/points/store-terms`
+- `/biz/points/store-types`
+- `/biz/settle/batch`
+- `/biz/settle/bills`
+- `/biz/settle/bills/{settleNo}`
+- `/biz/settle/daily-flow`
+- `/biz/settle/income`
+- `/biz/settle/invoice-pending`
+- `/biz/settle/invoice-title`
+- `/biz/settle/invoices`
+- `/biz/settle/rate-card`
+- `/biz/settle/statement`
+
 ### `STORE`　（OWNER、MANAGER）
 
 - `/biz/appointment-slots/{slotNo}/close`
@@ -231,30 +259,6 @@
 - `/biz/store/{storeNo}/slug`
 - `/biz/store/{storeNo}/status`
 - `/biz/store/{storeNo}/stock-alignment/confirm`
-
-### `FINANCE`　（OWNER）
-
-- `/biz/deposit`
-- `/biz/deposit/txns`
-- `/biz/merchant/debt`
-- `/biz/merchant/pay-channel`
-- `/biz/merchant/payment`
-- `/biz/merchant/payment/store/{storeNo}`
-- `/biz/merchant/payment/{payChannel}/refresh`
-- `/biz/payout-account`
-- `/biz/points/account`
-- `/biz/points/records`
-- `/biz/points/toggle`
-- `/biz/settle/batch`
-- `/biz/settle/bills`
-- `/biz/settle/bills/{settleNo}`
-- `/biz/settle/daily-flow`
-- `/biz/settle/income`
-- `/biz/settle/invoice-pending`
-- `/biz/settle/invoice-title`
-- `/biz/settle/invoices`
-- `/biz/settle/rate-card`
-- `/biz/settle/statement`
 
 ### `VERIFY`　（OWNER、MANAGER、CLERK）
 

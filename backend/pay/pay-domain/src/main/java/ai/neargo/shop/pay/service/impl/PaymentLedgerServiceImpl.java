@@ -16,6 +16,11 @@ import java.util.Objects;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
+import tools.jackson.databind.ObjectMapper;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class PaymentLedgerServiceImpl implements PaymentLedgerService {
@@ -23,6 +28,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     private static final Logger log = LoggerFactory.getLogger(PaymentLedgerServiceImpl.class);
 
     private final SettleMappers.PaymentMapper paymentMapper;
+    private final ObjectMapper json = new ObjectMapper();
 
     public PaymentLedgerServiceImpl(SettleMappers.PaymentMapper paymentMapper) {
         this.paymentMapper = paymentMapper;
@@ -44,8 +50,18 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
          */
         StlPayment open = openPaymentOf(cmd.orderNo());
         if (open != null) {
+            var original = paymentRequest(open.getOutTradeNo()).orElseThrow(
+                    () -> new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_REQUIRED"));
+            if (!Objects.equals(original.userNo(), cmd.userNo())
+                    || !Objects.equals(original.entityNo(), cmd.entityNo())
+                    || !Objects.equals(original.payChannel(), cmd.payChannel())
+                    || !Objects.equals(original.currency(), cmd.currency())
+                    || original.amountMinor() != cmd.amountMinor()) {
+                throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_CONFLICT");
+            }
             return open.getOutTradeNo();
         }
+        validateRequest(cmd);
         /*
          * **商户单号 = 订单号 + 尝试序号**（第一次就是订单号本身）。
          *
@@ -75,8 +91,68 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         p.setEntityNo(cmd.entityNo());
         p.setPayChannel(cmd.payChannel());
         p.setAmountMinor(cmd.amountMinor());
+        p.setCurrency(cmd.currency());
+        p.setPaymentRequestJson(json.writeValueAsString(cmd));
         DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
         return outTradeNo;
+    }
+
+    @Override
+    public Optional<SettlePort.PaymentOpen> paymentRequest(String outTradeNo) {
+        StlPayment row = byOutTradeNo(outTradeNo);
+        if (row == null || row.getPaymentRequestJson() == null) {
+            return Optional.empty();
+        }
+        var request = json.readValue(row.getPaymentRequestJson(), SettlePort.PaymentOpen.class);
+        validateRequest(request);
+        if (!Objects.equals(row.getOrderNo(), request.orderNo())
+                || !Objects.equals(row.getUserNo(), request.userNo())
+                || !Objects.equals(row.getEntityNo(), request.entityNo())
+                || !Objects.equals(row.getPayChannel(), request.payChannel())
+                || !Objects.equals(row.getCurrency(), request.currency())
+                || row.getAmountMinor() == null || row.getAmountMinor() != request.amountMinor()) {
+            throw new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_CONFLICT");
+        }
+        return Optional.of(request);
+    }
+
+    private static void validateRequest(SettlePort.PaymentOpen request) {
+        if (!nonblank(request.orderNo()) || !nonblank(request.userNo()) || !nonblank(request.payChannel())
+                || request.currency() == null || !request.currency().matches("[A-Z]{3}")
+                || request.amountMinor() < 0) {
+            throw new IllegalArgumentException("PAY_REQUEST_INVALID");
+        }
+        Set<String> subs = new HashSet<>();
+        String directAccount = null;
+        String path = null;
+        for (var store : request.stores()) {
+            var route = store.route();
+            if (!nonblank(store.subOrderNo()) || !subs.add(store.subOrderNo()) || route == null
+                    || !nonblank(route.merchantNo()) || !nonblank(route.storeNo())
+                    || !nonblank(route.payMerchantNo()) || !nonblank(route.subMerchantId())
+                    || !nonblank(route.accountVersion())
+                    || !(Objects.equals(route.channel(), request.payChannel())
+                            || ("FREE".equals(request.payChannel()) && request.amountMinor() == 0
+                                    && nonblank(route.channel())))
+                    || !("DIRECT".equals(route.fundsPath()) || "AGGREGATED".equals(route.fundsPath()))) {
+                throw new IllegalArgumentException("PAY_STORE_ROUTE_INVALID");
+            }
+            if (path != null && !path.equals(route.fundsPath())) {
+                throw new IllegalArgumentException("PAY_MIXED_FUNDS_PATH_UNSUPPORTED");
+            }
+            path = route.fundsPath();
+            if ("DIRECT".equals(path)) {
+                String account = route.payMerchantNo() + ":" + route.subMerchantId() + ":" + route.accountVersion();
+                if (directAccount != null && !directAccount.equals(account)) {
+                    throw new IllegalArgumentException("PAY_MULTIPLE_DIRECT_ACCOUNTS_UNSUPPORTED");
+                }
+                directAccount = account;
+            }
+        }
+    }
+
+    private static boolean nonblank(String value) {
+        return value != null && !value.isBlank();
     }
 
     /** 这个订单已经向通道下过几次单 —— 决定下一个商户单号的后缀 */
@@ -117,35 +193,21 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     @Transactional("payTxManager")
     public String refund(String orderNo, String subOrderNo, String afterSaleNo,
                          long amountMinor, String reason) {
-        /*
-         * **幂等按售后单号。**重试是常态 —— 分账回退失败会让整笔退款停在
-         * REFUNDING 等续跑任务再来一次。不幂等的话每重试一次多一行退款流水，
-         * 而对账会把它们当成「多退了几笔」。
-         */
-        StlPayment exist = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
-                Wrappers.<StlPayment>lambdaQuery()
-                        .eq(StlPayment::getDirection, StlPayment.REFUND)
-                        .eq(StlPayment::getAfterSaleNo, afterSaleNo)
-                        .last("LIMIT 1")));
-        if (exist != null) {
-            return exist.getPaymentNo();
+        if (amountMinor <= 0 || afterSaleNo == null || afterSaleNo.isBlank()) {
+            throw new IllegalArgumentException("PAY_REFUND_INPUT_INVALID");
         }
-
-        /*
-         * **挂在原收款上。**没有原收款就退不了 —— 那说明这笔单的钱从没收到过，
-         * 而给一笔没收到钱的单退款是真通道一定会拒的。
-         * 返回 null 让调用方知道，而不是落一行无主的退款流水。
-         */
-        StlPayment origin = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
-                Wrappers.<StlPayment>lambdaQuery()
-                        .eq(StlPayment::getDirection, StlPayment.PAY)
-                        .eq(StlPayment::getOrderNo, orderNo)
-                        .eq(StlPayment::getStatus, StlPayment.SUCCESS)
-                        .orderByDesc(StlPayment::getId).last("LIMIT 1")));
+        StlPayment origin = DataScopeContext.executeWithoutScope(() -> paymentMapper.lockPaidForRefund(orderNo));
         if (origin == null) {
-            log.warn("[payment-ledger] 订单 {} 没有成功的收款流水，退款无从挂靠（售后 {}）",
-                    orderNo, afterSaleNo);
             return null;
+        }
+        StlPayment exist = DataScopeContext.executeWithoutScope(
+                () -> paymentMapper.lockRefundByAfterSale(afterSaleNo));
+        if (exist != null) {
+            if (!orderNo.equals(exist.getOrderNo()) || !subOrderNo.equals(exist.getSubOrderNo())
+                    || exist.getAmountMinor() == null || exist.getAmountMinor() != amountMinor) {
+                throw new IllegalArgumentException("PAY_REFUND_INPUT_CONFLICT");
+            }
+            return exist.getPaymentNo();
         }
 
         // 商户单号 = 原单号-R序号。客服按前缀能把一笔单的收与退一次找全
@@ -173,10 +235,30 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         r.setCurrency(origin.getCurrency());
         r.setAmountMinor(amountMinor);
         r.setErrMsg(reason);
+        r.setRefundRequestJson(json.writeValueAsString(new RefundTicket(origin.getPayChannel(), origin.getTradeNo(),
+                origin.getOutTradeNo(), r.getOutTradeNo(), nz(origin.getAmountMinor()), amountMinor, reason)));
         DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(r));
         log.info("[payment-ledger] 退款流水 {} 已落（原收款 {}，{} 分）",
                 r.getPaymentNo(), origin.getOutTradeNo(), amountMinor);
         return r.getPaymentNo();
+    }
+
+    @Override
+    @Transactional("payTxManager")
+    public boolean claimRefundDispatch(String refundPaymentNo) {
+        StlPayment refund = DataScopeContext.executeWithoutScope(
+                () -> paymentMapper.lockRefundEvidence(refundPaymentNo));
+        if (refund == null) {
+            throw new IllegalArgumentException("PAY_REFUND_UNKNOWN");
+        }
+        if (!StlPayment.PENDING.equals(refund.getStatus()) || refund.getRefundDispatchAt() != null) {
+            return false;
+        }
+        StlPayment patch = new StlPayment();
+        patch.setId(refund.getId());
+        patch.setRefundDispatchAt(System.currentTimeMillis());
+        DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
+        return true;
     }
 
     @Override
@@ -185,34 +267,24 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
             return java.util.Optional.empty();
         }
-        /*
-         * 原收款按**订单号 + 成功**去找，与 refund() 落账时用的是同一个判据 ——
-         * 两处不一致的话，退款会挂在 A 而发给通道的坐标来自 B。
-         */
-        StlPayment origin = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
-                Wrappers.<StlPayment>lambdaQuery()
-                        .eq(StlPayment::getDirection, StlPayment.PAY)
-                        .eq(StlPayment::getOrderNo, r.getOrderNo())
-                        .eq(StlPayment::getStatus, StlPayment.SUCCESS)
-                        .orderByDesc(StlPayment::getId).last("LIMIT 1")));
-        if (origin == null) {
-            // 落账那一步已经查过一次，走到这里说明中间被改动过
-            log.warn("[payment-ledger] 退款 {} 的原收款不见了，不发通道", refundPaymentNo);
+        if (r.getRefundRequestJson() == null) {
             return java.util.Optional.empty();
         }
-        return java.util.Optional.of(new RefundTicket(
-                origin.getPayChannel(), origin.getTradeNo(), origin.getOutTradeNo(),
-                r.getOutTradeNo(), nz(origin.getAmountMinor()), nz(r.getAmountMinor()),
-                r.getErrMsg()));
+        RefundTicket ticket = json.readValue(r.getRefundRequestJson(), RefundTicket.class);
+        if (!r.getPayChannel().equals(ticket.payChannel()) || !r.getOutTradeNo().equals(ticket.outRefundNo())
+                || nz(r.getAmountMinor()) != ticket.amountMinor()) {
+            throw new IllegalArgumentException("PAY_REFUND_REQUEST_SNAPSHOT_CONFLICT");
+        }
+        return java.util.Optional.of(ticket);
     }
 
     @Override
     @Transactional("payTxManager")
     public void markRefundSent(String refundPaymentNo, boolean accepted, boolean retryable,
                                String providerNo, String reason) {
-        StlPayment r = byPaymentNo(refundPaymentNo);
-        if (r == null) {
-            log.warn("[payment-ledger] 回填退款结果时找不到流水 {}", refundPaymentNo);
+        StlPayment r = DataScopeContext.executeWithoutScope(
+                () -> paymentMapper.lockRefundEvidence(refundPaymentNo));
+        if (r == null || !StlPayment.PENDING.equals(r.getStatus())) {
             return;
         }
         StlPayment patch = new StlPayment();
@@ -257,32 +329,36 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     @Override
     @Transactional("payTxManager")
-    public void markRefundSettled(String refundPaymentNo, String providerNo) {
-        StlPayment r = byPaymentNo(refundPaymentNo);
-        if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
-            log.warn("[payment-ledger] 确认退款到账时找不到退款流水 {}", refundPaymentNo);
+    public void markRefundSettled(String refundPaymentNo,String providerNo,long verifiedMinor) {
+        StlPayment refund=DataScopeContext.executeWithoutScope(() -> paymentMapper.lockRefundEvidence(refundPaymentNo));
+        if (refund==null) { throw new IllegalArgumentException("PAY_REFUND_UNKNOWN"); }
+        if (verifiedMinor<=0 || refund.getAmountMinor()==null || refund.getAmountMinor()!=verifiedMinor) {
+            throw new IllegalArgumentException("PAY_REFUND_VERIFIED_AMOUNT_MISMATCH");
+        }
+        if (providerNo==null || providerNo.isBlank() || providerNo.length()>128) {
+            throw new IllegalArgumentException("PAY_REFUND_VERIFIED_RECEIPT_REQUIRED");
+        }
+        if (refund.getRefundVerifiedAt()!=null) {
+            if (!StlPayment.SUCCESS.equals(refund.getStatus())
+                    || refund.getRefundVerifiedMinor()==null || refund.getRefundVerifiedMinor()!=verifiedMinor) {
+                throw new IllegalArgumentException("PAY_REFUND_VERIFIED_RECEIPT_CONFLICT");
+            }
+            // A later verified replay must not replace the first receipt or success time.
             return;
         }
-        if (StlPayment.SUCCESS.equals(r.getStatus())) {
-            // **幂等**：不覆盖已有的成功时刻，否则对账查到的时刻会一轮一轮往后跳
-            return;
+        if (!StlPayment.PENDING.equals(refund.getStatus()) && !StlPayment.SUCCESS.equals(refund.getStatus())) {
+            throw new IllegalStateException("PAY_REFUND_STATE_CONFLICT");
         }
-        StlPayment patch = new StlPayment();
-        patch.setId(r.getId());
+        long now=System.currentTimeMillis();
+        StlPayment patch=new StlPayment();
+        patch.setId(refund.getId());
         patch.setStatus(StlPayment.SUCCESS);
-        patch.setSucceededAt(System.currentTimeMillis());
-        /*
-         * **不写 trade_no。**它在受理那一刻就由 markRefundSent 记下了
-         * （通道自己回的 refund_id），那个才是权威；回查只负责确认「退成功了没」。
-         *
-         * 覆盖它有实打实的代价：`stl_payment` 上有
-         * <b>UNIQUE (pay_channel, trade_no)</b>，而这个索引是<b>跨方向</b>的 ——
-         * 回查一旦给回一个别的行已经占着的号，插不进去的不是这一行，
-         * 是<b>整轮自查当场抛异常中断</b>，后面几百笔一笔都不查了。
-         * 用一个不带新信息的写，去换一条能炸掉整轮扫描的路径，不划算。
-         */
+        patch.setSucceededAt(refund.getSucceededAt()==null?now:refund.getSucceededAt());
+        patch.setRefundVerifiedMinor(verifiedMinor);
+        patch.setRefundVerifiedProviderNo(providerNo);
+        patch.setRefundVerifiedAt(now);
+        // Do not overwrite trade_no: its original acceptance value participates in a cross-direction unique key.
         DataScopeContext.executeWithoutScope(() -> paymentMapper.updateById(patch));
-        log.info("[payment-ledger] 退款 {} 已确认到账（通道单号 {}）", refundPaymentNo, providerNo);
     }
 
     @Override
@@ -308,8 +384,10 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
 
     @Override
     @Transactional("payTxManager")
-    public String settleRefundByOutTradeNo(String outRefundNo, String providerNo) {
-        StlPayment r = byOutTradeNo(outRefundNo, StlPayment.REFUND);
+    public String settleRefundByOutTradeNo(String outRefundNo,String providerNo,long verifiedMinor) {
+        StlPayment r = DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(
+                Wrappers.<StlPayment>lambdaQuery().eq(StlPayment::getDirection, StlPayment.REFUND)
+                        .eq(StlPayment::getOutTradeNo, outRefundNo).last("LIMIT 1")));
         if (r == null || !StlPayment.REFUND.equals(r.getDirection())) {
             /*
              * **认领不了就说认领不了。** 通道回传了一个我方没发出去过的退款号，
@@ -319,7 +397,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
             log.error("[payment-ledger] 收到无法认领的退款回调 out_refund_no={}", outRefundNo);
             return null;
         }
-        markRefundSettled(r.getPaymentNo(), providerNo);
+        markRefundSettled(r.getPaymentNo(),providerNo,verifiedMinor);
         return r.getOrderNo();
     }
 
@@ -432,5 +510,22 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
                         .eq(StlPayment::getDirection, direction)
                         .eq(StlPayment::getOutTradeNo, outTradeNo)
                         .last("LIMIT 1")));
+    }
+    @Override public SettlePort.RefundEvidence refundEvidence(String no) {
+        var row=byPaymentNo(no);
+        if (row==null) { return null; }
+        return new SettlePort.RefundEvidence(row.getPaymentNo(),row.getDirection(),row.getAfterSaleNo(),
+                row.getSubOrderNo(),row.getUserNo(),row.getCurrency(),row.getAmountMinor(),row.getStatus(),
+                row.getRefundVerifiedMinor(),row.getRefundVerifiedAt(),row.getRefundVerifiedProviderNo());
+    }
+    @Override public boolean hasRefundForAfterSale(String no) {
+        return DataScopeContext.executeWithoutScope(() -> paymentMapper.selectCount(Wrappers.<StlPayment>lambdaQuery()
+                .eq(StlPayment::getDirection,StlPayment.REFUND).eq(StlPayment::getAfterSaleNo,no)))>0;
+    }
+    @Override public String paymentCurrency(String orderNo) {
+        var row=DataScopeContext.executeWithoutScope(() -> paymentMapper.selectOne(Wrappers.<StlPayment>lambdaQuery()
+                .eq(StlPayment::getOrderNo,orderNo).eq(StlPayment::getDirection,StlPayment.PAY)
+                .eq(StlPayment::getStatus,StlPayment.SUCCESS).orderByDesc(StlPayment::getId).last("LIMIT 1")));
+        return row==null?null:row.getCurrency();
     }
 }

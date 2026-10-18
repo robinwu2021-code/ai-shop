@@ -26,14 +26,14 @@ class PaymentLedgerRefundCallbackTest {
     void refundCallbackClaimsRefundAndPreservesFirstSuccess() {
         String no = insert(StlPayment.REFUND);
 
-        assertThat(ledger.settleRefundByOutTradeNo(no, "provider-refund"))
+        assertThat(ledger.settleRefundByOutTradeNo(no, "provider-refund", 1000))
                 .isEqualTo("P-" + no);
         assertThat(status(no)).isEqualTo(StlPayment.SUCCESS);
         Long first = jdbc.queryForObject("select succeeded_at from stl_payment where out_trade_no = ?",
                 Long.class, no);
         assertThat(first).isPositive();
 
-        assertThat(ledger.settleRefundByOutTradeNo(no, "provider-refund-replay"))
+        assertThat(ledger.settleRefundByOutTradeNo(no, "provider-refund-replay", 1000))
                 .isEqualTo("P-" + no);
         assertThat(jdbc.queryForObject("select succeeded_at from stl_payment where out_trade_no = ?",
                 Long.class, no)).isEqualTo(first);
@@ -43,8 +43,8 @@ class PaymentLedgerRefundCallbackTest {
     void refundCallbackRejectsMissingAndPayDirectionRows() {
         String no = insert(StlPayment.PAY);
 
-        assertThat(ledger.settleRefundByOutTradeNo("missing-refund-" + no, "provider")).isNull();
-        assertThat(ledger.settleRefundByOutTradeNo(no, "provider")).isNull();
+        assertThat(ledger.settleRefundByOutTradeNo("missing-refund-" + no, "provider", 1000)).isNull();
+        assertThat(ledger.settleRefundByOutTradeNo(no, "provider", 1000)).isNull();
         assertThat(status(no)).isEqualTo(StlPayment.PENDING);
         assertThat(jdbc.queryForObject("select succeeded_at from stl_payment where out_trade_no = ?",
                 Long.class, no)).isNull();

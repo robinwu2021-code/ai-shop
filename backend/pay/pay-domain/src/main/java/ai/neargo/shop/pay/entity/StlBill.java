@@ -235,7 +235,7 @@ public class StlBill extends BaseEntity {
     private Long subsidyAt;
 
     /**
-     * 实际向通道发起分账的金额（分）= 佣金 + 履约服务费 + 积分服务费。
+     * 实际向通道发起分账的金额（分）= 佣金 + 履约服务费；积分返分不向商家收费。
      *
      * <p><b>分账指令以它为准，不要在发起时重算</b> —— 算式会变（将来可能加收费项），
      * 而历史账不能跟着变。与 commissionRate 落快照是同一个道理。
@@ -298,6 +298,10 @@ public class StlBill extends BaseEntity {
 
     /** 付款凭证号（网银流水号）。自营专用；空 = 尚未付款。 */
     private String paymentRef;
+    /** Original committed points funding ticket; independent of the supplier goods payment. */
+    private String pointsFundingTicket;
+    /** Goods funding readiness: verified replenishment for per-order, paid-store fact for periodic. */
+    private Long pointsFundingReadyAt;
 
     /**
      * T2 可结算时刻 = 履约完成 + 售后期。

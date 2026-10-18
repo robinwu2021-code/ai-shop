@@ -304,9 +304,6 @@ public class OrdSubOrder extends BaseEntity {
     /** 本单积分抵扣金额（分）。上限 = 券后金额 30%，运费不参与。平台内部字段。 */
     private Long pointsDeductMinor;
 
-    /** 发放幂等标记：防重复核销重复发分。 */
-    private Boolean pointsGranted;
-
     /** 本单发放积分的服务费（分）。发放时算定，结算时从货款扣走进积分池。 */
     private Long pointsFeeMinor;
 }

@@ -1,0 +1,30 @@
+package ai.neargo.shop.trade.order.refund.service;
+
+import ai.neargo.shop.trade.order.refund.model.LedgerResult;
+import ai.neargo.shop.trade.order.refund.model.RefundPlan;
+import java.util.List;
+import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.points.PointsRefundPort;
+
+/** Source reservations survive retries; confirmed refunded counters change only after trusted cash evidence. */
+public interface RefundExecutionService {
+    /** Current durable source plan; null only when this after-sale has not been prepared. */
+    Execution inspect(String afterSaleNo);
+    /** Bounded durable work queue, including fresh approvals and retryable in-flight work. */
+    List<String> pendingNos(int limit);
+    Preparation prepare(String afterSaleNo,RefundPlan plan);
+    /** Freeze the decision before a pay-domain cash intent can exist. Points plans require their own proof. */
+    CashIntent beginCash(String afterSaleNo);
+    void bindCash(String afterSaleNo,String paymentNo,long netCashMinor);
+    void bindCash(String afterSaleNo,String paymentNo,long netCashMinor,SettlePort.RefundEvidence evidence);
+    void confirmCash(String afterSaleNo);
+    void confirmCash(String afterSaleNo,SettlePort.RefundEvidence evidence);
+    void completeZeroCash(String afterSaleNo);
+    LedgerResult commit(String afterSaleNo);
+    void release(String afterSaleNo);
+    /** Close a definitively failed cash intent only after points compensation was settled. */
+    void abortCompensated(String afterSaleNo, PointsRefundPort.RefundRecoveryStatus proof);
+    record Execution(Preparation preparation,RefundPlan plan,String cashPaymentNo) { }
+    record CashIntent(String afterSaleNo,String subOrderNo,long netCashMinor) { }
+    record Preparation(String afterSaleNo,String subOrderNo,String inputHash,String state,long businessMinor) { }
+}

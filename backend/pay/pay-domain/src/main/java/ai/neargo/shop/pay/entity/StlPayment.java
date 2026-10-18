@@ -75,6 +75,9 @@ public class StlPayment extends BaseEntity {
 
     private String currency;
 
+    /** 支付创建时固化的完整请求，包括币种、子单和门店账户版本。 */
+    private String paymentRequestJson;
+
     private String status;
 
     /** 我方给通道的商户订单号。**用户报障时报的是这个**。 */
@@ -100,6 +103,21 @@ public class StlPayment extends BaseEntity {
     private Long channelFeeMinor;
 
     private Long succeededAt;
+
+    /** Durable single send attempt. A lost response must be resolved using the original refund number. */
+    private Long refundDispatchAt;
+
+    /** Immutable original payment coordinates and refund request, saved with the intent. */
+    private String refundRequestJson;
+
+    /** Actual refund amount verified by a trusted channel query, distinct from the requested amount. */
+    private Long refundVerifiedMinor;
+
+    /** Query receipt remains available when the original acceptance reply was lost. */
+    private String refundVerifiedProviderNo;
+
+    /** Immutable successful verification time; retries retain it. */
+    private Long refundVerifiedAt;
 
     private Long closedAt;
 

@@ -35,7 +35,13 @@ function sharedTypesSrc(root: string): string {
   return src;
 }
 
-const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
+// The clean source snapshot is immutable during this suite. Cache file bytes
+// instead of reopening every Java file for each endpoint/type comparison.
+const sourceCache = new Map<string, string>();
+const read = (p: string) => {
+  if (!sourceCache.has(p)) sourceCache.set(p, readFileSync(join(ROOT, p), "utf8"));
+  return sourceCache.get(p)!;
+};
 
 /**
  * 检查哪几端。

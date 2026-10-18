@@ -113,6 +113,11 @@ def main():
                     stmt = re.sub(r"^(INSERT\s+INTO\s+\w+)\s+VALUES\b",
                                   lambda mm: f"{mm.group(1)} ({', '.join(cols)}) VALUES",
                                   stmt, count=1, flags=re.S | re.I)
+            # V27 seeds a natural-key MICRO row; V270 renames it. Replaying V27 would
+            # recreate MICRO beside NATURAL_PERSON and V270 would collide on its unique key.
+            # Emit the final natural key for that historical constant seed.
+            if re.match(r"^INSERT\s+INTO\s+mch_admission_policy\b",stmt,re.I):
+                stmt=stmt.replace("'MICRO'", "'NATURAL_PERSON'")
             stmt = stmt + ";"
             for old, new in renames.items():
                 stmt = re.sub(rf"\b{re.escape(old)}\b", new, stmt)

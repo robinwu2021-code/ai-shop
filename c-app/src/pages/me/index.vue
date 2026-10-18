@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MasterData, MerchantApplyStatus, MyFission } from "@shared/types";
+import type { BuyerPointsAccount } from "@/api/contract";
 // 我的：登录入口 + 归属信息 + 外观与语言。
 // 列表项之间用间距分块，不用分隔线（扁平色块风格）。
 import { computed, ref } from "vue";
@@ -48,7 +49,15 @@ const phoneGate = ref(false);
 const community = useCommunityStore();
 const location = useLocationStore();
 const themeVisible = ref(false);
-const points = ref(0);
+const pointAccounts = ref<BuyerPointsAccount[]>([]);
+const pointsHint = computed(() => {
+  const first = pointAccounts.value[0];
+  if (pointAccounts.value.length === 1 && first)
+    return `${first.typeCode} · ${t("points.entryHint", { n: first.balance })}`;
+  return pointAccounts.value.length > 1
+    ? String(t("points.typeCount", { n: pointAccounts.value.length }))
+    : String(t("points.viewLedger"));
+});
 const unread = ref(0);
 
 function gotoLogin() {
@@ -557,7 +566,10 @@ onShow(() => {
     // 登出之后不该还挂着别人的邀请进度
     fission.value = null;
   }
-  if (FEATURES.points) api.pointAccount().then((a) => (points.value = a.balance));
+  if (FEATURES.points && user.isLogin) {
+    api.pointsAccounts().then((accounts) => (pointAccounts.value = accounts))
+      .catch(() => (pointAccounts.value = []));
+  } else pointAccounts.value = [];
   // 进页即弹（2026-10-08 拍板）
   void requirePhoneOnEnter();
 });
@@ -661,7 +673,7 @@ onShow(() => {
       </view>
       <view v-if="FEATURES.points" class="sh-cell sh-row sh-row--between" @tap="gotoPoints">
         <text class="txt-body cell__label">{{ $t("points.title") }}</text>
-        <text class="txt-caption cell__value sh-num">{{ $t("points.entryHint", { n: points }) }}</text>
+        <text class="txt-caption cell__value sh-num">{{ pointsHint }}</text>
       </view>
     </view>
 

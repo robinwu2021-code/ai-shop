@@ -41,6 +41,10 @@ class ConsumerOrderFlowTest {
 
     @Autowired
     private ObjectMapper json;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private ai.neargo.shop.spi.settle.PointsPort legacyPoints;
 
 
     @Autowired
@@ -91,6 +95,13 @@ class ConsumerOrderFlowTest {
                 .andExpect(jsonPath("$.data.payParams.prepayId").isNotEmpty());
 
         payCallback(orderNo, "TX-001");
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM ord_sub_order WHERE order_no=? AND points_granted=1",
+                Long.class, orderNo)).isZero();
+        org.mockito.Mockito.verify(legacyPoints, org.mockito.Mockito.never())
+                .grant(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
 
         mvc().perform(get("/mp/order/" + orderNo + "/pay-result").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.status").value("PAID"))
@@ -149,6 +160,8 @@ class ConsumerOrderFlowTest {
                 .andExpect(jsonPath("$.data.status").value("CANCELLED"));
 
         assertThat(availableOf("SK0002")).isEqualTo(initial);
+        org.mockito.Mockito.verify(legacyPoints, org.mockito.Mockito.never())
+                .reverse(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test

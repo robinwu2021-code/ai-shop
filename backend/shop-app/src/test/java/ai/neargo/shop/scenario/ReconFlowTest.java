@@ -385,7 +385,7 @@ class ReconFlowTest {
     void refundPaidSettlesTheRefundNotTheOrder() {
         StlPayment r = stalRefund();
         // 对退款单来说，paid=true 的含义是「**退款**成功了」
-        fakeQuery.answer(new PayQueryPort.Result(true, true, true, 3300L, "WXRF-1"));
+        fakeQuery.refundAnswer(r.getOutTradeNo(),new PayQueryPort.Result(true,true,true,3300L,"WXRF-"+r.getPaymentNo()));
 
         paymentRecon.scan(System.currentTimeMillis());
 
@@ -428,7 +428,7 @@ class ReconFlowTest {
     @DisplayName("★★ 退款确认是幂等的 —— 重复扫不改已有的成功时刻")
     void refundSettleIsIdempotent() {
         StlPayment r = stalRefund();
-        fakeQuery.answer(new PayQueryPort.Result(true, true, true, 3300L, "WXRF-2"));
+        fakeQuery.refundAnswer(r.getOutTradeNo(),new PayQueryPort.Result(true,true,true,3300L,"WXRF-"+r.getPaymentNo()));
 
         paymentRecon.scan(System.currentTimeMillis());
         Long first = reload(r).getSucceededAt();

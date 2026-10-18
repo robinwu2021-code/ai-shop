@@ -464,9 +464,13 @@ class BizEndpointPermTest {
         put("/biz/merchant/debt", BizPerms.FINANCE);
         put("/biz/merchant/payment/{payChannel}/refresh", BizPerms.FINANCE);
         put("/biz/merchant/payment/store/{storeNo}", BizPerms.FINANCE);
-        put("/biz/points/account", BizPerms.FINANCE);
-        put("/biz/points/records", BizPerms.FINANCE);
-        put("/biz/points/toggle", BizPerms.FINANCE);
+        put("/biz/points/store-types", BizPerms.FINANCE);
+        put("/biz/points/store-account", BizPerms.FINANCE);
+        put("/biz/points/store-entries", BizPerms.FINANCE);
+        put("/biz/points/store-terms", BizPerms.FINANCE);
+        put("/biz/points/store-agreement", BizPerms.FINANCE);
+        put("/biz/points/store-agreement/sign", BizPerms.FINANCE);
+        put("/biz/points/store-agreement/terminate", BizPerms.FINANCE);
         // 保证金与额度是钱的事，与结算同权限；不放宽到「登录即可」——
         // 余额和流水会暴露平台对这家店的风险判断
         put("/biz/deposit", BizPerms.FINANCE);

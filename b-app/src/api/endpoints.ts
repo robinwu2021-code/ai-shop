@@ -333,30 +333,17 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
 
   // ---------------------------------------------------------------- 积分（B-11.x）
   //
-  // 商家**不感知积分抵扣**（V34）：他收到的是订单全额减各项费用。
-  // 这里只有他自己发分的成本，以及开关。
   mIncomeSummary: { method: "GET", path: "/biz/settle/income", auth: true, summary: "收入按状态汇总" },
   // 每日流水：与上面那条**同一批结算单的另一种切法**（按天，不按状态）
   mDailyFlow: { method: "GET", path: "/biz/settle/daily-flow", auth: true, summary: "每日流水" },
 
-  mPointsAccount: {
-    method: "GET",
-    path: "/biz/points/account",
-    auth: true,
-    summary: "本期发分服务费与开关状态",
-  },
-  mPointsRecords: {
-    method: "GET",
-    path: "/biz/points/records",
-    auth: true,
-    summary: "发分服务费明细（按单）",
-  },
-  mPointsToggle: {
-    method: "POST",
-    path: "/biz/points/toggle",
-    auth: true,
-    summary: "开/关本店积分",
-  },
+  mStorePointTypes: { method: "GET", path: "/biz/points/store-types", auth: true, summary: "当前门店可见的积分类型" },
+  mStorePointAccount: { method: "GET", path: "/biz/points/store-account", auth: true, summary: "当前门店积分账本" },
+  mStorePointEntries: { method: "GET", path: "/biz/points/store-entries", auth: true, summary: "当前门店积分流水" },
+  mStorePointTerms: { method: "GET", path: "/biz/points/store-terms", auth: true, summary: "当前积分签约条款" },
+  mStorePointAgreement: { method: "GET", path: "/biz/points/store-agreement", auth: true, summary: "当前门店有效积分签约" },
+  mSignStorePointAgreement: { method: "POST", path: "/biz/points/store-agreement/sign", auth: true, summary: "主体属主签署当前门店积分协议" },
+  mTerminateStorePointAgreement: { method: "POST", path: "/biz/points/store-agreement/terminate", auth: true, summary: "主体属主终止当前门店积分协议" },
 
   // ---------------------------------------------------------------- 消息（二期）
   mMessageList: { method: "GET", path: "/biz/message", auth: true, summary: "商家消息列表" },

@@ -30,4 +30,5 @@ MerchantQueryPort	30
 # 那两个**没有任何调用方**，已删 —— 否则这里是 16。
 # 2026-10-14 15 → 17：结算口径 A（`DefaultSettlementRefundPolicy`）判运费由谁回退 —— 平台代寄由平台承担、商家自寄由商家回退，
 # 判据与上一条是**同一个常量** `SHIP_PLATFORM_CALL`（import + 一处使用）。不复制到 pay 的理由同上。
-SettleSourcePort	17
+# 2026-10-18：旧积分引擎退出生产源码，移除其 SettleSourcePort import，17 → 16。
+SettleSourcePort	16

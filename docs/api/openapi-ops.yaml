@@ -1082,10 +1082,12 @@ components:
       properties:
         entityNo:
           type: "string"
+          description: "商家主体编号"
         merchantName:
           type:
             - "string"
             - "null"
+          description: "商家展示名称"
         goods:
           type: "number"
           description: "建了几个 SPU"
@@ -1184,6 +1186,7 @@ components:
     OrderStatus:
       type: "string"
       enum:
+        - "POINTS_PROCESSING"
         - "WAIT_PAY"
         - "WAIT_OFFLINE_PAY"
         - "PAID"
@@ -1808,14 +1811,17 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "门店编号"
         storeName:
           type:
             - "string"
             - "null"
+          description: "门店展示名称"
         merchantNo:
           type:
             - "string"
             - "null"
+          description: "归属商家主体编号"
         merchantName:
           type:
             - "string"
@@ -1823,12 +1829,16 @@ components:
           description: "门店属于谁。**两家都在垫底时，是不是同一个老板该做的事完全不同**"
         gmv:
           type: "number"
+          description: "成交金额，最小货币单位"
         orderCount:
           type: "number"
+          description: "订单数量"
         avgOrderValue:
           type: "number"
+          description: "平均订单金额，最小货币单位"
         refundedCount:
           type: "number"
+          description: "已退款订单数量"
         refundedRate:
           type: "number"
           description: "退款率 0–1。分母是总成交单数（在售的 + 已退的）"
@@ -1996,6 +2006,7 @@ components:
           type:
             - "number"
             - "null"
+          description: "经度乘以一百万的整数"
       required:
         - "communityNo"
         - "name"
@@ -2413,6 +2424,7 @@ components:
             - "withCoords"
             - "missing"
           additionalProperties: false
+          description: "门店统计摘要"
         addresses:
           type: "object"
           properties:
@@ -2451,6 +2463,7 @@ components:
             - "withCoords"
             - "missing"
           additionalProperties: false
+          description: "社区统计摘要"
       required:
         - "stores"
         - "addresses"
@@ -2462,12 +2475,16 @@ components:
       properties:
         currentRadiusM:
           type: "number"
+          description: "当前服务半径，米"
         previewRadiusM:
           type: "number"
+          description: "预览服务半径，米"
         currentInside:
           type: "number"
+          description: "当前半径内对象数"
         previewInside:
           type: "number"
+          description: "预览半径内对象数"
         addressesWithCoords:
           type: "number"
           description: "有坐标的收货地址总数。**分母要给** —— 「多进来 0 户」在一个没几条地址有坐标的库里说明不了任何事"
@@ -2497,6 +2514,7 @@ components:
           description: "全局四桶计数 + 买家总数"
         unattributable:
           "$ref": "#/components/schemas/Unattributable"
+          description: "无法归属覆盖片区的数量"
       required:
         - "regions"
         - "supplyGaps"
@@ -2893,6 +2911,32 @@ components:
         subAttempts:
           type: "number"
           description: "订阅累计尝试次数"
+        subscriptions:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              channel:
+                type: "string"
+              state:
+                type: "string"
+              error:
+                type:
+                  - "string"
+                  - "null"
+              lastAttemptAt:
+                type:
+                  - "number"
+                  - "null"
+              nextRetryAt:
+                type:
+                  - "number"
+                  - "null"
+            required:
+              - "channel"
+              - "state"
+            additionalProperties: false
+          description: "Current shipment identity only; WeChat follow and Kuaidi100 are independent."
         bindState:
           "$ref": "#/components/schemas/BindState"
           description: "微信 token 状态"
@@ -3572,12 +3616,15 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/CoverageArea"
+          description: "明确纳入的服务范围"
         excludes:
           type: "array"
           items:
             "$ref": "#/components/schemas/CoverageArea"
+          description: "明确排除的服务范围"
         reachableCount:
           type: "number"
+          description: "当前可触达对象数量"
         reachableSample:
           type: "array"
           items:
@@ -3598,6 +3645,7 @@ components:
           description: "COMMUNITY / STREET / DISTRICT / CITY / PROVINCE"
         refCode:
           type: "string"
+          description: "范围所引用的行政或业务编码"
         name:
           type: "string"
           description: "取不到名就给号，**不留空** —— 空会被读成「没有这一条」"
@@ -5627,40 +5675,6 @@ components:
         - "configured"
       additionalProperties: false
       description: "类目 × 支付方式（线下）。\n\n**`offlineAllowed` 的默认是「允许」**：后端那张表的语义是 「没有行即放行，插 allowed=0 才是禁止」。设计成白名单的话， 上线当天得先把 57 个类目全配一遍才有人下得了单。"
-    CategoryPoints:
-      type: "object"
-      properties:
-        categoryNo:
-          type: "string"
-          description: "类目号"
-        categoryName:
-          type: "string"
-          description: "类目名"
-        parentName:
-          type: "string"
-          description: "父类目名。**同名子类目很常见**，只给自己的名字分不清是哪个"
-        earnMode:
-          type:
-            - "string"
-            - "null"
-          enum:
-            - "FIXED"
-            - "RATIO"
-            - null
-          description: "FIXED 定额 / RATIO 按成交额比例；**空 = 没配**，走平台兜底"
-        earnValue:
-          type:
-            - "number"
-            - "null"
-          description: "发分比例（万分比）"
-      required:
-        - "categoryNo"
-        - "categoryName"
-        - "parentName"
-        - "earnMode"
-        - "earnValue"
-      additionalProperties: false
-      description: "类目 × 积分发放规则。**平台按类目统一管理，商家不参与配置** —— 依据是实测：线上 199 件商品里，用商品级配置配了积分的是 0 件。\n\n`earnValue` 是**整数**：FIXED 存分、RATIO 存万分比（千分之一 = 10）。 不用浮点 —— 金额与比例一旦用 double，对账时的分位差没人说得清。"
     ClientPointsPolicy:
       type: "object"
       properties:
@@ -5688,11 +5702,13 @@ components:
       properties:
         categories:
           type: "number"
+          description: "分类数量"
         categoriesUsed:
           type: "number"
           description: "至少被一个商品用过的类目数"
         skus:
           type: "number"
+          description: "SKU 数量"
         skusWithBarcode:
           type: "number"
           description: "填了条码的。**扫码功能的天花板就是这个数**"
@@ -5701,20 +5717,25 @@ components:
           description: "填了商家货号的"
         specDims:
           type: "number"
+          description: "规格维度数量"
         specDimsBound:
           type: "number"
           description: "至少挂到一个类目上的维度数。规格库只增不减，没挂上的是清理依据"
         auditApproved:
           type: "number"
+          description: "审核通过商品数量"
         auditRejected:
           type: "number"
+          description: "审核驳回商品数量"
         auditPending:
           type: "number"
+          description: "待审核商品数量"
         auditActions:
           type: "number"
           description: "最近 N 天的审核动作数 —— **吞吐**，与上面三个累计数不是一回事"
         auditDays:
           type: "number"
+          description: "审核统计窗口天数"
       required:
         - "categories"
         - "categoriesUsed"
@@ -5735,29 +5756,38 @@ components:
       properties:
         goodsNo:
           type: "string"
+          description: "商品编号"
         title:
           type:
             - "string"
             - "null"
+          description: "商品或规格展示标题"
         entityNo:
           type: "string"
+          description: "商家主体编号"
         auditStatus:
           type:
             - "string"
             - "null"
+          description: "商品审核状态"
         onSale:
           type: "boolean"
+          description: "是否上架销售"
         skuCount:
           type: "number"
+          description: "SKU 数量"
         bookedSkus:
           type: "number"
           description: "其中在进销存里建了账的。**少于 skuCount 就是投影没搬全** —— 商家端的表现是「有些规格盘得着、有些盘不着」，极难自查"
         onHand:
           type: "number"
+          description: "账面库存数量"
         available:
           type: "number"
+          description: "当前可售库存数量"
         soldCount:
           type: "number"
+          description: "累计销售数量"
         stuckAt:
           anyOf:
             - "$ref": "#/components/schemas/MerchantChainStuck"
@@ -5782,6 +5812,7 @@ components:
       properties:
         id:
           type: "number"
+          description: "持久记录主键"
         word:
           type: "string"
           description: "词。**存的是小写**，匹配时两边都转小写"
@@ -5792,6 +5823,7 @@ components:
           description: "为什么禁。**会原样出现在给商家的报错里**，所以要写成他看得懂的一句话"
         enabled:
           type: "boolean"
+          description: "是否启用该配置"
       required:
         - "id"
         - "word"
@@ -6108,6 +6140,7 @@ components:
       properties:
         channel:
           "$ref": "#/components/schemas/InvLinkChannel"
+          description: "通道编码"
         pending:
           type: "number"
           description: "积压总数"
@@ -6129,6 +6162,7 @@ components:
           description: "最近一次成功投递。null = 从没成功过"
         maxRetry:
           type: "number"
+          description: "允许的最大重试次数"
         lastError:
           type:
             - "string"
@@ -6136,6 +6170,7 @@ components:
           description: "最近一条错误摘要，只在 retrying > 0 时有意义"
         verdict:
           "$ref": "#/components/schemas/InvLinkVerdict"
+          description: "服务端健康检查结论"
       required:
         - "channel"
         - "pending"
@@ -6167,16 +6202,19 @@ components:
       properties:
         scannedSkus:
           type: "number"
+          description: "本次扫描 SKU 数量"
         moved:
           type: "number"
           description: "真搬了几条。**试算时恒为 0** —— 不传 apply 就一条都不该动"
         skipped:
           type: "number"
+          description: "本次跳过的记录数量"
         pending:
           type: "number"
           description: "仍待搬的"
         clean:
           type: "boolean"
+          description: "未发现投影差异的数量"
       required:
         - "scannedSkus"
         - "moved"
@@ -6190,15 +6228,19 @@ components:
       properties:
         entityNo:
           type: "string"
+          description: "商家主体编号"
         ownerId:
           type: "string"
+          description: "主体属主用户编号"
         itemCount:
           type: "number"
           description: "建了几条账（物料）"
         shortageCount:
           type: "number"
+          description: "库存不足记录数量"
         staleCount:
           type: "number"
+          description: "投影过期记录数量"
         ledgerCount:
           type: "number"
           description: "累计流水笔数。**0 = 建了账但一次都没记过**"
@@ -6206,6 +6248,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "最近库存账务记录时间，Unix 毫秒"
         openCountNo:
           type:
             - "string"
@@ -6232,6 +6275,86 @@ components:
         - "reconCleanStreakRequired"
       additionalProperties: false
       description: "进销存平台规则（M7）。今天只有一条 —— 见后端那个控制器的类注释： 其余几条查下来多数不该按原样做（有的本来就在拦，有的会拆掉模块边界）。"
+    PointsTypeConfigStatus:
+      type: "string"
+      enum:
+        - "DRAFT"
+        - "ACTIVE"
+        - "DRAINING"
+        - "RETIRED"
+      description: "PointsTypeConfig 的 status 取值域，按服务端契约校验。"
+    PointsTypeChangeAction:
+      type: "string"
+      enum:
+        - "ACTIVATE"
+        - "DRAIN"
+        - "RETIRE"
+      description: "PointsTypeChange 的 action 取值域，按服务端契约校验。"
+    PointsFallbackMode:
+      type: "string"
+      enum:
+        - "FIXED"
+        - "RATIO"
+      description: "PointsFallback 的 mode 取值域，按服务端契约校验。"
+    PointsFundsTargetPath:
+      type: "string"
+      enum:
+        - "DIRECT"
+        - "AGGREGATED"
+      description: "PointsFundsTarget 的 path 取值域，按服务端契约校验。"
+    PointsPlanAction:
+      type: "string"
+      enum:
+        - "TOPUP_U"
+        - "TOPUP_B"
+        - "TRANSFER_U_TO_B"
+      description: "PointsPlan 的 action 取值域，按服务端契约校验。"
+    PointsExecutionStatus:
+      type: "string"
+      enum:
+        - "SUCCEEDED"
+        - "FAILED"
+        - "UNKNOWN"
+      description: "PointsExecution 的 status 取值域，按服务端契约校验。"
+    PointsStatementChangeAction:
+      type: "string"
+      enum:
+        - "CONFIRM"
+        - "DISPUTE"
+        - "REDRAFT"
+        - "PREPARE_PAYOUT"
+      description: "PointsStatementChange 的 action 取值域，按服务端契约校验。"
+    PointsFlowViewBucket:
+      type: "string"
+      enum:
+        - "U"
+        - "C"
+        - "D"
+        - "B"
+        - "RESERVED_B"
+        - "LOCKED_U"
+        - "LOCKED_B"
+      description: "PointsFlowView 的 bucket 取值域，按服务端契约校验。"
+    OrderPointsIntegrationQScene:
+      type: "string"
+      enum:
+        - "ONLINE"
+        - "OFFLINE"
+      description: "OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。"
+    OrderPointsIntegrationPolicyMode:
+      type: "string"
+      enum:
+        - "DETACHED"
+        - "ACTIVE"
+        - "DRAINING"
+      description: "OrderPointsIntegrationPolicy 的 mode 取值域，按服务端契约校验。"
+    PointsStatsQScope:
+      type: "string"
+      enum:
+        - "TOTAL"
+        - "STORE"
+        - "USER"
+      description: "PointsStatsQ 的 scope 取值域，按服务端契约校验。"
     SettleStatus:
       type: "string"
       enum:
@@ -6250,43 +6373,137 @@ components:
     PointsOverview:
       type: "object"
       properties:
-        circulatingPoints:
-          type: "number"
-          description: "流通中的积分（用户可用 + 待生效）"
-        poolBalanceMinor:
-          type: "number"
-          description: "池子余额（分）。与上一个数对不上就是失衡"
-        periodRedeemMinor:
-          type: "number"
-          description: "本期兑付（分）：补给商家的钱"
-        byChannel:
-          type: "array"
-          items:
-            "$ref": "#/components/schemas/PoolByChannel"
-          description: "按通道分的账本。**不能只看总数** —— 账面是一个池子，钱实际分散在两个通道账户； 一个溢一个空的时候，总数仍然是平的。"
-      required:
-        - "circulatingPoints"
-        - "poolBalanceMinor"
-        - "periodRedeemMinor"
-        - "byChannel"
-      additionalProperties: false
-      description: "积分资金总览。\n\n**三个数摆在一起是刻意的** —— 恒等式是「流通中的积分 == 池子里的钱」， 分开看的话，失衡要等到有人主动比对才会发现。"
-    PoolByChannel:
-      type: "object"
-      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型，不按不同类型合并余额"
         market:
           type: "string"
           description: "市场"
-        payChannel:
+        currency:
           type: "string"
-          description: "支付通道"
-        balanceMinor:
+          description: "ISO货币代码"
+        scale:
           type: "number"
-          description: "池子余额（分）"
+          description: "金额最小单位的小数位数"
+        ratePoints:
+          type: "number"
+          description: "兑换比例的积分单位"
+        rateMinor:
+          type: "number"
+          description: "兑换比例的最小货币单位"
+        uMinor:
+          type: "number"
+          description: "发行备款 U，最小货币单位"
+        cMinor:
+          type: "number"
+          description: "积分负债对应资金 C，最小货币单位"
+        dMinor:
+          type: "number"
+          description: "待兑付资金 D，最小货币单位"
+        bMinor:
+          type: "number"
+          description: "退款备付 B，最小货币单位"
+        reservedBMinor:
+          type: "number"
+          description: "已承诺退款的 B 预留"
+        lockedUMinor:
+          type: "number"
+          description: "待决提取占用的 U"
+        lockedBMinor:
+          type: "number"
+          description: "待决提取占用的 B"
+        receivableMinor:
+          type: "number"
+          description: "门店未回收应收 R，不属于现金"
       required:
+        - "typeCode"
         - "market"
-        - "payChannel"
-        - "balanceMinor"
+        - "currency"
+        - "scale"
+        - "ratePoints"
+        - "rateMinor"
+        - "uMinor"
+        - "cMinor"
+        - "dMinor"
+        - "bMinor"
+        - "reservedBMinor"
+        - "lockedUMinor"
+        - "lockedBMinor"
+        - "receivableMinor"
+      additionalProperties: false
+      description: "Four independent funding buckets, with non-cash store receivables reported separately."
+    PointsReceivable:
+      type: "object"
+      properties:
+        id:
+          type: "number"
+          description: "分页游标 ID"
+        receivableNo:
+          type: "string"
+          description: "应收编号"
+        storeNo:
+          type: "string"
+          description: "门店编号"
+        state:
+          type: "string"
+          description: "应收状态"
+        originalMinor:
+          type: "number"
+          description: "原始应收金额"
+        recoveredMinor:
+          type: "number"
+          description: "已回收金额"
+        lockedMinor:
+          type: "number"
+          description: "待决抵销占用，仍包含在未回收金额中"
+        outstandingMinor:
+          type: "number"
+          description: "未回收金额，原始减已回收"
+        version:
+          type: "number"
+          description: "当前版本"
+      required:
+        - "id"
+        - "receivableNo"
+        - "storeNo"
+        - "state"
+        - "originalMinor"
+        - "recoveredMinor"
+        - "lockedMinor"
+        - "outstandingMinor"
+        - "version"
+      additionalProperties: false
+      description: "Explicit receivable fields; no original bank instructions or posting payloads."
+    PointsReceivablePage:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型，不按不同类型合并余额"
+        currency:
+          type: "string"
+          description: "ISO货币代码"
+        scale:
+          type: "number"
+          description: "金额最小单位的小数位数"
+        rows:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PointsReceivable"
+          description: "当前门店的应收记录"
+        next:
+          type: "number"
+          description: "下一页游标"
+        hasMore:
+          type: "boolean"
+          description: "是否可能还有下一页"
+      required:
+        - "typeCode"
+        - "currency"
+        - "scale"
+        - "rows"
+        - "next"
+        - "hasMore"
       additionalProperties: false
     Settlement:
       type: "object"
@@ -6861,8 +7078,10 @@ components:
       properties:
         messageNo:
           type: "string"
+          description: "通道报文编号"
         payChannel:
           type: "string"
+          description: "支付通道编码"
         msgType:
           type: "string"
           description: "CALLBACK 通道推给我方 / SEND 我方发给通道"
@@ -6878,6 +7097,7 @@ components:
           type:
             - "string"
             - "null"
+          description: "原支付指令编号"
         outcome:
           type: "string"
           description: "RECEIVED / ACCEPTED / REJECTED / OK / FAILED"
@@ -6895,10 +7115,12 @@ components:
           type:
             - "string"
             - "null"
+          description: "按接口权限返回的报文头信息"
         createdAt:
           type:
             - "number"
             - "null"
+          description: "服务端创建时间，Unix 毫秒"
       required:
         - "messageNo"
         - "payChannel"
@@ -7160,14 +7382,19 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/ChannelMessage"
+          description: "本页记录"
         total:
           type: "number"
+          description: "符合条件的记录总数"
         pageNo:
           type: "number"
+          description: "页码，从一开始"
         size:
           type: "number"
+          description: "本页最大记录数"
         note:
           type: "string"
+          description: "服务端补充说明"
       required:
         - "records"
         - "total"
@@ -7661,6 +7888,2216 @@ components:
         - "DEPOSIT"
         - "WRITE_OFF"
       description: "欠款流水类型。<b>方向不由它推</b> —— amountMinor 自带符号，靠类型再推一次方向等于把同一件事表达两遍， 而两处迟早会不一致。"
+    PointsTypeConfig:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        market:
+          type: "string"
+          description: "市场代码"
+        currency:
+          type: "string"
+          description: "ISO 货币代码"
+        scale:
+          type: "number"
+          description: "货币最小单位精度"
+        rate:
+          type: "object"
+          properties:
+            pointsUnit:
+              type: "number"
+              description: "换算比例中的积分数量"
+            minorUnit:
+              type: "number"
+              description: "换算比例中的最小货币单位数量"
+          required:
+            - "pointsUnit"
+            - "minorUnit"
+          additionalProperties: false
+          description: "积分与最小货币单位的换算比例"
+        deductRatioBp:
+          type: "number"
+          description: "最大抵扣比例，万分比"
+        idleDays:
+          type: "number"
+          description: "账户无活动失效天数"
+        status:
+          "$ref": "#/components/schemas/PointsTypeConfigStatus"
+          description: "服务端业务状态"
+      required:
+        - "typeCode"
+        - "market"
+        - "currency"
+        - "scale"
+        - "rate"
+        - "deductRatioBp"
+        - "idleDays"
+        - "status"
+      additionalProperties: false
+      description: "Points configuration commands carry stable intent IDs; identity and time come from the server."
+    PointsChangeResult:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        action:
+          type: "string"
+          description: "请求执行的业务动作"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        at:
+          type: "number"
+          description: "服务端事件时间，Unix 毫秒"
+      required:
+        - "requestId"
+        - "action"
+        - "typeCode"
+        - "at"
+      additionalProperties: false
+    PointsCreate:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        command:
+          type: "object"
+          properties:
+            typeCode:
+              type: "string"
+              description: "积分类型唯一编码"
+            market:
+              type: "string"
+              description: "市场代码"
+            rate:
+              type: "object"
+              properties:
+                pointsUnit:
+                  type: "number"
+                  description: "换算比例中的积分数量"
+                minorUnit:
+                  type: "number"
+                  description: "换算比例中的最小货币单位数量"
+              required:
+                - "pointsUnit"
+                - "minorUnit"
+              additionalProperties: false
+              description: "积分与最小货币单位的换算比例"
+            deductRatioBp:
+              type: "number"
+              description: "最大抵扣比例，万分比"
+            idleDays:
+              type: "number"
+              description: "账户无活动失效天数"
+          required:
+            - "typeCode"
+            - "market"
+            - "rate"
+            - "deductRatioBp"
+            - "idleDays"
+          additionalProperties: false
+          description: "类型创建参数，服务端校验"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "command"
+        - "reason"
+      additionalProperties: false
+    PointsTypeChange:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        action:
+          "$ref": "#/components/schemas/PointsTypeChangeAction"
+          description: "请求执行的业务动作"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "action"
+        - "reason"
+      additionalProperties: false
+    PointsFallback:
+      type: "object"
+      properties:
+        revision:
+          type: "number"
+          description: "不可变修订版本"
+        mode:
+          "$ref": "#/components/schemas/PointsFallbackMode"
+          description: "服务端参与模式或已发布回退规则模式"
+        value:
+          type: "number"
+          description: "回退规则配置值"
+      required:
+        - "revision"
+        - "mode"
+        - "value"
+      additionalProperties: false
+    PointsFallbackChange:
+      type: "object"
+      properties:
+        mode:
+          "$ref": "#/components/schemas/PointsFallbackMode"
+          description: "服务端参与模式或已发布回退规则模式"
+        value:
+          type: "number"
+          description: "回退规则配置值"
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        expectedRevision:
+          type: "number"
+          description: "调用方预期修订号"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "expectedRevision"
+        - "mode"
+        - "reason"
+        - "requestId"
+        - "typeCode"
+        - "value"
+      additionalProperties: false
+    PointsScope:
+      type: "string"
+      enum:
+        - "GLOBAL"
+        - "REGION"
+        - "TYPE"
+        - "SCENE"
+        - "CLIENT"
+        - "MERCHANT"
+        - "STORE"
+        - "USER"
+    PointsFlow:
+      type: "string"
+      enum:
+        - "EARN"
+        - "REDEEM"
+        - "BOTH"
+    PointsSwitchChange:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        scope:
+          "$ref": "#/components/schemas/PointsScope"
+          description: "开关或统计的作用范围"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        subjectNo:
+          type: "string"
+          description: "范围对象编号，门店范围使用 storeNo"
+        enabled:
+          type: "boolean"
+          description: "是否允许新增对应业务"
+        flow:
+          "$ref": "#/components/schemas/PointsFlow"
+          description: "控制积分发放、核销或两个方向"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "scope"
+        - "typeCode"
+        - "subjectNo"
+        - "enabled"
+        - "flow"
+        - "reason"
+      additionalProperties: false
+    PointsSwitchView:
+      type: "object"
+      properties:
+        scope:
+          "$ref": "#/components/schemas/PointsScope"
+          description: "开关或统计的作用范围"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        subjectNo:
+          type: "string"
+          description: "范围对象编号，门店范围使用 storeNo"
+        enabled:
+          type: "boolean"
+          description: "是否允许新增对应业务"
+        flow:
+          "$ref": "#/components/schemas/PointsFlow"
+          description: "控制积分发放、核销或两个方向"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+        id:
+          type: "number"
+          description: "持久记录主键"
+        actor:
+          type: "string"
+          description: "服务端取得的操作人编号"
+        at:
+          type: "number"
+          description: "服务端事件时间，Unix 毫秒"
+      required:
+        - "actor"
+        - "at"
+        - "enabled"
+        - "flow"
+        - "id"
+        - "reason"
+        - "scope"
+        - "subjectNo"
+        - "typeCode"
+      additionalProperties: false
+    PointsCursor:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        after:
+          type: "number"
+          description: "起始游标，首次为零"
+        limit:
+          type: "number"
+          description: "本次请求的记录上限"
+      required:
+        - "typeCode"
+      additionalProperties: false
+    PointsSwitchPage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PointsSwitchView"
+          description: "本页记录"
+        next:
+          type: "number"
+          description: "下一页游标"
+        hasMore:
+          type: "boolean"
+          description: "是否还有后续记录"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    PointsTerms:
+      type: "object"
+      properties:
+        version:
+          type: "string"
+          description: "当前版本号，变更按版本校验"
+        hash:
+          type: "string"
+          description: "发布条款的内容摘要"
+        text:
+          type: "string"
+          description: "发布条款正文"
+      required:
+        - "version"
+        - "hash"
+        - "text"
+      additionalProperties: false
+    PointsTermsChange:
+      type: "object"
+      properties:
+        version:
+          type: "string"
+          description: "当前版本号，变更按版本校验"
+        text:
+          type: "string"
+          description: "发布条款正文"
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "reason"
+        - "requestId"
+        - "text"
+        - "typeCode"
+        - "version"
+      additionalProperties: false
+    PointsAgreement:
+      type: "object"
+      properties:
+        agreementNo:
+          type: "string"
+          description: "门店接受协议编号"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        merchantNo:
+          type: "string"
+          description: "门店归属主体编号，不作为积分隔离维度"
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        signedBy:
+          type: "string"
+          description: "签署该门店协议的主体属主"
+        termsVersion:
+          type: "string"
+          description: "接受的条款版本"
+        termsHash:
+          type: "string"
+          description: "接受条款的内容摘要"
+        termsText:
+          type: "string"
+          description: "接受时冻结的条款正文"
+        settleMode:
+          type: "string"
+          description: "门店按单或按期结算方式"
+        path:
+          type: "string"
+          description: "冻结的直连或归集资金路径"
+        channel:
+          type: "string"
+          description: "冻结的支付通道编码"
+        accountVersion:
+          type: "string"
+          description: "冻结的收款账户版本"
+        state:
+          type: "string"
+          description: "服务端处理状态"
+      required:
+        - "agreementNo"
+        - "typeCode"
+        - "merchantNo"
+        - "storeNo"
+        - "signedBy"
+        - "termsVersion"
+        - "termsHash"
+        - "termsText"
+        - "settleMode"
+        - "path"
+        - "channel"
+        - "accountVersion"
+        - "state"
+      additionalProperties: false
+    PointsAgreementPage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "number"
+                description: "持久记录主键"
+              agreement:
+                "$ref": "#/components/schemas/PointsAgreement"
+                description: "服务端冻结的门店协议快照"
+              state:
+                type: "string"
+                description: "服务端处理状态"
+              version:
+                type: "number"
+                description: "当前版本号，变更按版本校验"
+            required:
+              - "id"
+              - "agreement"
+              - "state"
+              - "version"
+            additionalProperties: false
+          description: "本页记录"
+        next:
+          type: "number"
+          description: "下一页游标"
+        hasMore:
+          type: "boolean"
+          description: "是否还有后续记录"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    PointsOperation:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        operation:
+          type: "string"
+          description: "服务端接受的操作类型"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        reference:
+          type: "string"
+          description: "原业务引用编号"
+        at:
+          type: "number"
+          description: "服务端事件时间，Unix 毫秒"
+      required:
+        - "requestId"
+        - "operation"
+        - "typeCode"
+        - "reference"
+        - "at"
+      additionalProperties: false
+    PointsPoolAction:
+      type: "string"
+      enum:
+        - "TOPUP_U"
+        - "TOPUP_B"
+        - "TRANSFER_U_TO_B"
+        - "WITHDRAW_U"
+        - "WITHDRAW_B"
+    PointsFundsTarget:
+      type: "object"
+      properties:
+        path:
+          "$ref": "#/components/schemas/PointsFundsTargetPath"
+          description: "冻结的直连或归集资金路径"
+        channel:
+          type: "string"
+          description: "冻结的支付通道编码"
+        merchantNo:
+          type: "string"
+          description: "门店归属主体编号，不作为积分隔离维度"
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        accountVersion:
+          type: "string"
+          description: "冻结的收款账户版本"
+        subMerchantId:
+          type: "string"
+          description: "原资金路由的通道子商户号"
+        tradeNo:
+          type:
+            - "string"
+            - "null"
+          description: "核验后的通道交易号"
+        outTradeNo:
+          type:
+            - "string"
+            - "null"
+          description: "原商户支付请求号"
+        orderTotalMinor:
+          type: "number"
+          description: "订单金额，最小货币单位"
+      required:
+        - "path"
+        - "channel"
+        - "merchantNo"
+        - "storeNo"
+        - "accountVersion"
+        - "subMerchantId"
+        - "tradeNo"
+        - "outTradeNo"
+        - "orderTotalMinor"
+      additionalProperties: false
+    PointsSubmission:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        requestNo:
+          type: "string"
+          description: "原资金或申请请求号"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        action:
+          "$ref": "#/components/schemas/PointsPoolAction"
+          description: "请求执行的业务动作"
+        amountMinor:
+          type: "number"
+          description: "本次资金金额，最小货币单位"
+        evidenceNo:
+          type:
+            - "string"
+            - "null"
+          description: "已核验的资金证据编号"
+        fundsContext:
+          anyOf:
+            - "$ref": "#/components/schemas/PointsFundsTarget"
+            - type: "null"
+          description: "冻结的原交易及资金路由"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "requestNo"
+        - "typeCode"
+        - "action"
+        - "amountMinor"
+        - "evidenceNo"
+        - "fundsContext"
+        - "reason"
+      additionalProperties: false
+    PointsRequestReview:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        requestNo:
+          type: "string"
+          description: "原资金或申请请求号"
+        expectedVersion:
+          type: "number"
+          description: "调用方预期版本号"
+        approve:
+          type: "boolean"
+          description: "是否批准原申请"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "requestNo"
+        - "expectedVersion"
+        - "approve"
+        - "reason"
+      additionalProperties: false
+    PointsRequestView:
+      type: "object"
+      properties:
+        id:
+          type: "number"
+          description: "持久记录主键"
+        requestNo:
+          type: "string"
+          description: "原资金或申请请求号"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        action:
+          "$ref": "#/components/schemas/PointsPoolAction"
+          description: "请求执行的业务动作"
+        amountMinor:
+          type: "number"
+          description: "本次资金金额，最小货币单位"
+        state:
+          type: "string"
+          description: "服务端处理状态"
+        submittedBy:
+          type: "string"
+          description: "原申请人编号"
+        approvedBy:
+          type:
+            - "string"
+            - "null"
+          description: "服务端审核人编号"
+        hasEvidence:
+          type: "boolean"
+          description: "是否已有合格资金证据"
+        ticketNo:
+          type:
+            - "string"
+            - "null"
+          description: "持久资金指令编号"
+        version:
+          type: "number"
+          description: "当前版本号，变更按版本校验"
+      required:
+        - "id"
+        - "requestNo"
+        - "typeCode"
+        - "action"
+        - "amountMinor"
+        - "state"
+        - "submittedBy"
+        - "approvedBy"
+        - "hasEvidence"
+        - "ticketNo"
+        - "version"
+      additionalProperties: false
+    PointsRequestPage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PointsRequestView"
+          description: "本页记录"
+        next:
+          type: "number"
+          description: "下一页游标"
+        hasMore:
+          type: "boolean"
+          description: "是否还有后续记录"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    PointsPlan:
+      type: "object"
+      properties:
+        planNo:
+          type: "string"
+          description: "周期计划编号"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        action:
+          "$ref": "#/components/schemas/PointsPlanAction"
+          description: "请求执行的业务动作"
+        amountMinor:
+          type: "number"
+          description: "本次资金金额，最小货币单位"
+        anchor:
+          type: "string"
+          description: "计划锚点时间，Unix 毫秒"
+        everyDays:
+          type: "number"
+          description: "周期天数"
+        enabled:
+          type: "boolean"
+          description: "是否允许新增对应业务"
+      required:
+        - "planNo"
+        - "typeCode"
+        - "action"
+        - "amountMinor"
+        - "anchor"
+        - "everyDays"
+        - "enabled"
+      additionalProperties: false
+    PointsPlanChange:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        plan:
+          "$ref": "#/components/schemas/PointsPlan"
+          description: "周期计划配置"
+        expectedVersion:
+          type: "number"
+          description: "调用方预期版本号"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "plan"
+        - "expectedVersion"
+        - "reason"
+      additionalProperties: false
+    PointsPlanGenerate:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        limit:
+          type: "number"
+          description: "本次请求的记录上限"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "limit"
+        - "reason"
+      additionalProperties: false
+    PointsPlanCancellation:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        planNo:
+          type: "string"
+          description: "周期计划编号"
+        period:
+          type: "string"
+          description: "本次生成的周期序号"
+        expectedVersion:
+          type: "number"
+          description: "调用方预期版本号"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "planNo"
+        - "period"
+        - "expectedVersion"
+        - "reason"
+      additionalProperties: false
+    PointsPlanReceipt:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        planNo:
+          type: "string"
+          description: "周期计划编号"
+        period:
+          type: "string"
+          description: "本次生成的周期序号"
+        expectedVersion:
+          type: "number"
+          description: "调用方预期版本号"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+        evidenceNo:
+          type: "string"
+          description: "已核验的资金证据编号"
+      required:
+        - "evidenceNo"
+        - "expectedVersion"
+        - "period"
+        - "planNo"
+        - "reason"
+        - "requestId"
+        - "typeCode"
+      additionalProperties: false
+    PointsPlanView:
+      type: "object"
+      properties:
+        planNo:
+          type: "string"
+          description: "周期计划编号"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        action:
+          "$ref": "#/components/schemas/PointsPlanAction"
+          description: "请求执行的业务动作"
+        amountMinor:
+          type: "number"
+          description: "本次资金金额，最小货币单位"
+        anchor:
+          type: "string"
+          description: "计划锚点时间，Unix 毫秒"
+        everyDays:
+          type: "number"
+          description: "周期天数"
+        enabled:
+          type: "boolean"
+          description: "是否允许新增对应业务"
+        id:
+          type: "number"
+          description: "持久记录主键"
+        period:
+          type: "string"
+          description: "本次生成的周期序号"
+        nextPeriod:
+          type:
+            - "string"
+            - "null"
+          description: "下一待生成周期序号"
+        state:
+          type: "string"
+          description: "服务端处理状态"
+        requestNo:
+          type:
+            - "string"
+            - "null"
+          description: "原资金或申请请求号"
+        version:
+          type: "number"
+          description: "当前版本号，变更按版本校验"
+      required:
+        - "action"
+        - "amountMinor"
+        - "anchor"
+        - "enabled"
+        - "everyDays"
+        - "id"
+        - "nextPeriod"
+        - "period"
+        - "planNo"
+        - "requestNo"
+        - "state"
+        - "typeCode"
+        - "version"
+      additionalProperties: false
+    PointsPlanPage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PointsPlanView"
+          description: "本页记录"
+        next:
+          type: "number"
+          description: "下一页游标"
+        hasMore:
+          type: "boolean"
+          description: "是否还有后续记录"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    PointsWithdrawal:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        ticketNo:
+          type: "string"
+          description: "持久资金指令编号"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "ticketNo"
+        - "reason"
+      additionalProperties: false
+    PointsExecution:
+      type: "object"
+      properties:
+        ticketNo:
+          type: "string"
+          description: "持久资金指令编号"
+        status:
+          "$ref": "#/components/schemas/PointsExecutionStatus"
+          description: "服务端业务状态"
+        confirmedMinor:
+          type: "number"
+          description: "已核验入账金额，最小货币单位"
+        replayed:
+          type: "boolean"
+          description: "是否返回原请求的幂等结果"
+      required:
+        - "ticketNo"
+        - "status"
+        - "confirmedMinor"
+        - "replayed"
+      additionalProperties: false
+    PointsStatementSnapshot:
+      type: "object"
+      properties:
+        statementNo:
+          type: "string"
+          description: "门店结算单编号"
+        period:
+          type: "object"
+          properties:
+            typeCode:
+              type: "string"
+              description: "积分类型唯一编码"
+            storeNo:
+              type: "string"
+              description: "积分业务隔离的门店编号"
+            fromMillis:
+              type: "number"
+              description: "统计或结算起始时间，Unix 毫秒"
+            toMillis:
+              type: "number"
+              description: "统计或结算截止时间，Unix 毫秒"
+            routeKey:
+              type:
+                - "string"
+                - "null"
+              description: "原资金路由唯一键"
+          required:
+            - "typeCode"
+            - "storeNo"
+            - "fromMillis"
+            - "toMillis"
+            - "routeKey"
+          additionalProperties: false
+          description: "本次生成的周期序号"
+        positionIds:
+          type: "array"
+          items:
+            type: "string"
+          description: "本次结算引用的原持仓编号集合"
+        revisions:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              number:
+                type: "number"
+                description: "修订序号"
+              lines:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    positionNo:
+                      type: "string"
+                      description: "原持仓编号"
+                    sourceVersion:
+                      type: "number"
+                      description: "引用的原持仓版本"
+                    points:
+                      type: "number"
+                      description: "积分数量"
+                  required:
+                    - "positionNo"
+                    - "sourceVersion"
+                    - "points"
+                  additionalProperties: false
+                description: "本修订包含的原持仓结算行"
+              points:
+                type: "number"
+                description: "积分数量"
+              actor:
+                type: "string"
+                description: "服务端取得的操作人编号"
+              reason:
+                type:
+                  - "string"
+                  - "null"
+                description: "服务端不可用原因或操作审计原因"
+            required:
+              - "number"
+              - "lines"
+              - "points"
+              - "actor"
+              - "reason"
+            additionalProperties: false
+          description: "结算单不可变修订记录"
+        state:
+          type: "string"
+          description: "服务端处理状态"
+        disputeReason:
+          type:
+            - "string"
+            - "null"
+          description: "争议原因，未争议时为空"
+      required:
+        - "statementNo"
+        - "period"
+        - "positionIds"
+        - "revisions"
+        - "state"
+        - "disputeReason"
+      additionalProperties: false
+    PointsStatementPage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              id:
+                type: "number"
+                description: "持久记录主键"
+              snapshot:
+                "$ref": "#/components/schemas/PointsStatementSnapshot"
+                description: "服务端冻结的账务或准备快照"
+              version:
+                type: "number"
+                description: "当前版本号，变更按版本校验"
+            required:
+              - "id"
+              - "snapshot"
+              - "version"
+            additionalProperties: false
+          description: "本页记录"
+        next:
+          type: "number"
+          description: "下一页游标"
+        hasMore:
+          type: "boolean"
+          description: "是否还有后续记录"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    PointsStatementDraft:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        fromMillis:
+          type: "number"
+          description: "统计或结算起始时间，Unix 毫秒"
+        toMillis:
+          type: "number"
+          description: "统计或结算截止时间，Unix 毫秒"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "storeNo"
+        - "fromMillis"
+        - "toMillis"
+        - "reason"
+      additionalProperties: false
+    PointsStatementChange:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        statementNo:
+          type: "string"
+          description: "门店结算单编号"
+        revision:
+          type: "number"
+          description: "不可变修订版本"
+        action:
+          "$ref": "#/components/schemas/PointsStatementChangeAction"
+          description: "请求执行的业务动作"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "storeNo"
+        - "statementNo"
+        - "revision"
+        - "action"
+        - "reason"
+      additionalProperties: false
+    PointsReference:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        reference:
+          type: "string"
+          description: "原业务引用编号"
+      required:
+        - "typeCode"
+        - "storeNo"
+        - "reference"
+      additionalProperties: false
+    PointsRevision:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        reference:
+          type: "string"
+          description: "原业务引用编号"
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        expectedVersion:
+          type: "number"
+          description: "调用方预期版本号"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "expectedVersion"
+        - "reason"
+        - "reference"
+        - "requestId"
+        - "storeNo"
+        - "typeCode"
+      additionalProperties: false
+    PointsRefundPreparation:
+      type: "object"
+      properties:
+        preparationNo:
+          type: "string"
+          description: "退款准备编号"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        revision:
+          type: "number"
+          description: "不可变修订版本"
+        inputHash:
+          type: "string"
+          description: "原准备输入的不可变摘要"
+        returnedPoints:
+          type: "number"
+          description: "本次退回已使用积分"
+        reclaimedPending:
+          type: "number"
+          description: "本次收回待激活积分"
+        reclaimedAvailable:
+          type: "number"
+          description: "本次收回可用积分"
+        expectedClawbackPoints:
+          type: "number"
+          description: "原承诺要求收回的积分总数"
+        cashOffsetMinor:
+          type: "number"
+          description: "现金退款中抵销的金额，最小货币单位"
+        netCashMinor:
+          type: "number"
+          description: "最终需退现金金额，最小货币单位"
+        waivedPoints:
+          type: "number"
+          description: "按授权豁免的补收积分"
+        collectionTicket:
+          type:
+            - "string"
+            - "null"
+          description: "原补收资金指令，未生成时为空"
+        state:
+          type: "string"
+          description: "服务端处理状态"
+      required:
+        - "preparationNo"
+        - "typeCode"
+        - "revision"
+        - "inputHash"
+        - "returnedPoints"
+        - "reclaimedPending"
+        - "reclaimedAvailable"
+        - "expectedClawbackPoints"
+        - "cashOffsetMinor"
+        - "netCashMinor"
+        - "waivedPoints"
+        - "collectionTicket"
+        - "state"
+      additionalProperties: false
+    PointsRefundView:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        afterSaleNo:
+          type: "string"
+          description: "原售后尝试编号"
+        subOrderNo:
+          type: "string"
+          description: "门店子订单编号"
+        state:
+          type: "string"
+          description: "服务端处理状态"
+        version:
+          type: "number"
+          description: "当前版本号，变更按版本校验"
+        preparation:
+          "$ref": "#/components/schemas/PointsRefundPreparation"
+          description: "本次售后冻结的退款准备"
+      required:
+        - "typeCode"
+        - "storeNo"
+        - "afterSaleNo"
+        - "subOrderNo"
+        - "state"
+        - "version"
+        - "preparation"
+      additionalProperties: false
+    PointsReceivableRecovery:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        receivableNo:
+          type: "string"
+          description: "门店应收责任编号"
+        expectedVersion:
+          type: "number"
+          description: "调用方预期版本号"
+        amountMinor:
+          type: "number"
+          description: "本次资金金额，最小货币单位"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "storeNo"
+        - "receivableNo"
+        - "expectedVersion"
+        - "amountMinor"
+        - "reason"
+      additionalProperties: false
+    PointsRecoveryOperation:
+      type: "string"
+      enum:
+        - "PAYOUT"
+        - "TRANSFER"
+        - "REFUND_COLLECTION"
+        - "REFUND_COMPENSATION"
+    PointsFundsReference:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        reference:
+          type: "string"
+          description: "原业务引用编号"
+        operation:
+          "$ref": "#/components/schemas/PointsRecoveryOperation"
+          description: "服务端接受的操作类型"
+      required:
+        - "operation"
+        - "reference"
+        - "storeNo"
+        - "typeCode"
+      additionalProperties: false
+    PointsFundsView:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        reference:
+          type: "string"
+          description: "原业务引用编号"
+        operation:
+          "$ref": "#/components/schemas/PointsRecoveryOperation"
+          description: "服务端接受的操作类型"
+        state:
+          type: "string"
+          description: "服务端处理状态"
+        version:
+          type: "number"
+          description: "当前版本号，变更按版本校验"
+        grossMinor:
+          type: "number"
+          description: "原退款金额，最小货币单位"
+        offsetMinor:
+          type: "number"
+          description: "已抵销金额，最小货币单位"
+        cashMinor:
+          type: "number"
+          description: "实际现金退款金额，最小货币单位"
+      required:
+        - "cashMinor"
+        - "grossMinor"
+        - "offsetMinor"
+        - "operation"
+        - "reference"
+        - "state"
+        - "storeNo"
+        - "typeCode"
+        - "version"
+      additionalProperties: false
+    PointsRecovery:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        reference:
+          type: "string"
+          description: "原业务引用编号"
+        operation:
+          "$ref": "#/components/schemas/PointsRecoveryOperation"
+          description: "服务端接受的操作类型"
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        expectedVersion:
+          type: "number"
+          description: "调用方预期版本号"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "expectedVersion"
+        - "operation"
+        - "reason"
+        - "reference"
+        - "requestId"
+        - "storeNo"
+        - "typeCode"
+      additionalProperties: false
+    PointsRecoveryExecution:
+      type: "object"
+      properties:
+        reference:
+          type: "string"
+          description: "原业务引用编号"
+        status:
+          "$ref": "#/components/schemas/PointsExecutionStatus"
+          description: "服务端业务状态"
+      required:
+        - "reference"
+        - "status"
+      additionalProperties: false
+    PointsEventView:
+      type: "object"
+      properties:
+        id:
+          type: "number"
+          description: "持久记录主键"
+        eventNo:
+          type: "string"
+          description: "源事实事件编号"
+        kind:
+          type: "string"
+          description: "原业务持仓或事件种类"
+        state:
+          type: "string"
+          description: "服务端处理状态"
+        attempt:
+          type: "number"
+          description: "原事件投递次数"
+        nextAttempt:
+          type: "number"
+          description: "下一允许重试时间，Unix 毫秒"
+        version:
+          type: "number"
+          description: "当前版本号，变更按版本校验"
+      required:
+        - "id"
+        - "eventNo"
+        - "kind"
+        - "state"
+        - "attempt"
+        - "nextAttempt"
+        - "version"
+      additionalProperties: false
+    PointsEventPage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/PointsEventView"
+          description: "本页记录"
+        next:
+          type: "number"
+          description: "下一页游标"
+        hasMore:
+          type: "boolean"
+          description: "是否还有后续记录"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    PointsEventRetry:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        eventId:
+          type: "number"
+          description: "持久源事件主键"
+        expectedVersion:
+          type: "number"
+          description: "调用方预期版本号"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "eventId"
+        - "expectedVersion"
+        - "reason"
+      additionalProperties: false
+    PointsHolder:
+      type: "string"
+      enum:
+        - "MINT"
+        - "ISSUE"
+        - "USER"
+        - "STORE"
+        - "RECEIVE"
+    PointsBucket:
+      type: "string"
+      enum:
+        - "ISSUED"
+        - "ISSUABLE"
+        - "PENDING"
+        - "AVAILABLE"
+        - "HELD"
+        - "REFUND_RESERVED"
+        - "RECIRCULATABLE"
+    PointsPositionKind:
+      type: "string"
+      enum:
+        - "GRANT"
+        - "REDEEM"
+        - "REFUND"
+        - "PAYOUT"
+        - "STATEMENT"
+        - "TRANSFER"
+    PointsAccountQ:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        holderType:
+          "$ref": "#/components/schemas/PointsHolder"
+          description: "账本持有人类型"
+        holderNo:
+          type: "string"
+          description: "账本持有人编号，与持有人类型联合定位"
+      required:
+        - "typeCode"
+        - "holderType"
+        - "holderNo"
+      additionalProperties: false
+    PointsAccountView:
+      type: "object"
+      properties:
+        snapshot:
+          type: "object"
+          additionalProperties: false
+          properties:
+            buckets:
+              "$ref": "#/components/schemas/Partial%3CRecord%3CPointsBucket%2Cnumber%3E%3E"
+              description: "按账本分桶保存的积分余额"
+            frozen:
+              type: "boolean"
+              description: "是否冻结该账户新增使用"
+            expireAt:
+              type:
+                - "number"
+                - "null"
+              description: "服务端计算的过期时间，Unix 毫秒；无则为空"
+            expiryRevision:
+              type: "number"
+              description: "账户失效计划修订号"
+            lastActiveAt:
+              type: "number"
+              description: "最近有效账务活动时间，Unix 毫秒"
+            typeCode:
+              type: "string"
+              description: "积分类型唯一编码"
+            holderType:
+              "$ref": "#/components/schemas/PointsHolder"
+              description: "账本持有人类型"
+            holderNo:
+              type: "string"
+              description: "账本持有人编号，与持有人类型联合定位"
+          required:
+            - "buckets"
+            - "expireAt"
+            - "expiryRevision"
+            - "frozen"
+            - "holderNo"
+            - "holderType"
+            - "lastActiveAt"
+            - "typeCode"
+          description: "服务端冻结的账务或准备快照"
+        exists:
+          type: "boolean"
+          description: "账户是否已经创建，未创建不代表查询失败"
+        version:
+          type: "number"
+          description: "当前版本号，变更按版本校验"
+      required:
+        - "snapshot"
+        - "exists"
+        - "version"
+      additionalProperties: false
+    "Partial<Record<PointsBucket,number>>":
+      type: "object"
+      properties:
+        ISSUED:
+          type: "number"
+        ISSUABLE:
+          type: "number"
+        PENDING:
+          type: "number"
+        AVAILABLE:
+          type: "number"
+        HELD:
+          type: "number"
+        REFUND_RESERVED:
+          type: "number"
+        RECIRCULATABLE:
+          type: "number"
+      additionalProperties: false
+    PointsFreeze:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        userNo:
+          type: "string"
+          description: "被操作用户编号"
+        expectedVersion:
+          type: "number"
+          description: "调用方预期版本号"
+        frozen:
+          type: "boolean"
+          description: "是否冻结该账户新增使用"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "userNo"
+        - "expectedVersion"
+        - "frozen"
+        - "reason"
+      additionalProperties: false
+    PointsVoucherView:
+      type: "object"
+      properties:
+        id:
+          type: "number"
+          description: "持久记录主键"
+        voucherNo:
+          type: "string"
+          description: "原记账凭证编号"
+        bizRef:
+          type: "string"
+          description: "原业务引用号"
+        currency:
+          type: "string"
+          description: "ISO 货币代码"
+        ratePoints:
+          type: "number"
+          description: "换算比例的积分数量"
+        rateMinor:
+          type: "number"
+          description: "换算比例的最小货币单位数量"
+      required:
+        - "id"
+        - "voucherNo"
+        - "bizRef"
+        - "currency"
+        - "ratePoints"
+        - "rateMinor"
+      additionalProperties: false
+    PointsEntryView:
+      type: "object"
+      properties:
+        id:
+          type: "number"
+          description: "持久记录主键"
+        entryNo:
+          type: "string"
+          description: "不可变积分分录编号"
+        voucherNo:
+          type: "string"
+          description: "原记账凭证编号"
+        holderType:
+          "$ref": "#/components/schemas/PointsHolder"
+          description: "账本持有人类型"
+        holderNo:
+          type: "string"
+          description: "账本持有人编号，与持有人类型联合定位"
+        bucket:
+          "$ref": "#/components/schemas/PointsBucket"
+          description: "积分账本或资金池分桶"
+        deltaPoints:
+          type: "number"
+          description: "该分录积分变化，负值表示扣减"
+        afterPoints:
+          type: "number"
+          description: "该分录完成后的积分余额"
+      required:
+        - "id"
+        - "entryNo"
+        - "voucherNo"
+        - "holderType"
+        - "holderNo"
+        - "bucket"
+        - "deltaPoints"
+        - "afterPoints"
+      additionalProperties: false
+    PointsFlowView:
+      type: "object"
+      properties:
+        id:
+          type: "number"
+          description: "持久记录主键"
+        flowNo:
+          type: "string"
+          description: "不可变资金池流水号"
+        voucherNo:
+          type: "string"
+          description: "原记账凭证编号"
+        bucket:
+          "$ref": "#/components/schemas/PointsFlowViewBucket"
+          description: "积分账本或资金池分桶"
+        deltaMinor:
+          type: "number"
+          description: "该流水金额变化，最小货币单位"
+        afterMinor:
+          type: "number"
+          description: "该流水完成后金额，最小货币单位"
+      required:
+        - "id"
+        - "flowNo"
+        - "voucherNo"
+        - "bucket"
+        - "deltaMinor"
+        - "afterMinor"
+      additionalProperties: false
+    OrderPointsIntegrationQ:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        scene:
+          "$ref": "#/components/schemas/OrderPointsIntegrationQScene"
+          description: "线上或线下交易场景"
+      required:
+        - "storeNo"
+        - "scene"
+      additionalProperties: false
+    OrderPointsIntegrationPolicy:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        scene:
+          "$ref": "#/components/schemas/OrderPointsIntegrationQScene"
+          description: "线上或线下交易场景"
+        mode:
+          "$ref": "#/components/schemas/OrderPointsIntegrationPolicyMode"
+          description: "服务端参与模式或已发布回退规则模式"
+        earnEnabled:
+          type: "boolean"
+          description: "是否接收新的返分承诺"
+        redeemEnabled:
+          type: "boolean"
+          description: "是否接收新的抵扣承诺"
+        version:
+          type: "number"
+          description: "当前版本号，变更按版本校验"
+        actor:
+          type:
+            - "string"
+            - "null"
+          description: "服务端取得的操作人编号"
+        reason:
+          type:
+            - "string"
+            - "null"
+          description: "服务端不可用原因或操作审计原因"
+        changedAt:
+          type: "number"
+          description: "服务端配置变更时间，Unix 毫秒"
+      required:
+        - "actor"
+        - "changedAt"
+        - "earnEnabled"
+        - "mode"
+        - "reason"
+        - "redeemEnabled"
+        - "scene"
+        - "storeNo"
+        - "version"
+      additionalProperties: false
+    OrderPointsIntegrationChange:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+          description: "积分业务隔离的门店编号"
+        scene:
+          "$ref": "#/components/schemas/OrderPointsIntegrationQScene"
+          description: "线上或线下交易场景"
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        mode:
+          "$ref": "#/components/schemas/OrderPointsIntegrationPolicyMode"
+          description: "服务端参与模式或已发布回退规则模式"
+        earnEnabled:
+          type: "boolean"
+          description: "是否接收新的返分承诺"
+        redeemEnabled:
+          type: "boolean"
+          description: "是否接收新的抵扣承诺"
+        expectedVersion:
+          type: "number"
+          description: "调用方预期版本号"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "earnEnabled"
+        - "expectedVersion"
+        - "mode"
+        - "reason"
+        - "redeemEnabled"
+        - "requestId"
+        - "scene"
+        - "storeNo"
+      additionalProperties: false
+    OrderPointsInspection:
+      type: "object"
+      properties:
+        subOrderNo:
+          type: "string"
+          description: "门店子订单编号"
+        bindingPhase:
+          type:
+            - "string"
+            - "null"
+          description: "源绑定当前阶段，无绑定为空"
+        bindingVersion:
+          type: "number"
+          description: "源绑定版本，无绑定为空"
+        placementPhase:
+          type:
+            - "string"
+            - "null"
+          description: "下单工作流阶段，无记录为空"
+        placementVersion:
+          type: "number"
+          description: "下单工作流版本，无记录为空"
+        originalHoldNo:
+          type:
+            - "string"
+            - "null"
+          description: "原积分占用编号，不生成新编号替换"
+        refundPhases:
+          type: "array"
+          items:
+            type: "string"
+          description: "该子单所有售后执行阶段"
+        pendingSourceEvents:
+          type: "number"
+          description: "尚未确认送达的源事实数量"
+        paymentVerified:
+          type: "boolean"
+          description: "原支付证据是否核验成功"
+        differences:
+          type: "array"
+          items:
+            type: "string"
+          description: "只读一致性差异项，不返回敏感正文"
+      required:
+        - "subOrderNo"
+        - "bindingPhase"
+        - "bindingVersion"
+        - "placementPhase"
+        - "placementVersion"
+        - "originalHoldNo"
+        - "refundPhases"
+        - "pendingSourceEvents"
+        - "paymentVerified"
+        - "differences"
+      additionalProperties: false
+    OrderPointsManualRefundPage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              afterSaleNo:
+                type: "string"
+                description: "原售后尝试编号"
+              subOrderNo:
+                type: "string"
+                description: "门店子订单编号"
+              createdAt:
+                type: "number"
+                description: "服务端创建时间，Unix 毫秒"
+            required:
+              - "afterSaleNo"
+              - "subOrderNo"
+              - "createdAt"
+            additionalProperties: false
+          description: "本页记录"
+        next:
+          type:
+            - "string"
+            - "null"
+          description: "下一页游标"
+        hasMore:
+          type: "boolean"
+          description: "是否还有后续记录"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    OrderPointsRefundActionResult:
+      type: "object"
+      properties:
+        afterSaleNo:
+          type: "string"
+          description: "原售后尝试编号"
+        subOrderNo:
+          type: "string"
+          description: "门店子订单编号"
+        status:
+          type: "string"
+          description: "服务端业务状态"
+      required:
+        - "afterSaleNo"
+        - "subOrderNo"
+        - "status"
+      additionalProperties: false
+    PointsPositionQ:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        kind:
+          "$ref": "#/components/schemas/PointsPositionKind"
+          description: "原业务持仓或事件种类"
+        reference:
+          type: "string"
+          description: "原业务引用编号"
+      required:
+        - "typeCode"
+        - "kind"
+        - "reference"
+      additionalProperties: false
+    PointsPositionView:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        kind:
+          "$ref": "#/components/schemas/PointsPositionKind"
+          description: "原业务持仓或事件种类"
+        reference:
+          type: "string"
+          description: "原业务引用编号"
+        state:
+          type: "string"
+          description: "服务端处理状态"
+        originalPoints:
+          type: "number"
+          description: "原持仓积分总数"
+        processedPoints:
+          type: "number"
+          description: "该持仓已处理积分数"
+        version:
+          type: "number"
+          description: "当前版本号，变更按版本校验"
+      required:
+        - "kind"
+        - "originalPoints"
+        - "processedPoints"
+        - "reference"
+        - "state"
+        - "typeCode"
+        - "version"
+      additionalProperties: false
+    PointsStatsQ:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        day:
+          type: "string"
+          description: "业务统计日期，YYYY-MM-DD"
+        scope:
+          "$ref": "#/components/schemas/PointsStatsQScope"
+          description: "开关或统计的作用范围"
+        subjectNo:
+          type: "string"
+          description: "范围对象编号，门店范围使用 storeNo"
+      required:
+        - "typeCode"
+        - "day"
+      additionalProperties: false
+    PointsStats:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        day:
+          type: "string"
+          description: "业务统计日期，YYYY-MM-DD"
+        scopeNo:
+          type: "string"
+          description: "统计范围对象编号"
+        metrics:
+          "$ref": "#/components/schemas/Record%3Cstring%2Cnumber%3E"
+          description: "服务端账本计算的指标值"
+        skipReasons:
+          "$ref": "#/components/schemas/Record%3Cstring%2Cnumber%3E"
+          description: "本轮跳过原因及数量"
+        throughVoucherId:
+          type: "number"
+          description: "统计已处理的最大凭证主键"
+        rebuiltAt:
+          type: "number"
+          description: "服务端统计重建时间，Unix 毫秒"
+      required:
+        - "typeCode"
+        - "day"
+        - "scopeNo"
+        - "metrics"
+        - "skipReasons"
+        - "throughVoucherId"
+        - "rebuiltAt"
+      additionalProperties: false
+    PointsStatsRebuild:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        day:
+          type: "string"
+          description: "业务统计日期，YYYY-MM-DD"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "day"
+        - "reason"
+      additionalProperties: false
+    PointsReconRun:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+          description: "幂等操作请求号，重试必须复用"
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        reason:
+          type: "string"
+          description: "服务端不可用原因或操作审计原因"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "reason"
+      additionalProperties: false
+    PointsRecon:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码"
+        checkedAt:
+          type: "number"
+          description: "服务端一致性检查时间，Unix 毫秒"
+        complete:
+          type: "boolean"
+          description: "本轮有界检查是否完整"
+        differences:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              code:
+                type: "string"
+                description: "服务端差异分类代码"
+              reference:
+                type: "string"
+                description: "原业务引用编号"
+              expected:
+                type: "number"
+                description: "按原承诺计算的预期数量"
+              actual:
+                type: "number"
+                description: "实际已记录数量"
+            required:
+              - "code"
+              - "reference"
+              - "expected"
+              - "actual"
+            additionalProperties: false
+          description: "只读一致性差异项，不返回敏感正文"
+      required:
+        - "typeCode"
+        - "checkedAt"
+        - "complete"
+        - "differences"
+      additionalProperties: false
+    PointsEntriesQ:
+      anyOf:
+        - type: "object"
+          additionalProperties: false
+          properties:
+            holderType:
+              "$ref": "#/components/schemas/PointsHolder"
+            holderNo:
+              type: "string"
+            typeCode:
+              type: "string"
+              description: "积分类型唯一编码"
+            after:
+              type: "number"
+              description: "起始游标，首次为零"
+            limit:
+              type: "number"
+              description: "本次请求的记录上限"
+          required:
+            - "holderNo"
+            - "holderType"
+            - "typeCode"
+        - type: "object"
+          additionalProperties: false
+          properties:
+            voucherNo:
+              type: "string"
+            typeCode:
+              type: "string"
+              description: "积分类型唯一编码"
+            after:
+              type: "number"
+              description: "起始游标，首次为零"
+            limit:
+              type: "number"
+              description: "本次请求的记录上限"
+          required:
+            - "typeCode"
+            - "voucherNo"
+    OrderPointsStoreObligations:
+      type: "object"
+      properties:
+        known:
+          type: "boolean"
+          description: "核验是否完整可用；false 时禁止按零义务判断"
+        activePolicies:
+          type: "number"
+          description: "仍处于 ACTIVE 的场景策略数量"
+        openBindings:
+          type: "number"
+          description: "尚未关闭的源订单绑定数量"
+        sourceSettled:
+          type: "boolean"
+          description: "源端义务是否全部结清"
+        pay:
+          type: "object"
+          properties:
+            known:
+              type: "boolean"
+              description: "核验是否完整可用；false 时禁止按零义务判断"
+            openHolds:
+              type: "number"
+              description: "未释放的原占用数量"
+            pendingPromises:
+              type: "number"
+              description: "未完成的原承诺数量"
+            openRefunds:
+              type: "number"
+              description: "未完成的原退款数量"
+            openStatements:
+              type: "number"
+              description: "未完成的门店结算单数量"
+            unknownFunds:
+              type: "number"
+              description: "资金结果未知的原指令数量"
+            pendingEvents:
+              type: "number"
+              description: "未处理完的原事件数量"
+          required:
+            - "known"
+            - "openHolds"
+            - "pendingPromises"
+            - "openRefunds"
+            - "openStatements"
+            - "unknownFunds"
+            - "pendingEvents"
+          additionalProperties: false
+          description: "支付侧义务摘要，不可用时为 null"
+      required:
+        - "known"
+        - "activePolicies"
+        - "openBindings"
+        - "sourceSettled"
+        - "pay"
+      additionalProperties: false
     Staff:
       type: "object"
       properties:
@@ -14315,6 +16752,217 @@ paths:
             schema:
               type: "object"
         description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/order-integration/obligations":
+    get:
+      operationId: "orderPointsObligations"
+      summary: "订单积分动态接线策略，门店和支付场景精确查询"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OrderPointsStoreObligations"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/order-integration":
+    get:
+      operationId: "orderPointsIntegration"
+      summary: "orderPointsIntegration"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OrderPointsIntegrationPolicy"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "changeOrderPointsIntegration"
+      summary: "版本化接线变更，操作人和审计时间由服务端取得"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OrderPointsIntegrationPolicy"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/order-integration/inspection":
+    get:
+      operationId: "inspectOrderPoints"
+      summary: "inspectOrderPoints"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OrderPointsInspection"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/order-integration/refunds/manual":
+    get:
+      operationId: "manualOrderPointsRefunds"
+      summary: "manualOrderPointsRefunds"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OrderPointsManualRefundPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/order-integration/refunds/{afterSaleNo}/close":
+    post:
+      operationId: "closeOrderPointsRefund"
+      summary: "closeOrderPointsRefund"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OrderPointsRefundActionResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "afterSaleNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/order-integration/refunds/{afterSaleNo}/retry":
+    post:
+      operationId: "retryOrderPointsRefund"
+      summary: "retryOrderPointsRefund"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/OrderPointsRefundActionResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "afterSaleNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
   "/ops/points/overview":
     get:
       operationId: "pointsOverview"
@@ -14341,10 +16989,10 @@ paths:
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/points/client-policy":
+  "/ops/points/receivables":
     get:
-      operationId: "pointsClientPolicy"
-      summary: "积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣"
+      operationId: "pointsReceivables"
+      summary: "门店应收分页"
       tags:
         - "finance"
       responses:
@@ -14361,15 +17009,43 @@ paths:
                   msg:
                     type: "string"
                   data:
-                    "$ref": "#/components/schemas/ClientPointsPolicy"
+                    "$ref": "#/components/schemas/PointsReceivablePage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/types":
+    get:
+      operationId: "pointsTypes"
+      summary: "pointsTypes"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/PointsTypeConfig"
                 required:
                   - "code"
                   - "msg"
                   - "data"
       description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
     post:
-      operationId: "savePointsClientPolicy"
-      summary: "savePointsClientPolicy"
+      operationId: "createPointsType"
+      summary: "createPointsType"
       tags:
         - "finance"
       responses:
@@ -14386,7 +17062,1084 @@ paths:
                   msg:
                     type: "string"
                   data:
-                    "$ref": "#/components/schemas/ClientPointsPolicy"
+                    "$ref": "#/components/schemas/PointsChangeResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/type-state":
+    post:
+      operationId: "transitionPointsType"
+      summary: "transitionPointsType"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsChangeResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/fallback-rule":
+    get:
+      operationId: "pointsFallback"
+      summary: "pointsFallback"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsFallback"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "savePointsFallback"
+      summary: "savePointsFallback"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsChangeResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/switches":
+    get:
+      operationId: "pointsSwitches"
+      summary: "pointsSwitches"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsSwitchPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "changePointsSwitch"
+      summary: "changePointsSwitch"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsChangeResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/terms":
+    get:
+      operationId: "pointsTerms"
+      summary: "pointsTerms"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "publishPointsTerms"
+      summary: "publishPointsTerms"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsChangeResult"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/agreements":
+    get:
+      operationId: "pointsAgreements"
+      summary: "pointsAgreements"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsAgreementPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/requests":
+    get:
+      operationId: "pointsRequests"
+      summary: "pointsRequests"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsRequestPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "submitPointsRequest"
+      summary: "submitPointsRequest"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/request-review":
+    post:
+      operationId: "reviewPointsRequest"
+      summary: "reviewPointsRequest"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/plans":
+    get:
+      operationId: "pointsPlans"
+      summary: "pointsPlans"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsPlanPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+    post:
+      operationId: "savePointsPlan"
+      summary: "savePointsPlan"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/plan-generate":
+    post:
+      operationId: "generatePointsPeriods"
+      summary: "generatePointsPeriods"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/plan-receipt":
+    post:
+      operationId: "declarePointsReceipt"
+      summary: "declarePointsReceipt"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/plan-cancel":
+    post:
+      operationId: "cancelPointsPeriod"
+      summary: "cancelPointsPeriod"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/withdrawal-execute":
+    post:
+      operationId: "executePointsWithdrawal"
+      summary: "executePointsWithdrawal"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsExecution"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/statements":
+    get:
+      operationId: "pointsStatements"
+      summary: "pointsStatements"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsStatementPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/statement-draft":
+    post:
+      operationId: "draftPointsStatements"
+      summary: "draftPointsStatements"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/statement-change":
+    post:
+      operationId: "changePointsStatement"
+      summary: "changePointsStatement"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/refund":
+    get:
+      operationId: "pointsRefund"
+      summary: "pointsRefund"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsRefundView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/refund-revise":
+    post:
+      operationId: "revisePointsRefund"
+      summary: "revisePointsRefund"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/receivable-recovery":
+    post:
+      operationId: "preparePointsReceivable"
+      summary: "preparePointsReceivable"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/funds":
+    get:
+      operationId: "pointsFunds"
+      summary: "pointsFunds"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsFundsView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/funds-recovery":
+    post:
+      operationId: "recoverPointsFunds"
+      summary: "recoverPointsFunds"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsRecoveryExecution"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/events":
+    get:
+      operationId: "pointsEvents"
+      summary: "pointsEvents"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsEventPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/event-retry":
+    post:
+      operationId: "retryPointsEvent"
+      summary: "retryPointsEvent"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/account":
+    get:
+      operationId: "pointsAccount"
+      summary: "pointsAccount"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsAccountView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/account-freeze":
+    post:
+      operationId: "freezePointsAccount"
+      summary: "freezePointsAccount"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/vouchers":
+    get:
+      operationId: "pointsVouchers"
+      summary: "pointsVouchers"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/entries":
+    get:
+      operationId: "pointsEntries"
+      summary: "pointsEntries"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/flows":
+    get:
+      operationId: "pointsFlows"
+      summary: "pointsFlows"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/position":
+    get:
+      operationId: "pointsPosition"
+      summary: "pointsPosition"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsPositionView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/stats":
+    get:
+      operationId: "pointsStats"
+      summary: "pointsStats"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/stats-rebuild":
+    post:
+      operationId: "rebuildPointsStats"
+      summary: "rebuildPointsStats"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              type: "object"
+        description: "请求体字段见对应契约方法的入参。"
+  "/ops/points/reconciliation":
+    get:
+      operationId: "pointsReconciliation"
+      summary: "pointsReconciliation"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/reconcile":
+    post:
+      operationId: "reconcilePoints"
+      summary: "reconcilePoints"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsOperation"
                 required:
                   - "code"
                   - "msg"
@@ -24333,74 +28086,6 @@ paths:
                     type: "array"
                     items:
                       "$ref": "#/components/schemas/CategoryPayMode"
-                required:
-                  - "code"
-                  - "msg"
-                  - "data"
-      parameters:
-        - name: "categoryNo"
-          in: "path"
-          required: true
-          schema:
-            type: "string"
-      requestBody:
-        required: true
-        content:
-          "application/json":
-            schema:
-              type: "object"
-        description: "请求体字段见对应契约方法的入参。"
-  "/ops/category-points":
-    get:
-      operationId: "listCategoryPoints"
-      summary: "类目 × 积分"
-      tags:
-        - "product"
-      responses:
-        "200":
-          description: "成功"
-          content:
-            "application/json":
-              schema:
-                type: "object"
-                properties:
-                  code:
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg:
-                    type: "string"
-                  data:
-                    type: "array"
-                    items:
-                      "$ref": "#/components/schemas/CategoryPoints"
-                required:
-                  - "code"
-                  - "msg"
-                  - "data"
-      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
-  "/ops/category-points/{categoryNo}":
-    post:
-      operationId: "saveCategoryPoints"
-      summary: "`earnMode` 传 null = 清除这条规则，回到平台兜底 */"
-      tags:
-        - "product"
-      responses:
-        "200":
-          description: "成功"
-          content:
-            "application/json":
-              schema:
-                type: "object"
-                properties:
-                  code:
-                    type: "integer"
-                    description: "0 表示成功"
-                  msg:
-                    type: "string"
-                  data:
-                    type: "array"
-                    items:
-                      "$ref": "#/components/schemas/CategoryPoints"
                 required:
                   - "code"
                   - "msg"

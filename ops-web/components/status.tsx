@@ -38,6 +38,7 @@ export function MerchantStatusBadge({ value }: { value: MerchantStatus }) {
 export function useOrderStatusMap(): StatusMap<OrderStatus> {
   const { t } = useI18n();
   return {
+    POINTS_PROCESSING: { label: t("orderStatus.POINTS_PROCESSING"), tone: "warning" },
     WAIT_PAY: { label: t("orderStatus.WAIT_PAY"), tone: "warning" },
     WAIT_OFFLINE_PAY: { label: t("orderStatus.WAIT_OFFLINE_PAY"), tone: "warning" },
     PAID: { label: t("orderStatus.PAID"), tone: "info" },

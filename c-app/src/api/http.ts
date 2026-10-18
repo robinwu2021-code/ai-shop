@@ -4,7 +4,7 @@
 // 迁移到真实后端时这个文件基本不用改 —— 改的是 `.env` 里的开关。
 import { clientTag, http } from "@shared/net/http-client";
 import { buildPath, ENDPOINTS } from "./endpoints";
-import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList} from "./contract";
+import type { CreateOrderReq, GoodsQuery, ShopApi , PayInit, PayMethodList, PointsOrderState, OrderPointsQuote, BuyerPointsAccount, BuyerPointsEntryPage} from "./contract";
 import type { InvoiceRequest, MyMembership, ReachOpened, MyStoreCoupon, PlaceSearchHit, RegionNode, RegionOption,
   PasswordState,
   PhoneCapable,
@@ -43,7 +43,6 @@ import type {
   ReviewListQuery,
   SaveAddressReq,
   VerifyPickupReq,
-  PointsDeductibleQuery,
   MyStoresQuery,
   StoreNearbyQuery,
   StoreEnterReq,
@@ -81,9 +80,6 @@ import type {
   TrackView,
   PageQuery,
   PageResult,
-  PointAccount,
-  PointsDeductible,
-  PointRecord,
   Review,
   MerchantApplyReq,
   MasterData,
@@ -111,7 +107,8 @@ function call<T>(
   if (ep.method === "GET") {
     return http.get<T>(url, d, ep.clientTag ? { "X-Client": clientTag() } : undefined);
   }
-  return ep.method === "PUT" ? http.put<T>(url, d) : http.post<T>(url, d);
+  return ep.method === "PUT" ? http.put<T>(url, d)
+    : http.post<T>(url, d, ep.clientTag ? { "X-Client": clientTag() } : undefined);
 }
 
 export const httpApi: ShopApi = {
@@ -204,6 +201,7 @@ export const httpApi: ShopApi = {
   myInvoices: () => call<InvoiceRequest[]>("myInvoices"),
   invoiceOfOrder: (orderNo) => call<InvoiceRequest | null>("invoiceOfOrder", { orderNo }),
   orderDetail: (orderNo) => call<Order>("orderDetail", { orderNo }),
+  orderPointsState: (orderNo) => call<PointsOrderState>("orderPointsState", { orderNo }),
   track: (t) => call<TrackView | null>("track", undefined, { t }),
   trackMiniLink: (t) => call<{ url: string } | null>("trackMiniLink", undefined, { t }),
   trackMine: (t) => call<TrackView>("trackMine", undefined, { t }),
@@ -217,6 +215,7 @@ export const httpApi: ShopApi = {
   afterSaleList: () => call<AfterSale[]>("afterSaleList"),
   cancelAfterSale: (afterSaleNo) => call<AfterSale>("cancelAfterSale", { afterSaleNo }, {}),
   orderPreview: (req) => http.post<OrderPreview>(ENDPOINTS.orderPreview.path, req),
+  orderPointsQuote: (req) => call<OrderPointsQuote>("orderPointsQuote", undefined, { ...req }),
   orderCapability: (req) => http.post<CheckoutCapability>(ENDPOINTS.orderCapability.path, req),
 
   // ---- 营销
@@ -331,9 +330,9 @@ export const httpApi: ShopApi = {
   toggleReviewLike: (reviewNo) => call<Review>("toggleReviewLike", { reviewNo }),
 
   // ---- 积分
-  pointAccount: () => call<PointAccount>("pointAccount"),
-  pointRecords: () => call<PointRecord[]>("pointRecords"),
-  pointsDeductible: (q) => call<PointsDeductible>("pointsDeductible", undefined, { ...q } satisfies PointsDeductibleQuery),
+  pointsAccounts: () => call<BuyerPointsAccount[]>("pointsAccounts"),
+  pointsEntries: (typeCode, after = 0) => call<BuyerPointsEntryPage>(
+    "pointsEntries", undefined, { typeCode, after, limit: 20 }),
 
   // ---- 卡包
   myCards: () => call<UserCard[]>("myCards"),

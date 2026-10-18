@@ -66,7 +66,7 @@ class BizRoleForbiddenFlowTest {
         forbidden(s, get("/biz/settle/bills"));
         forbidden(s, get("/biz/settle/rate-card"));
         forbidden(s, get("/biz/merchant/payment"));
-        forbidden(s, get("/biz/points/account"));
+        forbidden(s, get("/biz/points/store-account").param("typeCode", "TYPE"));
     }
 
     @Test

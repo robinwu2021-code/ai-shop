@@ -225,7 +225,7 @@ _无字段_
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
 | `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度乘以一百万的整数 |
 
 
 #### POST `/ops/communities/{no}/fence`
@@ -261,7 +261,7 @@ _无字段_
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
 | `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度乘以一百万的整数 |
 
 
 #### GET `/ops/communities/{no}/fence-impact`
@@ -282,10 +282,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `currentRadiusM` | `number` | 是 | — |
-| `previewRadiusM` | `number` | 是 | — |
-| `currentInside` | `number` | 是 | — |
-| `previewInside` | `number` | 是 | — |
+| `currentRadiusM` | `number` | 是 | 当前服务半径，米 |
+| `previewRadiusM` | `number` | 是 | 预览服务半径，米 |
+| `currentInside` | `number` | 是 | 当前半径内对象数 |
+| `previewInside` | `number` | 是 | 预览半径内对象数 |
 | `addressesWithCoords` | `number` | 是 | 有坐标的收货地址总数。**分母要给** —— 「多进来 0 户」在一个没几条地址有坐标的库里说明不了任何事 |
 
 
@@ -322,7 +322,7 @@ _无字段_
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
 | `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度乘以一百万的整数 |
 
 
 #### POST `/ops/communities/{no}/region`
@@ -358,7 +358,7 @@ _无字段_
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
 | `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度乘以一百万的整数 |
 
 
 #### POST `/ops/communities/{no}/unarchive`
@@ -394,7 +394,7 @@ _无字段_
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
 | `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度乘以一百万的整数 |
 
 
 #### GET `/ops/communities/applies`
@@ -485,7 +485,7 @@ _无字段_
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
 | `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度乘以一百万的整数 |
 
 
 #### GET `/ops/communities/duplicates`
@@ -530,7 +530,7 @@ _无字段_
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
 | `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度乘以一百万的整数 |
 
 
 #### GET `/ops/communities/near`
@@ -576,7 +576,7 @@ _无字段_
 | `regions` | [`RegionRow`](#regionrow)\[\] | 是 | 区县概览：一区县一行。两万多聚落不平铺，点开区县走 communitiesInRegion 下钻 |
 | `supplyGaps` | [`DistributionRow`](#distributionrow)\[\] | 是 | 招商清单：有买家、无商家覆盖的聚落（全局小集合，可行动到小区） |
 | `totals` | [`DistributionTotals`](#distributiontotals) | 是 | 全局四桶计数 + 买家总数 |
-| `unattributable` | [`Unattributable`](#unattributable) | 是 | — |
+| `unattributable` | [`Unattributable`](#unattributable) | 是 | 无法归属覆盖片区的数量 |
 
 
 #### GET `/ops/coverage/distribution/communities`
@@ -613,9 +613,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `stores` | `object`（见下） | 是 | — |
+| `stores` | `object`（见下） | 是 | 门店统计摘要 |
 | `addresses` | `object`（见下） | 是 | 地址**只给聚合数**：那是个人信息，看总数就够判断分母有多脏 |
-| `communities` | `object`（见下） | 是 | — |
+| `communities` | `object`（见下） | 是 | 社区统计摘要 |
 
 `stores` 的字段：
 
@@ -2872,9 +2872,9 @@ _无字段_
 | `settleNos` | `string`\[\] | 是 | 本笔包含的结算单 |
 
 
-#### GET `/ops/points/client-policy`
+#### GET `/ops/points/account`
 
-积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣
+pointsAccount
 
 > 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
 
@@ -2882,18 +2882,31 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`ClientPointsPolicy`](#clientpointspolicy)
+类型：[`PointsAccountView`](#pointsaccountview)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `earnDeny` | `string`\[\] | 是 | 这些端不发放积分 |
-| `redeemDeny` | `string`\[\] | 是 | 这些端不能用积分抵扣 |
-| `offlineRedeem` | `boolean` | 是 | 当面付能不能用积分抵扣。**默认开** —— 成本本来就在商家，线下反而比线上简单 |
+| `snapshot` | `object`（见下） | 是 | 服务端冻结的账务或准备快照 |
+| `exists` | `boolean` | 是 | 账户是否已经创建，未创建不代表查询失败 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+`snapshot` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `buckets` | [`Partial<Record<PointsBucket,number>>`](#partialrecordpointsbucketnumber) | 是 | 按账本分桶保存的积分余额 |
+| `frozen` | `boolean` | 是 | 是否冻结该账户新增使用 |
+| `expireAt` | `number,null` | 是 | 服务端计算的过期时间，Unix 毫秒；无则为空 |
+| `expiryRevision` | `number` | 是 | 账户失效计划修订号 |
+| `lastActiveAt` | `number` | 是 | 最近有效账务活动时间，Unix 毫秒 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `holderType` | [`PointsHolder`](#pointsholder) | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
 
 
-#### POST `/ops/points/client-policy`
+#### POST `/ops/points/account-freeze`
 
-savePointsClientPolicy
+freezePointsAccount
 
 **入参**
 
@@ -2901,13 +2914,373 @@ _无字段_
 
 **出参**（`data`）
 
-类型：[`ClientPointsPolicy`](#clientpointspolicy)
+类型：[`PointsOperation`](#pointsoperation)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `earnDeny` | `string`\[\] | 是 | 这些端不发放积分 |
-| `redeemDeny` | `string`\[\] | 是 | 这些端不能用积分抵扣 |
-| `offlineRedeem` | `boolean` | 是 | 当面付能不能用积分抵扣。**默认开** —— 成本本来就在商家，线下反而比线上简单 |
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/agreements`
+
+pointsAgreements
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsAgreementPage`](#pointsagreementpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 持久记录主键 |
+| `agreement` | [`PointsAgreement`](#pointsagreement) | 是 | 服务端冻结的门店协议快照 |
+| `state` | `string` | 是 | 服务端处理状态 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+
+#### GET `/ops/points/entries`
+
+pointsEntries
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/points/event-retry`
+
+retryPointsEvent
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/events`
+
+pointsEvents
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsEventPage`](#pointseventpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`PointsEventView`](#pointseventview)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+
+#### GET `/ops/points/fallback-rule`
+
+pointsFallback
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsFallback`](#pointsfallback)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `revision` | `number` | 是 | 不可变修订版本 |
+| `mode` | [`PointsFallbackMode`](#pointsfallbackmode) | 是 | 服务端参与模式或已发布回退规则模式 |
+| `value` | `number` | 是 | 回退规则配置值 |
+
+
+#### POST `/ops/points/fallback-rule`
+
+savePointsFallback
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsChangeResult`](#pointschangeresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `action` | `string` | 是 | 请求执行的业务动作 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/flows`
+
+pointsFlows
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/points/funds`
+
+pointsFunds
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsFundsView`](#pointsfundsview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `operation` | [`PointsRecoveryOperation`](#pointsrecoveryoperation) | 是 | 服务端接受的操作类型 |
+| `state` | `string` | 是 | 服务端处理状态 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+| `grossMinor` | `number` | 是 | 原退款金额，最小货币单位 |
+| `offsetMinor` | `number` | 是 | 已抵销金额，最小货币单位 |
+| `cashMinor` | `number` | 是 | 实际现金退款金额，最小货币单位 |
+
+
+#### POST `/ops/points/funds-recovery`
+
+recoverPointsFunds
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsRecoveryExecution`](#pointsrecoveryexecution)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `status` | [`PointsExecutionStatus`](#pointsexecutionstatus) | 是 | 服务端业务状态 |
+
+
+#### GET `/ops/points/order-integration`
+
+orderPointsIntegration
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`OrderPointsIntegrationPolicy`](#orderpointsintegrationpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `scene` | [`OrderPointsIntegrationQScene`](#orderpointsintegrationqscene) | 是 | 线上或线下交易场景 |
+| `mode` | [`OrderPointsIntegrationPolicyMode`](#orderpointsintegrationpolicymode) | 是 | 服务端参与模式或已发布回退规则模式 |
+| `earnEnabled` | `boolean` | 是 | 是否接收新的返分承诺 |
+| `redeemEnabled` | `boolean` | 是 | 是否接收新的抵扣承诺 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+| `actor` | `string,null` | 是 | 服务端取得的操作人编号 |
+| `reason` | `string,null` | 是 | 服务端不可用原因或操作审计原因 |
+| `changedAt` | `number` | 是 | 服务端配置变更时间，Unix 毫秒 |
+
+
+#### POST `/ops/points/order-integration`
+
+版本化接线变更，操作人和审计时间由服务端取得
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`OrderPointsIntegrationPolicy`](#orderpointsintegrationpolicy)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `scene` | [`OrderPointsIntegrationQScene`](#orderpointsintegrationqscene) | 是 | 线上或线下交易场景 |
+| `mode` | [`OrderPointsIntegrationPolicyMode`](#orderpointsintegrationpolicymode) | 是 | 服务端参与模式或已发布回退规则模式 |
+| `earnEnabled` | `boolean` | 是 | 是否接收新的返分承诺 |
+| `redeemEnabled` | `boolean` | 是 | 是否接收新的抵扣承诺 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+| `actor` | `string,null` | 是 | 服务端取得的操作人编号 |
+| `reason` | `string,null` | 是 | 服务端不可用原因或操作审计原因 |
+| `changedAt` | `number` | 是 | 服务端配置变更时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/order-integration/inspection`
+
+inspectOrderPoints
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`OrderPointsInspection`](#orderpointsinspection)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
+| `bindingPhase` | `string,null` | 是 | 源绑定当前阶段，无绑定为空 |
+| `bindingVersion` | `number` | 是 | 源绑定版本，无绑定为空 |
+| `placementPhase` | `string,null` | 是 | 下单工作流阶段，无记录为空 |
+| `placementVersion` | `number` | 是 | 下单工作流版本，无记录为空 |
+| `originalHoldNo` | `string,null` | 是 | 原积分占用编号，不生成新编号替换 |
+| `refundPhases` | `string`\[\] | 是 | 该子单所有售后执行阶段 |
+| `pendingSourceEvents` | `number` | 是 | 尚未确认送达的源事实数量 |
+| `paymentVerified` | `boolean` | 是 | 原支付证据是否核验成功 |
+| `differences` | `string`\[\] | 是 | 只读一致性差异项，不返回敏感正文 |
+
+
+#### GET `/ops/points/order-integration/obligations`
+
+订单积分动态接线策略，门店和支付场景精确查询
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`OrderPointsStoreObligations`](#orderpointsstoreobligations)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `known` | `boolean` | 是 | 核验是否完整可用；false 时禁止按零义务判断 |
+| `activePolicies` | `number` | 是 | 仍处于 ACTIVE 的场景策略数量 |
+| `openBindings` | `number` | 是 | 尚未关闭的源订单绑定数量 |
+| `sourceSettled` | `boolean` | 是 | 源端义务是否全部结清 |
+| `pay` | `object`（见下） | 是 | 支付侧义务摘要，不可用时为 null |
+
+`pay` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `known` | `boolean` | 是 | 核验是否完整可用；false 时禁止按零义务判断 |
+| `openHolds` | `number` | 是 | 未释放的原占用数量 |
+| `pendingPromises` | `number` | 是 | 未完成的原承诺数量 |
+| `openRefunds` | `number` | 是 | 未完成的原退款数量 |
+| `openStatements` | `number` | 是 | 未完成的门店结算单数量 |
+| `unknownFunds` | `number` | 是 | 资金结果未知的原指令数量 |
+| `pendingEvents` | `number` | 是 | 未处理完的原事件数量 |
+
+
+#### POST `/ops/points/order-integration/refunds/{afterSaleNo}/close`
+
+closeOrderPointsRefund
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `afterSaleNo` | path | `string` | 是 | 售后单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`OrderPointsRefundActionResult`](#orderpointsrefundactionresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | 原售后尝试编号 |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
+| `status` | `string` | 是 | 服务端业务状态 |
+
+
+#### POST `/ops/points/order-integration/refunds/{afterSaleNo}/retry`
+
+retryOrderPointsRefund
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `afterSaleNo` | path | `string` | 是 | 售后单号 |
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`OrderPointsRefundActionResult`](#orderpointsrefundactionresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | 原售后尝试编号 |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
+| `status` | `string` | 是 | 服务端业务状态 |
+
+
+#### GET `/ops/points/order-integration/refunds/manual`
+
+manualOrderPointsRefunds
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`OrderPointsManualRefundPage`](#orderpointsmanualrefundpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `string,null` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | 原售后尝试编号 |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
+| `createdAt` | `number` | 是 | 服务端创建时间，Unix 毫秒 |
 
 
 #### GET `/ops/points/overview`
@@ -2924,10 +3297,589 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `circulatingPoints` | `number` | 是 | 流通中的积分（用户可用 + 待生效） |
-| `poolBalanceMinor` | `number` | 是 | 池子余额（分）。与上一个数对不上就是失衡 |
-| `periodRedeemMinor` | `number` | 是 | 本期兑付（分）：补给商家的钱 |
-| `byChannel` | [`PoolByChannel`](#poolbychannel)\[\] | 是 | 按通道分的账本。**不能只看总数** —— 账面是一个池子，钱实际分散在两个通道账户； 一个溢一个空的时候，总数仍然是平的。 |
+| `typeCode` | `string` | 是 | 积分类型，不按不同类型合并余额 |
+| `market` | `string` | 是 | 市场 |
+| `currency` | `string` | 是 | ISO货币代码 |
+| `scale` | `number` | 是 | 金额最小单位的小数位数 |
+| `ratePoints` | `number` | 是 | 兑换比例的积分单位 |
+| `rateMinor` | `number` | 是 | 兑换比例的最小货币单位 |
+| `uMinor` | `number` | 是 | 发行备款 U，最小货币单位 |
+| `cMinor` | `number` | 是 | 积分负债对应资金 C，最小货币单位 |
+| `dMinor` | `number` | 是 | 待兑付资金 D，最小货币单位 |
+| `bMinor` | `number` | 是 | 退款备付 B，最小货币单位 |
+| `reservedBMinor` | `number` | 是 | 已承诺退款的 B 预留 |
+| `lockedUMinor` | `number` | 是 | 待决提取占用的 U |
+| `lockedBMinor` | `number` | 是 | 待决提取占用的 B |
+| `receivableMinor` | `number` | 是 | 门店未回收应收 R，不属于现金 |
+
+
+#### POST `/ops/points/plan-cancel`
+
+cancelPointsPeriod
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### POST `/ops/points/plan-generate`
+
+generatePointsPeriods
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### POST `/ops/points/plan-receipt`
+
+declarePointsReceipt
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/plans`
+
+pointsPlans
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsPlanPage`](#pointsplanpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`PointsPlanView`](#pointsplanview)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+
+#### POST `/ops/points/plans`
+
+savePointsPlan
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/position`
+
+pointsPosition
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsPositionView`](#pointspositionview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `kind` | [`PointsPositionKind`](#pointspositionkind) | 是 | 原业务持仓或事件种类 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `state` | `string` | 是 | 服务端处理状态 |
+| `originalPoints` | `number` | 是 | 原持仓积分总数 |
+| `processedPoints` | `number` | 是 | 该持仓已处理积分数 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+
+#### POST `/ops/points/receivable-recovery`
+
+preparePointsReceivable
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/receivables`
+
+门店应收分页
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsReceivablePage`](#pointsreceivablepage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型，不按不同类型合并余额 |
+| `currency` | `string` | 是 | ISO货币代码 |
+| `scale` | `number` | 是 | 金额最小单位的小数位数 |
+| `rows` | [`PointsReceivable`](#pointsreceivable)\[\] | 是 | 当前门店的应收记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否可能还有下一页 |
+
+
+#### POST `/ops/points/reconcile`
+
+reconcilePoints
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/reconciliation`
+
+pointsReconciliation
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/points/refund`
+
+pointsRefund
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsRefundView`](#pointsrefundview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `afterSaleNo` | `string` | 是 | 原售后尝试编号 |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
+| `state` | `string` | 是 | 服务端处理状态 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+| `preparation` | [`PointsRefundPreparation`](#pointsrefundpreparation) | 是 | 本次售后冻结的退款准备 |
+
+
+#### POST `/ops/points/refund-revise`
+
+revisePointsRefund
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### POST `/ops/points/request-review`
+
+reviewPointsRequest
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/requests`
+
+pointsRequests
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsRequestPage`](#pointsrequestpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`PointsRequestView`](#pointsrequestview)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+
+#### POST `/ops/points/requests`
+
+submitPointsRequest
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### POST `/ops/points/statement-change`
+
+changePointsStatement
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### POST `/ops/points/statement-draft`
+
+draftPointsStatements
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/statements`
+
+pointsStatements
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsStatementPage`](#pointsstatementpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 持久记录主键 |
+| `snapshot` | [`PointsStatementSnapshot`](#pointsstatementsnapshot) | 是 | 服务端冻结的账务或准备快照 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+
+#### GET `/ops/points/stats`
+
+pointsStats
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/points/stats-rebuild`
+
+rebuildPointsStats
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsOperation`](#pointsoperation)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/switches`
+
+pointsSwitches
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsSwitchPage`](#pointsswitchpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`PointsSwitchView`](#pointsswitchview)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+
+#### POST `/ops/points/switches`
+
+changePointsSwitch
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsChangeResult`](#pointschangeresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `action` | `string` | 是 | 请求执行的业务动作 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/terms`
+
+pointsTerms
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/points/terms`
+
+publishPointsTerms
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsChangeResult`](#pointschangeresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `action` | `string` | 是 | 请求执行的业务动作 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### POST `/ops/points/type-state`
+
+transitionPointsType
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsChangeResult`](#pointschangeresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `action` | `string` | 是 | 请求执行的业务动作 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/types`
+
+pointsTypes
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`PointsTypeConfig`](#pointstypeconfig)\[\]
+
+
+#### POST `/ops/points/types`
+
+createPointsType
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsChangeResult`](#pointschangeresult)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `action` | `string` | 是 | 请求执行的业务动作 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/ops/points/vouchers`
+
+pointsVouchers
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/points/withdrawal-execute`
+
+executePointsWithdrawal
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：[`PointsExecution`](#pointsexecution)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `ticketNo` | `string` | 是 | 持久资金指令编号 |
+| `status` | [`PointsExecutionStatus`](#pointsexecutionstatus) | 是 | 服务端业务状态 |
+| `confirmedMinor` | `number` | 是 | 已核验入账金额，最小货币单位 |
+| `replayed` | `boolean` | 是 | 是否返回原请求的幂等结果 |
 
 
 #### GET `/ops/purchase-invoices`
@@ -3788,6 +4740,7 @@ _无字段_
 | `subChannel` | `string,null` | 否 | 受理订阅的渠道（`kuaidi100` / `yto` …） |
 | `subError` | `string,null` | 否 | 订阅最后一次失败：渠道 + 码 + 原文 |
 | `subAttempts` | `number` | 否 | 订阅累计尝试次数 |
+| `subscriptions` | `object`（见下）\[\] | 否 | Current shipment identity only; WeChat follow and Kuaidi100 are independent. |
 | `bindState` | [`BindState`](#bindstate) | 否 | 微信 token 状态 |
 | `bindError` | `string,null` | 否 | 换微信 token 最后一次失败的原因 |
 | `signedAt` | `string,null` | 否 | 签收时间 |
@@ -3795,6 +4748,16 @@ _无字段_
 | `atLocker` | `boolean` | 否 | 已放到驿站或快递柜 |
 | `carrierCorrectedFrom` | `string,null` | 否 | 渠道纠正过承运商时的原值 |
 | `receiverPhoneLast4` | `string,null` | 否 | 收件人手机号后四位（完整号只在物流模块里加密存，签收后清空） |
+
+`subscriptions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `channel` | `string` | 是 | — |
+| `state` | `string` | 是 | — |
+| `error` | `string,null` | 否 | — |
+| `lastAttemptAt` | `number,null` | 否 | — |
+| `nextRetryAt` | `number,null` | 否 | — |
 
 
 ### group
@@ -4706,11 +5669,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `scannedSkus` | `number` | 是 | — |
+| `scannedSkus` | `number` | 是 | 本次扫描 SKU 数量 |
 | `moved` | `number` | 是 | 真搬了几条。**试算时恒为 0** —— 不传 apply 就一条都不该动 |
-| `skipped` | `number` | 是 | — |
+| `skipped` | `number` | 是 | 本次跳过的记录数量 |
 | `pending` | `number` | 是 | 仍待搬的 |
-| `clean` | `boolean` | 是 | — |
+| `clean` | `boolean` | 是 | 未发现投影差异的数量 |
 
 
 #### POST `/ops/merchant/{entityNo}/stock-doubt`
@@ -7914,11 +8877,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`ChannelMessage`](#channelmessage)\[\] | 是 | — |
-| `total` | `number` | 是 | — |
-| `pageNo` | `number` | 是 | — |
-| `size` | `number` | 是 | — |
-| `note` | `string` | 是 | — |
+| `records` | [`ChannelMessage`](#channelmessage)\[\] | 是 | 本页记录 |
+| `total` | `number` | 是 | 符合条件的记录总数 |
+| `pageNo` | `number` | 是 | 页码，从一开始 |
+| `size` | `number` | 是 | 本页最大记录数 |
+| `note` | `string` | 是 | 服务端补充说明 |
 
 
 #### GET `/ops/payments/close-rule`
@@ -8289,36 +9252,6 @@ _无字段_
 类型：[`CategoryPayMode`](#categorypaymode)\[\]
 
 
-#### GET `/ops/category-points`
-
-类目 × 积分
-
-> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`CategoryPoints`](#categorypoints)\[\]
-
-
-#### POST `/ops/category-points/{categoryNo}`
-
-`earnMode` 传 null = 清除这条规则，回到平台兜底 */
-
-**入参**
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|---|---|---|:---:|---|
-| `categoryNo` | path | `string` | 是 | 类目单号 |
-
-_无字段_
-
-**出参**（`data`）
-
-类型：[`CategoryPoints`](#categorypoints)\[\]
-
-
 #### GET `/ops/category-specs`
 
 类目 × 规格总览（规格库 V195）
@@ -8559,16 +9492,16 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `goodsNo` | `string` | 是 | — |
-| `title` | `string,null` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `auditStatus` | `string,null` | 是 | — |
-| `onSale` | `boolean` | 是 | — |
-| `skuCount` | `number` | 是 | — |
+| `goodsNo` | `string` | 是 | 商品编号 |
+| `title` | `string,null` | 是 | 商品或规格展示标题 |
+| `entityNo` | `string` | 是 | 商家主体编号 |
+| `auditStatus` | `string,null` | 是 | 商品审核状态 |
+| `onSale` | `boolean` | 是 | 是否上架销售 |
+| `skuCount` | `number` | 是 | SKU 数量 |
 | `bookedSkus` | `number` | 是 | 其中在进销存里建了账的。**少于 skuCount 就是投影没搬全** —— 商家端的表现是「有些规格盘得着、有些盘不着」，极难自查 |
-| `onHand` | `number` | 是 | — |
-| `available` | `number` | 是 | — |
-| `soldCount` | `number` | 是 | — |
+| `onHand` | `number` | 是 | 账面库存数量 |
+| `available` | `number` | 是 | 当前可售库存数量 |
+| `soldCount` | `number` | 是 | 累计销售数量 |
 | `stuckAt` | [`MerchantChainStuck`](#merchantchainstuck) \| `null` | 是 | 与链条画像用同一套词（）—— 两处分叉就是两套结论 |
 
 
@@ -8624,18 +9557,18 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `categories` | `number` | 是 | — |
+| `categories` | `number` | 是 | 分类数量 |
 | `categoriesUsed` | `number` | 是 | 至少被一个商品用过的类目数 |
-| `skus` | `number` | 是 | — |
+| `skus` | `number` | 是 | SKU 数量 |
 | `skusWithBarcode` | `number` | 是 | 填了条码的。**扫码功能的天花板就是这个数** |
 | `skusWithCode` | `number` | 是 | 填了商家货号的 |
-| `specDims` | `number` | 是 | — |
+| `specDims` | `number` | 是 | 规格维度数量 |
 | `specDimsBound` | `number` | 是 | 至少挂到一个类目上的维度数。规格库只增不减，没挂上的是清理依据 |
-| `auditApproved` | `number` | 是 | — |
-| `auditRejected` | `number` | 是 | — |
-| `auditPending` | `number` | 是 | — |
+| `auditApproved` | `number` | 是 | 审核通过商品数量 |
+| `auditRejected` | `number` | 是 | 审核驳回商品数量 |
+| `auditPending` | `number` | 是 | 待审核商品数量 |
 | `auditActions` | `number` | 是 | 最近 N 天的审核动作数 —— **吞吐**，与上面三个累计数不是一回事 |
-| `auditDays` | `number` | 是 | — |
+| `auditDays` | `number` | 是 | 审核统计窗口天数 |
 
 
 #### GET `/ops/skus`
@@ -10836,10 +11769,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `id` | `number` | 是 | — |
+| `id` | `number` | 是 | 持久记录主键 |
 | `word` | `string` | 是 | 词。**存的是小写**，匹配时两边都转小写 |
 | `reason` | `string,null` | 是 | 为什么禁。**会原样出现在给商家的报错里**，所以要写成他看得懂的一句话 |
-| `enabled` | `boolean` | 是 | — |
+| `enabled` | `boolean` | 是 | 是否启用该配置 |
 
 ### BatchStatus
 
@@ -11027,18 +11960,6 @@ _无字段_
 | `offlineAllowed` | `boolean` | 是 | 这个类目准不准线下付。**默认放行** —— 没有行即不限制 |
 | `configured` | `boolean` | 是 | 是否**显式配过**。与 offlineAllowed 分开：没配过也是允许，但两者含义不同 |
 
-### CategoryPoints
-
-类目 × 积分发放规则。**平台按类目统一管理，商家不参与配置** —— 依据是实测：线上 199 件商品里，用商品级配置配了积分的是 0 件。 `earnValue` 是**整数**：FIXED 存分、RATIO 存万分比（千分之一 = 10）。 不用浮点 —— 金额与比例一旦用 double，对账时的分位差没人说得清。
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `categoryNo` | `string` | 是 | 类目号 |
-| `categoryName` | `string` | 是 | 类目名 |
-| `parentName` | `string` | 是 | 父类目名。**同名子类目很常见**，只给自己的名字分不清是哪个 |
-| `earnMode` | `FIXED` \| `RATIO` \| `null` | 是 | FIXED 定额 / RATIO 按成交额比例；**空 = 没配**，走平台兜底 |
-| `earnValue` | `number,null` | 是 | 发分比例（万分比） |
-
 ### CategorySpec
 
 类目 × 规格总览的一行（规格库 V195，`GET /ops/category-specs`）。 **一条规格都没绑的类目也会返回**：这张表真正要回答的是「哪些类目还没配」—— 只列已配的，缺口就永远看不见，而缺口的代价是那一类商家建品只能手打， 手打的选项没有 code，跨店聚合就此断掉。
@@ -11099,17 +12020,17 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `messageNo` | `string` | 是 | — |
-| `payChannel` | `string` | 是 | — |
+| `messageNo` | `string` | 是 | 通道报文编号 |
+| `payChannel` | `string` | 是 | 支付通道编码 |
 | `msgType` | `string` | 是 | CALLBACK 通道推给我方 / SEND 我方发给通道 |
 | `api` | `string` | 是 | 回调是端点路径，发送是接口坐标 |
 | `bizNo` | `string,null` | 否 | 我方单号。**验签失败时为空** —— 那种行只能按时间和通道翻， 所以按单号筛会把最该看的那几行滤掉 |
-| `paymentNo` | `string,null` | 否 | — |
+| `paymentNo` | `string,null` | 否 | 原支付指令编号 |
 | `outcome` | `string` | 是 | RECEIVED / ACCEPTED / REJECTED / OK / FAILED |
 | `reason` | `string,null` | 否 | 拒绝或失败的原因，直接显示 |
 | `payload` | `string,null` | 否 | 脱敏并截断后的报文 |
-| `headers` | `string,null` | 否 | — |
-| `createdAt` | `number,null` | 否 | — |
+| `headers` | `string,null` | 否 | 按接口权限返回的报文头信息 |
+| `createdAt` | `number,null` | 否 | 服务端创建时间，Unix 毫秒 |
 
 ### ChannelMessagePage
 
@@ -11117,21 +12038,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `records` | [`ChannelMessage`](#channelmessage)\[\] | 是 | — |
-| `total` | `number` | 是 | — |
-| `pageNo` | `number` | 是 | — |
-| `size` | `number` | 是 | — |
-| `note` | `string` | 是 | — |
-
-### ClientPointsPolicy
-
-积分的**端策略**。存的是**禁用名单，不是允许名单** —— `X-Client` 头今天还没有哪个端全量在发，用允许名单会让开关一上线就把全站积分静默关掉。 ⚠️ 它**不是合规硬闸**：端标识来自客户端、可伪造，只能用于平台策略。
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `earnDeny` | `string`\[\] | 是 | 这些端不发放积分 |
-| `redeemDeny` | `string`\[\] | 是 | 这些端不能用积分抵扣 |
-| `offlineRedeem` | `boolean` | 是 | 当面付能不能用积分抵扣。**默认开** —— 成本本来就在商家，线下反而比线上简单 |
+| `records` | [`ChannelMessage`](#channelmessage)\[\] | 是 | 本页记录 |
+| `total` | `number` | 是 | 符合条件的记录总数 |
+| `pageNo` | `number` | 是 | 页码，从一开始 |
+| `size` | `number` | 是 | 本页最大记录数 |
+| `note` | `string` | 是 | 服务端补充说明 |
 
 ### CloseRule
 
@@ -11164,7 +12075,7 @@ _无字段_
 | `regionCode` | `string` | 否 | 所属行政区划码（`sys_region.region_code`），空 = 尚未归属。 挂上之后「按区/按街道覆盖」才能命中这个社区（ADR-013）。 **空着不代表配错了** —— 平台不按名字猜归属：猜错不报错，只会让这个社区 悄悄出现在别人的经营范围里。 |
 | `regionPath` | `string` | 否 | 从省到自身的中文路径，如「浙江省 / 杭州市 / 西湖区 / 北山街道」。 **后端拼好给的**：只给一个 330106002 的话，端上要么显示一串数字， 要么自己按码长切片再逐级查 —— 而国标编码规则不是端该知道的事。 |
 | `latE6` | `number,null` | 否 | 聚落中心坐标（gcj02，×1e6）。**围栏那一屏要用** —— 没标点的聚落算不出任何圈，而「算不出」与「圈里没人」在界面上长得一样， 必须分开说：前者是待办，后者是事实。 |
-| `lngE6` | `number,null` | 否 | — |
+| `lngE6` | `number,null` | 否 | 经度乘以一百万的整数 |
 
 ### CommunityApply
 
@@ -11308,7 +12219,7 @@ DRAFT 可改可删；ACTIVE ⇄ PAUSED 之间可来回；ENDED 是终态（券�
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `level` | `string` | 是 | COMMUNITY / STREET / DISTRICT / CITY / PROVINCE |
-| `refCode` | `string` | 是 | — |
+| `refCode` | `string` | 是 | 范围所引用的行政或业务编码 |
 | `name` | `string` | 是 | 取不到名就给号，**不留空** —— 空会被读成「没有这一条」 |
 | `status` | `string` | 是 | ACTIVE / PENDING |
 
@@ -11321,7 +12232,7 @@ DRAFT 可改可删；ACTIVE ⇄ PAUSED 之间可来回；ENDED 是终态（券�
 | `regions` | [`RegionRow`](#regionrow)\[\] | 是 | 区县概览：一区县一行。两万多聚落不平铺，点开区县走 communitiesInRegion 下钻 |
 | `supplyGaps` | [`DistributionRow`](#distributionrow)\[\] | 是 | 招商清单：有买家、无商家覆盖的聚落（全局小集合，可行动到小区） |
 | `totals` | [`DistributionTotals`](#distributiontotals) | 是 | 全局四桶计数 + 买家总数 |
-| `unattributable` | [`Unattributable`](#unattributable) | 是 | — |
+| `unattributable` | [`Unattributable`](#unattributable) | 是 | 无法归属覆盖片区的数量 |
 
 ### CoverageHealth
 
@@ -11329,9 +12240,9 @@ DRAFT 可改可删；ACTIVE ⇄ PAUSED 之间可来回；ENDED 是终态（券�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `stores` | `object`（见下） | 是 | — |
+| `stores` | `object`（见下） | 是 | 门店统计摘要 |
 | `addresses` | `object`（见下） | 是 | 地址**只给聚合数**：那是个人信息，看总数就够判断分母有多脏 |
-| `communities` | `object`（见下） | 是 | — |
+| `communities` | `object`（见下） | 是 | 社区统计摘要 |
 
 `stores` 的字段：
 
@@ -11989,10 +12900,10 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `currentRadiusM` | `number` | 是 | — |
-| `previewRadiusM` | `number` | 是 | — |
-| `currentInside` | `number` | 是 | — |
-| `previewInside` | `number` | 是 | — |
+| `currentRadiusM` | `number` | 是 | 当前服务半径，米 |
+| `previewRadiusM` | `number` | 是 | 预览服务半径，米 |
+| `currentInside` | `number` | 是 | 当前半径内对象数 |
+| `previewInside` | `number` | 是 | 预览半径内对象数 |
 | `addressesWithCoords` | `number` | 是 | 有坐标的收货地址总数。**分母要给** —— 「多进来 0 户」在一个没几条地址有坐标的库里说明不了任何事 |
 
 ### FissionCampaign
@@ -12148,16 +13059,16 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `goodsNo` | `string` | 是 | — |
-| `title` | `string,null` | 是 | — |
-| `entityNo` | `string` | 是 | — |
-| `auditStatus` | `string,null` | 是 | — |
-| `onSale` | `boolean` | 是 | — |
-| `skuCount` | `number` | 是 | — |
+| `goodsNo` | `string` | 是 | 商品编号 |
+| `title` | `string,null` | 是 | 商品或规格展示标题 |
+| `entityNo` | `string` | 是 | 商家主体编号 |
+| `auditStatus` | `string,null` | 是 | 商品审核状态 |
+| `onSale` | `boolean` | 是 | 是否上架销售 |
+| `skuCount` | `number` | 是 | SKU 数量 |
 | `bookedSkus` | `number` | 是 | 其中在进销存里建了账的。**少于 skuCount 就是投影没搬全** —— 商家端的表现是「有些规格盘得着、有些盘不着」，极难自查 |
-| `onHand` | `number` | 是 | — |
-| `available` | `number` | 是 | — |
-| `soldCount` | `number` | 是 | — |
+| `onHand` | `number` | 是 | 账面库存数量 |
+| `available` | `number` | 是 | 当前可售库存数量 |
+| `soldCount` | `number` | 是 | 累计销售数量 |
 | `stuckAt` | [`MerchantChainStuck`](#merchantchainstuck) \| `null` | 是 | 与链条画像用同一套词（）—— 两处分叉就是两套结论 |
 
 ### GoodsDetail
@@ -12436,15 +13347,15 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `channel` | [`InvLinkChannel`](#invlinkchannel) | 是 | — |
+| `channel` | [`InvLinkChannel`](#invlinkchannel) | 是 | 通道编码 |
 | `pending` | `number` | 是 | 积压总数 |
 | `neverTried` | `number` | 是 | 其中一次都没被投递过的（retry = 0）—— 投递任务没在跑 |
 | `retrying` | `number` | 是 | 其中投过且失败过的（retry > 0）—— 消费者在抛异常 |
 | `oldestPendingAt` | `string,null` | 是 | 最老一条积压的产生时间。**这是判据，不是 pending 的条数** —— 积压 1 条可能只是正在处理的那一瞬，最老的躺了六小时才是断了 |
 | `lastSentAt` | `string,null` | 是 | 最近一次成功投递。null = 从没成功过 |
-| `maxRetry` | `number` | 是 | — |
+| `maxRetry` | `number` | 是 | 允许的最大重试次数 |
 | `lastError` | `string,null` | 是 | 最近一条错误摘要，只在 retrying > 0 时有意义 |
-| `verdict` | [`InvLinkVerdict`](#invlinkverdict) | 是 | — |
+| `verdict` | [`InvLinkVerdict`](#invlinkverdict) | 是 | 服务端健康检查结论 |
 
 ### InvLinkVerdict
 
@@ -12494,11 +13405,11 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `scannedSkus` | `number` | 是 | — |
+| `scannedSkus` | `number` | 是 | 本次扫描 SKU 数量 |
 | `moved` | `number` | 是 | 真搬了几条。**试算时恒为 0** —— 不传 apply 就一条都不该动 |
-| `skipped` | `number` | 是 | — |
+| `skipped` | `number` | 是 | 本次跳过的记录数量 |
 | `pending` | `number` | 是 | 仍待搬的 |
-| `clean` | `boolean` | 是 | — |
+| `clean` | `boolean` | 是 | 未发现投影差异的数量 |
 
 ### InvoiceRequest
 
@@ -13030,8 +13941,8 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `entityNo` | `string` | 是 | — |
-| `merchantName` | `string,null` | 是 | — |
+| `entityNo` | `string` | 是 | 商家主体编号 |
+| `merchantName` | `string,null` | 是 | 商家展示名称 |
 | `goods` | `number` | 是 | 建了几个 SPU |
 | `pendingAudit` | `number` | 是 | 其中待审几个 |
 | `onSale` | `number` | 是 | 其中上架几个 |
@@ -13059,9 +13970,9 @@ KPI 卡（金额为最小货币单位整数）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `includes` | [`CoverageArea`](#coveragearea)\[\] | 是 | — |
-| `excludes` | [`CoverageArea`](#coveragearea)\[\] | 是 | — |
-| `reachableCount` | `number` | 是 | — |
+| `includes` | [`CoverageArea`](#coveragearea)\[\] | 是 | 明确纳入的服务范围 |
+| `excludes` | [`CoverageArea`](#coveragearea)\[\] | 是 | 明确排除的服务范围 |
+| `reachableCount` | `number` | 是 | 当前可触达对象数量 |
 | `reachableSample` | `string`\[\] | 是 | 覆盖到的聚落名，最多几条。只给一个数字的话，30 与 3 一样让人无从判断展开对不对 |
 
 ### MerchantDebt
@@ -13566,12 +14477,107 @@ KPI 卡（金额为最小货币单位整数）。
 | `qty` | `number` | 是 | 件数 |
 | `price` | `number` | 是 | 最小货币单位（分） |
 
+### OrderPointsInspection
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
+| `bindingPhase` | `string,null` | 是 | 源绑定当前阶段，无绑定为空 |
+| `bindingVersion` | `number` | 是 | 源绑定版本，无绑定为空 |
+| `placementPhase` | `string,null` | 是 | 下单工作流阶段，无记录为空 |
+| `placementVersion` | `number` | 是 | 下单工作流版本，无记录为空 |
+| `originalHoldNo` | `string,null` | 是 | 原积分占用编号，不生成新编号替换 |
+| `refundPhases` | `string`\[\] | 是 | 该子单所有售后执行阶段 |
+| `pendingSourceEvents` | `number` | 是 | 尚未确认送达的源事实数量 |
+| `paymentVerified` | `boolean` | 是 | 原支付证据是否核验成功 |
+| `differences` | `string`\[\] | 是 | 只读一致性差异项，不返回敏感正文 |
+
+### OrderPointsIntegrationPolicy
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `scene` | [`OrderPointsIntegrationQScene`](#orderpointsintegrationqscene) | 是 | 线上或线下交易场景 |
+| `mode` | [`OrderPointsIntegrationPolicyMode`](#orderpointsintegrationpolicymode) | 是 | 服务端参与模式或已发布回退规则模式 |
+| `earnEnabled` | `boolean` | 是 | 是否接收新的返分承诺 |
+| `redeemEnabled` | `boolean` | 是 | 是否接收新的抵扣承诺 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+| `actor` | `string,null` | 是 | 服务端取得的操作人编号 |
+| `reason` | `string,null` | 是 | 服务端不可用原因或操作审计原因 |
+| `changedAt` | `number` | 是 | 服务端配置变更时间，Unix 毫秒 |
+
+### OrderPointsIntegrationPolicyMode
+
+OrderPointsIntegrationPolicy 的 mode 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `DETACHED`
+- `ACTIVE`
+- `DRAINING`
+
+### OrderPointsIntegrationQScene
+
+OrderPointsIntegrationQ 的 scene 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `ONLINE`
+- `OFFLINE`
+
+### OrderPointsManualRefundPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `string,null` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | 原售后尝试编号 |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
+| `createdAt` | `number` | 是 | 服务端创建时间，Unix 毫秒 |
+
+### OrderPointsRefundActionResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | 原售后尝试编号 |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
+| `status` | `string` | 是 | 服务端业务状态 |
+
+### OrderPointsStoreObligations
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `known` | `boolean` | 是 | 核验是否完整可用；false 时禁止按零义务判断 |
+| `activePolicies` | `number` | 是 | 仍处于 ACTIVE 的场景策略数量 |
+| `openBindings` | `number` | 是 | 尚未关闭的源订单绑定数量 |
+| `sourceSettled` | `boolean` | 是 | 源端义务是否全部结清 |
+| `pay` | `object`（见下） | 是 | 支付侧义务摘要，不可用时为 null |
+
+`pay` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `known` | `boolean` | 是 | 核验是否完整可用；false 时禁止按零义务判断 |
+| `openHolds` | `number` | 是 | 未释放的原占用数量 |
+| `pendingPromises` | `number` | 是 | 未完成的原承诺数量 |
+| `openRefunds` | `number` | 是 | 未完成的原退款数量 |
+| `openStatements` | `number` | 是 | 未完成的门店结算单数量 |
+| `unknownFunds` | `number` | 是 | 资金结果未知的原指令数量 |
+| `pendingEvents` | `number` | 是 | 未处理完的原事件数量 |
+
 ### OrderStatus
 
 订单状态。**抽象状态，与履约方式无关**，三端同一套。 ⚠️ 这里曾经是另一套：`PENDING_PAY` / `PREPARING` / `DELIVERING` / `AFTER_SALE`。 同一条订单，运营端叫一个名字、C/B 端叫另一个、库里又是第三个 —— 而 ops-web 只跑 mock，所以三套并存了很久没人发现。 ⚠️ 后来又有过 `SHIPPED` / `ARRIVED` 两个值。它们**不是状态**， 是「状态 × 履约方式」的组合冒充状态 —— 代价是每加一种履约就要加一批状态。 现在下发抽象状态 + 履约方式，显示成什么由展示层决定 （见《订单状态-统一整理》与 shared 的 `orderView`）。
 
 枚举取值：
 
+- `POINTS_PROCESSING`
 - `WAIT_PAY`
 - `WAIT_OFFLINE_PAY`
 - `PAID`
@@ -13642,6 +14648,18 @@ KPI 卡（金额为最小货币单位整数）。
 |---|---|:---:|---|
 | `CN` | `number` | 否 | — |
 | `SG` | `number` | 否 | — |
+
+### Partial<Record<PointsBucket,number>>
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `ISSUED` | `number` | 否 | — |
+| `ISSUABLE` | `number` | 否 | — |
+| `PENDING` | `number` | 否 | — |
+| `AVAILABLE` | `number` | 否 | — |
+| `HELD` | `number` | 否 | — |
+| `REFUND_RESERVED` | `number` | 否 | — |
+| `RECIRCULATABLE` | `number` | 否 | — |
 
 ### PayChannel
 
@@ -13918,24 +14936,478 @@ PENDING/REJECTED（P1）：商家自建点的审核态 —— 先审后用，地
 | `categoryNos` | `string`\[\] | 是 | 只收这些类目的货 |
 | `cityCodes` | `string`\[\] | 是 | 只收这些城市的店（暂只展示、不校验） |
 
+### PointsAccountView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `snapshot` | `object`（见下） | 是 | 服务端冻结的账务或准备快照 |
+| `exists` | `boolean` | 是 | 账户是否已经创建，未创建不代表查询失败 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+`snapshot` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `buckets` | [`Partial<Record<PointsBucket,number>>`](#partialrecordpointsbucketnumber) | 是 | 按账本分桶保存的积分余额 |
+| `frozen` | `boolean` | 是 | 是否冻结该账户新增使用 |
+| `expireAt` | `number,null` | 是 | 服务端计算的过期时间，Unix 毫秒；无则为空 |
+| `expiryRevision` | `number` | 是 | 账户失效计划修订号 |
+| `lastActiveAt` | `number` | 是 | 最近有效账务活动时间，Unix 毫秒 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `holderType` | [`PointsHolder`](#pointsholder) | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+
+### PointsAgreement
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `agreementNo` | `string` | 是 | 门店接受协议编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `signedBy` | `string` | 是 | 签署该门店协议的主体属主 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `termsText` | `string` | 是 | 接受时冻结的条款正文 |
+| `settleMode` | `string` | 是 | 门店按单或按期结算方式 |
+| `path` | `string` | 是 | 冻结的直连或归集资金路径 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+| `accountVersion` | `string` | 是 | 冻结的收款账户版本 |
+| `state` | `string` | 是 | 服务端处理状态 |
+
+### PointsAgreementPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 持久记录主键 |
+| `agreement` | [`PointsAgreement`](#pointsagreement) | 是 | 服务端冻结的门店协议快照 |
+| `state` | `string` | 是 | 服务端处理状态 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+### PointsChangeResult
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `action` | `string` | 是 | 请求执行的业务动作 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+### PointsEventPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`PointsEventView`](#pointseventview)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+### PointsEventView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 持久记录主键 |
+| `eventNo` | `string` | 是 | 源事实事件编号 |
+| `kind` | `string` | 是 | 原业务持仓或事件种类 |
+| `state` | `string` | 是 | 服务端处理状态 |
+| `attempt` | `number` | 是 | 原事件投递次数 |
+| `nextAttempt` | `number` | 是 | 下一允许重试时间，Unix 毫秒 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+### PointsExecution
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `ticketNo` | `string` | 是 | 持久资金指令编号 |
+| `status` | [`PointsExecutionStatus`](#pointsexecutionstatus) | 是 | 服务端业务状态 |
+| `confirmedMinor` | `number` | 是 | 已核验入账金额，最小货币单位 |
+| `replayed` | `boolean` | 是 | 是否返回原请求的幂等结果 |
+
+### PointsExecutionStatus
+
+PointsExecution 的 status 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `SUCCEEDED`
+- `FAILED`
+- `UNKNOWN`
+
+### PointsFallback
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `revision` | `number` | 是 | 不可变修订版本 |
+| `mode` | [`PointsFallbackMode`](#pointsfallbackmode) | 是 | 服务端参与模式或已发布回退规则模式 |
+| `value` | `number` | 是 | 回退规则配置值 |
+
+### PointsFallbackMode
+
+PointsFallback 的 mode 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `FIXED`
+- `RATIO`
+
+### PointsFlow
+
+枚举取值：
+
+- `EARN`
+- `REDEEM`
+- `BOTH`
+
+### PointsFundsView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `operation` | [`PointsRecoveryOperation`](#pointsrecoveryoperation) | 是 | 服务端接受的操作类型 |
+| `state` | `string` | 是 | 服务端处理状态 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+| `grossMinor` | `number` | 是 | 原退款金额，最小货币单位 |
+| `offsetMinor` | `number` | 是 | 已抵销金额，最小货币单位 |
+| `cashMinor` | `number` | 是 | 实际现金退款金额，最小货币单位 |
+
+### PointsHolder
+
+枚举取值：
+
+- `MINT`
+- `ISSUE`
+- `USER`
+- `STORE`
+- `RECEIVE`
+
+### PointsOperation
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 幂等操作请求号，重试必须复用 |
+| `operation` | `string` | 是 | 服务端接受的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
 ### PointsOverview
 
-积分资金总览。 **三个数摆在一起是刻意的** —— 恒等式是「流通中的积分 == 池子里的钱」， 分开看的话，失衡要等到有人主动比对才会发现。
+Four independent funding buckets, with non-cash store receivables reported separately.
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `circulatingPoints` | `number` | 是 | 流通中的积分（用户可用 + 待生效） |
-| `poolBalanceMinor` | `number` | 是 | 池子余额（分）。与上一个数对不上就是失衡 |
-| `periodRedeemMinor` | `number` | 是 | 本期兑付（分）：补给商家的钱 |
-| `byChannel` | [`PoolByChannel`](#poolbychannel)\[\] | 是 | 按通道分的账本。**不能只看总数** —— 账面是一个池子，钱实际分散在两个通道账户； 一个溢一个空的时候，总数仍然是平的。 |
-
-### PoolByChannel
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型，不按不同类型合并余额 |
 | `market` | `string` | 是 | 市场 |
-| `payChannel` | `string` | 是 | 支付通道 |
-| `balanceMinor` | `number` | 是 | 池子余额（分） |
+| `currency` | `string` | 是 | ISO货币代码 |
+| `scale` | `number` | 是 | 金额最小单位的小数位数 |
+| `ratePoints` | `number` | 是 | 兑换比例的积分单位 |
+| `rateMinor` | `number` | 是 | 兑换比例的最小货币单位 |
+| `uMinor` | `number` | 是 | 发行备款 U，最小货币单位 |
+| `cMinor` | `number` | 是 | 积分负债对应资金 C，最小货币单位 |
+| `dMinor` | `number` | 是 | 待兑付资金 D，最小货币单位 |
+| `bMinor` | `number` | 是 | 退款备付 B，最小货币单位 |
+| `reservedBMinor` | `number` | 是 | 已承诺退款的 B 预留 |
+| `lockedUMinor` | `number` | 是 | 待决提取占用的 U |
+| `lockedBMinor` | `number` | 是 | 待决提取占用的 B |
+| `receivableMinor` | `number` | 是 | 门店未回收应收 R，不属于现金 |
+
+### PointsPlanAction
+
+PointsPlan 的 action 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `TOPUP_U`
+- `TOPUP_B`
+- `TRANSFER_U_TO_B`
+
+### PointsPlanPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`PointsPlanView`](#pointsplanview)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+### PointsPlanView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `planNo` | `string` | 是 | 周期计划编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `action` | [`PointsPlanAction`](#pointsplanaction) | 是 | 请求执行的业务动作 |
+| `amountMinor` | `number` | 是 | 本次资金金额，最小货币单位 |
+| `anchor` | `string` | 是 | 计划锚点时间，Unix 毫秒 |
+| `everyDays` | `number` | 是 | 周期天数 |
+| `enabled` | `boolean` | 是 | 是否允许新增对应业务 |
+| `id` | `number` | 是 | 持久记录主键 |
+| `period` | `string` | 是 | 本次生成的周期序号 |
+| `nextPeriod` | `string,null` | 是 | 下一待生成周期序号 |
+| `state` | `string` | 是 | 服务端处理状态 |
+| `requestNo` | `string,null` | 是 | 原资金或申请请求号 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+### PointsPoolAction
+
+枚举取值：
+
+- `TOPUP_U`
+- `TOPUP_B`
+- `TRANSFER_U_TO_B`
+- `WITHDRAW_U`
+- `WITHDRAW_B`
+
+### PointsPositionKind
+
+枚举取值：
+
+- `GRANT`
+- `REDEEM`
+- `REFUND`
+- `PAYOUT`
+- `STATEMENT`
+- `TRANSFER`
+
+### PointsPositionView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `kind` | [`PointsPositionKind`](#pointspositionkind) | 是 | 原业务持仓或事件种类 |
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `state` | `string` | 是 | 服务端处理状态 |
+| `originalPoints` | `number` | 是 | 原持仓积分总数 |
+| `processedPoints` | `number` | 是 | 该持仓已处理积分数 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+### PointsReceivable
+
+Explicit receivable fields; no original bank instructions or posting payloads.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 分页游标 ID |
+| `receivableNo` | `string` | 是 | 应收编号 |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `state` | `string` | 是 | 应收状态 |
+| `originalMinor` | `number` | 是 | 原始应收金额 |
+| `recoveredMinor` | `number` | 是 | 已回收金额 |
+| `lockedMinor` | `number` | 是 | 待决抵销占用，仍包含在未回收金额中 |
+| `outstandingMinor` | `number` | 是 | 未回收金额，原始减已回收 |
+| `version` | `number` | 是 | 当前版本 |
+
+### PointsReceivablePage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型，不按不同类型合并余额 |
+| `currency` | `string` | 是 | ISO货币代码 |
+| `scale` | `number` | 是 | 金额最小单位的小数位数 |
+| `rows` | [`PointsReceivable`](#pointsreceivable)\[\] | 是 | 当前门店的应收记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否可能还有下一页 |
+
+### PointsRecoveryExecution
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reference` | `string` | 是 | 原业务引用编号 |
+| `status` | [`PointsExecutionStatus`](#pointsexecutionstatus) | 是 | 服务端业务状态 |
+
+### PointsRecoveryOperation
+
+枚举取值：
+
+- `PAYOUT`
+- `TRANSFER`
+- `REFUND_COLLECTION`
+- `REFUND_COMPENSATION`
+
+### PointsRefundPreparation
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `preparationNo` | `string` | 是 | 退款准备编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `revision` | `number` | 是 | 不可变修订版本 |
+| `inputHash` | `string` | 是 | 原准备输入的不可变摘要 |
+| `returnedPoints` | `number` | 是 | 本次退回已使用积分 |
+| `reclaimedPending` | `number` | 是 | 本次收回待激活积分 |
+| `reclaimedAvailable` | `number` | 是 | 本次收回可用积分 |
+| `expectedClawbackPoints` | `number` | 是 | 原承诺要求收回的积分总数 |
+| `cashOffsetMinor` | `number` | 是 | 现金退款中抵销的金额，最小货币单位 |
+| `netCashMinor` | `number` | 是 | 最终需退现金金额，最小货币单位 |
+| `waivedPoints` | `number` | 是 | 按授权豁免的补收积分 |
+| `collectionTicket` | `string,null` | 是 | 原补收资金指令，未生成时为空 |
+| `state` | `string` | 是 | 服务端处理状态 |
+
+### PointsRefundView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `afterSaleNo` | `string` | 是 | 原售后尝试编号 |
+| `subOrderNo` | `string` | 是 | 门店子订单编号 |
+| `state` | `string` | 是 | 服务端处理状态 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+| `preparation` | [`PointsRefundPreparation`](#pointsrefundpreparation) | 是 | 本次售后冻结的退款准备 |
+
+### PointsRequestPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`PointsRequestView`](#pointsrequestview)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+### PointsRequestView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 持久记录主键 |
+| `requestNo` | `string` | 是 | 原资金或申请请求号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `action` | [`PointsPoolAction`](#pointspoolaction) | 是 | 请求执行的业务动作 |
+| `amountMinor` | `number` | 是 | 本次资金金额，最小货币单位 |
+| `state` | `string` | 是 | 服务端处理状态 |
+| `submittedBy` | `string` | 是 | 原申请人编号 |
+| `approvedBy` | `string,null` | 是 | 服务端审核人编号 |
+| `hasEvidence` | `boolean` | 是 | 是否已有合格资金证据 |
+| `ticketNo` | `string,null` | 是 | 持久资金指令编号 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+### PointsScope
+
+枚举取值：
+
+- `GLOBAL`
+- `REGION`
+- `TYPE`
+- `SCENE`
+- `CLIENT`
+- `MERCHANT`
+- `STORE`
+- `USER`
+
+### PointsStatementPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 持久记录主键 |
+| `snapshot` | [`PointsStatementSnapshot`](#pointsstatementsnapshot) | 是 | 服务端冻结的账务或准备快照 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+### PointsStatementSnapshot
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `statementNo` | `string` | 是 | 门店结算单编号 |
+| `period` | `object`（见下） | 是 | 本次生成的周期序号 |
+| `positionIds` | `string`\[\] | 是 | 本次结算引用的原持仓编号集合 |
+| `revisions` | `object`（见下）\[\] | 是 | 结算单不可变修订记录 |
+| `state` | `string` | 是 | 服务端处理状态 |
+| `disputeReason` | `string,null` | 是 | 争议原因，未争议时为空 |
+
+`period` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `fromMillis` | `number` | 是 | 统计或结算起始时间，Unix 毫秒 |
+| `toMillis` | `number` | 是 | 统计或结算截止时间，Unix 毫秒 |
+| `routeKey` | `string,null` | 是 | 原资金路由唯一键 |
+
+`revisions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `number` | `number` | 是 | 修订序号 |
+| `lines` | `object`（见下）\[\] | 是 | 本修订包含的原持仓结算行 |
+| `points` | `number` | 是 | 积分数量 |
+| `actor` | `string` | 是 | 服务端取得的操作人编号 |
+| `reason` | `string,null` | 是 | 服务端不可用原因或操作审计原因 |
+
+`revisions[].lines[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `positionNo` | `string` | 是 | 原持仓编号 |
+| `sourceVersion` | `number` | 是 | 引用的原持仓版本 |
+| `points` | `number` | 是 | 积分数量 |
+
+### PointsSwitchPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`PointsSwitchView`](#pointsswitchview)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+### PointsSwitchView
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scope` | [`PointsScope`](#pointsscope) | 是 | 开关或统计的作用范围 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `subjectNo` | `string` | 是 | 范围对象编号，门店范围使用 storeNo |
+| `enabled` | `boolean` | 是 | 是否允许新增对应业务 |
+| `flow` | [`PointsFlow`](#pointsflow) | 是 | 控制积分发放、核销或两个方向 |
+| `reason` | `string` | 是 | 服务端不可用原因或操作审计原因 |
+| `id` | `number` | 是 | 持久记录主键 |
+| `actor` | `string` | 是 | 服务端取得的操作人编号 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+### PointsTypeConfig
+
+Points configuration commands carry stable intent IDs; identity and time come from the server.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `market` | `string` | 是 | 市场代码 |
+| `currency` | `string` | 是 | ISO 货币代码 |
+| `scale` | `number` | 是 | 货币最小单位精度 |
+| `rate` | `object`（见下） | 是 | 积分与最小货币单位的换算比例 |
+| `deductRatioBp` | `number` | 是 | 最大抵扣比例，万分比 |
+| `idleDays` | `number` | 是 | 账户无活动失效天数 |
+| `status` | [`PointsTypeConfigStatus`](#pointstypeconfigstatus) | 是 | 服务端业务状态 |
+
+`rate` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `pointsUnit` | `number` | 是 | 换算比例中的积分数量 |
+| `minorUnit` | `number` | 是 | 换算比例中的最小货币单位数量 |
+
+### PointsTypeConfigStatus
+
+PointsTypeConfig 的 status 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `DRAFT`
+- `ACTIVE`
+- `DRAINING`
+- `RETIRED`
 
 ### Post
 
@@ -14008,18 +15480,18 @@ PENDING/REJECTED（P1）：商家自建点的审核态 —— 先审后用，地
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `categories` | `number` | 是 | — |
+| `categories` | `number` | 是 | 分类数量 |
 | `categoriesUsed` | `number` | 是 | 至少被一个商品用过的类目数 |
-| `skus` | `number` | 是 | — |
+| `skus` | `number` | 是 | SKU 数量 |
 | `skusWithBarcode` | `number` | 是 | 填了条码的。**扫码功能的天花板就是这个数** |
 | `skusWithCode` | `number` | 是 | 填了商家货号的 |
-| `specDims` | `number` | 是 | — |
+| `specDims` | `number` | 是 | 规格维度数量 |
 | `specDimsBound` | `number` | 是 | 至少挂到一个类目上的维度数。规格库只增不减，没挂上的是清理依据 |
-| `auditApproved` | `number` | 是 | — |
-| `auditRejected` | `number` | 是 | — |
-| `auditPending` | `number` | 是 | — |
+| `auditApproved` | `number` | 是 | 审核通过商品数量 |
+| `auditRejected` | `number` | 是 | 审核驳回商品数量 |
+| `auditPending` | `number` | 是 | 待审核商品数量 |
 | `auditActions` | `number` | 是 | 最近 N 天的审核动作数 —— **吞吐**，与上面三个累计数不是一回事 |
-| `auditDays` | `number` | 是 | — |
+| `auditDays` | `number` | 是 | 审核统计窗口天数 |
 
 ### ProxyLimit
 
@@ -14711,6 +16183,7 @@ PENDING/REJECTED（P1）：商家自建点的审核态 —— 先审后用，地
 | `subChannel` | `string,null` | 否 | 受理订阅的渠道（`kuaidi100` / `yto` …） |
 | `subError` | `string,null` | 否 | 订阅最后一次失败：渠道 + 码 + 原文 |
 | `subAttempts` | `number` | 否 | 订阅累计尝试次数 |
+| `subscriptions` | `object`（见下）\[\] | 否 | Current shipment identity only; WeChat follow and Kuaidi100 are independent. |
 | `bindState` | [`BindState`](#bindstate) | 否 | 微信 token 状态 |
 | `bindError` | `string,null` | 否 | 换微信 token 最后一次失败的原因 |
 | `signedAt` | `string,null` | 否 | 签收时间 |
@@ -14718,6 +16191,16 @@ PENDING/REJECTED（P1）：商家自建点的审核态 —— 先审后用，地
 | `atLocker` | `boolean` | 否 | 已放到驿站或快递柜 |
 | `carrierCorrectedFrom` | `string,null` | 否 | 渠道纠正过承运商时的原值 |
 | `receiverPhoneLast4` | `string,null` | 否 | 收件人手机号后四位（完整号只在物流模块里加密存，签收后清空） |
+
+`subscriptions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `channel` | `string` | 是 | — |
+| `state` | `string` | 是 | — |
+| `error` | `string,null` | 否 | — |
+| `lastAttemptAt` | `number,null` | 否 | — |
+| `nextRetryAt` | `number,null` | 否 | — |
 
 ### ShipmentProfile
 
@@ -15077,14 +16560,14 @@ REJECTED 不是终态：商家改完可以重新提审。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `storeNo` | `string` | 是 | — |
-| `storeName` | `string,null` | 是 | — |
-| `merchantNo` | `string,null` | 是 | — |
+| `storeNo` | `string` | 是 | 门店编号 |
+| `storeName` | `string,null` | 是 | 门店展示名称 |
+| `merchantNo` | `string,null` | 是 | 归属商家主体编号 |
 | `merchantName` | `string,null` | 是 | 门店属于谁。**两家都在垫底时，是不是同一个老板该做的事完全不同** |
-| `gmv` | `number` | 是 | — |
-| `orderCount` | `number` | 是 | — |
-| `avgOrderValue` | `number` | 是 | — |
-| `refundedCount` | `number` | 是 | — |
+| `gmv` | `number` | 是 | 成交金额，最小货币单位 |
+| `orderCount` | `number` | 是 | 订单数量 |
+| `avgOrderValue` | `number` | 是 | 平均订单金额，最小货币单位 |
+| `refundedCount` | `number` | 是 | 已退款订单数量 |
 | `refundedRate` | `number` | 是 | 退款率 0–1。分母是总成交单数（在售的 + 已退的） |
 
 ### StoreStats

@@ -22,6 +22,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
+import javax.sql.DataSource;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -41,6 +43,7 @@ class BasicRefundRecoveryFlowTest {
     @Autowired private ObjectMapper json;
     @Autowired private OtpStore otp;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired @Qualifier("payDataSource") private DataSource payDataSource;
     @Autowired private AfterSaleService afterSales;
     @Autowired private TestPayGateway gateway;
     @Autowired private FakePayQueryPort channel;
@@ -79,7 +82,11 @@ class BasicRefundRecoveryFlowTest {
     void missingOriginDoesNotBecomeSuccessfulRefund() throws Exception {
         Purchase p = purchase("13207071002");
         String afterSale = apply(p);
-        jdbc.update("update stl_payment set status='CLOSED' where order_no=? and direction='PAY'", p.payNo());
+        new JdbcTemplate(payDataSource).update(
+                "update stl_payment set status='CLOSED' where order_no=? and direction='PAY'", p.payNo());
+        assertThat(new JdbcTemplate(payDataSource).queryForObject(
+                "select status from stl_payment where order_no=? and direction='PAY'", String.class, p.payNo()))
+                .isEqualTo("CLOSED");
         try {
             approve(p, afterSale);
         } catch (RuntimeException expectedValidation) {

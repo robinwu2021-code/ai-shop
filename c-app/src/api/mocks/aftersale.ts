@@ -24,12 +24,21 @@ export const aftersaleMock: Pick<ShopApi,
   "applyAfterSale"
   | "afterSaleReasons"
   | "orderPreview"
+  | "orderPointsQuote"
   | "orderCapability"
   | "afterSaleList"
   | "cancelAfterSale"
   | "fillReturnExpress"
   | "raiseDispute"
 > = {
+  async orderPointsQuote(req) {
+    const preview = await this.orderPreview(req);
+    return {
+      state: "UNAVAILABLE", reason: "POINTS_INTEGRATION_DETACHED", pointsUsed: 0,
+      deductMinor: 0, ratePoints: 0, rateMinor: 0,
+      basePayMinor: preview.amount.payableMinor, stores: [],
+    };
+  },
   // ---------------------------------------------------------------- 售后
   async applyAfterSale(orderNo, reason, images, type = "REFUND_ONLY") {
     const o = findOrder(orderNo);

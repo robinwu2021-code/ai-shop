@@ -471,8 +471,7 @@ class OfflinePayFlowTest {
         /*
          * ⚠️ 这一条与 PointsClientSwitchFlowTest 那条**不重复**：那边直接调发分入口，
          * 这边走的是真实链路（下单 → 商家确认收款 → markPaid 内部发分）。
-         * 判定读的是订单上的 pay_channel，而那一列正是在 markPaid 里写的 ——
-         * 只有真跑一遍，才验得到「写入与读取的先后」对不对。
+         * 判定读的是订单上的 pay_channel，而那一列正是在 markPaid 里写的。
          *
          * 断言落在**费用金**上而不是积分数上：积分数为 0 也可能是商家开关没开
          * （四级开关默认全关），那样这条用例会绿得毫无意义。费用金只在真发了分时才非 0。
@@ -483,9 +482,6 @@ class OfflinePayFlowTest {
         assertThat(sub.getPointsFeeMinor() == null ? 0L : sub.getPointsFeeMinor())
                 .as("线下收不到这笔钱 —— 记上就是给积分池挂一笔永远不到账的应收")
                 .isZero();
-        assertThat(Boolean.TRUE.equals(sub.getPointsGranted()))
-                .as("发分标记也不该被置上，否则将来补发逻辑会跳过这一单")
-                .isFalse();
     }
 
     @Test

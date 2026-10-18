@@ -17,6 +17,7 @@ import lombok.Setter;
 public class OrdOrder extends BaseEntity {
 
     public static final String WAIT_PAY = "WAIT_PAY";
+    public static final String POINTS_PENDING = "POINTS_PENDING";
     public static final String PAID = "PAID";
 
     /**
@@ -78,6 +79,9 @@ public class OrdOrder extends BaseEntity {
      * 绝不能用于权限或资金判定。
      */
     private String payScene;
+
+    /** Source-owned marker: an accepted placement exists for this order, even after READY. */
+    private Boolean pointsIntegrated;
 
     /**
      * 线下收款的确认人（B 端操作员）。

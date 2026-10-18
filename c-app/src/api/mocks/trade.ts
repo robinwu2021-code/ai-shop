@@ -75,6 +75,7 @@ export const tradeMock: Pick<ShopApi,
   | "myInvoices"
   | "invoiceOfOrder"
   | "orderDetail"
+  | "orderPointsState"
   | "orderTrace"
   | "track"
   | "trackMiniLink"
@@ -468,6 +469,7 @@ export const tradeMock: Pick<ShopApi,
     return delay(orderNo === (o as MockOrder).payGroupNo ? paymentView(o) : withFlag);
   },
 
+
   async payResult(orderNo) {
     return delay(paymentView(findPaymentOrder(orderNo)));
   },
@@ -481,10 +483,15 @@ export const tradeMock: Pick<ShopApi,
     return delay(o);
   },
 
+  async orderPointsState(orderNo) {
+    const o = findOrder(orderNo);
+    return delay({ phase: o.status === "POINTS_PROCESSING" ? "UNKNOWN" : "NONE", reason: null });
+  },
+
   async cancelOrder(orderNo) {
     const target = findPaymentOrder(orderNo);
     const group = paymentView(target).subOrders || [target];
-    // 先校验全集合，不能取消一半后才发现兄弟单已付款。
+    // Validate the complete payment group before changing any order.
     group.filter((o) => o.status !== "CANCELLED").forEach((o) => assertTransition(o.status, "CANCELLED"));
     for (const o of group) {
       if (o.status === "CANCELLED") continue;
@@ -493,9 +500,6 @@ export const tradeMock: Pick<ShopApi,
         const sku = findGoodsSeed(it.goodsNo).skus.find((s) => s.skuNo === it.skuNo);
         if (sku) sku.stock += it.qty;
       });
-      if (o.amount.pointsUsed > 0) {
-        pushPoint(db.points, "REFUND", o.amount.pointsUsed, "订单取消返还", o.orderNo);
-      }
       pushTimeline(o, "订单已取消");
     }
     persist();

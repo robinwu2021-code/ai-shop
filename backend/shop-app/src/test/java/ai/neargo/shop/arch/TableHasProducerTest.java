@@ -67,6 +67,10 @@ class TableHasProducerTest {
     private static final Map<String, String> NO_PRODUCER = new LinkedHashMap<>();
 
     static {
+        // Stage C retires the old engine. These tables remain only for historical test fixtures.
+        NO_PRODUCER.put("pts_user_account", "积分 V3 已下线旧余额入口，生产使用 pts_account");
+        NO_PRODUCER.put("pts_user_ledger", "积分 V3 已下线旧流水入口，生产使用 pts_voucher/pts_entry");
+        NO_PRODUCER.put("stl_points_pool", "积分 V3 废除商家返分费入池，生产使用 pts_fund_pool");
         // 已核实：有意让范围
         // stl_withdraw 已于 2026-09-02（V288）落地 B 端申请入口，从本表移除 —— 闸门自己报的陈行
         NO_PRODUCER.put("stl_settle_invoice",

@@ -1,3 +1,9 @@
+/** StorePointType 的 status 取值域，按服务端契约校验。 */
+export type StorePointTypeStatus = "DRAFT" | "ACTIVE" | "DRAINING" | "RETIRED";
+
+/** StorePointAgreement 的 settleMode 取值域，按服务端契约校验。 */
+export type StorePointAgreementSettleMode = "PER_ORDER" | "PERIODIC";
+
 // 商家主体：证照与进件、员工与角色、套餐、结算与欠款、跨店汇总
 //
 // 三端共用的契约镜像，按域切开的一份 —— 口径与切开之前逐字相同，见 `index.ts`。
@@ -14,47 +20,134 @@ import type { Store, StoreRole, StoreStatus } from "./store";
 import type { AfterSaleStatus, AfterSaleType, Order } from "./trade";
 import type { GrantType } from "./user";
 
-/** 商家的一条发分服务费记录：一单一条，来自 `stl_bill.points_fee_minor` */
-export interface MerchantPointsRecord {
-  /** 结算单号 */
-  settleNo: string;
-  /** 关联子单，商家据此对到具体订单 */
-  subOrderNo: string;
-  /** 本单发放的积分数 */
-  points: number;
-  /** 本单的发分服务费（分）。**这是商家唯一感知到的积分成本** */
-  feeMinor: number;
-  /** 账期 `YYYYMM` */
-  period: string;
-  /** 计提时间（支付成功时），不是分账时间 —— 两者相差一个售后期 */
-  at: number;
+/** Pay ledger views are scoped to the authenticated current store and one points type. */
+export interface StorePointType {
+  /** 最大抵扣比例，万分比 */
+  deductRatioBp: number;
+  /** 无活动失效天数 */
+  idleDays: number;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 市场代码 */
+  market: string;
+  /** ISO 货币代码 */
+  currency: string;
+  /** 货币最小单位精度 */
+  scale: number;
+  /** 积分与最小货币单位的换算比例 */
+  rate: {
+    /** 换算比例中的积分数量 */
+    pointsUnit: number;
+    /** 换算比例中的最小货币单位数量 */
+    minorUnit: number;
+  };
+  /** 服务端业务状态 */
+  status: StorePointTypeStatus;
 }
-/**
- * 商家的积分成本视图。**单位是钱，不是分**。
- *
- * 商家只感知**一件事**：开了积分，每笔订单要付一笔发分服务费。
- * 他**看不到**用户抵了多少分、平台补了多少、资金池 —— 对他而言订单就是全额，
- * 收到的是「订单金额 − 各项费用」（V34）。
- *
- * 所以这里没有 income/net：商家侧不存在「积分兑付进账」这个概念。
- */
-export interface MerchantPointAccount {
-  /** 本期发分服务费支出（分）。**商家唯一感知到的积分成本** */
-  periodExpenseMinor: number;
-  /** 当前账期标识，如 `2026-08` */
-  period: string;
-  /** 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 */
-  enabled: boolean;
-  /**
-   * 不生效的原因，直接展示给商家。
-   *
-   * 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」——
-   * 后者会让商家去开一个他根本开不了的开关。
-   */
-  disabledReason?: string;
-  /** 平台按行业强制开，商家不可自行关闭 */
-  forced: boolean;
+export interface StorePointAccount {
+  /** 服务端冻结的账务或准备快照 */
+  snapshot: {
+    /** 积分类型唯一编码 */
+    typeCode: string;
+    /** 账本持有人类型 */
+    holderType: "STORE";
+    /** 账本持有人编号，与持有人类型联合定位 */
+    holderNo: string;
+    /** 按账本分桶保存的积分余额 */
+    buckets: Record<string, number>;
+    /** 是否冻结该账户新增使用 */
+    frozen: boolean;
+    /** 服务端计算的过期时间，Unix 毫秒；无则为空 */
+    expireAt: number | null;
+    /** 账户失效计划修订号 */
+    expiryRevision: number;
+    /** 最近有效账务活动时间，Unix 毫秒 */
+    lastActiveAt: number;
+  };
+  /** 账户是否已经创建，未创建不代表查询失败 */
+  exists: boolean;
+  /** 当前版本号，变更按版本校验 */
+  version: number;
 }
+export interface StorePointEntryPage {
+  /** 本页记录 */
+  rows: {
+    /** 持久记录主键 */
+    id: number;
+    /** 不可变积分分录编号 */
+    entryNo: string;
+    /** 原记账凭证编号 */
+    voucherNo: string;
+    /** 账本持有人类型 */
+    holderType: "STORE";
+    /** 账本持有人编号，与持有人类型联合定位 */
+    holderNo: string;
+    /** 积分账本或资金池分桶 */
+    bucket: string;
+    /** 该分录积分变化，负值表示扣减 */
+    deltaPoints: number;
+    /** 该分录完成后的积分余额 */
+    afterPoints: number;
+    /** 服务端事件时间，Unix 毫秒 */
+    at: number;
+  }[];
+  /** 下一页游标 */
+  next: number;
+  /** 是否还有后续记录 */
+  hasMore: boolean;
+}
+
+/** Current store's published acceptance terms. */
+export interface StorePointTerms {
+  /** 当前版本号，变更按版本校验 */
+  version: string;
+  /** 发布条款的内容摘要 */
+  hash: string;
+  /** 发布条款正文 */
+  text: string;
+}
+/** Frozen, store-scoped acceptance. Route fields are read-only server snapshots. */
+export interface StorePointAgreement {
+  /** 门店接受协议编号 */
+  agreementNo: string;
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 门店归属主体编号，不作为积分隔离维度 */
+  merchantNo: string;
+  /** 积分业务隔离的门店编号 */
+  storeNo: string;
+  /** 签署该门店协议的主体属主 */
+  signedBy: string;
+  /** 接受的条款版本 */
+  termsVersion: string;
+  /** 接受条款的内容摘要 */
+  termsHash: string;
+  /** 接受时冻结的条款正文 */
+  termsText: string;
+  /** 门店按单或按期结算方式 */
+  settleMode: StorePointAgreementSettleMode;
+  /** 冻结的直连或归集资金路径 */
+  path: FundsMode;
+  /** 冻结的支付通道编码 */
+  channel: string;
+  /** 冻结的收款账户版本 */
+  accountVersion: string;
+  /** 服务端处理状态 */
+  state: string;
+}
+export interface StorePointSignRequest {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 接受的条款版本 */
+  termsVersion: string;
+  /** 接受条款的内容摘要 */
+  termsHash: string;
+  /** 门店按单或按期结算方式 */
+  settleMode: StorePointAgreementSettleMode;
+  /** 冻结的支付通道编码 */
+  channel: string;
+}
+
 // ---------------------------------------------------------------- 商家
 //
 // 数据模型从一开始就按**多商家**建：merchantNo 贯穿商品/订单/评价/结算。

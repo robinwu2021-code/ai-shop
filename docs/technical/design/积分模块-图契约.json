@@ -1,0 +1,2489 @@
+{
+  "title": "积分模块图契约",
+  "version": "v3",
+  "status": "DESIGN_WITH_KERNEL_IMPLEMENTATION",
+  "source": "docs/technical/TDD-积分域重整.md",
+  "scope": "目标设计核心类；基础框架、DTO嵌套record及持久化元数据Store按接口目录引用，不伪称源码反射",
+  "classes": [
+    {
+      "name": "PointType",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "typeCode: String",
+        "market / currency: String",
+        "rate: RedeemRate",
+        "deductRatioBp / idleDays: int",
+        "status: ACTIVE | DRAINING | RETIRED"
+      ],
+      "methods": [
+        "activate()",
+        "startDrain()",
+        "retire()"
+      ],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "RedeemRate",
+      "kind": "value",
+      "package": "pay.points.model",
+      "fields": [
+        "pointsUnit / minorUnit: long"
+      ],
+      "methods": [
+        "toMinor(points): long",
+        "floorAligned(points): long",
+        "requireAligned(points): void"
+      ],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "HolderAccount",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "typeCode / holderNo: String",
+        "holderType: HolderType",
+        "buckets: Map<Bucket, long>",
+        "frozen / expiryRevision"
+      ],
+      "methods": [
+        "snapshot(): AccountSnapshot"
+      ],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "FundPool",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "typeCode / currency",
+        "U / C / D / B: long",
+        "reservedBMinor: long",
+        "version: long"
+      ],
+      "methods": [
+        "freeB(): long",
+        "requireCovered(): void"
+      ],
+      "source": "TDD §2.3",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "RefundReserve",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "reserveNo / positionNo",
+        "original / remainingMinor",
+        "consumed / releasedMinor",
+        "version"
+      ],
+      "methods": [
+        "reserve(minor)",
+        "consume(minor)",
+        "release(minor)"
+      ],
+      "source": "TDD §2.3",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "MerchantAgreement",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "agreementNo / entityNo / typeCode",
+        "docVersion / docDigest",
+        "settleMode / settlePeriod",
+        "signedBy / signedAt / status"
+      ],
+      "methods": [
+        "snapshot(): AgreementSnapshot"
+      ],
+      "source": "TDD §2.5",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "PointsSwitch",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "scopeType / scopeId",
+        "issuePaused / redeemPaused",
+        "reason / operatorNo"
+      ],
+      "methods": [
+        "pause(action)",
+        "resume(action)"
+      ],
+      "source": "TDD §2.9",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "PauseInterval",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "scopeType / scopeId",
+        "action / from / until",
+        "affectedAvailability"
+      ],
+      "methods": [
+        "unionDuration(intervals): long"
+      ],
+      "source": "TDD §2.9",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "Voucher",
+      "kind": "value",
+      "package": "pay.points.model",
+      "fields": [
+        "bizRef / payloadHash / type / rate",
+        "pointsMoves: List<PointsMove>",
+        "fundMoves: List<FundMove>",
+        "positionMoves / reserveMoves",
+        "evidenceRefs / resultSnapshot"
+      ],
+      "methods": [
+        "validateV1ToV4()",
+        "requireAligned()"
+      ],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "BizRef",
+      "kind": "value",
+      "package": "pay.points.model",
+      "fields": [
+        "action / objectNo / revision"
+      ],
+      "methods": [
+        "key(): String"
+      ],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "PointsMove",
+      "kind": "value",
+      "package": "pay.points.model",
+      "fields": [
+        "holderType / holderNo / typeCode",
+        "bucket / deltaPoints: long"
+      ],
+      "methods": [],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "FundMove",
+      "kind": "value",
+      "package": "pay.points.model",
+      "fields": [
+        "typeCode / currency",
+        "bucket: U | C | D | B",
+        "deltaMinor / externalMinor"
+      ],
+      "methods": [],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "PositionMove",
+      "kind": "value",
+      "package": "pay.points.model",
+      "fields": [
+        "positionNo / expectedVersion",
+        "action / deltas / nextState"
+      ],
+      "methods": [],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "ReserveMove",
+      "kind": "value",
+      "package": "pay.points.model",
+      "fields": [
+        "reserveNo / positionNo",
+        "reserved / consumed / releasedMinor"
+      ],
+      "methods": [],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "EvidenceRef",
+      "kind": "value",
+      "package": "pay.points.model",
+      "fields": [
+        "evidenceNo / fundsTicketNo",
+        "currency / exactMinor",
+        "verifiedPurpose / result"
+      ],
+      "methods": [],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "PostingResult",
+      "kind": "value",
+      "package": "pay.points.posting",
+      "fields": [
+        "voucherNo / replayed",
+        "immutableResultJson"
+      ],
+      "methods": [],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.posting"
+    },
+    {
+      "name": "GrantPosition",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "positionNo / subOrderNo / typeCode",
+        "status / skipReason",
+        "granted / activated / revoked",
+        "lines: List<GrantLine>"
+      ],
+      "methods": [
+        "remainingPending(): long"
+      ],
+      "source": "TDD §2.4",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "GrantLine",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "itemId / ruleSnapshot",
+        "originalRulePoints / grantedPoints",
+        "grantBeforeRefundedGoodsMinor",
+        "grantBasisMinor / handledPoints"
+      ],
+      "methods": [
+        "targetRevoke(refundedTotal): long"
+      ],
+      "source": "TDD §2.8",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "RedeemPosition",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "positionNo / subOrderNo / typeCode",
+        "agreement / rate / funds snapshots",
+        "state / held / returnedPoints",
+        "paidCash / paidOffset / ticketNo",
+        "lines: List<RedeemLine>"
+      ],
+      "methods": [
+        "currentPayable(): long"
+      ],
+      "source": "TDD §2.6",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "RedeemLine",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "itemId / points / amountMinor",
+        "couponAfterGoodsMinor",
+        "finalCashGoodsMinor / refundedMinor"
+      ],
+      "methods": [],
+      "source": "TDD §2.5",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "RefundPreparation",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "prepareNo / afterSaleNo / inputHash",
+        "revision / immutableOutcome",
+        "cashRefund / collection / pointsState",
+        "lines: List<RefundPreparationLine>"
+      ],
+      "methods": [
+        "sameInput(hash): boolean",
+        "canAbort(evidence): boolean"
+      ],
+      "source": "TDD §2.8",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "RefundPreparationLine",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "positionNo / itemId",
+        "returned / revoked / waivedPoints",
+        "cashOffsetMinor / originalBucket",
+        "frozenPoints / evidenceRefs"
+      ],
+      "methods": [],
+      "source": "TDD §2.8",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "PayoutTicket",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "ticketNo / providerIdem / purpose",
+        "sourceRef / receiverSnapshot",
+        "gross / offset / cashMinor",
+        "currency / status / resultEvidence"
+      ],
+      "methods": [
+        "requireFixedAmount()",
+        "isUnknown(): boolean"
+      ],
+      "source": "TDD §2.6",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "StoreStatement",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "statementNo / typeCode / storeNo",
+        "periodFrom / periodTo",
+        "revision / status / autoConfirmAt"
+      ],
+      "methods": [
+        "confirm(expectedRevision)",
+        "dispute(reason)"
+      ],
+      "source": "TDD §2.6",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "StatementRevision",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "statementNo / revision",
+        "candidateIds / gross / offset / cash",
+        "lines: List<StatementLine>",
+        "inputHash / auditReason"
+      ],
+      "methods": [],
+      "source": "TDD §2.6",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "StatementLine",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "statementNo / revision / positionNo",
+        "points / amountMinor",
+        "activeBinding / snapshot"
+      ],
+      "methods": [],
+      "source": "TDD §2.6",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "Receivable",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "receivableNo / entityNo / typeCode",
+        "refundRef / advanceEvidence",
+        "original / recoveredMinor"
+      ],
+      "methods": [
+        "remaining(): long"
+      ],
+      "source": "TDD §2.3",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "ReceivableAllocation",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "ticketNo / receivableNo / minor",
+        "state: LOCKED | CONFIRMED | RELEASED"
+      ],
+      "methods": [
+        "lock()",
+        "confirm()",
+        "release()"
+      ],
+      "source": "TDD §2.6",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "LifecycleFact",
+      "kind": "value",
+      "package": "pay.points.model",
+      "fields": [
+        "eventNo / subOrderNo / payloadHash",
+        "source / sourceVersion / factType",
+        "paid / refunded / finalized / closed",
+        "finalLineAmounts"
+      ],
+      "methods": [
+        "mergeBySourceVersion()"
+      ],
+      "source": "TDD §2.7",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "FundTransfer",
+      "kind": "entity",
+      "package": "pay.points.model",
+      "fields": [
+        "transferNo / purpose / currency",
+        "minor / evidenceNo / status",
+        "sourcePosition / expiryRevision"
+      ],
+      "methods": [
+        "isConfirmed(): boolean"
+      ],
+      "source": "TDD §2.9",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.model"
+    },
+    {
+      "name": "PointTypeService",
+      "kind": "service",
+      "package": "pay.points.type",
+      "fields": [
+        "types: PointTypeStore"
+      ],
+      "methods": [
+        "create(cmd)",
+        "activate(type)",
+        "startDrain(type)",
+        "retire(type)"
+      ],
+      "source": "TDD §2.1",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.type"
+    },
+    {
+      "name": "PoolService",
+      "kind": "service",
+      "package": "pay.points.pool",
+      "fields": [
+        "posting: PointsPostingService"
+      ],
+      "methods": [
+        "transferIssueToReserve(type,minor)",
+        "withdraw(request)",
+        "watermark(type)"
+      ],
+      "source": "TDD §2.3",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.pool"
+    },
+    {
+      "name": "PoolRequestService",
+      "kind": "service",
+      "package": "pay.points.pool",
+      "fields": [
+        "requests: PoolRequestStore",
+        "posting: PointsPostingService"
+      ],
+      "methods": [
+        "submit(request)",
+        "approve(no,operator,evidence)",
+        "reject(no,reason)"
+      ],
+      "source": "TDD §2.3",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.pool"
+    },
+    {
+      "name": "AgreementService",
+      "kind": "service",
+      "package": "pay.points.agreement",
+      "fields": [
+        "agreements: AgreementStore",
+        "funds: PointsFundsGateway"
+      ],
+      "methods": [
+        "sign(command)",
+        "changeMode(command)",
+        "terminate(no,reason)"
+      ],
+      "source": "TDD §2.5",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.agreement"
+    },
+    {
+      "name": "EarnService",
+      "kind": "service",
+      "package": "pay.points.earn",
+      "fields": [
+        "policy: EarnPolicy",
+        "posting: PointsPostingService"
+      ],
+      "methods": [
+        "grant(GrantCommand): GrantOutcome"
+      ],
+      "source": "TDD §2.4",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.earn"
+    },
+    {
+      "name": "RedeemService",
+      "kind": "service",
+      "package": "pay.points.redeem",
+      "fields": [
+        "policy: RedeemPolicy",
+        "funds: PointsFundsGateway",
+        "posting: PointsPostingService"
+      ],
+      "methods": [
+        "quote(RedeemQuery): RedeemQuote",
+        "hold(HoldCommand): HoldOutcome",
+        "release(ReleaseCommand): HoldOutcome",
+        "settleModeOf(subOrderNo): SettleMode"
+      ],
+      "source": "TDD §2.5",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.redeem"
+    },
+    {
+      "name": "EarnPolicy",
+      "kind": "interface",
+      "package": "pay.points.policy",
+      "fields": [
+        "rule snapshots / integer rate"
+      ],
+      "methods": [
+        "calculate(lines,fact): EarnDecision"
+      ],
+      "source": "TDD §2.4",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.policy"
+    },
+    {
+      "name": "RedeemPolicy",
+      "kind": "interface",
+      "package": "pay.points.policy",
+      "fields": [
+        "eligible targets / integer rate"
+      ],
+      "methods": [
+        "quote(query,snapshots): RedeemDecision"
+      ],
+      "source": "TDD §2.5",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.policy"
+    },
+    {
+      "name": "PointsSwitchService",
+      "kind": "service",
+      "package": "pay.points.pool",
+      "fields": [
+        "switches / intervals",
+        "expiry: ExpiryService"
+      ],
+      "methods": [
+        "pause(command)",
+        "resume(command)"
+      ],
+      "source": "TDD §2.9",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.pool"
+    },
+    {
+      "name": "PointsRefundService",
+      "kind": "service",
+      "package": "pay.points.refund",
+      "fields": [
+        "ratio: RefundRatioPolicy",
+        "posting: PointsPostingService"
+      ],
+      "methods": [
+        "prepare(RefundCommand): RefundPreparation",
+        "confirm(RefundConfirmation): RefundOutcome",
+        "abort(RefundAbort): void"
+      ],
+      "source": "TDD §2.8",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.refund"
+    },
+    {
+      "name": "RefundRatioPolicy",
+      "kind": "interface",
+      "package": "pay.points.policy",
+      "fields": [
+        "original and late-grant bases"
+      ],
+      "methods": [
+        "calculate(lines,cumulative): RefundDecision"
+      ],
+      "source": "TDD §2.8",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.policy"
+    },
+    {
+      "name": "StoreStatementService",
+      "kind": "service",
+      "package": "pay.points.statement",
+      "fields": [
+        "fixed store / period / original route groups",
+        "posting: PointsPostingService"
+      ],
+      "methods": [
+        "draftGroups(period,actor): List<Snapshot>",
+        "draft / confirm / dispute / redraft",
+        "reopenForRefund(positionNo)"
+      ],
+      "source": "TDD §2.6",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.statement"
+    },
+    {
+      "name": "StatementPolicy",
+      "kind": "adapter",
+      "package": "pay.points.statement",
+      "fields": [
+        "market timezone / agreement period"
+      ],
+      "methods": [
+        "periodAt(time)",
+        "autoConfirmAt(time)",
+        "offsetOf(gross,receivables)"
+      ],
+      "source": "TDD §2.6",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.statement"
+    },
+    {
+      "name": "PointsPayoutService",
+      "kind": "service",
+      "package": "pay.points.payout",
+      "fields": [
+        "funds: PointsFundsGateway",
+        "posting: PointsPostingService"
+      ],
+      "methods": [
+        "beginPayout(PayoutCommand): PayoutTicket",
+        "acceptResult(FundsResult): PayoutOutcome",
+        "query(ticketNo)"
+      ],
+      "source": "TDD §2.6",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.payout"
+    },
+    {
+      "name": "StatementPayoutService",
+      "kind": "service",
+      "package": "pay.points.payout",
+      "fields": [
+        "payouts: PointsPayoutService"
+      ],
+      "methods": [
+        "payout(statementNo,revision)"
+      ],
+      "source": "TDD §2.6",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.payout"
+    },
+    {
+      "name": "RefundClosureService",
+      "kind": "service",
+      "package": "pay.points.lifecycle",
+      "fields": [
+        "facts / positions",
+        "posting: PointsPostingService"
+      ],
+      "methods": [
+        "close(positionNo,closureVersion)"
+      ],
+      "source": "TDD §2.3",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.lifecycle"
+    },
+    {
+      "name": "ReceiveReserveService",
+      "kind": "service",
+      "package": "pay.points.pool",
+      "fields": [
+        "posting: PointsPostingService",
+        "实现: PoolService补U只消费自由回流格"
+      ],
+      "methods": [
+        "releaseRefundReserve(positionNo,version)"
+      ],
+      "source": "TDD §2.3",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.pool"
+    },
+    {
+      "name": "ExpiryService",
+      "kind": "service",
+      "package": "pay.points.lifecycle",
+      "fields": [
+        "policy: ExpiryPolicy",
+        "posting: PointsPostingService"
+      ],
+      "methods": [
+        "prepareDue(type)",
+        "confirmIncome(result)",
+        "remindDue(type)"
+      ],
+      "source": "TDD §2.9",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.lifecycle"
+    },
+    {
+      "name": "ExpiryPolicy",
+      "kind": "value",
+      "package": "pay.points.policy",
+      "fields": [
+        "pause union / market midnight"
+      ],
+      "methods": [
+        "extend(base, active, asOf, pauses)",
+        "regionalDeadline(activeAt, idleDays, zone)"
+      ],
+      "source": "TDD §2.9",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.policy"
+    },
+    {
+      "name": "PointsEventWorker",
+      "kind": "interface",
+      "package": "pay.points.event",
+      "fields": [
+        "source handlers / original funds executors",
+        "notifications outside pay transaction"
+      ],
+      "methods": [
+        "process(type, limit, now): Outcome",
+        "drain(type, limit, now)"
+      ],
+      "source": "TDD §2.7",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.event"
+    },
+    {
+      "name": "PointsPostingService",
+      "kind": "service",
+      "package": "pay.points.posting",
+      "fields": [
+        "store: PostingStore"
+      ],
+      "methods": [
+        "post(Voucher): PostingResult"
+      ],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.posting"
+    },
+    {
+      "name": "PointsSourceFactHandler",
+      "kind": "interface",
+      "package": "pay.points.event",
+      "fields": [
+        "trusted paid / finalized / refund facts"
+      ],
+      "methods": [
+        "apply(fact)",
+        "earn(command)",
+        "confirm(refundFact)"
+      ],
+      "source": "TDD §2.7",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.event"
+    },
+    {
+      "name": "PointsEventQueue",
+      "kind": "interface",
+      "package": "pay.points.event",
+      "fields": [
+        "pts_outbox / lease / retry / audit"
+      ],
+      "methods": [
+        "enqueue(type, event, message)",
+        "claim(type, now)",
+        "complete(lease) / fail(lease)",
+        "retry(id, actor, reason)"
+      ],
+      "source": "TDD §2.7",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.event"
+    },
+    {
+      "name": "PointsReconService",
+      "kind": "interface",
+      "package": "pay.points.recon",
+      "fields": [
+        "read-only balances / positions / verified evidence"
+      ],
+      "methods": [
+        "scan(type, now): Report"
+      ],
+      "source": "TDD §2.10",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.recon"
+    },
+    {
+      "name": "PointsSourceReconciler",
+      "kind": "interface",
+      "package": "pay.points.recon",
+      "fields": [
+        "facts: SourceFactsPort",
+        "destination: PointsFactPort / durable cursor"
+      ],
+      "methods": [
+        "scan(type, limit): Outcome"
+      ],
+      "source": "TDD §2.10",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.recon"
+    },
+    {
+      "name": "PointsStatsService",
+      "kind": "interface",
+      "package": "pay.points.query",
+      "fields": [
+        "voucher results / immutable decisions",
+        "TOTAL / STORE / USER / skipped reasons"
+      ],
+      "methods": [
+        "rebuild(type, day): Snapshot",
+        "read(type, day, scope): Snapshot",
+        "project(type, limit)"
+      ],
+      "source": "TDD §2.10",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.query"
+    },
+    {
+      "name": "PointsJobServices",
+      "kind": "interface",
+      "package": "pay.points.job",
+      "fields": [
+        "8 tasks / bounded cursors",
+        "default disabled / no auto approval"
+      ],
+      "methods": [
+        "run(task, type, limit, now, day)"
+      ],
+      "source": "TDD §2.10",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.job"
+    },
+    {
+      "name": "PostingStore",
+      "kind": "interface",
+      "package": "pay.points.store",
+      "fields": [
+        "snapshots / unique business refs"
+      ],
+      "methods": [
+        "lockStable(keys)",
+        "applyConditions(voucher)",
+        "appendLedgers(voucher)",
+        "appendOutbox(events)"
+      ],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.store"
+    },
+    {
+      "name": "MybatisPostingStore",
+      "kind": "adapter",
+      "package": "pay.points.store.impl",
+      "fields": [
+        "mapper: PointsPostingMapper"
+      ],
+      "methods": [
+        "lockStable(keys)",
+        "applyConditions(voucher)",
+        "appendLedgers(voucher)"
+      ],
+      "source": "TDD §2.2",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.store.impl"
+    },
+    {
+      "name": "PointsPostingMapper",
+      "kind": "adapter",
+      "package": "pay.mapper.points",
+      "fields": [
+        "paySqlSessionFactory"
+      ],
+      "methods": [
+        "selectForUpdate(keys)",
+        "conditionalUpdate(delta)",
+        "insertVoucherAndEntries(voucher)"
+      ],
+      "source": "TDD §2.1",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.mapper.points"
+    },
+    {
+      "name": "PointsEarnPort",
+      "kind": "interface",
+      "package": "shop-base.spi.points",
+      "fields": [
+        "immutable earning rules / store / source version",
+        "original payment snapshot for refund routing"
+      ],
+      "methods": [
+        "grant(GrantCommand): GrantOutcome"
+      ],
+      "source": "TDD §2.7",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.spi.points"
+    },
+    {
+      "name": "PointsRedeemPort",
+      "kind": "interface",
+      "package": "shop-base.spi.points",
+      "fields": [
+        "DTO nested records / business keys"
+      ],
+      "methods": [
+        "quote(RedeemQuery): RedeemQuote",
+        "hold(HoldCommand): HoldOutcome",
+        "release(ReleaseCommand): HoldOutcome"
+      ],
+      "source": "TDD §2.7",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.spi.points"
+    },
+    {
+      "name": "PointsRefundPort",
+      "kind": "interface",
+      "package": "shop-base.spi.points",
+      "fields": [
+        "DTO nested records / business keys"
+      ],
+      "methods": [
+        "prepare(RefundCommand): RefundPreparation",
+        "confirm(RefundConfirmation): RefundOutcome",
+        "abort(RefundAbort): void"
+      ],
+      "source": "TDD §2.7",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.spi.points"
+    },
+    {
+      "name": "PointsFactPort",
+      "kind": "interface",
+      "package": "shop-base.spi.points",
+      "fields": [
+        "DTO nested records / business keys"
+      ],
+      "methods": [
+        "accept(LifecycleFact): void"
+      ],
+      "source": "TDD §2.7",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.spi.points"
+    },
+    {
+      "name": "PointsSettlementHook",
+      "kind": "interface",
+      "package": "pay.points.app",
+      "fields": [
+        "DTO nested records / business keys"
+      ],
+      "methods": [
+        "beginPayout(PayoutCommand): PayoutTicket",
+        "acceptResult(FundsResult): PayoutOutcome",
+        "onBillFinalized(LifecycleFact): void",
+        "settleModeOf(subOrderNo): SettleMode"
+      ],
+      "source": "TDD §2.7",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.app"
+    },
+    {
+      "name": "PointsFundsGateway",
+      "kind": "interface",
+      "package": "pay.points.port",
+      "fields": [
+        "DTO nested records / business keys"
+      ],
+      "methods": [
+        "capabilities(FundsContext): FundsCapabilities",
+        "submit(FundsCommand): FundsResult",
+        "query(ticketNo): FundsResult"
+      ],
+      "source": "TDD §2.7",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.port"
+    },
+    {
+      "name": "SourceFactsPort",
+      "kind": "interface",
+      "package": "shop-base.spi.points",
+      "fields": [
+        "DTO nested records / business keys"
+      ],
+      "methods": [
+        "scan(type, afterSequence, limit): Page"
+      ],
+      "source": "TDD §2.7",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.spi.points"
+    },
+    {
+      "name": "PointsEarnPortImpl",
+      "kind": "adapter",
+      "package": "pay.points.port",
+      "fields": [
+        "earn: EarnService"
+      ],
+      "methods": [
+        "grant(GrantCommand): GrantOutcome"
+      ],
+      "source": "TDD §2.1",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.port"
+    },
+    {
+      "name": "PointsRedeemPortImpl",
+      "kind": "adapter",
+      "package": "pay.points.port",
+      "fields": [
+        "redeem: RedeemService"
+      ],
+      "methods": [
+        "quote(RedeemQuery): RedeemQuote",
+        "hold(HoldCommand): HoldOutcome",
+        "release(ReleaseCommand): HoldOutcome"
+      ],
+      "source": "TDD §2.1",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.port"
+    },
+    {
+      "name": "PayPointsFundsAdapter",
+      "kind": "adapter",
+      "package": "pay.points.port",
+      "fields": [
+        "payment API / funds evidence"
+      ],
+      "methods": [
+        "capabilities(FundsContext): FundsCapabilities",
+        "submit(FundsCommand): FundsResult",
+        "query(ticketNo): FundsResult"
+      ],
+      "source": "TDD §2.1",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.port"
+    },
+    {
+      "name": "OrderPointsSourceFactsAdapter",
+      "kind": "adapter",
+      "package": "shop-app.payclient",
+      "fields": [
+        "order/after-sale API"
+      ],
+      "methods": [
+        "scan(type, afterSequence, limit): Page"
+      ],
+      "source": "TDD §2.1",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.payclient"
+    },
+    {
+      "name": "PointsRefundPortImpl",
+      "kind": "adapter",
+      "package": "pay.points.port",
+      "fields": [
+        "service: PointsRefundService"
+      ],
+      "methods": [
+        "prepare(RefundCommand): RefundPreparation",
+        "confirm(RefundConfirmation): RefundOutcome",
+        "abort(RefundAbort): void"
+      ],
+      "source": "TDD §2.1 / §2.7",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.port"
+    },
+    {
+      "name": "PointsFactPortImpl",
+      "kind": "adapter",
+      "package": "pay.points.event.impl",
+      "fields": [
+        "service: PointsEventWorker"
+      ],
+      "methods": [
+        "accept(LifecycleFact): void"
+      ],
+      "source": "TDD §2.1 / §2.7",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.event.impl"
+    },
+    {
+      "name": "PointsSettlementHookImpl",
+      "kind": "adapter",
+      "package": "pay.points.port",
+      "fields": [
+        "payouts: PointsPayoutService",
+        "lifecycle: PointsEventWorker",
+        "redeem: RedeemService"
+      ],
+      "methods": [
+        "beginPayout(PayoutCommand): PayoutTicket",
+        "acceptResult(FundsResult): PayoutOutcome",
+        "onBillFinalized(LifecycleFact): void",
+        "settleModeOf(subOrderNo): SettleMode"
+      ],
+      "source": "TDD §2.1 / §2.7",
+      "status": "DESIGN",
+      "javaPackage": "ai.neargo.shop.pay.points.port"
+    },
+    {
+      "name": "AccountExpiryGuard",
+      "kind": "interface",
+      "package": "pay.points.lifecycle",
+      "fields": [
+        "current account / pause coverage"
+      ],
+      "methods": [
+        "overdue(account, now)"
+      ],
+      "source": "TDD A3-A6 2026-10-16",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.lifecycle"
+    },
+    {
+      "name": "ExpiryReminderService",
+      "kind": "interface",
+      "package": "pay.points.lifecycle",
+      "fields": [
+        "revision / durable reminder"
+      ],
+      "methods": [
+        "prepare(type, user, now, leadDays)",
+        "current(reminder, now)"
+      ],
+      "source": "TDD A3-A6 2026-10-16",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.lifecycle"
+    },
+    {
+      "name": "PointsRecoveryService",
+      "kind": "interface",
+      "package": "pay.points.job",
+      "fields": [
+        "original financial intent / category cursors"
+      ],
+      "methods": [
+        "discover(type, limit, now)",
+        "schedule(work)",
+        "execute(work)"
+      ],
+      "source": "TDD A3-A6 2026-10-16",
+      "status": "KERNEL_IMPLEMENTED",
+      "javaPackage": "ai.neargo.shop.pay.points.job"
+    },
+    {
+      "name": "UserInboxPort",
+      "kind": "interface",
+      "package": "shop-base.spi.notify",
+      "javaPackage": "ai.neargo.shop.spi.notify",
+      "fields": [
+        "durable recipient dedup / no financial writes"
+      ],
+      "methods": [
+        "pointsExpiring(notice)"
+      ],
+      "source": "TDD A3-A6 2026-10-16",
+      "status": "KERNEL_IMPLEMENTED"
+    },
+    {
+      "name": "OpsAlertPort",
+      "kind": "interface",
+      "package": "shop-base.spi.notify",
+      "javaPackage": "ai.neargo.shop.spi.notify",
+      "fields": [
+        "durable recipient dedup / no financial writes"
+      ],
+      "methods": [
+        "pointsAttention(alert, receivers, link): boolean"
+      ],
+      "source": "TDD A3-A6 2026-10-16",
+      "status": "KERNEL_IMPLEMENTED"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "PointType",
+      "target": "RedeemRate",
+      "kind": "composition",
+      "label": "兑换比例",
+      "multiplicity": "1"
+    },
+    {
+      "source": "HolderAccount",
+      "target": "PointType",
+      "kind": "association",
+      "label": "typeCode",
+      "multiplicity": "1"
+    },
+    {
+      "source": "FundPool",
+      "target": "PointType",
+      "kind": "association",
+      "label": "typeCode",
+      "multiplicity": "1"
+    },
+    {
+      "source": "RefundReserve",
+      "target": "FundPool",
+      "kind": "association",
+      "label": "预留覆盖",
+      "multiplicity": "1"
+    },
+    {
+      "source": "MerchantAgreement",
+      "target": "PointType",
+      "kind": "association",
+      "label": "受理种类",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsSwitch",
+      "target": "PauseInterval",
+      "kind": "association",
+      "label": "审计区间",
+      "multiplicity": "0..*"
+    },
+    {
+      "source": "Voucher",
+      "target": "BizRef",
+      "kind": "composition",
+      "label": "幂等键",
+      "multiplicity": "1"
+    },
+    {
+      "source": "Voucher",
+      "target": "PointsMove",
+      "kind": "composition",
+      "label": "积分行",
+      "multiplicity": "0..*"
+    },
+    {
+      "source": "Voucher",
+      "target": "FundMove",
+      "kind": "composition",
+      "label": "资金行",
+      "multiplicity": "0..*"
+    },
+    {
+      "source": "Voucher",
+      "target": "PositionMove",
+      "kind": "composition",
+      "label": "头寸变更",
+      "multiplicity": "0..*"
+    },
+    {
+      "source": "Voucher",
+      "target": "ReserveMove",
+      "kind": "composition",
+      "label": "预留变更",
+      "multiplicity": "0..*"
+    },
+    {
+      "source": "Voucher",
+      "target": "EvidenceRef",
+      "kind": "association",
+      "label": "资金证据",
+      "multiplicity": "0..*"
+    },
+    {
+      "source": "GrantPosition",
+      "target": "GrantLine",
+      "kind": "composition",
+      "label": "逐行发放",
+      "multiplicity": "1..*"
+    },
+    {
+      "source": "RedeemPosition",
+      "target": "RedeemLine",
+      "kind": "composition",
+      "label": "逐行分摊",
+      "multiplicity": "1..*"
+    },
+    {
+      "source": "RefundPreparation",
+      "target": "RefundPreparationLine",
+      "kind": "composition",
+      "label": "逐行处理",
+      "multiplicity": "1..*"
+    },
+    {
+      "source": "RefundPreparation",
+      "target": "PayoutTicket",
+      "kind": "association",
+      "label": "资金腿",
+      "multiplicity": "0..*"
+    },
+    {
+      "source": "RedeemPosition",
+      "target": "RefundReserve",
+      "kind": "association",
+      "label": "最大退款额度",
+      "multiplicity": "1"
+    },
+    {
+      "source": "RedeemPosition",
+      "target": "MerchantAgreement",
+      "kind": "association",
+      "label": "hold快照",
+      "multiplicity": "1"
+    },
+    {
+      "source": "StoreStatement",
+      "target": "StatementRevision",
+      "kind": "composition",
+      "label": "不可变修订",
+      "multiplicity": "1..*"
+    },
+    {
+      "source": "StatementRevision",
+      "target": "StatementLine",
+      "kind": "composition",
+      "label": "候选集合",
+      "multiplicity": "1..*"
+    },
+    {
+      "source": "StatementLine",
+      "target": "RedeemPosition",
+      "kind": "association",
+      "label": "头寸绑定",
+      "multiplicity": "1"
+    },
+    {
+      "source": "ReceivableAllocation",
+      "target": "Receivable",
+      "kind": "association",
+      "label": "具体待追回",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PayoutTicket",
+      "target": "ReceivableAllocation",
+      "kind": "composition",
+      "label": "抵销分配",
+      "multiplicity": "0..*"
+    },
+    {
+      "source": "StoreStatement",
+      "target": "PayoutTicket",
+      "kind": "association",
+      "label": "付款意图",
+      "multiplicity": "0..*"
+    },
+    {
+      "source": "PoolService",
+      "target": "PointsPostingService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PoolRequestService",
+      "target": "PointsPostingService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "EarnService",
+      "target": "EarnPolicy",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "EarnService",
+      "target": "PointsPostingService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "RedeemService",
+      "target": "RedeemPolicy",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "RedeemService",
+      "target": "PointsPostingService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "RedeemService",
+      "target": "PointsFundsGateway",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "AgreementService",
+      "target": "PointsFundsGateway",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsRefundService",
+      "target": "RefundRatioPolicy",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsRefundService",
+      "target": "PointsPostingService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "StoreStatementService",
+      "target": "StatementPolicy",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "StoreStatementService",
+      "target": "PointsPostingService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "StatementPayoutService",
+      "target": "PointsPayoutService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsPayoutService",
+      "target": "PointsFundsGateway",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsPayoutService",
+      "target": "PointsPostingService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "RefundClosureService",
+      "target": "ReceiveReserveService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "ReceiveReserveService",
+      "target": "PointsPostingService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "ExpiryService",
+      "target": "ExpiryPolicy",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "ExpiryService",
+      "target": "PointsPostingService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsPostingService",
+      "target": "PostingStore",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsPostingService",
+      "target": "Voucher",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "MybatisPostingStore",
+      "target": "PointsPostingMapper",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsSourceReconciler",
+      "target": "SourceFactsPort",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsJobServices",
+      "target": "PointsReconService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsJobServices",
+      "target": "PointsSourceReconciler",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsJobServices",
+      "target": "PointsStatsService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsSwitchService",
+      "target": "ExpiryService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "MybatisPostingStore",
+      "target": "PostingStore",
+      "kind": "realization",
+      "label": "implements",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsEarnPortImpl",
+      "target": "PointsEarnPort",
+      "kind": "realization",
+      "label": "implements",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsRedeemPortImpl",
+      "target": "PointsRedeemPort",
+      "kind": "realization",
+      "label": "implements",
+      "multiplicity": ""
+    },
+    {
+      "source": "PayPointsFundsAdapter",
+      "target": "PointsFundsGateway",
+      "kind": "realization",
+      "label": "implements",
+      "multiplicity": ""
+    },
+    {
+      "source": "OrderPointsSourceFactsAdapter",
+      "target": "SourceFactsPort",
+      "kind": "realization",
+      "label": "implements",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsEarnPortImpl",
+      "target": "EarnService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsRedeemPortImpl",
+      "target": "RedeemService",
+      "kind": "dependency",
+      "label": "uses",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsRefundPortImpl",
+      "target": "PointsRefundPort",
+      "kind": "realization",
+      "label": "implements",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsRefundPortImpl",
+      "target": "PointsRefundService",
+      "kind": "dependency",
+      "label": "delegates",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsFactPortImpl",
+      "target": "PointsFactPort",
+      "kind": "realization",
+      "label": "implements",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsSettlementHookImpl",
+      "target": "PointsSettlementHook",
+      "kind": "realization",
+      "label": "implements",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsSettlementHookImpl",
+      "target": "PointsPayoutService",
+      "kind": "dependency",
+      "label": "delegates",
+      "multiplicity": ""
+    },
+    {
+      "source": "PointsSettlementHookImpl",
+      "target": "RedeemService",
+      "kind": "dependency",
+      "label": "settleModeOf",
+      "multiplicity": ""
+    },
+    {
+      "source": "EarnService",
+      "target": "AccountExpiryGuard",
+      "kind": "dependency",
+      "label": "禁止到期余额被迟到发放续活",
+      "multiplicity": "1"
+    },
+    {
+      "source": "RedeemService",
+      "target": "AccountExpiryGuard",
+      "kind": "dependency",
+      "label": "新占用核验有效到期时间",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsJobServices",
+      "target": "ExpiryReminderService",
+      "kind": "dependency",
+      "label": "按周期持久提醒",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsJobServices",
+      "target": "PointsRecoveryService",
+      "kind": "dependency",
+      "label": "有界轮换恢复原指令",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsRecoveryService",
+      "target": "PointsFundsGateway",
+      "kind": "dependency",
+      "label": "事务外执行或查询原号",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsFactPortImpl",
+      "target": "PointsEventQueue",
+      "kind": "dependency",
+      "label": "先持久化可信事实",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "PointsEventQueue",
+      "kind": "dependency",
+      "label": "租约 / 确认 / 退避",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "PointsSourceFactHandler",
+      "kind": "dependency",
+      "label": "分发来源事实",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "PointsRecoveryService",
+      "kind": "dependency",
+      "label": "原资金指令恢复",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "ExpiryReminderService",
+      "kind": "dependency",
+      "label": "投递前核验周期",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "RefundClosureService",
+      "kind": "dependency",
+      "label": "可信责任解除",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "UserInboxPort",
+      "kind": "dependency",
+      "label": "事务外生命周期通知",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsEventWorker",
+      "target": "OpsAlertPort",
+      "kind": "dependency",
+      "label": "事务外权限接收人告警",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsSourceFactHandler",
+      "target": "EarnService",
+      "kind": "dependency",
+      "label": "应用支付快照",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsSourceFactHandler",
+      "target": "PointsSettlementHook",
+      "kind": "dependency",
+      "label": "终局转正",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsSourceFactHandler",
+      "target": "PointsRefundService",
+      "kind": "dependency",
+      "label": "核验资金后确认",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsSourceReconciler",
+      "target": "PointsFactPort",
+      "kind": "dependency",
+      "label": "整页持久后推进水位",
+      "multiplicity": "1"
+    },
+    {
+      "source": "PointsJobServices",
+      "target": "PointsEventWorker",
+      "kind": "dependency",
+      "label": "限量处理 / 报告待办",
+      "multiplicity": "1"
+    },
+    {
+      "source": "ExpiryReminderService",
+      "target": "PointsEventQueue",
+      "kind": "dependency",
+      "label": "按活动周期幂等提醒",
+      "multiplicity": "1"
+    }
+  ],
+  "groups": [
+    {
+      "id": "overview",
+      "title": "模块协作总览",
+      "classes": [
+        "EarnService",
+        "RedeemService",
+        "PointsRefundService",
+        "StoreStatementService",
+        "PointsPayoutService",
+        "PointsFundsGateway",
+        "PointsPostingService",
+        "Voucher",
+        "PostingStore",
+        "PointsSourceFactHandler",
+        "PointsEventWorker",
+        "PointsReconService"
+      ]
+    },
+    {
+      "id": "accounts",
+      "title": "种类账户与预留",
+      "classes": [
+        "PointType",
+        "RedeemRate",
+        "HolderAccount",
+        "FundPool",
+        "RefundReserve",
+        "MerchantAgreement",
+        "PointsSwitch",
+        "PauseInterval"
+      ]
+    },
+    {
+      "id": "voucher",
+      "title": "凭证与原子过账值对象",
+      "classes": [
+        "Voucher",
+        "BizRef",
+        "PointsMove",
+        "FundMove",
+        "PositionMove",
+        "ReserveMove",
+        "EvidenceRef",
+        "PostingResult"
+      ]
+    },
+    {
+      "id": "positions",
+      "title": "业务头寸与退款准备",
+      "classes": [
+        "GrantPosition",
+        "GrantLine",
+        "RedeemPosition",
+        "RedeemLine",
+        "RefundPreparation",
+        "RefundPreparationLine",
+        "PayoutTicket"
+      ]
+    },
+    {
+      "id": "statements",
+      "title": "账期应收与生命周期事实",
+      "classes": [
+        "StoreStatement",
+        "StatementRevision",
+        "StatementLine",
+        "Receivable",
+        "ReceivableAllocation",
+        "LifecycleFact",
+        "FundTransfer"
+      ]
+    },
+    {
+      "id": "entry",
+      "title": "种类发放与核销服务",
+      "classes": [
+        "PointTypeService",
+        "PoolService",
+        "PoolRequestService",
+        "AgreementService",
+        "EarnService",
+        "RedeemService",
+        "EarnPolicy",
+        "RedeemPolicy",
+        "PointsSwitchService"
+      ]
+    },
+    {
+      "id": "settlement",
+      "title": "退款兑付与到期服务",
+      "classes": [
+        "PointsRefundService",
+        "RefundRatioPolicy",
+        "StoreStatementService",
+        "StatementPolicy",
+        "PointsPayoutService",
+        "StatementPayoutService",
+        "RefundClosureService",
+        "ReceiveReserveService",
+        "ExpiryService",
+        "ExpiryPolicy",
+        "AccountExpiryGuard",
+        "ExpiryReminderService"
+      ]
+    },
+    {
+      "id": "runtime",
+      "title": "过账持久化与可靠事件",
+      "classes": [
+        "PointsPostingService",
+        "PostingStore",
+        "MybatisPostingStore",
+        "PointsPostingMapper",
+        "PointsSourceFactHandler",
+        "PointsEventQueue",
+        "PointsEventWorker",
+        "PointsReconService",
+        "PointsSourceReconciler",
+        "PointsStatsService",
+        "PointsJobServices",
+        "PointsRecoveryService"
+      ]
+    },
+    {
+      "id": "spi",
+      "title": "订单SPI及域内结算Hook实现",
+      "classes": [
+        "PointsEarnPort",
+        "PointsRedeemPort",
+        "PointsRefundPort",
+        "PointsFactPort",
+        "PointsSettlementHook",
+        "PointsEarnPortImpl",
+        "PointsRedeemPortImpl",
+        "PointsRefundPortImpl",
+        "PointsFactPortImpl",
+        "PointsSettlementHookImpl"
+      ]
+    },
+    {
+      "id": "funds-spi",
+      "title": "pay内资金接口与订单事实SPI",
+      "classes": [
+        "PointsFundsGateway",
+        "SourceFactsPort",
+        "PayPointsFundsAdapter",
+        "OrderPointsSourceFactsAdapter",
+        "PointsPayoutService",
+        "PointsSourceReconciler",
+        "UserInboxPort",
+        "OpsAlertPort"
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "id": "TOPUP_MINT",
+      "name": "补U：新增发行",
+      "points": {
+        "MINT": -100,
+        "ISSUE": 100
+      },
+      "funds": {
+        "U": 100
+      },
+      "external": "100",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "已核验备款；自由接收分不够",
+      "group": "funding"
+    },
+    {
+      "id": "TOPUP_RECYCLE",
+      "name": "补U：优先回流",
+      "points": {
+        "RECEIVE_FREE": -100,
+        "ISSUE": 100
+      },
+      "funds": {
+        "U": 100
+      },
+      "external": "100",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "只用可回流格；退款预留不动",
+      "group": "funding"
+    },
+    {
+      "id": "TOPUP_B",
+      "name": "补退款备付B",
+      "points": {},
+      "funds": {
+        "B": 100
+      },
+      "external": "100",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "双人审批；不发行积分",
+      "group": "funding"
+    },
+    {
+      "id": "U_TO_B",
+      "name": "发放预算转退款备付",
+      "points": {
+        "ISSUE": -100,
+        "RECEIVE_FREE": 100
+      },
+      "funds": {
+        "U": -100,
+        "B": 100
+      },
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "内部调拨；分和钱一起调整",
+      "group": "funding"
+    },
+    {
+      "id": "WITHDRAW_U",
+      "name": "提取未发预算",
+      "points": {
+        "ISSUE": -100,
+        "RECEIVE_FREE": 100
+      },
+      "funds": {
+        "U": -100
+      },
+      "external": "-100",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "不能超过U和发放户",
+      "group": "funding"
+    },
+    {
+      "id": "WITHDRAW_B",
+      "name": "提取自由B",
+      "points": {},
+      "funds": {
+        "B": -100
+      },
+      "external": "-100",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "仅可提freeB=B−有效预留",
+      "group": "funding"
+    },
+    {
+      "id": "GRANT",
+      "name": "支付后发待生效",
+      "points": {
+        "ISSUE": -100,
+        "USER_P": 100
+      },
+      "funds": {
+        "U": -100,
+        "C": 100
+      },
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "门禁与预算；不足整张子单SKIPPED",
+      "group": "earn"
+    },
+    {
+      "id": "ACTIVATE",
+      "name": "结算终局转正",
+      "points": {
+        "USER_P": -100,
+        "USER_A": 100
+      },
+      "funds": {},
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "只转剩余；退款与终局乱序按事实处理",
+      "group": "earn"
+    },
+    {
+      "id": "HOLD",
+      "name": "下单占用",
+      "points": {
+        "USER_A": -100,
+        "USER_H_ORDER": 100
+      },
+      "funds": {},
+      "external": "0",
+      "reserve": "100",
+      "receivable": "0",
+      "condition": "签约/能力/最终金额；hold锁协议快照",
+      "group": "settlement"
+    },
+    {
+      "id": "RELEASE",
+      "name": "取消或关单释放",
+      "points": {
+        "USER_H_ORDER": -100,
+        "USER_A": 100
+      },
+      "funds": {},
+      "external": "0",
+      "reserve": "-100",
+      "receivable": "0",
+      "condition": "权威未付款取消；和支付抢同一头寸",
+      "group": "settlement"
+    },
+    {
+      "id": "PAY_PER_ORDER",
+      "name": "随单兑付",
+      "points": {
+        "USER_H_ORDER": -100,
+        "RECEIVE_RESERVED": 100
+      },
+      "funds": {
+        "C": -100,
+        "D": 100
+      },
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "门店仅留受理流水，不留余额",
+      "group": "settlement"
+    },
+    {
+      "id": "PAY_PERIODIC",
+      "name": "定期门店收分",
+      "points": {
+        "USER_H_ORDER": -100,
+        "STORE_P": 100
+      },
+      "funds": {},
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "按hold协议快照；钱仍在C",
+      "group": "settlement"
+    },
+    {
+      "id": "STORE_CONFIRM",
+      "name": "终局门店转待结算",
+      "points": {
+        "STORE_P": -100,
+        "STORE_A": 100
+      },
+      "funds": {},
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "只转剩余；不是立刻付款",
+      "group": "settlement"
+    },
+    {
+      "id": "STATEMENT_CONFIRM",
+      "name": "确认账单兑付",
+      "points": {
+        "STORE_A": -100,
+        "RECEIVE_RESERVED": 100
+      },
+      "funds": {
+        "C": -100,
+        "D": 100
+      },
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "固定候选ID/修订号；头寸PAYABLE",
+      "group": "settlement"
+    },
+    {
+      "id": "UNCONFIRM",
+      "name": "未付账单撤销确认",
+      "points": {
+        "RECEIVE_RESERVED": -100,
+        "STORE_A": 100
+      },
+      "funds": {
+        "D": -100,
+        "C": 100
+      },
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "没有在途付款；回草稿重算",
+      "group": "refund"
+    },
+    {
+      "id": "PAYOUT_CASH",
+      "name": "现金/专项回补明确成功",
+      "points": {},
+      "funds": {
+        "D": -100
+      },
+      "external": "-100",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "意图先提交；证据确认；积分不动",
+      "group": "settlement"
+    },
+    {
+      "id": "PAYOUT_OFFSET",
+      "name": "账期现金70＋抵销30",
+      "points": {},
+      "funds": {
+        "D": -100,
+        "B": 30
+      },
+      "external": "-70",
+      "reserve": "0",
+      "receivable": "-30",
+      "condition": "成功才冲R；gross=offset+cash",
+      "group": "settlement"
+    },
+    {
+      "id": "PREPARE_REFUND",
+      "name": "准备：收回分先冻结",
+      "points": {
+        "USER_SOURCE": -100,
+        "USER_H_REFUND": 100
+      },
+      "funds": {},
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "P/A来源分别记；不提前给可花退分",
+      "group": "refund"
+    },
+    {
+      "id": "ABORT_REFUND",
+      "name": "安全撤销退款准备",
+      "points": {
+        "USER_H_REFUND": -100,
+        "USER_SOURCE": 100
+      },
+      "funds": {},
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "原来源恢复；资金未发生或补偿完",
+      "group": "refund"
+    },
+    {
+      "id": "REFUND_STORE",
+      "name": "门店内未兑付退分",
+      "points": {
+        "STORE_SOURCE": -100,
+        "USER_A": 100
+      },
+      "funds": {},
+      "external": "0",
+      "reserve": "-100",
+      "receivable": "0",
+      "condition": "STORE.P/A；现金结果明确后确认",
+      "group": "refund"
+    },
+    {
+      "id": "REFUND_D",
+      "name": "已兑付未付款退分",
+      "points": {
+        "RECEIVE_RESERVED": -100,
+        "USER_A": 100
+      },
+      "funds": {
+        "D": -100,
+        "C": 100
+      },
+      "external": "0",
+      "reserve": "-100",
+      "receivable": "0",
+      "condition": "PAYING先查询，不能反转未知资金",
+      "group": "refund"
+    },
+    {
+      "id": "REFUND_FUNDED",
+      "name": "已付且补差实际追回",
+      "points": {
+        "RECEIVE_RESERVED": -100,
+        "USER_A": 100
+      },
+      "funds": {
+        "C": 100
+      },
+      "external": "100",
+      "reserve": "-100",
+      "receivable": "0",
+      "condition": "实际追回直接支撑C，不再垫B",
+      "group": "refund"
+    },
+    {
+      "id": "REFUND_ADVANCE",
+      "name": "已付未追回：B垫付",
+      "points": {
+        "RECEIVE_RESERVED": -100,
+        "USER_A": 100
+      },
+      "funds": {
+        "B": -100,
+        "C": 100
+      },
+      "external": "0",
+      "reserve": "-100",
+      "receivable": "100",
+      "condition": "消耗该头寸预留，开R应收",
+      "group": "refund"
+    },
+    {
+      "id": "RECOVER",
+      "name": "后续真实追回",
+      "points": {},
+      "funds": {
+        "B": 100
+      },
+      "external": "100",
+      "reserve": "0",
+      "receivable": "-100",
+      "condition": "回补B，不重复补C/返分",
+      "group": "refund"
+    },
+    {
+      "id": "REVOKE",
+      "name": "实际收回购物返分",
+      "points": {
+        "USER_H_REFUND": -100,
+        "ISSUE": 100
+      },
+      "funds": {
+        "C": -100,
+        "U": 100
+      },
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "准备成功后确认；不许负余额",
+      "group": "refund"
+    },
+    {
+      "id": "CLAWBACK_CASH",
+      "name": "现金补收支持发行",
+      "points": {
+        "MINT": -100,
+        "ISSUE": 100
+      },
+      "funds": {
+        "U": 100
+      },
+      "external": "100",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "到账才补U；先回流自由分，不足发行",
+      "group": "refund"
+    },
+    {
+      "id": "WAIVE",
+      "name": "不足部分平台承担",
+      "points": {},
+      "funds": {},
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "不增U、不假造收回、不建用户负余额",
+      "group": "refund"
+    },
+    {
+      "id": "CLOSE_REFUND",
+      "name": "退款责任解除",
+      "points": {
+        "RECEIVE_RESERVED": -100,
+        "RECEIVE_FREE": 100
+      },
+      "funds": {},
+      "external": "0",
+      "reserve": "-100",
+      "receivable": "0",
+      "condition": "窗口结束＋无活动售后＋资金明确",
+      "group": "lifecycle"
+    },
+    {
+      "id": "EXPIRE_PREPARE",
+      "name": "到期准备",
+      "points": {
+        "USER_A": -100,
+        "USER_H_EXPIRE": 100
+      },
+      "funds": {},
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "C保留，收入划拨结果未知仍准备",
+      "group": "lifecycle"
+    },
+    {
+      "id": "EXPIRE_CONFIRM",
+      "name": "收入划拨确认后清零",
+      "points": {
+        "USER_H_EXPIRE": -100,
+        "RECEIVE_FREE": 100
+      },
+      "funds": {
+        "C": -100
+      },
+      "external": "-100",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "只清到期准备，不动退款/订单占用",
+      "group": "lifecycle"
+    },
+    {
+      "id": "ADJUST_PLUS",
+      "name": "审批正向调账",
+      "points": {
+        "ISSUE": -100,
+        "USER_A": 100
+      },
+      "funds": {
+        "U": -100,
+        "C": 100
+      },
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "双人复核；有U才加分",
+      "group": "lifecycle"
+    },
+    {
+      "id": "ADJUST_MINUS",
+      "name": "审批负向调账",
+      "points": {
+        "USER_A": -100,
+        "ISSUE": 100
+      },
+      "funds": {
+        "C": -100,
+        "U": 100
+      },
+      "external": "0",
+      "reserve": "0",
+      "receivable": "0",
+      "condition": "只扣可用，不借占用，不扣成负",
+      "group": "lifecycle"
+    }
+  ],
+  "module": {
+    "artifact": "pay-domain",
+    "businessPackage": "ai.neargo.shop.pay.points",
+    "mapperPackage": "ai.neargo.shop.pay.mapper.points",
+    "txManager": "payTxManager",
+    "sqlSessionFactory": "paySqlSessionFactory",
+    "physicalModule": false,
+    "settlementHook": "PointsSettlementHook",
+    "transition": "unreleased: directly replace obsolete implementation; latest logic only"
+  }
+}

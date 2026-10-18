@@ -43,9 +43,9 @@ public record AfterSaleVO(String afterSaleNo,
                            * <b>商家券</b>的退回让他少收一次券核销，所以要在点同意之前看见。
                            */
                           RefundImpact impact,
-                          /** 退款形式：{@code CASH}/{@code POINTS}（AC10）。商家审核时定，默认现金 */
+                          /** 退款形式：当前仅受理 {@code CASH}，积分返还由独立退款准备处理 */
                           String refundMode,
-                          /** 退款形式为 POINTS 时发放的积分数；现金时为 null */
+                          /** 旧补偿字段；当前现金退款不写入，待接口清理时删除 */
                           Long refundPoints,
                           /** 商家核定的退款额(分)，部分退款时 < 申请额；未核定为 null（= 全额）（AC9） */
                           Long approvedMinor,

@@ -4,7 +4,6 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.order.policy.PhaseOnePointsPolicy;
 import ai.neargo.shop.trade.order.refund.model.RefundLine;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.shop.trade.order.refund.policy.LineShares;
@@ -17,7 +16,6 @@ public final class BasicRefundPolicy {
     private BasicRefundPolicy() { }
 
     public static RefundPlan full(OrdSubOrder sub, List<OrdItem> items) {
-        PhaseOnePointsPolicy.requireCashHistory(sub);
         if (sub.getPayAmount() == null || sub.getPayAmount() < 0 || items.isEmpty()
                 || nz(sub.getRefundedMinor()) != 0 || items.stream().anyMatch(i -> nz(i.getRefundedQty()) != 0
                         || nz(i.getRefundedMinor()) != 0)) {

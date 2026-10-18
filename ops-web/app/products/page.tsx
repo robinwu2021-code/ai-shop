@@ -24,7 +24,6 @@ import { SpecTemplateTab } from "./spec-template-tab";
 import { SpecLibraryTab } from "./spec-library-tab";
 import { CategorySpecTab } from "./category-spec-tab";
 import { CategoryPayModeTab } from "./category-pay-mode-tab";
-import { CategoryPointsTab } from "./category-points-tab";
 import { CategoriesTab } from "./categories-tab";
 import { SpuStdTab } from "./spu-std-tab";
 import { TopicsTab } from "./topics-tab";
@@ -52,7 +51,7 @@ import { PagedTable } from "@/components/ui/paged-table";
 type Copy = (typeof PRODUCTS_COPY)["zh"];
 const TAB_KEYS = ["categories", "skus", "audit", "stock", "templates",
   // 规格库（V195）：通用 / 专用 / 类目×规格 —— 三件事分成三页，见 lib/nav.ts 的说明
-  "spec-common", "spec-special", "category-spec", "category-pay-mode", "category-points",
+  "spec-common", "spec-special", "category-spec", "category-pay-mode",
   "spu-std", "topics", "stats", "banned-word"] as const;   // 顺序与 lib/nav.ts 的叶子一致
 
 const MARKET_LABEL = (c: Copy): Record<Market, string> => ({ CN: c.marketCN, SG: c.marketSG });
@@ -477,7 +476,6 @@ function ProductsInner() {
 
       {/* 类目策略两页：能不能当面付、发多少积分。权限跟类目走，不跟规格走 */}
       {tab === "category-pay-mode" && <CategoryPayModeTab c={c} canEdit={canEditCategory} />}
-      {tab === "category-points" && <CategoryPointsTab c={c} canEdit={canEditCategory} />}
 
       {/* 商品详情 / 审核。一个商品可能有好几个规格，通过/驳回/强制下架都是打在具体某个 sku 上的 */}
       <Drawer

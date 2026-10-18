@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1640" height="785" viewBox="0 0 1640 785"><title>下单核销与两种商家兑付</title><desc>完整核销头寸状态及用户/门店/接收户积分移动，随单与定期付款来源互斥。</desc>
+<defs><marker id="point" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker><marker id="money" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#c2410c"/></marker><marker id="dep" markerWidth="10" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9" fill="none" stroke="#64748b"/></marker><marker id="real" markerWidth="13" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0 0L12 6L0 12Z" fill="white" stroke="#475569"/></marker><marker id="diamond" markerWidth="15" markerHeight="10" refX="14" refY="5" orient="auto-start-reverse"><path d="M0 5L7 0L14 5L7 10Z" fill="#475569"/></marker></defs>
+<rect width="1640" height="785" fill="#f8fafc"/>
+<text x="35" y="48" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="29" fill="#172554" font-weight="650" text-anchor="start">下单核销与两种商家兑付</text>
+<text x="35" y="80" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">v3 设计契约 · pay-domain内业务模块 · payTxManager · 实现与验收状态见 TDD</text>
+<text x="35" y="138" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="22" fill="#172554" font-weight="650" text-anchor="start">随单：默认</text>
+<rect x="35.0" y="150" width="356.0" height="170" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="35.0" y="150" width="6" height="170" rx="3" fill="#2563eb"/>
+<text x="51.0" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">HELD</text>
+<text x="51.0" y="205" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">USER.A→订单H</text>
+<text x="51.0" y="228" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">协议快照＋B额度</text>
+<rect x="433.0" y="150" width="356.0" height="170" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="433.0" y="150" width="6" height="170" rx="3" fill="#2563eb"/>
+<text x="449.0" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">PAYABLE</text>
+<text x="449.0" y="205" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">H→接收户预留</text>
+<text x="449.0" y="228" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">C→D，门店只留流水</text>
+<path d="M391.0,235 L433.0,235" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="831.0" y="150" width="356.0" height="170" rx="12" fill="white" stroke="#7c3aed" stroke-width="1.8"/>
+<rect x="831.0" y="150" width="6" height="170" rx="3" fill="#7c3aed"/>
+<text x="847.0" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">PAYING</text>
+<text x="847.0" y="205" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">固定ticket与应付</text>
+<text x="847.0" y="228" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">未知只查询不重付</text>
+<path d="M789.0,235 L831.0,235" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="1229.0" y="150" width="356.0" height="170" rx="12" fill="white" stroke="#c2410c" stroke-width="1.8"/>
+<rect x="1229.0" y="150" width="6" height="170" rx="3" fill="#c2410c"/>
+<text x="1245.0" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#c2410c" font-weight="650" text-anchor="start">PAID</text>
+<text x="1245.0" y="205" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">证据成功扣D</text>
+<text x="1245.0" y="228" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">积分仍在接收户预留</text>
+<path d="M1187.0,235 L1229.0,235" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<text x="35" y="355" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="17" fill="#526277" font-weight="400" text-anchor="start">未支付取消：H→A并释放B。直连补差；归集专项回补，商家货款不再额外付第二次。</text>
+<text x="35" y="423" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="22" fill="#172554" font-weight="650" text-anchor="start">定期：归集商家本期可用</text>
+<rect x="35.0" y="435" width="223.33333333333334" height="170" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="35.0" y="435" width="6" height="170" rx="3" fill="#2563eb"/>
+<text x="51.0" y="464" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">IN_STORE</text>
+<text x="51.0" y="490" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">H→STORE.P</text>
+<text x="51.0" y="513" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">C不变</text>
+<rect x="300.33333333333337" y="435" width="223.33333333333334" height="170" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="300.33333333333337" y="435" width="6" height="170" rx="3" fill="#2563eb"/>
+<text x="316.33333333333337" y="464" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">SETTLEABLE</text>
+<text x="316.33333333333337" y="490" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">终局STORE.P→A</text>
+<text x="316.33333333333337" y="513" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">可进入固定账期</text>
+<path d="M258.33333333333337,520 L300.33333333333337,520" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="565.6666666666667" y="435" width="223.33333333333334" height="170" rx="12" fill="white" stroke="#7c3aed" stroke-width="1.8"/>
+<rect x="565.6666666666667" y="435" width="6" height="170" rx="3" fill="#7c3aed"/>
+<text x="581.6666666666667" y="464" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">IN_STATEMENT</text>
+<text x="581.6666666666667" y="490" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">固定候选ID/金额</text>
+<text x="581.6666666666667" y="513" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">同账期修订重算</text>
+<path d="M523.6666666666667,520 L565.6666666666667,520" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="831.0000000000001" y="435" width="223.33333333333334" height="170" rx="12" fill="white" stroke="#2563eb" stroke-width="1.8"/>
+<rect x="831.0000000000001" y="435" width="6" height="170" rx="3" fill="#2563eb"/>
+<text x="847.0000000000001" y="464" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">PAYABLE</text>
+<text x="847.0000000000001" y="490" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">确认STORE→接收户</text>
+<text x="847.0000000000001" y="513" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">C→D</text>
+<path d="M789.0000000000001,520 L831.0000000000001,520" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="1096.3333333333335" y="435" width="223.33333333333334" height="170" rx="12" fill="white" stroke="#7c3aed" stroke-width="1.8"/>
+<rect x="1096.3333333333335" y="435" width="6" height="170" rx="3" fill="#7c3aed"/>
+<text x="1112.3333333333335" y="464" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#7c3aed" font-weight="650" text-anchor="start">PAYING</text>
+<text x="1112.3333333333335" y="490" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">gross=offset+cash</text>
+<text x="1112.3333333333335" y="513" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">R锁定未核减</text>
+<path d="M1054.3333333333335,520 L1096.3333333333335,520" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<rect x="1361.666666666667" y="435" width="223.33333333333334" height="170" rx="12" fill="white" stroke="#c2410c" stroke-width="1.8"/>
+<rect x="1361.666666666667" y="435" width="6" height="170" rx="3" fill="#c2410c"/>
+<text x="1377.666666666667" y="464" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#c2410c" font-weight="650" text-anchor="start">PAID</text>
+<text x="1377.666666666667" y="490" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">D−gross/B+offset</text>
+<text x="1377.666666666667" y="513" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">R−offset，现金出</text>
+<path d="M1319.666666666667,520 L1361.666666666667,520" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" marker-end="url(#point)"/>
+<text x="35" y="640" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="17" fill="#526277" font-weight="400" text-anchor="start">直连无定期转账能力拒签；抵销不是现金到账。确认前退款修订，确认未付先反转；PAYING先查结果。</text>
+<text x="35" y="761" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#be123c" font-weight="400" text-anchor="start">资金证据不明确时保留原意图/占用；不假记到账、不改同一幂等请求金额。</text>
+</svg>

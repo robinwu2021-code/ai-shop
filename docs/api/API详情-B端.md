@@ -226,6 +226,26 @@
 类型：[`AfterSale`](#aftersale)\[\]
 
 
+#### GET `/biz/after-sale/{afterSaleNo}`
+
+售后详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `afterSaleNo` | path | `string` | 是 | 售后单号 |
+
+**出参**（`data`）
+
+类型：[`MerchantAfterSaleWorkItem`](#merchantaftersaleworkitem)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSale` | [`AfterSale`](#aftersale) | 是 | 售后单 |
+| `order` | [`Order`](#order) | 是 | 所属订单 |
+
+
 #### POST `/biz/after-sale/{afterSaleNo}/approve`
 
 同意售后　🔒
@@ -442,6 +462,74 @@
 | `status` | `string` | 是 | — |
 | `label` | `string` | 是 | — |
 | `at` | `number` | 是 | — |
+
+
+#### GET `/biz/after-sale/by-order/{orderNo}`
+
+订单的当前售后　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`AfterSale`](#aftersale)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
+| `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
+| `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
+| `orderNo` | `string` | 是 | 所属**主订单**号（`SO…`）。跨商家下单会拆成多笔子订单，它们共用这一个主单号。 展示「同一次下单」时用它，关联单张订单卡片请用  {@link  subOrderNo } 。 |
+| `type` | [`AfterSaleType`](#aftersaletype) | 是 | 售后类型：仅退款 / 退货退款 |
+| `status` | [`AfterSaleStatus`](#aftersalestatus) | 是 | 售后单状态，独立于订单状态流转 |
+| `reason` | `string` | 是 | 用户填写的售后原因 |
+| `images` | `string`\[\] | 是 | 举证图（破损、少件的照片）。是否必填由售后类型决定 |
+| `refundMinor` | `number` | 是 | 这张售后单要退的钱（分）。**不等于订单金额** —— 一张子订单可以只退其中一件，也可以先后发起多次。 <p>后端一直在发（`AfterSaleVO.refundMinor`），只是契约里漏了声明， 于是 B 端售后页拿不到它，只能退而求其次显示**整张子订单的应付**。 单件单品的单子上两个数恰好相等，所以这个错在联调环境里看不出来 —— 直到有人退三件里的一件。 |
+| `instant` | `boolean` | 否 | 极速退：金额在阈值内的仅退款，系统自动通过。 **商家只可见不可拒**，所以这类单上不该出现同意/驳回按钮。 |
+| `merchantReply` | `string` | 否 | 商家同意/驳回时的说明 |
+| `refundMode` | [`RefundMode`](#refundmode) | 否 | 退款形式：现金 / 积分（售后规则 §2.4，AC10）。商家审核时定，默认现金。 积分形式不退现金、不回冲分账，按核定额折积分补偿。 |
+| `refundPoints` | `number,null` | 否 | 退款形式为 POINTS 时发放的积分数；现金时为空 |
+| `approvedMinor` | `number,null` | 否 | 商家核定的退款额（分），部分退款时 < 申请额；未核定为空（= 全额）（AC9） |
+| `fulfillStage` | [`FulfillStage`](#fulfillstage) \| `null` | 否 | 申请当时的履约进度快照：未备货/备货中/已出单未揽收/已揽收/已签收。 B 端审核弹层显示实况，C 端据它给灰色档提示（AC13/AC15）。 |
+| `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
+| `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
+| `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
+| `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
+| `createdAt` | `number` | 否 | 申请时间 |
+| `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
+| `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
+| `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`timeline[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | — |
+| `label` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### GET `/biz/after-sale/worklist`
+
+分页售后待办　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`MerchantAfterSaleWorkItem`](#merchantaftersaleworkitem)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 ### appointment-slots
@@ -4583,6 +4671,48 @@ _无字段_
 类型：[`ExpressQuote`](#expressquote)\[\]
 
 
+#### POST `/biz/order/{orderNo}/fulfillment-change`
+
+配送方式切换　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`MerchantFulfillmentChange`](#merchantfulfillmentchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `order` | [`Order`](#order) | 是 | 更新后的订单摘要 |
+| `version` | `number` | 是 | 新的并发更新版本 |
+
+
+#### GET `/biz/order/{orderNo}/fulfillment-options`
+
+配送方式切换资格　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`MerchantFulfillmentOptions`](#merchantfulfillmentoptions)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `subOrderNo` | `string` | 是 | 门店子订单号 |
+| `currentFulfillment` | `string` | 是 | 当前履约方式 |
+| `version` | `number` | 是 | 并发更新版本 |
+| `options` | [`MerchantFulfillmentOption`](#merchantfulfillmentoption)\[\] | 是 | 本门店可选的履约方式 |
+
+
 #### GET `/biz/order/{orderNo}/logistics-updates`
 
 物流更新记录　🔒
@@ -4831,6 +4961,24 @@ _无字段_
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
 | `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
+
+
+#### GET `/biz/order/worklist`
+
+按优先级分页的订单待办　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`MerchantOrderWorkItem`](#merchantorderworkitem)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 ### payout-account
@@ -5433,53 +5581,192 @@ _无字段_
 
 ### points
 
-#### GET `/biz/points/account`
+#### GET `/biz/points/store-account`
 
-本期发分服务费与开关状态　🔒
+当前门店积分账本　🔒
 
-**入参**：无
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
 
 **出参**（`data`）
 
-类型：[`MerchantPointAccount`](#merchantpointaccount)
+类型：[`StorePointAccount`](#storepointaccount)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `periodExpenseMinor` | `number` | 是 | 本期发分服务费支出（分）。**商家唯一感知到的积分成本** |
-| `period` | `string` | 是 | 当前账期标识，如 `2026-08` |
-| `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
-| `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
-| `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
+| `snapshot` | `object`（见下） | 是 | 服务端冻结的账务或准备快照 |
+| `exists` | `boolean` | 是 | 账户是否已经创建，未创建不代表查询失败 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
 
-
-#### GET `/biz/points/records`
-
-发分服务费明细（按单）　🔒
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`MerchantPointsRecord`](#merchantpointsrecord)\[\]
-
-
-#### POST `/biz/points/toggle`
-
-开/关本店积分　🔒
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`MerchantPointAccount`](#merchantpointaccount)
+`snapshot` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `periodExpenseMinor` | `number` | 是 | 本期发分服务费支出（分）。**商家唯一感知到的积分成本** |
-| `period` | `string` | 是 | 当前账期标识，如 `2026-08` |
-| `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
-| `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
-| `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `holderType` | `string` | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+| `buckets` | [`Record_string_number`](#record_string_number) | 是 | 按账本分桶保存的积分余额 |
+| `frozen` | `boolean` | 是 | 是否冻结该账户新增使用 |
+| `expireAt` | `number,null` | 是 | 服务端计算的过期时间，Unix 毫秒；无则为空 |
+| `expiryRevision` | `number` | 是 | 账户失效计划修订号 |
+| `lastActiveAt` | `number` | 是 | 最近有效账务活动时间，Unix 毫秒 |
+
+
+#### GET `/biz/points/store-agreement`
+
+当前门店有效积分签约　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointAgreement`](#storepointagreement)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `agreementNo` | `string` | 是 | 门店接受协议编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `signedBy` | `string` | 是 | 签署该门店协议的主体属主 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `termsText` | `string` | 是 | 接受时冻结的条款正文 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `path` | [`FundsMode`](#fundsmode) | 是 | 冻结的直连或归集资金路径 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+| `accountVersion` | `string` | 是 | 冻结的收款账户版本 |
+| `state` | `string` | 是 | 服务端处理状态 |
+
+
+#### POST `/biz/points/store-agreement/sign`
+
+主体属主签署当前门店积分协议　🔒
+
+**入参**
+
+请求体：[`StorePointSignRequest`](#storepointsignrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+
+**出参**（`data`）
+
+类型：[`StorePointAgreement`](#storepointagreement)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `agreementNo` | `string` | 是 | 门店接受协议编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `signedBy` | `string` | 是 | 签署该门店协议的主体属主 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `termsText` | `string` | 是 | 接受时冻结的条款正文 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `path` | [`FundsMode`](#fundsmode) | 是 | 冻结的直连或归集资金路径 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+| `accountVersion` | `string` | 是 | 冻结的收款账户版本 |
+| `state` | `string` | 是 | 服务端处理状态 |
+
+
+#### POST `/biz/points/store-agreement/terminate`
+
+主体属主终止当前门店积分协议　🔒
+
+**入参**
+
+请求体：[`StorePointsTypeQuery`](#storepointstypequery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### GET `/biz/points/store-entries`
+
+当前门店积分流水　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+| `after` | query | `number` | 否 | — |
+| `limit` | query | `number` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointEntryPage`](#storepointentrypage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 持久记录主键 |
+| `entryNo` | `string` | 是 | 不可变积分分录编号 |
+| `voucherNo` | `string` | 是 | 原记账凭证编号 |
+| `holderType` | `string` | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+| `bucket` | `string` | 是 | 积分账本或资金池分桶 |
+| `deltaPoints` | `number` | 是 | 该分录积分变化，负值表示扣减 |
+| `afterPoints` | `number` | 是 | 该分录完成后的积分余额 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/biz/points/store-terms`
+
+当前积分签约条款　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointTerms`](#storepointterms)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `version` | `string` | 是 | 当前版本号，变更按版本校验 |
+| `hash` | `string` | 是 | 发布条款的内容摘要 |
+| `text` | `string` | 是 | 发布条款正文 |
+
+
+#### GET `/biz/points/store-types`
+
+当前门店可见的积分类型　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StorePointType`](#storepointtype)\[\]
 
 
 ### push-token
@@ -8866,6 +9153,15 @@ _无字段_
 | `activities` | [`AudienceRef`](#audienceref)\[\] | 是 | 受众里引用它的未结束活动 |
 | `segments` | [`MemberSegment`](#membersegment)\[\] | 是 | 条件里含它的人群 |
 
+### MerchantAfterSaleWorkItem
+
+售后工作台行；订单摘要用于展示关联商品与金额。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSale` | [`AfterSale`](#aftersale) | 是 | 售后单 |
+| `order` | [`Order`](#order) | 是 | 所属订单 |
+
 ### MerchantApplyReq
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -8953,6 +9249,36 @@ _无字段_
 | `silent` | `boolean` | 是 | 沉默客户：曾经常来、最近没来。**这是店主唯一能立刻行动的信号** |
 | `source` | [`TrafficSource`](#trafficsource) | 是 | 客流来源：他是你自己带来的，还是平台分配的 |
 
+### MerchantFulfillmentChange
+
+履约方式变更结果。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `order` | [`Order`](#order) | 是 | 更新后的订单摘要 |
+| `version` | `number` | 是 | 新的并发更新版本 |
+
+### MerchantFulfillmentOption
+
+门店订单可切换的履约选项。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `fulfillment` | `string` | 是 | 履约方式 |
+| `allowed` | `boolean` | 是 | 当前门店是否允许选择 |
+| `reason` | `string,null` | 是 | 不允许时的原因 |
+
+### MerchantFulfillmentOptions
+
+当前履约方式及可选项。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `subOrderNo` | `string` | 是 | 门店子订单号 |
+| `currentFulfillment` | `string` | 是 | 当前履约方式 |
+| `version` | `number` | 是 | 并发更新版本 |
+| `options` | [`MerchantFulfillmentOption`](#merchantfulfillmentoption)\[\] | 是 | 本门店可选的履约方式 |
+
 ### MerchantLoginReqBody
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -8987,6 +9313,18 @@ _无字段_
 | `name` | `string` | 是 | — |
 | `amountMinor` | `number` | 是 | — |
 
+### MerchantOrderWorkItem
+
+商家订单待办行；订单事实与需要执行的动作同时返回。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `order` | [`Order`](#order) | 是 | 订单摘要 |
+| `actionKind` | `AFTER_SALE` \| `RECEIVE_PAYMENT` \| `FULFILL` \| `VERIFY` | 是 | 当前订单待办动作 |
+| `priority` | `number` | 是 | 待办优先级 |
+| `afterSaleNo` | `string,null` | 是 | 关联售后单号 |
+| `afterSaleStatus` | `string,null` | 是 | 关联售后单状态 |
+
 ### MerchantPlan
 
 我的增值包（B-11.13，`GET /biz/plan`）。 <p>与运营端那份（`MerchantPlanRow`）刻意是两个类型：运营看的是「这家商家买了什么」， 商家看的是「我有什么、还差什么、能不能试」。挤成一个的结果是商家侧要接一堆 用不上的字段（授予方、降级时间、额度来源），而它们每一个都会被端上误读成给他看的。
@@ -9008,31 +9346,6 @@ _无字段_
 | `trialDays` | `number,null` | 否 | 试用天数，配合 `trialTier` 显示「免费试用 14 天」 |
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
-
-### MerchantPointAccount
-
-商家的积分成本视图。**单位是钱，不是分**。 商家只感知**一件事**：开了积分，每笔订单要付一笔发分服务费。 他**看不到**用户抵了多少分、平台补了多少、资金池 —— 对他而言订单就是全额， 收到的是「订单金额 − 各项费用」（V34）。 所以这里没有 income/net：商家侧不存在「积分兑付进账」这个概念。
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `periodExpenseMinor` | `number` | 是 | 本期发分服务费支出（分）。**商家唯一感知到的积分成本** |
-| `period` | `string` | 是 | 当前账期标识，如 `2026-08` |
-| `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
-| `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
-| `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
-
-### MerchantPointsRecord
-
-商家的一条发分服务费记录：一单一条，来自 `stl_bill.points_fee_minor`
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `settleNo` | `string` | 是 | 结算单号 |
-| `subOrderNo` | `string` | 是 | 关联子单，商家据此对到具体订单 |
-| `points` | `number` | 是 | 本单发放的积分数 |
-| `feeMinor` | `number` | 是 | 本单的发分服务费（分）。**这是商家唯一感知到的积分成本** |
-| `period` | `string` | 是 | 账期 `YYYYMM` |
-| `at` | `number` | 是 | 计提时间（支付成功时），不是分账时间 —— 两者相差一个售后期 |
 
 ### MerchantProfile
 
@@ -9169,6 +9482,10 @@ _无字段_
 | `title` | `string` | 是 | 标题（列表页展示） |
 | `body` | `string` | 是 | 正文 |
 | `link` | `string` | 否 | 点进去要跳哪（订单详情/商品/团），已是完整页面路径带参 |
+| `bizType` | `string,null` | 否 | B inbox projection; business action state is independent of read/unread. |
+| `bizNo` | `string,null` | 否 | — |
+| `storeNo` | `string,null` | 否 | — |
+| `actionPending` | `boolean` | 否 | — |
 | `read` | `boolean` | 是 | 是否已读。未读数按 type 分别统计 |
 | `at` | `number` | 是 | 消息产生时间 |
 
@@ -9392,6 +9709,7 @@ _无字段_
 枚举取值：
 
 - `WAIT_PAY`
+- `POINTS_PROCESSING`
 - `WAIT_OFFLINE_PAY`
 - `PAID`
 - `FULFILLING`
@@ -11124,6 +11442,137 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `locked` | `boolean` | 否 | 运营锁路（P2）：置灰不可改，文案「平台已暂停，联系运营」 |
 | `scopeMode` | `string` | 否 | ALL / SUBSET（P2）：这一路只送经营范围的一个子集 |
 | `areaNos` | `string`\[\] | 否 | SUBSET 时适用的范围项 area_no |
+
+### StorePointAccount
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `snapshot` | `object`（见下） | 是 | 服务端冻结的账务或准备快照 |
+| `exists` | `boolean` | 是 | 账户是否已经创建，未创建不代表查询失败 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+`snapshot` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `holderType` | `string` | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+| `buckets` | [`Record_string_number`](#record_string_number) | 是 | 按账本分桶保存的积分余额 |
+| `frozen` | `boolean` | 是 | 是否冻结该账户新增使用 |
+| `expireAt` | `number,null` | 是 | 服务端计算的过期时间，Unix 毫秒；无则为空 |
+| `expiryRevision` | `number` | 是 | 账户失效计划修订号 |
+| `lastActiveAt` | `number` | 是 | 最近有效账务活动时间，Unix 毫秒 |
+
+### StorePointAgreement
+
+Frozen, store-scoped acceptance. Route fields are read-only server snapshots.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `agreementNo` | `string` | 是 | 门店接受协议编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `signedBy` | `string` | 是 | 签署该门店协议的主体属主 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `termsText` | `string` | 是 | 接受时冻结的条款正文 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `path` | [`FundsMode`](#fundsmode) | 是 | 冻结的直连或归集资金路径 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+| `accountVersion` | `string` | 是 | 冻结的收款账户版本 |
+| `state` | `string` | 是 | 服务端处理状态 |
+
+### StorePointAgreementSettleMode
+
+StorePointAgreement 的 settleMode 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `PER_ORDER`
+- `PERIODIC`
+
+### StorePointEntryPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 持久记录主键 |
+| `entryNo` | `string` | 是 | 不可变积分分录编号 |
+| `voucherNo` | `string` | 是 | 原记账凭证编号 |
+| `holderType` | `string` | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+| `bucket` | `string` | 是 | 积分账本或资金池分桶 |
+| `deltaPoints` | `number` | 是 | 该分录积分变化，负值表示扣减 |
+| `afterPoints` | `number` | 是 | 该分录完成后的积分余额 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+### StorePointSignRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+
+### StorePointTerms
+
+Current store's published acceptance terms.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `version` | `string` | 是 | 当前版本号，变更按版本校验 |
+| `hash` | `string` | 是 | 发布条款的内容摘要 |
+| `text` | `string` | 是 | 发布条款正文 |
+
+### StorePointType
+
+Pay ledger views are scoped to the authenticated current store and one points type.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `deductRatioBp` | `number` | 是 | 最大抵扣比例，万分比 |
+| `idleDays` | `number` | 是 | 无活动失效天数 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `market` | `string` | 是 | 市场代码 |
+| `currency` | `string` | 是 | ISO 货币代码 |
+| `scale` | `number` | 是 | 货币最小单位精度 |
+| `rate` | `object`（见下） | 是 | 积分与最小货币单位的换算比例 |
+| `status` | [`StorePointTypeStatus`](#storepointtypestatus) | 是 | 服务端业务状态 |
+
+`rate` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `pointsUnit` | `number` | 是 | 换算比例中的积分数量 |
+| `minorUnit` | `number` | 是 | 换算比例中的最小货币单位数量 |
+
+### StorePointTypeStatus
+
+StorePointType 的 status 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `DRAFT`
+- `ACTIVE`
+- `DRAINING`
+- `RETIRED`
+
+### StorePointsTypeQuery
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
 
 ### StoreProfile
 

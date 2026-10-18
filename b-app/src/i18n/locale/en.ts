@@ -718,39 +718,50 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
 
   points: {
 
+    agreement: "Store points agreement",
+    activeAgreement: "Agreement active",
+    terminate: "Terminate agreement",
+    termsVersion: "Terms version",
+    signHint: "Select an active payment channel and settlement mode. The server verifies the route.",
+    perOrder: "Per order",
+    periodic: "Periodic",
+    acceptTerms: "I have read and accept these terms",
+    sign: "Sign agreement",
+    noTerms: "No terms published for this points type",
+    signConfirm: "Sign this points agreement for the current store?",
+    terminateConfirm: "Terminate this store agreement? Existing points obligations still apply.",
+    actionFailed: "Action failed. Refresh and retry.",
+    storeLedger: "Store points ledger",
+    storeLedgerHint: "View by current store and points type. The payment ledger is authoritative.",
+    noTypes: "No points types yet",
+    type: "Points type",
+    pointsUnit: "points",
+    minorUnit: "minor currency units",
+    accountBuckets: "Account buckets",
+    emptyAccount: "No ledger activity for this store and type",
+    balanceAfter: "Balance after",
+    loadMore: "Load more",
+
     title: "Points",
 
-    periodExpense: "Issuing fee this period",
 
-    periodHint: "{p} · deducted at settlement",
 
-    switch: "Points at this store",
 
-    switchHint: "Once enabled, customers earn points when buying here, and the merchant pays a service fee on points issued",
 
-    closeOnlyFuture: "Turning it off only affects the future: points already issued stay valid, fees already charged are not refunded",
 
-    forced: "The platform has force-enabled points for this store; it cannot be turned off",
 
-    rule: "Earning rules",
 
-    rulePlatform: "Set by platform",
 
-    ruleHint: "Set per category, not per merchant. See the published category rules for exact rates.",
 
-    records: "View issuing details",
+    records: "View points entries",
 
-    recordsTitle: "Points issued",
+    recordsTitle: "Store points entries",
 
-    periodTotal: "Period total",
 
-    recordsEmpty: "No points issued this period",
+    recordsEmpty: "No points entries yet",
 
-    granted: "{n} points issued",
 
-    notGranted: "Not issued",
 
-    notGrantedWhy: "Orders paid on site do not earn points",
 
   },
 
@@ -1332,7 +1343,6 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     allTab: "All after-sales",
     withdraw: "Withdraw request",
     fullCash: "Full cash refund for this store order to the original payment method",
-    historicalPoints: "This order includes historical points requiring manual verification",
     restock: "Returned goods can be resold; approve restocking (off by default)",
     accepted: "Submitted. Check refund progress.",
     execution: {
@@ -1365,8 +1375,6 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     donePointsHint: "Refunded as {n} points to the buyer per agreement — this case is closed.",
     waitReceiptHint: "In transit. Confirm the refund once the buyer receives it.",
     approveAmount: "Refund amount",
-    refundModeCash: "Cash",
-    refundModePoints: "Points",
     amountInvalid: "Refund amount must be >0 and not exceed the amount paid",
     stage: {
       NOT_PREPARED: "Not prepared",
@@ -1634,15 +1642,6 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
     batchStatusRECONCILED: "Ready to release",
     batchStatusRELEASED: "Released",
     rateTitle: "Fee rates",
-    pointsTitle: "Store points", pointsOn: "On", pointsOff: "Off", pointsForced: "On by platform",
-    pointsExpense: "{period} points issuing fee",
-    pointsHint: "The platform covers the amount customers offset with points; the merchant pays only the issuing fee.",
-    pointsDetail: "See details", pointsFold: "Hide details",
-    pointsEmpty: "No issuing fees this period", pointsQty: "{n} pts",
-    pointsOnTitle: "Enable store points",
-    pointsOnHint: "Once enabled, every order issues points by the rules and incurs an issuing fee.",
-    pointsOffTitle: "Disable store points",
-    pointsOffHint: "Future orders only — points already issued stay valid and fees already charged are not refunded.",
 
     title: "Settlement", empty: "Nothing to settle yet",
     net: "Net", gross: "Goods",

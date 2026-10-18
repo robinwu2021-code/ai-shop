@@ -575,26 +575,6 @@ export interface CategoryPayMode {
 }
 
 /**
- * 类目 × 积分发放规则。**平台按类目统一管理，商家不参与配置** ——
- * 依据是实测：线上 199 件商品里，用商品级配置配了积分的是 0 件。
- *
- * `earnValue` 是**整数**：FIXED 存分、RATIO 存万分比（千分之一 = 10）。
- * 不用浮点 —— 金额与比例一旦用 double，对账时的分位差没人说得清。
- */
-export interface CategoryPoints {
-  /** 类目号 */
-  categoryNo: string;
-  /** 类目名 */
-  categoryName: string;
-  /** 父类目名。**同名子类目很常见**，只给自己的名字分不清是哪个 */
-  parentName: string;
-  /** FIXED 定额 / RATIO 按成交额比例；**空 = 没配**，走平台兜底 */
-  earnMode: "FIXED" | "RATIO" | null;
-  /** 发分比例（万分比） */
-  earnValue: number | null;
-}
-
-/**
  * 积分的**端策略**。存的是**禁用名单，不是允许名单** ——
  * `X-Client` 头今天还没有哪个端全量在发，用允许名单会让开关一上线就把全站积分静默关掉。
  *
@@ -615,23 +595,36 @@ export interface ClientPointsPolicy {
  * <p>此前这个域**一个统计数字都没有**，而商品是这个平台的主体。
  * 四个数各自对应一个能做的事，不是四个摆着看的指标。
  */
+/**
+ * 商品域平台统计（M4）。
+ *
+ * <p>此前这个域**一个统计数字都没有**，而商品是这个平台的主体。
+ * 四个数各自对应一个能做的事，不是四个摆着看的指标。
+ */
 export interface ProductStats {
+  /** 分类数量 */
   categories: number;
   /** 至少被一个商品用过的类目数 */
   categoriesUsed: number;
+  /** SKU 数量 */
   skus: number;
   /** 填了条码的。**扫码功能的天花板就是这个数** */
   skusWithBarcode: number;
   /** 填了商家货号的 */
   skusWithCode: number;
+  /** 规格维度数量 */
   specDims: number;
   /** 至少挂到一个类目上的维度数。规格库只增不减，没挂上的是清理依据 */
   specDimsBound: number;
+  /** 审核通过商品数量 */
   auditApproved: number;
+  /** 审核驳回商品数量 */
   auditRejected: number;
+  /** 待审核商品数量 */
   auditPending: number;
   /** 最近 N 天的审核动作数 —— **吞吐**，与上面三个累计数不是一回事 */
   auditActions: number;
+  /** 审核统计窗口天数 */
   auditDays: number;
 }
 
@@ -641,20 +634,35 @@ export interface ProductStats {
  * <p>「审核到哪了、建账了吗、有库存吗、卖了多少」此前要在四个页面之间跳着看，
  * 而它们各自的主键还不一样。卡点用词与链条画像同一套 —— 分叉就是两套结论。
  */
+/**
+ * 单商品全链路状态（M5）。
+ *
+ * <p>「审核到哪了、建账了吗、有库存吗、卖了多少」此前要在四个页面之间跳着看，
+ * 而它们各自的主键还不一样。卡点用词与链条画像同一套 —— 分叉就是两套结论。
+ */
 export interface GoodsChain {
+  /** 商品编号 */
   goodsNo: string;
+  /** 商品或规格展示标题 */
   title: string | null;
+  /** 商家主体编号 */
   entityNo: string;
+  /** 商品审核状态 */
   auditStatus: string | null;
+  /** 是否上架销售 */
   onSale: boolean;
+  /** SKU 数量 */
   skuCount: number;
   /**
    * 其中在进销存里建了账的。**少于 skuCount 就是投影没搬全** ——
    * 商家端的表现是「有些规格盘得着、有些盘不着」，极难自查
    */
   bookedSkus: number;
+  /** 账面库存数量 */
   onHand: number;
+  /** 当前可售库存数量 */
   available: number;
+  /** 累计销售数量 */
   soldCount: number;
   /** 卡在哪一层。null = 这一件是通的 */
   /** 与链条画像用同一套词（）—— 两处分叉就是两套结论 */
@@ -667,12 +675,20 @@ export interface GoodsChain {
  * <p>**此前只有事后驳回**：带违禁词的标题会进审核队列、占一个审核员的时间、
  * 再被驳回，而商家隔几天才知道要改哪个字。
  */
+/**
+ * 平台禁售词（商品①）。商家提审商品时前置校验标题。
+ *
+ * <p>**此前只有事后驳回**：带违禁词的标题会进审核队列、占一个审核员的时间、
+ * 再被驳回，而商家隔几天才知道要改哪个字。
+ */
 export interface BannedWord {
+  /** 持久记录主键 */
   id: number;
   /** 词。**存的是小写**，匹配时两边都转小写 */
   word: string;
   /** 为什么禁。**会原样出现在给商家的报错里**，所以要写成他看得懂的一句话 */
   reason: string | null;
+  /** 是否启用该配置 */
   enabled: boolean;
 }
 

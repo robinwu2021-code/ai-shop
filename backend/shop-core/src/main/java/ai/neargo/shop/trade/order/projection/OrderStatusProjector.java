@@ -39,6 +39,9 @@ public final class OrderStatusProjector {
         if (OrdOrder.CLOSED.equals(mainStatus)) {
             return ContractOrderStatus.CANCELLED;
         }
+        if (OrdOrder.POINTS_PENDING.equals(mainStatus)) {
+            return ContractOrderStatus.POINTS_PROCESSING;
+        }
         // 线下支付等当面收款：主单说了算，子单那一列不动
         if (OrdOrder.WAIT_OFFLINE_PAY.equals(mainStatus)
                 && ContractOrderStatus.WAIT_PAY.equals(subContract(subStatus))) {
@@ -61,6 +64,9 @@ public final class OrderStatusProjector {
             // 付款前/取消/关闭：订单总状态由主单决定
             if (OrdOrder.CLOSED.equals(mainStatus)) {
                 return ContractOrderStatus.CANCELLED;
+            }
+            if (OrdOrder.POINTS_PENDING.equals(mainStatus)) {
+                return ContractOrderStatus.POINTS_PROCESSING;
             }
             if (OrdOrder.WAIT_OFFLINE_PAY.equals(mainStatus)) {
                 return ContractOrderStatus.WAIT_OFFLINE_PAY;

@@ -14,7 +14,7 @@ import { orderSubscribeTmpls, requestSubscribe } from "@shared/ports/push";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
 import type { Order } from "@shared/types";
-import type { PayMethodItem, PayMethodList } from "@/api/contract";
+import type { PayMethodItem, PayMethodList, PointsOrderState } from "@/api/contract";
 import { confirm } from "@ai-shop/ui/prompt";
 import { PaymentResultPoller, paymentPhase } from "@/shared/payment-result";
 import { clearCheckoutKey } from "@/shared/checkout-key";
@@ -22,6 +22,9 @@ import { clearCheckoutKey } from "@/shared/checkout-key";
 const { t } = useI18n();
 
 const order = ref<Order | null>(null);
+const pointsState = ref<PointsOrderState | null>(null);
+const processing = computed(() => order.value?.status === "POINTS_PROCESSING");
+const reconfirm = computed(() => processing.value && pointsState.value?.phase === "RECONFIRM");
 const paying = ref(false);
 /** 可用支付方式。null = 还没拉到 */
 const methodList = ref<PayMethodList | null>(null);
@@ -29,6 +32,7 @@ const methodList = ref<PayMethodList | null>(null);
 const chosen = ref<string>("");
 const now = ref(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
+
 
 const awaitingConfirmation = ref(false);
 const phase = computed(() => paymentPhase(order.value?.status, awaitingConfirmation.value));
@@ -46,6 +50,7 @@ let resumePayment: ((visible: boolean) => void) | undefined;
 function resumeWhenVisible(): Promise<boolean> {
   return visible ? Promise.resolve(true) : new Promise((resolve) => { resumePayment = resolve; });
 }
+
 
 /** 那串码叫什么。与订单详情共用一份判据，别在两处各写一个三分支 */
 const codeLabel = computed(() =>
@@ -108,18 +113,29 @@ async function load(orderNo: string) {
   poller.cancel();
   currentNo.value = orderNo;
   order.value = null;
+  pointsState.value = null;
   awaitingConfirmation.value = false;
   checkoutCleared = false;
   methodList.value = null;
   chosen.value = "";
   paying.value = false;
   try {
+
     let detail = await api.orderDetail(orderNo);
     const payNo = detail.payOrderNo || detail.orderNo;
     if (payNo !== detail.orderNo) detail = await api.orderDetail(payNo);
     if (generation !== loadGeneration || !visible) return;
     currentNo.value = payNo;
     order.value = detail;
+    if (detail.status === "POINTS_PROCESSING") {
+      try {
+        pointsState.value = await api.orderPointsState(payNo);
+        if (generation !== loadGeneration || !visible) return;
+      } catch {
+        pointsState.value = null;
+      }
+    }
+
     failed.value = false;
     if (detail.status === "WAIT_PAY" && !detail.paymentResolution) {
       try {
@@ -130,7 +146,9 @@ async function load(orderNo: string) {
       } catch { /* 网络抖动时仍允许服务端验证通道。 */ }
     }
   } catch {
+
     if (generation === loadGeneration && visible) failed.value = true;
+
   }
 }
 
@@ -155,9 +173,11 @@ async function refreshResult() {
 
 async function pay() {
   const o = order.value;
+
   if (!o || paying.value || expired.value || !canPay.value || phase.value !== "waiting") return;
   const generation = loadGeneration;
   const active = () => visible && generation === loadGeneration;
+
   paying.value = true;
   try {
     /*
@@ -283,6 +303,21 @@ async function cancel() {
   uni.redirectTo({ url: `${ROUTES.orders}` });
 }
 
+async function cancelForReconfirm() {
+  const o=order.value;
+  if (!o || !reconfirm.value) return;
+  const ok=await confirm({ title: String(t("pay.pointsReconfirmTitle")),
+    hint: String(t("pay.pointsReconfirmHint")) });
+  if (!ok) return;
+  try {
+    await api.cancelOrder(o.orderNo);
+    clearCheckoutKey();
+    uni.switchTab({ url: ROUTES.cart });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
 /** 这笔支付里参团的那一单的团号。支付视角下团号挂在子单上 */
 function groupNoOf(o: typeof order.value): string {
   if (!o) return "";
@@ -349,7 +384,9 @@ onUnmounted(() => { visible = false; resumePayment?.(false); resumePayment = und
     <template v-if="order">
         <text v-if="order.paymentResolution && phase !== 'waiting'" class="txt-caption block-reason">{{ $t("pay.manualRequired") }}</text>
         <!-- 待支付 -->
+
         <template v-if="phase === 'waiting'">
+
           <view class="sh-card hero">
             <text class="txt-hero hero__amount sh-num">{{ money(order.amount.payableMinor) }}</text>
             <text class="txt-caption hero__label">{{ $t("pay.payable") }}</text>

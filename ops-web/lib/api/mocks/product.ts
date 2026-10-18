@@ -221,7 +221,6 @@ function parentNameOf(cat: Category) {
 }
 /** 保存后的覆盖值。mock 不落库，但改完要看得见变化，否则以为按钮没生效 */
 const mockPayModes = new Map<string, boolean>();
-const mockPoints = new Map<string, { earnMode: "FIXED" | "RATIO" | null; earnValue: number | null }>();
 
 const mockPolicy: ProductPolicy = { requireCover: false, titleMinLength: 0, titleMaxLength: 0 };
 
@@ -794,27 +793,6 @@ export const productMock: ProductApi = {
       rows.map((r) => (mockPayModes.has(r.categoryNo)
         ? { ...r, offlineAllowed: mockPayModes.get(r.categoryNo)!, configured: !mockPayModes.get(r.categoryNo)! }
         : r)));
-  },
-
-  listCategoryPoints: () =>
-    wait(leafCategories().map((cat, i) => {
-      const saved = mockPoints.get(cat.categoryNo);
-      if (saved) return { categoryNo: cat.categoryNo, categoryName: cat.name, parentName: parentNameOf(cat), ...saved };
-      // 三分之一配了规则，其余留空 —— 「没配」是这一页的主角
-      const mode = i % 3 === 0 ? "RATIO" : i % 3 === 1 ? "FIXED" : null;
-      return {
-        categoryNo: cat.categoryNo,
-        categoryName: cat.name,
-        parentName: parentNameOf(cat),
-        earnMode: mode as "FIXED" | "RATIO" | null,
-        earnValue: mode === "RATIO" ? 50 : mode === "FIXED" ? 100 : null,
-      };
-    })),
-
-  saveCategoryPoints: (categoryNo, v) => {
-    if (v.earnMode) mockPoints.set(categoryNo, v);
-    else mockPoints.delete(categoryNo);
-    return productMock.listCategoryPoints();
   },
 
   listCategorySpecs: () =>

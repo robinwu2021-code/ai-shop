@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1660" height="1383" viewBox="0 0 1660 1383"><title>积分模块类图 · 业务头寸与退款准备</title><desc>由积分模块图契约JSON生成，UML组合/关联/依赖/接口实现，目标设计非Java源码反射。</desc>
+<defs><marker id="point" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#2563eb"/></marker><marker id="money" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="#c2410c"/></marker><marker id="dep" markerWidth="10" markerHeight="9" refX="9" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9" fill="none" stroke="#64748b"/></marker><marker id="real" markerWidth="13" markerHeight="12" refX="12" refY="6" orient="auto"><path d="M0 0L12 6L0 12Z" fill="white" stroke="#475569"/></marker><marker id="diamond" markerWidth="15" markerHeight="10" refX="14" refY="5" orient="auto-start-reverse"><path d="M0 5L7 0L14 5L7 10Z" fill="#475569"/></marker></defs>
+<rect width="1660" height="1383" fill="#f8fafc"/>
+<text x="35" y="48" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="29" fill="#172554" font-weight="650" text-anchor="start">积分模块类图 · 业务头寸与退款准备</text>
+<text x="35" y="80" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">v3 设计契约 · pay-domain内业务模块 · payTxManager · 实现与验收状态见 TDD</text>
+<text x="40" y="115" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="16" fill="#526277" font-weight="400" text-anchor="start">实线＝关联  ◆＝组合  虚线开放箭头＝依赖  空心三角＝接口实现；字段与方法为目标设计。</text>
+<path d="M490,282.0 L590,282.0" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-start="url(#diamond)" marker-end="url(#dep)"/>
+<path d="M1590,282.0 L1624,282.0 L1624,474 L265.0,474 L265.0,509" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-start="url(#diamond)" marker-end="url(#dep)"/>
+<path d="M1040,636.0 L1140,636.0" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-start="url(#diamond)" marker-end="url(#dep)"/>
+<path d="M1040,636.0 L1094,636.0 L1094,828 L265.0,828 L265.0,863" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#dep)"/>
+<rect x="40" y="155" width="450" height="254" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="56" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="56" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">GrantPosition</text>
+<path d="M40 225H490" stroke="#2563eb" stroke-width="1"/>
+<text x="56" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">positionNo / subOrderNo / typeCode</text>
+<text x="56" y="272" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">status / skipReason</text>
+<text x="56" y="294" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">granted / activated / revoked</text>
+<text x="56" y="316" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">lines: List&lt;GrantLine&gt;</text>
+<path d="M40 332H490" stroke="#cbd5e1"/>
+<text x="56" y="356" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ remainingPending(): long</text>
+<rect x="590" y="155" width="450" height="254" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="606" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="606" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">GrantLine</text>
+<path d="M590 225H1040" stroke="#2563eb" stroke-width="1"/>
+<text x="606" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">itemId / ruleSnapshot</text>
+<text x="606" y="272" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">originalRulePoints / grantedPoints</text>
+<text x="606" y="294" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">grantBeforeRefundedGoodsMinor</text>
+<text x="606" y="316" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">grantBasisMinor / handledPoints</text>
+<path d="M590 332H1040" stroke="#cbd5e1"/>
+<text x="606" y="356" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ targetRevoke(refundedTotal): long</text>
+<rect x="1140" y="155" width="450" height="254" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="1156" y="179" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="1156" y="208" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">RedeemPosition</text>
+<path d="M1140 225H1590" stroke="#2563eb" stroke-width="1"/>
+<text x="1156" y="250" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">positionNo / subOrderNo / typeCode</text>
+<text x="1156" y="272" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">agreement / rate / funds snapshots</text>
+<text x="1156" y="294" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">state / held / returnedPoints</text>
+<text x="1156" y="316" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">paidCash / paidOffset / ticketNo</text>
+<text x="1156" y="338" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">lines: List&lt;RedeemLine&gt;</text>
+<path d="M1140 354H1590" stroke="#cbd5e1"/>
+<text x="1156" y="378" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ currentPayable(): long</text>
+<rect x="40" y="509" width="450" height="254" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="56" y="533" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="56" y="562" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">RedeemLine</text>
+<path d="M40 579H490" stroke="#2563eb" stroke-width="1"/>
+<text x="56" y="604" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">itemId / points / amountMinor</text>
+<text x="56" y="626" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">couponAfterGoodsMinor</text>
+<text x="56" y="648" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">finalCashGoodsMinor / refundedMinor</text>
+<path d="M40 664H490" stroke="#cbd5e1"/>
+<text x="56" y="688" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">—</text>
+<rect x="590" y="509" width="450" height="254" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="606" y="533" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="606" y="562" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">RefundPreparation</text>
+<path d="M590 579H1040" stroke="#2563eb" stroke-width="1"/>
+<text x="606" y="604" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">prepareNo / afterSaleNo / inputHash</text>
+<text x="606" y="626" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">revision / immutableOutcome</text>
+<text x="606" y="648" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">cashRefund / collection / pointsState</text>
+<text x="606" y="670" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">lines: List&lt;RefundPreparationLine&gt;</text>
+<path d="M590 686H1040" stroke="#cbd5e1"/>
+<text x="606" y="710" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ sameInput(hash): boolean</text>
+<text x="606" y="732" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ canAbort(evidence): boolean</text>
+<rect x="1140" y="509" width="450" height="254" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="1156" y="533" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="1156" y="562" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">RefundPreparationLine</text>
+<path d="M1140 579H1590" stroke="#2563eb" stroke-width="1"/>
+<text x="1156" y="604" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">positionNo / itemId</text>
+<text x="1156" y="626" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">returned / revoked / waivedPoints</text>
+<text x="1156" y="648" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">cashOffsetMinor / originalBucket</text>
+<text x="1156" y="670" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">frozenPoints / evidenceRefs</text>
+<path d="M1140 686H1590" stroke="#cbd5e1"/>
+<text x="1156" y="710" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">—</text>
+<rect x="40" y="863" width="450" height="254" rx="8" fill="white" stroke="#2563eb" stroke-width="1.5"/>
+<text x="56" y="887" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="13" fill="#2563eb" font-weight="400" text-anchor="start">«entity»  pay.points.model</text>
+<text x="56" y="916" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="20" fill="#2563eb" font-weight="650" text-anchor="start">PayoutTicket</text>
+<path d="M40 933H490" stroke="#2563eb" stroke-width="1"/>
+<text x="56" y="958" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">ticketNo / providerIdem / purpose</text>
+<text x="56" y="980" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">sourceRef / receiverSnapshot</text>
+<text x="56" y="1002" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">gross / offset / cashMinor</text>
+<text x="56" y="1024" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">currency / status / resultEvidence</text>
+<path d="M40 1040H490" stroke="#cbd5e1"/>
+<text x="56" y="1064" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ requireFixedAmount()</text>
+<text x="56" y="1086" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#172554" font-weight="400" text-anchor="start">+ isUnknown(): boolean</text>
+<text x="40" y="1229" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="18" fill="#172554" font-weight="650" text-anchor="start">本图内关系（跨图关系及完整属性见图册与JSON契约）</text>
+<text x="40" y="1262" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">GrantPosition ◆── GrantLine   逐行发放 1..*</text>
+<text x="40" y="1286" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">RedeemPosition ◆── RedeemLine   逐行分摊 1..*</text>
+<text x="40" y="1310" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">RefundPreparation ◆── RefundPreparationLine   逐行处理 1..*</text>
+<text x="40" y="1334" font-family="PingFang SC,Microsoft YaHei,Arial,sans-serif" font-size="15" fill="#526277" font-weight="400" text-anchor="start">RefundPreparation ── PayoutTicket   资金腿 0..*</text>
+</svg>

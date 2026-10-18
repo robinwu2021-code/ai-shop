@@ -2680,6 +2680,7 @@ export function pointBalance(ledger: PointRecord[]): number {
  */
 const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   WAIT_PAY: ["PAID", "CANCELLED"],
+  POINTS_PROCESSING: ["WAIT_PAY", "WAIT_OFFLINE_PAY", "CANCELLED"],
   // 没有回到 WAIT_PAY 的边：改主意想线上付要重新下单，
   // 否则「收没收到钱」有两个真源（商家确认 与 支付回调），而它们可能同时到达
   WAIT_OFFLINE_PAY: ["PAID", "CANCELLED"],

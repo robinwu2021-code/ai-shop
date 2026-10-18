@@ -22,7 +22,6 @@ describe("B端单次备货发货",()=>{
  it("备货成功回读当前子单",async()=>{m.prepare.mockResolvedValue(order({preparedAt:123}));const w=await render();const b=w.findAll(".sh-btn").find(n=>n.text()==="order.prepare");expect(b).toBeDefined();await b!.trigger("tap");await flush();expect(m.prepare).toHaveBeenCalledWith("SUB1");expect(m.detail.mock.calls.length).toBeGreaterThan(1);w.unmount();});
  it("整张门店子单发货后回读运单，失败保留输入",async()=>{
    const w=await render();
-   await w.findAll("text").find(n=>n.text()==="order.shipMode.SELF")!.trigger("tap");
    await w.get("input.field__input").setValue("SF123456");
    await w.findAll(".carrier__chip")[0].trigger("tap");
    m.ship.mockRejectedValueOnce(new Error("运单错误"));

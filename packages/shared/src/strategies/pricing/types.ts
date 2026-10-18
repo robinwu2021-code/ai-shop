@@ -12,8 +12,10 @@ export interface PricingContext {
   fulfillment: FulfillmentType;
   currency: CurrencyCode;
   coupon?: Coupon;
-  /** 用户想用的积分数（会被抵扣上限截断） */
+  /** 用户想用的积分数；本地估价不会自行决定抵扣额。 */
   usePoints?: number;
+  /** 与当前购物车和政策版本绑定的服务端报价。 */
+  pointsQuote?: { pointsUsed: number; deductMinor: number; ratePoints: number; rateMinor: number; version: number };
   /** 本单可获得的积分 */
   earnPoints?: number;
 }
@@ -70,11 +72,18 @@ export function baseAmount(
   const discountMinor = couponDiscount(ctx.coupon, goodsMinor);
 
   const afterCoupon = Math.max(0, goodsMinor - discountMinor);
-  // 抵扣上限：不能整单抵掉，否则平台收不到现金却要向商家兑付这笔积分
-  const capMinor = Math.floor(afterCoupon * POINTS.maxDeductRatio);
-  const wantMinor = Math.floor((ctx.usePoints ?? 0) / POINTS.perMinor);
-  const pointsDeductMinor = Math.max(0, Math.min(capMinor, wantMinor));
-  const pointsUsed = pointsDeductMinor * POINTS.perMinor;
+  // 比例、上限和门店参与状态由服务端定；没有有效报价时本地只显示全额现金估价。
+  const quote = ctx.pointsQuote;
+  const quoted = (ctx.usePoints ?? 0) > 0 && quote
+    && Number.isSafeInteger(quote.pointsUsed) && quote.pointsUsed >= 0
+    && Number.isSafeInteger(quote.deductMinor) && quote.deductMinor >= 0
+    && Number.isSafeInteger(quote.ratePoints) && quote.ratePoints > 0
+    && Number.isSafeInteger(quote.rateMinor) && quote.rateMinor > 0
+    && Number.isSafeInteger(quote.version) && quote.version >= 0
+    && quote.pointsUsed <= (ctx.usePoints ?? 0)
+    && quote.deductMinor <= afterCoupon;
+  const pointsDeductMinor = quoted ? quote.deductMinor : 0;
+  const pointsUsed = quoted ? quote.pointsUsed : 0;
 
   const payableMinor = Math.max(
     0,

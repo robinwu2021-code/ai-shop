@@ -15,20 +15,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * 积分补差（落地清单 P2-8）。
- *
- * <p>修的是一个<b>正在发生的错</b>：{@code ord_sub_order.points_deduct} 的注释写着
- * 「平台内部字段，不下发商家端 —— 商家按订单全额收款」，而实际链路是
- * {@code pay_amount} 已经把积分扣掉、结算又拿 {@code pay_amount + platform 补贴} 当基数。
- * 于是买家用积分抵掉的那部分<b>从商家的货款里出</b>。
- *
- * <p>通道侧本来就有这一步（{@code PayGateway.subsidy} 与两个通道实现都在），
- * <b>零调用方</b> —— 接口在、实现在、钱没打。
- *
- * <p>本类<b>自己构造账单</b>而不是等种子数据凑巧带积分：
- * 靠「有就断言、没有就跳过」的用例会长期显绿而什么都没查。
+/** Current funding guard: a bill alone never authorizes a points subsidy.
+ * Funded payout, external failure, reply loss and idempotency are exercised with real
+ * ledger positions and durable tickets in PerOrderSettlementTest / PointsPayoutPreparationTest.
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -60,59 +51,40 @@ class PointsSubsidyFlowTest {
     }
 
     @Test
-    @DisplayName("★★ 有补差额的账单：先补差再分账，两步都留痕")
+    @DisplayName("缺少抵扣持仓的账单不能补差或分账")
     void subsidyHappensBeforeSplit() {
-        StlBill bill = aBill(SUBSIDY);
-
-        settleService.executeSplit(bill.getSettleNo());
-
-        StlBill after = reload(bill.getSettleNo());
-        assertThat(after.getSubsidyAt()).as("补差要真的发生并落时刻").isNotNull();
-        assertThat(after.getStatus()).isEqualTo(StlBill.SPLIT);
-        assertThat(settleService.splitLogCount(bill.getSettleNo(), StlSplitLog.SUBSIDY))
-                .as("补差是一笔真实的通道指令，要有自己的流水")
-                .isEqualTo(1L);
-        assertThat(settleService.splitLogCount(bill.getSettleNo(), StlSplitLog.SPLIT))
-                .isEqualTo(1L);
+        StlBill bill=aBill(SUBSIDY);
+        assertThatThrownBy(() -> settleService.executeSplit(bill.getSettleNo()))
+                .hasMessage("POINTS_REDEMPTION_NOT_UNIQUE");
+        assertThat(reload(bill.getSettleNo()).getStatus()).isEqualTo(StlBill.PENDING);
+        assertThat(reload(bill.getSettleNo()).getSubsidyAt()).isNull();
+        assertThat(settleService.splitLogCount(bill.getSettleNo(),StlSplitLog.SPLIT)).isZero();
+        assertThat(settleService.splitLogCount(bill.getSettleNo(),StlSplitLog.SUBSIDY)).isZero();
     }
 
     @Test
-    @DisplayName("★★ 补差失败就不分账 —— 只改基数不补钱，比不改更糟")
+    @DisplayName("无持仓时不得触发补差通道，连失败指令也不能发送")
     void failedSubsidyStopsSplit() {
-        StlBill bill = aBill(SUBSIDY);
+        StlBill bill=aBill(SUBSIDY);
         stubGateway.failNext(bill.getSubOrderNo());
-
-        settleService.executeSplit(bill.getSettleNo());
-
-        StlBill after = reload(bill.getSettleNo());
-        assertThat(after.getStatus())
-                .as("补差没成功就把账分了，等于把商家的账做大而钱没打")
-                .isEqualTo(StlBill.RETRYING);
-        assertThat(after.getSubsidyAt()).isNull();
-        assertThat(settleService.splitLogCount(bill.getSettleNo(), StlSplitLog.SPLIT))
-                .as("**一条分账指令都不该发出去**")
-                .isZero();
+        assertThatThrownBy(() -> settleService.executeSplit(bill.getSettleNo()))
+                .hasMessage("POINTS_REDEMPTION_NOT_UNIQUE");
+        assertThat(reload(bill.getSettleNo()).getStatus()).isEqualTo(StlBill.PENDING);
+        assertThat(reload(bill.getSettleNo()).getSubsidyAt()).isNull();
+        assertThat(settleService.splitLogCount(bill.getSettleNo(),StlSplitLog.SPLIT)).isZero();
+        assertThat(settleService.splitLogCount(bill.getSettleNo(),StlSplitLog.SUBSIDY)).isZero();
     }
 
     @Test
-    @DisplayName("★★ 补差走的是补差额，不是净额 —— 两个数都「看起来合理」，记错了看不出来")
+    @DisplayName("账单中的补差金额不能取代真实抵扣凭据")
     void subsidyUsesItsOwnAmount() {
-        StlBill bill = aBill(SUBSIDY);
-
-        settleService.executeSplit(bill.getSettleNo());
-
-        var logs = billLogs(bill.getSettleNo());
-        var subsidyLog = logs.stream()
-                .filter(l -> StlSplitLog.SUBSIDY.equals(l.getSplitAction())).findFirst().orElseThrow();
-        var splitLog = logs.stream()
-                .filter(l -> StlSplitLog.SPLIT.equals(l.getSplitAction())).findFirst().orElseThrow();
-
-        assertThat(subsidyLog.getAmountMinor())
-                .as("补差动的是买家用积分抵掉的那部分")
-                .isEqualTo(SUBSIDY);
-        assertThat(splitLog.getAmountMinor())
-                .as("分账动的是平台应收，与补差不是同一个口径")
-                .isNotEqualTo(SUBSIDY);
+        StlBill bill=aBill(SUBSIDY);
+        assertThatThrownBy(() -> settleService.executeSplit(bill.getSettleNo()))
+                .hasMessage("POINTS_REDEMPTION_NOT_UNIQUE");
+        assertThat(reload(bill.getSettleNo()).getStatus()).isEqualTo(StlBill.PENDING);
+        assertThat(reload(bill.getSettleNo()).getSubsidyAt()).isNull();
+        assertThat(settleService.splitLogCount(bill.getSettleNo(),StlSplitLog.SPLIT)).isZero();
+        assertThat(settleService.splitLogCount(bill.getSettleNo(),StlSplitLog.SUBSIDY)).isZero();
     }
 
     @Test
@@ -128,33 +100,31 @@ class PointsSubsidyFlowTest {
     }
 
     @Test
-    @DisplayName("★ 补差幂等：重复执行不会重复补钱")
+    @DisplayName("反复执行无凭据账单不能生成任何资金指令")
     void subsidyIsIdempotent() {
-        StlBill bill = aBill(SUBSIDY);
-
-        settleService.executeSplit(bill.getSettleNo());
-        settleService.executeSplit(bill.getSettleNo());
-
-        assertThat(settleService.splitLogCount(bill.getSettleNo(), StlSplitLog.SUBSIDY))
-                .as("重复补差是凭空送钱，比重复分账更严重")
-                .isEqualTo(1L);
+        StlBill bill=aBill(SUBSIDY);
+        assertThatThrownBy(() -> settleService.executeSplit(bill.getSettleNo()))
+                .hasMessage("POINTS_REDEMPTION_NOT_UNIQUE");
+        assertThatThrownBy(() -> settleService.executeSplit(bill.getSettleNo()))
+                .hasMessage("POINTS_REDEMPTION_NOT_UNIQUE");
+        assertThat(reload(bill.getSettleNo()).getStatus()).isEqualTo(StlBill.PENDING);
+        assertThat(reload(bill.getSettleNo()).getSubsidyAt()).isNull();
+        assertThat(settleService.splitLogCount(bill.getSettleNo(),StlSplitLog.SPLIT)).isZero();
+        assertThat(settleService.splitLogCount(bill.getSettleNo(),StlSplitLog.SUBSIDY)).isZero();
     }
 
     @org.junit.jupiter.api.Test
-    @org.junit.jupiter.api.DisplayName("★★ 通道不支持补差 → 转人工，而不是发起一次注定失败的补差")
+    @org.junit.jupiter.api.DisplayName("无凭据且通道不支持补差时同样阻断资金指令")
     void unsupportedChannelGoesManual() {
-        StlBill bill = aBill(300L);
-        bill.setPayChannel("CASH_ON_DELIVERY");   // 不在 sys_pay_channel 里
+        StlBill bill=aBill(300L);
+        bill.setPayChannel("CASH_ON_DELIVERY");
         billMapper.updateById(bill);
-
-        settleService.executeSplit(bill.getSettleNo());
-
-        StlBill after = reload(bill.getSettleNo());
-        // supports_subsidy 这一列建出来就是为了拦这里，而此前**零读取** ——
-        // 不具备补差能力的通道照样走到分账，然后失败、转重试，
-        // 而根因（通道压根没这个能力）要翻网关日志才看得出来
-        assertThat(after.getStatus()).isEqualTo(StlBill.MANUAL);
-        assertThat(after.getLastError()).contains("不支持积分补差");
+        assertThatThrownBy(() -> settleService.executeSplit(bill.getSettleNo()))
+                .hasMessage("POINTS_REDEMPTION_NOT_UNIQUE");
+        assertThat(reload(bill.getSettleNo()).getStatus()).isEqualTo(StlBill.PENDING);
+        assertThat(reload(bill.getSettleNo()).getSubsidyAt()).isNull();
+        assertThat(settleService.splitLogCount(bill.getSettleNo(),StlSplitLog.SPLIT)).isZero();
+        assertThat(settleService.splitLogCount(bill.getSettleNo(),StlSplitLog.SUBSIDY)).isZero();
     }
 
     // ---------------------------------------------------------------- helpers
@@ -167,6 +137,8 @@ class PointsSubsidyFlowTest {
         b.setEntityNo("M0001");
         b.setStoreNo("ST001");
         b.setPayMerchantNo("PM-TEST");
+        b.setCurrency("CNY");
+        b.setSplitAmountMinor(550L);
         b.setGrossMinor(11_000L);
         b.setCommissionMinor(550L);
         b.setServiceFeeMinor(0L);

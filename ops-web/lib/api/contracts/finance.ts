@@ -1,28 +1,81 @@
+import type { PointsAccountQ, PointsAccountView, PointsFreeze, PointsCursorPage, PointsVoucherView, PointsEntriesQ, PointsEntryView, PointsFlowView, PointsPositionQ, PointsPositionView, PointsStatsQ, PointsStats, PointsStatsRebuild, PointsReconRun, PointsRecon } from "@/lib/types";
+import type { PointsStatementPage, PointsStatementDraft, PointsStatementChange, PointsReference, PointsRevision, PointsRefundView, PointsReceivableRecovery, PointsFundsReference, PointsFundsView, PointsRecovery, PointsRecoveryExecution, PointsEventPage, PointsEventRetry } from "@/lib/types";
+import type { PointsOperation, PointsSubmission, PointsRequestReview, PointsRequestPage, PointsPlanChange, PointsPlanGenerate, PointsPlanReceipt, PointsPlanCancellation, PointsPlanPage, PointsWithdrawal, PointsExecution } from "@/lib/types";
+import type { PointsTypeConfig, PointsChangeResult, PointsCreate, PointsTypeChange, PointsFallback, PointsFallbackChange, PointsCursor, PointsSwitchPage, PointsSwitchChange, PointsTerms, PointsTermsChange, PointsAgreementPage } from "@/lib/types";
 // 覆盖范围：分账结算（P-12.1）与提现·发票·个税（P-12.2）。
 import type { PayChannelSetting, PayChannelRateVersion, SettleBatch, MerchantDebt,
   PurchaseInvoice,
   BuyerInvoiceRequest,
-  ClientPointsPolicy, PointsOverview, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Payout, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule,
+  PointsOverview, PointsReceivablePage, AfterSale, BusinessMode, EffectiveFeeRates, FeeRuleVersion, FeeTrafficSource, InvoiceRequest, InvoiceTitle, Page, Payout, PayoutAccount, PayoutList, SettleStatRow, Settlement, SplitLog, TaxRule,
   BankFlowImportResult,
 } from "@/lib/types";
-import type { PageQ, SettlementQ } from "../query";
+import type { PageQ, SettlementQ, PointsReceivableQ } from "../query";
+
+import type { OrderPointsStoreObligations, OrderPointsIntegrationQ, OrderPointsIntegrationPolicy, OrderPointsIntegrationChange, OrderPointsInspection, OrderPointsManualRefundPage, OrderPointsRefundActionResult } from "@/lib/types";
 
 export interface FinanceApi {
+  /** 订单积分动态接线策略，门店和支付场景精确查询。 */
+  orderPointsObligations(storeNo: string): Promise<OrderPointsStoreObligations>;
+  orderPointsIntegration(q: OrderPointsIntegrationQ): Promise<OrderPointsIntegrationPolicy>;
+  /** 版本化接线变更，操作人和审计时间由服务端取得。 */
+  changeOrderPointsIntegration(v: OrderPointsIntegrationChange): Promise<OrderPointsIntegrationPolicy>;
+  inspectOrderPoints(subOrderNo: string): Promise<OrderPointsInspection>;
+  manualOrderPointsRefunds(storeNo: string, after: string, limit: number): Promise<OrderPointsManualRefundPage>;
+  closeOrderPointsRefund(afterSaleNo: string, reason: string): Promise<OrderPointsRefundActionResult>;
+  retryOrderPointsRefund(afterSaleNo: string, reason: string): Promise<OrderPointsRefundActionResult>;
   /**
    * 积分资金总览。**只读** —— 池子的钱是靠流水推出来的，不是靠人改的。
    * 开一个「手工调整余额」的入口，等于允许在没有业务事件的情况下改账，
    * 而那之后恒等式失衡就再也说不清是哪一笔。
    */
-  pointsOverview(market?: string): Promise<PointsOverview>;
-
+  pointsOverview(market?: string, typeCode?: string): Promise<PointsOverview>;
   /**
-   * 积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣。
-   *
-   * ⚠️ 存的是**禁用名单**（`X-Client` 还没全量在发，允许名单会静默关掉全站积分），
-   * 而且**不是合规硬闸** —— 端标识来自客户端、可伪造。
+   * 门店应收分页。R 不作为现金；必须明确积分类型和门店。
    */
-  pointsClientPolicy(): Promise<ClientPointsPolicy>;
-  savePointsClientPolicy(v: ClientPointsPolicy): Promise<ClientPointsPolicy>;
+  pointsReceivables(q: PointsReceivableQ): Promise<PointsReceivablePage>;
+
+  pointsTypes(): Promise<PointsTypeConfig[]>;
+  createPointsType(v: PointsCreate): Promise<PointsChangeResult>;
+  transitionPointsType(v: PointsTypeChange): Promise<PointsChangeResult>;
+  pointsFallback(typeCode: string): Promise<PointsFallback>;
+  savePointsFallback(v: PointsFallbackChange): Promise<PointsChangeResult>;
+  pointsSwitches(q: PointsCursor): Promise<PointsSwitchPage>;
+  changePointsSwitch(v: PointsSwitchChange): Promise<PointsChangeResult>;
+  pointsTerms(typeCode: string): Promise<PointsTerms | null>;
+  publishPointsTerms(v: PointsTermsChange): Promise<PointsChangeResult>;
+  pointsAgreements(q: PointsCursor & { storeNo: string }): Promise<PointsAgreementPage>;
+
+  pointsRequests(q: PointsCursor): Promise<PointsRequestPage>;
+  submitPointsRequest(v: PointsSubmission): Promise<PointsOperation>;
+  reviewPointsRequest(v: PointsRequestReview): Promise<PointsOperation>;
+  pointsPlans(q: PointsCursor): Promise<PointsPlanPage>;
+  savePointsPlan(v: PointsPlanChange): Promise<PointsOperation>;
+  generatePointsPeriods(v: PointsPlanGenerate): Promise<PointsOperation>;
+  declarePointsReceipt(v: PointsPlanReceipt): Promise<PointsOperation>;
+  cancelPointsPeriod(v: PointsPlanCancellation): Promise<PointsOperation>;
+  executePointsWithdrawal(v: PointsWithdrawal): Promise<PointsExecution>;
+
+  pointsStatements(q: PointsCursor & { storeNo: string }): Promise<PointsStatementPage>;
+  draftPointsStatements(v: PointsStatementDraft): Promise<PointsOperation>;
+  changePointsStatement(v: PointsStatementChange): Promise<PointsOperation>;
+  pointsRefund(q: PointsReference): Promise<PointsRefundView>;
+  revisePointsRefund(v: PointsRevision): Promise<PointsOperation>;
+  preparePointsReceivable(v: PointsReceivableRecovery): Promise<PointsOperation>;
+  pointsFunds(q: PointsFundsReference): Promise<PointsFundsView>;
+  recoverPointsFunds(v: PointsRecovery): Promise<PointsRecoveryExecution>;
+  pointsEvents(q: PointsCursor): Promise<PointsEventPage>;
+  retryPointsEvent(v: PointsEventRetry): Promise<PointsOperation>;
+
+  pointsAccount(q: PointsAccountQ): Promise<PointsAccountView>;
+  freezePointsAccount(v: PointsFreeze): Promise<PointsOperation>;
+  pointsVouchers(q: PointsCursor): Promise<PointsCursorPage<PointsVoucherView>>;
+  pointsEntries(q: PointsEntriesQ): Promise<PointsCursorPage<PointsEntryView>>;
+  pointsFlows(q: PointsCursor): Promise<PointsCursorPage<PointsFlowView>>;
+  pointsPosition(q: PointsPositionQ): Promise<PointsPositionView>;
+  pointsStats(q: PointsStatsQ): Promise<PointsStats | null>;
+  rebuildPointsStats(v: PointsStatsRebuild): Promise<PointsOperation>;
+  pointsReconciliation(q: { typeCode: string; day: string }): Promise<PointsRecon | null>;
+  reconcilePoints(v: PointsReconRun): Promise<PointsOperation>;
 
   /** 结算单列表。**自营与第三方都在这里** —— 不该因经营模式分成两个入口。 */
   /**

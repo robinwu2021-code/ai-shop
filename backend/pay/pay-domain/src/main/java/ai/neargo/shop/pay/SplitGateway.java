@@ -36,6 +36,11 @@ public interface SplitGateway {
      */
     Result split(String subOrderNo, String payMerchantNo, long amountMinor, String requestNo);
 
+    /** Queries only the original split request after uncertain transport; unsupported query keeps it unknown. */
+    default Result querySplit(String subOrderNo,String payMerchantNo,long amountMinor,String requestNo) {
+        return Result.fail("SPLIT_QUERY_NOT_SUPPORTED");
+    }
+
     /**
      * 冲正。<b>必须打回当初收款的那个账户</b>，同样取自结算单快照。
      *
@@ -44,6 +49,20 @@ public interface SplitGateway {
      * 两个账户的账也各错一笔，且方向相反。
      */
     Result reverse(String subOrderNo, String payMerchantNo, long amountMinor, String requestNo);
+
+    /** Full immutable route for source refunds. A successful reverse/query result must verify
+     * completion of this exact command; acceptance-only or mismatched responses remain unknown. */
+    default Result reverse(ai.neargo.shop.pay.settle.SplitCommand command) {
+        return reverse(command.subOrderNo(),command.payMerchantNo(),command.amountMinor(),command.requestNo());
+    }
+    default Result queryReverse(ai.neargo.shop.pay.settle.SplitCommand command) {
+        return queryReverse(command.subOrderNo(),command.payMerchantNo(),command.amountMinor(),command.requestNo());
+    }
+
+    /** Query the original reversal only. Unsupported providers keep the source refund pending. */
+    default Result queryReverse(String subOrderNo,String payMerchantNo,long amountMinor,String requestNo) {
+        return Result.fail("REVERSAL_QUERY_NOT_SUPPORTED");
+    }
 
     /**
      * 积分补差：平台把买家用积分抵掉的那部分<b>补进</b>二级商户账户。

@@ -19,6 +19,7 @@ const root = path.resolve(here, "..");
 const outFile = path.resolve(root, "../docs/api/openapi-b.yaml");
 const typesFile = path.resolve(root, "../packages/shared/src/types/index.ts");
 const reqFile = path.resolve(root, "src/api/requests.ts");
+const responseFile = path.resolve(root, "src/api/response-types.ts");
 
 // ---------------------------------------------------------------- 1. 端点表
 const epSrc = fs.readFileSync(path.resolve(root, "src/api/endpoints.ts"), "utf8");
@@ -112,7 +113,7 @@ function collectAll(file) {
   return gen.createSchema("*").definitions ?? {};
 }
 
-let schemas = { ...collectAll(typesFile), ...collectAll(reqFile) };
+let schemas = { ...collectAll(typesFile), ...collectAll(reqFile), ...collectAll(responseFile) };
 if (!Object.keys(schemas).length) {
   console.error("没有抽出任何 schema，检查类型文件路径");
   process.exit(1);
@@ -158,6 +159,12 @@ const RESPONSE_TYPES = {
    * 类型逐条取自 `contract.ts` 的签名，不是猜的。
    */
   mActivities: "StoreActivity[]",
+  mOrderWorklist: "PageResult<MerchantOrderWorkItem>",
+  mFulfillmentOptions: "MerchantFulfillmentOptions",
+  mChangeFulfillment: "MerchantFulfillmentChange",
+  mAfterSaleWorklist: "PageResult<MerchantAfterSaleWorkItem>",
+  mAfterSaleDetail: "MerchantAfterSaleWorkItem",
+  mActiveAfterSaleForOrder: "AfterSale",
   mActivity: "StoreActivity",
   mActivityConflicts: "ActivityConflict[]",
   mMarketingSummary: "MarketingSummary",
@@ -474,14 +481,24 @@ const RESPONSE_TYPES = {
   mRateCard: "RateCard",
   mSettleBatches: "MySettleBatch[]",
   mMyDebt: "MyDebt",
-  mPointsAccount: "MerchantPointAccount",
-  mPointsRecords: "MerchantPointsRecord[]",
-  mPointsToggle: "MerchantPointAccount",
+  mStorePointTypes: "StorePointType[]",
+  mStorePointAccount: "StorePointAccount",
+  mStorePointEntries: "StorePointEntryPage",
+  mStorePointTerms: "StorePointTerms",
+  mStorePointAgreement: "StorePointAgreement",
+  mSignStorePointAgreement: "StorePointAgreement",
+  mTerminateStorePointAgreement: "void",
   mReportShortage: "Order",
 };
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mStorePointAccount: "StorePointsTypeQuery",
+  mStorePointTerms: "StorePointsTypeQuery",
+  mStorePointAgreement: "StorePointsTypeQuery",
+  mStorePointEntries: "StorePointsEntriesQuery",
+  mSignStorePointAgreement: "StorePointSignRequest",
+  mTerminateStorePointAgreement: "StorePointsTypeQuery",
   mCrossStoreCompare: "CrossStoreCompareQuery",
   mLogin: "MerchantLoginReqBody",
   mStaffLogin: "StaffLoginReq",
@@ -660,7 +677,8 @@ function toYaml(value, indent = 0) {
       const v = toYaml(value[k], indent + 1);
       const inline = typeof value[k] !== "object" || value[k] === null;
       const isEmpty = v === "{}" || v === "[]";
-      return `\n${pad}${yamlKey(k)}: ${inline || isEmpty ? v : v.startsWith("\n") ? v : `\n${"  ".repeat(indent + 1)}${v}`}`;
+      const suffix = inline || isEmpty ? ` ${v}` : v.startsWith("\n") ? v : `\n${"  ".repeat(indent + 1)}${v}`;
+      return `\n${pad}${yamlKey(k)}:${suffix}`;
     })
     .join("");
 }

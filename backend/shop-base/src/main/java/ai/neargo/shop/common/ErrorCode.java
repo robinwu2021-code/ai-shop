@@ -580,6 +580,13 @@ public enum ErrorCode {
     /** 个税税率超过硬上限（45%）。超过一定是配置错误，而它会扣光每一笔提现。 */
     TAX_RATE_TOO_HIGH(50009, "err.settle.tax_rate_too_high"),
 
+    /** Points operator requests retain the original financial reference when a check rejects them. */
+    POINTS_SELF_REVIEW(50040, "err.points.self_review"),
+    POINTS_REVISION_CHANGED(50041, "err.points.revision_changed"),
+    POINTS_FUNDS_UNAVAILABLE(50042, "err.points.funds_unavailable"),
+    POINTS_EVIDENCE_REQUIRED(50043, "err.points.evidence_required"),
+    POINTS_OPERATION_REJECTED(50044, "err.points.operation_rejected"),
+
     // ---- 6xxxx 风控 ----
     RISK_BLOCKED(60001, "err.risk.blocked"),
 
