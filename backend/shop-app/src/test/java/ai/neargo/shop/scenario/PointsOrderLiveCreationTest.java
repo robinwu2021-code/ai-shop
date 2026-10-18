@@ -197,6 +197,17 @@ class PointsOrderLiveCreationTest {
         assertThat(quote.get("ratePoints").asLong()).isEqualTo(2);
         assertThat(quote.get("rateMinor").asLong()).isEqualTo(1);
         assertThat(quote.get("stores").get(0).get("storeNo").asString()).isEqualTo(f.store);
+        when(redeem.hold(any())).thenAnswer(call -> {
+            var h = call.<PointsRedeemPort.HoldCommand>getArgument(0);
+            var price = h.acceptedPrice();
+            return new PointsRedeemPort.HoldOutcome("QA:" + h.orderNo(), price.typeCode(),
+                    price.points(), price.minor(), "HELD", null, price.shares());
+        });
+        String root = create(f, "quote-matches-placement").get("payOrderNo").asString();
+        assertThat(jdbc.queryForObject("select pay_amount from ord_order where order_no=?",
+                Long.class, root)).isEqualTo(quote.get("basePayMinor").asLong()
+                        - quote.get("deductMinor").asLong());
+        assertThat(placement.inspect(root).phase()).isEqualTo(PointsOrderPlacementCoordinator.Phase.READY);
     }
 
     @Test

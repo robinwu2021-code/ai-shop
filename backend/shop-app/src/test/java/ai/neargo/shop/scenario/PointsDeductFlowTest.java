@@ -103,28 +103,6 @@ class PointsDeductFlowTest {
     // ---------------------------------------------------------------- 核心：试算 == 实扣
 
     @Test
-    @DisplayName("★★★ 结算页说能抵多少，下单就抵多少 —— 两处算不出同一个数是最难查的一类")
-    void previewMatchesActualDeduction() throws Exception {
-        String phone = "13700137001";
-        openPointsSwitches();
-        String token = login(phone);
-        givePoints(userNoOf(token), 100_000L);
-
-        // 4980 × 2 = 9960
-        addToCart(token, "G0001", "SK0001", 2);
-
-        long maxPoints = deductible(token, 9960L).get("maxPoints").asLong();
-        // 上限 = 9960 × 30% = 2988 分钱 = 2988 积分（perMinor = 1）
-        assertThat(maxPoints).isEqualTo(2988L);
-
-        // 意愿值给满：服务端应当正好抵到上限
-        JsonNode order = placeOrder(token, 100_000L);
-        assertThat(order.get("amount").get("pointsDeductMinor").asLong())
-                .as("试算给的是 2988，实扣必须也是 2988")
-                .isEqualTo(2988L);
-    }
-
-    @Test
     @DisplayName("★★ 抵扣从实付里扣，但不计进 discountAmount —— 那一列是营销优惠，混了会让分账拆错出资方")
     void deductionIsNotCountedAsMarketingDiscount() throws Exception {
         openPointsSwitches();
@@ -282,16 +260,6 @@ class PointsDeductFlowTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"goodsNo\":\"" + goodsNo + "\",\"skuNo\":\"" + skuNo + "\",\"qty\":"
                         + qty + "}"));
-    }
-
-    private JsonNode deductible(String token, long payableMinor) throws Exception {
-        String body = mvc().perform(get("/mp/points/deductible")
-                        .param("merchantNo", "M0001")
-                        .param("payableMinor", String.valueOf(payableMinor))
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-        return json.readTree(body).get("data");
     }
 
     private JsonNode placeOrder(String token, long usePoints) throws Exception {
