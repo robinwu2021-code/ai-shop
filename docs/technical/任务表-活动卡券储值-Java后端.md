@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：21项DONE、8项DOING、26项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
+本表共55项：25项DONE、8项DOING、22项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序（2026-10-19用户调整）：第一阶段完成core活动自身能力，第二阶段完成pay权益、卡券、储值及活动权益联动。具体任务分组、跨阶段子项与验收见[两阶段执行方案](./开发计划-活动优先与权益两阶段.md)。已完成的权益公共基础直接保留；JB-015尚未开始Java实现，移至第二阶段。原任务编号与整体依赖保留，跨阶段任务仅完成活动部分不能标记整项DONE。
 
@@ -87,11 +87,11 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-017 | D02.3 | DONE | 016 | pay.entitlement | EntitlementIssueBatchService/Impl；P07/P08底层能力，受众快照预检 | B1真实事务/Mapper及原生MySQL通过；完整证据见第二阶段B1-发行批次验收；源码提交e78d7fc3a |
 | JB-018 | D02.3/D04.3 | TODO | 016,032 | pay/app | 本人领取路径、CENTER/ACTIVITY校验、core资格到pay发放协调 | EntitlementClaimFlowTest：未登录/越权拒绝；付费卡不可免费领；未知结果只查原grant |
 | JB-019 | D02.4/D06.3 | DONE | 003,005 | pay.policy | EntitlementValidityPolicy、CountUsagePolicy、PeriodCountUsagePolicy；从共享额度规则派生 | EntitlementValidityPolicyTest：支付/首用、自然月/滚动天、时区、月末/闰日、半开区间；GET无激活副作用 |
-| JB-020 | D02.4 | TODO | 011,013,014,016,019 | pay.entitlement/app | EntitlementUseService/Impl、UsePortImpl、EntitlementPostingService、EntitlementOrderCoordinator；prepare/commit/release/query | EntitlementUseFlowTest：同源不双扣、确认释放互斥、并发不负数、未知不重扣、本人/订单/门店绑定；原生事务检查 |
-| JB-021 | D02.4 | TODO | 008,019,020 | pay.entitlement | CouponQuotePolicy迁入既有唯一门槛/折扣/分摊算法；P15服务 | EntitlementQuoteFlowTest：先活动后券、FREE_SHIP、折扣封顶、分摊守恒；预览不冻结不扣款 |
+| JB-020 | D02.4 | DOING | 011,013,014,016,019 | pay.entitlement/app | EntitlementUseService/Impl、UsePortImpl、EntitlementPostingService、EntitlementOrderCoordinator；prepare/commit/release/query | EntitlementUseFlowTest：同源不双扣、确认释放互斥、并发不负数、未知不重扣、本人/订单/门店绑定；原生事务检查 |
+| JB-021 | D02.4 | DONE | 008,019,020 | pay.entitlement | CouponQuotePolicy迁入既有唯一门槛/折扣/分摊算法；P15服务 | EntitlementQuoteFlowTest：先活动后券、FREE_SHIP、折扣封顶、分摊守恒；预览不冻结不扣款 |
 | JB-022 | D02.4/D03.2 | TODO | 020,021 | pay.entitlement | 原使用受限reverse、EntUseReversal与旧券售后回补；I11 | EntitlementReverseFlowTest：部分售后累计不超原分配、同售后幂等；储值/新付费卡线上退款拒绝 |
 | JB-023 | D02.4 | TODO | 010,016,020 | pay.entitlement | EntitlementCodeService/Impl；短期兑换券token签发/解析/失效 | EntitlementCodeFlowTest：仅STORE_EXCHANGE、本人可签、过期/重放拒绝、码不入日志；不生成储值专用码 |
-| JB-024 | D02.5 | TODO | 016,020,042 | pay.entitlement | EntitlementQueryService/Impl、QueryPortImpl；本人资产/商家受控详情/总次与日额度/使用明细 | EntitlementQueryFlowTest：跨用户/主体/租户拒绝、过期历史保留、游标稳定、DTO无内部授权/资金拆分 |
+| JB-024 | D02.5 | DONE | 016,020,042 | pay.entitlement | EntitlementQueryService/Impl、QueryPortImpl；本人资产/商家受控详情/总次与日额度/使用明细 | EntitlementQueryFlowTest：跨用户/主体/租户拒绝、过期历史保留、游标稳定、DTO无内部授权/资金拆分 |
 | JB-025 | D02.2/2.6 | DONE | 008,009,015,041 | app HTTP | BizEntitlementTemplateController；P01–P06及管理DTO映射 | EntitlementTemplateApiTest：真实HTTP写后读、BeanValidation生效、权限逐条校验；不能直接绑定CatalogScope |
 | JB-026 | D02.3/2.4 | TODO | 017,018,020,021,023,041,042 | app HTTP | BizEntitlementIssueController、BizEntitlementUseController、MpEntitlementController使用/领取部分；P07/P08/P11–P16/P30 | EntitlementUseApiTest：先看后核、本人授权、PROCESSING查询原操作；未具备能力拒绝而非假成功 |
 | JB-027 | D02.5 | TODO | 024,041 | app HTTP | MpEntitlementController查询部分、B记录/详情；P09/P10/P17/P25/P26/P29 | EntitlementQueryApiTest：本人字段白名单、商家门店过滤、游标/分页、金额币种与次数分开 |
@@ -119,7 +119,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-039 | D06.1 | TODO | 006,009,028 | core.product/app | CardProductBindingService/Impl、BizCardProductBindingController；C07 | CardProductBindingFlowTest：只绑已发布PAID_CARD、主体/币种一致；售价沿商品SKU，旧版绑定不随模板草稿改变 |
 | JB-040 | D06.2 | TODO | 012,016,039,042 | app/core.trade | CardSaleCoordinator与支付/取消Outbox订阅，按订单行/件/件内权益发卡 | PaidCardSaleFlowTest：2×2权益不漏不重发、付款/取消竞争、迟到付款起算正确；不以储值扣款冒充现金付款 |
 | JB-041 | D02.6 | DOING | 008,016,017,020,021,022,023,024,031,034,035,036,037,040 | payclient/pay-svc/core内部适配 | AppService本地/Remote承载底座、PayInternalApi/Paths、内部Endpoint及core反向适配；已实现业务完整query | EntitlementInternalApiRoundTripTest：真实HTTP DTO无wrapper嵌套、签名身份、超时/失联可查、两种部署同语义且Bean互斥 |
-| JB-042 | D06.3 | TODO | 019,020 | pay.entitlement | EntitlementLifecycleService/Impl、PeriodDailyUsagePolicy、ent_period_bucket；首用激活/日限/到期 | PaidCardAllowanceFlowTest：并发首用仅激活一次、指定服务日、跨日释放回原bucket、不结转、月末与时区边界 |
+| JB-042 | D06.3 | DONE | 019,020 | pay.entitlement | EntitlementLifecycleService/Impl、PeriodDailyUsagePolicy、ent_period_bucket；首用激活/日限/到期 | PaidCardAllowanceFlowTest：并发首用仅激活一次、指定服务日、跨日释放回原bucket、不结转、月末与时区边界 |
 
 ### 2.6 通知、运营、兼容及后端收口
 
@@ -192,10 +192,10 @@ git diff --check
 | pay.entitlement | ent_issue_batch | EntIssueBatch / EntIssueBatchMapper | JB-017 | DONE，V433/V434/V435及真实pay Mapper |
 | pay.entitlement | ent_grant | EntGrant / EntGrantMapper | JB-016 | DONE，V433/V434/V435及真实pay Mapper |
 | pay.entitlement | ent_instance | EntInstance / EntInstanceMapper | JB-016 | DONE，V433/V434/V435及真实pay Mapper |
-| pay.entitlement | ent_period_bucket | EntPeriodBucket / EntPeriodBucketMapper | JB-042 | TODO，设计表/已有表待改造 |
-| pay.entitlement | ent_use_intent | EntUseIntent / EntUseIntentMapper | JB-020 | TODO，设计表/已有表待改造 |
-| pay.entitlement | ent_use_allocation | EntUseAllocation / EntUseAllocationMapper | JB-020 | TODO，设计表/已有表待改造 |
-| pay.entitlement | ent_usage | EntUsage / EntUsageMapper | JB-020 | TODO，设计表/已有表待改造 |
+| pay.entitlement | ent_period_bucket | EntPeriodBucket / EntPeriodBucketMapper | JB-042 | DONE，V436，pay事务与实体Mapper已验证 |
+| pay.entitlement | ent_use_intent | EntUseIntent / EntUseIntentMapper | JB-020 | DONE，V436，pay事务与实体Mapper已验证 |
+| pay.entitlement | ent_use_allocation | EntUseAllocation / EntUseAllocationMapper | JB-020 | DONE，V436，pay事务与实体Mapper已验证 |
+| pay.entitlement | ent_usage | EntUsage / EntUsageMapper | JB-020 | DONE，V436，pay事务与实体Mapper已验证 |
 | pay.entitlement | ent_ledger | EntLedger / EntLedgerMapper | JB-016 | DONE，V433/V434/V435及真实pay Mapper |
 | pay.entitlement | ent_code_token | EntCodeToken / EntCodeTokenMapper | JB-023 | TODO，设计表/已有表待改造 |
 | pay.storedvalue | sv_account | SvAccount / SvAccountMapper | JB-035 | TODO，设计表/已有表待改造 |
@@ -284,9 +284,9 @@ git diff --check
 | I05 | EntitlementGrantPort.prepare(GrantCommand) | JB-016 | DOING（pay本地协议已完成；041远程承载待接） |
 | I06 | EntitlementGrantPort.commit(GrantDecision) | JB-016 | DOING（pay本地协议已完成；041远程承载待接） |
 | I07 | EntitlementGrantPort.abort(AbortGrant) | JB-016 | DOING（pay本地协议已完成；041远程承载待接） |
-| I08 | EntitlementUsePort.prepare(UseCommand) | JB-020 | TODO |
-| I09 | EntitlementUsePort.commit(UseDecision) | JB-020 | TODO |
-| I10 | EntitlementUsePort.release(CancelUse) | JB-020 | TODO |
+| I08 | EntitlementUsePort.prepare(UseCommand) | JB-020 | DOING（pay本地协议已完成；core订单协调及041远程承载待接） |
+| I09 | EntitlementUsePort.commit(UseDecision) | JB-020 | DOING（pay本地协议已完成；core订单协调及041远程承载待接） |
+| I10 | EntitlementUsePort.release(CancelUse) | JB-020 | DOING（pay本地协议已完成；core订单协调及041远程承载待接） |
 | I11 | EntitlementUsePort.reverse(OrderBenefitReverse) | JB-022 | TODO |
 | I12 | StoredValuePort.credit(CreditRecharge) | JB-035 | TODO |
 
@@ -507,3 +507,13 @@ JB-015/016/017完成，状态21 DONE / 7 DOING / 27 TODO。复用[第二阶段�
 P01–P06真实Handler、商家会话scope、平铺请求DTO、BeanValidation与4个pay权限码落地；只有商家级授权可管理跨门店模板，未给预置店长自动加权。列表附发行策略，写响应保留原幂等快照。独立pay管理及目录9个内部POST端点使用共享密钥，错误状态有明确映射；pay-svc补显式payTxManager别名，目录Port本地/远程互斥。Grant/Use/储值传输仍待JB-041后续子项，不将父任务标完成。
 
 验证：`/tmp/phase-two-management-complete.log`，pay-svc2 + shop-app34 =36项通过（HTTP3、路由2、架构16、三语6、角色3、权限登记4）；补齐第一阶段4条遗漏权限登记。首轮HTTP测试2项因无Handler失败；新增架构Port包问题已修复，权限生成器补识别pay前缀。文档守卫66项通过；生成物随本批更新。未做全量测试。
+
+### 第二阶段使用领域批次（JB-020内核 / JB-021 / JB-024 / JB-042）
+
+JB-021/024/042已交付；JB-020保持DOING，真实core源事实及订单协调随后接线，独立部署use/query归JB-041，不以本地领域验证冒充全链路。Use预览/报价记录冻结选择，不激活、不预占；本人授权、源订单明细及金额核实在pay事务外完成。Writer锁意图→实例→原服务日bucket，实例/分配/账/使用事实/Outbox同事务。成功回复丢失重查原号；未知源决策不释放；同源未决修订不能另建预占。
+
+V436新增5表（含ent_use_proposal）及对应实体Mapper，intent额外冻结command_snapshot、active_source_key和usage_no。报价迁入pay，旧mkt/pmt与pay复用CouponCalculation；保留折扣向下取分、CASH忽略percent封顶的既有语义，分摊对舍入尾差逐行约束且守恒。当前沿既有结算仅支持单张订单券，多券明确未开放。订单券预占由quote快照版本控制；卡/兑换沿preview的expectedAssetRevision控制。
+
+生命周期覆盖首用成功提交激活、每日有限次数、源owner指定服务日、释放回原日和到期标记；到期不清剩余/冻结，保留原承诺可结算。到期扫描调度及通知归JB-051/043。Query仅白名单DTO，历史保留；游标绑定租户/本人/筛选且签名，需各节点一致的SHOP_PAY_ENTITLEMENT_CURSOR_KEY（>=32字符）；未配置且需要续页时明确不可用，无随机临时密钥或固定密钥兜底。
+
+验证：本批新增14个Java用例，另覆盖旧券、SPI/架构/schema39个不同用例，共53个不同Java用例通过；最近批次`/tmp/phase-two-b2-domain-final.log`31项，报价/兼容见`/tmp/phase-two-use-query-final.log`50项（含重叠），不叠加冒称81项。`scripts/verify-entitlement-use-mysql.mjs`在一次性原生MySQL实跑1项0跳过，实际Writer/事务验证20并发重放、JSON/CHECK、跨日桶隔离、Outbox故障整笔回滚及重试唯一；最终日志`/tmp/phase-two-use-native-final.log`。测试曾发现毫秒重放精度、测试夹具本地时间冒充UTC及Service分层问题，均已修复。未做全量回归。

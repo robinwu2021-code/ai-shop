@@ -1,6 +1,7 @@
 package ai.neargo.shop.marketing.coupon.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import ai.neargo.shop.common.promotion.CouponCalculation;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
@@ -105,13 +106,8 @@ public class MktCoupon extends BaseEntity {
      * @param base 参与计算的商品额（分）。商家券只算本店那部分
      */
     public long discountFor(long base) {
-        if (DISCOUNT.equals(type)) {
-            long off = base * (10_000 - (discountRate == null ? 0 : discountRate)) / 10_000;
-            long cap = maxDiscountMinor == null ? 0 : maxDiscountMinor;
-            return cap > 0 ? Math.min(off, cap) : off;
-        }
-        // 满减不能减成负数：券面额大于商品额时按商品额封顶
-        return Math.min(faceMinor == null ? 0 : faceMinor, base);
+        return CouponCalculation.discount(DISCOUNT.equals(type) ? "PERCENT" : "CASH",
+                DISCOUNT.equals(type) ? (discountRate == null ? null : discountRate.longValue()) : faceMinor, maxDiscountMinor, base);
     }
 
     /**

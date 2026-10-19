@@ -412,3 +412,12 @@ B1本地受众适配落于core.member.EntitlementIssueAudiencePortImpl：audienc
 Java商家入口：`BizEntitlementTemplateController`；通过`EntitlementManagementAppService`选择内嵌领域服务或独立pay的`PayInternalApi`。P01列表返回完整草稿、当前版本号与可空issuePolicy；P02/P03/P05写响应不再附加后续变化的策略，以保持命令幂等响应稳定。策略独立由P06配置。商家作用域来自会话，4个pay权限仍各自校验，限制门店员工不得管理全主体模板。
 
 独立pay承载目录/管理9个内部POST：`/internal/pay/entitlement/management/{list,get,create,draft,publish,status,issue-policy}`与`/internal/pay/entitlement/catalog/{version,validate-reference}`。请求使用`PayEntitlementRequests`，不得直接对公网暴露。共享密钥空或错误401；领域BAD_REQUEST/FORBIDDEN/NOT_FOUND/CONFLICT/FEATURE_UNAVAILABLE分别400/403/404/409/503；主应用映射原业务错误，网络/鉴权配置错误报内部异常，不能返回空列表或自动重试写。其余grant/use/储值内部承载尚待对应任务。
+
+
+### 使用领域与查询实现裁定（第二阶段）
+
+- Preview/quote在pay持久保存不可变提案，只写元数据，不预占、不激活。新UseSourcePort由core提供可信优惠后行项、运费、归属、门店名、类别快照及预约服务日；未接owner时fail closed。I08冻结本人授权和源事实，I09/I10终态以SourceDecisionPort为准，UNKNOWN/PENDING保留预占。原承诺完成不受停发/新用开关阻断。
+- 当前订单合同仅单券，selectedInstanceNos最多1项；多券返回能力未就绪。quote快照记录资产修订，订单券hold使用该修订；expectedAssetRevision继续用于preview型卡/兑换，不能通过订单券调用方传0绕过quote快照并发校验。后续多券需扩展原子多分配命令。
+- FREE_SHIP分摊行键固定`__FREIGHT__`，只减少运费；goodsAmountMinor与可信优惠后行项合计一致。优惠类型和分摊共用CouponCalculation，新旧券无两套算价实现。
+- Query投影无授权/规则JSON/资金拆分；cursor使用HMAC绑定本人和筛选，30分钟有效，原始租户/用户号不在cursor明文中。各节点配置相同的SHOP_PAY_ENTITLEMENT_CURSOR_KEY。ActivationQuote在FIRST_USE尚未激活时ON_FIRST_COMMIT，已激活改为NONE并返回实际窗口；读取永不激活。
+- I11合法回补、P30券码、真实订单协调以及使用/查询内部HTTP仍为后续任务，不能视为本批已开放。

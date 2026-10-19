@@ -5470,6 +5470,141 @@ CREATE TABLE IF NOT EXISTS ent_issue_batch
     CONSTRAINT uk_batch UNIQUE (tenant_no,batch_no)
 );
 
+CREATE TABLE IF NOT EXISTS ent_period_bucket
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    period_key VARCHAR(32) NOT NULL,
+    service_day DATE NOT NULL,
+    limit_units INT NOT NULL,
+    reserved_units INT NOT NULL DEFAULT 0,
+    used_units INT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_bucket UNIQUE (tenant_no,instance_no,period_key,service_day),
+    CHECK (limit_units>0 AND reserved_units>=0 AND used_units>=0 AND reserved_units+used_units<=limit_units)
+);
+
+CREATE TABLE IF NOT EXISTS ent_use_intent
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    active_source_key CHAR(64) NULL,
+    source_snapshot TEXT NOT NULL,
+    settled_source_key CHAR(64) NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    asset_kind VARCHAR(24) NOT NULL,
+    authorization_ref VARCHAR(64) NOT NULL,
+    command_snapshot TEXT NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    service_day DATE NULL,
+    source_decision_no VARCHAR(64) NULL,
+    expires_at DATETIME(3) NOT NULL,
+    committed_at DATETIME(3) NULL,
+    usage_no VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_operation UNIQUE (tenant_no,operation_no),
+    CONSTRAINT uk_use_source UNIQUE (tenant_no,source_key),
+    CONSTRAINT uk_use_active_source UNIQUE (tenant_no,active_source_key),
+    CONSTRAINT uk_settled_source UNIQUE (tenant_no,settled_source_key)
+);
+
+CREATE TABLE IF NOT EXISTS ent_use_allocation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    period_key VARCHAR(32) NOT NULL,
+    service_day DATE NOT NULL,
+    units INT NOT NULL,
+    discount_minor BIGINT NOT NULL DEFAULT 0,
+    currency VARCHAR(8) NOT NULL,
+    items_allocation TEXT NOT NULL,
+    reversed_units INT NOT NULL DEFAULT 0,
+    reversed_discount_minor BIGINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ent_alloc UNIQUE (tenant_no,operation_no,instance_no,period_key,service_day),
+    CHECK (units>0 AND discount_minor>=0),
+    CHECK (reversed_units>=0 AND reversed_units<=units AND reversed_discount_minor>=0 AND reversed_discount_minor<=discount_minor)
+);
+
+CREATE TABLE IF NOT EXISTS ent_usage
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    usage_no VARCHAR(64) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    store_name VARCHAR(100) NOT NULL,
+    asset_kind VARCHAR(24) NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    units INT NULL,
+    amount_minor BIGINT NULL,
+    currency VARCHAR(8) NULL,
+    items_snapshot TEXT NOT NULL,
+    service_staff_name VARCHAR(64) NULL,
+    source_order_no VARCHAR(64) NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_usage UNIQUE (tenant_no,usage_no),
+    CONSTRAINT uk_usage_op UNIQUE (tenant_no,operation_no)
+);
+
+CREATE TABLE IF NOT EXISTS ent_use_proposal
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    proposal_no VARCHAR(64) NOT NULL,
+    proposal_kind VARCHAR(16) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    payload_snapshot TEXT NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_use_proposal UNIQUE (tenant_no,proposal_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

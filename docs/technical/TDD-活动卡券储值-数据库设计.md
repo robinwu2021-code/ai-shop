@@ -970,3 +970,10 @@ V433创建ent_issue_policy/ent_issue_recipient，字段沿设计DDL。V434创建
 
 
 V435补ent_issue_batch，新增audience_snapshot JSON、recipient_results JSON和cursor_offset INT，固定受众/规则/摘要和逐项原grant号，批次恢复不重新筛人。每项grant与结果游标同pay事务，失败先回滚后单独记录明确跳过原因，不留半次预算预占。
+
+
+### 第二阶段V436使用领域落库
+
+新增ent_period_bucket、ent_use_intent、ent_use_allocation、ent_usage及ent_use_proposal；完整DDL见pay-schema目标文件及V436。意图冻结command_snapshot（原命令、源事实、规则、授权、选择与原服务日），usage_no用于稳定重放；active_source_key以不含修订的来源键互斥未决意图，RELEASED原子置空，成功终态继续保留；不能以新修订绕过旧预占。提案存preview/quote元数据和到期时刻，不写余额，不存明码。
+
+服务日桶与次数分录都在pay锁定实例后变更。到期仅改状态、记0变化分录，不清余额或释放未决预占。新增迁移已通过实际MySQL Writer事务、JSON/CHECK、失败回滚与H2结构/生成器对账；已应用V425–V435保持原样。

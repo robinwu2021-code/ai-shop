@@ -232,6 +232,7 @@ CREATE TABLE ent_use_intent (
     tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
     operation_no VARCHAR(64) NOT NULL COMMENT '核销操作号即hold引用',
     source_key CHAR(64) NOT NULL COMMENT '订单/兑换/服务行使用意图唯一',
+    active_source_key CHAR(64) NULL COMMENT '同源修订互斥，只有释放才能重建',
     source_snapshot JSON NOT NULL COMMENT '源订单版本/服务日等',
     settled_source_key CHAR(64) NULL COMMENT '成功订单支付维度唯一，改价重建仍一笔',
     user_no VARCHAR(64) NOT NULL COMMENT '使用者',
@@ -239,12 +240,14 @@ CREATE TABLE ent_use_intent (
     store_no VARCHAR(64) NOT NULL COMMENT '核销门店',
     asset_kind VARCHAR(24) NOT NULL COMMENT 'ORDER_COUPON/STORE_EXCHANGE/PAID_CARD/STORED_VALUE',
     authorization_ref VARCHAR(64) NOT NULL COMMENT '可信源本人确认/原有兑换核对凭证',
+    command_snapshot JSON NOT NULL COMMENT '冻结的核销命令与源事实',
     payload_hash CHAR(64) NOT NULL COMMENT '重试内容检查',
     status VARCHAR(24) NOT NULL COMMENT 'HELD/COMMITTED/RELEASED/EXCEPTION',
     service_day DATE NULL COMMENT '服务日期',
     source_decision_no VARCHAR(64) NULL COMMENT '源成功或取消决策',
     expires_at DATETIME(3) NOT NULL COMMENT '超时核查时刻',
     committed_at DATETIME(3) NULL COMMENT '成功核销时间',
+    usage_no VARCHAR(64) NULL COMMENT '成功记录引用',
     version BIGINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity乐观锁',
     deleted TINYINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity，账务事实禁止删除',
     created_at DATETIME(3) NOT NULL COMMENT 'UTC创建',
@@ -254,6 +257,7 @@ CREATE TABLE ent_use_intent (
     PRIMARY KEY (id),
     UNIQUE KEY uk_operation (tenant_no,operation_no),
     UNIQUE KEY uk_use_source (tenant_no,source_key),
+    UNIQUE KEY uk_use_active_source (tenant_no,active_source_key),
     UNIQUE KEY uk_settled_source (tenant_no,settled_source_key),
     KEY ix_use_pending (tenant_no,status,expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='统一权益使用意图，储值和券卡共用状态头';
@@ -673,3 +677,25 @@ CREATE TABLE ent_use_reversal (
     UNIQUE KEY uk_reverse_fact (tenant_no,after_sale_no,origin_operation_no,instance_no),
     CHECK (units>=0 AND discount_minor>=0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='既有订单券受限内部补偿，不开放储值退款';
+
+
+CREATE TABLE ent_use_proposal (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    proposal_no VARCHAR(64) NOT NULL COMMENT '预览或报价引用',
+    proposal_kind VARCHAR(16) NOT NULL COMMENT 'PREVIEW或QUOTE',
+    user_no VARCHAR(64) NOT NULL COMMENT '权益持有人',
+    entity_no VARCHAR(64) NOT NULL COMMENT '归属主体',
+    payload_snapshot JSON NOT NULL COMMENT '不可变预览及报价绑定',
+    snapshot_hash CHAR(64) NOT NULL COMMENT '本人确认的选择摘要',
+    expires_at DATETIME(3) NOT NULL COMMENT '只限制新增预占',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '乐观锁',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '不可物理删除账务相关事实',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC',
+    created_by VARCHAR(64) NOT NULL COMMENT '经办者',
+    updated_by VARCHAR(64) NOT NULL COMMENT '经办者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_use_proposal (tenant_no,proposal_no),
+    KEY ix_proposal_expiry (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='核销预览及报价，创建不扣减资产';

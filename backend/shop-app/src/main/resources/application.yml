@@ -523,6 +523,9 @@ shop:
 
   # 支付通道。**密钥一律走环境变量**，不写进这个文件、不进代码库。
   pay:
+    entitlement:
+      # Stable shared random secret (>=32 characters) for scoped query cursors; no development fallback.
+      cursor-key: ${SHOP_PAY_ENTITLEMENT_CURSOR_KEY:}
     # 假网关：只在开发期开。默认 false —— 默认开的话，真实现没接上时
     # 线上会「支付成功」而钱根本没动，且没有任何症状，要到对账日才发现
     stub: ${SHOP_PAY_STUB:false}

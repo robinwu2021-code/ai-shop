@@ -1,6 +1,7 @@
 package ai.neargo.shop.promotion.entity;
 
 import ai.neargo.shop.common.BaseEntity;
+import ai.neargo.shop.common.promotion.CouponCalculation;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
@@ -94,18 +95,7 @@ public class PmtCoupon extends BaseEntity {
      * @param base 参与计算的商品额（分）。商家券只算本店那部分
      */
     public long discountFor(long base) {
-        if (PERCENT.equals(benefitMode)) {
-            long rate = benefitValue == null ? 0 : benefitValue;
-            long off = base * (10_000 - rate) / 10_000;
-            long cap = benefitCapMinor == null ? 0 : benefitCapMinor;
-            return cap > 0 ? Math.min(off, cap) : off;
-        }
-        if (CASH.equals(benefitMode)) {
-            // 满减不能减成负数：券面额大于商品额时按商品额封顶
-            return Math.min(benefitValue == null ? 0 : benefitValue, base);
-        }
-        // 兑换与免运费不在这里减钱：前者给的是东西，后者减的是运费（在运费那一步）
-        return 0L;
+        return CouponCalculation.discount(benefitMode, benefitValue, benefitCapMinor, base);
     }
 
     /** 一张能用几次。次卡（豆浆 5 杯）就是这一列 &gt; 1 */

@@ -21,6 +21,9 @@ spring:
 
 shop:
   pay:
+    entitlement:
+      # Stable shared random secret (>=32 characters) for scoped query cursors; no development fallback.
+      cursor-key: ${SHOP_PAY_ENTITLEMENT_CURSOR_KEY:}
     # 这个进程自己不读这个开关（有闸门盯着：PayHasNoControllerTest）。
     # 形态由**主应用侧**决定注入 Local 还是 Remote。
     deployment: standalone

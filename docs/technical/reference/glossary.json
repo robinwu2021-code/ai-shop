@@ -26636,6 +26636,13 @@
       "package": "ai.neargo.shop.pay.entitlement.entity"
     },
     {
+      "table": "ent_period_bucket",
+      "class": "EntPeriodBucket",
+      "zh": "Pay-owned durable use fact; never written through a core transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
       "table": "ent_template",
       "class": "EntTemplate",
       "zh": "Payment-owned catalog row; published snapshots are never rewritten or deleted.",
@@ -26646,6 +26653,34 @@
       "table": "ent_template_version",
       "class": "EntTemplateVersion",
       "zh": "Payment-owned catalog row; published snapshots are never rewritten or deleted.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_usage",
+      "class": "EntUsage",
+      "zh": "Pay-owned durable use fact; never written through a core transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_use_allocation",
+      "class": "EntUseAllocation",
+      "zh": "Pay-owned durable use fact; never written through a core transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_use_intent",
+      "class": "EntUseIntent",
+      "zh": "Pay-owned durable use fact; never written through a core transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_use_proposal",
+      "class": "EntUseProposal",
+      "zh": "Pay-owned durable use fact; never written through a core transaction.",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.entitlement.entity"
     },
@@ -28505,6 +28540,13 @@
         "name": "MONTHLY",
         "value": "MONTHLY",
         "zh": "月结：次月首日。",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "EntitlementUseWriter",
+        "name": "PERIOD",
+        "value": "LIFETIME",
+        "zh": "",
         "module": "pay/pay-domain"
       },
       {
@@ -39077,6 +39119,14 @@
       "name": "ENT_REFERENCE",
       "type": "String",
       "value": "\"/internal/pay/entitlement/catalog/validate-reference\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "CouponQuotePolicy",
+      "name": "FREIGHT_LINE",
+      "type": "String",
+      "value": "\"__FREIGHT__\"",
       "zh": "",
       "module": "pay/pay-domain"
     },

@@ -2,6 +2,7 @@ package ai.neargo.shop.promotion.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.promotion.CouponCalculation;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.promotion.entity.PmtApply;
@@ -102,23 +103,11 @@ public class CouponAllocServiceImpl implements CouponAllocService {
         }
 
         List<CouponPort.MerchantDiscount> shares = new ArrayList<>();
-        long allocated = 0;
-        for (CouponPort.MerchantAmount g : applicable) {
-            long part = Math.round((double) total * g.goodsAmount() / base);
-            shares.add(new CouponPort.MerchantDiscount(g.merchantNo(), part, g.storeNo()));
-            allocated += part;
-        }
-        long remainder = total - allocated;
-        if (remainder != 0) {
-            // 按位置找最大那一组，不按主体号：同主体两家店是两组（ADR-031），按号会落到第一组
-            int largest = 0;
-            for (int i = 1; i < applicable.size(); i++) {
-                if (applicable.get(i).goodsAmount() > applicable.get(largest).goodsAmount()) {
-                    largest = i;
-                }
-            }
-            CouponPort.MerchantDiscount d = shares.get(largest);
-            shares.set(largest, new CouponPort.MerchantDiscount(d.merchantNo(), d.amount() + remainder, d.storeNo()));
+        var amounts = CouponCalculation.allocate(total, applicable.stream()
+                .map(CouponPort.MerchantAmount::goodsAmount).toList());
+        for (int i = 0; i < applicable.size(); i++) {
+            var group = applicable.get(i);
+            shares.add(new CouponPort.MerchantDiscount(group.merchantNo(), amounts.get(i), group.storeNo()));
         }
         return new CouponPort.Allocation(total,
                 PmtCoupon.BY_MERCHANT.equals(coupon.getFunder()), shares, coupon.getTitle());

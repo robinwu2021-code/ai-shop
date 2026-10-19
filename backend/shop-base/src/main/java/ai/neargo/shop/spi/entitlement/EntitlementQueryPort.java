@@ -32,8 +32,9 @@ public interface EntitlementQueryPort {
             ContractChecks.require(periodBasis != null
                     && Set.of("ROLLING_DAYS", "CALENDAR_MONTH").contains(periodBasis));
             ContractChecks.present(activationAction);
-            ContractChecks.require("FIRST_USE".equals(startBasis)
-                    == (activationAction == ActivationAction.ON_FIRST_COMMIT));
+            ContractChecks.require(activationAction != ActivationAction.ON_FIRST_COMMIT
+                    || "FIRST_USE".equals(startBasis));
+            ContractChecks.require(activationAction != ActivationAction.NONE || effectiveFrom != null);
             ContractChecks.require((effectiveFrom == null) == (effectiveUntil == null));
             ContractChecks.require(effectiveFrom == null ? "FIRST_USE".equals(startBasis)
                     : effectiveFrom.isBefore(effectiveUntil));
