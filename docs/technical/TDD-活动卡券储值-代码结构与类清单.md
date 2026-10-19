@@ -370,3 +370,19 @@ ORDER_COUPON协调切片验收后仍不能关闭JB-020：真实服务核销意�
 
 PayEntitlementOutboxRelay由组合根显式创建，独立形态只在pay-svc运行，主应用不重复扫描支付事件。
 领域PortImpl只由所属组合根绑定，避免本地和HTTP实现同时成为候选Bean。
+
+
+## 第二阶段 B3 活动权益与领取类
+
+| 模块 | 类/接口 | 责任 |
+|---|---|---|
+| core.promotion.dto | BenefitClaimCommand / BenefitGrantPlan / ActivityBenefitDecided | 最小领取输入、冻结权益包与持久决定事件 |
+| core.promotion.entity/mapper | PmtBenefitIntent / PmtBenefitIntentMapper | V441真实来源、本人幂等及状态锁 |
+| core.promotion.service/impl | ActivityBenefitIntentService / Impl | 冻结来源、父参与许可、子发放命令和不可反悔决定 |
+| core.promotion.port | ActivityGrantSourcePortImpl | CENTER/ACTIVITY完整冻结命令与真实决定核实 |
+| core.promotion.service.impl | ActivityClaimCapabilityEvidence | 仅已实现主动领取能力，不证明定向/订单触发引擎 |
+| app.paybridge | ActivityBenefitCoordinator / impl / ActivityBenefitDecisionConsumer | 无跨库事务的权益包协调与重复事件恢复 |
+| app.paybridge.port | ActivityGrantOutcomePortImpl | 所有子pay终态核实后提供营销确认/释放事实 |
+| app.portal.mp | MpEntitlementController | P11及原领取只读查询，消费者字段白名单 |
+
+ActivityPresetExecutionPolicy仅新增AP004的NONE触发权益领取执行器；其他预置仍逐项判断实际能力。

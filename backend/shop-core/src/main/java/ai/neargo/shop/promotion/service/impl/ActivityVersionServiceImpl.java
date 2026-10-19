@@ -264,7 +264,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
                 var owner = catalog.getIfAvailable();
                 if (owner == null) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
                 owner.validateReference(new ReferenceQuery(actor.tenantNo(), actor.entityNo(),
-                        benefit.templateVersionNo(), d.currency(), "ACTIVITY"));
+                        benefit.templateVersionNo(), d.currency(), "ACTIVITY_GRANT"));
             }
             if (benefit.goodsNo() != null
                     && !products.goodsOwned(actor.tenantNo(), actor.entityNo(), Set.of(benefit.goodsNo()))) {

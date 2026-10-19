@@ -42,7 +42,7 @@ class EntitlementGrantFlowTest {
     @Autowired EntitlementGrantService grants;
     @Autowired EntitlementGrantWriter writer;
     @Autowired JdbcTemplate jdbc;
-    @MockitoBean EntitlementGrantSourcePort source;
+    @MockitoBean(name = "batchGrantSourcePortImpl") EntitlementGrantSourcePort source;
     @MockitoBean SourceDecisionPort decisions;
     private final CatalogScope scope = new CatalogScope("MAIN", "GR-" + UUID.randomUUID(), "GRANT-TEST", false);
     private String key() { return UUID.randomUUID().toString(); }

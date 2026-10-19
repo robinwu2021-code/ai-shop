@@ -10,7 +10,7 @@
 
 每表id为内部自增主键，tenant_no参与业务唯一性；version条件更新（对外expectedRevision映射此列）；created/updated_at用UTC DATETIME(3)，created/updated_by留操作人。资金/核销事实不可物理删除；模板归档不删除历史。沿现有BaseEntity实际审计列对齐后再生成正式迁移，不借设计重命名所有现存列。
 
-公共字段适用于当前基础42张及6张支撑表（core18/pay30，合计48张；含预览、取消栅栏与订单协调增量），DDL逐表展开：
+公共字段适用于当前基础43张及6张支撑表（core19/pay30，合计49张；含预览、取消栅栏与订单协调增量），DDL逐表展开：
 
 | 字段 | 类型及空值 | 含义 |
 |---|---|---|
@@ -1022,3 +1022,17 @@ pay仅接受ORDER_COUPON原成功使用；CORE/ORDER_REFUND的sourceNo为权威�
 仅STORE_EXCHANGE类型为可签发模板策略；新代码不扩展所有既有不可变模板定义的字段。`shop.pay.entitlement.code.enabled`默认false，并要求use开关；签发密钥`shop.pay.entitlement.code-key`由`SHOP_PAY_ENTITLEMENT_CODE_KEY`供给，至少32字节，缺失拒绝新签发，不生成随机默认密钥。HMAC-SHA256绑定租户/本人/实例/原幂等键摘要/随机nonce，数据库只存token摘要及nonce，不存明文或可逆密文；重试原幂等键可重建原响应，密钥改变后无法重建旧token时明确拒绝，不另发新码。已持有的原码仍按摘要验证。
 
 本人签发/撤销；解析仅定位一张兑换券并限制主体/适用门店，USED绑定原操作、门店和人；只有完全相同绑定在过期前可重放，换号/换店/换人拒绝。解析/签发不激活、不预占、不扣次数，不可查询该人的其他权益。停止新增签发不使短期已签凭证失效；冻结/到期/耗尽的资产仍不可新解析。原USED凭证不因撤销其他ACTIVE凭证而取消已建立的业务意图，原意图按020协议单独确认/取消。
+
+
+### 第二阶段活动领取来源：V441 pmt_benefit_intent
+
+核心服务新增真实领取来源表，唯一键为tenant+intentNo及tenant+user+requestKeyHash。
+保存请求摘要、原上下文、冻结活动版本/参与命令/许可及全部子发放命令；JSON中无余额、明码。
+状态PENDING→COMMIT_DECIDED/ABORT_DECIDED→COMMITTED/ABORTED，终态不可互转。
+同一用户幂等键不可更换模板、活动或门店。核心源决定和ActivityBenefitDecided事件同事务落库，
+支付prepare/commit/abort在核心资源锁外进行；未知结果不释放预算。
+一次活动预留一份营销名额，每个权益项保留稳定sourceLineNo与grantNo；子许可仅替换sourceRef，
+其余字段与父许可一致，由核心来源owner逐字段核实并冻结完整GrantCommand。
+全部子发放准备成功后才确定COMMIT；部分准备失败先确定ABORT，再逐子撤销（含未准备的取消栅栏），
+全部支付终态核实后确认或释放营销占用。COMMIT决定后暂停发行不能反悔已准备的权益承诺。
+当前C主动领取只支持NONE触发的ENTITLEMENT_GRANT活动；订单条件触发仍须真实订单资格owner。

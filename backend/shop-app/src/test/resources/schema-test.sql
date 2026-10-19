@@ -5735,6 +5735,28 @@ CREATE TABLE IF NOT EXISTS ent_code_token
     CHECK ((status='USED' AND consumed_operation_no IS NOT NULL AND consumed_store_no IS NOT NULL AND consumed_actor_no IS NOT NULL AND consumed_at IS NOT NULL) OR (status IN ('ACTIVE','REVOKED') AND consumed_operation_no IS NULL AND consumed_store_no IS NULL AND consumed_actor_no IS NULL AND consumed_at IS NULL))
 );
 
+CREATE TABLE IF NOT EXISTS pmt_benefit_intent
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    intent_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    plan_snapshot TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_benefit_intent UNIQUE (tenant_no,intent_no),
+    CONSTRAINT uk_benefit_request UNIQUE (tenant_no,user_no,request_key_hash),
+    CHECK (status IN ('PENDING','COMMIT_DECIDED','ABORT_DECIDED','COMMITTED','ABORTED'))
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

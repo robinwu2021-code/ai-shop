@@ -15,6 +15,10 @@ class ActivityPresetExecutionPolicyTest {
         assertTrue(policy.missing(actor, "AP010").isEmpty());
         assertEquals(List.of("PRESET_EXECUTOR"), policy.missing(actor, "AP014"));
     }
+    @Test void activeClaimExecutorAdmitsOnlyItsImplementedReceivePreset() {
+        assertTrue(policy.missing(actor, "AP004").isEmpty());
+        assertTrue(policy.missing(actor, "AP019").contains("PRESET_EXECUTOR"));
+    }
     @Test void currentOrderAdapterDoesNotPublishOtherTenantsOrCurrencies() {
         var foreign = new ActivityActor("OTHER", "M1", "U1", null);
         assertTrue(policy.missing(foreign, "AP009").contains("ORDER_TENANT_UNSUPPORTED"));

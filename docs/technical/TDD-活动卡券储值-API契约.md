@@ -46,7 +46,7 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | P08 | GET | /biz/entitlement-issue-batches/{batchNo} | 无 | IssueBatchView | pay:ent:read | 含逐项跳过/失败原因 |
 | P09 | GET | /mp/entitlements | kind?,status?,cursor?,size | CursorPage<EntitlementItem> | 登录本人 | 本人卡券/次卡/月卡 |
 | P10 | GET | /mp/entitlements/{instanceNo} | 无 | EntitlementDetail | 登录本人 | 余次/期限/范围，已过期保留 |
-| P11 | POST | /mp/entitlement-claims | ClaimCommand | GrantView | 登录本人 | 模板CENTER或活动资格，不任意领付费卡 |
+| P11 | POST | /mp/entitlement-claims | BenefitClaimCommand | ClaimReceipt | 登录本人 | 模板CENTER或活动资格，不任意领付费卡 |
 | P12 | POST | /biz/entitlement-uses/preview | UsePreviewCommand | UsePreview | pay:ent:use | 先看后核，检查可用状态 |
 | P13 | POST | /biz/entitlement-uses | UseSubmitCommand | OperationView | pay:ent:use | 受控核销，由应用协调源授权，不裸露commit |
 | P14 | GET | /biz/entitlement-uses/{operationNo} | 无 | OperationView | pay:ent:read | 未知状态查原操作，不重新扣 |
@@ -520,3 +520,27 @@ pay-svc始终绑定支付owner，不在pay领域内读取部署开关。独立�
 订单协调在原命令已持久化后遇503或其他不确定错误，返回PROCESSING并保留占用；
 只恢复原operationNo，未知结果不释放、不换号。已有积分分摊的订单暂不支持新券改价，
 待JB-020/JB-049具备原积分分摊的原子重算协议后放开；旧积分与旧券流程不受此新增入口影响。
+
+
+## 第二阶段：活动发放与本人领取
+
+P11已实现：`BenefitClaimCommand(templateVersionNo,activityNo?,activityVersionNo?,entityNo,storeNo)`，
+要求`Idempotency-Key`（非空，最多128字符），本人/租户从消费者会话构造。
+请求不接受收件人、数量、资格凭证、决定或实付金额。活动与活动版本须同时提供或同时为空。
+无活动时只允许CENTER发行途径，付费卡及仅定向发行模板拒绝；有活动时核实真实已发布活动版本、
+当前运行状态、门店、人群、营销预算与限领，冻结该活动的完整权益包，不能由C任意拼装权益。
+当前主动领取仅支持NONE触发的ENTITLEMENT_GRANT，订单条件活动须等待其真实来源执行器。
+AP004进店领券已具备执行器与能力证据；预置仍默认关闭，需运营启用及通过商家准入后才能发布。
+
+返回`ClaimReceipt(intentNo,status,instanceNos)`，状态COMMITTED/ABORTED/PROCESSING。
+多权益活动返回一个领取意图，包含所有成功实例号；不向C暴露子命令、内部许可、来源决定或双池字段。
+`GET /mp/entitlement-claims/{intentNo}`只查询本人原意图及原pay事实，不隐式发放或恢复。
+继续办理用相同P11幂等键和原请求；异参409，不生成替代grant。后台持久决定事件继续原操作。
+
+调用顺序：core begin冻结来源与一次活动预留→pay逐子prepare→core决定+outbox同事务→
+pay逐子commit/abort→按全部真实pay终态confirm/release活动→core记录完成。
+全部prepare成功才允许COMMIT；某子确定失败则整体ABORT并逐子建立取消栅栏，防止迟到prepare。
+某次远程结果未知则PROCESSING，原营销占用与pay准备承诺保留，不按TTL回收。
+决定后遇失联只恢复原决定；消费/发行开关变更不撤销既有承诺。
+一次活动只消耗一个营销名额，多个权益项使用稳定sourceLineNo/grantNo；源owner核对完整冻结命令。
+`ACTIVITY_BENEFIT_DECIDED`不含许可/码/余额，重复和乱序投递均重读原核心计划。

@@ -27609,6 +27609,13 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "pmt_benefit_intent",
+      "class": "PmtBenefitIntent",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
       "table": "pmt_command_dedup",
       "class": "PmtCommandDedup",
       "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
