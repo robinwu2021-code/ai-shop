@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestStoreCategory;
+import ai.neargo.shop.support.CashReceiptFixture;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestPlan;
@@ -238,9 +239,7 @@ class ReviewStoreAttributionFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("payOrderNo").asString();
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + payOrderNo
-                        + "\",\"sign\":\"stub-secret\"}"));
+        new CashReceiptFixture(context).pay(buyer, payOrderNo);
 
         /*
          * 子单号从**买家自己**的「我的订单」取，不从商家的订单列表取第一行。
@@ -257,6 +256,10 @@ class ReviewStoreAttributionFlowTest {
         mvc().perform(post("/biz/order/" + subOrderNo + "/ship")
                 .header("Authorization", "Bearer " + bizToken)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"expressNo\":\"SF-RV-1\"}"));
+        mvc().perform(post("/biz/order/" + subOrderNo + "/delivered")
+                        .header("Authorization", "Bearer " + bizToken)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(jsonPath("$.code").value(0));
         // 端点是 confirm-receipt（收货确认）。写成 /confirm 的话请求 404，
         // 单还停在 SHIPPED，下一步「发表评价」返回 20004（订单状态不允许）——
         // 而那个报错指向的是评价，看起来像评价链路坏了

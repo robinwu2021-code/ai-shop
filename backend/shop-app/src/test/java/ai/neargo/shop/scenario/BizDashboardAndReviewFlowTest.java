@@ -2,6 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.CashReceiptFixture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -836,9 +837,7 @@ class BizDashboardAndReviewFlowTest {
          * 而下一步「商家看不到这单」看起来像数据域过滤问题。
          */
         String payOrderNo = data.get("payOrderNo").asString();
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + payOrderNo
-                        + "\",\"sign\":\"stub-secret\"}"));
+        new CashReceiptFixture(context).pay(buyer, payOrderNo);
 
         // 商家订单列表里，子单号这一列叫 orderNo（OrderVO 对 B 端的口径）
         String subOrderNo = json.readTree(mvc().perform(get("/biz/order")
@@ -852,6 +851,10 @@ class BizDashboardAndReviewFlowTest {
         mvc().perform(post("/biz/order/" + subOrderNo + "/delivered")
                 .header("Authorization", "Bearer " + merchantToken)
                 .contentType(MediaType.APPLICATION_JSON).content("{}"));
+        // A delivered parcel is still WAIT_RECEIPT; reviews open only after buyer receipt.
+        mvc().perform(post("/mp/order/" + subOrderNo + "/confirm-receipt")
+                .header("Authorization", "Bearer " + buyer))
+                .andExpect(jsonPath("$.code").value(0));
         // **返回子单号**：C 端的「订单」就是子单，评价也是对商家的（一主单可拆给多家）
         return subOrderNo;
     }
