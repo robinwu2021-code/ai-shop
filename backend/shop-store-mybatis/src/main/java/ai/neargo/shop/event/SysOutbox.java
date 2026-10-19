@@ -48,4 +48,13 @@ public class SysOutbox {
     private String lastError;
     private LocalDateTime createdAt;
     private LocalDateTime sentAt;
+    /** Unified protocol; null on legacy events not yet adopted. */
+    private String sourceSystem;
+    private String sourceEventNo;
+    private Integer schemaVersion;
+    private String payloadHash;
+    private String streamKey;
+    private Long streamSequence;
+    private String routingMode;
+    private LocalDateTime occurredAt;
 }

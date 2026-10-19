@@ -33,4 +33,15 @@ public class InvOutbox extends InvMutableEntity {
 
     private LocalDateTime sentAt;
 
+    /** Unified protocol; null on legacy events not yet adopted. */
+    private String sourceSystem;
+    private String sourceEventNo;
+    private Integer schemaVersion;
+    private String payloadHash;
+    private String streamKey;
+    private Long streamSequence;
+    private String routingMode;
+    private LocalDateTime occurredAt;
+    private String aggregateType;
+    private String aggregateId;
 }
