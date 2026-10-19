@@ -270,9 +270,7 @@ class BizNotifyFlowTest {
                         .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey
-                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        new ai.neargo.shop.support.CashReceiptFixture(context).pay(token, payOrderNo);
     }
 
     private String loginAsOwnerOf(String merchantNo, String phone) throws Exception {

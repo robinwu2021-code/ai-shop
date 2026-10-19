@@ -189,11 +189,7 @@ class S3AdmissionRealPathTest {
          * 当日成交额算出来是 0，于是买家 B 那一单被放行，
          * 症状伪装成「日累计上限跨买家不累加」这个完全不相干的结论。
          */
-        String ack = mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey
-                                + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
-                .andReturn().getResponse().getContentAsString();
-        assertThat(ack).as("支付回调要真的成功，否则这一单不计入当日成交额").contains("SUCCESS");
+        new ai.neargo.shop.support.CashReceiptFixture(context).pay(token, payOrderNo);
         return amount;
     }
 

@@ -14,12 +14,14 @@ import ai.neargo.shop.trade.entity.OrdSubOrder;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -62,6 +64,22 @@ class ProxyOrderFlowTest {
     private OrderStatusLogMapper statusLogMapper;
     @Autowired
     private BaseMapper<MktAttribution> attributionMapper;
+    @Autowired
+    private JdbcTemplate jdbc;
+
+    /** These scenarios exercise proxy-order rules, so pin their fulfillment prerequisite explicitly. */
+    @BeforeEach
+    void enablePickupForSeedMerchant() {
+        String store = "ST-M0001";
+        int updated = jdbc.update("UPDATE mch_fulfillment_channel SET enabled=1,scope_mode='ALL',ops_locked=0,deleted=0 "
+                        + "WHERE entity_no=? AND store_no=? AND channel='STORE_PICKUP'", MERCHANT, store);
+        if (updated == 0) {
+            jdbc.update("INSERT INTO mch_fulfillment_channel "
+                            + "(store_no,entity_no,channel,enabled,scope_mode,tenant_no,created_at,updated_at) "
+                            + "VALUES (?,?,'STORE_PICKUP',1,'ALL','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                    store, MERCHANT);
+        }
+    }
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -74,6 +92,8 @@ class ProxyOrderFlowTest {
     void cleanup() throws Exception {
         attributionMapper.delete(Wrappers.<MktAttribution>lambdaQuery()
                 .likeRight(MktAttribution::getUserNo, "U"));
+        jdbc.update("DELETE FROM mch_fulfillment_channel WHERE entity_no=? AND store_no='ST-M0001' "
+                + "AND channel='STORE_PICKUP'", MERCHANT);
     }
 
     @Test

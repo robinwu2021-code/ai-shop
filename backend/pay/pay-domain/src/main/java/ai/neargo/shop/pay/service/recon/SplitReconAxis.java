@@ -7,6 +7,7 @@ import ai.neargo.shop.pay.entity.StlReconDiff;
 import ai.neargo.shop.pay.mapper.SettleMappers;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -80,10 +81,11 @@ public class SplitReconAxis implements ReconAxis {
                         .le(StlBill::getSplitAt, cutoff)));
 
         int opened = 0;
+        String billDate = java.time.LocalDate.now().toString();
         for (StlBill b : stale) {
-            if (alreadyOpen(b.getSettleNo())) {
-                // 幂等：连跑两轮差异不该翻倍。**按结算单去重而不是按天** ——
-                // 同一笔卡了三天不该变成三条待处置
+            String payChannel = payChannelOf(b);
+            if (alreadyRecorded(billDate, payChannel, b.getSettleNo())) {
+                // 唯一键不含 axis 或 status，已处置记录和其他轴的同键记录也必须阻止重插。
                 continue;
             }
             StlReconDiff d = new StlReconDiff();
@@ -92,30 +94,42 @@ public class SplitReconAxis implements ReconAxis {
             d.setDiffType(DIFF_UNCONFIRMED);
             // bill_date 必填：对账是**按天组织**的，运营按日期核。
             // 用「发现日」而不是单据日 —— 一笔卡了三天的单，运营要在今天这一页看到它
-            d.setBillDate(java.time.LocalDate.now().toString());
+            d.setBillDate(billDate);
             d.setSource("SELF_CHECK");
             d.setOrderNo(b.getOrderNo());
             d.setPaymentNo(b.getSettleNo());
             d.setPlatformAmountMinor(b.getSplitAmountMinor());
             // 存量结算单的 pay_channel 是 null（那一列 2026-08-26 才开始写）——
             // 落 null 会撞 NOT NULL，所以兜到「不适用」
-            d.setPayChannel(b.getPayChannel() == null || b.getPayChannel().isBlank()
-                    ? CHANNEL_NA : b.getPayChannel());
+            d.setPayChannel(payChannel);
             d.setStatus("PENDING");
             d.setTenantNo("MAIN");
             d.setCreatedAt(LocalDateTime.now());
-            DataScopeContext.executeWithoutScope(() -> diffMapper.insert(d));
-            opened++;
+            try {
+                DataScopeContext.executeWithoutScope(() -> diffMapper.insert(d));
+                opened++;
+            } catch (DuplicateKeyException raced) {
+                // Two nodes may both pass the read check. Treat only this exact unique-key collision as idempotent.
+                if (!alreadyRecorded(billDate, payChannel, b.getSettleNo())) {
+                    throw raced;
+                }
+            }
         }
         return new ScanOutcome(stale.size(), 0, opened, 0);
     }
 
-    private boolean alreadyOpen(String settleNo) {
+    private boolean alreadyRecorded(String billDate, String payChannel, String settleNo) {
         return DataScopeContext.executeWithoutScope(() ->
                 diffMapper.selectCount(Wrappers.<StlReconDiff>lambdaQuery()
-                        .eq(StlReconDiff::getAxis, CODE)
+                        .eq(StlReconDiff::getBillDate, billDate)
+                        .eq(StlReconDiff::getPayChannel, payChannel)
                         .eq(StlReconDiff::getPaymentNo, settleNo)
-                        .eq(StlReconDiff::getStatus, "PENDING"))) > 0;
+                        .eq(StlReconDiff::getDiffType, DIFF_UNCONFIRMED))) > 0;
+    }
+
+    private static String payChannelOf(StlBill bill) {
+        return bill.getPayChannel() == null || bill.getPayChannel().isBlank()
+                ? CHANNEL_NA : bill.getPayChannel();
     }
 
     /**

@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** JSON must persist as an object under both H2 JSON and the strict native schema. */
+/** Snapshot JSON text must remain an object when read back under the H2/MariaDB-compatible schemas. */
 @SpringBootTest
 @ActiveProfiles("test")
 class ShippingSnapshotPersistenceFlowTest {
@@ -27,7 +27,7 @@ class ShippingSnapshotPersistenceFlowTest {
     @Autowired private ObjectMapper json;
 
     @Test
-    void mappedSnapshotRoundTripsAnObjectAndQueueRevisionClearsPriorSuccess() {
+    void mappedSnapshotRoundTripsAnObjectAndQueueRevisionClearsPriorSuccess() throws Exception {
         String order = "SNAP-" + UUID.randomUUID();
         TrdShippingUpload row = new TrdShippingUpload();
         row.setOrderNo(order);
@@ -42,7 +42,7 @@ class ShippingSnapshotPersistenceFlowTest {
         Object raw = jdbc.queryForObject("SELECT source_snapshot FROM trd_shipping_upload WHERE id=?",
                 Object.class, row.getId());
         String persisted = raw instanceof byte[] bytes ? new String(bytes, StandardCharsets.UTF_8)
-                : raw.toString();
+                : raw instanceof java.sql.Clob clob ? clob.getSubString(1, (int) clob.length()) : raw.toString();
         assertThat(json.readTree(persisted).isObject()).isTrue();
         service.enqueue(order, row.getOutTradeNo(), 1);
         TrdShippingUpload refreshed = mapper.selectOne(Wrappers.<TrdShippingUpload>lambdaQuery()

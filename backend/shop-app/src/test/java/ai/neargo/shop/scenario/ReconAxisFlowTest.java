@@ -16,6 +16,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -52,7 +55,8 @@ class ReconAxisFlowTest {
     void cleanDiffs() {
         DataScopeContext.executeWithoutScope(() -> diffMapper.delete(
                 Wrappers.<StlReconDiff>lambdaQuery()
-                        .in(StlReconDiff::getAxis, SplitReconAxis.CODE, PayoutReconAxis.CODE)));
+                        .likeRight(StlReconDiff::getPaymentNo, "SB-AXIS-")
+                        .in(StlReconDiff::getAxis, SplitReconAxis.CODE, PayoutReconAxis.CODE, "PAYMENT")));
         DataScopeContext.executeWithoutScope(() -> billMapper.delete(
                 Wrappers.<StlBill>lambdaQuery().likeRight(StlBill::getSettleNo, "SB-AXIS-")));
     }
@@ -100,6 +104,51 @@ class ReconAxisFlowTest {
         bill("SB-AXIS-FRESH", StlBill.SPLIT, System.currentTimeMillis(), null, System.currentTimeMillis());
         splitAxis.scan(System.currentTimeMillis());
         assertThat(diffsOf("SB-AXIS-FRESH")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("差异唯一键跨轴且包含已处置记录 —— 分账轴重扫不能重复插入")
+    void crossAxisDiffWithAnyStatusSatisfiesUniqueKey() {
+        for (String status : List.of("PENDING", "RESOLVED")) {
+            String settleNo = "SB-AXIS-CROSS-" + status;
+            bill(settleNo, StlBill.SPLIT, hoursAgo(72), null, hoursAgo(72));
+            StlReconDiff otherAxis = new StlReconDiff();
+            otherAxis.setAxis("PAYMENT");
+            otherAxis.setDiffNo("DIFF-AXIS-CROSS-" + status);
+            otherAxis.setBillDate(java.time.LocalDate.now().toString());
+            otherAxis.setPayChannel("WECHAT");
+            otherAxis.setPaymentNo(settleNo);
+            otherAxis.setDiffType("SPLIT_UNCONFIRMED");
+            otherAxis.setSource("SELF_CHECK");
+            otherAxis.setStatus(status);
+            otherAxis.setTenantNo("MAIN");
+            DataScopeContext.executeWithoutScope(() -> diffMapper.insert(otherAxis));
+        }
+
+        splitAxis.scan(System.currentTimeMillis());
+
+        assertThat(diffsOf("SB-AXIS-CROSS-PENDING")).hasSize(1);
+        assertThat(diffsOf("SB-AXIS-CROSS-RESOLVED")).hasSize(1);
+        assertThat(diffsOf("SB-AXIS-CROSS-RESOLVED").getFirst().getStatus()).isEqualTo("RESOLVED");
+    }
+
+    @Test
+    @DisplayName("并发重复扫描依靠唯一键收口，不让其中一个扫描返回异常")
+    void concurrentSplitScansAreIdempotent() throws Exception {
+        String settleNo = "SB-AXIS-RACE";
+        bill(settleNo, StlBill.SPLIT, hoursAgo(72), null, hoursAgo(72));
+        var pool = Executors.newFixedThreadPool(2);
+        var start = new CountDownLatch(1);
+        try {
+            var first = pool.submit(() -> { start.await(); return splitAxis.scan(System.currentTimeMillis()); });
+            var second = pool.submit(() -> { start.await(); return splitAxis.scan(System.currentTimeMillis()); });
+            start.countDown();
+            first.get(10, TimeUnit.SECONDS);
+            second.get(10, TimeUnit.SECONDS);
+            assertThat(diffsOf(settleNo)).hasSize(1);
+        } finally {
+            pool.shutdownNow();
+        }
     }
 
     @Test
@@ -164,6 +213,7 @@ class ReconAxisFlowTest {
         b.setOrderNo("ORD-" + settleNo);
         b.setEntityNo(ENTITY);
         b.setStatus(status);
+        b.setPayChannel("WECHAT");
         b.setGrossMinor(10_000L);
         b.setNetMinor(9_500L);
         b.setSplitAmountMinor(500L);

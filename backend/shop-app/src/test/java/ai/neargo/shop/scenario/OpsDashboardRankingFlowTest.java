@@ -31,9 +31,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class OpsDashboardRankingFlowTest {
 
-    /** 支付回调桩的签名，与 M7SettleFlowTest 同一个 */
-    private static final String STUB_SECRET = "stub-secret";
-
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
 
@@ -332,9 +329,7 @@ class OpsDashboardRankingFlowTest {
             return code;
         }
         String payOrderNo = root.get("data").get("payOrderNo").asString();
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idem
-                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        new ai.neargo.shop.support.CashReceiptFixture(context).pay(buyer, payOrderNo);
         return 0;
     }
 

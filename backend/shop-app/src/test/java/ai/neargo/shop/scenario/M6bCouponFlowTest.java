@@ -6,6 +6,7 @@ import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.marketing.coupon.entity.MktCoupon;
 import ai.neargo.shop.marketing.coupon.mapper.CouponMappers.CouponMapper;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,6 +15,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import org.springframework.jdbc.core.JdbcTemplate;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -50,6 +52,29 @@ class M6bCouponFlowTest {
 
     @Autowired
     private CouponMapper couponMapper;
+
+    @Autowired
+    private JdbcTemplate jdbc;
+
+    /** Coupon cases need a stable pickup route even if another scenario changed the seed merchant. */
+    @BeforeEach
+    void enablePickupForSeedMerchant() {
+        String store = "ST-M0001";
+        int updated = jdbc.update("UPDATE mch_fulfillment_channel SET enabled=1,scope_mode='ALL',ops_locked=0,deleted=0 "
+                        + "WHERE entity_no='M0001' AND store_no=? AND channel='STORE_PICKUP'", store);
+        if (updated == 0) {
+            jdbc.update("INSERT INTO mch_fulfillment_channel "
+                            + "(store_no,entity_no,channel,enabled,scope_mode,tenant_no,created_at,updated_at) "
+                            + "VALUES (?,'M0001','STORE_PICKUP',1,'ALL','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                    store);
+        }
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void removePickupFixture() {
+        jdbc.update("DELETE FROM mch_fulfillment_channel WHERE entity_no='M0001' "
+                + "AND store_no='ST-M0001' AND channel='STORE_PICKUP'");
+    }
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

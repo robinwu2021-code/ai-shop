@@ -31,10 +31,11 @@ class PointsJobWiringTest {
                             var handlers = context.getBeansOfType(JobHandler.class).values();
                             var declarations =
                                     context.getBeansOfType(JobDeclaration.class).values();
-                            assertThat(handlers).hasSize(8);
-                            assertThat(declarations).hasSize(8).allMatch(d -> !d.enabled());
+                            assertThat(handlers).hasSize(10);
+                            assertThat(declarations).hasSize(10).allMatch(d -> !d.enabled());
                             assertThat(handlers)
                                     .extracting(JobHandler::name)
+                                    .contains("points-statement-build", "points-topup-plans")
                                     .doesNotContain(
                                             "points-activate", "points-expire", "points-identity");
                             for (var handler : handlers) {

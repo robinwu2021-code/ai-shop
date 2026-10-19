@@ -475,17 +475,20 @@ class BizCrossStoreFlowTest {
     /** 下单 + **付款**。不付款的单是 WAIT_PAY，不计入成交口径 */
     private void buyAndPay(String buyerPhone, String goodsNo, String skuNo, int qty,
                            String pickupNo, String idem) throws Exception {
-        String payOrderNo = buyOnly(buyerPhone, goodsNo, skuNo, qty, pickupNo, idem);
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idem
-                                + "\",\"sign\":\"stub-secret\"}"))
-                .andExpect(status().isOk());
+        String buyer = login(buyerPhone);
+        String payOrderNo = placeOrder(buyer, goodsNo, skuNo, qty, pickupNo, idem);
+        new ai.neargo.shop.support.CashReceiptFixture(context).pay(buyer, payOrderNo);
     }
 
     /** @return payOrderNo —— 回调认的是它，不是 orderNo */
     private String buyOnly(String buyerPhone, String goodsNo, String skuNo, int qty,
                            String pickupNo, String idem) throws Exception {
         String buyer = login(buyerPhone);
+        return placeOrder(buyer, goodsNo, skuNo, qty, pickupNo, idem);
+    }
+
+    private String placeOrder(String buyer, String goodsNo, String skuNo, int qty,
+                              String pickupNo, String idem) throws Exception {
         String body = mvc().perform(post("/mp/order").header("Authorization", "Bearer " + buyer)
                         .header("Idempotency-Key", idem)
                         .contentType(MediaType.APPLICATION_JSON)

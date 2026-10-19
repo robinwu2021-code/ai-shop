@@ -11,8 +11,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.junit.jupiter.api.BeforeEach;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 /**
  * 位置分布：**区县概览 + 聚落下钻**（TDD-运营端位置分布-区县下钻；需求 PRD-位置与经营范围 O11–O13 §8.3）。
@@ -42,6 +45,15 @@ class CoverageDistributionTest {
     private CommunityMapper communityMapper;
     @Autowired
     private ai.neargo.shop.user.mapper.UserMappers.AddressMapper addressMapper;
+    @MockitoBean
+    private ai.neargo.shop.spi.product.SupplyStatsPort supplyStats;
+
+    @BeforeEach
+    void isolateSupplyCoverage() {
+        // This class verifies geographic aggregation. Merchant coverage is independently integration-tested;
+        // keep seeded/global merchant scopes from changing the four-bucket fixture between suite runs.
+        when(supplyStats.byCommunity()).thenReturn(java.util.Map.of());
+    }
 
     private static int seq = 9500;
 

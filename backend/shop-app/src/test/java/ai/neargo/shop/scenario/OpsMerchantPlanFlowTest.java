@@ -50,8 +50,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class OpsMerchantPlanFlowTest {
 
     /** 与 BizOrderFulfillFlowTest 同一个：stub 回调的签名，配在 application-test.yml */
-    private static final String STUB_SECRET = "stub-secret";
-
     /** 无权限：{@code ErrorCode.FORBIDDEN}。HTTP 仍是 200，权限失败走统一信封 */
     private static final int DENIED = 10403;
 
@@ -602,12 +600,8 @@ class OpsMerchantPlanFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("payOrderNo").asString();
-        // 走支付回调而不是 /pay：只调 /pay 的话单还在 WAIT_PAY，发货会被状态机拒 ——
-        // 而那是测试写错了不是代码错了
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-"
-                                + payOrderNo + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
-                .andExpect(status().isOk());
+        // 只走 /pay 会保留 WAIT_PAY。CashReceiptFixture 会完成通道确认及收据回调。
+        new ai.neargo.shop.support.CashReceiptFixture(context).pay(buyer, payOrderNo);
 
         // 商家视角的 OrderVO.orderNo 装的是子单号 —— 商家谈的一直是自己那一单
         String list = mvc().perform(get("/biz/order").header("Authorization", "Bearer " + bizToken))

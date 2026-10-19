@@ -4261,7 +4261,8 @@ CREATE TABLE IF NOT EXISTS trd_shipping_upload
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted INT(11) NOT NULL DEFAULT 0,
     confirm_notified_at BIGINT DEFAULT NULL,
-    source_snapshot JSON NULL,
+    -- MariaDB's JSON type is a LONGTEXT alias; CLOB mirrors its raw JSON-text storage in H2.
+    source_snapshot CLOB NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_shipping_order UNIQUE (order_no, tenant_no, deleted)
 );

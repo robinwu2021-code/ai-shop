@@ -315,11 +315,7 @@ class PushNotifyFlowTest {
                 .andReturn().getResponse().getContentAsString();
         var data = json.readTree(body).get("data");
         assertThat(data == null ? null : data.get("payOrderNo")).as("下单失败：%s", body).isNotNull();
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + data.get("payOrderNo").asString()
-                                + "\",\"transactionId\":\"TX-" + idemKey
-                                + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
-                .andExpect(status().isOk());
+        new ai.neargo.shop.support.CashReceiptFixture(context).pay(token, data.get("payOrderNo").asString());
     }
 
     private String loginAsOwnerOf(String merchantNo, String phone) throws Exception {
