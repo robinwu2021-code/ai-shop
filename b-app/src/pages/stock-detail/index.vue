@@ -8,12 +8,14 @@
 // **「改数」不是设置库存**：它按盘点走（后端 `/biz/inventory/adjust` 落一张单、
 // 落一行流水）。差异不为 0 时原因必填 —— 自由文本汇总不出「这个月报损了多少」，
 // 而那正是月底商家唯一想知道的数。
-import { ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
-import type { StockItemDetail, StockLedgerRow } from "@shared/types";
+import { createStockRequestScope } from "@/shared/stock-overview";
+import { sellRuleText } from "@/shared/inv-mode";
+import type { SellRuleType, StockOverview, StockItemDetail, StockLedgerRow } from "@shared/types";
 import { uomLabel } from "@shared/utils/format";
 import { pick, prompt } from "@ai-shop/ui/prompt";
 
@@ -25,6 +27,19 @@ const detail = ref<StockItemDetail | null>(null);
 const ledger = ref<StockLedgerRow[]>([]);
 const cursor = ref<number | null>(null);
 const loading = ref(false);
+const overview = ref<StockOverview | null>(null);
+const requestScope = createStockRequestScope();
+const ruleText = computed(() => overview.value
+  ? sellRuleText(t, { ruleType: overview.value.ruleSource.ruleType as SellRuleType,
+      param: overview.value.ruleSource.param }) : "—");
+watch(() => merchant.storeNo, () => {
+  detail.value = null;
+  ledger.value = [];
+  cursor.value = null;
+  overview.value = null;
+  loaded.value = false;
+  void load();
+});
 
 /**
  * 差异原因。**枚举不是自由文本** —— 与后端 `reason_code` 同一套。
@@ -48,29 +63,45 @@ const failed = ref(false);
 
 async function load() {
   if (!itemId.value) return;
+  const storeNo = merchant.storeNo ?? "";
+  const request = requestScope.begin(storeNo);
+  const current = () => requestScope.current(request, merchant.storeNo ?? "");
   loading.value = true;
   try {
     const [d, page] = await Promise.all([
       api.mStockItem(itemId.value),
       api.mStockLedger({ itemId: itemId.value, size: 20 }),
     ]);
+    if (!current()) return;
     detail.value = d;
     ledger.value = page.entries;
     cursor.value = page.nextCursor ?? null;
+    overview.value = null;
     failed.value = false;
+    if (d.skuNo && storeNo) {
+      const result = await api.mStockOverview(storeNo, d.skuNo).catch(() => null);
+      if (current() && result?.storeNo === storeNo && result.skuNo === d.skuNo) overview.value = result;
+    }
   } catch (e) {
+    if (!current()) return;
     uni.showToast({ title: (e as Error).message, icon: "none" });
     failed.value = true;
   } finally {
-    loading.value = false;
-    loaded.value = true;
+    if (current()) {
+      loading.value = false;
+      loaded.value = true;
+    }
   }
 }
 
 /** 再读一页。**游标由服务端给** —— 自己拿最后一行的 id 推，同一毫秒有多笔时会漏行 */
 async function more() {
   if (cursor.value == null) return;
-  const page = await api.mStockLedger({ itemId: itemId.value, cursor: cursor.value, size: 20 });
+  const storeNo = merchant.storeNo;
+  const expectedDetail = detail.value;
+  const expectedCursor = cursor.value;
+  const page = await api.mStockLedger({ itemId: itemId.value, cursor: expectedCursor, size: 20 });
+  if (merchant.storeNo !== storeNo || detail.value !== expectedDetail || cursor.value !== expectedCursor) return;
   ledger.value = [...ledger.value, ...page.entries];
   cursor.value = page.nextCursor ?? null;
 }
@@ -81,6 +112,9 @@ async function more() {
  */
 async function adjust() {
   if (!detail.value) return;
+  const origin = detail.value;
+  const originStore = merchant.storeNo;
+  const active = () => merchant.storeNo === originStore && detail.value === origin;
   const input = await prompt({
     title: String(t("stockDetail.adjustTitle")),
     hint: String(t("stockDetail.adjustHintDialog", { n: detail.value.onHand })),
@@ -88,13 +122,13 @@ async function adjust() {
     type: "number",
     value: String(detail.value.onHand),
   });
-  if (input == null || input === "") return;
+  if (input == null || input === "" || !active()) return;
   const counted = Number(input);
   if (!Number.isInteger(counted) || counted < 0) {
     uni.showToast({ title: String(t("stockDetail.adjustBadNumber")), icon: "none" });
     return;
   }
-  const diff = counted - detail.value.onHand;
+  const diff = counted - origin.onHand;
 
   // 有差异才问原因；取消就整件事作罢 —— 不要「原因没选就按默认记一笔」，
   // 那会让月底的报损汇总里混进一堆没人选过的「损坏」
@@ -105,7 +139,7 @@ async function adjust() {
       hint: String(t("stockDetail.reasonHint", { n: diff > 0 ? `+${diff}` : String(diff) })),
       items: REASONS.map((r) => String(t(`stock.reason.${r}`))),
     });
-    if (idx === null) return;
+    if (idx === null || !active()) return;
     reasonCode = REASONS[idx];
   }
 
@@ -128,6 +162,8 @@ async function adjust() {
  */
 async function editSafety(loc?: { locationId: string; locationName: string; safetyStock?: number }) {
   if (!detail.value) return;
+  const origin = detail.value;
+  const originStore = merchant.storeNo;
   const current = loc ? loc.safetyStock : detail.value.safetyStock;
   const input = await prompt({
     title: String(t("stockDetail.safetyTitle")),
@@ -138,7 +174,7 @@ async function editSafety(loc?: { locationId: string; locationName: string; safe
     // 库位那一级允许提交空串 —— 那就是「撤掉覆盖」。物料那一级空串当取消
     value: current == null ? "" : String(current),
   });
-  if (input == null) return;
+  if (input == null || merchant.storeNo !== originStore || detail.value !== origin) return;
 
   let qty: number | null;
   if (input === "") {
@@ -210,7 +246,7 @@ onShow(load);
 
       <sh-stat
         :items="[
-          { value: detail.onHand, label: String($t('stockDetail.onHand')) },
+          { value: detail.onHand, label: String($t(overview?.accountingMode === 'HANDOFF_DEDUCT' ? 'stockOverview.physical' : 'stockOverview.book')) },
           { value: detail.reserved, label: String($t('stockDetail.reserved')), tone: 'warn' },
           { value: detail.available, label: String($t('stockDetail.available')) },
         ]"
@@ -224,6 +260,28 @@ onShow(load);
             uom: uomLabel(detail.baseUom, t) || "—",
           }) }}
         </text>
+      </view>
+
+      <view class="sh-block">
+        <sh-section pad :title="String($t('stockOverview.section'))"></sh-section>
+        <view class="blk">
+          <text class="sh-hint">{{ $t('stockOverview.totalScope') }}</text>
+          <template v-if="overview">
+            <sh-kv between :label="String($t('stockOverview.online'))">
+              <text class="sh-num">{{ overview.onlineSellable }} {{ uomLabel(overview.unit || detail.baseUom, t) }}</text>
+            </sh-kv>
+            <sh-kv between :label="String($t('stockOverview.supply'))">
+              <text class="sh-num">{{ overview.supplyAvailable ?? '—' }}</text>
+            </sh-kv>
+            <text v-if="overview.supplyAvailable !== null && overview.available !== overview.supplyAvailable" class="sh-hint">{{ $t('stockOverview.supplyHint') }}</text>
+            <sh-kv between :label="String($t('stockOverview.rule'))"><text>{{ ruleText }}</text></sh-kv>
+            <sh-kv between :label="String($t('stockOverview.source'))"><text>{{ $t(`stockOverview.${overview.ruleSource.scopeType}`) }}</text></sh-kv>
+            <sh-kv between :label="String($t('stockOverview.config'))"><text>{{ $t(overview.syncEnabled ? 'stockOverview.enabled' : 'stockOverview.disabled') }}</text></sh-kv>
+            <sh-kv between :label="String($t('stockOverview.health'))"><text>{{ $t('stockOverview.notAssessed') }}</text></sh-kv>
+            <text v-if="overview.inventoryState === 'INITIALIZING'" class="sh-hint">{{ $t('stockOverview.initializing') }}</text>
+          </template>
+          <text v-else class="sh-hint">{{ $t(detail.skuNo ? 'stockOverview.unavailable' : 'stockOverview.unmapped') }}</text>
+        </view>
       </view>
 
       <!--

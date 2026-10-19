@@ -367,7 +367,7 @@ public class StockQueryServiceImpl implements StockQueryService {
                 onHand, reserved, onHand - reserved,
                 // 投影进来的老物料可能没写过这一列，读出 null 时按 0（不预警）报
                 item.getSafetyStock() == null ? 0 : item.getSafetyStock(),
-                byLocation);
+                byLocation, refOf(ownerId, itemId, InvEnums.RefSystem.AISHOP));
     }
 
     @Override

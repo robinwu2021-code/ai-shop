@@ -1,4 +1,28 @@
 export default {
+  stockOverview: {
+  "onlineN": "Online: {n} {unit}",
+  "unavailable": "Online stock unavailable",
+  "unmapped": "No online product linked",
+  "book": "Book balance",
+  "section": "Online stock · current store",
+  "totalScope": "The totals above cover all locations. Online stock below is for the current store.",
+  "online": "Online sellable",
+  "supply": "Supply for stock sync",
+  "supplyHint": "Sync supply excludes safety stock; it differs from available stock above.",
+  "rule": "Effective rule",
+  "source": "Rule source",
+  "STORE": "Store default",
+  "CATEGORY": "Category",
+  "GOODS": "This product",
+  "config": "Sync configuration",
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "health": "Sync health",
+  "notAssessed": "Not checked",
+  "initializing": "Inventory mapping not created",
+  "physical": "Physical stock"
+},
+
   trace: {
     awaitingPickup: "Awaiting pickup",
     exception: "Shipment exception",

@@ -22,6 +22,22 @@ public interface StockSyncService {
     /** 这件商品在这家店的生效规则：单品 › 品类 › 本店默认 › 全部可售 */
     Rule ruleOf(String storeNo, String goodsNo, String categoryNo);
 
+    /** Shared precedence for individual and batch queries. */
+    static Rule resolveRule(List<PrdSellRule> rows, String storeNo, String goodsNo, String categoryNo) {
+        for (String scope : List.of(PrdSellRule.SCOPE_GOODS, PrdSellRule.SCOPE_CATEGORY, PrdSellRule.SCOPE_STORE)) {
+            String ref = PrdSellRule.SCOPE_GOODS.equals(scope) ? goodsNo
+                    : PrdSellRule.SCOPE_CATEGORY.equals(scope) ? categoryNo : storeNo;
+            if (ref == null) continue;
+            for (PrdSellRule row : rows) {
+                if (scope.equals(row.getScopeType()) && ref.equals(row.getScopeRef())
+                        && !PrdSellRule.INHERIT.equals(row.getRuleType())) {
+                    return new Rule(scope, ref, row.getRuleType(), row.getParam() == null ? 0 : row.getParam());
+                }
+            }
+        }
+        return new Rule(PrdSellRule.SCOPE_STORE, storeNo, PrdSellRule.ALL, 0);
+    }
+
     /** 本店设过的所有规则（设置页用） */
     List<PrdSellRule> rules(String storeNo);
 
@@ -72,6 +88,8 @@ public interface StockSyncService {
     }
 
     Sellable sellableOf(String storeNo, String skuNo);
+
+    java.util.Map<String, Sellable> sellablesOf(String storeNo, java.util.Collection<String> skuNos);
 
     /**
      * @param applied  改了商城（或者本来就等于目标，也算已处理）

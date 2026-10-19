@@ -7,7 +7,7 @@ import { db, delay } from "@shared/mock/db";
 import { isoDay } from "@/shared/quick-dates";
 import type {
   Carrier, GoodsInvMode, InvCategorySetting, InvMode, InvModeChange, OfflineSaleRow, SellRule, StockAlignRow,
-  StockBalance, StockCount, StockSyncState, StockTransfer, Supplier,
+  StockOverview, StockBalance, StockCount, StockSyncState, StockTransfer, Supplier,
 } from "@shared/types";
 import {
   currentStoreNo,
@@ -27,7 +27,9 @@ import {
 import type { MerchantApi } from "../contract";
 
 export const inventoryMock: Pick<MerchantApi,
-  "mStockSummary"
+  "mStockOverview"
+  | "mStockOverviews"
+  | "mStockSummary"
   | "mStockBalances"
   | "mStockPickable"
   | "mSuppliers"
@@ -89,6 +91,12 @@ export const inventoryMock: Pick<MerchantApi,
   //
   // 种子刻意「不干净」：有缺货、有滞销、有预留。全绿的库存页看不出这一页是干什么的。
 
+  async mStockOverview(storeNo, skuNo) {
+    return delay(mockStockOverview(storeNo, skuNo));
+  },
+  async mStockOverviews(storeNo, skuNos) {
+    return delay([...new Set(skuNos)].map(sku => mockStockOverview(storeNo, sku)));
+  },
   async mStockSummary() {
     /*
      * 四个数按**当前门店**算，而不是四个写死的常量。
@@ -183,7 +191,7 @@ export const inventoryMock: Pick<MerchantApi,
     /** 库位覆盖读回来 —— `undefined` 是「跟随默认」，与显式的 0（这个库位不预警）是两件事 */
     const override = (loc: string) => mockSafety.get(`${b.itemId}@${loc}`);
     return delay({
-      itemId: b.itemId, name: b.name, specText: b.specText, baseUom: b.baseUom,
+      itemId: b.itemId, skuNo: b.skuNo ?? null, name: b.name, specText: b.specText, baseUom: b.baseUom,
       barcode: "6901234567892", itemCode: "LM-05",
       onHand: b.onHand, reserved: b.reserved, available: b.available,
       safetyStock: mockSafety.get(b.itemId) ?? 0,
@@ -667,4 +675,18 @@ function invGoodsMode(goodsNo: string): GoodsInvMode {
   const categoryManaged = true;
   const managed = mode === "INHERIT" ? categoryManaged : mode === "ON";
   return { goodsNo, mode, managed, categoryManaged };
+}
+
+/** Read-only sample derived from the same stock rows as the inventory page. */
+function mockStockOverview(storeNo: string, skuNo: string): StockOverview {
+  const b = invBalances().find(r => r.skuNo === skuNo);
+  if (!b) throw new Error("Stock mapping not found");
+  const safety = b.safetyStock ?? 0;
+  const supply = Math.max(0, b.onHand - b.reserved - safety);
+  return { storeNo, skuNo, unit: b.baseUom ?? null, inventoryState: "MAPPED",
+    accountingMode: "PAYMENT_DEDUCT", onHand: b.onHand, reserved: b.reserved,
+    available: b.available, safetyStock: safety, supplyAvailable: supply,
+    onlineSellable: supply, onlineLocked: b.reserved, salesStockMode: "STORE",
+    ruleSource: { scopeType: "STORE", scopeRef: storeNo, ruleType: "ALL", param: 0 },
+    syncEnabled: syncStateOf(storeNo).enabled, syncHealth: "NOT_ASSESSED", asOf: Date.now() };
 }

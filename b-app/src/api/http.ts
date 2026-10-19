@@ -180,6 +180,7 @@ import type {
   StockLocation,
   StockMonthly,
   StockRank,
+  StockOverview,
   StockSummary,
   StockSyncState,
   StockTransfer,
@@ -752,6 +753,8 @@ export const httpApi: MerchantApi = {
   mSaveNotifyEmail: (email) => http.put<NotifySetting>(E.mSaveNotifyEmail.path, { email }),
 
   // ---- 进销存（P-18）
+  mStockOverview: (storeNo, skuNo) => http.get<StockOverview>(buildPath(E.mStockOverview.path, { storeNo }), { skuNo }),
+  mStockOverviews: (storeNo, skuNos) => http.post<StockOverview[]>(buildPath(E.mStockOverviews.path, { storeNo }), { skuNos }),
   mStockSummary: () => http.get<StockSummary>(E.mStockSummary.path),
   mStockBalances: (q) => http.get<StockBalance[]>(E.mStockBalances.path, q),
   mStockCrossStore: (q) => http.get<StockCrossStoreRow[]>(E.mStockCrossStore.path, q),

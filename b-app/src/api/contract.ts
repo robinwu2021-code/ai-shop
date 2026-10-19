@@ -13,6 +13,7 @@ import type {
 } from "./response-types";
 import type {
   // 进销存（P-18）
+  StockOverview,
   StockSummary,
   ShipmentTrace,
   LogisticsUpdateRecord,
@@ -2082,6 +2083,8 @@ export interface MerchantApi {
 
   /** 库存总览三个数：在售 SKU / 缺货 / 滞销 */
   mStockSummary(): Promise<StockSummary>;
+  mStockOverview(storeNo: string, skuNo: string): Promise<StockOverview>;
+  mStockOverviews(storeNo: string, skuNos: string[]): Promise<StockOverview[]>;
   /**
    * 库存列表。
    *

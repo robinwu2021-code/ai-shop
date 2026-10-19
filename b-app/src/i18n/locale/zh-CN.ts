@@ -1,6 +1,30 @@
 // B 端词条。与 C 端各自维护 —— 商家看的是「待发货 / 待核销」，消费者看的是「待收货 / 取货码」，
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
+  stockOverview: {
+  "onlineN": "线上可售 {n} {unit}",
+  "unavailable": "线上库存暂不可用",
+  "unmapped": "未关联线上商品",
+  "book": "账面结存",
+  "section": "本店线上库存",
+  "totalScope": "上方数量汇总全部库位；下方为当前门店的线上库存。",
+  "online": "线上可售",
+  "supply": "同步供给量",
+  "supplyHint": "同步供给量已扣安全库存，不等同于上方可用量。",
+  "rule": "有效规则",
+  "source": "规则来源",
+  "STORE": "本店默认",
+  "CATEGORY": "商品品类",
+  "GOODS": "本商品",
+  "config": "同步配置",
+  "enabled": "已开启",
+  "disabled": "未开启",
+  "health": "运行情况",
+  "notAssessed": "尚未检查",
+  "initializing": "尚未建立库存映射",
+  "physical": "实物库存"
+},
+
   trace: {
     awaitingPickup: "待揽收",
     exception: "物流异常",

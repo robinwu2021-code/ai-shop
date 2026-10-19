@@ -216,6 +216,16 @@ public class InvManagedServiceImpl implements InvManagedService {
     // ------------------------------------------------------------------ 单品
 
     @Override
+    public Map<String, PrdGoods> goodsOfBatch(String entityNo, Collection<String> goodsNos) {
+        if (entityNo == null || goodsNos == null || goodsNos.isEmpty()) return Map.of();
+        Map<String, PrdGoods> result = new LinkedHashMap<>();
+        DataScopeContext.executeWithoutScope(() -> goodsMapper.selectList(Wrappers.<PrdGoods>lambdaQuery()
+                .eq(PrdGoods::getEntityNo, entityNo).in(PrdGoods::getGoodsNo, goodsNos)))
+                .forEach(g -> result.putIfAbsent(g.getGoodsNo(), g));
+        return result;
+    }
+
+    @Override
     public PrdGoods goodsOf(String entityNo, String goodsNo) {
         if (entityNo == null || goodsNo == null) {
             return null;

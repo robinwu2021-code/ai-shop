@@ -453,6 +453,8 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mInvSetCategory: { method: "PUT", path: "/biz/inventory/category-setting/:categoryNo", auth: true, summary: "拨一个品类记不记库存（有在途拒绝、有库存要确认）" },
   mGoodsInvModes: { method: "GET", path: "/biz/goods/inv-mode", auth: true, summary: "几件商品记不记库存（列表标签、编辑页那一行）" },
   mGoodsSetInvMode: { method: "PUT", path: "/biz/goods/:goodsNo/inv-mode", auth: true, summary: "单件商品记不记库存（跟随品类 / 记 / 不记）" },
+  mStockOverview: { method: "GET", path: "/biz/store/:storeNo/stock-overview", auth: true, summary: "库存与线上可售总览" },
+  mStockOverviews: { method: "POST", path: "/biz/store/:storeNo/stock-overview/batch", auth: true, summary: "批量库存与线上可售总览" },
   mStockSync: { method: "GET", path: "/biz/store/:storeNo/stock-sync", auth: true, summary: "本店库存同步状态" },
   mSetStockSync: { method: "PUT", path: "/biz/store/:storeNo/stock-sync", auth: true, summary: "开 / 关本店库存同步（要先期初对齐）" },
   mStorePaySetting: { method: "GET", path: "/biz/store/:storeNo/pay-setting", auth: true, summary: "本店收款方式（线下收款 / 货到付款）" },

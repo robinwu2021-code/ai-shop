@@ -946,6 +946,7 @@ public enum ErrorCode {
      * 带着两本账的旧差额开写回，第一天线上就不对。
      */
     STOCK_SYNC_NOT_ALIGNED(70069, "err.inventory.sync_not_aligned"),
+    STOCK_SHARED_SOURCE(70081, "err.inventory.shared_source"),
 
     /*
      * 快递代下单（TDD-快递100商家寄件）。

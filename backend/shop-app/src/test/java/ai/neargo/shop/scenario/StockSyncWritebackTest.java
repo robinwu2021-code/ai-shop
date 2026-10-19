@@ -303,6 +303,40 @@ class StockSyncWritebackTest {
     }
 
     /** 一家对齐过、开了同步的店 */
+    @Test
+    void overviewEndpointKeepsBookSupplyAndOnlineQuantitiesExplicit() throws Exception {
+        Shop s = syncingShop();
+        postInbound(s, 10);
+        pump();
+        JsonNode result = ok(get("/biz/store/" + s.storeNo + "/stock-overview").param("skuNo", s.skuNo), s.token);
+        assertThat(result.get("inventoryState").asString()).isEqualTo("MAPPED");
+        assertThat(result.get("accountingMode").asString()).isEqualTo("PAYMENT_DEDUCT");
+        assertThat(result.get("onHand").asInt()).isEqualTo(10);
+        assertThat(result.get("available").asInt()).isEqualTo(10);
+        assertThat(result.get("supplyAvailable").asInt()).isEqualTo(10);
+        assertThat(result.get("onlineSellable").asInt()).isEqualTo(10);
+        assertThat(result.get("unit").asString()).isEqualTo("箱");
+        // A successful switch must not masquerade as a successful per-SKU delivery.
+        assertThat(result.get("syncHealth").asString()).isEqualTo("NOT_ASSESSED");
+        JsonNode batch = ok(post("/biz/store/" + s.storeNo + "/stock-overview/batch")
+                .content(json.writeValueAsString(java.util.Map.of("skuNos", List.of(s.skuNo, s.skuNo)))), s.token);
+        assertThat(batch.size()).isEqualTo(1);
+        assertThat(batch.get(0).get("onlineSellable").asInt()).isEqualTo(10);
+        assertThat(batch.get(0).get("supplyAvailable").asInt()).isEqualTo(10);
+        stockSync.saveRule(s.storeNo, "STORE", s.storeNo, "CAP", 3, "TEST");
+        JsonNode mixed = ok(post("/biz/store/" + s.storeNo + "/stock-overview/batch")
+                .content(json.writeValueAsString(java.util.Map.of("skuNos", List.of(s.skuNo, "STALE_SKU")))), s.token);
+        assertThat(mixed.size()).isEqualTo(1);
+        assertThat(mixed.get(0).get("ruleSource").get("ruleType").asString()).isEqualTo("CAP");
+        assertThat(mixed.get(0).get("ruleSource").get("param").asInt()).isEqualTo(3);
+        JsonNode item = ok(get("/biz/inventory/items/" + acl.itemIdOfSku(s.skuNo)), s.token);
+        assertThat(item.get("skuNo").asString()).isEqualTo(s.skuNo);
+        Shop other = shop();
+        JsonNode denied = json.readTree(send(get("/biz/store/" + s.storeNo + "/stock-overview")
+                .param("skuNo", s.skuNo), other.token));
+        assertThat(denied.get("code").asInt()).isNotZero();
+    }
+
     private Shop syncingShop() throws Exception {
         Shop s = shop();
         ok(post("/biz/store/" + s.storeNo + "/stock-alignment/confirm").content("{\"mode\":\"COUNT\"}"), s.token);

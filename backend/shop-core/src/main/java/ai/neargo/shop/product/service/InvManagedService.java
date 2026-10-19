@@ -60,6 +60,8 @@ public interface InvManagedService {
     /** 本主体的这件商品；不存在或不是他的返回 {@code null} */
     PrdGoods goodsOf(String entityNo, String goodsNo);
 
+    Map<String, PrdGoods> goodsOfBatch(String entityNo, Collection<String> goodsNos);
+
     /** 存单品设置。{@code mode} 必须是 INHERIT / ON / OFF */
     void saveGoodsMode(PrdGoods g, String mode, String operator);
 

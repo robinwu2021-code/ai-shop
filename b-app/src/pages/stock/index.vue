@@ -14,15 +14,17 @@
 //
 // 三个数字即入口（`sh-stat` 的 boxed 那一档）：点「缺货」就按缺货筛。
 // 数字下面点不动的话，商家会去别处找筛选，而这一页并没有别处。
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
+import { uomLabel } from "@shared/utils/format";
 import { useMerchantStore } from "@/stores/merchant";
 import { urgentStockItems, canStartNewCount } from "@/shared/stock-urgent";
 import { stockEntries, countUsableLocations, type StockEntry } from "@/shared/stock-entries";
 import { ROUTES } from "@/shared/nav";
-import type { StockBalance, StockSummary } from "@shared/types";
+import { loadStockOverviewMap, createStockRequestScope } from "@/shared/stock-overview";
+import type { StockOverview, StockBalance, StockSummary } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -30,6 +32,25 @@ const merchant = useMerchantStore();
 const summary = ref<StockSummary | null>(null);
 const rows = ref<StockBalance[]>([]);
 const loading = ref(false);
+const overviews = ref<Record<string, StockOverview>>({});
+const requestScope = createStockRequestScope();
+watch(() => merchant.storeNo, () => {
+  rows.value = [];
+  summary.value = null;
+  overviews.value = {};
+  settled.value = false;
+  usableLocations.value = null;
+  loaded.value = false;
+  void load();
+});
+
+function onlineText(b: StockBalance): string {
+  if (!b.skuNo) return String(t("stockOverview.unmapped"));
+  const overview = overviews.value[b.skuNo];
+  return overview ? String(t("stockOverview.onlineN", {
+    n: overview.onlineSellable, unit: uomLabel(overview.unit || b.baseUom, t),
+  })) : String(t("stockOverview.unavailable"));
+}
 
 /**
  * 「更多」那一层开着没有。
@@ -69,43 +90,44 @@ const loaded = ref(false);
 const failed = ref(false);
 
 async function load() {
+  const storeNo = merchant.storeNo ?? "";
+  const request = requestScope.begin(storeNo);
+  const current = () => requestScope.current(request, merchant.storeNo ?? "");
   loading.value = true;
   try {
-    /*
-     * 三段各自兜底：总览取不到不该让列表也空着，反之亦然。
-     *
-     * 库位跟着一起取：**判据要在弹层打开的那一刻就成立**，
-     * 开的时候才去取的话，那一瞬间的「调拨」是可点的，一秒后才灰掉。
-     * 它也必须跟着 `onShow` 重取 —— 「去添加」加完一个回来，灰的那条要变回可点。
-     */
     const [s, list, locs] = await Promise.all([
       api.mStockSummary().catch(() => null),
       api.mStockBalances({ filter: filter.value }),
       api.mStockLocations().catch(() => null),
     ]);
-    if (s) summary.value = s;
-    rows.value = list;
-    // 取不到就保留上一次的数 —— 一次网络抖动不该把调拨灰掉
-    if (locs) usableLocations.value = countUsableLocations(locs);
-
-    /*
-     * 「要处理」空了就落到「全部」。**要重新取一次数** —— 上面那次取的是
-     * filter=todo 的结果（空的），直接改 filter 只会换个高亮，列表还是空的。
-     */
-    if (!settled.value) {
-      settled.value = true;
-      if (filter.value === "todo" && todoCount.value === 0) {
-        filter.value = "all";
-        rows.value = await api.mStockBalances({ filter: "all" });
-      }
+    if (!current()) return;
+    let effectiveRows = list;
+    if (!settled.value && filter.value === "todo" && s
+        && s.shortageCount + s.staleCount === 0) {
+      effectiveRows = await api.mStockBalances({ filter: "all" });
+      if (!current()) return;
+      filter.value = "all";
     }
+    settled.value = true;
+    if (s) summary.value = s;
+    rows.value = effectiveRows;
+    overviews.value = {};
+    if (locs) usableLocations.value = countUsableLocations(locs);
     failed.value = false;
+    // Online information is optional: its failure must not hide the physical inventory list.
+    if (storeNo) {
+      const map = await loadStockOverviewMap(storeNo, effectiveRows, api.mStockOverviews).catch(() => ({}));
+      if (current()) overviews.value = map;
+    }
   } catch (e) {
+    if (!current()) return;
     uni.showToast({ title: (e as Error).message, icon: "none" });
     failed.value = true;
   } finally {
-    loading.value = false;
-    loaded.value = true;
+    if (current()) {
+      loading.value = false;
+      loaded.value = true;
+    }
   }
 }
 
@@ -296,6 +318,7 @@ onShow(() => {
               <text class="sh-muted sh-num">{{ $t("stock.reservedN", { n: b.reserved }) }}</text>
             </template>
           </view>
+          <text class="txt-caption sh-muted">{{ onlineText(b) }}</text>
         </view>
         <view class="row__end">
           <text class="txt-price sh-num" :class="{ 'is-danger': b.available <= 0 }">

@@ -76,6 +76,9 @@ public class StockSyncAppService {
     }
 
     public SyncState setEnabled(String entityNo, String storeNo, boolean enabled, String operator) {
+        if (enabled) {
+            writeback.requireExclusiveSource(entityNo, storeNo);
+        }
         stockSync.setEnabled(entityNo, storeNo, enabled, operator);
         if (enabled) {
             // 打开那一刻按当前规则对齐一次：从关着到开着这段时间里的单据不会再补发
@@ -127,6 +130,7 @@ public class StockSyncAppService {
      * @return 调了几行实存
      */
     public int confirmAlignment(String entityNo, String storeNo, String mode, String operator) {
+        writeback.requireExclusiveSource(entityNo, storeNo);
         int adjusted = 0;
         if (PrdStoreStockSync.ALIGN_MALL.equals(mode)) {
             String ownerId = acl.ownerIdOf(entityNo);

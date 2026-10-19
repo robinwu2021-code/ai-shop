@@ -57,29 +57,7 @@ public class StockSyncServiceImpl implements StockSyncService {
 
     @Override
     public Rule ruleOf(String storeNo, String goodsNo, String categoryNo) {
-        List<PrdSellRule> rows = rules(storeNo);
-        PrdSellRule hit = find(rows, PrdSellRule.SCOPE_GOODS, goodsNo);
-        if (hit == null) {
-            hit = find(rows, PrdSellRule.SCOPE_CATEGORY, categoryNo);
-        }
-        if (hit == null) {
-            hit = find(rows, PrdSellRule.SCOPE_STORE, storeNo);
-        }
-        return hit == null
-                ? new Rule(PrdSellRule.SCOPE_STORE, storeNo, PrdSellRule.ALL, 0)
-                : new Rule(hit.getScopeType(), hit.getScopeRef(), hit.getRuleType(),
-                        hit.getParam() == null ? 0 : hit.getParam());
-    }
-
-    private static PrdSellRule find(List<PrdSellRule> rows, String scope, String ref) {
-        if (ref == null) {
-            return null;
-        }
-        return rows.stream()
-                .filter(r -> scope.equals(r.getScopeType()) && ref.equals(r.getScopeRef()))
-                // INHERIT = 这一级撤掉了覆盖，往上一级取
-                .filter(r -> !PrdSellRule.INHERIT.equals(r.getRuleType()))
-                .findFirst().orElse(null);
+        return StockSyncService.resolveRule(rules(storeNo), storeNo, goodsNo, categoryNo);
     }
 
     @Override
@@ -210,6 +188,28 @@ public class StockSyncServiceImpl implements StockSyncService {
         return sku == null
                 ? new Sellable("NONE", 0, 0)
                 : new Sellable("ENTITY", nz(sku.getStock()) - nz(sku.getLockedStock()), nz(sku.getLockedStock()));
+    }
+
+    @Override
+    public java.util.Map<String, Sellable> sellablesOf(String storeNo, java.util.Collection<String> skuNos) {
+        if (skuNos.isEmpty()) return java.util.Map.of();
+        var stockRows = DataScopeContext.executeWithoutScope(() -> storeStockMapper.selectList(
+                Wrappers.<PrdStoreStock>lambdaQuery().in(PrdStoreStock::getSkuNo, skuNos)));
+        var skuRows = DataScopeContext.executeWithoutScope(() -> skuMapper.selectList(
+                Wrappers.<PrdSku>lambdaQuery().in(PrdSku::getSkuNo, skuNos)));
+        java.util.Set<String> storeManaged = new java.util.HashSet<>();
+        java.util.Map<String, Sellable> result = new java.util.LinkedHashMap<>();
+        for (PrdStoreStock row : stockRows) {
+            storeManaged.add(row.getSkuNo());
+            if (java.util.Objects.equals(storeNo, row.getStoreNo())) {
+                result.put(row.getSkuNo(), new Sellable("STORE", nz(row.getStock()) - nz(row.getLockedStock()), nz(row.getLockedStock())));
+            }
+        }
+        for (PrdSku row : skuRows) {
+            result.putIfAbsent(row.getSkuNo(), storeManaged.contains(row.getSkuNo()) ? new Sellable("STORE", 0, 0)
+                    : new Sellable("ENTITY", nz(row.getStock()) - nz(row.getLockedStock()), nz(row.getLockedStock())));
+        }
+        return result;
     }
 
     @Override

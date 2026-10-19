@@ -1,15 +1,14 @@
 package ai.neargo.shop.invbridge;
 
-import ai.neargo.shop.event.SysOutbox;
-import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
+import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
 import ai.neargo.shop.product.service.InvManagedService;
 import ai.neargo.shop.product.service.StockSyncService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -28,7 +27,7 @@ import java.util.Objects;
  * <h2>为什么要「等追平」</h2>
  * 线上下单是商城先锁、几秒后镜像才把占用记到进销存（{@code INV_MIRROR_RESERVE}）。这几秒里
  * 进销存的可用多算了一件，按它写回会把刚锁掉的那件又放出来 —— 超卖。所以这个 SKU 还有没投完的
- * RESERVE / ADJUST 镜像时<b>抛出去让投递器稍后重投</b>。COMMIT / RELEASE / RESTORE 没追平只会让线上少放，不等。
+ * RESERVE / ADJUST 镜像未确认成功时<b>抛出去让投递器稍后重投</b>。COMMIT / RELEASE / RESTORE 没追平只会让线上少放，不等。
  */
 @Service
 @ConditionalOnInventory
@@ -41,15 +40,15 @@ public class InventoryWritebackService {
     private final InvManagedService invManaged;
     private final InventoryAclService acl;
     private final MerchantQueryPort merchants;
-    private final SysOutboxMapper outbox;
+    private final InventoryDeliveryGuard deliveryGuard;
 
     public InventoryWritebackService(StockSyncService stockSync, InvManagedService invManaged,
-                                     InventoryAclService acl, MerchantQueryPort merchants, SysOutboxMapper outbox) {
+                                     InventoryAclService acl, MerchantQueryPort merchants, InventoryDeliveryGuard deliveryGuard) {
         this.stockSync = stockSync;
         this.invManaged = invManaged;
         this.acl = acl;
         this.merchants = merchants;
-        this.outbox = outbox;
+        this.deliveryGuard = deliveryGuard;
     }
 
     /** 镜像还没追平：抛给投递器，按它的退避稍后重投 */
@@ -115,6 +114,7 @@ public class InventoryWritebackService {
         if (invManaged.managedSkus(List.of(skuNo)).isEmpty()) {
             return false;
         }
+        requireExclusiveSource(entityNo, storeNo);
         if (mirrorPending(skuNo)) {
             throw new MirrorNotCaughtUp(skuNo);
         }
@@ -146,6 +146,7 @@ public class InventoryWritebackService {
         if (invManaged.managedSkus(List.of(skuNo)).isEmpty()) {
             return null;
         }
+        requireExclusiveSource(entityNo, storeNo);
         if (mirrorPending(skuNo)) {
             throw new MirrorNotCaughtUp(skuNo);
         }
@@ -160,12 +161,19 @@ public class InventoryWritebackService {
         return r;
     }
 
-    /** 这个 SKU 还有没投完的 RESERVE / ADJUST 镜像吗 */
+    /** Shared pools require a shared reservation boundary, not independent copies of the same quota. */
+    public void requireExclusiveSource(String entityNo, String storeNo) {
+        String source = acl.stockLocationOf(entityNo, storeNo);
+        if (source == null) return;
+        for (String other : merchants.storeNos(entityNo)) {
+            if (!Objects.equals(storeNo, other) && Objects.equals(source, acl.stockLocationOf(entityNo, other))) {
+                throw BizException.of(ErrorCode.STOCK_SHARED_SOURCE, storeNo, other);
+            }
+        }
+    }
+
+    /** 同时支持旧事件状态与统一 outbox 的 inventory-mirror 投递状态。 */
     boolean mirrorPending(String skuNo) {
-        Long n = outbox.selectCount(Wrappers.<SysOutbox>lambdaQuery()
-                .eq(SysOutbox::getStatus, SysOutbox.PENDING)
-                .in(SysOutbox::getEventType, InvMirrorEvent.RESERVE, InvMirrorEvent.ADJUST)
-                .like(SysOutbox::getPayload, "\"" + skuNo + "\""));
-        return n != null && n > 0;
+        return deliveryGuard.blocked(skuNo);
     }
 }

@@ -169,4 +169,6 @@ public interface InventoryAclService {
 
     /** 查不到业主或物料返回 {@code null}（进销存里没有这件货）。没有余额行按 0 */
     StockAt stockAt(String entityNo, String storeNo, String skuNo);
+
+    java.util.Map<String, StockAt> stockAtBatch(String entityNo, String storeNo, java.util.Collection<String> skuNos);
 }

@@ -5,6 +5,8 @@ import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.invbridge.StockSyncAppService;
+import ai.neargo.shop.invbridge.InventoryOverviewQuery;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,9 +30,11 @@ import java.util.List;
 public class BizStockSyncController {
 
     private final StockSyncAppService service;
+    private final InventoryOverviewQuery overview;
 
-    public BizStockSyncController(StockSyncAppService service) {
+    public BizStockSyncController(StockSyncAppService service, InventoryOverviewQuery overview) {
         this.service = service;
+        this.overview = overview;
     }
 
     private String entity(String storeNo) {
@@ -79,6 +83,21 @@ public class BizStockSyncController {
         return service.saveRule(entity(storeNo), storeNo, req.scopeType(), req.scopeRef(), req.ruleType(),
                 req.param() == null ? 0 : req.param(), SecurityUtils.currentUserNo());
     }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @GetMapping("/biz/store/{storeNo}/stock-overview")
+    public InventoryOverviewQuery.Overview overview(@PathVariable String storeNo, @RequestParam String skuNo) {
+        return overview.get(entity(storeNo), storeNo, skuNo);
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @PostMapping("/biz/store/{storeNo}/stock-overview/batch")
+    public List<InventoryOverviewQuery.Overview> overviewBatch(@PathVariable String storeNo,
+                                                               @RequestBody OverviewBatchReq req) {
+        return overview.batch(entity(storeNo), storeNo, req.skuNos());
+    }
+
+    public record OverviewBatchReq(List<String> skuNos) { }
 
     public record EnabledReq(Boolean enabled) {
     }

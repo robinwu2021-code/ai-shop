@@ -536,6 +536,40 @@ public class InventoryAclServiceImpl implements InventoryAclService {
                 b.getSafetyStock() != null ? b.getSafetyStock() : itemSafety);
     }
 
+    @Override
+    @Transactional(transactionManager = "invTransactionManager", readOnly = true)
+    public Map<String, StockAt> stockAtBatch(String entityNo, String storeNo, Collection<String> skuNos) {
+        if (skuNos.isEmpty()) return Map.of();
+        InvOwner owner = findOwner(entityNo);
+        if (owner == null) return Map.of();
+        var refs = refMapper.selectList(Wrappers.<InvItemRef>lambdaQuery()
+                .eq(InvItemRef::getOwnerId, owner.getOwnerId()).eq(InvItemRef::getRefSystem, InvEnums.RefSystem.AISHOP)
+                .in(InvItemRef::getRef, skuNos));
+        if (refs.isEmpty()) return Map.of();
+        Set<String> itemIds = new HashSet<>();
+        refs.forEach(ref -> itemIds.add(ref.getItemId()));
+        Map<String, InvItem> items = new HashMap<>();
+        itemMapper.selectList(Wrappers.<InvItem>lambdaQuery().eq(InvItem::getOwnerId, owner.getOwnerId())
+                .in(InvItem::getItemId, itemIds)).forEach(item -> items.put(item.getItemId(), item));
+        String location = stockLocationOf(entityNo, storeNo);
+        Map<String, InvStockBalance> balances = new HashMap<>();
+        if (location != null) {
+            balanceMapper.selectList(Wrappers.<InvStockBalance>lambdaQuery()
+                    .eq(InvStockBalance::getOwnerId, owner.getOwnerId()).eq(InvStockBalance::getLocationId, location)
+                    .in(InvStockBalance::getItemId, itemIds)).forEach(b -> balances.put(b.getItemId(), b));
+        }
+        Map<String, StockAt> result = new LinkedHashMap<>();
+        for (InvItemRef ref : refs) {
+            InvItem item = items.get(ref.getItemId());
+            int safety = item == null || item.getSafetyStock() == null ? 0 : item.getSafetyStock();
+            InvStockBalance b = balances.get(ref.getItemId());
+            result.put(ref.getRef(), b == null ? new StockAt(0, 0, safety)
+                    : new StockAt(b.getOnHand() == null ? 0 : b.getOnHand(), b.getReserved() == null ? 0 : b.getReserved(),
+                    b.getSafetyStock() == null ? safety : b.getSafetyStock()));
+        }
+        return result;
+    }
+
     /** 只读地找业主。{@link #ownerIdOf} 找不到会建一个 —— 查询路径上不能有这种副作用 */
     private InvOwner findOwner(String entityNo) {
         return entityNo == null ? null : ownerMapper.selectOne(Wrappers.<InvOwner>lambdaQuery()

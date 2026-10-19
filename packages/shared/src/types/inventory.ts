@@ -1,3 +1,24 @@
+/** Merchant stock overview; matches InventoryOverviewQuery. Null physical values mean unknown, not zero. */
+export interface StockOverview {
+  storeNo: string;
+  skuNo: string;
+  unit: string | null;
+  inventoryState: "UNMANAGED" | "INITIALIZING" | "MAPPED";
+  accountingMode: "PAYMENT_DEDUCT" | "HANDOFF_DEDUCT";
+  onHand: number | null;
+  reserved: number | null;
+  available: number | null;
+  safetyStock: number | null;
+  supplyAvailable: number | null;
+  onlineSellable: number;
+  onlineLocked: number;
+  salesStockMode: string;
+  ruleSource: { scopeType: string; scopeRef: string; ruleType: string; param: number };
+  syncEnabled: boolean;
+  syncHealth: "NOT_ASSESSED";
+  asOf: number;
+}
+
 // 进销存：库存余额、单据、盘点、调拨
 //
 // 三端共用的契约镜像，按域切开的一份 —— 口径与切开之前逐字相同，见 `index.ts`。
@@ -83,6 +104,8 @@ export interface StockBalance {
 }
 /** 某个物料在各库位的分布（`ItemDetailVO`）。 */
 export interface StockItemDetail {
+  /** Optional platform mapping; never substitute itemId. */
+  skuNo?: string | null;
   /** 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 */
   itemId: string;
   /** 货品名 */

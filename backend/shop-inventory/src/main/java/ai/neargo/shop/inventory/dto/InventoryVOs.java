@@ -62,7 +62,7 @@ public final class InventoryVOs {
                                String barcode, String itemCode,
                                int onHand, int reserved, int available,
                                Integer safetyStock,
-                               List<LocationQty> byLocation) {
+                               List<LocationQty> byLocation, String skuNo) {
     }
 
     /**
