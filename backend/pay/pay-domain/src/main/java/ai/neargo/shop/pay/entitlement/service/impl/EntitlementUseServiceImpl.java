@@ -369,12 +369,16 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
         boolean inScope = switch (scope.mode()) {
             case "ALL" -> true;
             case "STORES" -> scope.refs().contains(store);
-            case "GOODS" -> source.items().stream().anyMatch(i -> scope.refs().contains(i.itemNo()));
-            case "CATEGORIES" -> source.items().stream().anyMatch(i -> source.categoryRefsByLine()
+            case "GOODS" -> source.items().stream().allMatch(i -> scope.refs().contains(i.itemNo()));
+            case "CATEGORIES" -> source.items().stream().allMatch(i -> source.categoryRefsByLine()
                     .getOrDefault(i.orderLineNo(), List.of()).stream().anyMatch(scope.refs()::contains));
             default -> false;
         };
-        if (!inScope) return PreviewReason.OUT_OF_SCOPE;
+        if (!inScope || source.items().isEmpty()) return PreviewReason.OUT_OF_SCOPE;
+        if ("GIFT".equals(d.benefitMode()) && source.items().stream()
+                .anyMatch(i -> !i.itemNo().equals(d.benefitRef()))) return PreviewReason.OUT_OF_SCOPE;
+        long sourceUnits = source.items().stream().mapToLong(i -> i.quantity()).sum();
+        if (units > sourceUnits) return PreviewReason.OUT_OF_SCOPE;
         var window = new EntitlementValidityPolicy().calculate(d.validity(), instant(asset.getSourcePaidAt()),
                 instant(asset.getCreatedAt()), asset.getActivationAt() == null ? at : instant(asset.getActivationAt()));
         var from = asset.getEffectiveFrom() == null ? window.from() : instant(asset.getEffectiveFrom());

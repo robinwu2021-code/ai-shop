@@ -88,6 +88,12 @@ class EntitlementUseFlowTest {
     }
 
     private UseCommand command(int units) {
+        var fact = sources.resolve(context, source);
+        items = List.of(new UseItem("L1", "G1", "Care service", units, 0));
+        when(sources.resolve(any(), any())).thenReturn(new EntitlementUseSourcePort.UseSourceFact(
+                fact.tenantNo(), source, fact.userNo(), fact.entityNo(), fact.storeNo(), fact.currency(), items,
+                fact.orderSnapshotHash(), fact.storeName(), fact.serviceStaffName(), fact.serviceDay(),
+                fact.freightMinor(), fact.categoryRefsByLine(), fact.serviceAt()));
         var preview = uses.preview(context, new PreviewQuery("U1", "M1", "S1", "CNY", instance,
                 null, units, source));
         assertThat(preview.redeemable()).isTrue();
@@ -282,6 +288,37 @@ class EntitlementUseFlowTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_source_fence WHERE operation_no=?",
                 Integer.class, c.operationNo())).isZero();
         assertThat(uses.prepare(context, c).status()).isEqualTo(State.HELD);
+    }
+
+    @Test
+    void giftReferenceAndSourceQuantityMustBothMatchTheRedemption() {
+        var gift = new EntitlementDefinition("Gift", "STORE_EXCHANGE", "MERCHANT", "CNY", "GIFT",
+                null, null, "OTHER-GOODS", null, null, "COUNT", 3, null,
+                new Validity("RELATIVE", null, null, 30, "GRANTED", "ROLLING_DAYS", "Asia/Shanghai"),
+                new RedemptionScope("ALL", List.of()), List.of("TARGETED"));
+        jdbc.update("UPDATE ent_instance SET rule_snapshot=? WHERE instance_no=?", json.writeValueAsString(gift), instance);
+        var preview = uses.preview(context, new PreviewQuery("U1", "M1", "S1", "CNY", instance, null, 1, source));
+        assertThat(preview.redeemable()).isFalse();
+        // A source containing one service cannot authorize two consumed units.
+        gift = new EntitlementDefinition("Gift", "STORE_EXCHANGE", "MERCHANT", "CNY", "GIFT",
+                null, null, "G1", null, null, "COUNT", 3, null, gift.validity(), gift.redemptionScope(), List.of("TARGETED"));
+        jdbc.update("UPDATE ent_instance SET rule_snapshot=? WHERE instance_no=?", json.writeValueAsString(gift), instance);
+        assertThat(uses.preview(context, new PreviewQuery("U1", "M1", "S1", "CNY", instance, null, 2, source))
+                .redeemable()).isFalse();
+    }
+
+    @Test
+    void everySourceLineMustBeCoveredWhenConsumingServiceUnits() {
+        var scoped = new EntitlementDefinition("Care", "STORE_EXCHANGE", "MERCHANT", "CNY", "SERVICE_UNITS",
+                null, null, null, null, null, "COUNT", 3, null,
+                new Validity("RELATIVE", null, null, 30, "GRANTED", "ROLLING_DAYS", "Asia/Shanghai"),
+                new RedemptionScope("GOODS", List.of("G1")), List.of("TARGETED"));
+        jdbc.update("UPDATE ent_instance SET rule_snapshot=? WHERE instance_no=?", json.writeValueAsString(scoped), instance);
+        when(sources.resolve(any(), any())).thenReturn(new EntitlementUseSourcePort.UseSourceFact("MAIN", source,
+                "U1", "M1", "S1", "CNY", List.of(new UseItem("L1", "G1", "Care", 1, 0),
+                        new UseItem("L2", "G2", "Uncovered", 1, 0)), orderHash, "Care store", null, null));
+        assertThat(uses.preview(context, new PreviewQuery("U1", "M1", "S1", "CNY", instance, null, 2, source))
+                .redeemable()).isFalse();
     }
 
     @Test

@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
-/** Each item owns one pay transaction containing its grant and cursor; failure rolls both back before recording a skip. */
+/** Creation reserves every eligible grant atomically; each bounded resume commits one grant and its cursor. */
 @Component
 public class EntitlementIssueBatchWriter {
     private final EntIssueBatchMapper batches;
@@ -48,7 +48,19 @@ public class EntitlementIssueBatchWriter {
             row.setStatus(row.getPendingCount() == 0 ? "COMPLETED" : "PROCESSING"); row.setOperatorNo(scope.actorNo());
             row.setVersion(0L); row.setDeleted(0); row.setCreatedBy(scope.actorNo()); row.setUpdatedBy(scope.actorNo());
             row.setCreatedAt(LocalDateTime.ofInstant(snapshot.createdAt(), ZoneOffset.UTC)); row.setUpdatedAt(row.getCreatedAt());
-            changed(batches.insert(row)); return view(row);
+            changed(batches.insert(row));
+            // Only PAY/TARGETED facts are consulted here: all source facts are in this same local batch snapshot.
+            for (int index = 0; index < snapshot.audience().recipients().size(); index++) {
+                var recipient = snapshot.audience().recipients().get(index);
+                if (!recipient.eligible()) continue;
+                var grant = BatchGrantSourcePortImpl.command(no, row.getEntityNo(), index, recipient.userNo(), snapshot);
+                var context = new EntitlementContext(scope.tenantNo(), scope.actorNo(), grant.grantNo(),
+                        snapshot.benefitHash());
+                if (grants.prepare(context, grant).status() != State.PREPARED) {
+                    throw BizException.of(ErrorCode.CONFLICT);
+                }
+            }
+            return view(row);
         });
     }
     @Transactional("payTxManager")
@@ -71,14 +83,6 @@ public class EntitlementIssueBatchWriter {
         append(row, new Item(recipient.userNo(), grant, recipient.eligible() ? "ISSUED" : "SKIPPED",
                 recipient.eligible() ? null : recipient.reasonCode()));
         return true;
-    }
-    @Transactional("payTxManager")
-    public void skipConflict(CatalogScope scope, String no, int expectedCursor) {
-        var row = owned(scope, no, true);
-        if (row.getPendingCount() == 0 || row.getCursorOffset() != expectedCursor) return;
-        var snap = json.readValue(row.getAudienceSnapshot(), BatchSnapshot.class);
-        var recipient = snap.audience().recipients().get(expectedCursor);
-        append(row, new Item(recipient.userNo(), null, "SKIPPED", "CAPACITY_OR_SOURCE_CONFLICT"));
     }
     private void append(EntIssueBatch row, Item item) {
         var results = new ArrayList<>(Arrays.asList(json.readValue(row.getRecipientResults(), Item[].class)));

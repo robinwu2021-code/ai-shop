@@ -2,7 +2,9 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
+import ai.neargo.shop.pay.entitlement.config.PayEntitlementProperties;
 import ai.neargo.shop.pay.entitlement.dto.IssueBatchViews.CreateBatch;
+import ai.neargo.shop.pay.entitlement.dto.IssueBatchViews.BatchView;
 import ai.neargo.shop.pay.entitlement.dto.IssuePolicyViews.SavePolicy;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCatalogService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementIssueBatchService;
@@ -31,6 +33,7 @@ class EntitlementIssueBatchFlowTest {
     @Autowired EntitlementIssuePolicyService policies;
     @Autowired EntitlementIssueBatchService batches;
     @Autowired JdbcTemplate jdbc;
+    @Autowired PayEntitlementProperties properties;
     @MockitoBean EntitlementIssueAudiencePort audiences;
     private final CatalogScope scope = new CatalogScope("MAIN", "BATCH-" + UUID.randomUUID(), "BATCH-TEST", false);
     private String key() { return UUID.randomUUID().toString(); }
@@ -42,21 +45,31 @@ class EntitlementIssueBatchFlowTest {
         var h = catalog.create(scope, d, key()); var v = catalog.publish(scope, h.templateNo(), h.revision(), key());
         policies.save(scope, h.templateNo(), new SavePolicy(0, 2L, 200L, 1, true), key()); return v.versionNo();
     }
-    @Test void boundedResumeKeepsStableRecipientsAndCapacityFailuresLeaveNoPartialGrant() {
+    @Test void boundedResumeKeepsPreReservedCapacityAndStableRecipients() {
         String version = version(); String ref = key();
         when(audiences.resolve(any(), any(), any())).thenReturn(new EntitlementIssueAudiencePort.AudienceSnapshot(
                 "MAIN", scope.entityNo(), ref, List.of(
                 new EntitlementIssueAudiencePort.Recipient("U1", true, null),
                 new EntitlementIssueAudiencePort.Recipient("U2", false, "NOT_ELIGIBLE"),
-                new EntitlementIssueAudiencePort.Recipient("U3", true, null),
-                new EntitlementIssueAudiencePort.Recipient("U4", true, null))));
+                new EntitlementIssueAudiencePort.Recipient("U3", true, null))));
         var c = new CreateBatch(version, ref); String k = key(); var created = batches.create(scope, c, k);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_grant WHERE entity_no=? AND status='PREPARED'",
+                Integer.class, scope.entityNo())).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_instance WHERE entity_no=?", Integer.class,
+                scope.entityNo())).isZero();
         assertThat(batches.resume(scope, created.batchNo(), 1).issuedCount()).isEqualTo(1);
         assertThat(batches.create(scope, c, k)).isEqualTo(created);
-        var finished = batches.resume(scope, created.batchNo(), 100);
+        var template = catalog.getVersion(scope, version).templateNo();
+        var policy = policies.get(scope, template);
+        assertThat(policy.heldCount()).isOne();
+        policies.save(scope, template, new SavePolicy(policy.revision(), 2L, 200L, 1, false), key());
+        properties.getEntitlement().getIssue().setEnabled(false);
+        BatchView finished;
+        try { finished = batches.resume(scope, created.batchNo(), 100); }
+        finally { properties.getEntitlement().getIssue().setEnabled(true); }
         assertThat(finished.status()).isEqualTo("PARTIAL"); assertThat(finished.pendingCount()).isZero();
-        assertThat(finished.issuedCount()).isEqualTo(2); assertThat(finished.skippedCount()).isEqualTo(2);
-        assertThat(finished.results()).hasSize(4);
+        assertThat(finished.issuedCount()).isEqualTo(2); assertThat(finished.skippedCount()).isEqualTo(1);
+        assertThat(finished.results()).hasSize(3);
         assertThat(finished.results().get(1).reasonCode()).isEqualTo("NOT_ELIGIBLE");
         assertThat(batches.resume(scope, created.batchNo(), 100)).isEqualTo(finished);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_grant WHERE entity_no=?", Integer.class,
@@ -65,6 +78,23 @@ class EntitlementIssueBatchFlowTest {
                 scope.entityNo())).isEqualTo(2);
         assertThatThrownBy(() -> batches.get(new CatalogScope("MAIN", "OTHER", "X", false), created.batchNo()))
                 .isInstanceOf(BizException.class);
+    }
+    @Test void insufficientCapacityRejectsTheWholeBatchWithoutLeakingReservations() {
+        String version = version(); String ref = key();
+        when(audiences.resolve(any(), any(), any())).thenReturn(new EntitlementIssueAudiencePort.AudienceSnapshot(
+                "MAIN", scope.entityNo(), ref, List.of(
+                new EntitlementIssueAudiencePort.Recipient("U1", true, null),
+                new EntitlementIssueAudiencePort.Recipient("U2", true, null),
+                new EntitlementIssueAudiencePort.Recipient("U3", true, null))));
+        assertThatThrownBy(() -> batches.create(scope, new CreateBatch(version, ref), key()))
+                .isInstanceOf(BizException.class);
+        var policy = policies.get(scope, catalog.getVersion(scope, version).templateNo());
+        assertThat(policy.heldCount()).isZero();
+        assertThat(policy.heldExposureMinor()).isZero();
+        for (String table : List.of("ent_issue_batch", "ent_grant", "ent_instance", "pay_ent_source_fence")) {
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM " + table + " WHERE entity_no=?",
+                    Integer.class, scope.entityNo())).as(table).isZero();
+        }
     }
     @Test void rejectsCrossOwnerAudienceBeforeCreatingABatch() {
         String version = version(); String ref = key();

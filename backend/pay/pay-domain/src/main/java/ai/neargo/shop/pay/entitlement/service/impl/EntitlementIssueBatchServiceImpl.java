@@ -66,9 +66,10 @@ public class EntitlementIssueBatchServiceImpl implements EntitlementIssueBatchSe
             if (before.getPendingCount() == 0) break;
             try { writer.step(scope, no, before.getCursorOffset()); }
             catch (BizException rejected) {
-                if (rejected.errorCode() == ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE) break;
-                if (rejected.errorCode() != ErrorCode.CONFLICT) throw rejected;
-                writer.skipConflict(scope, no, before.getCursorOffset());
+                // Never skip a promised recipient: preserve its original grant number, capacity and cursor.
+                if (rejected.errorCode() == ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE
+                        || rejected.errorCode() == ErrorCode.CONFLICT) break;
+                throw rejected;
             }
         }
         return get(scope, no);

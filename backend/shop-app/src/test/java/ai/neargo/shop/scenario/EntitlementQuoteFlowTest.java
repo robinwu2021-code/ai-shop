@@ -123,6 +123,24 @@ class EntitlementQuoteFlowTest {
     }
 
     @Test
+    void couponMayCoverOnlyEligibleLinesWhileUnitRedemptionsRequireFullCoverage() {
+        coupon("CASH", 100L, null, new RedemptionScope("GOODS", List.of("G1")), 0);
+        items = List.of(new UseItem("L1", "G1", "Eligible", 1, 1000),
+                new UseItem("L2", "G2", "Other", 1, 500));
+        when(sources.resolve(any(), any())).thenReturn(new EntitlementUseSourcePort.UseSourceFact("MAIN", source,
+                "U1", "M1", "S1", "CNY", items, orderHash, "Care store", null, null));
+        var quote = uses.quote(context, new QuoteCommand(source, "U1", "M1", "S1", "CNY", 1500, 0, items,
+                List.of(instance), orderHash));
+        assertThat(quote.allocations()).allMatch(a -> a.orderLineNo().equals("L1"));
+        when(decisions.authorization(any(), any())).thenReturn(new SourceDecisionPort.AuthorizationDecision(
+                "AUTH1", SourceDecisionPort.AuthorizationState.AUTHORIZED, source, "U1", "M1", "S1", "CNY",
+                100L, quote.selectionDigest(), orderHash, quote.expiresAt()));
+        var c = new UseCommand(UUID.randomUUID().toString(), source, "U1", "M1", "S1", "CNY",
+                AssetKind.ORDER_COUPON, instance, null, null, 1, 100L, items, "AUTH1", null, 0, null, quote.quoteRef());
+        assertThat(uses.prepare(context, c).status()).isEqualTo(State.HELD);
+    }
+
+    @Test
     void freightIsSeparateFromGoodsAndCategoryScopeUsesAuthoritativeLineFacts() {
         coupon("FREE_SHIP", null, 200L, new RedemptionScope("CATEGORIES", List.of("CAT1")), 350);
         var quote = uses.quote(context, quoteCommand(350));
