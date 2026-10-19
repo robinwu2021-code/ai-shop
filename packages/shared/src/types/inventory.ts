@@ -534,6 +534,22 @@ export interface StockAlignRow {
   note: StockAlignNote | null;
 }
 
+export interface StockAlignmentBatch {
+  batchNo: string;
+  storeNo: string;
+  mode: StockAlignMode;
+  snapshotVersion: string;
+  expiresAt: number | null;
+  status: "PREVIEW" | "PROCESSING" | "PARTIAL" | "BLOCKED" | "COMPLETED" | "STALE" | "EXPIRED";
+  completed: number;
+  blocked: number;
+  waiting: number;
+  rows: Array<{
+    skuNo: string; title: string; spec: string | null; beforeQty: number | null; reserved: number | null;
+    mallStock: number; mallLocked: number; afterQty: number | null; status: string; operationNo: string; errorCode: string | null;
+  }>;
+}
+
 /** 线上可售规则的作用范围。STORE 本店默认 · CATEGORY 某个类目 · GOODS 某件商品 */
 export type SellRuleScope = "STORE" | "CATEGORY" | "GOODS";
 

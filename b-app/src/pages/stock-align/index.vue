@@ -10,7 +10,7 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { confirm } from "@ai-shop/ui/prompt";
-import type { StockAlignMode, StockAlignRow } from "@shared/types";
+import type { StockAlignMode, StockAlignRow, StockAlignmentBatch } from "@shared/types";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
@@ -19,6 +19,7 @@ const rows = ref<StockAlignRow[]>([]);
 const loaded = ref(false);
 const failed = ref(false);
 const busy = ref(false);
+const batch = ref<StockAlignmentBatch | null>(null);
 
 const storeNo = computed(() => merchant.storeNo);
 /** 以线上为准时会被调实存的行：有差额、且能比 */
@@ -38,19 +39,38 @@ async function load() {
 
 async function run(mode: StockAlignMode) {
   if (!storeNo.value || busy.value) return;
-  const ok = await confirm(mode === "MALL"
-    ? { title: String(t("stockAlign.confirmMallTitle")), hint: String(t("stockAlign.confirmMallHint", { n: diffCount.value })) }
-    : { title: String(t("stockAlign.confirmCountTitle")), hint: String(t("stockAlign.confirmCountHint")) });
-  if (!ok) return;
   busy.value = true;
   try {
-    await api.mConfirmAlignment(storeNo.value, mode);
-    uni.showToast({ title: String(t("stockAlign.done")), icon: "none" });
-    await load();
+    batch.value = await api.mPreviewStockAlignment(storeNo.value, mode);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
     busy.value = false;
+  }
+}
+
+async function confirmBatch() {
+  const current = batch.value;
+  if (!storeNo.value || !current || busy.value || !["PREVIEW", "PARTIAL", "BLOCKED"].includes(current.status)) return;
+  if (current.status === "PREVIEW" && current.blocked > 0) {
+    uni.showToast({ title: "请先处理阻断项，再重新预览", icon: "none" });
+    return;
+  }
+  const ok = await confirm(current.mode === "MALL"
+    ? { title: String(t("stockAlign.confirmMallTitle")), hint: String(t("stockAlign.confirmMallHint", { n: current.rows.filter((r) => r.beforeQty !== r.afterQty && r.status !== "BLOCKED").length })) }
+    : { title: String(t("stockAlign.confirmCountTitle")), hint: String(t("stockAlign.confirmCountHint")) });
+  if (!ok) return;
+  busy.value = true;
+  const operationNo = `ALIGN-${current.batchNo}`;
+  try {
+    batch.value = await api.mConfirmStockAlignmentBatch(storeNo.value, current.batchNo, operationNo, current.snapshotVersion);
+  } catch {
+    // 写入结果未知时读取已存在批次，绝不另开一批重做。
+    try { batch.value = await api.mStockAlignmentBatch(storeNo.value, current.batchNo); }
+    catch (e) { uni.showToast({ title: (e as Error).message, icon: "none" }); }
+  } finally {
+    busy.value = false;
+    await load();
   }
 }
 
@@ -76,6 +96,21 @@ onShow(() => {
     @retry="load"
   >
     <text class="txt-caption sh-muted intro">{{ $t("stockAlign.intro") }}</text>
+    <view v-if="batch" class="sh-card sh-mb-sm">
+      <view class="sh-row sh-row--between">
+        <text class="txt-strong">{{ batch.status === "PREVIEW" ? "对齐预览" : "批次处理结果" }}</text>
+        <text class="txt-caption sh-muted">{{ batch.batchNo }}</text>
+      </view>
+      <text class="txt-caption sh-muted">{{ batch.mode === "MALL" ? "以线上库存为准" : "按已实地盘点" }} · {{ batch.completed }}项完成 · {{ batch.blocked }}项阻断 · {{ batch.waiting }}项等待</text>
+      <view v-for="line in batch.rows" :key="line.skuNo" class="batch-line">
+        <text class="txt-body">{{ line.title }}{{ line.spec ? ` · ${line.spec}` : "" }}</text>
+        <text class="txt-caption sh-muted">{{ line.beforeQty ?? "—" }} → {{ line.afterQty ?? "—" }} · {{ line.status }}{{ line.errorCode ? ` (${line.errorCode})` : "" }}</text>
+      </view>
+      <view v-if="['PREVIEW', 'PARTIAL', 'BLOCKED'].includes(batch.status)" class="sh-row sh-row--between sh-mt-sm">
+        <text class="sh-btn sh-btn--soft" @tap="batch = null">取消</text>
+        <text class="sh-btn" @tap="confirmBatch">{{ batch.status === "PREVIEW" ? "确认对齐" : "继续处理未完成项" }}</text>
+      </view>
+    </view>
     <sh-empty v-if="!rows.length" :pending="!loaded" :text="String($t('stockAlign.empty'))"></sh-empty>
     <view v-for="r in rows" :key="r.skuNo" class="sh-card sh-mb-sm">
       <view class="sh-row sh-row--between">
@@ -100,4 +135,5 @@ onShow(() => {
   display: block;
   padding: 0 8rpx 16rpx;
 }
+.batch-line { display: flex; flex-direction: column; gap: 4rpx; padding: 16rpx 0; border-top: 1rpx solid var(--sh-line); }
 </style>

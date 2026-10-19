@@ -6,7 +6,7 @@
 import { db, delay } from "@shared/mock/db";
 import { isoDay } from "@/shared/quick-dates";
 import type {
-  Carrier, GoodsInvMode, InvCategorySetting, InvMode, InvModeChange, OfflineSaleRow, SellRule, StockAlignRow,
+  Carrier, GoodsInvMode, InvCategorySetting, InvMode, InvModeChange, OfflineSaleRow, SellRule, StockAlignRow, StockAlignmentBatch,
   StockOverview, StockBalance, StockCount, StockSyncOperationRecord, StockSyncState, StockTransfer, Supplier,
 } from "@shared/types";
 import {
@@ -77,6 +77,9 @@ export const inventoryMock: Pick<MerchantApi,
   | "mSetStockSync"
   | "mStockAlignment"
   | "mConfirmAlignment"
+  | "mPreviewStockAlignment"
+  | "mConfirmStockAlignmentBatch"
+  | "mStockAlignmentBatch"
   | "mSellRules"
   | "mSaveSellRule"
   | "mOfflineSales"
@@ -589,6 +592,33 @@ export const inventoryMock: Pick<MerchantApi,
     syncStates.set(storeNo, { ...st, state: st.enabled ? "SYNCING" : "ALIGNED", alignedAt: Date.now(), alignMode: mode });
     return delay({ adjusted: mode === "MALL" ? 1 : 0 });
   },
+  async mPreviewStockAlignment(storeNo, mode) {
+    storeNo = storeNo || currentStoreNo();
+    const batch: StockAlignmentBatch = {
+      batchNo: `AL-MOCK-${Date.now()}`, storeNo, mode, snapshotVersion: `snapshot-${Date.now()}`,
+      expiresAt: Date.now() + 900_000, status: "PREVIEW", completed: 0, blocked: 0, waiting: 0,
+      rows: (await inventoryMock.mStockAlignment(storeNo)).map((r) => ({ skuNo: r.skuNo, title: r.title, spec: r.spec,
+        beforeQty: r.onHand, reserved: r.reserved, mallStock: r.mallStock, mallLocked: r.mallLocked,
+        afterQty: mode === "MALL" ? r.mallStock : r.onHand, status: r.note ? "BLOCKED" : "PENDING",
+        operationNo: `MOCK-${r.skuNo}`, errorCode: r.note })),
+    };
+    alignmentBatches.set(batch.batchNo, batch);
+    return delay(batch);
+  },
+  async mConfirmStockAlignmentBatch(_storeNo, batchNo) {
+    const batch = alignmentBatches.get(batchNo);
+    if (!batch) throw new Error("对齐批次不存在");
+    const done = { ...batch, status: "COMPLETED" as const, completed: batch.rows.filter((r) => r.status !== "BLOCKED").length,
+      blocked: batch.rows.filter((r) => r.status === "BLOCKED").length,
+      rows: batch.rows.map((r) => ({ ...r, status: r.status === "BLOCKED" ? "BLOCKED" : "COMPLETED" })) };
+    alignmentBatches.set(batchNo, done);
+    return delay(done);
+  },
+  async mStockAlignmentBatch(_storeNo, batchNo) {
+    const batch = alignmentBatches.get(batchNo);
+    if (!batch) throw new Error("对齐批次不存在");
+    return delay(batch);
+  },
   async mSellRules(storeNo) {
     storeNo = storeNo || currentStoreNo();
     return delay(sellRules.filter((r) => r.storeNo === storeNo).map(({ storeNo: _s, ...r }) => r));
@@ -650,6 +680,7 @@ const offlineSales = new Map<string, OfflineSaleRow[]>();
  */
 const invSet = new Map<string, boolean>();
 const syncStates = new Map<string, StockSyncState>();
+const alignmentBatches = new Map<string, StockAlignmentBatch>();
 const sellRules: (SellRule & { storeNo: string })[] = [];
 
 function syncStateOf(storeNo: string): StockSyncState {

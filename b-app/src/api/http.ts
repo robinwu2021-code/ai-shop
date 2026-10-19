@@ -169,6 +169,7 @@ import type {
   SpuStd,
   StaffLog,
   StockAlignRow,
+  StockAlignmentBatch,
   StockBalance,
   StockCount,
   StockCountFilled,
@@ -839,6 +840,12 @@ export const httpApi: MerchantApi = {
   mStockAlignment: (storeNo) => http.get<StockAlignRow[]>(buildPath(E.mStockAlignment.path, { storeNo })),
   mConfirmAlignment: (storeNo, mode) =>
     http.post<{ adjusted: number }>(buildPath(E.mConfirmAlignment.path, { storeNo }), { mode }),
+  mPreviewStockAlignment: (storeNo, mode) =>
+    http.post<StockAlignmentBatch>(buildPath(E.mPreviewStockAlignment.path, { storeNo }), { mode }),
+  mConfirmStockAlignmentBatch: (storeNo, batchNo, operationNo, snapshotVersion) =>
+    http.post<StockAlignmentBatch>(buildPath(E.mConfirmStockAlignmentBatch.path, { storeNo, batchNo }), { operationNo, snapshotVersion }),
+  mStockAlignmentBatch: (storeNo, batchNo) =>
+    http.get<StockAlignmentBatch>(buildPath(E.mStockAlignmentBatch.path, { storeNo, batchNo })),
   mSellRules: (storeNo) => http.get<SellRule[]>(buildPath(E.mSellRules.path, { storeNo })),
   mSaveSellRule: (storeNo, rule) => http.put<SellRule>(buildPath(E.mSaveSellRule.path, { storeNo }), rule),
   mOfflineSales: (storeNo, date) =>

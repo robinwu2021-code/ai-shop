@@ -144,6 +144,7 @@ import type {
   StaffRole,
   StockAlignMode,
   StockAlignRow,
+  StockAlignmentBatch,
   StockBalance,
   StockCount,
   StockCountFilled,
@@ -2254,6 +2255,9 @@ export interface MerchantApi {
   mStockAlignment(storeNo: string): Promise<StockAlignRow[]>;
   /** 确认期初对齐。返回以商城为准时调了几行实存 */
   mConfirmAlignment(storeNo: string, mode: StockAlignMode): Promise<{ adjusted: number }>;
+  mPreviewStockAlignment(storeNo: string, mode: StockAlignMode): Promise<StockAlignmentBatch>;
+  mConfirmStockAlignmentBatch(storeNo: string, batchNo: string, operationNo: string, snapshotVersion: string): Promise<StockAlignmentBatch>;
+  mStockAlignmentBatch(storeNo: string, batchNo: string): Promise<StockAlignmentBatch>;
   /** 本店线上可售规则 */
   mSellRules(storeNo: string): Promise<SellRule[]>;
   /** 存一条规则（STORE 级不传 scopeRef） */
