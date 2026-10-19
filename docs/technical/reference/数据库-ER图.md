@@ -5,7 +5,7 @@
 
 ## 一、总览
 
-全库 **258** 张表、**381** 条引用关系，分 **16** 个域。
+全库 **265** 张表、**388** 条引用关系，分 **16** 个域。
 按「被引用次数」分三条带 —— **不是有向无环图**：域之间存在环
 （`cmt → mkt → usr → cmt`），强行分层会画错。
 
@@ -21,7 +21,7 @@
 | 交易 | `ord_*` | 23 | 8 |
 | 履约 | `ful_*` | 5 | 0 |
 | 营销与团购 | `mkt_*` | 17 | 4 |
-| 积分 | `pts_*` | 34 | 0 |
+| 积分 | `pts_*` | 41 | 0 |
 | 结算 | `stl_*` | 18 | 2 |
 | 评价 | `rvw_*` | 3 | 0 |
 | 消息与客服 | `msg_*` | 1 | 0 |
@@ -226,7 +226,7 @@
 
 **跨域引用**：`mkt_attribution.user_no` → `usr_account`、`mkt_attribution.entity_no` → `mch_entity`、`mkt_attribution.inviter_no` → `usr_account`、`mkt_attribution_log.user_no` → `usr_account`、`mkt_attribution_log.entity_no` → `mch_entity`、`mkt_attribution_log.inviter_no` → `usr_account`、`mkt_attribution_log.order_no` → `ord_order`、`mkt_attribution_log.store_no` → `mch_store`、`mkt_campaign.entity_no` → `mch_entity`、`mkt_campaign.store_no` → `mch_store`、`mkt_coupon.entity_no` → `mch_entity`、`mkt_group_buy.goods_no` → `prd_goods`、`mkt_group_buy.sku_no` → `prd_sku`、`mkt_group_buy.entity_no` → `mch_entity`、`mkt_group_buy.pickup_no` → `cmt_pickup_point`、`mkt_group_buy.activity_no` → `pmt_activity`、`mkt_group_member.user_no` → `usr_account`、`mkt_group_member.sub_order_no` → `ord_sub_order`、`mkt_quote.entity_no` → `mch_entity`、`mkt_quote_revision.entity_no` → `mch_entity`、`mkt_request.pickup_no` → `cmt_pickup_point`、`mkt_request_interest.user_no` → `usr_account`、`mkt_user_coupon.user_no` → `usr_account`、`mkt_user_coupon.order_no` → `ord_order`、`mkt_coupon_issue.user_no` → `usr_account`、`mkt_fission_invite.inviter_no` → `usr_account`、`mkt_fission_invite.order_no` → `ord_order`、`mkt_store_visit.entity_no` → `mch_entity`、`mkt_store_visit.store_no` → `mch_store`、`mkt_store_visit.user_no` → `usr_account`
 
-### 积分 `pts_*`（34 张）
+### 积分 `pts_*`（41 张）
 
 ![积分表关系](../diagrams/db-pts.svg)
 
@@ -266,8 +266,15 @@
 | `pts_outbox` | Points v3 pts_outbox |
 | `pts_stat_daily` | Points v3 pts_stat_daily |
 | `pts_cursor` | Points v3 pts_cursor |
+| `pts_availability_projection` | — |
+| `pts_statement_final_fact` | — |
+| `pts_statement_build` | — |
+| `pts_statement_build_item` | — |
+| `pts_statement_source_history` | — |
+| `pts_user_adjustment` | — |
+| `pts_statement_confirmation` | — |
 
-**跨域引用**：`pts_user_account.user_no` → `usr_account`、`pts_user_ledger.user_no` → `usr_account`、`pts_user_ledger.issuer_merchant_no` → `mch_entity`、`pts_user_ledger.sub_order_no` → `ord_sub_order`、`pts_grant_position.sub_order_no` → `ord_sub_order`、`pts_grant_position.user_no` → `usr_account`、`pts_redeem_position.sub_order_no` → `ord_sub_order`、`pts_redeem_position.order_no` → `ord_order`、`pts_redeem_position.user_no` → `usr_account`、`pts_redeem_position.store_no` → `mch_store`、`pts_refund_preparation.after_sale_no` → `ord_after_sale`、`pts_refund_preparation.sub_order_no` → `ord_sub_order`、`pts_store_statement.store_no` → `mch_store`、`pts_merchant_agreement.store_no` → `mch_store`、`pts_receivable.store_no` → `mch_store`、`pts_lifecycle_fact.sub_order_no` → `ord_sub_order`、`pts_inbox.event_no` → `sys_outbox`、`pts_outbox.event_no` → `sys_outbox`
+**跨域引用**：`pts_user_account.user_no` → `usr_account`、`pts_user_ledger.user_no` → `usr_account`、`pts_user_ledger.issuer_merchant_no` → `mch_entity`、`pts_user_ledger.sub_order_no` → `ord_sub_order`、`pts_grant_position.sub_order_no` → `ord_sub_order`、`pts_grant_position.user_no` → `usr_account`、`pts_redeem_position.sub_order_no` → `ord_sub_order`、`pts_redeem_position.order_no` → `ord_order`、`pts_redeem_position.user_no` → `usr_account`、`pts_redeem_position.store_no` → `mch_store`、`pts_refund_preparation.after_sale_no` → `ord_after_sale`、`pts_refund_preparation.sub_order_no` → `ord_sub_order`、`pts_store_statement.store_no` → `mch_store`、`pts_merchant_agreement.store_no` → `mch_store`、`pts_receivable.store_no` → `mch_store`、`pts_lifecycle_fact.sub_order_no` → `ord_sub_order`、`pts_inbox.event_no` → `sys_outbox`、`pts_outbox.event_no` → `sys_outbox`、`pts_statement_final_fact.sub_order_no` → `ord_sub_order`、`pts_statement_build.store_no` → `mch_store`、`pts_statement_confirmation.merchant_no` → `mch_entity`、`pts_statement_confirmation.store_no` → `mch_store`
 
 ### 结算 `stl_*`（18 张）
 

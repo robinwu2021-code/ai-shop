@@ -1848,42 +1848,69 @@ export interface StoreAcode {
 
 /** Current-store statement projection; source positions and bank routes remain server-side. */
 export interface StorePointStatement {
+  /** 账单游标ID */
   id: number;
+  /** 门店积分账单号 */
   statementNo: string;
+  /** 积分类型编码 */
   typeCode: string;
+  /** 账单所属门店号 */
   storeNo: string;
+  /** 账期起始时间，毫秒时间戳 */
   fromMillis: number;
+  /** 账期结束时间，毫秒时间戳 */
   toMillis: number;
+  /** 账单当前状态 */
   state: string;
+  /** 账单修订号，提交确认或异议时必须匹配 */
   revision: number;
+  /** 本修订积分合计 */
   points: number;
+  /** 当前异议原因，无异议时为空 */
   disputeReason: string | null;
+  /** 历史修订摘要，number为修订号，points为积分数，reason为修订原因 */
   revisions: { number: number; points: number; reason: string | null }[];
 }
 export interface StorePointStatementPage {
+  /** 本页记录 */
   rows: StorePointStatement[];
+  /** 下一页游标，无更多记录时保留末尾游标 */
   next: number;
+  /** 是否还有下一页 */
   hasMore: boolean;
 }
 export interface StorePointStatementChange {
+  /** 请求幂等号，同一次操作重试保持不变 */
   requestId: string;
+  /** 积分类型编码 */
   typeCode: string;
+  /** 门店积分账单号 */
   statementNo: string;
+  /** 账单修订号，提交确认或异议时必须匹配 */
   revision: number;
+  /** 确认或异议的操作原因 */
   reason: string;
 }
 
 export interface StorePointStatementLinePage {
+  /** 本页记录 */
   rows: { orderNo: string; subOrderNo: string; points: number }[];
+  /** 下一页游标，无更多记录时保留末尾游标 */
   next: number;
+  /** 是否还有下一页 */
   hasMore: boolean;
 }
 
 /** Receipt of an audited statement decision; this does not assert bank payout success. */
 export interface StorePointStatementReceipt {
+  /** 请求幂等号，同一次操作重试保持不变 */
   requestId: string;
+  /** 已受理的操作类型 */
   operation: string;
+  /** 积分类型编码 */
   typeCode: string;
+  /** 操作关联的账单号 */
   reference: string;
+  /** 操作受理时间，毫秒时间戳 */
   at: number;
 }

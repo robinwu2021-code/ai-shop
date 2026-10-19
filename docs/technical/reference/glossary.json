@@ -17109,7 +17109,7 @@
         },
         {
           "key": "points.statementFailed",
-          "zh-CN": "账单加载或操作失败，请刷新核对最新修订后重试",
+          "zh-CN": "操作失败，请刷新账单后重试",
           "en": "Unable to load or update. Refresh and check the latest revision before retrying.",
           "ar": "تعذر التحميل أو التحديث. حدّث الكشف وراجع آخر إصدار قبل المحاولة."
         },

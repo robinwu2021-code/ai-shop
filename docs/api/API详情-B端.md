@@ -5732,17 +5732,17 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `id` | `number` | 是 | — |
-| `statementNo` | `string` | 是 | — |
-| `typeCode` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `fromMillis` | `number` | 是 | — |
-| `toMillis` | `number` | 是 | — |
-| `state` | `string` | 是 | — |
-| `revision` | `number` | 是 | — |
-| `points` | `number` | 是 | — |
-| `disputeReason` | `string,null` | 是 | — |
-| `revisions` | `object`（见下）\[\] | 是 | — |
+| `id` | `number` | 是 | 账单游标ID |
+| `statementNo` | `string` | 是 | 门店积分账单号 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `storeNo` | `string` | 是 | 账单所属门店号 |
+| `fromMillis` | `number` | 是 | 账期起始时间，毫秒时间戳 |
+| `toMillis` | `number` | 是 | 账期结束时间，毫秒时间戳 |
+| `state` | `string` | 是 | 账单当前状态 |
+| `revision` | `number` | 是 | 账单修订号，提交确认或异议时必须匹配 |
+| `points` | `number` | 是 | 本修订积分合计 |
+| `disputeReason` | `string,null` | 是 | 当前异议原因，无异议时为空 |
+| `revisions` | `object`（见下）\[\] | 是 | 历史修订摘要，number为修订号，points为积分数，reason为修订原因 |
 
 `revisions[]` 的字段：
 
@@ -5763,11 +5763,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `requestId` | `string` | 是 | — |
-| `typeCode` | `string` | 是 | — |
-| `statementNo` | `string` | 是 | — |
-| `revision` | `number` | 是 | — |
-| `reason` | `string` | 是 | — |
+| `requestId` | `string` | 是 | 请求幂等号，同一次操作重试保持不变 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `statementNo` | `string` | 是 | 门店积分账单号 |
+| `revision` | `number` | 是 | 账单修订号，提交确认或异议时必须匹配 |
+| `reason` | `string` | 是 | 确认或异议的操作原因 |
 
 **出参**（`data`）
 
@@ -5775,11 +5775,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `requestId` | `string` | 是 | — |
-| `operation` | `string` | 是 | — |
-| `typeCode` | `string` | 是 | — |
-| `reference` | `string` | 是 | — |
-| `at` | `number` | 是 | — |
+| `requestId` | `string` | 是 | 请求幂等号，同一次操作重试保持不变 |
+| `operation` | `string` | 是 | 已受理的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `reference` | `string` | 是 | 操作关联的账单号 |
+| `at` | `number` | 是 | 操作受理时间，毫秒时间戳 |
 
 
 #### POST `/biz/points/store-statement-dispute`
@@ -5792,11 +5792,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `requestId` | `string` | 是 | — |
-| `typeCode` | `string` | 是 | — |
-| `statementNo` | `string` | 是 | — |
-| `revision` | `number` | 是 | — |
-| `reason` | `string` | 是 | — |
+| `requestId` | `string` | 是 | 请求幂等号，同一次操作重试保持不变 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `statementNo` | `string` | 是 | 门店积分账单号 |
+| `revision` | `number` | 是 | 账单修订号，提交确认或异议时必须匹配 |
+| `reason` | `string` | 是 | 确认或异议的操作原因 |
 
 **出参**（`data`）
 
@@ -5804,11 +5804,11 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `requestId` | `string` | 是 | — |
-| `operation` | `string` | 是 | — |
-| `typeCode` | `string` | 是 | — |
-| `reference` | `string` | 是 | — |
-| `at` | `number` | 是 | — |
+| `requestId` | `string` | 是 | 请求幂等号，同一次操作重试保持不变 |
+| `operation` | `string` | 是 | 已受理的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `reference` | `string` | 是 | 操作关联的账单号 |
+| `at` | `number` | 是 | 操作受理时间，毫秒时间戳 |
 
 
 #### GET `/biz/points/store-statement-lines`
@@ -5831,9 +5831,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rows` | `object`（见下）\[\] | 是 | — |
-| `next` | `number` | 是 | — |
-| `hasMore` | `boolean` | 是 | — |
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标，无更多记录时保留末尾游标 |
+| `hasMore` | `boolean` | 是 | 是否还有下一页 |
 
 `rows[]` 的字段：
 
@@ -5862,9 +5862,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rows` | [`StorePointStatement`](#storepointstatement)\[\] | 是 | — |
-| `next` | `number` | 是 | — |
-| `hasMore` | `boolean` | 是 | — |
+| `rows` | [`StorePointStatement`](#storepointstatement)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标，无更多记录时保留末尾游标 |
+| `hasMore` | `boolean` | 是 | 是否还有下一页 |
 
 
 #### GET `/biz/points/store-terms`
@@ -9619,9 +9619,9 @@ _无字段_
 | `body` | `string` | 是 | 正文 |
 | `link` | `string` | 否 | 点进去要跳哪（订单详情/商品/团），已是完整页面路径带参 |
 | `bizType` | `string,null` | 否 | B inbox projection; business action state is independent of read/unread. |
-| `bizNo` | `string,null` | 否 | — |
-| `storeNo` | `string,null` | 否 | — |
-| `actionPending` | `boolean` | 否 | — |
+| `bizNo` | `string,null` | 否 | 关联业务单号，缺失时无业务定位 |
+| `storeNo` | `string,null` | 否 | 业务所属门店，跳转前校验门店权限 |
+| `actionPending` | `boolean` | 否 | 是否仍需处理业务动作，与已读状态独立 |
 | `read` | `boolean` | 是 | 是否已读。未读数按 type 分别统计 |
 | `at` | `number` | 是 | 消息产生时间 |
 
@@ -11687,17 +11687,17 @@ Current-store statement projection; source positions and bank routes remain serv
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `id` | `number` | 是 | — |
-| `statementNo` | `string` | 是 | — |
-| `typeCode` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
-| `fromMillis` | `number` | 是 | — |
-| `toMillis` | `number` | 是 | — |
-| `state` | `string` | 是 | — |
-| `revision` | `number` | 是 | — |
-| `points` | `number` | 是 | — |
-| `disputeReason` | `string,null` | 是 | — |
-| `revisions` | `object`（见下）\[\] | 是 | — |
+| `id` | `number` | 是 | 账单游标ID |
+| `statementNo` | `string` | 是 | 门店积分账单号 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `storeNo` | `string` | 是 | 账单所属门店号 |
+| `fromMillis` | `number` | 是 | 账期起始时间，毫秒时间戳 |
+| `toMillis` | `number` | 是 | 账期结束时间，毫秒时间戳 |
+| `state` | `string` | 是 | 账单当前状态 |
+| `revision` | `number` | 是 | 账单修订号，提交确认或异议时必须匹配 |
+| `points` | `number` | 是 | 本修订积分合计 |
+| `disputeReason` | `string,null` | 是 | 当前异议原因，无异议时为空 |
+| `revisions` | `object`（见下）\[\] | 是 | 历史修订摘要，number为修订号，points为积分数，reason为修订原因 |
 
 `revisions[]` 的字段：
 
@@ -11711,19 +11711,19 @@ Current-store statement projection; source positions and bank routes remain serv
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `requestId` | `string` | 是 | — |
-| `typeCode` | `string` | 是 | — |
-| `statementNo` | `string` | 是 | — |
-| `revision` | `number` | 是 | — |
-| `reason` | `string` | 是 | — |
+| `requestId` | `string` | 是 | 请求幂等号，同一次操作重试保持不变 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `statementNo` | `string` | 是 | 门店积分账单号 |
+| `revision` | `number` | 是 | 账单修订号，提交确认或异议时必须匹配 |
+| `reason` | `string` | 是 | 确认或异议的操作原因 |
 
 ### StorePointStatementLinePage
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rows` | `object`（见下）\[\] | 是 | — |
-| `next` | `number` | 是 | — |
-| `hasMore` | `boolean` | 是 | — |
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标，无更多记录时保留末尾游标 |
+| `hasMore` | `boolean` | 是 | 是否还有下一页 |
 
 `rows[]` 的字段：
 
@@ -11737,9 +11737,9 @@ Current-store statement projection; source positions and bank routes remain serv
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `rows` | [`StorePointStatement`](#storepointstatement)\[\] | 是 | — |
-| `next` | `number` | 是 | — |
-| `hasMore` | `boolean` | 是 | — |
+| `rows` | [`StorePointStatement`](#storepointstatement)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标，无更多记录时保留末尾游标 |
+| `hasMore` | `boolean` | 是 | 是否还有下一页 |
 
 ### StorePointStatementReceipt
 
@@ -11747,11 +11747,11 @@ Receipt of an audited statement decision; this does not assert bank payout succe
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `requestId` | `string` | 是 | — |
-| `operation` | `string` | 是 | — |
-| `typeCode` | `string` | 是 | — |
-| `reference` | `string` | 是 | — |
-| `at` | `number` | 是 | — |
+| `requestId` | `string` | 是 | 请求幂等号，同一次操作重试保持不变 |
+| `operation` | `string` | 是 | 已受理的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `reference` | `string` | 是 | 操作关联的账单号 |
+| `at` | `number` | 是 | 操作受理时间，毫秒时间戳 |
 
 ### StorePointTerms
 

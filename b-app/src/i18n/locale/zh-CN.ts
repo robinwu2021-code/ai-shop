@@ -894,7 +894,7 @@ export default {
     statementDetails: "账单明细",
     statementSourceOrder: "来源订单",
     statements: "积分账单",
-    statementFailed: "账单加载或操作失败，请刷新核对最新修订后重试",
+    statementFailed: "操作失败，请刷新账单后重试",
     statementRefresh: "刷新账单",
     noStatements: "暂无账单",
     statementRevision: "修订",

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 门店积分账单：财务人员查看当前及历史修订，确认账单或提出异议。
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { confirm as confirmDialog } from "@ai-shop/ui/prompt";
@@ -131,8 +132,8 @@ function date(at: number) { return new Date(at).toLocaleDateString(); }
       <view v-if="row.disputeReason">{{ row.disputeReason }}</view>
       <template v-if="row.state === 'DRAFT'">
         <textarea v-model="reasons[row.statementNo]" :placeholder="t('points.statementDisputeReason')" maxlength="500" />
-        <view data-test="confirm" class="sh-btn sh-btn--primary" :class="{ 'sh-disabled': busy }" @click="decide(row, false)">{{ t("points.statementConfirm") }}</view>
-        <view data-test="dispute" class="sh-btn sh-btn--muted" :class="{ 'sh-disabled': busy }" @click="decide(row, true)">{{ t("points.statementDispute") }}</view>
+        <view data-test="confirm" class="sh-btn" :class="{ 'is-disabled': busy }" @click="decide(row, false)">{{ t("points.statementConfirm") }}</view>
+        <view data-test="dispute" class="sh-btn sh-btn--muted" :class="{ 'is-disabled': busy }" @click="decide(row, true)">{{ t("points.statementDispute") }}</view>
       </template>
     </view>
     <view v-if="hasMore && !loading" class="sh-btn sh-btn--muted" @click="load(true)">{{ t("points.statementMore") }}</view>

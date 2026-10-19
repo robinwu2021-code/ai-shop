@@ -67,6 +67,7 @@ const DOMAINS = [
  * 与 packages/shared/tests/schema-lineage.test.ts 的同名表保持一致（有断言校验）。
  */
 export const KEY_OWNERS = {
+  build_no: "pts_statement_build",
   payout_no: "stl_payout",
   voucher_no: "pts_voucher",
   evidence_no: "pts_fund_evidence",

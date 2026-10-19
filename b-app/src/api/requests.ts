@@ -791,11 +791,16 @@ export interface StorePointsEntriesQuery {
 }
 
 export interface StorePointStatementQuery {
+  /** 积分类型编码 */
   typeCode: string;
+  /** 当前门店积分账单号 */
   statementNo: string;
 }
 export interface StorePointStatementLinesQuery extends StorePointStatementQuery {
+  /** 要查询的账单修订号 */
   revision: number;
+  /** 明细分页游标，首屏为0 */
   after?: number;
+  /** 本页条数上限 */
   limit?: number;
 }

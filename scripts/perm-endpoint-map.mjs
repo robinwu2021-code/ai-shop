@@ -23,6 +23,9 @@
 
 /** [方法或 *, 路径正则, 权限码, 理由（只在不显然时写）] */
 export const RULES = [
+  ["GET", /^\/ops\/points\/adjustments$/, "finance:settle:read"],
+  ["POST", /^\/ops\/points\/adjustments$/, "finance:settle:execute"],
+  ["POST", /^\/ops\/points\/adjustment-review$/, "finance:payout:execute"],
   // 2026-10-18：与当前受保护接口逐项对齐；分操作权限用 / 标示，非运行时授权规则。
   ["GET", /^\/ops\/banned-word$/, "product:category:read"],
   ["POST", /^\/ops\/banned-word$/, "product:category:update"],

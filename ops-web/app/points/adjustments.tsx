@@ -20,7 +20,7 @@ export function PointsAdjustments({ canMake, canCheck }: { canMake: boolean; can
  function send(value:Command){const next=pointsCommand(value,intent.current);intent.current=next.intent;
   const command={...value,value:{...value.value,requestId:next.command.requestId}} as Command;mutation.mutate(command);}
  const disabled=mutation.isPending || !reason.trim() || IS_MOCK;
- return <section className="space-y-3 rounded border border-border p-4">
+ return <section className="space-y-3 rounded-card border border-border p-4">
   <h3>{t("用户积分调账 · 双人审批","User adjustments · maker and checker")}</h3>
   <p>{t("调增消耗平台预算；调减仅扣可用积分并释放回平台可发预算，待生效和占用积分不参与，不发起外部转账。","Increases consume platform budget; decreases release available points back to platform issuance budget without an external transfer. Pending and held points are excluded.")}</p>
   <label>{t("积分类型","Point type")}<Select value={code} onChange={e=>{select(e.target.value);setAfter(0);}}>{types.data?.map(x=><option key={x.typeCode} value={x.typeCode}>{x.typeCode}</option>)}</Select></label>

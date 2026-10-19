@@ -130,6 +130,7 @@ const LINEAGE: Hop[] = [
  * 例如「发放方商家」`issuer_merchant_no` 指向 `usr_merchant.merchant_no`。
  */
 const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
+  build_no: { table: "pts_statement_build" },
   voucher_no: { table: "pts_voucher" },
   evidence_no: { table: "pts_fund_evidence" },
   receivable_no: { table: "pts_receivable" },

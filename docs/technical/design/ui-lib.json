@@ -3534,7 +3534,7 @@
       "name": "StorePointStatements",
       "file": "b-app/src/components/points/StorePointStatements.vue",
       "scope": "B 端",
-      "lines": 140,
+      "lines": 141,
       "props": [
         "typeCode: string",
         "storeNo: string",
@@ -3545,7 +3545,7 @@
         "c-app": 0,
         "lib": 0
       },
-      "note": "—",
+      "note": "门店积分账单：财务人员查看当前及历史修订，确认账单或提出异议",
       "why": "—",
       "uses": {
         "tiers": [

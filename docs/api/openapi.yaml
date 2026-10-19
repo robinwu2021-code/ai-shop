@@ -6152,26 +6152,36 @@ components:
       properties:
         id:
           type: "number"
+          description: "账单游标ID"
         statementNo:
           type: "string"
+          description: "门店积分账单号"
         typeCode:
           type: "string"
+          description: "积分类型编码"
         storeNo:
           type: "string"
+          description: "账单所属门店号"
         fromMillis:
           type: "number"
+          description: "账期起始时间，毫秒时间戳"
         toMillis:
           type: "number"
+          description: "账期结束时间，毫秒时间戳"
         state:
           type: "string"
+          description: "账单当前状态"
         revision:
           type: "number"
+          description: "账单修订号，提交确认或异议时必须匹配"
         points:
           type: "number"
+          description: "本修订积分合计"
         disputeReason:
           type:
             - "string"
             - "null"
+          description: "当前异议原因，无异议时为空"
         revisions:
           type: "array"
           items:
@@ -6190,6 +6200,7 @@ components:
               - "points"
               - "reason"
             additionalProperties: false
+          description: "历史修订摘要，number为修订号，points为积分数，reason为修订原因"
       required:
         - "id"
         - "statementNo"
@@ -6211,10 +6222,13 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/StorePointStatement"
+          description: "本页记录"
         next:
           type: "number"
+          description: "下一页游标，无更多记录时保留末尾游标"
         hasMore:
           type: "boolean"
+          description: "是否还有下一页"
       required:
         - "rows"
         - "next"
@@ -6225,14 +6239,19 @@ components:
       properties:
         requestId:
           type: "string"
+          description: "请求幂等号，同一次操作重试保持不变"
         typeCode:
           type: "string"
+          description: "积分类型编码"
         statementNo:
           type: "string"
+          description: "门店积分账单号"
         revision:
           type: "number"
+          description: "账单修订号，提交确认或异议时必须匹配"
         reason:
           type: "string"
+          description: "确认或异议的操作原因"
       required:
         - "requestId"
         - "typeCode"
@@ -6259,10 +6278,13 @@ components:
               - "subOrderNo"
               - "points"
             additionalProperties: false
+          description: "本页记录"
         next:
           type: "number"
+          description: "下一页游标，无更多记录时保留末尾游标"
         hasMore:
           type: "boolean"
+          description: "是否还有下一页"
       required:
         - "rows"
         - "next"
@@ -6273,14 +6295,19 @@ components:
       properties:
         requestId:
           type: "string"
+          description: "请求幂等号，同一次操作重试保持不变"
         operation:
           type: "string"
+          description: "已受理的操作类型"
         typeCode:
           type: "string"
+          description: "积分类型编码"
         reference:
           type: "string"
+          description: "操作关联的账单号"
         at:
           type: "number"
+          description: "操作受理时间，毫秒时间戳"
       required:
         - "requestId"
         - "operation"
@@ -6323,12 +6350,15 @@ components:
           type:
             - "string"
             - "null"
+          description: "关联业务单号，缺失时无业务定位"
         storeNo:
           type:
             - "string"
             - "null"
+          description: "业务所属门店，跳转前校验门店权限"
         actionPending:
           type: "boolean"
+          description: "是否仍需处理业务动作，与已读状态独立"
         read:
           type: "boolean"
           description: "是否已读。未读数按 type 分别统计"
