@@ -2910,6 +2910,9 @@ class PointsPayoutPreparationTest {
                         "AK:" + c.typeCode() + ":" + store,
                         Timestamp.from(Instant.EPOCH),
                         Timestamp.from(Instant.EPOCH));
+        // Direct fixture SQL bypasses the agreement service's projection invalidation.
+        context.getBean(ai.neargo.shop.pay.points.store.impl.AcceptanceAvailabilityProjection.class)
+                .rebuild(c.typeCode());
     }
 
     @Test
@@ -3243,6 +3246,9 @@ class PointsPayoutPreparationTest {
     }
 
     private ExpiryService.Request expiryRequest(PayoutCommand c, long revision, long asOf) {
+        // Production recovery refreshes dirty availability before lifecycle work runs.
+        context.getBean(ai.neargo.shop.pay.points.store.impl.AcceptanceAvailabilityProjection.class)
+                .repair(c.typeCode());
         return new ExpiryService.Request(
                 c.typeCode(),
                 "U",

@@ -970,6 +970,7 @@ class PointsRefundPreparationTest {
                             + " VALUES(?,'REFUND',?,?,?,'USER','CNY',40,'PENDING','TEST')",
                         "CASH:" + failedType,
                         "AS:" + failedType,
+                        failedType,
                         failedType);
         assertThatThrownBy(() -> collectionDecisions.reviseFailed(failed.preparationNo()))
                 .hasMessage("POINTS_REFUND_CASH_ALREADY_PREPARED");

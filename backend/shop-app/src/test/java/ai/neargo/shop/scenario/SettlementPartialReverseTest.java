@@ -36,6 +36,9 @@ class SettlementPartialReverseTest {
     private SplitPreparationService splits;
     @MockitoBean
     private PointsRefundPort pointsRefunds;
+    // These cases exercise settlement holds; cash terminal-proof validation has its own flow tests.
+    @MockitoBean
+    private ai.neargo.shop.pay.service.impl.RefundCapacityLedger refundCapacity;
     @Autowired
     private StubSplitGateway gateway;
     @Autowired
@@ -43,11 +46,11 @@ class SettlementPartialReverseTest {
 
     private void givenBill(String sub, String status) {
         DataScopeContext.executeWithoutScope(() -> jdbc.update(
-                "INSERT INTO stl_bill (settle_no, sub_order_no, order_no, entity_no, pay_channel, status,"
+                "INSERT INTO stl_bill (settle_no, sub_order_no, order_no, entity_no, pay_merchant_no, pay_channel, status,"
                         + " gross_minor, commission_minor, service_fee_minor, net_minor, split_amount_minor,"
                         + " freight_income_minor, freight_cost_minor, freight_ship_mode, accrued_at,"
                         + " tenant_no, created_at, updated_at, version, deleted)"
-                        + " VALUES (?, ?, ?, 'M0001', 'WECHAT', ?, 9000, 450, 90, 8460, 8460, 0, 0, 'MERCHANT_SELF', ?,"
+                        + " VALUES (?, ?, ?, 'M0001', 'SYNTHETIC-PARTIAL-REFUND', 'WECHAT', ?, 9000, 450, 90, 8460, 8460, 0, 0, 'MERCHANT_SELF', ?,"
                         + " 'MAIN', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0)",
                 "STL-" + sub, sub, "P-" + sub, status, System.currentTimeMillis()));
     }

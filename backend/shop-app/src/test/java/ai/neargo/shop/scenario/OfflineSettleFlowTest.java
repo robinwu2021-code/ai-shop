@@ -18,7 +18,6 @@ import ai.neargo.shop.pay.entity.StlPayment;
 import ai.neargo.shop.pay.mapper.SettleMappers;
 import ai.neargo.shop.spi.user.QualificationPort;
 import ai.neargo.shop.support.TestLogin;
-import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,8 +77,6 @@ class OfflineSettleFlowTest {
     private ObjectMapper json;
     @Autowired
     private SettleService settleService;
-    @Autowired
-    private OrderService orderService;
     @Autowired
     private SettleMappers.BillMapper billMapper;
     @Autowired
@@ -260,7 +257,7 @@ class OfflineSettleFlowTest {
     @Test
     @DisplayName("★★★ 通道手续费按**实付**算，不是按结算基数 —— 用 gross 会让手续费凭空变大")
     void channelFeeIsBasedOnPaidAmountNotGross() throws Exception {
-        var rate = addWechatRate(60, 0L);
+        var rate = addTestChannelRate(60, 0L);
         try {
             String token = login("13400288011");
             addToCart(token);
@@ -276,10 +273,7 @@ class OfflineSettleFlowTest {
                     subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
                             .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("LIMIT 1"))).getPayAmount();
 
-            DataScopeContext.executeWithoutScope(() -> {
-                orderService.markPaid(mainOrderNoOf(subOrderNo), "WECHAT", "TXN-settle-fee-1");
-                return null;
-            });
+            payOnline(token, payOrderNo, "settle-fee-1");
             StlBill bill = requireBill(subOrderNo);
 
             assertThat(bill.getGrossMinor())
@@ -322,7 +316,7 @@ class OfflineSettleFlowTest {
     @Test
     @DisplayName("★★ 单笔最低手续费要压得住 —— 漏了它，小额单的手续费系统性偏低且每笔都「算得对」")
     void minFeeFloorApplies() throws Exception {
-        var rate = addWechatRate(1, 99L);
+        var rate = addTestChannelRate(1, 99L);
         try {
             StlBill bill = billOfOnlineOrder("13400288013", "settle-fee-3");
             assertThat(bill.getChannelFeeMinor())
@@ -339,7 +333,7 @@ class OfflineSettleFlowTest {
     @Test
     @DisplayName("★★ 线下单不碰手续费四列 —— 钱从没进过通道，谈不上通道手续费")
     void offlineBillHasNoChannelFee() throws Exception {
-        var rate = addWechatRate(60, 0L);
+        var rate = addTestChannelRate(60, 0L);
         try {
             StlBill bill = billOfOfflineOrder("13400288014", "settle-fee-4");
             assertThat(bill.getChannelFeeMinor()).isZero();
@@ -352,7 +346,7 @@ class OfflineSettleFlowTest {
     @Test
     @DisplayName("★★★ 佣金基数扣完手续费再抽 —— 按原价抽，每笔多收几分，累积起来对不上账")
     void commissionBaseExcludesChannelFee() throws Exception {
-        var rate = addWechatRate(200, 0L);          // 2%，让手续费大到肉眼可辨
+        var rate = addTestChannelRate(200, 0L);          // 2%，让手续费大到肉眼可辨
         try {
             StlBill bill = billOfOnlineOrder("13400288015", "settle-fee-5");
 
@@ -373,7 +367,7 @@ class OfflineSettleFlowTest {
     @Test
     @DisplayName("★★★ 商家承担的手续费要从实得里扣 —— 只记不扣，等于账上有一笔谁都不出的费用")
     void merchantBorneFeeIsDeductedFromNet() throws Exception {
-        var rate = addWechatRate(200, 0L);
+        var rate = addTestChannelRate(200, 0L);
         String payNo = givenApplyment("MERCHANT");
         try {
             StlBill bill = billOfOnlineOrder("13400288016", "settle-fee-6");
@@ -407,7 +401,7 @@ class OfflineSettleFlowTest {
     @Test
     @DisplayName("★★★ 没进件时落 UNKNOWN 且不扣 —— 不知道不等于商家出，猜错就是少付给他钱")
     void unknownBearerIsExplicitAndDeductsNothing() throws Exception {
-        var rate = addWechatRate(200, 0L);
+        var rate = addTestChannelRate(200, 0L);
         try {
             StlBill bill = billOfOnlineOrder("13400288017", "settle-fee-7");
 
@@ -437,7 +431,7 @@ class OfflineSettleFlowTest {
         DataScopeContext.executeWithoutScope(() -> jdbc.update(
                 "INSERT INTO mch_payment_merchant (pay_merchant_no, entity_no, store_no, pay_channel,"
                         + " apply_status, fee_bearer, tenant_no, created_at, updated_at, version, deleted)"
-                        + " VALUES (?, ?, '', 'WECHAT', 'ACTIVE', ?, 'MAIN', CURRENT_TIMESTAMP,"
+                        + " VALUES (?, ?, '', 'TEST', 'ACTIVE', ?, 'MAIN', CURRENT_TIMESTAMP,"
                         + " CURRENT_TIMESTAMP, 0, 0)", no, SEED_ENTITY, bearer));
         return no;
     }
@@ -449,12 +443,12 @@ class OfflineSettleFlowTest {
 
     /**
      * ⚠️ <b>费率行必须删干净。</b>{@code sys_pay_channel_rate} 是全局表，
-     * 留一行 WECHAT 费率在库里，此后**所有**线上单都会带上手续费 ——
+     * 留一行 TEST 费率在库里，此后**所有**线上单都会带上手续费 ——
      * 而别的用例的失败信息里不会有任何一个字提到费率。
      */
-    private ai.neargo.shop.pay.channel.entity.SysPayChannelRate addWechatRate(int bp, long minFee) {
+    private ai.neargo.shop.pay.channel.entity.SysPayChannelRate addTestChannelRate(int bp, long minFee) {
         var r = new ai.neargo.shop.pay.channel.entity.SysPayChannelRate();
-        r.setPayChannel("WECHAT");
+        r.setPayChannel("TEST");
         r.setRateBp(bp);
         r.setMinFeeMinor(minFee);
         r.setEffectiveFrom(1L);      // 早于任何一单，取的时候一定命中
@@ -623,8 +617,7 @@ class OfflineSettleFlowTest {
     /**
      * 线上单的对照组。
      *
-     * <p>直接调 {@code markPaid} 而不是走支付回调：这里要比的是**账单长什么样**，
-     * 而不是回调链路 —— 把通道回调也拉进来，这条用例会变成整条支付链路的镜子。
+     * <p>通过测试通道确认实际支付事实，再由支付生命周期生成结算单。
      */
     private StlBill billOfOnlineOrder(String phone, String idem) throws Exception {
         String token = login(phone);
@@ -632,17 +625,18 @@ class OfflineSettleFlowTest {
         String payOrderNo = create(token, idem, "");
         String subOrderNo = subOrderNoOf(token, payOrderNo);
 
-        DataScopeContext.executeWithoutScope(() -> {
-            orderService.markPaid(mainOrderNoOf(subOrderNo), "WECHAT", "TXN-" + idem);
-            return null;
-        });
+        payOnline(token, payOrderNo, idem);
         return requireBill(subOrderNo);
     }
 
-    private String mainOrderNoOf(String subOrderNo) {
-        return DataScopeContext.executeWithoutScope(() ->
-                subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
-                        .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("LIMIT 1"))).getOrderNo();
+    private void payOnline(String token, String payOrderNo, String idem) throws Exception {
+        mvc().perform(post("/mp/order/" + payOrderNo + "/pay")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0));
+        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TXN-" + idem
+                                + "\",\"sign\":\"stub-secret\"}"))
+                .andExpect(status().isOk());
     }
 
     private StlBill requireBill(String subOrderNo) {
