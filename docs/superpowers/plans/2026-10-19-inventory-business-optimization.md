@@ -276,3 +276,4 @@ npm --prefix b-app test -- tests/stock-entries.test.ts
 - 本轮定向复核通过：C端type-check及购物车库存/下单错误/订单详情/售后测试72项；运营端type-check及API契约/OpenAPI parity 10项；后端 `InventoryOpsEndpointTest` 7项、`InventoryTraceSyncProjectionTest` 2项，均0失败、0错误。
 - 线上版本回读：B端 `6471b95a0`、运营端 `9925e0a56`、C端 `58cccd339`，后端健康为 `UP`。此次未使用运营管理员账号做页面登录；运营端只读屏以静态类型检查、契约测试、后端授权测试和已发布资源校验作为证据，不声称人工登录验收。
 - 当前只读范围已经核查；订单支付/履约/退款/退货的人工验收按用户要求暂缓，完整目标待恢复该验收后才能最终关闭。
+- 盘点截止提示在已有盘点单详情中渲染；本次线上门店没有可打开的进行中盘点单。新增 `stock-check-cutoff-ui.test.ts` 用只读的既有单据fixture断言锁定时间与截止说明可见，并确保页面打开不会调用开单、填报、过账或作废接口；该用例通过，B端type-check通过。未为查看提示而在真实门店新建盘点单。
