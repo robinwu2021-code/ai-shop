@@ -273,6 +273,9 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
         match(source, c.sourceRef(), c.userNo(), c.entityNo(), c.storeNo(), c.currency());
         if (!source.items().equals(q.itemsSnapshot()) || !q.orderSnapshotHash().equals(source.orderSnapshotHash())
                 || source.freightMinor() != q.freightMinor()) conflict();
+        if (!new CouponQuotePolicy().calculate(c.instanceNo(), d, source).equals(quoted.view().allocations())) {
+            conflict();
+        }
         var owner = decisions.getIfAvailable();
         if (owner == null) unavailable();
         var auth = owner.authorization(context, c.authorizationRef());
@@ -317,7 +320,10 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
                 || !store.equals(fact.storeNo()) || !currency.equals(fact.currency())) conflict();
     }
     private LocalDate day(EntitlementDefinition d, LocalDate requested, UseSourceFact fact) {
-        var effective = fact.serviceDay() == null ? LocalDate.now(ZoneId.of(d.validity().zone())) : fact.serviceDay();
+        var zone = ZoneId.of(d.validity().zone());
+        var effective = fact.serviceAt() != null ? fact.serviceAt().atZone(zone).toLocalDate()
+                : fact.serviceDay() == null ? LocalDate.now(zone) : fact.serviceDay();
+        if (fact.serviceDay() != null && !effective.equals(fact.serviceDay())) conflict();
         if (requested != null && !requested.equals(effective)) conflict();
         return effective;
     }

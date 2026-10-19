@@ -12,6 +12,7 @@ import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entitlement.entity.OrdEntAuthorization;
+import ai.neargo.shop.trade.entitlement.EntitlementOrderSnapshotPolicy;
 import ai.neargo.shop.trade.mapper.TradeMappers.EntitlementAuthorizationMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
@@ -182,11 +183,7 @@ public class EntitlementAuthorizationServiceImpl implements EntitlementAuthoriza
     }
 
     private String snapshotHash(OrdOrder order, List<OrdSubOrder> subOrderRows, List<OrdItem> itemRows) {
-        try {
-            return digest(json.writeValueAsString(List.of(order, subOrderRows, itemRows)));
-        } catch (Exception e) {
-            throw new IllegalStateException("Could not serialize frozen order snapshot", e);
-        }
+        return EntitlementOrderSnapshotPolicy.hash(json, order, subOrderRows, itemRows);
     }
 
     private String writeSource(SourceRef source) {

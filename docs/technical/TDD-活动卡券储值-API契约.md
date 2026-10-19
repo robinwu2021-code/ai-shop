@@ -421,3 +421,6 @@ Java商家入口：`BizEntitlementTemplateController`；通过`EntitlementManage
 - FREE_SHIP分摊行键固定`__FREIGHT__`，只减少运费；goodsAmountMinor与可信优惠后行项合计一致。优惠类型和分摊共用CouponCalculation，新旧券无两套算价实现。
 - Query投影无授权/规则JSON/资金拆分；cursor使用HMAC绑定本人和筛选，30分钟有效，原始租户/用户号不在cursor明文中。各节点配置相同的SHOP_PAY_ENTITLEMENT_CURSOR_KEY。ActivationQuote在FIRST_USE尚未激活时ON_FIRST_COMMIT，已激活改为NONE并返回实际窗口；读取永不激活。
 - I11合法回补、P30券码、真实订单协调以及使用/查询内部HTTP仍为后续任务，不能视为本批已开放。
+
+
+内部源事实追加可空serviceAt（预约发生时刻）；pay按不可变规则zone换算serviceDay，避免currency推断时区。旧serviceDay和构造方式兼容。新增EntitlementUseFactsPort为内部core记账提供原实际hold的命令、规则/出资方、分摊和订单摘要，查询同时隔离tenant/entity；不向公网返回此含授权的内部DTO。报价后重新准备时重算当前类目适用分摊，不将旧提案误作新资格证明。传输在JB-041继续接线。

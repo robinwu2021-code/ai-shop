@@ -50,6 +50,14 @@ public class CouponAllocServiceImpl implements CouponAllocService {
     }
 
     @Override
+    public boolean hasActiveBinding(String tenantNo, String orderNo) {
+        return DataScopeContext.executeWithoutScope(() -> applyMapper.selectCount(
+                Wrappers.<PmtApply>lambdaQuery().eq(PmtApply::getTenantNo, tenantNo)
+                        .eq(PmtApply::getOrderNo, orderNo).eq(PmtApply::getPromoType, PmtApply.COUPON)
+                        .isNull(PmtApply::getRevertedAt))) > 0;
+    }
+
+    @Override
     public List<String> heldUsable(String userNo) {
         long now = System.currentTimeMillis();
         List<PmtUserCoupon> rows = DataScopeContext.executeWithoutScope(() ->

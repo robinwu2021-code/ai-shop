@@ -134,6 +134,21 @@ class EntitlementQuoteFlowTest {
     }
 
     @Test
+    void changedCategoryLineageCannotTurnAnOldQuoteIntoANewHold() {
+        coupon("CASH", 300L, null, new RedemptionScope("CATEGORIES", List.of("CAT1")), 0);
+        var quote = uses.quote(context, quoteCommand(0));
+        when(sources.resolve(any(), any())).thenReturn(new EntitlementUseSourcePort.UseSourceFact("MAIN", source,
+                "U1", "M1", "S1", "CNY", items, orderHash, "Care store", null, null, 0,
+                Map.of("L1", List.of("CAT2"))));
+        when(decisions.authorization(any(), any())).thenReturn(new SourceDecisionPort.AuthorizationDecision(
+                "AUTH1", SourceDecisionPort.AuthorizationState.AUTHORIZED, source, "U1", "M1", "S1", "CNY",
+                300L, quote.selectionDigest(), orderHash, quote.expiresAt()));
+        var c = new UseCommand(UUID.randomUUID().toString(), source, "U1", "M1", "S1", "CNY",
+                AssetKind.ORDER_COUPON, instance, null, null, 1, 300L, items, "AUTH1", null, 0, null, quote.quoteRef());
+        assertThatThrownBy(() -> uses.prepare(context, c)).isInstanceOf(BizException.class);
+    }
+
+    @Test
     void callerCannotChangePostActivityAmountsOrSelectAnotherHolderAsset() {
         coupon("CASH", 300L, 10L, new RedemptionScope("ALL", List.of()), 0);
         assertThat(uses.quote(context, quoteCommand(0)).discountMinor()).isEqualTo(300);

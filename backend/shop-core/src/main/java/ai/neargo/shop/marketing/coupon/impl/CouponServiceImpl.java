@@ -49,6 +49,13 @@ public class CouponServiceImpl implements CouponService {
     }
 
     @Override
+    public boolean hasActiveBinding(String tenantNo, String orderNo) {
+        return DataScopeContext.executeWithoutScope(() -> userCouponMapper.selectCount(
+                Wrappers.<MktUserCoupon>lambdaQuery().eq(MktUserCoupon::getTenantNo, tenantNo)
+                        .eq(MktUserCoupon::getOrderNo, orderNo).eq(MktUserCoupon::getStatus, MktUserCoupon.USED))) > 0;
+    }
+
+    @Override
     public List<CouponVO> center() {
         long now = System.currentTimeMillis();
         List<MktCoupon> coupons = DataScopeContext.executeWithoutScope(() ->

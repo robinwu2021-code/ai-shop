@@ -8,6 +8,9 @@ import java.util.List;
 /** 优惠券（[API 清单 §2.7]）。领券中心游客可看，领取与券包需要登录。 */
 public interface CouponService {
 
+    /** An existing order coupon blocks a second protocol, even if its template has been removed. */
+    boolean hasActiveBinding(String tenantNo, String orderNo);
+
     /** 领券中心：当前可领的券。 */
     List<CouponVO> center();
 

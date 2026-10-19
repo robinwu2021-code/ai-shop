@@ -43,6 +43,21 @@ public class ProductScopeFactsPortImpl implements ProductScopeFactsPort {
     }
 
     @Override
+    public List<String> categoryLineage(String tenantNo, String categoryNo) {
+        var lineage = new ArrayList<String>();
+        String next = categoryNo;
+        while (next != null && !next.isBlank() && lineage.size() < 4 && !lineage.contains(next)) {
+            lineage.add(next); // Exact category is already part of the tenant-owned immutable order snapshot.
+            String current = next;
+            var row = DataScopeContext.executeWithoutScope(() -> categories.selectOne(
+                    Wrappers.<PrdCategory>lambdaQuery().eq(PrdCategory::getTenantNo, tenantNo)
+                            .eq(PrdCategory::getCategoryNo, current)));
+            next = row == null ? null : row.getParentNo();
+        }
+        return List.copyOf(lineage);
+    }
+
+    @Override
     public boolean categoriesActive(String tenantNo, Set<String> categoryNos) {
         if (categoryNos == null || categoryNos.isEmpty()) {
             return false;

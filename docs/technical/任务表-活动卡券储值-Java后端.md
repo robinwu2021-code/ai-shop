@@ -517,3 +517,6 @@ V436新增5表（含ent_use_proposal）及对应实体Mapper，intent额外冻�
 生命周期覆盖首用成功提交激活、每日有限次数、源owner指定服务日、释放回原日和到期标记；到期不清剩余/冻结，保留原承诺可结算。到期扫描调度及通知归JB-051/043。Query仅白名单DTO，历史保留；游标绑定租户/本人/筛选且签名，需各节点一致的SHOP_PAY_ENTITLEMENT_CURSOR_KEY（>=32字符）；未配置且需要续页时明确不可用，无随机临时密钥或固定密钥兜底。
 
 验证：本批新增14个Java用例，另覆盖旧券、SPI/架构/schema39个不同用例，共53个不同Java用例通过；最近批次`/tmp/phase-two-b2-domain-final.log`31项，报价/兼容见`/tmp/phase-two-use-query-final.log`50项（含重叠），不叠加冒称81项。`scripts/verify-entitlement-use-mysql.mjs`在一次性原生MySQL实跑1项0跳过，实际Writer/事务验证20并发重放、JSON/CHECK、跨日桶隔离、Outbox故障整笔回滚及重试唯一；最终日志`/tmp/phase-two-use-native-final.log`。测试曾发现毫秒重放精度、测试夹具本地时间冒充UTC及Service分层问题，均已修复。未做全量回归。
+
+
+JB-020源事实子项进展：core真实EntitlementUseSourcePortImpl、共享订单摘要、两套旧券精确占用事实的app组合，以及pay已冻结使用事实读取SPI已落地。source3由缺provider RED开始，实际订单/账户/门店表验证；类目归属在quote后变化新增回归RED→GREEN，prepare重新计算并对比原分摊。source/auth/use/quote/Architecture合并33项通过（/tmp/phase-two-order-facts-final.log）。SourceFact追加可空serviceAt，pay按原权益时区推导服务日，不按币种猜时区。尚未交付完整订单协调，020仍DOING。
