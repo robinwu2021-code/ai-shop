@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import ai.neargo.shop.spi.product.StockPort.ReturnLine;
 import ai.neargo.shop.spi.product.StockPort.SkuQty;
 import org.springframework.beans.factory.annotation.Autowired;
 import tools.jackson.core.type.TypeReference;
@@ -144,7 +145,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
                 || !payload.path("lines").isArray()) {
             throw new IllegalStateException("RETURN_RECEIPT_PAYLOAD_INVALID");
         }
-        List<ai.neargo.shop.spi.product.StockPort.ReturnLine> lines = json.convertValue(
+        List<ReturnLine> lines = json.convertValue(
                 payload.path("lines"), new TypeReference<>() { });
         List<ReturnReceiptService.Line> accepted = lines.stream().map(line -> new ReturnReceiptService.Line(
                 acl.itemIdOfSku(line.skuNo()), line.qty(), ReturnReceiptService.Quality.valueOf(line.quality().name())))

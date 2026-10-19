@@ -34,7 +34,3 @@ InventoryStockPort -> StockCountService
 InventoryStockPort -> ReservationService
 InventoryStockPort -> InventoryAclService
 InventoryStockPort -> LocationService
-InventoryMirrorConsumer -> StockCountService
-InventoryMirrorConsumer -> ReservationService
-InventoryMirrorConsumer -> InventoryAclService
-InventoryMirrorConsumer -> LocationService

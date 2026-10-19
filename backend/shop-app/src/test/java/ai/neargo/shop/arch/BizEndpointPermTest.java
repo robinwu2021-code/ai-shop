@@ -157,6 +157,14 @@ class BizEndpointPermTest {
         put("/biz/store/{storeNo}/stock-sync", BizPerms.STOCK);
         put("/biz/store/{storeNo}/stock-alignment", BizPerms.STOCK);
         put("/biz/store/{storeNo}/stock-alignment/confirm", BizPerms.STORE_ADMIN);
+        put("/biz/store/{storeNo}/stock-alignment/preview", BizPerms.STORE_ADMIN);
+        put("/biz/store/{storeNo}/stock-alignment/batches/{batchNo}", BizPerms.STOCK);
+        put("/biz/store/{storeNo}/stock-alignment/batches/{batchNo}/confirm", BizPerms.STORE_ADMIN);
+        put("/biz/store/{storeNo}/stock-overview", BizPerms.STOCK);
+        put("/biz/store/{storeNo}/stock-overview/batch", BizPerms.STOCK);
+        put("/biz/store/{storeNo}/stock-reconcile", BizPerms.STORE_ADMIN);
+        put("/biz/store/{storeNo}/stock-reconcile/records", BizPerms.STOCK);
+        put("/biz/store/{storeNo}/stock-reconcile/{operationNo}", BizPerms.STOCK);
         put("/biz/store/{storeNo}/sell-rules", BizPerms.STOCK);
         // 门店收款方式（线下收款 / 货到付款）：看用门店的码，改是店主级（控制器里 PUT 挂 store:admin）
         put("/biz/store/{storeNo}/pay-setting", BizPerms.STORE);
@@ -244,6 +252,7 @@ class BizEndpointPermTest {
         put("/biz/order/{subOrderNo}", BizPerms.ORDER_VIEW);
         // 物流轨迹（TDD-物流模块 B2）：看订单的人就能看物流
         put("/biz/order/{subOrderNo}/trace", BizPerms.ORDER_VIEW);
+        put("/biz/order/{subOrderNo}/inventory-trace", BizPerms.ORDER_VIEW);
         put("/biz/order/worklist", BizPerms.ORDER_VIEW);
         put("/biz/order/{subOrderNo}/logistics-updates", BizPerms.ORDER_VIEW);
         put("/biz/dashboard/stats", BizPerms.CUSTOMER);
