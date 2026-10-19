@@ -3,7 +3,7 @@
     {
       "key": "b-app",
       "label": "商家 App",
-      "count": 90,
+      "count": 91,
       "domains": [
         {
           "name": "工作台",
@@ -516,6 +516,17 @@
               "proto": "s02",
               "protoUrl": "https://claude.ai/artifact/F6WeTTr6aYReBd4wseF5Ug",
               "preview": "http://localhost:5175/#/pages/stock-settings/index"
+            },
+            {
+              "app": "b-app",
+              "route": "/pages/stock-sync-records/index",
+              "title": "库存同步记录",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5175/#/pages/stock-sync-records/index"
             },
             {
               "app": "b-app",
@@ -3549,5 +3560,5 @@
       ]
     }
   ],
-  "total": 280
+  "total": 281
 }
