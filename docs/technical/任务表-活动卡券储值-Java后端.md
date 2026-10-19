@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：25项DONE、8项DOING、22项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
+本表共55项：31项DONE、8项DOING、16项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序（2026-10-19用户调整）：第一阶段完成core活动自身能力，第二阶段完成pay权益、卡券、储值及活动权益联动。具体任务分组、跨阶段子项与验收见[两阶段执行方案](./开发计划-活动优先与权益两阶段.md)。已完成的权益公共基础直接保留；JB-015尚未开始Java实现，移至第二阶段。原任务编号与整体依赖保留，跨阶段任务仅完成活动部分不能标记整项DONE。
 
@@ -93,7 +93,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-023 | D02.4 | DONE | 010,016,020 | pay.entitlement | EntitlementCodeService/Impl；短期兑换券token签发/解析/失效 | EntitlementCodeFlowTest：仅STORE_EXCHANGE、本人可签、过期/重放拒绝、码不入日志；不生成储值专用码 |
 | JB-024 | D02.5 | DONE | 016,020,042 | pay.entitlement | EntitlementQueryService/Impl、QueryPortImpl；本人资产/商家受控详情/总次与日额度/使用明细 | EntitlementQueryFlowTest：跨用户/主体/租户拒绝、过期历史保留、游标稳定、DTO无内部授权/资金拆分 |
 | JB-025 | D02.2/2.6 | DONE | 008,009,015,041 | app HTTP | BizEntitlementTemplateController；P01–P06及管理DTO映射 | EntitlementTemplateApiTest：真实HTTP写后读、BeanValidation生效、权限逐条校验；不能直接绑定CatalogScope |
-| JB-026 | D02.3/2.4 | DOING | 017,018,020,021,023,041,042 | app HTTP | BizEntitlementIssueController、BizEntitlementUseController、MpEntitlementController使用/领取部分；P07/P08/P11–P16/P30 | EntitlementUseApiTest：先看后核、本人授权、PROCESSING查询原操作；未具备能力拒绝而非假成功 |
+| JB-026 | D02.3/2.4 | DONE | 017,018,020,021,023,041,042 | app HTTP | BizEntitlementIssueController、BizEntitlementUseController、MpEntitlementController使用/领取部分；P07/P08/P11–P16/P30 | EntitlementUseApiTest：先看后核、本人授权、PROCESSING查询原操作；未具备能力拒绝而非假成功 |
 | JB-027 | D02.5 | DONE | 024,041 | app HTTP | MpEntitlementController查询部分、B记录/详情；P09/P10/P17/P25/P26/P29 | EntitlementQueryApiTest：本人字段白名单、商家门店过滤、游标/分页、金额币种与次数分开 |
 
 ### 2.4 核心活动系统
@@ -248,16 +248,16 @@ git diff --check
 | P04 | POST /biz/entitlement-templates/{templateNo}/publish | JB-025 | DONE |
 | P05 | PUT /biz/entitlement-templates/{templateNo}/status | JB-025 | DONE |
 | P06 | PUT /biz/entitlement-templates/{templateNo}/issue-policy | JB-025 | DONE |
-| P07 | POST /biz/entitlement-issue-batches | JB-026 | DOING |
-| P08 | GET /biz/entitlement-issue-batches/{batchNo} | JB-026 | DOING |
+| P07 | POST /biz/entitlement-issue-batches | JB-026 | DONE |
+| P08 | GET /biz/entitlement-issue-batches/{batchNo} | JB-026 | DONE |
 | P09 | GET /mp/entitlements | JB-027 | DONE |
 | P10 | GET /mp/entitlements/{instanceNo} | JB-027 | DONE |
-| P11 | POST /mp/entitlement-claims | JB-026 | DOING |
-| P12 | POST /biz/entitlement-uses/preview | JB-026 | DOING |
-| P13 | POST /biz/entitlement-uses | JB-026 | DOING |
-| P14 | GET /biz/entitlement-uses/{operationNo} | JB-026 | DOING |
-| P15 | POST /mp/entitlement-quotes | JB-026 | DOING |
-| P16 | POST /mp/entitlements/{instanceNo}/activation-quotes | JB-026 | DOING |
+| P11 | POST /mp/entitlement-claims | JB-026 | DONE |
+| P12 | POST /biz/entitlement-uses/preview | JB-026 | DONE |
+| P13 | POST /biz/entitlement-uses | JB-026 | DONE |
+| P14 | GET /biz/entitlement-uses/{operationNo} | JB-026 | DONE |
+| P15 | POST /mp/entitlement-quotes | JB-026 | DONE |
+| P16 | POST /mp/entitlements/{instanceNo}/activation-quotes | JB-026 | DONE |
 | P17 | GET /mp/entitlements/{instanceNo}/allowances | JB-027 | DONE |
 | P18 | POST /biz/stored-value/recharges | JB-038 | TODO |
 | P19 | POST /biz/stored-value/recharges/{rechargeNo}/submit | JB-038 | TODO |
@@ -271,7 +271,7 @@ git diff --check
 | P27 | GET /biz/stored-value/recharges/{rechargeNo} | JB-038 | TODO |
 | P28 | GET /biz/stored-value/accounts | JB-038 | TODO |
 | P29 | GET /biz/entitlements/{instanceNo} | JB-027 | DONE |
-| P30 | POST /mp/entitlements/{instanceNo}/redeem-codes | JB-026 | DOING |
+| P30 | POST /mp/entitlements/{instanceNo}/redeem-codes | JB-026 | DONE |
 | O01 | GET /ops/pay/entitlement-exceptions | JB-045 | TODO |
 | O02 | GET /ops/pay/entitlement-exceptions/{exceptionNo} | JB-045 | TODO |
 | O03 | POST /ops/pay/entitlement-exceptions/{exceptionNo}/retry-grant | JB-045 | TODO |
@@ -593,3 +593,13 @@ C09复用本人授权，B提交后支付扣次；查询只读，取消先到也�
 目标MySQL DDL1项实际通过、0跳过，文档70/生成物24及SQL守卫通过。架构发现Controller注入ObjectMapper触发边界守卫，
 已将稳定操作编号生成留在核心服务，未放宽守卫。未运行全量回归。
 当前保持30 DONE / 9 DOING / 16 TODO；026剩P15，020剩储值协调；实物赠品库存履约仍需能力接入。
+
+
+第二阶段JB-026完成：P15已接本人实际订单报价；C09对订单券同事务冻结授权、原命令及准备事件，
+使用进度与授权状态分别返回；原支付价格封口仍生效。准备事件消费达到已应用价格的HELD即可，
+终态事件必须COMMITTED/RELEASED。服务核销仍需B提交，不因C确认自动扣次。
+本批44项不同定向Java通过（报价HTTP3、服务HTTP2、服务3、原授权5、原协调8、架构16、C鉴权7），
+目标MySQL迁移/字段对齐1项实际通过0跳过。消融去掉外层事务时，outbox失败后授权错误保留AUTHORIZED，
+恢复事务后3个HTTP场景通过。鉴权探针补合法请求体后7项通过，未放宽鉴权或守卫。
+文档70/生成物24/SQL守卫通过，无全量测试。当前55项：31 DONE / 8 DOING / 16 TODO；
+JB-020仍DOING，后续推进039商品绑定及034–038储值，不把可配置付费卡视为已完成售卡。

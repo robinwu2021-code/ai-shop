@@ -9,6 +9,7 @@ import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementOrderEvents.UseDecided;
+import ai.neargo.shop.spi.entitlement.EntitlementOrderEvents.UsePrepared;
 import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort.UseFact;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.AssetKind;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.HoldView;
@@ -112,7 +113,9 @@ public class EntitlementOrderUseServiceImpl implements EntitlementOrderUseServic
         row.setUserNo(c.userNo()); row.setSourceKey(c.sourceRef().useIntentKey());
         row.setPayloadHash(digest(json.writeValueAsString(c))); row.setCommandSnapshot(json.writeValueAsString(c));
         row.setContextSnapshot(json.writeValueAsString(ctx)); row.setOrderSnapshotHash(hash); row.setStatus("PENDING");
-        changed(unscoped(() -> uses.insert(row))); return view(row);
+        changed(unscoped(() -> uses.insert(row)));
+        events.publish(new UsePrepared(ctx.tenantNo(), c.entityNo(), c.operationNo()));
+        return view(row);
     }
     @Override @Transactional
     public void apply(EntitlementContext ctx, UseFact fact) {

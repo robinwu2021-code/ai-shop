@@ -4958,6 +4958,7 @@ CREATE TABLE IF NOT EXISTS ord_ent_authorization
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    order_use_snapshot TEXT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_order_auth_intent UNIQUE (tenant_no,intent_key),
     CONSTRAINT uk_order_auth_no UNIQUE (tenant_no,authorization_no),

@@ -68,6 +68,7 @@ class MpEndpointAuthTest {
     private static final Set<String> REQUIRES_LOGIN = Set.of(
             "POST /mp/member-code",
             "POST /mp/orders/{orderNo}/entitlement-authorizations",
+            "POST /mp/entitlement-quotes",
             "GET /mp/entitlement-service-orders",
             "GET /mp/entitlement-service-orders/{serviceOrderNo}",
             "GET /mp/entitlements",
@@ -529,6 +530,8 @@ class MpEndpointAuthTest {
      * 这条用例会红并把 10400 打出来 —— 那时补一个字段进来，不要改判据。
      */
     private static final java.util.Map<String, String> PROBE_BODY = java.util.Map.of(
+            "POST /mp/entitlement-quotes",
+                    "{\"orderDraftRef\":\"PROBE-SUB\",\"orderRevision\":0,\"selectedInstanceNos\":[]}",
             "POST /mp/push-token", "{\"platform\":\"ANDROID\",\"clientId\":\"PROBE\"}",
             "POST /mp/orders/{orderNo}/entitlement-authorizations",
                     "{\"orderRevision\":0,\"quoteRef\":\"PROBE-QUOTE\",\"selectionDigest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"requestKey\":\"PROBE-REQUEST\"}",

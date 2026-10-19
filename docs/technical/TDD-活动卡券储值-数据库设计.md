@@ -1059,3 +1059,10 @@ CANCEL_DECIDED→RELEASED。客户端展示WAIT_AUTH、WAIT_SUBMIT、PROCESSING�
 不扩充支付预占状态。授权复用`ord_ent_authorization`和C09，服务源采用专用验证委托，不新建授权表。
 共享UseSourceFact增加可空`stagedOperationNo`；仅核心已持久命令后返回，支付新prepare必须匹配。
 它是源提交就绪事实，不冒充授权状态，也不参与不可变服务快照摘要；旧订单源保持null兼容。
+
+
+### V443：订单券报价选择快照（已实现）
+
+`ord_ent_authorization`增加可空`order_use_snapshot JSON`，冻结订单源事实、QuoteView及选定实例。
+无字段的旧意图和SERVICE_USE授权保持兼容；字段不表示余额，不允许页面改写来源金额。授权确认时生成
+稳定原操作，同一core事务保存ord_ent_order_use和UsePrepared outbox。原cash seal与历史支付事实继续校验。

@@ -6,7 +6,8 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.trade.dto.AuthorizationCommand;
 import ai.neargo.shop.trade.dto.AuthorizationView;
-import ai.neargo.shop.trade.service.EntitlementAuthorizationService;
+import ai.neargo.shop.paybridge.EntitlementCheckoutCoordinator;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
 import org.springframework.validation.annotation.Validated;
@@ -20,9 +21,9 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 public class MpEntitlementAuthorizationController {
-    private final EntitlementAuthorizationService authorizations;
+    private final EntitlementCheckoutCoordinator authorizations;
 
-    public MpEntitlementAuthorizationController(EntitlementAuthorizationService authorizations) {
+    public MpEntitlementAuthorizationController(EntitlementCheckoutCoordinator authorizations) {
         this.authorizations = authorizations;
     }
 
@@ -30,6 +31,7 @@ public class MpEntitlementAuthorizationController {
     public AuthorizationView confirm(@PathVariable String orderNo, @Valid @RequestBody AuthorizationCommand command) {
         var user = SecurityUtils.requireUser();
         if (user.realm() != Realm.CONSUMER) throw BizException.of(ErrorCode.FORBIDDEN);
-        return authorizations.confirm(user.tenantNo(), user.userNo(), orderNo, command);
+        var ctx = new EntitlementContext(user.tenantNo(), user.userNo(), command.requestKey(), "0".repeat(64));
+        return authorizations.confirm(ctx, orderNo, command);
     }
 }

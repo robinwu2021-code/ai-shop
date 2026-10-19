@@ -11,6 +11,7 @@ CREATE TABLE ord_ent_authorization (
     payload_hash CHAR(64) NOT NULL COMMENT 'owner重算请求指纹',
     source_key CHAR(64) NOT NULL COMMENT '含修订号的使用意图键',
     source_snapshot JSON NOT NULL COMMENT '完整SourceRef及原订单定位',
+    order_use_snapshot JSON NULL COMMENT '真实订单源、报价与选定券，仅用于原操作恢复',
     source_revision BIGINT NOT NULL COMMENT '源意图修订',
     order_no VARCHAR(64) NOT NULL COMMENT '真实源订单',
     user_no VARCHAR(64) NOT NULL COMMENT '本人消费者',

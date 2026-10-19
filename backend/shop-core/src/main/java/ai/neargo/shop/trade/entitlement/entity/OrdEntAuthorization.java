@@ -16,6 +16,7 @@ public class OrdEntAuthorization extends BaseEntity {
     private String payloadHash;
     private String sourceKey;
     private String sourceSnapshot;
+    private String orderUseSnapshot;
     private Long sourceRevision;
     private String orderNo;
     private String userNo;

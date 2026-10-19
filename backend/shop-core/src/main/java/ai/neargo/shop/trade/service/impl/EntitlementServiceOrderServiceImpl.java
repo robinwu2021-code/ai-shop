@@ -13,6 +13,7 @@ import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementOrderEvents.UseDecided;
+import ai.neargo.shop.spi.entitlement.EntitlementOrderEvents.UsePrepared;
 import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort.UseFact;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.AssetKind;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.HoldView;
@@ -239,7 +240,9 @@ public class EntitlementServiceOrderServiceImpl implements EntitlementServiceOrd
         var original = new EntitlementContext(ctx.tenantNo(), ctx.actorNo(), row.getOperationNo(),
                 hash(json.writeValueAsString(use)));
         row.setContextSnapshot(json.writeValueAsString(original)); row.setCommandSnapshot(json.writeValueAsString(use));
-        row.setStatus("PENDING"); update(row, ctx.actorNo()); return snapshot(row, json);
+        row.setStatus("PENDING"); update(row, ctx.actorNo());
+        events.publish(new UsePrepared(ctx.tenantNo(), entity, row.getOperationNo()));
+        return snapshot(row, json);
     }
     @Override @Transactional
     public ServiceOrderSnapshot accept(EntitlementContext ctx, String entity, UseFact fact) {

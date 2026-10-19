@@ -606,3 +606,16 @@ STORE_EXCHANGE实例，不能替代本人确认，不能核销储值。明码仅
 核心服务先持久原UseCommand，支付读取UseSourceFact.stagedOperationNo匹配原操作后才接受新prepare。
 新准备必须授权未过期；已有持久预占承诺按原命令及源决定恢复，即使当前授权过期也不重新发起扣次。
 UNKNOWN保留原号与占用，不按TTL释放；源决定与UseDecided同事务，消费者重复投递不会重扣。
+
+
+### P15订单券报价与确认衔接（已实现）
+
+`POST /mp/entitlement-quotes`接收`{orderDraftRef,orderRevision,selectedInstanceNos}`；draftRef当前指实际待付款
+子订单号，C会话必须为该订单本人；订单金额、项目、主体、门店、币种与源修订从core读取，首期最多1张券。
+报价只试算，不冻结资产。选定有效优惠时，将原源事实和pay QuoteView冻结在现有授权记录的
+`order_use_snapshot`（V443新增可空JSON），不新增授权表或账户。
+
+C09确认这类报价时，core一个事务完成本人授权、原UseCommand与UsePrepared outbox；app随后调用原协调器。
+报价为空选择时不创建使用承诺；旧授权/服务核销C09沿原语义。AuthorizationView兼容保留3字段，新增可空
+`operationNo/useStatus`说明原订单券使用进度（HELD已实际改价，PROCESSING不可新发支付）。同确认请求重放原
+授权与操作，不重新选券。核心原支付封口仍阻止未应用价格的PENDING请求发起现金支付。

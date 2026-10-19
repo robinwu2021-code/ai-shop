@@ -421,3 +421,13 @@ EntitlementBatchPreparedConsumer在app paybridge按原批次有界续跑；批�
 EntitlementOrderCoordinatorImpl原操作恢复找不到普通订单链接时路由服务核销协调器；复用UseDecided事件。
 UseSourceFact新增可空stagedOperationNo，由core源所有者提供，pay新prepare核对；旧构造器及旧源null保持兼容。
 消费发生后的余次来自pay真实usage，不从预览推算最终账。实物赠品库存出库尚未接入，该源明确只允许服务SKU。
+
+
+### P15订单券报价衔接（已实现）
+
+core.trade新增`EntitlementOrderQuoteService/Impl`和`OrderCouponSelection`：解析本人实际子订单、冻结
+可信QuoteView/源事实/选券，复用原授权和原订单使用服务。app新增`EntitlementCheckoutCoordinator/Impl`
+及`MpEntitlementQuoteController`；C09控制器转交协调器，原服务授权不自动扣次。V443只增原授权JSON字段。
+核心`UsePrepared`事件在原命令写入事务发布；现有`EntitlementOrderUseDecisionConsumer`区分准备与终态事件，
+准备达到实际已应用价格的HELD即可，未知重试原操作；终态事件仍必须达到COMMITTED/RELEASED。
+AuthorizationView新增可空operationNo/useStatus及3参兼容构造器，不把使用状态当作本人同意状态。

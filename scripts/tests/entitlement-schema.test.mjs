@@ -54,6 +54,15 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         assert.throws(() => sql("UPDATE ord_ent_service_order SET status='COMMITTED' WHERE service_order_no='svc1'"),
             /Check constraint/, 'a successful service needs a durable source decision');
         sql("UPDATE ord_ent_service_order SET status='COMMITTED',decision_snapshot='{}' WHERE service_order_no='svc1'");
+        sql('CREATE DATABASE entitlement_checkout_fixture');
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
+            + 'V427__entitlement_authorization_source_decision.sql', import.meta.url), 'utf8'),
+        'entitlement_checkout_fixture');
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
+            + 'V443__entitlement_checkout_selection.sql', import.meta.url), 'utf8'), 'entitlement_checkout_fixture');
+        const authColumns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns
+            WHERE table_schema='${database}' AND table_name='ord_ent_authorization' ORDER BY column_name`);
+        assert.equal(authColumns('entitlement_checkout_fixture'), authColumns('entitlement_test'));
         const credentialAudit = "created_at,updated_at,created_by,updated_by";
         sql(`INSERT INTO ent_code_token(tenant_no,token_hash,instance_no,user_no,entity_no,request_key_hash,`
             + `payload_hash,nonce,expires_at,status,${credentialAudit}) VALUES ('MAIN','${'a'.repeat(64)}',`
