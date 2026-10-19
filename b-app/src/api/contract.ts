@@ -184,6 +184,23 @@ export type PayMode = (typeof PAY_MODE)[keyof typeof PAY_MODE];
 
 export type { LogisticsUpdateRecord } from "@shared/types";
 
+export interface MerchantInventoryTrace {
+  orderNo: string;
+  reservations: Array<{
+    reservationId: string; ownerId: string; status: string; lifecycleVersion: number | null;
+    outboundNo: string | null; createdAt: string | null;
+    lines: Array<{
+      lineNo: number; fulfillmentRef: string | null; itemId: string; locationId: string;
+      reservedQty: number; issuedQty: number; releasedQty: number; outboundNo: string | null;
+      issuedAt: string | null; updatedBy: string | null;
+      issueLedger: Array<{ id: number; docNo: string; reasonCode: string; qtyDelta: number;
+        balanceBefore: number; balanceAfter: number; operator: string | null; createdBy: string | null; occurredAt: string }>;
+      returns: Array<{ receiptNo: string; afterSaleNo: string; qty: number; quality: string;
+        locationId: string; inboundNo: string; createdBy: string | null; createdAt: string }>;
+    }>;
+  }>;
+}
+
 /** 门店收款方式。与后端 StorePaySettingService.PaySettingVO 同形 */
 export interface StorePaySetting {
   storeNo: string;
@@ -1553,6 +1570,7 @@ export interface MerchantApi {
     },
   ): Promise<PageResult<Order>>;
   mOrderDetail(orderNo: string): Promise<Order>;
+  mOrderInventoryTrace(orderNo: string): Promise<MerchantInventoryTrace>;
   mFulfillmentOptions(orderNo: string): Promise<MerchantFulfillmentOptions>;
   mChangeFulfillment(orderNo: string, req: {
     targetFulfillment: string; reason: string; expectedVersion: number;
@@ -1702,7 +1720,7 @@ export interface MerchantApi {
    * 确认收到退货并准备退款；restockApproved 缺省 false，明确同意才恢复库存。
    * **退款必须在这一步之后** —— 同意即退的话，货没回来钱先出去了。
    */
-  mConfirmReturn(afterSaleNo: string, restockApproved?: boolean): Promise<AfterSale>;
+  mConfirmReturn(afterSaleNo: string, request: import("./requests").ReceiveReturnReq): Promise<AfterSale>;
   /**
    * 在途仅退款（WAIT_RECEIPT）由商家确认退款。系统签收后只提醒，**不自动退**（TDD-订单状态机 AC8）。
    */

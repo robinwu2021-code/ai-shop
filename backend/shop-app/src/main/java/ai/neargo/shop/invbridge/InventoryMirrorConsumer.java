@@ -5,6 +5,7 @@ import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.shop.inventory.service.ReturnReceiptService;
 import ai.neargo.shop.inventory.service.StockCountService;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -53,11 +54,15 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
     private final LocationService locations;
     private final ObjectMapper json;
     private OriginalInventoryRestoreAdapter originalRestores;
+    private ReturnReceiptService returnReceipts;
 
     @Autowired
     public void setOriginalRestores(OriginalInventoryRestoreAdapter originalRestores) {
         this.originalRestores = originalRestores;
     }
+
+    @Autowired
+    public void setReturnReceipts(ReturnReceiptService returnReceipts) { this.returnReceipts = returnReceipts; }
 
     public InventoryMirrorConsumer(StockCountService counts, ReservationService reservations, InventoryAclService acl,
                                    LocationService locations, ObjectMapper json) {
@@ -104,6 +109,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
             case InvMirrorEvent.RELEASE -> settled(ref, () -> reservations.releaseByRef(ref));
             case InvMirrorEvent.RESTORE -> restore(ref, p);
             case InvMirrorEvent.RESTORE_ORIGINAL -> restoreOriginal(ref, p);
+            case InvMirrorEvent.RETURN_RECEIPT -> receiveReturn(ref, p);
             case InvMirrorEvent.ADJUST -> adjust(p);
             default -> log.warn("不认识的镜像事件类型：{}", event.getEventType());
         }
@@ -126,6 +132,22 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         }
         List<SkuQty> original = json.convertValue(payload.path("items"), new TypeReference<>() { });
         originalRestores.restore(purpose, text(payload, "originalRef"), original);
+    }
+
+    private void receiveReturn(String receiptNo, JsonNode payload) {
+        String afterSaleNo = text(payload, "afterSaleNo");
+        String originalOrderNo = text(payload, "originalOrderNo");
+        String fulfillmentRef = text(payload, "fulfillmentRef");
+        if (afterSaleNo == null || originalOrderNo == null || fulfillmentRef == null
+                || !payload.path("lines").isArray()) {
+            throw new IllegalStateException("RETURN_RECEIPT_PAYLOAD_INVALID");
+        }
+        List<ai.neargo.shop.spi.product.StockPort.ReturnLine> lines = json.convertValue(
+                payload.path("lines"), new TypeReference<>() { });
+        List<ReturnReceiptService.Line> accepted = lines.stream().map(line -> new ReturnReceiptService.Line(
+                acl.itemIdOfSku(line.skuNo()), line.qty(), ReturnReceiptService.Quality.valueOf(line.quality().name())))
+                .toList();
+        returnReceipts.receive(receiptNo, afterSaleNo, originalOrderNo, fulfillmentRef, accepted, "MIRROR");
     }
 
     /**

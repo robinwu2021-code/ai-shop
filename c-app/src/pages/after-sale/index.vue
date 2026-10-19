@@ -206,6 +206,7 @@ onLoad((q) => {
             {{ asStatus === "REFUNDED" ? $t("afterSale.refunded") : $t("afterSale.applied") }}
           </text>
           <text class="txt-caption done__hint">{{ $t(doneHintKey) }}</text>
+          <text v-if="order.afterSale?.returnInventoryStatus" class="txt-caption done__hint">{{ $t(`afterSale.returnInventory.${order.afterSale.returnInventoryStatus}`) }}</text>
         </view>
 
         <view class="sh-card block">

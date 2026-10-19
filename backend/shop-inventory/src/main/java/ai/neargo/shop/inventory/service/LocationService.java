@@ -31,4 +31,7 @@ public interface LocationService {
 
     /** 取（必要时建）本业主的默认库位。存量「主体级库存」的落点。 */
     String defaultLocation(String ownerId);
+
+    /** 取（必要时建）隔离库位。退货验收为不可售的实物进入这里，不会增加门店可售库存。 */
+    String quarantineLocation(String ownerId);
 }

@@ -62,6 +62,20 @@ public class StockPortImpl implements StockPort {
     }
 
     @Override
+    public void receiveReturn(String receiptNo, String afterSaleNo, String originalOrderNo,
+                              String fulfillmentRef, List<ReturnLine> lines) {
+        List<SkuQty> saleable = lines == null ? List.of() : lines.stream()
+                .filter(line -> line.quality() == ReturnQuality.SALEABLE)
+                .map(line -> new SkuQty(line.skuNo(), line.qty())).toList();
+        if (!saleable.isEmpty()) originalRestore.restore(receiptNo, originalOrderNo, saleable);
+        // With platform-only inventory there is no inventory quarantine ledger. Unsaleable returns are
+        // intentionally not added back to sellable stock; the receipt remains an after-sale fact.
+    }
+
+    @Override
+    public String returnReceiptStatus(String receiptNo) { return "NOT_TRACKED"; }
+
+    @Override
     @Transactional(propagation = Propagation.NESTED)
     public List<String> lock(String lockNo, List<SkuQty> items) {
         List<String> failed = new ArrayList<>();

@@ -1038,6 +1038,7 @@ export default {
     grayStageOk: "仍要提交",
     waitReceipt: "商家已同意，货还在路上——签收后自动退款",
     refundedPoints: "已按约定折算积分退回你的账户，可在积分页查看",
+    returnInventory: { PENDING: "退货已验收，库存更新处理中", COMPLETED: "退货已验收，库存更新完成", FAILED: "退货已验收，库存更新待处理", PLATFORM_UPDATED: "退货已验收，库存已更新", NOT_TRACKED: "退货已验收，库存结果未跟踪" },
   },
   /** 选城市。**让「在别处填地址」成立** —— 搜索此前只围着当前定位搜 */
   cityPick: {

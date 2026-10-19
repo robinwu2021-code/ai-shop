@@ -17,6 +17,19 @@ public interface StockPort {
         throw new UnsupportedOperationException("original stock restore unavailable");
     }
 
+    /** Records goods physically received for a V2 return; quality is independent of refund settlement. */
+    default void receiveReturn(String receiptNo, String afterSaleNo, String originalOrderNo,
+                               String fulfillmentRef, List<ReturnLine> lines) {
+        throw new UnsupportedOperationException("return receipt unavailable");
+    }
+
+    /** Inventory-side acknowledgement of a physical return receipt; independent from cash refund. */
+    default String returnReceiptStatus(String receiptNo) { return "NOT_TRACKED"; }
+
+    enum ReturnQuality { SALEABLE, UNSALEABLE }
+
+    record ReturnLine(String skuNo, int qty, ReturnQuality quality) { }
+
 
     /**
      * 锁定库存（下单时）。全部成功或全部失败，不允许部分锁定 ——

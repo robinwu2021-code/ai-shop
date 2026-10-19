@@ -27,7 +27,9 @@ describe("售后 mock 不把受理当成到账", () => {
   });
   it("确认收妥后仍需等待现金成功", async () => {
     const order = seed("RETURN_REFUND", "RETURNING");
-    const result = await orderMock.mConfirmReturn("AS-PHASE1", true);
+    const result = await orderMock.mConfirmReturn("AS-PHASE1", {
+      receiptNo: "RR-AS-PHASE1", lines: [{ itemId: 1, receivedQty: 1, quality: "UNSALEABLE" }],
+    });
     expect(result.status).toBe("REFUNDING");
     expect(result.refundExecution?.succeededAt).toBeNull();
     expect(order.status).toBe("PAID");

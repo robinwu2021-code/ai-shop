@@ -73,6 +73,9 @@ public final class UnifiedOutboxFacade {
         if (store == null) { throw new IllegalStateException("Outbox source not registered: " + source); }
         return store;
     }
+    public String statusOf(String source, String aggregateType, String aggregateId, String eventType) {
+        return store(source).statusOf(aggregateType, aggregateId, eventType);
+    }
     public boolean enabled(String source) { return stores.containsKey(source); }
     public OutboxHandler handler(String source, String id) {
         return handlers.getOrDefault(source, Map.of()).get(id);

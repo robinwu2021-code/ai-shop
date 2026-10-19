@@ -29,6 +29,8 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
   // 输入框与生效值分开：每敲一个字就打一次接口，台账这种大表扛不住
   const [entityInput, setEntityInput] = useState("");
   const [itemInput, setItemInput] = useState("");
+  const [orderInput, setOrderInput] = useState("");
+  const [traceOrder, setTraceOrder] = useState("");
   const [q, setQ] = useState<{ entityNo: string; itemId?: string } | null>(null);
 
   const list = useInfiniteQuery({
@@ -51,6 +53,11 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
     queryKey: ["inv-digest", q?.entityNo],
     queryFn: () => api.invMerchantDigest(q!.entityNo),
     enabled: !!q,
+  });
+  const trace = useQuery({
+    queryKey: ["inv-order-trace", traceOrder],
+    queryFn: () => api.getInvOrderTrace(traceOrder),
+    enabled: !!traceOrder,
   });
 
   const rows: InvLedgerRow[] = list.data?.pages.flatMap((p) => p.entries) ?? [];
@@ -109,7 +116,58 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
         >
           {c.invLedgerSearch}
         </Button>
+        <Input value={orderInput} onChange={(e) => setOrderInput(e.target.value)} placeholder={c.invTraceOrderPh} className="w-56" />
+        <Button disabled={!orderInput.trim()} variant="secondary" onClick={() => setTraceOrder(orderInput.trim())}>
+          {c.invTraceTitle}
+        </Button>
       </Toolbar>
+
+      {traceOrder && (
+        <section className="space-y-3 rounded-card border p-4">
+          <h2 className="txt-title">{c.invTraceTitle} · <span className="tabular-nums">{traceOrder}</span></h2>
+          {trace.isLoading && <Notice tone="muted">{c.invLedgerSearch}…</Notice>}
+          {trace.error && <Notice tone="danger">{c.invLedgerNotice}</Notice>}
+          {trace.data && trace.data.reservations.length === 0 && <Notice tone="muted">{c.invTraceEmpty}</Notice>}
+          {trace.data?.reservations.map((reservation) => (
+            <div key={`${reservation.ownerId}:${reservation.reservationId}`} className="space-y-2 rounded-md bg-muted/30 p-3">
+              <div className="flex flex-wrap gap-x-5 gap-y-1 txt-caption">
+                <span>{c.invTraceReservation}: {reservation.reservationId} · {reservation.status}</span>
+                <span>{c.invColMerchant}: {reservation.ownerId}</span>
+                <span>V{reservation.lifecycleVersion ?? 1}</span>
+                <span>{c.invColDoc}: {reservation.outboundNo ?? "—"}</span>
+              </div>
+              {reservation.lines.map((line) => (
+                <div key={`${reservation.reservationId}:${line.lineNo}`} className="rounded-md border bg-background p-3 txt-caption">
+                  <div className="flex flex-wrap gap-x-5 gap-y-1">
+                    <span>{c.invColItem}: {line.itemId}</span>
+                    <span>{c.invTraceLocation}: {line.locationId}</span>
+                    <span>{c.invTraceReserved}: {line.reservedQty}</span>
+                    <span>{c.invTraceIssued}: {line.issuedQty}</span>
+                    <span>{c.invTraceIssue}: {line.outboundNo ?? "—"}</span>
+                    <span>{c.invTraceOperator}: {line.updatedBy ?? "—"}</span>
+                  </div>
+                  {line.issueLedger.map((entry) => (
+                    <div key={entry.id} className="mt-1 flex flex-wrap gap-x-5 border-t pt-1">
+                      <span>{c.invColTime}: {fmtTime(entry.occurredAt)}</span>
+                      <span>{c.invTraceBalance}: {entry.balanceBefore} → {entry.balanceAfter}</span>
+                      <span>{c.invTraceOperator}: {entry.operator ?? entry.createdBy ?? "—"}</span>
+                    </div>
+                  ))}
+                  {line.returns.map((receipt) => (
+                    <div key={`${receipt.receiptNo}:${receipt.inboundNo}`} className="mt-1 flex flex-wrap gap-x-5 border-t pt-1">
+                      <span>{c.invTraceReturn}: {receipt.receiptNo} · {receipt.afterSaleNo}</span>
+                      <span>{receipt.qty} · {receipt.quality}</span>
+                      <span>{c.invTraceLocation}: {receipt.locationId}</span>
+                      <span>{c.invColDoc}: {receipt.inboundNo}</span>
+                      <span>{c.invTraceOperator}: {receipt.createdBy ?? "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ))}
+        </section>
+      )}
 
       {/*
         * 概况条（M5）。**「没搬进来」与「搬了但一笔没记」要分开说** ——

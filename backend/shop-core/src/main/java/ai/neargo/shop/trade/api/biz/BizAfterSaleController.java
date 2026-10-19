@@ -109,6 +109,11 @@ public class BizAfterSaleController {
     @PostMapping("/biz/after-sale/{afterSaleNo}/receive")
     public AfterSaleVO confirmReturn(@PathVariable String afterSaleNo,
                                       @RequestBody(required = false) ReceiveReq request) {
+        if (request != null && request.lines() != null) {
+            return afterSaleService.confirmReturn(BizContext.requireMerchantNo(), afterSaleNo,
+                    request.receiptNo(), request.lines().stream().map(line ->
+                            new AfterSaleService.ReturnReceiveLine(line.itemId(), line.receivedQty(), line.quality())).toList());
+        }
         return afterSaleService.confirmReturn(BizContext.requireMerchantNo(), afterSaleNo,
                 request != null && Boolean.TRUE.equals(request.restockApproved()));
     }
@@ -124,7 +129,9 @@ public class BizAfterSaleController {
 
     public record ConfirmRefundReq(String reason) { }
 
-    public record ReceiveReq(Boolean restockApproved) { }
+    public record ReceiveReq(Boolean restockApproved, String receiptNo, List<ReceiveLineReq> lines) { }
+
+    public record ReceiveLineReq(Long itemId, Integer receivedQty, String quality) { }
 
     public record RejectReq(@NotBlank String remark) {
     }

@@ -228,3 +228,18 @@ npm --prefix b-app test -- tests/stock-entries.test.ts
 按用户要求，将六屏自由布局稿重排为八屏基于当前产品的增量原型。库存保留四格统计、筛选与底部操作面板；明细保留数字格、标识、安全库存、库位与流水；设置保留三块分组；期初对齐保留差异卡及双操作；确认与数量录入分别映射sh-dialog/sh-confirm和sh-prompt，实收数量映射sh-stepper。新增信息进入现有组件，新增样式仅在proto.css的proto-stock范围内按真实组件尺寸缩放。正式B端代码未改动。
 
 修订后8屏ID、控件样式、JavaScript语法及原型索引检查通过。浏览器工具拒绝读取file协议，未对修订稿完成浏览器视觉复核，不沿用前版截图作为修订稿验证证据。
+
+### 后续执行记录：任务7退货验收与退款资源分离（2026-10-19）
+
+- 已新增进销存退货验收凭证与 `V13__return_receipt.sql`：凭证以收货号/行号幂等，来源必须匹配原销售出库及已出库数量；可售商品进入原来源库位，不可售商品进入虚拟隔离库位；验收数量与退款资源恢复分别记账。
+- V2商家收货接口逐商品提交实收数量与质量；B端复用现有 `sh-stepper` / `sh-option`，C/B售后详情显示独立的库存处理进度。统一Outbox可按收货号读取投递状态，旧版V1售后仍保留原库存恢复分支。
+- 当前售后退款政策仍按整单全额处理，因此本次要求申请退货商品全部收齐后才允许确认退款；缺货/部分实收不能先按全额退款。部分验收后续需要单独实现退款金额分摊与多次收货协议。
+- 定向后端用例：`InventoryFlowTest` 26、`RefundShippedResourceFlowTest` 3、`BasicReturnRefundFlowTest` 2、`OutboxUnifiedFlowTest` 4，共35项通过。B端/C端type-check通过，B端售后页面/接口用例10项、C端售后用例2项通过。本段代码尚未部署。
+- 任务8追溯接口与两端页面已在本轮补齐；运营端及B端都可按订单号读取预留、来源库位、履约出库、流水前后余额、操作人和退货验收凭证。C端保留买家可见的售后/库存处理进度，不暴露内部库位与成本字段。
+
+### 执行记录：任务8追溯收尾与发布验证（2026-10-19）
+
+- 新增运营端 `GET /ops/inventory/order-trace?orderNo=` 与 B 端授权订单下 `GET /biz/order/{subOrderNo}/inventory-trace`；B端订单详情展示来源库位、预留/出库量、出库凭证、库存流水前后余额、操作人及退货验收去向。运营端账本页可按订单号查询相同事实。
+- 后端定向验证：`InventoryFlowTest` 26、`OutboxUnifiedFlowTest` 4、`RefundShippedResourceFlowTest` 3、`BasicReturnRefundFlowTest` 2 均通过（共35）。B端 type-check 通过，售后/订单接口测试8项通过；运维端 typecheck 通过、契约与 OpenAPI parity 10项通过；C端 type-check 通过、售后测试2项通过。
+- 仍需真实环境人工验收：快递/自送/自提、退款和V1/V2订单须用指定测试账号及可退款测试订单完整点验。当前模拟器只做商家端只读界面检查，不创建真实订单、不触发付款或库存变更；不将自动化服务端用例冒充人工业务验收。
+- 已部署/模拟器记录将在实际发布完成后补充提交号、线上版本、健康检查、APK 版本及页面检查结果。

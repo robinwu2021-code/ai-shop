@@ -4,6 +4,7 @@ import ai.neargo.shop.invbridge.OriginalInventoryRestoreAdapter;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.shop.inventory.service.ReturnReceiptService;
 import ai.neargo.shop.inventory.service.StockCountService;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.event.OutboxEventBus;
@@ -62,11 +63,15 @@ public class InventoryStockPort implements StockPort {
     @Autowired
     public void setEvents(OutboxEventBus events) { this.events = events; }
     private OriginalInventoryRestoreAdapter originalRestores;
+    private ReturnReceiptService returnReceipts;
 
     @Autowired
     public void setOriginalRestores(OriginalInventoryRestoreAdapter originalRestores) {
         this.originalRestores = originalRestores;
     }
+
+    @Autowired
+    public void setReturnReceipts(ReturnReceiptService returnReceipts) { this.returnReceipts = returnReceipts; }
 
     public InventoryStockPort(StockCountService counts, ReservationService reservations, InventoryAclService acl,
                               LocationService locations) {
@@ -147,6 +152,19 @@ public class InventoryStockPort implements StockPort {
         originalRestores.restore(purpose, originalRef, items);
         return RestoreResult.COMPLETED;
     }
+
+    @Override
+    public void receiveReturn(String receiptNo, String afterSaleNo, String originalOrderNo,
+                              String fulfillmentRef, List<ReturnLine> lines) {
+        if (lines == null || lines.isEmpty()) throw new IllegalArgumentException("RETURN_RECEIPT_LINES_REQUIRED");
+        List<ReturnReceiptService.Line> accepted = lines.stream().map(line -> new ReturnReceiptService.Line(
+                acl.itemIdOfSku(line.skuNo()), line.qty(), ReturnReceiptService.Quality.valueOf(line.quality().name())))
+                .toList();
+        returnReceipts.receive(receiptNo, afterSaleNo, originalOrderNo, fulfillmentRef, accepted, "MERCHANT");
+    }
+
+    @Override
+    public String returnReceiptStatus(String receiptNo) { return returnReceipts.status(receiptNo); }
 
     /**
      * 翻译只有两处：{@code skuNo → itemId}、{@code storeNo → locationId}。

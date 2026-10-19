@@ -4,13 +4,10 @@ vi.mock("@shared/net/http-client", () => ({ http: { post }, clientTag: () => "te
 import { httpApi } from "@/api/http";
 beforeEach(() => { post.mockReset(); post.mockResolvedValue({ status: "REFUNDING" }); });
 describe("基础退款 HTTP 合同", () => {
-  it("收妥且可回库时明确提交 true", async () => {
-    await httpApi.mConfirmReturn("AS1", true);
-    expect(post).toHaveBeenCalledWith("/biz/after-sale/AS1/receive", { restockApproved: true });
-  });
-  it("旧调用缺省不回库", async () => {
-    await httpApi.mConfirmReturn("AS1");
-    expect(post).toHaveBeenCalledWith("/biz/after-sale/AS1/receive", { restockApproved: false });
+  it("收货验收逐行提交件数与品质，并传入可重试的收货单号", async () => {
+    const request = { receiptNo: "RR-AS1", lines: [{ itemId: 11, receivedQty: 1, quality: "SALEABLE" as const }] };
+    await httpApi.mConfirmReturn("AS1", request);
+    expect(post).toHaveBeenCalledWith("/biz/after-sale/AS1/receive", request);
   });
   it("全额审核不填写金额，受理仍为处理中", async () => {
     const response = await httpApi.mApproveAfterSale("AS1", "同意", undefined, "CASH");

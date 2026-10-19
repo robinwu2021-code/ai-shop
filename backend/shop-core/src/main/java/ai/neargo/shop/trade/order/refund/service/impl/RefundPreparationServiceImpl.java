@@ -122,8 +122,13 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
         boolean shipped = items.stream().anyMatch(i -> i.getShippedQty() != null && i.getShippedQty() > 0)
                 || !OrdSubOrder.WAIT_FULFILL.equals(child.getStatus());
         row.setRestockApproved(Boolean.TRUE.equals(as.getRestockApproved()));
-        row.setRestoreStock(!shipped || (OrdAfterSale.RETURN_REFUND.equals(as.getType())
-                && as.getReturnReceivedAt() != null && Boolean.TRUE.equals(as.getRestockApproved())));
+        boolean inventoryV2 = Integer.valueOf(2).equals(child.getInventoryLifecycleVersion());
+        boolean physicallyReceivedReturn = OrdAfterSale.RETURN_REFUND.equals(as.getType())
+                && as.getReturnReceivedAt() != null && Boolean.TRUE.equals(as.getRestockApproved());
+        // V2 records the physical receipt and saleable disposition before refund execution;
+        // restoring those units again here would duplicate stock. Unshipped V2 refunds still
+        // release their reservation through the resource worker.
+        row.setRestoreStock(!shipped || (physicallyReceivedReturn && !inventoryV2));
         row.setReason(as.getReason());
         row.setStatus(OrdRefundExecution.PREPARED);
         row.setPhase(OrdRefundExecution.REVERSAL);

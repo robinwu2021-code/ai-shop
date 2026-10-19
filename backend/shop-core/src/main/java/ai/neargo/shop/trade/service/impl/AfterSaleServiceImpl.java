@@ -44,6 +44,7 @@ import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.order.refund.port.AfterSaleLineStore;
 import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
 import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
 import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
@@ -58,6 +59,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 售后。
@@ -95,6 +97,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     private final UserQueryPort userPort;
     private final StockPort stockPort;
     private final OrderItemMapper orderItemMapper;
+    private AfterSaleLineStore afterSaleLines;
     /**
      * 极速退的门槛与各环节时效（§3）。
      *
@@ -154,6 +157,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     public void setSwitchPort(ai.neargo.shop.spi.platform.PlatformSwitchPort switchPort) {
         this.switchPort = switchPort;
     }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAfterSaleLines(AfterSaleLineStore afterSaleLines) { this.afterSaleLines = afterSaleLines; }
 
     static final String FLAG_RETURN_COUPON = "refund.return-coupon";
 
@@ -689,13 +695,78 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo, boolean restockApproved) {
+        return confirmReturnInternal(merchantNo, afterSaleNo, null, null, restockApproved);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo, String receiptNo,
+                                     List<AfterSaleService.ReturnReceiveLine> receivedLines) {
+        return confirmReturnInternal(merchantNo, afterSaleNo, receiptNo, receivedLines, false);
+    }
+
+    private AfterSaleVO confirmReturnInternal(String merchantNo, String afterSaleNo, String receiptNo,
+                                               List<AfterSaleService.ReturnReceiveLine> receivedLines,
+                                               boolean legacyRestockApproved) {
         OrdAfterSale as = ofMerchant(merchantNo, afterSaleNo);
+        if (!OrdAfterSale.RETURNING.equals(as.getStatus())) {
+            // A retry after the platform transaction committed is a read, never a second receipt.
+            if (as.getReturnReceivedAt() != null) return detailOf(as);
+            throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+        }
+        OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
+        boolean lifecycleV2 = sub != null && Integer.valueOf(2).equals(sub.getInventoryLifecycleVersion());
+        boolean restockApproved = legacyRestockApproved;
+        if (lifecycleV2) {
+            if (receiptNo == null || receiptNo.isBlank() || receivedLines == null || receivedLines.isEmpty()) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            List<StockPort.ReturnLine> accepted = acceptedReturnLines(as, receivedLines);
+            restockApproved = accepted.stream().anyMatch(line -> line.quality() == StockPort.ReturnQuality.SALEABLE);
+            // V2 physical receipt is durable independently of the refund callback/resource worker.
+            stockPort.receiveReturn(receiptNo, as.getAfterSaleNo(), as.getOrderNo(), as.getSubOrderNo(), accepted);
+        }
         if (as.getReturnReceivedAt() == null) {
             as.setReturnReceivedAt(System.currentTimeMillis());
             as.setRestockApproved(restockApproved);
         }
         doRefund(as, "商家已收到退货", AfterSaleEvent.RETURN_RECEIVED, Actor.MERCHANT, merchantNo);
         return detailOf(as);
+    }
+
+    private List<StockPort.ReturnLine> acceptedReturnLines(OrdAfterSale as,
+            List<AfterSaleService.ReturnReceiveLine> receivedLines) {
+        if (afterSaleLines == null) throw new IllegalStateException("AFTERSALE_LINES_UNAVAILABLE");
+        List<RefundLine> planned = afterSaleLines.lines(as.getAfterSaleNo());
+        java.util.Map<Long, Integer> limits = planned.stream().collect(java.util.stream.Collectors.toMap(
+                RefundLine::itemId, RefundLine::qty, Math::addExact));
+        java.util.Set<Long> seen = new java.util.HashSet<>();
+        List<StockPort.ReturnLine> accepted = new java.util.ArrayList<>();
+        int total = 0;
+        for (AfterSaleService.ReturnReceiveLine line : receivedLines) {
+            if (line == null || line.itemId() == null || line.receivedQty() == null || line.receivedQty() < 0
+                    || !seen.add(line.itemId()) || !limits.containsKey(line.itemId())
+                    || !Objects.equals(line.receivedQty(), limits.get(line.itemId()))) {
+                // This release only supports full-child cash refunds. Do not refund the whole child
+                // after accepting fewer physical units; partial cash allocation needs its own policy.
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            if (line.receivedQty() == 0) continue;
+            StockPort.ReturnQuality quality;
+            try {
+                quality = StockPort.ReturnQuality.valueOf(line.quality());
+            } catch (RuntimeException invalid) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            OrdItem item = orderItemMapper.selectById(line.itemId());
+            if (item == null || !Objects.equals(item.getSubOrderNo(), as.getSubOrderNo())) {
+                throw BizException.of(ErrorCode.BAD_REQUEST);
+            }
+            accepted.add(new StockPort.ReturnLine(item.getSkuNo(), line.receivedQty(), quality));
+            total = Math.addExact(total, line.receivedQty());
+        }
+        if (total <= 0 || !seen.containsAll(limits.keySet())) throw BizException.of(ErrorCode.BAD_REQUEST);
+        return List.copyOf(accepted);
     }
 
     @Override
@@ -1017,6 +1088,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                         l.getAt() == null ? 0L : l.getAt()))
                 .toList();
 
+        List<AfterSaleVO.ReturnItem> returnItems = returnItems(as);
         return new AfterSaleVO(as.getAfterSaleNo(), as.getSubOrderNo(), as.getOrderNo(),
                 as.getType(), as.getStatus(), as.getReason(), readList(as.getImages()),
                 as.getRefundMinor() == null ? 0L : as.getRefundMinor(),
@@ -1025,7 +1097,18 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 // 更新时间：库里有 updated_at，此前没往外发 —— 两个端都按它显示「最后动了什么时候」
                 millis(as.getUpdatedAt()), timeline, null,
                 as.getRefundMode(), as.getRefundPoints(), as.getApprovedMinor(), as.getFulfillStage(),
-                OrdAfterSale.WAIT_RECEIPT.equals(as.getStatus()), escalationOpen(as), refundProgress(as));
+                OrdAfterSale.WAIT_RECEIPT.equals(as.getStatus()), escalationOpen(as), refundProgress(as), returnItems,
+                as.getReturnReceivedAt() == null ? null
+                        : stockPort.returnReceiptStatus("RR-" + as.getAfterSaleNo()));
+    }
+
+    private List<AfterSaleVO.ReturnItem> returnItems(OrdAfterSale as) {
+        if (afterSaleLines == null) return List.of();
+        return afterSaleLines.lines(as.getAfterSaleNo()).stream().map(line -> {
+            OrdItem item = orderItemMapper.selectById(line.itemId());
+            return new AfterSaleVO.ReturnItem(line.itemId(), item == null ? null : item.getSkuNo(),
+                    item == null ? "商品" : item.getTitle(), line.qty());
+        }).toList();
     }
 
     private AfterSaleVO.RefundExecutionProgress refundProgress(OrdAfterSale as) {

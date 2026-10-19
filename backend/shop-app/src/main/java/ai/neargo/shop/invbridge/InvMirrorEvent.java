@@ -58,6 +58,8 @@ public final class InvMirrorEvent {
     public static final String RESTORE = PREFIX + "RESTORE";
     /** 原退款执行恢复：原库存预留事实与目的号决定入库，不重新解析当前配置。 */
     public static final String RESTORE_ORIGINAL = PREFIX + "RESTORE_ORIGINAL";
+    /** V2 physical return acceptance with quality routing; independent of cash refund callbacks. */
+    public static final String RETURN_RECEIPT = PREFIX + "RETURN_RECEIPT";
     /**
      * 商家在商品页手改库存 → 进销存跟着改。
      *
@@ -74,7 +76,7 @@ public final class InvMirrorEvent {
      * 消不掉的是<b>遗漏</b>，那一档交给 {@code InvMirrorEventCoverageTest}。
      */
     public static final Set<String> ALL = Set.of(RESERVE, COMMIT, ALLOCATE, ISSUE, RELEASE_ALLOCATED,
-            RELEASE, RESTORE, RESTORE_ORIGINAL, ADJUST);
+            RELEASE, RESTORE, RESTORE_ORIGINAL, RETURN_RECEIPT, ADJUST);
 
     private InvMirrorEvent() {
     }

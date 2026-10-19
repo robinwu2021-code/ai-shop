@@ -493,6 +493,8 @@ export const httpApi: MerchantApi = {
     priority: number; afterSaleNo: string | null; afterSaleStatus: string | null;
   }>>(E.mOrderWorklist.path, q),
   mOrderDetail: (orderNo) => http.get<Order>(buildPath(E.mOrderDetail.path, { orderNo })),
+  mOrderInventoryTrace: (orderNo) => http.get<Awaited<ReturnType<MerchantApi["mOrderInventoryTrace"]>>>(
+    buildPath(E.mOrderInventoryTrace.path, { orderNo })),
   mFulfillmentOptions: (orderNo) => http.get<Awaited<ReturnType<MerchantApi["mFulfillmentOptions"]>>>(
     buildPath(E.mFulfillmentOptions.path, { orderNo })),
   mChangeFulfillment: (orderNo, req) => http.post<Awaited<ReturnType<MerchantApi["mChangeFulfillment"]>>>(
@@ -577,10 +579,8 @@ export const httpApi: MerchantApi = {
       remark: reply,
     } satisfies HandleAfterSaleReq),
 
-  mConfirmReturn: (afterSaleNo, restockApproved = false) =>
-    http.post<AfterSale>(buildPath(E.mConfirmReturn.path, { afterSaleNo }), {
-      restockApproved,
-    } satisfies import("./requests").ReceiveReturnReq),
+  mConfirmReturn: (afterSaleNo, request) =>
+    http.post<AfterSale>(buildPath(E.mConfirmReturn.path, { afterSaleNo }), request),
   mConfirmRefund: (afterSaleNo, reason) =>
     http.post<AfterSale>(buildPath(E.mConfirmRefund.path, { afterSaleNo }), { reason }),
 

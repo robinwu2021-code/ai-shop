@@ -772,8 +772,10 @@ export interface StockOutboundReq {
 
 /** 收妥退货不代表可以再次销售，缺省禁止自动回库。 */
 export interface ReceiveReturnReq {
-  /** 商家明确确认可再次销售；默认 false。 */
-  restockApproved: boolean;
+  /** 本次退货验收号，重试必须复用。 */
+  receiptNo: string;
+  /** 实际收到件数和质检结论，未收到的件数不要提交。 */
+  lines: { itemId: number; receivedQty: number; quality: "SALEABLE" | "UNSALEABLE" }[];
 }
 
 export interface StorePointsTypeQuery {

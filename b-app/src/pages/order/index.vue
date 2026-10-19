@@ -19,12 +19,13 @@ import { fulfillmentAllowed } from "@shared/strategies/order-phase1";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 import { confirm } from "@ai-shop/ui/prompt";
 import type { AfterSale, Order, ShipmentTrace } from "@shared/types";
-import type { ExpressPickup, LogisticsUpdateRecord } from "@/api/contract";
+import type { ExpressPickup, LogisticsUpdateRecord, MerchantInventoryTrace } from "@/api/contract";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
 const order = ref<Order | null>(null);
+const inventoryTrace = ref<MerchantInventoryTrace | null>(null);
 const activeAfterSale = ref<AfterSale | null>(null);
 type FulfillmentOptions = Awaited<ReturnType<typeof api.mFulfillmentOptions>>;
 const fulfillmentOptions = ref<FulfillmentOptions | null>(null);
@@ -219,12 +220,14 @@ async function load(orderNo: string) {
   try {
     await merchant.ensureScope();
     order.value = await api.mOrderDetail(orderNo);
+    inventoryTrace.value = await api.mOrderInventoryTrace(orderNo).catch(() => null);
     activeAfterSale.value = merchant.can("biz:aftersale")
       ? await api.mActiveAfterSaleForOrder(orderNo).catch(() => null) : null;
     fulfillmentOptions.value = merchant.can("biz:ship")
       ? await api.mFulfillmentOptions(orderNo).catch(() => null) : null;
     failed.value = false;
     fullTrace.value = null;
+    inventoryTrace.value = null;
     updateRecords.value = [];
     void loadPickup();
     if (order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value.status === "PAID") void loadShipDefaults();
@@ -523,6 +526,25 @@ onPullDownRefresh(async () => {
         <text class="txt-caption sh-muted trace-card__no">
           {{ carrierLabel }} {{ order.expressNo }}
         </text>
+      </view>
+
+      <view v-if="inventoryTrace?.reservations.length" class="sh-card sh-mt-sm">
+        <text class="txt-title">{{ $t('order.inventoryTrace') }}</text>
+        <view v-for="reservation in inventoryTrace.reservations" :key="`${reservation.ownerId}:${reservation.reservationId}`"
+          class="sh-mt-sm">
+          <text class="txt-caption sh-muted">{{ $t('order.inventoryReservation') }} {{ reservation.status }} · V{{ reservation.lifecycleVersion ?? 1 }}</text>
+          <view v-for="line in reservation.lines" :key="`${reservation.reservationId}:${line.lineNo}`" class="line">
+            <view class="sh-row sh-row--between"><text class="sh-muted">{{ $t('order.inventorySource') }}</text><text>{{ line.locationId }}</text></view>
+            <view class="sh-row sh-row--between"><text class="sh-muted">{{ $t('order.inventoryReserved') }}</text><text>{{ line.reservedQty }}</text></view>
+            <view class="sh-row sh-row--between"><text class="sh-muted">{{ $t('order.inventoryIssued') }}</text><text>{{ line.issuedQty }} · {{ line.outboundNo || '—' }}</text></view>
+            <view v-for="entry in line.issueLedger" :key="entry.id" class="txt-caption sh-muted">
+              {{ datetime(new Date(entry.occurredAt).getTime()) }} · {{ entry.balanceBefore }} → {{ entry.balanceAfter }} · {{ entry.operator || entry.createdBy || '—' }}
+            </view>
+            <view v-for="receipt in line.returns" :key="receipt.receiptNo" class="txt-caption sh-muted">
+              {{ $t('order.inventoryReturn') }} {{ receipt.qty }} · {{ receipt.quality }} · {{ receipt.locationId }} · {{ receipt.createdBy || '—' }}
+            </view>
+          </view>
+        </view>
       </view>
 
       <view class="sh-card">

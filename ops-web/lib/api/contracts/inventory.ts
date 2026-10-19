@@ -1,6 +1,6 @@
 // 进销存（P-18）—— `/ops/inventory/**`。**独立模块**：与商品域不共契约文件，
 // 它将来要能单独交付。
-import type { InvBalanceRow, InvHealthRow, InvLedgerPage, InvReconReport, InvCredential, InvCredentialIssued, InvLinkHealth, InvRepairResult, InvMerchantDigest, InvPolicy } from "@/lib/types";
+import type { InvBalanceRow, InvHealthRow, InvLedgerPage, InvReconReport, InvCredential, InvCredentialIssued, InvLinkHealth, InvRepairResult, InvMerchantDigest, InvPolicy, InvOrderTrace } from "@/lib/types";
 
 export interface InventoryApi {
   // **库存本身仍然只读**：运营不改商家库存 —— 改了之后「这个数是谁改的」
@@ -63,6 +63,9 @@ export interface InventoryApi {
    * 最后一行的 id 去推：同一毫秒有多笔时会漏行，而漏的那几行不会有任何报错。
    */
   listInvLedger(q: { entityNo: string; itemId?: string; cursor?: number; size?: number }): Promise<InvLedgerPage>;
+
+  /** Whole reservation → issue → return chain for a parent order. */
+  getInvOrderTrace(orderNo: string): Promise<InvOrderTrace>;
 
   /**
    * 库存对差。**这是 G3 闸门的数据来源**：`clean` 连续 N 天为真才准切真相源。

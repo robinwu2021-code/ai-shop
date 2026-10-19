@@ -14,10 +14,12 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.InventorySnapshotService;
+import ai.neargo.shop.inventory.service.InventoryOrderTraceService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.OutboundService;
 import ai.neargo.shop.inventory.service.ReservationService;
 import ai.neargo.shop.inventory.service.OriginalReservationRestoreService;
+import ai.neargo.shop.inventory.service.ReturnReceiptService;
 import ai.neargo.shop.inventory.service.StockCountService;
 import ai.neargo.shop.inventory.service.StockQueryService;
 import ai.neargo.shop.inventory.service.TransferService;
@@ -72,11 +74,15 @@ class InventoryFlowTest {
     @Autowired
     OriginalReservationRestoreService originalRestores;
     @Autowired
+    ReturnReceiptService returnReceipts;
+    @Autowired
     StockCountService counts;
     @Autowired
     TransferService transfers;
     @Autowired
     StockQueryService query;
+    @Autowired
+    InventoryOrderTraceService orderTrace;
 
     @Autowired
     InventoryBackfillService backfill;
@@ -139,6 +145,16 @@ class InventoryFlowTest {
         assertThat(onHand(f)).isEqualTo(7);
         assertThat(available(f)).isEqualTo(5);
 
+        var trace = orderTrace.trace(payNo);
+        var issuedLine = trace.reservations().stream().flatMap(reservation -> reservation.lines().stream())
+                .filter(line -> firstSubOrder.equals(line.fulfillmentRef())).findFirst().orElseThrow();
+        assertThat(issuedLine.locationId()).isEqualTo(f.location);
+        assertThat(issuedLine.reservedQty()).isEqualTo(3);
+        assertThat(issuedLine.issuedQty()).isEqualTo(3);
+        assertThat(issuedLine.issueLedger()).hasSize(1);
+        assertThat(issuedLine.issueLedger().getFirst().balanceBefore()).isEqualTo(10);
+        assertThat(issuedLine.issueLedger().getFirst().balanceAfter()).isEqualTo(7);
+
         String refundNo = "RF-V2-" + f.seq;
         originalRestores.restore(refundNo, payNo, List.of(new OriginalReservationRestoreService.ItemQty(f.item, 2)));
         originalRestores.restore(refundNo, payNo, List.of(new OriginalReservationRestoreService.ItemQty(f.item, 2)));
@@ -149,6 +165,36 @@ class InventoryFlowTest {
         reservations.issueByFulfillmentRef(secondSubOrder, "店员");
         assertThat(onHand(f)).isEqualTo(7);
         assertThat(available(f)).isEqualTo(7);
+    }
+
+    @Test
+    @DisplayName("V2退货验收独立于退款：可售回原库位，不可售进隔离库位，重放不重复入库")
+    void v2ReturnReceiptRoutesByQualityAndIsIdempotent() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "老板");
+        String payNo = "PAY-V2-RETURN-" + f.seq;
+        String subOrder = "SUB-V2-RETURN-" + f.seq;
+        reservations.reserve(f.owner, payNo, List.of(
+                new ReservationService.Line(f.item, f.location, 4, subOrder)), 900, 2);
+        reservations.allocatePaidByRef(payNo);
+        reservations.issueByFulfillmentRef(subOrder, "店员");
+
+        String receiptNo = "RR-" + f.seq;
+        List<ReturnReceiptService.Line> accepted = List.of(
+                new ReturnReceiptService.Line(f.item, 1, ReturnReceiptService.Quality.SALEABLE),
+                new ReturnReceiptService.Line(f.item, 1, ReturnReceiptService.Quality.UNSALEABLE));
+        returnReceipts.receive(receiptNo, "AS-" + f.seq, payNo, subOrder, accepted, "店员");
+        returnReceipts.receive(receiptNo, "AS-" + f.seq, payNo, subOrder, accepted, "店员");
+
+        String quarantine = locations.quarantineLocation(f.owner);
+        assertThat(locationOnHand(f.owner, quarantine, f.item)).isEqualTo(1);
+        assertThat(locationOnHand(f.owner, f.location, f.item)).isEqualTo(7);
+        assertThat(totalOf(f.owner, f.item)).isEqualTo(8);
+        assertThatThrownBy(() -> returnReceipts.receive("RR-OVER-" + f.seq, "AS-" + f.seq,
+                payNo, subOrder, List.of(new ReturnReceiptService.Line(f.item, 3,
+                        ReturnReceiptService.Quality.SALEABLE)), "店员"))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(totalOf(f.owner, f.item)).isEqualTo(8);
     }
 
     @Test
@@ -794,5 +840,11 @@ class InventoryFlowTest {
 
     private int totalOf(String owner, String item) {
         return query.itemDetail(owner, item).onHand();
+    }
+
+    private int locationOnHand(String owner, String location, String item) {
+        return query.balances(owner, location, "all", 1000).stream()
+                .filter(balance -> item.equals(balance.itemId())).mapToInt(balance -> balance.onHand()).findFirst()
+                .orElse(0);
     }
 }

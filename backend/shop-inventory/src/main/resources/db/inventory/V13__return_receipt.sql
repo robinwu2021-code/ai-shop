@@ -1,0 +1,22 @@
+CREATE TABLE inv_return_receipt (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    receipt_no VARCHAR(64) NOT NULL,
+    line_no INT NOT NULL,
+    after_sale_no VARCHAR(64) NOT NULL,
+    original_order_no VARCHAR(64) NOT NULL,
+    fulfillment_ref VARCHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    original_line_id BIGINT NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    qty INT NOT NULL,
+    quality VARCHAR(16) NOT NULL COMMENT 'SALEABLE / UNSALEABLE',
+    location_id VARCHAR(32) NOT NULL COMMENT 'accepted destination, unsaleable is quarantined',
+    inbound_no VARCHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_inv_return_receipt_line (receipt_no, line_no),
+    KEY idx_inv_return_receipt_aftersale (after_sale_no, id),
+    KEY idx_inv_return_receipt_original (original_line_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='退货实收与质量分流凭证，独立于退款执行';

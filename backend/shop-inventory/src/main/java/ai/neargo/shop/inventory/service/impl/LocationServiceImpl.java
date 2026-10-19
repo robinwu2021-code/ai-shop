@@ -102,6 +102,34 @@ public class LocationServiceImpl implements LocationService {
         return create(ownerId, "默认库位", InvEnums.LocationKind.WAREHOUSE, true, "SYSTEM");
     }
 
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String quarantineLocation(String ownerId) {
+        InvLocation row = locationMapper.selectOne(Wrappers.<InvLocation>lambdaQuery()
+                .eq(InvLocation::getOwnerId, ownerId).eq(InvLocation::getExternalRef, "RETURN_QUARANTINE")
+                .last("LIMIT 1"));
+        if (row != null) return row.getLocationId();
+        InvLocation quarantine = new InvLocation();
+        quarantine.setLocationId(InvKeys.next(InvKeys.LOCATION));
+        quarantine.setOwnerId(ownerId);
+        quarantine.setName("退货隔离区");
+        quarantine.setKind(InvEnums.LocationKind.VIRTUAL);
+        quarantine.setExternalRef("RETURN_QUARANTINE");
+        quarantine.setIsDefault(0);
+        quarantine.setStatus(InvEnums.MasterStatus.ACTIVE);
+        quarantine.setCreatedBy("SYSTEM");
+        try {
+            locationMapper.insert(quarantine);
+            return quarantine.getLocationId();
+        } catch (org.springframework.dao.DuplicateKeyException duplicate) {
+            InvLocation existing = locationMapper.selectOne(Wrappers.<InvLocation>lambdaQuery()
+                    .eq(InvLocation::getOwnerId, ownerId).eq(InvLocation::getExternalRef, "RETURN_QUARANTINE")
+                    .last("LIMIT 1"));
+            if (existing == null) throw duplicate;
+            return existing.getLocationId();
+        }
+    }
+
     // ────────────────────────────────────────────────────────────────────
 
     private String findOrCreate(String ownerId, String kind, String name) {

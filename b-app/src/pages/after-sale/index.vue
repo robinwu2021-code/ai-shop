@@ -58,7 +58,8 @@ const reason = ref("");
 
 const earlyRefunding = ref("");
 const earlyRefundReason = ref("");
-const restock = ref<Record<string, boolean>>({});
+const receiptQty = ref<Record<string, number>>({});
+const receiptQuality = ref<Record<string, "SALEABLE" | "UNSALEABLE">>({});
 
 /** 正在核定金额/形式的单号 —— 展开审核面板（仅已签收） */
 const approving = ref("");
@@ -164,7 +165,22 @@ function confirmApprove(r: Row) {
  * 只对「已寄回」的退货单出现 —— 用户还没寄就点确认，多半是误操作。
  */
 async function confirmReturn(r: Row) {
-  await runRefund(() => api.mConfirmReturn(r.as.afterSaleNo, restock.value[r.as.afterSaleNo] === true));
+  const items = r.as.returnItems ?? [];
+  const lines = items.map((item) => ({
+    itemId: item.itemId,
+    receivedQty: receiptQty.value[`${r.as.afterSaleNo}:${item.itemId}`] ?? 0,
+    quality: receiptQuality.value[`${r.as.afterSaleNo}:${item.itemId}`] ?? "UNSALEABLE" as const,
+  })).filter((line) => line.receivedQty > 0);
+  if (!items.length || lines.length !== items.length
+      || lines.some((line, i) => !Number.isInteger(line.receivedQty)
+        || line.receivedQty !== items[i]?.requestedQty)) {
+    uni.showToast({ title: "当前退款按整单处理，请确认本单退货商品均已收齐", icon: "none" });
+    return;
+  }
+  await runRefund(() => api.mConfirmReturn(r.as.afterSaleNo, {
+    receiptNo: `RR-${r.as.afterSaleNo}`,
+    lines,
+  }));
 }
 
 /**
@@ -287,6 +303,7 @@ onShow(() => { if (!targetAfterSaleNo.value || loaded.value) void load(); });
       -->
       <text class="txt-caption sh-muted blk">{{ $t("afterSale.fullCash") }}</text>
       <text v-if="r.as.refundExecution" class="txt-caption blk">{{ $t(refundProgressKey(r.as)) }}</text>
+      <text v-if="r.as.returnInventoryStatus" class="txt-caption sh-muted blk">{{ $t(`afterSale.returnInventory.${r.as.returnInventoryStatus}`) }}</text>
       <text v-if="impactText(r)" class="txt-caption sh-muted impact blk">{{ impactText(r) }}</text>
 
       <template v-if="rejecting === r.as.afterSaleNo">
@@ -352,9 +369,21 @@ onShow(() => { if (!targetAfterSaleNo.value || loaded.value) void load(); });
       </view>
 
       <view v-else-if="asStatus(r) === 'RETURNING'">
-        <sh-option class="restock-option sh-mt-sm" :selected="restock[r.as.afterSaleNo] === true" :disabled="busy" @tap="restock[r.as.afterSaleNo] = !restock[r.as.afterSaleNo]">
-          <text>{{ restock[r.as.afterSaleNo] ? '☑' : '☐' }} {{ $t("afterSale.restock") }}</text>
-        </sh-option>
+        <view class="return-inspection sh-mt-sm">
+          <text class="txt-strong">退货验收（按实收件数与质检结果入库）</text>
+          <view v-for="item in (r.as.returnItems ?? [])" :key="item.itemId" class="return-inspection__item">
+            <view class="sh-row sh-between"><text>{{ item.title }}</text><text class="sh-muted">申请 {{ item.requestedQty }} 件</text></view>
+            <view class="sh-row sh-between sh-mt-xs">
+              <text>实收件数</text>
+              <sh-stepper :model-value="receiptQty[`${r.as.afterSaleNo}:${item.itemId}`] ?? 0" :min="0" :max="item.requestedQty" :disabled="busy" @update:model-value="receiptQty[`${r.as.afterSaleNo}:${item.itemId}`] = $event" />
+            </view>
+            <view class="sh-row sh-mt-xs return-inspection__qualities">
+              <sh-option :selected="(receiptQuality[`${r.as.afterSaleNo}:${item.itemId}`] ?? 'UNSALEABLE') === 'SALEABLE'" :disabled="busy" @tap="receiptQuality[`${r.as.afterSaleNo}:${item.itemId}`] = 'SALEABLE'">可再次销售</sh-option>
+              <sh-option :selected="(receiptQuality[`${r.as.afterSaleNo}:${item.itemId}`] ?? 'UNSALEABLE') === 'UNSALEABLE'" :disabled="busy" @tap="receiptQuality[`${r.as.afterSaleNo}:${item.itemId}`] = 'UNSALEABLE'">不可销售/隔离</sh-option>
+            </view>
+          </view>
+          <text class="sh-muted">不可销售的退货只进入隔离库存，不会增加可售库存。</text>
+        </view>
         <view class="btns sh-row">
         <view class="express sh-fill">
           <text class="sh-muted">{{ $t("afterSale.returnExpress") }}</text>
@@ -394,6 +423,9 @@ onShow(() => { if (!targetAfterSaleNo.value || loaded.value) void load(); });
 </template>
 
 <style scoped>
+.return-inspection { padding: 20rpx; border-radius: 12rpx; background: #f7f8fa; }
+.return-inspection__item { padding: 16rpx 0; border-bottom: 1rpx solid #e8e8e8; }
+.return-inspection__qualities { gap: 12rpx; }
 .tabs {
   gap: 16rpx;
 }

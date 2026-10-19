@@ -165,7 +165,6 @@ CREATE TABLE IF NOT EXISTS inv_reservation
     owner_id       VARCHAR(32) NOT NULL,
     external_ref   VARCHAR(64) NOT NULL,
     status         VARCHAR(16) NOT NULL DEFAULT 'HELD',
-    lifecycle_version INT NOT NULL DEFAULT 1,
     expires_at     DATETIME    NOT NULL,
     committed_at   DATETIME    DEFAULT NULL,
     released_at    DATETIME    DEFAULT NULL,
@@ -174,6 +173,7 @@ CREATE TABLE IF NOT EXISTS inv_reservation
     created_by     VARCHAR(64) DEFAULT NULL,
     updated_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by      VARCHAR(64) DEFAULT NULL,
+    lifecycle_version INT NOT NULL DEFAULT 1,
     PRIMARY KEY (id),
     CONSTRAINT uk_reservation UNIQUE (owner_id, reservation_id),
     CONSTRAINT uk_reservation_ext UNIQUE (owner_id, external_ref)
@@ -188,6 +188,8 @@ CREATE TABLE IF NOT EXISTS inv_reservation_line
     item_id        VARCHAR(32) NOT NULL,
     location_id    VARCHAR(32) NOT NULL,
     qty            INT         NOT NULL,
+    created_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by      VARCHAR(64) DEFAULT NULL,
     fulfillment_ref VARCHAR(64) DEFAULT NULL,
     issued_qty INT NOT NULL DEFAULT 0,
     released_qty INT NOT NULL DEFAULT 0,
@@ -195,11 +197,8 @@ CREATE TABLE IF NOT EXISTS inv_reservation_line
     issued_at DATETIME DEFAULT NULL,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     updated_by VARCHAR(64) DEFAULT NULL,
-    created_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_by      VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_res_line UNIQUE (reservation_id, line_no),
-    INDEX idx_inv_reservation_fulfillment (owner_id, fulfillment_ref)
+    CONSTRAINT uk_res_line UNIQUE (reservation_id, line_no)
 );
 
 CREATE TABLE IF NOT EXISTS inv_inbound_order
@@ -542,6 +541,28 @@ CREATE TABLE IF NOT EXISTS inv_stock_count_operation
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT uk_inv_count_operation UNIQUE (owner_id, operation_no)
+);
+
+CREATE TABLE IF NOT EXISTS inv_return_receipt
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    receipt_no VARCHAR(64) NOT NULL,
+    line_no INT NOT NULL,
+    after_sale_no VARCHAR(64) NOT NULL,
+    original_order_no VARCHAR(64) NOT NULL,
+    fulfillment_ref VARCHAR(64) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    original_line_id BIGINT NOT NULL,
+    owner_id VARCHAR(32) NOT NULL,
+    item_id VARCHAR(32) NOT NULL,
+    qty INT NOT NULL,
+    quality VARCHAR(16) NOT NULL,
+    location_id VARCHAR(32) NOT NULL,
+    inbound_no VARCHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_return_receipt_line UNIQUE (receipt_no, line_no)
 );
 
 -- 种子数据

@@ -69,6 +69,14 @@ public final class JdbcOutboxStore implements OutboxStore {
     @Override
     public String source() { return source.name(); }
 
+    /** Read-only acknowledgement lookup for a stable business receipt reference. */
+    public String statusOf(String aggregateType, String aggregateId, String eventType) {
+        var rows = jdbc.queryForList("SELECT status FROM " + events
+                + " WHERE aggregate_type=? AND aggregate_id=? AND event_type=? ORDER BY created_at DESC LIMIT 1",
+                aggregateType, aggregateId, eventType);
+        return rows.isEmpty() ? null : (String) rows.getFirst().get("status");
+    }
+
     /** Caller must already hold this source's business transaction. */
     public PublishReceipt append(OutboxEnvelope event, Map<String, Boolean> targets, boolean archiveOnly) {
         requireSourceTransaction();

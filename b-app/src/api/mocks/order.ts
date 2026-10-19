@@ -27,6 +27,7 @@ export const orderMock: Pick<MerchantApi,
   "mOrderList"
   | "mOrderWorklist"
   | "mOrderDetail"
+  | "mOrderInventoryTrace"
   | "mFulfillmentOptions"
   | "mChangeFulfillment"
   | "mOrderTrace"
@@ -126,6 +127,11 @@ export const orderMock: Pick<MerchantApi,
 
   async mOrderDetail(orderNo) {
     return delay({ ...findOrder(orderNo) });
+  },
+
+  async mOrderInventoryTrace(orderNo) {
+    const order = findOrder(orderNo);
+    return delay({ orderNo: order.payOrderNo || order.orderNo, reservations: [] });
   },
 
   async mFulfillmentOptions(orderNo) {
@@ -720,7 +726,7 @@ export const orderMock: Pick<MerchantApi,
     return delay(o.afterSale!);
   },
 
-  async mConfirmReturn(afterSaleNo) {
+  async mConfirmReturn(afterSaleNo, _request) {
     const o = findOrderByAfterSale(afterSaleNo);
     const as = o.afterSale!;
     if (as.type !== "RETURN_REFUND") throw new Error("该售后单不是退货退款");

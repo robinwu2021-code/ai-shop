@@ -94,6 +94,29 @@ export interface InvLedgerPage {
   nextCursor?: number | null;
 }
 
+/** Order-to-inventory audit chain; all quantities and source locations come from durable inventory rows. */
+export interface InvOrderTrace {
+  orderNo: string;
+  reservations: InvTraceReservation[];
+}
+export interface InvTraceReservation {
+  reservationId: string; ownerId: string; status: string; lifecycleVersion: number | null;
+  outboundNo: string | null; createdAt: string | null; lines: InvTraceLine[];
+}
+export interface InvTraceLine {
+  lineNo: number; fulfillmentRef: string | null; itemId: string; locationId: string;
+  reservedQty: number; issuedQty: number; releasedQty: number; outboundNo: string | null;
+  issuedAt: string | null; updatedBy: string | null; issueLedger: InvTraceLedger[]; returns: InvTraceReturn[];
+}
+export interface InvTraceLedger {
+  id: number; docNo: string; reasonCode: string; qtyDelta: number; balanceBefore: number;
+  balanceAfter: number; operator: string | null; createdBy: string | null; occurredAt: string;
+}
+export interface InvTraceReturn {
+  receiptNo: string; afterSaleNo: string; qty: number; quality: string; locationId: string;
+  inboundNo: string; createdBy: string | null; createdAt: string;
+}
+
 export interface InvReconReport {
   /** 扫了多少个 SKU */
   scannedSkus: number;

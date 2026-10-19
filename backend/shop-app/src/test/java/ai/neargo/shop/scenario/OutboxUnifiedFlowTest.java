@@ -3,6 +3,7 @@ package ai.neargo.shop.scenario;
 import ai.neargo.shop.event.DomainEvent;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import ai.neargo.shop.invbridge.InvMirrorEvent;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,5 +74,21 @@ class OutboxUnifiedFlowTest {
         assertThat(((Number)row.get("schema_version")).intValue()).isEqualTo(1);
         assertThat(row.get("stream_key")).isEqualTo("INVENTORY:DOCUMENT:DOC-V1");
         assertThat(new tools.jackson.databind.ObjectMapper().readTree((String)row.get("payload")).path("payload").asString()).isEqualTo(payload);
+    }
+
+    private record ReturnReceiptPosted(String receiptNo) implements DomainEvent {
+        public String aggregateType() { return "INVENTORY"; }
+        public String aggregateId() { return receiptNo; }
+        public String eventType() { return InvMirrorEvent.RETURN_RECEIPT; }
+    }
+
+    @Test
+    void returnInventoryStatusCanReadUnifiedOutboxAcknowledgement() {
+        String receipt = "RR-" + UUID.randomUUID();
+        new TransactionTemplate(platformTx).executeWithoutResult(s ->
+                facade.publish("PLATFORM", new ReturnReceiptPosted(receipt),
+                        new ai.neargo.shop.event.outbox.PublishOptions("RETURN:" + receipt, 1)));
+        assertThat(facade.statusOf("PLATFORM", "INVENTORY", receipt, InvMirrorEvent.RETURN_RECEIPT))
+                .isEqualTo("PENDING");
     }
 }

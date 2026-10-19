@@ -2,6 +2,9 @@ package ai.neargo.shop.invbridge.port;
 
 import ai.neargo.shop.invbridge.InvMirrorEvent;
 import ai.neargo.shop.invbridge.OriginalMirrorRestore;
+import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.event.SysOutboxMapper;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.event.DomainEvent;
 import ai.neargo.shop.event.OutboxEventBus;
@@ -10,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ai.neargo.shop.spi.product.InvManagedPort;
 import ai.neargo.shop.spi.product.StockPort;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
@@ -67,15 +71,64 @@ public class DualWriteStockPort implements StockPort {
      */
     private final InvManagedPort invManaged;
     private OriginalMirrorRestore originalRestores;
+    private SysOutboxMapper outbox;
+    private UnifiedOutboxFacade unifiedOutbox;
 
     @Autowired
     public void setOriginalRestores(OriginalMirrorRestore originalRestores) {
         this.originalRestores = originalRestores;
     }
 
+    @Autowired
+    public void setOutbox(SysOutboxMapper outbox) { this.outbox = outbox; }
+
+    @Autowired(required = false)
+    public void setUnifiedOutbox(UnifiedOutboxFacade unifiedOutbox) { this.unifiedOutbox = unifiedOutbox; }
+
     @Override
     public RestoreResult restoreOriginal(String purpose, String originalRef, List<SkuQty> items) {
         return originalRestores.restore(purpose, originalRef, items);
+    }
+
+    @Override
+    public void receiveReturn(String receiptNo, String afterSaleNo, String originalOrderNo,
+                              String fulfillmentRef, List<ReturnLine> lines) {
+        if (lines == null || lines.isEmpty()) throw new IllegalArgumentException("RETURN_RECEIPT_LINES_REQUIRED");
+        List<ReturnLine> managed = lines.stream()
+                .filter(line -> !invManaged.managedSkus(List.of(line.skuNo())).isEmpty()).toList();
+        List<ReturnLine> unmanaged = lines.stream()
+                .filter(line -> invManaged.managedSkus(List.of(line.skuNo())).isEmpty()).toList();
+        List<SkuQty> unmanagedSaleable = unmanaged.stream()
+                .filter(line -> line.quality() == ReturnQuality.SALEABLE)
+                .map(line -> new SkuQty(line.skuNo(), line.qty())).toList();
+        if (!unmanagedSaleable.isEmpty()) platform.restoreOriginal(receiptNo, originalOrderNo, unmanagedSaleable);
+        if (managed.isEmpty()) return;
+        List<SkuQty> saleable = managed.stream().filter(line -> line.quality() == ReturnQuality.SALEABLE)
+                .map(line -> new SkuQty(line.skuNo(), line.qty())).toList();
+        if (!saleable.isEmpty()) platform.restoreOriginal(receiptNo, originalOrderNo, saleable);
+        bus.publish(new ReturnReceiptEvent(receiptNo, afterSaleNo, originalOrderNo, fulfillmentRef, managed));
+    }
+
+    @Override
+    public String returnReceiptStatus(String receiptNo) {
+        String state = unifiedOutbox != null && unifiedOutbox.enabled("PLATFORM")
+                ? unifiedOutbox.statusOf("PLATFORM", AGGREGATE, receiptNo, InvMirrorEvent.RETURN_RECEIPT)
+                : null;
+        if (state != null) return mapOutboxState(state);
+        SysOutbox event = outbox.selectOne(Wrappers.<SysOutbox>lambdaQuery()
+                .eq(SysOutbox::getAggregateType, AGGREGATE)
+                .eq(SysOutbox::getAggregateId, receiptNo)
+                .eq(SysOutbox::getEventType, InvMirrorEvent.RETURN_RECEIPT)
+                .orderByDesc(SysOutbox::getId).last("LIMIT 1"));
+        return event == null ? "NOT_TRACKED" : mapOutboxState(event.getStatus());
+    }
+
+    private static String mapOutboxState(String state) {
+        return switch (state) {
+            case SysOutbox.SENT -> "COMPLETED";
+            case SysOutbox.FAILED -> "FAILED";
+            default -> "PENDING";
+        };
     }
 
     public DualWriteStockPort(StockPortImpl platform, OutboxEventBus bus, InvManagedPort invManaged) {
@@ -211,6 +264,13 @@ public class DualWriteStockPort implements StockPort {
     }
 
     private void publish(MirrorEvent event) { bus.publish(event); }
+
+    private record ReturnReceiptEvent(String receiptNo, String afterSaleNo, String originalOrderNo,
+                                      String fulfillmentRef, List<ReturnLine> lines) implements DomainEvent {
+        @Override public String aggregateType() { return AGGREGATE; }
+        @Override public String aggregateId() { return receiptNo; }
+        @Override public String eventType() { return InvMirrorEvent.RETURN_RECEIPT; }
+    }
 
     /**
      * @param ref   平台侧的自然键（锁号 / 售后单号）。进销存那边靠它幂等 ——

@@ -87,6 +87,14 @@ public interface AfterSaleService {
         return confirmReturn(merchantNo, afterSaleNo);
     }
 
+    /** Records actual received quantities and their disposition before starting cash settlement. */
+    default AfterSaleVO confirmReturn(String merchantNo, String afterSaleNo, String receiptNo,
+                                      java.util.List<ReturnReceiveLine> lines) {
+        return confirmReturn(merchantNo, afterSaleNo, false);
+    }
+
+    record ReturnReceiveLine(Long itemId, Integer receivedQty, String quality) { }
+
     /**
      * 在途仅退款（{@code WAIT_RECEIPT}）由商家确认退款（TDD-订单状态机 AC8）。
      * 签收后系统只提醒，<b>不自动退</b>；商家也可以不等签收直接确认。

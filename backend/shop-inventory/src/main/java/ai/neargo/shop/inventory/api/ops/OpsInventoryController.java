@@ -6,6 +6,7 @@ import ai.neargo.shop.inventory.dto.InventoryVOs.BalanceVO;
 import ai.neargo.shop.inventory.dto.InventoryVOs.LedgerPageVO;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.StockQueryService;
+import ai.neargo.shop.inventory.service.InventoryOrderTraceService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,10 +34,13 @@ public class OpsInventoryController {
 
     private final StockQueryService query;
     private final InventoryAclService acl;
+    private final InventoryOrderTraceService orderTrace;
 
-    public OpsInventoryController(StockQueryService query, InventoryAclService acl) {
+    public OpsInventoryController(StockQueryService query, InventoryAclService acl,
+                                  InventoryOrderTraceService orderTrace) {
         this.query = query;
         this.acl = acl;
+        this.orderTrace = orderTrace;
     }
 
     /**
@@ -65,5 +69,12 @@ public class OpsInventoryController {
                                @RequestParam(required = false) Long cursor,
                                @RequestParam(defaultValue = "50") int size) {
         return query.ledger(acl.ownerIdOf(entityNo), itemId, null, null, cursor, Math.min(size, PAGE_MAX));
+    }
+
+    /** Full read-only order reservation/issue/return trace for support and reconciliation. */
+    @PreAuthorize("@perm.can('" + Perms.INVENTORY_STOCK_READ + "')")
+    @GetMapping("/ops/inventory/order-trace")
+    public InventoryOrderTraceService.InventoryOrderTrace orderTrace(@RequestParam String orderNo) {
+        return orderTrace.trace(orderNo);
     }
 }

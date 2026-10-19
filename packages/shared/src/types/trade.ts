@@ -884,6 +884,10 @@ export interface AfterSale {
   canEscalate?: boolean;
   /** 用户寄回的运单号（RETURN_REFUND） */
   returnExpressNo?: string;
+  /** 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 */
+  returnItems?: { itemId: number; skuNo?: string | null; title: string; requestedQty: number }[];
+  /** 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 */
+  returnInventoryStatus?: "PENDING" | "COMPLETED" | "FAILED" | "PLATFORM_UPDATED" | "NOT_TRACKED" | null;
   /** 上升平台时用户的申诉理由 */
   disputeReason?: string;
   /** 最后一次状态变更时间。超时自动同意等时效规则以它为基准 */

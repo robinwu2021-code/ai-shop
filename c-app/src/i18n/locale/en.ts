@@ -965,6 +965,7 @@ export default {
     grayStageOk: "Submit anyway",
     waitReceipt: "Merchant approved; the parcel is on the way — refund is issued automatically after you confirm delivery",
     refundedPoints: "Refunded as points to your account per agreement; see your points page",
+    returnInventory: { PENDING: "Return accepted; inventory update is processing", COMPLETED: "Return accepted; inventory update completed", FAILED: "Return accepted; inventory update needs attention", PLATFORM_UPDATED: "Return accepted; stock updated", NOT_TRACKED: "Return accepted; inventory result is not tracked" },
   },
   /** 选城市。**让「在别处填地址」成立** —— 搜索此前只围着当前定位搜 */
   cityPick: {
