@@ -63,11 +63,11 @@ T4/T5 涉及新数据库和 SPI 结构，先完成任务内契约设计子步骤
 
 **Interfaces（新增设计）:** `RefundClosurePolicy.decide(RefundClosureFacts facts): RefundClosureDecision`；结果为 cashProgress、goodsClosed、allGoodsTerminated、approvedObligationsSettled、可空 targetOrderStatus。Facts 从权威读模型构造，不允许请求参数直接提供结清布尔值。
 
-- [ ] 先写策略用例：部分现金/未交付→不终态；交付后补偿→COMPLETED；取消与交付闭合→COMPLETED；全部终止但权益未完→不退款终态；零现金权益完成且全部终止→REFUNDED。
-- [ ] 运行用例确认缺少策略导致失败，再实现纯函数；这是目标规则测试，不能宣称现行入口已经支持全部场景。
-- [ ] 接入现行全退路径：只从完整原订单行/退款计划和执行凭据构造一期 Facts；无法证明的事实拒绝新协议收尾，保留恢复待办，不能默认 true。
-- [ ] 在申请和准备层保留全退限制；回归全退、零元、金额不匹配和重复回执，确保没有顺带开放部分退。
-- [ ] 提交：`refactor: centralize refund closure decisions`。
+- [x] 先写策略用例：部分现金/未交付→不终态；交付后补偿→COMPLETED；取消与交付闭合→COMPLETED；全部终止但权益未完→不退款终态；零现金权益完成且全部终止→REFUNDED。
+- [x] 运行用例确认缺少策略导致失败，再实现纯函数；这是目标规则测试，不能宣称现行入口已经支持全部场景。
+- [x] 接入现行现金全退路径（积分公共收尾延至 T3，见执行记录）：只从完整原订单行/退款计划和执行凭据构造一期 Facts；无法证明的事实拒绝新协议收尾，保留恢复待办，不能默认 true。
+- [x] 在申请和准备层保留全退限制；回归全退、零元、金额不匹配和重复回执，确保没有顺带开放部分退。
+- [x] 提交：`refactor: centralize refund closure decisions`。
 
 ## T2：持久权益义务及现金成功后的恢复
 
