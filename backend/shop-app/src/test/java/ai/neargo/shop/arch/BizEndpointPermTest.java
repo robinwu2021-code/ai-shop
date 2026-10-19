@@ -323,6 +323,13 @@ class BizEndpointPermTest {
         // 只能改库存的角色（配送员、客服）建不了品，也就用不上标准品
         put("/biz/spu-std", BizPerms.GOODS);
 
+        // Same resource has read/write methods; registry records the stricter permission.
+        put("/biz/entitlement-templates", BizPerms.ENT_TEMPLATE_WRITE);
+        put("/biz/entitlement-templates/{templateNo}/draft", BizPerms.ENT_TEMPLATE_WRITE);
+        put("/biz/entitlement-templates/{templateNo}/publish", BizPerms.ENT_TEMPLATE_PUBLISH);
+        put("/biz/entitlement-templates/{templateNo}/status", BizPerms.ENT_TEMPLATE_PUBLISH);
+        put("/biz/entitlement-templates/{templateNo}/issue-policy", BizPerms.ENT_ISSUE_MANAGE);
+
         // ---- 营销与报价：都是对钱的承诺 ----
         put("/biz/campaign", BizPerms.CAMPAIGN);
         put("/biz/campaign/{campaignNo}/toggle", BizPerms.CAMPAIGN);
@@ -384,6 +391,10 @@ class BizEndpointPermTest {
         // 核销的人是收银台前的店员，不是建券的老板 —— 与自提核销同一个码
         put("/biz/coupon-redeem/{code}", BizPerms.VERIFY);
         put("/biz/coupon-redeem", BizPerms.VERIFY);
+        put("/biz/activity-presets", BizPerms.CAMPAIGN);
+        put("/biz/card-product-presets", BizPerms.GOODS);
+        put("/biz/marketing-summary", BizPerms.CAMPAIGN);
+        put("/biz/activities/{activityNo}/publish", BizPerms.CAMPAIGN);
         put("/biz/activities", BizPerms.CAMPAIGN);
         put("/biz/activities/{activityNo}", BizPerms.CAMPAIGN);
         put("/biz/activities/{activityNo}/status", BizPerms.CAMPAIGN);
@@ -630,7 +641,7 @@ class BizEndpointPermTest {
             if (f.getType() == String.class && java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
                 try {
                     Object v = f.get(null);
-                    if (v instanceof String s && s.startsWith("biz:")) {
+                    if (v instanceof String s && (s.startsWith("biz:") || s.startsWith("pay:ent:"))) {
                         out.add(s);
                     }
                 } catch (IllegalAccessException ignored) {

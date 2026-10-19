@@ -30,7 +30,7 @@ const testSrc = readFileSync(TEST, "utf8");
 // 改成：先定位字段，再往回取「最后一个 /** … */」——注释块之间不可能嵌套，
 // 所以「最后一个」必然是紧邻它的那一个。
 const perms = new Map();
-for (const m of permSrc.matchAll(/public static final String ([A-Z_]+) = "(biz:[a-z:]+)";/g)) {
+for (const m of permSrc.matchAll(/public static final String ([A-Z_]+) = "((?:biz|pay):[a-z:]+)";/g)) {
   const before = permSrc.slice(0, m.index);
   const open = before.lastIndexOf("/**");
   const close = before.lastIndexOf("*/");

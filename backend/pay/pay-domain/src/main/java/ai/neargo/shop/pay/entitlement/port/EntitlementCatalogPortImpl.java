@@ -9,10 +9,8 @@ import ai.neargo.shop.pay.entitlement.policy.EntitlementRuleValidator;
 import ai.neargo.shop.pay.entitlement.policy.PayEntitlementFeatureGate;
 import java.time.Instant;
 import ai.neargo.shop.spi.entitlement.EntitlementCatalogPort;
-import org.springframework.stereotype.Component;
 
 /** Local catalog adapter; independent deployment must use the authenticated internal API adapter before rollout. */
-@Component
 public class EntitlementCatalogPortImpl implements EntitlementCatalogPort {
     private final EntitlementCatalogService catalog;
     private final PayEntitlementFeatureGate features;

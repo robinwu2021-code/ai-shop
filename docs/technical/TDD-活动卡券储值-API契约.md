@@ -405,3 +405,10 @@ B1批量发行：CreateBatch仅接受templateVersionNo/audienceFactRef；Entitle
 
 
 B1本地受众适配落于core.member.EntitlementIssueAudiencePortImpl：audienceFactRef当前解析为已有主体人群号/预设人群键；调用会员owner核实归属、会员受众和有效消费者，固定结果存入pay批次，不重筛。其他租户不借MAIN人群执行。独立pay部署的受众传输归041，未接时明确不可用。
+
+
+### 第二阶段P01–P06实现补充
+
+Java商家入口：`BizEntitlementTemplateController`；通过`EntitlementManagementAppService`选择内嵌领域服务或独立pay的`PayInternalApi`。P01列表返回完整草稿、当前版本号与可空issuePolicy；P02/P03/P05写响应不再附加后续变化的策略，以保持命令幂等响应稳定。策略独立由P06配置。商家作用域来自会话，4个pay权限仍各自校验，限制门店员工不得管理全主体模板。
+
+独立pay承载目录/管理9个内部POST：`/internal/pay/entitlement/management/{list,get,create,draft,publish,status,issue-policy}`与`/internal/pay/entitlement/catalog/{version,validate-reference}`。请求使用`PayEntitlementRequests`，不得直接对公网暴露。共享密钥空或错误401；领域BAD_REQUEST/FORBIDDEN/NOT_FOUND/CONFLICT/FEATURE_UNAVAILABLE分别400/403/404/409/503；主应用映射原业务错误，网络/鉴权配置错误报内部异常，不能返回空列表或自动重试写。其余grant/use/储值内部承载尚待对应任务。

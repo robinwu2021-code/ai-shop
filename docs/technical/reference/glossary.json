@@ -39009,6 +39009,78 @@
       "module": "pay/pay-domain"
     },
     {
+      "host": "PayInternalPaths",
+      "name": "ENT_LIST",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/list\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_CREATE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/create\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_DRAFT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/draft\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_PUBLISH",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/publish\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_STATUS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/status\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_POLICY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/issue-policy\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_VERSION",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/catalog/version\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_REFERENCE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/catalog/validate-reference\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
       "host": "EntitlementRuleValidator",
       "name": "KINDS",
       "type": "Set<String>",
@@ -39450,9 +39522,41 @@
     },
     {
       "host": "BizPerms",
+      "name": "ENT_TEMPLATE_READ",
+      "type": "String",
+      "value": "\"pay:ent:template:read\"",
+      "zh": "查看主体级权益目录，不授予变更能力。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "ENT_TEMPLATE_WRITE",
+      "type": "String",
+      "value": "\"pay:ent:template:write\"",
+      "zh": "编辑权益草稿，不能发布。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "ENT_TEMPLATE_PUBLISH",
+      "type": "String",
+      "value": "\"pay:ent:template:publish\"",
+      "zh": "发布与停发影响全主体，需单独授权。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "ENT_ISSUE_MANAGE",
+      "type": "String",
+      "value": "\"pay:ent:issue:manage\"",
+      "zh": "调整发行容量，不直接发放实例。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },

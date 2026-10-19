@@ -624,4 +624,13 @@ Create：pay entitlement/entity/EntIssuePolicy、EntIssueRecipient，mapper/enti
 发行计数按templateNo跨版本/途径累计；policy+recipient条件更新同事务。新增预留要求真实ACTIVE模板、开启策略与发行门禁；确认/释放既有占用不依赖新发行开关。发行控制revision使用CAS，下调全局或个人上限不得小于已有held+issued。服务端scope核实owner及平台出资权限。对应EntitlementIssuePolicyFlowTest和隔离原生MySQL验证，批次验收前不记DONE。
 
 
-B1实际验收：JB-015/016/017的实体Mapper/Service/本地SPI、V433–V435、真实core受众适配已完成，57个不同Java定向用例及隔离MySQL1项通过；RR当前读取修复后策略3项重跑通过，敞口消融RED→GREEN通过。对应[交付报告](./第二阶段B1-发行批次验收.md)和最新独立任务表；非全量/非公共HTTP全量交付。源码提交及stat紧随提交后回填。
+B1实际验收：JB-015/016/017的实体Mapper/Service/本地SPI、V433–V435、真实core受众适配已完成，57个不同Java定向用例及隔离MySQL1项通过；RR当前读取修复后策略3项重跑通过，敞口消融RED→GREEN通过。对应[交付报告](./第二阶段B1-发行批次验收.md)和最新独立任务表；非全量/非公共HTTP全量交付。源码提交`e78d7fc3a`，55文件2230新增/37删除。
+
+
+### JB-025及041目录/策略承载（开工）
+
+新增EntitlementManagementAppService及embedded/standalone实现、pay-svc内部目录管理端点；复用PayInternalApi/Paths和服务token，不增加第三套客户端。公开BizEntitlementTemplateController交付P01–P06，租户/主体/操作人来自会话，范围校验复用EntitlementScopeResolver。新增四项冻结权限pay:ent:template:read/write/publish与pay:ent:issue:manage，默认OWNER全权，其他角色须显式授权，不默认扩大MANAGER权限。
+
+裁定：模板状态与发行策略影响跨门店、跨版本全部持有人，因此本批P01–P06要求主体全域授权（allowedStoresOrAll=null），受限门店员工不因传入本店STORES范围获得主体级管理；后续核销与本人查询仍按各任务的门店子集执行。成本：受限门店管理员即使配置了新权限也不能管理主体模板，须由全域管理者处理；不以分页后过滤制造总数泄漏。新模板/修改/发布仍逐项验证真实门店/商品/类目归属。
+
+内部分开管理协议与冻结的getPublishedVersion/validateReference SPI；CatalogPort本地与远程在bootstrap互斥装配，pay域不感知部署模式。独立pay提供payTxManager以保证目录写入真实参与其数据源事务。测试包含P01–P06真实HTTP写后读/越权/字段校验、共享客户端打真实pay-svc、失联分类和装配互斥；批次后集中运行。

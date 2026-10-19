@@ -16,6 +16,16 @@ public final class PayInternalPaths {
     public static final String SETTLE_INVOICE_ISSUE = "/internal/pay/settle-invoices/{invoiceNo}/issue";
     public static final String SETTLE_INVOICE_REJECT = "/internal/pay/settle-invoices/{invoiceNo}/reject";
 
+    public static final String ENT_LIST = "/internal/pay/entitlement/management/list";
+    public static final String ENT_GET = "/internal/pay/entitlement/management/get";
+    public static final String ENT_CREATE = "/internal/pay/entitlement/management/create";
+    public static final String ENT_DRAFT = "/internal/pay/entitlement/management/draft";
+    public static final String ENT_PUBLISH = "/internal/pay/entitlement/management/publish";
+    public static final String ENT_STATUS = "/internal/pay/entitlement/management/status";
+    public static final String ENT_POLICY = "/internal/pay/entitlement/management/issue-policy";
+    public static final String ENT_VERSION = "/internal/pay/entitlement/catalog/version";
+    public static final String ENT_REFERENCE = "/internal/pay/entitlement/catalog/validate-reference";
+
     private PayInternalPaths() {
     }
 }

@@ -3,6 +3,19 @@ package ai.neargo.shop.pay.client;
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.pay.dto.FeeRuleVO;
 import ai.neargo.shop.pay.dto.FinanceVOs.SettleInvoiceVO;
+import ai.neargo.shop.pay.entitlement.dto.ManagedTemplateView;
+import ai.neargo.shop.pay.entitlement.dto.CatalogViews.PublishedVersionView;
+import ai.neargo.shop.pay.entitlement.dto.IssuePolicyViews.PolicyView;
+import ai.neargo.shop.spi.entitlement.EntitlementCatalogPort.PublishedDefinition;
+import ai.neargo.shop.pay.client.PayEntitlementRequests.ListTemplates;
+import ai.neargo.shop.pay.client.PayEntitlementRequests.GetTemplate;
+import ai.neargo.shop.pay.client.PayEntitlementRequests.CreateTemplate;
+import ai.neargo.shop.pay.client.PayEntitlementRequests.DraftTemplate;
+import ai.neargo.shop.pay.client.PayEntitlementRequests.PublishTemplate;
+import ai.neargo.shop.pay.client.PayEntitlementRequests.StatusTemplate;
+import ai.neargo.shop.pay.client.PayEntitlementRequests.ConfigureIssue;
+import ai.neargo.shop.pay.client.PayEntitlementRequests.CatalogVersion;
+import ai.neargo.shop.pay.client.PayEntitlementRequests.ValidateCatalogReference;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -53,4 +66,32 @@ public interface PayInternalApi {
 
     record RejectReq(String reason, String operatorNo) {
     }
+    @PostExchange(PayInternalPaths.ENT_LIST)
+    PageData<ManagedTemplateView> entTemplates(@RequestBody ListTemplates request);
+
+    @PostExchange(PayInternalPaths.ENT_GET)
+    ManagedTemplateView entTemplate(@RequestBody GetTemplate request);
+
+    @PostExchange(PayInternalPaths.ENT_CREATE)
+    ManagedTemplateView entCreate(@RequestBody CreateTemplate request);
+
+    @PostExchange(PayInternalPaths.ENT_DRAFT)
+    ManagedTemplateView entDraft(@RequestBody DraftTemplate request);
+
+    @PostExchange(PayInternalPaths.ENT_PUBLISH)
+    PublishedVersionView entPublish(@RequestBody PublishTemplate request);
+
+    @PostExchange(PayInternalPaths.ENT_STATUS)
+    ManagedTemplateView entStatus(@RequestBody StatusTemplate request);
+
+    @PostExchange(PayInternalPaths.ENT_POLICY)
+    PolicyView entIssuePolicy(@RequestBody ConfigureIssue request);
+
+    @PostExchange(PayInternalPaths.ENT_VERSION)
+    PublishedDefinition entVersion(@RequestBody CatalogVersion request);
+
+    @PostExchange(PayInternalPaths.ENT_REFERENCE)
+    PublishedDefinition entReference(@RequestBody ValidateCatalogReference request);
+
+
 }

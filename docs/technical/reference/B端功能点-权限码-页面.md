@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**13 个权限码 × 6 个角色 × 229 个受控功能点**
+统计：**17 个权限码 × 6 个角色 × 238 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -22,8 +22,8 @@
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 44 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 36 | ✅ | ✅ | — | — | — | — |
-| `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
+| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 37 | ✅ | ✅ | — | — | — | — |
+| `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 32 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `biz:store:admin` | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 21 | ✅ | — | — | — | — | — |
@@ -34,6 +34,10 @@
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 3 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
+| `pay:ent:template:write` | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
+| `pay:ent:template:publish` | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
+| `pay:ent:issue:manage` | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
+| `pay:ent:template:read` | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
 > `OWNER` 是 `*`：**不走这张表**。新增权限码时老板自动有，其余角色要显式加。
 
@@ -142,6 +146,7 @@
 | 在平台维度下加一个自有规格值 | POST | `/biz/spec-values` | `mAddSpecValue` | goods-edit、my-specs |
 | 标准品搜索（建品用） | GET | `/biz/spu-std` | `mSpuStdSearch` | goods-edit |
 | 本店货架类目各自能用的规格 | GET | `/biz/store-spec-dims` | `mStoreSpecDims` | my-specs |
+| —（b-app 未接） | — | `/biz/card-product-presets` | — | — |
 
 ### `biz:campaign`　营销活动、开团、报价
 
@@ -182,6 +187,9 @@
 | 报名平台活动（审核前可改） | POST | `/biz/platform-activity/:activityNo/enrollment` | `mEnroll` | platform-activity-apply |
 | 撤回待审的报名 | POST | `/biz/platform-activity/:activityNo/withdraw` | `mWithdrawEnrollment` | platform-activity-apply |
 | —（b-app 未接） | — | `/biz/quote/{}/revise` | — | — |
+| —（b-app 未接） | — | `/biz/activity-presets` | — | — |
+| —（b-app 未接） | — | `/biz/marketing-summary` | — | — |
+| —（b-app 未接） | — | `/biz/activities/{}/publish` | — | — |
 
 ### `biz:customer`　顾客列表（含累计消费额）、经营数据
 
@@ -391,6 +399,32 @@
 | 申诉差评 | POST | `/biz/review/:reviewNo/appeal` | `mAppealReview` | reviews |
 | 回复评价 | POST | `/biz/review/:reviewNo/reply` | `mReplyReview` | reviews |
 
+### `pay:ent:template:write`　编辑权益草稿，不能发布
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/entitlement-templates` | — | — |
+| —（b-app 未接） | — | `/biz/entitlement-templates/{}/draft` | — | — |
+
+### `pay:ent:template:publish`　发布与停发影响全主体，需单独授权
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/entitlement-templates/{}/publish` | — | — |
+| —（b-app 未接） | — | `/biz/entitlement-templates/{}/status` | — | — |
+
+### `pay:ent:issue:manage`　调整发行容量，不直接发放实例
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/entitlement-templates/{}/issue-policy` | — | — |
+
 ## 三、页面 × 门禁　—— 前端裁剪与后端判权对不对得上
 
 **页面的 `denied` 门禁必须 ⊇ 该页所有调用所需的权限码。**
@@ -492,7 +526,16 @@
 
 | 端点 | 权限码 | 可用角色 |
 |---|---|---|
+| `/biz/activities/{}/publish` | `biz:campaign` | 老板、店长 |
+| `/biz/activity-presets` | `biz:campaign` | 老板、店长 |
+| `/biz/card-product-presets` | `biz:goods` | 老板、店长 |
+| `/biz/entitlement-templates` | `pay:ent:template:write` | 老板 |
+| `/biz/entitlement-templates/{}/draft` | `pay:ent:template:write` | 老板 |
+| `/biz/entitlement-templates/{}/issue-policy` | `pay:ent:issue:manage` | 老板 |
+| `/biz/entitlement-templates/{}/publish` | `pay:ent:template:publish` | 老板 |
+| `/biz/entitlement-templates/{}/status` | `pay:ent:template:publish` | 老板 |
 | `/biz/inventory/export` | `biz:customer` | 老板、店长 |
+| `/biz/marketing-summary` | `biz:campaign` | 老板、店长 |
 | `/biz/quote/{}/revise` | `biz:campaign` | 老板、店长 |
 | `/biz/settle/bills/{}` | `biz:finance` | 老板 |
 
