@@ -20,6 +20,7 @@ public class PayEntitlementProperties {
         private final Toggle catalog = new Toggle();
         private final Toggle issue = new Toggle();
         private final Toggle use = new Toggle();
+        private final Toggle code = new Toggle();
     }
 
     /** Missing configuration must never open a newly introduced financial or rights workflow. */

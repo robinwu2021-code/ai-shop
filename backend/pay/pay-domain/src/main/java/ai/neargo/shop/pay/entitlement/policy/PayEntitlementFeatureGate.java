@@ -30,6 +30,11 @@ public class PayEntitlementFeatureGate {
         require(properties.getEntitlement().getUse().isEnabled());
     }
 
+    /** Optional exchange-code compatibility never enables account-wide or stored-value credentials. */
+    public void requireCode() {
+        requireUse(); require(properties.getEntitlement().getCode().isEnabled());
+    }
+
     /** Stored value has its own account/posting owner; its use entry must also requireUse. */
     public void requireStoredValue() {
         require(properties.getStoredValue().isEnabled());

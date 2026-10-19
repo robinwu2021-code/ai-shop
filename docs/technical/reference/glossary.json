@@ -26594,6 +26594,13 @@
       "package": "ai.neargo.shop.content.entity"
     },
     {
+      "table": "ent_code_token",
+      "class": "EntCodeToken",
+      "zh": "No raw credential or reversible ciphertext is persisted.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
       "table": "ent_grant",
       "class": "EntGrant",
       "zh": "Immutable source identity and owner-side balances are kept in the pay transaction.",

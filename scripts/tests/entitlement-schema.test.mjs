@@ -31,6 +31,15 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         assert.ok(sql("SHOW COLUMNS FROM ent_template LIKE 'draft_snapshot'"), 'template draft needs persisted editable rules');
         sql(readFileSync(new URL('../../docs/technical/design/活动权益-support-schema.sql', import.meta.url), 'utf8'));
         assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '48');
+        const credentialAudit = "created_at,updated_at,created_by,updated_by";
+        sql(`INSERT INTO ent_code_token(tenant_no,token_hash,instance_no,user_no,entity_no,request_key_hash,`
+            + `payload_hash,nonce,expires_at,status,${credentialAudit}) VALUES ('MAIN','${'a'.repeat(64)}',`
+            + `'code-instance','code-user','code-entity','${'b'.repeat(64)}','${'c'.repeat(64)}','${'d'.repeat(32)}',`
+            + `UTC_TIMESTAMP(3)+INTERVAL 60 SECOND,'ACTIVE',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'TEST','TEST')`);
+        assert.throws(() => sql("UPDATE ent_code_token SET status='USED' WHERE instance_no='code-instance'"));
+        sql("UPDATE ent_code_token SET status='USED',consumed_operation_no='code-op',consumed_store_no='code-store',"
+            + "consumed_actor_no='code-actor',consumed_at=UTC_TIMESTAMP(3) WHERE instance_no='code-instance'");
+        assert.throws(() => sql("UPDATE ent_code_token SET status='ACTIVE' WHERE instance_no='code-instance'"));
         const supportAudit = "created_at,updated_at,created_by,updated_by";
         const supportValues = "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'TEST','TEST'";
         const decision = (no, key, settled, status, type, revision = 1, tenant = 'MAIN') =>

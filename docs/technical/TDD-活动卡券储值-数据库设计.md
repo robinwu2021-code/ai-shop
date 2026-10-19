@@ -505,11 +505,18 @@ CARD商品SKU引用支付权益版本，不重复保存余次规则。
 | token_hash | CHAR(64) NOT NULL | 高熵token摘要 |
 | instance_no | VARCHAR(64) NOT NULL | 仅对应指定用户券 |
 | user_no | VARCHAR(64) NOT NULL | 持有人 |
-| expires_at | DATETIME(3) NOT NULL | 有效期 |
+| entity_no | VARCHAR(64) NOT NULL | 所属实例的主体 |
+| request_key_hash | CHAR(64) NOT NULL | 本人签发幂等键摘要 |
+| payload_hash | CHAR(64) NOT NULL | 本人/实例/用途绑定摘要 |
+| nonce | CHAR(32) NOT NULL | HMAC重放用随机nonce，不是明码 |
+| expires_at | DATETIME(3) NOT NULL | 最长60秒且不晚于实例有效期 |
 | status | VARCHAR(16) NOT NULL | ACTIVE/USED/REVOKED |
-| consumed_operation_no | VARCHAR(64) NULL | 被哪次意图消费 |
+| consumed_operation_no | VARCHAR(64) NULL | 绑定的原操作 |
+| consumed_store_no | VARCHAR(64) NULL | 原解析门店 |
+| consumed_actor_no | VARCHAR(64) NULL | 原B操作人 |
+| consumed_at | DATETIME(3) NULL | 首次定位UTC时间 |
 
-索引：`UNIQUE KEY uk_token (tenant_no,token_hash)`；`KEY ix_token_instance (tenant_no,instance_no,status)`。
+索引：`UNIQUE KEY uk_token (tenant_no,token_hash)`；`UNIQUE KEY uk_token_request (tenant_no,user_no,request_key_hash)`；`KEY ix_token_instance (tenant_no,instance_no,status)`。USED要求消费操作/门店/人/时间全部非空；ACTIVE/REVOKED要求这些列全部为空。
 ### sv_account
 
 金额储值账户，不持有活动预算。
@@ -1008,3 +1015,10 @@ pay_ent_source_fence以tenant+purpose+source_key及tenant+purpose+operation_no�
 pay仅接受ORDER_COUPON原成功使用；CORE/ORDER_REFUND的sourceNo为权威售后号，sourceLineNo必须是原usageNo，决策同时绑定本人、商家、门店、币种、原订单摘要及本次优惠归属金额。UNKNOWN/PENDING只返回PROCESSING。原使用意图锁串行化所有回补，再锁实例和分配；累计优惠归属不超原discount，只有归属全部返回时才恢复原分配的使用次数。既有“整单退完退券”的经营策略由core/旧券适配保持，不能由pay按现金退款额自行算回券。
 
 反向行、原分配计数、实例、带origin_entry_no的次数账及EntitlementUseReversed事件同pay事务；发生异常整笔回滚。旧效期不延长，EXPIRED/FROZEN保持状态，原消费金额和项目保留。不开新储值或新付费卡线上退款；旧URL及售后自动路由仍由JB-049交付。
+
+
+### JB-023兼容兑换凭证实现（V440）
+
+仅STORE_EXCHANGE类型为可签发模板策略；新代码不扩展所有既有不可变模板定义的字段。`shop.pay.entitlement.code.enabled`默认false，并要求use开关；签发密钥`shop.pay.entitlement.code-key`由`SHOP_PAY_ENTITLEMENT_CODE_KEY`供给，至少32字节，缺失拒绝新签发，不生成随机默认密钥。HMAC-SHA256绑定租户/本人/实例/原幂等键摘要/随机nonce，数据库只存token摘要及nonce，不存明文或可逆密文；重试原幂等键可重建原响应，密钥改变后无法重建旧token时明确拒绝，不另发新码。已持有的原码仍按摘要验证。
+
+本人签发/撤销；解析仅定位一张兑换券并限制主体/适用门店，USED绑定原操作、门店和人；只有完全相同绑定在过期前可重放，换号/换店/换人拒绝。解析/签发不激活、不预占、不扣次数，不可查询该人的其他权益。停止新增签发不使短期已签凭证失效；冻结/到期/耗尽的资产仍不可新解析。原USED凭证不因撤销其他ACTIVE凭证而取消已建立的业务意图，原意图按020协议单独确认/取消。
