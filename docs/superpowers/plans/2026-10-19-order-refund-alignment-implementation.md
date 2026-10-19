@@ -79,12 +79,12 @@ T4/T5 涉及新数据库和 SPI 结构，先完成任务内契约设计子步骤
 
 **Interfaces（新增设计）:** `RefundObligationService.prepare(String executionNo)` 保存政策和义务快照；`recover(String executionNo)` 只驱动未结清步骤；`settled(String executionNo): boolean` 读取可信成功/NOT_REQUIRED 凭据。积分既有确认流程保留，义务层引用其结果，不再创建第二份积分退款。
 
-- [ ] 先冻结 schema/API：按执行号+义务类型+原权益标识唯一；保存输入 hash、协议版本、原影响集、PENDING/PROCESSING/UNKNOWN/SUCCEEDED/NOT_REQUIRED、权威凭据、重试时间和错误。只有具备安全中止凭据才能释放预占。
-- [ ] 写失败用例：现金成功后券调用失败、积分确认超时、重启重放、多店只有一店退款、无应退权益。断言现金只发送一次，未结清售后仍 REFUNDING，NOT_REQUIRED 可正常结束。
-- [ ] 实现现金成功、实退与义务意图在本地事务持久化；外部权益调用在事务外，完成后短事务记凭据并调用 T1 重评。
-- [ ] 库存继续独立恢复；移除依赖“所有子单已经 REFUNDED”才产生券义务的循环，改由券原影响集和批准商品范围计算资格。未达返还条件的单次决定记 NOT_REQUIRED，最后满足条件的决定创建唯一返还义务。
-- [ ] 为新执行持久化结清协议版本；旧成功但资源未完成的执行继续原恢复协议，不因当前开关切换改义。
-- [ ] 验证新增 schema 默认值、唯一约束、恢复扫描索引及 MySQL 迁移；提交：`feat: persist refund obligations and recover closure`。
+- [x] 先冻结 schema/API：按执行号+义务类型+原权益标识唯一；保存输入 hash、协议版本、原影响集、PENDING/PROCESSING/UNKNOWN/SUCCEEDED/NOT_REQUIRED、权威凭据、重试时间和错误。只有具备安全中止凭据才能释放预占。
+- [x] 写失败用例：现金成功后券调用失败、积分确认超时、重启重放、多店只有一店退款、无应退权益。断言现金只发送一次，未结清售后仍 REFUNDING，NOT_REQUIRED 可正常结束。
+- [x] 实现现金成功、实退与义务意图在本地事务持久化；外部权益调用在事务外，完成后短事务记凭据并调用 T1 重评。
+- [x] 库存继续独立恢复；移除依赖“所有子单已经 REFUNDED”才产生券义务的循环，改由券原影响集和批准商品范围计算资格。未达返还条件的单次决定记 NOT_REQUIRED，最后满足条件的决定创建唯一返还义务。
+- [x] 为新执行持久化结清协议版本；旧成功但资源未完成的执行继续原恢复协议，不因当前开关切换改义。
+- [x] 验证新增 schema 默认值、唯一约束、恢复扫描索引及 MySQL 迁移；提交：`feat: persist refund obligations and recover closure`。
 
 ## T3：状态机事件、守卫与零现金统一
 

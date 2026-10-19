@@ -91,7 +91,7 @@ public class RefundResourceServiceImpl implements RefundResourceService {
         }
         List<OrdSubOrder> siblings = DataScopeContext.executeWithoutScope(() -> children.selectList(
                 Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getOrderNo, row.getOrderNo())));
-        if (!siblings.isEmpty() && siblings.stream().allMatch(s -> OrdSubOrder.REFUNDED.equals(s.getStatus())
+        if (!Integer.valueOf(2).equals(row.getClosureVersion()) && !siblings.isEmpty() && siblings.stream().allMatch(s -> OrdSubOrder.REFUNDED.equals(s.getStatus())
                 || OrdSubOrder.CANCELLED.equals(s.getStatus()))) {
             CouponPort coupon = coupons.getIfAvailable();
             PlatformSwitchPort flags = switches.getIfAvailable();

@@ -16,6 +16,9 @@ public final class BasicRefundPolicy {
     private BasicRefundPolicy() { }
 
     public static RefundPlan full(OrdSubOrder sub, List<OrdItem> items) {
+        if (nz(sub.getPointsDeduct()) < 0 || nz(sub.getPointsDeductMinor()) < 0 || nz(sub.getPointsFeeMinor()) < 0) {
+            throw BizException.of(ErrorCode.ORDER_POINTS_MANUAL_REQUIRED);
+        }
         if (sub.getPayAmount() == null || sub.getPayAmount() < 0 || items.isEmpty()
                 || nz(sub.getRefundedMinor()) != 0 || items.stream().anyMatch(i -> nz(i.getRefundedQty()) != 0
                         || nz(i.getRefundedMinor()) != 0)) {

@@ -4944,6 +4944,9 @@ CREATE TABLE IF NOT EXISTS ord_refund_execution
     updated_by VARCHAR(64) NULL,
     version BIGINT NOT NULL DEFAULT 0,
     deleted TINYINT NOT NULL DEFAULT 0,
+    closure_version INT NOT NULL DEFAULT 1,
+    closure_status VARCHAR(16) NOT NULL DEFAULT 'LEGACY',
+    return_coupon BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_refund_execution UNIQUE (execution_no),
     CONSTRAINT uk_ord_refund_after_sale UNIQUE (after_sale_no)
@@ -6170,6 +6173,34 @@ CREATE TABLE IF NOT EXISTS prd_stock_alignment_line
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT uk_stock_alignment_sku UNIQUE (batch_no, sku_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_refund_coupon_scope
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    order_no VARCHAR(64) NOT NULL,
+    coupon_no VARCHAR(64) NULL,
+    payload_json MEDIUMTEXT NOT NULL,
+    input_hash VARCHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_refund_coupon_scope_order UNIQUE (order_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_refund_obligation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    execution_no VARCHAR(64) NOT NULL,
+    kind VARCHAR(24) NOT NULL,
+    source_no VARCHAR(64) NOT NULL,
+    input_hash VARCHAR(64) NOT NULL,
+    payload_json MEDIUMTEXT NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    authority_proof VARCHAR(128) NULL,
+    error_code VARCHAR(128) NULL,
+    next_attempt_at BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_refund_obligation_source UNIQUE (execution_no, kind, source_no)
 );
 
 -- 种子数据

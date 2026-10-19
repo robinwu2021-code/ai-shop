@@ -135,6 +135,7 @@ public class OrderServiceImpl implements OrderService {
     private final ai.neargo.shop.spi.user.MerchantAdminPort merchantAdminPort;
     private final AttributionPort attributionPort;
     private final CouponPort couponPort;
+    private final ai.neargo.shop.trade.order.refund.service.RefundCouponScopeService refundCouponScopes;
     /** 店铺活动的自动优惠（满减）。此前 mkt_campaign 没有任何消费方 */
     private final CampaignPort campaignPort;
     @Autowired
@@ -408,7 +409,9 @@ public class OrderServiceImpl implements OrderService {
                             ai.neargo.shop.spi.user.PersonPort personPort,
                             CloseRuleService closeRuleService,
                             ShipmentTraceQueryPort shipmentTracePort,
-                            OrderNoGenerator orderNoGenerator) {
+                            OrderNoGenerator orderNoGenerator,
+                            ai.neargo.shop.trade.order.refund.service.RefundCouponScopeService refundCouponScopes) {
+        this.refundCouponScopes=refundCouponScopes;
         this.payModeService = payModeService;
         this.appointmentSlotPort = appointmentSlotPort;
         this.reviewQueryPort = reviewQueryPort;
@@ -1889,6 +1892,7 @@ public class OrderServiceImpl implements OrderService {
          * 券的门槛/封顶被改过而对不上。
          */
         couponPort.markUsed(userNo, cmd.couponNo(), orderNo, discounts.coupon());
+        refundCouponScopes.freeze(orderNo,cmd.couponNo(),discounts.coupon());
 
         /*
          * 活动扣限量。**放在这里而不是算价那一步**：算价会被反复调用

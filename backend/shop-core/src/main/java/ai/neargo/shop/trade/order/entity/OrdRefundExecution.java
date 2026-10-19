@@ -42,4 +42,7 @@ public class OrdRefundExecution extends BaseEntity {
     private String resourceStatus;
     private String resourceErrorCode;
     private Long succeededAt;
+    private Integer closureVersion;
+    private String closureStatus;
+    private Boolean returnCoupon;
 }

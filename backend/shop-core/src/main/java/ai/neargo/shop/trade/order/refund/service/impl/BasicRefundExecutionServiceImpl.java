@@ -28,9 +28,12 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
     private final RefundResourceService resources;
     private final SettlePort settle;
     private final ObjectMapper json;
+    private final ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations;
 
     public BasicRefundExecutionServiceImpl(RefundPreparationService preparation, RefundExecutionStore store,
-            RefundResultService results, RefundResourceService resources, SettlePort settle, ObjectMapper json) {
+            RefundResultService results, RefundResourceService resources, SettlePort settle, ObjectMapper json,
+            ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations) {
+        this.obligations=obligations;
         this.preparation = preparation;
         this.store = store;
         this.results = results;
@@ -82,7 +85,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
                 ? settle.queryRefundExecution(request(store.read(result.executionNo()))) : result;
         results.apply(verified);
         if (verified.status() == DispatchStatus.SUCCEEDED) {
-            resources.recover(verified.executionNo());
+            recoverSuccessful(verified.executionNo());
         }
     }
 
@@ -93,7 +96,7 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
             return;
         }
         if (OrdRefundExecution.SUCCEEDED.equals(row.getStatus())) {
-            resources.recover(no);
+            recoverSuccessful(no);
         } else if (OrdRefundExecution.CASH.equals(row.getPhase())) {
             RefundDispatchResult result = settle.queryRefundExecution(request(row));
             if ("REFUND_NOT_PREPARED".equals(result.errorCode())
@@ -105,6 +108,15 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
         } else {
             dispatch(no);
         }
+    }
+
+    private void recoverSuccessful(String no) {
+        var row=store.read(no);
+        if(row!=null && Integer.valueOf(2).equals(row.getClosureVersion())) {
+            obligations.recover(no);
+            results.closePending(no);
+        }
+        resources.recover(no);
     }
 
     @Override

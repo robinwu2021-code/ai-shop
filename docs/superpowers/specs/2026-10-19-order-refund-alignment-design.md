@@ -54,3 +54,13 @@ M2/M3 具备可信快照且通道支持的订单才开放；未知旧数据进�
 必须验证：一期全退限制；现金成功权益失败恢复；重复/迟到/未知回执；商品交付与取消混合闭合；补偿不耗件；全积分连续部分退款；退款与收货/放款并发；券跨店影响集；历史缺快照。
 
 本次文档交付不包含实现、迁移、生产发布或真实资金认证。既有测试记录不能作为未来改动的通过证据。
+
+## 6. M1 冻结的持久协议
+
+- ord_refund_execution 新增 closure_version(默认1)、closure_status(默认 LEGACY)、return_coupon(审批时政策快照)。新开关 shop.refund.closure.enabled 默认 false；只有存在下单冻结券影响集的新订单才能选择版本2。选择结果永久落在执行单。
+- ord_refund_coupon_scope 按 order_no 唯一，保存用户券号与原 allocation 对应的子订单号集合；无券也保存空集合，区别于未知历史。由 trade 在下单事务保存营销分摊返回事实，不读取或重算营销规则。
+- ord_refund_obligation 按 execution_no/kind/source_no 唯一，保存 input_hash、payload_json、state、authority_proof、error_code、next_attempt_at；状态为 PENDING/PROCESSING/UNKNOWN/SUCCEEDED/NOT_REQUIRED。成功与不需要状态不可回退。
+- 普通现金版本2：实退记账与执行 SUCCEEDED 先持久化；同事务建立消费者权益义务。之后事务外恢复券，凭据确认后单独事务结束售后。库存独立，不阻止消费者结清。
+- 多子单券：在支付根锁串行下检查原影响集的退款数量事实，未满足全退的当次决定记 NOT_REQUIRED；最后使影响集全退的决定承担唯一返还义务。判断不依赖订单 REFUNDED，避免循环。支付根锁后只读其他子单事实，不反向加子单锁。
+- 券 release(orderNo) 是同一原订单的幂等恢复；UNKNOWN 只重复原释放操作，不创建新现金退款。旧执行继续资源恢复的原退券协议；版本2资源工人不重复退券。
+- 积分沿用既有 pay 确认与 source binding 凭据，义务层只引用其结果，不重复生成积分退回或扣回。T3 再接统一事件。

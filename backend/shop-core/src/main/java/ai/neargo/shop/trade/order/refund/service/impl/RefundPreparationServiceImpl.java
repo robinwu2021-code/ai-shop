@@ -40,10 +40,17 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
     private final RefundExecutionStore store;
     private final SettlePort settle;
     private final ObjectMapper json;
+    private final ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations;
+    private final ai.neargo.shop.spi.platform.PlatformSwitchPort flags;
+    private final boolean closureEnabled;
 
     public RefundPreparationServiceImpl(AfterSaleMapper afterSales, StatusCasMapper locks, PaymentMapper payments,
             CreateIntentMapper intents, RefundableQuery query, RefundExecutionStore store,
-            SettlePort settle, ObjectMapper json) {
+            SettlePort settle, ObjectMapper json,
+            ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations,
+            ai.neargo.shop.spi.platform.PlatformSwitchPort flags,
+            @org.springframework.beans.factory.annotation.Value("${shop.refund.closure.enabled:false}") boolean closureEnabled) {
+        this.obligations=obligations; this.flags=flags; this.closureEnabled=closureEnabled;
         this.afterSales = afterSales;
         this.locks = locks;
         this.payments = payments;
@@ -107,6 +114,10 @@ public class RefundPreparationServiceImpl implements RefundPreparationService {
     private OrdRefundExecution frozen(OrdAfterSale as, OrdSubOrder child, List<OrdItem> items, RefundPlan plan) {
         OrdRefundExecution row = new OrdRefundExecution();
         row.setExecutionNo("RF-" + as.getAfterSaleNo());
+        boolean versioned=closureEnabled && obligations.hasScope(child.getOrderNo());
+        row.setClosureVersion(versioned?2:1);
+        row.setClosureStatus(versioned?"PENDING":"LEGACY");
+        row.setReturnCoupon(versioned && flags.bool("refund.return-coupon",true));
         row.setAfterSaleNo(as.getAfterSaleNo());
         row.setSubOrderNo(child.getSubOrderNo());
         row.setOrderNo(child.getOrderNo());
