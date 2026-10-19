@@ -53,7 +53,8 @@ class StoredValueCreditNativeMysqlTest {
         assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/sv_credit_native_fixture\\?.*");
         var ds = new DriverManagerDataSource(url, "root", ""); var jdbc = new JdbcTemplate(ds);
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V429__pay_entitlement_event_outbox_inbox.sql"),
-                new ClassPathResource("db/migration/V445__stored_value_credit_ledger.sql")).execute(ds);
+                new ClassPathResource("db/migration/V445__stored_value_credit_ledger.sql"),
+                new ClassPathResource("db/migration/V446__stored_value_total_balance_bound.sql")).execute(ds);
         var config = new MybatisConfiguration(); config.setMapUnderscoreToCamelCase(true);
         var interceptor = new MybatisPlusInterceptor(); interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
         var factory = new MybatisSqlSessionFactoryBean(); factory.setDataSource(ds); factory.setConfiguration(config);
@@ -87,6 +88,8 @@ class StoredValueCreditNativeMysqlTest {
             assertThat(jdbc.queryForObject("SELECT SUM(CASE WHEN side='DEBIT' THEN amount_minor ELSE -amount_minor END) "
                     + "FROM sv_posting_line", Long.class)).isZero();
             assertThatThrownBy(() -> jdbc.update("UPDATE sv_posting_line SET amount_minor=0"))
+                    .isInstanceOf(RuntimeException.class);
+            assertThatThrownBy(() -> jdbc.update("UPDATE sv_account SET principal_minor=9223372036854775807,bonus_minor=1"))
                     .isInstanceOf(RuntimeException.class);
             assertThatThrownBy(() -> jdbc.update("UPDATE sv_account SET principal_minor=-1"))
                     .isInstanceOf(RuntimeException.class);

@@ -560,6 +560,15 @@ def _apply_action(table, action, cols):
         cols.insert(idx, f"    CONSTRAINT {name} UNIQUE ({uk_cols.strip()})")
         return
 
+    # Added financial checks must survive H2 fixture generation as well as CREATE TABLE checks.
+    add_check = re.fullmatch(
+        r"ADD\s+(?:CONSTRAINT\s+(\w+)\s+)?CHECK\s*(\(.*\))", action, re.I | re.S)
+    if add_check:
+        name, expression = add_check.groups()
+        prefix = f"CONSTRAINT {name} " if name else ""
+        cols.append(f"    {prefix}CHECK {expression}")
+        return
+
     if re.match(r"ADD\s+(?:INDEX|KEY)\s+(?:IF\s+NOT\s+EXISTS\s+)?\w*\s*\(", action, re.I):
         # 普通索引：H2 测试库用不上，与 CREATE INDEX 同样跳过
         return

@@ -5864,7 +5864,8 @@ CREATE TABLE IF NOT EXISTS sv_account
     CONSTRAINT uk_sv_account UNIQUE (tenant_no,account_no),
     CONSTRAINT uk_sv_owner UNIQUE (tenant_no,user_no,entity_no,currency),
     CHECK (status IN ('ACTIVE','FROZEN')),
-    CHECK (principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0)
+    CHECK (principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0),
+    CONSTRAINT ck_sv_account_total_balance CHECK (principal_minor <= 9223372036854775807 - bonus_minor)
 );
 
 CREATE TABLE IF NOT EXISTS sv_recharge

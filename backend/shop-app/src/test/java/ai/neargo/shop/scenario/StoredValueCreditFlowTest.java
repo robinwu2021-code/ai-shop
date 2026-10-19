@@ -112,6 +112,14 @@ class StoredValueCreditFlowTest {
         credits.credit(ctx, local); credits.credit(ctx, foreign);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_account WHERE user_no=?", Integer.class, user))
                 .isEqualTo(2);
+        assertThatThrownBy(() -> jdbc.update("UPDATE sv_account SET principal_minor=9223372036854775807,"
+                + "bonus_minor=1 WHERE user_no=? AND currency='CNY'", user)).isInstanceOf(RuntimeException.class);
+        String combined = id();
+        credits.credit(ctx, received(combined, entity, store, Long.MAX_VALUE - 1000, 0));
+        var combinedExtra = received(combined, entity, store, 1, 1000);
+        assertThatThrownBy(() -> credits.credit(ctx, combinedExtra)).isInstanceOf(BizException.class);
+        assertThat(jdbc.queryForObject("SELECT status FROM sv_recharge WHERE recharge_no=?", String.class,
+                combinedExtra.rechargeNo())).isEqualTo("RECEIVED");
         String overflowUser = id();
         var maximum = received(overflowUser, entity, store, Long.MAX_VALUE - 10, 0);
         credits.credit(ctx, maximum);

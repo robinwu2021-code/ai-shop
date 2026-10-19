@@ -405,6 +405,7 @@ CREATE TABLE sv_account (
     UNIQUE KEY uk_sv_account (tenant_no,account_no),
     UNIQUE KEY uk_sv_owner (tenant_no,user_no,entity_no,currency),
     CHECK (status IN ('ACTIVE','FROZEN')),
+    CONSTRAINT ck_sv_account_total_balance CHECK (principal_minor <= 9223372036854775807 - bonus_minor),
     CHECK (principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='金额储值账户，不持有活动预算';
 

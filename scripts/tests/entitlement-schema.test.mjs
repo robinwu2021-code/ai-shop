@@ -79,6 +79,8 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         sql('CREATE DATABASE stored_value_credit_fixture');
         sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
             + 'V445__stored_value_credit_ledger.sql', import.meta.url), 'utf8'), 'stored_value_credit_fixture');
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
+            + 'V446__stored_value_total_balance_bound.sql', import.meta.url), 'utf8'), 'stored_value_credit_fixture');
         for (const table of ['sv_account', 'sv_recharge', 'sv_lot', 'sv_voucher', 'sv_entry', 'sv_posting_line',
             'sv_user_store_index']) {
             const columns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns

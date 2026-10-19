@@ -1090,3 +1090,8 @@ CANCEL_DECIDED→RELEASED。客户端展示WAIT_AUTH、WAIT_SUBMIT、PROCESSING�
 按账户→原充值单固定顺序锁定，账户/批次/凭证/分录/备查借贷/目录投影/到账事件同一pay事务，失败全回滚。
 金额用addExact防溢出；冻结账户仍可记录已欠到账，消费另受冻结约束。原档位未规定资金失效时间，不擅加到期。
 此增量落地后目标逻辑52（core21/pay31，含6支撑），运行表247；完整来源/实收链路仍属后续034。
+
+
+V446补账户总额上限：不仅每池余额各自安全，principal+bonus合计也须能由公开long金额表示。
+新增独立迁移CHECK `principal_minor <= Long.MAX_VALUE - bonus_minor`；V445保持原校验和不变。
+应用在写入批次/凭证之前核对合计，超限整笔回滚，原单保持RECEIVED。该增量不新增表，仍52目标/247运行表。

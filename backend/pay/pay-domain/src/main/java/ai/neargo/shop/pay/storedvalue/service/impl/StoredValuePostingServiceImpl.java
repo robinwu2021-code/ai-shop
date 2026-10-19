@@ -91,6 +91,7 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
         long total = add(principal, bonus);
         long afterPrincipal = add(account.getPrincipalMinor(), principal);
         long afterBonus = add(account.getBonusMinor(), bonus);
+        add(afterPrincipal, afterBonus); // The unified balance is also a signed-long contract.
         long sequence = add(account.getAccountSeq(), 1);
         var lot = new SvLot(); audit(lot, ctx, at);
         lot.setLotNo(no("SL", List.of(ctx.tenantNo(), c.rechargeNo()), json)); lot.setAccountNo(account.getAccountNo());
