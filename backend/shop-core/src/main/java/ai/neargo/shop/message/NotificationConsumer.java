@@ -2,6 +2,7 @@ package ai.neargo.shop.message;
 
 import ai.neargo.shop.common.ExpressCompanies;
 import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.event.outbox.OutboxLease;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.entity.MchNotifyPref;
@@ -102,6 +103,12 @@ public class NotificationConsumer implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "notification"; }
+
+    @Override
+    public boolean externalWorkflow() { return true; }
+
+    @Override
     public boolean supports(String eventType) {
         return NotifyScene.ALL.contains(eventType);
     }
@@ -134,6 +141,7 @@ public class NotificationConsumer implements OutboxConsumer {
                         link, event.getEventNo());
                 // 微信 page 路径不带前导斜杠；站内信 link 带 —— 两端各按各的约定
                 if (routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_WXSUB)) {
+                    OutboxLease.check();
                     wxSender.orderArrived(userNo, count, link.substring(1));
                 }
                 // 到货是 C 端最重要的一条；级别由配置决定（默认 NORMAL，不把买家从睡梦中叫醒）
@@ -177,6 +185,7 @@ public class NotificationConsumer implements OutboxConsumer {
                  * 整条链封在 ShipRecipientNotify 里、自己吞异常，不影响上面已发的站内信与推送。
                  */
                 if (byExpress) {
+                    OutboxLease.check();
                     shipNotify.notify(nz(text(payload, "subOrderNo"), text(payload, "orderNo")));
                 }
                 /*
@@ -185,6 +194,7 @@ public class NotificationConsumer implements OutboxConsumer {
                  * 商家配送的单微信只在「已送达」上报时推，出发那一刻没人告诉买家。
                  */
                 if (!byExpress && routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_WXSUB)) {
+                    OutboxLease.check();
                     wxSender.fielded(userNo, WxSubscribePort.SCENE_DELIVERY_START, Map.of(
                             "orderNo", nz(text(payload, "subOrderNo"), ""),
                             "status", "配送中",
@@ -203,6 +213,7 @@ public class NotificationConsumer implements OutboxConsumer {
                 if (routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_WXSUB)) {
                     long refundMinor = payload.get("refundMinor") == null
                             ? 0L : payload.get("refundMinor").asLong();
+                    OutboxLease.check();
                     wxSender.refunded(userNo, "%.2f元".formatted(refundMinor / 100.0), link.substring(1));
                 }
                 cPush(scene, userNo, "退款已处理", "退款将原路退回，到账时间以支付渠道为准", link);
@@ -223,6 +234,7 @@ public class NotificationConsumer implements OutboxConsumer {
                         link, event.getEventNo());
                 cPush(scene, userNo, "售后未通过", body, link);
                 if (routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_WXSUB)) {
+                    OutboxLease.check();
                     wxSender.fielded(userNo, WxSubscribePort.SCENE_AFTER_SALE_RESULT, Map.of(
                             "orderNo", nz(text(payload, "subOrderNo"), ""),
                             "result", "未通过",
@@ -242,6 +254,7 @@ public class NotificationConsumer implements OutboxConsumer {
                         link, event.getEventNo());
                 cPush(scene, userNo, "请寄回商品", body, link);
                 if (routing.enabled(scene, MsgSceneChannel.AUD_C_USER, MsgSceneChannel.CH_WXSUB)) {
+                    OutboxLease.check();
                     wxSender.fielded(userNo, WxSubscribePort.SCENE_RETURN_WAIT, Map.of(
                             "afterSaleNo", event.getAggregateId(),
                             "status", "待寄回",
@@ -301,8 +314,10 @@ public class NotificationConsumer implements OutboxConsumer {
                     }
                     try {
                         switch (ch) {
-                            case MchNotifyPref.CH_WEBHOOK ->
-                                    weComOrderAlert.paid(entityNo, storeNo, subOrderNo, paid);
+                            case MchNotifyPref.CH_WEBHOOK -> {
+                                OutboxLease.check();
+                                weComOrderAlert.paid(entityNo, storeNo, subOrderNo, paid);
+                            }
                             case MchNotifyPref.CH_SMS ->
                                     smsOrderPaid(entityNo, storeNo, subOrderNo, paid);
                             case MchNotifyPref.CH_MAIL ->
@@ -370,8 +385,10 @@ public class NotificationConsumer implements OutboxConsumer {
             return;
         }
         if (MsgSceneChannel.LEVEL_RING.equals(routing.pushLevel(scene, MsgSceneChannel.AUD_C_USER))) {
+            OutboxLease.check();
             pushSender.ring(MsgMessage.RECEIVER_USER, userNo, title, body, link);
         } else {
+            OutboxLease.check();
             pushSender.notify(MsgMessage.RECEIVER_USER, userNo, title, body, link);
         }
     }
@@ -436,6 +453,7 @@ public class NotificationConsumer implements OutboxConsumer {
             cPush(scene, userNo, msgTitle, body, link);
             if (wx) {
                 // 团里多数人没授权过这条 —— 没额度的静默跳过（WxSubscribeSender 的口径），不是错误
+                OutboxLease.check();
                 wxSender.fielded(userNo, WxSubscribePort.SCENE_GROUP_RESULT, wxValues, link.substring(1));
             }
         }
@@ -504,6 +522,7 @@ public class NotificationConsumer implements OutboxConsumer {
             // 而不是一句泛泛的「点开查看」。另外两条模板没有提示语格，传了也不占位
             String tip = "DELIVERING".equals(status)
                     ? (atLocker ? "已到驿站，取件码见订单" : "派件中，请保持电话畅通") : null;
+            OutboxLease.check();
             wxSender.waybill(userNo, wxScene, new WxSubscribePort.WaybillNotice(buyer.get().orderNo(),
                     carrierName, waybillNo, title, at, tip), link.substring(1));
         }
@@ -544,6 +563,7 @@ public class NotificationConsumer implements OutboxConsumer {
             }
             if (wx) {
                 // 微信 page 不带前导斜杠；站内信 link 带 —— 两端各按各的约定（同到货那条）
+                OutboxLease.check();
                 wxSender.newGoods(userNo, title, text(payload, "goodsDesc"), onSaleAt,
                         link.substring(1));
             }
@@ -632,13 +652,16 @@ public class NotificationConsumer implements OutboxConsumer {
              * 店主的商家账号与 C 端同一个 user_no，小程序 openid 现成；店员多半查不到 openid → 静默跳过、只走 App。
              * 没额度 / 没模板同样静默跳过 —— 那正是「微信优先、没发出去才回落 App」里「没发出去」的那一半。
              */
+            OutboxLease.check();
             boolean wxSent = wx && wxSender.fielded(userNo, wxStaff.scene(), wxStaff.values(), mpBizPage(link));
             if (!push || (wxSent && wxStaff.wxFirst())) {
                 continue;
             }
             if (ring) {
+                OutboxLease.check();
                 pushSender.ring(MsgMessage.RECEIVER_STAFF, userNo, title, body, link);
             } else {
+                OutboxLease.check();
                 pushSender.notify(MsgMessage.RECEIVER_STAFF, userNo, title, body, link);
             }
         }
@@ -675,6 +698,7 @@ public class NotificationConsumer implements OutboxConsumer {
         String yuan = "%.2f".formatted(payAmountMinor / 100.0);
         for (String phone : to) {
             try {
+                OutboxLease.check();
                 smsPort.sendOrderPaid(phone, subOrderNo, yuan);
             } catch (RuntimeException e) {
                 // 一个号发不出去不该拖累其余的 —— 逐个 try，否则第一个号有问题后面都收不到
@@ -699,6 +723,7 @@ public class NotificationConsumer implements OutboxConsumer {
         }
         try {
             String amount = "￥%.2f".formatted(payAmountMinor / 100.0);
+            OutboxLease.check();
             mailPort.send(to, "新订单 " + amount,
                     weComOrderAlert.plainText(entityNo, storeNo, subOrderNo, payAmountMinor));
         } catch (RuntimeException e) {

@@ -3,6 +3,9 @@ package ai.neargo.shop.invbridge.impl;
 import ai.neargo.shop.invbridge.LinkHealthService;
 
 import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.time.Instant;
 import ai.neargo.shop.event.SysOutboxMapper;
 import ai.neargo.shop.inventory.entity.InvOutbox;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboxMapper;
@@ -42,12 +45,30 @@ public class LinkHealthServiceImpl implements LinkHealthService {
         this.invOutbox = invOutbox;
     }
 
+    private UnifiedOutboxFacade unified;
+    @Autowired(required = false)
+    public void setUnified(UnifiedOutboxFacade unified) { this.unified = unified; }
+
+    private ChannelHealth withDelivery(ChannelHealth row, String source) {
+        if (unified == null || !unified.enabled(source)) { return row; }
+        Map<String, Object> delivery = unified.store(source).health(Instant.now());
+        long failed = num(delivery.get("failed")) + num(delivery.get("unrouted"));
+        String verdict = failed > 0 ? Verdict.CONSUMER_FAILING : row.verdict();
+        String error = row.lastError();
+        var recent = unified.store(source).diagnostics(20);
+        for (var r : recent) {
+            if (r.get("last_error_code") != null) { error = str(r.get("last_error_code")); break; }
+        }
+        return new ChannelHealth(row.channel(),row.pending(),row.neverTried(),row.retrying(),row.oldestPendingAt(),
+                row.lastSentAt(),row.maxRetry(),error,verdict,delivery);
+    }
+
     @Override
     public List<ChannelHealth> scan() {
         LocalDateTime stallBefore = LocalDateTime.now().minusMinutes(STALL_MINUTES);
         return List.of(
-                platformToInventory(stallBefore),
-                inventoryToPlatform(stallBefore));
+                withDelivery(platformToInventory(stallBefore), "PLATFORM"),
+                withDelivery(inventoryToPlatform(stallBefore), "INVENTORY"));
     }
 
     private ChannelHealth platformToInventory(LocalDateTime stallBefore) {

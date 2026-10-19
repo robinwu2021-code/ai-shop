@@ -36,6 +36,9 @@ public class WxUploadedConsumer implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "logistics-wx-uploaded"; }
+
+    @Override
     public boolean supports(String eventType) {
         return TYPE.equals(eventType);
     }

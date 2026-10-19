@@ -40,6 +40,9 @@ public class InventoryWritebackConsumer implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "inventory-writeback"; }
+
+    @Override
     public boolean supports(String eventType) {
         return EVENT_TYPE.equals(eventType);
     }

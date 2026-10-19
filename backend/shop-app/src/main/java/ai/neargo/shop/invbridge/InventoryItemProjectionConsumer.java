@@ -51,6 +51,12 @@ public class InventoryItemProjectionConsumer implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "inventory-item-projection"; }
+
+    @Override
+    public String targetSource() { return "INVENTORY"; }
+
+    @Override
     public boolean supports(String eventType) {
         return SKU_UPSERTED.equals(eventType);
     }

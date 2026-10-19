@@ -2,6 +2,7 @@ package ai.neargo.shop.invbridge;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 投影链路健康度（M3）。
@@ -52,7 +53,13 @@ public interface LinkHealthService {
      */
     record ChannelHealth(String channel, long pending, long neverTried, long retrying,
                          LocalDateTime oldestPendingAt, LocalDateTime lastSentAt,
-                         long maxRetry, String lastError, String verdict) {
+                         long maxRetry, String lastError, String verdict, Map<String, Object> delivery) {
+        public ChannelHealth(String channel, long pending, long neverTried, long retrying,
+                             LocalDateTime oldestPendingAt, LocalDateTime lastSentAt,
+                             long maxRetry, String lastError, String verdict) {
+            this(channel, pending, neverTried, retrying, oldestPendingAt, lastSentAt,
+                    maxRetry, lastError, verdict, null);
+        }
     }
 
     final class Channel {

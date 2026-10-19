@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 
 import jakarta.annotation.PreDestroy;
 import java.time.Duration;
@@ -66,6 +67,7 @@ import java.util.concurrent.TimeUnit;
  * 旧的 5 秒轮就回来了 —— 留它是为了不用紧急发版。
  */
 @Component
+@ConditionalOnExpression("!${shop.outbox.maintenance:false} && '${shop.outbox.sources.platform.mode:legacy}' == 'legacy'")
 public class OutboxPump {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxPump.class);

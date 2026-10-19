@@ -41,6 +41,9 @@ public class FissionOutboxConsumer implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "fission-attribution"; }
+
+    @Override
     public boolean supports(String eventType) {
         return HANDLED.contains(eventType);
     }
@@ -53,12 +56,6 @@ public class FissionOutboxConsumer implements OutboxConsumer {
         if (userNo == null || userNo.isNull() || orderNo == null || orderNo.isNull()) {
             return;
         }
-        try {
-            inviteService.onFirstOrder(userNo.asString(), orderNo.asString());
-        } catch (RuntimeException e) {
-            // 统计口径失败不该让 outbox 反复重投一条永远处理不了的事件
-            log.warn("[裂变] 首单回填失败 user={} order={}：{}",
-                    userNo.asString(), orderNo.asString(), e.toString());
-        }
+        inviteService.onFirstOrder(userNo.asString(), orderNo.asString());
     }
 }

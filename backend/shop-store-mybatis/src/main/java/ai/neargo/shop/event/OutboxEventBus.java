@@ -1,6 +1,8 @@
 package ai.neargo.shop.event;
 
 import ai.neargo.shop.common.BizKey;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import org.springframework.beans.factory.annotation.Autowired;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
@@ -46,7 +48,17 @@ public class OutboxEventBus {
         this.pumpProvider = pumpProvider;
     }
 
+    private UnifiedOutboxFacade unified;
+
+    @Autowired(required = false)
+    public void setUnified(UnifiedOutboxFacade unified) { this.unified = unified; }
+
     public void publish(DomainEvent event) {
+        if (unified != null && unified.isMaintenance()) { throw new IllegalStateException("Outbox maintenance"); }
+        if (unified != null && unified.enabled("PLATFORM")) {
+            unified.publish("PLATFORM", event);
+            return;
+        }
         SysOutbox row = new SysOutbox();
         row.setEventNo(BizKey.next(BizKey.EVENT));
         row.setAggregateType(event.aggregateType());

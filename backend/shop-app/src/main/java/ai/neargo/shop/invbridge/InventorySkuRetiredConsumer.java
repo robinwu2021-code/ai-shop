@@ -48,6 +48,12 @@ public class InventorySkuRetiredConsumer implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "inventory-sku-retired"; }
+
+    @Override
+    public String targetSource() { return "INVENTORY"; }
+
+    @Override
     public boolean supports(String eventType) {
         return SKU_RETIRED.equals(eventType);
     }

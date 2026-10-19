@@ -2,6 +2,7 @@ package ai.neargo.shop.paybridge;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.spi.logistics.LogisticsPort;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
@@ -44,21 +45,32 @@ public class WxConfirmOnSignedConsumer implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "wx-confirm-signed"; }
+
+    @Override
+    public boolean externalWorkflow() { return true; }
+
+    @Override
     public boolean supports(String eventType) {
         return TYPE.equals(eventType);
     }
 
     @Override
-    public void consume(SysOutbox event) {
+    public void consume(SysOutbox event) { process(event, false); }
+
+    @Override
+    public DeliveryResult deliver(SysOutbox event) { return process(event, true); }
+
+    private DeliveryResult process(SysOutbox event, boolean unified) {
         JsonNode p = json.readTree(event.getPayload());
         if (!"WX".equals(p.path("profile").asString(""))) {
-            return;   // 非微信支付单：微信没有这笔交易，提醒不了；靠签收后 7 天自动确认
+            return DeliveryResult.sent();   // 非微信支付单：微信没有这笔交易，提醒不了；靠签收后 7 天自动确认
         }
         String subOrderNo = p.path("bizRef").asString("");
         OrdSubOrder sub = DataScopeContext.executeWithoutScope(() -> subOrders.selectOne(
                 Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1")));
         if (sub == null || sub.getOrderNo() == null) {
-            return;
+            return DeliveryResult.sent();
         }
         List<OrdSubOrder> express = DataScopeContext.executeWithoutScope(() -> subOrders.selectList(
                 Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getOrderNo, sub.getOrderNo())
@@ -67,8 +79,11 @@ public class WxConfirmOnSignedConsumer implements OutboxConsumer {
         boolean waiting = express.stream()
                 .anyMatch(s -> OPEN.contains(s.getStatus()) && !signed.containsKey(s.getSubOrderNo()));
         if (waiting || signed.isEmpty()) {
-            return;   // 还有包裹在路上：等最后一张签收的那条事件
+            return DeliveryResult.sent();   // 还有包裹在路上：等最后一张签收的那条事件
         }
-        confirm.notifyOne(sub.getOrderNo(), signed.values().stream().mapToLong(Long::longValue).max().orElseThrow());
+        long latest = signed.values().stream().mapToLong(Long::longValue).max().orElseThrow();
+        if (unified) { return confirm.deliverOne(sub.getOrderNo(), latest); }
+        confirm.notifyOne(sub.getOrderNo(), latest);
+        return DeliveryResult.sent();
     }
 }

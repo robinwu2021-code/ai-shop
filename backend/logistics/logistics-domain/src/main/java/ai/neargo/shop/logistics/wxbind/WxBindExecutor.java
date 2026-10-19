@@ -1,6 +1,9 @@
 package ai.neargo.shop.logistics.wxbind;
 
 import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.event.outbox.DeliveryResult;
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.RetryableOutboxException;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.logistics.capability.ChannelOutcome;
 import ai.neargo.shop.logistics.capability.WaybillTokenBinder;
@@ -46,8 +49,31 @@ public class WxBindExecutor implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "logistics-wx-bind"; }
+
+    @Override
+    public boolean externalWorkflow() { return true; }
+
+    @Override
     public boolean supports(String eventType) {
         return WxBindRequested.TYPE.equals(eventType);
+    }
+
+    @Override
+    public DeliveryResult deliver(SysOutbox event) {
+        String shipmentNo = json.readTree(event.getPayload()).path("shipmentNo").asString("");
+        LgsWaybill before = waybills.selectOne(Wrappers.<LgsWaybill>query().eq("shipment_no", shipmentNo).last("limit 1"));
+        if (WxBindPolicy.ready(before, props.getWxBind().onShip())
+                && binders.stream().noneMatch(b -> b.available() && props.enabled(b.channel()))) {
+            return DeliveryResult.failed("NOT_CONFIGURED", "No token binding channel available");
+        }
+        consume(event);
+        LgsWaybill w = waybills.selectOne(Wrappers.<LgsWaybill>query().eq("shipment_no", shipmentNo).last("limit 1"));
+        if (w != null && LgsWaybill.BIND_FATAL.equals(w.getBindState())) {
+            return DeliveryResult.failed("BIND_FAILED", "See logistics action state");
+        }
+        return WxBindPolicy.ready(w, props.getWxBind().onShip())
+                ? DeliveryResult.retry("NOT_READY", "Token not available yet") : DeliveryResult.sent();
     }
 
     @Override
@@ -63,6 +89,7 @@ public class WxBindExecutor implements OutboxConsumer {
             log.warn("[lgs-wxbind] {} 没有可用的换 token 渠道（微信 appid / secret 没配？）", shipmentNo);
             return;
         }
+        OutboxLease.check();
         ChannelOutcome r = binder.bind(new WaybillTokenBinder.BindCmd(
                 w.getWxOpenid(), w.getWxTransId(), w.getWaybillNo(),
                 codes.codeOf(w.getCarrier(), binder.channel()).orElse(null),
@@ -86,7 +113,7 @@ public class WxBindExecutor implements OutboxConsumer {
                 waybills.updateById(p);
                 log.error("[lgs-wxbind] {} 换 token 判死：{} {}", shipmentNo, r.code(), r.message());
             }
-            case RETRYABLE -> throw new IllegalStateException("换 token 可重试失败，交 outbox 退避：" + r.code());
+            case RETRYABLE -> throw new RetryableOutboxException("Token binding rejected; retryable");
             default -> throw new IllegalStateException("unreachable");
         }
     }

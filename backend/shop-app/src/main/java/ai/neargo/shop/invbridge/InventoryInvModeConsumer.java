@@ -40,6 +40,12 @@ public class InventoryInvModeConsumer implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "inventory-mode"; }
+
+    @Override
+    public String targetSource() { return "INVENTORY"; }
+
+    @Override
     public boolean supports(String eventType) {
         return SKU_INV_MODE_CHANGED.equals(eventType);
     }

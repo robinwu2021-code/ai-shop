@@ -62,6 +62,12 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "inventory-mirror"; }
+
+    @Override
+    public String targetSource() { return "INVENTORY"; }
+
+    @Override
     public boolean supports(String eventType) {
         return eventType != null && eventType.startsWith(InvMirrorEvent.PREFIX);
     }
@@ -138,11 +144,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
      * 而队列里那条红会盖住真正需要人看的那些。
      */
     private void settled(String ref, Runnable action) {
-        try {
-            action.run();
-        } catch (RuntimeException e) {
-            log.debug("镜像 {} 找不到对应预留，按已处理跳过", ref, e);
-        }
+        action.run();
     }
 
     private List<ReservationService.Line> lines(JsonNode p) {

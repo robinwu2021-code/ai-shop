@@ -209,6 +209,13 @@ export interface InvLinkHealth {
   /** 最近一条错误摘要，只在 retrying > 0 时有意义 */
   lastError: string | null;
   verdict: InvLinkVerdict;
+  /** Unified source progress; legacy mode returns null. */
+  delivery?: {
+    due: number; processing: number; retrying: number; failed: number;
+    unknown: number; blocked: number; unadopted: number; unrouted: number;
+    oldestDueAt: string | null; lastSuccessAt: string | null;
+    recentDeliveries: Record<string, unknown>[];
+  } | null;
 }
 
 /** 平台 → 进销存（建品投影、上架变更）· 进销存 → 平台（库存镜像回写） */

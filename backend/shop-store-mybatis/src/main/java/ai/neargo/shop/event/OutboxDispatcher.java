@@ -1,6 +1,8 @@
 package ai.neargo.shop.event;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -59,6 +61,10 @@ public class OutboxDispatcher {
         this.consumers = consumers;
     }
 
+    private UnifiedOutboxFacade unified;
+    @Autowired(required = false)
+    public void setUnified(UnifiedOutboxFacade unified) { this.unified = unified; }
+
     /**
      * 投递待发送事件。由定时任务调用；测试直接调它，不必等调度。
      *
@@ -66,9 +72,12 @@ public class OutboxDispatcher {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int dispatchPending() {
+        if (unified != null && unified.isMaintenance()) { return 0; }
+        if (unified != null && unified.enabled("PLATFORM")) { unified.signal("PLATFORM"); return 0; }
         LocalDateTime now = LocalDateTime.now();
         List<SysOutbox> pending = mapper.selectList(Wrappers.<SysOutbox>lambdaQuery()
                 .eq(SysOutbox::getStatus, SysOutbox.PENDING)
+                .isNull(SysOutbox::getSourceSystem)
                 // 还在退避里的不取。**只写 next_retry_at 不读它，退避就是假的** ——
                 // 投递任务 5 秒一轮，照样一轮不落地重试
                 .and(w -> w.isNull(SysOutbox::getNextRetryAt).or().le(SysOutbox::getNextRetryAt, now))
@@ -153,8 +162,11 @@ public class OutboxDispatcher {
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Outcome dispatchOne(long id) {
+        if (unified != null && (unified.isMaintenance() || unified.enabled("PLATFORM"))) {
+            return new Outcome(false, null);
+        }
         SysOutbox event = mapper.selectById(id);
-        if (event == null || !SysOutbox.PENDING.equals(event.getStatus())) {
+        if (event == null || event.getRoutingMode() != null || !SysOutbox.PENDING.equals(event.getStatus())) {
             return new Outcome(false, null);
         }
         try {
@@ -184,6 +196,7 @@ public class OutboxDispatcher {
         return mapper.selectList(Wrappers.<SysOutbox>lambdaQuery()
                         .select(SysOutbox::getId, SysOutbox::getAggregateId)
                         .eq(SysOutbox::getStatus, SysOutbox.PENDING)
+                .isNull(SysOutbox::getSourceSystem)
                         .orderByAsc(SysOutbox::getId)).stream()
                 .map(e -> new Pending(e.getId(), e.getAggregateId())).toList();
     }
@@ -194,7 +207,8 @@ public class OutboxDispatcher {
     /** 待投递条数。运维看板与测试用。 */
     public long pendingCount() {
         return mapper.selectCount(Wrappers.<SysOutbox>lambdaQuery()
-                .eq(SysOutbox::getStatus, SysOutbox.PENDING));
+                .eq(SysOutbox::getStatus, SysOutbox.PENDING)
+                .isNull(SysOutbox::getSourceSystem));
     }
 
     /**

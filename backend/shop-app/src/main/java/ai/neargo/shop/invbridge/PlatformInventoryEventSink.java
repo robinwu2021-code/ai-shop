@@ -1,6 +1,9 @@
 package ai.neargo.shop.invbridge;
 
 import ai.neargo.shop.event.DomainEvent;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.time.Instant;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.inventory.service.InventoryEventSink;
 import org.slf4j.Logger;
@@ -50,8 +53,22 @@ public class PlatformInventoryEventSink implements InventoryEventSink {
      * 在这里等真正的下游确认，等于把两条链的事务绑在一起 ——
      * 而下游是谁、有没有人，本来就不该由进销存关心。
      */
+    private UnifiedOutboxFacade unified;
+
+    @Autowired(required = false)
+    public void setUnified(UnifiedOutboxFacade unified) { this.unified = unified; }
+
     @Override
     public boolean deliver(String eventNo, String ownerId, String eventType, String payload) {
+        return deliver(eventNo, ownerId, eventType, payload, Instant.EPOCH);
+    }
+
+    @Override
+    public boolean deliver(String eventNo, String ownerId, String eventType, String payload, Instant occurredAt) {
+        if (unified != null && unified.enabled("PLATFORM")) {
+            unified.acceptInventory(eventNo, ownerId, eventType, payload, occurredAt);
+            return true;
+        }
         try {
             bus.publish(new InventoryDomainEvent(ownerId, eventType, payload));
             return true;

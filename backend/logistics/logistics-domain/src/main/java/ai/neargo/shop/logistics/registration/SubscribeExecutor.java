@@ -1,6 +1,9 @@
 package ai.neargo.shop.logistics.registration;
 
 import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.event.outbox.DeliveryResult;
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.RetryableOutboxException;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.logistics.capability.ChannelOutcome;
 import ai.neargo.shop.logistics.capability.TrackingSubscriber;
@@ -64,8 +67,28 @@ public class SubscribeExecutor implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "logistics-subscribe"; }
+
+    @Override
+    public boolean externalWorkflow() { return true; }
+
+    @Override
     public boolean supports(String eventType) {
         return WaybillRegistered.TYPE.equals(eventType);
+    }
+
+    @Override
+    public DeliveryResult deliver(SysOutbox event) {
+        if (!props.isSubscribeEnabled()) { return DeliveryResult.failed("DISABLED", "Logistics subscription disabled"); }
+        consume(event);
+        String shipmentNo = json.readTree(event.getPayload()).path("shipmentNo").asString("");
+        LgsWaybill w = waybills.selectOne(Wrappers.<LgsWaybill>query().eq("shipment_no", shipmentNo).last("limit 1"));
+        if (w == null) { return DeliveryResult.retry("NOT_READY", "Waybill not registered"); }
+        if (LgsWaybill.SUB_FATAL.equals(w.getSubState())) {
+            return DeliveryResult.failed("SUBSCRIPTION_FAILED", "See logistics action state");
+        }
+        return LgsWaybill.SUB_PENDING.equals(w.getSubState())
+                ? DeliveryResult.retry("NOT_READY", "Subscription pending") : DeliveryResult.sent();
     }
 
     @Override
@@ -163,6 +186,7 @@ public class SubscribeExecutor implements OutboxConsumer {
             }
             String code = router.codeOf(w.getCarrier(), ch).orElse(null);
             String callback = props.getCallbackBase() + "/" + ch.channel();
+            OutboxLease.check();
             ChannelOutcome r = ch.subscribe(new TrackingSubscriber.SubscribeCmd(
                     w.getCarrier(), code, w.getWaybillNo(), phone, callback));
             attempts++;
@@ -185,7 +209,7 @@ public class SubscribeExecutor implements OutboxConsumer {
                 case RETRYABLE -> {
                     p.setSubError(err(ch, r));
                     waybills.updateById(p);
-                    throw new IllegalStateException("订阅可重试失败，交 outbox 退避重投：" + err(ch, r));
+                    throw new RetryableOutboxException("Subscription rejected; retryable");
                 }
                 case FATAL -> {
                     lastError = err(ch, r);

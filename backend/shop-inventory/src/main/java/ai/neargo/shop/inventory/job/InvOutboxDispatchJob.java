@@ -5,6 +5,10 @@ import ai.neargo.shop.inventory.entity.InvOutbox;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboxMapper;
 import ai.neargo.shop.inventory.service.InventoryEventSink;
 import ai.neargo.shop.job.JobSupport;
+import ai.neargo.shop.event.outbox.RetryPolicy;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import org.springframework.beans.factory.annotation.Autowired;
+import java.time.ZoneId;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
@@ -32,7 +36,7 @@ public class InvOutboxDispatchJob {
 
     private static final int BATCH = 100;
     /** 退避到多少次就不再自动重试 —— 再往后是人的事，让它在积压里显出来。 */
-    private static final int MAX_RETRY = 8;
+    private static final int MAX_RETRY = RetryPolicy.defaults().maxAttempts();
 
     private final OutboxMapper outboxMapper;
     private final List<InventoryEventSink> sinks;
@@ -59,11 +63,23 @@ public class InvOutboxDispatchJob {
      * 于是它一次都没跑过，212 条事件从 08-27 堆到 08-30，`retry_count` 全是 0
      *（连投都没投过）。两条路径都收在这一个方法上，别再各写一遍。
      */
+    private UnifiedOutboxFacade unified;
+
+    @Autowired(required = false)
+    public void setUnified(UnifiedOutboxFacade unified) { this.unified = unified; }
+
     public String dispatchOnce() {
+        if (unified != null && unified.isMaintenance()) { return "paused=maintenance"; }
+        if (unified != null && unified.enabled("INVENTORY")) {
+            unified.signal("INVENTORY");
+            return "delegated=unified";
+        }
         {
             List<InvOutbox> pending = outboxMapper.selectList(Wrappers.<InvOutbox>lambdaQuery()
                     .eq(InvOutbox::getStatus, "PENDING")
+                    .isNull(InvOutbox::getSourceSystem)
                     .lt(InvOutbox::getRetryCount, MAX_RETRY)
+                    .and(w -> w.isNull(InvOutbox::getNextRetryAt).or().le(InvOutbox::getNextRetryAt, LocalDateTime.now()))
                     .orderByAsc(InvOutbox::getId)
                     .last("LIMIT " + BATCH));
             if (pending.isEmpty()) {
@@ -80,10 +96,10 @@ public class InvOutboxDispatchJob {
                 for (InventoryEventSink sink : sinks) {
                     try {
                         delivered &= sink.deliver(e.getEventNo(), e.getOwnerId(),
-                                e.getEventType(), e.getPayload());
+                                e.getEventType(), e.getPayload(), e.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant());
                     } catch (RuntimeException ex) {
                         delivered = false;
-                        e.setLastError(ex.getClass().getSimpleName() + ": " + ex.getMessage());
+                        e.setLastError(ex.getClass().getSimpleName());
                     }
                 }
                 if (delivered) {
@@ -92,8 +108,10 @@ public class InvOutboxDispatchJob {
                     ok++;
                 } else {
                     e.setRetryCount(e.getRetryCount() + 1);
-                    // 线性退避就够：这不是外部通道，多半是下游短暂不可用
-                    e.setNextRetryAt(LocalDateTime.now().plusSeconds(10L * e.getRetryCount()));
+                    var delay = RetryPolicy.defaults().retryDelay(e.getRetryCount());
+                    if (delay.isEmpty()) { e.setStatus("FAILED"); }
+                    else { e.setNextRetryAt(LocalDateTime.now().plus(delay.get())); }
+                    if (e.getLastError() == null) { e.setLastError("SINK_NOT_ACCEPTED"); }
                 }
                 outboxMapper.updateById(e);
             }

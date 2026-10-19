@@ -58,4 +58,30 @@ class OutboxStoreFlowTest extends OutboxTestFixture {
         assertThatThrownBy(() -> store.accept(event("E1","{\"a\":9}"),Map.of("a",false)))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("SOURCE_EVENT_CONFLICT");
     }
+
+    @Test
+    void unknownExpiredExternalAttemptIsNotAutomaticallyRepeated() {
+        tx.executeWithoutResult(s -> store.append(event("E1","{}"),Map.of("external",true),false));
+        var ref=store.findDue(now,1).getFirst();
+        store.tryClaim(ref,"lost",now,Duration.ofSeconds(1)).orElseThrow();
+        store.recoverExpired(now.plusSeconds(2),100);
+        assertThat(store.findDue(now.plusSeconds(2),100)).isEmpty();
+        var row=jdbc.queryForMap("SELECT status,last_error_code FROM sys_outbox_delivery WHERE id=?",ref.id());
+        assertThat(row.get("status")).isEqualTo("FAILED");
+        assertThat(row.get("last_error_code")).isEqualTo("OUTCOME_UNKNOWN");
+    }
+    @Test
+    void failedDeliveryStopsAfterTenAttempts() {
+        tx.executeWithoutResult(s -> store.append(event("E1","{}"),Map.of("a",false),false));
+        for (int i=0;i<10;i++) {
+            var time=now.plusSeconds(86400L*i);
+            var ref=store.findDue(time,1).getFirst();
+            var claim=store.tryClaim(ref,"attempt-"+i,time,Duration.ofSeconds(120)).orElseThrow();
+            store.complete(claim,DeliveryResult.retry("TEMP","retry"),time,RetryPolicy.defaults());
+        }
+        assertThat(store.findDue(now.plusSeconds(864000),100)).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_no='E1'",String.class))
+                .isEqualTo("FAILED");
+        assertThat(jdbc.queryForObject("SELECT attempt_count FROM sys_outbox_delivery",Integer.class)).isEqualTo(10);
+    }
 }

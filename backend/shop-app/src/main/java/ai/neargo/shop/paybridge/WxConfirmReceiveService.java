@@ -4,6 +4,8 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.fulfillment.service.LogisticsService;
 import ai.neargo.shop.fulfillment.service.LogisticsService.SignedShipment;
 import ai.neargo.shop.spi.trade.WxShippingPort;
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.TrdShippingUpload;
 import ai.neargo.shop.trade.mapper.TradeMappers;
@@ -95,39 +97,45 @@ public class WxConfirmReceiveService {
 
     /** @return 真的调了微信并成功才 true。包内可见：签收事件那一路（{@link WxConfirmOnSignedConsumer}）也走这里 */
     boolean notifyOne(String orderNo, long signedAtMillis) {
+        return notifyAttempt(orderNo, signedAtMillis, true).notified();
+    }
+
+    /** Unified delivery exposes rejection separately from a successful notification. */
+    DeliveryResult deliverOne(String orderNo, long signedAtMillis) {
+        return notifyAttempt(orderNo, signedAtMillis, false).result();
+    }
+
+    private record Attempt(boolean notified, DeliveryResult result) { }
+
+    private Attempt notifyAttempt(String orderNo, long signedAtMillis, boolean legacy) {
         TrdShippingUpload row = DataScopeContext.executeWithoutScope(() -> uploadMapper.selectOne(
-                Wrappers.<TrdShippingUpload>lambdaQuery()
-                        .eq(TrdShippingUpload::getOrderNo, orderNo).last("limit 1")));
-        if (row == null || row.getConfirmNotifiedAt() != null) {
-            return false;   // 没进过上报台账（非微信支付单），或已经提醒过
+                Wrappers.<TrdShippingUpload>lambdaQuery().eq(TrdShippingUpload::getOrderNo, orderNo).last("limit 1")));
+        if (row == null) {
+            return new Attempt(false, DeliveryResult.retry("NOT_READY", "Shipping upload not registered"));
         }
+        if (row.getConfirmNotifiedAt() != null) { return new Attempt(false, DeliveryResult.sent()); }
         if (!TrdShippingUpload.SUCCESS.equals(row.getStatus())) {
-            return false;   // 发货都没报上去，谈不上提醒收货
+            return new Attempt(false, DeliveryResult.retry("NOT_READY", "Shipping upload incomplete"));
         }
         if (row.getLogisticsType() == null || row.getLogisticsType() != LOGISTICS_EXPRESS) {
-            return false;   // 微信只对物流快递允许提醒
+            return new Attempt(false, DeliveryResult.sent());
         }
-        /*
-         * **毫秒 → 秒**。微信的 received_time 是秒级；传毫秒会被当成一个遥远未来的时间，
-         * 而「晚于发货时间」那条校验反而会过 —— 错得静悄悄，买家收到的提醒上写着 55000 年。
-         */
+        OutboxLease.check();
         var result = shipping.notifyConfirmReceive(
                 new WxShippingPort.ConfirmCmd(row.getOutTradeNo(), signedAtMillis / 1000L));
         if (!result.success()) {
-            /*
-             * **失败也标记**，否则下一轮又来一次 —— 而微信「每单一次」的那一次可能已经耗掉了。
-             * 可重试的错（取 token 失败、网络）不标记：那类错下一轮会好。
-             */
             if (result.retryable()) {
-                log.warn("[wxconfirm] 提醒失败可重试 orderNo={} code={} msg={}",
-                        orderNo, result.code(), result.message());
-                return false;
+                if (!legacy && result.code() != 40001 && result.code() != 40014 && result.code() != 42001
+                        && result.code() != 45009) {
+                    return new Attempt(false, DeliveryResult.unknown(Integer.toString(result.code())));
+                }
+                return new Attempt(false, DeliveryResult.retry("CHANNEL_RETRYABLE", Integer.toString(result.code())));
             }
-            log.warn("[wxconfirm] 提醒失败不再试 orderNo={} code={} msg={}",
-                    orderNo, result.code(), result.message());
+            if (legacy) { markNotified(row.getId()); }
+            return new Attempt(false, DeliveryResult.failed("CHANNEL_REJECTED", Integer.toString(result.code())));
         }
         markNotified(row.getId());
-        return result.success();
+        return new Attempt(true, DeliveryResult.sent());
     }
 
     /**

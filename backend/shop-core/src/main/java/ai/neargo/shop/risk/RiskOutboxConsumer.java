@@ -40,6 +40,9 @@ public class RiskOutboxConsumer implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "risk"; }
+
+    @Override
     public boolean supports(String eventType) {
         return HANDLED.contains(eventType);
     }

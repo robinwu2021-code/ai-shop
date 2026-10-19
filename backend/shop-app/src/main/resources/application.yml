@@ -224,6 +224,24 @@ shop:
     #   （configured() 返回 false，服务照起，只是永远存不进凭据）。
     cred-key: ${SHOP_NOTIFY_CRED_KEY:}
   outbox:
+    enabled: ${SHOP_OUTBOX_ENABLED:true}
+    maintenance: ${SHOP_OUTBOX_MAINTENANCE:false}
+    archive-only: []
+    concurrency: 5
+    queue-capacity: 500
+    recovery-interval: 5s
+    batch-size: 100
+    lease-duration: 120s
+    heartbeat-interval: 20s
+    retry:
+      max-attempts: 10
+      initial-delay: 10s
+      max-delay: 30m
+    sources:
+      platform:
+        mode: ${SHOP_OUTBOX_PLATFORM_MODE:legacy}
+      inventory:
+        mode: ${SHOP_OUTBOX_INVENTORY_MODE:legacy}
     pump:
       # 投递泵（OutboxPump）：事务提交后直接投、单机并发 5、按聚合分线保证同一张单有序、
       # 启动补扫承担「重启后继续发送」。关掉它等于只写库不投递 —— 那时必须把下面那条打开。

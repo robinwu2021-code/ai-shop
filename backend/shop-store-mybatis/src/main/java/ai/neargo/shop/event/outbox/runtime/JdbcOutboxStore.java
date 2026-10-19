@@ -48,6 +48,8 @@ public final class JdbcOutboxStore implements OutboxStore {
     private final String deliveries;
     private final String streams;
     private final String operations;
+    private RetryPolicy retryPolicy = RetryPolicy.defaults();
+    public void setRetryPolicy(RetryPolicy policy) { retryPolicy = policy; }
 
     public JdbcOutboxStore(Source source, DataSource dataSource, PlatformTransactionManager manager, ObjectMapper json) {
         this.source = source;
@@ -69,14 +71,7 @@ public final class JdbcOutboxStore implements OutboxStore {
     public PublishReceipt append(OutboxEnvelope event, Map<String, Boolean> targets, boolean archiveOnly) {
         requireSourceTransaction();
         String fingerprint = fingerprint(event);
-        try {
-            jdbc.update("INSERT INTO " + streams + " (stream_key,next_sequence) VALUES (?,1)", event.streamKey());
-        } catch (DuplicateKeyException existingStream) {
-            // Dedicated primary-key insert: another transaction created this stream.
-        }
-        Long sequence = jdbc.queryForObject("SELECT next_sequence FROM " + streams
-                + " WHERE stream_key=? FOR UPDATE", Long.class, event.streamKey());
-        jdbc.update("UPDATE " + streams + " SET next_sequence=next_sequence+1 WHERE stream_key=?", event.streamKey());
+        long sequence = allocateSequence(event.streamKey());
         String state = archiveOnly ? "ARCHIVED" : targets.isEmpty() ? "FAILED" : "PENDING";
         String columns = "event_no,aggregate_type,aggregate_id,event_type,payload,status,retry_count,created_at,"
                 + "source_system,source_event_no,schema_version,payload_hash,stream_key,stream_sequence,"
@@ -199,7 +194,7 @@ public final class JdbcOutboxStore implements OutboxStore {
             recovered += transactions.execute(s -> {
                 lockEvent((String) row.get("event_no"));
                 int changed = jdbc.update("UPDATE " + deliveries
-                                + " SET status=CASE WHEN external_workflow=1 OR round_attempt_count>=10"
+                                + " SET status=CASE WHEN external_workflow=1 OR round_attempt_count>=" + retryPolicy.maxAttempts()
                                 + " THEN 'FAILED' ELSE 'PENDING' END,"
                                 + "last_error_code=CASE WHEN external_workflow=1 THEN 'OUTCOME_UNKNOWN'"
                                 + " ELSE 'LEASE_EXPIRED' END,last_error='Lease expired before acknowledgement',"
@@ -243,7 +238,8 @@ public final class JdbcOutboxStore implements OutboxStore {
             if (!prior.isEmpty()) {
                 var p = prior.getFirst();
                 if (!eventNo.equals(p.get("event_no")) || !handlerId.equals(p.get("handler_id"))
-                        || !(skip ? "SKIP" : "REPLAY").equals(p.get("operation"))) {
+                        || !(skip ? "SKIP" : "REPLAY").equals(p.get("operation"))
+                        || !actor.equals(p.get("actor")) || !reason.equals(p.get("reason"))) {
                     throw new IllegalStateException("OPERATION_REQUEST_CONFLICT");
                 }
                 return;
@@ -274,6 +270,146 @@ public final class JdbcOutboxStore implements OutboxStore {
         jdbc.query("SELECT status,COUNT(*) AS n FROM " + deliveries + " GROUP BY status", rs -> {
             result.put(rs.getString("status"), rs.getLong("n"));
         });
+        return result;
+    }
+
+    /** Review-only legacy manifest: payloads stay in the database; checksum detects later changes. */
+    public record LegacyRecord(String eventNo, String eventType, String aggregateType,
+                               String aggregateId, String checksum, Instant createdAt) { }
+    public record LegacyDecision(LegacyRecord record, String streamKey, Map<String, String> handlerStates,
+                                 Map<String, Boolean> externalTargets, String evidence) { }
+
+    public List<LegacyRecord> inspectLegacy(int limit) {
+        return jdbc.query("SELECT * FROM " + events
+                + " WHERE source_system IS NULL AND status IN ('PENDING','FAILED') ORDER BY id LIMIT ?",
+                (rs, n) -> legacyRecord(rs), bounded(limit));
+    }
+
+    public long unadoptedCount() {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM " + events
+                + " WHERE source_system IS NULL AND status IN ('PENDING','FAILED')", Long.class);
+    }
+
+    /** Offline, all-or-nothing adoption refuses mixed new/legacy sources and incomplete review manifests. */
+    public int adoptLegacy(List<LegacyDecision> manifest, boolean offlineConfirmed, Instant now) {
+        if (!offlineConfirmed) { throw new IllegalStateException("Offline confirmation required"); }
+        if (manifest.size() > 500) { throw new IllegalArgumentException("Offline batch exceeds review limit"); }
+        return transactions.execute(s -> {
+            Long newRows = jdbc.queryForObject("SELECT COUNT(*) FROM " + events
+                    + " WHERE source_system IS NOT NULL", Long.class);
+            if (newRows != 0) { throw new IllegalStateException("Source already contains unified events"); }
+            var records = jdbc.query("SELECT * FROM " + events
+                            + " WHERE source_system IS NULL AND status IN ('PENDING','FAILED') ORDER BY id FOR UPDATE",
+                    (rs, n) -> legacyRecord(rs));
+            if (records.size() != manifest.size()) { throw new IllegalStateException("Incomplete legacy manifest"); }
+            Map<String, LegacyDecision> decisions = new TreeMap<>();
+            for (var d : manifest) {
+                if (decisions.put(d.record().eventNo(), d) != null || d.evidence() == null || d.evidence().isBlank()
+                        || d.evidence().length() > 500 || !d.handlerStates().keySet().equals(d.externalTargets().keySet())
+                        || d.handlerStates().isEmpty()) {
+                    throw new IllegalArgumentException("Incomplete or duplicate adoption decision");
+                }
+            }
+            for (var record : records) {
+                LegacyDecision d = decisions.get(record.eventNo());
+                if (d == null || !d.record().equals(record)) { throw new IllegalStateException("Legacy event changed"); }
+                String payload = jdbc.queryForObject("SELECT payload FROM " + events + " WHERE event_no=?",
+                        String.class, record.eventNo());
+                OutboxEnvelope event = new OutboxEnvelope(record.eventNo(), source(), record.eventNo(),
+                        record.aggregateType(), record.aggregateId(), record.eventType(), 1,
+                        d.streamKey(), 0, payload, record.createdAt());
+                long sequence = allocateSequence(d.streamKey());
+                Integer oldRetries = jdbc.queryForObject("SELECT retry_count FROM " + events + " WHERE event_no=?",
+                        Integer.class, record.eventNo());
+                jdbc.update("UPDATE " + events + " SET source_system=?,source_event_no=?,schema_version=1,"
+                                + "payload_hash=?,stream_key=?,stream_sequence=?,routing_mode='DELIVERY',"
+                                + "occurred_at=?,aggregate_type=?,aggregate_id=? WHERE event_no=?",
+                        source(), record.eventNo(), fingerprint(event), d.streamKey(), sequence,
+                        at(record.createdAt()), record.aggregateType(), record.aggregateId(), record.eventNo());
+                for (var target : d.handlerStates().entrySet()) {
+                    String state = target.getValue();
+                    if (!List.of("SENT","PENDING","FAILED","OUTCOME_UNKNOWN").contains(state)
+                            || target.getKey().isBlank() || target.getKey().length() > 128) {
+                        throw new IllegalArgumentException("Invalid reviewed consumer state");
+                    }
+                    jdbc.update("INSERT INTO " + deliveries
+                                    + " (event_no,handler_id,stream_key,stream_sequence,external_workflow,status,"
+                                    + "attempt_count,last_error_code,completed_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                            record.eventNo(), target.getKey(), d.streamKey(), sequence,
+                            d.externalTargets().get(target.getKey()) ? 1 : 0,
+                            "OUTCOME_UNKNOWN".equals(state) ? "FAILED" : state, oldRetries == null ? 0 : oldRetries,
+                            "OUTCOME_UNKNOWN".equals(state) ? state : null,
+                            "SENT".equals(state) ? at(now) : null, at(now));
+                }
+                aggregate(record.eventNo(), now);
+                String after = jdbc.queryForObject("SELECT status FROM " + events + " WHERE event_no=?",
+                        String.class, record.eventNo());
+                jdbc.update("INSERT INTO " + operations
+                                + " (request_id,event_no,handler_id,operation,actor,reason,before_status,after_status,created_at)"
+                                + " VALUES (?,?,?,'ADOPT','MIGRATION',?,'LEGACY',?,?)",
+                        digest("ADOPT:" + record.eventNo()), record.eventNo(), "*", d.evidence(), after, at(now));
+            }
+            return records.size();
+        });
+    }
+
+    private LegacyRecord legacyRecord(ResultSet rs) throws SQLException {
+        String type = rs.getString("aggregate_type");
+        String aggregate = rs.getString("aggregate_id");
+        if (source == Source.INVENTORY) {
+            if (type == null) { type = "INVENTORY"; }
+            if (aggregate == null) { aggregate = rs.getString("owner_id"); }
+        }
+        Instant created = rs.getTimestamp("created_at").toInstant();
+        String eventType = rs.getString("event_type");
+        String checksum = digest(json.writeValueAsString(List.of(type, aggregate, eventType,
+                canonical(json.readValue(rs.getString("payload"), Object.class)), created.toString())));
+        return new LegacyRecord(rs.getString("event_no"), eventType, type, aggregate, checksum, created);
+    }
+
+    private long allocateSequence(String streamKey) {
+        try {
+            jdbc.update("INSERT INTO " + streams + " (stream_key,next_sequence) VALUES (?,1)", streamKey);
+        } catch (DuplicateKeyException existing) { /* stream primary key already allocated */ }
+        Long sequence = jdbc.queryForObject("SELECT next_sequence FROM " + streams
+                + " WHERE stream_key=? FOR UPDATE", Long.class, streamKey);
+        jdbc.update("UPDATE " + streams + " SET next_sequence=next_sequence+1 WHERE stream_key=?", streamKey);
+        return sequence;
+    }
+
+    private static String digest(String content) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(content.getBytes(StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException impossible) { throw new IllegalStateException(impossible); }
+    }
+
+    /** Health is derived from consumer progress; source event SENT is not external channel delivery. */
+    public Map<String, Object> health(Instant now) {
+        Map<String, Object> result = new TreeMap<>();
+        var statusCounts = counts();
+        result.put("processing", statusCounts.getOrDefault("PROCESSING", 0L));
+        result.put("failed", statusCounts.getOrDefault("FAILED", 0L));
+        result.put("due", jdbc.queryForObject("SELECT COUNT(*) FROM " + deliveries
+                + " d WHERE d.status='PENDING' AND (d.next_retry_at IS NULL OR d.next_retry_at<=?)"
+                + headPredicate(), Long.class, at(now)));
+        result.put("retrying", jdbc.queryForObject("SELECT COUNT(*) FROM " + deliveries
+                + " WHERE status='PENDING' AND round_attempt_count>0", Long.class));
+        result.put("unknown", jdbc.queryForObject("SELECT COUNT(*) FROM " + deliveries
+                + " WHERE status='FAILED' AND last_error_code='OUTCOME_UNKNOWN'", Long.class));
+        Long pending = statusCounts.getOrDefault("PENDING", 0L);
+        Long runnable = jdbc.queryForObject("SELECT COUNT(*) FROM " + deliveries
+                + " d WHERE d.status='PENDING'" + headPredicate(), Long.class);
+        result.put("blocked", pending - runnable);
+        result.put("oldestDueAt", jdbc.queryForObject("SELECT MIN(d.created_at) FROM " + deliveries
+                + " d WHERE d.status='PENDING' AND (d.next_retry_at IS NULL OR d.next_retry_at<=?)"
+                + headPredicate(), Timestamp.class, at(now)));
+        result.put("lastSuccessAt", jdbc.queryForObject("SELECT MAX(completed_at) FROM " + deliveries
+                + " WHERE status='SENT'", Timestamp.class));
+        result.put("recentDeliveries", diagnostics(20));
+        result.put("unadopted", unadoptedCount());
+        result.put("unrouted", jdbc.queryForObject("SELECT COUNT(*) FROM " + events
+                + " WHERE source_system IS NOT NULL AND status='FAILED' AND last_error='NO_CONSUMER'", Long.class));
         return result;
     }
 

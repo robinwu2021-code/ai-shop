@@ -47,6 +47,9 @@ public class ShipmentRegistrar implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "logistics-register"; }
+
+    @Override
     public boolean supports(String eventType) {
         return SHIPPED.equals(eventType);
     }

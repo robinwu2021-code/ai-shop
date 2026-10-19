@@ -47,6 +47,12 @@ public class InventoryOnSaleConsumer implements OutboxConsumer {
     }
 
     @Override
+    public String handlerId() { return "inventory-on-sale"; }
+
+    @Override
+    public String targetSource() { return "INVENTORY"; }
+
+    @Override
     public boolean supports(String eventType) {
         return GOODS_ON_SALE_CHANGED.equals(eventType);
     }

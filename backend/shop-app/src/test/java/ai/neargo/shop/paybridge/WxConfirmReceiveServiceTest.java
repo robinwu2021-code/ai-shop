@@ -1,6 +1,7 @@
 package ai.neargo.shop.paybridge;
 
 import ai.neargo.shop.fulfillment.service.LogisticsService;
+import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.fulfillment.service.LogisticsService.SignedShipment;
 import ai.neargo.shop.spi.trade.WxShippingPort;
 import ai.neargo.shop.spi.trade.WxShippingPort.ConfirmCmd;
@@ -155,5 +156,23 @@ class WxConfirmReceiveServiceTest {
         ArgumentCaptor<ConfirmCmd> cmd = ArgumentCaptor.forClass(ConfirmCmd.class);
         verify(shipping).notifyConfirmReceive(cmd.capture());
         assertThat(cmd.getValue().receivedAt()).isEqualTo(1_791_500_000L);
+    }
+
+    @Test
+    void unifiedDeliveryExposesRetryableRejection() {
+        wire(1_791_500_000_000L, 1, TrdShippingUpload.SUCCESS, null);
+        when(shipping.notifyConfirmReceive(any())).thenReturn(Result.retry(40001, "token expired"));
+        assertThat(service().deliverOne("SO-1", 1_791_500_000_000L).kind())
+                .isEqualTo(DeliveryResult.Kind.RETRYABLE);
+        verify(uploadMapper, never()).updateById(any(TrdShippingUpload.class));
+    }
+
+    @Test
+    void unifiedDeliveryDoesNotMarkRejectedAttemptAsNotified() {
+        wire(1_791_500_000_000L, 1, TrdShippingUpload.SUCCESS, null);
+        when(shipping.notifyConfirmReceive(any())).thenReturn(Result.fatal(10060029, "rejected"));
+        assertThat(service().deliverOne("SO-1", 1_791_500_000_000L).kind())
+                .isEqualTo(DeliveryResult.Kind.PERMANENT);
+        verify(uploadMapper, never()).updateById(any(TrdShippingUpload.class));
     }
 }

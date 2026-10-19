@@ -1,6 +1,9 @@
 package ai.neargo.shop.inventory.service.impl;
 
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
+import ai.neargo.shop.event.DomainEvent;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.entity.InvLedger;
@@ -151,7 +154,23 @@ public class StockPostingServiceImpl implements StockPostingService {
      * 事件写出站表，**不在事务里直接调下游**：下游挂了不该把这笔过账一起回滚。
      * 独立库用不了平台的 {@code sys_outbox}，自己带一份。
      */
+    private UnifiedOutboxFacade unified;
+
+    @Autowired(required = false)
+    public void setUnified(UnifiedOutboxFacade unified) { this.unified = unified; }
+
+    private record PostingEvent(String ownerId, String docNo, String docKind) implements DomainEvent {
+        public String aggregateType() { return "INVENTORY"; }
+        public String aggregateId() { return ownerId; }
+        public String eventType() { return InvEnums.EventType.DOCUMENT_POSTED; }
+    }
+
     private void publish(PostingDoc doc) {
+        if (unified != null && unified.isMaintenance()) { throw new IllegalStateException("Outbox maintenance"); }
+        if (unified != null && unified.enabled("INVENTORY")) {
+            unified.publish("INVENTORY", new PostingEvent(doc.ownerId(), doc.docNo(), doc.docKind()));
+            return;
+        }
         InvOutbox evt = new InvOutbox();
         evt.setEventNo(InvKeys.next(InvKeys.EVENT));
         evt.setOwnerId(doc.ownerId());

@@ -14,4 +14,10 @@ public interface InventoryEventSink {
      * @return 送达了返回 true；返回 false 或抛异常都会让这一行留在出站表里重试
      */
     boolean deliver(String eventNo, String ownerId, String eventType, String payload);
+
+    /** Preserve source fact time while retaining compatibility with existing sink implementations. */
+    default boolean deliver(String eventNo, String ownerId, String eventType, String payload,
+                            java.time.Instant occurredAt) {
+        return deliver(eventNo, ownerId, eventType, payload);
+    }
 }
