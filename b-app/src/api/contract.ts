@@ -186,6 +186,11 @@ export type { LogisticsUpdateRecord } from "@shared/types";
 
 export interface MerchantInventoryTrace {
   orderNo: string;
+  syncEvents: Array<{
+    aggregateId: string; eventType: string; source: string;
+    status: "COMPLETED" | "PENDING" | "FAILED" | "WARNING" | "SKIPPED" | "ARCHIVED";
+    outboxMode: "UNIFIED" | "LEGACY";
+  }>;
   reservations: Array<{
     reservationId: string; ownerId: string; status: string; lifecycleVersion: number | null;
     outboundNo: string | null; createdAt: string | null;

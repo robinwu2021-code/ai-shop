@@ -160,10 +160,19 @@ class InventoryOpsEndpointTest {
         // **不是 HTTP 403**：这套接口把权限不足包成业务码 10403，HTTP 仍是 200。
         // 断言写在 HTTP 上的话，这条守卫会全程绿着，而闸门开没开根本没测到
         for (String path : List.of("/ops/inventory/health", "/ops/inventory/recon",
-                "/ops/inventory/ledger?entityNo=E-NOPE")) {
+                "/ops/inventory/ledger?entityNo=E-NOPE", "/ops/inventory/order-trace?orderNo=NOPE")) {
             assertThat(codeOf(path, cs)).as("%s 对没有 product:sku:read 的角色必须拒绝", path)
                     .isEqualTo(10403);
         }
+    }
+
+    @Test
+    @DisplayName("订单追溯保留库存事实，并返回可供运营核对的同步事件数组")
+    void orderTraceIncludesOutboxSyncEvents() throws Exception {
+        JsonNode trace = ok("/ops/inventory/order-trace?orderNo=NO-TRACE-TEST", opsLogin());
+        assertThat(trace.get("orderNo").asString()).isEqualTo("NO-TRACE-TEST");
+        assertThat(trace.get("reservations").isArray()).isTrue();
+        assertThat(trace.get("syncEvents").isArray()).isTrue();
     }
 
     // ------------------------------------------------------------------ 种子

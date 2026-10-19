@@ -61,6 +61,11 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
   });
 
   const rows: InvLedgerRow[] = list.data?.pages.flatMap((p) => p.entries) ?? [];
+  const syncStatusLabels = {
+    COMPLETED: c.invTraceSyncCompleted, PENDING: c.invTraceSyncPending, FAILED: c.invTraceSyncFailed,
+    WARNING: c.invTraceSyncWarning, SKIPPED: c.invTraceSyncSkipped, ARCHIVED: c.invTraceSyncArchived,
+  };
+  const syncModeLabels = { UNIFIED: c.invTraceModeUnified, LEGACY: c.invTraceModeLegacy };
 
   const columns: Column<InvLedgerRow>[] = [
     { header: c.invColTime, cell: (r) => <span className="tabular-nums">{fmtTime(r.occurredAt)}</span> },
@@ -128,6 +133,20 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
           {trace.isLoading && <Notice tone="muted">{c.invLedgerSearch}…</Notice>}
           {trace.error && <Notice tone="danger">{c.invLedgerNotice}</Notice>}
           {trace.data && trace.data.reservations.length === 0 && <Notice tone="muted">{c.invTraceEmpty}</Notice>}
+          {trace.data && (
+            <div className="space-y-1 rounded-md border p-3 txt-caption">
+              <div className="txt-title">{c.invTraceSync}</div>
+              {trace.data.syncEvents.length === 0 ? <div className="text-muted-foreground">{c.invTraceSyncEmpty}</div>
+                : trace.data.syncEvents.map((event) => (
+                  <div key={`${event.eventType}:${event.aggregateId}`} className="flex flex-wrap gap-x-4 gap-y-1 border-t pt-1">
+                    <span>{event.eventType}</span>
+                    <span>{event.aggregateId}</span>
+                    <span>{c.invTraceSyncStatus}: {syncStatusLabels[event.status]}</span>
+                    <span>{c.invTraceSyncSource}: {event.source} · {syncModeLabels[event.outboxMode]}</span>
+                  </div>
+                ))}
+            </div>
+          )}
           {trace.data?.reservations.map((reservation) => (
             <div key={`${reservation.ownerId}:${reservation.reservationId}`} className="space-y-2 rounded-md bg-muted/30 p-3">
               <div className="flex flex-wrap gap-x-5 gap-y-1 txt-caption">

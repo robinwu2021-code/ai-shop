@@ -98,6 +98,12 @@ export interface InvLedgerPage {
 export interface InvOrderTrace {
   orderNo: string;
   reservations: InvTraceReservation[];
+  syncEvents: InvTraceSyncEvent[];
+}
+export interface InvTraceSyncEvent {
+  aggregateId: string; eventType: string; source: string;
+  status: "COMPLETED" | "PENDING" | "FAILED" | "WARNING" | "SKIPPED" | "ARCHIVED";
+  outboxMode: "UNIFIED" | "LEGACY";
 }
 export interface InvTraceReservation {
   reservationId: string; ownerId: string; status: string; lifecycleVersion: number | null;

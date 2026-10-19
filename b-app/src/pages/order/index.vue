@@ -546,6 +546,13 @@ onPullDownRefresh(async () => {
           </view>
         </view>
       </view>
+      <view v-if="inventoryTrace?.syncEvents.length" class="sh-card sh-mt-sm">
+        <text class="txt-title">{{ $t('order.inventorySync') }}</text>
+        <view v-for="event in inventoryTrace.syncEvents" :key="`${event.eventType}:${event.aggregateId}`" class="line">
+          <view class="sh-row sh-row--between"><text>{{ event.eventType }}</text><text>{{ $t(`order.inventorySyncStatusValue.${event.status}`) }}</text></view>
+          <view class="txt-caption sh-muted">{{ event.aggregateId }} · {{ $t(`order.inventorySyncSourceValue.${event.source}`) }} · {{ $t(`order.inventorySyncModeValue.${event.outboxMode}`) }}</view>
+        </view>
+      </view>
 
       <view class="sh-card">
         <view class="line sh-row sh-row--between">

@@ -131,7 +131,7 @@ export const orderMock: Pick<MerchantApi,
 
   async mOrderInventoryTrace(orderNo) {
     const order = findOrder(orderNo);
-    return delay({ orderNo: order.payOrderNo || order.orderNo, reservations: [] });
+    return delay({ orderNo: order.payOrderNo || order.orderNo, reservations: [], syncEvents: [] });
   },
 
   async mFulfillmentOptions(orderNo) {

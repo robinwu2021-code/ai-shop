@@ -4,7 +4,13 @@ package ai.neargo.shop.inventory.service;
 public interface InventoryOrderTraceService {
     InventoryOrderTrace trace(String orderNo);
 
-    record InventoryOrderTrace(String orderNo, java.util.List<Reservation> reservations) { }
+    record InventoryOrderTrace(String orderNo, java.util.List<Reservation> reservations,
+                               java.util.List<SyncEvent> syncEvents) {
+        public InventoryOrderTrace(String orderNo, java.util.List<Reservation> reservations) {
+            this(orderNo, reservations, java.util.List.of());
+        }
+    }
+    record SyncEvent(String aggregateId, String eventType, String source, String status, String outboxMode) { }
     record Reservation(String reservationId, String ownerId, String status, Integer lifecycleVersion,
                        String outboundNo, java.time.LocalDateTime createdAt,
                        java.util.List<Line> lines) { }

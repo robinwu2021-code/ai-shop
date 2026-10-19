@@ -3,6 +3,7 @@ package ai.neargo.shop.portal.biz;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.inventory.service.InventoryOrderTraceService;
+import ai.neargo.shop.invbridge.InventoryTraceSyncProjection;
 import ai.neargo.shop.trade.dto.OrderVO;
 import ai.neargo.shop.trade.service.MerchantOrderService;
 import org.springframework.context.annotation.Profile;
@@ -16,9 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class BizOrderInventoryTraceController {
     private final MerchantOrderService orders;
-    private final InventoryOrderTraceService inventory;
+    private final InventoryTraceSyncProjection inventory;
 
-    public BizOrderInventoryTraceController(MerchantOrderService orders, InventoryOrderTraceService inventory) {
+    public BizOrderInventoryTraceController(MerchantOrderService orders, InventoryTraceSyncProjection inventory) {
         this.orders = orders;
         this.inventory = inventory;
     }

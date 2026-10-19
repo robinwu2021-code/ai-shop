@@ -111,7 +111,7 @@ export const inventoryMock: InventoryApi = {
       nextCursor: rows.length < (q.size ?? 50) ? null : (last?.id ?? null),
     });
   },
-  getInvOrderTrace: (orderNo) => wait({ orderNo, reservations: [] }),
+  getInvOrderTrace: (orderNo) => wait({ orderNo, reservations: [], syncEvents: [] }),
 
   getInvRecon: () =>
     wait({
