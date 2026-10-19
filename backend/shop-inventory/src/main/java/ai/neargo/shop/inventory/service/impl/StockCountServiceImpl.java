@@ -44,12 +44,13 @@ public class StockCountServiceImpl implements StockCountService {
     private final BalanceMapper balanceMapper;
     private final InboundService inbound;
     private final OutboundService outbound;
+    private final InventoryMutationGuard mutationGuard;
 
     public StockCountServiceImpl(ItemMapper itemMapper,
                                  StockCountMapper countMapper, StockCountLineMapper lineMapper,
                                  StockCountOperationMapper operationMapper,
                                  BalanceMapper balanceMapper, InboundService inbound,
-                                 OutboundService outbound) {
+                                 OutboundService outbound, InventoryMutationGuard mutationGuard) {
         this.itemMapper = itemMapper;
         this.countMapper = countMapper;
         this.lineMapper = lineMapper;
@@ -57,6 +58,7 @@ public class StockCountServiceImpl implements StockCountService {
         this.balanceMapper = balanceMapper;
         this.inbound = inbound;
         this.outbound = outbound;
+        this.mutationGuard = mutationGuard;
     }
 
     @Override
@@ -97,6 +99,9 @@ public class StockCountServiceImpl implements StockCountService {
         if (itemIds == null || itemIds.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
+        // Same location row is locked by every physical posting before its count check.
+        // Thus the snapshot and the cutoff are ordered within the inventory transaction.
+        mutationGuard.lockLocation(ownerId, locationId);
         /*
          * **一个库位同时只许有一张盘点单开着。**
          *

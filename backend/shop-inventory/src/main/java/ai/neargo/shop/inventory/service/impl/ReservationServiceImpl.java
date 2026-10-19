@@ -357,12 +357,24 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public int expireOverdue(int limit) {
-        List<InvReservation> due = resMapper.selectList(Wrappers.<InvReservation>lambdaQuery()
+        LocalDateTime now = LocalDateTime.now();
+        List<InvReservation> candidates = resMapper.selectList(Wrappers.<InvReservation>lambdaQuery()
                 .eq(InvReservation::getStatus, InvEnums.ReservationStatus.HELD)
-                .lt(InvReservation::getExpiresAt, LocalDateTime.now())
+                .lt(InvReservation::getExpiresAt, now)
+                .select(InvReservation::getReservationId)
                 .last("LIMIT " + Math.min(limit, EXPIRE_BATCH_MAX)));
-        due.forEach(h -> unholdAll(h, InvEnums.ReservationStatus.EXPIRED));
-        return due.size();
+        int expired = 0;
+        for (InvReservation candidate : candidates) {
+            // The initial query is only a candidate scan. Re-read under the reservation row
+            // lock because payment may have changed HELD to ALLOCATED in the meantime.
+            InvReservation current = resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
+                    .eq(InvReservation::getReservationId, candidate.getReservationId()).last("FOR UPDATE"));
+            if (current == null || !InvEnums.ReservationStatus.HELD.equals(current.getStatus())
+                    || current.getExpiresAt() == null || !current.getExpiresAt().isBefore(now)) continue;
+            unholdAll(current, InvEnums.ReservationStatus.EXPIRED);
+            expired++;
+        }
+        return expired;
     }
 
     @Override
@@ -375,6 +387,7 @@ public class ReservationServiceImpl implements ReservationService {
     // ────────────────────────────────────────────────────────────────────
 
     private void unholdAll(InvReservation head, String toStatus) {
+        if (!InvEnums.ReservationStatus.HELD.equals(head.getStatus())) return;
         for (InvReservationLine r : linesOf(head.getReservationId())) {
             balanceMapper.unhold(head.getOwnerId(), r.getItemId(), r.getLocationId(), r.getQty());
         }
