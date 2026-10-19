@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" viewBox="0 0 960 430" role="img" aria-labelledby="title desc">
+  <title id="title">Outbox统一封装结构</title>
+  <desc id="desc">平台与库存各自同事务写事件、顺序号和逐消费者投递记录，经存储适配器连接公共运行器；公共运行器由Spring线程池和计时器驱动，消费者在目标库事务中去重并执行业务。</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#52647a"/></marker></defs>
+  <rect width="960" height="430" rx="12" fill="#f7f9fc"/>
+  <g font-family="sans-serif" text-anchor="middle" fill="#172b4d">
+    <text x="480" y="35" font-size="20" font-weight="bold">各源同事务保存，共用投递规则</text>
+    <g stroke="#97adca" fill="#eef4ff" stroke-width="1.5">
+      <rect x="25" y="65" width="270" height="110" rx="8"/>
+      <rect x="25" y="220" width="270" height="110" rx="8"/>
+      <rect x="350" y="70" width="220" height="60" rx="8"/>
+      <rect x="350" y="250" width="220" height="60" rx="8"/>
+      <rect x="625" y="140" width="290" height="115" rx="8"/>
+      <rect x="350" y="355" width="565" height="50" rx="8"/>
+    </g>
+    <g font-size="16">
+      <text x="160" y="94">平台业务事务</text><text x="160" y="123">sys_outbox / stream / delivery</text><text x="160" y="150" font-size="14">平台 TransactionManager</text>
+      <text x="160" y="249">库存业务事务</text><text x="160" y="278">inv_outbox / stream / delivery</text><text x="160" y="305" font-size="14">invTransactionManager</text>
+      <text x="460" y="106">平台存储适配器</text><text x="460" y="286">库存存储适配器</text>
+      <text x="770" y="170">公共 OutboxRunner</text><text x="770" y="200">认领 / 到期检查 / 重试 / 恢复</text><text x="770" y="230" font-size="14">Spring 执行池 5 线程 + 计时器</text>
+      <text x="632" y="386">目的域消费者：目标库事务 + Inbox / 业务去重</text>
+    </g>
+  </g>
+  <g fill="none" stroke="#52647a" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M295 100H345"/><path d="M295 280H345"/>
+    <path d="M570 100H600V166H620"/><path d="M570 280H600V228H620"/>
+    <path d="M770 255V350"/>
+  </g>
+</svg>
