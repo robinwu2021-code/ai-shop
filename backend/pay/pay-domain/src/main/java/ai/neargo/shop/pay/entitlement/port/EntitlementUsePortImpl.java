@@ -35,6 +35,10 @@ public class EntitlementUsePortImpl implements EntitlementUsePort {
         return service.reverse(c, q);
     }
     @Override
+    public ReversalView queryReverse(EntitlementContext c, String entity, String reverseNo) {
+        return service.queryReverse(c, entity, reverseNo);
+    }
+    @Override
     public HoldView query(EntitlementContext c, String e, String n) {
         return service.query(c, e, n);
     }

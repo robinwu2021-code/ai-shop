@@ -22,6 +22,16 @@ public final class EntitlementEvents {
         @Override public String eventType() { return "ENTITLEMENT_USED"; }
     }
 
+    public record EntitlementUseReversed(String eventNo, String reverseNo, String usageNo, String userNo,
+                                          String entityNo, String storeNo, String instanceNo, int restoredUnits,
+                                          long discountMinor, String currency, long occurredAt)
+            implements PayEntitlementEvent {
+        @Override public int schemaVersion() { return 1; }
+        @Override public String aggregateType() { return "ENTITLEMENT_REVERSAL"; }
+        @Override public String aggregateId() { return reverseNo; }
+        @Override public String eventType() { return "ENTITLEMENT_USE_REVERSED"; }
+    }
+
     public record StoredValueCredited(String eventNo, String rechargeNo, String accountNo, String userNo,
                                       String entityNo, String storeNo, long paidAmountMinor,
                                       long creditedAmountMinor, String currency, long occurredAt)

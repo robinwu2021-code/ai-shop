@@ -321,3 +321,15 @@ shop-base新增EntitlementGrantSourcePort和EntitlementIssueAudiencePort，供�
 | app.paybridge | EntitlementOrderCoordinator/Impl、EntitlementOrderUseDecisionConsumer | 挂起核心事务后逐个调用owner，丢响应重放原命令，Outbox恢复原操作 |
 
 ORDER_COUPON协调切片验收后仍不能关闭JB-020：真实服务核销意图、储值使用与对应远程接线须继续交付。
+
+
+### JB-022受限回补切片
+
+| 模块 | 类/接口 | 责任 |
+|---|---|---|
+| pay.entitlement | EntitlementReversalService/Impl、EntitlementReversalWriter | 先查可信售后决策，再同pay事务处理原分配累计、退回次数、反向账、原消费状态及事件 |
+| pay.entity/mapper | EntUseReversal、EntUseReversalMapper | V439，原回补号/售后唯一性、不可变命令与query |
+| base | EntitlementUsePort.ReversalView、queryReverse；EntitlementEvents.EntitlementUseReversed | 独立回补query命名空间、版本化反向事实，不开放储值/付费卡退款 |
+| core.trade | EntitlementSourceDecisionPortImpl | ORDER_REFUND明确路由REVERSE目的，避免误查GRANT |
+
+已完成pay领域切片；旧券URL、owner路由与整单退回触发接线由JB-049继续。实际验收命令、结果见独立任务表JB-022执行记录。

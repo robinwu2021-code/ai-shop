@@ -132,4 +132,15 @@ class EntitlementAuthorizationPersistenceFlowTest {
     private SourceRef source(long revision) {
         return new SourceRef("CORE", "SUB_ORDER_USE", subOrderNo, null, null, null, revision);
     }
+    @Test
+    void orderRefundVocabularyResolvesTheReversePurposeInsteadOfFallingBackToGrant() {
+        var context = new EntitlementContext("MAIN", "AFTER-SALE", "REFUND-FACTS", "d".repeat(64));
+        var source = new SourceRef("CORE", "ORDER_REFUND", "AS" + UUID.randomUUID(), "ORIGINAL-USAGE", null, null, 1);
+        var ref = sourceDecisions.record("MAIN", source, "REVERSE", DecisionRef.DecisionType.ORDER_REVERSE,
+                null, null, userNo, "EA-ENTITY", "EA-STORE", "CNY", 100, "e".repeat(64), Instant.now());
+        var port = new EntitlementSourceDecisionPortImpl(authorizationMapper, decisionMapper, json);
+        assertThat(port.query(context, source).status()).isEqualTo(SourceDecisionPort.State.COMMITTED);
+        assertThat(port.query(context, source).decision()).isEqualTo(ref);
+    }
+
 }

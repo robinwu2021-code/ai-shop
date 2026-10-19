@@ -93,6 +93,12 @@ public class PayEntitlementEventPublisher {
                     || used.units() != null)) || (!storedValue && (used.units() == null || used.units() <= 0
                     || used.amountMinor() != null)))
                 throw new IllegalArgumentException("Entitlement usage event fields are incomplete");
+        } else if (event instanceof EntitlementEvents.EntitlementUseReversed returned) {
+            if (!id(returned.reverseNo()) || !id(returned.usageNo()) || !id(returned.userNo())
+                    || !id(returned.entityNo()) || !id(returned.storeNo()) || !id(returned.instanceNo())
+                    || !id(returned.currency()) || returned.restoredUnits() < 0 || returned.discountMinor() <= 0) {
+                throw new IllegalArgumentException("Entitlement reversal event fields are incomplete");
+            }
         } else if (event instanceof EntitlementEvents.StoredValueCredited credited) {
             if (!id(credited.rechargeNo()) || !id(credited.accountNo()) || !id(credited.userNo())
                     || !id(credited.entityNo()) || !id(credited.storeNo()) || !id(credited.currency())

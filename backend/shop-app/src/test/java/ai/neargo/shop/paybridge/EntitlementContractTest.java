@@ -158,4 +158,15 @@ class EntitlementContractTest {
     private <T> void roundTrip(T value, Class<T> type) {
         assertThat(json.readValue(json.writeValueAsString(value), type)).isEqualTo(value);
     }
+    @Test
+    void reversalQueryDoesNotClaimSuccessWithoutItsOriginalUsageAndTimestamp() {
+        var missing = new EntitlementUsePort.ReversalView("reverse1", EntitlementUsePort.State.NOT_FOUND, null, null);
+        roundTrip(missing, EntitlementUsePort.ReversalView.class);
+        assertThatThrownBy(() -> new EntitlementUsePort.ReversalView("reverse1",
+                EntitlementUsePort.State.COMMITTED, null, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new EntitlementUsePort.ReversalView("reverse1",
+                EntitlementUsePort.State.NOT_FOUND, "usage1", Instant.now()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
 }

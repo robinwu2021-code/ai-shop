@@ -8,6 +8,7 @@ import ai.neargo.shop.spi.entitlement.EntitlementUsePort.PreviewQuery;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.HoldView;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseCommand;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseReceipt;
+import ai.neargo.shop.spi.entitlement.EntitlementUsePort.ReversalView;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseDecision;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.CancelUse;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.OrderBenefitReverse;
@@ -20,5 +21,6 @@ public interface EntitlementUseService {
     UseReceipt commit(EntitlementContext context, UseDecision command);
     HoldView release(EntitlementContext context, CancelUse command);
     UseReceipt reverse(EntitlementContext context, OrderBenefitReverse command);
+    ReversalView queryReverse(EntitlementContext context, String entityNo, String reverseNo);
     HoldView query(EntitlementContext context, String entityNo, String operationNo);
 }

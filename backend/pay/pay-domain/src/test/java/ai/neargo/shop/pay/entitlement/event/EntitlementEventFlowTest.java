@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.pay.entitlement.entity.PayEntInbox;
+import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.pay.entitlement.entity.PayEntOutbox;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntInboxMapper;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntOutboxMapper;
@@ -106,6 +107,26 @@ class EntitlementEventFlowTest {
         assertThatThrownBy(() -> processor.process("MAIN", "CORE_ACTIVITY", "EVT-3", "activity:changed",
                 () -> calls.incrementAndGet()))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("payload conflict");
+    }
+
+    @Test
+    void reversalFactsCanCrossTheAllowlistedBridgeWithoutBecomingASecondGrant() {
+        var json = new ObjectMapper();
+        var event = new EntitlementEvents.EntitlementUseReversed("EVT-R", "RV-1", "EU-1", "U-1", "E-1", "S-1",
+                "I-1", 1, 100, "CNY", 1_797_000_000_000L);
+        var row = new PayEntOutbox(); row.setId(1L); row.setStatus("PENDING"); row.setAttempts(0);
+        row.setEventNo(event.eventNo()); row.setEventType(event.eventType()); row.setSchemaVersion(1);
+        row.setAggregateNo(event.aggregateId()); row.setPayload(json.writeValueAsString(event));
+        row.setPayloadHash(PayEntitlementEventPublisher.hash(event, row.getPayload()));
+        PayEntOutboxMapper mapper = mock(PayEntOutboxMapper.class);
+        when(mapper.findByEventNo("MAIN", event.eventNo())).thenReturn(row);
+        var bus = mock(OutboxEventBus.class);
+        var relay = new PayEntitlementOutboxRelay(mapper, bus, json);
+        try {
+            relay.relay(event.eventNo());
+            verify(bus).publish(event.eventNo(), event);
+            verify(mapper).markForwarded(eq(1L), eq("MAIN"), any());
+        } finally { relay.shutdown(); }
     }
 
     private static ObjectProvider<PayEntitlementOutboxRelay> provider(PayEntitlementOutboxRelay relay) {

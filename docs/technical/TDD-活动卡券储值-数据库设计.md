@@ -471,7 +471,7 @@ CARD商品SKU引用支付权益版本，不重复保存余次规则。
 | service_staff_name | VARCHAR(64) NULL | 服务人员 |
 | source_order_no | VARCHAR(64) NULL | 源订单 |
 | operator_no | VARCHAR(64) NOT NULL | 经办者 |
-| status | VARCHAR(16) NOT NULL | COMMITTED，回补另记反向账 |
+| status | VARCHAR(16) NOT NULL | COMMITTED/PARTIAL_REVERSED/REVERSED；原金额与项目不改写，回补另记反向账 |
 | occurred_at | DATETIME(3) NOT NULL | 业务成功时间 |
 
 索引：`UNIQUE KEY uk_usage (tenant_no,usage_no)`；`UNIQUE KEY uk_usage_op (tenant_no,operation_no)`；`KEY ix_user_usage (tenant_no,user_no,store_no,asset_kind,occurred_at DESC,usage_no DESC)`；`KEY ix_store_usage (tenant_no,entity_no,store_no,occurred_at DESC)`。
@@ -729,6 +729,9 @@ CARD商品SKU引用支付权益版本，不重复保存余次规则。
 | 字段 | 类型及空值 | 含义 |
 |---|---|---|
 | reverse_no | VARCHAR(64) NOT NULL | 反向操作号 |
+| usage_no | VARCHAR(64) NOT NULL | 原成功明细号 |
+| payload_hash | CHAR(64) NOT NULL | 原回补命令摘要，重放异参拒绝 |
+| command_snapshot | JSON NOT NULL | 不可变来源、金额与决策引用 |
 | origin_operation_no | VARCHAR(64) NOT NULL | 原成功使用 |
 | instance_no | VARCHAR(64) NOT NULL | 原用户券 |
 | after_sale_no | VARCHAR(64) NOT NULL | 权威售后号 |
@@ -998,3 +1001,10 @@ pay_ent_source_fence以tenant+purpose+source_key及tenant+purpose+operation_no�
 #### ord_ent_payment_seal（核心库，V438）
 
 公共审计列沿第一节；order_no VARCHAR(64)、pay_amount BIGINT、currency VARCHAR(8)均非空；tenant+order唯一，pay_amount非负。核心订单锁串行化封存与优惠应用；封存只记金额与币种，不改变订单摘要。历史已存在的支付尝试经pay事实端口核实后拒绝改价。此表只经已授权订单回捞，不作为独立商家列表。
+
+
+### JB-022受限回补实现（V439）
+
+pay仅接受ORDER_COUPON原成功使用；CORE/ORDER_REFUND的sourceNo为权威售后号，sourceLineNo必须是原usageNo，决策同时绑定本人、商家、门店、币种、原订单摘要及本次优惠归属金额。UNKNOWN/PENDING只返回PROCESSING。原使用意图锁串行化所有回补，再锁实例和分配；累计优惠归属不超原discount，只有归属全部返回时才恢复原分配的使用次数。既有“整单退完退券”的经营策略由core/旧券适配保持，不能由pay按现金退款额自行算回券。
+
+反向行、原分配计数、实例、带origin_entry_no的次数账及EntitlementUseReversed事件同pay事务；发生异常整笔回滚。旧效期不延长，EXPIRED/FROZEN保持状态，原消费金额和项目保留。不开新储值或新付费卡线上退款；旧URL及售后自动路由仍由JB-049交付。

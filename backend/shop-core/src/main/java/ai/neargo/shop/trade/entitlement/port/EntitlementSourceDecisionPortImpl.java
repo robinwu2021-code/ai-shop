@@ -95,7 +95,7 @@ public class EntitlementSourceDecisionPortImpl implements SourceDecisionPort {
     }
 
     private static String purpose(SourceRef source) {
-        if (source.sourceType().contains("REVERSE")) return "REVERSE";
+        if (source.sourceType().contains("REVERSE") || "ORDER_REFUND".equals(source.sourceType())) return "REVERSE";
         return source.sourceType().contains("USE") ? "USE" : "GRANT";
     }
 

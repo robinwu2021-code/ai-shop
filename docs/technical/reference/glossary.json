@@ -26685,6 +26685,13 @@
       "package": "ai.neargo.shop.pay.entitlement.entity"
     },
     {
+      "table": "ent_use_reversal",
+      "class": "EntUseReversal",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
       "table": "ful_batch",
       "class": "FulBatch",
       "zh": "到货批次：自提点按「哪一天到的货」把子单归堆，站长按堆签收。",

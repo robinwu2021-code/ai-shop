@@ -5678,6 +5678,33 @@ CREATE TABLE IF NOT EXISTS ord_ent_payment_seal
     CHECK (pay_amount>=0)
 );
 
+CREATE TABLE IF NOT EXISTS ent_use_reversal
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    reverse_no VARCHAR(64) NOT NULL,
+    usage_no VARCHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    command_snapshot TEXT NOT NULL,
+    origin_operation_no VARCHAR(64) NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    after_sale_no VARCHAR(64) NOT NULL,
+    source_decision_no VARCHAR(64) NOT NULL,
+    units INT NOT NULL,
+    discount_minor BIGINT NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_reverse UNIQUE (tenant_no,reverse_no),
+    CONSTRAINT uk_reverse_fact UNIQUE (tenant_no,after_sale_no,origin_operation_no,instance_no),
+    CHECK (units>=0 AND discount_minor>=0)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

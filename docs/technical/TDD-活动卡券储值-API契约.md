@@ -251,6 +251,7 @@ C02/C07统一沿用实际BizPerms.GOODS（biz:goods），不虚设不存在的re
 | pay | /internal/pay/entitlement/use/commit | EntitlementUsePort.commit | command |
 | pay | /internal/pay/entitlement/use/release | EntitlementUsePort.release | command |
 | pay | /internal/pay/entitlement/use/reverse | EntitlementUsePort.reverse | command |
+| pay | /internal/pay/entitlement/use/reverse/query | EntitlementUsePort.queryReverse | entityNo,reverseNo |
 | pay | /internal/pay/entitlement/use/query | EntitlementUsePort.query | entityNo,operationNo |
 | pay | /internal/pay/entitlement/query/mine | EntitlementQueryPort.mine | query |
 | pay | /internal/pay/entitlement/query/detail | EntitlementQueryPort.detail | query |
@@ -434,3 +435,10 @@ I07/I10允许可信取消先于prepare，持久负向事实后返回ABORTED/RELE
 核心服务以`ord_ent_order_use`保存原操作、授权、命令与原订单摘要，先持久化PENDING再向pay预占；pay返回的真实冻结分摊经核心服务核对后一次应用价格。`ord_ent_payment_seal`在调用外部收银前由核心服务锁单封存应付金额；已发起过收款或已封存的订单不能新增优惠。核心服务终态事务同时记录USE_COMMIT/USE_CANCEL及Outbox；应用协调器只提交/释放原operationNo，丢响应按原操作恢复，不以超时推断取消。暂停新增能力不阻止已有承诺完成。
 
 本切片仅接ORDER_COUPON；服务券/次卡的真实服务意图和储值扣款仍在原任务内继续，不能用普通现金订单支付成功冒充已完成扣次。每单首期只接受一张新订单券；预占后不支持替换券，需取消原订单后重新下单。新表均在核心库；不跨库事务，不直接访问pay实体。
+
+
+### I11受限回补来源绑定
+
+`OrderBenefitReverse`签名不变；sourceRef固定CORE/ORDER_REFUND，sourceNo=权威售后号、sourceLineNo=原usageNo，无unitIndex/entitlementIndex。ORDER_REVERSE决策需权威owner查询核实原本人/主体/门店/币种/订单摘要及本次discount归属。原reverseNo重放不受新增开关影响，同号异参409；同售后换reverseNo不重复回补；未知只返回PROCESSING，不信用调用方自报金额。累计归属到齐才恢复原使用次数，部分归属不会恢复一整次券。新储值/付费卡线上退款继续拒绝；旧券整单退回策略及URL接回仍归JB-049。
+
+新增内部事件ENTITLEMENT_USE_REVERSED（schemaVersion=1）：reverseNo、原usageNo、本人/主体/门店、instanceNo、restoredUnits、discountMinor、currency、occurredAt及eventNo；不含授权、码或支付凭据。次数与优惠归属金额分量纲，不记作新收入。

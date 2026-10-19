@@ -20,6 +20,9 @@ public interface EntitlementUsePort {
 
     UseReceipt reverse(EntitlementContext context, OrderBenefitReverse command);
 
+    /** Dedicated namespace: a reverseNo may not be interpreted as an ordinary use operationNo. */
+    ReversalView queryReverse(EntitlementContext context, String entityNo, String reverseNo);
+
     /** Lost responses are resolved using the original operationNo. */
     HoldView query(EntitlementContext context, String entityNo, String operationNo);
 
@@ -187,6 +190,19 @@ public interface EntitlementUsePort {
             ContractChecks.id(reverseNo);
             ContractChecks.require(assetKind == AssetKind.ORDER_COUPON && amountMinor != null && amountMinor > 0);
             ContractChecks.present(decisionRef).requireFor(sourceRef, DecisionRef.DecisionType.ORDER_REVERSE);
+        }
+    }
+
+    record ReversalView(String reverseNo, State status, String usageNo, Instant occurredAt) {
+        public ReversalView {
+            ContractChecks.id(reverseNo);
+            ContractChecks.require(status == State.NOT_FOUND || status == State.COMMITTED);
+            if (status == State.COMMITTED) {
+                ContractChecks.id(usageNo);
+                ContractChecks.present(occurredAt);
+            } else {
+                ContractChecks.require(usageNo == null && occurredAt == null);
+            }
         }
     }
 

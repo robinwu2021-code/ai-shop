@@ -89,8 +89,8 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-019 | D02.4/D06.3 | DONE | 003,005 | pay.policy | EntitlementValidityPolicy、CountUsagePolicy、PeriodCountUsagePolicy；从共享额度规则派生 | EntitlementValidityPolicyTest：支付/首用、自然月/滚动天、时区、月末/闰日、半开区间；GET无激活副作用 |
 | JB-020 | D02.4 | DOING | 011,013,014,016,019 | pay.entitlement/app | EntitlementUseService/Impl、UsePortImpl、EntitlementPostingService、EntitlementOrderCoordinator；prepare/commit/release/query | EntitlementUseFlowTest：同源不双扣、确认释放互斥、并发不负数、未知不重扣、本人/订单/门店绑定；原生事务检查 |
 | JB-021 | D02.4 | DONE | 008,019,020 | pay.entitlement | CouponQuotePolicy迁入既有唯一门槛/折扣/分摊算法；P15服务 | EntitlementQuoteFlowTest：先活动后券、FREE_SHIP、折扣封顶、分摊守恒；预览不冻结不扣款 |
-| JB-022 | D02.4/D03.2 | TODO | 020,021 | pay.entitlement | 原使用受限reverse、EntUseReversal与旧券售后回补；I11 | EntitlementReverseFlowTest：部分售后累计不超原分配、同售后幂等；储值/新付费卡线上退款拒绝 |
-| JB-023 | D02.4 | TODO | 010,016,020 | pay.entitlement | EntitlementCodeService/Impl；短期兑换券token签发/解析/失效 | EntitlementCodeFlowTest：仅STORE_EXCHANGE、本人可签、过期/重放拒绝、码不入日志；不生成储值专用码 |
+| JB-022 | D02.4/D03.2 | DONE | 020,021 | pay.entitlement | 原使用受限reverse、EntUseReversal与旧券售后回补；I11 | EntitlementReverseFlowTest：部分售后累计不超原分配、同售后幂等；储值/新付费卡线上退款拒绝 |
+| JB-023 | D02.4 | DOING | 010,016,020 | pay.entitlement | EntitlementCodeService/Impl；短期兑换券token签发/解析/失效 | EntitlementCodeFlowTest：仅STORE_EXCHANGE、本人可签、过期/重放拒绝、码不入日志；不生成储值专用码 |
 | JB-024 | D02.5 | DONE | 016,020,042 | pay.entitlement | EntitlementQueryService/Impl、QueryPortImpl；本人资产/商家受控详情/总次与日额度/使用明细 | EntitlementQueryFlowTest：跨用户/主体/租户拒绝、过期历史保留、游标稳定、DTO无内部授权/资金拆分 |
 | JB-025 | D02.2/2.6 | DONE | 008,009,015,041 | app HTTP | BizEntitlementTemplateController；P01–P06及管理DTO映射 | EntitlementTemplateApiTest：真实HTTP写后读、BeanValidation生效、权限逐条校验；不能直接绑定CatalogScope |
 | JB-026 | D02.3/2.4 | TODO | 017,018,020,021,023,041,042 | app HTTP | BizEntitlementIssueController、BizEntitlementUseController、MpEntitlementController使用/领取部分；P07/P08/P11–P16/P30 | EntitlementUseApiTest：先看后核、本人授权、PROCESSING查询原操作；未具备能力拒绝而非假成功 |
@@ -212,7 +212,7 @@ git diff --check
 | pay.entitlement | pay_ent_inbox | PayEntInbox / PayEntInboxMapper | JB-014 | DONE；V429，pay端计算摘要，唯一消费键同事务去重 |
 | pay.entitlement | pay_ent_exception | PayEntException / PayEntExceptionMapper | JB-045 | TODO，设计表/已有表待改造 |
 | pay.entitlement | pay_ent_command_dedup | PayEntCommandDedup / PayEntCommandDedupMapper | JB-004 | DONE，V425 |
-| pay.entitlement | ent_use_reversal | EntUseReversal / EntUseReversalMapper | JB-022 | TODO，设计表/已有表待改造 |
+| pay.entitlement | ent_use_reversal | EntUseReversal / EntUseReversalMapper | JB-022 | DONE，V439；原成功记录/额度/反向账/事件同pay事务 |
 
 基础38张之外，支撑DDL与数据库字典第七节新增以下6张，目标合计44张（core16/pay28）；正式迁移V425为目录三张、V426为会员凭证一张。恢复租约复用既有V91 shedlock，不另建空壳表。
 
@@ -534,3 +534,10 @@ JB-020源事实子项进展：core真实EntitlementUseSourcePortImpl、共享订
 JB-020仍DOING，新增订单券链路：报价→本人确认→核心持久原命令→pay预占→按冻结行分摊应用价格→现金/零元收银封存→订单终态与源决策/Outbox同事务→pay提交/释放。V438增加核心协调/金额封存两表，无跨库事务。真实订单服务付款、超时关单、事件重复、取消先于预占、已有收款与封存拒绝改价、异常回滚均有实际场景断言。
 
 定向合并56项通过（`/tmp/phase-two-order-coordinator-acceptance.log`）；实际订单及零元事务追加11项通过（`/tmp/phase-two-order-owner-final.log`）。独立原生MySQL目标DDL/约束1项通过、0跳过（`/tmp/phase-two-order-schema-native.log`）。零元付款消融实际RED：预期WAIT_PAY却为PAID；经代理进入markPaid事务后GREEN。没有执行后端全量。服务券/次卡真实核销源、储值扣款与041远程仍按原任务继续。
+
+
+### 第二阶段：JB-022受限回补执行记录
+
+已完成pay原成功订单券回补协议、ent_use_reversal/Mapper、ReversalService/Impl、ReversalWriter及反向事件；V439。可信售后source绑定原usageNo和全部owner事实；原使用锁串行化，累计不超原优惠，归属未到齐不退整次券；原效期及冻结状态保留。响应丢失按queryReverse原号查询，同售后换号拒绝；既有整单退券策略和旧URL接回仍由049负责。
+
+实际37项合并通过（`/tmp/phase-two-reversal-acceptance.log`）；查询/契约补充20项通过（`/tmp/phase-two-reversal-query-final.log`，含复跑），事件桥接5项通过（`/tmp/phase-two-reversal-relay-final.log`），原生目标DDL/约束1项实际通过、0跳过（`/tmp/phase-two-reversal-native-schema.log`）。没有执行后端全量。JB-023已补5项关键场景，RED为缺CodeViews/CodeService，接下来编码；统一会员码入口维持，兑换专用凭证只作默认关闭的兼容能力，不增加储值专用码或C端独立入口。

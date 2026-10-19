@@ -20,6 +20,7 @@ import ai.neargo.shop.pay.entitlement.entity.EntUseProposal;
 import ai.neargo.shop.pay.entitlement.policy.EntitlementValidityPolicy;
 import ai.neargo.shop.pay.entitlement.policy.PayEntitlementFeatureGate;
 import ai.neargo.shop.pay.entitlement.service.EntitlementUseService;
+import ai.neargo.shop.pay.entitlement.service.EntitlementReversalService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementSourceFence;
 import ai.neargo.shop.pay.entitlement.service.EntitlementUseWriter;
 import ai.neargo.shop.pay.mapper.entitlement.EntInstanceMapper;
@@ -39,6 +40,7 @@ import ai.neargo.shop.spi.entitlement.EntitlementUsePort.PreviewReason;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.HoldView;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseCommand;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseReceipt;
+import ai.neargo.shop.spi.entitlement.EntitlementUsePort.ReversalView;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseDecision;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.CancelUse;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.OrderBenefitReverse;
@@ -70,13 +72,15 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
     private final ObjectProvider<SourceDecisionPort> decisions;
     private final PayEntitlementFeatureGate features;
     private final EntitlementUseWriter writer;
+    private final EntitlementReversalService reversals;
     private final EntitlementSourceFence fences;
     private final ObjectMapper json;
 
     public EntitlementUseServiceImpl(EntInstanceMapper instances, EntUseIntentMapper intents,
             EntUseProposalMapper proposals, EntPeriodBucketMapper buckets,
             ObjectProvider<EntitlementUseSourcePort> sources, ObjectProvider<SourceDecisionPort> decisions,
-            PayEntitlementFeatureGate features, EntitlementUseWriter writer, EntitlementSourceFence fences, ObjectMapper json) {
+            PayEntitlementFeatureGate features, EntitlementUseWriter writer, EntitlementSourceFence fences,
+            EntitlementReversalService reversals, ObjectMapper json) {
         this.instances = instances;
         this.intents = intents;
         this.proposals = proposals;
@@ -85,6 +89,7 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
         this.decisions = decisions;
         this.features = features;
         this.writer = writer;
+        this.reversals = reversals;
         this.fences = fences;
         this.json = json;
     }
@@ -327,9 +332,13 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
     }
 
     @Override
+    public ReversalView queryReverse(EntitlementContext context, String entityNo, String reverseNo) {
+        return reversals.queryReverse(context, entityNo, reverseNo);
+    }
+
+    @Override
     public UseReceipt reverse(EntitlementContext context, OrderBenefitReverse command) {
-        unavailable();
-        throw new IllegalStateException("unreachable");
+        return reversals.reverse(context, command);
     }
 
     private EntInstance owned(EntitlementContext context, String user, String entity, String no) {
