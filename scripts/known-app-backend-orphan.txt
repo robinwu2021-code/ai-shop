@@ -1,0 +1,2 @@
+b-app GET /biz/store/*/stock-reconcile/*
+b-app POST /biz/store/*/stock-reconcile
