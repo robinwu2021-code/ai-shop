@@ -329,6 +329,8 @@ class BizEndpointPermTest {
         put("/biz/entitlement-templates/{templateNo}/publish", BizPerms.ENT_TEMPLATE_PUBLISH);
         put("/biz/entitlement-templates/{templateNo}/status", BizPerms.ENT_TEMPLATE_PUBLISH);
         put("/biz/entitlement-templates/{templateNo}/issue-policy", BizPerms.ENT_ISSUE_MANAGE);
+        put("/biz/entitlement-usage", BizPerms.ENT_READ);
+        put("/biz/entitlements/{instanceNo}", BizPerms.ENT_READ);
 
         // ---- 营销与报价：都是对钱的承诺 ----
         put("/biz/campaign", BizPerms.CAMPAIGN);

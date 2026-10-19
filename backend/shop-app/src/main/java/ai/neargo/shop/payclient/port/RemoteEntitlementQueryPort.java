@@ -7,6 +7,7 @@ import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort;
 
 @Component
@@ -19,6 +20,9 @@ public class RemoteEntitlementQueryPort implements EntitlementQueryPort {
     }
     @Override public EntitlementDetail detail(EntitlementContext c, DetailQuery q) {
         return RemoteEntitlementCalls.call(() -> pay.entDetail(new PayEntitlementRequests.Detail(c, q)));
+    }
+    @Override public PageData<UsageItem> merchantUsage(EntitlementContext c, BizUsageQuery q) {
+        return RemoteEntitlementCalls.call(() -> pay.entMerchantUsage(new PayEntitlementRequests.MerchantUsage(c, q)));
     }
     @Override public UsageDetail usage(EntitlementContext c, UsageQuery q) {
         return RemoteEntitlementCalls.call(() -> pay.entUsage(new PayEntitlementRequests.Usage(c, q)));

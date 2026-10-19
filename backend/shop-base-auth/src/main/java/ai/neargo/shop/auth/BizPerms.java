@@ -77,6 +77,7 @@ public final class BizPerms {
     public static final String FINANCE = "biz:finance";
 
     /** 查看主体级权益目录，不授予变更能力。 */
+    public static final String ENT_READ = "pay:ent:read";
     public static final String ENT_TEMPLATE_READ = "pay:ent:template:read";
     /** 编辑权益草稿，不能发布。 */
     public static final String ENT_TEMPLATE_WRITE = "pay:ent:template:write";
@@ -142,6 +143,7 @@ public final class BizPerms {
             Map.entry(CUSTOMER, "顾客列表与经营数据"),
             Map.entry(STORE, "店铺装修与配送规则"),
             Map.entry(STORE_ADMIN, "建店、停用、挂收款号、管员工"),
+            Map.entry(ENT_READ, "查看权益与核销记录"),
             Map.entry(ENT_TEMPLATE_READ, "查看权益模板"),
             Map.entry(ENT_TEMPLATE_WRITE, "编辑权益模板"),
             Map.entry(ENT_TEMPLATE_PUBLISH, "发布与停用权益模板"),

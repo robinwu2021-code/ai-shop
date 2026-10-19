@@ -6,6 +6,8 @@ import static ai.neargo.shop.pay.entitlement.service.EntitlementRecords.utc;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.BizUsageQuery;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.entity.EntInstance;
 import ai.neargo.shop.pay.entitlement.entity.EntLedger;
@@ -45,7 +47,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
-/** White-listed consumer projections always join tenant, beneficiary and merchant ownership. */
+/** White-listed reads bind tenant and beneficiary; merchant records additionally bind owner and permitted stores. */
 @Service
 public class EntitlementQueryServiceImpl implements EntitlementQueryService {
     private final EntInstanceMapper instances;
@@ -87,15 +89,38 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
     @Override
     public EntitlementDetail detail(EntitlementContext context, DetailQuery q) {
         var asset = owned(context, q.userNo(), q.entityNo(), q.instanceNo());
+        var scope = rule(asset).redemptionScope();
+        if (q.storeNo() != null && "STORES".equals(scope.mode()) && !scope.refs().contains(q.storeNo())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
         return new EntitlementDetail(item(context, asset), "按有效期及适用范围使用，以门店确认的消费记录为准",
-                usages.recent(context.tenantNo(), q.userNo(), q.entityNo(), q.instanceNo(), q.storeNo()).stream()
+                usages.recent(context.tenantNo(), q.userNo(), asset.getEntityNo(), q.instanceNo(), q.storeNo()).stream()
                         .map(this::usageItem).toList());
+    }
+
+    @Override
+    public PageData<UsageItem> merchantUsage(EntitlementContext ctx, BizUsageQuery q) {
+        if (q.storeNo() != null && q.allowedStores() != null && !q.allowedStores().contains(q.storeNo())) {
+            throw BizException.of(ErrorCode.NOT_FOUND);
+        }
+        if (q.allowedStores() != null && q.allowedStores().isEmpty()) return PageData.empty(q.page(), q.size());
+        var condition = Wrappers.<EntUsage>lambdaQuery().eq(EntUsage::getTenantNo, ctx.tenantNo())
+                .eq(EntUsage::getEntityNo, q.entityNo())
+                .in(q.allowedStores() != null, EntUsage::getStoreNo, q.allowedStores())
+                .eq(q.storeNo() != null, EntUsage::getStoreNo, q.storeNo())
+                .eq(q.assetKind() != null, EntUsage::getAssetKind, q.assetKind() == null ? null : q.assetKind().name())
+                .ge(q.from() != null, EntUsage::getOccurredAt, q.from() == null ? null : utc(q.from()))
+                .lt(q.to() != null, EntUsage::getOccurredAt, q.to() == null ? null : utc(q.to()));
+        long total = usages.selectCount(condition);
+        var rows = usages.selectList(condition.orderByDesc(EntUsage::getOccurredAt, EntUsage::getUsageNo)
+                .last("LIMIT " + q.size() + " OFFSET " + ((q.page() - 1) * q.size())));
+        return new PageData<>(rows.stream().map(this::usageItem).toList(), total, q.page(), q.size());
     }
 
     @Override
     public UsageDetail usage(EntitlementContext context, UsageQuery q) {
         var row = usages.selectOne(Wrappers.<EntUsage>lambdaQuery().eq(EntUsage::getTenantNo, context.tenantNo())
-                .eq(EntUsage::getUserNo, q.userNo()).eq(EntUsage::getEntityNo, q.entityNo())
+                .eq(EntUsage::getUserNo, q.userNo()).eq(q.entityNo() != null, EntUsage::getEntityNo, q.entityNo())
                 .eq(EntUsage::getUsageNo, q.usageNo()));
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
         var allocation = allocations.selectOne(Wrappers.<EntUseAllocation>lambdaQuery()
@@ -161,7 +186,7 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
     private EntInstance owned(EntitlementContext context, String user, String entity, String no) {
         var row = instances.selectOne(Wrappers.<EntInstance>lambdaQuery()
                 .eq(EntInstance::getTenantNo, context.tenantNo())
-                .eq(EntInstance::getUserNo, user).eq(EntInstance::getEntityNo, entity)
+                .eq(EntInstance::getUserNo, user).eq(entity != null, EntInstance::getEntityNo, entity)
                 .eq(EntInstance::getInstanceNo, no));
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
         return row;

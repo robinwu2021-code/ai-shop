@@ -52,6 +52,8 @@ public final class PayInternalPaths {
     public static final String ENT_CODE_RESOLVE = "/internal/pay/entitlement/code/resolve";
     public static final String ENT_CODE_INVALIDATE = "/internal/pay/entitlement/code/invalidate";
 
+    public static final String ENT_MERCHANT_USAGE = "/internal/pay/entitlement/query/merchant-usage";
+
     private PayInternalPaths() {
     }
 }

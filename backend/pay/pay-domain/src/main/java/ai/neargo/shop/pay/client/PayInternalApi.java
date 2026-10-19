@@ -157,7 +157,8 @@ public interface PayInternalApi {
     EntitlementUseFactsPort.UseFact entUseFacts(@RequestBody PayEntitlementRequests.UseFacts request);
 
     @PostExchange(PayInternalPaths.ENT_PAYMENT_ATTEMPTS)
-    PayEntitlementResponses.PaymentAttemptView entPaymentAttempts(@RequestBody PayEntitlementRequests.PaymentAttempts request);
+    PayEntitlementResponses.PaymentAttemptView entPaymentAttempts(
+            @RequestBody PayEntitlementRequests.PaymentAttempts request);
 
     @PostExchange(PayInternalPaths.ENT_BATCH_CREATE)
     IssueBatchViews.BatchView entBatchCreate(@RequestBody PayEntitlementRequests.BatchCreate request);
@@ -175,6 +176,10 @@ public interface PayInternalApi {
     CodeViews.ResolvedCode entCodeResolve(@RequestBody PayEntitlementRequests.CodeResolve request);
 
     @PostExchange(PayInternalPaths.ENT_CODE_INVALIDATE)
-    PayEntitlementResponses.CodeInvalidationView entCodeInvalidate(@RequestBody PayEntitlementRequests.CodeInvalidate request);
+    PayEntitlementResponses.CodeInvalidationView entCodeInvalidate(
+            @RequestBody PayEntitlementRequests.CodeInvalidate request);
 
+    @PostExchange(PayInternalPaths.ENT_MERCHANT_USAGE)
+    PageData<EntitlementQueryPort.UsageItem> entMerchantUsage(
+            @RequestBody PayEntitlementRequests.MerchantUsage request);
 }

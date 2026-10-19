@@ -271,4 +271,7 @@ public final class PayEntitlementRequests {
         }
     }
 
+    public record MerchantUsage(EntitlementContext context, EntitlementQueryPort.BizUsageQuery query) {
+        public MerchantUsage { Objects.requireNonNull(context); Objects.requireNonNull(query); }
+    }
 }

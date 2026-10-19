@@ -68,6 +68,12 @@ class MpEndpointAuthTest {
     private static final Set<String> REQUIRES_LOGIN = Set.of(
             "POST /mp/member-code",
             "POST /mp/orders/{orderNo}/entitlement-authorizations",
+            "GET /mp/entitlements",
+            "GET /mp/entitlements/{instanceNo}",
+            "GET /mp/entitlement-usage/{usageNo}",
+            "GET /mp/entitlements/{instanceNo}/allowances",
+            "POST /mp/entitlements/{instanceNo}/activation-quotes",
+            "POST /mp/entitlements/{instanceNo}/redeem-codes",
             "POST /mp/entitlement-claims",
             "GET /mp/entitlement-claims/{intentNo}",
             "POST /mp/user/login/phone",
@@ -526,6 +532,7 @@ class MpEndpointAuthTest {
                     "{\"orderRevision\":0,\"quoteRef\":\"PROBE-QUOTE\",\"selectionDigest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"requestKey\":\"PROBE-REQUEST\"}",
             "POST /mp/entitlement-claims",
                     "{\"templateVersionNo\":\"V1\",\"entityNo\":\"M1\",\"storeNo\":\"S1\"}",
+            "POST /mp/entitlements/{instanceNo}/redeem-codes", "{\"useContext\":\"STORE_EXCHANGE\"}",
             "POST /mp/ticket", "{\"subject\":\"探针\",\"content\":\"探针\"}",
             "POST /mp/order/{orderNo}/after-sale", "{\"type\":\"REFUND\",\"reason\":\"探针\"}",
             "POST /mp/after-sale/{afterSaleNo}/ship", "{\"expressNo\":\"PROBE1\"}",
@@ -548,7 +555,8 @@ class MpEndpointAuthTest {
             default -> MockMvcRequestBuilders.get(url);
         };
         try {
-            var res = mvc().perform(req.header("Idempotency-Key", "AUTH-PROBE").contentType(MediaType.APPLICATION_JSON).content("{}"))
+            var res = mvc().perform(req.header("Idempotency-Key", "AUTH-PROBE")
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
                     .andReturn().getResponse();
             var m = java.util.regex.Pattern.compile("\"code\"\\s*:\\s*(-?\\d+)")
                     .matcher(res.getContentAsString());

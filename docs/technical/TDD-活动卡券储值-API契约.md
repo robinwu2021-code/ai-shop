@@ -45,7 +45,7 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | P07 | POST | /biz/entitlement-issue-batches | IssueBatchCommand | IssueBatchView | pay:ent:issue | 异步结果，不假称全部成功 |
 | P08 | GET | /biz/entitlement-issue-batches/{batchNo} | 无 | IssueBatchView | pay:ent:read | 含逐项跳过/失败原因 |
 | P09 | GET | /mp/entitlements | kind?,status?,cursor?,size | CursorPage<EntitlementItem> | 登录本人 | 本人卡券/次卡/月卡 |
-| P10 | GET | /mp/entitlements/{instanceNo} | 无 | EntitlementDetail | 登录本人 | 余次/期限/范围，已过期保留 |
+| P10 | GET | /mp/entitlements/{instanceNo} | entityNo? | EntitlementDetail | 登录本人 | 余次/期限/范围，已过期保留 |
 | P11 | POST | /mp/entitlement-claims | BenefitClaimCommand | ClaimReceipt | 登录本人 | 模板CENTER或活动资格，不任意领付费卡 |
 | P12 | POST | /biz/entitlement-uses/preview | UsePreviewCommand | UsePreview | pay:ent:use | 先看后核，检查可用状态 |
 | P13 | POST | /biz/entitlement-uses | UseSubmitCommand | OperationView | pay:ent:use | 受控核销，由应用协调源授权，不裸露commit |
@@ -60,8 +60,8 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | P22 | POST | /biz/stored-value/consumptions | StoredValueConsumeCommand | OperationView | pay:sv:consume:create | 绑定真实服务订单与本人授权 |
 | P23 | GET | /mp/stored-value/stores | cursor?,size | CursorPage<StoreItem> | 登录本人 | 有成功储值历史门店 |
 | P24 | GET | /mp/stored-value/consumptions | storeNo,cursor?,size | CursorPage<UsageItem> | 登录本人 | 该店本人储值使用历史 |
-| P25 | GET | /mp/entitlement-usage/{usageNo} | 无 | UsageDetail | 登录本人 | 本人统一核销详情 |
-| P26 | GET | /biz/entitlement-usage | storeNo?,assetKind?,from,to,page,size | Page<UsageItem> | pay:ent:read | 只授权主体门店 |
+| P25 | GET | /mp/entitlement-usage/{usageNo} | entityNo? | UsageDetail | 登录本人 | 本人统一核销详情 |
+| P26 | GET | /biz/entitlement-usage | storeNo?,assetKind?,from?,to?,page,size | PageData<UsageItem> | pay:ent:read | 只授权主体门店 |
 | P27 | GET | /biz/stored-value/recharges/{rechargeNo} | 无 | RechargeView | pay:sv:recharge:read | 查询入账进度，不能再次确认收款代替查询 |
 | P28 | GET | /biz/stored-value/accounts | customerRef,currency,storeNo? | StoredValueBalanceView | pay:sv:account:read | 总余额、总冻结及当前项目可用额，内部双池不返回 |
 | P29 | GET | /biz/entitlements/{instanceNo} | customerRef,storeNo | EntitlementDetail | pay:ent:read | 本主体已识别本人指定卡余次，不任意枚举其他用户 |
@@ -544,3 +544,22 @@ pay逐子commit/abort→按全部真实pay终态confirm/release活动→core记�
 决定后遇失联只恢复原决定；消费/发行开关变更不撤销既有承诺。
 一次活动只消耗一个营销名额，多个权益项使用稳定sourceLineNo/grantNo；源owner核对完整冻结命令。
 `ACTIVITY_BENEFIT_DECIDED`不含许可/码/余额，重复和乱序投递均重读原核心计划。
+
+
+## 第二阶段：本人资产与商家记录查询
+
+P09/P10/P17/P25/P26/P29已实现；同时接入只读起算预览P16及默认关闭的短期券码P30。
+C端租户和userNo取登录会话，统一列表不先选主体；详情/核销详情/日额度中的entityNo是可选的额外筛选，
+未提供时仍须同时匹配tenant+sessionUser+instanceNo/usageNo。提供错误主体不会回退为全主体查询。
+P09沿已有签名游标绑定本人、主体/类型/状态筛选与稳定主键；size范围1–50，禁用STORED_VALUE类型，储值另走P23/P24。
+P10只返回本人实例及历史；P25返回原核销项目、门店、人员、源订单与原消费账后的余次；不拿当前余额改写历史。
+P17 serviceDate可选，按卡内固定时区取服务日；P16只预览起算效果，均不写日额度、不激活、不发事件。
+P30仍要求Idempotency-Key及STORE_EXCHANGE上下文，受独立默认关闭开关控制，不能为付费卡或储值签码。
+
+商家记录P26新增共享`BizUsageQuery`及POST `/internal/pay/entitlement/query/merchant-usage`。
+主体来自商家会话，每个可见门店还需具备pay:ent:read；空门店权限集合返回空列表，不省略IN条件放大数据域。
+owner全主体范围仅在可信内部DTO中以null集合表达；远程传输区分null与空集合。
+按业务发生时间倒序及usageNo倒序稳定排列，from含、to不含，接受ISO8601 Instant；page为1–10000，size为1–50。
+金额带币种、次数独立返回，不把次数当金额。新权限不自动加入店长或其他预置员工角色。
+P29必须提供指定门店及原customerRef；通过会员码识别取得的引用绑定租户/主体/门店/经办人，不能换店复用。
+对STORES范围的实例，非适用门店查询返回404。商家不直接提交任意顾客userNo读取资产。

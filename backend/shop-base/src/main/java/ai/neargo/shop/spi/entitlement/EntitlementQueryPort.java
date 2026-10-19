@@ -1,6 +1,7 @@
 package ai.neargo.shop.spi.entitlement;
 
 import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.AssetKind;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseItem;
 import java.time.Instant;
@@ -14,6 +15,8 @@ public interface EntitlementQueryPort {
 
     EntitlementDetail detail(EntitlementContext context, DetailQuery query);
 
+    PageData<UsageItem> merchantUsage(EntitlementContext context, BizUsageQuery query);
+
     UsageDetail usage(EntitlementContext context, UsageQuery query);
 
     AllowanceView allowances(EntitlementContext context, AllowanceQuery query);
@@ -21,6 +24,17 @@ public interface EntitlementQueryPort {
     /** Preview only; the first successful use transaction persists activation. */
     ActivationQuote activationQuote(EntitlementContext context, DetailQuery query);
 
+    /** Trusted store scope is constructed from merchant permissions, never bound from a public body. */
+    record BizUsageQuery(String entityNo, Set<String> allowedStores, String storeNo, AssetKind assetKind,
+                         Instant from, Instant to, long page, long size) {
+        public BizUsageQuery {
+            ContractChecks.id(entityNo); ContractChecks.optionalId(storeNo);
+            allowedStores = allowedStores == null ? null : Set.copyOf(allowedStores);
+            if (allowedStores != null) allowedStores.forEach(ContractChecks::id);
+            ContractChecks.require(page >= 1 && page <= 10000 && size >= 1 && size <= 50);
+            ContractChecks.require(from == null || to == null || from.isBefore(to));
+        }
+    }
     enum ActivationAction { NONE, ON_FIRST_COMMIT }
 
     record ActivationQuote(String instanceNo, String startBasis, String periodBasis, Instant effectiveFrom,
@@ -55,7 +69,7 @@ public interface EntitlementQueryPort {
     record DetailQuery(String userNo, String entityNo, String instanceNo, String storeNo) {
         public DetailQuery {
             ContractChecks.id(userNo);
-            ContractChecks.id(entityNo);
+            ContractChecks.optionalId(entityNo);
             ContractChecks.id(instanceNo);
             ContractChecks.optionalId(storeNo);
         }
@@ -64,7 +78,7 @@ public interface EntitlementQueryPort {
     record UsageQuery(String userNo, String entityNo, String usageNo) {
         public UsageQuery {
             ContractChecks.id(userNo);
-            ContractChecks.id(entityNo);
+            ContractChecks.optionalId(entityNo);
             ContractChecks.id(usageNo);
         }
     }
@@ -72,7 +86,7 @@ public interface EntitlementQueryPort {
     record AllowanceQuery(String userNo, String entityNo, String instanceNo, LocalDate serviceDate) {
         public AllowanceQuery {
             ContractChecks.id(userNo);
-            ContractChecks.id(entityNo);
+            ContractChecks.optionalId(entityNo);
             ContractChecks.id(instanceNo);
         }
     }

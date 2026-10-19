@@ -10,6 +10,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.common.PageData;
+import java.util.Set;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.client.PayInternalApi;
 import ai.neargo.shop.pay.client.PayInternalPaths;
@@ -156,6 +158,22 @@ class EntitlementRuntimeInternalApiRoundTripTest {
         assertThat(api.entUsage(new PayEntitlementRequests.Usage(ctx, u))).isEqualTo(usage);
         assertThat(api.entAllowances(new PayEntitlementRequests.Allowances(ctx, a))).isEqualTo(allowance);
         assertThat(api.entActivation(new PayEntitlementRequests.Activation(ctx, d))).isEqualTo(activation);
+    }
+    @Test void merchantRecordsPreserveExactStoreScopeDatesAndMoneyUnitFields() {
+        var query = new EntitlementQueryPort.BizUsageQuery("M1", Set.of("S1"), null,
+                EntitlementUsePort.AssetKind.PAID_CARD, at, at.plusSeconds(3600), 1, 10);
+        var item = new EntitlementQueryPort.UsageItem("US1", EntitlementUsePort.AssetKind.PAID_CARD, "swimming",
+                null, null, 1, "S1", "store", at, "COMMITTED");
+        var page = new PageData<>(List.of(item), 1, 1, 10);
+        when(queries.merchantUsage(ctx, query)).thenReturn(page);
+        assertThat(api("tk").entMerchantUsage(new PayEntitlementRequests.MerchantUsage(ctx, query))).isEqualTo(page);
+        var empty = new EntitlementQueryPort.BizUsageQuery("M1", Set.of(), null, null, null, null, 1, 10);
+        var noRecords = PageData.<EntitlementQueryPort.UsageItem>empty(1, 10);
+        when(queries.merchantUsage(ctx, empty)).thenReturn(noRecords);
+        assertThat(api("tk").entMerchantUsage(new PayEntitlementRequests.MerchantUsage(ctx, empty))).isEqualTo(noRecords);
+        var all = new EntitlementQueryPort.BizUsageQuery("M1", null, null, null, null, null, 1, 10);
+        when(queries.merchantUsage(ctx, all)).thenReturn(page);
+        assertThat(api("tk").entMerchantUsage(new PayEntitlementRequests.MerchantUsage(ctx, all))).isEqualTo(page);
     }
     @Test void batchAndCredentialRequestsRetainOwnerScopeAndOriginalKeys() {
         var scope = new CatalogScope("MAIN", "M1", "B1", false);

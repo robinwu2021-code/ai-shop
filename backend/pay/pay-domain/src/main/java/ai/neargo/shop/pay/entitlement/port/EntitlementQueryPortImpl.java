@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.entitlement.port;
 
 import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.pay.entitlement.service.EntitlementQueryService;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort;
@@ -16,6 +17,10 @@ public class EntitlementQueryPortImpl implements EntitlementQueryPort {
     @Override
     public EntitlementDetail detail(EntitlementContext c, DetailQuery q) {
         return service.detail(c, q);
+    }
+    @Override
+    public PageData<UsageItem> merchantUsage(EntitlementContext c, BizUsageQuery q) {
+        return service.merchantUsage(c, q);
     }
     @Override
     public UsageDetail usage(EntitlementContext c, UsageQuery q) {

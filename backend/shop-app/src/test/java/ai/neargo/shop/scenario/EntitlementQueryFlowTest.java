@@ -10,6 +10,8 @@ import ai.neargo.shop.pay.entitlement.service.EntitlementUseService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementQueryService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementLifecycleService;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.AssetQuery;
+import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.BizUsageQuery;
+import java.util.Set;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.AssetState;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.DetailQuery;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
@@ -127,5 +129,33 @@ class EntitlementQueryFlowTest {
                 Integer.class, instance)).isOne();
         String serialized = json.writeValueAsString(expired);
         assertThat(serialized).doesNotContain("ruleSnapshot", "authorizationRef", "tenantNo", "sourcePaidAt");
+    }
+    @Test void merchantRecordQueryCannotWidenStoreScopeAndSeparatesUnitsFromMoney() {
+        String entity = UUID.randomUUID().toString();
+        String[] stores = {"S1", "S2"};
+        for (String store : stores) {
+            jdbc.update("INSERT INTO ent_usage(usage_no,operation_no,user_no,entity_no,store_no,store_name,"
+                    + "asset_kind,title,units,items_snapshot,operator_no,status,occurred_at,tenant_no,created_at,"
+                    + "updated_at,created_by,updated_by) VALUES (?,?,'U1',?,?,'store','PAID_CARD','swimming',1,"
+                    + "'[]','ACTOR','COMMITTED',?,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'T','T')",
+                    UUID.randomUUID().toString(), UUID.randomUUID().toString(), entity, store,
+                    LocalDateTime.now(ZoneOffset.UTC));
+        }
+        var limited = query.merchantUsage(context, new BizUsageQuery(entity, Set.of("S1"), null, null,
+                null, null, 1, 20));
+        assertThat(limited.total()).isEqualTo(1);
+        assertThat(limited.records().getFirst().storeNo()).isEqualTo("S1");
+        assertThat(limited.records().getFirst().amountMinor()).isNull();
+        assertThat(limited.records().getFirst().units()).isEqualTo(1);
+        assertThat(query.merchantUsage(context, new BizUsageQuery(entity, null, null, null,
+                null, null, 1, 20)).total()).isEqualTo(2);
+        assertThat(query.merchantUsage(context, new BizUsageQuery(entity, Set.of(), null, null,
+                null, null, 1, 20)).records()).isEmpty();
+        assertThatThrownBy(() -> query.merchantUsage(context, new BizUsageQuery(entity, Set.of("S1"), "S2",
+                null, null, null, 1, 20))).isInstanceOf(BizException.class);
+        assertThat(query.merchantUsage(context, new BizUsageQuery(entity, null, null, null,
+                Instant.now().plusSeconds(60), null, 1, 20)).records()).isEmpty();
+        assertThat(query.merchantUsage(new EntitlementContext("OTHER", "ACTOR", "R1", "a".repeat(64)),
+                new BizUsageQuery(entity, null, null, null, null, null, 1, 20)).records()).isEmpty();
     }
 }

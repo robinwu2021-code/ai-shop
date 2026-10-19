@@ -386,3 +386,10 @@ PayEntitlementOutboxRelay由组合根显式创建，独立形态只在pay-svc运
 | app.portal.mp | MpEntitlementController | P11及原领取只读查询，消费者字段白名单 |
 
 ActivityPresetExecutionPolicy仅新增AP004的NONE触发权益领取执行器；其他预置仍逐项判断实际能力。
+
+
+第二阶段查询HTTP：MpEntitlementController增加本人列表、详情、使用详情、日额度与起算预览及可选兑换码；
+BizEntitlementQueryController提供P26授权门店记录与P29已识别顾客的指定实例详情。
+EntitlementQueryPort/Service/Impl增加merchantUsage，BizUsageQuery只允许内部可信范围构造；
+PayInternalApi/Requests/Paths、RuntimeEndpoint与RemoteEntitlementQueryPort承载同一商家查询协议。
+本批无新增数据库表，复用ent_instance/ent_usage/ent_ledger/ent_period_bucket与会员身份引用。

@@ -94,7 +94,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-024 | D02.5 | DONE | 016,020,042 | pay.entitlement | EntitlementQueryService/Impl、QueryPortImpl；本人资产/商家受控详情/总次与日额度/使用明细 | EntitlementQueryFlowTest：跨用户/主体/租户拒绝、过期历史保留、游标稳定、DTO无内部授权/资金拆分 |
 | JB-025 | D02.2/2.6 | DONE | 008,009,015,041 | app HTTP | BizEntitlementTemplateController；P01–P06及管理DTO映射 | EntitlementTemplateApiTest：真实HTTP写后读、BeanValidation生效、权限逐条校验；不能直接绑定CatalogScope |
 | JB-026 | D02.3/2.4 | DOING | 017,018,020,021,023,041,042 | app HTTP | BizEntitlementIssueController、BizEntitlementUseController、MpEntitlementController使用/领取部分；P07/P08/P11–P16/P30 | EntitlementUseApiTest：先看后核、本人授权、PROCESSING查询原操作；未具备能力拒绝而非假成功 |
-| JB-027 | D02.5 | TODO | 024,041 | app HTTP | MpEntitlementController查询部分、B记录/详情；P09/P10/P17/P25/P26/P29 | EntitlementQueryApiTest：本人字段白名单、商家门店过滤、游标/分页、金额币种与次数分开 |
+| JB-027 | D02.5 | DONE | 024,041 | app HTTP | MpEntitlementController查询部分、B记录/详情；P09/P10/P17/P25/P26/P29 | EntitlementQueryApiTest：本人字段白名单、商家门店过滤、游标/分页、金额币种与次数分开 |
 
 ### 2.4 核心活动系统
 
@@ -250,15 +250,15 @@ git diff --check
 | P06 | PUT /biz/entitlement-templates/{templateNo}/issue-policy | JB-025 | DONE |
 | P07 | POST /biz/entitlement-issue-batches | JB-026 | DOING |
 | P08 | GET /biz/entitlement-issue-batches/{batchNo} | JB-026 | DOING |
-| P09 | GET /mp/entitlements | JB-027 | TODO |
-| P10 | GET /mp/entitlements/{instanceNo} | JB-027 | TODO |
+| P09 | GET /mp/entitlements | JB-027 | DONE |
+| P10 | GET /mp/entitlements/{instanceNo} | JB-027 | DONE |
 | P11 | POST /mp/entitlement-claims | JB-026 | DOING |
 | P12 | POST /biz/entitlement-uses/preview | JB-026 | DOING |
 | P13 | POST /biz/entitlement-uses | JB-026 | DOING |
 | P14 | GET /biz/entitlement-uses/{operationNo} | JB-026 | DOING |
 | P15 | POST /mp/entitlement-quotes | JB-026 | DOING |
 | P16 | POST /mp/entitlements/{instanceNo}/activation-quotes | JB-026 | DOING |
-| P17 | GET /mp/entitlements/{instanceNo}/allowances | JB-027 | TODO |
+| P17 | GET /mp/entitlements/{instanceNo}/allowances | JB-027 | DONE |
 | P18 | POST /biz/stored-value/recharges | JB-038 | TODO |
 | P19 | POST /biz/stored-value/recharges/{rechargeNo}/submit | JB-038 | TODO |
 | P20 | POST /biz/stored-value/recharges/{rechargeNo}/receive | JB-038 | TODO |
@@ -266,11 +266,11 @@ git diff --check
 | P22 | POST /biz/stored-value/consumptions | JB-038 | TODO |
 | P23 | GET /mp/stored-value/stores | JB-038 | TODO |
 | P24 | GET /mp/stored-value/consumptions | JB-038 | TODO |
-| P25 | GET /mp/entitlement-usage/{usageNo} | JB-027 | TODO |
-| P26 | GET /biz/entitlement-usage | JB-027 | TODO |
+| P25 | GET /mp/entitlement-usage/{usageNo} | JB-027 | DONE |
+| P26 | GET /biz/entitlement-usage | JB-027 | DONE |
 | P27 | GET /biz/stored-value/recharges/{rechargeNo} | JB-038 | TODO |
 | P28 | GET /biz/stored-value/accounts | JB-038 | TODO |
-| P29 | GET /biz/entitlements/{instanceNo} | JB-027 | TODO |
+| P29 | GET /biz/entitlements/{instanceNo} | JB-027 | DONE |
 | P30 | POST /mp/entitlements/{instanceNo}/redeem-codes | JB-026 | DOING |
 | O01 | GET /ops/pay/entitlement-exceptions | JB-045 | TODO |
 | O02 | GET /ops/pay/entitlement-exceptions/{exceptionNo} | JB-045 | TODO |
@@ -568,3 +568,11 @@ AP004可在预置显式启用、实际商家准入及功能开关满足时正常
 本批合计54项不同定向Java用例通过（权益联动11、策略3、原grant8、参与5、架构16、pay边界4、C鉴权7）；
 原生目标DDL1项通过、0跳过，文档70及生成物24守卫通过；未运行后端全量。
 当前55项：29 DONE / 9 DOING / 17 TODO。JB-031仍待充值终态，JB-041仍待储值/售卡承载，均不提前标完成。
+
+
+第二阶段查询批次JB-027完成；P09/P10/P17/P25/P26/P29与P16/P30承载均已接入。
+C身份从会话构造，详情主体可选、仍严格校验本人；B记录按逐门店读取权限过滤，指定卡详情需真实会员码识别引用。
+共享merchant-usage内部POST区分null全主体与空授权集合；新增pay:ent:read权限不自动授予预置店长。
+47项不同定向Java用例通过，覆盖6项真实B/C HTTP、3项领域查询、9项运行RPC及权限/架构/路由；
+命令与证据记在执行账本，未运行全量。无新增迁移，V441保持不变。
+当前55项为30 DONE / 9 DOING / 16 TODO；JB-026仍待P07/P08/P12/P13/P14/P15，JB-020仍待真实服务核销源与储值协调。

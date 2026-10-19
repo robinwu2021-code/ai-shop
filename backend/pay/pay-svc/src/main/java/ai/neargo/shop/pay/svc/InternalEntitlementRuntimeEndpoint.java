@@ -171,4 +171,9 @@ public class InternalEntitlementRuntimeEndpoint {
         return InternalServiceResponses.invoke(token, given, () -> new PayEntitlementResponses.CodeInvalidationView(
                 r.userNo(), r.instanceNo(), codes.invalidate(r.context(), r.userNo(), r.instanceNo())));
     }
+    @PostMapping(PayInternalPaths.ENT_MERCHANT_USAGE)
+    public ResponseEntity<?> merchantUsage(@RequestBody PayEntitlementRequests.MerchantUsage r,
+            @RequestHeader(value = InternalHttp.TOKEN_HEADER, required = false) String given) {
+        return InternalServiceResponses.invoke(token, given, () -> queries.merchantUsage(r.context(), r.query()));
+    }
 }
