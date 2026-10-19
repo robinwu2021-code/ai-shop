@@ -93,6 +93,23 @@ class StateMachineTest {
     }
 
     @Test
+    void allowedExcludesBusinessRejectedTargetsButExposesDefinitionErrors() {
+        var conditional = StateMachine.<S, E, Ctx>builder("conditional")
+                .from(S.A).on(E.GO).by(Actor.PLATFORM)
+                .toOneOf(Set.of(S.B), (from, c) -> {
+                    if (!c.ok()) throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+                    return S.B;
+                }).add().build();
+        assertThat(conditional.allowed(S.A, Actor.PLATFORM, new Ctx(false, false))).isEmpty();
+        assertThat(conditional.allowed(S.A, Actor.PLATFORM, OK)).containsExactly(E.GO);
+        var invalid = StateMachine.<S, E, Ctx>builder("invalid")
+                .from(S.A).on(E.GO).by(Actor.PLATFORM)
+                .toOneOf(Set.of(S.B), (from, c) -> S.C).add().build();
+        assertThatThrownBy(() -> invalid.allowed(S.A, Actor.PLATFORM, OK))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     @DisplayName("去向函数返回声明之外的状态 → 定义错误，立即失败")
     void resolverOutsideDeclared() {
         StateMachine<S, E, Ctx> bad = StateMachine.<S, E, Ctx>builder("bad")

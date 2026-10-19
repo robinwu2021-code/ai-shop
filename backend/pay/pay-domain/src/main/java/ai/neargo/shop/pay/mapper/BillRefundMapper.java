@@ -17,8 +17,14 @@ public interface BillRefundMapper extends BaseMapper<StlBillRefund> {
     @Select("SELECT COUNT(*) FROM stl_bill_refund WHERE after_sale_no = #{afterSaleNo}")
     long countByAfterSale(@Param("afterSaleNo") String afterSaleNo);
 
-    @Select("SELECT COALESCE(SUM(goods_minor),0) FROM stl_bill_refund WHERE settle_no=#{settleNo} AND pre_split=1")
-    long preSplitGoods(@Param("settleNo") String settleNo);
+    @Select("SELECT goods_minor FROM stl_bill_refund WHERE settle_no=#{settleNo} AND pre_split=1 FOR UPDATE")
+    java.util.List<Long> preSplitAmounts(@Param("settleNo") String settleNo);
+
+    default long preSplitGoods(String settleNo) {
+        long total = 0;
+        for (long amount : preSplitAmounts(settleNo)) total = Math.addExact(total, amount);
+        return total;
+    }
 
     /**
      * 分账前：各项金额按份额扣减，状态 old → next（未退完时 next = old）。

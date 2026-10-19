@@ -59,9 +59,14 @@ public final class StateMachine<S, E, C> {
         Set<E> out = new LinkedHashSet<>();
         for (Transition<S, E, C> t : transitions) {
             boolean here = from == null ? t.creation() : t.from().contains(from);
-            if (here && t.actors().contains(actor)
-                    && t.guards().stream().allMatch(g -> g.check(ctx).isEmpty())) {
-                out.add(t.event());
+            if (here && t.actors().contains(actor)) {
+                try {
+                    // Resolve the target as well: a visible action must be executable with these facts.
+                    fire(from, t.event(), actor, ctx);
+                    out.add(t.event());
+                } catch (BizException rejected) {
+                    // Business rejection hides the action; malformed definitions still fail loudly.
+                }
             }
         }
         return out;

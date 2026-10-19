@@ -66,7 +66,8 @@ public class PayoutServiceImpl implements PayoutService {
         }
         List<StlBill> bills = DataScopeContext.executeWithoutScope(() ->
                 billMapper.selectList(Wrappers.<StlBill>lambdaQuery()
-                        .eq(StlBill::getBatchNo, batchNo)));
+                        .eq(StlBill::getBatchNo, batchNo).orderByAsc(StlBill::getSettleNo).last("FOR UPDATE")));
+        for (StlBill bill : bills) pointsFunding.assertRefundClear(bill.getSettleNo());
         List<StlBill> selfOperated = bills.stream()
                 .filter(b -> StlBill.BIZ_SELF_OPERATED.equals(b.getBusinessMode()))
                 .toList();

@@ -37,12 +37,17 @@ public class SettlementRefundCoordinator {
     private final PointsSettlementRefundHoldMapper holds;
     private final PointsRefundPort pointsRefunds;
     private final ai.neargo.shop.pay.mapper.CashRefundSplitMapper cashReversals;
+    private final PreparedRefundPosting preparedPosting;
+    private final PreparedRefundShares preparedShares;
 
     public SettlementRefundCoordinator(BillMapper billMapper, BillRefundJournal journal, SettlementRefundPolicy policy,
                                    PreSplitAdjuster preSplit, PostSplitReverser postSplit,
                                    PointsSettlementRefundHoldMapper holds, PointsRefundPort pointsRefunds,
                                    ai.neargo.shop.pay.mapper.CashRefundSplitMapper cashReversals,
-                                   ai.neargo.shop.pay.service.impl.RefundCapacityLedger capacity) {
+                                   ai.neargo.shop.pay.service.impl.RefundCapacityLedger capacity,
+                                   PreparedRefundPosting preparedPosting, PreparedRefundShares preparedShares) {
+        this.preparedPosting=preparedPosting;
+        this.preparedShares=preparedShares;
         this.capacity = capacity;
         this.billMapper = billMapper;
         this.journal = journal;
@@ -78,12 +83,18 @@ public class SettlementRefundCoordinator {
                     || cmd.freightMinor() != number(prior, "freight_minor")
                     || cmd.goodsPaidMinor() != number(prior, "goods_paid_minor"))
                 throw new IllegalArgumentException("SETTLEMENT_REFUND_HOLD_CONFLICT");
+            if ("PENDING".equals(prior.get("status"))) preparedShares.share(bill,cmd);
             return !"CANCELLED".equals(prior.get("status"));
         }
         if (journal.recorded(cmd.afterSaleNo()))
             throw new IllegalArgumentException("SETTLEMENT_REFUND_HOLD_CONFLICT");
-        if (holds.pendingForBill(bill.getSettleNo()) > 0 || StlBill.SPLITTING.equals(bill.getStatus())
-                || splitDone(bill) || !StlBill.PENDING.equals(bill.getStatus())) return false;
+        boolean supported=Set.of(StlBill.PENDING,StlBill.PENDING_RECON,StlBill.CONFIRMED,StlBill.PAID)
+                .contains(bill.getStatus()) || splitDone(bill);
+        if (!supported || holds.pendingForBill(bill.getSettleNo()) > 0
+                || cashReversals.pending(bill.getSettleNo())>0
+                || bill.getPayoutNo()!=null && bill.getPaidAt()==null) return false;
+        // Validate the immutable basis before allowing any external cash refund.
+        preparedShares.share(bill,cmd);
         holds.create(cmd.afterSaleNo(), bill.getSettleNo(), cmd.subOrderNo(),
                 cmd.goodsMinor(), cmd.freightMinor(), cmd.goodsPaidMinor());
         return true;
@@ -110,9 +121,9 @@ public class SettlementRefundCoordinator {
         }
         if (!"PENDING".equals(hold.get("status")))
             throw new IllegalArgumentException("SETTLEMENT_REFUND_HOLD_CONFLICT");
-        if (splitDone(bill) || StlBill.SPLITTING.equals(bill.getStatus()))
+        if (StlBill.SPLITTING.equals(bill.getStatus()))
             throw new IllegalStateException("SETTLEMENT_REFUND_HOLD_VIOLATED");
-        if (!reverse(cmd, true)) return false;
+        if (!preparedPosting.confirm(bill,cmd,splitDone(bill))) return false;
         if (holds.finish(cmd.afterSaleNo(), "CONFIRMED", preparationNo) != 1)
             throw new IllegalStateException("SETTLEMENT_REFUND_HOLD_CONFLICT");
         return true;
@@ -136,8 +147,9 @@ public class SettlementRefundCoordinator {
         }
         if (!"PENDING".equals(hold.get("status")) || journal.recorded(cmd.afterSaleNo()))
             throw new IllegalArgumentException("SETTLEMENT_REFUND_HOLD_CONFLICT");
-        if (splitDone(bill) || StlBill.SPLITTING.equals(bill.getStatus()))
+        if (StlBill.SPLITTING.equals(bill.getStatus()))
             throw new IllegalStateException("SETTLEMENT_REFUND_HOLD_VIOLATED");
+        preparedPosting.cancel(bill,cmd);
         if (holds.finish(cmd.afterSaleNo(), "CANCELLED", preparationNo) != 1)
             throw new IllegalStateException("SETTLEMENT_REFUND_HOLD_CONFLICT");
         capacity.releaseAfterRecovery(proof);
@@ -207,8 +219,11 @@ public class SettlementRefundCoordinator {
         if(remainingBase==0) return amount;
         var total=java.math.BigInteger.valueOf(amount);
         var base=java.math.BigInteger.valueOf(remainingBase);
-        return total.multiply(java.math.BigInteger.valueOf(Math.addExact(before,cmd.goodsMinor()))).divide(base)
-                .subtract(total.multiply(java.math.BigInteger.valueOf(before)).divide(base)).longValueExact();
+        long target=total.multiply(java.math.BigInteger.valueOf(Math.addExact(before,cmd.goodsMinor())))
+                .divide(base).longValueExact();
+        // A cancelled cash refund may already have returned part of the original split at the bank.
+        long returned=bill.getReversedMinor()==null?0:bill.getReversedMinor();
+        return Math.max(0L,Math.subtractExact(target,returned));
     }
 
     /** 转人工的单要看分账发过没有：发过（splitAt 有值）就是钱已动过，同样经通道回退。 */

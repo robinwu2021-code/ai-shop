@@ -297,7 +297,7 @@ public class SettlePortImpl implements SettlePort {
 
     @Override
     public boolean reversePreparedRefund(SplitReversal cmd) {
-        return settlementRefund.reversePrepared(cmd);
+        return settlementRefund.reversePrepared(cmd) && cashRefundSplit.reversePrepared(cmd);
     }
 
     @Override

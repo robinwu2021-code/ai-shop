@@ -1158,6 +1158,7 @@ public class SettleServiceImpl implements SettleService {
     @Override
     @Transactional("payTxManager")
     public SettleBillVO confirmRecon(String settleNo, String operatorNo) {
+        pointsFunding.assertRefundClear(settleNo);
         StlBill b = requireSelfOperated(settleNo);
         if (StlBill.CONFIRMED.equals(b.getStatus()) || StlBill.PAID.equals(b.getStatus())) {
             return toVO(b);   // 幂等：重复确认不报错
@@ -1173,6 +1174,7 @@ public class SettleServiceImpl implements SettleService {
     @Override
     @Transactional("payTxManager")
     public SettleBillVO markPaid(String settleNo, String paymentRef, String operatorNo) {
+        pointsFunding.assertRefundClear(settleNo);
         if (paymentRef == null || paymentRef.isBlank()) {
             // 没有凭证号的「已付」等于没记：事后对不上银行流水，也说不清是谁付的
             throw BizException.of(ErrorCode.BAD_REQUEST);

@@ -5,4 +5,6 @@ import ai.neargo.shop.spi.settle.SettlePort.SplitReversal;
 /** Cash-only source continuation. Unknown outcomes query the committed original request, never resubmit it. */
 public interface CashRefundSplitService {
     boolean reverse(SplitReversal command);
+    /** Reverse only the external split; the points hold owns subsequent goods accounting. */
+    boolean reversePrepared(SplitReversal command);
 }

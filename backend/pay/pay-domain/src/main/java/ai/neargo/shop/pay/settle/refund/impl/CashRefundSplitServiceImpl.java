@@ -31,6 +31,7 @@ public class CashRefundSplitServiceImpl implements CashRefundSplitService {
     private final PointsSettlementRefundHoldMapper holds;
     private final SettlementRefundCoordinator settlement;
     private final SettlementRefundPolicy policy;
+    private final PreparedRefundShares preparedShares;
     private final BillRefundJournal journal;
     private final SplitGateway bank;
     private final TransactionTemplate tx;
@@ -38,18 +39,21 @@ public class CashRefundSplitServiceImpl implements CashRefundSplitService {
 
     public CashRefundSplitServiceImpl(CashRefundSplitMapper intents,SplitIntentMapper splits,BillMapper bills,
             BillRefundMapper refunds,SplitLogMapper logs,PointsSettlementRefundHoldMapper holds,
-            SettlementRefundCoordinator settlement,SettlementRefundPolicy policy,BillRefundJournal journal,
+            SettlementRefundCoordinator settlement,SettlementRefundPolicy policy,PreparedRefundShares preparedShares,BillRefundJournal journal,
             SplitGateway bank,@Qualifier("payTxManager") PlatformTransactionManager manager) {
         this.intents=intents; this.splits=splits; this.bills=bills; this.refunds=refunds; this.logs=logs;
         this.holds=holds; this.settlement=settlement; this.policy=policy; this.journal=journal; this.bank=bank;
+        this.preparedShares=preparedShares;
         this.tx=new TransactionTemplate(manager);
     }
-    @Override public boolean reverse(SplitReversal command) {
+    @Override public boolean reverse(SplitReversal command) { return reverse(command, false); }
+    @Override public boolean reversePrepared(SplitReversal command) { return reverse(command, true); }
+    private boolean reverse(SplitReversal command, boolean prepared) {
         require(!TransactionSynchronizationManager.isActualTransactionActive(),"CASH_REVERSAL_REQUIRES_NO_TRANSACTION");
         require(command!=null && command.subOrderNo()!=null && command.afterSaleNo()!=null
                 && command.goodsMinor()>=0 && command.freightMinor()>=0 && command.goodsPaidMinor()>=0,
                 "CASH_REVERSAL_INPUT_INVALID");
-        var plan=tx.execute(s -> DataScopeContext.executeWithoutScope(() -> prepare(command)));
+        var plan=tx.execute(s -> DataScopeContext.executeWithoutScope(() -> prepare(command, prepared)));
         if(plan.done()) return true;
         if(plan.frozen()==null) return false;
         var frozen=plan.frozen(); var cash=frozen.cash();
@@ -62,18 +66,27 @@ public class CashRefundSplitServiceImpl implements CashRefundSplitService {
         var outcome=result;
         return Boolean.TRUE.equals(tx.execute(s -> DataScopeContext.executeWithoutScope(() -> accept(frozen,outcome))));
     }
-    private Plan prepare(SplitReversal source) {
+    private Plan prepare(SplitReversal source, boolean prepared) {
         StlBill bill=bills.selectOne(Wrappers.<StlBill>lambdaQuery().eq(StlBill::getSubOrderNo,source.subOrderNo())
                 .last("LIMIT 1 FOR UPDATE"));
         if(bill==null) return new Plan(null,false,true);
         var prior=intents.find(source.afterSaleNo());
         if(prior!=null) {
             var frozen=json.readValue((String)prior.get("command_json"),Frozen.class);
-            require(frozen.source().equals(source),"CASH_REVERSAL_INPUT_CONFLICT");
+            require(frozen.source().equals(source) && frozen.deferred()==prepared,"CASH_REVERSAL_INPUT_CONFLICT");
             return new Plan(frozen,false,"CONFIRMED".equals(prior.get("state")));
         }
         if(journal.recorded(source.afterSaleNo())) return new Plan(null,false,true);
-        if(intents.pending(bill.getSettleNo())>0 || holds.pendingForBill(bill.getSettleNo())>0)
+        if (prepared) {
+            var hold=holds.find(source.afterSaleNo());
+            require(hold!=null && "PENDING".equals(hold.get("status"))
+                    && bill.getSettleNo().equals(hold.get("settle_no"))
+                    && source.goodsMinor()==((Number)hold.get("goods_minor")).longValue()
+                    && source.freightMinor()==((Number)hold.get("freight_minor")).longValue()
+                    && source.goodsPaidMinor()==((Number)hold.get("goods_paid_minor")).longValue(),
+                    "SETTLEMENT_REFUND_HOLD_MISMATCH");
+        }
+        if(intents.pending(bill.getSettleNo())>0 || !prepared && holds.pendingForBill(bill.getSettleNo())>0)
             return new Plan(null,false,false);
         var split=splits.latest(bill.getSettleNo());
         if(split!=null && !"ACCEPTED".equals(split.get("state")) && !"FAILED".equals(split.get("state")))
@@ -81,8 +94,8 @@ public class CashRefundSplitServiceImpl implements CashRefundSplitService {
         if(StlBill.SPLITTING.equals(bill.getStatus())) return new Plan(null,false,false);
         boolean splitDone=StlBill.SPLIT.equals(bill.getStatus()) || StlBill.SPLIT_CONFIRMED.equals(bill.getStatus())
                 || StlBill.MANUAL.equals(bill.getStatus()) && bill.getSplitAt()!=null;
-        if(!splitDone) return new Plan(null,false,settlement.reverse(source));
-        require(nz(bill.getSubsidyMinor())==0 && nz(bill.getPointsCostMinor())==0,"CASH_REVERSAL_POINTS_PREPARATION_REQUIRED");
+        if(!splitDone) return new Plan(null,false,prepared || settlement.reverse(source));
+        require(prepared || nz(bill.getSubsidyMinor())==0 && nz(bill.getPointsCostMinor())==0,"CASH_REVERSAL_POINTS_PREPARATION_REQUIRED");
         SplitCommand original=null;
         if(split!=null && "ACCEPTED".equals(split.get("state")))
             original=json.readValue((String)split.get("command_json"),SplitCommand.class);
@@ -103,8 +116,10 @@ public class CashRefundSplitServiceImpl implements CashRefundSplitService {
         String request="REV-"+source.afterSaleNo(); require(request.length()<=64,"CASH_REVERSAL_REQUEST_TOO_LONG");
         var cash=new SplitCommand(request,original.settleNo(),original.subOrderNo(),original.merchantNo(),original.storeNo(),
                 original.payMerchantNo(),original.channel(),original.currency(),settlement.splitReturn(bill,source));
-        var frozen=new Frozen(source,cash,policy.share(bill,source.goodsMinor(),source.freightMinor(),source.goodsPaidMinor()),
-                nz(bill.getRefundedGoodsMinor()),bill.getStatus());
+        var share=prepared?preparedShares.share(bill,source)
+                :policy.share(bill,source.goodsMinor(),source.freightMinor(),source.goodsPaidMinor());
+        var frozen=new Frozen(source,cash,share,
+                nz(bill.getRefundedGoodsMinor()),bill.getStatus(),prepared);
         intents.create(source.afterSaleNo(),bill.getSettleNo(),request,json.writeValueAsString(frozen),cash.channel());
         return new Plan(frozen,true,false);
     }
@@ -123,6 +138,12 @@ public class CashRefundSplitServiceImpl implements CashRefundSplitService {
         boolean sameState=bill!=null && (bill.getStatus().equals(frozen.billStatus())
                 || StlBill.SPLIT.equals(frozen.billStatus()) && StlBill.SPLIT_CONFIRMED.equals(bill.getStatus()));
         require(sameState && nz(bill.getRefundedGoodsMinor())==frozen.before(),"CASH_REVERSAL_BILL_CHANGED");
+        if (frozen.deferred()) {
+            // Record the actual bank movement now, without pretending that goods/cash were refunded.
+            require(refunds.recordAfterSplit(cash.settleNo(),0,cash.amountMinor(),frozen.before(),
+                    bill.getStatus(),bill.getStatus())==1,"CASH_REVERSAL_RESULT_CONFLICT");
+            return true;
+        }
         journal.append(bill,frozen.share(),frozen.source().afterSaleNo(),false);
         require(refunds.recordAfterSplit(cash.settleNo(),frozen.share().goodsMinor(),cash.amountMinor(),frozen.before(),
                 bill.getStatus(),frozen.share().finalRefund()?StlBill.REVERSED:bill.getStatus())==1,
@@ -144,5 +165,6 @@ public class CashRefundSplitServiceImpl implements CashRefundSplitService {
     private long nz(Long value) { return value==null?0:value; }
     private void require(boolean valid,String message) { if(!valid) throw new IllegalStateException(message); }
     private record Plan(Frozen frozen,boolean submit,boolean done) {}
-    public record Frozen(SplitReversal source,SplitCommand cash,BillRefundShare share,long before,String billStatus) {}
+    public record Frozen(SplitReversal source,SplitCommand cash,BillRefundShare share,long before,String billStatus,
+                         boolean deferred) {}
 }

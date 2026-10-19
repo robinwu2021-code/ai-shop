@@ -59,8 +59,8 @@ public class BasicRefundExecutionServiceImpl implements BasicRefundExecutionServ
                         row.getAfterSaleNo(), plan.goodsMinor(), plan.freightMinor(), plan.goodsMinor()),
                         Boolean.TRUE.equals(row.getZeroLiability()));
                 if (!confirmed) {
-                    results.apply(new RefundDispatchResult(no, null, DispatchStatus.FAILED,
-                            "REVERSE_UNCONFIRMED", false, null));
+                    results.apply(new RefundDispatchResult(no, null, DispatchStatus.ACCEPTED,
+                            "REVERSE_UNCONFIRMED", true, null));
                     return;
                 }
                 store.cashReady(no);

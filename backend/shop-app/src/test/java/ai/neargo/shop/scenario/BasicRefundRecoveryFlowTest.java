@@ -78,6 +78,27 @@ class BasicRefundRecoveryFlowTest {
                 + " and direction='REFUND' and status='SUCCESS'", Integer.class, afterSale)).isZero();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"PROCESSING", "FAILED"})
+    void temporarySettlementConflictRecoversTheOriginalExecution(String storedStatus) throws Exception {
+        Purchase p = purchase("13207071005");
+        jdbc.update("update stl_bill set status='SPLITTING' where sub_order_no=?", p.subNo());
+        String afterSale = apply(p);
+        approve(p, afterSale);
+        assertThat(jdbc.queryForObject("select status from ord_refund_execution where after_sale_no=?",
+                String.class, afterSale)).isEqualTo("PROCESSING");
+        assertThat(jdbc.queryForObject("select count(*) from stl_payment where after_sale_no=?",
+                Long.class, afterSale)).isZero();
+        jdbc.update("update stl_bill set status='PENDING' where sub_order_no=?", p.subNo());
+        jdbc.update("update ord_refund_execution set status=?,next_attempt_at=0 where after_sale_no=?", storedStatus, afterSale);
+        assertThat(refunds.recoverDue(System.currentTimeMillis(), 200)).isGreaterThanOrEqualTo(1);
+        assertThat(jdbc.queryForObject("select phase from ord_refund_execution where after_sale_no=?",
+                String.class, afterSale)).isEqualTo("CASH");
+        refunds.recover("RF-" + afterSale);
+        assertThat(jdbc.queryForObject("select count(*) from stl_payment where after_sale_no=?",
+                Long.class, afterSale)).isEqualTo(1L);
+    }
+
     @Test
     void missingOriginDoesNotBecomeSuccessfulRefund() throws Exception {
         Purchase p = purchase("13207071002");

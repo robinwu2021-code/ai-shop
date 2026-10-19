@@ -3,7 +3,9 @@
 状态：已确认（用户 2026-10-14「确认」：售后新状态一次到位、干预收窄为非资金、三端按钮读 allowedActions、先做步 1–3）
 关联需求：docs/superpowers/specs/2026-10-14-订单状态机-完整方案.md（迁移表 §2–§5、不变式 §8、类设计 §10）；
 docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动）
-创建：2026-10-14 · 最后更新：2026-10-14
+创建：2026-10-14 · 最后更新：2026-10-19
+
+2026-10-19 修复接续：本次退款恢复、积分退款结算屏障及动态目标校验，以[订单状态机 Review 修复记录](./订单状态机Review修复-2026-10-19.md)为准。下文的阶段计划和历史验收记录保留其原有时间范围。
 
 本轮接续：§2D 为 2026-10-14 两轮 review 后的下一步计划，状态为**计划草稿、未实施**。原有已确认规则与历史验证记录保留；§2D 的业务建议不自动视为已确认，未执行测试不计入 §5 的既有通过记录。
 
@@ -18,7 +20,7 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 | AC | 需求（Given / When / Then） | 落点 |
 |---|---|---|
 | AC1 | 引擎按（当前状态, 事件, 执行者）找迁移；找不到 → `ORDER_STATE_ILLEGAL`；状态对但执行者不对 → `FORBIDDEN`；守卫按序校验，第一个失败即返回它的错误码 | `statemachine/StateMachine` · `Transition` · `Guard` |
-| AC2 | `allowed(状态, 执行者, 上下文)` 返回守卫全部通过的事件集合 | `StateMachine#allowed` |
+| AC2 | `allowed(状态, 执行者, 上下文)` 与 `fire` 共用执行者、守卫和动态目标校验；业务拒绝的事件不展示，目标不在声明集合等定义错误仍抛出 | `StateMachine#allowed` |
 | AC3 | 四台机器的迁移与方案 §2–§5 逐行一致；表外组合一律拒 | `PaymentMachine` · `OrderMachine` · `ShipmentMachine` · `AfterSaleMachine` |
 | AC4 | 不变式 I1–I4：SYSTEM 只能经 `TRADE_VOID` 进入退款；买家主动申请且未备货可经 `PREPARATION_NOT_STARTED_REFUND` 进入退款；定时器事件不进入退款；终态无出边；全部可达 | `statemachine/Invariants` |
 | AC5 | 状态写入经转换门：CAS 写库，0 行 → `CONFLICT`，不覆盖；每次迁移写一行流水（聚合、单号、事件、从、到、执行者、理由） | `transition/StateTransitionGate` · `StatusStore` · `TransitionLog`；`V402__status_log_aggregate.sql` |

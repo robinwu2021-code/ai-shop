@@ -7,5 +7,6 @@ public interface SettlementPointsFundingService {
     Plan prepare(String settleNo);
     boolean accept(String settleNo,DispatchResult result);
     void assertReady(String settleNo);
+    void assertRefundClear(String settleNo);
     record Plan(String ticketNo,boolean ready) { }
 }

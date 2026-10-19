@@ -4,7 +4,7 @@ import ai.neargo.shop.pay.entity.StlBill;
 
 import java.util.Optional;
 
-/** 写入原始基数；本阶段保留旧退款读路径，后续累计切分才消费该事实。 */
+/** 保存不可变原始基数；准备退款路径消费此事实计算累计切分。 */
 public interface RefundBasisStore {
     Optional<SettlementRefundBasis> find(String settleNo);
 

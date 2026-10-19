@@ -5921,6 +5921,8 @@ CREATE TABLE IF NOT EXISTS stl_points_refund_hold
     proof_no VARCHAR(64) DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    recovery_minor BIGINT NOT NULL DEFAULT 0,
+    recovery_status VARCHAR(16) NOT NULL DEFAULT 'NONE',
     PRIMARY KEY (after_sale_no)
 );
 

@@ -19,13 +19,17 @@ public class SettlementPointsFundingServiceImpl implements SettlementPointsFundi
     private final SplitIntentMapper locks;
     private final BillMapper bills;
     private final PointsSettlementHook points;
-    public SettlementPointsFundingServiceImpl(SplitIntentMapper locks,BillMapper bills,PointsSettlementHook points) {
+    private final ai.neargo.shop.pay.mapper.PointsSettlementRefundHoldMapper refunds;
+    public SettlementPointsFundingServiceImpl(SplitIntentMapper locks,BillMapper bills,PointsSettlementHook points,
+            ai.neargo.shop.pay.mapper.PointsSettlementRefundHoldMapper refunds) {
+        this.refunds=refunds;
         this.locks=locks; this.bills=bills; this.points=points;
     }
     @Override public Plan prepare(String no) {
         return DataScopeContext.executeWithoutScope(() -> {
             StlBill bill=locks.lockBill(no);
             require(bill!=null,"SETTLEMENT_BILL_NOT_FOUND");
+            require(refunds.pendingForBill(no)==0,"SETTLEMENT_REFUND_PENDING");
             if (amount(bill)==0 || bill.getPointsFundingReadyAt()!=null) { return new Plan(null,true); }
             require(StlBill.AGGREGATED.equals(bill.getFundsMode()),"POINTS_GOODS_FUNDING_REQUIRES_AGGREGATED");
             var plan=points.prepareForBill(new BillPayout(no,bill.getSubOrderNo(),bill.getEntityNo(),bill.getStoreNo(),
@@ -64,8 +68,16 @@ public class SettlementPointsFundingServiceImpl implements SettlementPointsFundi
         DataScopeContext.executeWithoutScope(() -> {
             StlBill bill=locks.lockBill(no);
             require(bill!=null,"SETTLEMENT_BILL_NOT_FOUND");
+            require(refunds.pendingForBill(no)==0,"SETTLEMENT_REFUND_PENDING");
             require(amount(bill)==0 || bill.getPointsFundingReadyAt()!=null,
                     "POINTS_FUNDING_PENDING_EXPORT_BLOCKED");
+            return null;
+        });
+    }
+    @Override public void assertRefundClear(String no) {
+        DataScopeContext.executeWithoutScope(() -> {
+            require(locks.lockBill(no)!=null,"SETTLEMENT_BILL_NOT_FOUND");
+            require(refunds.pendingForBill(no)==0,"SETTLEMENT_REFUND_PENDING");
             return null;
         });
     }

@@ -18,6 +18,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.*;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
 import javax.sql.DataSource;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -32,14 +34,41 @@ class CashRefundSplitNativeRaceTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired CashRefundSplitService reversals;
     @Autowired SplitGateway bank;
+    @Autowired PointsSettlementRefundHoldMapper holds;
+    @Autowired BillRefundMapper refundRows;
+    @Autowired PlatformTransactionManager manager;
     @BeforeEach void schema() throws Exception {
         try(var c=data.getConnection()) { Assumptions.assumeTrue(c.getMetaData().getDatabaseProductName().contains("MySQL")); }
         String sql=new ClassPathResource("schema-test.sql").getContentAsString(StandardCharsets.UTF_8);
-        for(String table:List.of("stl_bill","stl_split_log","stl_bill_refund","stl_split_intent","stl_cash_refund_reverse")) {
+        for(String table:List.of("stl_bill","stl_split_log","stl_bill_refund","stl_split_intent","stl_cash_refund_reverse","stl_points_refund_hold")) {
             int start=sql.indexOf("CREATE TABLE IF NOT EXISTS "+table+"\n");
             assertThat(start).isGreaterThanOrEqualTo(0);
             jdbc.execute(sql.substring(start,sql.indexOf(';',start)));
         }
+    }
+    @Test void holdAndRefundBarriersUseCurrentReadAfterAnEarlierRepeatableReadSnapshot() {
+        String sub="NHR"+UUID.randomUUID().toString().replace("-","");
+        String as="AS-"+sub;
+        jdbc.update("INSERT INTO stl_bill(settle_no,sub_order_no,order_no,entity_no,pay_channel,status,gross_minor,net_minor,created_at,updated_at)"
+                +" VALUES(?,?,?,'M','TEST','PENDING',100,90,NOW(),NOW())",sub,sub,sub);
+        var tx=new TransactionTemplate(manager);
+        tx.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_REPEATABLE_READ);
+        tx.executeWithoutResult(status -> {
+            // Establish an old snapshot before another transaction commits the hold and refund.
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_points_refund_hold WHERE settle_no=?",Long.class,sub)).isZero();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_bill_refund WHERE settle_no=?",Long.class,sub)).isZero();
+            try(var worker=Executors.newSingleThreadExecutor()) {
+                worker.submit(() -> new TransactionTemplate(manager).executeWithoutResult(other -> {
+                    jdbc.queryForMap("SELECT * FROM stl_bill WHERE settle_no=? FOR UPDATE",sub);
+                    holds.create(as,sub,sub,50,0,100);
+                    jdbc.update("INSERT INTO stl_bill_refund(settle_no,sub_order_no,after_sale_no,goods_minor,pre_split,at)"
+                            +" VALUES(?,?,?,50,1,1)",sub,sub,as);
+                })).get(5,TimeUnit.SECONDS);
+            } catch(Exception failure) { throw new AssertionError(failure); }
+            jdbc.queryForMap("SELECT * FROM stl_bill WHERE settle_no=? FOR UPDATE",sub);
+            assertThat(holds.pendingForBill(sub)).isEqualTo(1);
+            assertThat(refundRows.preSplitGoods(sub)).isEqualTo(50);
+        });
     }
     @Test void concurrent_continuation_queries_without_holding_the_bill_lock_or_resubmitting() throws Exception {
         String sub="NCR"+UUID.randomUUID().toString().replace("-","");
@@ -94,11 +123,13 @@ class CashRefundSplitNativeRaceTest {
         @Bean(name="payTxManager") DataSourceTransactionManager payTx(DataSource data) { return new DataSourceTransactionManager(data); }
         @Bean JdbcTemplate jdbc(DataSource data) { return new JdbcTemplate(data); }
         @Bean SplitGateway bank() { return mock(SplitGateway.class); }
-        @Bean PointsSettlementRefundHoldMapper holds() { return mock(PointsSettlementRefundHoldMapper.class); }
+        @Bean PreparedRefundShares preparedShares() { return mock(PreparedRefundShares.class); }
         @Bean SettlementRefundCoordinator coordinator(BillMapper bills,BillRefundJournal journal,SettlementRefundPolicy policy,
                 PointsSettlementRefundHoldMapper holds,CashRefundSplitMapper intents) {
             return new SettlementRefundCoordinator(bills,journal,policy,mock(PreSplitAdjuster.class),mock(PostSplitReverser.class),
-                    holds,mock(PointsRefundPort.class),intents, mock(ai.neargo.shop.pay.service.impl.RefundCapacityLedger.class));
+                    holds,mock(PointsRefundPort.class),intents, mock(ai.neargo.shop.pay.service.impl.RefundCapacityLedger.class),
+                    mock(ai.neargo.shop.pay.settle.refund.PreparedRefundPosting.class),
+                    mock(ai.neargo.shop.pay.settle.refund.PreparedRefundShares.class));
         }
     }
 }

@@ -50,7 +50,7 @@ public class RefundExecutionStore {
     public OrdRefundExecution claim(String no) {
         OrdRefundExecution row = lock(no);
         if (row == null || OrdRefundExecution.SUCCEEDED.equals(row.getStatus())
-                || OrdRefundExecution.FAILED.equals(row.getStatus())
+                || OrdRefundExecution.FAILED.equals(row.getStatus()) && !pendingReversal(row)
                 || row.getNextAttemptAt() > System.currentTimeMillis()) {
             return null;
         }
@@ -74,11 +74,21 @@ public class RefundExecutionStore {
                 .and(q -> q.ne(OrdRefundExecution::getStatus, OrdRefundExecution.FAILED)
                         .ne(OrdRefundExecution::getStatus, OrdRefundExecution.SUCCEEDED)
                         .or(r -> r.eq(OrdRefundExecution::getStatus, OrdRefundExecution.SUCCEEDED)
-                                .ne(OrdRefundExecution::getResourceStatus, OrdRefundExecution.DONE)))
+                                .ne(OrdRefundExecution::getResourceStatus, OrdRefundExecution.DONE))
+                        .or(r -> r.eq(OrdRefundExecution::getStatus, OrdRefundExecution.FAILED)
+                                .eq(OrdRefundExecution::getPhase, OrdRefundExecution.REVERSAL)
+                                .isNull(OrdRefundExecution::getPaymentNo)
+                                .eq(OrdRefundExecution::getErrorCode, "REVERSE_UNCONFIRMED")))
                 .and(q -> q.isNull(OrdRefundExecution::getErrorCode)
                         .or().ne(OrdRefundExecution::getErrorCode, "REFUND_EXECUTION_CONFLICT"))
                 .le(OrdRefundExecution::getNextAttemptAt, now).orderByAsc(OrdRefundExecution::getId)
                 .last("LIMIT " + Math.max(1, Math.min(limit, 200)))));
+    }
+
+    private boolean pendingReversal(OrdRefundExecution row) {
+        // Only repair the former classification error, never revive a definitively failed cash send.
+        return OrdRefundExecution.REVERSAL.equals(row.getPhase()) && row.getPaymentNo()==null
+                && "REVERSE_UNCONFIRMED".equals(row.getErrorCode());
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
