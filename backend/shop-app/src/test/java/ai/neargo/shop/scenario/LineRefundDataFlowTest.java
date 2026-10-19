@@ -59,11 +59,15 @@ class LineRefundDataFlowTest {
             assertThat(sum).as("子单 %s 的行实付快照没落或 Σ 不等", sub).isEqualTo(goodsPaid).isPositive();
         }
 
-        String sub = jdbc.queryForList("select sub_order_no from ord_sub_order where order_no = ?", String.class, payNo).get(0);
-        assertThat(completedAt(sub)).isNull();
-        mvc().perform(post("/mp/order/" + sub + "/confirm-receipt").header("Authorization", "Bearer " + token))
-                .andExpect(jsonPath("$.code").value(0));
-        assertThat(completedAt(sub)).as("完成时刻没写 —— 售后期没有起算点").isNotNull();
+        // Completion requires physical fulfillment, so exercise a real express journey.
+        try (var journey = new ai.neargo.shop.support.OrderJourneyFixture(context, "13400153002", "13400153003")) {
+            var purchase = journey.purchase();
+            assertThat(completedAt(purchase.subNo())).isNull();
+            journey.prepare(purchase);
+            journey.ship(purchase);
+            journey.receive(purchase);
+            assertThat(completedAt(purchase.subNo())).as("完成时刻没写 —— 售后期没有起算点").isNotNull();
+        }
     }
 
     @Test
@@ -112,10 +116,7 @@ class LineRefundDataFlowTest {
                         .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
                 .andExpect(jsonPath("$.code").value(0)).andReturn().getResponse().getContentAsString();
         String payNo = json.readTree(body).get("data").get("payOrderNo").asString();
-        mvc().perform(post("/mp/order/" + payNo + "/pay").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + payNo + "\",\"transactionId\":\"tx-" + key + "\",\"sign\":\"stub-secret\"}"))
-                .andExpect(status().isOk());
+        new ai.neargo.shop.support.CashReceiptFixture(context).pay(token, payNo);
         return payNo;
     }
 }

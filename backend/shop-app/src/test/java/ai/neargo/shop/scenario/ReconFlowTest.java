@@ -407,6 +407,7 @@ class ReconFlowTest {
     @DisplayName("★★★ 通道没有这笔**退款**时绝不动订单 —— 那是退款没发成，不是订单没付成")
     void refundNotFoundMustNotTouchTheOrder() {
         StlPayment r = stalRefund();
+        seedOrder(r.getOrderNo(), "PAID");
         // ok=true, paid=false, found=false —— 通道说「没有这笔退款」
         fakeQuery.answer(new PayQueryPort.Result(true, false, false, 0, null));
 
@@ -418,7 +419,11 @@ class ReconFlowTest {
                         + "而那会关掉一笔用户已经付过钱的订单")
                 .isNotEmpty();
         assertThat(diffsOf(r).getFirst().getResolution())
-                .contains("通道那边不存在");
+                .contains(r.getOutTradeNo(), "需人工核对", "不得自动释放或重新付款");
+        assertThat(fakeQuery.askedRefund()).contains(r.getOutTradeNo());
+        assertThat(fakeQuery.asked()).doesNotContain(r.getOutTradeNo());
+        assertThat(orderMapper.selectOne(Wrappers.<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
+                .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, r.getOrderNo())).getStatus()).isEqualTo("PAID");
         assertThat(reload(r).getStatus())
                 .as("通道没有这笔退款时不能改退款流水的状态 —— 钱还在我方这边，要人工看")
                 .isEqualTo(StlPayment.PENDING);

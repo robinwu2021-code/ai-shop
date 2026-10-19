@@ -968,7 +968,10 @@ class M5AfterSaleFlowTest {
         settleService.merchantBills("M0001", java.util.List.of(), null).stream()
                 .filter(b -> b.subOrderNo().equals(subOrderNo))
                 .findFirst()
-                .ifPresent(b -> settleService.executeSplit(b.settleNo()));
+                .ifPresent(b -> {
+                    jdbc.update("UPDATE stl_bill SET pay_merchant_no='SYNTHETIC-M5-ACCOUNT' WHERE settle_no=?", b.settleNo());
+                    settleService.executeSplit(b.settleNo());
+                });
     }
 
     private String opsLogin(String username, String password) throws Exception {

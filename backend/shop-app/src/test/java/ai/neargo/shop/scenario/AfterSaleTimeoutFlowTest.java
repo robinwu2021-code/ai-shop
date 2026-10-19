@@ -62,6 +62,8 @@ class AfterSaleTimeoutFlowTest {
     private AfterSaleRuleService ruleService;
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private ai.neargo.shop.trade.service.MerchantOrderService merchantOrders;
 
     /** 规则与商家资金路径都是**共享种子**：改了不还原，后面的用例读到的是我改过的值 */
     private String savedRule;
@@ -71,7 +73,7 @@ class AfterSaleTimeoutFlowTest {
      * 每个用例都从同一个确定状态开始：
      *
      * <ul>
-     *   <li><b>极速退上限压到 1 分</b> —— 否则这一单会被秒退，而本类要测的是「等商家」那条路。
+     *   <li><b>极速退上限压到 1 分</b> —— 本类验证旧极速退配置不会改变已备货单的人工审核路径。
      *       不依赖种子商品的价格与环境阈值（{@code application-testcfg.yml} 里是 ¥50，
      *       生产默认 ¥100），那种依赖会在阈值一改动时静默失效。</li>
      *   <li><b>M0001 改成非自营</b> —— 测试库里所有商家默认 {@code AGGREGATED}（自营），
@@ -129,7 +131,7 @@ class AfterSaleTimeoutFlowTest {
         String token = login(PHONE_1);
         String subOrderNo = placeAndPay(token, PHONE_1);
         String asNo = apply(token, subOrderNo, "REFUND_ONLY");
-        assertThat(statusOf(asNo)).as("上限压到 1 分了，这一单本该停在等商家").isEqualTo(OrdAfterSale.APPLIED);
+        assertThat(statusOf(asNo)).as("已备货单应停在等商家").isEqualTo(OrdAfterSale.APPLIED);
 
         int replyHours = ruleService.get().replyHours();
 
@@ -239,7 +241,7 @@ class AfterSaleTimeoutFlowTest {
         AfterSaleRuleVO base = ruleService.get();
 
         /*
-         * 退款一律先审核、收货后再退钱 —— apply 不再读极速退规则。
+         * 已备货单须人工审核 —— apply 不再读极速退规则。
          * 这里把上限抬到 1 万、开关开着（原本必然秒退的配置），申请后仍须停在 APPLIED。
          * 规则本身仍可保存（运营那一屏保留），只是对 apply 不再有任何效果。
          */
@@ -337,11 +339,7 @@ class AfterSaleTimeoutFlowTest {
             String token = login(PHONE_5);
             String sub = placeAndPayFresh(token, PHONE_5);
             String asNo = apply(token, sub, "REFUND_ONLY");
-            assertThat(statusOf(asNo)).as("申请时未备货，正常受理").isEqualTo(OrdAfterSale.APPLIED);
-
-            // 商家开始备货 → 进入灰色地带（货可能已备，有成本）
-            jdbc.update("UPDATE ord_sub_order SET prepared_at = ? WHERE sub_order_no = ?",
-                    System.currentTimeMillis(), sub);
+            assertThat(statusOf(asNo)).as("已备货的灰色档申请等待商家处理").isEqualTo(OrdAfterSale.APPLIED);
 
             afterSaleService.remindOverdue(asNo);
             assertThat(statusOf(asNo))
@@ -366,10 +364,13 @@ class AfterSaleTimeoutFlowTest {
         new CashReceiptFixture(context).pay(token, payOrderNo);
         String list = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
-        return json.readTree(list).get("data").get("records").get(0).get("orderNo").asString();
+        String sub = json.readTree(list).get("data").get("records").get(0).get("orderNo").asString();
+        var owner = jdbc.queryForMap("SELECT entity_no,store_no FROM ord_sub_order WHERE sub_order_no=?", sub);
+        merchantOrders.prepare((String) owner.get("entity_no"), (String) owner.get("store_no"), sub);
+        return sub;
     }
 
-    /** 6980 的油（M0001/G0002）：**高于极速退阈值**，所以申请后停在等商家 */
+    /** 已付款并已备货的油（M0001/G0002）：申请后等待商家审核。 */
     private String placeAndPay(String token, String idemKey) throws Exception {
         mvc().perform(post("/mp/cart/add").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -383,7 +384,10 @@ class AfterSaleTimeoutFlowTest {
         new CashReceiptFixture(context).pay(token, payOrderNo);
         String list = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
-        return json.readTree(list).get("data").get("records").get(0).get("orderNo").asString();
+        String sub = json.readTree(list).get("data").get("records").get(0).get("orderNo").asString();
+        var owner = jdbc.queryForMap("SELECT entity_no,store_no FROM ord_sub_order WHERE sub_order_no=?", sub);
+        merchantOrders.prepare((String) owner.get("entity_no"), (String) owner.get("store_no"), sub);
+        return sub;
     }
 
     private String apply(String token, String subOrderNo, String type) throws Exception {

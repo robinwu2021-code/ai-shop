@@ -59,8 +59,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class OpsFinanceGovernFlowTest {
 
-    private static final String STUB_SECRET = "stub-secret";
-
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
 
@@ -72,8 +70,6 @@ class OpsFinanceGovernFlowTest {
 
     @Autowired
     private SettleService settleService;
-    @Autowired private ai.neargo.shop.pay.service.PaymentLedgerService ledger;
-    @Autowired private ai.neargo.shop.pay.channel.TestPayGateway bank;
 
     @Autowired
     private WithdrawMapper withdrawMapper;
@@ -124,7 +120,7 @@ class OpsFinanceGovernFlowTest {
         long splitAmount = splitLogAmount(settleNo, StlSplitLog.SPLIT);
         assertThat(splitAmount).as("分账指令必须带金额，否则回退无从核对").isPositive();
 
-        // ② 走到「平台裁决支持退款」——arbitrate 只改状态、不退款，队列的来源就是这里
+        // ② 平台裁决会持久化执行单并发起原路退款，现金到账仍须独立核验。
         String asNo = escalated(biz, o);
         String support = TestLogin.operator(mvc(), json, "support", "support123");
         mvc().perform(post("/ops/after-sales/" + asNo + "/decide")
@@ -135,12 +131,11 @@ class OpsFinanceGovernFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.status").value("REFUNDING"));
 
-        /*
-         * 裁决之后**钱一分没退、分账一分没收回**。这两条是队列存在的全部理由，
-         * 不先钉住它们，后面「执行完变了」就证明不了是执行干的。
-         */
+        // 分账先回退，现金未核验时仍保留财务待办，不能拿分账结果代替到账凭据。
         assertThat(afterSaleStatus(o.userToken(), asNo)).isEqualTo("REFUNDING");
-        assertThat(billStatus(biz, settleNo)).isEqualTo("SPLIT");
+        assertThat(billStatus(biz, settleNo)).isEqualTo("REVERSED");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM stl_payment WHERE after_sale_no=?"
+                + " AND direction='REFUND' AND status='SUCCESS'", Long.class, asNo)).isZero();
 
         JsonNode item = queueItem(asNo);
         assertThat(item).as("裁决支持退款且已分账的单必须进队列").isNotNull();
@@ -154,11 +149,7 @@ class OpsFinanceGovernFlowTest {
         assertThat(item.get("images").isArray()).isTrue();
         assertThat(item.get("verdict").asString()).contains("商家承担");
 
-        // ③ 执行：先回退分账，再退款
-        ai.neargo.shop.support.RefundScenarioPayments.received(jdbc,ledger,bank,asNo);
-        assertThat(codeOf(executeRaw(asNo))).isZero();
-        assertThat(afterSaleStatus(o.userToken(),asNo)).isEqualTo("REFUNDING");
-        assertThat(queueItem(asNo)).isNotNull();
+        // ③ 财务恢复原执行号，核验 TEST 通道已经退回的现金后收尾。
         assertThat(codeOf(executeRaw(asNo))).isZero();
 
         /*
@@ -549,16 +540,15 @@ class OpsFinanceGovernFlowTest {
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
 
-        // 只调 /pay 的话单还在 WAIT_PAY，也不会生成结算单 —— 分账无从谈起
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idem
-                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        new ai.neargo.shop.support.CashReceiptFixture(context).pay(buyer, payOrderNo);
 
         String list = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + buyer))
                 .andReturn().getResponse().getContentAsString();
         JsonNode row = json.readTree(list).get("data").get("records").get(0);
         assertThat(row.get("status").asString())
                 .as("没打支付回调的话单会停在 WAIT_PAY").isEqualTo("PAID");
+        jdbc.update("UPDATE ord_sub_order SET prepared_at=? WHERE order_no=?",
+                System.currentTimeMillis(), payOrderNo);
         return new Ordered(buyer, row.get("orderNo").asString(),
                 row.get("amount").get("paidMinor").asLong());
     }
