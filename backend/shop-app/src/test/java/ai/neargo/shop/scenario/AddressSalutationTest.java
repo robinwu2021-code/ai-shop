@@ -71,6 +71,14 @@ class AddressSalutationTest {
         assertThat(jdbc.queryForList("SELECT receiver_salutation FROM ord_sub_order WHERE address_id = ?", String.class, id))
                 .containsExactly("MS");
     }
+
+    @org.junit.jupiter.api.AfterEach
+    void restoreSeedGoodsFulfillment() {
+        // This scenario temporarily enables EXPRESS to test an address snapshot.
+        // G0001 is shared by later scenario tests and is seeded as pickup-only.
+        jdbc.update("UPDATE prd_goods SET fulfillments = ? WHERE goods_no = ?",
+                "[\"STORE_PICKUP\"]", "G0001");
+    }
     @Test
     void legacyAddressDefaultsAndInvalidSalutationIsRejected() throws Exception {
         String token = TestLogin.consumer(mvc(), json, otpStore, "13900000673");
