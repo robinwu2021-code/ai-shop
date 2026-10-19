@@ -34,8 +34,7 @@ public class PostSplitReverser {
     }
 
     /** @return false = 通道回退失败（结算单已转人工），调用方<b>必须停止退款</b> */
-    public boolean reverse(StlBill bill, BillRefundShare share, String afterSaleNo) {
-        long amount = share.merchantReverseMinor();
+    public boolean reverse(StlBill bill, BillRefundShare share, String afterSaleNo, long amount) {
         if (amount > 0 && !sender.send(StlSplitLog.REVERSE, bill, "REV-" + afterSaleNo, amount)) {
             DataScopeContext.executeWithoutScope(() -> mapper.markManual(
                     bill.getSettleNo(), bill.getStatus(), "分账回退失败，需人工处理（售后 " + afterSaleNo + "）"));

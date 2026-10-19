@@ -50,8 +50,8 @@ class DualWriteStockPortManagedTest {
     }
 
     @Test
-    @DisplayName("★★ 整单都是不记库存的货：RESERVE 不发；平台照锁")
-    void allUnmanagedPublishesNothing() {
+    @DisplayName("★★ 整单都是不记库存的货：留空 RESERVE 范围证明；平台照锁")
+    void allUnmanagedPublishesEmptyOriginalScope() {
         when(managed.managedSkus(anyCollection())).thenReturn(Set.of());
         List<StockPort.SkuQty> items = List.of(new StockPort.SkuQty("SKU-CLEAN", 1, "S1"));
 
@@ -60,7 +60,10 @@ class DualWriteStockPortManagedTest {
 
         verify(platform).lock("L2", items);
         verify(platform).restore("R2", items);
-        verify(bus, never()).publish(any());
+        ArgumentCaptor<DomainEvent> ev = ArgumentCaptor.forClass(DomainEvent.class);
+        verify(bus).publish(ev.capture());
+        assertThat(ev.getValue().eventType()).isEqualTo(InvMirrorEvent.RESERVE);
+        assertThat(ev.getValue().toString()).contains("items=[]").doesNotContain("SKU-CLEAN");
     }
 
     @Test

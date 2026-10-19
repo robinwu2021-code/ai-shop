@@ -216,7 +216,10 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
             if (!"SUCCESS".equals(state)) {
                 return QueryResult.unpaid();
             }
-            return QueryResult.paid(totalOf(resp), String.valueOf(resp.get("transaction_id")));
+            return new QueryResult(true, true, true, totalOf(resp),
+                    resp.get("transaction_id") instanceof String trade ? trade : null,
+                    resp.get("amount") instanceof Map<?, ?> details && details.get("currency") instanceof String currency
+                            ? currency : null);
         } catch (ChannelClient.ChannelException e) {
             /*
              * **只有 ORDER_NOT_EXIST 才是「通道没有这笔」**，其余失败一律 failed()。
@@ -236,25 +239,40 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
      * 而钱可能真的已经退出去了。
      */
     @Override
-    public QueryResult queryRefund(String outRefundNo) {
+    public QueryResult queryRefund(String no) {
+        var result = queryRefundOutcome(no);
+        return switch (result.status()) {
+            case SUCCEEDED -> QueryResult.paid(result.amountMinor(), result.providerNo(), result.currency());
+            case PROCESSING, TERMINAL_FAILED, MANUAL_REQUIRED -> QueryResult.unpaid();
+            case UNKNOWN -> QueryResult.failed();
+        };
+    }
+
+    @Override
+    public ai.neargo.shop.spi.pay.RefundQueryResult queryRefundOutcome(String no) {
         try {
-            Map<String, Object> resp = client.get(
-                    WechatDirectApis.REFUND_BY_OUT_REFUND_NO + outRefundNo);
-            Object status = resp.get("status");
-            if (status == null) {
-                return QueryResult.notFound();
-            }
-            // 退款的「已完成」是 SUCCESS；PROCESSING / ABNORMAL / CLOSED 都不是
-            if (!"SUCCESS".equals(status)) {
-                return QueryResult.unpaid();
-            }
-            return QueryResult.paid(refundAmountOf(resp), String.valueOf(resp.get("refund_id")));
-        } catch (ChannelClient.ChannelException e) {
-            if (notExist(e.getMessage(), "RESOURCE_NOT_EXISTS")) {
-                return QueryResult.notFound();
-            }
-            log.warn("[wechat-direct] 查退款失败，不据此关单：{}（{}）", outRefundNo, e.getMessage());
-            return QueryResult.failed();
+            Map<String, Object> resp = client.get(WechatDirectApis.REFUND_BY_OUT_REFUND_NO + no);
+            String raw = resp.get("status") instanceof String value ? value : null;
+            if (resp.get("out_refund_no") != null && !no.equals(resp.get("out_refund_no")))
+                return ai.neargo.shop.spi.pay.RefundQueryResult.unknown(no);
+            var status = switch (raw == null ? "" : raw) {
+                case "SUCCESS" -> ai.neargo.shop.spi.pay.RefundQueryResult.Status.SUCCEEDED;
+                case "PROCESSING" -> ai.neargo.shop.spi.pay.RefundQueryResult.Status.PROCESSING;
+                case "CLOSED" -> ai.neargo.shop.spi.pay.RefundQueryResult.Status.TERMINAL_FAILED;
+                case "ABNORMAL" -> ai.neargo.shop.spi.pay.RefundQueryResult.Status.MANUAL_REQUIRED;
+                default -> ai.neargo.shop.spi.pay.RefundQueryResult.Status.UNKNOWN;
+            };
+            String provider = resp.get("refund_id") instanceof String value ? value : null;
+            String currency = resp.get("amount") instanceof Map<?, ?> amount
+                    && amount.get("currency") instanceof String value ? value : null;
+            return new ai.neargo.shop.spi.pay.RefundQueryResult(status, raw, no,
+                    status == ai.neargo.shop.spi.pay.RefundQueryResult.Status.SUCCEEDED
+                            || status == ai.neargo.shop.spi.pay.RefundQueryResult.Status.TERMINAL_FAILED
+                            ? refundAmountOf(resp) : 0,
+                    provider, currency, System.currentTimeMillis());
+        } catch (RuntimeException uncertain) {
+            log.warn("[wechat-direct] 退款查询未知 no={} exception={}", no, uncertain.getClass().getSimpleName());
+            return ai.neargo.shop.spi.pay.RefundQueryResult.unknown(no);
         }
     }
 
@@ -319,7 +337,7 @@ public class WechatDirectPayGateway extends AbstractPayGateway {
         body.put("amount", Map.of(
                 "refund", amountMinor,
                 "total", ctx.totalMinor(),
-                "currency", DEFAULT_CURRENCY));
+                "currency", ctx.currency()));
         return new Call(WechatDirectApis.REFUND, body, "refund_id");
     }
 

@@ -9,6 +9,7 @@ import { useUserStore } from "@/stores/user";
 import { api } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
 import { countdown, datetime, money } from "@shared/utils/format";
+import { expressOrderStatusKey } from "@shared/strategies/trace-step";
 import type { Order } from "@shared/types";
 import {
   DELIVERY_SHAPE,
@@ -160,6 +161,8 @@ watch(tab, load);
 
 /** 状态文案：`(状态 × 履约 × 信息)`。预约单要把时间带进文案，没时间的「待服务」等于没说 */
 function statusText(o: Order): string {
+  const expressStatus = expressOrderStatusKey(o);
+  if (expressStatus) return String(t(expressStatus));
   const v = orderView(o.status, o.fulfillment, { appointmentAt: o.appointmentAt });
   return String(v.needsTime ? t(v.labelKey, { t: datetime(o.appointmentAt!) }) : t(v.labelKey));
 }
@@ -169,6 +172,7 @@ function open(o: Order) {
 }
 
 function pay(o: Order) {
+  if (o.paymentResolution) return;
   uni.navigateTo({ url: `${ROUTES.pay}?orderNo=${o.orderNo}` });
 }
 
@@ -196,8 +200,9 @@ watch(() => user.isPhoneLogin ? user.token : "", () => {
     ></sh-tabs>
 
     <view v-for="o in shown" :key="o.orderNo" class="sh-card card" @tap="open(o)">
+      <text class="txt-caption sh-muted sh-num card__no">{{ $t("order.orderNo") }}：{{ o.payOrderNo || o.orderNo }}</text>
       <view class="card__head sh-row sh-row--between">
-        <text class="txt-caption card__pickup">
+        <text v-if="o.fulfillment !== 'EXPRESS'" class="txt-caption card__pickup">
           {{ o.pickupName || $t(`fulfillment.${o.fulfillment}`) }}
         </text>
         <!--
@@ -244,12 +249,17 @@ watch(() => user.isPhoneLogin ? user.token : "", () => {
         </view>
       </view>
 
-      <view v-if="o.status === 'WAIT_PAY'" class="card__ops sh-row sh-row--between">
+      <text v-if="o.paymentResolution" class="txt-caption">{{ $t("pay.manualRequired") }}</text>
+      <view v-if="o.status === 'WAIT_PAY' && !o.paymentResolution" class="card__ops sh-row sh-row--between">
         <!-- 倒计时给在按钮旁边：不说的话他不知道这一单还等不等得起 -->
         <text v-if="payLeft(o)" class="txt-caption is-danger sh-num">
           {{ $t("orders.payLeft", { t: payLeft(o) }) }}
         </text>
         <view class="txt-sub sh-btn card__pay" @tap.stop="pay(o)">{{ $t("orders.pay") }}</view>
+      </view>
+      <view v-else-if="o.status === 'POINTS_PROCESSING'" class="card__ops sh-row sh-row--between">
+        <text class="txt-caption">{{ $t("orders.pointsProcessing") }}</text>
+        <view class="txt-sub sh-btn card__pay" @tap.stop="load">{{ $t("pay.recheck") }}</view>
       </view>
       <view v-else-if="o.verifyCode && o.status !== 'COMPLETED' && showVerifyCode(o.items[0]?.type, o.fulfillment)" class="sh-notice codeline sh-row sh-row--between">
         <text class="txt-caption codeline__label txt-primary">{{ $t("pay.verifyCode") }}</text>
@@ -292,6 +302,10 @@ watch(() => user.isPhoneLogin ? user.token : "", () => {
 .card {
   margin-bottom: 20rpx;
 }
+.card__no {
+  display: block;
+  margin-bottom: 12rpx;
+}
 .card__head {
   gap: 20rpx;
 }
@@ -304,6 +318,7 @@ watch(() => user.isPhoneLogin ? user.token : "", () => {
    留在这里会把库件压掉 */
 .card__status {
   flex-shrink: 0;
+  margin-inline-start: auto;
 }
 .row__right {
   text-align: end;

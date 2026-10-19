@@ -63,7 +63,7 @@ fi
 
 # 2. 应用名。重解压后会退回 SDK 自带的名字，而界面上看不出来
 label=$(printf '%s\n' "$BADGING" | awk -F"'" '/^application-label:/{print $2; exit}')
-if [ "$label" = "虹选商家" ]; then ok "应用名：$label"; else bad "应用名是「$label」，应为「虹选商家」"; fi
+if [ "$label" = "虹选商家" ]; then ok "应用名：$label"; else bad "应用名是「${label}」，应为「虹选商家」"; fi
 
 # 3. 版本号 —— **两处必须一致**，这一条此前只是把 badging 打印出来，没有比对
 #
@@ -88,11 +88,11 @@ else
   if [ -z "$www_vc" ]; then
     bad "www/manifest.json 里读不到 version.code"
   elif [ "$apk_vc" != "$www_vc" ]; then
-    bad "versionCode 两处不一致：APK manifest=$apk_vc，包内 www=$www_vc
-       → 装上去系统显示 $apk_vc，实际跑的是 $www_vc 那一版的页面代码。
+    bad "versionCode 两处不一致：APK manifest=${apk_vc}，包内 www=$www_vc
+       → 装上去系统显示 ${apk_vc}，实际跑的是 $www_vc 那一版的页面代码。
        两处都要抬：离线工程 build.gradle 的 versionCode，和 b-app/src/manifest.json"
   else
-    ok "versionCode 两处一致（$apk_vc）"
+    ok "versionCode 两处一致（${apk_vc}）"
   fi
 fi
 
@@ -140,9 +140,9 @@ else
   OLD_IC=$("$AAPT" dump badging "$OLD" 2>/dev/null | grep -oE "icon='[^']*'" | head -1 | sed "s/icon='//;s/'//" || true)
   OLD_IC_MD5=$(unzip -p "$OLD" "$OLD_IC" 2>/dev/null | md5 -q || true)
   if [ "$NEW_IC_MD5" = "$OLD_IC_MD5" ]; then
-    ok "启动图标与旧包一致（$NEW_IC）"
+    ok "启动图标与旧包一致（${NEW_IC}）"
   else
-    ok "启动图标**变了**：$OLD_IC_MD5 → $NEW_IC_MD5（有意换过就对，没换过要查）"
+    ok "启动图标**变了**：$OLD_IC_MD5 → ${NEW_IC_MD5}（有意换过就对，没换过要查）"
   fi
 fi
 
@@ -152,7 +152,7 @@ DEX_NEW=$("$APKAN" dex packages "$NEW" 2>/dev/null || true)
 for pkg in com.igexin com.tencent.mm.opensdk com.amap.api io.dcloud; do
   a=$(printf '%s\n' "$DEX_OLD" | grep -c "$pkg" || true)
   b=$(printf '%s\n' "$DEX_NEW" | grep -c "$pkg" || true)
-  if [ "$a" = "$b" ]; then ok "$pkg：$b 项（与旧包同）"; else bad "$pkg：旧 $a → 新 $b"; fi
+  if [ "$a" = "$b" ]; then ok "${pkg}：$b 项（与旧包同）"; else bad "${pkg}：旧 $a → 新 $b"; fi
 done
 
 echo

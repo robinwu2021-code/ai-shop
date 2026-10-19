@@ -1,5 +1,16 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.trade.order.service.create.OrderCreateRequestHasher;
+import ai.neargo.shop.trade.order.service.create.OrderCreationRecoveryService;
+import ai.neargo.shop.trade.order.service.create.OrderStockAllocator;
+import ai.neargo.shop.trade.order.service.StoreOrderQueryService;
+import ai.neargo.shop.trade.order.service.query.StoreOrderMaterial;
+import ai.neargo.shop.trade.order.contract.StoreOrderQuery;
+import ai.neargo.shop.trade.order.service.lifecycle.PaymentLifecycleService;
+import ai.neargo.shop.trade.order.service.lifecycle.PaymentResolutionService;
+
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+
 import ai.neargo.shop.spi.fulfillment.FreightPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.user.PickupQueryPort;
@@ -8,6 +19,12 @@ import ai.neargo.shop.trade.service.CloseRuleService;
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
+import ai.neargo.shop.trade.order.service.receipt.OrderReceiptCompleter;
+import ai.neargo.shop.trade.order.service.OrderReceiptService;
+import ai.neargo.shop.trade.order.command.OrderActor;
+import ai.neargo.shop.trade.order.contract.CancellationImpact;
+import ai.neargo.shop.trade.order.policy.PaymentImpactPolicy;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.trade.service.OrderStatusView;
 import ai.neargo.shop.trade.order.machine.order.OrderContext;
 import ai.neargo.shop.trade.order.machine.order.OrderEvent;
@@ -18,7 +35,6 @@ import ai.neargo.shop.trade.order.statemachine.Actor;
 import ai.neargo.shop.spi.marketing.AttributionPort;
 import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
-import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.settle.SettlePort;
@@ -44,14 +60,15 @@ import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.TrdCartItem;
 import ai.neargo.shop.trade.mapper.TradeMappers.CartItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import java.security.SecureRandom;
 import java.time.Duration;
@@ -95,8 +112,8 @@ public class OrderServiceImpl implements OrderService {
     private static final String CURRENCY_CNY = "CNY";
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    private final OrderMapper orderMapper;
-    private final SubOrderMapper subOrderMapper;
+    private final PaymentMapper orderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final ai.neargo.shop.spi.user.AdmissionPort admissionPort;
     private final OrderItemMapper itemMapper;
     /**
@@ -118,22 +135,66 @@ public class OrderServiceImpl implements OrderService {
     private final CouponPort couponPort;
     /** 店铺活动的自动优惠（满减）。此前 mkt_campaign 没有任何消费方 */
     private final CampaignPort campaignPort;
-    private final PointsPort pointsPort;
+    @Autowired
+    private OrderCreateRequestHasher createRequestHasher;
+    @Autowired private OrderCreationRecoveryService creationRecovery;
+    @Autowired private OrderStockAllocator stockAllocator;
+    @Autowired private StoreOrderQueryService storeQueries;
+    @Autowired private PaymentLifecycleService paymentLifecycle;
+    @Autowired private PaymentResolutionService paymentResolutions;
+
+    private ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator pointsRefundSource;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPointsRefundSource(ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator source) {
+        this.pointsRefundSource = source;
+    }
+    private ai.neargo.shop.trade.order.points.OrderPointsCoordinator pointsCoordinator;
+    private ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator pointsPlacement;
+    private ai.neargo.shop.trade.order.points.OrderPointsTargetFactory pointsTargets;
+    private ai.neargo.shop.spi.points.PointsRedeemPort pointsQuoteRedeem;
+    private ai.neargo.shop.spi.points.PointsOrderTermsPort pointsQuoteTerms;
+    private ai.neargo.shop.spi.points.PointsPaymentSnapshotPort pointsPaymentSnapshots;
+    private ai.neargo.shop.trade.order.points.OrderPointsPaidFactService pointsPaidFacts;
+    private org.springframework.transaction.support.TransactionTemplate sourceTransactions;
+    @org.springframework.beans.factory.annotation.Value("${shop.points.enabled:false}")
+    private boolean pointsEnabled;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPointsIntegration(ai.neargo.shop.trade.order.points.OrderPointsCoordinator coordinator,
+            ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator placement,
+            ai.neargo.shop.trade.order.points.OrderPointsTargetFactory targets) {
+        this.pointsCoordinator = coordinator;
+        this.pointsPlacement = placement;
+        this.pointsTargets = targets;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPointsQuotePorts(ai.neargo.shop.spi.points.PointsRedeemPort redeem,
+            ai.neargo.shop.spi.points.PointsOrderTermsPort terms) {
+        this.pointsQuoteRedeem = redeem;
+        this.pointsQuoteTerms = terms;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPointsPaidIntegration(ai.neargo.shop.spi.points.PointsPaymentSnapshotPort snapshots,
+            ai.neargo.shop.trade.order.points.OrderPointsPaidFactService facts) {
+        this.pointsPaymentSnapshots = snapshots;
+        this.pointsPaidFacts = facts;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSourceTransactionManager(
+            @org.springframework.beans.factory.annotation.Qualifier("transactionManager")
+            org.springframework.transaction.PlatformTransactionManager manager) {
+        this.sourceTransactions = new org.springframework.transaction.support.TransactionTemplate(manager);
+    }
     /** 取该商家按市场筛出的可用通道（S4）—— 下单要选通道 */
     private final ai.neargo.shop.spi.pay.PayChannelMasterPort payChannelMasterPort;
-    /**
-     * 「这一行配了什么积分规则」（product 域）。
-     *
-     * <p>M9（2026-09-01）之前这个 Port 是<b>支付域</b>在调 —— 支付域反过来问商品配置。
-     * 现在由这边查好、随 {@code EarnLine} 传进去：规则是下单那一刻的事实，
-     * 而下单链路本来就在这儿。
-     */
-    private final ai.neargo.shop.spi.product.PointsRulePort pointsRulePort;
     private final SettlePort settlePort;
-    private final StatusLogMapper statusLogMapper;
+    private final OrderStatusLogMapper statusLogMapper;
 
     /** 自动确认收货要跳过争议中的单（AFTER_SALE_OPEN），判据与结算入批同一份。 */
-    private final ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper;
+    private final AfterSaleMapper afterSaleMapper;
     private final PickupQueryPort pickupPort;
     /** 自提点匹配的规则在聚落域一处（归属链 + 距离），这里只负责把商家的许可点喂进去 */
     private final ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort;
@@ -169,6 +230,26 @@ public class OrderServiceImpl implements OrderService {
     @org.springframework.beans.factory.annotation.Autowired
     public void setStatusWriter(ai.neargo.shop.trade.order.transition.TradeStatusWriter statusWriter) {
         this.statusWriter = statusWriter;
+    }
+
+    private OrderReceiptCompleter receiptCompleter;
+    private OrderReceiptService receipts;
+
+    @Autowired
+    public void setReceipts(OrderReceiptService receipts) {
+        this.receipts = receipts;
+    }
+    private PaymentImpactPolicy paymentImpact;
+
+    @Autowired
+    public void setPaymentImpact(PaymentImpactPolicy paymentImpact) {
+        this.paymentImpact = paymentImpact;
+    }
+
+
+    @Autowired
+    public void setReceiptCompleter(OrderReceiptCompleter receiptCompleter) {
+        this.receiptCompleter = receiptCompleter;
     }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -222,6 +303,12 @@ public class OrderServiceImpl implements OrderService {
 
     /** 物流页（TDD-物流模块 批 3）。setter 注入：存量手工构造本类的地方不用跟着改 */
     private ai.neargo.shop.spi.logistics.LogisticsPort logisticsPort;
+    private ai.neargo.shop.trade.order.service.ship.ShipmentSnapshotConverger shipmentConverger;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setShipmentConverger(ai.neargo.shop.trade.order.service.ship.ShipmentSnapshotConverger converger) {
+        this.shipmentConverger = converger;
+    }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setLogisticsPort(ai.neargo.shop.spi.logistics.LogisticsPort port) {
@@ -298,18 +385,17 @@ public class OrderServiceImpl implements OrderService {
                             ai.neargo.shop.spi.product.ReviewQueryPort reviewQueryPort,
                             AfterSaleService afterSaleService,
                             ai.neargo.shop.trade.service.AfterSaleRuleService afterSaleRuleService,
-                            OrderMapper orderMapper, SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+                            PaymentMapper orderMapper, StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                             ai.neargo.shop.spi.product.PayModePort payModeService,
                             CartItemMapper cartMapper, GoodsQueryPort goodsPort, StockPort stockPort,
                             MerchantQueryPort merchantPort,
                             ai.neargo.shop.spi.user.MerchantAdminPort merchantAdminPort,
                             AttributionPort attributionPort,
-                            CouponPort couponPort, CampaignPort campaignPort, PointsPort pointsPort,
+                            CouponPort couponPort, CampaignPort campaignPort,
                             ai.neargo.shop.spi.pay.PayChannelMasterPort payChannelMasterPort,
-                            ai.neargo.shop.spi.product.PointsRulePort pointsRulePort,
                             SettlePort settlePort,
-                            StatusLogMapper statusLogMapper,
-                            ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper,
+                            OrderStatusLogMapper statusLogMapper,
+                            AfterSaleMapper afterSaleMapper,
                             PickupQueryPort pickupPort,
                             ai.neargo.shop.spi.user.CommunityQueryPort communityQueryPort,
                             ai.neargo.shop.spi.user.UserQueryPort userPort,
@@ -340,9 +426,7 @@ public class OrderServiceImpl implements OrderService {
         this.merchantAdminPort = merchantAdminPort;
         this.attributionPort = attributionPort;
         this.couponPort = couponPort;
-        this.pointsPort = pointsPort;
         this.payChannelMasterPort = payChannelMasterPort;
-        this.pointsRulePort = pointsRulePort;
         this.campaignPort = campaignPort;
         this.settlePort = settlePort;
         this.statusLogMapper = statusLogMapper;
@@ -434,6 +518,10 @@ public class OrderServiceImpl implements OrderService {
                         : intersect(payModes, modes);
             }
         }
+        if (payModes != null && !PaymentImpactPolicy.singleStore(split.groups().stream()
+                .map(group -> stores.get(group.key())).toList())) {
+            payModes.remove(PayModes.OFFLINE);
+        }
         return new ai.neargo.shop.trade.dto.CheckoutCapabilityVO(
                 usable == null ? null : new ArrayList<>(usable), anyNoInvoice, rows,
                 payModes == null ? List.of(ai.neargo.shop.common.PayModes.ONLINE)
@@ -495,6 +583,191 @@ public class OrderServiceImpl implements OrderService {
                 .withOutOfRange(outOfRangeMerchants(cmd, split, userNo));
     }
 
+    @Override
+    public PointsQuote quotePoints(CreateOrderCommand cmd) {
+        String userNo = SecurityUtils.currentUserNo();
+        Split raw = split(cmd);
+        Split priced = repriced(raw, groupQuoteOf(cmd, raw, userNo));
+        Split split = withFreight(priced, cmd, storesOf(cmd, priced), userNo);
+        Discounts discounts = discountsOf(cmd, split, userNo);
+        long base = split.payAmount() - discounts.total();
+        if (!pointsEnabled
+                || pointsCoordinator == null
+                || pointsTargets == null
+                || pointsQuoteRedeem == null
+                || pointsQuoteTerms == null) {
+            return new PointsQuote(
+                    "UNAVAILABLE", "POINTS_INTEGRATION_DETACHED", 0, 0, 0, 0, base, List.of());
+        }
+        String client = ai.neargo.shop.common.PayScenes.normalize(cmd.payScene());
+        if (client == null || cmd.usePoints() == null || cmd.usePoints() <= 0) {
+            return new PointsQuote(
+                    "UNAVAILABLE", "POINTS_REQUOTE_REQUIRED", 0, 0, 0, 0, base, List.of());
+        }
+        Map<String, String> stores = storesOf(cmd, split);
+        String payMode = requirePayModeSupported(cmd, split, stores);
+        String market = null;
+        Map<String, ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Decision> decisions =
+                new LinkedHashMap<>();
+        for (Group g : split.groups) {
+            String store = stores.get(g.key());
+            if (store == null || store.isBlank()) continue;
+            var decision =
+                    pointsCoordinator.decide(
+                            new ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Context(
+                                    store, payMode, true, true, true));
+            if (decision.action()
+                    == ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Action.RECONFIRM)
+                return new PointsQuote(
+                        "UNAVAILABLE", decision.reason(), 0, 0, 0, 0, base, List.of());
+            if (!decision.redemption()) continue;
+            String next = merchantPort.marketOf(g.merchantNo());
+            if (next == null || next.isBlank() || (market != null && !market.equals(next)))
+                return new PointsQuote(
+                        "UNAVAILABLE", "POINTS_MARKET_CONFLICT", 0, 0, 0, 0, base, List.of());
+            market = next;
+            decisions.put(g.key(), decision);
+        }
+        if (decisions.isEmpty())
+            return new PointsQuote(
+                    "UNAVAILABLE", "POINTS_REQUOTE_REQUIRED", 0, 0, 0, 0, base, List.of());
+        String chosenMarket = market;
+        String channel =
+                payChannelMasterPort.payableChannels(chosenMarket).stream()
+                        .filter(
+                                ch ->
+                                        split.groups.stream()
+                                                .allMatch(
+                                                        g ->
+                                                                merchantPort
+                                                                        .activeChannelsOf(
+                                                                                g.merchantNo(),
+                                                                                g.storeNo())
+                                                                        .contains(ch)))
+                        .sorted()
+                        .findFirst()
+                        .orElse(null);
+        if (channel == null)
+            return new PointsQuote(
+                    "UNAVAILABLE", "POINTS_PAYMENT_ROUTE_REQUIRED", 0, 0, 0, 0, base, List.of());
+        List<ai.neargo.shop.spi.points.PointsRedeemPort.Target> targets = new ArrayList<>();
+        ai.neargo.shop.spi.points.PointsOrderTermsPort.Terms first = null;
+        int index = 0;
+        for (Group g : split.groups) {
+            if (!decisions.containsKey(g.key())) continue;
+            String store = stores.get(g.key());
+            var term =
+                    pointsQuoteTerms
+                            .resolve(chosenMarket, userNo, g.merchantNo(), store, payMode, client)
+                            .orElse(null);
+            if (term == null
+                    || !term.redemptionAllowed()
+                    || !CURRENCY_CNY.equals(term.currency())
+                    || (first != null
+                            && (!first.typeCode().equals(term.typeCode())
+                                    || first.ratePoints() != term.ratePoints()
+                                    || first.rateMinor() != term.rateMinor())))
+                return new PointsQuote(
+                        "UNAVAILABLE", "POINTS_TERMS_CHANGED", 0, 0, 0, 0, base, List.of());
+            if (first == null) first = term;
+            List<ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine> lines =
+                    new ArrayList<>();
+            for (Line line : g.lines) {
+                lines.add(
+                        new ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine(
+                                "Q" + (++index),
+                                g.merchantNo(),
+                                line.snapshot.storeNo(),
+                                store,
+                                line.amount()));
+            }
+            targets.add(
+                    pointsTargets
+                            .build(
+                                    "Q" + index,
+                                    g.merchantNo(),
+                                    store,
+                                    channel,
+                                    null,
+                                    discounts.of(g.merchantNo(), store),
+                                    g.freight(),
+                                    lines)
+                            .target());
+        }
+        var quote =
+                pointsQuoteRedeem.quote(
+                        new ai.neargo.shop.spi.points.PointsRedeemPort.RedeemQuery(
+                                chosenMarket, userNo, cmd.usePoints(), payMode, client, targets));
+        if (quote == null
+                || first == null
+                || !first.typeCode().equals(quote.typeCode())
+                || first.ratePoints() != quote.pointsUnit()
+                || first.rateMinor() != quote.minorUnit()
+                || quote.points() <= 0
+                || quote.minor() <= 0
+                || quote.minor() > base)
+            return new PointsQuote(
+                    "UNAVAILABLE", "POINTS_REQUOTE_REQUIRED", 0, 0, 0, 0, base, List.of());
+        List<StorePointsQuote> shares = new ArrayList<>();
+        long points = 0, minor = 0;
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (var share : quote.shares()) {
+            var target =
+                    targets.stream()
+                            .filter(t -> t.subOrderNo().equals(share.subOrderNo()))
+                            .findFirst()
+                            .orElse(null);
+            if (target == null
+                    || !seen.add(share.subOrderNo())
+                    || !target.storeNo().equals(share.storeNo())
+                    || !target.merchantNo().equals(share.merchantNo())
+                    || share.points() < 0
+                    || share.minor() < 0
+                    || share.minor() > target.goodsMinor())
+                return new PointsQuote(
+                        "UNAVAILABLE", "POINTS_REQUOTE_REQUIRED", 0, 0, 0, 0, base, List.of());
+            points = Math.addExact(points, share.points());
+            minor = Math.addExact(minor, share.minor());
+            var group =
+                    split.groups.stream()
+                            .filter(
+                                    g ->
+                                            g.merchantNo().equals(target.merchantNo())
+                                                    && g.storeNo().equals(target.storeNo()))
+                            .findFirst()
+                            .orElseThrow();
+            shares.add(
+                    new StorePointsQuote(
+                            target.storeNo(),
+                            target.merchantNo(),
+                            decisions.get(group.key()).policyVersion(),
+                            share.points(),
+                            share.minor()));
+        }
+        if (points != quote.points() || minor != quote.minor())
+            return new PointsQuote(
+                    "UNAVAILABLE", "POINTS_REQUOTE_REQUIRED", 0, 0, 0, 0, base, List.of());
+        return new PointsQuote(
+                "AVAILABLE",
+                null,
+                points,
+                minor,
+                quote.pointsUnit(),
+                quote.minorUnit(),
+                base,
+                shares);
+    }
+
+    @Override
+    public PointsState pointsState(String orderNo) {
+        var order=requireOwnOrder(orderNo);
+        if (!Boolean.TRUE.equals(order.getPointsIntegrated())) return new PointsState("NONE",null);
+        if (pointsPlacement==null) throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
+        var placement=pointsPlacement.inspect(order.getOrderNo());
+        if (placement==null) throw new IllegalStateException("POINTS_PLACEMENT_MISSING");
+        return new PointsState(placement.phase().name(),placement.reason());
+    }
+
     /**
      * 预览用：每件设了限购的货的限购数与已买量。
      * 开关关着时返回空 —— 步进器只按库存，与「只显示不拦」一致。
@@ -540,8 +813,15 @@ public class OrderServiceImpl implements OrderService {
             return null;
         }
         String title = couponPort.returnedTitleOf(sub.getOrderNo());
-        var pts = pointsPort.returnedOf(List.of(sub.getSubOrderNo()));
-        return new OrderVO.Returned(title, pts.refunded(), pts.clawedBack());
+        var root=orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                .eq(OrdOrder::getOrderNo,sub.getOrderNo()).last("LIMIT 1"));
+        if (root != null && Boolean.TRUE.equals(root.getPointsIntegrated())) {
+            if (pointsRefundSource == null)
+                throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
+            var totals=pointsRefundSource.confirmedTotals(sub.getSubOrderNo());
+            return new OrderVO.Returned(title,totals.returnedPoints(),totals.reclaimedPoints());
+        }
+        return new OrderVO.Returned(title,0,0);
     }
 
     /** 一件货的限购与已买量 */
@@ -895,7 +1175,7 @@ public class OrderServiceImpl implements OrderService {
                         g.merchantNo, g.goodsAmount(), g.goodsQty(), stores.get(g.key()),
                         // 逐件小计：平台活动只对报名的货生效，门槛按那几件货判（P3）
                         offline ? List.<CampaignPort.GoodsLine>of() : g.lines.stream().map(l -> new CampaignPort.GoodsLine(
-                                l.snapshot.goodsNo(), l.amount(), l.qty)).toList()))
+                                l.snapshot.goodsNo(), l.amount(), l.qty)).toList(), false))
                 .toList();
     }
 
@@ -1117,23 +1397,41 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
     public OrderVO create(CreateOrderCommand cmd, String idempotencyKey) {
         return createFor(SecurityUtils.currentUserNo(), cmd, idempotencyKey);
     }
 
     @Override
-    @Transactional
     public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey) {
         return createFor(userNo, cmd, idempotencyKey, null);
     }
 
     @Override
-    @Transactional
     public OrderVO createFor(String userNo, CreateOrderCommand cmd, String idempotencyKey,
                              Integer payMinutes) {
-        return idempotency.execute(idempotencyKey, "POST /mp/order", userNo, OrderVO.class,
-                () -> doCreate(cmd, userNo, payMinutes));
+        boolean callerTransaction = org.springframework.transaction.support.TransactionSynchronizationManager
+                .isActualTransactionActive();
+        String inputHash = createRequestHasher.hash(cmd);
+        java.util.function.Supplier<OrderVO> create = () -> idempotency.execute(
+                idempotencyKey, "POST /mp/order", userNo, inputHash, OrderVO.class,
+                () -> doCreate(cmd, userNo, payMinutes, idempotencyKey, inputHash));
+        OrderVO initial = sourceTransactions == null ? create.get() : sourceTransactions.execute(s -> create.get());
+        if (!ai.neargo.shop.trade.order.contract.ContractOrderStatus.POINTS_PROCESSING.equals(initial.status())) {
+            return initial;
+        }
+        String root = initial.payOrderNo();
+        var staged = pointsPlacement.inspect(root);
+        if (staged == null || !staged.draft().requestHash().equals(pointsRequestHash(userNo, cmd))) {
+            throw new IllegalArgumentException("POINTS_PLACEMENT_REPLAY_CONFLICT");
+        }
+        if (callerTransaction) return initial;
+        try {
+            pointsPlacement.resume(root);
+        } catch (RuntimeException pending) {
+            log.warn("[points] placement awaiting recovery order={} cause={}", root,
+                    pending.getClass().getSimpleName());
+        }
+        return detailOf(root, userNo, "MP");
     }
 
     /**
@@ -1141,11 +1439,8 @@ public class OrderServiceImpl implements OrderService {
      * 自调用不走代理，写在这里的 {@code @Transactional} 完全不生效 ——
      * 那样「锁了库存但订单没落库」会变成常态，且测试很难发现。
      */
-    private OrderVO doCreate(CreateOrderCommand cmd, String userNo) {
-        return doCreate(cmd, userNo, null);
-    }
-
-    private OrderVO doCreate(CreateOrderCommand cmd, String userNo, Integer payMinutes) {
+    private OrderVO doCreate(CreateOrderCommand cmd, String userNo, Integer payMinutes,
+                             String idempotencyKey, String inputHash) {
         Split raw = split(cmd);
         if (raw.items.isEmpty()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
@@ -1188,6 +1483,33 @@ public class OrderServiceImpl implements OrderService {
          * 不是「在它中间插一脚」。
          */
         String payMode = requirePayModeSupported(cmd, split, storeOfMerchant);
+        String clientScene = ai.neargo.shop.common.PayScenes.normalize(cmd.payScene());
+        Map<String, ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Decision> pointDecisions =
+                new LinkedHashMap<>();
+        boolean wantsPoints = cmd.usePoints() != null && cmd.usePoints() > 0;
+        if (pointsEnabled && pointsCoordinator != null && clientScene != null) {
+            for (Group g : split.groups) {
+                String store = storeOfMerchant.get(g.key());
+                if (store == null || store.isBlank()) continue;
+                var decision = pointsCoordinator.decide(
+                        new ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Context(
+                                store, payMode, wantsPoints, true, wantsPoints));
+                if (decision.action() == ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Action.RECONFIRM) {
+                    throw new IllegalArgumentException(decision.reason());
+                }
+                if (decision.action() == ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Action.READY) {
+                    pointDecisions.put(g.key(), decision);
+                }
+            }
+        }
+        if (wantsPoints && pointDecisions.values().stream().noneMatch(
+                ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Decision::redemption)) {
+            throw new IllegalArgumentException("POINTS_REQUOTE_REQUIRED");
+        }
+        boolean pointsStaged = !pointDecisions.isEmpty();
+        if (pointsStaged && (pointsPlacement == null || pointsTargets == null)) {
+            throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
+        }
         if (purchaseLimit != null) {
             // 每人限购：只读、在锁库存之前（与上面几道校验同一个姿势）
             purchaseLimit.require(userNo, split.qtyByGoods(), split.limitsByGoods());
@@ -1212,12 +1534,6 @@ public class OrderServiceImpl implements OrderService {
         requirePickupServed(cmd, split);
         requireAppointmentWhenNeeded(cmd, split, storeOfMerchant);
 
-        /*
-         * 占预约名额。**一单一次**，不在建子单的循环里 —— 带时段的单只有一个商家
-         * （前置校验保证），循环里调会在将来某次放宽限制时变成重复占位。
-         */
-        var slot = bookAppointmentSlot(cmd, split, storeOfMerchant);
-
         long now = System.currentTimeMillis();
         // 订单号序列化（ADR-035）：O + yyMMddHH + 4位序列（号段），撞 uk 兜底续号
         String orderNo = orderNoGenerator.mainOrderNo(now,
@@ -1234,39 +1550,6 @@ public class OrderServiceImpl implements OrderService {
          */
         Map<String, Integer> gifts = giftQtyOf(split);
 
-        // ⑤ 锁库存 —— 放在落库之前：库存不足就整单失败，不留半张订单
-        try {
-            List<StockPort.SkuQty> lock = new ArrayList<>();
-            for (Group g : split.groups) {
-                String storeNo = storeOfMerchant.get(g.key());
-                for (Line i : g.lines) {
-                    // 赠品与付费件是同一个 SKU（活动表里没有「赠哪件」），合并成一次锁
-                    lock.add(new StockPort.SkuQty(
-                            i.skuNo(), i.qty() + gifts.getOrDefault(i.skuNo(), 0), storeNo));
-                }
-            }
-            stockPort.lock(orderNo, lock);
-        } catch (RuntimeException e) {
-            /*
-             * 连赠品一起锁失败时**退回只锁付费件**再试一次：
-             * 这一步就是「库存不够少送」的落地 —— 不重试的话，
-             * 赠品缺货会表现成「这单买不了」，而用户根本没要那个赠品。
-             */
-            gifts.clear();
-            try {
-                List<StockPort.SkuQty> paidOnly = new ArrayList<>();
-                for (Group g : split.groups) {
-                    String storeNo = storeOfMerchant.get(g.key());
-                    for (Line i : g.lines) {
-                        paidOnly.add(new StockPort.SkuQty(i.skuNo(), i.qty(), storeNo));
-                    }
-                }
-                stockPort.lock(orderNo, paidOnly);
-            } catch (RuntimeException retry) {
-                throw BizException.of(ErrorCode.STOCK_NOT_ENOUGH);
-            }
-        }
-
         // 优惠：与预览同一套规则（discountsOf 是唯一实现）
         Discounts discounts = discountsOf(cmd, split, userNo);
 
@@ -1281,30 +1564,7 @@ public class OrderServiceImpl implements OrderService {
             subOrderNoOf.put(g.key(), orderNoGenerator.subOrderNo(orderNo, ++subIdx));
         }
 
-        /*
-         * 积分抵扣。**券之后、运费之外**：
-         *
-         * · 券先抵 —— 反过来的话积分把金额压低，券的满减门槛就达不到了，
-         *   用户会发现「用了积分反而更贵」
-         * · 运费不参与 —— 含运费的话一单全靠积分抵掉，商家一分收不到
-         *
-         * 端上传的 usePoints 只是意愿值，积分域按四道闸截断。
-         * 抵不了就是不抵（返回零值），**不抛异常** —— 为了抵扣失败把一笔真实成交挡掉，
-         * 代价与收益完全不成比例，与买赠缺货少送是同一条原则。
-         */
-        PointsPort.Deduction points = cmd.usePoints() == null || cmd.usePoints() <= 0
-                ? PointsPort.Deduction.none()
-                : pointsPort.deduct(userNo, cmd.usePoints(), split.groups.stream()
-                        .map(g -> new PointsPort.Target(g.merchantNo,
-                                g.goodsAmount() - discounts.of(g.merchantNo, g.storeNo()),
-                                subOrderNoOf.get(g.key())))
-                        /*
-                         * 端与支付方式一起传进去：能不能用积分抵扣是平台策略，
-                         * 判定收在积分域一处。**传的是本次请求的端**（cmd.payScene()
-                         * 来自 X-Client），核销判定的对象就是当前端 ——
-                         * 发放那边恰好相反，读的是订单快照，别把两者写混。
-                         */
-                        .toList(), payMode, cmd.payScene());
+        // 积分占用在普通源订单写入后通过门店策略和持久化 placement 阶段处理。
 
         /*
          * 线下支付**不能用平台券** —— 券要按出资方拆开看：
@@ -1326,7 +1586,7 @@ public class OrderServiceImpl implements OrderService {
         order.setUserNo(userNo);
         // 积分抵扣计入实付，但**不计入 discountAmount** —— 那一列是营销优惠，
         // 混进去会让「这单让了多少利」算错，而分账要按它拆出资方
-        order.setPayAmount(split.payAmount() - discounts.total() - points.amountMinor());
+        order.setPayAmount(split.payAmount() - discounts.total());
         order.setGoodsAmount(split.goodsAmount());
         order.setFreightAmount(split.freightAmount());
         order.setDiscountAmount(discounts.total());
@@ -1336,14 +1596,15 @@ public class OrderServiceImpl implements OrderService {
          * 直接落 PAID 的话，商家一旦收不到钱，退款链路要去退一笔平台从没收过的钱。
          * 库存照常锁（下面 confirm 之后才转实扣），与线上单一致。
          */
-        order.setStatus(PayModes.OFFLINE.equals(payMode)
-                ? OrdOrder.WAIT_OFFLINE_PAY : OrdOrder.WAIT_PAY);
+        order.setStatus(pointsStaged ? OrdOrder.POINTS_PENDING
+                : PayModes.OFFLINE.equals(payMode) ? OrdOrder.WAIT_OFFLINE_PAY : OrdOrder.WAIT_PAY);
         /*
          * 下单端快照。**列从 V1 baseline 就有，缺的一直是这一行写入。**
          * 积分发放的端判定读它 —— 发放发生时可能没有任何「当前端」
          * （超时自动完成是系统动作），只有下单这一刻的端是确定的。
          */
-        order.setPayScene(cmd.payScene());
+        order.setPayScene(clientScene);
+        order.setPointsIntegrated(pointsStaged);
         /*
          * 社区固化到主单上。**运营按社区做数据域隔离** —— 不写的话，
          * 平台端按社区筛订单永远是空的，而列表本身是好的，看起来只是「这个社区没单」。
@@ -1415,9 +1676,38 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
+        List<StockPort.SkuQty> paidOnly = new ArrayList<>();
+        List<StockPort.SkuQty> withGifts = new ArrayList<>();
+        for (Group g : split.groups) {
+            String storeNo = storeOfMerchant.get(g.key());
+            for (Line line : g.lines) {
+                paidOnly.add(new StockPort.SkuQty(line.skuNo(), line.qty(), storeNo));
+                withGifts.add(new StockPort.SkuQty(line.skuNo(),
+                        line.qty() + gifts.getOrDefault(line.skuNo(), 0), storeNo));
+            }
+        }
+        String registered = creationRecovery.register(orderNo, userNo, idempotencyKey, inputHash, withGifts);
+        if (!orderNo.equals(registered)) {
+            if (orderMapper.selectCount(Wrappers.<OrdOrder>lambdaQuery()
+                    .eq(OrdOrder::getOrderNo, registered).eq(OrdOrder::getUserNo, userNo)) == 0) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            return detailOf(registered, userNo, "MP");
+        }
+        creationRecovery.enlist(orderNo);
+        // Only a new durable intent can book a slot; replay must never reserve another resource.
+        var slot = bookAppointmentSlot(cmd, split, storeOfMerchant);
+        if (!stockAllocator.reserve(orderNo, withGifts, paidOnly)) {
+            gifts.clear();
+        }
+
         orderMapper.insert(order);
 
         List<String> subOrderNos = new ArrayList<>();
+        Map<String, List<ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine>> pointLines =
+                new LinkedHashMap<>();
+        Map<String, List<ai.neargo.shop.spi.points.PointsEarnPort.EarnLine>> pointRules =
+                new LinkedHashMap<>();
         for (Group g : split.groups) {
             String subOrderNo = subOrderNoOf.get(g.key());
             subOrderNos.add(subOrderNo);
@@ -1498,11 +1788,10 @@ public class OrderServiceImpl implements OrderService {
             // 出资方分列（Q9）：合成一列的话 M7 分账无法判断该扣谁的钱
             sub.setDiscountPlatform(discounts.platformFunded(g.merchantNo, g.storeNo()));
             sub.setDiscountMerchant(discounts.merchantFunded(g.merchantNo, g.storeNo()));
-            // 积分快照：结算与售后直接读这两列，不用回查积分流水
-            long pointsAmount = points.amountOf(subOrderNo);
-            sub.setPointsDeduct((int) points.pointsOf(subOrderNo));
-            sub.setPointsDeductMinor(pointsAmount);
-            sub.setPayAmount(g.goodsAmount() + g.freight - discount - pointsAmount);
+            // 先落全额现金源单；新积分 hold 确认后再写冻结的抵扣快照。
+            sub.setPointsDeduct(0);
+            sub.setPointsDeductMinor(0L);
+            sub.setPayAmount(g.goodsAmount() + g.freight - discount);
             sub.setRequireBuyerConfirm(
                     Boolean.TRUE.equals(needsConfirm.get(g.key())) ? 1 : 0);
             sub.setStatus(OrdSubOrder.WAIT_PAY);
@@ -1542,7 +1831,18 @@ public class OrderServiceImpl implements OrderService {
                 item.setCategoryType(line.snapshot.categoryType());
                 // 二级类目快照：积分按类目发放时读它，不现查商品（商品可以改类目）
                 item.setCategoryNo(line.snapshot.categoryNo());
+                item.setSupplyStoreNo(line.snapshot.storeNo());
                 itemMapper.insert(item);
+                if (pointDecisions.containsKey(g.key())) {
+                    pointLines.computeIfAbsent(g.key(), k -> new ArrayList<>()).add(
+                            new ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine(
+                                    String.valueOf(item.getId()), g.merchantNo(),
+                                    line.snapshot.storeNo(), storeOfMerchant.get(g.key()), line.amount()));
+                    pointRules.computeIfAbsent(g.key(), k -> new ArrayList<>()).add(
+                            new ai.neargo.shop.spi.points.PointsEarnPort.EarnLine(
+                                    String.valueOf(item.getId()), item.getGoodsNo(), item.getCategoryNo(),
+                                    item.getQty(), 0, 0, null));
+                }
 
                 int giftQty = gifts.getOrDefault(line.snapshot.skuNo(), 0);
                 if (giftQty > 0) {
@@ -1564,6 +1864,7 @@ public class OrderServiceImpl implements OrderService {
                     gift.setAmount(0L);
                     gift.setCategoryType(line.snapshot.categoryType());
                     gift.setCategoryNo(line.snapshot.categoryNo());
+                    gift.setSupplyStoreNo(line.snapshot.storeNo());
                     gift.setIsGift(true);
                     itemMapper.insert(gift);
                 }
@@ -1592,12 +1893,88 @@ public class OrderServiceImpl implements OrderService {
         campaignPort.commit(userNo, orderNo, discounts.auto());
 
         // ⑦ 发事件（只写 outbox，与业务同事务）
-        eventBus.publish(new OrderEvents.OrderCreated(orderNo, userNo, subOrderNos, split.payAmount()));
+        if (pointsStaged) {
+            var draft = pointsPlacementDraft(orderNo, userNo, cmd, payMode, split, discounts,
+                    pointDecisions, pointLines, pointRules, subOrderNoOf, subOrderNos,
+                    nz(order.getPayAmount()));
+            pointsPlacement.stage(draft);
+            eventBus.publish(new ai.neargo.shop.spi.points.OrderPointsPlacementWakeEvent(orderNo));
+        } else {
+            eventBus.publish(new OrderEvents.OrderCreated(orderNo, userNo, subOrderNos, order.getPayAmount()));
+        }
 
         // 下单返回支付视角：端上下一步就是去收银台。**按下单归属的那个人查**，
         // 代客下单时下单的是客服、属主是顾客。此刻还没有运单，traceOf 必然为 null，
         // 展示渠道传什么都不影响 —— 给 MP 占位
         return detailOf(orderNo, userNo, "MP");
+    }
+
+    private ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Draft pointsPlacementDraft(
+            String orderNo, String userNo, CreateOrderCommand cmd, String payMode, Split split,
+            Discounts discounts,
+            Map<String, ai.neargo.shop.trade.order.points.OrderPointsCoordinator.Decision> decisions,
+            Map<String, List<ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine>> lines,
+            Map<String, List<ai.neargo.shop.spi.points.PointsEarnPort.EarnLine>> rules,
+            Map<String, String> subOrderNoOf, List<String> subOrderNos, long basePayMinor) {
+        String market = null;
+        for (Group g : split.groups) {
+            if (!decisions.containsKey(g.key())) continue;
+            String next = merchantPort.marketOf(g.merchantNo());
+            if (next == null || next.isBlank() || (market != null && !market.equals(next))) {
+                throw new IllegalArgumentException("POINTS_MARKET_CONFLICT");
+            }
+            market = next;
+        }
+        if (market == null) throw new IllegalArgumentException("POINTS_MARKET_REQUIRED");
+        String chosenMarket = market;
+        String channel = payChannelMasterPort.payableChannels(chosenMarket).stream()
+                .filter(ch -> split.groups.stream()
+                        .allMatch(g -> merchantPort.activeChannelsOf(g.merchantNo(), g.storeNo()).contains(ch)))
+                .sorted().findFirst().orElseThrow(
+                        () -> new IllegalArgumentException("POINTS_PAYMENT_ROUTE_REQUIRED"));
+        List<ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Candidate> candidates =
+                new ArrayList<>();
+        List<SettlePort.PaymentStore> paymentStores = new ArrayList<>();
+        for (Group g : split.groups) {
+            var decision = decisions.get(g.key());
+            if (decision == null) {
+                var route = merchantPort.paymentRouteOf(g.merchantNo(), g.storeNo(), channel)
+                        .orElseThrow(() -> new IllegalArgumentException("POINTS_PAYMENT_ROUTE_REQUIRED"));
+                paymentStores.add(new SettlePort.PaymentStore(subOrderNoOf.get(g.key()), route));
+                continue;
+            }
+            var target = pointsTargets.build(subOrderNoOf.get(g.key()), g.merchantNo(), g.storeNo(),
+                    channel, null, discounts.of(g.merchantNo(), g.storeNo()), g.freight(),
+                    lines.getOrDefault(g.key(), List.of()));
+            paymentStores.add(new SettlePort.PaymentStore(subOrderNoOf.get(g.key()), target.acceptedRoute()));
+            Map<String, ai.neargo.shop.spi.points.PointsEarnPort.EarnLine> raw = new HashMap<>();
+            for (var rule : rules.getOrDefault(g.key(), List.of())) raw.put(rule.itemId(), rule);
+            var frozen = target.target().items().stream().map(item -> {
+                var rule = raw.get(item.itemId());
+                if (rule == null) throw new IllegalArgumentException("POINTS_PLACEMENT_LINES_INVALID");
+                return new ai.neargo.shop.spi.points.PointsEarnPort.EarnLine(
+                        rule.itemId(), rule.goodsNo(), rule.categoryNo(), rule.quantity(),
+                        item.goodsMinor(), 0, rule.rule());
+            }).toList();
+            candidates.add(new ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Candidate(
+                    target, decision.policyVersion(), decision.earning(), decision.redemption(), frozen));
+        }
+        long wanted = cmd.usePoints() == null ? 0 : cmd.usePoints();
+        return new ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Draft(
+                orderNo, userNo, market, CURRENCY_CNY, payMode,
+                ai.neargo.shop.common.PayScenes.normalize(cmd.payScene()), wanted,
+                basePayMinor, pointsRequestHash(userNo, cmd), candidates, subOrderNos, paymentStores);
+    }
+
+    private static String pointsRequestHash(String userNo, CreateOrderCommand cmd) {
+        try {
+            byte[] body = new tools.jackson.databind.ObjectMapper().writeValueAsBytes(
+                    java.util.List.of(userNo, cmd));
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(body);
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
     }
 
     // ---------------------------------------------------------------- 支付
@@ -1675,6 +2052,10 @@ public class OrderServiceImpl implements OrderService {
         if (!OrdOrder.WAIT_PAY.equals(order.getStatus())) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
+        if (settlePort.successPayment(orderNo) != null
+                || paymentResolutions.view(orderNo, order.getUserNo()) != null) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         if (order.getPayDeadlineAt() != null && order.getPayDeadlineAt() < System.currentTimeMillis()) {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
@@ -1709,10 +2090,27 @@ public class OrderServiceImpl implements OrderService {
          * 而那是最不该第一次执行它的时候。
          */
         String channel = resolvePayChannel(order, payChannel);
-        var init = settlePort.initPayment(new SettlePort.PaymentOpen(
-                orderNo, order.getUserNo(), null, channel,
-                order.getPayAmount() == null ? 0L : order.getPayAmount(),
-                payDescription(orderNo)));
+        SettlePort.PaymentOpen open;
+        if (Boolean.TRUE.equals(order.getPointsIntegrated())) {
+            var accepted = pointsPlacement.inspect(orderNo);
+            if (accepted == null || accepted.phase() !=
+                    ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.Phase.READY
+                    || accepted.draft().paymentStores().size() != accepted.draft().allSubOrderNos().size()
+                    || accepted.draft().paymentStores().stream().anyMatch(s ->
+                    !channel.equals(s.route().channel())
+                            && !(ai.neargo.shop.common.PayChannels.FREE.equals(channel)
+                                    && Long.valueOf(0).equals(order.getPayAmount())))) {
+                throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
+            }
+            open = new SettlePort.PaymentOpen(orderNo, order.getUserNo(), null, channel,
+                    order.getPayAmount() == null ? 0L : order.getPayAmount(),
+                    payDescription(orderNo), accepted.draft().currency(),
+                    accepted.draft().paymentStores());
+        } else {
+            open = new SettlePort.PaymentOpen(orderNo, order.getUserNo(), null, channel,
+                    order.getPayAmount() == null ? 0L : order.getPayAmount(), payDescription(orderNo));
+        }
+        var init = settlePort.initPayment(open);
 
         if (!init.success()) {
             /*
@@ -1738,7 +2136,7 @@ public class OrderServiceImpl implements OrderService {
          */
         boolean settled = ai.neargo.shop.common.PayChannels.FREE.equals(init.payChannel());
         if (settled) {
-            markPaid(orderNo, init.payChannel(), init.outTradeNo());
+            markPaid(orderNo, init.payChannel(), null);
         }
         return new PayResult(orderNo, init.payChannel(), init.payParams(), settled);
     }
@@ -1749,15 +2147,52 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
     public void markPaid(String orderNo, String payChannel, String payTradeNo) {
-        OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+        OrdOrder source = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));
+        if (source == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        ai.neargo.shop.spi.points.PointsPaymentSnapshotPort.VerifiedPayment proof = null;
+        if (Boolean.TRUE.equals(source.getPointsIntegrated()) && !OrdOrder.PAID.equals(source.getStatus())) {
+            if (org.springframework.transaction.support.TransactionSynchronizationManager
+                    .isActualTransactionActive()) {
+                throw new IllegalArgumentException("POINTS_SOURCE_TRANSACTION_OPEN");
+            }
+            if (pointsPaymentSnapshots == null || pointsPaidFacts == null || sourceTransactions == null) {
+                throw new IllegalArgumentException("POINTS_IMPLEMENTATION_REQUIRED");
+            }
+            proof = pointsPaymentSnapshots.verified(orderNo).orElseThrow(
+                    () -> new IllegalArgumentException("POINTS_PAYMENT_NOT_VERIFIED"));
+            if (!source.getUserNo().equals(proof.userNo())
+                    || !source.getCurrency().equals(proof.currency())
+                    || source.getPayAmount() == null || source.getPayAmount() != proof.amountMinor()
+                    || (payChannel != null && !proof.channel().equals(payChannel))
+                    || (payTradeNo != null && !proof.tradeNo().equals(payTradeNo))) {
+                throw new IllegalArgumentException("POINTS_PAYMENT_PROOF_MISMATCH");
+            }
+        }
+        var verified = proof;
+        String settledChannel = proof == null ? payChannel : proof.channel();
+        String settledTrade = proof == null ? payTradeNo : proof.tradeNo();
+        if (sourceTransactions != null) {
+            sourceTransactions.execute(s -> { markPaidSource(orderNo, settledChannel, settledTrade, verified); return null; });
+        } else {
+            markPaidSource(orderNo, settledChannel, settledTrade, verified);
+        }
+    }
+
+    private void markPaidSource(String orderNo, String payChannel, String payTradeNo,
+                                ai.neargo.shop.spi.points.PointsPaymentSnapshotPort.VerifiedPayment proof) {
+        OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
+                .eq(OrdOrder::getOrderNo, orderNo).last("limit 1 FOR UPDATE"));
         if (order == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
+        var confirmed = paymentLifecycle.requireConfirmed(order, payChannel, payTradeNo);
         if (OrdOrder.PAID.equals(order.getStatus())) {
             return;   // 幂等：回调会重发，重复到达不能重复扣库存、重复发事件
+        }
+        if (Boolean.TRUE.equals(order.getPointsIntegrated()) && proof == null) {
+            throw new IllegalArgumentException("POINTS_PAYMENT_NOT_VERIFIED");
         }
         // 经门：WAIT_PAY → 通道回调；WAIT_OFFLINE_PAY → 商家确认当面收款。与超时关单并发时 CAS 决出一方
         boolean offline = OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus());
@@ -1765,15 +2200,14 @@ public class OrderServiceImpl implements OrderService {
                 offline ? PaymentEvent.OFFLINE_CONFIRMED : PaymentEvent.PAY_SUCCEEDED,
                 offline ? Actor.MERCHANT : Actor.CHANNEL, null, "支付成功",
                 new PaymentContext(offline, true, true, false));
-        order.setPayChannel(payChannel);
-        order.setPayTradeNo(payTradeNo);
+        order.setPayChannel(confirmed.channel());
+        order.setPayTradeNo(confirmed.tradeNo());
         order.setPaidAt(System.currentTimeMillis());
         orderMapper.updateById(order);
 
         // 锁定转实扣
         stockPort.confirm(orderNo);
 
-        java.util.Set<String> bonusGranted = new java.util.HashSet<>();
         for (OrdSubOrder sub : subOrders(orderNo)) {
             /*
              * **支付成功后落哪个状态，由履约方式决定**（《订单状态-统一整理》§2.2）。
@@ -1842,17 +2276,6 @@ public class OrderServiceImpl implements OrderService {
             }
 
             /*
-             * 发分。**基数是实付金额**（已扣券与积分），不含运费 ——
-             * 拿运费也计分的话，一单加一次运费就能多赚一笔分。
-             *
-             * 进的是 pending_balance（待生效）而不是 balance：售后期内退款要把分收回，
-             * 而已经花出去的分收不回来。转正任务本批不做。
-             *
-             * points_granted 是幂等标记：支付回调会重发，这个方法开头的
-             * 「已 PAID 直接返回」挡掉大部分，但并发回调仍可能同时进来，
-             * 所以这里再挡一层 —— 重复发分是**凭空印钱**，比重复扣库存严重。
-             */
-            /*
              * 累加收款额度用量（P2-3）。
              *
              * 放在这个循环里而不是主单上：额度是**按商家**算的，
@@ -1862,29 +2285,11 @@ public class OrderServiceImpl implements OrderService {
             merchantAdminPort.accruePayQuota(sub.getEntityNo(), sub.getStoreNo(),
                     sub.getPayAmount() == null ? 0L : sub.getPayAmount());
 
-            if (!Boolean.TRUE.equals(sub.getPointsGranted())) {
-                /*
-                 * 发积分**在支付状态提交之后**做，与生成结算单同一条理由：
-                 * 支付域独立成进程后就没有共享事务了，而这里后面还有事件发布 ——
-                 * 中间任何一处抛异常，今天会把积分一起回滚，独立之后会留下
-                 * 「用户拿到了分、而订单回滚了」。
-                 *
-                 * <p>推到提交之后，两种失败方向都是安全的：业务回滚 → 根本没发；
-                 * 业务提交而发分失败 → 用户这次没拿到分，标记也没写上，
-                 * <b>而 grantOnPay 现在自己按 EARN 流水幂等</b>，重试不会多发。
-                 */
-                final String subNo = sub.getSubOrderNo();
-                final String userNo = order.getUserNo();
-                final String entityNo = sub.getEntityNo();
-                final long base = sub.getPayAmount() == null ? 0L
-                        : sub.getPayAmount() - (sub.getFreightAmount() == null ? 0L : sub.getFreightAmount());
-                final String scene = order.getPayScene();
-                // 自己组合的「送积分」：随常规积分一起发（同一次发放幂等、同一笔费用金）
-                // 活动赠积分按主体记（pmt_apply 没有门店维度）：同主体多张子单只发一次（ADR-031 §2.7）
-                final long bonus = bonusGranted.add(entityNo) ? campaignPort.bonusPoints(orderNo, entityNo) : 0L;
-                AfterCommit.run("发放积分 subOrderNo=" + subNo,
-                        () -> grantPointsAfterPay(subNo, userNo, entityNo, base, payChannel, scene, bonus));
-            }
+
+        }
+
+        if (Boolean.TRUE.equals(order.getPointsIntegrated())) {
+            pointsPaidFacts.recordPaid(orderNo, proof);
         }
 
         /*
@@ -1916,57 +2321,6 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    /**
-     * 支付提交后发放积分，并把结果写回子单。
-     *
-     * <p><b>重新读一次子单</b>，不用外面那个对象：那是提交之前读出来的，
-     * 而这里已经在事务之外 —— 拿旧对象 updateById 会把它当时的全部字段
-     * 原样写回去，覆盖掉这中间别处（比如履约）刚改的列。
-     *
-     * <p>失败不上抛：调用方是 {@link AfterCommit}，它会记 error。
-     * 用户这次没拿到分而标记也没写上，重试由 {@code grantOnPay} 自己的
-     * 流水幂等保证不会多发。
-     */
-    private void grantPointsAfterPay(String subOrderNo, String userNo, String entityNo, long base,
-                                     String payChannel, String payScene, long bonusPoints) {
-        /*
-         * 通道与场景**传进去**，不让支付域回查订单（2026-09-01）。
-         * 它们是支付那一刻的事实，这边本来就拿着：payChannel 是 markPaid 的参数，
-         * payScene 在 ord_order 上。
-         */
-        List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> lines = new ArrayList<>(earnLines(subOrderNo, base));
-        if (bonusPoints > 0) {
-            /*
-             * 活动送的积分作为**一行定额**并进同一次发放：FIXED 规则按值原样发（基数只要 > 0），
-             * 费用金照常按分数向商家收 —— 活动由商家出资，送的积分也是。
-             * 不单独调一次 grant：发放按子单幂等，第二次调用会被当成重复回调吞掉。
-             */
-            lines.add(new ai.neargo.shop.spi.settle.PointsPort.EarnLine(null, null, 1L,
-                    new ai.neargo.shop.spi.settle.PointsPort.EarnRule(
-                            ai.neargo.shop.spi.settle.PointsPort.FIXED, bonusPoints)));
-        }
-        var g = pointsPort.grant(userNo, entityNo, lines, subOrderNo, payChannel, payScene);
-        if (g.points() <= 0) {
-            return;
-        }
-        OrdSubOrder fresh = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
-                .eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1"));
-        if (fresh == null) {
-            return;
-        }
-        fresh.setPointsGranted(true);
-        /*
-         * 费用金落在子单上，**结算时才真的扣**（发分即付，从货款里出）。
-         *
-         * 此前这一列全库零写入 —— 于是 stl_bill 也拿不到值，
-         * B 端「本期积分支出」永远是 0，而池子只出不进：
-         * 用户花分时 MERCHANT_PAY 出账，发分时却没有对应的入账，
-         * 恒等式 2 会随发放量单调失衡。
-         */
-        fresh.setPointsFeeMinor(g.feeMinor());
-        subOrderMapper.updateById(fresh);
-    }
-
     // ---------------------------------------------------------------- 查询与取消
 
     @Override
@@ -1984,13 +2338,10 @@ public class OrderServiceImpl implements OrderService {
      */
     private OrderVO detailOf(String orderNo, String userNo, String surface) {
         // Q6：先按子单号查（C 端绝大多数请求是订单视角），查不到再按主单号
-        OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
-                .eq(OrdSubOrder::getSubOrderNo, orderNo)
-                .eq(OrdSubOrder::getUserNo, userNo)
-                .last("limit 1"));
+        StoreOrderMaterial material = storeQueries.material(orderNo, userNo);
+        OrdSubOrder sub = material == null ? null : material.order();
         if (sub != null) {
-            OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
-                    .eq(OrdOrder::getOrderNo, sub.getOrderNo()).last("limit 1"));
+            OrdOrder order = material.payment();
             /*
              * **三样只在详情查**（见 OrderVO 上的说明）：列表一次几十条，
              * 在 `orderView` 里查就是每条三次额外查询。
@@ -1999,7 +2350,7 @@ public class OrderServiceImpl implements OrderService {
              * 「已评价的单照样显示去评价」「售后进行中整张卡不显示」
              * 「拆单提示不显示」，三条都不报错。见 TDD-交互清单缺口修复 G15。
              */
-            OrderVO vo = orderView(sub, order).withDetail(
+            OrderVO vo = orderView(material).withDetail(
                     reviewQueryPort.reviewed(sub.getSubOrderNo()),
                     afterSaleService.ofSubOrder(sub.getSubOrderNo()).orElse(null),
                     subOrderMapper.selectCount(Wrappers.<OrdSubOrder>lambdaQuery()
@@ -2029,7 +2380,8 @@ public class OrderServiceImpl implements OrderService {
                         ? null : periodPort.openUntil(sub.getPeriodNo(), System.currentTimeMillis());
                 vo = vo.withBatch(sub.getArriveDate(), until);
             }
-            return vo;
+            return vo.withPaymentResolution(paymentResolutions.view(order.getOrderNo(), userNo))
+                    .withLogisticsSync(logisticsSyncOf(sub.getSubOrderNo()));
         }
         OrdOrder order = requireOwnOrder(orderNo, userNo);
         List<OrdSubOrder> subs = subOrders(orderNo);
@@ -2044,7 +2396,8 @@ public class OrderServiceImpl implements OrderService {
         if (subs.size() == 1) {
             vo = vo.withTrace(traceOf(subs.get(0), surface));
         }
-        return vo;
+        return vo.withPaymentResolution(paymentResolutions.view(order.getOrderNo(), userNo))
+                .withLogisticsSync(subs.size() == 1 ? logisticsSyncOf(subs.get(0).getSubOrderNo()) : null);
     }
 
     /**
@@ -2069,8 +2422,15 @@ public class OrderServiceImpl implements OrderService {
                 || sub.getExpressNo() == null || sub.getExpressNo().isBlank()) {
             return null;
         }
-        return logisticsPort.track(ai.neargo.shop.spi.logistics.LogisticsPort.TrackQuery.subOrder(
-                        sub.getSubOrderNo(), surfaceOf(client), refresh))
+        var tracked = logisticsPort.track(ai.neargo.shop.spi.logistics.LogisticsPort.TrackQuery.subOrder(
+                sub.getSubOrderNo(), surfaceOf(client), refresh));
+        if (refresh && shipmentConverger != null) {
+            logisticsPort.shipmentSnapshotOf(sub.getSubOrderNo()).ifPresent(snapshot ->
+                    shipmentConverger.converge(snapshot.sourceShipmentNo(), snapshot.sourceShipmentVersion(),
+                            snapshot.waybillNo(), snapshot.status(), snapshot.signedAt(),
+                            snapshot.signedNodeAt(), snapshot.firstTraceAt(), snapshot.source()));
+        }
+        return tracked
                 .map(OrderServiceImpl::toTraceVO)
                 .orElse(null);
     }
@@ -2091,7 +2451,7 @@ public class OrderServiceImpl implements OrderService {
          * 而接口全绿、日志干净。详情与 /trace 从此同源。
          *
          * refresh=false：**读路径不主动问渠道**，买家反复下拉打不穿配额、不花钱。
-         * （LogisticsPortImpl 内部对微信那条有 10 分钟 TTL 的自动校正，那是它的事。）
+         * 专门物流页仍保留微信 10 分钟 TTL 校正；普通详情只读缓存。
          * 端（MP / APP / H5）由 Controller 读 X-Client 传进来，不在这儿读 request。
          *
          * ful_shipment 那套保留给运营列表与兜底；logisticsPort 缺失的装配回落到它，
@@ -2101,7 +2461,7 @@ public class OrderServiceImpl implements OrderService {
             return legacyTraceOf(sub, surface);
         }
         return logisticsPort.track(ai.neargo.shop.spi.logistics.LogisticsPort.TrackQuery
-                        .subOrder(sub.getSubOrderNo(), surface, false))
+                        .cachedSubOrder(sub.getSubOrderNo(), surface))
                 .map(OrderServiceImpl::toTraceVO)
                 .orElse(null);
     }
@@ -2161,44 +2521,32 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public PageData<OrderVO> list(String status, List<String> fulfillments, long page, long size) {
-        // Q6：列表是子单粒度
-        var w = Wrappers.<OrdSubOrder>lambdaQuery()
-                .eq(OrdSubOrder::getUserNo, SecurityUtils.currentUserNo());
-        /*
-         * **两个正交的筛选条件**，不是一个。
-         *
-         * 此前端上传的是「状态 × 履约」的组合词（ARRIVED / SHIPPED），后端再拆回去 ——
-         * 于是「待取货」这种页签是一个**状态值**，加一种履约就得加一个值。
-         * 现在端上传抽象状态 + 想要的履约集合，页签变成**谓词**：
-         * 「待取货」= FULFILLING ∧ 自提类，「待使用」= FULFILLING ∧ 服务类，
-         * 想合并两个页签只改端上传的集合，后端一行不动。
-         */
-        List<String> stored = OrderStatusView.toStored(status);
-        if (!stored.isEmpty()) {
-            w.in(OrdSubOrder::getStatus, stored);
-        }
-        if (fulfillments != null && !fulfillments.isEmpty()) {
-            w.in(OrdSubOrder::getFulfillment, fulfillments);
-        }
-        w.orderByDesc(OrdSubOrder::getId);
+        String buyerNo = SecurityUtils.currentUserNo();
+        var result = storeQueries.materials(buyerNo, new StoreOrderQuery(status, fulfillments), page, size);
+        List<String> payNos = result.records().stream().map(m -> m.payment().getOrderNo()).distinct().toList();
+        var conflicts = paymentResolutions.views(payNos, buyerNo);
+        var summaries = logisticsPort == null ? java.util.Map.<String, ai.neargo.shop.spi.logistics.LogisticsPort.SyncResult>of()
+                : logisticsPort.summariesOf(result.records().stream()
+                        .map(m -> m.order().getSubOrderNo()).toList());
+        return PageData.of(result.records().stream().map(m -> orderView(m)
+                        .withPaymentResolution(conflicts.get(m.payment().getOrderNo()))
+                        .withLogisticsSync(asLogisticsSync(summaries.get(m.order().getSubOrderNo())))).toList(),
+                result.total(), result.page(), result.size());
+    }
 
-        Page<OrdSubOrder> p = subOrderMapper.selectPage(Page.of(page, size), w);
-        if (p.getRecords().isEmpty()) {
-            return PageData.empty(page, size);
-        }
-        Map<String, OrdOrder> orders = orderMapper.selectList(Wrappers.<OrdOrder>lambdaQuery()
-                        .in(OrdOrder::getOrderNo,
-                                p.getRecords().stream().map(OrdSubOrder::getOrderNo).distinct().toList()))
-                .stream().collect(Collectors.toMap(OrdOrder::getOrderNo, o -> o, (a, b) -> a));
+    private OrderVO.LogisticsSync logisticsSyncOf(String subOrderNo) {
+        return logisticsPort == null ? null
+                : asLogisticsSync(logisticsPort.summariesOf(List.of(subOrderNo)).get(subOrderNo));
+    }
 
-        List<OrderVO> records = p.getRecords().stream()
-                .map(s -> orderView(s, orders.get(s.getOrderNo())))
-                .toList();
-        return PageData.of(records, p.getTotal(), p.getCurrent(), p.getSize());
+    private static OrderVO.LogisticsSync asLogisticsSync(
+            ai.neargo.shop.spi.logistics.LogisticsPort.SyncResult value) {
+        return value == null ? null : new OrderVO.LogisticsSync(value.status(), value.source(),
+                value.lastEventAt(), value.pending(), value.reason());
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderVO cancel(String orderNo, String reason) {
         // 端上可能传子单号（订单列表上点取消）：解析成主单，一次支付整体取消
         OrdOrder order = resolveOrder(orderNo);
@@ -2213,18 +2561,29 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void cancelByPlatform(String orderNo, String reason, String operatorNo) {
         /*
          * 代客取消（TDD-订单状态机 AC15）。此前走通用人工干预，只把**子单**改成 CANCELLED：
          * 支付单仍是 WAIT_PAY（买家还能付）、库存 / 券 / 积分都没释放。现在与买家取消同一条路，执行者记平台。
          */
-        cancelPayment(resolveForPlatform(orderNo), reason, Actor.PLATFORM, operatorNo, "平台代客取消：" + reason);
+        var impact = paymentImpact.requireCancellable(orderNo);
+        DataScopeContext.executeWithoutScope(() -> {
+            cancelPayment(impact.payment(), reason, Actor.PLATFORM, operatorNo, "平台代客取消：" + reason);
+            return null;
+        });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CancellationImpact cancellationImpact(String orderNo) {
+        return paymentImpact.preview(orderNo);
     }
 
     /** 取消一次支付（未付款 / 待当面收款）：支付单 CANCELLED + 其下订单 CANCELLED + 释放占用 */
     /** 不返回详情：详情按买家身份取，平台调用会 NOT_FOUND 并把整个取消回滚掉 */
     private void cancelPayment(OrdOrder order, String reason, Actor actor, String operatorNo, String label) {
+        boolean pointsIntegrated = Boolean.TRUE.equals(order.getPointsIntegrated());
         statusWriter.payment(order, PaymentEvent.CANCEL, actor, operatorNo, label,
                 new PaymentContext(OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus()), true, true, false));
         order.setCancelReason(reason);
@@ -2236,21 +2595,14 @@ public class OrderServiceImpl implements OrderService {
         }
         stockPort.release(order.getOrderNo());
         couponPort.release(order.getOrderNo());
-        /*
-         * 积分按子单退。券是整单一张、积分是每个子单一条 ——
-         * 所以这里逐个子单退，而不是像券那样传 orderNo。
-         *
-         * <p><b>推迟到提交之后</b>：退分是跨域写，理由与生成结算单、发放积分同一条。
-         * 这一处推迟起来最省心 —— {@code reverse} 的幂等<b>在数据本身</b>：
-         * 它只认状态为 PENDING 的 USE 流水，翻成 REVERSED 之后第二次进来就找不到了。
-         * 不像 {@code grant} 那样靠调用方事务里的标记，所以移出事务不会让幂等失效。
-         */
+        campaignPort.release(order.getOrderNo());
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
-            final String subNo = sub.getSubOrderNo();
-            AfterCommit.run("退回积分 subOrderNo=" + subNo,
-                    () -> pointsPort.reverse(subNo, "订单已取消"));
             // 名额还回去。幂等标记在子单上 —— 与超时关闭那条路同时到达也只还一次
             releaseAppointmentSlot(sub);
+        }
+        if (pointsIntegrated) {
+            pointsPlacement.recordCancellation(order.getOrderNo());
+            eventBus.publish(new ai.neargo.shop.spi.points.OrderPointsPlacementWakeEvent(order.getOrderNo()));
         }
     }
 
@@ -2286,16 +2638,27 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public int closeExpiredOrders(long now) {
+        creationRecovery.recoverAbandoned(now);
         List<OrdOrder> expired = orderMapper.selectList(Wrappers.<OrdOrder>lambdaQuery()
-                .eq(OrdOrder::getStatus, OrdOrder.WAIT_PAY)
+                .in(OrdOrder::getStatus, OrdOrder.WAIT_PAY, OrdOrder.POINTS_PENDING)
                 .le(OrdOrder::getPayDeadlineAt, now));
 
+        int closed = 0;
         for (OrdOrder order : expired) {
-            closeOne(order, "支付超时");
+            try {
+                if (closeOne(order, "支付超时")) {
+                    closed++;
+                }
+            } catch (BizException e) {
+                if (e.errorCode() != ErrorCode.ORDER_POINTS_MANUAL_REQUIRED) {
+                    throw e;
+                }
+                log.warn("[close] {} 历史积分待人工处理，不自动关闭", order.getOrderNo());
+            }
         }
-        return expired.size();
+        return closed;
     }
 
     /**
@@ -2305,7 +2668,8 @@ public class OrderServiceImpl implements OrderService {
      * <b>两处必须走同一段代码</b> —— 关单要连着释放库存、券、积分，
      * 各写一遍的话，漏掉的那一项会让库存或券一直占着，而没有任何报错。
      */
-    void closeOne(OrdOrder order, String reason) {
+    boolean closeOne(OrdOrder order, String reason) {
+        boolean pointsIntegrated = Boolean.TRUE.equals(order.getPointsIntegrated());
         /*
          * 状态先改再释放：**改失败（并发下已被支付）就不该释放**。
          * 此前这里是无条件 updateById —— 与付款回调同时到达时会把已付款的单写回 CLOSED，
@@ -2318,7 +2682,7 @@ public class OrderServiceImpl implements OrderService {
             // CONFLICT = CAS 时被抢先；ORDER_STATE_ILLEGAL = 读到时已不是 WAIT_PAY。两者都是「已被别的流程改走」
             if (e.errorCode() == ErrorCode.CONFLICT || e.errorCode() == ErrorCode.ORDER_STATE_ILLEGAL) {
                 log.info("[close] {} 关单时状态已被改走（多半刚付款），跳过、不释放", order.getOrderNo());
-                return;
+                return false;
             }
             throw e;
         }
@@ -2341,42 +2705,33 @@ public class OrderServiceImpl implements OrderService {
          * 有几份从来没成交，而库存、券、积分三样都退了，唯独它不退。
          */
         campaignPort.release(order.getOrderNo());
-        // 同上，积分逐子单退，并同样推迟到提交之后。
-        // reverse 只认 PENDING 的 USE 流水，重复跑不会退两次 —— 幂等在数据里，不在标记上
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
-            final String subNo = sub.getSubOrderNo();
-            AfterCommit.run("退回积分 subOrderNo=" + subNo,
-                    () -> pointsPort.reverse(subNo, reason + "，订单关闭"));
             releaseAppointmentSlot(sub);
         }
+        if (pointsIntegrated) {
+            pointsPlacement.recordCancellation(order.getOrderNo());
+            eventBus.publish(new ai.neargo.shop.spi.points.OrderPointsPlacementWakeEvent(order.getOrderNo()));
+        }
+        return true;
     }
 
     /** 按单号关一笔待支付的单。已经不是待支付就当没事发生 —— 对账每轮都可能再撞到它 */
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void closeUnpaid(String orderNo, String reason) {
         OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
                 .eq(OrdOrder::getOrderNo, orderNo).last("limit 1"));
-        if (order == null || !OrdOrder.WAIT_PAY.equals(order.getStatus())) {
+        if (order == null || !(OrdOrder.WAIT_PAY.equals(order.getStatus())
+                || OrdOrder.POINTS_PENDING.equals(order.getStatus()))) {
             return;
         }
         closeOne(order, reason);
     }
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderVO confirmReceipt(String subOrderNo) {
-        OrdSubOrder sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
-                .eq(OrdSubOrder::getSubOrderNo, subOrderNo)
-                .eq(OrdSubOrder::getUserNo, SecurityUtils.currentUserNo())
-                .last("limit 1"));
-        if (sub == null) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
-        statusWriter.order(sub, OrderEvent.RECEIPT_CONFIRMED, Actor.BUYER, SecurityUtils.currentUserNo(),
-                "已确认收货", OrderContext.authorizedOnly());
-        // 签收触发「待收货后退款」：货在途时审过的仅退款单，此刻按约定退（AC7 出口①）
-        afterSaleService.settleOnReceipt(subOrderNo);
+        receipts.confirmCurrent(subOrderNo, OrderActor.buyer(SecurityUtils.currentUserNo()));
         return detail(subOrderNo, null);
     }
 
@@ -2460,7 +2815,6 @@ public class OrderServiceImpl implements OrderService {
             ai.neargo.shop.trade.entity.OrdAfterSale.ARBITRATING);
 
     @Override
-    @Transactional
     public int autoConfirmReceipt(long now, int shippedDays) {
         return autoConfirmReceipt(now, shippedDays, 0);
     }
@@ -2490,68 +2844,17 @@ public class OrderServiceImpl implements OrderService {
         if (shipped.isEmpty()) {
             return 0;
         }
-        List<String> subNos = shipped.stream().map(OrdSubOrder::getSubOrderNo).toList();
-
-        /*
-         * 发货时间取「进入 FULFILLING 那条流水的 at」——
-         * `ord_sub_order` 上**没有发货时间字段**（只有 created_at / updated_at），
-         * 而 updated_at 会被之后任何一次改动刷新，拿它当发货时间会让单子永远不到期。
-         */
-        Map<String, Long> shippedAt = DataScopeContext.executeWithoutScope(() ->
-                        statusLogMapper.selectList(Wrappers.<OrdStatusLog>lambdaQuery()
-                                .in(OrdStatusLog::getSubOrderNo, subNos)
-                                .eq(OrdStatusLog::getStatus, OrdSubOrder.FULFILLING)))
-                .stream()
-                .collect(Collectors.toMap(OrdStatusLog::getSubOrderNo,
-                        x -> x.getAt() == null ? Long.MAX_VALUE : x.getAt(),
-                        Math::max));
-
-        java.util.Set<String> blocked = DataScopeContext.executeWithoutScope(() ->
-                        afterSaleMapper.selectList(Wrappers.<ai.neargo.shop.trade.entity.OrdAfterSale>lambdaQuery()
-                                .in(ai.neargo.shop.trade.entity.OrdAfterSale::getSubOrderNo, subNos)
-                                .in(ai.neargo.shop.trade.entity.OrdAfterSale::getStatus, AFTER_SALE_OPEN)))
-                .stream()
-                .map(ai.neargo.shop.trade.entity.OrdAfterSale::getSubOrderNo)
-                .collect(Collectors.toSet());
-
-        /*
-         * ★ 判据从「发货后 N 天」扩成「**签收后 N 天 或 发货后 M 天，先到者为准**」（批 C）。
-         *
-         * 行业惯例（淘宝/拼多多）是签收后 7 天，而签收回传此前没有，所以上一版退到发货后 15 天。
-         * 现在 ful_shipment.signed_at 有了，但**不是直接换掉**：换掉的话
-         * 「第 10 天才签收」的单会从第 15 天推迟到第 17 天 —— 状态机的改动把某些单的
-         * 完成时间往后推，那是在动钱的到账时间。取先到者保证**没有任何一单比今天等得更久**。
-         *
-         * 查不到签收时间（自提已排除；快递里承运商没回传、或还没签收）一律走发货判据。
-         */
-        long shipDeadline = now - (long) shippedDays * 86_400_000L;
-        long signDeadline = signedDays > 0 ? now - (long) signedDays * 86_400_000L : Long.MIN_VALUE;
-        Map<String, Long> signedAt = signedDays > 0 && shipmentTracePort != null
-                ? shipmentTracePort.signedAtOf(subNos) : Map.of();
+        // Each child transaction re-reads all current package deadlines and after-sale facts.
         int n = 0;
         for (OrdSubOrder sub : shipped) {
-            if (blocked.contains(sub.getSubOrderNo())) {
-                continue;
+            try {
+                if (receiptCompleter.completeAuto(sub.getSubOrderNo(), now, shippedDays, signedDays)) {
+                    n++;
+                }
+            } catch (RuntimeException e) {
+                // 单笔代理事务已回滚；一张异常单不截断后续到期订单。
+                log.error("[order] 自动收货失败 subOrder={}", sub.getSubOrderNo(), e);
             }
-            /*
-             * 查不到发货流水的按 MAX_VALUE 处理 = 永不到期。
-             * 宁可多等：没有流水说明状态是被别的路径改的，那种单自动签收的风险更高。
-             */
-            Long at = shippedAt.get(sub.getSubOrderNo());
-            Long signed = signedAt.get(sub.getSubOrderNo());
-            boolean bySigned = signed != null && signed <= signDeadline;
-            boolean byShipped = at != null && at <= shipDeadline;
-            if (!bySigned && !byShipped) {
-                continue;
-            }
-            // 理由写清按哪条到期的 —— 对账时「为什么这单这天完成」只能看这一行
-            statusWriter.order(sub, OrderEvent.RECEIPT_AUTO_CONFIRMED, Actor.SYSTEM, null,
-                    bySigned ? "签收满 " + signedDays + " 天自动确认收货"
-                            : "发货满 " + shippedDays + " 天自动确认收货",
-                    OrderContext.authorizedOnly().withAutoReceiptDue(true));
-            // 自动签收同样触发「待收货后退款」（AC7 出口①）
-            afterSaleService.settleOnReceipt(sub.getSubOrderNo());
-            n++;
         }
         return n;
     }
@@ -3012,23 +3315,6 @@ public class OrderServiceImpl implements OrderService {
         return requireOwnOrder(sub == null ? orderNo : sub.getOrderNo());
     }
 
-    /**
-     * 平台侧取单：子单号或支付单号都认，<b>不按买家过滤</b>（{@link #resolveOrder} 按当前登录买家过滤，
-     * 运营调用必然查不到）。与此前代客取消走的人工干预取单（{@code requireAny}）同口径：解除数据域，
-     * 写操作的边界由权限码 {@code order:order:proxy} 管。
-     */
-    private OrdOrder resolveForPlatform(String orderNo) {
-        OrdSubOrder sub = DataScopeContext.executeWithoutScope(() -> subOrderMapper.selectOne(
-                Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getSubOrderNo, orderNo).last("limit 1")));
-        String payNo = sub == null ? orderNo : sub.getOrderNo();
-        OrdOrder order = DataScopeContext.executeWithoutScope(() -> orderMapper.selectOne(
-                Wrappers.<OrdOrder>lambdaQuery().eq(OrdOrder::getOrderNo, payNo).last("limit 1")));
-        if (order == null) {
-            throw BizException.of(ErrorCode.NOT_FOUND);
-        }
-        return order;
-    }
-
     private List<OrdSubOrder> subOrders(String orderNo) {
         return subOrderMapper.selectList(Wrappers.<OrdSubOrder>lambdaQuery()
                 .eq(OrdSubOrder::getOrderNo, orderNo).orderByAsc(OrdSubOrder::getId));
@@ -3044,7 +3330,23 @@ public class OrderServiceImpl implements OrderService {
         return orderViewBase(s, order).withGroup(s.getGroupNo());
     }
 
+    private OrderVO orderView(StoreOrderMaterial material) {
+        var nodes = material.timeline().stream().map(log -> new OrderVO.TimelineNode(log.getStatus(),
+                log.getLabel(), nz(log.getAt()))).toList();
+        String storeNo = material.order().getStoreNo();
+        OrderVO.StoreBrief store = storeNo == null || storeNo.isBlank() ? null
+                : new OrderVO.StoreBrief(storeNo, material.storeName());
+        return orderViewBase(material.order(), material.payment(), material.items(), nodes, store)
+                .withGroup(material.order().getGroupNo());
+    }
+
     private OrderVO orderViewBase(OrdSubOrder s, OrdOrder order) {
+        return orderViewBase(s, order, itemsOf(s.getSubOrderNo()), timelineOf(s.getSubOrderNo()), storeBriefOf(s));
+    }
+
+    private OrderVO orderViewBase(OrdSubOrder s, OrdOrder order, List<OrdItem> lines,
+                                  List<OrderVO.TimelineNode> timeline, OrderVO.StoreBrief store) {
+
         return new OrderVO(
                 /*
                  * 下发**抽象状态**：`WAIT_FULFILL` 归一成契约的 `PAID`，`FULFILLING` 原样。
@@ -3059,7 +3361,7 @@ public class OrderServiceImpl implements OrderService {
                 OrderStatusView.toContract(s.getStatus(), order == null ? null : order.getStatus()),
                 s.getFulfillment(),
                 s.getEntityNo(), s.getEntityName(),
-                itemsOf(s.getSubOrderNo()).stream().map(this::toItemVO).toList(),
+                lines.stream().map(this::toItemVO).toList(),
                 OrderVO.Amount.of(nz(s.getGoodsAmount()), nz(s.getFreightAmount()),
                         nz(s.getDiscountAmount()),
                         order != null && order.getPaidAt() != null ? nz(s.getPayAmount()) : 0L,
@@ -3078,7 +3380,7 @@ public class OrderServiceImpl implements OrderService {
                 s.getAppointmentAt(),
                 // 买家看自己的单：完整地址与完整手机号，那本来就是他填的
                 receiverOf(s),
-                timelineOf(s.getSubOrderNo()),
+                timeline,
                 null,
                 // 买家昵称只在商家侧下发（B12）——C 端自己就是买家，不需要
                 null,
@@ -3091,7 +3393,7 @@ public class OrderServiceImpl implements OrderService {
                 // 集单四样这里不填；末位 expressCompany 要下发 ——
                 // 买家查物流认的是「哪家快递 + 单号」，只给单号等于让他自己猜快递公司
                 null, null, null, null, s.getExpressCompany())
-                .withStore(storeBriefOf(s))
+                .withStore(store)
                 .withPrepared(s.getPreparedAt());
     }
 
@@ -3257,6 +3559,8 @@ public class OrderServiceImpl implements OrderService {
         if (PayModes.ONLINE.equals(payMode)) {
             return payMode;   // 线上不受四层约束，见 PayModePort#availablePayModes
         }
+        PaymentImpactPolicy.requireSingleStore(split.groups().stream()
+                .map(group -> storeOfMerchant.get(group.key())).toList());
         /*
          * 线下 × 履约方式：只有「当面能收到钱」的那几种。
          *
@@ -3735,44 +4039,6 @@ public class OrderServiceImpl implements OrderService {
      * <p>分摊余数补给<b>金额最大的那一行</b>，保证各行之和恰好等于子单基数：
      * 逐行 floor 会少掉几分，而积分要与结算对账，差几分就是账对不平。
      */
-    private List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> earnLines(
-            String subOrderNo, long base) {
-        List<OrdItem> items = DataScopeContext.executeWithoutScope(() ->
-                        itemMapper.selectList(Wrappers.<OrdItem>lambdaQuery()
-                                .eq(OrdItem::getSubOrderNo, subOrderNo)))
-                .stream().filter(i -> !Boolean.TRUE.equals(i.getIsGift())).toList();
-        long total = items.stream().mapToLong(i -> nz(i.getAmount())).sum();
-        if (items.isEmpty() || total <= 0 || base <= 0) {
-            return List.of();
-        }
-        int biggest = 0;
-        for (int i = 1; i < items.size(); i++) {
-            if (nz(items.get(i).getAmount()) > nz(items.get(biggest).getAmount())) {
-                biggest = i;
-            }
-        }
-        List<ai.neargo.shop.spi.settle.PointsPort.EarnLine> out = new ArrayList<>();
-        long allocated = 0;
-        for (int i = 0; i < items.size(); i++) {
-            OrdItem it = items.get(i);
-            long share = i == biggest ? 0 : base * nz(it.getAmount()) / total;
-            allocated += share;
-            out.add(new ai.neargo.shop.spi.settle.PointsPort.EarnLine(
-                    it.getGoodsNo(), it.getCategoryNo(), share,
-                    ruleOf(it.getGoodsNo(), it.getCategoryNo())));
-        }
-        OrdItem big = items.get(biggest);
-        out.set(biggest, new ai.neargo.shop.spi.settle.PointsPort.EarnLine(
-                big.getGoodsNo(), big.getCategoryNo(), base - allocated,
-                ruleOf(big.getGoodsNo(), big.getCategoryNo())));
-        return out;
-    }
-
-    /** 见 {@link PointsRuleHandoff} —— 转换单独成类是因为它是这条链上唯一会静默出错的一步 */
-    private ai.neargo.shop.spi.settle.PointsPort.EarnRule ruleOf(String goodsNo, String categoryNo) {
-        return PointsRuleHandoff.toPayRule(pointsRulePort.ruleFor(goodsNo, categoryNo));
-    }
-
     private static long nz(Long v) {
         return v == null ? 0L : v;
     }

@@ -21,15 +21,58 @@ public interface LogisticsPort {
      */
     Optional<TrackView> track(TrackQuery q);
 
+    /** Most recent channel attempts for the current waybill; caller must authorize the order first. */
+    default List<UpdateRecord> updatesOf(String subOrderNo) { return List.of(); }
+
+    record UpdateRecord(String source, String mode, String beforeStatus, String afterStatus,
+                        int nodesAdded, String outcome, String detail, long occurredAt) { }
+
+    /** Current immutable dispatch and dated carrier evidence for synchronous order convergence after a refresh. */
+    default Optional<ShipmentSnapshot> shipmentSnapshotOf(String subOrderNo) { return Optional.empty(); }
+
+    record ShipmentSnapshot(String sourceShipmentNo, long sourceShipmentVersion, String waybillNo,
+                            String status, Long signedAt, Long signedNodeAt, Long firstTraceAt, String source) { }
+
     /** 子单号 → 签收时间（毫秒）。没签收的不在结果里。自动确认收货与确认收货提醒用 */
     Map<String, Long> signedAtOf(Collection<String> subOrderNos);
+
+    /** Earliest carrier node; a reused tracking number can predate this order. */
+    default Map<String, Long> firstTraceAtOf(Collection<String> subOrderNos) { return Map.of(); }
+
+    /** Read-only check before B submits a carrier and tracking number. UNKNOWN never means invalid. */
+    default Precheck precheck(String subOrderNo, String carrier, String waybillNo, String receiverPhone) {
+        return new Precheck("UNKNOWN", null, null, System.currentTimeMillis(), "物流渠道暂未返回结果", false);
+    }
+
+    /** Invoked only after the local shipping transaction commits; failure cannot undo shipping. */
+    default SyncResult syncAfterShip(String subOrderNo) {
+        return new SyncResult("PENDING", null, null, true, "物流同步中");
+    }
+
+    /** One bulk read for order list and detail projections. Missing shipments are absent. */
+    default Map<String, SyncResult> summariesOf(Collection<String> subOrderNos) { return Map.of(); }
+
+    record Precheck(String verdict, String source, String status, long checkedAt,
+                    String reason, boolean confirmationRequired) { }
+
+    record SyncResult(String status, String source, Long lastEventAt, boolean pending, String reason) { }
 
     /**
      * @param bizType  今天只有 SUB_ORDER
      * @param surface  MP / APP / H5 / BIZ / OPS
      * @param refresh  界面上点了「刷新」
      */
-    record TrackQuery(String bizType, String bizRef, String surface, boolean refresh) {
+    record TrackQuery(String bizType, String bizRef, String surface, boolean refresh, boolean cacheOnly) {
+        /** Existing callers retain dedicated trace-page correction behavior. */
+        public TrackQuery(String bizType, String bizRef, String surface, boolean refresh) {
+            this(bizType, bizRef, surface, refresh, false);
+        }
+
+        /** Ordinary details must not spend external trace query quota. */
+        public static TrackQuery cachedSubOrder(String subOrderNo, String surface) {
+            return new TrackQuery("SUB_ORDER", subOrderNo, surface, false, true);
+        }
+
 
         public static TrackQuery subOrder(String subOrderNo, String surface, boolean refresh) {
             return new TrackQuery("SUB_ORDER", subOrderNo, surface, refresh);

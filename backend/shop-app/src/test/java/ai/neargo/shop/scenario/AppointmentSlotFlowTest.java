@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -12,7 +14,6 @@ import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.mapper.ProductMappers;
 import ai.neargo.shop.spi.user.AppointmentSlotPort;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.user.entity.UsrAddress;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -80,7 +81,7 @@ class AppointmentSlotFlowTest {
     @Autowired
     private ProductMappers.GoodsMapper goodsMapper;
     @Autowired
-    private TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
     @Autowired
     private ai.neargo.shop.user.mapper.UserMappers.AddressMapper addressMapper;
 
@@ -319,6 +320,20 @@ class AppointmentSlotFlowTest {
         assertThat(slot(slotNo).getBooked())
                 .as("名额不还的话，这个档在没人约的情况下永远显示已满")
                 .isZero();
+    }
+
+    @Test
+    void durableReplayAfterCacheCleanupDoesNotBookAnotherSlot() {
+        String slotNo = openSlot(2);
+        asBuyer();
+        String idem = key("durable-replay");
+        var command = appointmentOrder(slotNo);
+        var original = orderService.create(command, idem);
+        assertThat(slot(slotNo).getBooked()).isEqualTo(1);
+        jdbc.update("delete from sys_idempotent where idem_key=?", idem);
+        var replay = orderService.create(command, idem);
+        assertThat(replay.payOrderNo()).isEqualTo(original.payOrderNo());
+        assertThat(slot(slotNo).getBooked()).isEqualTo(1);
     }
 
     @Test

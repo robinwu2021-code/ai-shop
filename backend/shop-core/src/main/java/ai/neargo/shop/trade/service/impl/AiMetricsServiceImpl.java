@@ -4,9 +4,9 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.service.AiMetricsService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
@@ -35,11 +35,11 @@ public class AiMetricsServiceImpl implements AiMetricsService {
     /** IN 列表分块：子单号可能成千上万，一条 SQL 塞不下 */
     private static final int CHUNK = 500;
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final AfterSaleMapper afterSaleMapper;
     private final OrderItemMapper itemMapper;
 
-    public AiMetricsServiceImpl(SubOrderMapper subOrderMapper, AfterSaleMapper afterSaleMapper,
+    public AiMetricsServiceImpl(StoreOrderMapper subOrderMapper, AfterSaleMapper afterSaleMapper,
                                 OrderItemMapper itemMapper) {
         this.subOrderMapper = subOrderMapper;
         this.afterSaleMapper = afterSaleMapper;

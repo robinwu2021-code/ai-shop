@@ -29,11 +29,11 @@ public class MpTrackController {
     private final ShipTrackToken token;
     private final OrderService orderService;
     private final WxUrlLinkPort urlLink;
-    /** 看件页在小程序里的路径，不带前导斜杠 */
+    /** 微信 URL Link 已识别的入口页；该页再转入看件页 */
     private final String miniPath;
 
     public MpTrackController(ShipTrackToken token, OrderService orderService, WxUrlLinkPort urlLink,
-                             @Value("${shop.ship.track-mini-path:pages/track/index}") String miniPath) {
+                             @Value("${shop.ship.track-mini-path:pages/home/index}") String miniPath) {
         this.token = token;
         this.orderService = orderService;
         this.urlLink = urlLink;
@@ -48,13 +48,6 @@ public class MpTrackController {
                 .orElse(null);
     }
 
-    /**
-     * H5 看件页的「在小程序中打开」用：生成一条指向小程序看件页的微信 URL Link。
-     *
-     * <p><b>生成不出来就返回 null，H5 据此不显示按钮</b>（优雅降级）：URL Link 要小程序正式版
-     * 发布了看件页、且 {@code urllink} 真通道开着（{@code SHOP_WX_URLLINK_STUB=false}）才有；
-     * 在那之前这里恒为空，H5 只展示看件内容、不露一个点不动的按钮。
-     */
     /**
      * 小程序侧的看件：**要登录**（绑过手机号），且登录号==收货号才返回（否则 FORBIDDEN）。
      * H5 走上面的 /mp/track（免登录收窄）；小程序进来先绑手机号再调这条。
@@ -71,10 +64,14 @@ public class MpTrackController {
         return orderService.trackForRecipient(subOrderNo, client);
     }
 
+    /**
+     * H5 看件页的跳转入口。微信尚不识别新增看件页路径，先唤起已识别的首页，
+     * 再由首页转入看件页；生成失败时返回 null，让 H5 显示回退说明。
+     */
     @GetMapping("/mp/track/mini-link")
     public MiniLink miniLink(@RequestParam(value = "t", required = false) String t) {
         return token.verify(t)
-                .flatMap(subOrderNo -> urlLink.generate(miniPath, "t=" + t))
+                .flatMap(subOrderNo -> urlLink.generate(miniPath, "trackToken=" + t))
                 .map(MiniLink::new)
                 .orElse(null);
     }

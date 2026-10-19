@@ -57,12 +57,12 @@ public class SplitInstructionSender {
     /**
      * 收款号取<b>账单上的快照</b>，不是「这家店现在用哪个号」：商家改号之后，
      * 历史流水仍要打回当初收款的那个账户 —— 退款尤其，从新账户扣两个账户各错一笔且方向相反。
-     * 存量账单没有快照（V14 之前），落回主体默认号，与它们生成时的行为一致。
+     * 缺少原收款快照时暂停执行，不能使用当前账户替代。
      */
     private String payToOf(StlBill bill) {
         String payTo = bill.getPayMerchantNo();
         if (payTo == null || payTo.isBlank()) {
-            payTo = merchantQueryPort.payMerchantNoOf(bill.getEntityNo(), bill.getStoreNo()).orElse(null);
+            throw new IllegalStateException("SETTLEMENT_RECIPIENT_REQUIRED");
         }
         return payTo;
     }

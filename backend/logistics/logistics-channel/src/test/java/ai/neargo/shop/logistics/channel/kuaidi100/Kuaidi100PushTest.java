@@ -33,10 +33,11 @@ class Kuaidi100PushTest {
         String param = "{\"status\":\"polling\",\"lastResult\":{\"message\":\"ok\",\"state\":\"0\",\"com\":\"shentong\",\"nu\":\"A1\",\"data\":[]}}";
         assertThat(r.parse(new PushReceiver.Request(Map.of("param", param, "sign", "BAD"), null)).verified()).isFalse();
         PushReceiver.Parsed ok = r.parse(new PushReceiver.Request(
-                Map.of("param", param, "sign", Kuaidi100Codes.sign(param, "salt-1")), null));
+                Map.of("param", param, "sign", Kuaidi100Codes.sign(param, "salt-1"), "callbackId", "attempt-1"), null));
         assertThat(ok.verified()).isTrue();
         assertThat(ok.waybillNo()).isEqualTo("A1");
         assertThat(ok.channelCarrierCode()).isEqualTo("shentong");
+        assertThat(ok.callbackId()).isEqualTo("attempt-1");
     }
 
     @Test
@@ -53,6 +54,14 @@ class Kuaidi100PushTest {
         assertThat(p.correctedFrom()).isEqualTo("yuantong");
         assertThat(p.trace().status()).isEqualTo(TraceStatus.DELIVERING);
         assertThat(p.trace().atLocker()).as("子状态 501 → 已到驿站").isTrue();
+    }
+
+    @Test
+    void shutdownAlsoClosesSubscription() {
+        Kuaidi100PushReceiver r = new Kuaidi100PushReceiver("s");
+        String param = "{\"status\":\"shutdown\",\"lastResult\":{\"com\":\"shentong\",\"nu\":\"A1\"}}";
+        assertThat(r.parse(new PushReceiver.Request(Map.of("param", param,
+                "sign", Kuaidi100Codes.sign(param, "s")), null)).trackingEnded()).isTrue();
     }
 
     @Test

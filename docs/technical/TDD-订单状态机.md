@@ -20,7 +20,7 @@ docs/superpowers/specs/2026-10-14-退货退款逻辑.md v2（退款永不自动�
 | AC1 | 引擎按（当前状态, 事件, 执行者）找迁移；找不到 → `ORDER_STATE_ILLEGAL`；状态对但执行者不对 → `FORBIDDEN`；守卫按序校验，第一个失败即返回它的错误码 | `statemachine/StateMachine` · `Transition` · `Guard` |
 | AC2 | `allowed(状态, 执行者, 上下文)` 返回守卫全部通过的事件集合 | `StateMachine#allowed` |
 | AC3 | 四台机器的迁移与方案 §2–§5 逐行一致；表外组合一律拒 | `PaymentMachine` · `OrderMachine` · `ShipmentMachine` · `AfterSaleMachine` |
-| AC4 | 不变式 I1–I4：SYSTEM 只能经 `TRADE_VOID` 进入退款；定时器事件不进入退款；终态无出边；全部可达 | `statemachine/Invariants` |
+| AC4 | 不变式 I1–I4：SYSTEM 只能经 `TRADE_VOID` 进入退款；买家主动申请且未备货可经 `PREPARATION_NOT_STARTED_REFUND` 进入退款；定时器事件不进入退款；终态无出边；全部可达 | `statemachine/Invariants` |
 | AC5 | 状态写入经转换门：CAS 写库，0 行 → `CONFLICT`，不覆盖；每次迁移写一行流水（聚合、单号、事件、从、到、执行者、理由） | `transition/StateTransitionGate` · `StatusStore` · `TransitionLog`；`V402__status_log_aggregate.sql` |
 | AC6 | 商家超时未处理售后 → **不再自动同意**，只提醒商家并开放买家「申请平台介入」 | `AfterSaleServiceImpl#autoApprove` → 改为 `remindOverdue` |
 | AC7 | 退货寄回后商家超时未确认 → **不再自动退款**，只提醒 | `AfterSaleServiceImpl`（confirmHours 分支） |

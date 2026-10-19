@@ -3,8 +3,8 @@ package ai.neargo.shop.trade.order.refund.port.impl;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.order.refund.port.RefundSourceStore;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
@@ -14,9 +14,9 @@ import java.util.List;
 public class MybatisRefundSourceStore implements RefundSourceStore {
 
     private final OrderItemMapper itemMapper;
-    private final OrderMapper orderMapper;
+    private final PaymentMapper orderMapper;
 
-    public MybatisRefundSourceStore(OrderItemMapper itemMapper, OrderMapper orderMapper) {
+    public MybatisRefundSourceStore(OrderItemMapper itemMapper, PaymentMapper orderMapper) {
         this.itemMapper = itemMapper;
         this.orderMapper = orderMapper;
     }

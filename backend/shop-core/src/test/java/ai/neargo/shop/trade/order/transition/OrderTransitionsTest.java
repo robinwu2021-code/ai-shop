@@ -2,14 +2,13 @@ package ai.neargo.shop.trade.order.transition;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.trade.entity.OrdOrder;
+import ai.neargo.shop.trade.order.support.MemoryStatusWriter;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -20,44 +19,27 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class OrderTransitionsTest {
 
-    /** 记录被写了什么 */
-    static class FakeStore implements OrderStateStore {
-        final List<OrdOrder> orders = new ArrayList<>();
-        final List<OrdSubOrder> subs = new ArrayList<>();
-        final List<OrdStatusLog> logs = new ArrayList<>();
-
-        public void saveOrderStatus(OrdOrder order) {
-            orders.add(order);
-        }
-
-        public void saveSubStatus(OrdSubOrder sub) {
-            subs.add(sub);
-        }
-
-        public void appendLog(OrdStatusLog log) {
-            logs.add(log);
-        }
-    }
-
-    private FakeStore store;
+    private MemoryStatusWriter store;
     private OrderTransitions tx;
 
     @BeforeEach
     void setUp() {
-        store = new FakeStore();
-        tx = new OrderTransitions(store);
+        store = new MemoryStatusWriter();
+        tx = new OrderTransitions(store.writer());
     }
 
     private OrdSubOrder sub(String no, String status) {
         OrdSubOrder s = new OrdSubOrder();
         s.setSubOrderNo(no);
         s.setStatus(status);
+        store.track(s);
         return s;
     }
 
     private OrdOrder order(String status) {
         OrdOrder o = new OrdOrder();
         o.setStatus(status);
+        store.track(o);
         return o;
     }
 
@@ -123,7 +105,8 @@ class OrderTransitionsTest {
         tx.applyOrder(o, OrdOrder.PAID, Operator.system(), "支付回调");
         assertThat(o.getStatus()).isEqualTo(OrdOrder.PAID);
         assertThat(store.orders).hasSize(1);
-        assertThat(store.logs).isEmpty();   // 主单无子单粒度流水
+        assertThat(store.logs).hasSize(1);
+        assertThat(store.logs.getFirst().getAggregateType()).isEqualTo("PAYMENT");
     }
 
     @Test

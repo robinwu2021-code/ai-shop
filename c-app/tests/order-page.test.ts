@@ -29,12 +29,16 @@ import type { Order, OrderStatus } from "@shared/types";
 const orderDetail = vi.fn();
 const invoiceOfOrder = vi.fn();
 const cancelOrder = vi.fn();
+const confirmReceipt = vi.fn();
+const cancelAfterSale = vi.fn();
 
 vi.mock("@/api", () => ({
   api: {
     orderDetail: (...a: unknown[]) => orderDetail(...a),
     invoiceOfOrder: (...a: unknown[]) => invoiceOfOrder(...a),
     cancelOrder: (...a: unknown[]) => cancelOrder(...a),
+    confirmReceipt: (...a: unknown[]) => confirmReceipt(...a),
+    cancelAfterSale: (...a: unknown[]) => cancelAfterSale(...a),
     applyInvoice: vi.fn(),
     fillReturnExpress: vi.fn(),
     raiseDispute: vi.fn(),
@@ -298,4 +302,52 @@ describe("订单详情页的操作按钮", () => {
       expect((await render()).text(), st).toContain("order.buyAgain");
     }
   });
+});
+
+
+describe("一期收货与售后执行", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia()); vi.clearAllMocks();
+    confirmMock.mockResolvedValue(true); invoiceOfOrder.mockResolvedValue(null);
+  });
+  it("签收仍是履约中，确认收货后回读服务端完成状态", async () => {
+    orderDetail.mockResolvedValue(order("FULFILLING", { fulfillment: "EXPRESS" }));
+    confirmReceipt.mockImplementation(async () => {
+      orderDetail.mockResolvedValue(order("COMPLETED", { fulfillment: "EXPRESS" }));
+      return order("COMPLETED");
+    });
+    const w = await render();
+    const button = w.findAll("text").find(n => n.text() === "order.confirmReceipt");
+    expect(button).toBeDefined();
+    await button!.trigger("tap");
+    for (let i=0;i<15;i++) await Promise.resolve();
+    expect(confirmReceipt).toHaveBeenCalledWith("O1");
+    expect(orderDetail.mock.calls.length).toBeGreaterThan(1);
+    expect(w.text()).not.toContain("order.confirmReceipt"); w.unmount();
+  });
+  it("撤销按售后号提交并回读订单，不改写成一张售后单", async () => {
+    orderDetail.mockResolvedValue(order("PAID", { afterSale: { afterSaleNo:"AS1",status:"APPLIED" } as Order["afterSale"] }));
+    cancelAfterSale.mockImplementation(async () => {
+      orderDetail.mockResolvedValue(order("PAID", { afterSale: { afterSaleNo:"AS1",status:"CLOSED" } as Order["afterSale"] }));
+      return { status:"CLOSED" };
+    });
+    const w=await render();
+    const button=w.findAll("text,view").find(n=>n.text()==="afterSale.withdraw");
+    expect(button).toBeDefined(); await button!.trigger("tap");
+    for(let i=0;i<15;i++) await Promise.resolve();
+    expect(cancelAfterSale).toHaveBeenCalledWith("AS1"); expect(w.text()).toContain("afterSale.status.CLOSED"); w.unmount();
+  });
+  it("现金已退但资源未恢复时显示真实进度", async () => {
+    orderDetail.mockResolvedValue(order("REFUNDED", { afterSale:{status:"REFUNDED",refundExecution:{status:"SUCCEEDED",resourceStatus:"PENDING"}} as Order["afterSale"] }));
+    const w=await render(); expect(w.text()).toContain("afterSale.execution.resourcesPending"); w.unmount();
+  });
+  it("在途仅退款 WAIT_RECEIPT 仍可确认收到包裹，售后不自动到账", async () => {
+    const sale={afterSaleNo:"AS1",status:"WAIT_RECEIPT",type:"REFUND_ONLY"} as Order["afterSale"];
+    orderDetail.mockResolvedValue(order("FULFILLING",{fulfillment:"EXPRESS",afterSale:sale}));
+    confirmReceipt.mockImplementation(async()=>{orderDetail.mockResolvedValue(order("COMPLETED",{fulfillment:"EXPRESS",afterSale:sale}));return order("COMPLETED");});
+    const w=await render();const button=w.findAll("text").find(n=>n.text()==="order.confirmReceipt");
+    expect(button).toBeDefined();await button!.trigger("tap");for(let i=0;i<15;i++)await Promise.resolve();
+    expect(confirmReceipt).toHaveBeenCalledWith("O1");expect(w.text()).toContain("afterSale.status.WAIT_RECEIPT");expect(w.text()).not.toContain("afterSale.status.REFUNDED");w.unmount();
+  });
+
 });

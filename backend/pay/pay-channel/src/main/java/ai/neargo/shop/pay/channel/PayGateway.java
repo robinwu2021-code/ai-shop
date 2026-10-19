@@ -60,6 +60,17 @@ public interface PayGateway {
         return new QueryResult(false, false, false, 0L, null);
     }
 
+    /** Legacy gateways may prove success but cannot prove safe terminal failure. */
+    default ai.neargo.shop.spi.pay.RefundQueryResult queryRefundOutcome(String no) {
+        QueryResult result = queryRefund(no);
+        if (result == null || !result.ok() || !result.found())
+            return ai.neargo.shop.spi.pay.RefundQueryResult.unknown(no);
+        return new ai.neargo.shop.spi.pay.RefundQueryResult(
+                result.paid() ? ai.neargo.shop.spi.pay.RefundQueryResult.Status.SUCCEEDED
+                        : ai.neargo.shop.spi.pay.RefundQueryResult.Status.PROCESSING,
+                null, no, result.amountMinor(), result.tradeNo(), result.currency(), System.currentTimeMillis());
+    }
+
     /**
      * <b>向通道下单，拿回端上唤起收银台所需的参数。</b>
      *
@@ -123,7 +134,14 @@ public interface PayGateway {
      * @param amountMinor 通道侧金额（分）—— 与我方不符时是 AMOUNT_DIFF
      * @param tradeNo   通道流水号
      */
-    record QueryResult(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo) {
+    record QueryResult(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo, String currency) {
+        public QueryResult(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo) {
+            this(ok, paid, found, amountMinor, tradeNo, "CNY");
+        }
+
+        public static QueryResult paid(long amountMinor, String tradeNo, String currency) {
+            return new QueryResult(true, true, true, amountMinor, tradeNo, currency);
+        }
         public static QueryResult paid(long amountMinor, String tradeNo) {
             return new QueryResult(true, true, true, amountMinor, tradeNo);
         }
@@ -207,7 +225,16 @@ public interface PayGateway {
      * @param outTradeNo    我方商户订单号 —— 用户报障时报的是这个
      * @param totalMinor    订单总额（分），部分回退与比例上限都按它算
      */
-    record TxContext(String subMchId, String tradeNo, String outTradeNo, long totalMinor) {
+    record TxContext(String subMchId, String tradeNo, String outTradeNo, long totalMinor, String currency) {
+        /** Existing callers retain their documented domestic currency; new refunds pass the frozen receipt. */
+        public TxContext(String subMchId, String tradeNo, String outTradeNo, long totalMinor) {
+            this(subMchId, tradeNo, outTradeNo, totalMinor, "CNY");
+        }
+    }
+
+    /** Existing domestic refund routes must explicitly opt in before accepting another currency. */
+    default boolean supportsRefundCurrency(String currency) {
+        return "CNY".equals(currency);
     }
 
     /**
@@ -217,7 +244,14 @@ public interface PayGateway {
      *                  网络超时要重试，参数错误重试一万次也是错 ——
      *                  不区分的话失败会一直占着重试队列，而真正该人工介入的单没人看
      */
-    record Result(boolean success, String providerNo, String message, boolean retryable) {
+    record Result(boolean success, String providerNo, String message, boolean retryable, boolean definitiveRejection) {
+        public Result(boolean success, String providerNo, String message, boolean retryable) {
+            this(success, providerNo, message, retryable, false);
+        }
+        /** Only for a verified rejection or a failure known to occur before the request was sent. */
+        public static Result rejected(String message) {
+            return new Result(false, null, message, false, true);
+        }
 
         public static Result ok(String providerNo) {
             return new Result(true, providerNo, null, false);

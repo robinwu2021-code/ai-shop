@@ -1,0 +1,73 @@
+package ai.neargo.shop.trade.order.points;
+
+import ai.neargo.shop.spi.points.PointsPaymentSnapshotPort.VerifiedPayment;
+import ai.neargo.shop.spi.points.PointsRefundPort;
+import ai.neargo.shop.trade.order.refund.model.RefundPlan;
+import ai.neargo.shop.spi.settle.SettlePort;
+
+import java.util.List;
+
+/** Source-owned original refund decision; pay and bank calls happen after staging commits. */
+public interface OrderPointsRefundCoordinator {
+    Binding stage(String afterSaleNo, RefundPlan plan, VerifiedPayment payment);
+
+    Binding acceptPreparation(String afterSaleNo, PointsRefundPort.RefundPreparation preparation);
+
+    Binding authorizeCash(String afterSaleNo, PointsRefundPort.CashDecision decision);
+
+    Binding recordCashSuccess(String afterSaleNo, SettlePort.RefundEvidence evidence);
+
+    Binding recordCashFailure(String afterSaleNo, SettlePort.RefundEvidence evidence);
+
+    Binding recordNoCollectionCashFailure(String afterSaleNo, SettlePort.RefundEvidence evidence,
+                                           PointsRefundPort.RefundRecoveryStatus status);
+
+    Binding recordCompensated(String afterSaleNo, PointsRefundPort.RefundRecoveryStatus status);
+
+    Binding closeCompensated(String afterSaleNo, PointsRefundPort.RefundRecoveryStatus status);
+
+    Binding recordZeroCash(String afterSaleNo);
+
+    Binding acceptPointsConfirmation(String afterSaleNo, PointsRefundPort.RefundOutcome outcome);
+
+    Binding commit(String afterSaleNo);
+
+    Binding inspect(String afterSaleNo);
+
+    ConfirmedTotals confirmedTotals(String subOrderNo);
+
+    ManualPage manualForStore(String storeNo, String after, int limit);
+
+    record ManualRefund(String afterSaleNo, String subOrderNo, long createdAt) {}
+    record ManualPage(List<ManualRefund> rows, String next, boolean hasMore) {}
+
+    record ConfirmedTotals(long returnedPoints, long reclaimedPoints) {}
+
+    List<String> pending(int limit);
+
+    enum Phase {
+        STAGED,
+        PREPARED,
+        CASH_AUTHORIZED,
+        CASH_OPENING,
+        CASH_PENDING,
+        CASH_CONFIRMED,
+        ZERO_AUTHORIZED,
+        POINTS_CONFIRMED,
+        COMMITTED,
+        COMPENSATING,
+        COMPENSATED_PENDING_OPERATOR,
+        CASH_FAILED_PENDING_OPERATOR,
+        ABORTED
+    }
+
+    record Binding(
+            String afterSaleNo,
+            String subOrderNo,
+            Phase phase,
+            long version,
+            PointsRefundPort.RefundCommand command,
+            PointsRefundPort.RefundPreparation preparation,
+            String cashPaymentNo,
+            PointsRefundPort.RefundOutcome outcome) {}
+}

@@ -15,7 +15,8 @@ import type { GroupBuy, InvoiceRequest, Order, OrderStatus } from "@shared/types
 import { confirm, prompt } from "@ai-shop/ui/prompt";
 import { orderNoOf } from "@/shared/order-no";
 import { openWxWaybillTracking } from "@/ports/wx-logistics";
-import { traceStepKey } from "@shared/strategies/trace-step";
+import { expressOrderStatusKey } from "@shared/strategies/trace-step";
+import { refundProgressKey, canWithdrawAfterSale } from "@shared/strategies/order-phase1";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 
 const { t } = useI18n();
@@ -23,20 +24,23 @@ const { t } = useI18n();
  * 快递公司名（TDD-快递100商家寄件 §7 AC14）。订单一直带着 `expressCompany`（微信 delivery_id），
  * 只是没显示 —— 买家光看一串运单号，不知道该去哪家查。认不出的码原样显示，不吞掉。
  */
-/** 摘要行的状态词。与步骤条共用 shared 里那一份判定，别在两处各写一个三分支 */
-const traceStep = computed(() => (order.value?.trace ? traceStepKey(order.value.trace) : "picked"));
 /** 有没有轨迹。没有就不渲染轨迹那一段 */
 const hasTrace = computed(() => !!order.value?.trace?.nodes?.length);
+const signedBeforeOrder = computed(() => order.value?.status === "FULFILLING"
+  && order.value?.logisticsSync?.status === "DELIVERED"
+  && !!order.value?.trace?.signedAt && !!order.value?.createdAt
+  && order.value.trace.signedAt < order.value.createdAt);
 
 /*
- * 状态文字：有物流轨迹就显示轨迹步骤；否则走**履约感知**的 orderView（与订单列表同一把尺）——
+ * 状态文字：物流已有状态就显示物流步骤（微信可能只给状态、不给轨迹节点）；否则走**履约感知**的 orderView ——
  * FULFILLING + 快递 → 「已发货」，自提 → 「已到自提点」。
  * 只有在既无轨迹、又拿不到履约方式（跨商家支付视角，fulfillment 为空）时，才回落到原始状态词条。
  */
 const statusLabel = computed(() => {
   const o = order.value;
   if (!o) return "";
-  if (hasTrace.value) return String(t(`trace.step.${traceStep.value}`));
+  const projected = expressOrderStatusKey(o);
+  if (projected) return String(t(projected));
   if (o.fulfillment) {
     const v = orderView(o.status, o.fulfillment, { appointmentAt: o.appointmentAt });
     return String(v.needsTime ? t(v.labelKey, { t: datetime(o.appointmentAt!) }) : t(v.labelKey));
@@ -84,7 +88,7 @@ const shopName = computed(() => order.value?.store?.storeName || order.value?.me
  */
 const primaryKey = computed<"pay" | "review" | "buyAgain">(() => {
   const o = order.value;
-  if (o?.status === "WAIT_PAY") return "pay";
+  if (o?.status === "WAIT_PAY" && !o.paymentResolution) return "pay";
   if (canReview.value) return "review";
   return "buyAgain";
 });
@@ -484,7 +488,31 @@ async function cancel() {
 }
 
 function pay() {
+  if (order.value?.paymentResolution) return;
   uni.navigateTo({ url: `${ROUTES.pay}?orderNo=${orderNo.value}` });
+}
+
+const canReceive = computed(() => order.value?.status === "FULFILLING"
+  && order.value.fulfillment === "EXPRESS" && !order.value.subOrders?.length);
+const receiptBusy = ref(false);
+async function receive() {
+  const o = order.value;
+  if (!o || !canReceive.value || receiptBusy.value) return;
+  if (!await confirm({ title: String(t("order.confirmReceipt")), hint: String(t("order.receiptHint")) })) return;
+  receiptBusy.value = true;
+  try { await api.confirmReceipt(o.orderNo); await load(); }
+  catch (e) { uni.showToast({ title: (e as Error).message, icon: "none" }); }
+  finally { receiptBusy.value = false; }
+}
+const withdrawing = ref(false);
+async function withdrawAfterSale() {
+  const sale = order.value?.afterSale;
+  if (!sale || !canWithdrawAfterSale(sale) || withdrawing.value) return;
+  if (!await confirm({ title: String(t("afterSale.withdraw")) })) return;
+  withdrawing.value = true;
+  try { await api.cancelAfterSale(sale.afterSaleNo); await load(); }
+  catch (e) { uni.showToast({ title: (e as Error).message, icon: "none" }); }
+  finally { withdrawing.value = false; }
 }
 
 function afterSale() {
@@ -601,7 +629,15 @@ onPullDownRefresh(async () => {
         </view>
         <!-- 有物流就说最新那条（比状态词具体）；没有就说「接下来会发生什么」 -->
         <text v-if="hasTrace" class="txt-caption ostat__sub">{{ traceLatest }}</text>
-        <text v-else-if="nextStepText" class="txt-caption ostat__sub">{{ nextStepText }}</text>
+        <text v-if="order.status === 'FULFILLING' && order.logisticsSync?.status === 'DELIVERED'"
+          class="txt-caption ostat__sub">
+          {{ $t(signedBeforeOrder ? "order.signedBeforeOrder" : "order.signedPendingReviewHint") }}
+        </text>
+        <text v-if="order.logisticsSync?.pending" class="txt-caption ostat__sub">
+          {{ $t("order.syncPending") }}{{ order.logisticsSync.reason ? ` · ${order.logisticsSync.reason}` : "" }}
+        </text>
+        <text v-else-if="nextStepText && !(order.status === 'FULFILLING' && order.logisticsSync?.status === 'DELIVERED')"
+          class="txt-caption ostat__sub">{{ nextStepText }}</text>
         <!-- 承运商 + 单号：已发货才有，点一下复制 -->
         <text v-if="order.expressNo" class="txt-caption ostat__sub sh-num" @tap="copyExpressNo">
           {{ expressCompanyName ? `${expressCompanyName} ${order.expressNo}` : order.expressNo }}
@@ -780,6 +816,8 @@ onPullDownRefresh(async () => {
       它不上吸底条 —— 售后是例外路径，钉在常驻条上等于每单都在问「是不是有问题」；
       而且它有后续状态，申请之后这一行就被下面那张进行中的卡取代。
     -->
+    <text v-if="order.paymentResolution" class="txt-caption">{{ $t("pay.manualRequired") }}</text>
+    <view v-if="canReceive" class="sh-card"><text class="sh-btn" @tap="receive">{{ $t("order.confirmReceipt") }}</text></view>
     <view v-if="canApplyAfterSale" class="sh-card as" @tap="afterSale">
       <view class="sh-row sh-row--between">
         <text class="sh-muted">{{ $t("afterSale.section") }}</text>
@@ -793,10 +831,11 @@ onPullDownRefresh(async () => {
       <text class="txt-body as__title">
         {{ $t(`afterSale.status.${order.afterSale.status}`) }}
       </text>
+      <text v-if="canWithdrawAfterSale(order.afterSale)" class="sh-link" @tap="withdrawAfterSale">{{ $t("afterSale.withdraw") }}</text>
       <text v-if="order.afterSale.merchantReply" class="as__reply">
         {{ $t("afterSale.merchantReply") }}{{ order.afterSale.merchantReply }}
       </text>
-      <text class="txt-caption as__hint">{{ $t(`afterSale.statusHint.${order.afterSale.status}`) }}</text>
+      <text class="txt-caption as__hint">{{ $t(refundProgressKey(order.afterSale)) }}</text>
       <view
         v-if="order.afterSale.status === 'WAIT_RETURN'"
         class="sh-btn as__btn"
@@ -927,12 +966,6 @@ onPullDownRefresh(async () => {
   display: block;
   margin-top: 16rpx;
 }
-/* 只留版面。**颜色交给库件**（.txt-primary / .is-warning / .txt-quiet，
-   由 statusTone 给）—— 页内 scoped 选择器带 [data-v-x]，权重比全局库件高，
-   这里留一条 color 就会把库件那条压掉，而闸门看不出来。 */
-.status {
-  display: block;
-}
 /* 状态头（原型 c-order-detail）：**满宽**大字 + 按状态档的底色，像京东/淘宝那张醒目的头。
    卡自己 padding 归零，头与身各自留白，底色才能铺满整张卡宽。
    只给背景与字号，字色仍交给 statusTone 库件（见上面那条注释的理由）。 */
@@ -991,34 +1024,6 @@ onPullDownRefresh(async () => {
 .obar__price {
   line-height: 1.2;
 }
-.timeline {
-  margin-top: 28rpx;
-}
-.node {
-  display: flex;
-  gap: 20rpx;
-  padding-bottom: 24rpx;
-}
-.node__dot {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 9999px;
-  background: var(--sh-line);
-  margin-top: 8rpx;
-  flex-shrink: 0;
-}
-.node__dot.is-last {
-  background: var(--sh-primary);
-}
-
-.node__label {
-  display: block;
-  color: var(--sh-ink);
-}
-.node__at {
-  display: block;
-  margin-top: 4rpx;
-}
 .row__right {
   text-align: end;
   flex-shrink: 0;
@@ -1051,30 +1056,5 @@ onPullDownRefresh(async () => {
 .fact__v {
   color: var(--sh-ink);
   text-align: end;
-}
-.spacer {
-  height: 60rpx;
-}
-
-/* 进度区域：状态 → 履约落点 → 轨迹 → 订单进度，分段之间一条细线 */
-.prog__next {
-  display: block;
-  margin-top: 8rpx;
-}
-.prog__sec {
-  margin-top: 20rpx;
-  padding-top: 20rpx;
-  border-top: 1rpx solid var(--sh-line);
-}
-.prog__row {
-  display: block;
-  margin-top: 8rpx;
-}
-.prog__row:first-child {
-  margin-top: 0;
-}
-.prog__cap {
-  display: block;
-  margin-bottom: 12rpx;
 }
 </style>

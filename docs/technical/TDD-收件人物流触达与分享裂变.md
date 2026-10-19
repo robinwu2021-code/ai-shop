@@ -264,17 +264,18 @@ token 无状态，不建表。
    ▼
 H5 看件落地页  www.hxmall.top/c/#/pages/track/index?t=<令牌>
    │ · 直接展示：物流进度 + 收货 + 商品（GET /mp/track，没微信也能看）
-   │ · 「在小程序中打开」按钮（仅 H5；GET /mp/track/mini-link 拿微信 URL Link）
+   │ · 「在微信小程序中查看完整物流」按钮（仅 H5；GET /mp/track/mini-link 拿微信 URL Link）
    ▼ 点击
-   小程序看件页  pages/track/index?t=<令牌>
+   小程序首页  pages/home/index?trackToken=<令牌> → 看件页 pages/track/index?t=<令牌>
 ```
 
 - **短链 target 固定 H5**，不在后端生成 URL Link 作 target（URL Link 要小程序正式版发布才有，
   拿它当短信落点会在未发布时指向唤不起的链接）。
 - **跳小程序走 URL Link** 不走 `wx-open-launch-weapp`：收件人从短信点开多在系统浏览器，
   开放标签只在微信内浏览器生效。
-- **优雅降级**：URL Link 生成不出（小程序未发布 / `SHOP_WX_URLLINK_STUB=true`）→ mini-link 返 null
-  → H5 不显示按钮，只看 H5 看件内容。小程序正式版发布 + 开 urllink 真通道后，按钮自动出现。
+- **当前接法（2026-10-15）**：微信真接口对新增 `pages/track/index` 返回 `40165`，对现有首页返回 `0`，因此首页承接令牌并在小程序内转入看件页；体验版 URL Link 用 `env_version=trial`。小程序正式发布后切 `release`。
+- **优雅降级**：URL Link 生成不出（微信拒绝 / `SHOP_WX_URLLINK_STUB=true`）→ mini-link 返 null
+  → H5 不显示无效按钮，而显示“暂时无法跳转小程序，您可以先在本页查看物流”。
 
 ## §9 分期建议
 

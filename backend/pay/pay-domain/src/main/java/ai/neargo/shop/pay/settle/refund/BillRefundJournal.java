@@ -22,6 +22,10 @@ public class BillRefundJournal {
         return DataScopeContext.executeWithoutScope(() -> mapper.countByAfterSale(afterSaleNo)) > 0;
     }
 
+    public long preSplitGoods(String settleNo) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.preSplitGoods(settleNo));
+    }
+
     /** 落一行。并发重放同一售后单时第二行撞 {@code uk_stl_bill_refund}，整笔回滚。 */
     public void append(StlBill bill, BillRefundShare share, String afterSaleNo, boolean preSplit) {
         StlBillRefund row = new StlBillRefund();

@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.api.ops;
 
+import ai.neargo.shop.trade.order.contract.CancellationImpact;
+
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.PageData;
@@ -124,13 +126,14 @@ public class OpsOrderController {
         return vo;
     }
 
-    /**
-     * 代客取消。已支付的取消必然退款 —— 契约里不给「不退款」这条路。
-     *
-     * <p>与 {@link #intervene} 分开一个端点而不是让运营自己选 CANCELLED：
-     * 代客取消是一件有明确语义的事（用户打电话来要求取消），
-     * 混在通用干预里，事后无法从留痕上区分「用户要求的」与「运营自己改的」。
-     */
+    /** 只读完整取消影响；权限不足时不返回域外订单或主单金额。 */
+    @GetMapping("/ops/orders/{orderNo}/cancel-impact")
+    @PreAuthorize("@perm.can('" + Perms.ORDER_PROXY + "')")
+    public CancellationImpact cancellationImpact(@PathVariable String orderNo) {
+        return platformOrderService.cancellationImpact(orderNo);
+    }
+
+    /** 代客取消仅限未付款；服务端重新校验整笔影响，已付款走售后。 */
     @PostMapping("/ops/orders/{orderNo}/proxy-cancel")
     @PreAuthorize("@perm.can('" + Perms.ORDER_PROXY + "')")
     public MerchantOrderService.OpsOrderVO proxyCancel(@PathVariable String orderNo,

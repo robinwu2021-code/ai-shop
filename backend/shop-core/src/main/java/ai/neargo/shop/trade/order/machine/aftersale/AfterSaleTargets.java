@@ -13,7 +13,7 @@ final class AfterSaleTargets {
 
     static final Set<AfterSaleStatus> MONEY = Set.of(REFUNDING, WAIT_OFFLINE_REFUND);
     static final Set<AfterSaleStatus> APPROVE_TARGETS = Set.of(REFUNDING, WAIT_OFFLINE_REFUND, WAIT_RECEIPT, WAIT_RETURN);
-    static final Set<AfterSaleStatus> ACCEPT_TARGETS = Set.of(REFUNDING, WAIT_OFFLINE_REFUND, WAIT_RETURN);
+    static final Set<AfterSaleStatus> ACCEPT_TARGETS = Set.of(REFUNDING, WAIT_OFFLINE_REFUND, WAIT_RETURN, RETURNING);
 
     private AfterSaleTargets() {
     }
@@ -32,6 +32,9 @@ final class AfterSaleTargets {
 
     /** 买家接受协商额 / 平台裁决退：退货类货还没回来 → 等寄回；否则退钱 */
     static AfterSaleStatus refundOrAwaitReturn(AfterSaleStatus from, AfterSaleContext c) {
-        return c.returnRefund && !c.goodsReturned ? WAIT_RETURN : moneyStep(from, c);
+        if (c.returnRefund && !c.goodsReturned) {
+            return c.inTransit ? RETURNING : WAIT_RETURN;
+        }
+        return moneyStep(from, c);
     }
 }

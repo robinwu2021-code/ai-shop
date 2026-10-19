@@ -14,26 +14,62 @@ import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
 import { buildOrderCopyText } from "@/utils/order-copy";
 import { FULFILLMENT } from "@shared/utils/constants";
-import { traceStepKey } from "@shared/strategies/trace-step";
+import { expressOrderStatusKey, traceStatusKey } from "@shared/strategies/trace-step";
+import { fulfillmentAllowed } from "@shared/strategies/order-phase1";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 import { confirm } from "@ai-shop/ui/prompt";
-import type { Order, ShipmentTrace } from "@shared/types";
-import type { ExpressPickup, ExpressQuote } from "@/api/contract";
+import type { AfterSale, Order, ShipmentTrace } from "@shared/types";
+import type { ExpressPickup, LogisticsUpdateRecord } from "@/api/contract";
 
 const { t } = useI18n();
 const merchant = useMerchantStore();
 
 const order = ref<Order | null>(null);
+const activeAfterSale = ref<AfterSale | null>(null);
+type FulfillmentOptions = Awaited<ReturnType<typeof api.mFulfillmentOptions>>;
+const fulfillmentOptions = ref<FulfillmentOptions | null>(null);
+const changeReason = ref("");
+const alternative = computed(() => fulfillmentOptions.value?.options.find(
+  (option) => option.fulfillment !== order.value?.fulfillment));
+const shipSync = ref<Order["logisticsSync"]>(null);
+const currentSync = computed(() => order.value?.logisticsSync ?? shipSync.value);
 /**
  * 物流轨迹那份（TDD-物流模块 B2）：比详情里的多承运商、单号、到柜。
  * 拿不到（老后端 / 网络）就用详情里带的那份 —— 两份读的是同一张运单，只是字段多少不同
  */
 const fullTrace = ref<ShipmentTrace | null>(null);
+const updateRecords = ref<LogisticsUpdateRecord[]>([]);
+const updateSource = (source: string) => String(t(source === "wx" || source === "wx-follow"
+  ? "order.updateSourceWx" : source === "kuaidi100" ? "order.updateSourceK100"
+    : source === "yto" ? "order.updateSourceYto" : "order.updateSourceOther"));
+const updateMode = (mode: string) => String(t(mode === "PUSH" ? "order.updateModePush" : "order.updateModeQuery"));
+const updateOutcome = (outcome: string) => String(t(outcome === "ADVANCED" ? "order.updateAdvanced"
+  : outcome === "NODES_ADDED" ? "order.updateNodesAdded"
+    : outcome === "UNCHANGED" ? "order.updateUnchanged"
+      : outcome === "NO_RESULT" ? "order.updateNoResult"
+        : outcome === "THROTTLED" ? "order.updateThrottled" : "order.updateFailed"));
 const shownTrace = computed(() => fullTrace.value ?? order.value?.trace ?? null);
+const signedBeforeOrder = computed(() => order.value?.status === "FULFILLING"
+  && currentSync.value?.status === "DELIVERED"
+  && !!shownTrace.value?.signedAt && !!order.value?.createdAt
+  && shownTrace.value.signedAt < order.value.createdAt);
 /** 物流详情弹框。主页面只留一行摘要，这一行点开才是地图与全部节点 */
 const traceOpen = ref(false);
 /** 摘要行上的状态词。与步骤条共用 shared 里那一份判定，别在两处各写一个三分支 */
-const traceStep = computed(() => (shownTrace.value ? traceStepKey(shownTrace.value) : "picked"));
+const traceStep = computed(() => {
+  const current = order.value;
+  if (current) {
+    const projected = expressOrderStatusKey(current);
+    if (projected) return projected;
+    if (current.status === "COMPLETED" || current.status === "CANCELLED"
+        || current.status === "REFUNDED") return `order.status${current.status}`;
+  }
+  const status = currentSync.value?.status ?? shownTrace.value?.status;
+  if (status === "PENDING") return "order.syncPending";
+  return status
+    ? traceStatusKey({ status: status as NonNullable<Order["trace"]>["status"], nodes: [] })
+    : "trace.awaitingPickup";
+});
 /** 摘要行上的最新一条。节点按时间倒序，第一条就是最新 */
 const traceLatest = computed(() => shownTrace.value?.nodes?.[0]?.text ?? "");
 /** 承运商显示名。拿不到译名就显示原码 —— 显示「STO」好过显示空白 */
@@ -53,6 +89,13 @@ const returnedLines = computed(() => {
   return out;
 });
 const expressNo = ref("");
+const correctingWaybill = ref(false);
+const correctedNo = ref("");
+const correctedCarrierIdx = ref(-1);
+const correctionReason = ref("");
+const canCorrectWaybill = computed(() => order.value?.fulfillment === FULFILLMENT.EXPRESS
+  && order.value.status === "FULFILLING" && !!order.value.expressNo && merchant.can("biz:ship")
+  && !activeAfterSale.value);
 /**
  * 选中的快递公司下标。**默认 -1（未选）**，不默认第一家 ——
  * 默认一家的话，商家不点也「选」了顺丰，发出去的一半是错的快递公司，
@@ -61,6 +104,33 @@ const expressNo = ref("");
 const carrierIdx = ref(-1);
 const carriers = EXPRESS_COMPANIES;
 const busy = ref(false);
+const refreshingTrace = ref(false);
+
+async function refreshTrace() {
+  const current = order.value;
+  if (!current?.expressNo || current.status !== "FULFILLING" || refreshingTrace.value || busy.value) return;
+  refreshingTrace.value = true;
+  busy.value = true;
+  try {
+    const trace = await api.mOrderTrace(current.orderNo, true);
+    const latest = await api.mOrderDetail(current.orderNo);
+    order.value = latest;
+    fullTrace.value = trace;
+    updateRecords.value = await api.mOrderUpdates(current.orderNo).catch(() => []);
+    failed.value = false;
+    const key = latest.status !== current.status ? "order.traceOrderUpdated"
+      : latest.logisticsSync?.status === "DELIVERED" && latest.status === "FULFILLING"
+        ? "order.traceAwaitingProof"
+      : latest.logisticsSync?.status !== current.logisticsSync?.status ? "order.traceWaybillUpdated"
+      : trace?.refreshable ? "order.traceRefreshUnchanged" : "order.traceRefreshUnavailable";
+    uni.showToast({ title: String(t(key)), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    refreshingTrace.value = false;
+    busy.value = false;
+  }
+}
 
 /** 快递单且已付款 → 该发货 */
 /*
@@ -68,13 +138,13 @@ const busy = ref(false);
  * 于是「发货」按钮画给了他，点下去 70006 —— 而他既不该发货，也没有任何办法拿到这个权限。
  */
 const canShip = computed(
-  () => order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value?.status === "PAID"
-    && merchant.can("biz:ship"),
+  () => !activeAfterSale.value && order.value?.fulfillment === FULFILLMENT.EXPRESS
+    && fulfillmentAllowed(order.value, merchant.can("biz:ship")),
 );
 /** 自送单且已付款 → 该送。同样两个都要判（见 {@link canShip}） */
 const canDeliver = computed(
-  () => order.value?.fulfillment === FULFILLMENT.DELIVERY && order.value?.status === "PAID"
-    && merchant.can("biz:ship"),
+  () => !activeAfterSale.value && order.value?.fulfillment === FULFILLMENT.DELIVERY
+    && fulfillmentAllowed(order.value, merchant.can("biz:ship")),
 );
 
 /**
@@ -83,16 +153,17 @@ const canDeliver = computed(
  * 用 `biz:ship` 权限（备货是发货前一步）。已备货仍显示这张卡（给「已备货」状态）。
  */
 const canPrepare = computed(
-  () => order.value?.status === "PAID" && merchant.can("biz:ship")
+  () => !activeAfterSale.value && fulfillmentAllowed(order.value, merchant.can("biz:ship"))
     && (order.value?.fulfillment === FULFILLMENT.EXPRESS
       || order.value?.fulfillment === FULFILLMENT.DELIVERY),
 );
 
 async function prepare() {
-  if (!order.value || busy.value || order.value.preparedAt) return;
+  if (!order.value || !canPrepare.value || busy.value || order.value.preparedAt) return;
   busy.value = true;
   try {
-    order.value = await api.mPrepare(order.value.orderNo);
+    await api.mPrepare(order.value.orderNo);
+    await load(currentNo.value);
     uni.showToast({ title: t("order.prepared"), icon: "none" });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -146,10 +217,15 @@ async function confirmOffline() {
 async function load(orderNo: string) {
   currentNo.value = orderNo;
   try {
+    await merchant.ensureScope();
     order.value = await api.mOrderDetail(orderNo);
+    activeAfterSale.value = merchant.can("biz:aftersale")
+      ? await api.mActiveAfterSaleForOrder(orderNo).catch(() => null) : null;
+    fulfillmentOptions.value = merchant.can("biz:ship")
+      ? await api.mFulfillmentOptions(orderNo).catch(() => null) : null;
     failed.value = false;
     fullTrace.value = null;
-    if (order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value.expressNo) void loadTrace(orderNo);
+    updateRecords.value = [];
     void loadPickup();
     if (order.value?.fulfillment === FULFILLMENT.EXPRESS && order.value.status === "PAID") void loadShipDefaults();
   } catch {
@@ -159,12 +235,48 @@ async function load(orderNo: string) {
   }
 }
 
+async function changeFulfillment() {
+  if (!order.value || !alternative.value?.allowed || !fulfillmentOptions.value
+      || !changeReason.value.trim() || busy.value) {
+    if (!changeReason.value.trim()) uni.showToast({ title: t("order.changeFulfillmentReasonRequired"), icon: "none" });
+    return;
+  }
+  const yes = await confirm({
+    title: String(t("order.changeFulfillmentConfirm")),
+    confirmText: String(t("order.changeFulfillmentAction")),
+    cancelText: String(t("common.cancel")),
+  });
+  if (!yes) return;
+  busy.value = true;
+  try {
+    await api.mChangeFulfillment(order.value.orderNo, {
+      targetFulfillment: alternative.value.fulfillment,
+      reason: changeReason.value.trim(),
+      expectedVersion: fulfillmentOptions.value.version,
+    });
+    changeReason.value = "";
+    await load(currentNo.value);
+    uni.showToast({ title: t("order.changeFulfillmentDone"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+    await load(currentNo.value);
+  } finally {
+    busy.value = false;
+  }
+}
+
+function openActiveAfterSale() {
+  if (!activeAfterSale.value) return;
+  uni.navigateTo({ url: `${ROUTES.afterSale}?afterSaleNo=${encodeURIComponent(activeAfterSale.value.afterSaleNo)}&store=${encodeURIComponent(merchant.storeNo || "")}` });
+}
+
 async function loadTrace(orderNo: string) {
   try {
     fullTrace.value = await api.mOrderTrace(orderNo);
   } catch {
     fullTrace.value = null;
   }
+  updateRecords.value = await api.mOrderUpdates(orderNo).catch(() => []);
 }
 
 /**
@@ -180,18 +292,66 @@ function copyForSupplier() {
 }
 
 async function ship() {
-  if (!order.value || !expressNo.value || busy.value) return;
+  if (!order.value || !canShip.value || !expressNo.value.trim() || busy.value) return;
   const carrier = carriers[carrierIdx.value];
   if (!carrier) {
     uni.showToast({ title: t("order.pickCarrier"), icon: "none" });
     return;
   }
-  askMchSubscribe();
   busy.value = true;
   try {
-    order.value = await api.mShip(
-      order.value.orderNo, expressNo.value, carrier.code);
-    uni.showToast({ title: t("order.shipped"), icon: "none" });
+    const check = await api.mShipPrecheck(order.value.orderNo, expressNo.value.trim(), carrier.code);
+    if (check.verdict === "INVALID") throw new Error(check.reason || String(t("order.invalidWaybill")));
+    let confirmed = false;
+    if (check.confirmationRequired) {
+      confirmed = await confirm({
+        title: String(t("order.waybillHistoryTitle")),
+        hint: check.reason || String(t("order.waybillHistoryHint")),
+        confirmText: String(t("order.confirmWaybill")),
+      });
+      if (!confirmed) return;
+    }
+    askMchSubscribe();
+    const committed = await api.mShip(order.value.orderNo, expressNo.value.trim(), carrier.code, confirmed);
+    shipSync.value = committed.logisticsSync;
+    order.value = committed;
+    await load(currentNo.value);
+    uni.showToast({ title: t(shipSync.value?.pending ? "order.shippedSyncing" : "order.shipped"), icon: "none" });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  } finally {
+    busy.value = false;
+  }
+}
+
+function startWaybillCorrection() {
+  correctedNo.value = order.value?.expressNo ?? "";
+  correctedCarrierIdx.value = carriers.findIndex((c) => c.code === order.value?.expressCompany);
+  correctionReason.value = "";
+  correctingWaybill.value = true;
+}
+
+async function correctWaybill() {
+  if (!order.value || !canCorrectWaybill.value || busy.value) return;
+  if (correctedCarrierIdx.value < 0 || !correctedNo.value.trim() || !correctionReason.value.trim()) {
+    uni.showToast({ title: String(t("order.waybillIncomplete")), icon: "none" });
+    return;
+  }
+  const carrier = carriers[correctedCarrierIdx.value];
+  if (!carrier || (carrier.code === order.value.expressCompany
+      && correctedNo.value.trim() === order.value.expressNo)) {
+    uni.showToast({ title: String(t("order.waybillUnchanged")), icon: "none" });
+    return;
+  }
+  busy.value = true;
+  try {
+    const corrected = await api.mCorrectWaybill(order.value.orderNo, correctedNo.value.trim(), carrier.code,
+      correctionReason.value.trim());
+    shipSync.value = corrected.logisticsSync;
+    order.value = corrected;
+    correctingWaybill.value = false;
+    await load(currentNo.value);
+    uni.showToast({ title: String(t(shipSync.value?.pending ? "order.shippedSyncing" : "order.waybillCorrected")), icon: "none" });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
@@ -200,7 +360,7 @@ async function ship() {
 }
 
 async function delivered() {
-  if (!order.value || busy.value) return;
+  if (!order.value || !canDeliver.value || busy.value) return;
   askMchSubscribe();
   busy.value = true;
   try {
@@ -217,19 +377,12 @@ async function delivered() {
 
 /** 最近一张取件单。叫过就显示它的进度，不再给表单 —— 同一单同时只能有一张进行中的 */
 const pickup = ref<ExpressPickup | null>(null);
-const weightKg = ref("");
-const quotes = ref<ExpressQuote[] | null>(null);
-const quoteIdx = ref(-1);
 const PICKUP_OPEN = ["CREATED", "ACCEPTED", "PICKED", "DONE"];
 /** 取消与失败之后可以重新叫：这时表单回来，上一张的原因留一行 */
 const pickupActive = computed(() => !!pickup.value && PICKUP_OPEN.includes(pickup.value.status));
 const canCancelPickup = computed(
   () => pickup.value?.status === "CREATED" || pickup.value?.status === "ACCEPTED",
 );
-const weightOk = computed(() => {
-  const w = Number(weightKg.value);
-  return w >= 0.1 && w <= 30;
-});
 
 /**
  * 买家付的运费与叫快递的实际运费之差（TDD-快递100商家寄件 §8 AC18）。取件后才有实际运费；测试单不算（运费是假的）。
@@ -244,18 +397,12 @@ const freightGap = computed(() => {
   return { subsidy: diff < 0, amount: Math.abs(diff) };
 });
 
-/** 发货方式：叫快递上门 / 自己发货。默认叫快递 —— 它是推荐路径（平台批量价、运单号自动回填） */
-const SHIP_MODES = ["PICKUP", "SELF"] as const;
-const shipMode = ref<(typeof SHIP_MODES)[number]>("PICKUP");
-/** 发货设置里的默认快递公司：查到价后先选中它；自己发货时也先选中它 */
-const defaultCarrier = ref<string | null>(null);
-
 function openShipSettings() {
   uni.navigateTo({ url: ROUTES.shipSettings });
 }
 
 /**
- * 带出发货设置的默认值（快递公司、重量）。**拉不到不挡发货** —— 那一页是方便，不是前提；
+ * 带出发货设置的默认快递公司。**拉不到不挡发货** —— 那一页是方便，不是前提；
  * 商家手动选一次照样能发。只在他还没动过的时候填，不覆盖手上的输入。
  */
 async function loadShipDefaults() {
@@ -264,8 +411,6 @@ async function loadShipDefaults() {
   if (!merchant.can("biz:store")) return;
   try {
     const s = await api.mShipSetting(merchant.storeNo || "default");
-    defaultCarrier.value = s.carrier;
-    if (!weightKg.value && s.weightG) weightKg.value = String(s.weightG / 1000);
     if (carrierIdx.value < 0 && s.carrier) carrierIdx.value = carriers.findIndex((c) => c.code === s.carrier);
   } catch {
     // 见上：不挡发货
@@ -279,42 +424,6 @@ async function loadPickup() {
   } catch {
     // 取件单拉不到不影响手填发货：那一块照常可用
     pickup.value = null;
-  }
-}
-
-async function fetchQuotes() {
-  if (!order.value || !weightOk.value || busy.value) return;
-  busy.value = true;
-  try {
-    quotes.value = await api.mExpressQuotes(order.value.orderNo, Number(weightKg.value));
-    // 发货设置里的默认快递在报价单里就先选中它；不在（这条线不接）就选最便宜的那家
-    const def = quotes.value.findIndex((q) => q.carrier === defaultCarrier.value);
-    quoteIdx.value = def >= 0 ? def : quotes.value.length ? 0 : -1;
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    busy.value = false;
-  }
-}
-
-async function bookExpress() {
-  const q = quotes.value?.[quoteIdx.value];
-  if (!order.value || !q || busy.value) return;
-  const ok = await confirm({
-    title: String(t("order.expressBook")),
-    hint: String(t("order.expressConfirm", { carrier: q.carrierName, price: money(q.priceMinor) })),
-    confirmText: String(t("order.expressBookBtn")),
-  });
-  if (!ok) return;
-  busy.value = true;
-  try {
-    pickup.value = await api.mBookExpress(order.value.orderNo, q.carrier, Number(weightKg.value));
-    quotes.value = null;
-    uni.showToast({ title: t("order.expressBooked"), icon: "none" });
-  } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
-  } finally {
-    busy.value = false;
   }
 }
 
@@ -389,20 +498,28 @@ onPullDownRefresh(async () => {
     @retry="() => load(currentNo)"
   >
     <template v-if="order">
+      <view v-if="activeAfterSale" class="sh-card sh-mb-sm sh-row sh-row--between" @tap="openActiveAfterSale">
+        <view>
+          <text class="txt-strong is-danger">{{ $t('order.tabAfterSale') }}</text>
+          <text class="txt-caption sh-muted">{{ activeAfterSale.afterSaleNo }}</text>
+        </view>
+        <sh-go :text="String($t('message.view'))"></sh-go>
+      </view>
+
       <!--
         物流一栏，**放在最顶上、独立成卡**（淘宝订单详情那种形态）。
         店主打开这一页最常问的就是「货到哪了」，它不该排在订单号、下单时间后面；
         而混在订单信息那堆键值行里，它读起来像又一条属性，不像一件在变化的事。
         整卡可点 → 弹框里是全过程。
       -->
-      <view v-if="shownTrace && shownTrace.nodes.length" class="sh-card trace-card" @tap="traceOpen = true">
+      <view v-if="shownTrace || currentSync" class="sh-card trace-card" @tap="traceOpen = true; loadTrace(currentNo)">
         <view class="sh-row sh-row--between">
-          <text class="txt-strong trace-card__st">{{ $t(`trace.step.${traceStep}`) }}</text>
+          <text class="txt-strong trace-card__st">{{ $t(traceStep) }}</text>
           <sh-go :text="String($t('order.traceView'))"></sh-go>
         </view>
         <!-- 最新一条**最多两行**：一行截得太狠（「预计10月10日到达…」停在「两地」），
              两行能把「哪天到哪儿」说完；再多就该点进去看了 -->
-        <text class="txt-caption sh-muted trace-card__last">{{ traceLatest }}</text>
+        <text v-if="traceLatest" class="txt-caption sh-muted trace-card__last">{{ traceLatest }}</text>
         <text class="txt-caption sh-muted trace-card__no">
           {{ carrierLabel }} {{ order.expressNo }}
         </text>
@@ -412,7 +529,7 @@ onPullDownRefresh(async () => {
         <view class="line sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.no") }}</text>
           <view class="sh-row no-row__v">
-            <text class="sh-num">{{ order.orderNo }}</text>
+            <text class="sh-num">{{ order.payOrderNo || order.orderNo }}</text>
             <!-- 复制订单信息发给供应商（§5）。**不占一整行**：它是顺手动作，
                  而整宽按钮会把它读成这一页的主动作，挤掉真正的主动作（发货）。
                  贴在订单号右边：复制的正是这张卡上的东西 -->
@@ -450,6 +567,22 @@ onPullDownRefresh(async () => {
             <text class="txt-caption recv__addr">{{ order.receiver.address }}</text>
           </view>
         </view>
+      </view>
+
+      <view v-if="alternative && ['EXPRESS', 'MERCHANT_DELIVERY'].includes(order.fulfillment)"
+        class="sh-card sh-mt-sm">
+        <text class="txt-title">{{ $t('order.changeFulfillmentTitle') }}</text>
+        <text class="txt-caption sh-muted blk">
+          {{ $t('order.changeFulfillmentTarget') }}{{ $t(`fulfillmentLabel.${alternative.fulfillment}`) }}
+        </text>
+        <text v-if="!alternative.allowed" class="txt-caption sh-muted blk">{{ alternative.reason }}</text>
+        <template v-else>
+          <textarea v-model="changeReason" class="field__area sh-mt-sm"
+            :placeholder="$t('order.changeFulfillmentReasonPh')" maxlength="200" />
+          <text class="sh-btn sh-btn--sm sh-mt-sm" @tap="changeFulfillment">
+            {{ $t('order.changeFulfillmentAction') }}
+          </text>
+        </template>
       </view>
 
       <view class="sh-card sh-mt-sm">
@@ -505,12 +638,7 @@ onPullDownRefresh(async () => {
         <view class="sh-btn sh-mt-sm" @tap="offlineAsking = true">{{ $t("order.offlinePay") }}</view>
       </view>
 
-      <!--
-        发货（TDD-快递100商家寄件 §7 AC13）：一张卡、两种做法二选一 ——
-          · 叫快递上门：平台共用一个快递100 账号，小单量也拿得到批量价；取件后运单号自动回填
-          · 自己发货：已经交给快递了，填运单号（B-11.4.3；快递公司与运单号成对，微信发货信息录入要求）
-        默认值取「发货设置」（快递公司、重量），右上角直达那一页。叫过快递之后这张卡只显示进度。
-      -->
+      <!-- 快递订单录入公司与运单；历史已预约寄件单仍显示原预约进度和取消入口。 -->
       <!--
         开始备货（售后规则 §2.1）：只记时刻、不改状态。生鲜备货后非质量退款要商家确认。
         发货卡之上、与发货同一权限 —— 备货是发货前一步。
@@ -565,53 +693,6 @@ onPullDownRefresh(async () => {
           <text class="txt-title">{{ $t("order.ship") }}</text>
           <sh-go :text="String($t('home.shipEntry'))" @tap="openShipSettings"></sh-go>
         </view>
-        <view class="sh-row ship__modes sh-mt-sm">
-          <text
-            v-for="m in SHIP_MODES"
-            :key="m"
-            class="sh-seg sh-seg--fill"
-            :class="{ 'sh-seg--on': shipMode === m }"
-            @tap="shipMode = m"
-          >{{ $t(`order.shipMode.${m}`) }}</text>
-        </view>
-
-        <template v-if="shipMode === 'PICKUP'">
-          <text v-if="pickup?.failReason" class="txt-caption sh-muted sh-mt-sm express__last">
-            {{ $t(`order.expressStatus.${pickup.status}`) }}：{{ pickup.failReason }}
-          </text>
-          <view class="sh-row sh-mt-sm">
-            <input
-              v-model="weightKg"
-              type="digit"
-              maxlength="5"
-              class="field__input sh-fill"
-              :placeholder="$t('order.expressWeightPh')"
-              @input="quotes = null"
-            />
-            <view class="sh-btn sh-btn--sm" :class="{ 'sh-btn--muted': !weightOk }" @tap="fetchQuotes">
-              {{ $t("order.expressQuote") }}
-            </view>
-          </view>
-          <template v-if="quotes">
-            <text v-if="!quotes.length" class="txt-caption sh-muted sh-mt-sm express__last">{{ $t("order.expressNoQuote") }}</text>
-            <view
-              v-for="(q, i) in quotes"
-              :key="q.carrier"
-              class="quote sh-row sh-row--between"
-              :class="{ 'quote--on': quoteIdx === i }"
-              @tap="quoteIdx = i"
-            >
-              <text>{{ q.carrierName }}</text>
-              <view class="sh-row">
-                <text v-if="q.listPriceMinor > q.priceMinor" class="sh-was sh-num">{{ money(q.listPriceMinor) }}</text>
-                <text class="txt-strong sh-num">{{ money(q.priceMinor) }}</text>
-              </view>
-            </view>
-            <view v-if="quotes.length" class="sh-btn sh-mt-sm" @tap="bookExpress">{{ $t("order.expressBookBtn") }}</view>
-          </template>
-        </template>
-
-        <template v-else>
           <!-- 快递公司：横排可点的胶囊，选一个。picker 也行，但发货是高频动作，少一次弹层 -->
           <view class="sh-wrap sh-mt-sm">
             <text
@@ -635,7 +716,6 @@ onPullDownRefresh(async () => {
           >
             {{ $t("order.ship") }}
           </view>
-        </template>
       </view>
 
       <!-- 商家自送：老板点一下就是送到了，不做骑手轨迹（ADR-005 §5） -->
@@ -648,6 +728,30 @@ onPullDownRefresh(async () => {
         <view class="line sh-row sh-row--between">
           <text class="sh-muted">{{ $t("order.expressNo") }}</text>
           <text class="sh-num">{{ order.expressNo }}</text>
+        </view>
+        <text v-if="currentSync?.pending || currentSync?.reason" class="txt-caption sh-muted sh-mt-sm">
+          {{ currentSync?.pending ? $t("order.syncPending") : "" }}{{ currentSync?.reason ? ` · ${currentSync.reason}` : "" }}
+        </text>
+        <text v-if="order.status === 'FULFILLING' && currentSync?.status === 'DELIVERED'"
+          class="txt-caption sh-muted sh-mt-sm">
+          {{ $t(signedBeforeOrder ? "order.signedBeforeOrder" : "order.traceAwaitingProof") }}
+        </text>
+        <view v-if="order.fulfillment === FULFILLMENT.EXPRESS && order.status === 'FULFILLING'"
+          class="sh-btn sh-btn--muted sh-mt-sm" @tap="refreshTrace">
+          {{ $t(refreshingTrace ? "order.traceRefreshing" : "order.traceRefresh") }}
+        </view>
+        <view v-if="canCorrectWaybill && !correctingWaybill" class="sh-btn sh-btn--muted sh-mt-sm" @tap="startWaybillCorrection">
+          {{ $t("order.correctWaybill") }}
+        </view>
+        <view v-if="canCorrectWaybill && correctingWaybill">
+          <view class="sh-wrap sh-mt-sm">
+            <text v-for="(c, i) in carriers" :key="c.code" class="carrier__chip txt-caption"
+              :class="{ 'carrier__chip--on': correctedCarrierIdx === i }" @tap="correctedCarrierIdx = i">{{ c.name }}</text>
+          </view>
+          <input v-model="correctedNo" maxlength="64" class="field__input sh-mt-sm" :placeholder="$t('order.expressNo')" />
+          <input v-model="correctionReason" maxlength="100" class="field__input sh-mt-sm" :placeholder="$t('order.waybillReason')" />
+          <view class="sh-btn sh-mt-sm" :class="{ 'sh-btn--muted': !correctedNo.trim() || !correctionReason.trim() || correctedCarrierIdx < 0 || busy }"
+            @tap="correctWaybill">{{ $t("order.saveWaybill") }}</view>
         </view>
       </view>
 
@@ -692,11 +796,21 @@ onPullDownRefresh(async () => {
       @close="traceOpen = false"
     >
       <sh-trace :trace="shownTrace" :fold-at="shownTrace.nodes.length" :show-map="false"></sh-trace>
+      <view class="sh-mt-md">
+        <text class="txt-strong">{{ $t("order.updateHistory") }}</text>
+        <text v-if="!updateRecords.length" class="txt-caption sh-muted">{{ $t("order.updateHistoryEmpty") }}</text>
+        <view v-for="(item, i) in updateRecords" :key="i" class="sh-mt-sm">
+          <text class="txt-caption update-record__line">{{ datetime(item.occurredAt) }} · {{ updateSource(item.source) }} · {{ updateMode(item.mode) }}</text>
+          <text class="txt-caption sh-muted update-record__line">{{ updateOutcome(item.outcome) }} · {{ item.beforeStatus || "—" }} → {{ item.afterStatus || "—" }}{{ item.nodesAdded ? ` · +${item.nodesAdded}` : "" }}</text>
+          <text v-if="item.detail" class="txt-caption sh-muted update-record__line">{{ item.detail }}</text>
+        </view>
+      </view>
     </sh-sheet>
   </sh-scaffold>
 </template>
 
 <style scoped>
+.update-record__line { display: block; }
 .returned__line {
   display: block;
   margin-top: 12rpx;
@@ -753,24 +867,6 @@ onPullDownRefresh(async () => {
 .due__hint {
   display: block;
   margin-top: 16rpx;
-}
-/* 发货方式两段：等分铺满，与商品编辑页「售卖方式」同一件（sh-seg--fill） */
-.ship__modes {
-  gap: 16rpx;
-}
-/* 报价行：一家一行，选中的那行描主色边。行高够一根手指 */
-.quote {
-  margin-top: 12rpx;
-  padding: 20rpx 24rpx;
-  border-radius: 16rpx;
-  border: var(--sh-hairline);
-}
-.quote--on {
-  border-color: var(--sh-primary);
-  background: var(--sh-primary-tint);
-}
-.express__last {
-  display: block;
 }
 .carrier__chip {
   padding: 8rpx 20rpx;

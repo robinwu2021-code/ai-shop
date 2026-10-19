@@ -4,18 +4,18 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.trade.OrderSceneQueryPort;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
 @Component
 public class OrderSceneQueryPortImpl implements OrderSceneQueryPort {
 
-    private final SubOrderMapper subOrderMapper;
-    private final OrderMapper orderMapper;
+    private final StoreOrderMapper subOrderMapper;
+    private final PaymentMapper orderMapper;
 
-    public OrderSceneQueryPortImpl(SubOrderMapper subOrderMapper, OrderMapper orderMapper) {
+    public OrderSceneQueryPortImpl(StoreOrderMapper subOrderMapper, PaymentMapper orderMapper) {
         this.subOrderMapper = subOrderMapper;
         this.orderMapper = orderMapper;
     }

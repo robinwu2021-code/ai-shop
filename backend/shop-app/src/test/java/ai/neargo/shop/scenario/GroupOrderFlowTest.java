@@ -58,6 +58,23 @@ class GroupOrderFlowTest {
     @Autowired private ActivityService activityService;
     @Autowired private GroupService groupService;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private ai.neargo.shop.trade.service.AfterSaleService afterSales;
+    @Autowired private ai.neargo.shop.spi.trade.GroupOrderPort groupOrders;
+    @Autowired private ai.neargo.shop.pay.service.PaymentLedgerService ledger;
+    @Autowired private ai.neargo.shop.pay.channel.TestPayGateway bank;
+
+    private void finishRefund(String orderNo) {
+        String group=(String)subOf(orderNo).get("group_no");
+        groupOrders.refundAll(group,"TEST_GROUP_REFUND_RETRY");
+        String as = jdbc.queryForObject("SELECT after_sale_no FROM ord_after_sale WHERE order_no=?", String.class, orderNo);
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_after_sale WHERE after_sale_no=?", String.class, as))
+                .isEqualTo("REFUNDING");
+        ai.neargo.shop.support.RefundScenarioPayments.received(jdbc,ledger,bank,as);
+        afterSales.resumeRefund(as,"SYSTEM");
+        afterSales.resumeRefund(as,"SYSTEM");
+        assertThat(jdbc.queryForObject("SELECT status FROM stl_payment WHERE after_sale_no=?", String.class, as))
+                .isEqualTo("SUCCESS");
+    }
 
     private String activityNo;
 
@@ -134,6 +151,7 @@ class GroupOrderFlowTest {
         groupService.expireOverdue(System.currentTimeMillis());
 
         assertThat(groupStatus(groupNo)).isEqualTo("FAILED");
+        finishRefund(orderNo);
         assertThat(subOf(orderNo).get("status"))
                 .as("★ 团失败了钱没退 —— 此前到期只改状态，参团的人付的钱一分没回来").isEqualTo("REFUNDED");
     }
@@ -154,6 +172,7 @@ class GroupOrderFlowTest {
 
         groupService.dissolve(ENTITY, groupNo, "货源不足");
         assertThat(groupStatus(groupNo)).isEqualTo("FAILED");
+        finishRefund(orderNo);
         assertThat(subOf(orderNo).get("status")).as("★ 散团没退款").isEqualTo("REFUNDED");
     }
 
@@ -165,6 +184,7 @@ class GroupOrderFlowTest {
         pay(orderNo, "TX-G5-" + seq);
 
         groupService.abortGroup(groupNo, "团购价高于原价", "OP-1");
+        finishRefund(orderNo);
         assertThat(subOf(orderNo).get("status")).as("★ 中止团没退款").isEqualTo("REFUNDED");
     }
 
@@ -188,6 +208,7 @@ class GroupOrderFlowTest {
 
         pay(orderNo, "TX-G6-" + seq);
         assertThat(joined(groupNo)).as("散了的团不该再加人").isZero();
+        finishRefund(orderNo);
         assertThat(subOf(orderNo).get("status"))
                 .as("★ 付款时团已散却没退 —— 钱付进来了，没有团可参").isEqualTo("REFUNDED");
     }
@@ -347,10 +368,13 @@ class GroupOrderFlowTest {
     }
 
     private void pay(String orderNo, String tx) throws Exception {
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"" + tx
+        String trade=ai.neargo.shop.support.RefundScenarioPayments.receivedForOrder(
+                jdbc,ledger,bank,orderNo);
+        String ack=mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"" + trade
                                 + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(ack).as(tx).isEqualTo("SUCCESS");
     }
 
     private Map<String, Object> subOf(String orderNo) {

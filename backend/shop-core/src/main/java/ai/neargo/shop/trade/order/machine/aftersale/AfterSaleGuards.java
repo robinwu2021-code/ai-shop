@@ -25,6 +25,8 @@ final class AfterSaleGuards {
     static final Guard<AfterSaleContext> WAYBILL = Guard.of(c -> c.waybillValid, ErrorCode.BAD_REQUEST);
     static final Guard<AfterSaleContext> PROOF = Guard.of(c -> c.proofPresent, ErrorCode.BAD_REQUEST);
     static final Guard<AfterSaleContext> VOID_REASON = Guard.of(c -> c.voidReasonValid, ErrorCode.BAD_REQUEST);
+    static final Guard<AfterSaleContext> PREPARATION_NOT_STARTED =
+            Guard.of(c -> c.preparationNotStarted, ErrorCode.ORDER_STATE_ILLEGAL);
 
     private AfterSaleGuards() {
     }

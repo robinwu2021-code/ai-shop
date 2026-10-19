@@ -1,5 +1,9 @@
 package ai.neargo.shop.spi.settle;
 
+import ai.neargo.shop.spi.user.MerchantQueryPort.PaymentRoute;
+
+import java.util.List;
+
 /**
  * trade → settle：退款链路要用的两步。**顺序不可颠倒**（E4 / TDD-backend §7.2）。
  *
@@ -10,6 +14,46 @@ package ai.neargo.shop.spi.settle;
  * <p>因此这个 Port 刻意**不提供「一步退款」的方法**：调用方拿不到那个捷径。
  */
 public interface SettlePort {
+    /** Financial success is independent of whether an older refund has a trade execution reference. */
+    default RefundDispatchResult settleRefund(String outRefundNo, String payChannel, long amountMinor,
+                                              String currency, String providerNo) {
+        return new RefundDispatchResult(null, null, RefundDispatchResult.DispatchStatus.FAILED,
+                "REFUND_ADAPTER_UNAVAILABLE", false, null);
+    }
+
+    /** Refund-only lookup uses the cash receipt actually applied to the payment order. */
+    default PaymentReceipt refundOrigin(String orderNo, String tradeNo, String payChannel) {
+        return null;
+    }
+
+    /** Confirm a local, unsplit adjustment; an unconfirmed external reversal must return false. */
+    default boolean prepareRefundReversal(SplitReversal request) {
+        return false;
+    }
+
+    /** The trusted frozen child may prove zero liabilities; absence of a bill alone never proves that. */
+    default boolean prepareRefundReversal(SplitReversal request, boolean zeroLiability) {
+        return prepareRefundReversal(request);
+    }
+
+    /** Send or recover one durable instruction, never infer success from a returned number. */
+    default RefundDispatchResult requestRefund(RefundRequest request) {
+        return new RefundDispatchResult(request.executionNo(), null,
+                RefundDispatchResult.DispatchStatus.FAILED, "REFUND_ADAPTER_UNAVAILABLE", false, null);
+    }
+
+    /** Query the original refund instruction after a timeout or restart. */
+    default RefundDispatchResult queryRefundExecution(String executionNo) {
+        return new RefundDispatchResult(executionNo, null,
+                RefundDispatchResult.DispatchStatus.UNKNOWN, "REFUND_ADAPTER_UNAVAILABLE", false, null);
+    }
+
+    /** Verify the immutable original instruction before exposing any financial success to the order. */
+    default RefundDispatchResult queryRefundExecution(RefundRequest request) {
+        return new RefundDispatchResult(request.executionNo(), null,
+                RefundDispatchResult.DispatchStatus.UNKNOWN, "REFUND_ADAPTER_UNAVAILABLE", false, null);
+    }
+
 
     /**
      * 回退该子单的分账。
@@ -103,6 +147,19 @@ public interface SettlePort {
      */
     String settlePayment(PaymentSettled cmd);
 
+    /** Financial facts only; implementations must not infer success from an order projection. */
+    default PaymentReceipt successPayment(String orderNo) { return null; }
+
+    /** Exact confirmed attempt; callbacks must not select another attempt's successful cash. */
+    default PaymentReceipt successPayment(String orderNo, String channel, String tradeNo) { return null; }
+
+    /** Exact initiated channel reference, used by the explicitly enabled development callback. */
+    default PaymentReceipt paymentByOutTradeNo(String outTradeNo) { return null; }
+
+    record PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel,
+                          String tradeNo, long amountMinor, String currency, String status) { }
+
+
     /**
      * <p><b>这里没有 out_trade_no</b>：商户单号由支付域生成并<b>回传</b>
      * （见 {@link #openPayment} 的返回值）。2026-09-01 之前调用方传一个进来，
@@ -126,7 +183,21 @@ public interface SettlePort {
      *                    支付域拿不到商品名，编不出来。
      */
     record PaymentOpen(String orderNo, String userNo, String entityNo,
-                       String payChannel, long amountMinor, String subject) {
+                       String payChannel, long amountMinor, String subject,
+                       String currency, List<PaymentStore> stores) {
+        public PaymentOpen {
+            stores = stores == null ? List.of() : List.copyOf(stores);
+        }
+
+        /** 兼容普通现金支付调用；积分交易必须显式提供交易币种及门店路由。 */
+        public PaymentOpen(String orderNo, String userNo, String entityNo,
+                           String payChannel, long amountMinor, String subject) {
+            this(orderNo, userNo, entityNo, payChannel, amountMinor, subject, "CNY", List.of());
+        }
+    }
+
+    /** 支付发起时的子单与门店路由，缺失的路由不得作为积分交易事实。 */
+    record PaymentStore(String subOrderNo, PaymentRoute route) {
     }
 
     /**
@@ -137,7 +208,11 @@ public interface SettlePort {
      * @param succeededAt 通道回执的成功时刻
      */
     record PaymentSettled(String outTradeNo, String payChannel, String tradeNo,
-                          long amountMinor, long succeededAt) {
+                          long amountMinor, long succeededAt, String currency) {
+        public PaymentSettled(String outTradeNo, String payChannel, String tradeNo,
+                              long amountMinor, long succeededAt) {
+            this(outTradeNo, payChannel, tradeNo, amountMinor, succeededAt, "CNY");
+        }
     }
 
     int generateForOrder(String orderNo);
@@ -152,6 +227,18 @@ public interface SettlePort {
      * @return true=已回退（或无需回退）；false=回退失败，**此时绝不能继续退款**
      */
     boolean reverseSplit(SplitReversal cmd);
+
+    /** Durable ordinary-cash reversal. Must be called outside source/pay transactions. */
+    boolean reverseCashRefund(SplitReversal cmd);
+
+    /** Source workflow gate: post-split reversal waits for its durable financial preparation. */
+    boolean reversePreparedRefund(SplitReversal cmd);
+
+    /** Apply a held pre-split adjustment only after pay has confirmed the original refund. */
+    boolean confirmPreparedRefund(SplitReversal cmd, String preparationNo, String inputHash);
+
+    /** Release a held adjustment after verified cash failure and successful collection reversal. */
+    boolean cancelPreparedRefund(SplitReversal cmd, String preparationNo, String inputHash);
 
     /**
      * @param afterSaleNo    售后单号（幂等键）
@@ -174,6 +261,15 @@ public interface SettlePort {
      */
     String refund(String subOrderNo, String afterSaleNo, long amountMinor, String reason);
 
+    /** Persist the cash intent without sending. Bind it to source preparation before dispatch. */
+    String prepareRefund(String subOrderNo, String afterSaleNo, long amountMinor, String reason);
+
+    /** Dispatch a committed intent outside any transaction, at most once; unknown results require reconciliation. */
+    void dispatchRefund(String paymentNo);
+
+    /** Query the original intent outside transactions; only verified exact channel results can settle it. */
+    void refreshRefund(String paymentNo);
+
     /**
      * <b>退款确认到账</b>：把退款流水推到终态。由退款回调与对账回查共同驱动。
      *
@@ -185,5 +281,19 @@ public interface SettlePort {
      * @return 这笔退款挂在哪个订单上；认领不了返回 {@code null}
      *         —— 调用方要当成「这笔退款不是我方发出去的」，而不是当成成功
      */
-    String settleRefund(String outRefundNo, String providerNo);
+    String settleRefund(String outRefundNo,String providerNo,long verifiedMinor);
+    /** Trusted payment-ledger query used by source completion, without any remote bank operation. */
+    RefundEvidence refundEvidence(String paymentNo);
+    /** Currency of the original successful payment, frozen before any refund is prepared. */
+    String paymentCurrency(String orderNo);
+    /** Any existing cash intent blocks releasing a source preparation as if no funds action occurred. */
+    boolean hasRefundForAfterSale(String afterSaleNo);
+    record RefundEvidence(String paymentNo,String direction,String afterSaleNo,String subOrderNo,String userNo,
+                          String currency,long amountMinor,String status,Long verifiedMinor,Long verifiedAt,
+                          String providerNo, RefundSafety safety) {
+        public RefundEvidence(String paymentNo,String direction,String afterSaleNo,String subOrderNo,String userNo,
+                              String currency,long amountMinor,String status,Long verifiedMinor,Long verifiedAt,String providerNo) {
+            this(paymentNo,direction,afterSaleNo,subOrderNo,userNo,currency,amountMinor,status,verifiedMinor,verifiedAt,providerNo,RefundSafety.unknown());
+        }
+    }
 }

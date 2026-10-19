@@ -1,5 +1,9 @@
 package ai.neargo.shop.trade.api.ops;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+
 import ai.neargo.shop.auth.Perms;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -32,12 +36,12 @@ public class OpsStoreStatsController {
     private final MerchantOrderService orderService;
     private final MerchantQueryPort merchantPort;
 
-    private final ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper;
-    private final ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
+    private final AfterSaleMapper afterSaleMapper;
+    private final StoreOrderMapper subOrderMapper;
 
     public OpsStoreStatsController(MerchantOrderService orderService, MerchantQueryPort merchantPort,
-                                   ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper afterSaleMapper,
-                                   ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper) {
+                                   AfterSaleMapper afterSaleMapper,
+                                   StoreOrderMapper subOrderMapper) {
         this.orderService = orderService;
         this.merchantPort = merchantPort;
         this.afterSaleMapper = afterSaleMapper;

@@ -267,6 +267,8 @@ shop:
         # ⚠️ **只有 ${amt} 一个变量**：阿里云通知短信的变量只认语义类型（money/name/time…），
         #   订单号 SUB2026… 不符合任何一种，进不了模板。订单号在其余四条通道里有完整详情。
         order-paid: ${ALI_SMS_TPL_ORDER_PAID:}
+        # 售后待审核提醒。微信订阅与短信同时发送；未获批时记录 tpl_unconfigured。
+        after-sale-applied: ${ALI_SMS_TPL_MCH_AFTER_SALE:}
         # 发货触达收件人模板（TDD-收件人物流触达与分享裂变 §2.2）。**可选**，同 order-paid 的理由。
         # 模板形如「您的包裹已发货，物流进度查看 s.hxmall.top/${code}」——
         # ⚠️ 阿里云链接变量规则：域名是**固定文本**、变量只放路径段（link_param），
@@ -297,13 +299,15 @@ shop:
   # 物流（ADR-032 独立域）。**这里只显式暴露要改的那几项**，其余走 LogisticsProperties 的代码默认 ——
   # ⚠️ 别给它的 Map/List 字段（如 probe-surfaces）挂 ${ENV:} 空串：空串绑不进 Map，整个 context 起不来。
   logistics:
+    # 本期同一运单同时建立微信物流关注与快递100轨迹订阅；凭据/回调不可用时渠道独立记录原因。
+    subscribe-enabled: ${SHOP_LOGISTICS_SUBSCRIBE_ENABLED:true}
+    kd100-account-ref: ${SHOP_LOGISTICS_KD100_ACCOUNT_REF:default}
+    # 人工联调期间每次手动刷新都查微信；结束后可设为 10 恢复间隔。自动页面读取仍保留原节流。
+    manual-refresh-cache-minutes: ${SHOP_LOGISTICS_MANUAL_REFRESH_CACHE_MINUTES:0}
     wx-bind:
-      # 微信 waybill_token 什么时候换（TDD-物流模块 M6）：
-      #   on-picked-up（代码默认）= 已上报微信 ∧ 已揽收 才换。揽收前微信一定查不到（9300559），盲调只耗次数；
-      #   on-ship               = 发货上报后**立刻**换并可查。用户 2026-10-10：「B 端提交订单后应立即查一次物流单状态」。
-      # 代价写明白：商家在揽收前点发货的那些单，这一次调用必然 9300559 —— 不白丢，
-      # 揽收推送到达时 WaybillProgress 会再发一次 WxBindRequested 补上（有兜底，所以敢开）。
-      trigger: ${SHOP_LOGISTICS_WXBIND_TRIGGER:on-picked-up}
+      # 微信查询组件 token 在发货信息上报成功后立即尝试绑定；未收录（9300559）
+      # 保持 WAITING，后续揽收事件再触发。物流消息 follow_waybill 的 token 单独存放。
+      trigger: ${SHOP_LOGISTICS_WXBIND_TRIGGER:on-ship}
 
   # 发货触达收件人与免登录看件（TDD-收件人物流触达与分享裂变）。
   ship:
@@ -316,7 +320,7 @@ shop:
     # 短链域名前缀，不带尾斜杠。短信里拼的是 <base>/<code>
     short-link-base: ${SHIP_SHORT_LINK_BASE:https://s.hxmall.top}
     # 看件页在小程序里的路径（URL Link 用），不带前导斜杠
-    track-mini-path: ${SHIP_TRACK_MINI_PATH:pages/track/index}
+    track-mini-path: ${SHIP_TRACK_MINI_PATH:pages/home/index}
     # URL Link 生成不出来时退回的 H5 看件页前缀（hash 路由），token 以 ?t= 拼在后面
     track-h5-base: ${SHIP_TRACK_H5_BASE:https://www.hxmall.top/c/?t=}
 
@@ -364,7 +368,9 @@ shop:
     urllink:
       stub: ${SHOP_WX_URLLINK_STUB:${SHOP_WX_STUB:true}}
       # URL Link 有效期（天，≤30）。到期链接失效，与看件令牌同寿
-      expire-days: ${SHOP_WX_URLLINK_EXPIRE_DAYS:30}
+      expire-days: ${SHOP_WX_URLLINK_EXPIRE_DAYS:5}
+      # 体验版联调使用 trial；正式发布后随 WX_MP_STATE 切 release
+      env-version: ${SHOP_WX_URLLINK_ENV_VERSION:${WX_MP_STATE:release}}
     # 手机号快速验证（phonenumber.getPhoneNumber）。**要已认证 + 非个人主体，且按次计费** ——
     # 所以它默认关着，而验证码那条路必须一直在（端上按 /mp/user/phone/capable 决定显示哪个）
     phone:

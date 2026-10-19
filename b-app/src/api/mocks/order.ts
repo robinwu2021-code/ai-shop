@@ -16,18 +16,24 @@ import {
   pickupView,
   pushTimeline,
   scopedToStore,
-  settleRefund,
   storeOfOrder,
   takePendingAfterSale,
 } from "./_shared";
 import type { ExpressPickup, MerchantApi } from "../contract";
+import { beginMockRefund } from "@shared/mock/refund";
 import { EXPRESS_COMPANIES } from "@shared/utils/express-companies";
 
 export const orderMock: Pick<MerchantApi,
   "mOrderList"
+  | "mOrderWorklist"
   | "mOrderDetail"
+  | "mFulfillmentOptions"
+  | "mChangeFulfillment"
   | "mOrderTrace"
+  | "mOrderUpdates"
+  | "mShipPrecheck"
   | "mShip"
+  | "mCorrectWaybill"
   | "mDelivered"
   | "mPrepare"
   | "mConfirmOfflinePay"
@@ -54,6 +60,9 @@ export const orderMock: Pick<MerchantApi,
   | "mPayoutAccounts"
   | "mSubmitPayoutAccount"
   | "mAfterSaleList"
+  | "mAfterSaleWorklist"
+  | "mActiveAfterSaleForOrder"
+  | "mAfterSaleDetail"
   | "mApproveAfterSale"
   | "mRejectAfterSale"
   | "mConfirmReturn"
@@ -96,8 +105,46 @@ export const orderMock: Pick<MerchantApi,
     return delay(paginate(list, q.page, q.size));
   },
 
+  async mOrderWorklist(q) {
+    const merchantNo = db.merchant.merchantNo;
+    const orders = merchantNo ? scopedToStore(db.orders.filter((o) => belongsToMerchant(o, merchantNo))) : [];
+    const rows = orders.map((order) => {
+      const as = order.afterSale;
+      const afterSaleNo = as && ["APPLIED", "RETURNING", "WAIT_RECEIPT"].includes(as.status)
+        ? as.afterSaleNo : null;
+      const actionKind = afterSaleNo ? "AFTER_SALE" as const
+        : order.status === "WAIT_OFFLINE_PAY" ? "RECEIVE_PAYMENT" as const
+        : order.status === "PAID" ? "FULFILL" as const
+        : order.status === "FULFILLING" && ["STORE_PICKUP", "NEIGHBOR_PICKUP"].includes(order.fulfillment)
+          ? "VERIFY" as const : null;
+      return actionKind ? { order, actionKind, priority: afterSaleNo ? 0 : actionKind === "RECEIVE_PAYMENT" ? 1
+        : actionKind === "FULFILL" ? 2 : 3, afterSaleNo, afterSaleStatus: afterSaleNo ? as!.status : null } : null;
+    }).filter((row) => row !== null).sort((a, b) => a.priority - b.priority || a.order.createdAt - b.order.createdAt
+      || a.order.orderNo.localeCompare(b.order.orderNo));
+    return delay(paginate(rows, q.page, q.size));
+  },
+
   async mOrderDetail(orderNo) {
     return delay({ ...findOrder(orderNo) });
+  },
+
+  async mFulfillmentOptions(orderNo) {
+    const order = findOrder(orderNo);
+    const currentFulfillment = order.fulfillment;
+    const eligible = order.status === "PAID" && !order.expressNo && !order.afterSale;
+    return delay({ subOrderNo: orderNo, currentFulfillment, version: 0,
+      options: ["MERCHANT_DELIVERY", "EXPRESS"].map((fulfillment) => ({
+        fulfillment, allowed: fulfillment === currentFulfillment || eligible,
+        reason: fulfillment === currentFulfillment || eligible ? null : "此订单当前不可切换配送方式",
+      })) });
+  },
+  async mChangeFulfillment(orderNo, req) {
+    const order = findOrder(orderNo);
+    if (req.expectedVersion !== 0 || !req.reason.trim() || order.status !== "PAID"
+      || order.expressNo || order.afterSale) throw new Error("此订单当前不可切换配送方式");
+    order.fulfillment = req.targetFulfillment as typeof order.fulfillment;
+    persist();
+    return delay({ order: { ...order }, version: 1 });
   },
 
   async mOrderTrace(orderNo) {
@@ -112,6 +159,21 @@ export const orderMock: Pick<MerchantApi,
       waybillNo: o.expressNo,
       refreshable: false,
     });
+  },
+
+  async mOrderUpdates(orderNo) {
+    findOrder(orderNo);
+    return delay([]);
+  },
+
+  async mShipPrecheck(orderNo, expressNo, expressCompany) {
+    findOrder(orderNo);
+    if (!EXPRESS_COMPANIES.some((c) => c.code === expressCompany) || !expressNo.trim()) {
+      return delay({ verdict: "INVALID" as const, source: "LOCAL", status: null,
+        checkedAt: Date.now(), reason: "快递公司或运单号无效", confirmationRequired: false });
+    }
+    return delay({ verdict: "UNKNOWN" as const, source: null, status: null,
+      checkedAt: Date.now(), reason: "渠道尚无可核实的物流信息", confirmationRequired: false });
   },
 
   async mShip(orderNo, expressNo, expressCompany) {
@@ -134,6 +196,19 @@ export const orderMock: Pick<MerchantApi,
       `运单号 ${expressNo}，可在订单详情查看物流`,
       `/pages/order/index?orderNo=${o.orderNo}`,
     );
+    persist();
+    return delay(o);
+  },
+
+  async mCorrectWaybill(orderNo, expressNo, expressCompany, reason) {
+    const o = findOrder(orderNo);
+    if (o.status !== "FULFILLING" || o.fulfillment !== "EXPRESS" || !reason.trim()
+        || !expressNo.trim() || !EXPRESS_COMPANIES.some((c) => c.code === expressCompany)) {
+      throw new Error("运单信息不完整或订单不可更正");
+    }
+    o.expressNo = expressNo.trim();
+    o.expressCompany = expressCompany;
+    pushTimeline(o, "更正运单");
     persist();
     return delay(o);
   },
@@ -552,9 +627,40 @@ export const orderMock: Pick<MerchantApi,
     );
   },
 
+  async mAfterSaleWorklist(q) {
+    const merchantNo = db.merchant.merchantNo;
+    const pending = q?.pending ?? true;
+    const page = q?.page ?? 1;
+    const size = q?.size ?? 20;
+    const rows = scopedToStore(db.orders.filter((o) => o.afterSale && belongsToMerchant(o, merchantNo)))
+      .filter((o) => !pending || ["APPLIED", "WAIT_RECEIPT", "RETURNING"].includes(o.afterSale!.status))
+      .sort((a, b) => (b.afterSale?.createdAt ?? 0) - (a.afterSale?.createdAt ?? 0))
+      .map((o) => ({ afterSale: o.afterSale!, order: o }));
+    return delay(paginate(rows, page, size));
+  },
+  async mActiveAfterSaleForOrder(orderNo) {
+    const order = findOrder(orderNo);
+    if (!belongsToMerchant(order, db.merchant.merchantNo) || !scopedToStore([order]).length) {
+      throw new Error("订单不存在");
+    }
+    const as = order.afterSale;
+    return delay(as && !["REFUNDED", "REJECTED", "CLOSED"].includes(as.status) ? as : null);
+  },
+
+  async mAfterSaleDetail(afterSaleNo) {
+    const order = findOrderByAfterSale(afterSaleNo);
+    if (!order || !belongsToMerchant(order, db.merchant.merchantNo)
+      || !scopedToStore([order]).length || !order.afterSale) throw new Error("售后单不存在");
+    return delay({ afterSale: order.afterSale, order });
+  },
+
   async mApproveAfterSale(afterSaleNo, reply, refundMinor, refundMode) {
     const o = takePendingAfterSale(afterSaleNo);
     const as = o.afterSale!;
+    if (refundMode && refundMode !== "CASH") throw new Error("一期仅支持现金退款");
+    if (refundMinor != null && (refundMinor <= 0 || refundMinor !== as.refundMinor)) {
+      throw new Error("一期仅支持子单整单全额退款");
+    }
     as.merchantReply = reply;
     as.updatedAt = Date.now();
     // 核定金额 / 形式（AC9/AC10）：仅已签收能改金额，这里按后端一致存下
@@ -568,7 +674,7 @@ export const orderMock: Pick<MerchantApi,
      * 两者合成一条路的后果是「退款了货没回来」。
      */
     if (as.type === "RETURN_REFUND") {
-      as.status = "REFUNDING";
+      as.status = "WAIT_RETURN";
       pushTimeline(o, "商家已同意退货，等待寄回");
       pushMessage(
         "TRADE",
@@ -584,23 +690,13 @@ export const orderMock: Pick<MerchantApi,
     if (as.fulfillStage === "SHIPPED") {
       as.status = "WAIT_RECEIPT";
       as.waitReceipt = true;
-      pushTimeline(o, "商家已同意，货在途——签收后自动退款");
+      pushTimeline(o, "商家已同意，货在途——待商家确认退款");
       persist();
       return delay(o.afterSale!);
     }
 
-    // 积分形式：不退现金，按核定额折积分（mock perMinor=1）
-    if (refundMode === "POINTS") {
-      const amt = as.approvedMinor ?? as.refundMinor;
-      as.refundPoints = amt;
-      as.status = "REFUNDED";
-      as.updatedAt = Date.now();
-      pushTimeline(o, "商家已同意，按约定折积分退回");
-      persist();
-      return delay(o.afterSale!);
-    }
-
-    settleRefund(o, "商家已同意退款");
+    beginMockRefund(o);
+    pushTimeline(o, "商家已同意，退款处理中");
     persist();
     return delay(o.afterSale!);
   },
@@ -633,17 +729,18 @@ export const orderMock: Pick<MerchantApi,
     as.updatedAt = Date.now();
     pushTimeline(o, "商家已确认收到退货");
     // 确认收货与退款是同一个动作的两半，中间不留悬空态
-    settleRefund(o, "退款已发起");
+    beginMockRefund(o);
     persist();
     return delay(o.afterSale!);
   },
-  async mConfirmRefund(afterSaleNo) {
+  async mConfirmRefund(afterSaleNo, reason) {
     const o = findOrderByAfterSale(afterSaleNo);
     const as = o.afterSale!;
     if (as.status !== "WAIT_RECEIPT") throw new Error("该售后已处理或状态不对");
+    if (o.status !== "COMPLETED" && !reason?.trim()) throw new Error("货物仍在途，请说明提前退款原因");
     as.updatedAt = Date.now();
     pushTimeline(o, "商家确认退款");
-    settleRefund(o, "退款已发起");
+    beginMockRefund(o);
     persist();
     return delay(o.afterSale!);
   },

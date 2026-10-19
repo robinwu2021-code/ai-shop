@@ -8,7 +8,7 @@ import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.support.TestLogin;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,36 +20,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.ObjectMapper;
 
-/**
- * <b>支付回调传给支付域的 payScene，是订单快照，不是当前请求。</b>
- *
- * <h2>它补的是一条被移交的保护</h2>
- * 2026-09-01 之前，「读订单快照而不是当前请求」由支付域自己保证 ——
- * 它通过 {@code OrderSceneQueryPort} 反向查订单域。按
- * 「除回调外不做反向依赖，pay 只解决 pay 的核心问题」去掉那条反向依赖之后，
- * 场景改由 {@code OrderServiceImpl.markPaid} 传入，<b>责任移到了 trade 侧</b>。
- *
- * <p>责任移交时最容易丢的就是原来那条保护：改完之后支付域的用例照样绿
- * （它只管「传进来什么就按什么判」），而没有任何东西再盯着「传的是不是快照」。
- *
- * <p>它防的是什么：发放发生在支付那一刻，而那时用户可能已经换了端，
- * 更常见的是根本没有用户在场（超时自动确认收货是系统动作）。
- * 读当前端会让「这单发不发积分」取决于谁在哪个端点确认、
- * 甚至取决于是不是定时任务跑的 —— 不可复现也无法对账。
- *
- * <h2>前两版都是假的保护，记在这里</h2>
- * <ol>
- *   <li><b>第一版</b>写在支付域的用例里、直接调 grant 并由测试自己读快照 ——
- *       把 {@code OrderServiceImpl} 改成传 null 也照样绿；</li>
- *   <li><b>第二版</b>走真实链路、断言「禁发端拿不到分」—— 消融仍然不红。
- *       加了正对照才发现：那条链路上积分本来就发不出来
- *       （商家/小区开关、积分规则都没配），<b>那个 0 一直是假的</b>。</li>
- * </ol>
- *
- * <p>所以这一版换了判据：<b>不看结果，看传进去的值</b> ——
- * 用 spy 拦住 {@code PointsPort.grant}，断言它收到的 payScene 就是订单上那个。
- * 这与积分最终发没发无关，而后者取决于一串与本用例无关的开关。
- */
+/** Cash payment preserves the order's checkout scene snapshot and never calls the points grant path. */
 @SpringBootTest(properties = {
         /*
          * **必须另开一个库。** @MockitoSpyBean 会让这个类拿到一个新的 Spring 上下文，
@@ -72,15 +43,11 @@ class PayScenePassedThroughTest {
     @Autowired
     private ObjectMapper json;
 
+    @Autowired private JdbcTemplate jdbc;
+
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
 
-    /**
-     * 拦住 {@code PointsPort.grant} 看它收到什么。
-     *
-     * <p>用 spy 不用 mock：mock 会把真实发放整个挡掉，
-     * 而这条用例要的是「真实链路跑完之后它被怎么调的」。
-     */
     @MockitoSpyBean
     private PointsPort pointsPort;
 
@@ -92,8 +59,8 @@ class PayScenePassedThroughTest {
     }
 
     @Test
-    @DisplayName("★★★ 支付回调传的 payScene 是【订单快照】—— 传成当前请求会静默按错的端判发放")
-    void payScenePassedToPointsIsTheOrderSnapshot() throws Exception {
+    @DisplayName("一期支付回调保留下单场景且不调用积分")
+    void phaseOnePreservesSceneSnapshotWithoutPointsGrant() throws Exception {
         String token = TestLogin.consumer(mvc(), json, otpStore, "12800128096");
 
         // 下单时带 X-Client=MP_WECHAT —— 订单的 payScene 就是从这个头来的
@@ -116,15 +83,9 @@ class PayScenePassedThroughTest {
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-scene\","
                         + "\"sign\":\"" + STUB_SECRET + "\"}"));
 
-        var scene = ArgumentCaptor.forClass(String.class);
-        Mockito.verify(pointsPort, Mockito.atLeastOnce())
-                .grant(Mockito.anyString(), Mockito.anyString(), Mockito.anyList(),
-                        Mockito.anyString(), Mockito.any(), scene.capture());
+        assertThat(jdbc.queryForObject("select pay_scene from ord_order where order_no=?", String.class, payOrderNo))
+                .isEqualTo("MP_WECHAT");
+        Mockito.verifyNoInteractions(pointsPort);
 
-        assertThat(scene.getAllValues())
-                .as("回调链路上没有请求头 —— 传的若是「当前请求的端」这里会是 null。"
-                        + "必须是下单时那个 MP_WECHAT，才说明用的是订单快照")
-                .isNotEmpty()
-                .allMatch("MP_WECHAT"::equals);
     }
 }

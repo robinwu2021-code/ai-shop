@@ -2,6 +2,17 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
+  refundExecution: "退款执行",
+  recoverRefund: "恢复原退款执行",
+  refundRecoverSubmitted: "已提交恢复，请核对最新进度",
+  refundUnstarted: "尚未发起退款执行",
+  refundProcessing: "退款处理中，尚未确认到账",
+  refundFailed: "退款失败，核对原执行记录",
+  refundUnknown: "退款结果未知，请勿重复退款",
+  refundManual: "分账回退或资金结果需要人工核对",
+  refundResourcesPending: "现金已退，库存或优惠恢复中",
+  refundResourcesFailed: "现金已退，资源恢复异常",
+  refundDone: "退款与资源恢复完成",
 
   liabMerchant: "供货商家",
   liabMerchantHint: "商品本身的问题：坏果、少发、货不对板",
@@ -94,6 +105,17 @@ const zh = {
 };
 
 const en: typeof zh = {
+  refundExecution: "Refund execution",
+  recoverRefund: "Recover original refund",
+  refundRecoverSubmitted: "Recovery submitted. Check current progress.",
+  refundUnstarted: "Refund execution not started",
+  refundProcessing: "Refund processing; payment not confirmed",
+  refundFailed: "Refund failed. Check original execution.",
+  refundUnknown: "Refund result unknown. Do not refund again.",
+  refundManual: "Split reversal or payment result requires manual verification",
+  refundResourcesPending: "Cash refunded; inventory or benefits recovery pending",
+  refundResourcesFailed: "Cash refunded; resource recovery failed",
+  refundDone: "Refund and resource recovery completed",
 
   liabMerchant: "Supplying merchant",
   liabMerchantHint: "A problem with the goods themselves: spoiled produce, short shipment, wrong item",

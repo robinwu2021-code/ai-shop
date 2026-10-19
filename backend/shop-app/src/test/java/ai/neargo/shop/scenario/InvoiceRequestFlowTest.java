@@ -6,7 +6,7 @@ import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.trade.entity.OrdInvoiceRequest;
 import ai.neargo.shop.trade.entity.OrdOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.service.InvoiceRequestService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,7 +42,7 @@ class InvoiceRequestFlowTest {
     private InvoiceRequestService service;
 
     @Autowired
-    private OrderMapper orderMapper;
+    private PaymentMapper orderMapper;
 
     @Test
     @DisplayName("★★★ 已成交的单可以申请，金额落快照")

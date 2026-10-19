@@ -20,10 +20,11 @@
 // 理由是「两个解析器对它的处理不一致」—— **那是猜的，而且是错的**：
 // prd_store_goods（V15）表内一直有 `--` 注释，schema-lineage 从没红过。
 // 一条禁止无害写法的规则会让人绕路，而绕路的成本没有任何收益抵消它。
-import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
-import { readColumnNames, MIGRATION_DIR as PLATFORM_MIG, INVENTORY_MIGRATION_DIR }
+import { readColumnNames, readSchema, MIGRATION_DIR as PLATFORM_MIG, INVENTORY_MIGRATION_DIR }
   from "../../../scripts/lib/ddl.mjs";
 import { describe, expect, it } from "vitest";
 
@@ -122,6 +123,33 @@ describe("建表 DDL 必须可解析", () => {
         "  于是被吃掉收尾的那张（也就是这里报的）反而匹配不上了。\n" +
         "  按迁移版本号顺序，往**上**一个文件找收尾写错的那张。",
     ).toEqual([]);
+  });
+
+  it("CREATE TABLE 同时识别 BOOL 别名与完整 BOOLEAN 类型", () => {
+    const root = mkdtempSync(join(tmpdir(), "ddl-boolean-"));
+    try {
+      writeFileSync(join(root, "V1__boolean.sql"),
+        "CREATE TABLE flags (\n  enabled BOOL NOT NULL,\n  approved BOOLEAN NULL\n);\n");
+      const schema = readSchema(root, ["."]) as Map<string, { cols: { name: string; type: string; nullable: boolean }[] }>;
+      expect(schema.get("flags")?.cols).toEqual([
+        { name: "enabled", type: "bool", nullable: false, comment: "" },
+        { name: "approved", type: "boolean", nullable: true, comment: "" },
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("V415 的 BOOLEAN 恢复计划列必须保留类型与非空约束", () => {
+    if (!existsSync(join(ROOT, PLATFORM_MIG))) return;
+    const schema = readSchema(ROOT) as Map<string, { cols: { name: string; type: string; nullable: boolean }[] }>;
+    const columns = schema.get("ord_refund_execution")?.cols ?? [];
+    expect(columns.filter((c) => ["restore_stock", "restock_approved", "zero_liability"].includes(c.name)))
+      .toEqual([
+        { name: "restore_stock", type: "boolean", nullable: false, comment: "" },
+        { name: "restock_approved", type: "boolean", nullable: false, comment: "" },
+        { name: "zero_liability", type: "boolean", nullable: false, comment: "" },
+      ]);
   });
 
 });

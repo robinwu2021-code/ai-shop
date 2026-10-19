@@ -220,9 +220,22 @@ export interface StoreGovernDetail {
  *   框一个街道可能展开成 30 个聚落，也可能一个都没有（那条街道下还没开通任何聚落），
  *   而后者在只看「他框了什么」的界面上完全看不出来
  */
+/**
+ * 一个主体的经营范围明细。
+ *
+ * **三块分开，缺一块都会被读反：**
+ * - `includes` 他框了哪些地方
+ * - `excludes` 他**明确排除**的地方 —— 混在上面一起列，运营会读成「他做这儿」，而事实正好相反
+ * - `reachableCount` 展开之后**实际覆盖几个聚落** —— 框了什么与覆盖到什么不是一回事：
+ *   框一个街道可能展开成 30 个聚落，也可能一个都没有（那条街道下还没开通任何聚落），
+ *   而后者在只看「他框了什么」的界面上完全看不出来
+ */
 export interface MerchantCoverage {
+  /** 明确纳入的服务范围 */
   includes: CoverageArea[];
+  /** 明确排除的服务范围 */
   excludes: CoverageArea[];
+  /** 当前可触达对象数量 */
   reachableCount: number;
   /** 覆盖到的聚落名，最多几条。只给一个数字的话，30 与 3 一样让人无从判断展开对不对 */
   reachableSample: string[];
@@ -231,6 +244,7 @@ export interface MerchantCoverage {
 export interface CoverageArea {
   /** COMMUNITY / STREET / DISTRICT / CITY / PROVINCE */
   level: string;
+  /** 范围所引用的行政或业务编码 */
   refCode: string;
   /** 取不到名就给号，**不留空** —— 空会被读成「没有这一条」 */
   name: string;

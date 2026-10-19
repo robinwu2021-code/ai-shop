@@ -4,8 +4,8 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.trade.PeriodOrderPort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -24,11 +24,11 @@ public class PeriodOrderPortImpl implements PeriodOrderPort {
 
     private static final Logger log = LoggerFactory.getLogger(PeriodOrderPortImpl.class);
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
     private final AfterSaleService afterSaleService;
 
-    public PeriodOrderPortImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+    public PeriodOrderPortImpl(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                                AfterSaleService afterSaleService) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;

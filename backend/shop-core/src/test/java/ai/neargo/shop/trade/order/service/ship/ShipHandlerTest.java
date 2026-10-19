@@ -2,13 +2,11 @@ package ai.neargo.shop.trade.order.service.ship;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.trade.entity.OrdItem;
-import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.entity.OrdShipment;
 import ai.neargo.shop.trade.order.transition.Operator;
-import ai.neargo.shop.trade.order.transition.OrderStateStore;
+import ai.neargo.shop.trade.order.support.MemoryStatusWriter;
 import ai.neargo.shop.trade.order.transition.OrderTransitions;
-import ai.neargo.shop.trade.entity.OrdOrder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,6 +32,10 @@ class ShipHandlerTest {
             return items;
         }
 
+        public List<OrdShipment> activeOf(String subOrderNo) {
+            return List.of();
+        }
+
         public OrdShipment findActiveWaybill(String carrier, String waybillNo) {
             return dup;
         }
@@ -47,19 +49,14 @@ class ShipHandlerTest {
             saved = shipment;
         }
 
+        public void supersede(OrdShipment old, String replacement, Operator op) {
+        }
+
+        public void saveLegacyFields(OrdSubOrder order, String carrier, String waybill) {
+        }
+
         public void bindItems(List<OrdItem> items) {
             bound = items;
-        }
-    }
-
-    static class FakeStateStore implements OrderStateStore {
-        public void saveOrderStatus(OrdOrder order) {
-        }
-
-        public void saveSubStatus(OrdSubOrder sub) {
-        }
-
-        public void appendLog(OrdStatusLog log) {
         }
     }
 
@@ -70,6 +67,7 @@ class ShipHandlerTest {
     private OrdItem item(String sku) {
         OrdItem i = new OrdItem();
         i.setSkuNo(sku);
+        i.setId("SK1".equals(sku) ? 1L : 2L);
         i.setQty(1);
         return i;
     }
@@ -83,8 +81,10 @@ class ShipHandlerTest {
         o.setStatus(OrdSubOrder.WAIT_FULFILL);
         o.setStoreNo("ST-A");
         read.order = o;
+        MemoryStatusWriter status = new MemoryStatusWriter();
+        status.track(o);
         read.items = new ArrayList<>(List.of(item("SK1"), item("SK2")));
-        handler = new ShipHandler(read, write, new OrderTransitions(new FakeStateStore()), () -> "SH1");
+        handler = new ShipHandler(read, write, new OrderTransitions(status.writer()), () -> "SH1");
     }
 
     @Test
@@ -127,6 +127,7 @@ class ShipHandlerTest {
         mine.setSubOrderNo("ORD1");
         mine.setShipmentNo("SH1");
         read.dup = mine;
+        read.items.forEach(i -> i.setShipmentNo("SH1"));
         String no = handler.ship("ORD1", "STO", "773445089430765", null, Operator.merchant("M1"));
         assertThat(no).isEqualTo("SH1");
         assertThat(write.saved).isNull();

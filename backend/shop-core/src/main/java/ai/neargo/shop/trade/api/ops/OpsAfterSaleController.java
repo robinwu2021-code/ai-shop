@@ -76,6 +76,14 @@ public class OpsAfterSaleController {
         return vo;
     }
 
+    @PostMapping("/ops/after-sales/{afterSaleNo}/recover")
+    @PreAuthorize("@perm.can('" + Perms.AFTERSALE_TICKET_HANDLE + "')")
+    public OpsAfterSaleVO recover(@PathVariable String afterSaleNo) {
+        OpsAfterSaleVO result = afterSaleService.recoverRefund(afterSaleNo, SecurityUtils.currentUserNo());
+        auditLogPort.record("AFTER_SALE_RECOVER", afterSaleNo, "恢复原退款执行及待恢复资源");
+        return result;
+    }
+
     // ---------------------------------------------------------------- 售后规则（极速退 + 时效）
 
     @GetMapping("/ops/after-sales/fast-refund-rule")

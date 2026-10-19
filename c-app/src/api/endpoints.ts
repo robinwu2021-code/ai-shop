@@ -219,21 +219,25 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   cartRemove: { method: "POST", path: "/mp/cart/remove", auth: true, summary: "移除商品" },
 
   // ---------------------------------------------------------------- 交易
-  createOrder: { method: "POST", path: "/mp/order", auth: true, summary: "下单（幂等）" },
+  createOrder: { method: "POST", path: "/mp/order", auth: true, clientTag: true, summary: "下单（幂等）" },
   // 收银台先问「能用哪些方式」，再带着选中的通道去发起 —— 两步，不是一步。
   // 后端算好了交集（市场 × 各商家进件 × 网关有没有实现），端上直接渲染。
   payMethods: { method: "GET", path: "/mp/order/:orderNo/pay-method", auth: true, summary: "可用支付方式" },
+  payResult: { method: "GET", path: "/mp/order/:orderNo/pay-result", auth: true, summary: "支付结果" },
   payOrder: { method: "POST", path: "/mp/order/:orderNo/pay", auth: true, summary: "支付" },
   orderList: { method: "GET", path: "/mp/order", auth: true, summary: "订单列表" },
   promotedGoods: { method: "GET", path: "/mp/goods/promoted", auth: false, summary: "推荐商品（运营位）" },
   promotedMerchants: { method: "GET", path: "/mp/merchant/promoted", auth: false, summary: "推荐门店（运营位）" },
   orderDetail: { method: "GET", path: "/mp/order/:orderNo", auth: true, summary: "订单详情", clientTag: true },
+  orderPointsState: { method: "GET", path: "/mp/order/:orderNo/points-state", auth: true, summary: "本人订单积分接线阶段" },
   track: { method: "GET", path: "/mp/track", auth: false, summary: "免登录看件（令牌即授权）", clientTag: true },
   trackMiniLink: { method: "GET", path: "/mp/track/mini-link", auth: false, summary: "看件页跳小程序的 URL Link" },
   trackMine: { method: "GET", path: "/mp/track/mine", auth: true, summary: "小程序侧看件(本人)", clientTag: true },
   orderTrace: { method: "GET", path: "/mp/order/:orderNo/trace", auth: true, summary: "物流页（查看物流）", clientTag: true },
+  confirmReceipt: { method: "POST", path: "/mp/order/:orderNo/confirm-receipt", auth: true, summary: "本人确认收货" },
   cancelOrder: { method: "POST", path: "/mp/order/:orderNo/cancel", auth: true, summary: "取消订单" },
   orderPreview: { method: "POST", path: "/mp/order/preview", auth: true, summary: "订单预览（金额以后端为准）" },
+  orderPointsQuote: { method: "POST", path: "/mp/order/points-quote", auth: true, clientTag: true, summary: "按门店的积分抵扣报价" },
   orderCapability: { method: "POST", path: "/mp/order/capability", auth: true, summary: "结算页能力提示（开票/支付方式/额度）" },
   // 开票（ADR-017 §3.4 条件 2）。此前 C 端零入口 —— 只有下单前一句「本商家无法开票」，
   // 连申请的地方都没有。归集路径下开票的是平台，不是商家
@@ -250,6 +254,7 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   // ---------------------------------------------------------------- 营销
   afterSaleReasons: { method: "GET", path: "/mp/after-sale/reasons", auth: false, summary: "售后原因清单" },
   afterSaleList: { method: "GET", path: "/mp/after-sale", auth: true, summary: "我的售后单" },
+  cancelAfterSale: { method: "POST", path: "/mp/after-sale/:afterSaleNo/cancel", auth: true, summary: "撤销售后申请" },
   fillReturnExpress: { method: "POST", path: "/mp/after-sale/:afterSaleNo/ship", auth: true, summary: "填退货运单号" },
   raiseDispute: { method: "POST", path: "/mp/after-sale/:afterSaleNo/escalate", auth: true, summary: "上升平台裁决" },
 
@@ -388,14 +393,8 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   // 路径用**复数** `points`：与设计文档、B 端 `/biz/points/**` 一致。
   // 商家侧的两条已迁到 b-app —— ADR-007 §3「contract 层不共享」，
   // 它们挂在 C 端是契约写在 b-app 拆分之前留下的。
-  pointAccount: { method: "GET", path: "/mp/points/account", auth: true, summary: "积分账户" },
-  pointRecords: { method: "GET", path: "/mp/points/records", auth: true, summary: "积分流水" },
-  pointsDeductible: {
-    method: "GET",
-    path: "/mp/points/deductible",
-    auth: true,
-    summary: "结算页试算：本单最多可抵多少",
-  },
+  pointsAccounts: { method: "GET", path: "/mp/points/accounts", auth: true, summary: "本人按类型积分账户" },
+  pointsEntries: { method: "GET", path: "/mp/points/entries", auth: true, summary: "本人按类型积分流水" },
 
   // ---------------------------------------------------------------- 卡包
   myCards: { method: "GET", path: "/mp/card/mine", auth: true, summary: "我的卡包" },

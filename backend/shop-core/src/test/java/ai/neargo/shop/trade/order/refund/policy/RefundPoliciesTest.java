@@ -4,7 +4,7 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.trade.order.refund.model.RefundLine;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.shop.trade.order.refund.model.RefundableLine;
-import ai.neargo.shop.trade.service.FulfillStage;
+import ai.neargo.shop.trade.order.policy.FulfillStage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

@@ -212,7 +212,13 @@ public interface CampaignPort {
                            * 门槛要按那几件货的小计判 —— 只给总额的话，买一件报名的货加一堆别的货就凑够了满减。
                            * 老调用方不传（空列表）：平台活动在这一家上不生效，行为与加字段之前一致。
                            */
-                          List<GoodsLine> lines) {
+                          List<GoodsLine> lines, boolean pointsRewardsEnabled) {
+
+        /** Legacy domain callers retain their reward policy; order checkout supplies its own capability. */
+        public MerchantAmount(String merchantNo, long goodsAmount, int goodsQty, String storeNo,
+                              List<GoodsLine> lines) {
+            this(merchantNo, goodsAmount, goodsQty, storeNo, lines, true);
+        }
 
         public MerchantAmount(String merchantNo, long goodsAmount, int goodsQty, String storeNo) {
             this(merchantNo, goodsAmount, goodsQty, storeNo, List.of());

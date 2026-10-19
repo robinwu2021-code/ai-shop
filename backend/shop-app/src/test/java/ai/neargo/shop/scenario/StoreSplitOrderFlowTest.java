@@ -5,7 +5,7 @@ import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestPlan;
 import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,7 +53,7 @@ class StoreSplitOrderFlowTest {
     private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
 
     @Autowired
-    private SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

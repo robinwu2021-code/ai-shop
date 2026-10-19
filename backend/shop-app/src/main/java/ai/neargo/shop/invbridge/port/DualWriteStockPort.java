@@ -1,6 +1,8 @@
 package ai.neargo.shop.invbridge.port;
 
 import ai.neargo.shop.invbridge.InvMirrorEvent;
+import ai.neargo.shop.invbridge.OriginalMirrorRestore;
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.event.DomainEvent;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.product.port.StockPortImpl;
@@ -13,6 +15,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 双写：<b>平台仍是真相源，进销存跟着记一笔</b>。
@@ -47,6 +50,7 @@ import java.util.List;
  */
 @Component
 @Primary
+@ConditionalOnInventory
 @ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "DUAL")
 public class DualWriteStockPort implements StockPort {
 
@@ -62,6 +66,17 @@ public class DualWriteStockPort implements StockPort {
      * 过滤放在发事件这一侧而不是消费侧：消费时再判，切换那一刻前后的事件会按新设置被解释
      */
     private final InvManagedPort invManaged;
+    private OriginalMirrorRestore originalRestores;
+
+    @Autowired
+    public void setOriginalRestores(OriginalMirrorRestore originalRestores) {
+        this.originalRestores = originalRestores;
+    }
+
+    @Override
+    public RestoreResult restoreOriginal(String purpose, String originalRef, List<SkuQty> items) {
+        return originalRestores.restore(purpose, originalRef, items);
+    }
 
     public DualWriteStockPort(StockPortImpl platform, OutboxEventBus bus, InvManagedPort invManaged) {
         this.platform = platform;
@@ -143,10 +158,10 @@ public class DualWriteStockPort implements StockPort {
                     items.stream().map(StockPort.SkuQty::skuNo).toList());
             kept = items.stream().filter(i -> managed.contains(i.skuNo())).toList();
             /*
-             * 整单都是不记库存的货：RESERVE / RESTORE 不发。之后按 ref 来的 COMMIT / RELEASE
-             * 在消费侧找不到预留，按已处理跳过 —— 那条路本来就为「预留没建成」留着
+             * RESERVE 的空集合也留作原始范围证明；恢复时不能拿今日 managed 开关推断旧范围。
+             * 既有 RESTORE 对整单不管理的商品继续不发。
              */
-            if (kept.isEmpty()) {
+            if (kept.isEmpty() && !InvMirrorEvent.RESERVE.equals(type)) {
                 return;
             }
         }

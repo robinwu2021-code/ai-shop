@@ -23,8 +23,8 @@ import java.util.Optional;
  *   <li><b>返回类型必须就是 {@code String}</b>：统一信封只放过返回类型是 String 的方法 ——
  *       {@code ResponseEntity<String>} 也会被它包成 ApiResult，写响应时 ClassCastException、渠道收到 10500
  *       （2026-10-09 场景测试当场抓到）；</li>
- *   <li><b>只要渠道名存在就一律回成功</b>：验签失败、找不到运单、入库异常都回成功、各自记 WARN / ERROR ——
- *       回失败渠道会重推，而重推的报文不会让结果变对；快递100 只重试 3 次，之后靠补偿作业；</li>
+ *   <li>验签失败或身份不匹配回成功，重推也不会让无效报文变对；数据库写入异常回可重试失败，
+ *       让渠道重推并由补偿作业兜底。</li>
  *   <li>渠道名不存在 → 回 {@code {"result":false}} 并 WARN。写不出 404：全局异常处理把任何异常都转成
  *       HTTP 200 + 10500，而域里又不许碰 Servlet 响应对象。</li>
  * </ul>
@@ -45,6 +45,7 @@ public class LogisticsCallbackController {
     }
 
     static final String UNKNOWN_CHANNEL = "{\"result\":false,\"returnCode\":\"404\",\"message\":\"unknown channel\"}";
+    static final String TEMPORARY_FAILURE = "{\"result\":false,\"returnCode\":\"500\",\"message\":\"temporary failure\"}";
 
     @PostMapping(value = "/callback/logistics/{channel}", produces = "application/json")
     public String push(@PathVariable String channel,
@@ -60,7 +61,8 @@ public class LogisticsCallbackController {
             String raw = body != null && !body.isBlank() ? body : String.valueOf(form);
             ingestion.ingest(channel, r.parse(new PushReceiver.Request(form, body)), raw);
         } catch (RuntimeException e) {
-            log.error("[lgs-push] {} 推送入库失败（照样回成功，补偿作业兜底）：{}", channel, e.toString(), e);
+            log.error("[lgs-push] {} 推送入库失败，要求渠道重试：{}", channel, e.toString(), e);
+            return TEMPORARY_FAILURE;
         }
         return r.ack();
     }

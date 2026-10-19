@@ -56,6 +56,19 @@ const OWNER_COLUMNS = [
  * 业务数据的答案永远是会。
  */
 const EXEMPT: Record<string, string> = {
+  pts_statement_build: "账单构建游标，仅内部恢复按构建号访问；对外经账单所属门店权限校验，不提供独立列表。",
+  pts_statement_confirmation: "修订确认与通知状态，B仅按当前已授权门店账单访问，Ops先校验门店；后台恢复不能按请求数据域截断。",
+  pts_user_account: "旧积分方案的空表；生产只读审计为 0 行，新方案无代码读取，保留表结构不做数据迁移或删除。",
+  pts_user_ledger: "旧积分方案的空表；生产只读审计为 0 行，新方案无代码读取，保留表结构不做数据迁移或删除。",
+  stl_points_pool: "旧积分方案的空表；生产只读审计为 0 行，新方案改由 pts_fund_pool/pts_pool_flow 记账，保留表结构不做数据迁移或删除。",
+  ord_points_binding: "源绑定按原子单读取；运营经 PointsOpsAccess.store 校验冻结门店后访问，恢复不受调用人过滤。",
+  ord_points_integration_policy: "门店×场景主键策略配置；运营先校验门店数据域，准入按原门店锁定读取。",
+  ord_points_source_fact: "原事实与恢复队列，运营经已授权绑定读取，不提供无门店全量列表。",
+  pts_grant_position: "原承诺快照，恢复按原号读取；运营持仓入口先校验平台级或门店权限。",
+  pts_merchant_agreement: "门店冻结协议，B 从当前门店取号，Ops 明确校验该门店授权。",
+  pts_receivable: "门店应收，运营先验证门店；清偿不得按当前请求线程的数据域截断原责任。",
+  pts_redeem_position: "用户及接收门店原使用快照，运营查询先校验对应边界，恢复按原持仓。",
+  pts_store_statement: "原门店及路线结算持仓，运营先校验门店，账务恢复不能隐藏原责任。",
   /*
    * ── 2026-08-31：入驻申请单 —— **登记它反而会造出一片空白** ──
    *

@@ -56,6 +56,9 @@ public interface SmsPort {
      */
     SendResult sendOrderPaid(String phone, String subOrderNo, String amountYuan);
 
+    /** 商家待审核售后提醒；模板不带订单号变量，详情在商家端查看。 */
+    SendResult sendAfterSaleApplied(String phone, String afterSaleNo);
+
 
     /**
      * 发货通知**给收件人**（TDD-收件人物流触达与分享裂变 §2.2）。

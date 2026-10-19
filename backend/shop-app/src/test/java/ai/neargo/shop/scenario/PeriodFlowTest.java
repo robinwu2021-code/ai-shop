@@ -67,6 +67,16 @@ class PeriodFlowTest {
     @Autowired private PeriodService periodService;
     @Autowired private FulfillmentStatsPort statsPort;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private ai.neargo.shop.trade.service.AfterSaleService afterSales;
+    @Autowired private ai.neargo.shop.pay.service.PaymentLedgerService ledger;
+    @Autowired private ai.neargo.shop.pay.channel.TestPayGateway bank;
+
+    private void finishRefund(String order) {
+        String as=jdbc.queryForObject("SELECT after_sale_no FROM ord_after_sale WHERE order_no=?",String.class,order);
+        afterSales.resumeRefund(as,"SYSTEM"); afterSales.resumeRefund(as,"SYSTEM");
+        assertThat(jdbc.queryForObject("SELECT status FROM stl_payment WHERE after_sale_no=?",String.class,as)).isEqualTo("SUCCESS");
+    }
+
 
     private final List<String> started = new ArrayList<>();
 
@@ -126,6 +136,7 @@ class PeriodFlowTest {
         mvc().perform(post("/mp/order/" + first + "/cancel").header("Authorization", "Bearer " + buyer)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"不要了\"}"))
                 .andExpect(status().isOk());
+        finishRefund(first);
         assertThat(subOf(first).get("status"))
                 .as("★ 截单前撤单没退款 —— 已付款的主单在状态机里没有出口，只能逐张子单走系统退款")
                 .isEqualTo("REFUNDED");
@@ -152,6 +163,7 @@ class PeriodFlowTest {
         mvc().perform(post("/mp/order/" + refunded + "/cancel").header("Authorization", "Bearer " + buyer)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"x\"}"));
 
+        finishRefund(refunded);
         String periodNo = (String) subOf(kept).get("period_no");
         PeriodDetailVO d = periodService.detail(ENTITY, periodNo);
         int goodsQty = d.byGoods().stream().filter(g -> GOODS.equals(g.goodsNo()))
@@ -182,6 +194,7 @@ class PeriodFlowTest {
 
         periodService.decide(ENTITY, periodNo, Decision.CANCEL, "OP");
         assertThat(periodStatus(periodNo)).isEqualTo("CANCELLED");
+        finishRefund(orderNo);
         assertThat(subOf(orderNo).get("status"))
                 .as("★ 取消了期却没退钱 —— abortGroup 就是这么做的，钱一分没退").isEqualTo("REFUNDED");
     }
@@ -202,6 +215,7 @@ class PeriodFlowTest {
         assertThat(periodStatus(periodNo)).isEqualTo("CANCELLED");
         assertThat(jdbc.queryForObject("select decided_by from pmt_period where period_no=?",
                 String.class, periodNo)).as("超时取消要记成系统，商家问「谁取消的」要答得上").isEqualTo("SYSTEM");
+        finishRefund(a);
         assertThat(subOf(a).get("status")).isEqualTo("REFUNDED");
 
         periodService.cancelUndecided(afterDeadline);
@@ -337,10 +351,13 @@ class PeriodFlowTest {
         JsonNode r = json.readTree(body);
         assertThat(r.get("code").asInt()).as("下单失败：" + body).isEqualTo(0);
         String orderNo = r.get("data").get("payOrderNo").asString();
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"TX-P" + (++seq)
+        String trade=ai.neargo.shop.support.RefundScenarioPayments.receivedForOrder(
+                jdbc,ledger,bank,orderNo);
+        String ack=mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"" + trade
                         + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(ack).isEqualTo("SUCCESS");
         return orderNo;
     }
 

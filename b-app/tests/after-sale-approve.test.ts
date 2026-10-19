@@ -34,3 +34,14 @@ describe("「一并退回」提示不吞掉操作按钮（AC9）", () => {
     expect(next?.[1], "提示行后面接的是 v-else-if → 按钮又被吞了").toBe("if");
   });
 });
+
+describe("积分接线后的商家核定", () => {
+  const sfc = readFileSync(
+    fileURLToPath(new URL("../src/pages/after-sale/index.vue", import.meta.url)), "utf8");
+
+  it("只提交现金退款，积分返还由独立退款链路处理", () => {
+    expect(sfc).not.toContain('approveMode = "POINTS"');
+    expect(sfc).not.toContain('t("afterSale.refundModePoints")');
+    expect(sfc).toContain('void agree(r, minor, "CASH")');
+  });
+});

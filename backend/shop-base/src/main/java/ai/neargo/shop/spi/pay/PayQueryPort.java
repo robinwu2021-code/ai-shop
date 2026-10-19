@@ -27,6 +27,14 @@ public interface PayQueryPort {
      */
     Result queryRefund(String payChannel, String outTradeNo);
 
+    default RefundQueryResult queryRefundOutcome(String channel, String no) {
+        Result r = queryRefund(channel, no);
+        if (r == null || !r.ok() || !r.found()) return RefundQueryResult.unknown(no);
+        return new RefundQueryResult(r.paid() ? RefundQueryResult.Status.SUCCEEDED
+                : RefundQueryResult.Status.PROCESSING, null, no, r.amountMinor(), r.tradeNo(),
+                r.currency(), System.currentTimeMillis());
+    }
+
     /**
      * @param ok    查询本身是否成功。<b>false 时其余字段不可信</b>，
      *              而且<b>绝不能据此关单</b> —— 查询失败与「通道没有这笔」是两件事，
@@ -34,6 +42,9 @@ public interface PayQueryPort {
      * @param paid  通道侧是否已支付
      * @param found 通道有没有这笔单
      */
-    record Result(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo) {
+    record Result(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo, String currency) {
+        public Result(boolean ok, boolean paid, boolean found, long amountMinor, String tradeNo) {
+            this(ok, paid, found, amountMinor, tradeNo, "CNY");
+        }
     }
 }

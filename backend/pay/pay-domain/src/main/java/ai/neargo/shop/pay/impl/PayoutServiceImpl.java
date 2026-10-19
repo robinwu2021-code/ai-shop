@@ -5,7 +5,10 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.PayoutService;
-import ai.neargo.shop.pay.PointsService;
+import ai.neargo.shop.pay.settle.SettlementPointsFundingService;
+import ai.neargo.shop.pay.settle.SettlementPointsFundingExecutionService;
+import ai.neargo.shop.pay.settle.PayoutExportService;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.entity.StlPayout;
 import ai.neargo.shop.pay.entity.StlSettleBatch;
@@ -36,15 +39,18 @@ public class PayoutServiceImpl implements PayoutService {
     private final SettleBatchMapper batchMapper;
     private final PayoutMapper payoutMapper;
     private final PayoutAccountPort payoutAccounts;
-    private final PointsService pointsService;
+    private final SettlementPointsFundingService pointsFunding;
+    private final SettlementPointsFundingExecutionService fundingExecution;
+    private final PayoutExportService exports;
 
     public PayoutServiceImpl(BillMapper billMapper, SettleBatchMapper batchMapper, PayoutMapper payoutMapper,
-                             PayoutAccountPort payoutAccounts, PointsService pointsService) {
+                             PayoutAccountPort payoutAccounts, SettlementPointsFundingService pointsFunding,
+                             SettlementPointsFundingExecutionService fundingExecution,PayoutExportService exports) {
         this.billMapper = billMapper;
         this.batchMapper = batchMapper;
         this.payoutMapper = payoutMapper;
         this.payoutAccounts = payoutAccounts;
-        this.pointsService = pointsService;
+        this.pointsFunding=pointsFunding; this.fundingExecution=fundingExecution; this.exports=exports;
     }
 
     @Override
@@ -153,27 +159,21 @@ public class PayoutServiceImpl implements PayoutService {
     }
 
     @Override
-    @Transactional("payTxManager")
-    public int markExported(Collection<String> payoutNos, String operator) {
-        if (payoutNos == null || payoutNos.isEmpty()) {
-            return 0;
+    public int markExported(Collection<String> payoutNos,String operator) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("SETTLEMENT_FUNDS_REQUIRES_NO_TRANSACTION");
         }
-        int n = 0;
-        for (String no : payoutNos) {
-            StlPayout p = requirePayout(no);
-            if (!StlPayout.PENDING.equals(p.getStatus())) {
-                continue;   // 幂等：已导出 / 已付的不动
+        if (payoutNos==null || payoutNos.isEmpty()) { return 0; }
+        for (String no:payoutNos) {
+            StlPayout payout=requirePayout(no);
+            if (!StlPayout.PENDING.equals(payout.getStatus())) { continue; }
+            for (StlBill bill:billsOf(no)) {
+                if (!fundingExecution.ensureReady(bill.getSettleNo())) {
+                    throw new IllegalStateException("POINTS_FUNDING_PENDING_EXPORT_BLOCKED");
+                }
             }
-            StlPayout patch = new StlPayout();
-            patch.setId(p.getId());
-            patch.setStatus(StlPayout.EXPORTED);
-            patch.setExportedAt(System.currentTimeMillis());
-            patch.setUpdatedBy(operator);
-            // 不绕数据域：它从 GET 付款清单里被调到，运营看不到的放款也不该被它翻成已导出
-            payoutMapper.updateById(patch);
-            n++;
         }
-        return n;
+        return exports.markExported(payoutNos,operator);
     }
 
     @Override
@@ -208,8 +208,7 @@ public class PayoutServiceImpl implements PayoutService {
             patch.setPaymentRef(paymentRef.trim());
             patch.setPaidAt(now);
             DataScopeContext.executeWithoutScope(() -> billMapper.updateById(patch));
-            // 归集路径的积分兑付时点在这里（与老 markPaid 同一条规矩）
-            pointsService.confirmDeduction(b.getSubOrderNo());
+            pointsFunding.assertReady(b.getSettleNo());
         }
         log.warn("[payout] {} 登记付款：凭证 {} · {} 分（{}）", payoutNo, paymentRef, p.getAmountMinor(), operator);
         return toVO(p, settleNosOf(payoutNo));

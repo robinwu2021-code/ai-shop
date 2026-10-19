@@ -160,6 +160,8 @@ export interface Quote {
 export interface GroupRequest {
   /** 求团需求单号 */
   requestNo: string;
+  /** 求团发起人用户号；服务端用于区分发起人与参与邻居。 */
+  ownerId: string;
   /** 发起人昵称 */
   initiatorNickname: string;
   /** 发起人头像 */
@@ -199,10 +201,6 @@ export interface GroupRequest {
    * 这是防加价最硬的一层：加价在技术上做不到，不需要审核。
    */
   lockedPriceMinor?: number;
-  /** 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 */
-  confirmed?: boolean;
-  /** 已确认下单的人数 */
-  confirmedCount?: number;
 }
 /**
  * 商家团 —— 商家在已上架商品上开的团，用户可参与或自己开一桌。

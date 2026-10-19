@@ -90,6 +90,10 @@ export function orderView(
 ): OrderView {
   const shape = shapeOf(fulfillment);
 
+  if (status === "POINTS_PROCESSING") {
+    return { labelKey: "orderView.POINTS_PROCESSING", next: NEXT_ACTION.WAIT, needsTime: false };
+  }
+
   if (status === "WAIT_OFFLINE_PAY") {
     /*
      * 线下支付：钱要当面给。**下一步动作按形态分** ——
@@ -214,7 +218,7 @@ export function codeLabelKey(
 }
 
 export function statusTone(status: OrderStatus): string {
-  if (status === "WAIT_PAY" || status === "WAIT_OFFLINE_PAY") return "is-warning";
+  if (status === "WAIT_PAY" || status === "WAIT_OFFLINE_PAY" || status === "POINTS_PROCESSING") return "is-warning";
   if (status === "COMPLETED" || status === "CANCELLED" || status === "REFUNDED") return "txt-quiet";
   return "txt-primary";
 }

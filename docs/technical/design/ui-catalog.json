@@ -569,7 +569,7 @@
             {
               "app": "b-app",
               "route": "/pages/points-records/index",
-              "title": "积分发放明细",
+              "title": "门店积分流水",
               "domain": "钱",
               "tab": false,
               "status": "已实现",
@@ -1540,7 +1540,7 @@
     {
       "key": "ops-web",
       "label": "运营端",
-      "count": 149,
+      "count": 152,
       "domains": [
         {
           "name": "经营看板",
@@ -1961,19 +1961,6 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:3000/products?tab=category-pay-mode"
-            },
-            {
-              "app": "ops-web",
-              "route": "/products?tab=category-points",
-              "title": "类目 × 积分",
-              "domain": "商品与库存",
-              "group": "类目",
-              "matrix": "P-3.1",
-              "tab": false,
-              "status": "已实现",
-              "proto": null,
-              "protoUrl": null,
-              "preview": "http://localhost:3000/products?tab=category-points"
             },
             {
               "app": "ops-web",
@@ -2728,29 +2715,81 @@
             },
             {
               "app": "ops-web",
-              "route": "/finance?tab=points",
+              "route": "/points?tab=overview",
               "title": "积分资金看板",
               "domain": "结算与资金",
-              "group": "分账结算",
+              "group": "积分运营",
               "matrix": "P-12.1",
               "tab": false,
               "status": "已实现",
               "proto": null,
               "protoUrl": null,
-              "preview": "http://localhost:3000/finance?tab=points"
+              "preview": "http://localhost:3000/points?tab=overview"
             },
             {
               "app": "ops-web",
-              "route": "/finance?tab=points-policy",
-              "title": "积分端开关",
+              "route": "/points?tab=configuration",
+              "title": "积分类型与协议",
               "domain": "结算与资金",
-              "group": "分账结算",
+              "group": "积分运营",
               "matrix": "P-12.1",
               "tab": false,
               "status": "已实现",
               "proto": null,
               "protoUrl": null,
-              "preview": "http://localhost:3000/finance?tab=points-policy"
+              "preview": "http://localhost:3000/points?tab=configuration"
+            },
+            {
+              "app": "ops-web",
+              "route": "/points?tab=treasury",
+              "title": "积分资金工作台",
+              "domain": "结算与资金",
+              "group": "积分运营",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/points?tab=treasury"
+            },
+            {
+              "app": "ops-web",
+              "route": "/points?tab=settlements",
+              "title": "积分账单与退款",
+              "domain": "结算与资金",
+              "group": "积分运营",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/points?tab=settlements"
+            },
+            {
+              "app": "ops-web",
+              "route": "/points?tab=queries",
+              "title": "积分账务与对账",
+              "domain": "结算与资金",
+              "group": "积分运营",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/points?tab=queries"
+            },
+            {
+              "app": "ops-web",
+              "route": "/points?tab=switches",
+              "title": "积分范围开关",
+              "domain": "结算与资金",
+              "group": "积分运营",
+              "matrix": "P-12.1",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:3000/points?tab=switches"
             },
             {
               "app": "ops-web",
@@ -3510,5 +3549,5 @@
       ]
     }
   ],
-  "total": 277
+  "total": 280
 }

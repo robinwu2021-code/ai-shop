@@ -50,6 +50,8 @@ public final class InvMirrorEvent {
     public static final String RELEASE = PREFIX + "RELEASE";
     /** 售后退回 → 进销存回补库存。 */
     public static final String RESTORE = PREFIX + "RESTORE";
+    /** 原退款执行恢复：原库存预留事实与目的号决定入库，不重新解析当前配置。 */
+    public static final String RESTORE_ORIGINAL = PREFIX + "RESTORE_ORIGINAL";
     /**
      * 商家在商品页手改库存 → 进销存跟着改。
      *
@@ -65,7 +67,7 @@ public final class InvMirrorEvent {
      * {@code case} 标签上 —— 拼写不一致因此在编译期就没法发生。
      * 消不掉的是<b>遗漏</b>，那一档交给 {@code InvMirrorEventCoverageTest}。
      */
-    public static final Set<String> ALL = Set.of(RESERVE, COMMIT, RELEASE, RESTORE, ADJUST);
+    public static final Set<String> ALL = Set.of(RESERVE, COMMIT, RELEASE, RESTORE, RESTORE_ORIGINAL, ADJUST);
 
     private InvMirrorEvent() {
     }

@@ -25,7 +25,15 @@ export const messageMock: Pick<MerchantApi,
   // ---- 消息。mock 世界与 C 端共用一个消息池（没有 receiver 维度）——
   // 这里演示的是消息中心的交互，不是收件箱隔离；隔离由后端场景测试保证
   async mMessageList() {
-    return delay([...db.messages].sort((a, b) => b.at - a.at));
+    const storeNo = currentStoreNo();
+    return delay([...db.messages].sort((a, b) => b.at - a.at).map((m) => {
+      const bizNo = m.link?.match(/[?&]afterSaleNo=([^&]+)/)?.[1] ?? null;
+      const order = db.orders.find((o) => o.afterSale?.afterSaleNo === bizNo);
+      return { ...m, bizType: bizNo ? "AFTER_SALE" : null, bizNo,
+        storeNo: order?.store?.storeNo ?? null,
+        actionPending: !!order && (!storeNo || order.store?.storeNo === storeNo)
+          && ["APPLIED", "RETURNING", "WAIT_RECEIPT"].includes(order.afterSale!.status) };
+    }));
   },
 
   async mMessageUnread() {

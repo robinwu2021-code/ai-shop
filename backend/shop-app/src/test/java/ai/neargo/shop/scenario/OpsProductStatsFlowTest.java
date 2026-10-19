@@ -98,6 +98,25 @@ class OpsProductStatsFlowTest {
         assertThat(s.get("auditDays").asInt()).isEqualTo(7);
     }
 
+    @Autowired
+    private ai.neargo.shop.product.stats.ProductStatsService productStats;
+
+    @Test
+    void scopedStatsDoNotCountAnotherMerchantSku() {
+        Long id = seedSku("SCOPE-CODE", "SCOPE-SKU");
+        try {
+            DataScopeContext.set(ai.neargo.common.data.scope.DataScopeSpec.of(
+                    "MERCHANT", java.util.Set.of("E-STAT-OTHER")));
+            assertThat(productStats.stats(7).skus()).isZero();
+            DataScopeContext.set(ai.neargo.common.data.scope.DataScopeSpec.of(
+                    "MERCHANT", java.util.Set.of("E-STAT-PROBE")));
+            assertThat(productStats.stats(7).skus()).isGreaterThanOrEqualTo(1);
+        } finally {
+            DataScopeContext.clear();
+            DataScopeContext.executeWithoutScope(() -> skuMapper.deleteById(id));
+        }
+    }
+
     private Long seedSku(String barcode, String code) {
         PrdSku sku = new PrdSku();
         sku.setSkuNo("SKUSTAT-" + System.nanoTime());

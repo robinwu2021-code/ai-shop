@@ -61,6 +61,16 @@ public class AfterSaleRequestPlanner {
         return plan;
     }
 
+    /** Full server-calculated zero cash still represents physical goods and must retain the same window guard. */
+    public RefundPlan planFull(OrdSubOrder sub, RefundPlan full, List<RefundLine> items,
+                               Long amount, String reasonCode, long now) {
+        if (!window.isOpen(sub.getCompletedAt(), reasonCode, now)) {
+            throw BizException.of(ErrorCode.AFTERSALE_WINDOW_CLOSED);
+        }
+        BasicRefundPolicy.validateRequest(full, items, amount);
+        return full;
+    }
+
     public void save(String afterSaleNo, RefundPlan plan) {
         lines.saveLines(afterSaleNo, plan.subOrderNo(), plan.lines());
     }

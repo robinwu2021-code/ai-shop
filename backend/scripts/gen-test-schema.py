@@ -55,6 +55,13 @@ HEADER = """-- 【自动生成，勿手改】由 backend/scripts/gen-test-schema
 
 
 
+def _h2_generated_column(col: str) -> str:
+    # H2 calculates generated columns itself and has no MySQL STORED storage modifier.
+    if re.search(r"\bGENERATED\s+ALWAYS\s+AS\b", col, flags=re.I):
+        return re.sub(r"\s+STORED\s*$", "", col, flags=re.I)
+    return col
+
+
 def _h2_type(col: str) -> str:
     """列类型的 H2 兼容映射。
 
@@ -67,7 +74,7 @@ def _h2_type(col: str) -> str:
     **修在生成器而不是产物**：手改 schema-test.sql 会在下一次重新生成时被冲掉，
     这一条已经被覆盖过三次。生产库仍是 JSON，那边没有这个问题。
     """
-    return re.sub(r"(?<![\w])JSON(?![\w])", "TEXT", col, flags=re.I)
+    return _h2_generated_column(re.sub(r"(?<![\w])JSON(?![\w])", "TEXT", col, flags=re.I))
 
 
 def main():
@@ -106,6 +113,11 @@ def main():
                     stmt = re.sub(r"^(INSERT\s+INTO\s+\w+)\s+VALUES\b",
                                   lambda mm: f"{mm.group(1)} ({', '.join(cols)}) VALUES",
                                   stmt, count=1, flags=re.S | re.I)
+            # V27 seeds a natural-key MICRO row; V270 renames it. Replaying V27 would
+            # recreate MICRO beside NATURAL_PERSON and V270 would collide on its unique key.
+            # Emit the final natural key for that historical constant seed.
+            if re.match(r"^INSERT\s+INTO\s+mch_admission_policy\b",stmt,re.I):
+                stmt=stmt.replace("'MICRO'", "'NATURAL_PERSON'")
             stmt = stmt + ";"
             for old, new in renames.items():
                 stmt = re.sub(rf"\b{re.escape(old)}\b", new, stmt)
@@ -513,7 +525,7 @@ def _apply_action(table, action, cols):
         # 建表语句里出现「主键声明之后又冒出一列」，同样建不起来。
         idx = next((i for i, c in enumerate(cols)
                     if re.match(r"^\s*(CONSTRAINT|PRIMARY\s+KEY|UNIQUE)\b", c, re.I)), len(cols))
-        cols.insert(idx, "    " + col)
+        cols.insert(idx, "    " + _h2_generated_column(col))
         return True
 
     # ALTER 里的唯一键增删。**必须实现，不能靠「反正 H2 用不上索引」糊过去** ——

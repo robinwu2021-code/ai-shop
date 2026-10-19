@@ -17,17 +17,19 @@ import { ApiError } from "@shared/net/http-client";
 import { checkoutKey, checkoutKeyBoundTo } from "@/shared/checkout-key";
 import { segmentByMerchant, useCartStore } from "@/stores/cart";
 import { useCommunityStore } from "@/stores/community";
+import { useConfigStore } from "@/stores/config";
 import { useLocationStore } from "@/stores/location";
 import { useUserStore } from "@/stores/user";
 import BizLoginConsent from "@/components/biz/biz-login-consent.vue";
 import BizPhoneLoginButton from "@/components/biz/biz-phone-login-button.vue";
-import { ACTIVITY_NONE, FEATURES, FULFILLMENT, PAY_MODE, PICKUP_FAR_M, POINTS, ROUTES, TRADE_RULES } from "@shared/utils/constants";
+import { ACTIVITY_NONE, FEATURES, FULFILLMENT, PAY_MODE, PICKUP_FAR_M, ROUTES, TRADE_RULES } from "@shared/utils/constants";
 import { datetime, distance as fmtDistance, money } from "@shared/utils/format";
-import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
+import { pricingFor } from "@shared/strategies/pricing";
+import type { OrderPointsQuote } from "@/api/contract";
 // 券能减多少与后端同一套算法算 —— 两处各写一遍就会出现「页面说减 8，付完只减 5」
 import { couponDiscount } from "@shared/strategies/pricing/types";
 import { currentCurrency } from "@shared/utils/money";
-import type { ActivityChoice, Address, CartItem, CheckoutCapability, CheckoutOffers, CouponBestResult, DiscountLine, FulfillmentType, OrderItem, OrderAmount, PointsDeductible, UserCoupon } from "@shared/types";
+import type { ActivityChoice, Address, CartItem, CheckoutCapability, CheckoutOffers, CouponBestResult, DiscountLine, FulfillmentType, OrderItem, OrderAmount, UserCoupon } from "@shared/types";
 import { confirm, pick } from "@ai-shop/ui/prompt";
 import { metersBetweenE6, withinDeliveryRange } from "@shared/utils/geo";
 import { pickedAddress } from "@/shared/address-pick";
@@ -36,6 +38,7 @@ import { orderSubscribeTmpls, requestSubscribe } from "@shared/ports/push";
 const { t } = useI18n();
 const cart = useCartStore();
 const community = useCommunityStore();
+const config = useConfigStore();
 const user = useUserStore();
 const loginContinuation = ref(false);
 const revalidating = ref(false);
@@ -353,6 +356,7 @@ const amountStale = ref(false);
  * 点了支付之后才知道，而那时候平台既解释不清也补救不了。
  */
 const capability = ref<CheckoutCapability | null>(null);
+const pointsEnabled = computed(() => FEATURES.points && capability.value?.pointsEnabled === true);
 
 /**
  * 这一单里**送不到这个地址**的商家。空数组 = 都送得到。
@@ -457,8 +461,9 @@ watch(platformCouponBlocked, (blocked) => {
  *
  * 空 = 可用。**不可用时也要显示余额**，见模板里那段注释。
  */
-const pointsDeductible = ref<PointsDeductible | null>(null);
-const pointsBlockedReason = computed(() => pointsDeductible.value?.disabledReason || "");
+const pointsQuote = ref<OrderPointsQuote | null>(null);
+const pointsPending = ref(false);
+const pointsBlockedReason = computed(() => pointsQuote.value?.state === "AVAILABLE" ? "" : pointsQuote.value?.reason || "");
 
 /** 额度已用尽或本单会超的商家：这家的货现在下不了单。 */
 const quotaBlocked = computed(
@@ -472,12 +477,20 @@ const localEstimate = computed(() => {
     fulfillment: fulfillment.value,
     currency: currentCurrency(),
     coupon: coupon.value,
-    usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
-    earnPoints: FEATURES.points ? earnPointsFor(orderItems.value) : 0,
+
+    usePoints: 0,
+    earnPoints: 0,
+
   });
 });
 
-const amount = computed(() => serverAmount.value ?? localEstimate.value);
+const amount = computed(() => {
+  const base = serverAmount.value ?? localEstimate.value;
+  if (!base || !usePoints.value || !serverAmount.value || pointsQuote.value?.state !== "AVAILABLE"
+      || pointsQuote.value.basePayMinor !== serverAmount.value.payableMinor) return base;
+  return { ...base, payableMinor: base.payableMinor - pointsQuote.value.deductMinor,
+    pointsDeductMinor: pointsQuote.value.deductMinor, pointsUsed: pointsQuote.value.pointsUsed };
+});
 
 /**
  * 影响金额的任何一项变了就重新问后端 —— 少问一次就会显示上一次的价。
@@ -697,7 +710,9 @@ async function refreshAmount() {
       addressChoices: needAddress.value ? addressChoicesPayload() : undefined,
       couponNo: couponNo.value || undefined,
       payMode: payMode.value,
-      usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
+
+      usePoints: 0,
+
       appointmentAt: appointmentAt.value,
       groupNo: groupNo.value || undefined,
       openGroup: openGroup.value || undefined,
@@ -799,24 +814,40 @@ async function refreshCapability() {
  */
 let pointsSeq = 0;
 async function refreshPoints() {
-  const merchantNo = items.value[0]?.merchantNo;
-  if (!FEATURES.points || !merchantNo) {
-    pointsDeductible.value = null;
+  const seq = ++pointsSeq;
+  const token = user.token;
+
+  if (!config.flag("points", false) || !items.value.length) {
+    pointsQuote.value = null;
+    pointBalance.value = 0;
+    usePoints.value = false;
+    pointsPending.value = false;
     return;
   }
-  const seq = ++pointsSeq;
+  pointsPending.value = true;
   try {
-    const d = await api.pointsDeductible({
-      merchantNo,
-      payableMinor: goodsMinor.value - (coupon.value ? couponDiscount(coupon.value, goodsMinor.value) : 0),
+    const d = await api.orderPointsQuote({
+      items: items.value.map((it) => ({ goodsNo: it.goodsNo, skuNo: it.skuNo, qty: it.qty })),
+      fulfillment: fulfillment.value,
+      addressId: needAddress.value ? addressId.value : undefined,
+      addressChoices: needAddress.value ? addressChoicesPayload() : undefined,
+      couponNo: couponNo.value || undefined,
       payMode: payMode.value,
+      usePoints: Number.MAX_SAFE_INTEGER,
+      appointmentAt: appointmentAt.value,
+      groupNo: groupNo.value || undefined,
+      openGroup: openGroup.value || undefined,
+      activityChoices: choicesPayload(),
     });
-    if (seq !== pointsSeq) return;
-    pointsDeductible.value = d;
+    if (seq !== pointsSeq || user.token !== token) return;
+    pointsQuote.value = d;
+    pointBalance.value = d.state === "AVAILABLE" ? d.pointsUsed : 0;
   } catch {
-    if (seq !== pointsSeq) return;
-    // 同上：问不到就不显示原因，但不拦 —— 后端下单时还会再判一次
-    pointsDeductible.value = null;
+    if (seq !== pointsSeq || user.token !== token) return;
+    pointsQuote.value = null;
+    pointBalance.value = 0;
+  } finally {
+    if (seq === pointsSeq && user.token === token) pointsPending.value = false;
   }
 }
 
@@ -872,7 +903,9 @@ watch(
 
 // 积分试算跟支付方式与券走 —— 线下能否抵是平台开关，上限按券后金额算
 watch(
-  () => [items.value.map((it) => it.skuNo).join(","), payMode.value, couponNo.value].join("|"),
+  () => [user.token, config.flag("points", false), items.value.map((it) => `${it.skuNo}x${it.qty}`).join(","), fulfillment.value,
+    payMode.value, couponNo.value, addressId.value, appointmentAt.value,
+    JSON.stringify(activityChoices.value), JSON.stringify(addressOverrides.value)].join("|"),
   () => void refreshPoints(),
   { immediate: true },
 );
@@ -899,7 +932,10 @@ const submitBlockedReason = computed(() => {
    * 金额还在算：按钮上那个「立即支付 ¥X」是上一次预览的数。线上付带 auto=1 会直接拉起微信付款面板，
    * 买家看着 ¥X 付出去的却是服务端算的另一个数。放最后 —— 它是瞬时的，前面那些才是他要动手改的。
    */
-  if (amountPending.value) return String(t("confirm.calculating"));
+  if (amountPending.value || (usePoints.value && (pointsPending.value || !serverAmount.value
+      || pointsQuote.value?.state !== "AVAILABLE"
+      || pointsQuote.value.basePayMinor !== serverAmount.value.payableMinor)))
+    return String(t("confirm.calculating"));
   return "";
 });
 
@@ -1174,7 +1210,9 @@ async function submit(fromGesture = false) {
       addressChoices: needAddress.value ? addressChoicesPayload() : undefined,
       couponNo: couponNo.value || undefined,
       payMode: payMode.value,
-      usePoints: FEATURES.points && usePoints.value ? pointBalance.value : 0,
+
+      usePoints: usePoints.value ? pointsQuote.value?.pointsUsed ?? 0 : 0,
+
       activityChoices: choicesPayload(),
       remark: remark.value || undefined,
       appointmentAt: appointmentAt.value,
@@ -1200,7 +1238,7 @@ async function submit(fromGesture = false) {
      * 收银台页加载完直接拉起支付 —— 用户不必再点第二次「立即支付」。
      * 当面付没有「拉起」这一步，照旧落到收银台页让他看单。
      */
-    const auto = payMode.value === PAY_MODE.ONLINE ? "&auto=1" : "";
+    const auto = payMode.value === PAY_MODE.ONLINE && order.status === "WAIT_PAY" ? "&auto=1" : "";
     uni.redirectTo({ url: `${ROUTES.pay}?orderNo=${order.orderNo}${auto}` });
   } catch (e) {
     if (!current()) return;
@@ -1282,15 +1320,11 @@ async function loadAccountOffers() {
    * 领券中心回答的是「现在能领哪些」—— 活动下架 / 抢光 / 过了可领期之后，
    * 用户手里那张就从返回里消失，结算页于是说「无可用券」，而他明明有。
    */
-  const [c, a] = await Promise.allSettled([
-    api.myCoupons(),
-    FEATURES.points ? api.pointAccount() : Promise.resolve(null),
-  ]);
+  const [c] = await Promise.allSettled([api.myCoupons()]);
   if (user.token !== token) return;
   if (c.status === "fulfilled") coupons.value = c.value;
   couponFailed.value = c.status === "rejected";
-  if (a.status === "fulfilled" && a.value) pointBalance.value = a.value.balance;
-  return c.status === "fulfilled" && a.status === "fulfilled";
+  return c.status === "fulfilled";
 }
 onMounted(loadAccountOffers);
 
@@ -1326,6 +1360,8 @@ async function onPhoneReady(result: { userChanged: boolean }) {
   }
   if (!current()) return;
   const checks = await Promise.all([loadAddresses(), loadAccountOffers(), refreshCapability()]);
+  if (!current()) return;
+  await refreshPoints();
   if (!current()) return;
   const priced = await refreshAmount();
   if (!current()) return;
@@ -1569,9 +1605,11 @@ function onSubmitReady(result: { userChanged: boolean }) {
       </view>
       <!-- 积分抵扣：上限是「券后金额」的固定比例，说清楚为什么抵不满 -->
       <view
-        v-if="FEATURES.points && pointBalance > 0"
+
+        v-if="pointBalance > 0 || usePoints"
+
         class="cell sh-row sh-row--between"
-        @tap="pointsBlockedReason ? undefined : (usePoints = !usePoints)"
+        @tap="usePoints = !usePoints"
       >
         <text class="txt-sub cell__k">{{ $t("confirm.points") }}</text>
         <view class="pointsline sh-row">
@@ -1581,12 +1619,12 @@ function onSubmitReady(result: { userChanged: boolean }) {
             而客服看不出是哪一条策略关掉的。
           -->
           <text v-if="pointsBlockedReason" class="txt-bold txt-caption cell__v">
-            {{ $t("confirm.pointsHave", { n: pointBalance }) }}　{{ pointsBlockedReason }}
+            {{ $t("confirm.pointsUnavailable") }}
           </text>
           <text v-else class="txt-bold txt-caption cell__v" :class="{ 'is-danger': usePoints && !!amount?.pointsUsed }">
             {{ usePoints && amount?.pointsUsed
               ? $t("confirm.pointsUsed", { n: amount.pointsUsed, p: money(amount.pointsDeductMinor) })
-              : $t("confirm.pointsHave", { n: pointBalance }) }}
+              : $t("confirm.pointsApplicable", { n: pointBalance }) }}
           </text>
           <sh-switch v-if="!pointsBlockedReason" :model-value="usePoints"></sh-switch>
         </view>
@@ -1634,11 +1672,11 @@ function onSubmitReady(result: { userChanged: boolean }) {
           {{ offerSummary.text }}
         </text>
       </view>
-      <view v-if="amount.pointsDeductMinor" class="amt sh-row sh-row--between sh-row--top">
+      <view v-if="pointsEnabled && amount.pointsDeductMinor" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption sh-num">{{ $t("confirm.pointsDeduct", { n: amount.pointsUsed }) }}</text>
         <text class="txt-caption amt__v sh-num is-danger">-{{ money(amount.pointsDeductMinor) }}</text>
       </view>
-      <view v-if="amount.pointsEarn" class="amt sh-row sh-row--between sh-row--top">
+      <view v-if="pointsEnabled && amount.pointsEarn" class="amt sh-row sh-row--between sh-row--top">
         <text class="txt-caption">{{ $t("confirm.pointsEarn") }}</text>
         <text class="txt-caption amt__v amt__v--earn sh-num txt-ink txt-primary">+{{ amount.pointsEarn }}</text>
       </view>

@@ -30,11 +30,10 @@ export const accountMock: Pick<MerchantApi,
     if (!req.agreed) throw new Error("请先阅读并同意协议");
 
     // 手机号是商家账号的主标识；第三方登录拿到的是 code，手机号由服务端换取后回填。
-    // mock 无服务端换号能力，这里用占位号让流程能继续，并在 profile 上标出待补绑。
+    // mock 无服务端换号能力，这里用占位号让流程能继续。
     const isPhone = req.grantType === "PHONE_OTP";
     if (isPhone && !/^\d{11}$/.test(req.principal)) throw new Error("手机号格式不对");
     db.merchant.phone = isPhone ? req.principal : db.merchant.phone || "";
-    db.merchant.loginBy = req.grantType;
     persist();
     return delay({ token: `mock-b-token-${Date.now()}`, merchant: { ...db.merchant } });
   },

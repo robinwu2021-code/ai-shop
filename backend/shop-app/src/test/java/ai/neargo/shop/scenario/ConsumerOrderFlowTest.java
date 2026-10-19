@@ -41,6 +41,12 @@ class ConsumerOrderFlowTest {
 
     @Autowired
     private ObjectMapper json;
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired private ai.neargo.shop.pay.service.PaymentLedgerService ledger;
+    @Autowired private ai.neargo.shop.pay.channel.TestPayGateway gateway;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private ai.neargo.shop.spi.settle.PointsPort legacyPoints;
 
 
     @Autowired
@@ -91,6 +97,13 @@ class ConsumerOrderFlowTest {
                 .andExpect(jsonPath("$.data.payParams.prepayId").isNotEmpty());
 
         payCallback(orderNo, "TX-001");
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM ord_sub_order WHERE order_no=? AND points_granted=1",
+                Long.class, orderNo)).isZero();
+        org.mockito.Mockito.verify(legacyPoints, org.mockito.Mockito.never())
+                .grant(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
 
         mvc().perform(get("/mp/order/" + orderNo + "/pay-result").header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.status").value("PAID"))
@@ -149,6 +162,8 @@ class ConsumerOrderFlowTest {
                 .andExpect(jsonPath("$.data.status").value("CANCELLED"));
 
         assertThat(availableOf("SK0002")).isEqualTo(initial);
+        org.mockito.Mockito.verify(legacyPoints, org.mockito.Mockito.never())
+                .reverse(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test
@@ -157,15 +172,20 @@ class ConsumerOrderFlowTest {
         String token = login("13700137005");
         addToCart(token, "G0002", "SK0003", 1);
         String orderNo = createOrder(token, "idem-late-cb");
+        mvc().perform(post("/mp/order/" + orderNo + "/pay").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.code").value(0));
+        String outNo = jdbc.queryForObject("select out_trade_no from stl_payment where order_no=? and direction='PAY'",
+                String.class, orderNo);
 
         mvc().perform(post("/mp/order/" + orderNo + "/cancel").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"改主意\"}"));
 
-        // 迟到的支付回调：状态机拒绝 CANCELLED → PAID
+        assertThat(gateway.markPaid(outNo)).isTrue();
+        // 迟到的真实支付事实不能复活已取消订单，必须进入人工处理。
         mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"TX-late\",\"sign\":\""
+                        .content("{\"outTradeNo\":\"" + outNo + "\",\"transactionId\":\"" + gateway.query(outNo).tradeNo() + "\",\"sign\":\""
                                 + STUB_SECRET + "\"}"))
-                .andExpect(jsonPath("$.code").value(20004));
+                .andExpect(jsonPath("$.code").value(10409));
 
         mvc().perform(get("/mp/order/" + orderNo).header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.status").value("CANCELLED"));
@@ -219,10 +239,14 @@ class ConsumerOrderFlowTest {
     }
 
     private void payCallback(String orderNo, String txId) throws Exception {
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + orderNo + "\",\"transactionId\":\"" + txId
-                                + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
-                .andExpect(status().isOk());
+        String trade = ai.neargo.shop.support.RefundScenarioPayments.receivedForOrder(jdbc, ledger, gateway, orderNo);
+        String out = jdbc.queryForObject("select out_trade_no from stl_payment where order_no=?"
+                + " and direction='PAY' and status='SUCCESS' order by id desc limit 1", String.class, orderNo);
+        String ack = mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(java.util.Map.of("outTradeNo", out,
+                        "transactionId", trade, "sign", STUB_SECRET))))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(ack).isEqualTo("SUCCESS");
     }
 
     private int availableOf(String skuNo) throws Exception {

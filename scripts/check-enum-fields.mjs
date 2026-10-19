@@ -71,6 +71,12 @@ export const FIELDS = [
     backend: { ddl: ["usr_address", "salutation"] },
     clients: [{ file: "packages/shared/src/types/user.ts", type: "RecipientSalutation" }] },
   {
+    concept: "收件人称呼",
+    field: "usr_address.salutation",
+    backend: { ddl: ["usr_address", "salutation"] },
+    clients: [{ file: "packages/shared/src/types/user.ts", type: "RecipientSalutation" }],
+  },
+  {
     concept: "门店怎么进入买家的「我的店」",
     field: "usr_store_view.first_source",
     backend: {
@@ -217,7 +223,7 @@ export const FIELDS = [
   {
     concept: "订单状态（下发口径）",
     field: "ord_sub_order.status → OrderStatusView",
-    backend: { javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/service/OrderStatusView.java" },
+    backend: { javaConst: "shop-core/src/main/java/ai/neargo/shop/trade/order/contract/ContractOrderStatus.java" },
     clients: [
       { file: SHARED_TYPES, type: "OrderStatus" },
       { file: "ops-web/lib/types/order.ts", type: "OrderStatus" },
@@ -532,7 +538,10 @@ export const FIELDS = [
   {
     concept: "对账差异类型",
     field: "stl_recon_diff.diff_type",
-    backend: { ddl: ["stl_recon_diff", "diff_type"] },
+    backend: {
+      javaConst: "pay/pay-domain/src/main/java/ai/neargo/shop/pay/entity/StlReconDiff.java",
+      only: ["CHANNEL_ONLY", "PLATFORM_ONLY", "AMOUNT_DIFF", "REFUND_ABNORMAL", "REFUND_LATE_SUCCESS", "REFUND_CLOSED"],
+    },
     clients: [{ file: "ops-web/lib/types/payment.ts", type: "ReconDiffType" }],
   },
   {

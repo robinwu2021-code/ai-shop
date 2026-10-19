@@ -44,7 +44,7 @@ case "$APP" in
     elec-svc)
         echo "elec-svc 已迁到独立项目 ai-hxkey（2026-09-30）：cd ../ai-hxkey && scripts/check-head.sh <sha> && REF=<sha> scripts/deploy.sh" >&2
         exit 2 ;;
-    *) echo "不认识的产物：$APP（只支持 shop-app / pay-svc）" >&2; exit 2 ;;
+    *) echo "不认识的产物：${APP}（只支持 shop-app / pay-svc）" >&2; exit 2 ;;
 esac
 HEALTH_OK="${HEALTH_OK:-200}"
 LINK="$REMOTE_DIR/$LINK_NAME"
@@ -64,7 +64,7 @@ warn() { printf '  \033[33m!\033[0m %s\n' "$1" >&2; }
 wait_healthy() {
     ssh "$HOST" "for i in \$(seq 1 60); do
             c=\$(curl -s -o /dev/null -w '%{http_code}' '$HEALTH');
-            [ \"\$c\" = '$HEALTH_OK' ] && { echo \"health=$HEALTH_OK（约 \$((i*3)) 秒）\"; exit 0; };
+            [ \"\$c\" = '$HEALTH_OK' ] && { echo \"health=${HEALTH_OK}（约 \$((i*3)) 秒）\"; exit 0; };
             sleep 3;
         done; echo \"health=\$c\"; exit 1"
 }
@@ -117,27 +117,27 @@ if [ -f "$GATE_FILE" ]; then
     GATE_SHA="$(git rev-parse --short "$(head -1 "$GATE_FILE")")"
     GATE_WHAT="$(sed -n '2p' "$GATE_FILE")"
     if [ "$GATE_SHA" = "$HEAD_SHA" ]; then
-        ok "闸门验的就是这一版（$GATE_SHA）${GATE_WHAT:+ —— $GATE_WHAT}"
+        ok "闸门验的就是这一版（${GATE_SHA}）${GATE_WHAT:+ —— $GATE_WHAT}"
     elif git merge-base --is-ancestor "$HEAD_SHA" "$GATE_SHA" 2>/dev/null; then
         # REF 发的是闸门那一版的**祖先**：下面 GATE..REF 的 log 恒为空，会误报「没有 backend 改动、
         # 行为一致」—— 方向反了。闸门验的是更新的那一版，它通过不代表更早的这一版通过
         # （2026-09-29 发 986da6a83 时，闸门记录是 a65beed13，就打出了那句假话）。
         if [ "${ALLOW_GATE_DRIFT:-}" = "1" ]; then
-            say "⚠ 闸门验的是更新的 $GATE_SHA，本次发它的祖先 $HEAD_SHA —— 这一版没被闸门直接验过（ALLOW_GATE_DRIFT=1 放行）"
+            say "⚠ 闸门验的是更新的 ${GATE_SHA}，本次发它的祖先 $HEAD_SHA —— 这一版没被闸门直接验过（ALLOW_GATE_DRIFT=1 放行）"
         else
-            die "闸门验的是更新的 $GATE_SHA，本次要发的 $HEAD_SHA 是它的祖先 —— 这一版没被闸门直接验过。
-  先跑 scripts/check-head-compiles.sh $HEAD_SHA，或确认过之后 ALLOW_GATE_DRIFT=1 再跑本脚本。"
+            die "闸门验的是更新的 ${GATE_SHA}，本次要发的 $HEAD_SHA 是它的祖先 —— 这一版没被闸门直接验过。
+  先跑 scripts/check-head-compiles.sh ${HEAD_SHA}，或确认过之后 ALLOW_GATE_DRIFT=1 再跑本脚本。"
         fi
     else
         DRIFT="$(git log --oneline "$GATE_SHA..$HEAD_SHA" -- backend 2>/dev/null || true)"
         if [ -z "$DRIFT" ]; then
-            say "闸门验的是 $GATE_SHA，本次构建 $HEAD_SHA —— 其间**没有 backend 改动**，jar 行为一致"
+            say "闸门验的是 ${GATE_SHA}，本次构建 $HEAD_SHA —— 其间**没有 backend 改动**，jar 行为一致"
         elif [ "${ALLOW_GATE_DRIFT:-}" = "1" ]; then
-            say "⚠ 闸门验的是 $GATE_SHA，而这几笔 backend 改动没被它验过（ALLOW_GATE_DRIFT=1 放行）："
+            say "⚠ 闸门验的是 ${GATE_SHA}，而这几笔 backend 改动没被它验过（ALLOW_GATE_DRIFT=1 放行）："
             echo "$DRIFT" | sed 's/^/    /'
         else
             printf '%s\n' "$DRIFT" | sed 's/^/    /' >&2
-            die "闸门验的是 $GATE_SHA，本次要建 $HEAD_SHA —— 上面这几笔 backend 改动**没被闸门验过**。
+            die "闸门验的是 ${GATE_SHA}，本次要建 $HEAD_SHA —— 上面这几笔 backend 改动**没被闸门验过**。
   两条路：重跑一次 scripts/check-head-compiles.sh（推荐），
   或者确认过它们无害之后 ALLOW_GATE_DRIFT=1 再跑本脚本。"
         fi
@@ -243,7 +243,7 @@ say "上传 $JAR_NAME"
 scp -q "$LOCAL_JAR" "$HOST:/tmp/$JAR_NAME"
 LOCAL_MD5="$(md5 -q "$LOCAL_JAR" 2>/dev/null || md5sum "$LOCAL_JAR" | cut -d' ' -f1)"
 REMOTE_MD5="$(ssh "$HOST" "md5sum /tmp/$JAR_NAME | cut -d' ' -f1")"
-[ "$LOCAL_MD5" = "$REMOTE_MD5" ] || die "MD5 不一致，传输出问题了（本地 $LOCAL_MD5 / 远端 $REMOTE_MD5）"
+[ "$LOCAL_MD5" = "$REMOTE_MD5" ] || die "MD5 不一致，传输出问题了（本地 $LOCAL_MD5 / 远端 ${REMOTE_MD5}）"
 ok "MD5 一致 $LOCAL_MD5"
 
 if [ "${DRY:-}" = "1" ]; then
@@ -298,10 +298,10 @@ if wait_healthy; then
         LIVE_JAR="$(ssh "$HOST" "readlink -f '$LINK'")"
         STARTED="$(ssh "$HOST" "sudo ps -eo etimes,args | grep '$LINK_NAME' | grep -v grep | head -1 | awk '{print \$1}'")"
         if [ "$(basename "$LIVE_JAR")" = "$JAR_NAME" ] && [ "${STARTED:-99999}" -lt 300 ]; then
-            ok "线上进程确认在跑 $JAR_NAME（起于 ${STARTED}s 前）"
+            ok "线上进程确认在跑 ${JAR_NAME}（起于 ${STARTED}s 前）"
         else
             die "包切过去了，但进程对不上：
-       软链 $(basename "$LIVE_JAR")（期望 $JAR_NAME）
+       软链 $(basename "$LIVE_JAR")（期望 ${JAR_NAME}）
        进程已运行 ${STARTED:-?}s（应当不足 300s）
     看：ssh $HOST 'sudo systemctl status $SERVICE'"
         fi
@@ -333,7 +333,7 @@ fi
 #
 # ① **服务名曾写死成 shop-app**，而这个脚本从 2026-09-01 起就带 pay-svc 了 ——
 #    于是发 pay-svc 时这段一个都不删。实测服务器上 pay-svc 囤了 7 个 / 321M，
-#    而它本该只有 6 个。用 $APP / $LINK_NAME，别再写死。
+#    而它本该只有 6 个。用 $APP / ${LINK_NAME}，别再写死。
 #
 # ② **整段曾是 `>/dev/null 2>&1 || true`**，失败了也照样打印「上线完成」。
 #    这段要删文件，是最不该静音的那种 —— 现在把删了几个打出来，

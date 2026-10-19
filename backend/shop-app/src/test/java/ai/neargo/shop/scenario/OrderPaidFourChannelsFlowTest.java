@@ -125,6 +125,23 @@ class OrderPaidFourChannelsFlowTest {
     }
 
     @Test
+    @DisplayName("备货后售后申请同时发微信订阅和短信，短信落独立发送记录")
+    void afterSaleUsesWxAndSmsTogether() throws Exception {
+        Owner o = anOwner("wx-open-f4-refund", "M-F4-REFUND", "cid-f4-refund", "13700000020");
+        grantWx(o.userNo(), WxSubscribePort.SCENE_MCH_AFTER_SALE);
+        long before = logCount();
+        eventBus.publish(new OrderEvents.AfterSaleApplied("AS-F4-REFUND", "SUB-F4-REFUND",
+                o.entityNo(), o.storeNo(), "U-BUYER-REFUND", "REFUND_ONLY", 500L));
+        drainOutbox();
+
+        assertThat(sentWx(o.openId())).hasSize(1);
+        assertThat(smsTo("13700000020")).singleElement()
+                .satisfies(s -> assertThat(s.code()).contains("AS-F4-REFUND"));
+        assertThat(logsSince(before).stream().filter(r -> SysNotifyLog.SMS.equals(r.getChannel())).toList())
+                .singleElement().satisfies(r -> assertThat(r.getTemplateNo()).isEqualTo("TPL_SMS_MCH_AFTER_SALE"));
+    }
+
+    @Test
     @DisplayName("★★★ 短信到店主 + 这家店自填的两个号（用户 2026-10-10）")
     void smsGoesToOwnerPlusExtras() throws Exception {
         Owner o = anOwner("wx-open-f4-10", "M-F4-10", "cid-f4-10", "13700000010");
@@ -454,9 +471,13 @@ class OrderPaidFourChannelsFlowTest {
     }
 
     private void grantWx(String userNo) {
+        grantWx(userNo, WxSubscribePort.SCENE_MCH_NEW_ORDER);
+    }
+
+    private void grantWx(String userNo, String scene) {
         MsgSubscribe s = new MsgSubscribe();
         s.setUserNo(userNo);
-        s.setTemplateId("STUB_TPL_" + WxSubscribePort.SCENE_MCH_NEW_ORDER);
+        s.setTemplateId("STUB_TPL_" + scene);
         s.setAccepted(true);
         s.setQuota(5);
         s.setAt(System.currentTimeMillis());

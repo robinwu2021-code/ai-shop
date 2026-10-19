@@ -9,6 +9,7 @@ import ai.neargo.shop.pay.entity.StlSplitLog;
 import ai.neargo.shop.pay.entity.StlPurchaseInvoice;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 /** settle 域的 Mapper 集合。 */
@@ -39,6 +40,9 @@ public final class SettleMappers {
     /** 放款记录（V391）：账期批次 × 收款号一笔 */
     public interface PayoutMapper
             extends BaseMapper<ai.neargo.shop.pay.entity.StlPayout> {
+        @Update("UPDATE stl_payout SET status='EXPORTED',exported_at=#{at},updated_by=#{actor}"
+                + " WHERE id=#{id} AND status='PENDING'")
+        int markExported(@Param("id") long id,@Param("at") long at,@Param("actor") String actor);
     }
 
     /** 采购进项票（自营）。发票代码+号码联合唯一，挡住同一张票冲两个周期的账。 */
@@ -77,6 +81,14 @@ public final class SettleMappers {
     }
 
     public interface PaymentMapper extends BaseMapper<StlPayment> {
+        /** Trusted pay confirmation serializes verification and immutable receipt replay. */
+        @Select("SELECT * FROM stl_payment WHERE payment_no=#{no} AND direction='REFUND' AND deleted=0 FOR UPDATE")
+        StlPayment lockRefundEvidence(String no);
+
+        /** Current read after waiting for the original payment lock. */
+        @Select("SELECT * FROM stl_payment WHERE after_sale_no=#{afterSaleNo} AND direction='REFUND'"
+                + " AND deleted=0 LIMIT 1 FOR UPDATE")
+        StlPayment lockRefundByAfterSale(String afterSaleNo);
     }
 
     public interface PointsPoolMapper extends BaseMapper<StlPointsPool> {

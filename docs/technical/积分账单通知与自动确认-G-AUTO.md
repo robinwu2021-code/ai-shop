@@ -1,0 +1,25 @@
+# 积分账单通知与自动确认 G-AUTO
+
+独立pts_statement_confirmation按statementNo/revision持久化发布、通知、期限及状态；账单每次post同步发布metadata，DRAFT修订创建新revision记录，DISPUTED立即禁止自动确认。默认7天（shop.points.statement-confirm-days可配置，1–90），从真实站内通知落地后起算，避免延迟通知侵蚀商家完整异议期。publishedAt记录实际出单时间，notifiedAt及deadline仅确认通知成功后填入。
+
+后台有限批次分两步：取待通知metadata，事务外调用新StatementNoticePort，主应用站内员工消息使用SYSTEM，按门店实时FINANCE权限解析收件人，statement/revision/recipient去重。无人具备权限/适配未安装/失败不能写notifiedAt。重复消息写入幂等，消息与pay metadata不假设跨事务原子；崩溃后重试消息去重，再CAS标通知成功。
+
+自动确认采用短pay事务，先锁类型资金池、账单，再metadata；核验当前账单DRAFT及同revision、通知已成功且deadline到期，再调用现有confirm入口，源头寸校验及统一posting保持不变。DISPUTED/旧revision不得确认。批次1–200，一条故障延后不回滚其他记录；重复任务不重复记账。
+
+计划测试：未通知不确认；未到期不确认；旧revision/争议不确认；通知失败可重试且无期限；已到期确认当前revision；确认异常不把metadata标完成。新增JobServices任务STATEMENT_CONFIRM及宿主调度声明。pay-svc无主应用通知适配时明确deferred，不伪造通知成功。
+
+## 实施细节
+
+新增 StatementConfirmationPublisher 在账单post落凭证后同事务发布metadata；R11 normalized账单经StatementBuildStore.firstSource读取原门店主体。旧版本metadata置SUPERSEDED，新的revision重新计时。notify/due队列均按last_attempt_at轮转，避免前批无财务收件人或源数据异常永久挡住后续门店。
+
+消息适配根据当前门店BizIdentityResolver的FINANCE权限过滤所有活跃成员，支持自定义财务角色；核验解析结果主体及门店一致。使用员工SYSTEM站内通知，statement/revision/recipient作为dedupKey，不走营销模板/限频。消息资源提供中英阿三语，并说明实际配置天数；深链带storeNo及statementNo，由B端确保授权切店后定位。通知异常不写notifiedAt；部分投递后失败重复投递由MessageService去重。
+
+任务points-statement-confirmation默认每5分钟声明（沿既有积分任务默认未开启策略），PointsJobServices新增STATEMENT_CONFIRM。没有通知适配的宿主明确deferred，不视为已通知。自动确认只转CONFIRMED，不启动银行付款或兑付。
+
+新增验证：PointsStatementConfirmationTest（通知失败、期限、批内错误隔离3项）；PointsStatementConfirmationDatabaseTest（期限不可延长/幂等、旧revision/异议/未通知禁止、通知失败、确认事务回滚、发布事务回滚5项）；PointsStatementNoticeTest（空收件人、staff SYSTEM及原revision去重、部分失败、精确门店FINANCE权限4项）。统一由主执行者执行，具体结果待记录。
+
+## 非默认门店通知权限修复
+
+身份Resolver只按目标门店选择主体，currentStoreNo仍是默认店，不能直接以currentStoreNo等于目标门店作为收件条件。通知适配现复用BizContextFilter语义：先核验同主体及storeNos包含目标门店，再withStore切到已授权目标店，最后校验目标店FINANCE权限。默认门店财务权限不能代替目标店权限，owner也不能跨授权门店/主体。
+
+新增4个真实BizContext反例与正例；修复前8项通知测试中非默认财务/owner正例2项失败，RED记录为`/private/tmp/points-notice-scope-red2/20261019T011009Z-03b79f48/maven.log`。

@@ -190,9 +190,15 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSaveSpecTemplate: { method: "POST", path: "/biz/spec-templates", auth: true, summary: "存为常用规格" },
 
   mOrderList: { method: "GET", path: "/biz/order", auth: true, summary: "订单列表" },
+  mOrderWorklist: { method: "GET", path: "/biz/order/worklist", auth: true, summary: "按优先级分页的订单待办" },
   mOrderDetail: { method: "GET", path: "/biz/order/:orderNo", auth: true, summary: "订单详情" },
+  mFulfillmentOptions: { method: "GET", path: "/biz/order/:orderNo/fulfillment-options", auth: true, summary: "配送方式切换资格" },
+  mChangeFulfillment: { method: "POST", path: "/biz/order/:orderNo/fulfillment-change", auth: true, summary: "配送方式切换" },
   mOrderTrace: { method: "GET", path: "/biz/order/:orderNo/trace", auth: true, summary: "物流轨迹" },
+  mOrderUpdates: { method: "GET", path: "/biz/order/:orderNo/logistics-updates", auth: true, summary: "物流更新记录" },
   mShip: { method: "POST", path: "/biz/order/:orderNo/ship", auth: true, summary: "快递发货" },
+  mShipPrecheck: { method: "POST", path: "/biz/order/:orderNo/ship/precheck", auth: true, summary: "运单预检" },
+  mCorrectWaybill: { method: "POST", path: "/biz/order/:orderNo/waybill", auth: true, summary: "更正运单" },
   mDelivered: { method: "POST", path: "/biz/order/:orderNo/delivered", auth: true, summary: "自送已送达" },
   mPrepare: { method: "POST", path: "/biz/order/:orderNo/prepare", auth: true, summary: "开始备货" },
   mConfirmOfflinePay: { method: "POST", path: "/biz/order/:orderNo/confirm-offline-pay", auth: true, summary: "确认线下收款" },
@@ -241,6 +247,9 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mSubmitPayoutAccount: { method: "POST", path: "/biz/payout-account", auth: true, summary: "提交收款账户" },
 
   mAfterSaleList: { method: "GET", path: "/biz/after-sale", auth: true, summary: "待处理售后" },
+  mAfterSaleWorklist: { method: "GET", path: "/biz/after-sale/worklist", auth: true, summary: "分页售后待办" },
+  mActiveAfterSaleForOrder: { method: "GET", path: "/biz/after-sale/by-order/:orderNo", auth: true, summary: "订单的当前售后" },
+  mAfterSaleDetail: { method: "GET", path: "/biz/after-sale/:afterSaleNo", auth: true, summary: "售后详情" },
   // 同意与驳回是**两个动词、两条路径**，不是一个布尔参数 ——
   // 与后端一致，也让「谁被调用了」在日志与权限里能分开看
   mApproveAfterSale: { method: "POST", path: "/biz/after-sale/:afterSaleNo/approve", auth: true, summary: "同意售后" },
@@ -324,30 +333,22 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
 
   // ---------------------------------------------------------------- 积分（B-11.x）
   //
-  // 商家**不感知积分抵扣**（V34）：他收到的是订单全额减各项费用。
-  // 这里只有他自己发分的成本，以及开关。
   mIncomeSummary: { method: "GET", path: "/biz/settle/income", auth: true, summary: "收入按状态汇总" },
   // 每日流水：与上面那条**同一批结算单的另一种切法**（按天，不按状态）
   mDailyFlow: { method: "GET", path: "/biz/settle/daily-flow", auth: true, summary: "每日流水" },
 
-  mPointsAccount: {
-    method: "GET",
-    path: "/biz/points/account",
-    auth: true,
-    summary: "本期发分服务费与开关状态",
-  },
-  mPointsRecords: {
-    method: "GET",
-    path: "/biz/points/records",
-    auth: true,
-    summary: "发分服务费明细（按单）",
-  },
-  mPointsToggle: {
-    method: "POST",
-    path: "/biz/points/toggle",
-    auth: true,
-    summary: "开/关本店积分",
-  },
+  mStorePointStatement: { method: "GET", path: "/biz/points/store-statement", auth: true, summary: "当前门店指定积分账单" },
+  mStorePointStatementLines: { method: "GET", path: "/biz/points/store-statement-lines", auth: true, summary: "当前门店指定修订积分账单明细" },
+  mStorePointStatements: { method: "GET", path: "/biz/points/store-statements", auth: true, summary: "当前门店积分账单" },
+  mConfirmStorePointStatement: { method: "POST", path: "/biz/points/store-statement-confirm", auth: true, summary: "确认当前门店指定修订积分账单" },
+  mDisputeStorePointStatement: { method: "POST", path: "/biz/points/store-statement-dispute", auth: true, summary: "对当前门店积分账单提出异议" },
+  mStorePointTypes: { method: "GET", path: "/biz/points/store-types", auth: true, summary: "当前门店可见的积分类型" },
+  mStorePointAccount: { method: "GET", path: "/biz/points/store-account", auth: true, summary: "当前门店积分账本" },
+  mStorePointEntries: { method: "GET", path: "/biz/points/store-entries", auth: true, summary: "当前门店积分流水" },
+  mStorePointTerms: { method: "GET", path: "/biz/points/store-terms", auth: true, summary: "当前积分签约条款" },
+  mStorePointAgreement: { method: "GET", path: "/biz/points/store-agreement", auth: true, summary: "当前门店有效积分签约" },
+  mSignStorePointAgreement: { method: "POST", path: "/biz/points/store-agreement/sign", auth: true, summary: "主体属主签署当前门店积分协议" },
+  mTerminateStorePointAgreement: { method: "POST", path: "/biz/points/store-agreement/terminate", auth: true, summary: "主体属主终止当前门店积分协议" },
 
   // ---------------------------------------------------------------- 消息（二期）
   mMessageList: { method: "GET", path: "/biz/message", auth: true, summary: "商家消息列表" },

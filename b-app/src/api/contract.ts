@@ -1,3 +1,4 @@
+import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
 // B 端唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 B 端 BFF `/mb/**`（C 端是 `/mp/**`）。
 //
@@ -5,9 +6,17 @@
 // Order 结构，只是可见字段与可执行动作不同；各定义一份必然漂移。
 import type { PAY_MODE } from "@shared/utils/constants";
 import type {
+  MerchantAfterSaleWorkItem,
+  MerchantFulfillmentChange,
+  MerchantFulfillmentOptions,
+  MerchantOrderWorkItem,
+} from "./response-types";
+import type {
   // 进销存（P-18）
   StockSummary,
   ShipmentTrace,
+  LogisticsUpdateRecord,
+  ShipPrecheck,
   ActivityConflict,
   AfterSale,
   AppointmentSlot,
@@ -76,8 +85,12 @@ import type {
   MerchantCustomer,
   MerchantLoginResp,
   MerchantPlan,
-  MerchantPointAccount,
-  MerchantPointsRecord,
+  StorePointType,
+  StorePointAccount,
+  StorePointEntryPage,
+  StorePointTerms,
+  StorePointAgreement,
+  StorePointSignRequest,
   MerchantProfile,
   MerchantRole,
   MerchantSpecDim,
@@ -165,6 +178,8 @@ import type {
  */
 /** 支付方式，与后端 PayModes 逐字一致。ONLINE 恒在，商家只决定要不要加 OFFLINE */
 export type PayMode = (typeof PAY_MODE)[keyof typeof PAY_MODE];
+
+export type { LogisticsUpdateRecord } from "@shared/types";
 
 /** 门店收款方式。与后端 StorePaySettingService.PaySettingVO 同形 */
 export interface StorePaySetting {
@@ -793,12 +808,10 @@ import type {
   ZipPlanReq,
   ZipImported,
   PickupSelfBuildReq,
-  PointsRecordQuery,
   StaffLoginReq,
   StoreEditReq,
   StoreFulfillmentSaveReq,
   SubmitPaymentReq,
-  TogglePointsReq,
   OpenFromMapReq,
   StockInboundReq, StockOutboundReq,
   SaveShipSettingReq,
@@ -1526,6 +1539,7 @@ export interface MerchantApi {
    * 非法日期服务端会报错而**不是静默忽略**：忽略的话拿到的是没筛过的全量列表，
    * 而调用方以为那就是那一天的单。
    */
+  mOrderWorklist(q: PageQuery): Promise<PageResult<MerchantOrderWorkItem>>;
   mOrderList(
     q: PageQuery & {
       status?: OrderStatus;
@@ -1536,13 +1550,21 @@ export interface MerchantApi {
     },
   ): Promise<PageResult<Order>>;
   mOrderDetail(orderNo: string): Promise<Order>;
+  mFulfillmentOptions(orderNo: string): Promise<MerchantFulfillmentOptions>;
+  mChangeFulfillment(orderNo: string, req: {
+    targetFulfillment: string; reason: string; expectedVersion: number;
+  }): Promise<MerchantFulfillmentChange>;
   /**
    * 物流轨迹（TDD-物流模块 B2）：比详情里的多承运商、单号、签收时间、到柜。不是快递 / 还没发货 → null。
    * `refresh` 只在后端配置放行时才真去问渠道（`refreshable` 说明这一单能不能）
    */
   mOrderTrace(orderNo: string, refresh?: boolean): Promise<ShipmentTrace | null>;
+  mOrderUpdates(orderNo: string): Promise<LogisticsUpdateRecord[]>;
   /** 快递发货：回填运单号 */
-  mShip(orderNo: string, expressNo: string, expressCompany: string): Promise<Order>;
+  mShipPrecheck(orderNo: string, expressNo: string, expressCompany: string): Promise<ShipPrecheck>;
+  mShip(orderNo: string, expressNo: string, expressCompany: string,
+        confirmExistingTrace?: boolean): Promise<Order>;
+  mCorrectWaybill(orderNo: string, expressNo: string, expressCompany: string, reason: string): Promise<Order>;
   /** 商家自送：老板点一下「已送达」。不做骑手轨迹（ADR-005 §5） */
   mDelivered(orderNo: string): Promise<Order>;
   /**
@@ -1658,9 +1680,14 @@ export interface MerchantApi {
     accountNumber: string; bankName?: string; bankBranch?: string }): Promise<PayoutAccount>;
 
   mAfterSaleList(): Promise<AfterSale[]>;
+  /** 服务端按当前门店分页，订单摘要与售后同页返回，避免只关联前 50 笔订单。 */
+  mAfterSaleWorklist(q?: { pending?: boolean; page?: number; size?: number }):
+    Promise<PageResult<MerchantAfterSaleWorkItem>>;
+  mAfterSaleDetail(afterSaleNo: string): Promise<MerchantAfterSaleWorkItem>;
+  mActiveAfterSaleForOrder(orderNo: string): Promise<AfterSale | null>;
   /**
    * 同意。仅退款未发货/已签收直接退，已揽收在途转「待收货后退款」；退货退款等收货（见 mConfirmReturn）。
-   * 已签收可带核定金额 `refundMinor`（部分退，AC9）与形式 `refundMode`（现金/积分，AC10）。
+   * 兼容旧参数；一期页面省略自定义金额，只申请全额现金退款，资金成功需等待确认。
    */
   mApproveAfterSale(
     afterSaleNo: string, reply: string,
@@ -1669,14 +1696,14 @@ export interface MerchantApi {
   /** 驳回**必须给理由** —— 用户据此决定要不要上升平台，没理由就是把路堵死 */
   mRejectAfterSale(afterSaleNo: string, reply: string): Promise<AfterSale>;
   /**
-   * 确认收到退货 → 随即退款（B-7.3）。
+   * 确认收到退货并准备退款；restockApproved 缺省 false，明确同意才恢复库存。
    * **退款必须在这一步之后** —— 同意即退的话，货没回来钱先出去了。
    */
-  mConfirmReturn(afterSaleNo: string): Promise<AfterSale>;
+  mConfirmReturn(afterSaleNo: string, restockApproved?: boolean): Promise<AfterSale>;
   /**
    * 在途仅退款（WAIT_RECEIPT）由商家确认退款。系统签收后只提醒，**不自动退**（TDD-订单状态机 AC8）。
    */
-  mConfirmRefund(afterSaleNo: string): Promise<AfterSale>;
+  mConfirmRefund(afterSaleNo: string, reason?: string): Promise<AfterSale>;
 
   // ---- 团购与报价（B-11.6）
   /** 我的团（s09）。status：OPEN（含待审）/ FORMED / FAILED；不传给全部 */
@@ -1977,7 +2004,7 @@ export interface MerchantApi {
     payload: { skuNo: string; kind: ArrivalIssueKind; qty: number; note: string },
   ): Promise<PickupOrder>;
 
-  // ---- 积分（商家侧只有成本与开关，看不到抵扣与补差）
+  // ---- 当前门店积分账本
   /** 收入按状态汇总（四个数）。**门店收窄与 mSettleBills 逐字一致** —— 否则总览与明细对不上 */
   mIncomeSummary(allStores?: boolean): Promise<IncomeSummary>;
 
@@ -1989,16 +2016,18 @@ export interface MerchantApi {
    */
   mDailyFlow(q?: { from?: string; to?: string; allStores?: boolean }): Promise<DailyFlowPage>;
 
-  mPointsAccount(): Promise<MerchantPointAccount>;
-  /** 发分服务费明细：一单一条，数据来自 stl_bill.points_fee_minor */
-  mPointsRecords(q?: PointsRecordQuery): Promise<MerchantPointsRecord[]>;
-  /**
-   * 开/关本店积分。
-   *
-   * **关闭只影响将来** —— 已发出的分仍有效、已扣的服务费不退，
-   * 否则关一次开关就是一次资金事故。
-   */
-  mPointsToggle(req: TogglePointsReq): Promise<MerchantPointAccount>;
+  mStorePointStatement(typeCode: string, statementNo: string): Promise<StorePointStatement>;
+  mStorePointStatementLines(typeCode: string, statementNo: string, revision: number, after?: number, limit?: number): Promise<StorePointStatementLinePage>;
+  mStorePointStatements(typeCode: string, after?: number, limit?: number): Promise<StorePointStatementPage>;
+  mConfirmStorePointStatement(request: StorePointStatementChange): Promise<StorePointStatementReceipt>;
+  mDisputeStorePointStatement(request: StorePointStatementChange): Promise<StorePointStatementReceipt>;
+  mStorePointTypes(): Promise<StorePointType[]>;
+  mStorePointAccount(typeCode: string): Promise<StorePointAccount>;
+  mStorePointEntries(typeCode: string, after?: number, limit?: number): Promise<StorePointEntryPage>;
+  mStorePointTerms(typeCode: string): Promise<StorePointTerms | null>;
+  mStorePointAgreement(typeCode: string): Promise<StorePointAgreement | null>;
+  mSignStorePointAgreement(request: StorePointSignRequest): Promise<StorePointAgreement>;
+  mTerminateStorePointAgreement(typeCode: string): Promise<void>;
 
   // ---- 消息（新订单/售后/评价的落点；推送与响铃是三期的加速通道，这里是事实记录）
   mMessageList(): Promise<Message[]>;

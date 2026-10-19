@@ -121,4 +121,16 @@ describe("订单列表", () => {
     expect(w.text()).not.toContain("common.loadFailed");
     expect(uniMock.showToast).not.toHaveBeenCalled();
   });
+  it("两店门店单保留两行，支付入口沿用各子单并由收银台解析父单", async () => {
+    orderList.mockResolvedValue({ records: [{...ORDER, orderNo:"S1",payOrderNo:"P1",status:"WAIT_PAY"}, {...ORDER,orderNo:"S2",payOrderNo:"P1",status:"WAIT_PAY"}],total:2 });
+    const w=await render();expect(w.findAll(".card")).toHaveLength(2);
+    const buttons=w.findAll(".card__pay");expect(buttons).toHaveLength(2);
+    await buttons[0].trigger("tap");expect(uniMock.navigateTo).toHaveBeenLastCalledWith({url:expect.stringContaining("orderNo=S1")});
+    await buttons[1].trigger("tap");expect(uniMock.navigateTo).toHaveBeenLastCalledWith({url:expect.stringContaining("orderNo=S2")});w.unmount();
+  });
+  it("人工核对收款不再引导重复支付", async () => {
+    orderList.mockResolvedValue({ records:[{...ORDER,status:"WAIT_PAY",paymentResolution:{status:"MANUAL_REQUIRED"}}],total:1 });
+    const w=await render();expect(w.find(".card__pay").exists()).toBe(false);expect(w.text()).toContain("pay.manualRequired");w.unmount();
+  });
+
 });

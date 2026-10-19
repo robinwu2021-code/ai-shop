@@ -68,6 +68,10 @@ public class ReservationServiceImpl implements ReservationService {
     public String reserve(String ownerId, String externalRef, List<Line> lines, long ttlSeconds) {
         InvReservation exists = find(ownerId, externalRef);
         if (exists != null) {
+            if (InvEnums.ReservationStatus.RELEASED.equals(exists.getStatus())
+                    || InvEnums.ReservationStatus.EXPIRED.equals(exists.getStatus())) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
             // 幂等：重试拿回原结果。**不再占一份** —— 占了的话第二份没人释放
             return exists.getReservationId();
         }
@@ -176,22 +180,43 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public void releaseByRef(String externalRef) {
-        InvReservation head = byRef(externalRef);
-        if (head != null) {
+        for (InvReservation head : allByRef(externalRef)) {
             release(head.getOwnerId(), externalRef);
         }
     }
 
     @Override
     @Transactional(transactionManager = "invTransactionManager")
-    public String commitByRef(String externalRef, String operator) {
-        InvReservation head = byRef(externalRef);
-        if (head == null) {
-            // **不抛**：确认一个不存在的预留，多半是这一单根本没走预留（历史单、
-            // 或切换真相源之前下的）。抛出去会让支付回调失败重试，而重试永远不会成功
-            return null;
+    public void cancelByRef(String ownerId, String externalRef) {
+        InvReservation head = find(ownerId, externalRef);
+        if (head != null) {
+            if (InvEnums.ReservationStatus.COMMITTED.equals(head.getStatus())) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            release(ownerId, externalRef);
+            return;
         }
-        return commit(head.getOwnerId(), externalRef, operator);
+        InvReservation tombstone = new InvReservation();
+        tombstone.setReservationId(InvKeys.next(InvKeys.RESERVATION));
+        tombstone.setOwnerId(ownerId);
+        tombstone.setExternalRef(externalRef);
+        tombstone.setStatus(InvEnums.ReservationStatus.RELEASED);
+        tombstone.setExpiresAt(LocalDateTime.now());
+        tombstone.setReleasedAt(LocalDateTime.now());
+        resMapper.insert(tombstone);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String commitByRef(String externalRef, String operator) {
+        String firstOutbound = null;
+        for (InvReservation head : allByRef(externalRef)) {
+            String outboundNo = commit(head.getOwnerId(), externalRef, operator);
+            if (firstOutbound == null) {
+                firstOutbound = outboundNo;
+            }
+        }
+        return firstOutbound;
     }
 
     @Override
@@ -246,15 +271,16 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     /** 按单号反查（订单号平台内全局唯一）。 */
-    private InvReservation byRef(String externalRef) {
-        return resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
-                .eq(InvReservation::getExternalRef, externalRef).last("LIMIT 1"));
+    private List<InvReservation> allByRef(String externalRef) {
+        return resMapper.selectList(Wrappers.<InvReservation>lambdaQuery()
+                .eq(InvReservation::getExternalRef, externalRef).orderByAsc(InvReservation::getOwnerId)
+                .last("FOR UPDATE"));
     }
 
     private InvReservation find(String ownerId, String externalRef) {
         return resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
                 .eq(InvReservation::getOwnerId, ownerId)
-                .eq(InvReservation::getExternalRef, externalRef));
+                .eq(InvReservation::getExternalRef, externalRef).last("FOR UPDATE"));
     }
 
     private InvReservation require(String ownerId, String externalRef) {

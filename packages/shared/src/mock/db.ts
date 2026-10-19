@@ -455,7 +455,6 @@ const goodsSeeds: GoodsSeed[] = [
       { dimNo: "SD_ORIGIN_F", name: "产地", code: "ORGCN", label: "山东" },
       { dimNo: "SD_SHELF_LIFE", name: "保质期", code: "SL7D", label: "7 天" },
     ],
-    points: 30,
     merchantNo: "M002",
     title: t("山东烟台红富士苹果", "Yantai Fuji Apples", "تفاح فوجي من يانتاي"),
     subtitle: t("脆甜多汁 · 产地直发", "Crisp & sweet · direct from source", "مقرمش وحلو · مباشرة من المصدر"),
@@ -483,7 +482,6 @@ const goodsSeeds: GoodsSeed[] = [
   },
   {
     goodsNo: "G002",
-    points: 12,
     merchantNo: "M002",
     title: t("本地绿叶菜组合", "Local Leafy Greens Box", "صندوق خضار ورقية محلية"),
     subtitle: t("当日采摘 · 三样搭配", "Picked today · 3 varieties", "قُطفت اليوم · ٣ أصناف"),
@@ -509,7 +507,6 @@ const goodsSeeds: GoodsSeed[] = [
   // ---------------------------------------------------------------- 日用品（多规格示例）
   {
     goodsNo: "G101",
-    points: 60,
     merchantNo: "M001",
     title: t("洗衣液 大容量装", "Laundry Liquid · Bulk", "سائل غسيل · عبوة كبيرة"),
     subtitle: t("低泡易漂 · 两种香型", "Low suds · two scents", "رغوة قليلة · رائحتان"),
@@ -539,7 +536,6 @@ const goodsSeeds: GoodsSeed[] = [
   },
   {
     goodsNo: "G102",
-    points: 40,
     merchantNo: "M001",
     title: t("抽纸 4 层加厚", "4-Ply Facial Tissue", "مناديل ورقية ٤ طبقات"),
     subtitle: t("整箱 24 包 · 家庭装", "Case of 24 · family pack", "كرتون ٢٤ · عبوة عائلية"),
@@ -564,7 +560,6 @@ const goodsSeeds: GoodsSeed[] = [
   // ---------------------------------------------------------------- 服务（预约）
   {
     goodsNo: "G201",
-    points: 500,
     merchantNo: "M003",
     title: t("家电深度清洗 · 空调", "Deep Clean · Air Conditioner", "تنظيف عميق · مكيف"),
     subtitle: t("上门拆洗 · 需预约时段", "At-home service · book a slot", "خدمة منزلية · احجز موعدًا"),
@@ -590,7 +585,6 @@ const goodsSeeds: GoodsSeed[] = [
   // ---------------------------------------------------------------- 服务（到店核销）
   {
     goodsNo: "G202",
-    points: 80,
     merchantNo: "M004",
     title: t("洗剪吹 · 男士", "Cut & Style · Men", "قص وتصفيف · رجالي"),
     subtitle: t("到店核销 · 不限发型师", "Redeem in store · any stylist", "الاستخدام في المتجر · أي مصفف"),
@@ -612,7 +606,6 @@ const goodsSeeds: GoodsSeed[] = [
   // ---------------------------------------------------------------- 虚拟商品
   {
     goodsNo: "G301",
-    points: 15,
     merchantNo: "M001",
     title: t("视频会员月卡", "Streaming Membership · 1 Month", "اشتراك بث · شهر"),
     subtitle: t("兑换码直发 · 全平台通用", "Code delivered instantly", "يُرسل الرمز فورًا"),
@@ -642,7 +635,6 @@ const goodsSeeds: GoodsSeed[] = [
   // ---------------------------------------------------------------- 卡券
   {
     goodsNo: "G401",
-    points: 0,
     merchantNo: "M001",
     title: t("生鲜储值卡 200 元", "Fresh Store Card 200", "بطاقة رصيد للطازج ٢٠٠"),
     subtitle: t("充 200 得 220 · 一年有效", "Pay 200, get 220 · valid 1 year", "ادفع ٢٠٠ واحصل ٢٢٠ · صالحة سنة"),
@@ -662,7 +654,6 @@ const goodsSeeds: GoodsSeed[] = [
   },
   {
     goodsNo: "G402",
-    points: 200,
     merchantNo: "M004",
     title: t("洗剪吹 5 次卡", "Cut & Style · 5 Visits", "بطاقة ٥ زيارات للقص"),
     subtitle: t("按次核销 · 半年有效", "Redeem per visit · valid 6 months", "استخدام لكل زيارة · صالحة ٦ أشهر"),
@@ -2255,6 +2246,7 @@ export const db = {
   requests: [
     {
       requestNo: "RQ001",
+      ownerId: "CU10002",
       initiatorNickname: "3 幢老王",
       initiatorAvatar: "🧑",
       pickupNo: "PK001",
@@ -2306,6 +2298,7 @@ export const db = {
     },
     {
       requestNo: "RQ002",
+      ownerId: "CU10003",
       initiatorNickname: "团子妈",
       initiatorAvatar: "👧",
       pickupNo: "PK001",
@@ -2680,6 +2673,7 @@ export function pointBalance(ledger: PointRecord[]): number {
  */
 const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   WAIT_PAY: ["PAID", "CANCELLED"],
+  POINTS_PROCESSING: ["WAIT_PAY", "WAIT_OFFLINE_PAY", "CANCELLED"],
   // 没有回到 WAIT_PAY 的边：改主意想线上付要重新下单，
   // 否则「收没收到钱」有两个真源（商家确认 与 支付回调），而它们可能同时到达
   WAIT_OFFLINE_PAY: ["PAID", "CANCELLED"],

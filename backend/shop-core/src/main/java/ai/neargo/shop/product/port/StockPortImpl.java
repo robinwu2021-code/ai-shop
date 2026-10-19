@@ -2,6 +2,8 @@ package ai.neargo.shop.product.port;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.product.StockPort;
+import ai.neargo.shop.product.service.OriginalStockRestoreService;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.product.entity.PrdStockLock;
 import ai.neargo.shop.product.mapper.ProductMappers.SkuMapper;
 import ai.neargo.shop.product.entity.PrdStoreStock;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Component;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -45,8 +48,21 @@ public class StockPortImpl implements StockPort {
         this.storeStockReader = storeStockReader;
     }
 
+    private OriginalStockRestoreService originalRestore;
+
+    @Autowired
+    public void setOriginalRestore(OriginalStockRestoreService originalRestore) {
+        this.originalRestore = originalRestore;
+    }
+
     @Override
-    @Transactional
+    public RestoreResult restoreOriginal(String purposeNo, String originalLockNo, List<SkuQty> items) {
+        originalRestore.restore(purposeNo, originalLockNo, items);
+        return RestoreResult.COMPLETED;
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.NESTED)
     public List<String> lock(String lockNo, List<SkuQty> items) {
         List<String> failed = new ArrayList<>();
         for (SkuQty item : items) {
@@ -248,16 +264,16 @@ public class StockPortImpl implements StockPort {
         List<PrdStockLock> locks = DataScopeContext.executeWithoutScope(() ->
                 lockMapper.selectList(Wrappers.<PrdStockLock>lambdaQuery()
                         .eq(PrdStockLock::getLockNo, lockNo)
-                        .eq(PrdStockLock::getStatus, PrdStockLock.LOCKED)));
+                        .eq(PrdStockLock::getStatus, PrdStockLock.LOCKED).last("FOR UPDATE")));
         locks.forEach(action);
     }
 
     /** 库存不足。带上具体 SKU，端上才能精确标红。 */
-    public static class PartialLockException extends RuntimeException {
+    public static class PartialLockException extends StockPort.ShortageException {
         private final transient List<String> skuNos;
 
         public PartialLockException(List<String> skuNos) {
-            super("stock not enough: " + skuNos);
+            super();
             this.skuNos = skuNos;
         }
 

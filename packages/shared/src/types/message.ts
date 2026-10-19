@@ -21,6 +21,14 @@ export interface Message {
   body: string;
   /** 点进去要跳哪（订单详情/商品/团），已是完整页面路径带参 */
   link?: string;
+  /** B inbox projection; business action state is independent of read/unread. */
+  bizType?: string | null;
+  /** 关联业务单号，缺失时无业务定位 */
+  bizNo?: string | null;
+  /** 业务所属门店，跳转前校验门店权限 */
+  storeNo?: string | null;
+  /** 是否仍需处理业务动作，与已读状态独立 */
+  actionPending?: boolean;
   /** 是否已读。未读数按 type 分别统计 */
   read: boolean;
   /** 消息产生时间 */

@@ -15,6 +15,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import ai.neargo.shop.spi.product.StockPort.SkuQty;
+import org.springframework.beans.factory.annotation.Autowired;
+import tools.jackson.core.type.TypeReference;
 
 /**
  * 把平台侧的库存动作<b>补记</b>到进销存。双写的第二半。
@@ -51,6 +54,12 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
     private final InventoryAclService acl;
     private final LocationService locations;
     private final ObjectMapper json;
+    private OriginalInventoryRestoreAdapter originalRestores;
+
+    @Autowired
+    public void setOriginalRestores(OriginalInventoryRestoreAdapter originalRestores) {
+        this.originalRestores = originalRestores;
+    }
 
     public InventoryMirrorConsumer(StockCountService counts, ReservationService reservations, InventoryAclService acl,
                                    LocationService locations, ObjectMapper json) {
@@ -87,6 +96,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
             case InvMirrorEvent.COMMIT -> settled(ref, () -> reservations.commitByRef(ref, "MIRROR"));
             case InvMirrorEvent.RELEASE -> settled(ref, () -> reservations.releaseByRef(ref));
             case InvMirrorEvent.RESTORE -> restore(ref, p);
+            case InvMirrorEvent.RESTORE_ORIGINAL -> restoreOriginal(ref, p);
             case InvMirrorEvent.ADJUST -> adjust(p);
             default -> log.warn("不认识的镜像事件类型：{}", event.getEventType());
         }
@@ -99,6 +109,14 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         }
         String owner = requireOwner(first(p));
         reservations.reserve(owner, ref, lines, RESERVE_TTL_SECONDS);
+    }
+
+    private void restoreOriginal(String purpose, JsonNode payload) {
+        if (!payload.path("items").isArray() || text(payload, "originalRef") == null) {
+            throw new IllegalStateException("STOCK_SOURCE_MIRROR_CONFLICT");
+        }
+        List<SkuQty> original = json.convertValue(payload.path("items"), new TypeReference<>() { });
+        originalRestores.restore(purpose, text(payload, "originalRef"), original);
     }
 
     /**

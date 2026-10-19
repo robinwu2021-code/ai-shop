@@ -38,6 +38,7 @@ class OpsSettleQueryFlowTest {
 
     @Autowired
     private StubSplitGateway stubGateway;
+    @Autowired private ai.neargo.shop.pay.mapper.SettleMappers.SplitLogMapper logs;
 
     @Test
     @DisplayName("★★ 自营与第三方都在同一个列表里 —— 不该按经营模式分成两个入口")
@@ -86,10 +87,15 @@ class OpsSettleQueryFlowTest {
     @DisplayName("★ 按动作筛：补差与分账是两种指令，混在一起看不出顺序对不对")
     void filterByAction() {
         StlBill bill = aBill(MerchantQueryPort.MODE_THIRD_PARTY, StlBill.PENDING);
-        bill.setSubsidyMinor(1_000L);
-        billMapper.updateById(bill);
-
-        settleService.executeSplit(bill.getSettleNo());
+        // Query-only fixtures: actual funded payout is covered by PerOrderSettlementTest.
+        for (String action: java.util.List.of(StlSplitLog.SUBSIDY,StlSplitLog.SPLIT)) {
+            var log=new StlSplitLog();
+            log.setSettleNo(bill.getSettleNo()); log.setSubOrderNo(bill.getSubOrderNo());
+            log.setSplitAction(action); log.setAmountMinor(500L); log.setResult("SUCCESS");
+            log.setRequestNo("QUERY-"+java.util.UUID.randomUUID());
+            log.setAt(System.currentTimeMillis()); log.setCreatedAt(java.time.LocalDateTime.now());
+            logs.insert(log);
+        }
 
         assertThat(settleService.opsSplitLogs(bill.getSettleNo(), StlSplitLog.SUBSIDY))
                 .hasSize(1);
@@ -116,6 +122,9 @@ class OpsSettleQueryFlowTest {
         b.setEntityNo("M0001");
         b.setStoreNo("ST001");
         b.setPayMerchantNo("PM-TEST");
+        b.setCurrency("CNY");
+        b.setPayChannel("TEST");
+        b.setSplitAmountMinor(500L);
         b.setGrossMinor(10_000L);
         b.setCommissionMinor(500L);
         b.setServiceFeeMinor(0L);

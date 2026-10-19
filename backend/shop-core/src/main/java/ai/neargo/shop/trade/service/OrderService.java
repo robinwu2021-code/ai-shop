@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service;
 
+import ai.neargo.shop.trade.order.contract.CancellationImpact;
+
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.OrderVO;
 
@@ -14,6 +16,21 @@ public interface OrderService {
      * 否则「预览显示 2 个包裹、下单变 3 个」这种问题会反复出现。
      */
     OrderVO preview(CreateOrderCommand cmd);
+
+    /** Read-only buyer quote using the same store, discount and payment route as placement. */
+    PointsQuote quotePoints(CreateOrderCommand cmd);
+
+    record PointsQuote(String state, String reason, long pointsUsed, long deductMinor,
+                       long ratePoints, long rateMinor, long basePayMinor,
+                       List<StorePointsQuote> stores) {}
+
+    record StorePointsQuote(String storeNo, String merchantNo, long policyVersion,
+                            long pointsUsed, long deductMinor) {}
+
+    /** Buyer-scoped status of the optional points placement; only bounded phase/code is exposed. */
+    PointsState pointsState(String orderNo);
+
+    record PointsState(String phase, String reason) {}
 
     /** 下单。幂等由 {@code Idempotency-Key} 保证；库存在此锁定，支付成功才实扣。 */
     OrderVO create(CreateOrderCommand cmd, String idempotencyKey);
@@ -173,6 +190,9 @@ public interface OrderService {
      * 执行者记平台（TDD-订单状态机 AC15）。{@code orderNo} 可传子单号。
      */
     void cancelByPlatform(String orderNo, String reason, String operatorNo);
+
+    /** 完整授权的整笔取消影响；读取不改变任何事实。 */
+    CancellationImpact cancellationImpact(String orderNo);
 
     /**
      * 这张子单关闭后券与积分的去向（待办设计 P3）；非关闭态返回 null。

@@ -16,6 +16,8 @@ import static ai.neargo.shop.trade.order.statemachine.Actor.*;
 public final class ShipmentMachine {
 
     private static final Guard<ShipmentContext> AUTHORIZED = Guard.of(ShipmentContext::authorized, ErrorCode.FORBIDDEN);
+    private static final Guard<ShipmentContext> DISPATCHED =
+            Guard.of(ShipmentContext::dispatched, ErrorCode.ORDER_STATE_ILLEGAL);
     private static final Guard<ShipmentContext> WAYBILL_VALID =
             Guard.of(ShipmentContext::waybillValid, ErrorCode.BAD_REQUEST);
     private static final Guard<ShipmentContext> WAYBILL_FREE =
@@ -30,11 +32,17 @@ public final class ShipmentMachine {
                     .from(CREATED).on(PICKED_UP).by(CHANNEL).to(SHIPPED).emit("ShipmentPickedUp").add()
                     // H3 承运商签收（轨迹）
                     .from(SHIPPED).on(SIGNED).by(CHANNEL).to(DELIVERED).emit("ShipmentSigned").add()
+                    // Actual merchant dispatch can be confirmed before a carrier pickup callback arrives.
+                    .from(CREATED).on(RECEIPT_CONFIRMED).by(BUYER, SYSTEM).when(AUTHORIZED, DISPATCHED).to(RECEIVED)
+                    .emit("ShipmentReceived").add()
                     // H4 买家确认 / 自动确认收货
                     .from(SHIPPED, DELIVERED).on(RECEIPT_CONFIRMED).by(BUYER, SYSTEM).to(RECEIVED)
                     .emit("ShipmentReceived").add()
                     // H5 改单号：旧单作废（新号先过与建单相同的守卫）
-                    .from(CREATED, SHIPPED).on(CORRECT_WAYBILL).by(MERCHANT).when(AUTHORIZED, WAYBILL_VALID, WAYBILL_FREE)
+                    // A wrongly reused number can arrive already signed; while the trade order
+                    // still fulfills, replacing it must void that false carrier receipt too.
+                    .from(CREATED, SHIPPED, DELIVERED).on(CORRECT_WAYBILL).by(MERCHANT, PLATFORM)
+                    .when(AUTHORIZED, WAYBILL_VALID, WAYBILL_FREE)
                     .to(VOIDED).emit("ShipmentVoided").add()
                     // H6 未揽收前取消
                     .from(CREATED).on(CANCEL).by(MERCHANT).when(AUTHORIZED).to(VOIDED).emit("ShipmentVoided").add()

@@ -4,7 +4,6 @@
 
 import type { CurrencyCode } from "./core";
 import type { Coupon } from "./marketing";
-import type { MerchantPointAccount } from "./merchant";
 
 // ---------------------------------------------------------------- 用户与归属
 
@@ -135,8 +134,17 @@ export interface PointRecord {
   /** 变动后余额，用于对账 —— 只存变动量的话，一条记录出错后面全错 */
   balanceAfter: number;
 }
-/** 用户积分账户。**单位是积分个数** —— 商家侧是钱，用 {@link MerchantPointAccount} */
+/** 用户积分账户，单位是积分个数。 */
+/** 用户积分账户，单位是积分个数。 */
 export interface PointAccount {
+  /** 服务端积分类型的兑换比例；未配置时不展示折算价值。 */
+  ratePoints?: number;
+  /** 换算比例中的最小货币单位数量 */
+  rateMinor?: number;
+  /** 当前类型的规则由服务端提供，未给时不展示旧规则常量。 */
+  maxDeductRatio?: number;
+  /** 无活动账户失效天数 */
+  inactiveDays?: number;
   /** 当前可用余额。**只含能花的分**，待生效的在 pendingBalance */
   balance: number;
   /**
@@ -176,6 +184,7 @@ export interface PointsDeductible {
 }
 // ---------------------------------------------------------------- 地址簿
 
+/** 收件人称呼，与地址簿字段及订单收件人快照共用。 */
 export type RecipientSalutation = "MR" | "MS" | "UNSPECIFIED";
 
 export interface Address {
@@ -186,7 +195,7 @@ export interface Address {
   addressId: string;
   /** 收货人姓名 */
   name: string;
-  /** 用户选定的称呼；旧地址为空，展示按未选择处理。 */
+  /** 收件人称呼；缺省表示用户未选择。 */
   salutation?: RecipientSalutation | null;
   /** 收货人手机号 */
   phone: string;
@@ -314,6 +323,7 @@ export interface LoginReq {
   /** 凭证副本：仅 `PHONE_OTP` 需要，放短信验证码 */
   credential?: string;
   /** 邀请人。从邀请链接进入时带上，用于拉新归因 */
+  /** 邀请人编号，无邀请来源时不传 */
   inviterNo?: string;
   /** 从店铺码/店铺分享进入时带上，用于进店归因与费率分档（ADR-004 §5.4） */
   merchantNo?: string;
@@ -329,12 +339,18 @@ export interface LoginResp {
 
 /** Phone authorization is verified on the server; new number registers, existing number logs in. */
 export interface WxPhoneLoginReq {
+  /** 微信手机号授权凭证，由服务端向微信验证 */
   phoneCode: string;
+  /** 邀请人编号，无邀请来源时不传 */
   inviterNo?: string;
+  /** 邀请或登录入口关联的商家编号，可不传 */
   merchantNo?: string;
+  /** 是否已同意用户协议和隐私政策 */
   agreed?: boolean;
 }
 export interface WxPhoneLoginResp extends LoginResp {
+  /** 本次手机号认证是否新建了用户 */
   isNewUser: boolean;
+  /** 微信身份已关联或等待安全关联，pending不覆盖已有账号归属 */
   wxRelation: "linked" | "pending";
 }

@@ -6,8 +6,8 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.spi.platform.PlatformSwitchPort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -38,11 +38,11 @@ public class PurchaseLimitGuard {
 
     public static final String FLAG = "trade.purchase-limit.enforce";
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
     private final PlatformSwitchPort switchPort;
 
-    public PurchaseLimitGuard(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+    public PurchaseLimitGuard(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                               PlatformSwitchPort switchPort) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;

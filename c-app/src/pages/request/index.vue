@@ -22,7 +22,7 @@ const request = ref<GroupRequest | null>(null);
 
 /** 只有发起人能选定报价 */
 const isInitiator = computed(
-  () => !!request.value && request.value.initiatorNickname === user.user?.nickname,
+  () => !!request.value && request.value.ownerId === user.user?.cUserNo,
 );
 
 /** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
@@ -74,7 +74,7 @@ function lastRaise(q: Quote): number | null {
 
 async function confirm() {
   const r = request.value;
-  if (!r || r.confirmed) return;
+  if (!r || !isInitiator.value || r.status !== "LOCKED") return;
   try {
     request.value = await api.confirmRequest(r.requestNo);
     uni.showToast({ title: String(t("request.confirmedOk")), icon: "none" });
@@ -228,29 +228,28 @@ onShareAppMessage(() => {
       </view>
     </view>
 
-    <!-- 已选定报价：+1 的邻居各自二次确认 -->
+    <!-- 已选定报价：发起人确认并收口需求单 -->
     <view v-if="request.status === 'LOCKED'" class="sh-card block matched">
       <text class="txt-title">{{ $t("request.matchedTitle") }}</text>
       <text class="sh-muted nothint">{{ $t("request.matchedHint") }}</text>
       <view class="matched__row sh-row">
         <text class="txt-hero sh-num">{{ money(request.lockedPriceMinor ?? 0) }}</text>
         <text class="sh-chip sh-chip--primary sh-num">
-          {{ $t("request.confirmedCount", { n: request.confirmedCount ?? 0, t: request.interestedCount }) }}
+          {{ $t("request.neighbours", { n: request.interestedCount }) }}
         </text>
       </view>
     </view>
 
     <sh-actionbar :pad="180">
       <view
-        v-if="request.status === 'LOCKED'"
+        v-if="request.status === 'LOCKED' && isInitiator"
         class="sh-btn"
-        :class="{ 'is-disabled': request.confirmed }"
         @tap="confirm"
       >
-        {{ request.confirmed ? $t("request.confirmed") : $t("request.confirm") }}
+        {{ $t("request.confirm") }}
       </view>
       <view
-        v-else
+        v-else-if="request.status === 'COLLECTING' || request.status === 'QUOTED'"
         class="sh-btn"
         :class="{ 'sh-btn--soft': request.interested }"
         @tap="toggle"

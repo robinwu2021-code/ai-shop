@@ -60,28 +60,15 @@
 # 记进来是为了让订单号方案推得上去，不是认下这些债。order/track 那条线要把它们修掉
 # （有任务留着）。每条后面的数字只准往下走。
 #
-
 api-path-naming.test.ts::端点路径：资源段的单复数按域一致 ★★ 新端点必须跟随本域的约定（/mp /biz 单数 · /ops 复数） @<=5
-biz-contract-fields.test.ts::'c-app' 契约字段（'/mp'） ★★ 后端发了而契约没声明的字段（棘轮：只许降不许升） @<=32
 design-tokens.test.ts::端差异下沉到 ports/，页面里不写条件编译 pages/ 下没有 #ifdef / #ifndef @<=10
-doc-standard.test.ts::文档规范 没有状态行的文档不许再增加（基线只降不升） @<=42
-enum-registry.test.ts::枚举登记表 G1 · 端上每个具名枚举都必须登记（新增枚举不能绕过雷达） @<=11
-glossary.test.ts::后端验收清单与 mock 同步 拒绝规则条数与 mock 一致 @<=10
 i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 ar：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
 i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 en：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
 i18n-backend-enum-keys.test.ts::后端枚举当词条 key 用 zh-CN：每个枚举值都要有词条 —— 缺一个就是把程序标识符显示给商家 @<=1
-i18n-keys-exist.test.ts::词条引用 ★★★ 页面里 t("x.y") 引用的 key，词条里必须真的有 —— 否则用户看到的是 key 本身 @<=3
 i18n-parity.test.ts::三语词条一致性 b-app: 三语的 key 集合完全一致 @<=3
-ops-data-scope.test.ts::运营端数据域接入 ★★★ G1 ops 查询端点不许绕过已注册表的数据域 —— 绕过了就是越权，而且不报错 @<=1
-ops-perm-matrix.test.ts::运营端角色×端点矩阵 ★★ 每个端点在细化登记表里都要有归属 —— 漏一条就是拆码时被落下的那条 @<=12
 ops-reason-required.test.ts::运营端写操作的 reason ★★★ 后端要 reason 的端点，ops-web 必须真的发 reason @<=13
-page-scoped-orphan-class.test.ts::页面 scoped 样式不描别人的内部 ★★★ 不许新增：页面只描自己模板里的类 @<=11
-schema-lineage.test.ts::对账血缘 与 gen-erd.mjs 的键归属表一致 —— 两份分叉会让 ER 图连错线 @<=3
-schema-lineage.test.ts::对账血缘 新出现的跨表同名业务键必须被分类 @<=1
-spec-completeness.test.ts::契约完整性 B 端：每个字段都有说明 @<=21
-spec-completeness.test.ts::契约完整性 C 端：每个字段都有说明 @<=21
-spec-completeness.test.ts::契约完整性 平台端：每个字段都有说明 @<=70
+spec-completeness.test.ts::契约完整性 B 端：每个字段都有说明 @<=14
+spec-completeness.test.ts::契约完整性 C 端：每个字段都有说明 @<=20
+spec-completeness.test.ts::契约完整性 平台端：每个字段都有说明 @<=7
 typography.test.ts::字阶 圆角只用 token 五档 —— 差 4rpx 的两个圆角，没人分得出，只会让人各写各的 @<=1
 typography.test.ts::字阶 页面与组件的字号必须落在字阶上（图标/emoji 占位除外） @<=1
-ui-package.test.ts::拉数据的页面要区分出错与空 没有新增的「失败长得像空」页面 @<=10
-ui-package.test.ts::间距表与真实用量对得上 每个间距都落在 4rpx 网格上（2rpx 是发丝线单位，豁免） @<=10

@@ -36,6 +36,13 @@ export const afterSaleMock: AfterSaleApi = {
     return wait(a, 400);
   },
 
+  recoverAfterSale: async (afterSaleNo) => {
+    const a = find(afterSaleNo);
+    if (!a.refundExecution) fail("原退款执行不存在", "Original refund execution is missing");
+    // 模拟恢复不能凭空制造资金回执。
+    return wait(a);
+  },
+
   getFastRefundRule: async () => wait(db.fastRefundRule),
 
   saveFastRefundRule: async (v) => {

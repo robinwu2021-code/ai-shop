@@ -89,8 +89,10 @@ class MpEndpointAuthTest {
             "GET /mp/order/{orderNo}/pay-result",
             // 收银台的支付方式列表（C-1）：要登录 —— 它按下单的商家算，是这个人的单
             "GET /mp/order/{orderNo}/pay-method",
-            "GET /mp/points/account",
-            "GET /mp/points/records",
+            "GET /mp/order/{orderNo}/points-state",
+            "GET /mp/points/accounts",
+            "GET /mp/points/entries",
+            "POST /mp/order/points-quote",
             "GET /mp/store/{no}/frequent",
             "GET /mp/ticket",
             "GET /mp/ticket/{ticketNo}",
@@ -290,7 +292,6 @@ class MpEndpointAuthTest {
             "GET /mp/group-buy/{groupNo}",   // 探测得到 200/code=10404
             "GET /mp/group-buy/{groupNo}/orders",   // 探测得到 200/code=10404
             "GET /mp/group-request/{requestNo}",   // 探测得到 200/code=10404
-            "GET /mp/points/deductible",   // 探测得到 200/code=10400
             "GET /mp/review",   // 探测得到 200/code=10400
             "GET /mp/store/by-code",   // 探测得到 200/code=10400
             "GET /mp/stores/{storeNo}/appointment-slots",   // 探测得到 200/code=10400
@@ -494,6 +495,7 @@ class MpEndpointAuthTest {
             default -> MockMvcRequestBuilders.get(url);
         };
         try {
+            if (endpoint.equals("GET /mp/points/entries")) req.param("typeCode", "TYPE");
             return mvc().perform(req.contentType(MediaType.APPLICATION_JSON)
                             .content(PROBE_BODY.getOrDefault(endpoint, "{}")))
                     .andReturn().getResponse().getStatus();
@@ -517,6 +519,7 @@ class MpEndpointAuthTest {
      * 这条用例会红并把 10400 打出来 —— 那时补一个字段进来，不要改判据。
      */
     private static final java.util.Map<String, String> PROBE_BODY = java.util.Map.of(
+            "POST /mp/order/points-quote", "{\"items\":[{\"goodsNo\":\"G0001\",\"skuNo\":\"SK0001\",\"qty\":1}],\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\",\"usePoints\":20}",
             "POST /mp/push-token", "{\"platform\":\"ANDROID\",\"clientId\":\"PROBE\"}",
             "POST /mp/ticket", "{\"subject\":\"探针\",\"content\":\"探针\"}",
             "POST /mp/order/{orderNo}/after-sale", "{\"type\":\"REFUND\",\"reason\":\"探针\"}",

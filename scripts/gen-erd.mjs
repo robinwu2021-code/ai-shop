@@ -67,6 +67,15 @@ const DOMAINS = [
  * 与 packages/shared/tests/schema-lineage.test.ts 的同名表保持一致（有断言校验）。
  */
 export const KEY_OWNERS = {
+  build_no: "pts_statement_build",
+  payout_no: "stl_payout",
+  voucher_no: "pts_voucher",
+  evidence_no: "pts_fund_evidence",
+  receivable_no: "pts_receivable",
+  statement_no: "pts_store_statement",
+  cash_payment_no: "stl_payment",
+  origin_payment_no: "stl_payment",
+  pay_no: "ord_create_intent",
   /*
    * ── 2026-08-29 补齐的十三个 ──
    * 与 packages/shared/tests/schema-lineage.test.ts 的 KEY_OWNERS **必须逐条相等**
@@ -126,8 +135,7 @@ export const KEY_OWNERS = {
 /**
  * 专题图：一个业务域**横跨多个表名前缀**时，按前缀分的图看不全它。
  *
- * 积分就是这样 —— `pts_*` 两张表 + 结算侧三张，
- * 加上 `ord_sub_order`（资金账与积分账的勾稽点）才是完整的一张图。
+ * 积分就是这样 —— 独立凭证/账本、运营配置、资金池与订单售后接线横跨多个前缀。
  * 这里只列表名，关系仍从 schema 里算，所以**不会漂移**。
  */
 const TOPICS = [
@@ -141,19 +149,63 @@ const TOPICS = [
       "stl_payment",
       "stl_bill",
       "stl_split_log",
-      "pts_user_ledger",
-      "stl_points_pool",
     ],
   },
   {
     id: "points",
     label: "积分域",
     tables: [
+      "ord_order",
       "ord_sub_order",
-      "pts_user_account",
-      "pts_user_ledger",
+      "ord_after_sale",
+      "ord_refund_execution",
+      "ord_points_integration_policy",
+      "ord_points_command",
+      "ord_points_binding",
+      "ord_points_source_counter",
+      "ord_points_source_fact",
+      "ord_points_placement",
+      "ord_points_refund_execution",
+      "ord_points_refund_binding",
+      "ord_points_recovery_cursor",
+      "ord_points_refund_retry",
+      "ord_points_work_cursor",
+      "stl_payment",
       "stl_bill",
-      "stl_points_pool",
+      "stl_split_intent",
+      "stl_points_refund_hold",
+      "pts_point_type",
+      "pts_fund_pool",
+      "pts_account",
+      "pts_voucher",
+      "pts_ledger_entry",
+      "pts_pool_flow",
+      "pts_fund_evidence",
+      "pts_refund_reserve",
+      "pts_grant_position",
+      "pts_redeem_position",
+      "pts_refund_preparation",
+      "pts_payout_ticket",
+      "pts_store_statement",
+      "pts_fund_transfer",
+      "pts_grant_line",
+      "pts_redeem_line",
+      "pts_merchant_agreement",
+      "pts_statement_revision",
+      "pts_statement_line",
+      "pts_receivable",
+      "pts_receivable_allocation",
+      "pts_refund_preparation_line",
+      "pts_pool_request",
+      "pts_topup_plan",
+      "pts_switch",
+      "pts_switch_log",
+      "pts_pause_interval",
+      "pts_lifecycle_fact",
+      "pts_inbox",
+      "pts_outbox",
+      "pts_stat_daily",
+      "pts_cursor",
     ],
   },
   {
@@ -201,6 +253,13 @@ const TOPICS = [
  * 而守卫只查集合不查文档，漏了两天没人发现。
  */
 const NAME_COLLISIONS_WHY = {
+  parent_no: "不同层级树的父节点，必须结合所属树。",
+  provider_no: "通道回执需结合通道、资金方向与原请求。",
+  scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
+  revision_no: "商品版本与积分账单版本，各自独立。",
+  holder_no: "积分持有人多态编号，必须结合 holder_type。",
+  position_no: "不同种类积分持仓的多态编号，必须结合持仓类型。",
+  ticket_no: "积分资金指令与客服工单的独立编号，不可直接关联。",
   request_no: "`mkt_request` 是求团需求单号；`stl_split_log` 是分账幂等号",
   express_no: "`ord_sub_order` 是发货单号；`ord_after_sale` 是退货单号，**方向相反**",
   operator_no: "各表各自记录操作人，不是外键",

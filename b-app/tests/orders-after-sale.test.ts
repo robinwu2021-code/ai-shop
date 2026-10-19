@@ -13,7 +13,7 @@ function page(api: Record<string, unknown>, name = "orders", hooks = "load, swit
     if (name === "@/api") return { api };
     if (name === "@/stores/merchant") return { useMerchantStore: () => merchant };
     if (name === "vue-i18n") return { useI18n: () => ({ t: (key: string) => key }) };
-    if (name === "@dcloudio/uni-app") return { onShow: () => {} };
+    if (name === "@dcloudio/uni-app") return { onShow: () => {}, onLoad: () => {}, onReachBottom: () => {} };
     if (name.includes("order-view")) return { DELIVERY_SHAPE: {}, fulfillmentsOf: () => [], tabQuery: () => ({}) };
     if (name.includes("constants")) return { FULFILLMENT: {} };
     return {};
@@ -24,8 +24,12 @@ function page(api: Record<string, unknown>, name = "orders", hooks = "load, swit
 describe("商家售后订单隔离", () => {
   it("普通订单的迟到响应不能覆盖售后列表", async () => {
     let resolveAll!: (data: unknown) => void;
-    const api = { mAfterSaleList: vi.fn().mockResolvedValue([{ subOrderNo: "AS1", status: "APPLIED" }]), mOrderList: vi.fn().mockImplementationOnce(() => new Promise(r => { resolveAll = r; })).mockResolvedValue({ records: [{ orderNo: "AS1", status: "PAID" }, { orderNo: "OTHER", status: "FULFILLING" }] }) };
+    const api = {
+      mOrderList: vi.fn(() => new Promise(r => { resolveAll = r; })),
+      mAfterSaleWorklist: vi.fn().mockResolvedValue({ records: [{ afterSale: { subOrderNo: "AS1", status: "APPLIED" }, order: { orderNo: "AS1", status: "PAID" } }], total: 1 }),
+    };
     const p = page(api);
+    p.tab.value = "all";
     const first = p.load();
     p.tab.value = "afterSale";
     await p.load();
@@ -37,6 +41,6 @@ describe("商家售后订单隔离", () => {
 });
 
 it("售后处理独立页只列售后单，不因待发货或运输中订单而增加记录", async () => {
- const p = page({ mAfterSaleList: async () => [{ subOrderNo: "AS1", status: "APPLIED" }], mOrderList: async () => ({ records: [{ orderNo: "AS1", status: "PAID" }, { orderNo: "NORMAL1", status: "PAID" }, { orderNo: "NORMAL2", status: "FULFILLING" }] }) }, "after-sale", "load, list");
+ const p = page({ mAfterSaleWorklist: async () => ({ records: [{ afterSale: { subOrderNo: "AS1", status: "APPLIED" }, order: { orderNo: "AS1", status: "PAID" } }], total: 1 }), mOrderList: vi.fn(() => { throw new Error("售后列表不应扫描普通订单"); }) }, "after-sale", "load, list");
  await p.load(); expect(p.list.value.map((r: any) => r.as.subOrderNo)).toEqual(["AS1"]);
 });

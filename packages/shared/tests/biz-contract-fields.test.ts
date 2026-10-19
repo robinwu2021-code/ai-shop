@@ -35,7 +35,13 @@ function sharedTypesSrc(root: string): string {
   return src;
 }
 
-const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
+// The clean source snapshot is immutable during this suite. Cache file bytes
+// instead of reopening every Java file for each endpoint/type comparison.
+const sourceCache = new Map<string, string>();
+const read = (p: string) => {
+  if (!sourceCache.has(p)) sourceCache.set(p, readFileSync(join(ROOT, p), "utf8"));
+  return sourceCache.get(p)!;
+};
 
 /**
  * 检查哪几端。
@@ -50,6 +56,14 @@ const APPS = [
   { app: "b-app", prefix: "/biz", fn: "m" },
   { app: "c-app", prefix: "/mp", fn: "" },
 ];
+
+/** Types whose response deliberately selects a documented subset of a wider backend DTO. */
+const INTENTIONAL_RESPONSE_SUBSETS = new Map<string, string>([
+  [
+    "OrderPreview",
+    "`OrderPreview` intentionally selects checkout fields from the full `OrderVO`; order-detail-only fields are outside the preview contract.",
+  ],
+]);
 
 /**
  * 端点名 → `"METHOD 路径"`。
@@ -425,6 +439,15 @@ describe.each(APPS)("$app 契约字段（$prefix）", ({ app, prefix }) => {
       if (!hit) continue;
       const comps = javaComponents(hit.ret, hit.file, hit.pkg);
       if (!comps) continue;
+
+      if (INTENTIONAL_RESPONSE_SUBSETS.has(path)) {
+        const declaredDoc = sharedTypesSrc(ROOT);
+        expect(
+          declaredDoc,
+          `${path} is exempt as a response subset only while its source documents that boundary`,
+        ).toContain("后端返的是完整 OrderVO，这里只声明端上要用的那部分");
+        continue;
+      }
 
       const declared = new Set(tsFields(path).map((f) => f.name));
       if (!declared.size) continue; // 契约类型解析不到，别假装比过

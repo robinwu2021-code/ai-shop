@@ -48,6 +48,8 @@ class BizNotifyFlowTest {
     @Autowired
     private MchEntityMapper merchantMapper;
     @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    @Autowired
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper;
     @Autowired
     private ai.neargo.shop.product.mapper.ProductMappers.SkuMapper skuMapper;
@@ -145,19 +147,41 @@ class BizNotifyFlowTest {
     void afterSaleNotifiesOwner() throws Exception {
         String buyer = ai.neargo.shop.support.TestLogin.consumer(mvc(), json, otpStore, "12700127205");
         String owner = loginAsOwnerOf("M0001", "12700127206");
+        ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() -> {
+            var entity = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                    .eq(MchEntity::getEntityNo, "M0001").last("limit 1"));
+            entity.setFundsMode(ai.neargo.shop.spi.user.MerchantQueryPort.FUNDS_DIRECT);
+            merchantMapper.updateById(entity);
+            return null;
+        });
 
         buyAndPay(buyer, "bizn-as");
         dispatcher.dispatchPending();
         String subOrderNo = latestSubOrderNo(buyer);
+        // 既有测试用 STORE_PICKUP，支付后直接 FULFILLING；设置已备货事实只用于通知场景。
+        jdbc.update("update ord_sub_order set status='WAIT_FULFILL', prepared_at=? where sub_order_no=?",
+                System.currentTimeMillis(), subOrderNo);
 
         mvc().perform(post("/mp/order/" + subOrderNo + "/after-sale")
                         .header("Authorization", "Bearer " + buyer)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"type\":\"REFUND_ONLY\",\"reason\":\"不想要了\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value(0));
         dispatcher.dispatchPending();
 
-        assertThat(find(bizMessages(owner), "售后")).isNotNull();
+        JsonNode notice = find(bizMessages(owner), "售后");
+        assertThat(notice).isNotNull();
+        assertThat(notice.path("link").asString())
+                .startsWith("/pages/after-sale/index?afterSaleNo=")
+                .contains("&store=");
+        assertThat(notice.path("actionPending").asBoolean()).isTrue();
+        assertThat(notice.path("bizNo").asString()).isNotBlank();
+        mvc().perform(post("/biz/message/" + notice.path("messageNo").asString() + "/read")
+                        .header("Authorization", "Bearer " + owner))
+                .andExpect(status().isOk());
+        assertThat(find(bizMessages(owner), "售后").path("actionPending").asBoolean())
+                .as("已读不等于已处理").isTrue();
     }
 
     @Test

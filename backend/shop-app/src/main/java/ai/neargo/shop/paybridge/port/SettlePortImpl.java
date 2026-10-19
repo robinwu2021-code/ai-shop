@@ -5,6 +5,13 @@ import org.slf4j.LoggerFactory;
 import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.paybridge.SettleGenerationOrchestrator;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
+import ai.neargo.shop.pay.service.RefundExecutionService;
+import ai.neargo.shop.spi.settle.RefundRequest;
+import ai.neargo.shop.spi.settle.RefundDispatchResult;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
+import ai.neargo.shop.trade.order.refund.service.BasicRefundExecutionService;
+import ai.neargo.shop.spi.settle.RefundDispatchResult.DispatchStatus;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.user.UserIdentityPort;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,7 +54,6 @@ public class SettlePortImpl implements SettlePort {
      * 而那天要改的地方必须只有一处。散成字面量的话，改漏一处的表现是
      * 「某个市场的单按 CNY 结算」—— 金额对、币种错，账面上看不出来。
      */
-    private static final String CURRENCY_CNY = "CNY";
     /** 一期只在小程序里收款。端形态扩到 App 时这里要按端传值，不能默认 */
     private static final String PAY_METHOD_JSAPI = "JSAPI";
     private static final String WECHAT = "WECHAT";
@@ -75,20 +81,80 @@ public class SettlePortImpl implements SettlePort {
     private final String wechatAppId;
     /** 退款时的结算侧编排（按额回退分账，口径 A） */
     private final ai.neargo.shop.pay.settle.refund.SettlementRefundCoordinator settlementRefund;
+    private final ai.neargo.shop.pay.settle.refund.CashRefundSplitService cashRefundSplit;
 
     public SettlePortImpl(SettleService settleService, PaymentLedgerService paymentLedger,
                           SettleGenerationOrchestrator orchestrator,
                           ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter,
                           UserIdentityPort identityPort,
                           @Value("${shop.pay.wechat.appid:}") String wechatAppId,
-                          ai.neargo.shop.pay.settle.refund.SettlementRefundCoordinator settlementRefund) {
+                          ai.neargo.shop.pay.settle.refund.SettlementRefundCoordinator settlementRefund,
+                          ai.neargo.shop.pay.settle.refund.CashRefundSplitService cashRefundSplit) {
         this.settlementRefund = settlementRefund;
+        this.cashRefundSplit = cashRefundSplit;
         this.settleService = settleService;
         this.paymentLedger = paymentLedger;
         this.orchestrator = orchestrator;
         this.gatewayRouter = gatewayRouter;
         this.identityPort = identityPort;
         this.wechatAppId = wechatAppId;
+    }
+
+    private RefundExecutionService refunds;
+    private ObjectProvider<BasicRefundExecutionService> refundExecutions;
+
+    @Autowired
+    public void setRefundExecutionService(RefundExecutionService refunds) {
+        this.refunds = refunds;
+    }
+
+    @Autowired
+    public void setRefundExecutions(ObjectProvider<BasicRefundExecutionService> refundExecutions) {
+        this.refundExecutions = refundExecutions;
+    }
+
+    @Override
+    public RefundDispatchResult settleRefund(String no, String channel, long amount, String currency, String provider) {
+        RefundDispatchResult confirmed = refunds.confirm(no, channel, amount, currency, provider);
+        if (confirmed.status() == DispatchStatus.SUCCEEDED && confirmed.executionNo() != null) {
+            try {
+                refundExecutions.getObject().applyResult(confirmed);
+            } catch (RuntimeException projectionFailure) {
+                log.warn("refund {} cash confirmed; original execution awaits projection recovery",
+                        confirmed.executionNo(), projectionFailure);
+            }
+        }
+        return confirmed;
+    }
+
+    @Override
+    public PaymentReceipt refundOrigin(String orderNo, String tradeNo, String payChannel) {
+        return refunds.origin(orderNo, tradeNo, payChannel);
+    }
+
+    @Override
+    public boolean prepareRefundReversal(SplitReversal request) {
+        return refunds.reverseUnsplit(request);
+    }
+
+    @Override
+    public boolean prepareRefundReversal(SplitReversal request, boolean zeroLiability) {
+        return refunds.reverseUnsplit(request, zeroLiability);
+    }
+
+    @Override
+    public RefundDispatchResult requestRefund(RefundRequest request) {
+        return refunds.request(request);
+    }
+
+    @Override
+    public RefundDispatchResult queryRefundExecution(String executionNo) {
+        return refunds.query(executionNo);
+    }
+
+    @Override
+    public RefundDispatchResult queryRefundExecution(RefundRequest request) {
+        return refunds.query(request);
     }
 
     @Override
@@ -110,6 +176,8 @@ public class SettlePortImpl implements SettlePort {
          *    用户手上有一个能付的凭据而我方一无所知，那笔钱进来后没人认领它。
          */
         String outTradeNo = paymentLedger.open(cmd);
+        cmd = paymentLedger.paymentRequest(outTradeNo).orElseThrow(
+                () -> new IllegalArgumentException("PAY_REQUEST_SNAPSHOT_REQUIRED"));
 
         /*
          * ② 通道没接入时**直接失败**，不回退到别的通道。
@@ -132,15 +200,18 @@ public class SettlePortImpl implements SettlePort {
          * 的 `payer.openid` 是必填。此前不炸只因为下单一直走 STUB/TEST，
          * 而它们不看这个字段 —— 桩把缺件盖住了，正是这个仓库反复吃过亏的那种绿。
          *
-         * `subMchId` 仍是 null：直连商户号（ADR-017 路径 A「归集」）没有二级商户，
-         * 钱进平台商户号。收付通模式接上时它才有值，那时从主体属性里取。
+         * 门店直连使用本次支付已固化的通道账户；归集支付仍由平台账户收款。
+         * paymentLedger 已拒绝同一支付指令覆盖多个直连账户或混合资金路径。
          */
         String payerId = identityPort.wxPayerOpenIdMp(cmd.userNo()).orElse(null);
+        String subMchId = !cmd.stores().isEmpty()
+                && "DIRECT".equals(cmd.stores().getFirst().route().fundsPath())
+                ? cmd.stores().getFirst().route().subMerchantId() : null;
         var r = gateway.prepay(new ai.neargo.shop.pay.channel.PayGateway.PrepayCommand(
                 // description 由交易域拼好带过来（只有那一层有订单明细）。
                 // 传 "订单 "+orderNo 的老写法会让用户在微信购物订单里认不出这一单
-                outTradeNo, cmd.amountMinor(), CURRENCY_CNY, cmd.subject(),
-                PAY_METHOD_JSAPI, null, payerId));
+                outTradeNo, cmd.amountMinor(), cmd.currency(), cmd.subject(),
+                PAY_METHOD_JSAPI, subMchId, payerId));
 
         /*
          * ③ 下单失败就**关掉流水**，不留在 PENDING。
@@ -189,6 +260,21 @@ public class SettlePortImpl implements SettlePort {
     }
 
     @Override
+    public PaymentReceipt successPayment(String orderNo) {
+        return paymentLedger.successPayment(orderNo);
+    }
+
+    @Override
+    public PaymentReceipt successPayment(String orderNo, String channel, String tradeNo) {
+        return paymentLedger.successPayment(orderNo, channel, tradeNo);
+    }
+
+    @Override
+    public PaymentReceipt paymentByOutTradeNo(String outTradeNo) {
+        return paymentLedger.paymentByOutTradeNo(outTradeNo);
+    }
+
+    @Override
     public String settlePayment(PaymentSettled cmd) {
         return paymentLedger.settle(cmd);
     }
@@ -205,6 +291,31 @@ public class SettlePortImpl implements SettlePort {
     }
 
     @Override
+    public boolean reverseCashRefund(SplitReversal cmd) {
+        return cashRefundSplit.reverse(cmd);
+    }
+
+    @Override
+    public boolean reversePreparedRefund(SplitReversal cmd) {
+        return settlementRefund.reversePrepared(cmd);
+    }
+
+    @Override
+    public boolean confirmPreparedRefund(SplitReversal cmd, String preparationNo, String inputHash) {
+        return settlementRefund.confirmPrepared(cmd, preparationNo, inputHash);
+    }
+
+    @Override
+    public boolean cancelPreparedRefund(SplitReversal cmd, String preparationNo, String inputHash) {
+        return settlementRefund.cancelPrepared(cmd, preparationNo, inputHash);
+    }
+
+    @Override
+    public void refreshRefund(String paymentNo) {
+        settleService.refreshRefund(paymentNo);
+    }
+
+    @Override
     public String refund(String subOrderNo, long amountMinor, String reason) {
         return settleService.refund(subOrderNo, amountMinor, reason);
     }
@@ -215,7 +326,20 @@ public class SettlePortImpl implements SettlePort {
     }
 
     @Override
-    public String settleRefund(String outRefundNo, String providerNo) {
-        return paymentLedger.settleRefundByOutTradeNo(outRefundNo, providerNo);
+    public String prepareRefund(String subOrderNo, String afterSaleNo, long amountMinor, String reason) {
+        return settleService.prepareRefund(subOrderNo, afterSaleNo, amountMinor, reason);
     }
+
+    @Override
+    public void dispatchRefund(String paymentNo) {
+        settleService.dispatchRefund(paymentNo);
+    }
+
+    @Override
+    public String settleRefund(String outRefundNo,String providerNo,long verifiedMinor) {
+        return paymentLedger.settleRefundByOutTradeNo(outRefundNo,providerNo,verifiedMinor);
+    }
+    @Override public RefundEvidence refundEvidence(String no) { return paymentLedger.refundEvidence(no); }
+    @Override public boolean hasRefundForAfterSale(String no) { return paymentLedger.hasRefundForAfterSale(no); }
+    @Override public String paymentCurrency(String orderNo) { return paymentLedger.paymentCurrency(orderNo); }
 }

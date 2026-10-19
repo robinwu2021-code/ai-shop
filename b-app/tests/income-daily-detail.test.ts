@@ -102,7 +102,9 @@ describe("B 端每日流水补齐与按天明细", () => {
     // 商家是来核一天的账的，不是来改积分开关的
     expect(settle).toContain('v-if="!dayMode"');          // 四个入口卡
     expect(settle).toContain('v-if="rate && !dayMode"');  // 费率卡
-    expect(settle).toContain('v-if="points && !dayMode"'); // 积分卡
+    // 旧主体积分卡已退出；新的门店账本入口同样不能混入按天核账。
+    expect(settle).toContain(`v-if="!dayMode" class="sh-card" @tap="go('/pages/points/index')"`);
+    expect(code(settle)).not.toContain("api.mPoints(");
     expect(settle).toContain("settle.dayClear");          // 出得去
   });
 

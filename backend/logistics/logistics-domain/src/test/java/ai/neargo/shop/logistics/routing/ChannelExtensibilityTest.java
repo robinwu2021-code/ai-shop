@@ -124,6 +124,7 @@ class ChannelExtensibilityTest {
         w.setSubState(LgsWaybill.SUB_PENDING);
         w.setSubAttempts(0);
         when(waybills.selectOne(any())).thenReturn(w);
+        when(waybills.update(any(), any())).thenReturn(1);
         ShipmentSourcePort source = mock(ShipmentSourcePort.class);
         when(source.sourceOf(anyString())).thenReturn(Optional.empty());
         LogisticsProperties keyed = new LogisticsProperties();
@@ -136,7 +137,7 @@ class ChannelExtensibilityTest {
 
         assertThat(subscribed).extracting(TrackingSubscriber.SubscribeCmd::waybillNo).containsExactly("EXT0001");
         ArgumentCaptor<LgsWaybill> patch = ArgumentCaptor.forClass(LgsWaybill.class);
-        verify(waybills, atLeastOnce()).updateById(patch.capture());
+        verify(waybills, atLeastOnce()).update(patch.capture(), any());
         assertThat(patch.getAllValues()).anySatisfy(p -> {
             assertThat(p.getSubState()).isEqualTo(LgsWaybill.SUB_DONE);
             assertThat(p.getSubChannel()).isEqualTo("testch");

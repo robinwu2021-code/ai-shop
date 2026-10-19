@@ -47,7 +47,7 @@ public class PaymentReconAxis implements ReconAxis {
          */
         var findings = reconService.checkStalePayments(now);
         int deferred = (int) findings.stream()
-                .filter(ReconService.Finding::queryFailed)
+                .filter(f -> f.queryFailed() || f.requiresManual())
                 .count();
         return new ScanOutcome(findings.size(), 0, 0, deferred);
     }

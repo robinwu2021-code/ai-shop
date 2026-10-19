@@ -29,7 +29,7 @@ public class PayQueryPortImpl implements PayQueryPort {
             return new Result(false, false, false, 0, null);
         }
         PayGateway.QueryResult r = router.of(payChannel).query(outTradeNo);
-        return new Result(r.ok(), r.paid(), r.found(), r.amountMinor(), r.tradeNo());
+        return new Result(r.ok(), r.paid(), r.found(), r.amountMinor(), r.tradeNo(), r.currency());
     }
 
     @Override
@@ -39,6 +39,13 @@ public class PayQueryPortImpl implements PayQueryPort {
             return new Result(false, false, false, 0, null);
         }
         PayGateway.QueryResult r = router.of(payChannel).queryRefund(outTradeNo);
-        return new Result(r.ok(), r.paid(), r.found(), r.amountMinor(), r.tradeNo());
+        return new Result(r.ok(), r.paid(), r.found(), r.amountMinor(), r.tradeNo(), r.currency());
     }
+    @Override
+    public ai.neargo.shop.spi.pay.RefundQueryResult queryRefundOutcome(String channel, String no) {
+        if (channel == null || !router.supports(channel))
+            return ai.neargo.shop.spi.pay.RefundQueryResult.unknown(no);
+        return router.of(channel).queryRefundOutcome(no);
+    }
+
 }

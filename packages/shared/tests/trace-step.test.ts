@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { TRACE_STEPS, traceHasSteps, traceStepIndex, traceStepKey }
+import { TRACE_STEPS, expressOrderStatusKey, traceHasSteps, traceStepIndex, traceStepKey }
   from "../src/strategies/trace-step";
-import type { ShipmentTrace } from "../src/types";
+import type { Order, ShipmentTrace } from "../src/types";
 
 /**
  * 「走到第几步」现在**只此一份**：步骤条（sh-trace）与订单页的摘要行都读它。
@@ -48,5 +48,25 @@ describe("运单走到第几步", () => {
   it("★★ 没有节点也不许抛 —— 刚登记的运单就是空数组，摘要行照样要能渲染", () => {
     expect(() => traceStepIndex({ status: "IN_TRANSIT", nodes: [] } as never)).not.toThrow();
     expect(traceStepIndex({ status: "IN_TRANSIT" } as never)).toBe(1);
+  });
+});
+
+describe("快递订单主状态位", () => {
+  const order = (status: Order["status"], progress?: string): Order => ({
+    status, fulfillment: "EXPRESS",
+    logisticsSync: progress ? { status: progress, pending: false } : null,
+  } as Order);
+
+  it("履约中显示实时物流阶段，签收但未完成显示待核实", () => {
+    expect(expressOrderStatusKey(order("FULFILLING", "IN_TRANSIT"))).toBe("trace.step.transit");
+    expect(expressOrderStatusKey(order("FULFILLING", "DELIVERING"))).toBe("trace.step.delivering");
+    expect(expressOrderStatusKey(order("FULFILLING", "DELIVERED"))).toBe("order.signedPendingReview");
+    expect(expressOrderStatusKey(order("FULFILLING", "CREATED"))).toBe("trace.awaitingPickup");
+  });
+
+  it("无物流或交易终态回落交易状态，避免把已完成显示成待核实", () => {
+    expect(expressOrderStatusKey(order("FULFILLING"))).toBeNull();
+    expect(expressOrderStatusKey(order("COMPLETED", "DELIVERED"))).toBeNull();
+    expect(expressOrderStatusKey(order("CANCELLED", "IN_TRANSIT"))).toBeNull();
   });
 });

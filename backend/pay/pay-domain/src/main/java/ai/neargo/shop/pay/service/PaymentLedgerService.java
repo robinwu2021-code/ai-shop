@@ -44,6 +44,11 @@ public interface PaymentLedgerService {
      */
     String open(SettlePort.PaymentOpen cmd);
 
+    /** 原支付指令快照；缺失时不从当前商家配置合成。 */
+    default java.util.Optional<SettlePort.PaymentOpen> paymentRequest(String outTradeNo) {
+        return java.util.Optional.empty();
+    }
+
     /**
      * 收款成功，转 SUCCESS。
      *
@@ -56,6 +61,11 @@ public interface PaymentLedgerService {
      *         直接拿去查订单会查不到
      */
     String settle(SettlePort.PaymentSettled cmd);
+
+    SettlePort.PaymentReceipt successPayment(String orderNo);
+    SettlePort.PaymentReceipt successPayment(String orderNo, String channel, String tradeNo);
+
+    SettlePort.PaymentReceipt paymentByOutTradeNo(String outTradeNo);
 
     /**
      * 关掉一笔未终态的收款。
@@ -113,6 +123,9 @@ public interface PaymentLedgerService {
      * @return 找不到（单号不存在、或不是 REFUND 方向）时 empty
      */
     java.util.Optional<RefundTicket> refundTicket(String refundPaymentNo);
+
+    /** Commit the single send attempt before contacting the channel. False means query the original intent. */
+    boolean claimRefundDispatch(String refundPaymentNo);
 
     /**
      * 这个订单**付成功的那一笔**收款流水，给微信发货信息录入定位微信那笔单用。
@@ -183,28 +196,17 @@ public interface PaymentLedgerService {
                         String providerNo, String reason);
 
     /**
-     * <b>退款确认到账，转 SUCCESS。</b>由对账回查驱动。
-     *
-     * <h2>这个闭环此前不存在</h2>
-     * {@code markRefundSent} 受理之后<b>刻意留 PENDING</b>（微信退款异步，
-     * 受理≠钱退了），而「谁把它转成 SUCCESS」当时写的是「交给对账轴」——
-     * <b>那句话是错的</b>：对账轴只会 {@code markPaid} / {@code closeUnpaid} 订单，
-     * 从来没有任何东西写过退款流水的终态。
-     *
-     * <p>不补这一步的话，每一笔退款都会永远停在 PENDING：
-     * 对账轴每一轮都把它捞出来、每一轮都去问通道、每一轮都得到「已退款」，
-     * 然后什么都不做。而运营看到的是一张越堆越长的「待确认退款」。
-     *
-     * <p><b>幂等</b>：已经是 SUCCESS 的直接返回，不覆盖已有的成功时刻 ——
-     * 覆盖的话，对账查到的成功时刻会一轮一轮往后跳。
-     *
-     * @param providerNo 通道退款单号，<b>仅用于日志，不回写</b>：
-     *                   受理时 {@link #markRefundSent} 记下的那个才是权威，
-     *                   而 {@code stl_payment} 上 {@code (pay_channel, trade_no)}
-     *                   是跨方向唯一的 —— 覆盖它可能撞键，
-     *                   而撞键炸掉的是**整轮自查**，不是这一行
+     * Confirms a refund only when the trusted query amount exactly matches the immutable payment amount.
+     * Stores query evidence separately from the original acceptance trade number; replay retains timestamps.
      */
-    void markRefundSettled(String refundPaymentNo, String providerNo);
+    void markRefundRejected(String refundPaymentNo, String reason);
+
+    void markRefundSettled(String refundPaymentNo,String providerNo,long verifiedMinor);
+
+    /** Read-only coordinates survive historical missing send snapshots. Never used to send. */
+    java.util.Optional<RefundQueryCoordinates> refundQueryCoordinates(String paymentNo);
+    record RefundQueryCoordinates(String payChannel, String outRefundNo) { }
+
 
     /**
      * 记下这笔收款的<b>付款人</b>（{@code stl_payment.payer_openid} / {@code wx_appid}）。
@@ -236,5 +238,11 @@ public interface PaymentLedgerService {
      * @return 这笔退款挂的订单号；找不到这个单号返回 {@code null}
      *         （通道回传了一个我方没发出去过的退款号，那不能当成功）
      */
-    String settleRefundByOutTradeNo(String outRefundNo, String providerNo);
+    String settleRefundByOutTradeNo(String outRefundNo,String providerNo,long verifiedMinor);
+    /** Read-only trusted cash proof; acceptance is insufficient to complete source refunds. */
+    SettlePort.RefundEvidence refundEvidence(String paymentNo);
+    /** Uses the original successful payment instead of a default currency. */
+    String paymentCurrency(String orderNo);
+    /** Detects an existing refund intent before source reservations can be released. */
+    boolean hasRefundForAfterSale(String afterSaleNo);
 }

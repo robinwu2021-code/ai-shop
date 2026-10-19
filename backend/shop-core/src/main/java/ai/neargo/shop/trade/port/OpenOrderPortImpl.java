@@ -2,7 +2,7 @@ package ai.neargo.shop.trade.port;
 
 import ai.neargo.shop.spi.trade.OpenOrderPort;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -23,9 +23,9 @@ public class OpenOrderPortImpl implements OpenOrderPort {
     private static final List<String> SETTLED =
             List.of(OrdSubOrder.COMPLETED, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED);
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
 
-    public OpenOrderPortImpl(SubOrderMapper subOrderMapper) {
+    public OpenOrderPortImpl(StoreOrderMapper subOrderMapper) {
         this.subOrderMapper = subOrderMapper;
     }
 

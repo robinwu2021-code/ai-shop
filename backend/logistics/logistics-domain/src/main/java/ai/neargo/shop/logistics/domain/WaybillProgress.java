@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Objects;
 
 /**
  * 把一次轨迹（推送来的、或主动查来的）应用到运单上 —— 推送入库、物流页读时校正、补偿作业三处<b>共用这一份</b>，
@@ -33,6 +34,10 @@ public class WaybillProgress {
     private final WaybillNodeMapper nodes;
     private final OutboxEventBus events;
     private final LogisticsProperties props;
+    private WaybillUpdateAudit audit;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAudit(WaybillUpdateAudit audit) { this.audit = audit; }
 
     public WaybillProgress(WaybillMapper waybills, WaybillNodeMapper nodes, OutboxEventBus events,
                            LogisticsProperties props) {
@@ -49,10 +54,19 @@ public class WaybillProgress {
      * @return 状态推进的结果
      */
     public Transition apply(LgsWaybill w, TraceResult trace, String channel, String mode, LgsWaybill patch, long now) {
+        LgsWaybill current = waybills.selectOne(Wrappers.<LgsWaybill>query().eq("id", w.getId())
+                .last("FOR UPDATE"));
+        if (current == null || !Objects.equals(w.getWaybillNo(), current.getWaybillNo())
+                || !Objects.equals(w.getSourceShipmentNo(), current.getSourceShipmentNo())
+                || !Objects.equals(w.getSourceShipmentVersion(), current.getSourceShipmentVersion())) {
+            return WaybillStatus.advance(w.getStatus(), null);
+        }
+        w = current;
         boolean dirty = patch.getCarrier() != null || patch.getSubState() != null || patch.getWxStatusCheckedAt() != null;
         Transition t = WaybillStatus.advance(w.getStatus(), trace == null ? null : trace.status());
+        int added = 0;
         if (trace != null) {
-            int added = appendNodes(w.getShipmentNo(), trace.nodes(), channel, mode);
+            added = appendNodes(w.getShipmentNo(), trace.nodes(), channel, mode);
             if (t.changed()) {
                 patch.setStatus(t.next());
                 dirty = true;
@@ -64,6 +78,7 @@ public class WaybillProgress {
             }
             if (added > 0 || t.changed()) {
                 patch.setLastEventAt(now);
+                patch.setStatusSource(channel);
                 dirty = true;
             }
             if (t.firstPickedUp()) {
@@ -87,6 +102,12 @@ public class WaybillProgress {
                     carrierOf(w, patch), w.getWaybillNo(), WaybillStatus.DELIVERING, true, now));
         }
         if (t.changed()) {
+            if (w.getSourceShipmentNo() != null && w.getSourceShipmentVersion() != null) {
+                events.publish(new LogisticsEvents.ShipmentSnapshot(w.getSourceShipmentNo(),
+                        w.getSourceShipmentVersion(), w.getWaybillNo(), t.next(), patch.getSignedAt(),
+                        t.firstDelivered() ? signedNodeAt(trace, now) : null,
+                        t.firstDelivered() ? firstPersistedTraceAt(w.getShipmentNo(), now) : null, channel));
+            }
             publish(w, carrierOf(w, patch), t, trace,
                     patch.getSignedAt() == null ? now : patch.getSignedAt(), channel, now);
             // 进了揽收（或更后）之后再判一次换 token —— 上次 9300559 的，这一次自然重试
@@ -94,9 +115,23 @@ public class WaybillProgress {
             if (WxBindPolicy.ready(after, props.getWxBind().onShip())) {
                 events.publish(new WxBindRequested(w.getShipmentNo()));
             }
+        } else if (added > 0 && trace != null && WaybillStatus.DELIVERED.equals(w.getStatus())
+                && w.getSourceShipmentNo() != null && w.getSourceShipmentVersion() != null) {
+            // 微信可能先只报“签收”状态，带时间的承运商轨迹随后才到；补发快照让交易域复核。
+            Long signedNode = signedNodeAt(trace, now);
+            if (signedNode != null) {
+                events.publish(new LogisticsEvents.ShipmentSnapshot(w.getSourceShipmentNo(),
+                        w.getSourceShipmentVersion(), w.getWaybillNo(), w.getStatus(), signedNode,
+                        signedNode, firstPersistedTraceAt(w.getShipmentNo(), now), channel));
+            }
         } else if (trace != null && WxBindPolicy.ready(w, props.getWxBind().onShip())) {
             // 状态没变但又来了一条推送：上次微信还没收录的，再试一次
             events.publish(new WxBindRequested(w.getShipmentNo()));
+        }
+        if (audit != null && trace != null) {
+            audit.record(w, channel, mode, w.getStatus(), t.next(), added,
+                    t.changed() ? "ADVANCED" : added > 0 ? "NODES_ADDED" : "UNCHANGED",
+                    auditDetail(trace), now);
         }
         return t;
     }
@@ -104,6 +139,16 @@ public class WaybillProgress {
     /** 这一次补丁纠正了承运商的话用纠正后的（快递100 自动识别会改它） */
     private static String carrierOf(LgsWaybill w, LgsWaybill patch) {
         return patch.getCarrier() != null ? patch.getCarrier() : w.getCarrier();
+    }
+
+    private static String auditDetail(TraceResult trace) {
+        String status = trace.status().name();
+        if (trace.nodes().isEmpty()) return status + "（渠道未提供轨迹节点）";
+        TraceResult.TraceNode latest = trace.nodes().stream()
+                .max(java.util.Comparator.comparingLong(TraceResult.TraceNode::at)).orElseThrow();
+        String info = latest.info() == null ? "" : latest.info().trim();
+        String detail = status + " · " + latest.at() + " · " + info;
+        return detail.length() > 255 ? detail.substring(0, 255) : detail;
     }
 
     private void publish(LgsWaybill w, String carrier, Transition t, TraceResult trace, long signedAt,
@@ -147,7 +192,8 @@ public class WaybillProgress {
             row.setLocation(n.location());
             row.setLatE6(n.latE6());
             row.setLngE6(n.lngE6());
-            row.setStatusCode(n.statusCode());
+            row.setStatusCode(n.statusCode() == null || n.statusCode().isBlank()
+                    ? "TRACE_" + n.status().name() : n.statusCode());
             row.setChannel(channel);
             row.setMode(mode);
             row.setTenantNo("MAIN");
@@ -163,8 +209,20 @@ public class WaybillProgress {
      * 微信确认收货提醒要求签收时间晚于发货时间，早了是 10060029。
      */
     static long signedAt(TraceResult trace, long now) {
-        return trace.nodes().stream().filter(n -> n.status() == TraceStatus.SIGNED && n.at() > 0 && n.at() <= now)
-                .mapToLong(TraceResult.TraceNode::at).max().orElse(now);
+        Long actual = signedNodeAt(trace, now);
+        return actual == null ? now : actual;
+    }
+
+    private static Long signedNodeAt(TraceResult trace, long now) {
+        var signed = trace.nodes().stream().filter(n -> n.status() == TraceStatus.SIGNED && n.at() > 0 && n.at() <= now)
+                .mapToLong(TraceResult.TraceNode::at).max();
+        return signed.isPresent() ? signed.getAsLong() : null;
+    }
+
+    private Long firstPersistedTraceAt(String shipmentNo, long now) {
+        return nodes.selectList(Wrappers.<LgsWaybillNode>query().eq("shipment_no", shipmentNo)).stream()
+                .map(LgsWaybillNode::getAt).filter(at -> at != null && at > 0 && at <= now)
+                .min(Long::compareTo).orElse(null);
     }
 
     private static long firstAt(TraceResult trace, TraceStatus s, long now) {

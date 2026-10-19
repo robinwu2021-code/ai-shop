@@ -18,29 +18,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/**
- * 资金不变式巡检（I1 / I2 / I3 / I6）—— <b>三层保证里的第三层</b>。
- *
- * <p>2026-09-01 从 pay-domain 搬到主应用侧：这几条都是**跨域比对**
- * （拿 pay 的账去比 trade 的单），而跨域比对属于两边之上的那一层。
- * 判断与修复在 {@link FundInvariantReconciler}，pay 侧只回答「我这边有哪些账」。
- *
- * <p>它不看消息、不看重试次数，只看事实：「这个子单是已支付的，它有没有结算单？」
- * Outbox 投递失败、消费者有 bug、甚至 Outbox 那一行本身没写成功，都躲不过它。
- * 详见 {@link FundInvariantService} 的类注释。
- *
- * <h2>两条的处置方式刻意不同</h2>
- * <ul>
- *   <li><b>I1 自动补</b> —— 补生成结算单是幂等且只增不减的动作，自动执行安全；</li>
- *   <li><b>I2 只告警</b> —— 删账不可逆，而成因不止一种（含「巡检自己算错了窗口」）。</li>
- *   <li><b>I3 清标记</b> —— 标记说发过积分而没有流水时，把标记改回未发。
- *       方向安全：用户一分没拿到，而 {@code grantOnPay} 的幂等原本就是靠这个标记，
- *       不清掉它永远重发不了。<b>反方向（有流水而标记为假）刻意不动</b> ——
- *       那说明多发了一次，补标记等于把它盖掉，而分还在用户手里。</li>
- * </ul>
- *
- * <p>凡是「自动修复」的，都要能证明它幂等且方向安全。证不了的就只报不动。
- */
+/** Cash-bill and settlement-batch consistency; points have a separate recovery task. */
 @ConditionalOnProperty(name = "shop.job.enabled", havingValue = "true")
 @Component
 public class FundInvariantJob implements JobHandler {
@@ -48,7 +26,7 @@ public class FundInvariantJob implements JobHandler {
     private static final Logger log = LoggerFactory.getLogger(FundInvariantJob.class);
 
     /**
-     * 「I1–I3 一行都没扫到」持续期间，隔多久重述一次。
+     * 「I1–I2 一行都没扫到」持续期间，隔多久重述一次。
      *
      * <p>这条轴一小时一轮，此前每轮原样打一条 —— 而它报的是「查询条件/时间窗可能写错了」，
      * 那种事一旦成立就会一直成立，于是一天 24 条一模一样的 WARN。
@@ -62,7 +40,7 @@ public class FundInvariantJob implements JobHandler {
     private static final Duration RESTATE_EVERY = Duration.ofHours(6);
 
     /** 只有一件事要节流，key 用固定串。见 {@link StuckStateLog} 的类注释。 */
-    private static final String K_NOTHING_SCANNED = "I1-I3-nothing-scanned";
+    private static final String K_NOTHING_SCANNED = "I1-I2-nothing-scanned";
 
     private final StuckStateLog stuck = new StuckStateLog(RESTATE_EVERY);
 
@@ -83,17 +61,6 @@ public class FundInvariantJob implements JobHandler {
 
     @Value("${shop.job.fund-invariant.limit:2000}")
     private int limit;
-
-    /**
-     * 预占的积分多久没等到订单就算死。
-     *
-     * <p>给 15 分钟不是保守，是**避开正常链路**：下单与扣分在同一个请求里，
-     * 正常情况下秒级就有订单。但收银台上还有「等支付」那一段 ——
-     * 那种单的状态是 WAIT_PAY，判据里已经把它排除了，所以这个数只要覆盖
-     * 「下单事务本身」的耗时。太短会误伤正在建的单。
-     */
-    @Value("${shop.job.fund-invariant.hold-minutes:15}")
-    private int holdMinutes;
 
     /** 缺结算单超过这个时长就升级为 error —— 秒级窗口是设计，小时级就是故障 */
     @Value("${shop.job.fund-invariant.alert-after-minutes:60}")
@@ -121,7 +88,7 @@ public class FundInvariantJob implements JobHandler {
     public JobDeclaration fundInvariantDeclaration() {
         return new JobDeclaration("fund-invariant", "资金不变式巡检",
                 "比对「已支付的单」与「结算单」两边：缺的自动补出来，多出来的只报不动（删账不可逆）；"
-                        + "顺带查「标记说发过积分而没有流水」，把标记清掉让下一轮重发",
+                        + "积分源事件、占用与退款由独立积分恢复任务处理",
                 "shop-app", "0 20 * * * *", true,
                 2700, 3000, true, true);
     }
@@ -131,11 +98,6 @@ public class FundInvariantJob implements JobHandler {
         long since = System.currentTimeMillis() - lookbackHours * 3_600_000L;
         FundInvariantReconciler.Result r = invariants.scan(since, limit);
 
-        /*
-         * **对照量先判**，且报完不 return。I6 走的是另一个时间窗（分钟级），
-         * 提前返回会让「I1–I3 没数据」把 I6 一起带走 ——
-         * 而 I6 释放的是用户已经被扣走的分，最不该被别的检查的空转连累。
-         */
         reportNothingScanned(r.scannedAnything(), Instant.now());
 
         if (r.orphanBill() > 0) {
@@ -156,21 +118,9 @@ public class FundInvariantJob implements JobHandler {
         }
 
         /*
-         * I6 与上面三条分开跑，因为**时间窗不同**：I1–I3 回看 26 小时，
-         * 而预占的积分只需要等几分钟就能判死 —— 订单落库是同一个请求里的事。
-         * 用同一个窗口的话，刚回滚的那批要等一整天才还给用户。
-         */
-        FundInvariantReconciler.ReleaseResult rel = invariants.releaseDeadHolds(
-                System.currentTimeMillis() - holdMinutes * 60_000L, limit);
-        if (rel.dead() > 0) {
-            log.warn("[fund-invariant] I6 释放预占积分 {}/{}（扫 {} 条）",
-                    rel.released(), rel.dead(), rel.scanned());
-        }
-
-        /*
          * **R6：批次合计 ≡ 其下结算单之和**（S10 · 2026-09-02）。
          *
-         * 与 I1–I3 一起跑而不是单开一个任务：它们都是「资金账对不对得上」，
+         * 与 I1–I2 一起跑而不是单开一个任务：它们都是「资金账对不对得上」，
          * 分散在多个任务里的话，运营要看几个地方才知道账有没有问题。
          *
          * 这一条<b>只报不改</b> —— 合计是放款依据，而巡检自己也可能算错。
@@ -182,23 +132,13 @@ public class FundInvariantJob implements JobHandler {
                     mismatches.size());
         }
 
-        if (r.grantedNoLedger() > 0) {
-            log.error("[fund-invariant] I3 违反 {} 条：标记说发过积分而没有流水，"
-                    + "已清标记 {} 行 —— 下一轮会重发", r.grantedNoLedger(), r.clearedFlags());
-        }
-
-        return JobResult.ok(("已付子单 %d（缺 %d · 补 %d）· 结算单 %d（对不上 %d）"
-                + "· 已发分 %d（无流水 %d · 清 %d）· 预占 %d（已死 %d · 释放 %d）"
-                + "· 批次合计不符 %d")
+        return JobResult.ok(("已付子单 %d（缺 %d · 补 %d）· 结算单 %d（对不上 %d）· 批次合计不符 %d")
                 .formatted(r.scannedPaid(), r.missingBill(), r.repairedBill(),
-                        r.scannedBills(), r.orphanBill(),
-                        r.scannedGranted(), r.grantedNoLedger(), r.clearedFlags(),
-                        rel.scanned(), rel.dead(), rel.released(),
-                        mismatches.size()));
+                        r.scannedBills(), r.orphanBill(), mismatches.size()));
     }
 
     /**
-     * 报「I1–I3 一行都没扫到」——<b>对照量先判</b>，且<b>按状态变化报、不按轮次报</b>。
+     * 报「I1–I2 一行都没扫到」——<b>对照量先判</b>，且<b>按状态变化报、不按轮次报</b>。
      *
      * <h2>为什么要单独报这件事</h2>
      * 「违反 0 条」与「一行都没扫到」在结果上一模一样，而后者才是最该红的那种：
@@ -214,7 +154,7 @@ public class FundInvariantJob implements JobHandler {
      *
      * <p><b>刻意不做的：不降级、不静音。</b> 第一次原级别原速打出去，一刻不推迟。
      *
-     * @param scannedAnything 这一轮 I1–I3 的对照量是不是非 0
+     * @param scannedAnything 这一轮 I1–I2 的对照量是不是非 0
      * @param now             传进来而不是内部取，便于测试推进时间
      */
     void reportNothingScanned(boolean scannedAnything, Instant now) {
@@ -224,18 +164,18 @@ public class FundInvariantJob implements JobHandler {
                 return;   // 还在重述间隔内：这一轮不说话
             }
             if (st.first()) {
-                log.warn("[fund-invariant] **I1–I3 一行都没扫到**（回看 {} 小时）—— "
+                log.warn("[fund-invariant] **I1–I2 一行都没扫到**（回看 {} 小时）—— "
                         + "这与「没有违反」长得一样，但通常意味着查询条件或时间窗有问题",
                         lookbackHours);
             } else {
-                log.warn("[fund-invariant] **I1–I3 仍然一行都没扫到**：已持续 {} 轮 / {} 分钟"
+                log.warn("[fund-invariant] **I1–I2 仍然一行都没扫到**：已持续 {} 轮 / {} 分钟"
                         + "（自 {} 起，回看 {} 小时）—— 查询条件或时间窗有问题",
                         st.rounds(), st.minutes(), st.since(), lookbackHours);
             }
         } else {
             StuckStateLog.State ok = stuck.recovered(K_NOTHING_SCANNED, now);
             if (ok != null) {
-                log.info("[fund-invariant] I1–I3 又扫得到数据了（此前连续 {} 轮 / {} 分钟一行都没扫到，自 {} 起）",
+                log.info("[fund-invariant] I1–I2 又扫得到数据了（此前连续 {} 轮 / {} 分钟一行都没扫到，自 {} 起）",
                         ok.rounds(), ok.minutes(), ok.since());
             }
         }

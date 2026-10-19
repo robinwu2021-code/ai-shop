@@ -19,7 +19,8 @@ export type PayChannel = "WECHAT" | "ALIPAY" | "BALANCE";
  * - `PLATFORM_ONLY`：平台有、渠道无 —— 平台记了收款但渠道查无此笔，多半是误记，要**冲正**
  * - `AMOUNT_DIFF`：两边都有但金额不符 —— 要人去查是折扣算错还是重复扣款
  */
-export type ReconDiffType = "CHANNEL_ONLY" | "PLATFORM_ONLY" | "AMOUNT_DIFF";
+export type ReconDiffType = "CHANNEL_ONLY" | "PLATFORM_ONLY" | "AMOUNT_DIFF"
+  | "REFUND_ABNORMAL" | "REFUND_LATE_SUCCESS" | "REFUND_CLOSED";
 
 export type ReconStatus = "PENDING" | "RESOLVED" | "IGNORED";
 
@@ -34,7 +35,7 @@ export interface ReconDiff {
   channelTxnNo?: string | null;
   /** 平台订单号；CHANNEL_ONLY 时为空（平台没落库） */
   orderNo?: string | null;
-  /** 差异类型。**三类的处置方式完全不同**，见上方注释 */
+  /** 差异类型。退款异常仅用于人工核对，处置不自动解冻或付款，见上方注释 */
   type: ReconDiffType;
   /** 渠道侧金额，最小货币单位（分）。PLATFORM_ONLY 为 0 */
   channelAmount: number;

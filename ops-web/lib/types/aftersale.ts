@@ -60,7 +60,31 @@ export interface LiabilityShare {
   pickup: number;
 }
 
+/** 后端持久化的退款执行事实，资源恢复独立于资金结果。 */
+export interface RefundExecutionProgress {
+  /** 原退款执行号 */
+  executionNo: string;
+  /** 资金退款单号 */
+  paymentNo?: string | null;
+  /** 资金执行状态 */
+  status: string;
+  /** 分账回退或现金退款阶段 */
+  phase: string;
+  /** 资金执行错误码 */
+  errorCode?: string | null;
+  /** 库存及优惠恢复状态 */
+  resourceStatus: string;
+  /** 资源恢复错误码 */
+  resourceErrorCode?: string | null;
+  /** 可信现金成功时刻，毫秒 */
+  succeededAt?: number | null;
+  /** 原执行下次可恢复时刻，毫秒 */
+  nextAttemptAt?: number | null;
+}
+
 export interface AfterSale {
+  /** 原资金执行与独立资源恢复进度。 */
+  refundExecution?: RefundExecutionProgress | null;
   /** 售后单号 */
   afterSaleNo: string;
   /** 关联的子订单 */

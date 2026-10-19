@@ -45,6 +45,9 @@ class OpsDashboardRankingFlowTest {
 
     @Autowired
     private ObjectMapper json;
+    @Autowired private ai.neargo.shop.trade.service.AfterSaleService afterSales;
+    @Autowired private ai.neargo.shop.pay.service.PaymentLedgerService ledger;
+    @Autowired private ai.neargo.shop.pay.channel.TestPayGateway bank;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -175,10 +178,13 @@ class OpsDashboardRankingFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         String asNo = json.readTree(applyBody).get("data").get("afterSaleNo").asString();
-        // 商家同意 → 未发货即退款，子单转 REFUNDED（离开成交态）
+        ai.neargo.shop.support.RefundScenarioPayments.received(jdbc,ledger,bank,asNo);
+        // 商家同意提交决定，独立续跑核验退款到账。
         mvc().perform(post("/biz/after-sale/" + asNo + "/approve")
                         .header("Authorization", "Bearer " + biz))
                 .andExpect(jsonPath("$.code").value(0));
+        afterSales.resumeRefund(asNo,"SYSTEM");
+        afterSales.resumeRefund(asNo,"SYSTEM");
 
         /*
          * ★ 这家店必须**还在榜上**。

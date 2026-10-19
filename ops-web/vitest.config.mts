@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
 import path from "node:path";
 
-// 仅测 lib 纯函数（nav/permissions 无 React/DOM 依赖），不需要 jsdom。
+// lib纯函数默认node；页面挂载场景在测试文件内显式启用happy-dom。
 export default defineConfig({
   test: {
     include: ["lib/**/*.test.ts"],

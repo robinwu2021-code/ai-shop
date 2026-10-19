@@ -51,7 +51,7 @@ trap cleanup EXIT
 # **且废掉的样子看起来完全正常**（部署照打「就是这一版」）。
 VERIFIED_SHA="$(git -C "$ROOT" rev-parse "$REF")"
 
-echo "→ 从 $REF（$VERIFIED_SHA）拉一份干净副本：$WT"
+echo "→ 从 ${REF}（${VERIFIED_SHA}）拉一份干净副本：$WT"
 git -C "$ROOT" worktree add -f --detach "$WT" "$VERIFIED_SHA" >/dev/null
 
 # JDK 21：显式指定，别赌 shell 里 JAVA_HOME 是什么
@@ -96,7 +96,7 @@ LOG="$(mktemp "${TMPDIR:-/tmp}/head-test.XXXXXX")"
 echo "→ mvn test（全量，约 3 分钟）"
 START=$(date +%s)
 set +e
-(cd "$WT/backend" && mvn -o -B test) > "$LOG" 2>&1
+(cd "$WT/backend" && mvn -o -B -fae test) > "$LOG" 2>&1
 set -e
 echo "  用时 $(( $(date +%s) - START )) 秒"
 

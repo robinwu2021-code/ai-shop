@@ -2,7 +2,6 @@ package ai.neargo.shop.product.stats.impl;
 
 import ai.neargo.shop.product.stats.ProductStatsService;
 
-import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.platform.AuditLogPort;
 import ai.neargo.shop.product.entity.PrdCategory;
 import ai.neargo.shop.product.entity.PrdCategorySpec;
@@ -53,7 +52,6 @@ public class ProductStatsServiceImpl implements ProductStatsService {
 
     @Override
     public Stats stats(int auditDays) {
-        return DataScopeContext.executeWithoutScope(() -> {
             long categoryTotal = categories.selectCount(Wrappers.<PrdCategory>lambdaQuery()
                     .eq(PrdCategory::getDeleted, 0));
             long categoryUsed = distinct(goods.selectMaps(Wrappers.<PrdGoods>query()
@@ -103,7 +101,6 @@ public class ProductStatsServiceImpl implements ProductStatsService {
                     num(auditRow.get("approved")), num(auditRow.get("rejected")),
                     num(auditRow.get("pending")),
                     actions, auditDays);
-        });
     }
 
     private static long distinct(List<Map<String, Object>> rows) {

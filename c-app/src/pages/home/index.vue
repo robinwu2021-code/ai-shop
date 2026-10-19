@@ -22,6 +22,7 @@ import { useUserStore } from "@/stores/user";
 import { buildShareMessage } from "@shared/ports/share";
 import { GOODS_COVER_FALLBACK, ROUTES } from "@shared/utils/constants";
 import { goodsUrl } from "@/shared/goods-route";
+import { trackEntryPath } from "@/shared/track-entry";
 import { countdownShort, money } from "@shared/utils/format";
 import { firstBuyableSku } from "@shared/utils/goods";
 import { flyToCart, tapPoint } from "@/shared/fly";
@@ -252,6 +253,12 @@ async function ensureIdentity() {
  * 共用同一份判断 —— 空值不覆盖、自己不算。
  */
 onLoad((q) => {
+  // 微信 URL Link 对新看件页尚报 40165，已识别的首页负责转入看件页。
+  const trackPath = trackEntryPath(q?.trackToken);
+  if (trackPath) {
+    uni.navigateTo({ url: trackPath });
+    return;
+  }
   invitedBy.value = user.captureInviter(q?.inviterNo);
 });
 

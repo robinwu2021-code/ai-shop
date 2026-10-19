@@ -5,9 +5,9 @@ import ai.neargo.shop.spi.trade.FulfillmentStatsPort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -39,12 +39,12 @@ public class FulfillmentStatsPortImpl implements FulfillmentStatsPort {
     /** 「还没取走」= 待履约 + 已到货待取。终态与已退款的不算在待办里 */
     private static final List<String> OPEN = List.of(OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING);
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
-    private final StatusLogMapper statusLogMapper;
+    private final OrderStatusLogMapper statusLogMapper;
 
-    public FulfillmentStatsPortImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
-                                    StatusLogMapper statusLogMapper) {
+    public FulfillmentStatsPortImpl(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+                                    OrderStatusLogMapper statusLogMapper) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;
         this.statusLogMapper = statusLogMapper;

@@ -16,7 +16,6 @@ import {
   pick,
   pointBalance,
   pushMessage,
-  pushPoint,
   toCommunity,
   allCommunitySeeds,
   buildGroupBuy,
@@ -25,7 +24,7 @@ import {
   toMerchant,
   merchantBrief,
 } from "@shared/mock/db";
-import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
+import { pricingFor } from "@shared/strategies/pricing";
 import { fulfillmentFor } from "@shared/strategies/fulfillment";
 import { CATEGORY_TYPE, FULFILLMENT, PAY_MODE, POINTS, SERVICE_SCOPE, TRADE_RULES } from "@shared/utils/constants";
 import { currentCurrency } from "@shared/utils/money";
@@ -84,13 +83,6 @@ export function settleRefund(o: Order, label: string) {
     "款项已原路退回，到账时间以支付渠道为准",
     `/pages/order/index?orderNo=${o.orderNo}`,
   );
-  if (o.pointsGranted && o.amount.pointsEarn > 0) {
-    pushPoint(db.points, "EXPIRE", -o.amount.pointsEarn, "订单退款收回", o.orderNo);
-    o.pointsGranted = false;
-  }
-  if (o.amount.pointsUsed > 0) {
-    pushPoint(db.points, "REFUND", o.amount.pointsUsed, "订单退款返还", o.orderNo);
-  }
 }
 
 /**
@@ -133,31 +125,6 @@ export function issueCard(order: Order, item: OrderItem) {
       currency: order.amount.currency,
     });
   }
-}
-
-/**
- * 订单完成时发放积分。
- * **完成时才发，不是支付时** —— 支付即发的话，用户可以「下单→拿积分→立刻花掉→退款」，
- * 积分已经花出去了追不回来。
- *
- * 同时给商家侧记一笔「收到积分」：用户用积分抵掉的那部分，商家实际收的是积分，
- * 由平台后续兑付成现金（这正是积分成为平台负债的地方，见 ADR-006）。
- */
-export function grantPointsOnComplete(o: Order) {
-  if (o.pointsGranted) return;
-  if (o.amount.pointsEarn > 0) {
-    pushPoint(db.points, "EARN", o.amount.pointsEarn, "消费获得", o.orderNo);
-  }
-  if (o.amount.pointsUsed > 0) {
-    pushPoint(
-      db.merchantPoints,
-      "RECEIVE",
-      o.amount.pointsUsed,
-      "用户积分抵扣（待平台兑付）",
-      o.orderNo,
-    );
-  }
-  o.pointsGranted = true;
 }
 
 /** 账户视图由流水推导，不单独存余额 */

@@ -83,7 +83,7 @@ class SubscribeExecutorTest {
 
     private List<LgsWaybill> patches() {
         ArgumentCaptor<LgsWaybill> c = ArgumentCaptor.forClass(LgsWaybill.class);
-        verify(waybills, atLeastOnce()).updateById(c.capture());
+        verify(waybills, atLeastOnce()).update(c.capture(), any());
         return c.getAllValues();
     }
 

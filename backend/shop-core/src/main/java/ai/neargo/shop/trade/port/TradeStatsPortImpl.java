@@ -4,8 +4,8 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.trade.TradeStatsPort;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -44,10 +44,10 @@ public class TradeStatsPortImpl implements TradeStatsPort {
     private static final Set<String> OPEN_AFTER_SALE =
             Set.of(OrdAfterSale.APPLIED, OrdAfterSale.ARBITRATING);
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final AfterSaleMapper afterSaleMapper;
 
-    public TradeStatsPortImpl(SubOrderMapper subOrderMapper, AfterSaleMapper afterSaleMapper) {
+    public TradeStatsPortImpl(StoreOrderMapper subOrderMapper, AfterSaleMapper afterSaleMapper) {
         this.subOrderMapper = subOrderMapper;
         this.afterSaleMapper = afterSaleMapper;
     }

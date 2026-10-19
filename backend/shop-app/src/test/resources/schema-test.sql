@@ -523,6 +523,8 @@ CREATE TABLE IF NOT EXISTS ord_after_sale
     refund_points  BIGINT     NULL,
     approved_minor BIGINT     NULL,
     fulfill_stage  VARCHAR(16) NULL,
+    restock_approved BOOLEAN NOT NULL DEFAULT FALSE,
+    return_received_at BIGINT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_after_sale_no UNIQUE (after_sale_no)
 );
@@ -589,6 +591,7 @@ CREATE TABLE IF NOT EXISTS ord_order
     pay_scene VARCHAR(16) DEFAULT NULL,
     offline_confirmed_by VARCHAR(64) DEFAULT NULL,
     offline_confirmed_at BIGINT DEFAULT NULL,
+    points_integrated TINYINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_order_no UNIQUE (order_no)
 );
@@ -1026,6 +1029,9 @@ CREATE TABLE IF NOT EXISTS stl_bill
     payout_no VARCHAR(64) DEFAULT NULL,
     refunded_goods_minor BIGINT(20) NOT NULL DEFAULT 0,
     reversed_minor       BIGINT(20) NOT NULL DEFAULT 0,
+    points_funding_ticket VARCHAR(40) DEFAULT NULL,
+    points_funding_ready_at BIGINT DEFAULT NULL,
+    split_protocol_version INT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
@@ -1066,9 +1072,26 @@ CREATE TABLE IF NOT EXISTS stl_payment
     entity_no VARCHAR(64) DEFAULT NULL,
     payer_openid VARCHAR(64) NULL,
     wx_appid     VARCHAR(32) NULL,
+    refund_execution_no VARCHAR(64) NULL,
+    origin_payment_no VARCHAR(64) NULL,
+    refund_verified_minor BIGINT DEFAULT NULL,
+    refund_verified_provider_no VARCHAR(128) DEFAULT NULL,
+    refund_verified_at BIGINT DEFAULT NULL,
+    refund_dispatch_at BIGINT DEFAULT NULL,
+    refund_request_json MEDIUMTEXT DEFAULT NULL,
+    payment_request_json MEDIUMTEXT DEFAULT NULL,
+    refund_capacity_state VARCHAR(16) DEFAULT NULL,
+    refund_query_state VARCHAR(32) DEFAULT NULL,
+    refund_query_raw VARCHAR(64) DEFAULT NULL,
+    refund_query_at BIGINT DEFAULT NULL,
+    refund_terminal_proof LONGTEXT DEFAULT NULL,
+    refund_recovery_proof LONGTEXT DEFAULT NULL,
+    CONSTRAINT uk_stl_payment_direction_after_sale_no UNIQUE (direction,after_sale_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_stl_payment_no UNIQUE (payment_no),
-    CONSTRAINT uk_stl_payment_trade UNIQUE (pay_channel,trade_no)
+    CONSTRAINT uk_stl_payment_trade UNIQUE (pay_channel,trade_no),
+    CONSTRAINT uk_stl_refund_execution UNIQUE (refund_execution_no),
+    CONSTRAINT uk_stl_refund_verified_provider UNIQUE (pay_channel,refund_verified_provider_no)
 );
 
 CREATE TABLE IF NOT EXISTS stl_points_pool
@@ -1161,6 +1184,7 @@ CREATE TABLE IF NOT EXISTS sys_idempotent
     result_json TEXT DEFAULT NULL,
     created_at DATETIME NOT NULL,
     expire_at DATETIME NOT NULL,
+    request_hash VARCHAR(64) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_key_endpoint UNIQUE (idem_key,endpoint)
 );
@@ -2685,6 +2709,9 @@ CREATE TABLE IF NOT EXISTS lgs_waybill
     bind_state VARCHAR(12) NOT NULL DEFAULT 'NA',
     bind_error VARCHAR(255) DEFAULT NULL,
     wx_status_checked_at BIGINT DEFAULT NULL,
+    source_shipment_no VARCHAR(64) NULL,
+    source_shipment_version BIGINT NULL,
+    status_source VARCHAR(32) NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_shipment_no UNIQUE (shipment_no),
     CONSTRAINT uk_shipment_sub_order UNIQUE (biz_ref)
@@ -4222,6 +4249,7 @@ CREATE TABLE IF NOT EXISTS trd_shipping_upload
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted INT(11) NOT NULL DEFAULT 0,
     confirm_notified_at BIGINT DEFAULT NULL,
+    source_snapshot JSON NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_shipping_order UNIQUE (order_no, tenant_no, deleted)
 );
@@ -4765,6 +4793,10 @@ CREATE TABLE IF NOT EXISTS ord_shipment
     updated_by    VARCHAR(64) DEFAULT NULL,
     version       BIGINT(20)  NOT NULL DEFAULT 0,
     deleted       TINYINT(4)  NOT NULL DEFAULT 0,
+    active_waybill_no VARCHAR(64)
+        GENERATED ALWAYS AS (CASE WHEN status <> 'VOIDED' AND deleted = 0 THEN waybill_no ELSE NULL END),
+    signed_at BIGINT NULL,
+    CONSTRAINT uk_ord_shipment_active_waybill UNIQUE (carrier, active_waybill_no, tenant_no),
     PRIMARY KEY (id),
     CONSTRAINT uk_ord_shipment_no UNIQUE (shipment_no, tenant_no)
 );
@@ -4814,6 +4846,1201 @@ CREATE TABLE IF NOT EXISTS usr_mp_session
     user_no VARCHAR(64) NOT NULL,
     openid VARCHAR(128) NOT NULL,
     created_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ord_create_intent
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    endpoint VARCHAR(64) NOT NULL,
+    idem_key VARCHAR(128) NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    stock_authority VARCHAR(16) NOT NULL,
+    stock_needs_json TEXT NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    error_code VARCHAR(64) NULL,
+    next_attempt_at BIGINT NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_create_pay UNIQUE (pay_no),
+    CONSTRAINT uk_ord_create_key UNIQUE (endpoint, idem_key)
+);
+
+CREATE TABLE IF NOT EXISTS ord_payment_resolution
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_no VARCHAR(64) NOT NULL,
+    payment_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    source_user_no VARCHAR(64) NULL,
+    source_pay_no VARCHAR(64) NULL,
+    amount_minor BIGINT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    trade_no VARCHAR(128) NOT NULL,
+    reason VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    refund_no VARCHAR(64) NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_payment_resolution UNIQUE (pay_no, payment_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_refund_execution
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    execution_no VARCHAR(64) NOT NULL,
+    after_sale_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    origin_payment_no VARCHAR(64) NULL,
+    pay_channel VARCHAR(32) NULL,
+    amount_minor BIGINT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    plan_json TEXT NOT NULL,
+    stock_needs_json TEXT NOT NULL,
+    stock_authority VARCHAR(16) NULL,
+    restore_stock BOOLEAN NOT NULL DEFAULT FALSE,
+    restock_approved BOOLEAN NOT NULL DEFAULT FALSE,
+    zero_liability BOOLEAN NOT NULL DEFAULT FALSE,
+    reason VARCHAR(500) NULL,
+    status VARCHAR(32) NOT NULL,
+    phase VARCHAR(32) NOT NULL,
+    payment_no VARCHAR(64) NULL,
+    next_attempt_at BIGINT NOT NULL,
+    error_code VARCHAR(64) NULL,
+    resource_status VARCHAR(32) NOT NULL,
+    resource_error_code VARCHAR(64) NULL,
+    succeeded_at BIGINT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ord_refund_execution UNIQUE (execution_no),
+    CONSTRAINT uk_ord_refund_after_sale UNIQUE (after_sale_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_restore
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    purpose_no VARCHAR(64) NOT NULL,
+    original_lock_id BIGINT NOT NULL,
+    qty INT NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_prd_restore_purpose_source UNIQUE (purpose_no, original_lock_id)
+);
+
+CREATE TABLE IF NOT EXISTS stl_bill_refund_basis
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    settle_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    basis_version INT NOT NULL,
+    source VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    review_reason VARCHAR(64) DEFAULT NULL,
+    goods_paid_minor BIGINT DEFAULT NULL,
+    gross_minor BIGINT DEFAULT NULL,
+    merchant_goods_minor BIGINT DEFAULT NULL,
+    commission_minor BIGINT DEFAULT NULL,
+    service_fee_minor BIGINT DEFAULT NULL,
+    points_fee_minor BIGINT DEFAULT NULL,
+    points_cost_minor BIGINT DEFAULT NULL,
+    subsidy_minor BIGINT DEFAULT NULL,
+    freight_income_minor BIGINT DEFAULT NULL,
+    freight_cost_minor BIGINT DEFAULT NULL,
+    freight_ship_mode VARCHAR(32) DEFAULT NULL,
+    payment_route VARCHAR(32) DEFAULT NULL,
+    origin_payment_no VARCHAR(64) DEFAULT NULL,
+    account_snapshot_ref VARCHAR(80) DEFAULT NULL,
+    pay_merchant_no VARCHAR(64) DEFAULT NULL,
+    pay_channel VARCHAR(32) DEFAULT NULL,
+    pay_scene VARCHAR(32) DEFAULT NULL,
+    currency VARCHAR(8) DEFAULT NULL,
+    fee_bearer VARCHAR(32) DEFAULT NULL,
+    wx_appid VARCHAR(64) DEFAULT NULL,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_stl_refund_basis UNIQUE (settle_no),
+    CONSTRAINT uk_stl_refund_basis_account UNIQUE (account_snapshot_ref)
+);
+
+CREATE TABLE IF NOT EXISTS lgs_channel_subscription
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    shipment_no VARCHAR(64) NOT NULL,
+    identity_key VARCHAR(192) NOT NULL,
+    source_shipment_no VARCHAR(64) NULL,
+    source_shipment_version BIGINT NULL,
+    carrier VARCHAR(16) NOT NULL,
+    waybill_no VARCHAR(64) NOT NULL,
+    channel VARCHAR(32) NOT NULL,
+    state VARCHAR(20) NOT NULL,
+    ref VARCHAR(255) NULL,
+    error VARCHAR(255) NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    last_attempt_at BIGINT NULL,
+    last_query_at BIGINT NULL,
+    next_retry_at BIGINT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    CONSTRAINT uk_lgs_channel_identity UNIQUE (shipment_no, identity_key, channel)
+);
+
+CREATE TABLE IF NOT EXISTS lgs_kd100_sub_attempt
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    account_ref VARCHAR(64) NOT NULL,
+    company_code VARCHAR(32) NOT NULL,
+    waybill_no VARCHAR(64) NOT NULL,
+    month_key CHAR(6) NOT NULL,
+    attempt_no TINYINT NOT NULL,
+    shipment_no VARCHAR(64) NOT NULL,
+    identity_key VARCHAR(192) NOT NULL,
+    callback_id VARCHAR(64) NULL,
+    result VARCHAR(20) NOT NULL,
+    result_code VARCHAR(32) NULL,
+    terminated_at BIGINT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    CONSTRAINT uk_lgs_kd100_month_slot UNIQUE (account_ref, company_code, waybill_no, month_key, attempt_no)
+);
+
+CREATE TABLE IF NOT EXISTS lgs_push_event
+(
+    event_no CHAR(36) NOT NULL PRIMARY KEY,
+    channel VARCHAR(32) NOT NULL,
+    callback_id VARCHAR(64) NULL,
+    push_status VARCHAR(32) NULL,
+    waybill_no VARCHAR(64) NULL,
+    payload LONGTEXT NOT NULL,
+    outcome VARCHAR(32) NOT NULL,
+    shipment_no VARCHAR(64) NULL,
+    received_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS lgs_precheck_cache
+(
+    carrier VARCHAR(16) NOT NULL,
+    waybill_no VARCHAR(64) NOT NULL,
+    verdict VARCHAR(16) NOT NULL,
+    status VARCHAR(32) NULL,
+    reason VARCHAR(255) NULL,
+    checked_at BIGINT NOT NULL,
+    PRIMARY KEY (carrier, waybill_no)
+);
+
+CREATE TABLE IF NOT EXISTS lgs_update_log
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    shipment_no VARCHAR(64) NOT NULL,
+    biz_ref VARCHAR(64) NOT NULL,
+    carrier VARCHAR(32) NULL,
+    waybill_no VARCHAR(64) NOT NULL,
+    source VARCHAR(32) NOT NULL,
+    mode VARCHAR(16) NOT NULL,
+    before_status VARCHAR(32) NULL,
+    after_status VARCHAR(32) NULL,
+    nodes_added INT NOT NULL DEFAULT 0,
+    outcome VARCHAR(32) NOT NULL,
+    detail VARCHAR(255) NULL,
+    occurred_at BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pts_point_type
+(
+    type_code VARCHAR(40) NOT NULL,
+    market VARCHAR(16) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    scale INT NOT NULL DEFAULT 2,
+    rate_points BIGINT NOT NULL,
+    rate_minor BIGINT NOT NULL,
+    deduct_ratio_bp INT NOT NULL DEFAULT 3000,
+    idle_days INT NOT NULL DEFAULT 365,
+    status VARCHAR(16) NOT NULL DEFAULT 'DRAFT',
+    active_market VARCHAR(16) DEFAULT NULL,
+    fallback_rule_json MEDIUMTEXT DEFAULT NULL,
+    CONSTRAINT uk_pts_type UNIQUE (type_code),
+    CONSTRAINT uk_pts_active_market UNIQUE (active_market),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_fund_pool
+(
+    type_code VARCHAR(40) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    u_minor BIGINT NOT NULL DEFAULT 0,
+    c_minor BIGINT NOT NULL DEFAULT 0,
+    d_minor BIGINT NOT NULL DEFAULT 0,
+    b_minor BIGINT NOT NULL DEFAULT 0,
+    reserved_b_minor BIGINT NOT NULL DEFAULT 0,
+    locked_u_minor BIGINT NOT NULL DEFAULT 0,
+    locked_b_minor BIGINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_pts_pool UNIQUE (type_code),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_account
+(
+    type_code VARCHAR(40) NOT NULL,
+    holder_type VARCHAR(16) NOT NULL,
+    holder_no VARCHAR(64) NOT NULL,
+    issued_points BIGINT NOT NULL DEFAULT 0,
+    issuable_points BIGINT NOT NULL DEFAULT 0,
+    pending_points BIGINT NOT NULL DEFAULT 0,
+    available_points BIGINT NOT NULL DEFAULT 0,
+    held_points BIGINT NOT NULL DEFAULT 0,
+    refund_reserved_points BIGINT NOT NULL DEFAULT 0,
+    recirculatable_points BIGINT NOT NULL DEFAULT 0,
+    frozen TINYINT NOT NULL DEFAULT 0,
+    expire_at BIGINT DEFAULT NULL,
+    expiry_revision BIGINT NOT NULL DEFAULT 0,
+    last_active_at BIGINT DEFAULT NULL,
+    reminded_revision BIGINT DEFAULT NULL,
+    CONSTRAINT uk_pts_account UNIQUE (type_code,holder_type,holder_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_voucher
+(
+    voucher_no VARCHAR(40) NOT NULL,
+    biz_ref VARCHAR(160) NOT NULL,
+    payload_hash VARCHAR(64) NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    rate_points BIGINT NOT NULL,
+    rate_minor BIGINT NOT NULL,
+    result_json MEDIUMTEXT NOT NULL,
+    CONSTRAINT uk_pts_voucher_no UNIQUE (voucher_no),
+    CONSTRAINT uk_pts_voucher_ref UNIQUE (biz_ref),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_ledger_entry
+(
+    entry_no VARCHAR(40) NOT NULL,
+    voucher_no VARCHAR(40) NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    holder_type VARCHAR(16) NOT NULL,
+    holder_no VARCHAR(64) NOT NULL,
+    bucket VARCHAR(32) NOT NULL,
+    delta_points BIGINT NOT NULL,
+    after_points BIGINT NOT NULL,
+    CONSTRAINT uk_pts_entry UNIQUE (entry_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_pool_flow
+(
+    flow_no VARCHAR(40) NOT NULL,
+    voucher_no VARCHAR(40) NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    bucket VARCHAR(32) NOT NULL,
+    delta_minor BIGINT NOT NULL,
+    after_minor BIGINT NOT NULL,
+    CONSTRAINT uk_pts_pool_flow UNIQUE (flow_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_fund_evidence
+(
+    evidence_no VARCHAR(120) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    external_minor BIGINT NOT NULL,
+    verified TINYINT NOT NULL DEFAULT 0,
+    used_voucher_no VARCHAR(40) DEFAULT NULL,
+    binding_purpose VARCHAR(40) DEFAULT NULL,
+    binding_ref VARCHAR(120) DEFAULT NULL,
+    CONSTRAINT uk_pts_evidence UNIQUE (evidence_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_refund_reserve
+(
+    reserve_no VARCHAR(40) NOT NULL,
+    position_no VARCHAR(40) NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    original_minor BIGINT NOT NULL,
+    remaining_minor BIGINT NOT NULL DEFAULT 0,
+    consumed_minor BIGINT NOT NULL DEFAULT 0,
+    released_minor BIGINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_pts_reserve UNIQUE (reserve_no),
+    CONSTRAINT uk_pts_reserve_position UNIQUE (position_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_grant_position
+(
+    position_no VARCHAR(40) NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    original_points BIGINT NOT NULL DEFAULT 0,
+    processed_points BIGINT NOT NULL DEFAULT 0,
+    payload_json MEDIUMTEXT NOT NULL,
+    CONSTRAINT uk_pts_grant_position_position UNIQUE (position_no),
+    sub_order_no VARCHAR(40) DEFAULT NULL,
+    user_no VARCHAR(40) DEFAULT NULL,
+    CONSTRAINT uk_pts_grant_sub UNIQUE (type_code,sub_order_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_redeem_position
+(
+    position_no VARCHAR(40) NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    original_points BIGINT NOT NULL DEFAULT 0,
+    processed_points BIGINT NOT NULL DEFAULT 0,
+    payload_json MEDIUMTEXT NOT NULL,
+    CONSTRAINT uk_pts_redeem_position_position UNIQUE (position_no),
+    sub_order_no VARCHAR(40) DEFAULT NULL,
+    order_no VARCHAR(40) DEFAULT NULL,
+    user_no VARCHAR(40) DEFAULT NULL,
+    store_no VARCHAR(40) DEFAULT NULL,
+    statement_no VARCHAR(40) DEFAULT NULL,
+    ticket_no VARCHAR(40) DEFAULT NULL,
+    CONSTRAINT uk_pts_redeem_sub UNIQUE (type_code,sub_order_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_refund_preparation
+(
+    position_no VARCHAR(40) NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    original_points BIGINT NOT NULL DEFAULT 0,
+    processed_points BIGINT NOT NULL DEFAULT 0,
+    payload_json MEDIUMTEXT NOT NULL,
+    CONSTRAINT uk_pts_refund_preparation_position UNIQUE (position_no),
+    after_sale_no VARCHAR(40) DEFAULT NULL,
+    sub_order_no VARCHAR(40) DEFAULT NULL,
+    input_hash VARCHAR(64) DEFAULT NULL,
+    CONSTRAINT uk_pts_refund_as UNIQUE (after_sale_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_payout_ticket
+(
+    position_no VARCHAR(40) NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    original_points BIGINT NOT NULL DEFAULT 0,
+    processed_points BIGINT NOT NULL DEFAULT 0,
+    payload_json MEDIUMTEXT NOT NULL,
+    CONSTRAINT uk_pts_payout_ticket_position UNIQUE (position_no),
+    provider_idem VARCHAR(80) DEFAULT NULL,
+    gross_minor BIGINT NOT NULL DEFAULT 0,
+    offset_minor BIGINT NOT NULL DEFAULT 0,
+    cash_minor BIGINT NOT NULL DEFAULT 0,
+    currency VARCHAR(8) DEFAULT NULL,
+    CONSTRAINT uk_pts_payout_idem UNIQUE (provider_idem),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_store_statement
+(
+    position_no VARCHAR(40) NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    original_points BIGINT NOT NULL DEFAULT 0,
+    processed_points BIGINT NOT NULL DEFAULT 0,
+    payload_json MEDIUMTEXT NOT NULL,
+    route_key VARCHAR(64) NOT NULL DEFAULT 'DEFAULT',
+    CONSTRAINT uk_pts_store_statement_position UNIQUE (position_no),
+    store_no VARCHAR(40) DEFAULT NULL,
+    period_from BIGINT DEFAULT NULL,
+    period_to BIGINT DEFAULT NULL,
+    revision BIGINT NOT NULL DEFAULT 0,
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pts_statement_route_period UNIQUE (type_code,store_no,period_from,route_key)
+);
+
+CREATE TABLE IF NOT EXISTS pts_fund_transfer
+(
+    position_no VARCHAR(40) NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    original_points BIGINT NOT NULL DEFAULT 0,
+    processed_points BIGINT NOT NULL DEFAULT 0,
+    payload_json MEDIUMTEXT NOT NULL,
+    withdraw_bucket VARCHAR(8) DEFAULT NULL,
+    amount_minor BIGINT NOT NULL DEFAULT 0,
+    provider_idem VARCHAR(80) DEFAULT NULL,
+    CONSTRAINT uk_pts_fund_transfer_position UNIQUE (position_no),
+    evidence_no VARCHAR(120) DEFAULT NULL,
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pts_transfer_provider UNIQUE (provider_idem)
+);
+
+CREATE TABLE IF NOT EXISTS pts_grant_line
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    position_no VARCHAR(40) NOT NULL,
+    item_id VARCHAR(40) NOT NULL,
+    CONSTRAINT uk_pts_grant_line UNIQUE (position_no,item_id),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_redeem_line
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    position_no VARCHAR(40) NOT NULL,
+    item_id VARCHAR(40) NOT NULL,
+    CONSTRAINT uk_pts_redeem_line UNIQUE (position_no,item_id),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_merchant_agreement
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    agreement_no VARCHAR(40) NOT NULL,
+    store_no VARCHAR(40) NOT NULL,
+    active_key VARCHAR(80) DEFAULT NULL,
+    CONSTRAINT uk_pts_agreement_no UNIQUE (agreement_no),
+    CONSTRAINT uk_pts_agreement_active UNIQUE (active_key),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_statement_revision
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    statement_no VARCHAR(40) NOT NULL,
+    revision_no BIGINT NOT NULL,
+    CONSTRAINT uk_pts_statement_revision UNIQUE (statement_no,revision_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_statement_line
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    statement_no VARCHAR(40) NOT NULL,
+    revision_no BIGINT NOT NULL,
+    position_no VARCHAR(40) NOT NULL,
+    CONSTRAINT uk_pts_statement_line UNIQUE (statement_no,revision_no,position_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_receivable
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    receivable_no VARCHAR(40) NOT NULL,
+    store_no VARCHAR(40) NOT NULL,
+    original_minor BIGINT NOT NULL,
+    recovered_minor BIGINT NOT NULL DEFAULT 0,
+    locked_minor BIGINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_pts_receivable_no UNIQUE (receivable_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_receivable_allocation
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    ticket_no VARCHAR(40) NOT NULL,
+    receivable_no VARCHAR(40) NOT NULL,
+    CONSTRAINT uk_pts_r_allocation UNIQUE (ticket_no,receivable_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_refund_preparation_line
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    preparation_no VARCHAR(40) NOT NULL,
+    item_id VARCHAR(40) NOT NULL,
+    CONSTRAINT uk_pts_refund_line UNIQUE (preparation_no,item_id),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_pool_request
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    request_no VARCHAR(40) NOT NULL,
+    submitted_by VARCHAR(64) NOT NULL,
+    approved_by VARCHAR(64) DEFAULT NULL,
+    evidence_no VARCHAR(120) DEFAULT NULL,
+    CONSTRAINT uk_pts_request_no UNIQUE (request_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_topup_plan
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    plan_no VARCHAR(40) NOT NULL,
+    period_key VARCHAR(40) NOT NULL,
+    CONSTRAINT uk_pts_plan_period UNIQUE (plan_no,period_key),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_switch
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    scope VARCHAR(16) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_pts_switch UNIQUE (scope,scope_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_switch_log
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    scope VARCHAR(16) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_pause_interval
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    scope VARCHAR(16) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    from_at BIGINT NOT NULL,
+    to_at BIGINT DEFAULT NULL,
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_lifecycle_fact
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    sub_order_no VARCHAR(40) NOT NULL,
+    source_version BIGINT NOT NULL,
+    CONSTRAINT uk_pts_lifecycle_sub UNIQUE (type_code,sub_order_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_inbox
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    event_no VARCHAR(120) NOT NULL,
+    payload_hash VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_pts_inbox_event UNIQUE (event_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_outbox
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    event_no VARCHAR(120) NOT NULL,
+    retry_count INT NOT NULL DEFAULT 0,
+    next_attempt BIGINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_pts_outbox_event UNIQUE (event_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_stat_daily
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    day_key VARCHAR(10) NOT NULL,
+    scope_no VARCHAR(64) NOT NULL,
+    CONSTRAINT uk_pts_stat_daily UNIQUE (type_code,day_key,scope_no),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS pts_cursor
+(
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'NEW',
+    payload_json MEDIUMTEXT NOT NULL,
+    task_name VARCHAR(64) NOT NULL,
+    watermark BIGINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_pts_cursor_task UNIQUE (task_name),
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS stl_split_intent
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    request_no VARCHAR(80) NOT NULL,
+    settle_no VARCHAR(64) NOT NULL,
+    command_json MEDIUMTEXT NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    points_ticket VARCHAR(40) DEFAULT NULL,
+    funding_state VARCHAR(24) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_split_intent_request UNIQUE (request_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_refund_execution
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    after_sale_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    input_hash VARCHAR(64) NOT NULL,
+    payload_json MEDIUMTEXT NOT NULL,
+    cash_payment_no VARCHAR(64) DEFAULT NULL,
+    net_cash_minor BIGINT DEFAULT NULL,
+    result_json MEDIUMTEXT DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    tenant_no VARCHAR(32) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    last_attempt_at BIGINT DEFAULT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_refund_execution_as UNIQUE (after_sale_no),
+    CONSTRAINT uk_refund_execution_cash UNIQUE (cash_payment_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_integration_policy
+(
+    store_no VARCHAR(64) NOT NULL,
+    scene VARCHAR(16) NOT NULL,
+    mode VARCHAR(16) NOT NULL DEFAULT 'DETACHED',
+    payload_json LONGTEXT NULL,
+    version BIGINT NOT NULL DEFAULT -1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (store_no,scene)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_command
+(
+    request_id VARCHAR(120) NOT NULL,
+    command_json LONGTEXT NOT NULL,
+    result_json LONGTEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (request_id)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_binding
+(
+    binding_no VARCHAR(40) NOT NULL,
+    request_id VARCHAR(120) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    phase VARCHAR(16) NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    last_transition_json LONGTEXT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (binding_no),
+    CONSTRAINT uk_ord_points_request UNIQUE (request_id),
+    CONSTRAINT uk_ord_points_sub UNIQUE (sub_order_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_source_counter
+(
+    type_code VARCHAR(64) NOT NULL,
+    last_sequence BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY(type_code)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_source_fact
+(
+    event_no VARCHAR(120) NOT NULL,
+    type_code VARCHAR(64) NOT NULL,
+    source_sequence BIGINT NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    schema_version INT NOT NULL,
+    normalized_hash VARCHAR(64) NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    terminal_source TINYINT NOT NULL DEFAULT 0,
+    delivered TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    delivered_at DATETIME NULL,
+    PRIMARY KEY(event_no),
+    CONSTRAINT uk_ord_points_source_sequence UNIQUE (type_code,source_sequence)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_placement
+(
+    order_no VARCHAR(64) NOT NULL,
+    phase VARCHAR(24) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    payload_json LONGTEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(order_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_refund_binding
+(
+    after_sale_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    phase VARCHAR(32) NOT NULL,
+    source_version BIGINT NOT NULL,
+    command_json LONGTEXT NOT NULL,
+    preparation_json LONGTEXT NULL,
+    cash_payment_no VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    outcome_json LONGTEXT NULL,
+    PRIMARY KEY (after_sale_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_recovery_cursor
+(
+    queue_name VARCHAR(32) NOT NULL,
+    after_sub_order_no VARCHAR(64) NOT NULL DEFAULT '',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(queue_name)
+);
+
+CREATE TABLE IF NOT EXISTS stl_points_refund_hold
+(
+    after_sale_no VARCHAR(40) NOT NULL,
+    settle_no VARCHAR(40) NOT NULL,
+    sub_order_no VARCHAR(40) NOT NULL,
+    goods_minor BIGINT NOT NULL,
+    freight_minor BIGINT NOT NULL,
+    goods_paid_minor BIGINT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    proof_no VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (after_sale_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_refund_retry
+(
+    old_after_sale_no VARCHAR(64) NOT NULL,
+    new_after_sale_no VARCHAR(64) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (old_after_sale_no),
+    CONSTRAINT uk_ord_points_refund_retry_new UNIQUE (new_after_sale_no)
+);
+
+CREATE TABLE IF NOT EXISTS ord_points_work_cursor
+(
+    queue_name VARCHAR(32) NOT NULL,
+    after_reference VARCHAR(200) NOT NULL DEFAULT '',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(queue_name)
+);
+
+CREATE TABLE IF NOT EXISTS stl_cash_refund_reverse
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    after_sale_no VARCHAR(64) NOT NULL,
+    settle_no VARCHAR(64) NOT NULL,
+    request_no VARCHAR(64) NOT NULL,
+    command_json MEDIUMTEXT NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    provider_no VARCHAR(64) DEFAULT NULL,
+    last_error VARCHAR(512) DEFAULT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_cash_refund_reverse_as UNIQUE (after_sale_no),
+    CONSTRAINT uk_cash_refund_reverse_request UNIQUE (request_no),
+    CONSTRAINT uk_cash_refund_reverse_receipt UNIQUE (pay_channel,provider_no)
+);
+
+CREATE TABLE IF NOT EXISTS pts_availability_projection
+(
+    type_code VARCHAR(40) NOT NULL,
+    source_version BIGINT NOT NULL,
+    projected_version BIGINT NOT NULL,
+    payload_json LONGTEXT NOT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (type_code)
+);
+
+CREATE TABLE IF NOT EXISTS pts_statement_final_fact
+(
+    ready_seq BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    type_code VARCHAR(40) NOT NULL,
+    sub_order_no VARCHAR(40) NOT NULL,
+    final_at_millis BIGINT NOT NULL,
+    CONSTRAINT uk_pts_statement_final_source UNIQUE(type_code, sub_order_no)
+);
+
+CREATE TABLE IF NOT EXISTS pts_statement_build
+(
+    build_no VARCHAR(40) NOT NULL PRIMARY KEY,
+    type_code VARCHAR(40) NOT NULL,
+    store_no VARCHAR(40) NOT NULL,
+    period_from BIGINT NOT NULL,
+    period_to BIGINT NOT NULL,
+    high_water BIGINT NOT NULL,
+    scan_cursor BIGINT NOT NULL DEFAULT 0,
+    source_count BIGINT NOT NULL DEFAULT 0,
+    state VARCHAR(24) NOT NULL,
+    actor VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_pts_statement_build_period UNIQUE(type_code,store_no,period_from)
+);
+
+CREATE TABLE IF NOT EXISTS pts_statement_build_item
+(
+    build_no VARCHAR(40) NOT NULL,
+    position_no VARCHAR(40) NOT NULL,
+    ready_seq BIGINT NOT NULL,
+    route_key VARCHAR(40) NOT NULL,
+    source_version BIGINT NOT NULL,
+    points BIGINT NOT NULL,
+    PRIMARY KEY(build_no,ready_seq),
+    CONSTRAINT uk_pts_statement_build_source UNIQUE(position_no)
+);
+
+CREATE TABLE IF NOT EXISTS pts_statement_source_history
+(
+    statement_no VARCHAR(40) NOT NULL,
+    position_no VARCHAR(40) NOT NULL,
+    source_version BIGINT NOT NULL,
+    change_seq BIGINT NOT NULL,
+    points BIGINT NOT NULL,
+    PRIMARY KEY(statement_no,position_no,source_version)
+);
+
+CREATE TABLE IF NOT EXISTS pts_user_adjustment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    adjustment_no VARCHAR(40) NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'SUBMITTED',
+    submitted_by VARCHAR(40) NOT NULL,
+    approved_by VARCHAR(40) NULL,
+    payload_json LONGTEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_pts_adjustment_no UNIQUE (adjustment_no)
+);
+
+CREATE TABLE IF NOT EXISTS pts_statement_confirmation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    statement_no VARCHAR(40) NOT NULL,
+    revision BIGINT NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    merchant_no VARCHAR(40) NOT NULL,
+    store_no VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    published_at BIGINT NOT NULL,
+    last_attempt_at BIGINT NOT NULL DEFAULT 0,
+    notified_at BIGINT NULL,
+    deadline BIGINT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_pts_statement_confirmation UNIQUE (statement_no,revision)
 );
 
 -- 种子数据
@@ -4984,7 +6211,7 @@ VALUES
      'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0),
     ('INDIVIDUAL', 0, 0, 0, 0, NULL, 1, 'S2：能追到人、赔付能力弱；先不设限，观察后再调',
      'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0),
-    ('MICRO', 200000, 50000, 500000, 1, NULL, 1,
+    ('NATURAL_PERSON', 200000, 50000, 500000, 1, NULL, 1,
      'S3：几乎追不到人，平台是唯一被追的一方；保证金+限额+限品类三样同时生效',
      'MAIN', NOW(), 'SYSTEM', NOW(), NULL, 0, 0);
 INSERT IGNORE INTO stl_fee_rule
@@ -10105,3 +11332,47 @@ WHERE status = 'REFUNDING'
   AND liability IS NULL
   AND express_no IS NOT NULL
   AND express_no <> '';
+INSERT IGNORE INTO notify_scene_channel (scene_code, audience, channel, enabled, push_level, created_at, updated_at)
+SELECT t.scene_code, t.audience, t.channel, t.enabled, t.push_level, NOW(), NOW()
+FROM (
+    SELECT 'SUB_ORDER_FULFILLMENT_CHANGED' AS scene_code, 'C_USER' AS audience,
+           'INAPP' AS channel, 1 AS enabled, 'NORMAL' AS push_level UNION ALL
+    SELECT 'SUB_ORDER_FULFILLMENT_CHANGED', 'C_USER', 'PUSH', 1, 'NORMAL'
+) t
+WHERE NOT EXISTS (
+    SELECT 1 FROM notify_scene_channel m
+    WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
+);
+UPDATE sys_function_point SET href='/points?tab=overview',group_name='积分运营',updated_at=CURRENT_TIMESTAMP WHERE point_code='OPS_FINANCE__TAB_POINTS';
+UPDATE sys_function_point SET href='/points?tab=switches',name='积分范围开关',group_name='积分运营',updated_at=CURRENT_TIMESTAMP WHERE point_code='OPS_FINANCE__TAB_POINTS_POLICY';
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'OPS_POINTS__TAB_CONFIGURATION','OPS_FINANCE','积分类型与协议','积分运营','/points?tab=configuration','finance:settle:read','finance:settle:read','IMPLEMENTED',1,'P-12.1','MENU',52,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code='OPS_POINTS__TAB_CONFIGURATION');
+INSERT IGNORE INTO sys_role_point (role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
+SELECT DISTINCT source.role_code,'OPS_POINTS__TAB_CONFIGURATION',source.end_code,source.entity_no,source.tenant_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source
+WHERE source.point_code='OPS_FINANCE__TAB_POINTS' AND source.end_code='OPS' AND source.deleted=0 AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_CONFIGURATION');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'OPS_POINTS__TAB_TREASURY','OPS_FINANCE','积分资金工作台','积分运营','/points?tab=treasury','finance:settle:read','finance:settle:read','IMPLEMENTED',1,'P-12.1','MENU',53,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code='OPS_POINTS__TAB_TREASURY');
+INSERT IGNORE INTO sys_role_point (role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
+SELECT DISTINCT source.role_code,'OPS_POINTS__TAB_TREASURY',source.end_code,source.entity_no,source.tenant_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source
+WHERE source.point_code='OPS_FINANCE__TAB_POINTS' AND source.end_code='OPS' AND source.deleted=0 AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_TREASURY');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'OPS_POINTS__TAB_SETTLEMENTS','OPS_FINANCE','积分账单与退款','积分运营','/points?tab=settlements','finance:settle:read','finance:settle:read','IMPLEMENTED',1,'P-12.1','MENU',54,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code='OPS_POINTS__TAB_SETTLEMENTS');
+INSERT IGNORE INTO sys_role_point (role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
+SELECT DISTINCT source.role_code,'OPS_POINTS__TAB_SETTLEMENTS',source.end_code,source.entity_no,source.tenant_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source
+WHERE source.point_code='OPS_FINANCE__TAB_POINTS' AND source.end_code='OPS' AND source.deleted=0 AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_SETTLEMENTS');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
+SELECT 'OPS_POINTS__TAB_QUERIES','OPS_FINANCE','积分账务与对账','积分运营','/points?tab=queries','finance:settle:read','finance:settle:read','IMPLEMENTED',1,'P-12.1','MENU',55,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM sys_function_point WHERE point_code='OPS_POINTS__TAB_QUERIES');
+INSERT IGNORE INTO sys_role_point (role_code,point_code,end_code,entity_no,tenant_no,created_at,updated_at)
+SELECT DISTINCT source.role_code,'OPS_POINTS__TAB_QUERIES',source.end_code,source.entity_no,source.tenant_no,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM sys_role_point source
+WHERE source.point_code='OPS_FINANCE__TAB_POINTS' AND source.end_code='OPS' AND source.deleted=0 AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_QUERIES');
+UPDATE sys_function_point SET ui_perm_code='finance:recon:resolve',ui_ready=1,group_name='积分运营',name='积分对账快照核对',updated_at=CURRENT_TIMESTAMP
+WHERE point_code='ACT__FINANCE_RECON_RESOLVE' AND function_code='OPS_FINANCE' AND deleted=0;
+DELETE FROM sys_role_point
+WHERE point_code = 'OPS_PRODUCT__TAB_CATEGORY_POINTS';
+DELETE FROM sys_function_point
+WHERE point_code = 'OPS_PRODUCT__TAB_CATEGORY_POINTS'
+   OR href = '/products?tab=category-points';

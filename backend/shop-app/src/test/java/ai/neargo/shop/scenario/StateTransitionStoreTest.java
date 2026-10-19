@@ -1,6 +1,6 @@
 package ai.neargo.shop.scenario;
 
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.order.machine.shipment.ShipmentContext;
 import ai.neargo.shop.trade.order.machine.shipment.ShipmentEvent;
 import ai.neargo.shop.trade.order.machine.shipment.ShipmentMachine;
@@ -37,7 +37,7 @@ class StateTransitionStoreTest {
     @Autowired
     private StatusCasMapper casMapper;
     @Autowired
-    private StatusLogMapper logMapper;
+    private OrderStatusLogMapper logMapper;
     @Autowired
     private JdbcTemplate jdbc;
 

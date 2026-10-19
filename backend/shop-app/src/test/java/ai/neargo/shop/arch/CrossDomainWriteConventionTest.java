@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 凭空多出来的钱，删不得，只能人工判断。
  *
  * <h2>它同时是一份欠账清单</h2>
- * 七处跨域调用里，这一轮只改完了一处。{@link #REMAINING} 记着其余六处，
+ * {@link #REMAINING} 记录现有退款执行器中的跨域调用，
  * 每改完一处就从这里删一行 —— <b>数字只许变小</b>。
  * 把它写成清单而不是「以后再说」，是因为「以后再说」没有对照量：
  * 半年后谁也说不清还剩几处，而这个数决定了支付域能不能拆。
@@ -43,26 +43,14 @@ class CrossDomainWriteConventionTest {
      */
     private static final Map<String, List<String>> DEFERRED = Map.of(
             "shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java",
-            List.of("settlePort.generateForOrder", "grantPointsAfterPay",
-                    "pointsPort.reverse"));
+            List.of("settlePort.generateForOrder"));
 
-    /**
-     * <b>还没改的六处</b>，按方向分类（见 TDD-支付域拆分-最终一致性与补偿 §二）：
-     *
-     * <ul>
-     *   <li>{@code pointsPort.deduct}（下单扣分）—— <b>前置</b>，唯一不能用 Outbox 的一处，
-     *       要改预扣 + 确认 + 超时释放；</li>
-     *   <li>{@code settlePort.reverseSplit} / {@code settlePort.refund}（退款两步）——
-     *       <b>有序，刻意不改</b>：它们今天已经是最终一致性的形状
-     *       （REFUNDING + 失败就停不往下走），拆进程后一个字都不用动。</li>
-     * </ul>
-     *
-     * <p>最后两处永远留在这里，是<b>有意的</b> —— 它们不是欠账，是正确答案。
-     * 所以这个清单不是「要清零」，而是「不许变长」。
-     */
-    private static final List<String> REMAINING = List.of(
-            "pointsPort.deduct",
-            "settlePort.reverseSplit", "settlePort.refund");
+    /** Refund dispatches remain ordered; this inventory limits their current direct call sites. */
+    private static final List<String> REMAINING = List.of("settle.reverseSplit", "settle.refund");
+
+    /** Recognize old receiver names as well; a renamed call must not evade the debt limit. */
+    private static final List<String> RECOGNIZED = List.of(
+            "settle.reverseSplit", "settle.refund", "settlePort.reverseSplit", "settlePort.refund");
 
     /**
      * 去掉注释。<b>注释里提到这些调用是正常的</b>（本文件本身就提了一堆），
@@ -130,21 +118,32 @@ class CrossDomainWriteConventionTest {
     }
 
     @Test
+    void retired_points_writes_cannot_reappear_in_order_or_refund_sources() throws IOException {
+        for(String file: List.of("OrderServiceImpl.java","AfterSaleServiceImpl.java")) {
+            String source=stripComments(Files.readString(BACKEND.resolve(
+                    "shop-core/src/main/java/ai/neargo/shop/trade/service/impl/"+file),StandardCharsets.UTF_8));
+            assertThat(source).doesNotContain("pointsPort.","grantPointsAfterPay");
+        }
+    }
+
+    @Test
     @DisplayName("★★ 还没改的跨域写只许变少 —— 它是「支付域能不能拆」的进度条")
     void remainingDebtDoesNotGrow() throws IOException {
         List<Path> files = List.of(
                 BACKEND.resolve("shop-core/src/main/java/ai/neargo/shop/trade/service/impl/OrderServiceImpl.java"),
-                BACKEND.resolve("shop-core/src/main/java/ai/neargo/shop/trade/service/impl/AfterSaleServiceImpl.java"));
+                BACKEND.resolve("shop-core/src/main/java/ai/neargo/shop/trade/service/impl/AfterSaleServiceImpl.java"),
+                BACKEND.resolve("shop-core/src/main/java/ai/neargo/shop/trade/order/refund/service/AfterSaleRefundExecutor.java"));
 
         List<String> found = new ArrayList<>();
         for (Path f : files) {
-            String src = Files.readString(f, StandardCharsets.UTF_8);
+            String src = stripComments(Files.readString(f, StandardCharsets.UTF_8));
+            assertThat(src).as("一期不允许恢复直接积分抵扣: %s", f).doesNotContain("pointsPort.deduct(");
             for (String line : src.split("\n")) {
                 String t = line.trim();
                 if (t.startsWith("*") || t.startsWith("//") || t.contains("AfterCommit")) {
                     continue;
                 }
-                for (String call : REMAINING) {
+                for (String call : RECOGNIZED) {
                     if (t.contains(call)) {
                         found.add(f.getFileName() + " → " + call);
                     }

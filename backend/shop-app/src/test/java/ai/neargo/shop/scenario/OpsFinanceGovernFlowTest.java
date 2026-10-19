@@ -72,6 +72,8 @@ class OpsFinanceGovernFlowTest {
 
     @Autowired
     private SettleService settleService;
+    @Autowired private ai.neargo.shop.pay.service.PaymentLedgerService ledger;
+    @Autowired private ai.neargo.shop.pay.channel.TestPayGateway bank;
 
     @Autowired
     private WithdrawMapper withdrawMapper;
@@ -116,6 +118,7 @@ class OpsFinanceGovernFlowTest {
         // ① 分账：钱到了商家账户上。没有这一步，后面的「回退」就无从谈起
         JsonNode bill = billOf(biz, o.subOrderNo());
         String settleNo = bill.get("settleNo").asString();
+        jdbc.update("UPDATE stl_bill SET pay_merchant_no='SYNTHETIC-FINANCE-ACCOUNT' WHERE settle_no=?",settleNo);
         settleService.executeSplit(settleNo);
         assertThat(billStatus(biz, settleNo)).isEqualTo("SPLIT");
         long splitAmount = splitLogAmount(settleNo, StlSplitLog.SPLIT);
@@ -152,6 +155,10 @@ class OpsFinanceGovernFlowTest {
         assertThat(item.get("verdict").asString()).contains("商家承担");
 
         // ③ 执行：先回退分账，再退款
+        ai.neargo.shop.support.RefundScenarioPayments.received(jdbc,ledger,bank,asNo);
+        assertThat(codeOf(executeRaw(asNo))).isZero();
+        assertThat(afterSaleStatus(o.userToken(),asNo)).isEqualTo("REFUNDING");
+        assertThat(queueItem(asNo)).isNotNull();
         assertThat(codeOf(executeRaw(asNo))).isZero();
 
         /*
@@ -187,6 +194,7 @@ class OpsFinanceGovernFlowTest {
         Ordered o = placeAndPay("13000700021", goodsNo, skuNo, "fin-back-2");
 
         String settleNo = billOf(biz, o.subOrderNo()).get("settleNo").asString();
+        jdbc.update("UPDATE stl_bill SET pay_merchant_no='SYNTHETIC-FINANCE-ACCOUNT' WHERE settle_no=?",settleNo);
         settleService.executeSplit(settleNo);
 
         // 商家同意只属于「直连」商家：新入驻默认归集（平台是卖家），售后进平台裁决，商家同意不了（步 5.6 起由状态机挡）

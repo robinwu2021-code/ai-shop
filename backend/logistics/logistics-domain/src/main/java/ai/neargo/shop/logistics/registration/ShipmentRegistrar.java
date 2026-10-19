@@ -5,9 +5,14 @@ import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillNodeMapper;
+import ai.neargo.shop.spi.logistics.ShipmentSourcePort;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 import ai.neargo.shop.logistics.domain.WaybillStatus;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
-import ai.neargo.shop.logistics.event.WaybillRegistered;
+import ai.neargo.shop.logistics.entity.LgsWaybillNode;
+import ai.neargo.shop.logistics.wxbind.WxFollowRequested;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
@@ -23,8 +28,8 @@ import java.util.Objects;
 /**
  * 发货 → 登记运单骨架（TDD-物流模块 M1，AC1）。<b>取代「物流去扫订单表、读时补齐」</b>。
  *
- * <p>只用事件里已有的字段（子单号、快递公司、单号），<b>不调外部、不调反向 Port</b> ——
- * 这一步失败会让整条发货事件重投，连带通知模块把「已发货」再推一次（见 {@link WaybillRegistered}）。
+ * <p>事件冻结来源字段；映射来源用反向 Port 在调用事务持有子单锁，不调用外部渠道。
+ * 登记失败沿用原发货事件重投；快照与订阅失败由内部事件独立重试。
  * 快照与订阅在 {@link SubscribeExecutor} 上做。
  *
  * <p>幂等靠唯一键 {@code uk_shipment_sub_order(biz_ref)}，不靠查重（查与插之间有并发窗口）：
@@ -39,11 +44,16 @@ public class ShipmentRegistrar implements OutboxConsumer {
     private final WaybillMapper waybills;
     private final OutboxEventBus events;
     private final ObjectMapper json;
+    private final ShipmentSourcePort source;
+    private final WaybillNodeMapper nodes;
 
-    public ShipmentRegistrar(WaybillMapper waybills, OutboxEventBus events, ObjectMapper json) {
+    public ShipmentRegistrar(WaybillMapper waybills, OutboxEventBus events, ObjectMapper json,
+                             ShipmentSourcePort source, WaybillNodeMapper nodes) {
         this.waybills = waybills;
         this.events = events;
         this.json = json;
+        this.source = source;
+        this.nodes = nodes;
     }
 
     @Override
@@ -52,6 +62,7 @@ public class ShipmentRegistrar implements OutboxConsumer {
     }
 
     @Override
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void consume(SysOutbox event) {
         JsonNode p = json.readTree(event.getPayload());
         if (!Fulfillments.EXPRESS.equals(text(p, "fulfillment"))) {
@@ -64,31 +75,59 @@ public class ShipmentRegistrar implements OutboxConsumer {
             log.warn("[lgs-register] 快递发货事件缺子单号或单号，不登记：{}", event.getEventNo());
             return;
         }
+        String sourceNo = text(p, "sourceShipmentNo");
+        Long generation = p.path("sourceShipmentVersion").isNumber()
+                ? p.path("sourceShipmentVersion").asLong() : null;
+        if (sourceNo != null && !current(subOrderNo, sourceNo, generation, carrier, waybillNo)) {
+            return;
+        }
         LgsWaybill w = findByBizRef(subOrderNo);
         if (w == null) {
             w = skeleton(subOrderNo, carrier, waybillNo);
+            w.setSourceShipmentNo(sourceNo);
+            w.setSourceShipmentVersion(generation);
             try {
                 waybills.insert(w);
             } catch (DuplicateKeyException e) {
                 w = findByBizRef(subOrderNo);
             }
-        } else if (!Objects.equals(w.getWaybillNo(), waybillNo) && !WaybillStatus.isTerminal(w.getStatus())) {
-            // 同一子单换了单号（商家重新发货）：按新号重新订阅
-            log.warn("[lgs-register] 子单 {} 单号由 {} 换成 {}，按新号重新订阅", subOrderNo, w.getWaybillNo(), waybillNo);
-            LgsWaybill patch = LgsWaybill.patch(w.getId());
-            patch.setWaybillNo(waybillNo);
-            patch.setCarrier(carrier);
-            patch.setSubState(LgsWaybill.SUB_PENDING);
-            waybills.updateById(patch);
+        } else if (sourceNo != null && (!sourceNo.equals(w.getSourceShipmentNo())
+                || !Objects.equals(generation, w.getSourceShipmentVersion()))) {
+            WaybillReplacement.reset(waybills, nodes, w, carrier, waybillNo, sourceNo, generation);
+            w.setSourceShipmentNo(sourceNo);
+            w.setSourceShipmentVersion(generation);
+            w.setCarrier(carrier);
+            w.setWaybillNo(waybillNo);
+        } else if (sourceNo == null && w.getSourceShipmentNo() == null
+                && !Objects.equals(w.getWaybillNo(), waybillNo) && !WaybillStatus.isTerminal(w.getStatus())
+                && !hasManualCorrection(w)) {
+            // Explicit legacy compatibility; modern mapped events never let legacy replay replace their source.
+            WaybillReplacement.reset(waybills, nodes, w, carrier, waybillNo, null, null);
+            w.setCarrier(carrier);
+            w.setWaybillNo(waybillNo);
         }
         if (w != null) {
-            events.publish(new WaybillRegistered(w.getShipmentNo()));
+            String identity = ChannelSubscriptionStore.identityKey(w);
+            events.publish(new WxFollowRequested(w.getShipmentNo(), identity));
+            events.publish(new Kd100SubscribeRequested(w.getShipmentNo(), identity));
         }
+    }
+
+    private boolean current(String subOrderNo, String sourceNo, Long generation, String carrier, String waybillNo) {
+        return source.lockedIdentityOf(subOrderNo).filter(s -> sourceNo.equals(s.sourceShipmentNo())
+                && Objects.equals(generation, s.sourceShipmentVersion())
+                && Objects.equals(waybillNo, s.waybillNo()) && Objects.equals(carrier, s.carrier())).isPresent();
     }
 
     private LgsWaybill findByBizRef(String subOrderNo) {
         return waybills.selectOne(Wrappers.<LgsWaybill>query()
-                .eq("biz_type", LgsWaybill.BIZ_SUB_ORDER).eq("biz_ref", subOrderNo).last("limit 1"));
+                .eq("biz_type", LgsWaybill.BIZ_SUB_ORDER).eq("biz_ref", subOrderNo).last("LIMIT 1 FOR UPDATE"));
+    }
+
+    private boolean hasManualCorrection(LgsWaybill waybill) {
+        Long audit = nodes.selectCount(Wrappers.<LgsWaybillNode>query()
+                .eq("shipment_no", waybill.getShipmentNo()).eq("mode", "OPS"));
+        return audit != null && audit > 0;
     }
 
     private static LgsWaybill skeleton(String subOrderNo, String carrier, String waybillNo) {

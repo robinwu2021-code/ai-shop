@@ -92,7 +92,7 @@ public class BizDashboardController {
         var counts = orderService.todo(merchantNo, ctx.currentStoreScope(), ctx.pickupNos());
         return new TodoVO(counts.toShip(), counts.toDeliver(), counts.toStock(),
                 counts.toVerify(), counts.toPick(),
-                afterSaleService.merchantPendingCount(merchantNo),
+                afterSaleService.merchantPendingCount(merchantNo, ctx.currentStoreNo()),
                 reviewService.pendingReplyCount(merchantNo),
                 groupService.quotableCount(merchantNo));
     }
