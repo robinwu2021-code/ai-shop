@@ -1,6 +1,6 @@
 # TDD-Outbox统一投递与封装
 
-状态：代码已实现，重要审查问题已修复并合入统一分支，定向验收通过；尚未部署或启用新模式。
+状态：代码已实现并于 2026-10-19 部署到生产，平台 V471 与库存 V10 迁移成功；生产仍为 legacy 投递模式，尚未接管存量事件或启用 unified 模式。
 创建 / 更新：2026-10-19。
 依据：本次 Outbox review 与用户对统一封装、复用 Spring 能力的要求；现有《PRD-定时任务管理》§三、《运营端-开发计划》链路健康、《PRD-积分模块》AC-PTS-33。
 档位：2；已同步 PRD 的过时调度描述并登记 ADR。用户于 2026-10-19 确认按建议执行；§2.12 保留执行计划，实际结果与偏差见 §5–§7。
@@ -401,7 +401,7 @@ Spring Modulith 官方参考：https://docs.spring.io/spring-modulith/reference/
 
 ## §6 对账二：设计到实现
 
-公共协议、双库增量迁移、逐消费者调度、共享 Spring 运行器、来源接收去重、21个消费者适配、健康明细、源端审计操作和离线清单接管均已实现。最终交付分支为 `codex/ai-shop-codex`；在隔离工作树完成修复和验证后本地合入，不推送、不部署。
+公共协议、双库增量迁移、逐消费者调度、共享 Spring 运行器、来源接收去重、21个消费者适配、健康明细、源端审计操作和离线清单接管均已实现。最终交付分支为 `codex/ai-shop-codex`。生产部署 SHA 为 `4229159cc`；发布未包含共享工作区未提交文件。统一分支推送被生成物守卫拦截，需先更新生成文档；部署已从本地已提交 SHA 完成。
 
 | 统一分支新增消费者 | 稳定 handlerId | 执行边界 |
 |---|---|---|
@@ -418,7 +418,7 @@ Spring Modulith 官方参考：https://docs.spring.io/spring-modulith/reference/
 - 双库重复Mapper/实体收敛为 `JdbcOutboxStore`，使用 JdbcTemplate 和明确数据源事务；代价是 SQL 需独立真库验证，已在临时 MariaDB 验证。
 - 存储/事务测试集中在 shop-store-mybatis，应用只保留实际Spring装配与桥接测试，减少启动成本；代价是数据源装配不能只依赖存储测试，已另测。
 - 存量接管采用停机、完整确认清单、单事务，上限500条；超限或源内已混入新事件时拒绝。代价是更大存量需要另做迁移工具，不能自动推断部分成功。
-- 按用户指定合并最新统一分支，平台迁移改为 `V471__outbox_delivery.sql`，库存为 `V10__outbox_delivery.sql`，避免覆盖已占用V425/V9；尚未在生产执行。
+- 按用户指定合并最新统一分支，平台迁移改为 `V471__outbox_delivery.sql`，库存为 `V10__outbox_delivery.sql`，避免覆盖已占用V425/V9；两条迁移已于 2026-10-19 在生产成功执行。
 - 事务内暂存事件、beforeCommit统一排序保留流，覆盖现有多流发布循环；代价是事件行直到提交阶段才写入，不能在同一业务事务中提前查表依赖它。
 - 按用户要求不做全量、并发或饱和测试；代价是容量/竞争行为未通过运行测试验证，上线需观察。
 - 新增消费者保留已有目的域动作事务和台账；统一层不拿本地Inbox冒充跨事务完成，未知外部结果停止自动重放。
@@ -442,4 +442,6 @@ Spring Modulith 官方参考：https://docs.spring.io/spring-modulith/reference/
 
 保留的次要问题：健康响应的 lastError 目前从最近20条投递明细取值，极早的未解决失败可能不出现在该摘要；failed/unknown计数和delivery诊断仍保留。单独的未解决错误摘要查询可后续优化。
 
-生产仍默认legacy。代码开发不包含历史清单确认、生产迁移、模式切换及部署。
+生产状态（2026-10-19）：`shop-app` 部署 SHA `4229159cc`，health=200；平台 Flyway V471、库存 `inv_flyway_history` V10 均成功。平台 `sys_outbox` 保留 1,413 条旧记录，库存 `inv_outbox` 保留 234 条旧记录；新 delivery 表当前为空。`SHOP_OUTBOX_PLATFORM_MODE` 与 `SHOP_OUTBOX_INVENTORY_MODE` 均未设置，按默认 `legacy` 运行；`SHOP_INVENTORY_ENABLED=true`。本次仅部署向后兼容代码与增量 DDL，没有自动接管历史事件，也没有切换 unified 模式。回滚包为 `shop-app-20261019-093615-357769ed9.jar`。
+
+后续启用 unified 前，仍须按 §2.11 为两库存量建立并审核完整接管清单、暂停旧投递并确认在途结果，再依据运行观测单独切换；不得仅通过设置模式变量启用。
