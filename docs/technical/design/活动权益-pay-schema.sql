@@ -404,6 +404,7 @@ CREATE TABLE sv_account (
     PRIMARY KEY (id),
     UNIQUE KEY uk_sv_account (tenant_no,account_no),
     UNIQUE KEY uk_sv_owner (tenant_no,user_no,entity_no,currency),
+    CHECK (status IN ('ACTIVE','FROZEN')),
     CHECK (principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='金额储值账户，不持有活动预算';
 
@@ -434,6 +435,9 @@ CREATE TABLE sv_recharge (
     credited_at DATETIME(3) NULL COMMENT '到账时间',
     expires_at DATETIME(3) NOT NULL COMMENT '未实收截止',
     permit_snapshot JSON NOT NULL COMMENT '权威资格与权益范围',
+    source_snapshot JSON NOT NULL COMMENT 'core原充值业务来源',
+    received_decision_snapshot JSON NULL COMMENT 'pay实收决定，到账只认原记录',
+    confirmation_note VARCHAR(500) NULL COMMENT '人工核验备注，不返回消费者',
     version BIGINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity乐观锁',
     deleted TINYINT NOT NULL DEFAULT 0 COMMENT '对齐BaseEntity，账务事实禁止删除',
     created_at DATETIME(3) NOT NULL COMMENT 'UTC创建',
@@ -445,7 +449,15 @@ CREATE TABLE sv_recharge (
     UNIQUE KEY uk_recharge_request (tenant_no,request_id),
     UNIQUE KEY uk_recharge_permit (tenant_no,reservation_no),
     KEY ix_credit_pending (tenant_no,status,received_at),
-    CHECK (principal_minor>0 AND bonus_minor>=0)
+    CHECK (principal_minor>0 AND bonus_minor>=0),
+    CHECK (status IN ('WAIT_COLLECTION','SUBMITTED','RECEIVED','CREDITED','CANCELLED','REJECTED')),
+    CHECK (status NOT IN ('SUBMITTED','RECEIVED','CREDITED') OR
+        (collection_method IS NOT NULL AND actual_amount_minor IS NOT NULL
+         AND collection_method IN ('CASH','TRANSFER') AND actual_amount_minor=principal_minor
+         AND receipt_ref IS NOT NULL AND receipt_digest IS NOT NULL)),
+    CHECK (status NOT IN ('RECEIVED','CREDITED') OR
+        (received_by IS NOT NULL AND received_at IS NOT NULL AND received_decision_snapshot IS NOT NULL)),
+    CHECK ((status='CREDITED' AND credited_at IS NOT NULL) OR (status<>'CREDITED' AND credited_at IS NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='充值实收与活动凭证快照';
 
 CREATE TABLE sv_lot (
@@ -742,3 +754,26 @@ CREATE TABLE pay_ent_source_fence (
     CHECK ((status='OPEN' AND decision_snapshot IS NULL AND cancelled_at IS NULL)
         OR (status='CANCELLED' AND decision_snapshot IS NOT NULL AND cancelled_at IS NOT NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='防止已取消来源被晚到的prepare再次预占';
+
+CREATE TABLE sv_posting_line (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    voucher_no VARCHAR(64) NOT NULL COMMENT '原储值凭证',
+    line_no INT NOT NULL COMMENT '凭证内稳定序号',
+    pool VARCHAR(16) NOT NULL COMMENT 'PRINCIPAL/BONUS，仅内部',
+    book VARCHAR(32) NOT NULL COMMENT 'CUSTOMER_CLAIM/MERCHANT_OBLIGATION，管理备查账',
+    side VARCHAR(8) NOT NULL COMMENT 'DEBIT/CREDIT',
+    amount_minor BIGINT NOT NULL COMMENT '正分币金额，不代表平台银行现金',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '事实版本',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '事实不删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC',
+    created_by VARCHAR(64) NOT NULL COMMENT '操作者',
+    updated_by VARCHAR(64) NOT NULL COMMENT '操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_sv_posting_line (tenant_no,voucher_no,line_no),
+    CHECK (line_no>0 AND amount_minor>0),
+    CHECK (pool IN ('PRINCIPAL','BONUS')),
+    CHECK (book IN ('CUSTOMER_CLAIM','MERCHANT_OBLIGATION')),
+    CHECK (side IN ('DEBIT','CREDIT'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='储值请求权与商家义务的内部平衡分录';

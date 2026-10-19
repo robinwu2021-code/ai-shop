@@ -27,10 +27,10 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         for (const owner of ['core', 'pay']) {
             sql(readFileSync(new URL(`../../docs/technical/design/活动权益-${owner}-schema.sql`, import.meta.url), 'utf8'));
         }
-        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '45');
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '46');
         assert.ok(sql("SHOW COLUMNS FROM ent_template LIKE 'draft_snapshot'"), 'template draft needs persisted editable rules');
         sql(readFileSync(new URL('../../docs/technical/design/活动权益-support-schema.sql', import.meta.url), 'utf8'));
-        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '51');
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '52');
         const serviceMigration = readFileSync(new URL(
             '../../backend/shop-app/src/main/resources/db/migration/V442__entitlement_service_order.sql', import.meta.url),
             'utf8');
@@ -76,6 +76,15 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
             'b1','b1')`);
         assert.throws(() => sql("UPDATE prd_ent_binding_command SET status='COMPLETED' WHERE request_key='KeyA'"),
             /Check constraint/, 'a completed binding command needs its original reply');
+        sql('CREATE DATABASE stored_value_credit_fixture');
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
+            + 'V445__stored_value_credit_ledger.sql', import.meta.url), 'utf8'), 'stored_value_credit_fixture');
+        for (const table of ['sv_account', 'sv_recharge', 'sv_lot', 'sv_voucher', 'sv_entry', 'sv_posting_line',
+            'sv_user_store_index']) {
+            const columns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns
+                WHERE table_schema='${database}' AND table_name='${table}' ORDER BY ordinal_position`);
+            assert.equal(columns('stored_value_credit_fixture'), columns('entitlement_test'), table);
+        }
         const credentialAudit = "created_at,updated_at,created_by,updated_by";
         sql(`INSERT INTO ent_code_token(tenant_no,token_hash,instance_no,user_no,entity_no,request_key_hash,`
             + `payload_hash,nonce,expires_at,status,${credentialAudit}) VALUES ('MAIN','${'a'.repeat(64)}',`

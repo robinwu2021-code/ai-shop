@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：32项DONE、8项DOING、15项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
+本表共55项：32项DONE、9项DOING、14项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序（2026-10-19用户调整）：第一阶段完成core活动自身能力，第二阶段完成pay权益、卡券、储值及活动权益联动。具体任务分组、跨阶段子项与验收见[两阶段执行方案](./开发计划-活动优先与权益两阶段.md)。已完成的权益公共基础直接保留；JB-015尚未开始Java实现，移至第二阶段。原任务编号与整体依赖保留，跨阶段任务仅完成活动部分不能标记整项DONE。
 
@@ -112,7 +112,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | ID | 原任务 | 状态 | 依赖 | 模块 | 交付内容/Java类 | 验收条件/测试 |
 |---|---|---|---|---|---|---|
 | JB-034 | D05.1 | TODO | 010,011,013,014,031 | pay.storedvalue/app | StoredValueRechargeService/Impl、StoredValueRechargeCoordinator；创建/提交/实收/取消/query | StoredValueRechargeFlowTest：真实凭据/金额匹配；实收取消竞争唯一终态、重复实收不重复到账；已实收不可取消 |
-| JB-035 | D05.2 | TODO | 013,014,034 | pay.storedvalue | StoredValueCreditService/Impl、StoredValuePostingService；I12账户/批次/凭证/分录同事务 | StoredValueCreditFlowTest：原充值号只到账一次、借贷平衡、内部本金赠金守恒、异常整体回滚；原生MySQL验证 |
+| JB-035 | D05.2 | DOING | 013,014,034 | pay.storedvalue | StoredValueCreditService/Impl、StoredValuePostingService；I12账户/批次/凭证/分录同事务 | StoredValueCreditFlowTest：原充值号只到账一次、借贷平衡、内部本金赠金守恒、异常整体回滚；原生MySQL验证 |
 | JB-036 | D05.3 | TODO | 011,020,035 | pay.storedvalue | StoredValueRedemptionService/Impl、StoredValueAllocationPolicy；统一使用意图的金额预占/确认/释放 | StoredValueConsumptionFlowTest：范围/过期批次校验、条件余额不超扣、释放回原批次、消费重试不重复分录；原生并发 |
 | JB-037 | D05.4 | TODO | 014,035,036 | pay.storedvalue | StoredValueStoreProjector、StoredValueQueryService/Impl；记录、门店目录、总余额 | StoredValueConsumerQueryTest：只列成功储值门店、max充值/核销时间倒序、同时间稳定分页、耗尽仍保留、乱序不倒退 |
 | JB-038 | D05.1–5.4 | TODO | 009,034,035,036,037,041 | app HTTP | BizStoredValueController、MpStoredValueController；P18–P24/P27/P28 | StoredValueApiTest：办理/到账/核销/本人记录闭环；无本金赠金字段、无线上退款/购买入口、统一会员码 |
@@ -612,3 +612,14 @@ JB-020仍DOING，后续推进039商品绑定及034–038储值，不把可配置
 数据域修复沿商品原有约定：店主SELF会话下，仅在显式租户/主体/商品/SKU归属查询内豁免自动SQL数据域，
 不放宽会话权限或全局过滤。文档70/生成物24/SQL守卫通过，V444新增2张运行表，运行总数240，目标逻辑51。
 当前55项：32 DONE / 8 DOING / 15 TODO。付款前发行占用、真实付款后发卡及取消仍属JB-040，未冒称已完成。
+
+
+第二阶段JB-035完成首个内部到账内核切片，父任务仍DOING：原pay已实收充值单→账户/原批次→凭证与分录→
+分池平衡管理备查账→成功储值历史目录→原到账事件同事务写入。已有实收承诺不因新业务开关关闭停账，
+冻结账户可记录已欠到账；消费权限另行处理。不开放实收HTTP，未以领域收款记录夹具冒称实际活动办理完成。
+21项不同定向Java通过（到账4、架构16、pay事务约定1）；原生MySQL实际生产过账服务1项通过、0跳过，
+目标迁移字段/约束对齐1项通过、0跳过。原生并发发现并修复RR旧快照读不到已到账凭证/批次的重放冲突，
+改为账户锁后的当前读。去掉备查分录持久化后测试实际变红（期望4行、实为0），恢复后通过。
+币种及主体隔离、账号累计溢出回滚、事件失败回滚、20次并发原号到账一次均已验证。
+V445新增7张pay表（含新增管理备查分录），运行表247，逻辑目标52；sv前缀明确归支付储值账务，未新增未归域欠账。
+文档70/生成物24/SQL守卫通过，未全量测试。当前32 DONE / 9 DOING / 14 TODO，034真实活动源与人工实收尚待接通。

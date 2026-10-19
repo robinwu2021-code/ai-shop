@@ -629,3 +629,11 @@ POST /biz/card-product-bindings，权限biz:goods且主体全域配置权限；I
 只允许实际CARD商品的商家主市场SKU和已发布、仍可用于PAID_ORDER的PAID_CARD版本；币种/主体校验，
 售价不改。成功会递增商品修订；旧键返回原结果，同键异参及新请求旧修订409。绑定不等于已接通售卡发行，
 后续040按实际付款与原订单逐件快照发放，既有绑定不因模板草稿或新发布版本自动改变。
+
+
+### JB035内部到账实现范围（实施中）
+
+StoredValueCreditService沿既有CreditRecharge，只接收原`PAY/RECHARGE`与RECHARGE_RECEIVED决定引用，
+不接收金额；读取自己pay持久的实收记录、原core来源与ParticipationPermit核对。复用RechargeView无本金/赠金
+字段，内部备查账不直接作为B/C响应。记录CREDITED重放先校验原决定及凭证/批次，返回原到账时刻和修订；
+账户及流水不重复增加。B实收和StoredValuePort HTTP/远程入口仍未开放，待034/041真实来源接通。

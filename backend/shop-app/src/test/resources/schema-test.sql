@@ -1588,7 +1588,7 @@ CREATE TABLE IF NOT EXISTS usr_store_favorite
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     store_no VARCHAR(64) DEFAULT NULL,
-    CONSTRAINT uk_user_store UNIQUE (user_no, store_no),
+    CONSTRAINT usr_store_favorite_uk_user_store UNIQUE (user_no, store_no),
     PRIMARY KEY (id)
 );
 
@@ -5838,6 +5838,201 @@ CREATE TABLE IF NOT EXISTS prd_ent_binding_command
     PRIMARY KEY (id),
     CONSTRAINT uk_card_binding_request UNIQUE (tenant_no,request_key),
     CHECK ((status='PENDING' AND response_snapshot IS NULL) OR (status='COMPLETED' AND response_snapshot IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS sv_account
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    account_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    principal_minor BIGINT NOT NULL DEFAULT 0,
+    bonus_minor BIGINT NOT NULL DEFAULT 0,
+    held_principal_minor BIGINT NOT NULL DEFAULT 0,
+    held_bonus_minor BIGINT NOT NULL DEFAULT 0,
+    account_seq BIGINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sv_account UNIQUE (tenant_no,account_no),
+    CONSTRAINT uk_sv_owner UNIQUE (tenant_no,user_no,entity_no,currency),
+    CHECK (status IN ('ACTIVE','FROZEN')),
+    CHECK (principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS sv_recharge
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    recharge_no VARCHAR(64) NOT NULL,
+    request_id VARCHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    reservation_no VARCHAR(64) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    activity_version_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    store_name VARCHAR(100) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    principal_minor BIGINT NOT NULL,
+    bonus_minor BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    collection_method VARCHAR(16) NULL,
+    actual_amount_minor BIGINT NULL,
+    receipt_ref VARCHAR(128) NULL,
+    receipt_digest CHAR(64) NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    received_by VARCHAR(64) NULL,
+    received_at DATETIME(3) NULL,
+    credited_at DATETIME(3) NULL,
+    expires_at DATETIME(3) NOT NULL,
+    permit_snapshot TEXT NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    received_decision_snapshot TEXT NULL,
+    confirmation_note VARCHAR(500) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_recharge UNIQUE (tenant_no,recharge_no),
+    CONSTRAINT uk_recharge_request UNIQUE (tenant_no,request_id),
+    CONSTRAINT uk_recharge_permit UNIQUE (tenant_no,reservation_no),
+    CHECK (principal_minor>0 AND bonus_minor>=0),
+    CHECK (status IN ('WAIT_COLLECTION','SUBMITTED','RECEIVED','CREDITED','CANCELLED','REJECTED')),
+    CHECK (status NOT IN ('SUBMITTED','RECEIVED','CREDITED') OR (collection_method IS NOT NULL AND actual_amount_minor IS NOT NULL AND collection_method IN ('CASH','TRANSFER') AND actual_amount_minor=principal_minor AND receipt_ref IS NOT NULL AND receipt_digest IS NOT NULL)),
+    CHECK (status NOT IN ('RECEIVED','CREDITED') OR (received_by IS NOT NULL AND received_at IS NOT NULL AND received_decision_snapshot IS NOT NULL)),
+    CHECK ((status='CREDITED' AND credited_at IS NOT NULL) OR (status<>'CREDITED' AND credited_at IS NULL))
+);
+
+CREATE TABLE IF NOT EXISTS sv_lot
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    lot_no VARCHAR(64) NOT NULL,
+    account_no VARCHAR(64) NOT NULL,
+    recharge_no VARCHAR(64) NOT NULL,
+    activity_version_no VARCHAR(64) NOT NULL,
+    principal_minor BIGINT NOT NULL,
+    bonus_minor BIGINT NOT NULL,
+    held_principal_minor BIGINT NOT NULL DEFAULT 0,
+    held_bonus_minor BIGINT NOT NULL DEFAULT 0,
+    scope_snapshot TEXT NOT NULL,
+    credited_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sv_lot UNIQUE (tenant_no,lot_no),
+    CONSTRAINT uk_lot_recharge UNIQUE (tenant_no,recharge_no),
+    CHECK (principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS sv_voucher
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    voucher_no VARCHAR(64) NOT NULL,
+    account_no VARCHAR(64) NOT NULL,
+    account_seq BIGINT NOT NULL,
+    biz_type VARCHAR(24) NOT NULL,
+    biz_no VARCHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    principal_delta BIGINT NOT NULL,
+    bonus_delta BIGINT NOT NULL,
+    after_principal_minor BIGINT NOT NULL,
+    after_bonus_minor BIGINT NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_voucher UNIQUE (tenant_no,voucher_no),
+    CONSTRAINT uk_sv_biz UNIQUE (tenant_no,biz_type,biz_no),
+    CONSTRAINT uk_sv_seq UNIQUE (tenant_no,account_no,account_seq),
+    CHECK (after_principal_minor>=0 AND after_bonus_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS sv_entry
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    voucher_no VARCHAR(64) NOT NULL,
+    lot_no VARCHAR(64) NOT NULL,
+    principal_delta BIGINT NOT NULL,
+    bonus_delta BIGINT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sv_entry UNIQUE (tenant_no,voucher_no,lot_no)
+);
+
+CREATE TABLE IF NOT EXISTS sv_user_store_index
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    store_name VARCHAR(100) NOT NULL,
+    has_recharge TINYINT NOT NULL DEFAULT 0,
+    last_recharge_at DATETIME(3) NULL,
+    last_consume_at DATETIME(3) NULL,
+    last_activity_at DATETIME(3) NOT NULL,
+    last_activity_type VARCHAR(16) NOT NULL,
+    store_status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT sv_user_store_index_uk_user_store UNIQUE (tenant_no,user_no,store_no)
+);
+
+CREATE TABLE IF NOT EXISTS sv_posting_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    voucher_no VARCHAR(64) NOT NULL,
+    line_no INT NOT NULL,
+    pool VARCHAR(16) NOT NULL,
+    book VARCHAR(32) NOT NULL,
+    side VARCHAR(8) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sv_posting_line UNIQUE (tenant_no,voucher_no,line_no),
+    CHECK (line_no>0 AND amount_minor>0),
+    CHECK (pool IN ('PRINCIPAL','BONUS')),
+    CHECK (book IN ('CUSTOMER_CLAIM','MERCHANT_OBLIGATION')),
+    CHECK (side IN ('DEBIT','CREDIT'))
 );
 
 -- 种子数据

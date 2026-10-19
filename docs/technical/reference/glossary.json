@@ -28064,6 +28064,55 @@
       "package": "ai.neargo.shop.pay.entity"
     },
     {
+      "table": "sv_account",
+      "class": "SvAccount",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_entry",
+      "class": "SvEntry",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_lot",
+      "class": "SvLot",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_posting_line",
+      "class": "SvPostingLine",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_recharge",
+      "class": "SvRecharge",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_user_store_index",
+      "class": "SvUserStoreIndex",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_voucher",
+      "class": "SvVoucher",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
       "table": "sys_audit_log",
       "class": "SysAuditLog",
       "zh": "操作审计（append-only）。",

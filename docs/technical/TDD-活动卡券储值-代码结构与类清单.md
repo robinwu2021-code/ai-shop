@@ -440,3 +440,14 @@ core.product的`CardProductBindingService/Impl`负责真实商品/SKU/市场及p
 `ProductEntitlementBinding`、`CardProductBindingView`为输入/响应；
 `PrdEntitlementBinding`、`PrdEntBindingCommand`及对应Mapper沿商品扫描根；
 app `BizCardProductBindingController`仅负责会话、biz:goods及全主体权限。
+
+
+### JB035实收到账内核（实施中，未开放实收入口）
+
+pay.storedvalue的`StoredValueCreditService/Impl`只接受原pay实收决定；
+`StoredValuePostingService/Impl`以payTxManager完成账户→原充值单锁定、原号到账、批次/凭证/分录/平衡备查账及出站事件。
+`StoredValuePostingPolicy`为按本金/赠金分池的内部借贷规则；`StoredValueFacts`核对原收到证明及不可变许可；
+`StoredValueStoreProjector`只建立成功到账历史目录、时序不回退，当前门店状态后续查询时核实。
+实体`SvAccount/SvRecharge/SvLot/SvVoucher/SvEntry/SvPostingLine/SvUserStoreIndex`与
+pay.mapper.storedvalue下同名Mapper均绑定pay数据源；不通过core Mapper操作资金账。
+实际业务接线及完整StoredValuePort本地/远程装配待JB034/037/038/041，不把内部到账内核当作整条充值完成。
