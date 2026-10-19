@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 535,
+        "b-app": 539,
         "c-app": 97
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 126,
+        "b-app": 127,
         "c-app": 32
       }
     },
@@ -617,7 +617,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 236,
+        "b-app": 237,
         "c-app": 93
       }
     },
@@ -809,7 +809,7 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 205,
+        "b-app": 211,
         "c-app": 80
       }
     },
@@ -885,7 +885,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 68,
+        "b-app": 73,
         "c-app": 7
       }
     },
@@ -1845,7 +1845,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 114,
+        "b-app": 117,
         "c-app": 3
       }
     },
@@ -3529,6 +3529,38 @@
       "rootDecl": {
         "gap": "12rpx"
       }
+    },
+    {
+      "name": "StorePointStatements",
+      "file": "b-app/src/components/points/StorePointStatements.vue",
+      "scope": "B 端",
+      "lines": 140,
+      "props": [
+        "typeCode: string",
+        "storeNo: string",
+        "targetStatement?: string"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "—",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "sh-card",
+        "sh-mt-sm"
+      ],
+      "rootDecl": {}
     }
   ],
   "pages": [
@@ -4401,7 +4433,8 @@
       "file": "b-app/src/pages/points/index.vue",
       "components": [
         "sh-empty",
-        "sh-scaffold"
+        "sh-scaffold",
+        "StorePointStatements"
       ],
       "libClassHits": 49,
       "localSelectors": 3,
@@ -5751,6 +5784,17 @@
       "rolled": []
     },
     {
+      "app": "b-app",
+      "page": "StorePointStatements",
+      "key": "b-app/StorePointStatements",
+      "file": "b-app/src/components/points/StorePointStatements.vue",
+      "components": [],
+      "libClassHits": 20,
+      "localSelectors": 0,
+      "localCssLines": 0,
+      "rolled": []
+    },
+    {
       "app": "c-app",
       "page": "app-overlay",
       "key": "c-app/app-overlay",
@@ -6076,8 +6120,8 @@
   "counts": {
     "tokens": 16,
     "blocks": 81,
-    "components": 40,
-    "pages": 159,
+    "components": 41,
+    "pages": 160,
     "gapKinds": 3
   }
 }

@@ -9,6 +9,11 @@ import java.time.LocalDate;
 public interface TopupPlanService {
     void save(String eventNo, Plan plan, String actor, String reason);
 
+    /**
+     * Each call checks at most limit submitted periods and limit active schedules, and attempts at
+     * most limit new/replayed periods. Durable rotating cursors ensure later rows receive a turn;
+     * the return value counts newly created periods, not all work performed.
+     */
     int tick(String typeCode, LocalDate asOf, int limit);
 
     String submitReceipt(

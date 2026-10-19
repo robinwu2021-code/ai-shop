@@ -1,3 +1,4 @@
+import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 取。
 // 迁移时这个文件基本不用改，改的是 .env 里的开关。
 import { http } from "@shared/net/http-client";
@@ -710,6 +711,13 @@ export const httpApi: MerchantApi = {
     } satisfies ReportShortageReq),
 
   // ---- 积分
+  mStorePointStatement: (typeCode, statementNo) => http.get<StorePointStatement>(E.mStorePointStatement.path, { typeCode, statementNo }),
+  mStorePointStatementLines: (typeCode, statementNo, revision, after = 0, limit = 20) =>
+    http.get<StorePointStatementLinePage>(E.mStorePointStatementLines.path, { typeCode, statementNo, revision, after, limit }),
+  mStorePointStatements: (typeCode, after = 0, limit = 20) =>
+    http.get<StorePointStatementPage>(E.mStorePointStatements.path, { typeCode, after, limit }),
+  mConfirmStorePointStatement: (request: StorePointStatementChange) => http.post<StorePointStatementReceipt>(E.mConfirmStorePointStatement.path, request),
+  mDisputeStorePointStatement: (request: StorePointStatementChange) => http.post<StorePointStatementReceipt>(E.mDisputeStorePointStatement.path, request),
   mStorePointTypes: () => http.get<StorePointType[]>(E.mStorePointTypes.path),
   mStorePointAccount: (typeCode) => http.get<StorePointAccount>(E.mStorePointAccount.path, { typeCode }),
   mStorePointEntries: (typeCode, after = 0, limit = 20) =>

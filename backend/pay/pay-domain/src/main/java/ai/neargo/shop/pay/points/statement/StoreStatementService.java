@@ -29,8 +29,12 @@ public interface StoreStatementService {
 
     record Line(String positionNo, long sourceVersion, long points) {}
 
-    record Revision(long number, List<Line> lines, long points, String actor, String reason) {
+    record Revision(long number, List<Line> lines, long points, String actor, String reason, Long sourceVersionSum) {
+        public Revision(long number,List<Line> lines,long points,String actor,String reason) {
+            this(number,lines,points,actor,reason,0L);
+        }
         public Revision {
+            sourceVersionSum = sourceVersionSum == null ? 0L : sourceVersionSum;
             lines = List.copyOf(lines);
         }
     }
@@ -41,7 +45,10 @@ public interface StoreStatementService {
             List<String> positionIds,
             List<Revision> revisions,
             String state,
-            String disputeReason) {
+            String disputeReason, String sourceBuildNo) {
+        public Snapshot(String no,Period period,List<String> ids,List<Revision> revisions,String state,String reason) {
+            this(no,period,ids,revisions,state,reason,null);
+        }
         public Snapshot {
             positionIds = List.copyOf(positionIds);
             revisions = List.copyOf(revisions);

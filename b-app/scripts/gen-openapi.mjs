@@ -482,6 +482,11 @@ const RESPONSE_TYPES = {
   mSettleBatches: "MySettleBatch[]",
   mMyDebt: "MyDebt",
   mStorePointTypes: "StorePointType[]",
+  mStorePointStatement: "StorePointStatement",
+  mStorePointStatementLines: "StorePointStatementLinePage",
+  mStorePointStatements: "StorePointStatementPage",
+  mConfirmStorePointStatement: "StorePointStatementReceipt",
+  mDisputeStorePointStatement: "StorePointStatementReceipt",
   mStorePointAccount: "StorePointAccount",
   mStorePointEntries: "StorePointEntryPage",
   mStorePointTerms: "StorePointTerms",
@@ -493,6 +498,11 @@ const RESPONSE_TYPES = {
 
 /** 契约方法 → 入参类型名。GET 的展开成 query 参数，POST 的作为 requestBody */
 const REQUEST_TYPES = {
+  mStorePointStatement: "StorePointStatementQuery",
+  mStorePointStatementLines: "StorePointStatementLinesQuery",
+  mStorePointStatements: "StorePointsEntriesQuery",
+  mConfirmStorePointStatement: "StorePointStatementChange",
+  mDisputeStorePointStatement: "StorePointStatementChange",
   mStorePointAccount: "StorePointsTypeQuery",
   mStorePointTerms: "StorePointsTypeQuery",
   mStorePointAgreement: "StorePointsTypeQuery",

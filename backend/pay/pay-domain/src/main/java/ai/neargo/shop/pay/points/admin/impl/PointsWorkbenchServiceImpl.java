@@ -43,6 +43,8 @@ public class PointsWorkbenchServiceImpl implements PointsWorkbenchService {
     private final PointsEventQueue queue;
     private final Clock clock;
     private final ObjectMapper json = new ObjectMapper();
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectProvider<ai.neargo.shop.pay.points.statement.StatementBuildService> statementBuilders;
 
     public PointsWorkbenchServiceImpl(
             PointsOperatorJournal journal,
@@ -67,6 +69,43 @@ public class PointsWorkbenchServiceImpl implements PointsWorkbenchService {
         this.recovery = recovery;
         this.queue = queue;
         this.clock = clocks.getIfAvailable(Clock::systemUTC);
+    }
+
+    @Override
+    public StatementView statement(Reference r) {
+        requiredStore(r.storeNo());
+        var head = read.position(PositionMove.Kind.STATEMENT.table(), r.reference());
+        require(head != null && r.typeCode().equals(head.get("type_code")), "POINTS_STATEMENT_UNKNOWN");
+        var saved = json.readValue((String) head.get("payload_json"), Snapshot.class);
+        require(r.storeNo().equals(saved.period().storeNo()), "POINTS_STORE_MISMATCH");
+        return new StatementView(num(head, "id"), saved, num(head, "version"));
+    }
+
+    @Override
+    public StatementLinePage statementLines(StatementLines r) {
+        require(r.after() >= 0 && r.limit() > 0 && r.limit() <= 200 && r.revision() > 0,
+                "POINTS_PAGE_INVALID");
+        var saved = statement(new Reference(r.typeCode(), r.storeNo(), r.statementNo())).snapshot();
+        var selected = saved.revisions().stream().filter(x -> x.number() == r.revision()).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("POINTS_STATEMENT_REVISION_CONFLICT"));
+        if (saved.sourceBuildNo() != null) {
+            var page = statementBuilders.getObject().lines(r.statementNo(), r.revision(), r.after(), r.limit());
+            return new StatementLinePage(page.items().stream().map(x -> sourceLine(x.positionNo(), x.points(), r))
+                    .toList(), page.nextAfter(), page.hasMore());
+        }
+        var lines = selected.lines().stream().skip(r.after()).limit((long) r.limit() + 1).toList();
+        var rows = lines.stream().limit(r.limit()).map(x -> sourceLine(x.positionNo(), x.points(), r)).toList();
+        return new StatementLinePage(rows, r.after() + rows.size(), lines.size() > r.limit());
+    }
+
+    private StatementLine sourceLine(String no, long points, StatementLines r) {
+        var source = read.position(PositionMove.Kind.REDEEM.table(), no);
+        require(source != null && r.typeCode().equals(source.get("type_code"))
+                && r.statementNo().equals(source.get("statement_no")), "POINTS_STATEMENT_BINDING_CONFLICT");
+        var saved = json.readValue((String) source.get("payload_json"),
+                ai.neargo.shop.pay.points.redeem.impl.RedeemServiceImpl.RedeemSnapshot.class);
+        require(r.storeNo().equals(saved.share().storeNo()), "POINTS_STORE_MISMATCH");
+        return new StatementLine(saved.orderNo(), saved.subOrderNo(), points);
     }
 
     @Override

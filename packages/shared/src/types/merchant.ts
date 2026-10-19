@@ -1845,3 +1845,45 @@ export interface StoreAcode {
   /** PNG 的 base64（不含 `data:` 前缀）。**通道未开启时为 null** —— 端上画一张不带码的海报 */
   imageBase64: string | null;
 }
+
+/** Current-store statement projection; source positions and bank routes remain server-side. */
+export interface StorePointStatement {
+  id: number;
+  statementNo: string;
+  typeCode: string;
+  storeNo: string;
+  fromMillis: number;
+  toMillis: number;
+  state: string;
+  revision: number;
+  points: number;
+  disputeReason: string | null;
+  revisions: { number: number; points: number; reason: string | null }[];
+}
+export interface StorePointStatementPage {
+  rows: StorePointStatement[];
+  next: number;
+  hasMore: boolean;
+}
+export interface StorePointStatementChange {
+  requestId: string;
+  typeCode: string;
+  statementNo: string;
+  revision: number;
+  reason: string;
+}
+
+export interface StorePointStatementLinePage {
+  rows: { orderNo: string; subOrderNo: string; points: number }[];
+  next: number;
+  hasMore: boolean;
+}
+
+/** Receipt of an audited statement decision; this does not assert bank payout success. */
+export interface StorePointStatementReceipt {
+  requestId: string;
+  operation: string;
+  typeCode: string;
+  reference: string;
+  at: number;
+}

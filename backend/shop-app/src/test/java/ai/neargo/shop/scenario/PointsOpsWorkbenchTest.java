@@ -94,6 +94,21 @@ class PointsOpsWorkbenchTest {
                 .doesNotContain("payload_json", "accountVersion", "subMerchantId");
     }
 
+    @Test
+    void exact_statement_and_revision_lines_reject_other_store_and_unknown_revision() {
+        String type = type();
+        String no = statement(type, "STORE", "ROUTE", 3);
+        assertThat(workbench.statement(new PointsWorkbenchService.Reference(type, "STORE", no))
+                .snapshot().statementNo()).isEqualTo(no);
+        assertThatThrownBy(() -> workbench.statement(new PointsWorkbenchService.Reference(type, "OTHER", no)))
+                .hasMessageContaining("STORE");
+        assertThat(workbench.statementLines(new PointsWorkbenchService.StatementLines(type, "STORE", no, 3, 0, 20)).rows()).isEmpty();
+        assertThatThrownBy(() -> workbench.statementLines(new PointsWorkbenchService.StatementLines(type, "OTHER", no, 3, 0, 20)))
+                .hasMessageContaining("STORE");
+        assertThatThrownBy(() -> workbench.statementLines(new PointsWorkbenchService.StatementLines(type, "STORE", no, 2, 0, 20)))
+                .hasMessageContaining("REVISION");
+    }
+
     @Autowired ai.neargo.shop.pay.points.event.PointsEventQueue queue;
     @Autowired PointsPayoutPreparationTest.TestClock clock;
 

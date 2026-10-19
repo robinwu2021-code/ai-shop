@@ -185,7 +185,7 @@ public class PointsPayoutServiceImpl implements PointsPayoutService {
             }
             String nextState=result.status()==FundsStatus.SUCCEEDED?"PAID":"CONFIRMED";
             var updated=new Snapshot(saved.statementNo(),saved.period(),saved.positionIds(),saved.revisions(),
-                    nextState,saved.disputeReason());
+                    nextState,saved.disputeReason(),saved.sourceBuildNo());
             positions.add(new PositionMove(PositionMove.Kind.STATEMENT,old.statementNo(),num(statement,"version"),
                     "PAYING",nextState,num(statement,"original_points"),0,json.writeValueAsString(updated)));
         }

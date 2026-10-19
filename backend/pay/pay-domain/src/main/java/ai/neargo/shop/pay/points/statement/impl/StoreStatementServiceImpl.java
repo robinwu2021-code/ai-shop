@@ -43,11 +43,24 @@ public class StoreStatementServiceImpl implements StoreStatementService {
         }
         var head = store.lock(no);
         var saved = snapshot(head);
-        require(saved.positionIds().contains(positionNo), "POINTS_STATEMENT_BINDING_CONFLICT");
-        if (Set.of("DRAFT", "DISPUTED", "PAID").contains(saved.state())) {
+        require(saved.sourceBuildNo()!=null || saved.positionIds().contains(positionNo), "POINTS_STATEMENT_BINDING_CONFLICT");
+        if (Set.of("BUILDING", "DRAFT", "DISPUTED", "PAID").contains(saved.state())) {
             return;
         }
         require("CONFIRMED".equals(saved.state()), "POINTS_STATEMENT_PAYMENT_UNRESOLVED");
+        if (saved.sourceBuildNo()!=null) {
+            var history=new ArrayList<>(saved.revisions());
+            var actual=normalizedRevision(saved,Math.addExact(saved.current().number(),1),"REFUND:"+positionNo);
+            require(actual.points()==saved.current().points(),"POINTS_STATEMENT_AMOUNT_CONFLICT");
+            history.add(actual);
+            var next=new Snapshot(no,saved.period(),List.of(),history,"DRAFT",null,saved.sourceBuildNo());
+            String type=saved.period().typeCode();
+            long points=saved.current().points(),minor=read.type(type).orElseThrow().rate().toMinor(points);
+            post(head,next,List.of(new PointsMove(new AccountKey(type,HolderType.STORE,saved.period().storeNo(),Bucket.AVAILABLE),points),
+                    new PointsMove(new AccountKey(type,HolderType.RECEIVE,"PLATFORM",Bucket.REFUND_RESERVED),-points)),
+                    List.of(new FundMove(FundBucket.D,-minor),new FundMove(FundBucket.C,minor)),List.of(),"REFUND:"+positionNo);
+            return;
+        }
         List<PositionMove> positions = new ArrayList<>();
         List<Line> lines = new ArrayList<>();
         long points = 0;
@@ -86,7 +99,7 @@ public class StoreStatementServiceImpl implements StoreStatementService {
                         saved.positionIds(),
                         history,
                         history.getLast().points() == 0 ? "CLEARED" : "DRAFT",
-                        null);
+                        null,saved.sourceBuildNo());
         String type = saved.period().typeCode();
         long minor = read.type(type).orElseThrow().rate().toMinor(points);
         post(
@@ -116,6 +129,12 @@ public class StoreStatementServiceImpl implements StoreStatementService {
     private final PointsConfigurationStore config;
     private final StatementStore store;
     private final PointsPostingService posting;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.pay.points.statement.StatementConfirmationPublisher> confirmationPublisher;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.pay.points.store.StatementBuildStore> buildStores;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.pay.points.statement.StatementBuildService> builders;
     private final ObjectMapper json = new ObjectMapper();
 
     public StoreStatementServiceImpl(
@@ -149,11 +168,45 @@ public class StoreStatementServiceImpl implements StoreStatementService {
         config.lockTypeAndPool(period.typeCode());
         var existing = store.forPeriod(period.typeCode(), period.storeNo(), period.fromMillis());
         require(existing.size() <= 200, "POINTS_STATEMENT_ROUTE_GROUP_LIMIT");
+        if (existing.isEmpty() && buildStores!=null && buildStores.getIfAvailable()!=null) {
+            String buildNo=PointsKeys.position("SB",period.typeCode(),period.storeNo()+":"+period.fromMillis());
+            var priorBuild=buildStores.getObject().find(buildNo);
+            if (priorBuild!=null) {
+                require(priorBuild.toMillis()==period.toMillis(),"POINTS_STATEMENT_PERIOD_CONFLICT");
+                if ("PUBLISHED".equals(priorBuild.state())) return List.of();
+                var progress=builders.getObject().advance(period.typeCode(),buildNo);
+                var results=store.forPeriod(period.typeCode(),period.storeNo(),period.fromMillis()).stream()
+                        .map(this::snapshot).toList();
+                if ("READY".equals(progress.state()) && results.isEmpty()) buildStores.getObject().published(buildNo);
+                return results;
+            }
+        }
         if (!existing.isEmpty()) {
             var saved = existing.stream().map(this::snapshot).toList();
             require(
                     saved.stream().allMatch(s -> s.period().toMillis() == period.toMillis()),
                     "POINTS_STATEMENT_PERIOD_CONFLICT");
+            var building=saved.stream().filter(x -> "BUILDING".equals(x.state())).findFirst();
+            if (building.isPresent()) {
+                var build=builders.getObject().advance(period.typeCode(),building.get().sourceBuildNo());
+                if ("READY".equals(build.state())) {
+                    for (var row:existing) {
+                        var old=snapshot(row);
+                        if ("BUILDING".equals(old.state())) {
+                            var actual=normalizedRevision(old,1,actor);
+                            var next=new Snapshot(old.statementNo(),old.period(),List.of(),List.of(actual),
+                                    actual.points()==0?"CLEARED":"DRAFT",null,old.sourceBuildNo());
+                            post(row,next,List.of(),List.of(),List.of(),actor);
+                        }
+                    }
+                }
+                var results=store.forPeriod(period.typeCode(),period.storeNo(),period.fromMillis()).stream()
+                        .map(this::snapshot).toList();
+                if ("READY".equals(build.state()) && results.stream().noneMatch(x -> "BUILDING".equals(x.state()))) {
+                    buildStores.getObject().published(build.buildNo());
+                }
+                return results;
+            }
             var selected =
                     saved.stream()
                             .filter(
@@ -166,8 +219,13 @@ public class StoreStatementServiceImpl implements StoreStatementService {
             return selected;
         }
         require(period.routeKey() == null, "POINTS_STATEMENT_ROUTE_UNKNOWN");
-        var candidates = store.candidates(period.typeCode(), period.storeNo());
-        require(candidates.size() <= 10000, "POINTS_STATEMENT_SOURCE_LIMIT");
+        var candidates = store.candidates(period.typeCode(), period.storeNo(), period.toMillis());
+        if (candidates.size()>200) {
+            var build=builders.getObject().start(period,actor);
+            builders.getObject().advance(period.typeCode(),build.buildNo());
+            return store.forPeriod(period.typeCode(),period.storeNo(),period.fromMillis()).stream()
+                    .map(this::snapshot).toList();
+        }
         var groups = new java.util.TreeMap<String, List<Map<String, Object>>>();
         for (var source : candidates) {
             if (belongsToPeriod(source, period)) {
@@ -224,7 +282,8 @@ public class StoreStatementServiceImpl implements StoreStatementService {
         require(Set.of("DRAFT", "DISPUTED").contains(saved.state()), "POINTS_STATEMENT_NOT_DRAFT");
         var history = new ArrayList<>(saved.revisions());
         history.add(
-                revision(saved.period(), saved.positionIds(), Math.addExact(revision, 1), actor));
+                saved.sourceBuildNo()==null ? revision(saved.period(), saved.positionIds(), Math.addExact(revision, 1), actor)
+                        : normalizedRevision(saved,Math.addExact(revision,1),actor));
         var next =
                 new Snapshot(
                         no,
@@ -232,7 +291,7 @@ public class StoreStatementServiceImpl implements StoreStatementService {
                         saved.positionIds(),
                         history,
                         history.getLast().points() == 0 ? "CLEARED" : "DRAFT",
-                        null);
+                        null,saved.sourceBuildNo());
         post(head, next, List.of(), List.of(), List.of(), actor);
         return next;
     }
@@ -246,9 +305,11 @@ public class StoreStatementServiceImpl implements StoreStatementService {
         }
         require("DRAFT".equals(saved.state()), "POINTS_STATEMENT_NOT_DRAFT");
         require(saved.current().points() > 0, "POINTS_STATEMENT_EMPTY");
-        var actual = revision(saved.period(), saved.positionIds(), revision, actor);
+        var actual = saved.sourceBuildNo()==null ? revision(saved.period(), saved.positionIds(), revision, actor)
+                : normalizedRevision(saved,revision,actor);
         require(
-                actual.lines().equals(saved.current().lines()),
+                actual.lines().equals(saved.current().lines()) && actual.points()==saved.current().points()
+                        && actual.sourceVersionSum().equals(saved.current().sourceVersionSum()),
                 "POINTS_STATEMENT_REDRAFT_REQUIRED");
         List<PositionMove> positions = new ArrayList<>();
         for (var line : actual.lines()) {
@@ -274,7 +335,7 @@ public class StoreStatementServiceImpl implements StoreStatementService {
                         saved.positionIds(),
                         saved.revisions(),
                         "CONFIRMED",
-                        null);
+                        null,saved.sourceBuildNo());
         post(
                 head,
                 next,
@@ -316,9 +377,16 @@ public class StoreStatementServiceImpl implements StoreStatementService {
                         saved.positionIds(),
                         saved.revisions(),
                         "DISPUTED",
-                        reason);
+                        reason,saved.sourceBuildNo());
         post(head, next, List.of(), List.of(), List.of(), actor);
         return next;
+    }
+
+    private Revision normalizedRevision(Snapshot saved,long number,String actor) {
+        var totals=buildStores.getObject().totals(saved.statementNo());
+        require(num(totals,"busy")==0,"POINTS_STATEMENT_SOURCE_NOT_READY");
+        require(num(totals,"source_count")>0,"POINTS_STATEMENT_EMPTY");
+        return new Revision(number,List.of(),num(totals,"points"),actor,null,num(totals,"version_sum"));
     }
 
     private Revision revision(Period period, List<String> ids, long number, String actor) {
@@ -418,6 +486,10 @@ public class StoreStatementServiceImpl implements StoreStatementService {
                         0,
                         List.of(),
                         json.writeValueAsString(Map.of("actor", actor, "statement", saved))));
+        if (confirmationPublisher != null) {
+            var publisher = confirmationPublisher.getIfAvailable();
+            if (publisher != null) publisher.publish(saved);
+        }
     }
 
     private long num(Map<String, Object> row, String key) {

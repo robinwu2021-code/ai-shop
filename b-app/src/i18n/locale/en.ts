@@ -717,6 +717,30 @@ byWechat: "WeChat", byApple: "Sign in with Apple",
 
 
   points: {
+    statementStateBuilding: "Generating",
+    statementStateDraft: "Awaiting confirmation",
+    statementStateDisputed: "Disputed",
+    statementStateConfirmed: "Awaiting payment",
+    statementStatePaying: "Payment processing",
+    statementStatePaid: "Paid",
+    statementStateCleared: "No payment needed",
+    statementStateUnknown: "Awaiting verification",
+
+    statementDetails: "Statement details",
+    statementSourceOrder: "Source order",
+    statements: "Points statements",
+    statementFailed: "Unable to load or update. Refresh and check the latest revision before retrying.",
+    statementRefresh: "Refresh statements",
+    noStatements: "No statements",
+    statementRevision: "Revision",
+    statementDisputeReason: "Dispute reason (required)",
+    statementConfirm: "Confirm revision",
+    statementDispute: "Raise dispute",
+    statementMore: "Load more",
+    statementChecked: "Statement revision checked",
+    statementConfirmHint: "Confirm this revision for payout processing after checking points and period.",
+    statementDisputeHint: "This revision will stop automatic confirmation pending review.",
+
 
     agreement: "Store points agreement",
     activeAgreement: "Agreement active",

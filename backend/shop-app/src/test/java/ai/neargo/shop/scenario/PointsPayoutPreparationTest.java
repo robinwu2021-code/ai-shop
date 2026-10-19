@@ -1036,6 +1036,593 @@ class PointsPayoutPreparationTest {
     }
 
     @Test
+    void statement_old_period_is_not_blocked_by_ten_thousand_future_candidates() {
+        var c = periodicStatementFixture();
+        assertThat(jdbc().queryForObject("SELECT final_at_millis FROM pts_statement_final_fact"
+                + " WHERE type_code=? AND sub_order_no=?", Long.class, c.typeCode(), c.sourceRef()))
+                .isEqualTo(Instant.parse("2026-10-14T00:00:00Z").toEpochMilli());
+        var sources = new java.util.ArrayList<Object[]>();
+        var facts = new java.util.ArrayList<Object[]>();
+        var projections = new java.util.ArrayList<Object[]>();
+        String originalPayload = jdbc().queryForObject(
+                "SELECT payload_json FROM pts_redeem_position WHERE position_no=?",
+                String.class, c.positionIds().getFirst());
+        for (int i = 0; i < 10000; i++) {
+            String sub = "FUTURE:" + i;
+            String position = PointsKeys.position("R", c.typeCode(), sub);
+            sources.add(new Object[] {position, c.typeCode(),
+                    originalPayload.replace(c.sourceRef(), sub), sub, "STORE"});
+            var future = new LifecycleFact("F:" + i, "HASH", sub, "U", c.typeCode(), 2,
+                    FactKind.FINALIZED, 100, 0, List.of(new LineSnapshot("I", 1, 100, 0)),
+                    Instant.parse("2027-01-01T00:00:00Z"));
+            facts.add(new Object[] {c.typeCode(), sub,
+                    json.writeValueAsString(java.util.Map.of("finalFact", future))});
+            projections.add(new Object[] {c.typeCode(), sub, future.occurredAt().toEpochMilli()});
+        }
+        jdbc().batchUpdate("INSERT INTO pts_redeem_position"
+                + "(position_no,type_code,state,original_points,processed_points,payload_json,sub_order_no,store_no)"
+                + " VALUES(?,?,'SETTLEABLE',30,0,?,?,?)", sources);
+        jdbc().batchUpdate("INSERT INTO pts_lifecycle_fact"
+                + "(type_code,sub_order_no,state,source_version,payload_json) VALUES(?,?,'FINALIZED',2,?)", facts);
+        jdbc().batchUpdate("INSERT INTO pts_statement_final_fact"
+                + "(type_code,sub_order_no,final_at_millis) VALUES(?,?,?)", projections);
+        var statements = context.getBean(StoreStatementService.class);
+        var period = new Period(c.typeCode(), "STORE", 0,
+                Instant.parse("2026-11-01T00:00:00Z").toEpochMilli());
+        var result = statements.draft(period, "OPERATOR");
+        assertThat(result.positionIds()).containsExactlyElementsOf(c.positionIds());
+        assertThat(result.current().points()).isEqualTo(30);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_redeem_position"
+                + " WHERE type_code=? AND statement_no IS NOT NULL", Long.class, c.typeCode()))
+                .isEqualTo(1);
+    }
+
+    @Test
+    void statement_build_commits_bounded_pages_and_excludes_facts_after_its_high_water() {
+        var c = periodicStatementFixture();
+        seedStatementBuildSources(c, 0, 400);
+        var builds = context.getBean(ai.neargo.shop.pay.points.statement.StatementBuildService.class);
+        var period = new Period(c.typeCode(), "STORE", 0, 4102444800000L);
+        var started = builds.start(period, "OPERATOR");
+        assertThat(builds.start(period, "OPERATOR")).isEqualTo(started);
+        var first = builds.advance(started.buildNo());
+        assertThat(first.state()).isEqualTo("BUILDING");
+        assertThat(first.sourceCount()).isEqualTo(200);
+        seedStatementBuildSources(c, 400, 1);
+        var second = builds.advance(started.buildNo());
+        assertThat(second.sourceCount()).isEqualTo(400);
+        var done = builds.advance(started.buildNo());
+        assertThat(done.sourceCount()).isEqualTo(401);
+        assertThat(done.state()).isEqualTo("READY");
+        assertThat(done.cursor()).isEqualTo(started.highWater());
+        assertThat(builds.advance(started.buildNo())).isEqualTo(done);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_statement_build_item WHERE build_no=?",
+                Long.class, started.buildNo())).isEqualTo(401);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_statement_build_item WHERE position_no=?",
+                Long.class, PointsKeys.position("R", c.typeCode(), "BUILD:400"))).isZero();
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_store_statement WHERE type_code=?",
+                Long.class, c.typeCode())).isEqualTo(1);
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_store_statement WHERE type_code=?",
+                String.class,c.typeCode())).isEqualTo("BUILDING");
+    }
+
+    @Test
+    void statement_build_failed_page_rolls_back_items_and_cursor_before_retry() {
+        var c = periodicStatementFixture();
+        seedStatementBuildSources(c, 0, 250);
+        var builds = context.getBean(ai.neargo.shop.pay.points.statement.StatementBuildService.class);
+        var start = builds.start(new Period(c.typeCode(), "STORE", 0, 4102444800000L), "OPERATOR");
+        var first = builds.advance(start.buildNo());
+        String bad = PointsKeys.position("R", c.typeCode(), "BUILD:249");
+        String saved = jdbc().queryForObject("SELECT payload_json FROM pts_redeem_position WHERE position_no=?",
+                String.class, bad);
+        var original = json.readValue(saved, RedeemSnapshot.class);
+        var unfinished = new RedeemSnapshot(original.subOrderNo(),original.userNo(),original.orderNo(),
+                original.share(),original.target(),original.agreement(),original.fundsContext(),false);
+        jdbc().update("UPDATE pts_redeem_position SET payload_json=? WHERE position_no=?",
+                json.writeValueAsString(unfinished),bad);
+        assertThatThrownBy(() -> builds.advance(start.buildNo()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("POINTS_STATEMENT_SOURCE_NOT_READY");
+        assertThat(jdbc().queryForObject("SELECT source_count FROM pts_statement_build WHERE build_no=?",
+                Long.class, start.buildNo())).isEqualTo(200);
+        assertThat(jdbc().queryForObject("SELECT scan_cursor FROM pts_statement_build WHERE build_no=?",
+                Long.class, start.buildNo())).isEqualTo(first.cursor());
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_statement_build_item WHERE build_no=?",
+                Long.class, start.buildNo())).isEqualTo(200);
+        jdbc().update("UPDATE pts_redeem_position SET payload_json=? WHERE position_no=?", saved, bad);
+        var done = builds.advance(start.buildNo());
+        assertThat(done.sourceCount()).isEqualTo(251);
+        assertThat(done.state()).isEqualTo("READY");
+    }
+
+    @Test
+    void normalized_statement_publishes_confirms_and_pays_without_materializing_all_source_ids() {
+        var c = periodicStatementFixture();
+        seedStatementBuildSources(c, 0, 400);
+        backStatementSources(c,12000);
+        var builds = context.getBean(ai.neargo.shop.pay.points.statement.StatementBuildService.class);
+        var period = new Period(c.typeCode(), "STORE", 0, 4102444800000L);
+        var build = builds.start(period,"OPERATOR");
+        while (!"READY".equals(build.state())) build = builds.advance(build.buildNo());
+        var statements = context.getBean(StoreStatementService.class);
+        var draft = statements.draft(period,"OPERATOR");
+        assertThat(draft.sourceBuildNo()).isEqualTo(build.buildNo());
+        assertThat(draft.positionIds()).isEmpty();
+        assertThat(draft.current().lines()).isEmpty();
+        assertThat(draft.current().points()).isEqualTo(12030);
+        assertThat(draft.state()).isEqualTo("DRAFT");
+        var page1=builds.lines(draft.statementNo(),1,0,200);
+        var page2=builds.lines(draft.statementNo(),1,page1.nextAfter(),200);
+        var page3=builds.lines(draft.statementNo(),1,page2.nextAfter(),200);
+        assertThat(page1.items()).hasSize(200);
+        assertThat(page2.items()).hasSize(200);
+        assertThat(page3.items()).hasSize(1);
+        assertThat(page1.hasMore()).isTrue();
+        assertThat(page3.hasMore()).isFalse();
+        statements.confirm(draft.statementNo(),1,"CHECKER");
+        var read = context.getBean(ai.neargo.shop.pay.points.store.PointsReadStore.class);
+        assertThat(read.position(PositionMove.Kind.REDEEM.table(),c.positionIds().getFirst()).get("state"))
+                .isEqualTo("PAYABLE");
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_redeem_position WHERE position_no=?",
+                String.class,c.positionIds().getFirst())).isEqualTo("SETTLEABLE");
+        var ticket = context.getBean(ai.neargo.shop.pay.points.payout.StatementPayoutService.class)
+                .prepare("BUILD_PAY:"+c.typeCode(),draft.statementNo(),1,"OPERATOR");
+        assertThat(ticket.gross()).isEqualTo(12030);
+        assertThat(read.position(PositionMove.Kind.REDEEM.table(),c.positionIds().getFirst()).get("state"))
+                .isEqualTo("PAYING");
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.UNKNOWN);
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.SUCCEEDED);
+        assertThat(read.position(PositionMove.Kind.REDEEM.table(),c.positionIds().getFirst()).get("state"))
+                .isEqualTo("PAID");
+        assertThat(execute(ticket.ticketNo()).replayed()).isTrue();
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",
+                Long.class,c.typeCode())).isZero();
+    }
+
+    @Test
+    void normalized_statement_refund_reopens_aggregate_and_requires_a_fresh_revision() {
+        var c = periodicStatementFixture();
+        var period = new Period(c.typeCode(),"STORE",0,4102444800000L);
+        var builds = context.getBean(ai.neargo.shop.pay.points.statement.StatementBuildService.class);
+        var build = builds.start(period,"OPERATOR");
+        assertThat(builds.advance(build.buildNo()).state()).isEqualTo("READY");
+        var statements = context.getBean(StoreStatementService.class);
+        var draft = statements.draft(period,"OPERATOR");
+        statements.confirm(draft.statementNo(),1,"CHECKER");
+        completeZeroRefund(c,"BUILD_REFUND",50);
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_store_statement WHERE position_no=?",
+                String.class,draft.statementNo())).isEqualTo("DRAFT");
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",
+                Long.class,c.typeCode())).isZero();
+        assertThatThrownBy(() -> statements.confirm(draft.statementNo(),1,"CHECKER"))
+                .hasMessage("POINTS_STATEMENT_REVISION_CONFLICT");
+        assertThatThrownBy(() -> statements.confirm(draft.statementNo(),2,"CHECKER"))
+                .hasMessage("POINTS_STATEMENT_REDRAFT_REQUIRED");
+        var revised = statements.redraft(draft.statementNo(),2,"OPERATOR");
+        assertThat(revised.current().points()).isEqualTo(15);
+        assertThat(revised.sourceBuildNo()).isEqualTo(build.buildNo());
+        assertThat(revised.revisions().getFirst().points()).isEqualTo(30);
+        assertThat(builds.lines(draft.statementNo(),1,0,200).items().getFirst().points()).isEqualTo(30);
+        assertThat(builds.lines(draft.statementNo(),3,0,200).items().getFirst().points()).isEqualTo(15);
+        statements.confirm(draft.statementNo(),3,"CHECKER");
+        var ticket = context.getBean(ai.neargo.shop.pay.points.payout.StatementPayoutService.class)
+                .prepare("BUILD_REFUND_PAY:"+c.typeCode(),draft.statementNo(),3,"OPERATOR");
+        assertThat(ticket.gross()).isEqualTo(15);
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.UNKNOWN);
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.SUCCEEDED);
+        var recon=context.getBean(PointsReconService.class).scan(c.typeCode(),0);
+        assertThat(recon.complete()).isTrue();
+        assertThat(recon.differences()).isEmpty();
+    }
+
+    @Test
+    void normalized_statement_payout_offsets_actual_store_debt_only_after_cash_is_confirmed() {
+        var c = periodicStatementFixture(100);
+        seedDebt(c, 30);
+        var statements = context.getBean(StoreStatementService.class);
+        var statement =
+                normalizedDraft(c);
+        statements.confirm(statement.statementNo(), 1, "REVIEWER");
+        var payout =
+                context.getBean(StatementPayoutService.class)
+                        .prepare("PERIOD:" + c.typeCode(), statement.statementNo(), 1, "OP");
+        assertThat(payout).isNotNull();
+        assertThat(payout.gross()).isEqualTo(100);
+        assertThat(payout.offset()).isEqualTo(30);
+        assertThat(payout.cash()).isEqualTo(70);
+        assertThat(execute(payout.ticketNo()).status()).isEqualTo(FundsStatus.UNKNOWN);
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT recovered_minor FROM pts_receivable WHERE"
+                                                + " type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isZero();
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT locked_minor FROM pts_receivable WHERE type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isEqualTo(30);
+        assertThat(execute(payout.ticketNo()).confirmedMinor()).isEqualTo(100);
+        assertThat(execute(payout.ticketNo()).replayed()).isTrue();
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT d_minor FROM pts_fund_pool WHERE type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isZero();
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT b_minor FROM pts_fund_pool WHERE type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isEqualTo(200);
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT recovered_minor FROM pts_receivable WHERE"
+                                                + " type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isEqualTo(30);
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT state FROM pts_store_statement WHERE position_no=?",
+                                        String.class,
+                                        statement.statementNo()))
+                .isEqualTo("PAID");
+        assertThat(testFunds.sends.get(payout.ticketNo())).isEqualTo(1);
+    }
+
+    @Test
+    void normalized_statement_failed_payout_releases_offset_locks_and_retains_the_original_intent() {
+        var c = periodicStatementFixture(100);
+        seedDebt(c, 30);
+        var statements = context.getBean(StoreStatementService.class);
+        var statement =
+                normalizedDraft(c);
+        statements.confirm(statement.statementNo(), 1, "REVIEWER");
+        var payouts = context.getBean(StatementPayoutService.class);
+        var payout = payouts.prepare("PERIOD:" + c.typeCode(), statement.statementNo(), 1, "OP");
+        assertThat(payout).isNotNull();
+        testFunds.rejections.add(payout.ticketNo());
+        assertThat(execute(payout.ticketNo()).status()).isEqualTo(FundsStatus.FAILED);
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT locked_minor FROM pts_receivable WHERE type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isZero();
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT d_minor FROM pts_fund_pool WHERE type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isEqualTo(100);
+        assertThat(payouts.prepare("PERIOD:" + c.typeCode(), statement.statementNo(), 1, "OP"))
+                .isEqualTo(payout);
+        assertThat(
+                        payouts.prepare("RETRY:" + c.typeCode(), statement.statementNo(), 1, "OP")
+                                .ticketNo())
+                .isNotEqualTo(payout.ticketNo());
+        var retry=payouts.prepare("RETRY:"+c.typeCode(),statement.statementNo(),1,"OP");
+        var read=context.getBean(ai.neargo.shop.pay.points.store.PointsReadStore.class);
+        assertThat(read.position(PositionMove.Kind.REDEEM.table(),c.positionIds().getFirst()).get("state"))
+                .isEqualTo("PAYING");
+        assertThat(execute(retry.ticketNo()).status()).isEqualTo(FundsStatus.UNKNOWN);
+        assertThat(execute(retry.ticketNo()).status()).isEqualTo(FundsStatus.SUCCEEDED);
+        assertThat(execute(payout.ticketNo()).status()).isEqualTo(FundsStatus.FAILED);
+        assertThat(testFunds.sends.get(payout.ticketNo())).isEqualTo(1);
+        assertThat(testFunds.sends.get(retry.ticketNo())).isEqualTo(1);
+    }
+
+    @Test
+    void
+            normalized_statement_paid_refund_uses_buffer_and_opens_store_receivable_without_reopening_paid_bill() {
+        var c = periodicStatementFixture(100);
+        var statements = context.getBean(StoreStatementService.class);
+        var statement =
+                normalizedDraft(c);
+        statements.confirm(statement.statementNo(), 1, "REVIEWER");
+        var ticket =
+                context.getBean(StatementPayoutService.class)
+                        .prepare("PERIOD:" + c.typeCode(), statement.statementNo(), 1, "OP");
+        execute(ticket.ticketNo());
+        execute(ticket.ticketNo());
+        assertThat(statements.confirm(statement.statementNo(), 1, "REVIEWER").state())
+                .isEqualTo("PAID");
+        completeZeroRefund(c, "PAID_REFUND", 50);
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT state FROM pts_store_statement WHERE position_no=?",
+                                        String.class,
+                                        statement.statementNo()))
+                .isEqualTo("PAID");
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT b_minor FROM pts_fund_pool WHERE type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isEqualTo(150);
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT c_minor FROM pts_fund_pool WHERE type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isEqualTo(50);
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT original_minor FROM pts_receivable WHERE"
+                                                + " type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isEqualTo(50);
+    }
+
+    @Test
+    void normalized_statement_unknown_payment_blocks_refund_and_preserves_all_offset_reservations() {
+        var c = periodicStatementFixture(100);
+        seedDebt(c, 30);
+        var statements = context.getBean(StoreStatementService.class);
+        var statement =
+                normalizedDraft(c);
+        statements.confirm(statement.statementNo(), 1, "REVIEWER");
+        var ticket =
+                context.getBean(StatementPayoutService.class)
+                        .prepare("PERIOD:" + c.typeCode(), statement.statementNo(), 1, "OP");
+        execute(ticket.ticketNo());
+        assertThatThrownBy(() -> completeZeroRefund(c, "UNKNOWN", 50))
+                .hasMessage("POINTS_STATEMENT_PAYMENT_UNRESOLVED");
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT locked_minor FROM pts_receivable WHERE type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isEqualTo(30);
+        assertThat(
+                        jdbc().queryForObject(
+                                        "SELECT d_minor FROM pts_fund_pool WHERE type_code=?",
+                                        Long.class,
+                                        c.typeCode()))
+                .isEqualTo(100);
+    }
+
+    @Test
+    void normalized_building_refund_is_included_in_the_first_published_revision() {
+        var c=periodicStatementFixture();
+        seedStatementBuildSources(c,0,400);
+        backStatementSources(c,12000);
+        var period=new Period(c.typeCode(),"STORE",0,4102444800000L);
+        var builds=context.getBean(ai.neargo.shop.pay.points.statement.StatementBuildService.class);
+        var progress=builds.start(period,"OP");
+        progress=builds.advance(progress.buildNo());
+        assertThat(progress.state()).isEqualTo("BUILDING");
+        completeZeroRefund(c,"DURING_BUILD",50);
+        while (!"READY".equals(progress.state())) progress=builds.advance(progress.buildNo());
+        var statements=context.getBean(StoreStatementService.class);
+        var published=statements.draft(period,"OP");
+        assertThat(published.current().points()).isEqualTo(12015);
+        assertThat(builds.lines(published.statementNo(),1,0,1).items().getFirst().points()).isEqualTo(15);
+        statements.confirm(published.statementNo(),1,"CHECKER");
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",
+                Long.class,c.typeCode())).isEqualTo(12015);
+    }
+
+    @Test
+    void statement_build_job_advances_and_publishes_without_repeated_operator_requests() {
+        var c=periodicStatementFixture();
+        seedStatementBuildSources(c,0,400);
+        backStatementSources(c,12000);
+        var period=new Period(c.typeCode(),"STORE",0,4102444800000L);
+        var build=context.getBean(ai.neargo.shop.pay.points.statement.StatementBuildService.class).start(period,"OP");
+        var jobs=context.getBean(PointsJobServices.class);
+        for (int i=0;i<3;i++) {
+            assertThat(jobs.run(PointsJobServices.Task.STATEMENTS,c.typeCode(),50,0,null).processed()).isEqualTo(1);
+        }
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_statement_build WHERE build_no=?",
+                String.class,build.buildNo())).isEqualTo("PUBLISHED");
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_store_statement WHERE type_code=?",
+                String.class,c.typeCode())).isEqualTo("DRAFT");
+        assertThat(jobs.run(PointsJobServices.Task.STATEMENTS,c.typeCode(),50,0,null).processed()).isZero();
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_payout_ticket WHERE type_code=?",
+                Long.class,c.typeCode())).isZero();
+    }
+
+    @Test
+    void more_than_ten_thousand_current_sources_use_bounded_construction_instead_of_a_source_limit() {
+        var c=periodicStatementFixture();
+        seedStatementBuildSources(c,0,10000);
+        backStatementSources(c,300000);
+        var period=new Period(c.typeCode(),"STORE",0,4102444800000L);
+        var statements=context.getBean(StoreStatementService.class);
+        var group=statements.draftGroups(period,"OP").getFirst();
+        assertThat(group.state()).isEqualTo("BUILDING");
+        int pages=1;
+        while ("BUILDING".equals(group.state()) && pages<60) {
+            group=statements.draftGroups(period,"OP").getFirst(); pages++;
+        }
+        assertThat(group.state()).isEqualTo("DRAFT");
+        assertThat(group.positionIds()).isEmpty();
+        assertThat(group.current().points()).isEqualTo(300030);
+        assertThat(jdbc().queryForObject("SELECT source_count FROM pts_statement_build WHERE build_no=?",
+                Long.class,group.sourceBuildNo())).isEqualTo(10001);
+        statements.confirm(group.statementNo(),1,"CHECKER");
+        var ticket=context.getBean(StatementPayoutService.class)
+                .prepare("LARGE:"+c.typeCode(),group.statementNo(),1,"OP");
+        assertThat(ticket.gross()).isEqualTo(300030);
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.UNKNOWN);
+        assertThat(execute(ticket.ticketNo()).status()).isEqualTo(FundsStatus.SUCCEEDED);
+        assertThat(jdbc().queryForObject("SELECT d_minor FROM pts_fund_pool WHERE type_code=?",
+                Long.class,c.typeCode())).isZero();
+    }
+
+    @Test
+    void statement_build_waiting_for_pool_uses_fresh_head_and_backing_after_a_competing_commit() throws Exception {
+        var c=periodicStatementFixture();
+        seedStatementBuildSources(c,0,400);
+        backStatementSources(c,12000);
+        for (int i=199;i<400;i++) {
+            String sourceNo=PointsKeys.position("R",c.typeCode(),"BUILD:"+i);
+            String payload=jdbc().queryForObject("SELECT payload_json FROM pts_redeem_position WHERE position_no=?",
+                    String.class,sourceNo);
+            // A second immutable recipient starts on the next page, forcing a new head posting
+            // after the waiting transaction obtains the pool lock.
+            jdbc().update("UPDATE pts_redeem_position SET payload_json=? WHERE position_no=?",
+                    payload.replace("\"accountVersion\":\"A1\"","\"accountVersion\":\"A2\""),sourceNo);
+        }
+        var builds=context.getBean(ai.neargo.shop.pay.points.statement.StatementBuildService.class);
+        var build=builds.start(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        var target=org.springframework.test.util.AopTestUtils.getUltimateTargetObject(builds);
+        var original=(ai.neargo.shop.pay.points.store.StatementBuildStore)
+                org.springframework.test.util.ReflectionTestUtils.getField(target,"store");
+        var identityRead=new java.util.concurrent.CountDownLatch(1);
+        var observed=org.mockito.Mockito.spy(original);
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Object row=invocation.callRealMethod();
+            identityRead.countDown();
+            return row;
+        }).when(observed).find(build.buildNo());
+        var executor=java.util.concurrent.Executors.newSingleThreadExecutor();
+        org.springframework.test.util.ReflectionTestUtils.setField(target,"store",observed);
+        java.util.concurrent.Future<ai.neargo.shop.pay.points.statement.StatementBuildService.Build> waiting;
+        try {
+            var transaction=new TransactionTemplate(txManager);
+            final java.util.concurrent.atomic.AtomicReference<java.util.concurrent.Future<
+                    ai.neargo.shop.pay.points.statement.StatementBuildService.Build>> task=new java.util.concurrent.atomic.AtomicReference<>();
+            transaction.executeWithoutResult(status -> {
+                context.getBean(ai.neargo.shop.pay.points.store.PointsConfigurationStore.class).lockTypeAndPool(c.typeCode());
+                task.set(executor.submit(() -> builds.advance(build.buildNo())));
+                try { assertThat(identityRead.await(10,java.util.concurrent.TimeUnit.SECONDS)).isTrue(); }
+                catch (InterruptedException failure) { Thread.currentThread().interrupt(); throw new IllegalStateException(failure); }
+                // A competing transaction creates the head AND changes backing while the worker waits.
+                String proof="RR:"+c.typeCode();
+                jdbc().update("INSERT INTO pts_fund_evidence(evidence_no,currency,external_minor,verified)"
+                        + " VALUES(?,'CNY',5,1)",proof);
+                posting.post(new Voucher(proof,c.typeCode(),"CNY",new RedeemRate(1,1),
+                        List.of(move(c.typeCode(),HolderType.MINT,"PLATFORM",Bucket.ISSUED,-5),
+                                move(c.typeCode(),HolderType.USER,"U",Bucket.AVAILABLE,5)),
+                        List.of(new FundMove(FundBucket.C,5)),List.of(),0,
+                        List.of(new EvidenceRef(proof,"CNY",5)),"{}"));
+                assertThat(builds.advance(c.typeCode(),build.buildNo()).sourceCount()).isEqualTo(200);
+            });
+            waiting=task.get();
+            assertThat(waiting.get(15,java.util.concurrent.TimeUnit.SECONDS).sourceCount()).isEqualTo(400);
+            assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_store_statement WHERE type_code=?",
+                    Long.class,c.typeCode())).isEqualTo(2);
+            assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_statement_build_item WHERE build_no=?",
+                    Long.class,build.buildNo())).isEqualTo(400);
+        } finally {
+            org.springframework.test.util.ReflectionTestUtils.setField(target,"store",original);
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void statement_build_excludes_per_order_and_fully_refunded_unbound_sources() {
+        var c=periodicStatementFixture();
+        var active=addPeriodicSource(c);
+        completeZeroRefund(c,"UNBOUND_FULL",100);
+        seedStatementBuildSources(c,0,2);
+        for (int i=0;i<2;i++) {
+            String no=PointsKeys.position("R",c.typeCode(),"BUILD:"+i);
+            var source=json.readValue(jdbc().queryForObject("SELECT payload_json FROM pts_redeem_position"
+                    + " WHERE position_no=?",String.class,no),RedeemSnapshot.class);
+            var a=source.agreement();
+            var perOrder=new AgreementSnapshot(a.agreementNo(),a.typeCode(),a.merchantNo(),a.storeNo(),
+                    a.signedBy(),a.termsVersion(),a.termsHash(),a.termsText(),"PER_ORDER",a.path(),
+                    a.channel(),a.accountVersion(),a.state());
+            var snapshot=new RedeemSnapshot(source.subOrderNo(),source.userNo(),source.orderNo(),
+                    source.share(),source.target(),perOrder,source.fundsContext(),true);
+            jdbc().update("UPDATE pts_redeem_position SET state=?,payload_json=? WHERE position_no=?",
+                    i==0?"PAYABLE":"REFUND_PREPARED",json.writeValueAsString(snapshot),no);
+        }
+        var builds=context.getBean(ai.neargo.shop.pay.points.statement.StatementBuildService.class);
+        var start=builds.start(new Period(c.typeCode(),"STORE",0,4102444800000L),"OP");
+        var done=builds.advance(start.buildNo());
+        assertThat(done.state()).isEqualTo("READY");
+        assertThat(done.sourceCount()).isEqualTo(1);
+        assertThat(jdbc().queryForObject("SELECT statement_no FROM pts_redeem_position WHERE position_no=?",
+                String.class,c.positionIds().getFirst())).isNull();
+        assertThat(jdbc().queryForObject("SELECT statement_no FROM pts_redeem_position WHERE position_no=?",
+                String.class,active.positionIds().getFirst())).isNotBlank();
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_statement_build_item WHERE build_no=?",
+                Long.class,start.buildNo())).isEqualTo(1);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_redeem_position WHERE type_code=?"
+                + " AND statement_no IS NOT NULL",Long.class,c.typeCode())).isEqualTo(1);
+    }
+
+    @Test
+    void two_hundred_and_one_sources_use_a_bounded_first_draft_then_publish_on_the_next_page() {
+        var c=periodicStatementFixture();
+        seedStatementBuildSources(c,0,200);
+        var facts=new java.util.ArrayList<Object[]>();
+        for (int i=0;i<200;i++) {
+            String sub="BUILD:"+i;
+            var fact=new LifecycleFact("BF:"+i,"HASH",sub,"U",c.typeCode(),2,FactKind.FINALIZED,
+                    100,0,List.of(new LineSnapshot("I",1,100,0)),Instant.parse("2026-10-14T00:00:00Z"));
+            facts.add(new Object[]{c.typeCode(),sub,json.writeValueAsString(java.util.Map.of("finalFact",fact))});
+        }
+        jdbc().batchUpdate("INSERT INTO pts_lifecycle_fact(type_code,sub_order_no,state,source_version,payload_json)"
+                + " VALUES(?,?,'FINALIZED',2,?)",facts);
+        backStatementSources(c,6000);
+        var period=new Period(c.typeCode(),"STORE",0,4102444800000L);
+        var statements=context.getBean(StoreStatementService.class);
+        var first=statements.draft(period,"OP");
+        assertThat(first.state()).isEqualTo("BUILDING");
+        assertThat(first.sourceBuildNo()).isNotBlank();
+        assertThat(jdbc().queryForObject("SELECT source_count FROM pts_statement_build WHERE build_no=?",
+                Long.class,first.sourceBuildNo())).isEqualTo(200);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_redeem_position WHERE statement_no=?",
+                Long.class,first.statementNo())).isEqualTo(200);
+        var published=statements.draft(period,"OP");
+        assertThat(published.statementNo()).isEqualTo(first.statementNo());
+        assertThat(published.state()).isEqualTo("DRAFT");
+        assertThat(published.current().points()).isEqualTo(6030);
+        assertThat(published.positionIds()).isEmpty();
+        assertThat(jdbc().queryForObject("SELECT source_count FROM pts_statement_build WHERE build_no=?",
+                Long.class,first.sourceBuildNo())).isEqualTo(201);
+        assertThat(statements.draft(period,"OP")).isEqualTo(published);
+    }
+
+    private void backStatementSources(PayoutCommand c,long amount) {
+        String proof="BUILD_BACKING:"+c.typeCode();
+        jdbc().update("INSERT INTO pts_fund_evidence(evidence_no,currency,external_minor,verified)"
+                + " VALUES(?,'CNY',?,1)",proof,amount);
+        posting.post(new Voucher(proof,c.typeCode(),"CNY",new RedeemRate(1,1),
+                List.of(move(c.typeCode(),HolderType.MINT,"PLATFORM",Bucket.ISSUED,-amount),
+                        move(c.typeCode(),HolderType.STORE,"STORE",Bucket.AVAILABLE,amount)),
+                List.of(new FundMove(FundBucket.C,amount)),List.of(),0,
+                List.of(new EvidenceRef(proof,"CNY",amount)),"{}"));
+    }
+
+    private StoreStatementService.Snapshot normalizedDraft(PayoutCommand c) {
+        var period=new Period(c.typeCode(),"STORE",0,4102444800000L);
+        var builds=context.getBean(ai.neargo.shop.pay.points.statement.StatementBuildService.class);
+        var build=builds.start(period,"OP");
+        while (!"READY".equals(build.state())) build=builds.advance(build.buildNo());
+        return context.getBean(StoreStatementService.class).draft(period,"OP");
+    }
+
+    private void seedStatementBuildSources(PayoutCommand c, int from, int count) {
+        String payload = jdbc().queryForObject("SELECT payload_json FROM pts_redeem_position WHERE position_no=?",
+                String.class, c.positionIds().getFirst());
+        var sources = new java.util.ArrayList<Object[]>();
+        var finals = new java.util.ArrayList<Object[]>();
+        for (int i = from; i < from + count; i++) {
+            String sub = "BUILD:" + i;
+            sources.add(new Object[] {PointsKeys.position("R", c.typeCode(), sub), c.typeCode(),
+                    payload.replace(c.sourceRef(), sub), sub, "STORE"});
+            finals.add(new Object[] {c.typeCode(), sub, Instant.parse("2026-10-14T00:00:00Z").toEpochMilli()});
+        }
+        jdbc().batchUpdate("INSERT INTO pts_redeem_position"
+                + "(position_no,type_code,state,original_points,payload_json,sub_order_no,store_no)"
+                + " VALUES(?,?,'SETTLEABLE',30,?,?,?)", sources);
+        jdbc().batchUpdate("INSERT INTO pts_statement_final_fact"
+                + "(type_code,sub_order_no,final_at_millis) VALUES(?,?,?)", finals);
+    }
+
+    @Test
     void statement_draft_fixes_candidates_and_confirmation_moves_store_backing_once() {
         var c = periodicStatementFixture();
         var statements = context.getBean(StoreStatementService.class);
@@ -2964,6 +3551,8 @@ class PointsPayoutPreparationTest {
         MybatisPointsFactStore.class,
         EarnServiceImpl.class,
         MybatisStatementStore.class,
+        ai.neargo.shop.pay.points.store.impl.MybatisStatementConfirmationStore.class,
+        ai.neargo.shop.pay.points.store.impl.MybatisStatementBuildStore.class,
         MybatisPointsCashRefundReadStore.class,
         MybatisLifecycleStore.class,
         MybatisPointsCursorStore.class,

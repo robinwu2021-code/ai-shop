@@ -1,5 +1,7 @@
 # 积分第三阶段完整接线实施计划
 
+> 状态更新（2026-10-19）：本计划的生产兼容整合与订单含积分基本流程发布已完成；旧待确认项为历史记录，实际门禁以用户限定的定向范围及[发布证据](../../technical/订单含积分基本流程-Review修复与发布记录-2026-10-19.md)为准，未宣称全量失败基线清空。结算资金后续修复另见2026-10-19-points-financial-review-fixes.md。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 延续已选择的当前会话内逐项执行方式；阶段末一次全阶段独立 Review。
 
 **Goal:** 完成积分与订单、支付、售后的接线，支持运行时停止新增与重新接线，纯现金订单可独立运行，已受理义务可靠收尾。

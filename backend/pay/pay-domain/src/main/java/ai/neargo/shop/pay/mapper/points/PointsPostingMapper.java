@@ -309,4 +309,10 @@ public interface PointsPostingMapper {
                 + " VALUES(#{type},#{no},'NEW',#{payload})")
     int outbox(
             @Param("type") String type, @Param("no") String no, @Param("payload") String payload);
+
+    @Insert("INSERT INTO pts_statement_source_history(statement_no,position_no,source_version,change_seq,points)"
+            + " SELECT r.statement_no,r.position_no,r.version,"
+            + "(SELECT COALESCE(SUM(s.version),0) FROM pts_redeem_position s WHERE s.statement_no=r.statement_no AND s.deleted=0),"
+            + "r.original_points-r.processed_points FROM pts_redeem_position r WHERE r.position_no=#{source}")
+    int recordStatementSourceHistory(String source);
 }

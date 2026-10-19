@@ -29,6 +29,11 @@ export const settleMock: Pick<MerchantApi,
   | "mVerify"
   | "mVerifyBatch"
   | "mVerifySearch"
+  | "mStorePointStatement"
+  | "mStorePointStatementLines"
+  | "mStorePointStatements"
+  | "mConfirmStorePointStatement"
+  | "mDisputeStorePointStatement"
   | "mStorePointTypes"
   | "mStorePointAccount"
   | "mStorePointEntries"
@@ -416,6 +421,11 @@ export const settleMock: Pick<MerchantApi,
     );
   },
 
+  async mStorePointStatement() { throw new Error("请连接积分账单后端"); },
+  async mStorePointStatementLines() { return delay({ rows: [], next: 0, hasMore: false }); },
+  async mStorePointStatements() { return delay({ rows: [], next: 0, hasMore: false }); },
+  async mConfirmStorePointStatement() { throw new Error("请连接积分账单后端"); },
+  async mDisputeStorePointStatement() { throw new Error("请连接积分账单后端"); },
   async mStorePointTypes() { return delay([]); },
   async mStorePointAccount() { throw new Error("请连接积分账本后端"); },
   async mStorePointEntries() { throw new Error("请连接积分账本后端"); },

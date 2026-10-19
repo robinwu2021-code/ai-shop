@@ -38,6 +38,12 @@ const camel = (s: string) =>
  * 删不掉说明还没做完。
  */
 const NO_ENTITY_YET: Record<string, string> = {
+  pts_statement_final_fact: "可信终局发生时间与首次就绪序列投影，由PointsConfigurationMapper维护，按积分SQL mapper设计无ORM实体。",
+  pts_statement_build: "大账单构建状态及高水位由PointsConfigurationMapper与MybatisStatementBuildStore与不可变record维护，按积分SQL mapper设计无ORM实体。",
+  pts_statement_source_history: "大账单来源版本的只增历史由PointsConfigurationMapper与MybatisStatementBuildStore维护，用于分页重建旧修订，不设独立ORM实体。",
+  pts_statement_build_item: "大账单固定来源分页明细由PointsConfigurationMapper与MybatisStatementBuildStore维护，与build同事务，按积分SQL mapper设计无ORM实体。",
+  pts_statement_confirmation: "每修订通知与确认期限由StatementConfirmationMapper维护，按积分SQL mapper设计无ORM实体。",
+  pts_user_adjustment: "双人调账原申请及审批版本由PointsAdjustmentMapper维护，账务经统一posting，按积分SQL mapper设计无ORM实体。",
   pts_availability_projection: "可重建的版本水位派生投影，由PointsAvailabilityMapper与AcceptanceAvailabilityProjection读写不可变快照，不是独立业务聚合，按现有积分SQL mapper方案不设ORM实体。",
   prd_category_points: "旧版类目积分规则表；生产只读审计为空，新积分方案不再读取，由 points integration policy 按门店×场景控制；不迁移、不删除历史表。",
   ord_points_refund_execution: "SQL mapper 由 RefundExecutionMapper/RefundLedgerMapper 直接访问，事务与恢复队列共用投影，无独立 ORM 实体。",

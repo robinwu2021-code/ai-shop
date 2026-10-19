@@ -1,13 +1,23 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { computed, ref, watch } from "vue";
+import StorePointStatements from "@/components/points/StorePointStatements.vue";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { confirm as confirmDialog } from "@ai-shop/ui/prompt";
 import { useMerchantStore } from "@/stores/merchant";
 import type { PaymentApplyment, StorePointAccount, StorePointAgreement, StorePointTerms, StorePointType } from "@shared/types";
 
+import { preparePointStatementLink } from "@/shared/points-statement-link";
 const merchant = useMerchantStore();
+const pageReady = ref(false);
+const linkQuery = ref<{ storeNo?: string; typeCode?: string; statementNo?: string } | null>(null);
+const targetStatement = ref("");
+onLoad((query) => {
+  if (query && (query.storeNo || query.typeCode || query.statementNo)) {
+    linkQuery.value = { storeNo: query.storeNo, typeCode: query.typeCode, statementNo: query.statementNo };
+  }
+});
 const { t } = useI18n();
 const canView = computed(() => merchant.can("biz:finance"));
 const isOwner = computed(() => merchant.perms.includes("*"));
@@ -29,6 +39,7 @@ const channels = computed(() => [...new Map(payments.value.filter((p) => p.canRe
   && (!p.storeNo || p.storeNo === merchant.storeNo)).map((p) => [p.payChannel, p.channelName])).entries()]);
 
 async function selectType(typeCode: string) {
+  const store = merchant.storeNo;
   selected.value = typeCode;
   account.value = null;
   terms.value = null;
@@ -36,26 +47,44 @@ async function selectType(typeCode: string) {
   accepted.value = false;
   failed.value = false;
   try {
-    [account.value, terms.value, agreement.value] = await Promise.all([
+    const result = await Promise.all([
       api.mStorePointAccount(typeCode), api.mStorePointTerms(typeCode), api.mStorePointAgreement(typeCode),
     ]);
+    if (merchant.storeNo !== store || selected.value !== typeCode) return;
+    [account.value, terms.value, agreement.value] = result;
   } catch {
     failed.value = true;
   }
 }
 
 async function load() {
-  await merchant.ensureStores();
-  if (!canView.value || !merchant.storeNo) return;
+  pageReady.value = false;
+  account.value = null; terms.value = null; agreement.value = null; types.value = [];
   loading.value = true;
   try {
+    if (linkQuery.value) {
+      const target = await preparePointStatementLink(merchant, linkQuery.value);
+      selected.value = target.typeCode; targetStatement.value = target.statementNo;
+    } else {
+      await Promise.all([merchant.ensureStores(), merchant.ensureScope()]);
+      targetStatement.value = "";
+    }
+    if (!canView.value || !merchant.storeNo) return;
+    const loadedStore = merchant.storeNo;
     types.value = await api.mStorePointTypes();
+    if (linkQuery.value && !types.value.some(type => type.typeCode === selected.value)) throw new Error("POINTS_LINK_TYPE_UNKNOWN");
     payments.value = await api.mPayments().catch(() => []);
     if (!channels.value.some(([code]) => code === channel.value)) channel.value = channels.value[0]?.[0] ?? "";
     const choice = types.value.find((x) => x.typeCode === selected.value)
       ?? types.value.find((x) => x.status === "ACTIVE") ?? types.value[0];
     if (choice) await selectType(choice.typeCode);
-    else { selected.value = ""; account.value = null; failed.value = false; }
+    else { selected.value = ""; failed.value = false; }
+    if (merchant.storeNo !== loadedStore) {
+      account.value = null; terms.value = null; agreement.value = null; types.value = [];
+      failed.value = true;
+      return;
+    }
+    pageReady.value = true;
   } catch {
     failed.value = true;
   } finally {
@@ -96,11 +125,19 @@ function openEntries() {
   uni.navigateTo({ url: `/pages/points-records/index?typeCode=${encodeURIComponent(selected.value)}` });
 }
 
+watch(() => merchant.storeNo, () => {
+  if (loading.value) return;
+  // A manual store change leaves the notification context and reloads only the selected store.
+  linkQuery.value = null; targetStatement.value = "";
+  pageReady.value = false; account.value = null; terms.value = null; agreement.value = null;
+  void load();
+});
 onShow(() => { void load(); });
 </script>
 
 <template>
   <sh-scaffold title-key="points.title" :denied="!canView" :failed="failed" @retry="load">
+    <template v-if="pageReady">
     <view class="sh-card">
       <text class="txt-title">{{ $t("points.storeLedger") }}</text>
       <text class="sh-muted">{{ merchant.currentStore?.name ?? merchant.storeNo }}</text>
@@ -128,6 +165,7 @@ onShow(() => { void load(); });
       </view>
       <view class="sh-btn sh-btn--muted sh-mt-sm" @tap="openEntries">{{ $t("points.records") }}</view>
     </view>
+    <StorePointStatements v-if="selected && canView" :type-code="selected" :store-no="merchant.storeNo" :target-statement="targetStatement" />
     <view v-if="current" class="sh-card sh-mt-sm">
       <text class="txt-title">{{ $t("points.agreement") }}</text>
       <view v-if="agreement" class="note">
@@ -157,6 +195,7 @@ onShow(() => { void load(); });
       </view>
       <text v-else class="sh-muted note">{{ $t("points.noTerms") }}</text>
     </view>
+    </template>
   </sh-scaffold>
 </template>
 

@@ -789,3 +789,13 @@ export interface StorePointsEntriesQuery {
   limit?: number;
 
 }
+
+export interface StorePointStatementQuery {
+  typeCode: string;
+  statementNo: string;
+}
+export interface StorePointStatementLinesQuery extends StorePointStatementQuery {
+  revision: number;
+  after?: number;
+  limit?: number;
+}

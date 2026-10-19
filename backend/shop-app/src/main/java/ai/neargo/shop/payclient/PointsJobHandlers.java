@@ -27,6 +27,15 @@ public class PointsJobHandlers {
     }
 
     @Bean
+    public JobHandler pointsStatementConfirmationHandler(PointsJobServices services) {
+        return handler("points-statement-confirmation", Task.STATEMENT_CONFIRM, services);
+    }
+    @Bean
+    public JobDeclaration pointsStatementConfirmationDeclaration() {
+        return new JobDeclaration("points-statement-confirmation", "积分账单通知与自动确认",
+            "可靠通知有财务权限的门店员工；通知后完整异议期届满才自动确认当前无争议版本", "pay", "0 */5 * * * *", false, 90, 180, true, false);
+    }
+    @Bean
     public JobHandler pointsSourceHandler(PointsJobServices services) {
         return handler("points-source-reconcile", Task.SOURCE, services);
     }
@@ -184,6 +193,18 @@ public class PointsJobHandlers {
                 180,
                 true,
                 false);
+    }
+
+    @Bean
+    public JobHandler pointsStatementBuildHandler(PointsJobServices services) {
+        return handler("points-statement-build",Task.STATEMENTS,services);
+    }
+
+    @Bean
+    public JobDeclaration pointsStatementBuildDeclaration() {
+        return new JobDeclaration("points-statement-build","积分账单分批构建",
+                "每页最多200条，按固定终局高水位续跑并发布账单；不发起真实兑付",
+                "pay","0 */5 * * * *",false,90,180,true,false);
     }
 
     private JobHandler handler(String name, Task task, PointsJobServices services) {

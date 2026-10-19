@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 241 个受控端点**。
+统计：**6 个角色 × 13 个权限点 × 246 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -18,9 +18,9 @@
 |---|---|---|---|---|---|---|---|---|
 | `STOCK` | 改库存（含门店库存） | 44 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `GOODS` | 建/改商品、上下架、规格模板、识图 | 36 | ✅ | ✅ | — | — | — | — |
+| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 30 | ✅ | — | — | — | — | — |
 | `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
 | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 27 | ✅ | ✅ | — | — | — | — |
-| `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 25 | ✅ | — | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
 | `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 21 | ✅ | — | — | — | — | — |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
@@ -121,6 +121,39 @@
 - `/biz/spu-std`
 - `/biz/store-spec-dims`
 
+### `FINANCE`　（OWNER）
+
+- `/biz/deposit`
+- `/biz/deposit/txns`
+- `/biz/merchant/debt`
+- `/biz/merchant/pay-channel`
+- `/biz/merchant/payment`
+- `/biz/merchant/payment/store/{storeNo}`
+- `/biz/merchant/payment/{payChannel}/refresh`
+- `/biz/payout-account`
+- `/biz/points/store-account`
+- `/biz/points/store-agreement`
+- `/biz/points/store-agreement/sign`
+- `/biz/points/store-agreement/terminate`
+- `/biz/points/store-entries`
+- `/biz/points/store-statement`
+- `/biz/points/store-statement-confirm`
+- `/biz/points/store-statement-dispute`
+- `/biz/points/store-statement-lines`
+- `/biz/points/store-statements`
+- `/biz/points/store-terms`
+- `/biz/points/store-types`
+- `/biz/settle/batch`
+- `/biz/settle/bills`
+- `/biz/settle/bills/{settleNo}`
+- `/biz/settle/daily-flow`
+- `/biz/settle/income`
+- `/biz/settle/invoice-pending`
+- `/biz/settle/invoice-title`
+- `/biz/settle/invoices`
+- `/biz/settle/rate-card`
+- `/biz/settle/statement`
+
 ### `CAMPAIGN`　（OWNER、MANAGER）
 
 - `/biz/activities`
@@ -182,34 +215,6 @@
 - `/biz/report/daily`
 - `/biz/report/goods`
 - `/biz/report/monthly`
-
-### `FINANCE`　（OWNER）
-
-- `/biz/deposit`
-- `/biz/deposit/txns`
-- `/biz/merchant/debt`
-- `/biz/merchant/pay-channel`
-- `/biz/merchant/payment`
-- `/biz/merchant/payment/store/{storeNo}`
-- `/biz/merchant/payment/{payChannel}/refresh`
-- `/biz/payout-account`
-- `/biz/points/store-account`
-- `/biz/points/store-agreement`
-- `/biz/points/store-agreement/sign`
-- `/biz/points/store-agreement/terminate`
-- `/biz/points/store-entries`
-- `/biz/points/store-terms`
-- `/biz/points/store-types`
-- `/biz/settle/batch`
-- `/biz/settle/bills`
-- `/biz/settle/bills/{settleNo}`
-- `/biz/settle/daily-flow`
-- `/biz/settle/income`
-- `/biz/settle/invoice-pending`
-- `/biz/settle/invoice-title`
-- `/biz/settle/invoices`
-- `/biz/settle/rate-card`
-- `/biz/settle/statement`
 
 ### `STORE`　（OWNER、MANAGER）
 

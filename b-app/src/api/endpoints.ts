@@ -337,6 +337,11 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   // 每日流水：与上面那条**同一批结算单的另一种切法**（按天，不按状态）
   mDailyFlow: { method: "GET", path: "/biz/settle/daily-flow", auth: true, summary: "每日流水" },
 
+  mStorePointStatement: { method: "GET", path: "/biz/points/store-statement", auth: true, summary: "当前门店指定积分账单" },
+  mStorePointStatementLines: { method: "GET", path: "/biz/points/store-statement-lines", auth: true, summary: "当前门店指定修订积分账单明细" },
+  mStorePointStatements: { method: "GET", path: "/biz/points/store-statements", auth: true, summary: "当前门店积分账单" },
+  mConfirmStorePointStatement: { method: "POST", path: "/biz/points/store-statement-confirm", auth: true, summary: "确认当前门店指定修订积分账单" },
+  mDisputeStorePointStatement: { method: "POST", path: "/biz/points/store-statement-dispute", auth: true, summary: "对当前门店积分账单提出异议" },
   mStorePointTypes: { method: "GET", path: "/biz/points/store-types", auth: true, summary: "当前门店可见的积分类型" },
   mStorePointAccount: { method: "GET", path: "/biz/points/store-account", auth: true, summary: "当前门店积分账本" },
   mStorePointEntries: { method: "GET", path: "/biz/points/store-entries", auth: true, summary: "当前门店积分流水" },

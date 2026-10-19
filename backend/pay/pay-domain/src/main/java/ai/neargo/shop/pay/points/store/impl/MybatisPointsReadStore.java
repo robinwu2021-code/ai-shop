@@ -142,7 +142,18 @@ public class MybatisPointsReadStore implements PointsReadStore {
         if (!allowed) {
             throw new IllegalArgumentException("POINTS_POSITION_KIND_INVALID");
         }
-        return DataScopeContext.executeWithoutScope(() -> mapper.position(table, no));
+        return DataScopeContext.executeWithoutScope(() -> {
+            var row=mapper.position(table,no);
+            if (row!=null && PositionMove.Kind.REDEEM.table().equals(table) && row.get("statement_no")!=null) {
+                var head=mapper.position(PositionMove.Kind.STATEMENT.table(),(String)row.get("statement_no"));
+                String effective=ai.neargo.shop.pay.points.statement.StatementSourceState.effective(row,head);
+                if (!effective.equals(row.get("state"))) {
+                    row=new java.util.HashMap<>(row);
+                    row.put("raw_state",row.get("state")); row.put("state",effective);
+                }
+            }
+            return row;
+        });
     }
 
     @Override

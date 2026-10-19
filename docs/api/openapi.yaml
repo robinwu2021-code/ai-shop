@@ -6147,6 +6147,148 @@ components:
         - "imageBase64"
       additionalProperties: false
       description: "店铺小程序码（海报用，`GET /mp/merchant/{merchantNo}/acode`）。\n\n**码是店铺码，不带邀请人**：`wxacode.getUnlimited` 是永久码且每个 appid 总量有限， 一人一张会烧穿额度 —— 而烧穿之后新入驻的商家再也拿不到店铺码。 所以海报归因到**店**，邀请归因走小程序内转发那条路。"
+    StorePointStatement:
+      type: "object"
+      properties:
+        id:
+          type: "number"
+        statementNo:
+          type: "string"
+        typeCode:
+          type: "string"
+        storeNo:
+          type: "string"
+        fromMillis:
+          type: "number"
+        toMillis:
+          type: "number"
+        state:
+          type: "string"
+        revision:
+          type: "number"
+        points:
+          type: "number"
+        disputeReason:
+          type:
+            - "string"
+            - "null"
+        revisions:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              number:
+                type: "number"
+              points:
+                type: "number"
+              reason:
+                type:
+                  - "string"
+                  - "null"
+            required:
+              - "number"
+              - "points"
+              - "reason"
+            additionalProperties: false
+      required:
+        - "id"
+        - "statementNo"
+        - "typeCode"
+        - "storeNo"
+        - "fromMillis"
+        - "toMillis"
+        - "state"
+        - "revision"
+        - "points"
+        - "disputeReason"
+        - "revisions"
+      additionalProperties: false
+      description: "Current-store statement projection; source positions and bank routes remain server-side."
+    StorePointStatementPage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StorePointStatement"
+        next:
+          type: "number"
+        hasMore:
+          type: "boolean"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    StorePointStatementChange:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+        typeCode:
+          type: "string"
+        statementNo:
+          type: "string"
+        revision:
+          type: "number"
+        reason:
+          type: "string"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "statementNo"
+        - "revision"
+        - "reason"
+      additionalProperties: false
+    StorePointStatementLinePage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              orderNo:
+                type: "string"
+              subOrderNo:
+                type: "string"
+              points:
+                type: "number"
+            required:
+              - "orderNo"
+              - "subOrderNo"
+              - "points"
+            additionalProperties: false
+        next:
+          type: "number"
+        hasMore:
+          type: "boolean"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    StorePointStatementReceipt:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+        operation:
+          type: "string"
+        typeCode:
+          type: "string"
+        reference:
+          type: "string"
+        at:
+          type: "number"
+      required:
+        - "requestId"
+        - "operation"
+        - "typeCode"
+        - "reference"
+        - "at"
+      additionalProperties: false
+      description: "Receipt of an audited statement decision; this does not assert bank payout success."
     MessageType:
       type: "string"
       enum:

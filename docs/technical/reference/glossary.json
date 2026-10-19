@@ -16994,6 +16994,12 @@
           "ar": "وحدة نقدية صغرى"
         },
         {
+          "key": "points.noStatements",
+          "zh-CN": "暂无账单",
+          "en": "No statements",
+          "ar": "لا توجد كشوف"
+        },
+        {
           "key": "points.noTerms",
           "zh-CN": "平台尚未发布此类型的协议条款",
           "en": "No terms published for this points type",
@@ -17058,6 +17064,132 @@
           "zh-CN": "请选择当前门店已开通的收款通道与结算方式；最终路由由服务端核验。",
           "en": "Select an active payment channel and settlement mode. The server verifies the route.",
           "ar": "اختر قناة دفع مفعّلة وطريقة التسوية. يتحقق الخادم من المسار."
+        },
+        {
+          "key": "points.statementChecked",
+          "zh-CN": "已核对本修订账单",
+          "en": "Statement revision checked",
+          "ar": "تمت مراجعة إصدار الكشف"
+        },
+        {
+          "key": "points.statementConfirm",
+          "zh-CN": "确认本修订",
+          "en": "Confirm revision",
+          "ar": "تأكيد الإصدار"
+        },
+        {
+          "key": "points.statementConfirmHint",
+          "zh-CN": "确认当前修订后将进入待兑付流程，请核对积分数量和账期。",
+          "en": "Confirm this revision for payout processing after checking points and period.",
+          "ar": "تحقق من النقاط والفترة قبل تأكيد هذا الإصدار للصرف."
+        },
+        {
+          "key": "points.statementDetails",
+          "zh-CN": "账单明细",
+          "en": "Statement details",
+          "ar": "تفاصيل الكشف"
+        },
+        {
+          "key": "points.statementDispute",
+          "zh-CN": "提出异议",
+          "en": "Raise dispute",
+          "ar": "تقديم اعتراض"
+        },
+        {
+          "key": "points.statementDisputeHint",
+          "zh-CN": "提交后本修订停止自动确认，等待运营核查。",
+          "en": "This revision will stop automatic confirmation pending review.",
+          "ar": "سيتوقف التأكيد التلقائي لهذا الإصدار بانتظار المراجعة."
+        },
+        {
+          "key": "points.statementDisputeReason",
+          "zh-CN": "异议原因（必填）",
+          "en": "Dispute reason (required)",
+          "ar": "سبب الاعتراض (مطلوب)"
+        },
+        {
+          "key": "points.statementFailed",
+          "zh-CN": "账单加载或操作失败，请刷新核对最新修订后重试",
+          "en": "Unable to load or update. Refresh and check the latest revision before retrying.",
+          "ar": "تعذر التحميل أو التحديث. حدّث الكشف وراجع آخر إصدار قبل المحاولة."
+        },
+        {
+          "key": "points.statementMore",
+          "zh-CN": "加载更多",
+          "en": "Load more",
+          "ar": "تحميل المزيد"
+        },
+        {
+          "key": "points.statementRefresh",
+          "zh-CN": "刷新账单",
+          "en": "Refresh statements",
+          "ar": "تحديث الكشوف"
+        },
+        {
+          "key": "points.statementRevision",
+          "zh-CN": "修订",
+          "en": "Revision",
+          "ar": "الإصدار"
+        },
+        {
+          "key": "points.statementSourceOrder",
+          "zh-CN": "来源订单",
+          "en": "Source order",
+          "ar": "الطلب المصدر"
+        },
+        {
+          "key": "points.statementStateBuilding",
+          "zh-CN": "生成中",
+          "en": "Generating",
+          "ar": "جارٍ الإنشاء"
+        },
+        {
+          "key": "points.statementStateCleared",
+          "zh-CN": "无需付款",
+          "en": "No payment needed",
+          "ar": "لا يلزم الدفع"
+        },
+        {
+          "key": "points.statementStateConfirmed",
+          "zh-CN": "待付款",
+          "en": "Awaiting payment",
+          "ar": "بانتظار الدفع"
+        },
+        {
+          "key": "points.statementStateDisputed",
+          "zh-CN": "有异议",
+          "en": "Disputed",
+          "ar": "يوجد اعتراض"
+        },
+        {
+          "key": "points.statementStateDraft",
+          "zh-CN": "待确认",
+          "en": "Awaiting confirmation",
+          "ar": "بانتظار التأكيد"
+        },
+        {
+          "key": "points.statementStatePaid",
+          "zh-CN": "已付",
+          "en": "Paid",
+          "ar": "مدفوع"
+        },
+        {
+          "key": "points.statementStatePaying",
+          "zh-CN": "付款处理中",
+          "en": "Payment processing",
+          "ar": "جارٍ معالجة الدفع"
+        },
+        {
+          "key": "points.statementStateUnknown",
+          "zh-CN": "待核实",
+          "en": "Awaiting verification",
+          "ar": "بانتظار التحقق"
+        },
+        {
+          "key": "points.statements",
+          "zh-CN": "积分账单",
+          "en": "Points statements",
+          "ar": "كشوف النقاط"
         },
         {
           "key": "points.storeLedger",
@@ -26989,6 +27121,18 @@
           "zh-CN": "积分即将到期",
           "en": "Your points expire soon",
           "ar": "ستنتهي صلاحية نقاطك قريبًا"
+        },
+        {
+          "key": "points.statement.notice.body",
+          "zh-CN": "门店 {0} 的积分账单 {1}（版本 {2}）已出单，请核对；本通知送达后享有完整 {3} 天异议期，期满无异议将自动确认。",
+          "en": "Points statement {1} (revision {2}) for store {0} is available. You have {3} full days after notification to raise a dispute; it will then be confirmed automatically.",
+          "ar": "كشف النقاط {1} (الإصدار {2}) للمتجر {0} متاح. لديك {3} أيام كاملة بعد الإشعار للاعتراض، وبعدها سيتم تأكيده تلقائياً."
+        },
+        {
+          "key": "points.statement.notice.title",
+          "zh-CN": "门店积分账单待确认",
+          "en": "Store points statement awaiting confirmation",
+          "ar": "كشف نقاط المتجر بانتظار التأكيد"
         }
       ]
     }
@@ -35871,6 +36015,15 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "Direction",
+        "values": [
+          "INCREASE",
+          "DECREASE"
+        ],
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
         "name": "DispatchStatus",
         "values": [
           "ACCEPTED",
@@ -36738,6 +36891,8 @@
           "RECON",
           "STATS_PROJECT",
           "STATS_REBUILD",
+          "STATEMENTS",
+          "STATEMENT_CONFIRM",
           "PLANS"
         ],
         "zh": "",

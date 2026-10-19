@@ -882,6 +882,30 @@ export default {
 
 
   points: {
+    statementStateBuilding: "生成中",
+    statementStateDraft: "待确认",
+    statementStateDisputed: "有异议",
+    statementStateConfirmed: "待付款",
+    statementStatePaying: "付款处理中",
+    statementStatePaid: "已付",
+    statementStateCleared: "无需付款",
+    statementStateUnknown: "待核实",
+
+    statementDetails: "账单明细",
+    statementSourceOrder: "来源订单",
+    statements: "积分账单",
+    statementFailed: "账单加载或操作失败，请刷新核对最新修订后重试",
+    statementRefresh: "刷新账单",
+    noStatements: "暂无账单",
+    statementRevision: "修订",
+    statementDisputeReason: "异议原因（必填）",
+    statementConfirm: "确认本修订",
+    statementDispute: "提出异议",
+    statementMore: "加载更多",
+    statementChecked: "已核对本修订账单",
+    statementConfirmHint: "确认当前修订后将进入待兑付流程，请核对积分数量和账期。",
+    statementDisputeHint: "提交后本修订停止自动确认，等待运营核查。",
+
 
     agreement: "门店积分协议",
     activeAgreement: "协议已生效",

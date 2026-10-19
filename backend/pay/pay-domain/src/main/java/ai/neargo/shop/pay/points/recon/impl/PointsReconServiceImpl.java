@@ -3,6 +3,7 @@ package ai.neargo.shop.pay.points.recon.impl;
 import ai.neargo.shop.pay.points.event.PointsAttentionService;
 import ai.neargo.shop.pay.points.model.Bucket;
 import ai.neargo.shop.pay.points.model.PointsKeys;
+import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.recon.PointsReconService;
 import ai.neargo.shop.pay.points.store.PointsConfigurationStore;
 import ai.neargo.shop.pay.points.store.PointsOperationsStore;
@@ -301,6 +302,19 @@ public class PointsReconServiceImpl implements PointsReconService {
             }
         }
         var payoutIndex = index(payouts, "position_no");
+        var normalizedStatementTickets=new HashMap<String,String>();
+        for (var row:payouts) {
+            var saved=body(row);
+            String statement=saved.path("statementNo").asText(null);
+            if (statement==null || "FAILED".equals(text(row,"state"))) continue;
+            var head=read.position(PositionMove.Kind.STATEMENT.table(),statement);
+            if (head==null) continue;
+            var snapshot=json.readValue((String)head.get("payload_json"),
+                    ai.neargo.shop.pay.points.statement.StoreStatementService.Snapshot.class);
+            if (snapshot.sourceBuildNo()!=null && snapshot.current().number()==saved.path("statementRevision").longValue()) {
+                normalizedStatementTickets.put(statement,text(row,"position_no"));
+            }
+        }
         for (var row : payouts) {
             var snap = body(row);
             var ticket = snap.path("ticket");
@@ -345,9 +359,18 @@ public class PointsReconServiceImpl implements PointsReconService {
             }
         }
         for (var row : redemptions) {
+            String ticket=text(row,"ticket_no");
+            String statement=text(row,"statement_no");
+            if (ticket.isBlank() && !statement.isBlank()) {
+                ticket=normalizedStatementTickets.get(statement);
+                // A fully refunded normalized source may close without a cash payout.
+                if (ticket==null && n(row,"original_points")==n(row,"processed_points")) {
+                    var head=read.position(PositionMove.Kind.STATEMENT.table(),statement);
+                    if (head!=null && body(head).hasNonNull("sourceBuildNo")) continue;
+                }
+            }
             if (Set.of("PAYING", "PAID", "CLOSED").contains(sourceState(row, pendingBySub, errors))
-                    && row.get("sub_order_no") != null
-                    && !payoutIndex.containsKey(text(row, "ticket_no"))) {
+                    && row.get("sub_order_no") != null && !payoutIndex.containsKey(ticket)) {
                 errors.add(new Difference("MISSING_PAYOUT_TICKET", text(row, "position_no"), 1, 0));
             }
         }
@@ -419,6 +442,10 @@ public class PointsReconServiceImpl implements PointsReconService {
     private String sourceState(
             Map<String, Object> row, Map<String, JsonNode> refunds, List<Difference> errors) {
         String state = text(row, "state");
+        if (row.get("statement_no")!=null) {
+            state=ai.neargo.shop.pay.points.statement.StatementSourceState.effective(row,
+                    read.position(PositionMove.Kind.STATEMENT.table(),(String)row.get("statement_no")));
+        }
         if (!"REFUND_PREPARED".equals(state)) {
             return state;
         }

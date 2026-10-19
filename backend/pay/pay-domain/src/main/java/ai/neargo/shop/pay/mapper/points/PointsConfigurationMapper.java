@@ -251,11 +251,24 @@ public interface PointsConfigurationMapper {
             @Param("type") String type, @Param("store") String store, @Param("from") long from);
 
     @Select(
-            "SELECT * FROM pts_redeem_position WHERE type_code=#{type} AND store_no=#{store} AND"
-                + " deleted=0 AND state='SETTLEABLE' AND statement_no IS NULL AND"
-                + " original_points>processed_points ORDER BY position_no LIMIT 10001 FOR UPDATE")
+            "SELECT r.* FROM pts_redeem_position r JOIN pts_statement_final_fact f"
+                + " ON f.type_code=r.type_code AND f.sub_order_no=r.sub_order_no"
+                + " WHERE r.type_code=#{type} AND r.store_no=#{store} AND"
+                + " r.deleted=0 AND r.state='SETTLEABLE' AND r.statement_no IS NULL AND"
+                + " r.original_points>r.processed_points AND f.final_at_millis < #{to}"
+                + " ORDER BY r.position_no LIMIT 201 FOR UPDATE")
     List<Map<String, Object>> statementCandidates(
-            @Param("type") String type, @Param("store") String store);
+            @Param("type") String type, @Param("store") String store, @Param("to") long to);
+
+    @Insert("INSERT INTO pts_statement_final_fact(type_code,sub_order_no,final_at_millis)"
+            + " SELECT #{type},#{sub},#{at} WHERE NOT EXISTS (SELECT 1 FROM"
+            + " pts_statement_final_fact WHERE type_code=#{type} AND sub_order_no=#{sub})")
+    int recordStatementFinalFact(@Param("type") String type, @Param("sub") String sub,
+            @Param("at") long occurredAt);
+
+    @Select("SELECT final_at_millis FROM pts_statement_final_fact WHERE type_code=#{type}"
+            + " AND sub_order_no=#{sub}")
+    Long statementFinalAt(@Param("type") String type, @Param("sub") String sub);
 
     @Select("SELECT * FROM pts_receivable WHERE receivable_no=#{no} AND deleted=0")
     Map<String, Object> receivable(String no);
@@ -414,4 +427,78 @@ public interface PointsConfigurationMapper {
                 + " submitted_by<>#{actor}")
     int rejectRequest(
             @Param("no") String no, @Param("version") long version, @Param("actor") String actor);
+
+    @Select("SELECT COALESCE(MAX(ready_seq),0) FROM pts_statement_final_fact WHERE type_code=#{type}")
+    long statementBuildHighWater(String type);
+
+    @Select("SELECT * FROM pts_statement_build WHERE build_no=#{no}")
+    Map<String,Object> statementBuild(String no);
+
+    @Select("SELECT * FROM pts_statement_build WHERE build_no=#{no} FOR UPDATE")
+    Map<String,Object> lockStatementBuild(String no);
+
+    @Insert("INSERT INTO pts_statement_build(build_no,type_code,store_no,period_from,period_to,"
+            + "high_water,scan_cursor,source_count,state,actor,version) VALUES(#{b.buildNo},#{b.typeCode},"
+            + "#{b.storeNo},#{b.fromMillis},#{b.toMillis},#{b.highWater},0,0,'BUILDING',#{actor},0)")
+    int insertStatementBuild(@Param("b") ai.neargo.shop.pay.points.statement.StatementBuildService.Build build,
+            @Param("actor") String actor);
+
+    @Select("SELECT r.*,f.ready_seq FROM pts_redeem_position r JOIN pts_statement_final_fact f"
+            + " ON r.type_code=f.type_code AND r.sub_order_no=f.sub_order_no"
+            + " WHERE r.type_code=#{b.typeCode} AND r.store_no=#{b.storeNo} AND r.deleted=0"
+            + " AND r.statement_no IS NULL AND r.original_points>r.processed_points"
+            + " AND r.state IN ('SETTLEABLE','REFUND_PREPARED') AND f.final_at_millis < #{b.toMillis}"
+            + " AND f.ready_seq>#{b.cursor} AND f.ready_seq<=#{b.highWater}"
+            + " AND NOT EXISTS(SELECT 1 FROM pts_statement_build_item i WHERE i.position_no=r.position_no)"
+            + " ORDER BY f.ready_seq LIMIT #{limit} FOR UPDATE")
+    List<Map<String,Object>> statementBuildPage(
+            @Param("b") ai.neargo.shop.pay.points.statement.StatementBuildService.Build build,
+            @Param("limit") int limit);
+
+    @Insert("INSERT INTO pts_statement_build_item(build_no,position_no,ready_seq,route_key,source_version,points)"
+            + " VALUES(#{build},#{source},#{seq},#{route},#{version},#{points})")
+    int insertStatementBuildItem(@Param("build") String build,@Param("source") String source,
+            @Param("seq") long seq,@Param("route") String route,@Param("version") long version,
+            @Param("points") long points);
+
+    @Update("UPDATE pts_statement_build SET scan_cursor=#{after.cursor},source_count=#{after.sourceCount},"
+            + "state=#{after.state},version=version+1 WHERE build_no=#{before.buildNo}"
+            + " AND version=#{before.version} AND state='BUILDING'")
+    int advanceStatementBuild(
+            @Param("before") ai.neargo.shop.pay.points.statement.StatementBuildService.Build before,
+            @Param("after") ai.neargo.shop.pay.points.statement.StatementBuildService.Build after);
+
+    @Update("UPDATE pts_redeem_position SET statement_no=#{statement} WHERE position_no=#{source}"
+            + " AND type_code=#{type} AND store_no=#{store} AND (statement_no IS NULL OR statement_no=#{statement})")
+    int bindStatementBuildSource(@Param("source") String source,@Param("type") String type,
+            @Param("store") String store,@Param("statement") String statement);
+
+    @Select("SELECT COUNT(*) AS source_count,COALESCE(SUM(version),0) AS version_sum,"
+            + "COALESCE(SUM(original_points-processed_points),0) AS points,"
+            + "COALESCE(SUM(CASE WHEN state='REFUND_PREPARED' THEN 1 ELSE 0 END),0) AS busy"
+            + " FROM pts_redeem_position WHERE statement_no=#{statement} AND deleted=0")
+    Map<String,Object> statementBuildTotals(String statement);
+
+    @Select("SELECT * FROM pts_redeem_position WHERE statement_no=#{statement} AND deleted=0 ORDER BY id LIMIT 1")
+    Map<String,Object> firstStatementBuildSource(String statement);
+    @Select("SELECT DISTINCT route_key FROM pts_statement_build_item WHERE build_no=#{build} LIMIT 201")
+    List<String> statementBuildRoutes(String build);
+
+    @Select("SELECT i.ready_seq,i.position_no,COALESCE(h.source_version,i.source_version) AS source_version,"
+            + " COALESCE(h.points,i.points) AS points FROM pts_statement_build_item i"
+            + " JOIN pts_redeem_position r ON r.position_no=i.position_no"
+            + " LEFT JOIN pts_statement_source_history h ON h.statement_no=r.statement_no AND h.position_no=i.position_no"
+            + " AND h.change_seq=(SELECT MAX(h2.change_seq) FROM pts_statement_source_history h2"
+            + " WHERE h2.statement_no=r.statement_no AND h2.position_no=i.position_no AND h2.change_seq<=#{cutoff})"
+            + " WHERE i.build_no=#{build} AND i.route_key=#{route} AND r.statement_no=#{statement}"
+            + " AND i.ready_seq>#{after} ORDER BY i.ready_seq LIMIT #{limit}")
+    List<Map<String,Object>> statementBuildLines(@Param("statement") String statement,
+            @Param("build") String build,@Param("route") String route,@Param("cutoff") long cutoff,
+            @Param("after") long after,@Param("limit") int limit);
+
+    @Select("SELECT * FROM pts_statement_build WHERE type_code=#{type} AND build_no>#{after}"
+            + " AND state IN ('BUILDING','READY') ORDER BY build_no LIMIT #{limit}")
+    List<Map<String,Object>> pendingStatementBuilds(@Param("type") String type,@Param("after") String after,@Param("limit") int limit);
+    @Update("UPDATE pts_statement_build SET state='PUBLISHED',version=version+1 WHERE build_no=#{no} AND state='READY'")
+    int publishStatementBuild(String no);
 }

@@ -41,19 +41,28 @@ public class SplitPreparationServiceImpl implements SplitPreparationService {
             require(refundHolds.pendingForBill(settleNo)==0,"SETTLEMENT_REFUND_PENDING");
             if (terminal(bill.getStatus())) { return new Plan(null,null,true); }
             var prior=intents.latest(settleNo);
-            if (prior!=null && !"FAILED".equals(prior.get("state"))) { return plan(prior); }
-            require(bill.getSplitAmountMinor()!=null && bill.getSplitAmountMinor()>=0,
-                    "SETTLEMENT_SPLIT_AMOUNT_REQUIRED");
+            boolean legacy = bill.getSplitProtocolVersion() == null || bill.getSplitProtocolVersion() == 0;
+            if (prior!=null && (legacy || !"FAILED".equals(prior.get("state")))) { return plan(prior); }
+            Long amount = legacy ? bill.getNetMinor() : bill.getSplitAmountMinor();
+            require(amount!=null && amount>=0, "SETTLEMENT_SPLIT_AMOUNT_REQUIRED");
             require(bill.getPayMerchantNo()!=null && !bill.getPayMerchantNo().isBlank()
                     && bill.getStoreNo()!=null && bill.getCurrency()!=null,"SETTLEMENT_RECIPIENT_REQUIRED");
-            var funding=points.prepareForBill(new BillPayout(settleNo,bill.getSubOrderNo(),bill.getEntityNo(),
-                    bill.getStoreNo(),bill.getCurrency(),Math.addExact(nz(bill.getSubsidyMinor()),
-                    nz(bill.getPointsCostMinor())),bill.getFundsMode()));
-            String request="SPL-"+UUID.randomUUID();
+            String ticket = null;
+            if (!legacy) {
+                var funding=points.prepareForBill(new BillPayout(settleNo,bill.getSubOrderNo(),bill.getEntityNo(),
+                        bill.getStoreNo(),bill.getCurrency(),Math.addExact(nz(bill.getSubsidyMinor()),
+                        nz(bill.getPointsCostMinor())),bill.getFundsMode()));
+                ticket=funding.ticket()==null?null:funding.ticket().ticketNo();
+            }
+            String request=legacy ? "SPL-"+settleNo : "SPL-"+UUID.randomUUID();
             var command=new SplitCommand(request,settleNo,bill.getSubOrderNo(),bill.getEntityNo(),bill.getStoreNo(),
-                    bill.getPayMerchantNo(),bill.getPayChannel(),bill.getCurrency(),bill.getSplitAmountMinor());
-            String ticket=funding.ticket()==null?null:funding.ticket().ticketNo();
+                    bill.getPayMerchantNo(),bill.getPayChannel(),bill.getCurrency(),amount);
             intents.insert(request,settleNo,json.writeValueAsString(command),ticket,ticket==null?"FUNDED":"PENDING");
+            // A deployed legacy command may have reached the bank even with no local success log.
+            // Recover the fixed original identity through query only; NOT_FOUND never permits submit.
+            if (legacy) {
+                require(intents.state(request,"READY","UNKNOWN")==1,"SETTLEMENT_DISPATCH_CONFLICT");
+            }
             bill.setStatus(StlBill.SPLITTING); bills.updateById(bill);
             return new Plan(command,ticket,false);
         });

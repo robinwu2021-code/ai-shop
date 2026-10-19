@@ -15,6 +15,8 @@ public interface PointsJobServices {
         RECON,
         STATS_PROJECT,
         STATS_REBUILD,
+        STATEMENTS,
+        STATEMENT_CONFIRM,
         PLANS
     }
 

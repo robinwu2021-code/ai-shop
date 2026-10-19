@@ -476,6 +476,11 @@ class BizEndpointPermTest {
         put("/biz/points/store-types", BizPerms.FINANCE);
         put("/biz/points/store-account", BizPerms.FINANCE);
         put("/biz/points/store-entries", BizPerms.FINANCE);
+        put("/biz/points/store-statements", BizPerms.FINANCE);
+        put("/biz/points/store-statement", BizPerms.FINANCE);
+        put("/biz/points/store-statement-lines", BizPerms.FINANCE);
+        put("/biz/points/store-statement-confirm", BizPerms.FINANCE);
+        put("/biz/points/store-statement-dispute", BizPerms.FINANCE);
         put("/biz/points/store-terms", BizPerms.FINANCE);
         put("/biz/points/store-agreement", BizPerms.FINANCE);
         put("/biz/points/store-agreement/sign", BizPerms.FINANCE);

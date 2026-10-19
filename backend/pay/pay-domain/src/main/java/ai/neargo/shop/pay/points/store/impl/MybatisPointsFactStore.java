@@ -89,5 +89,24 @@ public class MybatisPointsFactStore implements PointsFactStore {
         if (changed != 1) {
             throw new IllegalStateException("POINTS_FACT_STATE_CONFLICT");
         }
+        var json = new tools.jackson.databind.ObjectMapper();
+        var finalNode = json.readTree(payload).get("finalFact");
+        if (finalNode != null && !finalNode.isNull()) {
+            var terminal = json.treeToValue(finalNode, LifecycleFact.class);
+            if (terminal.kind() != ai.neargo.shop.spi.points.PointsFactPort.FactKind.FINALIZED
+                    || terminal.occurredAt() == null || !fact.typeCode().equals(terminal.typeCode())
+                    || !fact.subOrderNo().equals(terminal.subOrderNo())) {
+                throw new IllegalStateException("POINTS_STATEMENT_FINAL_FACT_REQUIRED");
+            }
+            long at = terminal.occurredAt().toEpochMilli();
+            DataScopeContext.executeWithoutScope(() -> {
+                mapper.recordStatementFinalFact(fact.typeCode(), fact.subOrderNo(), at);
+                if (!java.util.Objects.equals(at,
+                        mapper.statementFinalAt(fact.typeCode(), fact.subOrderNo()))) {
+                    throw new IllegalStateException("POINTS_STATEMENT_FINAL_FACT_CONFLICT");
+                }
+                return null;
+            });
+        }
     }
 }

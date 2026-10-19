@@ -45,6 +45,12 @@ public class PointsJobServicesImpl implements PointsJobServices {
     private final PointsOperationsStore store;
     private final PointsCursorStore cursors;
     private final PointsAttentionService attention;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectProvider<ai.neargo.shop.pay.points.statement.impl.StatementConfirmationServiceImpl> statementConfirmation;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectProvider<ai.neargo.shop.pay.points.store.StatementBuildStore> statementBuildStore;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectProvider<ai.neargo.shop.pay.points.statement.StoreStatementService> statements;
     private final ObjectMapper json = new ObjectMapper();
 
     public PointsJobServicesImpl(
@@ -121,8 +127,44 @@ public class PointsJobServicesImpl implements PointsJobServices {
                 stats.rebuild(type, day);
                 yield new Result(true, 1, 0, 0);
             }
+            case STATEMENTS -> statementBuilds(type,limit);
+            case STATEMENT_CONFIRM -> {
+                var service=statementConfirmation==null?null:statementConfirmation.getIfAvailable();
+                if(service==null) yield new Result(false,0,1,0);
+                var result=service.run(type,limit,now);
+                yield new Result(true,result.processed(),result.deferred(),0);
+            }
             case PLANS -> new Result(true, plans.tick(type, day, limit), 0, 0);
         };
+    }
+
+    private Result statementBuilds(String type,int limit) {
+        var builds=statementBuildStore.getIfAvailable();
+        var service=statements.getIfAvailable();
+        if (builds==null || service==null) return new Result(false,0,1,0);
+        String key="PTS_STATEMENT_BUILDS:"+type;
+        var cursor=cursors.state(key);
+        String after=json.readTree(cursor.payload()).path("afterBuildNo").asText("");
+        var page=builds.pending(type,after,limit);
+        int visited=0,processed=0,deferred=0;
+        long started=System.nanoTime();
+        for (var build:page) {
+            if (visited>0 && (System.nanoTime()-started)/1000000>=20000) break;
+            try {
+                service.draftGroups(new ai.neargo.shop.pay.points.statement.StoreStatementService.Period(
+                        build.typeCode(),build.storeNo(),build.fromMillis(),build.toMillis()),"SYSTEM:STATEMENT_BUILD");
+                processed++;
+            } catch (IllegalArgumentException failure) {
+                if (!Set.of("POINTS_STATEMENT_SOURCE_NOT_READY","POINTS_STATEMENT_ROUTE_GROUP_LIMIT")
+                        .contains(failure.getMessage())) throw failure;
+                deferred++;
+            }
+            after=build.buildNo(); visited++;
+        }
+        if (visited==page.size() && page.size()<limit) after="";
+        cursors.advance(key,type,cursor.watermark(),Math.addExact(cursor.watermark(),1),
+                json.writeValueAsString(java.util.Map.of("afterBuildNo",after)));
+        return new Result(true,processed,deferred,0);
     }
 
     private Result lifecycle(String type, int limit, long now) {

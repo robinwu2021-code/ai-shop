@@ -2925,6 +2925,45 @@ _无字段_
 | `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
 
 
+#### POST `/ops/points/adjustment-review`
+
+reviewPointsAdjustment
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### GET `/ops/points/adjustments`
+
+pointsAdjustments
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`
+
+
+#### POST `/ops/points/adjustments`
+
+submitPointsAdjustment
+
+**入参**
+
+_无字段_
+
+**出参**（`data`）
+
+类型：`object`
+
+
 #### GET `/ops/points/agreements`
 
 pointsAgreements

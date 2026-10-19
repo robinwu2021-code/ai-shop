@@ -66,7 +66,7 @@ class RefundSplitClaimFlowTest {
                     settle.executeSplit(bill);
                 }));
                 await().during(Duration.ofMillis(200)).atMost(Duration.ofSeconds(10)).until(() ->
-                        DatabaseThreadBarrier.updating(thread.get(), "SettleServiceImpl", "executeSplit"));
+                        DatabaseThreadBarrier.executing(thread.get(), "SplitPreparationServiceImpl", "prepare"));
                 financial.update("update stl_bill set status='REVERSED',version=version+1 where settle_no=?", bill);
             });
             awaitSplitLoser(worker.get());

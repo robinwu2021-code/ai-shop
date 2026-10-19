@@ -203,9 +203,30 @@ public class MybatisPostingStore implements PostingStore {
                 mapper.createPosition(move.kind().table(), type, move);
                 revision = 0;
             }
+            PositionMove actualMove=move;
+            if (move.kind()==PositionMove.Kind.REDEEM && move.expectedVersion()>=0) {
+                var source=mapper.lockPosition(move.kind().table(),move.positionNo());
+                if (source!=null && source.get("statement_no")!=null) {
+                    var statement=mapper.lockPosition(PositionMove.Kind.STATEMENT.table(),
+                            (String)source.get("statement_no"));
+                    String effective=ai.neargo.shop.pay.points.statement.StatementSourceState.effective(source,statement);
+                    require(move.fromState().equals(effective),"POINTS_POSITION_STATE_CONFLICT");
+                    actualMove=new PositionMove(move.kind(),move.positionNo(),move.expectedVersion(),
+                            (String)source.get("state"),move.nextState(),move.originalPoints(),move.processedDelta(),move.payload());
+                }
+            }
             require(
-                    mapper.movePosition(move.kind().table(), type, move, revision) == 1,
+                    mapper.movePosition(move.kind().table(), type, actualMove, revision) == 1,
                     "POINTS_POSITION_STATE_CONFLICT");
+            if (move.kind()==PositionMove.Kind.REDEEM && move.expectedVersion()>=0) {
+                var source=mapper.lockPosition(move.kind().table(),move.positionNo());
+                if (source!=null && source.get("statement_no")!=null) {
+                    var statement=mapper.lockPosition(PositionMove.Kind.STATEMENT.table(),(String)source.get("statement_no"));
+                    if (statement!=null && json.readValue((String)statement.get("payload_json"),Snapshot.class).sourceBuildNo()!=null) {
+                        require(mapper.recordStatementSourceHistory(move.positionNo())==1,"POINTS_STATEMENT_SOURCE_HISTORY_CONFLICT");
+                    }
+                }
+            }
             if (move.kind() == PositionMove.Kind.STATEMENT) {
                 var statement = json.readValue(move.payload(), Snapshot.class);
                 var period = statement.period();

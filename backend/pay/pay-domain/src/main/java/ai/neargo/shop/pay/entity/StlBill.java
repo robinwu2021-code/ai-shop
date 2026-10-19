@@ -241,6 +241,8 @@ public class StlBill extends BaseEntity {
      * 而历史账不能跟着变。与 commissionRate 落快照是同一个道理。
      */
     private Long splitAmountMinor;
+    /** 0: deployed legacy net command (query only); 1: fee-snapshot protocol. */
+    private Integer splitProtocolVersion;
 
     /**
      * 已退货款累计（分，买家实付口径，不含运费）。口径 A 按「累计已退 ÷ 商品实付」算各项份额，

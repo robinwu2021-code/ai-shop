@@ -51,7 +51,8 @@ public class UnsplitRefundAdjustment {
             if (splitDispatched) {
                 return coordinator.reverse(request);
             }
-            if (bill.getPaidAt() != null || bill.getPayoutNo() != null || StlBill.REVERSED.equals(bill.getStatus())) {
+            if (bill.getPaidAt() != null || bill.getPayoutNo() != null || StlBill.PAID.equals(bill.getStatus())
+                    || StlBill.REVERSED.equals(bill.getStatus())) {
                 return false;
             }
             return coordinator.reverse(request);

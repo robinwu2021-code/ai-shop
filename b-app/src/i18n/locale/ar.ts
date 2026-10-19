@@ -717,6 +717,30 @@ byWechat: "وي شات", byApple: "الدخول عبر Apple",
 
 
   points: {
+    statementStateBuilding: "جارٍ الإنشاء",
+    statementStateDraft: "بانتظار التأكيد",
+    statementStateDisputed: "يوجد اعتراض",
+    statementStateConfirmed: "بانتظار الدفع",
+    statementStatePaying: "جارٍ معالجة الدفع",
+    statementStatePaid: "مدفوع",
+    statementStateCleared: "لا يلزم الدفع",
+    statementStateUnknown: "بانتظار التحقق",
+
+    statementDetails: "تفاصيل الكشف",
+    statementSourceOrder: "الطلب المصدر",
+    statements: "كشوف النقاط",
+    statementFailed: "تعذر التحميل أو التحديث. حدّث الكشف وراجع آخر إصدار قبل المحاولة.",
+    statementRefresh: "تحديث الكشوف",
+    noStatements: "لا توجد كشوف",
+    statementRevision: "الإصدار",
+    statementDisputeReason: "سبب الاعتراض (مطلوب)",
+    statementConfirm: "تأكيد الإصدار",
+    statementDispute: "تقديم اعتراض",
+    statementMore: "تحميل المزيد",
+    statementChecked: "تمت مراجعة إصدار الكشف",
+    statementConfirmHint: "تحقق من النقاط والفترة قبل تأكيد هذا الإصدار للصرف.",
+    statementDisputeHint: "سيتوقف التأكيد التلقائي لهذا الإصدار بانتظار المراجعة.",
+
 
     agreement: "اتفاقية نقاط المتجر",
     activeAgreement: "الاتفاقية سارية",

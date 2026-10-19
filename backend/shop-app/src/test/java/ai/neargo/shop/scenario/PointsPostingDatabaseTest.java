@@ -149,6 +149,30 @@ class PointsPostingDatabaseTest {
                             "db/migration/V466__points_availability_projection.sql")).execute(dataSource);
                 }
             }
+            try (var finalProjection = connection.getMetaData().getTables(
+                    connection.getCatalog(), null, "pts_statement_final_fact", null)) {
+                if (!finalProjection.next()) {
+                    var migration = new ClassPathResource(
+                            "db/migration/V467__points_statement_final_fact_projection.sql");
+                    if ("H2".equals(connection.getMetaData().getDatabaseProductName())) {
+                        String sql;
+                        try { sql = migration.getContentAsString(java.nio.charset.StandardCharsets.UTF_8); }
+                        catch (java.io.IOException failure) { throw new IllegalStateException(failure); }
+                        int start = sql.indexOf("INSERT INTO pts_statement_final_fact");
+                        int end = sql.indexOf(';', start);
+                        // H2 has no native MySQL JSON/date functions; fresh isolated fixture has no
+                        // historical lifecycle rows. Native migration/backfill is verified on MySQL.
+                        sql = sql.substring(0, start) + sql.substring(end + 1);
+                        new ResourceDatabasePopulator(new org.springframework.core.io.ByteArrayResource(
+                                sql.getBytes(java.nio.charset.StandardCharsets.UTF_8))).execute(dataSource);
+                    } else {
+                        new ResourceDatabasePopulator(migration).execute(dataSource);
+                    }
+                }
+            }
+            try (var confirmation = connection.getMetaData().getTables(connection.getCatalog(), null, "pts_statement_confirmation", null)) {
+                if (!confirmation.next()) new ResourceDatabasePopulator(new ClassPathResource("db/migration/V469__points_statement_confirmation.sql")).execute(dataSource);
+            }
         } catch (SQLException failure) {
             throw new IllegalStateException("Points schema fixture failed", failure);
         }

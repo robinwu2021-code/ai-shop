@@ -104,6 +104,7 @@ class PerOrderSettlementTest {
         bill.setStatus(StlBill.PENDING); bill.setGrossMinor(1000L); bill.setNetMinor(985L);
         bill.setCommissionMinor(10L); bill.setServiceFeeMinor(5L); bill.setSplitAmountMinor(15L);
         bill.setPointsCostMinor(0L); bill.setSubsidyMinor(0L); bill.setPointsFeeMinor(0L);
+        bill.setSplitProtocolVersion(1);
         DataScopeContext.executeWithoutScope(() -> bills.insert(bill));
         settlement.executeSplit(no);
         assertThat(settlement.reverseSplit(bill.getSubOrderNo())).isFalse();
@@ -117,6 +118,43 @@ class PerOrderSettlementTest {
         assertThat(DataScopeContext.executeWithoutScope(() -> bills.selectById(bill.getId())).getStatus())
                 .isEqualTo(StlBill.SPLIT);
         assertThat(gateway.originals.get("S:"+no)).contains("ORIGINAL-ACCOUNT", "|15|");
+    }
+
+    @Test
+    void legacy_cash_unknown_only_queries_original_command_and_never_submits() {
+        String no = "LEG" + UUID.randomUUID().toString().replace("-", "").substring(0,20);
+        StlBill bill = legacyCashBill(no, StlBill.RETRYING);
+        DataScopeContext.executeWithoutScope(() -> bills.insert(bill));
+        gateway.originals.put(bill.getSubOrderNo(), "ORIGINAL-ACCOUNT|985|SPL-" + no);
+        gateway.unknownQueries.add(bill.getSubOrderNo());
+        settlement.executeSplit(no);
+        settlement.executeSplit(no);
+        assertThat(gateway.sends.getOrDefault(bill.getSubOrderNo(), 0)).isZero();
+        assertThat(gateway.queries.get(bill.getSubOrderNo())).isEqualTo(2);
+        assertThat(DataScopeContext.executeWithoutScope(() -> bills.selectById(bill.getId())).getStatus())
+                .isEqualTo(StlBill.RETRYING);
+    }
+
+    @Test
+    void legacy_successful_split_reversal_uses_original_net_not_new_fee_formula() {
+        String no = "LREV" + UUID.randomUUID().toString().replace("-", "").substring(0,20);
+        StlBill bill = legacyCashBill(no, StlBill.SPLIT);
+        DataScopeContext.executeWithoutScope(() -> bills.insert(bill));
+        gateway.reverseAmounts.put(bill.getSubOrderNo(), 985L);
+        assertThat(settlement.reverseSplit(bill.getSubOrderNo())).isTrue();
+        assertThat(DataScopeContext.executeWithoutScope(() -> bills.selectById(bill.getId())).getStatus())
+                .isEqualTo(StlBill.REVERSED);
+    }
+
+    private StlBill legacyCashBill(String no, String status) {
+        StlBill bill = new StlBill(); bill.setSettleNo(no); bill.setSubOrderNo("S:" + no);
+        bill.setOrderNo("O:" + no); bill.setEntityNo("M"); bill.setStoreNo("STORE");
+        bill.setPayMerchantNo("ORIGINAL-ACCOUNT"); bill.setCurrency("CNY"); bill.setPayChannel("TEST");
+        bill.setFundsMode(MerchantQueryPort.FUNDS_DIRECT); bill.setStatus(status);
+        bill.setGrossMinor(1000L); bill.setNetMinor(985L); bill.setCommissionMinor(10L);
+        bill.setServiceFeeMinor(5L); bill.setSplitAmountMinor(15L); bill.setPointsCostMinor(0L);
+        bill.setSubsidyMinor(0L); bill.setPointsFeeMinor(0L);
+        return bill;
     }
 
     @Test
@@ -227,6 +265,33 @@ class PerOrderSettlementTest {
         assertThat(payoutRows.selectById(row.getId()).getAmountMinor()).isEqualTo(955);
     }
 
+    @Test
+    void aggregated_split_runs_outside_transaction_and_funds_before_cash() {
+        String no="AS"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
+        var bill=pointsBill(no,PointsFundsGateway.FundsPath.AGGREGATED,"PER_ORDER");
+        DataScopeContext.executeWithoutScope(() -> bills.insert(bill));
+        settlement.executeSplit(no);
+        assertThat(funds.sends.get(bill.getSubOrderNo())).isEqualTo(1);
+        assertThat(gateway.sends.getOrDefault(bill.getSubOrderNo(),0)).isZero();
+        settlement.executeSplit(no);
+        assertThat(funds.queries.get(bill.getSubOrderNo())).isEqualTo(1);
+        assertThat(gateway.sends.get(bill.getSubOrderNo())).isEqualTo(1);
+    }
+
+    @Test
+    void missing_payment_route_does_not_send_or_resolve_current_store_account() {
+        String no="MR"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
+        var bill=pointsBill(no,PointsFundsGateway.FundsPath.DIRECT,"PER_ORDER");
+        bill.setPayMerchantNo(null);
+        DataScopeContext.executeWithoutScope(() -> bills.insert(bill));
+        assertThatThrownBy(() -> settlement.executeSplit(no))
+                .hasMessage("SETTLEMENT_RECIPIENT_REQUIRED");
+        assertThat(gateway.sends.getOrDefault(bill.getSubOrderNo(),0)).isZero();
+        assertThat(funds.sends.getOrDefault(bill.getSubOrderNo(),0)).isZero();
+        assertThat(new JdbcTemplate(payDataSource).queryForObject(
+                "SELECT COUNT(*) FROM stl_split_intent WHERE settle_no=?",Long.class,no)).isZero();
+    }
+
     private StlBill pointsBill(String no,PointsFundsGateway.FundsPath path,String mode) {
         String type="T:"+no;
         String sub="S:"+no;
@@ -264,6 +329,7 @@ class PerOrderSettlementTest {
         bill.setCurrency("CNY"); bill.setPayChannel("TEST"); bill.setFundsMode(path.name());
         bill.setStatus(StlBill.PENDING); bill.setGrossMinor(1000L); bill.setNetMinor(985L);
         bill.setCommissionMinor(10L); bill.setServiceFeeMinor(5L); bill.setSplitAmountMinor(15L);
+        bill.setSplitProtocolVersion(1);
         bill.setPointsCostMinor(path==PointsFundsGateway.FundsPath.AGGREGATED?30L:0L);
         bill.setSubsidyMinor(path==PointsFundsGateway.FundsPath.DIRECT?30L:0L); bill.setPointsFeeMinor(0L);
         return bill;
@@ -286,6 +352,8 @@ class PerOrderSettlementTest {
         final Map<String,Integer> sends=new ConcurrentHashMap<>();
         final Map<String,Integer> queries=new ConcurrentHashMap<>();
         final Map<String,String> originals=new ConcurrentHashMap<>();
+        final java.util.Set<String> unknownQueries=ConcurrentHashMap.newKeySet();
+        final Map<String,Long> reverseAmounts=new ConcurrentHashMap<>();
         LostSplitGateway(JdbcTemplate jdbc) { this.jdbc=jdbc; }
         @Override public Result split(String sub,String recipient,long amount,String request) {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
@@ -299,10 +367,13 @@ class PerOrderSettlementTest {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             assertThat(recipient+"|"+amount+"|"+request).isEqualTo(originals.get(sub));
             queries.merge(sub,1,Integer::sum);
+            if (unknownQueries.contains(sub)) return Result.fail("LEGACY_OUTCOME_UNKNOWN");
             return Result.ok("TEST-ACCEPTED:"+request);
         }
         @Override public Result reverse(String sub,String recipient,long amount,String request) {
-            throw new AssertionError("unexpected reverse");
+            if (!reverseAmounts.containsKey(sub)) throw new AssertionError("unexpected reverse");
+            assertThat(amount).isEqualTo(reverseAmounts.get(sub));
+            return Result.ok("TEST-REVERSED:"+request);
         }
         @Override public Result subsidy(String sub,String recipient,long amount,String request) {
             throw new AssertionError("points must use the new funds gateway");

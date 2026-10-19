@@ -38,6 +38,8 @@ public class StatementPayoutServiceImpl implements StatementPayoutService {
     private final StatementStore store;
     private final PointsPostingService posting;
     private final ObjectProvider<PointsFundsGateway> gateways;
+    @org.springframework.beans.factory.annotation.Autowired
+    private ObjectProvider<ai.neargo.shop.pay.points.store.StatementBuildStore> buildStores;
     private final ObjectMapper json=new ObjectMapper();
 
     public StatementPayoutServiceImpl(PointsReadStore read,PointsConfigurationStore config,StatementStore store,
@@ -68,6 +70,18 @@ public class StatementPayoutServiceImpl implements StatementPayoutService {
         FundsContext recipient=null;
         long points=0;
         List<String> ids=new ArrayList<>();
+        if (statement.sourceBuildNo()!=null) {
+            var totals=buildStores.getObject().totals(no);
+            require(num(totals,"busy")==0,"POINTS_STATEMENT_SOURCE_NOT_READY");
+            require(num(totals,"version_sum")==statement.current().sourceVersionSum(),"POINTS_STATEMENT_REDRAFT_REQUIRED");
+            points=num(totals,"points");
+            var source=store.firstSource(no);
+            require(source!=null,"POINTS_STATEMENT_EMPTY");
+            var snapshot=json.readValue((String)source.get("payload_json"),RedeemSnapshot.class);
+            var c=snapshot.fundsContext();
+            recipient=new FundsContext(c.path(),c.channel(),c.merchantNo(),c.storeNo(),c.accountVersion(),
+                    c.subMerchantId(),null,null,0);
+        }
         for (String id:statement.positionIds()) {
             var source=store.lockSource(id);
             require("PAYABLE".equals(source.get("state")) && no.equals(source.get("statement_no")),
@@ -109,7 +123,7 @@ public class StatementPayoutServiceImpl implements StatementPayoutService {
         var saved=new PayoutSnapshot(command,ticket,funds,null,no,revision,offsets);
         positions.add(new PositionMove(PositionMove.Kind.PAYOUT,ticketNo,-1,"NEW","READY",points,0,
                 json.writeValueAsString(saved)));
-        var paying=new Snapshot(no,statement.period(),statement.positionIds(),statement.revisions(),"PAYING",null);
+        var paying=new Snapshot(no,statement.period(),statement.positionIds(),statement.revisions(),"PAYING",null,statement.sourceBuildNo());
         positions.add(new PositionMove(PositionMove.Kind.STATEMENT,no,num(head,"version"),"CONFIRMED","PAYING",
                 num(head,"original_points"),0,json.writeValueAsString(paying)));
         posting.post(new Voucher("STATEMENT_PAYOUT:"+biz,typeCode,type.currency(),type.rate(),List.of(),List.of(),

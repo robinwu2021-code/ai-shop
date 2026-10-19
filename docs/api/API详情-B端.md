@@ -5715,6 +5715,158 @@ _无字段_
 | `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
 
 
+#### GET `/biz/points/store-statement`
+
+当前门店指定积分账单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+| `statementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointStatement`](#storepointstatement)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `statementNo` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `fromMillis` | `number` | 是 | — |
+| `toMillis` | `number` | 是 | — |
+| `state` | `string` | 是 | — |
+| `revision` | `number` | 是 | — |
+| `points` | `number` | 是 | — |
+| `disputeReason` | `string,null` | 是 | — |
+| `revisions` | `object`（见下）\[\] | 是 | — |
+
+`revisions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `number` | `number` | 是 | — |
+| `points` | `number` | 是 | — |
+| `reason` | `string,null` | 是 | — |
+
+
+#### POST `/biz/points/store-statement-confirm`
+
+确认当前门店指定修订积分账单　🔒
+
+**入参**
+
+请求体：[`StorePointStatementChange`](#storepointstatementchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `statementNo` | `string` | 是 | — |
+| `revision` | `number` | 是 | — |
+| `reason` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointStatementReceipt`](#storepointstatementreceipt)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### POST `/biz/points/store-statement-dispute`
+
+对当前门店积分账单提出异议　🔒
+
+**入参**
+
+请求体：[`StorePointStatementChange`](#storepointstatementchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `statementNo` | `string` | 是 | — |
+| `revision` | `number` | 是 | — |
+| `reason` | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointStatementReceipt`](#storepointstatementreceipt)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### GET `/biz/points/store-statement-lines`
+
+当前门店指定修订积分账单明细　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+| `statementNo` | query | `string` | 是 | — |
+| `revision` | query | `number` | 是 | — |
+| `after` | query | `number` | 否 | — |
+| `limit` | query | `number` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointStatementLinePage`](#storepointstatementlinepage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | — |
+| `points` | `number` | 是 | — |
+
+
+#### GET `/biz/points/store-statements`
+
+当前门店积分账单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+| `after` | query | `number` | 否 | — |
+| `limit` | query | `number` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointStatementPage`](#storepointstatementpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`StorePointStatement`](#storepointstatement)\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+
 #### GET `/biz/points/store-terms`
 
 当前积分签约条款　🔒
@@ -11528,6 +11680,78 @@ StorePointAgreement 的 settleMode 取值域，按服务端契约校验。
 | `termsHash` | `string` | 是 | 接受条款的内容摘要 |
 | `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
 | `channel` | `string` | 是 | 冻结的支付通道编码 |
+
+### StorePointStatement
+
+Current-store statement projection; source positions and bank routes remain server-side.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `statementNo` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `fromMillis` | `number` | 是 | — |
+| `toMillis` | `number` | 是 | — |
+| `state` | `string` | 是 | — |
+| `revision` | `number` | 是 | — |
+| `points` | `number` | 是 | — |
+| `disputeReason` | `string,null` | 是 | — |
+| `revisions` | `object`（见下）\[\] | 是 | — |
+
+`revisions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `number` | `number` | 是 | — |
+| `points` | `number` | 是 | — |
+| `reason` | `string,null` | 是 | — |
+
+### StorePointStatementChange
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `statementNo` | `string` | 是 | — |
+| `revision` | `number` | 是 | — |
+| `reason` | `string` | 是 | — |
+
+### StorePointStatementLinePage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | — |
+| `points` | `number` | 是 | — |
+
+### StorePointStatementPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`StorePointStatement`](#storepointstatement)\[\] | 是 | — |
+| `next` | `number` | 是 | — |
+| `hasMore` | `boolean` | 是 | — |
+
+### StorePointStatementReceipt
+
+Receipt of an audited statement decision; this does not assert bank payout success.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | — |
+| `operation` | `string` | 是 | — |
+| `typeCode` | `string` | 是 | — |
+| `reference` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
 
 ### StorePointTerms
 

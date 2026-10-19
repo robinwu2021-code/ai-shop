@@ -6146,6 +6146,148 @@ components:
         - "imageBase64"
       additionalProperties: false
       description: "店铺小程序码（海报用，`GET /mp/merchant/{merchantNo}/acode`）。\n\n**码是店铺码，不带邀请人**：`wxacode.getUnlimited` 是永久码且每个 appid 总量有限， 一人一张会烧穿额度 —— 而烧穿之后新入驻的商家再也拿不到店铺码。 所以海报归因到**店**，邀请归因走小程序内转发那条路。"
+    StorePointStatement:
+      type: "object"
+      properties:
+        id:
+          type: "number"
+        statementNo:
+          type: "string"
+        typeCode:
+          type: "string"
+        storeNo:
+          type: "string"
+        fromMillis:
+          type: "number"
+        toMillis:
+          type: "number"
+        state:
+          type: "string"
+        revision:
+          type: "number"
+        points:
+          type: "number"
+        disputeReason:
+          type:
+            - "string"
+            - "null"
+        revisions:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              number:
+                type: "number"
+              points:
+                type: "number"
+              reason:
+                type:
+                  - "string"
+                  - "null"
+            required:
+              - "number"
+              - "points"
+              - "reason"
+            additionalProperties: false
+      required:
+        - "id"
+        - "statementNo"
+        - "typeCode"
+        - "storeNo"
+        - "fromMillis"
+        - "toMillis"
+        - "state"
+        - "revision"
+        - "points"
+        - "disputeReason"
+        - "revisions"
+      additionalProperties: false
+      description: "Current-store statement projection; source positions and bank routes remain server-side."
+    StorePointStatementPage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            "$ref": "#/components/schemas/StorePointStatement"
+        next:
+          type: "number"
+        hasMore:
+          type: "boolean"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    StorePointStatementChange:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+        typeCode:
+          type: "string"
+        statementNo:
+          type: "string"
+        revision:
+          type: "number"
+        reason:
+          type: "string"
+      required:
+        - "requestId"
+        - "typeCode"
+        - "statementNo"
+        - "revision"
+        - "reason"
+      additionalProperties: false
+    StorePointStatementLinePage:
+      type: "object"
+      properties:
+        rows:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              orderNo:
+                type: "string"
+              subOrderNo:
+                type: "string"
+              points:
+                type: "number"
+            required:
+              - "orderNo"
+              - "subOrderNo"
+              - "points"
+            additionalProperties: false
+        next:
+          type: "number"
+        hasMore:
+          type: "boolean"
+      required:
+        - "rows"
+        - "next"
+        - "hasMore"
+      additionalProperties: false
+    StorePointStatementReceipt:
+      type: "object"
+      properties:
+        requestId:
+          type: "string"
+        operation:
+          type: "string"
+        typeCode:
+          type: "string"
+        reference:
+          type: "string"
+        at:
+          type: "number"
+      required:
+        - "requestId"
+        - "operation"
+        - "typeCode"
+        - "reference"
+        - "at"
+      additionalProperties: false
+      description: "Receipt of an audited statement decision; this does not assert bank payout success."
     MessageType:
       type: "string"
       enum:
@@ -12187,6 +12329,35 @@ components:
           type: "number"
           description: "本次请求记录上限"
       required:
+        - "typeCode"
+      additionalProperties: false
+    StorePointStatementQuery:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+        statementNo:
+          type: "string"
+      required:
+        - "typeCode"
+        - "statementNo"
+      additionalProperties: false
+    StorePointStatementLinesQuery:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+        statementNo:
+          type: "string"
+        revision:
+          type: "number"
+        after:
+          type: "number"
+        limit:
+          type: "number"
+      required:
+        - "revision"
+        - "statementNo"
         - "typeCode"
       additionalProperties: false
     MerchantOrderActionKind:
@@ -19831,6 +20002,211 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/points/store-statement":
+    get:
+      operationId: "mStorePointStatement"
+      summary: "当前门店指定积分账单"
+      tags:
+        - "points"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "typeCode"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "statementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StorePointStatement"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/points/store-statement-lines":
+    get:
+      operationId: "mStorePointStatementLines"
+      summary: "当前门店指定修订积分账单明细"
+      tags:
+        - "points"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "typeCode"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "statementNo"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+        - name: "revision"
+          in: "query"
+          required: true
+          schema:
+            type: "number"
+        - name: "after"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+        - name: "limit"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StorePointStatementLinePage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/points/store-statements":
+    get:
+      operationId: "mStorePointStatements"
+      summary: "当前门店积分账单"
+      tags:
+        - "points"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "typeCode"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+            description: "积分类型唯一编码"
+        - name: "after"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "上一页返回的游标，首次为零"
+        - name: "limit"
+          in: "query"
+          required: false
+          schema:
+            type: "number"
+            description: "本次请求记录上限"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StorePointStatementPage"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/points/store-statement-confirm":
+    post:
+      operationId: "mConfirmStorePointStatement"
+      summary: "确认当前门店指定修订积分账单"
+      tags:
+        - "points"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StorePointStatementReceipt"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/StorePointStatementChange"
+  "/biz/points/store-statement-dispute":
+    post:
+      operationId: "mDisputeStorePointStatement"
+      summary: "对当前门店积分账单提出异议"
+      tags:
+        - "points"
+      security:
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StorePointStatementReceipt"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/StorePointStatementChange"
   "/biz/points/store-types":
     get:
       operationId: "mStorePointTypes"

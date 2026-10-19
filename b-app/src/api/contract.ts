@@ -1,3 +1,4 @@
+import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
 // B 端唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 B 端 BFF `/mb/**`（C 端是 `/mp/**`）。
 //
@@ -2015,6 +2016,11 @@ export interface MerchantApi {
    */
   mDailyFlow(q?: { from?: string; to?: string; allStores?: boolean }): Promise<DailyFlowPage>;
 
+  mStorePointStatement(typeCode: string, statementNo: string): Promise<StorePointStatement>;
+  mStorePointStatementLines(typeCode: string, statementNo: string, revision: number, after?: number, limit?: number): Promise<StorePointStatementLinePage>;
+  mStorePointStatements(typeCode: string, after?: number, limit?: number): Promise<StorePointStatementPage>;
+  mConfirmStorePointStatement(request: StorePointStatementChange): Promise<StorePointStatementReceipt>;
+  mDisputeStorePointStatement(request: StorePointStatementChange): Promise<StorePointStatementReceipt>;
   mStorePointTypes(): Promise<StorePointType[]>;
   mStorePointAccount(typeCode: string): Promise<StorePointAccount>;
   mStorePointEntries(typeCode: string, after?: number, limit?: number): Promise<StorePointEntryPage>;

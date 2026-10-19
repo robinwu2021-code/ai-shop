@@ -1031,6 +1031,7 @@ CREATE TABLE IF NOT EXISTS stl_bill
     reversed_minor       BIGINT(20) NOT NULL DEFAULT 0,
     points_funding_ticket VARCHAR(40) DEFAULT NULL,
     points_funding_ready_at BIGINT DEFAULT NULL,
+    split_protocol_version INT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT uk_settle_no UNIQUE (settle_no),
     CONSTRAINT uk_sub_order UNIQUE (sub_order_no)
@@ -5960,6 +5961,86 @@ CREATE TABLE IF NOT EXISTS pts_availability_projection
     payload_json LONGTEXT NOT NULL,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (type_code)
+);
+
+CREATE TABLE IF NOT EXISTS pts_statement_final_fact
+(
+    ready_seq BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    type_code VARCHAR(40) NOT NULL,
+    sub_order_no VARCHAR(40) NOT NULL,
+    final_at_millis BIGINT NOT NULL,
+    CONSTRAINT uk_pts_statement_final_source UNIQUE(type_code, sub_order_no)
+);
+
+CREATE TABLE IF NOT EXISTS pts_statement_build
+(
+    build_no VARCHAR(40) NOT NULL PRIMARY KEY,
+    type_code VARCHAR(40) NOT NULL,
+    store_no VARCHAR(40) NOT NULL,
+    period_from BIGINT NOT NULL,
+    period_to BIGINT NOT NULL,
+    high_water BIGINT NOT NULL,
+    scan_cursor BIGINT NOT NULL DEFAULT 0,
+    source_count BIGINT NOT NULL DEFAULT 0,
+    state VARCHAR(24) NOT NULL,
+    actor VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    CONSTRAINT uk_pts_statement_build_period UNIQUE(type_code,store_no,period_from)
+);
+
+CREATE TABLE IF NOT EXISTS pts_statement_build_item
+(
+    build_no VARCHAR(40) NOT NULL,
+    position_no VARCHAR(40) NOT NULL,
+    ready_seq BIGINT NOT NULL,
+    route_key VARCHAR(40) NOT NULL,
+    source_version BIGINT NOT NULL,
+    points BIGINT NOT NULL,
+    PRIMARY KEY(build_no,ready_seq),
+    CONSTRAINT uk_pts_statement_build_source UNIQUE(position_no)
+);
+
+CREATE TABLE IF NOT EXISTS pts_statement_source_history
+(
+    statement_no VARCHAR(40) NOT NULL,
+    position_no VARCHAR(40) NOT NULL,
+    source_version BIGINT NOT NULL,
+    change_seq BIGINT NOT NULL,
+    points BIGINT NOT NULL,
+    PRIMARY KEY(statement_no,position_no,source_version)
+);
+
+CREATE TABLE IF NOT EXISTS pts_user_adjustment
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    adjustment_no VARCHAR(40) NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL DEFAULT 'SUBMITTED',
+    submitted_by VARCHAR(40) NOT NULL,
+    approved_by VARCHAR(40) NULL,
+    payload_json LONGTEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_pts_adjustment_no UNIQUE (adjustment_no)
+);
+
+CREATE TABLE IF NOT EXISTS pts_statement_confirmation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    statement_no VARCHAR(40) NOT NULL,
+    revision BIGINT NOT NULL,
+    type_code VARCHAR(40) NOT NULL,
+    merchant_no VARCHAR(40) NOT NULL,
+    store_no VARCHAR(40) NOT NULL,
+    state VARCHAR(24) NOT NULL,
+    published_at BIGINT NOT NULL,
+    last_attempt_at BIGINT NOT NULL DEFAULT 0,
+    notified_at BIGINT NULL,
+    deadline BIGINT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_pts_statement_confirmation UNIQUE (statement_no,revision)
 );
 
 -- 种子数据

@@ -25,7 +25,21 @@ public class MybatisStatementStore implements StatementStore {
 
     @Override
     public Map<String, Object> lockSource(String no) {
-        return DataScopeContext.executeWithoutScope(() -> mapper.lockStatementSource(no));
+        return DataScopeContext.executeWithoutScope(() -> {
+            var row=mapper.lockStatementSource(no);
+            if (row!=null && row.get("statement_no")!=null) {
+                var head=mapper.lockStatement((String)row.get("statement_no"));
+                String effective=ai.neargo.shop.pay.points.statement.StatementSourceState.effective(row,head);
+                if (!effective.equals(row.get("state"))) {
+                    row=new java.util.HashMap<>(row); row.put("raw_state",row.get("state")); row.put("state",effective);
+                }
+            }
+            return row;
+        });
+    }
+
+    @Override public Map<String,Object> firstSource(String statement) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.firstStatementBuildSource(statement));
     }
 
     @Override
@@ -35,8 +49,8 @@ public class MybatisStatementStore implements StatementStore {
     }
 
     @Override
-    public List<Map<String, Object>> candidates(String type, String store) {
-        return DataScopeContext.executeWithoutScope(() -> mapper.statementCandidates(type, store));
+    public List<Map<String, Object>> candidates(String type, String store, long toMillis) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.statementCandidates(type, store, toMillis));
     }
 
     @Override

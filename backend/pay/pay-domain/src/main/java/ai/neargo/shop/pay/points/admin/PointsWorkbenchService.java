@@ -10,6 +10,14 @@ import java.util.List;
 
 /** Store-scoped operating actions cannot manufacture source orders or cash confirmations. */
 public interface PointsWorkbenchService {
+    StatementView statement(Reference request);
+
+    StatementLinePage statementLines(StatementLines request);
+
+    record StatementLines(String typeCode, String storeNo, String statementNo, long revision, long after, int limit) {}
+    record StatementLine(String orderNo, String subOrderNo, long points) {}
+    record StatementLinePage(List<StatementLine> rows, long next, boolean hasMore) {}
+
     StatementPage statements(String typeCode, String storeNo, long after, int limit);
 
     OperatorResult draftStatements(StatementDraft request, String actor);

@@ -2340,6 +2340,8 @@ class PointsRefundPreparationTest {
         PointsPostingDatabaseTest.Config.class,
         MybatisPointsReadStore.class,
         ai.neargo.shop.pay.points.store.impl.MybatisStatementStore.class,
+        ai.neargo.shop.pay.points.store.impl.MybatisStatementBuildStore.class,
+        ai.neargo.shop.pay.points.store.impl.MybatisStatementConfirmationStore.class,
         MybatisPointsConfigurationStore.class, ai.neargo.shop.pay.points.store.impl.AcceptanceAvailabilityProjection.class,
         ai.neargo.shop.pay.points.store.impl.MybatisLifecycleStore.class,
         ai.neargo.shop.pay.points.lifecycle.impl.AccountExpiryGuardImpl.class,

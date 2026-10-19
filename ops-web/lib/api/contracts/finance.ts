@@ -1,3 +1,4 @@
+import type { PointsAdjustmentSubmission, PointsAdjustmentReview, PointsAdjustmentPage } from "../points-adjustment-types";
 import type { PointsAccountQ, PointsAccountView, PointsFreeze, PointsCursorPage, PointsVoucherView, PointsEntriesQ, PointsEntryView, PointsFlowView, PointsPositionQ, PointsPositionView, PointsStatsQ, PointsStats, PointsStatsRebuild, PointsReconRun, PointsRecon } from "@/lib/types";
 import type { PointsStatementPage, PointsStatementDraft, PointsStatementChange, PointsReference, PointsRevision, PointsRefundView, PointsReceivableRecovery, PointsFundsReference, PointsFundsView, PointsRecovery, PointsRecoveryExecution, PointsEventPage, PointsEventRetry } from "@/lib/types";
 import type { PointsOperation, PointsSubmission, PointsRequestReview, PointsRequestPage, PointsPlanChange, PointsPlanGenerate, PointsPlanReceipt, PointsPlanCancellation, PointsPlanPage, PointsWithdrawal, PointsExecution } from "@/lib/types";
@@ -14,6 +15,9 @@ import type { PageQ, SettlementQ, PointsReceivableQ } from "../query";
 import type { OrderPointsStoreObligations, OrderPointsIntegrationQ, OrderPointsIntegrationPolicy, OrderPointsIntegrationChange, OrderPointsInspection, OrderPointsManualRefundPage, OrderPointsRefundActionResult } from "@/lib/types";
 
 export interface FinanceApi {
+  pointsAdjustments(q: { typeCode: string; after?: number; limit?: number }): Promise<PointsAdjustmentPage>;
+  submitPointsAdjustment(value: PointsAdjustmentSubmission): Promise<import("@/lib/types").PointsOperation>;
+  reviewPointsAdjustment(value: PointsAdjustmentReview): Promise<import("@/lib/types").PointsOperation>;
   /** 订单积分动态接线策略，门店和支付场景精确查询。 */
   orderPointsObligations(storeNo: string): Promise<OrderPointsStoreObligations>;
   orderPointsIntegration(q: OrderPointsIntegrationQ): Promise<OrderPointsIntegrationPolicy>;

@@ -17,6 +17,7 @@ import { PointsPolicyTab } from "./switches-tab";
 import { PointsConfigurationTab } from "./types-tab";
 import { PointsQueriesTab } from "./queries-tab";
 import { PointsSettlementsTab } from "./settlements-tab";
+import { PointsAdjustments } from "./adjustments";
 import { PointsTreasuryTab } from "./requests-tab";
 
 const TABS = ["overview", "configuration", "switches", "treasury", "settlements", "queries"] as const;
@@ -44,6 +45,6 @@ function PointsInner() {
     {tab === "switches" && <PointsPolicyTab c={c} canEdit={can("finance:settle:execute")} />}
     {tab === "queries" && <PointsQueriesTab canEdit={can("finance:settle:execute")} canReconRead={can("finance:recon:read")} canReconRun={can("finance:recon:resolve")} />}
     {tab === "settlements" && <PointsSettlementsTab canMake={can("finance:settle:execute")} canExecute={can("finance:payout:execute")} />}
-    {tab === "treasury" && <PointsTreasuryTab canMake={can("finance:settle:execute")} canCheck={can("finance:payout:execute")} />}
+    {tab === "treasury" && <><PointsTreasuryTab canMake={can("finance:settle:execute")} canCheck={can("finance:payout:execute")} /><PointsAdjustments canMake={can("finance:settle:execute")} canCheck={can("finance:payout:execute")} /></>}
   </div>;
 }

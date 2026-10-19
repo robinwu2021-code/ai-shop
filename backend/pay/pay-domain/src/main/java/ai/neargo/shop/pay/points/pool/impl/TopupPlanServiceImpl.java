@@ -8,6 +8,7 @@ import ai.neargo.shop.pay.points.policy.PointsDigests;
 import ai.neargo.shop.pay.points.pool.TopupPlanService;
 import ai.neargo.shop.pay.points.pool.impl.PoolRequestServiceImpl.Envelope;
 import ai.neargo.shop.pay.points.store.PointsConfigurationStore;
+import ai.neargo.shop.pay.points.store.PointsCursorStore;
 import ai.neargo.shop.pay.points.store.PointsFactStore;
 import ai.neargo.shop.pay.points.store.PointsOperationsStore;
 import ai.neargo.shop.pay.points.store.PointsReadStore;
@@ -32,17 +33,20 @@ public class TopupPlanServiceImpl implements TopupPlanService {
     private final PointsOperationsStore store;
     private final PointsReadStore read;
     private final PointsFactStore facts;
+    private final PointsCursorStore cursors;
     private final ObjectMapper json = new ObjectMapper();
 
     public TopupPlanServiceImpl(
             PointsConfigurationStore config,
             PointsOperationsStore store,
             PointsReadStore read,
-            PointsFactStore facts) {
+            PointsFactStore facts,
+            PointsCursorStore cursors) {
         this.config = config;
         this.store = store;
         this.read = read;
         this.facts = facts;
+        this.cursors = cursors;
     }
 
     @Override
@@ -102,64 +106,56 @@ public class TopupPlanServiceImpl implements TopupPlanService {
     public int tick(String type, LocalDate asOf, int limit) {
         require(asOf != null && limit > 0 && limit <= 200, "POINTS_BATCH_INVALID");
         config.lockTypeAndPool(type);
-        settleSubmitted(type);
-        int created = 0, scanned = 0;
-        long after = 0;
-        while (created < limit) {
-            var page = store.plans(type, after, 200, true);
-            if (page.isEmpty()) {
+        String task = PointsKeys.position("PLAN_SCAN", type, type);
+        var cursor = cursors.state(task);
+        var progress = json.readTree(cursor.payload());
+        long submittedAfter = settleSubmitted(type, (progress.has("submittedAfter") ? progress.get("submittedAfter").longValue() : 0), limit);
+        long after = (progress.has("configAfter") ? progress.get("configAfter").longValue() : 0);
+        var page = store.plans(type, after, limit, true);
+        if (page.isEmpty() && after > 0) {
+            after = 0;
+            page = store.plans(type, after, limit, true);
+        }
+        int created = 0, attempts = 0;
+        for (var candidate : page) {
+            var row = store.lockPlan(text(candidate, "plan_no"), "CONFIG");
+            after = num(candidate, "id");
+            if (!"ACTIVE".equals(row.get("state"))) {
+                continue;
+            }
+            var schedule = json.readValue(text(row, "payload_json"), Schedule.class);
+            LocalDate next = schedule.nextPeriod();
+            // Attempt budget also bounds recovery over periods already materialized before nextPeriod.
+            while (!next.isAfter(asOf) && attempts < limit) {
+                attempts++;
+                String key = next.toString();
+                if (store.lockPlan(schedule.plan().planNo(), key) == null) {
+                    PoolRequest request = null;
+                    if (schedule.plan().action() == Action.TRANSFER_U_TO_B) {
+                        require(schedule.maker() != null && !schedule.maker().isBlank(),
+                                "POINTS_PLAN_MAKER_REQUIRED");
+                        request = request(schedule.plan(), next, null, schedule.maker());
+                        config.submit(request, json.writeValueAsString(new Envelope(request, null)));
+                    }
+                    store.savePlan(type, schedule.plan().planNo(), key,
+                            request == null ? "AWAITING_RECEIPT" : "SUBMITTED",
+                            json.writeValueAsString(new Period(schedule.plan(), next, request, null)), -1);
+                    created++;
+                }
+                next = next.plusDays(schedule.plan().everyDays());
+            }
+            if (!next.equals(schedule.nextPeriod())) {
+                store.savePlan(type, schedule.plan().planNo(), "CONFIG", "ACTIVE",
+                        json.writeValueAsString(new Schedule(schedule.plan(), next, schedule.maker())),
+                        num(row, "version"));
+            }
+            // Move past even an overdue schedule: other schedules must get a turn before revisiting it.
+            if (attempts == limit) {
                 break;
             }
-            for (var candidate : page) {
-                if (++scanned > 10000) {
-                    throw new IllegalStateException("POINTS_PLAN_SCAN_LIMIT");
-                }
-                var row = store.lockPlan(text(candidate, "plan_no"), "CONFIG");
-                if (!"ACTIVE".equals(row.get("state"))) {
-                    continue;
-                }
-                var schedule = json.readValue(text(row, "payload_json"), Schedule.class);
-                LocalDate next = schedule.nextPeriod();
-                int attempts = 0;
-                while (!next.isAfter(asOf) && created < limit) {
-                    require(++attempts <= 10000, "POINTS_PLAN_SCAN_LIMIT");
-                    String key = next.toString();
-                    if (store.lockPlan(schedule.plan().planNo(), key) == null) {
-                        PoolRequest request = null;
-                        if (schedule.plan().action() == Action.TRANSFER_U_TO_B) {
-                            require(
-                                    schedule.maker() != null && !schedule.maker().isBlank(),
-                                    "POINTS_PLAN_MAKER_REQUIRED");
-                            request = request(schedule.plan(), next, null, schedule.maker());
-                            config.submit(
-                                    request, json.writeValueAsString(new Envelope(request, null)));
-                        }
-                        store.savePlan(
-                                type,
-                                schedule.plan().planNo(),
-                                key,
-                                request == null ? "AWAITING_RECEIPT" : "SUBMITTED",
-                                json.writeValueAsString(
-                                        new Period(schedule.plan(), next, request, null)),
-                                -1);
-                        created++;
-                    }
-                    next = next.plusDays(schedule.plan().everyDays());
-                }
-                store.savePlan(
-                        type,
-                        schedule.plan().planNo(),
-                        "CONFIG",
-                        "ACTIVE",
-                        json.writeValueAsString(
-                                new Schedule(schedule.plan(), next, schedule.maker())),
-                        num(row, "version"));
-                if (created == limit) {
-                    break;
-                }
-            }
-            after = num(page.getLast(), "id");
         }
+        cursors.advance(task, type, cursor.watermark(), Math.addExact(cursor.watermark(), 1),
+                json.writeValueAsString(Map.of("submittedAfter", submittedAfter, "configAfter", after)));
         return created;
     }
 
@@ -213,34 +209,26 @@ public class TopupPlanServiceImpl implements TopupPlanService {
                 num(row, "version"));
     }
 
-    private void settleSubmitted(String type) {
-        long after = 0;
-        int scanned = 0;
-        while (true) {
-            var page = store.plans(type, after, 200, false);
-            if (page.isEmpty()) {
-                return;
-            }
-            for (var row : page) {
-                require(++scanned <= 10000, "POINTS_PLAN_SCAN_LIMIT");
-                var period = json.readValue(text(row, "payload_json"), Period.class);
-                var request = config.request(period.request().requestNo());
-                if (request == null) {
-                    continue;
-                }
+    private long settleSubmitted(String type, long after, int limit) {
+        var page = store.plans(type, after, limit, false);
+        if (page.isEmpty() && after > 0) {
+            after = 0;
+            page = store.plans(type, after, limit, false);
+        }
+        for (var row : page) {
+            var period = json.readValue(text(row, "payload_json"), Period.class);
+            var request = config.request(period.request().requestNo());
+            if (request != null) {
                 String state = text(request, "state");
                 if (Set.of("APPROVED", "REJECTED", "CANCELLED").contains(state)) {
-                    store.savePlan(
-                            type,
-                            period.plan().planNo(),
-                            period.day().toString(),
+                    store.savePlan(type, period.plan().planNo(), period.day().toString(),
                             "APPROVED".equals(state) ? "COMPLETED" : "CANCELLED",
-                            text(row, "payload_json"),
-                            num(row, "version"));
+                            text(row, "payload_json"), num(row, "version"));
                 }
             }
-            after = num(page.getLast(), "id");
+            after = num(row, "id");
         }
+        return after;
     }
 
     private Map<String, Object> locked(String plan, LocalDate day) {

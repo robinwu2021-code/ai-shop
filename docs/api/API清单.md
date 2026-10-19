@@ -8,7 +8,7 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 893 个接口**：后端已实现 809（91%）· 前端在调 816
+**合计 901 个接口**：后端已实现 817（91%）· 前端在调 824
 
 ---
 
@@ -284,7 +284,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **311** 个接口 ｜ 后端已实现 **294**（95%）｜ 前端在调 **311**
+共 **316** 个接口 ｜ 后端已实现 **299**（95%）｜ 前端在调 **316**
 
 ### activities（4）
 
@@ -727,7 +727,7 @@
 | POST | `/biz/platform-activity/{activityNo}/enrollment` | 报名平台活动（审核前可改） | `EnrollReq` | `PlatformEnrollment` | 🔒 | ✅ | ✅ |
 | POST | `/biz/platform-activity/{activityNo}/withdraw` | 撤回待审的报名 | — | `PlatformEnrollment` | 🔒 | ✅ | ✅ |
 
-### points（7）
+### points（12）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -736,6 +736,11 @@
 | POST | `/biz/points/store-agreement/sign` | 主体属主签署当前门店积分协议 | `StorePointSignRequest` | `StorePointAgreement` | 🔒 | ✅ | ✅ |
 | POST | `/biz/points/store-agreement/terminate` | 主体属主终止当前门店积分协议 | `StorePointsTypeQuery` | — | 🔒 | ✅ | ✅ |
 | GET | `/biz/points/store-entries` | 当前门店积分流水 | — | `StorePointEntryPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-statement` | 当前门店指定积分账单 | — | `StorePointStatement` | 🔒 | ✅ | ✅ |
+| POST | `/biz/points/store-statement-confirm` | 确认当前门店指定修订积分账单 | `StorePointStatementChange` | `StorePointStatementReceipt` | 🔒 | ✅ | ✅ |
+| POST | `/biz/points/store-statement-dispute` | 对当前门店积分账单提出异议 | `StorePointStatementChange` | `StorePointStatementReceipt` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-statement-lines` | 当前门店指定修订积分账单明细 | — | `StorePointStatementLinePage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-statements` | 当前门店积分账单 | — | `StorePointStatementPage` | 🔒 | ✅ | ✅ |
 | GET | `/biz/points/store-terms` | 当前积分签约条款 | — | `StorePointTerms` | 🔒 | ✅ | ✅ |
 | GET | `/biz/points/store-types` | 当前门店可见的积分类型 | — | `数组` | 🔒 | ✅ | ✅ |
 
@@ -934,7 +939,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **461** 个接口 ｜ 后端已实现 **395**（86%）｜ 前端在调 **384**
+共 **464** 个接口 ｜ 后端已实现 **398**（86%）｜ 前端在调 **387**
 
 ### aftersale（5）
 
@@ -1016,7 +1021,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（89）
+### finance（92）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1045,6 +1050,9 @@
 | POST | `/ops/payouts/{payoutNo}/paid` | 登记凭证 | — | `Payout` | — | ✅ | ✅ |
 | GET | `/ops/points/account` | pointsAccount | — | `PointsAccountView` | — | ✅ | ✅ |
 | POST | `/ops/points/account-freeze` | freezePointsAccount | — | `PointsOperation` | — | ✅ | ✅ |
+| POST | `/ops/points/adjustment-review` | reviewPointsAdjustment | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/points/adjustments` | pointsAdjustments | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/points/adjustments` | submitPointsAdjustment | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/points/agreements` | pointsAgreements | — | `PointsAgreementPage` | — | ✅ | ✅ |
 | GET | `/ops/points/entries` | pointsEntries | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/points/event-retry` | retryPointsEvent | — | `PointsOperation` | — | ✅ | ✅ |

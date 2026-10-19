@@ -347,6 +347,118 @@ class PointsKernelOperationsTest {
     }
 
     @Test
+    void plan_scan_budget_survives_restart_and_reaches_due_config_behind_future_configs() {
+        String type = fixture();
+        var plans = context.getBean(TopupPlanService.class);
+        var day = LocalDate.of(2026, 10, 1);
+        for (int i = 0; i < 3; i++) {
+            String no = "FUTURE:" + i + ":" + type;
+            plans.save("SAVE:" + no,
+                    new TopupPlanService.Plan(no, type, Action.TOPUP_U, 1,
+                            day.plusDays(10), 1, true), "MAKER", "FUTURE");
+        }
+        String due = "DUE:" + type;
+        plans.save("SAVE:" + due,
+                new TopupPlanService.Plan(due, type, Action.TOPUP_U, 1, day, 1, true),
+                "MAKER", "DUE");
+        assertThat(plans.tick(type, day, 1)).isZero();
+        // Recreate the service: progress must live in SQL rather than a JVM field.
+        var resumed = new ai.neargo.shop.pay.points.pool.impl.TopupPlanServiceImpl(
+                context.getBean(ai.neargo.shop.pay.points.store.PointsConfigurationStore.class),
+                context.getBean(ai.neargo.shop.pay.points.store.PointsOperationsStore.class),
+                context.getBean(ai.neargo.shop.pay.points.store.PointsReadStore.class),
+                context.getBean(ai.neargo.shop.pay.points.store.PointsFactStore.class),
+                context.getBean(ai.neargo.shop.pay.points.store.PointsCursorStore.class));
+        var tx = new org.springframework.transaction.support.TransactionTemplate(
+                context.getBean("payTxManager", org.springframework.transaction.PlatformTransactionManager.class));
+        assertThat(tx.<Integer>execute(status -> resumed.tick(type, day, 1)).intValue()).isZero();
+        assertThat(tx.<Integer>execute(status -> resumed.tick(type, day, 1)).intValue()).isZero();
+        assertThat(tx.<Integer>execute(status -> resumed.tick(type, day, 1)).intValue()).isEqualTo(1);
+        for (int i = 0; i < 5; i++) plans.tick(type, day, 1);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_topup_plan WHERE plan_no=? AND period_key=?",
+                Long.class, due, day.toString())).isEqualTo(1);
+        assertThat(context.getBean(ai.neargo.shop.pay.points.store.PointsOperationsStore.class)
+                .page(type, Kind.PLAN, 0, 200)).allSatisfy(row ->
+                        assertThat(row.get("period_key")).isIn("CONFIG", day.toString()));
+    }
+
+    @Test
+    void plan_submitted_backlog_larger_than_old_cap_commits_bounded_progress() {
+        String type = fixture();
+        var day = LocalDate.of(2026, 10, 1);
+        var json = new tools.jackson.databind.ObjectMapper();
+        var requests = new java.util.ArrayList<Object[]>();
+        var periods = new java.util.ArrayList<Object[]>();
+        for (int i = 0; i < 10001; i++) {
+            String no = "SUB:" + i + ":" + type;
+            var plan = new TopupPlanService.Plan(no, type, Action.TOPUP_U, 1, day, 1, true);
+            var request = new ai.neargo.shop.pay.points.model.PoolRequest(no, type,
+                    Action.TOPUP_U, 1, "MAKER", "EVIDENCE:" + no);
+            requests.add(new Object[]{type, no, "MAKER"});
+            periods.add(new Object[]{type, no, day.toString(), json.writeValueAsString(
+                    new TopupPlanService.Period(plan, day, request, null))});
+        }
+        jdbc().batchUpdate("INSERT INTO pts_pool_request(type_code,request_no,submitted_by,state,payload_json) VALUES(?,?,?,'APPROVED','{}')", requests);
+        jdbc().batchUpdate("INSERT INTO pts_topup_plan(type_code,plan_no,period_key,state,payload_json) VALUES(?,?,?,'SUBMITTED',?)", periods);
+        var plans = context.getBean(TopupPlanService.class);
+        assertThat(plans.tick(type, day, 1)).isZero();
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_topup_plan WHERE type_code=? AND state='COMPLETED'", Long.class, type)).isEqualTo(1);
+        for (int i = 0; i < 50; i++) plans.tick(type, day, 200);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_topup_plan WHERE type_code=? AND state='SUBMITTED'", Long.class, type)).isZero();
+    }
+
+    @Test
+    void plan_pending_receipts_do_not_starve_approved_later_rows_and_wrap_to_recheck() {
+        String type = fixture();
+        var day = LocalDate.of(2026, 10, 1);
+        var json = new tools.jackson.databind.ObjectMapper();
+        for (int i = 0; i < 4; i++) {
+            String no = "WAIT:" + i + ":" + type;
+            var plan = new TopupPlanService.Plan(no, type, Action.TOPUP_U, 1, day, 1, true);
+            var request = new ai.neargo.shop.pay.points.model.PoolRequest(no, type,
+                    Action.TOPUP_U, 1, "MAKER", "EVIDENCE:" + no);
+            jdbc().update("INSERT INTO pts_pool_request(type_code,request_no,submitted_by,state,payload_json) VALUES(?,?,? ,?,'{}')",
+                    type, no, "MAKER", i == 3 ? "APPROVED" : "SUBMITTED");
+            jdbc().update("INSERT INTO pts_topup_plan(type_code,plan_no,period_key,state,payload_json) VALUES(?,?,?,'SUBMITTED',?)",
+                    type, no, day.toString(), json.writeValueAsString(new TopupPlanService.Period(plan, day, request, null)));
+        }
+        var plans = context.getBean(TopupPlanService.class);
+        plans.tick(type, day, 1);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_topup_plan WHERE type_code=? AND state='COMPLETED'", Long.class, type)).isZero();
+        for (int i = 0; i < 3; i++) plans.tick(type, day, 1);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_topup_plan WHERE type_code=? AND state='COMPLETED'", Long.class, type)).isEqualTo(1);
+        jdbc().update("UPDATE pts_pool_request SET state='APPROVED' WHERE request_no=?", "WAIT:0:" + type);
+        plans.tick(type, day, 1);
+        assertThat(jdbc().queryForObject("SELECT state FROM pts_topup_plan WHERE plan_no=? AND period_key=?", String.class, "WAIT:0:" + type, day.toString())).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void plan_overdue_schedule_yields_to_other_schedule_and_cursor_rolls_back_with_period() {
+        String type = fixture();
+        var day = LocalDate.of(2026, 10, 1);
+        var plans = context.getBean(TopupPlanService.class);
+        for (int i = 0; i < 2; i++) {
+            String no = "OVERDUE:" + i + ":" + type;
+            plans.save("SAVE:" + no,
+                    new TopupPlanService.Plan(no, type, Action.TOPUP_U, 1,
+                            day.minusDays(100), 1, true), "MAKER", "CATCH_UP");
+        }
+        var tx = new org.springframework.transaction.support.TransactionTemplate(
+                context.getBean("payTxManager", org.springframework.transaction.PlatformTransactionManager.class));
+        assertThatThrownBy(() -> tx.executeWithoutResult(status -> {
+            plans.tick(type, day, 1);
+            throw new IllegalStateException("ROLLBACK_BATCH");
+        })).hasMessage("ROLLBACK_BATCH");
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_topup_plan WHERE type_code=? AND period_key<>'CONFIG'", Long.class, type)).isZero();
+        assertThat(plans.tick(type, day, 1)).isEqualTo(1);
+        assertThat(plans.tick(type, day, 1)).isEqualTo(1);
+        for (int i = 0; i < 2; i++) {
+            assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_topup_plan WHERE plan_no=? AND period_key=?", Long.class,
+                    "OVERDUE:" + i + ":" + type, day.minusDays(100).toString())).isEqualTo(1);
+        }
+    }
+
+    @Test
     void operational_pages_are_bounded_and_use_a_stable_id_cursor() {
         String type = fixture();
         context.getBean(EarnService.class).grant(grant(type, "PAGE", 20));

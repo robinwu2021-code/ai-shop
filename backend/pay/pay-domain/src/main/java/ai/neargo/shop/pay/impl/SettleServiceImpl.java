@@ -281,6 +281,7 @@ public class SettleServiceImpl implements SettleService {
 
             StlBill bill = new StlBill();
             bill.setSettleNo(BizKey.next(BizKey.SETTLE_BILL));
+            bill.setSplitProtocolVersion(1);
             bill.setSubOrderNo(src.subOrderNo());
             bill.setOrderNo(orderNo);
             bill.setEntityNo(src.merchantNo());
@@ -495,39 +496,9 @@ public class SettleServiceImpl implements SettleService {
         return true;
     }
 
+    /** The preparation and result beans own short pay transactions; remote calls run between them. */
     @Override
-    @Transactional("payTxManager")
     public void executeSplit(String settleNo) {
-        StlBill bill = require(settleNo);
-        if (nz(bill.getPointsCostMinor()) > 0) {
-            TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
-                @Override public void afterCommit() { executePointsSplit(settleNo); }
-            });
-            return;
-        }
-        executeCashSplit(bill, settleNo);
-    }
-
-    /** Preserve the deployed cash split protocol; points funding uses the isolated protocol below. */
-    private void executeCashSplit(StlBill bill, String settleNo) {
-        if (StlBill.SPLIT.equals(bill.getStatus()) || StlBill.SPLITTING.equals(bill.getStatus())
-                || StlBill.SPLIT_CONFIRMED.equals(bill.getStatus()) || StlBill.REVERSED.equals(bill.getStatus())
-                || StlBill.OFFLINE_SETTLED.equals(bill.getStatus())) return;
-        bill.setStatus(StlBill.SPLITTING);
-        if (DataScopeContext.executeWithoutScope(() -> billMapper.updateById(bill)) != 1) return;
-        boolean ok = callProvider(StlSplitLog.SPLIT, bill, "SPL-" + settleNo);
-        if (!ok) {
-            bill.setStatus(StlBill.RETRYING);
-            bill.setRetryCount(nzi(bill.getRetryCount()) + 1);
-            update(bill);
-            return;
-        }
-        bill.setStatus(StlBill.SPLIT);
-        bill.setSplitAt(System.currentTimeMillis());
-        update(bill);
-    }
-
-    private void executePointsSplit(String settleNo) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("SETTLEMENT_FUNDS_REQUIRES_NO_TRANSACTION");
         }
@@ -566,10 +537,8 @@ public class SettleServiceImpl implements SettleService {
             // 没有结算单（例如未支付即取消）：没什么可回退的，视为成功
             return true;
         }
-        if (nz(bill.getPointsCostMinor()) > 0) {
-            bill=splitPreparation.lockForReverse(bill.getSettleNo());
-            if (bill==null) { return false; }
-        }
+        bill=splitPreparation.lockForReverse(bill.getSettleNo());
+        if (bill==null) { return false; }
         if (StlBill.REVERSED.equals(bill.getStatus())) {
             return true;
         }
@@ -998,8 +967,29 @@ public class SettleServiceImpl implements SettleService {
          */
         boolean isSubsidy = StlSplitLog.SUBSIDY.equals(action)
                 || StlSplitLog.SUBSIDY_RETURN.equals(action);
-        long amount = isSubsidy ? nz(bill.getSubsidyMinor()) : nz(bill.getNetMinor());
+        long amount = isSubsidy ? nz(bill.getSubsidyMinor()) : originalSplitAmount(bill);
         return splitSender.send(action, bill, requestNo, amount);
+    }
+
+    /** Return the actual original command amount, including deployed legacy cash splits. */
+    private long originalSplitAmount(StlBill bill) {
+        var amounts = DataScopeContext.executeWithoutScope(() -> splitLogMapper.selectList(
+                Wrappers.<StlSplitLog>lambdaQuery().eq(StlSplitLog::getSettleNo, bill.getSettleNo())
+                        .eq(StlSplitLog::getSplitAction, StlSplitLog.SPLIT)
+                        .eq(StlSplitLog::getResult, "SUCCESS")))
+                .stream().map(StlSplitLog::getAmountMinor).distinct().toList();
+        if (!amounts.isEmpty()) {
+            if (amounts.size() != 1 || amounts.getFirst() == null || amounts.getFirst() < 0) {
+                throw new IllegalStateException("SETTLEMENT_ORIGINAL_SPLIT_AMOUNT_CONFLICT");
+            }
+            return amounts.getFirst();
+        }
+        Long amount = bill.getSplitProtocolVersion() == null || bill.getSplitProtocolVersion() == 0
+                ? bill.getNetMinor() : bill.getSplitAmountMinor();
+        if (amount == null || amount < 0) {
+            throw new IllegalStateException("SETTLEMENT_SPLIT_AMOUNT_REQUIRED");
+        }
+        return amount;
     }
 
     /**
