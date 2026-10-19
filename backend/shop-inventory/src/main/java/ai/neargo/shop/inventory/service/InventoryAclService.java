@@ -160,7 +160,8 @@ public interface InventoryAclService {
     String stockLocationOf(String entityNo, String storeNo);
 
     /** 某店某 SKU 在出货库位上的数。安全库存取库位覆盖，没有取物料默认 */
-    record StockAt(int onHand, int reserved, int safety) {
+    record StockAt(int onHand, int reserved, int safety, long version) {
+        public StockAt(int onHand, int reserved, int safety) { this(onHand, reserved, safety, 0); }
         /** 可用 = 实存 − 占用 − 安全库存，不小于 0 */
         public int available() {
             return Math.max(0, onHand - reserved - safety);

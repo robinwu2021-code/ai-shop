@@ -521,6 +521,20 @@ CREATE TABLE IF NOT EXISTS inv_event_consumed
     CONSTRAINT uk_inv_event_handler UNIQUE (event_no, handler)
 );
 
+CREATE TABLE IF NOT EXISTS inv_stock_count_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    owner_id VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(96) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    count_no VARCHAR(64) DEFAULT NULL,
+    status VARCHAR(16) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_count_operation UNIQUE (owner_id, operation_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO inv_uom (uom_code, name, divisible, sort)
 SELECT 'PIECE', '件', 0, 10 FROM DUAL

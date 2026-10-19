@@ -297,6 +297,105 @@ class StockSyncWritebackTest {
                 .as("对齐后是「已对齐未开启」—— 打开是店主另一个动作").isEqualTo("ALIGNED");
     }
 
+    @Test
+    @DisplayName("期初对齐先预览，确认结果可查询且重复确认不重复改账")
+    void alignmentPreviewConfirmIsDurableAndIdempotent() throws Exception {
+        Shop s = shop();
+        DataScopeContext.executeWithoutScope(() -> skuMapper.setStock(s.skuNo, 8));
+        JsonNode preview = ok(post("/biz/store/" + s.storeNo + "/stock-alignment/preview")
+                .content("{\"mode\":\"MALL\"}"), s.token);
+        String batchNo = preview.get("batchNo").asString();
+        String version = preview.get("snapshotVersion").asString();
+        assertThat(preview.get("rows").get(0).get("beforeQty").asInt()).isZero();
+        assertThat(preview.get("rows").get(0).get("afterQty").asInt()).isEqualTo(8);
+
+        String path = "/biz/store/" + s.storeNo + "/stock-alignment/batches/" + batchNo;
+        JsonNode confirmed = ok(post(path + "/confirm")
+                .content("{\"operationNo\":\"ALIGN-" + batchNo + "\",\"snapshotVersion\":\"" + version + "\"}"), s.token);
+        JsonNode repeated = ok(post(path + "/confirm")
+                .content("{\"operationNo\":\"ALIGN-" + batchNo + "\",\"snapshotVersion\":\"" + version + "\"}"), s.token);
+        assertThat(confirmed.get("status").asString()).isEqualTo("COMPLETED");
+        assertThat(repeated.get("status").asString()).isEqualTo("COMPLETED");
+        assertThat(acl.stockAt(s.entityNo, s.storeNo, s.skuNo).onHand()).isEqualTo(8);
+        assertThat(ok(get(path), s.token).get("batchNo").asString()).isEqualTo(batchNo);
+
+        JsonNode secondPreview = ok(post("/biz/store/" + s.storeNo + "/stock-alignment/preview")
+                .content("{\"mode\":\"COUNT\"}"), s.token);
+        String reused = send(post("/biz/store/" + s.storeNo + "/stock-alignment/batches/"
+                + secondPreview.get("batchNo").asString() + "/confirm")
+                .content("{\"operationNo\":\"ALIGN-" + batchNo + "\",\"snapshotVersion\":\""
+                        + secondPreview.get("snapshotVersion").asString() + "\"}"), s.token);
+        assertThat(json.readTree(reused).get("code").asInt()).isNotZero();
+    }
+
+    @Test
+    @DisplayName("期初对齐预览后商城数量变化，旧快照不能落账")
+    void staleAlignmentPreviewDoesNotPost() throws Exception {
+        Shop s = shop();
+        JsonNode preview = ok(post("/biz/store/" + s.storeNo + "/stock-alignment/preview")
+                .content("{\"mode\":\"MALL\"}"), s.token);
+        DataScopeContext.executeWithoutScope(() -> skuMapper.setStock(s.skuNo, 6));
+        String path = "/biz/store/" + s.storeNo + "/stock-alignment/batches/" + preview.get("batchNo").asString();
+        JsonNode result = ok(post(path + "/confirm")
+                .content("{\"operationNo\":\"ALIGN-" + preview.get("batchNo").asString()
+                        + "\",\"snapshotVersion\":\"" + preview.get("snapshotVersion").asString() + "\"}"), s.token);
+        assertThat(result.get("status").asString()).isEqualTo("STALE");
+        assertThat(acl.stockAt(s.entityNo, s.storeNo, s.skuNo).onHand()).isZero();
+        assertThat(ok(get("/biz/store/" + s.storeNo + "/stock-sync"), s.token).get("state").asString())
+                .isEqualTo("NOT_ALIGNED");
+    }
+
+    @Test
+    @DisplayName("期初对齐部分行等待镜像时可续跑，仅重试未完成的商品")
+    void alignmentResumesOnlyTheWaitingLine() throws Exception {
+        Shop s = shop();
+        String secondGoods = ok(post("/biz/goods/save").content("{\"categoryNo\":\"" + FRUIT
+                + "\",\"title\":\"续跑测试苹果\",\"subtitle\":\"测试\",\"cover\":\"🍎\",\"images\":[],"
+                + "\"specGroups\":[],\"skus\":[{\"optionValues\":[],\"price\":5000,\"stock\":0,\"saleUnit\":\"箱\"}]}"), s.token)
+                .get("goodsNo").asString();
+        String secondSku = DataScopeContext.executeWithoutScope(() -> skuMapper.selectList(
+                Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getGoodsNo, secondGoods)).get(0).getSkuNo());
+        pump();
+        DataScopeContext.executeWithoutScope(() -> {
+            skuMapper.setStock(s.skuNo, 3);
+            skuMapper.setStock(secondSku, 4);
+        });
+        JsonNode preview = ok(post("/biz/store/" + s.storeNo + "/stock-alignment/preview")
+                .content("{\"mode\":\"MALL\"}"), s.token);
+        assertThat(preview.get("rows").size()).isEqualTo(2);
+        String eventNo = "EVT-ALIGN-WAIT-" + secondSku;
+        SysOutbox pending = new SysOutbox();
+        pending.setEventNo(eventNo);
+        pending.setAggregateType("INVENTORY");
+        pending.setAggregateId("L-ALIGN-" + secondSku);
+        pending.setEventType("INV_MIRROR_RESERVE");
+        pending.setPayload("{\"type\":\"INV_MIRROR_RESERVE\",\"items\":[{\"skuNo\":\"" + secondSku + "\"}]}");
+        pending.setStatus(SysOutbox.PENDING);
+        pending.setRetryCount(0);
+        pending.setCreatedAt(java.time.LocalDateTime.now());
+        pending.setNextRetryAt(java.time.LocalDateTime.now().plusHours(1));
+        sysOutbox.insert(pending);
+
+        String batchPath = "/biz/store/" + s.storeNo + "/stock-alignment/batches/" + preview.get("batchNo").asString();
+        String body = "{\"operationNo\":\"ALIGN-" + preview.get("batchNo").asString()
+                + "\",\"snapshotVersion\":\"" + preview.get("snapshotVersion").asString() + "\"}";
+        JsonNode partial = ok(post(batchPath + "/confirm").content(body), s.token);
+        assertThat(partial.get("status").asString()).isEqualTo("PARTIAL");
+        assertThat(partial.get("completed").asInt()).isEqualTo(1);
+        assertThat(partial.get("waiting").asInt()).isEqualTo(1);
+        try {
+            pending.setStatus(SysOutbox.SENT);
+            sysOutbox.updateById(pending);
+            JsonNode resumed = ok(post(batchPath + "/confirm").content(body), s.token);
+            assertThat(resumed.get("status").asString()).isEqualTo("COMPLETED");
+            assertThat(resumed.get("completed").asInt()).isEqualTo(2);
+            assertThat(acl.stockAt(s.entityNo, s.storeNo, s.skuNo).onHand()).isEqualTo(3);
+            assertThat(acl.stockAt(s.entityNo, s.storeNo, secondSku).onHand()).isEqualTo(4);
+        } finally {
+            sysOutbox.deleteById(pending.getId());
+        }
+    }
+
     // ------------------------------------------------------------------ 种子
 
     private record Shop(String token, String entityNo, String storeNo, String goodsNo, String skuNo) {

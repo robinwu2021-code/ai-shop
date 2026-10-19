@@ -4500,20 +4500,6 @@ CREATE TABLE IF NOT EXISTS prd_stock_sync_log
     CONSTRAINT uk_prd_stock_sync_log UNIQUE (source_ref, store_no, sku_no)
 );
 
-CREATE TABLE IF NOT EXISTS prd_stock_sync_operation
-(
-    operation_no VARCHAR(96) NOT NULL PRIMARY KEY,
-    entity_no VARCHAR(64) NOT NULL,
-    store_no VARCHAR(64) NOT NULL,
-    sku_no VARCHAR(64) NOT NULL,
-    reason VARCHAR(32) NOT NULL,
-    request_hash CHAR(64) NOT NULL,
-    status VARCHAR(16) NOT NULL,
-    result_json CLOB DEFAULT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS ord_express_pickup
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,
@@ -6119,6 +6105,69 @@ CREATE TABLE IF NOT EXISTS sys_outbox_operation
     after_status VARCHAR(16) NOT NULL,
     created_at DATETIME NOT NULL,
     CONSTRAINT uk_sys_outbox_operation UNIQUE (request_id)
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_sync_operation
+(
+    operation_no VARCHAR(96) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) NOT NULL,
+    reason VARCHAR(32) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    result_json TEXT DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (operation_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_alignment_batch
+(
+    batch_no VARCHAR(40) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    mode VARCHAR(16) NOT NULL,
+    snapshot_version CHAR(64) NOT NULL,
+    context_version CHAR(64) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    operation_no VARCHAR(96) DEFAULT NULL,
+    operator VARCHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (batch_no),
+    CONSTRAINT uk_stock_alignment_operation UNIQUE (operation_no)
+);
+
+CREATE TABLE IF NOT EXISTS prd_stock_alignment_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    batch_no VARCHAR(40) NOT NULL,
+    line_no INT NOT NULL,
+    goods_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) NOT NULL,
+    item_id VARCHAR(64) DEFAULT NULL,
+    title VARCHAR(128) NOT NULL,
+    spec VARCHAR(128) DEFAULT NULL,
+    before_qty INT DEFAULT NULL,
+    reserved_qty INT DEFAULT NULL,
+    safety_qty INT DEFAULT NULL,
+    inventory_version BIGINT NOT NULL DEFAULT 0,
+    mall_stock INT NOT NULL,
+    mall_locked INT NOT NULL,
+    mall_version BIGINT NOT NULL DEFAULT 0,
+    after_qty INT DEFAULT NULL,
+    note VARCHAR(32) DEFAULT NULL,
+    status VARCHAR(20) NOT NULL,
+    line_operation_no VARCHAR(96) NOT NULL,
+    sync_operation_no VARCHAR(96) NOT NULL,
+    result_json TEXT DEFAULT NULL,
+    error_code VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_stock_alignment_sku UNIQUE (batch_no, sku_no)
 );
 
 -- 种子数据

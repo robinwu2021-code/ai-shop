@@ -219,6 +219,22 @@ class InventoryFlowTest {
     }
 
     @Test
+    @DisplayName("期初对齐重试使用稳定操作号，不重复生成盘点凭证")
+    void countAdjustmentWithOperationNoIsIdempotent() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "老板");
+        counts.adjustOneIdempotent(f.owner, f.location, f.item, 8, InvEnums.Reason.CHECK, "Codex", "ALIGN-LINE-1");
+        int ledgerAfterFirst = query.ledger(f.owner, f.item, null, f.location, null, 50).entries().size();
+
+        counts.adjustOneIdempotent(f.owner, f.location, f.item, 8, InvEnums.Reason.CHECK, "Codex", "ALIGN-LINE-1");
+
+        assertThat(onHand(f)).isEqualTo(8);
+        assertThat(query.ledger(f.owner, f.item, null, f.location, null, 50).entries()).hasSize(ledgerAfterFirst);
+        assertThatThrownBy(() -> counts.adjustOneIdempotent(f.owner, f.location, f.item, 7,
+                InvEnums.Reason.CHECK, "Codex", "ALIGN-LINE-1")).isInstanceOf(BizException.class);
+    }
+
+    @Test
     @DisplayName("★★★ 调拨全程总量守恒 —— 包括货在在途库位上的那一段")
     void transferConservesTotal() {
         Fixture f = fixture();

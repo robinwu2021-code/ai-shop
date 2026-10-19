@@ -84,7 +84,8 @@ public interface StockSyncService {
      *
      * @param mode STORE 按店库存行 / ENTITY 主体级（没有任何按店行）/ NONE 查不到这个 SKU
      */
-    record Sellable(String mode, int sellable, int locked) {
+    record Sellable(String mode, int sellable, int locked, long version) {
+        public Sellable(String mode, int sellable, int locked) { this(mode, sellable, locked, 0); }
     }
 
     Sellable sellableOf(String storeNo, String skuNo);

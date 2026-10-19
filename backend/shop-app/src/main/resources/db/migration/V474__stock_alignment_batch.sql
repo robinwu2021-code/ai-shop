@@ -1,0 +1,50 @@
+CREATE TABLE IF NOT EXISTS prd_stock_alignment_batch
+(
+    batch_no VARCHAR(40) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    mode VARCHAR(16) NOT NULL,
+    snapshot_version CHAR(64) NOT NULL,
+    context_version CHAR(64) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    status VARCHAR(16) NOT NULL COMMENT 'PREVIEW / PROCESSING / PARTIAL / BLOCKED / STALE / EXPIRED / COMPLETED',
+    operation_no VARCHAR(96) DEFAULT NULL,
+    operator VARCHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (batch_no),
+    UNIQUE KEY uk_stock_alignment_operation (operation_no),
+    KEY idx_stock_alignment_store (entity_no, store_no, created_at),
+    KEY idx_stock_alignment_status (status, updated_at)
+) COMMENT='Recoverable stock alignment preview and confirmation';
+
+CREATE TABLE IF NOT EXISTS prd_stock_alignment_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    batch_no VARCHAR(40) NOT NULL,
+    line_no INT NOT NULL,
+    goods_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) NOT NULL,
+    item_id VARCHAR(64) DEFAULT NULL,
+    title VARCHAR(128) NOT NULL,
+    spec VARCHAR(128) DEFAULT NULL,
+    before_qty INT DEFAULT NULL,
+    reserved_qty INT DEFAULT NULL,
+    safety_qty INT DEFAULT NULL,
+    inventory_version BIGINT NOT NULL DEFAULT 0,
+    mall_stock INT NOT NULL,
+    mall_locked INT NOT NULL,
+    mall_version BIGINT NOT NULL DEFAULT 0,
+    after_qty INT DEFAULT NULL,
+    note VARCHAR(32) DEFAULT NULL,
+    status VARCHAR(20) NOT NULL COMMENT 'PENDING / ADJUSTED / WAITING / FAILED / BLOCKED / SKIPPED / COMPLETED',
+    line_operation_no VARCHAR(96) NOT NULL,
+    sync_operation_no VARCHAR(96) NOT NULL,
+    result_json JSON DEFAULT NULL,
+    error_code VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_stock_alignment_sku (batch_no, sku_no),
+    KEY idx_stock_alignment_line_status (batch_no, status)
+) COMMENT='Per-SKU stock alignment snapshot and resumable result';

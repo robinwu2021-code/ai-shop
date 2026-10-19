@@ -177,7 +177,7 @@ public class StockSyncServiceImpl implements StockSyncService {
     public Sellable sellableOf(String storeNo, String skuNo) {
         PrdStoreStock row = storeRow(storeNo, skuNo);
         if (row != null) {
-            return new Sellable("STORE", nz(row.getStock()) - nz(row.getLockedStock()), nz(row.getLockedStock()));
+            return new Sellable("STORE", nz(row.getStock()) - nz(row.getLockedStock()), nz(row.getLockedStock()), ver(row.getVersion()));
         }
         if (hasStoreStock(skuNo)) {
             // 这个 SKU 已按店管、本店没设过 —— 本店线上卖 0（StockPortImpl 的口径）
@@ -187,7 +187,7 @@ public class StockSyncServiceImpl implements StockSyncService {
                 Wrappers.<PrdSku>lambdaQuery().eq(PrdSku::getSkuNo, skuNo).last("limit 1")));
         return sku == null
                 ? new Sellable("NONE", 0, 0)
-                : new Sellable("ENTITY", nz(sku.getStock()) - nz(sku.getLockedStock()), nz(sku.getLockedStock()));
+                : new Sellable("ENTITY", nz(sku.getStock()) - nz(sku.getLockedStock()), nz(sku.getLockedStock()), ver(sku.getVersion()));
     }
 
     @Override
@@ -202,12 +202,12 @@ public class StockSyncServiceImpl implements StockSyncService {
         for (PrdStoreStock row : stockRows) {
             storeManaged.add(row.getSkuNo());
             if (java.util.Objects.equals(storeNo, row.getStoreNo())) {
-                result.put(row.getSkuNo(), new Sellable("STORE", nz(row.getStock()) - nz(row.getLockedStock()), nz(row.getLockedStock())));
+                result.put(row.getSkuNo(), new Sellable("STORE", nz(row.getStock()) - nz(row.getLockedStock()), nz(row.getLockedStock()), ver(row.getVersion())));
             }
         }
         for (PrdSku row : skuRows) {
             result.putIfAbsent(row.getSkuNo(), storeManaged.contains(row.getSkuNo()) ? new Sellable("STORE", 0, 0)
-                    : new Sellable("ENTITY", nz(row.getStock()) - nz(row.getLockedStock()), nz(row.getLockedStock())));
+                    : new Sellable("ENTITY", nz(row.getStock()) - nz(row.getLockedStock()), nz(row.getLockedStock()), ver(row.getVersion())));
         }
         return result;
     }
@@ -336,4 +336,6 @@ public class StockSyncServiceImpl implements StockSyncService {
     private static int nz(Integer v) {
         return v == null ? 0 : v;
     }
+
+    private static long ver(Long v) { return v == null ? 0 : v; }
 }

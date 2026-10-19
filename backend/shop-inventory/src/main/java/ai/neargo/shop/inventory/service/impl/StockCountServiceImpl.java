@@ -8,10 +8,12 @@ import ai.neargo.shop.inventory.entity.InvItem;
 import ai.neargo.shop.inventory.entity.InvStockBalance;
 import ai.neargo.shop.inventory.entity.InvStockCount;
 import ai.neargo.shop.inventory.entity.InvStockCountLine;
+import ai.neargo.shop.inventory.entity.InvStockCountOperation;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.BalanceMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ItemMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.StockCountLineMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.StockCountMapper;
+import ai.neargo.shop.inventory.mapper.InventoryMappers.StockCountOperationMapper;
 import ai.neargo.shop.inventory.service.InboundService;
 import ai.neargo.shop.inventory.service.OutboundService;
 import ai.neargo.shop.inventory.service.StockCountService;
@@ -19,6 +21,7 @@ import ai.neargo.shop.inventory.support.InvEnums;
 import ai.neargo.shop.inventory.support.InvKeys;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -37,17 +40,20 @@ public class StockCountServiceImpl implements StockCountService {
     private final ItemMapper itemMapper;
     private final StockCountMapper countMapper;
     private final StockCountLineMapper lineMapper;
+    private final StockCountOperationMapper operationMapper;
     private final BalanceMapper balanceMapper;
     private final InboundService inbound;
     private final OutboundService outbound;
 
     public StockCountServiceImpl(ItemMapper itemMapper,
                                  StockCountMapper countMapper, StockCountLineMapper lineMapper,
+                                 StockCountOperationMapper operationMapper,
                                  BalanceMapper balanceMapper, InboundService inbound,
                                  OutboundService outbound) {
         this.itemMapper = itemMapper;
         this.countMapper = countMapper;
         this.lineMapper = lineMapper;
+        this.operationMapper = operationMapper;
         this.balanceMapper = balanceMapper;
         this.inbound = inbound;
         this.outbound = outbound;
@@ -242,9 +248,67 @@ public class StockCountServiceImpl implements StockCountService {
     @Transactional(transactionManager = "invTransactionManager")
     public void adjustOne(String ownerId, String locationId, String itemId, int countedQty,
                           String reasonCode, String operator) {
+        adjust(ownerId, locationId, itemId, countedQty, reasonCode, operator);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void adjustOneIdempotent(String ownerId, String locationId, String itemId, int countedQty,
+                                    String reasonCode, String operator, String operationNo) {
+        if (operationNo == null || operationNo.isBlank() || operationNo.length() > 96) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        String requestHash = adjustmentHash(ownerId, locationId, itemId, countedQty, reasonCode);
+        InvStockCountOperation existing = operationMapper.selectOne(Wrappers.<InvStockCountOperation>lambdaQuery()
+                .eq(InvStockCountOperation::getOwnerId, ownerId)
+                .eq(InvStockCountOperation::getOperationNo, operationNo).last("LIMIT 1"));
+        if (existing != null) {
+            if (!requestHash.equals(existing.getRequestHash())) throw BizException.of(ErrorCode.CONFLICT);
+            if ("COMPLETED".equals(existing.getStatus())) return;
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        InvStockCountOperation marker = new InvStockCountOperation();
+        marker.setOwnerId(ownerId);
+        marker.setOperationNo(operationNo);
+        marker.setRequestHash(requestHash);
+        marker.setStatus("PROCESSING");
+        marker.setCreatedAt(LocalDateTime.now());
+        marker.setUpdatedAt(LocalDateTime.now());
+        try {
+            operationMapper.insert(marker);
+        } catch (DuplicateKeyException duplicate) {
+            existing = operationMapper.selectOne(Wrappers.<InvStockCountOperation>lambdaQuery()
+                    .eq(InvStockCountOperation::getOwnerId, ownerId)
+                    .eq(InvStockCountOperation::getOperationNo, operationNo).last("LIMIT 1"));
+            if (existing != null && requestHash.equals(existing.getRequestHash())
+                    && "COMPLETED".equals(existing.getStatus())) return;
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        String countNo = adjust(ownerId, locationId, itemId, countedQty, reasonCode, operator);
+        marker.setCountNo(countNo);
+        marker.setStatus("COMPLETED");
+        marker.setUpdatedAt(LocalDateTime.now());
+        operationMapper.updateById(marker);
+    }
+
+    private String adjust(String ownerId, String locationId, String itemId, int countedQty,
+                          String reasonCode, String operator) {
         String no = open(ownerId, locationId, List.of(itemId), operator);
         fill(ownerId, no, List.of(new Filled(itemId, countedQty, reasonCode)));
         post(ownerId, no, operator);
+        return no;
+    }
+
+    private static String adjustmentHash(String ownerId, String locationId, String itemId, int countedQty,
+                                         String reasonCode) {
+        try {
+            var digest = java.security.MessageDigest.getInstance("SHA-256");
+            String input = String.join("\n", ownerId, String.valueOf(locationId), itemId,
+                    Integer.toString(countedQty), String.valueOf(reasonCode));
+            return java.util.HexFormat.of().formatHex(digest.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
     }
 
     // ────────────────────────────────────────────────────────────────────

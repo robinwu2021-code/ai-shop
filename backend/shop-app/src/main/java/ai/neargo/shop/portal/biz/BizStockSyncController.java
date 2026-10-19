@@ -7,6 +7,7 @@ import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.invbridge.StockSyncAppService;
 import ai.neargo.shop.invbridge.InventoryOverviewQuery;
 import ai.neargo.shop.invbridge.StockReconcileService;
+import ai.neargo.shop.invbridge.StockAlignmentService;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,12 +34,14 @@ public class BizStockSyncController {
     private final StockSyncAppService service;
     private final InventoryOverviewQuery overview;
     private final StockReconcileService reconcile;
+    private final StockAlignmentService alignment;
 
     public BizStockSyncController(StockSyncAppService service, InventoryOverviewQuery overview,
-                                  StockReconcileService reconcile) {
+                                  StockReconcileService reconcile, StockAlignmentService alignment) {
         this.service = service;
         this.overview = overview;
         this.reconcile = reconcile;
+        this.alignment = alignment;
     }
 
     private String entity(String storeNo) {
@@ -72,6 +75,28 @@ public class BizStockSyncController {
     public AlignResult confirm(@PathVariable String storeNo, @RequestBody AlignReq req) {
         return new AlignResult(service.confirmAlignment(entity(storeNo), storeNo, req.mode(),
                 SecurityUtils.currentUserNo()));
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @PostMapping("/biz/store/{storeNo}/stock-alignment/preview")
+    public StockAlignmentService.BatchView previewAlignment(@PathVariable String storeNo,
+                                                             @RequestBody AlignPreviewReq req) {
+        return alignment.preview(entity(storeNo), storeNo, req.mode(), SecurityUtils.currentUserNo());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @PostMapping("/biz/store/{storeNo}/stock-alignment/batches/{batchNo}/confirm")
+    public StockAlignmentService.BatchView confirmAlignmentBatch(@PathVariable String storeNo,
+                                                                  @PathVariable String batchNo,
+                                                                  @RequestBody AlignBatchConfirmReq req) {
+        return alignment.confirm(entity(storeNo), storeNo, batchNo, req.operationNo(), req.snapshotVersion(),
+                SecurityUtils.currentUserNo());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @GetMapping("/biz/store/{storeNo}/stock-alignment/batches/{batchNo}")
+    public StockAlignmentService.BatchView alignmentResult(@PathVariable String storeNo, @PathVariable String batchNo) {
+        return alignment.result(entity(storeNo), storeNo, batchNo);
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
@@ -124,6 +149,10 @@ public class BizStockSyncController {
 
     public record AlignReq(String mode) {
     }
+
+    public record AlignPreviewReq(String mode) { }
+
+    public record AlignBatchConfirmReq(String operationNo, String snapshotVersion) { }
 
     /** @param adjusted 以商城为准时调了几行实存 */
     public record AlignResult(int adjusted) {

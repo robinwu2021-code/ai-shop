@@ -53,6 +53,10 @@ public interface StockCountService {
     void adjustOne(String ownerId, String locationId, String itemId, int countedQty,
                    String reasonCode, String operator);
 
+    /** Stable operation identity for retryable cross-domain adjustments; the count and its idempotency marker commit together. */
+    void adjustOneIdempotent(String ownerId, String locationId, String itemId, int countedQty,
+                             String reasonCode, String operator, String operationNo);
+
     /**
      * 读回一张盘点单（含<b>开单那一刻的账面数</b>）。
      *

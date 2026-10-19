@@ -18,6 +18,7 @@ import ai.neargo.shop.inventory.entity.InvReservationLine;
 import ai.neargo.shop.inventory.entity.InvStockBalance;
 import ai.neargo.shop.inventory.entity.InvStockCount;
 import ai.neargo.shop.inventory.entity.InvStockCountLine;
+import ai.neargo.shop.inventory.entity.InvStockCountOperation;
 import ai.neargo.shop.inventory.entity.InvTransferOrder;
 import ai.neargo.shop.inventory.entity.InvUom;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -165,6 +166,9 @@ public final class InventoryMappers {
     }
 
     public interface StockCountLineMapper extends BaseMapper<InvStockCountLine> {
+    }
+
+    public interface StockCountOperationMapper extends BaseMapper<InvStockCountOperation> {
     }
 
     public interface TransferOrderMapper extends BaseMapper<InvTransferOrder> {

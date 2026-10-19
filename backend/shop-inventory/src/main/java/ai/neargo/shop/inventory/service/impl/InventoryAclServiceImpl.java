@@ -530,10 +530,11 @@ public class InventoryAclServiceImpl implements InventoryAclService {
                         .eq(InvStockBalance::getItemId, ref.getItemId())
                         .eq(InvStockBalance::getLocationId, locationId));
         if (b == null) {
-            return new StockAt(0, 0, itemSafety);
+            return new StockAt(0, 0, itemSafety, 0);
         }
         return new StockAt(b.getOnHand() == null ? 0 : b.getOnHand(), b.getReserved() == null ? 0 : b.getReserved(),
-                b.getSafetyStock() != null ? b.getSafetyStock() : itemSafety);
+                b.getSafetyStock() != null ? b.getSafetyStock() : itemSafety,
+                b.getVersion() == null ? 0 : b.getVersion());
     }
 
     @Override
@@ -563,9 +564,9 @@ public class InventoryAclServiceImpl implements InventoryAclService {
             InvItem item = items.get(ref.getItemId());
             int safety = item == null || item.getSafetyStock() == null ? 0 : item.getSafetyStock();
             InvStockBalance b = balances.get(ref.getItemId());
-            result.put(ref.getRef(), b == null ? new StockAt(0, 0, safety)
+            result.put(ref.getRef(), b == null ? new StockAt(0, 0, safety, 0)
                     : new StockAt(b.getOnHand() == null ? 0 : b.getOnHand(), b.getReserved() == null ? 0 : b.getReserved(),
-                    b.getSafetyStock() == null ? safety : b.getSafetyStock()));
+                    b.getSafetyStock() == null ? safety : b.getSafetyStock(), b.getVersion() == null ? 0 : b.getVersion()));
         }
         return result;
     }
