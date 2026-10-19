@@ -146,7 +146,7 @@ npm --prefix b-app test -- tests/stock-entries.test.ts
 - [x] 测试未录入与实盘0不同；未录入拒绝过账、实盘0正常过账。
 - [ ] 取消/完成释放冻结，超时只提醒与受控取消，不静默丢弃未完成盘点。
 - [ ] UI确认冻结范围、受影响动作；显示未录行数及恢复入口。
-- [ ] 定向运行 InventoryCountCutoffFlowTest、InventoryFlowTest，B端type-check；补齐冻结范围提示及超时恢复后提交任务6。
+- [ ] 定向运行 InventoryCountCutoffFlowTest、InventoryFlowTest，B端type-check；已增加实物移动暂停提示，仍欠盘点超时/恢复入口与更细的冻结影响范围。
 
 ## Task 7：退款资源恢复与退货验收入库分离
 

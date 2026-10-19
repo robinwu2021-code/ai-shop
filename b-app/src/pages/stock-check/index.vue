@@ -380,6 +380,7 @@ function at(iso?: string): string {
           <text class="sh-chip sh-chip--warning">{{ $t("stockCheck.counting") }}</text>
         </view>
         <text class="txt-caption">{{ $t("stockCheck.lockedAt", { at: at(doc.startedAt) }) }}</text>
+        <text class="sh-hint sh-mt-sm">{{ $t("stockCheck.cutoffHint") }}</text>
 
         <!--
           连续扫码贴在单据头下面，不进底部动作条：底下那枚是「提交并过账」，
