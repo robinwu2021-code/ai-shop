@@ -4,16 +4,11 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * 预留行：全成功或全失败，不允许部分预留
- *
- * <p><b>只追加</b>：继承 {@link InvEntity} 而不是 {@link InvMutableEntity} ——
- * 实体上没有 updatedAt，「改一行」在编译期就不成立。
- */
+/** Reserved quantity and source are immutable; V2 fulfillment issue/release progress is mutable and audited. */
 @Getter
 @Setter
 @TableName("inv_reservation_line")
-public class InvReservationLine extends InvEntity {
+public class InvReservationLine extends InvMutableEntity {
 
     private String reservationId;
 
@@ -26,5 +21,15 @@ public class InvReservationLine extends InvEntity {
     private String locationId;
 
     private Integer qty;
+
+    private String fulfillmentRef;
+
+    private Integer issuedQty;
+
+    private Integer releasedQty;
+
+    private String outboundNo;
+
+    private java.time.LocalDateTime issuedAt;
 
 }

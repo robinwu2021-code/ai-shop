@@ -9,6 +9,7 @@ import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboundLineMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.OutboundOrderMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ReservationLineMapper;
 import ai.neargo.shop.inventory.mapper.InventoryMappers.ReservationMapper;
+import ai.neargo.shop.inventory.support.InvEnums;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -49,6 +50,9 @@ class OriginalReservationSource {
     }
 
     private List<Source> prove(InvReservation head, String originalRef) {
+        if (Integer.valueOf(2).equals(head.getLifecycleVersion())) {
+            return proveFulfillmentIssuedLines(head, originalRef);
+        }
         if (!"COMMITTED".equals(head.getStatus()) || head.getOutboundNo() == null) {
             throw invalid();
         }
@@ -64,7 +68,39 @@ class OriginalReservationSource {
                 .eq(InvReservationLine::getReservationId, head.getReservationId())
                 .orderByAsc(InvReservationLine::getId));
         Map<String, Long> costs = verifyLines(actual, original);
-        return original.stream().map(line -> new Source(line, costs.get(line.getItemId()))).toList();
+        return original.stream().map(line -> new Source(line, costs.get(line.getItemId()), line.getQty())).toList();
+    }
+
+    private List<Source> proveFulfillmentIssuedLines(InvReservation head, String originalRef) {
+        if (!List.of("COMMITTED", InvEnums.ReservationStatus.PARTIALLY_COMMITTED, "PARTIAL_RELEASED").contains(head.getStatus())) throw invalid();
+        List<Source> result = new ArrayList<>();
+        for (InvReservationLine line : lines.selectList(Wrappers.<InvReservationLine>lambdaQuery()
+                .eq(InvReservationLine::getReservationId, head.getReservationId()).orderByAsc(InvReservationLine::getId))) {
+            if (line.getIssuedQty() == null || line.getIssuedQty() == 0) continue;
+            if (line.getIssuedQty() + (line.getReleasedQty() == null ? 0 : line.getReleasedQty()) > line.getQty()
+                    || line.getOutboundNo() == null) throw invalid();
+            InvOutboundOrder actual = outbound.selectOne(Wrappers.<InvOutboundOrder>lambdaQuery()
+                    .eq(InvOutboundOrder::getOutboundNo, line.getOutboundNo()).last("FOR UPDATE"));
+            if (actual == null || !"POSTED".equals(actual.getStatus()) || !"SALE".equals(actual.getPurpose())
+                    || !Objects.equals(actual.getOwnerId(), head.getOwnerId())
+                    || !Objects.equals(actual.getSourceRef(), originalRef)
+                    || !Objects.equals(actual.getReservationId(), head.getReservationId())
+                    || !Objects.equals(actual.getLocationId(), line.getLocationId())) throw invalid();
+            Map<String, Integer> expected = Map.of(line.getItemId(), line.getIssuedQty());
+            Map<String, Integer> posted = new HashMap<>();
+            Map<String, Long> costs = new HashMap<>();
+            for (InvOutboundLine outLine : outboundLines.selectList(Wrappers.<InvOutboundLine>lambdaQuery()
+                    .eq(InvOutboundLine::getOutboundNo, actual.getOutboundNo()))) {
+                if (!Objects.equals(outLine.getOwnerId(), head.getOwnerId()) || outLine.getQty() == null
+                        || outLine.getQty() <= 0) throw invalid();
+                posted.merge(outLine.getItemId(), outLine.getQty(), Math::addExact);
+                costs.put(outLine.getItemId(), outLine.getUnitCostMinor());
+            }
+            if (!expected.equals(posted) || !costs.containsKey(line.getItemId())) throw invalid();
+            result.add(new Source(line, costs.get(line.getItemId()), line.getIssuedQty()));
+        }
+        if (result.isEmpty()) throw invalid();
+        return result;
     }
 
     private Map<String, Long> verifyLines(InvOutboundOrder actual, List<InvReservationLine> original) {
@@ -98,5 +134,5 @@ class OriginalReservationSource {
         return new IllegalStateException("STOCK_ORIGINAL_POSTING_UNCONFIRMED");
     }
 
-    record Source(InvReservationLine line, Long unitCostMinor) { }
+    record Source(InvReservationLine line, Long unitCostMinor, int restorableQty) { }
 }

@@ -129,6 +129,8 @@ public class OrderServiceImpl implements OrderService {
     private final CartItemMapper cartMapper;
     private final GoodsQueryPort goodsPort;
     private final StockPort stockPort;
+    @org.springframework.beans.factory.annotation.Value("${shop.inventory.lifecycle.version:1}")
+    private int inventoryLifecycleVersion = 1;
     private final MerchantQueryPort merchantPort;
     private final ai.neargo.shop.spi.user.MerchantAdminPort merchantAdminPort;
     private final AttributionPort attributionPort;
@@ -1681,9 +1683,11 @@ public class OrderServiceImpl implements OrderService {
         for (Group g : split.groups) {
             String storeNo = storeOfMerchant.get(g.key());
             for (Line line : g.lines) {
-                paidOnly.add(new StockPort.SkuQty(line.skuNo(), line.qty(), storeNo));
+                String fulfillmentRef = subOrderNoOf.get(g.key());
+                int lifecycleVersion = inventoryLifecycleVersion == 2 ? 2 : 1;
+                paidOnly.add(new StockPort.SkuQty(line.skuNo(), line.qty(), storeNo, fulfillmentRef, lifecycleVersion));
                 withGifts.add(new StockPort.SkuQty(line.skuNo(),
-                        line.qty() + gifts.getOrDefault(line.skuNo(), 0), storeNo));
+                        line.qty() + gifts.getOrDefault(line.skuNo(), 0), storeNo, fulfillmentRef, lifecycleVersion));
             }
         }
         String registered = creationRecovery.register(orderNo, userNo, idempotencyKey, inputHash, withGifts);
@@ -1735,6 +1739,7 @@ public class OrderServiceImpl implements OrderService {
             sub.setStoreNo(storeOfMerchant.get(g.key()));
             sub.setEntityName(g.merchantName);
             sub.setFulfillment(cmd.fulfillment());
+            sub.setInventoryLifecycleVersion(inventoryLifecycleVersion == 2 ? 2 : 1);
             // 预约时段落到子单：商家的待服务列表按它排，买家的订单卡按它显示「几点」。
             // 只在预约类履约上写，其余留空 —— 一个不需要预约的单带着时间是噪音
             if (Fulfillments.NEEDS_APPOINTMENT.contains(cmd.fulfillment())) {
@@ -2206,9 +2211,11 @@ public class OrderServiceImpl implements OrderService {
         orderMapper.updateById(order);
 
         // 锁定转实扣
-        stockPort.confirm(orderNo);
+        List<OrdSubOrder> paidSubOrders = subOrders(orderNo);
+        int lifecycleVersion = paidSubOrders.stream().allMatch(s -> Integer.valueOf(2).equals(s.getInventoryLifecycleVersion())) ? 2 : 1;
+        stockPort.confirm(orderNo, lifecycleVersion);
 
-        for (OrdSubOrder sub : subOrders(orderNo)) {
+        for (OrdSubOrder sub : paidSubOrders) {
             /*
              * **支付成功后落哪个状态，由履约方式决定**（《订单状态-统一整理》§2.2）。
              *

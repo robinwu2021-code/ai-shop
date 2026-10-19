@@ -22,11 +22,14 @@ public class PrdStockLock extends BaseEntity {
     public static final String LOCKED = "LOCKED";
     public static final String RELEASED = "RELEASED";
     public static final String CONFIRMED = "CONFIRMED";
+    public static final String ALLOCATED = "ALLOCATED";
 
     /** 锁定单号 = 订单号。 */
     private String lockNo;
 
     private String skuNo;
+
+    private String fulfillmentRef;
     private Integer qty;
 
     /**

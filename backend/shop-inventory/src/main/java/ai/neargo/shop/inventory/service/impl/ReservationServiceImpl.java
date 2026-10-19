@@ -66,6 +66,13 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional(transactionManager = "invTransactionManager")
     public String reserve(String ownerId, String externalRef, List<Line> lines, long ttlSeconds) {
+        return reserve(ownerId, externalRef, lines, ttlSeconds, 1);
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String reserve(String ownerId, String externalRef, List<Line> lines, long ttlSeconds, int lifecycleVersion) {
+        if (lifecycleVersion != 1 && lifecycleVersion != 2) throw BizException.of(ErrorCode.BAD_REQUEST);
         InvReservation exists = find(ownerId, externalRef);
         if (exists != null) {
             if (InvEnums.ReservationStatus.RELEASED.equals(exists.getStatus())
@@ -115,6 +122,7 @@ public class ReservationServiceImpl implements ReservationService {
         head.setOwnerId(ownerId);
         head.setExternalRef(externalRef);
         head.setStatus(InvEnums.ReservationStatus.HELD);
+        head.setLifecycleVersion(lifecycleVersion);
         head.setExpiresAt(LocalDateTime.now().plusSeconds(ttlSeconds));
         resMapper.insert(head);
 
@@ -127,6 +135,8 @@ public class ReservationServiceImpl implements ReservationService {
             row.setItemId(l.itemId());
             row.setLocationId(l.locationId());
             row.setQty(l.qty());
+            row.setFulfillmentRef(l.fulfillmentRef());
+            row.setIssuedQty(0);
             lineMapper.insert(row);
         }
         return id;
@@ -143,6 +153,7 @@ public class ReservationServiceImpl implements ReservationService {
             // 已释放/已过期的不能再确认 —— 那意味着货已经被别人买走了
             throw BizException.of(ErrorCode.CONFLICT);
         }
+        if (Integer.valueOf(2).equals(head.getLifecycleVersion())) throw BizException.of(ErrorCode.CONFLICT);
         List<InvReservationLine> rows = linesOf(head.getReservationId());
 
         // 先退预留、再出库：两步都是同一行上的条件更新，事务内由行锁串起来。
@@ -165,6 +176,114 @@ public class ReservationServiceImpl implements ReservationService {
         resMapper.updateById(head);
         return outboundNo;
     }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void allocatePaidByRef(String externalRef) {
+        for (InvReservation head : allByRef(externalRef)) {
+            if (Integer.valueOf(2).equals(head.getLifecycleVersion())
+                    && InvEnums.ReservationStatus.HELD.equals(head.getStatus())) {
+                head.setStatus(InvEnums.ReservationStatus.ALLOCATED);
+                head.setCommittedAt(LocalDateTime.now());
+                // ALLOCATED is excluded from expiry; this timestamp remains only for compatibility/readers.
+                head.setExpiresAt(LocalDateTime.now());
+                head.setUpdatedBy("PAYMENT");
+                resMapper.updateById(head);
+            }
+        }
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public String issueByFulfillmentRef(String fulfillmentRef, String operator) {
+        if (fulfillmentRef == null || fulfillmentRef.isBlank()) throw BizException.of(ErrorCode.BAD_REQUEST);
+        List<InvReservationLine> matching = lineMapper.selectList(Wrappers.<InvReservationLine>lambdaQuery()
+                .eq(InvReservationLine::getFulfillmentRef, fulfillmentRef).orderByAsc(InvReservationLine::getReservationId)
+                .orderByAsc(InvReservationLine::getLineNo).last("FOR UPDATE"));
+        String firstOutbound = matching.stream().map(InvReservationLine::getOutboundNo).filter(java.util.Objects::nonNull)
+                .findFirst().orElse(null);
+        for (InvReservationLine line : matching) {
+            int issuedQty = line.getIssuedQty() == null ? 0 : line.getIssuedQty();
+            int releasedQty = line.getReleasedQty() == null ? 0 : line.getReleasedQty();
+            if (issuedQty + releasedQty >= line.getQty()) continue;
+            InvReservation head = resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
+                    .eq(InvReservation::getReservationId, line.getReservationId()).last("FOR UPDATE"));
+            if (head == null || !(InvEnums.ReservationStatus.ALLOCATED.equals(head.getStatus())
+                    || InvEnums.ReservationStatus.PARTIALLY_COMMITTED.equals(head.getStatus()))) continue;
+            int remaining = line.getQty() - issuedQty - releasedQty;
+            balanceMapper.unhold(head.getOwnerId(), line.getItemId(), line.getLocationId(), remaining);
+            String outboundNo = outbound.postDirectly(new OutboundService.Draft(head.getOwnerId(), line.getLocationId(),
+                    InvEnums.OutboundPurpose.SALE, head.getExternalRef(), head.getReservationId(), null,
+                    LocalDateTime.now(), null, List.of(new OutboundService.Line(line.getItemId(), remaining, null))), operator);
+            line.setIssuedQty(line.getQty());
+            line.setOutboundNo(outboundNo);
+            line.setIssuedAt(LocalDateTime.now());
+            line.setUpdatedBy(operator);
+            lineMapper.updateById(line);
+            if (firstOutbound == null) firstOutbound = outboundNo;
+            List<InvReservationLine> all = linesOf(head.getReservationId());
+            boolean done = all.stream().allMatch(row -> nz(row.getIssuedQty()) + nz(row.getReleasedQty()) >= row.getQty());
+            boolean hasIssued = all.stream().anyMatch(row -> row.getIssuedQty() != null && row.getIssuedQty() > 0);
+            boolean hasReleased = all.stream().anyMatch(row -> row.getReleasedQty() != null && row.getReleasedQty() > 0);
+            head.setStatus(done ? hasReleased && hasIssued ? "PARTIAL_RELEASED"
+                    : hasIssued ? InvEnums.ReservationStatus.COMMITTED : InvEnums.ReservationStatus.RELEASED
+                    : hasIssued ? InvEnums.ReservationStatus.PARTIALLY_COMMITTED : InvEnums.ReservationStatus.ALLOCATED);
+            if (head.getOutboundNo() == null) head.setOutboundNo(outboundNo);
+            resMapper.updateById(head);
+        }
+        return firstOutbound;
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void releaseAllocatedByRef(String externalRef) {
+        for (InvReservation head : allByRef(externalRef)) {
+            releaseAllocatedLines(head, linesOf(head.getReservationId()));
+        }
+    }
+
+    @Override
+    @Transactional(transactionManager = "invTransactionManager")
+    public void releaseAllocatedByFulfillmentRef(String fulfillmentRef) {
+        List<InvReservationLine> matching = lineMapper.selectList(Wrappers.<InvReservationLine>lambdaQuery()
+                .eq(InvReservationLine::getFulfillmentRef, fulfillmentRef).orderByAsc(InvReservationLine::getReservationId)
+                .orderByAsc(InvReservationLine::getLineNo).last("FOR UPDATE"));
+        java.util.Map<String, List<InvReservationLine>> byReservation = matching.stream()
+                .collect(java.util.stream.Collectors.groupingBy(InvReservationLine::getReservationId));
+        for (var entry : byReservation.entrySet()) {
+            InvReservation head = resMapper.selectOne(Wrappers.<InvReservation>lambdaQuery()
+                    .eq(InvReservation::getReservationId, entry.getKey()).last("FOR UPDATE"));
+            if (head != null) releaseAllocatedLines(head, entry.getValue());
+        }
+    }
+
+    private void releaseAllocatedLines(InvReservation head, List<InvReservationLine> requested) {
+        if (!(InvEnums.ReservationStatus.ALLOCATED.equals(head.getStatus())
+                || InvEnums.ReservationStatus.PARTIALLY_COMMITTED.equals(head.getStatus()))) return;
+        for (InvReservationLine line : requested) {
+            int issued = nz(line.getIssuedQty());
+            int released = nz(line.getReleasedQty());
+            int remaining = line.getQty() - issued - released;
+            if (remaining > 0) {
+                balanceMapper.unhold(head.getOwnerId(), line.getItemId(), line.getLocationId(), remaining);
+                line.setReleasedQty(released + remaining);
+                line.setUpdatedBy("REFUND");
+                lineMapper.updateById(line);
+            }
+        }
+        List<InvReservationLine> all = linesOf(head.getReservationId());
+        boolean settled = all.stream().allMatch(row -> nz(row.getIssuedQty()) + nz(row.getReleasedQty()) >= row.getQty());
+        boolean hasIssued = all.stream().anyMatch(row -> nz(row.getIssuedQty()) > 0);
+        boolean hasReleased = all.stream().anyMatch(row -> nz(row.getReleasedQty()) > 0);
+        head.setStatus(settled ? hasIssued && hasReleased ? "PARTIAL_RELEASED"
+                : hasIssued ? InvEnums.ReservationStatus.COMMITTED : InvEnums.ReservationStatus.RELEASED
+                : hasIssued ? InvEnums.ReservationStatus.PARTIALLY_COMMITTED : InvEnums.ReservationStatus.ALLOCATED);
+        head.setReleasedAt(LocalDateTime.now());
+        head.setUpdatedBy("REFUND");
+        resMapper.updateById(head);
+    }
+
+    private static int nz(Integer value) { return value == null ? 0 : value; }
 
     @Override
     @Transactional(transactionManager = "invTransactionManager")

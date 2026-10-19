@@ -33,14 +33,17 @@ public class OutboundServiceImpl implements OutboundService {
     private final ItemMapper itemMapper;
     private final SupplierMapper supplierMapper;
     private final StockPostingService posting;
+    private final InventoryMutationGuard mutationGuard;
 
     public OutboundServiceImpl(OutboundOrderMapper orderMapper, OutboundLineMapper lineMapper,
-                               ItemMapper itemMapper, SupplierMapper supplierMapper, StockPostingService posting) {
+                               ItemMapper itemMapper, SupplierMapper supplierMapper, StockPostingService posting,
+                               InventoryMutationGuard mutationGuard) {
         this.orderMapper = orderMapper;
         this.lineMapper = lineMapper;
         this.itemMapper = itemMapper;
         this.supplierMapper = supplierMapper;
         this.posting = posting;
+        this.mutationGuard = mutationGuard;
     }
 
     @Override
@@ -148,8 +151,10 @@ public class OutboundServiceImpl implements OutboundService {
                 .eq(InvOutboundLine::getOutboundNo, head.getOutboundNo())
                 .orderByAsc(InvOutboundLine::getLineNo));
         List<StockPostingService.Line> lines = new ArrayList<>();
+        String countNo = InvEnums.OutboundPurpose.COUNT_LOSS.equals(head.getPurpose()) ? head.getSourceRef() : null;
         long total = 0;
         for (InvOutboundLine r : rows) {
+            mutationGuard.assertMutable(head.getOwnerId(), head.getLocationId(), r.getItemId(), countNo);
             /*
              * 成本在**过账那一刻**结转并快照到行上。
              *

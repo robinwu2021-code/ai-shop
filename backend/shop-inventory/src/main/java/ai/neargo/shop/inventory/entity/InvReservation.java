@@ -22,6 +22,9 @@ public class InvReservation extends InvMutableEntity {
     /** HELD / COMMITTED / RELEASED / EXPIRED */
     private String status;
 
+    /** Snapshot of the stock lifecycle chosen when this reservation was created. */
+    private Integer lifecycleVersion;
+
     /** ★ 到期自动回收。调用方可能永远不回来 —— 跨进程之后兜底必须在本领域内 */
     private LocalDateTime expiresAt;
 

@@ -30,13 +30,15 @@ public class InboundServiceImpl implements InboundService {
     private final InboundLineMapper lineMapper;
     private final ItemMapper itemMapper;
     private final StockPostingService posting;
+    private final InventoryMutationGuard mutationGuard;
 
     public InboundServiceImpl(InboundOrderMapper orderMapper, InboundLineMapper lineMapper,
-                              ItemMapper itemMapper, StockPostingService posting) {
+                              ItemMapper itemMapper, StockPostingService posting, InventoryMutationGuard mutationGuard) {
         this.orderMapper = orderMapper;
         this.lineMapper = lineMapper;
         this.itemMapper = itemMapper;
         this.posting = posting;
+        this.mutationGuard = mutationGuard;
     }
 
     @Override
@@ -127,7 +129,9 @@ public class InboundServiceImpl implements InboundService {
                 .eq(InvInboundLine::getInboundNo, head.getInboundNo())
                 .orderByAsc(InvInboundLine::getLineNo));
         List<StockPostingService.Line> lines = new ArrayList<>();
+        String countNo = InvEnums.InboundSource.COUNT_GAIN.equals(head.getSourceType()) ? head.getSourceRef() : null;
         for (InvInboundLine r : rows) {
+            mutationGuard.assertMutable(head.getOwnerId(), head.getLocationId(), r.getItemId(), countNo);
             lines.add(new StockPostingService.Line(
                     r.getLineNo(), r.getItemId(), head.getLocationId(), r.getQty(), r.getUnitCostMinor()));
         }

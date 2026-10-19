@@ -117,6 +117,43 @@ public class DualWriteStockPort implements StockPort {
     }
 
     @Override
+    public void confirm(String lockNo, int lifecycleVersion) {
+        if (lifecycleVersion != 2) { confirm(lockNo); return; }
+        platform.confirm(lockNo, 2);
+        mirror(InvMirrorEvent.ALLOCATE, lockNo, List.of());
+    }
+
+    @Override
+    public void allocatePaid(String lockNo) {
+        // Locks already allocated by payment remain ALLOCATED; this replay is safe for a late handoff consumer.
+        mirror(InvMirrorEvent.ALLOCATE, lockNo, List.of());
+    }
+
+    @Override
+    public void issue(String fulfillmentRef) {
+        platform.issue(fulfillmentRef);
+        mirror(InvMirrorEvent.ISSUE, fulfillmentRef, List.of());
+    }
+
+    @Override
+    public void issue(String fulfillmentRef, String orderNo) {
+        platform.issue(fulfillmentRef);
+        publish(new MirrorEvent(InvMirrorEvent.ISSUE, fulfillmentRef, List.of(), orderNo));
+    }
+
+    @Override
+    public void releaseAllocated(String fulfillmentRef) {
+        platform.releaseAllocated(fulfillmentRef);
+        mirror(InvMirrorEvent.RELEASE_ALLOCATED, fulfillmentRef, List.of());
+    }
+
+    @Override
+    public void releaseAllocated(String fulfillmentRef, String orderNo) {
+        platform.releaseAllocated(fulfillmentRef);
+        publish(new MirrorEvent(InvMirrorEvent.RELEASE_ALLOCATED, fulfillmentRef, List.of(), orderNo));
+    }
+
+    @Override
     public void restore(String restoreNo, List<StockPort.SkuQty> items) {
         platform.restore(restoreNo, items);
         mirror(InvMirrorEvent.RESTORE, restoreNo, items);
@@ -165,15 +202,22 @@ public class DualWriteStockPort implements StockPort {
                 return;
             }
         }
-        bus.publish(new MirrorEvent(type, ref, kept));
+        String orderNo = switch (type) {
+            case InvMirrorEvent.RESERVE, InvMirrorEvent.COMMIT, InvMirrorEvent.RELEASE,
+                    InvMirrorEvent.ALLOCATE, InvMirrorEvent.RELEASE_ALLOCATED -> ref;
+            default -> "";
+        };
+        bus.publish(new MirrorEvent(type, ref, kept, orderNo));
     }
+
+    private void publish(MirrorEvent event) { bus.publish(event); }
 
     /**
      * @param ref   平台侧的自然键（锁号 / 售后单号）。进销存那边靠它幂等 ——
      *              至少一次投递意味着同一笔可能来两遍
      * @param items 明细。{@code release} / {@code commit} 不需要（进销存按 ref 找预留）
      */
-    private record MirrorEvent(String type, String ref, List<StockPort.SkuQty> items)
+    private record MirrorEvent(String type, String ref, List<StockPort.SkuQty> items, String orderNo)
             implements DomainEvent {
 
         @Override

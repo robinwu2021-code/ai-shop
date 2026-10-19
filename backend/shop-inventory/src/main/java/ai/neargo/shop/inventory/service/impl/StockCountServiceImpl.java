@@ -214,6 +214,9 @@ public class StockCountServiceImpl implements StockCountService {
             return;   // 幂等
         }
         List<InvStockCountLine> rows = rowsOf(countNo);
+        if (rows.stream().anyMatch(row -> row.getCountedQty() == null || row.getDiffQty() == null)) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
         List<InboundService.Line> gains = new ArrayList<>();
         List<OutboundService.Line> losses = new ArrayList<>();
         for (InvStockCountLine r : rows) {

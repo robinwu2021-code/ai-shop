@@ -28,6 +28,10 @@ public interface ReservationService {
      */
     String reserve(String ownerId, String externalRef, List<Line> lines, long ttlSeconds);
 
+    default String reserve(String ownerId, String externalRef, List<Line> lines, long ttlSeconds, int lifecycleVersion) {
+        return reserve(ownerId, externalRef, lines, ttlSeconds);
+    }
+
     /**
      * 确认：{@code reserved} 转实扣，并**自动开一张 SALE 出库单**。
      *
@@ -37,6 +41,17 @@ public interface ReservationService {
      * @return 生成的出库单号；重复 commit 返回原单号
      */
     String commit(String ownerId, String externalRef, String operator);
+
+    /** Paid V2 orders keep their physical hold until a merchant confirms a fulfillment handoff. */
+    void allocatePaidByRef(String externalRef);
+
+    /** Issues only the original reserved lines belonging to one fulfillment reference. */
+    String issueByFulfillmentRef(String fulfillmentRef, String operator);
+
+    /** Refund before handoff releases paid allocation without creating a stock receipt. */
+    void releaseAllocatedByRef(String externalRef);
+
+    void releaseAllocatedByFulfillmentRef(String fulfillmentRef);
 
     /** 释放。幂等：只作用于 {@code HELD} 的预留。 */
     void release(String ownerId, String externalRef);
@@ -82,6 +97,7 @@ public interface ReservationService {
      */
     int countOverdue();
 
-    record Line(String itemId, String locationId, int qty) {
+    record Line(String itemId, String locationId, int qty, String fulfillmentRef) {
+        public Line(String itemId, String locationId, int qty) { this(itemId, locationId, qty, null); }
     }
 }

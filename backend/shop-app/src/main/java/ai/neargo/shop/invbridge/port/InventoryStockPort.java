@@ -6,6 +6,7 @@ import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
 import ai.neargo.shop.inventory.service.StockCountService;
 import ai.neargo.shop.spi.product.StockPort;
+import ai.neargo.shop.event.OutboxEventBus;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
@@ -56,6 +57,10 @@ public class InventoryStockPort implements StockPort {
     private final ReservationService reservations;
     private final InventoryAclService acl;
     private final LocationService locations;
+    private OutboxEventBus events;
+
+    @Autowired
+    public void setEvents(OutboxEventBus events) { this.events = events; }
     private OriginalInventoryRestoreAdapter originalRestores;
 
     @Autowired
@@ -82,7 +87,8 @@ public class InventoryStockPort implements StockPort {
             byOwner.computeIfAbsent(acl.ownerOfSku(item.skuNo()), owner -> new ArrayList<>()).add(item);
         }
         for (var group : byOwner.entrySet()) {
-            reservations.reserve(group.getKey(), lockNo, toLines(group.getKey(), group.getValue()), RESERVE_TTL_SECONDS);
+            int lifecycleVersion = group.getValue().stream().mapToInt(SkuQty::lifecycleVersion).max().orElse(1);
+            reservations.reserve(group.getKey(), lockNo, toLines(group.getKey(), group.getValue()), RESERVE_TTL_SECONDS, lifecycleVersion);
         }
         return List.of();
     }
@@ -102,6 +108,29 @@ public class InventoryStockPort implements StockPort {
     @Override
     public void confirm(String lockNo) {
         reservations.commitByRef(lockNo, "SYSTEM");
+    }
+
+    @Override
+    public void confirm(String lockNo, int lifecycleVersion) {
+        if (lifecycleVersion == 2) {
+            if (events == null) throw new IllegalStateException("INVENTORY_LIFECYCLE_OUTBOX_UNAVAILABLE");
+            events.publish(new ai.neargo.shop.invbridge.InventoryLifecycleCommand(
+                    ai.neargo.shop.invbridge.InvMirrorEvent.ALLOCATE, lockNo, List.of(), lockNo));
+        }
+        else confirm(lockNo);
+    }
+
+    @Override
+    public void allocatePaid(String lockNo) { reservations.allocatePaidByRef(lockNo); }
+
+    @Override
+    public void issue(String fulfillmentRef) {
+        reservations.issueByFulfillmentRef(fulfillmentRef, "SYSTEM");
+    }
+
+    @Override
+    public void releaseAllocated(String fulfillmentRef) {
+        reservations.releaseAllocatedByFulfillmentRef(fulfillmentRef);
     }
 
     @Override
@@ -133,7 +162,7 @@ public class InventoryStockPort implements StockPort {
         for (SkuQty q : items) {
             String locationId = locations.resolveStockLocation(
                     owner, acl.locationOfStore(owner, q.storeNo()));
-            lines.add(new ReservationService.Line(acl.itemIdOfSku(q.skuNo()), locationId, q.qty()));
+            lines.add(new ReservationService.Line(acl.itemIdOfSku(q.skuNo()), locationId, q.qty(), q.fulfillmentRef()));
         }
         return lines;
     }

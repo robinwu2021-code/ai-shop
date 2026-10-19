@@ -17,6 +17,7 @@ import ai.neargo.shop.inventory.service.InventorySnapshotService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.OutboundService;
 import ai.neargo.shop.inventory.service.ReservationService;
+import ai.neargo.shop.inventory.service.OriginalReservationRestoreService;
 import ai.neargo.shop.inventory.service.StockCountService;
 import ai.neargo.shop.inventory.service.StockQueryService;
 import ai.neargo.shop.inventory.service.TransferService;
@@ -69,6 +70,8 @@ class InventoryFlowTest {
     @Autowired
     ReservationService reservations;
     @Autowired
+    OriginalReservationRestoreService originalRestores;
+    @Autowired
     StockCountService counts;
     @Autowired
     TransferService transfers;
@@ -109,6 +112,84 @@ class InventoryFlowTest {
         reservations.commit(f.owner, "SO-" + f.seq, "SYSTEM");
         assertThat(onHand(f)).isEqualTo(97);
         assertThat(available(f)).isEqualTo(97);
+    }
+
+    @Test
+    @DisplayName("V2 支付转已付款占用，不扣实存也不参与待支付过期；首次子单交接才出库且可重放")
+    void paidAllocationIssuesOnlyAtFulfillmentHandoff() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "老板");
+        String payNo = "PAY-V2-" + f.seq;
+        String firstSubOrder = "SUB-V2-A-" + f.seq;
+        String secondSubOrder = "SUB-V2-B-" + f.seq;
+        reservations.reserve(f.owner, payNo, List.of(
+                new ReservationService.Line(f.item, f.location, 3, firstSubOrder),
+                new ReservationService.Line(f.item, f.location, 2, secondSubOrder)), 900, 2);
+        reservations.allocatePaidByRef(payNo);
+
+        assertThat(onHand(f)).isEqualTo(10);
+        assertThat(available(f)).isEqualTo(5);
+        assertThat(reservations.expireOverdue(200)).isZero();
+
+        String first = reservations.issueByFulfillmentRef(firstSubOrder, "店员");
+        String retry = reservations.issueByFulfillmentRef(firstSubOrder, "店员");
+
+        assertThat(first).isNotBlank();
+        assertThat(retry).isEqualTo(first);
+        assertThat(onHand(f)).isEqualTo(7);
+        assertThat(available(f)).isEqualTo(5);
+
+        String refundNo = "RF-V2-" + f.seq;
+        originalRestores.restore(refundNo, payNo, List.of(new OriginalReservationRestoreService.ItemQty(f.item, 2)));
+        originalRestores.restore(refundNo, payNo, List.of(new OriginalReservationRestoreService.ItemQty(f.item, 2)));
+        assertThat(onHand(f)).isEqualTo(9);
+        assertThat(available(f)).isEqualTo(7);
+
+        reservations.issueByFulfillmentRef(secondSubOrder, "店员");
+        reservations.issueByFulfillmentRef(secondSubOrder, "店员");
+        assertThat(onHand(f)).isEqualTo(7);
+        assertThat(available(f)).isEqualTo(7);
+    }
+
+    @Test
+    @DisplayName("V1 已付款订单在实际发货事件重放时不二次扣库存")
+    void legacyPaymentDeductLifecycleIgnoresLaterHandoffIssue() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 8), "老板");
+        String payNo = "PAY-V1-" + f.seq;
+        String subOrderNo = "SUB-V1-" + f.seq;
+        reservations.reserve(f.owner, payNo, List.of(new ReservationService.Line(f.item, f.location, 3, subOrderNo)), 900, 1);
+        reservations.commit(f.owner, payNo, "SYSTEM");
+        int afterPayment = onHand(f);
+
+        reservations.issueByFulfillmentRef(subOrderNo, "SYSTEM");
+
+        assertThat(afterPayment).isEqualTo(5);
+        assertThat(onHand(f)).isEqualTo(afterPayment);
+    }
+
+    @Test
+    @DisplayName("V2 未交接退款只释放对应子单占用，不生成入库，也不释放同主单其他门店子单")
+    void preHandoffRefundReleasesOnlyItsSubOrderAllocation() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 10), "老板");
+        String payNo = "PAY-V2-REFUND-" + f.seq;
+        String refundSub = "SUB-V2-REFUND-" + f.seq;
+        String liveSub = "SUB-V2-LIVE-" + f.seq;
+        reservations.reserve(f.owner, payNo, List.of(
+                new ReservationService.Line(f.item, f.location, 3, refundSub),
+                new ReservationService.Line(f.item, f.location, 2, liveSub)), 900, 2);
+        reservations.allocatePaidByRef(payNo);
+
+        reservations.releaseAllocatedByFulfillmentRef(refundSub);
+        reservations.releaseAllocatedByFulfillmentRef(refundSub);
+
+        assertThat(onHand(f)).isEqualTo(10);
+        assertThat(available(f)).isEqualTo(8);
+        reservations.issueByFulfillmentRef(refundSub, "SYSTEM");
+        reservations.issueByFulfillmentRef(liveSub, "SYSTEM");
+        assertThat(onHand(f)).isEqualTo(8);
+        assertThat(available(f)).isEqualTo(8);
     }
 
     @Test
@@ -197,25 +278,38 @@ class InventoryFlowTest {
     }
 
     @Test
-    @DisplayName("★★★ 盘点按**开单那一刻**的账面数算差异 —— 中间卖掉的不算盘亏")
-    void countUsesSnapshotBookQty() {
+    @DisplayName("盘点冻结实物出入库，不能把开盘后的交接重复算成盘亏")
+    void countFreezesPhysicalMutationsUntilPosting() {
         Fixture f = fixture();
         inbound.postDirectly(purchase(f, 10), "老板");
 
         String countNo = counts.open(f.owner, f.location, List.of(f.item), "张伟");
-        // 开单之后又卖掉 2 件（账面变成 8）
+        // 开盘后可建立预留，但实际交接出库被截止守卫阻止。
         reservations.reserve(f.owner, "SO-" + f.seq, List.of(
                 new ReservationService.Line(f.item, f.location, 2)), 900);
-        reservations.commit(f.owner, "SO-" + f.seq, "SYSTEM");
-        assertThat(onHand(f)).isEqualTo(8);
+        assertThatThrownBy(() -> reservations.commit(f.owner, "SO-" + f.seq, "SYSTEM"))
+                .isInstanceOf(BizException.class);
+        assertThat(onHand(f)).isEqualTo(10);
 
-        // 实盘 9：相对**开单时的 10** 是 −1，不是相对现在的 8 算成 +1
+        // 实盘 8：只生成 -2 一次。
         counts.fill(f.owner, countNo, List.of(
-                new StockCountService.Filled(f.item, 9, InvEnums.Reason.BROKEN)));
+                new StockCountService.Filled(f.item, 8, InvEnums.Reason.BROKEN)));
         counts.post(f.owner, countNo, "张伟");
+        assertThat(onHand(f)).isEqualTo(8);
+        counts.post(f.owner, countNo, "张伟");
+        assertThat(onHand(f)).isEqualTo(8);
+    }
 
-        // 8 − 1 = 7：盘亏那一件被扣掉，中间卖掉的两件不重复计
-        assertThat(onHand(f)).isEqualTo(7);
+    @Test
+    @DisplayName("未录入实盘数量的盘点不能过账，实盘0仍是有效输入")
+    void countRequiresEveryLineAndAcceptsZero() {
+        Fixture f = fixture();
+        inbound.postDirectly(purchase(f, 3), "老板");
+        String countNo = counts.open(f.owner, f.location, List.of(f.item), "张伟");
+        assertThatThrownBy(() -> counts.post(f.owner, countNo, "张伟")).isInstanceOf(BizException.class);
+        counts.fill(f.owner, countNo, List.of(new StockCountService.Filled(f.item, 0, InvEnums.Reason.BROKEN)));
+        counts.post(f.owner, countNo, "张伟");
+        assertThat(onHand(f)).isZero();
     }
 
     @Test

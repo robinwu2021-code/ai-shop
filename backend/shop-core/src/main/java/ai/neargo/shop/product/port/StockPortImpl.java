@@ -101,6 +101,7 @@ public class StockPortImpl implements StockPort {
             PrdStockLock lock = new PrdStockLock();
             lock.setLockNo(lockNo);
             lock.setSkuNo(item.skuNo());
+            lock.setFulfillmentRef(item.fulfillmentRef());
             lock.setQty(item.qty());
             // **锁在哪张表就记在哪** —— 释放与确认靠它决定把数减回哪里，
             // 记错的后果是库存凭空多出或少掉一批，而且要等到对账才发现
@@ -168,6 +169,63 @@ public class StockPortImpl implements StockPort {
             lock.setSettledAt(LocalDateTime.now());
             lockMapper.updateById(lock);
         });
+    }
+
+    @Override
+    @Transactional
+    public void confirm(String lockNo, int lifecycleVersion) {
+        if (lifecycleVersion != 2) { confirm(lockNo); return; }
+        forEachActiveLock(lockNo, lock -> {
+            lock.setStatus(PrdStockLock.ALLOCATED);
+            lock.setSettledAt(LocalDateTime.now());
+            lockMapper.updateById(lock);
+        });
+    }
+
+    @Override
+    @Transactional
+    public void issue(String fulfillmentRef) {
+        List<PrdStockLock> locks = DataScopeContext.executeWithoutScope(() ->
+                lockMapper.selectList(Wrappers.<PrdStockLock>lambdaQuery()
+                        .eq(PrdStockLock::getFulfillmentRef, fulfillmentRef)
+                        .eq(PrdStockLock::getStatus, PrdStockLock.ALLOCATED).last("FOR UPDATE")));
+        locks.forEach(this::deductAllocated);
+    }
+
+    @Override
+    @Transactional
+    public void releaseAllocated(String fulfillmentRef) {
+        List<PrdStockLock> locks = DataScopeContext.executeWithoutScope(() ->
+                lockMapper.selectList(Wrappers.<PrdStockLock>lambdaQuery()
+                        .eq(PrdStockLock::getFulfillmentRef, fulfillmentRef)
+                        .eq(PrdStockLock::getStatus, PrdStockLock.ALLOCATED).last("FOR UPDATE")));
+        locks.forEach(lock -> {
+            releaseBalance(lock);
+            lock.setStatus(PrdStockLock.RELEASED);
+            lock.setSettledAt(LocalDateTime.now());
+            lockMapper.updateById(lock);
+        });
+    }
+
+    private void deductAllocated(PrdStockLock lock) {
+        if (Boolean.TRUE.equals(lock.getPresale())) {
+            lock.setStatus(PrdStockLock.CONFIRMED);
+            lock.setSettledAt(LocalDateTime.now());
+            lockMapper.updateById(lock);
+            return;
+        }
+        if (lock.getStoreNo() != null) storeStockMapper.confirmStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());
+        else DataScopeContext.executeWithoutScope(() -> skuMapper.confirmStock(lock.getSkuNo(), lock.getQty()));
+        lock.setStatus(PrdStockLock.CONFIRMED);
+        lock.setSettledAt(LocalDateTime.now());
+        lockMapper.updateById(lock);
+    }
+
+    private void releaseBalance(PrdStockLock lock) {
+        if (Boolean.TRUE.equals(lock.getPresale())) {
+            DataScopeContext.executeWithoutScope(() -> skuMapper.releasePresale(lock.getSkuNo(), lock.getQty()));
+        } else if (lock.getStoreNo() != null) storeStockMapper.releaseStock(lock.getStoreNo(), lock.getSkuNo(), lock.getQty());
+        else DataScopeContext.executeWithoutScope(() -> skuMapper.releaseStock(lock.getSkuNo(), lock.getQty()));
     }
 
     @Override

@@ -46,7 +46,7 @@ public class OriginalReservationRestoreServiceImpl implements OriginalReservatio
                 .forEach(claim -> used.merge(claim.getOriginalLineId(), claim.getQty(), Math::addExact));
         for (Source row : rows) {
             int wanted = needed.getOrDefault(row.line().getItemId(), 0);
-            int available = row.line().getQty() - used.getOrDefault(row.line().getId(), 0);
+            int available = row.restorableQty() - used.getOrDefault(row.line().getId(), 0);
             if (available < 0) {
                 throw conflict();
             }

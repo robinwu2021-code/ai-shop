@@ -1,6 +1,8 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.config.OutboxEventRoutes;
+import ai.neargo.shop.invbridge.InventoryLifecycleCommand;
+import ai.neargo.shop.invbridge.InvMirrorEvent;
 import ai.neargo.shop.spi.trade.OrderEvents;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
@@ -21,5 +23,16 @@ class OutboxRoutingTest {
         assertThat(result.get(1).event()).isEqualTo(new OrderEvents.SubOrdersArrived("U1","P1",List.of("S2")));
         assertThatThrownBy(() -> routes.expand("PLATFORM",new OrderEvents.SubOrdersArrived("U1","P1",List.of("MISSING"))))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void inventoryAllocationCommandUsesOrderStreamSoItPrecedesFulfillmentHandoff() {
+        var routes = new OutboxEventRoutes(new ObjectMapper(), sub -> "PAY-1");
+        var event = new InventoryLifecycleCommand(InvMirrorEvent.ALLOCATE, "PAY-1", List.of(), "PAY-1");
+        var allocation = routes.expand("PLATFORM", event);
+        var shipment = routes.expand("PLATFORM", new OrderEvents.SubOrderShipped("SUB-1", "PAY-1", "M-1",
+                "U-1", "EXPRESS", "SF", "SF-TRACK", "SHIP-1", 0L));
+        assertThat(allocation).singleElement().satisfies(p -> assertThat(p.options().streamKey()).isEqualTo("ORDER:PAY-1"));
+        assertThat(shipment).singleElement().satisfies(p -> assertThat(p.options().streamKey()).isEqualTo("ORDER:PAY-1"));
     }
 }

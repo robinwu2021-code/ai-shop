@@ -10,7 +10,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -41,7 +40,6 @@ import tools.jackson.core.type.TypeReference;
  * 否则双写期结束时对差是干净的，而干净的原因是「漏的那些根本没记」。
  */
 @Component
-@ConditionalOnProperty(prefix = "shop.inventory", name = "stock-authority", havingValue = "DUAL")
 public class InventoryMirrorConsumer implements OutboxConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(InventoryMirrorConsumer.class);
@@ -100,6 +98,9 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
         switch (event.getEventType()) {
             case InvMirrorEvent.RESERVE -> reserve(ref, p);
             case InvMirrorEvent.COMMIT -> settled(ref, () -> reservations.commitByRef(ref, "MIRROR"));
+            case InvMirrorEvent.ALLOCATE -> reservations.allocatePaidByRef(ref);
+            case InvMirrorEvent.ISSUE -> reservations.issueByFulfillmentRef(ref, "MIRROR");
+            case InvMirrorEvent.RELEASE_ALLOCATED -> reservations.releaseAllocatedByFulfillmentRef(ref);
             case InvMirrorEvent.RELEASE -> settled(ref, () -> reservations.releaseByRef(ref));
             case InvMirrorEvent.RESTORE -> restore(ref, p);
             case InvMirrorEvent.RESTORE_ORIGINAL -> restoreOriginal(ref, p);
@@ -114,7 +115,9 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
             return;
         }
         String owner = requireOwner(first(p));
-        reservations.reserve(owner, ref, lines, RESERVE_TTL_SECONDS);
+        int lifecycleVersion = p.path("items").isArray() && !p.path("items").isEmpty()
+                ? p.path("items").get(0).path("lifecycleVersion").asInt(1) : 1;
+        reservations.reserve(owner, ref, lines, RESERVE_TTL_SECONDS, lifecycleVersion);
     }
 
     private void restoreOriginal(String purpose, JsonNode payload) {
@@ -181,7 +184,7 @@ public class InventoryMirrorConsumer implements OutboxConsumer {
             }
             String locationId = locations.resolveStockLocation(
                     owner, acl.locationOfStore(owner, storeNo));
-            out.add(new ReservationService.Line(acl.itemIdOfSku(skuNo), locationId, qty));
+            out.add(new ReservationService.Line(acl.itemIdOfSku(skuNo), locationId, qty, text(it, "fulfillmentRef")));
         }
         return out;
     }

@@ -19,11 +19,10 @@ import java.time.LocalDateTime;
  * {@code deleted = 0}；库里没有这一列，报的是「未知列」，
  * 排查方向会指向 SQL 写错，不会指向基类。
  *
- * <p><b>继承关系即是不可变规矩</b>：只追加 / 写一次的三张表（{@code inv_ledger} ·
- * {@code inv_item_ref} · {@code inv_reservation_line}）直接继承本类，
- * <b>因此它们的实体上根本没有 {@code updatedAt} 这个字段</b> ——
- * 不变式 I3 由类型兜住，而不是靠代码里记得别写 update。
- * 其余十四张继承 {@link InvMutableEntity}。
+ * <p><b>继承关系即是不可变规矩</b>：只追加 / 写一次的 {@code inv_ledger} 与
+ * {@code inv_item_ref} 直接继承本类，<b>实体上根本没有 {@code updatedAt}</b>。
+ * 其余可变表继承 {@link InvMutableEntity}。预留明细只更新 V2 的履约核销/释放标记，
+ * SKU、数量和原库位仍保持不变。
  *
  * <p><b>时间列由本域自己的填充器写</b>（{@code InventoryDataSourceConfig} 里那个
  * MetaObjectHandler）。刻意不装的是**拦截器**（DataScope / 分页 / 乐观锁）——

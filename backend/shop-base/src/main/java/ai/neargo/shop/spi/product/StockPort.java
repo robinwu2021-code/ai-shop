@@ -45,6 +45,20 @@ public interface StockPort {
     /** 确认扣减（支付成功）。锁定转实扣，此后不再释放。 */
     void confirm(String lockNo);
 
+    /** Payment-time transition selected by the order's immutable lifecycle snapshot. */
+    default void confirm(String lockNo, int lifecycleVersion) { confirm(lockNo); }
+
+    /** Idempotently repairs a paid allocation before processing a durable handoff event. */
+    default void allocatePaid(String lockNo) { }
+
+    /** Physical stock issue after an explicit merchant handoff/delivery action. */
+    default void issue(String fulfillmentRef) { }
+    default void issue(String fulfillmentRef, String orderNo) { issue(fulfillmentRef); }
+
+    /** Release paid but unissued stock for one merchant sub-order after a successful pre-handoff refund. */
+    default void releaseAllocated(String fulfillmentRef) { }
+    default void releaseAllocated(String fulfillmentRef, String orderNo) { releaseAllocated(fulfillmentRef); }
+
     /**
      * 退货入库：把货加回来。
      *
@@ -140,11 +154,13 @@ public interface StockPort {
      * <p>空值的含义是「这一行按主体总量扣」，与单店时代逐字相同。
      * 真正决定走哪条路的是 SKU 有没有启用分店库存，见 StockPortImpl。
      */
-    record SkuQty(String skuNo, int qty, String storeNo) {
+    record SkuQty(String skuNo, int qty, String storeNo, String fulfillmentRef, int lifecycleVersion) {
+
+        public SkuQty(String skuNo, int qty, String storeNo) { this(skuNo, qty, storeNo, null, 1); }
 
         /** 主体级扣减。存量调用方与单店场景用这个 */
         public SkuQty(String skuNo, int qty) {
-            this(skuNo, qty, null);
+            this(skuNo, qty, null, null, 1);
         }
     }
 }

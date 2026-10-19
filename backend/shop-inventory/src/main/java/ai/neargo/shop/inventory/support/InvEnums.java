@@ -116,6 +116,10 @@ public final class InvEnums {
     /** 预留状态。 */
     public static final class ReservationStatus {
         public static final String HELD = "HELD";
+        /** Paid allocation; excluded from unpaid expiry and issued only on fulfillment handoff. */
+        public static final String ALLOCATED = "ALLOCATED";
+        // Reservation status is VARCHAR(16) in the deployed schema.
+        public static final String PARTIALLY_COMMITTED = "PARTIAL_COMMIT";
         public static final String COMMITTED = "COMMITTED";
         public static final String RELEASED = "RELEASED";
         public static final String EXPIRED = "EXPIRED";

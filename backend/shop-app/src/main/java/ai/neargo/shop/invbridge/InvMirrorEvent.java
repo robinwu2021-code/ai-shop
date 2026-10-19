@@ -46,6 +46,12 @@ public final class InvMirrorEvent {
     public static final String RESERVE = PREFIX + "RESERVE";
     /** 平台确认 → 进销存把预留转成出库。 */
     public static final String COMMIT = PREFIX + "COMMIT";
+    /** Paid lifecycle V2: reservation becomes a non-expiring allocation without physical issue. */
+    public static final String ALLOCATE = PREFIX + "ALLOCATE";
+    /** Fulfillment handoff: only the referenced sub-order lines are issued. */
+    public static final String ISSUE = PREFIX + "ISSUE";
+    /** Refund before handoff releases a paid allocation. */
+    public static final String RELEASE_ALLOCATED = PREFIX + "RELEASE_ALLOCATED";
     /** 平台释放 → 进销存撤销预留。 */
     public static final String RELEASE = PREFIX + "RELEASE";
     /** 售后退回 → 进销存回补库存。 */
@@ -67,7 +73,8 @@ public final class InvMirrorEvent {
      * {@code case} 标签上 —— 拼写不一致因此在编译期就没法发生。
      * 消不掉的是<b>遗漏</b>，那一档交给 {@code InvMirrorEventCoverageTest}。
      */
-    public static final Set<String> ALL = Set.of(RESERVE, COMMIT, RELEASE, RESTORE, RESTORE_ORIGINAL, ADJUST);
+    public static final Set<String> ALL = Set.of(RESERVE, COMMIT, ALLOCATE, ISSUE, RELEASE_ALLOCATED,
+            RELEASE, RESTORE, RESTORE_ORIGINAL, ADJUST);
 
     private InvMirrorEvent() {
     }

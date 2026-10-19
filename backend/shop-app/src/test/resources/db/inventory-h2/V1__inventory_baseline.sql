@@ -165,6 +165,7 @@ CREATE TABLE IF NOT EXISTS inv_reservation
     owner_id       VARCHAR(32) NOT NULL,
     external_ref   VARCHAR(64) NOT NULL,
     status         VARCHAR(16) NOT NULL DEFAULT 'HELD',
+    lifecycle_version INT NOT NULL DEFAULT 1,
     expires_at     DATETIME    NOT NULL,
     committed_at   DATETIME    DEFAULT NULL,
     released_at    DATETIME    DEFAULT NULL,
@@ -187,10 +188,18 @@ CREATE TABLE IF NOT EXISTS inv_reservation_line
     item_id        VARCHAR(32) NOT NULL,
     location_id    VARCHAR(32) NOT NULL,
     qty            INT         NOT NULL,
+    fulfillment_ref VARCHAR(64) DEFAULT NULL,
+    issued_qty INT NOT NULL DEFAULT 0,
+    released_qty INT NOT NULL DEFAULT 0,
+    outbound_no VARCHAR(64) DEFAULT NULL,
+    issued_at DATETIME DEFAULT NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by VARCHAR(64) DEFAULT NULL,
     created_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by      VARCHAR(64) DEFAULT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_res_line UNIQUE (reservation_id, line_no)
+    CONSTRAINT uk_res_line UNIQUE (reservation_id, line_no),
+    INDEX idx_inv_reservation_fulfillment (owner_id, fulfillment_ref)
 );
 
 CREATE TABLE IF NOT EXISTS inv_inbound_order

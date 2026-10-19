@@ -78,8 +78,16 @@ public class RefundResourceServiceImpl implements RefundResourceService {
                 throw new IllegalStateException("STOCK_SOURCE_AUTHORITY_MISMATCH");
             }
             List<StockPort.SkuQty> items = json.readValue(row.getStockNeedsJson(), new TypeReference<>() { });
-            restored = stock.restoreOriginal(row.getExecutionNo(), row.getOrderNo(), items)
-                    == StockPort.RestoreResult.COMPLETED;
+            OrdSubOrder child = DataScopeContext.executeWithoutScope(() -> children.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
+                    .eq(OrdSubOrder::getSubOrderNo, row.getSubOrderNo()).last("LIMIT 1")));
+            if (child != null && Integer.valueOf(2).equals(child.getInventoryLifecycleVersion())
+                    && OrdSubOrder.WAIT_FULFILL.equals(child.getStatus())) {
+                stock.releaseAllocated(child.getSubOrderNo(), child.getOrderNo());
+                restored = true;
+            } else {
+                restored = stock.restoreOriginal(row.getExecutionNo(), row.getOrderNo(), items)
+                        == StockPort.RestoreResult.COMPLETED;
+            }
         }
         List<OrdSubOrder> siblings = DataScopeContext.executeWithoutScope(() -> children.selectList(
                 Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getOrderNo, row.getOrderNo())));

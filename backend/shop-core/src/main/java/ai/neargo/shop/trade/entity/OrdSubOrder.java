@@ -99,6 +99,9 @@ public class OrdSubOrder extends BaseEntity {
     /** STORE_PICKUP / NEIGHBOR_PICKUP / MERCHANT_DELIVERY / EXPRESS */
     private String fulfillment;
 
+    /** Immutable order-time stock accounting behavior; absent legacy values are interpreted as V1. */
+    private Integer inventoryLifecycleVersion;
+
     private String pickupNo;
 
     /**
