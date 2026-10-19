@@ -243,6 +243,6 @@ npm --prefix b-app test -- tests/stock-entries.test.ts
 - 后端定向验证：`InventoryFlowTest` 26、`OutboxUnifiedFlowTest` 4、`RefundShippedResourceFlowTest` 3、`BasicReturnRefundFlowTest` 2 均通过（共35）。B端 type-check 通过，售后/订单接口测试8项通过；运维端 typecheck 通过、契约与 OpenAPI parity 10项通过；C端 type-check 通过、售后测试2项通过。
 - 仍需真实环境人工验收：快递/自送/自提、退款和V1/V2订单须用指定测试账号及可退款测试订单完整点验。当前模拟器只做商家端只读界面检查，不创建真实订单、不触发付款或库存变更；不将自动化服务端用例冒充人工业务验收。
 - 服务端 `759c865e2` 已部署为 `/data/app/ai-shop/shop-app/shop-app-20261019-1424-759c865e2.jar`，MD5 一致，systemd 确认运行该版本，`https://www.hxmall.top/actuator/health` 返回 HTTP 200 / UP。追溯 API 的未认证请求返回 401，符合受保护端点预期。
-- B端H5与运营端部署版本 `58cccd339`；`/b/VERSION` 和 `/ops-web/VERSION` 均匹配，入口资源分别3个、18个且全部 HTTP 200。
+- B端H5、C端H5与运营端部署版本 `58cccd339`；`/b/VERSION`、`/c/VERSION` 和 `/ops-web/VERSION` 均匹配，入口资源分别3个、3个、18个且全部 HTTP 200。
 - APK `虹选商家-0.5.83-316.apk` 通过签名包体检查并安装至 `emulator-5554`；系统包信息为 versionName 0.5.83 / versionCode 316，进程存活且无 FATAL。人工查看工作台、订单列表、已退款订单详情与库存页，页面可加载并显示数据，未创建订单、付款或更改库存。
 - 部署提交与APK提交对应：后端 `759c865e2`；前端/Android `58cccd339`。剩余人工验收范围是使用指定 V1/V2 测试订单走完快递、自送、自提、退款及退货验收；当前模拟器账号没有可验证的新V2退货订单，未以线上订单进行有资金/库存副作用的操作。
