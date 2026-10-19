@@ -431,3 +431,12 @@ core.trade新增`EntitlementOrderQuoteService/Impl`和`OrderCouponSelection`：�
 核心`UsePrepared`事件在原命令写入事务发布；现有`EntitlementOrderUseDecisionConsumer`区分准备与终态事件，
 准备达到实际已应用价格的HELD即可，未知重试原操作；终态事件仍必须达到COMMITTED/RELEASED。
 AuthorizationView新增可空operationNo/useStatus及3参兼容构造器，不把使用状态当作本人同意状态。
+
+
+### JB039商品绑定（已实现）
+
+core.product的`CardProductBindingService/Impl`负责真实商品/SKU/市场及pay版本预检；
+`CardProductBindingWriter`在独立核心事务内幂等保存、商品修订CAS及回执；
+`ProductEntitlementBinding`、`CardProductBindingView`为输入/响应；
+`PrdEntitlementBinding`、`PrdEntBindingCommand`及对应Mapper沿商品扫描根；
+app `BizCardProductBindingController`仅负责会话、biz:goods及全主体权限。

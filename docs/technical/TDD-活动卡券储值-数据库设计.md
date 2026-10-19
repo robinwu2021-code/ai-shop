@@ -10,7 +10,7 @@
 
 每表id为内部自增主键，tenant_no参与业务唯一性；version条件更新（对外expectedRevision映射此列）；created/updated_at用UTC DATETIME(3)，created/updated_by留操作人。资金/核销事实不可物理删除；模板归档不删除历史。沿现有BaseEntity实际审计列对齐后再生成正式迁移，不借设计重命名所有现存列。
 
-公共字段适用于当前基础44张及6张支撑表（core20/pay30，合计50张；含预览、取消栅栏与订单协调增量），DDL逐表展开：
+公共字段适用于当前基础45张及6张支撑表（core21/pay30，合计51张；含预览、取消栅栏与订单协调增量），DDL逐表展开：
 
 | 字段 | 类型及空值 | 含义 |
 |---|---|---|
@@ -1066,3 +1066,16 @@ CANCEL_DECIDED→RELEASED。客户端展示WAIT_AUTH、WAIT_SUBMIT、PROCESSING�
 `ord_ent_authorization`增加可空`order_use_snapshot JSON`，冻结订单源事实、QuoteView及选定实例。
 无字段的旧意图和SERVICE_USE授权保持兼容；字段不表示余额，不允许页面改写来源金额。授权确认时生成
 稳定原操作，同一core事务保存ord_ent_order_use和UsePrepared outbox。原cash seal与历史支付事实继续校验。
+
+
+### V444：CARD商品绑定与命令原回执（已实现）
+
+将原目标`prd_entitlement_binding`建为核心商品表，额外冻结实际SKU市场；只绑定商家主市场的CARD SKU，
+币种沿真实MarketPort，售价沿SKU，不能从请求覆盖。`units_per_item`是每件发行实例数，30次余量属于模板。
+另增商品域`prd_ent_binding_command`保存租户/原请求键/actor+entity+参数摘要与原BindingView，
+避免商品域直接写营销的pmt_command_dedup；绑定后再改版本时，旧请求仍回原结果。
+远程pay版本校验先于核心事务；核心事务内认领命令、锁商品及核对expectedProductRevision、绑定、递增商品
+版本并保存原回执。新增表后目标为基础45+支撑6，共51（core21/pay30）。
+
+绑定同时保存已验证的pay不可变规则JSON及原摘要，供真实下单时本地冻结售卡快照；不在订单持锁事务里
+跨服务读取pay目录，不把模板草稿当作已售权益。版本引用和副本均来自同一次真实validateReference结果。

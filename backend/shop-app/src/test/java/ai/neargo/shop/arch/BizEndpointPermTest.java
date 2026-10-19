@@ -331,6 +331,7 @@ class BizEndpointPermTest {
         put("/biz/entitlement-templates/{templateNo}/issue-policy", BizPerms.ENT_ISSUE_MANAGE);
         put("/biz/entitlement-issue-batches", BizPerms.ENT_ISSUE);
         put("/biz/entitlement-issue-batches/{batchNo}", BizPerms.ENT_READ);
+        put("/biz/card-product-bindings", BizPerms.GOODS);
         put("/biz/entitlement-uses/preview", BizPerms.ENT_USE);
         put("/biz/entitlement-uses", BizPerms.ENT_USE);
         put("/biz/entitlement-uses/{operationNo}", BizPerms.ENT_READ);

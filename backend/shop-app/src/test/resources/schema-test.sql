@@ -5796,6 +5796,50 @@ CREATE TABLE IF NOT EXISTS ord_ent_service_order
     CHECK ((status IN ('CREATED','PREVIEWED','AUTHORIZED','PENDING') AND decision_snapshot IS NULL) OR (status IN ('COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED') AND decision_snapshot IS NOT NULL))
 );
 
+CREATE TABLE IF NOT EXISTS prd_entitlement_binding
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    goods_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) NOT NULL,
+    market VARCHAR(8) NOT NULL,
+    template_version_no VARCHAR(64) NOT NULL,
+    rule_snapshot TEXT NOT NULL,
+    rule_hash CHAR(64) NOT NULL,
+    units_per_item INT NOT NULL DEFAULT 1,
+    currency VARCHAR(8) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_product_entitlement UNIQUE (tenant_no,goods_no,sku_no),
+    CHECK (units_per_item BETWEEN 1 AND 100),
+    CHECK (status IN ('ACTIVE','DISABLED'))
+);
+
+CREATE TABLE IF NOT EXISTS prd_ent_binding_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    response_snapshot TEXT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_card_binding_request UNIQUE (tenant_no,request_key),
+    CHECK ((status='PENDING' AND response_snapshot IS NULL) OR (status='COMPLETED' AND response_snapshot IS NOT NULL))
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

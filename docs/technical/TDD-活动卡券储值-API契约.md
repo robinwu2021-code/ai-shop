@@ -619,3 +619,13 @@ C09确认这类报价时，core一个事务完成本人授权、原UseCommand与
 报价为空选择时不创建使用承诺；旧授权/服务核销C09沿原语义。AuthorizationView兼容保留3字段，新增可空
 `operationNo/useStatus`说明原订单券使用进度（HELD已实际改价，PROCESSING不可新发支付）。同确认请求重放原
 授权与操作，不重新选券。核心原支付封口仍阻止未应用价格的PENDING请求发起现金支付。
+
+
+### C07商品权益版本绑定（已实现）
+
+POST /biz/card-product-bindings，权限biz:goods且主体全域配置权限；Idempotency-Key大小写敏感、最长64。
+请求仍为`{goodsNo,skuNo,expectedProductRevision,templateVersionNo,unitsPerItem}`；返回
+`BindingView{goodsNo,skuNo,templateVersionNo,unitsPerItem,currency,status,productRevision,bindingRevision}`。
+只允许实际CARD商品的商家主市场SKU和已发布、仍可用于PAID_ORDER的PAID_CARD版本；币种/主体校验，
+售价不改。成功会递增商品修订；旧键返回原结果，同键异参及新请求旧修订409。绑定不等于已接通售卡发行，
+后续040按实际付款与原订单逐件快照发放，既有绑定不因模板草稿或新发布版本自动改变。

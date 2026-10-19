@@ -27735,6 +27735,20 @@
       "package": "ai.neargo.shop.product.entity"
     },
     {
+      "table": "prd_ent_binding_command",
+      "class": "PrdEntBindingCommand",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
+      "table": "prd_entitlement_binding",
+      "class": "PrdEntitlementBinding",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
       "table": "prd_entity_category_inv",
       "class": "PrdEntityCategoryInv",
       "zh": "主体按类目设置记不记库存（V345，TDD-商品纳入进销存开关 §3）。",

@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**20 个权限码 × 6 个角色 × 246 个受控功能点**
+统计：**20 个权限码 × 6 个角色 × 247 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -22,7 +22,7 @@
 | 权限码 | 常量 | 含义 | 功能点数 | 老板 | 店长 | 店员 | 理货员 | 配送员 | 客服 |
 |---|---|---|---|---|---|---|---|---|---|
 | `biz:stock` | `STOCK` | 改库存（含门店库存） | 44 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 37 | ✅ | ✅ | — | — | — | — |
+| `biz:goods` | `GOODS` | 建/改商品、上下架、规格模板、识图 | 38 | ✅ | ✅ | — | — | — | — |
 | `biz:campaign` | `CAMPAIGN` | 营销活动、开团、报价 | 32 | ✅ | ✅ | — | — | — | — |
 | `biz:customer` | `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
 | `biz:store` | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
@@ -149,6 +149,7 @@
 | 在平台维度下加一个自有规格值 | POST | `/biz/spec-values` | `mAddSpecValue` | goods-edit、my-specs |
 | 标准品搜索（建品用） | GET | `/biz/spu-std` | `mSpuStdSearch` | goods-edit |
 | 本店货架类目各自能用的规格 | GET | `/biz/store-spec-dims` | `mStoreSpecDims` | my-specs |
+| —（b-app 未接） | — | `/biz/card-product-bindings` | — | — |
 | —（b-app 未接） | — | `/biz/card-product-presets` | — | — |
 
 ### `biz:campaign`　营销活动、开团、报价
@@ -560,6 +561,7 @@
 |---|---|---|
 | `/biz/activities/{}/publish` | `biz:campaign` | 老板、店长 |
 | `/biz/activity-presets` | `biz:campaign` | 老板、店长 |
+| `/biz/card-product-bindings` | `biz:goods` | 老板、店长 |
 | `/biz/card-product-presets` | `biz:goods` | 老板、店长 |
 | `/biz/entitlement-issue-batches` | `pay:ent:issue` | 老板 |
 | `/biz/entitlement-issue-batches/{}` | `pay:ent:read` | 老板 |

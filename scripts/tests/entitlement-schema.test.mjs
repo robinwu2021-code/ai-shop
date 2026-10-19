@@ -27,10 +27,10 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         for (const owner of ['core', 'pay']) {
             sql(readFileSync(new URL(`../../docs/technical/design/活动权益-${owner}-schema.sql`, import.meta.url), 'utf8'));
         }
-        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '44');
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '45');
         assert.ok(sql("SHOW COLUMNS FROM ent_template LIKE 'draft_snapshot'"), 'template draft needs persisted editable rules');
         sql(readFileSync(new URL('../../docs/technical/design/活动权益-support-schema.sql', import.meta.url), 'utf8'));
-        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '50');
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '51');
         const serviceMigration = readFileSync(new URL(
             '../../backend/shop-app/src/main/resources/db/migration/V442__entitlement_service_order.sql', import.meta.url),
             'utf8');
@@ -63,6 +63,19 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         const authColumns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns
             WHERE table_schema='${database}' AND table_name='ord_ent_authorization' ORDER BY column_name`);
         assert.equal(authColumns('entitlement_checkout_fixture'), authColumns('entitlement_test'));
+        sql('CREATE DATABASE entitlement_binding_fixture');
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
+            + 'V444__card_product_binding.sql', import.meta.url), 'utf8'), 'entitlement_binding_fixture');
+        for (const table of ['prd_entitlement_binding', 'prd_ent_binding_command']) {
+            const columns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns
+                WHERE table_schema='${database}' AND table_name='${table}' ORDER BY ordinal_position`);
+            assert.equal(columns('entitlement_binding_fixture'), columns('entitlement_test'), table);
+        }
+        sql(`INSERT INTO prd_ent_binding_command(tenant_no,request_key,payload_hash,status,created_at,updated_at,
+            created_by,updated_by) VALUES ('MAIN','KeyA',REPEAT('a',64),'PENDING',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),
+            'b1','b1')`);
+        assert.throws(() => sql("UPDATE prd_ent_binding_command SET status='COMPLETED' WHERE request_key='KeyA'"),
+            /Check constraint/, 'a completed binding command needs its original reply');
         const credentialAudit = "created_at,updated_at,created_by,updated_by";
         sql(`INSERT INTO ent_code_token(tenant_no,token_hash,instance_no,user_no,entity_no,request_key_hash,`
             + `payload_hash,nonce,expires_at,status,${credentialAudit}) VALUES ('MAIN','${'a'.repeat(64)}',`
