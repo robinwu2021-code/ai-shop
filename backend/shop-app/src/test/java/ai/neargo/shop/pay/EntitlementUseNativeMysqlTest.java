@@ -6,6 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ai.neargo.shop.pay.entitlement.dto.UseSnapshots.Prepared;
 import ai.neargo.shop.pay.entitlement.event.PayEntitlementEventPublisher;
 import ai.neargo.shop.pay.entitlement.service.impl.EntitlementPostingServiceImpl;
+import ai.neargo.shop.pay.entitlement.service.EntitlementSourceFence;
+import ai.neargo.shop.pay.mapper.entitlement.PayEntSourceFenceMapper;
+import ai.neargo.shop.spi.entitlement.SourceDecisionPort.SourceDecision;
 import ai.neargo.shop.pay.entitlement.service.EntitlementUseWriter;
 import ai.neargo.shop.pay.entitlement.service.impl.EntitlementLifecycleServiceImpl;
 import ai.neargo.shop.pay.mapper.entitlement.EntInstanceMapper;
@@ -23,6 +26,8 @@ import ai.neargo.shop.spi.entitlement.EntitlementDefinition.RedemptionScope;
 import ai.neargo.shop.spi.entitlement.EntitlementDefinition.Validity;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.AssetKind;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.State;
+import ai.neargo.shop.spi.entitlement.EntitlementUsePort.HoldView;
+import ai.neargo.shop.spi.entitlement.SourceDecisionPort;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseCommand;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseItem;
 import ai.neargo.shop.spi.entitlement.EntitlementUseSourcePort.UseSourceFact;
@@ -73,7 +78,8 @@ class EntitlementUseNativeMysqlTest {
         var jdbc = new JdbcTemplate(ds);
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V434__entitlement_grants_and_ledger.sql"),
                 new ClassPathResource("db/migration/V429__pay_entitlement_event_outbox_inbox.sql"),
-                new ClassPathResource("db/migration/V436__entitlement_use_and_daily_quota.sql")).execute(ds);
+                new ClassPathResource("db/migration/V436__entitlement_use_and_daily_quota.sql"),
+                new ClassPathResource("db/migration/V437__pay_entitlement_source_fence.sql")).execute(ds);
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         var plugin = new MybatisPlusInterceptor();
@@ -100,15 +106,25 @@ class EntitlementUseNativeMysqlTest {
             beans.registerBean(ObjectMapper.class, () -> json);
             for (var mapper : List.of(EntInstanceMapper.class, EntLedgerMapper.class, EntPeriodBucketMapper.class,
                     EntUsageMapper.class, EntUseAllocationMapper.class, EntUseIntentMapper.class,
-                    EntUseProposalMapper.class, PayEntOutboxMapper.class)) {
+                    EntUseProposalMapper.class, PayEntOutboxMapper.class, PayEntSourceFenceMapper.class)) {
                 register(beans, mapper, factory.getObject());
             }
             beans.register(EntitlementUseWriter.class, EntitlementLifecycleServiceImpl.class,
-                    EntitlementPostingServiceImpl.class, PayEntitlementEventPublisher.class);
+                    EntitlementPostingServiceImpl.class, PayEntitlementEventPublisher.class, EntitlementSourceFence.class);
             beans.refresh();
             var writer = beans.getBean(EntitlementUseWriter.class);
             var caller = new EntitlementContext("MAIN", "TEST", "NATIVE", "b".repeat(64));
             var day = LocalDate.now(ZoneOffset.UTC);
+            var late = prepared(definition, day, 0);
+            var earlyCancel = new DecisionRef("EARLY-CANCEL", Instant.now(), 1, DecisionRef.DecisionType.USE_CANCEL);
+            var negative = new SourceDecision(late.command().sourceRef(), SourceDecisionPort.State.CANCELLED,
+                    earlyCancel, "U1", "M1", "S1", "CNY", 0L, late.source().orderSnapshotHash());
+            assertThat(writer.cancelAbsent(caller, late.command().operationNo(), late.command().sourceRef(), negative))
+                    .isTrue();
+            // Model a request that passed source/auth preflight before cancellation, but entered pay locks later.
+            assertThat(writer.prepare(caller, late).status()).isEqualTo(State.RELEASED);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_use_intent", Integer.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT reserved_units FROM ent_instance", Integer.class)).isZero();
             var held = prepared(definition, day, 0);
             var work = new ArrayList<Callable<State>>();
             for (int i = 0; i < 20; i++) work.add(() -> writer.prepare(caller, held).status());
@@ -122,7 +138,7 @@ class EntitlementUseNativeMysqlTest {
             assertThatThrownBy(() -> jdbc.update("UPDATE ent_use_intent SET command_snapshot='not-json'"))
                     .isInstanceOf(DataAccessException.class);
             var cancel = new DecisionRef("C1", Instant.now(), 1, DecisionRef.DecisionType.USE_CANCEL);
-            writer.finish(caller, held.command().operationNo(), held.command().sourceRef(), cancel, false);
+            finish(writer, caller, held, cancel, false);
             assertThat(jdbc.queryForObject("SELECT active_source_key FROM ent_use_intent", String.class)).isNull();
             var tomorrow = prepared(definition, day.plusDays(1), 2);
             writer.prepare(caller, tomorrow);
@@ -130,19 +146,16 @@ class EntitlementUseNativeMysqlTest {
             // Outbox insert must be in the same pay transaction; duplicate event is not used to hide failures.
             jdbc.execute("ALTER TABLE pay_ent_outbox ADD CONSTRAINT reject_usage "
                     + "CHECK (event_type<>'ENTITLEMENT_USED')");
-            assertThatThrownBy(() -> writer.finish(caller, tomorrow.command().operationNo(),
-                    tomorrow.command().sourceRef(), commit, true)).isInstanceOf(IllegalStateException.class)
+            assertThatThrownBy(() -> finish(writer, caller, tomorrow, commit, true)).isInstanceOf(IllegalStateException.class)
                     .hasMessage("Entitlement event number already exists with different immutable facts");
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_usage", Integer.class)).isZero();
             assertThat(jdbc.queryForObject("SELECT activation_at FROM ent_instance", Timestamp.class)).isNull();
             assertThat(jdbc.queryForObject("SELECT reserved_units FROM ent_period_bucket WHERE service_day=?",
                     Integer.class, day.plusDays(1))).isEqualTo(2);
             jdbc.execute("ALTER TABLE pay_ent_outbox DROP CHECK reject_usage");
-            var receipt = writer.finish(caller, tomorrow.command().operationNo(), tomorrow.command().sourceRef(),
-                    commit, true);
+            var receipt = finish(writer, caller, tomorrow, commit, true);
             assertThat(receipt.status()).isEqualTo(State.COMMITTED);
-            assertThat(writer.finish(caller, tomorrow.command().operationNo(), tomorrow.command().sourceRef(),
-                    commit, true))
+            assertThat(finish(writer, caller, tomorrow, commit, true))
                     .isEqualTo(receipt);
             assertThat(jdbc.queryForObject("SELECT used_units FROM ent_period_bucket WHERE service_day=?",
                     Integer.class, day.plusDays(1))).isEqualTo(2);
@@ -153,6 +166,16 @@ class EntitlementUseNativeMysqlTest {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_outbox", Integer.class)).isOne();
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_ledger", Integer.class)).isEqualTo(4);
         }
+    }
+
+    private HoldView finish(EntitlementUseWriter writer,
+            EntitlementContext context, Prepared prepared, DecisionRef ref, boolean commit) {
+        var c = prepared.command();
+        var truth = new SourceDecision(c.sourceRef(), commit
+                ? SourceDecisionPort.State.COMMITTED
+                : SourceDecisionPort.State.CANCELLED,
+                ref, c.userNo(), c.entityNo(), c.storeNo(), c.currency(), 0L, prepared.source().orderSnapshotHash());
+        return writer.finish(context, c.operationNo(), c.sourceRef(), ref, commit, truth);
     }
 
     private Prepared prepared(EntitlementDefinition rule, LocalDate day, long revision) {

@@ -520,3 +520,8 @@ V436新增5表（含ent_use_proposal）及对应实体Mapper，intent额外冻�
 
 
 JB-020源事实子项进展：core真实EntitlementUseSourcePortImpl、共享订单摘要、两套旧券精确占用事实的app组合，以及pay已冻结使用事实读取SPI已落地。source3由缺provider RED开始，实际订单/账户/门店表验证；类目归属在quote后变化新增回归RED→GREEN，prepare重新计算并对比原分摊。source/auth/use/quote/Architecture合并33项通过（/tmp/phase-two-order-facts-final.log）。SourceFact追加可空serviceAt，pay按原权益时区推导服务日，不按币种猜时区。尚未交付完整订单协调，020仍DOING。
+
+
+020/051一致性底座增量：V437创建pay_ent_source_fence，发行和使用在prepare/finish前先锁同一来源；可信取消即使早于实体行也会留下负向事实。晚到prepare只能返回原ABORTED/RELEASED，不能重新占容量或余额；UNKNOWN/PENDING不写取消标记。此标记不按UI/网络TTL删除。query及内部UseFacts按归属返回同一终态，不把无实际hold的已取消操作误报成成功消费。
+
+本增量50项Java定向通过（/tmp/phase-two-source-fence-final.log），包括发放8、使用9、批次2、来源4、报价4、授权4、架构16、schema3；另2项最终重放/晚到Writer检查通过（/tmp/phase-two-source-fence-replay.log，包含重叠，不累计）。原生MySQL实跑1项0跳过（/tmp/phase-two-fence-native.log），验证已完成预检的请求在取消后进入实际Writer亦不能冻结资源，并保留并发、跨日、CHECK/JSON、事件失败原子回滚验证。源决策首次响应与数据库时间精度不一致、未知/外租户类目父级被误认成祖先，均先回归RED后修复GREEN。020订单协调及051恢复调度仍未完成。

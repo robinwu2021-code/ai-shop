@@ -10,6 +10,7 @@ import ai.neargo.shop.pay.entitlement.policy.PayEntitlementFeatureGate;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCatalogService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementGrantService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementGrantWriter;
+import ai.neargo.shop.pay.entitlement.service.EntitlementSourceFence;
 import ai.neargo.shop.pay.mapper.entitlement.EntGrantMapper;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -33,6 +34,7 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class EntitlementGrantServiceImpl implements EntitlementGrantService {
     private final EntGrantMapper grants;
+    private final EntitlementSourceFence fences;
     private final EntitlementCatalogService catalog;
     private final EntitlementGrantWriter writer;
     private final PayEntitlementFeatureGate features;
@@ -41,7 +43,8 @@ public class EntitlementGrantServiceImpl implements EntitlementGrantService {
     private final ObjectMapper json;
     public EntitlementGrantServiceImpl(EntGrantMapper grants, EntitlementCatalogService catalog,
             EntitlementGrantWriter writer, PayEntitlementFeatureGate features, List<EntitlementGrantSourcePort> sources,
-            ObjectProvider<SourceDecisionPort> decisions, ObjectMapper json) {
+            ObjectProvider<SourceDecisionPort> decisions, EntitlementSourceFence fences, ObjectMapper json) {
+        this.fences = fences;
         this.grants = grants; this.catalog = catalog; this.writer = writer; this.features = features;
         this.sources = sources; this.decisions = decisions; this.json = json;
     }
@@ -51,6 +54,12 @@ public class EntitlementGrantServiceImpl implements EntitlementGrantService {
         if (prior != null) {
             if (!prior.getPayloadHash().equals(EntitlementGrantWriter.digest(json.writeValueAsString(c)))) conflict();
             return writer.view(prior);
+        }
+        var fence = fences.find(context, "GRANT", c.grantNo());
+        if (fences.cancelled(fence)) {
+            fences.requireSource(fence, c.sourceRef());
+            if (!c.recipientUserNo().equals(fence.getUserNo()) || !c.entityNo().equals(fence.getEntityNo())) conflict();
+            return writer.cancelled(fence);
         }
         features.requireIssuance();
         var scope = new CatalogScope(context.tenantNo(), c.entityNo(), context.actorNo(), false);
@@ -79,6 +88,24 @@ public class EntitlementGrantServiceImpl implements EntitlementGrantService {
     private GrantView finish(EntitlementContext context, String no, SourceRef source, DecisionRef ref, boolean issue) {
         supported(context);
         var row = grants.find(context.tenantNo(), no);
+        if (row == null && !issue) {
+            var fence = fences.find(context, "GRANT", no);
+            if (fences.cancelled(fence)) {
+                fences.requireSource(fence, source);
+                fences.requireDecision(fence, ref);
+                return writer.cancelled(fence);
+            }
+            var truth = sourceDecision(context, source);
+            if (truth.status() == SourceDecisionPort.State.UNKNOWN || truth.status() == SourceDecisionPort.State.PENDING) {
+                return new GrantView(no, State.PROCESSING, List.of(), source);
+            }
+            if (truth.status() != SourceDecisionPort.State.CANCELLED || !source.equals(truth.source())
+                    || !ref.equals(truth.decision())) conflict();
+            if (writer.abortAbsent(context, no, source, truth)) {
+                return writer.cancelled(fences.find(context, "GRANT", no));
+            }
+            row = grants.find(context.tenantNo(), no);
+        }
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
         var frozen = json.readValue(row.getPreparedSnapshot(), PreparedGrant.class); var c = frozen.command();
         if (!source.equals(c.sourceRef())) conflict();
@@ -87,14 +114,7 @@ public class EntitlementGrantServiceImpl implements EntitlementGrantService {
             return writer.view(row);
         }
         if (!"PREPARED".equals(row.getStatus())) conflict();
-        var local = sources.stream().filter(p -> p.supports(source)).toList();
-        if (local.size() > 1) unavailable();
-        var truth = local.isEmpty() ? null : local.getFirst().decision(context, source);
-        if (truth == null) {
-            var owner = decisions.getIfAvailable(); if (owner == null) unavailable();
-            truth = owner.query(context, source);
-        }
-        if (truth == null) unavailable();
+        var truth = sourceDecision(context, source);
         if (truth.status() == SourceDecisionPort.State.UNKNOWN || truth.status() == SourceDecisionPort.State.PENDING) {
             return new GrantView(no, State.PROCESSING, List.of(), source);
         }
@@ -103,12 +123,27 @@ public class EntitlementGrantServiceImpl implements EntitlementGrantService {
                 || !Objects.equals(truth.currency(), frozen.definition().currency())
                 || !Objects.equals(truth.snapshotHash(), c.benefitSnapshotHash())
                 || truth.status() != (issue ? SourceDecisionPort.State.COMMITTED : SourceDecisionPort.State.CANCELLED)) conflict();
-        return writer.finish(context, no, source, ref, issue);
+        return writer.finish(context, no, source, ref, issue, truth);
     }
     @Override public GrantView query(EntitlementContext context, String entity, String no) {
         var row = grants.find(context.tenantNo(), no);
+        if (row == null) {
+            var fence = fences.find(context, "GRANT", no);
+            if (fences.cancelled(fence) && entity.equals(fence.getEntityNo())) return writer.cancelled(fence);
+        }
         if (row == null || !entity.equals(row.getEntityNo())) return new GrantView(no, State.NOT_FOUND, List.of(), null);
         return writer.view(row);
+    }
+    private SourceDecisionPort.SourceDecision sourceDecision(EntitlementContext context, SourceRef source) {
+        var local = sources.stream().filter(p -> p.supports(source)).toList();
+        if (local.size() > 1) unavailable();
+        var truth = local.isEmpty() ? null : local.getFirst().decision(context, source);
+        if (truth == null) {
+            var owner = decisions.getIfAvailable(); if (owner == null) unavailable();
+            truth = owner.query(context, source);
+        }
+        if (truth == null) unavailable();
+        return truth;
     }
     private static long exposure(EntitlementDefinition d, int quantity) {
         Long per = switch (d.benefitMode()) {

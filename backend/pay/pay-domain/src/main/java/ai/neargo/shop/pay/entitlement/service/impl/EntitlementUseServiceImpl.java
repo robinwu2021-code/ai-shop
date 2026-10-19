@@ -20,6 +20,7 @@ import ai.neargo.shop.pay.entitlement.entity.EntUseProposal;
 import ai.neargo.shop.pay.entitlement.policy.EntitlementValidityPolicy;
 import ai.neargo.shop.pay.entitlement.policy.PayEntitlementFeatureGate;
 import ai.neargo.shop.pay.entitlement.service.EntitlementUseService;
+import ai.neargo.shop.pay.entitlement.service.EntitlementSourceFence;
 import ai.neargo.shop.pay.entitlement.service.EntitlementUseWriter;
 import ai.neargo.shop.pay.mapper.entitlement.EntInstanceMapper;
 import ai.neargo.shop.pay.mapper.entitlement.EntPeriodBucketMapper;
@@ -69,12 +70,13 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
     private final ObjectProvider<SourceDecisionPort> decisions;
     private final PayEntitlementFeatureGate features;
     private final EntitlementUseWriter writer;
+    private final EntitlementSourceFence fences;
     private final ObjectMapper json;
 
     public EntitlementUseServiceImpl(EntInstanceMapper instances, EntUseIntentMapper intents,
             EntUseProposalMapper proposals, EntPeriodBucketMapper buckets,
             ObjectProvider<EntitlementUseSourcePort> sources, ObjectProvider<SourceDecisionPort> decisions,
-            PayEntitlementFeatureGate features, EntitlementUseWriter writer, ObjectMapper json) {
+            PayEntitlementFeatureGate features, EntitlementUseWriter writer, EntitlementSourceFence fences, ObjectMapper json) {
         this.instances = instances;
         this.intents = intents;
         this.proposals = proposals;
@@ -83,6 +85,7 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
         this.decisions = decisions;
         this.features = features;
         this.writer = writer;
+        this.fences = fences;
         this.json = json;
     }
 
@@ -126,6 +129,12 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
         if (existing != null) {
             if (!existing.getPayloadHash().equals(digest(json.writeValueAsString(c)))) conflict();
             return writer.view(existing);
+        }
+        var fence = fences.find(context, "USE", c.operationNo());
+        if (fences.cancelled(fence)) {
+            fences.requireSource(fence, c.sourceRef());
+            if (!c.userNo().equals(fence.getUserNo()) || !c.entityNo().equals(fence.getEntityNo())) conflict();
+            return writer.cancelled(fence);
         }
         features.requireUse();
         if (c.assetKind() == AssetKind.STORED_VALUE) unavailable();
@@ -178,6 +187,27 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
     private HoldView finish(EntitlementContext context, String no, SourceRef source, DecisionRef ref, boolean commit) {
         supported(context);
         var row = intents.find(context.tenantNo(), no);
+        if (row == null && !commit) {
+            var fence = fences.find(context, "USE", no);
+            if (fences.cancelled(fence)) {
+                fences.requireSource(fence, source);
+                fences.requireDecision(fence, ref);
+                return writer.cancelled(fence);
+            }
+            var owner = decisions.getIfAvailable();
+            if (owner == null) unavailable();
+            var truth = owner.query(context, source);
+            if (truth == null) unavailable();
+            if (truth.status() == SourceDecisionPort.State.UNKNOWN || truth.status() == SourceDecisionPort.State.PENDING) {
+                return new HoldView(no, State.PROCESSING, null, null, null);
+            }
+            if (truth.status() != SourceDecisionPort.State.CANCELLED || !source.equals(truth.source())
+                    || !ref.equals(truth.decision())) conflict();
+            if (writer.cancelAbsent(context, no, source, truth)) {
+                return writer.cancelled(fences.find(context, "USE", no));
+            }
+            row = intents.find(context.tenantNo(), no);
+        }
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
         var frozen = json.readValue(row.getCommandSnapshot(), Prepared.class);
         var c = frozen.command();
@@ -203,12 +233,16 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
                 : SourceDecisionPort.State.CANCELLED)) {
             conflict();
         }
-        return writer.finish(context, no, source, ref, commit);
+        return writer.finish(context, no, source, ref, commit, truth);
     }
 
     @Override
     public HoldView query(EntitlementContext context, String entityNo, String operationNo) {
         var row = intents.find(context.tenantNo(), operationNo);
+        if (row == null) {
+            var fence = fences.find(context, "USE", operationNo);
+            if (fences.cancelled(fence) && entityNo.equals(fence.getEntityNo())) return writer.cancelled(fence);
+        }
         return row == null || !entityNo.equals(row.getEntityNo())
                 ? new HoldView(operationNo, State.NOT_FOUND, null, null, null) : writer.view(row);
     }

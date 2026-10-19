@@ -80,6 +80,19 @@ class EntitlementOrderSourceFactsFlowTest {
     }
 
     @Test
+    void anUnknownOrForeignTenantParentCannotBecomeAnEligibleCategoryAncestor() {
+        String child = "OF-C" + UUID.randomUUID();
+        String parent = "OF-P" + UUID.randomUUID();
+        jdbc.update("INSERT INTO prd_category(category_no,parent_no,name,status,tenant_no,created_at,updated_at) "
+                + "VALUES (?,?,'child','ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", child, parent);
+        jdbc.update("INSERT INTO prd_category(category_no,name,status,tenant_no,created_at,updated_at) "
+                + "VALUES (?,'foreign parent','ACTIVE','OTHER',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", parent);
+        jdbc.update("UPDATE ord_item SET category_no=? WHERE order_no=?", child, order);
+        var fact = sources.resolve(context, source());
+        assertThat(fact.categoryRefsByLine().get(fact.items().getFirst().orderLineNo())).containsExactly(child);
+    }
+
+    @Test
     void crossTenantDisabledIdentityAndReadOnlyStoreAreRejectedBeforeNewHolds() {
         var other = new EntitlementContext("OTHER", "PAY", "FACTS", "a".repeat(64));
         assertThatThrownBy(() -> sources.resolve(other, source())).isInstanceOf(BizException.class);

@@ -26,6 +26,7 @@ import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseCommand;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseDecision;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.UseItem;
 import ai.neargo.shop.spi.entitlement.EntitlementUseSourcePort;
+import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort;
 import ai.neargo.shop.spi.entitlement.SourceDecisionPort;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import java.time.Instant;
@@ -53,6 +54,7 @@ import tools.jackson.databind.ObjectMapper;
 class EntitlementUseFlowTest {
     @Autowired private EntitlementUseService uses;
     @Autowired private EntitlementQueryService query;
+    @Autowired private EntitlementUseFactsPort heldFacts;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ObjectMapper json;
     @MockitoBean private EntitlementUseSourcePort sources;
@@ -113,6 +115,8 @@ class EntitlementUseFlowTest {
         var c = command(2);
         var held = uses.prepare(context, c);
         assertThat(held.status()).isEqualTo(State.HELD);
+        assertThat(heldFacts.query(context, "M1", c.operationNo()).command()).isEqualTo(c);
+        assertThat(heldFacts.query(context, "OTHER", c.operationNo()).operation().status()).isEqualTo(State.NOT_FOUND);
         assertThat(uses.prepare(context, c)).isEqualTo(held);
         var ref = decision(c, true);
         var receipt = uses.commit(context, new UseDecision(c.operationNo(), source, ref));
@@ -252,6 +256,32 @@ class EntitlementUseFlowTest {
         assertThat(jdbc.queryForObject("SELECT reserved_units FROM ent_period_bucket "
                 + "WHERE instance_no=? AND service_day=?",
                 Integer.class, instance, today.plusDays(1))).isOne();
+    }
+
+    @Test
+    void cancellationBeforePreparePreventsLateRequestsFromReservingResources() {
+        var c = command(2);
+        var cancel = decision(c, false);
+        assertThat(uses.release(context, new CancelUse(c.operationNo(), c.sourceRef(), cancel)).status())
+                .isEqualTo(State.RELEASED);
+        assertThat(uses.prepare(context, c).status()).isEqualTo(State.RELEASED);
+        assertThat(uses.query(context, "M1", c.operationNo()).status()).isEqualTo(State.RELEASED);
+        assertThat(heldFacts.query(context, "M1", c.operationNo()).operation().status()).isEqualTo(State.RELEASED);
+        assertThat(jdbc.queryForObject("SELECT reserved_units FROM ent_instance WHERE instance_no=?",
+                Integer.class, instance)).isZero();
+    }
+
+    @Test
+    void unknownBeforePrepareCannotCreateANegativeFence() {
+        var c = command(1);
+        when(decisions.query(any(), any())).thenReturn(new SourceDecisionPort.SourceDecision(c.sourceRef(),
+                SourceDecisionPort.State.UNKNOWN, null, null, null, null, null, null, null));
+        var ref = new DecisionRef("UNKNOWN-CANCEL", Instant.now(), 1, DecisionRef.DecisionType.USE_CANCEL);
+        assertThat(uses.release(context, new CancelUse(c.operationNo(), c.sourceRef(), ref)).status())
+                .isEqualTo(State.PROCESSING);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_source_fence WHERE operation_no=?",
+                Integer.class, c.operationNo())).isZero();
+        assertThat(uses.prepare(context, c).status()).isEqualTo(State.HELD);
     }
 
     @Test

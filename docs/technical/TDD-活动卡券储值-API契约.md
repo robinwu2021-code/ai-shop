@@ -424,3 +424,6 @@ Java商家入口：`BizEntitlementTemplateController`；通过`EntitlementManage
 
 
 内部源事实追加可空serviceAt（预约发生时刻）；pay按不可变规则zone换算serviceDay，避免currency推断时区。旧serviceDay和构造方式兼容。新增EntitlementUseFactsPort为内部core记账提供原实际hold的命令、规则/出资方、分摊和订单摘要，查询同时隔离tenant/entity；不向公网返回此含授权的内部DTO。报价后重新准备时重算当前类目适用分摊，不将旧提案误作新资格证明。传输在JB-041继续接线。
+
+
+I07/I10允许可信取消先于prepare，持久负向事实后返回ABORTED/RELEASED。再次prepare/query仍回同一终态；不存在实际资产/hold时不制造资产引用。UNKNOWN/PENDING仅PROCESSING且不写取消标记，来源/租户/受益主体不匹配拒绝。内部UseFacts与普通query对负向终态一致，command/rule在无实际hold的RELEASED可空；HELD/COMMITTED仍必须有完整冻结事实。调用方不得把NOT_FOUND当作原请求将永不到达的证明。

@@ -41,7 +41,7 @@ try {
             throw new Error(`Native verification must execute its test without skipping: ${report}`);
         }
     }
-    console.log('Native MySQL use writer + JSON/CHECK + 20 concurrent replays + day release + outbox rollback: 1 test passed, 0 skipped');
+    console.log('Native MySQL use writer + early cancellation fence + JSON/CHECK + 20 concurrent replays + day release + outbox rollback: 1 test passed, 0 skipped');
 } finally {
     docker(['rm', '--force', name]);
 }

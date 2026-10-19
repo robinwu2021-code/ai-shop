@@ -27490,6 +27490,13 @@
       "package": "ai.neargo.shop.pay.entitlement.entity"
     },
     {
+      "table": "pay_ent_source_fence",
+      "class": "PayEntSourceFence",
+      "zh": "Negative source facts outlive in-flight remote requests and must never expire with a UI timeout.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
       "table": "pay_risk_shadow_log",
       "class": "PayRiskShadowLog",
       "zh": "资金风控 · 影子期日志。",

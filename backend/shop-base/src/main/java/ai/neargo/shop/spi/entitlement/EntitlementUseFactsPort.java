@@ -14,7 +14,8 @@ public interface EntitlementUseFactsPort {
         public UseFact {
             ContractChecks.present(operation);
             couponAllocations = List.copyOf(ContractChecks.present(couponAllocations));
-            if (operation.status() != EntitlementUsePort.State.NOT_FOUND) {
+            if (operation.status() == EntitlementUsePort.State.HELD
+                    || operation.status() == EntitlementUsePort.State.COMMITTED) {
                 ContractChecks.present(command);
                 ContractChecks.present(rule);
                 ContractChecks.hash(orderSnapshotHash);

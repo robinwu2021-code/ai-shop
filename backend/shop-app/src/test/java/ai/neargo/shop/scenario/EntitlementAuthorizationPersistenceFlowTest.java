@@ -69,6 +69,16 @@ class EntitlementAuthorizationPersistenceFlowTest {
     }
 
     @Test
+    void sourceDecisionReplyUsesTheSamePrecisionAsDurableQuery() {
+        var source = source(0);
+        var ref = sourceDecisions.record("MAIN", source, "USE", DecisionRef.DecisionType.USE_COMMIT,
+                "NANO-AUTH", null, userNo, "EA-ENTITY", "EA-STORE", "CNY", 1000,
+                "b".repeat(64), Instant.parse("2026-10-19T00:00:00.123456Z"));
+        var context = new EntitlementContext("MAIN", "PAY-SERVICE", "NANO", "c".repeat(64));
+        assertThat(sourceDecisionPort.query(context, source).decision()).isEqualTo(ref);
+    }
+
+    @Test
     void confirmsOnlyCurrentConsumerAndReplaysSameRequestAfterServiceRestart() {
         var source = source(0);
         var quote = "EA-QUOTE-" + UUID.randomUUID();

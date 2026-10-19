@@ -12,6 +12,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.dto.UseSnapshots.Prepared;
 import ai.neargo.shop.pay.entitlement.entity.EntInstance;
+import ai.neargo.shop.pay.entitlement.entity.PayEntSourceFence;
 import ai.neargo.shop.pay.entitlement.entity.EntUsage;
 import ai.neargo.shop.pay.entitlement.entity.EntUseAllocation;
 import ai.neargo.shop.pay.entitlement.entity.EntUseIntent;
@@ -28,6 +29,7 @@ import ai.neargo.shop.spi.entitlement.EntitlementEvents.EntitlementUsed;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.HoldView;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.State;
 import ai.neargo.shop.spi.entitlement.SourceRef;
+import ai.neargo.shop.spi.entitlement.SourceDecisionPort.SourceDecision;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -39,6 +41,7 @@ import tools.jackson.databind.ObjectMapper;
 public class EntitlementUseWriter {
     public static final String PERIOD = "LIFETIME";
     private final EntUseIntentMapper intents;
+    private final EntitlementSourceFence fences;
     private final EntInstanceMapper instances;
     private final EntUseAllocationMapper allocations;
     private final EntitlementLifecycleService lifecycle;
@@ -51,8 +54,9 @@ public class EntitlementUseWriter {
     public EntitlementUseWriter(EntUseIntentMapper intents, EntInstanceMapper instances,
             EntUseAllocationMapper allocations, EntitlementLifecycleService lifecycle, EntUsageMapper usages,
             EntUseProposalMapper proposals, EntitlementPostingService posting,
-            PayEntitlementEventPublisher events, ObjectMapper json) {
+            PayEntitlementEventPublisher events, EntitlementSourceFence fences, ObjectMapper json) {
         this.intents = intents;
+        this.fences = fences;
         this.instances = instances;
         this.allocations = allocations;
         this.lifecycle = lifecycle;
@@ -69,6 +73,8 @@ public class EntitlementUseWriter {
     @Transactional("payTxManager")
     public HoldView prepare(EntitlementContext context, Prepared frozen) {
         var c = frozen.command();
+        var fence = fences.lock(context, "USE", c.operationNo(), c.sourceRef(), c.userNo(), c.entityNo());
+        if (fences.cancelled(fence)) return cancelled(fence);
         var row = new EntUseIntent();
         audit(row, context);
         row.setOperationNo(c.operationNo());
@@ -123,7 +129,11 @@ public class EntitlementUseWriter {
 
     @Transactional("payTxManager")
     public HoldView finish(EntitlementContext context, String operation, SourceRef source,
-                           DecisionRef decision, boolean commit) {
+                           DecisionRef decision, boolean commit, SourceDecision truth) {
+        var known = intents.find(context.tenantNo(), operation);
+        if (known == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        var fence = fences.lock(context, "USE", operation, source, known.getUserNo(), known.getEntityNo());
+        if (commit && fences.cancelled(fence)) conflict();
         var row = intents.lock(context.tenantNo(), operation);
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
         var frozen = json.readValue(row.getCommandSnapshot(), Prepared.class);
@@ -164,7 +174,20 @@ public class EntitlementUseWriter {
         row.setUpdatedAt(now());
         row.setUpdatedBy(context.actorNo());
         changed(intents.updateById(row));
+        if (!commit) fences.cancel(context, fence, truth);
         return view(row);
+    }
+
+    @Transactional("payTxManager")
+    public boolean cancelAbsent(EntitlementContext context, String operation, SourceRef source, SourceDecision truth) {
+        var fence = fences.lock(context, "USE", operation, source, truth.userNo(), truth.entityNo());
+        if (intents.lock(context.tenantNo(), operation) != null) return false;
+        fences.cancel(context, fence, truth);
+        return true;
+    }
+
+    public HoldView cancelled(PayEntSourceFence fence) {
+        return new HoldView(fence.getOperationNo(), State.RELEASED, null, null, instant(fence.getCancelledAt()));
     }
 
     private EntUsage usage(EntitlementContext context, Prepared frozen, EntUseIntent intent, EntInstance asset) {

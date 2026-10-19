@@ -5,6 +5,8 @@ import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
 import ai.neargo.shop.pay.entitlement.dto.IssuePolicyViews.SavePolicy;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCatalogService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementGrantService;
+import ai.neargo.shop.pay.entitlement.service.EntitlementGrantWriter;
+import ai.neargo.shop.pay.entitlement.dto.PreparedGrant;
 import ai.neargo.shop.pay.entitlement.service.EntitlementIssuePolicyService;
 import ai.neargo.shop.spi.entitlement.DecisionRef;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
@@ -38,6 +40,7 @@ class EntitlementGrantFlowTest {
     @Autowired EntitlementCatalogService catalog;
     @Autowired EntitlementIssuePolicyService policies;
     @Autowired EntitlementGrantService grants;
+    @Autowired EntitlementGrantWriter writer;
     @Autowired JdbcTemplate jdbc;
     @MockitoBean EntitlementGrantSourcePort source;
     @MockitoBean SourceDecisionPort decisions;
@@ -104,6 +107,20 @@ class EntitlementGrantFlowTest {
         assertThat(jdbc.queryForObject("SELECT held_count FROM ent_issue_policy WHERE template_no="
                 + "(SELECT template_no FROM ent_template_version WHERE version_no=?)", Long.class,
                 c.templateVersionNo())).isZero();
+    }
+    @Test void abortBeforePrepareMakesLateGrantPermanentlyAbortedWithoutReservingCapacity() {
+        var c = command(); origin(c);
+        var version = catalog.getVersion(scope, c.templateVersionNo());
+        var late = new PreparedGrant(c, version.templateNo(), version.definition(), null, 200);
+        var ref = decision(c, false);
+        assertThat(grants.abort(context(), new EntitlementGrantPort.AbortGrant(c.grantNo(), c.sourceRef(), ref)).status())
+                .isEqualTo(EntitlementGrantPort.State.ABORTED);
+        assertThat(grants.prepare(context(), c).status()).isEqualTo(EntitlementGrantPort.State.ABORTED);
+        assertThat(writer.prepare(context(), late).status()).isEqualTo(EntitlementGrantPort.State.ABORTED);
+        assertThat(grants.query(context(), c.entityNo(), c.grantNo()).status())
+                .isEqualTo(EntitlementGrantPort.State.ABORTED);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_instance WHERE grant_no=?", Integer.class,
+                c.grantNo())).isZero();
     }
     @Test void forgedOriginAndTenantFailBeforeClaimingCapacity() {
         var c = command(); when(source.supports(any())).thenReturn(true);

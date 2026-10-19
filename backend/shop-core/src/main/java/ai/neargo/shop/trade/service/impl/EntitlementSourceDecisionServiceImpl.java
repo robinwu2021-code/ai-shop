@@ -13,6 +13,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -87,7 +88,7 @@ public class EntitlementSourceDecisionServiceImpl implements EntitlementSourceDe
         row.setCurrency(currency);
         row.setAmountMinor(amountMinor);
         row.setSnapshotHash(snapshotHash);
-        row.setOccurredAt(LocalDateTime.ofInstant(occurredAt, ZoneOffset.UTC));
+        row.setOccurredAt(LocalDateTime.ofInstant(occurredAt.truncatedTo(ChronoUnit.MILLIS), ZoneOffset.UTC));
         row.setVersion(0L);
         row.setDeleted(0);
         row.setCreatedAt(row.getOccurredAt());

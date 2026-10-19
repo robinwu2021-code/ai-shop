@@ -19,6 +19,8 @@ import ai.neargo.shop.spi.entitlement.EntitlementEvents.EntitlementGranted;
 import ai.neargo.shop.spi.entitlement.EntitlementGrantPort.GrantView;
 import ai.neargo.shop.spi.entitlement.EntitlementGrantPort.State;
 import ai.neargo.shop.spi.entitlement.SourceRef;
+import ai.neargo.shop.spi.entitlement.SourceDecisionPort.SourceDecision;
+import ai.neargo.shop.pay.entitlement.entity.PayEntSourceFence;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -38,19 +40,24 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class EntitlementGrantWriter {
     private final EntGrantMapper grants;
+    private final EntitlementSourceFence fences;
     private final EntInstanceMapper instances;
     private final EntLedgerMapper ledger;
     private final EntitlementIssuePolicyService policies;
     private final PayEntitlementEventPublisher events;
     private final ObjectMapper json;
     public EntitlementGrantWriter(EntGrantMapper grants, EntInstanceMapper instances, EntLedgerMapper ledger,
-            EntitlementIssuePolicyService policies, PayEntitlementEventPublisher events, ObjectMapper json) {
+            EntitlementIssuePolicyService policies, PayEntitlementEventPublisher events,
+            EntitlementSourceFence fences, ObjectMapper json) {
+        this.fences = fences;
         this.grants = grants; this.instances = instances; this.ledger = ledger;
         this.policies = policies; this.events = events; this.json = json;
     }
     @Transactional("payTxManager")
     public GrantView prepare(EntitlementContext context, PreparedGrant prepared) {
         var c = prepared.command();
+        var fence = fences.lock(context, "GRANT", c.grantNo(), c.sourceRef(), c.recipientUserNo(), c.entityNo());
+        if (fences.cancelled(fence)) return cancelled(fence);
         var row = new EntGrant(); audit(row, context);
         row.setGrantNo(c.grantNo()); row.setSourceKey(c.sourceRef().grantKey());
         row.setSourceSnapshot(json.writeValueAsString(c.sourceRef())); row.setTemplateVersionNo(c.templateVersionNo());
@@ -68,7 +75,12 @@ public class EntitlementGrantWriter {
         return view(original);
     }
     @Transactional("payTxManager")
-    public GrantView finish(EntitlementContext context, String no, SourceRef source, DecisionRef decision, boolean issue) {
+    public GrantView finish(EntitlementContext context, String no, SourceRef source, DecisionRef decision,
+                            boolean issue, SourceDecision truth) {
+        var known = grants.find(context.tenantNo(), no);
+        if (known == null) throw BizException.of(ErrorCode.NOT_FOUND);
+        var fence = fences.lock(context, "GRANT", no, source, known.getUserNo(), known.getEntityNo());
+        if (issue && fences.cancelled(fence)) conflict();
         var row = grants.lock(context.tenantNo(), no);
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
         var prepared = json.readValue(row.getPreparedSnapshot(), PreparedGrant.class);
@@ -111,7 +123,19 @@ public class EntitlementGrantWriter {
         }
         row.setStatus(issue ? "COMMITTED" : "ABORTED"); row.setSourceDecisionNo(decision.decisionNo());
         row.setUpdatedAt(now()); row.setUpdatedBy(context.actorNo()); changed(grants.updateById(row));
+        if (!issue) fences.cancel(context, fence, truth);
         return view(row);
+    }
+    @Transactional("payTxManager")
+    public boolean abortAbsent(EntitlementContext context, String no, SourceRef source, SourceDecision truth) {
+        var fence = fences.lock(context, "GRANT", no, source, truth.userNo(), truth.entityNo());
+        if (grants.lock(context.tenantNo(), no) != null) return false;
+        fences.cancel(context, fence, truth);
+        return true;
+    }
+    public GrantView cancelled(PayEntSourceFence fence) {
+        return new GrantView(fence.getOperationNo(), State.ABORTED, List.of(),
+                json.readValue(fence.getSourceSnapshot(), SourceRef.class));
     }
     public GrantView view(EntGrant row) {
         var source = json.readValue(row.getSourceSnapshot(), SourceRef.class);
