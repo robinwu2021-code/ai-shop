@@ -645,3 +645,5 @@ StoredValueCreditService沿既有CreditRecharge，只接收原`PAY/RECHARGE`与R
 反向事实POST为`/internal/core/stored-value/source`（context+source）、`source-by-recharge`（context+rechargeNo），返回完整冻结SourceFact。pay内部POST为`/internal/pay/stored-value/{create,submit,receive,cancel,credit,facts}`，create/submit/receive/cancel均携带可信context和entityNo，credit只能带原PAY实收决定；facts返回安全RechargeView、许可及来源绑定，不返回收款凭据或内部双池。全部沿内部令牌、非空响应及明确UNKNOWN语义，不自动重试写请求。
 
 人工实收是持receive权限的商家对原CASH/TRANSFER收款凭据的明确核验，不宣称平台银行核验。提交金额必须等于冻结应收，receive必须匹配原revision及receiptDigest；实际确认人/时间由服务端记录。不同命令键重复操作遵循状态守卫，同键原样重放返回原操作答复；create额外返回当前实际状态，避免已取消原单被旧WAIT_COLLECTION答复重新提示收款。到账可异步，查询不能代替再次确认实收。
+
+商家充值协调当前实现：P18创建后只有实际pay建单应答才返回WAIT_COLLECTION；已有core意图但pay尚无应答，P27返回业务PROCESSING，不能解释为可收款。P20返回实收的当前事实，到账可以继续为RECEIVED；Received Outbox触发原单credit并确认core营销。P27保持纯查询。三个明确权限pay:sv:recharge:create/receive/read均按该笔原门店校验；无新C购买、退款或独立码接口。

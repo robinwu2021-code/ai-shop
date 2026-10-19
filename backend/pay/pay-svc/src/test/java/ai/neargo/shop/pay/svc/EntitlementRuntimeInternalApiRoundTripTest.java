@@ -9,6 +9,12 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueRechargeService;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueCreditService;
+import ai.neargo.shop.pay.client.PayStoredValueRequests;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort;
+import ai.neargo.shop.spi.storedvalue.StoredValueRechargeFactsPort;
+import ai.neargo.shop.spi.promotion.ActivityParticipationPort.ParticipationPermit;
 import ai.neargo.shop.common.CursorPage;
 import ai.neargo.shop.common.PageData;
 import java.util.Set;
@@ -55,6 +61,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @ActiveProfiles("svctest")
 class EntitlementRuntimeInternalApiRoundTripTest {
     @LocalServerPort int port;
+    @MockitoBean StoredValueRechargeService recharges;
+    @MockitoBean StoredValueCreditService credits;
+    @MockitoBean StoredValueRechargeFactsPort rechargeFacts;
     @MockitoBean EntitlementGrantPort grants;
     @MockitoBean EntitlementUsePort uses;
     @MockitoBean EntitlementQueryPort queries;
@@ -243,4 +252,59 @@ class EntitlementRuntimeInternalApiRoundTripTest {
         assertThatThrownBy(call).isInstanceOfSatisfying(ServiceCallException.class,
                 e -> assertThat(e.statusCode()).isEqualTo(expected));
     }
+    @Test void storedValueCommandsAndFactsHaveSharedAuthenticatedHttpContracts() {
+        var src = new SourceRef("CORE", "RECHARGE", "RI1", null, null, null, 0);
+        var permit = new ParticipationPermit("AR1", src, "A1", "AV1", "T1", "U1", "M1", "S1", "CNY",
+                1000L, 100L, List.of(), new EntitlementDefinition.RedemptionScope("STORES", List.of("S1")),
+                "a".repeat(64), at);
+        var create = new StoredValuePort.CreateRecharge(src, permit);
+        var submit = new StoredValuePort.SubmitRecharge("RC1", 0, 1000, StoredValuePort.CollectionMethod.TRANSFER,
+                "PRIVATE-RECEIPT", "b".repeat(64));
+        var receive = new StoredValuePort.ReceiveRecharge("RC1", 1, "b".repeat(64), "private human verification");
+        var cancel = new StoredValuePort.CancelRecharge("RC1", 0, "unreceived");
+        var paySource = new SourceRef("PAY", "RECHARGE", "RC1", null, null, null, 0);
+        var decision = new DecisionRef("RD1", at, 0, DecisionRef.DecisionType.RECHARGE_RECEIVED);
+        var credit = new StoredValuePort.CreditRecharge("RC1", paySource, decision);
+        var view = new StoredValuePort.RechargeView("RC1", StoredValuePort.RechargeState.RECEIVED, "U1", "M1", "S1",
+                "CNY", 1000L, 1100L, at, null, 2);
+        when(recharges.create(ctx, "M1", create)).thenReturn(view);
+        when(recharges.submit(ctx, "M1", submit)).thenReturn(view);
+        when(recharges.receive(ctx, "M1", receive)).thenReturn(view);
+        when(recharges.cancel(ctx, "M1", cancel)).thenReturn(view);
+        when(credits.credit(ctx, credit)).thenReturn(view);
+        var fact = new StoredValueRechargeFactsPort.RechargeFact("MAIN", view, src, permit, "U1", decision);
+        when(rechargeFacts.query(ctx, "M1", "RC1")).thenReturn(fact);
+        var api = api("tk");
+        assertThat(api.svCreate(new PayStoredValueRequests.Create(ctx, "M1", create))).isEqualTo(view);
+        assertThat(api.svSubmit(new PayStoredValueRequests.Submit(ctx, "M1", submit))).isEqualTo(view);
+        assertThat(api.svReceive(new PayStoredValueRequests.Receive(ctx, "M1", receive))).isEqualTo(view);
+        assertThat(api.svCancel(new PayStoredValueRequests.Cancel(ctx, "M1", cancel))).isEqualTo(view);
+        assertThat(api.svCredit(new PayStoredValueRequests.Credit(ctx, credit))).isEqualTo(view);
+        assertThat(api.svFacts(new PayStoredValueRequests.Query(ctx, "M1", "RC1"))).isEqualTo(fact);
+        verify(recharges).receive(ctx, "M1", receive);
+    }
+    @Test void storedValueMoneyCannotBeFractionalAndWrongServiceTokenNeverReachesOwner() {
+        assertThatThrownBy(() -> api("wrong").svReceive(new PayStoredValueRequests.Receive(ctx, "M1",
+                new StoredValuePort.ReceiveRecharge("RC1", 1, "b".repeat(64), null))))
+                .isInstanceOf(ServiceCallException.class);
+        verifyNoInteractions(recharges);
+        var raw = "{\"context\":" + new ObjectMapper().writeValueAsString(ctx)
+                + ",\"entityNo\":\"M1\",\"command\":{\"rechargeNo\":\"RC1\",\"expectedRevision\":0,"
+                + "\"actualAmountMinor\":1000.5,\"collectionMethod\":\"CASH\",\"receiptRef\":\"R1\","
+                + "\"receiptDigest\":\"" + "a".repeat(64) + "\"}}";
+        assertThatThrownBy(() -> RestClient.create("http://127.0.0.1:" + port).post()
+                .uri(PayInternalPaths.SV_SUBMIT).header(InternalHttp.TOKEN_HEADER, "tk")
+                .contentType(MediaType.APPLICATION_JSON).body(raw).retrieve().toBodilessEntity())
+                .isInstanceOfSatisfying(RestClientResponseException.class,
+                        e -> assertThat(e.getStatusCode().value()).isEqualTo(400));
+        verifyNoInteractions(recharges);
+    }
+    @Test void storedValueMissingOwnerReplyNeverMeansReceivedOrCancelled() {
+        assertThatThrownBy(() -> api("tk").svCancel(new PayStoredValueRequests.Cancel(ctx, "M1",
+                new StoredValuePort.CancelRecharge("RC1", 0, "cancel"))))
+                .isInstanceOf(ServiceCallException.class);
+        assertThatThrownBy(() -> api("tk").svFacts(new PayStoredValueRequests.Query(ctx, "M1", "RC1")))
+                .isInstanceOf(ServiceCallException.class);
+    }
+
 }

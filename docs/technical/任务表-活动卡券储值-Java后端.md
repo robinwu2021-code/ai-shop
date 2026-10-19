@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：32项DONE、11项DOING、12项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
+本表共55项：32项DONE、12项DOING、11项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序（2026-10-19用户调整）：第一阶段完成core活动自身能力，第二阶段完成pay权益、卡券、储值及活动权益联动。具体任务分组、跨阶段子项与验收见[两阶段执行方案](./开发计划-活动优先与权益两阶段.md)。已完成的权益公共基础直接保留；JB-015尚未开始Java实现，移至第二阶段。原任务编号与整体依赖保留，跨阶段任务仅完成活动部分不能标记整项DONE。
 
@@ -115,7 +115,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-035 | D05.2 | DOING | 013,014,034 | pay.storedvalue | StoredValueCreditService/Impl、StoredValuePostingService；I12账户/批次/凭证/分录同事务 | StoredValueCreditFlowTest：原充值号只到账一次、借贷平衡、内部本金赠金守恒、异常整体回滚；原生MySQL验证 |
 | JB-036 | D05.3 | TODO | 011,020,035 | pay.storedvalue | StoredValueRedemptionService/Impl、StoredValueAllocationPolicy；统一使用意图的金额预占/确认/释放 | StoredValueConsumptionFlowTest：范围/过期批次校验、条件余额不超扣、释放回原批次、消费重试不重复分录；原生并发 |
 | JB-037 | D05.4 | TODO | 014,035,036 | pay.storedvalue | StoredValueStoreProjector、StoredValueQueryService/Impl；记录、门店目录、总余额 | StoredValueConsumerQueryTest：只列成功储值门店、max充值/核销时间倒序、同时间稳定分页、耗尽仍保留、乱序不倒退 |
-| JB-038 | D05.1–5.4 | TODO | 009,034,035,036,037,041 | app HTTP | BizStoredValueController、MpStoredValueController；P18–P24/P27/P28 | StoredValueApiTest：办理/到账/核销/本人记录闭环；无本金赠金字段、无线上退款/购买入口、统一会员码 |
+| JB-038 | D05.1–5.4 | DOING | 009,034,035,036,037,041 | app HTTP | BizStoredValueController、MpStoredValueController；P18–P24/P27/P28 | StoredValueApiTest：办理/到账/核销/本人记录闭环；无本金赠金字段、无线上退款/购买入口、统一会员码 |
 | JB-039 | D06.1 | DONE | 006,009,028 | core.product/app | CardProductBindingService/Impl、BizCardProductBindingController；C07 | CardProductBindingFlowTest：只绑已发布PAID_CARD、主体/币种一致；售价沿商品SKU，旧版绑定不随模板草稿改变 |
 | JB-040 | D06.2 | DOING | 012,016,039,042 | app/core.trade | CardSaleCoordinator与支付/取消Outbox订阅，按订单行/件/件内权益发卡 | PaidCardSaleFlowTest：2×2权益不漏不重发、付款/取消竞争、迟到付款起算正确；不以储值扣款冒充现金付款 |
 | JB-041 | D02.6 | DOING | 008,016,017,020,021,022,023,024,031,034,035,036,037,040 | payclient/pay-svc/core内部适配 | AppService本地/Remote承载底座、PayInternalApi/Paths、内部Endpoint及core反向适配；已实现业务完整query | EntitlementInternalApiRoundTripTest：真实HTTP DTO无wrapper嵌套、签名身份、超时/失联可查、两种部署同语义且Bean互斥 |
@@ -259,16 +259,16 @@ git diff --check
 | P15 | POST /mp/entitlement-quotes | JB-026 | DONE |
 | P16 | POST /mp/entitlements/{instanceNo}/activation-quotes | JB-026 | DONE |
 | P17 | GET /mp/entitlements/{instanceNo}/allowances | JB-027 | DONE |
-| P18 | POST /biz/stored-value/recharges | JB-038 | TODO |
-| P19 | POST /biz/stored-value/recharges/{rechargeNo}/submit | JB-038 | TODO |
-| P20 | POST /biz/stored-value/recharges/{rechargeNo}/receive | JB-038 | TODO |
-| P21 | POST /biz/stored-value/recharges/{rechargeNo}/cancel | JB-038 | TODO |
+| P18 | POST /biz/stored-value/recharges | JB-038 | DOING |
+| P19 | POST /biz/stored-value/recharges/{rechargeNo}/submit | JB-038 | DOING |
+| P20 | POST /biz/stored-value/recharges/{rechargeNo}/receive | JB-038 | DOING |
+| P21 | POST /biz/stored-value/recharges/{rechargeNo}/cancel | JB-038 | DOING |
 | P22 | POST /biz/stored-value/consumptions | JB-038 | TODO |
 | P23 | GET /mp/stored-value/stores | JB-038 | TODO |
 | P24 | GET /mp/stored-value/consumptions | JB-038 | TODO |
 | P25 | GET /mp/entitlement-usage/{usageNo} | JB-027 | DONE |
 | P26 | GET /biz/entitlement-usage | JB-027 | DONE |
-| P27 | GET /biz/stored-value/recharges/{rechargeNo} | JB-038 | TODO |
+| P27 | GET /biz/stored-value/recharges/{rechargeNo} | JB-038 | DOING |
 | P28 | GET /biz/stored-value/accounts | JB-038 | TODO |
 | P29 | GET /biz/entitlements/{instanceNo} | JB-027 | DONE |
 | P30 | POST /mp/entitlements/{instanceNo}/redeem-codes | JB-026 | DONE |
@@ -645,3 +645,13 @@ V447在core新增pmt_recharge_intent，冻结真实会员引用、门店、市�
 定向Java：真实源/人工收款/到账/营销确认与反向HTTP 6项、路由2项、架构16项、pay事务1项、原支付HTTP5项通过，共30项；未跑全量。临时MySQL使用真实支付Writer/事务，验证20并发到账、实收Outbox失败回滚、同凭据重复实收拒绝、实收/取消竞争和迟到创建栅栏，1项实跑0跳过。53张目标DDL及V447/V448迁移字段/约束原生验证1项实跑0跳过；H2运行表248张。文档70/生成器24/SQL守卫通过。
 
 本批没有将接口声明算作业务闭环：新的6条pay充值RPC已编译，但其真实HTTP专项、应用Outbox协调、公共B/C接口、正常预置活动发布路径和储值消费仍待后续批次。JB-034/035/041保留DOING。当前32 DONE / 11 DOING / 12 TODO。V447/V448本批验收后冻结，后续追加迁移。
+
+#### 储值应用协调与商家办理入口子批次
+
+新增StoredValueRechargeCoordinator及Prepared/Received/Cancelled/Credited订阅，按原intent/recharge/实收决定恢复，不建立跨core/pay事务。pay实收答复RECEIVED，到账由持久事件推动；只有实际CREDITED才能确认营销参与，失败保留原实收及营销占用。迟到Prepared遇到CANCELLED只校验原取消与释放，不重开单。core来源终态从本库真实Participation读回，来源已存在但pay未应答显示PROCESSING，不能提示商家收款。P27只读，不驱动到账。
+
+BizStoredValueController已接P18/P19/P20/P21/P27；create/receive/read三项明确权限与原门店交集分别检查，用户、主体、确认人由会话确定，不回传凭据或本金赠金。新权限不隐含授予MANAGER。新6条pay充值RPC完成真实HTTP专项（服务函数替身只隔离传输测试），真实业务和数据库事务仍由H2端到端与此前原生MySQL验证证明。正确币种、原许可、本人、门店、金额及实收决定时间完整核对；非空错误/无关事实不算成功。
+
+最终定向：StoredValueRechargeSourceFlowTest 9项（含真实商家登录、只读门店权限、失败恢复与实际Received事件HTTP交接）、路由2项、BizPerms10项、架构16项、pay事务1项通过，共38项；pay-svc运行协议12项另通过（其中3项新增储值专项），合计50项。未运行全量。前两次验证分别发现测试误用sv_voucher.recharge_no（实际biz_no）及编码方法名误写，已修正测试，未修改生产规则迎合测试。
+
+JB-038进入DOING；尚未编写的P22/P23/P24/P28仍TODO，不误标开发完成。JB-034/035待正常预置活动发布/储值消费验收后关闭，JB-041待剩余完整协议及部署切换验证。当前32 DONE / 12 DOING / 11 TODO；无push/部署。

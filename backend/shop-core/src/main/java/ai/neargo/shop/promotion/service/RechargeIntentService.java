@@ -10,6 +10,7 @@ public interface RechargeIntentService {
     RechargeIntentPlan begin(EntitlementContext context, String entityNo, RechargeIntentCreate command, String key);
     RechargeIntentPlan find(String tenantNo, String intentNo);
     RechargeIntentPlan byRechargeNo(String tenantNo, String rechargeNo);
+    void markSettled(EntitlementContext context, String intentNo);
     void validateParticipation(EntitlementContext context, ReserveActivity command);
     void requireSource(RechargeIntentPlan plan, SourceRef source);
 }

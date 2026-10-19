@@ -36,6 +36,9 @@ import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort;
 import ai.neargo.shop.spi.entitlement.PaymentAttemptFactsPort;
 import ai.neargo.shop.pay.mapper.storedvalue.SvRechargeMapper;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueRechargeService;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueCreditService;
+import ai.neargo.shop.payclient.StoredValueRechargeAppService;
 import ai.neargo.shop.payclient.port.RemoteStoredValueRechargeFactsPort;
 import ai.neargo.shop.spi.storedvalue.StoredValueRechargeFactsPort;
 import org.junit.jupiter.api.Test;
@@ -48,7 +51,10 @@ class EntitlementRuntimeRoutingTest {
                     RemoteEntitlementUsePort.class, RemoteEntitlementQueryPort.class,
                     RemoteEntitlementUseFactsPort.class, RemotePaymentAttemptFactsPort.class, RemoteStoredValueRechargeFactsPort.class,
                     EntitlementCodeAppServiceImpl.class, RemoteEntitlementCodeAppService.class,
-                    EntitlementBatchAppServiceImpl.class, RemoteEntitlementBatchAppService.class)
+                    EntitlementBatchAppServiceImpl.class, RemoteEntitlementBatchAppService.class,
+                    StoredValueRechargeAppServiceImpl.class, RemoteStoredValueRechargeAppService.class)
+            .withBean(StoredValueRechargeService.class, () -> mock(StoredValueRechargeService.class))
+            .withBean(StoredValueCreditService.class, () -> mock(StoredValueCreditService.class))
             .withBean(EntitlementGrantService.class, () -> mock(EntitlementGrantService.class))
             .withBean(EntitlementUseService.class, () -> mock(EntitlementUseService.class))
             .withBean(EntitlementQueryService.class, () -> mock(EntitlementQueryService.class))
@@ -69,7 +75,7 @@ class EntitlementRuntimeRoutingTest {
             assertThat(c).hasSingleBean(EntitlementGrantPort.class).hasSingleBean(EntitlementUsePort.class)
                     .hasSingleBean(EntitlementQueryPort.class).hasSingleBean(EntitlementUseFactsPort.class)
                     .hasSingleBean(PaymentAttemptFactsPort.class).hasSingleBean(EntitlementCodeAppService.class)
-                    .hasSingleBean(EntitlementBatchAppService.class).hasSingleBean(StoredValueRechargeFactsPort.class);
+                    .hasSingleBean(EntitlementBatchAppService.class).hasSingleBean(StoredValueRechargeFactsPort.class).hasSingleBean(StoredValueRechargeAppService.class);
             assertThat(c).hasSingleBean(PayEntitlementOutboxRelay.class);
             assertThat(c.getBean(EntitlementUsePort.class)).isNotInstanceOf(RemoteEntitlementUsePort.class);
         });
@@ -77,7 +83,7 @@ class EntitlementRuntimeRoutingTest {
             assertThat(c).hasSingleBean(EntitlementGrantPort.class).hasSingleBean(EntitlementUsePort.class)
                     .hasSingleBean(EntitlementQueryPort.class).hasSingleBean(EntitlementUseFactsPort.class)
                     .hasSingleBean(PaymentAttemptFactsPort.class).hasSingleBean(EntitlementCodeAppService.class)
-                    .hasSingleBean(EntitlementBatchAppService.class).hasSingleBean(StoredValueRechargeFactsPort.class);
+                    .hasSingleBean(EntitlementBatchAppService.class).hasSingleBean(StoredValueRechargeFactsPort.class).hasSingleBean(StoredValueRechargeAppService.class);
             assertThat(c).doesNotHaveBean(PayEntitlementOutboxRelay.class);
             assertThat(c.getBean(EntitlementGrantPort.class)).isInstanceOf(RemoteEntitlementGrantPort.class);
             assertThat(c.getBean(EntitlementUsePort.class)).isInstanceOf(RemoteEntitlementUsePort.class);
@@ -86,6 +92,10 @@ class EntitlementRuntimeRoutingTest {
             assertThat(c.getBean(PaymentAttemptFactsPort.class)).isInstanceOf(RemotePaymentAttemptFactsPort.class);
             assertThat(c.getBean(EntitlementCodeAppService.class)).isInstanceOf(RemoteEntitlementCodeAppService.class);
             assertThat(c.getBean(EntitlementBatchAppService.class)).isInstanceOf(RemoteEntitlementBatchAppService.class);
+            assertThat(c.getBean(StoredValueRechargeAppService.class))
+                    .isInstanceOf(RemoteStoredValueRechargeAppService.class);
+            assertThat(c.getBean(StoredValueRechargeFactsPort.class))
+                    .isInstanceOf(RemoteStoredValueRechargeFactsPort.class);
         });
     }
     @Test void missingOrWrongPaymentFactsCannotBeInterpretedAsNoPriorCharge() {

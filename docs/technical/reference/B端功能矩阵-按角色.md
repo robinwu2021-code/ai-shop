@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 20 个权限点 × 247 个受控端点**。
+统计：**6 个角色 × 23 个权限点 × 247 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -35,9 +35,12 @@
 | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
+| `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
+| `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
+| `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 9 项**：`STORE_ADMIN`、`FINANCE`、`ENT_READ`、`ENT_USE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`ENT_TEMPLATE_READ`
+**只有 OWNER 能碰的 12 项**：`STORE_ADMIN`、`FINANCE`、`ENT_READ`、`ENT_USE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`SV_RECHARGE_CREATE`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`ENT_TEMPLATE_READ`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点

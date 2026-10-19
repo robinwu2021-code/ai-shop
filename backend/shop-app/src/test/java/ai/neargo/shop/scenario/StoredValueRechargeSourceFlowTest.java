@@ -4,6 +4,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BaseEntity;
+import ai.neargo.shop.paybridge.StoredValueRechargeCoordinator;
+import ai.neargo.shop.paybridge.StoredValueRechargeEventConsumer;
+import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.auth.TokenStores;
+import ai.neargo.shop.auth.Realm;
+import ai.neargo.shop.common.OtpStore;
+import ai.neargo.shop.support.TestLogin;
+import java.util.Map;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
+import org.springframework.http.MediaType;
+import tools.jackson.databind.JsonNode;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueRechargeService;
 import ai.neargo.shop.pay.storedvalue.service.StoredValueCreditService;
 import ai.neargo.shop.spi.storedvalue.StoredValuePort;
@@ -11,6 +27,8 @@ import ai.neargo.shop.spi.storedvalue.StoredValueRechargeFactsPort;
 import ai.neargo.shop.spi.promotion.ActivityParticipationPort;
 import ai.neargo.shop.spi.entitlement.SourceRef;
 import ai.neargo.shop.spi.entitlement.CoreEntitlementInternalApi;
+import ai.neargo.shop.spi.entitlement.EntitlementEvents.StoredValueRechargeReceived;
+import ai.neargo.shop.spi.entitlement.PayEntitlementEventCodec;
 import ai.neargo.shop.spi.entitlement.EntitlementCoreInternal;
 import ai.neargo.shop.svc.ConfigServiceLocator;
 import ai.neargo.shop.svc.InternalHttp;
@@ -57,6 +75,11 @@ import tools.jackson.databind.ObjectMapper;
         "spring.datasource.url=jdbc:h2:mem:sv-source;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"})
 @ActiveProfiles("test")
 class StoredValueRechargeSourceFlowTest {
+    @Autowired WebApplicationContext web;
+    @Autowired TokenStores tokens;
+    @Autowired OtpStore otp;
+    @Autowired StoredValueRechargeCoordinator coordinator;
+    @Autowired StoredValueRechargeEventConsumer recovery;
     @Autowired StoredValueRechargeService recharges;
     @Autowired StoredValueCreditService credits;
     @Autowired StoredValueRechargeFactsPort payFacts;
@@ -247,6 +270,132 @@ class StoredValueRechargeSourceFlowTest {
         }
         assertThat(payFacts.query(ctx, entity, raceSubmitted.rechargeNo()).recharge().status())
                 .isIn(StoredValuePort.RechargeState.RECEIVED, StoredValuePort.RechargeState.CANCELLED);
+    }
+    @Test void durableEventsRecoverTheOriginalReceivedCreditAndMarketingOnlyAfterPaySucceeds() {
+        var p = sources.begin(ctx, entity, request, "event-recovery");
+        var prepared = event("STORED_VALUE_RECHARGE_PREPARED", jdbc.queryForObject(
+                "SELECT payload FROM sys_outbox WHERE aggregate_id=? AND event_type='STORED_VALUE_RECHARGE_PREPARED'",
+                String.class, p.intentNo()));
+        recovery.consume(prepared); recovery.consume(prepared);
+        var created = payFacts.query(ctx, entity, p.rechargeNo()).recharge();
+        assertThat(created.status()).isEqualTo(StoredValuePort.RechargeState.WAIT_COLLECTION);
+        var submitted = recharges.submit(commandContext(), entity, new StoredValuePort.SubmitRecharge(p.rechargeNo(),
+                created.revision(), 1000, StoredValuePort.CollectionMethod.CASH, id(), "c".repeat(64)));
+        recharges.receive(commandContext(), entity, new StoredValuePort.ReceiveRecharge(p.rechargeNo(),
+                submitted.revision(), "c".repeat(64), null));
+        var received = event("STORED_VALUE_RECHARGE_RECEIVED", jdbc.queryForObject("SELECT payload FROM pay_ent_outbox "
+                + "WHERE aggregate_no=? AND event_type='STORED_VALUE_RECHARGE_RECEIVED'", String.class, p.rechargeNo()));
+        var locator = new ConfigServiceLocator();
+        locator.getTargets().put(ServiceName.PLATFORM, "http://127.0.0.1:" + port);
+        var api = new InternalHttp(locator, "recharge-source-rpc").client(ServiceName.PLATFORM,
+                CoreEntitlementInternalApi.class, Duration.ofSeconds(5));
+        var actualEvent = json.readValue(received.getPayload(), StoredValueRechargeReceived.class);
+        assertThat(api.receiveEvent(PayEntitlementEventCodec.encode(actualEvent, json)).accepted()).isTrue();
+        jdbc.execute("ALTER TABLE pay_ent_outbox ADD CONSTRAINT reject_recovery_credit CHECK "
+                + "(aggregate_no<>'" + p.rechargeNo() + "' OR event_type<>'STORED_VALUE_CREDITED')");
+        try { assertThatThrownBy(() -> recovery.consume(received)).isInstanceOf(RuntimeException.class); }
+        finally { jdbc.execute("ALTER TABLE pay_ent_outbox DROP CONSTRAINT reject_recovery_credit"); }
+        assertThat(participation.query(p.context(), p.source()).status())
+                .isEqualTo(ActivityParticipationPort.State.RESERVED);
+        assertThat(payFacts.query(ctx, entity, p.rechargeNo()).recharge().status())
+                .isEqualTo(StoredValuePort.RechargeState.RECEIVED);
+        recovery.consume(received); recovery.consume(received); recovery.consume(prepared);
+        assertThat(coordinator.query(ctx, entity, p.rechargeNo()).status()).isEqualTo("CREDITED");
+        assertThat(participation.query(p.context(), p.source()).status())
+                .isEqualTo(ActivityParticipationPort.State.CONFIRMED);
+        assertThat(jdbc.queryForObject("SELECT status FROM pmt_recharge_intent WHERE intent_no=?", String.class,
+                p.intentNo())).isEqualTo("CREDITED");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_voucher WHERE biz_no=?", Integer.class,
+                p.rechargeNo())).isOne();
+    }
+    @Test void latePreparedEventCannotReopenACancelledIntentOrReReserveMarketing() {
+        var p = sources.begin(ctx, entity, request, "delayed-prepared");
+        assertThat(coordinator.query(ctx, entity, p.rechargeNo()).status()).isEqualTo("PROCESSING");
+        assertThat(coordinator.cancel(commandContext(), entity,
+                new StoredValuePort.CancelRecharge(p.rechargeNo(), 0, "do not collect")).status())
+                .isEqualTo("CANCELLED");
+        var prepared = event("STORED_VALUE_RECHARGE_PREPARED", jdbc.queryForObject(
+                "SELECT payload FROM sys_outbox WHERE aggregate_id=? AND event_type='STORED_VALUE_RECHARGE_PREPARED'",
+                String.class, p.intentNo()));
+        recovery.consume(prepared);
+        assertThat(coordinator.query(ctx, entity, p.rechargeNo()).status()).isEqualTo("CANCELLED");
+        assertThat(jdbc.queryForObject("SELECT status FROM pmt_recharge_intent WHERE intent_no=?", String.class,
+                p.intentNo())).isEqualTo("CANCELLED");
+        assertThat(participation.query(p.context(), p.source()).status())
+                .isEqualTo(ActivityParticipationPort.State.RELEASED);
+    }
+    @Test void merchantHttpHandlesReceiptProgressAndEnforcesExplicitStorePermissions() throws Exception {
+        var mvc = MockMvcBuilders.webAppContextSetup(web).apply(SecurityMockMvcConfigurers.springSecurity()).build();
+        String phone = "126" + String.format("%08d", Math.floorMod(UUID.randomUUID().getLeastSignificantBits(), 100000000));
+        String consumer = TestLogin.consumer(mvc, json, otp, phone);
+        String operator = tokens.of(Realm.CONSUMER).get(consumer).orElseThrow().user().userNo();
+        jdbc.update("UPDATE mch_entity SET owner_user_no=? WHERE entity_no=?", operator, entity);
+        String account = id();
+        jdbc.update("INSERT INTO mch_account(mch_account_no,entity_no,user_no,is_owner,is_primary,status,tenant_no,"
+                + "created_at,updated_at) VALUES (?,?,?,1,1,'ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                account, entity, operator);
+        String merchant = TestLogin.merchantOwner(mvc, json, otp, phone);
+        var member = members.issue("MAIN", user);
+        var reference = members.resolve(new MemberCodeScope("MAIN", entity, store, operator), member.memberCode());
+        String key = id();
+        var body = new RechargeIntentCreate(reference.customerRef(), activity, activity + "V", "T1", store);
+        var first = publicPost(mvc, "/biz/stored-value/recharges", merchant, body, key);
+        assertThat(first.path("code").asInt()).isZero();
+        var created = first.path("data"); String no = created.path("rechargeNo").asString();
+        assertThat(created.path("status").asString()).isEqualTo("WAIT_COLLECTION");
+        String path = "/biz/stored-value/recharges/" + no;
+        assertThat(publicPost(mvc, path + "/submit", merchant, Map.of("expectedRevision", 0,
+                "actualAmountMinor", 999, "collectionMethod", "CASH", "receiptRef", id(), "receiptDigest",
+                "c".repeat(64)), id()).path("code").asInt()).isNotZero();
+        var submitted = publicPost(mvc, path + "/submit", merchant, Map.of("expectedRevision", 0,
+                "actualAmountMinor", 1000, "collectionMethod", "CASH", "receiptRef", id(), "receiptDigest",
+                "c".repeat(64)), id());
+        assertThat(submitted.path("code").asInt()).isZero();
+        var received = publicPost(mvc, path + "/receive", merchant,
+                Map.of("expectedRevision", submitted.path("data").path("revision").asLong(), "receiptDigest",
+                        "c".repeat(64)), id());
+        assertThat(received.path("code").asInt()).isZero();
+        assertThat(received.path("data").path("status").asString()).isEqualTo("RECEIVED");
+        recovery.consume(event("STORED_VALUE_RECHARGE_RECEIVED", jdbc.queryForObject("SELECT payload "
+                + "FROM pay_ent_outbox WHERE aggregate_no=? AND event_type='STORED_VALUE_RECHARGE_RECEIVED'",
+                String.class, no)));
+        var completed = publicGet(mvc, path, merchant);
+        assertThat(completed.path("code").asInt()).isZero();
+        assertThat(completed.path("data").path("status").asString()).isEqualTo("CREDITED");
+        assertThat(json.writeValueAsString(completed)).doesNotContain("principalMinor", "bonusMinor", "receiptRef",
+                "receiptDigest", "receivedBy", reference.customerRef());
+        assertThat(publicPost(mvc, "/biz/stored-value/recharges", merchant, body, key)
+                .path("data").path("rechargeNo").asString()).isEqualTo(no);
+        assertThat(publicGet(mvc, path, consumer).path("code").asInt()).isNotZero();
+        String otherStore = id();
+        jdbc.update("INSERT INTO mch_store(store_no,entity_no,name,status,tenant_no,created_at,updated_at) "
+                + "VALUES (?,?,'other store','ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", otherStore, entity);
+        jdbc.update("UPDATE mch_account SET is_owner=0 WHERE mch_account_no=?", account);
+        jdbc.update("INSERT INTO mch_role(entity_no,role_code,name,perms,tenant_no,created_at,updated_at) "
+                + "VALUES (?,'SV_READ_ONLY','reader','[\"pay:sv:recharge:read\"]','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                entity);
+        jdbc.update("INSERT INTO mch_store_role(mch_account_no,store_no,role,tenant_no,created_at,updated_at) "
+                + "VALUES (?,?,'SV_READ_ONLY','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", account, otherStore);
+        assertThat(publicGet(mvc, path, merchant).path("code").asInt()).isNotZero();
+        jdbc.update("INSERT INTO mch_store_role(mch_account_no,store_no,role,tenant_no,created_at,updated_at) "
+                + "VALUES (?,?,'SV_READ_ONLY','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", account, store);
+        assertThat(publicGet(mvc, path, merchant).path("code").asInt()).isZero();
+        assertThat(publicPost(mvc, path + "/receive", merchant, Map.of("expectedRevision", 0, "receiptDigest",
+                "c".repeat(64)), id()).path("code").asInt()).isNotZero();
+    }
+    private JsonNode publicPost(MockMvc mvc, String path, String token, Object body, String key) throws Exception {
+        var response = json.readTree(mvc.perform(post(path).header("Authorization", "Bearer " + token)
+                .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(body))).andReturn().getResponse().getContentAsString());
+        assertThat(response.has("code")).isTrue(); return response;
+    }
+    private JsonNode publicGet(MockMvc mvc, String path, String token) throws Exception {
+        var response = json.readTree(mvc.perform(get(path).header("Authorization", "Bearer " + token))
+                .andReturn().getResponse().getContentAsString());
+        assertThat(response.has("code")).isTrue(); return response;
+    }
+    private SysOutbox event(String type, String payload) {
+        var event = new SysOutbox(); event.setEventType(type); event.setPayload(payload); return event;
     }
     private boolean attempt(Runnable work) { try { work.run(); return true; } catch (RuntimeException failure) { return false; } }
     private EntitlementContext commandContext() { return new EntitlementContext("MAIN", actor, id(), "b".repeat(64)); }

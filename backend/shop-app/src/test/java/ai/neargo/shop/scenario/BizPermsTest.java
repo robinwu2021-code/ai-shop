@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -143,4 +144,13 @@ class BizPermsTest {
         // 切到任何一家店都还是老板
         assertThat(owner.withStore("ST-X").can(BizPerms.FINANCE)).isTrue();
     }
+    @Test void storedValueReceiptPermissionsAreExplicitAndNotImplicitManagerPowers() {
+        for (var permission : List.of(BizPerms.SV_RECHARGE_CREATE, BizPerms.SV_RECHARGE_RECEIVE,
+                BizPerms.SV_RECHARGE_READ)) {
+            assertThat(BizPerms.can(Set.of(BizPerms.MANAGER), permission)).isFalse();
+            assertThat(BizPerms.can(Set.of(BizPerms.OWNER), permission)).isTrue();
+            assertThat(BizPerms.assignableCodes()).contains(permission);
+        }
+    }
+
 }

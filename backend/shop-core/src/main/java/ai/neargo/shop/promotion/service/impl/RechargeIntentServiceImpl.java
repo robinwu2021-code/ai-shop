@@ -113,6 +113,23 @@ public class RechargeIntentServiceImpl implements RechargeIntentService {
     @Override public RechargeIntentPlan byRechargeNo(String tenant, String no) {
         return read(intents.byRecharge(tenant, no));
     }
+    @Override @Transactional("transactionManager")
+    public void markSettled(EntitlementContext ctx, String no) {
+        var row = intents.lock(ctx.tenantNo(), no); var p = read(row);
+        var actual = participation.getObject().query(ctx, p.source());
+        if (!p.permit().reservationNo().equals(actual.reservationNo()) || !p.source().equals(actual.sourceRef())) {
+            conflict();
+        }
+        String status = switch (actual.status()) {
+            case CONFIRMED -> "CREDITED";
+            case RELEASED -> "CANCELLED";
+            default -> throw BizException.of(ErrorCode.CONFLICT);
+        };
+        if (status.equals(row.getStatus())) return;
+        if (!"PENDING".equals(row.getStatus()) || !p.rechargeNo().equals(actual.confirmedFactNo())
+                && actual.status() == ActivityParticipationPort.State.CONFIRMED) conflict();
+        if (intents.save(ctx.tenantNo(), no, status, row.getPlanSnapshot()) != 1) conflict();
+    }
     @Override public void validateParticipation(EntitlementContext ctx, ReserveActivity command) {
         var plan = find(ctx.tenantNo(), command.sourceRef().sourceNo()); requireSource(plan, command.sourceRef());
         if (!plan.context().equals(ctx) || !plan.participation().equals(command)) conflict();
