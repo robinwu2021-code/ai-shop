@@ -5,8 +5,9 @@
  * 这套文档里同一事实被写了两遍的地方不少（术语层、能力码、状态、表名、自称数字），
  * 一次 review 已经抓到一处实质漂移：可售时段的关系表在对齐清单里挂 goods、
  * 在规格书里挂 listing —— **表名不同只是表面，粒度错了才是缺陷**。
- * 靠人比对四十份文档不可持续，所以本脚本只查四类机器查得动的：
+ * 靠人比对四十份文档不可持续，所以本脚本只查机器能验证的文档身份及四类结构：
  *
+ *   0. 文档身份   —— 活动权益四份关键设计文档不能被同一说明误覆盖
  *   1. 断链       —— v2 集与本轮 design/reference 新册的相对链接必须存在
  *   2. 表名集合   —— 规格书 CREATE TABLE 的表名，必须与 v2 摘要层提到的一致（互为子集）
  *   3. 自称数字   —— 「N 张表」「N 个 Core*Api」「N 场景」等自述与实际条数一致
@@ -35,13 +36,28 @@ const read = (p) => readFileSync(p, "utf8");
  * 下面 MIN_FILES 那条断言守的就是这个。
  */
 const V2_DEEP = /^(TDD-(支付域|商品域|订单域|预约资源域|会员资产域|打印域|工作流领域模型|基础订单流|行业包|基座与行业应用|前端方案)|商品域V2|订单域V2|预约资源域V2|会员资产域V2|shop-industry-spi|能力开关A4|迁移与兼容手册|三行业场景|结算域-V2|库存域-V2|服务人员-收尾|SKU与规格库|权限码扩容单)/;
+const entitlementDocs = new Map([
+  ["API契约", "活动卡券储值模块API契约"],
+  ["数据库设计", "活动卡券储值模块数据库设计"],
+  ["代码结构与类清单", "活动卡券储值代码结构与类清单"],
+  ["模块化系统设计", "活动卡券储值模块化系统设计"],
+].map(([suffix, title]) => [join(ROOT, `docs/technical/TDD-活动卡券储值-${suffix}.md`), title]));
 const files = [
+  ...entitlementDocs.keys(),
   ...readdirSync(join(ROOT, "docs/v2")).filter((f) => f.endsWith(".md")).map((f) => join(ROOT, "docs/v2", f)),
   ...readdirSync(join(ROOT, "docs/technical/design")).filter((f) => f.endsWith(".md") && V2_DEEP.test(f))
     .map((f) => join(ROOT, "docs/technical/design", f)),
   join(ROOT, "docs/technical/reference/商品域-多行业对齐清单.md"),
   join(ROOT, "docs/technical/reference/核心能力清单.md"),
 ];
+
+// A copied database document must not pass as the API or class-list deliverable.
+for (const [file, title] of entitlementDocs) {
+  if (!existsSync(file)) fail(file, "活动权益关键设计文档缺失");
+  else if (read(file).split(/\r?\n/, 1)[0] !== `# ${title}`) {
+    fail(file, `文档身份不符，首行应为「# ${title}」`);
+  }
+}
 
 /*
  * **扫描面本身要有个下限。**

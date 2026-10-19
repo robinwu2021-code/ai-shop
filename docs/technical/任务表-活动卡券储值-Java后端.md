@@ -547,4 +547,7 @@ JB-020仍DOING，新增订单券链路：报价→本人确认→核心持久原
 
 EntitlementCodeService/Impl、CodeWriter/Signer及EntCodeToken/Mapper已完成，V440；CodeViews明确脱敏toString。默认关闭的code能力独立配置，且要求use开关；签名密钥缺失/变更不另发新码，数据库不持久明码。原请求幂等重建原凭证，60秒内只允许原操作/门店/操作人完全相同的解析重放；无余额扣减、预占或首用激活。付费卡/储值不能签此码。
 
-实际38项合并通过（`/tmp/phase-two-code-acceptance.log`：场景6、签名2、契约11、架构16、schema3）；最终场景6项复跑通过（`/tmp/phase-two-code-final.log`）；原生MySQL目标DDL/消费绑定CHECK 1项通过、0跳过（`/tmp/phase-two-code-native-schema.log`）。文档66、生成物24、SQL无新欠账；无全后端全量。P30及P12/P13门面/041传输仍按原任务交付，C端统一会员码入口没有新增独立兑换/储值码页面。
+实际38项合并通过（`/tmp/phase-two-code-acceptance.log`：场景6、签名2、契约11、架构16、schema3）；最终场景6项复跑通过（`/tmp/phase-two-code-final.log`）；原生MySQL目标DDL/消费绑定CHECK 1项通过、0跳过（`/tmp/phase-two-code-native-schema.log`）。文档70（含本轮4份活动设计）、生成物24、SQL无新欠账；无全后端全量。P30及P12/P13门面/041传输仍按原任务交付，C端统一会员码入口没有新增独立兑换/储值码页面。
+
+
+文档复核补记：更新JB-023时脚本变量复用曾误覆盖API与类清单，已从0d1f64ce7恢复全部原文并追加正确增量。原66份文档守卫范围未含活动根目录的四份TDD，不能作为这四份的验证证据；现已显式纳入，标题身份检查在错误版本实际失败2项，恢复后70份通过。Java、迁移及前述业务测试结果未变。

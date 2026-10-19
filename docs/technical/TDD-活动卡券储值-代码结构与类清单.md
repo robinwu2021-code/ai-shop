@@ -1,1024 +1,347 @@
-# 活动卡券储值模块数据库设计
+# 活动卡券储值代码结构与类清单
 
-状态：目标逻辑模型草案，待评审 · 2026-10-18
+状态：目标代码设计，待评审 · 2026-10-18
 
 执行状态与先后顺序见[Java后端独立任务表](./任务表-活动卡券储值-Java后端.md)，已实现目录内核直接复用，其余目标设计不视为已完成。
 
-[总设计](./TDD-活动卡券储值-模块化系统设计.md) · [接口](./TDD-活动卡券储值-API契约.md)。活动类归核心服务数据源，券与卡和储值权益归pay数据源；HTTP入口不改变数据所有者。以下DDL用于完整字段评审，不可直接替代当前线上同名表。
-
-## 一、共同约定与关系
-
-每表id为内部自增主键，tenant_no参与业务唯一性；version条件更新（对外expectedRevision映射此列）；created/updated_at用UTC DATETIME(3)，created/updated_by留操作人。资金/核销事实不可物理删除；模板归档不删除历史。沿现有BaseEntity实际审计列对齐后再生成正式迁移，不借设计重命名所有现存列。
-
-公共字段适用于当前基础42张及6张支撑表（core18/pay30，合计48张；含预览、取消栅栏与订单协调增量），DDL逐表展开：
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| id | BIGINT NOT NULL AUTO_INCREMENT | 内部主键，不能作为跨服务身份 |
-| tenant_no | VARCHAR(32) NOT NULL | 租户隔离，所有业务唯一键含租户 |
-| version | BIGINT NOT NULL DEFAULT 0 | 对齐BaseEntity乐观锁 |
-| deleted | TINYINT NOT NULL DEFAULT 0 | 兼容BaseEntity；账务事实禁止删除 |
-| created_at | DATETIME(3) NOT NULL | UTC创建时间 |
-| updated_at | DATETIME(3) NOT NULL | UTC更新时间 |
-| created_by | VARCHAR(64) NOT NULL | 创建操作者/系统任务 |
-| updated_by | VARCHAR(64) NOT NULL | 最后操作者/系统任务 |
-
-业务编号VARCHAR(64)上限须兼容BizKey；source_key为稳定来源复合键SHA256，原始sourceRef保存在快照内以支持碰撞/异参校验。JSON保存不可变规则/分摊，查询、排序、金额、额度与状态独立列；金额BIGINT、次数INT，计算比例乘法用BigInteger。pay与core之间只存号与快照，不跨库JOIN或外键。
-
-活动版本引用pay权益模板版本；活动预留绑定源充值/发放操作；pay发放绑定资格凭证；pay实例绑定发放及原模板版本；付费卡实例额外保留原订单行/单件来源。模板后改不影响已获权益。储值批次保存core活动资格权益快照。
-
-### 必须有的并发约束
-
-- 活动预算held+used≤limit；个人held+used≤perUserLimit由锁定预算和个人行的同事务条件更新保证。
-- pay发行额度及个人发行计数独立防超发；预算上限NULL不是0，不能误解释。
-- 实例remaining≥reserved≥0；服务日used+reserved≤limit；储值双池余额均≥冻结。
-- 同一grant.source_key只一条，quantity件每件unitIndex唯一；同一源支付意图settled_source_key只可有一个COMMITTED操作。
-- 一个操作多张券的分配可有多行，但全部同pay事务过账；允许组合由业务白名单决定，首期储值不叠券/积分。
-- MySQL唯一键对NULL允许多行，因此settled_source_key仅成功核销时赋值，不能用空串表示未成功。
-
-基础目标逻辑表38张（核心12、支付26），补充支撑表6张（核心4、支付2），合计44张（核心16、支付28）。包含现有表重构和拟新增表，不表示已创建44张生产表；正式迁移V425为目录三表，V426为会员身份凭证，V427为授权与源决策，V428新增售卡权益快照。快照的order_line_no由core将已落库ord_item主键转换成仅内部使用的稳定行身份，不改动公共订单表；主体与门店按子单/订单行可信事实落快照，不能从整张支付主单推断。支撑表字典见第七节。
-
-## 二、核心服务完整数据字典
-
-[完整DDL](./design/活动权益-core-schema.sql)。公共审计字段见第一节；以下列出每表业务字段、索引与约束。
-
-### pmt_preset_template
-
-预置模板目录，仅默认草稿，40活动和6产品推荐标签。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| template_code | VARCHAR(32) NOT NULL | 稳定AP/EP编号 |
-| template_version | INT NOT NULL | 模板目录版本 |
-| catalog_kind | VARCHAR(24) NOT NULL | ACTIVITY或PAID_PRODUCT |
-| category | VARCHAR(32) NOT NULL | 四类机制或产品 |
-| name | VARCHAR(100) NOT NULL | 模板名 |
-| industry_tags | JSON NOT NULL | 推荐标签非准入码 |
-| draft_schema | JSON NOT NULL | 类型化可编辑草稿参数 |
-| required_capabilities | JSON NOT NULL | 映射真实能力后的门槛 |
-| enabled | TINYINT NOT NULL DEFAULT 0 | 默认不启用 |
-
-索引：`UNIQUE KEY uk_preset (tenant_no,template_code,template_version)`。
-### pmt_activity
-
-活动管理头，历史规则列实施时保留直到所有消费者迁移。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| activity_no | VARCHAR(64) NOT NULL | 活动号 |
-| entity_no | VARCHAR(64) NOT NULL | 归属商家或平台哨兵 |
-| owner | VARCHAR(16) NOT NULL | MERCHANT/PLATFORM |
-| scene | VARCHAR(24) NOT NULL | ORDER/ENTITLEMENT_GRANT/RECHARGE |
-| name | VARCHAR(100) NOT NULL | 名称 |
-| status | VARCHAR(16) NOT NULL | DRAFT/RUNNING/PAUSED/ENDED |
-| current_version_no | VARCHAR(64) NULL | 当前已发布版本 |
-| ended_reason | VARCHAR(32) NULL | 结束原因 |
-| archived_at | DATETIME(3) NULL | 归档不删除历史 |
-
-索引：`UNIQUE KEY uk_activity (tenant_no,activity_no)`；`KEY ix_activity_list (tenant_no,entity_no,scene,status,id)`。
-### pmt_activity_version
-
-不可变活动发布规则，不拥有权益余次。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| version_no | VARCHAR(64) NOT NULL | 版本号 |
-| activity_no | VARCHAR(64) NOT NULL | 活动号 |
-| version_index | INT NOT NULL | 递增版本 |
-| schema_version | INT NOT NULL | 规则结构版本 |
-| currency | VARCHAR(8) NOT NULL | 预算与充值币种 |
-| schedule_type | VARCHAR(24) NOT NULL | ONE_OFF/ALWAYS_ON/RECURRING |
-| starts_at | DATETIME(3) NOT NULL | UTC开始 |
-| ends_at | DATETIME(3) NULL | UTC结束 |
-| market_zone | VARCHAR(64) NOT NULL | 市场时区 |
-| rule_snapshot | JSON NOT NULL | 触发/利益/引用pay模板版本 |
-| rule_hash | CHAR(64) NOT NULL | 快照摘要非授权签名 |
-| published_by | VARCHAR(64) NOT NULL | 发布人 |
-| published_at | DATETIME(3) NOT NULL | 发布时间 |
-
-索引：`UNIQUE KEY uk_activity_version (tenant_no,version_no)`；`UNIQUE KEY uk_activity_revision (tenant_no,activity_no,version_index)`。
-### pmt_activity_scope
-
-活动参与范围；权益使用范围在pay快照中。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| version_no | VARCHAR(64) NOT NULL | 活动版本 |
-| scope_kind | VARCHAR(24) NOT NULL | STORE/GOODS/CATEGORY/ALL |
-| ref_no | VARCHAR(64) NOT NULL | 范围对象，ALL固定* |
-
-索引：`UNIQUE KEY uk_scope (tenant_no,version_no,scope_kind,ref_no)`。
-### pmt_activity_audience
-
-目标活动受众，替换前保留旧列兼容。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| version_no | VARCHAR(64) NOT NULL | 发布版本 |
-| audience_kind | VARCHAR(24) NOT NULL | ALL/MEMBER_LEVEL/SEGMENT/NEW_CUSTOMER |
-| ref_no | VARCHAR(64) NOT NULL | 对象编号或固定* |
-| rule_snapshot | JSON NOT NULL | 资格定义快照 |
-
-索引：`UNIQUE KEY uk_audience (tenant_no,version_no,audience_kind,ref_no)`。
-### pmt_recharge_tier
-
-储值活动精确档位规则。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| tier_no | VARCHAR(64) NOT NULL | 档位号 |
-| version_no | VARCHAR(64) NOT NULL | 活动版本 |
-| pay_amount_minor | BIGINT NOT NULL | 应实收本金 |
-| bonus_amount_minor | BIGINT NOT NULL | 赠金额 |
-| redemption_scope | JSON NOT NULL | 余额可用门店及项目快照 |
-
-索引：`UNIQUE KEY uk_tier (tenant_no,version_no,tier_no)`；`UNIQUE KEY uk_tier_amount (tenant_no,version_no,pay_amount_minor)`。
-约束：`pay_amount_minor>0 AND bonus_amount_minor>=0`。
-### pmt_activity_budget
-
-活动跨版本总名额与营销预算。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| activity_no | VARCHAR(64) NOT NULL | 活动号 |
-| currency | VARCHAR(8) NOT NULL | 币种发布后不可换账 |
-| quota_limit | BIGINT NULL | NULL不限 |
-| quota_held | BIGINT NOT NULL DEFAULT 0 | 预留数量 |
-| quota_used | BIGINT NOT NULL DEFAULT 0 | 实际参与 |
-| budget_limit_minor | BIGINT NULL | 营销预算NULL不限 |
-| budget_held_minor | BIGINT NOT NULL DEFAULT 0 | 预留营销额 |
-| budget_used_minor | BIGINT NOT NULL DEFAULT 0 | 实际营销额 |
-| per_user_limit | INT NOT NULL | 每人跨版本次数 |
-
-索引：`UNIQUE KEY uk_budget (tenant_no,activity_no)`。
-约束：`quota_held>=0 AND quota_used>=0 AND budget_held_minor>=0 AND budget_used_minor>=0`；`quota_limit IS NULL OR quota_held+quota_used<=quota_limit`；`budget_limit_minor IS NULL OR budget_held_minor+budget_used_minor<=budget_limit_minor`；`per_user_limit>0`。
-### pmt_activity_participant
-
-跨版本个人参与计数。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| activity_no | VARCHAR(64) NOT NULL | 活动号 |
-| user_no | VARCHAR(64) NOT NULL | 本人用户 |
-| held_count | INT NOT NULL DEFAULT 0 | 预留次数 |
-| used_count | INT NOT NULL DEFAULT 0 | 成功次数 |
-
-索引：`UNIQUE KEY uk_participant (tenant_no,activity_no,user_no)`。
-约束：`held_count>=0 AND used_count>=0`。
-### pmt_activity_reservation
-
-营销参与凭证与预算预留。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| reservation_no | VARCHAR(64) NOT NULL | 参与预留号 |
-| source_key | CHAR(64) NOT NULL | 稳定源业务与利益项摘要 |
-| activity_no | VARCHAR(64) NOT NULL | 活动号 |
-| version_no | VARCHAR(64) NOT NULL | 规则版本 |
-| tier_no | VARCHAR(64) NULL | 储值档位 |
-| user_no | VARCHAR(64) NOT NULL | 受益用户 |
-| entity_no | VARCHAR(64) NOT NULL | 商家 |
-| store_no | VARCHAR(64) NOT NULL | 参与门店 |
-| currency | VARCHAR(8) NOT NULL | 币种 |
-| quota_units | INT NOT NULL | 名额占用量 |
-| budget_minor | BIGINT NOT NULL | 营销预算占用 |
-| status | VARCHAR(16) NOT NULL | RESERVED/COMMITTED/RELEASED |
-| permit_snapshot | JSON NOT NULL | 不可变权益约定 |
-| payload_hash | CHAR(64) NOT NULL | 同键异参检查 |
-| deadline | DATETIME(3) NOT NULL | 超时核查而非直接释放 |
-| pay_fact_no | VARCHAR(64) NULL | 权威发放或终止事实 |
-
-索引：`UNIQUE KEY uk_reservation (tenant_no,reservation_no)`；`UNIQUE KEY uk_reserve_source (tenant_no,source_key)`；`KEY ix_reserve_pending (tenant_no,status,deadline)`。
-约束：`quota_units>0 AND budget_minor>=0`。
-### pmt_effect_projection
-
-非权威可重建营销统计，量纲分开。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| source_event_no | VARCHAR(64) NOT NULL | pay/core源事件号 |
-| activity_no | VARCHAR(64) NOT NULL | 活动号 |
-| entity_no | VARCHAR(64) NOT NULL | 商家 |
-| store_no | VARCHAR(64) NULL | 源事实门店；历史未知不猜测，受限员工不可见未知门店 |
-| effect_kind | VARCHAR(32) NOT NULL | ORDER_DISCOUNT/COUPON_ISSUED/RECHARGE/CONSUMED |
-| amount_minor | BIGINT NULL | 金额类事实 |
-| currency | VARCHAR(8) NULL | 金额币种 |
-| units | BIGINT NULL | 数量类事实 |
-| occurred_at | DATETIME(3) NOT NULL | 业务发生UTC |
-
-索引：`UNIQUE KEY uk_effect (tenant_no,source_event_no,activity_no,effect_kind)`；`KEY ix_effect_summary (tenant_no,entity_no,effect_kind,occurred_at)`；`KEY ix_effect_store_time (tenant_no,entity_no,store_no,occurred_at)`。
-### pmt_command_dedup
-
-写接口幂等结果，与本域业务变更同事务。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| operation_kind | VARCHAR(64) NOT NULL | 接口/动作命名空间 |
-| request_key | VARCHAR(64) COLLATE utf8mb4_bin NOT NULL | Idempotency-Key |
-| payload_hash | CHAR(64) NOT NULL | 同键异参检测 |
-| resource_no | VARCHAR(64) NOT NULL | 原资源或操作号 |
-| result_status | VARCHAR(24) NOT NULL | PENDING/COMPLETED |
-| response_snapshot | JSON NULL | 稳定业务响应，不含敏感token |
-
-索引：`UNIQUE KEY uk_command (tenant_no,operation_kind,request_key)`。
-### prd_entitlement_binding
-
-CARD商品SKU引用支付权益版本，不重复保存余次规则。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| goods_no | VARCHAR(64) NOT NULL | 商品号 |
-| sku_no | VARCHAR(64) NOT NULL | SKU号 |
-| template_version_no | VARCHAR(64) NOT NULL | pay已发布权益定义版本 |
-| units_per_item | INT NOT NULL DEFAULT 1 | 每销售件对应权益实例数 |
-| currency | VARCHAR(8) NOT NULL | 与商品售价/pay定义一致 |
-| status | VARCHAR(16) NOT NULL | ACTIVE/DISABLED |
-
-索引：`UNIQUE KEY uk_product_entitlement (tenant_no,goods_no,sku_no)`。
-约束：`units_per_item>0`。
-## 三、支付服务完整数据字典
-
-[完整DDL](./design/活动权益-pay-schema.sql)。公共审计字段见第一节；以下列出每表业务字段、索引与约束。
-
-### ent_template
-
-支付权益模板管理头。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| template_no | VARCHAR(64) NOT NULL | 模板号，保留迁移映射 |
-| entity_no | VARCHAR(64) NOT NULL | 商家或平台主体 |
-| title | VARCHAR(100) NOT NULL | 标题 |
-| kind | VARCHAR(24) NOT NULL | ORDER_COUPON/STORE_EXCHANGE/PAID_CARD |
-| funder | VARCHAR(16) NOT NULL | MERCHANT/PLATFORM |
-| status | VARCHAR(16) NOT NULL | DRAFT/ACTIVE/PAUSED/ENDED |
-| current_version_no | VARCHAR(64) NULL | 当前发布版本 |
-| draft_snapshot | JSON NOT NULL | 可编辑草稿规则，发布时复制为不可变版本 |
-| archived_at | DATETIME(3) NULL | 归档时间 |
-
-索引：`UNIQUE KEY uk_template (tenant_no,template_no)`；`KEY ix_ent_templates (tenant_no,entity_no,kind,status,id)`。
-### ent_template_version
-
-发布权益不可变版本，券和付费卡都在pay。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| version_no | VARCHAR(64) NOT NULL | 版本号 |
-| template_no | VARCHAR(64) NOT NULL | 模板头 |
-| version_index | INT NOT NULL | 版本序号 |
-| currency | VARCHAR(8) NOT NULL | 金额/商品售价需兼容 |
-| benefit_mode | VARCHAR(24) NOT NULL | CASH/PERCENT/FREE_SHIP/GIFT/SERVICE_UNITS |
-| benefit_value | BIGINT NULL | 面额或应付比例bp |
-| benefit_cap_minor | BIGINT NULL | 折扣减免上限 |
-| min_amount_minor | BIGINT NULL | 门槛 |
-| usage_model | VARCHAR(24) NOT NULL | COUNT/PERIOD_COUNT/PERIOD_DAILY |
-| total_units | INT NULL | 总次数，不适用NULL |
-| daily_units | INT NULL | 每日上限 |
-| validity_mode | VARCHAR(16) NOT NULL | ABSOLUTE/RELATIVE |
-| valid_from | DATETIME(3) NULL | 绝对开始 |
-| valid_until | DATETIME(3) NULL | 绝对结束，开区间 |
-| valid_days | INT NULL | 滚动天数 |
-| start_basis | VARCHAR(16) NOT NULL | GRANTED/PAID/FIRST_USE |
-| period_basis | VARCHAR(24) NOT NULL | ROLLING_DAYS/CALENDAR_MONTH |
-| market_zone | VARCHAR(64) NOT NULL | 时间窗口计算时区 |
-| redemption_scope | JSON NOT NULL | 门店/商品/服务范围 |
-| allowed_issue_modes | JSON NOT NULL | CENTER/TARGETED/ACTIVITY/PAID_ORDER |
-| policy_snapshot | JSON NOT NULL | 完整规则及尾差/预约限制 |
-| snapshot_hash | CHAR(64) NOT NULL | 完整性摘要 |
-| published_by | VARCHAR(64) NOT NULL | 发布人 |
-| published_at | DATETIME(3) NOT NULL | 发布时间 |
-
-索引：`UNIQUE KEY uk_ent_version (tenant_no,version_no)`；`UNIQUE KEY uk_ent_version_seq (tenant_no,template_no,version_index)`。
-约束：`total_units IS NULL OR total_units>0`；`daily_units IS NULL OR daily_units>0`；`benefit_cap_minor IS NULL OR benefit_cap_minor>=0`。
-### ent_issue_policy
-
-支付发行授权控制，不等同core营销预算。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| template_no | VARCHAR(64) NOT NULL | 跨版本模板发行控制 |
-| limit_count | BIGINT NULL | 最大可发份数 |
-| held_count | BIGINT NOT NULL DEFAULT 0 | 准备中份数 |
-| issued_count | BIGINT NOT NULL DEFAULT 0 | 实际发行份数 |
-| max_exposure_minor | BIGINT NULL | 发放授权敞口 |
-| held_exposure_minor | BIGINT NOT NULL DEFAULT 0 | 占用敞口 |
-| used_exposure_minor | BIGINT NOT NULL DEFAULT 0 | 已发敞口 |
-| per_user_limit | INT NOT NULL | 独立领取/发放上限 |
-| enabled | TINYINT NOT NULL DEFAULT 0 | 发行开关 |
-
-索引：`UNIQUE KEY uk_issue_policy (tenant_no,template_no)`。
-约束：`held_count>=0 AND issued_count>=0 AND held_exposure_minor>=0 AND used_exposure_minor>=0`；`limit_count IS NULL OR held_count+issued_count<=limit_count`；`max_exposure_minor IS NULL OR held_exposure_minor+used_exposure_minor<=max_exposure_minor`。
-### ent_issue_recipient
-
-支付模板个人发行限制，防并发多领。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| template_no | VARCHAR(64) NOT NULL | 模板号 |
-| user_no | VARCHAR(64) NOT NULL | 用户 |
-| held_count | INT NOT NULL DEFAULT 0 | 待发行份数 |
-| issued_count | INT NOT NULL DEFAULT 0 | 累计发行份数 |
-
-索引：`UNIQUE KEY uk_issue_recipient (tenant_no,template_no,user_no)`。
-约束：`held_count>=0 AND issued_count>=0`。
-### ent_issue_batch
-
-发放批次汇总，逐项结果在grant。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| batch_no | VARCHAR(64) NOT NULL | 批次号 |
-| entity_no | VARCHAR(64) NOT NULL | 商家 |
-| template_version_no | VARCHAR(64) NOT NULL | 权益版本 |
-| activity_ref | VARCHAR(64) NULL | core活动引用 |
-| audience_fact_ref | VARCHAR(64) NOT NULL | core可信受众快照号 |
-| planned_count | INT NOT NULL | 计划数量 |
-| issued_count | INT NOT NULL DEFAULT 0 | 已发 |
-| skipped_count | INT NOT NULL DEFAULT 0 | 资格跳过 |
-| failed_count | INT NOT NULL DEFAULT 0 | 明确失败 |
-| pending_count | INT NOT NULL | 待处理 |
-| skip_reasons | JSON NOT NULL | 原因分项 |
-| status | VARCHAR(24) NOT NULL | PREPARING/PROCESSING/COMPLETED/PARTIAL/FAILED |
-| operator_no | VARCHAR(64) NOT NULL | 经办人 |
-
-索引：`UNIQUE KEY uk_batch (tenant_no,batch_no)`；`KEY ix_batches (tenant_no,entity_no,created_at)`。
-### ent_grant
-
-单受益人发放操作及跨域幂等。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| grant_no | VARCHAR(64) NOT NULL | 发放操作号 |
-| batch_no | VARCHAR(64) NULL | 批次 |
-| source_key | CHAR(64) NOT NULL | 来源业务行利益项唯一键 |
-| source_snapshot | JSON NOT NULL | 原始sourceRef，含订单行/单件序号策略 |
-| template_version_no | VARCHAR(64) NOT NULL | 固定版本 |
-| user_no | VARCHAR(64) NOT NULL | 受益人 |
-| entity_no | VARCHAR(64) NOT NULL | 权益承担主体 |
-| reservation_no | VARCHAR(64) NULL | core参与凭证 |
-| paid_fact_ref | VARCHAR(64) NULL | 付费购卡支付事实 |
-| quantity | INT NOT NULL | 本次发放实例数 |
-| payload_hash | CHAR(64) NOT NULL | 同键异参检测 |
-| status | VARCHAR(16) NOT NULL | PREPARED/COMMITTED/ABORTED/EXCEPTION |
-| source_decision_no | VARCHAR(64) NULL | 提交或终止持久决策 |
-| committed_at | DATETIME(3) NULL | 实际发放时间 |
-| reason_code | VARCHAR(64) NULL | 单项跳过或明确失败原因 |
-
-索引：`UNIQUE KEY uk_grant (tenant_no,grant_no)`；`UNIQUE KEY uk_grant_source (tenant_no,source_key)`；`KEY ix_grant_recovery (tenant_no,status,updated_at)`。
-约束：`quantity>0`。
-### ent_instance
-
-用户实际权益和总次数余额。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| instance_no | VARCHAR(64) NOT NULL | 用户权益号 |
-| template_version_no | VARCHAR(64) NOT NULL | 原版本 |
-| grant_no | VARCHAR(64) NOT NULL | 原发放 |
-| unit_index | INT NOT NULL | 本次发放第几件，从1起 |
-| source_unit_key | CHAR(64) NOT NULL | 源订单行加单件序号或发放单件唯一 |
-| user_no | VARCHAR(64) NOT NULL | 所有者 |
-| entity_no | VARCHAR(64) NOT NULL | 主体 |
-| kind | VARCHAR(24) NOT NULL | 三类权益 |
-| status | VARCHAR(24) NOT NULL | PENDING_ACTIVATION/ACTIVE/FROZEN/EXHAUSTED/EXPIRED/REVOKED |
-| total_units | INT NULL | 总次模式 |
-| remaining_units | INT NULL | 剩余总次 |
-| reserved_units | INT NOT NULL DEFAULT 0 | 冻结总次 |
-| effective_from | DATETIME(3) NULL | 实际起算，首用激活前NULL |
-| effective_until | DATETIME(3) NULL | 实际截止开区间 |
-| activation_at | DATETIME(3) NULL | 激活时刻 |
-| source_paid_at | DATETIME(3) NULL | 权威支付成功时间 |
-| rule_snapshot | JSON NOT NULL | 已获权益完整规则 |
-| asset_seq | BIGINT NOT NULL DEFAULT 0 | 单权益记账序号 |
-
-索引：`UNIQUE KEY uk_instance (tenant_no,instance_no)`；`UNIQUE KEY uk_grant_unit (tenant_no,grant_no,unit_index)`；`UNIQUE KEY uk_source_unit (tenant_no,source_unit_key)`；`KEY ix_wallet (tenant_no,user_no,kind,status,id)`。
-约束：`unit_index>0 AND reserved_units>=0`；`remaining_units IS NULL OR remaining_units>=reserved_units`。
-### ent_period_bucket
-
-服务日额度计数，跨日释放回原bucket。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| instance_no | VARCHAR(64) NOT NULL | 权益实例 |
-| period_key | VARCHAR(32) NOT NULL | 实例有效期窗口标识 |
-| service_day | DATE NOT NULL | 市场时区服务日 |
-| limit_units | INT NOT NULL | 本日上限 |
-| reserved_units | INT NOT NULL DEFAULT 0 | 本日预占 |
-| used_units | INT NOT NULL DEFAULT 0 | 本日已用 |
-
-索引：`UNIQUE KEY uk_bucket (tenant_no,instance_no,period_key,service_day)`。
-约束：`limit_units>0 AND reserved_units>=0 AND used_units>=0 AND reserved_units+used_units<=limit_units`。
-### ent_use_intent
-
-统一权益使用意图，储值和券卡共用状态头。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| operation_no | VARCHAR(64) NOT NULL | 核销操作号即hold引用 |
-| source_key | CHAR(64) NOT NULL | 订单/兑换/服务行使用意图唯一 |
-| source_snapshot | JSON NOT NULL | 源订单版本/服务日等 |
-| settled_source_key | CHAR(64) NULL | 成功订单支付维度唯一，改价重建仍一笔 |
-| user_no | VARCHAR(64) NOT NULL | 使用者 |
-| entity_no | VARCHAR(64) NOT NULL | 承担主体 |
-| store_no | VARCHAR(64) NOT NULL | 核销门店 |
-| asset_kind | VARCHAR(24) NOT NULL | ORDER_COUPON/STORE_EXCHANGE/PAID_CARD/STORED_VALUE |
-| authorization_ref | VARCHAR(64) NOT NULL | 可信源本人确认/原有兑换核对凭证 |
-| payload_hash | CHAR(64) NOT NULL | 重试内容检查 |
-| status | VARCHAR(24) NOT NULL | HELD/COMMITTED/RELEASED/EXCEPTION |
-| service_day | DATE NULL | 服务日期 |
-| source_decision_no | VARCHAR(64) NULL | 源成功或取消决策 |
-| expires_at | DATETIME(3) NOT NULL | 超时核查时刻 |
-| committed_at | DATETIME(3) NULL | 成功核销时间 |
-
-索引：`UNIQUE KEY uk_operation (tenant_no,operation_no)`；`UNIQUE KEY uk_use_source (tenant_no,source_key)`；`UNIQUE KEY uk_settled_source (tenant_no,settled_source_key)`；`KEY ix_use_pending (tenant_no,status,expires_at)`。
-### ent_use_allocation
-
-券卡预占分配，金额折扣分摊不是金额余额。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| operation_no | VARCHAR(64) NOT NULL | 意图 |
-| instance_no | VARCHAR(64) NOT NULL | 实例 |
-| period_key | VARCHAR(32) NOT NULL | 非周期固定NONE |
-| service_day | DATE NOT NULL | 实际使用服务日 |
-| units | INT NOT NULL | 本次预占次数 |
-| discount_minor | BIGINT NOT NULL DEFAULT 0 | 订单券本次折扣 |
-| currency | VARCHAR(8) NOT NULL | 折扣币种 |
-| items_allocation | JSON NOT NULL | 商品/服务行分摊快照 |
-| reversed_units | INT NOT NULL DEFAULT 0 | 累计恢复次数，条件不超原units |
-| reversed_discount_minor | BIGINT NOT NULL DEFAULT 0 | 累计回补折扣，条件不超原discount |
-
-索引：`UNIQUE KEY uk_ent_alloc (tenant_no,operation_no,instance_no,period_key,service_day)`。
-约束：`units>0 AND discount_minor>=0`；`reversed_units>=0 AND reversed_units<=units AND reversed_discount_minor>=0 AND reversed_discount_minor<=discount_minor`。
-### ent_usage
-
-核销成功事实，消费者简明查询源。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| usage_no | VARCHAR(64) NOT NULL | 核销记录号 |
-| operation_no | VARCHAR(64) NOT NULL | 原意图 |
-| user_no | VARCHAR(64) NOT NULL | 本人 |
-| entity_no | VARCHAR(64) NOT NULL | 主体 |
-| store_no | VARCHAR(64) NOT NULL | 门店 |
-| store_name | VARCHAR(100) NOT NULL | 发生时门店名 |
-| asset_kind | VARCHAR(24) NOT NULL | 资产类别 |
-| title | VARCHAR(100) NOT NULL | 项目摘要 |
-| units | INT NULL | 核销次数 |
-| amount_minor | BIGINT NULL | 储值支付额或订单券优惠额 |
-| currency | VARCHAR(8) NULL | 对应金额币种 |
-| items_snapshot | JSON NOT NULL | 服务/商品明细 |
-| service_staff_name | VARCHAR(64) NULL | 服务人员 |
-| source_order_no | VARCHAR(64) NULL | 源订单 |
-| operator_no | VARCHAR(64) NOT NULL | 经办者 |
-| status | VARCHAR(16) NOT NULL | COMMITTED/PARTIAL_REVERSED/REVERSED；原金额与项目不改写，回补另记反向账 |
-| occurred_at | DATETIME(3) NOT NULL | 业务成功时间 |
-
-索引：`UNIQUE KEY uk_usage (tenant_no,usage_no)`；`UNIQUE KEY uk_usage_op (tenant_no,operation_no)`；`KEY ix_user_usage (tenant_no,user_no,store_no,asset_kind,occurred_at DESC,usage_no DESC)`；`KEY ix_store_usage (tenant_no,entity_no,store_no,occurred_at DESC)`。
-### ent_ledger
-
-权益次数不可变分录，预占变更也留痕。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| entry_no | VARCHAR(64) NOT NULL | 分录号 |
-| instance_no | VARCHAR(64) NOT NULL | 实例 |
-| asset_seq | BIGINT NOT NULL | 有序账序 |
-| biz_type | VARCHAR(24) NOT NULL | GRANT/HOLD/USE/RELEASE/REVERSE/EXPIRE/FREEZE |
-| biz_key | VARCHAR(128) NOT NULL | 每动作分录稳定键 |
-| units_delta | INT NOT NULL | 总次余额变化 |
-| reserved_delta | INT NOT NULL | 冻结变化 |
-| after_units | INT NULL | 总次模式账后余次 |
-| after_reserved | INT NOT NULL | 账后冻结 |
-| bucket_key | VARCHAR(64) NULL | 每日计数分配引用 |
-| origin_entry_no | VARCHAR(64) NULL | 受限内部回补原引用 |
-| occurred_at | DATETIME(3) NOT NULL | 发生时间 |
-
-索引：`UNIQUE KEY uk_ent_entry (tenant_no,entry_no)`；`UNIQUE KEY uk_asset_seq (tenant_no,instance_no,asset_seq)`；`UNIQUE KEY uk_ledger_biz (tenant_no,instance_no,biz_key)`。
-约束：`after_reserved>=0`；`after_units IS NULL OR after_units>=after_reserved`。
-### ent_code_token
-
-券码定位凭证，存摘要不存明码。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| token_hash | CHAR(64) NOT NULL | 高熵token摘要 |
-| instance_no | VARCHAR(64) NOT NULL | 仅对应指定用户券 |
-| user_no | VARCHAR(64) NOT NULL | 持有人 |
-| entity_no | VARCHAR(64) NOT NULL | 所属实例的主体 |
-| request_key_hash | CHAR(64) NOT NULL | 本人签发幂等键摘要 |
-| payload_hash | CHAR(64) NOT NULL | 本人/实例/用途绑定摘要 |
-| nonce | CHAR(32) NOT NULL | HMAC重放用随机nonce，不是明码 |
-| expires_at | DATETIME(3) NOT NULL | 最长60秒且不晚于实例有效期 |
-| status | VARCHAR(16) NOT NULL | ACTIVE/USED/REVOKED |
-| consumed_operation_no | VARCHAR(64) NULL | 绑定的原操作 |
-| consumed_store_no | VARCHAR(64) NULL | 原解析门店 |
-| consumed_actor_no | VARCHAR(64) NULL | 原B操作人 |
-| consumed_at | DATETIME(3) NULL | 首次定位UTC时间 |
-
-索引：`UNIQUE KEY uk_token (tenant_no,token_hash)`；`UNIQUE KEY uk_token_request (tenant_no,user_no,request_key_hash)`；`KEY ix_token_instance (tenant_no,instance_no,status)`。USED要求消费操作/门店/人/时间全部非空；ACTIVE/REVOKED要求这些列全部为空。
-### sv_account
-
-金额储值账户，不持有活动预算。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| account_no | VARCHAR(64) NOT NULL | 账户号 |
-| user_no | VARCHAR(64) NOT NULL | 本人 |
-| entity_no | VARCHAR(64) NOT NULL | 主体 |
-| currency | VARCHAR(8) NOT NULL | 币种 |
-| status | VARCHAR(16) NOT NULL | ACTIVE/FROZEN |
-| principal_minor | BIGINT NOT NULL DEFAULT 0 | 内部本金余额 |
-| bonus_minor | BIGINT NOT NULL DEFAULT 0 | 内部赠金余额 |
-| held_principal_minor | BIGINT NOT NULL DEFAULT 0 | 本金冻结 |
-| held_bonus_minor | BIGINT NOT NULL DEFAULT 0 | 赠金冻结 |
-| account_seq | BIGINT NOT NULL DEFAULT 0 | 账序 |
-
-索引：`UNIQUE KEY uk_sv_account (tenant_no,account_no)`；`UNIQUE KEY uk_sv_owner (tenant_no,user_no,entity_no,currency)`。
-约束：`principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0`。
-### sv_recharge
-
-充值实收与活动凭证快照。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| recharge_no | VARCHAR(64) NOT NULL | 充值号 |
-| request_id | VARCHAR(64) NOT NULL | 创建幂等键 |
-| payload_hash | CHAR(64) NOT NULL | 内容摘要 |
-| reservation_no | VARCHAR(64) NOT NULL | core参与凭证 |
-| activity_no | VARCHAR(64) NOT NULL | core活动号 |
-| activity_version_no | VARCHAR(64) NOT NULL | 固定活动版本 |
-| user_no | VARCHAR(64) NOT NULL | 受益人 |
-| entity_no | VARCHAR(64) NOT NULL | 主体 |
-| store_no | VARCHAR(64) NOT NULL | 实际充值店 |
-| store_name | VARCHAR(100) NOT NULL | 门店快照 |
-| currency | VARCHAR(8) NOT NULL | 币种 |
-| principal_minor | BIGINT NOT NULL | 应实收本金 |
-| bonus_minor | BIGINT NOT NULL | 赠金快照 |
-| status | VARCHAR(24) NOT NULL | WAIT_COLLECTION/SUBMITTED/RECEIVED/CREDITED/CANCELLED/REJECTED |
-| collection_method | VARCHAR(16) NULL | CASH/TRANSFER |
-| actual_amount_minor | BIGINT NULL | 人工实际收款 |
-| receipt_ref | VARCHAR(128) NULL | 私有凭据 |
-| receipt_digest | CHAR(64) NULL | 凭据摘要 |
-| operator_no | VARCHAR(64) NOT NULL | 经办人 |
-| received_by | VARCHAR(64) NULL | 有权确认人 |
-| received_at | DATETIME(3) NULL | 实收确认时间 |
-| credited_at | DATETIME(3) NULL | 到账时间 |
-| expires_at | DATETIME(3) NOT NULL | 未实收截止 |
-| permit_snapshot | JSON NOT NULL | 权威资格与权益范围 |
-
-索引：`UNIQUE KEY uk_recharge (tenant_no,recharge_no)`；`UNIQUE KEY uk_recharge_request (tenant_no,request_id)`；`UNIQUE KEY uk_recharge_permit (tenant_no,reservation_no)`；`KEY ix_credit_pending (tenant_no,status,received_at)`。
-约束：`principal_minor>0 AND bonus_minor>=0`。
-### sv_lot
-
-金额充值批次与历史使用约定。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| lot_no | VARCHAR(64) NOT NULL | 批次号 |
-| account_no | VARCHAR(64) NOT NULL | 账户 |
-| recharge_no | VARCHAR(64) NOT NULL | 每笔充值唯一 |
-| activity_version_no | VARCHAR(64) NOT NULL | core规则引用 |
-| principal_minor | BIGINT NOT NULL | 本金余量 |
-| bonus_minor | BIGINT NOT NULL | 赠金余量 |
-| held_principal_minor | BIGINT NOT NULL DEFAULT 0 | 本金预占 |
-| held_bonus_minor | BIGINT NOT NULL DEFAULT 0 | 赠金预占 |
-| scope_snapshot | JSON NOT NULL | 适用范围不可实时改变 |
-| credited_at | DATETIME(3) NOT NULL | 入账排序 |
-
-索引：`UNIQUE KEY uk_sv_lot (tenant_no,lot_no)`；`UNIQUE KEY uk_lot_recharge (tenant_no,recharge_no)`；`KEY ix_sv_allocate (tenant_no,account_no,credited_at,lot_no)`。
-约束：`principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0`。
-### sv_hold_allocation
-
-储值预占分配，状态统一在ent_use_intent。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| operation_no | VARCHAR(64) NOT NULL | 统一使用意图号 |
-| lot_no | VARCHAR(64) NOT NULL | 批次 |
-| principal_minor | BIGINT NOT NULL | 固化本金分配 |
-| bonus_minor | BIGINT NOT NULL | 固化赠金分配 |
-| items_allocation | JSON NOT NULL | 服务行分摊 |
-
-索引：`UNIQUE KEY uk_sv_alloc (tenant_no,operation_no,lot_no)`。
-约束：`principal_minor>=0 AND bonus_minor>=0`。
-### sv_voucher
-
-金额变化不可变凭证。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| voucher_no | VARCHAR(64) NOT NULL | 凭证号 |
-| account_no | VARCHAR(64) NOT NULL | 账户 |
-| account_seq | BIGINT NOT NULL | 账户账序 |
-| biz_type | VARCHAR(24) NOT NULL | RECHARGE/CONSUME，首期无开放退款 |
-| biz_no | VARCHAR(64) NOT NULL | 来源充值或使用意图 |
-| payload_hash | CHAR(64) NOT NULL | 幂等内容 |
-| principal_delta | BIGINT NOT NULL | 本金变化 |
-| bonus_delta | BIGINT NOT NULL | 赠金变化 |
-| after_principal_minor | BIGINT NOT NULL | 账后本金 |
-| after_bonus_minor | BIGINT NOT NULL | 账后赠金 |
-| occurred_at | DATETIME(3) NOT NULL | 业务时间 |
-
-索引：`UNIQUE KEY uk_voucher (tenant_no,voucher_no)`；`UNIQUE KEY uk_sv_biz (tenant_no,biz_type,biz_no)`；`UNIQUE KEY uk_sv_seq (tenant_no,account_no,account_seq)`。
-约束：`after_principal_minor>=0 AND after_bonus_minor>=0`。
-### sv_entry
-
-金额凭证的批次分录。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| voucher_no | VARCHAR(64) NOT NULL | 凭证 |
-| lot_no | VARCHAR(64) NOT NULL | 批次 |
-| principal_delta | BIGINT NOT NULL | 本金delta |
-| bonus_delta | BIGINT NOT NULL | 赠金delta |
-
-索引：`UNIQUE KEY uk_sv_entry (tenant_no,voucher_no,lot_no)`；`KEY ix_sv_lot_ledger (tenant_no,lot_no,id)`。
-### sv_user_store_index
-
-目录投影，无余额冗余。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| user_no | VARCHAR(64) NOT NULL | 本人 |
-| entity_no | VARCHAR(64) NOT NULL | 主体 |
-| store_no | VARCHAR(64) NOT NULL | 实际门店 |
-| store_name | VARCHAR(100) NOT NULL | 目录显示名 |
-| has_recharge | TINYINT NOT NULL DEFAULT 0 | 成功储值历史 |
-| last_recharge_at | DATETIME(3) NULL | 最近实际充值 |
-| last_consume_at | DATETIME(3) NULL | 最近实际核销 |
-| last_activity_at | DATETIME(3) NOT NULL | 两时间MAX |
-| last_activity_type | VARCHAR(16) NOT NULL | RECHARGE/CONSUME |
-| store_status | VARCHAR(16) NOT NULL | 门店可用/历史状态 |
-
-索引：`UNIQUE KEY uk_user_store (tenant_no,user_no,store_no)`；`KEY ix_sv_directory (tenant_no,user_no,has_recharge,last_activity_at DESC,store_no ASC)`。
-### ent_owner_registry
-
-迁移时明确唯一权威归属，不靠查不到兜底。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| source_system | VARCHAR(32) NOT NULL | MKT_LEGACY/PMT/PAY |
-| source_kind | VARCHAR(24) NOT NULL | TEMPLATE/INSTANCE/USAGE |
-| source_no | VARCHAR(64) NOT NULL | 原业务号 |
-| target_no | VARCHAR(64) NULL | pay目标号 |
-| owner_system | VARCHAR(16) NOT NULL | CORE_LEGACY/PAY |
-| migration_batch_no | VARCHAR(64) NOT NULL | 迁移批次 |
-| cutover_watermark | VARCHAR(128) NULL | 源截止水位 |
-| status | VARCHAR(24) NOT NULL | PREPARING/VERIFIED/CUTOVER/ARCHIVED |
-
-索引：`UNIQUE KEY uk_source_owner (tenant_no,source_system,source_kind,source_no)`。
-### pay_ent_outbox
-
-支付持久事件，同权益/资金事务。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| event_no | VARCHAR(64) NOT NULL | 事件号 |
-| event_type | VARCHAR(64) NOT NULL | 事件种类 |
-| schema_version | INT NOT NULL | 事件版本 |
-| aggregate_no | VARCHAR(64) NOT NULL | 聚合号 |
-| payload | JSON NOT NULL | 不含明码/完整凭据 |
-| occurred_at | DATETIME(3) NOT NULL | 业务时间 |
-| payload_hash | CHAR(64) NOT NULL | 事件类型/版本/聚合/载荷的稳定摘要 |
-| status | VARCHAR(16) NOT NULL | PENDING/SENT/DEAD；SENT表示已写入统一sys_outbox |
-| attempts | INT NOT NULL DEFAULT 0 | 桥接到统一投递箱的失败次数 |
-| next_attempt_at | DATETIME(3) NOT NULL | 下次桥接时刻；启动及周期扫描恢复 |
-
-索引：`UNIQUE KEY uk_pay_event (tenant_no,event_no)`；`KEY ix_pay_dispatch (status,next_attempt_at)`。支付事务内先持久化事件，提交后以稳定eventNo桥接至共享`sys_outbox`；pay与平台使用不同事务管理器，桥接通过幂等和恢复扫描处理崩溃窗口。`SENT`只表示共享投递箱已持久接管，最终投递、重试和消费确认仍由共享投递机制负责；达到10次桥接失败进入`DEAD`并告警处理。载荷由版本化白名单record生成，不含会员码或凭据。
-### pay_ent_inbox
-
-跨域事件消费防重，同账提交。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| consumer | VARCHAR(64) NOT NULL | 消费者 |
-| event_no | VARCHAR(64) NOT NULL | 事件号 |
-| payload_hash | CHAR(64) NOT NULL | 同事件异参拒绝 |
-| processed_at | DATETIME(3) NOT NULL | 应用时间 |
-
-索引：`UNIQUE KEY uk_pay_inbox (tenant_no,consumer,event_no)`。
-### pay_ent_exception
-
-受控异常处置与对账差异。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| exception_no | VARCHAR(64) NOT NULL | 异常号 |
-| entity_no | VARCHAR(64) NOT NULL | 主体 |
-| kind | VARCHAR(32) NOT NULL | 异常类型 |
-| biz_no | VARCHAR(64) NOT NULL | 原业务 |
-| status | VARCHAR(16) NOT NULL | OPEN/PROCESSING/RESOLVED |
-| evidence | JSON NOT NULL | 脱敏源事实 |
-| last_action | VARCHAR(64) NULL | 受控恢复动作 |
-| handled_by | VARCHAR(64) NULL | 操作者 |
-| handled_at | DATETIME(3) NULL | 处理时间 |
-
-索引：`UNIQUE KEY uk_pay_exception (tenant_no,exception_no)`；`UNIQUE KEY uk_exception_source (tenant_no,kind,biz_no)`；`KEY ix_pay_exception_queue (tenant_no,entity_no,status,created_at)`。
-### pay_ent_command_dedup
-
-写接口幂等结果，与本域业务变更同事务。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| operation_kind | VARCHAR(64) NOT NULL | 接口/动作命名空间 |
-| request_key | VARCHAR(64) COLLATE utf8mb4_bin NOT NULL | Idempotency-Key |
-| payload_hash | CHAR(64) NOT NULL | 同键异参检测 |
-| resource_no | VARCHAR(64) NOT NULL | 原资源或操作号 |
-| result_status | VARCHAR(24) NOT NULL | PENDING/COMPLETED |
-| response_snapshot | JSON NULL | 稳定业务响应，不含敏感token |
-
-索引：`UNIQUE KEY uk_command (tenant_no,operation_kind,request_key)`。
-### ent_use_reversal
-
-既有订单券受限内部补偿，不开放储值退款。
-
-| 字段 | 类型及空值 | 含义 |
-|---|---|---|
-| reverse_no | VARCHAR(64) NOT NULL | 反向操作号 |
-| usage_no | VARCHAR(64) NOT NULL | 原成功明细号 |
-| payload_hash | CHAR(64) NOT NULL | 原回补命令摘要，重放异参拒绝 |
-| command_snapshot | JSON NOT NULL | 不可变来源、金额与决策引用 |
-| origin_operation_no | VARCHAR(64) NOT NULL | 原成功使用 |
-| instance_no | VARCHAR(64) NOT NULL | 原用户券 |
-| after_sale_no | VARCHAR(64) NOT NULL | 权威售后号 |
-| source_decision_no | VARCHAR(64) NOT NULL | 源补偿决策 |
-| units | INT NOT NULL | 本次恢复使用次数 |
-| discount_minor | BIGINT NOT NULL | 原优惠的本次回补归属 |
-| occurred_at | DATETIME(3) NOT NULL | 实际应用时间 |
-
-索引：`UNIQUE KEY uk_reverse (tenant_no,reverse_no)`；`UNIQUE KEY uk_reverse_fact (tenant_no,after_sale_no,origin_operation_no,instance_no)`。
-约束：`units>=0 AND discount_minor>=0`。
-
-## 四、现有数据与迁移对应
-
-| 现有表/草案 | 目标 | 处理 |
-|---|---|---|
-| pmt_activity及规则/范围/受众 | core同名头+version/范围 | 新增scene与版本关联，存量ORDER；旧列先保留，停止旧写路径后清理 |
-| pmt_coupon、pmt_coupon_scope；旧mkt_coupon | pay ent_template/version | 保留面额、出资、币种、门槛、范围、效期、发行控制，精确来源映射 |
-| pmt_user_coupon；旧用户券 | pay ent_instance | 余次、期限、使用状态和既有业务号迁移；不重发通知 |
-| pmt_coupon_issue及旧发放 | pay ent_issue_batch/grant | 保留受众快照和跳过原因；无法细分单人时标明历史汇总，不编造精确记录 |
-| pmt_apply中的券使用 | pay ent_usage/ledger | 迁移审计源，保留sourceSystem/sourceNo；core只保留营销派生投影 |
-| pmt_apply中的ACTIVITY | core保留当前订单优惠事实 | 不作为pay用户权益余额；统计按来源去重 |
-| sv_campaign/version/budget/participation旧设计 | core pmt活动/预留 | 未实施草案取消；不产生新sv活动表 |
-| sv_hold、sv_consumption旧设计 | ent_use_intent、ent_usage | 统一操作头和简明查询，金额分配仍sv_hold_allocation |
-| sv_account/lot/voucher/entry | pay同族 | 账户双池与批次账权威保留 |
-
-切换遵循总设计§5：清点→冻结精确批次/水位→迁移→核对→更新唯一owner→目标唯一写。迁移后不能按新表查不到就回旧表；历史使用码需要摘要映射到目标实例，原码可用性按已承诺规则迁移，不重新生成而让旧用户失效。
-
-设计阶段不分配Flyway版本号；本批已新增V425，仅目录三表。后续正式迁移继续先取当前最大版本，保留已应用脚本checksum；现有同名表用ALTER/回填，不执行本稿CREATE覆盖。新版本与源老列共存期，必须明确每列哪个写路径，禁止双向同步成为永久状态。
-
-## 五、查询、对账与生命周期
-
-储值门店投影按user/store唯一，has_recharge=1才入默认目录；时间用GREATEST，等时优先CONSUME，storeNo稳定排序。核销记录统一ent_usage，资产类别明确，金额为储值实付或券折扣，次数为兑换量；前端不可跨量纲求和。
-
-核心活动预算与pay发行控制是不同约束，日切分别核对预留/已用与权威pay发放事实。pay核对账户=批次=分录净额，实例余次=发行次数+使用/受限回补，日额度=对应服务日分配之和，冻结=HELD分配。pmt_effect_projection可重建，不是第二本资金账。
-
-所有期限制采用[effective_from,effective_until)半开区间；自然月按IANA时区月边界，滚动N天按模板定义的本地服务日规则。首用激活、有效窗口及日bucket同首次使用事务固化；不能在读接口激活或月底任务直接改历史次数。到期只阻止新用并留状态/审计，不删除余额。服务日改约必须取消原占用后重新prepare，未知结果不跨日补扣。
-
-目标数据库验收：执行DDL与回填脚本，核实CHECK真正生效、JSON合法性、唯一性、非负条件更新、索引执行计划；H2不能替代。迁移前后按主体/用户/资产逐笔比对，不只比总数。
-
-
-## 六、特定兼容与计量规则
-
-ent_use_reversal仅用于原订单券受限内部补偿，累计恢复次数/优惠额不能超过原分配，既有售后决定是否恢复券，原效期不延长；不得每次部分退款恢复完整券。幂等响应表不保存token明文。ent_grant单项失败/跳过留reason_code；批次计数与逐项结果相符，不能用未知结果冒充失败。
-
-prd_entitlement_binding售价沿既有商品SKU，不复制资金账。每件unitsPerItem个实例时，来源唯一键包含订单行、销售单件序号及件内权益序号。pmt_effect_projection的activityNo属于幂等键，一个事件可以分别更新多个活动效果。
-
-旧券UNUSED/USED分别按规则映射ACTIVE/PENDING_ACTIVATION/EXHAUSTED，状态变换保留源审计；绝对有效期若原来是毫秒闭区间，迁移到半开区间须按原精度转换（截止+1ms），不能提前失效。自然月/每日额度的时区和服务日起算写进实例快照。
-
-### 实施前对齐决定（2026-10-18）
-
-目标公共字段按现有BaseEntity采用version BIGINT和deleted TINYINT，替代早期草案revision列；API的expectedRevision/revision仍是契约名，由映射层转换为实体version，不改sourceRevision等来源修订号。所有财务/使用事实禁止删除，模板用archived_at归档，不能调用通用deleteById删除历史。
-
-ent_template新增draft_snapshot保存完整可编辑草稿，避免把尚未发布规则写进不可变版本。发布事务核对head版本，写version快照再推进current_version_no。停发与保存草稿分别控制，不改已发布规则。
-
-AuditMetaObjectHandler当前使用LocalDateTime.now，不能直接宣称其符合本设计UTC约定。新表插入由领域工厂显式填UTC时间和可信actor（已有strictInsertFill保留非空值）；状态/计数CAS使用显式SQL记录UTC更新时间、操作者与version，不通过会覆盖操作者/时区的通用updateById。此决定需在后续Mapper集成用例验证，禁止为新模块修改全局历史时间语义。
-
-幂等request_key采用utf8mb4_bin，区分大小写；应用拒绝首尾空白，避免PAD SPACE比较合并不同请求。正式V425仅创建ent_template、ent_template_version和pay_ent_command_dedup，不切换旧券归属，也不创建余额或使用账。逻辑模型中的FREE_SHIP保留旧包邮券定义，消费/报价仍须后续能力接通。
-
-
-## 七、授权、售卡与对账支撑存储
-
-[支撑DDL](./design/活动权益-support-schema.sql)独立于当前基础42表，用于设计校验；各表正式增量迁移另列。公共字段沿第一节。core四表仅core事务写，pay两表仅pay事务写；无跨库外键。授权/源决策由V427交付；售卡快照实体、Mapper、稳定订单行号及V428由JB-012交付；对账表归JB-046。
-
-### ord_ent_authorization
-
-| 字段 | 类型与约束 | 含义 |
-|---|---|---|
-| authorization_no | VARCHAR(64) NOT NULL | 本人授权引用 |
-| request_key | VARCHAR(64) COLLATE utf8mb4_bin NOT NULL | 本人确认幂等键 |
-| payload_hash | CHAR(64) NOT NULL | owner重算请求指纹 |
-| source_key | CHAR(64) NOT NULL | 含修订号的使用意图键 |
-| source_snapshot | JSON NOT NULL | 完整SourceRef及原订单定位 |
-| source_revision | BIGINT NOT NULL | 源意图修订 |
-| user_no | VARCHAR(64) NOT NULL | 本人消费者 |
-| entity_no | VARCHAR(64) NOT NULL | 资产承担主体 |
-| store_no | VARCHAR(64) NOT NULL | 真实履约门店 |
-| quote_ref | VARCHAR(64) NOT NULL | 服务端可信pay报价引用，tenant内唯一 |
-| selection_digest | CHAR(64) NOT NULL | 绑定资产及版本金额次数服务日 |
-| order_snapshot_hash | CHAR(64) NOT NULL | 可信源价格明细摘要 |
-| amount_minor | BIGINT NOT NULL | 本次确认金额可为零 |
-| currency | VARCHAR(8) NOT NULL | 币种 |
-| intent_key | VARCHAR(64) NOT NULL | 服务端预确认记录键 |
-| order_no | VARCHAR(64) NOT NULL | 被确认的真实订单 |
-| status | VARCHAR(16) NOT NULL | PENDING/AUTHORIZED/CANCELLED/EXPIRED |
-| authorized_at | DATETIME(3) NULL | 仅本人确认后写入；PENDING不能视为授权 |
-| expires_at | DATETIME(3) NOT NULL | 授权截止半开区间 |
-
-索引：
-
-```sql
-UNIQUE KEY uk_order_auth_intent (tenant_no,intent_key),
-UNIQUE KEY uk_order_auth_no (tenant_no,authorization_no),
-UNIQUE KEY uk_order_auth_request (tenant_no,user_no,request_key),
-KEY ix_order_auth_source (tenant_no,source_key,user_no,status),
+本文细化[系统总设计](./TDD-活动卡券储值-模块化系统设计.md)，与[功能矩阵](../requirements/活动卡券储值-模块功能矩阵.md)、[API契约](./TDD-活动卡券储值-API契约.md)、[数据库设计](./TDD-活动卡券储值-数据库设计.md)配套。除下方实施清单外，类名为实施建议，不表示已创建Java文件。标记“现有改造/复用”的类已在本地源码核对；其他均为拟新增。最终迁移需继续盘点旧marketing/mkt实现，不能只迁promotion。
+
+## §0 设计约束
+
+活动规则、资格与营销预算属于core；券/兑换券/付费卡定义、用户权益、储值与核销账属于pay。商品售价、订单和履约仍在core。40项活动模板是数据预置，不创建40个Service；6项售卡产品是目录配置，也不创建6个卡服务。共用COUNT、PERIOD_COUNT、PERIOD_DAILY策略。
+
+总设计中的activity/catalog/grant等是职责分组。物理包以当前项目的entity/service/impl/mapper/dto/port习惯为准，不要求先整体重命名promotion。本文进一步明确拟新增类的物理归属。
+
+## §1 目录与依赖
+
+下列路径相对仓库根；Java包统一以ai.neargo.shop开头。
+
+```text
+backend/
+  shop-base/src/main/java/ai/neargo/shop/spi/
+    promotion/       活动参与端口及跨服务DTO
+    entitlement/     权益目录、发行、使用、查询端口及DTO
+    storedvalue/     储值端口及DTO
+    marketing/       保留CouponPort等既有协议，逐步委派
+  shop-core/src/main/java/ai/neargo/shop/
+    promotion/
+      entity/ mapper/ dto/ service/ service/impl/ port/ policy/ job/
+    product/         CARD商品及权益版本绑定（沿既有商品包）
+    trade/           售卡订单快照、本人授权、履约决策
+    member/          会员识别（在既有会员域内落地）
+    message/         复用消息能力
+  pay/pay-domain/src/main/java/ai/neargo/shop/pay/
+    entitlement/
+      entity/ dto/ service/ service/impl/ policy/ posting/
+      port/ event/ job/ migration/
+    storedvalue/
+      entity/ dto/ service/ service/impl/ policy/ posting/ port/
+    mapper/entitlement/ mapper/storedvalue/  沿现有pay.mapper扫描根
+    client/          扩展现有PayInternalApi与PayInternalPaths
+  shop-app/src/main/java/ai/neargo/shop/
+    portal/biz/ portal/mp/ portal/ops/   HTTP适配与鉴权
+    payclient/ payclient/impl/          沿已有本地/远程门面模式
+    paybridge/                         活动、售卡、使用协调器
 ```
 
-### ord_ent_source_decision
+依赖：shop-app→core服务/共享SPI/pay客户端；core→shop-base SPI；pay-domain→shop-base与既有基础依赖。core不引用pay实体/Mapper，pay不引用shop-core服务。HTTP Controller不访问Mapper；跨服务DTO不带数据库实体或Spring事务对象。
 
-| 字段 | 类型与约束 | 含义 |
+pay新增Mapper物理位置为pay/mapper/entitlement和pay/mapper/storedvalue，沿现有扫描根，不放在扫描范围外的pay/entitlement/mapper；必须绑定paySqlSessionFactory，写服务显式使用payTxManager；core使用既有核心数据源配置。跨模块编排不包跨库@Transactional，远程调用不放进持锁事务。model/policy采用纯Java；只有有替换边界的服务定义接口+Impl，纯策略和不可变record无需空接口。
+
+## §2 核心服务类清单
+
+以下路径相对shop-core的ai/neargo/shop/；service接口的实现统一落同域service/impl/{名称}Impl.java。
+
+| 类/接口 | 位置 | 状态 | 职责与关键方法 | 表/API |
+|---|---|---|---|---|
+| ActivityService / ActivityServiceImpl | promotion/service及impl | 现有改造 | saveDraft、publish、changeStatus；发布固定版本 | pmt_activity/version；C03–C06 |
+| ActivityPricingService / ActivityPricingServiceImpl | promotion/service及impl | 现有改造 | 仅ORDER活动定价；隔离储值场景 | 既有规则；旧定价接口 |
+| PlatformActivityService / PlatformActivityServiceImpl | promotion/service及impl | 现有改造 | 平台活动/报名治理，沿既有身份和权限 | 原平台活动接口 |
+| MarketingSummaryService / MarketingSummaryServiceImpl | promotion/service及impl | 现有改造 | 分项统计，不把储值赠金加进订单折扣 | pmt_effect_projection；C10 |
+| ActivityVersionService / Impl | promotion/service及impl | 新增 | publishSnapshot、getPublished；发布前核实pay模板版本 | pmt_activity_version |
+| ActivityPresetService / Impl | promotion/service及impl | 新增 | list、instantiateDraft、filterCapabilities；40+6目录分类 | pmt_preset_template；C01/C02 |
+| ActivityParticipationService / Impl | promotion/service及impl | 新增 | reserve、confirm、release、query；营销与个人限额同事务 | budget/participant/reservation；I01–I04 |
+| ActivityParticipationPortImpl | promotion/port | 新增 | 实现共享ActivityParticipationPort，转换DTO | I01–I04 |
+| ActivityRuleValidator | promotion/policy | 新增 | 按scene/template/schemaVersion验证范围、排期、档位与利益引用 | C04/C05 |
+| ActivityEligibilityPolicy | promotion/policy | 新增 | 受众/门店/时间/跨版本限购判定，无余额写入 | I01 |
+| MarketingEffectProjector | promotion/service | 新增 | 按eventNo+activityNo消费pay事实，更新派生统计 | pmt_effect_projection |
+| ActivityReservationRecoveryJob | promotion/job | 新增 | 查询pay终态，确认或释放；未知不释放 | pmt_activity_reservation |
+| CardProductBindingService / Impl | product/service及impl | 新增 | bind、validatePublishedVersion；售价仍用原商品能力 | prd_entitlement_binding；C07 |
+| CardSaleSnapshotService / Impl | trade/service及impl | 新增 | 固化订单行/件/件内权益序号、模板版本与付款事实 | 既有订单行扩展；售卡流程 |
+| EntitlementAuthorizationService / Impl | trade/service及impl | 新增 | stageTrustedIntent、confirm；订单+明细快照重验及本人幂等授权 | C09；V427 |
+| EntitlementSourceDecisionService / Impl、EntitlementSourceDecisionPortImpl | trade/service及impl、trade/entitlement/port | 新增 | 源事务内持久终态决策、按SourceRef/authorizationRef反查 | pay恢复查询；V427 |
+| MemberCodeResolveService / Impl | core.member.service及impl | JB-010实施 | 随机凭证摘要校验、短期顾客引用；不复用登录token | mbr_identity_ticket；C08/C11 |
+
+ActivityVersionService只负责版本快照，ActivityService负责管理入口；参与服务不再次实现活动发布。订单意图、订单Outbox优先沿现有持久机制，若缺失需补充正式DDL与契约后实施，不允许用本地Map保存授权决策。
+
+## §3 支付服务类清单
+
+以下路径相对pay-domain的ai/neargo/shop/pay/。接口与Impl按既有service/impl风格配对。
+
+| 类/接口 | 子包 | 状态 | 职责与关键方法 | 表/API |
+|---|---|---|---|---|
+| EntitlementCatalogService / Impl | entitlement/service及impl | 新增 | saveDraft、publish、changeStatus；模板版本不可变 | ent_template/version；P01–P05 |
+| EntitlementIssuePolicyService / Impl | entitlement/service及impl | 新增 | updateLimit、reserveCapacity、commitCapacity、releaseCapacity | ent_issue_policy/recipient；P06 |
+| EntitlementIssueBatchService / Impl | entitlement/service及impl | 新增 | preflight、start、getProgress；先预留发行容量，按原grant重试 | ent_issue_batch；P07/P08 |
+| EntitlementGrantService / Impl | entitlement/service及impl | 新增 | prepare、commit、abort、query；来源唯一发放 | ent_grant/instance/ledger；I05–I07/P11 |
+| EntitlementUseService / Impl | entitlement/service及impl | 新增 | preview、prepare、commit、release、query、reverse；状态互斥 | intent/allocation/usage/reversal；P12–P15/I08–I11 |
+| EntitlementLifecycleService / Impl | entitlement/service及impl | 新增 | activationQuote、activateOnCommit、expire、freeze | ent_instance/bucket；P16/P17/O07 |
+| EntitlementQueryService / Impl | entitlement/service及impl | 新增 | 本人券包、权益详情、额度和使用记录；白名单DTO | P09/P10/P17/P25/P26/P29 |
+| EntitlementCodeService / Impl | entitlement/service及impl | 新增 | issueToken、resolveToken、invalidate；仅兑换券用途 | ent_code_token；P30/P12 |
+| EntitlementPostingService | entitlement/posting | 新增 | 在调用方pay事务内改次数、bucket、分配及ledger；不自行开启独立事务 | ent_instance/bucket/ledger |
+| EntitlementRuleValidator | entitlement/policy | 新增 | 模板kind/benefit/使用模型/有效期组合校验 | P02–P04 |
+| CountUsagePolicy | entitlement/policy | 新增 | 总次数与冻结次数校验 | COUNT |
+| PeriodCountUsagePolicy | entitlement/policy | 新增 | 有效窗口内总次数校验 | PERIOD_COUNT |
+| PeriodDailyUsagePolicy | entitlement/policy | 新增 | 指定服务日每日额度校验，无结转 | PERIOD_DAILY |
+| EntitlementValidityPolicy | entitlement/policy | 新增 | 支付起算/首用激活、自然月/滚动天数，半开区间 | 实例快照 |
+| CouponQuotePolicy | entitlement/policy | 新增迁入 | 迁移既有门槛、折扣及分摊算法，唯一计算实现 | P15/旧CouponPort |
+| StoredValueRechargeService / Impl | storedvalue/service及impl | 新增 | create、submit、receive、cancel、get；已实收禁止取消 | sv_recharge；P18–P21/P27 |
+| StoredValueCreditService / Impl | storedvalue/service及impl | 新增 | credit、query；实收事实验证，按充值号唯一入账 | sv_account/lot/voucher/entry；I12 |
+| StoredValueRedemptionService / Impl | storedvalue/service及impl | 新增 | amount预览/预占/确认/释放；共享统一使用头 | sv_hold_allocation+ent_use_intent；P22/I08–I10 |
+| StoredValuePostingService | storedvalue/posting | 新增 | 账户/批次/借贷分录/凭证同事务；内部双池守恒 | sv_account/lot/voucher/entry |
+| StoredValueAllocationPolicy | storedvalue/policy | 新增 | 按既定范围与扣款顺序分配批次/双池；纯计算 | sv_lot/hold_allocation |
+| StoredValueQueryService / Impl | storedvalue/service及impl | 新增 | 门店目录、本人核销、商家总余额查询 | P23/P24/P28 |
+| StoredValueStoreProjector | storedvalue/service | 新增 | 成功储值标记与max事件时间，乱序不倒退 | sv_user_store_index |
+| EntitlementReconciliationService / Impl | entitlement/service及impl | 新增 | 次数、冻结、发行与储值分录分别对账；不跨量纲相加 | O05 |
+| EntitlementExceptionService / Impl | entitlement/service及impl | 新增 | 列表、证据、查源、恢复原grant；不任意调余额 | pay_ent_exception；O01–O04 |
+| EntitlementCommandDeduplicator | entitlement/service | 新增 | 幂等键/payloadHash、稳定响应同业务事务 | pay_ent_command_dedup |
+| PayEntitlementEventPublisher / PayEntitlementOutboxRelay / PayEntitlementInboxProcessor | entitlement/event | JB-014已实现 | payTx同事务写类型白名单事件；提交后稳定eventNo幂等桥接至sys_outbox，启动/周期扫描恢复；inbox按tenant+consumer+eventNo锁定去重并同业务事务应用 | pay_ent_outbox/inbox、sys_outbox |
+| EntitlementRecoveryJob | entitlement/job | 新增 | 查源决策恢复发放/预占/充值，持久租约防重复执行 | 在途业务/异常 |
+| EntitlementExpiryJob | entitlement/job | 新增 | 到期状态与提醒事件；查询也校验真实期限 | ent_instance/事件 |
+| EntitlementMigrationService / Impl | entitlement/migration | 新增 | 批次导入、对账、owner切换；不触发新发行通知 | ent_owner_registry |
+
+统一使用入口按assetKind委派券/卡策略或StoredValueRedemptionService，后者不得反向再调用统一入口形成递归。单次使用由一个pay业务事务协调全部记账；posting方法不得使用REQUIRES_NEW。冻结金额和余次不通过Controller直接更新。
+
+### 首批基础实现
+
+SourceRef在shop-base/spi/entitlement，生成稳定来源键，不代替身份或源事实认证。UsageQuota在pay/entitlement/policy，提供不可变Count/Daily计数与reserve/commit/release；后续使用策略复用该计算规则，目前未接入数据库。
+
+## §4 共享端口与协议类型
+
+端口只在shop-base/spi声明；实现放业务所有者域内port包。以下均拟新增，既有CouponPort另列。
+
+| 接口 | SPI子包 | 核心方法 | 实现位置 |
+|---|---|---|---|
+| ActivityParticipationPort | promotion | reserve/confirm/release/query | core.promotion.port.ActivityParticipationPortImpl |
+| EntitlementCatalogPort | entitlement | getPublishedVersion/validateReference | pay.entitlement.port.EntitlementCatalogPortImpl |
+| EntitlementGrantPort | entitlement | prepare/commit/abort/query | pay.entitlement.port.EntitlementGrantPortImpl |
+| EntitlementUsePort | entitlement | quote/preview/prepare/commit/release/reverse/query | pay.entitlement.port.EntitlementUsePortImpl |
+| EntitlementQueryPort | entitlement | mine/detail/usage/allowances | pay.entitlement.port.EntitlementQueryPortImpl |
+| StoredValuePort | storedvalue | createRecharge/submit/receive/cancel/credit/queryRecharge/balance/stores | pay.storedvalue.port.StoredValuePortImpl |
+| CouponPort | marketing | 保留allocate/markUsed/release及原有查询 | 现有调用方保留，由迁移路由适配pay，最终唯一pay实现 |
+
+协议DTO建议record：SourceRef、DecisionRef、ParticipationPermit、ReserveActivity、ConfirmParticipation、ReleaseParticipation、GrantCommand、GrantDecision、AbortGrant、UseCommand、UseDecision、CancelUse、OrderBenefitReverse、CreditRecharge；字段以API契约§5为准。SourceRef的订单行/单件/件内权益序号全部纳入稳定来源唯一性。命令/结果放对应SPI子包dto，业务内部实体不穿透端口。
+
+新增端口的query方法是恢复所需基础契约，不因API编号只列写操作而遗漏。部署为远程pay时，通过现有PayInternalApi/PayInternalPaths扩展方法和路径；服务身份、签名、超时语义沿已有配置。ActivityParticipationPort反向调用core需单独内部适配，禁止pay引用core实现。
+
+## §5 应用门面、Controller与协调器
+
+以下路径相对shop-app的ai/neargo/shop/。新增Controller名避免与现有路由重复注册。DTO按端放portal对应dto，映射器显式挑字段；HTTP DTO与SPI DTO可以不同。
+
+| 类/接口 | 位置 | 状态 | API/职责 |
+|---|---|---|---|
+| BizActivityController | portal/biz | 现有改造 | C03–C06及既有详情/冲突，委派core |
+| BizActivityPresetController | portal/biz | 新增 | C01/C02，能力筛选目录 |
+| BizCardProductBindingController | portal/biz | 新增 | C07 |
+| BizMemberCodeController / MpMemberCodeController | portal/biz、mp | JB-010实施 | C08商家识别 / C11本人签发 |
+| MpEntitlementAuthorizationController | portal/mp | 新增 | C09，本人确认 |
+| BizMarketingSummaryController | portal/biz | 新增或兼容既有摘要入口 | C10 |
+| BizEntitlementTemplateController | portal/biz | 新增 | P01–P06 |
+| BizEntitlementIssueController | portal/biz | 新增 | P07/P08 |
+| BizEntitlementUseController | portal/biz | 新增 | P12–P14/P26/P29 |
+| BizStoredValueController | portal/biz | 新增 | P18–P22/P27/P28 |
+| MpEntitlementController | portal/mp | 新增 | P09–P11/P15–P17/P25/P30 |
+| MpStoredValueController | portal/mp | 新增 | P23/P24；只返回本人简明记录 |
+| OpsEntitlementController | portal/ops | 新增 | O01–O05/O07 |
+| OpsPromotionController | portal/ops | 现有改造 | 核心活动治理保留；权益统计委派pay |
+| BizCouponController、MpCouponCenterController | portal/biz、portal/mp | 现有兼容改造 | 旧URL/DTO保持，内部经兼容门面路由 |
+| ActivityBenefitCoordinator | paybridge | 新增 | core reserve→pay prepare/commit→core confirm |
+| StoredValueRechargeCoordinator | paybridge | 新增 | 充值资格与充值源号绑定，实收后入账/回写资格 |
+| CardSaleCoordinator | paybridge | 新增 | 订单支付事实→按件发卡，重投不重发 |
+| EntitlementOrderCoordinator | paybridge | 新增 | 本人授权/源决策→pay预占确认释放 |
+| BizEntitlementAppService | payclient及impl | 新增接口及本地/远程实现 | B券卡管理、发放与核销门面 |
+| MpEntitlementAppService | payclient及impl | 新增接口及本地/远程实现 | C权益与储值记录查询，DTO白名单 |
+| BizStoredValueAppService | payclient及impl | 新增接口及本地/远程实现 | B储值办理和进度 |
+| OpsEntitlementAppService | payclient及impl | 新增接口及本地/远程实现 | O异常、对账、受限恢复 |
+| LegacyCouponCompatibilityService | paybridge | 新增 | 旧DTO映射、owner路由；业务算法委派唯一owner |
+| EntitlementNotificationSubscriber | paybridge | 新增 | pay事件转既有MessageService，去重及收件人校验 |
+
+本地实现名采用{名称}Impl、远程实现采用Remote{名称}，由既有PayClientConfig模式选择，不同时注册两个同接口默认Bean。O06复用既有通知日志Controller，禁止创建重复GET /ops/notify-logs。订单支付/取消/售后订阅适配沿既有事件机制接入，不在Controller请求结束后用内存线程补发卡。
+
+HTTP请求类、响应类的完整清单以API契约§6/§7的schema为准；Java目标名保持一致，如ActivityDraft、TemplateDraft、UseSubmitCommand、RechargeCreateCommand、StoreItem、UsageDetail。Page/CursorPage/ApiResponse复用公共类型。EntitlementItem/Detail等合写名称在Java拆为EntitlementItem与EntitlementDetail两个record，禁止把运营内部VO直接返回C端。
+
+## §6 数据实体与Mapper逐表清单
+
+每行对应数据库设计的一张目标逻辑表。新增实体可按现有BaseEntity惯例对齐审计字段；现有PmtActivity等保留包位置。核心Mapper可沿PromotionMappers既有聚合方式扩展；表中给出逻辑Mapper名，不强制每个独立文件。pay侧拟用独立Mapper接口方便扫描和事务归属审查。
+
+| 所有者 | 表 | 实体 | Mapper | 状态 |
+|---|---|---|---|---|
+| promotion | pmt_preset_template | PmtPresetTemplate | PmtPresetTemplateMapper | 拟新增；同名存量实施前核对 |
+| promotion | pmt_activity | PmtActivity | PmtActivityMapper | 现有实体改造 |
+| promotion | pmt_activity_version | PmtActivityVersion | PmtActivityVersionMapper | 拟新增；同名存量实施前核对 |
+| promotion | pmt_activity_scope | PmtActivityScope | PmtActivityScopeMapper | 拟新增；同名存量实施前核对 |
+| promotion | pmt_activity_audience | PmtActivityAudience | PmtActivityAudienceMapper | 现有实体改造 |
+| promotion | pmt_recharge_tier | PmtRechargeTier | PmtRechargeTierMapper | 拟新增；同名存量实施前核对 |
+| promotion | pmt_activity_budget | PmtActivityBudget | PmtActivityBudgetMapper | 拟新增；同名存量实施前核对 |
+| promotion | pmt_activity_participant | PmtActivityParticipant | PmtActivityParticipantMapper | 拟新增；同名存量实施前核对 |
+| promotion | pmt_activity_reservation | PmtActivityReservation | PmtActivityReservationMapper | 拟新增；同名存量实施前核对 |
+| promotion | pmt_effect_projection | PmtEffectProjection | PmtEffectProjectionMapper | 拟新增；同名存量实施前核对 |
+| promotion | pmt_command_dedup | PmtCommandDedup | PmtCommandDedupMapper | 拟新增；同名存量实施前核对 |
+| product | prd_entitlement_binding | PrdEntitlementBinding | PrdEntitlementBindingMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_template | EntTemplate | EntTemplateMapper | 已实现；V425及实体Mapper，见JB-004 |
+| pay.entitlement | ent_template_version | EntTemplateVersion | EntTemplateVersionMapper | 已实现；V425及实体Mapper，见JB-004 |
+| pay.entitlement | ent_issue_policy | EntIssuePolicy | EntIssuePolicyMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_issue_recipient | EntIssueRecipient | EntIssueRecipientMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_issue_batch | EntIssueBatch | EntIssueBatchMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_grant | EntGrant | EntGrantMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_instance | EntInstance | EntInstanceMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_period_bucket | EntPeriodBucket | EntPeriodBucketMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_use_intent | EntUseIntent | EntUseIntentMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_use_allocation | EntUseAllocation | EntUseAllocationMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_usage | EntUsage | EntUsageMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_ledger | EntLedger | EntLedgerMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_code_token | EntCodeToken | EntCodeTokenMapper | 拟新增；同名存量实施前核对 |
+| pay.storedvalue | sv_account | SvAccount | SvAccountMapper | 拟新增；同名存量实施前核对 |
+| pay.storedvalue | sv_recharge | SvRecharge | SvRechargeMapper | 拟新增；同名存量实施前核对 |
+| pay.storedvalue | sv_lot | SvLot | SvLotMapper | 拟新增；同名存量实施前核对 |
+| pay.storedvalue | sv_hold_allocation | SvHoldAllocation | SvHoldAllocationMapper | 拟新增；同名存量实施前核对 |
+| pay.storedvalue | sv_voucher | SvVoucher | SvVoucherMapper | 拟新增；同名存量实施前核对 |
+| pay.storedvalue | sv_entry | SvEntry | SvEntryMapper | 拟新增；同名存量实施前核对 |
+| pay.storedvalue | sv_user_store_index | SvUserStoreIndex | SvUserStoreIndexMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | ent_owner_registry | EntOwnerRegistry | EntOwnerRegistryMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | pay_ent_outbox | PayEntOutbox | PayEntOutboxMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | pay_ent_inbox | PayEntInbox | PayEntInboxMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | pay_ent_exception | PayEntException | PayEntExceptionMapper | 拟新增；同名存量实施前核对 |
+| pay.entitlement | pay_ent_command_dedup | PayEntCommandDedup | PayEntCommandDedupMapper | 已实现；V425及实体Mapper，见JB-004 |
+| pay.entitlement | ent_use_reversal | EntUseReversal | EntUseReversalMapper | 拟新增；同名存量实施前核对 |
+
+核心预算/幂等Mapper只被对应参与服务使用；pay Mapper只被支付业务/记账/查询服务使用。迁移工具不得成为日常发券入口，历史导入不能调用发放Service导致再次发行。
+
+## §7 旧类改造与退出清单
+
+| 现有类 | 目标处理 | 退出条件 |
 |---|---|---|
-| decision_no | VARCHAR(64) NOT NULL | 持久源决策引用 |
-| purpose | VARCHAR(16) NOT NULL | USE/GRANT/REVERSE |
-| source_key | CHAR(64) NOT NULL | USE用useIntentKey；发放用grantKey |
-| source_snapshot | JSON NOT NULL | 完整SourceRef |
-| settled_source_key | CHAR(64) NULL | 仅成功时写稳定成功键，取消为NULL |
-| source_revision | BIGINT NOT NULL | 本次决策源修订 |
-| decision_type | VARCHAR(24) NOT NULL | GRANT_COMMIT/GRANT_ABORT/USE_COMMIT/USE_CANCEL/ORDER_REVERSE |
-| status | VARCHAR(16) NOT NULL | COMMITTED/CANCELLED |
-| authorization_ref | VARCHAR(64) NULL | 使用决策绑定原本人授权 |
-| paid_fact_ref | VARCHAR(64) NULL | 售卡真实付款事实引用 |
-| user_no | VARCHAR(64) NOT NULL | 受益或使用本人 |
-| entity_no | VARCHAR(64) NOT NULL | 资产主体 |
-| store_no | VARCHAR(64) NULL | 真实门店 |
-| currency | VARCHAR(8) NOT NULL | 币种 |
-| amount_minor | BIGINT NOT NULL | 源真实金额非客户端报价 |
-| snapshot_hash | CHAR(64) NOT NULL | 被冻结源事实摘要 |
-| occurred_at | DATETIME(3) NOT NULL | 真实成功或取消时刻 |
+| PmtCoupon、PmtCouponScope、PmtUserCoupon、PmtCouponIssue | 保留迁移读取与旧批处理，目标映射pay权益模型 | 已迁批不再写旧表，所有历史核对完成后只读归档 |
+| CouponService/PmtCouponServiceImpl | 旧模板/发行入口委派兼容门面 | 不再持有已迁资产写逻辑 |
+| CouponAllocService/CouponAllocServiceImpl | 算法迁至pay CouponQuotePolicy，旧接口适配 | 新旧订单报价一致，唯一计算实现 |
+| CouponRedeemService/CouponRedeemServiceImpl | 旧兑换入口委派pay统一使用服务 | 旧码/余次/原使用流水可验证一致 |
+| PmtApply | core保留活动优惠事实，券使用迁pay，core只留派生查询 | 不重复汇总券折扣或储值消费 |
+| PromotionMappers | 核心活动Mapper保留，已迁券写Mapper停止调用 | 批次owner切换并排空在途 |
+| CouponPort调用方 | 原签名兼容，逐步接入预占/确认语义 | 核对markUsed原调用时点，不仅重命名成commit |
 
-索引：
+逐实例owner由ent_owner_registry决定；双读比对仅用于迁移校验，不能“新表找不到就写旧表”。旧mkt_coupon相关实现也需同样盘点，不能由上表推断已覆盖全部旧模型。
 
-```sql
-UNIQUE KEY uk_source_decision (tenant_no,decision_no),
-UNIQUE KEY uk_source_intent (tenant_no,purpose,source_key),
-UNIQUE KEY uk_source_settled (tenant_no,purpose,settled_source_key),
-```
+## §8 关键调用链与实施顺序
 
-### ord_card_sale_snapshot
+充值：BizStoredValueController→BizStoredValueAppService→StoredValueRechargeCoordinator→ActivityParticipationPort.reserve→StoredValuePort.createRecharge；商家receive后，StoredValueCreditService→StoredValuePostingService→同事务Outbox→core确认预算/消息通知。
 
-| 字段 | 类型与约束 | 含义 |
+售卡：core订单权威支付事实→CardSaleCoordinator→EntitlementGrantPort.prepare/commit→EntitlementGrantService→实例/发行账/Outbox。单行多件及每件多个权益均以完整来源键去重。
+
+核销：BizEntitlementUseController→应用协调器核验本人/订单→EntitlementUsePort.prepare→策略与posting预占→core持久化成功决策→commit→使用流水及事件。储值走金额批次分配；次卡/月卡走余次与服务日bucket。未知结果由query与RecoveryJob恢复，不能新建操作再扣。
+
+C端记录：MpStoredValueController→MpEntitlementAppService→StoredValueQueryService→有成功储值历史门店，按最后成功储值/核销倒序→本人核销明细。页面及通知不暴露本金赠金拆分、不新增储值专用码、不新增线上退款入口。
+
+落地依序：共享契约/Mapper归属→pay权益模板发行账→旧券迁移与兼容→core活动参与协议→储值闭环→付费卡与专用UI→三端权限/通知/对账。任务边界沿总设计D01–D07，不能先接UI后补幂等与余额约束。
+
+本轮交付仅代码设计文档及索引关联；具体Java实现、正式迁移与运行契约仍需按任务逐步落地。
+
+## §9 当前实际实现清单
+
+- shop-base：SourceRef、EntitlementDefinition（含Validity/RedemptionScope）、EntitlementCatalogPort（ReferenceQuery/PublishedDefinition）。JB-008新增EntitlementContext、DecisionRef、SourceDecisionPort、ActivityParticipationPort、EntitlementGrantPort、EntitlementUsePort、EntitlementQueryPort、StoredValuePort及嵌套DTO；均为协议，除原目录端口外尚未接业务实现。通用CursorPage持有不可变records、nextCursor与一致的hasMore。
+- pay-domain：CatalogScope、CatalogViews、EntTemplate、EntTemplateVersion、PayEntCommandDedup；EntitlementRuleValidator、UsageQuota、EntitlementValidityPolicy、CountUsagePolicy、PeriodCountUsagePolicy；EntitlementCatalogService及Impl、EntitlementCatalogPortImpl、EntitlementCommandDeduplicator。
+- pay-domain/pay/mapper/entitlement：EntTemplateMapper、EntTemplateVersionMapper、PayEntCommandDedupMapper，沿现有pay.mapper扫描根绑定。
+- shop-app：V425目录三表、生成H2 schema、EntitlementCatalogFlowTest。尚无新商家/C端/运营Controller或远程目录门面。
+
+目录已委派EntitlementCommandDeduplicator唯一实现；该组件要求已有pay事务，后续发放/核销/充值复用，不保留目录私有第二套算法。范围事实预检现已由core EntitlementScopeValidationService/Impl、product ProductScopeFactsPortImpl及merchant MerchantScopeFactsPortImpl提供；shop-base持有两个事实SPI，shop-app EntitlementScopeResolver从商家会话构造可信范围，完整定义另核实赠品归属。对外开放前仍需HTTP权限接线。本清单不改变未实现类的状态。
+
+
+JB-008协议补充：EntitlementUsePort提供QuoteCommand/QuoteView/CouponAllocation、PreviewQuery/PreviewView；UseCommand绑定expectedAssetRevision及previewRef/quoteRef。EntitlementQueryPort提供ActivationQuote；预览不激活或扣减。对应EntitlementPreviewContractTest，尚无业务实现。
+
+支撑持久化类：core.trade已实现OrdEntAuthorization/Mapper、OrdEntSourceDecision/Mapper（JB-011）和OrdCardSaleSnapshot/Mapper（JB-012）；`CardSaleSnapshotPlan`按订单行、件数及件内权益生成稳定来源与哈希，商家主体/门店由每行可信子单事实确定，`CardSaleSnapshotService/Impl`幂等落库并仅从主订单支付事实固化paidFactNo/paidAt。V428创建快照表；order_line_no由core基于已落库ord_item主键派生并只写入快照，不更改通用订单表。pay侧PayEntReconRun/Mapper、PayEntReconDiff/Mapper仍归JB-046；恢复租约复用shedlock（JB-051），无新增通用租约实体。
+
+
+JB-008门禁基础：pay.entitlement.config.PayEntitlementProperties与policy.PayEntitlementFeatureGate；core promotion.config.PromotionFeatureProperties与policy.PromotionFeatureGate；shop-base spi.promotion.ActivityCapability。7个开关默认关闭、35个能力码仅定义词汇不宣称就绪。目录写入/新引用已调用门禁，幂等响应回放及历史读取不受阻，其他消费者按所属任务实现；未新增公开Controller或实际远程调用。ErrorCode增加40040及三语消息。
+
+
+### JB-010落地类（2026-10-18）
+
+| 模块/包 | 类清单 | 职责 |
 |---|---|---|
-| snapshot_no | VARCHAR(64) NOT NULL | 单件权益快照号 |
-| source_key | CHAR(64) NOT NULL | SourceRef.grantKey |
-| order_no | VARCHAR(64) NOT NULL | 主订单 |
-| sub_order_no | VARCHAR(64) NOT NULL | 本主体子单 |
-| order_line_no | VARCHAR(64) NOT NULL | 原订单行 |
-| unit_index | INT NOT NULL | 从1开始的单件序号 |
-| entitlement_index | INT NOT NULL | 从1开始的件内权益序号 |
-| user_no | VARCHAR(64) NOT NULL | 消费者 |
-| entity_no | VARCHAR(64) NOT NULL | 售价及资产主体 |
-| store_no | VARCHAR(64) NOT NULL | 销售门店 |
-| goods_no | VARCHAR(64) NOT NULL | 原商品 |
-| sku_no | VARCHAR(64) NOT NULL | 原SKU |
-| template_version_no | VARCHAR(64) NOT NULL | 固定pay定义版本 |
-| unit_price_minor | BIGINT NOT NULL | 原单件售价；多权益行不得重复统计收入 |
-| currency | VARCHAR(8) NOT NULL | 币种 |
-| rule_snapshot | JSON NOT NULL | 原权益定义 |
-| snapshot_hash | CHAR(64) NOT NULL | 固定定义摘要 |
-| paid_fact_no | VARCHAR(64) NULL | 真实支付事实后仅单向固化 |
-| paid_at | DATETIME(3) NULL | 真实付款时间，不用事件到达时间 |
+| shop-base/spi.member | CustomerIdentityPort、ReferenceQuery、ResolvedCustomer | 跨域最小身份事实，不含实体/余额 |
+| shop-base/spi.user | UserScopeFactsPort、ActiveUser | 显式租户及有效消费者事实 |
+| core.user.port | UserScopeFactsPortImpl | 用户owner查询有效账户 |
+| core.member.config/dto | MemberCodeProperties、MemberCodeScope、MemberCodeViews、MemberResolveCommand | 缺省关闭、可信作用域、脱敏响应/请求 |
+| core.member.entity/mapper | MbrIdentityTicket、MemberIdentityTicketMapper | V426核心持久摘要凭证 |
+| core.member.service/impl | MemberCodeResolveService、MemberCodeResolveServiceImpl | 统一码签发60秒、解析及绑定引用120秒 |
+| core.member.port | MemberCustomerIdentityPortImpl | 本地SPI委派；远程HTTP由JB-041实现 |
+| app.portal.mp/biz | MpMemberCodeController、BizMemberCodeController | C11本人签发、C08带权限和门店子集解析 |
+| app测试 | MemberCodeResolveFlowTest、MemberCodeHttpFlowTest | 数据库隔离/TTL/会话/角色/门店子集 |
 
-索引：
+识别成功不是扣款授权，后续消费者本人确认依JB-011。活动与权益owner不因统一会员码而改变；pay不存会员码、登录token或core用户实体。
 
-```sql
-UNIQUE KEY uk_card_sale_snapshot (tenant_no,snapshot_no),
-UNIQUE KEY uk_card_sale_source (tenant_no,source_key),
-UNIQUE KEY uk_card_sale_unit (tenant_no,order_line_no,unit_index,entitlement_index),
-KEY ix_card_sale_order (tenant_no,order_no),
-```
 
-### pay_ent_recon_run
+## 第一阶段实际落地补充（2026-10-19）
 
-| 字段 | 类型与约束 | 含义 |
+| 模块 | 新增或接入的实现 |
+|---|---|
+| shop-base/spi.promotion | ActivityParticipationInternal共享传输DTO；ActivityParticipationOutcomePort可信来源终态扩展点 |
+| shop-base/spi.marketing | ActivityOrderFactsPort真实订单事实契约 |
+| core.promotion | ActivityPresetService/Impl；ActivityVersionService/Impl；ActivityGovernanceService/Impl；ActivityParticipationService/Impl与ActivityParticipationPortImpl；ActivityEligibilityPolicy、ActivityPresetExecutionPolicy |
+| core.promotion定价 | UnifiedOrderActivityPricingService/Impl、UnifiedOrderActivityCapabilityEvidence；既有ActivityPricingServiceImpl调用新执行器并保留旧路径 |
+| core.promotion统计恢复 | MarketingEffectProjector；ActivityMarketingSummaryService/Impl；ActivityReservationRecoveryJob复用ShedLock |
+| core.promotion持久化 | Pmt预置/版本/范围/受众/档位/预算/参与者/参与凭证/投影/幂等实体Mapper；UnifiedActivityManagementMapper显式CAS；UnifiedOrderActivityAccountingMapper条件返还 |
+| core.trade | ActivityOrderFactsPortImpl由交易owner读取；OrderServiceImpl取消后释放活动使用资源 |
+| core/merchant/platform | MerchantActivityCapabilityEvidence经MerchantScopeFactsPort及MasterDataPort核验持久主体、行业注册与资质事实 |
+| app.portal | BizActivityPresetController、BizVersionedActivityController、BizActivityMarketingSummaryController；OpsVersionedActivityController；InternalActivityParticipationEndpoint |
+
+Service遵循接口/Impl分层，跨域Port仅在shop-base SPI，聚合更新Mapper显式@Mapper并绑核心SqlSessionFactory。无真实pay来源提供者时拒绝新增参与，不注册假成功适配器。完整测试、迁移及阶段边界见[第一阶段交付报告](./活动第一阶段-交付与验收.md)。
+
+
+### 第二阶段B1代码落点（编码中）
+
+pay.entitlement新增IssuePolicyViews、IssueBatchViews、PreparedGrant；EntIssuePolicy/EntIssueRecipient/EntGrant/EntInstance/EntLedger/EntIssueBatch及pay.mapper.entitlement同名Mapper。EntitlementIssuePolicyService/Impl管理跨版本授权容量；EntitlementGrantService/Impl负责源事实预检，EntitlementGrantWriter负责pay事务；EntitlementGrantPortImpl委派本地SPI；BatchGrantSourcePortImpl从持久批次证明PAY/TARGETED来源；EntitlementIssueBatchService/Impl及Writer负责冻结受众和逐项事务。Writer为组件而非第二套Service接口，避免在持锁事务跨域取事实。
+
+shop-base新增EntitlementGrantSourcePort和EntitlementIssueAudiencePort，供来源/受众owner验证，不接收公共客户端自报用户列表。真实活动/售卡适配后续由031/032/040接入。测试EntitlementIssuePolicyFlowTest、EntitlementGrantFlowTest、EntitlementIssueBatchFlowTest使用真实pay服务/Mapper/事务，EntitlementIssuanceNativeMysqlTest及verify-entitlement-issuance-mysql.mjs验证隔离原生MySQL容量/回滚/源唯一约束。本记录尚非验收结论。
+
+
+第二阶段已实现使用领域：pay的UseService/Writer、LifecycleService/Impl、QueryService/Impl、PostingService/Impl，Use/Query/UseFacts Port适配；UseSnapshots冻结原证明，CursorCodec签名分页。core新增EntitlementOrderSnapshotPolicy、trade.entitlement.port.EntitlementUseSourcePortImpl；LegacyCouponOrderFactsPort在app组合marketing.CouponService与promotion.CouponAllocService的精确占用事实，不能靠显示名称。ProductScopeFactsPort提供订单类目的已知祖先。订单协调、负向源围栏、reverse/code仍在后续020/022/023/051中推进。
+
+
+补充pay.entitlement的PayEntSourceFence/Mapper、EntitlementSourceFence（技术锁与负向事实，不是业务权益Service）；GrantWriter/UseWriter共享其来源锁，调用者在事务外取得SourceDecision。负向事实的存续不依赖请求超时或提案有效期。SourceDecisionService统一UTC毫秒时间，产品类目事实只追加同租户已知父级。020/051继续承担订单协调与恢复调度，不以本底座交付替代它们。
+
+
+### JB-020订单券协调切片
+
+| 模块 | 类/接口 | 责任 |
 |---|---|---|
-| recon_no | VARCHAR(64) NOT NULL | 对账批次号 |
-| request_key | VARCHAR(64) COLLATE utf8mb4_bin NOT NULL | 调度或人工发起幂等键 |
-| payload_hash | CHAR(64) NOT NULL | 对账参数指纹 |
-| entity_no | VARCHAR(64) NOT NULL | 授权商家；ALL仅全域运营可用 |
-| axis | VARCHAR(16) NOT NULL | ISSUANCE/RIGHTS/HOLD/MONEY |
-| currency | VARCHAR(8) NULL | MONEY必须分币种 |
-| biz_date | DATE NOT NULL | 本地市场日 |
-| market_zone | VARCHAR(64) NOT NULL | IANA时区 |
-| status | VARCHAR(16) NOT NULL | RUNNING/COMPLETED/FAILED |
-| scan_cursor | VARCHAR(512) NULL | 重启续扫游标 |
-| checked_count | BIGINT NOT NULL DEFAULT 0 | 已检查量 |
-| diff_count | BIGINT NOT NULL DEFAULT 0 | 差异量 |
-| started_at | DATETIME(3) NOT NULL | UTC开始 |
-| completed_at | DATETIME(3) NULL | UTC完成 |
+| base | PaymentAttemptFactsPort、EntitlementOrderEvents.UseDecided | 历史收款事实、只含租户/操作标识的终态事件 |
+| pay.entitlement.port | PaymentAttemptFactsPortImpl | 读取全部PAY尝试，含失败/关闭；不从无回调推断未支付 |
+| core.trade | EntitlementOrderUseService/Impl、OrderEntitlementUseView | stage/apply/seal/decision/acknowledge；只用核心事务 |
+| core.trade.entitlement.entity/mapper | OrdEntOrderUse/EntitlementOrderUseMapper、OrdEntPaymentSeal/EntitlementPaymentSealMapper | 持久意图与现金支付金额封存；V438 |
+| app.paybridge | EntitlementOrderCoordinator/Impl、EntitlementOrderUseDecisionConsumer | 挂起核心事务后逐个调用owner，丢响应重放原命令，Outbox恢复原操作 |
 
-索引：
+ORDER_COUPON协调切片验收后仍不能关闭JB-020：真实服务核销意图、储值使用与对应远程接线须继续交付。
 
-```sql
-UNIQUE KEY uk_ent_recon_no (tenant_no,recon_no),
-UNIQUE KEY uk_ent_recon_request (tenant_no,request_key),
-KEY ix_ent_recon_query (tenant_no,entity_no,biz_date,axis,id),
-```
 
-### pay_ent_recon_diff
+### JB-022受限回补切片
 
-| 字段 | 类型与约束 | 含义 |
+| 模块 | 类/接口 | 责任 |
 |---|---|---|
-| diff_no | VARCHAR(64) NOT NULL | 差异号 |
-| recon_no | VARCHAR(64) NOT NULL | 同域批次号 |
-| entity_no | VARCHAR(64) NOT NULL | 实际差异主体 |
-| resource_no | VARCHAR(64) NOT NULL | 账户或权益业务号 |
-| diff_kind | VARCHAR(32) NOT NULL | 差异原因码 |
-| expected_snapshot | JSON NOT NULL | 内部应有事实，不能直接回传页面 |
-| actual_snapshot | JSON NOT NULL | 内部实有事实，不能直接回传页面 |
-| exception_no | VARCHAR(64) NULL | 受控恢复关联原异常 |
-| status | VARCHAR(16) NOT NULL | OPEN/ACKNOWLEDGED/RESOLVED |
-| resolution_note | VARCHAR(500) NULL | 处理证据，不允许余额调平 |
+| pay.entitlement | EntitlementReversalService/Impl、EntitlementReversalWriter | 先查可信售后决策，再同pay事务处理原分配累计、退回次数、反向账、原消费状态及事件 |
+| pay.entity/mapper | EntUseReversal、EntUseReversalMapper | V439，原回补号/售后唯一性、不可变命令与query |
+| base | EntitlementUsePort.ReversalView、queryReverse；EntitlementEvents.EntitlementUseReversed | 独立回补query命名空间、版本化反向事实，不开放储值/付费卡退款 |
+| core.trade | EntitlementSourceDecisionPortImpl | ORDER_REFUND明确路由REVERSE目的，避免误查GRANT |
 
-索引：
-
-```sql
-UNIQUE KEY uk_ent_recon_diff (tenant_no,diff_no),
-UNIQUE KEY uk_ent_recon_resource (tenant_no,recon_no,resource_no,diff_kind),
-KEY ix_ent_recon_diff_query (tenant_no,entity_no,recon_no,status),
-```
-
-正式增量迁移为V427；订单确认前由可信core业务流将已核验的订单快照与pay报价引用写成PENDING意图。确认时锁定订单、子单、行与意图，比较订单修订、订单快照摘要、报价引用和选择摘要，再写入授权号、本人requestKey与authorizedAt。API只接收修订、报价引用、选择摘要和幂等键，用户号取登录态，金额/商家/门店来自已冻结服务端事实。`shop.core.entitlement.authorization.enabled` 默认关闭。数据库允许PENDING的授权字段为空，防止把意图误读为消费授权。
-
-### 并发、状态与恢复裁定
-
-- 授权按tenant/user/requestKey幂等；同键重放返回原结果，已过期也不刷新期限。重新确认使用新requestKey，core锁定真实源订单并同事务取消旧授权、插入新授权；不设sourceKey唯一，避免禁止合法重确认。修改价格、资产选择或源修订使旧授权失效，expiresAt为半开区间。
-- 源决策的USE source_key使用useIntentKey（含修订），成功settled_source_key使用settledKey（不含修订）；取消必须NULL，不能用空串。因此允许修订1取消后修订2成功，同时阻止修订3重复成功。GRANT固定grantKey；用途隔离，取消不能携带提交decisionType。决策与源成功/取消在同core事务落库，pay只通过可信SPI/query核实，不以请求引用为凭据。
-- 多商家订单按真实子单划分SUB_ORDER_USE，sourceNo为subOrderNo，不能把主单号作为不同商家的共同成功源。可多次履约的服务以真实履约单号作来源；来源由core推导。售卡保留订单行、unitIndex、entitlementIndex，2件×2权益产生4个稳定来源。
-- 售卡规则与单件售价在下单时固化。paid_fact_no/paid_at仅在真实支付成功时单向关联，迟到事件不得替换付款时间。同一件多个权益行重复保存单价只为追溯，不得累加为收入。
-- 对账按ISSUANCE/RIGHTS/HOLD/MONEY分量纲；MONEY必须指定币种。批次游标可续扫、差异唯一，RUNNING→COMPLETED/FAILED；差异OPEN→ACKNOWLEDGED→RESOLVED。受控重试仍作用于原异常/原操作，不开放自动调平余额。ALL主体仅授权全域运营可用。内部expected/actual快照不得直接返回页面。
-- 恢复任务全局租约复用既有V91的shedlock；单操作沿既有Outbox租约及状态CAS。租约过期仅允许接管查询，UNKNOWN/PENDING不得推断取消；无需新增通用租约表。JB-051落实任务与多节点验证。
+已完成pay领域切片；旧券URL、owner路由与整单退回触发接线由JB-049继续。实际验收命令、结果见独立任务表JB-022执行记录。
 
 
-### 7.6 core.member：mbr_identity_ticket（JB-010，V426）
+### JB-023兼容兑换凭证切片
 
-统一身份凭证，非余额表。ticket_hash为唯一查询摘要（tenant_no,ticket_hash），原文永不落库；purpose区分MEMBER_CODE/CUSTOMER_REFERENCE，user_no为可信顾客。MEMBER_CODE的entity_no/store_no/actor_no/source_ticket_hash必须全部为空；CUSTOMER_REFERENCE必须全部非空，分别绑定商家/门店/B操作人及来源会员码摘要。issued_at/expires_at为UTC DATETIME(3)，CHECK expires_at>issued_at，半开有效期60/120秒。公共审计字段齐全，version/deleted沿第一节。
+| 模块 | 类/接口 | 责任 |
+|---|---|---|
+| pay.entitlement.dto | CodeViews.CodeRequest/CodeView/ResolvedCode | 公共签发请求/白名单响应与内部单实例定位结果 |
+| pay.entitlement.service | EntitlementCodeService/Impl、EntitlementCodeWriter、EntitlementCodeSigner | 本人签发、HMAC幂等重建、短期原绑定解析及撤销；无资产扣减 |
+| pay.entity/mapper | EntCodeToken、EntCodeTokenMapper | V440，摘要及幂等nonce、期限、原解析操作/门店/人 |
+| app/pay-svc配置 | PayEntitlementProperties/Gate及环境映射 | 默认关闭的code开关、稳定密钥，不影响统一会员码功能 |
 
-索引tenant/purpose/expires_at供未来JB-051批量清理过期记录；tenant/user/purpose供账号审计和撤销。来源摘要不设跨行FK，引用具有独立截止时间；清理父码不改变引用。禁止把此表当作消费授权，源意图和本人授权仍归ord_ent_authorization。V426在统一Flyway下归核心数据源，实体MbrIdentityTicket和MemberIdentityTicketMapper；DataScopeRegistration登记SELF:user_no和MERCHANT:entity_no，服务所有读写显式tenant/purpose且在可信owner内绕过环境scope。
-
-
-## 第一阶段正式迁移与事实边界（2026-10-19）
-
-V430创建统一预置目录并插入40AP+6EP（全部默认禁用）；V431扩展pmt_activity并创建版本、范围、受众、储值档位、预算、参与者、参与凭证、效果投影与core命令幂等表；V432补投影store_no及门店时间索引。归core数据源，沿主应用统一Flyway，不修改已应用脚本。目标pay表不因此视为已交付。
-
-订单优惠的预算/个人计数/pmt_apply/效果投影必须在同一core事务；取消仅返还已使用且尚未撤销的原事实。统计按币种分组，关联原pmt_apply排除已撤销；投影不充当资金账。活动预算按活动号累计而非版本重置。参与超时只触发可信来源核查，UNKNOWN保持占用并延期重查。
-
-
-## 第二阶段B1持久化补充
-
-V433创建ent_issue_policy/ent_issue_recipient，字段沿设计DDL。V434创建ent_grant/ent_instance/ent_ledger，并在ent_grant增加prepared_snapshot JSON NOT NULL：保存GrantCommand、不可变EntitlementDefinition、可信paidAt及exposureMinor。已有payload_hash校验同grant命令，source_key防换号重复发行；所有计数、实例、账与事件同pay事务，未接源适配器不伪造付款或资格。
-
-
-V435补ent_issue_batch，新增audience_snapshot JSON、recipient_results JSON和cursor_offset INT，固定受众/规则/摘要和逐项原grant号，批次恢复不重新筛人。每项grant与结果游标同pay事务，失败先回滚后单独记录明确跳过原因，不留半次预算预占。
-
-
-### 第二阶段V436使用领域落库
-
-新增ent_period_bucket、ent_use_intent、ent_use_allocation、ent_usage及ent_use_proposal；完整DDL见pay-schema目标文件及V436。意图冻结command_snapshot（原命令、源事实、规则、授权、选择与原服务日），usage_no用于稳定重放；active_source_key以不含修订的来源键互斥未决意图，RELEASED原子置空，成功终态继续保留；不能以新修订绕过旧预占。提案存preview/quote元数据和到期时刻，不写余额，不存明码。
-
-服务日桶与次数分录都在pay锁定实例后变更。到期仅改状态、记0变化分录，不清余额或释放未决预占。新增迁移已通过实际MySQL Writer事务、JSON/CHECK、失败回滚与H2结构/生成器对账；已应用V425–V435保持原样。
-
-
-### V437：源取消早到与请求晚到
-
-pay_ent_source_fence以tenant+purpose+source_key及tenant+purpose+operation_no双重唯一，GRANT来源键不含修订、USE预占键包含修订。OPEN记录源/受益人/主体，CANCELLED额外冻结已核实的SourceDecision和毫秒UTC时刻。所有相关Writer按fence→意图/发放→实例/容量顺序锁定；未出现实体时的可信取消也必须落此表，防止超时后原prepare仍在网络/服务端处理中。负向事实不是资金分录，不伪造权益实例，不凭查无记录或TTL猜取消。Core源决策写入在返回前统一毫秒精度，回读与首响一致。
-
-
-### JB-020订单券协调补充（执行中）
-
-核心服务以`ord_ent_order_use`保存原操作、授权、命令与原订单摘要，先持久化PENDING再向pay预占；pay返回的真实冻结分摊经核心服务核对后一次应用价格。`ord_ent_payment_seal`在调用外部收银前由核心服务锁单封存应付金额；已发起过收款或已封存的订单不能新增优惠。核心服务终态事务同时记录USE_COMMIT/USE_CANCEL及Outbox；应用协调器只提交/释放原operationNo，丢响应按原操作恢复，不以超时推断取消。暂停新增能力不阻止已有承诺完成。
-
-本切片仅接ORDER_COUPON；服务券/次卡的真实服务意图和储值扣款仍在原任务内继续，不能用普通现金订单支付成功冒充已完成扣次。每单首期只接受一张新订单券；预占后不支持替换券，需取消原订单后重新下单。新表均在核心库；不跨库事务，不直接访问pay实体。
-
-
-#### ord_ent_order_use（核心库，V438）
-
-公共审计列沿第一节；operation_no、order_no、entity_no、user_no为VARCHAR(64)非空；source_key、payload_hash、order_snapshot_hash为CHAR(64)非空；context_snapshot、command_snapshot为JSON非空；status为VARCHAR(24)非空；decision_snapshot为JSON可空。tenant+operation、tenant+order、tenant+source各唯一，status+updated_at用于恢复扫描。状态PENDING→APPLIED→COMMIT_DECIDED→COMMITTED，未成功支付可转CANCEL_DECIDED→RELEASED；决策状态强制包含源决策JSON，其他状态不得伪造决策。
-
-#### ord_ent_payment_seal（核心库，V438）
-
-公共审计列沿第一节；order_no VARCHAR(64)、pay_amount BIGINT、currency VARCHAR(8)均非空；tenant+order唯一，pay_amount非负。核心订单锁串行化封存与优惠应用；封存只记金额与币种，不改变订单摘要。历史已存在的支付尝试经pay事实端口核实后拒绝改价。此表只经已授权订单回捞，不作为独立商家列表。
-
-
-### JB-022受限回补实现（V439）
-
-pay仅接受ORDER_COUPON原成功使用；CORE/ORDER_REFUND的sourceNo为权威售后号，sourceLineNo必须是原usageNo，决策同时绑定本人、商家、门店、币种、原订单摘要及本次优惠归属金额。UNKNOWN/PENDING只返回PROCESSING。原使用意图锁串行化所有回补，再锁实例和分配；累计优惠归属不超原discount，只有归属全部返回时才恢复原分配的使用次数。既有“整单退完退券”的经营策略由core/旧券适配保持，不能由pay按现金退款额自行算回券。
-
-反向行、原分配计数、实例、带origin_entry_no的次数账及EntitlementUseReversed事件同pay事务；发生异常整笔回滚。旧效期不延长，EXPIRED/FROZEN保持状态，原消费金额和项目保留。不开新储值或新付费卡线上退款；旧URL及售后自动路由仍由JB-049交付。
-
-
-### JB-023兼容兑换凭证实现（V440）
-
-仅STORE_EXCHANGE类型为可签发模板策略；新代码不扩展所有既有不可变模板定义的字段。`shop.pay.entitlement.code.enabled`默认false，并要求use开关；签发密钥`shop.pay.entitlement.code-key`由`SHOP_PAY_ENTITLEMENT_CODE_KEY`供给，至少32字节，缺失拒绝新签发，不生成随机默认密钥。HMAC-SHA256绑定租户/本人/实例/原幂等键摘要/随机nonce，数据库只存token摘要及nonce，不存明文或可逆密文；重试原幂等键可重建原响应，密钥改变后无法重建旧token时明确拒绝，不另发新码。已持有的原码仍按摘要验证。
-
-本人签发/撤销；解析仅定位一张兑换券并限制主体/适用门店，USED绑定原操作、门店和人；只有完全相同绑定在过期前可重放，换号/换店/换人拒绝。解析/签发不激活、不预占、不扣次数，不可查询该人的其他权益。停止新增签发不使短期已签凭证失效；冻结/到期/耗尽的资产仍不可新解析。原USED凭证不因撤销其他ACTIVE凭证而取消已建立的业务意图，原意图按020协议单独确认/取消。
+可选兼容领域已完成；P30及P12/P13调用和双部署内部HTTP承载仍由026/041完成，不提前开放独立消费者码入口。38项定向Java、最终场景6项及原生MySQL约束1项通过，证据见独立任务表。
