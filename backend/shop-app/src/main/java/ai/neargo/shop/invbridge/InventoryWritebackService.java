@@ -41,14 +41,17 @@ public class InventoryWritebackService {
     private final InventoryAclService acl;
     private final MerchantQueryPort merchants;
     private final InventoryDeliveryGuard deliveryGuard;
+    private final StockReconcileService reconcile;
 
     public InventoryWritebackService(StockSyncService stockSync, InvManagedService invManaged,
-                                     InventoryAclService acl, MerchantQueryPort merchants, InventoryDeliveryGuard deliveryGuard) {
+                                     InventoryAclService acl, MerchantQueryPort merchants, InventoryDeliveryGuard deliveryGuard,
+                                     StockReconcileService reconcile) {
         this.stockSync = stockSync;
         this.invManaged = invManaged;
         this.acl = acl;
         this.merchants = merchants;
         this.deliveryGuard = deliveryGuard;
+        this.reconcile = reconcile;
     }
 
     /** 镜像还没追平：抛给投递器，按它的退避稍后重投 */
@@ -140,22 +143,8 @@ public class InventoryWritebackService {
      */
     StockSyncService.Result syncOne(String entityNo, String storeNo, String skuNo, String sourceRef,
                                     boolean requireEnabled) {
-        if (requireEnabled && !stockSync.enabled(storeNo)) {
-            return null;
-        }
-        if (invManaged.managedSkus(List.of(skuNo)).isEmpty()) {
-            return null;
-        }
-        requireExclusiveSource(entityNo, storeNo);
-        if (mirrorPending(skuNo)) {
-            throw new MirrorNotCaughtUp(skuNo);
-        }
-        InventoryAclService.StockAt st = acl.stockAt(entityNo, storeNo, skuNo);
-        if (st == null) {
-            return null;
-        }
-        StockSyncService.Result r = stockSync.apply(entityNo, storeNo, skuNo, st.available(), sourceRef, OPERATOR);
-        if (r.skipped() != null && !"DONE_BEFORE".equals(r.skipped())) {
+        StockSyncService.Result r = reconcile.sync(entityNo, storeNo, skuNo, sourceRef, requireEnabled, "AUTO_SYNC");
+        if (r != null && r.skipped() != null && !"DONE_BEFORE".equals(r.skipped())) {
             log.info("[stock-sync] 跳过 store={} sku={} src={} 原因={}", storeNo, skuNo, sourceRef, r.skipped());
         }
         return r;

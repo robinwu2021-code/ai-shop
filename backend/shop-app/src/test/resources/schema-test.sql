@@ -4500,6 +4500,20 @@ CREATE TABLE IF NOT EXISTS prd_stock_sync_log
     CONSTRAINT uk_prd_stock_sync_log UNIQUE (source_ref, store_no, sku_no)
 );
 
+CREATE TABLE IF NOT EXISTS prd_stock_sync_operation
+(
+    operation_no VARCHAR(96) NOT NULL PRIMARY KEY,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) NOT NULL,
+    reason VARCHAR(32) NOT NULL,
+    request_hash CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    result_json CLOB DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS ord_express_pickup
 (
     id BIGINT(20) NOT NULL AUTO_INCREMENT,

@@ -6,6 +6,7 @@ import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.invbridge.StockSyncAppService;
 import ai.neargo.shop.invbridge.InventoryOverviewQuery;
+import ai.neargo.shop.invbridge.StockReconcileService;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,10 +32,13 @@ public class BizStockSyncController {
 
     private final StockSyncAppService service;
     private final InventoryOverviewQuery overview;
+    private final StockReconcileService reconcile;
 
-    public BizStockSyncController(StockSyncAppService service, InventoryOverviewQuery overview) {
+    public BizStockSyncController(StockSyncAppService service, InventoryOverviewQuery overview,
+                                  StockReconcileService reconcile) {
         this.service = service;
         this.overview = overview;
+        this.reconcile = reconcile;
     }
 
     private String entity(String storeNo) {
@@ -97,7 +101,23 @@ public class BizStockSyncController {
         return overview.batch(entity(storeNo), storeNo, req.skuNos());
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
+    @PostMapping("/biz/store/{storeNo}/stock-reconcile")
+    public StockReconcileService.OperationResult reconcile(@PathVariable String storeNo,
+                                                            @RequestBody ReconcileReq req) {
+        return reconcile.reconcile(entity(storeNo), storeNo, req.skuNo(), req.reason(), req.operationNo());
+    }
+
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @GetMapping("/biz/store/{storeNo}/stock-reconcile/{operationNo}")
+    public StockReconcileService.OperationResult reconcileResult(@PathVariable String storeNo,
+                                                                  @PathVariable String operationNo) {
+        return reconcile.result(entity(storeNo), storeNo, operationNo);
+    }
+
     public record OverviewBatchReq(List<String> skuNos) { }
+
+    public record ReconcileReq(String skuNo, String reason, String operationNo) { }
 
     public record EnabledReq(Boolean enabled) {
     }
