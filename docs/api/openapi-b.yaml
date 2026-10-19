@@ -688,6 +688,98 @@ components:
         - "name"
       additionalProperties: false
       description: "一家承运方（`CarrierVO`）。**归履约域维护，进销存只读**。"
+    StockOverview:
+      type: "object"
+      properties:
+        storeNo:
+          type: "string"
+        skuNo:
+          type: "string"
+        unit:
+          type:
+            - "string"
+            - "null"
+        inventoryState:
+          type: "string"
+          enum:
+            - "UNMANAGED"
+            - "INITIALIZING"
+            - "MAPPED"
+        accountingMode:
+          type: "string"
+          enum:
+            - "PAYMENT_DEDUCT"
+            - "HANDOFF_DEDUCT"
+        onHand:
+          type:
+            - "number"
+            - "null"
+        reserved:
+          type:
+            - "number"
+            - "null"
+        available:
+          type:
+            - "number"
+            - "null"
+        safetyStock:
+          type:
+            - "number"
+            - "null"
+        supplyAvailable:
+          type:
+            - "number"
+            - "null"
+        onlineSellable:
+          type: "number"
+        onlineLocked:
+          type: "number"
+        salesStockMode:
+          type: "string"
+        ruleSource:
+          type: "object"
+          properties:
+            scopeType:
+              type: "string"
+            scopeRef:
+              type: "string"
+            ruleType:
+              type: "string"
+            param:
+              type: "number"
+          required:
+            - "scopeType"
+            - "scopeRef"
+            - "ruleType"
+            - "param"
+          additionalProperties: false
+        syncEnabled:
+          type: "boolean"
+        syncHealth:
+          type: "string"
+          const: "NOT_ASSESSED"
+        asOf:
+          type: "number"
+      required:
+        - "storeNo"
+        - "skuNo"
+        - "unit"
+        - "inventoryState"
+        - "accountingMode"
+        - "onHand"
+        - "reserved"
+        - "available"
+        - "safetyStock"
+        - "supplyAvailable"
+        - "onlineSellable"
+        - "onlineLocked"
+        - "salesStockMode"
+        - "ruleSource"
+        - "syncEnabled"
+        - "syncHealth"
+        - "asOf"
+      additionalProperties: false
+      description: "Merchant stock overview; matches InventoryOverviewQuery. Null physical values mean unknown, not zero."
     StockSummary:
       type: "object"
       properties:
@@ -807,6 +899,11 @@ components:
     StockItemDetail:
       type: "object"
       properties:
+        skuNo:
+          type:
+            - "string"
+            - "null"
+          description: "Optional platform mapping; never substitute itemId."
         itemId:
           type: "string"
           description: "物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键"
@@ -1464,6 +1561,62 @@ components:
         - "alignedAt"
         - "alignMode"
       additionalProperties: false
+    StockSyncOperationRecord:
+      type: "object"
+      properties:
+        operationNo:
+          type: "string"
+        skuNo:
+          type: "string"
+        reason:
+          type: "string"
+        status:
+          type: "string"
+          enum:
+            - "PROCESSING"
+            - "WAITING"
+            - "FAILED"
+            - "BLOCKED"
+            - "COMPLETED"
+        result:
+          anyOf:
+            - type: "object"
+              properties:
+                applied:
+                  type: "boolean"
+                skipped:
+                  type:
+                    - "string"
+                    - "null"
+                ruleType:
+                  type:
+                    - "string"
+                    - "null"
+                available:
+                  type: "number"
+                before:
+                  type: "number"
+                after:
+                  type: "number"
+              required:
+                - "applied"
+                - "skipped"
+                - "ruleType"
+                - "available"
+                - "before"
+                - "after"
+              additionalProperties: false
+            - type: "null"
+        updatedAt:
+          type: "string"
+      required:
+        - "operationNo"
+        - "skuNo"
+        - "reason"
+        - "status"
+        - "result"
+        - "updatedAt"
+      additionalProperties: false
     StockAlignNote:
       type: "string"
       enum:
@@ -1524,6 +1677,99 @@ components:
         - "mallLocked"
         - "diff"
         - "note"
+      additionalProperties: false
+    StockAlignmentBatch:
+      type: "object"
+      properties:
+        batchNo:
+          type: "string"
+        storeNo:
+          type: "string"
+        mode:
+          "$ref": "#/components/schemas/StockAlignMode"
+        snapshotVersion:
+          type: "string"
+        expiresAt:
+          type:
+            - "number"
+            - "null"
+        status:
+          type: "string"
+          enum:
+            - "PREVIEW"
+            - "PROCESSING"
+            - "PARTIAL"
+            - "BLOCKED"
+            - "COMPLETED"
+            - "STALE"
+            - "EXPIRED"
+        completed:
+          type: "number"
+        blocked:
+          type: "number"
+        waiting:
+          type: "number"
+        rows:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              skuNo:
+                type: "string"
+              title:
+                type: "string"
+              spec:
+                type:
+                  - "string"
+                  - "null"
+              beforeQty:
+                type:
+                  - "number"
+                  - "null"
+              reserved:
+                type:
+                  - "number"
+                  - "null"
+              mallStock:
+                type: "number"
+              mallLocked:
+                type: "number"
+              afterQty:
+                type:
+                  - "number"
+                  - "null"
+              status:
+                type: "string"
+              operationNo:
+                type: "string"
+              errorCode:
+                type:
+                  - "string"
+                  - "null"
+            required:
+              - "skuNo"
+              - "title"
+              - "spec"
+              - "beforeQty"
+              - "reserved"
+              - "mallStock"
+              - "mallLocked"
+              - "afterQty"
+              - "status"
+              - "operationNo"
+              - "errorCode"
+            additionalProperties: false
+      required:
+        - "batchNo"
+        - "storeNo"
+        - "mode"
+        - "snapshotVersion"
+        - "expiresAt"
+        - "status"
+        - "completed"
+        - "blocked"
+        - "waiting"
+        - "rows"
       additionalProperties: false
     SellRuleScope:
       type: "string"
@@ -10354,6 +10600,39 @@ components:
         returnExpressNo:
           type: "string"
           description: "用户寄回的运单号（RETURN_REFUND）"
+        returnItems:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              itemId:
+                type: "number"
+              skuNo:
+                type:
+                  - "string"
+                  - "null"
+              title:
+                type: "string"
+              requestedQty:
+                type: "number"
+            required:
+              - "itemId"
+              - "title"
+              - "requestedQty"
+            additionalProperties: false
+          description: "退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。"
+        returnInventoryStatus:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "PENDING"
+            - "COMPLETED"
+            - "FAILED"
+            - "PLATFORM_UPDATED"
+            - "NOT_TRACKED"
+            - null
+          description: "退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。"
         disputeReason:
           type: "string"
           description: "上升平台时用户的申诉理由"
@@ -10402,6 +10681,32 @@ components:
     RefundExecutionProgress:
       type: "object"
       properties:
+        closureVersion:
+          type:
+            - "number"
+            - "null"
+          description: "Persisted protocol version; absent means legacy recovery semantics."
+        closureStatus:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "LEGACY"
+            - "PENDING"
+            - "DONE"
+            - null
+        cashStatus:
+          type:
+            - "string"
+            - "null"
+        benefitsStatus:
+          type:
+            - "string"
+            - "null"
+          enum:
+            - "PENDING"
+            - "SETTLED"
+            - null
         executionNo:
           type: "string"
           description: "原退款执行号；恢复仍使用同一执行。"
@@ -12397,11 +12702,32 @@ components:
     ReceiveReturnReq:
       type: "object"
       properties:
-        restockApproved:
-          type: "boolean"
-          description: "商家明确确认可再次销售；默认 false。"
+        receiptNo:
+          type: "string"
+          description: "本次退货验收号，重试必须复用。"
+        lines:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              itemId:
+                type: "number"
+              receivedQty:
+                type: "number"
+              quality:
+                type: "string"
+                enum:
+                  - "SALEABLE"
+                  - "UNSALEABLE"
+            required:
+              - "itemId"
+              - "receivedQty"
+              - "quality"
+            additionalProperties: false
+          description: "实际收到件数和质检结论，未收到的件数不要提交。"
       required:
-        - "restockApproved"
+        - "receiptNo"
+        - "lines"
       additionalProperties: false
       description: "收妥退货不代表可以再次销售，缺省禁止自动回库。"
     StorePointsTypeQuery:
@@ -12573,6 +12899,199 @@ components:
         - "order"
       additionalProperties: false
       description: "售后工作台行；订单摘要用于展示关联商品与金额。"
+    MerchantInventoryTrace:
+      type: "object"
+      properties:
+        orderNo:
+          type: "string"
+        syncEvents:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              aggregateId:
+                type: "string"
+              eventType:
+                type: "string"
+              source:
+                type: "string"
+              status:
+                type: "string"
+                enum:
+                  - "COMPLETED"
+                  - "PENDING"
+                  - "FAILED"
+                  - "WARNING"
+                  - "SKIPPED"
+                  - "ARCHIVED"
+              outboxMode:
+                type: "string"
+                enum:
+                  - "UNIFIED"
+                  - "LEGACY"
+            required:
+              - "aggregateId"
+              - "eventType"
+              - "source"
+              - "status"
+              - "outboxMode"
+            additionalProperties: false
+        reservations:
+          type: "array"
+          items:
+            type: "object"
+            properties:
+              reservationId:
+                type: "string"
+              ownerId:
+                type: "string"
+              status:
+                type: "string"
+              lifecycleVersion:
+                type:
+                  - "number"
+                  - "null"
+              outboundNo:
+                type:
+                  - "string"
+                  - "null"
+              createdAt:
+                type:
+                  - "string"
+                  - "null"
+              lines:
+                type: "array"
+                items:
+                  type: "object"
+                  properties:
+                    lineNo:
+                      type: "number"
+                    fulfillmentRef:
+                      type:
+                        - "string"
+                        - "null"
+                    itemId:
+                      type: "string"
+                    locationId:
+                      type: "string"
+                    reservedQty:
+                      type: "number"
+                    issuedQty:
+                      type: "number"
+                    releasedQty:
+                      type: "number"
+                    outboundNo:
+                      type:
+                        - "string"
+                        - "null"
+                    issuedAt:
+                      type:
+                        - "string"
+                        - "null"
+                    updatedBy:
+                      type:
+                        - "string"
+                        - "null"
+                    issueLedger:
+                      type: "array"
+                      items:
+                        type: "object"
+                        properties:
+                          id:
+                            type: "number"
+                          docNo:
+                            type: "string"
+                          reasonCode:
+                            type: "string"
+                          qtyDelta:
+                            type: "number"
+                          balanceBefore:
+                            type: "number"
+                          balanceAfter:
+                            type: "number"
+                          operator:
+                            type:
+                              - "string"
+                              - "null"
+                          createdBy:
+                            type:
+                              - "string"
+                              - "null"
+                          occurredAt:
+                            type: "string"
+                        required:
+                          - "id"
+                          - "docNo"
+                          - "reasonCode"
+                          - "qtyDelta"
+                          - "balanceBefore"
+                          - "balanceAfter"
+                          - "operator"
+                          - "createdBy"
+                          - "occurredAt"
+                        additionalProperties: false
+                    returns:
+                      type: "array"
+                      items:
+                        type: "object"
+                        properties:
+                          receiptNo:
+                            type: "string"
+                          afterSaleNo:
+                            type: "string"
+                          qty:
+                            type: "number"
+                          quality:
+                            type: "string"
+                          locationId:
+                            type: "string"
+                          inboundNo:
+                            type: "string"
+                          createdBy:
+                            type:
+                              - "string"
+                              - "null"
+                          createdAt:
+                            type: "string"
+                        required:
+                          - "receiptNo"
+                          - "afterSaleNo"
+                          - "qty"
+                          - "quality"
+                          - "locationId"
+                          - "inboundNo"
+                          - "createdBy"
+                          - "createdAt"
+                        additionalProperties: false
+                  required:
+                    - "lineNo"
+                    - "fulfillmentRef"
+                    - "itemId"
+                    - "locationId"
+                    - "reservedQty"
+                    - "issuedQty"
+                    - "releasedQty"
+                    - "outboundNo"
+                    - "issuedAt"
+                    - "updatedBy"
+                    - "issueLedger"
+                    - "returns"
+                  additionalProperties: false
+            required:
+              - "reservationId"
+              - "ownerId"
+              - "status"
+              - "lifecycleVersion"
+              - "outboundNo"
+              - "createdAt"
+              - "lines"
+            additionalProperties: false
+      required:
+        - "orderNo"
+        - "syncEvents"
+        - "reservations"
+      additionalProperties: false
+      description: "订单库存追溯：当前状态、事件投递和实物出入账事实。"
     Record_Lang_string:
       type: "object"
       properties:
@@ -16503,6 +17022,39 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/Order"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/order/{orderNo}/inventory-trace":
+    get:
+      operationId: "mOrderInventoryTrace"
+      summary: "订单库存追溯"
+      tags:
+        - "order"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/MerchantInventoryTrace"
                 required:
                   - "code"
                   - "msg"
@@ -22276,6 +22828,74 @@ paths:
                   - "code"
                   - "msg"
                   - "data"
+  "/biz/store/{storeNo}/stock-overview":
+    get:
+      operationId: "mStockOverview"
+      summary: "库存与线上可售总览"
+      tags:
+        - "store"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StockOverview"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/store/{storeNo}/stock-overview/batch":
+    post:
+      operationId: "mStockOverviews"
+      summary: "批量库存与线上可售总览"
+      tags:
+        - "store"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/StockOverview"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
   "/biz/store/{storeNo}/stock-sync":
     get:
       operationId: "mStockSync"
@@ -22337,6 +22957,41 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/StockSyncState"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/store/{storeNo}/stock-reconcile/records":
+    get:
+      operationId: "mStockSyncRecords"
+      summary: "库存同步操作记录"
+      tags:
+        - "store"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/StockSyncOperationRecord"
                 required:
                   - "code"
                   - "msg"
@@ -22535,6 +23190,115 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/{ adjusted: number }"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/store/{storeNo}/stock-alignment/preview":
+    post:
+      operationId: "mPreviewStockAlignment"
+      summary: "预览期初对齐批次"
+      tags:
+        - "store"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StockAlignmentBatch"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/store/{storeNo}/stock-alignment/batch/{batchNo}/confirm":
+    post:
+      operationId: "mConfirmStockAlignmentBatch"
+      summary: "确认期初对齐批次"
+      tags:
+        - "store"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "batchNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StockAlignmentBatch"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+  "/biz/store/{storeNo}/stock-alignment/batch/{batchNo}":
+    get:
+      operationId: "mStockAlignmentBatch"
+      summary: "查询期初对齐批次结果"
+      tags:
+        - "store"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "storeNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "batchNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/StockAlignmentBatch"
                 required:
                   - "code"
                   - "msg"

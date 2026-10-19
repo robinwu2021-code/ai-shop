@@ -158,8 +158,8 @@ class BizEndpointPermTest {
         put("/biz/store/{storeNo}/stock-alignment", BizPerms.STOCK);
         put("/biz/store/{storeNo}/stock-alignment/confirm", BizPerms.STORE_ADMIN);
         put("/biz/store/{storeNo}/stock-alignment/preview", BizPerms.STORE_ADMIN);
-        put("/biz/store/{storeNo}/stock-alignment/batches/{batchNo}", BizPerms.STOCK);
-        put("/biz/store/{storeNo}/stock-alignment/batches/{batchNo}/confirm", BizPerms.STORE_ADMIN);
+        put("/biz/store/{storeNo}/stock-alignment/batch/{batchNo}", BizPerms.STOCK);
+        put("/biz/store/{storeNo}/stock-alignment/batch/{batchNo}/confirm", BizPerms.STORE_ADMIN);
         put("/biz/store/{storeNo}/stock-overview", BizPerms.STOCK);
         put("/biz/store/{storeNo}/stock-overview/batch", BizPerms.STOCK);
         put("/biz/store/{storeNo}/stock-reconcile", BizPerms.STORE_ADMIN);

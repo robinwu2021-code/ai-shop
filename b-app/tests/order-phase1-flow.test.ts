@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import "./component-setup";
 import type { Order } from "@shared/types";
-const m = vi.hoisted(() => ({ scope:vi.fn(),active:vi.fn(),detail:vi.fn(),prepare:vi.fn(),precheck:vi.fn(),ship:vi.fn(),trace:vi.fn(),can:vi.fn(),load:undefined as undefined|((q:Record<string,string>)=>unknown) }));
-vi.mock("@/api",()=>({api:{mOrderDetail:m.detail,mActiveAfterSaleForOrder:m.active,mFulfillmentOptions:vi.fn().mockResolvedValue(null),mPrepare:m.prepare,mShipPrecheck:m.precheck,mShip:m.ship,mOrderTrace:m.trace,mExpressPickup:vi.fn(),mShipDefaults:vi.fn()}}));
+const m = vi.hoisted(() => ({ scope:vi.fn(),active:vi.fn(),detail:vi.fn(),inventoryTrace:vi.fn(),prepare:vi.fn(),precheck:vi.fn(),ship:vi.fn(),trace:vi.fn(),can:vi.fn(),load:undefined as undefined|((q:Record<string,string>)=>unknown) }));
+vi.mock("@/api",()=>({api:{mOrderDetail:m.detail,mOrderInventoryTrace:m.inventoryTrace,mActiveAfterSaleForOrder:m.active,mFulfillmentOptions:vi.fn().mockResolvedValue(null),mPrepare:m.prepare,mShipPrecheck:m.precheck,mShip:m.ship,mOrderTrace:m.trace,mExpressPickup:vi.fn(),mShipDefaults:vi.fn()}}));
 vi.mock("@/stores/merchant",()=>({useMerchantStore:()=>({can:m.can,ensureScope:m.scope,storeNo:"ST1"})}));
 vi.mock("@/shared/mch-subscribe",()=>({askMchSubscribe:vi.fn()}));
 vi.mock("vue-i18n",()=>({useI18n:()=>({t:(k:string)=>k})}));
@@ -13,7 +13,7 @@ import Page from "@/pages/order/index.vue";
 const order=(extra:Partial<Order>={}):Order=>({orderNo:"SUB1",merchantName:"店一",status:"PAID",fulfillment:"EXPRESS",items:[],amount:{paidMinor:1000,payableMinor:1000},timeline:[],createdAt:1,...extra} as Order);
 async function flush(){for(let i=0;i<25;i++)await Promise.resolve();}
 async function render(){const w=mount(Page,{global:{mocks:{$t:(k:string)=>k},stubs:{"sh-scaffold":{template:"<div><slot/></div>"}}}});m.load?.({orderNo:"SUB1"});await flush();return w;}
-beforeEach(()=>{vi.clearAllMocks();m.can.mockReturnValue(true);m.scope.mockResolvedValue(undefined);m.active.mockResolvedValue(null);m.detail.mockResolvedValue(order());
+beforeEach(()=>{vi.clearAllMocks();m.can.mockReturnValue(true);m.scope.mockResolvedValue(undefined);m.active.mockResolvedValue(null);m.detail.mockResolvedValue(order());m.inventoryTrace.mockResolvedValue(null);
   m.precheck.mockResolvedValue({verdict:"UNKNOWN",checkedAt:Date.now(),confirmationRequired:false});});
 describe("B端单次备货发货",()=>{
  it("深链先加载权限再查询售后，不能漏掉阻断履约的申请",async()=>{

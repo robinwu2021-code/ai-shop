@@ -53,3 +53,26 @@ export interface MerchantAfterSaleWorkItem {
   /** 所属订单 */
   order: Order;
 }
+
+/** 订单库存追溯：当前状态、事件投递和实物出入账事实。 */
+export interface MerchantInventoryTrace {
+  orderNo: string;
+  syncEvents: Array<{
+    aggregateId: string; eventType: string; source: string;
+    status: "COMPLETED" | "PENDING" | "FAILED" | "WARNING" | "SKIPPED" | "ARCHIVED";
+    outboxMode: "UNIFIED" | "LEGACY";
+  }>;
+  reservations: Array<{
+    reservationId: string; ownerId: string; status: string; lifecycleVersion: number | null;
+    outboundNo: string | null; createdAt: string | null;
+    lines: Array<{
+      lineNo: number; fulfillmentRef: string | null; itemId: string; locationId: string;
+      reservedQty: number; issuedQty: number; releasedQty: number; outboundNo: string | null;
+      issuedAt: string | null; updatedBy: string | null;
+      issueLedger: Array<{ id: number; docNo: string; reasonCode: string; qtyDelta: number;
+        balanceBefore: number; balanceAfter: number; operator: string | null; createdBy: string | null; occurredAt: string }>;
+      returns: Array<{ receiptNo: string; afterSaleNo: string; qty: number; quality: string;
+        locationId: string; inboundNo: string; createdBy: string | null; createdAt: string }>;
+    }>;
+  }>;
+}

@@ -309,7 +309,7 @@ class StockSyncWritebackTest {
         assertThat(preview.get("rows").get(0).get("beforeQty").asInt()).isZero();
         assertThat(preview.get("rows").get(0).get("afterQty").asInt()).isEqualTo(8);
 
-        String path = "/biz/store/" + s.storeNo + "/stock-alignment/batches/" + batchNo;
+        String path = "/biz/store/" + s.storeNo + "/stock-alignment/batch/" + batchNo;
         JsonNode confirmed = ok(post(path + "/confirm")
                 .content("{\"operationNo\":\"ALIGN-" + batchNo + "\",\"snapshotVersion\":\"" + version + "\"}"), s.token);
         JsonNode repeated = ok(post(path + "/confirm")
@@ -321,7 +321,7 @@ class StockSyncWritebackTest {
 
         JsonNode secondPreview = ok(post("/biz/store/" + s.storeNo + "/stock-alignment/preview")
                 .content("{\"mode\":\"COUNT\"}"), s.token);
-        String reused = send(post("/biz/store/" + s.storeNo + "/stock-alignment/batches/"
+        String reused = send(post("/biz/store/" + s.storeNo + "/stock-alignment/batch/"
                 + secondPreview.get("batchNo").asString() + "/confirm")
                 .content("{\"operationNo\":\"ALIGN-" + batchNo + "\",\"snapshotVersion\":\""
                         + secondPreview.get("snapshotVersion").asString() + "\"}"), s.token);
@@ -335,7 +335,7 @@ class StockSyncWritebackTest {
         JsonNode preview = ok(post("/biz/store/" + s.storeNo + "/stock-alignment/preview")
                 .content("{\"mode\":\"MALL\"}"), s.token);
         DataScopeContext.executeWithoutScope(() -> skuMapper.setStock(s.skuNo, 6));
-        String path = "/biz/store/" + s.storeNo + "/stock-alignment/batches/" + preview.get("batchNo").asString();
+        String path = "/biz/store/" + s.storeNo + "/stock-alignment/batch/" + preview.get("batchNo").asString();
         JsonNode result = ok(post(path + "/confirm")
                 .content("{\"operationNo\":\"ALIGN-" + preview.get("batchNo").asString()
                         + "\",\"snapshotVersion\":\"" + preview.get("snapshotVersion").asString() + "\"}"), s.token);
@@ -376,7 +376,7 @@ class StockSyncWritebackTest {
         pending.setNextRetryAt(java.time.LocalDateTime.now().plusHours(1));
         sysOutbox.insert(pending);
 
-        String batchPath = "/biz/store/" + s.storeNo + "/stock-alignment/batches/" + preview.get("batchNo").asString();
+        String batchPath = "/biz/store/" + s.storeNo + "/stock-alignment/batch/" + preview.get("batchNo").asString();
         String body = "{\"operationNo\":\"ALIGN-" + preview.get("batchNo").asString()
                 + "\",\"snapshotVersion\":\"" + preview.get("snapshotVersion").asString() + "\"}";
         JsonNode partial = ok(post(batchPath + "/confirm").content(body), s.token);

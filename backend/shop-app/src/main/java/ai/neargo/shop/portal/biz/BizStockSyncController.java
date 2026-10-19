@@ -85,7 +85,7 @@ public class BizStockSyncController {
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE_ADMIN + "')")
-    @PostMapping("/biz/store/{storeNo}/stock-alignment/batches/{batchNo}/confirm")
+    @PostMapping("/biz/store/{storeNo}/stock-alignment/batch/{batchNo}/confirm")
     public StockAlignmentService.BatchView confirmAlignmentBatch(@PathVariable String storeNo,
                                                                   @PathVariable String batchNo,
                                                                   @RequestBody AlignBatchConfirmReq req) {
@@ -94,7 +94,7 @@ public class BizStockSyncController {
     }
 
     @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
-    @GetMapping("/biz/store/{storeNo}/stock-alignment/batches/{batchNo}")
+    @GetMapping("/biz/store/{storeNo}/stock-alignment/batch/{batchNo}")
     public StockAlignmentService.BatchView alignmentResult(@PathVariable String storeNo, @PathVariable String batchNo) {
         return alignment.result(entity(storeNo), storeNo, batchNo);
     }

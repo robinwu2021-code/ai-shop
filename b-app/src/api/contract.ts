@@ -9,8 +9,10 @@ import type {
   MerchantAfterSaleWorkItem,
   MerchantFulfillmentChange,
   MerchantFulfillmentOptions,
+  MerchantInventoryTrace,
   MerchantOrderWorkItem,
 } from "./response-types";
+export type { MerchantInventoryTrace } from "./response-types";
 import type {
   // 进销存（P-18）
   StockOverview,
@@ -183,28 +185,6 @@ import type {
 export type PayMode = (typeof PAY_MODE)[keyof typeof PAY_MODE];
 
 export type { LogisticsUpdateRecord } from "@shared/types";
-
-export interface MerchantInventoryTrace {
-  orderNo: string;
-  syncEvents: Array<{
-    aggregateId: string; eventType: string; source: string;
-    status: "COMPLETED" | "PENDING" | "FAILED" | "WARNING" | "SKIPPED" | "ARCHIVED";
-    outboxMode: "UNIFIED" | "LEGACY";
-  }>;
-  reservations: Array<{
-    reservationId: string; ownerId: string; status: string; lifecycleVersion: number | null;
-    outboundNo: string | null; createdAt: string | null;
-    lines: Array<{
-      lineNo: number; fulfillmentRef: string | null; itemId: string; locationId: string;
-      reservedQty: number; issuedQty: number; releasedQty: number; outboundNo: string | null;
-      issuedAt: string | null; updatedBy: string | null;
-      issueLedger: Array<{ id: number; docNo: string; reasonCode: string; qtyDelta: number;
-        balanceBefore: number; balanceAfter: number; operator: string | null; createdBy: string | null; occurredAt: string }>;
-      returns: Array<{ receiptNo: string; afterSaleNo: string; qty: number; quality: string;
-        locationId: string; inboundNo: string; createdBy: string | null; createdAt: string }>;
-    }>;
-  }>;
-}
 
 /** 门店收款方式。与后端 StorePaySettingService.PaySettingVO 同形 */
 export interface StorePaySetting {
