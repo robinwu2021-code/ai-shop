@@ -336,8 +336,8 @@ onShow(load);
             <text class="txt-strong led__title">{{ $t(`stock.reason.${r.reasonCode}`) }}</text>
             <view class="led__meta">
               <!-- 单号用链接色：这一行可点，而「可点」在密排的流水里得看得出来 -->
-              <text class="sh-link sh-num">{{ r.docNo }}</text>
-              <text class="sh-muted">{{ r.operator || "—" }}</text>
+              <text class="sh-link sh-num led__doc" :title="r.docNo">{{ r.docNo }}</text>
+              <text class="sh-muted led__operator">{{ r.operator || "—" }}</text>
             </view>
             <text class="txt-caption sh-num">{{ at(r.occurredAt) }}</text>
           </view>
@@ -397,7 +397,27 @@ onShow(load);
 .led__meta {
   display: flex;
   gap: 20rpx;
+  min-width: 0;
+  width: 100%;
   margin-top: 8rpx;
+}
+.led__doc {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.led__operator {
+  flex: none;
+  max-width: 35%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.led > .sh-fill {
+  min-width: 0;
 }
 .led__end {
   text-align: end;

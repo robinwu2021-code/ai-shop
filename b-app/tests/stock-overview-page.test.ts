@@ -54,6 +54,17 @@ describe("库存页面只读接入", () => {
     expect(w.text()).toContain("stockOverview.totalScope"); expect(w.text()).toContain("stockOverview.supplyHint");
     expect(w.text()).toContain("12"); w.unmount();
   });
+  it("库存流水将长单号收缩显示，不挤占数量和操作人", async () => {
+    const docNo = "U202609161449430000150";
+    m.ledger.mockResolvedValue({ entries: [{ id: 1, itemId: "I", itemName: "Pear", docKind: "IN",
+      docNo, reasonCode: "RETURN", qtyDelta: 1, balanceAfter: 1, occurredAt: "2026-09-23T04:24:00Z",
+      operator: "长名称操作员" }], nextCursor: null });
+    const w = mount(Detail, options); m.show?.(); await flushPromises();
+    expect(w.find(".led__doc").text()).toBe(docNo);
+    expect(w.find(".led__doc").attributes("title")).toBe(docNo);
+    expect(w.find(".led__operator").text()).toBe("长名称操作员");
+    w.unmount();
+  });
   it("盘点输入期间切换门店不会将旧店操作提交到新店", async () => {
     let resolveInput!: (v: string) => void;
     m.prompt.mockImplementationOnce(() => new Promise(r => { resolveInput = r; }));
