@@ -38,7 +38,7 @@ function resultText(record: StockSyncOperationRecord): string {
   if (r.skipped) return `未执行：${r.skipped}`;
   return r.applied ? `线上数量 ${r.before} → ${r.after}` : `无需调整，线上数量 ${r.after}`;
 }
-onShow(() => { void merchant.ensureStores(); void load(); });
+onShow(async () => { await merchant.ensureStores(); await load(); });
 </script>
 
 <template>

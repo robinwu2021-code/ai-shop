@@ -230,7 +230,8 @@ const filledCount = computed(() =>
 const unfilledCount = computed(() => doc.value ? Math.max(0, doc.value.lines.length - filledCount.value) : 0);
 const overdue = computed(() => {
   if (!doc.value?.startedAt) return false;
-  const started = Date.parse(doc.value.startedAt);
+  // Jackson may serialize LocalDateTime with either `T` or a space separator.
+  const started = Date.parse(doc.value.startedAt.replace(" ", "T"));
   return Number.isFinite(started) && Date.now() - started >= 24 * 60 * 60 * 1000;
 });
 
