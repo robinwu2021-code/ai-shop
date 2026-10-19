@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.trade.service.OrderService;
 import ai.neargo.shop.common.OtpStore;
 import ai.neargo.shop.auth.Realm;
 import ai.neargo.shop.auth.TokenStores;
@@ -36,6 +38,7 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("test")
 class CardProductBindingFlowTest {
     @Autowired CardProductBindingService bindings;
+    @Autowired OrderService orders;
     @Autowired EntitlementCatalogService catalog;
     @Autowired JdbcTemplate jdbc;
     @Autowired WebApplicationContext web;
@@ -82,6 +85,15 @@ class CardProductBindingFlowTest {
         assertThat(first.templateVersionNo()).isEqualTo(v1.versionNo());
         assertThat(first.productRevision()).isEqualTo(1);
         assertThat(first.unitsPerItem()).isEqualTo(2);
+        jdbc.update("UPDATE prd_goods SET on_sale=1,audit_status='APPROVED',fulfillments='[\"STORE_VERIFY\"]' "
+                + "WHERE goods_no=?", goods);
+        var checkout = new OrderService.CreateOrderCommand(
+                List.of(new OrderService.CreateOrderCommand.Item(goods, sku, 1)), "STORE_VERIFY", null,
+                null, null, null, "bound card awaiting sale admission", null, null, null, null);
+        assertThatThrownBy(() -> orders.createFor(actor, checkout, id())).isInstanceOfSatisfying(BizException.class,
+                e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_order WHERE user_no=?", Integer.class, actor)).isZero();
+        assertThat(jdbc.queryForObject("SELECT locked_stock FROM prd_sku WHERE sku_no=?", Integer.class, sku)).isZero();
         assertThat(jdbc.queryForObject("SELECT price FROM prd_sku WHERE sku_no=?", Long.class, sku)).isEqualTo(30000);
         var head = catalog.get(scope, template.templateNo());
         var draft = catalog.saveDraft(scope, template.templateNo(), head.revision(), rule("New card title"), id());
@@ -106,9 +118,30 @@ class CardProductBindingFlowTest {
             assertThat(won).isEqualTo(1);
         }
         assertThat(jdbc.queryForObject("SELECT version FROM prd_goods WHERE goods_no=?", Long.class, goods)).isEqualTo(3);
+        jdbc.update("UPDATE prd_entitlement_binding SET status='DISABLED' WHERE sku_no=?", sku);
+        assertThatThrownBy(() -> orders.createFor(actor, checkout, id())).isInstanceOfSatisfying(BizException.class,
+                e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));
+        jdbc.update("UPDATE prd_entitlement_binding SET deleted=1 WHERE sku_no=?", sku);
+        assertThatThrownBy(() -> orders.createFor(actor, checkout, id())).isInstanceOfSatisfying(BizException.class,
+                e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE));
+        jdbc.update("UPDATE prd_entitlement_binding SET status='ACTIVE',deleted=0 WHERE sku_no=?", sku);
         jdbc.update("UPDATE prd_goods SET type='SERVICE' WHERE goods_no=?", goods);
         assertThatThrownBy(() -> bindings.bind(ctx, entity,
                 new ProductEntitlementBinding(goods, sku, 3, v2.versionNo(), 1), id())).isInstanceOf(BizException.class);
+        String legacyGoods = id(), legacySku = id();
+        jdbc.update("INSERT INTO prd_goods(goods_no,entity_no,title,type,on_sale,audit_status,fulfillments,tenant_no,"
+                + "created_at,updated_at) VALUES (?,?,'legacy card','CARD',1,'APPROVED','[\"STORE_VERIFY\"]',"
+                + "'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)", legacyGoods, entity);
+        jdbc.update("INSERT INTO prd_sku(sku_no,goods_no,entity_no,market,price,stock,locked_stock,tenant_no,"
+                + "created_at,updated_at) VALUES (?,?,?,'CN',1000,1,0,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                legacySku, legacyGoods, entity);
+        var legacy = new OrderService.CreateOrderCommand(
+                List.of(new OrderService.CreateOrderCommand.Item(legacyGoods, legacySku, 1)), "STORE_VERIFY", null,
+                null, null, null, "unbound legacy card", null, null, null, null);
+        orders.createFor(actor, legacy, id());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_order WHERE user_no=?", Integer.class, actor)).isOne();
+        assertThat(jdbc.queryForObject("SELECT locked_stock FROM prd_sku WHERE sku_no=?", Integer.class, legacySku))
+                .isOne();
     }
     private boolean attempt(EntitlementContext ctx, String entity, ProductEntitlementBinding c) {
         try { bindings.bind(ctx, entity, c, id()); return true; }

@@ -451,3 +451,8 @@ pay.storedvalue的`StoredValueCreditService/Impl`只接受原pay实收决定；
 实体`SvAccount/SvRecharge/SvLot/SvVoucher/SvEntry/SvPostingLine/SvUserStoreIndex`与
 pay.mapper.storedvalue下同名Mapper均绑定pay数据源；不通过core Mapper操作资金账。
 实际业务接线及完整StoredValuePort本地/远程装配待JB034/037/038/041，不把内部到账内核当作整条充值完成。
+
+
+JB040先行安全切片：shared spi.product.CardProductSalePort与core.product.port.CardProductSalePortImpl
+按真实商品/主体验证并查询含历史状态的新绑定；core.trade.OrderServiceImpl的split在建单/预览前调用。
+当前有新绑定即能力未就绪，无绑定旧卡放行；不安装恒成功或伪造付款适配，不增加新的默认角色权限。

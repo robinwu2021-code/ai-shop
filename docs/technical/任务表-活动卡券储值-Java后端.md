@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：32项DONE、9项DOING、14项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
+本表共55项：32项DONE、10项DOING、13项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序（2026-10-19用户调整）：第一阶段完成core活动自身能力，第二阶段完成pay权益、卡券、储值及活动权益联动。具体任务分组、跨阶段子项与验收见[两阶段执行方案](./开发计划-活动优先与权益两阶段.md)。已完成的权益公共基础直接保留；JB-015尚未开始Java实现，移至第二阶段。原任务编号与整体依赖保留，跨阶段任务仅完成活动部分不能标记整项DONE。
 
@@ -117,7 +117,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-037 | D05.4 | TODO | 014,035,036 | pay.storedvalue | StoredValueStoreProjector、StoredValueQueryService/Impl；记录、门店目录、总余额 | StoredValueConsumerQueryTest：只列成功储值门店、max充值/核销时间倒序、同时间稳定分页、耗尽仍保留、乱序不倒退 |
 | JB-038 | D05.1–5.4 | TODO | 009,034,035,036,037,041 | app HTTP | BizStoredValueController、MpStoredValueController；P18–P24/P27/P28 | StoredValueApiTest：办理/到账/核销/本人记录闭环；无本金赠金字段、无线上退款/购买入口、统一会员码 |
 | JB-039 | D06.1 | DONE | 006,009,028 | core.product/app | CardProductBindingService/Impl、BizCardProductBindingController；C07 | CardProductBindingFlowTest：只绑已发布PAID_CARD、主体/币种一致；售价沿商品SKU，旧版绑定不随模板草稿改变 |
-| JB-040 | D06.2 | TODO | 012,016,039,042 | app/core.trade | CardSaleCoordinator与支付/取消Outbox订阅，按订单行/件/件内权益发卡 | PaidCardSaleFlowTest：2×2权益不漏不重发、付款/取消竞争、迟到付款起算正确；不以储值扣款冒充现金付款 |
+| JB-040 | D06.2 | DOING | 012,016,039,042 | app/core.trade | CardSaleCoordinator与支付/取消Outbox订阅，按订单行/件/件内权益发卡 | PaidCardSaleFlowTest：2×2权益不漏不重发、付款/取消竞争、迟到付款起算正确；不以储值扣款冒充现金付款 |
 | JB-041 | D02.6 | DOING | 008,016,017,020,021,022,023,024,031,034,035,036,037,040 | payclient/pay-svc/core内部适配 | AppService本地/Remote承载底座、PayInternalApi/Paths、内部Endpoint及core反向适配；已实现业务完整query | EntitlementInternalApiRoundTripTest：真实HTTP DTO无wrapper嵌套、签名身份、超时/失联可查、两种部署同语义且Bean互斥 |
 | JB-042 | D06.3 | DONE | 019,020 | pay.entitlement | EntitlementLifecycleService/Impl、PeriodDailyUsagePolicy、ent_period_bucket；首用激活/日限/到期 | PaidCardAllowanceFlowTest：并发首用仅激活一次、指定服务日、跨日释放回原bucket、不结转、月末与时区边界 |
 
@@ -623,3 +623,11 @@ JB-020仍DOING，后续推进039商品绑定及034–038储值，不把可配置
 币种及主体隔离、账号累计溢出回滚、事件失败回滚、20次并发原号到账一次均已验证。
 V445新增7张pay表（含新增管理备查分录），运行表247，逻辑目标52；sv前缀明确归支付储值账务，未新增未归域欠账。
 文档70/生成物24/SQL守卫通过，未全量测试。当前32 DONE / 9 DOING / 14 TODO，034真实活动源与人工实收尚待接通。
+
+
+第二阶段JB-040完成先行结算校验，仍DOING：已绑定新付费卡在实际预览/建单/代客公用split中，发行流程
+未就绪时返回明确能力错误，发生在库存预占和订单写入之前。禁用或软删绑定也不能退回旧售卖路径。
+实际RED证明此前可经旧入口建单；GREEN后新绑定拒绝且订单/库存无变化，未绑定旧CARD仍可实际建单。
+本批25项不同定向Java通过（绑定/真实结算/历史绑定综合1、原消费者订单8、架构16）；补充禁用/软删及
+旧CARD实际建单后单项重跑通过。无新数据库迁移、权限或HTTP路由，文档70/生成物24/SQL守卫通过。
+当前32 DONE / 10 DOING / 13 TODO；040的付款前发行预留、真实付款后逐件发卡和取消恢复继续待办。

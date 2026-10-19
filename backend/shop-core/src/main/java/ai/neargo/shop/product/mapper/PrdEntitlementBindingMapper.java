@@ -9,6 +9,10 @@ import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 public interface PrdEntitlementBindingMapper extends BaseMapper<PrdEntitlementBinding> {
+    /** Includes historical mappings: disabling/deleting a binding must not re-enable legacy sales. */
+    @Select("SELECT * FROM prd_entitlement_binding WHERE tenant_no=#{tenant} AND goods_no=#{goods} AND sku_no=#{sku}")
+    PrdEntitlementBinding findIdentity(@Param("tenant") String tenant, @Param("goods") String goods,
+                                      @Param("sku") String sku);
     @Select("SELECT * FROM prd_goods WHERE tenant_no=#{tenant} AND entity_no=#{entity} AND goods_no=#{goods} "
             + "AND deleted=0 FOR UPDATE")
     PrdGoods lockGoods(@Param("tenant") String tenant, @Param("entity") String entity, @Param("goods") String goods);

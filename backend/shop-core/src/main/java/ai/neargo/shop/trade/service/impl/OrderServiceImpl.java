@@ -23,6 +23,7 @@ import ai.neargo.shop.spi.marketing.CampaignPort;
 import ai.neargo.shop.spi.marketing.CouponPort;
 import ai.neargo.shop.spi.settle.PointsPort;
 import ai.neargo.shop.spi.product.GoodsQueryPort;
+import ai.neargo.shop.spi.product.CardProductSalePort;
 import ai.neargo.shop.spi.product.StockPort;
 import ai.neargo.shop.spi.settle.SettlePort;
 import ai.neargo.shop.spi.trade.OrderEvents;
@@ -180,6 +181,13 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     public void setOrderServiceProvider(ObjectProvider<OrderService> orderServiceProvider) {
         this.orderServiceProvider = orderServiceProvider;
+    }
+
+    private CardProductSalePort cardProductSales;
+
+    @Autowired
+    public void setCardProductSales(CardProductSalePort cardProductSales) {
+        this.cardProductSales = cardProductSales;
     }
 
     private EntitlementOrderUseService entitlementOrderUses;
@@ -2672,6 +2680,12 @@ public class OrderServiceImpl implements OrderService {
                 throw BizException.of(ErrorCode.GOODS_OFF_SALE);
             }
             lines.add(new Line(s, item.qty()));
+        }
+        for (Line line : lines) {
+            if ("CARD".equals(line.snapshot.categoryType())) {
+                if (cardProductSales == null) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+                cardProductSales.requirePurchasable(line.snapshot.merchantNo(), line.snapshot.goodsNo(), line.skuNo());
+            }
         }
         /*
          * **仅活动的货，普通下单要有活动开着这条路**（TDD-商品仅活动可售 §4.3）。
