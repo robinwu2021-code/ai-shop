@@ -5297,6 +5297,179 @@ CREATE TABLE IF NOT EXISTS pmt_command_dedup
     CONSTRAINT pmt_command_dedup_uk_command UNIQUE (tenant_no,operation_kind,request_key)
 );
 
+CREATE TABLE IF NOT EXISTS ent_issue_policy
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    template_no VARCHAR(64) NOT NULL,
+    limit_count BIGINT NULL,
+    held_count BIGINT NOT NULL DEFAULT 0,
+    issued_count BIGINT NOT NULL DEFAULT 0,
+    max_exposure_minor BIGINT NULL,
+    held_exposure_minor BIGINT NOT NULL DEFAULT 0,
+    used_exposure_minor BIGINT NOT NULL DEFAULT 0,
+    per_user_limit INT NOT NULL,
+    enabled TINYINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_issue_policy UNIQUE (tenant_no,template_no),
+    CHECK (held_count>=0 AND issued_count>=0 AND held_exposure_minor>=0 AND used_exposure_minor>=0),
+    CHECK (limit_count IS NULL OR held_count+issued_count<=limit_count),
+    CHECK (max_exposure_minor IS NULL OR held_exposure_minor+used_exposure_minor<=max_exposure_minor)
+);
+
+CREATE TABLE IF NOT EXISTS ent_issue_recipient
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    template_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    held_count INT NOT NULL DEFAULT 0,
+    issued_count INT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_issue_recipient UNIQUE (tenant_no,template_no,user_no),
+    CHECK (held_count>=0 AND issued_count>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ent_grant
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    grant_no VARCHAR(64) NOT NULL,
+    batch_no VARCHAR(64) NULL,
+    source_key CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    template_version_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    reservation_no VARCHAR(64) NULL,
+    paid_fact_ref VARCHAR(64) NULL,
+    quantity INT NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    prepared_snapshot TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    source_decision_no VARCHAR(64) NULL,
+    committed_at DATETIME(3) NULL,
+    reason_code VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_grant UNIQUE (tenant_no,grant_no),
+    CONSTRAINT uk_grant_source UNIQUE (tenant_no,source_key),
+    CHECK (quantity>0)
+);
+
+CREATE TABLE IF NOT EXISTS ent_instance
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    template_version_no VARCHAR(64) NOT NULL,
+    grant_no VARCHAR(64) NOT NULL,
+    unit_index INT NOT NULL,
+    source_unit_key CHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    kind VARCHAR(24) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    total_units INT NULL,
+    remaining_units INT NULL,
+    reserved_units INT NOT NULL DEFAULT 0,
+    effective_from DATETIME(3) NULL,
+    effective_until DATETIME(3) NULL,
+    activation_at DATETIME(3) NULL,
+    source_paid_at DATETIME(3) NULL,
+    rule_snapshot TEXT NOT NULL,
+    asset_seq BIGINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_instance UNIQUE (tenant_no,instance_no),
+    CONSTRAINT uk_grant_unit UNIQUE (tenant_no,grant_no,unit_index),
+    CONSTRAINT uk_source_unit UNIQUE (tenant_no,source_unit_key),
+    CHECK (unit_index>0 AND reserved_units>=0),
+    CHECK (remaining_units IS NULL OR remaining_units>=reserved_units)
+);
+
+CREATE TABLE IF NOT EXISTS ent_ledger
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    entry_no VARCHAR(64) NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    asset_seq BIGINT NOT NULL,
+    biz_type VARCHAR(24) NOT NULL,
+    biz_key VARCHAR(128) NOT NULL,
+    units_delta INT NOT NULL,
+    reserved_delta INT NOT NULL,
+    after_units INT NULL,
+    after_reserved INT NOT NULL,
+    bucket_key VARCHAR(64) NULL,
+    origin_entry_no VARCHAR(64) NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ent_entry UNIQUE (tenant_no,entry_no),
+    CONSTRAINT uk_asset_seq UNIQUE (tenant_no,instance_no,asset_seq),
+    CONSTRAINT uk_ledger_biz UNIQUE (tenant_no,instance_no,biz_key),
+    CHECK (after_reserved>=0),
+    CHECK (after_units IS NULL OR after_units>=after_reserved)
+);
+
+CREATE TABLE IF NOT EXISTS ent_issue_batch
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    batch_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    template_version_no VARCHAR(64) NOT NULL,
+    activity_ref VARCHAR(64) NULL,
+    audience_fact_ref VARCHAR(64) NOT NULL,
+    planned_count INT NOT NULL,
+    issued_count INT NOT NULL DEFAULT 0,
+    skipped_count INT NOT NULL DEFAULT 0,
+    failed_count INT NOT NULL DEFAULT 0,
+    pending_count INT NOT NULL,
+    skip_reasons TEXT NOT NULL,
+    audience_snapshot TEXT NOT NULL,
+    recipient_results TEXT NOT NULL,
+    cursor_offset INT NOT NULL DEFAULT 0,
+    status VARCHAR(24) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_batch UNIQUE (tenant_no,batch_no)
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

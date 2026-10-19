@@ -392,3 +392,16 @@ core内部POST `/internal/core/promotion/participation/{reserve,confirm,release,
 GET `/biz/marketing-summary?from=ISO-UTC&to=ISO-UTC&storeNo=...`返回币种分组及ORDER优惠额/事件数，最长366天，按可信员工门店过滤。旧`/biz/marketing/summary`保留，不把缺币种历史金额混合统计。C端账单/核销与pay业务接口留在第二阶段。
 
 46项预置目录展示真实readiness与missingCapabilities；统一可执行预置仅AP009/AP010、MAIN/CNY固定CUT。其他预置返回PRESET_EXECUTOR等诊断；仅开部署开关或目录行不能绕过执行器校验。服务端资格证据核验商家、行业、门店，冻结人群条件与规则随已发布版本读取。
+
+
+## 第二阶段B1内部源事实补充
+
+EntitlementGrantPort原签名不变。新增owner扩展EntitlementGrantSourcePort.supports/resolve，返回tenantNo、完整原GrantCommand绑定及可信paidAt；pay必须逐字段一致，不把paidFactRef/permit原文当凭证。来源适配随031/032/040接入，没有真实provider拒绝新增发放；终态仍经SourceDecisionPort核实，UNKNOWN返回PROCESSING，不按超时推断取消。调用发生在pay资源事务之前。
+
+Grant准备时持久保存完整命令、不可变定义、支付时间与计算的发行敞口，供关闭新发行后继续确认/释放。资金敞口按固定现金券面额/封顶券上限×每实例总使用次数×实例数量计算（现金券沿原算法忽略百分比封顶字段）；非现金次数类只累计发行数量，不能当现金备付。缺正数封顶（包括0）的百分比/免运费券暂不发放，避免把无法确定的金额授权写0。现有事件桥接绑定MAIN，本批发放执行入口对其他tenant明确不可用，不能串入MAIN事件；多租户事件承载由041/053对账后开放。
+
+
+B1批量发行：CreateBatch仅接受templateVersionNo/audienceFactRef；EntitlementIssueAudiencePort由core受众owner返回固定身份/资格快照（每批最多1000项），禁止调用方传用户列表。resume每次1–100项，重复/重启沿原游标与稳定grant号。PAY/TARGETED来源由持久批次自身证明，使用GrantSourcePort.decision返回明确发放决定；其他来源仍查SourceDecisionPort。容量/来源冲突记逐项SKIPPED和原因，能力关闭保留pending；未知/传输异常不推定成功。失败项回滚后更新结果，不能吞掉一个已标rollbackOnly的事务并提交游标。
+
+
+B1本地受众适配落于core.member.EntitlementIssueAudiencePortImpl：audienceFactRef当前解析为已有主体人群号/预设人群键；调用会员owner核实归属、会员受众和有效消费者，固定结果存入pay批次，不重筛。其他租户不借MAIN人群执行。独立pay部署的受众传输归041，未接时明确不可用。

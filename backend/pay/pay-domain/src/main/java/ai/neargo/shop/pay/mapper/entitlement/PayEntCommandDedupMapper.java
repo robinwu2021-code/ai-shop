@@ -23,6 +23,11 @@ public interface PayEntCommandDedupMapper extends BaseMapper<PayEntCommandDedup>
     PayEntCommandDedup lock(@Param("tenant") String tenant, @Param("operation") String operation,
                            @Param("key") String key);
 
+    @Select("SELECT * FROM pay_ent_command_dedup WHERE tenant_no=#{tenant} AND operation_kind=#{operation} "
+            + "AND request_key=#{key} AND deleted=0")
+    PayEntCommandDedup find(@Param("tenant") String tenant, @Param("operation") String operation,
+                           @Param("key") String key);
+
     /** Finish the stable response inside the same pay transaction as the business mutation. */
     @Update("UPDATE pay_ent_command_dedup SET result_status='COMPLETED',response_snapshot=#{response}, "
             + "updated_by=#{actor},updated_at=#{at},version=version+1 "

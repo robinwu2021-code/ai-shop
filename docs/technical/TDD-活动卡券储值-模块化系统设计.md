@@ -615,3 +615,13 @@ JB-011按验收完成。最终干净HEAD f116a02ab1cb68dd0148a8270c3cfbdf918edb5
 
 
 第一阶段最终实现提交`14f19f552`；`git show --stat`：81 files changed, 3186 insertions(+), 128 deletions(-)，对应上方管理、参与、订单、统计、传输、owner事实及验证分层。Java21离线定向151项0失败/错误/跳过，原生MySQL独立1项0跳过，生成器1项及消融RED→GREEN通过；24生成器/V2 66文档/SQL/Controller守卫通过。无全量回归，完整命令及能力边界见阶段交付报告。本阶段DONE不改变pay权益/储值未完成的事实。
+
+
+### 第二阶段B1开工：JB-015（2026-10-19）
+
+Create：pay entitlement/entity/EntIssuePolicy、EntIssueRecipient，mapper/entitlement对应Mapper；dto/IssuePolicyViews；service/EntitlementIssuePolicyService及impl；主应用新增V433发行容量迁移（实施时再次检查版本）。使用CatalogScope、已有目录头锁、PayEntitlementFeatureGate与EntitlementCommandDeduplicator。配置save/get；内部reserve/settle仅MANDATORY加入既有pay事务，发放操作幂等由JB-016拥有，不开放裸计数HTTP。
+
+发行计数按templateNo跨版本/途径累计；policy+recipient条件更新同事务。新增预留要求真实ACTIVE模板、开启策略与发行门禁；确认/释放既有占用不依赖新发行开关。发行控制revision使用CAS，下调全局或个人上限不得小于已有held+issued。服务端scope核实owner及平台出资权限。对应EntitlementIssuePolicyFlowTest和隔离原生MySQL验证，批次验收前不记DONE。
+
+
+B1实际验收：JB-015/016/017的实体Mapper/Service/本地SPI、V433–V435、真实core受众适配已完成，57个不同Java定向用例及隔离MySQL1项通过；RR当前读取修复后策略3项重跑通过，敞口消融RED→GREEN通过。对应[交付报告](./第二阶段B1-发行批次验收.md)和最新独立任务表；非全量/非公共HTTP全量交付。源码提交及stat紧随提交后回填。

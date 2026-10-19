@@ -13,6 +13,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -75,6 +76,21 @@ public class EntitlementCommandDeduplicator {
             throw BizException.of(ErrorCode.CONFLICT);
         }
         return response;
+    }
+
+    /** Read a committed reply before external source lookups; transactional execute still serializes the write. */
+    public <T> Optional<T> replay(CatalogScope scope, String operation, String key, Object payload, Class<T> type) {
+        if (!id(operation) || !id(key) || scope == null || payload == null) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var row = commands.find(scope.tenantNo(), operation, key);
+        if (row == null) return Optional.empty();
+        String actual = hash(json.writeValueAsString(List.of(scope.entityNo(), scope.actorNo(),
+                scope.platformActor(), payload)));
+        if (!actual.equals(row.getPayloadHash()) || !"COMPLETED".equals(row.getResultStatus())) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        return Optional.of(json.readValue(row.getResponseSnapshot(), type));
     }
 
     private static boolean id(String value) {

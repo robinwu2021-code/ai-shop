@@ -962,3 +962,11 @@ KEY ix_ent_recon_diff_query (tenant_no,entity_no,recon_no,status),
 V430创建统一预置目录并插入40AP+6EP（全部默认禁用）；V431扩展pmt_activity并创建版本、范围、受众、储值档位、预算、参与者、参与凭证、效果投影与core命令幂等表；V432补投影store_no及门店时间索引。归core数据源，沿主应用统一Flyway，不修改已应用脚本。目标pay表不因此视为已交付。
 
 订单优惠的预算/个人计数/pmt_apply/效果投影必须在同一core事务；取消仅返还已使用且尚未撤销的原事实。统计按币种分组，关联原pmt_apply排除已撤销；投影不充当资金账。活动预算按活动号累计而非版本重置。参与超时只触发可信来源核查，UNKNOWN保持占用并延期重查。
+
+
+## 第二阶段B1持久化补充
+
+V433创建ent_issue_policy/ent_issue_recipient，字段沿设计DDL。V434创建ent_grant/ent_instance/ent_ledger，并在ent_grant增加prepared_snapshot JSON NOT NULL：保存GrantCommand、不可变EntitlementDefinition、可信paidAt及exposureMinor。已有payload_hash校验同grant命令，source_key防换号重复发行；所有计数、实例、账与事件同pay事务，未接源适配器不伪造付款或资格。
+
+
+V435补ent_issue_batch，新增audience_snapshot JSON、recipient_results JSON和cursor_offset INT，固定受众/规则/摘要和逐项原grant号，批次恢复不重新筛人。每项grant与结果游标同pay事务，失败先回滚后单独记录明确跳过原因，不留半次预算预占。

@@ -26594,6 +26594,48 @@
       "package": "ai.neargo.shop.content.entity"
     },
     {
+      "table": "ent_grant",
+      "class": "EntGrant",
+      "zh": "Immutable source identity and owner-side balances are kept in the pay transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_instance",
+      "class": "EntInstance",
+      "zh": "Immutable source identity and owner-side balances are kept in the pay transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_issue_batch",
+      "class": "EntIssueBatch",
+      "zh": "Frozen recipients and a durable cursor keep retries on their original grant operations.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_issue_policy",
+      "class": "EntIssuePolicy",
+      "zh": "Lifetime issuance facts are keyed by template, never reset by publication.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_issue_recipient",
+      "class": "EntIssueRecipient",
+      "zh": "Lifetime issuance facts are keyed by template, never reset by publication.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_ledger",
+      "class": "EntLedger",
+      "zh": "Immutable source identity and owner-side balances are kept in the pay transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
       "table": "ent_template",
       "class": "EntTemplate",
       "zh": "Payment-owned catalog row; published snapshots are never rewritten or deleted.",

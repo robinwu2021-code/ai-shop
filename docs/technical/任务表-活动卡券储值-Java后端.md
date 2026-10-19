@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：18项DONE、7项DOING、30项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
+本表共55项：21项DONE、7项DOING、27项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序（2026-10-19用户调整）：第一阶段完成core活动自身能力，第二阶段完成pay权益、卡券、储值及活动权益联动。具体任务分组、跨阶段子项与验收见[两阶段执行方案](./开发计划-活动优先与权益两阶段.md)。已完成的权益公共基础直接保留；JB-015尚未开始Java实现，移至第二阶段。原任务编号与整体依赖保留，跨阶段任务仅完成活动部分不能标记整项DONE。
 
@@ -82,9 +82,9 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 
 | ID | 原任务 | 状态 | 依赖 | 模块 | 交付内容/Java类 | 验收条件/测试 |
 |---|---|---|---|---|---|---|
-| JB-015 | D02.1/2.2 | TODO | 005,013,014 | pay.entitlement | EntitlementIssuePolicyService/Impl；发行总量/敞口/个人容量条件更新 | EntitlementIssuePolicyFlowTest：100并发不超限；新上限不得低于held+issued；关闭仅挡新增；原生MySQL验证 |
-| JB-016 | D02.3 | TODO | 002,014,015,019 | pay.entitlement | EntitlementGrantService/Impl、GrantPortImpl、EntitlementPostingService；prepare/commit/abort/query | EntitlementGrantFlowTest：来源唯一、重复确认同实例、付费卡缺付款事实拒绝、承诺/取消互斥；账与事件原子 |
-| JB-017 | D02.3 | TODO | 016 | pay.entitlement | EntitlementIssueBatchService/Impl；P07/P08底层能力，受众快照预检 | EntitlementIssueBatchFlowTest：容量不足不半批超发、逐项跳过原因、重启续发不重发；任意外部用户列表拒绝 |
+| JB-015 | D02.1/2.2 | DONE | 005,013,014 | pay.entitlement | EntitlementIssuePolicyService/Impl；发行总量/敞口/个人容量条件更新 | B1真实事务/Mapper及原生MySQL通过；完整证据见第二阶段B1-发行批次验收；源码提交待回填 |
+| JB-016 | D02.3 | DONE | 002,014,015,019 | pay.entitlement | EntitlementGrantService/Impl、GrantPortImpl、EntitlementPostingService；prepare/commit/abort/query | B1真实事务/Mapper及原生MySQL通过；完整证据见第二阶段B1-发行批次验收；源码提交待回填 |
+| JB-017 | D02.3 | DONE | 016 | pay.entitlement | EntitlementIssueBatchService/Impl；P07/P08底层能力，受众快照预检 | B1真实事务/Mapper及原生MySQL通过；完整证据见第二阶段B1-发行批次验收；源码提交待回填 |
 | JB-018 | D02.3/D04.3 | TODO | 016,032 | pay/app | 本人领取路径、CENTER/ACTIVITY校验、core资格到pay发放协调 | EntitlementClaimFlowTest：未登录/越权拒绝；付费卡不可免费领；未知结果只查原grant |
 | JB-019 | D02.4/D06.3 | DONE | 003,005 | pay.policy | EntitlementValidityPolicy、CountUsagePolicy、PeriodCountUsagePolicy；从共享额度规则派生 | EntitlementValidityPolicyTest：支付/首用、自然月/滚动天、时区、月末/闰日、半开区间；GET无激活副作用 |
 | JB-020 | D02.4 | TODO | 011,013,014,016,019 | pay.entitlement/app | EntitlementUseService/Impl、UsePortImpl、EntitlementPostingService、EntitlementOrderCoordinator；prepare/commit/release/query | EntitlementUseFlowTest：同源不双扣、确认释放互斥、并发不负数、未知不重扣、本人/订单/门店绑定；原生事务检查 |
@@ -187,16 +187,16 @@ git diff --check
 | product | prd_entitlement_binding | PrdEntitlementBinding / PrdEntitlementBindingMapper | JB-039 | TODO，设计表/已有表待改造 |
 | pay.entitlement | ent_template | EntTemplate / EntTemplateMapper | JB-004 | DONE，V425 |
 | pay.entitlement | ent_template_version | EntTemplateVersion / EntTemplateVersionMapper | JB-004 | DONE，V425 |
-| pay.entitlement | ent_issue_policy | EntIssuePolicy / EntIssuePolicyMapper | JB-015 | TODO，设计表/已有表待改造 |
-| pay.entitlement | ent_issue_recipient | EntIssueRecipient / EntIssueRecipientMapper | JB-015 | TODO，设计表/已有表待改造 |
-| pay.entitlement | ent_issue_batch | EntIssueBatch / EntIssueBatchMapper | JB-017 | TODO，设计表/已有表待改造 |
-| pay.entitlement | ent_grant | EntGrant / EntGrantMapper | JB-016 | TODO，设计表/已有表待改造 |
-| pay.entitlement | ent_instance | EntInstance / EntInstanceMapper | JB-016 | TODO，设计表/已有表待改造 |
+| pay.entitlement | ent_issue_policy | EntIssuePolicy / EntIssuePolicyMapper | JB-015 | DONE，V433/V434/V435及真实pay Mapper |
+| pay.entitlement | ent_issue_recipient | EntIssueRecipient / EntIssueRecipientMapper | JB-015 | DONE，V433/V434/V435及真实pay Mapper |
+| pay.entitlement | ent_issue_batch | EntIssueBatch / EntIssueBatchMapper | JB-017 | DONE，V433/V434/V435及真实pay Mapper |
+| pay.entitlement | ent_grant | EntGrant / EntGrantMapper | JB-016 | DONE，V433/V434/V435及真实pay Mapper |
+| pay.entitlement | ent_instance | EntInstance / EntInstanceMapper | JB-016 | DONE，V433/V434/V435及真实pay Mapper |
 | pay.entitlement | ent_period_bucket | EntPeriodBucket / EntPeriodBucketMapper | JB-042 | TODO，设计表/已有表待改造 |
 | pay.entitlement | ent_use_intent | EntUseIntent / EntUseIntentMapper | JB-020 | TODO，设计表/已有表待改造 |
 | pay.entitlement | ent_use_allocation | EntUseAllocation / EntUseAllocationMapper | JB-020 | TODO，设计表/已有表待改造 |
 | pay.entitlement | ent_usage | EntUsage / EntUsageMapper | JB-020 | TODO，设计表/已有表待改造 |
-| pay.entitlement | ent_ledger | EntLedger / EntLedgerMapper | JB-016 | TODO，设计表/已有表待改造 |
+| pay.entitlement | ent_ledger | EntLedger / EntLedgerMapper | JB-016 | DONE，V433/V434/V435及真实pay Mapper |
 | pay.entitlement | ent_code_token | EntCodeToken / EntCodeTokenMapper | JB-023 | TODO，设计表/已有表待改造 |
 | pay.storedvalue | sv_account | SvAccount / SvAccountMapper | JB-035 | TODO，设计表/已有表待改造 |
 | pay.storedvalue | sv_recharge | SvRecharge / SvRechargeMapper | JB-034 | TODO，设计表/已有表待改造 |
@@ -281,9 +281,9 @@ git diff --check
 | I02 | ActivityParticipationPort.confirm(ConfirmParticipation) | JB-031 | DOING（core实现及内部HTTP已完成；真实pay源适配待第二阶段） |
 | I03 | ActivityParticipationPort.release(ReleaseParticipation) | JB-031 | DOING（core实现及内部HTTP已完成；真实pay源适配待第二阶段） |
 | I04 | ActivityParticipationPort.query(SourceRef) | JB-031 | DOING（core实现及内部HTTP已完成；真实pay源适配待第二阶段） |
-| I05 | EntitlementGrantPort.prepare(GrantCommand) | JB-016 | TODO |
-| I06 | EntitlementGrantPort.commit(GrantDecision) | JB-016 | TODO |
-| I07 | EntitlementGrantPort.abort(AbortGrant) | JB-016 | TODO |
+| I05 | EntitlementGrantPort.prepare(GrantCommand) | JB-016 | DOING（pay本地协议已完成；041远程承载待接） |
+| I06 | EntitlementGrantPort.commit(GrantDecision) | JB-016 | DOING（pay本地协议已完成；041远程承载待接） |
+| I07 | EntitlementGrantPort.abort(AbortGrant) | JB-016 | DOING（pay本地协议已完成；041远程承载待接） |
 | I08 | EntitlementUsePort.prepare(UseCommand) | JB-020 | TODO |
 | I09 | EntitlementUsePort.commit(UseDecision) | JB-020 | TODO |
 | I10 | EntitlementUsePort.release(CancelUse) | JB-020 | TODO |
@@ -491,3 +491,13 @@ A1–A6的活动侧任务已完成，完整边界、代码落点、命令与结�
 统一验证：Java21离线Maven定向151项（core25/app126），0失败/错误/跳过，21项目BUILD SUCCESS；原生MySQL9.7.2独立1项实际运行、0跳过，100次并发中20次成功、每人2次、总预算2000分无超额；生成器回归1项及消融RED→GREEN；24生成器、V2 66份文档、SQL无新增方言债务、Controller聚合守卫与diff检查通过。未运行后端全量；未推送、部署或访问生产数据库。
 
 下一执行项为第二阶段B1：JB-015发行容量与个人限额，其后JB-016 prepare/commit/abort及JB-017批量发行。沿既有任务依赖继续，权益归pay，不在core复制余额或发行账。
+
+
+第二阶段B1编码记录：JB-015新增V433、发行策略/个人计数实体Mapper与Service/Impl，先写真实事务用例并确认缺类编译RED，再通过test-compile。尚待B1合并验收和原生MySQL，不标DONE；JB-016/017接续开发。
+
+
+### 第二阶段B1验收（2026-10-19）
+
+JB-015/016/017完成，状态21 DONE / 7 DOING / 27 TODO。复用[第二阶段清单](./任务清单-第二阶段权益卡券储值.md)，详见[B1交付报告](./第二阶段B1-发行批次验收.md)。Java57个不同定向用例通过，原生MySQL1项实际运行0跳过；57项由55项合并验证+2项core受众校验组成，敞口/批次/架构复核重跑不重复累计。RR修复后另跑策略3项0失败，原生RR旧视图/当前读取差异断言通过。敞口消融RED（600/200）后恢复GREEN；当前批次未运行全量。
+
+本地批次发行具备真实core会员受众适配；活动/领取/售卡源适配按031/032/018/040接续。MAIN与MERCHANT出资门禁显式保留，不能用本批代码冒称独立pay/其他租户事件已验收。下一执行：041目录/发行控制子项及025，再020/021/042使用领域。
