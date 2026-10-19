@@ -42,7 +42,7 @@ class OutboxTestFixture {
                 + "status VARCHAR(16),retry_count INT DEFAULT 0,next_retry_at TIMESTAMP,last_error VARCHAR(512),"
                 + "created_at TIMESTAMP,sent_at TIMESTAMP)");
         new ResourceDatabasePopulator(new FileSystemResource(
-                "../shop-app/src/main/resources/db/migration/V425__outbox_delivery.sql")).execute(ds);
+                "../shop-app/src/main/resources/db/migration/V471__outbox_delivery.sql")).execute(ds);
         var manager = new DataSourceTransactionManager(ds);
         tx = new TransactionTemplate(manager);
         store = new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, ds, manager, new ObjectMapper());

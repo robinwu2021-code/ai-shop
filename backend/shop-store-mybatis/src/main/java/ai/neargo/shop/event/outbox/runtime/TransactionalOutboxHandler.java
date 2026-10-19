@@ -27,6 +27,7 @@ public final class TransactionalOutboxHandler implements OutboxHandler {
         if (!"sys_event_consumed".equals(inbox) && !"inv_event_consumed".equals(inbox)) {
             throw new IllegalArgumentException("Unsupported inbox");
         }
+        OutboxTransactions.register(manager);
         this.consumer = consumer;
         this.jdbc = new JdbcTemplate(ds);
         this.inbox = inbox;

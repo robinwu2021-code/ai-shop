@@ -52,6 +52,7 @@ public final class JdbcOutboxStore implements OutboxStore {
     public void setRetryPolicy(RetryPolicy policy) { retryPolicy = policy; }
 
     public JdbcOutboxStore(Source source, DataSource dataSource, PlatformTransactionManager manager, ObjectMapper json) {
+        OutboxTransactions.register(manager);
         this.source = source;
         this.dataSource = dataSource;
         this.jdbc = new JdbcTemplate(dataSource);
@@ -110,7 +111,7 @@ public final class JdbcOutboxStore implements OutboxStore {
                     + " WHERE source_system=? AND source_event_no=?", event.sourceSystem(), event.sourceEventNo());
             if (rows.isEmpty()) { throw conflict; }
             if (!hash.equals(rows.getFirst().get("payload_hash"))) {
-                throw new IllegalStateException("SOURCE_EVENT_CONFLICT", conflict);
+                throw new ai.neargo.shop.event.outbox.OutboxSourceConflictException(conflict);
             }
             return new PublishReceipt((String) rows.getFirst().get("event_no"), false);
         }
@@ -244,6 +245,10 @@ public final class JdbcOutboxStore implements OutboxStore {
                 }
                 return;
             }
+            var before = jdbc.queryForList("SELECT * FROM " + deliveries
+                    + " WHERE event_no=? AND handler_id=? AND status='FAILED' FOR UPDATE", eventNo, handlerId);
+            if (before.size() != 1) { throw new IllegalStateException("Only FAILED deliveries can be replayed or skipped"); }
+            var snapshot = before.getFirst();
             int changed = jdbc.update("UPDATE " + deliveries + " SET status=?,round_attempt_count=0,"
                             + "replay_count=replay_count+1,last_replayed_at=?,next_retry_at=NULL,"
                             + "claim_token=NULL,lease_until=NULL,completed_at=?"
@@ -251,9 +256,13 @@ public final class JdbcOutboxStore implements OutboxStore {
                     skip ? "SKIPPED" : "PENDING", at(now), skip ? at(now) : null, eventNo, handlerId);
             if (changed != 1) { throw new IllegalStateException("Only FAILED deliveries can be replayed or skipped"); }
             jdbc.update("INSERT INTO " + operations + " (request_id,event_no,handler_id,operation,actor,reason,"
-                            + "before_status,after_status,created_at) VALUES (?,?,?,?,?,?,'FAILED',?,?)",
+                            + "before_status,after_status,created_at,original_error_code,original_error,original_attempt_count,"
+                            + "original_round_attempt_count,original_last_attempt_at,original_next_retry_at)"
+                            + " VALUES (?,?,?,?,?,?,'FAILED',?,?,?,?,?,?,?,?)",
                     requestId, eventNo, handlerId, skip ? "SKIP" : "REPLAY", actor, reason,
-                    skip ? "SKIPPED" : "PENDING", at(now));
+                    skip ? "SKIPPED" : "PENDING", at(now), snapshot.get("last_error_code"), snapshot.get("last_error"),
+                    snapshot.get("attempt_count"), snapshot.get("round_attempt_count"), snapshot.get("last_attempt_at"),
+                    snapshot.get("next_retry_at"));
             aggregate(eventNo, now);
         });
     }
@@ -416,9 +425,17 @@ public final class JdbcOutboxStore implements OutboxStore {
     /** Reject an unrelated active transaction: synchronization alone does not establish atomicity. */
     public void requireSourceTransaction() {
         if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !OutboxTransactions.owns(dataSource)
                 || !TransactionSynchronizationManager.hasResource(dataSource)) {
             throw new IllegalStateException("Outbox publication requires source transaction: " + source());
         }
+        var holder = (org.springframework.jdbc.datasource.ConnectionHolder)
+                TransactionSynchronizationManager.getResource(dataSource);
+        try {
+            if (holder == null || holder.getConnection().getAutoCommit()) {
+                throw new IllegalStateException("Outbox source connection is not transactional");
+            }
+        } catch (SQLException ex) { throw new IllegalStateException("Cannot verify source transaction", ex); }
     }
 
     private String fingerprint(OutboxEnvelope e) {

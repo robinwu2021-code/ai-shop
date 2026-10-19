@@ -22,6 +22,12 @@ class OutboxMaintenanceTest extends OutboxTestFixture {
         assertThat(((Number)row.get("round_attempt_count")).intValue()).isZero();
         assertThat(((Number)row.get("replay_count")).intValue()).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox_operation",Long.class)).isEqualTo(1);
+        var replayed = store.tryClaim(ref,"replay",now,Duration.ofSeconds(120)).orElseThrow();
+        store.complete(replayed,DeliveryResult.sent(),now,RetryPolicy.defaults());
+        var audit = jdbc.queryForMap("SELECT * FROM sys_outbox_operation");
+        assertThat(audit.get("original_error_code")).isEqualTo("REJECTED");
+        assertThat(((Number) audit.get("original_attempt_count")).intValue()).isEqualTo(1);
+
     }
     @Test
     void legacyAdoptionRequiresCompleteReviewedManifestAndOfflineConfirmation() {

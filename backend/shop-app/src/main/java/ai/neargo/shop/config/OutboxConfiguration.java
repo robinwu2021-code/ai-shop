@@ -44,7 +44,8 @@ public class OutboxConfiguration {
             @Qualifier("transactionManager") PlatformTransactionManager platformTx,
             @Qualifier("invDataSource") ObjectProvider<DataSource> inventory,
             @Qualifier("invTransactionManager") ObjectProvider<PlatformTransactionManager> inventoryTx,
-            ObjectProvider<TradeMappers.SubOrderMapper> subOrders) {
+            ObjectProvider<TradeMappers.SubOrderMapper> subOrders,
+            ObjectProvider<PlatformTransactionManager> allTransactionManagers) {
         return () -> {
             props.validate();
             facade.setMaintenance(props.isMaintenance());
@@ -57,6 +58,7 @@ public class OutboxConfiguration {
             if (props.unified("PLATFORM") && env.getProperty("shop.outbox.legacy-scan.enabled", Boolean.class, false)) {
                 throw new IllegalStateException("Unified outbox cannot enable legacy-scan");
             }
+            allTransactionManagers.orderedStream().forEach(ai.neargo.shop.event.outbox.runtime.OutboxTransactions::register);
             List<OutboxHandler> handlers = consumers.orderedStream().map(consumer -> {
                 boolean inv = "INVENTORY".equals(consumer.targetSource());
                 DataSource ds = inv ? inventory.getObject() : platform;

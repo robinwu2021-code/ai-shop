@@ -84,4 +84,16 @@ class OutboxStoreFlowTest extends OutboxTestFixture {
                 .isEqualTo("FAILED");
         assertThat(jdbc.queryForObject("SELECT attempt_count FROM sys_outbox_delivery",Integer.class)).isEqualTo(10);
     }
+    @Test
+    void readBoundAutocommitConnectionIsNotSourceTransaction() {
+        var other = new DriverManagerDataSource("jdbc:h2:mem:" + UUID.randomUUID(), "sa", "");
+        var otherTx = new TransactionTemplate(new DataSourceTransactionManager(other));
+        otherTx.executeWithoutResult(status -> {
+            jdbc.queryForObject("SELECT 1", Integer.class);
+            assertThatThrownBy(() -> store.append(event("WRONG", "{}"), Map.of("a", false), false))
+                    .isInstanceOf(IllegalStateException.class);
+            status.setRollbackOnly();
+        });
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox", Long.class)).isZero();
+    }
 }

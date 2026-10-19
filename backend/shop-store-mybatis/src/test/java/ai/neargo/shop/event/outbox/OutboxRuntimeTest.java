@@ -57,4 +57,41 @@ class OutboxRuntimeTest extends OutboxTestFixture {
                     .isEqualTo("FAILED");
         }
     }
+    @Test
+    void disabledRunnerIgnoresCommitAndReplaySignals() throws Exception {
+        var called = new java.util.concurrent.CountDownLatch(1);
+        var facade = new UnifiedOutboxFacade(new ObjectMapper());
+        facade.register(store, List.of(new OutboxHandler() {
+            public String handlerId() { return "a"; }
+            public boolean supports(String type) { return true; }
+            public DeliveryResult handle(OutboxEnvelope e) { called.countDown(); return DeliveryResult.sent(); }
+        }));
+        try (var runner = new OutboxRunner(facade, Clock.fixed(now, ZoneOffset.UTC), 1, 10)) {
+            append("E1");
+            facade.signal("PLATFORM");
+            assertThat(called.await(250, java.util.concurrent.TimeUnit.MILLISECONDS)).isFalse();
+            assertThat(store.counts().get("PENDING")).isEqualTo(2L);
+            runner.start();
+            assertThat(called.await(2, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+        }
+    }
+
+    @Test
+    void rawBridgeFailureRecordsCauseAndRetryInsteadOfWaitingForLeaseExpiry() throws Exception {
+        tx.executeWithoutResult(s -> store.append(event("BRIDGE", "{}"), java.util.Map.of("bridge", false), false));
+        var facade = new UnifiedOutboxFacade(new ObjectMapper());
+        facade.register(store, List.of(new OutboxHandler() {
+            public String handlerId() { return "bridge"; }
+            public boolean supports(String type) { return true; }
+            public DeliveryResult handle(OutboxEnvelope e) { throw new org.springframework.dao.DataAccessResourceFailureException("offline"); }
+        }));
+        try (var runner = new OutboxRunner(facade, Clock.fixed(now, ZoneOffset.UTC), 1, 10)) {
+            runner.recoverDue();
+            assertThat(runner.awaitIdle(Duration.ofSeconds(2))).isTrue();
+            var row = jdbc.queryForMap("SELECT * FROM sys_outbox_delivery");
+            assertThat(row.get("status")).isEqualTo("PENDING");
+            assertThat(row.get("last_error_code")).isEqualTo("TARGET_UNAVAILABLE");
+            assertThat(row.get("next_retry_at")).isNotNull();
+        }
+    }
 }

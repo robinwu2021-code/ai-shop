@@ -29,6 +29,8 @@ public final class OutboxRunner implements AutoCloseable {
     private final AtomicBoolean scanning = new AtomicBoolean();
     private final AtomicInteger firstSource = new AtomicInteger();
     private final AtomicBoolean stopped = new AtomicBoolean();
+    private final AtomicBoolean started = new AtomicBoolean();
+    private final AtomicBoolean scanQueued = new AtomicBoolean();
     private ScheduledFuture<?> recovery;
     private final Duration recoveryInterval;
     private final Duration leaseDuration;
@@ -62,14 +64,18 @@ public final class OutboxRunner implements AutoCloseable {
 
     /** Explicit lifecycle scheduling works without worker profile or the business job switch. */
     public void start() {
+        if (stopped.get() || !started.compareAndSet(false, true)) { return; }
         recovery = scheduler.scheduleWithFixedDelay(this::recoverDue, recoveryInterval);
         recoverDue();
     }
 
     public void signal(String source) {
-        if (!stopped.get()) {
-            try { scheduler.execute(this::recoverDue); }
-            catch (RuntimeException ignored) { /* periodic recovery will retry */ }
+        if (started.get() && !stopped.get() && scanQueued.compareAndSet(false, true)) {
+            try { scheduler.execute(() -> {
+                scanQueued.set(false);
+                recoverDue();
+            }); }
+            catch (RuntimeException ignored) { scanQueued.set(false); /* periodic recovery will retry */ }
         }
     }
 
@@ -110,10 +116,22 @@ public final class OutboxRunner implements AutoCloseable {
             }, clock.instant().plus(heartbeatInterval), heartbeatInterval);
             try {
                 var handler = facade.handler(ref.source(), c.handlerId());
-                DeliveryResult result = handler == null ? DeliveryResult.failed("NO_HANDLER", "Handler not registered")
-                         : OutboxLease.withCheck(() -> leaseValid.get()
-                                && store.renew(c, clock.instant(), leaseDuration),
-                                () -> handler.handle(c.event()));
+                DeliveryResult result;
+                try {
+                    result = handler == null ? DeliveryResult.failed("NO_HANDLER", "Handler not registered")
+                            : OutboxLease.withCheck(() -> leaseValid.get()
+                                && store.renew(c, clock.instant(), leaseDuration), () -> handler.handle(c.event()));
+                } catch (ai.neargo.shop.event.outbox.OutboxSourceConflictException ex) {
+                    result = DeliveryResult.failed("SOURCE_EVENT_CONFLICT", "Source identity has conflicting content");
+                } catch (org.springframework.dao.DataAccessException ex) {
+                    result = DeliveryResult.retry("TARGET_UNAVAILABLE", ex.getClass().getSimpleName());
+                } catch (ai.neargo.shop.event.outbox.RetryableOutboxException ex) {
+                    result = DeliveryResult.retry("CHANNEL_RETRYABLE", ex.getClass().getSimpleName());
+                } catch (RuntimeException ex) {
+                    result = handler != null && handler.externalWorkflow()
+                            ? DeliveryResult.unknown(ex.getClass().getSimpleName())
+                            : DeliveryResult.retry("HANDLER_FAILED", ex.getClass().getSimpleName());
+                }
                 if (leaseValid.get() && store.complete(c, result, clock.instant(), retryPolicy)) {
                     if (result.kind() == DeliveryResult.Kind.RETRYABLE) {
                         retryPolicy.retryDelay(c.roundAttemptCount()).ifPresent(delay ->

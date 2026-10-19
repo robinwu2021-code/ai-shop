@@ -233,7 +233,7 @@ P2、P3 作为同一可切换平台版本交付，不能让新记录在没有运
 - 每个任务先写能复现缺口的最小测试，确认失败后实现并定向验证；不做并发压测、不跑全量场景集。数据库认领的交错操作用两个可控连接顺序推进，不依赖随机并发。
 - 执行命令从 backend/ 运行，使用 JDK 21。公共命令模板为 `mvn -pl <模块> -am test -Dtest=<类名> -Dsurefire.failIfNoSpecifiedTests=false`；只选择本任务列出的类。最终执行 `mvn -pl shop-app -am -DskipTests package` 检查整条后端依赖链编译。
 - 真数据库验证使用单独临时库及测试凭据，不能写生产库；若当前环境无可用实例，列为未完成验证，不能用 H2 通过替代。
-- 新增平台迁移暂定 V425__outbox_delivery.sql、库存迁移暂定 V9__outbox_delivery.sql；写入前再次确认版本未被其他任务占用。变更须同步 schema-test.sql 与 inventory-h2 测试 schema。
+- 新增平台迁移暂定 V471__outbox_delivery.sql、库存迁移暂定 V10__outbox_delivery.sql；写入前再次确认版本未被其他任务占用。变更须同步 schema-test.sql 与 inventory-h2 测试 schema。
 - 日志不输出敏感载荷。所有 source 枚举、handler ID 和新 SQL 表名来自注册配置/固定适配器，不允许 API 参数直接拼接表名。
 
 #### 审查重点
