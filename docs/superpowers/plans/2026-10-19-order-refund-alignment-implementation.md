@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans，按任务顺序执行并以复核证据更新勾选项。本计划不授权自动委派子代理。
 
-**Goal:** 统一现金、积分和零现金退款的结清协议，在保持现有全额退款能力的基础上，分阶段开放商品级部分退款及全积分结算。
+**Goal（2026-10-19 用户收敛）:** 统一现金、积分和零现金整单退款的结清及恢复，只支持现有商家子单全额退款；屏蔽部分退款，不实施 M2/M3 的部分退款扩展。
 
 **Architecture:** 复用四台业务状态机、既有退款执行和原号恢复协议。新增结清判定、持久权益义务及商品闭合模型；外部资金调用保持事务外，凭据回写后重新评估售后和订单终态。
 
@@ -28,6 +28,10 @@
 3. 商品取消与最后收货并发：T4 验证订单级串行和数量闭合。
 4. 全积分分母为零、连续部分退及舍入：T5 验证不会首次全退结算。
 5. 多店券影响集、旧执行及缺快照：T2/T3/T6 验证不提前退券、不误切协议。
+
+## 本轮范围裁决
+
+用户于执行中明确“屏蔽掉部分退款的分支，只支持整单退款”。因此 T4/T5 保留研究记录与待评审附录，不编码、不分配迁移、不开放入口。T6/T7 只验收 M1 对应契约和兼容恢复；真实资金认证、生产历史盘点及发布不算本地已完成。T8 仅交付接缝设计和独立子计划，不重复实施其他工作区的储值项目。实现与流程真源见 [M1 流程与契约](../../technical/订单退款结清-M1流程与契约.md)。
 
 ## 里程碑与依赖
 
@@ -99,7 +103,7 @@ T4/T5 涉及新数据库和 SPI 结构，先完成任务内契约设计子步骤
 - [x] 将 PREPARATION_NOT_STARTED_REFUND、COMPENSATED_CLOSE 纳入迁移表及不变式；保留未备货买家入口既有授权，不误删合法退款例外。
 - [x] 验证旧执行重放、线下未知原路退款阻断、终态幂等；提交：`feat: align refund terminal events with settlement proof`。
 
-## T4：商品数量、不可变批准决定与部分退款
+## T4：商品数量、不可变批准决定与部分退款（已延期，不属本轮实施）
 
 **Modify:** `backend/shop-core/src/main/java/ai/neargo/shop/trade/order/refund/model/RefundPlan.java`、`RefundLine.java`、`service/RefundLedger.java`、`service/impl/RefundPreparationServiceImpl.java`、`RefundResultServiceImpl.java`；`order/mapper/RefundLedgerMapper.java`、`ShipmentMapper.java`；`AfterSaleServiceImpl.java`；现有发货/收货/核销调用点按引用定位。
 
@@ -114,7 +118,7 @@ T4/T5 涉及新数据库和 SPI 结构，先完成任务内契约设计子步骤
 - [ ] 先在影子计算中比较新旧结果，核对差异后对有快照、通道支持、客户端可表达的订单开放部分退款；其余保持一期全退约束。
 - [ ] 运行 MySQL 原生并发与容量验收；提交：`feat: close orders by goods quantities and approved refunds`。
 
-## T5：全积分部分退款与结算基数版本化
+## T5：全积分部分退款与结算基数版本化（已延期，不属本轮实施）
 
 **Modify:** `backend/shop-base/src/main/java/ai/neargo/shop/spi/settle/SettlePort.java`；`backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/settle/refund/PreparedRefundShares.java`、`DefaultSettlementRefundPolicy.java`、`impl/CashRefundSplitServiceImpl.java`；商品退款→结算及积分准备的调用点。
 
@@ -134,21 +138,21 @@ T4/T5 涉及新数据库和 SPI 结构，先完成任务内契约设计子步骤
 
 **Interfaces:** 在既有业务状态之外新增结清进度投影，分别返回现金结果、权益结果和资源恢复状态；原 refundProgress 保持现金语义。三端仅消费服务端允许动作，不凭进度自行推导权限。
 
-- [ ] 冻结字段与枚举契约，兼容旧端；补现金成功权益处理中、零现金权益完成、需人工核对的展示用例，避免显示“等待现金到账”。
-- [ ] 更新三端和词条；库存恢复待办仅向有权限的商家/运营展示，消费者不暴露内部资金池或账务实现。
-- [ ] 生成只读历史差异清单：订单状态、现金凭据、商品数量、权益义务、结算差异；缺证据不自动改状态，不批量将 REFUNDED 改回。
-- [ ] 按每一条状态迁移建立文档→代码→测试索引，流程图明确标注已实现/未实现；通过契约检查后提交：`feat: expose refund closure progress across clients`。
+- [x] 冻结字段与枚举契约，兼容旧端；补现金成功权益处理中、零现金权益完成、需人工核对的展示用例，避免显示“等待现金到账”。
+- [x] 更新三端和词条；库存恢复待办仅向有权限的商家/运营展示，消费者不暴露内部资金池或账务实现。
+- [ ] 生成生产只读历史差异清单（已交付并用合成MySQL夹具验证 backend/scripts/refund-closure-audit.sql；未连接生产）：订单状态、现金凭据、商品数量、权益义务、结算差异；缺证据不自动改状态，不批量将 REFUNDED 改回。
+- [x] 按本轮M1每一条变更的状态迁移建立文档→代码→测试索引，流程图明确标注已实现/未实现；通过契约检查后提交：`feat: expose refund closure progress across clients`。
 
 ## T7：发布门禁与兼容恢复
 
 **Files:** 本计划执行记录、新迁移及仓库现行发布流程；不创建绕过现有部署锁的脚本。
 
-- [ ] 按任务运行定向测试；Java 场景命令模板：在 backend 执行 `mvn -pl shop-app -am -Dtest=AfterSaleRefundExecutionTest,PointsOrderRefundStageTest -Dsurefire.failIfNoSpecifiedTests=false test`。其余 T0–T6 用各任务列出的测试类替换列表；纯策略测试使用 `-pl shop-core -am`，结算策略使用 `-pl pay/pay-domain -am`。新增测试未实现前不声称命令已通过。
-- [ ] 三端使用各 package.json 中现有脚本执行相关测试、类型检查；不安装新测试框架。归档命令、退出码及报告，既有失败与新增失败分别记录。
+- [x] 按任务运行定向测试（本轮最终67项通过）；Java 场景命令模板：在 backend 执行 `mvn -pl shop-app -am -Dtest=AfterSaleRefundExecutionTest,PointsOrderRefundStageTest -Dsurefire.failIfNoSpecifiedTests=false test`。其余 T0–T6 用各任务列出的测试类替换列表；纯策略测试使用 `-pl shop-core -am`，结算策略使用 `-pl pay/pay-domain -am`。新增测试未实现前不声称命令已通过。
+- [x] 三端使用各 package.json 中现有脚本执行相关测试、类型检查（54项定向通过，扩大范围既有失败单列）；不安装新测试框架。归档命令、退出码及报告，既有失败与新增失败分别记录。
 - [ ] 用 MySQL 验证迁移、唯一键、current read 和并发锁顺序；H2 不能代替原生锁验收。真实资金通道认证单列，不以 stub 通过替代。
 - [ ] 发布前用干净提交产物核对 shop-app/pay-svc SPI 兼容性，采用新增兼容接口后再切调用方；新执行协议开关默认关闭，先验证旧执行恢复。
 - [ ] 逐阶段开放；回退关闭新入口并保留在途查询、义务恢复和新增字段。旧包不能处理新执行版本时，不得直接回旧包，采用兼容修复版本收尾。
-- [ ] 本轮仅计划，不执行提交业务代码或部署；实际实施完成后按用户授权和仓库发布要求记录发布及回滚证据。
+- [x] 用户已授权实现和本地提交；本轮不执行生产部署。后续发布需补齐真实通道、历史核对、干净产物和发布锁证据。
 
 ## T8：储值独立设计及开发子计划
 
@@ -156,12 +160,14 @@ T4/T5 涉及新数据库和 SPI 结构，先完成任务内契约设计子步骤
 
 **Create:** 独立储值接入设计与开发计划；本主计划不预设尚未冻结的 sv 表、HTTP 路由或线上退款能力。
 
-- [ ] 整理已确认/拟议/排除能力矩阵，明确活动归核心、权益归支付的接缝及首期现金/线上限制。
-- [ ] 冻结账户币种/主体、原消费本金赠金分配、预占/确认/释放、退款可退范围及原分配退回规则。
-- [ ] 对已获确认的支付形态设计结清接入：现金与储值分别凭据，部分成功仍处理中；不把积分或现金余额当储值余额。
-- [ ] 形成独立 schema/SPI/API/权限/迁移任务及测试矩阵：最后余额并发预占、重复扣减回执、混合部分成功、退款重放、跨主体/币种拒绝。
+- [x] 整理已确认/拟议/排除能力矩阵，明确活动归核心、权益归支付的接缝及首期现金/线上限制。
+- [x] 冻结账户币种/主体、原消费本金赠金分配、预占/确认/释放、退款可退范围及原分配退回规则。
+- [x] 对已获确认的支付形态设计结清接入：现金与储值分别凭据，部分成功仍处理中；不把积分或现金余额当储值余额。
+- [x] 形成独立 schema/SPI/API/权限/迁移任务及测试矩阵：最后余额并发预占、重复扣减回执、混合部分成功、退款重放、跨主体/币种拒绝。
 - [ ] 完成独立方案审阅后才进入储值实现；M1–M4 验收不能标记储值已上线。
+
+T8 设计交付：[储值接缝](../specs/2026-10-19-stored-value-order-closure-seam.md)、[独立接入子计划](./2026-10-19-stored-value-order-closure-integration.md)。最终 schema/API 评审与储值运行时代码仍由独立项目交付；未决事项没有视为已批准。
 
 ## 执行记录要求
 
-每个任务记录起止 HEAD、改动文件、测试命令和结果、未覆盖边界、迁移/兼容风险及提交号。任务完成后再勾选；失败项不通过删除守卫、改变金额口径或修改失败基线掩盖。计划自审已核对现行一期限制、零现金已有保护、商品闭合、权益恢复、结算和储值分期的依赖；所有实现和验收项目前均未执行。
+每个任务记录起止 HEAD、改动文件、测试命令和结果、未覆盖边界、迁移/兼容风险及提交号。任务完成后再勾选；失败项不通过删除守卫、改变金额口径或修改失败基线掩盖。计划自审已核对现行一期限制、零现金已有保护、商品闭合、权益恢复、结算和储值分期的依赖；执行中已完成部分以勾选及执行记录为准；延期、生产验收与未完成项不因本地实现而视为完成。
