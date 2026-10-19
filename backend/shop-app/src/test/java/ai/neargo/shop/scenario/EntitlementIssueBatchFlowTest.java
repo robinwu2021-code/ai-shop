@@ -53,6 +53,8 @@ class EntitlementIssueBatchFlowTest {
                 new EntitlementIssueAudiencePort.Recipient("U2", false, "NOT_ELIGIBLE"),
                 new EntitlementIssueAudiencePort.Recipient("U3", true, null))));
         var c = new CreateBatch(version, ref); String k = key(); var created = batches.create(scope, c, k);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pay_ent_outbox WHERE aggregate_no=? "
+                + "AND event_type='ENTITLEMENT_BATCH_PREPARED'", Integer.class, created.batchNo())).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_grant WHERE entity_no=? AND status='PREPARED'",
                 Integer.class, scope.entityNo())).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_instance WHERE entity_no=?", Integer.class,

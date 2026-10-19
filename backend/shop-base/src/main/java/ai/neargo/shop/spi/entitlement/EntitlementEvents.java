@@ -4,6 +4,14 @@ package ai.neargo.shop.spi.entitlement;
 public final class EntitlementEvents {
     private EntitlementEvents() { }
 
+    public record EntitlementBatchPrepared(String eventNo, String tenantNo, String batchNo, String entityNo,
+                                           String actorNo, long occurredAt) implements PayEntitlementEvent {
+        @Override public int schemaVersion() { return 1; }
+        @Override public String aggregateType() { return "ENTITLEMENT_ISSUE_BATCH"; }
+        @Override public String aggregateId() { return batchNo; }
+        @Override public String eventType() { return "ENTITLEMENT_BATCH_PREPARED"; }
+    }
+
     public record EntitlementGranted(String eventNo, String grantNo, String userNo, String entityNo,
                                      String templateVersionNo, String sourceType, String sourceNo,
                                      long occurredAt) implements PayEntitlementEvent {

@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 18 个权限点 × 240 个受控端点**。
+统计：**6 个角色 × 19 个权限点 × 242 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -29,13 +29,14 @@
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
 | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 3 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
-| `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
+| `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
+| `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
 | `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
 | `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 7 项**：`STORE_ADMIN`、`FINANCE`、`ENT_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE_MANAGE`、`ENT_TEMPLATE_READ`
+**只有 OWNER 能碰的 8 项**：`STORE_ADMIN`、`FINANCE`、`ENT_READ`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`ENT_TEMPLATE_READ`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -314,6 +315,7 @@
 
 ### `ENT_READ`　（OWNER）
 
+- `/biz/entitlement-issue-batches/{batchNo}`
 - `/biz/entitlement-usage`
 - `/biz/entitlements/{instanceNo}`
 
@@ -326,6 +328,10 @@
 
 - `/biz/entitlement-templates/{templateNo}/publish`
 - `/biz/entitlement-templates/{templateNo}/status`
+
+### `ENT_ISSUE`　（OWNER）
+
+- `/biz/entitlement-issue-batches`
 
 ### `ENT_ISSUE_MANAGE`　（OWNER）
 

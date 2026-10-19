@@ -20,6 +20,8 @@ public final class PayEntitlementEventCodec {
     public static PayEntitlementEvent decode(Envelope wire, ObjectMapper json) {
         if (!"MAIN".equals(wire.tenantNo())) throw new IllegalArgumentException("Event tenant is not enabled");
         PayEntitlementEvent event = switch (wire.eventType()) {
+            case "ENTITLEMENT_BATCH_PREPARED" ->
+                    json.readValue(wire.payload(), EntitlementEvents.EntitlementBatchPrepared.class);
             case "ENTITLEMENT_GRANTED" -> json.readValue(wire.payload(), EntitlementEvents.EntitlementGranted.class);
             case "ENTITLEMENT_USED" -> json.readValue(wire.payload(), EntitlementEvents.EntitlementUsed.class);
             case "ENTITLEMENT_USE_REVERSED" ->
@@ -43,7 +45,12 @@ public final class PayEntitlementEventCodec {
                 || event.occurredAt() <= 0) {
             throw new IllegalArgumentException("Entitlement event identity is incomplete");
         }
-        if (event instanceof EntitlementEvents.EntitlementGranted granted) {
+        if (event instanceof EntitlementEvents.EntitlementBatchPrepared prepared) {
+            if (!"MAIN".equals(prepared.tenantNo()) || !id(prepared.batchNo()) || !id(prepared.entityNo())
+                    || !id(prepared.actorNo())) {
+                throw new IllegalArgumentException("Batch prepared identity is incomplete");
+            }
+        } else if (event instanceof EntitlementEvents.EntitlementGranted granted) {
             if (!id(granted.grantNo()) || !id(granted.userNo()) || !id(granted.entityNo())
                     || !id(granted.templateVersionNo()) || !oneOf(granted.sourceType(), "ACTIVITY", "CENTER",
                     "TARGETED", "PAID_ORDER", "RECHARGE" ) || !id(granted.sourceNo()))

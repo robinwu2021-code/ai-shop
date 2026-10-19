@@ -96,6 +96,8 @@ public class PayEntitlementOutboxRelay {
 
     private PayEntitlementEvent decode(PayEntOutbox row) {
         PayEntitlementEvent event = switch (row.getEventType()) {
+            case "ENTITLEMENT_BATCH_PREPARED" ->
+                    json.readValue(row.getPayload(), EntitlementEvents.EntitlementBatchPrepared.class);
             case "ENTITLEMENT_GRANTED" -> json.readValue(row.getPayload(), EntitlementEvents.EntitlementGranted.class);
             case "ENTITLEMENT_USE_REVERSED" ->
                     json.readValue(row.getPayload(), EntitlementEvents.EntitlementUseReversed.class);

@@ -12,6 +12,8 @@ import ai.neargo.shop.pay.entitlement.policy.PayEntitlementFeatureGate;
 import ai.neargo.shop.pay.entitlement.port.BatchGrantSourcePortImpl;
 import ai.neargo.shop.pay.mapper.entitlement.EntIssueBatchMapper;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.shop.spi.entitlement.EntitlementEvents.EntitlementBatchPrepared;
+import ai.neargo.shop.pay.entitlement.event.PayEntitlementEventPublisher;
 import ai.neargo.shop.spi.entitlement.EntitlementGrantPort.GrantDecision;
 import ai.neargo.shop.spi.entitlement.EntitlementGrantPort.State;
 import java.time.LocalDateTime;
@@ -32,9 +34,12 @@ public class EntitlementIssueBatchWriter {
     private final EntitlementCommandDeduplicator commands;
     private final PayEntitlementFeatureGate features;
     private final ObjectMapper json;
+    private final PayEntitlementEventPublisher events;
     public EntitlementIssueBatchWriter(EntIssueBatchMapper batches, EntitlementGrantService grants,
-            EntitlementCommandDeduplicator commands, PayEntitlementFeatureGate features, ObjectMapper json) {
-        this.batches = batches; this.grants = grants; this.commands = commands; this.features = features; this.json = json;
+            EntitlementCommandDeduplicator commands, PayEntitlementFeatureGate features, ObjectMapper json,
+            PayEntitlementEventPublisher events) {
+        this.batches = batches; this.grants = grants; this.commands = commands; this.features = features;
+        this.json = json; this.events = events;
     }
     @Transactional("payTxManager")
     public BatchView create(CatalogScope scope, CreateBatch c, String key, String no, BatchSnapshot snapshot) {
@@ -60,6 +65,9 @@ public class EntitlementIssueBatchWriter {
                     throw BizException.of(ErrorCode.CONFLICT);
                 }
             }
+            String eventNo = "BP" + EntitlementGrantWriter.digest(no).substring(0, 60);
+            events.publish(new EntitlementBatchPrepared(eventNo, scope.tenantNo(), no, scope.entityNo(),
+                    scope.actorNo(), snapshot.createdAt().toEpochMilli()));
             return view(row);
         });
     }
