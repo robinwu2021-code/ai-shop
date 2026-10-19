@@ -2,6 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
+import ai.neargo.shop.support.CashReceiptFixture;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,8 +32,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @ActiveProfiles("test")
 class M8MessageFlowTest {
-
-    private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
@@ -342,11 +341,12 @@ class M8MessageFlowTest {
                         .header("Idempotency-Key", idemKey)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey
-                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        assertThat(payOrderNo).isNotBlank();
+        new CashReceiptFixture(context).pay(token, payOrderNo);
     }
 
     private String loginAsOwnerOf(String merchantNo, String phone) throws Exception {
