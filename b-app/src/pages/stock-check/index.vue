@@ -227,6 +227,12 @@ const hasDiff = computed(() =>
 const filledCount = computed(() =>
   Object.values(counted.value).filter((v) => v !== "").length,
 );
+const unfilledCount = computed(() => doc.value ? Math.max(0, doc.value.lines.length - filledCount.value) : 0);
+const overdue = computed(() => {
+  if (!doc.value?.startedAt) return false;
+  const started = Date.parse(doc.value.startedAt);
+  return Number.isFinite(started) && Date.now() - started >= 24 * 60 * 60 * 1000;
+});
 
 /**
  * 作废这张单 —— 「开错了怎么办」的答案。
@@ -262,7 +268,7 @@ async function voidDoc() {
 }
 
 async function submit() {
-  if (!doc.value || !filledCount.value) return;
+  if (!doc.value || !filledCount.value || unfilledCount.value > 0) return;
   const ok = await confirm({
     title: String(t("stockCheck.confirmTitle")),
     hint: String(t("stockCheck.confirmBody", { n: totalDiff.value })),
@@ -381,6 +387,8 @@ function at(iso?: string): string {
         </view>
         <text class="txt-caption">{{ $t("stockCheck.lockedAt", { at: at(doc.startedAt) }) }}</text>
         <text class="sh-hint sh-mt-sm">{{ $t("stockCheck.cutoffHint") }}</text>
+        <text v-if="overdue" class="sh-hint overdue sh-mt-sm">{{ $t("stockCheck.overdueHint") }}</text>
+        <text class="txt-caption sh-mt-sm">{{ $t("stockCheck.unfilled", { n: unfilledCount }) }}</text>
 
         <!--
           连续扫码贴在单据头下面，不进底部动作条：底下那枚是「提交并过账」，
@@ -472,10 +480,10 @@ function at(iso?: string): string {
       <sh-actionbar :pad="200">
         <view
           class="sh-btn"
-          :class="{ 'sh-btn--muted': !filledCount || busy }"
+          :class="{ 'sh-btn--muted': unfilledCount > 0 || busy }"
           @tap="submit"
         >
-          {{ $t("stockCheck.submit") }}
+          {{ unfilledCount > 0 ? $t("stockCheck.submitRemaining", { n: unfilledCount }) : $t("stockCheck.submit") }}
         </view>
       </sh-actionbar>
     </template>
@@ -517,5 +525,8 @@ function at(iso?: string): string {
 }
 .hint {
   padding: 0 4rpx;
+}
+.overdue {
+  color: var(--sh-danger, #b42318);
 }
 </style>
