@@ -2,6 +2,7 @@ package ai.neargo.shop.portal.biz;
 
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.service.InventoryOrderTraceService;
 import ai.neargo.shop.invbridge.InventoryTraceSyncProjection;
 import ai.neargo.shop.trade.dto.OrderVO;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 /** Merchant-safe read projection for the inventory chain attached to one authorized sub-order. */
 @Profile("api")
 @RestController
+@ConditionalOnInventory
 public class BizOrderInventoryTraceController {
     private final MerchantOrderService orders;
     private final InventoryTraceSyncProjection inventory;

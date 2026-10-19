@@ -790,8 +790,6 @@ export default {
     inventoryIssued: "已出库",
     inventoryReturn: "退货验收入库",
     inventorySync: "库存同步事件",
-    inventorySyncStatus: "同步状态",
-    inventorySyncMode: "Outbox来源",
     inventorySyncStatusValue: { COMPLETED: "已同步", PENDING: "同步中", FAILED: "同步失败", WARNING: "完成但有告警", SKIPPED: "已跳过", ARCHIVED: "仅归档" },
     inventorySyncModeValue: { UNIFIED: "统一Outbox", LEGACY: "旧版Outbox" },
     inventorySyncSourceValue: { PLATFORM: "平台库存同步" },
@@ -1648,7 +1646,6 @@ export default {
     allTab: "全部售后",
 
     fullCash: "本期按本门店子单全额原路退回现金",
-    restock: "退货可再次销售，同意回库（默认不回库）",
     accepted: "已提交，请查看退款进度",
     execution: {
       processing: "退款已受理，等待资金结果",
@@ -1685,8 +1682,6 @@ export default {
     closedHint: "售后已关闭。",
     donePointsHint: "已按约定折 {n} 积分退回买家，这一单结束了。",
     waitReceiptHint: "货在途。买家签收后请确认退款。",
-    approveAmount: "退款金额",
-    amountInvalid: "退款金额需大于 0 且不超过实付",
     stage: {
       NOT_PREPARED: "未备货",
       PREPARING: "备货中",
@@ -2982,7 +2977,6 @@ entryHint: "谁在买 · 谁不来了",
   },
   stockDetail: {
     title: "库存明细",
-    onHand: "实存",
     reserved: "预留",
     available: "可用",
     idLine: "条码 {barcode}　货号 {code}　单位 {uom}",

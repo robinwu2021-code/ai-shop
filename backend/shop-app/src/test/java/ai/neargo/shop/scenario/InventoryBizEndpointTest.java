@@ -406,20 +406,21 @@ class InventoryBizEndpointTest {
         Shop s = shop();
         int book = onHand(s, s.itemA);
 
-        // ① 开单。b-app：http.post(path, { itemIds })
+        // ① 开单时锁定账面快照；盘点完成前，实物出库必须暂缓。
         String no = okText(post("/biz/inventory/counts")
                 .content("{\"itemIds\":[\"" + s.itemA + "\"]}"), s.token);
 
-        /*
-         * ② 开单之后**再卖掉一件**。账面数必须还是开单那一刻的数 ——
-         * 拿当前余额顶替的话，这一件会被算成盘亏，凭空多出一笔损失。
-         */
+        // ② 建出库单后在过账边界拒绝实物变动，库存和盘点快照都保持一致。
         String outNo = okText(post("/biz/inventory/outbounds").content("""
                 {"purpose":"SCRAP","reasonCode":"BROKEN","occurredAt":"2026-08-26T00:00:00",
                  "lines":[{"itemId":"%s","qty":1,"uom":"袋"}]}
                 """.formatted(s.itemA)), s.token);
-        ok(post("/biz/inventory/outbounds/" + outNo + "/post"), s.token);
-        assertThat(onHand(s, s.itemA)).as("当前余额已经少一件").isEqualTo(book - 1);
+        String blocked = mvc().perform(post("/biz/inventory/outbounds/" + outNo + "/post")
+                        .header("Authorization", "Bearer " + s.token))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(blocked).get("code").asInt())
+                .as("盘点期间冻结该库位的实物出库").isEqualTo(10409);
+        assertThat(onHand(s, s.itemA)).isEqualTo(book);
 
         JsonNode doc = ok(get("/biz/inventory/counts/" + no), s.token);
         for (String f : List.of("countNo", "status", "locationId", "startedAt", "operator", "lines")) {
@@ -430,39 +431,27 @@ class InventoryBizEndpointTest {
                 "bookQty", "countedQty", "diffQty", "reasonCode")) {
             assertThat(line.has(f)).as("StockCountLine 读 %s", f).isTrue();
         }
-        assertThat(line.get("bookQty").asInt())
-                .as("**账面数是开单那一刻的快照** —— 等于当前余额就说明它是现算的，"
-                        + "中间卖掉的那一件会被记成盘亏")
-                .isEqualTo(book);
+        assertThat(line.get("bookQty").asInt()).as("账面数在开单时锁定").isEqualTo(book);
         assertThat(line.get("countedQty").isNull())
-                .as("还没盘的是 null 不是 0 —— 0 的意思是「盘了，一件不差」")
-                .isTrue();
+                .as("还没盘的是 null 不是 0").isTrue();
 
-        // ③ 填数。**裸数组**，与 b-app 的 http.put(path, lines) 一致
+        // ③ 裸数组与 b-app 的 http.put(path, lines) 一致。
         ok(put("/biz/inventory/counts/" + no + "/lines")
                 .content("[{\"itemId\":\"" + s.itemA + "\",\"countedQty\":" + (book - 3)
                         + ",\"reasonCode\":\"BROKEN\"}]"), s.token);
-
         JsonNode filled = ok(get("/biz/inventory/counts/" + no), s.token);
-        assertThat(filled.get("lines").get(0).get("countedQty").asInt())
-                .as("裸数组没被解成空列表 —— 解错了这里还是 null，而过账会什么都不做")
-                .isEqualTo(book - 3);
+        assertThat(filled.get("lines").get(0).get("countedQty").asInt()).isEqualTo(book - 3);
 
-        /*
-         * ④ 过账。**按差异过账，不是覆盖成实盘数** —— 这两者只在
-         * 「盘的过程中没动过」时才相同，而这一条正是它们分开的场景：
-         *   账面 10、实盘 7 → 差异 −3；期间卖掉 1，当前是 9；过账后 9 − 3 = 6。
-         * 覆盖成 7 的话，那笔卖出会被盘点悄悄吃掉 —— 卖了却没扣。
-         */
+        // ④ 按盘点差异过账后，恢复普通实物出库。
         ok(post("/biz/inventory/counts/" + no + "/post"), s.token);
-        assertThat(onHand(s, s.itemA))
-                .as("过账按差异走：当前 %d 加上差异 −3。覆盖成实盘数会把期间那笔卖出吃掉", book - 1)
-                .isEqualTo(book - 1 - 3);
+        assertThat(onHand(s, s.itemA)).as("只记实盘差异 -3").isEqualTo(book - 3);
+        ok(post("/biz/inventory/outbounds/" + outNo + "/post"), s.token);
+        assertThat(onHand(s, s.itemA)).as("盘点完成后出库恢复").isEqualTo(book - 4);
     }
 
 
     @Test
-    @DisplayName("★★★ 一个库位同时只许开一张盘点单 —— 第二张会把期间的销售当成盘亏再扣一遍")
+    @DisplayName("★★★ 一个库位同时只许开一张盘点单 —— 盘点过账前冻结实物出库")
     void secondOpenCountIsRefused() throws Exception {
         Shop s = shop();
 
@@ -470,9 +459,8 @@ class InventoryBizEndpointTest {
                 .content("{\"itemIds\":[\"" + s.itemA + "\"]}"), s.token);
 
         /*
-         * 第二张必须开不出来。**这不是洁癖**：账面数是开单那一刻锁的，
-         * 两张单锁的是两个时刻的数 —— 先开那张过账时，会把这中间卖掉的量
-         * 当成盘亏再扣一遍，账朝一个方向错且不报错。
+         * 第二张必须开不出来：一个库位同一时刻只能有一个盘点截止点，避免两张盘点单
+         * 对同一批库存分别调整。
          */
         String body = mvc().perform(post("/biz/inventory/counts")
                         .header("Authorization", "Bearer " + s.token)
@@ -495,17 +483,14 @@ class InventoryBizEndpointTest {
                 .contains(first);
 
         /*
-         * **退路要通**：拦的是「同时两张」，不是「这辈子只许一张」。
-         * 把前一张过账掉就又开得出来 —— 而一件都没填的单过账是**空操作**
-         * （`post` 跳过 `diff == null` 的行），库存一件不动。
-         *
-         * ⚠️ 顺带记下来：**盘点单今天没有作废入口**（调拨在 INV-W15 补了，盘点没有）。
-         * 于是「开错了想扔掉」这条路只能走「过账一张空单」。这道闸让那件事从
-         * 「反正还能再开一张」变成了「必须处理掉」，所以作废入口该补 —— 另开一件事。
+         * 退路要通：拦的是「同时两张」，不是「这辈子只许一张」。盘点必须录入实盘数，
+         * 这里用原账面数确认零差异盘点可过账，完成后还能再开下一张。
          */
         int before = onHand(s, s.itemA);
+        ok(put("/biz/inventory/counts/" + first + "/lines")
+                .content("[{\"itemId\":\"" + s.itemA + "\",\"countedQty\":" + before + "}]"), s.token);
         ok(post("/biz/inventory/counts/" + first + "/post"), s.token);
-        assertThat(onHand(s, s.itemA)).as("一件没填的单过账是空操作，库存不该动").isEqualTo(before);
+        assertThat(onHand(s, s.itemA)).as("实盘与账面相同，过账不改库存").isEqualTo(before);
 
         String second = okText(post("/biz/inventory/counts")
                 .content("{\"itemIds\":[\"" + s.itemA + "\"]}"), s.token);
@@ -541,6 +526,8 @@ class InventoryBizEndpointTest {
          * **已过账的不给作废。** 那时盘盈／盘亏单已经落账、余额已经改了 ——
          * 把它弄回去是「反向再盘一次」，不是作废。与调拨拒绝已发出的是同一条道理。
          */
+        ok(put("/biz/inventory/counts/" + again + "/lines")
+                .content("[{\"itemId\":\"" + s.itemA + "\",\"countedQty\":" + before + "}]"), s.token);
         ok(post("/biz/inventory/counts/" + again + "/post"), s.token);
         String body = mvc().perform(post("/biz/inventory/counts/" + again + "/void")
                         .header("Authorization", "Bearer " + s.token))

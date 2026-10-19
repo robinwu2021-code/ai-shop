@@ -2,6 +2,7 @@ package ai.neargo.shop.invbridge;
 
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.inventory.config.ConditionalOnInventory;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.ReservationService;
@@ -41,6 +42,7 @@ import tools.jackson.core.type.TypeReference;
  * 否则双写期结束时对差是干净的，而干净的原因是「漏的那些根本没记」。
  */
 @Component
+@ConditionalOnInventory
 public class InventoryMirrorConsumer implements OutboxConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(InventoryMirrorConsumer.class);

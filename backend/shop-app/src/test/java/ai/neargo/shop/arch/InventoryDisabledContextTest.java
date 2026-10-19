@@ -1,5 +1,9 @@
 package ai.neargo.shop.arch;
 
+import ai.neargo.shop.inventory.service.StockCountService;
+import ai.neargo.shop.invbridge.InventoryMirrorConsumer;
+import ai.neargo.shop.invbridge.InventoryTraceSyncProjection;
+import ai.neargo.shop.portal.biz.BizOrderInventoryTraceController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,5 +72,11 @@ class InventoryDisabledContextTest {
         assertThat(ctx.getBeanNamesForType(
                 ai.neargo.shop.inventory.service.OpenApiCredentialService.class))
                 .as("凭证服务同上").isEmpty();
+        assertThat(ctx.getBeanNamesForType(StockCountService.class))
+                .as("库存镜像消费者依赖盘点服务，进销存关闭时也必须一并关闭").isEmpty();
+        assertThat(ctx.getBeanNamesForType(InventoryMirrorConsumer.class)).isEmpty();
+        assertThat(ctx.getBeanNamesForType(InventoryTraceSyncProjection.class)).isEmpty();
+        assertThat(ctx.getBeanNamesForType(BizOrderInventoryTraceController.class))
+                .as("库存追踪接口依赖进销存，功能关闭时不注册").isEmpty();
     }
 }
