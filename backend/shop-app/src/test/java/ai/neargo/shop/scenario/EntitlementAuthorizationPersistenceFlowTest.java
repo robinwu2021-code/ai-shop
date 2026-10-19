@@ -14,6 +14,8 @@ import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
 import ai.neargo.shop.trade.service.EntitlementAuthorizationService;
+import ai.neargo.shop.trade.service.EntitlementServiceAuthorizationService;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.trade.service.EntitlementSourceDecisionService;
 import ai.neargo.shop.trade.service.impl.EntitlementAuthorizationServiceImpl;
 import java.time.Instant;
@@ -47,6 +49,7 @@ class EntitlementAuthorizationPersistenceFlowTest {
     @Autowired private OrderItemMapper itemMapper;
     @Autowired private ObjectMapper json;
     @Autowired private EntitlementAuthorizationProperties properties;
+    @Autowired private ObjectProvider<EntitlementServiceAuthorizationService> serviceAuthorizations;
     private String orderNo;
     private String subOrderNo;
     private String userNo;
@@ -87,7 +90,7 @@ class EntitlementAuthorizationPersistenceFlowTest {
         var command = new AuthorizationCommand(0, quote, "a".repeat(64), "EA-REQUEST-1");
         var first = authorization.confirm("MAIN", userNo, orderNo, command);
         var restartedService = new EntitlementAuthorizationServiceImpl(authorizationMapper, orderMapper,
-                subOrderMapper, itemMapper, json, properties);
+                subOrderMapper, itemMapper, json, properties, serviceAuthorizations);
         var replay = restartedService.confirm("MAIN", userNo, orderNo, command);
         assertThat(replay).isEqualTo(first);
         var context = new EntitlementContext("MAIN", "PAY-SERVICE", "EA-CHECK", "b".repeat(64));

@@ -5757,6 +5757,44 @@ CREATE TABLE IF NOT EXISTS pmt_benefit_intent
     CHECK (status IN ('PENDING','COMMIT_DECIDED','ABORT_DECIDED','COMMITTED','ABORTED'))
 );
 
+CREATE TABLE IF NOT EXISTS ord_ent_service_order
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    service_order_no VARCHAR(64) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    context_snapshot TEXT NOT NULL,
+    preview_snapshot TEXT NULL,
+    preview_expires_at DATETIME(3) NULL,
+    command_snapshot TEXT NULL,
+    decision_snapshot TEXT NULL,
+    cancellation_reason VARCHAR(100) NULL,
+    deadline DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_service_order UNIQUE (tenant_no,service_order_no),
+    CONSTRAINT uk_service_operation UNIQUE (tenant_no,operation_no),
+    CONSTRAINT uk_service_request UNIQUE (tenant_no,entity_no,operator_no,request_key_hash),
+    CHECK (status IN ('CREATED','PREVIEWED','AUTHORIZED','PENDING','COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED')),
+    CHECK (status NOT IN ('PREVIEWED','AUTHORIZED','PENDING','COMMIT_DECIDED','COMMITTED') OR (preview_snapshot IS NOT NULL AND preview_expires_at IS NOT NULL)),
+    CHECK (status NOT IN ('PENDING','COMMIT_DECIDED','COMMITTED') OR command_snapshot IS NOT NULL),
+    CHECK ((status IN ('CREATED','PREVIEWED','AUTHORIZED','PENDING') AND decision_snapshot IS NULL) OR (status IN ('COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED') AND decision_snapshot IS NOT NULL))
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),

@@ -11,7 +11,7 @@
 > 与 [B端功能矩阵-按角色](./B端功能矩阵-按角色.md) 的分工：那份是**角色视角**
 > （谁能碰哪些路径），这份是**功能视角**（哪个功能点归哪个码、画在哪一页）。
 
-统计：**19 个权限码 × 6 个角色 × 242 个受控功能点**
+统计：**20 个权限码 × 6 个角色 × 246 个受控功能点**
 （另有 39 个登录即可、1 个「任一权限即可」）。
 
 > ⚠️ 角色列只有 6 个平台预置角色。商家自定义角色（V71 `mch_role`）按主体存库，
@@ -32,9 +32,10 @@
 | `biz:ship` | `SHIP` | 发货、标记自送送达 | 6 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `biz:aftersale` | `AFTERSALE` | 售后同意/驳回/收货 | 5 | ✅ | ✅ | — | — | — | ✅ |
 | `biz:receive` | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `pay:ent:read` | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `biz:order:view` | `ORDER_VIEW` | 订单列表与详情、工作台待办 | 3 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `biz:review` | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
-| `pay:ent:read` | `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
+| `pay:ent:use` | `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
 | `pay:ent:template:write` | `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
 | `pay:ent:template:publish` | `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
 | `pay:ent:issue` | `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
@@ -381,6 +382,17 @@
 | 标记到货 | POST | `/biz/pickup/arrived` | `mMarkArrived` | picking |
 | 分拣单 | GET | `/biz/pickup/picking` | `mPickingList` | picking |
 
+### `pay:ent:read`　查看主体级权益目录，不授予变更能力
+
+**可用角色**：老板
+
+| 功能点 | 方法 | 端点 | 契约方法 | 页面 |
+|---|---|---|---|---|
+| —（b-app 未接） | — | `/biz/entitlement-issue-batches/{}` | — | — |
+| —（b-app 未接） | — | `/biz/entitlement-uses/{}` | — | — |
+| —（b-app 未接） | — | `/biz/entitlement-usage` | — | — |
+| —（b-app 未接） | — | `/biz/entitlements/{}` | — | — |
+
 ### `biz:order:view`　订单列表与详情、工作台待办
 
 **可用角色**：老板、店长、店员、配送员、客服
@@ -401,15 +413,15 @@
 | 申诉差评 | POST | `/biz/review/:reviewNo/appeal` | `mAppealReview` | reviews |
 | 回复评价 | POST | `/biz/review/:reviewNo/reply` | `mReplyReview` | reviews |
 
-### `pay:ent:read`　查看主体级权益目录，不授予变更能力
+### `pay:ent:use`　查看主体级权益目录，不授予变更能力
 
 **可用角色**：老板
 
 | 功能点 | 方法 | 端点 | 契约方法 | 页面 |
 |---|---|---|---|---|
-| —（b-app 未接） | — | `/biz/entitlement-issue-batches/{}` | — | — |
-| —（b-app 未接） | — | `/biz/entitlement-usage` | — | — |
-| —（b-app 未接） | — | `/biz/entitlements/{}` | — | — |
+| —（b-app 未接） | — | `/biz/entitlement-uses/preview` | — | — |
+| —（b-app 未接） | — | `/biz/entitlement-uses` | — | — |
+| —（b-app 未接） | — | `/biz/entitlement-uses/{}/cancel` | — | — |
 
 ### `pay:ent:template:write`　编辑权益草稿，不能发布
 
@@ -557,6 +569,10 @@
 | `/biz/entitlement-templates/{}/publish` | `pay:ent:template:publish` | 老板 |
 | `/biz/entitlement-templates/{}/status` | `pay:ent:template:publish` | 老板 |
 | `/biz/entitlement-usage` | `pay:ent:read` | 老板 |
+| `/biz/entitlement-uses` | `pay:ent:use` | 老板 |
+| `/biz/entitlement-uses/preview` | `pay:ent:use` | 老板 |
+| `/biz/entitlement-uses/{}` | `pay:ent:read` | 老板 |
+| `/biz/entitlement-uses/{}/cancel` | `pay:ent:use` | 老板 |
 | `/biz/entitlements/{}` | `pay:ent:read` | 老板 |
 | `/biz/inventory/export` | `biz:customer` | 老板、店长 |
 | `/biz/marketing-summary` | `biz:campaign` | 老板、店长 |

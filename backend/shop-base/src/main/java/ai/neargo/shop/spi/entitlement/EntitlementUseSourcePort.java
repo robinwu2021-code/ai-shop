@@ -14,7 +14,16 @@ public interface EntitlementUseSourcePort {
     record UseSourceFact(String tenantNo, SourceRef source, String userNo, String entityNo, String storeNo,
                          String currency, List<UseItem> items, String orderSnapshotHash,
                          String storeName, String serviceStaffName, LocalDate serviceDay, long freightMinor,
-                         Map<String, List<String>> categoryRefsByLine, Instant serviceAt) {
+                         Map<String, List<String>> categoryRefsByLine, Instant serviceAt,
+                         String stagedOperationNo) {
+        /** Compatibility for ordinary source owners: only SERVICE_USE currently requires an explicit staged operation. */
+        public UseSourceFact(String tenantNo, SourceRef source, String userNo, String entityNo, String storeNo,
+                String currency, List<UseItem> items, String orderSnapshotHash, String storeName,
+                String serviceStaffName, LocalDate serviceDay, long freightMinor,
+                Map<String, List<String>> categoryRefsByLine, Instant serviceAt) {
+            this(tenantNo, source, userNo, entityNo, storeNo, currency, items, orderSnapshotHash, storeName,
+                    serviceStaffName, serviceDay, freightMinor, categoryRefsByLine, serviceAt, null);
+        }
         public UseSourceFact(String tenantNo, SourceRef source, String userNo, String entityNo, String storeNo,
                 String currency, List<UseItem> items, String orderSnapshotHash, String storeName,
                 String serviceStaffName, LocalDate serviceDay) {
@@ -30,6 +39,7 @@ public interface EntitlementUseSourcePort {
         }
         public UseSourceFact {
             ContractChecks.id(tenantNo);
+            ContractChecks.optionalId(stagedOperationNo);
             ContractChecks.present(source);
             ContractChecks.id(userNo);
             ContractChecks.id(entityNo);

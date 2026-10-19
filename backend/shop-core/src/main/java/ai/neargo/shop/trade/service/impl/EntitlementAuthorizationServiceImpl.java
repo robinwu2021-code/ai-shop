@@ -18,6 +18,8 @@ import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
 import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
 import ai.neargo.shop.trade.service.EntitlementAuthorizationService;
+import ai.neargo.shop.trade.service.EntitlementServiceAuthorizationService;
+import org.springframework.beans.factory.ObjectProvider;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -41,16 +43,18 @@ public class EntitlementAuthorizationServiceImpl implements EntitlementAuthoriza
     private final OrderItemMapper items;
     private final ObjectMapper json;
     private final EntitlementAuthorizationProperties properties;
-
+    private final ObjectProvider<EntitlementServiceAuthorizationService> serviceAuthorizations;
     public EntitlementAuthorizationServiceImpl(EntitlementAuthorizationMapper authorizations, OrderMapper orders,
             SubOrderMapper subOrders, OrderItemMapper items, ObjectMapper json,
-            EntitlementAuthorizationProperties properties) {
+            EntitlementAuthorizationProperties properties,
+            ObjectProvider<EntitlementServiceAuthorizationService> serviceAuthorizations) {
         this.authorizations = authorizations;
         this.orders = orders;
         this.subOrders = subOrders;
         this.items = items;
         this.json = json;
         this.properties = properties;
+        this.serviceAuthorizations = serviceAuthorizations;
     }
 
     @Override
@@ -59,6 +63,11 @@ public class EntitlementAuthorizationServiceImpl implements EntitlementAuthoriza
                                    String selectionDigest, long amountMinor, String currency,
                                    Instant quoteExpiresAt) {
         requireEnabled();
+        if (source != null && "SERVICE_USE".equals(source.sourceType())) {
+            serviceAuthorizations.getObject().stage(tenantNo, orderNo, source, quoteRef, selectionDigest,
+                    amountMinor, currency, quoteExpiresAt);
+            return;
+        }
         validateId(tenantNo); validateId(orderNo); validateId(quoteRef);
         if (source == null || !source.sourceType().contains("USE") || amountMinor < 0
                 || currency == null || !currency.matches("[A-Z]{3}") || !isHash(selectionDigest)
@@ -122,6 +131,8 @@ public class EntitlementAuthorizationServiceImpl implements EntitlementAuthoriza
         requireEnabled();
         if (command == null) throw BizException.of(ErrorCode.BAD_REQUEST);
         validateId(tenantNo); validateId(userNo); validateId(orderNo);
+        var service = serviceAuthorizations.getIfAvailable();
+        if (service != null && service.supports(tenantNo, orderNo)) return service.confirm(tenantNo, userNo, orderNo, command);
         var previous = DataScopeContext.executeWithoutScope(() -> authorizations.selectOne(
                 Wrappers.<OrdEntAuthorization>lambdaQuery().eq(OrdEntAuthorization::getTenantNo, tenantNo)
                         .eq(OrdEntAuthorization::getUserNo, userNo)

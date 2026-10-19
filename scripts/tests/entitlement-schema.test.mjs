@@ -27,10 +27,33 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         for (const owner of ['core', 'pay']) {
             sql(readFileSync(new URL(`../../docs/technical/design/活动权益-${owner}-schema.sql`, import.meta.url), 'utf8'));
         }
-        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '43');
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '44');
         assert.ok(sql("SHOW COLUMNS FROM ent_template LIKE 'draft_snapshot'"), 'template draft needs persisted editable rules');
         sql(readFileSync(new URL('../../docs/technical/design/活动权益-support-schema.sql', import.meta.url), 'utf8'));
-        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '49');
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '50');
+        const serviceMigration = readFileSync(new URL(
+            '../../backend/shop-app/src/main/resources/db/migration/V442__entitlement_service_order.sql', import.meta.url),
+            'utf8');
+        sql('CREATE DATABASE entitlement_service_fixture');
+        sql(serviceMigration, 'entitlement_service_fixture');
+        const serviceColumns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns
+            WHERE table_schema='${database}' AND table_name='ord_ent_service_order' ORDER BY ordinal_position`);
+        assert.equal(serviceColumns('entitlement_service_fixture'), serviceColumns('entitlement_test'));
+        sql(`INSERT INTO ord_ent_service_order(tenant_no,service_order_no,operation_no,entity_no,store_no,user_no,
+            operator_no,request_key_hash,payload_hash,source_snapshot,source_hash,status,context_snapshot,deadline,
+            created_at,updated_at,created_by,updated_by) VALUES ('MAIN','svc1','op1','m1','s1','u1','b1',
+            REPEAT('a',64),REPEAT('b',64),'{}',REPEAT('c',64),'CREATED','{}',UTC_TIMESTAMP(3)+INTERVAL 15 MINUTE,
+            UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'b1','b1')`);
+        assert.throws(() => sql("UPDATE ord_ent_service_order SET status='AUTHORIZED' WHERE service_order_no='svc1'"),
+            /Check constraint/, 'confirmation requires a persisted preview and expiry');
+        sql("UPDATE ord_ent_service_order SET status='AUTHORIZED',preview_snapshot='{}',"
+            + "preview_expires_at=UTC_TIMESTAMP(3)+INTERVAL 10 MINUTE WHERE service_order_no='svc1'");
+        assert.throws(() => sql("UPDATE ord_ent_service_order SET status='PENDING' WHERE service_order_no='svc1'"),
+            /Check constraint/, 'a new pay preparation requires its original frozen command');
+        sql("UPDATE ord_ent_service_order SET status='PENDING',command_snapshot='{}' WHERE service_order_no='svc1'");
+        assert.throws(() => sql("UPDATE ord_ent_service_order SET status='COMMITTED' WHERE service_order_no='svc1'"),
+            /Check constraint/, 'a successful service needs a durable source decision');
+        sql("UPDATE ord_ent_service_order SET status='COMMITTED',decision_snapshot='{}' WHERE service_order_no='svc1'");
         const credentialAudit = "created_at,updated_at,created_by,updated_by";
         sql(`INSERT INTO ent_code_token(tenant_no,token_hash,instance_no,user_no,entity_no,request_key_hash,`
             + `payload_hash,nonce,expires_at,status,${credentialAudit}) VALUES ('MAIN','${'a'.repeat(64)}',`

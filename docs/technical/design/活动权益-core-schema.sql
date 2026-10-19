@@ -336,3 +336,45 @@ CREATE TABLE pmt_benefit_intent (
     KEY ix_benefit_pending (status,updated_at),
     CHECK (status IN ('PENDING','COMMIT_DECIDED','ABORT_DECIDED','COMMITTED','ABORTED'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='活动或领券中心的真实发放来源';
+
+-- V442: actual service redemption source, separate from cash orders.
+-- Dedicated nonmonetary counter-service source; no cash order, settlement income or pay asset balance.
+CREATE TABLE ord_ent_service_order (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '内部主键',
+    tenant_no VARCHAR(32) NOT NULL COMMENT '租户',
+    service_order_no VARCHAR(64) NOT NULL COMMENT '服务核销单',
+    operation_no VARCHAR(64) NOT NULL COMMENT '预先固定的pay操作号',
+    entity_no VARCHAR(64) NOT NULL COMMENT '主体',
+    store_no VARCHAR(64) NOT NULL COMMENT '履约门店',
+    user_no VARCHAR(64) NOT NULL COMMENT '已识别顾客',
+    operator_no VARCHAR(64) NOT NULL COMMENT '原经办人',
+    request_key_hash CHAR(64) NOT NULL COMMENT '经办范围内幂等键摘要',
+    payload_hash CHAR(64) NOT NULL COMMENT '原创建请求摘要，不存明文身份引用',
+    source_snapshot JSON NOT NULL COMMENT '真实服务SKU及数量、发生时间与范围事实',
+    source_hash CHAR(64) NOT NULL COMMENT '不可变源快照摘要',
+    status VARCHAR(24) NOT NULL COMMENT 'CREATED/PREVIEWED/AUTHORIZED/PENDING/COMMIT_DECIDED/CANCEL_DECIDED/COMMITTED/RELEASED',
+    context_snapshot JSON NOT NULL COMMENT '原可信经办上下文',
+    preview_snapshot JSON NULL COMMENT '预览与资产类型、原服务日',
+    preview_expires_at DATETIME(3) NULL COMMENT '本人待确认列表期限，不回收已准备承诺',
+    command_snapshot JSON NULL COMMENT '本人确认后冻结的使用命令',
+    decision_snapshot JSON NULL COMMENT '持久源决定',
+    cancellation_reason VARCHAR(100) NULL COMMENT '核销请求取消原因',
+    deadline DATETIME(3) NOT NULL COMMENT '仅限制新提案，已准备承诺继续恢复',
+    version BIGINT NOT NULL DEFAULT 0 COMMENT '技术行版本，业务源修订固定0',
+    deleted TINYINT NOT NULL DEFAULT 0 COMMENT '来源事实不可删除',
+    created_at DATETIME(3) NOT NULL COMMENT 'UTC',
+    updated_at DATETIME(3) NOT NULL COMMENT 'UTC',
+    created_by VARCHAR(64) NOT NULL COMMENT '操作者',
+    updated_by VARCHAR(64) NOT NULL COMMENT '操作者',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_service_order (tenant_no,service_order_no),
+    UNIQUE KEY uk_service_operation (tenant_no,operation_no),
+    UNIQUE KEY uk_service_request (tenant_no,entity_no,operator_no,request_key_hash),
+    KEY ix_service_recover (status,deadline,id),
+    KEY ix_service_user_pending (tenant_no,user_no,status,preview_expires_at,id),
+    CHECK (status IN ('CREATED','PREVIEWED','AUTHORIZED','PENDING','COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED')),
+    CHECK (status NOT IN ('PREVIEWED','AUTHORIZED','PENDING','COMMIT_DECIDED','COMMITTED') OR (preview_snapshot IS NOT NULL AND preview_expires_at IS NOT NULL)),
+    CHECK (status NOT IN ('PENDING','COMMIT_DECIDED','COMMITTED') OR command_snapshot IS NOT NULL),
+    CHECK ((status IN ('CREATED','PREVIEWED','AUTHORIZED','PENDING') AND decision_snapshot IS NULL)
+        OR (status IN ('COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED') AND decision_snapshot IS NOT NULL))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='核心服务核销业务源，不代表现金订单收入';

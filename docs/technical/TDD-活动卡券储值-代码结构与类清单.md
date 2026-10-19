@@ -400,3 +400,24 @@ EntitlementIssueBatchWriter新增同pay事务的EntitlementBatchPrepared事件�
 PayEntitlementEventCodec与PayEntitlementOutboxRelay补第五个白名单类型。
 EntitlementBatchPreparedConsumer在app paybridge按原批次有界续跑；批次事实Mapper刷新会话缓存，
 避免外层无资源事务同步范围沿用预提交的旧游标。本批无新增迁移。
+
+
+### 第二阶段实际服务核销源类（V442）
+
+| 模块 | 类/接口 | 职责 |
+|---|---|---|
+| core.trade.dto | ServiceOrderCreate、ServiceOrderIdentifiedCreate | 前者接作用域内会员引用；后者仅内部接已由pay验证的定位结果；真实SKU、数量，不信任页面售价 |
+| core.trade.dto | ServiceOrderSnapshot、ServiceUseSubmit | 内部原源/命令/决定快照与提交条件，不能直接作为C响应 |
+| core.trade.entitlement | EntitlementServiceSnapshotPolicy | 原JSON摘要、稳定源/操作编号、业务修订0、提交就绪事实 |
+| core.trade.entitlement.entity / mapper | OrdEntServiceOrder、EntitlementServiceOrderMapper | 新V442核心业务表，含幂等、预览、原命令、源决定、期限与恢复索引 |
+| core.trade.service / impl | EntitlementServiceOrderService/Impl | 校验实际商品/会员/门店，冻结服务事实、绑定预览、核对本人授权、准备原命令、记录提交或取消决定 |
+| core.trade.service / impl | EntitlementServiceAuthorizationService/Impl | 现有C09/OrdEntAuthorization的服务源验证委托；不增加授权模型 |
+| core.trade.entitlement.port | EntitlementUseSourcePortImpl | 按CORE/SERVICE_USE分发给实际服务源；普通订单源保持原校验 |
+| app.paybridge / impl | EntitlementServiceUseCoordinator/Impl | NOT_SUPPORTED编排core和pay；prepare→可信UseFact→核心决定→commit，响应丢失按原号恢复 |
+| app.paybridge.dto | EntitlementServiceViews | C字段白名单、B业务进度投影；WAIT_SUBMIT/EXPIRED不进入支付预占枚举 |
+| app.portal.biz | BizEntitlementUseController | P12/P13/P14与请求取消；独立pay:ent:use权限及门店交集，不扩充经理默认授权 |
+| app.portal.mp | MpEntitlementController | 补C本人待确认列表/详情；项目和余次清晰展示；C09沿原控制器授权 |
+
+EntitlementOrderCoordinatorImpl原操作恢复找不到普通订单链接时路由服务核销协调器；复用UseDecided事件。
+UseSourceFact新增可空stagedOperationNo，由core源所有者提供，pay新prepare核对；旧构造器及旧源null保持兼容。
+消费发生后的余次来自pay真实usage，不从预览推算最终账。实物赠品库存出库尚未接入，该源明确只允许服务SKU。

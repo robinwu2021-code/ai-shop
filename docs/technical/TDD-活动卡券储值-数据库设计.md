@@ -10,7 +10,7 @@
 
 每表id为内部自增主键，tenant_no参与业务唯一性；version条件更新（对外expectedRevision映射此列）；created/updated_at用UTC DATETIME(3)，created/updated_by留操作人。资金/核销事实不可物理删除；模板归档不删除历史。沿现有BaseEntity实际审计列对齐后再生成正式迁移，不借设计重命名所有现存列。
 
-公共字段适用于当前基础43张及6张支撑表（core19/pay30，合计49张；含预览、取消栅栏与订单协调增量），DDL逐表展开：
+公共字段适用于当前基础44张及6张支撑表（core20/pay30，合计50张；含预览、取消栅栏与订单协调增量），DDL逐表展开：
 
 | 字段 | 类型及空值 | 含义 |
 |---|---|---|
@@ -1036,3 +1036,26 @@ pay仅接受ORDER_COUPON原成功使用；CORE/ORDER_REFUND的sourceNo为权威�
 全部子发放准备成功后才确定COMMIT；部分准备失败先确定ABORT，再逐子撤销（含未准备的取消栅栏），
 全部支付终态核实后确认或释放营销占用。COMMIT决定后暂停发行不能反悔已准备的权益承诺。
 当前C主动领取只支持NONE触发的ENTITLEMENT_GRANT活动；订单条件触发仍须真实订单资格owner。
+
+
+### V442：服务核销业务源（已实现）
+
+核心服务新增`ord_ent_service_order`；支付服务继续独占实例、余次、日额度、预占与核销流水。
+服务单独立于`ord_order`现金订单，不能产生`stl_payment`或现金收入事件。字段与约束完整DDL见
+[core模型](./design/活动权益-core-schema.sql)，运行迁移为`V442__entitlement_service_order.sql`。
+
+| 字段组 | 持久事实与约束 |
+|---|---|
+| tenant/entity/store/user/operator | 原租户、门店、消费者、经办人；本人查询由C会话绑定，B写入必须原经办人及有核销权限的门店 |
+| service_order_no/operation_no/request_key_hash | 创建即固定业务源与使用操作；请求按租户/主体/经办人幂等；取消先到亦可建立原操作负栅栏 |
+| payload_hash/source_snapshot/source_hash | 原创建请求仅存摘要；实际在售SERVICE/STORE_VERIFY商品、数量、类目、门店及服务时间不可变；无明文会员引用或兑换码 |
+| preview_snapshot/preview_expires_at | 原实例、预览摘要、版本及资产时区服务日；只存元数据，不预占余次 |
+| command_snapshot/context_snapshot | C确认后冻结原UseCommand与可信上下文；PENDING必须有命令；恢复不重新识别会员、不更换操作 |
+| decision_snapshot/cancellation_reason | USE_COMMIT或USE_CANCEL与UseDecided outbox同一核心事务；终态决定字段必填 |
+| deadline/status/version | 新提案15分钟；技术行版本不改变业务源修订0；已有预占承诺不因超时释放 |
+
+状态依次为CREATED→PREVIEWED→AUTHORIZED→PENDING→COMMIT_DECIDED→COMMITTED；未提交完成可转
+CANCEL_DECIDED→RELEASED。客户端展示WAIT_AUTH、WAIT_SUBMIT、PROCESSING、EXPIRED是业务投影，
+不扩充支付预占状态。授权复用`ord_ent_authorization`和C09，服务源采用专用验证委托，不新建授权表。
+共享UseSourceFact增加可空`stagedOperationNo`；仅核心已持久命令后返回，支付新prepare必须匹配。
+它是源提交就绪事实，不冒充授权状态，也不参与不可变服务快照摘要；旧订单源保持null兼容。

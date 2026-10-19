@@ -15,6 +15,8 @@ import ai.neargo.shop.spi.user.StoreDirectoryPort;
 import ai.neargo.shop.spi.user.UserScopeFactsPort;
 import ai.neargo.shop.trade.entitlement.EntitlementOrderSnapshotPolicy;
 import ai.neargo.shop.trade.entity.OrdItem;
+import ai.neargo.shop.trade.service.EntitlementServiceOrderService;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
@@ -43,10 +45,11 @@ public class EntitlementUseSourcePortImpl implements EntitlementUseSourcePort {
     private final ProductScopeFactsPort products;
     private final LegacyCouponOrderFactsPort legacyCoupons;
     private final ObjectMapper json;
-
+    private final ObjectProvider<EntitlementServiceOrderService> serviceOrders;
     public EntitlementUseSourcePortImpl(OrderMapper orders, SubOrderMapper subs, OrderItemMapper items,
             MerchantScopeFactsPort merchants, StoreDirectoryPort stores, UserScopeFactsPort users,
-            ProductScopeFactsPort products, LegacyCouponOrderFactsPort legacyCoupons, ObjectMapper json) {
+            ProductScopeFactsPort products, LegacyCouponOrderFactsPort legacyCoupons, ObjectMapper json,
+            ObjectProvider<EntitlementServiceOrderService> serviceOrders) {
         this.orders = orders;
         this.subs = subs;
         this.items = items;
@@ -55,12 +58,15 @@ public class EntitlementUseSourcePortImpl implements EntitlementUseSourcePort {
         this.users = users;
         this.products = products;
         this.legacyCoupons = legacyCoupons;
-        this.json = json;
+        this.json = json; this.serviceOrders = serviceOrders;
     }
 
     @Override
     @Transactional(readOnly = true)
     public UseSourceFact resolve(EntitlementContext context, SourceRef source) {
+        if (source != null && "CORE".equals(source.sourceSystem()) && "SERVICE_USE".equals(source.sourceType())) {
+            return serviceOrders.getObject().source(context, source);
+        }
         if (source == null || !"CORE".equals(source.sourceSystem())
                 || !Set.of("ORDER_USE", "STORE_USE").contains(source.sourceType())) {
             throw BizException.of(ErrorCode.BAD_REQUEST);

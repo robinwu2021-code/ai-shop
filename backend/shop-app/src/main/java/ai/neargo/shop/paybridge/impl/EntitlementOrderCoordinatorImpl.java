@@ -3,6 +3,7 @@ package ai.neargo.shop.paybridge.impl;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.paybridge.EntitlementOrderCoordinator;
+import ai.neargo.shop.paybridge.EntitlementServiceUseCoordinator;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort;
@@ -34,11 +35,13 @@ public class EntitlementOrderCoordinatorImpl implements EntitlementOrderCoordina
     private final PaymentAttemptFactsPort attempts;
     private final EntitlementAuthorizationService authorizations;
     private final EntitlementOrderUseService orders;
+    private final EntitlementServiceUseCoordinator serviceUses;
     public EntitlementOrderCoordinatorImpl(EntitlementUseSourcePort sources, EntitlementUsePort pay,
             EntitlementUseFactsPort facts, PaymentAttemptFactsPort attempts,
-            EntitlementAuthorizationService authorizations, EntitlementOrderUseService orders) {
+            EntitlementAuthorizationService authorizations, EntitlementOrderUseService orders,
+            EntitlementServiceUseCoordinator serviceUses) {
         this.sources = sources; this.pay = pay; this.facts = facts; this.attempts = attempts;
-        this.authorizations = authorizations; this.orders = orders;
+        this.authorizations = authorizations; this.orders = orders; this.serviceUses = serviceUses;
     }
     @Override public QuoteView quote(EntitlementContext ctx, String orderNo, SourceRef source, List<String> instances) {
         var fact = sources.resolve(ctx, source);
@@ -82,7 +85,7 @@ public class EntitlementOrderCoordinatorImpl implements EntitlementOrderCoordina
     }
     @Override public HoldView recover(EntitlementContext ctx, String entity, String operation) {
         var row = orders.find(ctx.tenantNo(), entity, operation);
-        if (row == null) return new HoldView(operation, State.NOT_FOUND, null, null, null);
+        if (row == null) return serviceUses.recover(ctx, entity, operation);
         orders.decideForTerminalOrder(ctx.tenantNo(), row.orderNo());
         row = orders.find(ctx.tenantNo(), entity, operation);
         if (row.decisionRef() == null && "PENDING".equals(row.status())) return prepare(row.context(), row.command());

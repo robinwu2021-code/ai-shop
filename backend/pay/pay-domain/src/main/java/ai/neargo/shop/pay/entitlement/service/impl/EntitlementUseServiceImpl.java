@@ -159,6 +159,9 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
         var source = source(context, c.sourceRef());
         match(source, c.sourceRef(), c.userNo(), c.entityNo(), c.storeNo(), c.currency());
         if (!source.items().equals(c.itemsSnapshot())) conflict();
+        if ("SERVICE_USE".equals(c.sourceRef().sourceType()) && !c.operationNo().equals(source.stagedOperationNo())) {
+            conflict();
+        }
         var owner = decisions.getIfAvailable();
         if (owner == null) unavailable();
         var auth = owner.authorization(context, c.authorizationRef());

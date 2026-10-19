@@ -580,3 +580,29 @@ P07请求复用`CreateBatch(templateVersionNo,audienceFactRef)`；受众引用�
 每次resume最多100项，每次消费最多10轮（冻结人群最多1000项）；正常分段推进不当作消息失败。
 游标不能推进或远程结果未知时重试原批次，不生成新发放来源。重复事件不重新选人、不追加容量。
 最终COMPLETED或PARTIAL表示逐项处理结束，不保证所有人均成功；必须显示issued/skipped/failed/pending及原因。
+
+
+### 第二阶段服务核销入口实现（P12/P13/P14，V442）
+
+核销单是核心服务的真实非现金业务源`CORE/SERVICE_USE`，修订固定0；支付只负责预览、预占和扣次。
+服务时间由服务器记录；项目来自真实在售且支持STORE_VERIFY的SERVICE SKU，数量逐项目冻结。
+不新增现金订单或收入事件。下面路径均已实现；P15订单券报价与储值用款另按任务表推进。
+
+| 入口 | 请求 | 响应与权限 |
+|---|---|---|
+| POST /biz/entitlement-uses/preview | Idempotency-Key≤128；storeNo、instanceNo、items[{skuNo,quantity}]；customerRef/code/orderRef三选一；serviceDate、units可选但必须等于真实源 | pay:ent:use且门店范围；{operationNo,orderRef,sourceRef,preview}；预览不扣次；CODE仅可选兑换券定位 |
+| POST /biz/entitlement-uses | {sourceRef,previewRef,expectedAssetRevision,authorizationRef?} | pay:ent:use、原经办人及门店；{operationNo,status,holdNo,usageNo,occurredAt}；服务端从源派生会员、项目、次数、币种和授权引用 |
+| GET /biz/entitlement-uses/{operationNo} | 原操作号 | pay:ent:read及门店范围；只读。授权前WAIT_AUTH，确认待商家提交WAIT_SUBMIT；已过新提案期限EXPIRED；未知PROCESSING；扣次后COMMITTED |
+| POST /biz/entitlement-uses/{operationNo}/cancel | {reason}≤100字 | pay:ent:use、原经办人及门店；仅取消尚未完成的核销请求，不是退款；负栅栏阻止迟到prepare |
+| GET /mp/entitlement-service-orders | size默认20、1–50 | C本人尚待确认/提交/处理的核销单，不接收userNo |
+| GET /mp/entitlement-service-orders/{serviceOrderNo} | 核销单号 | 仅C本人；门店、项目、数量、服务时间、权益标题、扣后余次、确认元数据；不返回原命令/身份码/授权引用 |
+| POST /mp/orders/{serviceOrderNo}/entitlement-authorizations | 复用C09 {orderRevision:0,quoteRef,selectionDigest,requestKey} | 本人确认实际服务项目；同一授权表和状态机；确认后仍需B提交，不自动证明服务已履约 |
+
+C服务单确认投影为`confirmation{orderRevision,quoteRef,selectionDigest,expiresAt}`；服务单及消费明细不展示
+本金/赠金，不提供线上退款或购买入口。可选兑换码仍默认关闭，不新增C独立码页面；开通兼容后仅定位
+STORE_EXCHANGE实例，不能替代本人确认，不能核销储值。明码仅送pay解析，不入日志/业务快照；
+解析绑定预先固定的原操作、门店和经办人；同请求摘要的已有服务单可在码过期后重放。
+
+核心服务先持久原UseCommand，支付读取UseSourceFact.stagedOperationNo匹配原操作后才接受新prepare。
+新准备必须授权未过期；已有持久预占承诺按原命令及源决定恢复，即使当前授权过期也不重新发起扣次。
+UNKNOWN保留原号与占用，不按TTL释放；源决定与UseDecided同事务，消费者重复投递不会重扣。

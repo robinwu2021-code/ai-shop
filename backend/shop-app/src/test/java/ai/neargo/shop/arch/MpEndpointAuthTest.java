@@ -68,6 +68,8 @@ class MpEndpointAuthTest {
     private static final Set<String> REQUIRES_LOGIN = Set.of(
             "POST /mp/member-code",
             "POST /mp/orders/{orderNo}/entitlement-authorizations",
+            "GET /mp/entitlement-service-orders",
+            "GET /mp/entitlement-service-orders/{serviceOrderNo}",
             "GET /mp/entitlements",
             "GET /mp/entitlements/{instanceNo}",
             "GET /mp/entitlement-usage/{usageNo}",
