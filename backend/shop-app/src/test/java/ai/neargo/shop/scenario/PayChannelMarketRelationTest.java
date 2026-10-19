@@ -93,7 +93,7 @@ class PayChannelMarketRelationTest {
                         + "V295 的回填是 INSERT…SELECT，schema-test 生成器<b>刻意丢掉</b>这类语句，"
                         + "于是测试库里这张表是空的 —— 而空表恰好命中「无行 = 不限市场」，"
                         + "本组每一条断言都会通过，通过的原因是「谁都没被筛」")
-                .contains("INSERT INTO sys_pay_channel_market")
+                .contains("INSERT IGNORE INTO sys_pay_channel_market")
                 .contains("'WECHAT', 'CN'")
                 .contains("'ALIPAY', 'CN'");
 

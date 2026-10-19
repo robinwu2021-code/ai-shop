@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.order.mapper;
 
+import ai.neargo.shop.trade.entity.OrdSubOrder;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -14,6 +15,26 @@ import java.time.LocalDateTime;
  */
 @Mapper
 public interface StatusCasMapper {
+
+    /** 单笔完成先锁当前事实，售后占位与同订单其他写入不能穿过该串行点。 */
+    @Select("SELECT * FROM ord_sub_order WHERE sub_order_no = #{no} AND deleted = 0 FOR UPDATE")
+    OrdSubOrder lockOrder(@Param("no") String no);
+
+    @Update("UPDATE ord_sub_order SET fulfillment = #{target}, updated_at = CURRENT_TIMESTAMP, "
+            + "version = version + 1 WHERE sub_order_no = #{no} AND deleted = 0 "
+            + "AND version = #{expectedVersion} AND status = 'WAIT_FULFILL' "
+            + "AND open_after_sale_no IS NULL AND (express_no IS NULL OR express_no = '')")
+    int changeFulfillment(@Param("no") String no, @Param("target") String target,
+                          @Param("expectedVersion") long expectedVersion);
+
+    @Select("SELECT open_after_sale_no FROM ord_sub_order WHERE sub_order_no = #{no}")
+    String openAfterSaleNo(@Param("no") String no);
+
+    /** 备货是原地事实：条件成功的一方才有资格记事件，不忽略0行。 */
+    @Update("UPDATE ord_sub_order SET prepared_at = #{at}, updated_at = CURRENT_TIMESTAMP, version = version + 1 "
+            + "WHERE sub_order_no = #{no} AND deleted = 0 AND status = 'WAIT_FULFILL' "
+            + "AND prepared_at IS NULL AND open_after_sale_no IS NULL")
+    int prepareIfEligible(@Param("no") String no, @Param("at") long preparedAt);
 
     @Select("SELECT status FROM ord_order WHERE order_no = #{no} LIMIT 1")
     String paymentStatus(@Param("no") String no);

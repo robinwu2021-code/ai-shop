@@ -43,6 +43,8 @@ public final class NotifyScene {
      * （2026-09-29 查证，自提零使用）。
      */
     public static final String SUB_ORDER_SHIPPED = "SUB_ORDER_SHIPPED";
+    /** 商家在交运前改变配送承诺，买家需要知道最新方式。 */
+    public static final String SUB_ORDER_FULFILLMENT_CHANGED = "SUB_ORDER_FULFILLMENT_CHANGED";
     /**
      * 拼团成团（C 端，扇出给全团）。
      *
@@ -98,7 +100,7 @@ public final class NotifyScene {
     public static final Set<String> ALL = Set.of(
             ORDER_PAID, ORDER_ARRIVED, SUB_ORDER_COMPLETED, AFTER_SALE_REFUNDED,
             SUB_ORDER_PAID, AFTER_SALE_APPLIED, REVIEW_CREATED, NEW_GOODS_ON_SALE,
-            SUB_ORDER_SHIPPED, GROUP_FORMED, GROUP_FAILED,
+            SUB_ORDER_SHIPPED, SUB_ORDER_FULFILLMENT_CHANGED, GROUP_FORMED, GROUP_FAILED,
             AFTER_SALE_REJECTED, AFTER_SALE_RETURN_WAIT,
             WAYBILL_PROGRESSED, WAYBILL_SIGNED);
 

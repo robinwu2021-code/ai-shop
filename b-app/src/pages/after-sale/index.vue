@@ -9,11 +9,12 @@ const merchant = useMerchantStore();
 //
 // 另外：驳回**不改订单状态**。置回已完成就把「申请平台介入」的路堵死了，
 // 用户会以为售后已结束（ADR 里没写，但这是售后设计的常见坑）。
-import { ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { computed, ref } from "vue";
+import { onLoad, onShow, onReachBottom } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { askMchSubscribe } from "@/shared/mch-subscribe";
+import { refundProgressKey } from "@shared/strategies/order-phase1";
 import { approveCap } from "@/shared/approve-cap";
 import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
@@ -30,10 +31,8 @@ function impactText(r: Row): string {
   if (!i) return "";
   const parts: string[] = [];
   if (i.couponTitle) parts.push(String(t("afterSale.impactCoupon", { name: i.couponTitle })));
-  if (i.pointsReturn) parts.push(String(t("afterSale.impactPoints", { n: i.pointsReturn })));
   const head = parts.length ? String(t("afterSale.impactReturn", { what: parts.join("、") })) : "";
-  const tail = i.pointsRevoke ? String(t("afterSale.impactRevoke", { n: i.pointsRevoke })) : "";
-  return [head, tail].filter(Boolean).join("；");
+  return head;
 }
 
 /**
@@ -47,19 +46,27 @@ function impactText(r: Row): string {
 type Row = { as: AfterSale; order?: Order };
 
 const list = ref<Row[]>([]);
+const tab = ref<"pending" | "all">("pending");
+const pendingTotal = ref(0);
+const total = ref(0);
+const page = ref(1);
+const loading = ref(false);
+const visible = computed(() => list.value);
 /** 正在驳回的单号 —— 展开理由输入框 */
 const rejecting = ref("");
 const reason = ref("");
+
+const earlyRefunding = ref("");
+const earlyRefundReason = ref("");
+const restock = ref<Record<string, boolean>>({});
+
 /** 正在核定金额/形式的单号 —— 展开审核面板（仅已签收） */
 const approving = ref("");
 /** 核定退款额（元，字符串输入）；默认全额 */
 const approveAmount = ref("");
-/** 退款形式：现金 / 积分 */
-const approveMode = ref<RefundMode>("CASH");
-const busy = ref(false);
 
-/** 核定上限：买家申请额（见 approveCap） */
-const capOf = (r: Row) => approveCap(r.as.refundMinor, r.order?.amount.paidMinor);
+const busy = ref(false);
+const targetAfterSaleNo = ref("");
 
 /**
  * 老数据（以及后端补字段之前的数据）可能没有 `afterSale`。
@@ -67,29 +74,47 @@ const capOf = (r: Row) => approveCap(r.as.refundMinor, r.order?.amount.paidMinor
  */
 const asStatus = (r: Row) => r.as.status;
 const asType = (r: Row) => r.as.type;
+const capOf = (r: Row) => approveCap(r.as.refundMinor, r.order?.amount.paidMinor);
 
 /** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
 const loaded = ref(false);
 /** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
 const failed = ref(false);
 
-async function load() {
+async function load(next = false) {
+  if (loading.value || (next && list.value.length >= total.value)) return;
+  loading.value = true;
   try {
     rejecting.value = "";
     reason.value = "";
-    approving.value = "";
-    const [afterSales, orders] = await Promise.all([
-      api.mAfterSaleList(),
-      api.mOrderList({ size: 50 }),
-    ]);
-    const byNo = new Map(orders.records.map((o) => [o.orderNo, o]));
-    list.value = afterSales.map((as) => ({ as, order: byNo.get(as.subOrderNo) }));
+    const requestedPage = next ? page.value + 1 : 1;
+    const result = await api.mAfterSaleWorklist({ pending: tab.value === "pending", page: requestedPage, size: 20 });
+    const rows = result.records.map((r) => ({ as: r.afterSale, order: r.order }));
+    list.value = next ? [...list.value, ...rows] : rows;
+    if (!next && targetAfterSaleNo.value && !list.value.some((r) => r.as.afterSaleNo === targetAfterSaleNo.value)) {
+      const selected = await api.mAfterSaleDetail(targetAfterSaleNo.value).catch(() => null);
+      if (selected) list.value = [{ as: selected.afterSale, order: selected.order }, ...list.value];
+    }
+    page.value = requestedPage;
+    total.value = result.total;
+    if (tab.value === "pending") pendingTotal.value = result.total;
+    else pendingTotal.value = (await api.mAfterSaleWorklist({ pending: true, page: 1, size: 1 })).total;
     failed.value = false;
   } catch {
     failed.value = true;
+  } finally {
+    loading.value = false;
   }
   loaded.value = true;
 }
+
+function switchTab(value: "pending" | "all") {
+  if (tab.value === value) return;
+  tab.value = value;
+  void load();
+}
+
+onReachBottom(() => { void load(true); });
 
 async function agree(r: Row, refundMinor?: number, refundMode?: RefundMode) {
   if (busy.value) return;
@@ -97,7 +122,7 @@ async function agree(r: Row, refundMinor?: number, refundMode?: RefundMode) {
   askMchSubscribe();
   busy.value = true;
   try {
-    await api.mApproveAfterSale(r.as.afterSaleNo, "", refundMinor, refundMode);
+    await api.mApproveAfterSale(r.as.afterSaleNo, "", refundMinor, refundMode ?? "CASH");
     uni.showToast({ title: t("afterSale.agreed"), icon: "none" });
     await load();
   } catch (e) {
@@ -108,20 +133,21 @@ async function agree(r: Row, refundMinor?: number, refundMode?: RefundMode) {
 }
 
 /**
- * 点「同意」：已签收才展开核定面板（可改金额/形式，AC9/AC10）；
+
+
+ * 点「同意」：已签收才展开核定面板（可改金额，AC9/AC10）；
  * 未签收只能全额同意（商家看不到实物损坏比例，§2.4），直接提交。
  */
 function startApprove(r: Row) {
   if (r.as.fulfillStage === "RECEIVED") {
     approving.value = r.as.afterSaleNo;
     approveAmount.value = (capOf(r) / 100).toFixed(2);
-    approveMode.value = "CASH";
   } else {
     void agree(r);
   }
 }
 
-/** 确认核定：校验金额（>0 且 ≤实付），带金额与形式提交 */
+/** 确认核定：校验金额（>0 且 ≤实付），现金退款中的积分返还由后端处理 */
 function confirmApprove(r: Row) {
   const minor = Math.round(Number(approveAmount.value) * 100);
   if (!(minor > 0 && minor <= capOf(r))) {
@@ -129,23 +155,36 @@ function confirmApprove(r: Row) {
     return;
   }
   approving.value = "";
-  void agree(r, minor, approveMode.value);
+  void agree(r, minor, "CASH");
 }
 
 /**
+
  * 确认收到退货 → 随即退款（B-7.3）。
  * 只对「已寄回」的退货单出现 —— 用户还没寄就点确认，多半是误操作。
  */
 async function confirmReturn(r: Row) {
-  await runRefund(() => api.mConfirmReturn(r.as.afterSaleNo));
+  await runRefund(() => api.mConfirmReturn(r.as.afterSaleNo, restock.value[r.as.afterSaleNo] === true));
 }
 
 /**
- * 在途仅退款：签收后系统只提醒，**由商家点这一下才退**（退款永不自动，TDD-订单状态机 AC8）。
+ * 在途仅退款：签收后由商家确认；未备货的申请已在后端直接进入退款，不会出现在此处。
  * 不等签收也可以点 —— 商家判断不用等时自己决定。
  */
 async function confirmRefund(r: Row) {
-  await runRefund(() => api.mConfirmRefund(r.as.afterSaleNo));
+  const inTransit = r.order?.status !== "COMPLETED";
+  if (inTransit && earlyRefunding.value !== r.as.afterSaleNo) {
+    earlyRefunding.value = r.as.afterSaleNo;
+    earlyRefundReason.value = "";
+    return;
+  }
+  if (inTransit && !earlyRefundReason.value.trim()) {
+    uni.showToast({ title: t("afterSale.earlyRefundReasonRequired"), icon: "none" });
+    return;
+  }
+  await runRefund(() => api.mConfirmRefund(r.as.afterSaleNo,
+    inTransit ? earlyRefundReason.value.trim() : undefined));
+  earlyRefunding.value = "";
 }
 
 async function runRefund(call: () => Promise<unknown>) {
@@ -154,7 +193,7 @@ async function runRefund(call: () => Promise<unknown>) {
   busy.value = true;
   try {
     await call();
-    uni.showToast({ title: t("afterSale.refunded"), icon: "none" });
+    uni.showToast({ title: t("afterSale.accepted"), icon: "none" });
     await load();
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });
@@ -182,16 +221,32 @@ async function reject(r: Row) {
   }
 }
 
-onShow(load);
+onLoad(async (q) => {
+  targetAfterSaleNo.value = typeof q?.afterSaleNo === "string" ? q.afterSaleNo : "";
+  if (typeof q?.store === "string" && q.store && q.store !== merchant.storeNo) {
+    await merchant.switchStore(q.store);
+  }
+  if (targetAfterSaleNo.value) {
+    const selected = await api.mAfterSaleDetail(targetAfterSaleNo.value).catch(() => null);
+    if (selected && !["APPLIED", "WAIT_RECEIPT", "RETURNING"].includes(selected.afterSale.status)) tab.value = "all";
+    await load();
+  }
+});
+onShow(() => { if (!targetAfterSaleNo.value || loaded.value) void load(); });
 </script>
 
 <template>
   <sh-scaffold title-key="afterSale.title" :denied="!merchant.can('biz:aftersale')">
     <text class="txt-display">{{ $t("afterSale.title") }}</text>
 
-    <sh-empty v-if="!list.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("afterSale.empty")'></sh-empty>
+    <view class="tabs sh-row">
+      <text class="sh-chip" :class="{ 'sh-chip--warning': tab === 'pending' }" @tap="switchTab('pending')">{{ $t("afterSale.pendingTab") }} ({{ pendingTotal }})</text>
+      <text class="sh-chip" :class="{ 'sh-chip--warning': tab === 'all' }" @tap="switchTab('all')">{{ $t("afterSale.allTab") }}</text>
+    </view>
 
-    <view v-for="r in list" :key="r.as.afterSaleNo" class="sh-card sh-mt-sm">
+    <sh-empty v-if="!visible.length" :pending="!loaded" :failed="failed" @retry="load" :text='$t("afterSale.empty")'></sh-empty>
+
+    <view v-for="r in visible" :key="r.as.afterSaleNo" class="sh-card sh-mt-sm">
       <view class="item__head sh-row sh-row--between sh-row--baseline">
         <text class="txt-body">{{ r.order?.buyerNickname || "—" }}</text>
         <text class="sh-muted">{{ datetime(r.as.updatedAt) }}</text>
@@ -230,6 +285,8 @@ onShow(load);
         ⚠️ 它是**独立的一行**，不在下面那条 v-if 链里：此前它是链头，一出现就把同意/驳回/确认收货整块吞掉，
         商家只能干等超时自动同意。
       -->
+      <text class="txt-caption sh-muted blk">{{ $t("afterSale.fullCash") }}</text>
+      <text v-if="r.as.refundExecution" class="txt-caption blk">{{ $t(refundProgressKey(r.as)) }}</text>
       <text v-if="impactText(r)" class="txt-caption sh-muted impact blk">{{ impactText(r) }}</text>
 
       <template v-if="rejecting === r.as.afterSaleNo">
@@ -245,9 +302,11 @@ onShow(load);
         </view>
       </template>
 
+
+
       <!-- 按售后状态给动作。后端没有独立的「等寄回 / 已收货」两态：
            同意即 REFUNDING，是否已寄回看 returnExpressNo 有没有值 -->
-      <!-- 核定面板（仅已签收）：改金额 + 选现金/积分（AC9/AC10） -->
+      <!-- 核定面板（仅已签收）：改金额（AC9/AC10） -->
       <template v-else-if="approving === r.as.afterSaleNo">
         <view class="approve sh-mt-sm">
           <view class="sh-row sh-row--between sh-row--baseline">
@@ -257,38 +316,29 @@ onShow(load);
               <input v-model="approveAmount" type="digit" maxlength="9" class="field__input amount-field" />
             </view>
           </view>
-          <view class="sh-row modes sh-mt-sm">
-            <text
-              class="sh-seg sh-seg--fill"
-              :class="{ 'sh-seg--on': approveMode === 'CASH' }"
-              @tap="approveMode = 'CASH'"
-            >{{ $t("afterSale.refundModeCash") }}</text>
-            <text
-              class="sh-seg sh-seg--fill"
-              :class="{ 'sh-seg--on': approveMode === 'POINTS' }"
-              @tap="approveMode = 'POINTS'"
-            >{{ $t("afterSale.refundModePoints") }}</text>
-          </view>
           <view class="btns sh-row sh-mt-sm">
             <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="approving = ''">{{ $t("common.cancel") }}</text>
             <text class="sh-btn sh-btn--sm txt-strong btn" @tap="confirmApprove(r)">{{ $t("afterSale.agree") }}</text>
           </view>
         </view>
       </template>
+
       <view v-else-if="asStatus(r) === 'APPLIED'" class="btns sh-row">
         <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="rejecting = r.as.afterSaleNo">
           {{ $t("afterSale.reject") }}
         </text>
-        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="startApprove(r)">
+        <text class="sh-btn sh-btn--sm txt-strong btn" @tap="agree(r)">
           {{ asType(r) === "RETURN_REFUND" ? $t("afterSale.agreeReturn") : $t("afterSale.agree") }}
         </text>
       </view>
 
-      <!-- 货在途已同意：签收后由商家确认退款（不自动退）；不等签收也可以直接确认 -->
+      <!-- 在途提前退款必须明确承担风险；签收后按正常确认路径退款。 -->
       <view v-else-if="asStatus(r) === 'WAIT_RECEIPT'" class="btns sh-row">
         <text class="sh-muted sh-fill">{{ $t("afterSale.waitReceiptHint") }}</text>
+        <textarea v-if="earlyRefunding === r.as.afterSaleNo" v-model="earlyRefundReason"
+          class="field__area" :placeholder="$t('afterSale.earlyRefundReasonPh')" maxlength="200" />
         <text class="sh-btn sh-btn--sm txt-strong btn btn--auto" @tap="confirmRefund(r)">
-          {{ $t("afterSale.confirmRefund") }}
+          {{ earlyRefunding === r.as.afterSaleNo ? $t("afterSale.confirmEarlyRefund") : $t("afterSale.confirmRefund") }}
         </text>
       </view>
 
@@ -301,7 +351,11 @@ onShow(load);
         <text class="sh-muted">{{ $t("afterSale.refundingHint") }}</text>
       </view>
 
-      <view v-else-if="asStatus(r) === 'RETURNING'" class="btns sh-row">
+      <view v-else-if="asStatus(r) === 'RETURNING'">
+        <sh-option class="restock-option sh-mt-sm" :selected="restock[r.as.afterSaleNo] === true" :disabled="busy" @tap="restock[r.as.afterSaleNo] = !restock[r.as.afterSaleNo]">
+          <text>{{ restock[r.as.afterSaleNo] ? '☑' : '☐' }} {{ $t("afterSale.restock") }}</text>
+        </sh-option>
+        <view class="btns sh-row">
         <view class="express sh-fill">
           <text class="sh-muted">{{ $t("afterSale.returnExpress") }}</text>
           <text class="sh-num">{{ r.as.returnExpressNo }}</text>
@@ -309,6 +363,7 @@ onShow(load);
         <text class="sh-btn sh-btn--sm txt-strong btn btn--auto" @tap="confirmReturn(r)">
           {{ $t("afterSale.confirmReceived") }}
         </text>
+        </view>
       </view>
 
       <!-- 已退款也要说一句。此前这一支没有分支，卡片下方是**一片空白** ——
@@ -334,11 +389,14 @@ onShow(load);
       </view>
     </view>
 
-    <text v-if="list.length" class="tip sh-hint">{{ $t("afterSale.hint") }}</text>
+    <text v-if="visible.length" class="tip sh-hint">{{ $t("afterSale.hint") }}</text>
   </sh-scaffold>
 </template>
 
 <style scoped>
+.tabs {
+  gap: 16rpx;
+}
 .item__tags {
   gap: 12rpx;
 }
@@ -422,8 +480,5 @@ onShow(load);
 .amount-field {
   width: 180rpx;
   text-align: end;
-}
-.modes {
-  gap: 16rpx;
 }
 </style>

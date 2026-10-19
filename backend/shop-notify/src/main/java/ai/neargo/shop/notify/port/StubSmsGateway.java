@@ -85,6 +85,15 @@ public class StubSmsGateway implements SmsPort {
         return SendResult.none();
     }
 
+    @Override
+    public SendResult sendAfterSaleApplied(String phone, String afterSaleNo) {
+        synchronized (sent) {
+            sent.addLast(new Sent(phone, "AFTER_SALE|" + afterSaleNo));
+            while (sent.size() > KEEP) sent.pollFirst();
+        }
+        return SendResult.none();
+    }
+
     /**
      * 发货触达收件人。桩里也进同一个队列：{@code Sent.code} 放短链，
      * 测试据此断言「发给了收件人、带的是哪条短链」。

@@ -1,13 +1,15 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
@@ -15,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,6 +26,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * 自营单的售后**直接进平台仲裁**，不派给商家。
@@ -47,17 +53,20 @@ class SelfOperatedAfterSaleFlowTest {
     @Autowired
     private AfterSaleService afterSaleService;
 
+    @MockitoSpyBean
+    private ai.neargo.shop.spi.settle.PointsPort legacyPoints;
+
     @Autowired
     private MchEntityMapper entityMapper;
 
     @Autowired
-    private SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
 
     @Autowired
     private AfterSaleMapper afterSaleMapper;
 
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper itemMapper;
+    private OrderItemMapper itemMapper;
 
     @Test
     @DisplayName("★★ 归集（平台是销售主体）→ 直接 ARBITRATING")
@@ -79,6 +88,8 @@ class SelfOperatedAfterSaleFlowTest {
         // 钱在商家账户、票是商家开的，那么先由他处理是对的 ——
         // 这条不能一起改掉，否则平台在替一个不该他负责的关系担责
         assertThat(latest(sub).getStatus()).isEqualTo(OrdAfterSale.APPLIED);
+        afterSaleService.merchantList(latest(sub).getEntityNo(), OrdAfterSale.APPLIED);
+        verify(legacyPoints, never()).pendingImpactOf(anyList());
     }
 
     @Test

@@ -154,14 +154,14 @@ public abstract class AbstractPayGateway implements PayGateway {
         if (deny != null) {
             // 能力位拦下来的**不可重试** —— 重试一万次通道也不会长出这个能力
             log.warn("[pay] {} {} 被能力位拦下：{}（单号 {}）", payChannel(), op.label(), deny, requestNo);
-            return Result.fatal(deny);
+            return op == Op.REFUND ? Result.rejected(deny) : Result.fatal(deny);
         }
         Call c;
         try {
             c = builder.get();
         } catch (PreconditionFailed e) {
             log.warn("[pay] {} {} 前置不满足：{}（单号 {}）", payChannel(), op.label(), e.getMessage(), requestNo);
-            return Result.fatal(e.getMessage());
+            return op == Op.REFUND ? Result.rejected(e.getMessage()) : Result.fatal(e.getMessage());
         }
         try {
             Map<String, Object> resp = client.post(c.api(), c.body());
@@ -177,7 +177,7 @@ public abstract class AbstractPayGateway implements PayGateway {
                 String msg = c.api() + " 未返回 " + c.idField();
                 log.warn("[pay] {} {} 回执缺字段：{}（单号 {}）", payChannel(), op.label(), msg, requestNo);
                 recorder.sent(payChannel(), c.api(), requestNo, false, msg, c.body());
-                return Result.fatal(msg);
+                return op == Op.REFUND ? Result.retry(msg) : Result.fatal(msg);
             }
             /*
              * **成功也要留一行。** 此前只有失败才有日志，于是「这笔分账到底发出去没有」

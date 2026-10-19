@@ -21,6 +21,7 @@ import ai.neargo.shop.spi.reach.ConsumerProfile;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import java.util.Optional;
 
@@ -588,6 +589,24 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
     }
 
     @Override
+    public java.util.OptionalLong merchantDeliveryFeeMinor(String merchantNo, String storeNo,
+                                                            long goodsAmountMinor) {
+        if (merchantNo == null || storeNo == null || storeNo.isBlank()) {
+            return java.util.OptionalLong.empty();
+        }
+        var store = DataScopeContext.executeWithoutScope(() -> storeMapper.selectOne(
+                Wrappers.<MchStore>lambdaQuery().eq(MchStore::getEntityNo, merchantNo)
+                        .eq(MchStore::getStoreNo, storeNo).last("limit 1")));
+        if (store == null) return java.util.OptionalLong.empty();
+        long minOrder = store.getDeliveryMinOrderMinor() == null ? 0L : store.getDeliveryMinOrderMinor();
+        if (goodsAmountMinor < minOrder) return java.util.OptionalLong.empty();
+        long fee = store.getDeliveryFeeMinor() == null ? 0L : store.getDeliveryFeeMinor();
+        long freeAt = store.getDeliveryFreeThresholdMinor() == null
+                ? 0L : store.getDeliveryFreeThresholdMinor();
+        return java.util.OptionalLong.of(freeAt > 0 && goodsAmountMinor >= freeAt ? 0L : fee);
+    }
+
+    @Override
     public Optional<DeliveryOrigin> deliveryOrigin(String merchantNo) {
         if (merchantNo == null || merchantNo.isBlank()) {
             return Optional.empty();
@@ -842,6 +861,44 @@ public class MerchantPortImpl implements MerchantQueryPort, MerchantAdminPort,
             return MchStore.SELF_OPERATED;
         }
         return store.getBusinessMode();
+    }
+
+    @Override
+    @Transactional(transactionManager = "transactionManager", readOnly = true,
+            isolation = Isolation.REPEATABLE_READ)
+    public Optional<PaymentRoute> paymentRouteOf(String merchantNo, String storeNo, String channel) {
+        if (merchantNo == null || merchantNo.isBlank() || storeNo == null || storeNo.isBlank()
+                || channel == null || channel.isBlank()) {
+            return Optional.empty();
+        }
+        // 同一数据库快照内读取归属、显式门店绑定和实际收款档案，不借用其他门店或默认账户。
+        return DataScopeContext.executeWithoutScope(() -> {
+            MchStore store = storeMapper.selectOne(Wrappers.<MchStore>lambdaQuery()
+                    .eq(MchStore::getEntityNo, merchantNo).eq(MchStore::getStoreNo, storeNo)
+                    .eq(MchStore::getStatus, ACTIVE));
+            if (store == null || store.getPayMerchantNo() == null || store.getPayMerchantNo().isBlank()) {
+                return Optional.empty();
+            }
+            MchEntity entity = merchantMapper.selectOne(Wrappers.<MchEntity>lambdaQuery()
+                    .eq(MchEntity::getEntityNo, merchantNo).eq(MchEntity::getStatus, ACTIVE));
+            if (entity == null || !("DIRECT".equals(entity.getFundsMode())
+                    || "AGGREGATED".equals(entity.getFundsMode()))) {
+                return Optional.empty();
+            }
+            MchPaymentMerchant payment = merchantPaymentMapper.selectOne(
+                    Wrappers.<MchPaymentMerchant>lambdaQuery()
+                            .eq(MchPaymentMerchant::getEntityNo, merchantNo)
+                            .eq(MchPaymentMerchant::getPayMerchantNo, store.getPayMerchantNo())
+                            .eq(MchPaymentMerchant::getPayChannel, channel)
+                            .eq(MchPaymentMerchant::getApplyStatus, MchPaymentMerchant.ACTIVE));
+            if (payment == null || payment.getSubMchid() == null || payment.getSubMchid().isBlank()
+                    || payment.getVersion() == null || payment.getVersion() < 0) {
+                return Optional.empty();
+            }
+            return Optional.of(new PaymentRoute(merchantNo, storeNo, payment.getPayMerchantNo(), channel,
+                    payment.getSubMchid(), payment.getPayMerchantNo() + ":" + payment.getVersion(),
+                    entity.getFundsMode()));
+        });
     }
 
     @Override

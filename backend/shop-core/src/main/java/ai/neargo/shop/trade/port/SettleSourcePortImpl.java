@@ -5,15 +5,15 @@ import ai.neargo.shop.spi.trade.SettleSourcePort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
-import ai.neargo.shop.trade.mapper.TradeMappers.AfterSaleMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.AfterSaleMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.entity.OrdExpressPickup;
-import ai.neargo.shop.trade.mapper.TradeMappers.ExpressPickupMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.ExpressPickupMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -24,10 +24,10 @@ import java.util.stream.Collectors;
 @Component
 public class SettleSourcePortImpl implements SettleSourcePort {
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
-    private final OrderMapper orderMapper;
-    private final StatusLogMapper statusLogMapper;
+    private final PaymentMapper orderMapper;
+    private final OrderStatusLogMapper statusLogMapper;
     private final AfterSaleMapper afterSaleMapper;
 
     /**
@@ -38,8 +38,8 @@ public class SettleSourcePortImpl implements SettleSourcePort {
      */
     private final ExpressPickupMapper expressPickupMapper;
 
-    public SettleSourcePortImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
-                                OrderMapper orderMapper, StatusLogMapper statusLogMapper,
+    public SettleSourcePortImpl(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+                                PaymentMapper orderMapper, OrderStatusLogMapper statusLogMapper,
                                 AfterSaleMapper afterSaleMapper,
                                 ExpressPickupMapper expressPickupMapper) {
         this.subOrderMapper = subOrderMapper;
@@ -58,7 +58,7 @@ public class SettleSourcePortImpl implements SettleSourcePort {
      */
     private static final java.util.Set<String> AFTER_SALE_OPEN = java.util.Set.of(
             OrdAfterSale.APPLIED, OrdAfterSale.WAIT_RETURN, OrdAfterSale.RETURNING,
-            OrdAfterSale.REFUNDING, OrdAfterSale.ARBITRATING);
+            OrdAfterSale.WAIT_RECEIPT, OrdAfterSale.REFUNDING, OrdAfterSale.ARBITRATING);
 
     @Override
     public List<SettleReadiness> settleReadiness(java.util.Collection<String> subOrderNos) {
@@ -195,40 +195,6 @@ public class SettleSourcePortImpl implements SettleSourcePort {
                     return status == null || !OrdOrder.PAID.equals(status);
                 })
                 .toList();
-    }
-
-    /** 不变式 I3 的左边：这段时间里标着「已发过积分」的子单 */
-    @Override
-    public List<String> pointsGrantedSince(long since, int limit) {
-        return paidSubOrdersSince(since, limit).stream()
-                .map(PaidSubOrder::subOrderNo)
-                .filter(no -> {
-                    OrdSubOrder sub = DataScopeContext.executeWithoutScope(() ->
-                            subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
-                                    .eq(OrdSubOrder::getSubOrderNo, no).last("limit 1")));
-                    return sub != null && Boolean.TRUE.equals(sub.getPointsGranted());
-                })
-                .toList();
-    }
-
-    /**
-     * 把标记改回未发，让下一轮重发。
-     *
-     * <p><b>用 update 而不是先查后改</b>：这条修复动作可能与正常的发分链路
-     * 并发跑到同一行上，先查后改会把中间那次写覆盖掉。
-     */
-    @Override
-    public int clearPointsGranted(java.util.Collection<String> subOrderNos) {
-        if (subOrderNos == null || subOrderNos.isEmpty()) {
-            return 0;
-        }
-        return DataScopeContext.executeWithoutScope(() -> {
-            OrdSubOrder patch = new OrdSubOrder();
-            patch.setPointsGranted(false);
-            return subOrderMapper.update(patch, Wrappers.<OrdSubOrder>lambdaUpdate()
-                    .in(OrdSubOrder::getSubOrderNo, subOrderNos)
-                    .eq(OrdSubOrder::getPointsGranted, true));
-        });
     }
 
     /**

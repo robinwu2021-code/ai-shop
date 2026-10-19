@@ -10,6 +10,7 @@ import ai.neargo.shop.logistics.capability.TrackingSubscriber;
 import ai.neargo.shop.logistics.config.LogisticsProperties;
 import ai.neargo.shop.logistics.domain.PhoneCipher;
 import ai.neargo.shop.logistics.domain.WaybillStatus;
+import ai.neargo.shop.logistics.domain.WaybillSourceIdentity;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
 import ai.neargo.shop.logistics.event.WaybillRegistered;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
@@ -103,10 +104,18 @@ public class SubscribeExecutor implements OutboxConsumer {
         if (WaybillStatus.isTerminal(w.getStatus())) {
             LgsWaybill p = LgsWaybill.patch(w.getId());
             p.setSubState(LgsWaybill.SUB_NA);
-            waybills.updateById(p);
+            waybills.update(p, WaybillSourceIdentity.unchanged(w));
             return;
         }
-        String phone = snapshot(w);
+        Optional<ShipmentSource> found = source.sourceOf(w.getBizRef());
+        if (w.getSourceShipmentNo() != null && (found.isEmpty()
+                || !WaybillSourceIdentity.matches(w, new ShipmentSourcePort.ShipmentIdentity(
+                        found.get().sourceShipmentNo(), found.get().sourceShipmentVersion(),
+                        found.get().carrier(), found.get().waybillNo())))) {
+            fatal(w, 0, "当前有效发货身份不匹配；请重放原发货事件");
+            return;
+        }
+        String phone = snapshot(w, found);
         if (!props.isSubscribeEnabled()) {
             return;   // 总开关关着：停在 PENDING，打开后补偿作业补订
         }
@@ -115,7 +124,10 @@ public class SubscribeExecutor implements OutboxConsumer {
 
     /** 取快照写进运单，返回明文手机号（只在内存里用这一次） */
     String snapshot(LgsWaybill w) {
-        Optional<ShipmentSource> src = source.sourceOf(w.getBizRef());
+        return snapshot(w, source.sourceOf(w.getBizRef()));
+    }
+
+    private String snapshot(LgsWaybill w, Optional<ShipmentSource> src) {
         if (src.isEmpty()) {
             log.warn("[lgs-subscribe] {} 取不到发货快照（子单 {}）", w.getShipmentNo(), w.getBizRef());
             return phones.decrypt(w.getReceiverPhoneEnc());
@@ -146,7 +158,7 @@ public class SubscribeExecutor implements OutboxConsumer {
         if (s.wxUploadedAt() != null && w.getWxUploadedAt() == null) {
             p.setWxUploadedAt(s.wxUploadedAt());   // 上传事件可能先于登记到达，那一次通知落空了，这里补上
         }
-        waybills.updateById(p);
+        waybills.update(p, WaybillSourceIdentity.unchanged(w));
         w.setStoreNo(s.storeNo());
         return s.receiverPhone();
     }
@@ -201,20 +213,20 @@ public class SubscribeExecutor implements OutboxConsumer {
                     p.setSubState(LgsWaybill.SUB_DONE);
                     p.setSubChannel(ch.channel());
                     p.setSubRef(r.ref());
-                    waybills.updateById(p);
+                    waybills.update(p, WaybillSourceIdentity.unchanged(w).set("sub_error", null));
                     log.info("[lgs-subscribe] {} {} {} 订阅成功（{}）", w.getShipmentNo(), w.getCarrier(),
                             w.getWaybillNo(), ch.channel());
                     return;
                 }
                 case RETRYABLE -> {
                     p.setSubError(err(ch, r));
-                    waybills.updateById(p);
+                    waybills.update(p, WaybillSourceIdentity.unchanged(w));
                     throw new RetryableOutboxException("Subscription rejected; retryable");
                 }
                 case FATAL -> {
                     lastError = err(ch, r);
                     p.setSubError(lastError);
-                    waybills.updateById(p);
+                    waybills.update(p, WaybillSourceIdentity.unchanged(w));
                     log.warn("[lgs-subscribe] {} 在 {} 不可重试地失败，换下一家：{}", w.getShipmentNo(), ch.channel(), lastError);
                     w.setKd100SubMonth(p.getKd100SubMonth() != null ? p.getKd100SubMonth() : w.getKd100SubMonth());
                     w.setKd100SubCount(p.getKd100SubCount() != null ? p.getKd100SubCount() : w.getKd100SubCount());
@@ -230,7 +242,7 @@ public class SubscribeExecutor implements OutboxConsumer {
         p.setSubState(LgsWaybill.SUB_FATAL);
         p.setSubAttempts(attempts);
         p.setSubError(clip(reason));
-        waybills.updateById(p);
+        waybills.update(p, WaybillSourceIdentity.unchanged(w));
         log.error("[lgs-subscribe] {} {} {} 订阅判死：{}", w.getShipmentNo(), w.getCarrier(), w.getWaybillNo(), reason);
     }
 

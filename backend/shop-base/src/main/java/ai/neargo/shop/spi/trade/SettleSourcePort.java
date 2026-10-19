@@ -71,32 +71,6 @@ public interface SettleSourcePort {
     List<String> notPaidOrders(java.util.Collection<String> orderNos);
 
     /**
-     * 这段时间里<b>标着「已发过积分」</b>的子单（不变式 I3 的左边）。
-     *
-     * <p>积分域拿它去比「标记为真的，是不是真有发分流水」。
-     * <b>这两边分别由不同的事务写</b>：标记跟着订单走，流水跟着积分走 ——
-     * 支付域独立之后它们不再是一个事务，中间断一次就会出现
-     * 「标记说发过、而用户一分没拿到」，且<b>标记本身会挡住重试</b>
-     * （{@code grantOnPay} 的幂等就是靠它）。
-     *
-     * @param since 起始时刻（毫秒），按主单的支付时刻算
-     * @param limit 单轮上限
-     */
-    List<String> pointsGrantedSince(long since, int limit);
-
-    /**
-     * 把「已发过积分」的标记<b>改回未发</b>，让下一轮能重发（不变式 I3 的修复动作）。
-     *
-     * <p><b>方向只有这一个。</b>反过来（有流水而标记为假 → 补上标记）看起来对称，
-     * 其实不能自动做：那种情况说明流水那边多发了一次，
-     * 补标记等于把多发的一次盖掉，而账上那笔分还在用户手里。
-     * 那一类要人看，见 {@code FundInvariantService} 里的处置说明。
-     *
-     * @return 实际改了几行
-     */
-    int clearPointsGranted(java.util.Collection<String> subOrderNos);
-
-    /**
      * 这批子单里<b>已经不可能再成交</b>的（不变式 I6 的判据）。
      *
      * <p>两类都算：<b>库里根本没有这个子单</b>（下单事务回滚了，而积分已经扣走），

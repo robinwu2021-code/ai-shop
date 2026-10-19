@@ -1,5 +1,7 @@
 package ai.neargo.shop.trade.service;
 
+import ai.neargo.shop.trade.order.contract.CancellationImpact;
+
 import ai.neargo.shop.common.PageData;
 import ai.neargo.shop.trade.dto.OrderVO;
 
@@ -65,4 +67,6 @@ public interface PlatformOrderService {
 
     /** 代客取消：与买家取消同一条路（支付单 + 订单一起取消、释放占用），执行者记平台 */
     void proxyCancel(String orderNo, String reason, String operatorNo);
+
+    CancellationImpact cancellationImpact(String orderNo);
 }

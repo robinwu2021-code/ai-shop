@@ -4,8 +4,8 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.trade.SubOrderBuyerPort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -15,10 +15,10 @@ import java.util.Optional;
 @Component
 public class SubOrderBuyerPortImpl implements SubOrderBuyerPort {
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
 
-    public SubOrderBuyerPortImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper) {
+    public SubOrderBuyerPortImpl(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;
     }

@@ -1,5 +1,6 @@
 // 真实后端 fetch 封装：拼身份头 + Accept-Language + 统一 Result<T> 拆包 + 抛 ApiError。
 // 契约口径见 lib/types/common.ts（{code,msg,data}），与 C 端一致。
+import { pointsAcceptLanguage } from "../points-language";
 import { currentAuth, refreshPerms, scopeOf, useAuth } from "../auth";
 import { notify } from "../notify";
 import type { Result } from "../types";
@@ -32,14 +33,14 @@ const BASE = process.env.NEXT_PUBLIC_API_BASE || "";
  */
 const ELEC_BASE = process.env.NEXT_PUBLIC_ELEC_BASE || "";
 
-function headers(): Record<string, string> {
+function headers(path: string): Record<string, string> {
   const a = currentAuth();
   const scope = scopeOf(a);
   // ⚠️ 这些头是**给后端做日志与灰度的线索**，不是鉴权依据。
   // 角色与数据域以 Bearer 里的声明为准（矩阵 §2.3：不靠前端隐藏，更不靠前端声明）。
   return {
     "Content-Type": "application/json",
-    "Accept-Language": LOCALE_TAG[curLocale()], // 让后端按语言返回本地化 msg
+    "Accept-Language": pointsAcceptLanguage(path, LOCALE_TAG[curLocale()]), // 让后端按语言返回本地化 msg
     "X-Tenant-No": scope.tenantNo,
     "X-User-Id": a?.username ?? "",
     ...(a?.token ? { Authorization: `Bearer ${a.token}` } : {}),
@@ -105,7 +106,7 @@ function onForbidden(): void {
 async function req<T>(base: string, path: string, init?: RequestInit): Promise<T> {
   let r: Response;
   try {
-    r = await fetch(`${base}${path}`, { ...init, headers: { ...headers(), ...init?.headers } });
+    r = await fetch(`${base}${path}`, { ...init, headers: { ...headers(path), ...init?.headers } });
   } catch {
     throw new ApiError(-1, translate(curLocale(), "error.network")); // 网络层失败
   }

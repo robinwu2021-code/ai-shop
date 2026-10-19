@@ -125,5 +125,12 @@ class MachineBehaviorTest {
         assertThatThrownBy(() -> m.fire(PaymentStatus.WAIT_PAY, PaymentEvent.PAY_SUCCEEDED, Actor.CHANNEL,
                 new PaymentContext(false, true, false, false)))
                 .extracting(e -> ((BizException) e).errorCode()).isEqualTo(ErrorCode.BAD_REQUEST);
+        assertThat(m.fire(null, PaymentEvent.POINTS_STAGE, Actor.BUYER,
+                new PaymentContext(false, true, true, false)).to()).isEqualTo(PaymentStatus.POINTS_PENDING);
+        assertThat(m.fire(PaymentStatus.POINTS_PENDING, PaymentEvent.POINTS_READY, Actor.SYSTEM,
+                new PaymentContext(false, true, true, false)).to()).isEqualTo(PaymentStatus.WAIT_PAY);
+        assertThatThrownBy(() -> m.fire(PaymentStatus.POINTS_PENDING, PaymentEvent.PAY_SUCCEEDED,
+                Actor.CHANNEL, new PaymentContext(false, true, true, false)))
+                .isInstanceOf(BizException.class);
     }
 }

@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.CashReceiptFixture;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.job.AfterSaleTimeoutJob;
 import ai.neargo.shop.trade.service.AfterSaleRuleService;
@@ -49,9 +50,6 @@ class AfterSaleTimeoutFlowTest {
     private static final long HOUR = 3_600_000L;
     private static final String MERCHANT = "M0001";
     private static final String SKU = "SK0003";
-    /** 与 M5AfterSaleFlowTest 同一个桩密钥 */
-    private static final String STUB_SECRET = "stub-secret";
-
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
     @Autowired
@@ -365,9 +363,7 @@ class AfterSaleTimeoutFlowTest {
                         .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-astf-" + idemKey
-                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        new CashReceiptFixture(context).pay(token, payOrderNo);
         String list = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(list).get("data").get("records").get(0).get("orderNo").asString();
@@ -384,9 +380,7 @@ class AfterSaleTimeoutFlowTest {
                         .content("{\"fulfillment\":\"STORE_PICKUP\",\"pickupNo\":\"PP0001\"}"))
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-ast-" + idemKey
-                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        new CashReceiptFixture(context).pay(token, payOrderNo);
         String list = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
         return json.readTree(list).get("data").get("records").get(0).get("orderNo").asString();

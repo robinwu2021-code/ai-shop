@@ -150,7 +150,9 @@ const gen = createGenerator({
   additionalProperties: false,
 });
 const schema = gen.createSchema("*");
-const schemas = schema.definitions ?? {};
+// definitions 被装入 components.schemas，内部引用也必须跟随实际文档位置。
+const schemas = JSON.parse(JSON.stringify(schema.definitions ?? {})
+  .replaceAll("#/definitions/", "#/components/schemas/"));
 
 // ─────────────────────────────────────────────── 5. 组装 OpenAPI
 /** 路径里的 {param} → parameters 定义。全部按 string 处理（业务单号都是字符串）。 */
@@ -329,7 +331,7 @@ function toYaml(v, indent = 0) {
   return "\n" + keys.map((k) => `${pad}${yamlKey(k)}: ${toYaml(v[k], indent + 1)}`).join("\n");
 }
 
-const yamlText = toYaml(doc).replace(/^\n/, "") + "\n";
+const yamlText = toYaml(doc).replace(/^\n/, "").replace(/[ \t]+$/gm, "") + "\n";
 
 // ─────────────────────────────────────────────── 7. 自校验：产物必须能被解析回来
 //

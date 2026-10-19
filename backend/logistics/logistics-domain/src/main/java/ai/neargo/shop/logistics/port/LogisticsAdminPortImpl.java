@@ -13,10 +13,19 @@ import ai.neargo.shop.logistics.domain.WaybillStatus;
 import ai.neargo.shop.logistics.entity.LgsCarrierCode;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
 import ai.neargo.shop.logistics.entity.LgsWaybillNode;
+import ai.neargo.shop.logistics.entity.LgsChannelSubscription;
 import ai.neargo.shop.logistics.event.WaybillRegistered;
+import ai.neargo.shop.logistics.registration.WaybillReplacement;
+import ai.neargo.shop.logistics.registration.ChannelSubscriptionStore;
+import ai.neargo.shop.logistics.registration.Kd100SubscribeRequested;
+import ai.neargo.shop.logistics.wxbind.WxFollowRequested;
+import ai.neargo.shop.spi.logistics.ShipmentSourcePort;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Isolation;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.CarrierCodeMapper;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillNodeMapper;
+import ai.neargo.shop.logistics.mapper.LogisticsMappers.ChannelSubscriptionMapper;
 import ai.neargo.shop.logistics.routing.CarrierCodeBook;
 import ai.neargo.shop.logistics.routing.ChannelRouter;
 import ai.neargo.shop.logistics.wxbind.WxBindRequested;
@@ -35,6 +44,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -56,6 +66,14 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
     private final List<WaybillTokenBinder> binders;
     private final LogisticsProperties props;
     private final OutboxEventBus events;
+    private ShipmentSourcePort source;
+    private ChannelSubscriptionMapper channelRows;
+
+    @Autowired(required = false)
+    public void setChannelRows(ChannelSubscriptionMapper channelRows) { this.channelRows = channelRows; }
+
+    @Autowired
+    public void setShipmentSourcePort(ShipmentSourcePort source) { this.source = source; }
 
     public LogisticsAdminPortImpl(WaybillMapper waybills, WaybillNodeMapper nodes, CarrierCodeMapper codeMapper,
                                   CarrierCodeBook codes, ChannelRouter router, List<WaybillTokenBinder> binders,
@@ -94,15 +112,19 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
         w.orderByDesc("id");
         Page<LgsWaybill> page = waybills.selectPage(Page.of(Math.max(1, q.page()), Math.max(1, q.size())), w);
         Map<String, List<Node>> traces = tracesOf(page.getRecords().stream().map(LgsWaybill::getShipmentNo).toList());
+        Map<String, ShipmentSourcePort.UploadState> uploadStates = source == null ? Map.of()
+                : source.uploadStatesOf(page.getRecords().stream().map(LgsWaybill::getBizRef).toList());
+        Map<String, List<Subscription>> subscriptions = subscriptionsOf(page.getRecords());
         List<Shipment> rows = page.getRecords().stream()
-                .map(r -> toShipment(r, traces.getOrDefault(r.getShipmentNo(), List.of()))).toList();
+                .map(r -> toShipment(r, traces.getOrDefault(r.getShipmentNo(), List.of()),
+                        uploadStates.get(r.getBizRef()), subscriptions.getOrDefault(r.getShipmentNo(), List.of()))).toList();
         return new ShipmentPage(rows, page.getTotal());
     }
 
     // ---------------------------------------------------------------- O2 换单号
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Shipment changeWaybill(String shipmentNo, String carrier, String waybillNo, String reason,
                                   Set<String> entityNos) {
         // 原因必填：之后对不上时这是唯一线索，而用户可能已拿着旧号在查件
@@ -110,7 +132,11 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
         LgsWaybill w = require(shipmentNo, entityNos);
-        if (WaybillStatus.isTerminal(w.getStatus())) {
+        // A reused or mistyped number may already be marked delivered by the carrier.
+        // The source correction below still requires the trade order to be fulfilling;
+        // only then may the merchant replace that false terminal trace.
+        if (WaybillStatus.isTerminal(w.getStatus())
+                && !(WaybillStatus.DELIVERED.equals(w.getStatus()) && w.getSourceShipmentNo() != null)) {
             throw BizException.of(ErrorCode.WAYBILL_LOCKED);   // 等于把一条已完成的轨迹指向别处
         }
         String newCarrier = notBlank(carrier) ? carrier.trim() : w.getCarrier();
@@ -126,19 +152,19 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
          * 状态回到 CREATED 是运营动作，不走「只进不退」（那条规矩管的是渠道推来的进展）。
          * 清空要显式 set null：updateById 跳过 null。
          */
-        boolean wx = LgsWaybill.PROFILE_WX.equals(w.getProfile());
-        waybills.update(null, Wrappers.<LgsWaybill>update()
-                .set("carrier", newCarrier).set("waybill_no", newNo)
-                .set("status", WaybillStatus.CREATED)
-                .set("sub_state", LgsWaybill.SUB_PENDING).set("sub_channel", null).set("sub_ref", null)
-                .set("sub_attempts", 0).set("sub_error", null)
-                .set("kd100_sub_month", null).set("kd100_sub_count", 0)
-                .set("bind_state", wx ? LgsWaybill.BIND_WAITING : LgsWaybill.BIND_NA)
-                .set("bind_error", null).set("display_token", null).set("wx_status_checked_at", null)
-                .set("picked_up_at", null).set("signed_at", null).set("at_locker", 0)
-                .set("carrier_corrected_from", null)
-                .set("updated_at", LocalDateTime.now())
-                .eq("id", w.getId()));
+        String sourceNo = w.getSourceShipmentNo();
+        Long generation = w.getSourceShipmentVersion();
+        if (sourceNo != null) {
+            if (source == null || generation == null) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            var corrected = source.correctSource(w.getBizRef(), sourceNo, generation, newCarrier, newNo, reason)
+                    .orElseThrow(() -> BizException.of(ErrorCode.CONFLICT));
+            sourceNo = corrected.sourceShipmentNo();
+            generation = corrected.sourceShipmentVersion();
+            newNo = corrected.waybillNo();
+        }
+        WaybillReplacement.reset(waybills, nodes, w, newCarrier, newNo, sourceNo, generation);
         // 换号本身要进轨迹：不写的话，之后看到的是一条凭空换了单号的运单
         LgsWaybillNode n = new LgsWaybillNode();
         n.setShipmentNo(shipmentNo);
@@ -151,19 +177,33 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
         n.setTenantNo("MAIN");
         n.setCreatedAt(LocalDateTime.now());
         nodes.insert(n);
-        events.publish(new WaybillRegistered(shipmentNo));   // 按新号重新订阅（开关关着时停在 PENDING）
+        if (sourceNo == null) events.publish(new WaybillRegistered(shipmentNo));
+        else {
+            String identity = sourceNo + ":" + generation;
+            events.publish(new WxFollowRequested(shipmentNo, identity));
+            events.publish(new Kd100SubscribeRequested(shipmentNo, identity));
+        }
         LgsWaybill after = waybills.selectById(w.getId());
-        return toShipment(after, tracesOf(List.of(shipmentNo)).getOrDefault(shipmentNo, List.of()));
+        return toShipment(after, tracesOf(List.of(shipmentNo)).getOrDefault(shipmentNo, List.of()),
+                source == null ? null : source.uploadStatesOf(List.of(after.getBizRef())).get(after.getBizRef()),
+                subscriptionsOf(List.of(after)).getOrDefault(shipmentNo, List.of()));
     }
 
     // ---------------------------------------------------------------- O3 重放
 
     @Override
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void replay(String shipmentNo, String action, String channel, Set<String> entityNos) {
         LgsWaybill w = require(shipmentNo, entityNos);
         if (WaybillStatus.isTerminal(w.getStatus())) {
             throw BizException.of(ErrorCode.WAYBILL_TERMINAL);
+        }
+        if (REPLAY_WX_UPLOAD.equals(action)) {
+            if (source == null || w.getSourceShipmentNo() == null || w.getSourceShipmentVersion() == null) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            source.retryUpload(w.getBizRef(), w.getSourceShipmentNo(), w.getSourceShipmentVersion());
+            return;
         }
         if (REPLAY_WX_BIND.equals(action)) {
             if (!LgsWaybill.PROFILE_WX.equals(w.getProfile())) {
@@ -194,7 +234,16 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
         waybills.update(null, Wrappers.<LgsWaybill>update()
                 .set("sub_state", LgsWaybill.SUB_PENDING).set("sub_attempts", 0).set("sub_error", null)
                 .set("updated_at", LocalDateTime.now()).eq("id", w.getId()));
-        events.publish(new WaybillRegistered(shipmentNo, forced));
+        if (w.getSourceShipmentNo() == null) events.publish(new WaybillRegistered(shipmentNo, forced));
+        else if (forced == null) {
+            String identity = ChannelSubscriptionStore.identityKey(w);
+            events.publish(new WxFollowRequested(shipmentNo, identity));
+            events.publish(new Kd100SubscribeRequested(shipmentNo, identity));
+        } else if (KD100.equals(forced)) {
+            events.publish(new Kd100SubscribeRequested(shipmentNo, ChannelSubscriptionStore.identityKey(w)));
+        } else if ("wx-follow".equals(forced)) {
+            events.publish(new WxFollowRequested(shipmentNo, ChannelSubscriptionStore.identityKey(w)));
+        } else events.publish(new WaybillRegistered(shipmentNo, forced));
     }
 
     private static boolean kd100UsedUp(LgsWaybill w) {
@@ -315,14 +364,37 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
         return out;
     }
 
-    private static Shipment toShipment(LgsWaybill w, List<Node> traces) {
+    private Map<String, List<Subscription>> subscriptionsOf(List<LgsWaybill> current) {
+        if (current.isEmpty() || channelRows == null) return Map.of();
+        List<LgsChannelSubscription> rows = channelRows.selectList(Wrappers.<LgsChannelSubscription>query()
+                .in("shipment_no", current.stream().map(LgsWaybill::getShipmentNo).toList()));
+        Map<String, String> identities = new LinkedHashMap<>();
+        current.forEach(w -> identities.put(w.getShipmentNo(), ChannelSubscriptionStore.identityKey(w)));
+        Map<String, List<Subscription>> out = new LinkedHashMap<>();
+        for (LgsChannelSubscription row : rows) {
+            if (!Objects.equals(identities.get(row.getShipmentNo()), row.getIdentityKey())) continue;
+            out.computeIfAbsent(row.getShipmentNo(), ignored -> new ArrayList<>())
+                    .add(new Subscription(row.getChannel(), row.getState(), row.getError(),
+                            row.getLastAttemptAt(), row.getNextRetryAt()));
+        }
+        return out;
+    }
+
+    private static Shipment toShipment(LgsWaybill w, List<Node> traces, ShipmentSourcePort.UploadState upload,
+                                       List<Subscription> subscriptions) {
+        String sourceCarrier = w.getCarrierCorrectedFrom() == null ? w.getCarrier() : w.getCarrierCorrectedFrom();
+        boolean current = upload != null && Objects.equals(w.getSourceShipmentNo(), upload.sourceShipmentNo())
+                && Objects.equals(w.getSourceShipmentVersion(), upload.sourceShipmentVersion())
+                && Objects.equals(w.getWaybillNo(), upload.waybillNo())
+                && Objects.equals(sourceCarrier, upload.carrier());
         return new Shipment(w.getShipmentNo(), w.getBizRef(), w.getCarrier(), w.getWaybillNo(), w.getStatus(),
                 w.getReceiver(), w.getRegion(), w.getCreatedAt(), w.getUpdatedAt(), traces,
                 w.getProfile(), w.getStoreNo(), w.getEntityNo(),
                 w.getSubState(), w.getSubChannel(), w.getSubError(), w.getSubAttempts(),
                 w.getBindState(), w.getBindError(), w.getSignedAt(), w.getLastEventAt(),
                 w.getAtLocker() != null && w.getAtLocker() == 1,
-                w.getCarrierCorrectedFrom(), w.getReceiverPhoneLast4());
+                w.getCarrierCorrectedFrom(), w.getReceiverPhoneLast4(),
+                current ? upload.status() : null, current ? upload.error() : null, subscriptions);
     }
 
     private static void eq(QueryWrapper<LgsWaybill> w, String col, String v) {

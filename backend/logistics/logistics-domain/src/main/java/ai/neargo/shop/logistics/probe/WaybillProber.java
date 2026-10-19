@@ -3,6 +3,7 @@ package ai.neargo.shop.logistics.probe;
 import ai.neargo.shop.logistics.capability.StatusProbe;
 import ai.neargo.shop.logistics.domain.PhoneCipher;
 import ai.neargo.shop.logistics.domain.WaybillProgress;
+import ai.neargo.shop.logistics.domain.WaybillUpdateAudit;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
 import ai.neargo.shop.logistics.routing.ChannelRouter;
@@ -12,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import ai.neargo.shop.logistics.domain.WaybillSourceIdentity;
 
 /**
  * 按一个探测渠道问一次运单、把答案应用到运单上 —— 物流页读时校正（M7）与补偿作业（M8）<b>共用这一份</b>。
@@ -31,6 +33,10 @@ public class WaybillProber {
     private final ChannelRouter router;
     private final WaybillProgress progress;
     private final PhoneCipher phones;
+    private WaybillUpdateAudit audit;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAudit(WaybillUpdateAudit audit) { this.audit = audit; }
 
     public WaybillProber(WaybillMapper waybills, ChannelRouter router, WaybillProgress progress, PhoneCipher phones) {
         this.waybills = waybills;
@@ -52,18 +58,27 @@ public class WaybillProber {
             patch.setWxStatusCheckedAt(now);
             w.setWxStatusCheckedAt(now);
         }
+        Optional<TraceResult> result;
         try {
-            Optional<TraceResult> r = p.probe(new StatusProbe.ProbeCmd(w.getCarrier(),
+            result = p.probe(new StatusProbe.ProbeCmd(w.getCarrier(),
                     router.codeOf(w.getCarrier(), p).orElse(null), w.getWaybillNo(),
                     phones.decrypt(w.getReceiverPhoneEnc()), w.getDisplayToken()));
-            if (r.isPresent()) {
-                return new Outcome(true, progress.apply(w, r.get(), p.channel(), "QUERY", patch, now).changed());
-            }
         } catch (RuntimeException e) {
             log.warn("[lgs-probe] {} 问 {} 失败：{}", w.getShipmentNo(), p.channel(), e.toString());
+            if (audit != null) audit.record(w, p.channel(), "QUERY", w.getStatus(), w.getStatus(), 0,
+                    "ERROR", e.getClass().getSimpleName(), now);
+            if (patch.getWxStatusCheckedAt() != null) {
+                waybills.update(patch, WaybillSourceIdentity.unchanged(w));
+            }
+            return new Outcome(false, false);
         }
+        if (result.isPresent()) {
+            return new Outcome(true, progress.apply(w, result.get(), p.channel(), "QUERY", patch, now).changed());
+        }
+        if (audit != null) audit.record(w, p.channel(), "QUERY", w.getStatus(), w.getStatus(), 0,
+                "NO_RESULT", "渠道未返回可用物流状态", now);
         if (patch.getWxStatusCheckedAt() != null) {
-            waybills.updateById(patch);
+            waybills.update(patch, WaybillSourceIdentity.unchanged(w));
         }
         return new Outcome(false, false);
     }

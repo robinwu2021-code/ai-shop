@@ -23,6 +23,8 @@ public class BootstrapConfigServiceImpl implements BootstrapConfigService {
             new tools.jackson.databind.ObjectMapper();
 
     private final ShopProperties props;
+    @org.springframework.beans.factory.annotation.Value("${shop.points.enabled:false}")
+    private boolean pointsOrderIntegrationEnabled;
     /**
      * 平台开关（运营端「功能开关」那一屏）。
      *
@@ -58,6 +60,8 @@ public class BootstrapConfigServiceImpl implements BootstrapConfigService {
                 features.put(f.key(), f.enabled());
             }
         }
+        // The client flag alone cannot turn on order integration while its server gate is closed.
+        features.put("points", pointsOrderIntegrationEnabled && Boolean.TRUE.equals(features.get("points")));
         return new BootstrapConfig(
                 props.getDefaultSkin(),
                 Map.copyOf(features),

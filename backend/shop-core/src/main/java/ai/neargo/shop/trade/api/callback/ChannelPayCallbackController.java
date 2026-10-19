@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import ai.neargo.shop.spi.settle.SettlePort;
+import ai.neargo.shop.spi.settle.RefundDispatchResult;
+import ai.neargo.shop.spi.settle.RefundDispatchResult.DispatchStatus;
 
 /**
  * 真通道的支付回调。**不走 Bearer**，靠验签。
@@ -127,7 +129,7 @@ public class ChannelPayCallbackController {
                     "回查失败（通道查询没答上来）", String.valueOf(outTradeNo), null, payload);
             return v.ackFail();
         }
-        if (!r.paid()) {
+        if (!r.paid() || !r.found()) {
             /*
              * 通道推了「已支付」，回查却说没付。**这两句话不能都对。**
              * 回 FAIL 让它重推：真付了下一次就一致，没付则永远不会落库。
@@ -152,7 +154,7 @@ public class ChannelPayCallbackController {
          */
         String orderNo = settlePort.settlePayment(new SettlePort.PaymentSettled(
                 String.valueOf(outTradeNo), channel, r.tradeNo(),
-                r.amountMinor(), System.currentTimeMillis()));
+                r.amountMinor(), System.currentTimeMillis(), r.currency()));
 
         /*
          * **订单号由支付域给**：商户单号是「订单号 + 尝试序号」，
@@ -222,7 +224,7 @@ public class ChannelPayCallbackController {
                     "回查失败（通道查询没答上来）", String.valueOf(outRefundNo), null, payload);
             return v.ackFail();
         }
-        if (!r.paid()) {
+        if (!r.paid() || !r.found()) {
             /*
              * 通道推了「已退款」，回查却说没退完。**这两句话不能都对。**
              * 回 FAIL 让它重推 —— 退款处理中（PROCESSING）也走这一支，
@@ -235,8 +237,9 @@ public class ChannelPayCallbackController {
             return v.ackFail();
         }
 
-        String orderNo = settlePort.settleRefund(String.valueOf(outRefundNo), r.tradeNo());
-        if (orderNo == null) {
+        RefundDispatchResult confirmed = settlePort.settleRefund(String.valueOf(outRefundNo), channel,
+                r.amountMinor(), r.currency(), r.tradeNo());
+        if (confirmed == null || confirmed.status() != DispatchStatus.SUCCEEDED || confirmed.paymentNo() == null) {
             log.error("[callback] {} 收到无法认领的退款 out_refund_no={} —— 流水里没有这个单号",
                     channel, outRefundNo);
             payMessage.callbackSettled(msgNo, PayMessagePort.REJECTED,

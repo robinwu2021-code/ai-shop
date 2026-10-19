@@ -26,7 +26,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "../../..");
-const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
+const sourceCache = new Map<string, string>();
+const read = (p: string) => {
+  if (!sourceCache.has(p)) sourceCache.set(p, readFileSync(join(ROOT, p), "utf8"));
+  return sourceCache.get(p)!;
+};
 
 function filesIn(dir: string, ext: string): string[] {
   const abs = join(ROOT, dir);
@@ -39,10 +43,10 @@ function methodPaths(): Record<string, string> {
   const out: Record<string, string> = {};
   for (const f of filesIn("ops-web/lib/api/https", ".ts")) {
     for (const m of read(f).matchAll(
-      /(\w+):\s*\([^)]*\)\s*=>\s*client\.(?:get|post|put)\(\s*`?["'`]([^"'`$]+)/g,
+      /(\w+):\s*\([^)]*\)\s*=>\s*client\.(get|post|put)\(\s*`?["'`]([^"'`$]+)/g,
     )) {
       // 只收静态路径；带模板变量的（`/ops/x/${no}`）在 $ 处被截断，跳过
-      if (!m[2]!.includes("$")) out[m[1]!] = m[2]!;
+      if (!m[3]!.includes("$")) out[m[1]!] = `${m[2]!.toUpperCase()} ${m[3]!}`;
     }
   }
   return out;
@@ -128,9 +132,9 @@ function backendReturns(): Record<string, { ret: string; file: string }> {
   const out: Record<string, { ret: string; file: string }> = {};
   for (const f of JAVA) {
     for (const m of read(f).matchAll(
-      /@(?:Get|Post|Put)Mapping\((?:value\s*=\s*)?"([^"]+)"\)[\s\S]{0,400}?public\s+([\w.<>?, ]+?)\s+\w+\s*\(/g,
+      /@(Get|Post|Put)Mapping\((?:value\s*=\s*)?"([^"]+)"\)[\s\S]{0,400}?public\s+([\w.<>?, ]+?)\s+\w+\s*\(/g,
     )) {
-      out[m[1]!] = { ret: simpleName(m[2]!), file: f };
+      out[`${m[1]!.toUpperCase()} ${m[2]!}`] = { ret: simpleName(m[3]!), file: f };
     }
   }
   return out;
@@ -194,6 +198,12 @@ describe("ops-web 契约字段（必填数组）", () => {
     .filter(([m]) => paths[m])
     .map(([m, t]) => ({ method: m, path: paths[m]!, opsType: t, be: backend[paths[m]!] }))
     .filter((p) => p.be);
+
+  it("同路径 GET 与 POST 分别保留读取列表与变更结果", () => {
+    expect(backend["GET /ops/points/switches"]?.ret).toBe("SwitchPage");
+    expect(backend["POST /ops/points/switches"]?.ret).toBe("ChangeResult");
+    expect(paths.pointsSwitches).toBe("GET /ops/points/switches");
+  });
 
   it("能配上足够多的端点 —— 配不上说明解析退化了，那时断言恒真", () => {
     expect(pairs.length).toBeGreaterThan(5);

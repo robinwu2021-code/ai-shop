@@ -792,8 +792,16 @@ export interface OnboardingRow {
  * <p>六个数字沿着「建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账」排开，
  * 而**真正能拿去做事的是 `stuckAt`** —— 数字自己不指向任何人。
  */
+/**
+ * 商家链条画像的一行（M1）。
+ *
+ * <p>六个数字沿着「建品 → 提审 → 上架 → 建账 → 首次进货 → 持续记账」排开，
+ * 而**真正能拿去做事的是 `stuckAt`** —— 数字自己不指向任何人。
+ */
 export interface MerchantChainRow {
+  /** 商家主体编号 */
   entityNo: string;
+  /** 商家展示名称 */
   merchantName: string | null;
   /** 建了几个 SPU */
   goods: number;

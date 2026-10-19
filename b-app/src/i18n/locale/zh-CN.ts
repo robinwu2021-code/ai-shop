@@ -2,6 +2,9 @@
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
   trace: {
+    awaitingPickup: "待揽收",
+    exception: "物流异常",
+    cancelled: "运单已作废",
     step: {
       picked: "已揽收",
       transit: "运输中",
@@ -701,6 +704,8 @@ export default {
     statusWAIT_PAY: "待付款",
     statusPAID: "待发货",
     statusSHIPPED: "已发货",
+    signedPendingReview: "签收待核实",
+    signedBeforeOrder: "此运单在本单下单前已签收，不能自动完成交易；请核对并更正运单号。",
     delivering: "配送中",
     statusARRIVED: "待核销",
     statusCOMPLETED: "已完成",
@@ -708,6 +713,14 @@ export default {
     statusREFUNDED: "已退款",
     statusCANCELLED: "已取消",
     title: "订单",
+    tabTodo: "待办",
+    changeFulfillmentTitle: "修改配送方式",
+    changeFulfillmentTarget: "改为：",
+    changeFulfillmentReasonPh: "填写与买家协商的原因（必填）",
+    changeFulfillmentReasonRequired: "请填写修改原因",
+    changeFulfillmentConfirm: "配送方式将更新并通知买家，订单金额与运费不变。确认修改？",
+    changeFulfillmentAction: "确认修改",
+    changeFulfillmentDone: "配送方式已更新",
     tabAll: "全部",
     tabToShip: "待发货", tabToReceive: "待收款", statusWAIT_OFFLINE_PAY: "待当面收款",
     tabShipped: "已发货",
@@ -730,19 +743,55 @@ export default {
     receiver: "收件人",
     ship: "发货",
     expressNo: "运单号",
+    correctWaybill: "更正运单",
+    waybillReason: "更正原因（必填）",
+    saveWaybill: "保存新运单",
+    waybillCorrected: "运单已更正",
+    waybillIncomplete: "请填写快递公司、新运单号和更正原因",
+    waybillUnchanged: "新运单与当前运单相同",
     trace: "物流轨迹",
+
+
+    syncPending: "同步中",
+    shippedSyncing: "已发货，物流同步中",
+    invalidWaybill: "运单信息无效",
+    waybillHistoryTitle: "运单已有物流记录",
+    waybillHistoryHint: "该运单已有物流状态，请确认它属于本次发货。",
+    confirmWaybill: "确认使用此运单",
     traceView: "查看",
+    traceRefresh: "更新运单状态",
+    traceRefreshing: "查询中…",
+    traceRefreshUnchanged: "当前状态未变化，请等待渠道更新",
+    traceOrderUpdated: "订单状态已更新",
+    traceWaybillUpdated: "运单已更新，订单状态未变化",
+    traceAwaitingProof: "物流显示签收，待核实本次发货轨迹后完成订单",
+    updateHistory: "运单更新记录",
+    updateHistoryEmpty: "暂无更新记录",
+    updateSourceWx: "微信物流",
+    updateSourceK100: "快递100",
+    updateSourceYto: "圆通直连",
+    updateSourceOther: "其他渠道",
+    updateModePush: "订阅推送",
+    updateModeQuery: "主动查询",
+    updateAdvanced: "物流状态已更新",
+    updateNodesAdded: "新增物流轨迹",
+    updateUnchanged: "状态未变化",
+    updateNoResult: "渠道暂无结果",
+    updateThrottled: "快递100查询限频",
+    updateFailed: "更新失败",
+    traceRefreshUnavailable: "渠道暂不支持查询，请等待物流更新",
+
     pickCarrier: "请选择快递公司",
-    expressBook: "叫快递上门",
+
     expressSandbox: "测试",
-    shipMode: { PICKUP: "叫快递上门", SELF: "自己发货" },
-    expressBookBtn: "叫快递",
+
+
     expressWeight: "重量",
-    expressWeightPh: "重量（公斤）",
-    expressQuote: "查价",
-    expressNoQuote: "这条线路暂无快递可接",
-    expressConfirm: "{carrier}，运费约 {price}。快递员上门取件后，运费记入本店欠款。",
-    expressBooked: "已叫快递",
+
+
+
+
+
     expressCancel: "取消取件",
     expressCancelAsk: "取消这次取件？",
     expressKeep: "保留",
@@ -833,40 +882,75 @@ export default {
 
 
   points: {
+    statementStateBuilding: "生成中",
+    statementStateDraft: "待确认",
+    statementStateDisputed: "有异议",
+    statementStateConfirmed: "待付款",
+    statementStatePaying: "付款处理中",
+    statementStatePaid: "已付",
+    statementStateCleared: "无需付款",
+    statementStateUnknown: "待核实",
+
+    statementDetails: "账单明细",
+    statementSourceOrder: "来源订单",
+    statements: "积分账单",
+    statementFailed: "操作失败，请刷新账单后重试",
+    statementRefresh: "刷新账单",
+    noStatements: "暂无账单",
+    statementRevision: "修订",
+    statementDisputeReason: "异议原因（必填）",
+    statementConfirm: "确认本修订",
+    statementDispute: "提出异议",
+    statementMore: "加载更多",
+    statementChecked: "已核对本修订账单",
+    statementConfirmHint: "确认当前修订后将进入待兑付流程，请核对积分数量和账期。",
+    statementDisputeHint: "提交后本修订停止自动确认，等待运营核查。",
+
+
+    agreement: "门店积分协议",
+    activeAgreement: "协议已生效",
+    terminate: "终止协议",
+    termsVersion: "条款版本",
+    signHint: "请选择当前门店已开通的收款通道与结算方式；最终路由由服务端核验。",
+    perOrder: "随单结算",
+    periodic: "定期结算",
+    acceptTerms: "我已阅读并同意以上条款",
+    sign: "签署协议",
+    noTerms: "平台尚未发布此类型的协议条款",
+    signConfirm: "确认以当前门店签署这份积分协议？",
+    terminateConfirm: "确认终止此门店协议？存量积分义务仍需继续处理。",
+    actionFailed: "操作失败，请刷新后重试",
+    storeLedger: "门店积分账本",
+    storeLedgerHint: "按当前门店与积分类型查看，金额和积分以支付账本为准。",
+    noTypes: "暂无积分类型",
+    type: "积分类型",
+    pointsUnit: "积分",
+    minorUnit: "最小货币单位",
+    accountBuckets: "账户分桶",
+    emptyAccount: "当前门店在此类型下暂无账本记录",
+    balanceAfter: "变动后余额",
+    loadMore: "加载更多",
 
     title: "积分",
 
-    periodExpense: "本期发放服务费",
 
-    periodHint: "{p} · 结算时从货款里扣",
 
-    switch: "本店积分",
 
-    switchHint: "开启后顾客在本店消费可获得积分，商家按发放额支付服务费",
 
-    closeOnlyFuture: "关闭只影响将来：已发出的分仍然有效，已扣的服务费不退",
 
-    forced: "平台已强制开启本店积分，不能关闭",
 
-    rule: "发放规则",
 
-    rulePlatform: "平台统一",
 
-    ruleHint: "按类目统一设置，商家不单独配置。具体比例见平台公布的类目规则。",
 
-    records: "查看发放明细",
+    records: "查看积分流水",
 
-    recordsTitle: "积分发放明细",
+    recordsTitle: "门店积分流水",
 
-    periodTotal: "本期合计",
 
-    recordsEmpty: "本期暂无发放记录",
+    recordsEmpty: "暂无积分流水",
 
-    granted: "发放 {n} 分",
 
-    notGranted: "未发放",
 
-    notGrantedWhy: "当面付款的订单不发放积分",
 
   },
 
@@ -1524,10 +1608,25 @@ export default {
       ARBITRATING: "平台介入中",
       CLOSED: "售后已关闭",
     },
+    pendingTab: "待处理申请",
+    allTab: "全部售后",
+
+    fullCash: "本期按本门店子单全额原路退回现金",
+    restock: "退货可再次销售，同意回库（默认不回库）",
+    accepted: "已提交，请查看退款进度",
+    execution: {
+      processing: "退款已受理，等待资金结果",
+      failed: "退款失败，请联系客服核对原退款单",
+      unknown: "退款结果尚未确认，请勿重复申请",
+      manual: "退款需要人工核对，请联系客服",
+      resourcesPending: "现金已退，库存或优惠仍在恢复中",
+      resourcesFailed: "已退现金，资源恢复异常请联系客服",
+      done: "退款与资源恢复已完成",
+    },
     impactReturn: "整单退款，将同时退回用户的{what}",
     impactCoupon: "券「{name}」",
-    impactPoints: "{n} 积分",
-    impactRevoke: "并收回本单赠送的 {n} 积分",
+
+
     agreeReturn: "同意退货",
     buyerReason: "顾客理由：",
     rejectedHint: "已驳回，等待顾客确认或申请平台介入。",
@@ -1536,16 +1635,17 @@ export default {
     waitReturn: "已同意，等待顾客寄回商品。",
     refundingHint: "退款处理中。",
     confirmRefund: "确认退款",
+    confirmEarlyRefund: "确认承担风险并退款",
+    earlyRefundReasonPh: "说明提前退款原因及货物处置情况",
+    earlyRefundReasonRequired: "请先说明在途提前退款原因",
     returnExpress: "退货运单号",
     confirmReceived: "确认收货并退款",
-    refunded: "已确认收货，退款已发起",
+
     doneHint: "已退款，这一单结束了。",
     closedHint: "售后已关闭。",
     donePointsHint: "已按约定折 {n} 积分退回买家，这一单结束了。",
     waitReceiptHint: "货在途。买家签收后请确认退款。",
     approveAmount: "退款金额",
-    refundModeCash: "退现金",
-    refundModePoints: "退积分",
     amountInvalid: "退款金额需大于 0 且不超过实付",
     stage: {
       NOT_PREPARED: "未备货",
@@ -1838,20 +1938,6 @@ export default {
     batchStatusRECONCILED: "待放款",
     batchStatusRELEASED: "已放款",
     rateTitle: "费率说明",
-    pointsTitle: "本店积分",
-    pointsOn: "已开启",
-    pointsOff: "已关闭",
-    pointsForced: "平台已开启",
-    pointsExpense: "{period} 积分发放服务费",
-    pointsHint: "顾客使用积分抵扣的金额由平台承担，商家仅支付发放服务费。",
-    pointsDetail: "查看明细",
-    pointsFold: "收起明细",
-    pointsEmpty: "本期暂无积分发放服务费",
-    pointsQty: "{n} 分",
-    pointsOnTitle: "开启本店积分",
-    pointsOnHint: "开启后每笔订单按规则发放积分，并产生发放服务费。",
-    pointsOffTitle: "关闭本店积分",
-    pointsOffHint: "关闭只影响将来：已发出的分仍然有效，已扣的服务费不退。",
 
     title: "结算单",
     empty: "还没有可结算的订单",
@@ -2729,10 +2815,11 @@ entryHint: "谁在买 · 谁不来了",
   },
   message: {
     title: "消息",
+    pendingAfterSale: "待处理退款 {n} 笔",
     readAll: "全部已读",
     view: "查看详情",
     empty: "还没有消息",
-    tab: { all: "全部", TRADE: "经营", MARKETING: "活动", SYSTEM: "系统" },
+    tab: { pending: "待处理", progress: "进度", all: "全部", TRADE: "经营", MARKETING: "活动", SYSTEM: "系统" },
   },
   stockSync: {
     section: "线上库存同步",

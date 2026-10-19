@@ -38,6 +38,63 @@ const camel = (s: string) =>
  * 删不掉说明还没做完。
  */
 const NO_ENTITY_YET: Record<string, string> = {
+  pts_statement_final_fact: "可信终局发生时间与首次就绪序列投影，由PointsConfigurationMapper维护，按积分SQL mapper设计无ORM实体。",
+  pts_statement_build: "大账单构建状态及高水位由PointsConfigurationMapper与MybatisStatementBuildStore与不可变record维护，按积分SQL mapper设计无ORM实体。",
+  pts_statement_source_history: "大账单来源版本的只增历史由PointsConfigurationMapper与MybatisStatementBuildStore维护，用于分页重建旧修订，不设独立ORM实体。",
+  pts_statement_build_item: "大账单固定来源分页明细由PointsConfigurationMapper与MybatisStatementBuildStore维护，与build同事务，按积分SQL mapper设计无ORM实体。",
+  pts_statement_confirmation: "每修订通知与确认期限由StatementConfirmationMapper维护，按积分SQL mapper设计无ORM实体。",
+  pts_user_adjustment: "双人调账原申请及审批版本由PointsAdjustmentMapper维护，账务经统一posting，按积分SQL mapper设计无ORM实体。",
+  pts_availability_projection: "可重建的版本水位派生投影，由PointsAvailabilityMapper与AcceptanceAvailabilityProjection读写不可变快照，不是独立业务聚合，按现有积分SQL mapper方案不设ORM实体。",
+  prd_category_points: "旧版类目积分规则表；生产只读审计为空，新积分方案不再读取，由 points integration policy 按门店×场景控制；不迁移、不删除历史表。",
+  ord_points_refund_execution: "SQL mapper 由 RefundExecutionMapper/RefundLedgerMapper 直接访问，事务与恢复队列共用投影，无独立 ORM 实体。",
+  lgs_push_event: "物流推送审计由 PushIngestion 通过 JdbcTemplate 追加与回写，按事件号定点读取，不使用 ORM 实体。",
+  lgs_precheck_cache: "渠道预检缓存由 LogisticsPortImpl 通过 JdbcTemplate 读写，按运单身份定点读取，不使用 ORM 实体。",
+  lgs_update_log: "物流更新审计由 WaybillUpdateAudit 通过 JdbcTemplate 追加并按运单查询，不使用 ORM 实体。",
+  pts_point_type: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_fund_pool: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_account: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsOperationsMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_voucher: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsOperationsMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_ledger_entry: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsOperationsMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_pool_flow: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_fund_evidence: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsOperationsMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_refund_reserve: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_grant_position: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsOperationsMapper 维护，无独立 ORM 实体。",
+  pts_redeem_position: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsOperationsMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_refund_preparation: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_payout_ticket: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_store_statement: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsOperationsMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_fund_transfer: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_grant_line: "预留关系投影表，当前业务权威记录由 PointsPositionMapper/PointsRecordMapper 的不可变 JSON 快照维护；此表不作为生产写入或查询入口。",
+  pts_redeem_line: "预留关系投影表，当前业务权威记录由 PointsPositionMapper/PointsRecordMapper 的不可变 JSON 快照维护；此表不作为生产写入或查询入口。",
+  pts_merchant_agreement: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsOperationsMapper 维护，无独立 ORM 实体。",
+  pts_statement_revision: "预留关系投影表，当前业务权威记录由 PointsPositionMapper/PointsRecordMapper 的不可变 JSON 快照维护；此表不作为生产写入或查询入口。",
+  pts_statement_line: "预留关系投影表，当前业务权威记录由 PointsPositionMapper/PointsRecordMapper 的不可变 JSON 快照维护；此表不作为生产写入或查询入口。",
+  pts_receivable: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsOperationsMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_receivable_allocation: "预留关系投影表，当前业务权威记录由 PointsPositionMapper/PointsRecordMapper 的不可变 JSON 快照维护；此表不作为生产写入或查询入口。",
+  pts_refund_preparation_line: "预留关系投影表，当前业务权威记录由 PointsPositionMapper/PointsRecordMapper 的不可变 JSON 快照维护；此表不作为生产写入或查询入口。",
+  pts_pool_request: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper 维护，无独立 ORM 实体。",
+  pts_topup_plan: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsOperationsMapper 维护，无独立 ORM 实体。",
+  pts_switch: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsOperationsMapper 维护，无独立 ORM 实体。",
+  pts_switch_log: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper 维护，无独立 ORM 实体。",
+  pts_pause_interval: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper 维护，无独立 ORM 实体。",
+  pts_lifecycle_fact: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper 维护，无独立 ORM 实体。",
+  pts_inbox: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsConfigurationMapper, PointsEventMapper 维护，无独立 ORM 实体。",
+  pts_outbox: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsEventMapper, PointsOperationsMapper, PointsPostingMapper 维护，无独立 ORM 实体。",
+  pts_stat_daily: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsOperationsMapper 维护，无独立 ORM 实体。",
+  pts_cursor: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsEventMapper 维护，无独立 ORM 实体。",
+  stl_split_intent: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 SplitIntentMapper 维护，无独立 ORM 实体。",
+  ord_points_integration_policy: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 OrderPointsBindingMapper 维护，无独立 ORM 实体。",
+  ord_points_command: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 OrderPointsBindingMapper 维护，无独立 ORM 实体。",
+  ord_points_binding: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 OrderPointsFactMapper, OrderPointsBindingMapper 维护，无独立 ORM 实体。",
+  ord_points_source_counter: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 OrderPointsFactMapper 维护，无独立 ORM 实体。",
+  ord_points_source_fact: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 OrderPointsFactMapper 维护，无独立 ORM 实体。",
+  ord_points_placement: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 OrderPointsPlacementMapper 维护，无独立 ORM 实体。",
+  ord_points_refund_binding: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 RefundExecutionMapper, OrderPointsRefundBindingMapper 维护，无独立 ORM 实体。",
+  ord_points_recovery_cursor: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 OrderPointsRecoveryCursorMapper 维护，无独立 ORM 实体。",
+  stl_points_refund_hold: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 PointsSettlementRefundHoldMapper 维护，无独立 ORM 实体。",
+  ord_points_refund_retry: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 OrderPointsRefundRetryMapper 维护，无独立 ORM 实体。",
+  ord_points_work_cursor: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 OrderPointsWorkCursorMapper 维护，无独立 ORM 实体。",
+  stl_cash_refund_reverse: "持久 SQL mapper 与不可变 record/JSON 快照模型，由 CashRefundSplitMapper 维护，无独立 ORM 实体。",
   // 新表如果一时来不及配实体，登记在这里并写清何时补，别让守卫红着过夜。
   // （ful_batch 已在「按业务模块整理实体」时补齐 FulBatch。）
   /*
@@ -69,11 +126,15 @@ function scanEntities(dir: string, out = new Map<string, { file: string; fields:
       if (!t) continue;
       // `private Long x;` / `private List<String> y;` / `private Map<String, X> z;`
       // `@TableField("col")` 显式映射优先 —— 全库改名（merchant_no→entity_no）后
-      // 字段名与列名分离是常态，对齐要按**实际映射到的列**算
+      // 字段名与列名分离是常态，对齐要按**实际映射到的列**算。
+      // Getter/Setter 等字段注解可以位于 TableField 与字段之间，必须整组读取。
       const fields = new Set(
         [...src.matchAll(
-          /(?:@TableField\("(\w+)"\)\s*)?private\s+[\w.]+(?:<[^>]*>)?(?:\[\])?\s+(\w+)\s*;/g,
-        )].map((m) => (m[1] ? camel(m[1]) : m[2]!)),
+          /((?:@[\w.]+(?:\([^)]*\))?\s*)*)private\s+[\w.]+(?:<[^>]*>)?(?:\[\])?\s+(\w+)\s*;/g,
+        )].map((m) => {
+          const column = m[1]!.match(/@TableField\(\s*"(\w+)"\s*\)/)?.[1];
+          return column ? camel(column) : m[2]!;
+        }),
       );
       /*
        * 同一张表可能有两个实体：过渡期老实体只改了表名、新实体在新模块里（TDD-物流模块 批 1：
@@ -101,6 +162,12 @@ const businessCols = (table: string) =>
     .filter((c) => !AUDIT.has(c) && !BASE_FIELDS.has(c));
 
 describe("Java 实体与库表对齐", () => {
+  it("多个字段注解之间的显式列映射仍优先于 Java 字段名", () => {
+    const fields = entities.get("trd_shipping_upload")?.fields;
+    expect(fields?.has("sourceSnapshot")).toBe(true);
+    expect(fields?.has("sourceSnapshotJson")).toBe(false);
+  });
+
   it("解析到了实体与表 —— 一个都没有多半是路径或注解写法变了", () => {
     expect(schema.size, "没解析到迁移").toBeGreaterThan(20);
     expect(entities.size, "没扫到 @TableName 实体").toBeGreaterThan(10);
@@ -116,16 +183,20 @@ describe("Java 实体与库表对齐", () => {
  * 这张表上任何真正的漏字段都不会再报。
  */
 const DELIBERATELY_UNMAPPED: Record<string, Record<string, string>> = {
+  prd_goods: {
+    pointsConfig: "旧版商品积分配置列保留在已应用 schema；新积分方案不按商品写配置，避免 MyBatis updateById 覆盖遗留值。",
+  },
+  ord_sub_order: {
+    pointsGranted: "旧版积分发放标记保留在已应用 schema；新积分方案以 points voucher 与订单绑定事实实现幂等，不读写该列。",
+    openAfterSaleNo:
+      "V406 售后占位（一张订单同时只有一张进行中售后，库内 CAS）。只由 AfterSaleSlotMapper 的专用 SQL 读写 ——" +
+      "订单流程会先读子单再 updateById，实体若映射它，会把读到的旧占位原样写回，占位就再也释放不掉。",
+  },
   sys_pay_channel: {
     markets:
       "V295 起通道×市场在 sys_pay_channel_market 关系表。这一列还在库里（已应用的迁移是冻结的，" +
       "且留着才有回滚余地），但不再被写入 —— 映射它就会有人读到陈旧值，" +
       "那正是「运营改了一张表、领域读另一张，保存成功而改动不生效且不报错」的形状。",
-  },
-  ord_sub_order: {
-    openAfterSaleNo:
-      "V406 售后占位（一张订单同时只有一张进行中售后，库内 CAS）。只由 AfterSaleSlotMapper 的专用 SQL 读写 ——" +
-      "订单流程会先读子单再 updateById，实体若映射它，会把读到的旧占位原样写回，占位就再也释放不掉。",
   },
 };
 

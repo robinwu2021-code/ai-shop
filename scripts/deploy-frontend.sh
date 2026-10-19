@@ -60,13 +60,13 @@ say "$APP ← $HEAD_SHA  $(git log -1 --format=%s "$REF" | cut -c1-46)"
 # 比**解析后的 sha**，不比字符串：REF 给的就是当前 HEAD 的 sha 时，
 # 按字符串判会打出「不是当前 HEAD d66981aa0」而后面跟着同一个 d66981aa0 —— 一句假话
 [ "$HEAD_SHA" = "$(git rev-parse --short HEAD)" ] \
-    || say "（指定了 REF=$REF，不是当前 HEAD $(git rev-parse --short HEAD)）"
+    || say "（指定了 REF=${REF}，不是当前 HEAD $(git rev-parse --short HEAD)）"
 
 # ── 锁（每个前端一把，互不阻塞）────────────────────────────────────────────
 LOCKDIR="$WWW/.deploy-$APP.lock"
 if ! ssh "$HOST" "mkdir '$LOCKDIR' 2>/dev/null"; then
     HOLDER="$(ssh "$HOST" "cat '$LOCKDIR/owner' 2>/dev/null" || true)"
-    die "有人正在部署 $APP：${HOLDER:-（未知）}
+    die "有人正在部署 ${APP}：${HOLDER:-（未知）}
     确认那个进程已死之后：ssh $HOST \"rm -rf '$LOCKDIR'\""
 fi
 ssh "$HOST" "echo '$(whoami)@$(hostname -s) $(date '+%F %T')' > '$LOCKDIR/owner'" || true
@@ -90,7 +90,10 @@ ok "已拿到 $APP 的部署锁"
 WT="$(mktemp -d)/fe-head"
 git worktree add -q --detach "$WT" "$REF"
 say "准备依赖（拷不软链）…"
-cp -Rc "$ROOT/node_modules" "$WT/node_modules" 2>/dev/null || cp -R "$ROOT/node_modules" "$WT/node_modules"
+# A workspace root may itself symlink node_modules. Resolve the source so cp copies
+# the actual directory rather than preserving an out-of-worktree symlink.
+MODULES_SOURCE="$(cd "$ROOT/node_modules" && pwd -P)"
+cp -Rc "$MODULES_SOURCE" "$WT/node_modules" 2>/dev/null || cp -R "$MODULES_SOURCE" "$WT/node_modules"
 [ -d "$ROOT/$APP/node_modules" ] && { cp -Rc "$ROOT/$APP/node_modules" "$WT/$APP/node_modules" 2>/dev/null \
     || cp -R "$ROOT/$APP/node_modules" "$WT/$APP/node_modules"; }
 [ "$APP" = "ops-web" ] && [ -d "$ROOT/ops-web/.next" ] && { cp -Rc "$ROOT/ops-web/.next" "$WT/ops-web/.next" 2>/dev/null \

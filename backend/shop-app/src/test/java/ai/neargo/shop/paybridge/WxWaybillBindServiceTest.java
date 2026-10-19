@@ -1,5 +1,11 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+
 import ai.neargo.shop.fulfillment.service.LogisticsService;
 import ai.neargo.shop.fulfillment.service.LogisticsService.WxBindTarget;
 import ai.neargo.shop.pay.service.PaymentLedgerService;
@@ -11,7 +17,6 @@ import ai.neargo.shop.spi.logistics.TraceDisplayPort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -37,9 +42,9 @@ class WxWaybillBindServiceTest {
     private final LogisticsService logistics = mock(LogisticsService.class);
     private final TraceDisplayPort displayPort = mock(TraceDisplayPort.class);
     private final PaymentLedgerService ledger = mock(PaymentLedgerService.class);
-    private final TradeMappers.SubOrderMapper subOrderMapper = mock(TradeMappers.SubOrderMapper.class);
-    private final TradeMappers.OrderMapper orderMapper = mock(TradeMappers.OrderMapper.class);
-    private final TradeMappers.OrderItemMapper itemMapper = mock(TradeMappers.OrderItemMapper.class);
+    private final StoreOrderMapper subOrderMapper = mock(StoreOrderMapper.class);
+    private final PaymentMapper orderMapper = mock(PaymentMapper.class);
+    private final OrderItemMapper itemMapper = mock(OrderItemMapper.class);
 
     private WxWaybillBindService service() {
         return new WxWaybillBindService(logistics, displayPort, ledger,

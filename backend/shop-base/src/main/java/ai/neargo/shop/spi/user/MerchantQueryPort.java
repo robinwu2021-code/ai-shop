@@ -218,6 +218,12 @@ public interface MerchantQueryPort {
      */
     java.util.Optional<String> expressTemplateNo(String merchantNo, String storeNo);
 
+    /** Current self-delivery fee for a store/order total; empty means pricing cannot be verified. */
+    default java.util.OptionalLong merchantDeliveryFeeMinor(String merchantNo, String storeNo,
+                                                             long goodsAmountMinor) {
+        return java.util.OptionalLong.empty();
+    }
+
     /**
      * 门店坐标健康度。**运营端唯一能看见「自送半径是不是哑的」的地方。**
      *
@@ -323,6 +329,21 @@ public interface MerchantQueryPort {
      *         此时结算单照常生成（钱是欠着的，不是不存在），但不能发起打款
      */
     java.util.Optional<String> payMerchantNoOf(String merchantNo, String storeNo);
+
+    /**
+     * 交易快照专用：只解析指定门店显式绑定、同主体且已激活的指定通道收款号。
+     * 缺配置或配置失效返回空，不回退主体默认号。调用方应在支付发起时持久化结果，
+     * 退款不得重新查询当前配置替代交易时的快照。未实现此能力的适配器返回空。
+     */
+    default Optional<PaymentRoute> paymentRouteOf(String merchantNo, String storeNo, String channel) {
+        return Optional.empty();
+    }
+
+    /** 门店仍为业务维度；accountVersion 是实际收款档案业务键与行版本组成的保守版本。 */
+    record PaymentRoute(String merchantNo, String storeNo, String payMerchantNo, String channel,
+                        String subMerchantId, String accountVersion, String fundsPath) {
+    }
+
 
     /**
      * 这个主体名下的全部门店号（含停用的）。

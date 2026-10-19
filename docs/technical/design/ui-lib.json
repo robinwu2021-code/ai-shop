@@ -257,8 +257,8 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 526,
-        "c-app": 94
+        "b-app": 539,
+        "c-app": 97
       }
     },
     {
@@ -280,7 +280,7 @@
       },
       "usage": {
         "b-app": 430,
-        "c-app": 87
+        "c-app": 85
       }
     },
     {
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 410,
-        "c-app": 290
+        "b-app": 422,
+        "c-app": 302
       }
     },
     {
@@ -340,7 +340,7 @@
       },
       "usage": {
         "b-app": 37,
-        "c-app": 7
+        "c-app": 9
       }
     },
     {
@@ -377,7 +377,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 5,
+        "b-app": 4,
         "c-app": 12
       }
     },
@@ -415,7 +415,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 7,
+        "b-app": 6,
         "c-app": 0
       }
     },
@@ -437,7 +437,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 17,
+        "b-app": 16,
         "c-app": 13
       }
     },
@@ -454,7 +454,7 @@
       },
       "usage": {
         "b-app": 46,
-        "c-app": 50
+        "c-app": 54
       }
     },
     {
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 138,
+        "b-app": 141,
         "c-app": 58
       }
     },
@@ -513,8 +513,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 118,
-        "c-app": 82
+        "b-app": 117,
+        "c-app": 83
       }
     },
     {
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 123,
+        "b-app": 127,
         "c-app": 32
       }
     },
@@ -635,8 +635,8 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 231,
-        "c-app": 91
+        "b-app": 237,
+        "c-app": 94
       }
     },
     {
@@ -827,8 +827,8 @@
         "line-height": "1.4"
       },
       "usage": {
-        "b-app": 200,
-        "c-app": 76
+        "b-app": 211,
+        "c-app": 81
       }
     },
     {
@@ -903,7 +903,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 64,
+        "b-app": 73,
         "c-app": 7
       }
     },
@@ -979,8 +979,8 @@
         "font-weight": "400"
       },
       "usage": {
-        "b-app": 71,
-        "c-app": 20
+        "b-app": 70,
+        "c-app": 23
       }
     },
     {
@@ -1073,7 +1073,7 @@
         "text-decoration": "line-through"
       },
       "usage": {
-        "b-app": 1,
+        "b-app": 0,
         "c-app": 5
       }
     },
@@ -1095,8 +1095,8 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 349,
-        "c-app": 154
+        "b-app": 341,
+        "c-app": 152
       }
     },
     {
@@ -1159,7 +1159,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 160,
+        "b-app": 163,
         "c-app": 57
       }
     },
@@ -1253,7 +1253,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 72,
+        "b-app": 74,
         "c-app": 26
       }
     },
@@ -1307,7 +1307,7 @@
         "color": "var(--sh-warning)"
       },
       "usage": {
-        "b-app": 14,
+        "b-app": 17,
         "c-app": 5
       }
     },
@@ -1421,7 +1421,7 @@
         "min-width": "0"
       },
       "usage": {
-        "b-app": 177,
+        "b-app": 176,
         "c-app": 94
       }
     },
@@ -1438,7 +1438,7 @@
       },
       "usage": {
         "b-app": 40,
-        "c-app": 14
+        "c-app": 16
       }
     },
     {
@@ -1457,8 +1457,8 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 592,
-        "c-app": 211
+        "b-app": 586,
+        "c-app": 212
       }
     },
     {
@@ -1473,7 +1473,7 @@
         "align-items": "baseline"
       },
       "usage": {
-        "b-app": 40,
+        "b-app": 36,
         "c-app": 11
       }
     },
@@ -1489,8 +1489,8 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 325,
-        "c-app": 105
+        "b-app": 322,
+        "c-app": 106
       }
     },
     {
@@ -1565,7 +1565,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 10,
+        "b-app": 7,
         "c-app": 4
       }
     },
@@ -1583,7 +1583,7 @@
         "text-align": "center"
       },
       "usage": {
-        "b-app": 5,
+        "b-app": 2,
         "c-app": 0
       }
     },
@@ -1619,7 +1619,7 @@
         "font-weight": "600"
       },
       "usage": {
-        "b-app": 10,
+        "b-app": 7,
         "c-app": 4
       }
     },
@@ -1639,7 +1639,7 @@
         "gap": "6px"
       },
       "usage": {
-        "b-app": 49,
+        "b-app": 53,
         "c-app": 19
       }
     },
@@ -1685,7 +1685,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 8,
+        "b-app": 10,
         "c-app": 3
       }
     },
@@ -1733,7 +1733,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 71,
+        "b-app": 72,
         "c-app": 24
       }
     },
@@ -1831,7 +1831,7 @@
         "margin-bottom": "8px"
       },
       "usage": {
-        "b-app": 26,
+        "b-app": 28,
         "c-app": 1
       }
     },
@@ -1847,7 +1847,7 @@
         "margin-top": "14px"
       },
       "usage": {
-        "b-app": 13,
+        "b-app": 14,
         "c-app": 3
       }
     },
@@ -1863,7 +1863,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 102,
+        "b-app": 117,
         "c-app": 3
       }
     },
@@ -1879,7 +1879,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 18,
+        "b-app": 22,
         "c-app": 0
       }
     }
@@ -1898,7 +1898,7 @@
       ],
       "usage": {
         "b-app": 35,
-        "c-app": 17,
+        "c-app": 19,
         "lib": 0
       },
       "note": "悬浮内缩的贴底操作条 —— 第三种贴底形态，此前库里没有",
@@ -2144,7 +2144,7 @@
       ],
       "usage": {
         "b-app": 61,
-        "c-app": 38,
+        "c-app": 39,
         "lib": 1
       },
       "note": "空态",
@@ -2225,7 +2225,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 24,
+        "b-app": 27,
         "c-app": 4,
         "lib": 0
       },
@@ -2371,7 +2371,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 6,
+        "b-app": 7,
         "c-app": 1,
         "lib": 0
       },
@@ -2772,7 +2772,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 11,
+        "b-app": 10,
         "c-app": 2,
         "lib": 0
       },
@@ -2858,7 +2858,7 @@
       ],
       "usage": {
         "b-app": 16,
-        "c-app": 13,
+        "c-app": 14,
         "lib": 0
       },
       "note": "筛选条",
@@ -3548,6 +3548,38 @@
       "rootDecl": {
         "gap": "12rpx"
       }
+    },
+    {
+      "name": "StorePointStatements",
+      "file": "b-app/src/components/points/StorePointStatements.vue",
+      "scope": "B 端",
+      "lines": 141,
+      "props": [
+        "typeCode: string",
+        "storeNo: string",
+        "targetStatement?: string"
+      ],
+      "usage": {
+        "b-app": 1,
+        "c-app": 0,
+        "lib": 0
+      },
+      "note": "门店积分账单：财务人员查看当前及历史修订，确认账单或提出异议",
+      "why": "—",
+      "uses": {
+        "tiers": [
+          "txt-title"
+        ],
+        "rawFontSize": [],
+        "spacing": [],
+        "radius": [],
+        "deps": []
+      },
+      "rootClasses": [
+        "sh-card",
+        "sh-mt-sm"
+      ],
+      "rootDecl": {}
     }
   ],
   "pages": [
@@ -3607,9 +3639,10 @@
       "file": "b-app/src/pages/after-sale/index.vue",
       "components": [
         "sh-empty",
+        "sh-option",
         "sh-scaffold"
       ],
-      "libClassHits": 95,
+      "libClassHits": 97,
       "localSelectors": 19,
       "localCssLines": 67,
       "rolled": []
@@ -4195,7 +4228,7 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 12,
+      "libClassHits": 17,
       "localSelectors": 9,
       "localCssLines": 37,
       "rolled": []
@@ -4268,9 +4301,9 @@
         "sh-sheet",
         "sh-trace"
       ],
-      "libClassHits": 168,
-      "localSelectors": 23,
-      "localCssLines": 95,
+      "libClassHits": 192,
+      "localSelectors": 20,
+      "localCssLines": 80,
       "rolled": []
     },
     {
@@ -4281,10 +4314,11 @@
       "components": [
         "sh-cover",
         "sh-empty",
+        "sh-go",
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 18,
+      "libClassHits": 25,
       "localSelectors": 5,
       "localCssLines": 21,
       "rolled": []
@@ -4417,13 +4451,22 @@
       "key": "b-app/points",
       "file": "b-app/src/pages/points/index.vue",
       "components": [
+        "sh-empty",
         "sh-scaffold",
-        "sh-switch"
+        "StorePointStatements"
       ],
-      "libClassHits": 27,
+      "libClassHits": 49,
       "localSelectors": 3,
-      "localCssLines": 13,
-      "rolled": []
+      "localCssLines": 3,
+      "rolled": [
+        {
+          "id": "switchctl",
+          "label": "开关",
+          "lib": null,
+          "rule": "名册：points .sw（逐处核过）",
+          "gap": true
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -4434,9 +4477,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 22,
-      "localSelectors": 2,
-      "localCssLines": 2,
+      "libClassHits": 19,
+      "localSelectors": 0,
+      "localCssLines": 0,
       "rolled": []
     },
     {
@@ -4572,9 +4615,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 119,
-      "localSelectors": 15,
-      "localCssLines": 55,
+      "libClassHits": 100,
+      "localSelectors": 13,
+      "localCssLines": 48,
       "rolled": []
     },
     {
@@ -5063,7 +5106,7 @@
         "sh-scaffold",
         "sh-uploader"
       ],
-      "libClassHits": 27,
+      "libClassHits": 28,
       "localSelectors": 17,
       "localCssLines": 76,
       "rolled": [
@@ -5432,9 +5475,9 @@
         "sh-scaffold",
         "sh-trace"
       ],
-      "libClassHits": 164,
-      "localSelectors": 51,
-      "localCssLines": 191,
+      "libClassHits": 170,
+      "localSelectors": 38,
+      "localCssLines": 138,
       "rolled": []
     },
     {
@@ -5466,9 +5509,9 @@
         "sh-scaffold",
         "sh-tabs"
       ],
-      "libClassHits": 45,
-      "localSelectors": 16,
-      "localCssLines": 58,
+      "libClassHits": 54,
+      "localSelectors": 17,
+      "localCssLines": 63,
       "rolled": []
     },
     {
@@ -5480,7 +5523,7 @@
         "sh-actionbar",
         "sh-scaffold"
       ],
-      "libClassHits": 39,
+      "libClassHits": 52,
       "localSelectors": 26,
       "localCssLines": 113,
       "rolled": []
@@ -5492,11 +5535,12 @@
       "file": "c-app/src/pages/points/index.vue",
       "components": [
         "sh-empty",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-tabs"
       ],
       "libClassHits": 35,
-      "localSelectors": 19,
-      "localCssLines": 75,
+      "localSelectors": 12,
+      "localCssLines": 12,
       "rolled": []
     },
     {
@@ -5587,9 +5631,9 @@
         "sh-scaffold",
         "sh-trace"
       ],
-      "libClassHits": 45,
-      "localSelectors": 9,
-      "localCssLines": 9,
+      "libClassHits": 49,
+      "localSelectors": 10,
+      "localCssLines": 10,
       "rolled": []
     },
     {
@@ -5758,6 +5802,17 @@
       "libClassHits": 9,
       "localSelectors": 5,
       "localCssLines": 22,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "StorePointStatements",
+      "key": "b-app/StorePointStatements",
+      "file": "b-app/src/components/points/StorePointStatements.vue",
+      "components": [],
+      "libClassHits": 20,
+      "localSelectors": 0,
+      "localCssLines": 0,
       "rolled": []
     },
     {
@@ -6068,6 +6123,16 @@
   ],
   "gaps": [
     {
+      "id": "switchctl",
+      "label": "开关",
+      "lib": null,
+      "gap": true,
+      "rule": "名册：points .sw（逐处核过）",
+      "pages": [
+        "b-app/points"
+      ]
+    },
+    {
       "id": "optcard",
       "label": "选项卡片",
       "lib": null,
@@ -6113,8 +6178,8 @@
   "counts": {
     "tokens": 16,
     "blocks": 82,
-    "components": 40,
-    "pages": 162,
-    "gapKinds": 2
+    "components": 41,
+    "pages": 163,
+    "gapKinds": 3
   }
 }

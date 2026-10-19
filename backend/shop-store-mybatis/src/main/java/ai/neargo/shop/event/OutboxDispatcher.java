@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -55,10 +57,14 @@ public class OutboxDispatcher {
 
     private final SysOutboxMapper mapper;
     private final List<OutboxConsumer> consumers;
+    private final TransactionTemplate perEventTransaction;
 
-    public OutboxDispatcher(SysOutboxMapper mapper, List<OutboxConsumer> consumers) {
+    public OutboxDispatcher(SysOutboxMapper mapper, List<OutboxConsumer> consumers,
+                            PlatformTransactionManager transactionManager) {
         this.mapper = mapper;
         this.consumers = consumers;
+        this.perEventTransaction = new TransactionTemplate(transactionManager);
+        this.perEventTransaction.setPropagationBehavior(Propagation.REQUIRES_NEW.value());
     }
 
     private UnifiedOutboxFacade unified;
@@ -70,7 +76,6 @@ public class OutboxDispatcher {
      *
      * @return 成功投递的条数
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public int dispatchPending() {
         if (unified != null && unified.isMaintenance()) { return 0; }
         if (unified != null && unified.enabled("PLATFORM")) { unified.signal("PLATFORM"); return 0; }
@@ -86,16 +91,21 @@ public class OutboxDispatcher {
 
         int sent = 0;
         for (SysOutbox event : pending) {
-            try {
-                deliver(event);
-                event.setStatus(SysOutbox.SENT);
-                event.setSentAt(LocalDateTime.now());
-                mapper.updateById(event);
-                sent++;
-            } catch (RuntimeException e) {
-                // 消费者的异常不该影响其它事件，所以在这里逐条捕获
-                onFailure(event, e, now);
-            }
+            Boolean delivered = perEventTransaction.execute(status -> {
+                SysOutbox current = mapper.selectById(event.getId());
+                if (current == null || !SysOutbox.PENDING.equals(current.getStatus())) return false;
+                try {
+                    deliver(current);
+                    current.setStatus(SysOutbox.SENT);
+                    current.setSentAt(LocalDateTime.now());
+                    mapper.updateById(current);
+                    return true;
+                } catch (RuntimeException e) {
+                    onFailure(current, e, now);
+                    return false;
+                }
+            });
+            if (Boolean.TRUE.equals(delivered)) sent++;
         }
         return sent;
     }
@@ -150,8 +160,8 @@ public class OutboxDispatcher {
     /**
      * 投**一条**。{@link OutboxPump} 的主路：事件提交后直接走这里，不等任何轮次。
      *
-     * <p>独立事务：一条的成败不牵连别条 —— 批量那条路里它们本来就共用一个事务，
-     * 而单条路径下共用没有意义。
+     * <p>独立事务：一条的成败不牵连别条；补扫也逐条提交，避免前一条登记的
+     * 运单锁与后一条暂停事务的渠道调用互相等待。
      *
      * <p><b>查不到、或已经不是 PENDING 就什么都不做</b>：另一个实例抢先投了、
      * 或启动补扫与即时投递撞上了同一条，都会走到这里。投递语义是 at-least-once、

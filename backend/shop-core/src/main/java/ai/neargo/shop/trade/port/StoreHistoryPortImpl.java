@@ -4,8 +4,8 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.trade.StoreHistoryPort;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 
@@ -22,10 +22,10 @@ public class StoreHistoryPortImpl implements StoreHistoryPort {
     private static final List<String> PAID_STATES = List.of(
             OrdSubOrder.WAIT_FULFILL, OrdSubOrder.FULFILLING, OrdSubOrder.COMPLETED);
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
 
-    public StoreHistoryPortImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper) {
+    public StoreHistoryPortImpl(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;
     }

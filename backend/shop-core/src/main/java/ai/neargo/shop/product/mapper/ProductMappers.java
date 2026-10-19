@@ -120,11 +120,6 @@ public final class ProductMappers {
             extends BaseMapper<ai.neargo.shop.product.entity.PrdCategoryPayMode> {
     }
 
-    /** 类目积分规则。平台统一按类目管理，商家不配。 */
-    public interface CategoryPointsMapper
-            extends BaseMapper<ai.neargo.shop.product.entity.PrdCategoryPoints> {
-    }
-
     public interface GoodsDraftMapper extends BaseMapper<ai.neargo.shop.product.entity.PrdGoodsDraft> {
         /**
          * 物理删（发布成功 / 内容与线上相同 / 商家丢弃草稿）。

@@ -15,6 +15,9 @@ public interface ShipmentReadStore {
     /** 该订单的全部行。 */
     List<OrdItem> itemsOf(String subOrderNo);
 
+    /** Effective packages are used to validate replay contents and replacement identity. */
+    List<OrdShipment> activeOf(String subOrderNo);
+
     /** 占用该 (carrier, waybillNo) 的活跃发货单（未作废/未取消）；没有返回 null —— 重号判定用。 */
     OrdShipment findActiveWaybill(String carrier, String waybillNo);
 }

@@ -8,6 +8,7 @@ import ai.neargo.shop.logistics.domain.PhoneCipher;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
 import ai.neargo.shop.logistics.routing.CarrierCodeBook;
+import ai.neargo.shop.spi.logistics.LogisticsPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -23,6 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 /** 换 waybill_token：前置条件与四种结局（TDD-物流模块 AC2 / AC3）。 */
 class WxBindTest {
@@ -85,12 +87,29 @@ class WxBindTest {
     void ok() {
         when(waybills.selectOne(any())).thenReturn(ready());
         WxBindExecutor x = executor();
+        LogisticsPort logistics = mock(LogisticsPort.class);
+        x.logisticsPort(logistics);
         when(binder.bind(any())).thenReturn(ChannelOutcome.ok("0", "tk-1"));
         x.consume(event());
         ArgumentCaptor<LgsWaybill> c = ArgumentCaptor.forClass(LgsWaybill.class);
-        verify(waybills).updateById(c.capture());
+        verify(waybills).update(c.capture(), any());
         assertThat(c.getValue().getDisplayToken()).isEqualTo("tk-1");
         assertThat(c.getValue().getBindState()).isEqualTo(LgsWaybill.BIND_DONE);
+        verify(logistics).track(LogisticsPort.TrackQuery.subOrder("SUB9", "MP", false));
+    }
+
+    @Test
+    void statusProbeFailureDoesNotUndoSuccessfulBind() {
+        when(waybills.selectOne(any())).thenReturn(ready());
+        when(binder.bind(any())).thenReturn(ChannelOutcome.ok("0", "tk-1"));
+        LogisticsPort logistics = mock(LogisticsPort.class);
+        doThrow(new IllegalStateException("temporary wx failure")).when(logistics).track(any());
+        WxBindExecutor x = executor();
+        x.logisticsPort(logistics);
+
+        x.consume(event());
+
+        verify(waybills).update(any(LgsWaybill.class), any());
     }
 
     @Test
@@ -100,7 +119,7 @@ class WxBindTest {
         WxBindExecutor x = executor();
         when(binder.bind(any())).thenReturn(ChannelOutcome.notReady("9300559", "运单不存在"));
         x.consume(event());   // 不抛
-        verify(waybills, never()).updateById(any(LgsWaybill.class));
+        verify(waybills, never()).update(any(LgsWaybill.class), any());
     }
 
     @Test
@@ -111,7 +130,7 @@ class WxBindTest {
         when(binder.bind(any())).thenReturn(ChannelOutcome.fatal("9300561", "收件人手机号错误"));
         x.consume(event());
         ArgumentCaptor<LgsWaybill> c = ArgumentCaptor.forClass(LgsWaybill.class);
-        verify(waybills).updateById(c.capture());
+        verify(waybills).update(c.capture(), any());
         assertThat(c.getValue().getBindState()).isEqualTo(LgsWaybill.BIND_FATAL);
         assertThat(c.getValue().getBindError()).contains("9300561");
 

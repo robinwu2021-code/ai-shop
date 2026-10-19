@@ -16,4 +16,7 @@ public interface ReceiptReadStore {
     List<OrdItem> itemsOf(String subOrderNo);
 
     OrdSubOrder findOrder(String subOrderNo);
+
+    /** CREATED receipt requires durable physical dispatch and positive fully dispatched quantities. */
+    boolean dispatched(OrdSubOrder order, OrdShipment shipment);
 }

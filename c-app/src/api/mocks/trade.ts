@@ -6,14 +6,13 @@
 import type { CreateOrderReq } from "../contract";
 import { allCommunitySeeds, assertTransition, db, delay, findGoodsSeed, merchantBrief, nextNo, paginate, persist, pick, pointBalance, pushMessage, pushPoint, toCommunity, toGoods } from "@shared/mock/db";
 import { fulfillmentFor } from "@shared/strategies/fulfillment";
-import { earnPointsFor, pricingFor } from "@shared/strategies/pricing";
+import { pricingFor } from "@shared/strategies/pricing";
 import type { Coupon, InvoiceRequest, Order, OrderItem, PageQuery, ShipmentTrace, TrackView } from "@shared/types";
 import { CATEGORY_TYPE, FULFILLMENT, TRADE_RULES } from "@shared/utils/constants";
 import { currentCurrency } from "@shared/utils/money";
 import { buyNGetM, giftQtyFor } from "@shared/utils/promotion";
 import {
   findOrder,
-  grantPointsOnComplete,
   issueCard,
   pushTimeline,
   requireWithinLimit,
@@ -46,23 +45,46 @@ function mockInstantEligible(o: Order): boolean {
   return (o.amount.paidMinor || o.amount.payableMinor) <= MOCK_INSTANT_MAX_MINOR;
 }
 
+/** 主单号是服务端契约字段；内部组键仅供替身构造主单视角。 */
+function findPaymentOrder(no: string): Order {
+  return db.orders.find((o) => (o as MockOrder).payGroupNo === no) || findOrder(no);
+}
+
+function paymentView(o: Order): Order {
+  const pg = (o as MockOrder).payGroupNo;
+  if (!pg) return { ...o };
+  const siblings = db.orders.filter((x) => (x as MockOrder).payGroupNo === pg);
+  const amount = { ...o.amount };
+  for (const key of ["goodsMinor", "freightMinor", "discountMinor", "payableMinor", "paidMinor",
+    "pointsDeductMinor", "pointsUsed", "pointsEarn"] as const) {
+    amount[key] = siblings.reduce((sum, child) => sum + (child.amount[key] ?? 0), 0);
+  }
+  const status = siblings.some((x) => x.status === "WAIT_PAY") ? "WAIT_PAY"
+    : siblings.some((x) => x.status === "WAIT_OFFLINE_PAY") ? "WAIT_OFFLINE_PAY" : o.status;
+  return { ...o, orderNo: pg, payOrderNo: pg, status, amount, subOrders: siblings };
+}
+
 export const tradeMock: Pick<ShopApi,
   "createOrder"
   | "payMethods"
   | "payOrder"
+  | "payResult"
   | "orderList"
   | "applyInvoice"
   | "myInvoices"
   | "invoiceOfOrder"
   | "orderDetail"
+  | "orderPointsState"
   | "orderTrace"
   | "track"
   | "trackMiniLink"
   | "trackMine"
+  | "confirmReceipt"
   | "cancelOrder"
 > = {
   // ---------------------------------------------------------------- 交易
   async createOrder(req: CreateOrderReq) {
+    if ((req.usePoints ?? 0) !== 0) throw new Error("本期暂不支持积分抵扣");
     // 幂等：同一 key 重复提交返回同一单
     const dup = db.orders.find((o) => o.idempotencyKey === req.idempotencyKey);
     if (dup) return delay(dup);
@@ -123,7 +145,6 @@ export const tradeMock: Pick<ShopApi,
         type: g.type,
         nominalGram: sku.nominalGram,
         weighed: g.weighed,
-        points: g.points,
       };
     });
 
@@ -181,7 +202,7 @@ export const tradeMock: Pick<ShopApi,
         currency: currentCurrency(),
         coupon: isFirst ? coupon : undefined,
         usePoints: isFirst ? wantPoints : 0,
-        earnPoints: earnPointsFor(subItems),
+        earnPoints: 0,
       });
 
       const addressId = req.addressChoices?.find(choice => choice.merchantNo === merchantNo)?.addressId ?? req.addressId;
@@ -209,6 +230,7 @@ export const tradeMock: Pick<ShopApi,
         // mock 内部的分组键。**不是契约字段** —— 后端没有这一列，
         // 端上要判的是「这次支付覆盖几笔」，那个由 payGroupSize 表达
         payGroupNo,
+        payOrderNo: payGroupNo,
         payGroupSize: byMerchant.size,
         trafficSource: db.user.merchantNo === merchantNo ? "MERCHANT_OWNED" : "PLATFORM",
       };
@@ -243,7 +265,7 @@ export const tradeMock: Pick<ShopApi,
   },
 
   async payOrder(orderNo) {
-    const target = findOrder(orderNo);
+    const target = findPaymentOrder(orderNo);
 
     /**
      * **一次支付付掉整个支付组**（E3 拆单的另一半）。
@@ -288,7 +310,6 @@ export const tradeMock: Pick<ShopApi,
         assertTransition(o.status, "COMPLETED");
         o.status = "COMPLETED";
         pushTimeline(o, "已发放");
-        grantPointsOnComplete(o);
         continue;
       }
 
@@ -329,7 +350,7 @@ export const tradeMock: Pick<ShopApi,
      * 替身也照这条分：不分的话 mock 下 0 元单一路通畅，
      * 而真后端会被「金额必须大于 0」拒掉 —— 那正是这个特性要修的缺陷。
      */
-    if ((target.amount?.payableMinor ?? 0) === 0) {
+    if (group.every((o) => o.amount.payableMinor === 0)) {
       return delay({
         orderNo,
         payChannel: "FREE",
@@ -343,7 +364,7 @@ export const tradeMock: Pick<ShopApi,
       payParams: {
         prepayId: "mock_" + orderNo,
         outTradeNo: orderNo,
-        amount: String(target.amount?.payableMinor ?? 0),
+        amount: String(group.reduce((sum, o) => sum + o.amount.payableMinor, 0)),
         testChannel: "true",
       },
       settled: false,
@@ -446,41 +467,45 @@ export const tradeMock: Pick<ShopApi,
   },
 
   async orderDetail(orderNo) {
-    const o = findOrder(orderNo);
-    /*
-     * 同支付组的兄弟单一起带上（对齐后端 OrderVO 的支付视角）。
-     * 收银台靠它显示「本次付款覆盖 N 笔订单」——
-     * mock 不给的话，那一屏在 mock 下永远是哑的，而它恰恰是最该被看见的一屏。
-     *
-     * 只在**确实跨了商家**时带：单商家时 subOrders 等于把自己抄一遍，端上也不渲染。
-     */
-    const pg = (o as MockOrder).payGroupNo;
-    const siblings = pg
-      ? db.orders.filter((x) => (x as MockOrder).payGroupNo === pg)
-      : [];
-    /*
-     * 「现在申请仅退款会不会秒退」**由这一层答**，与后端的 withDetail 同一位置。
-     * 页面不再自己拿常量比金额 —— 那是此前那份 ¥50 常量与后端 ¥100 阈值分叉的由来，
-     * 而 mock 也照同一个常量算，于是<b>替身替缺陷背了书</b>：两边都说「会秒退」。
-     */
+    const o = findPaymentOrder(orderNo);
     const withFlag = { ...o, instantRefundEligible: mockInstantEligible(o) };
-    return delay(siblings.length > 1 ? { ...withFlag, subOrders: siblings } : withFlag);
+    return delay(orderNo === (o as MockOrder).payGroupNo ? paymentView(o) : withFlag);
+  },
+
+
+  async payResult(orderNo) {
+    return delay(paymentView(findPaymentOrder(orderNo)));
+  },
+
+  async confirmReceipt(orderNo) {
+    const o = findOrder(orderNo);
+    if (o.fulfillment !== "EXPRESS" || o.status !== "FULFILLING") throw new Error("当前订单不能确认收货");
+    o.status = "COMPLETED";
+    pushTimeline(o, "买家已确认收到全部包裹");
+    persist();
+    return delay(o);
+  },
+
+  async orderPointsState(orderNo) {
+    const o = findOrder(orderNo);
+    return delay({ phase: o.status === "POINTS_PROCESSING" ? "UNKNOWN" : "NONE", reason: null });
   },
 
   async cancelOrder(orderNo) {
-    const o = findOrder(orderNo);
-    assertTransition(o.status, "CANCELLED");
-    o.status = "CANCELLED";
-    // 释放锁库
-    o.items.forEach((it) => {
-      const sku = findGoodsSeed(it.goodsNo).skus.find((s) => s.skuNo === it.skuNo);
-      if (sku) sku.stock += it.qty;
-    });
-    if (o.amount.pointsUsed > 0) {
-      pushPoint(db.points, "REFUND", o.amount.pointsUsed, "订单取消返还", o.orderNo);
+    const target = findPaymentOrder(orderNo);
+    const group = paymentView(target).subOrders || [target];
+    // Validate the complete payment group before changing any order.
+    group.filter((o) => o.status !== "CANCELLED").forEach((o) => assertTransition(o.status, "CANCELLED"));
+    for (const o of group) {
+      if (o.status === "CANCELLED") continue;
+      o.status = "CANCELLED";
+      o.items.forEach((it) => {
+        const sku = findGoodsSeed(it.goodsNo).skus.find((s) => s.skuNo === it.skuNo);
+        if (sku) sku.stock += it.qty;
+      });
+      pushTimeline(o, "订单已取消");
     }
-    pushTimeline(o, "订单已取消");
     persist();
-    return delay(o);
+    return delay(orderNo === (target as MockOrder).payGroupNo ? paymentView(target) : target);
   },
 };

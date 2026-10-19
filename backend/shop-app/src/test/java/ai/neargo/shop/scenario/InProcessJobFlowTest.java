@@ -69,7 +69,7 @@ class InProcessJobFlowTest {
         List<String> declared = handlers.declarations().stream()
                 .map(JobDeclaration::handlerName).toList();
         assertThat(declared).contains("order-auto-close", "plan-expiry", "recon-scan",
-                "points-activate", "points-expire");
+                "points-lifecycle", "points-funds-recovery");
     }
 
     @Test

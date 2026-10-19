@@ -1,3 +1,4 @@
+import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 取。
 // 迁移时这个文件基本不用改，改的是 .env 里的开关。
 import { http } from "@shared/net/http-client";
@@ -36,7 +37,6 @@ import type {
   OpenFromMapReq,
   OrderListQuery,
   PickupSelfBuildReq,
-  PointsRecordQuery,
   QuoteReq,
   RecognizeGoodsReq,
   ReplyReviewReq,
@@ -57,7 +57,6 @@ import type {
   SubmitPaymentReq,
   ToggleCampaignReq,
   ToggleGoodsReq,
-  TogglePointsReq,
   VerifyBatchReq,
   VerifyReq,
 } from "./requests";
@@ -120,8 +119,11 @@ import type {
   MerchantCustomer,
   MerchantLoginResp,
   MerchantPlan,
-  MerchantPointAccount,
-  MerchantPointsRecord,
+  StorePointType,
+  StorePointAccount,
+  StorePointEntryPage,
+  StorePointTerms,
+  StorePointAgreement,
   MerchantProfile,
   MerchantRole,
   MerchantSpecDim,
@@ -483,12 +485,28 @@ export const httpApi: MerchantApi = {
     http.post<SpecTemplate>(E.mSaveSpecTemplate.path, { ...payload } satisfies SaveSpecTemplateReq),
 
   mOrderList: (q) => http.get<PageResult<Order>>(E.mOrderList.path, { ...q } satisfies OrderListQuery),
+  mOrderWorklist: (q) => http.get<PageResult<{
+    order: Order; actionKind: "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
+    priority: number; afterSaleNo: string | null; afterSaleStatus: string | null;
+  }>>(E.mOrderWorklist.path, q),
   mOrderDetail: (orderNo) => http.get<Order>(buildPath(E.mOrderDetail.path, { orderNo })),
+  mFulfillmentOptions: (orderNo) => http.get<Awaited<ReturnType<MerchantApi["mFulfillmentOptions"]>>>(
+    buildPath(E.mFulfillmentOptions.path, { orderNo })),
+  mChangeFulfillment: (orderNo, req) => http.post<Awaited<ReturnType<MerchantApi["mChangeFulfillment"]>>>(
+    buildPath(E.mChangeFulfillment.path, { orderNo }), req),
   mOrderTrace: (orderNo, refresh) =>
     http.get<ShipmentTrace | null>(buildPath(E.mOrderTrace.path, { orderNo }), refresh ? { refresh: true } : undefined),
-  mShip: (orderNo, expressNo, expressCompany) =>
+  mOrderUpdates: (orderNo) =>
+    http.get<Awaited<ReturnType<MerchantApi["mOrderUpdates"]>>>(buildPath(E.mOrderUpdates.path, { orderNo })),
+  mShipPrecheck: (orderNo, expressNo, expressCompany) =>
+    http.post<Awaited<ReturnType<MerchantApi["mShipPrecheck"]>>>(
+      buildPath(E.mShipPrecheck.path, { orderNo }), { expressNo, expressCompany } satisfies ShipReq),
+  mShip: (orderNo, expressNo, expressCompany, confirmExistingTrace) =>
     http.post<Order>(buildPath(E.mShip.path, { orderNo }),
-      { expressNo, expressCompany } satisfies ShipReq),
+      { expressNo, expressCompany, confirmExistingTrace } satisfies ShipReq),
+  mCorrectWaybill: (orderNo, expressNo, expressCompany, reason) =>
+    http.post<Order>(buildPath(E.mCorrectWaybill.path, { orderNo }),
+      { expressNo, expressCompany, reason }),
   mDelivered: (orderNo) => http.post<Order>(buildPath(E.mDelivered.path, { orderNo }), {}),
   mPrepare: (orderNo) => http.post<Order>(buildPath(E.mPrepare.path, { orderNo }), {}),
   mConfirmOfflinePay: (subOrderNo) =>
@@ -541,6 +559,12 @@ export const httpApi: MerchantApi = {
   mPayoutAccounts: () => http.get<PayoutAccount[]>(E.mPayoutAccounts.path),
   mSubmitPayoutAccount: (v) => http.post<PayoutAccount>(E.mSubmitPayoutAccount.path, v),
   mAfterSaleList: () => http.get<AfterSale[]>(E.mAfterSaleList.path),
+  mAfterSaleWorklist: (q) => http.get<PageResult<{ afterSale: AfterSale; order: Order }>>(
+    E.mAfterSaleWorklist.path, q ?? { pending: true, page: 1, size: 20 }),
+  mActiveAfterSaleForOrder: (orderNo) => http.get<AfterSale | null>(
+    buildPath(E.mActiveAfterSaleForOrder.path, { orderNo })),
+  mAfterSaleDetail: (afterSaleNo) => http.get<{ afterSale: AfterSale; order: Order }>(
+    buildPath(E.mAfterSaleDetail.path, { afterSaleNo })),
   mApproveAfterSale: (afterSaleNo, reply, refundMinor, refundMode) =>
     http.post<AfterSale>(buildPath(E.mApproveAfterSale.path, { afterSaleNo }), {
       remark: reply, refundMinor, refundMode,
@@ -550,10 +574,12 @@ export const httpApi: MerchantApi = {
       remark: reply,
     } satisfies HandleAfterSaleReq),
 
-  mConfirmReturn: (afterSaleNo) =>
-    http.post<AfterSale>(buildPath(E.mConfirmReturn.path, { afterSaleNo }), {}),
-  mConfirmRefund: (afterSaleNo) =>
-    http.post<AfterSale>(buildPath(E.mConfirmRefund.path, { afterSaleNo }), {}),
+  mConfirmReturn: (afterSaleNo, restockApproved = false) =>
+    http.post<AfterSale>(buildPath(E.mConfirmReturn.path, { afterSaleNo }), {
+      restockApproved,
+    } satisfies import("./requests").ReceiveReturnReq),
+  mConfirmRefund: (afterSaleNo, reason) =>
+    http.post<AfterSale>(buildPath(E.mConfirmRefund.path, { afterSaleNo }), { reason }),
 
   mGroupList: (status) => http.get<GroupBuy[]>(E.mGroupList.path, status ? { status } : undefined),
   mCreateGroup: (req) => http.post<GroupBuy>(E.mCreateGroup.path, req satisfies CreateGroupReq),
@@ -685,11 +711,21 @@ export const httpApi: MerchantApi = {
     } satisfies ReportShortageReq),
 
   // ---- 积分
-  mPointsAccount: () => http.get<MerchantPointAccount>(E.mPointsAccount.path),
-  mPointsRecords: (q) =>
-    http.get<MerchantPointsRecord[]>(E.mPointsRecords.path, { ...q } satisfies PointsRecordQuery),
-  mPointsToggle: (req) =>
-    http.post<MerchantPointAccount>(E.mPointsToggle.path, { ...req } satisfies TogglePointsReq),
+  mStorePointStatement: (typeCode, statementNo) => http.get<StorePointStatement>(E.mStorePointStatement.path, { typeCode, statementNo }),
+  mStorePointStatementLines: (typeCode, statementNo, revision, after = 0, limit = 20) =>
+    http.get<StorePointStatementLinePage>(E.mStorePointStatementLines.path, { typeCode, statementNo, revision, after, limit }),
+  mStorePointStatements: (typeCode, after = 0, limit = 20) =>
+    http.get<StorePointStatementPage>(E.mStorePointStatements.path, { typeCode, after, limit }),
+  mConfirmStorePointStatement: (request: StorePointStatementChange) => http.post<StorePointStatementReceipt>(E.mConfirmStorePointStatement.path, request),
+  mDisputeStorePointStatement: (request: StorePointStatementChange) => http.post<StorePointStatementReceipt>(E.mDisputeStorePointStatement.path, request),
+  mStorePointTypes: () => http.get<StorePointType[]>(E.mStorePointTypes.path),
+  mStorePointAccount: (typeCode) => http.get<StorePointAccount>(E.mStorePointAccount.path, { typeCode }),
+  mStorePointEntries: (typeCode, after = 0, limit = 20) =>
+    http.get<StorePointEntryPage>(E.mStorePointEntries.path, { typeCode, after, limit }),
+  mStorePointTerms: (typeCode) => http.get<StorePointTerms | null>(E.mStorePointTerms.path, { typeCode }),
+  mStorePointAgreement: (typeCode) => http.get<StorePointAgreement | null>(E.mStorePointAgreement.path, { typeCode }),
+  mSignStorePointAgreement: (request) => http.post<StorePointAgreement>(E.mSignStorePointAgreement.path, request),
+  mTerminateStorePointAgreement: (typeCode) => http.post<void>(E.mTerminateStorePointAgreement.path, { typeCode }),
 
   // ---- 消息
   mMessageList: () => http.get<Message[]>(E.mMessageList.path),

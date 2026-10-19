@@ -8,6 +8,10 @@ import ai.neargo.shop.spi.pay.PayQueryPort;
 import ai.neargo.shop.trade.service.OrderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.jdbc.core.JdbcTemplate;
+import ai.neargo.shop.pay.service.PaymentLedgerService;
+import ai.neargo.shop.spi.settle.SettlePort;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -105,6 +109,15 @@ class ChannelPayCallbackFlowTest {
     @Autowired
     @org.springframework.beans.factory.annotation.Qualifier("payTxManager")
     private org.springframework.transaction.PlatformTransactionManager payTx;
+
+    @Autowired private JdbcTemplate financialJdbc;
+    @Autowired private PaymentLedgerService ledger;
+
+    @BeforeEach
+    void initiatedFinancialReceipt() {
+        financialJdbc.update("DELETE FROM stl_payment WHERE order_no='OT-CB-1' AND direction='PAY'");
+        ledger.open(new SettlePort.PaymentOpen("OT-CB-1", "U-CB-1", null, CH, 1990, "callback test"));
+    }
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context).build();

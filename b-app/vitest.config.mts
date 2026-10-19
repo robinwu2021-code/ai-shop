@@ -1,4 +1,5 @@
 import { fileURLToPath, URL } from "node:url";
+import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vitest/config";
 
 /*
@@ -26,8 +27,10 @@ import { defineConfig } from "vitest/config";
  * c-app 那三条红（`show` → `visible` 改名）就是这么活了不知道多久的。
  */
 export default defineConfig({
+  plugins: [vue()],
   resolve: {
     alias: {
+      "@ai-shop/ui": fileURLToPath(new URL("../packages/ui/src", import.meta.url)),
       "@": fileURLToPath(new URL("./src", import.meta.url)),
       "@shared": fileURLToPath(new URL("../packages/shared/src", import.meta.url)),
     },

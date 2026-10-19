@@ -22,4 +22,4 @@ export function pricingFor(type: CategoryType): PricingStrategy {
 }
 
 export type { PricingStrategy, PricingContext } from "./types";
-export { baseAmount, earnPointsFor, noFreightPricing } from "./types";
+export { baseAmount, noFreightPricing } from "./types";

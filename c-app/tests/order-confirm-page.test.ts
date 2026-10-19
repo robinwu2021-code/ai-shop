@@ -32,10 +32,12 @@ const orderPreview = vi.fn();
 const orderCapability = vi.fn();
 const orderCalls = vi.hoisted(() => ({ create: vi.fn(), phone: vi.fn() }));
 vi.mock("@/ports/phone-login", () => ({ nativePhoneAuthorization: true }));
+const orderPointsQuote = vi.fn();
 vi.mock("@/api", () => ({
   api: {
     orderPreview: (...a: unknown[]) => orderPreview(...a),
     orderCapability: (...a: unknown[]) => orderCapability(...a),
+    orderPointsQuote: (...a: unknown[]) => orderPointsQuote(...a),
     pointsDeductible: vi.fn(() => Promise.resolve(null)),
     couponList: vi.fn(() => Promise.resolve([])),
     // 下单页改读「我的券」与最优券试算（B1）——
@@ -59,6 +61,7 @@ import { onHide } from "@dcloudio/uni-app";
 import { useUserStore } from "@/stores/user";
 import ConfirmPage from "@/pages/order-confirm/index.vue";
 import { useCartStore } from "@/stores/cart";
+import { useConfigStore } from "@/stores/config";
 
 function item(over: Partial<CartItem> = {}): CartItem {
   return {
@@ -133,6 +136,8 @@ describe("结算页", () => {
     orderCalls.create.mockResolvedValue({ orderNo: "O1" });
     orderPreview.mockResolvedValue(amount(2980));
     orderCapability.mockResolvedValue({ merchants: [], usablePayMethods: null, usablePayModes: ["ONLINE"] });
+    orderPointsQuote.mockResolvedValue({ state: "UNAVAILABLE", reason: "POINTS_INTEGRATION_DETACHED",
+      pointsUsed: 0, deductMinor: 0, ratePoints: 0, rateMinor: 0, basePayMinor: 2980, stores: [] });
   });
 
   it("★★★ 迟到的试算响应不许盖住新的 —— 否则屏幕上是上一次的价", async () => {
@@ -232,6 +237,40 @@ describe("结算页", () => {
 
     expect(w.text()).toContain("confirm.estimateOnly");
   });
+
+  it.each([false, undefined])("一期能力 %s 不显示服务端遗留赠分承诺", async (pointsEnabled) => {
+    orderCapability.mockResolvedValue({ merchants: [], usablePayMethods: null, pointsEnabled });
+    orderPreview.mockResolvedValue({ ...amount(2980), amount: {
+      ...amount(2980).amount, pointsEarn: 100, pointsUsed: 20, pointsDeductMinor: 20,
+    } });
+    const w = await render([item()]);
+    expect(w.text()).not.toContain("confirm.pointsEarn");
+    expect(w.text()).not.toContain("confirm.pointsDeduct");
+    expect(orderPreview.mock.calls.every(([req]) => req.usePoints === 0)).toBe(true);
+    w.unmount();
+  });
+
+
+
+  it("门店积分报价按服务端的 2:1 比例显示，提交意愿取已报价积分", async () => {
+    useConfigStore().features.points = true;
+    orderPointsQuote.mockResolvedValue({ state: "AVAILABLE", reason: null,
+      pointsUsed: 20, deductMinor: 10, ratePoints: 2, rateMinor: 1, basePayMinor: 2980,
+      stores: [{ storeNo: "ST1", merchantNo: "M1", policyVersion: 3, pointsUsed: 20, deductMinor: 10 }] });
+    const w = await render([item()]);
+    expect(orderPointsQuote).toHaveBeenCalled();
+    expect(w.text()).toContain("confirm.pointsApplicable");
+    await w.find(".pointsline").trigger("tap");
+    await settle(w);
+    expect(w.find(".actionbar__total").text()).toBe("¥29.70");
+  });
+
+  it("全局未接线时不请求积分报价，纯现金结算保留原路径", async () => {
+    const w = await render([item()]);
+    expect(orderPointsQuote).not.toHaveBeenCalled();
+    expect(w.find(".actionbar__total").text()).toBe("¥29.80");
+  });
+
 });
 
 

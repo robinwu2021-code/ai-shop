@@ -229,7 +229,7 @@
     {
       "path": "pages/points-records/index",
       "style": {
-        "navigationBarTitleText": "积分发放明细",
+        "navigationBarTitleText": "门店积分流水",
         "app-plus": {
           "navigationStyle": "custom"
         },

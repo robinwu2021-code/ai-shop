@@ -448,6 +448,18 @@ CREATE TABLE IF NOT EXISTS inv_supplier
     CONSTRAINT uk_sup_name UNIQUE (owner_id, name)
 );
 
+CREATE TABLE IF NOT EXISTS inv_refund_restore
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    purpose_no VARCHAR(64) NOT NULL,
+    original_line_id BIGINT NOT NULL,
+    qty INT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_inv_refund_restore_purpose_line UNIQUE (purpose_no, original_line_id)
+);
+
 CREATE TABLE IF NOT EXISTS inv_outbox_stream
 (
     stream_key VARCHAR(128) NOT NULL PRIMARY KEY,

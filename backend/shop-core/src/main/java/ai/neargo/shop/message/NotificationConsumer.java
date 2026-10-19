@@ -161,6 +161,16 @@ public class NotificationConsumer implements OutboxConsumer {
                         doneTitle, "订单已完成，欢迎评价", link, event.getEventNo());
                 cPush(scene, userNo, doneTitle, "订单已完成，欢迎评价", link);
             }
+            case NotifyScene.SUB_ORDER_FULFILLMENT_CHANGED -> {
+                String userNo = text(payload, "userNo");
+                String target = text(payload, "current");
+                String method = "EXPRESS".equals(target) ? "快递配送" : "商家自送";
+                String link = "/pages/order/index?orderNo=" + event.getAggregateId();
+                String body = "您购买的订单已改为" + method + "，订单金额和运费不变，请查看详情";
+                messageService.push(userNo, MessageService.TRADE,
+                        "配送方式已更新", body, link, event.getEventNo());
+                cPush(scene, userNo, "配送方式已更新", body, link);
+            }
             case NotifyScene.SUB_ORDER_SHIPPED -> {
                 String userNo = text(payload, "userNo");
                 String link = "/pages/order/index?orderNo=" + text(payload, "orderNo");
@@ -335,15 +345,25 @@ public class NotificationConsumer implements OutboxConsumer {
                     }
                 }
             }
-            case NotifyScene.AFTER_SALE_APPLIED -> fanOutToStaff(event, text(payload, "entityNo"),
+            case NotifyScene.AFTER_SALE_APPLIED -> {
+                String afterSaleStore = text(payload, "storeNo");
+                String afterSaleLink = "/pages/after-sale/index?afterSaleNo=" + event.getAggregateId()
+                        + (afterSaleStore == null || afterSaleStore.isBlank() ? "" : "&store=" + afterSaleStore);
+                fanOutToStaff(event, text(payload, "entityNo"),
                     text(payload, "storeNo"), AFTER_SALE_ROLES,
                     "新的售后申请", "买家提交了售后申请，尽早处理更容易协商解决",
-                    "/pages/after-sale/index",
+                    afterSaleLink,
                     new WxStaff(WxSubscribePort.SCENE_MCH_AFTER_SALE, Map.of(
                             "orderNo", nz(text(payload, "subOrderNo"), ""),
                             "status", "待处理",
                             "tip", "顾客申请了售后，请尽快处理",
                             "time", String.valueOf(System.currentTimeMillis())), true));
+                String entityNo = text(payload, "entityNo");
+                String storeNo = text(payload, "storeNo");
+                if (prefs.on(storeNo, scene, MchNotifyPref.CH_SMS)) {
+                    smsAfterSaleApplied(entityNo, storeNo, event.getAggregateId());
+                }
+            }
             case NotifyScene.REVIEW_CREATED -> {
                 int rating = payload.get("rating") == null ? 5 : payload.get("rating").asInt();
                 // 差评单独点名：混在普通评价里会被当成例行夸奖划掉
@@ -703,6 +723,24 @@ public class NotificationConsumer implements OutboxConsumer {
             } catch (RuntimeException e) {
                 // 一个号发不出去不该拖累其余的 —— 逐个 try，否则第一个号有问题后面都收不到
                 log.warn("[notify] 来单短信没发出去 subOrderNo={} {}", subOrderNo, e.toString());
+            }
+        }
+    }
+
+    private void smsAfterSaleApplied(String entityNo, String storeNo, String afterSaleNo) {
+        java.util.LinkedHashSet<String> to = new java.util.LinkedHashSet<>();
+        merchantStaffPort.ownerPhone(entityNo).ifPresent(to::add);
+        to.addAll(recipients.extraPhones(storeNo));
+        if (to.isEmpty()) {
+            logWriter.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, "-", null,
+                    "TPL_SMS_MCH_AFTER_SALE", SysNotifyLog.FAILED, "no_recipient", null, null);
+            return;
+        }
+        for (String phone : to) {
+            try {
+                smsPort.sendAfterSaleApplied(phone, afterSaleNo);
+            } catch (RuntimeException e) {
+                log.warn("[notify] 售后短信没发出去 afterSaleNo={} {}", afterSaleNo, e.toString());
             }
         }
     }

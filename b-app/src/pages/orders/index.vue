@@ -4,7 +4,7 @@
 // tab 按「我要做什么」分，不按订单状态字典分 —— 商家不关心状态字典的细分，
 // 只关心「这单要不要我发货」。
 import { computed, ref } from "vue";
-import { onShow } from "@dcloudio/uni-app";
+import { onShow, onReachBottom } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
 import { ROUTES } from "@/shared/nav";
@@ -12,6 +12,7 @@ import { useI18n } from "vue-i18n";
 import { money } from "@shared/utils/money";
 import { FULFILLMENT } from "@shared/utils/constants";
 import { datetime } from "@shared/utils/datetime";
+import { expressOrderStatusKey } from "@shared/strategies/trace-step";
 import type { AfterSale, Order } from "@shared/types";
 import {
   DELIVERY_SHAPE,
@@ -50,8 +51,10 @@ function statusChip(o: Order): string {
 function statusText(o: Order): string {
   if (tab.value === "afterSale") {
     const status = afterSaleByOrder.value.get(o.orderNo)?.status;
-    return status ? t(`afterSale.status.${status}`) : "";
+    return status ? String(t(`afterSale.status.${status}`)) : "";
   }
+  const expressStatus = expressOrderStatusKey(o);
+  if (expressStatus) return String(t(expressStatus));
   const f = o.fulfillment;
   if (o.status === "PAID") {
     if (f === FULFILLMENT.PICKUP || f === FULFILLMENT.NEIGHBOR_PICKUP) return t("home.cell.toVerify");
@@ -75,6 +78,7 @@ function statusText(o: Order): string {
  * 正是因为状态不含履约 —— 此前 `ARRIVED`/`SHIPPED` 把商家的分法烧进了状态里。
  */
 const ALL_TABS: (OrderTabSpec & { labelKey: string; perm?: string })[] = [
+  { key: "todo", labelKey: "order.tabTodo" },
   { key: "all", labelKey: "order.tabAll" },
   /*
    * 待收款单独一个页签，**排在待发货前面**。
@@ -105,11 +109,16 @@ const ALL_TABS: (OrderTabSpec & { labelKey: string; perm?: string })[] = [
 
 const TABS = computed(() => ALL_TABS.filter((t) => !t.perm || merchant.can(t.perm)));
 
-const tab = ref("all");
+const tab = ref("todo");
 const list = ref<Order[]>([]);
 const afterSaleByOrder = ref(new Map<string, AfterSale>());
-let loadSequence = 0;
+type WorkItem = Awaited<ReturnType<typeof api.mOrderWorklist>>["records"][number];
+const workByOrder = ref<Record<string, WorkItem>>({});
 const loading = ref(false);
+const page = ref(1);
+const total = ref(0);
+const pendingRefunds = ref(0);
+let requestSerial = 0;
 
 const empty = computed(() => !loading.value && !list.value.length);
 
@@ -118,37 +127,44 @@ const loaded = ref(false);
 /** 这次没取到。**与「确定为空」是两件事** —— 网络不通时不该显示「还没有…」 */
 const failed = ref(false);
 
-async function load() {
+async function load(next = false) {
   if (!merchant.canOperate) return;
-  const sequence = ++loadSequence;
-  const selectedTab = tab.value;
+  if (next && (loading.value || list.value.length >= total.value)) return;
+  const serial = ++requestSerial;
   loading.value = true;
   try {
-    const scope = { size: 50 };
-    if (selectedTab === "afterSale") {
-      const afterSales = await api.mAfterSaleList();
-      // 用 subOrderNo：列表一行是一张子订单，售后单的 orderNo 是主单号
-      const nos = new Set(afterSales.map((a) => a.subOrderNo));
-      const res = await api.mOrderList(scope);
-      if (sequence !== loadSequence) return;
-      const latest = new Map<string, AfterSale>();
-      for (const a of afterSales) {
-        if (!latest.has(a.subOrderNo)) latest.set(a.subOrderNo, a);
-      }
-      afterSaleByOrder.value = latest;
-      list.value = res.records.filter((o) => nos.has(o.orderNo));
+    const requestedPage = next ? page.value + 1 : 1;
+    const scope = { page: requestedPage, size: 20 };
+    let result: { records: Order[]; total: number };
+    if (tab.value === "todo") {
+      const res = await api.mOrderWorklist(scope);
+      if (serial !== requestSerial) return;
+      workByOrder.value = next ? { ...workByOrder.value } : {};
+      for (const row of res.records) workByOrder.value[row.order.orderNo] = row;
+      result = { records: res.records.map((r) => r.order), total: res.total };
+    } else if (tab.value === "afterSale") {
+      const res = await api.mAfterSaleWorklist({ pending: true, ...scope });
+      if (serial !== requestSerial) return;
+      const sales = next ? new Map(afterSaleByOrder.value) : new Map<string, AfterSale>();
+      for (const row of res.records) sales.set(row.order.orderNo, row.afterSale);
+      afterSaleByOrder.value = sales;
+      result = { records: res.records.map((r) => r.order), total: res.total };
     } else {
-      const spec = ALL_TABS.find((t) => t.key === selectedTab);
+      const spec = ALL_TABS.find((t) => t.key === tab.value);
       const res = await api.mOrderList({ ...scope, ...(spec ? tabQuery(spec) : {}) });
-      if (sequence !== loadSequence) return;
-      list.value = res.records;
+      result = res;
     }
+    if (serial !== requestSerial) return;
+    list.value = next ? [...list.value, ...result.records] : result.records;
+    page.value = requestedPage;
+    total.value = result.total;
     failed.value = false;
   } catch {
+    if (serial !== requestSerial) return;
     // 此前只有 finally，请求挂了没人接：单子列表空着，而商家以为今天没单
-    if (sequence === loadSequence) failed.value = true;
+    failed.value = true;
   } finally {
-    if (sequence === loadSequence) {
+    if (serial === requestSerial) {
       loading.value = false;
       loaded.value = true;
     }
@@ -161,12 +177,35 @@ function switchTab(key: string) {
   void load();
 }
 
+onReachBottom(() => { void load(true); });
+
 function open(o: Order) {
+  const work = tab.value === "todo" ? workByOrder.value[o.orderNo] : null;
+  if (work?.afterSaleNo && merchant.can("biz:aftersale")) {
+    uni.navigateTo({ url: `${ROUTES.afterSale}?afterSaleNo=${encodeURIComponent(work.afterSaleNo)}&store=${encodeURIComponent(merchant.storeNo || "")}` });
+    return;
+  }
   uni.navigateTo({ url: `${ROUTES.order}?orderNo=${o.orderNo}` });
 }
 
-onShow(() => {
+function openAfterSale() {
+  uni.navigateTo({ url: ROUTES.afterSale });
+}
+
+onShow(async () => {
+  try {
+    await Promise.all([merchant.ensureScope(), merchant.ensureProfile()]);
+  } catch {
+    failed.value = true;
+    loaded.value = true;
+    return;
+  }
+  if (tab.value === "afterSale" && !merchant.can("biz:aftersale")) tab.value = "todo";
   void load();
+  if (merchant.can("biz:aftersale")) {
+    void api.mAfterSaleWorklist({ pending: true, page: 1, size: 1 })
+      .then((result) => { pendingRefunds.value = result.total; }).catch(() => null);
+  }
   /*
    * 门店列表：筛选条上那句「当前门店 / 全部门店」靠它判多店。
    * 不拉的话 `stores` 是空的 → `multiStore` 为 false → **整条门店范围消失**，
@@ -184,6 +223,11 @@ onShow(() => {
     :title-suffix="merchant.multiStore ? merchant.currentStore?.name : ''"
     :denied="!merchant.can('biz:order:view')"
   >
+    <view v-if="merchant.can('biz:aftersale') && pendingRefunds" class="sh-card sh-mb-sm sh-row sh-row--between"
+      @tap="openAfterSale">
+      <text class="txt-strong is-danger">{{ $t('order.tabAfterSale') }} · {{ pendingRefunds }}</text>
+      <sh-go :text="String($t('message.view'))"></sh-go>
+    </view>
     <sh-tabs
       :items="TABS.map((t) => ({ key: t.key, label: String($t(t.labelKey)) }))"
       :active="tab"
@@ -194,15 +238,17 @@ onShow(() => {
 
     <view v-for="o in list" :key="o.orderNo" class="sh-card sh-mb-sm" @tap="open(o)">
       <view class="row__head sh-row sh-row--between">
-        <text class="txt-caption sh-num">{{ o.orderNo }}</text>
-        <!-- 行内显示的是**订单自己的状态**。原先拼的是 tab 的 key
+        <text class="txt-caption sh-num">{{ o.payOrderNo || o.orderNo }}</text>
+        <text v-if="tab === 'todo' && workByOrder[o.orderNo]?.afterSaleNo" class="sh-chip sh-chip--warning">
+          {{ $t('order.tabAfterSale') }}
+        </text>
+        <!-- 快递履约中显示物流阶段，交易终态显示交易状态。原先拼的是 tab 的 key
              （`order.tab${PAID ? 'ToShip' : 'All'}`），于是除待发货外一律显示「全部」——
              一屏订单看下来全是「全部」，等于这一列没有信息 -->
         <text class="sh-chip" :class="statusChip(o)">
           {{ statusText(o) }}
         </text>
       </view>
-
       <view v-for="it in o.items" :key="it.skuNo" class="sh-row item sh-mb-sm">
         <sh-cover class="item__cover" :src="it.cover" :w="200"></sh-cover>
         <view class="sh-fill">

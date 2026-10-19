@@ -1,0 +1,26 @@
+-- Financial evidence survives a failed order projection. No foreign-key lock to the owning order.
+CREATE TABLE ord_payment_resolution (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_no VARCHAR(64) NOT NULL,
+    payment_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    source_user_no VARCHAR(64) NULL,
+    source_pay_no VARCHAR(64) NULL,
+    amount_minor BIGINT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    pay_channel VARCHAR(32) NOT NULL,
+    trade_no VARCHAR(128) NOT NULL,
+    reason VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    refund_no VARCHAR(64) NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_ord_payment_resolution (pay_no, payment_no),
+    KEY idx_ord_payment_resolution_status (status, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

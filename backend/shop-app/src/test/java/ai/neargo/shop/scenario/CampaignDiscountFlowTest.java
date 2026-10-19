@@ -1,5 +1,11 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
+
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.marketing.campaign.entity.MktCampaign;
 import ai.neargo.shop.marketing.campaign.mapper.CampaignMappers.CampaignMapper;
@@ -426,10 +432,10 @@ class CampaignDiscountFlowTest {
     }
 
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper itemMapper;
+    private OrderItemMapper itemMapper;
 
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper orderMapper;
+    private PaymentMapper orderMapper;
 
     private java.util.List<ai.neargo.shop.trade.entity.OrdItem> itemsOf(String orderNo) {
         return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->
@@ -556,7 +562,7 @@ class CampaignDiscountFlowTest {
     }
 
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
 
     private long subOrderField(String orderNo, String field) {
         var subs = ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(() ->

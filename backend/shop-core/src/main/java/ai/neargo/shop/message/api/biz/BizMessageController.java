@@ -1,8 +1,11 @@
 package ai.neargo.shop.message.api.biz;
 
+import ai.neargo.shop.auth.BizContext;
+import ai.neargo.shop.auth.BizPerms;
 import ai.neargo.shop.message.MessageService;
 import ai.neargo.shop.message.dto.MessageVOs.MessageVO;
 import ai.neargo.shop.message.entity.MsgMessage;
+import ai.neargo.shop.spi.trade.AfterSalePendingQueryPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,14 +27,50 @@ import java.util.List;
 public class BizMessageController {
 
     private final MessageService messageService;
+    private final AfterSalePendingQueryPort afterSales;
 
-    public BizMessageController(MessageService messageService) {
+    public BizMessageController(MessageService messageService, AfterSalePendingQueryPort afterSales) {
         this.messageService = messageService;
+        this.afterSales = afterSales;
     }
 
+    public record BizMessageVO(String messageNo, String type, String title, String body,
+                               String link, boolean read, long at,
+                               String bizType, String bizNo, String storeNo,
+                               boolean actionPending) { }
+
     @GetMapping("/biz/message")
-    public List<MessageVO> messages() {
-        return messageService.list(MsgMessage.RECEIVER_STAFF);
+    public List<BizMessageVO> messages() {
+        List<MessageVO> messages = messageService.list(MsgMessage.RECEIVER_STAFF);
+        var ctx = BizContext.current();
+        java.util.Map<String, String> ids = new java.util.HashMap<>();
+        java.util.Map<String, String> stores = new java.util.HashMap<>();
+        for (MessageVO m : messages) {
+            if (m.link() == null || !m.link().startsWith("/pages/after-sale/index")) continue;
+            String no = queryParam(m.link(), "afterSaleNo");
+            if (no != null && !no.isBlank()) ids.put(m.messageNo(), no);
+            String store = queryParam(m.link(), "store");
+            if (store != null && !store.isBlank()) stores.put(m.messageNo(), store);
+        }
+        java.util.Set<String> pending = ctx.can(BizPerms.AFTERSALE) && ctx.merchantNo() != null
+                ? afterSales.pending(ctx.merchantNo(), ctx.currentStoreNo(), ids.values())
+                : java.util.Set.of();
+        return messages.stream().map(m -> new BizMessageVO(m.messageNo(), m.type(), m.title(),
+                m.body(), m.link(), m.read(), m.at(), ids.containsKey(m.messageNo())
+                ? "AFTER_SALE" : null, ids.get(m.messageNo()), stores.get(m.messageNo()),
+                ids.containsKey(m.messageNo()) && pending.contains(ids.get(m.messageNo())))).toList();
+    }
+
+    private static String queryParam(String link, String key) {
+        int mark = link.indexOf('?');
+        if (mark < 0) return null;
+        for (String item : link.substring(mark + 1).split("&")) {
+            int eq = item.indexOf('=');
+            if (eq > 0 && key.equals(item.substring(0, eq))) {
+                return java.net.URLDecoder.decode(item.substring(eq + 1), java.nio.charset.StandardCharsets.UTF_8);
+            }
+        }
+        return null;
     }
 
     /** 未读角标。b-app 30s 轮询用，只给一个数。 */

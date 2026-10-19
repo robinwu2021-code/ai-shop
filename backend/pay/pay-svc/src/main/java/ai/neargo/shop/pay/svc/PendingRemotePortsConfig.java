@@ -59,6 +59,8 @@ public class PendingRemotePortsConfig {
          * 独立形态下不接这条流量，所以这里给「调用即抛」的桩是对的口径。
          */
         ai.neargo.shop.spi.user.PayoutAccountPort.class,        // 1
+        // 积分签约按门店核验；独立支付进程未接业务流量，缺少远程目录时必须明确失败。
+        ai.neargo.shop.spi.user.StoreDirectoryPort.class,
     };
 
     @Bean

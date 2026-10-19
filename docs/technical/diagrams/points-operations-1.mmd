@@ -1,0 +1,22 @@
+flowchart TD
+    UI[积分运营工作区] --> HTTP[Ops Controller：功能权限与登录操作人]
+    HTTP --> Scope{应用门面：数据域校验}
+    Scope -->|逐店操作| Store[门店目录解析归属并匹配授权商家]
+    Scope -->|全量资金或用户数据| All[要求平台 ALL 范围]
+    Store --> Audit[幂等操作日志：原始请求、操作人、服务端时间]
+    All --> Audit
+    Audit --> Config[类型 / 规则 / 协议 / 开关]
+    Audit --> Maker[资金申请或周期计划版本]
+    Maker --> Request[周期申请保留该配置版本真实制单人]
+    Request --> Checker{不同操作人复核}
+    Checker -->|通过| Kernel[积分内核与短 pay 事务]
+    Audit --> Statement[按门店、原路由组与 revision 操作账单]
+    Statement --> Permission{PREPARE_PAYOUT：付款执行权限}
+    Permission -->|授权通过| Kernel
+    Kernel --> Intent[提交原始资金意图]
+    Intent --> Executor[事务外执行或查询原号]
+    Executor --> Unknown{资金结果}
+    Unknown -->|UNKNOWN| Executor
+    Unknown -->|可信明确结果| Confirm[短 pay 事务确认、流水与审计]
+    All --> Query[只读 DTO：四池、预留、锁定、独立 R]
+    Store --> Query

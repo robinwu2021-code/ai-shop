@@ -85,7 +85,12 @@ public final class OrderEvents {
      *
      * @param outTradeNo 微信支付的商户单号。物流按它找运单（登记快照里存了同一个值），不必认识子单与支付单的对应
      */
-    public record WxShippingUploaded(String orderNo, String outTradeNo, long at) implements DomainEvent {
+    public record WxShippingUploaded(String orderNo, String outTradeNo, long at,
+                                     List<WxShippingPort.ShippingItem> shipments) implements DomainEvent {
+        /** Old events remain explicitly unmapped and cannot acknowledge a modern package. */
+        public WxShippingUploaded(String orderNo, String outTradeNo, long at) {
+            this(orderNo, outTradeNo, at, List.of());
+        }
         @Override
         public String aggregateType() {
             return "ORDER";
@@ -104,8 +109,14 @@ public final class OrderEvents {
 
     public record SubOrderShipped(String subOrderNo, String orderNo, String merchantNo,
                                   String userNo, String fulfillment,
-                                  String expressCompany, String expressNo)
+                                  String expressCompany, String expressNo,
+                                  String sourceShipmentNo, Long sourceShipmentVersion)
             implements DomainEvent {
+        /** Old publishers remain compatible; new shipping freezes the immutable source generation. */
+        public SubOrderShipped(String subOrderNo, String orderNo, String merchantNo, String userNo,
+                               String fulfillment, String expressCompany, String expressNo) {
+            this(subOrderNo, orderNo, merchantNo, userNo, fulfillment, expressCompany, expressNo, null, null);
+        }
         @Override
         public String aggregateType() {
             return AGG_SUB_ORDER;
@@ -120,6 +131,15 @@ public final class OrderEvents {
         public String eventType() {
             return "SUB_ORDER_SHIPPED";
         }
+    }
+
+    /** Buyer promise changed before hand-off; order and freight amounts remain unchanged. */
+    public record SubOrderFulfillmentChanged(String subOrderNo, String orderNo, String userNo,
+                                             String merchantNo, String storeNo, String previous,
+                                             String current, String reason) implements DomainEvent {
+        @Override public String aggregateType() { return AGG_SUB_ORDER; }
+        @Override public String aggregateId() { return subOrderNo; }
+        @Override public String eventType() { return "SUB_ORDER_FULFILLMENT_CHANGED"; }
     }
 
     public record SubOrderCompleted(String subOrderNo, String orderNo, String merchantNo,

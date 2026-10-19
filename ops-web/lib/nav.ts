@@ -221,7 +221,6 @@ export const NAV: NavSection[] = [
       // 路由 `category-pay-mode` **没跟着改**：它是内部键，改它要动 TAB_KEYS、
       // 迁移里的 href、清单产物，还会让已有的链接失效，而这些换不来任何东西。
       { href: "/products?tab=category-pay-mode", label: "当面付禁用类目", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
-      { href: "/products?tab=category-points", label: "类目 × 积分", perm: "product:category:read", group: "类目", matrix: "P-3.1", ready: true },
       // 禁售词（商品①）。**前置拦在提审之前** —— 此前只有事后驳回：
       // 带违禁词的标题会进审核队列、占一个审核员的时间、再被驳回，
       // 而商家隔几天才知道要改哪个字。
@@ -381,7 +380,7 @@ export const NAV: NavSection[] = [
 
   // ── P-12 结算与资金 ─────────────────────────────────────────────────────
   {
-    key: "finance", label: "结算与资金", icon: "Wallet", modules: ["finance"], href: "/finance",
+    key: "finance", label: "结算与资金", icon: "Wallet", modules: ["finance"], href: "/finance", match: ["/finance", "/points"],
     children: [
       // 分账指令/重试/报备状态都是结算单**行上的动作与列**，不单独成页
       { href: "/finance", label: "结算单与分账", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
@@ -396,8 +395,12 @@ export const NAV: NavSection[] = [
       { href: "/finance?tab=purchase-invoices", label: "进项票", perm: "finance:invoice:read", group: "应付与发票", matrix: "P-12.2", ready: true },
       { href: "/finance?tab=buyer-invoices", label: "买家开票申请", perm: "finance:invoice:read", group: "应付与发票", matrix: "P-12.2", ready: true },
       { href: "/finance?tab=payout-accounts", label: "供应商收款账户", perm: "finance:payout:execute", group: "应付与发票", matrix: "P-12.1", ready: true },
-      { href: "/finance?tab=points", label: "积分资金看板", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
-      { href: "/finance?tab=points-policy", label: "积分端开关", perm: "finance:settle:read", group: "分账结算", matrix: "P-12.1", ready: true },
+      { href: "/points?tab=overview", label: "积分资金看板", perm: "finance:settle:read", group: "积分运营", matrix: "P-12.1", ready: true },
+      { href: "/points?tab=configuration", label: "积分类型与协议", perm: "finance:settle:read", group: "积分运营", matrix: "P-12.1", ready: true },
+      { href: "/points?tab=treasury", label: "积分资金工作台", perm: "finance:settle:read", group: "积分运营", matrix: "P-12.1", ready: true },
+      { href: "/points?tab=settlements", label: "积分账单与退款", perm: "finance:settle:read", group: "积分运营", matrix: "P-12.1", ready: true },
+      { href: "/points?tab=queries", label: "积分账务与对账", perm: "finance:settle:read", group: "积分运营", matrix: "P-12.1", ready: true },
+      { href: "/points?tab=switches", label: "积分范围开关", perm: "finance:settle:read", group: "积分运营", matrix: "P-12.1", ready: true },
 
       { href: "/finance?tab=rates", label: "分档费率与服务费", perm: "finance:rate:update", group: "费率", matrix: "P-12.1", ready: true },
       // 与上一条是**两笔钱**：那条是平台向商家收的佣金，这条是通道向我们收的手续费。

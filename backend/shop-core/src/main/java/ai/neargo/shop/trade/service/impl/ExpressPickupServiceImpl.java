@@ -13,9 +13,9 @@ import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.trade.entity.OrdExpressPickup;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.ExpressPickupMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.ExpressPickupMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.trade.service.ExpressPickupService;
 import ai.neargo.shop.trade.service.MerchantOrderService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -57,7 +57,7 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
 
     private final ExpressPickupPort port;
     private final ExpressPickupMapper pickupMapper;
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
     private final MerchantQueryPort merchantPort;
     private final MerchantDebtPort debtPort;
@@ -65,7 +65,7 @@ public class ExpressPickupServiceImpl implements ExpressPickupService {
     private final PlatformSwitchPort switchPort;
 
     public ExpressPickupServiceImpl(ExpressPickupPort port, ExpressPickupMapper pickupMapper,
-                                    SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+                                    StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
                                     MerchantQueryPort merchantPort, MerchantDebtPort debtPort,
                                     MerchantOrderService merchantOrderService, PlatformSwitchPort switchPort) {
         this.port = port;

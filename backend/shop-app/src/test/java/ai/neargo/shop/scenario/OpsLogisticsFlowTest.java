@@ -733,6 +733,8 @@ class OpsLogisticsFlowTest {
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
 
+        mvc().perform(post("/mp/order/" + payOrderNo + "/pay").header("Authorization", "Bearer " + buyer))
+                .andExpect(jsonPath("$.code").value(0));
         mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-log-" + phone
                         + "\",\"sign\":\"" + STUB_SECRET + "\"}"));

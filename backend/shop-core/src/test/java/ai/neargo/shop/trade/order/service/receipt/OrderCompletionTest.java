@@ -15,6 +15,8 @@ class OrderCompletionTest {
         OrdItem i = new OrdItem();
         i.setSkuNo(sku);
         i.setShipmentNo(shipmentNo);
+        i.setQty(1);
+        i.setShippedQty(shipmentNo == null ? 0 : 1);
         return i;
     }
 

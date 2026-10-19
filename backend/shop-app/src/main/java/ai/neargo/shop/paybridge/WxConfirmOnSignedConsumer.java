@@ -1,12 +1,13 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.spi.logistics.LogisticsPort;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -33,11 +34,11 @@ public class WxConfirmOnSignedConsumer implements OutboxConsumer {
 
     private final WxConfirmReceiveService confirm;
     private final LogisticsPort logistics;
-    private final TradeMappers.SubOrderMapper subOrders;
+    private final StoreOrderMapper subOrders;
     private final ObjectMapper json;
 
     public WxConfirmOnSignedConsumer(WxConfirmReceiveService confirm, LogisticsPort logistics,
-                                     TradeMappers.SubOrderMapper subOrders, ObjectMapper json) {
+                                     StoreOrderMapper subOrders, ObjectMapper json) {
         this.confirm = confirm;
         this.logistics = logistics;
         this.subOrders = subOrders;

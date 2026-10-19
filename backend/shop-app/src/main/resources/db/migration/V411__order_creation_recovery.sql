@@ -1,0 +1,25 @@
+-- Independent creation intent; intentionally no foreign key to the order that may roll back.
+CREATE TABLE ord_create_intent (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    pay_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    endpoint VARCHAR(64) NOT NULL,
+    idem_key VARCHAR(128) NULL,
+    request_hash VARCHAR(64) NOT NULL,
+    stock_authority VARCHAR(16) NOT NULL,
+    stock_needs_json JSON NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    error_code VARCHAR(64) NULL,
+    next_attempt_at BIGINT NOT NULL,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    created_at DATETIME NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_ord_create_pay (pay_no),
+    UNIQUE KEY uk_ord_create_key (endpoint, idem_key),
+    KEY idx_ord_create_recovery (status, next_attempt_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

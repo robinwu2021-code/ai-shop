@@ -25,6 +25,10 @@ public class StlReconDiff extends BaseEntity {
     public static final String PLATFORM_ONLY = "PLATFORM_ONLY";
     /** 两边都有，金额不符 */
     public static final String AMOUNT_DIFF = "AMOUNT_DIFF";
+    /** Separate semantic keys prevent an older resolved issue hiding a new refund anomaly. */
+    public static final String REFUND_ABNORMAL = "REFUND_ABNORMAL";
+    public static final String REFUND_LATE_SUCCESS = "REFUND_LATE_SUCCESS";
+    public static final String REFUND_CLOSED = "REFUND_CLOSED";
 
     /** 平台侧自查：扫我方的 PENDING 流水，逐笔向通道查单 */
     public static final String SELF_CHECK = "SELF_CHECK";

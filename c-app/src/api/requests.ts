@@ -492,18 +492,13 @@ export interface MarkArrivedReq {
   orderNos: string[];
 }
 
-// ---------------------------------------------------------------- 积分
-
-export interface PointsDeductibleQuery {
-  /** 试算哪个商家的单 —— 开关是按商家判的，不同店结果不同 */
-  merchantNo: string;
-  /** 券后金额（分）。抵扣上限按它算，**运费不参与** */
-  payableMinor: number;
-  /**
-   * 支付方式（`PAY_MODE`）。线下能否用积分由平台一个开关控制 ——
-   * 不传的话试算按线上算，而下单时按真实支付方式算，两处会给出不同的数。
-   */
-  payMode?: string;
+export interface PointsEntriesQuery {
+  /** 积分类型唯一编码 */
+  typeCode: string;
+  /** 上一页返回的游标，首次为零 */
+  after?: number;
+  /** 本次请求记录上限 */
+  limit?: number;
 }
 
 export type { WxPhoneLoginReq } from "@shared/types";

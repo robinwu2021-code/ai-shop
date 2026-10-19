@@ -45,7 +45,16 @@ describe("结算参数：占位值也要守住方向", () => {
   });
 });
 
-import { showVerifyCode } from "@shared/strategies/order-view";
+import { orderView, showVerifyCode, statusTone, NEXT_ACTION } from "@shared/strategies/order-view";
+
+describe("积分受理中的订单", () => {
+  it("等待原号核验期间不引导再次付款", () => {
+    const view = orderView("POINTS_PROCESSING", FULFILLMENT.PICKUP);
+    expect(view.labelKey).toBe("orderView.POINTS_PROCESSING");
+    expect(view.next).toBe(NEXT_ACTION.WAIT);
+    expect(statusTone("POINTS_PROCESSING")).toBe("is-warning");
+  });
+});
 
 describe("核销码/取货码显示：快递单不显示码（ADR 无，2026-10-09 用户：快递单的取货码像假数据）", () => {
   it("自提 / 到店核销：显示码", () => {

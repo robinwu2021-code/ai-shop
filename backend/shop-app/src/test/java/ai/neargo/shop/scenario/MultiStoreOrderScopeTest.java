@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
 import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestPlan;
@@ -140,6 +142,9 @@ class MultiStoreOrderScopeTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
+        mvc().perform(post("/mp/order/" + payOrderNo + "/pay")
+                        .header("Authorization", "Bearer " + buyer))
+                .andExpect(jsonPath("$.code").value(0));
         mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idem
                         + "\",\"sign\":\"stub-secret\"}"));
@@ -187,7 +192,7 @@ class MultiStoreOrderScopeTest {
     // ---------------------------------------------------------------- 装配
 
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
 
     private String merchantNoOf(String token) throws Exception {
         String body = mvc().perform(get("/biz/merchant/profile").header("Authorization", "Bearer " + token))

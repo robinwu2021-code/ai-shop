@@ -7,8 +7,8 @@ import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.trade.entity.OrdInvoiceRequest;
 import ai.neargo.shop.trade.entity.OrdOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.InvoiceRequestMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderMapper;
+import ai.neargo.shop.trade.order.mapper.InvoiceRequestMapper;
+import ai.neargo.shop.trade.order.mapper.PaymentMapper;
 import ai.neargo.shop.trade.service.InvoiceRequestService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -23,9 +23,9 @@ import java.util.List;
 public class InvoiceRequestServiceImpl implements InvoiceRequestService {
 
     private final InvoiceRequestMapper mapper;
-    private final OrderMapper orderMapper;
+    private final PaymentMapper orderMapper;
 
-    public InvoiceRequestServiceImpl(InvoiceRequestMapper mapper, OrderMapper orderMapper) {
+    public InvoiceRequestServiceImpl(InvoiceRequestMapper mapper, PaymentMapper orderMapper) {
         this.mapper = mapper;
         this.orderMapper = orderMapper;
     }

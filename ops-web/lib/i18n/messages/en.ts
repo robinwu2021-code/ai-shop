@@ -176,6 +176,7 @@ export const en: Messages = {
   },
   merchantTier: { SMALL: "Small", MEDIUM: "Medium", LARGE: "Large" },
   orderStatus: {
+    POINTS_PROCESSING: "Points processing",
     WAIT_PAY: "Awaiting payment",
     WAIT_OFFLINE_PAY: "Awaiting cash on site",
     PAID: "Awaiting fulfilment",

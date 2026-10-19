@@ -2,63 +2,50 @@ package ai.neargo.shop.trade.order.refund.service;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
-import ai.neargo.shop.spi.settle.SettlePort;
-import ai.neargo.shop.spi.settle.SettlePort.SplitReversal;
 import ai.neargo.shop.trade.entity.OrdAfterSale;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.order.refund.model.LedgerResult;
 import ai.neargo.shop.trade.order.refund.model.RefundLine;
-import ai.neargo.shop.trade.order.refund.model.RefundOutcome;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.shop.trade.order.refund.model.RefundableView;
 import ai.neargo.shop.trade.order.refund.policy.ApprovedAmountAllocator;
-import ai.neargo.shop.trade.order.refund.policy.LineShares;
 import ai.neargo.shop.trade.order.refund.port.AfterSaleLineStore;
 
 import java.util.List;
 
-/**
- * 现金退款的执行（取代 {@code AfterSaleServiceImpl#doRefund} 的现金分支）。顺序：
- * <ol>
- *   <li>记账（条件增量，R2）—— 并发超退在这里就 CONFLICT，钱还没动</li>
- *   <li>按额回退分账（{@code REV-售后单号}）—— 失败抛 SPLIT_EXPIRED，整笔回滚，<b>绝不往下退钱</b></li>
- *   <li>原路退款（幂等键 = 售后单号）</li>
- * </ol>
- * 回补库存、改状态、退券由调用方按 {@link RefundOutcome} 做。每一步可重放（R3）。
- */
+/** Prepares an immutable source plan; cash sending and success finalization run in separate stages. */
 public class AfterSaleRefundExecutor {
 
     private final RefundableQuery query;
     private final RefundPlanner planner;
     private final ApprovedAmountAllocator allocator;
-    private final RefundLedger ledger;
+    private final RefundExecutionService executions;
     private final AfterSaleLineStore lines;
-    private final SettlePort settle;
 
     public AfterSaleRefundExecutor(RefundableQuery query, RefundPlanner planner, ApprovedAmountAllocator allocator,
-                                   RefundLedger ledger, AfterSaleLineStore lines, SettlePort settle) {
+                                   RefundExecutionService executions, AfterSaleLineStore lines) {
         this.query = query;
         this.planner = planner;
         this.allocator = allocator;
-        this.ledger = ledger;
+        this.executions = executions;
         this.lines = lines;
-        this.settle = settle;
     }
 
-    public RefundOutcome execute(OrdAfterSale as, OrdSubOrder sub) {
+    /** Replay returns the frozen plan, never recalculating against partially changed source counters. */
+    public void prepare(OrdAfterSale as, OrdSubOrder sub) {
+        var prior = executions.inspect(as.getAfterSaleNo());
+        if (prior != null) {
+            long target = as.getApprovedMinor() == null ? as.getRefundMinor() : as.getApprovedMinor();
+            if (!prior.plan().subOrderNo().equals(sub.getSubOrderNo()) || prior.plan().totalMinor() != target) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
+            return;
+        }
         RefundableView view = query.view(sub);
         RefundPlan plan = finalPlan(as, view);
         if (plan.isPartial(view) && !view.partialSupported()) {
             throw BizException.of(ErrorCode.AFTERSALE_CHANNEL_PARTIAL_UNSUPPORTED);
         }
-        LedgerResult result = ledger.record(plan);
-        SplitReversal reversal = new SplitReversal(sub.getSubOrderNo(), as.getAfterSaleNo(), plan.goodsMinor(),
-                plan.freightMinor(), LineShares.goodsPaid(sub));
-        if (!settle.reverseSplit(reversal)) {
-            throw BizException.of(ErrorCode.SPLIT_EXPIRED);
-        }
-        String paymentNo = settle.refund(sub.getSubOrderNo(), as.getAfterSaleNo(), plan.totalMinor(), as.getReason());
-        return new RefundOutcome(plan, result, paymentNo);
+        executions.prepare(as.getAfterSaleNo(), plan);
     }
 
     /**

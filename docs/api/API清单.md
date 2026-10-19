@@ -8,21 +8,22 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 832 个接口**：后端已实现 754（91%）· 前端在调 756
+**合计 902 个接口**：后端已实现 818（91%）· 前端在调 825
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **118** 个接口 ｜ 后端已实现 **117**（99%）｜ 前端在调 **118**
+共 **122** 个接口 ｜ 后端已实现 **121**（99%）｜ 前端在调 **122**
 
-### after-sale（4）
+### after-sale（5）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/after-sale` | 我的售后单 | — | `数组` | 🔒 | ✅ | ✅ |
-| POST | `/mp/after-sale/{afterSaleNo}/escalate` | 上升平台裁决 | — | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/mp/after-sale/{afterSaleNo}/ship` | 填退货运单号 | — | `Order` | 🔒 | ✅ | ✅ |
+| POST | `/mp/after-sale/{afterSaleNo}/cancel` | 撤销售后申请 | — | `AfterSale` | 🔒 | ✅ | ✅ |
+| POST | `/mp/after-sale/{afterSaleNo}/escalate` | 上升平台裁决 | — | `AfterSale` | 🔒 | ✅ | ✅ |
+| POST | `/mp/after-sale/{afterSaleNo}/ship` | 填退货运单号 | — | `AfterSale` | 🔒 | ✅ | ✅ |
 | GET | `/mp/after-sale/reasons` | 售后原因清单 | — | `数组` | — | ✅ | ✅ |
 
 ### card（1）
@@ -170,20 +171,24 @@
 | GET | `/mp/my-memberships` | 我是哪几家店的会员 | — | `数组` | 🔒 | ✅ | ✅ |
 | PUT | `/mp/my-memberships/{entityNo}/reach` | 关掉/打开某家店的消息 | — | — | 🔒 | ✅ | ✅ |
 
-### order（11）
+### order（15）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/mp/order` | 下单（幂等） | `CreateOrderReqBody` | `Order` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order` | 订单列表 | — | `object` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}` | 订单详情 | — | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/mp/order/{orderNo}/after-sale` | 申请售后 | `AfterSaleReq` | `Order` | 🔒 | ✅ | ✅ |
+| POST | `/mp/order/{orderNo}/after-sale` | 申请售后 | `AfterSaleReq` | `AfterSale` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/cancel` | 取消订单 | — | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/mp/order/{orderNo}/pay` | 支付 | — | `Order` | 🔒 | ✅ | ✅ |
+| POST | `/mp/order/{orderNo}/confirm-receipt` | 本人确认收货 | — | `Order` | 🔒 | ✅ | ✅ |
+| POST | `/mp/order/{orderNo}/pay` | 支付 | — | `PayInit` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/pay-method` | 可用支付方式 | — | `PayMethodList` | 🔒 | ✅ | ✅ |
+| GET | `/mp/order/{orderNo}/pay-result` | 支付结果 | — | `Order` | 🔒 | ✅ | ✅ |
+| GET | `/mp/order/{orderNo}/points-state` | 本人订单积分接线阶段 | — | `PointsOrderState` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/{orderNo}/reorder` | 一键再来一单 | — | `ReorderResult` | 🔒 | ✅ | ✅ |
 | GET | `/mp/order/{orderNo}/trace` | 物流页（查看物流） | — | `ShipmentTrace` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/capability` | 结算页能力提示（开票/支付方式/额度） | — | `CheckoutCapability` | 🔒 | ✅ | ✅ |
+| POST | `/mp/order/points-quote` | 按门店的积分抵扣报价 | — | `OrderPointsQuote` | 🔒 | ✅ | ✅ |
 | POST | `/mp/order/preview` | 订单预览（金额以后端为准） | — | `OrderPreview` | 🔒 | ✅ | ✅ |
 
 ### place（1）
@@ -192,13 +197,12 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/place/search` | 按名字找地方（本地优先，地图是补充） | — | `数组` | — | ✅ | ✅ |
 
-### points（3）
+### points（2）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/mp/points/account` | 积分账户 | — | `PointAccount` | 🔒 | ✅ | ✅ |
-| GET | `/mp/points/deductible` | 结算页试算：本单最多可抵多少 | — | `PointsDeductible` | 🔒 | ✅ | ✅ |
-| GET | `/mp/points/records` | 积分流水 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/points/accounts` | 本人按类型积分账户 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/mp/points/entries` | 本人按类型积分流水 | — | `BuyerPointsEntryPage` | 🔒 | ✅ | ✅ |
 
 ### push-token（2）
 
@@ -281,7 +285,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **298** 个接口 ｜ 后端已实现 **287**（96%）｜ 前端在调 **298**
+共 **316** 个接口 ｜ 后端已实现 **299**（95%）｜ 前端在调 **316**
 
 ### activities（4）
 
@@ -298,15 +302,18 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | POST | `/biz/activity-conflicts` | 这些商品已经在哪些活动里 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### after-sale（5）
+### after-sale（8）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/after-sale` | 待处理售后 | — | `数组` | 🔒 | ✅ | ✅ |
-| POST | `/biz/after-sale/{afterSaleNo}/approve` | 同意售后 | `HandleAfterSaleReq` | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/biz/after-sale/{afterSaleNo}/confirm-refund` | 在途仅退款：商家确认退款 | — | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/biz/after-sale/{afterSaleNo}/receive` | 确认收到退货 | — | `Order` | 🔒 | ✅ | ✅ |
-| POST | `/biz/after-sale/{afterSaleNo}/reject` | 驳回售后 | `HandleAfterSaleReq` | `Order` | 🔒 | ✅ | ✅ |
+| GET | `/biz/after-sale/{afterSaleNo}` | 售后详情 | — | `MerchantAfterSaleWorkItem` | 🔒 | ✅ | ✅ |
+| POST | `/biz/after-sale/{afterSaleNo}/approve` | 同意售后 | `HandleAfterSaleReq` | `AfterSale` | 🔒 | ✅ | ✅ |
+| POST | `/biz/after-sale/{afterSaleNo}/confirm-refund` | 在途仅退款：商家确认退款 | — | `AfterSale` | 🔒 | ✅ | ✅ |
+| POST | `/biz/after-sale/{afterSaleNo}/receive` | 确认收到退货 | `ReceiveReturnReq` | `AfterSale` | 🔒 | ✅ | ✅ |
+| POST | `/biz/after-sale/{afterSaleNo}/reject` | 驳回售后 | `HandleAfterSaleReq` | `AfterSale` | 🔒 | ✅ | ✅ |
+| GET | `/biz/after-sale/by-order/{orderNo}` | 订单的当前售后 | — | `AfterSale` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/after-sale/worklist` | 分页售后待办 | — | `object` | 🔒 | ✅ | ✅ |
 
 ### appointment-slots（1）
 
@@ -640,7 +647,7 @@
 | PUT | `/biz/notify/wecom` | 录入本店的企业微信群机器人地址 | — | `NotifySetting` | 🔒 | ✅ | ✅ |
 | POST | `/biz/notify/wecom/test` | 往本店的企微群发一条测试 | — | `boolean` | 🔒 | ✅ | ✅ |
 
-### order（11）
+### order（17）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -652,9 +659,15 @@
 | GET | `/biz/order/{orderNo}/express` | 取件单 | — | `ExpressPickup` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/express/cancel` | 取消取件 | — | `ExpressPickup` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/{orderNo}/express/quotes` | 快递报价 | — | `数组` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/order/{orderNo}/fulfillment-change` | 配送方式切换 | — | `MerchantFulfillmentChange` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/order/{orderNo}/fulfillment-options` | 配送方式切换资格 | — | `MerchantFulfillmentOptions` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/order/{orderNo}/logistics-updates` | 物流更新记录 | — | `数组` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/prepare` | 开始备货 | — | `Order` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/ship` | 快递发货 | `ShipReq` | `Order` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/order/{orderNo}/ship/precheck` | 运单预检 | — | `ShipPrecheck` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/{orderNo}/trace` | 物流轨迹 | — | `ShipmentTrace` | 🔒 | ⬜ | ✅ |
+| POST | `/biz/order/{orderNo}/waybill` | 更正运单 | — | `Order` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/order/worklist` | 按优先级分页的订单待办 | — | `object` | 🔒 | ✅ | ✅ |
 
 ### payout-account（2）
 
@@ -715,13 +728,22 @@
 | POST | `/biz/platform-activity/{activityNo}/enrollment` | 报名平台活动（审核前可改） | `EnrollReq` | `PlatformEnrollment` | 🔒 | ✅ | ✅ |
 | POST | `/biz/platform-activity/{activityNo}/withdraw` | 撤回待审的报名 | — | `PlatformEnrollment` | 🔒 | ✅ | ✅ |
 
-### points（3）
+### points（12）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
-| GET | `/biz/points/account` | 本期发分服务费与开关状态 | — | `MerchantPointAccount` | 🔒 | ✅ | ✅ |
-| GET | `/biz/points/records` | 发分服务费明细（按单） | — | `数组` | 🔒 | ✅ | ✅ |
-| POST | `/biz/points/toggle` | 开/关本店积分 | — | `MerchantPointAccount` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-account` | 当前门店积分账本 | — | `StorePointAccount` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-agreement` | 当前门店有效积分签约 | — | `StorePointAgreement` | 🔒 | ✅ | ✅ |
+| POST | `/biz/points/store-agreement/sign` | 主体属主签署当前门店积分协议 | `StorePointSignRequest` | `StorePointAgreement` | 🔒 | ✅ | ✅ |
+| POST | `/biz/points/store-agreement/terminate` | 主体属主终止当前门店积分协议 | `StorePointsTypeQuery` | — | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-entries` | 当前门店积分流水 | — | `StorePointEntryPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-statement` | 当前门店指定积分账单 | — | `StorePointStatement` | 🔒 | ✅ | ✅ |
+| POST | `/biz/points/store-statement-confirm` | 确认当前门店指定修订积分账单 | `StorePointStatementChange` | `StorePointStatementReceipt` | 🔒 | ✅ | ✅ |
+| POST | `/biz/points/store-statement-dispute` | 对当前门店积分账单提出异议 | `StorePointStatementChange` | `StorePointStatementReceipt` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-statement-lines` | 当前门店指定修订积分账单明细 | — | `StorePointStatementLinePage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-statements` | 当前门店积分账单 | — | `StorePointStatementPage` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-terms` | 当前积分签约条款 | — | `StorePointTerms` | 🔒 | ✅ | ✅ |
+| GET | `/biz/points/store-types` | 当前门店可见的积分类型 | — | `数组` | 🔒 | ✅ | ✅ |
 
 ### push-token（2）
 
@@ -918,14 +940,15 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **416** 个接口 ｜ 后端已实现 **350**（84%）｜ 前端在调 **340**
+共 **464** 个接口 ｜ 后端已实现 **398**（86%）｜ 前端在调 **387**
 
-### aftersale（4）
+### aftersale（5）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/after-sales` | listAfterSales | — | `object` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/{afterSaleNo}/decide` | 平台介入裁决（`ARBITRATING` 的唯一出口） | — | `AfterSale` | — | ✅ | ✅ |
+| POST | `/ops/after-sales/{afterSaleNo}/recover` | 仅恢复原执行，不确认资金成功、不新建退款 | — | `AfterSale` | — | ✅ | ✅ |
 | GET | `/ops/after-sales/fast-refund-rule` | getFastRefundRule | — | `FastRefundRule` | — | ✅ | ✅ |
 | POST | `/ops/after-sales/fast-refund-rule` | 售后规则（P-6.1.2）：金额上限 > 0、各时限 ≥ 1 | — | `FastRefundRule` | — | ✅ | ✅ |
 
@@ -999,7 +1022,7 @@
 | GET | `/ops/dashboard/trend` | getDashboardTrend | — | `数组` | — | ✅ | ✅ |
 | GET | `/ops/menu` | 当前登录人的**动态菜单**（`GET /ops/menu`） | — | `数组` | — | ✅ | ✅ |
 
-### finance（44）
+### finance（92）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1026,9 +1049,57 @@
 | GET | `/ops/payouts` | listPayouts | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/payouts/{payoutNo}/fail` | 打款失败或退回 | — | `Payout` | — | ✅ | ✅ |
 | POST | `/ops/payouts/{payoutNo}/paid` | 登记凭证 | — | `Payout` | — | ✅ | ✅ |
-| GET | `/ops/points/client-policy` | 积分的**端策略**：哪个端不发放、哪个端不核销、当面付能不能抵扣 | — | `ClientPointsPolicy` | — | ✅ | ⬜ |
-| POST | `/ops/points/client-policy` | savePointsClientPolicy | — | `ClientPointsPolicy` | — | ✅ | ⬜ |
+| GET | `/ops/points/account` | pointsAccount | — | `PointsAccountView` | — | ✅ | ✅ |
+| POST | `/ops/points/account-freeze` | freezePointsAccount | — | `PointsOperation` | — | ✅ | ✅ |
+| POST | `/ops/points/adjustment-review` | reviewPointsAdjustment | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/points/adjustments` | pointsAdjustments | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/points/adjustments` | submitPointsAdjustment | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/points/agreements` | pointsAgreements | — | `PointsAgreementPage` | — | ✅ | ✅ |
+| GET | `/ops/points/entries` | pointsEntries | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/points/event-retry` | retryPointsEvent | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/events` | pointsEvents | — | `PointsEventPage` | — | ✅ | ✅ |
+| GET | `/ops/points/fallback-rule` | pointsFallback | — | `PointsFallback` | — | ✅ | ✅ |
+| POST | `/ops/points/fallback-rule` | savePointsFallback | — | `PointsChangeResult` | — | ✅ | ✅ |
+| GET | `/ops/points/flows` | pointsFlows | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/points/funds` | pointsFunds | — | `PointsFundsView` | — | ✅ | ✅ |
+| POST | `/ops/points/funds-recovery` | recoverPointsFunds | — | `PointsRecoveryExecution` | — | ✅ | ✅ |
+| GET | `/ops/points/order-integration` | orderPointsIntegration | — | `OrderPointsIntegrationPolicy` | — | ✅ | ✅ |
+| POST | `/ops/points/order-integration` | 版本化接线变更，操作人和审计时间由服务端取得 | — | `OrderPointsIntegrationPolicy` | — | ✅ | ✅ |
+| GET | `/ops/points/order-integration/inspection` | inspectOrderPoints | — | `OrderPointsInspection` | — | ✅ | ✅ |
+| GET | `/ops/points/order-integration/obligations` | 订单积分动态接线策略，门店和支付场景精确查询 | — | `OrderPointsStoreObligations` | — | ✅ | ✅ |
+| POST | `/ops/points/order-integration/refunds/{afterSaleNo}/close` | closeOrderPointsRefund | — | `OrderPointsRefundActionResult` | — | ✅ | ⬜ |
+| POST | `/ops/points/order-integration/refunds/{afterSaleNo}/retry` | retryOrderPointsRefund | — | `OrderPointsRefundActionResult` | — | ✅ | ⬜ |
+| GET | `/ops/points/order-integration/refunds/manual` | manualOrderPointsRefunds | — | `OrderPointsManualRefundPage` | — | ✅ | ✅ |
 | GET | `/ops/points/overview` | 积分资金总览 | — | `PointsOverview` | — | ✅ | ✅ |
+| POST | `/ops/points/plan-cancel` | cancelPointsPeriod | — | `PointsOperation` | — | ✅ | ✅ |
+| POST | `/ops/points/plan-generate` | generatePointsPeriods | — | `PointsOperation` | — | ✅ | ✅ |
+| POST | `/ops/points/plan-receipt` | declarePointsReceipt | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/plans` | pointsPlans | — | `PointsPlanPage` | — | ✅ | ✅ |
+| POST | `/ops/points/plans` | savePointsPlan | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/position` | pointsPosition | — | `PointsPositionView` | — | ✅ | ✅ |
+| POST | `/ops/points/receivable-recovery` | preparePointsReceivable | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/receivables` | 门店应收分页 | — | `PointsReceivablePage` | — | ✅ | ✅ |
+| POST | `/ops/points/reconcile` | reconcilePoints | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/reconciliation` | pointsReconciliation | — | `object` | — | ✅ | ✅ |
+| GET | `/ops/points/refund` | pointsRefund | — | `PointsRefundView` | — | ✅ | ✅ |
+| POST | `/ops/points/refund-revise` | revisePointsRefund | — | `PointsOperation` | — | ✅ | ✅ |
+| POST | `/ops/points/request-review` | reviewPointsRequest | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/requests` | pointsRequests | — | `PointsRequestPage` | — | ✅ | ✅ |
+| POST | `/ops/points/requests` | submitPointsRequest | — | `PointsOperation` | — | ✅ | ✅ |
+| POST | `/ops/points/statement-change` | changePointsStatement | — | `PointsOperation` | — | ✅ | ✅ |
+| POST | `/ops/points/statement-draft` | draftPointsStatements | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/statements` | pointsStatements | — | `PointsStatementPage` | — | ✅ | ✅ |
+| GET | `/ops/points/stats` | pointsStats | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/points/stats-rebuild` | rebuildPointsStats | — | `PointsOperation` | — | ✅ | ✅ |
+| GET | `/ops/points/switches` | pointsSwitches | — | `PointsSwitchPage` | — | ✅ | ✅ |
+| POST | `/ops/points/switches` | changePointsSwitch | — | `PointsChangeResult` | — | ✅ | ✅ |
+| GET | `/ops/points/terms` | pointsTerms | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/points/terms` | publishPointsTerms | — | `PointsChangeResult` | — | ✅ | ✅ |
+| POST | `/ops/points/type-state` | transitionPointsType | — | `PointsChangeResult` | — | ✅ | ✅ |
+| GET | `/ops/points/types` | pointsTypes | — | `数组` | — | ✅ | ✅ |
+| POST | `/ops/points/types` | createPointsType | — | `PointsChangeResult` | — | ✅ | ✅ |
+| GET | `/ops/points/vouchers` | pointsVouchers | — | `object` | — | ✅ | ✅ |
+| POST | `/ops/points/withdrawal-execute` | executePointsWithdrawal | — | `PointsExecution` | — | ✅ | ✅ |
 | GET | `/ops/purchase-invoices` | listPurchaseInvoices | — | `数组` | — | ✅ | ⬜ |
 | POST | `/ops/purchase-invoices/{invoiceNo}/reject` | rejectPurchaseInvoice | — | `PurchaseInvoice` | — | ✅ | ⬜ |
 | POST | `/ops/purchase-invoices/{invoiceNo}/verify` | verifyPurchaseInvoice | — | `PurchaseInvoice` | — | ✅ | ⬜ |
@@ -1284,12 +1355,13 @@
 | POST | `/ops/tickets/{no}/proxy-actions` | 记录代客操作（P-14.2.3）：谁、对什么、做了什么 | — | `Ticket` | — | ⬜ | ✅ |
 | POST | `/ops/tickets/{no}/reply` | 客服回复（P-14.2.2） | — | `Ticket` | — | ⬜ | ✅ |
 
-### order（10）
+### order（11）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/ops/orders` | listOrders | — | `object` | — | ✅ | ✅ |
 | GET | `/ops/orders/{orderNo}` | getOrder | — | `Order` | — | ✅ | ✅ |
+| GET | `/ops/orders/{orderNo}/cancel-impact` | 整笔取消影响，权限不足时不返回隐藏明细 | — | `CancellationImpact` | — | ✅ | ✅ |
 | POST | `/ops/orders/{orderNo}/intervene` | 人工把订单推到另一个状态 | — | `Order` | — | ✅ | ✅ |
 | GET | `/ops/orders/{orderNo}/interventions` | 某单的人工干预历史 | — | `数组` | — | ✅ | ✅ |
 | POST | `/ops/orders/{orderNo}/proxy-cancel` | 代客取消 | — | `Order` | — | ✅ | ✅ |
@@ -1308,11 +1380,11 @@
 | PUT | `/ops/payments/close-rule` | 关单策略（P-4.2.3） | — | `CloseRule` | — | ✅ | ✅ |
 | GET | `/ops/payments/recon-axes` | 四条轴各跑一轮 | — | `数组` | — | ✅ | ⬜ |
 | GET | `/ops/payments/recon-coverage` | 对账覆盖范围 | — | `ReconCoverage` | — | ✅ | ⬜ |
-| GET | `/ops/payments/recon-diffs` | 对账差异列表（P-4.2.1） | — | `object` | — | ✅ | ✅ |
-| POST | `/ops/payments/recon-diffs/{diffNo}/ignore` | 忽略一条差异（如渠道手续费导致的分位差） | — | `ReconDiff` | — | ✅ | ✅ |
-| POST | `/ops/payments/recon-diffs/{diffNo}/resolve` | 处置一条差异（P-4.2.1 / 4.2.2） | — | `ReconDiff` | — | ✅ | ✅ |
+| GET | `/ops/payments/recon-diffs` | 对账差异列表（P-4.2.1） | — | `object` | — | ✅ | ⬜ |
+| POST | `/ops/payments/recon-diffs/{diffNo}/ignore` | 忽略一条差异（如渠道手续费导致的分位差） | — | `ReconDiff` | — | ✅ | ⬜ |
+| POST | `/ops/payments/recon-diffs/{diffNo}/resolve` | 处置一条差异（P-4.2.1 / 4.2.2） | — | `ReconDiff` | — | ✅ | ⬜ |
 
-### product（51）
+### product（49）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1326,8 +1398,6 @@
 | POST | `/ops/categories/{no}/unarchive` | unarchiveCategory | — | `Category` | — | ⬜ | ✅ |
 | GET | `/ops/category-pay-modes` | 类目 × 支付方式 | — | `数组` | — | ✅ | ⬜ |
 | POST | `/ops/category-pay-modes/{categoryNo}` | saveCategoryPayMode | — | `数组` | — | ✅ | ⬜ |
-| GET | `/ops/category-points` | 类目 × 积分 | — | `数组` | — | ✅ | ⬜ |
-| POST | `/ops/category-points/{categoryNo}` | `earnMode` 传 null = 清除这条规则，回到平台兜底 */ | — | `数组` | — | ✅ | ⬜ |
 | GET | `/ops/category-specs` | 类目 × 规格总览（规格库 V195） | — | `数组` | — | ✅ | ⬜ |
 | POST | `/ops/category-specs/{categoryNo}` | 整份替换一个类目的绑定 */ | — | `数组` | — | ✅ | ⬜ |
 | GET | `/ops/goods` | 商品池：按商家/类目/关键词/状态筛，goods 粒度（每行一个商品，SKU 嵌在 `skus[]` 里） | — | `object` | — | ✅ | ⬜ |

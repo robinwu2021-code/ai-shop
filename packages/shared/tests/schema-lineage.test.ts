@@ -1,17 +1,16 @@
-// 对账血缘守卫：资金账与积分账的关联通路必须连得上。
+// 对账血缘守卫：资金账与当前积分账的关联通路必须连得上。
 //
 // 为什么需要它：这条链路**断了不会有任何编译错误，也不会有测试失败**。
-// 把 `pts_user_ledger.sub_order_no` 改个名或删掉，代码照样编译、单测照样绿，
+// 把 `pts_ledger_entry.voucher_no` 改个名或删掉，代码照样编译、单测照样绿，
 // 要等到月底对账对不上、或者商家问「我的积分兑付去哪了」才会发现。
 // 而那时数据已经错了一个月。
 //
-// 通路（8 跳，来自 docs/technical/积分域-ER图.md）：
+// 通路来自 V425 积分账本与 V453+ 订单绑定：
 //   资金账 stl_payment → ord_order/ord_after_sale（收款与退款）
 //         ord_sub_order → stl_bill → stl_split_log（计提与分账）
-//   积分账 ord_sub_order →(points_fee)→ stl_bill →(settle_no)→ stl_points_pool
-//                        stl_payment(SUBSIDY) →(sub_order_no)→ ord_sub_order
-//         商家侧的积分账在 V34 删除：他只感知发分服务费，抵扣与兑付不可见
-//   勾稽点 ord_sub_order.points_deduct_minor ↔ pts_user_ledger.amount_minor
+//   积分账 pts_voucher → pts_ledger_entry / pts_pool_flow
+//         ord_points_binding → ord_sub_order；售后决策 → ord_points_refund_binding
+//   旧 pts_user_ledger / stl_points_pool 属于未上线旧方案，保留空表，不参与当前链路
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 // @ts-expect-error -- 生成器是 .mjs，没有类型声明；它是 DDL 解析的唯一真源
 import { readColumnNames } from "../../../scripts/lib/ddl.mjs";
@@ -78,33 +77,35 @@ const LINEAGE: Hop[] = [
   },
   {
     lane: "积分账",
-    from: "ord_sub_order",
+    from: "pts_ledger_entry",
+    fromCol: "voucher_no",
+    to: "pts_voucher",
+    toCol: "voucher_no",
+    why: "不可变积分分录必须回溯到唯一凭证；凭证保存幂等键和完整过账结果。",
+  },
+  {
+    lane: "积分账",
+    from: "pts_pool_flow",
+    fromCol: "voucher_no",
+    to: "pts_voucher",
+    toCol: "voucher_no",
+    why: "资金池 U/C/D/B 变动与用户积分分录共用凭证，保证复式过账原子可追溯。",
+  },
+  {
+    lane: "订单接线",
+    from: "ord_points_binding",
     fromCol: "sub_order_no",
-    to: "pts_user_ledger",
+    to: "ord_sub_order",
     toCol: "sub_order_no",
-    why:
-      "本单发了多少分、抵了多少钱。断了就退款时不知道该扣回多少 —— " +
-      "扣回是**按订单**找发放行，不是按发放商家追溯（V28）",
+    why: "积分接线绑定冻结到原门店子单，便于单独接通或脱离而不改变普通订单行为。",
   },
   {
-    lane: "积分账",
-    from: "ord_sub_order",
-    fromCol: "points_fee_minor",
-    to: "stl_bill",
-    toCol: "points_fee_minor",
-    why:
-      "商家发分的服务费，按单计提到结算单。**这是商家唯一感知到的积分成本** —— " +
-      "抵扣与兑付对他不可见（V34）。断了商家就白发分，平台成本失控",
-  },
-  {
-    lane: "积分账",
-    from: "stl_bill",
-    fromCol: "settle_no",
-    to: "stl_points_pool",
-    toCol: "ref_no",
-    why:
-      "收到的发分服务费进池（MERCHANT_RECEIVE）。断了池子就只出不进，" +
-      "「池子余额 == 流通积分对应资金」这条恒等式立刻失衡",
+    lane: "售后接线",
+    from: "ord_points_refund_binding",
+    fromCol: "after_sale_no",
+    to: "ord_after_sale",
+    toCol: "after_sale_no",
+    why: "售后积分决策必须绑定原售后单；重试沿用冻结决策，避免重复退款或反向过账。",
   },
   {
     lane: "积分账",
@@ -115,14 +116,6 @@ const LINEAGE: Hop[] = [
     why:
       "补差流水 → 子单。断了就不知道这一单补没补上，而**补差失败必须阻断分账**：" +
       "认不出对应关系，要么漏拦（商家少收），要么全拦（好单也结不了）",
-  },
-  {
-    lane: "勾稽点",
-    from: "ord_sub_order",
-    fromCol: "points_deduct_minor",
-    to: "pts_user_ledger",
-    toCol: "amount_minor",
-    why: "两本账唯一的连接点：资金账里商家少收的 == 积分账里商家收到的",
   },
 ];
 
@@ -137,6 +130,14 @@ const LINEAGE: Hop[] = [
  * 例如「发放方商家」`issuer_merchant_no` 指向 `usr_merchant.merchant_no`。
  */
 const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
+  build_no: { table: "pts_statement_build" },
+  voucher_no: { table: "pts_voucher" },
+  evidence_no: { table: "pts_fund_evidence" },
+  receivable_no: { table: "pts_receivable" },
+  statement_no: { table: "pts_store_statement", col: "position_no" },
+  cash_payment_no: { table: "stl_payment", col: "payment_no" },
+  origin_payment_no: { table: "stl_payment", col: "payment_no" },
+  pay_no: { table: "ord_create_intent" },
   /*
    * ── 2026-08-29 补齐的十三个 ──
    * 归属判据不是靠猜：**看哪张表把它建成了唯一键**（schema-test.sql 里逐个查过），
@@ -239,6 +240,16 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  trade_no: "stl_payment 与 ord_payment_resolution 保存渠道交易号快照；该号仅在 pay_channel 范围内唯一，不能脱离渠道直接关联。",
+  source_shipment_no:
+    "lgs_waybill 与 lgs_channel_subscription 保存同一个上游发货身份的快照；更新订阅必须同时匹配 source_shipment_version，不能把历史订阅行当作当前运单主记录。",
+  parent_no: "不同层级树的父节点，必须结合所属树。",
+  provider_no: "通道回执需结合通道、资金方向与原请求。",
+  scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
+  revision_no: "商品版本与积分账单版本，各自独立。",
+  holder_no: "积分持有人多态编号，必须结合 holder_type。",
+  position_no: "不同种类积分持仓的多态编号，必须结合持仓类型。",
+  ticket_no: "积分资金指令与客服工单的独立编号，不可直接关联。",
   waybill_no:
     "两边是**同一个快递运单号**，但它**不是外键**：运单号只在承运商内唯一，lgs_waybill 按（承运商, 运单号）登记；" +
     "ord_shipment（订单服务 2.0 发货单，V401）记的是商家录入的号。\n" +

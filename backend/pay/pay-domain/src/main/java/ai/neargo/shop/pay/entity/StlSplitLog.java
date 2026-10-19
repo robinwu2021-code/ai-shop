@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * 分账指令与回执（append-only）。
+ * 分账指令与回执。成功回执固定；未知结果可按同一原请求核验推进，金额与归属不变。
  *
  * <p>{@code requestNo} 唯一 —— 平台侧幂等号，与支付服务商的幂等号构成双保险：
  * 重复执行分账在这一层就会被挡下，不必依赖对方的幂等实现是否可靠。

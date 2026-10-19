@@ -2,7 +2,7 @@ package ai.neargo.shop.trade.order.transition.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import ai.neargo.shop.trade.order.statemachine.Actor;
 import ai.neargo.shop.trade.order.transition.TransitionLog;
 
@@ -12,9 +12,9 @@ import java.time.LocalDateTime;
 public class StatusLogStore implements TransitionLog {
 
     private static final String TENANT = "MAIN";
-    private final StatusLogMapper mapper;
+    private final OrderStatusLogMapper mapper;
 
-    public StatusLogStore(StatusLogMapper mapper) {
+    public StatusLogStore(OrderStatusLogMapper mapper) {
         this.mapper = mapper;
     }
 

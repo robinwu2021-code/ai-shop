@@ -1,0 +1,38 @@
+classDiagram
+    OpsPointsController --> PointsOpsAppService
+    OpsPointsPolicyController --> PointsConfigurationAppService
+    OpsPointsTreasuryController --> PointsTreasuryAppService
+    OpsPointsWorkbenchController --> PointsWorkbenchAppService
+    OpsPointsInspectionController --> PointsInspectionAppService
+    PointsOpsAppServiceImpl ..|> PointsOpsAppService
+    PointsConfigurationAppServiceImpl ..|> PointsConfigurationAppService
+    PointsTreasuryAppServiceImpl ..|> PointsTreasuryAppService
+    PointsWorkbenchAppServiceImpl ..|> PointsWorkbenchAppService
+    PointsInspectionAppServiceImpl ..|> PointsInspectionAppService
+    PointsOpsAppServiceImpl --> PointsOpsAccess
+    PointsConfigurationAppServiceImpl --> PointsOpsAccess
+    PointsTreasuryAppServiceImpl --> PointsOpsAccess
+    PointsWorkbenchAppServiceImpl --> PointsOpsAccess
+    PointsInspectionAppServiceImpl --> PointsOpsAccess
+    PointsOpsAccess --> SecurityUtils
+    PointsOpsAccess --> StoreDirectoryPort
+    PointsOpsAppServiceImpl --> PointsOverviewService
+    PointsConfigurationAppServiceImpl --> PointsAdministrationService
+    PointsTreasuryAppServiceImpl --> PointsTreasuryService
+    PointsWorkbenchAppServiceImpl --> PointsWorkbenchService
+    PointsInspectionAppServiceImpl --> PointsInspectionService
+    PointsAdministrationServiceImpl --> PointsOperatorJournal
+    PointsTreasuryServiceImpl --> PointsOperatorJournal
+    PointsWorkbenchServiceImpl --> PointsOperatorJournal
+    PointsInspectionServiceImpl --> PointsOperatorJournal
+    PointsTreasuryServiceImpl --> TopupPlanService
+    TopupPlanServiceImpl --> Schedule
+    Schedule : Plan plan
+    Schedule : LocalDate nextPeriod
+    Schedule : String maker
+    PointsWorkbenchServiceImpl --> StatementPayoutService
+    PointsInspectionServiceImpl --> FlowBucket
+    FlowBucket : U C D B
+    FlowBucket : RESERVED_B LOCKED_U LOCKED_B
+    PointsInspectionServiceImpl --> PointsOperationsStore
+    PointsInspectionServiceImpl --> PointsReadStore

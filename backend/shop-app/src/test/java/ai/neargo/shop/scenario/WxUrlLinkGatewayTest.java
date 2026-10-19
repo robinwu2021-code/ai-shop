@@ -31,7 +31,7 @@ class WxUrlLinkGatewayTest {
         });
         server.start();
         gateway = new WxUrlLinkGateway("http://127.0.0.1:" + server.getAddress().getPort(),
-                "fixture-appid", "fixture-secret", 30);
+                "fixture-appid", "fixture-secret", 30, "release");
     }
 
     @AfterEach

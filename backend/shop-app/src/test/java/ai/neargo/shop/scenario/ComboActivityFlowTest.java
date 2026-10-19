@@ -9,6 +9,7 @@ import ai.neargo.shop.promotion.entity.PmtActivity;
 import ai.neargo.shop.promotion.service.ActivityPricingService;
 import ai.neargo.shop.promotion.service.ActivityService;
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.spi.marketing.CampaignPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,7 @@ class ComboActivityFlowTest {
     @AfterEach
     void drop() {
         for (String no : made) {
+            jdbc.update("delete from pmt_apply where promo_no=?", no);
             jdbc.update("delete from pmt_activity_rule where activity_no=?", no);
             jdbc.update("delete from pmt_activity_goods where activity_no=?", no);
             jdbc.update("delete from pmt_activity where activity_no=?", no);
@@ -83,13 +85,20 @@ class ComboActivityFlowTest {
         assertThat(a.rules().get(2).bp()).isEqualTo(8000);
         assertThat(a.rules().get(0).goodsNos()).containsExactly(GOODS);
 
-        String three = buy(GOODS, SKU, 3);   // 149.40 × 20% = 29.88，封顶 30 没到
-        assertThat(discountOf(three)).as("★ 组合没生效：条件都满足了却一分没减").isEqualTo(2988L);
-        assertThat(pricing.bonusPoints(three, ENTITY)).as("★ 送积分那一行没被读出来").isEqualTo(50L);
+        var three = pricing.autoDiscount(null, List.of(new CampaignPort.MerchantAmount(ENTITY, 14940, 3, null,
+                List.of(new CampaignPort.GoodsLine(GOODS, 14940, 3)))));
+        assertThat(three.total()).isEqualTo(2988L);
+        pricing.commit("TEST-COMBO", "HIST-COMBO-" + a.activityNo(), three);
+        assertThat(pricing.bonusPoints("HIST-COMBO-" + a.activityNo(), ENTITY)).isEqualTo(50L);
+        assertThat(pricing.autoDiscount(null, List.of(new CampaignPort.MerchantAmount(ENTITY, 9960, 2, null,
+                List.of(new CampaignPort.GoodsLine(GOODS, 9960, 2)))))
+                .total()).isZero();
 
-        String two = buy(GOODS, SKU, 2);
-        assertThat(discountOf(two)).as("★ 件数不够也减了 —— 条件是「全部满足」").isZero();
-        assertThat(pricing.bonusPoints(two, ENTITY)).isZero();
+        // New cash checkout keeps supported cash-only combinations working.
+        List<RuleItem> cashRules = rules().stream().filter(r -> !"POINTS".equals(r.type())).toList();
+        save(null, cashRules, System.currentTimeMillis() - 60_000);
+        assertThat(discountOf(buy(GOODS, SKU, 3))).isEqualTo(2988L);
+        assertThat(discountOf(buy(GOODS, SKU, 2))).isZero();
     }
 
     @Test

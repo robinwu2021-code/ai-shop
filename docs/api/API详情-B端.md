@@ -223,7 +223,27 @@
 
 **出参**（`data`）
 
-类型：[`Order`](#order)\[\]
+类型：[`AfterSale`](#aftersale)\[\]
+
+
+#### GET `/biz/after-sale/{afterSaleNo}`
+
+售后详情　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `afterSaleNo` | path | `string` | 是 | 售后单号 |
+
+**出参**（`data`）
+
+类型：[`MerchantAfterSaleWorkItem`](#merchantaftersaleworkitem)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSale` | [`AfterSale`](#aftersale) | 是 | 售后单 |
+| `order` | [`Order`](#order) | 是 | 所属订单 |
 
 
 #### POST `/biz/after-sale/{afterSaleNo}/approve`
@@ -244,48 +264,42 @@
 
 **出参**（`data`）
 
-类型：[`Order`](#order)
+类型：[`AfterSale`](#aftersale)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | 订单单号 |
-| `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
-| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
-| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
-| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
-| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
-| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
-| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
-| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
-| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
-| `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
-| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
-| `offers` | [`CheckoutOffers`](#checkoutoffers) \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.offers`） |
-| `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
-| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
-| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
-| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
-| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
-| `createdAt` | `number` | 是 | 下单时间 |
-| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
-| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
-| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
-| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
-| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
-| `reviewed` | `boolean` | 否 | 已评价 |
-| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
-| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
-| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
-| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
-| `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
-| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
-| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
-| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
-| `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
+| `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
+| `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
+| `orderNo` | `string` | 是 | 所属**主订单**号（`SO…`）。跨商家下单会拆成多笔子订单，它们共用这一个主单号。 展示「同一次下单」时用它，关联单张订单卡片请用  {@link  subOrderNo } 。 |
+| `type` | [`AfterSaleType`](#aftersaletype) | 是 | 售后类型：仅退款 / 退货退款 |
+| `status` | [`AfterSaleStatus`](#aftersalestatus) | 是 | 售后单状态，独立于订单状态流转 |
+| `reason` | `string` | 是 | 用户填写的售后原因 |
+| `images` | `string`\[\] | 是 | 举证图（破损、少件的照片）。是否必填由售后类型决定 |
+| `refundMinor` | `number` | 是 | 这张售后单要退的钱（分）。**不等于订单金额** —— 一张子订单可以只退其中一件，也可以先后发起多次。 <p>后端一直在发（`AfterSaleVO.refundMinor`），只是契约里漏了声明， 于是 B 端售后页拿不到它，只能退而求其次显示**整张子订单的应付**。 单件单品的单子上两个数恰好相等，所以这个错在联调环境里看不出来 —— 直到有人退三件里的一件。 |
+| `instant` | `boolean` | 否 | 极速退：金额在阈值内的仅退款，系统自动通过。 **商家只可见不可拒**，所以这类单上不该出现同意/驳回按钮。 |
+| `merchantReply` | `string` | 否 | 商家同意/驳回时的说明 |
+| `refundMode` | [`RefundMode`](#refundmode) | 否 | 退款形式：现金 / 积分（售后规则 §2.4，AC10）。商家审核时定，默认现金。 积分形式不退现金、不回冲分账，按核定额折积分补偿。 |
+| `refundPoints` | `number,null` | 否 | 退款形式为 POINTS 时发放的积分数；现金时为空 |
+| `approvedMinor` | `number,null` | 否 | 商家核定的退款额（分），部分退款时 < 申请额；未核定为空（= 全额）（AC9） |
+| `fulfillStage` | [`FulfillStage`](#fulfillstage) \| `null` | 否 | 申请当时的履约进度快照：未备货/备货中/已出单未揽收/已揽收/已签收。 B 端审核弹层显示实况，C 端据它给灰色档提示（AC13/AC15）。 |
+| `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
+| `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
+| `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
+| `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
+| `createdAt` | `number` | 否 | 申请时间 |
+| `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
+| `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
+| `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`timeline[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | — |
+| `label` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
 
 
 #### POST `/biz/after-sale/{afterSaleNo}/confirm-refund`
@@ -300,48 +314,42 @@
 
 **出参**（`data`）
 
-类型：[`Order`](#order)
+类型：[`AfterSale`](#aftersale)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | 订单单号 |
-| `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
-| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
-| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
-| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
-| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
-| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
-| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
-| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
-| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
-| `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
-| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
-| `offers` | [`CheckoutOffers`](#checkoutoffers) \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.offers`） |
-| `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
-| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
-| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
-| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
-| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
-| `createdAt` | `number` | 是 | 下单时间 |
-| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
-| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
-| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
-| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
-| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
-| `reviewed` | `boolean` | 否 | 已评价 |
-| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
-| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
-| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
-| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
-| `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
-| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
-| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
-| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
-| `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
+| `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
+| `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
+| `orderNo` | `string` | 是 | 所属**主订单**号（`SO…`）。跨商家下单会拆成多笔子订单，它们共用这一个主单号。 展示「同一次下单」时用它，关联单张订单卡片请用  {@link  subOrderNo } 。 |
+| `type` | [`AfterSaleType`](#aftersaletype) | 是 | 售后类型：仅退款 / 退货退款 |
+| `status` | [`AfterSaleStatus`](#aftersalestatus) | 是 | 售后单状态，独立于订单状态流转 |
+| `reason` | `string` | 是 | 用户填写的售后原因 |
+| `images` | `string`\[\] | 是 | 举证图（破损、少件的照片）。是否必填由售后类型决定 |
+| `refundMinor` | `number` | 是 | 这张售后单要退的钱（分）。**不等于订单金额** —— 一张子订单可以只退其中一件，也可以先后发起多次。 <p>后端一直在发（`AfterSaleVO.refundMinor`），只是契约里漏了声明， 于是 B 端售后页拿不到它，只能退而求其次显示**整张子订单的应付**。 单件单品的单子上两个数恰好相等，所以这个错在联调环境里看不出来 —— 直到有人退三件里的一件。 |
+| `instant` | `boolean` | 否 | 极速退：金额在阈值内的仅退款，系统自动通过。 **商家只可见不可拒**，所以这类单上不该出现同意/驳回按钮。 |
+| `merchantReply` | `string` | 否 | 商家同意/驳回时的说明 |
+| `refundMode` | [`RefundMode`](#refundmode) | 否 | 退款形式：现金 / 积分（售后规则 §2.4，AC10）。商家审核时定，默认现金。 积分形式不退现金、不回冲分账，按核定额折积分补偿。 |
+| `refundPoints` | `number,null` | 否 | 退款形式为 POINTS 时发放的积分数；现金时为空 |
+| `approvedMinor` | `number,null` | 否 | 商家核定的退款额（分），部分退款时 < 申请额；未核定为空（= 全额）（AC9） |
+| `fulfillStage` | [`FulfillStage`](#fulfillstage) \| `null` | 否 | 申请当时的履约进度快照：未备货/备货中/已出单未揽收/已揽收/已签收。 B 端审核弹层显示实况，C 端据它给灰色档提示（AC13/AC15）。 |
+| `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
+| `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
+| `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
+| `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
+| `createdAt` | `number` | 否 | 申请时间 |
+| `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
+| `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
+| `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`timeline[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | — |
+| `label` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
 
 
 #### POST `/biz/after-sale/{afterSaleNo}/receive`
@@ -354,50 +362,50 @@
 |---|---|---|:---:|---|
 | `afterSaleNo` | path | `string` | 是 | 售后单号 |
 
-**出参**（`data`）
-
-类型：[`Order`](#order)
+请求体：[`ReceiveReturnReq`](#receivereturnreq)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | 订单单号 |
-| `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
-| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
-| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
-| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
-| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
-| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
-| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
-| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
-| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
-| `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
-| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
-| `offers` | [`CheckoutOffers`](#checkoutoffers) \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.offers`） |
-| `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
-| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
-| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
-| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
-| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
-| `createdAt` | `number` | 是 | 下单时间 |
-| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
-| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
-| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
-| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
-| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
-| `reviewed` | `boolean` | 否 | 已评价 |
-| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
-| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
-| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
-| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
-| `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
-| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
-| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
-| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
-| `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `restockApproved` | `boolean` | 是 | 商家明确确认可再次销售；默认 false。 |
+
+**出参**（`data`）
+
+类型：[`AfterSale`](#aftersale)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
+| `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
+| `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
+| `orderNo` | `string` | 是 | 所属**主订单**号（`SO…`）。跨商家下单会拆成多笔子订单，它们共用这一个主单号。 展示「同一次下单」时用它，关联单张订单卡片请用  {@link  subOrderNo } 。 |
+| `type` | [`AfterSaleType`](#aftersaletype) | 是 | 售后类型：仅退款 / 退货退款 |
+| `status` | [`AfterSaleStatus`](#aftersalestatus) | 是 | 售后单状态，独立于订单状态流转 |
+| `reason` | `string` | 是 | 用户填写的售后原因 |
+| `images` | `string`\[\] | 是 | 举证图（破损、少件的照片）。是否必填由售后类型决定 |
+| `refundMinor` | `number` | 是 | 这张售后单要退的钱（分）。**不等于订单金额** —— 一张子订单可以只退其中一件，也可以先后发起多次。 <p>后端一直在发（`AfterSaleVO.refundMinor`），只是契约里漏了声明， 于是 B 端售后页拿不到它，只能退而求其次显示**整张子订单的应付**。 单件单品的单子上两个数恰好相等，所以这个错在联调环境里看不出来 —— 直到有人退三件里的一件。 |
+| `instant` | `boolean` | 否 | 极速退：金额在阈值内的仅退款，系统自动通过。 **商家只可见不可拒**，所以这类单上不该出现同意/驳回按钮。 |
+| `merchantReply` | `string` | 否 | 商家同意/驳回时的说明 |
+| `refundMode` | [`RefundMode`](#refundmode) | 否 | 退款形式：现金 / 积分（售后规则 §2.4，AC10）。商家审核时定，默认现金。 积分形式不退现金、不回冲分账，按核定额折积分补偿。 |
+| `refundPoints` | `number,null` | 否 | 退款形式为 POINTS 时发放的积分数；现金时为空 |
+| `approvedMinor` | `number,null` | 否 | 商家核定的退款额（分），部分退款时 < 申请额；未核定为空（= 全额）（AC9） |
+| `fulfillStage` | [`FulfillStage`](#fulfillstage) \| `null` | 否 | 申请当时的履约进度快照：未备货/备货中/已出单未揽收/已揽收/已签收。 B 端审核弹层显示实况，C 端据它给灰色档提示（AC13/AC15）。 |
+| `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
+| `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
+| `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
+| `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
+| `createdAt` | `number` | 否 | 申请时间 |
+| `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
+| `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
+| `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`timeline[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | — |
+| `label` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
 
 
 #### POST `/biz/after-sale/{afterSaleNo}/reject`
@@ -418,48 +426,110 @@
 
 **出参**（`data`）
 
-类型：[`Order`](#order)
+类型：[`AfterSale`](#aftersale)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | 订单单号 |
-| `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
-| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
-| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
-| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
-| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
-| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
-| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
-| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
-| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
-| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
-| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
-| `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
-| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
-| `offers` | [`CheckoutOffers`](#checkoutoffers) \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.offers`） |
-| `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
-| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
-| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
-| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
-| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
-| `createdAt` | `number` | 是 | 下单时间 |
-| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
-| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
-| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
-| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
-| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
-| `reviewed` | `boolean` | 否 | 已评价 |
-| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
-| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
-| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
-| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
-| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
-| `merchantName` | `string` | 否 | 商家名快照 |
-| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
-| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
-| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
-| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
-| `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
+| `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
+| `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
+| `orderNo` | `string` | 是 | 所属**主订单**号（`SO…`）。跨商家下单会拆成多笔子订单，它们共用这一个主单号。 展示「同一次下单」时用它，关联单张订单卡片请用  {@link  subOrderNo } 。 |
+| `type` | [`AfterSaleType`](#aftersaletype) | 是 | 售后类型：仅退款 / 退货退款 |
+| `status` | [`AfterSaleStatus`](#aftersalestatus) | 是 | 售后单状态，独立于订单状态流转 |
+| `reason` | `string` | 是 | 用户填写的售后原因 |
+| `images` | `string`\[\] | 是 | 举证图（破损、少件的照片）。是否必填由售后类型决定 |
+| `refundMinor` | `number` | 是 | 这张售后单要退的钱（分）。**不等于订单金额** —— 一张子订单可以只退其中一件，也可以先后发起多次。 <p>后端一直在发（`AfterSaleVO.refundMinor`），只是契约里漏了声明， 于是 B 端售后页拿不到它，只能退而求其次显示**整张子订单的应付**。 单件单品的单子上两个数恰好相等，所以这个错在联调环境里看不出来 —— 直到有人退三件里的一件。 |
+| `instant` | `boolean` | 否 | 极速退：金额在阈值内的仅退款，系统自动通过。 **商家只可见不可拒**，所以这类单上不该出现同意/驳回按钮。 |
+| `merchantReply` | `string` | 否 | 商家同意/驳回时的说明 |
+| `refundMode` | [`RefundMode`](#refundmode) | 否 | 退款形式：现金 / 积分（售后规则 §2.4，AC10）。商家审核时定，默认现金。 积分形式不退现金、不回冲分账，按核定额折积分补偿。 |
+| `refundPoints` | `number,null` | 否 | 退款形式为 POINTS 时发放的积分数；现金时为空 |
+| `approvedMinor` | `number,null` | 否 | 商家核定的退款额（分），部分退款时 < 申请额；未核定为空（= 全额）（AC9） |
+| `fulfillStage` | [`FulfillStage`](#fulfillstage) \| `null` | 否 | 申请当时的履约进度快照：未备货/备货中/已出单未揽收/已揽收/已签收。 B 端审核弹层显示实况，C 端据它给灰色档提示（AC13/AC15）。 |
+| `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
+| `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
+| `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
+| `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
+| `createdAt` | `number` | 否 | 申请时间 |
+| `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
+| `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
+| `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`timeline[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | — |
+| `label` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### GET `/biz/after-sale/by-order/{orderNo}`
+
+订单的当前售后　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`AfterSale`](#aftersale)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
+| `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
+| `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
+| `orderNo` | `string` | 是 | 所属**主订单**号（`SO…`）。跨商家下单会拆成多笔子订单，它们共用这一个主单号。 展示「同一次下单」时用它，关联单张订单卡片请用  {@link  subOrderNo } 。 |
+| `type` | [`AfterSaleType`](#aftersaletype) | 是 | 售后类型：仅退款 / 退货退款 |
+| `status` | [`AfterSaleStatus`](#aftersalestatus) | 是 | 售后单状态，独立于订单状态流转 |
+| `reason` | `string` | 是 | 用户填写的售后原因 |
+| `images` | `string`\[\] | 是 | 举证图（破损、少件的照片）。是否必填由售后类型决定 |
+| `refundMinor` | `number` | 是 | 这张售后单要退的钱（分）。**不等于订单金额** —— 一张子订单可以只退其中一件，也可以先后发起多次。 <p>后端一直在发（`AfterSaleVO.refundMinor`），只是契约里漏了声明， 于是 B 端售后页拿不到它，只能退而求其次显示**整张子订单的应付**。 单件单品的单子上两个数恰好相等，所以这个错在联调环境里看不出来 —— 直到有人退三件里的一件。 |
+| `instant` | `boolean` | 否 | 极速退：金额在阈值内的仅退款，系统自动通过。 **商家只可见不可拒**，所以这类单上不该出现同意/驳回按钮。 |
+| `merchantReply` | `string` | 否 | 商家同意/驳回时的说明 |
+| `refundMode` | [`RefundMode`](#refundmode) | 否 | 退款形式：现金 / 积分（售后规则 §2.4，AC10）。商家审核时定，默认现金。 积分形式不退现金、不回冲分账，按核定额折积分补偿。 |
+| `refundPoints` | `number,null` | 否 | 退款形式为 POINTS 时发放的积分数；现金时为空 |
+| `approvedMinor` | `number,null` | 否 | 商家核定的退款额（分），部分退款时 < 申请额；未核定为空（= 全额）（AC9） |
+| `fulfillStage` | [`FulfillStage`](#fulfillstage) \| `null` | 否 | 申请当时的履约进度快照：未备货/备货中/已出单未揽收/已揽收/已签收。 B 端审核弹层显示实况，C 端据它给灰色档提示（AC13/AC15）。 |
+| `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
+| `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
+| `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
+| `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
+| `createdAt` | `number` | 否 | 申请时间 |
+| `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
+| `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
+| `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`timeline[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | — |
+| `label` | `string` | 是 | — |
+| `at` | `number` | 是 | — |
+
+
+#### GET `/biz/after-sale/worklist`
+
+分页售后待办　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`MerchantAfterSaleWorkItem`](#merchantaftersaleworkitem)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 ### appointment-slots
@@ -1383,7 +1453,6 @@ _无字段_
 | `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
 | `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
@@ -1524,7 +1593,6 @@ _无字段_
 | `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
 | `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
@@ -1651,7 +1719,6 @@ _无字段_
 | `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
 | `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
@@ -1728,7 +1795,6 @@ _无字段_
 | `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
 | `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
@@ -1874,7 +1940,6 @@ _无字段_
 | `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
 | `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
@@ -1951,7 +2016,6 @@ _无字段_
 | `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
 | `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
@@ -2028,7 +2092,6 @@ _无字段_
 | `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
 | `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
@@ -2105,7 +2168,6 @@ _无字段_
 | `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
 | `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
@@ -2188,7 +2250,6 @@ _无字段_
 | `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
 | `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
@@ -2399,7 +2460,6 @@ _无字段_
 | `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
 | `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
@@ -2612,6 +2672,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `requestNo` | `string` | 是 | 求团需求单号 |
+| `ownerId` | `string` | 是 | 求团发起人用户号；服务端用于区分发起人与参与邻居。 |
 | `initiatorNickname` | `string` | 是 | 发起人昵称 |
 | `initiatorAvatar` | `string` | 是 | 发起人头像 |
 | `pickupNo` | `string` | 是 | 需求的范围仍是自提点/小区 —— 邻里的意义就在于此 |
@@ -2630,8 +2691,6 @@ _无字段_
 | `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
 | `groupNo` | `string` | 否 | LOCKED 之后指向生成的正式团 |
 | `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
-| `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
-| `confirmedCount` | `number` | 否 | 已确认下单的人数 |
 
 `neighbours[]` 的字段：
 
@@ -3922,7 +3981,6 @@ _无字段_
 | `pickupNo` | `string` | 否 | 承接的自提点单号。`isPickupPoint=true` 时有值 |
 | `rejectReason` | `string` | 否 | 驳回原因，status=REJECTED 时有值 |
 | `favoriteCount` | `number` | 否 | 被顾客收藏的次数。后端一直在发（`MerchantProfileVO`），契约此前没接 —— 数据到端上就没了，而且不报错。店主看得见这个数才知道「关注我的人」在涨。 |
-| `loginBy` | [`GrantType`](#granttype) | 否 | 本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号 |
 | `fundsMode` | [`FundsMode`](#fundsmode) | 否 | 资金路径。**B 端价格字段叫什么由它决定** —— 归集（钱进平台账户）下平台是销售主体、最终售价平台定，商家填的是「期望收购价」； 直连下他自己就是销售主体，那就是「售价」。 判据用它而不是门店的 `businessMode`：与积分能力同一根轴 —— **责任跟着钱走**。 还没进件的申请人为空：那时资金路径尚未确定， 猜一个默认值会让他在入驻页看到一个还轮不到他的字段名。 |
 | `agreementPending` | `boolean` | 否 | <b>《商家服务协议》还没人勾</b>（三期）。 <p>只在**代填的单子**上为真 —— 运营代商家进件时不能替商户勾协议。 <p>⚠️ **不是「agreed_at 为空」**：存量单子这一列同样全是空的 （协议勾选此前从没落过库），那样判会让全体存量商家明天一早都看到 一条「你还没同意协议」，而他们当初确实勾过、只是没人记下来。 一条对所有人恒亮的提示等于没有提示。 <p>当前**只提示不拦截**：今天没有提现可挂，而拦上架或拦收款会打断 一家已经审核通过的店的生意 —— 协议没勾是平台流程造成的（运营代填）。 |
 
@@ -4134,7 +4192,6 @@ _无字段_
 | `pickupNo` | `string` | 否 | 承接的自提点单号。`isPickupPoint=true` 时有值 |
 | `rejectReason` | `string` | 否 | 驳回原因，status=REJECTED 时有值 |
 | `favoriteCount` | `number` | 否 | 被顾客收藏的次数。后端一直在发（`MerchantProfileVO`），契约此前没接 —— 数据到端上就没了，而且不报错。店主看得见这个数才知道「关注我的人」在涨。 |
-| `loginBy` | [`GrantType`](#granttype) | 否 | 本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号 |
 | `fundsMode` | [`FundsMode`](#fundsmode) | 否 | 资金路径。**B 端价格字段叫什么由它决定** —— 归集（钱进平台账户）下平台是销售主体、最终售价平台定，商家填的是「期望收购价」； 直连下他自己就是销售主体，那就是「售价」。 判据用它而不是门店的 `businessMode`：与积分能力同一根轴 —— **责任跟着钱走**。 还没进件的申请人为空：那时资金路径尚未确定， 猜一个默认值会让他在入驻页看到一个还轮不到他的字段名。 |
 | `agreementPending` | `boolean` | 否 | <b>《商家服务协议》还没人勾</b>（三期）。 <p>只在**代填的单子**上为真 —— 运营代商家进件时不能替商户勾协议。 <p>⚠️ **不是「agreed_at 为空」**：存量单子这一列同样全是空的 （协议勾选此前从没落过库），那样判会让全体存量商家明天一早都看到 一条「你还没同意协议」，而他们当初确实勾过、只是没人记下来。 一条对所有人恒亮的提示等于没有提示。 <p>当前**只提示不拦截**：今天没有提现可挂，而拦上架或拦收款会打断 一家已经审核通过的店的生意 —— 协议没勾是平台流程造成的（运营代填）。 |
 
@@ -4163,7 +4220,6 @@ _无字段_
 | `pickupNo` | `string` | 否 | 承接的自提点单号。`isPickupPoint=true` 时有值 |
 | `rejectReason` | `string` | 否 | 驳回原因，status=REJECTED 时有值 |
 | `favoriteCount` | `number` | 否 | 被顾客收藏的次数。后端一直在发（`MerchantProfileVO`），契约此前没接 —— 数据到端上就没了，而且不报错。店主看得见这个数才知道「关注我的人」在涨。 |
-| `loginBy` | [`GrantType`](#granttype) | 否 | 本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号 |
 | `fundsMode` | [`FundsMode`](#fundsmode) | 否 | 资金路径。**B 端价格字段叫什么由它决定** —— 归集（钱进平台账户）下平台是销售主体、最终售价平台定，商家填的是「期望收购价」； 直连下他自己就是销售主体，那就是「售价」。 判据用它而不是门店的 `businessMode`：与积分能力同一根轴 —— **责任跟着钱走**。 还没进件的申请人为空：那时资金路径尚未确定， 猜一个默认值会让他在入驻页看到一个还轮不到他的字段名。 |
 | `agreementPending` | `boolean` | 否 | <b>《商家服务协议》还没人勾</b>（三期）。 <p>只在**代填的单子**上为真 —— 运营代商家进件时不能替商户勾协议。 <p>⚠️ **不是「agreed_at 为空」**：存量单子这一列同样全是空的 （协议勾选此前从没落过库），那样判会让全体存量商家明天一早都看到 一条「你还没同意协议」，而他们当初确实勾过、只是没人记下来。 一条对所有人恒亮的提示等于没有提示。 <p>当前**只提示不拦截**：今天没有提现可挂，而拦上架或拦收款会打断 一家已经审核通过的店的生意 —— 协议没勾是平台流程造成的（运营代填）。 |
 
@@ -4377,6 +4433,7 @@ _无字段_
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
+| `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
 | `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
@@ -4402,7 +4459,6 @@ _无字段_
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
 | `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
-| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
 | `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
@@ -4413,6 +4469,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/biz/order/{orderNo}/confirm-offline-pay`
@@ -4433,6 +4490,7 @@ _无字段_
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
+| `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
 | `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
@@ -4458,7 +4516,6 @@ _无字段_
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
 | `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
-| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
 | `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
@@ -4469,6 +4526,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/biz/order/{orderNo}/delivered`
@@ -4489,6 +4547,7 @@ _无字段_
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
+| `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
 | `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
@@ -4514,7 +4573,6 @@ _无字段_
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
 | `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
-| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
 | `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
@@ -4525,6 +4583,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/biz/order/{orderNo}/express`
@@ -4595,6 +4654,63 @@ _无字段_
 类型：[`ExpressQuote`](#expressquote)\[\]
 
 
+#### POST `/biz/order/{orderNo}/fulfillment-change`
+
+配送方式切换　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`MerchantFulfillmentChange`](#merchantfulfillmentchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `order` | [`Order`](#order) | 是 | 更新后的订单摘要 |
+| `version` | `number` | 是 | 新的并发更新版本 |
+
+
+#### GET `/biz/order/{orderNo}/fulfillment-options`
+
+配送方式切换资格　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`MerchantFulfillmentOptions`](#merchantfulfillmentoptions)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `subOrderNo` | `string` | 是 | 门店子订单号 |
+| `currentFulfillment` | `string` | 是 | 当前履约方式 |
+| `version` | `number` | 是 | 并发更新版本 |
+| `options` | [`MerchantFulfillmentOption`](#merchantfulfillmentoption)\[\] | 是 | 本门店可选的履约方式 |
+
+
+#### GET `/biz/order/{orderNo}/logistics-updates`
+
+物流更新记录　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`LogisticsUpdateRecord`](#logisticsupdaterecord)\[\]
+
+
 #### POST `/biz/order/{orderNo}/prepare`
 
 开始备货　🔒
@@ -4613,6 +4729,7 @@ _无字段_
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
+| `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
 | `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
@@ -4638,7 +4755,6 @@ _无字段_
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
 | `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
-| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
 | `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
@@ -4649,6 +4765,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/biz/order/{orderNo}/ship`
@@ -4667,6 +4784,7 @@ _无字段_
 |---|---|:---:|---|
 | `expressNo` | `string` | 是 | 快递单号。填了即视为已发货，订单流转到 SHIPPED |
 | `expressCompany` | `string` | 是 | 快递公司，取 `EXPRESS_COMPANIES` 里的码（微信 delivery_id，如 SF / ZTO）。 **与运单号成对必填**：微信发货信息录入缺一就拒（268485226 / 268485227）， 而不报的后果是那笔订单的货款一直冻在微信那边 —— 买家无感，商家几天后才发现。 |
+| `confirmExistingTrace` | `boolean` | 否 | — |
 
 **出参**（`data`）
 
@@ -4676,6 +4794,7 @@ _无字段_
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
+| `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
 | `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
@@ -4701,7 +4820,6 @@ _无字段_
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
 | `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
-| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
 | `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
@@ -4712,6 +4830,31 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
+
+
+#### POST `/biz/order/{orderNo}/ship/precheck`
+
+运单预检　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`ShipPrecheck`](#shipprecheck)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `verdict` | [`ShipPrecheckVerdict`](#shipprecheckverdict) | 是 | 提交前的运单有效性判断。 |
+| `source` | `string,null` | 否 | 给出判断的物流渠道。 |
+| `status` | `string,null` | 否 | 查询到的运单状态。 |
+| `checkedAt` | `number` | 是 | 查询时间，UTC 毫秒时间戳。 |
+| `reason` | `string,null` | 否 | 需要商家关注的判断说明。 |
+| `confirmationRequired` | `boolean` | 是 | 是否需要商家确认后再发货。 |
 
 
 #### GET `/biz/order/{orderNo}/trace`
@@ -4741,6 +4884,81 @@ _无字段_
 | `atLocker` | `boolean` | 否 | 已放到驿站或快递柜 —— 取件码在节点原文里，渠道不给结构化的，不自己从文字里抠 |
 | `freshAt` | `number,null` | 否 | 最近一次有新进展的时刻（毫秒），显示「X 分钟前更新」用 |
 | `refreshable` | `boolean` | 否 | 这个界面的「刷新」能不能真的去问渠道 |
+
+
+#### POST `/biz/order/{orderNo}/waybill`
+
+更正运单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`Order`](#order)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | 订单单号 |
+| `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
+| `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
+| `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
+| `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
+| `items` | [`OrderItem`](#orderitem)\[\] | 是 | 订单行。含赠品行（`isGift`，价格为 0） |
+| `amount` | [`OrderAmount`](#orderamount) | 是 | 金额明细 |
+| `verifyCode` | `string` | 否 | 自提码 / 核销码 |
+| `pickupNo` | `string` | 否 | PICKUP：自提点单号 |
+| `pickupName` | `string` | 否 | PICKUP：自提点名称快照 |
+| `pickupDistanceM` | `number,null` | 否 | PICKUP：这个自提点离买家多远（米）。**只有确认页那一次预览有值**， 历史订单为空 —— 距离是按买家当时的坐标算的，存下来下次看又该变了。 `-1` = 点没标坐标，**不是 0**（0 会显示成「0 米」，那是一句假话）。 |
+| `discountLines` | [`DiscountLine`](#discountline)\[\] | 否 | 这笔优惠是怎么来的。空 = 没有优惠，或这一单是老模型下的（没有那张账）。 预览与订单详情有值，列表没有 —— 列表一次几十条，逐条回查就是 N+1。 |
+| `returned` | [`OrderReturned`](#orderreturned) \| `null` | 否 | 已取消 / 已退款时，券与积分的去向（待办设计 P3）。**只在详情、只在这两个状态有值**。 从数据查，不从状态推：每一项有才给，端上有才说 —— 编一句「已为你退回」是在说一句可能不成立的话。 |
+| `outOfRange` | `string`\[\] \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.outOfRange`） |
+| `offers` | [`CheckoutOffers`](#checkoutoffers) \| `null` | 否 | 订单上恒为空 —— 只有预览给（见 `OrderPreview.offers`） |
+| `instantRefundEligible` | `boolean,null` | 否 | 现在申请「仅退款」会不会立即退（极速退）。**只在订单详情有值**。 由后端判定：此前端上拿 `TRADE_RULES.instantRefundMaxMinor` 比金额，而那份常量是 ¥50、 后端阈值是 ¥100 —— 差了一倍；常量也表达不了规则里的另两半（总开关、下单 N 小时内）。 于是「会不会秒退」这句话在页面上说的，和在后端做的，从来不是同一个判断。 |
+| `expressNo` | `string` | 否 | EXPRESS：快递单号，发货后才有 |
+| `expressCompany` | `string` | 否 | EXPRESS：快递公司，微信的 `delivery_id`（见 `@shared/utils/express-companies`）。 **与 `expressNo` 成对**：微信发货信息录入两者缺一就拒。 V344 之前发的存量单是空的 —— 当时根本没收集过。 |
+| `preparedAt` | `number,null` | 否 | 商家点「开始备货」的时刻（毫秒）。空 = 还没备货。 售后判进度的分水岭之一（售后规则 §2.1）：生鲜备货后，非质量退款从「自由退」 变成「商家确认」。B 端据它在待发货单上显示「开始备货」还是「已备货」。 |
+| `appointmentAt` | `number` | 否 | APPOINTMENT：预约开始时间戳 |
+| `createdAt` | `number` | 是 | 下单时间 |
+| `payDeadlineAt` | `number` | 否 | 支付截止时间。超时自动取消，仅 WAIT_PAY 有意义 |
+| `timeline` | [`OrderTimelineNode`](#ordertimelinenode)\[\] | 是 | 状态流转轨迹，按时间正序。订单详情的进度条据此渲染 |
+| `idempotencyKey` | `string` | 否 | 下单幂等 key。端上生成，重复提交返回同一笔订单而不是新建 |
+| `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
+| `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
+| `reviewed` | `boolean` | 否 | 已评价 |
+| `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
+| `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
+| `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
+| `merchantNo` | `string` | 否 | 本单归属的商家。**一单只属于一个商家** —— 购物车跨商家时拆成多笔子订单（E3）。 不拆的话分账无从谈起：一笔钱要分给几家、各分多少，没有承载的单据。 |
+| `merchantName` | `string` | 否 | 商家名快照 |
+| `payGroupSize` | `number` | 否 | 这次支付一共覆盖几笔子订单。缺省 1。 ⚠️ **这里原本是 `payGroupNo?: string`，而那个字段库里、后端 VO 里都不存在** —— 是 mock 里造出来的概念，于是详情页那句「本次支付覆盖多笔订单」永远不出现。 真实模型里这件事由「主单下有几张子单」表达，所以发的是个数不是编号： 端上要判的本来就是「是不是多于一笔」。 |
+| `subOrders` | [`Order`](#order)\[\] | 否 | **仅支付视角**：这次付款覆盖的各商家订单。订单视角为空。 后端 `OrderVO` 一直在发（同一个结构承担订单/支付两种视角）， 端上此前没声明 —— 于是收银台是整条拆单链路里**唯一哑掉的一屏**： 购物车说会拆 2 单、确认页说会拆 2 单、订单详情各自标着商家， 中间付款那一步却只有一个总额。 |
+| `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
+| `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
+| `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
+
+
+#### GET `/biz/order/worklist`
+
+按优先级分页的订单待办　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：`object`（见下）
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `records` | [`MerchantOrderWorkItem`](#merchantorderworkitem)\[\] | 是 | — |
+| `total` | `integer` | 是 | — |
+| `page` | `integer` | 是 | — |
+| `size` | `integer` | 是 | — |
 
 
 ### payout-account
@@ -4922,6 +5140,7 @@ _无字段_
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
+| `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
 | `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
@@ -4947,7 +5166,6 @@ _无字段_
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
 | `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
-| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
 | `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
@@ -4958,6 +5176,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/biz/pickup/arrived`
@@ -5040,6 +5259,7 @@ _无字段_
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
+| `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
 | `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
@@ -5065,7 +5285,6 @@ _无字段_
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
 | `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
-| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
 | `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
@@ -5076,6 +5295,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 
 #### POST `/biz/pickup/verify/batch`
@@ -5339,53 +5559,344 @@ _无字段_
 
 ### points
 
-#### GET `/biz/points/account`
+#### GET `/biz/points/store-account`
 
-本期发分服务费与开关状态　🔒
+当前门店积分账本　🔒
 
-**入参**：无
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
 
 **出参**（`data`）
 
-类型：[`MerchantPointAccount`](#merchantpointaccount)
+类型：[`StorePointAccount`](#storepointaccount)
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `periodExpenseMinor` | `number` | 是 | 本期发分服务费支出（分）。**商家唯一感知到的积分成本** |
-| `period` | `string` | 是 | 当前账期标识，如 `2026-08` |
-| `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
-| `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
-| `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
+| `snapshot` | `object`（见下） | 是 | 服务端冻结的账务或准备快照 |
+| `exists` | `boolean` | 是 | 账户是否已经创建，未创建不代表查询失败 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
 
-
-#### GET `/biz/points/records`
-
-发分服务费明细（按单）　🔒
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`MerchantPointsRecord`](#merchantpointsrecord)\[\]
-
-
-#### POST `/biz/points/toggle`
-
-开/关本店积分　🔒
-
-**入参**：无
-
-**出参**（`data`）
-
-类型：[`MerchantPointAccount`](#merchantpointaccount)
+`snapshot` 的字段：
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `periodExpenseMinor` | `number` | 是 | 本期发分服务费支出（分）。**商家唯一感知到的积分成本** |
-| `period` | `string` | 是 | 当前账期标识，如 `2026-08` |
-| `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
-| `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
-| `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `holderType` | `string` | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+| `buckets` | [`Record_string_number`](#record_string_number) | 是 | 按账本分桶保存的积分余额 |
+| `frozen` | `boolean` | 是 | 是否冻结该账户新增使用 |
+| `expireAt` | `number,null` | 是 | 服务端计算的过期时间，Unix 毫秒；无则为空 |
+| `expiryRevision` | `number` | 是 | 账户失效计划修订号 |
+| `lastActiveAt` | `number` | 是 | 最近有效账务活动时间，Unix 毫秒 |
+
+
+#### GET `/biz/points/store-agreement`
+
+当前门店有效积分签约　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointAgreement`](#storepointagreement)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `agreementNo` | `string` | 是 | 门店接受协议编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `signedBy` | `string` | 是 | 签署该门店协议的主体属主 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `termsText` | `string` | 是 | 接受时冻结的条款正文 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `path` | [`FundsMode`](#fundsmode) | 是 | 冻结的直连或归集资金路径 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+| `accountVersion` | `string` | 是 | 冻结的收款账户版本 |
+| `state` | `string` | 是 | 服务端处理状态 |
+
+
+#### POST `/biz/points/store-agreement/sign`
+
+主体属主签署当前门店积分协议　🔒
+
+**入参**
+
+请求体：[`StorePointSignRequest`](#storepointsignrequest)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+
+**出参**（`data`）
+
+类型：[`StorePointAgreement`](#storepointagreement)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `agreementNo` | `string` | 是 | 门店接受协议编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `signedBy` | `string` | 是 | 签署该门店协议的主体属主 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `termsText` | `string` | 是 | 接受时冻结的条款正文 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `path` | [`FundsMode`](#fundsmode) | 是 | 冻结的直连或归集资金路径 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+| `accountVersion` | `string` | 是 | 冻结的收款账户版本 |
+| `state` | `string` | 是 | 服务端处理状态 |
+
+
+#### POST `/biz/points/store-agreement/terminate`
+
+主体属主终止当前门店积分协议　🔒
+
+**入参**
+
+请求体：[`StorePointsTypeQuery`](#storepointstypequery)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+
+**出参**（`data`）
+
+类型：`any`
+
+
+#### GET `/biz/points/store-entries`
+
+当前门店积分流水　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+| `after` | query | `number` | 否 | — |
+| `limit` | query | `number` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointEntryPage`](#storepointentrypage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 持久记录主键 |
+| `entryNo` | `string` | 是 | 不可变积分分录编号 |
+| `voucherNo` | `string` | 是 | 原记账凭证编号 |
+| `holderType` | `string` | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+| `bucket` | `string` | 是 | 积分账本或资金池分桶 |
+| `deltaPoints` | `number` | 是 | 该分录积分变化，负值表示扣减 |
+| `afterPoints` | `number` | 是 | 该分录完成后的积分余额 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+
+#### GET `/biz/points/store-statement`
+
+当前门店指定积分账单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+| `statementNo` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointStatement`](#storepointstatement)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 账单游标ID |
+| `statementNo` | `string` | 是 | 门店积分账单号 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `storeNo` | `string` | 是 | 账单所属门店号 |
+| `fromMillis` | `number` | 是 | 账期起始时间，毫秒时间戳 |
+| `toMillis` | `number` | 是 | 账期结束时间，毫秒时间戳 |
+| `state` | `string` | 是 | 账单当前状态 |
+| `revision` | `number` | 是 | 账单修订号，提交确认或异议时必须匹配 |
+| `points` | `number` | 是 | 本修订积分合计 |
+| `disputeReason` | `string,null` | 是 | 当前异议原因，无异议时为空 |
+| `revisions` | `object`（见下）\[\] | 是 | 历史修订摘要，number为修订号，points为积分数，reason为修订原因 |
+
+`revisions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `number` | `number` | 是 | — |
+| `points` | `number` | 是 | — |
+| `reason` | `string,null` | 是 | — |
+
+
+#### POST `/biz/points/store-statement-confirm`
+
+确认当前门店指定修订积分账单　🔒
+
+**入参**
+
+请求体：[`StorePointStatementChange`](#storepointstatementchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 请求幂等号，同一次操作重试保持不变 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `statementNo` | `string` | 是 | 门店积分账单号 |
+| `revision` | `number` | 是 | 账单修订号，提交确认或异议时必须匹配 |
+| `reason` | `string` | 是 | 确认或异议的操作原因 |
+
+**出参**（`data`）
+
+类型：[`StorePointStatementReceipt`](#storepointstatementreceipt)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 请求幂等号，同一次操作重试保持不变 |
+| `operation` | `string` | 是 | 已受理的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `reference` | `string` | 是 | 操作关联的账单号 |
+| `at` | `number` | 是 | 操作受理时间，毫秒时间戳 |
+
+
+#### POST `/biz/points/store-statement-dispute`
+
+对当前门店积分账单提出异议　🔒
+
+**入参**
+
+请求体：[`StorePointStatementChange`](#storepointstatementchange)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 请求幂等号，同一次操作重试保持不变 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `statementNo` | `string` | 是 | 门店积分账单号 |
+| `revision` | `number` | 是 | 账单修订号，提交确认或异议时必须匹配 |
+| `reason` | `string` | 是 | 确认或异议的操作原因 |
+
+**出参**（`data`）
+
+类型：[`StorePointStatementReceipt`](#storepointstatementreceipt)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 请求幂等号，同一次操作重试保持不变 |
+| `operation` | `string` | 是 | 已受理的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `reference` | `string` | 是 | 操作关联的账单号 |
+| `at` | `number` | 是 | 操作受理时间，毫秒时间戳 |
+
+
+#### GET `/biz/points/store-statement-lines`
+
+当前门店指定修订积分账单明细　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+| `statementNo` | query | `string` | 是 | — |
+| `revision` | query | `number` | 是 | — |
+| `after` | query | `number` | 否 | — |
+| `limit` | query | `number` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointStatementLinePage`](#storepointstatementlinepage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标，无更多记录时保留末尾游标 |
+| `hasMore` | `boolean` | 是 | 是否还有下一页 |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | — |
+| `points` | `number` | 是 | — |
+
+
+#### GET `/biz/points/store-statements`
+
+当前门店积分账单　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+| `after` | query | `number` | 否 | — |
+| `limit` | query | `number` | 否 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointStatementPage`](#storepointstatementpage)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`StorePointStatement`](#storepointstatement)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标，无更多记录时保留末尾游标 |
+| `hasMore` | `boolean` | 是 | 是否还有下一页 |
+
+
+#### GET `/biz/points/store-terms`
+
+当前积分签约条款　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `typeCode` | query | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StorePointTerms`](#storepointterms)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `version` | `string` | 是 | 当前版本号，变更按版本校验 |
+| `hash` | `string` | 是 | 发布条款的内容摘要 |
+| `text` | `string` | 是 | 发布条款正文 |
+
+
+#### GET `/biz/points/store-types`
+
+当前门店可见的积分类型　🔒
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`StorePointType`](#storepointtype)\[\]
 
 
 ### push-token
@@ -7273,6 +7784,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `afterSaleNo` | `string` | 是 | 售后单号。**售后是独立资源，不是订单上的一个字段** —— 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台， 一个订单还可能先后发起多次。挂在订单下用 orderNo 寻址，第二次申请就没法表达了。 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。 |
+| `refundExecution` | [`RefundExecutionProgress`](#refundexecutionprogress) \| `null` | 否 | 原执行的资金进度和资源恢复结果；旧记录可缺省。 |
 | `subOrderNo` | `string` | 是 | 所属**子订单**号（`SUB…`）。 ⚠️ **要关联回订单卡片用的是这个，不是下面的 `orderNo`。** C/B 两端列表里的一行是一张子订单，而 `Order.orderNo` 字段里装的就是子订单号 （后端 `OrderVO.orderNo` = `SUB…`）；售后单上的 `orderNo` 却是**主单号**（`SO…`）。 两个字段同名不同物 —— 按 `orderNo` 去 join 一条也匹配不上， 而症状是「售后页签空着」，与它本来要修的 bug 一模一样。 |
 | `orderNo` | `string` | 是 | 所属**主订单**号（`SO…`）。跨商家下单会拆成多笔子订单，它们共用这一个主单号。 展示「同一次下单」时用它，关联单张订单卡片请用  {@link  subOrderNo } 。 |
 | `type` | [`AfterSaleType`](#aftersaletype) | 是 | 售后类型：仅退款 / 退货退款 |
@@ -8119,7 +8631,6 @@ _无字段_
 | `services` | `string`\[\] | 否 | 服务承诺（详情页那一条短语，如「极速退款」「门店自提免运」）。**只在买家详情有值**。 下发的是**码**不是文案 —— 三语 App，下发中文等于把翻译从端上剥夺掉。 取值见 `GOODS_SERVICE`；端上遇到不认识的码直接跳过，不显示原始码。 由后端判定：「极速退款」成不成立取决于售后规则里的金额上限与总开关（运营可调）， 端上拿常量比金额就是那份 ¥50 常量的翻版。 |
 | `reviewSummary` | [`ReviewSummary`](#reviewsummary) \| `null` | 否 | 评分概览（§3.3）：平均分、星级分布、有图条数、三个维度各自的平均分。 **只在买家详情有值**；随详情一起下发，省掉首屏那一行「4.6 分」的第二次请求。 |
 | `groupBuy` | `object`（见下） | 否 | 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 |
-| `points` | `number` | 否 | 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列， 但全仓没有任何读写。等积分域接上再兑现。 |
 | `limitPerUser` | `number` | 是 | 每人限购，0 = 不限 |
 | `restrictedRegions` | `string`\[\] | 否 | 限购地区（#3）：这件货**不卖到**的省级 regionCode 列表（如 `["65","54"]`）。 排除语义:默认全国可售、列表内不可售。两端都下发——B 端编辑页据此回显反选器, C 端详情据省级码解析出省名、显示「不发货地区」。空 = 全国可售。 |
 | `freightTemplateNo` | `string,null` | 否 | 商品指定的运费模板（ADR-031，只在 B 端详情下发）。空 = 跟随门店 |
@@ -8341,6 +8852,7 @@ _无字段_
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `requestNo` | `string` | 是 | 求团需求单号 |
+| `ownerId` | `string` | 是 | 求团发起人用户号；服务端用于区分发起人与参与邻居。 |
 | `initiatorNickname` | `string` | 是 | 发起人昵称 |
 | `initiatorAvatar` | `string` | 是 | 发起人头像 |
 | `pickupNo` | `string` | 是 | 需求的范围仍是自提点/小区 —— 邻里的意义就在于此 |
@@ -8359,8 +8871,6 @@ _无字段_
 | `expireAt` | `number` | 是 | 需求单过期时间。过期即 EXPIRED，不再接受报价 |
 | `groupNo` | `string` | 否 | LOCKED 之后指向生成的正式团 |
 | `lockedPriceMinor` | `number` | 否 | 选定的报价快照。转成正式团后下单用这个价，**不读商家当前价** —— 这是防加价最硬的一层：加价在技术上做不到，不需要审核。 |
-| `confirmed` | `boolean` | 否 | 我（+1 的邻居）是否已二次确认下单。+1 不等于承诺，必须各自确认 |
-| `confirmedCount` | `number` | 否 | 已确认下单的人数 |
 
 `neighbours[]` 的字段：
 
@@ -8475,6 +8985,21 @@ _无字段_
 
 - `STOCK`
 - `PER_USER`
+
+### LogisticsUpdateRecord
+
+物流刷新或订阅回调的渠道更新记录。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `source` | `string` | 是 | 更新渠道：wx、kuaidi100 等。 |
+| `mode` | `string` | 是 | QUERY 为主动查询，PUSH 为订阅推送。 |
+| `beforeStatus` | `string,null` | 是 | 更新前的运单状态。 |
+| `afterStatus` | `string,null` | 是 | 更新后的运单状态。 |
+| `nodesAdded` | `number` | 是 | 本次新增的轨迹节点数。 |
+| `outcome` | `string` | 是 | 更新结果：ADVANCED、NODES_ADDED、UNCHANGED、NO_RESULT、ERROR、THROTTLED 等。 |
+| `detail` | `string,null` | 是 | 查询结果或最近节点摘要；不含收件人手机号。 |
+| `occurredAt` | `number` | 是 | 更新时间，UTC 毫秒时间戳。 |
 
 ### MarkArrivedReq
 
@@ -8756,6 +9281,15 @@ _无字段_
 | `activities` | [`AudienceRef`](#audienceref)\[\] | 是 | 受众里引用它的未结束活动 |
 | `segments` | [`MemberSegment`](#membersegment)\[\] | 是 | 条件里含它的人群 |
 
+### MerchantAfterSaleWorkItem
+
+售后工作台行；订单摘要用于展示关联商品与金额。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `afterSale` | [`AfterSale`](#aftersale) | 是 | 售后单 |
+| `order` | [`Order`](#order) | 是 | 所属订单 |
+
 ### MerchantApplyReq
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -8844,6 +9378,36 @@ _无字段_
 | `silent` | `boolean` | 是 | 沉默客户：曾经常来、最近没来。**这是店主唯一能立刻行动的信号** |
 | `source` | [`TrafficSource`](#trafficsource) | 是 | 客流来源：他是你自己带来的，还是平台分配的 |
 
+### MerchantFulfillmentChange
+
+履约方式变更结果。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `order` | [`Order`](#order) | 是 | 更新后的订单摘要 |
+| `version` | `number` | 是 | 新的并发更新版本 |
+
+### MerchantFulfillmentOption
+
+门店订单可切换的履约选项。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `fulfillment` | `string` | 是 | 履约方式 |
+| `allowed` | `boolean` | 是 | 当前门店是否允许选择 |
+| `reason` | `string,null` | 是 | 不允许时的原因 |
+
+### MerchantFulfillmentOptions
+
+当前履约方式及可选项。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `subOrderNo` | `string` | 是 | 门店子订单号 |
+| `currentFulfillment` | `string` | 是 | 当前履约方式 |
+| `version` | `number` | 是 | 并发更新版本 |
+| `options` | [`MerchantFulfillmentOption`](#merchantfulfillmentoption)\[\] | 是 | 本门店可选的履约方式 |
+
 ### MerchantLoginReqBody
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -8878,6 +9442,27 @@ _无字段_
 | `name` | `string` | 是 | — |
 | `amountMinor` | `number` | 是 | — |
 
+### MerchantOrderActionKind
+
+枚举取值：
+
+- `AFTER_SALE`
+- `RECEIVE_PAYMENT`
+- `FULFILL`
+- `VERIFY`
+
+### MerchantOrderWorkItem
+
+商家订单待办行；订单事实与需要执行的动作同时返回。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `order` | [`Order`](#order) | 是 | 订单摘要 |
+| `actionKind` | [`MerchantOrderActionKind`](#merchantorderactionkind) | 是 | 当前订单待办动作 |
+| `priority` | `number` | 是 | 待办优先级 |
+| `afterSaleNo` | `string,null` | 是 | 关联售后单号 |
+| `afterSaleStatus` | `string,null` | 是 | 关联售后单状态 |
+
 ### MerchantPlan
 
 我的增值包（B-11.13，`GET /biz/plan`）。 <p>与运营端那份（`MerchantPlanRow`）刻意是两个类型：运营看的是「这家商家买了什么」， 商家看的是「我有什么、还差什么、能不能试」。挤成一个的结果是商家侧要接一堆 用不上的字段（授予方、降级时间、额度来源），而它们每一个都会被端上误读成给他看的。
@@ -8900,31 +9485,6 @@ _无字段_
 | `suspendedStores` | `string`\[\] | 是 | 因降级被压成只读的门店名。 <p>**只含平台压的那几家**，商家自己停用的不在里面 —— 页面要写明是「哪几家」：只说「部分门店已停用」，他得自己一家家点开去找。 |
 | `tiers` | [`PlanTier`](#plantier)\[\] | 是 | 三档对比，顺序即展示顺序（后端按 sort 排好） |
 
-### MerchantPointAccount
-
-商家的积分成本视图。**单位是钱，不是分**。 商家只感知**一件事**：开了积分，每笔订单要付一笔发分服务费。 他**看不到**用户抵了多少分、平台补了多少、资金池 —— 对他而言订单就是全额， 收到的是「订单金额 − 各项费用」（V34）。 所以这里没有 income/net：商家侧不存在「积分兑付进账」这个概念。
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `periodExpenseMinor` | `number` | 是 | 本期发分服务费支出（分）。**商家唯一感知到的积分成本** |
-| `period` | `string` | 是 | 当前账期标识，如 `2026-08` |
-| `enabled` | `boolean` | 是 | 本店积分是否生效 —— 全局 AND 社区 AND 主体非小微 AND 本店开关 |
-| `disabledReason` | `string` | 否 | 不生效的原因，直接展示给商家。 小微主体要说「升级为个体工商户后可开启」，不能说「本店未开启积分」—— 后者会让商家去开一个他根本开不了的开关。 |
-| `forced` | `boolean` | 是 | 平台按行业强制开，商家不可自行关闭 |
-
-### MerchantPointsRecord
-
-商家的一条发分服务费记录：一单一条，来自 `stl_bill.points_fee_minor`
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `settleNo` | `string` | 是 | 结算单号 |
-| `subOrderNo` | `string` | 是 | 关联子单，商家据此对到具体订单 |
-| `points` | `number` | 是 | 本单发放的积分数 |
-| `feeMinor` | `number` | 是 | 本单的发分服务费（分）。**这是商家唯一感知到的积分成本** |
-| `period` | `string` | 是 | 账期 `YYYYMM` |
-| `at` | `number` | 是 | 计提时间（支付成功时），不是分账时间 —— 两者相差一个售后期 |
-
 ### MerchantProfile
 
 登录后的商家会话
@@ -8943,7 +9503,6 @@ _无字段_
 | `pickupNo` | `string` | 否 | 承接的自提点单号。`isPickupPoint=true` 时有值 |
 | `rejectReason` | `string` | 否 | 驳回原因，status=REJECTED 时有值 |
 | `favoriteCount` | `number` | 否 | 被顾客收藏的次数。后端一直在发（`MerchantProfileVO`），契约此前没接 —— 数据到端上就没了，而且不报错。店主看得见这个数才知道「关注我的人」在涨。 |
-| `loginBy` | [`GrantType`](#granttype) | 否 | 本次会话的登录方式。第三方登录且 phone 为空时，要引导补绑手机号 |
 | `fundsMode` | [`FundsMode`](#fundsmode) | 否 | 资金路径。**B 端价格字段叫什么由它决定** —— 归集（钱进平台账户）下平台是销售主体、最终售价平台定，商家填的是「期望收购价」； 直连下他自己就是销售主体，那就是「售价」。 判据用它而不是门店的 `businessMode`：与积分能力同一根轴 —— **责任跟着钱走**。 还没进件的申请人为空：那时资金路径尚未确定， 猜一个默认值会让他在入驻页看到一个还轮不到他的字段名。 |
 | `agreementPending` | `boolean` | 否 | <b>《商家服务协议》还没人勾</b>（三期）。 <p>只在**代填的单子**上为真 —— 运营代商家进件时不能替商户勾协议。 <p>⚠️ **不是「agreed_at 为空」**：存量单子这一列同样全是空的 （协议勾选此前从没落过库），那样判会让全体存量商家明天一早都看到 一条「你还没同意协议」，而他们当初确实勾过、只是没人记下来。 一条对所有人恒亮的提示等于没有提示。 <p>当前**只提示不拦截**：今天没有提现可挂，而拦上架或拦收款会打断 一家已经审核通过的店的生意 —— 协议没勾是平台流程造成的（运营代填）。 |
 
@@ -9060,6 +9619,10 @@ _无字段_
 | `title` | `string` | 是 | 标题（列表页展示） |
 | `body` | `string` | 是 | 正文 |
 | `link` | `string` | 否 | 点进去要跳哪（订单详情/商品/团），已是完整页面路径带参 |
+| `bizType` | `string,null` | 否 | B inbox projection; business action state is independent of read/unread. |
+| `bizNo` | `string,null` | 否 | 关联业务单号，缺失时无业务定位 |
+| `storeNo` | `string,null` | 否 | 业务所属门店，跳转前校验门店权限 |
+| `actionPending` | `boolean` | 否 | 是否仍需处理业务动作，与已读状态独立 |
 | `read` | `boolean` | 是 | 是否已读。未读数按 type 分别统计 |
 | `at` | `number` | 是 | 消息产生时间 |
 
@@ -9182,6 +9745,7 @@ _无字段_
 |---|---|:---:|---|
 | `orderNo` | `string` | 是 | 订单单号 |
 | `payOrderNo` | `string` | 否 | 支付单号（主单号）。后端 `OrderVO.payOrderNo` 一直在发，此前没声明。 **订单视角**下 orderNo 是子单号、这里是主单号；**支付视角**下两者相等。 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。 |
+| `paymentResolution` | [`PaymentResolution`](#paymentresolution) \| `null` | 否 | 已确认收款但订单需人工处理；存在时禁止再次付款。 |
 | `store` | [`OrderStore`](#orderstore) \| `null` | 否 | 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 |
 | `status` | [`OrderStatus`](#orderstatus) | 是 | 订单状态。粗粒度；售后细节见 `afterSale` |
 | `fulfillment` | [`FulfillmentType`](#fulfillmenttype) | 是 | 履约方式，下单时锁定 |
@@ -9207,7 +9771,6 @@ _无字段_
 | `buyerNickname` | `string` | 否 | 下单人昵称。团长视角（分拣单/核销台）要看得见是谁的单 |
 | `receiver` | [`OrderReceiver`](#orderreceiver) | 否 | 收件人（下单时的**快照**，自提单没有）。 快照而不是现查地址：买家下完单把地址改成新家，商家看到的就跟着变了， 而货已经按旧地址在路上。 ⚠️ **`phone` 的脱敏程度由后端按履约方式决定**：**商家自送与快递都给完整号** （自送要打电话找人、快递要填运单且快递员要联系收件人，2026-10-04 放开快递这一档）， 其余履约方式（到店核销 / 预约等）给 `****1234`。 端上**不要自己判**要不要打码 —— 两处规则迟早分叉。 |
 | `reviewed` | `boolean` | 否 | 已评价 |
-| `pointsGranted` | `boolean` | 否 | 积分是否已发放（幂等标记，防止重复核销重复发分） |
 | `trafficSource` | [`TrafficSource`](#trafficsource) | 否 | 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。 |
 | `groupNo` | `string` | 否 | 参与的团。邻里自提的核销作用域就靠它裁剪（E16） |
 | `afterSale` | [`AfterSale`](#aftersale) | 否 | 售后单。订单状态只有粗粒度的 REFUNDING/REFUNDED，细节在这里 |
@@ -9218,6 +9781,7 @@ _无字段_
 | `arriveDate` | `string,null` | 否 | 社区集单的提货日 YYYY-MM-DD（原型 s37）。非集单单为空 —— 那时提货日就是按履约方式走的那一套。 |
 | `cancellableUntil` | `number,null` | 否 | 社区集单：**截单时刻**，此前买家可以取消（全额退款），此后不能 —— 商家已按这一期的量去采购。 已截单或已退款时为空：端上只看「有没有」，不必自己再比一次时钟。 |
 | `trace` | [`ShipmentTrace`](#shipmenttrace) | 否 | 物流轨迹（TDD-圆通物流直连 Y4）。**只有订单详情、快递履约、缓存里有记录时才下发** —— 非快递、未发货、或承运商还没查到（没配凭据 / 轮询还没跑）时不下发，端上显示「暂无轨迹」。 轨迹来自承运商、经缓存，不是平台编的。 |
+| `logisticsSync` | `object`（见下） \| `null` | 否 | B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 |
 
 ### OrderAmount
 
@@ -9250,7 +9814,6 @@ _无字段_
 | `nominalGram` | `number` | 否 | FRESH 且按重计价：下单时的标称重量（克） |
 | `weighed` | `boolean` | 否 | 是否已实际称重。称重后按实重产生差价，见 `OrderAmount.weighAdjustMinor` |
 | `isGift` | `boolean` | 否 | 赠品行：价格为 0，不参与计价，履约时随单发出 |
-| `points` | `number` | 否 | 该商品每件赠送的积分 |
 | `maxQty` | `number,null` | 否 | 这一行最多还能买几件。**只有下单页那一次预览有值**，历史订单为空。 上限只有后端算得准（可售库存按门店覆盖层算），端上手里那份是商品页缓存的旧数； 猜大了提交才报错、猜小了少卖。取「可售库存」与「每人限购还剩几件」的小值（待办设计 P1）。 |
 | `limitReason` | [`LimitReason`](#limitreason) \| `null` | 否 | 是谁挡住了 `maxQty`。到顶时那句话要说对：库存等补货能买，限购补货也没用 |
 | `limitPerUser` | `number,null` | 否 | 每人限购（只在设了限购且平台开关开着时给） |
@@ -9262,8 +9825,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `salutation` | `MR` \| `MS` \| `UNSPECIFIED` \| `null` | 否 | 下单时保存的称呼快照，不随地址簿变化。 |
 | `name` | `string` | 否 | 收货人姓名。取不到时为空 —— 空就是空，不要回落成「顾客」 |
+| `salutation` | [`RecipientSalutation`](#recipientsalutation) \| `null` | 否 | 收件人称呼快照；老订单或用户未选择时为空。 |
 | `phone` | `string` | 否 | 脱敏程度由后端定，见 `Order.receiver` 的说明 |
 | `address` | `string` | 否 | 省市区 + 详细，拼好的一行 |
 
@@ -9282,6 +9845,7 @@ _无字段_
 枚举取值：
 
 - `WAIT_PAY`
+- `POINTS_PROCESSING`
 - `WAIT_OFFLINE_PAY`
 - `PAID`
 - `FULFILLING`
@@ -9353,6 +9917,16 @@ _无字段_
 | `appliedAt` | `number` | 否 | 提交进件的时间。没提交过为空 |
 | `activatedAt` | `number` | 否 | 通道开户完成的时间 —— 从这一刻起才真的能收钱 |
 | `storeNo` | `string` | 否 | 这条进件是**为哪家门店**做的；空 = 主体级默认号。 多门店商家会有多条「微信 · 已开通」，不显示门店就分不清哪条是哪家店 —— 等于让他猜自己的钱打进了哪张卡。 |
+
+### PaymentResolution
+
+支付异常投影，不包含其他门店的现金明细。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `status` | `string` | 是 | 处理状态，例如 MANUAL_REQUIRED。 |
+| `reason` | `string` | 是 | 服务端记录的原因码，页面映射为可理解的提示。 |
+| `reference` | `string` | 是 | 原资金凭据引用。 |
 
 ### PermOption
 
@@ -9774,6 +10348,24 @@ _无字段_
 | `reason` | `string` | 是 | — |
 | `count` | `number` | 是 | — |
 
+### ReceiveReturnReq
+
+收妥退货不代表可以再次销售，缺省禁止自动回库。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `restockApproved` | `boolean` | 是 | 商家明确确认可再次销售；默认 false。 |
+
+### RecipientSalutation
+
+收件人称呼，与地址簿字段及订单收件人快照共用。
+
+枚举取值：
+
+- `MR`
+- `MS`
+- `UNSPECIFIED`
+
 ### RecognizeGoodsReq
 
 | 字段 | 类型 | 必填 | 说明 |
@@ -9791,6 +10383,22 @@ _无字段_
 ### Record_string_string
 
 类型：`object`
+
+### RefundExecutionProgress
+
+资金执行与库存/优惠恢复是两个独立结果。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `executionNo` | `string` | 是 | 原退款执行号；恢复仍使用同一执行。 |
+| `paymentNo` | `string,null` | 否 | 资金流水号，尚未准备时可空。 |
+| `status` | `string` | 是 | 执行状态，以后端实际确认结果为准。 |
+| `phase` | `string` | 是 | 当前处理阶段。 |
+| `errorCode` | `string,null` | 否 | 资金执行错误码。 |
+| `resourceStatus` | `string` | 是 | 原库存和优惠恢复状态，DONE 表示已恢复。 |
+| `resourceErrorCode` | `string,null` | 否 | 资源恢复失败原因。 |
+| `succeededAt` | `number,null` | 否 | 资金成功确认的毫秒时间戳。 |
+| `nextAttemptAt` | `number,null` | 否 | 后端计划恢复的毫秒时间戳，不由客户端发起第二笔退款。 |
 
 ### RefundImpact
 
@@ -10284,12 +10892,37 @@ _无字段_
 | `text` | `string` | 是 | 分享文案，已按当前语言与市场生成 |
 | `posterUrl` | `string` | 是 | 落地页链接，文案里已经拼过一次；未配对外域名时为空串。真正的海报图走  {@link  Poster } |
 
+### ShipPrecheck
+
+商家提交运单前的渠道预检结果。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `verdict` | [`ShipPrecheckVerdict`](#shipprecheckverdict) | 是 | 提交前的运单有效性判断。 |
+| `source` | `string,null` | 否 | 给出判断的物流渠道。 |
+| `status` | `string,null` | 否 | 查询到的运单状态。 |
+| `checkedAt` | `number` | 是 | 查询时间，UTC 毫秒时间戳。 |
+| `reason` | `string,null` | 否 | 需要商家关注的判断说明。 |
+| `confirmationRequired` | `boolean` | 是 | 是否需要商家确认后再发货。 |
+
+### ShipPrecheckVerdict
+
+商家提交运单前的渠道预检结论。
+
+枚举取值：
+
+- `VALID`
+- `INVALID`
+- `UNKNOWN`
+- `WARNING`
+
 ### ShipReq
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `expressNo` | `string` | 是 | 快递单号。填了即视为已发货，订单流转到 SHIPPED |
 | `expressCompany` | `string` | 是 | 快递公司，取 `EXPRESS_COMPANIES` 里的码（微信 delivery_id，如 SF / ZTO）。 **与运单号成对必填**：微信发货信息录入缺一就拒（268485226 / 268485227）， 而不报的后果是那笔订单的货款一直冻在微信那边 —— 买家无感，商家几天后才发现。 |
+| `confirmExistingTrace` | `boolean` | 否 | — |
 
 ### ShipmentStatus
 
@@ -10966,6 +11599,209 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `locked` | `boolean` | 否 | 运营锁路（P2）：置灰不可改，文案「平台已暂停，联系运营」 |
 | `scopeMode` | `string` | 否 | ALL / SUBSET（P2）：这一路只送经营范围的一个子集 |
 | `areaNos` | `string`\[\] | 否 | SUBSET 时适用的范围项 area_no |
+
+### StorePointAccount
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `snapshot` | `object`（见下） | 是 | 服务端冻结的账务或准备快照 |
+| `exists` | `boolean` | 是 | 账户是否已经创建，未创建不代表查询失败 |
+| `version` | `number` | 是 | 当前版本号，变更按版本校验 |
+
+`snapshot` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `holderType` | `string` | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+| `buckets` | [`Record_string_number`](#record_string_number) | 是 | 按账本分桶保存的积分余额 |
+| `frozen` | `boolean` | 是 | 是否冻结该账户新增使用 |
+| `expireAt` | `number,null` | 是 | 服务端计算的过期时间，Unix 毫秒；无则为空 |
+| `expiryRevision` | `number` | 是 | 账户失效计划修订号 |
+| `lastActiveAt` | `number` | 是 | 最近有效账务活动时间，Unix 毫秒 |
+
+### StorePointAgreement
+
+Frozen, store-scoped acceptance. Route fields are read-only server snapshots.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `agreementNo` | `string` | 是 | 门店接受协议编号 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `merchantNo` | `string` | 是 | 门店归属主体编号，不作为积分隔离维度 |
+| `storeNo` | `string` | 是 | 积分业务隔离的门店编号 |
+| `signedBy` | `string` | 是 | 签署该门店协议的主体属主 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `termsText` | `string` | 是 | 接受时冻结的条款正文 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `path` | [`FundsMode`](#fundsmode) | 是 | 冻结的直连或归集资金路径 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+| `accountVersion` | `string` | 是 | 冻结的收款账户版本 |
+| `state` | `string` | 是 | 服务端处理状态 |
+
+### StorePointAgreementSettleMode
+
+StorePointAgreement 的 settleMode 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `PER_ORDER`
+- `PERIODIC`
+
+### StorePointEntryPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标 |
+| `hasMore` | `boolean` | 是 | 是否还有后续记录 |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 持久记录主键 |
+| `entryNo` | `string` | 是 | 不可变积分分录编号 |
+| `voucherNo` | `string` | 是 | 原记账凭证编号 |
+| `holderType` | `string` | 是 | 账本持有人类型 |
+| `holderNo` | `string` | 是 | 账本持有人编号，与持有人类型联合定位 |
+| `bucket` | `string` | 是 | 积分账本或资金池分桶 |
+| `deltaPoints` | `number` | 是 | 该分录积分变化，负值表示扣减 |
+| `afterPoints` | `number` | 是 | 该分录完成后的积分余额 |
+| `at` | `number` | 是 | 服务端事件时间，Unix 毫秒 |
+
+### StorePointSignRequest
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `termsVersion` | `string` | 是 | 接受的条款版本 |
+| `termsHash` | `string` | 是 | 接受条款的内容摘要 |
+| `settleMode` | [`StorePointAgreementSettleMode`](#storepointagreementsettlemode) | 是 | 门店按单或按期结算方式 |
+| `channel` | `string` | 是 | 冻结的支付通道编码 |
+
+### StorePointStatement
+
+Current-store statement projection; source positions and bank routes remain server-side.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | 账单游标ID |
+| `statementNo` | `string` | 是 | 门店积分账单号 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `storeNo` | `string` | 是 | 账单所属门店号 |
+| `fromMillis` | `number` | 是 | 账期起始时间，毫秒时间戳 |
+| `toMillis` | `number` | 是 | 账期结束时间，毫秒时间戳 |
+| `state` | `string` | 是 | 账单当前状态 |
+| `revision` | `number` | 是 | 账单修订号，提交确认或异议时必须匹配 |
+| `points` | `number` | 是 | 本修订积分合计 |
+| `disputeReason` | `string,null` | 是 | 当前异议原因，无异议时为空 |
+| `revisions` | `object`（见下）\[\] | 是 | 历史修订摘要，number为修订号，points为积分数，reason为修订原因 |
+
+`revisions[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `number` | `number` | 是 | — |
+| `points` | `number` | 是 | — |
+| `reason` | `string,null` | 是 | — |
+
+### StorePointStatementChange
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 请求幂等号，同一次操作重试保持不变 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `statementNo` | `string` | 是 | 门店积分账单号 |
+| `revision` | `number` | 是 | 账单修订号，提交确认或异议时必须匹配 |
+| `reason` | `string` | 是 | 确认或异议的操作原因 |
+
+### StorePointStatementLinePage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | `object`（见下）\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标，无更多记录时保留末尾游标 |
+| `hasMore` | `boolean` | 是 | 是否还有下一页 |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `subOrderNo` | `string` | 是 | — |
+| `points` | `number` | 是 | — |
+
+### StorePointStatementPage
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `rows` | [`StorePointStatement`](#storepointstatement)\[\] | 是 | 本页记录 |
+| `next` | `number` | 是 | 下一页游标，无更多记录时保留末尾游标 |
+| `hasMore` | `boolean` | 是 | 是否还有下一页 |
+
+### StorePointStatementReceipt
+
+Receipt of an audited statement decision; this does not assert bank payout success.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `requestId` | `string` | 是 | 请求幂等号，同一次操作重试保持不变 |
+| `operation` | `string` | 是 | 已受理的操作类型 |
+| `typeCode` | `string` | 是 | 积分类型编码 |
+| `reference` | `string` | 是 | 操作关联的账单号 |
+| `at` | `number` | 是 | 操作受理时间，毫秒时间戳 |
+
+### StorePointTerms
+
+Current store's published acceptance terms.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `version` | `string` | 是 | 当前版本号，变更按版本校验 |
+| `hash` | `string` | 是 | 发布条款的内容摘要 |
+| `text` | `string` | 是 | 发布条款正文 |
+
+### StorePointType
+
+Pay ledger views are scoped to the authenticated current store and one points type.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `deductRatioBp` | `number` | 是 | 最大抵扣比例，万分比 |
+| `idleDays` | `number` | 是 | 无活动失效天数 |
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
+| `market` | `string` | 是 | 市场代码 |
+| `currency` | `string` | 是 | ISO 货币代码 |
+| `scale` | `number` | 是 | 货币最小单位精度 |
+| `rate` | `object`（见下） | 是 | 积分与最小货币单位的换算比例 |
+| `status` | [`StorePointTypeStatus`](#storepointtypestatus) | 是 | 服务端业务状态 |
+
+`rate` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `pointsUnit` | `number` | 是 | 换算比例中的积分数量 |
+| `minorUnit` | `number` | 是 | 换算比例中的最小货币单位数量 |
+
+### StorePointTypeStatus
+
+StorePointType 的 status 取值域，按服务端契约校验。
+
+枚举取值：
+
+- `DRAFT`
+- `ACTIVE`
+- `DRAINING`
+- `RETIRED`
+
+### StorePointsTypeQuery
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `typeCode` | `string` | 是 | 积分类型唯一编码 |
 
 ### StoreProfile
 

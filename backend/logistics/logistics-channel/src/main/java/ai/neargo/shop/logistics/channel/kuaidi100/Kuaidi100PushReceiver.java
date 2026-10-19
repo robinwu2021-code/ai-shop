@@ -60,13 +60,16 @@ public class Kuaidi100PushReceiver implements PushReceiver {
             String nu = last.path("nu").asText("").trim();
             boolean corrected = "1".equals(root.path("autoCheck").asText(""));
             String com = corrected ? root.path("comNew").asText(last.path("com").asText("")) : last.path("com").asText("");
-            boolean ended = "abort".equalsIgnoreCase(root.path("status").asText(""));
+            String pushStatus = root.path("status").asText("");
+            boolean ended = "abort".equalsIgnoreCase(pushStatus) || "shutdown".equalsIgnoreCase(pushStatus);
             TraceResult trace = null;
             if (last.isObject() && last.path("data").isArray() && !last.path("data").isEmpty()) {
                 Optional<TraceResult> t = Kuaidi100TraceProvider.parse(json, com, nu, last.toString());
                 trace = t.orElse(null);
             }
-            return new Parsed(true, com, nu, trace, ended, corrected ? root.path("comOld").asText(null) : null);
+            return new Parsed(true, com, nu, trace, ended,
+                    corrected ? root.path("comOld").asText(null) : null,
+                    request.form().get("callbackId"), pushStatus);
         } catch (Exception e) {
             log.warn("[lgs:kuaidi100] 推送报文解析失败：{}", e.toString());
             return new Parsed(true, null, null, null, false, null);

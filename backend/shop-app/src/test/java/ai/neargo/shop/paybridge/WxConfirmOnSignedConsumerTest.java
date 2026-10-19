@@ -1,9 +1,10 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.spi.logistics.LogisticsPort;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
@@ -24,7 +25,7 @@ class WxConfirmOnSignedConsumerTest {
 
     private final WxConfirmReceiveService confirm = mock(WxConfirmReceiveService.class);
     private final LogisticsPort logistics = mock(LogisticsPort.class);
-    private final TradeMappers.SubOrderMapper subOrders = mock(TradeMappers.SubOrderMapper.class);
+    private final StoreOrderMapper subOrders = mock(StoreOrderMapper.class);
 
     private WxConfirmOnSignedConsumer consumer() {
         return new WxConfirmOnSignedConsumer(confirm, logistics, subOrders, new ObjectMapper());

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="320" viewBox="0 0 1100 320" role="img" aria-label="B 端发货同步预检、双渠道关注、物流状态真源与 C B 端展示">
+  <title>订单发货、物流订阅与状态同步</title>
+  <desc>商家预检后提交发货，微信与快递 100 两个渠道同步物流事件到状态真源，再由 C、B 和 H5 共用订单物流摘要。</desc>
+  <style>
+    text{font-family:Arial,"PingFang SC","Microsoft YaHei",sans-serif;fill:#243047}
+    .box{fill:#f3f7ff;stroke:#7897d3;stroke-width:1.5;rx:10}
+    .side{fill:#f3fbf6;stroke:#6aaf83;stroke-width:1.5;rx:10}
+    .warn{fill:#fff7ec;stroke:#d7a25e;stroke-width:1.5;rx:10}
+    .title{font-size:15px;font-weight:bold}.sub{font-size:12px;fill:#586579}
+    .line{stroke:#677d9f;stroke-width:2;fill:none;marker-end:url(#arrow)}
+  </style>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#677d9f"/></marker></defs>
+  <rect class="warn" x="15" y="48" width="190" height="84"/><text class="title" x="30" y="76">B 端同步预检</text><text class="sub" x="30" y="99">微信有 token 则查；否则快递 100</text><text class="sub" x="30" y="117">有状态 / 无效 / 待核实</text>
+  <rect class="box" x="250" y="48" width="185" height="84"/><text class="title" x="265" y="76">确认提交发货</text><text class="sub" x="265" y="99">本地事务 + outbox</text><text class="sub" x="265" y="117">回显已查到的物流状态</text>
+  <rect class="box" x="485" y="15" width="185" height="76"/><text class="title" x="500" y="43">微信关注 + 主动查询</text><text class="sub" x="500" y="65">通知真实买家 · 状态入库</text>
+  <rect class="box" x="485" y="112" width="185" height="76"/><text class="title" x="500" y="140">快递 100 订阅</text><text class="sub" x="500" y="162">轨迹回调到我方服务</text>
+  <rect class="box" x="485" y="210" width="185" height="76"/><text class="title" x="500" y="238">微信发货上报</text><text class="sub" x="500" y="260">token 绑定 / 状态补查</text>
+  <rect class="side" x="720" y="104" width="155" height="90"/><text class="title" x="735" y="134">物流状态真源</text><text class="sub" x="735" y="158">lgs_waybill + 节点</text><text class="sub" x="735" y="177">按运单身份防旧回调</text>
+  <rect class="side" x="920" y="104" width="165" height="90"/><text class="title" x="935" y="134">C/B/H5 展示</text><text class="sub" x="935" y="158">列表 + 详情同一摘要</text><text class="sub" x="935" y="177">交易 / 物流双状态</text>
+  <path class="line" d="M205 90 H250"/><path class="line" d="M435 70 L485 53"/><path class="line" d="M435 90 H485 V150"/><path class="line" d="M435 110 L485 248"/><path class="line" d="M435 120 C565 205 650 115 720 125"/><path class="line" d="M670 53 L720 125"/><path class="line" d="M670 150 H720"/><path class="line" d="M670 248 L720 174"/><path class="line" d="M875 149 H920"/>
+  <text class="sub" x="715" y="265">已签收只推进物流；交易完成另走确认收货规则</text>
+</svg>

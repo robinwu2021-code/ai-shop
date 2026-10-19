@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="680" height="912" viewBox="0 0 680 912" role="img" font-family="system-ui,-apple-system,'PingFang SC',sans-serif">
-<title>商品与类目 表关系</title><desc>27 张表，箭头由引用方指向被引用方。</desc>
+<title>商品与类目 表关系</title><desc>28 张表，箭头由引用方指向被引用方。</desc>
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
 <path d="M2 1L8 5L2 9" fill="none" stroke="#8A94A2" stroke-width="1.4" stroke-linecap="round"/></marker>
 <style>.n{font-weight:500;fill:#161A21}.s{font-size:11px;fill:#5A6472}
@@ -43,12 +43,15 @@
 <rect x="447" y="30" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="532" y="50" text-anchor="middle" font-size="13">prd_spec_dim</text>
 <text class="s" x="532" y="65" text-anchor="middle">规格项：一个维度一行，通用维…</text>
-<rect x="159" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="244" y="166" text-anchor="middle" font-size="13">prd_sell_rule</text>
-<text class="s" x="244" y="181" text-anchor="middle">门店线上可售规则。行只改不删…</text>
-<rect x="351" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
-<text class="n" x="436" y="166" text-anchor="middle" font-size="13">prd_store_stock_sync</text>
-<text class="s" x="436" y="181" text-anchor="middle">门店库存同步开关与期初对齐</text>
+<rect x="63" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="148" y="166" text-anchor="middle" font-size="13">prd_sell_rule</text>
+<text class="s" x="148" y="181" text-anchor="middle">门店线上可售规则。行只改不删…</text>
+<rect x="255" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="340" y="166" text-anchor="middle" font-size="13">prd_store_stock_sync</text>
+<text class="s" x="340" y="181" text-anchor="middle">门店库存同步开关与期初对齐</text>
+<rect x="447" y="146" width="170" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
+<text class="n" x="532" y="172" text-anchor="middle" font-size="13">prd_stock_restore</text>
+
 <rect x="31" y="262" width="138" height="44" rx="6" fill="#EAF1F6" stroke="#8FB3C9"/>
 <text class="n" x="100" y="282" text-anchor="middle" font-size="13">prd_spec_template</text>
 <text class="s" x="100" y="297" text-anchor="middle">规格模板（平台维护 +…</text>

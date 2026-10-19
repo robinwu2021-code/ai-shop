@@ -1,5 +1,9 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
+import ai.neargo.shop.trade.order.mapper.ShippingUploadMapper;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.fulfillment.service.LogisticsService;
 import ai.neargo.shop.fulfillment.service.LogisticsService.SignedShipment;
@@ -8,7 +12,6 @@ import ai.neargo.shop.event.outbox.OutboxLease;
 import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.entity.TrdShippingUpload;
-import ai.neargo.shop.trade.mapper.TradeMappers;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,12 +48,12 @@ public class WxConfirmReceiveService {
 
     private final LogisticsService logistics;
     private final WxShippingPort shipping;
-    private final TradeMappers.ShippingUploadMapper uploadMapper;
-    private final TradeMappers.SubOrderMapper subOrderMapper;
+    private final ShippingUploadMapper uploadMapper;
+    private final StoreOrderMapper subOrderMapper;
 
     public WxConfirmReceiveService(LogisticsService logistics, WxShippingPort shipping,
-                                   TradeMappers.ShippingUploadMapper uploadMapper,
-                                   TradeMappers.SubOrderMapper subOrderMapper) {
+                                   ShippingUploadMapper uploadMapper,
+                                   StoreOrderMapper subOrderMapper) {
         this.logistics = logistics;
         this.shipping = shipping;
         this.uploadMapper = uploadMapper;

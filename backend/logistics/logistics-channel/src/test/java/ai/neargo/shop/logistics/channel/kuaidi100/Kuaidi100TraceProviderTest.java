@@ -47,6 +47,18 @@ class Kuaidi100TraceProviderTest {
     }
 
     @Test
+    void signedStatusCodePreservesHistoricalSignatureTimeWhenStatusNameIsMissing() {
+        String body = """
+                {"message":"ok","state":"3","data":[
+                  {"ftime":"2026-10-08 11:22:20","context":"快件已签收","statusCode":"304"}
+                ]}
+                """;
+        var result = Kuaidi100TraceProvider.parse(json, "STO", "STO123", body);
+        assertThat(result).isPresent();
+        assertThat(result.get().nodes().getFirst().status()).isEqualTo(TraceStatus.SIGNED);
+    }
+
+    @Test
     @DisplayName("★★★ 失败返回（查无结果 / 手机号校验未过 / 无可用单量）→ empty，不编造推进")
     void failureBodyIsEmpty() {
         assertThat(Kuaidi100TraceProvider.parse(json, "SF", "X",

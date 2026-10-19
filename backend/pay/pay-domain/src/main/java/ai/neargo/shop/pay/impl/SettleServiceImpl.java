@@ -2,8 +2,15 @@ package ai.neargo.shop.pay.impl;
 
 import ai.neargo.shop.pay.SettleService;
 import ai.neargo.shop.pay.SplitGateway;
+import ai.neargo.shop.pay.settle.SplitPreparationService;
+import ai.neargo.shop.pay.settle.SplitResultService;
+import ai.neargo.shop.pay.settle.SettlementPointsFundingService;
+import ai.neargo.shop.pay.points.payout.PointsPayoutExecutionService;
+import ai.neargo.shop.pay.points.app.PointsSettlementHook;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import ai.neargo.common.data.scope.DataScopeContext;
+import ai.neargo.shop.pay.channel.PayGateway.QueryResult;
 import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 import ai.neargo.shop.pay.channel.master.PayChannelRateService;
 import ai.neargo.shop.spi.trade.SettleSourcePort;
@@ -16,7 +23,6 @@ import ai.neargo.shop.pay.dto.RateCardVO;
 import ai.neargo.shop.pay.dto.SettleBillVO;
 import ai.neargo.shop.pay.entity.StlBill;
 import ai.neargo.shop.pay.entity.StlSettleBatch;
-import ai.neargo.shop.pay.entity.StlPointsPool;
 import ai.neargo.shop.pay.entity.StlFeeRule;
 import ai.neargo.shop.pay.entity.StlPurchaseInvoice;
 import ai.neargo.shop.pay.dto.PurchaseInvoiceVO;
@@ -35,6 +41,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import ai.neargo.shop.pay.setting.PaySettingService;
+import ai.neargo.shop.pay.settle.refund.RefundBasisStore;
 
 /**
  * 结算与分账（ADR-002）。**M7 起取代 {@code SettlePortStub}**。
@@ -51,8 +58,11 @@ import ai.neargo.shop.pay.setting.PaySettingService;
  */
 @Service
 public class SettleServiceImpl implements SettleService {
+    private final ai.neargo.shop.pay.service.impl.RefundCapacityLedger refundCapacity;
+
 
     private static final Logger log = LoggerFactory.getLogger(SettleServiceImpl.class);
+    private final RefundBasisStore refundBases;
 
     /*
      * 费率来自 stl_fee_rule，不再来自 application.yml（P1-4）。
@@ -64,7 +74,7 @@ public class SettleServiceImpl implements SettleService {
     private final ai.neargo.shop.pay.service.FeeRuleService feeRuleService;
 
     /** 积分池入账 —— 池子的记账口径归积分域，结算侧只在发生时调它 */
-    private final ai.neargo.shop.pay.PointsService pointsService;
+    private final SettlementPointsFundingService pointsFunding;
     /** 通道能力（能否补差）—— 判在结算侧，因为下单时通道还没定 */
     /*
      * 通道属性与通道费率 —— 2026-09-01 起直接调 pay-channel，不再经 MasterDataPort。
@@ -100,6 +110,12 @@ public class SettleServiceImpl implements SettleService {
     /** 分账指令的发送与留痕（幂等在它那一层） */
     private final ai.neargo.shop.pay.settle.SplitInstructionSender splitSender;
 
+    private final SplitPreparationService splitPreparation;
+    private final SplitResultService splitResults;
+    private final PointsPayoutExecutionService pointsExecution;
+    private final SplitGateway splitGateway;
+    private final PointsSettlementHook pointsHook;
+
     public SettleServiceImpl(BillMapper billMapper, SplitLogMapper splitLogMapper,
                              SettleSourcePort sourcePort,
                              PickupQueryPort pickupPort,
@@ -107,20 +123,31 @@ public class SettleServiceImpl implements SettleService {
                              ai.neargo.shop.pay.mapper.SettleMappers.PurchaseInvoiceMapper purchaseInvoiceMapper,
                              PaySettingService paySettings,
                              ai.neargo.shop.pay.service.FeeRuleService feeRuleService,
-                             ai.neargo.shop.pay.PointsService pointsService,
+                             SettlementPointsFundingService pointsFunding,
                              PayChannelMasterService channelMaster,
                              PayChannelRateService channelRates,
                              ai.neargo.shop.pay.mapper.SettleMappers.SettleBatchMapper batchMapper,
                              ai.neargo.shop.pay.service.PaymentLedgerService paymentLedger,
                              ai.neargo.shop.pay.channel.PayGatewayRouter gatewayRouter,
-                             ai.neargo.shop.pay.settle.SplitInstructionSender splitSender) {
+                             ai.neargo.shop.pay.settle.SplitInstructionSender splitSender,
+                             RefundBasisStore refundBases, SplitPreparationService splitPreparation,
+                             SplitResultService splitResults, PointsPayoutExecutionService pointsExecution,
+                             SplitGateway splitGateway, PointsSettlementHook pointsHook,
+                             ai.neargo.shop.pay.service.impl.RefundCapacityLedger refundCapacity) {
+        this.refundCapacity = refundCapacity;
+        this.refundBases = refundBases;
+        this.pointsHook = pointsHook;
+        this.splitPreparation = splitPreparation;
+        this.splitResults = splitResults;
+        this.pointsExecution = pointsExecution;
+        this.splitGateway = splitGateway;
         this.splitSender = splitSender;
         this.gatewayRouter = gatewayRouter;
         this.paymentLedger = paymentLedger;
         this.batchMapper = batchMapper;
         this.channelMaster = channelMaster;
         this.channelRates = channelRates;
-        this.pointsService = pointsService;
+        this.pointsFunding = pointsFunding;
         this.paySettings = paySettings;
         this.feeRuleService = feeRuleService;
         this.purchaseInvoiceMapper = purchaseInvoiceMapper;
@@ -183,7 +210,11 @@ public class SettleServiceImpl implements SettleService {
             SettleSourcePort.SettleSource src = in.source();
             // 一个子单只能有一张结算单：重复生成 = 重复分账 = 给商家多打钱。
             // 靠先查再插 + DB 唯一索引双保险（事件重投时两条路径都可能撞上）
-            if (findBySubOrder(src.subOrderNo()) != null) {
+            StlBill existing = findBySubOrder(src.subOrderNo());
+            if (existing != null) {
+                if (refundBases.find(existing.getSettleNo()).isEmpty()) {
+                    refundBases.backfill(existing, src.payAmount() - src.freightIncomeMinor());
+                }
                 continue;
             }
             /*
@@ -217,6 +248,11 @@ public class SettleServiceImpl implements SettleService {
              *
              * 服务费同样按去掉运费之后的基数算 —— 自提点按件收的那档不受影响。
              */
+            boolean periodic=src.pointsDeductMinor()>0
+                    && pointsHook.settleModeOf(src.subOrderNo())==PointsSettlementHook.SettleMode.PERIODIC;
+            if (periodic && !MerchantQueryPort.FUNDS_AGGREGATED.equals(in.fundsMode())) {
+                throw new IllegalStateException("POINTS_PERIODIC_REQUIRES_AGGREGATED");
+            }
             long gross = src.payAmount() + src.discountPlatform() + src.pointsDeductMinor()
                     - src.freightIncomeMinor();
             long serviceFee = serviceFeeOf(src, gross);
@@ -245,6 +281,7 @@ public class SettleServiceImpl implements SettleService {
 
             StlBill bill = new StlBill();
             bill.setSettleNo(BizKey.next(BizKey.SETTLE_BILL));
+            bill.setSplitProtocolVersion(1);
             bill.setSubOrderNo(src.subOrderNo());
             bill.setOrderNo(orderNo);
             bill.setEntityNo(src.merchantNo());
@@ -258,6 +295,7 @@ public class SettleServiceImpl implements SettleService {
              */
             bill.setWaivedCommissionMinor(offline ? ruleCommission : 0L);
             bill.setServiceFeeMinor(serviceFee);
+            bill.setSplitAmountMinor(Math.addExact(commission,serviceFee));
             /*
              * 通道与下单端。**payChannel 此前全库为 null** —— 它从没被传进结算域，
              * 而下面入池流水那行已经在读它了（读到的一直是 null）。线下单靠它认，
@@ -266,19 +304,8 @@ public class SettleServiceImpl implements SettleService {
             bill.setPayChannel(src.payChannel());
             bill.setPayScene(src.payScene());
             bill.setCurrency(currencyOf(src.payChannel()));
-            /*
-             * ★ 发分费用金：**单独一列，不并进 serviceFeeMinor**。
-             *
-             * 商家最常问的是「这个月为什么少了」，而两者的解释路径完全不同 ——
-             * 佣金是按率的（他改不了），费用金是按他自己开的积分活动走的（他关掉就没了）。
-             * 并成一列，客服每次都得回去翻明细才答得出。
-             *
-             * 此前这一列全库零写入：B 端「本期积分支出」永远是 0，
-             * 而池子只出不进（用户花分时 MERCHANT_PAY 出账，发分时没有对应入账）——
-             * 恒等式 2「池子余额 == 流通中积分 × 汇率」会随发放量单调失衡。
-             */
-            long pointsFee = src.pointsFeeMinor();
-            bill.setPointsFeeMinor(pointsFee);
+            // Earning is platform-funded; settlement does not charge the merchant an earning fee.
+            bill.setPointsFeeMinor(0L);
             /*
              * ★ 商家实得要减掉**他自己承担的**那部分通道手续费。
              *
@@ -333,8 +360,8 @@ public class SettleServiceImpl implements SettleService {
                                 + "只扣 {} 分，差额待人工处理", src.subOrderNo(),
                         freightCostRaw, freightIncome, freightCap);
             }
-            bill.setNetMinor(gross - commission - serviceFee - pointsFee - fee.borneByMerchant()
-                    + freightIncome - freightCost);
+            bill.setNetMinor(gross - commission - serviceFee - fee.borneByMerchant()
+                    - (periodic?src.pointsDeductMinor():0) + freightIncome - freightCost);
             bill.setChannelFeeMinor(fee.minor());
             bill.setChannelFeeRate(fee.rateBp());
             bill.setChannelFeeSource(fee.source());
@@ -400,34 +427,8 @@ public class SettleServiceImpl implements SettleService {
             bill.setInvoiceStatus(selfOperated ? StlBill.INV_PENDING : StlBill.INV_NONE);
             bill.setRetryCount(0);
             DataScopeContext.executeWithoutScope(() -> billMapper.insert(bill));
+            refundBases.recordCreated(bill, src.payAmount() - src.freightIncomeMinor());
 
-            /*
-             * 费用金入池 —— **与货款扣减同一时刻**。
-             *
-             * 不在发分时入池：那一刻钱还没到手（货款要到结算才扣），
-             * 提前入池等于池子里记着一笔还没收到的钱。
-             *
-             * refNo 用结算单号：对账时要能从池子的一笔回溯到是哪张单收的。
-             */
-            if (pointsFee > 0) {
-                /*
-                 * ⚠️ 通道**显式传 null**，不要改成 bill.getPayChannel()。
-                 *
-                 * 池子按 (market, pay_channel) 分桶记账，而**所有出池都传 null**
-                 * （PointsServiceImpl 的 MERCHANT_PAY 与 EXPIRE_INCOME 两处）——
-                 * null 落到列默认值 'WECHAT'，于是进出目前都在同一个桶里，是平的。
-                 *
-                 * 这一行此前读的 bill.getPayChannel() 恒为 null（那一列从没被写过），
-                 * 所以碰巧也落 WECHAT。本步开始真的写通道了：若照旧读它，
-                 * 线下单的入池会落进 OFFLINE 桶而出池还在 WECHAT 桶 ——
-                 * 两个桶一个单调涨一个单调负，而账面总额仍然是平的，
-                 * 只有翻「按通道」那张明细才看得出来。
-                 *
-                 * 要真按通道分桶，得进出两侧一起改，那是独立的一件事。
-                 */
-                pointsService.recordPoolFlow(StlPointsPool.MERCHANT_RECEIVE, pointsFee,
-                        src.merchantNo(), bill.getSettleNo(), null, null);
-            }
             created++;
         }
         return created;
@@ -495,105 +496,35 @@ public class SettleServiceImpl implements SettleService {
         return true;
     }
 
+    /** The preparation and result beans own short pay transactions; remote calls run between them. */
     @Override
-    @Transactional("payTxManager")
     public void executeSplit(String settleNo) {
-        StlBill bill = require(settleNo);
-        if (StlBill.SPLIT.equals(bill.getStatus())
-                || StlBill.SPLIT_CONFIRMED.equals(bill.getStatus())
-                || StlBill.REVERSED.equals(bill.getStatus())) {
-            // 幂等：重复执行不会重复打款。**SPLIT_CONFIRMED 也要挡** ——
-            // 少了它，一笔已确认到账的单被重放时会再发一次分账指令
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("SETTLEMENT_FUNDS_REQUIRES_NO_TRANSACTION");
+        }
+        var plan=splitPreparation.prepare(settleNo);
+        if (plan.completed()) { return; }
+        if (plan.pointsTicket()!=null
+                && !splitResults.acceptPoints(plan.command().requestNo(),pointsExecution.perform(plan.pointsTicket()))) {
             return;
         }
-        /*
-         * 线下单**永远不分账**：钱在商家自己口袋里，向二级商户发起分账
-         * 会从他的**其他**收入里划走这笔佣金 —— 而这单的佣金已经说好不收了。
-         *
-         * 直接返回而不是抛异常：批量分账任务是按状态捞单的，OFFLINE_SETTLED
-         * 本来就捞不到；能走到这儿的只有人工重放或将来某个新入口。
-         * 那种时候要的是「这单不动」，不是让整批任务红着停下。
-         */
-        if (StlBill.OFFLINE_SETTLED.equals(bill.getStatus())) {
-            return;
-        }
-
-        bill.setStatus(StlBill.SPLITTING);
-        update(bill);
-
-        /*
-         * **先补差，再分账**。顺序不能反：
-         * 分账是从二级商户账户里往外拿钱，而补差是往里放钱 ——
-         * 先分后补的话，账户余额可能不够扣，分账被通道拒绝，
-         * 而那时订单已经付过款了。
-         *
-         * 补差失败就不分账，整单转重试：只改了结算基数而钱没补进去，
-         * 等于把商家的账做大而钱没打，比不改更糟。
-         */
-        /*
-         * **补差只在直连路径上存在。**
-         *
-         * 归集路径下应付账款已经按全额算过了（gross 里加回了积分抵扣），
-         * 再补一次就是**重复付款** —— 100 元的货平台会付出 110。
-         *
-         * 现在不出这个问题，只是因为自营单不走到这里；那是<b>巧合式的正确</b>，
-         * 不是设计。在执行点断言，而不是指望调用方记得。
-         */
-        if (!MerchantQueryPort.FUNDS_DIRECT.equals(bill.getFundsMode())
-                && nz(bill.getSubsidyMinor()) > 0) {
-            throw BizException.of(ErrorCode.CONFLICT);
-        }
-        /*
-         * **通道要真的支持补差。**
-         *
-         * `sys_pay_channel.supports_subsidy` 这一列建出来就是为了拦这里，
-         * 但此前**零读取** —— 不具备补差能力的通道照样走到这一步，
-         * 然后补差调用失败、整单转重试，而根因（通道压根没这个能力）
-         * 要翻网关日志才看得出来。
-         *
-         * 判在这里而不是扣分那一刻：**下单时通道还没定**（markPaid 才有），
-         * 那时判等于拿一个还不存在的事实做判断。
-         */
-        if (nz(bill.getSubsidyMinor()) > 0 && !channelMaster.supportsSubsidy(bill.getPayChannel())) {
-            bill.setStatus(StlBill.MANUAL);
-            bill.setLastError("通道不支持积分补差，需人工处理：" + bill.getPayChannel());
-            update(bill);
-            return;
-        }
-        long subsidy = nz(bill.getSubsidyMinor());
-        if (subsidy > 0 && bill.getSubsidyAt() == null) {
-            boolean subsidized = callProvider(StlSplitLog.SUBSIDY, bill, "SUB-" + settleNo);
-            if (!subsidized) {
-                bill.setStatus(StlBill.RETRYING);
-                bill.setRetryCount(nzi(bill.getRetryCount()) + 1);
-                bill.setLastError("积分补差失败，未分账");
-                update(bill);
-                return;
+        var claim=splitPreparation.claim(plan.command().requestNo());
+        if (claim.completed()) { return; }
+        var command=claim.command();
+        SplitGateway.Result result;
+        try {
+            if (command.amountMinor()==0) {
+                result=SplitGateway.Result.ok("NO-CASH:"+command.requestNo());
+            } else {
+                result=claim.submit()
+                        ? splitGateway.split(command.subOrderNo(),command.payMerchantNo(),command.amountMinor(),
+                                command.requestNo())
+                        : splitGateway.querySplit(command.subOrderNo(),command.payMerchantNo(),command.amountMinor(),
+                                command.requestNo());
             }
-            bill.setSubsidyAt(System.currentTimeMillis());
-            update(bill);
-        }
+        } catch (RuntimeException uncertain) { result=SplitGateway.Result.fail("SPLIT_TRANSPORT_UNKNOWN"); }
+        splitResults.acceptCash(command.requestNo(),result);
 
-        String requestNo = "SPL-" + settleNo;
-        boolean ok = callProvider(StlSplitLog.SPLIT, bill, requestNo);
-        if (!ok) {
-            bill.setStatus(StlBill.RETRYING);
-            bill.setRetryCount(nzi(bill.getRetryCount()) + 1);
-            update(bill);
-            return;
-        }
-        bill.setStatus(StlBill.SPLIT);
-        bill.setSplitAt(System.currentTimeMillis());
-        update(bill);
-
-        /*
-         * 积分抵扣兑付跟着分账走 —— **同一时点，不另立一套「积分售后期」**。
-         * 分账成立意味着钱真的到了商家账户，抵扣的那部分补差也在同一笔里，
-         * 此刻才谈得上「平台已付」。
-         *
-         * 各设一套时点的代价：月末对不平，第一件事要先分辨是账单晚了还是积分晚了。
-         */
-        pointsService.confirmDeduction(bill.getSubOrderNo());
     }
 
     // ---------------------------------------------------------------- SettlePort（退款链路）
@@ -606,6 +537,8 @@ public class SettleServiceImpl implements SettleService {
             // 没有结算单（例如未支付即取消）：没什么可回退的，视为成功
             return true;
         }
+        bill=splitPreparation.lockForReverse(bill.getSettleNo());
+        if (bill==null) { return false; }
         if (StlBill.REVERSED.equals(bill.getStatus())) {
             return true;
         }
@@ -691,6 +624,67 @@ public class SettleServiceImpl implements SettleService {
         return refundNo;
     }
 
+    @Override
+    public String prepareRefund(String subOrderNo, String afterSaleNo, long amountMinor, String reason) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("PAY_REFUND_PREPARE_IN_TRANSACTION");
+        }
+        StlBill bill = DataScopeContext.executeWithoutScope(() -> billMapper.selectOne(
+                Wrappers.<StlBill>lambdaQuery().eq(StlBill::getSubOrderNo, subOrderNo).last("LIMIT 1")));
+        if (bill == null) {
+            throw new IllegalArgumentException("PAY_REFUND_BILL_UNKNOWN");
+        }
+        String no = paymentLedger.refund(bill.getOrderNo(), subOrderNo, afterSaleNo, amountMinor, reason);
+        if (no == null) {
+            throw new IllegalArgumentException("PAY_REFUND_ORIGINAL_PAYMENT_UNKNOWN");
+        }
+        return no;
+    }
+
+    @Override
+    public void dispatchRefund(String paymentNo) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("PAY_REFUND_DISPATCH_IN_TRANSACTION");
+        }
+        sendRefundToChannel(paymentNo);
+    }
+
+    @Override
+    public void refreshRefund(String paymentNo) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("PAY_REFUND_QUERY_IN_TRANSACTION");
+        }
+        var evidence = paymentLedger.refundEvidence(paymentNo);
+        if (evidence == null) {
+            throw new IllegalArgumentException("PAY_REFUND_UNKNOWN");
+        }
+        if (evidence.verifiedAt() != null || (evidence.safety()!=null && evidence.safety().terminalVerified())
+                || (evidence.safety()!=null && "REFUND_LATE_SUCCESS_FROZEN".equals(evidence.safety().errorCode()))) return;
+        var coordinates = paymentLedger.refundQueryCoordinates(paymentNo);
+        if (coordinates.isEmpty()) {
+            log.error("[settle] 历史退款缺回查坐标，转人工 paymentNo={}",paymentNo);
+            return;
+        }
+        var ticket = coordinates.get();
+        ai.neargo.shop.spi.pay.RefundQueryResult result;
+        try {
+            result = gatewayRouter.of(ticket.payChannel()).queryRefundOutcome(ticket.outRefundNo());
+        } catch (RuntimeException uncertain) {
+            log.warn("[settle] 退款回查未知 paymentNo={} exception={}", paymentNo,
+                    uncertain.getClass().getSimpleName());
+            return;
+        }
+        if (result == null) return;
+        if (result.status() == ai.neargo.shop.spi.pay.RefundQueryResult.Status.SUCCEEDED) {
+            if (!ticket.outRefundNo().equals(result.outRefundNo()))
+                throw new IllegalArgumentException("PAY_REFUND_QUERY_IDENTITY_MISMATCH");
+            var stored = paymentLedger.refundEvidence(paymentNo);
+            if (!java.util.Objects.equals(stored.currency(), result.currency()))
+                throw new IllegalArgumentException("PAY_REFUND_QUERY_CURRENCY_MISMATCH");
+            paymentLedger.markRefundSettled(paymentNo, result.providerNo(), result.amountMinor());
+        } else refundCapacity.observe(paymentNo, result);
+    }
+
     /**
      * <b>把退款真的发给通道。</b>
      *
@@ -713,9 +707,12 @@ public class SettleServiceImpl implements SettleService {
      * 回滚掉之后，一笔可能已经发到通道的退款在我方一点痕迹都没有。
      */
     private void sendRefundToChannel(String refundNo) {
+        if (!paymentLedger.claimRefundDispatch(refundNo)) {
+            return;
+        }
         var ticket = paymentLedger.refundTicket(refundNo);
         if (ticket.isEmpty()) {
-            paymentLedger.markRefundSent(refundNo, false, false, null,
+            paymentLedger.markRefundRejected(refundNo,
                     "取不到原收款在通道侧的坐标");
             return;
         }
@@ -725,7 +722,7 @@ public class SettleServiceImpl implements SettleService {
             channel = gatewayRouter.of(t.payChannel());
         } catch (RuntimeException e) {
             // 通道未接入**不可重试** —— 重试一万次它也不会自己接上
-            paymentLedger.markRefundSent(refundNo, false, false, null,
+            paymentLedger.markRefundRejected(refundNo,
                     "支付通道未接入：" + t.payChannel());
             return;
         }
@@ -735,9 +732,15 @@ public class SettleServiceImpl implements SettleService {
          */
         var ctx = new ai.neargo.shop.pay.channel.PayGateway.TxContext(
                 null, t.originTradeNo(), t.originOutTradeNo(), t.originTotalMinor());
-        var r = channel.refund(ctx, t.amountMinor(), t.outRefundNo(), t.reason());
-        paymentLedger.markRefundSent(refundNo, r.success(), r.retryable(),
-                r.providerNo(), r.message());
+        try {
+            var r = channel.refund(ctx, t.amountMinor(), t.outRefundNo(), t.reason());
+            if (!r.success() && r.definitiveRejection())
+                paymentLedger.markRefundRejected(refundNo, r.message());
+            else paymentLedger.markRefundSent(refundNo, r.success(), !r.success(), r.providerNo(), r.message());
+        } catch (RuntimeException e) {
+            paymentLedger.markRefundSent(refundNo, false, true, null, "退款发送结果未知，等待原单回查");
+            log.warn("[settle] 退款结果未知 paymentNo={} exception={}", refundNo, e.getClass().getSimpleName());
+        }
     }
 
     /**
@@ -964,8 +967,29 @@ public class SettleServiceImpl implements SettleService {
          */
         boolean isSubsidy = StlSplitLog.SUBSIDY.equals(action)
                 || StlSplitLog.SUBSIDY_RETURN.equals(action);
-        long amount = isSubsidy ? nz(bill.getSubsidyMinor()) : nz(bill.getNetMinor());
+        long amount = isSubsidy ? nz(bill.getSubsidyMinor()) : originalSplitAmount(bill);
         return splitSender.send(action, bill, requestNo, amount);
+    }
+
+    /** Return the actual original command amount, including deployed legacy cash splits. */
+    private long originalSplitAmount(StlBill bill) {
+        var amounts = DataScopeContext.executeWithoutScope(() -> splitLogMapper.selectList(
+                Wrappers.<StlSplitLog>lambdaQuery().eq(StlSplitLog::getSettleNo, bill.getSettleNo())
+                        .eq(StlSplitLog::getSplitAction, StlSplitLog.SPLIT)
+                        .eq(StlSplitLog::getResult, "SUCCESS")))
+                .stream().map(StlSplitLog::getAmountMinor).distinct().toList();
+        if (!amounts.isEmpty()) {
+            if (amounts.size() != 1 || amounts.getFirst() == null || amounts.getFirst() < 0) {
+                throw new IllegalStateException("SETTLEMENT_ORIGINAL_SPLIT_AMOUNT_CONFLICT");
+            }
+            return amounts.getFirst();
+        }
+        Long amount = bill.getSplitProtocolVersion() == null || bill.getSplitProtocolVersion() == 0
+                ? bill.getNetMinor() : bill.getSplitAmountMinor();
+        if (amount == null || amount < 0) {
+            throw new IllegalStateException("SETTLEMENT_SPLIT_AMOUNT_REQUIRED");
+        }
+        return amount;
     }
 
     /**
@@ -1177,13 +1201,9 @@ public class SettleServiceImpl implements SettleService {
         b.setPaidAt(System.currentTimeMillis());
         DataScopeContext.executeWithoutScope(() -> billMapper.updateById(b));
 
-        /*
-         * 归集路径的兑付时点在这里，**不是 executeSplit** ——
-         * 自营单根本不走分账（钱本来就在平台账户，没有划转动作）。
-         * 只把确认挂在分账上的话，归集路径下的 USE 会永远停在 PENDING，
-         * 池子只进不出，而且不报任何错。
-         */
-        pointsService.confirmDeduction(b.getSubOrderNo());
+
+        pointsFunding.assertReady(b.getSettleNo());
+
         return toVO(b);
     }
 

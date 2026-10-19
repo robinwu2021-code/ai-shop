@@ -33,7 +33,14 @@ import java.util.List;
 public record CheckoutCapabilityVO(List<String> usablePayMethods,
                                    boolean anyNotInvoiceCapable,
                                    List<MerchantCapability> merchants,
-                                   List<String> usablePayModes) {
+                                   List<String> usablePayModes,
+                                   boolean pointsEnabled) {
+
+    /** Older internal callers inherit phase one's disabled policy rather than promising unavailable deductions. */
+    public CheckoutCapabilityVO(List<String> usablePayMethods, boolean anyNotInvoiceCapable,
+                                List<MerchantCapability> merchants, List<String> usablePayModes) {
+        this(usablePayMethods, anyNotInvoiceCapable, merchants, usablePayModes, false);
+    }
 
     /**
      * @param quotaExhausted    本期额度已用尽 —— 这家的货现在下不了单

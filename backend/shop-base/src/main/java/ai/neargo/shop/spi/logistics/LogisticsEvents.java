@@ -15,6 +15,22 @@ public final class LogisticsEvents {
     private LogisticsEvents() {
     }
 
+    /** Trusted logistics fact freezes the source generation before a mutable logistics row is corrected. */
+    public record ShipmentSnapshot(String shipmentNo, long version, String waybillNo, String status,
+                                   Long signedAt, Long signedNodeAt, Long firstTraceAt, String source)
+            implements DomainEvent {
+        public ShipmentSnapshot(String shipmentNo, long version, String waybillNo, String status,
+                                Long signedAt, Long signedNodeAt, Long firstTraceAt) {
+            this(shipmentNo, version, waybillNo, status, signedAt, signedNodeAt, firstTraceAt, null);
+        }
+        @Override
+        public String aggregateType() { return "SHIPMENT"; }
+        @Override
+        public String aggregateId() { return shipmentNo; }
+        @Override
+        public String eventType() { return "LGS_SHIPMENT_SNAPSHOT"; }
+    }
+
     /**
      * 首次揽收 / 首次派件 / 进入异常；派件中途<b>放进驿站或快递柜</b>也发一次（{@code atLocker=true}）——
      * 快递100 的「投柜 / 驿站」是派件的子状态，主状态不变，不单发的话「去取件」这一句永远到不了买家。

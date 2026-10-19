@@ -11,9 +11,9 @@ import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.trade.entity.OrdItem;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.OrderItemMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.OrderItemMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.spi.user.UserQueryPort;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
@@ -68,9 +68,9 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
             org.slf4j.LoggerFactory.getLogger(FulfillmentQueryPortImpl.class);
 
 
-    private final SubOrderMapper subOrderMapper;
+    private final StoreOrderMapper subOrderMapper;
     private final OrderItemMapper itemMapper;
-    private final StatusLogMapper statusLogMapper;
+    private final OrderStatusLogMapper statusLogMapper;
     private final UserQueryPort userPort;
     private final OutboxEventBus eventBus;
 
@@ -82,8 +82,8 @@ public class FulfillmentQueryPortImpl implements FulfillmentQueryPort {
         this.statusWriter = statusWriter;
     }
 
-    public FulfillmentQueryPortImpl(SubOrderMapper subOrderMapper, OrderItemMapper itemMapper,
-                                    StatusLogMapper statusLogMapper, UserQueryPort userPort,
+    public FulfillmentQueryPortImpl(StoreOrderMapper subOrderMapper, OrderItemMapper itemMapper,
+                                    OrderStatusLogMapper statusLogMapper, UserQueryPort userPort,
                                     OutboxEventBus eventBus) {
         this.subOrderMapper = subOrderMapper;
         this.itemMapper = itemMapper;

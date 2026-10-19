@@ -50,6 +50,9 @@ public interface ReservationService {
      */
     void releaseByRef(String externalRef);
 
+    /** Cancel even before reserve arrives; the durable tombstone prevents a late reserve from holding stock. */
+    void cancelByRef(String ownerId, String externalRef);
+
     /** 按调用方的单号确认。理由同 {@link #releaseByRef}。 */
     String commitByRef(String externalRef, String operator);
 

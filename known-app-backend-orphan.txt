@@ -57,7 +57,6 @@ c-app GET /mp/group-request/*/price-history
 c-app GET /mp/group-request/*/quotes
 c-app GET /mp/help/faq
 c-app GET /mp/merchant/*/score
-c-app GET /mp/order/*/pay-result
 c-app GET /mp/pickup/*
 c-app GET /mp/search/hot
 c-app GET /mp/search/suggest
@@ -66,10 +65,8 @@ c-app GET /mp/ticket
 c-app GET /mp/ticket/*
 c-app GET /mp/topics
 c-app GET /mp/topics/*/goods
-c-app POST /mp/after-sale/*/cancel
 c-app POST /mp/attribution/report
 c-app POST /mp/group-buy/*/join
-c-app POST /mp/order/*/confirm-receipt
 c-app POST /mp/risk/appeal
 c-app POST /mp/store/*/rebuy
 c-app POST /mp/ticket

@@ -26,6 +26,7 @@ const PENDING = new Map<string, string>([
   // 不是命名问题。见 docs/technical/营销枚举对账报告.md
 ]);
 
+
 describe("枚举对账 · 按字段", () => {
   const { problems, skipped } = audit() as {
     problems: {

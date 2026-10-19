@@ -1,12 +1,12 @@
 <script setup lang="ts">
-// 收银台 + 支付结果（同一页两态）。
+// 收银台与服务端确认结果：待付款、待收款、确认中及终态。
 //
 // ⚠️ **端侧不自判支付成功**。requestPayment 返回的只是「用户完成了交互」，
 // 真正的成功以后端支付回调为准 —— 所以唤起支付后要回查订单状态，而不是直接跳成功页。
 // 这条在 ports/payment.ts 里也写了，是所有支付接入最容易错的地方。
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onHide, onShow } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { requestPayment } from "@shared/ports/payment";
 import { codeLabelKey, showVerifyCode } from "@shared/strategies/order-view";
@@ -14,13 +14,17 @@ import { orderSubscribeTmpls, requestSubscribe } from "@shared/ports/push";
 import { CATEGORY_TYPE, ROUTES } from "@shared/utils/constants";
 import { countdown, money } from "@shared/utils/format";
 import type { Order } from "@shared/types";
-import type { PayMethodItem, PayMethodList } from "@/api/contract";
+import type { PayMethodItem, PayMethodList, PointsOrderState } from "@/api/contract";
 import { confirm } from "@ai-shop/ui/prompt";
+import { PaymentResultPoller, paymentPhase } from "@/shared/payment-result";
 import { clearCheckoutKey } from "@/shared/checkout-key";
 
 const { t } = useI18n();
 
 const order = ref<Order | null>(null);
+const pointsState = ref<PointsOrderState | null>(null);
+const processing = computed(() => order.value?.status === "POINTS_PROCESSING");
+const reconfirm = computed(() => processing.value && pointsState.value?.phase === "RECONFIRM");
 const paying = ref(false);
 /** 可用支付方式。null = 还没拉到 */
 const methodList = ref<PayMethodList | null>(null);
@@ -29,7 +33,24 @@ const chosen = ref<string>("");
 const now = ref(Date.now());
 let timer: ReturnType<typeof setInterval> | undefined;
 
-const paid = computed(() => !!order.value && order.value.status !== "WAIT_PAY");
+
+const awaitingConfirmation = ref(false);
+const phase = computed(() => paymentPhase(order.value?.status, awaitingConfirmation.value));
+const paid = computed(() => phase.value === "paid");
+const resultHint = computed(() => ({ offline: "pay.pendingOffline", confirming: "pay.confirmPending",
+  cancelled: "pay.orderCancelled", refunded: "pay.orderRefunded", unknown: "pay.unknownResult",
+ } as Record<string, string>)[phase.value] || "pay.unknownResult");
+const poller = new PaymentResultPoller();
+let visible = true;
+let loadGeneration = 0;
+let checkoutCleared = false;
+let invokingPayment = false;
+let resumePayment: ((visible: boolean) => void) | undefined;
+
+function resumeWhenVisible(): Promise<boolean> {
+  return visible ? Promise.resolve(true) : new Promise((resolve) => { resumePayment = resolve; });
+}
+
 
 /** 那串码叫什么。与订单详情共用一份判据，别在两处各写一个三分支 */
 const codeLabel = computed(() =>
@@ -47,6 +68,7 @@ const showCode = computed(() =>
  * 而端上要做的事正好相反。
  */
 const canPay = computed(() => {
+  if (order.value?.paymentResolution) return false;
   const list = methodList.value;
   if (!list || !list.configured) return true;
   return list.methods.some((m) => m.available);
@@ -54,6 +76,7 @@ const canPay = computed(() => {
 
 /** 拦住时要说明原因，别只给一个灰按钮 */
 const blockedReason = computed(() => {
+  if (order.value?.paymentResolution) return String(t("pay.manualRequired"));
   const list = methodList.value;
   if (!list || !list.configured || list.methods.some((m) => m.available)) return "";
   return String(t("pay.noUsableMethod"));
@@ -83,37 +106,78 @@ const failed = ref(false);
 const currentNo = ref("");
 
 async function load(orderNo: string) {
+  resumePayment?.(false);
+  resumePayment = undefined;
+  invokingPayment = false;
+  const generation = ++loadGeneration;
+  poller.cancel();
   currentNo.value = orderNo;
+  order.value = null;
+  pointsState.value = null;
+  awaitingConfirmation.value = false;
+  checkoutCleared = false;
+  methodList.value = null;
+  chosen.value = "";
+  paying.value = false;
   try {
-    order.value = await api.orderDetail(orderNo);
+
+    let detail = await api.orderDetail(orderNo);
+    const payNo = detail.payOrderNo || detail.orderNo;
+    if (payNo !== detail.orderNo) detail = await api.orderDetail(payNo);
+    if (generation !== loadGeneration || !visible) return;
+    currentNo.value = payNo;
+    order.value = detail;
+    if (detail.status === "POINTS_PROCESSING") {
+      try {
+        pointsState.value = await api.orderPointsState(payNo);
+        if (generation !== loadGeneration || !visible) return;
+      } catch {
+        pointsState.value = null;
+      }
+    }
+
     failed.value = false;
+    if (detail.status === "WAIT_PAY" && !detail.paymentResolution) {
+      try {
+        const list = await api.payMethods(payNo);
+        if (generation !== loadGeneration || !visible) return;
+        methodList.value = list;
+        chosen.value = list.methods.find((m) => m.available)?.payChannel ?? "";
+      } catch { /* 网络抖动时仍允许服务端验证通道。 */ }
+    }
   } catch {
-    failed.value = true;
-    return;
-  }
-  if (order.value?.status === "WAIT_PAY") {
-    await loadMethods(orderNo);
+
+    if (generation === loadGeneration && visible) failed.value = true;
+
   }
 }
 
-/** 拉可用支付方式，并把默认选中放在第一个可用的上 */
-async function loadMethods(orderNo: string) {
+function acceptResult(value: Order): boolean {
+  order.value = value;
+  if (paid.value) {
+    awaitingConfirmation.value = false;
+    if (!checkoutCleared) { clearCheckoutKey(); checkoutCleared = true; }
+  }
+  if (value.paymentResolution) awaitingConfirmation.value = false;
+  return value.status !== "WAIT_PAY" || !!value.paymentResolution;
+}
+
+async function refreshResult() {
+  if (!currentNo.value || !visible) return;
   try {
-    const list = await api.payMethods(orderNo);
-    methodList.value = list;
-    chosen.value = list.methods.find((m) => m.available)?.payChannel ?? "";
-  } catch {
-    /*
-     * 拉不到就当作「未配置」放行 —— 与后端 configured=false 同一条口径。
-     * 拦住的话，一次网络抖动会让用户付不了一个完全正常的单。
-     */
-    methodList.value = null;
+    await poller.run(() => api.payResult(currentNo.value), acceptResult, true);
+  } catch (e) {
+    if (visible) uni.showToast({ title: (e as Error).message, icon: "none" });
   }
 }
 
 async function pay() {
   const o = order.value;
-  if (!o || paying.value || expired.value) return;
+
+  if (!o || paying.value || expired.value || !canPay.value || phase.value !== "waiting") return;
+  const generation = loadGeneration;
+  const active = () => visible && generation === loadGeneration;
+
   paying.value = true;
   try {
     /*
@@ -124,7 +188,9 @@ async function pay() {
      * 而 mock 下它「成功」了，于是这条链看起来是通的。
      * 真通道上它一定失败，且失败在用户面前。
      */
-    const init = await api.payOrder(o.orderNo, chosen.value || undefined);
+    const init = await api.payOrder(currentNo.value, chosen.value || undefined);
+    if (!active()) return;
+    currentNo.value = init.orderNo || currentNo.value;
 
     /*
      * **应付 0 元：后端已经结清了，不要唤起收银台。**
@@ -137,20 +203,27 @@ async function pay() {
      * 将来多一个免支付的来源就要改这里。见 TDD-零元订单支付 §4.2。
      */
     if (init.settled) {
-      order.value = await api.orderDetail(o.orderNo);
-      if (paid.value) clearCheckoutKey();
-      uni.showToast({ title: String(t("pay.freeSettled")), icon: "none" });
+      awaitingConfirmation.value = true;
+      await refreshResult();
+      if (active() && paid.value) uni.showToast({ title: String(t("pay.freeSettled")), icon: "none" });
       return;
     }
 
     // 参数原样透传：不同通道字段完全不同，端上不该翻译成一套「统一格式」
+    awaitingConfirmation.value = true;
+    invokingPayment = true;
     const res = await requestPayment(init.payParams);
+    if (generation !== loadGeneration) return;
+    invokingPayment = false;
+    if (!await resumeWhenVisible() || !active()) return;
     if (res.cancelled) {
+      awaitingConfirmation.value = false;
       uni.showToast({ title: String(t("pay.cancelled")), icon: "none" });
       // 取消不是失败：单还在，用户可以换一种方式再来（后端会换新的商户单号）
       return;
     }
     if (!res.invoked) {
+      awaitingConfirmation.value = false;
       /*
        * **唤起失败要把通道的原话说出来。**
        *
@@ -187,9 +260,9 @@ async function pay() {
       if (r.rejected.length) void api.subscribeReport(r.rejected, false);
     });
     // 以回查为准，不用端侧返回值判成功
-    order.value = await api.orderDetail(o.orderNo);
-    // 付掉了：结算页的幂等键作废。不清的话，紧接着再买一份一模一样的会被回放成这张已付的单
-    if (paid.value) clearCheckoutKey();
+    awaitingConfirmation.value = true;
+    await poller.run(() => api.payResult(currentNo.value), acceptResult);
+    if (!active()) return;
 
     /*
      * **团单付完直接落在自己的团页**（原型 p04）：倒计时、人头、一颗「邀请邻居来拼」。
@@ -199,12 +272,12 @@ async function pay() {
     const groupNo = paid.value ? groupNoOf(order.value) : "";
     if (groupNo) {
       await subscribed.catch(() => {});
-      uni.redirectTo({ url: `${ROUTES.group}?groupNo=${groupNo}&paid=1` });
+      if (active()) uni.redirectTo({ url: `${ROUTES.group}?groupNo=${groupNo}&paid=1` });
     }
   } catch (e) {
-    uni.showToast({ title: (e as Error).message, icon: "none" });
+    if (active()) uni.showToast({ title: (e as Error).message, icon: "none" });
   } finally {
-    paying.value = false;
+    if (generation === loadGeneration) { paying.value = false; invokingPayment = false; }
   }
 }
 
@@ -230,6 +303,21 @@ async function cancel() {
   uni.redirectTo({ url: `${ROUTES.orders}` });
 }
 
+async function cancelForReconfirm() {
+  const o=order.value;
+  if (!o || !reconfirm.value) return;
+  const ok=await confirm({ title: String(t("pay.pointsReconfirmTitle")),
+    hint: String(t("pay.pointsReconfirmHint")) });
+  if (!ok) return;
+  try {
+    await api.cancelOrder(o.orderNo);
+    clearCheckoutKey();
+    uni.switchTab({ url: ROUTES.cart });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: "none" });
+  }
+}
+
 /** 这笔支付里参团的那一单的团号。支付视角下团号挂在子单上 */
 function groupNoOf(o: typeof order.value): string {
   if (!o) return "";
@@ -237,7 +325,7 @@ function groupNoOf(o: typeof order.value): string {
 }
 
 function gotoOrder() {
-  uni.redirectTo({ url: `${ROUTES.order}?orderNo=${order.value?.orderNo}` });
+  uni.redirectTo({ url: `${ROUTES.order}?orderNo=${order.value?.subOrders?.[0]?.orderNo || order.value?.orderNo}` });
 }
 
 function gotoHome() {
@@ -245,6 +333,7 @@ function gotoHome() {
 }
 
 onLoad((q) => {
+  visible = true;
   const no = (q?.orderNo as string) || "";
   /*
    * **`auto=1`：下单页刚提交完，直接把微信支付拉起来**（执行计划 B3，原型 k02）。
@@ -261,8 +350,10 @@ onLoad((q) => {
    * 取消或失败时退回的正是这一页（单已经建好、倒计时在走）。
    */
   if (no) {
-    void load(no).then(() => {
-      if (q?.auto === "1" && order.value?.status === "WAIT_PAY") {
+    const loading = load(no);
+    const generation = loadGeneration;
+    void loading.then(() => {
+      if (visible && generation === loadGeneration && q?.auto === "1" && order.value?.status === "WAIT_PAY") {
         void pay();
       }
     });
@@ -270,7 +361,15 @@ onLoad((q) => {
   timer = setInterval(() => (now.value = Date.now()), 1000);
 });
 
-onUnmounted(() => clearInterval(timer));
+onHide(() => { visible = false; poller.cancel(); });
+onShow(() => {
+  visible = true;
+  if (resumePayment) { const resume = resumePayment; resumePayment = undefined; resume(true); return; }
+  if (invokingPayment) return;
+  if (!order.value && currentNo.value) void load(currentNo.value);
+  else if (awaitingConfirmation.value) void refreshResult();
+});
+onUnmounted(() => { visible = false; resumePayment?.(false); resumePayment = undefined; loadGeneration++; poller.cancel(); clearInterval(timer); });
 </script>
 
 <template>
@@ -283,8 +382,31 @@ onUnmounted(() => clearInterval(timer));
          **不写在 `<sh-scaffold>` 上**：写在那儿的话，`order` 为空时连外壳都不渲染 ——
          没有导航栏、没有一个字，退不回去。守卫留在这里，外壳照常在。 -->
     <template v-if="order">
+      <template v-if="processing">
+        <view class="sh-card points-processing">
+          <text class="txt-display">
+            {{ $t(reconfirm ? "pay.pointsReconfirmTitle" : "pay.pointsProcessing") }}
+          </text>
+          <text class="txt-caption points-processing__hint">
+            {{ $t(reconfirm ? "pay.pointsReconfirmHint" : "pay.pointsProcessingHint") }}
+          </text>
+        </view>
+        <sh-actionbar class="bar-center" :pad="220">
+          <view v-if="reconfirm" class="sh-btn" @tap="cancelForReconfirm">
+            {{ $t("pay.pointsReconfirmAction") }}
+          </view>
+          <template v-else>
+            <view class="sh-btn" @tap="load(currentNo)">{{ $t("pay.refreshResult") }}</view>
+            <text class="sh-link sh-hit" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</text>
+          </template>
+        </sh-actionbar>
+      </template>
+      <template v-else>
+        <text v-if="order.paymentResolution && phase !== 'waiting'" class="txt-caption block-reason">{{ $t("pay.manualRequired") }}</text>
         <!-- 待支付 -->
-        <template v-if="!paid">
+
+        <template v-if="phase === 'waiting'">
+
           <view class="sh-card hero">
             <text class="txt-hero hero__amount sh-num">{{ money(order.amount.payableMinor) }}</text>
             <text class="txt-caption hero__label">{{ $t("pay.payable") }}</text>
@@ -351,7 +473,7 @@ onUnmounted(() => clearInterval(timer));
         </template>
 
         <!-- 支付完成 -->
-        <template v-else>
+        <template v-else-if="paid">
           <view class="sh-card done">
             <text class="done__icon">✓</text>
             <text class="txt-display done__title">{{ $t("pay.done") }}</text>
@@ -379,8 +501,16 @@ onUnmounted(() => clearInterval(timer));
             <text class="sh-link sh-link--quiet cancel sh-hit" @tap="gotoHome">{{ $t("pay.keepShopping") }}</text>
           </sh-actionbar>
         </template>
-  
-  
+        <template v-else>
+          <view class="sh-card done">
+            <text class="txt-display done__title">{{ $t(resultHint) }}</text>
+          </view>
+          <sh-actionbar class="bar-center" :pad="220">
+            <view class="sh-btn" @tap="refreshResult">{{ $t("pay.refreshResult") }}</view>
+            <text class="sh-link sh-hit" @tap="gotoOrder">{{ $t("pay.viewOrder") }}</text>
+          </sh-actionbar>
+        </template>
+      </template>
     </template>
   </sh-scaffold>
 </template>

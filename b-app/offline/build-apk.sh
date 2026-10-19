@@ -107,7 +107,7 @@ ok "两行 apply from 接线在"
 
 [ -f "$KEYSTORE" ] || die "签名 keystore 不在：$KEYSTORE"
 ok "keystore 在"
-[ -d "$JDK" ] || die "JDK 不在：$JDK（用 JAVA_HOME 指一个 17）"
+[ -d "$JDK" ] || die "JDK 不在：${JDK}（用 JAVA_HOME 指一个 17）"
 ok "JDK：$JDK"
 
 # ── ⓪b 原生插件：以仓库里那份为真源 ─────────────────────────────────────
@@ -167,7 +167,7 @@ if not (n1 and n2):
     sys.exit(f"没能改动 build.gradle 的版本号（versionCode 改了 {n1} 处、versionName {n2} 处）")
 open(p, 'w', encoding='utf-8').write(s)
 PY
-    ok "已把离线工程 gradle 同步到 $VNAME / $VCODE（原为 ${GRADLE_CODE:-?}）"
+    ok "已把离线工程 gradle 同步到 $VNAME / ${VCODE}（原为 ${GRADLE_CODE:-?}）"
 else
     ok "离线工程 gradle 已是 $VCODE"
 fi
@@ -236,7 +236,7 @@ case "$BASES" in
 esac
 
 DIST_CODE=$(python3 -c "import json;print(json.load(open('$DIST/manifest.json'))['version']['code'])")
-[ "$DIST_CODE" = "$VCODE" ] || die "产物里的 version.code 是 $DIST_CODE，而真源是 $VCODE。
+[ "$DIST_CODE" = "$VCODE" ] || die "产物里的 version.code 是 ${DIST_CODE}，而真源是 ${VCODE}。
     多半是改了 manifest.json 却没重跑 build:app（别加 --no-build）。"
 ok "产物 www 版本：$DIST_CODE"
 
@@ -305,14 +305,14 @@ if [ -n "$INSTALL_TO" ]; then
     adb -s "$INSTALL_TO" install -r "$DEST" >/dev/null || die "安装失败"
     INSTALLED=$(adb -s "$INSTALL_TO" shell dumpsys package "$PKG" 2>/dev/null \
         | awk '/versionCode=/{print $1; exit}' | sed 's/.*versionCode=//')
-    [ "$INSTALLED" = "$VCODE" ] || die "装上的是 $INSTALLED，不是 $VCODE"
+    [ "$INSTALLED" = "$VCODE" ] || die "装上的是 ${INSTALLED}，不是 $VCODE"
     ok "已安装 $VNAME / $VCODE"
 
     # 从手机那一侧探后端：本机 curl 验不了（本机 DNS 走内网代理，与手机不是一条路）
     BASE=$(printf '%s' "$BASES" | sed 's/.*="//; s/"$//' | awk 'NR==1')
     HEALTH=$(adb -s "$INSTALL_TO" shell "curl -s --max-time 12 $BASE/actuator/health" 2>/dev/null || true)
     case "$HEALTH" in
-        *'"status":"UP"'*) ok "手机侧探后端：UP（$BASE）" ;;
+        *'"status":"UP"'*) ok "手机侧探后端：UP（${BASE}）" ;;
         *) printf '  \033[33m!\033[0m 手机侧探 %s 没拿到 UP：%s\n' "$BASE" "${HEALTH:0:120}" ;;
     esac
 
@@ -321,7 +321,7 @@ if [ -n "$INSTALL_TO" ]; then
     sleep 10
     PID=$(adb -s "$INSTALL_TO" shell pidof "$PKG" 2>/dev/null | tr -d '\r' || true)
     [ -n "$PID" ] || die "启动后进程不在 —— 启动即崩。看 adb -s $INSTALL_TO logcat -d | grep -i fatal"
-    ok "进程活着（pid $PID）"
+    ok "进程活着（pid ${PID}）"
 
     CRASH=$(adb -s "$INSTALL_TO" logcat -d -t 400 2>/dev/null | grep -iE "FATAL|AndroidRuntime" || true)
     [ -z "$CRASH" ] || die "logcat 里有崩溃：

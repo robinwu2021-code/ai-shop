@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,11 +34,7 @@ public class WxShippingGateway implements WxShippingPort {
     private static final Pattern ERRCODE = Pattern.compile("\"errcode\"\\s*:\\s*(-?\\d+)");
     private static final Pattern ERRMSG = Pattern.compile("\"errmsg\"\\s*:\\s*\"([^\"]*)\"");
 
-    /**
-     * <b>「订单已发货」当成功</b>。重试撞到它是正常的 —— 上一次其实报成功了，
-     * 只是回执没收到。按失败重试的话这笔单会永远重试下去，
-     * 而台账上它永远是「失败」，运营永远在看一条修不好的告警。
-     */
+    /** Legacy scalar replay compatibility only; a mapped source cannot prove identity from this reply. */
     private static final int ALREADY_SHIPPED = 10060002;
     /** 这个小程序还没开通「发货信息录入」。**不可重试**，也不该当成缺陷去查代码 */
     private static final int NOT_TRADE_MANAGED = 10060011;
@@ -100,7 +97,7 @@ public class WxShippingGateway implements WxShippingPort {
             int code = intOf(resp, ERRCODE, -1);
             String msg = strOf(resp, ERRMSG);
 
-            if (code == 0 || code == ALREADY_SHIPPED) {
+            if (code == 0 || code == 10060023 || (code == ALREADY_SHIPPED && !cmd.mappedSource())) {
                 log.info("[wxship] 上报成功 outTradeNo={}{}", cmd.outTradeNo(),
                         code == ALREADY_SHIPPED ? "（微信说已发货，按成功处理）" : "");
                 return Result.ok();
@@ -127,8 +124,7 @@ public class WxShippingGateway implements WxShippingPort {
                     cmd.outTradeNo(), code, msg, retryable);
             return retryable ? Result.retry(code, msg) : Result.fatal(code, msg);
         } catch (Exception e) {
-            // 网络层失败一律可重试：这一刻「到底报没报上」是真的不知道，
-            // 而微信对重复上报会回 10060002，我们把它当成功——所以重试是安全的
+            // Unknown outcomes retry the captured body; mapped already-shipped replies require manual proof.
             log.warn("[wxship] 上报异常 outTradeNo={}：{}", cmd.outTradeNo(), e.toString());
             return Result.retry(-1, e.getClass().getSimpleName());
         }
@@ -182,21 +178,26 @@ public class WxShippingGateway implements WxShippingPort {
     }
 
     private static String validate(Command c) {
-        if (c.outTradeNo() == null || c.outTradeNo().isBlank()) {
-            return "缺商户单号";
-        }
-        if (c.itemDesc() == null || c.itemDesc().isBlank()) {
-            return "缺商品描述（微信 10060008：不能为空）";
-        }
-        if (c.payerOpenid() == null || c.payerOpenid().isBlank()) {
-            return "缺付款人 openid —— 必须是支付时那个 AppID 下的，从支付单读";
-        }
-        if (c.logisticsType() == 1
-                && (blank(c.trackingNo()) || blank(c.expressCompany()))) {
-            // 快递必须运单号与快递公司**成对**，缺一个微信回 268485226/227
-            return "快递发货缺运单号或快递公司（两者必须成对）";
+        if (blank(c.outTradeNo())) { return "缺商户单号"; }
+        if (blank(c.payerOpenid())) { return "缺支付单付款人 openid"; }
+        List<ShippingItem> shipments = itemsOf(c);
+        if (shipments.isEmpty() || shipments.size() > 15) { return "发货包裹数量必须为1至15，不能截断上报"; }
+        if (c.deliveryMode() != 1 && c.deliveryMode() != 2) { return "无效发货模式"; }
+        if (c.deliveryMode() == 1 && shipments.size() != 1) { return "统一发货必须只有一个包裹"; }
+        if (c.deliveryMode() == 2 && c.logisticsType() != 1) { return "拆单发货仅支持物流快递"; }
+        for (ShippingItem item : shipments) {
+            if (blank(item.itemDesc())) { return "缺商品描述（微信 10060008）"; }
+            if (c.logisticsType() == 1 && (blank(item.trackingNo()) || blank(item.expressCompany()))) {
+                return "快递发货缺运单号或快递公司";
+            }
         }
         return null;
+    }
+
+    private static List<ShippingItem> itemsOf(Command c) {
+        return c.shipments().isEmpty() && !c.mappedSource()
+                ? List.of(new ShippingItem(null, null, null, c.trackingNo(), c.expressCompany(), c.itemDesc()))
+                : c.shipments();
     }
 
     private static boolean blank(String s) {
@@ -205,19 +206,24 @@ public class WxShippingGateway implements WxShippingPort {
 
     private String buildBody(Command c) {
         StringBuilder sb = new StringBuilder(256);
-        sb.append("{\"order_key\":{\"order_number_type\":1,\"mchid\":\"").append(mchId)
+        sb.append("{\"order_key\":{\"order_number_type\":1,\"mchid\":\"").append(esc(mchId))
                 .append("\",\"out_trade_no\":\"").append(esc(c.outTradeNo())).append("\"},")
                 .append("\"logistics_type\":").append(c.logisticsType()).append(',')
-                // 拆单发货（2）只有快递才允许（10060006），我们暂不支持
-                .append("\"delivery_mode\":1,")
-                .append("\"shipping_list\":[{\"item_desc\":\"")
-                .append(esc(trim(c.itemDesc(), 120))).append('"');
-        if (c.logisticsType() == 1) {
-            sb.append(",\"tracking_no\":\"").append(esc(c.trackingNo()))
-                    .append("\",\"express_company\":\"").append(esc(c.expressCompany())).append('"');
+                .append("\"delivery_mode\":").append(c.deliveryMode()).append(',');
+        if (c.deliveryMode() == 2) { sb.append("\"is_all_delivered\":").append(c.allDelivered()).append(','); }
+        sb.append("\"shipping_list\":[");
+        boolean first = true;
+        for (ShippingItem item : itemsOf(c)) {
+            if (!first) { sb.append(','); }
+            first = false;
+            sb.append("{\"item_desc\":\"").append(esc(trim(item.itemDesc(), 120))).append('"');
+            if (c.logisticsType() == 1) {
+                sb.append(",\"tracking_no\":\"").append(esc(item.trackingNo()))
+                        .append("\",\"express_company\":\"").append(esc(item.expressCompany())).append('"');
+            }
+            sb.append('}');
         }
-        sb.append("}],")
-                .append("\"upload_time\":\"")
+        sb.append("],\"upload_time\":\"")
                 .append(OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)).append("\",")
                 .append("\"payer\":{\"openid\":\"").append(esc(c.payerOpenid())).append("\"}}");
         return sb.toString();

@@ -20,7 +20,7 @@ import { money } from "@/lib/utils";
 import type { FulfillmentType, Order } from "@/lib/types";
 import { OrderStatusBadge, useFulfillmentTypeMap } from "@/components/status";
 import { type Column } from "@/components/ui/data-table";
-import { Drawer, DrawerSection, Field, FieldGrid } from "@/components/ui/drawer";
+import { Field, FieldGrid } from "@/components/ui/drawer";
 import { Toolbar } from "@/components/ui/toolbar";
 import { HelpNote } from "@/components/ui/help-note";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ import { IdCell } from "@/components/ui/misc";
 import { PROXY_CANCELLABLE } from "@/lib/types";
 import { usePaging } from "@/lib/use-paging";
 import type { OrdersCopy } from "./copy";
+import { ProxyCancelDrawer } from "./proxy-cancel-drawer";
 
 interface Line { skuNo: string; qty: string }
 
@@ -47,8 +48,7 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
   const fulfillMap = useFulfillmentTypeMap();
   const [keyword, setKeyword] = useState("");
   const { page, setPage, size, setSize } = usePaging();
-  const [cancelling, setCancelling] = useState<Order | null>(null);
-  const [reason, setReason] = useState("");
+  const [cancelling, setCancelling] = useState<{ order: Order; session: string } | null>(null);
 
   const [form, setForm] = useState({
     merchantNo: "", fulfillType: "STORE_PICKUP" as FulfillmentType,
@@ -143,15 +143,6 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
     },
   });
 
-  const cancel = useMutation({
-    mutationFn: () => api.proxyCancelOrder({ orderNo: cancelling!.orderNo, reason }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["orders"] });
-      setCancelling(null);
-      notify.success(c.toastProxyCancelled);
-    },
-  });
-
   const columns: Column<Order>[] = [
     { header: c.colSubOrderNo, cell: (o) => <IdCell value={o.orderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (o) => o.merchantName },
@@ -163,7 +154,9 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
       // 只有状态机允许取消的单才给按钮：已完成的要走售后，摆个会报错的按钮是在骗人点一次
       cell: (o) =>
         canProxy && PROXY_CANCELLABLE.includes(o.status) ? (
-          <Button size="sm" variant="outline" onClick={() => { setCancelling(o); setReason(""); }}>
+          <Button size="sm" variant="outline" onClick={() => {
+            setCancelling({ order: o, session: crypto.randomUUID() });
+          }}>
             {c.actionProxyCancel}
           </Button>
         ) : <span className="text-muted-foreground">{c.none}</span>,
@@ -355,33 +348,13 @@ export function ProxyTab({ c, canProxy }: { c: OrdersCopy; canProxy: boolean }) 
         empty={c.empty}
       />
 
-      <Drawer
-        open={!!cancelling}
-        onOpenChange={(o) => !o && setCancelling(null)}
-        title={cancelling ? fill(c.cancelTitle, { no: cancelling.orderNo }) : ""}
-        footer={<Button loading={cancel.isPending} onClick={() => cancel.mutate()}>{c.btnProxyCancel}</Button>}
-      >
-        {cancelling && (
-          <div>
-            <DrawerSection first title={c.secOverview}>
-              <FieldGrid>
-                <Field className="mb-3" label={c.colMerchant}>{cancelling.merchantName}</Field>
-                <Field className="mb-3" label={c.colBuyer}>{cancelling.buyerNickname}</Field>
-                <Field className="mb-3" label={c.colPaid}>{money(cancelling.payAmount)}</Field>
-                <Field className="mb-3" label={c.colStatus}><OrderStatusBadge value={cancelling.status} /></Field>
-              </FieldGrid>
-            </DrawerSection>
-            <DrawerSection title={c.secCancel}>
-              <Field className="mb-0" label={c.fieldCancelReason}>
-                <Textarea value={reason} onChange={setReason} placeholder={c.cancelReasonPlaceholder} rows={3} />
-              </Field>
-              <p className="txt-caption text-muted-foreground">
-                {c.cancelUnpaidHint}
-              </p>
-            </DrawerSection>
-          </div>
-        )}
-      </Drawer>
+      {cancelling && <ProxyCancelDrawer key={cancelling.session} order={cancelling.order}
+        session={cancelling.session} c={c} onClose={() => setCancelling(null)}
+        onCancelled={(submittedSession) => {
+          qc.invalidateQueries({ queryKey: ["orders"] });
+          setCancelling((current) => current?.session === submittedSession ? null : current);
+          notify.success(c.toastProxyCancelled);
+        }} />}
     </>
   );
 }

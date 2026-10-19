@@ -14,7 +14,7 @@ import ai.neargo.shop.spi.logistics.LogisticsEvents;
 import ai.neargo.shop.spi.notify.WxSubscribePort;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -56,7 +56,7 @@ class WaybillNotifyFlowTest {
     @Autowired
     private SubscribeMapper subscribeMapper;
     @Autowired
-    private SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
     @Autowired
     private StubWxSubscribeGateway wxStub;
 

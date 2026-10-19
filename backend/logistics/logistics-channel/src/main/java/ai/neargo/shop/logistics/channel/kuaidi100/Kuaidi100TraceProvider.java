@@ -123,6 +123,20 @@ public class Kuaidi100TraceProvider implements TraceProvider {
      */
     @Override
     public Optional<TraceResult> trace(String carrier, String waybillNo, String phone) {
+        return query(carrier, waybillNo, phone, Duration.ofSeconds(10));
+    }
+
+    @Override
+    public Optional<TraceResult> precheck(String carrier, String waybillNo, String phone) {
+        return query(carrier, waybillNo, phone, Duration.ofSeconds(3));
+    }
+
+    @Override
+    public Optional<TraceResult> refresh(String carrier, String waybillNo, String phone) {
+        return query(carrier, waybillNo, phone, Duration.ofSeconds(3));
+    }
+
+    private Optional<TraceResult> query(String carrier, String waybillNo, String phone, Duration timeout) {
         String com = carrier == null ? null : CODES.get(carrier);
         if (com == null || waybillNo == null || waybillNo.isBlank() || !available()) {
             return Optional.empty();
@@ -142,7 +156,7 @@ public class Kuaidi100TraceProvider implements TraceProvider {
             String param = json.writeValueAsString(p);
             String form = "customer=" + enc(customer) + "&sign=" + enc(sign(param, key, customer)) + "&param=" + enc(param);
             HttpRequest req = HttpRequest.newBuilder(URI.create(endpoint))
-                    .timeout(Duration.ofSeconds(10))
+                    .timeout(timeout)
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .POST(HttpRequest.BodyPublishers.ofString(form)).build();
             String body = http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)).body();
@@ -204,7 +218,9 @@ public class Kuaidi100TraceProvider implements TraceProvider {
                 String loc = d.path("areaName").asText(d.path("location").asText("")).trim();
                 int[] ll = parseCenter(d.path("areaCenter").asText(""));
                 String sc = d.path("statusCode").asText("").trim();
-                nodes.add(new TraceResult.TraceNode(at, nodeStatus(d.path("status").asText("")), text,
+                String statusName = d.path("status").asText("");
+                TraceStatus nodeState = statusName.isBlank() ? statusOf(sc) : nodeStatus(statusName);
+                nodes.add(new TraceResult.TraceNode(at, nodeState, text,
                         loc.isEmpty() ? null : loc,
                         ll == null ? null : ll[0], ll == null ? null : ll[1],
                         sc.isEmpty() ? null : sc));

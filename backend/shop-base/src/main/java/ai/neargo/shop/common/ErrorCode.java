@@ -350,6 +350,9 @@ public enum ErrorCode {
     /** 本单支付渠道不支持部分退款（或已超次数 / 期限）—— 改用积分补偿、线下退款登记或整单退。 */
     AFTERSALE_CHANNEL_PARTIAL_UNSUPPORTED(20013, "err.trade.aftersale_channel_partial_unsupported"),
 
+    /** Do not report cash-order cleanup complete when an older order still contains points liabilities. */
+    ORDER_POINTS_MANUAL_REQUIRED(20014, "err.trade.order_points_manual_required"),
+
     // ---- 3xxxx 履约 ----
     ALREADY_VERIFIED(30001, "err.fulfillment.already_verified"),
     NOT_THIS_PICKUP_POINT(30002, "err.fulfillment.not_this_pickup"),
@@ -576,6 +579,13 @@ public enum ErrorCode {
     INVOICE_TAX_NO_REQUIRED(50008, "err.settle.invoice_tax_no_required"),
     /** 个税税率超过硬上限（45%）。超过一定是配置错误，而它会扣光每一笔提现。 */
     TAX_RATE_TOO_HIGH(50009, "err.settle.tax_rate_too_high"),
+
+    /** Points operator requests retain the original financial reference when a check rejects them. */
+    POINTS_SELF_REVIEW(50040, "err.points.self_review"),
+    POINTS_REVISION_CHANGED(50041, "err.points.revision_changed"),
+    POINTS_FUNDS_UNAVAILABLE(50042, "err.points.funds_unavailable"),
+    POINTS_EVIDENCE_REQUIRED(50043, "err.points.evidence_required"),
+    POINTS_OPERATION_REJECTED(50044, "err.points.operation_rejected"),
 
     // ---- 6xxxx 风控 ----
     RISK_BLOCKED(60001, "err.risk.blocked"),

@@ -27,10 +27,12 @@ class MachineTablesTest {
     void payment() {
         EdgeTable t = new EdgeTable()
                 .row(List.of(E), "PLACE", List.of("BUYER", "PLATFORM"), "WAIT_PAY", "WAIT_OFFLINE_PAY")
+                .row(List.of(E), "POINTS_STAGE", List.of("BUYER", "PLATFORM"), "POINTS_PENDING")
+                .row(List.of("POINTS_PENDING"), "POINTS_READY", List.of("SYSTEM"), "WAIT_PAY", "WAIT_OFFLINE_PAY")
                 .row(List.of("WAIT_PAY"), "PAY_SUCCEEDED", List.of("CHANNEL"), "PAID")
                 .row(List.of("WAIT_OFFLINE_PAY"), "OFFLINE_CONFIRMED", List.of("MERCHANT"), "PAID")
-                .row(List.of("WAIT_PAY", "WAIT_OFFLINE_PAY"), "CANCEL", List.of("BUYER", "PLATFORM"), "CANCELLED")
-                .row(List.of("WAIT_PAY"), "PAY_TIMEOUT", List.of("SYSTEM"), "CLOSED")
+                .row(List.of("POINTS_PENDING", "WAIT_PAY", "WAIT_OFFLINE_PAY"), "CANCEL", List.of("BUYER", "PLATFORM"), "CANCELLED")
+                .row(List.of("POINTS_PENDING", "WAIT_PAY"), "PAY_TIMEOUT", List.of("SYSTEM"), "CLOSED")
                 .stay(List.of("CLOSED", "CANCELLED"), "LATE_PAY_SUCCEEDED", List.of("CHANNEL"));
         assertThat(Invariants.edges(PaymentMachine.MACHINE)).containsExactlyInAnyOrderElementsOf(t.edges());
     }
@@ -43,6 +45,7 @@ class MachineTablesTest {
                 .row(List.of("WAIT_PAY"), "CANCEL", List.of("SYSTEM"), "CANCELLED")
                 .stay(List.of("WAIT_FULFILL"), "PREPARE", List.of("MERCHANT"))
                 .row(List.of("WAIT_FULFILL"), "SHIPPED", List.of("SYSTEM"), "FULFILLING")
+                .row(List.of("WAIT_FULFILL"), "SHIP_BY_MERCHANT", List.of("MERCHANT"), "FULFILLING")
                 .row(List.of("WAIT_FULFILL"), "ARRIVED_AT_PICKUP", List.of("MERCHANT"), "FULFILLING")
                 .row(List.of("WAIT_FULFILL", "FULFILLING"), "VERIFIED", List.of("MERCHANT"), "FULFILLING", "COMPLETED")
                 .row(List.of("WAIT_FULFILL", "FULFILLING"), "DELIVERED_BY_MERCHANT", List.of("MERCHANT"), "COMPLETED")
@@ -60,8 +63,8 @@ class MachineTablesTest {
                 .row(List.of(E), "CREATE", List.of("MERCHANT"), "CREATED")
                 .row(List.of("CREATED"), "PICKED_UP", List.of("CHANNEL"), "SHIPPED")
                 .row(List.of("SHIPPED"), "SIGNED", List.of("CHANNEL"), "DELIVERED")
-                .row(List.of("SHIPPED", "DELIVERED"), "RECEIPT_CONFIRMED", List.of("BUYER", "SYSTEM"), "RECEIVED")
-                .row(List.of("CREATED", "SHIPPED"), "CORRECT_WAYBILL", List.of("MERCHANT"), "VOIDED")
+                .row(List.of("CREATED", "SHIPPED", "DELIVERED"), "RECEIPT_CONFIRMED", List.of("BUYER", "SYSTEM"), "RECEIVED")
+                .row(List.of("CREATED", "SHIPPED", "DELIVERED"), "CORRECT_WAYBILL", List.of("MERCHANT", "PLATFORM"), "VOIDED")
                 .row(List.of("CREATED"), "CANCEL", List.of("MERCHANT"), "VOIDED");
         assertThat(Invariants.edges(ShipmentMachine.MACHINE)).containsExactlyInAnyOrderElementsOf(t.edges());
     }
@@ -72,11 +75,12 @@ class MachineTablesTest {
         String money = "REFUNDING", offline = "WAIT_OFFLINE_REFUND";
         EdgeTable t = new EdgeTable()
                 .row(List.of(E), "APPLY", List.of("BUYER"), "APPLIED")
+                .row(List.of("APPLIED"), "PREPARATION_NOT_STARTED_REFUND", List.of("BUYER"), money)
                 .row(List.of(E), "MERCHANT_INITIATE", List.of("MERCHANT"), money, offline)
                 .row(List.of(E), "TRADE_VOID", List.of("SYSTEM"), money)
                 .row(List.of("APPLIED"), "APPROVE", List.of("MERCHANT"), money, offline, "WAIT_RECEIPT", "WAIT_RETURN")
                 .row(List.of("APPLIED"), "OFFER", List.of("MERCHANT"), "NEGOTIATING")
-                .row(List.of("NEGOTIATING"), "ACCEPT_OFFER", List.of("BUYER"), money, offline, "WAIT_RETURN")
+                .row(List.of("NEGOTIATING"), "ACCEPT_OFFER", List.of("BUYER"), money, offline, "WAIT_RETURN", "RETURNING")
                 .row(List.of("NEGOTIATING"), "DECLINE_OFFER", List.of("BUYER"), "APPLIED")
                 .row(List.of("NEGOTIATING"), "OFFER_EXPIRED", List.of("SYSTEM"), "APPLIED")
                 .row(List.of("APPLIED"), "REJECT", List.of("MERCHANT"), "REJECTED")
@@ -86,9 +90,10 @@ class MachineTablesTest {
                 .row(List.of("RETURNING"), "RETURN_RECEIVED", List.of("MERCHANT"), money, offline)
                 .row(List.of(money), "REFUND_SUCCEEDED", List.of("CHANNEL", "SYSTEM"), "REFUNDED")
                 .stay(List.of(money), "REFUND_FAILED", List.of("CHANNEL"))
+                .row(List.of(money), "COMPENSATED_CLOSE", List.of("PLATFORM"), "CLOSED")
                 .row(List.of("APPLIED", "NEGOTIATING", "WAIT_RETURN", "RETURNING", "WAIT_RECEIPT", "REJECTED",
                         offline, "OFFLINE_REFUNDED"), "ESCALATE", List.of("BUYER", "MERCHANT"), "ARBITRATING")
-                .row(List.of("ARBITRATING"), "ARBITRATE_REFUND", List.of("PLATFORM"), money, offline, "WAIT_RETURN")
+                .row(List.of("ARBITRATING"), "ARBITRATE_REFUND", List.of("PLATFORM"), money, offline, "WAIT_RETURN", "RETURNING")
                 .row(List.of("ARBITRATING"), "ARBITRATE_CLOSE", List.of("PLATFORM"), "CLOSED")
                 .row(List.of("APPLIED", "NEGOTIATING", "WAIT_RETURN", "REJECTED"), "WITHDRAW", List.of("BUYER"), "CLOSED")
                 .row(List.of("REJECTED"), "ESCALATION_WINDOW_EXPIRED", List.of("SYSTEM"), "CLOSED")

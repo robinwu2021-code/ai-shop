@@ -3,78 +3,98 @@ package ai.neargo.shop.trade.order.transition;
 import ai.neargo.shop.trade.entity.OrdOrder;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.order.machine.order.OrderContext;
+import ai.neargo.shop.trade.order.machine.order.OrderEvent;
+import ai.neargo.shop.trade.order.machine.payment.PaymentContext;
+import ai.neargo.shop.trade.order.machine.payment.PaymentEvent;
+import ai.neargo.shop.trade.order.statemachine.Actor;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 
-import java.time.LocalDateTime;
-
-/**
- * 订单状态<b>唯一写入门</b>（订单服务 2.0）。所有 {@code setStatus} 都应经这里：
- * 状态机断言 → 写状态 → 写流水。收口现状散落 5 处的裸 {@code setStatus}
- * （closeOne / autoConfirmReceipt / markArrived / complete 的降级分支 / intervene），
- * 接线阶段由 ArchUnit 守卫"除本类外不得出现 setStatus(状态)"。
- *
- * <p>本阶段（strangler 第一步）：建好 + 纯逻辑单测，<b>暂不替换</b>现有 5 处裸写入，
- * 不接请求链路。持久化经 {@link OrderStateStore}（便于单测用 fake）。
- *
- * <p>本阶段<b>不发状态事件</b>：事件发布机制在接线阶段接入（避免现在引入跨模块依赖）。
- * 主单状态变更不写 {@code ord_status_log}（日志是子单粒度，与现状一致）。
- */
+/** Legacy target-state API delegates every production write to the shared CAS/log writer. */
 public class OrderTransitions {
+    private final TradeStatusWriter writer;
 
-    private static final String TENANT = "MAIN";
-
-    private final OrderStateStore store;
-
-    public OrderTransitions(OrderStateStore store) {
-        this.store = store;
+    public OrderTransitions(TradeStatusWriter writer) {
+        this.writer = writer;
     }
 
-    /** 主单迁移：断言 → 写状态。{@code from==to} 为幂等空操作（不写）。 */
-    public void applyOrder(OrdOrder order, String to, Operator op, String reason) {
-        String from = order.getStatus();
-        OrderStateMachine.assertOrderTransit(from, to);
-        if (to.equals(from)) {
+    /** Translate legacy payment targets while retaining the original transition validation. */
+    public void applyOrder(OrdOrder order, String to, Operator operator, String reason) {
+        OrderStateMachine.assertOrderTransit(order.getStatus(), to);
+        if (to.equals(order.getStatus())) {
             return;
         }
-        order.setStatus(to);
-        store.saveOrderStatus(order);
+        boolean offline = OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus());
+        PaymentEvent event = switch (to) {
+            case OrdOrder.PAID -> offline ? PaymentEvent.OFFLINE_CONFIRMED : PaymentEvent.PAY_SUCCEEDED;
+            case OrdOrder.CANCELLED -> PaymentEvent.CANCEL;
+            case OrdOrder.CLOSED -> PaymentEvent.PAY_TIMEOUT;
+            default -> throw new IllegalArgumentException("Unsupported payment target: " + to);
+        };
+        Actor actor = switch (event) {
+            case PAY_SUCCEEDED -> Actor.CHANNEL;
+            case OFFLINE_CONFIRMED -> Actor.MERCHANT;
+            case PAY_TIMEOUT -> Actor.SYSTEM;
+            default -> Actor.BUYER;
+        };
+        writer.payment(order, event, actor, number(operator), reason, new PaymentContext(offline, true, true, true));
     }
 
-    /** 子单迁移（系统/买家侧）：断言 → 写状态 → 写流水。 */
-    public void applySub(OrdSubOrder sub, String to, Operator op, String reason) {
-        transitSub(sub, to, op, reason, false);
+    /** Preserve the legacy caller API while the event/CAS gate remains authoritative. */
+    public void applySub(OrdSubOrder order, String to, Operator operator, String reason) {
+        OrderStateMachine.assertSubOrderTransit(order.getStatus(), to);
+        transit(order, to, operator, reason);
     }
 
-    /** 子单迁移（<b>商家发起</b>）：多一条"不能从未付款出发"的商家闸。 */
-    public void applyMerchantSub(OrdSubOrder sub, String to, Operator op, String reason) {
-        transitSub(sub, to, op, reason, true);
+    /** Merchant eligibility retains its stricter unpaid guard before shared state/event translation. */
+    public void applyMerchantSub(OrdSubOrder order, String to, Operator operator, String reason) {
+        OrderStateMachine.assertMerchantSubOrderTransit(order.getStatus(), to);
+        transit(order, to, operator, reason);
     }
 
-    private void transitSub(OrdSubOrder sub, String to, Operator op, String reason, boolean merchant) {
-        String from = sub.getStatus();
-        if (merchant) {
-            OrderStateMachine.assertMerchantSubOrderTransit(from, to);
-        } else {
-            OrderStateMachine.assertSubOrderTransit(from, to);
+    private void transit(OrdSubOrder order, String to, Operator operator, String reason) {
+        if (to.equals(order.getStatus())) {
+            return;
         }
-        if (to.equals(from)) {
-            return;   // 幂等空操作：不写状态、不重复记流水
+        Actor actor = actor(operator);
+        OrderEvent event = event(order, to, actor);
+        if (event == OrderEvent.PAY_CONFIRMED || event == OrderEvent.SHIPPED
+                || event == OrderEvent.CANCEL || event == OrderEvent.FULLY_REFUNDED) {
+            actor = Actor.SYSTEM;
         }
-        sub.setStatus(to);
-        store.saveSubStatus(sub);
-        store.appendLog(buildLog(sub.getSubOrderNo(), to, op, reason));
+        OrderContext context = OrderContext.authorizedOnly()
+                .withServiceClass(OrdSubOrder.FULFILLING.equals(to) && OrdSubOrder.WAIT_PAY.equals(order.getStatus()))
+                .withFullyRefunded(OrdSubOrder.REFUNDED.equals(to))
+                .withAutoReceiptDue(event == OrderEvent.RECEIPT_AUTO_CONFIRMED);
+        writer.order(order, event, actor, number(operator), reason, context);
     }
 
-    private OrdStatusLog buildLog(String subOrderNo, String status, Operator op, String reason) {
-        OrdStatusLog row = new OrdStatusLog();
-        row.setSubOrderNo(subOrderNo);
-        row.setStatus(status);
-        row.setLabel(reason);
-        row.setOperatorType(op == null ? OrdStatusLog.BY_SYSTEM : op.type());
-        row.setOperatorNo(op == null ? null : op.no());
-        row.setAt(System.currentTimeMillis());
-        row.setTenantNo(TENANT);
-        row.setCreatedAt(LocalDateTime.now());
-        return row;
+    private static OrderEvent event(OrdSubOrder order, String to, Actor actor) {
+        return switch (to) {
+            case OrdSubOrder.WAIT_FULFILL -> OrderEvent.PAY_CONFIRMED;
+            case OrdSubOrder.FULFILLING -> OrdSubOrder.WAIT_PAY.equals(order.getStatus()) ? OrderEvent.PAY_CONFIRMED
+                    : actor == Actor.MERCHANT ? OrderEvent.SHIP_BY_MERCHANT : OrderEvent.SHIPPED;
+            case OrdSubOrder.COMPLETED -> actor == Actor.MERCHANT ? OrderEvent.DELIVERED_BY_MERCHANT
+                    : actor == Actor.SYSTEM ? OrderEvent.RECEIPT_AUTO_CONFIRMED : OrderEvent.RECEIPT_CONFIRMED;
+            case OrdSubOrder.CANCELLED -> OrderEvent.CANCEL;
+            case OrdSubOrder.REFUNDED -> OrderEvent.FULLY_REFUNDED;
+            default -> throw new IllegalArgumentException("Unsupported order target: " + to);
+        };
+    }
+
+    private static Actor actor(Operator operator) {
+        if (operator == null) {
+            return Actor.SYSTEM;
+        }
+        return switch (operator.type()) {
+            case OrdStatusLog.BY_MERCHANT -> Actor.MERCHANT;
+            case OrdStatusLog.BY_USER -> Actor.BUYER;
+            case OrdStatusLog.BY_PLATFORM -> Actor.PLATFORM;
+            default -> Actor.SYSTEM;
+        };
+    }
+
+    private static String number(Operator operator) {
+        return operator == null ? null : operator.no();
     }
 }

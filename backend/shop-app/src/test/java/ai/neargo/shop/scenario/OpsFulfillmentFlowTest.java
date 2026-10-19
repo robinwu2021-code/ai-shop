@@ -10,7 +10,7 @@ import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.StatusLogMapper;
+import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -84,7 +84,7 @@ class OpsFulfillmentFlowTest {
     private ai.neargo.shop.merchant.mapper.MerchantMappers.MchAccountMapper merchantStaffMapper;
 
     @Autowired
-    private StatusLogMapper statusLogMapper;
+    private OrderStatusLogMapper statusLogMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

@@ -1,7 +1,7 @@
 // 覆盖范围：类目（P-3.1）、商品池（P-3.2）、库存与预售（P-3.3）。
 import type {
   CategoryPayMode,
-  CategoryPoints, GoodsAudit, GoodsDraftPreview, GoodsDetail, Category, CategoryArchiveImpact, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic, ProductStats, GoodsChain, BannedWord, ProductPolicy } from "@/lib/types";
+  GoodsAudit, GoodsDraftPreview, GoodsDetail, Category, CategoryArchiveImpact, CategorySpec, CategorySpecBinding, SpecDim, SpecValue, Page, ProductGoods, Sku, SpecTemplate, SpuStd, Topic, ProductStats, GoodsChain, BannedWord, ProductPolicy } from "@/lib/types";
 import type { CategoryQ, SkuQ, SpecTemplateQ } from "../query";
 
 export interface ProductApi {
@@ -174,14 +174,6 @@ export interface ProductApi {
    */
   listCategoryPayModes(): Promise<CategoryPayMode[]>;
   saveCategoryPayMode(categoryNo: string, offlineAllowed: boolean): Promise<CategoryPayMode[]>;
-
-  /** 类目 × 积分。同样全量返回，理由同上 */
-  listCategoryPoints(): Promise<CategoryPoints[]>;
-  /** `earnMode` 传 null = 清除这条规则，回到平台兜底 */
-  saveCategoryPoints(
-    categoryNo: string,
-    v: { earnMode: "FIXED" | "RATIO" | null; earnValue: number | null },
-  ): Promise<CategoryPoints[]>;
 
   // ── 规格库（V195）—— 与类目分开的一套 `product:spec:*`
 

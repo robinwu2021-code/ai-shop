@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.job.JobSupport;
+import ai.neargo.shop.support.OrderReceiptFixture;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.trade.job.OrderAutoReceiptJob;
@@ -16,10 +17,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import tools.jackson.databind.ObjectMapper;
 
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -69,6 +72,8 @@ class OrderAutoReceiptFlowTest {
         int rows = jdbc.update(
                 "update ord_status_log set at = ? where sub_order_no = ? and status = 'FULFILLING'",
                 at, subOrderNo);
+        jdbc.update("update ord_shipment set created_at = ? where sub_order_no = ?",
+                OrderReceiptFixture.physicalAt(at), subOrderNo);
         assertThat(rows)
                 .as("没有拨到任何一行 —— 子单 %s 没有 FULFILLING 流水？那说明它根本没发货", subOrderNo)
                 .isGreaterThan(0);
@@ -96,6 +101,8 @@ class OrderAutoReceiptFlowTest {
     /** 把这张子单的运单标成「几天前签收」。签收时间落在运单上（V386；V387 起表名 lgs_waybill、子单号列 biz_ref） */
     private void backdateSigned(String subOrderNo, String waybillNo, int daysAgo) {
         long at = System.currentTimeMillis() - (long) daysAgo * 86_400_000L;
+        jdbc.update("update ord_shipment set status = 'DELIVERED', signed_at = ? where sub_order_no = ? "
+                + "and status <> 'VOIDED'", at, subOrderNo);
         jdbc.update("insert into lgs_waybill (shipment_no, biz_ref, carrier, waybill_no, status,"
                         + " signed_at, tenant_no, created_at, updated_at)"
                         + " values (?, ?, 'SF', ?, 'DELIVERED', ?, 'MAIN', now(), now())",
@@ -306,10 +313,12 @@ class OrderAutoReceiptFlowTest {
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("payOrderNo").asString();
 
+        mvc().perform(post("/mp/order/" + payOrderNo + "/pay").header("Authorization", "Bearer " + buyer))
+                .andExpect(jsonPath("$.code").value(0));
         mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-"
                                 + payOrderNo + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk()).andExpect(content().string("SUCCESS"));
 
         String list = mvc().perform(get("/biz/order").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();

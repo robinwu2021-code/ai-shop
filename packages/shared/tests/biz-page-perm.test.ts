@@ -56,6 +56,12 @@ const cutsBy = (src: string, code: string) =>
  * 「因为它是对的」不算理由。
  */
 const EXEMPT: Record<string, string> = {
+  "messages/biz:aftersale":
+    "消息归本人；load先ensureScope再can('biz:aftersale')查询待办，无售后权限不发请求、不展示待办入口；查询失败保留原消息并可重试。",
+  "order/biz:aftersale":
+    "详情先ensureScope，售后卡由can('biz:aftersale')裁剪，mActiveAfterSaleForOrder单独catch；无权限不发请求，后端继续校验发货售后守卫。",
+  "orders/biz:aftersale":
+    "onShow先ensureScope与ensureProfile，售后tab/待办入口/计数均按can('biz:aftersale')裁剪，计数单独catch；权限收回时切回订单待办，不请求售后。",
   // ① 页内逐块裁
   "order/biz:store":
     "发货卡读「发货设置」（mShipSetting）只为带出默认快递公司与重量：调用前先 ensureScope 再 can('biz:store')、失败单独 catch —— "
@@ -85,9 +91,6 @@ const EXEMPT: Record<string, string> = {
     + "客服与配送员看不到它，也就不会去调",
   "order/biz:ship":
     "详情页门禁是 biz:order:view；发货/送达按钮 canShip/canDeliver 里带 can('biz:ship')",
-  "orders/biz:aftersale":
-    "「售后」tab 按 perm 从 TABS 里过滤掉，店员与配送员看不到它，也就不会去调 mAfterSaleList",
-
   // ② 调用点自己 catch + UI 判空
   "delivery/biz:store":
     "规则卡片用 can('biz:store') 包住并单独 catch；配送员只拿待送列表与「已送达」，两个码他都有",

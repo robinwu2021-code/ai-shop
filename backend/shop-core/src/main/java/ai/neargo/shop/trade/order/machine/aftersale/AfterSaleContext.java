@@ -37,6 +37,8 @@ public final class AfterSaleContext {
     public final boolean proofPresent;
     /** 交易不成立的原因 ∈ {拼团未成团, 集单撤单, 关单后迟到回调} */
     public final boolean voidReasonValid;
+    /** 买家付款后，当前子单仍待履约且没有开始备货或录运单 */
+    public final boolean preparationNotStarted;
 
     private AfterSaleContext(Builder b) {
         authorized = b.authorized; returnRefund = b.returnRefund; inTransit = b.inTransit;
@@ -45,6 +47,7 @@ public final class AfterSaleContext {
         channelSupports = b.channelSupports; reasonValid = b.reasonValid; offerValid = b.offerValid;
         remarkPresent = b.remarkPresent; escalationOpen = b.escalationOpen; expired = b.expired;
         waybillValid = b.waybillValid; proofPresent = b.proofPresent; voidReasonValid = b.voidReasonValid;
+        preparationNotStarted = b.preparationNotStarted;
     }
 
     public static Builder builder() {
@@ -58,6 +61,7 @@ public final class AfterSaleContext {
         private boolean inWindow = true, noOpenAfterSale = true, amountRefundable = true, channelSupports = true;
         private boolean reasonValid = true, offerValid = true, remarkPresent = true, escalationOpen = true;
         private boolean expired = true, waybillValid = true, proofPresent = true, voidReasonValid = true;
+        private boolean preparationNotStarted;
 
         public Builder authorized(boolean v) { authorized = v; return this; }
         public Builder returnRefund(boolean v) { returnRefund = v; return this; }
@@ -77,6 +81,7 @@ public final class AfterSaleContext {
         public Builder waybillValid(boolean v) { waybillValid = v; return this; }
         public Builder proofPresent(boolean v) { proofPresent = v; return this; }
         public Builder voidReasonValid(boolean v) { voidReasonValid = v; return this; }
+        public Builder preparationNotStarted(boolean v) { preparationNotStarted = v; return this; }
 
         public AfterSaleContext build() {
             return new AfterSaleContext(this);

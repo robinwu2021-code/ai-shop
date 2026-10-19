@@ -6,7 +6,6 @@
 import { assertTransition, buildGroupBuy, db, delay, findGoodsSeed, nextNo, persist, pick, pushMessage, toGoods } from "@shared/mock/db";
 import type { Order, PickupPoint } from "@shared/types";
 import {
-  grantPointsOnComplete,
   maskAddress,
   pushTimeline,
   toPickupOrder,
@@ -330,7 +329,6 @@ export const marketingMock: Pick<ShopApi,
     assertTransition(o.status, "COMPLETED");
     o.status = "COMPLETED";
     pushTimeline(o, "邻居已取走");
-    grantPointsOnComplete(o);
     persist();
     return delay(toPickupOrder(o));
   },

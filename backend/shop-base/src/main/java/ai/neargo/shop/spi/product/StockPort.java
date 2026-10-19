@@ -10,6 +10,13 @@ import java.util.List;
  * 就要反向依赖交易模块。
  */
 public interface StockPort {
+    enum RestoreResult { COMPLETED, PENDING }
+
+    /** The purpose key belongs to the destination inventory ledger, rather than a caller Boolean. */
+    default RestoreResult restoreOriginal(String purposeNo, String originalLockNo, List<SkuQty> items) {
+        throw new UnsupportedOperationException("original stock restore unavailable");
+    }
+
 
     /**
      * 锁定库存（下单时）。全部成功或全部失败，不允许部分锁定 ——
@@ -19,6 +26,18 @@ public interface StockPort {
      * @return 库存不足的 SKU；空列表表示全部锁定成功
      */
     List<String> lock(String lockNo, List<SkuQty> items);
+
+    /** A rolled-back shortage is distinct from an unknown reservation outcome. */
+    class ShortageException extends RuntimeException {
+        public ShortageException() {
+            super("stock shortage");
+        }
+    }
+
+    /** Frozen SKU ownership lets a remote source reject a reserve that arrives after cancellation. */
+    default void release(String lockNo, List<SkuQty> originalNeeds) {
+        release(lockNo);
+    }
 
     /** 释放（超时未支付、下单失败回滚）。幂等：重复释放不会把库存加两次。 */
     void release(String lockNo);

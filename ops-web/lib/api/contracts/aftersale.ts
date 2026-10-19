@@ -4,6 +4,8 @@ import type { AfterSaleQ } from "../query";
 
 export interface AfterSaleApi {
   listAfterSales(q?: AfterSaleQ): Promise<Page<AfterSale>>;
+  /** 仅恢复原执行，不确认资金成功、不新建退款。 */
+  recoverAfterSale(afterSaleNo: string): Promise<AfterSale>;
   /**
    * 平台介入裁决（`ARBITRATING` 的唯一出口）。
    * **责任方与裁决说明必填**——判了责任才谈得上赔付归属，裁决说明双方都会看到。

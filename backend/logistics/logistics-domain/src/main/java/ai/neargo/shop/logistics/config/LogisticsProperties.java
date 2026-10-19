@@ -29,6 +29,9 @@ public class LogisticsProperties {
      */
     private boolean subscribeEnabled = false;
 
+    /** Non-secret account label used for the Kuaidi100 monthly attempt ledger. */
+    private String kd100AccountRef = "default";
+
     /** 各能力的路由链 */
     private Routes routes = new Routes();
 
@@ -40,6 +43,9 @@ public class LogisticsProperties {
 
     /** 物流页读时校正的最短间隔（分钟） */
     private int readCacheMinutes = 10;
+
+    /** Explicit B/C refresh: 0 during manual testing; restore a positive interval after acceptance. */
+    private int manualRefreshCacheMinutes = 0;
 
     /** 微信换 waybill_token 的时机 */
     private WxBind wxBind = new WxBind();
@@ -104,7 +110,7 @@ public class LogisticsProperties {
          * {@code on-picked-up}（默认）：已上传微信 ∧ 已揽收 才换 —— 揽收前微信一定查不到（9300559），盲调只耗次数；
          * {@code on-ship}：上传了就换，留着验证「微信收录其实很快」。
          */
-        private String trigger = "on-picked-up";
+        private String trigger = "on-ship";
 
         public boolean onShip() {
             return "on-ship".equalsIgnoreCase(trigger);

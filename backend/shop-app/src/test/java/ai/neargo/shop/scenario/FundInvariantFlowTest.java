@@ -310,8 +310,8 @@ class FundInvariantFlowTest {
     }
 
     @Test
-    @DisplayName("I3 · 标记说发过积分而没有流水 —— 把标记清掉，让下一轮能重发")
-    void grantedFlagWithoutLedgerIsCleared() {
+    @DisplayName("现金巡检退出旧积分标记修复")
+    void cash_scan_does_not_rewrite_legacy_points_flags() {
         long paidAt = System.currentTimeMillis() - 3_600_000L;
         givenPaidOrder(paidAt);
         // 造出那个不一致：标记为真，而 pts_user_ledger 里一条 EARN 都没有
@@ -323,15 +323,9 @@ class FundInvariantFlowTest {
 
         FundInvariantReconciler.Result r = invariants.scan(paidAt - 60_000L, 500);
 
-        assertThat(r.scannedGranted()).as("对照量：标着已发的那一侧真的扫到了").isPositive();
-        assertThat(r.grantedNoLedger()).as("这条应当被算作 I3 违反").isPositive();
-        assertThat(r.clearedFlags()).as("修复动作要真的落库").isPositive();
-        /*
-         * **最要紧的一条**：标记被清回 false。
-         * grantOnPay 的幂等原本就是靠这个标记 —— 不清掉的话它永远重发不了，
-         * 而用户一分都没拿到，且没有任何地方会再提起这件事。
-         */
-        assertThat(grantedFlagOf(SUB)).as("标记要被改回未发，下一轮才能重发").isFalse();
+        assertThat(r.scannedPaid()).isPositive();
+        assertThat(grantedFlagOf(SUB)).as("现金巡检不能改写旧积分标记").isTrue();
+        assertThat(earnLedgerCount(SUB)).isZero();
     }
 
     @Test
@@ -406,8 +400,8 @@ class FundInvariantFlowTest {
     }
 
     @Test
-    @DisplayName("I6 · 下单回滚后预占的积分要还回去，而等支付的单不能动")
-    void deadHoldsAreReleasedButWaitPayIsNot() {
+    @DisplayName("现金巡检退出旧积分预占释放")
+    void cash_scan_does_not_release_legacy_points_holds() {
         long now = System.currentTimeMillis();
         // ① 孤儿预占：只有 USE 流水，**没有对应的子单** —— 下单事务回滚就是这个样子
         givenPendingUse("SUB-INV-DEAD", "PL-INV-D");
@@ -422,19 +416,9 @@ class FundInvariantFlowTest {
         assertThat(refundLedgerCount("SUB-INV-DEAD")).as("前置：还没退过").isZero();
         assertThat(refundLedgerCount("SUB-INV-WAIT")).as("前置：还没退过").isZero();
 
-        FundInvariantReconciler.ReleaseResult r = invariants.releaseDeadHolds(now + 60_000L, 500);
-
-        // 对照量：真的扫到预占流水了 —— 否则「释放 0 条」什么都不说明
-        assertThat(r.scanned()).as("一条预占都没扫到，下面的断言就毫无意义").isPositive();
-        assertThat(r.released()).as("孤儿预占要被释放").isPositive();
-        assertThat(refundLedgerCount("SUB-INV-DEAD")).as("没有子单的那条，分要还回去").isEqualTo(1);
-
-        /*
-         * **反向对照，也是这一条最要紧的断言**：等支付的单不能动。
-         * 判据写成「不是成交态」的话它会被一起释放 —— 而那意味着
-         * 用户站在收银台前，眼看着已经算好的抵扣消失。
-         */
-        assertThat(refundLedgerCount("SUB-INV-WAIT")).as("等支付的单，积分正当地占着").isZero();
+        invariants.scan(now - 60_000L, 500);
+        assertThat(refundLedgerCount("SUB-INV-DEAD")).isZero();
+        assertThat(refundLedgerCount("SUB-INV-WAIT")).isZero();
     }
 
     @Test

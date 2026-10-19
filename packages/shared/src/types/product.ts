@@ -396,11 +396,6 @@ export interface Goods {
   reviewSummary?: ReviewSummary | null;
   /** 商家为本商品开放的拼团档：够 minCount 人享 price。不配则本商品不能发起团 */
   groupBuy?: { minCount: number; price: number };
-  /**
-   * 本商品每件赠送的积分。**后端未下发**：库里有 `prd_goods.points_config` 这一列，
-   * 但全仓没有任何读写。等积分域接上再兑现。
-   */
-  points?: number;
   /** 每人限购，0 = 不限 */
   limitPerUser: number;
   /**

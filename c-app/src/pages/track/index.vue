@@ -10,7 +10,7 @@ import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { onLoad, onShareAppMessage } from "@dcloudio/uni-app";
 import { statusTone } from "@shared/strategies/order-view";
-import { traceStepKey } from "@shared/strategies/trace-step";
+import { traceStatusKey } from "@shared/strategies/trace-step";
 import { api } from "@/api";
 import { ApiError } from "@/api";
 import { ROUTES } from "@shared/utils/constants";
@@ -22,6 +22,7 @@ const { t } = useI18n();
 const token = ref("");
 const view = ref<TrackView | null>(null);
 const loaded = ref(false);
+const failed = ref(false);
 // 小程序侧：登录手机号≠收货号时为 true，页面提示「这单不是寄给你的」
 const notRecipient = ref(false);
 
@@ -33,6 +34,10 @@ onLoad((q) => {
 async function load() {
   loaded.value = false;
   notRecipient.value = false;
+  failed.value = false;
+  view.value = null;
+  miniLink.value = "";
+  miniLinkLoaded.value = false;
   try {
     // #ifdef MP-WEIXIN
     // 小程序：进来先绑手机号（走登录页），再按「本人」校验看件（TDD §3）。
@@ -54,6 +59,8 @@ async function load() {
     // 403 = 登录号与收货号不一致（非本人）；其余当失效
     if (e instanceof ApiError && e.code === 80103) {
       notRecipient.value = true;
+    } else if (!(e instanceof ApiError && e.code === 10404)) {
+      failed.value = true;
     }
     view.value = null;
   } finally {
@@ -62,9 +69,9 @@ async function load() {
   loadMiniLink();
 }
 
-// 「在小程序中打开」：仅 H5 端有意义（小程序里已经在小程序内了）。
-// 拿到 URL Link 才显示按钮——小程序未发布/未开通时后端返 null，不露点不动的按钮。
+// H5 用微信 URL Link 唤起小程序；微信拒绝生成时说明可留在本页查看。
 const miniLink = ref("");
+const miniLinkLoaded = ref(false);
 async function loadMiniLink() {
   // #ifdef H5
   try {
@@ -72,6 +79,8 @@ async function loadMiniLink() {
     miniLink.value = r?.url ?? "";
   } catch {
     miniLink.value = "";
+  } finally {
+    miniLinkLoaded.value = true;
   }
   // #endif
 }
@@ -112,6 +121,12 @@ onShareAppMessage(() => ({
       :tip="String($t('track.notRecipientTip'))"
     ></sh-empty>
     <sh-empty
+      v-else-if="failed"
+      :failed="true"
+      :text="String($t('track.loadFailed'))"
+      @retry="load"
+    ></sh-empty>
+    <sh-empty
       v-else-if="loaded && !view"
       :text="String($t('track.invalidTitle'))"
       :tip="String($t('track.invalidTip'))"
@@ -128,10 +143,11 @@ onShareAppMessage(() => ({
           {{ $t("track.orderedBy") }}：{{ view.buyerNickname }}
         </text>
         <!-- #ifdef H5 -->
-        <!-- 拿到 URL Link 才显示：小程序未发布/未开通时不露点不动的按钮 -->
         <view v-if="miniLink" class="sh-btn sh-btn--sm trk-mini" @tap="openInMini">
           {{ $t("track.openInMini") }}
         </view>
+        <text v-if="miniLink" class="txt-caption sh-muted trk-mini-hint">{{ $t("track.miniJumpHint") }}</text>
+        <text v-else-if="miniLinkLoaded" class="txt-caption sh-muted trk-mini-hint">{{ $t("track.miniUnavailable") }}</text>
         <!-- #endif -->
       </view>
 
@@ -139,7 +155,7 @@ onShareAppMessage(() => ({
       <view class="sh-card block prog">
         <view class="sh-row sh-row--between">
           <text class="txt-title status" :class="statusTone(view.status)">
-            {{ view.trace ? $t(`trace.step.${traceStepKey(view.trace)}`) : $t(`orderStatus.${view.status}`) }}
+            {{ view.trace ? $t(traceStatusKey(view.trace)) : $t(`orderStatus.${view.status}`) }}
           </text>
         </view>
         <text v-if="view.expressNo" class="txt-caption sh-muted prog__row sh-num">
@@ -187,6 +203,7 @@ onShareAppMessage(() => ({
 .block { margin-bottom: 16rpx; }
 .trk-store { display: block; margin-top: 8rpx; }
 .trk-mini { margin-top: 16rpx; }
+.trk-mini-hint { display: block; margin-top: 8rpx; }
 /* 字重交给字阶：这个元素挂的是 .txt-title，它本来就是 600，这一行是冗余的 */
 .prog__row { display: block; margin-top: 8rpx; }
 .prog__sec { margin-top: 16rpx; }

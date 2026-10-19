@@ -159,6 +159,9 @@ export interface Shipment {
   subError?: string | null;
   /** 订阅累计尝试次数 */
   subAttempts?: number;
+  /** Current shipment identity only; WeChat follow and Kuaidi100 are independent. */
+  subscriptions?: Array<{ channel: string; state: string; error?: string | null;
+    lastAttemptAt?: number | null; nextRetryAt?: number | null }>;
   /** 微信 token 状态 */
   bindState?: BindState;
   /** 换微信 token 最后一次失败的原因 */

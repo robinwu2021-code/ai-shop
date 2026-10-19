@@ -4,6 +4,7 @@ import ai.neargo.shop.event.DomainEvent;
 import ai.neargo.shop.event.OutboxEventBus;
 import ai.neargo.shop.logistics.config.LogisticsProperties;
 import ai.neargo.shop.logistics.entity.LgsWaybill;
+import ai.neargo.shop.logistics.entity.LgsWaybillNode;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillMapper;
 import ai.neargo.shop.logistics.mapper.LogisticsMappers.WaybillNodeMapper;
 import ai.neargo.shop.spi.logistics.LogisticsEvents;
@@ -14,11 +15,15 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
+import java.util.ArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.ArgumentMatchers.any;
 
 /** 一次轨迹应用到运单上之后发出去的事件（TDD-物流模块 批 4：通知靠它们）。 */
 class WaybillProgressTest {
@@ -28,7 +33,7 @@ class WaybillProgressTest {
     private final OutboxEventBus events = mock(OutboxEventBus.class);
     private final WaybillProgress progress = new WaybillProgress(waybills, nodes, events, new LogisticsProperties());
 
-    private static LgsWaybill waybill(String status, Integer atLocker) {
+    private LgsWaybill waybill(String status, Integer atLocker) {
         LgsWaybill w = new LgsWaybill();
         w.setId(7L);
         w.setShipmentNo("SH7");
@@ -38,6 +43,7 @@ class WaybillProgressTest {
         w.setProfile(LgsWaybill.PROFILE_SELF);
         w.setStatus(status);
         w.setAtLocker(atLocker);
+        when(waybills.selectOne(any())).thenReturn(w);
         return w;
     }
 
@@ -83,16 +89,26 @@ class WaybillProgressTest {
     @Test
     @DisplayName("★★ 进入派件 → 事件带承运商与单号；承运商被这一次纠正了的话带纠正后的")
     void transitionCarriesCarrierAndNumber() {
+        WaybillUpdateAudit audit = mock(WaybillUpdateAudit.class);
+        progress.setAudit(audit);
         LgsWaybill patch = LgsWaybill.patch(7L);
         patch.setCarrier("STO");
         progress.apply(waybill(WaybillStatus.IN_TRANSIT, 0), trace(TraceStatus.DELIVERING, false),
                 "kuaidi100", "PUSH", patch, 2_000L);
+
+        assertThat(patch.getStatusSource()).isEqualTo("kuaidi100");
 
         assertThat(progressed()).singleElement().satisfies(e -> {
             assertThat(e.status()).isEqualTo(WaybillStatus.DELIVERING);
             assertThat(e.atLocker()).isFalse();
             assertThat(e.carrier()).isEqualTo("STO");
         });
+        verify(audit).record(any(LgsWaybill.class), org.mockito.ArgumentMatchers.eq("kuaidi100"),
+                org.mockito.ArgumentMatchers.eq("PUSH"), org.mockito.ArgumentMatchers.eq(WaybillStatus.IN_TRANSIT),
+                org.mockito.ArgumentMatchers.eq(WaybillStatus.DELIVERING), org.mockito.ArgumentMatchers.eq(1),
+                org.mockito.ArgumentMatchers.eq("ADVANCED"),
+                org.mockito.ArgumentMatchers.argThat((String detail) -> detail.startsWith("DELIVERING · 1000")),
+                org.mockito.ArgumentMatchers.eq(2_000L));
     }
 
     @Test
@@ -106,6 +122,47 @@ class WaybillProgressTest {
                     LogisticsEvents.WaybillSigned s = (LogisticsEvents.WaybillSigned) e;
                     assertThat(s.carrier()).isEqualTo("SF");
                     assertThat(s.waybillNo()).isEqualTo("SF100");
+                });
+    }
+
+    @Test
+    void snapshotDistinguishesDatedSignatureFromStatusOnlySignature() {
+        List<LgsWaybillNode> saved = new ArrayList<>();
+        when(nodes.selectList(any())).thenAnswer(invocation -> saved);
+        doAnswer(invocation -> { saved.add(invocation.getArgument(0)); return 1; }).when(nodes).insert(any(LgsWaybillNode.class));
+        LgsWaybill dated = waybill(WaybillStatus.DELIVERING, 0);
+        dated.setSourceShipmentNo("SRC7");
+        dated.setSourceShipmentVersion(0L);
+        progress.apply(dated, trace(TraceStatus.SIGNED, false),
+                "kuaidi100", "PUSH", LgsWaybill.patch(7L), 2_000L);
+        assertThat(published()).filteredOn(e -> e instanceof LogisticsEvents.ShipmentSnapshot)
+                .singleElement().satisfies(e -> {
+                    LogisticsEvents.ShipmentSnapshot snapshot = (LogisticsEvents.ShipmentSnapshot) e;
+                    assertThat(snapshot.signedNodeAt()).isEqualTo(1_000L);
+                    assertThat(snapshot.firstTraceAt()).isEqualTo(1_000L);
+                    assertThat(snapshot.source()).isEqualTo("kuaidi100");
+                });
+    }
+
+    @Test
+    void datedProofArrivingAfterStatusOnlySignatureReissuesSnapshotWithEarliestStoredTrace() {
+        List<LgsWaybillNode> saved = new ArrayList<>();
+        LgsWaybillNode old = new LgsWaybillNode();
+        old.setAt(500L);
+        old.setText("旧运单轨迹");
+        saved.add(old);
+        when(nodes.selectList(any())).thenAnswer(invocation -> saved);
+        doAnswer(invocation -> { saved.add(invocation.getArgument(0)); return 1; }).when(nodes).insert(any(LgsWaybillNode.class));
+        LgsWaybill delivered = waybill(WaybillStatus.DELIVERED, 0);
+        delivered.setSourceShipmentNo("SRC7");
+        delivered.setSourceShipmentVersion(0L);
+        progress.apply(delivered, trace(TraceStatus.SIGNED, false), "kuaidi100", "PUSH",
+                LgsWaybill.patch(7L), 2_000L);
+        assertThat(published()).filteredOn(e -> e instanceof LogisticsEvents.ShipmentSnapshot)
+                .singleElement().satisfies(e -> {
+                    LogisticsEvents.ShipmentSnapshot snapshot = (LogisticsEvents.ShipmentSnapshot) e;
+                    assertThat(snapshot.signedNodeAt()).isEqualTo(1_000L);
+                    assertThat(snapshot.firstTraceAt()).isEqualTo(500L);
                 });
     }
 }

@@ -13,10 +13,7 @@ import {
   belongsToMerchant,
   dueOf,
   findOrder,
-  mockState,
   pickupView,
-  pointsAccount,
-  pointsFeeRecords,
   pushTimeline,
 } from "./_shared";
 import type { MerchantApi } from "../contract";
@@ -32,9 +29,18 @@ export const settleMock: Pick<MerchantApi,
   | "mVerify"
   | "mVerifyBatch"
   | "mVerifySearch"
-  | "mPointsAccount"
-  | "mPointsRecords"
-  | "mPointsToggle"
+  | "mStorePointStatement"
+  | "mStorePointStatementLines"
+  | "mStorePointStatements"
+  | "mConfirmStorePointStatement"
+  | "mDisputeStorePointStatement"
+  | "mStorePointTypes"
+  | "mStorePointAccount"
+  | "mStorePointEntries"
+  | "mStorePointTerms"
+  | "mStorePointAgreement"
+  | "mSignStorePointAgreement"
+  | "mTerminateStorePointAgreement"
 > = {
   // ---------------------------------------------------------------- 结算
   /**
@@ -415,18 +421,16 @@ export const settleMock: Pick<MerchantApi,
     );
   },
 
-  // ---- 积分：商家只感知发分服务费与开关（V34）。
-  // 抵扣、补差、资金池对他全部不可见 —— 他收到的是订单全额减各项费用。
-  async mPointsAccount() {
-    return delay(pointsAccount());
-  },
-
-  async mPointsRecords() {
-    return delay(pointsFeeRecords());
-  },
-
-  async mPointsToggle(req) {
-    mockState.pointsEnabled = req.enabled;
-    return delay(pointsAccount());
-  },
+  async mStorePointStatement() { throw new Error("请连接积分账单后端"); },
+  async mStorePointStatementLines() { return delay({ rows: [], next: 0, hasMore: false }); },
+  async mStorePointStatements() { return delay({ rows: [], next: 0, hasMore: false }); },
+  async mConfirmStorePointStatement() { throw new Error("请连接积分账单后端"); },
+  async mDisputeStorePointStatement() { throw new Error("请连接积分账单后端"); },
+  async mStorePointTypes() { return delay([]); },
+  async mStorePointAccount() { throw new Error("请连接积分账本后端"); },
+  async mStorePointEntries() { throw new Error("请连接积分账本后端"); },
+  async mStorePointTerms() { return delay(null); },
+  async mStorePointAgreement() { return delay(null); },
+  async mSignStorePointAgreement() { throw new Error("请连接积分签约后端"); },
+  async mTerminateStorePointAgreement() { throw new Error("请连接积分签约后端"); },
 };

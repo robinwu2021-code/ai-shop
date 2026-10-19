@@ -386,4 +386,10 @@ if git diff --quiet "@{u}" HEAD -- backend 2>/dev/null; then
   exit 0
 fi
 
+# Frontend and documentation guards above always run. Reusing an unchanged backend
+# receipt avoids repeating the same 14-minute suite immediately after a manual release gate.
+if REUSED_BACKEND_SHA="$("$ROOT/scripts/backend-gate-cache.sh" "$ROOT" 2>/dev/null)"; then
+  echo "→ 后端及构建闸门未变化，复用已通过的编译 + 全量零失败记录：$REUSED_BACKEND_SHA"
+  exit 0
+fi
 exec "$ROOT/scripts/check-head-compiles.sh"

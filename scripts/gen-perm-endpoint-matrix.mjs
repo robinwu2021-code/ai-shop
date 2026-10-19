@@ -104,6 +104,29 @@ export function scanEndpoints(root = ROOT) {
           if (hit) { perm = hit[1]; break; }
         }
       }
+      // Multiline action-dependent annotations do not fit the historical
+      // six-line/single-constant scan. Read only this method's annotation block.
+      const declaration = lines.slice(at + 1).findIndex(l => /^\s*public\s/.test(l));
+      if (declaration >= 0) {
+        const block = lines.slice(at + 1, at + 1 + declaration).join("\n");
+        const annotation = /@PreAuthorize\(([\s\S]*)\)/.exec(block)?.[1];
+        if (annotation) {
+          const constants = [...new Set([...annotation.matchAll(/Perms\.(\w+)/g)].map(m => m[1]))];
+          if (constants.length > 1) {
+            // This matrix means access to at least one action, never all actions.
+            // Unknown compound expressions must fail instead of silently widening.
+            if (!(annotation.includes("?") && annotation.includes(":"))
+                && !annotation.includes(" or @perm.can(")) {
+              throw new Error(`Unsupported compound permission: ${mk.method} ${mk.path}`);
+            }
+            if ( (annotation.match(/@perm\.can\(/g) ?? []).length !== 2
+                || constants.length !== 2 || annotation.includes("&& @perm")) {
+              throw new Error(`Unsupported compound permission: ${mk.method} ${mk.path}`);
+            }
+            perm = constants.join("|");
+          } else if (constants.length === 1) perm = constants[0];
+        }
+      }
       out.push({ method: mk.method, path: mk.path, perm });
     }
   }
@@ -137,6 +160,10 @@ export function parsePerms(root = ROOT) {
   return { codes, roles };
 }
 
+export function permissionAlternatives(perm) {
+  return perm ? perm.split("|") : [];
+}
+
 /** 角色 → 可访问端点（"METHOD path"），排序后返回 */
 export function buildMatrix(root = ROOT) {
   const eps = scanEndpoints(root);
@@ -149,7 +176,7 @@ export function buildMatrix(root = ROOT) {
       .filter((e) => {
         // 没挂注解的端点：登录即可用，谁都能访问
         if (!e.perm) return true;
-        return has === null || has.has(codes.get(e.perm) ?? `?${e.perm}`);
+        return has === null || permissionAlternatives(e.perm).some(p => has.has(codes.get(p) ?? `?${p}`));
       })
       .map((e) => `${e.method} ${e.path}`);
   }
@@ -193,7 +220,7 @@ function main() {
   // ── 人看的那份 ──
   const byCode = new Map();
   for (const e of eps) {
-    const c = e.perm ? codes.get(e.perm) : "（无判权）";
+    const c = e.perm ? permissionAlternatives(e.perm).map(p => codes.get(p)).join(" / ") : "（无判权）";
     if (!byCode.has(c)) byCode.set(c, []);
     byCode.get(c).push(`${e.method} ${e.path}`);
   }
@@ -207,6 +234,7 @@ function main() {
   L.push("> 状态：**生成物**，随代码走。");
   L.push("> **勿手改** —— 由 `node scripts/gen-perm-endpoint-matrix.mjs` 生成。");
   L.push("> 真源：`@PreAuthorize` 注解 × `Perms.ROLE_PERMS`。");
+  L.push("> 按操作分权的端点表示至少一个操作可访问；具体操作仍按请求对应权限校验，不能据此认为全部操作可用。");
   L.push("> 守卫：`packages/shared/tests/ops-perm-matrix.test.ts` 比对 fixtures 里的基线。");
   L.push("");
   L.push("**这份产物的用途是权限码细化改造**（[方案](../design/权限码细化-对齐清单.md)）：");

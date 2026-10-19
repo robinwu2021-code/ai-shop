@@ -3,22 +3,18 @@ package ai.neargo.shop.trade.order.service.ship;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.trade.entity.OrdItem;
-import ai.neargo.shop.trade.order.entity.OrdShipment;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
+import ai.neargo.shop.trade.order.entity.OrdShipment;
 import ai.neargo.shop.trade.order.transition.Operator;
 import ai.neargo.shop.trade.order.transition.OrderTransitions;
 
 import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
-/**
- * 发货主干（订单服务 2.0 · W4）：清洗 → 格式 → 重号 → 建发货单 → 行归属 → 订单置履约中。
- *
- * <p>支持一个订单多张发货单（部分发货/多包裹）；重号（同承运商单号被别的订单的活跃发货单占用）拒绝；
- * 同单重复填同号为幂等（返回原发货单）。对比现状 {@code ship} 只改子单一个 express_no。
- */
+/** Whole-order shipping binds physical row IDs, with exact replay and audited package replacement. */
 public class ShipHandler {
-
     private final ShipmentReadStore read;
     private final ShipmentWriteStore write;
     private final OrderTransitions transitions;
@@ -32,56 +28,97 @@ public class ShipHandler {
         this.shipmentNoGen = shipmentNoGen;
     }
 
-    /** @return 发货单号（同单重复填同号时为原发货单号） */
-    public String ship(String subOrderNo, String carrier, String rawWaybillNo, List<String> itemSkuNos, Operator op) {
-        OrdSubOrder order = requireOrder(subOrderNo);
-        String waybillNo = normalizeAndValidate(rawWaybillNo);
-        OrdShipment dup = read.findActiveWaybill(carrier, waybillNo);
-        if (dup != null) {
-            if (subOrderNo.equals(dup.getSubOrderNo())) {
-                return dup.getShipmentNo();   // 幂等：同单重复填同号
-            }
-            throw BizException.of(ErrorCode.WAYBILL_DUPLICATED);   // 已被别的订单占用（同单同号在上面幂等返回）
-        }
-        return create(order, carrier, waybillNo, itemSkuNos, op);
-    }
-
-    private OrdSubOrder requireOrder(String subOrderNo) {
-        OrdSubOrder o = read.findOrder(subOrderNo);
-        if (o == null) {
+    /** Caller must hold the child lock and validate paid/authorized/after-sale facts in the same transaction. */
+    public String ship(String subOrderNo, String carrier, String rawWaybillNo, List<Long> itemIds, Operator op) {
+        OrdSubOrder order = read.findOrder(subOrderNo);
+        if (order == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        return o;
+        String waybill = WaybillNormalizer.normalize(rawWaybillNo);
+        if (!WaybillFormat.isValid(waybill)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        List<OrdItem> items = read.itemsOf(subOrderNo);
+        OrdShipment duplicate = read.findActiveWaybill(carrier, waybill);
+        if (duplicate != null) {
+            return replay(subOrderNo, duplicate, items, itemIds);
+        }
+        List<OrdShipment> active = read.activeOf(subOrderNo);
+        if (active.size() > 1) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        OrdShipment old = active.isEmpty() ? null : active.getFirst();
+        List<OrdItem> rows = items.stream().filter(i -> i.getShipmentNo() == null
+                || old != null && old.getShipmentNo().equals(i.getShipmentNo())).toList();
+        requireWholeContent(rows, itemIds);
+        return create(order, carrier, waybill, rows, old, op, "商家更正运单");
     }
 
-    private String normalizeAndValidate(String raw) {
-        String no = WaybillNormalizer.normalize(raw);
-        if (!WaybillFormat.isValid(no)) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);   // 运单号格式不正确（BAD_REQUEST 文案无占位符，不传参）
+    /** Ops correction reuses whole-order binding and uniqueness without impersonating a merchant. */
+    public String correct(String subOrderNo, String carrier, String waybillNo, Operator operator, String reason) {
+        OrdSubOrder order = read.findOrder(subOrderNo);
+        List<OrdShipment> active = read.activeOf(subOrderNo);
+        if (order == null || active.size() != 1) {
+            throw BizException.of(ErrorCode.CONFLICT);
         }
+        String normalized = WaybillNormalizer.normalize(waybillNo);
+        if (!WaybillFormat.isValid(normalized)) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        OrdShipment duplicate = read.findActiveWaybill(carrier, normalized);
+        if (duplicate != null) {
+            return replay(subOrderNo, duplicate, read.itemsOf(subOrderNo), List.of());
+        }
+        OrdShipment old = active.getFirst();
+        List<OrdItem> rows = read.itemsOf(subOrderNo).stream()
+                .filter(i -> old.getShipmentNo().equals(i.getShipmentNo())).toList();
+        requireWholeContent(rows, List.of());
+        return create(order, carrier, normalized, rows, old, operator, reason);
+    }
+
+    private String replay(String subOrderNo, OrdShipment duplicate, List<OrdItem> items, List<Long> ids) {
+        if (!subOrderNo.equals(duplicate.getSubOrderNo())) {
+            throw BizException.of(ErrorCode.WAYBILL_DUPLICATED);
+        }
+        List<OrdItem> bound = items.stream().filter(i -> duplicate.getShipmentNo().equals(i.getShipmentNo())).toList();
+        // A whole-order retry cannot silently ignore new unbound content.
+        if (items.stream().anyMatch(i -> i.getShipmentNo() == null)) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        requireWholeContent(bound, ids);
+        return duplicate.getShipmentNo();
+    }
+
+    private String create(OrdSubOrder order, String carrier, String waybill, List<OrdItem> rows,
+                          OrdShipment old, Operator operator, String reason) {
+        String no = shipmentNoGen.get();
+        OrdShipment shipment = ShipmentDraftFactory.express(no, order.getSubOrderNo(), order.getStoreNo(),
+                carrier, waybill);
+        shipment.setTenantNo("MAIN");
+        shipment.setVersion(0L);
+        write.saveShipment(shipment);
+        if (old != null) {
+            write.supersede(old, no, operator, reason);
+        }
+        rows.forEach(item -> ShipmentDraftFactory.bind(item, no));
+        write.bindItems(rows);
+        if (!OrdSubOrder.FULFILLING.equals(order.getStatus())) {
+            transitions.applyMerchantSub(order, OrdSubOrder.FULFILLING, operator, "商家发货：" + waybill);
+        }
+        write.saveLegacyFields(order, carrier, waybill);
         return no;
     }
 
-    private String create(OrdSubOrder order, String carrier, String waybillNo, List<String> itemSkuNos, Operator op) {
-        List<OrdItem> toShip = selectUnshipped(read.itemsOf(order.getSubOrderNo()), itemSkuNos);
-        if (toShip.isEmpty()) {
-            throw BizException.of(ErrorCode.BAD_REQUEST);   // 没有可发货的商品行
+    private static void requireWholeContent(List<OrdItem> rows, List<Long> ids) {
+        if (rows.isEmpty()) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        String shipmentNo = shipmentNoGen.get();
-        OrdShipment shipment = ShipmentDraftFactory.express(
-                shipmentNo, order.getSubOrderNo(), order.getStoreNo(), carrier, waybillNo);
-        toShip.forEach(i -> ShipmentDraftFactory.bind(i, shipmentNo));
-        write.saveShipment(shipment);
-        write.bindItems(toShip);
-        transitions.applyMerchantSub(order, OrdSubOrder.FULFILLING, op, "商家发货：" + waybillNo);
-        return shipmentNo;
-    }
-
-    private static List<OrdItem> selectUnshipped(List<OrdItem> items, List<String> skuNos) {
-        boolean all = skuNos == null || skuNos.isEmpty();
-        return items.stream()
-                .filter(i -> i.getShipmentNo() == null)
-                .filter(i -> all || skuNos.contains(i.getSkuNo()))
-                .toList();
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        Set<Long> expected = rows.stream().map(OrdItem::getId).collect(Collectors.toSet());
+        if (ids.size() != expected.size() || !expected.equals(Set.copyOf(ids))) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
     }
 }

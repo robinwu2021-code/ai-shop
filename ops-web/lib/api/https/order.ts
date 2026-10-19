@@ -10,6 +10,7 @@ export const orderHttp: OrderApi = {
   interveneOrder: (v) => client.post(`/ops/orders/${v.orderNo}/intervene`, v),
   listOrderInterventions: (orderNo) => client.get(`/ops/orders/${orderNo}/interventions`),
   proxyCancelOrder: (v) => client.post(`/ops/orders/${v.orderNo}/proxy-cancel`, v),
+  getCancellationImpact: (orderNo) => client.get(`/ops/orders/${orderNo}/cancel-impact`),
   /*
    * 字段逐个列出来而不是 `{ ...v }`：
    *   · 后端收的是 `fulfillment`，端上叫 `fulfillType` —— 名字不一样，透传会静默丢掉；

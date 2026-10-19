@@ -45,6 +45,7 @@ export const groupMock: Pick<ShopApi,
   async createRequest(payload) {
     const seed = {
       requestNo: nextNo("RQ"),
+      ownerId: db.user.cUserNo,
       initiatorNickname: db.user.nickname,
       initiatorAvatar: db.user.avatar,
       pickupNo: payload.pickupNo,
@@ -89,7 +90,7 @@ export const groupMock: Pick<ShopApi,
   async chooseQuote(requestNo, quoteNo) {
     const seed = db.requests.find((r) => r.requestNo === requestNo);
     if (!seed) throw new Error("需求不存在");
-    if (seed.initiatorNickname !== db.user.nickname) throw new Error("只有发起人可以选定报价");
+    if (seed.ownerId !== db.user.cUserNo) throw new Error("只有发起人可以选定报价");
     const q = seed.quotes.find((x) => x.quoteNo === quoteNo);
     if (!q) throw new Error("报价不存在");
     if (seed.interestedCount < q.minCount) {
@@ -102,24 +103,19 @@ export const groupMock: Pick<ShopApi,
     });
     seed.status = "LOCKED";
     seed.lockedPriceMinor = q.priceMinor;
-    // +1 只是意向，转团后每个人要各自确认才算下单
-    seed.confirmed = false;
-    seed.confirmedCount = 0;
     persist();
     return delay(toGroupRequest(seed));
   },
 
   /**
-   * 选定报价后的二次确认下单。
-   * +1 是「我也想要」，不是承诺 —— 直接按 +1 人数扣款会炸，所以必须各自确认。
+   * 与后端一致：只有发起人能在锁价后收口需求单。
    */
   async confirmRequest(requestNo) {
     const seed = db.requests.find((r) => r.requestNo === requestNo);
     if (!seed) throw new Error("需求不存在");
     if (seed.status !== "LOCKED") throw new Error("还没有选定报价");
-    if (seed.confirmed) throw new Error("你已确认");
-    seed.confirmed = true;
-    seed.confirmedCount = (seed.confirmedCount ?? 0) + 1;
+    if (seed.ownerId !== db.user.cUserNo) throw new Error("只有发起人可以确认");
+    seed.status = "CONFIRMED";
     persist();
     return delay(toGroupRequest(seed));
   },

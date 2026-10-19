@@ -17,6 +17,7 @@ public final class ContractOrderStatus {
 
     /** 待付款 */
     public static final String WAIT_PAY = "WAIT_PAY";
+    public static final String POINTS_PROCESSING = "POINTS_PROCESSING";
     /** 待当面收款（线下支付，由主单状态推出；库里子单没有这个值） */
     public static final String WAIT_OFFLINE_PAY = "WAIT_OFFLINE_PAY";
     /** 已付款、等交付方行动（库里子单叫 WAIT_FULFILL） */
@@ -32,7 +33,7 @@ public final class ContractOrderStatus {
 
     /** 全部契约状态。投影/聚合的结果必须落在其中。 */
     public static final Set<String> ALL = Set.of(
-            WAIT_PAY, WAIT_OFFLINE_PAY, PAID, FULFILLING, COMPLETED, CANCELLED, REFUNDED);
+            WAIT_PAY, POINTS_PROCESSING, WAIT_OFFLINE_PAY, PAID, FULFILLING, COMPLETED, CANCELLED, REFUNDED);
 
     private ContractOrderStatus() {
     }

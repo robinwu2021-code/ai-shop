@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -41,6 +42,95 @@ class BizOrderFulfillFlowTest {
 
     @Autowired
     private ObjectMapper json;
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private ai.neargo.shop.merchant.reach.ReachSnapshotCache reachSnapshotCache;
+
+    @Test
+    void fulfillmentChangeGuardsFeeVersionAfterSaleBookingAndShipping() throws Exception {
+        Ctx c = prepare("12600129931", "配送切换测试店", "12600129932");
+        var facts = jdbc.queryForMap("select store_no,entity_no,freight_amount from ord_sub_order where sub_order_no=?",
+                c.subOrderNo);
+        String store = (String) facts.get("store_no");
+        String merchant = (String) facts.get("entity_no");
+        long freight = ((Number) facts.get("freight_amount")).longValue();
+        jdbc.update("update mch_store set delivery_fee_minor=?,delivery_min_order_minor=0,"
+                + "delivery_free_threshold_minor=0 where store_no=?", freight, store);
+        jdbc.update("update prd_goods set fulfillments='[\"EXPRESS\",\"MERCHANT_DELIVERY\"]' "
+                + "where goods_no=(select goods_no from ord_item where sub_order_no=? limit 1)", c.subOrderNo);
+        int changed = jdbc.update("update mch_fulfillment_channel set enabled=1,ops_locked=0 "
+                + "where store_no=? and channel='MERCHANT_DELIVERY'", store);
+        if (changed == 0) jdbc.update("insert into mch_fulfillment_channel "
+                + "(store_no,entity_no,channel,enabled,scope_mode,tenant_no,created_at,updated_at) "
+                + "values (?,?,'MERCHANT_DELIVERY',1,'ALL','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                store, merchant);
+        jdbc.update("insert into mch_service_area "
+                + "(area_no,entity_no,store_no,level,ref_code,source,status,mode,tenant_no,created_at,updated_at) "
+                + "values (?,?,?,'UNLIMITED','*','SELF','ACTIVE','INCLUDE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                "AREA-" + c.subOrderNo, merchant, store);
+        reachSnapshotCache.evict();
+        jdbc.update("update mch_store set delivery_fee_minor=? where store_no=?", freight + 1, store);
+        String changedFeeOptions = mvc().perform(get("/biz/order/" + c.subOrderNo + "/fulfillment-options")
+                        .header("Authorization", "Bearer " + c.merchantToken))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(changedFeeOptions).get("data").get("options").get(0)
+                .get("allowed").asBoolean()).as("改价时不得静默切换").isFalse();
+        jdbc.update("update mch_store set delivery_fee_minor=? where store_no=?", freight, store);
+        String optionsBody = mvc().perform(get("/biz/order/" + c.subOrderNo + "/fulfillment-options")
+                        .header("Authorization", "Bearer " + c.merchantToken))
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn().getResponse().getContentAsString();
+        var options = json.readTree(optionsBody).get("data");
+        assertThat(options.get("options").get(0).get("allowed").asBoolean())
+                .as(options.toString()).isTrue();
+        long version = options.get("version").asLong();
+        mvc().perform(post("/biz/order/" + c.subOrderNo + "/fulfillment-change")
+                        .header("Authorization", "Bearer " + c.merchantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetFulfillment\":\"MERCHANT_DELIVERY\",\"reason\":\"买家协商自送\","
+                                + "\"expectedVersion\":" + version + "}"))
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.order.fulfillment").value("MERCHANT_DELIVERY"));
+        mvc().perform(post("/biz/order/" + c.subOrderNo + "/fulfillment-change")
+                        .header("Authorization", "Bearer " + c.merchantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetFulfillment\":\"EXPRESS\",\"reason\":\"旧页面\","
+                                + "\"expectedVersion\":" + version + "}"))
+                .andExpect(jsonPath("$.code").value(10409));
+        jdbc.update("update ord_sub_order set open_after_sale_no='AS-TEST' where sub_order_no=?", c.subOrderNo);
+        mvc().perform(get("/biz/order/" + c.subOrderNo + "/fulfillment-options")
+                        .header("Authorization", "Bearer " + c.merchantToken))
+                .andExpect(jsonPath("$.data.options[1].reason").value("订单有进行中的售后"));
+        mvc().perform(post("/biz/order/" + c.subOrderNo + "/fulfillment-change")
+                        .header("Authorization", "Bearer " + c.merchantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetFulfillment\":\"EXPRESS\",\"reason\":\"售后处理中\","
+                                + "\"expectedVersion\":" + (version + 1) + "}"))
+                .andExpect(jsonPath("$.code").value(10409));
+        jdbc.update("update ord_sub_order set open_after_sale_no=NULL where sub_order_no=?", c.subOrderNo);
+        jdbc.update("insert into ord_express_pickup "
+                        + "(pickup_no,sub_order_no,order_no,entity_no,store_no,provider,carrier,status,weight_g,"
+                        + "tenant_no,created_at,updated_at) values (?,?,?, ?,?,'KUAIDI100','SF','CREATED',100,"
+                        + "'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",
+                "PICK-" + c.subOrderNo, c.subOrderNo, "O-" + c.subOrderNo, merchant, store);
+        mvc().perform(get("/biz/order/" + c.subOrderNo + "/fulfillment-options")
+                        .header("Authorization", "Bearer " + c.merchantToken))
+                .andExpect(jsonPath("$.data.options[1].reason").value("请先取消快递取件预约"));
+        mvc().perform(post("/biz/order/" + c.subOrderNo + "/fulfillment-change")
+                        .header("Authorization", "Bearer " + c.merchantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetFulfillment\":\"EXPRESS\",\"reason\":\"取件未取消\","
+                                + "\"expectedVersion\":" + (version + 1) + "}"))
+                .andExpect(jsonPath("$.code").value(10409));
+        jdbc.update("update ord_sub_order set status='FULFILLING' where sub_order_no=?", c.subOrderNo);
+        mvc().perform(post("/biz/order/" + c.subOrderNo + "/fulfillment-change")
+                        .header("Authorization", "Bearer " + c.merchantToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"targetFulfillment\":\"EXPRESS\",\"reason\":\"已交运\","
+                                + "\"expectedVersion\":" + (version + 1) + "}"))
+                .andExpect(jsonPath("$.code").value(10409));
+    }
 
 
     /** 与 M9aOpsFlowTest 同一个：stub 回调的签名，配在 application-test.yml */
@@ -96,21 +186,21 @@ class BizOrderFulfillFlowTest {
     void reshipSemantics() throws Exception {
         Ctx c = prepare("12600129005", "重复发货店", "12600129006");
 
-        ship(c, "SF999").andExpect(jsonPath("$.code").value(0));
+        ship(c, "SF999001").andExpect(jsonPath("$.code").value(0));
         // 重复点击是常态（网络慢时人会连点两下），不该报错
-        ship(c, "SF999").andExpect(jsonPath("$.code").value(0));
+        ship(c, "SF999001").andExpect(jsonPath("$.code").value(0));
 
         /*
          * 换单号：**允许**。填错单号必须能改，拒了商家只能打客服。
          * 但它会改掉买家看到的物流号，所以要留痕 —— 见时间线里那条「商家改快递单号」。
          */
         // 同上：状态是 FULFILLING，SHIPPED 已不是状态常量
-        ship(c, "YT123").andExpect(jsonPath("$.data.status").value("FULFILLING"));
+        ship(c, "YT123001").andExpect(jsonPath("$.data.status").value("FULFILLING"));
 
         String detail = mvc().perform(get("/biz/order/" + c.subOrderNo)
                         .header("Authorization", "Bearer " + c.merchantToken))
                 .andReturn().getResponse().getContentAsString();
-        assertThat(detail).contains("YT123");
+        assertThat(detail).contains("YT123001");
     }
 
     @Test
@@ -251,11 +341,10 @@ class BizOrderFulfillFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("payOrderNo").asString();
-        /*
-         * **走支付回调而不是 /pay**：`/pay` 只是拿收银台参数，
-         * 真正把单推到 WAIT_FULFILL 的是通道回调 —— 只调 /pay 的话单还在 WAIT_PAY，
-         * 发货会被状态机拒，而那是测试写错了不是代码错了。
-         */
+        // Open the authoritative payment request before applying its signed success receipt.
+        mvc().perform(post("/mp/order/" + payOrderNo + "/pay")
+                        .header("Authorization", "Bearer " + buyer))
+                .andExpect(jsonPath("$.code").value(0));
         mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-"
                                 + payOrderNo + "\",\"sign\":\"" + STUB_SECRET + "\"}"))

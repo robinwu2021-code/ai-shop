@@ -24,14 +24,25 @@ export const aftersaleMock: Pick<ShopApi,
   "applyAfterSale"
   | "afterSaleReasons"
   | "orderPreview"
+  | "orderPointsQuote"
   | "orderCapability"
   | "afterSaleList"
+  | "cancelAfterSale"
   | "fillReturnExpress"
   | "raiseDispute"
 > = {
+  async orderPointsQuote(req) {
+    const preview = await this.orderPreview(req);
+    return {
+      state: "UNAVAILABLE", reason: "POINTS_INTEGRATION_DETACHED", pointsUsed: 0,
+      deductMinor: 0, ratePoints: 0, rateMinor: 0,
+      basePayMinor: preview.amount.payableMinor, stores: [],
+    };
+  },
   // ---------------------------------------------------------------- 售后
   async applyAfterSale(orderNo, reason, images, type = "REFUND_ONLY") {
     const o = findOrder(orderNo);
+    if (!["PAID", "FULFILLING", "COMPLETED"].includes(o.status) || (o.afterSale && !["CLOSED", "REJECTED"].includes(o.afterSale.status))) throw new Error("当前订单不能重复申请退款");
     /*
      * **订单状态不动。** 售后是挂在订单上的另一张单，两者并存 ——
      * 一个「已完成」的订单照样能申请售后，把它改成「退款中」就丢失了
@@ -68,6 +79,7 @@ export const aftersaleMock: Pick<ShopApi,
   },
 
   async orderPreview(req) {
+    if ((req.usePoints ?? 0) !== 0) throw new Error("本期暂不支持积分抵扣");
     /*
      * mock 里没有服务端活动，沿用与下单同一套定价策略 —— 两者算出同一个数才是 mock 的价值。
      * **不扣库存**：预览是只读的，用户会在结算页反复改地址与履约方式。
@@ -79,7 +91,7 @@ export const aftersaleMock: Pick<ShopApi,
       return {
         goodsNo: g.goodsNo, merchantNo: g.merchant.merchantNo, skuNo: sku.skuNo,
         title: g.title, cover: g.cover, spec: sku.spec, price: sku.price, qty: it.qty,
-        type: g.type, nominalGram: sku.nominalGram, weighed: g.weighed, points: g.points,
+        type: g.type, nominalGram: sku.nominalGram, weighed: g.weighed,
       };
     });
     if (!items.length) throw new Error("订单商品为空");
@@ -214,11 +226,24 @@ export const aftersaleMock: Pick<ShopApi,
       || req.fulfillment === FULFILLMENT.STORE_VERIFY
       || req.fulfillment === FULFILLMENT.DELIVERY;
     return delay({
+      pointsEnabled: false,
       usablePayMethods: usable,
       anyNotInvoiceCapable: merchants.some((m) => !m.invoiceCapable),
       merchants,
       usablePayModes: offlineOk ? [PAY_MODE.ONLINE, PAY_MODE.OFFLINE] : [PAY_MODE.ONLINE],
     });
+  },
+
+  async cancelAfterSale(afterSaleNo) {
+    const o = findOrderByAfterSale(afterSaleNo);
+    if (!["APPLIED", "NEGOTIATING", "WAIT_RETURN", "REJECTED"].includes(o.afterSale!.status)) {
+      throw new Error("当前售后无法撤销");
+    }
+    o.afterSale!.status = "CLOSED";
+    o.afterSale!.updatedAt = Date.now();
+    pushTimeline(o, "买家撤销售后");
+    persist();
+    return delay(o.afterSale!);
   },
 
   async afterSaleList() {

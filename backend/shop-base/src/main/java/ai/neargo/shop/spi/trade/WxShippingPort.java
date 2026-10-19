@@ -1,5 +1,7 @@
 package ai.neargo.shop.spi.trade;
 
+import java.util.List;
+
 /**
  * 微信小程序<b>发货信息录入</b>（{@code /wxa/sec/order/upload_shipping_info}）。
  *
@@ -29,7 +31,7 @@ public interface WxShippingPort {
      *
      * @param cmd 见 {@link Command}
      * @return 见 {@link Result}。<b>调用方不要自己解释错误码</b> ——
-     *         「已发货」算成功这条判断在实现里，散出去就会有人按失败重试
+     *         旧标量请求兼容已发货码；映射包裹必须由精确来源快照证明成功
      */
     Result upload(Command cmd);
 
@@ -46,8 +48,21 @@ public interface WxShippingPort {
      *                     微信认不出这个人。所以从支付单读，不从会话读
      */
     record Command(String outTradeNo, int logisticsType, String itemDesc,
-                   String trackingNo, String expressCompany, String payerOpenid) {
+                   String trackingNo, String expressCompany, String payerOpenid,
+                   List<ShippingItem> shipments, int deliveryMode, boolean allDelivered, boolean mappedSource) {
+        /** Preserve old scalar callers and their isolated legacy replay semantics. */
+        public Command(String outTradeNo, int logisticsType, String itemDesc, String trackingNo,
+                       String expressCompany, String payerOpenid) {
+            this(outTradeNo, logisticsType, itemDesc, trackingNo, expressCompany, payerOpenid,
+                    List.of(), 1, true, false);
+        }
+
+        public Command { shipments = shipments == null ? List.of() : List.copyOf(shipments); }
     }
+
+    /** Only tracking/company/description go on the wire; internal source identity stays in the durable event. */
+    record ShippingItem(String subOrderNo, String sourceShipmentNo, Long sourceShipmentVersion,
+                        String trackingNo, String expressCompany, String itemDesc) { }
 
     /**
      * 确认收货提醒（{@code /wxa/sec/order/notify_confirm_receive}）。
@@ -77,8 +92,7 @@ public interface WxShippingPort {
     }
 
     /**
-     * @param success  成不成功。<b>「订单已发货」（10060002）算成功</b> ——
-     *                 重试撞到它是正常的，按失败重试会永远重试下去
+     * @param success  成不成功。映射包裹的10060002缺少同一请求成功证明，需人工处理
      * @param code     微信错误码，成功为 0。留着是为了台账上能看出「为什么失败」
      * @param message  失败原因，给人看
      * @param retryable 值不值得重试。token 过期、限流、超时 → true；

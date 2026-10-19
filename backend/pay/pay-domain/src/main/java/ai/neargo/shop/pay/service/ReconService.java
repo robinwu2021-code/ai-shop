@@ -75,7 +75,27 @@ public interface ReconService {
     record Finding(String paymentNo, String orderNo, String payChannel, String outTradeNo,
                    String direction, Long ourAmountMinor, boolean paidOnChannel, boolean notFound,
                    boolean queryFailed, long channelAmountMinor, String channelTradeNo,
-                   String day) {
+                   String day, String channelCurrency, ai.neargo.shop.spi.pay.RefundQueryResult.Status refundOutcome,
+                   String errorCode) {
+        public Finding(String paymentNo, String orderNo, String payChannel, String outTradeNo,
+                       String direction, Long ourAmountMinor, boolean paidOnChannel, boolean notFound,
+                       boolean queryFailed, long channelAmountMinor, String channelTradeNo,
+                       String day, String channelCurrency) {
+            this(paymentNo,orderNo,payChannel,outTradeNo,direction,ourAmountMinor,paidOnChannel,notFound,
+                    queryFailed,channelAmountMinor,channelTradeNo,day,channelCurrency,null,null);
+        }
+        public boolean requiresManual() {
+            return refundOutcome == ai.neargo.shop.spi.pay.RefundQueryResult.Status.MANUAL_REQUIRED
+                    || refundOutcome == ai.neargo.shop.spi.pay.RefundQueryResult.Status.TERMINAL_FAILED;
+        }
+
+
+        public Finding(String paymentNo, String orderNo, String payChannel, String outTradeNo,
+                       String direction, Long ourAmountMinor, boolean paidOnChannel, boolean notFound,
+                       boolean queryFailed, long channelAmountMinor, String channelTradeNo, String day) {
+            this(paymentNo, orderNo, payChannel, outTradeNo, direction, ourAmountMinor, paidOnChannel,
+                    notFound, queryFailed, channelAmountMinor, channelTradeNo, day, "CNY");
+        }
 
         /**
          * 这是一笔<b>退款</b>的自查结果。
@@ -104,6 +124,9 @@ public interface ReconService {
 
     /** 差异列表（运营端）。{@code status} 为空给全部 */
     List<ReconDiffVO> diffs(String status);
+
+    /** Only a positively identified PAY receipt may use automatic order payment repair. */
+    boolean isPayPayment(String paymentNo);
 
     /**
      * 裁决一条差异。

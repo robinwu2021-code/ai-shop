@@ -2,6 +2,7 @@
 //
 // 测的是「做错会出事」的那几条：人工改状态绕过状态机、代客取消不留原因、
 // 代客下单跨商家或超卖、以及**校验一半就扣了库存**。
+import type { Order } from "@/lib/types";
 import { beforeEach, describe, expect, it } from "vitest";
 import { orderMock } from "@/lib/api/mocks/order";
 import { orderInterventions, orders, skus } from "@/lib/mock/db";
@@ -189,5 +190,42 @@ describe("代客下单（P-4.1.5）", () => {
 
   it("商品为空要拒绝", async () => {
     await expect(orderMock.createProxyOrder({ ...base, items: [] })).rejects.toThrow(/至少/);
+  });
+});
+
+
+describe("整笔取消影响集合", () => {
+  function seedImpact() {
+    const source = structuredClone(orderSnapshot[0]!);
+    const one: Order & { storeNo: string; storeName: string } = { ...source, orderNo: "IM-S1", parentNo: "IM-P", status: "WAIT_PAY",
+      payAmount: 1000, merchantNo: "M1", merchantName: "店一", storeNo: "ST1", storeName: "门店一" };
+    const two: Order & { storeNo: string; storeName: string } = { ...one, orderNo: "IM-S2", payAmount: 2000, merchantNo: "M2", merchantName: "店二",
+      storeNo: "ST2", storeName: "门店二" };
+    orders.unshift(one, two);
+    return [one, two];
+  }
+
+  it("预览汇总整笔付款，而非被点中的子单", async () => {
+    seedImpact();
+    expect(orderMock.getCancellationImpact).toBeTypeOf("function");
+    const impact = await orderMock.getCancellationImpact("IM-S1");
+    expect(impact).toMatchObject({ canCancel: true, payOrderNo: "IM-P", totalPayableMinor: 3000 });
+    if (impact.canCancel) expect(impact.affectedOrders).toHaveLength(2);
+  });
+
+  it("确认取消推进全部兄弟单并逐单留痕", async () => {
+    const [one, two] = seedImpact();
+    await orderMock.proxyCancelOrder({ orderNo: "IM-S1", reason: "用户要求整笔取消" });
+    expect(one!.status).toBe("CANCELLED");
+    expect(two!.status).toBe("CANCELLED");
+    expect(orderInterventions.filter((log) => ["IM-S1", "IM-S2"].includes(log.orderNo))).toHaveLength(2);
+  });
+
+  it("兄弟单已付款时拒绝整笔取消，任何子单都不改变", async () => {
+    const [one, two] = seedImpact();
+    two!.status = "PAID";
+    await expect(orderMock.proxyCancelOrder({ orderNo: "IM-S1", reason: "用户要求取消" })).rejects.toThrow();
+    expect(one!.status).toBe("WAIT_PAY");
+    expect(two!.status).toBe("PAID");
   });
 });

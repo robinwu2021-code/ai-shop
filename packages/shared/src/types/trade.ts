@@ -5,6 +5,7 @@
 import type { CategoryType, CurrencyCode, FulfillmentType, TrafficSource } from "./core";
 import type { MerchantCapability } from "./merchant";
 import type { CouponFunder } from "./marketing";
+import type { RecipientSalutation } from "./user";
 // FulfillStage 定义在策略层（售后规则矩阵与它同处）；契约类型按名引用，type-only 导入，编译期擦除不成环
 import type { FulfillStage } from "../strategies/after-sale";
 
@@ -103,6 +104,8 @@ export interface CartItem {
 }
 export type OrderStatus =
   | "WAIT_PAY"
+  /** 积分原号受理中；此时不能付款，继续核验或显式重新确认。 */
+  | "POINTS_PROCESSING"
   /**
    * 等商家当面收款（线下支付）。
    *
@@ -214,6 +217,8 @@ export interface OrderPreview {
  * 平台放弱主体进来了，而结算页还没告诉买家这意味着什么。
  */
 export interface CheckoutCapability {
+  /** 一期固定关闭；旧接口缺字段也按关闭处理。 */
+  pointsEnabled?: boolean;
   /**
    * 整单可用的支付方式 = <b>各商家支持集合的交集</b>。
    *
@@ -267,8 +272,6 @@ export interface OrderItem {
   weighed?: boolean;
   /** 赠品行：价格为 0，不参与计价，履约时随单发出 */
   isGift?: boolean;
-  /** 该商品每件赠送的积分 */
-  points?: number;
   /**
    * 这一行最多还能买几件。**只有下单页那一次预览有值**，历史订单为空。
    *
@@ -383,10 +386,10 @@ export interface OrderAmount {
  * 三端共用：C 端订单详情、B 端配送/发货、平台端查单。
  */
 export interface OrderReceiver {
-  /** 下单时保存的称呼快照，不随地址簿变化。 */
-  salutation?: "MR" | "MS" | "UNSPECIFIED" | null;
   /** 收货人姓名。取不到时为空 —— 空就是空，不要回落成「顾客」 */
   name?: string;
+  /** 收件人称呼快照；老订单或用户未选择时为空。 */
+  salutation?: RecipientSalutation | null;
   /** 脱敏程度由后端定，见 `Order.receiver` 的说明 */
   phone?: string;
   /** 省市区 + 详细，拼好的一行 */
@@ -450,6 +453,8 @@ export interface Order {
    * 按主单寻址的资源（开票）要用它 —— 拿子单号去查必然 NOT_FOUND。
    */
   payOrderNo?: string;
+  /** 已确认收款但订单需人工处理；存在时禁止再次付款。 */
+  paymentResolution?: PaymentResolution | null;
   /** 这张（子）单由哪家门店卖、哪家门店发（ADR-031）。主单与老数据为空 */
   store?: OrderStore | null;
   /** 订单状态。粗粒度；售后细节见 `afterSale` */
@@ -537,8 +542,6 @@ export interface Order {
   receiver?: OrderReceiver;
   /** 已评价 */
   reviewed?: boolean;
-  /** 积分是否已发放（幂等标记，防止重复核销重复发分） */
-  pointsGranted?: boolean;
   /**
    * 客流来源。**决定平台费率档**：商家自带客流建议零佣金 —— 他带来的客户
    * 在别家的消费才是平台的收益（ADR-004 §6）。从店铺码/店铺分享进入即为 MERCHANT_OWNED。
@@ -588,6 +591,9 @@ export interface Order {
    * 轨迹来自承运商、经缓存，不是平台编的。
    */
   trace?: ShipmentTrace;
+  /** B 端提交发货后即时回显；渠道仍在补偿时 pending=true。 */
+  logisticsSync?: { status: string; source?: string | null; lastEventAt?: number | null;
+    pending: boolean; reason?: string | null } | null;
 }
 
 /** 运单状态（与后端 `lgs_waybill` 一致）。EXCEPTION 不是终态——疑难件可能之后又派送成功 */
@@ -645,6 +651,45 @@ export interface ShipmentTrace {
   freshAt?: number | null;
   /** 这个界面的「刷新」能不能真的去问渠道 */
   refreshable?: boolean;
+}
+
+/** 物流刷新或订阅回调的渠道更新记录。 */
+export interface LogisticsUpdateRecord {
+  /** 更新渠道：wx、kuaidi100 等。 */
+  source: string;
+  /** QUERY 为主动查询，PUSH 为订阅推送。 */
+  mode: string;
+  /** 更新前的运单状态。 */
+  beforeStatus: string | null;
+  /** 更新后的运单状态。 */
+  afterStatus: string | null;
+  /** 本次新增的轨迹节点数。 */
+  nodesAdded: number;
+  /** 更新结果：ADVANCED、NODES_ADDED、UNCHANGED、NO_RESULT、ERROR、THROTTLED 等。 */
+  outcome: string;
+  /** 查询结果或最近节点摘要；不含收件人手机号。 */
+  detail: string | null;
+  /** 更新时间，UTC 毫秒时间戳。 */
+  occurredAt: number;
+}
+
+/** 商家提交运单前的渠道预检结论。 */
+export type ShipPrecheckVerdict = "VALID" | "INVALID" | "UNKNOWN" | "WARNING";
+
+/** 商家提交运单前的渠道预检结果。 */
+export interface ShipPrecheck {
+  /** 提交前的运单有效性判断。 */
+  verdict: ShipPrecheckVerdict;
+  /** 给出判断的物流渠道。 */
+  source?: string | null;
+  /** 查询到的运单状态。 */
+  status?: string | null;
+  /** 查询时间，UTC 毫秒时间戳。 */
+  checkedAt: number;
+  /** 需要商家关注的判断说明。 */
+  reason?: string | null;
+  /** 是否需要商家确认后再发货。 */
+  confirmationRequired: boolean;
 }
 
 /** 一个轨迹节点。`text` 原样来自承运商；`location` 城市/网点，可能没有 */
@@ -736,6 +781,36 @@ export type AfterSaleStatus =
   | "REJECTED" // 商家驳回
   | "ARBITRATING" // 用户不服，已上升平台裁决
   | "CLOSED"; // 用户撤销，或超时关闭
+/** 支付异常投影，不包含其他门店的现金明细。 */
+export interface PaymentResolution {
+  /** 处理状态，例如 MANUAL_REQUIRED。 */
+  status: string;
+  /** 服务端记录的原因码，页面映射为可理解的提示。 */
+  reason: string;
+  /** 原资金凭据引用。 */
+  reference: string;
+}
+/** 资金执行与库存/优惠恢复是两个独立结果。 */
+export interface RefundExecutionProgress {
+  /** 原退款执行号；恢复仍使用同一执行。 */
+  executionNo: string;
+  /** 资金流水号，尚未准备时可空。 */
+  paymentNo?: string | null;
+  /** 执行状态，以后端实际确认结果为准。 */
+  status: string;
+  /** 当前处理阶段。 */
+  phase: string;
+  /** 资金执行错误码。 */
+  errorCode?: string | null;
+  /** 原库存和优惠恢复状态，DONE 表示已恢复。 */
+  resourceStatus: string;
+  /** 资源恢复失败原因。 */
+  resourceErrorCode?: string | null;
+  /** 资金成功确认的毫秒时间戳。 */
+  succeededAt?: number | null;
+  /** 后端计划恢复的毫秒时间戳，不由客户端发起第二笔退款。 */
+  nextAttemptAt?: number | null;
+}
 export interface AfterSale {
   /**
    * 售后单号。**售后是独立资源，不是订单上的一个字段** ——
@@ -744,6 +819,8 @@ export interface AfterSale {
    * 后端一开始就是这么建的（/mp/after-sale/{afterSaleNo}/**），这里向它对齐。
    */
   afterSaleNo: string;
+  /** 原执行的资金进度和资源恢复结果；旧记录可缺省。 */
+  refundExecution?: RefundExecutionProgress | null;
   /**
    * 所属**子订单**号（`SUB…`）。
    *
@@ -843,6 +920,15 @@ export interface RefundImpact {
  *
  * <p>令牌无效 / 过期时后端返回 `null`，端上据此显示「链接已失效」。
  */
+/**
+ * 免登录看件视图（TDD-收件人物流触达与分享裂变 §3）。后端 `GET /mp/track?t=<token>` 返回。
+ *
+ * <p>**这是一份删过的订单详情**：发给收件人的看件链接会被转发、截图，
+ * 所以只放物流 + 收货 + 店名 + 商品摘要 —— 价格、买家身份不下发（后端就不给）。
+ * 手机号是**掩码**的（后端出 `138****8000`）。
+ *
+ * <p>令牌无效 / 过期时后端返回 `null`，端上据此显示「链接已失效」。
+ */
 export interface TrackView {
   /** Only returned after verifying the recipient's phone; absent from the anonymous H5 view. */
   buyerNickname?: string | null;
@@ -873,9 +959,14 @@ export interface TrackView {
 }
 
 /** 看件页的商品摘要 —— **不含价格**。 */
+/** 看件页的商品摘要 —— **不含价格**。 */
 export interface TrackItem {
+  /** 商品或规格展示标题 */
   title?: string;
+  /** 商品封面地址 */
   cover?: string;
+  /** 已选规格描述 */
   spec?: string;
+  /** 履约商品数量 */
   qty: number;
 }

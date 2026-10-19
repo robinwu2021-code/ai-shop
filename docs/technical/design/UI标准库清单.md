@@ -1,5 +1,7 @@
 # UI 标准库清单
 
+状态：已归档；现行组件目录从 ui-lib.json 生成。
+
 > ⚠️ **这份是手写的，已被生成版取代**（2026-08-28）。规范以下面三份为准，
 > 它们由 `scripts/gen-ui-spec.py` 从 `ui-lib.json` 生成、挂在 `check-generated-docs` 闸门上，
 > 陈了推不上去：

@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
 import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.merchant.service.MerchantStoreService;
@@ -286,7 +288,7 @@ class StoreScopedVisibilityFlowTest {
     private ai.neargo.shop.product.mapper.ProductMappers.StoreGoodsMapper storeGoodsMapper;
 
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
 
     @Autowired
     private ai.neargo.shop.community.mapper.CommunityMappers.CommunityMapper communityMapper;

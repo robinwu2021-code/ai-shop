@@ -4,7 +4,7 @@ import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchStoreMapper;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import ai.neargo.shop.user.entity.UsrStoreView;
 import ai.neargo.shop.user.mapper.UserMappers.StoreViewMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -51,7 +51,7 @@ class MyStoreFlowTest {
     @Autowired
     private StoreViewMapper viewMapper;
     @Autowired
-    private SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

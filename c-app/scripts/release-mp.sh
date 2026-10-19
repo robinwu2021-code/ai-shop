@@ -97,7 +97,7 @@ echo "▶ 3/4 传到 $HOST"
 COPYFILE_DISABLE=1 tar czf /tmp/mp-weixin.tgz -C "$HERE/dist/build" mp-weixin 2>/dev/null
 scp -q /tmp/mp-weixin.tgz "$HOST:$REMOTE/mp-weixin.tgz"
 
-echo "▶ 4/4 上传（版本 $VERSION）"
+echo "▶ 4/4 上传（版本 ${VERSION}）"
 # **退出码要穿过来**：`node ... | grep` 的退出码是 grep 的，上传失败照样是 0，
 # 于是下面那句「传完了」会在失败时照常打印 —— 这正是本脚本第 2 步要防的那种错，
 # 别在自己身上再犯一遍。落盘再过滤，rc 单独取。

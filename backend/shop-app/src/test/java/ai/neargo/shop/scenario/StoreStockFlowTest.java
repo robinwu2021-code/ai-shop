@@ -1,5 +1,7 @@
 package ai.neargo.shop.scenario;
 
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
+
 import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
 import ai.neargo.shop.support.TestPlan;
@@ -53,7 +55,7 @@ class StoreStockFlowTest {
     private ai.neargo.shop.merchant.mapper.MerchantMappers.EntityPlanMapper planMapper;
     /** 判据取子单上的履约门店 —— OrderVO 不带它，从接口外面看不出单落在哪家店 */
     @Autowired
-    private ai.neargo.shop.trade.mapper.TradeMappers.SubOrderMapper subOrderMapper;
+    private StoreOrderMapper subOrderMapper;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)

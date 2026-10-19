@@ -24,7 +24,7 @@ public class RefundLedger {
 
     public LedgerResult record(RefundPlan plan) {
         for (RefundLine l : plan.lines()) {
-            if (l.qty() > 0 && !store.addItemRefund(l.itemId(), l.qty(), l.amountMinor())) {
+            if ((l.qty() > 0 || l.amountMinor() > 0) && !store.addItemRefund(l.itemId(), l.qty(), l.amountMinor())) {
                 throw BizException.of(ErrorCode.CONFLICT);
             }
         }

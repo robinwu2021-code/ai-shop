@@ -64,6 +64,7 @@ public class AliSmsGateway implements SmsPort {
     private final String otpTemplate;
     /** 来单提醒模板。**可以为空**（阿里云审批没下来），见 requireConfigured 的注释 */
     private final String orderPaidTemplate;
+    private final String afterSaleTemplate;
     /** 发货触达模板。同样**可以为空**（审批没下来），缺它时 sendShipToRecipient 直接失败留痕 */
     private final String shipTemplate;
 
@@ -73,6 +74,7 @@ public class AliSmsGateway implements SmsPort {
                          @Value("${shop.sms.ali.sign:}") String signName,
                          @Value("${shop.sms.ali.templates.otp:}") String otpTemplate,
                          @Value("${shop.sms.ali.templates.order-paid:}") String orderPaidTemplate,
+                         @Value("${shop.sms.ali.templates.after-sale-applied:}") String afterSaleTemplate,
                          @Value("${shop.sms.ali.templates.ship:}") String shipTemplate) {
         this.endpoint = endpoint;
         this.accessKeyId = accessKeyId;
@@ -80,6 +82,7 @@ public class AliSmsGateway implements SmsPort {
         this.signName = signName;
         this.otpTemplate = otpTemplate;
         this.orderPaidTemplate = orderPaidTemplate == null ? "" : orderPaidTemplate.trim();
+        this.afterSaleTemplate = afterSaleTemplate == null ? "" : afterSaleTemplate.trim();
         this.shipTemplate = shipTemplate == null ? "" : shipTemplate.trim();
         requireConfigured();
         log.info("[sms] 阿里云短信已启用 endpoint={} sign={} otpTemplate={} orderPaidTemplate={}",
@@ -87,6 +90,8 @@ public class AliSmsGateway implements SmsPort {
                 this.orderPaidTemplate.isBlank() ? "(未报备，来单短信发不出去)" : this.orderPaidTemplate);
         log.info("[sms] 发货触达模板 shipTemplate={}",
                 this.shipTemplate.isBlank() ? "(未报备，发货短信发不出去)" : this.shipTemplate);
+        log.info("[sms] 售后待审核模板 afterSaleTemplate={}",
+                this.afterSaleTemplate.isBlank() ? "(未报备，售后短信发不出去)" : this.afterSaleTemplate);
     }
 
     /**
@@ -208,6 +213,31 @@ public class AliSmsGateway implements SmsPort {
                         + field(resp.body(), "Message"), false);
             }
             return SendResult.of(field(resp.body(), "BizId"), orderPaidTemplate);
+        } catch (java.io.IOException e) {
+            throw new SmsException("短信通道网络失败：" + e.getMessage(), true);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SmsException("短信发送被中断", true);
+        }
+    }
+
+    @Override
+    public SendResult sendAfterSaleApplied(String phone, String afterSaleNo) {
+        if (afterSaleTemplate.isBlank()) {
+            throw new SmsException("tpl_unconfigured", false);
+        }
+        Map<String, String> p = common();
+        p.put("PhoneNumbers", phone);
+        p.put("SignName", signName);
+        p.put("TemplateCode", afterSaleTemplate);
+        p.put("Signature", sign("POST&%2F&" + enc(canonicalize(p))));
+        try {
+            HttpResponse<String> resp = post(p);
+            String respCode = field(resp.body(), "Code");
+            if (!"OK".equals(respCode)) {
+                throw new SmsException("阿里云拒绝：" + respCode + " " + field(resp.body(), "Message"), false);
+            }
+            return SendResult.of(field(resp.body(), "BizId"), afterSaleTemplate);
         } catch (java.io.IOException e) {
             throw new SmsException("短信通道网络失败：" + e.getMessage(), true);
         } catch (InterruptedException e) {
