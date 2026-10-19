@@ -5810,6 +5810,8 @@ CREATE TABLE IF NOT EXISTS ord_points_refund_execution
     updated_by VARCHAR(64) DEFAULT NULL,
     deleted TINYINT NOT NULL DEFAULT 0,
     last_attempt_at BIGINT DEFAULT NULL,
+    closure_version INT NOT NULL DEFAULT 1,
+    return_coupon BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (id),
     CONSTRAINT uk_refund_execution_as UNIQUE (after_sale_no),
     CONSTRAINT uk_refund_execution_cash UNIQUE (cash_payment_no)

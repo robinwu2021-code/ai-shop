@@ -94,10 +94,10 @@ T4/T5 涉及新数据库和 SPI 结构，先完成任务内契约设计子步骤
 
 **Interfaces:** 新增 BENEFITS_SETTLED，限 SYSTEM、现金应退为零及 T2 结清凭据；REFUND_SUCCEEDED 要求非零现金成功与应退权益结清。新协议上下文只能由内部权威事实组装；旧执行通过明确兼容适配器接入。
 
-- [ ] 先写守卫拒绝测试：无批准决定、缺现金凭据、零现金误发 REFUND_SUCCEEDED、权益未完、客户端伪造结清。补 allowed/fire 一致性。
-- [ ] 实现 A13/A21/A22 的事实守卫和收尾；现金已成功后权益完成只重评 A13，零现金只走 A22，不新发现金指令。
-- [ ] 将 PREPARATION_NOT_STARTED_REFUND、COMPENSATED_CLOSE 纳入迁移表及不变式；保留未备货买家入口既有授权，不误删合法退款例外。
-- [ ] 验证旧执行重放、线下未知原路退款阻断、终态幂等；提交：`feat: align refund terminal events with settlement proof`。
+- [x] 先写守卫拒绝测试：无批准决定、缺现金凭据、零现金误发 REFUND_SUCCEEDED、权益未完、客户端伪造结清。补 allowed/fire 一致性。
+- [x] 实现 A13/A21/A22 的事实守卫和收尾；现金已成功后权益完成只重评 A13，零现金只走 A22，不新发现金指令。
+- [x] 将 PREPARATION_NOT_STARTED_REFUND、COMPENSATED_CLOSE 纳入迁移表及不变式；保留未备货买家入口既有授权，不误删合法退款例外。
+- [x] 验证旧执行重放、线下未知原路退款阻断、终态幂等；提交：`feat: align refund terminal events with settlement proof`。
 
 ## T4：商品数量、不可变批准决定与部分退款
 

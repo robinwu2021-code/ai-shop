@@ -34,8 +34,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 
 /** Exercises the real merchant entry and durable recovery, with synthetic store subjects and a test bank. */
-@SpringBootTest(properties="spring.datasource.url=jdbc:h2:mem:refund-entry;"
-        + "MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
+@SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:refund-entry;"
+        + "MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "shop.refund.closure.enabled=true"})
 @ActiveProfiles("test")
 class AfterSaleRefundExecutionTest {
     @Autowired private AfterSaleService afterSales;
@@ -43,12 +43,20 @@ class AfterSaleRefundExecutionTest {
     @Autowired private OrderPointsRecoveryService pointsRecovery;
     @Autowired private OrderPointsRefundCoordinator pointsRefundSource;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private ai.neargo.shop.trade.order.refund.service.RefundCouponScopeService couponScopes;
+    @Autowired private org.springframework.transaction.PlatformTransactionManager transactions;
+    @MockitoSpyBean private ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations;
     @MockitoSpyBean private TestPayGateway channel;
     @MockitoBean private PointsPaymentSnapshotPort pointsPayments;
     @MockitoBean private PointsRefundPort pointsRefunds;
     @MockitoBean private OrderPointsBindingService pointsBindings;
     @MockitoBean private OrderPointsOutboxConsumer pointsDelivery;
     @MockitoBean private OrderPointsClosureFlowService pointsClosure;
+
+    private void freezeEmptyScope(String order) {
+        new org.springframework.transaction.support.TransactionTemplate(transactions)
+                .executeWithoutResult(tx -> couponScopes.freeze(order,null,ai.neargo.shop.spi.marketing.CouponPort.Allocation.none()));
+    }
 
     @Test void detached_child_of_points_root_keeps_original_refund_route() {
         var f=fixture();
@@ -60,8 +68,11 @@ class AfterSaleRefundExecutionTest {
         assertThat(status(f.as())).isEqualTo("REFUNDING");
     }
 
-    @Test void integrated_refund_waits_for_verified_net_cash_and_points_confirmation() {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(booleans={false,true})
+    void integrated_refund_waits_for_verified_net_cash_and_points_confirmation(boolean interrupted) {
         var f=fixture();
+        freezeEmptyScope(f.sub());
         markPoints(f);
         var route=new PaymentRoute("MERCHANT","STORE","PM-TEST","TEST","SM","PM:1","DIRECT");
         var proof=new PointsPaymentSnapshotPort.VerifiedPayment(f.sub(),"USER","CNY",110,"TEST",
@@ -92,7 +103,18 @@ class AfterSaleRefundExecutionTest {
         assertThat(refunded(f.sub())).isZero();
         assertThat(jdbc.queryForObject("SELECT amount_minor FROM stl_payment WHERE after_sale_no=?",
                 Long.class,f.as())).isEqualTo(50);
+        if(interrupted) {
+            org.mockito.Mockito.doThrow(new IllegalStateException("AFTER_FINANCIAL_COMMIT"))
+                    .doCallRealMethod().when(obligations).recover("PRF-"+f.as());
+            assertThatThrownBy(() -> afterSales.resumeRefund(f.as(),"SYSTEM"))
+                    .hasMessageContaining("AFTER_FINANCIAL_COMMIT");
+            assertThat(status(f.as())).isEqualTo("REFUNDING");
+            assertThat(jdbc.queryForObject("SELECT state FROM ord_points_refund_execution WHERE after_sale_no=?",String.class,f.as()))
+                    .isEqualTo("COMMITTED");
+        }
         afterSales.resumeRefund(f.as(),"SYSTEM");
+        assertThat(jdbc.queryForObject("SELECT closure_version FROM ord_points_refund_execution WHERE after_sale_no=?",Integer.class,f.as()))
+                .isEqualTo(2);
         assertThat(status(f.as())).isEqualTo("REFUNDED");
         assertThat(jdbc.queryForObject("SELECT status FROM stl_points_refund_hold WHERE after_sale_no=?",
                 String.class, f.as())).isEqualTo("CONFIRMED");
@@ -103,6 +125,7 @@ class AfterSaleRefundExecutionTest {
 
     @Test void integrated_zero_cash_refund_uses_source_completion_fact_without_payment() {
         var f=fixture();
+        freezeEmptyScope(f.sub());
         markPoints(f);
         var route=new PaymentRoute("MERCHANT","STORE","PM-TEST","TEST","SM","PM:1","DIRECT");
         var proof=new PointsPaymentSnapshotPort.VerifiedPayment(f.sub(),"USER","CNY",110,"TEST",
@@ -126,6 +149,7 @@ class AfterSaleRefundExecutionTest {
                 .when(pointsRefunds).recoveryStatus(prep.preparationNo(), prep.inputHash());
         afterSales.approve("MERCHANT",f.as(),"approved",null,"CASH");
         afterSales.resumeRefund(f.as(),"SYSTEM");
+        assertThat(jdbc.queryForObject("SELECT closure_version FROM ord_points_refund_execution WHERE after_sale_no=?",Integer.class,f.as())).isEqualTo(2);
         assertThat(status(f.as())).isEqualTo("REFUNDED");
         assertThat(jdbc.queryForObject("SELECT status FROM stl_points_refund_hold WHERE after_sale_no=?",
                 String.class, f.as())).isEqualTo("CONFIRMED");

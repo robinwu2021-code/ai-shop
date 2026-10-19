@@ -52,6 +52,10 @@ public interface RefundExecutionMapper extends BaseMapper<OrdRefundExecution> {
     int create(@Param("as") String as, @Param("sub") String sub, @Param("hash") String hash,
                @Param("payload") String payload);
 
+    @Update("UPDATE ord_points_refund_execution SET closure_version=#{protocol},return_coupon=#{coupon}"
+            + " WHERE after_sale_no=#{as} AND state='PREPARED' AND version=0")
+    int pinClosure(@Param("as") String as,@Param("protocol") int protocol,@Param("coupon") boolean coupon);
+
     @Update("UPDATE ord_points_refund_execution SET state=#{next},cash_payment_no=#{payment},net_cash_minor=#{net},"
             + "result_json=#{result},version=version+1,updated_at=CURRENT_TIMESTAMP"
             + " WHERE after_sale_no=#{as} AND version=#{version} AND state=#{from}")

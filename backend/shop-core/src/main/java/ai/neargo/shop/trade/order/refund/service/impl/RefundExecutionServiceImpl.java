@@ -42,10 +42,17 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
     private final OrderPointsRefundBindingMapper pointsRefunds;
     private final OrderPointsBindingMapper pointsBindings;
     private final SettlePort settle;
+    private final ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations;
+    private final ai.neargo.shop.spi.platform.PlatformSwitchPort flags;
+    private final boolean closureEnabled;
     private final ObjectMapper json=new ObjectMapper();
     public RefundExecutionServiceImpl(RefundExecutionMapper store,RefundLedgerMapper mapper,SettlePort settle,
                                       PaymentMapper orders,OrderPointsRefundBindingMapper pointsRefunds,
-                                      OrderPointsBindingMapper pointsBindings) {
+                                      OrderPointsBindingMapper pointsBindings,
+                                      ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations,
+                                      ai.neargo.shop.spi.platform.PlatformSwitchPort flags,
+                                      @org.springframework.beans.factory.annotation.Value("${shop.refund.closure.enabled:false}") boolean closureEnabled) {
+        this.obligations=obligations; this.flags=flags; this.closureEnabled=closureEnabled;
         this.store=store; this.ledgerStore=mapper; this.settle=settle; this.orders=orders;
         this.pointsRefunds=pointsRefunds;
         this.pointsBindings=pointsBindings;
@@ -94,6 +101,9 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
             var frozen=new Snapshot(as,sub.getOrderNo(),sub.getUserNo(),sub.getStoreNo(),currency,plan);
             String payload=json.writeValueAsString(frozen);
             store.create(as,plan.subOrderNo(),hash(payload),payload);
+            boolean versioned=closureEnabled && obligations.hasScope(sub.getOrderNo());
+            require(store.pinClosure(as,versioned?2:1,versioned && flags.bool("refund.return-coupon",true))==1,
+                    "REFUND_CLOSURE_PROTOCOL_CONFLICT");
             return preparation(store.execution(as));
         });
     }

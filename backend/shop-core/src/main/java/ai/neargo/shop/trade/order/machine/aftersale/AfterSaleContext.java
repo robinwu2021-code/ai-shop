@@ -39,6 +39,8 @@ public final class AfterSaleContext {
     public final boolean voidReasonValid;
     /** 买家付款后，当前子单仍待履约且没有开始备货或录运单 */
     public final boolean preparationNotStarted;
+    /** Terminal guards fail closed unless the service provides verified authority facts. */
+    public final RefundTerminalProof refundProof;
 
     private AfterSaleContext(Builder b) {
         authorized = b.authorized; returnRefund = b.returnRefund; inTransit = b.inTransit;
@@ -47,7 +49,7 @@ public final class AfterSaleContext {
         channelSupports = b.channelSupports; reasonValid = b.reasonValid; offerValid = b.offerValid;
         remarkPresent = b.remarkPresent; escalationOpen = b.escalationOpen; expired = b.expired;
         waybillValid = b.waybillValid; proofPresent = b.proofPresent; voidReasonValid = b.voidReasonValid;
-        preparationNotStarted = b.preparationNotStarted;
+        preparationNotStarted = b.preparationNotStarted; refundProof=b.refundProof;
     }
 
     public static Builder builder() {
@@ -62,6 +64,7 @@ public final class AfterSaleContext {
         private boolean reasonValid = true, offerValid = true, remarkPresent = true, escalationOpen = true;
         private boolean expired = true, waybillValid = true, proofPresent = true, voidReasonValid = true;
         private boolean preparationNotStarted;
+        private RefundTerminalProof refundProof;
 
         public Builder authorized(boolean v) { authorized = v; return this; }
         public Builder returnRefund(boolean v) { returnRefund = v; return this; }
@@ -81,6 +84,7 @@ public final class AfterSaleContext {
         public Builder waybillValid(boolean v) { waybillValid = v; return this; }
         public Builder proofPresent(boolean v) { proofPresent = v; return this; }
         public Builder voidReasonValid(boolean v) { voidReasonValid = v; return this; }
+        public Builder refundProof(RefundTerminalProof v) { refundProof=v; return this; }
         public Builder preparationNotStarted(boolean v) { preparationNotStarted = v; return this; }
 
         public AfterSaleContext build() {

@@ -70,7 +70,7 @@ class MachineTablesTest {
     }
 
     @Test
-    @DisplayName("售后单 A1–A21")
+    @DisplayName("售后单 A1–A22")
     void afterSale() {
         String money = "REFUNDING", offline = "WAIT_OFFLINE_REFUND";
         EdgeTable t = new EdgeTable()
@@ -89,6 +89,7 @@ class MachineTablesTest {
                 .row(List.of("WAIT_RETURN"), "RETURN_EXPIRED", List.of("SYSTEM"), "CLOSED")
                 .row(List.of("RETURNING"), "RETURN_RECEIVED", List.of("MERCHANT"), money, offline)
                 .row(List.of(money), "REFUND_SUCCEEDED", List.of("CHANNEL", "SYSTEM"), "REFUNDED")
+                .row(List.of(money), "BENEFITS_SETTLED", List.of("SYSTEM"), "REFUNDED")
                 .stay(List.of(money), "REFUND_FAILED", List.of("CHANNEL"))
                 .row(List.of(money), "COMPENSATED_CLOSE", List.of("PLATFORM"), "CLOSED")
                 .row(List.of("APPLIED", "NEGOTIATING", "WAIT_RETURN", "RETURNING", "WAIT_RECEIPT", "REJECTED",

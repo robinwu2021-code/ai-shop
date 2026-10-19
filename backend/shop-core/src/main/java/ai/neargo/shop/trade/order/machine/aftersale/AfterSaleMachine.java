@@ -56,7 +56,9 @@ public final class AfterSaleMachine {
                     .from(RETURNING).on(RETURN_RECEIVED).by(MERCHANT).when(AUTHORIZED)
                     .toOneOf(AfterSaleTargets.MONEY, AfterSaleTargets::moneyStep).emit("AfterSaleReturnReceived").add()
                     // A13 / A14 退款回执（执行结果，不是决定）
-                    .from(REFUNDING).on(REFUND_SUCCEEDED).by(CHANNEL, SYSTEM).to(REFUNDED).emit("AfterSaleRefunded").add()
+                    .from(REFUNDING).on(REFUND_SUCCEEDED).by(CHANNEL, SYSTEM).when(CASH_SETTLED).to(REFUNDED).emit("AfterSaleRefunded").add()
+                    .from(REFUNDING).on(BENEFITS_SETTLED).by(SYSTEM).when(ZERO_SETTLED)
+                    .to(REFUNDED).emit("AfterSaleRefunded").add()
                     .from(REFUNDING).on(REFUND_FAILED).by(CHANNEL).stay().emit("AfterSaleRefundFailed").add()
                     .from(REFUNDING).on(COMPENSATED_CLOSE).by(PLATFORM).when(AUTHORIZED, REMARK)
                     .to(CLOSED).emit("AfterSaleCompensatedClosed").add()
@@ -79,7 +81,7 @@ public final class AfterSaleMachine {
                     // A20 / A21 线下付款单：商家线下退款登记 → 买家确认收到
                     .from(WAIT_OFFLINE_REFUND).on(OFFLINE_REFUND_REGISTERED).by(MERCHANT).when(AUTHORIZED, PROOF)
                     .to(OFFLINE_REFUNDED).emit("AfterSaleOfflineRefunded").add()
-                    .from(OFFLINE_REFUNDED).on(OFFLINE_REFUND_ACKED).by(BUYER).when(AUTHORIZED).to(REFUNDED)
+                    .from(OFFLINE_REFUNDED).on(OFFLINE_REFUND_ACKED).by(BUYER).when(AUTHORIZED, OFFLINE_SETTLED).to(REFUNDED)
                     .emit("AfterSaleRefunded").add()
                     .build();
 

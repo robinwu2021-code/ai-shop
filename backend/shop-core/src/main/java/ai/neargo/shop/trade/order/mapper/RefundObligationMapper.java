@@ -9,6 +9,11 @@ import org.apache.ibatis.annotations.*;
 public interface RefundObligationMapper {
     @Insert("INSERT INTO ord_refund_coupon_scope(order_no,coupon_no,payload_json,input_hash) VALUES(#{order},#{coupon},#{payload},#{hash})")
     int freezeScope(@Param("order") String order,@Param("coupon") String coupon,@Param("payload") String payload,@Param("hash") String hash);
+    @Select("SELECT a.order_no,e.closure_version,e.return_coupon,e.state,b.phase FROM ord_points_refund_execution e"
+        + " JOIN ord_after_sale a ON a.after_sale_no=e.after_sale_no AND a.deleted=0"
+        + " JOIN ord_points_refund_binding b ON b.after_sale_no=e.after_sale_no"
+        + " WHERE e.after_sale_no=#{as} AND e.deleted=0")
+    Map<String,Object> pointsSource(String as);
     @Select("SELECT * FROM ord_refund_coupon_scope WHERE order_no=#{order}")
     Map<String,Object> scope(String order);
     @Select("SELECT * FROM ord_order WHERE order_no=#{order} AND deleted=0 FOR UPDATE")

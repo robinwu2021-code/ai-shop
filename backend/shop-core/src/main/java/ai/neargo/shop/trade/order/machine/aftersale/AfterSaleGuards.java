@@ -28,6 +28,16 @@ final class AfterSaleGuards {
     static final Guard<AfterSaleContext> PREPARATION_NOT_STARTED =
             Guard.of(c -> c.preparationNotStarted, ErrorCode.ORDER_STATE_ILLEGAL);
 
+    static final Guard<AfterSaleContext> CASH_SETTLED = Guard.of(c -> c.refundProof!=null
+            && c.refundProof.decisionApproved() && c.refundProof.cashMinor()>0
+            && c.refundProof.cashConfirmed() && c.refundProof.benefitsSettled(), ErrorCode.CONFLICT);
+    static final Guard<AfterSaleContext> ZERO_SETTLED = Guard.of(c -> c.refundProof!=null
+            && c.refundProof.decisionApproved() && c.refundProof.cashMinor()==0
+            && c.refundProof.benefitsSettled(), ErrorCode.CONFLICT);
+    static final Guard<AfterSaleContext> OFFLINE_SETTLED = Guard.of(c -> c.refundProof!=null
+            && c.refundProof.decisionApproved() && c.refundProof.offlineAcknowledged()
+            && c.refundProof.benefitsSettled(), ErrorCode.CONFLICT);
+
     private AfterSaleGuards() {
     }
 }

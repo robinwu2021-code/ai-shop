@@ -167,8 +167,10 @@ public class RefundResultServiceImpl implements RefundResultService {
         as.setRefundPaymentNo(current.getPaymentNo());
         as.setRefundedAt(current.getSucceededAt());
         as.setSplitReversed(true);
-        statuses.afterSale(as, AfterSaleEvent.REFUND_SUCCEEDED, Actor.SYSTEM, null,
-                "原路退款已确认到账", AfterSaleContext.builder().build());
+        statuses.afterSale(as, current.getAmountMinor()==0 ? AfterSaleEvent.BENEFITS_SETTLED : AfterSaleEvent.REFUND_SUCCEEDED,
+                Actor.SYSTEM, null, current.getAmountMinor()==0 ? "零现金退款权益已结清" : "原路退款已确认到账",
+                AfterSaleContext.builder().refundProof(new ai.neargo.shop.trade.order.machine.aftersale.RefundTerminalProof(
+                        true,current.getAmountMinor(),current.getAmountMinor()>0,true,false)).build());
         if (afterSales.updateById(as) != 1) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
