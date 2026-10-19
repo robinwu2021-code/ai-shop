@@ -1,9 +1,9 @@
 # TDD-Outbox统一投递与封装
 
-状态：代码已实现，定向验收通过，独立审查中；尚未部署或启用新模式。  
-创建 / 更新：2026-10-19。  
-依据：本次 Outbox review 与用户对统一封装、复用 Spring 能力的要求；现有《PRD-定时任务管理》§三、《运营端-开发计划》链路健康、《PRD-积分模块》AC-PTS-33。  
-档位：2；正式实施需同步上述 PRD 的过时调度描述，并登记 ADR。用户于 2026-10-19 确认按建议执行；本次补充 §2.12 的书面执行计划，代码尚未修改。
+状态：代码已实现，重要审查问题已修复并合入统一分支，定向验收通过；尚未部署或启用新模式。
+创建 / 更新：2026-10-19。
+依据：本次 Outbox review 与用户对统一封装、复用 Spring 能力的要求；现有《PRD-定时任务管理》§三、《运营端-开发计划》链路健康、《PRD-积分模块》AC-PTS-33。
+档位：2；已同步 PRD 的过时调度描述并登记 ADR。用户于 2026-10-19 确认按建议执行；§2.12 保留执行计划，实际结果与偏差见 §5–§7。
 
 ## §0 对账一：需求到设计
 
@@ -220,10 +220,10 @@ P2、P3 作为同一可切换平台版本交付，不能让新记录在没有运
 
 > For agentic workers: REQUIRED SUB-SKILL: 使用 superpowers:executing-plans 在本会话逐项执行；最终安排一次独立代码审查。执行过程中不在任务之间重复请求确认。
 
-**Goal:** 用公共运行器统一平台与库存的可靠事件交付，落实 OB01–OB09。  
-**Architecture:** Spring 管理事务和执行资源；两个源各自持久化事件、顺序和逐消费者进度；跨库接收使用源事件唯一键。  
-**Tech Stack:** 项目父 BOM 所管理的 Java 21、Spring Boot、MyBatis-Plus、Flyway；复用现有数据库及测试设施。  
-**Spec:** 本文件 §0–§4；执行顺序为任务 1 到任务 8。  
+**Goal:** 用公共运行器统一平台与库存的可靠事件交付，落实 OB01–OB09。
+**Architecture:** Spring 管理事务和执行资源；两个源各自持久化事件、顺序和逐消费者进度；跨库接收使用源事件唯一键。
+**Tech Stack:** 项目父 BOM 所管理的 Java 21、Spring Boot、MyBatis-Plus、Flyway；复用现有数据库及测试设施。
+**Spec:** 本文件 §0–§4；执行顺序为任务 1 到任务 8。
 **Execution:** 建议本会话直接执行；每个任务记录提交与定向验证，最后统一审查。不部署或自动接管生产存量。
 
 #### 全局约束与验证方式
@@ -291,7 +291,7 @@ LOCAL_TRANSACTION 的 Inbox 与全部本地业务变更同目标事务；发现�
 
 **Files:** 新增 `shop-store-mybatis/.../event/outbox/runtime/OutboxPublisherSupport.java`、OutboxConsumerInvoker.java、OutboxRouteRegistry.java；新增 `.../platform/PlatformOutboxPublisher.java`、PlatformOutboxIngress.java；修改 OutboxEventBus、OutboxDispatcher、EventIdempotency；新增 `shop-app/.../config/OutboxConfiguration.java`；新增 `shop-app/src/test/java/ai/neargo/shop/scenario/OutboxPublisherTransactionTest.java`、OutboxConsumerTransactionTest.java；修改 IdempotencyTest 和 OutboxEventBusPumpTest 中 unified 分支的事务断言。
 
-**Consumes:** 任务1的 envelope/handler 协议及任务2两个 Store。  
+**Consumes:** 任务1的 envelope/handler 协议及任务2两个 Store。
 **Produces:** 平台 OutboxPublisher/OutboxIngress；`OutboxConsumerInvoker.invoke(ClaimedDelivery): DeliveryResult`；显式 LOCAL_TRANSACTION 和 EXTERNAL_WORKFLOW 两条执行路径；`OutboxRouteRegistry.resolve(DomainEvent): EventRoute`。
 
 - RED：事务回滚后业务/事件/delivery/序号一起回滚；仅库存事务下平台发布拒绝；A成功B失败后只重试B；目标事务失败不留 Inbox。
