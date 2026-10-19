@@ -320,6 +320,19 @@ if [ -n "$INSTALL_TO" ]; then
     adb -s "$INSTALL_TO" shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
     sleep 10
     PID=$(adb -s "$INSTALL_TO" shell pidof "$PKG" 2>/dev/null | tr -d '\r' || true)
+    if [ -z "$PID" ]; then
+        # Some emulator images resolve the launcher alias but `monkey -p` exits before
+        # starting it. Retry the exact component reported by PackageManager before
+        # treating a missing process as an app crash.
+        LAUNCHER=$(adb -s "$INSTALL_TO" shell cmd package resolve-activity --brief \
+            -a android.intent.action.MAIN -c android.intent.category.LAUNCHER "$PKG" 2>/dev/null \
+            | tr -d '\r' | tail -1)
+        case "$LAUNCHER" in
+            "$PKG"/*) adb -s "$INSTALL_TO" shell am start -n "$LAUNCHER" >/dev/null 2>&1 || true ;;
+        esac
+        sleep 5
+        PID=$(adb -s "$INSTALL_TO" shell pidof "$PKG" 2>/dev/null | tr -d '\r' || true)
+    fi
     [ -n "$PID" ] || die "启动后进程不在 —— 启动即崩。看 adb -s $INSTALL_TO logcat -d | grep -i fatal"
     ok "进程活着（pid ${PID}）"
 
