@@ -1,5 +1,6 @@
 package ai.neargo.shop.logistics.channel.wx;
 
+import ai.neargo.shop.event.outbox.OutboxLease;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,6 +53,7 @@ public class WxLogisticsClient {
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body), StandardCharsets.UTF_8))
                 .build();
+        OutboxLease.check();
         return json.readTree(http.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)).body());
     }
 

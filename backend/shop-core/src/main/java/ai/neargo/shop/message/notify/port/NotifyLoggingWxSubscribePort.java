@@ -1,5 +1,7 @@
 package ai.neargo.shop.message.notify.port;
 
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.shop.message.entity.SysNotifyLog;
 import ai.neargo.shop.message.notify.NotifyLogWriter;
 import ai.neargo.shop.spi.notify.NotifyBizType;
@@ -135,11 +137,14 @@ public class NotifyLoggingWxSubscribePort implements WxSubscribePort {
 
     private SendResult logged(String openId, String scene, java.util.function.Supplier<SendResult> call) {
         try {
+            OutboxLease.check();
             SendResult r = call.get();
             writer.write(SysNotifyLog.WXSUB, NotifyBizType.TRADE_NOTIFY, openId,
                     r.templateCode(), bizTemplateOf(scene),
                     SysNotifyLog.SENT, null, r.providerMsgId(), null);
             return r;
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.WXSUB, NotifyBizType.TRADE_NOTIFY, openId,
                     delegate.templateId(scene), bizTemplateOf(scene),

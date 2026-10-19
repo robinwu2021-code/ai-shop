@@ -57,4 +57,26 @@ class OutboxMaintenanceTest extends OutboxTestFixture {
         assertThat(health.get("blocked")).isEqualTo(2L);
         assertThat(health.get("due")).isEqualTo(1L);
     }
+    @Test
+    void supersededFailedIntentAndReplacementCommitOrRollbackTogether() {
+        tx.executeWithoutResult(s -> store.append(event("OLD", "{}"), Map.of("a", true), false));
+        var ref = store.findDue(now, 1).getFirst();
+        var claim = store.tryClaim(ref,"first",now,Duration.ofSeconds(120)).orElseThrow();
+        store.complete(claim,DeliveryResult.failed("REJECTED","verified rejection"),now,RetryPolicy.defaults());
+        tx.executeWithoutResult(s -> {
+            store.supersedeFailed("ORDER","O1", java.util.Set.of("a"), "OPS1", "SUBSCRIBE channel=wx", now);
+            store.append(event("ROLLED_BACK", "{}"),Map.of("a",true),false);
+            s.setRollbackOnly();
+        });
+        assertThat(store.counts().get("FAILED")).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox_operation",Long.class)).isZero();
+        tx.executeWithoutResult(s -> {
+            store.supersedeFailed("ORDER","O1", java.util.Set.of("a"), "OPS1", "SUBSCRIBE channel=wx", now);
+            store.append(event("NEW", "{}"),Map.of("a",true),false);
+        });
+        assertThat(store.findDue(now,100)).hasSize(1);
+        assertThat(jdbc.queryForObject("SELECT event_no FROM sys_outbox_delivery WHERE id=?",String.class,
+                store.findDue(now,1).getFirst().id())).isEqualTo("NEW");
+        assertThat(jdbc.queryForObject("SELECT original_error_code FROM sys_outbox_operation",String.class)).isEqualTo("REJECTED");
+    }
 }

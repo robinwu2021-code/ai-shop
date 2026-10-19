@@ -124,6 +124,10 @@ class LogisticsAdminPortImplTest {
         ArgumentCaptor<DomainEvent> c = ArgumentCaptor.forClass(DomainEvent.class);
         verify(events).publish(c.capture());
         assertThat(c.getValue()).isEqualTo(new WaybillRegistered("SH5", "yto"));
+        var order = org.mockito.Mockito.inOrder(events);
+        order.verify(events).supersedeFailed("WAYBILL", "SH5", Set.of("logistics-subscribe"),
+                "REPLAY_SUBSCRIBE channel=yto");
+        order.verify(events).publish(new WaybillRegistered("SH5", "yto"));
     }
 
     @Test

@@ -90,4 +90,20 @@ class Kd100SubscribeExecutorTest {
         verify(subscriptions).mark(eq("SH1"), eq("OS1:1"), eq("kuaidi100"), eq("CONFLICT"),
                 eq(null), any());
     }
+    @Test
+    void disabledUnifiedSubscriptionIsNotReportedAsSent() {
+        LogisticsProperties props = new LogisticsProperties(); props.setSubscribeEnabled(false);
+        var executor = new Kd100SubscribeExecutor(waybills,source,subscriptions,attempts,router,snapshots,props,new ObjectMapper());
+        org.assertj.core.api.Assertions.assertThat(executor.deliver(event()).kind())
+                .isEqualTo(ai.neargo.shop.event.outbox.DeliveryResult.Kind.PERMANENT);
+    }
+    @Test
+    void anotherInFlightChannelActionRemainsRetryable() {
+        SysOutbox event = event();
+        when(subscriptions.claim("SH1","OS1:1","kuaidi100")).thenReturn(false);
+        var pending = new LgsChannelSubscription(); pending.setState("ATTEMPTING");
+        when(subscriptions.find("SH1","OS1:1","kuaidi100")).thenReturn(pending);
+        org.assertj.core.api.Assertions.assertThat(executor().deliver(event).kind())
+                .isEqualTo(ai.neargo.shop.event.outbox.DeliveryResult.Kind.RETRYABLE);
+    }
 }

@@ -1,5 +1,7 @@
 package ai.neargo.shop.message.notify.port;
 
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.shop.message.entity.SysNotifyLog;
 import ai.neargo.shop.message.notify.NotifyLogWriter;
 import ai.neargo.shop.spi.notify.NotifyBizType;
@@ -51,10 +53,13 @@ public class NotifyLoggingSmsPort implements SmsPort {
     @Override
     public SendResult sendOtp(String phone, String code, String bizType, String operatorNo) {
         try {
+            OutboxLease.check();
             SendResult r = delegate.sendOtp(phone, code);
             writer.write(SysNotifyLog.SMS, bizType, phone, r.templateCode(),
                     TPL_SMS_OTP, SysNotifyLog.SENT, null, r.providerMsgId(), operatorNo);
             return r;
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.SMS, bizType, phone, null,
                     TPL_SMS_OTP, SysNotifyLog.FAILED, e.getMessage(), null, operatorNo);
@@ -70,10 +75,13 @@ public class NotifyLoggingSmsPort implements SmsPort {
     @Override
     public SendResult sendOrderPaid(String phone, String subOrderNo, String amountYuan) {
         try {
+            OutboxLease.check();
             SendResult r = delegate.sendOrderPaid(phone, subOrderNo, amountYuan);
             writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, r.templateCode(),
                     TPL_SMS_ORDER_PAID, SysNotifyLog.SENT, null, r.providerMsgId(), null);
             return r;
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, null,
                     TPL_SMS_ORDER_PAID, SysNotifyLog.FAILED, e.getMessage(), null, null);
@@ -84,10 +92,13 @@ public class NotifyLoggingSmsPort implements SmsPort {
     @Override
     public SendResult sendAfterSaleApplied(String phone, String afterSaleNo) {
         try {
+            OutboxLease.check();
             SendResult r = delegate.sendAfterSaleApplied(phone, afterSaleNo);
             writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, r.templateCode(),
                     TPL_SMS_MCH_AFTER_SALE, SysNotifyLog.SENT, null, r.providerMsgId(), null);
             return r;
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.SMS, NotifyBizType.TRADE_NOTIFY, phone, null,
                     TPL_SMS_MCH_AFTER_SALE, SysNotifyLog.FAILED, e.getMessage(), null, null);
@@ -102,10 +113,13 @@ public class NotifyLoggingSmsPort implements SmsPort {
     @Override
     public SendResult sendShipToRecipient(String phone, String receiverName, String trackUrl) {
         try {
+            OutboxLease.check();
             SendResult r = delegate.sendShipToRecipient(phone, receiverName, trackUrl);
             writer.write(SysNotifyLog.SMS, NotifyBizType.SHIP_NOTIFY, phone, r.templateCode(),
                     TPL_SMS_SHIP, SysNotifyLog.SENT, null, r.providerMsgId(), null);
             return r;
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.SMS, NotifyBizType.SHIP_NOTIFY, phone, null,
                     TPL_SMS_SHIP, SysNotifyLog.FAILED, e.getMessage(), null, null);

@@ -1,5 +1,7 @@
 package ai.neargo.shop.message.notify;
 
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.message.entity.MsgPushToken;
 import ai.neargo.shop.message.mapper.MessageMappers.PushTokenMapper;
@@ -81,8 +83,12 @@ public class PushSender {
             return;
         }
         try {
+            OutboxLease.check();
             router.push(PushProvider.normalize(provider), clientId, title, body, link, level);
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (RuntimeException e) {
+            OutboxChannelOutcomes.failure("PUSH");
             log.warn("[push] 定向设备发送失败（已留痕，不重试）provider={}: {}", provider, e.getMessage());
         }
     }
@@ -99,10 +105,14 @@ public class PushSender {
         int ok = 0;
         for (MsgPushToken t : tokens) {
             try {
+                OutboxLease.check();
                 router.push(PushProvider.normalize(t.getProvider()), t.getClientId(),
                         title, body, link, level);
                 ok++;
+            } catch (OutboxLeaseLostException e) {
+                throw e;
             } catch (RuntimeException e) {
+                OutboxChannelOutcomes.failure("PUSH");
                 // 路由内已留痕；这里保证一台失败不拖累其它台，也不让事件重试
                 log.warn("[push] 发送失败（已留痕，不重试）receiver={} platform={} provider={}: {}",
                         receiverNo, t.getPlatform(), t.getProvider(), e.getMessage());

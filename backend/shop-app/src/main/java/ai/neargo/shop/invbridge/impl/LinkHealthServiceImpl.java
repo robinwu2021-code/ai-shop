@@ -52,7 +52,7 @@ public class LinkHealthServiceImpl implements LinkHealthService {
     private ChannelHealth withDelivery(ChannelHealth row, String source) {
         if (unified == null || !unified.enabled(source)) { return row; }
         Map<String, Object> delivery = unified.store(source).health(Instant.now());
-        long failed = num(delivery.get("failed")) + num(delivery.get("unrouted"));
+        long failed = num(delivery.get("failed")) + num(delivery.get("unrouted")) + num(delivery.get("warning"));
         String verdict = failed > 0 ? Verdict.CONSUMER_FAILING : row.verdict();
         String error = row.lastError();
         var recent = unified.store(source).diagnostics(20);

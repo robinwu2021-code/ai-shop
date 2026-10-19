@@ -1,5 +1,6 @@
 package ai.neargo.shop.paybridge;
 
+import ai.neargo.shop.event.outbox.OutboxLease;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.OutboxEventBus;
@@ -96,6 +97,7 @@ public class WxShippingUploadService {
                 : new WxShippingPort.Command(row.getOutTradeNo(), row.getLogisticsType(), itemDesc,
                         trackingNo, expressCompany, payerOpenid, frozen.shipments(), frozen.deliveryMode(),
                         frozen.allDelivered(), frozen.shipments().stream().anyMatch(s -> s.sourceShipmentNo() != null));
+        OutboxLease.check();
         WxShippingPort.Result response = shipping.upload(command);
         Outcome outcome = outcomeOf(row.getAttempts() == null ? 0 : row.getAttempts(), response);
         if (!queue.finish(row, outcome, response.success() ? null : response.code(), response.message())) {

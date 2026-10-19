@@ -1,5 +1,8 @@
 package ai.neargo.shop.logistics.registration;
 
+import ai.neargo.shop.event.outbox.RetryableOutboxException;
+import ai.neargo.shop.event.outbox.DeliveryResult;
+import ai.neargo.shop.event.outbox.OutboxLease;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.logistics.capability.ChannelOutcome;
@@ -51,6 +54,24 @@ public class Kd100SubscribeExecutor implements OutboxConsumer {
         this.json = json;
     }
 
+    @Override
+    public DeliveryResult deliver(SysOutbox event) {
+        if (!props.isSubscribeEnabled()) { return DeliveryResult.failed("DISABLED", "Logistics subscriptions disabled"); }
+        consume(event);
+        var p = json.readTree(event.getPayload());
+        var row = subscriptions.find(p.path("shipmentNo").asString(""), p.path("identityKey").asString(""), CHANNEL);
+        if (row != null && java.util.Set.of("CONFLICT", "FATAL", "UNAVAILABLE").contains(row.getState())) {
+            return DeliveryResult.failed("SUBSCRIBE_FAILED", "See kuaidi100 action state");
+        }
+        if (row != null && java.util.Set.of("PENDING", "ATTEMPTING", "RETRYABLE", "WAITING").contains(row.getState())) {
+            return DeliveryResult.retry("SUBSCRIBE_NOT_READY", "See kuaidi100 action state");
+        }
+        return DeliveryResult.sent();
+    }
+
+    @Override public String handlerId() { return "logistics-kd100-subscribe"; }
+    @Override public boolean externalWorkflow() { return true; }
+
     @Override public boolean supports(String type) { return Kd100SubscribeRequested.TYPE.equals(type); }
 
     @Override
@@ -94,6 +115,7 @@ public class Kd100SubscribeExecutor implements OutboxConsumer {
         }
         LgsKd100SubAttempt attempt = reserved.orElseThrow();
         attempts.markResult(attempt.getId(), "RESERVED", null, callbackId);
+        OutboxLease.check();
         ChannelOutcome result = subscriber.subscribe(new TrackingSubscriber.SubscribeCmd(waybill.getCarrier(),
                 companyCode, waybill.getWaybillNo(), phone,
                 props.getCallbackBase() + "/" + CHANNEL + "?callbackId=" + callbackId));
@@ -115,7 +137,8 @@ public class Kd100SubscribeExecutor implements OutboxConsumer {
             case RETRYABLE, NOT_READY -> {
                 subscriptions.mark(shipmentNo, expectedIdentity, CHANNEL, "RETRYABLE", null,
                         result.code() + " " + result.message());
-                throw new IllegalStateException("快递100订阅待重试：" + result.code());
+                if ("IO".equals(result.code())) { throw new IllegalStateException("Kuaidi100 subscription outcome unknown"); }
+                throw new RetryableOutboxException("Kuaidi100 subscription rejected; retryable");
             }
             case FATAL -> subscriptions.mark(shipmentNo, expectedIdentity, CHANNEL, "FATAL", null,
                     result.code() + " " + result.message());

@@ -1,5 +1,7 @@
 package ai.neargo.shop.logistics.wxbind;
 
+import ai.neargo.shop.event.outbox.DeliveryResult;
+import ai.neargo.shop.event.outbox.OutboxLease;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.logistics.capability.ChannelOutcome;
@@ -44,6 +46,28 @@ public class WxFollowExecutor implements OutboxConsumer {
         this.writer = writer;
         this.json = json;
     }
+
+    @Override
+    public DeliveryResult deliver(SysOutbox event) {
+        var p = json.readTree(event.getPayload());
+        String shipmentNo = p.path("shipmentNo").asString("");
+        var w = waybills.selectOne(Wrappers.<LgsWaybill>query().eq("shipment_no", shipmentNo).last("LIMIT 1"));
+        if (w == null || !p.path("identityKey").asString("").equals(ChannelSubscriptionStore.identityKey(w))) {
+            return DeliveryResult.sent();
+        }
+        var result = followNow(shipmentNo);
+        return switch (result.kind()) {
+            case OK -> DeliveryResult.sent();
+            case RETRYABLE -> "IO".equals(result.code())
+                    ? DeliveryResult.unknown("See wx-follow action state")
+                    : DeliveryResult.retry("FOLLOW_RETRYABLE", "See wx-follow action state");
+            case NOT_READY -> DeliveryResult.retry("FOLLOW_NOT_READY", "See wx-follow action state");
+            case FATAL -> DeliveryResult.failed("FOLLOW_FAILED", "See wx-follow action state");
+        };
+    }
+
+    @Override public String handlerId() { return "logistics-wx-follow"; }
+    @Override public boolean externalWorkflow() { return true; }
 
     @Override public boolean supports(String type) { return WxFollowRequested.TYPE.equals(type); }
 
@@ -93,6 +117,7 @@ public class WxFollowExecutor implements OutboxConsumer {
         }
         String goods = json.writeValueAsString(shipment.goods() == null ? List.of() : shipment.goods().stream()
                 .limit(3).map(g -> Map.of("name", g.name(), "imageUrl", g.imageUrl() == null ? "" : g.imageUrl())).toList());
+        OutboxLease.check();
         ChannelOutcome outcome = gateway.follow(new WaybillFollower.FollowCmd(
                 shipment.wx().openid(), shipment.wx().transId(), shipment.waybillNo(),
                 codes.codeOf(shipment.carrier(), "wx").orElse(null), shipment.receiverPhone(),

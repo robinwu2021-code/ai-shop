@@ -1,5 +1,7 @@
 package ai.neargo.shop.message.notify;
 
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.message.entity.MsgSubscribe;
 import ai.neargo.shop.message.mapper.MessageMappers.SubscribeMapper;
@@ -140,9 +142,13 @@ public class WxSubscribeSender {
             return false;
         }
         try {
+            OutboxLease.check();
             call.accept(openId.get());
             return true;
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (RuntimeException e) {
+            OutboxChannelOutcomes.failure("WXSUB");
             // 装饰器已留痕 FAILED；这里只保证事件消费不被通道抖动拖进重试
             log.warn("[wxsub] 发送失败（已留痕，不重试）userNo={} scene={}: {}",
                     userNo, scene, e.getMessage());

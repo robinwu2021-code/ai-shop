@@ -1,5 +1,6 @@
 package ai.neargo.shop.trade.order.points;
 
+import ai.neargo.shop.event.outbox.RetryableOutboxException;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.spi.points.OrderPointsPlacementWakeEvent;
@@ -20,6 +21,9 @@ public class OrderPointsPlacementWakeConsumer implements OutboxConsumer {
         this.placement = placement;
     }
 
+    @Override public String handlerId() { return "order-points-placement"; }
+    @Override public boolean externalWorkflow() { return true; }
+
     @Override
     public boolean supports(String type) {
         return OrderPointsPlacementWakeEvent.TYPE.equals(type);
@@ -35,7 +39,7 @@ public class OrderPointsPlacementWakeConsumer implements OutboxConsumer {
                         || state.phase() == PointsOrderPlacementCoordinator.Phase.ADMITTED
                         || state.phase()
                                 == PointsOrderPlacementCoordinator.Phase.CANCEL_REQUESTED)) {
-            throw new IllegalStateException("POINTS_PLACEMENT_RETRY_REQUIRED");
+            throw new RetryableOutboxException("POINTS_PLACEMENT_RETRY_REQUIRED");
         }
     }
 }

@@ -11,7 +11,7 @@ import ai.neargo.shop.event.outbox.DeliveryResult;
 public interface OutboxConsumer {
 
     /** Explicit stable identity is mandatory when opting into unified delivery. */
-    default String handlerId() { throw new IllegalStateException("Stable outbox handler ID required"); }
+    default String handlerId() { throw new IllegalStateException("Stable outbox handler ID required: " + getClass().getName()); }
 
     /** Target database, not the source event database. */
     default String targetSource() { return "PLATFORM"; }

@@ -47,6 +47,10 @@ public class ShippingUploadPortImpl implements ShippingUploadPort, OutboxConsume
         this.sources = sources;
     }
 
+    @Override public String handlerId() { return "wx-shipping-queue"; }
+    // The upload queue commits in its own REQUIRES_NEW action transaction.
+    @Override public boolean externalWorkflow() { return true; }
+
     @Override
     public void enqueue(String orderNo, String subOrderNo, String fulfillment) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {

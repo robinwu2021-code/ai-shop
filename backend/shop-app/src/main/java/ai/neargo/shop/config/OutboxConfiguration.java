@@ -1,12 +1,12 @@
 package ai.neargo.shop.config;
 
+import ai.neargo.shop.event.outbox.runtime.OutboxTransactions;
+import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.event.OutboxConsumer;
-import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.event.outbox.OutboxEnvelope;
 import ai.neargo.shop.event.outbox.OutboxHandler;
-import ai.neargo.shop.event.outbox.PublishOptions;
 import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
 import ai.neargo.shop.event.outbox.runtime.OutboxProperties;
 import ai.neargo.shop.event.outbox.runtime.OutboxMigrationService;
@@ -14,7 +14,7 @@ import ai.neargo.shop.event.outbox.runtime.OutboxRunner;
 import ai.neargo.shop.event.outbox.runtime.TransactionalOutboxHandler;
 import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
-import ai.neargo.shop.trade.mapper.TradeMappers;
+import ai.neargo.shop.trade.order.mapper.StoreOrderMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
@@ -44,7 +44,7 @@ public class OutboxConfiguration {
             @Qualifier("transactionManager") PlatformTransactionManager platformTx,
             @Qualifier("invDataSource") ObjectProvider<DataSource> inventory,
             @Qualifier("invTransactionManager") ObjectProvider<PlatformTransactionManager> inventoryTx,
-            ObjectProvider<TradeMappers.SubOrderMapper> subOrders,
+            ObjectProvider<StoreOrderMapper> subOrders,
             ObjectProvider<PlatformTransactionManager> allTransactionManagers) {
         return () -> {
             props.validate();
@@ -58,8 +58,11 @@ public class OutboxConfiguration {
             if (props.unified("PLATFORM") && env.getProperty("shop.outbox.legacy-scan.enabled", Boolean.class, false)) {
                 throw new IllegalStateException("Unified outbox cannot enable legacy-scan");
             }
-            allTransactionManagers.orderedStream().forEach(ai.neargo.shop.event.outbox.runtime.OutboxTransactions::register);
+            allTransactionManagers.orderedStream().forEach(OutboxTransactions::register);
             List<OutboxHandler> handlers = consumers.orderedStream().map(consumer -> {
+                if (!List.of("PLATFORM", "INVENTORY").contains(consumer.targetSource())) {
+                    throw new IllegalStateException("Unknown outbox target source");
+                }
                 boolean inv = "INVENTORY".equals(consumer.targetSource());
                 DataSource ds = inv ? inventory.getObject() : platform;
                 PlatformTransactionManager tx = inv ? inventoryTx.getObject() : platformTx;
@@ -95,25 +98,11 @@ public class OutboxConfiguration {
                     }
                 }
             }
-            facade.setRoutes((source, event) -> {
-                var p = json.readTree(json.writeValueAsString(event));
-                if ("INVENTORY".equals(source)) {
-                    return new PublishOptions("DOCUMENT:" + p.path("docNo").asString(), 2);
-                }
-                String orderNo = p.path("orderNo").asString("");
-                String subOrderNo = p.path("subOrderNo").asString("");
-                boolean logistics = event.eventType().startsWith("WAYBILL_");
-                if (subOrderNo.isBlank() && logistics) { subOrderNo = p.path("bizRef").asString(""); }
-                String lookupSubOrder = subOrderNo;
-                if (orderNo.isBlank() && !subOrderNo.isBlank()) {
-                    OrdSubOrder sub = DataScopeContext.executeWithoutScope(() -> subOrders.getObject().selectOne(
-                            Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getSubOrderNo, lookupSubOrder).last("limit 1")));
-                    if (sub == null && !logistics) { throw new IllegalStateException("Order stream root not found"); }
-                    if (sub != null) { orderNo = sub.getOrderNo(); }
-                }
-                String key = orderNo.isBlank() ? event.aggregateType() + ":" + event.aggregateId() : "ORDER:" + orderNo;
-                return new PublishOptions(key, 1);
-            });
+            facade.setExpansion(new OutboxEventRoutes(json, subOrderNo -> {
+                OrdSubOrder sub = DataScopeContext.executeWithoutScope(() -> subOrders.getObject().selectOne(
+                        Wrappers.<OrdSubOrder>lambdaQuery().eq(OrdSubOrder::getSubOrderNo, subOrderNo).last("limit 1")));
+                return sub == null ? null : sub.getOrderNo();
+            })::expand);
         };
     }
 

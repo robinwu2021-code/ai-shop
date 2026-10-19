@@ -53,6 +53,16 @@ public class OutboxEventBus {
     @Autowired(required = false)
     public void setUnified(UnifiedOutboxFacade unified) { this.unified = unified; }
 
+    /** Only obsolete failed targets are skipped; successful and in-flight targets are preserved. */
+    public void supersedeFailed(String aggregateType, String aggregateId, java.util.Set<String> handlers,
+                                String reason) {
+        if (unified != null && unified.enabled("PLATFORM")) {
+            String actor = ai.neargo.shop.auth.SecurityUtils.currentUserNoOrNull();
+            unified.supersedeFailed("PLATFORM", aggregateType, aggregateId, handlers,
+                    actor == null ? "SYSTEM:LOGISTICS" : actor, reason);
+        }
+    }
+
     public void publish(DomainEvent event) {
         if (unified != null && unified.isMaintenance()) { throw new IllegalStateException("Outbox maintenance"); }
         if (unified != null && unified.enabled("PLATFORM")) {

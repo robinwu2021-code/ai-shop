@@ -17,6 +17,8 @@ public class ShipmentSnapshotConsumer implements OutboxConsumer {
         this.json = json;
     }
 
+    @Override public String handlerId() { return "shipment-snapshot"; }
+
     @Override
     public boolean supports(String eventType) { return "LGS_SHIPMENT_SNAPSHOT".equals(eventType); }
 

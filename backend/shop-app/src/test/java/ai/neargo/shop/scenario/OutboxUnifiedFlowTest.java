@@ -61,4 +61,17 @@ class OutboxUnifiedFlowTest {
                 + " WHERE source_system='INVENTORY' AND source_event_no=?",Long.class,
                 claim.event().sourceEventNo())).isEqualTo(1);
     }
+    @Test
+    void legacyInventoryIngressPreservesVersionOnePayloadAndOriginalIdentity() {
+        String original = "LEGACY-"+UUID.randomUUID();
+        String payload = "{\"docNo\":\"DOC-V1\",\"ownerId\":\"OWNER\"}";
+        Instant occurred = Instant.parse("2026-10-19T00:00:00Z");
+        var first = facade.acceptInventory(original,"OWNER","DocumentPosted",payload,occurred);
+        var again = facade.acceptInventory(original,"OWNER","DocumentPosted",payload,occurred);
+        assertThat(again.eventNo()).isEqualTo(first.eventNo());
+        var row = new JdbcTemplate(platform).queryForMap("SELECT schema_version,stream_key,payload FROM sys_outbox WHERE event_no=?",first.eventNo());
+        assertThat(((Number)row.get("schema_version")).intValue()).isEqualTo(1);
+        assertThat(row.get("stream_key")).isEqualTo("INVENTORY:DOCUMENT:DOC-V1");
+        assertThat(new tools.jackson.databind.ObjectMapper().readTree((String)row.get("payload")).path("payload").asString()).isEqualTo(payload);
+    }
 }

@@ -1,5 +1,7 @@
 package ai.neargo.shop.message.notify;
 
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.shop.message.entity.SysNotifyLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,6 +134,7 @@ public class WeComBotSender {
             String body = json.writeValueAsString(Map.of(
                     "msgtype", "markdown",
                     "markdown", Map.of("content", content)));
+            OutboxLease.check();
             HttpResponse<String> resp = http.send(
                     HttpRequest.newBuilder(URI.create(webhook))
                             .timeout(Duration.ofSeconds(5))
@@ -154,6 +157,8 @@ public class WeComBotSender {
             logWriter.write(SysNotifyLog.WEBHOOK, bizType, TARGET, null, null,
                     SysNotifyLog.FAILED, err, null, null, "WECOM");
             return false;
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("企微群机器人发送异常 bizType={} {}", bizType, e.toString());
             logWriter.write(SysNotifyLog.WEBHOOK, bizType, TARGET, null, null,

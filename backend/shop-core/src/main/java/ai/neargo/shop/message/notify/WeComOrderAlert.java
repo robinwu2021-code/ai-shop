@@ -1,5 +1,7 @@
 package ai.neargo.shop.message.notify;
 
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.notify.NotifyBizType;
 import ai.neargo.shop.spi.trade.SubOrderBuyerPort;
@@ -58,9 +60,13 @@ public class WeComOrderAlert {
             return false;
         }
         try {
-            return sender.sendMarkdown(NotifyBizType.TRADE_NOTIFY,
-                    content(entityNo, storeNo, subOrderNo, payAmountMinor), url.get());
+            String markdown = content(entityNo, storeNo, subOrderNo, payAmountMinor);
+            OutboxLease.check();
+            return sender.sendMarkdown(NotifyBizType.TRADE_NOTIFY, markdown, url.get());
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (RuntimeException e) {
+            OutboxChannelOutcomes.failure("WEBHOOK");
             // sendMarkdown 自己已经吞了发送异常；这里兜的是补查门店名/商品时的意外
             log.warn("来单推企微群失败 subOrderNo={} {}", subOrderNo, e.toString());
             return false;

@@ -1,5 +1,7 @@
 package ai.neargo.shop.logistics.channel.wx;
 
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.shop.logistics.capability.ChannelOutcome;
 import ai.neargo.shop.logistics.capability.WaybillTokenBinder;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -67,6 +69,8 @@ public class WxWaybillBinder implements WaybillTokenBinder {
                 return ChannelOutcome.ok("0", tk);
             }
             return classify(code, n.path("errmsg").asText(""));
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("[lgs:wx] trace_waybill {} 异常：{}", cmd.waybillNo(), e.toString());
             return ChannelOutcome.retryable("IO", e.getClass().getSimpleName());
@@ -90,6 +94,8 @@ public class WxWaybillBinder implements WaybillTokenBinder {
                             "goods_img_url", g.path("imageUrl").asText("")));
                 }
             }
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("[lgs:wx] 商品快照解析失败：{}", e.toString());
         }

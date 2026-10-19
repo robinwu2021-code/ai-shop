@@ -78,8 +78,11 @@ public class NotifyLogWriter {
             row.setClientIp(meta == null ? null : meta.ip());
             row.setCreatedAt(LocalDateTime.now());
             // 这张表没有数据域概念（它是平台侧的运维记录），绕开拦截器
-            DataScopeContext.executeWithoutScope(() -> mapper.insert(row));
+            int saved = DataScopeContext.executeWithoutScope(() -> mapper.insert(row));
+            if (saved == 1) { OutboxChannelOutcomes.recorded(channel, status, row.getNotifyNo()); }
+            else { OutboxChannelOutcomes.unrecorded(); }
         } catch (RuntimeException e) {
+            OutboxChannelOutcomes.unrecorded();
             log.error("[notify] 写发送记录失败 channel={} biz={} —— 不影响发送本身",
                     channel, bizType, e);
         }

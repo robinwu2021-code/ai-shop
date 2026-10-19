@@ -148,4 +148,13 @@ class WxBindTest {
         x.consume(event());
         verify(binder, never()).bind(any());
     }
+    @Test
+    void ioTimeoutIsUnknownInsteadOfAnAutomaticRetry() {
+        when(waybills.selectOne(any())).thenReturn(ready());
+        WxBindExecutor x = executor();
+        when(binder.bind(any())).thenReturn(ChannelOutcome.retryable("IO", "SocketTimeoutException"));
+        assertThatThrownBy(() -> x.consume(event()))
+                .isInstanceOf(IllegalStateException.class)
+                .isNotInstanceOf(ai.neargo.shop.event.outbox.RetryableOutboxException.class);
+    }
 }

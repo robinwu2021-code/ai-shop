@@ -38,6 +38,16 @@ public final class UnifiedOutboxFacade {
     private final Map<String, Map<String, OutboxHandler>> handlers = new ConcurrentHashMap<>();
     private BiFunction<String, DomainEvent, PublishOptions> routes =
             (source, event) -> new PublishOptions(event.aggregateType() + ":" + event.aggregateId(), 1);
+    public record Publication(DomainEvent event, PublishOptions options) { }
+    private BiFunction<String, DomainEvent, List<Publication>> expansion;
+    public void setExpansion(BiFunction<String, DomainEvent, List<Publication>> expansion) { this.expansion = expansion; }
+    private record BatchKey(Object transaction, String source) { }
+    private record Pending(OutboxEnvelope envelope, Map<String, Boolean> targets, boolean archive) { }
+    private static final class Batch {
+        final List<Pending> pending = new java.util.ArrayList<>();
+        boolean flushed;
+    }
+    private final Map<BatchKey, Batch> batches = new ConcurrentHashMap<>();
     private volatile Consumer<String> wakeup = source -> { };
 
     public UnifiedOutboxFacade(ObjectMapper json) { this.json = json; }
@@ -71,12 +81,21 @@ public final class UnifiedOutboxFacade {
         this.routes = routes;
     }
     public PublishReceipt publish(String source, DomainEvent event) {
-        return publisher(source).publish(event, routes.apply(source, event));
+        var publications = expansion == null ? List.of(new Publication(event, routes.apply(source, event)))
+                : expansion.apply(source, event);
+        if (publications.isEmpty()) { throw new IllegalArgumentException("Empty outbox expansion"); }
+        PublishReceipt first = null;
+        for (var publication : publications) {
+            var receipt = publish(source, publication.event(), publication.options());
+            if (first == null) { first = receipt; }
+        }
+        return first;
     }
     public void setWakeup(Consumer<String> wakeup) { this.wakeup = wakeup; }
 
     public PublishReceipt publish(String source, DomainEvent event, PublishOptions options) {
         if (maintenance) { throw new IllegalStateException("Outbox source is under maintenance"); }
+        store(source).requireSourceTransaction();
         String eventNo = BizKey.next(BizKey.EVENT);
         OutboxEnvelope envelope = new OutboxEnvelope(eventNo, source, eventNo, event.aggregateType(),
                 event.aggregateId(), event.eventType(), options.schemaVersion(), options.streamKey(), 0,
@@ -84,12 +103,32 @@ public final class UnifiedOutboxFacade {
         Map<String, Boolean> targets = targets(source, event.eventType());
         boolean archive = archiveOnly.contains(source + ":" + event.eventType());
         if (archive && !targets.isEmpty()) { throw new IllegalStateException("Archive route conflicts with consumers"); }
-        PublishReceipt receipt = store(source).append(envelope, targets, archive);
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() { signalSafely(source); }
+        BatchKey key = new BatchKey(OutboxTransactions.currentIdentity(), source);
+        Batch batch = batches.computeIfAbsent(key, ignored -> {
+            Batch created = new Batch();
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void beforeCommit(boolean readOnly) {
+                    if (readOnly) { throw new IllegalStateException("Outbox publication requires writable transaction"); }
+                    created.flushed = true;
+                    store(source).reserveStreams(created.pending.stream().map(p -> p.envelope().streamKey()).toList());
+                    for (var pending : created.pending) {
+                        store(source).append(pending.envelope(), pending.targets(), pending.archive());
+                    }
+                }
+                @Override public void afterCommit() { signalSafely(source); }
+                @Override public void afterCompletion(int status) { batches.remove(key); }
+            });
+            return created;
         });
-        return receipt;
+        if (batch.flushed) { throw new IllegalStateException("Cannot publish after source outbox flush"); }
+        batch.pending.add(new Pending(envelope, targets, archive));
+        return new PublishReceipt(eventNo, true);
+    }
+
+    public void supersedeFailed(String source, String aggregateType, String aggregateId,
+                                Set<String> handlerIds, String actor, String reason) {
+        if (maintenance) { throw new IllegalStateException("Outbox source is under maintenance"); }
+        store(source).supersedeFailed(aggregateType, aggregateId, handlerIds, actor, reason, Instant.now());
     }
 
     public PublishReceipt accept(String source, OutboxEnvelope envelope) {

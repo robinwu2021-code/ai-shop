@@ -117,14 +117,14 @@ delivery 是源端调度记录，目标端 Inbox 是去重记录，职责不同�
 
 每个源库另有 *_outbox_operation，保存重放/跳过的 request_id、操作人、原因及状态前后快照；操作记录与该源状态变更同事务。运维跨源查询分别读取并汇总，不要求两库操作审计共享事务。
 
-事件主表 status 是交付记录的汇总：所有目标 SENT 才 SENT；任一 FAILED 则 FAILED；其余为 PENDING。存在人工跳过则汇总为 SKIPPED；ARCHIVE_ONLY 记录为 ARCHIVED，不能算作交付成功。主表 retry_count 等旧字段作为过渡兼容投影，不参与新引擎调度。主表 SENT 不等于外部业务动作最终成功；外部动作结果由物流/通知等目的域记录。
+事件主表 status 是交付记录的汇总：所有目标 SENT 才 SENT；任一 FAILED 则 FAILED；仍有待处理目标为 PENDING；尽力通知存在通道失败时为 WARNING。WARNING 保留失败通道及 sys_notify_log 编号，是不阻塞后续通知的终态，不冒充全部发送成功。存在人工跳过则汇总为 SKIPPED；ARCHIVE_ONLY 记录为 ARCHIVED，不能算作交付成功。主表 retry_count 等旧字段作为过渡兼容投影，不参与新引擎调度。主表 SENT 不等于外部业务动作最终成功；外部动作结果由物流/通知等目的域记录。
 
 迁移脚本分别放平台 db/migration 与库存 db/inventory；迁移版本执行时依据最新最大版本分配。冻结的 baseline 和 V284 不改。新字段/表使用与所在库业务键一致的字符排序规则，避免 join 时字符集冲突。
 
 ### 2.4 发布流程：业务与事件同事务
 
-1. 入口检查事务资源是否绑定到源数据源；仅检查 isSynchronizationActive 不足以识别误用库存或支付事务。
-2. 先完成业务状态更新，再按稳定顺序锁定要使用的 stream 行；多流发布按 stream_key 排序，避免相互倒序加锁。
+1. 使用 Spring TransactionExecutionListener 跟踪最内层物理事务及提交阶段，结合源 ConnectionHolder 与 autoCommit=false 验证归属。同步绑定的只读连接、其他数据源的内层事务、afterCommit 阶段均不能发布。
+2. publish 立即序列化并保存路由快照，在当前物理事务内暂存待写事件；Spring beforeCommit 按完整 stream_key 集合排序锁定，再按发布顺序分配各流序号并落库。REQUIRES_NEW 使用独立缓冲，事务完成后清理；提交前直接读 Outbox 表不能依赖尚未 flush 的事件。底层直接 append 必须预先排序保留全部流，否则倒序新增流会拒绝。
 3. 分配序号，序列化载荷，插入事件和目标 delivery 记录。以上写入与业务共用一个事务。
 4. handler 目标清单由路由注册表在发布时确定并持久化；配置改变后不自动扩大历史事件的目标集合。
 5. 提交后只发送一个轻量唤醒信号。入队失败只记录限频日志，由持久补扫恢复；不能向调用者返回“业务失败”诱发重复提交。
@@ -160,7 +160,7 @@ delivery 是源端调度记录，目标端 Inbox 是去重记录，职责不同�
 
 ### 2.7 重试、占用和恢复
 
-delivery 状态统一为 PENDING → PROCESSING → SENT；可重试失败回 PENDING；不可重试/耗尽上限/结果未知进入 FAILED。人工审计跳过用 SKIPPED，并与 SENT 区分。
+delivery 状态统一为 PENDING → PROCESSING → SENT；尽力通知部分通道失败进入 WARNING，保留通道统计与持久发送记录引用且不整条重发；发送记录落库失败进入 OUTCOME_UNKNOWN。可重试失败回 PENDING；不可重试/耗尽上限/结果未知进入 FAILED。人工审计跳过用 SKIPPED，并与 SENT 区分。
 
 默认失败上限 10 次，退避 min(10秒 × 2^(本轮第n次失败−1), 30分钟)。第 10 次失败转 FAILED。attempt_count 保存总尝试次数；人工重放增加 replay_count，并开启新的本轮尝试预算，总历史不清零。重放仍针对原 event_no、原 handler_id，成功消费者的 Inbox 保留。
 
@@ -186,7 +186,7 @@ InvOutboxDispatchJob 的发出目标改为稳定 handler inventory-to-platform�
 
 健康查询复用 LinkHealthService，扩展统计：due、processing、retrying、failed、unknown、blocked、oldest_due_age、last_success_at。最近错误按 last_attempt_at 排序取真实对应行，不用 MAX(last_error)。旧 API 字段保持可读，新增字段契约执行时同步前端类型；本轮没有新增页面。
 
-人工重放服务以 source + eventNo + handlerId 定位，只允许 FAILED，已有 PROCESSING 不抢占；重复请求幂等。记录操作人、原因、前后状态、时间和原错误。新建对外重放端点前核对现有物流重放入口及运营权限，执行计划再固定端点与权限码。
+人工重放服务以 source + eventNo + handlerId 定位，只允许 FAILED，已有 PROCESSING 不抢占；重复请求幂等。记录操作人、原因、前后状态、时间、原错误码/摘要、原总尝试/本轮尝试和原最后执行/下次重试时间。物流现有重放和换号入口在同一源事务内审计跳过被替代的 FAILED 投递，再发布保留指定渠道的新意图；成功/执行中投递不重置。新建对外重放端点前核对现有物流重放入口及运营权限，执行计划再固定端点与权限码。
 
 第一期不自动删除成功事件或消费去重记录。后续归档须保证“允许最晚重放时间”短于 Inbox 保存期限，且载荷敏感数据策略与物流现有仅带业务引用的规则一致。
 
@@ -250,10 +250,10 @@ P2、P3 作为同一可切换平台版本交付，不能让新记录在没有运
 
 **Produces:** §2.2 接口；`RetryPolicy.retryDelay(int roundAttempt): Duration`；显式失败分类 RETRYABLE / PERMANENT / OUTCOME_UNKNOWN。DeliveryResult 带错误码、摘要及动作引用，不能只有布尔值。ClaimedDelivery 包含 delivery ID、claimToken、source、event、handlerId、leaseUntil。
 
-- [ ] RED：OutboxRetryPolicyTest 断言第1次失败10秒、第2次20秒、第9次1800秒、第10次不再调度，非法次数拒绝。
-- [ ] 固定 envelope 版本和字段长度；拒绝空来源号、空 handler、超长业务键及非法 JSON；确定规范化 JSON 的对象键排序、数组保序与数值表示规则。
-- [ ] 将下表固化为路由注册表，启动检查 handler ID 唯一、事务管理器存在、恢复策略已配置；不以代理类名自动生成 ID。
-- [ ] GREEN：运行 shop-base 的 OutboxRetryPolicyTest；提交公共契约和文档对齐。
+- RED：OutboxRetryPolicyTest 断言第1次失败10秒、第2次20秒、第9次1800秒、第10次不再调度，非法次数拒绝。
+- 固定 envelope 版本和字段长度；拒绝空来源号、空 handler、超长业务键及非法 JSON；确定规范化 JSON 的对象键排序、数组保序与数值表示规则。
+- 将下表固化为路由注册表，启动检查 handler ID 唯一、事务管理器存在、恢复策略已配置；不以代理类名自动生成 ID。
+- GREEN：运行 shop-base 的 OutboxRetryPolicyTest；提交公共契约和文档对齐。
 
 | 消费者 | 固定 handlerId | 执行事务 / 恢复类型 |
 |---|---|---|
@@ -281,11 +281,11 @@ LOCAL_TRANSACTION 的 Inbox 与全部本地业务变更同目标事务；发现�
 
 **Produces:** `SysOutboxStore implements OutboxStore` 和 `InvOutboxStore implements OutboxStore`；按 source 分别绑定事务模板。插入事件及 delivery 的 append 方法由发布器持有的源适配器提供，不能暴露任意库名参数。
 
-- [ ] RED：OutboxStoreFlowTest 覆盖未到期认领失败、单一 claim 成功、旧 token 不能完成、新 token 恢复、早 delivery 阻塞同 handler 晚 delivery、其他 handler 可推进。
-- [ ] 增加 §2.3 字段；delivery 补 round_attempt_count 和 last_replayed_at，使总尝试数保留、人工重放后的预算可单独计数；主表补 occurred_at。lease/retry 清空使用显式 SQL。
-- [ ] 以正确源事务锁 stream 分配序号；delivery 认领用条件更新及前序阻塞检查，前序判断包含 PENDING、PROCESSING、FAILED。SKIPPED 视为已审计放行但汇总不伪装 SENT。
-- [ ] 目标来源唯一键插入冲突后，在回滚的事务之外读取旧行并比对指纹；其他冲突继续抛出。
-- [ ] GREEN：运行 shop-app 的 OutboxStoreFlowTest，并在临时 MariaDB/MySQL 库执行迁移、回滚、认领及唯一键场景；提交 DDL、适配器和验证记录。
+- RED：OutboxStoreFlowTest 覆盖未到期认领失败、单一 claim 成功、旧 token 不能完成、新 token 恢复、早 delivery 阻塞同 handler 晚 delivery、其他 handler 可推进。
+- 增加 §2.3 字段；delivery 补 round_attempt_count 和 last_replayed_at，使总尝试数保留、人工重放后的预算可单独计数；主表补 occurred_at。lease/retry 清空使用显式 SQL。
+- 以正确源事务锁 stream 分配序号；delivery 认领用条件更新及前序阻塞检查，前序判断包含 PENDING、PROCESSING、FAILED。SKIPPED 视为已审计放行但汇总不伪装 SENT。
+- 目标来源唯一键插入冲突后，在回滚的事务之外读取旧行并比对指纹；其他冲突继续抛出。
+- GREEN：运行 shop-app 的 OutboxStoreFlowTest，并在临时 MariaDB/MySQL 库执行迁移、回滚、认领及唯一键场景；提交 DDL、适配器和验证记录。
 
 #### 任务 3：平台发布、事务隔离与逐消费者交付
 
@@ -294,11 +294,11 @@ LOCAL_TRANSACTION 的 Inbox 与全部本地业务变更同目标事务；发现�
 **Consumes:** 任务1的 envelope/handler 协议及任务2两个 Store。  
 **Produces:** 平台 OutboxPublisher/OutboxIngress；`OutboxConsumerInvoker.invoke(ClaimedDelivery): DeliveryResult`；显式 LOCAL_TRANSACTION 和 EXTERNAL_WORKFLOW 两条执行路径；`OutboxRouteRegistry.resolve(DomainEvent): EventRoute`。
 
-- [ ] RED：事务回滚后业务/事件/delivery/序号一起回滚；仅库存事务下平台发布拒绝；A成功B失败后只重试B；目标事务失败不留 Inbox。
-- [ ] 统一发布并保存目标 handler 快照。无消费者持久化 NO_CONSUMER；归档类型显式登记，不隐式吞掉未知类型。
-- [ ] LOCAL_TRANSACTION 的目标事务使用独立 TransactionTemplate 包住 Inbox 与 action；源端认领/确认在独立短事务，异常先退出目标事务再记录失败。
-- [ ] legacy 模式保留已有入口行为；unified 模式禁止无事务 publish，单独后台接收使用 OutboxIngress，不能静默新开发布事务掩盖与业务分离的问题。
-- [ ] GREEN：运行上述3组受影响测试；提交平台入口和消费执行器。
+- RED：事务回滚后业务/事件/delivery/序号一起回滚；仅库存事务下平台发布拒绝；A成功B失败后只重试B；目标事务失败不留 Inbox。
+- 统一发布并保存目标 handler 快照。无消费者持久化 NO_CONSUMER；归档类型显式登记，不隐式吞掉未知类型。
+- LOCAL_TRANSACTION 的目标事务使用独立 TransactionTemplate 包住 Inbox 与 action；源端认领/确认在独立短事务，异常先退出目标事务再记录失败。
+- legacy 模式保留已有入口行为；unified 模式禁止无事务 publish，单独后台接收使用 OutboxIngress，不能静默新开发布事务掩盖与业务分离的问题。
+- GREEN：运行上述3组受影响测试；提交平台入口和消费执行器。
 
 #### 任务 4：Spring运行器、限额与持久恢复
 
@@ -306,11 +306,11 @@ LOCAL_TRANSACTION 的 Inbox 与全部本地业务变更同目标事务；发现�
 
 **Produces:** `OutboxRunner.signal(String source)`、`recoverDue()`、`stop()`；Spring 生命周期按指定 source 注册；两个 source 共用一个5线程执行池，计时器不执行业务。
 
-- [ ] RED：故意丢弃内存提示后到期补扫恢复；队列拒绝后记录仍可发现；两个 source 合计不超过5个任务；关总 job 开关仍有内部恢复；过期旧回调不覆盖新 claim。
-- [ ] 内存队列只存轻量引用；在执行名额可用后认领。补扫 source 轮转、分页、重复提示去重；异常限频，单次异常不终止后续补扫。
-- [ ] 延迟唤醒与恢复统一调用认领，到期再次核查；租约续期失败停止后续动作，外部未知结果按 handler 策略隔离。
-- [ ] 停机先停止接收信号和认领，再终止计时器与执行池；未完成记录留库待恢复。新旧模式冲突时启动失败，避免静默双投。
-- [ ] GREEN：运行 OutboxRecoveryTest、OutboxRunnerCapacityTest 及受影响 OutboxPumpTest、OutboxWiringTest；提交运行器。
+- RED：故意丢弃内存提示后到期补扫恢复；队列拒绝后记录仍可发现；两个 source 合计不超过5个任务；关总 job 开关仍有内部恢复；过期旧回调不覆盖新 claim。
+- 内存队列只存轻量引用；在执行名额可用后认领。补扫 source 轮转、分页、重复提示去重；异常限频，单次异常不终止后续补扫。
+- 延迟唤醒与恢复统一调用认领，到期再次核查；租约续期失败停止后续动作，外部未知结果按 handler 策略隔离。
+- 停机先停止接收信号和认领，再终止计时器与执行池；未完成记录留库待恢复。新旧模式冲突时启动失败，避免静默双投。
+- GREEN：运行 OutboxRecoveryTest、OutboxRunnerCapacityTest 及受影响 OutboxPumpTest、OutboxWiringTest；提交运行器。
 
 #### 任务 5：库存发布、跨库去重与兼容载荷
 
@@ -318,22 +318,22 @@ LOCAL_TRANSACTION 的 Inbox 与全部本地业务变更同目标事务；发现�
 
 **Produces:** 库存 OutboxPublisher 绑定 invTransactionManager；inventory-to-platform 调用平台 OutboxIngress.accept；旧 sink 接口兼容；v1/v2 显式解码。
 
-- [ ] RED：平台入库后模拟源确认失败，再次转发返回相同 eventNo 且只有一条平台事件；异参冲突；非来源唯一键错误不能当成功；v1/v2 均正确读取 docNo。
-- [ ] 库存过账使用 JSON 序列化器，不再手拼 JSON；发布快照选择 inventory-to-platform 目标及 DOCUMENT:docNo 顺序键。
-- [ ] 旧库存 job 在 unified 模式代理公共引擎或关闭，不直接扫描和更改主表；legacy 模式补齐真实到期筛选和失败终态，使用同一 RetryPolicy。
-- [ ] GREEN：运行 InventoryOutboxIngressTest 及已有 StockSyncWritebackTest 中受影响的定向方法；提交库存接入。
+- RED：平台入库后模拟源确认失败，再次转发返回相同 eventNo 且只有一条平台事件；异参冲突；非来源唯一键错误不能当成功；v1/v2 均正确读取 docNo。
+- 库存过账使用 JSON 序列化器，不再手拼 JSON；发布快照选择 inventory-to-platform 目标及 DOCUMENT:docNo 顺序键。
+- 旧库存 job 在 unified 模式代理公共引擎或关闭，不直接扫描和更改主表；legacy 模式补齐真实到期筛选和失败终态，使用同一 RetryPolicy。
+- GREEN：运行 InventoryOutboxIngressTest 及已有 StockSyncWritebackTest 中受影响的定向方法；提交库存接入。
 
 #### 任务 6：消费者逐项接管与失败语义修复
 
-**Files:** 修改任务1表中14个现有 OutboxConsumer；新增 `shop-app/.../config/OutboxHandlerConfiguration.java`（显式适配 bean 和条件装配）；按需增加库存 Inbox 实体/Mapper与同批新增迁移；新增 `shop-app/src/test/java/ai/neargo/shop/scenario/OutboxDeliveryOrderTest.java`、OutboxRoutingTest.java、OutboxHandlerFailureTest.java。
+**Files:** 修改任务1表中原14个 OutboxConsumer，并适配统一分支新增的7个消费者；新增 `shop-app/.../config/OutboxHandlerConfiguration.java`（显式适配 bean 和条件装配）；按需增加库存 Inbox 实体/Mapper与同批新增迁移；新增 `shop-app/src/test/java/ai/neargo/shop/scenario/OutboxDeliveryOrderTest.java`、OutboxRoutingTest.java、OutboxHandlerFailureTest.java。
 
 **Produces:** 稳定 handlerId、目标事务和恢复策略；显式 stream 解析器（trade 根订单、物流运单、商品SKU、库存单据）。
 
-- [ ] RED：主单/子单通知同流有序；失败只阻塞该 handler；disabled / 未配置 / 未注册可区分；InventoryMirror 的普通数据库错误不得作为“已经处理”吞掉；裂变回填失败不得被判成功。
-- [ ] 修复 InventoryMirrorConsumer.settled 捕获全部 RuntimeException 的路径，只接受业务定义的确切已处理结果；修复 FissionOutboxConsumer 吞掉全部业务异常的路径，可重试错误交回引擎。
-- [ ] 外部流程逐项确认已有状态与渠道返回值。缺少可靠去重/查询的超时返回 OUTCOME_UNKNOWN；不能因适配旧 void 接口而直接返回成功。
-- [ ] 平台本地消费者复用 EventIdempotency；跨库库存写入在库存事务内复用业务唯一键，无法完整覆盖的增设库存 Inbox。禁止在平台 Inbox 里提前标记库存成功。
-- [ ] GREEN：运行上述3个类及任务3消费事务类；提交消费者接管及明确的行为变更说明。
+- RED：主单/子单通知同流有序；失败只阻塞该 handler；disabled / 未配置 / 未注册可区分；InventoryMirror 的普通数据库错误不得作为“已经处理”吞掉；裂变回填失败不得被判成功。
+- 修复 InventoryMirrorConsumer.settled 捕获全部 RuntimeException 的路径，只接受业务定义的确切已处理结果；修复 FissionOutboxConsumer 吞掉全部业务异常的路径，可重试错误交回引擎。
+- 外部流程逐项确认已有状态与渠道返回值。缺少可靠去重/查询的超时返回 OUTCOME_UNKNOWN；不能因适配旧 void 接口而直接返回成功。
+- 平台本地消费者复用 EventIdempotency；跨库库存写入在库存事务内复用业务唯一键，无法完整覆盖的增设库存 Inbox。禁止在平台 Inbox 里提前标记库存成功。
+- GREEN：运行上述3个类及任务3消费事务类；提交消费者接管及明确的行为变更说明。
 
 #### 任务 7：诊断、受控重放与存量接管
 
@@ -341,20 +341,20 @@ LOCAL_TRANSACTION 的 Inbox 与全部本地业务变更同目标事务；发现�
 
 **Produces:** 现有 GET /ops/inventory/link-health 的兼容扩展；内部运维方法 `replay(source,eventNo,handlerId,reason,requestId)`、`skip(source,eventNo,handlerId,reason,requestId)`；迁移入口 `inspect(source)`、`adopt(source,confirmedManifest)`。本期不增加未审定权限的外部写端点；只读诊断沿用 INVENTORY_STOCK_READ。
 
-- [ ] RED：FAILED、UNKNOWN 和被早序号阻塞的后续记录能区分；最近错误不是按字符串大小取值；重放保留历史并去重 requestId；未知历史进度不能自动认定未处理。
-- [ ] 新增 `sys_outbox_operation` / `inv_outbox_operation`：request_id唯一、source、event_no、handler_id、operation、actor、reason、before/after状态、created_at；操作记录与各自源状态更新同事务，运维读取时分别查询汇总。Mapper分别位于平台 event/outbox/platform 与 inventory/mapper，实体放对应平台包和 inventory/entity。
-- [ ] inspect 只读输出计数、来源、条件装配和不确定项；adopt 要求源已暂停且无在途，按确认清单接管，分批可恢复；没有确认清单拒绝修改。
-- [ ] GREEN：运行 OutboxDiagnosticsTest、OutboxMigrationTest；提交诊断及受控运维服务。生产清单核实与上线切换单独执行，不混入代码开发。
+- RED：FAILED、UNKNOWN 和被早序号阻塞的后续记录能区分；最近错误不是按字符串大小取值；重放保留历史并去重 requestId；未知历史进度不能自动认定未处理。
+- 新增 `sys_outbox_operation` / `inv_outbox_operation`：request_id唯一、source、event_no、handler_id、operation、actor、reason、before/after状态、created_at；操作记录与各自源状态更新同事务，运维读取时分别查询汇总。Mapper分别位于平台 event/outbox/platform 与 inventory/mapper，实体放对应平台包和 inventory/entity。
+- inspect 只读输出计数、来源、条件装配和不确定项；adopt 要求源已暂停且无在途，按确认清单接管，分批可恢复；没有确认清单拒绝修改。
+- GREEN：运行 OutboxDiagnosticsTest、OutboxMigrationTest；提交诊断及受控运维服务。生产清单核实与上线切换单独执行，不混入代码开发。
 
 #### 任务 8：定向验收和全分支审查
 
 **Files:** 本 TDD §5–§7、PRD对应状态；仅修复本次范围的重要问题，不混入共享工作区存量改动。
 
-- [ ] 按 §5 跑一次本次新增定向类，检查全部结果；已逐任务通过的用例不反复重跑，除非修改触及对应路径。
-- [ ] 做来源去重或到期检查的一次最小消融，确认对应测试变红，再恢复代码并确认通过；记录真实命令与输出。
-- [ ] 执行后端依赖链编译与迁移资源检查，核对两库Mapper绑定、SQL方言、配置互斥和归档状态读兼容。
-- [ ] 对整个实现安排一次独立审查，按审查重点检查租约、事务、历史接管和外部未知结果；修复重要问题后仅重跑受影响用例。
-- [ ] 更新本 TDD §5 实际结果、§6 自有提交文件对账与偏差；保留未完成的真实数据库验证或上线工作，不提前标已交付。
+- 按 §5 跑一次本次新增定向类，检查全部结果；已逐任务通过的用例不反复重跑，除非修改触及对应路径。
+- 做来源去重或到期检查的一次最小消融，确认对应测试变红，再恢复代码并确认通过；记录真实命令与输出。
+- 执行后端依赖链编译与迁移资源检查，核对两库Mapper绑定、SQL方言、配置互斥和归档状态读兼容。
+- 对整个实现安排一次独立审查，按审查重点检查租约、事务、历史接管和外部未知结果；修复重要问题后仅重跑受影响用例。
+- 更新本 TDD §5 实际结果、§6 自有提交文件对账与偏差；保留未完成的真实数据库验证或上线工作，不提前标已交付。
 
 ## §3 选型与取舍
 
@@ -381,37 +381,65 @@ Spring Modulith 官方参考：https://docs.spring.io/spring-modulith/reference/
 
 本方案不改变订单、退款、物流的业务状态机；消费者仍需拒绝非法状态倒退。投递保证为至少一次，外部最终效果由目的域幂等与核查实现。
 
-## §5 对账三：验证设计
+## §5 对账三：实际验证
 
-以下是实施后的定向验证清单，本轮未新增/运行测试。沿用用户减少测试强度的要求，不做压力测试或全量回归；认领与事务恢复用小范围、可控场景验证。
+沿用用户减少测试强度的要求，只做与本次变更有关的定向验证，不做全量回归、并发或压力测试。
 
-| AC | 拟定验证方法 | 当前状态 |
+| AC | 实际验证 | 状态 |
 |---|---|---|
-| OB01 | OutboxPublisherTransactionTest：业务回滚无事件、无 delivery；错误数据源事务被拒绝 | 待实施 |
-| OB02 | OutboxRecoveryTest：丢弃提交提示、执行异常、启动恢复均重新发现到期记录 | 待实施 |
-| OB03 | OutboxRetryPolicyTest：两适配器共用退避；未到期不执行；第10次转FAILED | 待实施 |
-| OB04 | InventoryOutboxIngressTest：目标已提交而源确认失败后再转发，目标只有一条；异参报冲突 | 待实施 |
-| OB05 | OutboxDeliveryOrderTest：早序号失败时同handler晚序号不执行，另一handler继续；主子单映射一致 | 待实施 |
-| OB06 | OutboxConsumerTransactionTest：A成功B失败只重试B；目标事务回滚不留下成功Inbox | 待实施 |
-| OB07 | OutboxRoutingTest：无消费者为NO_CONSUMER；归档策略、禁用、未配置分别有结果 | 待实施 |
-| OB08 | OutboxRunnerCapacityTest：两个source共享5个执行名额，队列拒绝后数据库记录可恢复 | 待实施 |
-| OB09 | OutboxDiagnosticsTest：最近错误对应真实记录；重放不清总尝试、跳过有审计 | 待实施 |
+| OB01 | OutboxStoreFlowTest、OutboxUnifiedFlowTest：业务回滚，读绑定自动提交连接、其他内层数据源、afterCommit 发布被拒绝 | 通过 |
+| OB02 | OutboxRuntimeTest：丢失提示后补扫、停用后忽略提示、桥接异常立即记录原因与退避 | 通过 |
+| OB03 | OutboxRetryPolicyTest、OutboxStoreFlowTest：真实到期限制与10次失败终止 | 通过 |
+| OB04 | OutboxUnifiedFlowTest、OutboxStoreFlowTest：双数据源、v1/v2接收、来源指纹冲突、非来源唯一冲突 | 通过 |
+| OB05 | OutboxRoutingTest、OutboxStoreFlowTest：按根订单拆到货事件、失败阻塞范围、流锁顺序约束 | 通过 |
+| OB06 | OutboxRuntimeTest：Inbox与本地副作用共同回滚，成功消费者不重跑，REQUIRES_NEW缓冲隔离 | 通过 |
+| OB07 | OutboxRuntimeTest、OutboxNotificationOutcomeTest、WxBindTest：无消费者、归档、尽力通知WARNING、租约失效、IO结果未知 | 通过 |
+| OB08 | 配置明确共用最多5线程、500队列；执行前认领、满队列不改数据库事实 | 实现已核对；按用户要求未做并发/饱和测试 |
+| OB09 | OutboxMaintenanceTest、LogisticsAdminPortImplTest：源端审计、原始错误快照、重放替代与业务同事务回滚 | 通过 |
 
-关键消融：移除来源唯一键接收逻辑、到期检查或同目标事务去重后，对应定向用例应失败。涉及数据库唯一键/事务/条件更新的核心场景需在与部署环境一致的数据库上定向执行，不能仅依据 H2 或 mock 推断通过。
+17类组合74项通过；再补跑新增消费者及发货材料未就绪场景，累计18类79个不同定向用例通过（0失败、0错误）。原生MariaDB存储/运行器/运维22项通过；库存V1–V10原生迁移通过（25表），临时库及测试账号已清理；后端依赖链打包通过。快递100禁用/执行中及发货材料未就绪的假成功均由RED→GREEN验证。来源指纹、微信IO分类、物流重放挂接均做最小消融，对应测试变红后恢复。
 
 ## §6 对账二：设计到实现
 
-已实现公共协议、双库增量迁移、逐消费者调度、共享 Spring 运行器、来源接收去重、14 个消费者适配、健康明细、源端审计操作和离线清单接管。实现位于 codex/outbox-unified 隔离分支，基线 00d04e580。
+公共协议、双库增量迁移、逐消费者调度、共享 Spring 运行器、来源接收去重、21个消费者适配、健康明细、源端审计操作和离线清单接管均已实现。最终交付分支为 `codex/ai-shop-codex`；在隔离工作树完成修复和验证后本地合入，不推送、不部署。
 
-已运行一次 13 类定向组合，共 45 项通过；源接收指纹校验消融时对应测试失败，恢复后通过。MariaDB 12.2.2 临时库初次6项通过，扩展验收与最终审查结果继续登记。不做压力测试或全量回归。
+| 统一分支新增消费者 | 稳定 handlerId | 执行边界 |
+|---|---|---|
+| WxFollowExecutor | logistics-wx-follow | 独立微信关注动作台账 |
+| Kd100SubscribeExecutor | logistics-kd100-subscribe | 独立快递100订阅动作台账 |
+| WxShippingUploadImmediateConsumer | wx-shipping-upload-immediate | 微信发货上报动作台账 |
+| ShippingUploadPortImpl | wx-shipping-queue | REQUIRES_NEW上报队列事务；不提前落本地Inbox |
+| ShipmentSnapshotConsumer | shipment-snapshot | 平台本地事务+Inbox |
+| OrderPointsPlacementWakeConsumer | order-points-placement | 已有积分下单协调器及恢复台账 |
+| OrderPointsOutboxConsumer | order-points-source | 已有积分事实与协调器台账 |
 
-实际文件与执行计划的差异：
-- 两套 Mapper/实体适配收敛为 JdbcOutboxStore，使用 JdbcTemplate 与明确数据源事务，减少相同 SQL 的重复实现；现有 SysOutbox/InvOutbox 仍补齐字段。
-- 运行器和事务验证集中为 OutboxRuntimeTest、OutboxStoreFlowTest、OutboxMaintenanceTest；应用装配与桥接另由 OutboxConfigurationTest 和 OutboxUnifiedFlowTest 覆盖。
-- 存量接管采用停机、完整确认清单、单事务方式，上限500条；超限或源内已混入新事件时拒绝接管。扩大规模需要另做迁移工具，不自动猜测历史成功结果。
-- 健康响应追加可选 delivery 明细，同时更新运营端类型；没有改页面。
-- 新模式默认 legacy；生产数据、服务部署及模式开关均未操作。
+实际文件与执行计划的差异及取舍：
 
-## §7 评审状态
+- 双库重复Mapper/实体收敛为 `JdbcOutboxStore`，使用 JdbcTemplate 和明确数据源事务；代价是 SQL 需独立真库验证，已在临时 MariaDB 验证。
+- 存储/事务测试集中在 shop-store-mybatis，应用只保留实际Spring装配与桥接测试，减少启动成本；代价是数据源装配不能只依赖存储测试，已另测。
+- 存量接管采用停机、完整确认清单、单事务，上限500条；超限或源内已混入新事件时拒绝。代价是更大存量需要另做迁移工具，不能自动推断部分成功。
+- 按用户指定合并最新统一分支，平台迁移改为 `V471__outbox_delivery.sql`，库存为 `V10__outbox_delivery.sql`，避免覆盖已占用V425/V9；尚未在生产执行。
+- 事务内暂存事件、beforeCommit统一排序保留流，覆盖现有多流发布循环；代价是事件行直到提交阶段才写入，不能在同一业务事务中提前查表依赖它。
+- 按用户要求不做全量、并发或饱和测试；代价是容量/竞争行为未通过运行测试验证，上线需观察。
+- 新增消费者保留已有目的域动作事务和台账；统一层不拿本地Inbox冒充跨事务完成，未知外部结果停止自动重放。
 
-用户于2026-10-19回复“继续”，确认书面计划并授权本会话直接执行。实现和45项定向验收已完成，当前安排独立代码审查与最终验证；没有部署或接管生产存量。
+## §7 评审与交付状态
+
+已完成一次独立全分支审查，重要问题进入同一修复批次：
+
+| 问题 | 修复与证据 |
+|---|---|
+| 错误源事务可能通过资源绑定检查 | 物理事务监听+连接校验；读绑定、其他内层库、afterCommit反例RED→GREEN |
+| enabled=false仍响应提交提示 | start前不处理唤醒；停用用例RED→GREEN |
+| 通知吞掉通道错误后错误标SENT | WARNING终态、通道统计/发送记录引用；结果用例RED→GREEN |
+| 设备循环等内部动作缺租约校验 | 每次实际发送前检查，租约异常不被吞；两设备反例RED→GREEN |
+| 微信绑定IO未知被当作可重试拒绝 | 仅已知拒绝自动重试；IO守卫消融RED→GREEN |
+| 到货事件没有根订单顺序键 | 按根订单拆分，保留用户/自提点/子单载荷；路由用例通过 |
+| 物流新重放任务被旧FAILED永久阻塞 | 同事务审计跳过旧失败并发布新意图；回滚及挂接消融验证 |
+| 原始桥接异常不记录原因，直到租约过期 | 区分来源冲突、数据库瞬时失败、已知可重试与未知结果；反例RED→GREEN |
+| 多流发布可能倒序锁定 | 提交前排序保留全部流、底层倒序拒绝；反例及嵌套缓冲隔离通过 |
+| 重放后清除投递错误导致丢原始证据 | 审计保存原错误与尝试快照；重放成功后仍可查询原始失败，RED→GREEN |
+
+保留的次要问题：健康响应的 lastError 目前从最近20条投递明细取值，极早的未解决失败可能不出现在该摘要；failed/unknown计数和delivery诊断仍保留。单独的未解决错误摘要查询可后续优化。
+
+生产仍默认legacy。代码开发不包含历史清单确认、生产迁移、模式切换及部署。

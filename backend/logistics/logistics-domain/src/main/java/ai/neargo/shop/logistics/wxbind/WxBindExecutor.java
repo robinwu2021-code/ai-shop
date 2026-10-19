@@ -1,9 +1,9 @@
 package ai.neargo.shop.logistics.wxbind;
 
-import ai.neargo.shop.event.OutboxConsumer;
+import ai.neargo.shop.event.outbox.RetryableOutboxException;
 import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.event.outbox.OutboxLease;
-import ai.neargo.shop.event.outbox.RetryableOutboxException;
+import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.logistics.capability.ChannelOutcome;
 import ai.neargo.shop.logistics.capability.WaybillTokenBinder;
@@ -141,7 +141,10 @@ public class WxBindExecutor implements OutboxConsumer {
                 waybills.update(p, WaybillSourceIdentity.unchanged(w));
                 log.error("[lgs-wxbind] {} 换 token 判死：{} {}", shipmentNo, r.code(), r.message());
             }
-            case RETRYABLE -> throw new RetryableOutboxException("Token binding rejected; retryable");
+            case RETRYABLE -> {
+                if ("IO".equals(r.code())) { throw new IllegalStateException("Token binding outcome unknown"); }
+                throw new RetryableOutboxException("Token binding rejected; retryable");
+            }
             default -> throw new IllegalStateException("unreachable");
         }
     }

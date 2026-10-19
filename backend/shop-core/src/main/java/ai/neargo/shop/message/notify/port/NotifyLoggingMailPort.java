@@ -1,5 +1,7 @@
 package ai.neargo.shop.message.notify.port;
 
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.shop.message.entity.SysNotifyLog;
 import ai.neargo.shop.message.notify.NotifyLogWriter;
 import ai.neargo.shop.spi.notify.MailPort;
@@ -57,11 +59,14 @@ public class NotifyLoggingMailPort implements MailPort {
     public SendResult send(String to, String subject, String body,
                            String bizType, String operatorNo, String templateNo) {
         try {
+            OutboxLease.check();
             SendResult r = delegate.send(to, subject, body);
             // 邮件没有通道方模板号，把**主题**记进 templateCode 列 —— 列表页要能一眼看出这是哪类邮件
             writer.write(SysNotifyLog.MAIL, bizType, to, subject,
                     templateNo, SysNotifyLog.SENT, null, r.providerMsgId(), operatorNo);
             return r;
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (RuntimeException e) {
             writer.write(SysNotifyLog.MAIL, bizType, to, subject,
                     templateNo, SysNotifyLog.FAILED, e.getMessage(), null, operatorNo);

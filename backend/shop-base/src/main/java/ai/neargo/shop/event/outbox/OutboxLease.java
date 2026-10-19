@@ -9,7 +9,7 @@ public final class OutboxLease {
     private OutboxLease() { }
     public static void check() {
         BooleanSupplier check = CHECK.get();
-        if (check != null && !check.getAsBoolean()) { throw new IllegalStateException("OUTBOX_LEASE_LOST"); }
+        if (check != null && !check.getAsBoolean()) { throw new OutboxLeaseLostException(); }
     }
     public static <T> T withCheck(BooleanSupplier check, Supplier<T> action) {
         BooleanSupplier previous = CHECK.get();

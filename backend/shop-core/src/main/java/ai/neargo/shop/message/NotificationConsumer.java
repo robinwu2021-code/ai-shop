@@ -1,8 +1,11 @@
 package ai.neargo.shop.message;
 
+import ai.neargo.shop.message.notify.OutboxChannelOutcomes;
+import ai.neargo.shop.event.outbox.DeliveryResult;
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.shop.common.ExpressCompanies;
 import ai.neargo.shop.event.OutboxConsumer;
-import ai.neargo.shop.event.outbox.OutboxLease;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.message.entity.MsgMessage;
 import ai.neargo.shop.message.entity.MchNotifyPref;
@@ -111,6 +114,11 @@ public class NotificationConsumer implements OutboxConsumer {
     @Override
     public boolean supports(String eventType) {
         return NotifyScene.ALL.contains(eventType);
+    }
+
+    @Override
+    public DeliveryResult deliver(SysOutbox event) {
+        return OutboxChannelOutcomes.capture(() -> consume(event));
     }
 
     @Override
@@ -335,7 +343,10 @@ public class NotificationConsumer implements OutboxConsumer {
                             default -> log.warn("[notify] 门店级通道 {} 没有发送实现 —— "
                                     + "往 STORE_CHANNEL_ORDER 加了成员却忘了在这里加分支", ch);
                         }
+                    } catch (OutboxLeaseLostException e) {
+                        throw e;
                     } catch (RuntimeException e) {
+                        OutboxChannelOutcomes.failure("NOTIFY");
                         /*
                          * 每条自己已经吞过一次，这里是兜底：**一条炸了不能影响下一条**，
                          * 更不能冒到 outbox 消费者那里 —— 那会判整条事件失败并重投，
@@ -720,7 +731,10 @@ public class NotificationConsumer implements OutboxConsumer {
             try {
                 OutboxLease.check();
                 smsPort.sendOrderPaid(phone, subOrderNo, yuan);
+            } catch (OutboxLeaseLostException e) {
+                throw e;
             } catch (RuntimeException e) {
+                OutboxChannelOutcomes.failure("NOTIFY");
                 // 一个号发不出去不该拖累其余的 —— 逐个 try，否则第一个号有问题后面都收不到
                 log.warn("[notify] 来单短信没发出去 subOrderNo={} {}", subOrderNo, e.toString());
             }
@@ -739,7 +753,10 @@ public class NotificationConsumer implements OutboxConsumer {
         for (String phone : to) {
             try {
                 smsPort.sendAfterSaleApplied(phone, afterSaleNo);
+            } catch (OutboxLeaseLostException e) {
+                throw e;
             } catch (RuntimeException e) {
+                OutboxChannelOutcomes.failure("NOTIFY");
                 log.warn("[notify] 售后短信没发出去 afterSaleNo={} {}", afterSaleNo, e.toString());
             }
         }
@@ -764,7 +781,10 @@ public class NotificationConsumer implements OutboxConsumer {
             OutboxLease.check();
             mailPort.send(to, "新订单 " + amount,
                     weComOrderAlert.plainText(entityNo, storeNo, subOrderNo, payAmountMinor));
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (RuntimeException e) {
+            OutboxChannelOutcomes.failure("NOTIFY");
             log.warn("[notify] 来单邮件没发出去 subOrderNo={} {}", subOrderNo, e.toString());
         }
     }

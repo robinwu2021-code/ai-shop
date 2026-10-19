@@ -164,6 +164,8 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
             generation = corrected.sourceShipmentVersion();
             newNo = corrected.waybillNo();
         }
+        events.supersedeFailed("WAYBILL", shipmentNo, Set.of("logistics-subscribe", "logistics-wx-bind",
+                "logistics-wx-follow", "logistics-kd100-subscribe"), "WAYBILL_REPLACED");
         WaybillReplacement.reset(waybills, nodes, w, newCarrier, newNo, sourceNo, generation);
         // 换号本身要进轨迹：不写的话，之后看到的是一条凭空换了单号的运单
         LgsWaybillNode n = new LgsWaybillNode();
@@ -212,6 +214,7 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
             waybills.update(null, Wrappers.<LgsWaybill>update()
                     .set("bind_state", LgsWaybill.BIND_WAITING).set("bind_error", null)
                     .set("updated_at", LocalDateTime.now()).eq("id", w.getId()));
+            events.supersedeFailed("WAYBILL", shipmentNo, Set.of("logistics-wx-bind"), "REPLAY_WX_BIND channel=wx");
             events.publish(new WxBindRequested(shipmentNo));
             return;
         }
@@ -230,6 +233,20 @@ public class LogisticsAdminPortImpl implements LogisticsAdminPort {
                 .allMatch(s -> KD100.equals(s.channel())));
         if (viaKd100 && kd100UsedUp(w)) {
             throw BizException.of(ErrorCode.WAYBILL_SUBSCRIBE_LIMIT);
+        }
+        Set<String> replacedHandlers = forced == null
+                ? Set.of("logistics-subscribe", "logistics-wx-follow", "logistics-kd100-subscribe")
+                : KD100.equals(forced) ? Set.of("logistics-subscribe", "logistics-kd100-subscribe")
+                : "wx-follow".equals(forced) ? Set.of("logistics-wx-follow") : Set.of("logistics-subscribe");
+        events.supersedeFailed("WAYBILL", shipmentNo, replacedHandlers,
+                "REPLAY_SUBSCRIBE channel=" + (forced == null ? "ALL" : forced));
+        if (channelRows != null && w.getSourceShipmentNo() != null) {
+            var reset = Wrappers.<LgsChannelSubscription>update().eq("shipment_no", shipmentNo)
+                    .eq("identity_key", ChannelSubscriptionStore.identityKey(w)).ne("state", "DONE");
+            if (forced != null) { reset.eq("channel", forced); }
+            else { reset.in("channel", "wx-follow", KD100); }
+            channelRows.update(null, reset.set("state", "PENDING").set("error", null)
+                    .set("next_retry_at", null).set("last_attempt_at", null).set("updated_at", LocalDateTime.now()));
         }
         waybills.update(null, Wrappers.<LgsWaybill>update()
                 .set("sub_state", LgsWaybill.SUB_PENDING).set("sub_attempts", 0).set("sub_error", null)

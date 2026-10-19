@@ -19,6 +19,9 @@ public class OrderPointsOutboxConsumer implements OutboxConsumer {
         this.coordinator = coordinator;
     }
 
+    @Override public String handlerId() { return "order-points-source"; }
+    @Override public boolean externalWorkflow() { return true; }
+
     @Override
     public boolean supports(String type) {
         return OrderPointsSourceEvent.TYPE.equals(type);

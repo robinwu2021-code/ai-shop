@@ -96,4 +96,56 @@ class OutboxStoreFlowTest extends OutboxTestFixture {
         });
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox", Long.class)).isZero();
     }
+    @Test
+    void reverseStreamLockOrderIsRejectedBeforeTakingAnotherLock() {
+        tx.executeWithoutResult(status -> {
+            store.append(new OutboxEnvelope("Z", "PLATFORM", "Z", "ORDER", "Z", "ORDER_PAID", 1, "ORDER:Z", 0, "{}", now), Map.of("a", false), false);
+            assertThatThrownBy(() -> store.append(event("A", "{}"), Map.of("a", false), false))
+                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("stream lock order");
+            status.setRollbackOnly();
+        });
+    }
+    @Test
+    void innerOtherSourceCannotPublishIntoSuspendedSourceTransaction() {
+        var ds = new DriverManagerDataSource("jdbc:h2:mem:" + UUID.randomUUID(), "sa", "");
+        var manager = new DataSourceTransactionManager(ds);
+        new JdbcOutboxStore(JdbcOutboxStore.Source.INVENTORY, ds, manager, new ObjectMapper());
+        tx.executeWithoutResult(outer -> new TransactionTemplate(manager).executeWithoutResult(inner -> {
+            assertThatThrownBy(() -> store.append(event("NESTED", "{}"), Map.of("a", false), false))
+                    .isInstanceOf(IllegalStateException.class);
+        }));
+    }
+    @Test
+    void afterCommitResourceBindingCannotBeUsedForNewPublication() {
+        tx.executeWithoutResult(status -> org.springframework.transaction.support.TransactionSynchronizationManager
+                .registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override public void afterCommit() {
+                        assertThatThrownBy(() -> store.append(event("TOO_LATE", "{}"), Map.of("a", false), false))
+                                .isInstanceOf(IllegalStateException.class);
+                    }
+                }));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox",Long.class)).isZero();
+    }
+    @Test
+    void bestEffortWarningRemainsVisibleAndDoesNotBlockNextNotification() {
+        tx.executeWithoutResult(s -> {
+            store.append(event("W1", "{}"), Map.of("notification",true),false);
+            store.append(event("W2", "{}"), Map.of("notification",true),false);
+        });
+        var ref = store.findDue(now,1).getFirst();
+        var claim = store.tryClaim(ref,"w",now,Duration.ofSeconds(120)).orElseThrow();
+        store.complete(claim,DeliveryResult.warning("PUSH failed=1;refs=N1"),now,RetryPolicy.defaults());
+        assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE event_no='W1'",String.class)).isEqualTo("WARNING");
+        assertThat(store.health(now).get("warning")).isEqualTo(1L);
+        var next=store.tryClaim(store.findDue(now,1).getFirst(),"next",now,Duration.ofSeconds(120)).orElseThrow();
+        assertThat(next.event().eventNo()).isEqualTo("W2");
+    }
+    @Test
+    void unrelatedUniqueKeyConflictMustNotBeAcknowledgedAsSourceDuplicate() {
+        store.accept(event("DUP", "{}"),Map.of("a",false));
+        var collision = new OutboxEnvelope("DUP","INVENTORY","OTHER","ORDER","O1","ORDER_PAID",1,"ORDER:O1",0,"{}",now);
+        assertThatThrownBy(() -> store.accept(collision,Map.of("a",false)))
+                .isInstanceOf(org.springframework.dao.DuplicateKeyException.class);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox",Long.class)).isEqualTo(1);
+    }
 }

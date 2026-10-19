@@ -222,7 +222,7 @@ export interface InvLinkHealth {
   verdict: InvLinkVerdict;
   /** Unified source progress; legacy mode returns null. */
   delivery?: {
-    due: number; processing: number; retrying: number; failed: number;
+    due: number; processing: number; retrying: number; failed: number; warning: number;
     unknown: number; blocked: number; unadopted: number; unrouted: number;
     oldestDueAt: string | null; lastSuccessAt: string | null;
     recentDeliveries: Record<string, unknown>[];

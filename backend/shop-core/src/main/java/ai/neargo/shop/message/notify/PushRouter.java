@@ -1,5 +1,7 @@
 package ai.neargo.shop.message.notify;
 
+import ai.neargo.shop.event.outbox.OutboxLease;
+import ai.neargo.shop.event.outbox.OutboxLeaseLostException;
 import ai.neargo.shop.message.entity.SysNotifyLog;
 import ai.neargo.shop.spi.notify.NotifyBizType;
 import ai.neargo.shop.spi.notify.PushGateway;
@@ -64,11 +66,16 @@ public class PushRouter {
             // select 也放进 try：找不到 gateway（如 FCM 尚在 P3）同样记一条 FAILED，
             // 「他为什么没收到」才分得清是「没配通道」还是「通道拒绝」
             String prov = PushProvider.normalize(provider);
-            SendResult r = select(provider).push(clientId, title, body, link, level);
+            PushGateway gateway = select(provider);
+            OutboxLease.check();
+            SendResult r = gateway.push(clientId, title, body, link, level);
             writer.write(SysNotifyLog.PUSH, NotifyBizType.TRADE_NOTIFY, clientId,
                     r.templateCode(), TPL_PUSH, SysNotifyLog.SENT, null, r.providerMsgId(), null, prov);
             return r;
+        } catch (OutboxLeaseLostException e) {
+            throw e;
         } catch (RuntimeException e) {
+            OutboxChannelOutcomes.failure("PUSH");
             writer.write(SysNotifyLog.PUSH, NotifyBizType.TRADE_NOTIFY, clientId,
                     level, TPL_PUSH, SysNotifyLog.FAILED, e.getMessage(), null, null,
                     PushProvider.normalize(provider));

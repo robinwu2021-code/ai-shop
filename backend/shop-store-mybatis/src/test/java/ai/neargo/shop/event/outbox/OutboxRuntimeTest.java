@@ -94,4 +94,41 @@ class OutboxRuntimeTest extends OutboxTestFixture {
             assertThat(row.get("next_retry_at")).isNotNull();
         }
     }
+    private record Changed(String id) implements ai.neargo.shop.event.DomainEvent {
+        public String aggregateType() { return "ORDER"; }
+        public String aggregateId() { return id; }
+        public String eventType() { return "ORDER_PAID"; }
+    }
+    @Test
+    void producerLoopsReserveStreamsInSortedOrderAndIsolateRequiresNewBuffers() {
+        var facade = new UnifiedOutboxFacade(new ObjectMapper());
+        facade.register(store,List.of());
+        var inner = new org.springframework.transaction.support.TransactionTemplate(tx.getTransactionManager());
+        inner.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        tx.executeWithoutResult(s -> {
+            facade.publish("PLATFORM",new Changed("Z"));
+            facade.publish("PLATFORM",new Changed("A"));
+            inner.executeWithoutResult(n -> facade.publish("PLATFORM",new Changed("INNER")));
+            s.setRollbackOnly();
+        });
+        assertThat(jdbc.queryForList("SELECT aggregate_id FROM sys_outbox",String.class)).containsExactly("INNER");
+        tx.executeWithoutResult(s -> {
+            facade.publish("PLATFORM",new Changed("Z"));
+            facade.publish("PLATFORM",new Changed("A"));
+        });
+        assertThat(jdbc.queryForList("SELECT aggregate_id FROM sys_outbox ORDER BY id",String.class))
+                .containsExactly("INNER","Z","A");
+    }
+    @Test
+    void noConsumerAndExplicitArchiveCannotBeReportedAsSuccessfulDelivery() {
+        var facade = new UnifiedOutboxFacade(new ObjectMapper());
+        facade.register(store,List.of());
+        tx.executeWithoutResult(s -> facade.publish("PLATFORM",new Changed("UNROUTED")));
+        assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE aggregate_id='UNROUTED'",String.class)).isEqualTo("FAILED");
+        assertThat(jdbc.queryForObject("SELECT last_error FROM sys_outbox WHERE aggregate_id='UNROUTED'",String.class)).isEqualTo("NO_CONSUMER");
+        facade.setArchiveOnly(java.util.Set.of("PLATFORM:ORDER_PAID"));
+        tx.executeWithoutResult(s -> facade.publish("PLATFORM",new Changed("ARCHIVE")));
+        assertThat(jdbc.queryForObject("SELECT status FROM sys_outbox WHERE aggregate_id='ARCHIVE'",String.class)).isEqualTo("ARCHIVED");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sys_outbox_delivery",Long.class)).isZero();
+    }
 }

@@ -1,8 +1,8 @@
 package ai.neargo.shop.event.outbox.runtime;
 
+import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.event.outbox.ClaimedDelivery;
 import ai.neargo.shop.event.outbox.DeliveryRef;
-import ai.neargo.shop.event.outbox.DeliveryResult;
 import ai.neargo.shop.event.outbox.OutboxEnvelope;
 import ai.neargo.shop.event.outbox.OutboxStore;
 import ai.neargo.shop.event.outbox.PublishReceipt;
@@ -48,6 +48,7 @@ public final class JdbcOutboxStore implements OutboxStore {
     private final String deliveries;
     private final String streams;
     private final String operations;
+    private final Map<Object, java.util.SortedSet<String>> heldStreams = new java.util.concurrent.ConcurrentHashMap<>();
     private RetryPolicy retryPolicy = RetryPolicy.defaults();
     public void setRetryPolicy(RetryPolicy policy) { retryPolicy = policy; }
 
@@ -162,7 +163,8 @@ public final class JdbcOutboxStore implements OutboxStore {
         checkSource(claim.ref());
         return Boolean.TRUE.equals(transactions.execute(s -> {
             lockEvent(claim.event().eventNo());
-            String status = result.kind() == DeliveryResult.Kind.SENT ? "SENT" : "FAILED";
+            String status = result.kind() == DeliveryResult.Kind.SENT ? "SENT"
+                    : result.kind() == DeliveryResult.Kind.WARNING ? "WARNING" : "FAILED";
             Instant retry = null;
             if (result.kind() == DeliveryResult.Kind.RETRYABLE) {
                 var delay = policy.retryDelay(claim.roundAttemptCount());
@@ -218,7 +220,7 @@ public final class JdbcOutboxStore implements OutboxStore {
         var states = counts.stream().map(r -> (String) r.get("status")).toList();
         String state = states.contains("FAILED") ? "FAILED"
                 : states.contains("PENDING") || states.contains("PROCESSING") ? "PENDING"
-                : states.contains("SKIPPED") ? "SKIPPED" : "SENT";
+                : states.contains("WARNING") ? "WARNING" : states.contains("SKIPPED") ? "SKIPPED" : "SENT";
         Integer attempts = jdbc.queryForObject("SELECT COALESCE(MAX(attempt_count),0) FROM " + deliveries
                 + " WHERE event_no=?", Integer.class, eventNo);
         jdbc.update("UPDATE " + events + " SET status=?,retry_count=?,sent_at=?,next_retry_at=NULL WHERE event_no=?",
@@ -232,39 +234,61 @@ public final class JdbcOutboxStore implements OutboxStore {
                 || actor.isBlank() || actor.length() > 64 || reason == null || reason.isBlank() || reason.length() > 500) {
             throw new IllegalArgumentException("Operation requires bounded request ID, actor and reason");
         }
-        transactions.executeWithoutResult(s -> {
-            // Locking the event serializes retries of this operation and aggregate updates.
-            lockEvent(eventNo);
-            var prior = jdbc.queryForList("SELECT * FROM " + operations + " WHERE request_id=?", requestId);
-            if (!prior.isEmpty()) {
-                var p = prior.getFirst();
-                if (!eventNo.equals(p.get("event_no")) || !handlerId.equals(p.get("handler_id"))
-                        || !(skip ? "SKIP" : "REPLAY").equals(p.get("operation"))
-                        || !actor.equals(p.get("actor")) || !reason.equals(p.get("reason"))) {
-                    throw new IllegalStateException("OPERATION_REQUEST_CONFLICT");
-                }
-                return;
+        transactions.executeWithoutResult(s -> operateInTransaction(requestId,eventNo,handlerId,actor,reason,skip,now));
+    }
+
+    private void operateInTransaction(String requestId, String eventNo, String handlerId, String actor,
+                                      String reason, boolean skip, Instant now) {
+        // Locking the event serializes retries of this operation and aggregate updates.
+        lockEvent(eventNo);
+        var prior = jdbc.queryForList("SELECT * FROM " + operations + " WHERE request_id=?", requestId);
+        if (!prior.isEmpty()) {
+            var p = prior.getFirst();
+            if (!eventNo.equals(p.get("event_no")) || !handlerId.equals(p.get("handler_id"))
+                    || !(skip ? "SKIP" : "REPLAY").equals(p.get("operation"))
+                    || !actor.equals(p.get("actor")) || !reason.equals(p.get("reason"))) {
+                throw new IllegalStateException("OPERATION_REQUEST_CONFLICT");
             }
-            var before = jdbc.queryForList("SELECT * FROM " + deliveries
-                    + " WHERE event_no=? AND handler_id=? AND status='FAILED' FOR UPDATE", eventNo, handlerId);
-            if (before.size() != 1) { throw new IllegalStateException("Only FAILED deliveries can be replayed or skipped"); }
-            var snapshot = before.getFirst();
-            int changed = jdbc.update("UPDATE " + deliveries + " SET status=?,round_attempt_count=0,"
-                            + "replay_count=replay_count+1,last_replayed_at=?,next_retry_at=NULL,"
-                            + "claim_token=NULL,lease_until=NULL,completed_at=?"
-                            + " WHERE event_no=? AND handler_id=? AND status='FAILED'",
-                    skip ? "SKIPPED" : "PENDING", at(now), skip ? at(now) : null, eventNo, handlerId);
-            if (changed != 1) { throw new IllegalStateException("Only FAILED deliveries can be replayed or skipped"); }
-            jdbc.update("INSERT INTO " + operations + " (request_id,event_no,handler_id,operation,actor,reason,"
-                            + "before_status,after_status,created_at,original_error_code,original_error,original_attempt_count,"
-                            + "original_round_attempt_count,original_last_attempt_at,original_next_retry_at)"
-                            + " VALUES (?,?,?,?,?,?,'FAILED',?,?,?,?,?,?,?,?)",
-                    requestId, eventNo, handlerId, skip ? "SKIP" : "REPLAY", actor, reason,
-                    skip ? "SKIPPED" : "PENDING", at(now), snapshot.get("last_error_code"), snapshot.get("last_error"),
-                    snapshot.get("attempt_count"), snapshot.get("round_attempt_count"), snapshot.get("last_attempt_at"),
-                    snapshot.get("next_retry_at"));
-            aggregate(eventNo, now);
-        });
+            return;
+        }
+        var before = jdbc.queryForList("SELECT * FROM " + deliveries
+                + " WHERE event_no=? AND handler_id=? AND status='FAILED' FOR UPDATE", eventNo, handlerId);
+        if (before.size() != 1) { throw new IllegalStateException("Only FAILED deliveries can be replayed or skipped"); }
+        var snapshot = before.getFirst();
+        int changed = jdbc.update("UPDATE " + deliveries + " SET status=?,round_attempt_count=0,"
+                        + "replay_count=replay_count+1,last_replayed_at=?,next_retry_at=NULL,"
+                        + "claim_token=NULL,lease_until=NULL,completed_at=?"
+                        + " WHERE event_no=? AND handler_id=? AND status='FAILED'",
+                skip ? "SKIPPED" : "PENDING", at(now), skip ? at(now) : null, eventNo, handlerId);
+        if (changed != 1) { throw new IllegalStateException("Only FAILED deliveries can be replayed or skipped"); }
+        jdbc.update("INSERT INTO " + operations + " (request_id,event_no,handler_id,operation,actor,reason,"
+                        + "before_status,after_status,created_at,original_error_code,original_error,original_attempt_count,"
+                        + "original_round_attempt_count,original_last_attempt_at,original_next_retry_at)"
+                        + " VALUES (?,?,?,?,?,?,'FAILED',?,?,?,?,?,?,?,?)",
+                requestId, eventNo, handlerId, skip ? "SKIP" : "REPLAY", actor, reason,
+                skip ? "SKIPPED" : "PENDING", at(now), snapshot.get("last_error_code"), snapshot.get("last_error"),
+                snapshot.get("attempt_count"), snapshot.get("round_attempt_count"), snapshot.get("last_attempt_at"),
+                snapshot.get("next_retry_at"));
+        aggregate(eventNo, now);
+    }
+
+    /** A replacement intent must not remain blocked behind an obsolete FAILED head. */
+    public void supersedeFailed(String aggregateType, String aggregateId, java.util.Set<String> handlerIds,
+                                String actor, String reason, Instant now) {
+        requireSourceTransaction();
+        if (handlerIds.isEmpty()) { return; }
+        if (actor == null || actor.isBlank() || actor.length() > 64 || reason == null
+                || reason.isBlank() || reason.length() > 500) { throw new IllegalArgumentException("Audit identity required"); }
+        var args = new ArrayList<Object>();
+        args.add(aggregateType); args.add(aggregateId); args.addAll(new java.util.TreeSet<>(handlerIds));
+        var rows = jdbc.queryForList("SELECT d.event_no,d.handler_id FROM " + deliveries + " d JOIN " + events
+                + " e ON e.event_no=d.event_no WHERE e.aggregate_type=? AND e.aggregate_id=?"
+                + " AND d.status='FAILED' AND d.handler_id IN ("
+                + String.join(",", java.util.Collections.nCopies(handlerIds.size(), "?")) + ") ORDER BY d.id", args.toArray());
+        for (var row : rows) {
+            operateInTransaction(java.util.UUID.randomUUID().toString(), (String) row.get("event_no"),
+                    (String) row.get("handler_id"), actor, reason, true, now);
+        }
     }
 
     /** Diagnostic results contain identities and progress, never event payloads. */
@@ -319,6 +343,7 @@ public final class JdbcOutboxStore implements OutboxStore {
                     throw new IllegalArgumentException("Incomplete or duplicate adoption decision");
                 }
             }
+            reserveStreams(manifest.stream().map(LegacyDecision::streamKey).toList());
             for (var record : records) {
                 LegacyDecision d = decisions.get(record.eventNo());
                 if (d == null || !d.record().equals(record)) { throw new IllegalStateException("Legacy event changed"); }
@@ -376,10 +401,31 @@ public final class JdbcOutboxStore implements OutboxStore {
         return new LegacyRecord(rs.getString("event_no"), eventType, type, aggregate, checksum, created);
     }
 
+    /** Every multi-stream transaction reserves the complete sorted set before writing any event. */
+    public void reserveStreams(java.util.Collection<String> keys) {
+        requireSourceTransaction();
+        Object transaction = OutboxTransactions.currentIdentity();
+        var held = heldStreams.computeIfAbsent(transaction, ignored -> {
+            TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                @Override public void afterCompletion(int status) { heldStreams.remove(transaction); }
+            });
+            return new java.util.TreeSet<>();
+        });
+        for (String key : new java.util.TreeSet<>(keys)) {
+            if (held.contains(key)) { continue; }
+            if (!held.isEmpty() && key.compareTo(held.last()) < 0) {
+                throw new IllegalStateException("Outbox stream lock order requires sorted reservation");
+            }
+            try {
+                jdbc.update("INSERT INTO " + streams + " (stream_key,next_sequence) VALUES (?,1)", key);
+            } catch (DuplicateKeyException existing) { /* fixed primary key already exists */ }
+            jdbc.queryForObject("SELECT next_sequence FROM " + streams + " WHERE stream_key=? FOR UPDATE", Long.class, key);
+            held.add(key);
+        }
+    }
+
     private long allocateSequence(String streamKey) {
-        try {
-            jdbc.update("INSERT INTO " + streams + " (stream_key,next_sequence) VALUES (?,1)", streamKey);
-        } catch (DuplicateKeyException existing) { /* stream primary key already allocated */ }
+        reserveStreams(List.of(streamKey));
         Long sequence = jdbc.queryForObject("SELECT next_sequence FROM " + streams
                 + " WHERE stream_key=? FOR UPDATE", Long.class, streamKey);
         jdbc.update("UPDATE " + streams + " SET next_sequence=next_sequence+1 WHERE stream_key=?", streamKey);
@@ -399,6 +445,7 @@ public final class JdbcOutboxStore implements OutboxStore {
         var statusCounts = counts();
         result.put("processing", statusCounts.getOrDefault("PROCESSING", 0L));
         result.put("failed", statusCounts.getOrDefault("FAILED", 0L));
+        result.put("warning", statusCounts.getOrDefault("WARNING", 0L));
         result.put("due", jdbc.queryForObject("SELECT COUNT(*) FROM " + deliveries
                 + " d WHERE d.status='PENDING' AND (d.next_retry_at IS NULL OR d.next_retry_at<=?)"
                 + headPredicate(), Long.class, at(now)));
