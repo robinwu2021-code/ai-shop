@@ -792,6 +792,11 @@ export interface PaymentResolution {
 }
 /** 资金执行与库存/优惠恢复是两个独立结果。 */
 export interface RefundExecutionProgress {
+  /** Persisted protocol version; absent means legacy recovery semantics. */
+  closureVersion?: number | null;
+  closureStatus?: "LEGACY" | "PENDING" | "DONE" | null;
+  cashStatus?: string | null;
+  benefitsStatus?: "PENDING" | "SETTLED" | null;
   /** 原退款执行号；恢复仍使用同一执行。 */
   executionNo: string;
   /** 资金流水号，尚未准备时可空。 */

@@ -15,10 +15,9 @@ import { useI18n } from "vue-i18n";
 import { api } from "@/api";
 import { askMchSubscribe } from "@/shared/mch-subscribe";
 import { refundProgressKey } from "@shared/strategies/order-phase1";
-import { approveCap } from "@/shared/approve-cap";
 import { money } from "@shared/utils/money";
 import { datetime } from "@shared/utils/datetime";
-import type { AfterSale, Order, RefundMode } from "@shared/types";
+import type { AfterSale, Order } from "@shared/types";
 
 const { t } = useI18n();
 
@@ -61,11 +60,6 @@ const earlyRefundReason = ref("");
 const receiptQty = ref<Record<string, number>>({});
 const receiptQuality = ref<Record<string, "SALEABLE" | "UNSALEABLE">>({});
 
-/** 正在核定金额/形式的单号 —— 展开审核面板（仅已签收） */
-const approving = ref("");
-/** 核定退款额（元，字符串输入）；默认全额 */
-const approveAmount = ref("");
-
 const busy = ref(false);
 const targetAfterSaleNo = ref("");
 
@@ -75,7 +69,6 @@ const targetAfterSaleNo = ref("");
  */
 const asStatus = (r: Row) => r.as.status;
 const asType = (r: Row) => r.as.type;
-const capOf = (r: Row) => approveCap(r.as.refundMinor, r.order?.amount.paidMinor);
 
 /** 首屏到过没有。**不是 `loading`** —— 那个含下拉刷新，刷新时把列表换成空态是另一个 bug */
 const loaded = ref(false);
@@ -117,13 +110,13 @@ function switchTab(value: "pending" | "all") {
 
 onReachBottom(() => { void load(true); });
 
-async function agree(r: Row, refundMinor?: number, refundMode?: RefundMode) {
+async function agree(r: Row) {
   if (busy.value) return;
   // 小程序里顺带攒订阅额度（TDD-微信订阅消息优先 AC8）
   askMchSubscribe();
   busy.value = true;
   try {
-    await api.mApproveAfterSale(r.as.afterSaleNo, "", refundMinor, refundMode ?? "CASH");
+    await api.mApproveAfterSale(r.as.afterSaleNo, "", undefined, "CASH");
     uni.showToast({ title: t("afterSale.agreed"), icon: "none" });
     await load();
   } catch (e) {
@@ -131,32 +124,6 @@ async function agree(r: Row, refundMinor?: number, refundMode?: RefundMode) {
   } finally {
     busy.value = false;
   }
-}
-
-/**
-
-
- * 点「同意」：已签收才展开核定面板（可改金额，AC9/AC10）；
- * 未签收只能全额同意（商家看不到实物损坏比例，§2.4），直接提交。
- */
-function startApprove(r: Row) {
-  if (r.as.fulfillStage === "RECEIVED") {
-    approving.value = r.as.afterSaleNo;
-    approveAmount.value = (capOf(r) / 100).toFixed(2);
-  } else {
-    void agree(r);
-  }
-}
-
-/** 确认核定：校验金额（>0 且 ≤实付），现金退款中的积分返还由后端处理 */
-function confirmApprove(r: Row) {
-  const minor = Math.round(Number(approveAmount.value) * 100);
-  if (!(minor > 0 && minor <= capOf(r))) {
-    uni.showToast({ title: t("afterSale.amountInvalid"), icon: "none" });
-    return;
-  }
-  approving.value = "";
-  void agree(r, minor, "CASH");
 }
 
 /**
@@ -321,25 +288,6 @@ onShow(() => { if (!targetAfterSaleNo.value || loaded.value) void load(); });
 
 
 
-      <!-- 按售后状态给动作。后端没有独立的「等寄回 / 已收货」两态：
-           同意即 REFUNDING，是否已寄回看 returnExpressNo 有没有值 -->
-      <!-- 核定面板（仅已签收）：改金额（AC9/AC10） -->
-      <template v-else-if="approving === r.as.afterSaleNo">
-        <view class="approve sh-mt-sm">
-          <view class="sh-row sh-row--between sh-row--baseline">
-            <text class="sh-muted">{{ $t("afterSale.approveAmount") }}</text>
-            <view class="sh-row amount-in sh-row--baseline">
-              <text class="sh-muted">¥</text>
-              <input v-model="approveAmount" type="digit" maxlength="9" class="field__input amount-field" />
-            </view>
-          </view>
-          <view class="btns sh-row sh-mt-sm">
-            <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="approving = ''">{{ $t("common.cancel") }}</text>
-            <text class="sh-btn sh-btn--sm txt-strong btn" @tap="confirmApprove(r)">{{ $t("afterSale.agree") }}</text>
-          </view>
-        </view>
-      </template>
-
       <view v-else-if="asStatus(r) === 'APPLIED'" class="btns sh-row">
         <text class="sh-btn sh-btn--sm sh-btn--muted txt-strong btn" @tap="rejecting = r.as.afterSaleNo">
           {{ $t("afterSale.reject") }}
@@ -500,17 +448,5 @@ onShow(() => { if (!targetAfterSaleNo.value || loaded.value) void load(); });
 .impact {
   display: block;
   margin-top: 12rpx;
-}
-.approve {
-  border-top: 2rpx solid var(--sh-line);
-  padding-top: 20rpx;
-}
-.amount-in {
-  gap: 4rpx;
-}
-/* 金额输入框右对齐、窄一点 —— 它只放一个数 */
-.amount-field {
-  width: 180rpx;
-  text-align: end;
 }
 </style>

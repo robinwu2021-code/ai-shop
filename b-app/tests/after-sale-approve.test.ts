@@ -42,6 +42,6 @@ describe("积分接线后的商家核定", () => {
   it("只提交现金退款，积分返还由独立退款链路处理", () => {
     expect(sfc).not.toContain('approveMode = "POINTS"');
     expect(sfc).not.toContain('t("afterSale.refundModePoints")');
-    expect(sfc).toContain('void agree(r, minor, "CASH")');
+    expect(sfc).toContain('r.as.afterSaleNo, "", undefined, "CASH"');
   });
 });

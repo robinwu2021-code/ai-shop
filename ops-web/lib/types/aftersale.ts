@@ -62,6 +62,11 @@ export interface LiabilityShare {
 
 /** 后端持久化的退款执行事实，资源恢复独立于资金结果。 */
 export interface RefundExecutionProgress {
+  /** Persisted protocol version; absent means legacy recovery semantics. */
+  closureVersion?: number | null;
+  closureStatus?: "LEGACY" | "PENDING" | "DONE" | null;
+  cashStatus?: string | null;
+  benefitsStatus?: "PENDING" | "SETTLED" | null;
   /** 原退款执行号 */
   executionNo: string;
   /** 资金退款单号 */
