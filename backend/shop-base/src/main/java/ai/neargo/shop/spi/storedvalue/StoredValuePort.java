@@ -36,10 +36,11 @@ public interface StoredValuePort {
 
     enum StoreActivityType { RECHARGE, CONSUMPTION }
 
-    record CreateRecharge(String customerRef, ParticipationPermit permit) {
+    record CreateRecharge(SourceRef sourceRef, ParticipationPermit permit) {
         public CreateRecharge {
-            ContractChecks.id(customerRef);
+            ContractChecks.present(sourceRef);
             ContractChecks.present(permit);
+            ContractChecks.require(sourceRef.equals(permit.sourceRef()));
             ContractChecks.require(permit.payAmountMinor() != null && permit.tierNo() != null);
         }
     }

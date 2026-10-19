@@ -26,6 +26,10 @@ public final class PayEntitlementEventCodec {
             case "ENTITLEMENT_USED" -> json.readValue(wire.payload(), EntitlementEvents.EntitlementUsed.class);
             case "ENTITLEMENT_USE_REVERSED" ->
                     json.readValue(wire.payload(), EntitlementEvents.EntitlementUseReversed.class);
+            case "STORED_VALUE_RECHARGE_RECEIVED" ->
+                    json.readValue(wire.payload(), EntitlementEvents.StoredValueRechargeReceived.class);
+            case "STORED_VALUE_RECHARGE_CANCELLED" ->
+                    json.readValue(wire.payload(), EntitlementEvents.StoredValueRechargeCancelled.class);
             case "STORED_VALUE_CREDITED" -> json.readValue(wire.payload(), EntitlementEvents.StoredValueCredited.class);
             default -> throw new IllegalArgumentException("Unsupported entitlement event type");
         };
@@ -69,6 +73,12 @@ public final class PayEntitlementEventCodec {
                     || !id(returned.currency()) || returned.restoredUnits() < 0 || returned.discountMinor() <= 0) {
                 throw new IllegalArgumentException("Entitlement reversal event fields are incomplete");
             }
+        } else if (event instanceof EntitlementEvents.StoredValueRechargeReceived received) {
+            if (!"MAIN".equals(received.tenantNo()) || !id(received.rechargeNo()) || !id(received.entityNo()))
+                throw new IllegalArgumentException("Stored value receipt event identity is incomplete");
+        } else if (event instanceof EntitlementEvents.StoredValueRechargeCancelled cancelled) {
+            if (!"MAIN".equals(cancelled.tenantNo()) || !id(cancelled.rechargeNo()) || !id(cancelled.entityNo()))
+                throw new IllegalArgumentException("Stored value cancellation event identity is incomplete");
         } else if (event instanceof EntitlementEvents.StoredValueCredited credited) {
             if (!id(credited.rechargeNo()) || !id(credited.accountNo()) || !id(credited.userNo())
                     || !id(credited.entityNo()) || !id(credited.storeNo()) || !id(credited.currency())

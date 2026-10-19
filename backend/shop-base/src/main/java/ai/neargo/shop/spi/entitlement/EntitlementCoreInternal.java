@@ -11,6 +11,11 @@ public final class EntitlementCoreInternal {
     public static final String AUTHORIZATION = "/internal/core/entitlement/authorization/query";
     public static final String GRANT_SOURCE = "/internal/core/entitlement/source/grant";
     public static final String GRANT_DECISION = "/internal/core/entitlement/source/grant-decision";
+    public static final String RECHARGE_SOURCE = "/internal/core/stored-value/source";
+    public static final String RECHARGE_BY_NO = "/internal/core/stored-value/source-by-recharge";
+    public record RechargeQuery(EntitlementContext context, String rechargeNo) {
+        public RechargeQuery { Objects.requireNonNull(context); ContractChecks.id(rechargeNo); }
+    }
     public static final String AUDIENCE = "/internal/core/entitlement/audience/resolve";
     public record SourceQuery(EntitlementContext context, SourceRef source) {
         public SourceQuery { Objects.requireNonNull(context); Objects.requireNonNull(source); }

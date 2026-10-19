@@ -27,10 +27,10 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         for (const owner of ['core', 'pay']) {
             sql(readFileSync(new URL(`../../docs/technical/design/活动权益-${owner}-schema.sql`, import.meta.url), 'utf8'));
         }
-        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '46');
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '47');
         assert.ok(sql("SHOW COLUMNS FROM ent_template LIKE 'draft_snapshot'"), 'template draft needs persisted editable rules');
         sql(readFileSync(new URL('../../docs/technical/design/活动权益-support-schema.sql', import.meta.url), 'utf8'));
-        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '52');
+        assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '53');
         const serviceMigration = readFileSync(new URL(
             '../../backend/shop-app/src/main/resources/db/migration/V442__entitlement_service_order.sql', import.meta.url),
             'utf8');
@@ -81,6 +81,14 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
             + 'V445__stored_value_credit_ledger.sql', import.meta.url), 'utf8'), 'stored_value_credit_fixture');
         sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
             + 'V446__stored_value_total_balance_bound.sql', import.meta.url), 'utf8'), 'stored_value_credit_fixture');
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
+            + 'V448__stored_value_receipt_lifecycle.sql', import.meta.url), 'utf8'), 'stored_value_credit_fixture');
+        sql('CREATE DATABASE recharge_source_fixture');
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
+            + 'V447__recharge_source_intent.sql', import.meta.url), 'utf8'), 'recharge_source_fixture');
+        const sourceColumns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns
+            WHERE table_schema='${database}' AND table_name='pmt_recharge_intent' ORDER BY ordinal_position`);
+        assert.equal(sourceColumns('recharge_source_fixture'), sourceColumns('entitlement_test'));
         for (const table of ['sv_account', 'sv_recharge', 'sv_lot', 'sv_voucher', 'sv_entry', 'sv_posting_line',
             'sv_user_store_index']) {
             const columns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns

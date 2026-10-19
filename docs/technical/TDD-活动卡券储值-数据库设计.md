@@ -10,7 +10,7 @@
 
 每表id为内部自增主键，tenant_no参与业务唯一性；version条件更新（对外expectedRevision映射此列）；created/updated_at用UTC DATETIME(3)，created/updated_by留操作人。资金/核销事实不可物理删除；模板归档不删除历史。沿现有BaseEntity实际审计列对齐后再生成正式迁移，不借设计重命名所有现存列。
 
-公共字段适用于当前基础46张及6张支撑表（core21/pay31，合计52张；含预览、取消栅栏与订单协调增量），DDL逐表展开：
+公共字段适用于当前基础47张及6张支撑表（core22/pay31，合计53张；含预览、取消栅栏与订单协调增量），DDL逐表展开：
 
 | 字段 | 类型及空值 | 含义 |
 |---|---|---|
@@ -1095,3 +1095,11 @@ CANCEL_DECIDED→RELEASED。客户端展示WAIT_AUTH、WAIT_SUBMIT、PROCESSING�
 V446补账户总额上限：不仅每池余额各自安全，principal+bonus合计也须能由公开long金额表示。
 新增独立迁移CHECK `principal_minor <= Long.MAX_VALUE - bonus_minor`；V445保持原校验和不变。
 应用在写入批次/凭证之前核对合计，超限整笔回滚，原单保持RECEIVED。该增量不新增表，仍52目标/247运行表。
+
+### 储值真实来源与人工实收增量（JB-034，V447/V448）
+
+V447仅由core拥有`pmt_recharge_intent`。唯一键为tenant+intent、tenant+recharge及tenant+entity+operator+request摘要；PENDING/CREDITED/CANCELLED与恢复索引独立列。JSON冻结原可信上下文、CORE/RECHARGE来源、确定的RC号、实际会员、门店名称、活动版本档位、参与许可及处理截止；不保存原始customerRef。先插真实来源，再在同一个core事务中reserve及写Prepared Outbox，失败一并回滚。处理截止不是资金有效期。
+
+V448仅修改pay的`sv_recharge`：received_receipt_key为NULL直到有权确认人实收时，写入收款方式和原收款凭据号的摘要；tenant+entity+received_receipt_key唯一，阻止一份人工收款凭据支持两笔到账。原凭据号/摘要和核验备注保持私有。cancelled_at/cancellation_reason记录未实收取消，CHECK禁止无事实的取消状态；已实收/到账不可取消。先取消后创建使用完整真实来源写CANCELLED栅栏，迟到create返回实际取消状态，不能重新提示收款。
+
+实收与取消竞争同一pay行锁及revision；实收决定与Received Outbox同事务，不持有充值行锁调用到账。到账继续遵循account→recharge锁序。已有RECEIVED承诺不因活动停用、会员引用过期、储值开关关闭或新增receipt claim列而失效。独立部署由反向core事实API读取许可，应用通过pay路由门面调用，不跨库JOIN。

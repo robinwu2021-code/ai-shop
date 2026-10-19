@@ -49,4 +49,19 @@ public final class EntitlementEvents {
         @Override public String aggregateId() { return rechargeNo; }
         @Override public String eventType() { return "STORED_VALUE_CREDITED"; }
     }
+    public record StoredValueRechargeReceived(String eventNo, String tenantNo, String rechargeNo, String entityNo,
+                                               long occurredAt) implements PayEntitlementEvent {
+        @Override public int schemaVersion() { return 1; }
+        @Override public String aggregateType() { return "STORED_VALUE_RECHARGE"; }
+        @Override public String aggregateId() { return rechargeNo; }
+        @Override public String eventType() { return "STORED_VALUE_RECHARGE_RECEIVED"; }
+    }
+    public record StoredValueRechargeCancelled(String eventNo, String tenantNo, String rechargeNo, String entityNo,
+                                                long occurredAt) implements PayEntitlementEvent {
+        @Override public int schemaVersion() { return 1; }
+        @Override public String aggregateType() { return "STORED_VALUE_RECHARGE"; }
+        @Override public String aggregateId() { return rechargeNo; }
+        @Override public String eventType() { return "STORED_VALUE_RECHARGE_CANCELLED"; }
+    }
+
 }

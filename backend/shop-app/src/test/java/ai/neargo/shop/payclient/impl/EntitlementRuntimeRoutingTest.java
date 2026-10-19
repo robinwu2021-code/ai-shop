@@ -35,6 +35,9 @@ import ai.neargo.shop.spi.entitlement.EntitlementQueryPort;
 import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort;
 import ai.neargo.shop.spi.entitlement.PaymentAttemptFactsPort;
+import ai.neargo.shop.pay.mapper.storedvalue.SvRechargeMapper;
+import ai.neargo.shop.payclient.port.RemoteStoredValueRechargeFactsPort;
+import ai.neargo.shop.spi.storedvalue.StoredValueRechargeFactsPort;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import tools.jackson.databind.ObjectMapper;
@@ -43,7 +46,7 @@ class EntitlementRuntimeRoutingTest {
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(EntitlementRuntimeRouting.class, RemoteEntitlementGrantPort.class,
                     RemoteEntitlementUsePort.class, RemoteEntitlementQueryPort.class,
-                    RemoteEntitlementUseFactsPort.class, RemotePaymentAttemptFactsPort.class,
+                    RemoteEntitlementUseFactsPort.class, RemotePaymentAttemptFactsPort.class, RemoteStoredValueRechargeFactsPort.class,
                     EntitlementCodeAppServiceImpl.class, RemoteEntitlementCodeAppService.class,
                     EntitlementBatchAppServiceImpl.class, RemoteEntitlementBatchAppService.class)
             .withBean(EntitlementGrantService.class, () -> mock(EntitlementGrantService.class))
@@ -52,6 +55,7 @@ class EntitlementRuntimeRoutingTest {
             .withBean(EntitlementCodeService.class, () -> mock(EntitlementCodeService.class))
             .withBean(EntitlementIssueBatchService.class, () -> mock(EntitlementIssueBatchService.class))
             .withBean(EntUseIntentMapper.class, () -> mock(EntUseIntentMapper.class))
+            .withBean(SvRechargeMapper.class, () -> mock(SvRechargeMapper.class))
             .withBean(PaymentMapper.class, () -> mock(PaymentMapper.class))
             .withBean(EntitlementUseWriter.class, () -> mock(EntitlementUseWriter.class))
             .withBean(EntitlementSourceFence.class, () -> mock(EntitlementSourceFence.class))
@@ -65,7 +69,7 @@ class EntitlementRuntimeRoutingTest {
             assertThat(c).hasSingleBean(EntitlementGrantPort.class).hasSingleBean(EntitlementUsePort.class)
                     .hasSingleBean(EntitlementQueryPort.class).hasSingleBean(EntitlementUseFactsPort.class)
                     .hasSingleBean(PaymentAttemptFactsPort.class).hasSingleBean(EntitlementCodeAppService.class)
-                    .hasSingleBean(EntitlementBatchAppService.class);
+                    .hasSingleBean(EntitlementBatchAppService.class).hasSingleBean(StoredValueRechargeFactsPort.class);
             assertThat(c).hasSingleBean(PayEntitlementOutboxRelay.class);
             assertThat(c.getBean(EntitlementUsePort.class)).isNotInstanceOf(RemoteEntitlementUsePort.class);
         });
@@ -73,7 +77,7 @@ class EntitlementRuntimeRoutingTest {
             assertThat(c).hasSingleBean(EntitlementGrantPort.class).hasSingleBean(EntitlementUsePort.class)
                     .hasSingleBean(EntitlementQueryPort.class).hasSingleBean(EntitlementUseFactsPort.class)
                     .hasSingleBean(PaymentAttemptFactsPort.class).hasSingleBean(EntitlementCodeAppService.class)
-                    .hasSingleBean(EntitlementBatchAppService.class);
+                    .hasSingleBean(EntitlementBatchAppService.class).hasSingleBean(StoredValueRechargeFactsPort.class);
             assertThat(c).doesNotHaveBean(PayEntitlementOutboxRelay.class);
             assertThat(c.getBean(EntitlementGrantPort.class)).isInstanceOf(RemoteEntitlementGrantPort.class);
             assertThat(c.getBean(EntitlementUsePort.class)).isInstanceOf(RemoteEntitlementUsePort.class);

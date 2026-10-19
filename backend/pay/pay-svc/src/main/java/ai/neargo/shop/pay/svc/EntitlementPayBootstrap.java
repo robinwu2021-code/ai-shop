@@ -22,6 +22,9 @@ import ai.neargo.shop.spi.entitlement.EntitlementQueryPort;
 import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort;
 import ai.neargo.shop.spi.entitlement.PaymentAttemptFactsPort;
 import tools.jackson.databind.ObjectMapper;
+import ai.neargo.shop.pay.mapper.storedvalue.SvRechargeMapper;
+import ai.neargo.shop.pay.storedvalue.port.StoredValueRechargeFactsPortImpl;
+import ai.neargo.shop.spi.storedvalue.StoredValueRechargeFactsPort;
 import ai.neargo.shop.pay.entitlement.event.PayEntitlementOutboxRelay;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntOutboxMapper;
 import ai.neargo.shop.spi.entitlement.PayEntitlementEventBridgePort;
@@ -67,6 +70,11 @@ public class EntitlementPayBootstrap {
     PayEntitlementOutboxRelay entitlementOutboxRelay(PayEntOutboxMapper outbox,
                                                     PayEntitlementEventBridgePort bridge, ObjectMapper json) {
         return new PayEntitlementOutboxRelay(outbox, bridge, json);
+    }
+
+    @Bean
+    StoredValueRechargeFactsPort storedValueRechargeFactsPort(SvRechargeMapper recharges, ObjectMapper json) {
+        return new StoredValueRechargeFactsPortImpl(recharges, json);
     }
 
 }

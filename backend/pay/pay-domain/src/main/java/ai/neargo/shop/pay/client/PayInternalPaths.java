@@ -56,4 +56,11 @@ public final class PayInternalPaths {
 
     private PayInternalPaths() {
     }
+    public static final String SV_FACTS = "/internal/pay/stored-value/facts";
+    public static final String SV_CREATE = "/internal/pay/stored-value/create";
+    public static final String SV_SUBMIT = "/internal/pay/stored-value/submit";
+    public static final String SV_RECEIVE = "/internal/pay/stored-value/receive";
+    public static final String SV_CANCEL = "/internal/pay/stored-value/cancel";
+    public static final String SV_CREDIT = "/internal/pay/stored-value/credit";
+
 }

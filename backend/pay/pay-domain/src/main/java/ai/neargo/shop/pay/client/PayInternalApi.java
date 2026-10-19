@@ -24,6 +24,8 @@ import ai.neargo.shop.pay.client.PayEntitlementRequests.StatusTemplate;
 import ai.neargo.shop.pay.client.PayEntitlementRequests.ConfigureIssue;
 import ai.neargo.shop.pay.client.PayEntitlementRequests.CatalogVersion;
 import ai.neargo.shop.pay.client.PayEntitlementRequests.ValidateCatalogReference;
+import ai.neargo.shop.spi.storedvalue.StoredValueRechargeFactsPort.RechargeFact;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort.RechargeView;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -182,4 +184,22 @@ public interface PayInternalApi {
     @PostExchange(PayInternalPaths.ENT_MERCHANT_USAGE)
     PageData<EntitlementQueryPort.UsageItem> entMerchantUsage(
             @RequestBody PayEntitlementRequests.MerchantUsage request);
+    @PostExchange(PayInternalPaths.SV_FACTS)
+    RechargeFact svFacts(@RequestBody PayStoredValueRequests.Query request);
+
+    @PostExchange(PayInternalPaths.SV_CREATE)
+    RechargeView svCreate(@RequestBody PayStoredValueRequests.Create request);
+
+    @PostExchange(PayInternalPaths.SV_SUBMIT)
+    RechargeView svSubmit(@RequestBody PayStoredValueRequests.Submit request);
+
+    @PostExchange(PayInternalPaths.SV_RECEIVE)
+    RechargeView svReceive(@RequestBody PayStoredValueRequests.Receive request);
+
+    @PostExchange(PayInternalPaths.SV_CANCEL)
+    RechargeView svCancel(@RequestBody PayStoredValueRequests.Cancel request);
+
+    @PostExchange(PayInternalPaths.SV_CREDIT)
+    RechargeView svCredit(@RequestBody PayStoredValueRequests.Credit request);
+
 }

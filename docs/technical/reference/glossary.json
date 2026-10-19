@@ -27686,6 +27686,13 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "pmt_recharge_intent",
+      "class": "PmtRechargeIntent",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
       "table": "pmt_recharge_tier",
       "class": "PmtRechargeTier",
       "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
@@ -39443,6 +39450,54 @@
       "module": "pay/pay-domain"
     },
     {
+      "host": "PayInternalPaths",
+      "name": "SV_FACTS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/facts\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CREATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/create\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_SUBMIT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/submit\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_RECEIVE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/receive\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CANCEL",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/cancel\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CREDIT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/credit\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
       "host": "CouponQuotePolicy",
       "name": "FREIGHT_LINE",
       "type": "String",
@@ -39783,6 +39838,22 @@
       "name": "GRANT_DECISION",
       "type": "String",
       "value": "\"/internal/core/entitlement/source/grant-decision\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "RECHARGE_SOURCE",
+      "type": "String",
+      "value": "\"/internal/core/stored-value/source\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "RECHARGE_BY_NO",
+      "type": "String",
+      "value": "\"/internal/core/stored-value/source-by-recharge\"",
       "zh": "",
       "module": "shop-base"
     },

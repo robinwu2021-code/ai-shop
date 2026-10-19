@@ -37,4 +37,7 @@ public class SvRecharge extends BaseEntity {
     private String sourceSnapshot;
     private String receivedDecisionSnapshot;
     private String confirmationNote;
+    private String receivedReceiptKey;
+    private String cancellationReason;
+    private LocalDateTime cancelledAt;
 }

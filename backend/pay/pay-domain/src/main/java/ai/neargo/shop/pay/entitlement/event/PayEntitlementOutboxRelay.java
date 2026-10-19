@@ -102,6 +102,10 @@ public class PayEntitlementOutboxRelay {
             case "ENTITLEMENT_USE_REVERSED" ->
                     json.readValue(row.getPayload(), EntitlementEvents.EntitlementUseReversed.class);
             case "ENTITLEMENT_USED" -> json.readValue(row.getPayload(), EntitlementEvents.EntitlementUsed.class);
+            case "STORED_VALUE_RECHARGE_RECEIVED" -> json.readValue(row.getPayload(),
+                    EntitlementEvents.StoredValueRechargeReceived.class);
+            case "STORED_VALUE_RECHARGE_CANCELLED" -> json.readValue(row.getPayload(),
+                    EntitlementEvents.StoredValueRechargeCancelled.class);
             case "STORED_VALUE_CREDITED" -> json.readValue(row.getPayload(),
                     EntitlementEvents.StoredValueCredited.class);
             default -> throw new IllegalArgumentException("Unknown pay entitlement event type");

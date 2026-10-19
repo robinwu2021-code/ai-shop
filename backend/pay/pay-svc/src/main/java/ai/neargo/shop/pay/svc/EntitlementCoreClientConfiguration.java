@@ -5,6 +5,8 @@ import ai.neargo.shop.pay.svc.client.port.CoreSourceDecisionPortImpl;
 import ai.neargo.shop.pay.svc.client.port.CoreEntitlementIssueAudiencePortImpl;
 import ai.neargo.shop.pay.svc.client.port.CoreEntitlementGrantSourcePortImpl;
 import ai.neargo.shop.spi.entitlement.EntitlementUseSourcePort;
+import ai.neargo.shop.spi.storedvalue.RechargeSourcePort;
+import ai.neargo.shop.pay.svc.client.port.CoreRechargeSourcePortImpl;
 import ai.neargo.shop.spi.entitlement.SourceDecisionPort;
 import ai.neargo.shop.spi.entitlement.EntitlementIssueAudiencePort;
 import ai.neargo.shop.spi.entitlement.EntitlementGrantSourcePort;
@@ -51,6 +53,11 @@ public class EntitlementCoreClientConfiguration {
     PayEntitlementEventBridgePort corePayEntitlementEventBridgePort(ObjectProvider<CoreEntitlementInternalApi> api,
                                                                   ObjectMapper json) {
         return new CorePayEntitlementEventBridgePortImpl(api, json);
+    }
+
+    @Bean
+    RechargeSourcePort coreRechargeSourcePort(ObjectProvider<CoreEntitlementInternalApi> api) {
+        return new CoreRechargeSourcePortImpl(api);
     }
 
 }

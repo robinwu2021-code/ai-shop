@@ -23,7 +23,7 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：32项DONE、10项DOING、13项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
+本表共55项：32项DONE、11项DOING、12项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。新增范围预检已运行Java业务测试，历史全量证据与本批定向结果分别列在末尾。
 
 优先顺序（2026-10-19用户调整）：第一阶段完成core活动自身能力，第二阶段完成pay权益、卡券、储值及活动权益联动。具体任务分组、跨阶段子项与验收见[两阶段执行方案](./开发计划-活动优先与权益两阶段.md)。已完成的权益公共基础直接保留；JB-015尚未开始Java实现，移至第二阶段。原任务编号与整体依赖保留，跨阶段任务仅完成活动部分不能标记整项DONE。
 
@@ -111,7 +111,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 
 | ID | 原任务 | 状态 | 依赖 | 模块 | 交付内容/Java类 | 验收条件/测试 |
 |---|---|---|---|---|---|---|
-| JB-034 | D05.1 | TODO | 010,011,013,014,031 | pay.storedvalue/app | StoredValueRechargeService/Impl、StoredValueRechargeCoordinator；创建/提交/实收/取消/query | StoredValueRechargeFlowTest：真实凭据/金额匹配；实收取消竞争唯一终态、重复实收不重复到账；已实收不可取消 |
+| JB-034 | D05.1 | DOING | 010,011,013,014,031 | pay.storedvalue/app | StoredValueRechargeService/Impl、StoredValueRechargeCoordinator；创建/提交/实收/取消/query | StoredValueRechargeFlowTest：真实凭据/金额匹配；实收取消竞争唯一终态、重复实收不重复到账；已实收不可取消 |
 | JB-035 | D05.2 | DOING | 013,014,034 | pay.storedvalue | StoredValueCreditService/Impl、StoredValuePostingService；I12账户/批次/凭证/分录同事务 | StoredValueCreditFlowTest：原充值号只到账一次、借贷平衡、内部本金赠金守恒、异常整体回滚；原生MySQL验证 |
 | JB-036 | D05.3 | TODO | 011,020,035 | pay.storedvalue | StoredValueRedemptionService/Impl、StoredValueAllocationPolicy；统一使用意图的金额预占/确认/释放 | StoredValueConsumptionFlowTest：范围/过期批次校验、条件余额不超扣、释放回原批次、消费重试不重复分录；原生并发 |
 | JB-037 | D05.4 | TODO | 014,035,036 | pay.storedvalue | StoredValueStoreProjector、StoredValueQueryService/Impl；记录、门店目录、总余额 | StoredValueConsumerQueryTest：只列成功储值门店、max充值/核销时间倒序、同时间稳定分页、耗尽仍保留、乱序不倒退 |
@@ -637,3 +637,11 @@ JB-035到账内核补充总额上限：增加V446独立CHECK，V445不改；应�
 合计溢出的入账。新回归先实际变红（旧实现允许合计Long.MAX_VALUE+1），修复后21项定向Java通过；
 原生实际过账1项、目标迁移1项均通过且0跳过。测试库生成器补严格ADD CHECK保留，相关生成器测试先红后绿，
 未知ALTER仍报错。运行表/目标表数量不变，父任务035仍等实际活动与人工实收整链路接通后验收。
+
+#### JB-034/035真实来源与人工实收子批次（尚未关闭父任务）
+
+V447在core新增pmt_recharge_intent，冻结真实会员引用、门店、市场币种、活动版本档位及参与许可；源行、营销预留和Prepared Outbox同事务，原请求重放不依赖会员引用TTL。V448在pay补独占收款凭据与未实收取消事实。新StoredValueRechargeService/Writer真实执行create/submit/receive/cancel，实收决定和Received事件同事务，到账继续使用既有唯一信用账序与平衡管理分录；不产生平台收款或现金结算收入。先取消后创建写完整来源栅栏，不能重新收款。
+
+定向Java：真实源/人工收款/到账/营销确认与反向HTTP 6项、路由2项、架构16项、pay事务1项、原支付HTTP5项通过，共30项；未跑全量。临时MySQL使用真实支付Writer/事务，验证20并发到账、实收Outbox失败回滚、同凭据重复实收拒绝、实收/取消竞争和迟到创建栅栏，1项实跑0跳过。53张目标DDL及V447/V448迁移字段/约束原生验证1项实跑0跳过；H2运行表248张。文档70/生成器24/SQL守卫通过。
+
+本批没有将接口声明算作业务闭环：新的6条pay充值RPC已编译，但其真实HTTP专项、应用Outbox协调、公共B/C接口、正常预置活动发布路径和储值消费仍待后续批次。JB-034/035/041保留DOING。当前32 DONE / 11 DOING / 12 TODO。V447/V448本批验收后冻结，后续追加迁移。

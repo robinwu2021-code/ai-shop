@@ -5905,6 +5905,10 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     updated_at DATETIME(3) NOT NULL,
     created_by VARCHAR(64) NOT NULL,
     updated_by VARCHAR(64) NOT NULL,
+    received_receipt_key CHAR(64) NULL,
+    cancellation_reason VARCHAR(500) NULL,
+    cancelled_at DATETIME(3) NULL,
+    CONSTRAINT uk_sv_received_receipt UNIQUE (tenant_no,entity_no,received_receipt_key),
     PRIMARY KEY (id),
     CONSTRAINT uk_recharge UNIQUE (tenant_no,recharge_no),
     CONSTRAINT uk_recharge_request UNIQUE (tenant_no,request_id),
@@ -5913,7 +5917,9 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     CHECK (status IN ('WAIT_COLLECTION','SUBMITTED','RECEIVED','CREDITED','CANCELLED','REJECTED')),
     CHECK (status NOT IN ('SUBMITTED','RECEIVED','CREDITED') OR (collection_method IS NOT NULL AND actual_amount_minor IS NOT NULL AND collection_method IN ('CASH','TRANSFER') AND actual_amount_minor=principal_minor AND receipt_ref IS NOT NULL AND receipt_digest IS NOT NULL)),
     CHECK (status NOT IN ('RECEIVED','CREDITED') OR (received_by IS NOT NULL AND received_at IS NOT NULL AND received_decision_snapshot IS NOT NULL)),
-    CHECK ((status='CREDITED' AND credited_at IS NOT NULL) OR (status<>'CREDITED' AND credited_at IS NULL))
+    CHECK ((status='CREDITED' AND credited_at IS NOT NULL) OR (status<>'CREDITED' AND credited_at IS NULL)),
+    CONSTRAINT ck_sv_cancel_facts CHECK ((status='CANCELLED' AND cancellation_reason IS NOT NULL AND cancelled_at IS NOT NULL)
+        OR (status<>'CANCELLED' AND cancelled_at IS NULL))
 );
 
 CREATE TABLE IF NOT EXISTS sv_lot
@@ -6034,6 +6040,31 @@ CREATE TABLE IF NOT EXISTS sv_posting_line
     CHECK (pool IN ('PRINCIPAL','BONUS')),
     CHECK (book IN ('CUSTOMER_CLAIM','MERCHANT_OBLIGATION')),
     CHECK (side IN ('DEBIT','CREDIT'))
+);
+
+CREATE TABLE IF NOT EXISTS pmt_recharge_intent
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    intent_no VARCHAR(64) NOT NULL,
+    recharge_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    plan_snapshot TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_recharge_intent UNIQUE (tenant_no,intent_no),
+    CONSTRAINT uk_recharge_intent_pay UNIQUE (tenant_no,recharge_no),
+    CONSTRAINT uk_recharge_intent_request UNIQUE (tenant_no,entity_no,operator_no,request_key_hash),
+    CHECK (status IN ('PENDING','CREDITED','CANCELLED'))
 );
 
 -- 种子数据

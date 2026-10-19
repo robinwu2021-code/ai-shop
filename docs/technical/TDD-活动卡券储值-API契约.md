@@ -637,3 +637,11 @@ StoredValueCreditService沿既有CreditRecharge，只接收原`PAY/RECHARGE`与R
 不接收金额；读取自己pay持久的实收记录、原core来源与ParticipationPermit核对。复用RechargeView无本金/赠金
 字段，内部备查账不直接作为B/C响应。记录CREDITED重放先校验原决定及凭证/批次，返回原到账时刻和修订；
 账户及流水不重复增加。B实收和StoredValuePort HTTP/远程入口仍未开放，待034/041真实来源接通。
+
+### 储值来源及实收内部承载（JB-034/041增量）
+
+尚未接完的公共入口不因内部承载存在而视为开放。P18仍收customerRef/activityNo/versionNo/tierNo/storeNo，不接受本金、赠金、受益人、币种或确认人。core源工厂按真实身份和市场冻结后，内部CreateRecharge改为`(sourceRef,permit)`，避免恢复依赖已过期的原始会员引用。CORE/RECHARGE(intentNo)是营销来源，PAY/RECHARGE(rechargeNo)是支付实收决定，二者不可替换。
+
+反向事实POST为`/internal/core/stored-value/source`（context+source）、`source-by-recharge`（context+rechargeNo），返回完整冻结SourceFact。pay内部POST为`/internal/pay/stored-value/{create,submit,receive,cancel,credit,facts}`，create/submit/receive/cancel均携带可信context和entityNo，credit只能带原PAY实收决定；facts返回安全RechargeView、许可及来源绑定，不返回收款凭据或内部双池。全部沿内部令牌、非空响应及明确UNKNOWN语义，不自动重试写请求。
+
+人工实收是持receive权限的商家对原CASH/TRANSFER收款凭据的明确核验，不宣称平台银行核验。提交金额必须等于冻结应收，receive必须匹配原revision及receiptDigest；实际确认人/时间由服务端记录。不同命令键重复操作遵循状态守卫，同键原样重放返回原操作答复；create额外返回当前实际状态，避免已取消原单被旧WAIT_COLLECTION答复重新提示收款。到账可异步，查询不能代替再次确认实收。

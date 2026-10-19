@@ -6,7 +6,8 @@ import ai.neargo.shop.event.DomainEvent;
 public sealed interface PayEntitlementEvent extends DomainEvent
         permits EntitlementEvents.EntitlementGranted, EntitlementEvents.EntitlementUsed,
                 EntitlementEvents.StoredValueCredited, EntitlementEvents.EntitlementUseReversed,
-                EntitlementEvents.EntitlementBatchPrepared {
+                EntitlementEvents.EntitlementBatchPrepared, EntitlementEvents.StoredValueRechargeReceived,
+                EntitlementEvents.StoredValueRechargeCancelled {
     String eventNo();
     int schemaVersion();
     long occurredAt();

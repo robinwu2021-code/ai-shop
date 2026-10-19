@@ -445,10 +445,17 @@ CREATE TABLE sv_recharge (
     updated_at DATETIME(3) NOT NULL COMMENT 'UTC更新',
     created_by VARCHAR(64) NOT NULL COMMENT '操作者或系统任务',
     updated_by VARCHAR(64) NOT NULL COMMENT '最后操作者',
+    received_receipt_key CHAR(64) NULL COMMENT '实收后占用的收款方式加凭据摘要',
+    cancellation_reason VARCHAR(500) NULL COMMENT '未实收取消原因',
+    cancelled_at DATETIME(3) NULL COMMENT '未实收取消时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_recharge (tenant_no,recharge_no),
     UNIQUE KEY uk_recharge_request (tenant_no,request_id),
     UNIQUE KEY uk_recharge_permit (tenant_no,reservation_no),
+    UNIQUE KEY uk_sv_received_receipt (tenant_no,entity_no,received_receipt_key),
+    CONSTRAINT ck_sv_cancel_facts CHECK
+        ((status='CANCELLED' AND cancellation_reason IS NOT NULL AND cancelled_at IS NOT NULL)
+        OR (status<>'CANCELLED' AND cancelled_at IS NULL)),
     KEY ix_credit_pending (tenant_no,status,received_at),
     CHECK (principal_minor>0 AND bonus_minor>=0),
     CHECK (status IN ('WAIT_COLLECTION','SUBMITTED','RECEIVED','CREDITED','CANCELLED','REJECTED')),
