@@ -11,6 +11,7 @@ import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.pay.entity.StlBill;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -43,6 +44,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class M7SettleFlowTest {
 
     private static final String STUB_SECRET = "stub-secret";
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private String splitRecipientNo;
+    private String previousStoreRecipient;
+
+    /** The settlement bill must freeze a real ACTIVE store-bound recipient before payment. */
+    private void givenSplitRecipient() {
+        splitRecipientNo = "PM-M7-" + java.util.UUID.randomUUID();
+        previousStoreRecipient = jdbc.queryForObject(
+                "SELECT pay_merchant_no FROM mch_store WHERE store_no='ST-M0001'", String.class);
+        jdbc.update("INSERT INTO mch_payment_merchant (pay_merchant_no,entity_no,store_no,pay_channel,"
+                + "apply_status,fee_bearer,tenant_no,created_at,updated_at,version,deleted)"
+                + " VALUES (?,'M0001','ST-M0001','TEST','ACTIVE','MERCHANT','MAIN',"
+                + "CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,0,0)", splitRecipientNo);
+        jdbc.update("UPDATE mch_store SET pay_merchant_no=? WHERE store_no='ST-M0001'", splitRecipientNo);
+    }
+
+    @AfterEach
+    void restoreSplitRecipient() {
+        if (splitRecipientNo == null) return;
+        jdbc.update("UPDATE mch_store SET pay_merchant_no=? WHERE store_no='ST-M0001'", previousStoreRecipient);
+        jdbc.update("DELETE FROM mch_payment_merchant WHERE pay_merchant_no=?", splitRecipientNo);
+    }
 
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
@@ -311,6 +335,7 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("分账执行：PENDING → SPLIT，回执落库")
     void executeSplit() throws Exception {
+        givenSplitRecipient();
         String token = login("12800128020");
         buyAndPay(token, "G0002", "SK0003", null, "m7-exec");
         String biz = loginAsOwnerOf("M0001", "12800128021");
@@ -327,6 +352,7 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("分账幂等：重复执行不会重复打款")
     void splitIsIdempotent() throws Exception {
+        givenSplitRecipient();
         String token = login("12800128022");
         buyAndPay(token, "G0002", "SK0003", null, "m7-idem");
         String biz = loginAsOwnerOf("M0001", "12800128023");
@@ -438,6 +464,7 @@ class M7SettleFlowTest {
     @Test
     @DisplayName("★ 退款先回退分账（真实实现下依然成立，M5 的顺序约束不因换实现而失效）")
     void refundReversesSplitFirst() throws Exception {
+        givenSplitRecipient();
         String token = login("12800128030");
         buyAndPay(token, "G0002", "SK0003", null, "m7-refund");
         // 商家同意 → 退款这条链只属于「直连」商家；归集（平台是卖家）的售后进平台裁决，商家同意不了（步 5.6 起由状态机挡）
