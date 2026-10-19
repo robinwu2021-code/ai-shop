@@ -37,6 +37,8 @@ class LineRefundFlowTest {
     private JdbcTemplate jdbc;
     @Autowired
     private AfterSaleService afterSales;
+    @Autowired
+    private ai.neargo.shop.trade.service.MerchantOrderService merchantOrders;
 
     private MockMvc mvc() {
         return MockMvcBuilders.webAppContextSetup(context)
@@ -59,6 +61,11 @@ class LineRefundFlowTest {
                 + "\"reasonCode\":\"NOT_WANTED\"}");
         assertThat(full.path("code").asInt()).isZero();
         String no = full.path("data").path("afterSaleNo").asString();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                afterSales.approve(entityOf(sub), no, null, 1L, "CASH"))
+                .isInstanceOf(ai.neargo.shop.common.BizException.class);
+        assertThat(jdbc.queryForObject("select status from ord_after_sale where after_sale_no=?", String.class, no))
+                .isEqualTo("APPLIED");
         afterSales.approve(entityOf(sub), no, null, null, null);
         assertThat(jdbc.queryForObject("select refunded_qty from ord_item where id=?", Integer.class, itemId))
                 .isZero();
@@ -204,6 +211,10 @@ class LineRefundFlowTest {
                 .andExpect(jsonPath("$.code").value(0)).andReturn().getResponse().getContentAsString();
         String payNo = json.readTree(body).get("data").get("payOrderNo").asString();
         new CashReceiptFixture(context).pay(token, payNo);
-        return jdbc.queryForObject("select sub_order_no from ord_sub_order where order_no = ?", String.class, payNo);
+        String sub = jdbc.queryForObject("select sub_order_no from ord_sub_order where order_no = ?", String.class, payNo);
+        // 本组验证商家审核及驳回；未备货买家申请会直接进入合法退款例外。
+        merchantOrders.prepare(entityOf(sub), jdbc.queryForObject(
+                "select store_no from ord_sub_order where sub_order_no=?", String.class, sub), sub);
+        return sub;
     }
 }

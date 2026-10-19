@@ -7,4 +7,7 @@ public interface RefundObligationService {
     void prepare(String executionNo);
     void recover(String executionNo);
     boolean settled(String executionNo);
+    Progress progress(String executionNo);
+    record Progress(int version,String closureStatus,String cashStatus,String benefitsStatus,
+                    String paymentNo,String financialState,String resourceStatus,String resourceError) { }
 }

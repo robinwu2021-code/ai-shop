@@ -7,6 +7,7 @@ import ai.neargo.job.api.JobResult;
 import ai.neargo.shop.job.JobSupport;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import ai.neargo.shop.trade.order.refund.service.BasicRefundExecutionService;
+import ai.neargo.shop.trade.order.refund.service.PointsRefundResourceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
@@ -65,6 +66,12 @@ public class RefundRetryJob implements JobHandler {
     }
 
     private BasicRefundExecutionService executions;
+    private PointsRefundResourceService pointsResources;
+
+    @Autowired
+    public void setPointsResources(PointsRefundResourceService pointsResources) {
+        this.pointsResources = pointsResources;
+    }
 
     @Autowired
     public void setRefundExecutions(BasicRefundExecutionService executions) {
@@ -97,6 +104,16 @@ public class RefundRetryJob implements JobHandler {
         long now = System.currentTimeMillis();
         if (executions != null) {
             executions.recoverDue(now, limit);
+        }
+        // 库存有独立批次，不能被持续占满的资金/权益恢复队列饿死。
+        if (pointsResources != null) {
+            for (String no : pointsResources.pendingNos(limit)) {
+                try {
+                    pointsResources.recover(no);
+                } catch (RuntimeException failure) {
+                    log.warn("[refund-retry] {} 库存恢复未完成：{}", no, failure.getMessage());
+                }
+            }
         }
 
         /*

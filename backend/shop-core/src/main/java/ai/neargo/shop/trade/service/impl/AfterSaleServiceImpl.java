@@ -4,6 +4,7 @@ import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.shop.trade.order.refund.model.RefundLine;
 import ai.neargo.shop.trade.order.refund.service.BasicRefundExecutionService;
+import ai.neargo.shop.trade.order.refund.service.PointsRefundResourceService;
 import ai.neargo.shop.trade.order.refund.service.BasicRefundPolicy;
 import ai.neargo.shop.trade.order.refund.service.RefundableQuery;
 import ai.neargo.shop.trade.order.entity.OrdRefundExecution;
@@ -71,6 +72,7 @@ import java.util.Objects;
 @Service
 public class AfterSaleServiceImpl implements AfterSaleService {
     private final ai.neargo.shop.trade.order.refund.service.RefundObligationService refundObligations;
+    private final PointsRefundResourceService pointsResources;
 
     /** 不用 @Slf4j：下面 appendLog 里有局部变量叫 {@code log}（OrdStatusLog），会撞名。 */
     private static final org.slf4j.Logger LOG =
@@ -183,7 +185,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                                 ai.neargo.shop.trade.order.mapper.OrderPointsRefundRetryMapper retryRows,
                                 ai.neargo.shop.trade.order.mapper.OrderPointsBindingMapper pointsBindings,
                                 @Qualifier("transactionManager") PlatformTransactionManager sourceTransactions,
-                                ai.neargo.shop.trade.order.refund.service.RefundObligationService refundObligations) {
+                                ai.neargo.shop.trade.order.refund.service.RefundObligationService refundObligations,
+                                PointsRefundResourceService pointsResources) {
+        this.pointsResources=pointsResources;
         this.refundObligations=refundObligations;
         this.refundExecutions = refundExecutions;
         this.retryRows = retryRows;
@@ -632,11 +636,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
         FulfillStage stage = stageOf(sub, true);
 
-        /*
-         * 核定金额（AC9，§2.4）：**只有已签收能定制金额** —— 未签收商家看不到实物损坏比例，
-         * 只能全额或驳回。传了金额却未签收 → 拒；金额 ≤0 或超实付 → 拒。核定额落 approved_minor，
-         * 与买家申请额分开留痕，实退以它为准。
-         */
+        // 当前仅支持整单全退；商家不能缩减核定金额，积分返还仍由原支付协议处理。
         if (refundMinor != null) {
             if (!refundMinor.equals(sub.getPayAmount())) {
                 throw BizException.of(ErrorCode.AFTERSALE_AMOUNT_INVALID);
@@ -1119,9 +1119,17 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     private AfterSaleVO.RefundExecutionProgress refundProgress(OrdAfterSale as) {
         OrdRefundExecution row = basicRefunds.find(as.getAfterSaleNo());
-        return row == null ? null : new AfterSaleVO.RefundExecutionProgress(row.getExecutionNo(), row.getPaymentNo(),
-                row.getStatus(), row.getPhase(), row.getErrorCode(), row.getResourceStatus(),
-                row.getResourceErrorCode(), row.getSucceededAt(), row.getNextAttemptAt());
+        if(row!=null) {
+            var progress=refundObligations.progress(row.getExecutionNo());
+            return new AfterSaleVO.RefundExecutionProgress(row.getExecutionNo(),row.getPaymentNo(),row.getStatus(),
+                    row.getPhase(),row.getErrorCode(),row.getResourceStatus(),row.getResourceErrorCode(),
+                    row.getSucceededAt(),row.getNextAttemptAt(),progress.version(),progress.closureStatus(),
+                    progress.cashStatus(),progress.benefitsStatus());
+        }
+        var progress=refundObligations.progress("PRF-"+as.getAfterSaleNo());
+        return progress==null?null:new AfterSaleVO.RefundExecutionProgress("PRF-"+as.getAfterSaleNo(),progress.paymentNo(),
+                progress.financialState(),"BENEFITS",null,progress.resourceStatus(),progress.resourceError(),
+                as.getRefundedAt(),null,progress.version(),progress.closureStatus(),progress.cashStatus(),progress.benefitsStatus());
     }
 
     private void appendLog(String subOrderNo, String status, String label,
@@ -1349,7 +1357,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             throw new IllegalStateException("REFUND_EXECUTION_REQUIRES_NO_TRANSACTION");
         }
         OrdAfterSale as = refundAfterSale(afterSaleNo, false);
-        if (OrdAfterSale.REFUNDED.equals(as.getStatus())) return;
+        if (OrdAfterSale.REFUNDED.equals(as.getStatus())) {
+            pointsResources.recover(afterSaleNo);
+            return;
+        }
         OrdSubOrder sub = subOrderOf(as.getSubOrderNo());
         if (pointsIntegrated(sub)) {
             resumePointsRefund(afterSaleNo, sub.getOrderNo());
@@ -1627,11 +1638,12 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             if(OrdAfterSale.REFUNDED.equals(as.getStatus())) return;
             as.setSplitReversed(true);
             as.setRefundPaymentNo(payment);
-            restoreStockIfReturned(as,plan);
             if(versioned) {
                 update(as);
                 refundObligations.prepare("PRF-"+no);
+                pointsResources.prepare(as,plan);
             } else {
+                restoreStockIfReturned(as,plan);
                 settleRefundTerminal(as,cash==0?"积分退款已确认":"退款到账已核验",cash,result.progress()==RefundProgress.FULL);
                 pointsRefundSource.commit(no);
                 pointsClosure.finalizeSubOrder(plan.subOrderNo());
@@ -1664,6 +1676,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             pointsRefundSource.commit(no);
             pointsClosure.finalizeSubOrder(plan.subOrderNo());
         });
+        pointsResources.recover(no);
     }
 
     private OrdAfterSale refundAfterSale(String afterSaleNo, boolean lock) {

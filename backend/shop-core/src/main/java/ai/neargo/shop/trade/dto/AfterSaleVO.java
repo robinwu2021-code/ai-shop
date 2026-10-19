@@ -77,7 +77,14 @@ public record AfterSaleVO(String afterSaleNo,
     /** Original execution and independent resource recovery remain visible after cash confirmation. */
     public record RefundExecutionProgress(String executionNo, String paymentNo, String status, String phase,
                                           String errorCode, String resourceStatus, String resourceErrorCode,
-                                          Long succeededAt, Long nextAttemptAt) { }
+                                          Long succeededAt, Long nextAttemptAt, Integer closureVersion,
+                                          String closureStatus, String cashStatus, String benefitsStatus) {
+        public RefundExecutionProgress(String executionNo,String paymentNo,String status,String phase,String errorCode,
+                String resourceStatus,String resourceErrorCode,Long succeededAt,Long nextAttemptAt) {
+            this(executionNo,paymentNo,status,phase,errorCode,resourceStatus,resourceErrorCode,succeededAt,nextAttemptAt,
+                    null,null,null,null);
+        }
+    }
 
     /** Original return lines and quantities to cap physical receipt; never inferred from cash amount. */
     public record ReturnItem(Long itemId, String skuNo, String title, int requestedQty) { }

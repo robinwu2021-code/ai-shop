@@ -48,6 +48,13 @@ class RefundClosureObligationFlowTest {
             assertThat(value("status",as)).isEqualTo("SUCCEEDED");
             assertThat(value("closure_status",as)).isEqualTo("PENDING");
             assertThat(afterSale(as)).isEqualTo("REFUNDING");
+            var view=context.getBean(ai.neargo.shop.trade.service.AfterSaleService.class).merchantList(f.merchant(p),null)
+                    .stream().filter(v -> as.equals(v.afterSaleNo())).findFirst().orElseThrow();
+            var progress=context.getBean(tools.jackson.databind.ObjectMapper.class)
+                    .readTree(context.getBean(tools.jackson.databind.ObjectMapper.class).writeValueAsString(view)).path("refundExecution");
+            assertThat(progress.path("closureStatus").asString()).isEqualTo("PENDING");
+            assertThat(progress.path("cashStatus").asString()).isEqualTo("CONFIRMED");
+            assertThat(progress.path("benefitsStatus").asString()).isEqualTo("PENDING");
             assertThat(value("resource_status",as)).isEqualTo("DONE");
             assertThat(refunds.recoverDue(System.currentTimeMillis()+300000,200)).isPositive();
             assertThat(afterSale(as)).isEqualTo("REFUNDING");

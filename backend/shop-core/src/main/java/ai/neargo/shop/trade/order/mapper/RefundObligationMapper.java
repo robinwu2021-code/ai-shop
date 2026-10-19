@@ -9,7 +9,8 @@ import org.apache.ibatis.annotations.*;
 public interface RefundObligationMapper {
     @Insert("INSERT INTO ord_refund_coupon_scope(order_no,coupon_no,payload_json,input_hash) VALUES(#{order},#{coupon},#{payload},#{hash})")
     int freezeScope(@Param("order") String order,@Param("coupon") String coupon,@Param("payload") String payload,@Param("hash") String hash);
-    @Select("SELECT a.order_no,e.closure_version,e.return_coupon,e.state,b.phase FROM ord_points_refund_execution e"
+    @Select("SELECT a.order_no,a.status AS after_sale_status,e.closure_version,e.return_coupon,e.state, "
+        + "e.net_cash_minor,e.cash_payment_no,b.preparation_json,b.phase FROM ord_points_refund_execution e"
         + " JOIN ord_after_sale a ON a.after_sale_no=e.after_sale_no AND a.deleted=0"
         + " JOIN ord_points_refund_binding b ON b.after_sale_no=e.after_sale_no"
         + " WHERE e.after_sale_no=#{as} AND e.deleted=0")
@@ -32,6 +33,15 @@ public interface RefundObligationMapper {
         + " VALUES(#{no},'COUPON',#{source},#{hash},#{payload},#{state},#{proof})")
     int create(@Param("no") String no,@Param("source") String source,@Param("hash") String hash,
         @Param("payload") String payload,@Param("state") String state,@Param("proof") String proof);
+    @Insert("INSERT INTO ord_refund_obligation(execution_no,kind,source_no,input_hash,payload_json,state,authority_proof)"
+        + " VALUES(#{no},'STOCK',#{source},#{hash},#{payload},#{state},#{proof})")
+    int createStock(@Param("no") String no,@Param("source") String source,@Param("hash") String hash,
+        @Param("payload") String payload,@Param("state") String state,@Param("proof") String proof);
+    @Select("SELECT SUBSTRING(execution_no,5) FROM ord_refund_obligation WHERE kind='STOCK'"
+        + " AND state NOT IN ('SUCCEEDED','NOT_REQUIRED') AND next_attempt_at<=#{now} ORDER BY next_attempt_at,id LIMIT #{limit}")
+    List<String> pendingStock(@Param("now") long now,@Param("limit") int limit);
+    @Update("UPDATE ord_after_sale SET stock_restored=1 WHERE after_sale_no=#{as} AND deleted=0")
+    int stockRestored(String as);
     @Update("UPDATE ord_refund_obligation SET state=#{state},authority_proof=#{proof},error_code=#{error},"
         + "next_attempt_at=#{next},updated_at=CURRENT_TIMESTAMP WHERE id=#{id} AND input_hash=#{hash}"
         + " AND state NOT IN ('SUCCEEDED','NOT_REQUIRED')")

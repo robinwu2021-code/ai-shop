@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyList;
 
 /** Exercises the real merchant entry and durable recovery, with synthetic store subjects and a test bank. */
 @SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:refund-entry;"
@@ -46,6 +47,7 @@ class AfterSaleRefundExecutionTest {
     @Autowired private ai.neargo.shop.trade.order.refund.service.RefundCouponScopeService couponScopes;
     @Autowired private org.springframework.transaction.PlatformTransactionManager transactions;
     @MockitoSpyBean private ai.neargo.shop.trade.order.refund.service.RefundObligationService obligations;
+    @MockitoSpyBean private ai.neargo.shop.spi.product.StockPort stock;
     @MockitoSpyBean private TestPayGateway channel;
     @MockitoBean private PointsPaymentSnapshotPort pointsPayments;
     @MockitoBean private PointsRefundPort pointsRefunds;
@@ -69,9 +71,21 @@ class AfterSaleRefundExecutionTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.ValueSource(booleans={false,true})
-    void integrated_refund_waits_for_verified_net_cash_and_points_confirmation(boolean interrupted) {
+    @org.junit.jupiter.params.provider.ValueSource(strings={"NORMAL","AFTER_COMMIT","STOCK_ERROR","LIFECYCLE2_RETURN","LIFECYCLE2_UNSHIPPED"})
+    void integrated_refund_waits_for_verified_net_cash_and_points_confirmation(String scenario) {
+        boolean interrupted="AFTER_COMMIT".equals(scenario);
+        boolean stockFailure="STOCK_ERROR".equals(scenario);
+        boolean lifecycleReturn="LIFECYCLE2_RETURN".equals(scenario);
+        boolean lifecycleUnshipped="LIFECYCLE2_UNSHIPPED".equals(scenario);
         var f=fixture();
+        if(lifecycleReturn || lifecycleUnshipped) {
+            jdbc.update("UPDATE ord_sub_order SET inventory_lifecycle_version=2 WHERE sub_order_no=?",f.sub());
+            jdbc.update("INSERT INTO ord_create_intent(pay_no,user_no,endpoint,request_hash,stock_authority,stock_needs_json,status,next_attempt_at,created_at,updated_at) VALUES(?,'USER','TEST','HASH','PLATFORM','[]','COMMITTED',0,NOW(),NOW())",f.sub());
+        }
+        if(lifecycleUnshipped) {
+            jdbc.update("UPDATE ord_sub_order SET status='WAIT_FULFILL' WHERE sub_order_no=?",f.sub());
+            jdbc.update("UPDATE ord_item SET qty=1,price=100 WHERE sub_order_no=?",f.sub());
+        }
         freezeEmptyScope(f.sub());
         markPoints(f);
         var route=new PaymentRoute("MERCHANT","STORE","PM-TEST","TEST","SM","PM:1","DIRECT");
@@ -103,6 +117,15 @@ class AfterSaleRefundExecutionTest {
         assertThat(refunded(f.sub())).isZero();
         assertThat(jdbc.queryForObject("SELECT amount_minor FROM stl_payment WHERE after_sale_no=?",
                 Long.class,f.as())).isEqualTo(50);
+        if(lifecycleReturn) {
+            jdbc.update("UPDATE ord_after_sale SET type='RETURN_REFUND',return_received_at=1,restock_approved=1 WHERE after_sale_no=?",f.as());
+        }
+        if(stockFailure) {
+            jdbc.update("UPDATE ord_after_sale SET type='RETURN_REFUND',return_received_at=1,restock_approved=1 WHERE after_sale_no=?",f.as());
+            jdbc.update("INSERT INTO ord_create_intent(pay_no,user_no,endpoint,request_hash,stock_authority,stock_needs_json,status,next_attempt_at,created_at,updated_at) VALUES(?,'USER','TEST','HASH','PLATFORM','[]','COMMITTED',0,NOW(),NOW())",f.sub());
+            org.mockito.Mockito.doThrow(new IllegalStateException("STOCK_RESTORE_FAILED")).when(stock).restore(eq(f.as()),anyList());
+            org.mockito.Mockito.doThrow(new IllegalStateException("STOCK_RESTORE_FAILED")).when(stock).restoreOriginal(eq("PRF-"+f.as()),eq(f.sub()),anyList());
+        }
         if(interrupted) {
             org.mockito.Mockito.doThrow(new IllegalStateException("AFTER_FINANCIAL_COMMIT"))
                     .doCallRealMethod().when(obligations).recover("PRF-"+f.as());
@@ -119,6 +142,27 @@ class AfterSaleRefundExecutionTest {
         assertThat(jdbc.queryForObject("SELECT status FROM stl_points_refund_hold WHERE after_sale_no=?",
                 String.class, f.as())).isEqualTo("CONFIRMED");
         assertThat(refunded(f.sub())).isEqualTo(60);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ord_refund_obligation WHERE execution_no=? AND kind='STOCK'",Long.class,"PRF-"+f.as())).isEqualTo(1);
+        if(stockFailure) {
+            assertThat(jdbc.queryForObject("SELECT state FROM ord_refund_obligation WHERE execution_no=? AND kind='STOCK'",String.class,"PRF-"+f.as())).isEqualTo("UNKNOWN");
+            org.mockito.Mockito.doReturn(ai.neargo.shop.spi.product.StockPort.RestoreResult.COMPLETED)
+                    .when(stock).restoreOriginal(eq("PRF-"+f.as()),eq(f.sub()),anyList());
+            afterSales.resumeRefund(f.as(),"SYSTEM");
+            assertThat(jdbc.queryForObject("SELECT state FROM ord_refund_obligation WHERE execution_no=? AND kind='STOCK'",String.class,"PRF-"+f.as())).isEqualTo("SUCCEEDED");
+            verify(stock,times(2)).restoreOriginal(eq("PRF-"+f.as()),eq(f.sub()),anyList());
+            verify(stock,never()).restore(eq(f.as()),anyList());
+        }
+        if(lifecycleReturn) {
+            assertThat(jdbc.queryForObject("SELECT state FROM ord_refund_obligation WHERE execution_no=? AND kind='STOCK'",String.class,"PRF-"+f.as())).isEqualTo("NOT_REQUIRED");
+            verify(stock,never()).restoreOriginal(eq("PRF-"+f.as()),anyString(),anyList());
+            verify(stock,never()).restore(eq(f.as()),anyList());
+            verify(stock,never()).releaseAllocated(anyString(),anyString());
+        }
+        if(lifecycleUnshipped) {
+            verify(stock).releaseAllocated(f.sub(),f.sub());
+            assertThat(jdbc.queryForObject("SELECT state FROM ord_refund_obligation WHERE execution_no=? AND kind='STOCK'",String.class,"PRF-"+f.as())).isEqualTo("SUCCEEDED");
+            verify(stock,never()).restoreOriginal(eq("PRF-"+f.as()),anyString(),anyList());
+        }
         verify(pointsRefunds,times(1)).confirm(any());
         verify(pointsClosure).finalizeSubOrder(f.sub());
     }
