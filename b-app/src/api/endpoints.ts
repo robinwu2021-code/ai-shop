@@ -456,6 +456,7 @@ export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
   mStockOverview: { method: "GET", path: "/biz/store/:storeNo/stock-overview", auth: true, summary: "库存与线上可售总览" },
   mStockOverviews: { method: "POST", path: "/biz/store/:storeNo/stock-overview/batch", auth: true, summary: "批量库存与线上可售总览" },
   mStockSync: { method: "GET", path: "/biz/store/:storeNo/stock-sync", auth: true, summary: "本店库存同步状态" },
+  mStockSyncRecords: { method: "GET", path: "/biz/store/:storeNo/stock-reconcile/records", auth: true, summary: "库存同步操作记录" },
   mSetStockSync: { method: "PUT", path: "/biz/store/:storeNo/stock-sync", auth: true, summary: "开 / 关本店库存同步（要先期初对齐）" },
   mStorePaySetting: { method: "GET", path: "/biz/store/:storeNo/pay-setting", auth: true, summary: "本店收款方式（线下收款 / 货到付款）" },
   mSaveStorePaySetting: { method: "PUT", path: "/biz/store/:storeNo/pay-setting", auth: true, summary: "开 / 关线下收款与货到付款（开线下要有有效营业执照）" },

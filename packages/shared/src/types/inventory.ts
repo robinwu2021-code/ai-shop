@@ -499,6 +499,15 @@ export interface StockSyncState {
   alignMode: StockAlignMode | null;
 }
 
+export interface StockSyncOperationRecord {
+  operationNo: string;
+  skuNo: string;
+  reason: string;
+  status: "PROCESSING" | "WAITING" | "FAILED" | "BLOCKED" | "COMPLETED";
+  result: { applied: boolean; skipped: string | null; ruleType: string | null; available: number; before: number; after: number } | null;
+  updatedAt: string;
+}
+
 /** 对齐清单一行的提示。ENTITY_MULTI_STORE 这件货在商城是全店共用一个数、要先按店设一次库存 · NO_ITEM 进销存里还没有这件货 */
 export type StockAlignNote = "ENTITY_MULTI_STORE" | "NO_ITEM";
 

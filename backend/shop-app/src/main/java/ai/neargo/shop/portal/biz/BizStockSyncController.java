@@ -140,6 +140,14 @@ public class BizStockSyncController {
         return reconcile.result(entity(storeNo), storeNo, operationNo);
     }
 
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STOCK + "')")
+    @GetMapping("/biz/store/{storeNo}/stock-reconcile/records")
+    public List<StockReconcileService.OperationRecord> reconcileRecords(@PathVariable String storeNo,
+            @RequestParam(required = false) String skuNo, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return reconcile.records(entity(storeNo), storeNo, skuNo, page, size);
+    }
+
     public record OverviewBatchReq(List<String> skuNos) { }
 
     public record ReconcileReq(String skuNo, String reason, String operationNo) { }

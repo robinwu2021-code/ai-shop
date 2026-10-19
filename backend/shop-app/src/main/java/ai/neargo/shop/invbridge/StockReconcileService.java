@@ -22,12 +22,15 @@ import java.util.Objects;
 import java.util.Collection;
 import java.util.List;
 import java.util.ArrayList;
+import org.springframework.jdbc.core.RowMapper;
 
 /** Durable, idempotent entry point for merchant initiated stock reconciliation. */
 @Service
 @ConditionalOnInventory
 public class StockReconcileService {
     public record OperationResult(String operationNo, String status, StockSyncService.Result result) { }
+    public record OperationRecord(String operationNo, String skuNo, String reason, String status,
+                                  StockSyncService.Result result, LocalDateTime updatedAt) { }
 
     private final JdbcTemplate jdbc;
     private final SyncAction action;
@@ -162,6 +165,20 @@ public class StockReconcileService {
                 operationNo, entityNo, storeNo);
         if (rows.isEmpty()) throw new IllegalArgumentException("库存操作不存在");
         return rows.get(0);
+    }
+
+    /** Merchant-safe, newest-first operation history; raw outbox payloads are never exposed. */
+    public List<OperationRecord> records(String entityNo, String storeNo, String skuNo, int page, int size) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(100, Math.max(1, size));
+        String sql = "SELECT operation_no,sku_no,reason,status,result_json,updated_at FROM prd_stock_sync_operation " +
+                "WHERE entity_no=? AND store_no=?" + (skuNo == null || skuNo.isBlank() ? "" : " AND sku_no=?") +
+                " ORDER BY updated_at DESC, operation_no DESC LIMIT ? OFFSET ?";
+        RowMapper<OperationRecord> mapper = (rs, row) -> new OperationRecord(rs.getString("operation_no"),
+                rs.getString("sku_no"), rs.getString("reason"), rs.getString("status"),
+                readResult(rs.getString("result_json")), rs.getTimestamp("updated_at").toLocalDateTime());
+        if (skuNo == null || skuNo.isBlank()) return jdbc.query(sql, mapper, entityNo, storeNo, safeSize, safePage * safeSize);
+        return jdbc.query(sql, mapper, entityNo, storeNo, skuNo, safeSize, safePage * safeSize);
     }
 
     private boolean claim(String operationNo, String entityNo, String storeNo, String skuNo,

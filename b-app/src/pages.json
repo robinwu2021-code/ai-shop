@@ -917,6 +917,14 @@
       }
     },
     {
+      "path": "pages/stock-sync-records/index",
+      "style": {
+        "navigationBarTitleText": "库存同步记录",
+        "app-plus": { "navigationStyle": "custom" },
+        "h5": { "navigationStyle": "custom" }
+      }
+    },
+    {
       "path": "pages/stock-cross/index",
       "style": {
         "navigationBarTitleText": "跨店库存",

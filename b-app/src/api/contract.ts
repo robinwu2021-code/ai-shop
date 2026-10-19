@@ -155,6 +155,7 @@ import type {
   StockLocation,
   StockMonthly,
   StockRank,
+  StockSyncOperationRecord,
   StockSyncState,
   StockTransfer,
   Store,
@@ -2234,6 +2235,7 @@ export interface MerchantApi {
 
   /** 本店库存同步状态 */
   mStockSync(storeNo: string): Promise<StockSyncState>;
+  mStockSyncRecords(storeNo: string, q?: { skuNo?: string; page?: number; size?: number }): Promise<StockSyncOperationRecord[]>;
   /** 开 / 关同步。没做期初对齐时打开返回 70069 */
   mSetStockSync(storeNo: string, enabled: boolean): Promise<StockSyncState>;
 

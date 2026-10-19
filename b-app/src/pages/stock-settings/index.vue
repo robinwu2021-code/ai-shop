@@ -81,6 +81,10 @@ function goAlign() {
   uni.navigateTo({ url: ROUTES.stockAlign });
 }
 
+function goSyncRecords() {
+  uni.navigateTo({ url: ROUTES.stockSyncRecords });
+}
+
 async function toggleSync() {
   const st = sync.value;
   if (!st || !storeNo.value || syncBusy.value || !canAdmin.value) return;
@@ -177,6 +181,10 @@ onShow(() => {
       <view class="sh-row sh-row--between line" @tap="toggleSync">
         <text class="txt-body">{{ $t("stockSync.switchLabel") }}</text>
         <sh-switch :model-value="sync.enabled" :disabled="syncBusy || !canAdmin || !sync.alignedAt"></sh-switch>
+      </view>
+      <view class="sh-row sh-row--between line" @tap="goSyncRecords">
+        <text class="txt-body">同步操作记录</text>
+        <sh-go></sh-go>
       </view>
       <text class="txt-caption sh-muted">{{ $t("stockSync.hint") }}</text>
     </view>

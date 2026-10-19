@@ -182,6 +182,7 @@ import type {
   StockRank,
   StockOverview,
   StockSummary,
+  StockSyncOperationRecord,
   StockSyncState,
   StockTransfer,
   Store,
@@ -825,6 +826,8 @@ export const httpApi: MerchantApi = {
   mGoodsSetInvMode: (goodsNo, body) =>
     http.put<InvModeChange>(buildPath(E.mGoodsSetInvMode.path, { goodsNo }), body),
   mStockSync: (storeNo) => http.get<StockSyncState>(buildPath(E.mStockSync.path, { storeNo })),
+  mStockSyncRecords: (storeNo, q) =>
+    http.get<StockSyncOperationRecord[]>(buildPath(E.mStockSyncRecords.path, { storeNo }), q),
   mSetStockSync: (storeNo, enabled) =>
     http.put<StockSyncState>(buildPath(E.mSetStockSync.path, { storeNo }), { enabled }),
   mStorePaySetting: (storeNo) => http.get<StorePaySetting>(buildPath(E.mStorePaySetting.path, { storeNo })),

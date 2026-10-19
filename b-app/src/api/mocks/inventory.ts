@@ -7,7 +7,7 @@ import { db, delay } from "@shared/mock/db";
 import { isoDay } from "@/shared/quick-dates";
 import type {
   Carrier, GoodsInvMode, InvCategorySetting, InvMode, InvModeChange, OfflineSaleRow, SellRule, StockAlignRow,
-  StockOverview, StockBalance, StockCount, StockSyncState, StockTransfer, Supplier,
+  StockOverview, StockBalance, StockCount, StockSyncOperationRecord, StockSyncState, StockTransfer, Supplier,
 } from "@shared/types";
 import {
   currentStoreNo,
@@ -73,6 +73,7 @@ export const inventoryMock: Pick<MerchantApi,
   | "mGoodsInvModes"
   | "mGoodsSetInvMode"
   | "mStockSync"
+  | "mStockSyncRecords"
   | "mSetStockSync"
   | "mStockAlignment"
   | "mConfirmAlignment"
@@ -554,6 +555,10 @@ export const inventoryMock: Pick<MerchantApi,
   async mStockSync(storeNo) {
     storeNo = storeNo || currentStoreNo();
     return delay(syncStateOf(storeNo));
+  },
+  async mStockSyncRecords() {
+    const rows: StockSyncOperationRecord[] = [];
+    return delay(rows);
   },
   async mSetStockSync(storeNo, enabled) {
     storeNo = storeNo || currentStoreNo();

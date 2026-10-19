@@ -40,4 +40,21 @@ class StockReconcileProtectionTest {
                 .hasMessageContaining("operationNo");
         verify(writeback, times(1)).syncOne(anyString(), anyString(), anyString(), anyString());
     }
+
+    @Test void merchantHistoryIsScopedPagedAndOmitsPersistedRawPayload() {
+        var ds = new DriverManagerDataSource("jdbc:h2:mem:reconcile-records;DB_CLOSE_DELAY=-1", "sa", "");
+        var jdbc = new JdbcTemplate(ds);
+        jdbc.execute("CREATE TABLE prd_stock_sync_operation (operation_no varchar(96) primary key, entity_no varchar(64) not null, store_no varchar(64) not null, sku_no varchar(64) not null, reason varchar(32) not null, request_hash varchar(64) not null, status varchar(16) not null, result_json clob, updated_at timestamp not null)");
+        jdbc.update("INSERT INTO prd_stock_sync_operation VALUES ('OP-1','E','S','K1','MANUAL','h','FAILED',null,'2026-10-19 10:00:00')");
+        jdbc.update("INSERT INTO prd_stock_sync_operation VALUES ('OP-2','E','S','K2','AUTO','h','COMPLETED','{\"applied\":true,\"skipped\":null,\"ruleType\":\"ALL\",\"available\":4,\"before\":2,\"after\":4}','2026-10-19 11:00:00')");
+        jdbc.update("INSERT INTO prd_stock_sync_operation VALUES ('OP-X','OTHER','S','K3','AUTO','h','COMPLETED',null,'2026-10-19 12:00:00')");
+        var service = new StockReconcileService(jdbc, mock(InventoryWritebackService.class), new tools.jackson.databind.ObjectMapper());
+
+        var page = service.records("E", "S", null, 0, 1);
+        var filtered = service.records("E", "S", "K1", 0, 20);
+
+        assertThat(page).hasSize(1).extracting(StockReconcileService.OperationRecord::operationNo).containsExactly("OP-2");
+        assertThat(page.get(0).result().after()).isEqualTo(4);
+        assertThat(filtered).extracting(StockReconcileService.OperationRecord::operationNo).containsExactly("OP-1");
+    }
 }
