@@ -325,15 +325,15 @@ class OpsLogisticsFlowTest {
         assertThat(changed.get("subState").asString()).isEqualTo("PENDING");
         assertThat(changed.get("status").asString()).isEqualTo("CREATED");
 
-        // 已签收（DELIVERED）不许改 —— 等于把一条已完成的轨迹指向别处。
-        // 签收只由渠道推进（推送 / 微信查询），这里直接把运单置成签收，测的是这道闸本身
+        // 渠道可能把错运单签收。只要订单仍在履约中，允许纠正这个错误终态；
+        // 真正完成的订单由订单发货状态机拒绝换单，见 OrderMappedOpsLogisticsFlowTest。
         DataScopeContext.executeWithoutScope(() -> shipmentMapper.update(null, Wrappers.<FulShipment>update()
                 .set("status", "DELIVERED").eq("shipment_no", shipA)));
         assertThat(rowByOrder(shipmentsPage(), a).get("status").asString()).isEqualTo("DELIVERED");
-        assertThat(codeOf(waybillRaw(shipA, "SFLOG-B1Z", "还想再改一次"))).isEqualTo(30006);
-        // 被拒之后单号不能被改掉
+        assertThat(codeOf(waybillRaw(shipA, "SFLOG-B1Z", "误签收后的换单纠正"))).isZero();
+        // 修正原因进轨迹，换单后指向新号
         assertThat(rowByOrder(shipmentsPage(), a).get("waybillNo").asString())
-                .isEqualTo("SFLOG-B1X");
+                .isEqualTo("SFLOG-B1Z");
     }
 
     // ---------------------------------------------------------------- 重放 / 渠道总览 / 承运商编码（批 5）
