@@ -427,3 +427,10 @@ Java商家入口：`BizEntitlementTemplateController`；通过`EntitlementManage
 
 
 I07/I10允许可信取消先于prepare，持久负向事实后返回ABORTED/RELEASED。再次prepare/query仍回同一终态；不存在实际资产/hold时不制造资产引用。UNKNOWN/PENDING仅PROCESSING且不写取消标记，来源/租户/受益主体不匹配拒绝。内部UseFacts与普通query对负向终态一致，command/rule在无实际hold的RELEASED可空；HELD/COMMITTED仍必须有完整冻结事实。调用方不得把NOT_FOUND当作原请求将永不到达的证明。
+
+
+### JB-020订单券协调补充（执行中）
+
+核心服务以`ord_ent_order_use`保存原操作、授权、命令与原订单摘要，先持久化PENDING再向pay预占；pay返回的真实冻结分摊经核心服务核对后一次应用价格。`ord_ent_payment_seal`在调用外部收银前由核心服务锁单封存应付金额；已发起过收款或已封存的订单不能新增优惠。核心服务终态事务同时记录USE_COMMIT/USE_CANCEL及Outbox；应用协调器只提交/释放原operationNo，丢响应按原操作恢复，不以超时推断取消。暂停新增能力不阻止已有承诺完成。
+
+本切片仅接ORDER_COUPON；服务券/次卡的真实服务意图和储值扣款仍在原任务内继续，不能用普通现金订单支付成功冒充已完成扣次。每单首期只接受一张新订单券；预占后不支持替换券，需取消原订单后重新下单。新表均在核心库；不跨库事务，不直接访问pay实体。

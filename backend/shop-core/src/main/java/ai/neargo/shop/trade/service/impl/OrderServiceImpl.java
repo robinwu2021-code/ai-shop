@@ -6,6 +6,9 @@ import ai.neargo.shop.spi.user.PickupQueryPort;
 import ai.neargo.shop.trade.service.AfterSaleService;
 import ai.neargo.shop.trade.service.CloseRuleService;
 import ai.neargo.shop.trade.service.OrderService;
+import ai.neargo.shop.trade.service.EntitlementOrderUseService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import ai.neargo.shop.trade.service.OrderStateMachine;
 import ai.neargo.shop.trade.order.projection.OrderStatusProjector;
 import ai.neargo.shop.trade.service.OrderStatusView;
@@ -170,6 +173,20 @@ public class OrderServiceImpl implements OrderService {
     public void setCardSaleSnapshotService(
             ai.neargo.shop.trade.entitlement.CardSaleSnapshotService cardSaleSnapshotService) {
         this.cardSaleSnapshotService = cardSaleSnapshotService;
+    }
+
+    private ObjectProvider<OrderService> orderServiceProvider;
+
+    @Autowired
+    public void setOrderServiceProvider(ObjectProvider<OrderService> orderServiceProvider) {
+        this.orderServiceProvider = orderServiceProvider;
+    }
+
+    private EntitlementOrderUseService entitlementOrderUses;
+
+    @Autowired
+    public void setEntitlementOrderUses(EntitlementOrderUseService entitlementOrderUses) {
+        this.entitlementOrderUses = entitlementOrderUses;
     }
 
     /** 状态写入口（TDD-订单状态机 §2B）：支付单 / 订单状态一律经它 CAS 落库 + 记流水 */
@@ -1717,6 +1734,9 @@ public class OrderServiceImpl implements OrderService {
          * 于是「下单 → 向通道下单 → 拿参数」这一段<b>在真通道接上那天才第一次被执行</b>，
          * 而那是最不该第一次执行它的时候。
          */
+        if (entitlementOrderUses != null) {
+            order = entitlementOrderUses.sealForPayment(order.getTenantNo(), orderNo);
+        }
         String channel = resolvePayChannel(order, payChannel);
         var init = settlePort.initPayment(new SettlePort.PaymentOpen(
                 orderNo, order.getUserNo(), null, channel,
@@ -1747,7 +1767,8 @@ public class OrderServiceImpl implements OrderService {
          */
         boolean settled = ai.neargo.shop.common.PayChannels.FREE.equals(init.payChannel());
         if (settled) {
-            markPaid(orderNo, init.payChannel(), init.outTradeNo());
+            // Enter the transactional proxy: direct self-invocation leaves paid status outside the source decision tx.
+            orderServiceProvider.getObject().markPaid(orderNo, init.payChannel(), init.outTradeNo());
         }
         return new PayResult(orderNo, init.payChannel(), init.payParams(), settled);
     }
@@ -1766,6 +1787,9 @@ public class OrderServiceImpl implements OrderService {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         if (OrdOrder.PAID.equals(order.getStatus())) {
+            if (entitlementOrderUses != null) {
+                entitlementOrderUses.decideForTerminalOrder(order.getTenantNo(), orderNo);
+            }
             if (cardSaleSnapshotService != null) cardSaleSnapshotService.recordPaidFromOrder(orderNo);
             return;   // 幂等：回调会重发，重复到达不能重复扣库存、重复发事件
         }
@@ -1779,6 +1803,9 @@ public class OrderServiceImpl implements OrderService {
         order.setPayTradeNo(payTradeNo);
         order.setPaidAt(System.currentTimeMillis());
         orderMapper.updateById(order);
+        if (entitlementOrderUses != null) {
+            entitlementOrderUses.decideForTerminalOrder(order.getTenantNo(), orderNo);
+        }
         if (cardSaleSnapshotService != null) cardSaleSnapshotService.recordPaidFromOrder(orderNo);
 
         // 锁定转实扣
@@ -2240,6 +2267,9 @@ public class OrderServiceImpl implements OrderService {
                 new PaymentContext(OrdOrder.WAIT_OFFLINE_PAY.equals(order.getStatus()), true, true, false));
         order.setCancelReason(reason);
         orderMapper.updateById(order);
+        if (entitlementOrderUses != null) {
+            entitlementOrderUses.decideForTerminalOrder(order.getTenantNo(), order.getOrderNo());
+        }
 
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
             statusWriter.order(sub, OrderEvent.CANCEL, Actor.SYSTEM, operatorNo, label,
@@ -2337,6 +2367,9 @@ public class OrderServiceImpl implements OrderService {
         }
         order.setCancelReason(reason);
         orderMapper.updateById(order);
+        if (entitlementOrderUses != null) {
+            entitlementOrderUses.decideForTerminalOrder(order.getTenantNo(), order.getOrderNo());
+        }
 
         for (OrdSubOrder sub : subOrders(order.getOrderNo())) {
             if (!OrdSubOrder.WAIT_PAY.equals(sub.getStatus())) {

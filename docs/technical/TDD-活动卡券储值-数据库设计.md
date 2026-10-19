@@ -10,7 +10,7 @@
 
 每表id为内部自增主键，tenant_no参与业务唯一性；version条件更新（对外expectedRevision映射此列）；created/updated_at用UTC DATETIME(3)，created/updated_by留操作人。资金/核销事实不可物理删除；模板归档不删除历史。沿现有BaseEntity实际审计列对齐后再生成正式迁移，不借设计重命名所有现存列。
 
-公共字段适用于基础38张及新增6张支撑表，DDL逐表展开：
+公共字段适用于当前基础42张及6张支撑表（core18/pay30，合计48张；含预览、取消栅栏与订单协调增量），DDL逐表展开：
 
 | 字段 | 类型及空值 | 含义 |
 |---|---|---|
@@ -790,7 +790,7 @@ AuditMetaObjectHandler当前使用LocalDateTime.now，不能直接宣称其符�
 
 ## 七、授权、售卡与对账支撑存储
 
-[支撑DDL](./design/活动权益-support-schema.sql)独立于基础38表，用于设计校验；各表正式增量迁移另列。公共字段沿第一节。core四表仅core事务写，pay两表仅pay事务写；无跨库外键。授权/源决策由V427交付；售卡快照实体、Mapper、稳定订单行号及V428由JB-012交付；对账表归JB-046。
+[支撑DDL](./design/活动权益-support-schema.sql)独立于当前基础42表，用于设计校验；各表正式增量迁移另列。公共字段沿第一节。core四表仅core事务写，pay两表仅pay事务写；无跨库外键。授权/源决策由V427交付；售卡快照实体、Mapper、稳定订单行号及V428由JB-012交付；对账表归JB-046。
 
 ### ord_ent_authorization
 
@@ -982,3 +982,19 @@ V435补ent_issue_batch，新增audience_snapshot JSON、recipient_results JSON�
 ### V437：源取消早到与请求晚到
 
 pay_ent_source_fence以tenant+purpose+source_key及tenant+purpose+operation_no双重唯一，GRANT来源键不含修订、USE预占键包含修订。OPEN记录源/受益人/主体，CANCELLED额外冻结已核实的SourceDecision和毫秒UTC时刻。所有相关Writer按fence→意图/发放→实例/容量顺序锁定；未出现实体时的可信取消也必须落此表，防止超时后原prepare仍在网络/服务端处理中。负向事实不是资金分录，不伪造权益实例，不凭查无记录或TTL猜取消。Core源决策写入在返回前统一毫秒精度，回读与首响一致。
+
+
+### JB-020订单券协调补充（执行中）
+
+核心服务以`ord_ent_order_use`保存原操作、授权、命令与原订单摘要，先持久化PENDING再向pay预占；pay返回的真实冻结分摊经核心服务核对后一次应用价格。`ord_ent_payment_seal`在调用外部收银前由核心服务锁单封存应付金额；已发起过收款或已封存的订单不能新增优惠。核心服务终态事务同时记录USE_COMMIT/USE_CANCEL及Outbox；应用协调器只提交/释放原operationNo，丢响应按原操作恢复，不以超时推断取消。暂停新增能力不阻止已有承诺完成。
+
+本切片仅接ORDER_COUPON；服务券/次卡的真实服务意图和储值扣款仍在原任务内继续，不能用普通现金订单支付成功冒充已完成扣次。每单首期只接受一张新订单券；预占后不支持替换券，需取消原订单后重新下单。新表均在核心库；不跨库事务，不直接访问pay实体。
+
+
+#### ord_ent_order_use（核心库，V438）
+
+公共审计列沿第一节；operation_no、order_no、entity_no、user_no为VARCHAR(64)非空；source_key、payload_hash、order_snapshot_hash为CHAR(64)非空；context_snapshot、command_snapshot为JSON非空；status为VARCHAR(24)非空；decision_snapshot为JSON可空。tenant+operation、tenant+order、tenant+source各唯一，status+updated_at用于恢复扫描。状态PENDING→APPLIED→COMMIT_DECIDED→COMMITTED，未成功支付可转CANCEL_DECIDED→RELEASED；决策状态强制包含源决策JSON，其他状态不得伪造决策。
+
+#### ord_ent_payment_seal（核心库，V438）
+
+公共审计列沿第一节；order_no VARCHAR(64)、pay_amount BIGINT、currency VARCHAR(8)均非空；tenant+order唯一，pay_amount非负。核心订单锁串行化封存与优惠应用；封存只记金额与币种，不改变订单摘要。历史已存在的支付尝试经pay事实端口核实后拒绝改价。此表只经已授权订单回捞，不作为独立商家列表。

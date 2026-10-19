@@ -308,3 +308,16 @@ shop-base新增EntitlementGrantSourcePort和EntitlementIssueAudiencePort，供�
 
 
 补充pay.entitlement的PayEntSourceFence/Mapper、EntitlementSourceFence（技术锁与负向事实，不是业务权益Service）；GrantWriter/UseWriter共享其来源锁，调用者在事务外取得SourceDecision。负向事实的存续不依赖请求超时或提案有效期。SourceDecisionService统一UTC毫秒时间，产品类目事实只追加同租户已知父级。020/051继续承担订单协调与恢复调度，不以本底座交付替代它们。
+
+
+### JB-020订单券协调切片
+
+| 模块 | 类/接口 | 责任 |
+|---|---|---|
+| base | PaymentAttemptFactsPort、EntitlementOrderEvents.UseDecided | 历史收款事实、只含租户/操作标识的终态事件 |
+| pay.entitlement.port | PaymentAttemptFactsPortImpl | 读取全部PAY尝试，含失败/关闭；不从无回调推断未支付 |
+| core.trade | EntitlementOrderUseService/Impl、OrderEntitlementUseView | stage/apply/seal/decision/acknowledge；只用核心事务 |
+| core.trade.entitlement.entity/mapper | OrdEntOrderUse/EntitlementOrderUseMapper、OrdEntPaymentSeal/EntitlementPaymentSealMapper | 持久意图与现金支付金额封存；V438 |
+| app.paybridge | EntitlementOrderCoordinator/Impl、EntitlementOrderUseDecisionConsumer | 挂起核心事务后逐个调用owner，丢响应重放原命令，Outbox恢复原操作 |
+
+ORDER_COUPON协调切片验收后仍不能关闭JB-020：真实服务核销意图、储值使用与对应远程接线须继续交付。

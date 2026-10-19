@@ -4,6 +4,7 @@ import ai.neargo.shop.pay.entitlement.entity.PayEntSourceFence;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Select;
 
 /** Source and operation uniqueness are both tenant/purpose scoped. */
@@ -27,5 +28,6 @@ public interface PayEntSourceFenceMapper extends BaseMapper<PayEntSourceFence> {
             SELECT * FROM pay_ent_source_fence WHERE tenant_no=#{tenant} AND purpose=#{purpose}
             AND operation_no=#{no} AND deleted=0
             """)
+    @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
     PayEntSourceFence find(@Param("tenant") String tenant, @Param("purpose") String purpose, @Param("no") String no);
 }

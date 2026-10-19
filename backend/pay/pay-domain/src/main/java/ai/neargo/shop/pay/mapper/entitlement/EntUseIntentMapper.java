@@ -3,6 +3,7 @@ package ai.neargo.shop.pay.mapper.entitlement;
 import ai.neargo.shop.pay.entitlement.entity.EntUseIntent;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Insert;
 
@@ -12,6 +13,7 @@ public interface EntUseIntentMapper extends BaseMapper<EntUseIntent> {
     EntUseIntent lock(@Param("tenant") String tenant, @Param("no") String no);
 
     @Select("SELECT * FROM ent_use_intent WHERE tenant_no=#{tenant} AND operation_no=#{no} AND deleted=0")
+    @Options(flushCache = Options.FlushCachePolicy.TRUE, useCache = false)
     EntUseIntent find(@Param("tenant") String tenant, @Param("no") String no);
 
     @Insert("""

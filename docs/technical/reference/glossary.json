@@ -27413,6 +27413,20 @@
       "package": "ai.neargo.shop.trade.entitlement.entity"
     },
     {
+      "table": "ord_ent_order_use",
+      "class": "OrdEntOrderUse",
+      "zh": "Core-owned coordination facts, never balances.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
+      "table": "ord_ent_payment_seal",
+      "class": "OrdEntPaymentSeal",
+      "zh": "Once cash initiation is allowed, payable amount can no longer change.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
       "table": "ord_ent_source_decision",
       "class": "OrdEntSourceDecision",
       "zh": "",

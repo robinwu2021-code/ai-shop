@@ -193,6 +193,8 @@ git diff --check
 | pay.entitlement | ent_grant | EntGrant / EntGrantMapper | JB-016 | DONE，V433/V434/V435及真实pay Mapper |
 | pay.entitlement | ent_instance | EntInstance / EntInstanceMapper | JB-016 | DONE，V433/V434/V435及真实pay Mapper |
 | pay.entitlement | ent_period_bucket | EntPeriodBucket / EntPeriodBucketMapper | JB-042 | DONE，V436，pay事务与实体Mapper已验证 |
+| trade | ord_ent_order_use | OrdEntOrderUse / EntitlementOrderUseMapper | JB-020 | DONE，V438，订单券持久协调及实际订单付款/关单已验证；父任务仍DOING |
+| trade | ord_ent_payment_seal | OrdEntPaymentSeal / EntitlementPaymentSealMapper | JB-020 | DONE，V438，收银前金额封存、历史收款拒绝改价已验证 |
 | pay.entitlement | ent_use_intent | EntUseIntent / EntUseIntentMapper | JB-020 | DONE，V436，pay事务与实体Mapper已验证 |
 | pay.entitlement | ent_use_allocation | EntUseAllocation / EntUseAllocationMapper | JB-020 | DONE，V436，pay事务与实体Mapper已验证 |
 | pay.entitlement | ent_usage | EntUsage / EntUsageMapper | JB-020 | DONE，V436，pay事务与实体Mapper已验证 |
@@ -284,9 +286,9 @@ git diff --check
 | I05 | EntitlementGrantPort.prepare(GrantCommand) | JB-016 | DOING（pay本地协议已完成；041远程承载待接） |
 | I06 | EntitlementGrantPort.commit(GrantDecision) | JB-016 | DOING（pay本地协议已完成；041远程承载待接） |
 | I07 | EntitlementGrantPort.abort(AbortGrant) | JB-016 | DOING（pay本地协议已完成；041远程承载待接） |
-| I08 | EntitlementUsePort.prepare(UseCommand) | JB-020 | DOING（pay本地协议已完成；core订单协调及041远程承载待接） |
-| I09 | EntitlementUsePort.commit(UseDecision) | JB-020 | DOING（pay本地协议已完成；core订单协调及041远程承载待接） |
-| I10 | EntitlementUsePort.release(CancelUse) | JB-020 | DOING（pay本地协议已完成；core订单协调及041远程承载待接） |
+| I08 | EntitlementUsePort.prepare(UseCommand) | JB-020 | DOING（pay本地协议已完成；订单券核心协调已接；服务核销/储值协调及041远程承载待接） |
+| I09 | EntitlementUsePort.commit(UseDecision) | JB-020 | DOING（pay本地协议已完成；订单券核心协调已接；服务核销/储值协调及041远程承载待接） |
+| I10 | EntitlementUsePort.release(CancelUse) | JB-020 | DOING（pay本地协议已完成；订单券核心协调已接；服务核销/储值协调及041远程承载待接） |
 | I11 | EntitlementUsePort.reverse(OrderBenefitReverse) | JB-022 | TODO |
 | I12 | StoredValuePort.credit(CreditRecharge) | JB-035 | TODO |
 
@@ -525,3 +527,10 @@ JB-020源事实子项进展：core真实EntitlementUseSourcePortImpl、共享订
 020/051一致性底座增量：V437创建pay_ent_source_fence，发行和使用在prepare/finish前先锁同一来源；可信取消即使早于实体行也会留下负向事实。晚到prepare只能返回原ABORTED/RELEASED，不能重新占容量或余额；UNKNOWN/PENDING不写取消标记。此标记不按UI/网络TTL删除。query及内部UseFacts按归属返回同一终态，不把无实际hold的已取消操作误报成成功消费。
 
 本增量50项Java定向通过（/tmp/phase-two-source-fence-final.log），包括发放8、使用9、批次2、来源4、报价4、授权4、架构16、schema3；另2项最终重放/晚到Writer检查通过（/tmp/phase-two-source-fence-replay.log，包含重叠，不累计）。原生MySQL实跑1项0跳过（/tmp/phase-two-fence-native.log），验证已完成预检的请求在取消后进入实际Writer亦不能冻结资源，并保留并发、跨日、CHECK/JSON、事件失败原子回滚验证。源决策首次响应与数据库时间精度不一致、未知/外租户类目父级被误认成祖先，均先回归RED后修复GREEN。020订单协调及051恢复调度仍未完成。
+
+
+### 第二阶段：订单券协调执行记录
+
+JB-020仍DOING，新增订单券链路：报价→本人确认→核心持久原命令→pay预占→按冻结行分摊应用价格→现金/零元收银封存→订单终态与源决策/Outbox同事务→pay提交/释放。V438增加核心协调/金额封存两表，无跨库事务。真实订单服务付款、超时关单、事件重复、取消先于预占、已有收款与封存拒绝改价、异常回滚均有实际场景断言。
+
+定向合并56项通过（`/tmp/phase-two-order-coordinator-acceptance.log`）；实际订单及零元事务追加11项通过（`/tmp/phase-two-order-owner-final.log`）。独立原生MySQL目标DDL/约束1项通过、0跳过（`/tmp/phase-two-order-schema-native.log`）。零元付款消融实际RED：预期WAIT_PAY却为PAID；经代理进入markPaid事务后GREEN。没有执行后端全量。服务券/次卡真实核销源、储值扣款与041远程仍按原任务继续。
