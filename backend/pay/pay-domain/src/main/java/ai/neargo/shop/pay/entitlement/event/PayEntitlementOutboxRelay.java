@@ -5,6 +5,8 @@ import ai.neargo.shop.pay.entitlement.entity.PayEntOutbox;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntOutboxMapper;
 import ai.neargo.shop.spi.entitlement.EntitlementEvents;
 import ai.neargo.shop.spi.entitlement.PayEntitlementEvent;
+import ai.neargo.shop.spi.entitlement.PayEntitlementEventBridgePort;
+import ai.neargo.shop.spi.entitlement.PayEntitlementEventCodec;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -15,32 +17,31 @@ import java.util.concurrent.TimeUnit;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.event.EventListener;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 /** Bridges durable pay source events into the shared ordered/retrying system outbox. */
-@Component
-@ConditionalOnBean(OutboxEventBus.class)
 public class PayEntitlementOutboxRelay {
     private static final int MAX_BRIDGE_ATTEMPTS = 10;
     private static final Logger log = LoggerFactory.getLogger(PayEntitlementOutboxRelay.class);
     private static final String TENANT = "MAIN";
     private static final int BATCH_SIZE = 100;
     private final PayEntOutboxMapper outbox;
-    private final OutboxEventBus bus;
+    private final PayEntitlementEventBridgePort bridge;
     private final ObjectMapper json;
     private final ScheduledExecutorService retryTimer = Executors.newSingleThreadScheduledExecutor(
             r -> new Thread(r, "pay-entitlement-outbox-retry"));
     private final ExecutorService relayWorker = Executors.newSingleThreadExecutor(
             r -> new Thread(r, "pay-entitlement-outbox-bridge"));
 
+    public PayEntitlementOutboxRelay(PayEntOutboxMapper outbox, PayEntitlementEventBridgePort bridge,
+            ObjectMapper json) {
+        this.outbox = outbox; this.bridge = bridge; this.json = json;
+    }
+    /** Existing native fixtures use a real core bus directly; production always binds the owned bridge. */
     public PayEntitlementOutboxRelay(PayEntOutboxMapper outbox, OutboxEventBus bus, ObjectMapper json) {
-        this.outbox = outbox;
-        this.bus = bus;
-        this.json = json;
+        this(outbox, bus::publish, json);
     }
 
     public void relay(String eventNo) {
@@ -48,7 +49,7 @@ public class PayEntitlementOutboxRelay {
         if (row == null || !"PENDING".equals(row.getStatus())) return;
         try {
             PayEntitlementEvent event = decode(row);
-            bus.publish(eventNo, event);
+            bridge.publish(eventNo, event);
             outbox.markForwarded(row.getId(), TENANT, LocalDateTime.now(ZoneOffset.UTC));
         } catch (RuntimeException e) {
             LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
@@ -72,7 +73,7 @@ public class PayEntitlementOutboxRelay {
 
     @EventListener(ApplicationReadyEvent.class)
     public void recoverAtStartup() {
-        relayPending();
+        relayPendingSafely();
         retryTimer.scheduleWithFixedDelay(this::relayPendingSafely, 5, 5, TimeUnit.SECONDS);
     }
 
@@ -99,9 +100,11 @@ public class PayEntitlementOutboxRelay {
             case "ENTITLEMENT_USE_REVERSED" ->
                     json.readValue(row.getPayload(), EntitlementEvents.EntitlementUseReversed.class);
             case "ENTITLEMENT_USED" -> json.readValue(row.getPayload(), EntitlementEvents.EntitlementUsed.class);
-            case "STORED_VALUE_CREDITED" -> json.readValue(row.getPayload(), EntitlementEvents.StoredValueCredited.class);
+            case "STORED_VALUE_CREDITED" -> json.readValue(row.getPayload(),
+                    EntitlementEvents.StoredValueCredited.class);
             default -> throw new IllegalArgumentException("Unknown pay entitlement event type");
         };
+        PayEntitlementEventCodec.validate(event);
         String canonicalPayload = json.writeValueAsString(event);
         if (!event.eventNo().equals(row.getEventNo()) || event.schemaVersion() != row.getSchemaVersion()
                 || !event.eventType().equals(row.getEventType()) || !event.aggregateId().equals(row.getAggregateNo())

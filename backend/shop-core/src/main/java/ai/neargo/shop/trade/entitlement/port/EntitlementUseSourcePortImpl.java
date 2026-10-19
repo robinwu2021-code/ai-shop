@@ -78,6 +78,10 @@ public class EntitlementUseSourcePortImpl implements EntitlementUseSourcePort {
                 || !OrdSubOrder.WAIT_PAY.equals(sub.getStatus()) || sub.getEntityNo() == null || sub.getStoreNo() == null) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
+        if (sub.getPointsDeductMinor() != null && sub.getPointsDeductMinor() > 0) {
+            // Repricing existing point allocations requires their own atomic reallocation protocol (020/049).
+            throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
+        }
         if (users.findActive(context.tenantNo(), order.getUserNo()).isEmpty()
                 || !merchants.entityActive(context.tenantNo(), sub.getEntityNo())
                 || !merchants.storesOwned(context.tenantNo(), sub.getEntityNo(), Set.of(sub.getStoreNo()))) {

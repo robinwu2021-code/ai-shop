@@ -72,6 +72,13 @@ class EntitlementOrderSourceFactsFlowTest {
     }
 
     @Test
+    void aNewCouponCannotRepriceAnOrderWhosePointsAllocationIsAlreadyFrozen() {
+        jdbc.update("UPDATE ord_sub_order SET points_deduct_minor=500,pay_amount=400 WHERE sub_order_no=?", sub);
+        jdbc.update("UPDATE ord_order SET pay_amount=400 WHERE order_no=?", order);
+        assertThatThrownBy(() -> sources.resolve(context, source())).isInstanceOf(BizException.class);
+    }
+
+    @Test
     void missingCouponTitleCannotHideAnActiveLegacyBinding() {
         jdbc.update("INSERT INTO mkt_user_coupon(user_coupon_no,coupon_no,user_no,status,order_no,tenant_no,"
                 + "created_at,updated_at,received_at) VALUES (?,'DELETED-TEMPLATE',?,'USED',?,'MAIN',"

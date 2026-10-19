@@ -9,11 +9,9 @@ import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.HoldView;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort.State;
 import java.util.List;
-import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 /** Core must post the actual frozen hold, rather than reconstructing discounts or funder from a title. */
-@Component
 public class EntitlementUseFactsPortImpl implements EntitlementUseFactsPort {
     private final EntUseIntentMapper intents;
     private final EntitlementUseWriter writer;

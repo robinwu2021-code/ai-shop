@@ -3,10 +3,8 @@ package ai.neargo.shop.pay.entitlement.port;
 import ai.neargo.shop.pay.entitlement.service.EntitlementUseService;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementUsePort;
-import org.springframework.stereotype.Component;
 
 /** Domain adapter; HTTP/user scope construction remains in main application. */
-@Component
 public class EntitlementUsePortImpl implements EntitlementUsePort {
     private final EntitlementUseService service;
     public EntitlementUsePortImpl(EntitlementUseService service) { this.service = service; }

@@ -39158,6 +39158,206 @@
       "module": "pay/pay-domain"
     },
     {
+      "host": "PayInternalPaths",
+      "name": "ENT_GRANT_PREPARE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/grant/prepare\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_GRANT_COMMIT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/grant/commit\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_GRANT_ABORT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/grant/abort\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_GRANT_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/grant/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_QUOTE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/quote\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_PREVIEW",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/preview\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_PREPARE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/prepare\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_COMMIT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/commit\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_RELEASE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/release\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_REVERSE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/reverse\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_REVERSE_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/reverse/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_QUERY_MINE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/mine\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_QUERY_DETAIL",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/detail\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_QUERY_USAGE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/usage\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_QUERY_ALLOWANCES",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/allowances\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_QUERY_ACTIVATION",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/activation\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_FACTS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/facts\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_PAYMENT_ATTEMPTS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/payment/attempt-exists\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_BATCH_CREATE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/batch/create\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_BATCH_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/batch/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_BATCH_RESUME",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/batch/resume\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_CODE_ISSUE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/code/issue\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_CODE_RESOLVE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/code/resolve\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_CODE_INVALIDATE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/code/invalidate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
       "host": "CouponQuotePolicy",
       "name": "FREIGHT_LINE",
       "type": "String",
@@ -39459,6 +39659,62 @@
       "type": "int",
       "value": "4",
       "zh": "用户自提",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "USE_SOURCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/source/use\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "SOURCE_QUERY",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/source/query\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "AUTHORIZATION",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/authorization/query\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "GRANT_SOURCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/source/grant\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "GRANT_DECISION",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/source/grant-decision\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "AUDIENCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/audience/resolve\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementEventInternal",
+      "name": "RECEIVE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/events/receive\"",
+      "zh": "",
       "module": "shop-base"
     },
     {

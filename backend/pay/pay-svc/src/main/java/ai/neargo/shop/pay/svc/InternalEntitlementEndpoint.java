@@ -15,8 +15,7 @@ import ai.neargo.shop.pay.client.PayInternalPaths;
 import ai.neargo.shop.pay.entitlement.service.EntitlementManagementService;
 import ai.neargo.shop.spi.entitlement.EntitlementCatalogPort;
 import ai.neargo.shop.svc.InternalHttp;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import ai.neargo.shop.svc.InternalServiceResponses;
 import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -30,12 +29,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalEntitlementEndpoint {
     private final EntitlementManagementService management;
     private final EntitlementCatalogPort catalog;
-    private final byte[] token;
+    private final String token;
     public InternalEntitlementEndpoint(EntitlementManagementService management, EntitlementCatalogPort catalog,
             @Value("${shop.services.internal-token:}") String token) {
         this.management = management;
         this.catalog = catalog;
-        this.token = token.getBytes(StandardCharsets.UTF_8);
+        this.token = token;
     }
     @PostMapping(PayInternalPaths.ENT_LIST)
     public ResponseEntity<?> list(@RequestBody ListTemplates r,
@@ -90,22 +89,6 @@ public class InternalEntitlementEndpoint {
         });
     }
     private ResponseEntity<?> invoke(String given, Supplier<?> operation) {
-        if (token.length == 0 || given == null
-                || !MessageDigest.isEqual(token, given.getBytes(StandardCharsets.UTF_8))) {
-            return ResponseEntity.status(401).build();
-        }
-        try {
-            return ResponseEntity.ok(operation.get());
-        } catch (BizException failure) {
-            int status = switch (failure.errorCode()) {
-                case BAD_REQUEST -> 400;
-                case FORBIDDEN -> 403;
-                case NOT_FOUND -> 404;
-                case CONFLICT -> 409;
-                case ENTITLEMENT_FEATURE_UNAVAILABLE -> 503;
-                default -> 500;
-            };
-            return ResponseEntity.status(status).build();
-        }
+        return InternalServiceResponses.invoke(token, given, operation);
     }
 }

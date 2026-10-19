@@ -453,3 +453,70 @@ I07/I10允许可信取消先于prepare，持久负向事实后返回ABORTED/RELE
 CodeRequest仅useContext=STORE_EXCHANGE；本人会话构造userNo/actor，不能由HTTP传入他人身份。CodeView仅token/expiresAt/instanceNo，日志toString脱敏。凭证至多60秒且受实例期限限制；重放原Idempotency-Key返回同一凭证，换实例则409。B解析由已核实门店范围的P12/P13应用层调用，得到内部userNo/instanceNo定位结果，仍须预览与核心服务的本人授权；不得以兑换码查完整账户或直接扣款。
 
 兼容开关SHOP_PAY_ENTITLEMENT_CODE_ENABLED默认false；缺32字节以上稳定SHOP_PAY_ENTITLEMENT_CODE_KEY拒绝签发。支持签发幂等、过期/撤销拒绝、原操作+门店+操作人完全相同的短期重放；非原绑定均拒绝。STORE_EXCHANGE类型为首期模板准入策略，没有新增逐模板开关。C端主入口继续统一会员码；不增加储值专用码、C端独立核销码页面或线上退款。领域服务不代表P30 HTTP/041远程已交付，门面仍在026/041接线。
+
+
+## 第二阶段：JB-041 权益运行协议承载
+
+本批新增以下25个pay内部POST端点，复用`PayInternalApi`、`PayInternalPaths`和共享SPI record。
+外部B/C接口仍由P编号任务实现，不将内部端点当作已开放的消费者接口。
+
+| 常量 | POST路径 |
+|---|---|
+| `ENT_GRANT_PREPARE` | `/internal/pay/entitlement/grant/prepare` |
+| `ENT_GRANT_COMMIT` | `/internal/pay/entitlement/grant/commit` |
+| `ENT_GRANT_ABORT` | `/internal/pay/entitlement/grant/abort` |
+| `ENT_GRANT_QUERY` | `/internal/pay/entitlement/grant/query` |
+| `ENT_USE_QUOTE` | `/internal/pay/entitlement/use/quote` |
+| `ENT_USE_PREVIEW` | `/internal/pay/entitlement/use/preview` |
+| `ENT_USE_PREPARE` | `/internal/pay/entitlement/use/prepare` |
+| `ENT_USE_COMMIT` | `/internal/pay/entitlement/use/commit` |
+| `ENT_USE_RELEASE` | `/internal/pay/entitlement/use/release` |
+| `ENT_USE_REVERSE` | `/internal/pay/entitlement/use/reverse` |
+| `ENT_USE_REVERSE_QUERY` | `/internal/pay/entitlement/use/reverse/query` |
+| `ENT_USE_QUERY` | `/internal/pay/entitlement/use/query` |
+| `ENT_QUERY_MINE` | `/internal/pay/entitlement/query/mine` |
+| `ENT_QUERY_DETAIL` | `/internal/pay/entitlement/query/detail` |
+| `ENT_QUERY_USAGE` | `/internal/pay/entitlement/query/usage` |
+| `ENT_QUERY_ALLOWANCES` | `/internal/pay/entitlement/query/allowances` |
+| `ENT_QUERY_ACTIVATION` | `/internal/pay/entitlement/query/activation` |
+| `ENT_USE_FACTS` | `/internal/pay/entitlement/use/facts` |
+| `ENT_PAYMENT_ATTEMPTS` | `/internal/pay/entitlement/payment/attempt-exists` |
+| `ENT_BATCH_CREATE` | `/internal/pay/entitlement/batch/create` |
+| `ENT_BATCH_GET` | `/internal/pay/entitlement/batch/get` |
+| `ENT_BATCH_RESUME` | `/internal/pay/entitlement/batch/resume` |
+| `ENT_CODE_ISSUE` | `/internal/pay/entitlement/code/issue` |
+| `ENT_CODE_RESOLVE` | `/internal/pay/entitlement/code/resolve` |
+| `ENT_CODE_INVALIDATE` | `/internal/pay/entitlement/code/invalidate` |
+
+core反向事实由`CoreEntitlementInternalApi`统一声明、实际订单/授权/来源owner提供：
+
+| POST路径 | 实际责任 |
+|---|---|
+| `/internal/core/entitlement/source/use` | 核心订单与商品来源快照 |
+| `/internal/core/entitlement/source/query` | 原来源的持久决定 |
+| `/internal/core/entitlement/authorization/query` | 原消费者授权状态与完整绑定 |
+| `/internal/core/entitlement/source/grant` | 唯一grant来源owner提供冻结事实；缺owner返回503 |
+| `/internal/core/entitlement/source/grant-decision` | 来源owner终态；未提供时查询核心决定注册表 |
+| `/internal/core/entitlement/audience/resolve` | 核心真实定向人群事实 |
+| `/internal/core/entitlement/events/receive` | 白名单支付事件持久写入核心outbox后确认 |
+
+所有端点验证`SHOP_INTERNAL_TOKEN`，缺失或错误返回401；业务错误按400/403/404/409/503映射，
+未知异常不包装为成功。响应为空按能力不可用处理，查询不会生成新操作或自动重试写命令。
+金额必须为整数最小货币单位，两个进程显式关闭Jackson的浮点转整数选项。
+支付历史查询返回`PaymentAttemptView(tenantNo,orderNo,hasAnyAttempt)`，核对绑定后才使用结果；
+不能把空体、错单响应解释为“没有历史收款”。代码失效返回带用户与实例绑定的明确回执。
+
+主应用`shop.pay.deployment=embedded`（默认）只绑定本地owner适配；`standalone`只绑定远程适配。
+pay-svc始终绑定支付owner，不在pay领域内读取部署开关。独立支付反查核心使用服务名`PLATFORM`，
+地址由`PLATFORM_API_BASE_URL`配置；未配置继续拒绝访问，不生成虚构事实。
+本批不宣称既有独立支付全域兼容已完成，储值与售卡运行端点随对应任务继续补齐。
+
+事件交接采用原eventNo及不可变类型/版本/聚合/发生时间/载荷哈希；仅接受四类既有强类型事件。
+额外载荷字段、错哈希、错租户均拒绝；同号同事实返回原确认，同号异事实409。
+支付收到核心持久化确认后才将原pay事件标记FORWARDED；确认丢失继续重试原事件。
+每种部署只运行支付owner中的一套relay，消费者处理与通知完成不属于交接确认的含义。
+当前事件租户仍明确限制MAIN，完整租户封装由JB-053收口。
+
+订单协调在原命令已持久化后遇503或其他不确定错误，返回PROCESSING并保留占用；
+只恢复原operationNo，未知结果不释放、不换号。已有积分分摊的订单暂不支持新券改价，
+待JB-020/JB-049具备原积分分摊的原子重算协议后放开；旧积分与旧券流程不受此新增入口影响。

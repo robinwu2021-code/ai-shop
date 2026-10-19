@@ -4,10 +4,8 @@ import ai.neargo.shop.common.CursorPage;
 import ai.neargo.shop.pay.entitlement.service.EntitlementQueryService;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort;
-import org.springframework.stereotype.Component;
 
 /** Read boundary projects only consumer-safe DTOs, never ORM rows or internal authorization snapshots. */
-@Component
 public class EntitlementQueryPortImpl implements EntitlementQueryPort {
     private final EntitlementQueryService service;
     public EntitlementQueryPortImpl(EntitlementQueryService service) { this.service = service; }

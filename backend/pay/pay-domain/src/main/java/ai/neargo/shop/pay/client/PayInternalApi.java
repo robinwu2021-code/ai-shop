@@ -1,6 +1,14 @@
 package ai.neargo.shop.pay.client;
 
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.spi.entitlement.EntitlementGrantPort;
+import ai.neargo.shop.spi.entitlement.EntitlementUsePort;
+import ai.neargo.shop.spi.entitlement.EntitlementQueryPort;
+import ai.neargo.shop.spi.entitlement.EntitlementUseFactsPort;
+import ai.neargo.shop.pay.entitlement.dto.IssueBatchViews;
+import ai.neargo.shop.pay.entitlement.dto.CodeViews;
+
 import ai.neargo.shop.pay.dto.FeeRuleVO;
 import ai.neargo.shop.pay.dto.FinanceVOs.SettleInvoiceVO;
 import ai.neargo.shop.pay.entitlement.dto.ManagedTemplateView;
@@ -93,5 +101,80 @@ public interface PayInternalApi {
     @PostExchange(PayInternalPaths.ENT_REFERENCE)
     PublishedDefinition entReference(@RequestBody ValidateCatalogReference request);
 
+
+    @PostExchange(PayInternalPaths.ENT_GRANT_PREPARE)
+    EntitlementGrantPort.GrantView entGrantPrepare(@RequestBody PayEntitlementRequests.GrantPrepare request);
+
+    @PostExchange(PayInternalPaths.ENT_GRANT_COMMIT)
+    EntitlementGrantPort.GrantView entGrantCommit(@RequestBody PayEntitlementRequests.GrantCommit request);
+
+    @PostExchange(PayInternalPaths.ENT_GRANT_ABORT)
+    EntitlementGrantPort.GrantView entGrantAbort(@RequestBody PayEntitlementRequests.GrantAbort request);
+
+    @PostExchange(PayInternalPaths.ENT_GRANT_QUERY)
+    EntitlementGrantPort.GrantView entGrantQuery(@RequestBody PayEntitlementRequests.GrantQuery request);
+
+    @PostExchange(PayInternalPaths.ENT_USE_QUOTE)
+    EntitlementUsePort.QuoteView entQuote(@RequestBody PayEntitlementRequests.UseQuote request);
+
+    @PostExchange(PayInternalPaths.ENT_USE_PREVIEW)
+    EntitlementUsePort.PreviewView entPreview(@RequestBody PayEntitlementRequests.UsePreview request);
+
+    @PostExchange(PayInternalPaths.ENT_USE_PREPARE)
+    EntitlementUsePort.HoldView entUsePrepare(@RequestBody PayEntitlementRequests.UsePrepare request);
+
+    @PostExchange(PayInternalPaths.ENT_USE_COMMIT)
+    EntitlementUsePort.UseReceipt entUseCommit(@RequestBody PayEntitlementRequests.UseCommit request);
+
+    @PostExchange(PayInternalPaths.ENT_USE_RELEASE)
+    EntitlementUsePort.HoldView entUseRelease(@RequestBody PayEntitlementRequests.UseRelease request);
+
+    @PostExchange(PayInternalPaths.ENT_USE_REVERSE)
+    EntitlementUsePort.UseReceipt entReverse(@RequestBody PayEntitlementRequests.UseReverse request);
+
+    @PostExchange(PayInternalPaths.ENT_USE_REVERSE_QUERY)
+    EntitlementUsePort.ReversalView entReverseQuery(@RequestBody PayEntitlementRequests.ReverseQuery request);
+
+    @PostExchange(PayInternalPaths.ENT_USE_QUERY)
+    EntitlementUsePort.HoldView entUseQuery(@RequestBody PayEntitlementRequests.UseQuery request);
+
+    @PostExchange(PayInternalPaths.ENT_QUERY_MINE)
+    CursorPage<EntitlementQueryPort.EntitlementItem> entMine(@RequestBody PayEntitlementRequests.Mine request);
+
+    @PostExchange(PayInternalPaths.ENT_QUERY_DETAIL)
+    EntitlementQueryPort.EntitlementDetail entDetail(@RequestBody PayEntitlementRequests.Detail request);
+
+    @PostExchange(PayInternalPaths.ENT_QUERY_USAGE)
+    EntitlementQueryPort.UsageDetail entUsage(@RequestBody PayEntitlementRequests.Usage request);
+
+    @PostExchange(PayInternalPaths.ENT_QUERY_ALLOWANCES)
+    EntitlementQueryPort.AllowanceView entAllowances(@RequestBody PayEntitlementRequests.Allowances request);
+
+    @PostExchange(PayInternalPaths.ENT_QUERY_ACTIVATION)
+    EntitlementQueryPort.ActivationQuote entActivation(@RequestBody PayEntitlementRequests.Activation request);
+
+    @PostExchange(PayInternalPaths.ENT_USE_FACTS)
+    EntitlementUseFactsPort.UseFact entUseFacts(@RequestBody PayEntitlementRequests.UseFacts request);
+
+    @PostExchange(PayInternalPaths.ENT_PAYMENT_ATTEMPTS)
+    PayEntitlementResponses.PaymentAttemptView entPaymentAttempts(@RequestBody PayEntitlementRequests.PaymentAttempts request);
+
+    @PostExchange(PayInternalPaths.ENT_BATCH_CREATE)
+    IssueBatchViews.BatchView entBatchCreate(@RequestBody PayEntitlementRequests.BatchCreate request);
+
+    @PostExchange(PayInternalPaths.ENT_BATCH_GET)
+    IssueBatchViews.BatchView entBatchGet(@RequestBody PayEntitlementRequests.BatchGet request);
+
+    @PostExchange(PayInternalPaths.ENT_BATCH_RESUME)
+    IssueBatchViews.BatchView entBatchResume(@RequestBody PayEntitlementRequests.BatchResume request);
+
+    @PostExchange(PayInternalPaths.ENT_CODE_ISSUE)
+    CodeViews.CodeView entCodeIssue(@RequestBody PayEntitlementRequests.CodeIssue request);
+
+    @PostExchange(PayInternalPaths.ENT_CODE_RESOLVE)
+    CodeViews.ResolvedCode entCodeResolve(@RequestBody PayEntitlementRequests.CodeResolve request);
+
+    @PostExchange(PayInternalPaths.ENT_CODE_INVALIDATE)
+    PayEntitlementResponses.CodeInvalidationView entCodeInvalidate(@RequestBody PayEntitlementRequests.CodeInvalidate request);
 
 }

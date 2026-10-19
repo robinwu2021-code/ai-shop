@@ -2,7 +2,10 @@ package ai.neargo.shop.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import ai.neargo.shop.common.BizException;
+import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.auth.store.SubjectKind;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.Realm;
@@ -32,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import tools.jackson.databind.ObjectMapper;
 
 /** Actual core authorizations, payment history and pay holds; no source/decision stubs. */
@@ -44,7 +48,7 @@ class EntitlementOrderCoordinatorFlowTest {
     @Autowired EntitlementOrderUseService orderUses;
     @Autowired OrderService orderService;
     @Autowired EntitlementAuthorizationService authorizations;
-    @Autowired EntitlementUsePort uses;
+    @MockitoSpyBean EntitlementUsePort uses;
     @Autowired EntitlementUseSourcePort sources;
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
@@ -109,6 +113,18 @@ class EntitlementOrderCoordinatorFlowTest {
         return new UseCommand("OP" + UUID.randomUUID(), source(), user, entity, store, "CNY",
                 AssetKind.ORDER_COUPON, instance, null, null, 1, 100L, fact.items(), auth.authorizationRef(),
                 null, 0, null, quote.quoteRef());
+    }
+    @Test void anUnknownPayResponseKeepsTheOriginalDurableCommandAndCanResume() {
+        var c = command();
+        doThrow(BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE)).doCallRealMethod()
+                .when(uses).prepare(any(), any());
+        assertThat(coordinator.prepare(context, c).status()).isEqualTo(State.PROCESSING);
+        assertThat(jdbc.queryForObject("SELECT status FROM ord_ent_order_use WHERE operation_no=?", String.class,
+                c.operationNo())).isEqualTo("PENDING");
+        assertThat(uses.query(context, entity, c.operationNo()).status()).isEqualTo(State.NOT_FOUND);
+        assertThat(coordinator.recover(context, entity, c.operationNo()).status()).isEqualTo(State.HELD);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_use_intent WHERE operation_no=?", Integer.class,
+                c.operationNo())).isOne();
     }
     @Test void actualHeldCouponIsAppliedOnceAndPaymentSealPreventsRepricing() {
         var c = command();

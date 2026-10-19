@@ -26,6 +26,32 @@ public final class PayInternalPaths {
     public static final String ENT_VERSION = "/internal/pay/entitlement/catalog/version";
     public static final String ENT_REFERENCE = "/internal/pay/entitlement/catalog/validate-reference";
 
+    public static final String ENT_GRANT_PREPARE = "/internal/pay/entitlement/grant/prepare";
+    public static final String ENT_GRANT_COMMIT = "/internal/pay/entitlement/grant/commit";
+    public static final String ENT_GRANT_ABORT = "/internal/pay/entitlement/grant/abort";
+    public static final String ENT_GRANT_QUERY = "/internal/pay/entitlement/grant/query";
+    public static final String ENT_USE_QUOTE = "/internal/pay/entitlement/use/quote";
+    public static final String ENT_USE_PREVIEW = "/internal/pay/entitlement/use/preview";
+    public static final String ENT_USE_PREPARE = "/internal/pay/entitlement/use/prepare";
+    public static final String ENT_USE_COMMIT = "/internal/pay/entitlement/use/commit";
+    public static final String ENT_USE_RELEASE = "/internal/pay/entitlement/use/release";
+    public static final String ENT_USE_REVERSE = "/internal/pay/entitlement/use/reverse";
+    public static final String ENT_USE_REVERSE_QUERY = "/internal/pay/entitlement/use/reverse/query";
+    public static final String ENT_USE_QUERY = "/internal/pay/entitlement/use/query";
+    public static final String ENT_QUERY_MINE = "/internal/pay/entitlement/query/mine";
+    public static final String ENT_QUERY_DETAIL = "/internal/pay/entitlement/query/detail";
+    public static final String ENT_QUERY_USAGE = "/internal/pay/entitlement/query/usage";
+    public static final String ENT_QUERY_ALLOWANCES = "/internal/pay/entitlement/query/allowances";
+    public static final String ENT_QUERY_ACTIVATION = "/internal/pay/entitlement/query/activation";
+    public static final String ENT_USE_FACTS = "/internal/pay/entitlement/use/facts";
+    public static final String ENT_PAYMENT_ATTEMPTS = "/internal/pay/entitlement/payment/attempt-exists";
+    public static final String ENT_BATCH_CREATE = "/internal/pay/entitlement/batch/create";
+    public static final String ENT_BATCH_GET = "/internal/pay/entitlement/batch/get";
+    public static final String ENT_BATCH_RESUME = "/internal/pay/entitlement/batch/resume";
+    public static final String ENT_CODE_ISSUE = "/internal/pay/entitlement/code/issue";
+    public static final String ENT_CODE_RESOLVE = "/internal/pay/entitlement/code/resolve";
+    public static final String ENT_CODE_INVALIDATE = "/internal/pay/entitlement/code/invalidate";
+
     private PayInternalPaths() {
     }
 }

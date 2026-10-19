@@ -65,29 +65,50 @@ public class EntitlementOrderCoordinatorImpl implements EntitlementOrderCoordina
     @Override public HoldView prepare(EntitlementContext ctx, UseCommand command) {
         var row = stage(ctx, command);
         if (row.decisionRef() != null) return recover(ctx, command.entityNo(), command.operationNo());
-        var result = pay.prepare(row.context(), row.command());
-        if (result.status() == State.HELD || result.status() == State.COMMITTED) {
-            orders.apply(row.context(), facts.query(row.context(), command.entityNo(), command.operationNo()));
+        try {
+            var result = pay.prepare(row.context(), row.command());
+            if (result.status() == State.HELD || result.status() == State.COMMITTED) {
+                var held = facts.query(row.context(), command.entityNo(), command.operationNo());
+                if (held.operation().status() != State.HELD && held.operation().status() != State.COMMITTED) {
+                    return processing(command.operationNo());
+                }
+                orders.apply(row.context(), held);
+            }
+            return result;
+        } catch (BizException failure) {
+            if (definitive(failure)) throw failure;
+            return processing(command.operationNo());
         }
-        return result;
     }
     @Override public HoldView recover(EntitlementContext ctx, String entity, String operation) {
         var row = orders.find(ctx.tenantNo(), entity, operation);
         if (row == null) return new HoldView(operation, State.NOT_FOUND, null, null, null);
         orders.decideForTerminalOrder(ctx.tenantNo(), row.orderNo());
         row = orders.find(ctx.tenantNo(), entity, operation);
-        if (row.decisionRef() == null) {
-            if ("PENDING".equals(row.status())) return prepare(row.context(), row.command());
-            return pay.query(row.context(), entity, operation);
-        }
-        if ("CANCEL_DECIDED".equals(row.status()) || "RELEASED".equals(row.status())) {
-            var result = pay.release(row.context(),
-                    new CancelUse(operation, row.command().sourceRef(), row.decisionRef()));
+        if (row.decisionRef() == null && "PENDING".equals(row.status())) return prepare(row.context(), row.command());
+        try {
+            if (row.decisionRef() == null) return pay.query(row.context(), entity, operation);
+            if ("CANCEL_DECIDED".equals(row.status()) || "RELEASED".equals(row.status())) {
+                var result = pay.release(row.context(),
+                        new CancelUse(operation, row.command().sourceRef(), row.decisionRef()));
+                orders.acknowledge(row.context(), entity, result); return result;
+            }
+            pay.commit(row.context(), new UseDecision(operation, row.command().sourceRef(), row.decisionRef()));
+            var result = pay.query(row.context(), entity, operation);
             orders.acknowledge(row.context(), entity, result); return result;
+        } catch (BizException failure) {
+            if (definitive(failure)) throw failure;
+            return processing(operation);
         }
-        pay.commit(row.context(), new UseDecision(operation, row.command().sourceRef(), row.decisionRef()));
-        var result = pay.query(row.context(), entity, operation);
-        orders.acknowledge(row.context(), entity, result); return result;
+    }
+    private static boolean definitive(BizException failure) {
+        return switch (failure.errorCode()) {
+            case BAD_REQUEST, FORBIDDEN, NOT_FOUND, CONFLICT -> true;
+            default -> false;
+        };
+    }
+    private static HoldView processing(String operation) {
+        return new HoldView(operation, State.PROCESSING, null, null, null);
     }
     private static void conflict() { throw BizException.of(ErrorCode.CONFLICT); }
 }

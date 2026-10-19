@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -14,6 +17,7 @@ import ai.neargo.shop.pay.entitlement.entity.PayEntOutbox;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntInboxMapper;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntOutboxMapper;
 import ai.neargo.shop.spi.entitlement.EntitlementEvents;
+import ai.neargo.shop.spi.entitlement.PayEntitlementEventBridgePort;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
@@ -126,6 +130,29 @@ class EntitlementEventFlowTest {
             relay.relay(event.eventNo());
             verify(bus).publish(event.eventNo(), event);
             verify(mapper).markForwarded(eq(1L), eq("MAIN"), any());
+        } finally { relay.shutdown(); }
+    }
+
+    @Test
+    void aLostCoreAcknowledgementRetriesTheSameEventWithoutMarkingItForwarded() {
+        var json = new ObjectMapper();
+        var event = new EntitlementEvents.EntitlementGranted("EVT-LOST", "G1", "U1", "M1", "V1", "TARGETED",
+                "B1", 1_797_000_000_000L);
+        var row = new PayEntOutbox(); row.setId(9L); row.setStatus("PENDING"); row.setAttempts(0);
+        row.setEventNo(event.eventNo()); row.setEventType(event.eventType()); row.setSchemaVersion(1);
+        row.setAggregateNo(event.aggregateId()); row.setPayload(json.writeValueAsString(event));
+        row.setPayloadHash(PayEntitlementEventPublisher.hash(event, row.getPayload()));
+        var mapper = mock(PayEntOutboxMapper.class);
+        when(mapper.findByEventNo("MAIN", event.eventNo())).thenReturn(row);
+        var bridge = mock(PayEntitlementEventBridgePort.class);
+        doThrow(new IllegalStateException("ack lost")).doNothing().when(bridge).publish(event.eventNo(), event);
+        var relay = new PayEntitlementOutboxRelay(mapper, bridge, json);
+        try {
+            relay.relay(event.eventNo());
+            verify(mapper, never()).markForwarded(eq(9L), eq("MAIN"), any());
+            relay.relay(event.eventNo());
+            verify(bridge, times(2)).publish(event.eventNo(), event);
+            verify(mapper).markForwarded(eq(9L), eq("MAIN"), any());
         } finally { relay.shutdown(); }
     }
 

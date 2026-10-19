@@ -3,6 +3,9 @@ server:
   port: ${PAY_SVC_PORT:8083}
 
 spring:
+  jackson:
+    deserialization:
+      accept-float-as-int: false
   application:
     name: pay-svc
   datasource:
@@ -20,6 +23,10 @@ spring:
     enabled: false
 
 shop:
+  services:
+    internal-token: ${SHOP_INTERNAL_TOKEN:}
+    targets:
+      PLATFORM: ${PLATFORM_API_BASE_URL:}
   pay:
     entitlement:
       # Stable shared random secret (>=32 characters) for scoped query cursors; no development fallback.

@@ -91,6 +91,7 @@ public class EntitlementOrderUseServiceImpl implements EntitlementOrderUseServic
                     || !digest(json.writeValueAsString(c)).equals(previous.getPayloadHash())) conflict();
             return view(previous);
         }
+        if (sub.getPointsDeductMinor() != null && sub.getPointsDeductMinor() > 0) unavailable();
         if (sealed(ctx.tenantNo(), order.getOrderNo()) != null || !OrdOrder.WAIT_PAY.equals(order.getStatus())
                 || !OrdSubOrder.WAIT_PAY.equals(sub.getStatus()) || !c.userNo().equals(order.getUserNo())
                 || !c.userNo().equals(sub.getUserNo()) || !c.entityNo().equals(sub.getEntityNo())
@@ -134,6 +135,7 @@ public class EntitlementOrderUseServiceImpl implements EntitlementOrderUseServic
                 || !row.getOrderSnapshotHash().equals(snapshot(order))) conflict();
         var target = subOrders(ctx.tenantNo(), order.getOrderNo()).stream()
                 .filter(s -> s.getSubOrderNo().equals(c.sourceRef().sourceNo())).findFirst().orElseThrow();
+        if (target.getPointsDeductMinor() != null && target.getPointsDeductMinor() > 0) unavailable();
         var lines = orderItems(ctx.tenantNo(), order.getOrderNo()).stream()
                 .filter(i -> i.getSubOrderNo().equals(target.getSubOrderNo())).toList();
         long freight = 0; long goods = 0;

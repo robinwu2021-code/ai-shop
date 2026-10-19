@@ -2,17 +2,12 @@ package ai.neargo.shop.pay.entitlement.event;
 
 import ai.neargo.shop.pay.entitlement.entity.PayEntOutbox;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntOutboxMapper;
-import ai.neargo.shop.spi.entitlement.EntitlementEvents;
 import ai.neargo.shop.spi.entitlement.PayEntitlementEvent;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import ai.neargo.shop.spi.entitlement.PayEntitlementEventCodec;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
-import java.util.HexFormat;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -77,37 +72,7 @@ public class PayEntitlementEventPublisher {
         }
     }
 
-    private static void validate(PayEntitlementEvent event) {
-        if (event == null || !id(event.eventNo()) || !id(event.aggregateId()) || event.schemaVersion() != 1
-                || event.occurredAt() <= 0) throw new IllegalArgumentException("Entitlement event identity is incomplete");
-        if (event instanceof EntitlementEvents.EntitlementGranted granted) {
-            if (!id(granted.grantNo()) || !id(granted.userNo()) || !id(granted.entityNo())
-                    || !id(granted.templateVersionNo()) || !oneOf(granted.sourceType(), "ACTIVITY", "CENTER",
-                    "TARGETED", "PAID_ORDER", "RECHARGE" ) || !id(granted.sourceNo()))
-                throw new IllegalArgumentException("Entitlement grant event fields are incomplete");
-        } else if (event instanceof EntitlementEvents.EntitlementUsed used) {
-            boolean storedValue = "STORED_VALUE".equals(used.assetKind());
-            if (!id(used.usageNo()) || !id(used.userNo()) || !id(used.entityNo()) || !id(used.storeNo())
-                    || !oneOf(used.assetKind(), "ORDER_COUPON", "STORE_EXCHANGE", "PAID_CARD", "STORED_VALUE")
-                    || !id(used.assetNo()) || (storedValue && (used.amountMinor() == null || used.amountMinor() <= 0
-                    || used.units() != null)) || (!storedValue && (used.units() == null || used.units() <= 0
-                    || used.amountMinor() != null)))
-                throw new IllegalArgumentException("Entitlement usage event fields are incomplete");
-        } else if (event instanceof EntitlementEvents.EntitlementUseReversed returned) {
-            if (!id(returned.reverseNo()) || !id(returned.usageNo()) || !id(returned.userNo())
-                    || !id(returned.entityNo()) || !id(returned.storeNo()) || !id(returned.instanceNo())
-                    || !id(returned.currency()) || returned.restoredUnits() < 0 || returned.discountMinor() <= 0) {
-                throw new IllegalArgumentException("Entitlement reversal event fields are incomplete");
-            }
-        } else if (event instanceof EntitlementEvents.StoredValueCredited credited) {
-            if (!id(credited.rechargeNo()) || !id(credited.accountNo()) || !id(credited.userNo())
-                    || !id(credited.entityNo()) || !id(credited.storeNo()) || !id(credited.currency())
-                    || credited.paidAmountMinor() < 0 || credited.creditedAmountMinor() < 0)
-                throw new IllegalArgumentException("Stored value credit event fields are incomplete");
-        } else {
-            throw new IllegalArgumentException("Unsupported pay entitlement event type");
-        }
-    }
+    private static void validate(PayEntitlementEvent event) { PayEntitlementEventCodec.validate(event); }
 
     private static boolean sameFacts(PayEntOutbox a, PayEntOutbox b) {
         return a.getEventType().equals(b.getEventType()) && a.getSchemaVersion().equals(b.getSchemaVersion())
@@ -116,27 +81,6 @@ public class PayEntitlementEventPublisher {
     }
 
     static String hash(PayEntitlementEvent event, String payload) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            for (String value : new String[] {event.eventType(), Integer.toString(event.schemaVersion()),
-                    event.aggregateType(), event.aggregateId(), payload}) {
-                byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
-                digest.update(ByteBuffer.allocate(Integer.BYTES).putInt(bytes.length).array());
-                digest.update(bytes);
-            }
-            return HexFormat.of().formatHex(digest.digest());
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is required by the Java runtime", e);
-        }
-    }
-
-    private static boolean id(String value) {
-        return value != null && !value.isBlank() && value.length() <= 64 && value.equals(value.strip());
-    }
-
-    private static boolean oneOf(String value, String... accepted) {
-        if (value == null) return false;
-        for (String item : accepted) if (item.equals(value)) return true;
-        return false;
+        return PayEntitlementEventCodec.hash(event, payload);
     }
 }

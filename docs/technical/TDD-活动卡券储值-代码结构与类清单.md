@@ -345,3 +345,28 @@ ORDER_COUPON协调切片验收后仍不能关闭JB-020：真实服务核销意�
 | app/pay-svc配置 | PayEntitlementProperties/Gate及环境映射 | 默认关闭的code开关、稳定密钥，不影响统一会员码功能 |
 
 可选兼容领域已完成；P30及P12/P13调用和双部署内部HTTP承载仍由026/041完成，不提前开放独立消费者码入口。38项定向Java、最终场景6项及原生MySQL约束1项通过，证据见独立任务表。
+
+
+## 第二阶段 JB-041 运行接线类
+
+| 模块 | 类/接口 | 责任 |
+|---|---|---|
+| base.spi.entitlement | CoreEntitlementInternalApi / EntitlementCoreInternal | 核心事实HTTP契约与请求 |
+| base.spi.entitlement | EntitlementEventInternal / PayEntitlementEventBridgePort / PayEntitlementEventCodec | 强类型事件交接、白名单与不可变哈希 |
+| base.svc | InternalServiceResponses | 内部令牌、错误状态与空响应规则 |
+| pay.client | PayEntitlementRequests / PayEntitlementResponses / EntitlementRemoteCalls | 运行请求、绑定回执、无隐式重试传输 |
+| pay-svc | InternalEntitlementRuntimeEndpoint / EntitlementCoreClientConfiguration | 25个真实内部Handler与反向客户端接线 |
+| pay-svc.client.port | CoreEntitlementUseSourcePortImpl / CoreSourceDecisionPortImpl | 核心来源与授权/决定查询 |
+| pay-svc.client.port | CoreEntitlementGrantSourcePortImpl / CoreEntitlementIssueAudiencePortImpl | 冻结grant来源与定向人群 |
+| pay-svc.client.port | CorePayEntitlementEventBridgePortImpl | 核心持久确认后完成支付事件交接 |
+| app.payclient | EntitlementRuntimeRouting / EntitlementCodeAppService / EntitlementBatchAppService | 本地/独立形态的应用边界 |
+| app.payclient.port | RemoteEntitlementGrantPort / RemoteEntitlementUsePort / RemoteEntitlementQueryPort | 原SPI运行远程承载 |
+| app.payclient.port | RemoteEntitlementUseFactsPort / RemotePaymentAttemptFactsPort | 精确占用与历史收款事实 |
+| app.payclient.impl | EntitlementCodeAppServiceImpl / RemoteEntitlementCodeAppService | 兑换码服务互斥接线 |
+| app.payclient.impl | EntitlementBatchAppServiceImpl / RemoteEntitlementBatchAppService | 批量发行服务互斥接线 |
+| app.portal.internal | InternalEntitlementFactsEndpoint | 核心真实来源、授权与事件接收端点 |
+| app.paybridge | EntitlementEventReceiverService / impl | 核心事务内接收、去重、冲突验证 |
+| app.paybridge.port | LocalPayEntitlementEventBridgePortImpl | 嵌入式形态的核心事件事务 |
+
+PayEntitlementOutboxRelay由组合根显式创建，独立形态只在pay-svc运行，主应用不重复扫描支付事件。
+领域PortImpl只由所属组合根绑定，避免本地和HTTP实现同时成为候选Bean。

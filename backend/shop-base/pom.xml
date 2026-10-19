@@ -28,6 +28,11 @@
       portInterfacesOnlyInSpi 看着。
     -->
     <dependencies>
+        <!-- Shared internal event wire validation must use the same typed JSON codec in both service owners. -->
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
         <!--
             事务编排（AfterCommit 用 TransactionSynchronizationManager）。
             **这一条以前是别的依赖传递带进来的**，瘦身之后才显出来 ——
