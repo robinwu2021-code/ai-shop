@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.CashReceiptFixture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +38,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class M3TradeFlowTest {
 
-    private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
@@ -161,7 +161,7 @@ class M3TradeFlowTest {
         mvc().perform(get("/mp/order/" + subOrderNo).header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.verifyCode").doesNotExist());
 
-        payCallback(payOrderNo, "TX-M3-1");
+        payCallback(token, payOrderNo);
 
         mvc().perform(get("/mp/order/" + subOrderNo).header("Authorization", "Bearer " + token))
                 .andExpect(jsonPath("$.data.verifyCode").isNotEmpty())
@@ -175,7 +175,7 @@ class M3TradeFlowTest {
         addToCart(token, "G0002", "SK0003", 1);
         String payOrderNo = createOrder(token, "m3-timeline");
         String subOrderNo = firstSubOrderNo(token);
-        payCallback(payOrderNo, "TX-M3-2");
+        payCallback(token, payOrderNo);
 
         String body = mvc().perform(get("/mp/order/" + subOrderNo).header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
@@ -230,7 +230,7 @@ class M3TradeFlowTest {
             String token = login("134001350" + (10 + i));
             addToCart(token, "G0002", "SK0003", 1);
             String payOrderNo = createOrder(token, "m3-uniq-" + i);
-            payCallback(payOrderNo, "TX-uniq-" + i);
+            payCallback(token, payOrderNo);
             codes.add(verifyCodeOf(token));
         }
         // 重码意味着核销台扫一次可能命中两单 —— 在货架前没法当场解决
@@ -244,7 +244,9 @@ class M3TradeFlowTest {
     void concurrentOrdersDoNotOversell() throws Exception {
         // 用一个独享 SKU，避免与其它用例互相干扰
         int stock = stockOf("G0004", "SK0005");
-        int threads = 10;
+        // Leave database connections for the request infrastructure and keep this a real race.
+        // Ten servlet requests each open transactional connections and exceed the test pool size.
+        int threads = 4;
 
         List<String> tokens = new ArrayList<>();
         for (int i = 0; i < threads; i++) {
@@ -430,11 +432,8 @@ class M3TradeFlowTest {
         return data.get("payOrderNo").asString();
     }
 
-    private void payCallback(String payOrderNo, String txId) throws Exception {
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"" + txId
-                                + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
-                .andExpect(status().isOk());
+    private void payCallback(String token, String payOrderNo) throws Exception {
+        new CashReceiptFixture(context).pay(token, payOrderNo);
     }
 
     private String login(String phone) throws Exception {

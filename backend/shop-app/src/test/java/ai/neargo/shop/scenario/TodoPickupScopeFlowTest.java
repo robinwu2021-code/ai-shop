@@ -2,6 +2,7 @@ package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.support.TestStoreCategory;
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.CashReceiptFixture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +42,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class TodoPickupScopeFlowTest {
 
-    private static final String STUB_SECRET = "stub-secret";
 
     @Autowired
     private ai.neargo.shop.common.OtpStore otpStore;
@@ -209,9 +209,7 @@ class TodoPickupScopeFlowTest {
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
         // 付款后才进 WAIT_FULFILL —— 未付款的单不是待办（那是买家的事）
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-todo-"
-                        + phone + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        new CashReceiptFixture(context).pay(token, payOrderNo);
     }
 
     private String onSaleGoods(String merchantToken, String title) throws Exception {

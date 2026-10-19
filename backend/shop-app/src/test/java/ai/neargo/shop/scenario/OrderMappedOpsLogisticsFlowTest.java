@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -40,6 +41,7 @@ class OrderMappedOpsLogisticsFlowTest {
     @Autowired private WebApplicationContext context;
 
     @Test
+    @Transactional
     void currentWaybillSignedAfterDispatchCompletesTradeButOldSignatureDoesNot() {
         String sub = OrderLogisticsFixture.seed(jdbc, ledger, false);
         String number = "STO" + sub.substring(2, 22).toUpperCase(Locale.ROOT) + "R";

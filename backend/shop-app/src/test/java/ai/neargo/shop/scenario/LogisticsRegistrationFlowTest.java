@@ -1,7 +1,10 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.event.OutboxDispatcher;
+import ai.neargo.shop.logistics.channel.kuaidi100.Kuaidi100PushReceiver;
+import ai.neargo.shop.logistics.capability.PushReceiver;
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.CashReceiptFixture;
 import ai.neargo.shop.support.TestStoreCategory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -39,10 +43,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("物流：发货登记与推送入库")
 class LogisticsRegistrationFlowTest {
 
-    private static final String STUB_SECRET = "stub-secret";
-    /** 与 application-testcfg.yml 的 shop.express.kuaidi100.salt 一致 */
-    private static final String SALT = "test-kuaidi100-salt";
-
     @Autowired
     private WebApplicationContext context;
     @Autowired
@@ -53,6 +53,10 @@ class LogisticsRegistrationFlowTest {
     private JdbcTemplate jdbc;
     @Autowired
     private OutboxDispatcher dispatcher;
+    @Autowired
+    private Kuaidi100PushReceiver pushReceiver;
+    @Value("${shop.express.kuaidi100.salt}")
+    private String kuaidi100Salt;
 
     @Test
     @DisplayName("★★★ 快递发货 → 运单登记 + 快照；订阅开关关着时停在 PENDING")
@@ -79,13 +83,16 @@ class LogisticsRegistrationFlowTest {
         Ctx c = prepare("15973010003", "物流推送测试店", "15973010004");
         ship(c, "STO-LGS-0002", "STO");
         drainOutbox();
-        subscribedAt(c.subOrderNo, "kuaidi100");
+        String callbackId = subscribedAt(c.subOrderNo, "kuaidi100");
         long eventsBefore = count("select count(*) from sys_outbox where event_type = 'WAYBILL_SIGNED'");
 
         String param = signedPush("STO-LGS-0002");
+        assertThat(pushReceiver.parse(new PushReceiver.Request(
+                Map.of("param", param, "sign", sign(param)), null)).verified())
+                .as("测试签名必须使用当前接收器配置的盐").isTrue();
         String body = mvc().perform(post("/callback/logistics/kuaidi100")
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                        .param("param", param).param("sign", sign(param)))
+                        .param("param", param).param("sign", sign(param)).param("callbackId", callbackId))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 
@@ -103,7 +110,8 @@ class LogisticsRegistrationFlowTest {
         // 快递100 每次推全量：同一条再来一次，节点不翻倍、事件不重发
         mvc().perform(post("/callback/logistics/kuaidi100")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .param("param", param).param("sign", sign(param))).andExpect(status().isOk());
+                .param("param", param).param("sign", sign(param)).param("callbackId", callbackId))
+                .andExpect(status().isOk());
         assertThat(count("select count(*) from lgs_waybill_node where shipment_no = '" + w.get("shipment_no") + "'"))
                 .as("全量推送靠去重，节点不该翻倍").isEqualTo(2);
         assertThat(count("select count(*) from sys_outbox where event_type = 'WAYBILL_SIGNED'"))
@@ -138,7 +146,7 @@ class LogisticsRegistrationFlowTest {
         Ctx c = prepare("15973010005", "物流验签测试店", "15973010006");
         ship(c, "STO-LGS-0003", "STO");
         drainOutbox();
-        subscribedAt(c.subOrderNo, "kuaidi100");
+        String callbackId = subscribedAt(c.subOrderNo, "kuaidi100");
 
         String param = signedPush("STO-LGS-0003");
         mvc().perform(post("/callback/logistics/kuaidi100")
@@ -167,12 +175,16 @@ class LogisticsRegistrationFlowTest {
         Ctx c = prepare("15973010011", "轨迹坐标测试店", "15973010012");
         ship(c, "STO-LGS-0005", "STO");
         drainOutbox();
-        subscribedAt(c.subOrderNo, "kuaidi100");
+        String callbackId = subscribedAt(c.subOrderNo, "kuaidi100");
 
         String param = pushWithCoords("STO-LGS-0005");
+        assertThat(pushReceiver.parse(new PushReceiver.Request(
+                Map.of("param", param, "sign", sign(param)), null)).verified())
+                .as("测试签名必须使用当前接收器配置的盐").isTrue();
         mvc().perform(post("/callback/logistics/kuaidi100")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .param("param", param).param("sign", sign(param))).andExpect(status().isOk());
+                .param("param", param).param("sign", sign(param)).param("callbackId", callbackId))
+                .andExpect(status().isOk());
 
         /*
          * 两个出口：专用物流页端点，与**订单详情里内嵌的那份**。
@@ -223,8 +235,8 @@ class LogisticsRegistrationFlowTest {
                 + "\"status\":\"揽收\",\"statusCode\":\"103\",\"areaCode\":\"\",\"areaName\":\"\"}]}}";
     }
 
-    private static String sign(String param) throws Exception {
-        byte[] h = MessageDigest.getInstance("MD5").digest((param + SALT).getBytes(StandardCharsets.UTF_8));
+    private String sign(String param) throws Exception {
+        byte[] h = MessageDigest.getInstance("MD5").digest((param + kuaidi100Salt).getBytes(StandardCharsets.UTF_8));
         StringBuilder sb = new StringBuilder();
         for (byte b : h) {
             sb.append(String.format("%02X", b));
@@ -238,10 +250,19 @@ class LogisticsRegistrationFlowTest {
     }
 
     /** 摆成「已在这家渠道订上」—— 订阅开关在测试里关着，真订阅留给批 2b 的实测 */
-    private void subscribedAt(String subOrderNo, String channel) {
+    private String subscribedAt(String subOrderNo, String channel) {
         int n = jdbc.update("update lgs_waybill set sub_state = 'DONE', sub_channel = ? where biz_ref = ?",
                 channel, subOrderNo);
         assertThat(n).as("子单 %s 没有运单", subOrderNo).isEqualTo(1);
+        Map<String, Object> waybill = waybill(subOrderNo);
+        String callbackId = "cb-" + waybill.get("shipment_no");
+        String identity = waybill.get("source_shipment_no") + ":" + waybill.get("source_shipment_version");
+        jdbc.update("insert into lgs_kd100_sub_attempt"
+                        + " (account_ref,company_code,waybill_no,month_key,attempt_no,shipment_no,identity_key,"
+                        + "callback_id,result,created_at,updated_at) values('test','shentong',?,'202610',1,?,?,?,'OK',"
+                        + "current_timestamp,current_timestamp)",
+                waybill.get("waybill_no"), waybill.get("shipment_no"), identity, callbackId);
+        return callbackId;
     }
 
     private Map<String, Object> waybill(String subOrderNo) {
@@ -333,12 +354,7 @@ class LogisticsRegistrationFlowTest {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn().getResponse().getContentAsString())
                 .get("data").get("payOrderNo").asString();
-        mvc().perform(post("/mp/order/" + payOrderNo + "/pay").header("Authorization", "Bearer " + buyer))
-                .andExpect(jsonPath("$.code").value(0));
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-"
-                                + payOrderNo + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
-                .andExpect(status().isOk());
+        new CashReceiptFixture(context).pay(buyer, payOrderNo);
         String list = mvc().perform(get("/biz/order").header("Authorization", "Bearer " + token))
                 .andReturn().getResponse().getContentAsString();
         var records = json.readTree(list).get("data").get("records");

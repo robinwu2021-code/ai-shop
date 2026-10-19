@@ -1,6 +1,7 @@
 package ai.neargo.shop.scenario;
 
 import ai.neargo.shop.notify.port.StubWxSubscribeGateway;
+import ai.neargo.shop.support.CashReceiptFixture;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.message.entity.MsgSubscribe;
@@ -40,7 +41,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class WxNotifyFlowTest {
 
-    private static final String STUB_SECRET = "stub-secret";
 
     /** 桩世界的模板号（与 {@code StubWxSubscribeGateway#templateId} 一致）。 */
     private static final String TPL_ARRIVED = "STUB_TPL_ORDER_ARRIVED";
@@ -389,10 +389,7 @@ class WxNotifyFlowTest {
         assertThat(payNode == null ? null : payNode.get("payOrderNo"))
                 .as("下单失败：%s", body).isNotNull();
         String payOrderNo = payNode.get("payOrderNo").asString();
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-" + idemKey
-                                + "\",\"sign\":\"" + STUB_SECRET + "\"}"))
-                .andExpect(status().isOk());
+        new CashReceiptFixture(context).pay(token, payOrderNo);
     }
 
     private String loginAsOwnerOf(String merchantNo, String phone) throws Exception {

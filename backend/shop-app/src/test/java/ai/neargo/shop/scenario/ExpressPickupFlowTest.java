@@ -126,9 +126,16 @@ class ExpressPickupFlowTest {
                 + " values (?, ?, '快递测试店', '山西省运城市盐湖区解放路 1 号', 1, now(), now())", ENTITY, STORE);
         jdbc.update("insert into mch_account(mch_account_no, entity_no, is_owner, login_phone, created_at, updated_at)"
                 + " values ('MA-EXP-T', ?, 1, '13900000001', now(), now())", ENTITY);
+        jdbc.update("insert into ord_order(order_no,user_no,status,pay_amount,goods_amount,currency,tenant_no,"
+                + "created_at,updated_at) values (?, 'U-EXP-T', 'PAID', 1000, 1000, 'CNY', 'MAIN', now(), now())",
+                ORDER);
+        jdbc.update("insert into stl_payment(payment_no,direction,order_no,user_no,amount_minor,currency,status,"
+                + "pay_channel,trade_no,out_trade_no,tenant_no,created_at,updated_at)"
+                + " values ('PAY-EXP-T','PAY',?,'U-EXP-T',1000,'CNY','SUCCESS','WECHAT','TX-EXP-T',"
+                + "'OUT-EXP-T','MAIN',now(),now())", ORDER);
         jdbc.update("insert into ord_sub_order(sub_order_no, order_no, user_no, entity_no, store_no, fulfillment, status,"
-                + " receiver_name, receiver_phone, receiver_address, created_at, updated_at)"
-                + " values (?, ?, 'U-EXP-T', ?, ?, 'EXPRESS', 'WAIT_FULFILL', '张三', '13700000000',"
+                + " pay_amount,receiver_name, receiver_phone, receiver_address, created_at, updated_at)"
+                + " values (?, ?, 'U-EXP-T', ?, ?, 'EXPRESS', 'WAIT_FULFILL', 1000, '张三', '13700000000',"
                 + " '广东省深圳市南山区科技园 8 号', now(), now())", SUB, ORDER, ENTITY, STORE);
         jdbc.update("insert into ord_item(sub_order_no, order_no, goods_no, sku_no, title, created_at, updated_at)"
                 + " values (?, ?, 'G-EXP', 'SK-EXP', '五得利五星特精小麦粉 25kg 家用通用面粉', now(), now())", SUB, ORDER);
@@ -140,6 +147,8 @@ class ExpressPickupFlowTest {
         jdbc.update("delete from ord_status_log where sub_order_no=?", SUB);
         jdbc.update("delete from ord_item where sub_order_no=?", SUB);
         jdbc.update("delete from ord_sub_order where sub_order_no=?", SUB);
+        jdbc.update("delete from stl_payment where order_no=?", ORDER);
+        jdbc.update("delete from ord_order where order_no=?", ORDER);
         jdbc.update("delete from mch_debt_txn where entity_no=?", ENTITY);
         jdbc.update("delete from mch_debt where entity_no=?", ENTITY);
         jdbc.update("delete from mch_account where entity_no=?", ENTITY);
@@ -174,20 +183,20 @@ class ExpressPickupFlowTest {
         assertThat(service.latest(ENTITY, null, SUB).status()).isEqualTo(OrdExpressPickup.ACCEPTED);
         assertThat(subStatus()).as("接单还不是发货：取件前还可能取消").isEqualTo("WAIT_FULFILL");
 
-        assertThat(service.onCallback(task, "GOOD", "10|ZT001|510")).isTrue();
+        assertThat(service.onCallback(task, "GOOD", "10|ZT0001|510")).isTrue();
         assertThat(subStatus()).isEqualTo("FULFILLING");
         Map<String, Object> sub = jdbc.queryForMap(
                 "select express_no, express_company from ord_sub_order where sub_order_no=?", SUB);
-        assertThat(sub.get("express_no")).isEqualTo("ZT001");
+        assertThat(sub.get("express_no")).isEqualTo("ZT0001");
         assertThat(sub.get("express_company")).as("存微信码，与手填发货同一口径").isEqualTo("ZTO");
         assertThat(debt()).isEqualTo(510L);
 
         // 重复推送同一个数：不多记
-        service.onCallback(task, "GOOD", "10|ZT001|510");
+        service.onCallback(task, "GOOD", "10|ZT0001|510");
         assertThat(debt()).isEqualTo(510L);
 
         // 改重：运费涨到 6 元，补记差额 90 分
-        service.onCallback(task, "GOOD", "155|ZT001|600");
+        service.onCallback(task, "GOOD", "155|ZT0001|600");
         assertThat(debt()).isEqualTo(600L);
         assertThat(jdbc.queryForObject("select count(*) from mch_debt_txn where entity_no=? and source_type='EXPRESS'",
                 Integer.class, ENTITY)).isEqualTo(2);

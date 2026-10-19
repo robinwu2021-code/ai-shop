@@ -8,6 +8,7 @@ import ai.neargo.shop.fulfillment.dto.SortingRowVO;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.mapper.MerchantMappers.MchEntityMapper;
 import ai.neargo.shop.support.TestLogin;
+import ai.neargo.shop.support.CashReceiptFixture;
 import ai.neargo.shop.trade.entity.OrdStatusLog;
 import ai.neargo.shop.trade.entity.OrdSubOrder;
 import ai.neargo.shop.trade.order.mapper.OrderStatusLogMapper;
@@ -65,7 +66,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class OpsFulfillmentFlowTest {
 
-    private static final String STUB_SECRET = "stub-secret";
     private static final String PICKUP = "PP0001";
 
     @Autowired
@@ -429,9 +429,7 @@ class OpsFulfillmentFlowTest {
                 .andReturn().getResponse().getContentAsString();
         String payOrderNo = json.readTree(body).get("data").get("payOrderNo").asString();
 
-        mvc().perform(post("/pay/callback/stub").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"outTradeNo\":\"" + payOrderNo + "\",\"transactionId\":\"TX-ful-" + phone
-                        + "\",\"sign\":\"" + STUB_SECRET + "\"}"));
+        new CashReceiptFixture(context).pay(buyer, payOrderNo);
 
         // 子订单号从订单列表取（订单视角的 orderNo 就是子单号），核销码支付成功后才有
         String list = mvc().perform(get("/mp/order").header("Authorization", "Bearer " + buyer))

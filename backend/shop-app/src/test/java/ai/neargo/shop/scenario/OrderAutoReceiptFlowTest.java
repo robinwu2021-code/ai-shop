@@ -103,10 +103,15 @@ class OrderAutoReceiptFlowTest {
         long at = System.currentTimeMillis() - (long) daysAgo * 86_400_000L;
         jdbc.update("update ord_shipment set status = 'DELIVERED', signed_at = ? where sub_order_no = ? "
                 + "and status <> 'VOIDED'", at, subOrderNo);
-        jdbc.update("insert into lgs_waybill (shipment_no, biz_ref, carrier, waybill_no, status,"
-                        + " signed_at, tenant_no, created_at, updated_at)"
-                        + " values (?, ?, 'SF', ?, 'DELIVERED', ?, 'MAIN', now(), now())",
-                "SH-" + subOrderNo, subOrderNo, waybillNo, at);
+        int updated = jdbc.update("update lgs_waybill set carrier='SF', waybill_no=?, status='DELIVERED',"
+                        + " signed_at=?, updated_at=now() where biz_ref=?",
+                waybillNo, at, subOrderNo);
+        assertThat(updated).as("发货登记时已创建唯一运单，应更新原记录").isEqualTo(1);
+        String shipmentNo = jdbc.queryForObject(
+                "select shipment_no from lgs_waybill where biz_ref=?", String.class, subOrderNo);
+        jdbc.update("insert into lgs_waybill_node(shipment_no,at,text,status_code,channel,mode,tenant_no,created_at)"
+                        + " values(?,?,'已签收','301','stub','PUSH','MAIN',now())",
+                shipmentNo, at);
     }
 
     @Test
@@ -114,8 +119,8 @@ class OrderAutoReceiptFlowTest {
     void signedLongAgoIsAutoConfirmed() throws Exception {
         Ctx c = prepare("12600181007", "签收确认测试店", "12600181008", "EXPRESS");
         ship(c, "SF-SIGNED-1");
-        // 发货才 3 天（按发货判据远没到期），但已签收 10 天
-        backdateShipped(c.subOrderNo, 3);
+        // 发货 12 天（按发货判据未到期），且在发货后签收 10 天
+        backdateShipped(c.subOrderNo, 12);
         backdateSigned(c.subOrderNo, "SF-SIGNED-1", 10);
 
         job(15, 7).confirm();
