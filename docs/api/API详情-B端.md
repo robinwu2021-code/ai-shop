@@ -286,12 +286,23 @@
 | `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
 | `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `returnItems` | `object`（见下）\[\] | 否 | 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 |
+| `returnInventoryStatus` | `PENDING` \| `COMPLETED` \| `FAILED` \| `PLATFORM_UPDATED` \| `NOT_TRACKED` \| `null` | 否 | 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
 | `createdAt` | `number` | 否 | 申请时间 |
 | `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
 | `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
 | `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`returnItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `skuNo` | `string,null` | 否 | — |
+| `title` | `string` | 是 | — |
+| `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
@@ -336,12 +347,23 @@
 | `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
 | `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `returnItems` | `object`（见下）\[\] | 否 | 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 |
+| `returnInventoryStatus` | `PENDING` \| `COMPLETED` \| `FAILED` \| `PLATFORM_UPDATED` \| `NOT_TRACKED` \| `null` | 否 | 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
 | `createdAt` | `number` | 否 | 申请时间 |
 | `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
 | `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
 | `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`returnItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `skuNo` | `string,null` | 否 | — |
+| `title` | `string` | 是 | — |
+| `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
@@ -366,7 +388,16 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `restockApproved` | `boolean` | 是 | 商家明确确认可再次销售；默认 false。 |
+| `receiptNo` | `string` | 是 | 本次退货验收号，重试必须复用。 |
+| `lines` | `object`（见下）\[\] | 是 | 实际收到件数和质检结论，未收到的件数不要提交。 |
+
+`lines[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `receivedQty` | `number` | 是 | — |
+| `quality` | `SALEABLE` \| `UNSALEABLE` | 是 | — |
 
 **出参**（`data`）
 
@@ -392,12 +423,23 @@
 | `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
 | `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `returnItems` | `object`（见下）\[\] | 否 | 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 |
+| `returnInventoryStatus` | `PENDING` \| `COMPLETED` \| `FAILED` \| `PLATFORM_UPDATED` \| `NOT_TRACKED` \| `null` | 否 | 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
 | `createdAt` | `number` | 否 | 申请时间 |
 | `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
 | `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
 | `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`returnItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `skuNo` | `string,null` | 否 | — |
+| `title` | `string` | 是 | — |
+| `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
@@ -448,12 +490,23 @@
 | `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
 | `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `returnItems` | `object`（见下）\[\] | 否 | 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 |
+| `returnInventoryStatus` | `PENDING` \| `COMPLETED` \| `FAILED` \| `PLATFORM_UPDATED` \| `NOT_TRACKED` \| `null` | 否 | 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
 | `createdAt` | `number` | 否 | 申请时间 |
 | `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
 | `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
 | `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`returnItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `skuNo` | `string,null` | 否 | — |
+| `title` | `string` | 是 | — |
+| `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
@@ -498,12 +551,23 @@
 | `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
 | `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `returnItems` | `object`（见下）\[\] | 否 | 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 |
+| `returnInventoryStatus` | `PENDING` \| `COMPLETED` \| `FAILED` \| `PLATFORM_UPDATED` \| `NOT_TRACKED` \| `null` | 否 | 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
 | `createdAt` | `number` | 否 | 申请时间 |
 | `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
 | `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
 | `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`returnItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `skuNo` | `string,null` | 否 | — |
+| `title` | `string` | 是 | — |
+| `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
@@ -3002,6 +3066,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `skuNo` | `string,null` | 否 | Optional platform mapping; never substitute itemId. |
 | `itemId` | `string` | 是 | 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 |
 | `name` | `string` | 是 | 货品名 |
 | `specText` | `string` | 否 | 规格描述（「10斤装」）。人读的，不参与匹配 |
@@ -3040,6 +3105,7 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `skuNo` | `string,null` | 否 | Optional platform mapping; never substitute itemId. |
 | `itemId` | `string` | 是 | 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 |
 | `name` | `string` | 是 | 货品名 |
 | `specText` | `string` | 否 | 规格描述（「10斤装」）。人读的，不参与匹配 |
@@ -3458,14 +3524,7 @@ _无字段_
 
 识别统一会员码　🔒
 
-**入参**
-
-请求体：[`MemberResolveReq`](#memberresolvereq)
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `memberCode` | `string` | 是 | 顾客出示的短期统一会员码。 |
-| `storeNo` | `string` | 是 | 当前办理业务的门店号，必须属于商家会话主体。 |
+**入参**：无
 
 **出参**（`data`）
 
@@ -4720,6 +4779,93 @@ _无字段_
 | `currentFulfillment` | `string` | 是 | 当前履约方式 |
 | `version` | `number` | 是 | 并发更新版本 |
 | `options` | [`MerchantFulfillmentOption`](#merchantfulfillmentoption)\[\] | 是 | 本门店可选的履约方式 |
+
+
+#### GET `/biz/order/{orderNo}/inventory-trace`
+
+订单库存追溯　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `orderNo` | path | `string` | 是 | 订单单号（按商家拆单后的子订单） |
+
+**出参**（`data`）
+
+类型：[`MerchantInventoryTrace`](#merchantinventorytrace)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `syncEvents` | `object`（见下）\[\] | 是 | — |
+| `reservations` | `object`（见下）\[\] | 是 | — |
+
+`syncEvents[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `aggregateId` | `string` | 是 | — |
+| `eventType` | `string` | 是 | — |
+| `source` | `string` | 是 | — |
+| `status` | `COMPLETED` \| `PENDING` \| `FAILED` \| `WARNING` \| `SKIPPED` \| `ARCHIVED` | 是 | — |
+| `outboxMode` | `UNIFIED` \| `LEGACY` | 是 | — |
+
+`reservations[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reservationId` | `string` | 是 | — |
+| `ownerId` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `lifecycleVersion` | `number,null` | 是 | — |
+| `outboundNo` | `string,null` | 是 | — |
+| `createdAt` | `string,null` | 是 | — |
+| `lines` | `object`（见下）\[\] | 是 | — |
+
+`reservations[].lines[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `lineNo` | `number` | 是 | — |
+| `fulfillmentRef` | `string,null` | 是 | — |
+| `itemId` | `string` | 是 | — |
+| `locationId` | `string` | 是 | — |
+| `reservedQty` | `number` | 是 | — |
+| `issuedQty` | `number` | 是 | — |
+| `releasedQty` | `number` | 是 | — |
+| `outboundNo` | `string,null` | 是 | — |
+| `issuedAt` | `string,null` | 是 | — |
+| `updatedBy` | `string,null` | 是 | — |
+| `issueLedger` | `object`（见下）\[\] | 是 | — |
+| `returns` | `object`（见下）\[\] | 是 | — |
+
+`reservations[].lines[].issueLedger[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `docNo` | `string` | 是 | — |
+| `reasonCode` | `string` | 是 | — |
+| `qtyDelta` | `number` | 是 | — |
+| `balanceBefore` | `number` | 是 | — |
+| `balanceAfter` | `number` | 是 | — |
+| `operator` | `string,null` | 是 | — |
+| `createdBy` | `string,null` | 是 | — |
+| `occurredAt` | `string` | 是 | — |
+
+`reservations[].lines[].returns[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `receiptNo` | `string` | 是 | — |
+| `afterSaleNo` | `string` | 是 | — |
+| `qty` | `number` | 是 | — |
+| `quality` | `string` | 是 | — |
+| `locationId` | `string` | 是 | — |
+| `inboundNo` | `string` | 是 | — |
+| `createdBy` | `string,null` | 是 | — |
+| `createdAt` | `string` | 是 | — |
 
 
 #### GET `/biz/order/{orderNo}/logistics-updates`
@@ -7350,6 +7496,96 @@ _无字段_
 类型：[`StockAlignRow`](#stockalignrow)\[\]
 
 
+#### GET `/biz/store/{storeNo}/stock-alignment/batch/{batchNo}`
+
+查询期初对齐批次结果　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `batchNo` | path | `string` | 是 | 到货批次号 |
+
+**出参**（`data`）
+
+类型：[`StockAlignmentBatch`](#stockalignmentbatch)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `batchNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `mode` | [`StockAlignMode`](#stockalignmode) | 是 | — |
+| `snapshotVersion` | `string` | 是 | — |
+| `expiresAt` | `number,null` | 是 | — |
+| `status` | `PREVIEW` \| `PROCESSING` \| `PARTIAL` \| `BLOCKED` \| `COMPLETED` \| `STALE` \| `EXPIRED` | 是 | — |
+| `completed` | `number` | 是 | — |
+| `blocked` | `number` | 是 | — |
+| `waiting` | `number` | 是 | — |
+| `rows` | `object`（见下）\[\] | 是 | — |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `spec` | `string,null` | 是 | — |
+| `beforeQty` | `number,null` | 是 | — |
+| `reserved` | `number,null` | 是 | — |
+| `mallStock` | `number` | 是 | — |
+| `mallLocked` | `number` | 是 | — |
+| `afterQty` | `number,null` | 是 | — |
+| `status` | `string` | 是 | — |
+| `operationNo` | `string` | 是 | — |
+| `errorCode` | `string,null` | 是 | — |
+
+
+#### POST `/biz/store/{storeNo}/stock-alignment/batch/{batchNo}/confirm`
+
+确认期初对齐批次　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+| `batchNo` | path | `string` | 是 | 到货批次号 |
+
+**出参**（`data`）
+
+类型：[`StockAlignmentBatch`](#stockalignmentbatch)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `batchNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `mode` | [`StockAlignMode`](#stockalignmode) | 是 | — |
+| `snapshotVersion` | `string` | 是 | — |
+| `expiresAt` | `number,null` | 是 | — |
+| `status` | `PREVIEW` \| `PROCESSING` \| `PARTIAL` \| `BLOCKED` \| `COMPLETED` \| `STALE` \| `EXPIRED` | 是 | — |
+| `completed` | `number` | 是 | — |
+| `blocked` | `number` | 是 | — |
+| `waiting` | `number` | 是 | — |
+| `rows` | `object`（见下）\[\] | 是 | — |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `spec` | `string,null` | 是 | — |
+| `beforeQty` | `number,null` | 是 | — |
+| `reserved` | `number,null` | 是 | — |
+| `mallStock` | `number` | 是 | — |
+| `mallLocked` | `number` | 是 | — |
+| `afterQty` | `number,null` | 是 | — |
+| `status` | `string` | 是 | — |
+| `operationNo` | `string` | 是 | — |
+| `errorCode` | `string,null` | 是 | — |
+
+
 #### POST `/biz/store/{storeNo}/stock-alignment/confirm`
 
 确认期初对齐（以商城为准 / 已实地盘点）　🔒
@@ -7363,6 +7599,124 @@ _无字段_
 **出参**（`data`）
 
 类型：[`{ adjusted: number }`](#adjustednumber)
+
+
+#### POST `/biz/store/{storeNo}/stock-alignment/preview`
+
+预览期初对齐批次　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StockAlignmentBatch`](#stockalignmentbatch)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `batchNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `mode` | [`StockAlignMode`](#stockalignmode) | 是 | — |
+| `snapshotVersion` | `string` | 是 | — |
+| `expiresAt` | `number,null` | 是 | — |
+| `status` | `PREVIEW` \| `PROCESSING` \| `PARTIAL` \| `BLOCKED` \| `COMPLETED` \| `STALE` \| `EXPIRED` | 是 | — |
+| `completed` | `number` | 是 | — |
+| `blocked` | `number` | 是 | — |
+| `waiting` | `number` | 是 | — |
+| `rows` | `object`（见下）\[\] | 是 | — |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `spec` | `string,null` | 是 | — |
+| `beforeQty` | `number,null` | 是 | — |
+| `reserved` | `number,null` | 是 | — |
+| `mallStock` | `number` | 是 | — |
+| `mallLocked` | `number` | 是 | — |
+| `afterQty` | `number,null` | 是 | — |
+| `status` | `string` | 是 | — |
+| `operationNo` | `string` | 是 | — |
+| `errorCode` | `string,null` | 是 | — |
+
+
+#### GET `/biz/store/{storeNo}/stock-overview`
+
+库存与线上可售总览　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StockOverview`](#stockoverview)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `skuNo` | `string` | 是 | — |
+| `unit` | `string,null` | 是 | — |
+| `inventoryState` | `UNMANAGED` \| `INITIALIZING` \| `MAPPED` | 是 | — |
+| `accountingMode` | `PAYMENT_DEDUCT` \| `HANDOFF_DEDUCT` | 是 | — |
+| `onHand` | `number,null` | 是 | — |
+| `reserved` | `number,null` | 是 | — |
+| `available` | `number,null` | 是 | — |
+| `safetyStock` | `number,null` | 是 | — |
+| `supplyAvailable` | `number,null` | 是 | — |
+| `onlineSellable` | `number` | 是 | — |
+| `onlineLocked` | `number` | 是 | — |
+| `salesStockMode` | `string` | 是 | — |
+| `ruleSource` | `object`（见下） | 是 | — |
+| `syncEnabled` | `boolean` | 是 | — |
+| `syncHealth` | `string` | 是 | — |
+| `asOf` | `number` | 是 | — |
+
+`ruleSource` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scopeType` | `string` | 是 | — |
+| `scopeRef` | `string` | 是 | — |
+| `ruleType` | `string` | 是 | — |
+| `param` | `number` | 是 | — |
+
+
+#### POST `/biz/store/{storeNo}/stock-overview/batch`
+
+批量库存与线上可售总览　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StockOverview`](#stockoverview)\[\]
+
+
+#### GET `/biz/store/{storeNo}/stock-reconcile/records`
+
+库存同步操作记录　🔒
+
+**入参**
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|---|---|---|:---:|---|
+| `storeNo` | path | `string` | 是 | — |
+
+**出参**（`data`）
+
+类型：[`StockSyncOperationRecord`](#stocksyncoperationrecord)\[\]
 
 
 #### GET `/biz/store/{storeNo}/stock-sync`
@@ -7827,12 +8181,23 @@ _无字段_
 | `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
 | `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `returnItems` | `object`（见下）\[\] | 否 | 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 |
+| `returnInventoryStatus` | `PENDING` \| `COMPLETED` \| `FAILED` \| `PLATFORM_UPDATED` \| `NOT_TRACKED` \| `null` | 否 | 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
 | `createdAt` | `number` | 否 | 申请时间 |
 | `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
 | `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
 | `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`returnItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `skuNo` | `string,null` | 否 | — |
+| `title` | `string` | 是 | — |
+| `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
@@ -9187,15 +9552,6 @@ _无字段_
 | `referencedActivities` | `number` | 是 | 引用了这个标签的活动数。**合并前要看** —— 合并不可逆，而活动的受众条件会跟着变 |
 | `applied` | `boolean` | 是 | false = 这只是试算，没有落库 |
 
-### MemberResolveReq
-
-身份/主体由会话解析，端上只提交扫描凭证和门店。
-
-| 字段 | 类型 | 必填 | 说明 |
-|---|---|:---:|---|
-| `memberCode` | `string` | 是 | 顾客出示的短期统一会员码。 |
-| `storeNo` | `string` | 是 | 当前办理业务的门店号，必须属于商家会话主体。 |
-
 ### MemberSegment
 
 人群：一组筛选条件，可命名保存、反复用。
@@ -9452,6 +9808,82 @@ _无字段_
 | `currentFulfillment` | `string` | 是 | 当前履约方式 |
 | `version` | `number` | 是 | 并发更新版本 |
 | `options` | [`MerchantFulfillmentOption`](#merchantfulfillmentoption)\[\] | 是 | 本门店可选的履约方式 |
+
+### MerchantInventoryTrace
+
+订单库存追溯：当前状态、事件投递和实物出入账事实。
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `syncEvents` | `object`（见下）\[\] | 是 | — |
+| `reservations` | `object`（见下）\[\] | 是 | — |
+
+`syncEvents[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `aggregateId` | `string` | 是 | — |
+| `eventType` | `string` | 是 | — |
+| `source` | `string` | 是 | — |
+| `status` | `COMPLETED` \| `PENDING` \| `FAILED` \| `WARNING` \| `SKIPPED` \| `ARCHIVED` | 是 | — |
+| `outboxMode` | `UNIFIED` \| `LEGACY` | 是 | — |
+
+`reservations[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reservationId` | `string` | 是 | — |
+| `ownerId` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `lifecycleVersion` | `number,null` | 是 | — |
+| `outboundNo` | `string,null` | 是 | — |
+| `createdAt` | `string,null` | 是 | — |
+| `lines` | `object`（见下）\[\] | 是 | — |
+
+`reservations[].lines[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `lineNo` | `number` | 是 | — |
+| `fulfillmentRef` | `string,null` | 是 | — |
+| `itemId` | `string` | 是 | — |
+| `locationId` | `string` | 是 | — |
+| `reservedQty` | `number` | 是 | — |
+| `issuedQty` | `number` | 是 | — |
+| `releasedQty` | `number` | 是 | — |
+| `outboundNo` | `string,null` | 是 | — |
+| `issuedAt` | `string,null` | 是 | — |
+| `updatedBy` | `string,null` | 是 | — |
+| `issueLedger` | `object`（见下）\[\] | 是 | — |
+| `returns` | `object`（见下）\[\] | 是 | — |
+
+`reservations[].lines[].issueLedger[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `docNo` | `string` | 是 | — |
+| `reasonCode` | `string` | 是 | — |
+| `qtyDelta` | `number` | 是 | — |
+| `balanceBefore` | `number` | 是 | — |
+| `balanceAfter` | `number` | 是 | — |
+| `operator` | `string,null` | 是 | — |
+| `createdBy` | `string,null` | 是 | — |
+| `occurredAt` | `string` | 是 | — |
+
+`reservations[].lines[].returns[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `receiptNo` | `string` | 是 | — |
+| `afterSaleNo` | `string` | 是 | — |
+| `qty` | `number` | 是 | — |
+| `quality` | `string` | 是 | — |
+| `locationId` | `string` | 是 | — |
+| `inboundNo` | `string` | 是 | — |
+| `createdBy` | `string,null` | 是 | — |
+| `createdAt` | `string` | 是 | — |
 
 ### MerchantLoginReqBody
 
@@ -10399,7 +10831,16 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `restockApproved` | `boolean` | 是 | 商家明确确认可再次销售；默认 false。 |
+| `receiptNo` | `string` | 是 | 本次退货验收号，重试必须复用。 |
+| `lines` | `object`（见下）\[\] | 是 | 实际收到件数和质检结论，未收到的件数不要提交。 |
+
+`lines[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `receivedQty` | `number` | 是 | — |
+| `quality` | `SALEABLE` \| `UNSALEABLE` | 是 | — |
 
 ### RecipientSalutation
 
@@ -10435,6 +10876,10 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `closureVersion` | `number,null` | 否 | Persisted protocol version; absent means legacy recovery semantics. |
+| `closureStatus` | `LEGACY` \| `PENDING` \| `DONE` \| `null` | 否 | — |
+| `cashStatus` | `string,null` | 否 | — |
+| `benefitsStatus` | `PENDING` \| `SETTLED` \| `null` | 否 | — |
 | `executionNo` | `string` | 是 | 原退款执行号；恢复仍使用同一执行。 |
 | `paymentNo` | `string,null` | 否 | 资金流水号，尚未准备时可空。 |
 | `status` | `string` | 是 | 执行状态，以后端实际确认结果为准。 |
@@ -11272,6 +11717,37 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `diff` | `number,null` | 是 | 实存 − 商城库存；为 null 表示比不了 |
 | `note` | [`StockAlignNote`](#stockalignnote) \| `null` | 是 | 为什么这一行不参与对齐；正常为 null |
 
+### StockAlignmentBatch
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `batchNo` | `string` | 是 | — |
+| `storeNo` | `string` | 是 | — |
+| `mode` | [`StockAlignMode`](#stockalignmode) | 是 | — |
+| `snapshotVersion` | `string` | 是 | — |
+| `expiresAt` | `number,null` | 是 | — |
+| `status` | `PREVIEW` \| `PROCESSING` \| `PARTIAL` \| `BLOCKED` \| `COMPLETED` \| `STALE` \| `EXPIRED` | 是 | — |
+| `completed` | `number` | 是 | — |
+| `blocked` | `number` | 是 | — |
+| `waiting` | `number` | 是 | — |
+| `rows` | `object`（见下）\[\] | 是 | — |
+
+`rows[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `skuNo` | `string` | 是 | — |
+| `title` | `string` | 是 | — |
+| `spec` | `string,null` | 是 | — |
+| `beforeQty` | `number,null` | 是 | — |
+| `reserved` | `number,null` | 是 | — |
+| `mallStock` | `number` | 是 | — |
+| `mallLocked` | `number` | 是 | — |
+| `afterQty` | `number,null` | 是 | — |
+| `status` | `string` | 是 | — |
+| `operationNo` | `string` | 是 | — |
+| `errorCode` | `string,null` | 是 | — |
+
 ### StockBalance
 
 一行库存（`BalanceVO`）。
@@ -11371,6 +11847,7 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `skuNo` | `string,null` | 否 | Optional platform mapping; never substitute itemId. |
 | `itemId` | `string` | 是 | 物料号。**进销存自己的编号**，与商城的 skuNo 靠 inv_item_ref 对上 —— 跨库不能外键 |
 | `name` | `string` | 是 | 货品名 |
 | `specText` | `string` | 否 | 规格描述（「10斤装」）。人读的，不参与匹配 |
@@ -11449,6 +11926,39 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `soldCostMinor` | `number` | 是 | 本月销售出库的成本合计（分）。**按每一笔当时的单位成本累加**， 不是「销量 × 当前成本价」—— 后者在进价波动时会把上个月的账算成今天的价。 **这不是毛利。** 毛利 = 收入 − 成本，而收入不在进销存域： 出库单只带成本、不带售价（同一件货不同渠道价不一样，写进来就有了第二个真源）。 要毛利得由知道收入的那一侧拿这个数去减。 |
 | `lostCostMinor` | `number` | 是 | 本月报损 + 盘亏的成本合计（分）—— 「这个月亏了多少钱」那个数 |
 
+### StockOverview
+
+Merchant stock overview; matches InventoryOverviewQuery. Null physical values mean unknown, not zero.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `storeNo` | `string` | 是 | — |
+| `skuNo` | `string` | 是 | — |
+| `unit` | `string,null` | 是 | — |
+| `inventoryState` | `UNMANAGED` \| `INITIALIZING` \| `MAPPED` | 是 | — |
+| `accountingMode` | `PAYMENT_DEDUCT` \| `HANDOFF_DEDUCT` | 是 | — |
+| `onHand` | `number,null` | 是 | — |
+| `reserved` | `number,null` | 是 | — |
+| `available` | `number,null` | 是 | — |
+| `safetyStock` | `number,null` | 是 | — |
+| `supplyAvailable` | `number,null` | 是 | — |
+| `onlineSellable` | `number` | 是 | — |
+| `onlineLocked` | `number` | 是 | — |
+| `salesStockMode` | `string` | 是 | — |
+| `ruleSource` | `object`（见下） | 是 | — |
+| `syncEnabled` | `boolean` | 是 | — |
+| `syncHealth` | `string` | 是 | — |
+| `asOf` | `number` | 是 | — |
+
+`ruleSource` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `scopeType` | `string` | 是 | — |
+| `scopeRef` | `string` | 是 | — |
+| `ruleType` | `string` | 是 | — |
+| `param` | `number` | 是 | — |
+
 ### StockRank
 
 榜单一行（`RankVO`）。
@@ -11472,6 +11982,17 @@ SKU 草稿。`optionValues` 的顺序与 `specGroups` 一一对应 —— 这是
 | `staleCount` | `number` | 是 | 滞销件数（长期未动销） |
 | `inTransitCount` | `number` | 是 | 待收货的调拨单数。**按单不按件** —— 收货是按单做的，给件数点不进任何一张单 |
 | `openCountNo` | `string,null` | 否 | 还开着的那张盘点单的单号，没有就没有这个字段。 **给单号不给个数**：工作台的「继续盘点」要带着它跳， 不带的话那一页会开一张**新的**盘点单，而按钮上写着「继续」。 |
+
+### StockSyncOperationRecord
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `operationNo` | `string` | 是 | — |
+| `skuNo` | `string` | 是 | — |
+| `reason` | `string` | 是 | — |
+| `status` | `PROCESSING` \| `WAITING` \| `FAILED` \| `BLOCKED` \| `COMPLETED` | 是 | — |
+| `result` | `object`（见下） \| `null` | 是 | — |
+| `updatedAt` | `string` | 是 | — |
 
 ### StockSyncState
 

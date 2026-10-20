@@ -8,13 +8,13 @@
 
 对照：[响应格式规范](响应格式规范.md) ｜ [三端与后端对照](三端与后端对照.md) ｜ [后端验收清单](后端验收清单.md) ｜ [项目词典](../requirements/项目词典.md)
 
-**合计 902 个接口**：后端已实现 818（91%）· 前端在调 825
+**合计 912 个接口**：后端已实现 827（91%）· 前端在调 834
 
 ---
 
 ## C 端 `/mp/**` · c-app（消费者）
 
-共 **122** 个接口 ｜ 后端已实现 **121**（99%）｜ 前端在调 **122**
+共 **123** 个接口 ｜ 后端已实现 **122**（99%）｜ 前端在调 **123**
 
 ### after-sale（5）
 
@@ -128,6 +128,12 @@
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/mp/location/resolve` | 一个坐标解析出「我在哪」与归属链 | — | `LocationContext` | — | ✅ | ✅ |
+
+### member-code（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/mp/member-code` | 签发本人统一会员码 | — | `MemberCodeView` | 🔒 | ✅ | ✅ |
 
 ### member-reach（1）
 
@@ -285,7 +291,7 @@
 
 ## B 端 `/biz/**` · b-app（商家）
 
-共 **316** 个接口 ｜ 后端已实现 **299**（95%）｜ 前端在调 **316**
+共 **324** 个接口 ｜ 后端已实现 **306**（94%）｜ 前端在调 **324**
 
 ### activities（4）
 
@@ -552,6 +558,12 @@
 |---|---|---|---|---|:---:|:---:|:---:|
 | GET | `/biz/marketing/summary` | 营销入口一屏的数字 | — | `MarketingSummary` | 🔒 | ✅ | ✅ |
 
+### member-code（1）
+
+| 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
+|---|---|---|---|---|:---:|:---:|:---:|
+| POST | `/biz/member-code/resolve` | 识别统一会员码 | — | `CustomerReference` | 🔒 | ✅ | ✅ |
+
 ### member-reach（4）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
@@ -647,7 +659,7 @@
 | PUT | `/biz/notify/wecom` | 录入本店的企业微信群机器人地址 | — | `NotifySetting` | 🔒 | ✅ | ✅ |
 | POST | `/biz/notify/wecom/test` | 往本店的企微群发一条测试 | — | `boolean` | 🔒 | ✅ | ✅ |
 
-### order（17）
+### order（18）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -661,6 +673,7 @@
 | GET | `/biz/order/{orderNo}/express/quotes` | 快递报价 | — | `数组` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/fulfillment-change` | 配送方式切换 | — | `MerchantFulfillmentChange` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/{orderNo}/fulfillment-options` | 配送方式切换资格 | — | `MerchantFulfillmentOptions` | 🔒 | ⬜ | ✅ |
+| GET | `/biz/order/{orderNo}/inventory-trace` | 订单库存追溯 | — | `MerchantInventoryTrace` | 🔒 | ⬜ | ✅ |
 | GET | `/biz/order/{orderNo}/logistics-updates` | 物流更新记录 | — | `数组` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/prepare` | 开始备货 | — | `Order` | 🔒 | ⬜ | ✅ |
 | POST | `/biz/order/{orderNo}/ship` | 快递发货 | `ShipReq` | `Order` | 🔒 | ⬜ | ✅ |
@@ -879,7 +892,7 @@
 | POST | `/biz/staff/{mchAccountNo}/store` | 授权到店 | `GrantStoreReq` | `MerchantStaff` | 🔒 | ✅ | ✅ |
 | GET | `/biz/staff/logs` | 员工与授权变更记录 | — | `数组` | 🔒 | ✅ | ✅ |
 
-### store（31）
+### store（37）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -903,7 +916,13 @@
 | POST | `/biz/store/{storeNo}/slug` | 设门店代码（对外链接那一段） | `SetStoreSlugReq` | `Store` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/status` | 停用/启用门店 | `SetActiveReq` | `Store` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/{storeNo}/stock-alignment` | 期初对齐清单：实存与商城库存逐件对照 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/store/{storeNo}/stock-alignment/batch/{batchNo}` | 查询期初对齐批次结果 | — | `StockAlignmentBatch` | 🔒 | ✅ | ✅ |
+| POST | `/biz/store/{storeNo}/stock-alignment/batch/{batchNo}/confirm` | 确认期初对齐批次 | — | `StockAlignmentBatch` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/{storeNo}/stock-alignment/confirm` | 确认期初对齐（以商城为准 / 已实地盘点） | — | — | 🔒 | ✅ | ✅ |
+| POST | `/biz/store/{storeNo}/stock-alignment/preview` | 预览期初对齐批次 | — | `StockAlignmentBatch` | 🔒 | ✅ | ✅ |
+| GET | `/biz/store/{storeNo}/stock-overview` | 库存与线上可售总览 | — | `StockOverview` | 🔒 | ✅ | ✅ |
+| POST | `/biz/store/{storeNo}/stock-overview/batch` | 批量库存与线上可售总览 | — | `数组` | 🔒 | ✅ | ✅ |
+| GET | `/biz/store/{storeNo}/stock-reconcile/records` | 库存同步操作记录 | — | `数组` | 🔒 | ✅ | ✅ |
 | GET | `/biz/store/{storeNo}/stock-sync` | 本店库存同步状态 | — | `StockSyncState` | 🔒 | ✅ | ✅ |
 | PUT | `/biz/store/{storeNo}/stock-sync` | 开 / 关本店库存同步（要先期初对齐） | — | `StockSyncState` | 🔒 | ✅ | ✅ |
 | POST | `/biz/store/announcement` | 只改公告（含有效期，可同时发到别的门店） | — | `StoreProfile` | 🔒 | ✅ | ✅ |
@@ -940,7 +959,7 @@
 
 ## 平台端 `/ops/**` · ops-web（运营）
 
-共 **464** 个接口 ｜ 后端已实现 **398**（86%）｜ 前端在调 **387**
+共 **465** 个接口 ｜ 后端已实现 **399**（86%）｜ 前端在调 **387**
 
 ### aftersale（5）
 
@@ -1189,7 +1208,7 @@
 | POST | `/ops/staffs/{no}/roles` | 改角色（**多角色**） | — | `Staff` | — | ⬜ | ⬜ |
 | POST | `/ops/staffs/{no}/scope` | 数据域授权（P-1.1.3） | — | `Staff` | — | ⬜ | ⬜ |
 
-### inventory（13）
+### inventory（14）
 
 | 方法 | 路径 | 说明 | 入参 | 出参 | 鉴权 | 后端 | 前端 |
 |---|---|---|---|---|:---:|:---:|:---:|
@@ -1201,6 +1220,7 @@
 | GET | `/ops/inventory/ledger` | 商家台账（只读） | — | `InvLedgerPage` | — | ✅ | ⬜ |
 | GET | `/ops/inventory/link-health` | 投影链路健康度（M3） | — | `数组` | — | ✅ | ⬜ |
 | GET | `/ops/inventory/merchant-digest` | 单商家进销存概况（M5） | — | `object` | — | ✅ | ⬜ |
+| GET | `/ops/inventory/order-trace` | Whole reservation → issue → return chain for a parent order. */ | — | `InvOrderTrace` | — | ✅ | ⬜ |
 | GET | `/ops/inventory/policy` | 进销存平台规则（M7） | — | `InvPolicy` | — | ✅ | ⬜ |
 | POST | `/ops/inventory/policy` | saveInvPolicy | — | `InvPolicy` | — | ✅ | ⬜ |
 | GET | `/ops/inventory/recon` | 库存对差 | — | `InvReconReport` | — | ✅ | ⬜ |

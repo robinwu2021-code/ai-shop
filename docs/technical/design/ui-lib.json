@@ -257,7 +257,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 539,
+        "b-app": 556,
         "c-app": 97
       }
     },
@@ -279,7 +279,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 430,
+        "b-app": 432,
         "c-app": 85
       }
     },
@@ -317,8 +317,8 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 422,
-        "c-app": 302
+        "b-app": 437,
+        "c-app": 303
       }
     },
     {
@@ -491,7 +491,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 141,
+        "b-app": 142,
         "c-app": 58
       }
     },
@@ -535,7 +535,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 127,
+        "b-app": 129,
         "c-app": 32
       }
     },
@@ -557,7 +557,7 @@
         "overflow": "hidden"
       },
       "usage": {
-        "b-app": 9,
+        "b-app": 10,
         "c-app": 18
       }
     },
@@ -635,7 +635,7 @@
         "padding": "var(--sh-pad-card, 16px)"
       },
       "usage": {
-        "b-app": 237,
+        "b-app": 241,
         "c-app": 94
       }
     },
@@ -903,7 +903,7 @@
         "color": "var(--sh-sub)"
       },
       "usage": {
-        "b-app": 73,
+        "b-app": 72,
         "c-app": 7
       }
     },
@@ -921,7 +921,7 @@
         "font-size": "13px"
       },
       "usage": {
-        "b-app": 55,
+        "b-app": 53,
         "c-app": 17
       }
     },
@@ -939,7 +939,7 @@
         "color": "var(--sh-primary-text)"
       },
       "usage": {
-        "b-app": 39,
+        "b-app": 40,
         "c-app": 12
       }
     },
@@ -1035,7 +1035,7 @@
         "line-height": "1.5"
       },
       "usage": {
-        "b-app": 113,
+        "b-app": 119,
         "c-app": 20
       }
     },
@@ -1095,7 +1095,7 @@
         "unicode-bidi": "isolate"
       },
       "usage": {
-        "b-app": 341,
+        "b-app": 343,
         "c-app": 152
       }
     },
@@ -1457,7 +1457,7 @@
         "gap": "8px"
       },
       "usage": {
-        "b-app": 586,
+        "b-app": 594,
         "c-app": 212
       }
     },
@@ -1473,7 +1473,7 @@
         "align-items": "baseline"
       },
       "usage": {
-        "b-app": 36,
+        "b-app": 34,
         "c-app": 11
       }
     },
@@ -1489,7 +1489,7 @@
         "justify-content": "space-between"
       },
       "usage": {
-        "b-app": 322,
+        "b-app": 329,
         "c-app": 106
       }
     },
@@ -1733,7 +1733,7 @@
         "color": "var(--sh-ink)"
       },
       "usage": {
-        "b-app": 72,
+        "b-app": 71,
         "c-app": 24
       }
     },
@@ -1831,7 +1831,7 @@
         "margin-bottom": "8px"
       },
       "usage": {
-        "b-app": 28,
+        "b-app": 30,
         "c-app": 1
       }
     },
@@ -1863,7 +1863,7 @@
         "margin-top": "8px"
       },
       "usage": {
-        "b-app": 117,
+        "b-app": 122,
         "c-app": 3
       }
     },
@@ -1879,7 +1879,7 @@
         "margin-top": "4px"
       },
       "usage": {
-        "b-app": 22,
+        "b-app": 24,
         "c-app": 0
       }
     }
@@ -2143,7 +2143,7 @@
         "failedText?: string"
       ],
       "usage": {
-        "b-app": 61,
+        "b-app": 62,
         "c-app": 39,
         "lib": 1
       },
@@ -2225,7 +2225,7 @@
         "quiet?: boolean"
       ],
       "usage": {
-        "b-app": 27,
+        "b-app": 28,
         "c-app": 4,
         "lib": 0
       },
@@ -2338,7 +2338,7 @@
         "divided?: boolean"
       ],
       "usage": {
-        "b-app": 53,
+        "b-app": 59,
         "c-app": 0,
         "lib": 0
       },
@@ -2371,7 +2371,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 7,
+        "b-app": 8,
         "c-app": 1,
         "lib": 0
       },
@@ -2562,7 +2562,7 @@
         "immersive?: boolean"
       ],
       "usage": {
-        "b-app": 89,
+        "b-app": 90,
         "c-app": 41,
         "lib": 1
       },
@@ -2609,7 +2609,7 @@
         "pad?: boolean"
       ],
       "usage": {
-        "b-app": 22,
+        "b-app": 23,
         "c-app": 0,
         "lib": 0
       },
@@ -2731,7 +2731,7 @@
         "disabled?: boolean"
       ],
       "usage": {
-        "b-app": 0,
+        "b-app": 1,
         "c-app": 4,
         "lib": 0
       },
@@ -3640,11 +3640,12 @@
       "components": [
         "sh-empty",
         "sh-option",
-        "sh-scaffold"
+        "sh-scaffold",
+        "sh-stepper"
       ],
-      "libClassHits": 97,
+      "libClassHits": 89,
       "localSelectors": 19,
-      "localCssLines": 67,
+      "localCssLines": 59,
       "rolled": []
     },
     {
@@ -4301,7 +4302,7 @@
         "sh-sheet",
         "sh-trace"
       ],
-      "libClassHits": 192,
+      "libClassHits": 218,
       "localSelectors": 20,
       "localCssLines": 80,
       "rolled": []
@@ -4728,7 +4729,7 @@
         "sh-stat",
         "sh-tabs"
       ],
-      "libClassHits": 38,
+      "libClassHits": 40,
       "localSelectors": 20,
       "localCssLines": 78,
       "rolled": []
@@ -4743,9 +4744,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 17,
-      "localSelectors": 1,
-      "localCssLines": 4,
+      "libClassHits": 35,
+      "localSelectors": 2,
+      "localCssLines": 5,
       "rolled": []
     },
     {
@@ -4759,9 +4760,9 @@
         "sh-empty",
         "sh-scaffold"
       ],
-      "libClassHits": 57,
-      "localSelectors": 8,
-      "localCssLines": 29,
+      "libClassHits": 63,
+      "localSelectors": 9,
+      "localCssLines": 32,
       "rolled": []
     },
     {
@@ -4791,10 +4792,18 @@
         "sh-section",
         "sh-stat"
       ],
-      "libClassHits": 26,
-      "localSelectors": 11,
-      "localCssLines": 42,
-      "rolled": []
+      "libClassHits": 33,
+      "localSelectors": 14,
+      "localCssLines": 62,
+      "rolled": [
+        {
+          "id": "fill",
+          "label": "占满剩余自写",
+          "lib": ".sh-fill",
+          "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
+          "gap": false
+        }
+      ]
     },
     {
       "app": "b-app",
@@ -4860,9 +4869,23 @@
         "sh-section",
         "sh-switch"
       ],
-      "libClassHits": 38,
+      "libClassHits": 41,
       "localSelectors": 3,
       "localCssLines": 14,
+      "rolled": []
+    },
+    {
+      "app": "b-app",
+      "page": "stock-sync-records",
+      "key": "b-app/stock-sync-records",
+      "file": "b-app/src/pages/stock-sync-records/index.vue",
+      "components": [
+        "sh-empty",
+        "sh-scaffold"
+      ],
+      "libClassHits": 15,
+      "localSelectors": 2,
+      "localCssLines": 2,
       "rolled": []
     },
     {
@@ -5106,7 +5129,7 @@
         "sh-scaffold",
         "sh-uploader"
       ],
-      "libClassHits": 28,
+      "libClassHits": 29,
       "localSelectors": 17,
       "localCssLines": 76,
       "rolled": [
@@ -6165,6 +6188,16 @@
       ]
     },
     {
+      "id": "fill",
+      "label": "占满剩余自写",
+      "lib": ".sh-fill",
+      "gap": false,
+      "rule": "^\\s*\\.[\\w-]*\\s*\\{[^}]*flex:\\s*1;[^}]*min-width:\\s*0",
+      "pages": [
+        "b-app/stock-detail"
+      ]
+    },
+    {
       "id": "uploader",
       "label": "图片上传格",
       "lib": "sh-uploader",
@@ -6179,7 +6212,7 @@
     "tokens": 16,
     "blocks": 82,
     "components": 41,
-    "pages": 163,
+    "pages": 164,
     "gapKinds": 3
   }
 }

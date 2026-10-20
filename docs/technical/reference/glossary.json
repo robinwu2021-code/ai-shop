@@ -550,6 +550,18 @@
           "ar": "طلب تدخل المنصة"
         },
         {
+          "key": "afterSale.execution.benefitsDone",
+          "zh-CN": "退款及相关权益已处理完成",
+          "en": "Refund and related benefits completed",
+          "ar": "اكتملت معالجة الاسترداد والمزايا المرتبطة"
+        },
+        {
+          "key": "afterSale.execution.benefitsPending",
+          "zh-CN": "现金已退，优惠权益处理中",
+          "en": "Cash refunded; benefits processing",
+          "ar": "تم رد المبلغ؛ المزايا قيد المعالجة"
+        },
+        {
           "key": "afterSale.execution.done",
           "zh-CN": "退款与资源恢复已完成",
           "en": "Refund and resource recovery completed",
@@ -590,6 +602,12 @@
           "zh-CN": "退款结果尚未确认，请勿重复申请",
           "en": "Refund result unconfirmed. Do not submit again.",
           "ar": "نتيجة الاسترداد غير مؤكدة. لا تقدم طلبا آخر."
+        },
+        {
+          "key": "afterSale.execution.zeroBenefitsPending",
+          "zh-CN": "无需现金退款，权益处理中",
+          "en": "No cash refund due; benefits processing",
+          "ar": "لا يوجد مبلغ نقدي للاسترداد؛ المزايا قيد المعالجة"
         },
         {
           "key": "afterSale.fillExpress",
@@ -740,6 +758,36 @@
           "zh-CN": "退货运单号",
           "en": "Return tracking no.",
           "ar": "رقم تتبع الإرجاع"
+        },
+        {
+          "key": "afterSale.returnInventory.COMPLETED",
+          "zh-CN": "退货已验收，库存更新完成",
+          "en": "Return accepted; inventory update completed",
+          "ar": "تم قبول الإرجاع وتحديث المخزون"
+        },
+        {
+          "key": "afterSale.returnInventory.FAILED",
+          "zh-CN": "退货已验收，库存更新待处理",
+          "en": "Return accepted; inventory update needs attention",
+          "ar": "تم قبول الإرجاع؛ يحتاج تحديث المخزون إلى متابعة"
+        },
+        {
+          "key": "afterSale.returnInventory.NOT_TRACKED",
+          "zh-CN": "退货已验收，库存结果未跟踪",
+          "en": "Return accepted; inventory result is not tracked",
+          "ar": "تم قبول الإرجاع؛ نتيجة المخزون غير متتبعة"
+        },
+        {
+          "key": "afterSale.returnInventory.PENDING",
+          "zh-CN": "退货已验收，库存更新处理中",
+          "en": "Return accepted; inventory update is processing",
+          "ar": "تم قبول الإرجاع؛ تحديث المخزون قيد المعالجة"
+        },
+        {
+          "key": "afterSale.returnInventory.PLATFORM_UPDATED",
+          "zh-CN": "退货已验收，库存已更新",
+          "en": "Return accepted; stock updated",
+          "ar": "تم قبول الإرجاع وتحديث المخزون"
         },
         {
           "key": "afterSale.section",
@@ -7160,18 +7208,6 @@
           "ar": "جميع طلبات ما بعد البيع"
         },
         {
-          "key": "afterSale.amountInvalid",
-          "zh-CN": "退款金额需大于 0 且不超过实付",
-          "en": "Refund amount must be >0 and not exceed the amount paid",
-          "ar": "يجب أن يكون المبلغ أكبر من 0 ولا يتجاوز المدفوع"
-        },
-        {
-          "key": "afterSale.approveAmount",
-          "zh-CN": "退款金额",
-          "en": "Refund amount",
-          "ar": "مبلغ الاسترداد"
-        },
-        {
           "key": "afterSale.buyerReason",
           "zh-CN": "顾客理由：",
           "en": "Customer's reason:",
@@ -7250,6 +7286,18 @@
           "ar": "لا يوجد ما يُعالج"
         },
         {
+          "key": "afterSale.execution.benefitsDone",
+          "zh-CN": "退款及相关权益已处理完成",
+          "en": "Refund and related benefits completed",
+          "ar": "اكتملت معالجة الاسترداد والمزايا المرتبطة"
+        },
+        {
+          "key": "afterSale.execution.benefitsPending",
+          "zh-CN": "现金已退，优惠权益处理中",
+          "en": "Cash refunded; benefits processing",
+          "ar": "تم رد المبلغ؛ المزايا قيد المعالجة"
+        },
+        {
           "key": "afterSale.execution.done",
           "zh-CN": "退款与资源恢复已完成",
           "en": "Refund and resource recovery completed",
@@ -7290,6 +7338,12 @@
           "zh-CN": "退款结果尚未确认，请勿重复申请",
           "en": "Refund result unconfirmed. Do not submit again.",
           "ar": "نتيجة الاسترداد غير مؤكدة. لا تقدم طلبا آخر."
+        },
+        {
+          "key": "afterSale.execution.zeroBenefitsPending",
+          "zh-CN": "无需现金退款，权益处理中",
+          "en": "No cash refund due; benefits processing",
+          "ar": "لا يوجد مبلغ نقدي للاسترداد؛ المزايا قيد المعالجة"
         },
         {
           "key": "afterSale.fullCash",
@@ -7364,16 +7418,40 @@
           "ar": "تم الرفض؛ بانتظار قبول العميل أو التصعيد إلى المنصة."
         },
         {
-          "key": "afterSale.restock",
-          "zh-CN": "退货可再次销售，同意回库（默认不回库）",
-          "en": "Returned goods can be resold; approve restocking (off by default)",
-          "ar": "البضاعة المرتجعة قابلة للبيع؛ الموافقة على إعادة التخزين"
-        },
-        {
           "key": "afterSale.returnExpress",
           "zh-CN": "退货运单号",
           "en": "Return tracking no.",
           "ar": "رقم تتبع الإرجاع"
+        },
+        {
+          "key": "afterSale.returnInventory.COMPLETED",
+          "zh-CN": "货物已验收并完成进销存入库",
+          "en": "Return accepted and posted to inventory",
+          "ar": "تم الاستلام وتسجيل المخزون"
+        },
+        {
+          "key": "afterSale.returnInventory.FAILED",
+          "zh-CN": "货物已验收，进销存入库待处理",
+          "en": "Return accepted; inventory posting needs attention",
+          "ar": "تم الاستلام؛ تسجيل المخزون يحتاج إلى متابعة"
+        },
+        {
+          "key": "afterSale.returnInventory.NOT_TRACKED",
+          "zh-CN": "货物已验收，库存结果未跟踪",
+          "en": "Return accepted; inventory result is not tracked",
+          "ar": "تم الاستلام؛ نتيجة المخزون غير متتبعة"
+        },
+        {
+          "key": "afterSale.returnInventory.PENDING",
+          "zh-CN": "货物已验收，进销存入库处理中",
+          "en": "Return accepted; inventory posting is processing",
+          "ar": "تم الاستلام؛ يجري تسجيل المخزون"
+        },
+        {
+          "key": "afterSale.returnInventory.PLATFORM_UPDATED",
+          "zh-CN": "货物已验收，平台库存已更新",
+          "en": "Return accepted; platform stock updated",
+          "ar": "تم الاستلام وتحديث مخزون المنصة"
         },
         {
           "key": "afterSale.stage.LABELED",
@@ -15266,6 +15344,102 @@
           "ar": "بيانات التتبع غير صالحة"
         },
         {
+          "key": "order.inventoryIssued",
+          "zh-CN": "已出库",
+          "en": "Issued",
+          "ar": "الكمية المصروفة"
+        },
+        {
+          "key": "order.inventoryReservation",
+          "zh-CN": "占用",
+          "en": "Reservation",
+          "ar": "الحجز"
+        },
+        {
+          "key": "order.inventoryReserved",
+          "zh-CN": "预留数量",
+          "en": "Reserved quantity",
+          "ar": "الكمية المحجوزة"
+        },
+        {
+          "key": "order.inventoryReturn",
+          "zh-CN": "退货验收入库",
+          "en": "Accepted return",
+          "ar": "مرتجع مستلم"
+        },
+        {
+          "key": "order.inventorySource",
+          "zh-CN": "来源库位",
+          "en": "Source location",
+          "ar": "موقع المصدر"
+        },
+        {
+          "key": "order.inventorySync",
+          "zh-CN": "库存同步事件",
+          "en": "Inventory sync events",
+          "ar": "أحداث مزامنة المخزون"
+        },
+        {
+          "key": "order.inventorySyncModeValue.LEGACY",
+          "zh-CN": "旧版Outbox",
+          "en": "Legacy Outbox",
+          "ar": "Outbox قديم"
+        },
+        {
+          "key": "order.inventorySyncModeValue.UNIFIED",
+          "zh-CN": "统一Outbox",
+          "en": "Unified Outbox",
+          "ar": "Outbox موحد"
+        },
+        {
+          "key": "order.inventorySyncSourceValue.PLATFORM",
+          "zh-CN": "平台库存同步",
+          "en": "Platform inventory sync",
+          "ar": "مزامنة مخزون المنصة"
+        },
+        {
+          "key": "order.inventorySyncStatusValue.ARCHIVED",
+          "zh-CN": "仅归档",
+          "en": "Archived only",
+          "ar": "مؤرشف فقط"
+        },
+        {
+          "key": "order.inventorySyncStatusValue.COMPLETED",
+          "zh-CN": "已同步",
+          "en": "Synced",
+          "ar": "تمت المزامنة"
+        },
+        {
+          "key": "order.inventorySyncStatusValue.FAILED",
+          "zh-CN": "同步失败",
+          "en": "Failed",
+          "ar": "فشلت"
+        },
+        {
+          "key": "order.inventorySyncStatusValue.PENDING",
+          "zh-CN": "同步中",
+          "en": "Pending",
+          "ar": "قيد المزامنة"
+        },
+        {
+          "key": "order.inventorySyncStatusValue.SKIPPED",
+          "zh-CN": "已跳过",
+          "en": "Skipped",
+          "ar": "تم التخطي"
+        },
+        {
+          "key": "order.inventorySyncStatusValue.WARNING",
+          "zh-CN": "完成但有告警",
+          "en": "Completed with warning",
+          "ar": "اكتملت مع تحذير"
+        },
+        {
+          "key": "order.inventoryTrace",
+          "zh-CN": "库存处理记录",
+          "en": "Inventory history",
+          "ar": "سجل المخزون"
+        },
+        {
           "key": "order.items",
           "zh-CN": "商品",
           "en": "Items",
@@ -20168,10 +20342,16 @@
           "ar": "قيد التنفيذ"
         },
         {
+          "key": "stockCheck.cutoffHint",
+          "zh-CN": "盘点期间该库位的实物出入库会暂缓；订单仍可支付并保留库存占用，盘点完成后再继续履约。",
+          "en": "Physical stock movements at this location pause during the count. Orders may still be paid and reserved; fulfillment can continue after posting.",
+          "ar": "تتوقف حركة المخزون الفعلية في هذا الموقع أثناء الجرد. يمكن دفع الطلبات وحجز المخزون، ويستأنف التنفيذ بعد الترحيل."
+        },
+        {
           "key": "stockCheck.lockedAt",
-          "zh-CN": "账面数已于 {at} 锁定，盘点期间的销售不计入差异",
-          "en": "Book quantities locked at {at} — keep selling while you count, it will not affect the difference",
-          "ar": "أُقفلت الكميات الدفترية في {at}؛ تابع البيع أثناء الجرد، لن يؤثر على الفرق"
+          "zh-CN": "账面数已于 {at} 锁定",
+          "en": "Book quantities locked at {at}",
+          "ar": "أُقفلت الكميات الدفترية في {at}"
         },
         {
           "key": "stockCheck.openBody",
@@ -20184,6 +20364,12 @@
           "zh-CN": "开始盘点这 {n} 件？",
           "en": "Start counting these {n} items?",
           "ar": "بدء جرد هذه العناصر الـ {n}؟"
+        },
+        {
+          "key": "stockCheck.overdueHint",
+          "zh-CN": "这张盘点单已超过 24 小时。请完成并过账，或确认后作废以恢复该库位的实物出入库。",
+          "en": "This count has been open for over 24 hours. Post it, or confirm voiding to resume physical stock movements at this location.",
+          "ar": "مضى على هذا الجرد أكثر من 24 ساعة. رحّله أو أكّد إلغاءه لاستئناف حركة المخزون الفعلية في هذا الموقع."
         },
         {
           "key": "stockCheck.pickAll",
@@ -20276,6 +20462,12 @@
           "ar": "ترحيل الجرد"
         },
         {
+          "key": "stockCheck.submitRemaining",
+          "zh-CN": "还差 {n} 件",
+          "en": "{n} items left",
+          "ar": "متبقي {n}"
+        },
+        {
           "key": "stockCheck.title",
           "zh-CN": "盘点",
           "en": "Stock count",
@@ -20286,6 +20478,12 @@
           "zh-CN": "合计差异",
           "en": "Total difference",
           "ar": "إجمالي الفرق"
+        },
+        {
+          "key": "stockCheck.unfilled",
+          "zh-CN": "还有 {n} 件未录入实盘数；全部录入后才能过账，实盘为 0 也请填写 0。",
+          "en": "{n} items still need a counted quantity. Enter all quantities before posting; enter 0 when none are on hand.",
+          "ar": "ما زالت كمية الجرد غير مسجلة لـ {n} عناصر. أدخل الكميات كلها قبل الترحيل، واكتب 0 إذا لم يتوفر شيء."
         },
         {
           "key": "stockCheck.voidConfirm",
@@ -20436,12 +20634,6 @@
           "zh-CN": "再读一页",
           "en": "Load more",
           "ar": "تحميل المزيد"
-        },
-        {
-          "key": "stockDetail.onHand",
-          "zh-CN": "实存",
-          "en": "On hand",
-          "ar": "الفعلي"
         },
         {
           "key": "stockDetail.reasonHint",
@@ -20886,6 +21078,132 @@
           "zh-CN": "合计出库",
           "en": "Total out",
           "ar": "إجمالي الإخراج"
+        },
+        {
+          "key": "stockOverview.CATEGORY",
+          "zh-CN": "商品品类",
+          "en": "Category",
+          "ar": "الفئة"
+        },
+        {
+          "key": "stockOverview.GOODS",
+          "zh-CN": "本商品",
+          "en": "This product",
+          "ar": "هذا المنتج"
+        },
+        {
+          "key": "stockOverview.STORE",
+          "zh-CN": "本店默认",
+          "en": "Store default",
+          "ar": "إعداد المتجر"
+        },
+        {
+          "key": "stockOverview.book",
+          "zh-CN": "账面结存",
+          "en": "Book balance",
+          "ar": "الرصيد الدفتري"
+        },
+        {
+          "key": "stockOverview.config",
+          "zh-CN": "同步配置",
+          "en": "Sync configuration",
+          "ar": "إعداد المزامنة"
+        },
+        {
+          "key": "stockOverview.disabled",
+          "zh-CN": "未开启",
+          "en": "Disabled",
+          "ar": "غير مفعّلة"
+        },
+        {
+          "key": "stockOverview.enabled",
+          "zh-CN": "已开启",
+          "en": "Enabled",
+          "ar": "مفعّلة"
+        },
+        {
+          "key": "stockOverview.health",
+          "zh-CN": "运行情况",
+          "en": "Sync health",
+          "ar": "حالة التشغيل"
+        },
+        {
+          "key": "stockOverview.initializing",
+          "zh-CN": "尚未建立库存映射",
+          "en": "Inventory mapping not created",
+          "ar": "لم يتم إنشاء ربط المخزون"
+        },
+        {
+          "key": "stockOverview.notAssessed",
+          "zh-CN": "尚未检查",
+          "en": "Not checked",
+          "ar": "لم يتم الفحص"
+        },
+        {
+          "key": "stockOverview.online",
+          "zh-CN": "线上可售",
+          "en": "Online sellable",
+          "ar": "المتاح للبيع عبر الإنترنت"
+        },
+        {
+          "key": "stockOverview.onlineN",
+          "zh-CN": "线上可售 {n} {unit}",
+          "en": "Online: {n} {unit}",
+          "ar": "المتاح عبر الإنترنت: {n} {unit}"
+        },
+        {
+          "key": "stockOverview.physical",
+          "zh-CN": "实物库存",
+          "en": "Physical stock",
+          "ar": "المخزون الفعلي"
+        },
+        {
+          "key": "stockOverview.rule",
+          "zh-CN": "有效规则",
+          "en": "Effective rule",
+          "ar": "القاعدة الفعلية"
+        },
+        {
+          "key": "stockOverview.section",
+          "zh-CN": "本店线上库存",
+          "en": "Online stock · current store",
+          "ar": "مخزون الإنترنت للمتجر الحالي"
+        },
+        {
+          "key": "stockOverview.source",
+          "zh-CN": "规则来源",
+          "en": "Rule source",
+          "ar": "مصدر القاعدة"
+        },
+        {
+          "key": "stockOverview.supply",
+          "zh-CN": "同步供给量",
+          "en": "Supply for stock sync",
+          "ar": "الكمية المتاحة للمزامنة"
+        },
+        {
+          "key": "stockOverview.supplyHint",
+          "zh-CN": "同步供给量已扣安全库存，不等同于上方可用量。",
+          "en": "Sync supply excludes safety stock; it differs from available stock above.",
+          "ar": "تستبعد كمية المزامنة مخزون الأمان وتختلف عن الكمية المتاحة أعلاه."
+        },
+        {
+          "key": "stockOverview.totalScope",
+          "zh-CN": "上方数量汇总全部库位；下方为当前门店的线上库存。",
+          "en": "The totals above cover all locations. Online stock below is for the current store.",
+          "ar": "الأرقام أعلاه لجميع المواقع، والمخزون أدناه للمتجر الحالي."
+        },
+        {
+          "key": "stockOverview.unavailable",
+          "zh-CN": "线上库存暂不可用",
+          "en": "Online stock unavailable",
+          "ar": "مخزون الإنترنت غير متاح مؤقتًا"
+        },
+        {
+          "key": "stockOverview.unmapped",
+          "zh-CN": "未关联线上商品",
+          "en": "No online product linked",
+          "ar": "غير مرتبط بمنتج إلكتروني"
         },
         {
           "key": "stockPick.empty",
@@ -25977,6 +26295,12 @@
           "ar": "لا يمكن استخدام قسائم المنصة مع الدفع غير المتصل"
         },
         {
+          "key": "err.entitlement.feature_unavailable",
+          "zh-CN": "此权益功能暂未开放，请稍后再试",
+          "en": "This benefits feature is not available yet. Please try again later.",
+          "ar": "ميزة المزايا هذه غير متاحة حاليًا. يرجى المحاولة لاحقًا."
+        },
+        {
           "key": "err.express.channel_off",
           "zh-CN": "平台快递代下单还没开通，请先自己叫快递并填写运单号",
           "en": "Courier booking is not available yet. Book a courier yourself and enter the tracking number",
@@ -26205,6 +26529,12 @@
           "ar": "حدث خطأ ما، يرجى المحاولة لاحقًا"
         },
         {
+          "key": "err.inventory.shared_source",
+          "zh-CN": "该门店与门店 {1} 共用发货库存，暂不支持分别同步全部库存，请先配置独立发货库位",
+          "en": "This store shares its stock source with store {1}. Configure independent stock locations before enabling stock sync.",
+          "ar": "يشترك هذا المتجر في مصدر المخزون مع المتجر {1}. يرجى إعداد مواقع مخزون مستقلة قبل تفعيل المزامنة."
+        },
+        {
           "key": "err.inventory.sync_not_aligned",
           "zh-CN": "这家店还没做期初对齐，先对齐再打开库存同步",
           "en": "Align this store's stock first, then turn on stock sync",
@@ -26431,6 +26761,12 @@
           "zh-CN": "请选择发给谁",
           "en": "Choose who to send to",
           "ar": "اختر المستلمين"
+        },
+        {
+          "key": "err.member.code_invalid",
+          "zh-CN": "会员码无效或已过期，请刷新后重试",
+          "en": "Member code is invalid or expired. Refresh and try again.",
+          "ar": "رمز العضوية غير صالح أو منتهي الصلاحية. يرجى التحديث والمحاولة مجدداً."
         },
         {
           "key": "err.member.phone_required",
@@ -27326,6 +27662,188 @@
       "package": "ai.neargo.shop.content.entity"
     },
     {
+      "table": "ent_code_token",
+      "class": "EntCodeToken",
+      "zh": "No raw credential or reversible ciphertext is persisted.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_grant",
+      "class": "EntGrant",
+      "zh": "Immutable source identity and owner-side balances are kept in the pay transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_instance",
+      "class": "EntInstance",
+      "zh": "Immutable source identity and owner-side balances are kept in the pay transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_issue_batch",
+      "class": "EntIssueBatch",
+      "zh": "Frozen recipients and a durable cursor keep retries on their original grant operations.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_issue_policy",
+      "class": "EntIssuePolicy",
+      "zh": "Lifetime issuance facts are keyed by template, never reset by publication.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_issue_recipient",
+      "class": "EntIssueRecipient",
+      "zh": "Lifetime issuance facts are keyed by template, never reset by publication.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_ledger",
+      "class": "EntLedger",
+      "zh": "Immutable source identity and owner-side balances are kept in the pay transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_legacy_coupon_issue",
+      "class": "EntLegacyCouponIssue",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_legacy_coupon_operation",
+      "class": "EntLegacyCouponOperation",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_alias",
+      "class": "EntMigrationAlias",
+      "zh": "Audited identity declaration tied to both encrypted source evidences; never a cutover permit.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_asset",
+      "class": "EntMigrationAsset",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_import",
+      "class": "EntMigrationImport",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_plan",
+      "class": "EntMigrationPlan",
+      "zh": "Fixed encrypted target mapping; never a financial or ownership decision.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_return",
+      "class": "EntMigrationReturn",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_stage",
+      "class": "EntMigrationStage",
+      "zh": "Immutable encrypted source evidence。",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_migration_usage",
+      "class": "EntMigrationUsage",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_owner_registry",
+      "class": "EntOwnerRegistry",
+      "zh": "Persistent ownership identity: equal source numbers in different protocols are independent resources.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.migration.entity"
+    },
+    {
+      "table": "ent_period_bucket",
+      "class": "EntPeriodBucket",
+      "zh": "Pay-owned durable use fact; never written through a core transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_sale_reservation",
+      "class": "EntSaleReservation",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_template",
+      "class": "EntTemplate",
+      "zh": "Payment-owned catalog row; published snapshots are never rewritten or deleted.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_template_version",
+      "class": "EntTemplateVersion",
+      "zh": "Payment-owned catalog row; published snapshots are never rewritten or deleted.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_usage",
+      "class": "EntUsage",
+      "zh": "Pay-owned durable use fact; never written through a core transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_use_allocation",
+      "class": "EntUseAllocation",
+      "zh": "Pay-owned durable use fact; never written through a core transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_use_intent",
+      "class": "EntUseIntent",
+      "zh": "Pay-owned durable use fact; never written through a core transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_use_proposal",
+      "class": "EntUseProposal",
+      "zh": "Pay-owned durable use fact; never written through a core transaction.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "ent_use_reversal",
+      "class": "EntUseReversal",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
       "table": "ful_batch",
       "class": "FulBatch",
       "zh": "到货批次：自提点按「哪一天到的货」把子单归堆，站长按堆签收。",
@@ -27475,7 +27993,14 @@
     {
       "table": "inv_reservation_line",
       "class": "InvReservationLine",
-      "zh": "预留行：全成功或全失败，不允许部分预留 只追加：继承 InvEntity 而不是 InvMutableEntity —— 实体上没有 updatedAt，「改一行」在编译期就不成立。",
+      "zh": "Reserved quantity and source are immutable; V2 fulfillment issue/release progress is mutable and audited.",
+      "module": "shop-inventory",
+      "package": "ai.neargo.shop.inventory.entity"
+    },
+    {
+      "table": "inv_return_receipt",
+      "class": "InvReturnReceipt",
+      "zh": "Immutable proof of a physically received return line and its quality disposition.",
       "module": "shop-inventory",
       "package": "ai.neargo.shop.inventory.entity"
     },
@@ -27497,6 +28022,13 @@
       "table": "inv_stock_count_line",
       "class": "InvStockCountLine",
       "zh": "盘点单行",
+      "module": "shop-inventory",
+      "package": "ai.neargo.shop.inventory.entity"
+    },
+    {
+      "table": "inv_stock_count_operation",
+      "class": "InvStockCountOperation",
+      "zh": "Idempotency marker stored in the same inventory database transaction as a one-line count adjustment.",
       "module": "shop-inventory",
       "package": "ai.neargo.shop.inventory.entity"
     },
@@ -27583,6 +28115,13 @@
       "zh": "短链（TDD-收件人物流触达与分享裂变 §4.2）。",
       "module": "shop-core",
       "package": "ai.neargo.shop.link.entity"
+    },
+    {
+      "table": "mbr_identity_ticket",
+      "class": "MbrIdentityTicket",
+      "zh": "Durable hash-only credentials allow multiple application nodes without persisting bearer secrets.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.member.entity"
     },
     {
       "table": "mbr_member",
@@ -28054,11 +28593,53 @@
       "package": "ai.neargo.shop.trade.order.entity"
     },
     {
+      "table": "ord_card_sale_snapshot",
+      "class": "OrdCardSaleSnapshot",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
       "table": "ord_create_intent",
       "class": "OrdCreateIntent",
       "zh": "Durable ownership and original stock references survive a failed order transaction.",
       "module": "shop-core",
       "package": "ai.neargo.shop.trade.order.entity"
+    },
+    {
+      "table": "ord_ent_authorization",
+      "class": "OrdEntAuthorization",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
+      "table": "ord_ent_order_use",
+      "class": "OrdEntOrderUse",
+      "zh": "Core-owned coordination facts, never balances.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
+      "table": "ord_ent_payment_seal",
+      "class": "OrdEntPaymentSeal",
+      "zh": "Once cash initiation is allowed, payable amount can no longer change.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
+      "table": "ord_ent_service_order",
+      "class": "OrdEntServiceOrder",
+      "zh": "Core counter-service source; this row is not an ordinary cash order or a payment receipt.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
+    },
+    {
+      "table": "ord_ent_source_decision",
+      "class": "OrdEntSourceDecision",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
     },
     {
       "table": "ord_express_pickup",
@@ -28080,6 +28661,13 @@
       "zh": "订单行。",
       "module": "shop-core",
       "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "ord_legacy_coupon_checkout",
+      "class": "OrdLegacyCouponCheckout",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entitlement.entity"
     },
     {
       "table": "ord_order",
@@ -28124,6 +28712,62 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "pay_ent_command_dedup",
+      "class": "PayEntCommandDedup",
+      "zh": "Payment-owned catalog row; published snapshots are never rewritten or deleted.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "pay_ent_exception",
+      "class": "PayEntException",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "pay_ent_exception_action",
+      "class": "PayEntExceptionAction",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "pay_ent_inbox",
+      "class": "PayEntInbox",
+      "zh": "Idempotency ledger for committed cross-domain events applied by pay.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "pay_ent_outbox",
+      "class": "PayEntOutbox",
+      "zh": "Pay-owned durable source event; system outbox is only the delivery adapter.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "pay_ent_recon_diff",
+      "class": "PayEntReconDiff",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "pay_ent_recon_run",
+      "class": "PayEntReconRun",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
+      "table": "pay_ent_source_fence",
+      "class": "PayEntSourceFence",
+      "zh": "Negative source facts outlive in-flight remote requests and must never expire with a UI timeout.",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.entitlement.entity"
+    },
+    {
       "table": "pay_risk_shadow_log",
       "class": "PayRiskShadowLog",
       "zh": "资金风控 · 影子期日志。",
@@ -28152,9 +28796,30 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "pmt_activity_budget",
+      "class": "PmtActivityBudget",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
       "table": "pmt_activity_goods",
       "class": "PmtActivityGoods",
       "zh": "活动作用在哪些商品上。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_activity_participant",
+      "class": "PmtActivityParticipant",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_activity_reservation",
+      "class": "PmtActivityReservation",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
       "module": "shop-core",
       "package": "ai.neargo.shop.promotion.entity"
     },
@@ -28166,9 +28831,37 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "pmt_activity_scope",
+      "class": "PmtActivityScope",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_activity_version",
+      "class": "PmtActivityVersion",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
       "table": "pmt_apply",
       "class": "PmtApply",
       "zh": "优惠发生记录：一单命中了什么、一张券被用了第几次。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_benefit_intent",
+      "class": "PmtBenefitIntent",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_command_dedup",
+      "class": "PmtCommandDedup",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
       "module": "shop-core",
       "package": "ai.neargo.shop.promotion.entity"
     },
@@ -28194,6 +28887,13 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "pmt_effect_projection",
+      "class": "PmtEffectProjection",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
       "table": "pmt_enrollment",
       "class": "PmtEnrollment",
       "zh": "平台活动报名单（详细设计 §1.6）：一个商家对一个平台活动的一次报名。",
@@ -28208,9 +28908,58 @@
       "package": "ai.neargo.shop.promotion.entity"
     },
     {
+      "table": "pmt_migration_decision",
+      "class": "PmtMigrationDecision",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.migration"
+    },
+    {
+      "table": "pmt_migration_return",
+      "class": "PmtMigrationReturn",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.trade.entity"
+    },
+    {
+      "table": "pmt_migration_source",
+      "class": "PmtMigrationSource",
+      "zh": "Immutable source binding; LegacyCouponSourceCommitMapper is its sole writer.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.migration"
+    },
+    {
+      "table": "pmt_pay_coupon_projection",
+      "class": "PmtPayCouponProjection",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.migration"
+    },
+    {
       "table": "pmt_period",
       "class": "PmtPeriod",
       "zh": "社区集单的一期：一个集单活动在一个截单日的全部订单（ADR-024）。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_preset_template",
+      "class": "PmtPresetTemplate",
+      "zh": "A recommendation is configuration; its existence never enables an execution capability.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_recharge_intent",
+      "class": "PmtRechargeIntent",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.entity"
+    },
+    {
+      "table": "pmt_recharge_tier",
+      "class": "PmtRechargeTier",
+      "zh": "Core-owned activity facts; pay assets remain outside this persistence boundary.",
       "module": "shop-core",
       "package": "ai.neargo.shop.promotion.entity"
     },
@@ -28246,6 +28995,20 @@
       "table": "prd_category_spec_value",
       "class": "PrdCategorySpecValue",
       "zh": "类目下的取值子集。",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
+      "table": "prd_ent_binding_command",
+      "class": "PrdEntBindingCommand",
+      "zh": "",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.product.entity"
+    },
+    {
+      "table": "prd_entitlement_binding",
+      "class": "PrdEntitlementBinding",
+      "zh": "",
       "module": "shop-core",
       "package": "ai.neargo.shop.product.entity"
     },
@@ -28577,6 +29340,62 @@
       "zh": "商家提现单（矩阵 P-12.2.1 提现审批 / 12.2.2 限额）。",
       "module": "pay/pay-domain",
       "package": "ai.neargo.shop.pay.entity"
+    },
+    {
+      "table": "sv_account",
+      "class": "SvAccount",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_entry",
+      "class": "SvEntry",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_hold_allocation",
+      "class": "SvHoldAllocation",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_lot",
+      "class": "SvLot",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_posting_line",
+      "class": "SvPostingLine",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_recharge",
+      "class": "SvRecharge",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_user_store_index",
+      "class": "SvUserStoreIndex",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
+    },
+    {
+      "table": "sv_voucher",
+      "class": "SvVoucher",
+      "zh": "",
+      "module": "pay/pay-domain",
+      "package": "ai.neargo.shop.pay.storedvalue.entity"
     },
     {
       "table": "sys_audit_log",
@@ -29132,6 +29951,13 @@
         "name": "MONTHLY",
         "value": "MONTHLY",
         "zh": "月结：次月首日。",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "EntitlementUseWriter",
+        "name": "PERIOD",
+        "value": "LIFETIME",
+        "zh": "",
         "module": "pay/pay-domain"
       },
       {
@@ -29849,6 +30675,34 @@
         "module": "pay/pay-domain"
       },
       {
+        "host": "EntitlementMigrationAliasWriter",
+        "name": "OPERATION",
+        "value": "MIGRATION_ALIAS",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "EntitlementMigrationPlanWriter",
+        "name": "OPERATION",
+        "value": "MIGRATION_PLAN",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "LegacyCouponIssueWriter",
+        "name": "OPERATION",
+        "value": "LEGACY_COUPON_ISSUE",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
+        "host": "LegacyCouponMigrationImportWriter",
+        "name": "OPERATION",
+        "value": "MIGRATION_IMPORT",
+        "zh": "",
+        "module": "pay/pay-domain"
+      },
+      {
         "host": "FundRisk",
         "name": "PASS",
         "value": "PASS",
@@ -29955,6 +30809,27 @@
       },
       {
         "host": "InvMirrorEvent",
+        "name": "ALLOCATE",
+        "value": "INV_MIRROR_ALLOCATE",
+        "zh": "Paid lifecycle V2: reservation becomes a non-expiring allocation without physical issue.",
+        "module": "shop-app"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "ISSUE",
+        "value": "INV_MIRROR_ISSUE",
+        "zh": "Fulfillment handoff: only the referenced sub-order lines are issued.",
+        "module": "shop-app"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RELEASE_ALLOCATED",
+        "value": "INV_MIRROR_RELEASE_ALLOCATED",
+        "zh": "Refund before handoff releases a paid allocation.",
+        "module": "shop-app"
+      },
+      {
+        "host": "InvMirrorEvent",
         "name": "RELEASE",
         "value": "INV_MIRROR_RELEASE",
         "zh": "平台释放 → 进销存撤销预留。",
@@ -29972,6 +30847,13 @@
         "name": "RESTORE_ORIGINAL",
         "value": "INV_MIRROR_RESTORE_ORIGINAL",
         "zh": "原退款执行恢复：原库存预留事实与目的号决定入库，不重新解析当前配置。",
+        "module": "shop-app"
+      },
+      {
+        "host": "InvMirrorEvent",
+        "name": "RETURN_RECEIPT",
+        "value": "INV_MIRROR_RETURN_RECEIPT",
+        "zh": "V2 physical return acceptance with quality routing; independent of cash refund callbacks.",
         "module": "shop-app"
       },
       {
@@ -30074,9 +30956,16 @@
       },
       {
         "host": "BizKey",
+        "name": "ACTIVITY_VERSION",
+        "value": "AV",
+        "zh": "前缀是语义的一部分：看到 SUB 就知道这是子订单，不用去查表。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
         "name": "ORDER",
         "value": "SO",
-        "zh": "前缀是语义的一部分：看到 SUB 就知道这是子订单，不用去查表。",
+        "zh": "",
         "module": "shop-base"
       },
       {
@@ -30203,6 +31092,48 @@
         "name": "CONTENT_SLOT",
         "value": "SL",
         "zh": "内容位（首页楼层/轮播/频道）。",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "ENTITLEMENT_TEMPLATE",
+        "value": "ETP",
+        "zh": "Payment-owned rights template and immutable definition version.",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "ENTITLEMENT_VERSION",
+        "value": "ETV",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "ENTITLEMENT_INTENT",
+        "value": "EI",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "ENTITLEMENT_AUTHORIZATION",
+        "value": "EA",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "ENTITLEMENT_DECISION",
+        "value": "ED",
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "host": "BizKey",
+        "name": "CARD_SALE_SNAPSHOT",
+        "value": "CSS",
+        "zh": "One immutable entitlement unit issued by a paid card order.",
         "module": "shop-base"
       },
       {
@@ -33314,6 +34245,13 @@
         "module": "shop-core"
       },
       {
+        "host": "PrdStockLock",
+        "name": "ALLOCATED",
+        "value": "ALLOCATED",
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "host": "PrdStoreStockSync",
         "name": "ALIGN_MALL",
         "value": "MALL",
@@ -35023,6 +35961,20 @@
       },
       {
         "host": "ReservationStatus",
+        "name": "ALLOCATED",
+        "value": "ALLOCATED",
+        "zh": "Paid allocation; excluded from unpaid expiry and issued only on fulfillment handoff.",
+        "module": "shop-inventory"
+      },
+      {
+        "host": "ReservationStatus",
+        "name": "PARTIALLY_COMMITTED",
+        "value": "PARTIAL_COMMIT",
+        "zh": "",
+        "module": "shop-inventory"
+      },
+      {
+        "host": "ReservationStatus",
         "name": "COMMITTED",
         "value": "COMMITTED",
         "zh": "",
@@ -36018,12 +36970,79 @@
       {
         "name": "Action",
         "values": [
+          "BEGIN_DRAIN",
+          "FREEZE",
+          "ABORT"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "name": "Action",
+        "values": [
           "BYPASS",
           "RECONFIRM",
           "READY"
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "ActivationAction",
+        "values": [
+          "NONE",
+          "ON_FIRST_COMMIT"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "ActivityCapability",
+        "values": [
+          "CARD_PRODUCT",
+          "PAID_ORDER",
+          "IDEMPOTENT_CARD_ISSUE",
+          "ENTITLEMENT_LEDGER",
+          "ATOMIC_USE_DEDUCT",
+          "VALIDITY_POLICY",
+          "ACTIVITY_VERSION",
+          "ATOMIC_QUOTA",
+          "AUDIENCE",
+          "COMBO_RULE",
+          "COUPON_BUDGET",
+          "COUPON_ISSUE",
+          "COUPON_RECEIVE",
+          "CUTOFF_JOB",
+          "DISCOUNT_CAP",
+          "FLASH_STOCK",
+          "FULFILLMENT",
+          "GIFT_AFTER_SALE",
+          "GIFT_FULFILLMENT",
+          "GIFT_STOCK",
+          "GOODS_SCOPE",
+          "GROUP_CLOSE",
+          "GROUP_INSTANCE",
+          "INDUSTRY_ADMISSION",
+          "MARKETING_RESERVATION",
+          "MEMBER_IDENTITY",
+          "MERCHANT_ACTIVE",
+          "MIN_QTY_DECISION",
+          "MULTI_USE_REDEEM",
+          "NTH_ITEM_ALLOCATION",
+          "ORDER_PRICING",
+          "ORDER_REFUND",
+          "PAY_CREDIT",
+          "PERIOD_INSTANCE",
+          "PER_USER_LIMIT",
+          "REFUND_ALLOCATION",
+          "SERVICE_SCOPE",
+          "SKU_PRICE_VALIDATION",
+          "STORED_VALUE_REDEEM",
+          "STORE_CODE_REDEEM",
+          "STORE_PERMISSION"
+        ],
+        "zh": "Shared requirement vocabulary, not a declaration that any listed workflow is already implemented or enabled.",
+        "module": "shop-base"
       },
       {
         "name": "Actor",
@@ -36055,6 +37074,7 @@
           "RETURN_EXPIRED",
           "RETURN_RECEIVED",
           "REFUND_SUCCEEDED",
+          "BENEFITS_SETTLED",
           "REFUND_FAILED",
           "COMPENSATED_CLOSE",
           "ESCALATE",
@@ -36097,6 +37117,41 @@
         ],
         "zh": "有状态机的四个聚合，以及它们的状态落在哪张表的哪一列（转换门按这里 CAS）。",
         "module": "shop-core"
+      },
+      {
+        "name": "AssetKind",
+        "values": [
+          "ORDER_COUPON",
+          "STORE_EXCHANGE",
+          "PAID_CARD",
+          "STORED_VALUE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "AssetState",
+        "values": [
+          "PENDING_ACTIVATION",
+          "ACTIVE",
+          "FROZEN",
+          "EXHAUSTED",
+          "EXPIRED",
+          "REVOKED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "AuthorizationState",
+        "values": [
+          "UNKNOWN",
+          "AUTHORIZED",
+          "CANCELLED",
+          "EXPIRED"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "BookOutcome",
@@ -36155,6 +37210,15 @@
         "module": "shop-merchant"
       },
       {
+        "name": "CollectionMethod",
+        "values": [
+          "CASH",
+          "TRANSFER"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "Decision",
         "values": [
           "CANCEL",
@@ -36162,6 +37226,19 @@
         ],
         "zh": "s33 的两个选择",
         "module": "shop-core"
+      },
+      {
+        "name": "DecisionType",
+        "values": [
+          "GRANT_COMMIT",
+          "GRANT_ABORT",
+          "USE_COMMIT",
+          "USE_CANCEL",
+          "ORDER_REVERSE",
+          "RECHARGE_RECEIVED"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "Dim",
@@ -36311,6 +37388,8 @@
           "ACTIVITY_CHOICE_UNAVAILABLE",
           "ENROLLMENT_CLOSED",
           "ENROLLMENT_OVER_BUDGET",
+          "ENTITLEMENT_FEATURE_UNAVAILABLE",
+          "MEMBER_CODE_INVALID",
           "SPLIT_RECEIVER_NOT_READY",
           "SPLIT_EXPIRED",
           "WITHDRAW_STATE_ILLEGAL",
@@ -36391,6 +37470,7 @@
           "GOODS_CATEGORY_IN_OTHER_STORE",
           "GOODS_OFF_SALE",
           "STOCK_SYNC_NOT_ALIGNED",
+          "STOCK_SHARED_SOURCE",
           "EXPRESS_CHANNEL_OFF",
           "EXPRESS_PICKUP_EXISTS",
           "EXPRESS_SENDER_INCOMPLETE",
@@ -36559,6 +37639,15 @@
         "module": "pay/pay-domain"
       },
       {
+        "name": "IntentKind",
+        "values": [
+          "QUOTE_ONLY",
+          "CHECKOUT"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "JobStatus",
         "values": [
           "SUCCESS",
@@ -36637,6 +37726,31 @@
       {
         "name": "Kind",
         "values": [
+          "SENT",
+          "WARNING",
+          "RETRYABLE",
+          "PERMANENT",
+          "OUTCOME_UNKNOWN"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Kind",
+        "values": [
+          "RECHARGE",
+          "SERVICE_USE",
+          "ORDER_USE",
+          "ACTIVITY_BENEFIT",
+          "LEGACY_COUPON",
+          "HISTORICAL_COUPON_RETURN"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "name": "Kind",
+        "values": [
           "COUPON",
           "MERCHANT",
           "PICKUP",
@@ -36660,6 +37774,17 @@
         "module": "shop-auth-store"
       },
       {
+        "name": "MigrationState",
+        "values": [
+          "PREPARING",
+          "VERIFIED",
+          "CUTOVER",
+          "ARCHIVED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "Mode",
         "values": [
           "FIXED",
@@ -36677,6 +37802,15 @@
         ],
         "zh": "",
         "module": "shop-core"
+      },
+      {
+        "name": "Mode",
+        "values": [
+          "LEGACY",
+          "UNIFIED"
+        ],
+        "zh": "",
+        "module": "shop-store-mybatis"
       },
       {
         "name": "MoveDirection",
@@ -36775,6 +37909,24 @@
         "module": "logistics"
       },
       {
+        "name": "Outcome",
+        "values": [
+          "COMMIT",
+          "ABORT"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "OwnerSystem",
+        "values": [
+          "CORE_LEGACY",
+          "PAY"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
         "name": "PaidOutcome",
         "values": [
           "JOINED",
@@ -36867,6 +38019,29 @@
         "module": "shop-core"
       },
       {
+        "name": "PreviewReason",
+        "values": [
+          "OK",
+          "NOT_ACTIVE",
+          "NOT_STARTED",
+          "EXPIRED",
+          "FROZEN",
+          "INSUFFICIENT_UNITS",
+          "OUT_OF_SCOPE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Quality",
+        "values": [
+          "SALEABLE",
+          "UNSALEABLE"
+        ],
+        "zh": "",
+        "module": "shop-inventory"
+      },
+      {
         "name": "Realm",
         "values": [
           "CONSUMER",
@@ -36875,6 +38050,31 @@
         ],
         "zh": "凭据池。",
         "module": "shop-base-auth"
+      },
+      {
+        "name": "Reason",
+        "values": [
+          "OK",
+          "NO_ACCOUNT",
+          "FROZEN",
+          "INSUFFICIENT_APPLICABLE_BALANCE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "RechargeState",
+        "values": [
+          "NOT_FOUND",
+          "WAIT_COLLECTION",
+          "SUBMITTED",
+          "RECEIVED",
+          "CREDITED",
+          "CANCELLED",
+          "REJECTED"
+        ],
+        "zh": "",
+        "module": "shop-base"
       },
       {
         "name": "RefundProgress",
@@ -36891,6 +38091,24 @@
         "values": [
           "COMPLETED",
           "PENDING"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "ReturnQuality",
+        "values": [
+          "SALEABLE",
+          "UNSALEABLE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "ReverseReason",
+        "values": [
+          "CANCELLED",
+          "FULL_REFUND"
         ],
         "zh": "",
         "module": "shop-base"
@@ -36966,6 +38184,129 @@
         "module": "shop-core"
       },
       {
+        "name": "Source",
+        "values": [
+          "PLATFORM",
+          "INVENTORY"
+        ],
+        "zh": "",
+        "module": "shop-store-mybatis"
+      },
+      {
+        "name": "SourceKind",
+        "values": [
+          "TEMPLATE",
+          "INSTANCE",
+          "USAGE"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "SourceSystem",
+        "values": [
+          "MKT_LEGACY",
+          "PMT",
+          "PAY"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "NOT_FOUND",
+          "PREPARED",
+          "COMMITTED",
+          "ABORTED",
+          "PROCESSING",
+          "EXCEPTION"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "NOT_FOUND",
+          "PROCESSING",
+          "RESERVED",
+          "TRANSFERRED",
+          "RELEASED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "NOT_FOUND",
+          "WAIT_AUTH",
+          "HELD",
+          "COMMITTED",
+          "RELEASED",
+          "PROCESSING",
+          "EXCEPTION"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "HELD",
+          "COMMITTED",
+          "RELEASED",
+          "REVERSED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "UNKNOWN",
+          "PENDING",
+          "COMMITTED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "UNKNOWN",
+          "COMMITTED",
+          "ABORTED"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "NOT_FOUND",
+          "RESERVED",
+          "CONFIRMED",
+          "RELEASED",
+          "EXCEPTION"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "State",
+        "values": [
+          "PENDING",
+          "AUTHORIZED",
+          "CANCELLED",
+          "EXPIRED"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
         "name": "StatementAction",
         "values": [
           "CONFIRM",
@@ -37015,6 +38356,24 @@
           "TERMINAL_FAILED",
           "MANUAL_REQUIRED",
           "UNKNOWN"
+        ],
+        "zh": "",
+        "module": "shop-base"
+      },
+      {
+        "name": "Status",
+        "values": [
+          "COMMITTED",
+          "CANCELLED"
+        ],
+        "zh": "",
+        "module": "shop-core"
+      },
+      {
+        "name": "StoreActivityType",
+        "values": [
+          "RECHARGE",
+          "CONSUMPTION"
         ],
         "zh": "",
         "module": "shop-base"
@@ -38808,8 +40167,7 @@
         "client": "ops-web",
         "values": [
           "zh",
-          "en",
-          "ar"
+          "en"
         ],
         "zh": ""
       },
@@ -39085,6 +40443,7 @@
           "/pages/suppliers/index",
           "/pages/stock-settings/index",
           "/pages/stock-align/index",
+          "/pages/stock-sync-records/index",
           "/pages/offline-sale/index"
         ],
         "zh": ""
@@ -40264,6 +41623,86 @@
     },
     {
       "host": "PayInternalPaths",
+      "name": "LEGACY_TEMPLATE_ARCHIVE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-template/archive\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_ISSUE_CREATE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-issue/create\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_ISSUE_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-issue/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_ISSUE_RESUME",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-issue/resume\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_ISSUE_LIST",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-issue/list\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_TEMPLATE_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-template/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_TEMPLATE_STATUS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-template/status\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_TEMPLATE_SAVE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-template/save\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "HISTORY_RETURN_REVERSE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/history-return/reverse\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "HISTORY_RETURN_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/history-return/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
       "name": "FEE_RULES",
       "type": "String",
       "value": "\"/internal/pay/fee-rules\"",
@@ -40299,6 +41738,766 @@
       "name": "SETTLE_INVOICE_REJECT",
       "type": "String",
       "value": "\"/internal/pay/settle-invoices/{invoiceNo}/reject\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_LIST",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/list\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_CREATE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/create\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_DRAFT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/draft\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_PUBLISH",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/publish\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_STATUS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/status\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_POLICY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/management/issue-policy\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_VERSION",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/catalog/version\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_REFERENCE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/catalog/validate-reference\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_GRANT_PREPARE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/grant/prepare\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_GRANT_COMMIT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/grant/commit\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_GRANT_ABORT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/grant/abort\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_GRANT_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/grant/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_QUOTE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/quote\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_PREVIEW",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/preview\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_PREPARE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/prepare\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_COMMIT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/commit\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_RELEASE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/release\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_REVERSE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/reverse\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_REVERSE_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/reverse/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_QUERY_MINE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/mine\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_QUERY_DETAIL",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/detail\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_QUERY_HISTORY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/history\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_QUERY_USAGE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/usage\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_QUERY_ALLOWANCES",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/allowances\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_QUERY_ACTIVATION",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/activation\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_USE_FACTS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/use/facts\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_PAYMENT_ATTEMPTS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/payment/attempt-exists\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_BATCH_CREATE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/batch/create\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_BATCH_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/batch/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_BATCH_RESUME",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/batch/resume\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_CODE_ISSUE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/code/issue\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_CODE_RESOLVE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/code/resolve\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_CODE_INVALIDATE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/code/invalidate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_MERCHANT_USAGE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/query/merchant-usage\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_FACTS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/facts\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CREATE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/create\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_SUBMIT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/submit\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_RECEIVE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/receive\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CANCEL",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/cancel\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CREDIT",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/credit\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/query/recharge\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_BALANCE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/query/balance\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_STORES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/query/stores\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CONSUMPTIONS",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/query/consumptions\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_USE_QUOTE",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/use/quote\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SALE_RESERVE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/sale/reserve\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SALE_RELEASE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/sale/release\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SALE_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/sale/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_RETRY_EVENT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/retry-event\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_DEAD_LETTERS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/dead-letters\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_LIST",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/list\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_RETRY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/retry-grant\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_SOURCE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/query-source\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "RECON_CHECK",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/reconciliations/check\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "RECON_LIST",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/reconciliations/list\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "RECON_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/reconciliations/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "RECON_DIFFS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/reconciliations/differences\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_ACTIONS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/actions\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LIFECYCLE_FREEZE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/lifecycle/freeze\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LIFECYCLE_STATE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/lifecycle/state\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "SV_CAPABILITIES",
+      "type": "String",
+      "value": "\"/internal/pay/stored-value/capabilities\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LIFECYCLE_EXPIRE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/lifecycle/expire\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MARKETING_USAGE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/marketing/usage-effects\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "OWNER_RESOLVE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/owners/resolve\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "ENT_CAPABILITIES",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/capabilities\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LIFECYCLE_REMINDERS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/lifecycle/expiring-soon\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "EXCEPTIONS_LIST_ACROSS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/exceptions/list-scoped\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_IMPORT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/import\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_IMPORT_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/import/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_PLAN",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/plan\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_PLAN_PREPARED",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/plan/prepared\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_PLAN_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/plan/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_PLAN_VERIFY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/plan/verify\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_STAGE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/stage\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_STAGE_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/stage/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_STAGE_VERIFY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/stage/verify\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_STAGE_MANIFEST",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/stage-manifest\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_STAGE_ASSESS",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/stage/assess\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_ALIAS_COMPARE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/alias/compare\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_ALIAS_RECOGNIZE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/alias/recognize\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "MIGRATION_ALIAS_GET",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/migration/alias/get\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_SNAPSHOT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/snapshot\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_ESTIMATE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/estimate\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_QUOTE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/quote\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_PREPARE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/prepare\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_COMMIT",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/commit\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_RELEASE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/release\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_REVERSE",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/reverse\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "PayInternalPaths",
+      "name": "LEGACY_COUPON_QUERY",
+      "type": "String",
+      "value": "\"/internal/pay/entitlement/legacy-coupons/query\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "CouponQuotePolicy",
+      "name": "FREIGHT_LINE",
+      "type": "String",
+      "value": "\"__FREIGHT__\"",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "EntitlementRuleValidator",
+      "name": "KINDS",
+      "type": "Set<String>",
+      "value": "Set.of(\"ORDER_COUPON\", \"STORE_EXCHANGE\", \"PAID_CARD\")",
+      "zh": "",
+      "module": "pay/pay-domain"
+    },
+    {
+      "host": "EntitlementRuleValidator",
+      "name": "STATUSES",
+      "type": "Set<String>",
+      "value": "Set.of(\"DRAFT\", \"ACTIVE\", \"PAUSED\", \"ENDED\")",
       "zh": "",
       "module": "pay/pay-domain"
     },
@@ -40386,7 +42585,7 @@
       "host": "InvMirrorEvent",
       "name": "ALL",
       "type": "Set<String>",
-      "value": "Set.of(RESERVE, COMMIT, RELEASE, RESTORE, RESTORE_ORIGINAL, ADJUST)",
+      "value": "Set.of(RESERVE, COMMIT, ALLOCATE, ISSUE, RELEASE_ALLOCATED, RELEASE, RESTORE, RESTORE_ORIGINAL, RETURN_RECEIPT, ADJUST)",
       "zh": "全部镜像事件。",
       "module": "shop-app"
     },
@@ -40583,6 +42782,166 @@
       "module": "shop-base"
     },
     {
+      "host": "EntitlementCoreInternal",
+      "name": "LEGACY_COUPON_AUDIENCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/legacy-coupon/audience\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "HISTORY_RETURN_SOURCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/migration/history-return/source\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "HISTORY_RETURN_ACK",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/migration/history-return/ack\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "LEGACY_MIGRATION_COMMIT",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/migration/source-commit\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "FROZEN_LEGACY_MANIFEST",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/migration/frozen-manifest\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "FROZEN_LEGACY_SNAPSHOT",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/migration/frozen-snapshot\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "LEGACY_CHECKOUT_SOURCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/legacy-checkout/source\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "LEGACY_CHECKOUT_DECISION",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/legacy-checkout/decision\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "LEGACY_CHECKOUT_REVERSAL",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/legacy-checkout/reversal\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "USE_SOURCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/source/use\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "SOURCE_QUERY",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/source/query\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "AUTHORIZATION",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/authorization/query\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "GRANT_SOURCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/source/grant\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "GRANT_DECISION",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/source/grant-decision\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "RECHARGE_SOURCE",
+      "type": "String",
+      "value": "\"/internal/core/stored-value/source\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "RECHARGE_BY_NO",
+      "type": "String",
+      "value": "\"/internal/core/stored-value/source-by-recharge\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "SALE_SOURCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/source/sale\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementCoreInternal",
+      "name": "AUDIENCE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/audience/resolve\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "EntitlementEventInternal",
+      "name": "RECEIVE",
+      "type": "String",
+      "value": "\"/internal/core/entitlement/events/receive\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
+      "host": "ActivityParticipationInternal",
+      "name": "BASE",
+      "type": "String",
+      "value": "\"/internal/core/promotion/participation\"",
+      "zh": "",
+      "module": "shop-base"
+    },
+    {
       "host": "InternalHttp",
       "name": "TOKEN_HEADER",
       "type": "String",
@@ -40720,9 +43079,105 @@
     },
     {
       "host": "BizPerms",
+      "name": "SV_RECHARGE_CREATE",
+      "type": "String",
+      "value": "\"pay:sv:recharge:create\"",
+      "zh": "查看主体级权益目录，不授予变更能力。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "SV_RECHARGE_RECEIVE",
+      "type": "String",
+      "value": "\"pay:sv:recharge:receive\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "SV_RECHARGE_READ",
+      "type": "String",
+      "value": "\"pay:sv:recharge:read\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "SV_ACCOUNT_READ",
+      "type": "String",
+      "value": "\"pay:sv:account:read\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "SV_CONSUME_CREATE",
+      "type": "String",
+      "value": "\"pay:sv:consume:create\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "ENT_USE",
+      "type": "String",
+      "value": "\"pay:ent:use\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "ENT_ISSUE",
+      "type": "String",
+      "value": "\"pay:ent:issue\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "ENT_READ",
+      "type": "String",
+      "value": "\"pay:ent:read\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "ENT_TEMPLATE_READ",
+      "type": "String",
+      "value": "\"pay:ent:template:read\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "ENT_TEMPLATE_WRITE",
+      "type": "String",
+      "value": "\"pay:ent:template:write\"",
+      "zh": "编辑权益草稿，不能发布。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "ENT_TEMPLATE_PUBLISH",
+      "type": "String",
+      "value": "\"pay:ent:template:publish\"",
+      "zh": "发布与停发影响全主体，需单独授权。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
+      "name": "ENT_ISSUE_MANAGE",
+      "type": "String",
+      "value": "\"pay:ent:issue:manage\"",
+      "zh": "调整发行容量，不直接发放实例。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "BizPerms",
       "name": "LABELS",
       "type": "Map<String, String>",
-      "value": "Map.ofEntries( Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
+      "value": "Map.ofEntries( Map.entry(RECEIVE, \"到货登记与分拣\"), Map.entry(VERIFY, \"核销取货\"), Map.entry(SHIP, \"发货与标记送达\"), Map.entry(ORDER_VIEW, \"看订单与金额\"), Map.entry(STOCK, \"看商品、改库存\"), Map.entry(GOODS, \"建商品、改价、上下架\"), Map.entry(CAMPAIGN, \"营销活动与报价\"), Map.entry(REVIEW, \"回评价、差评申诉\"), Map.entry(AFTERSALE, \"处理售后\"), Map.entry(CUSTOMER, \"顾客列表与经营数据\"), Map.entry(STORE, \"店铺装修与配送规则\"), Map.entry(STORE_ADMIN, \"建店、停用、挂收款号、管员工\"), Map.entry(SV_RECHARGE_CREATE, \"办理与取消未实收储值\"), Map.entry(SV_RECHARGE_RECEIVE, \"核验储值实收\"), Map.entry(SV_RECHARGE_READ, \"查看储值办理进度\"), Map.entry(SV_ACCOUNT_READ, \"查看顾客储值可用余额\"), Map.entry(SV_CONSUME_CREATE, \"使用储值核销服务\"), Map.entry(ENT_USE, \"核销权益\"), Map.entry(ENT_ISSUE, \"定向发放权益\"), Map.entry(ENT_READ, \"查看权益与核销记录\"), Map.entry(ENT_TEMPLATE_READ, \"查看权益模板\"), Map.entry(ENT_TEMPLATE_WRITE, \"编辑权益模板\"), Map.entry(ENT_TEMPLATE_PUBLISH, \"发布与停用权益模板\"), Map.entry(ENT_ISSUE_MANAGE, \"管理权益发行规则\"), Map.entry(FINANCE, \"结算账单与收款进件\"))",
       "zh": "权限码 → 给店主看的一句话（V71）。",
       "module": "shop-base-auth"
     },
@@ -40884,6 +43339,38 @@
       "type": "String",
       "value": "\"fulfillment:logistics:replay\"",
       "zh": "物流重放：重新订阅（可点名渠道）/ 重新换微信 token（TDD-物流模块 O3）。",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ENT_EXCEPTION_READ",
+      "type": "String",
+      "value": "\"ops:pay:ent:read\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ENT_EXCEPTION_RECOVER",
+      "type": "String",
+      "value": "\"ops:pay:ent:recover\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ENT_EXCEPTION_VERIFY",
+      "type": "String",
+      "value": "\"ops:pay:ent:verify\"",
+      "zh": "",
+      "module": "shop-base-auth"
+    },
+    {
+      "host": "Perms",
+      "name": "ENT_FREEZE",
+      "type": "String",
+      "value": "\"ops:pay:ent:freeze\"",
+      "zh": "Freezing restricts new use; read or recovery permission alone must not authorize it.",
       "module": "shop-base-auth"
     },
     {
@@ -41922,7 +44409,7 @@
       "host": "AfterSaleMachine",
       "name": "MACHINE",
       "type": "StateMachine<AfterSaleStatus, AfterSaleEvent, AfterSaleContext>",
-      "value": "StateMachine.<AfterSaleStatus, AfterSaleEvent, AfterSaleContext>builder(\"after-sale\") // A1 买家申请 .create().on(APPLY).by(BUYER).when(AUTHORIZED, IN_WINDOW, NO_OPEN, REFUNDABLE, REASON, APPLY_RULE) .to(APPLIED).emit(\"AfterSaleApplied\").add() .from(APPLIED).on(PREPARATION_NOT_STARTED_REFUND).by(BUYER) .when(AUTHORIZED, PREPARATION_NOT_STARTED, CHANNEL_OK) .to(REFUNDING).emit(\"BeforePreparationRefundRequested\").add() // A2 商家主动退款（缺货少发 / 称重差价 / 补偿 …） .create().on(MERCHANT_INITIATE).by(MERCHANT).when(AUTHORIZED, REASON, REFUNDABLE, CHANNEL_OK) .toOneOf(AfterSaleTargets.MONEY, AfterSaleTargets::moneyStep).emit(\"AfterSaleInitiated\").add() // A3 交易不成立（拼团未成团 / 集单撤单 / 关单后迟到回调）—— 系统唯一可退钱的入口 .create().on(TRADE_VOID).by(SYSTEM).when(VOID_REASON).to(REFUNDING).emit(\"TradeVoided\").add() // A4 商家同意（分流见 AfterSaleTargets.approve） .from(APPLIED).on(APPROVE).by(MERCHANT).when(AUTHORIZED, CHANNEL_OK) .toOneOf(AfterSaleTargets.APPROVE_TARGETS, AfterSaleTargets::approve).emit(\"AfterSaleApproved\").add() // A5 商家提出协商金额 .from(APPLIED).on(OFFER).by(MERCHANT).when(AUTHORIZED, OFFER_VALID, CHANNEL_OK).to(NEGOTIATING) .emit(\"AfterSaleOffered\").add() // A6 买家接受协商额（决定是商家做的，买家只是接受） .from(NEGOTIATING).on(ACCEPT_OFFER).by(BUYER).when(AUTHORIZED) .toOneOf(AfterSaleTargets.ACCEPT_TARGETS, AfterSaleTargets::refundOrAwaitReturn) .emit(\"AfterSaleOfferAccepted\").add() // A7 买家拒绝 / 48h 未答 → 回到待商家处理 .from(NEGOTIATING).on(DECLINE_OFFER).by(BUYER).when(AUTHORIZED).to(APPLIED).add() .from(NEGOTIATING).on(OFFER_EXPIRED).by(SYSTEM).when(EXPIRED).to(APPLIED).add() // A8 商家驳回（理由必填） .from(APPLIED).on(REJECT).by(MERCHANT).when(AUTHORIZED, REMARK).to(REJECTED) .emit(\"AfterSaleRejected\").add() // A9 在途仅退款签收后，商家一键确认退款（不自动） .from(WAIT_RECEIPT).on(CONFIRM_REFUND).by(MERCHANT).when(AUTHORIZED) .toOneOf(AfterSaleTargets.MONEY, AfterSaleTargets::moneyStep).emit(\"AfterSaleRefundConfirmed\").add() // A10–A12 退货：买家寄回 → 商家确认收货 → 退钱；7 天不寄回关闭 .from(WAIT_RETURN).on(RETURN_SHIPPED).by(BUYER).when(AUTHORIZED, WAYBILL).to(RETURNING) .emit(\"AfterSaleReturnShipped\").add() .from(WAIT_RETURN).on(RETURN_EXPIRED).by(SYSTEM).when(EXPIRED).to(CLOSED).add() .from(RETURNING).on(RETURN_RECEIVED).by(MERCHANT).when(AUTHORIZED) .toOneOf(AfterSaleTargets.MONEY, AfterSaleTargets::moneyStep).emit(\"AfterSaleReturnReceived\").add() // A13 / A14 退款回执（执行结果，不是决定） .from(REFUNDING).on(REFUND_SUCCEEDED).by(CHANNEL, SYSTEM).to(REFUNDED).emit(\"AfterSaleRefunded\").add() .from(REFUNDING).on(REFUND_FAILED).by(CHANNEL).stay().emit(\"AfterSaleRefundFailed\").add() .from(REFUNDING).on(COMPENSATED_CLOSE).by(PLATFORM).when(AUTHORIZED, REMARK) .to(CLOSED).emit(\"AfterSaleCompensatedClosed\").add() // A15 申请平台介入（只能由买家 / 商家发起，系统不自动转入） .from(APPLIED, NEGOTIATING, WAIT_RETURN, RETURNING, WAIT_RECEIPT, REJECTED, WAIT_OFFLINE_REFUND, OFFLINE_REFUNDED) .on(ESCALATE).by(BUYER, MERCHANT).when(AUTHORIZED, ESCALATION_OPEN).to(ARBITRATING) .emit(\"AfterSaleEscalated\").add() // A16 / A17 平台裁决 .from(ARBITRATING).on(ARBITRATE_REFUND).by(PLATFORM).when(AUTHORIZED, REFUNDABLE, CHANNEL_OK) .toOneOf(AfterSaleTargets.ACCEPT_TARGETS, AfterSaleTargets::refundOrAwaitReturn) .emit(\"AfterSaleArbitrated\").add() .from(ARBITRATING).on(ARBITRATE_CLOSE).by(PLATFORM).when(AUTHORIZED, REMARK).to(CLOSED) .emit(\"AfterSaleArbitrated\").add() // A18 买家撤销（钱已在路上不能撤） .from(APPLIED, NEGOTIATING, WAIT_RETURN, REJECTED).on(WITHDRAW).by(BUYER).when(AUTHORIZED) .to(CLOSED).emit(\"AfterSaleWithdrawn\").add() // A19 驳回后 7 天未申请介入 .from(REJECTED).on(ESCALATION_WINDOW_EXPIRED).by(SYSTEM).when(EXPIRED).to(CLOSED).add() // A20 / A21 线下付款单：商家线下退款登记 → 买家确认收到 .from(WAIT_OFFLINE_REFUND).on(OFFLINE_REFUND_REGISTERED).by(MERCHANT).when(AUTHORIZED, PROOF) .to(OFFLINE_REFUNDED).emit(\"AfterSaleOfflineRefunded\").add() .from(OFFLINE_REFUNDED).on(OFFLINE_REFUND_ACKED).by(BUYER).when(AUTHORIZED).to(REFUNDED) .emit(\"AfterSaleRefunded\").add() .build()",
+      "value": "StateMachine.<AfterSaleStatus, AfterSaleEvent, AfterSaleContext>builder(\"after-sale\") // A1 买家申请 .create().on(APPLY).by(BUYER).when(AUTHORIZED, IN_WINDOW, NO_OPEN, REFUNDABLE, REASON, APPLY_RULE) .to(APPLIED).emit(\"AfterSaleApplied\").add() .from(APPLIED).on(PREPARATION_NOT_STARTED_REFUND).by(BUYER) .when(AUTHORIZED, PREPARATION_NOT_STARTED, CHANNEL_OK) .to(REFUNDING).emit(\"BeforePreparationRefundRequested\").add() // A2 商家主动退款（缺货少发 / 称重差价 / 补偿 …） .create().on(MERCHANT_INITIATE).by(MERCHANT).when(AUTHORIZED, REASON, REFUNDABLE, CHANNEL_OK) .toOneOf(AfterSaleTargets.MONEY, AfterSaleTargets::moneyStep).emit(\"AfterSaleInitiated\").add() // A3 交易不成立（拼团未成团 / 集单撤单 / 关单后迟到回调）—— 系统唯一可退钱的入口 .create().on(TRADE_VOID).by(SYSTEM).when(VOID_REASON).to(REFUNDING).emit(\"TradeVoided\").add() // A4 商家同意（分流见 AfterSaleTargets.approve） .from(APPLIED).on(APPROVE).by(MERCHANT).when(AUTHORIZED, CHANNEL_OK) .toOneOf(AfterSaleTargets.APPROVE_TARGETS, AfterSaleTargets::approve).emit(\"AfterSaleApproved\").add() // A5 商家提出协商金额 .from(APPLIED).on(OFFER).by(MERCHANT).when(AUTHORIZED, OFFER_VALID, CHANNEL_OK).to(NEGOTIATING) .emit(\"AfterSaleOffered\").add() // A6 买家接受协商额（决定是商家做的，买家只是接受） .from(NEGOTIATING).on(ACCEPT_OFFER).by(BUYER).when(AUTHORIZED) .toOneOf(AfterSaleTargets.ACCEPT_TARGETS, AfterSaleTargets::refundOrAwaitReturn) .emit(\"AfterSaleOfferAccepted\").add() // A7 买家拒绝 / 48h 未答 → 回到待商家处理 .from(NEGOTIATING).on(DECLINE_OFFER).by(BUYER).when(AUTHORIZED).to(APPLIED).add() .from(NEGOTIATING).on(OFFER_EXPIRED).by(SYSTEM).when(EXPIRED).to(APPLIED).add() // A8 商家驳回（理由必填） .from(APPLIED).on(REJECT).by(MERCHANT).when(AUTHORIZED, REMARK).to(REJECTED) .emit(\"AfterSaleRejected\").add() // A9 在途仅退款签收后，商家一键确认退款（不自动） .from(WAIT_RECEIPT).on(CONFIRM_REFUND).by(MERCHANT).when(AUTHORIZED) .toOneOf(AfterSaleTargets.MONEY, AfterSaleTargets::moneyStep).emit(\"AfterSaleRefundConfirmed\").add() // A10–A12 退货：买家寄回 → 商家确认收货 → 退钱；7 天不寄回关闭 .from(WAIT_RETURN).on(RETURN_SHIPPED).by(BUYER).when(AUTHORIZED, WAYBILL).to(RETURNING) .emit(\"AfterSaleReturnShipped\").add() .from(WAIT_RETURN).on(RETURN_EXPIRED).by(SYSTEM).when(EXPIRED).to(CLOSED).add() .from(RETURNING).on(RETURN_RECEIVED).by(MERCHANT).when(AUTHORIZED) .toOneOf(AfterSaleTargets.MONEY, AfterSaleTargets::moneyStep).emit(\"AfterSaleReturnReceived\").add() // A13 / A14 退款回执（执行结果，不是决定） .from(REFUNDING).on(REFUND_SUCCEEDED).by(CHANNEL, SYSTEM).when(CASH_SETTLED).to(REFUNDED).emit(\"AfterSaleRefunded\").add() .from(REFUNDING).on(BENEFITS_SETTLED).by(SYSTEM).when(ZERO_SETTLED) .to(REFUNDED).emit(\"AfterSaleRefunded\").add() .from(REFUNDING).on(REFUND_FAILED).by(CHANNEL).stay().emit(\"AfterSaleRefundFailed\").add() .from(REFUNDING).on(COMPENSATED_CLOSE).by(PLATFORM).when(AUTHORIZED, REMARK) .to(CLOSED).emit(\"AfterSaleCompensatedClosed\").add() // A15 申请平台介入（只能由买家 / 商家发起，系统不自动转入） .from(APPLIED, NEGOTIATING, WAIT_RETURN, RETURNING, WAIT_RECEIPT, REJECTED, WAIT_OFFLINE_REFUND, OFFLINE_REFUNDED) .on(ESCALATE).by(BUYER, MERCHANT).when(AUTHORIZED, ESCALATION_OPEN).to(ARBITRATING) .emit(\"AfterSaleEscalated\").add() // A16 / A17 平台裁决 .from(ARBITRATING).on(ARBITRATE_REFUND).by(PLATFORM).when(AUTHORIZED, REFUNDABLE, CHANNEL_OK) .toOneOf(AfterSaleTargets.ACCEPT_TARGETS, AfterSaleTargets::refundOrAwaitReturn) .emit(\"AfterSaleArbitrated\").add() .from(ARBITRATING).on(ARBITRATE_CLOSE).by(PLATFORM).when(AUTHORIZED, REMARK).to(CLOSED) .emit(\"AfterSaleArbitrated\").add() // A18 买家撤销（钱已在路上不能撤） .from(APPLIED, NEGOTIATING, WAIT_RETURN, REJECTED).on(WITHDRAW).by(BUYER).when(AUTHORIZED) .to(CLOSED).emit(\"AfterSaleWithdrawn\").add() // A19 驳回后 7 天未申请介入 .from(REJECTED).on(ESCALATION_WINDOW_EXPIRED).by(SYSTEM).when(EXPIRED).to(CLOSED).add() // A20 / A21 线下付款单：商家线下退款登记 → 买家确认收到 .from(WAIT_OFFLINE_REFUND).on(OFFLINE_REFUND_REGISTERED).by(MERCHANT).when(AUTHORIZED, PROOF) .to(OFFLINE_REFUNDED).emit(\"AfterSaleOfflineRefunded\").add() .from(OFFLINE_REFUNDED).on(OFFLINE_REFUND_ACKED).by(BUYER).when(AUTHORIZED, OFFLINE_SETTLED).to(REFUNDED) .emit(\"AfterSaleRefunded\").add() .build()",
       "zh": "",
       "module": "shop-core"
     },

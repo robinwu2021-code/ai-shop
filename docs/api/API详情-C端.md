@@ -69,12 +69,23 @@
 | `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
 | `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `returnItems` | `object`（见下）\[\] | 否 | 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 |
+| `returnInventoryStatus` | `PENDING` \| `COMPLETED` \| `FAILED` \| `PLATFORM_UPDATED` \| `NOT_TRACKED` \| `null` | 否 | 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
 | `createdAt` | `number` | 否 | 申请时间 |
 | `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
 | `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
 | `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`returnItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `skuNo` | `string,null` | 否 | — |
+| `title` | `string` | 是 | — |
+| `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
@@ -119,12 +130,23 @@
 | `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
 | `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `returnItems` | `object`（见下）\[\] | 否 | 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 |
+| `returnInventoryStatus` | `PENDING` \| `COMPLETED` \| `FAILED` \| `PLATFORM_UPDATED` \| `NOT_TRACKED` \| `null` | 否 | 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
 | `createdAt` | `number` | 否 | 申请时间 |
 | `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
 | `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
 | `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`returnItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `skuNo` | `string,null` | 否 | — |
+| `title` | `string` | 是 | — |
+| `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
@@ -169,12 +191,23 @@
 | `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
 | `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `returnItems` | `object`（见下）\[\] | 否 | 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 |
+| `returnInventoryStatus` | `PENDING` \| `COMPLETED` \| `FAILED` \| `PLATFORM_UPDATED` \| `NOT_TRACKED` \| `null` | 否 | 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
 | `createdAt` | `number` | 否 | 申请时间 |
 | `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
 | `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
 | `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`returnItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `skuNo` | `string,null` | 否 | — |
+| `title` | `string` | 是 | — |
+| `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
@@ -1973,12 +2006,23 @@
 | `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
 | `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `returnItems` | `object`（见下）\[\] | 否 | 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 |
+| `returnInventoryStatus` | `PENDING` \| `COMPLETED` \| `FAILED` \| `PLATFORM_UPDATED` \| `NOT_TRACKED` \| `null` | 否 | 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
 | `createdAt` | `number` | 否 | 申请时间 |
 | `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
 | `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
 | `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`returnItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `skuNo` | `string,null` | 否 | — |
+| `title` | `string` | 是 | — |
+| `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
@@ -3307,12 +3351,23 @@
 | `waitReceipt` | `boolean` | 否 | 是否「待收货后退款」：等价 `status === "WAIT_RECEIPT"`，端上少判一层（AC7） |
 | `canEscalate` | `boolean` | 否 | 买家此刻能否「申请平台介入」。**后端判**：被驳回、在途待签收，或商家超时未处理 / 未确认退货收货。 端上按它显示按钮，不再自己按状态猜（TDD-订单状态机 AC10）。 |
 | `returnExpressNo` | `string` | 否 | 用户寄回的运单号（RETURN_REFUND） |
+| `returnItems` | `object`（见下）\[\] | 否 | 退货验收明细，仅 B 端收货确认使用；件数与品质由商家逐行确认。 |
+| `returnInventoryStatus` | `PENDING` \| `COMPLETED` \| `FAILED` \| `PLATFORM_UPDATED` \| `NOT_TRACKED` \| `null` | 否 | 退货入库状态，与退款资金状态分开；PENDING/FAILED 需要继续追踪处理。 |
 | `disputeReason` | `string` | 否 | 上升平台时用户的申诉理由 |
 | `updatedAt` | `number` | 是 | 最后一次状态变更时间。超时自动同意等时效规则以它为基准 |
 | `createdAt` | `number` | 否 | 申请时间 |
 | `liability` | `string` | 否 | 责任方，平台裁决后才有（口径未定） |
 | `timeline` | `object`（见下）\[\] | 否 | 售后自己的时间线（申请 → 同意 → 寄回 → 退款），与订单时间线分开 |
 | `impact` | [`RefundImpact`](#refundimpact) \| `null` | 否 | 同意这一笔之后会一并退回什么（待办设计 P2c，**只在商家侧**、待处理、整单最后一笔时给）。 商家券的退回会让他少收一次券核销，所以要在点同意之前看见。 |
+
+`returnItems[]` 的字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `itemId` | `number` | 是 | — |
+| `skuNo` | `string,null` | 否 | — |
+| `title` | `string` | 是 | — |
+| `requestedQty` | `number` | 是 | — |
 
 `timeline[]` 的字段：
 
@@ -4781,6 +4836,10 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `closureVersion` | `number,null` | 否 | Persisted protocol version; absent means legacy recovery semantics. |
+| `closureStatus` | `LEGACY` \| `PENDING` \| `DONE` \| `null` | 否 | — |
+| `cashStatus` | `string,null` | 否 | — |
+| `benefitsStatus` | `PENDING` \| `SETTLED` \| `null` | 否 | — |
 | `executionNo` | `string` | 是 | 原退款执行号；恢复仍使用同一执行。 |
 | `paymentNo` | `string,null` | 否 | 资金流水号，尚未准备时可空。 |
 | `status` | `string` | 是 | 执行状态，以后端实际确认结果为准。 |

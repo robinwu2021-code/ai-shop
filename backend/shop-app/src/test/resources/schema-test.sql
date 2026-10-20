@@ -258,8 +258,17 @@ CREATE TABLE IF NOT EXISTS mkt_coupon
     scope_desc VARCHAR(255) DEFAULT NULL,
     budget_minor BIGINT(20) NOT NULL DEFAULT 0,
     archived_at DATETIME DEFAULT NULL,
+    migration_state VARCHAR(24) NOT NULL DEFAULT 'OPEN',
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    migration_watermark CHAR(64) COLLATE utf8mb4_bin NULL,
+    migration_frozen_revision BIGINT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_coupon_no UNIQUE (coupon_no)
+    CONSTRAINT uk_coupon_no UNIQUE (coupon_no),
+    CONSTRAINT ck_mkt_migration_state CHECK (
+    migration_state IN ('OPEN','DRAINING','FROZEN','COMMIT_DECIDED','ABORT_DECIDED')
+    AND (migration_state='OPEN' OR migration_batch_no IS NOT NULL)
+    AND (migration_state NOT IN ('FROZEN','COMMIT_DECIDED') OR (migration_watermark IS NOT NULL AND migration_frozen_revision IS NOT NULL))
+    AND (migration_frozen_revision IS NULL OR migration_frozen_revision>=0))
 );
 
 CREATE TABLE IF NOT EXISTS mkt_group_buy
@@ -1624,7 +1633,7 @@ CREATE TABLE IF NOT EXISTS usr_store_favorite
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
     store_no VARCHAR(64) DEFAULT NULL,
-    CONSTRAINT uk_user_store UNIQUE (user_no, store_no),
+    CONSTRAINT usr_store_favorite_uk_user_store UNIQUE (user_no, store_no),
     PRIMARY KEY (id)
 );
 
@@ -3550,8 +3559,17 @@ CREATE TABLE IF NOT EXISTS pmt_coupon
     updated_by VARCHAR(64) DEFAULT NULL,
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted TINYINT(4) NOT NULL DEFAULT 0,
+    migration_state VARCHAR(24) NOT NULL DEFAULT 'OPEN',
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    migration_watermark CHAR(64) COLLATE utf8mb4_bin NULL,
+    migration_frozen_revision BIGINT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT uk_pmt_coupon_no UNIQUE (coupon_no)
+    CONSTRAINT uk_pmt_coupon_no UNIQUE (coupon_no),
+    CONSTRAINT ck_pmt_migration_state CHECK (
+    migration_state IN ('OPEN','DRAINING','FROZEN','COMMIT_DECIDED','ABORT_DECIDED')
+    AND (migration_state='OPEN' OR migration_batch_no IS NOT NULL)
+    AND (migration_state NOT IN ('FROZEN','COMMIT_DECIDED') OR (migration_watermark IS NOT NULL AND migration_frozen_revision IS NOT NULL))
+    AND (migration_frozen_revision IS NULL OR migration_frozen_revision>=0))
 );
 
 CREATE TABLE IF NOT EXISTS pmt_coupon_scope
@@ -3700,6 +3718,9 @@ CREATE TABLE IF NOT EXISTS pmt_activity
     enroll_deadline BIGINT(20) DEFAULT NULL,
     enroll_rule TEXT DEFAULT NULL,
     enroll_reserved_minor BIGINT(20) NOT NULL DEFAULT 0,
+    scene VARCHAR(24) NOT NULL DEFAULT 'ORDER',
+    current_version_no VARCHAR(64) NULL,
+    draft_snapshot TEXT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_pmt_activity_no UNIQUE (activity_no)
 );
@@ -4261,8 +4282,7 @@ CREATE TABLE IF NOT EXISTS trd_shipping_upload
     version BIGINT(20) NOT NULL DEFAULT 0,
     deleted INT(11) NOT NULL DEFAULT 0,
     confirm_notified_at BIGINT DEFAULT NULL,
-    -- MariaDB's JSON type is a LONGTEXT alias; CLOB mirrors its raw JSON-text storage in H2.
-    source_snapshot CLOB NULL,
+    source_snapshot TEXT NULL,
     PRIMARY KEY (id),
     CONSTRAINT uk_shipping_order UNIQUE (order_no, tenant_no, deleted)
 );
@@ -5088,6 +5108,91 @@ CREATE TABLE IF NOT EXISTS lgs_update_log
     occurred_at BIGINT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS ent_template
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    template_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    kind VARCHAR(24) NOT NULL,
+    funder VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    current_version_no VARCHAR(64) NULL,
+    draft_snapshot TEXT NOT NULL,
+    archived_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_template UNIQUE (tenant_no,template_no)
+);
+
+CREATE TABLE IF NOT EXISTS ent_template_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    version_no VARCHAR(64) NOT NULL,
+    template_no VARCHAR(64) NOT NULL,
+    version_index INT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    benefit_mode VARCHAR(24) NOT NULL,
+    benefit_value BIGINT NULL,
+    benefit_cap_minor BIGINT NULL,
+    min_amount_minor BIGINT NULL,
+    usage_model VARCHAR(24) NOT NULL,
+    total_units INT NULL,
+    daily_units INT NULL,
+    validity_mode VARCHAR(16) NOT NULL,
+    valid_from DATETIME(3) NULL,
+    valid_until DATETIME(3) NULL,
+    valid_days INT NULL,
+    start_basis VARCHAR(16) NOT NULL,
+    period_basis VARCHAR(24) NOT NULL,
+    market_zone VARCHAR(64) NOT NULL,
+    redemption_scope TEXT NOT NULL,
+    allowed_issue_modes TEXT NOT NULL,
+    policy_snapshot TEXT NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    published_by VARCHAR(64) NOT NULL,
+    published_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ent_version UNIQUE (tenant_no,version_no),
+    CONSTRAINT uk_ent_version_seq UNIQUE (tenant_no,template_no,version_index),
+    CHECK (total_units IS NULL OR total_units>0),
+    CHECK (daily_units IS NULL OR daily_units>0),
+    CHECK (benefit_cap_minor IS NULL OR benefit_cap_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS pay_ent_command_dedup
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    operation_kind VARCHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    resource_no VARCHAR(64) NOT NULL,
+    result_status VARCHAR(24) NOT NULL,
+    response_snapshot TEXT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT pay_ent_command_dedup_uk_command UNIQUE (tenant_no,operation_kind,request_key)
+);
+
 CREATE TABLE IF NOT EXISTS pts_point_type
 (
     type_code VARCHAR(40) NOT NULL,
@@ -5776,6 +5881,795 @@ CREATE TABLE IF NOT EXISTS pts_cursor
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS mbr_identity_ticket
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    ticket_hash CHAR(64) NOT NULL,
+    purpose VARCHAR(24) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NULL,
+    store_no VARCHAR(64) NULL,
+    actor_no VARCHAR(64) NULL,
+    source_ticket_hash CHAR(64) NULL,
+    issued_at DATETIME(3) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_member_identity_hash UNIQUE (tenant_no,ticket_hash),
+    CHECK (expires_at>issued_at),
+    CHECK ((purpose='MEMBER_CODE' AND entity_no IS NULL AND store_no IS NULL AND actor_no IS NULL AND source_ticket_hash IS NULL) OR (purpose='CUSTOMER_REFERENCE' AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS ord_ent_authorization
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    intent_key VARCHAR(64) NOT NULL,
+    authorization_no VARCHAR(64) NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    payload_hash CHAR(64) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    source_revision BIGINT NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    quote_ref VARCHAR(64) NOT NULL,
+    selection_digest CHAR(64) NOT NULL,
+    order_snapshot_hash CHAR(64) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    authorized_at DATETIME(3) NULL,
+    expires_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    order_use_snapshot TEXT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_order_auth_intent UNIQUE (tenant_no,intent_key),
+    CONSTRAINT uk_order_auth_no UNIQUE (tenant_no,authorization_no),
+    CONSTRAINT uk_order_auth_request UNIQUE (tenant_no,user_no,request_key),
+    CONSTRAINT uk_order_auth_quote UNIQUE (tenant_no,quote_ref),
+    CHECK (source_revision>=0 AND amount_minor>=0),
+    CHECK (expires_at>created_at),
+    CHECK ((status='PENDING' AND authorization_no IS NULL AND request_key IS NULL AND authorized_at IS NULL) OR (status='AUTHORIZED' AND authorization_no IS NOT NULL AND request_key IS NOT NULL AND authorized_at IS NOT NULL AND authorized_at<expires_at) OR (status IN ('CANCELLED','EXPIRED'))),
+    CHECK (status IN ('PENDING','AUTHORIZED','CANCELLED','EXPIRED'))
+);
+
+CREATE TABLE IF NOT EXISTS ord_ent_source_decision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    decision_no VARCHAR(64) NOT NULL,
+    purpose VARCHAR(16) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    settled_source_key CHAR(64) NULL,
+    source_revision BIGINT NOT NULL,
+    decision_type VARCHAR(24) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    authorization_ref VARCHAR(64) NULL,
+    paid_fact_ref VARCHAR(64) NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NULL,
+    currency VARCHAR(8) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_source_decision UNIQUE (tenant_no,decision_no),
+    CONSTRAINT uk_source_intent UNIQUE (tenant_no,purpose,source_key),
+    CONSTRAINT uk_source_settled UNIQUE (tenant_no,purpose,settled_source_key),
+    CHECK (source_revision>=0 AND amount_minor>=0),
+    CHECK ((status='CANCELLED' AND settled_source_key IS NULL AND ((purpose='USE' AND decision_type='USE_CANCEL') OR (purpose='GRANT' AND decision_type='GRANT_ABORT'))) OR (status='COMMITTED' AND settled_source_key IS NOT NULL AND ((purpose='USE' AND decision_type='USE_COMMIT') OR (purpose='GRANT' AND decision_type='GRANT_COMMIT') OR (purpose='REVERSE' AND decision_type='ORDER_REVERSE'))))
+);
+
+CREATE TABLE IF NOT EXISTS ord_card_sale_snapshot
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    snapshot_no VARCHAR(64) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    sub_order_no VARCHAR(64) NOT NULL,
+    order_line_no VARCHAR(64) NOT NULL,
+    unit_index INT NOT NULL,
+    entitlement_index INT NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    goods_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) NOT NULL,
+    template_version_no VARCHAR(64) NOT NULL,
+    unit_price_minor BIGINT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    rule_snapshot TEXT NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    paid_fact_no VARCHAR(64) NULL,
+    paid_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    delivery_status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    PRIMARY KEY (id),
+    CONSTRAINT uk_card_sale_snapshot UNIQUE (tenant_no, snapshot_no),
+    CONSTRAINT uk_card_sale_source UNIQUE (tenant_no, source_key),
+    CONSTRAINT uk_card_sale_unit UNIQUE (tenant_no, order_line_no, unit_index, entitlement_index),
+    CHECK (unit_index > 0 AND entitlement_index > 0 AND unit_price_minor >= 0),
+    CHECK ((paid_fact_no IS NULL AND paid_at IS NULL) OR (paid_fact_no IS NOT NULL AND paid_at IS NOT NULL)),
+    CONSTRAINT ck_card_sale_delivery CHECK (delivery_status IN ('PENDING','ACKNOWLEDGED'))
+);
+
+CREATE TABLE IF NOT EXISTS pay_ent_outbox
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    event_no VARCHAR(64) NOT NULL,
+    event_type VARCHAR(64) NOT NULL,
+    schema_version INT NOT NULL,
+    aggregate_no VARCHAR(64) NOT NULL,
+    payload TEXT NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    next_attempt_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_event UNIQUE (tenant_no,event_no),
+    CHECK (schema_version > 0 AND attempts >= 0),
+    CHECK (status IN ('PENDING','SENT','DEAD'))
+);
+
+CREATE TABLE IF NOT EXISTS pay_ent_inbox
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    consumer VARCHAR(64) NOT NULL,
+    event_no VARCHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    processed_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_inbox UNIQUE (tenant_no,consumer,event_no)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_preset_template
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    template_code VARCHAR(32) NOT NULL,
+    template_version INT NOT NULL,
+    catalog_kind VARCHAR(24) NOT NULL,
+    category VARCHAR(32) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    industry_tags TEXT NOT NULL,
+    draft_schema TEXT NOT NULL,
+    required_capabilities TEXT NOT NULL,
+    enabled TINYINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_preset UNIQUE (tenant_no,template_code,template_version),
+    CHECK (template_version > 0),
+    CHECK (catalog_kind IN ('ACTIVITY','PAID_PRODUCT'))
+);
+
+CREATE TABLE IF NOT EXISTS pmt_activity_version
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    version_no VARCHAR(64) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    version_index INT NOT NULL,
+    schema_version INT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    schedule_type VARCHAR(24) NOT NULL,
+    starts_at DATETIME(3) NOT NULL,
+    ends_at DATETIME(3) NULL,
+    market_zone VARCHAR(64) NOT NULL,
+    rule_snapshot TEXT NOT NULL,
+    rule_hash CHAR(64) NOT NULL,
+    published_by VARCHAR(64) NOT NULL,
+    published_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_activity_version UNIQUE (tenant_no,version_no),
+    CONSTRAINT uk_activity_revision UNIQUE (tenant_no,activity_no,version_index)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_activity_scope
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    version_no VARCHAR(64) NOT NULL,
+    scope_kind VARCHAR(24) NOT NULL,
+    ref_no VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_scope UNIQUE (tenant_no,version_no,scope_kind,ref_no)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_recharge_tier
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    tier_no VARCHAR(64) NOT NULL,
+    version_no VARCHAR(64) NOT NULL,
+    pay_amount_minor BIGINT NOT NULL,
+    bonus_amount_minor BIGINT NOT NULL,
+    redemption_scope TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_tier UNIQUE (tenant_no,version_no,tier_no),
+    CONSTRAINT uk_tier_amount UNIQUE (tenant_no,version_no,pay_amount_minor),
+    CHECK (pay_amount_minor>0 AND bonus_amount_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_activity_budget
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    quota_limit BIGINT NULL,
+    quota_held BIGINT NOT NULL DEFAULT 0,
+    quota_used BIGINT NOT NULL DEFAULT 0,
+    budget_limit_minor BIGINT NULL,
+    budget_held_minor BIGINT NOT NULL DEFAULT 0,
+    budget_used_minor BIGINT NOT NULL DEFAULT 0,
+    per_user_limit INT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_budget UNIQUE (tenant_no,activity_no),
+    CHECK (quota_held>=0 AND quota_used>=0 AND budget_held_minor>=0 AND budget_used_minor>=0),
+    CHECK (quota_limit IS NULL OR quota_held+quota_used<=quota_limit),
+    CHECK (budget_limit_minor IS NULL OR budget_held_minor+budget_used_minor<=budget_limit_minor),
+    CHECK (per_user_limit>0)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_activity_participant
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    held_count INT NOT NULL DEFAULT 0,
+    used_count INT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_participant UNIQUE (tenant_no,activity_no,user_no),
+    CHECK (held_count>=0 AND used_count>=0)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_activity_reservation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    reservation_no VARCHAR(64) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    version_no VARCHAR(64) NOT NULL,
+    tier_no VARCHAR(64) NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    quota_units INT NOT NULL,
+    budget_minor BIGINT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    permit_snapshot TEXT NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    deadline DATETIME(3) NOT NULL,
+    pay_fact_no VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_reservation UNIQUE (tenant_no,reservation_no),
+    CONSTRAINT uk_reserve_source UNIQUE (tenant_no,source_key),
+    CHECK (quota_units>0 AND budget_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_effect_projection
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    source_event_no VARCHAR(64) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    effect_kind VARCHAR(32) NOT NULL,
+    amount_minor BIGINT NULL,
+    currency VARCHAR(8) NULL,
+    units BIGINT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_effect UNIQUE (tenant_no,source_event_no,activity_no,effect_kind)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_command_dedup
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    operation_kind VARCHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    resource_no VARCHAR(64) NOT NULL,
+    result_status VARCHAR(24) NOT NULL,
+    response_snapshot TEXT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT pmt_command_dedup_uk_command UNIQUE (tenant_no,operation_kind,request_key)
+);
+
+CREATE TABLE IF NOT EXISTS ent_issue_policy
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    template_no VARCHAR(64) NOT NULL,
+    limit_count BIGINT NULL,
+    held_count BIGINT NOT NULL DEFAULT 0,
+    issued_count BIGINT NOT NULL DEFAULT 0,
+    max_exposure_minor BIGINT NULL,
+    held_exposure_minor BIGINT NOT NULL DEFAULT 0,
+    used_exposure_minor BIGINT NOT NULL DEFAULT 0,
+    per_user_limit INT NOT NULL,
+    enabled TINYINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_issue_policy UNIQUE (tenant_no,template_no),
+    CHECK (held_count>=0 AND issued_count>=0 AND held_exposure_minor>=0 AND used_exposure_minor>=0),
+    CHECK (limit_count IS NULL OR held_count+issued_count<=limit_count),
+    CHECK (max_exposure_minor IS NULL OR held_exposure_minor+used_exposure_minor<=max_exposure_minor)
+);
+
+CREATE TABLE IF NOT EXISTS ent_issue_recipient
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    template_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    held_count INT NOT NULL DEFAULT 0,
+    issued_count INT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_issue_recipient UNIQUE (tenant_no,template_no,user_no),
+    CHECK (held_count>=0 AND issued_count>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ent_grant
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    grant_no VARCHAR(64) NOT NULL,
+    batch_no VARCHAR(64) NULL,
+    source_key CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    template_version_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    reservation_no VARCHAR(64) NULL,
+    paid_fact_ref VARCHAR(64) NULL,
+    quantity INT NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    prepared_snapshot TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    source_decision_no VARCHAR(64) NULL,
+    committed_at DATETIME(3) NULL,
+    reason_code VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_grant UNIQUE (tenant_no,grant_no),
+    CONSTRAINT uk_grant_source UNIQUE (tenant_no,source_key),
+    CHECK (quantity>0)
+);
+
+CREATE TABLE IF NOT EXISTS ent_instance
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    template_version_no VARCHAR(64) NOT NULL,
+    grant_no VARCHAR(64) NOT NULL,
+    unit_index INT NOT NULL,
+    source_unit_key CHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    kind VARCHAR(24) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    total_units INT NULL,
+    remaining_units INT NULL,
+    reserved_units INT NOT NULL DEFAULT 0,
+    effective_from DATETIME(3) NULL,
+    effective_until DATETIME(3) NULL,
+    activation_at DATETIME(3) NULL,
+    source_paid_at DATETIME(3) NULL,
+    rule_snapshot TEXT NOT NULL,
+    asset_seq BIGINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_instance UNIQUE (tenant_no,instance_no),
+    CONSTRAINT uk_grant_unit UNIQUE (tenant_no,grant_no,unit_index),
+    CONSTRAINT uk_source_unit UNIQUE (tenant_no,source_unit_key),
+    CHECK (unit_index>0 AND reserved_units>=0),
+    CHECK (remaining_units IS NULL OR remaining_units>=reserved_units)
+);
+
+CREATE TABLE IF NOT EXISTS ent_ledger
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    entry_no VARCHAR(64) NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    asset_seq BIGINT NOT NULL,
+    biz_type VARCHAR(24) NOT NULL,
+    biz_key VARCHAR(128) NOT NULL,
+    units_delta INT NOT NULL,
+    reserved_delta INT NOT NULL,
+    after_units INT NULL,
+    after_reserved INT NOT NULL,
+    bucket_key VARCHAR(64) NULL,
+    origin_entry_no VARCHAR(64) NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ent_entry UNIQUE (tenant_no,entry_no),
+    CONSTRAINT uk_asset_seq UNIQUE (tenant_no,instance_no,asset_seq),
+    CONSTRAINT uk_ledger_biz UNIQUE (tenant_no,instance_no,biz_key),
+    CHECK (after_reserved>=0),
+    CHECK (after_units IS NULL OR after_units>=after_reserved)
+);
+
+CREATE TABLE IF NOT EXISTS ent_issue_batch
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    batch_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    template_version_no VARCHAR(64) NOT NULL,
+    activity_ref VARCHAR(64) NULL,
+    audience_fact_ref VARCHAR(64) NOT NULL,
+    planned_count INT NOT NULL,
+    issued_count INT NOT NULL DEFAULT 0,
+    skipped_count INT NOT NULL DEFAULT 0,
+    failed_count INT NOT NULL DEFAULT 0,
+    pending_count INT NOT NULL,
+    skip_reasons TEXT NOT NULL,
+    audience_snapshot TEXT NOT NULL,
+    recipient_results TEXT NOT NULL,
+    cursor_offset INT NOT NULL DEFAULT 0,
+    status VARCHAR(24) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_batch UNIQUE (tenant_no,batch_no)
+);
+
+CREATE TABLE IF NOT EXISTS ent_period_bucket
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    period_key VARCHAR(32) NOT NULL,
+    service_day DATE NOT NULL,
+    limit_units INT NOT NULL,
+    reserved_units INT NOT NULL DEFAULT 0,
+    used_units INT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_bucket UNIQUE (tenant_no,instance_no,period_key,service_day),
+    CHECK (limit_units>0 AND reserved_units>=0 AND used_units>=0 AND reserved_units+used_units<=limit_units)
+);
+
+CREATE TABLE IF NOT EXISTS ent_use_intent
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    active_source_key CHAR(64) NULL,
+    source_snapshot TEXT NOT NULL,
+    settled_source_key CHAR(64) NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    asset_kind VARCHAR(24) NOT NULL,
+    authorization_ref VARCHAR(64) NOT NULL,
+    command_snapshot TEXT NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    service_day DATE NULL,
+    source_decision_no VARCHAR(64) NULL,
+    expires_at DATETIME(3) NOT NULL,
+    committed_at DATETIME(3) NULL,
+    usage_no VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_operation UNIQUE (tenant_no,operation_no),
+    CONSTRAINT uk_use_source UNIQUE (tenant_no,source_key),
+    CONSTRAINT uk_use_active_source UNIQUE (tenant_no,active_source_key),
+    CONSTRAINT uk_settled_source UNIQUE (tenant_no,settled_source_key)
+);
+
+CREATE TABLE IF NOT EXISTS ent_use_allocation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    period_key VARCHAR(32) NOT NULL,
+    service_day DATE NOT NULL,
+    units INT NOT NULL,
+    discount_minor BIGINT NOT NULL DEFAULT 0,
+    currency VARCHAR(8) NOT NULL,
+    items_allocation TEXT NOT NULL,
+    reversed_units INT NOT NULL DEFAULT 0,
+    reversed_discount_minor BIGINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ent_alloc UNIQUE (tenant_no,operation_no,instance_no,period_key,service_day),
+    CHECK (units>0 AND discount_minor>=0),
+    CHECK (reversed_units>=0 AND reversed_units<=units AND reversed_discount_minor>=0 AND reversed_discount_minor<=discount_minor)
+);
+
+CREATE TABLE IF NOT EXISTS ent_usage
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    usage_no VARCHAR(64) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NULL,
+    store_name VARCHAR(100) NULL,
+    asset_kind VARCHAR(24) NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    units INT NULL,
+    amount_minor BIGINT NULL,
+    currency VARCHAR(8) NULL,
+    items_snapshot TEXT NOT NULL,
+    service_staff_name VARCHAR(64) NULL,
+    source_order_no VARCHAR(64) NULL,
+    operator_no VARCHAR(64) NULL,
+    status VARCHAR(16) NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    protocol VARCHAR(16) NOT NULL DEFAULT 'STANDARD',
+    legacy_instance_no VARCHAR(64) NULL,
+    migration_import_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    CONSTRAINT uk_usage_protocol_op UNIQUE (tenant_no,protocol,operation_no),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_usage UNIQUE (tenant_no,usage_no),
+    CONSTRAINT ck_usage_protocol CHECK (
+ (protocol='STANDARD' AND legacy_instance_no IS NULL AND migration_import_no IS NULL AND store_no IS NOT NULL AND store_name IS NOT NULL AND operator_no IS NOT NULL)
+ OR (protocol='LEGACY' AND legacy_instance_no IS NOT NULL AND migration_import_no IS NULL AND operator_no IS NOT NULL
+     AND asset_kind='ORDER_COUPON' AND currency IS NOT NULL AND currency='CNY' AND units IS NOT NULL AND units=1
+     AND amount_minor IS NOT NULL AND amount_minor>0 AND source_order_no IS NOT NULL)
+ OR (protocol='MIGRATED' AND migration_import_no IS NOT NULL AND asset_kind='ORDER_COUPON'
+     AND currency IS NOT NULL AND currency='CNY' AND units IS NOT NULL AND units=1
+     AND amount_minor IS NOT NULL AND amount_minor>=0 AND status IN ('COMMITTED','REVERSED'))
+)
+);
+
+CREATE TABLE IF NOT EXISTS ent_use_proposal
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    proposal_no VARCHAR(64) NOT NULL,
+    proposal_kind VARCHAR(16) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    payload_snapshot TEXT NOT NULL,
+    snapshot_hash CHAR(64) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_use_proposal UNIQUE (tenant_no,proposal_no)
+);
+
+CREATE TABLE IF NOT EXISTS pay_ent_source_fence
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    purpose VARCHAR(16) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    decision_snapshot TEXT NULL,
+    cancelled_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ent_fence_source UNIQUE (tenant_no,purpose,source_key),
+    CONSTRAINT uk_ent_fence_operation UNIQUE (tenant_no,purpose,operation_no),
+    CHECK (status IN ('OPEN','CANCELLED')),
+    CHECK ((status='OPEN' AND decision_snapshot IS NULL AND cancelled_at IS NULL) OR (status='CANCELLED' AND decision_snapshot IS NOT NULL AND cancelled_at IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS ord_ent_order_use
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    context_snapshot TEXT NOT NULL,
+    command_snapshot TEXT NOT NULL,
+    order_snapshot_hash CHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    decision_snapshot TEXT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_order_use_operation UNIQUE (tenant_no,operation_no),
+    CONSTRAINT uk_order_use_order UNIQUE (tenant_no,order_no),
+    CONSTRAINT uk_order_use_source UNIQUE (tenant_no,source_key),
+    CHECK (status IN ('PENDING','APPLIED','COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED')),
+    CHECK ((status IN ('PENDING','APPLIED') AND decision_snapshot IS NULL) OR (status IN ('COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED') AND decision_snapshot IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS ord_ent_payment_seal
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    order_no VARCHAR(64) NOT NULL,
+    pay_amount BIGINT NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_order_payment_seal UNIQUE (tenant_no,order_no),
+    CHECK (pay_amount>=0)
+);
+
 CREATE TABLE IF NOT EXISTS stl_split_intent
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
@@ -5790,6 +6684,167 @@ CREATE TABLE IF NOT EXISTS stl_split_intent
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT uk_split_intent_request UNIQUE (request_no)
+);
+
+CREATE TABLE IF NOT EXISTS ent_use_reversal
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    reverse_no VARCHAR(64) NOT NULL,
+    usage_no VARCHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    command_snapshot TEXT NOT NULL,
+    origin_operation_no VARCHAR(64) NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    after_sale_no VARCHAR(64) NOT NULL,
+    source_decision_no VARCHAR(64) NOT NULL,
+    units INT NOT NULL,
+    discount_minor BIGINT NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_reverse UNIQUE (tenant_no,reverse_no),
+    CONSTRAINT uk_reverse_fact UNIQUE (tenant_no,after_sale_no,origin_operation_no,instance_no),
+    CHECK (units>=0 AND discount_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ent_code_token
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    nonce CHAR(32) NOT NULL,
+    expires_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    consumed_operation_no VARCHAR(64) NULL,
+    consumed_store_no VARCHAR(64) NULL,
+    consumed_actor_no VARCHAR(64) NULL,
+    consumed_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_token UNIQUE (tenant_no,token_hash),
+    CONSTRAINT uk_token_request UNIQUE (tenant_no,user_no,request_key_hash),
+    CHECK (status IN ('ACTIVE','USED','REVOKED')),
+    CHECK ((status='USED' AND consumed_operation_no IS NOT NULL AND consumed_store_no IS NOT NULL AND consumed_actor_no IS NOT NULL AND consumed_at IS NOT NULL) OR (status IN ('ACTIVE','REVOKED') AND consumed_operation_no IS NULL AND consumed_store_no IS NULL AND consumed_actor_no IS NULL AND consumed_at IS NULL))
+);
+
+CREATE TABLE IF NOT EXISTS pmt_benefit_intent
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    intent_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    plan_snapshot TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_benefit_intent UNIQUE (tenant_no,intent_no),
+    CONSTRAINT uk_benefit_request UNIQUE (tenant_no,user_no,request_key_hash),
+    CHECK (status IN ('PENDING','COMMIT_DECIDED','ABORT_DECIDED','COMMITTED','ABORTED'))
+);
+
+CREATE TABLE IF NOT EXISTS ord_ent_service_order
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    service_order_no VARCHAR(64) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    context_snapshot TEXT NOT NULL,
+    preview_snapshot TEXT NULL,
+    preview_expires_at DATETIME(3) NULL,
+    command_snapshot TEXT NULL,
+    decision_snapshot TEXT NULL,
+    cancellation_reason VARCHAR(100) NULL,
+    deadline DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_service_order UNIQUE (tenant_no,service_order_no),
+    CONSTRAINT uk_service_operation UNIQUE (tenant_no,operation_no),
+    CONSTRAINT uk_service_request UNIQUE (tenant_no,entity_no,operator_no,request_key_hash),
+    CHECK (status IN ('CREATED','PREVIEWED','AUTHORIZED','PENDING','COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED')),
+    CHECK (status NOT IN ('PREVIEWED','AUTHORIZED','PENDING','COMMIT_DECIDED','COMMITTED') OR (preview_snapshot IS NOT NULL AND preview_expires_at IS NOT NULL)),
+    CHECK (status NOT IN ('PENDING','COMMIT_DECIDED','COMMITTED') OR command_snapshot IS NOT NULL),
+    CHECK ((status IN ('CREATED','PREVIEWED','AUTHORIZED','PENDING') AND decision_snapshot IS NULL) OR (status IN ('COMMIT_DECIDED','CANCEL_DECIDED','COMMITTED','RELEASED') AND decision_snapshot IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS prd_entitlement_binding
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    goods_no VARCHAR(64) NOT NULL,
+    sku_no VARCHAR(64) NOT NULL,
+    market VARCHAR(8) NOT NULL,
+    template_version_no VARCHAR(64) NOT NULL,
+    rule_snapshot TEXT NOT NULL,
+    rule_hash CHAR(64) NOT NULL,
+    units_per_item INT NOT NULL DEFAULT 1,
+    currency VARCHAR(8) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_product_entitlement UNIQUE (tenant_no,goods_no,sku_no),
+    CHECK (units_per_item BETWEEN 1 AND 100),
+    CHECK (status IN ('ACTIVE','DISABLED'))
+);
+
+CREATE TABLE IF NOT EXISTS prd_ent_binding_command
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    response_snapshot TEXT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_card_binding_request UNIQUE (tenant_no,request_key),
+    CHECK ((status='PENDING' AND response_snapshot IS NULL) OR (status='COMPLETED' AND response_snapshot IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ord_points_refund_execution
@@ -5816,6 +6871,310 @@ CREATE TABLE IF NOT EXISTS ord_points_refund_execution
     PRIMARY KEY (id),
     CONSTRAINT uk_refund_execution_as UNIQUE (after_sale_no),
     CONSTRAINT uk_refund_execution_cash UNIQUE (cash_payment_no)
+);
+
+CREATE TABLE IF NOT EXISTS sv_account
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    account_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    principal_minor BIGINT NOT NULL DEFAULT 0,
+    bonus_minor BIGINT NOT NULL DEFAULT 0,
+    held_principal_minor BIGINT NOT NULL DEFAULT 0,
+    held_bonus_minor BIGINT NOT NULL DEFAULT 0,
+    account_seq BIGINT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sv_account UNIQUE (tenant_no,account_no),
+    CONSTRAINT uk_sv_owner UNIQUE (tenant_no,user_no,entity_no,currency),
+    CHECK (status IN ('ACTIVE','FROZEN')),
+    CHECK (principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0),
+    CONSTRAINT ck_sv_account_total_balance CHECK (principal_minor <= 9223372036854775807 - bonus_minor)
+);
+
+CREATE TABLE IF NOT EXISTS sv_recharge
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    recharge_no VARCHAR(64) NOT NULL,
+    request_id VARCHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    reservation_no VARCHAR(64) NOT NULL,
+    activity_no VARCHAR(64) NOT NULL,
+    activity_version_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    store_name VARCHAR(100) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    principal_minor BIGINT NOT NULL,
+    bonus_minor BIGINT NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    collection_method VARCHAR(16) NULL,
+    actual_amount_minor BIGINT NULL,
+    receipt_ref VARCHAR(128) NULL,
+    receipt_digest CHAR(64) NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    received_by VARCHAR(64) NULL,
+    received_at DATETIME(3) NULL,
+    credited_at DATETIME(3) NULL,
+    expires_at DATETIME(3) NOT NULL,
+    permit_snapshot TEXT NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    received_decision_snapshot TEXT NULL,
+    confirmation_note VARCHAR(500) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    received_receipt_key CHAR(64) NULL,
+    cancellation_reason VARCHAR(500) NULL,
+    cancelled_at DATETIME(3) NULL,
+    CONSTRAINT uk_sv_received_receipt UNIQUE (tenant_no,entity_no,received_receipt_key),
+    PRIMARY KEY (id),
+    CONSTRAINT uk_recharge UNIQUE (tenant_no,recharge_no),
+    CONSTRAINT uk_recharge_request UNIQUE (tenant_no,request_id),
+    CONSTRAINT uk_recharge_permit UNIQUE (tenant_no,reservation_no),
+    CHECK (principal_minor>0 AND bonus_minor>=0),
+    CHECK (status IN ('WAIT_COLLECTION','SUBMITTED','RECEIVED','CREDITED','CANCELLED','REJECTED')),
+    CHECK (status NOT IN ('SUBMITTED','RECEIVED','CREDITED') OR (collection_method IS NOT NULL AND actual_amount_minor IS NOT NULL AND collection_method IN ('CASH','TRANSFER') AND actual_amount_minor=principal_minor AND receipt_ref IS NOT NULL AND receipt_digest IS NOT NULL)),
+    CHECK (status NOT IN ('RECEIVED','CREDITED') OR (received_by IS NOT NULL AND received_at IS NOT NULL AND received_decision_snapshot IS NOT NULL)),
+    CHECK ((status='CREDITED' AND credited_at IS NOT NULL) OR (status<>'CREDITED' AND credited_at IS NULL)),
+    CONSTRAINT ck_sv_cancel_facts CHECK ((status='CANCELLED' AND cancellation_reason IS NOT NULL AND cancelled_at IS NOT NULL)
+        OR (status<>'CANCELLED' AND cancelled_at IS NULL))
+);
+
+CREATE TABLE IF NOT EXISTS sv_lot
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    lot_no VARCHAR(64) NOT NULL,
+    account_no VARCHAR(64) NOT NULL,
+    recharge_no VARCHAR(64) NOT NULL,
+    activity_version_no VARCHAR(64) NOT NULL,
+    principal_minor BIGINT NOT NULL,
+    bonus_minor BIGINT NOT NULL,
+    held_principal_minor BIGINT NOT NULL DEFAULT 0,
+    held_bonus_minor BIGINT NOT NULL DEFAULT 0,
+    scope_snapshot TEXT NOT NULL,
+    credited_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sv_lot UNIQUE (tenant_no,lot_no),
+    CONSTRAINT uk_lot_recharge UNIQUE (tenant_no,recharge_no),
+    CHECK (principal_minor>=held_principal_minor AND held_principal_minor>=0 AND bonus_minor>=held_bonus_minor AND held_bonus_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS sv_voucher
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    voucher_no VARCHAR(64) NOT NULL,
+    account_no VARCHAR(64) NOT NULL,
+    account_seq BIGINT NOT NULL,
+    biz_type VARCHAR(24) NOT NULL,
+    biz_no VARCHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    principal_delta BIGINT NOT NULL,
+    bonus_delta BIGINT NOT NULL,
+    after_principal_minor BIGINT NOT NULL,
+    after_bonus_minor BIGINT NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_voucher UNIQUE (tenant_no,voucher_no),
+    CONSTRAINT uk_sv_biz UNIQUE (tenant_no,biz_type,biz_no),
+    CONSTRAINT uk_sv_seq UNIQUE (tenant_no,account_no,account_seq),
+    CHECK (after_principal_minor>=0 AND after_bonus_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS sv_entry
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    voucher_no VARCHAR(64) NOT NULL,
+    lot_no VARCHAR(64) NOT NULL,
+    principal_delta BIGINT NOT NULL,
+    bonus_delta BIGINT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sv_entry UNIQUE (tenant_no,voucher_no,lot_no)
+);
+
+CREATE TABLE IF NOT EXISTS sv_user_store_index
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    store_name VARCHAR(100) NOT NULL,
+    has_recharge TINYINT NOT NULL DEFAULT 0,
+    last_recharge_at DATETIME(3) NULL,
+    last_consume_at DATETIME(3) NULL,
+    last_activity_at DATETIME(3) NOT NULL,
+    last_activity_type VARCHAR(16) NOT NULL,
+    store_status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT sv_user_store_index_uk_user_store UNIQUE (tenant_no,user_no,store_no)
+);
+
+CREATE TABLE IF NOT EXISTS sv_posting_line
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    voucher_no VARCHAR(64) NOT NULL,
+    line_no INT NOT NULL,
+    pool VARCHAR(16) NOT NULL,
+    book VARCHAR(32) NOT NULL,
+    side VARCHAR(8) NOT NULL,
+    amount_minor BIGINT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sv_posting_line UNIQUE (tenant_no,voucher_no,line_no),
+    CHECK (line_no>0 AND amount_minor>0),
+    CHECK (pool IN ('PRINCIPAL','BONUS')),
+    CHECK (book IN ('CUSTOMER_CLAIM','MERCHANT_OBLIGATION')),
+    CHECK (side IN ('DEBIT','CREDIT'))
+);
+
+CREATE TABLE IF NOT EXISTS pmt_recharge_intent
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    intent_no VARCHAR(64) NOT NULL,
+    recharge_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    operator_no VARCHAR(64) NOT NULL,
+    request_key_hash CHAR(64) NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    plan_snapshot TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_recharge_intent UNIQUE (tenant_no,intent_no),
+    CONSTRAINT uk_recharge_intent_pay UNIQUE (tenant_no,recharge_no),
+    CONSTRAINT uk_recharge_intent_request UNIQUE (tenant_no,entity_no,operator_no,request_key_hash),
+    CHECK (status IN ('PENDING','CREDITED','CANCELLED'))
+);
+
+CREATE TABLE IF NOT EXISTS sv_hold_allocation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(64) NOT NULL,
+    lot_no VARCHAR(64) NOT NULL,
+    principal_minor BIGINT NOT NULL,
+    bonus_minor BIGINT NOT NULL,
+    items_allocation TEXT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sv_alloc UNIQUE (tenant_no,operation_no,lot_no),
+    CHECK (principal_minor>=0 AND bonus_minor>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ent_sale_reservation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    reservation_no VARCHAR(64) NOT NULL,
+    source_key CHAR(64) NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    command_snapshot TEXT NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    template_no VARCHAR(64) NULL,
+    definition_snapshot TEXT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    grant_no VARCHAR(64) NULL,
+    source_decision_no VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_sale_reservation UNIQUE (tenant_no,reservation_no),
+    CONSTRAINT uk_sale_reservation_source UNIQUE (tenant_no,source_key),
+    CHECK (status IN ('RESERVING','RESERVED','TRANSFERRED','RELEASED')),
+    CHECK (status NOT IN ('RESERVED','TRANSFERRED') OR (template_no IS NOT NULL AND definition_snapshot IS NOT NULL)),
+    CHECK (status <> 'TRANSFERRED' OR grant_no IS NOT NULL),
+    CHECK (status <> 'RELEASED' OR source_decision_no IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS pay_ent_exception
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    exception_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    kind VARCHAR(32) NOT NULL,
+    biz_no VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    evidence TEXT NOT NULL,
+    last_action VARCHAR(64) NULL,
+    handled_by VARCHAR(64) NULL,
+    handled_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_pay_exception UNIQUE (tenant_no,exception_no),
+    CONSTRAINT uk_exception_source UNIQUE (tenant_no,kind,biz_no),
+    CHECK (status IN ('OPEN','PROCESSING','RESOLVED'))
 );
 
 CREATE TABLE IF NOT EXISTS ord_points_integration_policy
@@ -5857,6 +7216,34 @@ CREATE TABLE IF NOT EXISTS ord_points_binding
     CONSTRAINT uk_ord_points_sub UNIQUE (sub_order_no)
 );
 
+CREATE TABLE IF NOT EXISTS pay_ent_exception_action
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    action_no VARCHAR(64) NOT NULL,
+    exception_no VARCHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    response_snapshot TEXT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    operation_kind VARCHAR(32) NOT NULL DEFAULT 'RETRY_GRANT',
+    PRIMARY KEY(id),
+    CONSTRAINT uk_exception_action UNIQUE (tenant_no,action_no),
+    CONSTRAINT uk_exception_request UNIQUE (tenant_no,request_key),
+    CHECK (status IN ('PENDING','DONE')),
+    CHECK (status <> 'DONE' OR response_snapshot IS NOT NULL),
+    CONSTRAINT ck_exception_action_kind CHECK (operation_kind IN ('RETRY_GRANT','QUERY_SOURCE','RETRY_EVENT','QUERY_EVENT'))
+);
+
 CREATE TABLE IF NOT EXISTS ord_points_source_counter
 (
     type_code VARCHAR(64) NOT NULL,
@@ -5893,6 +7280,65 @@ CREATE TABLE IF NOT EXISTS ord_points_placement
     PRIMARY KEY(order_no)
 );
 
+CREATE TABLE IF NOT EXISTS pay_ent_recon_run
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    recon_no VARCHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    payload_hash CHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    axis VARCHAR(16) NOT NULL,
+    currency VARCHAR(8) NULL,
+    biz_date DATE NOT NULL,
+    market_zone VARCHAR(64) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    scan_cursor VARCHAR(512) NULL,
+    checked_count BIGINT NOT NULL DEFAULT 0,
+    diff_count BIGINT NOT NULL DEFAULT 0,
+    started_at DATETIME(3) NOT NULL,
+    completed_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ent_recon_no UNIQUE (tenant_no,recon_no),
+    CONSTRAINT uk_ent_recon_request UNIQUE (tenant_no,request_key),
+    CHECK (checked_count>=0 AND diff_count>=0 AND diff_count<=checked_count),
+    CHECK (axis IN ('ISSUANCE','RIGHTS','HOLD','MONEY')),
+    CHECK (axis<>'MONEY' OR currency IS NOT NULL),
+    CHECK (status IN ('RUNNING','COMPLETED','FAILED'))
+);
+
+CREATE TABLE IF NOT EXISTS pay_ent_recon_diff
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    diff_no VARCHAR(64) NOT NULL,
+    recon_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    resource_no VARCHAR(64) NOT NULL,
+    diff_kind VARCHAR(32) NOT NULL,
+    expected_snapshot TEXT NOT NULL,
+    actual_snapshot TEXT NOT NULL,
+    exception_no VARCHAR(64) NULL,
+    status VARCHAR(16) NOT NULL,
+    resolution_note VARCHAR(500) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_ent_recon_diff UNIQUE (tenant_no,diff_no),
+    CONSTRAINT uk_ent_recon_resource UNIQUE (tenant_no,recon_no,resource_no,diff_kind),
+    CHECK (status IN ('OPEN','ACKNOWLEDGED','RESOLVED'))
+);
+
 CREATE TABLE IF NOT EXISTS ord_points_refund_binding
 (
     after_sale_no VARCHAR(64) NOT NULL,
@@ -5907,6 +7353,36 @@ CREATE TABLE IF NOT EXISTS ord_points_refund_binding
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     outcome_json LONGTEXT NULL,
     PRIMARY KEY (after_sale_no)
+);
+
+CREATE TABLE IF NOT EXISTS ent_owner_registry
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_kind VARCHAR(24) NOT NULL,
+    source_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    target_no VARCHAR(64) NULL,
+    owner_system VARCHAR(16) NOT NULL,
+    migration_batch_no VARCHAR(64) NOT NULL,
+    cutover_watermark VARCHAR(128) NULL,
+    status VARCHAR(24) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_source_owner UNIQUE (tenant_no,source_system,source_kind,source_no),
+    CHECK (source_system IN ('MKT_LEGACY','PMT','PAY')),
+    CHECK (source_kind IN ('TEMPLATE','INSTANCE','USAGE')),
+    CHECK (owner_system IN ('CORE_LEGACY','PAY')),
+    CHECK (status IN ('PREPARING','VERIFIED','CUTOVER','ARCHIVED')),
+    CHECK (owner_system<>'CORE_LEGACY' OR status IN ('PREPARING','VERIFIED')),
+    CHECK (owner_system<>'PAY' OR (status IN ('CUTOVER','ARCHIVED') AND target_no IS NOT NULL AND cutover_watermark IS NOT NULL)),
+    CHECK (status<>'VERIFIED' OR (target_no IS NOT NULL AND cutover_watermark IS NOT NULL)),
+    CHECK (source_system<>'PAY' OR owner_system='PAY')
 );
 
 CREATE TABLE IF NOT EXISTS ord_points_recovery_cursor
@@ -5945,6 +7421,55 @@ CREATE TABLE IF NOT EXISTS ord_points_refund_retry
     CONSTRAINT uk_ord_points_refund_retry_new UNIQUE (new_after_sale_no)
 );
 
+CREATE TABLE IF NOT EXISTS ent_migration_stage
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+    source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    source_schema_version INT NOT NULL,
+    frozen_revision BIGINT NOT NULL,
+    watermark CHAR(64) NOT NULL,
+    content_hash CHAR(64) NOT NULL,
+    crypto_key_id VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    payload_cipher MEDIUMTEXT NOT NULL,
+    payload_bytes INT NOT NULL,
+    instance_count BIGINT NOT NULL,
+    history_count BIGINT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    manifest_version INT NOT NULL DEFAULT 1,
+    history_available TINYINT NULL DEFAULT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_stage UNIQUE (tenant_no,stage_no),
+    CONSTRAINT uk_migration_stage_request UNIQUE (tenant_no,request_key),
+    CONSTRAINT uk_migration_stage_origin UNIQUE (tenant_no,source_system,source_template_no,migration_batch_no),
+    CHECK (source_system IN ('MKT_LEGACY','PMT')),
+    CHECK (source_schema_version=1 AND frozen_revision>=0),
+    CHECK (payload_bytes BETWEEN 1 AND 8388608),
+    CHECK (CHAR_LENGTH(payload_cipher) BETWEEN 1 AND 12000000),
+    CHECK (instance_count>=0 AND history_count>=0),
+    CHECK (CHAR_LENGTH(TRIM(reason))>0 AND CHAR_LENGTH(TRIM(crypto_key_id))>0),
+    CHECK (CHAR_LENGTH(watermark)=64 AND CHAR_LENGTH(content_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+    CHECK (status='STAGED'),
+    CONSTRAINT ck_migration_manifest_version CHECK (manifest_version IN (1,2)),
+    CONSTRAINT ck_migration_manifest_history CHECK (
+   (manifest_version=1 AND history_available IS NULL)
+   OR (history_available IS NOT NULL AND
+       ((source_system='PMT' AND history_available=1) OR (source_system='MKT_LEGACY' AND history_available=0))))
+);
+
 CREATE TABLE IF NOT EXISTS ord_points_work_cursor
 (
     queue_name VARCHAR(32) NOT NULL,
@@ -5971,6 +7496,146 @@ CREATE TABLE IF NOT EXISTS stl_cash_refund_reverse
     CONSTRAINT uk_cash_refund_reverse_as UNIQUE (after_sale_no),
     CONSTRAINT uk_cash_refund_reverse_request UNIQUE (request_no),
     CONSTRAINT uk_cash_refund_reverse_receipt UNIQUE (pay_channel,provider_no)
+);
+
+CREATE TABLE IF NOT EXISTS ent_migration_alias
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    alias_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    pmt_stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    mkt_stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    canonical_stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    pmt_content_hash CHAR(64) NOT NULL,
+    mkt_content_hash CHAR(64) NOT NULL,
+    comparison_hash CHAR(64) NOT NULL,
+    matched_instance_count BIGINT NOT NULL,
+    compared_at DATETIME(3) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_alias UNIQUE (tenant_no,alias_no),
+    CONSTRAINT uk_migration_alias_pmt UNIQUE (tenant_no,pmt_stage_no),
+    CONSTRAINT uk_migration_alias_mkt UNIQUE (tenant_no,mkt_stage_no),
+    CONSTRAINT uk_migration_alias_request UNIQUE (tenant_no,request_key),
+    CHECK (canonical_stage_no=pmt_stage_no AND pmt_stage_no<>mkt_stage_no),
+    CHECK (matched_instance_count>=0),
+    CHECK (CHAR_LENGTH(pmt_content_hash)=64 AND CHAR_LENGTH(mkt_content_hash)=64 AND CHAR_LENGTH(comparison_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+    CHECK (CHAR_LENGTH(TRIM(reason))>0),
+    CHECK (status='RECOGNIZED')
+);
+
+CREATE TABLE IF NOT EXISTS ent_legacy_coupon_operation
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    checkout_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    origin_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+    origin_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    instance_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    currency VARCHAR(8) NOT NULL,
+    owner_batch_no VARCHAR(64) NOT NULL,
+    owner_plan_hash CHAR(64) NOT NULL,
+    economic_hash CHAR(64) NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    source_version INT NOT NULL,
+    source_snapshot TEXT NOT NULL,
+    context_snapshot TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    ever_held TINYINT NOT NULL DEFAULT 0,
+    discount_minor BIGINT NULL,
+    allocation_snapshot TEXT NULL,
+    rule_snapshot TEXT NULL,
+    hold_asset_seq BIGINT NULL,
+    commit_asset_seq BIGINT NULL,
+    release_asset_seq BIGINT NULL,
+    reverse_asset_seq BIGINT NULL,
+    commit_decision_no VARCHAR(64) NULL,
+    abort_decision_no VARCHAR(64) NULL,
+    reverse_decision_no VARCHAR(64) NULL,
+    source_order_no VARCHAR(64) NULL,
+    commit_snapshot TEXT NULL,
+    abort_snapshot TEXT NULL,
+    reverse_snapshot TEXT NULL,
+    held_at DATETIME(3) NULL,
+    committed_at DATETIME(3) NULL,
+    released_at DATETIME(3) NULL,
+    reversed_at DATETIME(3) NULL,
+    source_committed_at DATETIME(3) NULL,
+    source_reversed_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_legacy_coupon_operation UNIQUE (tenant_no,operation_no),
+    CONSTRAINT uk_legacy_coupon_checkout UNIQUE (tenant_no,checkout_no),
+    CHECK (origin_system IN ('MKT_LEGACY','PMT','PAY') AND source_version=1),
+    CHECK (CHAR_LENGTH(owner_plan_hash)=64 AND CHAR_LENGTH(economic_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+    CHECK (discount_minor IS NULL OR discount_minor>0),
+    CHECK (status IN ('PREPARING','HELD','COMMITTED','RELEASED','REVERSED')),
+    CHECK ((ever_held=0 AND discount_minor IS NULL AND allocation_snapshot IS NULL AND rule_snapshot IS NULL AND hold_asset_seq IS NULL AND held_at IS NULL AND status IN ('PREPARING','RELEASED')) OR (ever_held=1 AND discount_minor IS NOT NULL AND allocation_snapshot IS NOT NULL AND rule_snapshot IS NOT NULL AND hold_asset_seq IS NOT NULL AND hold_asset_seq>0 AND held_at IS NOT NULL AND status<>'PREPARING')),
+    CHECK ((status IN ('COMMITTED','REVERSED') AND commit_asset_seq IS NOT NULL AND commit_asset_seq>hold_asset_seq AND commit_decision_no IS NOT NULL AND source_order_no IS NOT NULL AND commit_snapshot IS NOT NULL AND committed_at IS NOT NULL AND source_committed_at IS NOT NULL) OR (status NOT IN ('COMMITTED','REVERSED') AND commit_asset_seq IS NULL AND commit_decision_no IS NULL AND source_order_no IS NULL AND commit_snapshot IS NULL AND committed_at IS NULL AND source_committed_at IS NULL)),
+    CHECK ((status='RELEASED' AND abort_decision_no IS NOT NULL AND abort_snapshot IS NOT NULL AND released_at IS NOT NULL AND ((ever_held=0 AND release_asset_seq IS NULL) OR (ever_held=1 AND release_asset_seq IS NOT NULL AND release_asset_seq>hold_asset_seq))) OR (status<>'RELEASED' AND abort_decision_no IS NULL AND abort_snapshot IS NULL AND released_at IS NULL AND release_asset_seq IS NULL)),
+    CHECK ((status='REVERSED' AND reverse_asset_seq IS NOT NULL AND reverse_asset_seq>commit_asset_seq AND reverse_decision_no IS NOT NULL AND reverse_snapshot IS NOT NULL AND reversed_at IS NOT NULL AND source_reversed_at IS NOT NULL) OR (status<>'REVERSED' AND reverse_asset_seq IS NULL AND reverse_decision_no IS NULL AND reverse_snapshot IS NULL AND reversed_at IS NULL AND source_reversed_at IS NULL))
+);
+
+CREATE TABLE IF NOT EXISTS ord_legacy_coupon_checkout
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    checkout_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    operation_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    stage_hash CHAR(64) NOT NULL,
+    economic_hash CHAR(64) NOT NULL,
+    fact_snapshot TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    held_snapshot TEXT NULL,
+    decision_snapshot TEXT NULL,
+    reversal_snapshot TEXT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    pay_state VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+    pay_decision_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    pay_acked_at DATETIME(3) NULL,
+    recovery_due_at DATETIME(3) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_legacy_checkout_no UNIQUE (tenant_no,checkout_no),
+    CONSTRAINT uk_legacy_checkout_operation UNIQUE (tenant_no,operation_no),
+    CONSTRAINT uk_legacy_checkout_order UNIQUE (tenant_no,order_no),
+    CONSTRAINT ck_legacy_checkout_state CHECK ( (status='OPEN' AND decision_snapshot IS NULL AND order_no IS NULL AND reversal_snapshot IS NULL) OR (status='ABORTED' AND decision_snapshot IS NOT NULL AND order_no IS NULL AND reversal_snapshot IS NULL) OR (status='COMMITTED' AND decision_snapshot IS NOT NULL AND order_no IS NOT NULL AND held_snapshot IS NOT NULL)),
+    CONSTRAINT ck_legacy_checkout_not_deleted CHECK (deleted=0),
+    CONSTRAINT ck_legacy_checkout_pay_ack CHECK (
+   (pay_state IN ('PENDING','NONE') AND pay_decision_no IS NULL AND pay_acked_at IS NULL)
+   OR (pay_state='COMMITTED' AND status='COMMITTED' AND reversal_snapshot IS NULL AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)
+   OR (pay_state='RELEASED' AND status='ABORTED' AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)
+   OR (pay_state='REVERSED' AND status='COMMITTED' AND reversal_snapshot IS NOT NULL AND pay_decision_no IS NOT NULL AND pay_acked_at IS NOT NULL)),
+    CONSTRAINT ck_legacy_checkout_pay_queue CHECK (
+   (pay_state='PENDING' OR recovery_due_at IS NULL)
+   AND (pay_state<>'NONE' OR (status='OPEN' AND held_snapshot IS NULL)))
 );
 
 CREATE TABLE IF NOT EXISTS pts_availability_projection
@@ -6063,6 +7728,160 @@ CREATE TABLE IF NOT EXISTS pts_statement_confirmation
     CONSTRAINT uk_pts_statement_confirmation UNIQUE (statement_no,revision)
 );
 
+CREATE TABLE IF NOT EXISTS ent_migration_plan
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    plan_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    stage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    alias_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    source_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+    source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    plan_hash CHAR(64) NOT NULL,
+    source_bundle_hash CHAR(64) NOT NULL,
+    crypto_key_id VARCHAR(32) COLLATE utf8mb4_bin NOT NULL,
+    payload_cipher MEDIUMTEXT NOT NULL,
+    payload_bytes INT NOT NULL,
+    asset_count BIGINT NOT NULL,
+    archival_count BIGINT NOT NULL,
+    version_count INT NOT NULL,
+    assessed_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_plan UNIQUE (tenant_no,plan_no),
+    CONSTRAINT uk_migration_plan_stage UNIQUE (tenant_no,stage_no),
+    CONSTRAINT uk_migration_plan_request UNIQUE (tenant_no,request_key),
+    CONSTRAINT uk_migration_plan_origin UNIQUE (tenant_no,source_system,source_template_no,migration_batch_no),
+    CHECK (source_system IN ('PMT','MKT_LEGACY')),
+    CHECK (alias_no IS NULL OR source_system='PMT'),
+    CHECK (status='PLANNED' AND deleted=0),
+    CHECK (asset_count>=0 AND archival_count>=0 AND version_count>=1),
+    CHECK (payload_bytes BETWEEN 1 AND 8388608),
+    CHECK (CHAR_LENGTH(payload_cipher) BETWEEN 1 AND 12000000),
+    CHECK (CHAR_LENGTH(TRIM(reason))>0 AND CHAR_LENGTH(TRIM(crypto_key_id))>0),
+    CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(source_bundle_hash)=64 AND CHAR_LENGTH(command_hash)=64)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_migration_decision
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    decision_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    plan_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    plan_hash CHAR(64) NOT NULL,
+    source_bundle_hash CHAR(64) NOT NULL,
+    plan_snapshot TEXT NOT NULL,
+    command_hash CHAR(64) NOT NULL,
+    request_key VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    decided_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_decision UNIQUE (tenant_no,decision_no),
+    CONSTRAINT uk_migration_decision_plan UNIQUE (tenant_no,plan_no),
+    CONSTRAINT uk_migration_decision_request UNIQUE (tenant_no,request_key),
+    CHECK (status='COMMITTED' AND deleted=0 AND version=0),
+    CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(source_bundle_hash)=64 AND CHAR_LENGTH(command_hash)=64),
+    CHECK (CHAR_LENGTH(TRIM(reason))>0)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_migration_source
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    source_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+    source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    decision_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_source UNIQUE (tenant_no,source_system,source_template_no),
+    CHECK (source_system IN ('PMT','MKT_LEGACY') AND deleted=0 AND version=0)
+);
+
+CREATE TABLE IF NOT EXISTS ent_migration_import
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    import_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    plan_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_decision_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    plan_hash CHAR(64) NOT NULL,
+    source_bundle_hash CHAR(64) NOT NULL,
+    proof_snapshot TEXT NOT NULL,
+    asset_count BIGINT NOT NULL,
+    archival_count BIGINT NOT NULL,
+    imported_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    historical_record_count BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_import UNIQUE (tenant_no,import_no),
+    CONSTRAINT uk_migration_import_plan UNIQUE (tenant_no,plan_no),
+    CONSTRAINT uk_migration_import_decision UNIQUE (tenant_no,source_decision_no),
+    CHECK (status='IMPORTED' AND deleted=0 AND version=0),
+    CHECK (asset_count>=0 AND archival_count>=0),
+    CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(source_bundle_hash)=64),
+    CONSTRAINT ck_migration_history_count CHECK (historical_record_count>=0)
+);
+
+CREATE TABLE IF NOT EXISTS ent_migration_asset
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    import_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_system VARCHAR(24) COLLATE utf8mb4_bin NOT NULL,
+    source_instance_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    instance_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    baseline_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    archival_only TINYINT NOT NULL,
+    total_units INT NOT NULL,
+    baseline_remaining_units INT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_asset_source UNIQUE (tenant_no,source_system,source_instance_no),
+    CONSTRAINT uk_migration_asset_target UNIQUE (tenant_no,instance_no),
+    CONSTRAINT uk_migration_asset_baseline UNIQUE (tenant_no,baseline_no),
+    CHECK (source_system IN ('PMT','MKT_LEGACY') AND deleted=0 AND version=0),
+    CHECK (total_units>0 AND baseline_remaining_units>=0 AND baseline_remaining_units<=total_units),
+    CHECK ((archival_only=1 AND instance_no IS NULL AND baseline_no IS NULL) OR (archival_only=0 AND instance_no IS NOT NULL AND baseline_no IS NOT NULL))
+);
+
 CREATE TABLE IF NOT EXISTS sys_outbox_stream
 (
     stream_key VARCHAR(128) NOT NULL PRIMARY KEY,
@@ -6113,6 +7932,88 @@ CREATE TABLE IF NOT EXISTS sys_outbox_operation
     after_status VARCHAR(16) NOT NULL,
     created_at DATETIME NOT NULL,
     CONSTRAINT uk_sys_outbox_operation UNIQUE (request_id)
+);
+
+CREATE TABLE IF NOT EXISTS ent_migration_usage
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    import_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_instance_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    instance_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    source_hash CHAR(64) NOT NULL,
+    source_reverted_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_usage_source UNIQUE (tenant_no,source_usage_no),
+    CONSTRAINT uk_migration_usage_target UNIQUE (tenant_no,usage_no),
+    CHECK (version=0 AND deleted=0 AND CHAR_LENGTH(source_hash)=64)
+);
+
+CREATE TABLE IF NOT EXISTS pmt_migration_return
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    return_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    order_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    fact_snapshot TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    pay_state VARCHAR(16) NOT NULL,
+    pay_receipt_no VARCHAR(64) COLLATE utf8mb4_bin NULL,
+    pay_acked_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_return UNIQUE (tenant_no,return_no),
+    CONSTRAINT uk_migration_return_source UNIQUE (tenant_no,source_usage_no),
+    CHECK (status='COMMITTED' AND deleted=0 AND version>=0),
+    CHECK ((pay_state='PENDING' AND pay_receipt_no IS NULL AND pay_acked_at IS NULL) OR (pay_state='RESTORED' AND pay_receipt_no IS NOT NULL AND pay_acked_at IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS ent_migration_return
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    receipt_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    return_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    source_usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    usage_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    instance_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_hash CHAR(64) NOT NULL,
+    fact_hash CHAR(64) NOT NULL,
+    restored_units INT NOT NULL,
+    remaining_units INT NOT NULL,
+    asset_seq BIGINT NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_migration_return_receipt UNIQUE (tenant_no,receipt_no),
+    CONSTRAINT uk_migration_pay_return UNIQUE (tenant_no,return_no),
+    CONSTRAINT uk_migration_returned_source UNIQUE (tenant_no,source_usage_no),
+    CHECK (status='RESTORED' AND deleted=0 AND version=0),
+    CHECK (restored_units=1 AND remaining_units>=0 AND asset_seq>0),
+    CHECK (CHAR_LENGTH(source_hash)=64 AND CHAR_LENGTH(fact_hash)=64)
 );
 
 CREATE TABLE IF NOT EXISTS prd_stock_sync_operation
@@ -6176,6 +8077,66 @@ CREATE TABLE IF NOT EXISTS prd_stock_alignment_line
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT uk_stock_alignment_sku UNIQUE (batch_no, sku_no)
+);
+
+CREATE TABLE IF NOT EXISTS ent_legacy_coupon_issue
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    issue_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_system VARCHAR(24) NOT NULL,
+    source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    target_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    template_version_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    mode VARCHAR(16) NOT NULL,
+    frozen_snapshot TEXT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    result_snapshot TEXT NULL,
+    completed_at DATETIME(3) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_legacy_issue_no UNIQUE (tenant_no,issue_no),
+    CONSTRAINT uk_legacy_issue_batch UNIQUE (tenant_no,batch_no),
+    CHECK (source_system IN ('PMT','MKT_LEGACY') AND mode IN ('TARGETED','CENTER') AND deleted=0 AND version>=0),
+    CHECK ((status='PREPARED' AND result_snapshot IS NULL AND completed_at IS NULL) OR (status='COMPLETED' AND result_snapshot IS NOT NULL AND completed_at IS NOT NULL))
+);
+
+CREATE TABLE IF NOT EXISTS pmt_pay_coupon_projection
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL,
+    instance_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    user_no VARCHAR(64) NOT NULL,
+    entity_no VARCHAR(64) NOT NULL,
+    source_system VARCHAR(24) NOT NULL,
+    source_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    target_template_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    template_version_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    migration_batch_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    plan_hash CHAR(64) NOT NULL,
+    issue_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    grant_no VARCHAR(64) COLLATE utf8mb4_bin NOT NULL,
+    actor_no VARCHAR(64) NOT NULL,
+    fact_hash CHAR(64) NOT NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    created_at DATETIME(3) NOT NULL,
+    updated_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NOT NULL,
+    updated_by VARCHAR(64) NOT NULL,
+    PRIMARY KEY(id),
+    CONSTRAINT uk_pay_coupon_projection UNIQUE (tenant_no,instance_no),
+    CHECK (source_system IN ('PMT','MKT_LEGACY') AND version=0 AND deleted=0),
+    CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(fact_hash)=64)
 );
 
 CREATE TABLE IF NOT EXISTS ord_refund_coupon_scope
@@ -11506,6 +13467,52 @@ WHERE NOT EXISTS (
     SELECT 1 FROM notify_scene_channel m
     WHERE m.scene_code = t.scene_code AND m.audience = t.audience AND m.channel = t.channel
 );
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP001',1,'ACTIVITY','成交优惠','新客首单立减','["通用"]','{"templateCode":"AP001","templateVersion":1,"name":"新客首单立减","category":"成交优惠","baseTemplate":"A01","industryTags":["通用"],"goalTags":["获客"],"scenario":"首次有效交易","scene":"ORDER","effect":"CUT","family":"ORDER_DISCOUNT","exampleText":"满100减10","priority":"P1","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"],"constraints":["推荐给适配商家，不代表所有行业均可用"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP002',1,'ACTIVITY','成交优惠','会员满额优惠','["通用"]','{"templateCode":"AP002","templateVersion":1,"name":"会员满额优惠","category":"成交优惠","baseTemplate":"A01","industryTags":["通用"],"goalTags":["复购"],"scenario":"会员复购","scene":"ORDER","effect":"CUT","family":"ORDER_DISCOUNT","exampleText":"满200减20","priority":"P1","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"],"constraints":["推荐给适配商家，不代表所有行业均可用"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP003',1,'ACTIVITY','成交优惠','周末限时特价','["通用"]','{"templateCode":"AP003","templateVersion":1,"name":"周末限时特价","category":"成交优惠","baseTemplate":"A03","industryTags":["通用"],"goalTags":["转化"],"scenario":"指定商品周末促销","scene":"ORDER","effect":"PRICE","family":"GOODS_PRICE","exampleText":"指定商品活动价59","priority":"P1","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GOODS_SCOPE","SKU_PRICE_VALIDATION","AUDIENCE","ATOMIC_QUOTA"],"constraints":["推荐给适配商家，不代表所有行业均可用"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GOODS_SCOPE","SKU_PRICE_VALIDATION","AUDIENCE","ATOMIC_QUOTA"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP004',1,'ACTIVITY','权益发放','进店领券','["通用"]','{"templateCode":"AP004","templateVersion":1,"name":"进店领券","category":"权益发放","baseTemplate":"A09","industryTags":["通用"],"goalTags":["获客"],"scenario":"顾客主动领取","scene":"COUPON_DISTRIBUTION","effect":"COUPON","family":"COUPON_RECEIVE","exampleText":"满100减10，每人1张","priority":"P1","capabilityAssessment":"已有服务基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COUPON_RECEIVE","COUPON_BUDGET","PER_USER_LIMIT"],"constraints":["推荐给适配商家，不代表所有行业均可用"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.entitlement"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COUPON_RECEIVE","COUPON_BUDGET","PER_USER_LIMIT"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP005',1,'ACTIVITY','权益发放','沉睡客户唤醒券','["通用"]','{"templateCode":"AP005","templateVersion":1,"name":"沉睡客户唤醒券","category":"权益发放","baseTemplate":"A09","industryTags":["通用"],"goalTags":["召回"],"scenario":"已保存的未消费人群","scene":"COUPON_DISTRIBUTION","effect":"COUPON","family":"COUPON_ISSUE","exampleText":"满200减30，7天有效","priority":"P1","capabilityAssessment":"已有服务基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","AUDIENCE","COUPON_ISSUE","COUPON_BUDGET"],"constraints":["推荐给适配商家，不代表所有行业均可用"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.entitlement"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","AUDIENCE","COUPON_ISSUE","COUPON_BUDGET"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP006',1,'ACTIVITY','权益发放','会员生日礼券','["通用"]','{"templateCode":"AP006","templateVersion":1,"name":"会员生日礼券","category":"权益发放","baseTemplate":"A09","industryTags":["通用"],"goalTags":["关怀"],"scenario":"有生日资料的本人自愿提供人群","scene":"COUPON_DISTRIBUTION","effect":"COUPON","family":"COUPON_ISSUE","exampleText":"商品兑换1次，生日月有效","priority":"P1","capabilityAssessment":"已有服务基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","AUDIENCE","COUPON_ISSUE","COUPON_BUDGET"],"constraints":["推荐给适配商家，不代表所有行业均可用","仅使用本人自愿提供资料，不推断生日，不默认自动群发"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.entitlement"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","AUDIENCE","COUPON_ISSUE","COUPON_BUDGET"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP007',1,'ACTIVITY','协同成交','两人成团优惠','["通用"]','{"templateCode":"AP007","templateVersion":1,"name":"两人成团优惠","category":"协同成交","baseTemplate":"A11","industryTags":["通用"],"goalTags":["拉新"],"scenario":"分享拉新","scene":"ORDER","effect":"PRICE","family":"GROUP_PRICE","exampleText":"2人，24小时，团购价79","priority":"P2","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GROUP_INSTANCE","GROUP_CLOSE","ORDER_REFUND","FULFILLMENT"],"constraints":["推荐给适配商家，不代表所有行业均可用"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GROUP_INSTANCE","GROUP_CLOSE","ORDER_REFUND","FULFILLMENT"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP008',1,'ACTIVITY','储值激励','普通储值','["通用"]','{"templateCode":"AP008","templateVersion":1,"name":"普通储值","category":"储值激励","baseTemplate":"A14","industryTags":["通用"],"goalTags":["储值"],"scenario":"无需额外赠送的充值","scene":"RECHARGE","effect":"STORED_VALUE_BONUS","family":"RECHARGE_BONUS","exampleText":"充500到账500","priority":"P2","capabilityAssessment":"拟新增能力","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ACTIVITY_VERSION","MARKETING_RESERVATION","PAY_CREDIT","MEMBER_IDENTITY","STORED_VALUE_REDEEM"],"constraints":["推荐给适配商家，不代表所有行业均可用","商家出资、线下实收","不叠券或积分","无线上退款","普通充值赠送为0"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.storedvalue"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ACTIVITY_VERSION","MARKETING_RESERVATION","PAY_CREDIT","MEMBER_IDENTITY","STORED_VALUE_REDEEM"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP009',1,'ACTIVITY','成交优惠','全店满额立减','["零售"]','{"templateCode":"AP009","templateVersion":1,"name":"全店满额立减","category":"成交优惠","baseTemplate":"A01","industryTags":["零售"],"goalTags":["客单"],"scenario":"日常客单提升","scene":"ORDER","effect":"CUT","family":"ORDER_DISCOUNT","exampleText":"满199减20","priority":"P1","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"],"constraints":[],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP010',1,'ACTIVITY','成交优惠','满件优惠','["零售"]','{"templateCode":"AP010","templateVersion":1,"name":"满件优惠","category":"成交优惠","baseTemplate":"A02","industryTags":["零售"],"goalTags":["连带"],"scenario":"多件商品连带购买","scene":"ORDER","effect":"CUT","family":"ORDER_DISCOUNT","exampleText":"满3件减15","priority":"P1","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"],"constraints":[],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP011',1,'ACTIVITY','成交优惠','第二件优惠','["零售"]','{"templateCode":"AP011","templateVersion":1,"name":"第二件优惠","category":"成交优惠","baseTemplate":"A05","industryTags":["零售"],"goalTags":["连带"],"scenario":"同款多件购买","scene":"ORDER","effect":"NTH_ITEM_DISCOUNT","family":"NTH_ITEM","exampleText":"第二件5折，按规则限定商品","priority":"P3","capabilityAssessment":"分摊规则待验收","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","NTH_ITEM_ALLOCATION","DISCOUNT_CAP","REFUND_ALLOCATION"],"constraints":[],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","NTH_ITEM_ALLOCATION","DISCOUNT_CAP","REFUND_ALLOCATION"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP012',1,'ACTIVITY','成交优惠','换季指定商品特价','["零售"]','{"templateCode":"AP012","templateVersion":1,"name":"换季指定商品特价","category":"成交优惠","baseTemplate":"A03","industryTags":["零售"],"goalTags":["清货"],"scenario":"指定库存商品","scene":"ORDER","effect":"PRICE","family":"GOODS_PRICE","exampleText":"指定SKU活动价39","priority":"P1","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GOODS_SCOPE","SKU_PRICE_VALIDATION","AUDIENCE","ATOMIC_QUOTA"],"constraints":[],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GOODS_SCOPE","SKU_PRICE_VALIDATION","AUDIENCE","ATOMIC_QUOTA"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP013',1,'ACTIVITY','权益发放','满额赠小样','["零售"]','{"templateCode":"AP013","templateVersion":1,"name":"满额赠小样","category":"权益发放","baseTemplate":"A07","industryTags":["零售"],"goalTags":["客单"],"scenario":"购买后附赠实物","scene":"ORDER","effect":"GIFT","family":"GOODS_GIFT","exampleText":"满299赠指定小样1件","priority":"P2","capabilityAssessment":"赠品履约待验收","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GIFT_STOCK","GIFT_FULFILLMENT","GIFT_AFTER_SALE"],"constraints":[],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GIFT_STOCK","GIFT_FULFILLMENT","GIFT_AFTER_SALE"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP014',1,'ACTIVITY','权益发放','老客回购券','["零售"]','{"templateCode":"AP014","templateVersion":1,"name":"老客回购券","category":"权益发放","baseTemplate":"A09","industryTags":["零售"],"goalTags":["复购"],"scenario":"买过指定类目的客户","scene":"COUPON_DISTRIBUTION","effect":"COUPON","family":"COUPON_ISSUE","exampleText":"满150减15，14天有效","priority":"P1","capabilityAssessment":"已有服务基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","AUDIENCE","COUPON_ISSUE","COUPON_BUDGET"],"constraints":[],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.entitlement"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","AUDIENCE","COUPON_ISSUE","COUPON_BUDGET"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP015',1,'ACTIVITY','协同成交','每日社区集单','["生鲜社区"]','{"templateCode":"AP015","templateVersion":1,"name":"每日社区集单","category":"协同成交","baseTemplate":"A12","industryTags":["生鲜社区"],"goalTags":["集采"],"scenario":"按期收单后采购","scene":"ORDER","effect":"PRICE","family":"CUTOFF_PRICE","exampleText":"每日20:00截单，次日提货","priority":"P2","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","PERIOD_INSTANCE","CUTOFF_JOB","MIN_QTY_DECISION","ORDER_REFUND","FULFILLMENT"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","PERIOD_INSTANCE","CUTOFF_JOB","MIN_QTY_DECISION","ORDER_REFUND","FULFILLMENT"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP016',1,'ACTIVITY','协同成交','当季鲜果拼团','["生鲜社区"]','{"templateCode":"AP016","templateVersion":1,"name":"当季鲜果拼团","category":"协同成交","baseTemplate":"A11","industryTags":["生鲜社区"],"goalTags":["拉新"],"scenario":"同一提货范围团购","scene":"ORDER","effect":"PRICE","family":"GROUP_PRICE","exampleText":"3人团，24小时，指定商品团价","priority":"P2","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GROUP_INSTANCE","GROUP_CLOSE","ORDER_REFUND","FULFILLMENT"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GROUP_INSTANCE","GROUP_CLOSE","ORDER_REFUND","FULFILLMENT"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP017',1,'ACTIVITY','成交优惠','当日限时特价','["生鲜社区"]','{"templateCode":"AP017","templateVersion":1,"name":"当日限时特价","category":"成交优惠","baseTemplate":"A06","industryTags":["生鲜社区"],"goalTags":["清货"],"scenario":"明确可售批次及库存","scene":"ORDER","effect":"PRICE","family":"FLASH_STOCK","exampleText":"指定时段，限量30份","priority":"P3","capabilityAssessment":"库存并发待验收","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","SKU_PRICE_VALIDATION","FLASH_STOCK","ATOMIC_QUOTA"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","SKU_PRICE_VALIDATION","FLASH_STOCK","ATOMIC_QUOTA"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP018',1,'ACTIVITY','成交优惠','多件装优惠','["生鲜社区"]','{"templateCode":"AP018","templateVersion":1,"name":"多件装优惠","category":"成交优惠","baseTemplate":"A02","industryTags":["生鲜社区"],"goalTags":["连带"],"scenario":"同类商品组合购买","scene":"ORDER","effect":"CUT","family":"ORDER_DISCOUNT","exampleText":"满3件减5","priority":"P1","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP019',1,'ACTIVITY','权益发放','买菜复购券','["生鲜社区"]','{"templateCode":"AP019","templateVersion":1,"name":"买菜复购券","category":"权益发放","baseTemplate":"A09","industryTags":["生鲜社区"],"goalTags":["复购"],"scenario":"近期开单客户","scene":"COUPON_DISTRIBUTION","effect":"COUPON","family":"COUPON_ISSUE","exampleText":"满59减5，7天有效","priority":"P1","capabilityAssessment":"已有服务基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","AUDIENCE","COUPON_ISSUE","COUPON_BUDGET"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.entitlement"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","AUDIENCE","COUPON_ISSUE","COUPON_BUDGET"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP020',1,'ACTIVITY','成交优惠','非高峰时段优惠','["餐饮茶饮"]','{"templateCode":"AP020","templateVersion":1,"name":"非高峰时段优惠","category":"成交优惠","baseTemplate":"A04","industryTags":["餐饮茶饮"],"goalTags":["错峰"],"scenario":"指定门店与非高峰时段","scene":"ORDER","effect":"PERCENT","family":"PERCENT_CAP","exampleText":"8折，单笔最多减20","priority":"P2","capabilityAssessment":"组合折扣待验收","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COMBO_RULE","DISCOUNT_CAP","REFUND_ALLOCATION"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COMBO_RULE","DISCOUNT_CAP","REFUND_ALLOCATION"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP021',1,'ACTIVITY','权益发放','饮品买二赠一','["餐饮茶饮"]','{"templateCode":"AP021","templateVersion":1,"name":"饮品买二赠一","category":"权益发放","baseTemplate":"A08","industryTags":["餐饮茶饮"],"goalTags":["连带"],"scenario":"指定饮品","scene":"ORDER","effect":"GIFT","family":"GOODS_GIFT","exampleText":"买2件送指定饮品1件","priority":"P2","capabilityAssessment":"赠品履约待验收","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GIFT_STOCK","GIFT_FULFILLMENT","GIFT_AFTER_SALE"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GIFT_STOCK","GIFT_FULFILLMENT","GIFT_AFTER_SALE"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP022',1,'ACTIVITY','权益发放','到店饮品体验券','["餐饮茶饮"]','{"templateCode":"AP022","templateVersion":1,"name":"到店饮品体验券","category":"权益发放","baseTemplate":"A09","industryTags":["餐饮茶饮"],"goalTags":["体验"],"scenario":"新客到店兑换","scene":"COUPON_DISTRIBUTION","effect":"COUPON","family":"STORE_COUPON","exampleText":"指定饮品1杯，每人1次","priority":"P1","capabilityAssessment":"已有服务基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COUPON_ISSUE","STORE_CODE_REDEEM","AUDIENCE"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.entitlement"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COUPON_ISSUE","STORE_CODE_REDEEM","AUDIENCE"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP023',1,'ACTIVITY','协同成交','工作日团购套餐','["餐饮茶饮"]','{"templateCode":"AP023","templateVersion":1,"name":"工作日团购套餐","category":"协同成交","baseTemplate":"A11","industryTags":["餐饮茶饮"],"goalTags":["拉新"],"scenario":"现有商品套餐成团","scene":"ORDER","effect":"PRICE","family":"GROUP_PRICE","exampleText":"2人团，指定套餐团价","priority":"P2","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GROUP_INSTANCE","GROUP_CLOSE","ORDER_REFUND","FULFILLMENT"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GROUP_INSTANCE","GROUP_CLOSE","ORDER_REFUND","FULFILLMENT"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP024',1,'ACTIVITY','储值激励','门店储值充赠','["餐饮茶饮"]','{"templateCode":"AP024","templateVersion":1,"name":"门店储值充赠","category":"储值激励","baseTemplate":"A13","industryTags":["餐饮茶饮"],"goalTags":["储值"],"scenario":"门店现金或转账储值","scene":"RECHARGE","effect":"STORED_VALUE_BONUS","family":"RECHARGE_BONUS","exampleText":"充300送30，充500送60","priority":"P2","capabilityAssessment":"拟新增能力","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ACTIVITY_VERSION","MARKETING_RESERVATION","PAY_CREDIT","MEMBER_IDENTITY","STORED_VALUE_REDEEM"],"constraints":["该业态须按实际入驻范围与履约能力开放","商家出资、线下实收","不叠券或积分","无线上退款","普通充值赠送为0"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.storedvalue"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ACTIVITY_VERSION","MARKETING_RESERVATION","PAY_CREDIT","MEMBER_IDENTITY","STORED_VALUE_REDEEM"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP025',1,'ACTIVITY','成交优惠','新客护理体验价','["美业"]','{"templateCode":"AP025","templateVersion":1,"name":"新客护理体验价","category":"成交优惠","baseTemplate":"A03","industryTags":["美业"],"goalTags":["体验"],"scenario":"新客指定护理项目","scene":"ORDER","effect":"PRICE","family":"GOODS_PRICE","exampleText":"指定项目体验价99，每人1次","priority":"P1","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GOODS_SCOPE","SKU_PRICE_VALIDATION","AUDIENCE","ATOMIC_QUOTA"],"constraints":[],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GOODS_SCOPE","SKU_PRICE_VALIDATION","AUDIENCE","ATOMIC_QUOTA"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP026',1,'ACTIVITY','成交优惠','护理满额优惠','["美业"]','{"templateCode":"AP026","templateVersion":1,"name":"护理满额优惠","category":"成交优惠","baseTemplate":"A01","industryTags":["美业"],"goalTags":["客单"],"scenario":"同次购买指定服务","scene":"ORDER","effect":"CUT","family":"ORDER_DISCOUNT","exampleText":"满500减50","priority":"P1","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"],"constraints":[],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP027',1,'ACTIVITY','权益发放','老客护理复购券','["美业"]','{"templateCode":"AP027","templateVersion":1,"name":"老客护理复购券","category":"权益发放","baseTemplate":"A09","industryTags":["美业"],"goalTags":["复购"],"scenario":"近期到店客户","scene":"COUPON_DISTRIBUTION","effect":"COUPON","family":"COUPON_ISSUE","exampleText":"满300减30，30天有效","priority":"P1","capabilityAssessment":"已有服务基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","AUDIENCE","COUPON_ISSUE","COUPON_BUDGET"],"constraints":[],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.entitlement"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","AUDIENCE","COUPON_ISSUE","COUPON_BUDGET"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP028',1,'ACTIVITY','权益发放','沉睡会员唤醒体验券','["美业"]','{"templateCode":"AP028","templateVersion":1,"name":"沉睡会员唤醒体验券","category":"权益发放","baseTemplate":"A09","industryTags":["美业"],"goalTags":["召回"],"scenario":"90天未消费人群","scene":"COUPON_DISTRIBUTION","effect":"COUPON","family":"STORE_COUPON","exampleText":"指定护理兑换1次","priority":"P1","capabilityAssessment":"已有服务基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COUPON_ISSUE","STORE_CODE_REDEEM","AUDIENCE"],"constraints":[],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.entitlement"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COUPON_ISSUE","STORE_CODE_REDEEM","AUDIENCE"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP029',1,'ACTIVITY','协同成交','双人护理拼团','["美业"]','{"templateCode":"AP029","templateVersion":1,"name":"双人护理拼团","category":"协同成交","baseTemplate":"A11","industryTags":["美业"],"goalTags":["拉新"],"scenario":"两名不同客户参与","scene":"ORDER","effect":"PRICE","family":"GROUP_PRICE","exampleText":"2人团，24小时，限定护理商品","priority":"P2","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GROUP_INSTANCE","GROUP_CLOSE","ORDER_REFUND","FULFILLMENT"],"constraints":[],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GROUP_INSTANCE","GROUP_CLOSE","ORDER_REFUND","FULFILLMENT"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP030',1,'ACTIVITY','储值激励','护理储值充赠','["美业"]','{"templateCode":"AP030","templateVersion":1,"name":"护理储值充赠","category":"储值激励","baseTemplate":"A13","industryTags":["美业"],"goalTags":["储值"],"scenario":"商家确认实收后到账","scene":"RECHARGE","effect":"STORED_VALUE_BONUS","family":"RECHARGE_BONUS","exampleText":"充1000送200，充2000送600","priority":"P1-重点补齐","capabilityAssessment":"拟新增能力","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ACTIVITY_VERSION","MARKETING_RESERVATION","PAY_CREDIT","MEMBER_IDENTITY","STORED_VALUE_REDEEM"],"constraints":["商家出资、线下实收","不叠券或积分","无线上退款","普通充值赠送为0"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.storedvalue"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ACTIVITY_VERSION","MARKETING_RESERVATION","PAY_CREDIT","MEMBER_IDENTITY","STORED_VALUE_REDEEM"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP031',1,'ACTIVITY','权益发放','护理多次兑换券','["美业"]','{"templateCode":"AP031","templateVersion":1,"name":"护理多次兑换券","category":"权益发放","baseTemplate":"A09","industryTags":["美业"],"goalTags":["留存"],"scenario":"商家赠送的多次服务权益","scene":"COUPON_DISTRIBUTION","effect":"COUPON","family":"MULTI_USE_COUPON","exampleText":"指定项目5次，限制有效期","priority":"P2","capabilityAssessment":"多次核销需联调","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COUPON_ISSUE","MULTI_USE_REDEEM","SERVICE_SCOPE"],"constraints":["赠送兑换券，不是付费疗程卡或期限会籍","预约与可约资源需单独验收"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.entitlement"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COUPON_ISSUE","MULTI_USE_REDEEM","SERVICE_SCOPE"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP032',1,'ACTIVITY','权益发放','新客体验兑换券','["健身运动"]','{"templateCode":"AP032","templateVersion":1,"name":"新客体验兑换券","category":"权益发放","baseTemplate":"A09","industryTags":["健身运动"],"goalTags":["体验"],"scenario":"首次体验指定项目","scene":"COUPON_DISTRIBUTION","effect":"COUPON","family":"STORE_COUPON","exampleText":"体验课1次，7天有效","priority":"P1","capabilityAssessment":"已有服务基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COUPON_ISSUE","STORE_CODE_REDEEM","AUDIENCE"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.entitlement"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COUPON_ISSUE","STORE_CODE_REDEEM","AUDIENCE"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP033',1,'ACTIVITY','协同成交','双人体验拼团','["健身运动"]','{"templateCode":"AP033","templateVersion":1,"name":"双人体验拼团","category":"协同成交","baseTemplate":"A11","industryTags":["健身运动"],"goalTags":["拉新"],"scenario":"两名不同客户","scene":"ORDER","effect":"PRICE","family":"GROUP_PRICE","exampleText":"指定体验商品，2人成团","priority":"P2","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GROUP_INSTANCE","GROUP_CLOSE","ORDER_REFUND","FULFILLMENT"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GROUP_INSTANCE","GROUP_CLOSE","ORDER_REFUND","FULFILLMENT"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP034',1,'ACTIVITY','储值激励','运动服务储值充赠','["健身运动"]','{"templateCode":"AP034","templateVersion":1,"name":"运动服务储值充赠","category":"储值激励","baseTemplate":"A13","industryTags":["健身运动"],"goalTags":["储值"],"scenario":"商家实收后按项目消费","scene":"RECHARGE","effect":"STORED_VALUE_BONUS","family":"RECHARGE_BONUS","exampleText":"充1000送100","priority":"P2","capabilityAssessment":"拟新增能力","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ACTIVITY_VERSION","MARKETING_RESERVATION","PAY_CREDIT","MEMBER_IDENTITY","STORED_VALUE_REDEEM"],"constraints":["该业态须按实际入驻范围与履约能力开放","商家出资、线下实收","不叠券或积分","无线上退款","普通充值赠送为0"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.storedvalue"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ACTIVITY_VERSION","MARKETING_RESERVATION","PAY_CREDIT","MEMBER_IDENTITY","STORED_VALUE_REDEEM"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP035',1,'ACTIVITY','成交优惠','首次洗护体验价','["宠物服务"]','{"templateCode":"AP035","templateVersion":1,"name":"首次洗护体验价","category":"成交优惠","baseTemplate":"A03","industryTags":["宠物服务"],"goalTags":["体验"],"scenario":"首次消费指定洗护项目","scene":"ORDER","effect":"PRICE","family":"GOODS_PRICE","exampleText":"指定项目体验价79","priority":"P1","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GOODS_SCOPE","SKU_PRICE_VALIDATION","AUDIENCE","ATOMIC_QUOTA"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GOODS_SCOPE","SKU_PRICE_VALIDATION","AUDIENCE","ATOMIC_QUOTA"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP036',1,'ACTIVITY','权益发放','宠物用品满额赠品','["宠物服务"]','{"templateCode":"AP036","templateVersion":1,"name":"宠物用品满额赠品","category":"权益发放","baseTemplate":"A07","industryTags":["宠物服务"],"goalTags":["客单"],"scenario":"用品购买","scene":"ORDER","effect":"GIFT","family":"GOODS_GIFT","exampleText":"满199赠指定用品1件","priority":"P2","capabilityAssessment":"赠品履约待验收","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GIFT_STOCK","GIFT_FULFILLMENT","GIFT_AFTER_SALE"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","GIFT_STOCK","GIFT_FULFILLMENT","GIFT_AFTER_SALE"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP037',1,'ACTIVITY','储值激励','洗护储值充赠','["宠物服务"]','{"templateCode":"AP037","templateVersion":1,"name":"洗护储值充赠","category":"储值激励","baseTemplate":"A13","industryTags":["宠物服务"],"goalTags":["储值"],"scenario":"限定洗护服务","scene":"RECHARGE","effect":"STORED_VALUE_BONUS","family":"RECHARGE_BONUS","exampleText":"充500送50","priority":"P2","capabilityAssessment":"拟新增能力","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ACTIVITY_VERSION","MARKETING_RESERVATION","PAY_CREDIT","MEMBER_IDENTITY","STORED_VALUE_REDEEM"],"constraints":["该业态须按实际入驻范围与履约能力开放","商家出资、线下实收","不叠券或积分","无线上退款","普通充值赠送为0"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.storedvalue"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ACTIVITY_VERSION","MARKETING_RESERVATION","PAY_CREDIT","MEMBER_IDENTITY","STORED_VALUE_REDEEM"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP038',1,'ACTIVITY','权益发放','新客上门服务券','["家政生活服务"]','{"templateCode":"AP038","templateVersion":1,"name":"新客上门服务券","category":"权益发放","baseTemplate":"A09","industryTags":["家政生活服务"],"goalTags":["获客"],"scenario":"指定服务和可达区域","scene":"COUPON_DISTRIBUTION","effect":"COUPON","family":"COUPON_ISSUE","exampleText":"满200减20","priority":"P1","capabilityAssessment":"已有服务基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","AUDIENCE","COUPON_ISSUE","COUPON_BUDGET"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.entitlement"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","AUDIENCE","COUPON_ISSUE","COUPON_BUDGET"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP039',1,'ACTIVITY','成交优惠','老客服务满额优惠','["家政生活服务"]','{"templateCode":"AP039","templateVersion":1,"name":"老客服务满额优惠","category":"成交优惠","baseTemplate":"A01","industryTags":["家政生活服务"],"goalTags":["复购"],"scenario":"指定家政服务","scene":"ORDER","effect":"CUT","family":"ORDER_DISCOUNT","exampleText":"满400减40","priority":"P1","capabilityAssessment":"已有模型基础","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"],"constraints":["该业态须按实际入驻范围与履约能力开放"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"core.trade/product"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","ORDER_PRICING","AUDIENCE","ATOMIC_QUOTA"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','AP040',1,'ACTIVITY','权益发放','周期服务兑换券','["家政生活服务"]','{"templateCode":"AP040","templateVersion":1,"name":"周期服务兑换券","category":"权益发放","baseTemplate":"A09","industryTags":["家政生活服务"],"goalTags":["留存"],"scenario":"商家赠送的指定服务权益","scene":"COUPON_DISTRIBUTION","effect":"COUPON","family":"MULTI_USE_COUPON","exampleText":"保洁兑换3次，预约后履约","priority":"P2","capabilityAssessment":"多次核销需联调","requiredCapabilities":["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COUPON_ISSUE","MULTI_USE_REDEEM","SERVICE_SCOPE"],"constraints":["该业态须按实际入驻范围与履约能力开放","赠送兑换券，不是付费疗程卡或期限会籍","预约与可约资源需单独验收"],"editableFields":["name","schedule","storeScope","audience","rule","quota","budget","perUserLimit"],"seedEnabled":false,"publishOnCreate":false,"requiresMerchantReview":true,"activityOwner":"core.promotion","benefitExecutor":"pay.entitlement"}','["MERCHANT_ACTIVE","INDUSTRY_ADMISSION","STORE_PERMISSION","COUPON_ISSUE","MULTI_USE_REDEEM","SERVICE_SCOPE"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','EP001',1,'PAID_PRODUCT','付费权益产品','30次餐卡','["餐饮"]','{"templateCode":"EP001","templateVersion":1,"name":"30次餐卡","industryTags":["餐饮"],"catalogKind":"PAID_ENTITLEMENT_PRODUCT","usageModel":"COUNT","exampleTotalUses":30,"priceMinor":null,"seedEnabled":false,"publishOnCreate":false,"requiredCapabilities":["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"],"capabilityAssessment":"规划待补，非已实现活动能力","productOwner":"core.product","entitlementDefinitionOwner":"pay.entitlement","instanceAndUsageOwner":"pay.entitlement"}','["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','EP002',1,'PAID_PRODUCT','付费权益产品','30天30次餐卡','["餐饮"]','{"templateCode":"EP002","templateVersion":1,"name":"30天30次餐卡","industryTags":["餐饮"],"catalogKind":"PAID_ENTITLEMENT_PRODUCT","usageModel":"PERIOD_COUNT","exampleTotalUses":30,"priceMinor":null,"seedEnabled":false,"publishOnCreate":false,"requiredCapabilities":["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"],"capabilityAssessment":"规划待补，非已实现活动能力","productOwner":"core.product","entitlementDefinitionOwner":"pay.entitlement","instanceAndUsageOwner":"pay.entitlement"}','["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','EP003',1,'PAID_PRODUCT','付费权益产品','每日一餐月卡','["餐饮"]','{"templateCode":"EP003","templateVersion":1,"name":"每日一餐月卡","industryTags":["餐饮"],"catalogKind":"PAID_ENTITLEMENT_PRODUCT","usageModel":"PERIOD_DAILY","exampleTotalUses":null,"priceMinor":null,"seedEnabled":false,"publishOnCreate":false,"requiredCapabilities":["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"],"capabilityAssessment":"规划待补，非已实现活动能力","productOwner":"core.product","entitlementDefinitionOwner":"pay.entitlement","instanceAndUsageOwner":"pay.entitlement"}','["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','EP004',1,'PAID_PRODUCT','付费权益产品','30次游泳卡','["游泳运动"]','{"templateCode":"EP004","templateVersion":1,"name":"30次游泳卡","industryTags":["游泳运动"],"catalogKind":"PAID_ENTITLEMENT_PRODUCT","usageModel":"COUNT","exampleTotalUses":30,"priceMinor":null,"seedEnabled":false,"publishOnCreate":false,"requiredCapabilities":["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"],"capabilityAssessment":"规划待补，非已实现活动能力","productOwner":"core.product","entitlementDefinitionOwner":"pay.entitlement","instanceAndUsageOwner":"pay.entitlement"}','["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','EP005',1,'PAID_PRODUCT','付费权益产品','限次游泳月卡','["游泳运动"]','{"templateCode":"EP005","templateVersion":1,"name":"限次游泳月卡","industryTags":["游泳运动"],"catalogKind":"PAID_ENTITLEMENT_PRODUCT","usageModel":"PERIOD_COUNT","exampleTotalUses":null,"priceMinor":null,"seedEnabled":false,"publishOnCreate":false,"requiredCapabilities":["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"],"capabilityAssessment":"规划待补，非已实现活动能力","productOwner":"core.product","entitlementDefinitionOwner":"pay.entitlement","instanceAndUsageOwner":"pay.entitlement"}','["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
+INSERT IGNORE INTO pmt_preset_template (tenant_no,template_code,template_version,catalog_kind,category,name,industry_tags,draft_schema,required_capabilities,enabled,version,deleted,created_at,updated_at,created_by,updated_by) VALUES ('MAIN','EP006',1,'PAID_PRODUCT','付费权益产品','指定服务次卡','["生活服务"]','{"templateCode":"EP006","templateVersion":1,"name":"指定服务次卡","industryTags":["生活服务"],"catalogKind":"PAID_ENTITLEMENT_PRODUCT","usageModel":"COUNT","exampleTotalUses":null,"priceMinor":null,"seedEnabled":false,"publishOnCreate":false,"requiredCapabilities":["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"],"capabilityAssessment":"规划待补，非已实现活动能力","productOwner":"core.product","entitlementDefinitionOwner":"pay.entitlement","instanceAndUsageOwner":"pay.entitlement"}','["CARD_PRODUCT","PAID_ORDER","IDEMPOTENT_CARD_ISSUE","ENTITLEMENT_LEDGER","ATOMIC_USE_DEDUCT","VALIDITY_POLICY"]',0,0,0,'2026-10-19 00:00:00','2026-10-19 00:00:00','SYSTEM','SYSTEM');
 UPDATE sys_function_point SET href='/points?tab=overview',group_name='积分运营',updated_at=CURRENT_TIMESTAMP WHERE point_code='OPS_FINANCE__TAB_POINTS';
 UPDATE sys_function_point SET href='/points?tab=switches',name='积分范围开关',group_name='积分运营',updated_at=CURRENT_TIMESTAMP WHERE point_code='OPS_FINANCE__TAB_POINTS_POLICY';
 INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at)
@@ -11534,6 +13541,15 @@ SELECT DISTINCT source.role_code,'OPS_POINTS__TAB_QUERIES',source.end_code,sourc
 WHERE source.point_code='OPS_FINANCE__TAB_POINTS' AND source.end_code='OPS' AND source.deleted=0 AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code AND existing.end_code=source.end_code AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0 AND existing.point_code='OPS_POINTS__TAB_QUERIES');
 UPDATE sys_function_point SET ui_perm_code='finance:recon:resolve',ui_ready=1,group_name='积分运营',name='积分对账快照核对',updated_at=CURRENT_TIMESTAMP
 WHERE point_code='ACT__FINANCE_RECON_RESOLVE' AND function_code='OPS_FINANCE' AND deleted=0;
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_ENT_READ','OPS_FINANCE','权益异常查询','仅后端',NULL,'ops:pay:ent:read','ops:pay:ent:read','IMPLEMENTED',0,NULL,'ACTION',980,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_ENT_READ','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_ENT_READ' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_ENT_RECOVER','OPS_FINANCE','原权益发行恢复','仅后端',NULL,'ops:pay:ent:recover','ops:pay:ent:recover','IMPLEMENTED',0,NULL,'ACTION',981,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_ENT_RECOVER','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_ENT_RECOVER' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_ENT_VERIFY','OPS_FINANCE','权益来源核实','仅后端',NULL,'ops:pay:ent:verify','ops:pay:ent:verify','IMPLEMENTED',0,NULL,'ACTION',982,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_ENT_VERIFY','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_ENT_VERIFY' AND end_code='OPS');
+INSERT IGNORE INTO sys_function_point (point_code,function_code,name,group_name,href,ui_perm_code,perm_code,backend_status,ui_ready,matrix_code,point_type,sort,created_at,updated_at) VALUES ('ACT__PAY_ENT_FREEZE','OPS_FINANCE','权益冻结与解冻','仅后端',NULL,'ops:pay:ent:freeze','ops:pay:ent:freeze','IMPLEMENTED',0,NULL,'ACTION',983,NOW(),NOW()) ON DUPLICATE KEY UPDATE point_code=point_code;
+INSERT IGNORE INTO sys_role_point(role_code,point_code,end_code,created_at,updated_at) SELECT 'SUPER_ADMIN','ACT__PAY_ENT_FREEZE','OPS',NOW(),NOW() FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM sys_role_point WHERE role_code='SUPER_ADMIN' AND point_code='ACT__PAY_ENT_FREEZE' AND end_code='OPS');
+UPDATE ent_migration_stage SET history_available=CASE WHEN source_system='PMT' THEN 1 ELSE 0 END;
 DELETE FROM sys_role_point
 WHERE point_code = 'OPS_PRODUCT__TAB_CATEGORY_POINTS';
 DELETE FROM sys_function_point

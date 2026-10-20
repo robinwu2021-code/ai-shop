@@ -7,7 +7,7 @@
 > 端点→权限取自 `BizEndpointPermTest.REQUIRED` —— 最后那份是唯一**被守卫强制对过账**的
 > 清单（每个 `/biz` 端点都必须在里面有个说法，漏登记就红），所以比任何手写文档都可信。
 
-统计：**6 个角色 × 13 个权限点 × 246 个受控端点**。
+统计：**6 个角色 × 25 个权限点 × 282 个受控端点**。
 
 ## 一、角色 × 权限
 
@@ -16,21 +16,33 @@
 
 | 权限点 | 含义 | 端点数 | OWNER | MANAGER | CLERK | PICKER | COURIER | CS |
 |---|---|---|---|---|---|---|---|---|
-| `STOCK` | 改库存（含门店库存） | 44 | ✅ | ✅ | ✅ | ✅ | — | — |
-| `GOODS` | 建/改商品、上下架、规格模板、识图 | 36 | ✅ | ✅ | — | — | — | — |
+| `STOCK` | 改库存（含门店库存） | 49 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `GOODS` | 建/改商品、上下架、规格模板、识图 | 38 | ✅ | ✅ | — | — | — | — |
+| `CAMPAIGN` | 营销活动、开团、报价 | 32 | ✅ | ✅ | — | — | — | — |
 | `FINANCE` | 结算账单、费率卡、收款进件、积分开关 | 30 | ✅ | — | — | — | — | — |
-| `CAMPAIGN` | 营销活动、开团、报价 | 29 | ✅ | ✅ | — | — | — | — |
-| `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 27 | ✅ | ✅ | — | — | — | — |
+| `CUSTOMER` | 顾客列表（含累计消费额）、经营数据 | 28 | ✅ | ✅ | — | — | — | — |
+| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 24 | ✅ | — | — | — | — | — |
 | `STORE` | 门店经营面：装修、配送规则、店铺码、分享物料 | 22 | ✅ | ✅ | — | — | — | — |
-| `STORE_ADMIN` | 建店、改名、停用、设默认店、挂收款号 | 21 | ✅ | — | — | — | — | — |
 | `SHIP` | 发货、标记自送送达 | 10 | ✅ | ✅ | ✅ | — | ✅ | — |
 | `AFTERSALE` | 售后同意/驳回/收货 | 8 | ✅ | ✅ | — | — | — | ✅ |
 | `VERIFY` | 核销、批量核销、按码搜索 | 7 | ✅ | ✅ | ✅ | — | — | — |
-| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 5 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| `ORDER_VIEW` | 订单列表与详情、工作台待办 | 6 | ✅ | ✅ | ✅ | — | ✅ | ✅ |
 | `RECEIVE` | 到货登记、分拣单、短少上报 | 4 | ✅ | ✅ | ✅ | ✅ | — | — |
+| `ENT_READ` | 查看主体级权益目录，不授予变更能力 | 4 | ✅ | — | — | — | — | — |
 | `REVIEW` | 评价回复、差评申诉 | 3 | ✅ | ✅ | — | — | — | ✅ |
+| `SV_RECHARGE_CREATE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
+| `ENT_USE` | 查看主体级权益目录，不授予变更能力 | 3 | ✅ | — | — | — | — | — |
+| `SV_CONSUME_CREATE` | 查看主体级权益目录，不授予变更能力 | 2 | ✅ | — | — | — | — | — |
+| `ENT_TEMPLATE_WRITE` | 编辑权益草稿，不能发布 | 2 | ✅ | — | — | — | — | — |
+| `ENT_TEMPLATE_PUBLISH` | 发布与停发影响全主体，需单独授权 | 2 | ✅ | — | — | — | — | — |
+| `SV_RECHARGE_RECEIVE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
+| `SV_RECHARGE_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
+| `SV_ACCOUNT_READ` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
+| `ENT_ISSUE` | 查看主体级权益目录，不授予变更能力 | 1 | ✅ | — | — | — | — | — |
+| `ENT_ISSUE_MANAGE` | 调整发行容量，不直接发放实例 | 1 | ✅ | — | — | — | — | — |
+| `ENT_TEMPLATE_READ` | 查看主体级权益目录，不授予变更能力 | 0 | ✅ | — | — | — | — | — |
 
-**只有 OWNER 能碰的 2 项**：`FINANCE`、`STORE_ADMIN`
+**只有 OWNER 能碰的 14 项**：`FINANCE`、`STORE_ADMIN`、`ENT_READ`、`SV_RECHARGE_CREATE`、`ENT_USE`、`SV_CONSUME_CREATE`、`ENT_TEMPLATE_WRITE`、`ENT_TEMPLATE_PUBLISH`、`SV_RECHARGE_RECEIVE`、`SV_RECHARGE_READ`、`SV_ACCOUNT_READ`、`ENT_ISSUE`、`ENT_ISSUE_MANAGE`、`ENT_TEMPLATE_READ`
 —— 它们是「能把钱和人改掉」的那几组，连店长都不下放。
 
 ## 二、每个权限点覆盖的端点
@@ -80,10 +92,17 @@
 - `/biz/store/{storeNo}/offline-sale/{docNo}/revoke`
 - `/biz/store/{storeNo}/sell-rules`
 - `/biz/store/{storeNo}/stock-alignment`
+- `/biz/store/{storeNo}/stock-alignment/batch/{batchNo}`
+- `/biz/store/{storeNo}/stock-overview`
+- `/biz/store/{storeNo}/stock-overview/batch`
+- `/biz/store/{storeNo}/stock-reconcile/records`
+- `/biz/store/{storeNo}/stock-reconcile/{operationNo}`
 - `/biz/store/{storeNo}/stock-sync`
 
 ### `GOODS`　（OWNER、MANAGER）
 
+- `/biz/card-product-bindings`
+- `/biz/card-product-presets`
 - `/biz/goods/describe`
 - `/biz/goods/parse-text`
 - `/biz/goods/recognize`
@@ -121,6 +140,41 @@
 - `/biz/spu-std`
 - `/biz/store-spec-dims`
 
+### `CAMPAIGN`　（OWNER、MANAGER）
+
+- `/biz/activities`
+- `/biz/activities/{activityNo}`
+- `/biz/activities/{activityNo}/publish`
+- `/biz/activities/{activityNo}/status`
+- `/biz/activity-conflicts`
+- `/biz/activity-presets`
+- `/biz/campaign`
+- `/biz/campaign/{campaignNo}/toggle`
+- `/biz/coupon-issues`
+- `/biz/coupons`
+- `/biz/coupons/{couponNo}`
+- `/biz/coupons/{couponNo}/issue`
+- `/biz/coupons/{couponNo}/status`
+- `/biz/group-request/pool`
+- `/biz/group-request/{requestNo}/quote`
+- `/biz/group/pickups`
+- `/biz/group/{groupNo}`
+- `/biz/group/{groupNo}/dissolve`
+- `/biz/groups`
+- `/biz/marketing-summary`
+- `/biz/marketing/summary`
+- `/biz/member-reach/send`
+- `/biz/period`
+- `/biz/period/{periodNo}`
+- `/biz/period/{periodNo}/cutoff`
+- `/biz/period/{periodNo}/decision`
+- `/biz/period/{periodNo}/purchase-lines`
+- `/biz/platform-activity`
+- `/biz/platform-activity/{activityNo}`
+- `/biz/platform-activity/{activityNo}/enrollment`
+- `/biz/platform-activity/{activityNo}/withdraw`
+- `/biz/quote/{quoteNo}/revise`
+
 ### `FINANCE`　（OWNER）
 
 - `/biz/deposit`
@@ -154,38 +208,6 @@
 - `/biz/settle/rate-card`
 - `/biz/settle/statement`
 
-### `CAMPAIGN`　（OWNER、MANAGER）
-
-- `/biz/activities`
-- `/biz/activities/{activityNo}`
-- `/biz/activities/{activityNo}/status`
-- `/biz/activity-conflicts`
-- `/biz/campaign`
-- `/biz/campaign/{campaignNo}/toggle`
-- `/biz/coupon-issues`
-- `/biz/coupons`
-- `/biz/coupons/{couponNo}`
-- `/biz/coupons/{couponNo}/issue`
-- `/biz/coupons/{couponNo}/status`
-- `/biz/group-request/pool`
-- `/biz/group-request/{requestNo}/quote`
-- `/biz/group/pickups`
-- `/biz/group/{groupNo}`
-- `/biz/group/{groupNo}/dissolve`
-- `/biz/groups`
-- `/biz/marketing/summary`
-- `/biz/member-reach/send`
-- `/biz/period`
-- `/biz/period/{periodNo}`
-- `/biz/period/{periodNo}/cutoff`
-- `/biz/period/{periodNo}/decision`
-- `/biz/period/{periodNo}/purchase-lines`
-- `/biz/platform-activity`
-- `/biz/platform-activity/{activityNo}`
-- `/biz/platform-activity/{activityNo}/enrollment`
-- `/biz/platform-activity/{activityNo}/withdraw`
-- `/biz/quote/{quoteNo}/revise`
-
 ### `CUSTOMER`　（OWNER、MANAGER）
 
 - `/biz/cross-store/compare`
@@ -195,6 +217,7 @@
 - `/biz/inventory/export`
 - `/biz/inventory/report/monthly`
 - `/biz/inventory/report/ranking`
+- `/biz/member-code/resolve`
 - `/biz/member-reach/plan`
 - `/biz/member-reach/task`
 - `/biz/member-reach/task/{taskNo}`
@@ -215,6 +238,33 @@
 - `/biz/report/daily`
 - `/biz/report/goods`
 - `/biz/report/monthly`
+
+### `STORE_ADMIN`　（OWNER）
+
+- `/biz/entities`
+- `/biz/entity/{entityNo}`
+- `/biz/inventory/locations/{id}/source`
+- `/biz/member-settings`
+- `/biz/plan`
+- `/biz/plan/trial`
+- `/biz/role-perms`
+- `/biz/role/{roleCode}`
+- `/biz/role/{roleCode}/delete`
+- `/biz/roles`
+- `/biz/staff`
+- `/biz/staff/logs`
+- `/biz/staff/{mchAccountNo}/status`
+- `/biz/staff/{mchAccountNo}/store`
+- `/biz/store/create`
+- `/biz/store/{storeNo}/default`
+- `/biz/store/{storeNo}/payment`
+- `/biz/store/{storeNo}/rename`
+- `/biz/store/{storeNo}/slug`
+- `/biz/store/{storeNo}/status`
+- `/biz/store/{storeNo}/stock-alignment/batch/{batchNo}/confirm`
+- `/biz/store/{storeNo}/stock-alignment/confirm`
+- `/biz/store/{storeNo}/stock-alignment/preview`
+- `/biz/store/{storeNo}/stock-reconcile`
 
 ### `STORE`　（OWNER、MANAGER）
 
@@ -240,30 +290,6 @@
 - `/biz/store/{storeNo}/ship-setting`
 - `/biz/stores/{storeNo}/appointment-slots`
 - `/biz/stores/{storeNo}/fulfillment`
-
-### `STORE_ADMIN`　（OWNER）
-
-- `/biz/entities`
-- `/biz/entity/{entityNo}`
-- `/biz/inventory/locations/{id}/source`
-- `/biz/member-settings`
-- `/biz/plan`
-- `/biz/plan/trial`
-- `/biz/role-perms`
-- `/biz/role/{roleCode}`
-- `/biz/role/{roleCode}/delete`
-- `/biz/roles`
-- `/biz/staff`
-- `/biz/staff/logs`
-- `/biz/staff/{mchAccountNo}/status`
-- `/biz/staff/{mchAccountNo}/store`
-- `/biz/store/create`
-- `/biz/store/{storeNo}/default`
-- `/biz/store/{storeNo}/payment`
-- `/biz/store/{storeNo}/rename`
-- `/biz/store/{storeNo}/slug`
-- `/biz/store/{storeNo}/status`
-- `/biz/store/{storeNo}/stock-alignment/confirm`
 
 ### `SHIP`　（OWNER、MANAGER、CLERK、COURIER）
 
@@ -304,6 +330,7 @@
 - `/biz/order`
 - `/biz/order/worklist`
 - `/biz/order/{subOrderNo}`
+- `/biz/order/{subOrderNo}/inventory-trace`
 - `/biz/order/{subOrderNo}/logistics-updates`
 - `/biz/order/{subOrderNo}/trace`
 
@@ -314,11 +341,65 @@
 - `/biz/pickup/picking`
 - `/biz/pickup/{orderNo}/report`
 
+### `ENT_READ`　（OWNER）
+
+- `/biz/entitlement-issue-batches/{batchNo}`
+- `/biz/entitlement-usage`
+- `/biz/entitlement-uses/{operationNo}`
+- `/biz/entitlements/{instanceNo}`
+
 ### `REVIEW`　（OWNER、MANAGER、CS）
 
 - `/biz/review`
 - `/biz/review/{reviewNo}/appeal`
 - `/biz/review/{reviewNo}/reply`
+
+### `SV_RECHARGE_CREATE`　（OWNER）
+
+- `/biz/stored-value/recharges`
+- `/biz/stored-value/recharges/{rechargeNo}/cancel`
+- `/biz/stored-value/recharges/{rechargeNo}/submit`
+
+### `ENT_USE`　（OWNER）
+
+- `/biz/entitlement-uses`
+- `/biz/entitlement-uses/preview`
+- `/biz/entitlement-uses/{operationNo}/cancel`
+
+### `SV_CONSUME_CREATE`　（OWNER）
+
+- `/biz/stored-value/consumptions`
+- `/biz/stored-value/consumptions/preview`
+
+### `ENT_TEMPLATE_WRITE`　（OWNER）
+
+- `/biz/entitlement-templates`
+- `/biz/entitlement-templates/{templateNo}/draft`
+
+### `ENT_TEMPLATE_PUBLISH`　（OWNER）
+
+- `/biz/entitlement-templates/{templateNo}/publish`
+- `/biz/entitlement-templates/{templateNo}/status`
+
+### `SV_RECHARGE_RECEIVE`　（OWNER）
+
+- `/biz/stored-value/recharges/{rechargeNo}/receive`
+
+### `SV_RECHARGE_READ`　（OWNER）
+
+- `/biz/stored-value/recharges/{rechargeNo}`
+
+### `SV_ACCOUNT_READ`　（OWNER）
+
+- `/biz/stored-value/accounts`
+
+### `ENT_ISSUE`　（OWNER）
+
+- `/biz/entitlement-issue-batches`
+
+### `ENT_ISSUE_MANAGE`　（OWNER）
+
+- `/biz/entitlement-templates/{templateNo}/issue-policy`
 
 > **空角色 = 零权限**，不是「零权限 = 全放行」——`BizPerms.can` 对空集合直接返回 false。
 

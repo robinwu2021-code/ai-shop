@@ -90,7 +90,7 @@ export function PointsConfigurationTab({ canEdit }: { canEdit: boolean }) {
       {canEdit && <Button onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button>}
     </div>
     <Notice>{t("金额使用类型币种的最小货币单位。配置只影响后续交易，旧交易保留原比例、规则与协议快照。", "Amounts use the type's minor currency unit. Configuration affects future transactions; existing transactions retain their rate, rules and agreement.")}</Notice>
-    <DataTable<PointsTypeConfig> columns={columns} rows={types.data} loading={types.isPending} error={types.error} onRetry={() => void types.refetch()}
+    <DataTable columns={columns} rows={types.data} loading={types.isPending} error={types.error} onRetry={() => void types.refetch()}
       rowKey={(row) => row.typeCode} empty={t("还没有积分类型，请先新建。", "No points types yet. Create one to get started.")}
       emptyAction={canEdit ? <Button size="sm" onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button> : undefined}
       rowProps={(row) => ({ role: "button", tabIndex: 0, "aria-label": `${t("查看积分类型", "View points type")} ${row.typeCode}`,

@@ -8,7 +8,7 @@
 > 而消费者没有角色 —— 照搬会得到一张全是空格的表。
 > C 端要回答的是另外两个问题：**要不要登录**、**画在哪一页**。
 
-统计：**123 个功能点**，其中 **36 个游客可用**；**8 个没有任何页面调用**。
+统计：**124 个功能点**，其中 **36 个游客可用**；**9 个没有任何页面调用**。
 
 ## ⚠️ 没有页面调用的功能点
 
@@ -19,6 +19,7 @@
 | 功能点 | 方法 | 路径 | 说明 |
 |---|---|---|---|
 | `myInvoices` | GET | `/mp/invoice/mine` | — |
+| `issueMemberCode` | POST | `/mp/member-code` | — |
 | `merchantList` | GET | `/mp/merchant` | — |
 | `promotedMerchants` | GET | `/mp/merchant/promoted` | — |
 | `visitedMerchants` | GET | `/mp/merchant/visited` | — |
@@ -80,6 +81,7 @@
 | `myInvoices` | `GET /mp/invoice/mine` | 是 | **无** | — |
 | `invoiceOfOrder` | `GET /mp/invoice/order/:orderNo` | 是 | order | — |
 | `resolveLocation` | `GET /mp/location/resolve` | 游客 | (stores) | — |
+| `issueMemberCode` | `POST /mp/member-code` | 是 | **无** | — |
 | `reachOpened` | `POST /mp/member-reach/:reachNo/opened` | 是 | store | — |
 | `merchantList` | `GET /mp/merchant` | 游客 | **无** | — |
 | `merchantDetail` | `GET /mp/merchant/:merchantNo` | 游客 | merchant | — |

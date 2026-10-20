@@ -5638,6 +5638,25 @@ _无字段_
 类型：`object`
 
 
+#### GET `/ops/inventory/order-trace`
+
+Whole reservation → issue → return chain for a parent order. */
+
+> 查询参数见 lib/api/query.ts 中对应的 *Q 类型。
+
+**入参**：无
+
+**出参**（`data`）
+
+类型：[`InvOrderTrace`](#invordertrace)
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `reservations` | [`InvTraceReservation`](#invtracereservation)\[\] | 是 | — |
+| `syncEvents` | [`InvTraceSyncEvent`](#invtracesyncevent)\[\] | 是 | — |
+
+
 #### GET `/ops/inventory/policy`
 
 进销存平台规则（M7）
@@ -13395,6 +13414,7 @@ KPI 卡（金额为最小货币单位整数）。
 | `maxRetry` | `number` | 是 | 允许的最大重试次数 |
 | `lastError` | `string,null` | 是 | 最近一条错误摘要，只在 retrying > 0 时有意义 |
 | `verdict` | [`InvLinkVerdict`](#invlinkverdict) | 是 | 服务端健康检查结论 |
+| `delivery` | `object`（见下） \| `null` | 否 | Unified source progress; legacy mode returns null. |
 
 ### InvLinkVerdict
 
@@ -13406,6 +13426,16 @@ KPI 卡（金额为最小货币单位整数）。
 - `BACKLOG`
 - `DISPATCHER_STALLED`
 - `CONSUMER_FAILING`
+
+### InvOrderTrace
+
+Order-to-inventory audit chain; all quantities and source locations come from durable inventory rows.
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `orderNo` | `string` | 是 | — |
+| `reservations` | [`InvTraceReservation`](#invtracereservation)\[\] | 是 | — |
+| `syncEvents` | [`InvTraceSyncEvent`](#invtracesyncevent)\[\] | 是 | — |
 
 ### InvPolicy
 
@@ -13449,6 +13479,72 @@ KPI 卡（金额为最小货币单位整数）。
 | `skipped` | `number` | 是 | 本次跳过的记录数量 |
 | `pending` | `number` | 是 | 仍待搬的 |
 | `clean` | `boolean` | 是 | 未发现投影差异的数量 |
+
+### InvTraceLedger
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `id` | `number` | 是 | — |
+| `docNo` | `string` | 是 | — |
+| `reasonCode` | `string` | 是 | — |
+| `qtyDelta` | `number` | 是 | — |
+| `balanceBefore` | `number` | 是 | — |
+| `balanceAfter` | `number` | 是 | — |
+| `operator` | `string,null` | 是 | — |
+| `createdBy` | `string,null` | 是 | — |
+| `occurredAt` | `string` | 是 | — |
+
+### InvTraceLine
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `lineNo` | `number` | 是 | — |
+| `fulfillmentRef` | `string,null` | 是 | — |
+| `itemId` | `string` | 是 | — |
+| `locationId` | `string` | 是 | — |
+| `reservedQty` | `number` | 是 | — |
+| `issuedQty` | `number` | 是 | — |
+| `releasedQty` | `number` | 是 | — |
+| `outboundNo` | `string,null` | 是 | — |
+| `issuedAt` | `string,null` | 是 | — |
+| `updatedBy` | `string,null` | 是 | — |
+| `issueLedger` | [`InvTraceLedger`](#invtraceledger)\[\] | 是 | — |
+| `returns` | [`InvTraceReturn`](#invtracereturn)\[\] | 是 | — |
+
+### InvTraceReservation
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `reservationId` | `string` | 是 | — |
+| `ownerId` | `string` | 是 | — |
+| `status` | `string` | 是 | — |
+| `lifecycleVersion` | `number,null` | 是 | — |
+| `outboundNo` | `string,null` | 是 | — |
+| `createdAt` | `string,null` | 是 | — |
+| `lines` | [`InvTraceLine`](#invtraceline)\[\] | 是 | — |
+
+### InvTraceReturn
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `receiptNo` | `string` | 是 | — |
+| `afterSaleNo` | `string` | 是 | — |
+| `qty` | `number` | 是 | — |
+| `quality` | `string` | 是 | — |
+| `locationId` | `string` | 是 | — |
+| `inboundNo` | `string` | 是 | — |
+| `createdBy` | `string,null` | 是 | — |
+| `createdAt` | `string` | 是 | — |
+
+### InvTraceSyncEvent
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|:---:|---|
+| `aggregateId` | `string` | 是 | — |
+| `eventType` | `string` | 是 | — |
+| `source` | `string` | 是 | — |
+| `status` | `COMPLETED` \| `PENDING` \| `FAILED` \| `WARNING` \| `SKIPPED` \| `ARCHIVED` | 是 | — |
+| `outboxMode` | `UNIFIED` \| `LEGACY` | 是 | — |
 
 ### InvoiceRequest
 
@@ -15784,6 +15880,10 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 
 类型：`object`
 
+### Record<string,unknown>
+
+类型：`object`
+
 ### RedeemStat
 
 核销监控（P-5.1.3）：一行 = 一个自提点当日的履约健康度。
@@ -15804,6 +15904,10 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
+| `closureVersion` | `number,null` | 否 | Persisted protocol version; absent means legacy recovery semantics. |
+| `closureStatus` | `LEGACY` \| `PENDING` \| `DONE` \| `null` | 否 | — |
+| `cashStatus` | `string,null` | 否 | — |
+| `benefitsStatus` | `PENDING` \| `SETTLED` \| `null` | 否 | — |
 | `executionNo` | `string` | 是 | 原退款执行号 |
 | `paymentNo` | `string,null` | 否 | 资金退款单号 |
 | `status` | `string` | 是 | 资金执行状态 |
