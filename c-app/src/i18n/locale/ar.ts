@@ -1197,6 +1197,7 @@ export default {
     loadingMore: "جارٍ التحميل…",
     title: "نقاطي",
     entryHint: "{n} نقطة",
+    nameLoadFailed: "تعذر تحميل أسماء النقاط. اضغط لإعادة المحاولة.",
     viewLedger: "عرض سجل النقاط",
     typeCount: "{n} أنواع من النقاط",
     balance: "النقاط المتاحة",

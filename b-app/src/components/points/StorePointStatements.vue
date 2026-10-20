@@ -6,7 +6,7 @@ import { confirm as confirmDialog } from "@ai-shop/ui/prompt";
 import { useMerchantStore } from "@/stores/merchant";
 import { api } from "@/api";
 import type { StorePointStatement, StorePointStatementChange, StorePointStatementLinePage } from "@shared/types";
-const props = defineProps<{ typeCode: string; storeNo: string; targetStatement?: string }>();
+const props = defineProps<{ typeCode: string; typeName?: string; storeNo: string; targetStatement?: string }>();
 const merchant = useMerchantStore();
 const { t } = useI18n();
 const rows = ref<StorePointStatement[]>([]);
@@ -105,6 +105,7 @@ function date(at: number) { return new Date(at).toLocaleDateString(); }
 <template>
   <view class="sh-card sh-mt-sm">
     <text class="txt-title">{{ t("points.statements") }}</text>
+    <text v-if="typeName" class="sh-muted sh-mt-xs">{{ typeName }}</text>
     <view v-if="failed" class="sh-muted sh-mt-sm">
       <text>{{ t("points.statementFailed") }}</text>
       <view class="sh-btn sh-btn--muted" @click="load()">{{ t("points.statementRefresh") }}</view>

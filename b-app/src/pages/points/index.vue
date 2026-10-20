@@ -109,7 +109,7 @@ onShow(() => { void load(); });
       <view class="sh-wrap sh-mt-xs">
         <view v-for="p in types" :key="p.typeCode" class="sh-chip"
           :class="{ 'sh-chip--primary': selected === p.typeCode }" @tap="selectType(p.typeCode)">
-          {{ p.name || p.typeCode }}
+          {{ p.name }}
         </view>
       </view>
       <text v-if="current" class="txt-caption sh-muted note">
@@ -128,7 +128,7 @@ onShow(() => { void load(); });
     <view v-if="account?.snapshot.frozen" class="sh-card sh-mt-sm">{{ $t("points.accountFrozen") }}</view>
     <view v-if="account?.snapshot.expireAt" class="sh-card sh-mt-sm">{{ $t("points.accountExpiry") }}: {{ datetime(account.snapshot.expireAt) }}</view>
     <view v-if="selected" class="sh-btn sh-btn--muted sh-mt-sm" @tap="showStatements = !showStatements">{{ $t("points.statements") }}</view>
-    <StorePointStatements v-if="showStatements && selected && canView" :key="`${merchant.storeNo}:${selected}`" :type-code="selected" :store-no="merchant.storeNo" :target-statement="targetStatement" />
+    <StorePointStatements v-if="showStatements && selected && canView" :key="`${merchant.storeNo}:${selected}`" :type-code="selected" :type-name="current?.name" :store-no="merchant.storeNo" :target-statement="targetStatement" />
     <view v-if="selected" class="sh-btn sh-btn--muted sh-mt-sm" @tap="history">{{ $t("points.historyTerms") }}</view>
     <view v-if="showHistory" class="sh-card sh-mt-sm">
       <template v-if="agreement"><text>{{ agreement.termsVersion }} · {{ agreement.settleMode }}</text><view class="terms">{{ agreement.termsText }}</view></template>

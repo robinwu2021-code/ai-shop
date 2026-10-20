@@ -13,3 +13,11 @@ it("accepted work does not appear credited and retry remains available after a r
  expect(w.text()).toContain("points.redemptionPARTIALLY_RETURNED");expect(w.text()).toContain("points.refundPROCESSING");expect(w.text()).toContain("25");expect(w.text()).not.toContain("points.earningExpected");
  await w.setProps({failed:true});await w.get('.sh-btn').trigger('tap');expect(w.emitted('retry')).toHaveLength(1);w.unmount();
 });
+
+it("shows a retry action for nameless order points instead of presenting a code as its name", async () => {
+ const row = { orderNo: "S", typeCode: "SYS_TOKEN", name: "", currency: "CNY", state: "NONE" } as OrderPointsEarning;
+ const w=mount(Card,{props:{rows:[row]},global:{mocks:{$t:(k:string)=>k}}});
+ expect(w.text()).not.toContain("SYS_TOKEN");
+ await w.get('.sh-btn').trigger('tap');
+ expect(w.emitted('retry')).toHaveLength(1);w.unmount();
+});

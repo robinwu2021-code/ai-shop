@@ -18,7 +18,7 @@ let loadNo = 0;
 
 const account = computed(() => accounts.value.find((a) => a.typeCode === typeCode.value));
 const tabs = computed(() => accounts.value.map((a) => ({
-  key: a.typeCode, label: a.name || a.typeCode,
+  key: a.typeCode, label: a.name,
 })));
 
 async function selectType(next: string) {
@@ -87,7 +87,7 @@ function openOrder(no: string) {
   <sh-scaffold :title-key="'points.title'" :failed="failed" @retry="load">
     <sh-tabs v-if="tabs.length > 1" :items="tabs" :active="typeCode" @change="selectType"></sh-tabs>
     <view v-if="account" class="sh-card hero">
-      <text class="txt-title">{{ account.name || account.typeCode }}</text>
+      <text class="txt-title">{{ account.name }}</text>
       <text class="txt-caption hero__label">{{ $t("points.balance") }}</text>
       <text class="txt-hero hero__v sh-num">{{ account.balance }}</text>
       <text class="txt-caption hero__scope">{{ $t("points.code") }}: {{ account.typeCode }}</text>

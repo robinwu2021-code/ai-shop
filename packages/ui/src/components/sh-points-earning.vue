@@ -1,12 +1,15 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { OrderPointsEarning } from "@shared/types";
-defineProps<{ rows: OrderPointsEarning[]; failed?: boolean }>();
+const props = defineProps<{ rows: OrderPointsEarning[]; failed?: boolean }>();
+const namedRows = computed(() => props.rows.filter(row => row.name?.trim()));
+const nameMissing = computed(() => namedRows.value.length !== props.rows.length);
 defineEmits<{retry: []}>();
 </script>
 <template>
   <view v-if="rows.length || failed" class="sh-card sh-mt-sm">
     <text class="txt-title">{{ $t('points.orderEarning') }}</text>
-    <view v-for="row in rows" :key="`${row.orderNo}:${row.typeCode}`" class="sh-mt-sm">
+    <view v-for="row in namedRows" :key="`${row.orderNo}:${row.typeCode}`" class="sh-mt-sm">
       <view class="sh-row sh-row--between"><text>{{ row.name }}</text><text v-if="row.state !== 'NONE'">{{ $t(`points.earning${row.state}`) }}</text></view>
       <view class="sh-row sh-row--between txt-caption sh-muted"><text>{{ row.typeCode }}</text><text>{{ row.currency }}</text></view>
       <template v-if="row.state !== 'NONE'">
@@ -22,6 +25,6 @@ defineEmits<{retry: []}>();
         <view class="sh-row sh-row--between"><text>{{ $t('points.returnedPoints') }}</text><text class="sh-num">{{ row.returnedPoints }}</text></view>
       </template>
     </view>
-    <view v-if="failed" class="sh-btn sh-btn--muted sh-mt-sm" @tap="$emit('retry')">{{ $t('points.earningRetry') }}</view>
+    <view v-if="failed || nameMissing" class="sh-btn sh-btn--muted sh-mt-sm" @tap="$emit('retry')">{{ $t('points.earningRetry') }}</view>
   </view>
 </template>

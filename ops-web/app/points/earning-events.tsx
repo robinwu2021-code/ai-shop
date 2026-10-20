@@ -10,13 +10,14 @@ import {Input} from "@/components/ui/input";
 import {Notice} from "@/components/ui/notice";
 import {Drawer} from "@/components/ui/drawer";
 import {DataTable} from "@/components/ui/data-table";
-export function EarningEvents({typeCode,open,onOpenChange,canRetry}:{typeCode:string;open:boolean;onOpenChange:(open:boolean)=>void;canRetry:boolean}){
+export function EarningEvents({typeCode,typeName,open,onOpenChange,canRetry}:{typeCode:string;typeName?:string;open:boolean;onOpenChange:(open:boolean)=>void;canRetry:boolean}){
  const {t}=usePointsText();const qc=useQueryClient();const [after,setAfter]=useState(0);const [selected,setSelected]=useState<PointsEventView|null>(null);
  const intent=useRef<{body:string;requestId:string}|undefined>(undefined);
  const query=useQuery({queryKey:["points-events",typeCode,after],queryFn:()=>api.pointsEvents({typeCode,after,limit:50}),enabled:open&&!!typeCode});
  const retry=useMutation({mutationFn:api.retryPointsEvent,onSuccess:()=>{intent.current=undefined;setSelected(null);void qc.invalidateQueries({queryKey:["points-events"]});}});
  const state=(s:string)=>({DONE:t("已完成","Completed"),MANUAL:t("待人工处理","Needs attention"),RETRY:t("等待自动重试","Automatic retry pending"),PROCESSING:t("处理中","Processing"),NEW:t("待处理","Pending")})[s]??s;
  return <Drawer open={open} onOpenChange={o=>{setSelected(null);onOpenChange(o);}} title={t("积分处理记录","Points processing records")} width="w-[900px]">
+ <p className="txt-title">{typeName??t("积分名称未加载","Points name unavailable")}</p>
  {selected?<div className="space-y-4"><Button variant="outline" onClick={()=>setSelected(null)}>{t("返回列表","Back to list")}</Button>
   <dl className="grid grid-cols-[auto_1fr] gap-3 txt-body"><dt>{t("事件号","Event number")}</dt><dd className="break-all">{selected.eventNo}</dd><dt>{t("订单子单号","Sub-order number")}</dt><dd>{selected.subOrderNo??"—"}</dd><dt>{t("状态","Status")}</dt><dd>{state(selected.state)}</dd><dt>{t("失败原因","Failure reason")}</dt><dd>{selected.reason??"—"}</dd></dl>
   {selected.reason?.includes("POINTS_POOL_INSUFFICIENT")&&<Notice>{t("平台预算不足。请先补足平台预算，系统会自动重试；达到人工处理状态后可在此重新提交。现金退款不受影响。","The platform budget is insufficient. Replenish it for automatic retry; manual resubmission is available when attention is required. Cash refunds are unaffected.")}</Notice>}

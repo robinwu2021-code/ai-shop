@@ -32,7 +32,8 @@ async function load(more = false) {
       types.value = result;
       if (!typeCode.value) typeCode.value = (result.find(x => x.status === "ACTIVE") ?? result[0])?.typeCode ?? "";
     }
-    if (!typeCode.value || !types.value.some(x => x.typeCode === typeCode.value)) return;
+    if (!typeCode.value) return;
+    if (!current.value) throw new Error("POINTS_TYPE_UNKNOWN");
     const next = await api.mStorePointEntries(typeCode.value, more ? page.value.next : 0, 20);
     if (token !== epoch || store !== merchant.storeNo || !canView.value) return;
     page.value = more ? { ...next, rows: [...page.value.rows, ...next.rows.filter(row => !page.value.rows.some(old => old.entryNo === row.entryNo))] } : next;
@@ -53,7 +54,7 @@ function openOrder(no: string) {
 
 <template>
   <sh-scaffold title-key="points.recordsTitle" :denied="!canView" :failed="failed" @retry="load()">
-    <view class="sh-card"><text class="txt-title">{{ current?.name || typeCode }}</text>
+    <view class="sh-card"><text class="txt-title">{{ current?.name }}</text>
       <text class="sh-muted"> · {{ merchant.currentStore?.name ?? merchant.storeNo }}</text></view>
     <sh-empty v-if="!page.rows.length" :pending="!loaded" :failed="failed" @retry="load()"
       :text="$t('points.recordsEmpty')" />

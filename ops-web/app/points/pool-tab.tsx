@@ -33,7 +33,9 @@ export function PointsTab({ c }: { c: Copy }) {
   return <div className="space-y-4">
     <Notice tone="muted">{c.ptHint}</Notice>
     <label>{t("积分类型", "Points type")} <Select value={typeCode} onChange={(e) => select(e.target.value)}>{types.data?.map((t) => <option key={t.typeCode} value={t.typeCode}>{t.name} · {t.typeCode} · {t.market} · {t.status}</option>)}</Select></label>
-    <p dir="auto">{d.typeCode} · {d.market} · {d.currency}</p>
+    <p dir="auto" className="txt-title">{types.data?.find(x => x.typeCode === d.typeCode)?.name ?? t("积分名称未加载", "Points name unavailable")}</p>
+    <p dir="auto">{t("积分代码", "Points code")}: {d.typeCode}</p>
+    <p dir="auto">{d.market} · {d.currency}</p>
     <p dir="auto">{c.ptRate}: {d.ratePoints} / {d.rateMinor}</p>
     <div className="grid gap-3 sm:grid-cols-4">
       {cards.map(([label, value]) => <div key={label} className="rounded-card border p-3">

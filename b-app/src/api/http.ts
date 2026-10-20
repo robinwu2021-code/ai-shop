@@ -1,3 +1,4 @@
+import { requirePointsNames } from "@shared/utils/points-name";
 import type { OrderPointsEarning } from "@shared/types";
 import type * as SV from './stored-value-types';
 import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
@@ -745,7 +746,7 @@ export const httpApi: MerchantApi = {
     http.get<StorePointStatementPage>(E.mStorePointStatements.path, { typeCode, after, limit }),
   mConfirmStorePointStatement: (request: StorePointStatementChange) => http.post<StorePointStatementReceipt>(E.mConfirmStorePointStatement.path, request),
   mDisputeStorePointStatement: (request: StorePointStatementChange) => http.post<StorePointStatementReceipt>(E.mDisputeStorePointStatement.path, request),
-  mStorePointTypes: () => http.get<StorePointType[]>(E.mStorePointTypes.path),
+  mStorePointTypes: () => http.get<StorePointType[]>(E.mStorePointTypes.path).then(requirePointsNames),
   mStorePointAccount: (typeCode) => http.get<StorePointAccount>(E.mStorePointAccount.path, { typeCode }),
   mStorePointEntries: (typeCode, after = 0, limit = 20) =>
     http.get<StorePointEntryPage>(E.mStorePointEntries.path, { typeCode, after, limit }),

@@ -1283,6 +1283,7 @@ export default {
     loadingMore: "加载中…",
     title: "我的积分",
     entryHint: "{n} 分",
+    nameLoadFailed: "积分名称加载失败，点击重试",
     viewLedger: "查看积分账本",
     typeCount: "{n} 种积分类型",
     balance: "可用积分",

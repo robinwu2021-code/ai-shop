@@ -56,7 +56,8 @@ export function PointsStoreAccessPage({ canEdit }: { canEdit: boolean }) {
     o.pay.openHolds === 0 && o.pay.pendingPromises === 0 && o.pay.openRefunds === 0 &&
     o.pay.openStatements === 0 && o.pay.unknownFunds === 0 && o.pay.pendingEvents === 0;
   const columns = [
-    { header: t("积分类型", "Points type"), cell: (row: AgreementRow) => <strong>{row.agreement.typeCode}</strong> },
+    { header: t("积分类型", "Points type"), cell: (row: AgreementRow) => <strong>{types.data?.find(x => x.typeCode === row.agreement.typeCode)?.name ?? t("积分名称未加载", "Points name unavailable")}</strong> },
+    { header: t("积分代码", "Points code"), cell: (row: AgreementRow) => row.agreement.typeCode },
     { header: t("门店", "Store"), cell: (row: AgreementRow) => `${storeRows.find((s) => s.storeNo === row.agreement.storeNo)?.name ?? row.agreement.storeNo} · ${row.agreement.storeNo}` },
     { header: t("签署主体", "Signed by"), cell: (row: AgreementRow) => row.agreement.signedBy },
     { header: t("协议版本", "Terms version"), cell: (row: AgreementRow) => row.agreement.termsVersion },
@@ -64,10 +65,11 @@ export function PointsStoreAccessPage({ canEdit }: { canEdit: boolean }) {
     { header: t("状态", "Status"), cell: (row: AgreementRow) => row.state },
     { header: "", cell: () => <span className="text-muted-foreground">{t("查看详情 →", "View details →")}</span> },
   ];
-  const title = selected ? `${selected.agreement.storeNo} · ${selected.agreement.typeCode}` : "";
+  const title = selected ? `${types.data?.find(x => x.typeCode === selected.agreement.typeCode)?.name ?? t("积分名称未加载", "Points name unavailable")} · ${selected.agreement.storeNo}` : "";
 
   return <div className="space-y-4">
     <SectionHeader title={t("门店协议与接入", "Store agreements & access")} summary={rows.length} />
+    {types.error && <Notice tone="warning">{types.error.message}<Button onClick={() => void types.refetch()}>{t("重试", "Retry")}</Button></Notice>}
     <Notice>{t("先选择积分类型和门店查看其已签署协议。订单积分接入策略与义务核验在协议详情中查看；变更会由服务端按版本和未结义务再次校验。", "Choose a points type and store to review signed agreements. Order integration and obligation checks are available in agreement details; the server revalidates versions and outstanding obligations on changes.")}</Notice>
     <div className="grid gap-3 rounded-card border border-border p-4 md:grid-cols-[minmax(240px,1fr)_240px_auto] md:items-end">
       <label>{t("搜索门店", "Search stores")}<Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder={t("门店号、名称或商户", "Store no., name or merchant")} /></label>

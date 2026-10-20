@@ -1197,6 +1197,7 @@ export default {
     loadingMore: "Loading…",
     title: "My points",
     entryHint: "{n} pts",
+    nameLoadFailed: "Points names failed to load. Tap to retry.",
     viewLedger: "View points ledger",
     typeCount: "{n} points types",
     balance: "Available points",

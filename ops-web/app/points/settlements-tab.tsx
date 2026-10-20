@@ -58,7 +58,7 @@ export function PointsSettlementsTab({ canMake, canExecute }: { canMake: boolean
       <label>{t("积分类型", "Points type")}<Select name="type" required>{types.data?.map((x) => <option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode} · {x.market}</option>)}</Select></label>
       <label>{t("门店编号", "Store ID")}<Input dir="auto" name="store" required /></label><Button disabled={!types.data?.length} type="submit">{t("查询门店", "Search store")}</Button>
     </form>
-    {filter && <p dir="auto">{filter.typeCode} · {filter.storeNo} · {type?.currency}</p>}
+    {filter && <div><p dir="auto" className="txt-title">{type?.name ?? t("积分名称未加载", "Points name unavailable")}</p><p dir="auto">{t("积分代码", "Points code")}: {filter.typeCode}</p><p dir="auto">{filter.storeNo} · {type?.currency}</p></div>}
     {error && <Notice tone="warning">{t(error.message, error.message)}<Button onClick={() => { void types.refetch(); if (filter) { void statements.refetch(); void debts.refetch(); } if (fundsRef) void funds.refetch(); if (refundRef) void refund.refetch(); }}>{t("重试", "Retry")}</Button></Notice>}
     {save.isError && <Notice tone="warning">{t(save.error.message, save.error.message)}</Notice>}
     {save.data && <Notice>{"status" in save.data ? `${save.data.reference} · ${save.data.status}` : `${t("操作已受理", "Operation accepted")} ${save.data.requestId} · ${save.data.reference}`}</Notice>}

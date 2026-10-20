@@ -73,7 +73,9 @@ export function PointsPolicyTab({ c, canEdit }: { c: FinanceCopy; canEdit: boole
       {list.isError && <Notice tone="warning">{list.error.message} <Button onClick={() => void list.refetch()}>{text("重试", "Retry")}</Button></Notice>}
       {list.data && <div className="overflow-x-auto"><DataTable rows={list.data.rows} error={list.error} onRetry={() => void list.refetch()}
           empty={text("此范围暂无开关记录；实际可用性还受类型状态、协议及资金限制。", "No switch records in this scope. Type state, agreement and funding still constrain availability.")} rowKey={(r) => String(r.id)} columns={[
-          { header: text("范围", "Scope"), cell: (r) => `${r.scope} · ${r.typeCode}` },
+          { header: text("积分名称", "Points name"), cell: (r) => r.typeCode === "*" ? text("全部积分", "All points") : types.data?.find(x => x.typeCode === r.typeCode)?.name ?? text("积分名称未加载", "Points name unavailable") },
+          { header: text("积分代码", "Points code"), cell: (r) => r.typeCode },
+          { header: text("范围", "Scope"), cell: (r) => r.scope },
           { header: text("对象", "Subject"), cell: (r) => r.subjectNo },
           { header: text("方向", "Flow"), cell: (r) => r.flow },
           { header: text("状态", "Availability"), cell: (r) => r.enabled ? text("开启", "Enabled") : text("关闭", "Disabled") },

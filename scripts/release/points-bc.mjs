@@ -1,4 +1,4 @@
-// B/C points account release: explicit file scope, compile only; financial tests are recorded in the plan.
+// Points UI release: exact file scope and targeted checks; backend compilation only for backend changes.
 import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 const git=(...args)=>execFileSync('git',args,{encoding:'utf8'}).trim();
@@ -13,6 +13,16 @@ const files=git('diff','--name-only',base,head).split('\n').filter(Boolean);
 for(const file of files)if(!allowed.has(file))throw new Error(`Out of points B/C scope: ${file}`);
 git('diff','--check',base,head);
 const run=(cmd,args,cwd)=>execFileSync(cmd,args,{cwd,stdio:'inherit'});
-run('mvn',['-o','-pl','shop-app','-am','-Dmaven.test.skip=true','compile','-q'],'backend');
+if(files.some(file=>file.startsWith('backend/')))
+  run('mvn',['-o','-pl','shop-app','-am','-Dmaven.test.skip=true','compile','-q'],'backend');
 for(const app of ['b-app','c-app'])run('npm',['run','type-check'],app);
-console.log(`points-bc compile checks passed: ${head} (${files.length} files)`);
+
+
+if(files.some(file=>file.startsWith('ops-web/'))) run('npm',['run','typecheck'],'ops-web');
+if(files.includes('packages/shared/src/utils/points-name.ts')) {
+  run('npm',['test','--','tests/points-name.test.ts'],'packages/shared');
+  run('npm',['test','--','tests/points-name-api.test.ts','tests/points-statements.test.ts','tests/points-statement-link.test.ts'],'b-app');
+  run('npm',['test','--','tests/points-ledger-api.test.ts','tests/points-account.test.ts','tests/points-order-earning.test.ts','tests/points-quote-api.test.ts'],'c-app');
+  run('npm',['test','--','lib/api/points-configuration.test.ts','lib/points-store-access-page.test.ts','lib/points-types-page.test.ts'],'ops-web');
+}
+console.log(`points-bc scoped checks passed: ${head} (${files.length} files)`);

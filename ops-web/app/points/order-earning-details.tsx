@@ -8,12 +8,15 @@ import {Button} from "@/components/ui/button";
 export function OrderEarningDetails({subOrderNo}:{subOrderNo:string}){
  const {t}=usePointsText();
  const query=useQuery({queryKey:["points-order-earning",subOrderNo],queryFn:()=>api.pointsOrderEarning(subOrderNo)});
+ const types=useQuery({queryKey:["points-types"],queryFn:()=>api.pointsTypes()});
  const data=query.data;const ledger=data?.ledger;
+ const pointType=types.data?.find(type=>type.typeCode===data?.typeCode);
  return <section className="space-y-3">
   <h3 className="txt-heading">{t("订单赠送明细","Order reward details")}</h3>
   {query.error&&<Notice tone="warning">{query.error.message}<Button onClick={()=>void query.refetch()}>{t("重试","Retry")}</Button></Notice>}
+  {types.error&&<Notice tone="warning">{types.error.message}<Button onClick={()=>void types.refetch()}>{t("重试","Retry")}</Button></Notice>}
   {data&&<>
-   <dl className="grid grid-cols-[auto_1fr] gap-3 txt-body"><dt>{t("订单号","Order number")}</dt><dd>{data.orderNo}</dd><dt>{t("积分代码","Points code")}</dt><dd>{data.typeCode}</dd>
+   <dl className="grid grid-cols-[auto_1fr] gap-3 txt-body"><dt>{t("订单号","Order number")}</dt><dd>{data.orderNo}</dd><dt>{t("积分名称","Points name")}</dt><dd>{pointType?.name??t("积分名称未加载","Points name unavailable")}</dd><dt>{t("积分代码","Points code")}</dt><dd>{data.typeCode}</dd>
     <dt>{t("原预计积分","Original estimated points")}</dt><dd>{ledger?.expectedPoints??"—"}</dd>
     <dt>{t("实发积分","Granted points")}</dt><dd>{ledger?.grantedPoints??"—"}</dd>
     <dt>{t("待入账积分","Pending points")}</dt><dd>{ledger?.pendingPoints??"—"}</dd>

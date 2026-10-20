@@ -26,7 +26,7 @@ beforeEach(() => {
   (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   vi.clearAllMocks();
   mock.stores.mockResolvedValue({ records: [{ storeNo: "S1", name: "示例门店", merchantNo: "M1", merchantName: "商户一", status: "ACTIVE" }], total: 1 });
-  mock.types.mockResolvedValue([{ typeCode: "PT1" }]);
+  mock.types.mockResolvedValue([{ typeCode: "PT1", name: "商城积分" }]);
   mock.agreements.mockResolvedValue({ rows: [], next: 0, hasMore: false });
   mock.integration.mockResolvedValue({ mode: "DETACHED", earnEnabled: false, redeemEnabled: false, version: 1 });
   mock.obligations.mockResolvedValue({});
@@ -46,6 +46,7 @@ it("shows store agreement access in a focused list with store selection", async 
 });
 
 it("loads agreements and access state only after a store is selected", async () => {
+  mock.agreements.mockResolvedValue({rows:[{agreement:{storeNo:"S1",typeCode:"PT1",state:"ACTIVE",settleMode:"PER_ORDER",termsVersion:"1"}, integration:{}}],next:0,hasMore:false});
   await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsStoreAccessPage, { canEdit: false }))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
   const storeSelect = [...host.querySelectorAll("select")].at(-1)!;
@@ -60,4 +61,19 @@ it("loads agreements and access state only after a store is selected", async () 
   expect(mock.agreements).toHaveBeenCalledWith({ storeNo: "S1", typeCode: "PT1", after: 0, limit: 100 });
   expect(mock.integration).toHaveBeenCalledWith({ storeNo: "S1", scene: "ONLINE" });
   expect(host.textContent).toContain("示例门店");
+  const list=host.querySelector('[data-testid="points-store-access-list"]')!;
+  expect(list.textContent).toContain("商城积分");
+  expect(list.querySelectorAll("span")[0].textContent).toBe("商城积分");
+  expect(list.querySelectorAll("span")[1].textContent).toBe("PT1");
+});
+
+it("shows and retries a points-name load failure", async () => {
+  mock.types.mockRejectedValueOnce(new Error("POINTS_NAME_MISSING"));
+  await act(async () => root.render(h(QueryClientProvider, {client:query},h(PointsStoreAccessPage,{canEdit:false}))));
+  await act(async () => {await new Promise(resolve=>setTimeout(resolve,20));});
+  expect(host.textContent).toContain("POINTS_NAME_MISSING");
+  const retry=[...host.querySelectorAll("button")].find(b=>b.textContent==="重试")!;
+  await act(async () => {retry.click(); await new Promise(resolve=>setTimeout(resolve,20));});
+  expect(mock.types).toHaveBeenCalledTimes(2);
+  expect(host.textContent).toContain("商城积分");
 });

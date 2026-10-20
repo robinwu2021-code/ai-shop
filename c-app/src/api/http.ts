@@ -1,3 +1,4 @@
+import { requirePointsNames } from "@shared/utils/points-name";
 import type { OrderPointsEarning } from "@shared/types";
 import type { StoredValueStoresQuery, StoredValueRecordsQuery } from "./stored-value-types";
 import type { MemberCodeView } from "@shared/types";
@@ -341,7 +342,7 @@ export const httpApi: ShopApi = {
   storedValueStores: (query) => call("storedValueStores", undefined, { ...query } satisfies StoredValueStoresQuery),
   storedValueRecords: (storeNo, query) => call("storedValueRecords", { storeNo }, { ...query } satisfies StoredValueRecordsQuery),
   storedValueNotificationCapability: () => call("storedValueNotificationCapability"),
-  pointsAccounts: () => call<BuyerPointsAccount[]>("pointsAccounts"),
+  pointsAccounts: () => call<BuyerPointsAccount[]>("pointsAccounts").then(requirePointsNames),
   pointsEntries: (typeCode, after = 0) => call<BuyerPointsEntryPage>(
     "pointsEntries", undefined, { typeCode, after, limit: 20 }),
 

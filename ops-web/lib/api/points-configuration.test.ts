@@ -58,3 +58,10 @@ it("queries store obligations independently of scene without sending merchant id
   await financeHttp.orderPointsObligations("ST1");
   expect(client.get).toHaveBeenCalledWith("/ops/points/order-integration/obligations", { storeNo: "ST1" });
 });
+
+it("requires the operator-facing name without changing the ledger code", async () => {
+  client.get.mockResolvedValueOnce([{ typeCode: "SYS_TOKEN", name: "商城积分" }]);
+  expect(await financeHttp.pointsTypes()).toMatchObject([{ typeCode: "SYS_TOKEN", name: "商城积分" }]);
+  client.get.mockResolvedValueOnce([{ typeCode: "SYS_TOKEN" }]);
+  await expect(financeHttp.pointsTypes()).rejects.toThrow(/名称.*重试|names.*retry/);
+});
