@@ -29,5 +29,6 @@
   "packages/shared/src/types/merchant.ts",
   "prototypes/points-bc-accounts.html",
   "scripts/release/points-bc.json",
-  "scripts/release/points-bc.mjs"
+  "scripts/release/points-bc.mjs",
+  "site/lib/site.config.ts"
 ]
