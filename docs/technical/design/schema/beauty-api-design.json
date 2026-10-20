@@ -1,0 +1,2745 @@
+{
+  "status": "DESIGN_REVIEW_PENDING",
+  "date": "2026-10-20",
+  "featureSource": "docs/requirements/美业系统-多端功能矩阵.md",
+  "features": {
+    "BTY-A01": {
+      "title": "门店门户、位置、营业时间和服务范围",
+      "phase": "P1"
+    },
+    "BTY-A02": {
+      "title": "选择/切换受权门店及当前岗位",
+      "phase": "P1"
+    },
+    "BTY-A03": {
+      "title": "营业暂停、项目接待与预约窗口配置",
+      "phase": "P1"
+    },
+    "BTY-A04": {
+      "title": "先付单次服务规则及配置版本",
+      "phase": "P1"
+    },
+    "BTY-A05": {
+      "title": "上门、团体、后付、定金能力申请与控制",
+      "phase": "P4"
+    },
+    "BTY-B01": {
+      "title": "项目/护肤品建档、图片、SKU、上下架",
+      "phase": "P1"
+    },
+    "BTY-B02": {
+      "title": "门店价格及固定时长/等级规格维护",
+      "phase": "P1"
+    },
+    "BTY-B03": {
+      "title": "项目分组、展示顺序、销售时段与可见范围",
+      "phase": "P1"
+    },
+    "BTY-B04": {
+      "title": "项目时长、前后缓冲、技能与资源要求",
+      "phase": "P1"
+    },
+    "BTY-B05": {
+      "title": "项目详情、适用说明、可约人员及今日可约查询",
+      "phase": "P1"
+    },
+    "BTY-B06": {
+      "title": "项目附加项、复杂选配、补差和组合报价",
+      "phase": "P4"
+    },
+    "BTY-C01": {
+      "title": "共用人员建档/停用、可选账号关联与门店任职",
+      "phase": "P1"
+    },
+    "BTY-C02": {
+      "title": "岗位、操作范围、跨店和金额权限",
+      "phase": "P1"
+    },
+    "BTY-C03": {
+      "title": "业务岗位、技师公开档案、级别及有效服务资格",
+      "phase": "P1"
+    },
+    "BTY-C04": {
+      "title": "服务助理/顾问协作关系和负责客户范围",
+      "phase": "P3"
+    },
+    "BTY-C05": {
+      "title": "离职/停用后的会话撤销、未来预约和任务交接",
+      "phase": "P1"
+    },
+    "BTY-D01": {
+      "title": "技师、床位、座位、房间、设备资源维护",
+      "phase": "P1"
+    },
+    "BTY-D02": {
+      "title": "营业日历、技师班表、休息与缓冲配置",
+      "phase": "P1"
+    },
+    "BTY-D03": {
+      "title": "今日排程、人员跨店统一空闲/占用及冲突查询",
+      "phase": "P1"
+    },
+    "BTY-D04": {
+      "title": "请假、加班、临时停约及受影响预约处理",
+      "phase": "P3"
+    },
+    "BTY-D05": {
+      "title": "改约/换人资源替换、超时延长与冲突待办",
+      "phase": "P1"
+    },
+    "BTY-D06": {
+      "title": "团体同时占多资源、并行服务与上门路途缓冲",
+      "phase": "P4"
+    },
+    "BTY-E01": {
+      "title": "本人会员码展示与门店受控识别",
+      "phase": "P2"
+    },
+    "BTY-E02": {
+      "title": "临客登记、电话预约资料及到店认领",
+      "phase": "P1"
+    },
+    "BTY-E03": {
+      "title": "顾客资料、会员关系和消费/服务历史",
+      "phase": "P1"
+    },
+    "BTY-E04": {
+      "title": "偏好、过敏/护理注意事项与资料访问控制",
+      "phase": "P3"
+    },
+    "BTY-E05": {
+      "title": "护理照片、过程记录和资料撤权/留存管理",
+      "phase": "P3"
+    },
+    "BTY-F01": {
+      "title": "按项目/任职/资格/排班/资源匹配技师、占位成约",
+      "phase": "P1"
+    },
+    "BTY-F02": {
+      "title": "电话/微信代约及无交易预约",
+      "phase": "P1"
+    },
+    "BTY-F03": {
+      "title": "我的预约、预约详情与门店预约日历",
+      "phase": "P1"
+    },
+    "BTY-F04": {
+      "title": "改时间/项目/技师及原子资源替换",
+      "phase": "P1"
+    },
+    "BTY-F05": {
+      "title": "取消、临时占位过期、爽约记录与资源释放",
+      "phase": "P1"
+    },
+    "BTY-F06": {
+      "title": "定金尾款、违约收费或爽约扣次政策",
+      "phase": "P4"
+    },
+    "BTY-G01": {
+      "title": "预约到店签到、身份核对和到店记录",
+      "phase": "P1"
+    },
+    "BTY-G02": {
+      "title": "直客接待、即时资源安排和开工单",
+      "phase": "P1"
+    },
+    "BTY-G03": {
+      "title": "等候取号、过号、叫号与取消等候",
+      "phase": "P3"
+    },
+    "BTY-G04": {
+      "title": "分配接待技师、床位/房间和预约转工单",
+      "phase": "P1"
+    },
+    "BTY-G05": {
+      "title": "迟到、早到、无法服务与冲突协调",
+      "phase": "P1"
+    },
+    "BTY-H01": {
+      "title": "预约或直客开单、项目行和来源绑定",
+      "phase": "P1"
+    },
+    "BTY-H02": {
+      "title": "接单、开始服务、步骤进度与时间记录",
+      "phase": "P1"
+    },
+    "BTY-H03": {
+      "title": "中途加项、新报价/来源和本人确认",
+      "phase": "P1"
+    },
+    "BTY-H04": {
+      "title": "资格资源复核、换人交接及实际参与区间留痕",
+      "phase": "P1"
+    },
+    "BTY-H05": {
+      "title": "暂停、超时、提前结束与部分完成记录",
+      "phase": "P1"
+    },
+    "BTY-H06": {
+      "title": "单项完工、完成数量和核心履约申请",
+      "phase": "P1"
+    },
+    "BTY-H07": {
+      "title": "工单结清检查、关闭和资源释放",
+      "phase": "P1"
+    },
+    "BTY-H08": {
+      "title": "跨日、多阶段、多人并行及上门工单",
+      "phase": "P4"
+    },
+    "BTY-I01": {
+      "title": "基础报价、优惠校验、真实买家和门店落单",
+      "phase": "P1"
+    },
+    "BTY-I02": {
+      "title": "顾客线上支付/付款接管及结果查询",
+      "phase": "P1"
+    },
+    "BTY-I03": {
+      "title": "获准现金/转账等线下实收登记与确认",
+      "phase": "P1"
+    },
+    "BTY-I04": {
+      "title": "工单下来源汇总、逐笔付款和未结明细",
+      "phase": "P1"
+    },
+    "BTY-I05": {
+      "title": "支付处理中/未知、取消冲突与原号查单恢复",
+      "phase": "P1"
+    },
+    "BTY-I06": {
+      "title": "多来源一次收款、混合支付、多人代付",
+      "phase": "P4"
+    },
+    "BTY-I07": {
+      "title": "定金/尾款、后付、免单与临时改价申请",
+      "phase": "P4"
+    },
+    "BTY-J01": {
+      "title": "独立充值方案创建、版本、启停和办理范围",
+      "phase": "P2"
+    },
+    "BTY-J02": {
+      "title": "识别顾客、选方案、核验实收、提交到账",
+      "phase": "P2"
+    },
+    "BTY-J03": {
+      "title": "本店顾客账户目录、余额与冻结查询",
+      "phase": "P2"
+    },
+    "BTY-J04": {
+      "title": "服务来源报价、全额合格储值消费本人确认",
+      "phase": "P2"
+    },
+    "BTY-J05": {
+      "title": "我的储值门店、核销记录及简明详情",
+      "phase": "P2"
+    },
+    "BTY-J06": {
+      "title": "本店充值/核销统一收支、筛选和单客详情",
+      "phase": "P2"
+    },
+    "BTY-J07": {
+      "title": "已收未入账、已扣待确认、冻结等异常恢复",
+      "phase": "P2"
+    },
+    "BTY-K01": {
+      "title": "疗程/次卡规则、适用项目、次数和有效期定义",
+      "phase": "P4"
+    },
+    "BTY-K02": {
+      "title": "疗程销售商品SKU、门店售价和上下架",
+      "phase": "P4"
+    },
+    "BTY-K03": {
+      "title": "售卡收款、按销售来源发行及发行进度",
+      "phase": "P4"
+    },
+    "BTY-K04": {
+      "title": "已持有合格次数权益、适用项目和剩余次数查询",
+      "phase": "P2"
+    },
+    "BTY-K05": {
+      "title": "单次使用预览、本人确认、预占/核销及原号恢复",
+      "phase": "P2"
+    },
+    "BTY-K06": {
+      "title": "疗程分次预约、服务计划与每次工单履历",
+      "phase": "P4"
+    },
+    "BTY-K07": {
+      "title": "有效期/次数异常申诉及受支持冲回处理",
+      "phase": "P4"
+    },
+    "BTY-K08": {
+      "title": "退卡/转卡/延期/跨店使用等政策与执行",
+      "phase": "P4"
+    },
+    "BTY-L01": {
+      "title": "已支持优惠/券查询、选择及核心报价校验",
+      "phase": "P1"
+    },
+    "BTY-L02": {
+      "title": "活动草稿、发布版本、资格与预算管理",
+      "phase": "P3"
+    },
+    "BTY-L03": {
+      "title": "会员标签、人群分组和顾客经营名单",
+      "phase": "P3"
+    },
+    "BTY-L04": {
+      "title": "赠券/赠次数权益的受权发行与结果",
+      "phase": "P3"
+    },
+    "BTY-L05": {
+      "title": "复购、预约转化、活动/回访效果统计",
+      "phase": "P3"
+    },
+    "BTY-M01": {
+      "title": "护肤品等实物选购、库存校验、交付和售后关联",
+      "phase": "P1"
+    },
+    "BTY-M02": {
+      "title": "库存查询、采购收货、调拨和盘点",
+      "phase": "P3"
+    },
+    "BTY-M03": {
+      "title": "按服务任务申请/登记耗材领用和实际耗用",
+      "phase": "P3"
+    },
+    "BTY-M04": {
+      "title": "退回、报损及可再售质量处置",
+      "phase": "P3"
+    },
+    "BTY-M05": {
+      "title": "项目耗材定额、BOM、成本和差异分析",
+      "phase": "P4"
+    },
+    "BTY-N01": {
+      "title": "普通交易售后申请、材料、审核和进度",
+      "phase": "P1"
+    },
+    "BTY-N02": {
+      "title": "未开始任务撤销、资源释放及原来源取消",
+      "phase": "P1"
+    },
+    "BTY-N03": {
+      "title": "已做/未做数量、提前结束及质量争议证据",
+      "phase": "P1"
+    },
+    "BTY-N04": {
+      "title": "部分退款、返工补做及赔付方案",
+      "phase": "P4"
+    },
+    "BTY-N05": {
+      "title": "储值/次数使用争议登记和财务待办",
+      "phase": "P2"
+    },
+    "BTY-N06": {
+      "title": "资产冲回、退余额/退卡的后续正式合同执行",
+      "phase": "P4"
+    },
+    "BTY-O01": {
+      "title": "服务产出、参与技师/助理/顾问及归属事实",
+      "phase": "P1"
+    },
+    "BTY-O02": {
+      "title": "销售/服务业绩规则、分配比例和版本",
+      "phase": "P3"
+    },
+    "BTY-O03": {
+      "title": "提成计算、明细、核对和异议申请",
+      "phase": "P3"
+    },
+    "BTY-O04": {
+      "title": "换人、退款或资产冲正后的业绩/提成调整",
+      "phase": "P3"
+    },
+    "BTY-O05": {
+      "title": "提成结算、已发放留痕及后续调整",
+      "phase": "P3"
+    },
+    "BTY-P01": {
+      "title": "普通订单/充值/消费凭条与历史查询",
+      "phase": "P1"
+    },
+    "BTY-P02": {
+      "title": "开班、钱箱、现金实盘与交接差异",
+      "phase": "P3"
+    },
+    "BTY-P03": {
+      "title": "营业日切点、日结范围、水位及签核",
+      "phase": "P3"
+    },
+    "BTY-P04": {
+      "title": "收退款、充值、资产消费与渠道对账",
+      "phase": "P3"
+    },
+    "BTY-P05": {
+      "title": "结算单、费用票据、差异及受权恢复",
+      "phase": "P3"
+    },
+    "BTY-Q01": {
+      "title": "本人订单、预约、服务与消费记录",
+      "phase": "P1"
+    },
+    "BTY-Q02": {
+      "title": "当日来客、待服务、进行中、完工与未结概览",
+      "phase": "P1"
+    },
+    "BTY-Q03": {
+      "title": "现金实收、充值、资产消耗及未消费余额分口径",
+      "phase": "P3"
+    },
+    "BTY-Q04": {
+      "title": "预约转化、爽约、技师/床位利用率与服务时长",
+      "phase": "P3"
+    },
+    "BTY-Q05": {
+      "title": "项目销售、成本损耗、复购、业绩与提成报表",
+      "phase": "P3"
+    },
+    "BTY-Q06": {
+      "title": "跨店受权汇总、导出、水位及迟到事实更正",
+      "phase": "P3"
+    },
+    "BTY-R01": {
+      "title": "预约确认、改约取消及到店提醒",
+      "phase": "P1"
+    },
+    "BTY-R02": {
+      "title": "派工、换人、超时和资源冲突待办",
+      "phase": "P1"
+    },
+    "BTY-R03": {
+      "title": "支付、到账、资产消费及异常结果通知",
+      "phase": "P1"
+    },
+    "BTY-R04": {
+      "title": "护理回访计划、分配、跟进和客户回复",
+      "phase": "P3"
+    },
+    "BTY-R05": {
+      "title": "营销订阅、频控、退订和受众配置",
+      "phase": "P3"
+    },
+    "BTY-S01": {
+      "title": "服务单、任务单与消费凭条生成",
+      "phase": "P1"
+    },
+    "BTY-S02": {
+      "title": "打印设备、门店路由、模板及版本配置",
+      "phase": "P1"
+    },
+    "BTY-S03": {
+      "title": "打印失败/未知、查原任务、人工补打与审计",
+      "phase": "P1"
+    },
+    "BTY-S04": {
+      "title": "前台/技师终端绑定、撤销、心跳与最小权限",
+      "phase": "P3"
+    },
+    "BTY-S05": {
+      "title": "顾客自助签到机、上门终端及边缘设备协作",
+      "phase": "P4"
+    },
+    "BTY-T01": {
+      "title": "商家准入、门店能力及版本兼容检查",
+      "phase": "P1"
+    },
+    "BTY-T02": {
+      "title": "跨店越权、代客身份及关键动作审计",
+      "phase": "P1"
+    },
+    "BTY-T03": {
+      "title": "核心来源、预约、工单、资金结果关联追踪",
+      "phase": "P1"
+    },
+    "BTY-T04": {
+      "title": "已付未绑定、资源/事件积压和来源恢复待办",
+      "phase": "P1"
+    },
+    "BTY-T05": {
+      "title": "慢请求、错误率、设备/服务存活、告警值班",
+      "phase": "P1"
+    },
+    "BTY-T06": {
+      "title": "备份恢复、配置发布、保留与隐私权限治理",
+      "phase": "P3"
+    },
+    "BTY-T07": {
+      "title": "第三方预约/订单接入、外部号映射与冲突处理",
+      "phase": "P4"
+    },
+    "BTY-T08": {
+      "title": "断网营业、同步认领及重复事实拦截",
+      "phase": "P4"
+    }
+  },
+  "modules": [
+    {
+      "code": "A",
+      "name": "门店与营业配置",
+      "owner": "行业",
+      "ends": "前/管/B",
+      "apis": [
+        {
+          "id": "BAPI-001",
+          "method": "GET",
+          "path": "/biz/x/beauty/store-policies",
+          "purpose": "查询营业与预约规则",
+          "request": "storeNo,at",
+          "response": "StorePolicyVO含版本和有效能力",
+          "functions": [
+            "BTY-A01",
+            "BTY-A03",
+            "BTY-A04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-002",
+          "method": "POST",
+          "path": "/biz/x/beauty/store-policies/versions",
+          "purpose": "提交营业/预约窗口与先付规则版本",
+          "request": "expectedRevision,validFrom,policy",
+          "response": "PolicyVersionVO",
+          "functions": [
+            "BTY-A03",
+            "BTY-A04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-003",
+          "method": "CONTRACT",
+          "path": "merchant.store-context",
+          "purpose": "列出并切换受权门店/岗位",
+          "request": "当前账号,目标门店/岗位",
+          "response": "StoreContextVO与服务端重建权限",
+          "functions": [
+            "BTY-A02"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-004",
+          "method": "POST",
+          "path": "/biz/x/beauty/capability-applications",
+          "purpose": "申请高级经营能力",
+          "request": "storeNo,capability,evidence",
+          "response": "CapabilityApplicationVO不直接启用",
+          "functions": [
+            "BTY-A05"
+          ],
+          "phase": "P4",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-144",
+          "method": "GET",
+          "path": "/mp/x/beauty/stores/{storeNo}",
+          "purpose": "读取公开门店营业与预约须知",
+          "request": "storeNo",
+          "response": "PublicStoreVO",
+          "functions": [
+            "BTY-A01",
+            "BTY-A03",
+            "BTY-A04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        }
+      ]
+    },
+    {
+      "code": "B",
+      "name": "项目与目录",
+      "owner": "行业",
+      "ends": "C/前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-005",
+          "method": "CONTRACT",
+          "path": "product.catalog-and-store-offer",
+          "purpose": "共用商品SKU/媒体/上架与门店价维护",
+          "request": "productNo,skuNo,storeNo,version",
+          "response": "ProductVO/StoreOfferVO",
+          "functions": [
+            "BTY-B01",
+            "BTY-B02"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-006",
+          "method": "CONTRACT",
+          "path": "catalog.sales-calendar",
+          "purpose": "维护分组排序与销售时段",
+          "request": "catalogNo,storeNo,version,rules",
+          "response": "CatalogVersionVO",
+          "functions": [
+            "BTY-B03"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-007",
+          "method": "GET",
+          "path": "/biz/x/beauty/service-definitions",
+          "purpose": "查项目作业定义",
+          "request": "storeNo,skuNo,at",
+          "response": "PageData<ServiceDefinitionVO>",
+          "functions": [
+            "BTY-B04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-008",
+          "method": "POST",
+          "path": "/biz/x/beauty/service-definitions/versions",
+          "purpose": "提交项目时长缓冲资格资源要求",
+          "request": "skuNo,expectedRevision,duration,requirements",
+          "response": "ServiceDefinitionVersionVO",
+          "functions": [
+            "BTY-B04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-009",
+          "method": "GET",
+          "path": "/biz/x/beauty/services/{skuNo}",
+          "purpose": "查项目展示及适用须知",
+          "request": "storeNo",
+          "response": "ServiceDetailVO",
+          "functions": [
+            "BTY-B05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-010",
+          "method": "POST",
+          "path": "/biz/x/beauty/availability/queries",
+          "purpose": "查询项目可约组合",
+          "request": "storeNo,items,from,to,requestedPersonnelNo",
+          "response": "AvailabilityVO含候选组合与过期时间",
+          "functions": [
+            "BTY-B05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-011",
+          "method": "CONTRACT",
+          "path": "quote.configured-options",
+          "purpose": "复杂选配与补差报价",
+          "request": "正规SKU与选配版本,买家",
+          "response": "QuoteVO须正式合同开放",
+          "functions": [
+            "BTY-B06"
+          ],
+          "phase": "P4",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-145",
+          "method": "GET",
+          "path": "/mp/x/beauty/services/{skuNo}",
+          "purpose": "读取公开服务详情",
+          "request": "storeNo,skuNo",
+          "response": "PublicServiceVO",
+          "functions": [
+            "BTY-B05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-146",
+          "method": "POST",
+          "path": "/mp/x/beauty/availability/queries",
+          "purpose": "查询公开可约时段及可选技师",
+          "request": "storeNo,items,from,to",
+          "response": "PublicAvailabilityVO",
+          "functions": [
+            "BTY-B05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        }
+      ]
+    },
+    {
+      "code": "C",
+      "name": "共用人员与权限",
+      "owner": "共用",
+      "ends": "前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-012",
+          "method": "GET",
+          "path": "/biz/personnel",
+          "purpose": "查人员公开或内部档案",
+          "request": "storeNo,status,skill,page,size",
+          "response": "PageData<PersonnelVO>按用途脱敏",
+          "functions": [
+            "BTY-C01",
+            "BTY-C03"
+          ],
+          "phase": "P1",
+          "status": "共用候选新接口"
+        },
+        {
+          "id": "BAPI-013",
+          "method": "POST",
+          "path": "/biz/personnel",
+          "purpose": "建立可无登录的业务人员",
+          "request": "displayName,contact,storeAssignments",
+          "response": "PersonnelVO",
+          "functions": [
+            "BTY-C01"
+          ],
+          "phase": "P1",
+          "status": "共用候选新接口"
+        },
+        {
+          "id": "BAPI-014",
+          "method": "POST",
+          "path": "/biz/personnel/{personnelNo}/status-changes",
+          "purpose": "人员停用与在途影响协调",
+          "request": "expectedRevision,status,handoverPlan",
+          "response": "PersonnelChangeVO含受影响预约/任务",
+          "functions": [
+            "BTY-C01",
+            "BTY-C05"
+          ],
+          "phase": "P1",
+          "status": "共用候选新接口"
+        },
+        {
+          "id": "BAPI-015",
+          "method": "POST",
+          "path": "/biz/personnel/{personnelNo}/account-links",
+          "purpose": "绑定/解绑可选登录账号",
+          "request": "accountNo,action,expectedRevision",
+          "response": "PersonnelAccountLinkVO",
+          "functions": [
+            "BTY-C01"
+          ],
+          "phase": "P1",
+          "status": "共用候选新接口"
+        },
+        {
+          "id": "BAPI-016",
+          "method": "POST",
+          "path": "/biz/personnel/{personnelNo}/assignments",
+          "purpose": "维护任职岗位与资格有效期",
+          "request": "storeNo,positions,skills,validFrom,validTo",
+          "response": "PersonnelAssignmentVO",
+          "functions": [
+            "BTY-C01",
+            "BTY-C03"
+          ],
+          "phase": "P1",
+          "status": "共用候选新接口"
+        },
+        {
+          "id": "BAPI-017",
+          "method": "CONTRACT",
+          "path": "merchant.roles-and-permissions",
+          "purpose": "维护账号门店角色及操作范围",
+          "request": "accountNo,storeNo,roleCode,permissionScope",
+          "response": "RoleGrantVO不改变业务岗位",
+          "functions": [
+            "BTY-C02"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-018",
+          "method": "POST",
+          "path": "/biz/personnel-cooperations",
+          "purpose": "维护技师助理顾问与顾客负责范围",
+          "request": "personnelNos,customerScope,validity",
+          "response": "PersonnelCooperationVO",
+          "functions": [
+            "BTY-C04"
+          ],
+          "phase": "P3",
+          "status": "共用候选新接口"
+        },
+        {
+          "id": "BAPI-019",
+          "method": "CONTRACT",
+          "path": "identity.session-revoke",
+          "purpose": "撤销离职人员关联账号会话",
+          "request": "accountNo,reason",
+          "response": "SessionRevocationVO与审计",
+          "functions": [
+            "BTY-C05"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        }
+      ]
+    },
+    {
+      "code": "D",
+      "name": "资源与排班",
+      "owner": "共用",
+      "ends": "前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-020",
+          "method": "GET",
+          "path": "/biz/resources",
+          "purpose": "查询规范人员与物理资源",
+          "request": "storeNo,type,status,page,size",
+          "response": "PageData<ResourceVO>",
+          "functions": [
+            "BTY-D01"
+          ],
+          "phase": "P1",
+          "status": "共用候选新接口"
+        },
+        {
+          "id": "BAPI-021",
+          "method": "POST",
+          "path": "/biz/resources",
+          "purpose": "维护资源及容量",
+          "request": "resourceNo?,type,personnelNo?,storeNo?,capacity,expectedRevision",
+          "response": "ResourceVO",
+          "functions": [
+            "BTY-D01"
+          ],
+          "phase": "P1",
+          "status": "共用候选新接口"
+        },
+        {
+          "id": "BAPI-022",
+          "method": "GET",
+          "path": "/biz/schedules",
+          "purpose": "查询班表与营业例外",
+          "request": "resourceNos,from,to",
+          "response": "ScheduleVO",
+          "functions": [
+            "BTY-D02"
+          ],
+          "phase": "P1",
+          "status": "共用候选新接口"
+        },
+        {
+          "id": "BAPI-023",
+          "method": "POST",
+          "path": "/biz/schedule-changes/previews",
+          "purpose": "预览请假加班停约对预约任务影响",
+          "request": "resourceNos,intervals,changes",
+          "response": "ScheduleImpactVO",
+          "functions": [
+            "BTY-D02",
+            "BTY-D04"
+          ],
+          "phase": "P3",
+          "status": "共用候选新接口"
+        },
+        {
+          "id": "BAPI-024",
+          "method": "POST",
+          "path": "/biz/schedule-changes",
+          "purpose": "提交排班变更并生成协调待办",
+          "request": "previewNo,expectedRevisions,reason",
+          "response": "ScheduleChangeVO",
+          "functions": [
+            "BTY-D02",
+            "BTY-D04"
+          ],
+          "phase": "P3",
+          "status": "共用候选新接口"
+        },
+        {
+          "id": "BAPI-025",
+          "method": "GET",
+          "path": "/biz/x/beauty/workbench/calendar",
+          "purpose": "查询日历统一快照",
+          "request": "storeNo,from,to,view,resourceTypes,resourceCursor",
+          "response": "CalendarSnapshotVO见工作台专篇",
+          "functions": [
+            "BTY-D03"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-026",
+          "method": "GET",
+          "path": "/biz/x/beauty/workbench/calendar/pages",
+          "purpose": "续取同一快照资源泳道",
+          "request": "snapshotToken,resourceCursor",
+          "response": "CalendarPageVO过期要求重载",
+          "functions": [
+            "BTY-D03"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-027",
+          "method": "POST",
+          "path": "/biz/x/beauty/resource-changes/previews",
+          "purpose": "预览资源替换或超时延长",
+          "request": "targetRef,newAssignments,newEndAt,expectedRevision",
+          "response": "ResourceChangePreviewVO",
+          "functions": [
+            "BTY-D05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-028",
+          "method": "POST",
+          "path": "/biz/x/beauty/resource-changes",
+          "purpose": "原子提交完整资源替换/延长",
+          "request": "previewNo,expectedRevision,reason",
+          "response": "ResourceChangeResultVO或冲突",
+          "functions": [
+            "BTY-D05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-029",
+          "method": "POST",
+          "path": "/biz/x/beauty/group-scheduling/previews",
+          "purpose": "团体并行及路途缓冲规划",
+          "request": "participants,items,locations,requirements",
+          "response": "GroupSchedulePreviewVO仅规划",
+          "functions": [
+            "BTY-D06"
+          ],
+          "phase": "P4",
+          "status": "美业候选新接口"
+        }
+      ]
+    },
+    {
+      "code": "E",
+      "name": "顾客与护理",
+      "owner": "行业",
+      "ends": "C/前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-030",
+          "method": "CONTRACT",
+          "path": "member.identification",
+          "purpose": "共用会员码识别/身份核验",
+          "request": "memberToken,purpose,storeNo",
+          "response": "CustomerIdentityVO非资产扣款授权",
+          "functions": [
+            "BTY-E01"
+          ],
+          "phase": "P2",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-031",
+          "method": "POST",
+          "path": "/biz/x/beauty/guest-registrations",
+          "purpose": "登记临客及后续本人认领",
+          "request": "contact,displayName,consent",
+          "response": "GuestRegistrationVO不伪造买家",
+          "functions": [
+            "BTY-E02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-032",
+          "method": "POST",
+          "path": "/biz/x/beauty/guest-registrations/{guestNo}/claims",
+          "purpose": "本人认领临客预约/服务",
+          "request": "verifiedIdentity,claimToken",
+          "response": "GuestClaimVO",
+          "functions": [
+            "BTY-E02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-033",
+          "method": "CONTRACT",
+          "path": "member.profile-and-history",
+          "purpose": "顾客档案会员关系和受权历史",
+          "request": "customerNo,purpose,storeNo",
+          "response": "CustomerProfileVO",
+          "functions": [
+            "BTY-E03"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-034",
+          "method": "GET",
+          "path": "/biz/x/beauty/care-profiles/{customerNo}",
+          "purpose": "读取最少必要护理提醒",
+          "request": "purpose,taskNo?",
+          "response": "CareProfileVO按字段授权",
+          "functions": [
+            "BTY-E04"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-035",
+          "method": "POST",
+          "path": "/biz/x/beauty/care-profiles/{customerNo}/notes",
+          "purpose": "追加护理事实及更正引用",
+          "request": "taskNo,content,consentRef,correctsNoteNo?",
+          "response": "CareNoteVO",
+          "functions": [
+            "BTY-E04"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-036",
+          "method": "POST",
+          "path": "/biz/x/beauty/care-profiles/{customerNo}/media-authorizations",
+          "purpose": "申请私有护理媒体上传/读取",
+          "request": "taskNo,action,mediaNo?,purpose",
+          "response": "短期MediaAuthorizationVO",
+          "functions": [
+            "BTY-E05"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-037",
+          "method": "POST",
+          "path": "/biz/x/beauty/care-profiles/{customerNo}/privacy-requests",
+          "purpose": "申请撤权留存或合法删除",
+          "request": "requestType,scope,reason",
+          "response": "PrivacyRequestVO",
+          "functions": [
+            "BTY-E05"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        }
+      ]
+    },
+    {
+      "code": "F",
+      "name": "预约与改约",
+      "owner": "行业",
+      "ends": "C/前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-038",
+          "method": "POST",
+          "path": "/biz/x/beauty/appointments/previews",
+          "purpose": "校验预约要求并预览资源组合",
+          "request": "storeNo,customerRef,items,requestedAssignments,startAt",
+          "response": "AppointmentPreviewVO无占位承诺",
+          "functions": [
+            "BTY-F01",
+            "BTY-F02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-039",
+          "method": "POST",
+          "path": "/biz/x/beauty/appointments",
+          "purpose": "占齐完整资源并创建无交易或有来源预约",
+          "request": "previewNo,customerRef,sourceRefs?,consentRef?",
+          "response": "AppointmentVO与资源确认结果",
+          "functions": [
+            "BTY-F01",
+            "BTY-F02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-040",
+          "method": "GET",
+          "path": "/biz/x/beauty/appointments",
+          "purpose": "查预约列表",
+          "request": "storeNo,from,to,status,personnelNo,page,size,assignmentState",
+          "response": "PageData<AppointmentSummaryVO>",
+          "functions": [
+            "BTY-F03"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-041",
+          "method": "GET",
+          "path": "/biz/x/beauty/appointments/{appointmentNo}",
+          "purpose": "查预约任务资源时间线详情",
+          "request": "appointmentNo",
+          "response": "AppointmentDetailVO含版本与可用动作",
+          "functions": [
+            "BTY-F03"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-042",
+          "method": "POST",
+          "path": "/biz/x/beauty/appointments/{appointmentNo}/changes/previews",
+          "purpose": "改时段/项目/指定人员预览",
+          "request": "expectedRevision,items,startAt,assignments",
+          "response": "AppointmentChangePreviewVO含报价影响",
+          "functions": [
+            "BTY-F04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-043",
+          "method": "POST",
+          "path": "/biz/x/beauty/appointments/{appointmentNo}/changes",
+          "purpose": "原子改约及资源替换",
+          "request": "previewNo,expectedRevision,reason,consentRef?",
+          "response": "AppointmentVO保留旧安排版本",
+          "functions": [
+            "BTY-F04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-044",
+          "method": "POST",
+          "path": "/biz/x/beauty/appointments/{appointmentNo}/cancellations",
+          "purpose": "取消预约释放资源并协调来源",
+          "request": "expectedRevision,reason",
+          "response": "CancellationVO含来源处理进度",
+          "functions": [
+            "BTY-F05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-045",
+          "method": "POST",
+          "path": "/biz/x/beauty/appointments/{appointmentNo}/no-shows",
+          "purpose": "记录爽约事实",
+          "request": "expectedRevision,reason,evidenceRef?",
+          "response": "NoShowVO不自动扣款扣次",
+          "functions": [
+            "BTY-F05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-046",
+          "method": "CONTRACT",
+          "path": "booking.deposit-and-penalty-policy",
+          "purpose": "定金尾款与违约合同",
+          "request": "policyVersion,sourceRef,customerConsent",
+          "response": "合同待定默认关闭",
+          "functions": [
+            "BTY-F06"
+          ],
+          "phase": "P4",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-147",
+          "method": "POST",
+          "path": "/mp/x/beauty/appointments/previews",
+          "purpose": "本人预约预览",
+          "request": "storeNo,items,startAt,requestedPersonnelNo",
+          "response": "AppointmentPreviewVO",
+          "functions": [
+            "BTY-F01"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-148",
+          "method": "POST",
+          "path": "/mp/x/beauty/appointments",
+          "purpose": "本人提交预约并占齐资源",
+          "request": "previewNo,sourceRefs?,consentRef?",
+          "response": "MyAppointmentVO",
+          "functions": [
+            "BTY-F01"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-149",
+          "method": "GET",
+          "path": "/mp/x/beauty/appointments",
+          "purpose": "我的预约列表",
+          "request": "from,to,status,page,size",
+          "response": "PageData<MyAppointmentVO>",
+          "functions": [
+            "BTY-F03"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-150",
+          "method": "GET",
+          "path": "/mp/x/beauty/appointments/{appointmentNo}",
+          "purpose": "本人预约详情",
+          "request": "appointmentNo",
+          "response": "MyAppointmentDetailVO",
+          "functions": [
+            "BTY-F03"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-151",
+          "method": "POST",
+          "path": "/mp/x/beauty/appointments/{appointmentNo}/changes/previews",
+          "purpose": "本人改约预览",
+          "request": "expectedRevision,startAt,items,requestedPersonnelNo",
+          "response": "AppointmentChangePreviewVO",
+          "functions": [
+            "BTY-F04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-152",
+          "method": "POST",
+          "path": "/mp/x/beauty/appointments/{appointmentNo}/changes",
+          "purpose": "本人提交改约",
+          "request": "previewNo,expectedRevision,consentRef?",
+          "response": "MyAppointmentVO",
+          "functions": [
+            "BTY-F04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-153",
+          "method": "POST",
+          "path": "/mp/x/beauty/appointments/{appointmentNo}/cancellations",
+          "purpose": "本人取消预约",
+          "request": "expectedRevision,reason",
+          "response": "CancellationVO",
+          "functions": [
+            "BTY-F05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        }
+      ]
+    },
+    {
+      "code": "G",
+      "name": "到店与接待",
+      "owner": "行业",
+      "ends": "C/前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-047",
+          "method": "POST",
+          "path": "/biz/x/beauty/arrivals",
+          "purpose": "核对身份并到店签到",
+          "request": "appointmentNo,identityProof",
+          "response": "ArrivalVO不履约核销",
+          "functions": [
+            "BTY-G01"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-048",
+          "method": "POST",
+          "path": "/biz/x/beauty/walk-ins",
+          "purpose": "直客接待并安排即时资源",
+          "request": "customerRef,items,assignments,startAt",
+          "response": "WalkInVO含预约/工单引用",
+          "functions": [
+            "BTY-G02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-049",
+          "method": "GET",
+          "path": "/biz/x/beauty/waiting-tickets",
+          "purpose": "查询等候队列",
+          "request": "storeNo,status,page,size",
+          "response": "PageData<WaitingTicketVO>",
+          "functions": [
+            "BTY-G03"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-050",
+          "method": "POST",
+          "path": "/biz/x/beauty/waiting-tickets",
+          "purpose": "取号加入等候",
+          "request": "customerRef,items",
+          "response": "WaitingTicketVO",
+          "functions": [
+            "BTY-G03"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-051",
+          "method": "POST",
+          "path": "/biz/x/beauty/waiting-tickets/{ticketNo}/actions",
+          "purpose": "叫号过号取消等候",
+          "request": "action,expectedRevision",
+          "response": "WaitingTicketVO",
+          "functions": [
+            "BTY-G03"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-052",
+          "method": "POST",
+          "path": "/biz/x/beauty/appointments/{appointmentNo}/work-orders",
+          "purpose": "预约转工单并确认接待安排",
+          "request": "expectedRevision,assignments",
+          "response": "WorkOrderVO幂等返回原工单",
+          "functions": [
+            "BTY-G04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-053",
+          "method": "POST",
+          "path": "/biz/x/beauty/reception-exceptions",
+          "purpose": "迟到早到及无法服务协调",
+          "request": "appointmentNo,kind,proposal,reason",
+          "response": "ReceptionExceptionVO含受影响待办",
+          "functions": [
+            "BTY-G05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-154",
+          "method": "POST",
+          "path": "/mp/x/beauty/arrivals",
+          "purpose": "本人到店签到",
+          "request": "appointmentNo,checkInProof",
+          "response": "MyArrivalVO",
+          "functions": [
+            "BTY-G01"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        }
+      ]
+    },
+    {
+      "code": "H",
+      "name": "工单与任务执行",
+      "owner": "行业",
+      "ends": "C/前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-054",
+          "method": "POST",
+          "path": "/biz/x/beauty/work-orders",
+          "purpose": "建立工单项目行及来源提交意图",
+          "request": "customerRef,storeNo,items,appointmentNo?",
+          "response": "WorkOrderVO",
+          "functions": [
+            "BTY-H01"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-055",
+          "method": "GET",
+          "path": "/biz/x/beauty/work-orders/{workOrderNo}",
+          "purpose": "查工单任务来源与进度",
+          "request": "workOrderNo",
+          "response": "WorkOrderDetailVO",
+          "functions": [
+            "BTY-H01"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-056",
+          "method": "POST",
+          "path": "/biz/x/beauty/work-orders/{workOrderNo}/service-submissions",
+          "purpose": "提交新项目/加项及可信来源绑定流程",
+          "request": "items,quoteNo,customerConsent,expectedRevision",
+          "response": "ServiceSubmissionVO含恢复号",
+          "functions": [
+            "BTY-H01",
+            "BTY-H03"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-057",
+          "method": "GET",
+          "path": "/biz/x/beauty/tasks",
+          "purpose": "查询我的或受权任务",
+          "request": "storeNo,from,to,status,personnelNo,page,size,assignmentState",
+          "response": "PageData<ServiceTaskVO>",
+          "functions": [
+            "BTY-H02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-058",
+          "method": "POST",
+          "path": "/biz/x/beauty/tasks/{taskNo}/acceptances",
+          "purpose": "接单",
+          "request": "expectedRevision",
+          "response": "TaskActionResultVO",
+          "functions": [
+            "BTY-H02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-059",
+          "method": "POST",
+          "path": "/biz/x/beauty/tasks/{taskNo}/starts",
+          "purpose": "复核来源资格资源后开始服务",
+          "request": "expectedRevision,expectedBindingRevision",
+          "response": "TaskActionResultVO含实际开始时间",
+          "functions": [
+            "BTY-H02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-060",
+          "method": "POST",
+          "path": "/biz/x/beauty/tasks/{taskNo}/steps/{stepNo}/completions",
+          "purpose": "提交步骤进度",
+          "request": "expectedRevision,completedQuantity,evidenceRef?",
+          "response": "ServiceStepVO",
+          "functions": [
+            "BTY-H02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-061",
+          "method": "POST",
+          "path": "/biz/x/beauty/tasks/{taskNo}/handovers/previews",
+          "purpose": "预览换人交接与资格资源影响",
+          "request": "expectedRevision,newPersonnelNo,role,effectiveAt",
+          "response": "TaskHandoverPreviewVO",
+          "functions": [
+            "BTY-H04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-062",
+          "method": "POST",
+          "path": "/biz/x/beauty/tasks/{taskNo}/handovers",
+          "purpose": "提交交接并追加实际参与区间",
+          "request": "previewNo,expectedRevision,reason",
+          "response": "TaskHandoverVO",
+          "functions": [
+            "BTY-H04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-063",
+          "method": "POST",
+          "path": "/biz/x/beauty/tasks/{taskNo}/interruptions",
+          "purpose": "暂停/恢复/提前结束及事实记录",
+          "request": "expectedRevision,action,reason,actualQuantity",
+          "response": "TaskActionResultVO暂停不默认释放资源",
+          "functions": [
+            "BTY-H05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-064",
+          "method": "POST",
+          "path": "/biz/x/beauty/tasks/{taskNo}/completions",
+          "purpose": "提交真实完成数量与核心履约申请",
+          "request": "expectedRevision,bindingRevision,quantity,consentRef?",
+          "response": "TaskCompletionVO分开服务和履约状态",
+          "functions": [
+            "BTY-H06"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-065",
+          "method": "POST",
+          "path": "/biz/x/beauty/work-orders/{workOrderNo}/closure-previews",
+          "purpose": "检查真实任务/来源版本和未结项",
+          "request": "expectedRevision",
+          "response": "ClosurePreviewVO含阻断项",
+          "functions": [
+            "BTY-H07"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-066",
+          "method": "POST",
+          "path": "/biz/x/beauty/work-orders/{workOrderNo}/closures",
+          "purpose": "冻结范围后关闭并释放占用",
+          "request": "previewNo,expectedRevision",
+          "response": "WorkOrderClosureVO",
+          "functions": [
+            "BTY-H07"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-067",
+          "method": "POST",
+          "path": "/biz/x/beauty/work-orders/{workOrderNo}/stage-plans",
+          "purpose": "跨日多阶段并行与上门作业计划",
+          "request": "stageItems,resourceRequirements,expectedRevision",
+          "response": "StagePlanVO仅能力开放后",
+          "functions": [
+            "BTY-H08"
+          ],
+          "phase": "P4",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-155",
+          "method": "GET",
+          "path": "/mp/x/beauty/work-orders/{workOrderNo}",
+          "purpose": "本人服务任务及完成进度",
+          "request": "workOrderNo",
+          "response": "MyWorkOrderVO",
+          "functions": [
+            "BTY-H01",
+            "BTY-H02",
+            "BTY-H06"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-159",
+          "method": "GET",
+          "path": "/biz/x/beauty/tasks/{taskNo}",
+          "purpose": "查询具体任务步骤与安排/实际参与摘要",
+          "request": "taskNo",
+          "response": "ServiceTaskDetailVO含来源状态及允许动作",
+          "functions": [
+            "BTY-H01",
+            "BTY-H02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        }
+      ]
+    },
+    {
+      "code": "I",
+      "name": "共用交易与收银",
+      "owner": "核心",
+      "ends": "C/前/管/B",
+      "apis": [
+        {
+          "id": "BAPI-068",
+          "method": "CONTRACT",
+          "path": "trade.quote-and-create",
+          "purpose": "核心报价建单及买家接管",
+          "request": "storeNo,buyerRef,skuLines,quoteVersion",
+          "response": "OrderVO美业仅记来源引用",
+          "functions": [
+            "BTY-I01"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-069",
+          "method": "CONTRACT",
+          "path": "payment.initiate-and-query",
+          "purpose": "顾客付款和原支付号查结果",
+          "request": "orderNo,payMethod,customerConsent",
+          "response": "PaymentVO由资金域判定结果",
+          "functions": [
+            "BTY-I02"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-070",
+          "method": "CONTRACT",
+          "path": "payment.offline-receipt",
+          "purpose": "正式合同允许的线下实收确认",
+          "request": "orderNo,method,amount,evidence,operator",
+          "response": "ReceiptVO禁止代消费者线上确认",
+          "functions": [
+            "BTY-I03"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-071",
+          "method": "GET",
+          "path": "/biz/x/beauty/work-orders/{workOrderNo}/bill",
+          "purpose": "汇总逐来源应收实收与未结",
+          "request": "workOrderNo",
+          "response": "WorkOrderBillVO不生成混合收款单",
+          "functions": [
+            "BTY-I04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-072",
+          "method": "GET",
+          "path": "/biz/x/beauty/service-submissions/{submissionNo}",
+          "purpose": "查提交意图与来源绑定进度",
+          "request": "submissionNo",
+          "response": "ServiceSubmissionVO含UNKNOWN阻断项",
+          "functions": [
+            "BTY-I05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-073",
+          "method": "POST",
+          "path": "/biz/x/beauty/service-submissions/{submissionNo}/recovery-requests",
+          "purpose": "申请原号恢复查单及绑定",
+          "request": "expectedRevision,reason",
+          "response": "RecoveryRequestVO不能新号重复支付",
+          "functions": [
+            "BTY-I05"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-074",
+          "method": "CONTRACT",
+          "path": "cashier.advanced-contracts",
+          "purpose": "混合/跨单/后付/定金/免单/改价",
+          "request": "已批准政策及原来源,本人授权",
+          "response": "待正式合同不设执行路由",
+          "functions": [
+            "BTY-I06",
+            "BTY-I07"
+          ],
+          "phase": "P4",
+          "status": "共用合同接入，路径待核对"
+        }
+      ]
+    },
+    {
+      "code": "J",
+      "name": "储值",
+      "owner": "共用",
+      "ends": "C/前/管/B",
+      "apis": [
+        {
+          "id": "BAPI-075",
+          "method": "CONTRACT",
+          "path": "stored-value.plans",
+          "purpose": "共用独立充值方案版本启停",
+          "request": "storeNo,planNo,version,scope",
+          "response": "RechargePlanVO",
+          "functions": [
+            "BTY-J01"
+          ],
+          "phase": "P2",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-076",
+          "method": "CONTRACT",
+          "path": "stored-value.recharges",
+          "purpose": "创建提交实收确认充值及查原号",
+          "request": "customerNo,storeNo,planVersion,receipt",
+          "response": "RechargeVO仅正式渠道",
+          "functions": [
+            "BTY-J02"
+          ],
+          "phase": "P2",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-077",
+          "method": "CONTRACT",
+          "path": "stored-value.accounts",
+          "purpose": "本店账户目录及余额冻结",
+          "request": "storeNo,customerNo,page,size",
+          "response": "PageData<StoredValueAccountVO>",
+          "functions": [
+            "BTY-J03"
+          ],
+          "phase": "P2",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-078",
+          "method": "CONTRACT",
+          "path": "stored-value.consumptions",
+          "purpose": "本次服务来源全额消费预览/本人确认",
+          "request": "sourceRef,storeNo,memberAuthorization",
+          "response": "ConsumptionVO不混合补现金",
+          "functions": [
+            "BTY-J04"
+          ],
+          "phase": "P2",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-079",
+          "method": "CONTRACT",
+          "path": "stored-value.history",
+          "purpose": "本人门店消费记录及商家统一收支",
+          "request": "storeNo,customerNo,from,to,page,size",
+          "response": "PageData<StoredValueRecordVO>",
+          "functions": [
+            "BTY-J05",
+            "BTY-J06"
+          ],
+          "phase": "P2",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-080",
+          "method": "CONTRACT",
+          "path": "stored-value.recovery",
+          "purpose": "已收未入账/冻结/扣款未知原号恢复",
+          "request": "rechargeNo/consumptionNo,reason",
+          "response": "RecoveryVO不手调余额",
+          "functions": [
+            "BTY-J07"
+          ],
+          "phase": "P2",
+          "status": "共用合同接入，路径待核对"
+        }
+      ]
+    },
+    {
+      "code": "K",
+      "name": "疗程与权益",
+      "owner": "共用",
+      "ends": "C/前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-081",
+          "method": "CONTRACT",
+          "path": "entitlement.rules",
+          "purpose": "共用次数规则适用范围有效期",
+          "request": "ruleNo,version,skuScope,quantity,validity",
+          "response": "EntitlementRuleVO",
+          "functions": [
+            "BTY-K01"
+          ],
+          "phase": "P4",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-082",
+          "method": "CONTRACT",
+          "path": "product.treatment-card-offers",
+          "purpose": "疗程销售SKU及门店价格",
+          "request": "ruleVersion,skuNo,storeNo",
+          "response": "StoreOfferVO",
+          "functions": [
+            "BTY-K02"
+          ],
+          "phase": "P4",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-083",
+          "method": "CONTRACT",
+          "path": "entitlement.sale-and-issuance",
+          "purpose": "正式售卡来源及幂等发行进度",
+          "request": "salesSourceRef,ruleVersion,customerNo",
+          "response": "IssuanceVO发行和收款分别显示",
+          "functions": [
+            "BTY-K03"
+          ],
+          "phase": "P4",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-084",
+          "method": "CONTRACT",
+          "path": "entitlement.eligible-assets",
+          "purpose": "本人已持有合格权益和余次",
+          "request": "customerNo,storeNo,skuNo",
+          "response": "EligibleEntitlementVO",
+          "functions": [
+            "BTY-K04"
+          ],
+          "phase": "P2",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-085",
+          "method": "CONTRACT",
+          "path": "entitlement.service-consumption",
+          "purpose": "本次权益使用预览授权预占核销和恢复",
+          "request": "sourceRef,entitlementNo,quantity,customerConsent",
+          "response": "EntitlementConsumptionVO",
+          "functions": [
+            "BTY-K05"
+          ],
+          "phase": "P2",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-086",
+          "method": "GET",
+          "path": "/biz/x/beauty/treatment-plans",
+          "purpose": "查疗程计划与每次服务履历",
+          "request": "customerNo,storeNo,page,size",
+          "response": "PageData<TreatmentPlanVO>",
+          "functions": [
+            "BTY-K06"
+          ],
+          "phase": "P4",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-087",
+          "method": "POST",
+          "path": "/biz/x/beauty/treatment-plans",
+          "purpose": "创建分次服务计划",
+          "request": "customerNo,entitlementRef?,sessions",
+          "response": "TreatmentPlanVO计划不提前扣次",
+          "functions": [
+            "BTY-K06"
+          ],
+          "phase": "P4",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-088",
+          "method": "CONTRACT",
+          "path": "entitlement.policy-cases",
+          "purpose": "有效期次数申诉退转卡延期跨店政策",
+          "request": "assetRef,caseType,evidence,approvedPolicy",
+          "response": "CaseVO未定政策只登记不执行",
+          "functions": [
+            "BTY-K07",
+            "BTY-K08"
+          ],
+          "phase": "P4",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-156",
+          "method": "GET",
+          "path": "/mp/x/beauty/treatment-plans",
+          "purpose": "本人疗程计划与每次履历",
+          "request": "page,size",
+          "response": "PageData<MyTreatmentPlanVO>",
+          "functions": [
+            "BTY-K06"
+          ],
+          "phase": "P4",
+          "status": "美业候选新接口"
+        }
+      ]
+    },
+    {
+      "code": "L",
+      "name": "营销",
+      "owner": "共用",
+      "ends": "C/前/管/B",
+      "apis": [
+        {
+          "id": "BAPI-089",
+          "method": "CONTRACT",
+          "path": "promotion.eligible-and-quote",
+          "purpose": "查询选择合格券并核心报价核验",
+          "request": "buyerRef,skuLines,storeNo",
+          "response": "EligiblePromotionVO/QuoteVO",
+          "functions": [
+            "BTY-L01"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-090",
+          "method": "CONTRACT",
+          "path": "promotion.campaign-versions",
+          "purpose": "活动草稿发布资格预算",
+          "request": "campaignNo,version,scope,budget",
+          "response": "CampaignVO",
+          "functions": [
+            "BTY-L02"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-091",
+          "method": "CONTRACT",
+          "path": "member.tags-and-audiences",
+          "purpose": "标签人群及受控经营名单",
+          "request": "customerScope,purpose,tagChanges",
+          "response": "AudienceVO",
+          "functions": [
+            "BTY-L03"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-092",
+          "method": "CONTRACT",
+          "path": "entitlement.grant",
+          "purpose": "受权赠券赠次发行查结果",
+          "request": "grantSourceNo,ruleVersion,recipients",
+          "response": "GrantVO不等同付费售卡",
+          "functions": [
+            "BTY-L04"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-093",
+          "method": "CONTRACT",
+          "path": "analytics.campaign-conversion",
+          "purpose": "活动预约回访转化统计",
+          "request": "storeNo,period,campaignNo",
+          "response": "CampaignReportVO",
+          "functions": [
+            "BTY-L05"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        }
+      ]
+    },
+    {
+      "code": "M",
+      "name": "实物库存与耗材",
+      "owner": "共用",
+      "ends": "C/前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-094",
+          "method": "CONTRACT",
+          "path": "trade.goods-inventory-delivery",
+          "purpose": "实物报价库存承诺交付和售后",
+          "request": "skuNo,storeNo,quantity,sourceRef",
+          "response": "OrderVO/FulfillmentVO",
+          "functions": [
+            "BTY-M01"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-095",
+          "method": "CONTRACT",
+          "path": "inventory.stock-operations",
+          "purpose": "库存收货调拨盘点",
+          "request": "storeNo,skuLines,operation,expectedRevision",
+          "response": "StockDocumentVO",
+          "functions": [
+            "BTY-M02"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-096",
+          "method": "CONTRACT",
+          "path": "inventory.service-material-use",
+          "purpose": "按任务领料和实际耗用",
+          "request": "taskNo,skuLines,operator,sourceNo",
+          "response": "MaterialUsageVO",
+          "functions": [
+            "BTY-M03"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-097",
+          "method": "CONTRACT",
+          "path": "inventory.return-and-scrap",
+          "purpose": "退回报损质量处置",
+          "request": "originalDocumentNo,lines,quality,reason",
+          "response": "InventoryDispositionVO",
+          "functions": [
+            "BTY-M04"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-098",
+          "method": "CONTRACT",
+          "path": "inventory.bom-and-cost",
+          "purpose": "项目耗材BOM版本及成本差异",
+          "request": "serviceSkuNo,bomVersion,period",
+          "response": "BomVO/CostReportVO",
+          "functions": [
+            "BTY-M05"
+          ],
+          "phase": "P4",
+          "status": "共用合同接入，路径待核对"
+        }
+      ]
+    },
+    {
+      "code": "N",
+      "name": "售后与争议",
+      "owner": "行业",
+      "ends": "C/前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-099",
+          "method": "CONTRACT",
+          "path": "aftersale.standard",
+          "purpose": "普通交易售后材料审核进度",
+          "request": "orderNo,lineNos,reason,evidence",
+          "response": "AfterSaleVO不适用于任意资产退款",
+          "functions": [
+            "BTY-N01"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-100",
+          "method": "POST",
+          "path": "/biz/x/beauty/tasks/{taskNo}/cancellations",
+          "purpose": "未开始任务撤销及资源来源协调",
+          "request": "expectedRevision,reason",
+          "response": "TaskCancellationVO源取消另查进度",
+          "functions": [
+            "BTY-N02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-101",
+          "method": "POST",
+          "path": "/biz/x/beauty/tasks/{taskNo}/service-evidence",
+          "purpose": "追加完成数量提前结束质量事实",
+          "request": "expectedRevision,kind,quantity,evidenceRefs",
+          "response": "ServiceEvidenceVO不可覆盖原事实",
+          "functions": [
+            "BTY-N03"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-102",
+          "method": "POST",
+          "path": "/biz/x/beauty/service-remedy-cases",
+          "purpose": "申请返工补做部分退款赔付方案",
+          "request": "taskNo,sourceRef,proposal,evidence",
+          "response": "RemedyCaseVO审批不等于退款成功",
+          "functions": [
+            "BTY-N04"
+          ],
+          "phase": "P4",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-103",
+          "method": "POST",
+          "path": "/biz/x/beauty/asset-disputes",
+          "purpose": "登记储值次数争议形成财务待办",
+          "request": "sourceRef,assetUseNo,reason,evidence",
+          "response": "AssetDisputeVO保留原账",
+          "functions": [
+            "BTY-N05"
+          ],
+          "phase": "P2",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-104",
+          "method": "CONTRACT",
+          "path": "asset.reversal-contract",
+          "purpose": "经正式合同执行资产逆向",
+          "request": "originalUseNo,approvedCaseNo,policyVersion",
+          "response": "ReversalVO默认关闭",
+          "functions": [
+            "BTY-N06"
+          ],
+          "phase": "P4",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-157",
+          "method": "POST",
+          "path": "/mp/x/beauty/service-disputes",
+          "purpose": "本人提交服务数量质量争议",
+          "request": "taskNo,reason,evidenceRefs",
+          "response": "ServiceDisputeVO",
+          "functions": [
+            "BTY-N03"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        }
+      ]
+    },
+    {
+      "code": "O",
+      "name": "业绩与提成",
+      "owner": "行业",
+      "ends": "前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-105",
+          "method": "GET",
+          "path": "/biz/x/beauty/tasks/{taskNo}/participations",
+          "purpose": "查询实际参与与产出事实",
+          "request": "taskNo",
+          "response": "ParticipationVO含历史交接区间",
+          "functions": [
+            "BTY-O01"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-106",
+          "method": "GET",
+          "path": "/biz/x/beauty/commission-policies",
+          "purpose": "查规则版本及基数口径",
+          "request": "storeNo,at,page,size",
+          "response": "PageData<CommissionPolicyVO>",
+          "functions": [
+            "BTY-O02"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-107",
+          "method": "POST",
+          "path": "/biz/x/beauty/commission-policy-versions",
+          "purpose": "维护业绩分配与提成版本",
+          "request": "scope,basis,shares,validity,expectedRevision",
+          "response": "CommissionPolicyVersionVO",
+          "functions": [
+            "BTY-O02"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-108",
+          "method": "GET",
+          "path": "/biz/x/beauty/commission-entries",
+          "purpose": "查本人或受权提成明细",
+          "request": "storeNo,personnelNo,period,page,size",
+          "response": "PageData<CommissionEntryVO>",
+          "functions": [
+            "BTY-O03"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-109",
+          "method": "POST",
+          "path": "/biz/x/beauty/performance-adjustment-cases",
+          "purpose": "提交异议换人/退款后更正",
+          "request": "entryNo,sourceRevision,evidence,reason",
+          "response": "AdjustmentCaseVO追加不覆盖",
+          "functions": [
+            "BTY-O03",
+            "BTY-O04"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-110",
+          "method": "POST",
+          "path": "/biz/x/beauty/commission-settlement-records",
+          "purpose": "登记提成结算审核与已发放凭证",
+          "request": "entryNos,approvalRef,paymentEvidence",
+          "response": "SettlementRecordVO不新增银行代发",
+          "functions": [
+            "BTY-O05"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        }
+      ]
+    },
+    {
+      "code": "P",
+      "name": "班次财务",
+      "owner": "共用",
+      "ends": "C/前/管/B",
+      "apis": [
+        {
+          "id": "BAPI-111",
+          "method": "CONTRACT",
+          "path": "finance.receipt-history",
+          "purpose": "读取普通订单/充值/资产消费凭条",
+          "request": "sourceRef,customerNo,storeNo",
+          "response": "ReceiptVO按阶段开放",
+          "functions": [
+            "BTY-P01"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-112",
+          "method": "CONTRACT",
+          "path": "cashier.shifts",
+          "purpose": "开关班钱箱实盘交接",
+          "request": "storeNo,shiftNo,cashCount,expectedRevision",
+          "response": "ShiftVO",
+          "functions": [
+            "BTY-P02"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-113",
+          "method": "CONTRACT",
+          "path": "finance.business-day-close",
+          "purpose": "营业日范围水位日结签核",
+          "request": "storeNo,businessDate,watermark,approval",
+          "response": "DayCloseVO",
+          "functions": [
+            "BTY-P03"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-114",
+          "method": "CONTRACT",
+          "path": "finance.channel-reconciliation",
+          "purpose": "逐口径渠道对账",
+          "request": "storeNo,businessDate,channel",
+          "response": "ReconciliationVO",
+          "functions": [
+            "BTY-P04"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-115",
+          "method": "CONTRACT",
+          "path": "finance.settlements-and-cases",
+          "purpose": "结算票据费用差异与原号恢复",
+          "request": "settlementNo,caseNo,authorizedAction",
+          "response": "SettlementVO",
+          "functions": [
+            "BTY-P05"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        }
+      ]
+    },
+    {
+      "code": "Q",
+      "name": "查询与报表",
+      "owner": "行业",
+      "ends": "C/前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-116",
+          "method": "GET",
+          "path": "/biz/x/beauty/customer-timelines/{customerNo}",
+          "purpose": "本人或受权顾客预约服务来源时间线",
+          "request": "storeNo,from,to,page,size",
+          "response": "PageData<CustomerTimelineVO>",
+          "functions": [
+            "BTY-Q01"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-117",
+          "method": "GET",
+          "path": "/biz/x/beauty/workbench/summary",
+          "purpose": "今日接待待服务未结异常概览",
+          "request": "storeNo,businessDate",
+          "response": "WorkbenchSummaryVO含asOf独立水位",
+          "functions": [
+            "BTY-Q02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-118",
+          "method": "CONTRACT",
+          "path": "analytics.money-separate-measures",
+          "purpose": "现金充值资产消耗余额分口径报表",
+          "request": "storeNo,period,currency",
+          "response": "MoneyReportVO不可叠加为营收",
+          "functions": [
+            "BTY-Q03"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-119",
+          "method": "GET",
+          "path": "/biz/x/beauty/reports/scheduling",
+          "purpose": "预约转化爽约资源利用率",
+          "request": "storeNo,from,to,resourceType",
+          "response": "SchedulingReportVO含计划/实际口径",
+          "functions": [
+            "BTY-Q04"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-120",
+          "method": "GET",
+          "path": "/biz/x/beauty/reports/services",
+          "purpose": "项目服务产出成本复购业绩查询",
+          "request": "storeNo,period,dimensions",
+          "response": "ServiceReportVO各事实水位",
+          "functions": [
+            "BTY-Q05"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-121",
+          "method": "POST",
+          "path": "/biz/x/beauty/report-exports",
+          "purpose": "创建受权跨店导出任务",
+          "request": "storeNos,reportType,filters,purpose",
+          "response": "ReportExportVO含水位与到期下载",
+          "functions": [
+            "BTY-Q06"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-122",
+          "method": "GET",
+          "path": "/biz/x/beauty/report-exports/{exportNo}",
+          "purpose": "查导出结果及更正水位",
+          "request": "exportNo",
+          "response": "ReportExportVO下载二次鉴权",
+          "functions": [
+            "BTY-Q06"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-158",
+          "method": "GET",
+          "path": "/mp/x/beauty/timeline",
+          "purpose": "本人预约服务及来源历史",
+          "request": "from,to,page,size",
+          "response": "PageData<MyTimelineVO>",
+          "functions": [
+            "BTY-Q01"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        }
+      ]
+    },
+    {
+      "code": "R",
+      "name": "消息待办回访",
+      "owner": "行业",
+      "ends": "C/前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-123",
+          "method": "CONTRACT",
+          "path": "notification.delivery-and-preferences",
+          "purpose": "预约付款通知规则订阅与送达查询",
+          "request": "eventRef,templateVersion,recipientScope",
+          "response": "DeliveryVO失败不回滚交易",
+          "functions": [
+            "BTY-R01",
+            "BTY-R03"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-124",
+          "method": "GET",
+          "path": "/biz/x/beauty/workbench/exceptions",
+          "purpose": "查询派工超时冲突来源异常待办",
+          "request": "storeNo,from,to,kind,page,size",
+          "response": "PageData<ExceptionWorkitemVO>",
+          "functions": [
+            "BTY-R02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-125",
+          "method": "POST",
+          "path": "/biz/x/beauty/exception-workitems/{workitemNo}/resolutions",
+          "purpose": "认领/协调/解决业务异常",
+          "request": "expectedRevision,action,targetRef,reason",
+          "response": "ExceptionResolutionVO不绕过原聚合校验",
+          "functions": [
+            "BTY-R02"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-126",
+          "method": "GET",
+          "path": "/biz/x/beauty/follow-up-tasks",
+          "purpose": "查询护理回访任务",
+          "request": "storeNo,personnelNo,status,page,size",
+          "response": "PageData<FollowUpTaskVO>",
+          "functions": [
+            "BTY-R04"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-127",
+          "method": "POST",
+          "path": "/biz/x/beauty/follow-up-tasks",
+          "purpose": "建回访计划及分配",
+          "request": "customerNo,taskNo,dueAt,assignee",
+          "response": "FollowUpTaskVO",
+          "functions": [
+            "BTY-R04"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-128",
+          "method": "POST",
+          "path": "/biz/x/beauty/follow-up-tasks/{followUpNo}/entries",
+          "purpose": "追加跟进和顾客回复",
+          "request": "content,replyConsent,expectedRevision",
+          "response": "FollowUpEntryVO",
+          "functions": [
+            "BTY-R04"
+          ],
+          "phase": "P3",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-129",
+          "method": "CONTRACT",
+          "path": "notification.marketing-consent",
+          "purpose": "营销订阅频控受众退订",
+          "request": "customerNo,channel,purpose,consent",
+          "response": "NotificationPreferenceVO",
+          "functions": [
+            "BTY-R05"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        }
+      ]
+    },
+    {
+      "code": "S",
+      "name": "打印与设备",
+      "owner": "共用",
+      "ends": "前/技/管/B",
+      "apis": [
+        {
+          "id": "BAPI-130",
+          "method": "POST",
+          "path": "/biz/x/beauty/print-documents",
+          "purpose": "按真实来源生成脱敏文档快照",
+          "request": "documentType,workOrderNo/sourceRef,templateVersion",
+          "response": "PrintDocumentVO",
+          "functions": [
+            "BTY-S01"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-131",
+          "method": "CONTRACT",
+          "path": "device.print-routes-and-templates",
+          "purpose": "设备路由模板版本与自检",
+          "request": "storeNo,deviceNo,templateVersion",
+          "response": "PrintConfigVO",
+          "functions": [
+            "BTY-S02"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-132",
+          "method": "CONTRACT",
+          "path": "printing.jobs",
+          "purpose": "提交打印查询原任务和受控补打",
+          "request": "documentNo,deviceNo,originalJobNo?,reason",
+          "response": "PrintJobVO未知先查原号",
+          "functions": [
+            "BTY-S01",
+            "BTY-S03"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-133",
+          "method": "CONTRACT",
+          "path": "device.terminals",
+          "purpose": "终端绑定撤销心跳最小权限",
+          "request": "deviceNo,storeNo,accountScope,action",
+          "response": "TerminalVO",
+          "functions": [
+            "BTY-S04"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-134",
+          "method": "CONTRACT",
+          "path": "device.edge-service",
+          "purpose": "签到机上门边缘设备协作",
+          "request": "deviceSession,identityProof,authorizedIntent",
+          "response": "EdgeActionVO不能离线扣资产",
+          "functions": [
+            "BTY-S05"
+          ],
+          "phase": "P4",
+          "status": "共用合同接入，路径待核对"
+        }
+      ]
+    },
+    {
+      "code": "T",
+      "name": "治理与恢复",
+      "owner": "支撑",
+      "ends": "平/管/B",
+      "apis": [
+        {
+          "id": "BAPI-135",
+          "method": "GET",
+          "path": "/biz/x/beauty/capability-status",
+          "purpose": "查询门店接线兼容和验收能力",
+          "request": "storeNo,clientVersion",
+          "response": "CapabilityStatusVO缺省关闭",
+          "functions": [
+            "BTY-T01"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-136",
+          "method": "CONTRACT",
+          "path": "audit.scoped-events",
+          "purpose": "受控操作审计及代客身份追踪",
+          "request": "subjectRef,storeScope,from,to,page,size",
+          "response": "PageData<AuditEventVO>不含护理正文",
+          "functions": [
+            "BTY-T02"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-137",
+          "method": "GET",
+          "path": "/biz/x/beauty/traces/{businessNo}",
+          "purpose": "关联预约工单任务来源资金状态",
+          "request": "businessNo",
+          "response": "BusinessTraceVO按字段脱敏",
+          "functions": [
+            "BTY-T03"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-138",
+          "method": "GET",
+          "path": "/ops/x/beauty/recovery-workitems",
+          "purpose": "平台查已付未绑定资源事件积压",
+          "request": "entityNo,storeNo,kind,page,size",
+          "response": "PageData<RecoveryWorkitemVO>",
+          "functions": [
+            "BTY-T04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-139",
+          "method": "POST",
+          "path": "/ops/x/beauty/recovery-requests",
+          "purpose": "申请原号技术恢复",
+          "request": "workitemNo,expectedRevision,reason,approvalRef?",
+          "response": "RecoveryRequestVO不能代完工代授权",
+          "functions": [
+            "BTY-T04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        },
+        {
+          "id": "BAPI-140",
+          "method": "CONTRACT",
+          "path": "observability.health-and-alerts",
+          "purpose": "健康慢请求错误率设备存活与告警",
+          "request": "serviceScope,timeRange,traceNo",
+          "response": "HealthVO/AlertVO接已有观测设施",
+          "functions": [
+            "BTY-T05"
+          ],
+          "phase": "P1",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-141",
+          "method": "CONTRACT",
+          "path": "governance.privacy-config-backup",
+          "purpose": "隐私配置发布备份恢复受控流程",
+          "request": "scope,changeNo,purpose,approvalRef",
+          "response": "GovernanceJobVO不提供任意表写入",
+          "functions": [
+            "BTY-T06"
+          ],
+          "phase": "P3",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-142",
+          "method": "CONTRACT",
+          "path": "integration.external-booking",
+          "purpose": "第三方预约来源映射签名去重冲突",
+          "request": "provider,externalNo,revision,signedPayload",
+          "response": "ExternalBindingVO需独立合同",
+          "functions": [
+            "BTY-T07"
+          ],
+          "phase": "P4",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-143",
+          "method": "CONTRACT",
+          "path": "offline.claim-and-sync",
+          "purpose": "断网事实认领去重同步",
+          "request": "deviceNo,localIntentNo,evidence",
+          "response": "SyncClaimVO未验收不开放营业",
+          "functions": [
+            "BTY-T08"
+          ],
+          "phase": "P4",
+          "status": "共用合同接入，路径待核对"
+        },
+        {
+          "id": "BAPI-160",
+          "method": "GET",
+          "path": "/biz/x/beauty/operations/{operationNo}",
+          "purpose": "查询异步命令的原号进度和阻断原因",
+          "request": "operationNo",
+          "response": "OperationVO含目标引用和恢复入口",
+          "functions": [
+            "BTY-T03",
+            "BTY-T04"
+          ],
+          "phase": "P1",
+          "status": "美业候选新接口"
+        }
+      ]
+    }
+  ]
+}

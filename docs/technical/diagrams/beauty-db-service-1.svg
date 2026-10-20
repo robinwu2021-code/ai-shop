@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740">
+<title>服务数据库逻辑引用 1</title><desc>从数据库设计JSON生成，展示候选表及图内引用，跨图引用见字段字典；非已执行DDL。</desc>
+<defs><marker id="a" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="none" stroke="#8497a8"/></marker></defs>
+<rect width="100%" height="100%" fill="#f5f8fb"/>
+<text x="45" y="40" font-family="sans-serif" font-size="24">服务 · 目标结构 1</text>
+<path d="M555,142 C600,142 600,142 645,142" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M645,142 C600,142 600,142 555,142" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M555,297 C600,297 600,297 645,297" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M645,297 C600,297 600,297 555,297" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M555,452 C600,452 600,297 645,297" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M645,452 H620 V142 H645" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M555,607 C600,607 600,452 645,452" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<path d="M555,607 C600,607 600,297 645,297" fill="none" stroke="#8497a8" stroke-width="1.5" marker-end="url(#a)"/>
+<rect x="85" y="90" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="118" font-family="sans-serif" font-size="18" font-weight="bold">bty_store_policy</text>
+<text x="99" y="147" font-family="sans-serif" font-size="16">美业门店政策头</text>
+<text x="99" y="175" font-family="sans-serif" font-size="12">policy_no, store_no, current_policy_version_no</text>
+<rect x="645" y="90" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="659" y="118" font-family="sans-serif" font-size="18" font-weight="bold">bty_store_policy_version</text>
+<text x="659" y="147" font-family="sans-serif" font-size="16">不可变政策版本</text>
+<text x="659" y="175" font-family="sans-serif" font-size="12">policy_version_no, policy_no, revision_index</text>
+<rect x="85" y="245" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="273" font-family="sans-serif" font-size="18" font-weight="bold">bty_service_definition</text>
+<text x="99" y="302" font-family="sans-serif" font-size="16">项目执行定义头</text>
+<text x="99" y="330" font-family="sans-serif" font-size="12">definition_no, store_no, sku_no</text>
+<rect x="645" y="245" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="659" y="273" font-family="sans-serif" font-size="18" font-weight="bold">bty_service_definition_version</text>
+<text x="659" y="302" font-family="sans-serif" font-size="16">受理用服务规则版本</text>
+<text x="659" y="330" font-family="sans-serif" font-size="12">definition_version_no, definition_no, revision_index</text>
+<rect x="85" y="400" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="428" font-family="sans-serif" font-size="18" font-weight="bold">bty_service_requirement</text>
+<text x="99" y="457" font-family="sans-serif" font-size="16">服务资源需求明细</text>
+<text x="99" y="485" font-family="sans-serif" font-size="12">requirement_no, definition_version_no, role_code</text>
+<rect x="645" y="400" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="659" y="428" font-family="sans-serif" font-size="18" font-weight="bold">bty_appointment</text>
+<text x="659" y="457" font-family="sans-serif" font-size="16">预约单</text>
+<text x="659" y="485" font-family="sans-serif" font-size="12">appointment_no, store_no, customer_ref</text>
+<rect x="85" y="555" width="470" height="110" rx="10" fill="white" stroke="#b9cbd7"/>
+<text x="99" y="583" font-family="sans-serif" font-size="18" font-weight="bold">bty_appointment_item</text>
+<text x="99" y="612" font-family="sans-serif" font-size="16">预约项目行</text>
+<text x="99" y="640" font-family="sans-serif" font-size="12">appointment_item_no, appointment_no, sku_no</text>
+</svg>

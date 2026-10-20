@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="610" viewBox="0 0 1080 610" role="img" aria-labelledby="title desc">
+  <title id="title">美业工作流复用商品订单与支付底座</title>
+  <desc id="desc">顾客、前台和技师访问美业工作流，经应用桥接使用共享商品、Core普通交易与服务核销来源、资源预约与Pay；权威结果经事件和查询恢复返回，打印通知只消费业务事实。</desc>
+  <defs><marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#52627a" stroke-width="1.6"/></marker></defs>
+  <rect width="1080" height="610" fill="#f7f9fc"/>
+  <g font-family="system-ui, sans-serif" fill="#172c45">
+    <text x="40" y="43" font-size="24" font-weight="700">美业工作流与共用底座</text>
+    <text x="40" y="72" font-size="15" fill="#52627a">目标架构 · 服务进度与交易状态分轨 · 2026-10-20 草稿</text>
+    <g stroke="#c7d2e1" fill="#fff" stroke-width="1.5">
+      <rect x="40" y="105" width="220" height="90" rx="12"/>
+      <rect x="40" y="240" width="220" height="105" rx="12"/>
+      <rect x="325" y="105" width="325" height="240" rx="12" fill="#edf6f4" stroke="#8dbbb0"/>
+      <rect x="715" y="105" width="325" height="240" rx="12" fill="#eef3fc" stroke="#9eb6d8"/>
+      <rect x="325" y="400" width="715" height="155" rx="12"/>
+    </g>
+    <text x="62" y="139" font-size="19" font-weight="600">业务终端</text>
+    <text x="62" y="170" font-size="15">顾客 / 前台 / 技师 / 管理端</text>
+    <text x="62" y="274" font-size="19" font-weight="600">打印与通知</text>
+    <text x="62" y="304" font-size="15">消费业务事实，保留重试</text>
+    <text x="62" y="327" font-size="14" fill="#52627a">补打不扣款，不推进服务</text>
+    <text x="350" y="142" font-size="20" font-weight="700">美业行业工作流</text>
+    <text x="350" y="181" font-size="16">预约 → 签到 → 工单 → 服务任务</text>
+    <text x="350" y="215" font-size="16">改约 / 换人 / 加项 / 完工</text>
+    <text x="350" y="249" font-size="16">提交意图 / 类型化来源关联 / 审计</text>
+    <text x="350" y="286" font-size="15" fill="#52627a">拥有 bty_*，不维护售价与卡余额</text>
+    <text x="350" y="315" font-size="14" fill="#52627a">先付闭环优先，后付与定金逐项补齐</text>
+    <text x="740" y="142" font-size="20" font-weight="700">应用桥接与受控合同</text>
+    <text x="740" y="181" font-size="16">身份权限 / 报价 / 稳定行映射</text>
+    <text x="740" y="215" font-size="16">来源选择 / 本人授权 / 资源编排</text>
+    <text x="740" y="249" font-size="16">持久意图 / 幂等 / 事件与结果查询</text>
+    <text x="740" y="286" font-size="15" fill="#52627a">本地或远程适配，业务语义一致</text>
+    <text x="740" y="315" font-size="14" fill="#52627a">不跨库写表，不假设跨域大事务</text>
+    <text x="350" y="435" font-size="20" font-weight="700">共用底座及唯一事实</text>
+    <text x="350" y="471" font-size="16">商品：项目 / SKU / 门店价格</text>
+    <text x="350" y="504" font-size="16">Core：普通交易 / 服务核销来源</text>
+    <text x="730" y="471" font-size="16">资源：人员 / 排班 / 原子占用</text>
+    <text x="730" y="504" font-size="16">Pay：收款 / 储值 / 权益使用</text>
+    <text x="350" y="534" font-size="14" fill="#52627a">两类来源均属订单域；资源原子占用与门店独立账户仍需按阶段验收</text>
+  </g>
+  <g fill="none" stroke="#52627a" stroke-width="2" marker-end="url(#arrow)">
+    <path d="M260 150 H315"/>
+    <path d="M650 180 H705"/>
+    <path d="M715 270 H660" stroke-dasharray="6 4"/>
+    <path d="M325 285 H270"/>
+    <path d="M870 345 V390"/>
+    <path d="M490 400 V355" stroke-dasharray="6 4"/>
+  </g>
+  <text x="42" y="588" font-family="system-ui, sans-serif" font-size="14" fill="#52627a">实线：请求或业务事实投递　虚线：权威结果与恢复同步　行业状态不能代替支付、核销或基础履约事实</text>
+</svg>

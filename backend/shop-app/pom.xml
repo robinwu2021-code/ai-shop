@@ -218,6 +218,7 @@
                     <!-- 用属性而不是写死：空的 <excludedGroups/> 在 profile 合并时不会覆盖父值 -->
                     <systemPropertyVariables>
                         <food.build.shape>${food.build.shape}</food.build.shape>
+                        <beauty.build.shape>${beauty.build.shape}</beauty.build.shape>
                     </systemPropertyVariables>
                     <groups>${surefire.groups}</groups>
                     <excludedGroups>${surefire.excludedGroups}</excludedGroups>
@@ -229,6 +230,7 @@
     <properties>
         <!-- 默认：跑全部非 e2e 的用例 -->
         <food.build.shape>retail</food.build.shape>
+        <beauty.build.shape>retail</beauty.build.shape>
         <git.sha>unknown</git.sha>
         <surefire.groups></surefire.groups>
         <surefire.excludedGroups>e2e</surefire.excludedGroups>
@@ -284,6 +286,72 @@
                                             <excludes>
                                                 <exclude>ai.neargo.shop:food-core</exclude>
                                                 <exclude>ai.neargo.shop:food-server</exclude>
+                                            </excludes>
+                                            <searchTransitive>true</searchTransitive>
+                                        </bannedDependencies>
+                                    </rules>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!-- 显式构建形态；运行时仍必须设置 shop.beauty.enabled/deployment。 -->
+        <profile>
+            <id>beauty-embedded</id>
+            <properties>
+                <beauty.build.shape>embedded</beauty.build.shape>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>ai.neargo.shop</groupId>
+                    <artifactId>beauty-web</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>ai.neargo.shop</groupId>
+                    <artifactId>beauty-core</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <!-- 显式构建形态；运行时仍必须设置 shop.beauty.enabled/deployment。 -->
+        <profile>
+            <id>beauty-standalone</id>
+            <properties>
+                <beauty.build.shape>standalone</beauty.build.shape>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>ai.neargo.shop</groupId>
+                    <artifactId>beauty-web</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>ai.neargo.shop</groupId>
+                    <artifactId>beauty-channel</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>beauty-standalone-no-local-writer</id>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <bannedDependencies>
+                                            <excludes>
+                                                <exclude>ai.neargo.shop:beauty-core</exclude>
+                                                <exclude>ai.neargo.shop:beauty-server</exclude>
                                             </excludes>
                                             <searchTransitive>true</searchTransitive>
                                         </bannedDependencies>
