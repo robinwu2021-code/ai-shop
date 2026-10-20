@@ -299,7 +299,7 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
             facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
             if (env.getProperty("test.policy.archive", Boolean.class, true)) {
                 facade.setArchiveOnly(Set.of("PLATFORM:FOOD_STORE_POLICY_PUBLISHED",
-                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED", "PLATFORM:FOOD_TABLE_AREA_CHANGED"));
+                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED", "PLATFORM:FOOD_TABLE_AREA_CHANGED", "PLATFORM:FOOD_TABLE_CHANGED"));
             }
             return facade;
         }

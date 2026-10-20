@@ -12,6 +12,7 @@ public final class FoodDataScopeRegistration implements DataScopeRegistrar {
         registry.register("fnb_service_calendar", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_action_log", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_store_policy", Map.of(ScopeDim.MERCHANT, "entity_no"));
+        registry.register("fnb_table", Map.of(ScopeDim.MERCHANT, "entity_no"));
         registry.register("fnb_table_area", Map.of(ScopeDim.MERCHANT, "entity_no"));
     }
 }

@@ -7,7 +7,7 @@
 
 ## 一、协议与能力边界
 
-95个目标端点，统一JSON语义；路径为建议合同，未全部注册在当前Controller。本地适配器和远程适配器遵守相同DTO、权限和幂等。
+100个目标端点，统一JSON语义；路径为建议合同，未全部注册在当前Controller。本地适配器和远程适配器遵守相同DTO、权限和幂等。
 
 - /biz为商家作业，/mp为顾客，/ops为平台，/internal仅服务身份。老板App/收银/厨房复用biz服务，按角色门店工位鉴权，不把平台管理员当商家收银员。
 - Authorization为获准身份；X-Request-Id用于追踪。所有有副作用操作必需Idempotency-Key；作用域含entity/store/operation/key，规范payload哈希同键异参返回409。operator/entity从身份获取，不接受客户端冒充。
@@ -116,6 +116,11 @@
 | C | FOOD-API-093 | POST `/biz/x/food/stores/{storeNo}/table-areas` | 创建桌区 |
 | C | FOOD-API-094 | PUT `/biz/x/food/table-areas/{areaNo}` | 编辑桌区 |
 | C | FOOD-API-095 | POST `/biz/x/food/table-areas/{areaNo}:set-status` | 桌区启停 |
+| C | FOOD-API-096 | GET `/biz/x/food/stores/{storeNo}/tables` | 桌台列表 |
+| C | FOOD-API-097 | GET `/biz/x/food/tables/{tableNo}` | 桌台详情 |
+| C | FOOD-API-098 | PUT `/biz/x/food/tables/{tableNo}` | 编辑桌台 |
+| C | FOOD-API-099 | POST `/biz/x/food/tables/{tableNo}:set-status` | 桌台启停 |
+| C | FOOD-API-100 | POST `/biz/x/food/tables/{tableNo}:archive` | 归档桌台 |
 
 ## 三、公共DTO输入输出字段
 
@@ -1094,7 +1099,7 @@
 
 `POST /biz/x/food/stores/{storeNo}/tables`
 
-权限与守卫：门店范围与对象权限；写操作CAS版本及幂等。
+权限与守卫：主体门店及启用桌区一致；锁桌区仲裁行后创建；同店code精确唯一且归档后不复用；初始ACTIVE/IDLE、version0；不接受客户端占用状态；非空resourceNo在权威查询合同未齐时拒绝。
 
 能力依赖：餐饮新增。
 
@@ -1108,17 +1113,18 @@
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| name | string | 是 | 桌名 |
-| areaName | string | 是 | 桌区 |
-| capacity | int32 | 是 | 座位 |
-| resourceNo | string | 否 | 资源 |
+| areaNo | string | 是 | 桌区 |
+| code | string | 是 | 门店唯一桌台编码 |
+| name | string | 是 | 名称 |
+| capacity | int32 | 是 | 正座位数 |
+| sortNo | int32 | 是 | 排序 |
+| resourceNo | string | 否 | 共享资源 |
 
 成功输出（data）：
 
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
-| tableNo | string | 是 | 编号 |
-| version | int64 | 是 | 版本 |
+| table | Table | 是 | 桌台 |
 
 ### FOOD-API-025 · 桌码轮换
 
@@ -3235,6 +3241,150 @@
 | 参数 | 类型 | 必填 | 意义 |
 |---|---|---|---|
 | area | TableArea | 是 | 桌区 |
+
+
+### FOOD-API-096 · 桌台列表
+
+`GET /biz/x/food/stores/{storeNo}/tables`
+
+权限与守卫：主体及当前门店过滤records与total；默认page1/size20最大100；areaNo/status/turnoverState及字面关键词过滤；按sortNo/tableNo稳定排序；排除归档，不以支付状态代替桌态。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| storeNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Query：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| page | int32 | 否 | 默认1 |
+| size | int32 | 否 | 默认20最大100 |
+| areaNo | string | 否 | 桌区 |
+| status | string | 否 | 配置状态 |
+| turnoverState | string | 否 | 资源状态 |
+| keyword | string | 否 | 编码名称 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| records | Table[] | 是 | 授权列表 |
+| total | int64 | 是 | 总数 |
+| page | int32 | 是 | 页 |
+| size | int32 | 是 | 页长 |
+
+### FOOD-API-097 · 桌台详情
+
+`GET /biz/x/food/tables/{tableNo}`
+
+权限与守卫：主体及当前门店与对象一致；沿原STORE权限和目录；归档不显示，不暴露物理id。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| tableNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Query：
+
+无额外参数。
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| table | Table | 是 | 桌台详情 |
+
+### FOOD-API-098 · 编辑桌台
+
+`PUT /biz/x/food/tables/{tableNo}`
+
+权限与守卫：主体及当前门店与对象一致；原STORE权限、CAS版本和幂等；按编号锁原/目标桌区再锁桌台并复核；移区目标须启用，有活动占用禁止移区缩容；code及归属不改。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| tableNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| areaNo | string | 是 | 同店桌区 |
+| name | string | 是 | 名称 |
+| capacity | int32 | 是 | 正容量 |
+| sortNo | int32 | 是 | 排序 |
+| version | int64 | 是 | 版本 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| table | Table | 是 | 桌台 |
+
+### FOOD-API-099 · 桌台启停
+
+`POST /biz/x/food/tables/{tableNo}:set-status`
+
+权限与守卫：主体及当前门店与对象一致；原STORE权限、CAS版本和幂等；锁桌区再桌台；重新启用要求桌区启用，有活动占用禁止停用；同状态且版本正确无变更成功；reason非空最长255。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| tableNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| status | string | 是 | ACTIVE或DISABLED |
+| version | int64 | 是 | 版本 |
+| reason | string | 是 | 原因 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| table | Table | 是 | 桌台 |
+
+### FOOD-API-100 · 归档桌台
+
+`POST /biz/x/food/tables/{tableNo}:archive`
+
+权限与守卫：主体及当前门店与对象一致；原STORE权限、CAS版本和幂等；先停用且无活动占用；锁桌区再桌台并CAS逻辑归档；code唯一键及历史保留；原key重放Operation回执；reason非空最长255。
+
+能力依赖：餐饮新增。
+
+路径输入：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| tableNo | string (path) | 是 | 必须与授权主体及门店一致的路径标识 |
+
+请求Body：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| version | int64 | 是 | 版本 |
+| reason | string | 是 | 原因 |
+
+成功输出（data）：
+
+| 参数 | 类型 | 必填 | 意义 |
+|---|---|---|---|
+| operation | Operation | 是 | 归档记录 |
 
 
 ## 五、顾客与设备端复用

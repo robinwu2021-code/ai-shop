@@ -6262,7 +6262,7 @@
       "path": "/biz/x/food/stores/{storeNo}/tables",
       "input": "areaNo:string:桌区;code:string:门店唯一桌台编码;name:string:名称;capacity:int32:正座位数;sortNo:int32:排序;resourceNo?:string:共享资源",
       "output": "table:Table:桌台",
-      "guard": "主体门店及桌区一致；同店code唯一；初始空闲；不允许客户端传占用状态",
+      "guard": "主体门店及启用桌区一致；锁桌区仲裁行后创建；同店code精确唯一且归档后不复用；初始ACTIVE/IDLE、version0；不接受客户端占用状态；非空resourceNo在权威查询合同未齐时拒绝",
       "needs": "餐饮新增"
     },
     {
@@ -7054,7 +7054,7 @@
       "path": "/biz/x/food/stores/{storeNo}/tables",
       "input": "page?:int32:默认1;size?:int32:默认20最大100;areaNo?:string:桌区;status?:string:配置状态;turnoverState?:string:资源状态;keyword?:string:编码名称",
       "output": "records:Table[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；占用/台账按授权过滤，不以资金状态替代桌态",
+      "guard": "主体及当前门店过滤records与total；默认page1/size20最大100；areaNo/status/turnoverState及字面关键词过滤；按sortNo/tableNo稳定排序；排除归档，不以支付状态代替桌态",
       "needs": "餐饮新增"
     },
     {
@@ -7065,7 +7065,7 @@
       "path": "/biz/x/food/tables/{tableNo}",
       "input": "",
       "output": "table:Table:桌台详情",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "guard": "主体及当前门店与对象一致；沿原STORE权限和目录；归档不显示，不暴露物理id",
       "needs": "餐饮新增"
     },
     {
@@ -7076,7 +7076,7 @@
       "path": "/biz/x/food/tables/{tableNo}",
       "input": "areaNo:string:同店桌区;name:string:名称;capacity:int32:正容量;sortNo:int32:排序;version:int64:版本",
       "output": "table:Table:桌台",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；有活动占用禁止移区和缩容；code不可复用修改",
+      "guard": "主体及当前门店与对象一致；原STORE权限、CAS版本和幂等；按编号锁原/目标桌区再锁桌台并复核；移区目标须启用，有活动占用禁止移区缩容；code及归属不改",
       "needs": "餐饮新增"
     },
     {
@@ -7087,7 +7087,7 @@
       "path": "/biz/x/food/tables/{tableNo}:set-status",
       "input": "status:string:ACTIVE或DISABLED;version:int64:版本;reason:string:原因",
       "output": "table:Table:桌台",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；有活动占用禁止停用",
+      "guard": "主体及当前门店与对象一致；原STORE权限、CAS版本和幂等；锁桌区再桌台；重新启用要求桌区启用，有活动占用禁止停用；同状态且版本正确无变更成功；reason非空最长255",
       "needs": "餐饮新增"
     },
     {
@@ -7098,7 +7098,7 @@
       "path": "/biz/x/food/tables/{tableNo}:archive",
       "input": "version:int64:版本;reason:string:原因",
       "output": "operation:Operation:归档记录",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；先停用，无活动占用；历史引用保留",
+      "guard": "主体及当前门店与对象一致；原STORE权限、CAS版本和幂等；先停用且无活动占用；锁桌区再桌台并CAS逻辑归档；code唯一键及历史保留；原key重放Operation回执；reason非空最长255",
       "needs": "餐饮新增"
     },
     {

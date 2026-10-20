@@ -4,6 +4,7 @@ import ai.neargo.shop.food.api.FoodRequestScopeValidator;
 import ai.neargo.shop.food.api.biz.BizServiceCalendarController;
 import ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController;
 import ai.neargo.shop.food.api.biz.BizTableAreaController;
+import ai.neargo.shop.food.api.biz.BizTableController;
 import ai.neargo.shop.food.foodclient.FoodClientConfiguration;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.TableService;
@@ -53,6 +54,16 @@ public class FoodWebAutoConfiguration {
     BizTableAreaController tableAreaController(TableService service, StoreDirectoryPort stores,
             FoodRequestScopeValidator scope) {
         return new BizTableAreaController(service, stores, scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({TableService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizTableController.class)
+    BizTableController tableController(TableService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) {
+        return new BizTableController(service, stores, scope);
     }
 
     /** OFF is a nonbusiness skeleton mode; never expose a policy endpoint through it. */

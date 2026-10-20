@@ -7,6 +7,7 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.TableMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.idem.IdempotencyService;
 import org.mybatis.spring.mapper.MapperFactoryBean;
@@ -324,22 +325,29 @@ class TableServiceTest extends FoodWriteGuardFixture {
             factory.setSqlSessionTemplate(template);
             return factory;
         }
-        @Bean TableService tableService(TableAreaMapper areas, ActionLogMapper actions, IdempotencyService idem,
+        @Bean MapperFactoryBean<TableMapper> tables(@Qualifier("foodSqlSessionTemplate") SqlSessionTemplate template) {
+            var factory = new MapperFactoryBean<>(TableMapper.class);
+            factory.setSqlSessionTemplate(template);
+            return factory;
+        }
+        @Bean TableService tableService(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions, IdempotencyService idem,
                 @Qualifier("foodOutboxPublisher") OutboxPublisher publisher, PlatformTransactionManager manager,
                 StorePolicyPublicationTest.Signals signals, DataSource source) {
             OutboxPublisher checked = (event, options) -> {
+                int beforeCount = signals.afterFlush.get()
+                        ? new JdbcTemplate(source).queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class) : 0;
                 var receipt = publisher.publish(event, options);
                 if (signals.afterFlush.get()) TransactionSynchronizationManager.registerSynchronization(
                         new TransactionSynchronization() {
                             @Override public void beforeCommit(boolean readOnly) {
                                 assertThat(new JdbcTemplate(source).queryForObject(
-                                        "SELECT COUNT(*) FROM sys_outbox", Integer.class)).isOne();
+                                        "SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(beforeCount + 1);
                                 throw new IllegalStateException("after-policy-event-flush");
                             }
                         });
                 return receipt;
             };
-            return new TableServiceImpl(areas, actions, idem, checked, manager);
+            return new TableServiceImpl(areas, tables, actions, idem, checked, manager);
         }
     }
 }

@@ -3,12 +3,20 @@ package ai.neargo.shop.food.foodclient;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.food.dto.ArchiveTableReq;
 import ai.neargo.shop.food.dto.CreateTableAreaReq;
+import ai.neargo.shop.food.dto.CreateTableReq;
 import ai.neargo.shop.food.dto.ListTableAreasQuery;
+import ai.neargo.shop.food.dto.ListTablesQuery;
+import ai.neargo.shop.food.dto.OperationResultVO;
 import ai.neargo.shop.food.dto.SaveTableAreaReq;
+import ai.neargo.shop.food.dto.SaveTableReq;
 import ai.neargo.shop.food.dto.SetStatusTableAreaReq;
+import ai.neargo.shop.food.dto.SetStatusTableReq;
 import ai.neargo.shop.food.dto.TableAreaResultVO;
 import ai.neargo.shop.food.dto.TableAreaVO;
+import ai.neargo.shop.food.dto.TableResultVO;
+import ai.neargo.shop.food.dto.TableVO;
 import ai.neargo.shop.food.service.TableService;
 import ai.neargo.shop.food.spi.TableInternalApi;
 import ai.neargo.shop.svc.ServiceName;
@@ -56,5 +64,36 @@ public class RemoteTableService implements TableService {
             if (business != null) throw BizException.of(business);
             throw failure;
         }
+    }
+    @Override
+    public PageData<TableVO> listTables(String entityNo, String storeNo, ListTablesQuery query) {
+        return invoke(() -> api.listTables(new TableInternalApi.TableLookup(entityNo, storeNo, query)));
+    }
+    @Override
+    public TableResultVO getTable(String entityNo, String currentStoreNo, String tableNo) {
+        return invoke(() -> api.getTable(new TableInternalApi.TableIdentity(entityNo, currentStoreNo, tableNo)));
+    }
+    @Override
+    public TableResultVO createTable(String entityNo, String storeNo, String actorNo, CreateTableReq req, String key) {
+        return invoke(() -> api.createTable(new TableInternalApi.TableCreateCommand(
+                entityNo, storeNo, actorNo, key, req)));
+    }
+    @Override
+    public TableResultVO saveTable(String entityNo, String currentStoreNo, String tableNo, String actorNo,
+            SaveTableReq req, String key) {
+        return invoke(() -> api.saveTable(new TableInternalApi.TableSaveCommand(
+                entityNo, currentStoreNo, tableNo, actorNo, key, req)));
+    }
+    @Override
+    public TableResultVO setStatusTable(String entityNo, String currentStoreNo, String tableNo, String actorNo,
+            SetStatusTableReq req, String key) {
+        return invoke(() -> api.setStatusTable(new TableInternalApi.TableStatusCommand(
+                entityNo, currentStoreNo, tableNo, actorNo, key, req)));
+    }
+    @Override
+    public OperationResultVO archiveTable(String entityNo, String currentStoreNo, String tableNo, String actorNo,
+            ArchiveTableReq req, String key) {
+        return invoke(() -> api.archiveTable(new TableInternalApi.TableArchiveCommand(
+                entityNo, currentStoreNo, tableNo, actorNo, key, req)));
     }
 }

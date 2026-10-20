@@ -1,6 +1,6 @@
 # 餐饮系统 M0 基础工程与接入方案
 
-> 状态：实施中，NEXT-01～05已完成；NEXT-06基础接线完成，业务AC随NEXT-08/09验收；NEXT-07源码核验完成，独立交易验收阻塞；NEXT-08A读取、NEXT-08B受限策略发布、NEXT-08C接单日历及NEXT-09桌区管理已完成 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
+> 状态：实施中，NEXT-01～05已完成；NEXT-06基础接线完成，业务AC随NEXT-08/09验收；NEXT-07源码核验完成，独立交易验收阻塞；NEXT-08A读取、NEXT-08B受限策略发布、NEXT-08C接单日历、NEXT-09桌区管理及TBL-02桌台配置已完成 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
 > **本版替代上一版独立food-server三端鉴权、远程用户session解析的设计。** 独立餐饮只提供内部接口，C/B/平台运营Controller源码均归餐饮food-web，由shop-app挂载。
 > [独立项目、包及依赖清单](./TDD-餐饮系统-独立项目与包依赖方案.md) · [统一架构及三端完整清单](./TDD-餐饮系统-三端API与独立服务对齐.md) · [总计划](./TDD-餐饮系统-后端开发计划.md) · [平台Java规范](../../.claude/skills/ai-shop-dev-standards/references/java.md)。
 
@@ -398,6 +398,51 @@ TableAreaResultVO setStatusTableArea(String entityNo, String currentStoreNo, Str
 - [ ] 完整营业就绪及运行中数据库/远程依赖丢失的动态降级：当前始终OUT_OF_SERVICE，无UP状态；随真实交易合同与动态依赖检查另行实施验收，不作为本批非交易配置开发的阻断项。
 - [x] 对账实际7个B端业务API、表/类/方法，登记API081、PAY/INVENTORY和事件下游缺口；不以结构或liveness宣称营业通过。
 - [x] 桌区达到配置切片验收；下一步[TBL-02桌台配置需求细化](../requirements/餐饮系统-TBL02桌台配置需求细化.md)，再依次桌码、开台占用、清台。后续模块尚未实现。
+
+#### TBL-02：桌台配置实施计划（2026-10-21）
+
+**需求：** [TBL-02桌台配置](../requirements/餐饮系统-TBL02桌台配置需求细化.md)，用户已确认继续开发。档位1；原API024、096～100、原表fnb_table及同店code唯一键保持，创建ACTIVE/IDLE/version0。原TableService扩展六方法，不新增平行Service或Repository。无可用共享资源权威查询合同，本批明确拒绝非空resourceNo。
+
+**输入输出：** 原CreateTableReq(areaNo,code,name,capacity,sortNo,resourceNo)、ListTablesQuery(page,size,areaNo,status,turnoverState,keyword)、SaveTableReq(areaNo,name,capacity,sortNo,version)、SetStatusTableReq(status,version,reason)、ArchiveTableReq(version,reason)；TableVO含tableNo/storeNo/areaNo/code/name/capacity/sortNo/status/turnoverState/resourceNo/version。TableResultVO(table)，OperationResultVO(operation:OperationVO)沿原API100合同。
+
+**签名：** TableService.listTables(entityNo,storeNo,query):PageData<TableVO>；getTable(entityNo,currentStoreNo,tableNo):TableResultVO；createTable(entityNo,storeNo,actorNo,req,key):TableResultVO；saveTable/setStatusTable(entityNo,currentStoreNo,tableNo,actorNo,req,key):TableResultVO；archiveTable同入参返回OperationResultVO。
+
+**事务和锁顺序：** 保持现有桌区写事务SERIALIZABLE；桌台写明确READ_COMMITTED，避免初读自动持有共享锁造成锁升级。编辑/启停/归档先非锁定读取当前areaNo，再按areaNo升序锁定原/目标桌区，发现快照即验证其version，再锁桌台，复核当前areaNo及version；如中途已移区则CONFLICT，不自动重试。创建先锁目标桌区再插入；移区/启用验证目标ACTIVE。停用桌区沿NEXT-09同一仲裁行。活动占用使用真实ended_at IS NULL，不依赖资源投影。未来开台必须沿同一桌区→桌台锁顺序接入。
+
+**归档：** 先DISABLED且无活动占用；在行锁和CAS内更新deleted=1、version+1及原审计列，不调用物理delete、不释放原code唯一键。原key重放原归档回执，普通读取排除deleted。实际变化与原幂等/审计/Outbox同事务，事件带前后快照和reason；同状态且version正确无变化成功。
+
+**文件清单：** Java根ai.neargo.shop.food；A=food-api、D=food-core、W=food-web、S=food-server。
+
+- A/dto：上述五Req/Query与TableVO、TableResultVO、OperationResultVO；A/service/TableService保留桌区四方法并加桌台六方法；A/spi/TableInternalApi扩展六typed方法；全局ai.neargo.shop.spi.food/TableChanged记录真实变化。
+- D/entity/FnbTable、D/mapper/FoodMappers.TableMapper：原BaseEntity/主库、活动占用查询及CAS逻辑归档；D/service/impl/TableServiceImpl直接Mapper；FoodAutoConfiguration及FoodDataScopeRegistration实际装配/范围。
+- W/api/biz/BizTableController复用原身份/STORE权限/目录与范围；RemoteTableService及FoodWebAutoConfiguration补本地/远程入口；无C/平台代维护接口。
+- S/server/api/InternalTableController沿原内部安全链及400/403/404/409映射。既有独立HTTP客户端、原统一包装不变。
+- 测试：D/scenario/TableConfigurationTest，复用TableServiceTest夹具；W/scenario/TableConfigurationApiTest及RemoteTableServiceTest；S/scenario/InternalTableConfigurationApiTest与FoodServerPrimaryDatabaseTest；既有桌区测试替身显式拒绝未期望桌台调用。
+
+| 需求AC | 重点 | 测试与真实证据 |
+|---|---|---|
+| 查询/详情/范围 | records/total同过滤、关键词按字面、归档不显示、跨店拒绝 | readsOnlyScopedTables、keywordIsLiteral |
+| 创建/重复/资源 | ACTIVE/IDLE、同店唯一、原key及actor、非空resource拒绝 | createsAndReplays、rejectsInvalidCommands、concurrentCodeCreation |
+| 编辑/占用 | 旧版本、不能移区缩容但可改名、锁后复核 | editsWithVersionAndRejectsForeignMutation、occupancyBlocksUnsafeChanges、rejectsFutureVersionAcrossDiscoveryStatusChange |
+| 启停/归档 | 无变更、不级联、逻辑归档/唯一键保留/重放 | statusAndArchiveKeepHistory |
+| 事务/审计 | 实际前后payload及操作人，事件flush后异常全回滚 | preservesAuditSnapshots、rollbackAfterFlush |
+| 双部署 | 原权限/未知body、六typed HTTP无重试、主库真实链路 | 实际web/remote/internal/server测试 |
+| 资源并发 | 建桌/启用与桌区停用串行化，旧版竞争仅一成功 | 一次性MySQL raceCreateAgainstAreaDisable、raceEnableAgainstAreaDisable、raceSameVersion |
+
+- [x] 1. 写上述核心真实Mapper场景，先观察行为RED，再实现查询/创建/编辑/状态/归档，保留原桌区回归。
+- [x] 2. 写B端和内部六接口/独立HTTP测试，先观察缺路由或未实现RED，再接真实Controller和传输；不假造成功替身。
+- [x] 3. 一次性MySQL覆盖原冻结表、唯一键、两资源竞争和事务回滚；reactor完整回归、三宿主及设计守卫。
+- [x] 4. 同步六API guard真源并隔离生成相关章节，版本或占用校验消融必须变红；恢复后完整回归、独立审查和定向提交。
+
+**验证：** JDK21，mvn -o，私有缓存/private/tmp/food-next08c-m2；餐饮reactor install、scripts/verify-food-primary-mysql.py、宿主FoodEmbeddedWiringTest三形态、原30项设计守卫。Maven共享target串行运行，不访问现有业务库。
+
+**实施收据（2026-10-21）：** 原API024、096～100已实现，本地和typed独立调用合同一致；原桌区四接口回归保持通过。最终餐饮reactor实际157项通过（154项Surefire场景及3项打包IT）、25项数据库条件跳过；一次性MySQL实际82项通过且0跳过（15主库＋66业务/基础守卫＋1真实server），覆盖5类资源并发、确定性交错、全四种写操作的事件flush后回滚及冻结表上的六接口链路。宿主默认/embedded/standalone实际5/5/6项通过，条件跳过1/1/0；设计/DDL/方法/模块守卫30项通过。
+
+**缺陷与消融证据：** 初始桌台核心10项行为RED→GREEN，实际B端/内部缺路由RED及远程HTTP未实现RED→GREEN。独立只读审查发现1项Important：请求使用未来版本，发现后其他线程停用桌台和桌区，原逻辑可能跳过目标桌区ACTIVE校验。rejectsFutureVersionAcrossDiscoveryStatusChange通过真实Service交错复现RED，增加发现快照version即刻校验后GREEN，保留锁后version/area复核。移除该新增校验做消融后实际1项失败，恢复后完整回归与MySQL通过。无遗留Minor，审查者未运行测试，最终门禁由实施者执行。
+
+日志：/private/tmp/food-tbl02-final-reactor.log、food-tbl02-final-mysql.log、food-tbl02-host-*.log、food-tbl02-final-design.log、food-tbl02-discovery-red.log及food-tbl02-ablation.log。行宽整理后重新编译/私有缓存安装和宿主检查通过。冻结V1 SHA256仍为 `215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9`，未访问或修改现有业务库。
+
+**设计→实现对账：** 新增8个DTO/VO、FnbTable、TableChanged、BizTableController、InternalTableController及3个资源测试；扩展原TableService/Impl、TableInternalApi、RemoteTableService、原Mapper集合/装配/范围注册和既有夹具/真实server测试；MySQL脚本纳入18项桌台测试。保持原OperationResultVO(operation)，归档为Mapper显式CAS逻辑更新，唯一键不变。API真源仅补6条guard；隔离生成，仅提交024替换和096～100新增章节/目录，不收其他待提交设计。旧桌区替身继续显式拒绝非预期桌台调用。共享资源非空拒绝、后续占用必须共用锁顺序、平台授权和支付库存交易就绪仍单列未交付。
 
 #### 依赖与里程碑
 

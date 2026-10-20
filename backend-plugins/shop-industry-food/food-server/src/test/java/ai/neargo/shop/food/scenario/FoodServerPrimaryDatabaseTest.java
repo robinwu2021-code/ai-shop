@@ -13,6 +13,14 @@ import ai.neargo.shop.food.mapper.FoodMappers;
 import ai.neargo.shop.food.server.FoodApplication;
 import ai.neargo.shop.food.spi.ServiceCalendarInternalApi;
 import ai.neargo.shop.food.spi.TableInternalApi;
+import ai.neargo.shop.food.service.TableService;
+import ai.neargo.shop.food.dto.SetStatusTableAreaReq;
+import ai.neargo.shop.food.dto.CreateTableReq;
+import ai.neargo.shop.food.dto.SaveTableReq;
+import ai.neargo.shop.food.dto.SetStatusTableReq;
+import ai.neargo.shop.food.dto.ArchiveTableReq;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import ai.neargo.shop.food.spi.StoreOperationInternalApi;
 import ai.neargo.shop.food.spi.StorePolicyPublicationInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
@@ -207,9 +215,54 @@ class FoodServerPrimaryDatabaseTest {
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isEqualTo(7);
                         assertThat(sql.queryForObject("SELECT reason FROM fnb_action_log WHERE action='SET_STATUS_AREA'",
                                 String.class)).isEqualTo("停用");
+                        var tableService=context.getBean(TableService.class);
+                        tableService.setStatusTableArea("E","A",areaNo,"trusted-actor",
+                                new SetStatusTableAreaReq("ACTIVE",2L,"桌台配置"),"enable-area-for-table");
+                        var json=context.getBean(ObjectMapper.class);
+                        var createTable=new TableInternalApi.TableCreateCommand("E","A","trusted-actor","table-create",
+                                new CreateTableReq(areaNo,"T01","四人桌",4,0,null));
+                        String tableReceipt=tableCall(mvc,TableInternalApi.TABLE_CREATE_PATH,createTable,json)
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.table.version").value(0))
+                                .andExpect(jsonPath("$.table.turnoverState").value("IDLE"))
+                                .andReturn().getResponse().getContentAsString();
+                        tableCall(mvc,TableInternalApi.TABLE_CREATE_PATH,createTable,json).andExpect(status().isOk())
+                                .andExpect(r -> assertThat(r.getResponse().getContentAsString()).isEqualTo(tableReceipt));
+                        String tableNo=json.readTree(tableReceipt).get("table").get("tableNo").asString();
+                        tableCall(mvc,TableInternalApi.TABLE_LIST_PATH,new TableInternalApi.TableLookup("E","A",null),json)
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1));
+                        tableCall(mvc,TableInternalApi.TABLE_GET_PATH,new TableInternalApi.TableIdentity("E","A",tableNo),json)
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.table.capacity").value(4));
+                        tableCall(mvc,TableInternalApi.TABLE_SAVE_PATH,new TableInternalApi.TableSaveCommand("E","A",tableNo,
+                                "trusted-actor","table-save",new SaveTableReq(areaNo,"六人桌",6,1,0L)),json)
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.table.version").value(1));
+                        tableCall(mvc,TableInternalApi.TABLE_STATUS_PATH,new TableInternalApi.TableStatusCommand("E","A",tableNo,
+                                "trusted-actor","table-off",new SetStatusTableReq("DISABLED",1L,"停用")),json)
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.table.version").value(2));
+                        var archive=new TableInternalApi.TableArchiveCommand("E","A",tableNo,"trusted-actor","table-archive",
+                                new ArchiveTableReq(2L,"归档"));
+                        String archiveReceipt=tableCall(mvc,TableInternalApi.TABLE_ARCHIVE_PATH,archive,json)
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.operation.version").value(3))
+                                .andReturn().getResponse().getContentAsString();
+                        tableCall(mvc,TableInternalApi.TABLE_ARCHIVE_PATH,archive,json).andExpect(status().isOk())
+                                .andExpect(r -> assertThat(r.getResponse().getContentAsString()).isEqualTo(archiveReceipt));
+                        tableCall(mvc,TableInternalApi.TABLE_GET_PATH,new TableInternalApi.TableIdentity("E","A",tableNo),json)
+                                .andExpect(status().isNotFound());
+                        tableCall(mvc,TableInternalApi.TABLE_CREATE_PATH,new TableInternalApi.TableCreateCommand("E","A",
+                                "trusted-actor","reuse-code",new CreateTableReq(areaNo,"T01","重建",4,0,null)),json)
+                                .andExpect(status().isConflict());
+                        assertThat(sql.queryForObject("SELECT deleted FROM fnb_table",Integer.class)).isOne();
+                        assertThat(sql.queryForObject("SELECT version FROM fnb_table",Long.class)).isEqualTo(3);
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_action_log",Integer.class)).isEqualTo(11);
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class)).isEqualTo(11);
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent",Integer.class)).isEqualTo(12);
                     });
         } finally { admin.execute("DROP DATABASE " + database); }
     }
+    private static ResultActions tableCall(MockMvc mvc,String path,Object command,ObjectMapper json) throws Exception {
+        return mvc.perform(post(path).header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(command)));
+    }
+
     /** Only a disposable test source/route; production registration remains owned by the platform. */
     @Configuration(proxyBeanMethods = false)
     static class PublicationRoute {
@@ -218,7 +271,7 @@ class FoodServerPrimaryDatabaseTest {
             var facade = new UnifiedOutboxFacade(json);
             facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
             facade.setArchiveOnly(Set.of("PLATFORM:FOOD_STORE_POLICY_PUBLISHED",
-                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED", "PLATFORM:FOOD_TABLE_AREA_CHANGED"));
+                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED", "PLATFORM:FOOD_TABLE_AREA_CHANGED", "PLATFORM:FOOD_TABLE_CHANGED"));
             return facade;
         }
     }

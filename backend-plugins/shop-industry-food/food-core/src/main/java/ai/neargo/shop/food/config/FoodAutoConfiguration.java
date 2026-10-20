@@ -5,6 +5,7 @@ import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceCalendarMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.TableMapper;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.TableService;
 import ai.neargo.shop.food.service.impl.StoreOperationServiceImpl;
@@ -41,10 +42,11 @@ public class FoodAutoConfiguration {
     @Bean
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(TableService.class)
-    TableService tableService(TableAreaMapper areas, ActionLogMapper actions, IdempotencyService idem,
+    TableService tableService(TableAreaMapper areas, TableMapper tables, ActionLogMapper actions,
+            IdempotencyService idem,
             @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        return new TableServiceImpl(areas, actions, idem, publisher, manager);
+        return new TableServiceImpl(areas, tables, actions, idem, publisher, manager);
     }
 
     @Bean

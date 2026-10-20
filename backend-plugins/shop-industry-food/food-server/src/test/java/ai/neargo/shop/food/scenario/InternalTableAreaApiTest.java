@@ -8,6 +8,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.food.dto.CreateTableReq;
+import ai.neargo.shop.food.dto.SaveTableReq;
+import ai.neargo.shop.food.dto.SetStatusTableReq;
+import ai.neargo.shop.food.dto.ArchiveTableReq;
+import ai.neargo.shop.food.dto.ListTablesQuery;
+import ai.neargo.shop.food.dto.TableVO;
+import ai.neargo.shop.food.dto.TableResultVO;
+import ai.neargo.shop.food.dto.OperationResultVO;
+
 import ai.neargo.shop.food.dto.CreateTableAreaReq;
 import ai.neargo.shop.food.dto.ListTableAreasQuery;
 import ai.neargo.shop.food.dto.SaveTableAreaReq;
@@ -82,6 +91,25 @@ class InternalTableAreaApiTest {
     static class Host {
         @Bean TableService service() {
             return new TableService() {
+                public PageData<TableVO> listTables(String entityNo, String storeNo, ListTablesQuery query) {
+                    throw new AssertionError("Unexpected table operation");
+                }
+                public TableResultVO getTable(String entityNo, String currentStoreNo, String tableNo) {
+                    throw new AssertionError("Unexpected table operation");
+                }
+                public TableResultVO createTable(String entityNo, String storeNo, String actorNo, CreateTableReq req, String idempotencyKey) {
+                    throw new AssertionError("Unexpected table operation");
+                }
+                public TableResultVO saveTable(String entityNo, String currentStoreNo, String tableNo, String actorNo, SaveTableReq req, String idempotencyKey) {
+                    throw new AssertionError("Unexpected table operation");
+                }
+                public TableResultVO setStatusTable(String entityNo, String currentStoreNo, String tableNo, String actorNo, SetStatusTableReq req, String idempotencyKey) {
+                    throw new AssertionError("Unexpected table operation");
+                }
+                public OperationResultVO archiveTable(String entityNo, String currentStoreNo, String tableNo, String actorNo, ArchiveTableReq req, String idempotencyKey) {
+                    throw new AssertionError("Unexpected table operation");
+                }
+
                 private TableAreaResultVO check(String e,String s,String actor,String key) {
                     assertThat(e).isEqualTo("E");assertThat(s).isEqualTo("A");
                     assertThat(actor).isEqualTo("staff");assertThat(key).isEqualTo("original");

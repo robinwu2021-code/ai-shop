@@ -8,6 +8,12 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.api.biz.BizTableAreaController;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
 import ai.neargo.shop.food.dto.CreateTableAreaReq;
+import ai.neargo.shop.food.dto.CreateTableReq;
+import ai.neargo.shop.food.dto.SaveTableReq;
+import ai.neargo.shop.food.dto.SetStatusTableReq;
+import ai.neargo.shop.food.dto.ArchiveTableReq;
+import ai.neargo.shop.food.foodclient.RemoteTableService;
+import java.time.Duration;
 import ai.neargo.shop.food.dto.SaveTableAreaReq;
 import ai.neargo.shop.food.dto.SetStatusTableAreaReq;
 import ai.neargo.shop.food.service.TableService;
@@ -25,6 +31,49 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 
 class RemoteTableServiceTest {
+    @Test void sixTableCallsPreservePayloadAndNeverRetryArchiveConflict() throws Exception {
+        var requests = new ArrayList<String>();
+        var conflict = new AtomicBoolean();
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        String table = "{\"tableNo\":\"T1\",\"storeNo\":\"A\",\"areaNo\":\"AREA1\",\"code\":\"T1\","
+                + "\"name\":\"四人桌\",\"capacity\":4,\"sortNo\":0,\"status\":\"ACTIVE\",\"turnoverState\":\"IDLE\",\"version\":0}";
+        for(String path:List.of(TableInternalApi.TABLE_LIST_PATH,TableInternalApi.TABLE_GET_PATH,
+                TableInternalApi.TABLE_CREATE_PATH,TableInternalApi.TABLE_SAVE_PATH,
+                TableInternalApi.TABLE_STATUS_PATH,TableInternalApi.TABLE_ARCHIVE_PATH)) {
+            server.createContext(path, exchange -> {
+                requests.add(path+new String(exchange.getRequestBody().readAllBytes(),StandardCharsets.UTF_8));
+                assertThat(exchange.getRequestHeaders().getFirst(InternalHttp.TOKEN_HEADER)).isEqualTo("wire");
+                String response=path.equals(TableInternalApi.TABLE_LIST_PATH)
+                        ? "{\"records\":["+table+"],\"total\":1,\"page\":1,\"size\":20}"
+                        : path.equals(TableInternalApi.TABLE_ARCHIVE_PATH)
+                        ? "{\"operation\":{\"operationNo\":\"OP1\",\"status\":\"SUCCEEDED\",\"version\":1,\"resultRef\":\"T1\"}}"
+                        : "{\"table\":"+table+"}";
+                byte[] body=response.getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().add("Content-Type","application/json");
+                exchange.sendResponseHeaders(conflict.get()?409:200,body.length);
+                exchange.getResponseBody().write(body);exchange.close();
+            });
+        }
+        server.start();
+        try {
+            var http=new InternalHttp(name -> Optional.of("http://127.0.0.1:"+server.getAddress().getPort()),"wire");
+            var service=new RemoteTableService(http.client("FOOD",TableInternalApi.class,Duration.ofSeconds(2)));
+            assertThat(service.listTables("E","A",null)).isNotNull();
+            assertThat(service.getTable("E","A","T1").table().tableNo()).isEqualTo("T1");
+            service.createTable("E","A","staff",new CreateTableReq("AREA1","T1","四人桌",4,0,null),"original");
+            service.saveTable("E","A","T1","staff",new SaveTableReq("AREA1","四人桌",4,0,0L),"save");
+            service.setStatusTable("E","A","T1","staff",new SetStatusTableReq("DISABLED",0L,"调整"),"off");
+            assertThat(service.archiveTable("E","A","T1","staff",new ArchiveTableReq(0L,"调整"),"ar")
+                    .operation().version()).isEqualTo(1);
+            conflict.set(true);
+            assertThatThrownBy(() -> service.archiveTable("E","A","T1","staff",new ArchiveTableReq(0L,"调整"),"ar"))
+                    .isInstanceOfSatisfying(BizException.class,e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+            assertThat(requests).hasSize(7);
+            assertThat(requests.get(2)).contains("\"actorNo\":\"staff\"","\"idempotencyKey\":\"original\"", "\"capacity\":4");
+            assertThat(requests.get(3)).contains("\"tableNo\":\"T1\"","\"version\":0");
+        } finally { server.stop(0); }
+    }
+
     @Test void allFourCallsUseTypedWireAndConflictIsNeverRetried() throws Exception {
         var requests = new ArrayList<String>();
         var conflict = new AtomicBoolean();
