@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, mkdirSync, writeFileSync, mkdtempSync, rmSync, realpathSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync, mkdtempSync, rmSync, realpathSync, readdirSync, copyFileSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -43,7 +43,17 @@ function schemaCheck() {
   const temp = mkdtempSync(join(tmpdir(), 'points-schema-'));
   try {
     const generated = join(temp, 'schema.sql');
-    run('python3', ['backend/scripts/gen-test-schema.py', generated]);
+    const migrations = join(root, 'backend/shop-app/src/main/resources/db/migration');
+    const scoped = join(temp, 'migrations');
+    mkdirSync(scoped);
+    // Replay every SQL migration touching this table, including its original CREATE.
+    // Unrelated stored-value migrations are not inputs to this table's schema check.
+    for (const file of readdirSync(migrations).filter(f => /^V.*\.sql$/.test(f))) {
+      if (/\bpts_point_type\b/.test(readFileSync(join(migrations, file), 'utf8'))) {
+        copyFileSync(join(migrations, file), join(scoped, file));
+      }
+    }
+    run('python3', ['backend/scripts/gen-test-schema.py', generated, scoped]);
     const table = text => text.match(/CREATE TABLE IF NOT EXISTS pts_point_type\s*\([\s\S]*?\n\);/)?.[0];
     const expected = table(readFileSync(generated, 'utf8'));
     if (!expected || normalizeTable(expected) !== normalizeTable(table(readFileSync(join(root, 'backend/shop-app/src/test/resources/schema-test.sql'), 'utf8')) ?? '')) {
