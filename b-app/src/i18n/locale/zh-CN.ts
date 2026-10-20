@@ -2,6 +2,8 @@
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
   storedValue: {
+    "createdAt": "创建时间",
+    "updatedAt": "修改时间",
     "title": "储值管理",
     "plans": "储值方案",
     "customers": "顾客账户",

@@ -19,7 +19,7 @@ public final class StoredValuePlans {
 
     public record View(String planNo, String versionNo, long revision, String storeNo, String name,
             String currency, long paidAmountMinor, long bonusAmountMinor, long totalAmountMinor,
-            String status, Instant createdAt) { }
+            String status, Instant createdAt, Instant updatedAt) { }
 
     public record Status(String storeNo, String status, long expectedRevision) {
         public Status {

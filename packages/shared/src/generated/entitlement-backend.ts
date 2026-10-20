@@ -243,7 +243,7 @@ export type Validity_eaa8530e32 = { "endAt"?: string | null; "mode"?: string | n
 
 export type VersionView_0c9d33a791 = { "activityNo"?: string | null; "definition"?: UnifiedActivityDefinition_d13b99bbf6 | null; "publishedAt"?: string | null; "snapshotHash"?: string | null; "versionIndex"?: number; "versionNo"?: string | null; };
 
-export type View_a11db9045d = { "bonusAmountMinor"?: number; "createdAt"?: string | null; "currency"?: string | null; "name"?: string | null; "paidAmountMinor"?: number; "planNo"?: string | null; "revision"?: number; "status"?: string | null; "storeNo"?: string | null; "totalAmountMinor"?: number; "versionNo"?: string | null; };
+export type View_a11db9045d = { "bonusAmountMinor"?: number; "createdAt"?: string | null; "currency"?: string | null; "name"?: string | null; "paidAmountMinor"?: number; "planNo"?: string | null; "revision"?: number; "status"?: string | null; "storeNo"?: string | null; "totalAmountMinor"?: number; "updatedAt"?: string | null; "versionNo"?: string | null; };
 
 export interface EntitlementBackendOperations {
   "BizVersionedActivityController_list": {

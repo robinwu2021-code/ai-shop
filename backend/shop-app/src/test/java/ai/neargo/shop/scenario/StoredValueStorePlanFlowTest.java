@@ -62,6 +62,23 @@ class StoredValueStorePlanFlowTest {
         assertThat(plans.get(scope, store, first.planNo()).totalAmountMinor()).isEqualTo(6000);
     }
 
+    @Test void statusChangeExposesAuditTimeAndPersistsActualModifier() {
+        String entity=id(),store=id();
+        var owner=new CatalogScope("MAIN",entity,"CREATOR",false);
+        var created=plans.create(owner,new Create(store,"审计测试","CNY",5000,1000),id());
+        var initial=json.readTree(json.writeValueAsString(created));
+        assertThat(initial.path("updatedAt").isMissingNode()).isFalse();
+        var editor=new CatalogScope("MAIN",entity,"EDITOR",false);
+        String key=id();
+        var stopped=plans.status(editor,created.planNo(),new Status(store,"INACTIVE",created.revision()),key);
+        var changed=json.readTree(json.writeValueAsString(stopped));
+        assertThat(changed.path("updatedAt").asText()).isNotBlank();
+        assertThat(stopped.createdAt()).isEqualTo(created.createdAt());
+        assertThat(jdbc.queryForObject("SELECT created_by FROM sv_recharge_plan WHERE plan_no=?",String.class,created.planNo())).isEqualTo("CREATOR");
+        assertThat(jdbc.queryForObject("SELECT updated_by FROM sv_recharge_plan WHERE plan_no=?",String.class,created.planNo())).isEqualTo("EDITOR");
+        assertThat(plans.status(editor,created.planNo(),new Status(store,"INACTIVE",created.revision()),key)).isEqualTo(stopped);
+    }
+
     @Test void sameCustomerCreditsAccumulateOnlyInsideTheOriginalStore() {
         String user = id(), entity = id(), a = id(), b = id();
         var context = new EntitlementContext("MAIN", "WORKER", id(), "0".repeat(64));

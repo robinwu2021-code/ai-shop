@@ -1,5 +1,7 @@
 export default {
   storedValue: {
+    "createdAt": "Created at",
+    "updatedAt": "Updated at",
     "title": "Stored value",
     "plans": "Plans",
     "customers": "Customers",

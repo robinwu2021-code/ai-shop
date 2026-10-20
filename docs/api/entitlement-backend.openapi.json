@@ -6449,6 +6449,17 @@
             "format": "int64",
             "type": "integer"
           },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "versionNo": {
             "anyOf": [
               {

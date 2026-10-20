@@ -1,5 +1,7 @@
 export default {
   storedValue: {
+    "createdAt": "تاريخ الإنشاء",
+    "updatedAt": "تاريخ التعديل",
     "title": "إدارة الرصيد",
     "plans": "خطط الشحن",
     "customers": "حسابات العملاء",

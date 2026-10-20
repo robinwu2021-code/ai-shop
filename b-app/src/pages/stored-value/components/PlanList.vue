@@ -5,6 +5,7 @@ import { api } from '@/api';
 import { useMerchantStore } from '@/stores/merchant';
 import { useStoredValueList } from '@/shared/use-stored-value-list';
 import { money } from '@shared/utils/money';
+import { datetime } from '@shared/utils/datetime';
 const {t}=useI18n();const merchant=useMerchantStore();const status=ref('');
 const {records,cursor,loading,error,load}=useStoredValueList(()=>merchant.storeNo,c=>api.mSvPlans({storeNo:merchant.storeNo,status:status.value||undefined,cursor:c}));
 const statuses=computed(()=>[{key:'',label:t('storedValue.allPlans')},{key:'ACTIVE',label:t('storedValue.active')},{key:'INACTIVE',label:t('storedValue.inactive')}]);
@@ -21,6 +22,8 @@ function navigate(url:string){uni.navigateTo({url});}
    <view class="sh-row sh-row--between"><text class="txt-strong">{{p.name}}</text><text class="sh-chip" :class="p.status==='ACTIVE'?'sh-chip--success':''">{{t(p.status==='ACTIVE'?'storedValue.active':'storedValue.inactive')}}</text></view>
    <sh-kv :label="t('storedValue.total')" between><text class="txt-price sh-num">{{money(p.totalAmountMinor,p.currency)}}</text></sh-kv>
    <text class="sh-muted">{{t('storedValue.paid')}} {{money(p.paidAmountMinor,p.currency)}} · {{t('storedValue.bonus')}} {{money(p.bonusAmountMinor,p.currency)}}</text>
+   <sh-kv :label="t('storedValue.createdAt')" between><text class="sh-muted sh-num">{{datetime(Date.parse(p.createdAt))}}</text></sh-kv>
+   <sh-kv :label="t('storedValue.updatedAt')" between><text class="sh-muted sh-num">{{p.updatedAt?datetime(Date.parse(p.updatedAt)):'—'}}</text></sh-kv>
   </view>
   <sh-empty v-if="!loading&&!error&&!records.length" :text="t('storedValue.empty')"/>
   <text v-if="loading" class="sh-muted">{{t('storedValue.loading')}}</text><button v-else-if="cursor" class="sh-btn sh-btn--muted" @tap="load(true)">{{t('storedValue.more')}}</button>

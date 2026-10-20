@@ -109,8 +109,11 @@ public class StoredValuePlanServiceImpl implements StoredValuePlanService {
         return commands.execute(scope, "SV_PLAN_STATUS", key, List.of(planNo, c), planNo, View.class, () -> {
             var p = owned(scope, c.storeNo(), planNo, true);
             if (p.getVersion() != c.expectedRevision()) throw BizException.of(ErrorCode.CONFLICT);
-            p.setStatus(c.status()); p.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC)); p.setUpdatedBy(scope.actorNo());
-            if (plans.updateById(p) != 1) throw BizException.of(ErrorCode.CONFLICT);
+            if (plans.updateStatus(scope.tenantNo(), scope.entityNo(), c.storeNo(), planNo,
+                    c.status(), c.expectedRevision(), scope.actorNo(),
+                    LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS)) != 1) {
+                throw BizException.of(ErrorCode.CONFLICT);
+            }
             return view(owned(scope, c.storeNo(), planNo, false));
         });
     }
@@ -137,7 +140,7 @@ public class StoredValuePlanServiceImpl implements StoredValuePlanService {
     private static View view(SvRechargePlan p, SvRechargePlanVersion v) {
         return new View(p.getPlanNo(), v.getVersionNo(), p.getVersion(), p.getStoreNo(), p.getName(), p.getCurrency(),
                 v.getPaidAmountMinor(), v.getBonusAmountMinor(), Math.addExact(v.getPaidAmountMinor(), v.getBonusAmountMinor()),
-                p.getStatus(), instant(p.getCreatedAt()));
+                p.getStatus(), instant(p.getCreatedAt()), instant(p.getUpdatedAt()));
     }
     private static void merchant(CatalogScope scope) {
         if (scope.platformActor()) throw BizException.of(ErrorCode.FORBIDDEN);

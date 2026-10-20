@@ -42,7 +42,7 @@ MySQL演练使用独立临时库，只导入sv表结构并执行V532–V535；�
 | DTO | 业务字段 |
 |---|---|
 | 方案Create | storeNo、name、currency、paidAmountMinor>0、bonusAmountMinor>=0 |
-| 方案View | planNo、versionNo、storeNo、name、currency、paidAmountMinor、bonusAmountMinor、totalAmountMinor、status、revision |
+| 方案View | planNo、versionNo、storeNo、name、currency、paidAmountMinor、bonusAmountMinor、totalAmountMinor、status、revision、createdAt、updatedAt |
 | 方案Status | storeNo、status=ACTIVE/INACTIVE、expectedRevision |
 | 充值CreateRequest | customerRef、storeNo、planNo、versionNo |
 | SubmitRequest | expectedRevision、actualAmountMinor、collectionMethod=CASH/TRANSFER、receiptNo |
@@ -93,3 +93,11 @@ accountRef只读、签名且绑定当前主体/操作人/门店，不能代替cu
 ## 7. 发布更新
 
 2026-10-20，运行版本466c6b83c已发布，V532–V535均success=1。不入账联调及资金未变证据见[发布记录](./design/reviews/门店储值-部署与不入账联调-2026-10-20.md)；前文发布前时点描述保留，不作为当前未部署结论。
+
+## 8. 真机反馈修复（2026-10-20）
+
+办理储值的识别/扫码按钮改为统一view按钮并通过sh-fill等宽布局；主操作使用统一全宽view按钮，避免原生button默认外观与布局叠加。方案启停从金额信息卡移至审计信息下方的独立操作区：停用用sh-btn--danger描边，启用用sh-btn--soft；保留确认弹层及修订/幂等机制。
+
+方案View新增updatedAt，列表及详情展示创建时间/修改时间，状态继续用统一标签。数据库既有created_by/updated_by，无需新增列。本轮发现Pay通用更新填充器会把跨服务上下文的实际actor覆盖成SYSTEM；方案状态更新改为显式UTC时间/可信actor及门店+主体+revision条件SQL，避免被通用填充覆盖。创建人保持不变，同键重试返回原结果，不重复更新审计信息。客户端不允许指定修改人。历史SYSTEM不明归属不猜测回填。
+
+针对这次反馈：页面2项测试先失败后通过；审计测试先因缺updatedAt失败，再暴露updated_by被覆盖为SYSTEM，修复后1项通过；公开契约3项及Java编译通过，vue-tsc、H5、Android release编译和APK体检通过。没有全量回归。Android包0.5.87（320）已生成，真机连接恢复后的安装和视觉复查单独记录，不提前宣称通过。
