@@ -145,7 +145,6 @@ onUnmounted(()=>{generation++;clearTimeout(timer);});
    </template>
    <view v-if="progress" class="sh-card">
     <text class="txt-strong">{{t(`storedValue.${progress.status==='CREDITED'?'credited':progress.status==='RECEIVED'?'received':progress.status==='CANCELLED'?'cancelled':progress.status==='REJECTED'?'rejected':'processing'}`)}}</text>
-    <text class="sh-muted sh-num">{{progress.rechargeNo}}</text>
     <sh-kv v-if="credited" :label="t('storedValue.total')" between>{{money(progress.creditedTotalMinor||0,progress.currency)}}</sh-kv>
    </view>
    <text v-if="!allowed" class="sh-hint">{{t('storedValue.noPermission')}}</text>
