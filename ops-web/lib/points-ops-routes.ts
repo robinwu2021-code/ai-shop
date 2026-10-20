@@ -1,30 +1,38 @@
 import type { MenuFunction, MenuPoint } from "@/lib/types";
 
-/** Temporary URL bridge while points pages move out of the tabbed workspace. */
+/** Keep bookmarked legacy tabs working while the four points workspaces are split out. */
 export function pointsLegacyRedirect(tab: string | null): string | null {
-  if (tab === "overview") return "/points";
+  if (tab === "overview") return "/points/types";
   if (tab === "configuration") return "/points/types";
+  if (tab === "treasury") return "/points/budget";
+  if (tab === "queries") return "/points/accounts";
+  if (tab === "settlements") return "/points/transactions";
   return null;
 }
 
 const LEGACY_ROUTES: Record<string, { href: string; name: string; group: string; pointCode: string }> = {
-  "/points?tab=overview": { href: "/points", name: "积分总览", group: "配置与接入", pointCode: "OPS_FINANCE__TAB_POINTS" },
-  "/points?tab=configuration": { href: "/points/types", name: "积分类型与规则", group: "配置与接入", pointCode: "OPS_POINTS__TAB_CONFIGURATION" },
+  "/points?tab=overview": { href: "/points/types", name: "积分设置", group: "积分运营", pointCode: "OPS_FINANCE__TAB_POINTS" },
+  "/points?tab=configuration": { href: "/points/types", name: "积分设置", group: "积分运营", pointCode: "OPS_POINTS__TAB_CONFIGURATION" },
+  "/points?tab=treasury": { href: "/points/budget", name: "平台预算", group: "积分运营", pointCode: "OPS_POINTS__TAB_TREASURY" },
+  "/points?tab=queries": { href: "/points/accounts", name: "积分账户", group: "积分运营", pointCode: "OPS_POINTS__TAB_ACCOUNTS" },
+  "/points?tab=settlements": { href: "/points/transactions", name: "发放与核销", group: "积分运营", pointCode: "OPS_POINTS__TAB_TRANSACTIONS" },
 };
-const NEW_POINTS_ROUTES = new Set(["/points", "/points/types", "/points/store-access"]);
+const NEW_POINTS_ROUTES = new Set(["/points/types", "/points/budget", "/points/accounts", "/points/transactions"]);
 
 /** Existing database menu rows used to authorize the corresponding frontend routes until its migration ships. */
 export function pointsLegacyServerMenuHref(href: string): string {
-  if (href === "/points") return "/points?tab=overview";
-  if (href === "/points/types") return "/points?tab=configuration";
+  if (href === "/points" || href === "/points/types") return "/points?tab=configuration";
+  if (href === "/points/budget") return "/points?tab=treasury";
+  if (href === "/points/accounts") return "/points?tab=queries";
+  if (href === "/points/transactions") return "/points?tab=settlements";
   if (href === "/points/store-access") return "/points?tab=overview";
   return href;
 }
 
 /**
- * Adapt the deployed legacy `/ops/menu` response to the points pages shipped by the frontend.
- * The store-access link inherits only the existing overview read grant; the page and its APIs
- * continue to enforce `finance:settle:read` / `finance:settle:execute` independently.
+ * Adapt the deployed legacy `/ops/menu` response to the four points workspaces. Legacy settings,
+ * treasury, query and settlement grants map to settings, budget, accounts and transactions.
+ * Store agreements are intentionally hidden: stores participate by default in this release.
  */
 export function normalizeLegacyPointsMenu(functions: MenuFunction[]): MenuFunction[] {
   const pointsFunctions = functions.filter((fn) => fn.functionCode === "OPS_POINTS");
@@ -36,27 +44,11 @@ export function normalizeLegacyPointsMenu(functions: MenuFunction[]): MenuFuncti
   for (const point of sources) {
     const route = point.href ? LEGACY_ROUTES[point.href] : undefined;
     const href = route?.href ?? point.href!;
-    if (!NEW_POINTS_ROUTES.has(href) && !href.startsWith("/points?tab=")) continue;
+    if (!NEW_POINTS_ROUTES.has(href)) continue;
     normalized.set(href, {
       ...point,
       ...(route ? { pointCode: route.pointCode, name: route.name, groupName: route.group } : {}),
       href,
-    });
-  }
-
-  const overview = normalized.get("/points");
-  if (overview && !normalized.has("/points/store-access")) {
-    const previous = normalized.get("/points/types") ?? overview;
-    const nextSort = [...normalized.values()]
-      .filter((point) => point.href?.startsWith("/points?tab="))
-      .reduce<number | undefined>((next, point) => point.sort > previous.sort && (next === undefined || point.sort < next) ? point.sort : next, undefined);
-    normalized.set("/points/store-access", {
-      ...overview,
-      pointCode: "OPS_POINTS__TAB_STORE_ACCESS",
-      name: "门店协议与接入",
-      groupName: "配置与接入",
-      href: "/points/store-access",
-      sort: nextSort === undefined ? previous.sort + 1 : (previous.sort + nextSort) / 2,
     });
   }
 

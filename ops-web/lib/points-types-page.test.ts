@@ -43,12 +43,12 @@ afterEach(async () => {
   host?.remove();
 });
 
-it("keeps the type/rule page focused on its own list and rule details", async () => {
+it("keeps the settings page focused on its own list and rule details", async () => {
   await act(async () => root.render(h(QueryClientProvider, { client: query }, h(PointsTypesTab, { canEdit: false }))));
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
 
   expect(host.querySelector('[data-testid="points-type-list"]')).not.toBeNull();
-  expect(host.textContent).toContain("积分类型");
+  expect(host.textContent).toContain("积分设置");
   expect(host.textContent).not.toContain("门店协议查询");
   expect(host.textContent).not.toContain("订单积分按门店接线");
   expect(host.textContent).not.toContain("原订单积分核验");

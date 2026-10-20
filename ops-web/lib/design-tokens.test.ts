@@ -432,7 +432,8 @@ describe("页面层同样受约束（基线 0，不留额度）", () => {
     // `app/login/page.tsx`，那条正则从来没排到它。此前没显形，只因为它也没用
     // `<PageTitle>`；判据一变严就露了出来。工作台（app/page.tsx）与登录页都没有
     // L3 导航，本来就不该有 TabHeader。
-    const EXCLUDE = /app\/page\.tsx$|app\/login\/page\.tsx$/;
+    // Legacy points aliases only redirect to the settings route; they are not business pages.
+    const EXCLUDE = /app\/page\.tsx$|app\/login\/page\.tsx$|app\/points\/page\.tsx$|app\/points\/store-access\/page\.tsx$/;
     for (const f of entryPages().filter((x) => !EXCLUDE.test(x))) {
       const src = readFileSync(f, "utf8");
       if (src.includes("<TabHeader")) continue;

@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { PointsCreate, PointsFallbackChange, PointsTermsChange, PointsTypeChange, PointsTypeConfig } from "@/lib/types";
+import type { PointsCreate, PointsFallbackChange, PointsTypeChange, PointsTypeConfig } from "@/lib/types";
 import { pointsCommand } from "@/lib/points-command";
 import { usePointsText } from "@/lib/points-i18n";
 import { Button } from "@/components/ui/button";
@@ -15,7 +14,7 @@ import { Notice } from "@/components/ui/notice";
 import { SectionHeader } from "@/components/ui/section-header";
 
 type Command = { kind: "CREATE"; value: PointsCreate } | { kind: "STATE"; value: PointsTypeChange } |
-  { kind: "RULE"; value: PointsFallbackChange } | { kind: "TERMS"; value: PointsTermsChange };
+  { kind: "RULE"; value: PointsFallbackChange };
 
 export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
   const { t } = usePointsText();
@@ -25,7 +24,6 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
   const [createOpen, setCreateOpen] = useState(false);
   const selected = types.data?.find((item) => item.typeCode === selectedCode);
   const fallback = useQuery({ queryKey: ["points-fallback", selectedCode], queryFn: () => api.pointsFallback(selectedCode), enabled: !!selectedCode });
-  const terms = useQuery({ queryKey: ["points-terms", selectedCode], queryFn: () => api.pointsTerms(selectedCode), enabled: !!selectedCode });
   const intent = useRef<{ body: string; requestId: string } | undefined>(undefined);
   const save = useMutation({
     mutationFn: (command: Command) => {
@@ -33,14 +31,12 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
         case "CREATE": return api.createPointsType(command.value);
         case "STATE": return api.transitionPointsType(command.value);
         case "RULE": return api.savePointsFallback(command.value);
-        case "TERMS": return api.publishPointsTerms(command.value);
       }
     },
     onSuccess: (_result, command) => {
       intent.current = undefined;
       void qc.invalidateQueries({ queryKey: ["points-types"] });
       void qc.invalidateQueries({ queryKey: ["points-fallback"] });
-      void qc.invalidateQueries({ queryKey: ["points-terms"] });
       if (command.kind === "CREATE") {
         setCreateOpen(false);
         setSelectedCode(command.value.command.typeCode);
@@ -64,15 +60,14 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
     { header: "", cell: () => <span className="text-muted-foreground">{t("查看详情 →", "View details →")}</span> },
   ];
   const card = "space-y-3 rounded-card border border-border p-4";
-  const error = types.error || fallback.error || terms.error;
+  const error = types.error || fallback.error;
 
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <SectionHeader title={t("积分类型与规则", "Points types & rules")} summary={types.data?.length ?? 0} className="mb-0" />
+      <SectionHeader title={t("积分设置", "Points settings")} summary={types.data?.length ?? 0} className="mb-0" />
       {canEdit && <Button onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button>}
     </div>
-    <Notice>{t("金额使用类型币种的最小货币单位。配置只影响后续交易，旧交易保留原比例和规则快照。", "Amounts use the type's minor currency unit. Configuration affects future transactions; existing transactions keep their original rate and rules.")}</Notice>
-    <p className="txt-caption text-muted-foreground"><Link href="/points?tab=configuration-legacy" className="focus-ring rounded-field text-primary-ink underline">{t("其他积分操作（临时入口）", "Other points operations (temporary entry)")}</Link></p>
+    <Notice>{t("金额使用类型币种的最小货币单位。配置只影响后续交易，旧交易保留原比例和规则快照。所有门店默认参与，本期不在此维护单店签约或接入。", "Amounts use the type's minor currency unit. Configuration affects future transactions; existing transactions keep their original rate and rules. All stores participate by default; store agreements and per-store enrollment are not managed here.")}</Notice>
     <DataTable columns={columns} rows={types.data} loading={types.isPending} error={types.error} onRetry={() => void types.refetch()}
       rowKey={(row) => row.typeCode} empty={t("还没有积分类型，请先新建。", "No points types yet. Create one to get started.")}
       emptyAction={canEdit ? <Button size="sm" onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button> : undefined}
@@ -108,9 +103,9 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
 
     <Drawer open={!!selected} onOpenChange={(open) => { if (!open) { setSelectedCode(""); save.reset(); } }}
       title={selected ? `${selected.typeCode} · ${selected.market} · ${selected.status}` : ""}
-      desc={t("维护积分类型状态、兜底规则和受理协议。", "Manage points type status, fallback rule and acceptance terms.")}
+      desc={t("维护积分类型状态和兜底规则。", "Manage points type state and fallback rule.")}
       width="w-[760px]">
-      {error && <Notice tone="warning">{t(error.message, error.message)}<Button onClick={() => { void fallback.refetch(); void terms.refetch(); }}>{t("重试", "Retry")}</Button></Notice>}
+      {error && <Notice tone="warning">{t(error.message, error.message)}<Button onClick={() => { void fallback.refetch(); }}>{t("重试", "Retry")}</Button></Notice>}
       {save.isError && <Notice tone="warning">{t(save.error.message, save.error.message)}</Notice>}
       {save.isSuccess && <Notice>{t("已保存，操作号：", "Saved, request ID: ")}{save.data.requestId}</Notice>}
       {selected && <div className={card}>
@@ -143,19 +138,7 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
         </div>
         {canEdit && <Button type="submit" disabled={save.isPending}>{t("保存新修订", "Save new revision")}</Button>}
       </form>}
-      {selected && terms.data !== undefined && !terms.isPending && !terms.isError && <form key={`terms:${selectedCode}:${terms.data?.version ?? "none"}`} className={card} onSubmit={(event) => {
-        event.preventDefault(); const form = new FormData(event.currentTarget);
-        submit({ kind: "TERMS", value: { requestId: "", typeCode: selectedCode, version: String(form.get("version")),
-          text: String(form.get("text")), reason: String(form.get("reason")).trim() } });
-      }}>
-        <h3 className="txt-heading">{t("受理协议文本", "Acceptance terms")}</h3>
-        <p dir="auto">{t("发布文本不代表门店已签署。签署及解除由商家主账号办理。", "Publishing terms does not sign for a store. Signing and termination require the merchant owner.")}</p>
-        <label className="block">{t("版本", "Version")}<Input dir="auto" name="version" required defaultValue={terms.data?.version ?? ""} disabled={!canEdit} /></label>
-        <label className="block">{t("正文", "Text")}<textarea dir="auto" name="text" className="focus-ring min-h-40 w-full rounded-field border border-border p-3" required defaultValue={terms.data?.text ?? ""} disabled={!canEdit} /></label>
-        <p dir="auto" className="break-all txt-caption">{terms.data?.hash}</p>
-        <label className="block">{t("原因", "Reason")}<Input dir="auto" name="reason" required disabled={!canEdit} /></label>
-        {canEdit && <Button disabled={save.isPending} type="submit">{t("发布版本", "Publish version")}</Button>}
-      </form>}
+
     </Drawer>
   </div>;
 }

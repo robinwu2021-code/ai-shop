@@ -1669,6 +1669,14 @@ export interface PointsAccountQ {
   /** 账本持有人编号，与持有人类型联合定位 */
   holderNo: string;
 }
+export interface PointsAccountsQ extends PointsCursor {
+  /** 积分类型唯一编码，用于限定账户账本。 */
+  typeCode: string;
+  /** 账户持有人类别：会员或门店。 */
+  holderType: PointsHolder;
+  /** 按精确编号筛选账户；省略时返回该类型的账户列表。 */
+  holderNo?: string;
+}
 export interface PointsAccountView {
   /** 服务端冻结的账务或准备快照 */
   snapshot: PointsAccountQ & {
@@ -1715,6 +1723,35 @@ export interface PointsVoucherView {
   ratePoints: number;
   /** 换算比例的最小货币单位数量 */
   rateMinor: number;
+  /** 原凭证创建时间，Unix 毫秒 */
+  createdAt: number;
+}
+export type PointsTransactionDirection = "EARN" | "REDEEM" | "REVERSAL";
+export interface PointsTransactionsQ extends PointsCursor {
+  /** 积分类型唯一编码。 */
+  typeCode: string;
+  /** 流水方向：发放、核销或冲正。 */
+  direction: PointsTransactionDirection;
+  /** 查询区间起始时间，ISO-8601 格式。 */
+  from: string;
+  /** 查询区间结束时间，ISO-8601 格式。 */
+  to: string;
+  /** 门店编号，可选的精确筛选条件。 */
+  storeNo?: string;
+  /** 会员编号，可选的精确筛选条件。 */
+  userNo?: string;
+}
+export interface PointsTransactionView {
+  /** 该凭证对应的业务方向。 */
+  direction: PointsTransactionDirection;
+  /** 本次积分业务的凭证及创建时间、比例快照。 */
+  voucher: PointsVoucherView;
+  /** 关联门店编号；无法归属门店时为空。 */
+  storeNo: string | null;
+  /** 关联会员编号；不涉及会员时为空。 */
+  userNo: string | null;
+  /** 本凭证所有用户分录的净积分变化；可能为零，需查看详情理解分录。 */
+  pointsDelta: number;
 }
 export interface PointsCursorPage<T> {
   /** 本页记录 */
@@ -1741,6 +1778,8 @@ export interface PointsEntryView {
   deltaPoints: number;
   /** 该分录完成后的积分余额 */
   afterPoints: number;
+  /** 分录创建时间，Unix 毫秒 */
+  at: number;
 }
 export interface PointsFlowView {
   /** 持久记录主键 */
@@ -1880,6 +1919,20 @@ export interface PointsStats {
   throughVoucherId: number;
   /** 服务端统计重建时间，Unix 毫秒 */
   rebuiltAt: number;
+}
+export interface PointsStatsPeriod {
+  /** 积分类型唯一编码。 */
+  typeCode: string;
+  /** 统计周期起始日期，YYYY-MM-DD。 */
+  from: string;
+  /** 统计周期结束日期，YYYY-MM-DD。 */
+  to: string;
+  /** 周期内由服务端聚合的指标。 */
+  metrics: Record<string, number>;
+  /** 统计数据可用的日期数量。 */
+  availableDays: number;
+  /** 统计数据缺失的日期数量。 */
+  missingDays: number;
 }
 export interface PointsStatsRebuild {
   /** 幂等操作请求号，重试必须复用 */

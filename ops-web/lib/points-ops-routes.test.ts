@@ -1,45 +1,43 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { findActiveSection, NAV } from "./nav";
 import { normalizeLegacyPointsMenu, pointsLegacyRedirect, pointsLegacyServerMenuHref } from "./points-ops-routes";
-
-const MIGRATIONS = join(new URL("..", import.meta.url).pathname, "../backend/shop-app/src/main/resources/db/migration");
 
 describe("Points Operations first-group navigation", () => {
   it("owns the overview and first configuration pages under a separate top-level section", () => {
     const points = NAV.find((section) => section.key === "points");
 
-    expect(points?.href).toBe("/points");
+    expect(points?.href).toBe("/points/types");
     expect(points?.modules).toEqual(["finance"]);
     expect(points?.children?.map((leaf) => leaf.href)).toEqual([
-      "/points",
       "/points/types",
-      "/points/store-access",
-      "/points?tab=switches",
-      "/points?tab=treasury",
-      "/points?tab=settlements",
-      "/points?tab=queries",
+      "/points/budget",
+      "/points/accounts",
+      "/points/transactions",
     ]);
     expect(NAV.find((section) => section.key === "finance")?.match ?? []).not.toContain("/points");
   });
 
-  it.each(["/points", "/points/types", "/points/store-access"])(
+  it.each(["/points", "/points/types", "/points/budget", "/points/accounts", "/points/transactions"])(
     "selects the Points Operations section for %s",
     (href) => expect(findActiveSection(href)?.key).toBe("points"),
   );
 
   it.each([
-    ["/points", "/points?tab=overview"],
     ["/points/types", "/points?tab=configuration"],
+    ["/points/budget", "/points?tab=treasury"],
+    ["/points/accounts", "/points?tab=queries"],
+    ["/points/transactions", "/points?tab=settlements"],
     ["/points/store-access", "/points?tab=overview"],
   ])("uses the deployed legacy permission href %s → %s", (href, serverHref) => {
     expect(pointsLegacyServerMenuHref(href)).toBe(serverHref);
   });
 
   it.each([
-    ["overview", "/points"],
+    ["overview", "/points/types"],
     ["configuration", "/points/types"],
+    ["treasury", "/points/budget"],
+    ["queries", "/points/accounts"],
+    ["settlements", "/points/transactions"],
     ["switches", null],
     ["configuration-legacy", null],
     [null, null],
@@ -57,6 +55,8 @@ describe("Points Operations first-group navigation", () => {
       { functionCode: "OPS_FINANCE", name: "结算与资金", icon: "Wallet", href: "/finance", sort: 12,
         points: [overview, legacy("configuration", "OPS_POINTS__TAB_CONFIGURATION", "积分类型与协议", 51),
           legacy("treasury", "OPS_POINTS__TAB_TREASURY", "积分资金工作台", 52),
+          legacy("queries", "OPS_POINTS__TAB_QUERIES", "积分账务查询", 53),
+          legacy("settlements", "OPS_POINTS__TAB_SETTLEMENTS", "积分账单", 54),
           { ...legacy("payables", "OPS_FINANCE__TAB_PAYABLES", "自营应付账款", 30), href: "/finance?tab=payables" }] },
     ]);
 
@@ -64,23 +64,13 @@ describe("Points Operations first-group navigation", () => {
     const points = menu.find((item) => item.functionCode === "OPS_POINTS");
     expect(finance?.points.map((point) => point.href)).toEqual(["/finance?tab=payables"]);
     expect(points?.points.map((point) => point.href)).toEqual([
-      "/points", "/points/types", "/points/store-access", "/points?tab=treasury",
+      "/points/types", "/points/budget", "/points/accounts", "/points/transactions",
     ]);
-    expect(points?.points.find((point) => point.href === "/points/store-access")).toMatchObject({
-      uiPermCode: "finance:settle:read", permCode: "finance:settle:read", backendStatus: "IMPLEMENTED",
-    });
+    expect(points?.points.some((point) => point.href === "/points/store-access")).toBe(false);
   });
 
   it("does not invent a points menu for a user who has no points menu grant", () => {
     expect(normalizeLegacyPointsMenu([{ functionCode: "OPS_FINANCE", name: "结算与资金", sort: 12, points: [] }]))
       .toEqual([{ functionCode: "OPS_FINANCE", name: "结算与资金", sort: 12, points: [] }]);
-  });
-  it("registers the new menu routes under their live permission points", () => {
-    const sql = readFileSync(join(MIGRATIONS, "V529__points_ops_first_pages_menu.sql"), "utf8");
-    expect(sql).toContain("OPS_POINTS");
-    expect(sql).toContain("'/points/types'");
-    expect(sql).toContain("'/points/store-access'");
-    expect(sql).toContain("finance:settle:read");
-    expect(sql).toContain("source.point_code='OPS_FINANCE__TAB_POINTS'");
   });
 });

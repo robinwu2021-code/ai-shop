@@ -136,11 +136,10 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
      * 与分账明细同一个码，所以超管与财务两行各多出这一条。
      */
     "/finance?tab=settle-stats",
-    "/points?tab=treasury",
-    "/points?tab=queries",
-    "/points?tab=settlements",
-    "/points/types",
-    "/points/store-access",
+    // Four dedicated points workspaces replace the old tabbed points page.
+    "/points/budget",
+    "/points/accounts",
+    "/points/transactions",
 ]);
 
   it("★★★ AC2 · 合并前后每个角色看得见的功能点集合完全不变", () => {
@@ -160,8 +159,15 @@ describe("菜单合并（2026-09-09，21 → 13）", () => {
       for (const s of visibleSections(perms)) for (const l of visibleLeaves(s, perms)) now.add(l.href);
       // Points Operations moves existing finance points entries without changing point codes.
       const moved: Record<string, string> = {
-        "/finance?tab=points": "/points",
-        "/finance?tab=points-policy": "/points?tab=switches",
+        "/finance?tab=points": "/points/types",
+        "/finance?tab=points-policy": "/points/types",
+        "/points": "/points/types",
+        "/points?tab=overview": "/points/types",
+        "/points?tab=configuration": "/points/types",
+        "/points?tab=switches": "/points/types",
+        "/points?tab=treasury": "/points/budget",
+        "/points?tab=queries": "/points/accounts",
+        "/points?tab=settlements": "/points/transactions",
       };
       const was = new Set((baseline[role] ?? []).map((href) => moved[href] ?? href));
       const lost = [...was].filter((h) => !now.has(h));

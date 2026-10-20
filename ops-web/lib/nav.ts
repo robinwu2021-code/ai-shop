@@ -422,18 +422,14 @@ export const NAV: NavSection[] = [
     ],
   },
 
-  // ── 积分运营（配置与接入，原积分菜单从结算与资金独立）───────────────
+  // ── 积分运营：按配置 → 资金 → 账户 → 流水查看的运营顺序排列 ──────────
   {
-    key: "points", label: "积分运营", icon: "Coins", modules: ["finance"], href: "/points", match: ["/points", "/points/types", "/points/store-access"],
+    key: "points", label: "积分运营", icon: "Coins", modules: ["finance"], href: "/points/types", match: ["/points", "/points/types", "/points/budget", "/points/accounts", "/points/transactions"],
     children: [
-      { href: "/points", label: "积分总览", perm: "finance:settle:read", group: "配置与接入", matrix: "P-12.1", ready: true },
-      { href: "/points/types", label: "积分类型与规则", perm: "finance:settle:read", group: "配置与接入", matrix: "P-12.1", ready: true },
-      { href: "/points/store-access", label: "门店协议与接入", perm: "finance:settle:read", group: "配置与接入", matrix: "P-12.1", ready: true },
-      // 尚未完成独立页面迁移的现有积分功能继续可用，避免首批拆页期间丢失入口。
-      { href: "/points?tab=switches", label: "积分范围开关", perm: "finance:settle:read", group: "资金与日常（旧版）", matrix: "P-12.1", ready: true },
-      { href: "/points?tab=treasury", label: "积分资金工作台", perm: "finance:settle:read", group: "资金与日常（旧版）", matrix: "P-12.1", ready: true },
-      { href: "/points?tab=settlements", label: "积分账单与退款", perm: "finance:settle:read", group: "资金与日常（旧版）", matrix: "P-12.1", ready: true },
-      { href: "/points?tab=queries", label: "积分账务与对账", perm: "finance:settle:read", group: "资金与日常（旧版）", matrix: "P-12.1", ready: true },
+      { href: "/points/types", label: "积分设置", perm: "finance:settle:read", group: "积分配置", matrix: "P-12.1", ready: true },
+      { href: "/points/budget", label: "平台预算", perm: "finance:settle:read", group: "积分资金", matrix: "P-12.1", ready: true },
+      { href: "/points/accounts", label: "积分账户", perm: "finance:settle:read", group: "积分账务", matrix: "P-12.1", ready: true },
+      { href: "/points/transactions", label: "发放与核销", perm: "finance:settle:read", group: "积分账务", matrix: "P-12.1", ready: true },
     ],
   },
 
