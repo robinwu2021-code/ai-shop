@@ -57,6 +57,7 @@ it("offers audited resubmission only for manually recoverable events",async()=>{
 it("selects a separate points type for a new rule and submits its code",async()=>{
  await render();await act(async()=>[...host.querySelectorAll("button")].find(b=>b.textContent==="新增品类规则")!.click());
  const type=host.querySelector('select[name="typeCode"]') as HTMLSelectElement;expect(type).not.toBeNull();
+ expect([...type.options].map(o=>o.textContent)).toEqual(["请选择积分","消费积分","奖励积分"]);
  await act(async()=>{type.value="Q";type.dispatchEvent(new Event("change",{bubbles:true}));});
  const scope=host.querySelector('select[name="scope"]') as HTMLSelectElement;scope.value="C";
  await act(async()=>host.querySelector("form")!.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true})));
@@ -64,6 +65,7 @@ it("selects a separate points type for a new rule and submits its code",async()=
 });
 it("filters rules by type and keeps query cache identities separate",async()=>{
  await render();const filter=host.querySelector('select[name="filterTypeCode"]') as HTMLSelectElement;expect(filter).not.toBeNull();
+ expect([...filter.options].map(o=>o.textContent)).toEqual(["全部积分","消费积分","奖励积分"]);
  await act(async()=>{filter.value="Q";filter.dispatchEvent(new Event("change",{bubbles:true}));});
  await act(async()=>{await new Promise(r=>setTimeout(r,25));});
  expect(mock.rules).toHaveBeenLastCalledWith({typeCode:"Q",page:1,size:50});
@@ -89,6 +91,7 @@ it("preview submits selected currency and clears an in-flight result when switch
  await act(async()=>host.querySelector("form")!.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true})));
  expect(mock.preview).toHaveBeenLastCalledWith({typeCode:"P",currency:"CNY",categoryNo:null,cashMinor:10000});
  const selector=host.querySelector('select[name="previewTypeCode"]') as HTMLSelectElement;
+ expect([...selector.options].map(o=>o.textContent)).toEqual(["消费积分","奖励积分"]);
  await act(async()=>{selector.value="Q";selector.dispatchEvent(new Event("change",{bubbles:true}));});
  await act(async()=>resolve({matched:{scope:"DEFAULT",revision:1,rule:{mode:"RATIO",value:100}},cashMinor:10000,points:999}));
  expect(host.textContent).not.toContain("999");

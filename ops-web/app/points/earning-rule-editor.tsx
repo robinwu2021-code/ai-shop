@@ -19,20 +19,20 @@ export function EarningRuleEditor({rule,categories,types,defaultTypeCode,onSubmi
  }}>
   {error&&<Notice tone="warning">{error}</Notice>}
   {rule?.mode==="FIXED"&&<Notice>{t("原固定赠送规则仍在生效。保存比例草稿不会改变它，发布后才切换为比例赠送。","The existing fixed rule remains active until a ratio revision is published.")}</Notice>}
-  <label className="block space-y-2">{t("赠送积分","Reward points")}<Select name="typeCode" required defaultValue={rule?.typeCode??defaultTypeCode??""} disabled={!!rule}>
-   <option value="">{t("请选择积分","Select points")}</option>{types.filter(type=>type.status==="ACTIVE"||type.typeCode===rule?.typeCode).map(type=><option key={type.typeCode} value={type.typeCode}>{type.name} · {type.typeCode} · {type.currency}</option>)}
+  <label className="flex min-w-0 flex-col gap-2 txt-label">{t("赠送积分","Reward points")}<Select className="w-full min-w-0" name="typeCode" required defaultValue={rule?.typeCode??defaultTypeCode??""} disabled={!!rule}>
+   <option value="">{t("请选择积分","Select points")}</option>{types.filter(type=>type.status==="ACTIVE"||type.typeCode===rule?.typeCode).map(type=><option key={type.typeCode} value={type.typeCode}>{type.name}</option>)}
   </Select></label>
   {rule&&<input type="hidden" name="typeCode" value={rule.typeCode}/>}
-  <label className="block space-y-2">{t("适用品类","Category")}<Select name="scope" required defaultValue={rule?.scope??""} disabled={!!rule}>
+  <label className="flex min-w-0 flex-col gap-2 txt-label">{t("适用品类","Category")}<Select className="w-full min-w-0" name="scope" required defaultValue={rule?.scope??""} disabled={!!rule}>
    {!rule&&<option value="">{t("请选择品类","Select a category")}</option>}
    {rule?.scope==="DEFAULT"?<option value="DEFAULT">{t("所有未单独配置的品类","All categories without an override")}</option>:categories.map(c=><option key={c.categoryNo} value={c.categoryNo}>{c.path}</option>)}
   </Select></label>
   {rule&&<input type="hidden" name="scope" value={rule.scope}/>}
-  <div className="flex flex-wrap items-end gap-4">
-   <label className="block w-44 space-y-2">{t("赠送方式","Reward mode")}<Select name="mode" value={mode} onChange={e=>setMode(e.target.value)}><option value="RATIO">{t("按比例赠送","Percentage")}</option><option value="NONE">{t("不赠送","No reward")}</option></Select></label>
-   {mode==="RATIO"&&<label className="block w-36 space-y-2">{t("赠送比例","Reward rate")}<div className="flex items-center gap-2"><Input name="ratio" type="number" min="0" max="100" step="0.01" required defaultValue={rule?.mode==="RATIO"?(rule.value/100).toFixed(2):"1.00"}/><span>%</span></div></label>}
+  <div className="grid max-w-sm grid-cols-1 items-start gap-4 sm:grid-cols-2">
+   <label className="flex min-w-0 flex-col gap-2 txt-label">{t("赠送方式","Reward mode")}<Select className="w-full min-w-0" name="mode" value={mode} onChange={e=>setMode(e.target.value)}><option value="RATIO">{t("按比例赠送","Percentage")}</option><option value="NONE">{t("不赠送","No reward")}</option></Select></label>
+   {mode==="RATIO"&&<label className="flex min-w-0 flex-col gap-2 txt-label">{t("赠送比例","Reward rate")}<div className="flex items-center gap-2"><Input name="ratio" type="number" min="0" max="100" step="0.01" required defaultValue={rule?.mode==="RATIO"?(rule.value/100).toFixed(2):"1.00"}/><span className="shrink-0">%</span></div></label>}
   </div>
   <p className="txt-caption text-muted-foreground">{t("按商品现金实付金额计算，不含运费和积分抵扣部分。保存为草稿后，需要单独生效；已有订单不受影响；新增积分类型暂不自动接入订单赠送。","Calculated from cash paid for goods, excluding shipping and points deductions. Save a draft, then publish it. Existing orders are unchanged; new types are not automatically connected to orders.")}</p>
-  <label className="block space-y-2">{t("备注","Remark")}<Input name="remark" maxLength={500} defaultValue=""/></label>
+  <label className="flex min-w-0 flex-col gap-2 txt-label">{t("备注","Remark")}<Input name="remark" maxLength={500} defaultValue=""/></label>
  </form>;
 }

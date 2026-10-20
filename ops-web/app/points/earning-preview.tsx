@@ -12,7 +12,7 @@ export function EarningPreview({context,defaultTypeCode}:{context:EarningContext
  const types=context.types.filter(type=>type.status==="ACTIVE");
  const [code,setCode]=useState(types.find(type=>type.typeCode===defaultTypeCode)?.typeCode??types[0]?.typeCode??"");
  const type=types.find(type=>type.typeCode===code);
- return <div className="space-y-5"><label className="block space-y-2">{t("赠送积分","Reward points")}<Select name="previewTypeCode" value={code} onChange={e=>setCode(e.target.value)}>{types.map(type=><option key={type.typeCode} value={type.typeCode}>{type.name} · {type.typeCode} · {type.currency}</option>)}</Select></label>
+ return <div className="space-y-5"><label className="flex min-w-0 flex-col gap-2 txt-label">{t("赠送积分","Reward points")}<Select className="w-full min-w-0" name="previewTypeCode" value={code} onChange={e=>setCode(e.target.value)}>{types.map(type=><option key={type.typeCode} value={type.typeCode}>{type.name}</option>)}</Select></label>
  {type&&<PreviewForm key={type.typeCode} type={type} context={context}/>}</div>;
 }
 function PreviewForm({type,context}:{type:EarningContext["types"][number];context:EarningContext}) {
@@ -23,8 +23,8 @@ function PreviewForm({type,context}:{type:EarningContext["types"][number];contex
   e.preventDefault();const f=new FormData(e.currentTarget);setError("");
   try{preview.mutate({formVersion,query:{typeCode:type.typeCode,currency:type.currency,categoryNo:String(f.get("categoryNo"))||null,cashMinor:fiatToMinor(String(f.get("amount")),type.scale)}});}catch(err){setError((err as Error).message);}
  }}>
- <label className="block space-y-2">{t("商品品类","Category")}<Select name="categoryNo"><option value="">{t("默认规则","Default rule")}</option>{context.categories.map(c=><option key={c.categoryNo} value={c.categoryNo}>{c.path}</option>)}</Select></label>
- <label className="block w-56 space-y-2">{t("商品现金实付","Cash paid for goods")} · {type.currency}<Input name="amount" type="number" min="0" step={10**-type.scale} defaultValue="100" required/></label>
+ <label className="flex min-w-0 flex-col gap-2 txt-label">{t("商品品类","Category")}<Select className="w-full min-w-0" name="categoryNo"><option value="">{t("默认规则","Default rule")}</option>{context.categories.map(c=><option key={c.categoryNo} value={c.categoryNo}>{c.path}</option>)}</Select></label>
+ <label className="flex w-56 max-w-full min-w-0 flex-col gap-2 txt-label">{t("商品现金实付","Cash paid for goods")} · {type.currency}<Input name="amount" type="number" min="0" step={10**-type.scale} defaultValue="100" required/></label>
  <Button type="submit" disabled={preview.isPending}>{t("计算预计积分","Calculate points")}</Button>
  </form>
  {(error||preview.error)&&<Notice tone="warning">{error||preview.error?.message}</Notice>}
