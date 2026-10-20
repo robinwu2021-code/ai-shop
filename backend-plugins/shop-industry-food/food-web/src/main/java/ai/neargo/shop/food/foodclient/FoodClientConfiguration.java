@@ -3,9 +3,11 @@ package ai.neargo.shop.food.foodclient;
 import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
 import ai.neargo.shop.food.service.StoreOperationService;
+import ai.neargo.shop.food.service.TableService;
 import ai.neargo.shop.food.spi.ServiceCalendarInternalApi;
 import ai.neargo.shop.food.spi.StoreOperationInternalApi;
 import ai.neargo.shop.food.spi.StorePolicyPublicationInternalApi;
+import ai.neargo.shop.food.spi.TableInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.ServiceName;
 import java.time.Duration;
@@ -25,6 +27,12 @@ import org.springframework.context.annotation.Profile;
 @Conditional(PolicyEnabled.class)
 @Profile({"api", "ops"})
 public class FoodClientConfiguration {
+    @Bean
+    @ConditionalOnMissingBean(TableService.class)
+    TableService remoteTableService(InternalHttp http) {
+        return new RemoteTableService(http.client(ServiceName.FOOD, TableInternalApi.class, Duration.ofSeconds(5)));
+    }
+
     @Bean
     @ConditionalOnMissingBean(StoreOperationService.class)
     StoreOperationService remoteStoreOperationService(InternalHttp http) {

@@ -1,6 +1,6 @@
 # 餐饮系统 M0 基础工程与接入方案
 
-> 状态：实施中，NEXT-01～05已完成；NEXT-06基础接线完成，业务AC随NEXT-08/09验收；NEXT-07源码核验完成，独立交易验收阻塞；NEXT-08A读取、NEXT-08B受限策略发布、NEXT-08C接单日历已完成 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
+> 状态：实施中，NEXT-01～05已完成；NEXT-06基础接线完成，业务AC随NEXT-08/09验收；NEXT-07源码核验完成，独立交易验收阻塞；NEXT-08A读取、NEXT-08B受限策略发布、NEXT-08C接单日历及NEXT-09桌区管理已完成 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
 > **本版替代上一版独立food-server三端鉴权、远程用户session解析的设计。** 独立餐饮只提供内部接口，C/B/平台运营Controller源码均归餐饮food-web，由shop-app挂载。
 > [独立项目、包及依赖清单](./TDD-餐饮系统-独立项目与包依赖方案.md) · [统一架构及三端完整清单](./TDD-餐饮系统-三端API与独立服务对齐.md) · [总计划](./TDD-餐饮系统-后端开发计划.md) · [平台Java规范](../../.claude/skills/ai-shop-dev-standards/references/java.md)。
 
@@ -316,12 +316,14 @@ API001输入/输出沿既有API册；无生效策略沿NOT_FOUND。策略中的c
 
 #### NEXT-09：桌区首个真实业务切片（TBL-01）
 
+需求细化见：[NEXT09桌区管理需求细化](../requirements/餐饮系统-NEXT09桌区管理需求细化.md)；先评审需求和补充规则，再对齐字段、方法及事务设计。本需求稿不代表092～095已实现。
+
 **文件：**
 
 - `W/api/biz/BizTableAreaController.java`。
 - `A/service/TableService.java`及`A/dto/ListTableAreasQuery.java`、`CreateTableAreaReq.java`、`SaveTableAreaReq.java`、`SetStatusTableAreaReq.java`、`TableAreaResultVO.java`、`TableAreaVO.java`。
 - `D/service/impl/TableServiceImpl.java`、`D/entity/FnbTableArea.java`及`D/mapper/FoodMappers.java`内TableAreaMapper。
-- food-core的`TableServiceTest.java`及food-web的`FoodStoreScopeTest.java`；远程合同测试使用对应typed客户端，不能Controller直接HTTP串核心实现。
+- food-core的`TableServiceTest.java`及food-web的`TableAreaApiTest.java`；远程合同测试使用对应typed客户端，不能Controller直接HTTP串核心实现。
 
 **原Service接口签名（省略包名，类型沿food-api）：**
 
@@ -332,10 +334,60 @@ TableAreaResultVO saveTableArea(String entityNo, String currentStoreNo, String a
 TableAreaResultVO setStatusTableArea(String entityNo, String currentStoreNo, String areaNo, String actorNo, SetStatusTableAreaReq req, String idempotencyKey);
 ```
 
-- [ ] 先写`replayAreaCreation`、`denyForeignAreaMutation`、`rejectStaleAreaVersion`、`listOnlyAuthorizedAreas`：同键同参返回同areaNo且单行；跨店修改零写入；旧版本不覆盖；分页内容与total只来自授权范围。
-- [ ] 按092列表→093创建→094修改→095状态逐个红绿实现，Controller复用原认证/权限，Impl直接本域Mapper，审计与幂等事务一同验收；不提前创建桌台/订单空类。
-- [ ] 本地通过后只为该切片补typed餐饮内部合同、food-web远程Service适配及真实server合同测试；接口方法缺失时不可返回空结果充数。两部署同参数/状态/错误结果一致。
-- [ ] 验收“建桌区→查询→修改→停启用→重复提交→跨店拒绝”完整调用；提交建议按四个API切片分别为`feat(food): add table area ...`。
+- [x] 先写`replayAreaCreation`、`denyForeignAreaMutation`、`rejectStaleAreaVersion`、`listOnlyAuthorizedAreas`：同键同参返回同areaNo且单行；跨店修改零写入；旧版本不覆盖；分页内容与total只来自授权范围。
+- [x] 按092列表→093创建→094修改→095状态逐个红绿实现，Controller复用原认证/权限，Impl直接本域Mapper，审计与幂等事务一同验收；不提前创建桌台/订单空类。
+- [x] 本地通过后只为该切片补typed餐饮内部合同、food-web远程Service适配及真实server合同测试；接口方法缺失时不可返回空结果充数。两部署同参数/状态/错误结果一致。
+- [x] 验收“建桌区→查询→修改→停启用→重复提交→跨店拒绝”完整调用；提交建议按四个API切片分别为`feat(food): add table area ...`。
+
+##### NEXT-09实施清单（2026-10-20）
+
+需求：[桌区需求细化](../requirements/餐饮系统-NEXT09桌区管理需求细化.md)，用户已确认按此开发。实施方式：本会话直接执行，各接口先测试再实现，最后独立审查。沿原food-api/core/web/server，不改冻结V1。
+
+**约束：** 同店code唯一且大小写敏感；字符串trim；sortNo允许重复，按sortNo/areaNo升序；ACTIVE/DISABLED；reason最长255；创建version沿原平台填充。无删除/迁移/code编辑、无支付库存调用。业务修改与幂等/审计/Outbox同主事务，同状态且版本正确时无变更成功。
+
+**审查重点：** 分页total越权；同键跨对象或换actor；同版本并发编辑与启停；停用忽略异常活动占用；独立部署错误被包装或写入被重试。
+
+| 需求AC | 实现落点 | 测试 |
+|---|---|---|
+| 01/02 | TableServiceImpl.listTableAreas +原TableAreaMapper，数据库分页 | TableServiceTest.listOnlyAuthorizedAreas |
+| 03/04/05 | createTableArea +唯一键/幂等/主事务 | replayAreaCreation、concurrentSameCodeHasOneWinner |
+| 06/07 | saveTableArea +原乐观锁 | rejectStaleAreaVersion、concurrentMutationHasOneWinner |
+| 08/11 | BizTableAreaController原权限/目录/范围 +核心验证 | TableAreaApiTest、denyForeignAreaMutation、rejectInvalidCommands |
+| 09/10/12 | setStatusTableArea；Mapper查询已有table/occupancy | refusesDisableWithActiveTablesOrOccupancy、sameStatusDoesNotChangeVersion |
+| 13 | 原审计/幂等/Outbox事务 | rollbackAfterEventFlush、missingSourceRollsBack、auditRetainsBeforeAndAfterContentsInOriginalOutbox |
+| 14 | TableInternalApi、RemoteTableService、InternalTableAreaController | RemoteTableServiceTest、InternalTableAreaApiTest、真实server主库测试 |
+| 15 | 独立于policy/pay/stock的配置业务 | TableServiceTest在无policy/交易表的夹具中写入 |
+
+**文件和接口：** A=food-api，D=food-core，W=food-web，S=food-server，Java根包ai.neargo.shop.food。
+
+- A/dto：ListTableAreasQuery、CreateTableAreaReq、SaveTableAreaReq、SetStatusTableAreaReq、TableAreaVO、TableAreaResultVO；A/service/TableService保持本节原签名；A/spi/TableInternalApi typed内部查询/创建/编辑/启停。
+- A/ai.neargo.shop.spi.food/TableAreaChanged：实际配置变化事件，版本、操作号和before/after业务快照及reason；不为无变更制造事件。
+- D/service/impl/TableServiceImpl：直接TableAreaMapper，原事务/幂等/审计/Outbox，原FoodCommandFingerprint；不引入Repository。既有D/entity/FnbTableArea复用不重写。
+- D/mapper/FoodMappers.TableAreaMapper：新增同主体门店桌区下启用桌台/活动占用查询；D/config/FoodAutoConfiguration装配TableService。
+- W/api/biz/BizTableAreaController：原STORE权限、可信actor和实际目录；W/foodclient/RemoteTableService及FoodClientConfiguration；FoodWebAutoConfiguration按原开关提供入口。
+- S/server/api/InternalTableAreaController：原内部安全链和状态映射；S测试真实主库HTTP。现有schema/装配测试扩展TableService/Controller断言。
+- 测试：D/scenario/TableServiceTest，W/scenario/TableAreaApiTest、RemoteTableServiceTest，S/scenario/InternalTableAreaApiTest及FoodServerPrimaryDatabaseTest；scripts/verify-food-primary-mysql.py纳入真实并发测试。
+
+**执行步骤：**
+
+- [x] 1. 写真实Mapper夹具测试listOnlyAuthorizedAreas，先失败，再实现092分页/状态/范围校验；默认page1/size20，size<=100。
+- [x] 2. 写replayAreaCreation、rejectInvalidCommands和并发同code测试，先失败，再实现093；创建code/name trim，不造policy或交易依赖。
+- [x] 3. 写denyForeignAreaMutation、rejectStaleAreaVersion，先失败，再实现094；摘要含对象/version，保留code与归属。
+- [x] 4. 写启用桌台/异常占用阻断、同状态无变更、并发和回滚测试，先失败，再实现095；锁桌区作为未来桌台操作共用仲裁行。
+- [x] 5. 写实际B端权限/参数及内部typed HTTP测试，先失败，再装配两部署路径；错误沿原400/403/404/409，无写重试或降级。
+- [x] 6. 常规reactor、一次性MySQL、宿主三形态和设计守卫；消融范围或版本保护必须变红；恢复再跑绿色套件，审查后只提交本轮文件。
+
+**验证命令：** JDK21、mvn -o；餐饮reactor `mvn -o -f backend-plugins/shop-industry-food/pom.xml verify`；MySQL `python3 scripts/verify-food-primary-mysql.py`；宿主 `mvn -o -f backend/pom.xml -pl shop-app -am test -Dtest=FoodEmbeddedWiringTest -Dsurefire.failIfNoSpecifiedTests=false`，分别默认、food-embedded和food-standalone。使用任务私有Maven缓存，避免共享SNAPSHOT串包。
+
+**审查修正：** 原审计列继续保存前后指纹，现有Outbox事件同时保存before/after业务快照及reason，以operationNo关联审计，满足名称、排序和状态前后值可追溯；不新增表。审查指出仅指纹无法恢复旧值，补充真实payload断言观察RED→GREEN，回滚测试确认已flush事件与业务写入全撤销。
+
+**实施收据（2026-10-20）：** 原API092～095、本地TableService及typed独立调用已交付。最终餐饮reactor `install` 实际136项通过、20项数据库条件跳过；一次性MySQL实际64项通过且0跳过（15主库、48业务/基础守卫、1真实server）。宿主默认/embedded/standalone实际5/5/6项通过，条件跳过1/1/0；设计守卫30项通过。测试日志位于任务临时目录的food-next09-final-reactor.log、food-next09-final-mysql.log及host日志；数据库测试未访问既有业务库。
+
+版本保护消融后rejectStaleAreaVersion实际1项失败，恢复后完整套件通过；审计快照缺失复现测试实际RED后修复GREEN。独立只读审查发现的1项Important已通过该测试修复，无遗留Minor；审查者未执行测试，以上门禁由实施者运行。冻结V1 SHA256仍为 `215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9`。
+
+**对账与偏差：** TableArea实体及其范围注册已存在，仅扩展原Mapper；新增实际端点测试TableAreaApiTest复用FoodStoreScopeTest安全夹具。创建按原DB默认显式version=0，不修改共享填充器；完整前后值存原Outbox而非向指纹列塞明文。四接口共用合同以一次提交收口。变更范围为food-api合同/事件、core服务/Mapper/装配/测试、web业务入口/适配/装配/测试、server入口/真实主库测试、MySQL验证脚本、需求/M0/README与原设计真源和092～095生成章节，其他脏文件及API章节保留。
+
+**剩余边界：** 桌区配置不等于桌台占用或营业交易就绪；后续桌台写入必须遵守桌区行仲裁。平台API081、支付库存合同及事件下游消费仍需各自验收。NEXT-10做交付证据收口，再进入TBL-02。
 
 #### NEXT-10：首批交付收口与后续准入（FND/TBL收口）
 

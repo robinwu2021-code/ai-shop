@@ -3,8 +3,10 @@ package ai.neargo.shop.food.config;
 import ai.neargo.shop.food.api.FoodRequestScopeValidator;
 import ai.neargo.shop.food.api.biz.BizServiceCalendarController;
 import ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController;
+import ai.neargo.shop.food.api.biz.BizTableAreaController;
 import ai.neargo.shop.food.foodclient.FoodClientConfiguration;
 import ai.neargo.shop.food.service.StoreOperationService;
+import ai.neargo.shop.food.service.TableService;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -41,6 +43,16 @@ public class FoodWebAutoConfiguration {
     BizServiceCalendarController calendarController(StoreOperationService service, StoreDirectoryPort stores,
             FoodRequestScopeValidator scope) {
         return new BizServiceCalendarController(service, stores, scope);
+    }
+
+    @Bean
+    @Profile("api")
+    @Conditional(PolicyEnabled.class)
+    @ConditionalOnBean({TableService.class, StoreDirectoryPort.class})
+    @ConditionalOnMissingBean(BizTableAreaController.class)
+    BizTableAreaController tableAreaController(TableService service, StoreDirectoryPort stores,
+            FoodRequestScopeValidator scope) {
+        return new BizTableAreaController(service, stores, scope);
     }
 
     /** OFF is a nonbusiness skeleton mode; never expose a policy endpoint through it. */

@@ -7010,7 +7010,7 @@
       "path": "/biz/x/food/stores/{storeNo}/table-areas",
       "input": "page?:int32:默认1;size?:int32:默认20最大100;status?:string:状态",
       "output": "records:TableArea[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "guard": "主体门店对象一致；列表与total同时按主体及当前门店过滤；page默认1、size默认20最大100；status省略含ACTIVE和DISABLED；按sortNo、areaNo升序；不暴露物理id",
       "needs": "餐饮新增"
     },
     {
@@ -7021,7 +7021,7 @@
       "path": "/biz/x/food/stores/{storeNo}/table-areas",
       "input": "code:string:店内唯一;name:string:名称;sortNo:int32:排序",
       "output": "area:TableArea:桌区",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "guard": "主体门店对象一致；原STORE权限、可信actor及幂等；code/name去两端空白，同店code精确唯一且不可修改，名称可重名；初始ACTIVE、version沿平台0；不依赖支付库存",
       "needs": "餐饮新增"
     },
     {
@@ -7032,7 +7032,7 @@
       "path": "/biz/x/food/table-areas/{areaNo}",
       "input": "name:string:名称;sortNo:int32:排序;version:int64:版本",
       "output": "area:TableArea:桌区",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "guard": "主体及当前门店与对象一致；原STORE权限、CAS版本及幂等；只改name和sortNo，保留code及归属；摘要包含areaNo与version；不暴露物理id",
       "needs": "餐饮新增"
     },
     {
@@ -7043,7 +7043,7 @@
       "path": "/biz/x/food/table-areas/{areaNo}:set-status",
       "input": "status:string:ACTIVE或DISABLED;version:int64:版本;reason:string:原因",
       "output": "area:TableArea:桌区",
-      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；有启用桌台或占用禁止停用",
+      "guard": "主体及当前门店与对象一致；原STORE权限、CAS版本及幂等；有启用桌台或活动占用禁止停用；reason非空最长255并写原审计；同状态版本正确时无变更成功，不级联桌台或清台",
       "needs": "餐饮新增"
     },
     {

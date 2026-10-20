@@ -12,6 +12,7 @@ import ai.neargo.shop.food.config.FoodSchemaReady;
 import ai.neargo.shop.food.mapper.FoodMappers;
 import ai.neargo.shop.food.server.FoodApplication;
 import ai.neargo.shop.food.spi.ServiceCalendarInternalApi;
+import ai.neargo.shop.food.spi.TableInternalApi;
 import ai.neargo.shop.food.spi.StoreOperationInternalApi;
 import ai.neargo.shop.food.spi.StorePolicyPublicationInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
@@ -151,6 +152,61 @@ class FoodServerPrimaryDatabaseTest {
                         for (String table:List.of("fnb_action_log","sys_idempotent","sys_outbox")) {
                             assertThat(sql.queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isEqualTo(3);
                         }
+                        String createArea = "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"actorNo\":\"trusted-actor\","
+                                + "\"idempotencyKey\":\"create-area\","
+                                + "\"area\":{\"code\":\"HALL\",\"name\":\"大厅\",\"sortNo\":0}}";
+                        String areaReceipt = mvc.perform(post(TableInternalApi.CREATE_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON).content(createArea))
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.area.version").value(0))
+                                .andReturn().getResponse().getContentAsString();
+                        mvc.perform(post(TableInternalApi.CREATE_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON).content(createArea))
+                                .andExpect(status().isOk()).andExpect(r -> assertThat(
+                                        r.getResponse().getContentAsString()).isEqualTo(areaReceipt));
+                        String areaNo = context.getBean(ObjectMapper.class).readTree(areaReceipt)
+                                .get("area").get("areaNo").asString();
+                        mvc.perform(post(TableInternalApi.LIST_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content("{\"entityNo\":\"E\",\"storeNo\":\"A\"}"))
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(1));
+                        String editArea = "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"areaNo\":\""+areaNo+"\","
+                                + "\"actorNo\":\"trusted-actor\",\"idempotencyKey\":\"edit-area\","
+                                + "\"area\":{\"name\":\"包间\",\"sortNo\":1,\"version\":0}}";
+                        mvc.perform(post(TableInternalApi.SAVE_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON).content(editArea))
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.area.version").value(1));
+                        mvc.perform(post(TableInternalApi.SAVE_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(editArea.replace("edit-area","foreign-area").replace("\"E\"","\"OTHER\"")))
+                                .andExpect(status().isNotFound());
+                        mvc.perform(post(TableInternalApi.SAVE_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON).content(editArea.replace("edit-area","stale-area")))
+                                .andExpect(status().isConflict());
+                        String disableArea = "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"areaNo\":\""+areaNo+"\","
+                                + "\"actorNo\":\"trusted-actor\",\"idempotencyKey\":\"disable-area\","
+                                + "\"area\":{\"status\":\"DISABLED\",\"reason\":\"停用\",\"version\":1}}";
+                        mvc.perform(post(TableInternalApi.STATUS_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON).content(disableArea))
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.area.version").value(2))
+                                .andExpect(jsonPath("$.area.status").value("DISABLED"));
+                        mvc.perform(post(TableInternalApi.STATUS_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(disableArea.replace("disable-area","no-change-area").replace("\"version\":1","\"version\":2")))
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.area.version").value(2));
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_table_area", Integer.class)).isOne();
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_action_log", Integer.class)).isEqualTo(6);
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox", Integer.class)).isEqualTo(6);
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent", Integer.class)).isEqualTo(7);
+                        assertThat(sql.queryForObject("SELECT reason FROM fnb_action_log WHERE action='SET_STATUS_AREA'",
+                                String.class)).isEqualTo("停用");
                     });
         } finally { admin.execute("DROP DATABASE " + database); }
     }
@@ -162,7 +218,7 @@ class FoodServerPrimaryDatabaseTest {
             var facade = new UnifiedOutboxFacade(json);
             facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
             facade.setArchiveOnly(Set.of("PLATFORM:FOOD_STORE_POLICY_PUBLISHED",
-                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED"));
+                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED", "PLATFORM:FOOD_TABLE_AREA_CHANGED"));
             return facade;
         }
     }

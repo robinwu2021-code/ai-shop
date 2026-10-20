@@ -4,8 +4,11 @@ import ai.neargo.shop.event.outbox.OutboxPublisher;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.ServiceCalendarMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper;
 import ai.neargo.shop.food.service.StoreOperationService;
+import ai.neargo.shop.food.service.TableService;
 import ai.neargo.shop.food.service.impl.StoreOperationServiceImpl;
+import ai.neargo.shop.food.service.impl.TableServiceImpl;
 import ai.neargo.shop.idem.IdempotencyService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -33,6 +36,15 @@ public class FoodAutoConfiguration {
             IdempotencyService idempotency, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
         return new StoreOperationServiceImpl(policies, actions, calendars, idempotency, publisher, json, manager);
+    }
+
+    @Bean
+    @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
+    @ConditionalOnMissingBean(TableService.class)
+    TableService tableService(TableAreaMapper areas, ActionLogMapper actions, IdempotencyService idem,
+            @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new TableServiceImpl(areas, actions, idem, publisher, manager);
     }
 
     @Bean
