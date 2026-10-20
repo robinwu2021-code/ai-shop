@@ -134,7 +134,7 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
           {trace.error && <Notice tone="danger">{c.invLedgerNotice}</Notice>}
           {trace.data && trace.data.reservations.length === 0 && <Notice tone="muted">{c.invTraceEmpty}</Notice>}
           {trace.data && (
-            <div className="space-y-1 rounded-md border p-3 txt-caption">
+            <div className="space-y-1 rounded-field border p-3 txt-caption">
               <div className="txt-title">{c.invTraceSync}</div>
               {trace.data.syncEvents.length === 0 ? <div className="text-muted-foreground">{c.invTraceSyncEmpty}</div>
                 : trace.data.syncEvents.map((event) => (
@@ -148,7 +148,7 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
             </div>
           )}
           {trace.data?.reservations.map((reservation) => (
-            <div key={`${reservation.ownerId}:${reservation.reservationId}`} className="space-y-2 rounded-md bg-muted/30 p-3">
+            <div key={`${reservation.ownerId}:${reservation.reservationId}`} className="space-y-2 rounded-field bg-muted/30 p-3">
               <div className="flex flex-wrap gap-x-5 gap-y-1 txt-caption">
                 <span>{c.invTraceReservation}: {reservation.reservationId} · {reservation.status}</span>
                 <span>{c.invColMerchant}: {reservation.ownerId}</span>
@@ -156,7 +156,7 @@ export function LedgerTab({ c }: { c: InventoryCopy }) {
                 <span>{c.invColDoc}: {reservation.outboundNo ?? "—"}</span>
               </div>
               {reservation.lines.map((line) => (
-                <div key={`${reservation.reservationId}:${line.lineNo}`} className="rounded-md border bg-background p-3 txt-caption">
+                <div key={`${reservation.reservationId}:${line.lineNo}`} className="rounded-field border bg-background p-3 txt-caption">
                   <div className="flex flex-wrap gap-x-5 gap-y-1">
                     <span>{c.invColItem}: {line.itemId}</span>
                     <span>{c.invTraceLocation}: {line.locationId}</span>
