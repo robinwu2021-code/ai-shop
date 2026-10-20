@@ -83,6 +83,7 @@ export interface BuyerPointsEntry {
   voucherDocumentNo?: string | null;
   direction?: string | null;
   businessRef?: string | null;
+  orderNo?: string | null;
   /** 不可变积分分录编号 */
   entryNo: string;
   /** 积分账本或资金池分桶 */

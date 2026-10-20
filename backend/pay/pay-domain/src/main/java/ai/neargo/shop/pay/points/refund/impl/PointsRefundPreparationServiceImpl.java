@@ -363,7 +363,7 @@ public class PointsRefundPreparationServiceImpl implements PointsRefundPreparati
                         && nonblank(payment.merchantNo())
                         && nonblank(payment.storeNo())
                         && nonblank(payment.accountVersion())
-                        && nonblank(payment.subMerchantId())
+                        && (!"AGGREGATED".equals(payment.fundsPath()) || nonblank(payment.subMerchantId()))
                         && nonblank(payment.tradeNo())
                         && nonblank(payment.outTradeNo())
                         && payment.orderTotalMinor() >= command.businessCashMinor(),

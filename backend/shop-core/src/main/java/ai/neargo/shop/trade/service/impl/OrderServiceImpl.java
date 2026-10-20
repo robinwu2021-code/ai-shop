@@ -229,6 +229,11 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         this.pointsTargets = targets;
     }
 
+    @org.springframework.beans.factory.annotation.Autowired(required=false)
+    private ai.neargo.shop.spi.points.PointsOperationsPort unifiedPoints;
+    @org.springframework.beans.factory.annotation.Value("${shop.points.unified-earning-enabled:false}")
+    private boolean unifiedPointsEnabled;
+
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     public void setPointsQuotePorts(ai.neargo.shop.spi.points.PointsRedeemPort redeem,
             ai.neargo.shop.spi.points.PointsOrderTermsPort terms) {
@@ -791,10 +796,10 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                                     lines)
                             .target());
         }
-        var quote =
-                pointsQuoteRedeem.quote(
-                        new ai.neargo.shop.spi.points.PointsRedeemPort.RedeemQuery(
-                                chosenMarket, userNo, cmd.usePoints(), payMode, client, targets));
+        var query = new ai.neargo.shop.spi.points.PointsRedeemPort.RedeemQuery(chosenMarket,userNo,cmd.usePoints(),payMode,client,targets);
+        if(first==null)return new PointsQuote("UNAVAILABLE","POINTS_REQUOTE_REQUIRED",0,0,0,0,base,List.of());
+        if(unifiedPointsEnabled && unifiedPoints==null)throw new IllegalStateException("POINTS_IMPLEMENTATION_REQUIRED");
+        var quote = unifiedPointsEnabled ? unifiedPoints.quote(first.typeCode(),first.currency(),query) : pointsQuoteRedeem.quote(query);
         if (quote == null
                 || first == null
                 || !first.typeCode().equals(quote.typeCode())

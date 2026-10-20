@@ -23,6 +23,10 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
         this.inspection = inspection;
     }
 
+    private ai.neargo.shop.payclient.PointsOrderLinkService links;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setOrderLinks(ai.neargo.shop.payclient.PointsOrderLinkService links) { this.links=links; }
+
     @Override
     public List<Account> accounts(String userNo) {
         if (userNo == null || userNo.isBlank())
@@ -57,7 +61,7 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
         if (userNo == null || userNo.isBlank())
             throw new IllegalArgumentException("POINTS_BUYER_REQUIRED");
         var page = inspection.entries(typeCode, HolderType.USER, userNo, null, after, limit);
-        var metadata = new ai.neargo.shop.payclient.PointsEntryMetadata(inspection, typeCode);
+        var metadata = new ai.neargo.shop.payclient.PointsEntryMetadata(inspection, typeCode, links == null ? null : sub -> links.forUser(sub, userNo));
         return new EntryPage(
                 page.rows().stream()
                         .map(
@@ -69,7 +73,7 @@ public class BuyerPointsAppServiceImpl implements BuyerPointsAppService {
                                                 row.afterPoints(),
                                                 row.at(), row.voucherNo(), row.voucherDocumentNo(),
                                                 metadata.forVoucher(row.voucherNo()).direction(),
-                                                metadata.forVoucher(row.voucherNo()).businessRef()))
+                                                metadata.forVoucher(row.voucherNo()).businessRef(), metadata.forVoucher(row.voucherNo()).orderNo()))
                         .toList(),
                 page.next(),
                 page.hasMore());

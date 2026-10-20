@@ -1,3 +1,4 @@
+import type { OrderPointsEarning } from "@shared/types";
 import type * as SV from './stored-value-types';
 import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 取。
@@ -514,6 +515,7 @@ export const httpApi: MerchantApi = {
     order: Order; actionKind: "AFTER_SALE" | "RECEIVE_PAYMENT" | "FULFILL" | "VERIFY";
     priority: number; afterSaleNo: string | null; afterSaleStatus: string | null;
   }>>(E.mOrderWorklist.path, q),
+  mOrderPointsEarning: (orderNo) => http.get<OrderPointsEarning[]>(buildPath(E.mOrderPointsEarning.path, { orderNo })),
   mOrderDetail: (orderNo) => http.get<Order>(buildPath(E.mOrderDetail.path, { orderNo })),
   mOrderInventoryTrace: (orderNo) => http.get<Awaited<ReturnType<MerchantApi["mOrderInventoryTrace"]>>>(
     buildPath(E.mOrderInventoryTrace.path, { orderNo })),

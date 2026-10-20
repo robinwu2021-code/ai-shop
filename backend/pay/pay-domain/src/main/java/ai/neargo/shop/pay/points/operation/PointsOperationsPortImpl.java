@@ -110,15 +110,32 @@ import java.util.*;
         String key=PointsOperationKeys.key(c.operation());
         require(Objects.equals(cmd.typeCode(), c.operation().typeCode())&&Objects.equals(cmd.subOrderNo(), c.operation().businessNo())&&cmd.operationKey()==null, "POINTS_OPERATION_SUBJECT_MISMATCH");
         require(paid.kind()==PointsFactPort.FactKind.PAID&&Objects.equals(paid.typeCode(), cmd.typeCode())&&Objects.equals(paid.subOrderNo(), cmd.subOrderNo())&&Objects.equals(paid.userNo(), cmd.userNo())&&paid.sourceVersion()==cmd.sourceVersion()&&Objects.equals(paid.payment(), cmd.payment())&&paid.payment()!=null&&PointsLifecycleFacts.digest(paid, json::writeValueAsString).equals(paid.payloadHash()), "POINTS_PAID_PROOF_REQUIRED");
-        require(nonblank(paid.payment().fundsPath())&&nonblank(paid.payment().accountVersion())&&nonblank(paid.payment().subMerchantId())&&nonblank(paid.payment().tradeNo())&&nonblank(paid.payment().outTradeNo())&&paid.payment().orderTotalMinor()>=paid.finalGoodsMinor(), "POINTS_PAID_PROOF_REQUIRED");
+        require(nonblank(paid.payment().fundsPath())&&nonblank(paid.payment().accountVersion())&&(!"AGGREGATED".equals(paid.payment().fundsPath())||nonblank(paid.payment().subMerchantId()))&&nonblank(paid.payment().tradeNo())&&nonblank(paid.payment().outTradeNo())&&paid.payment().orderTotalMinor()>=0, "POINTS_PAID_PROOF_REQUIRED");
         require("ONLINE".equals(cmd.payScene())&&cmd.payChannel()!=null&&!"OFFLINE".equals(cmd.payChannel())&&Objects.equals(cmd.storeNo(), paid.payment().storeNo())&&Objects.equals(cmd.merchantNo(), paid.payment().merchantNo()), "POINTS_EARN_PAYMENT_MISMATCH");
         var lines=new HashMap<String, PointsFactPort.LineSnapshot>();
         for(var line:paid.lines())require(lines.put(line.itemId(), line)==null, "POINTS_EARN_INPUT_INVALID");
         require(!cmd.lines().isEmpty()&&cmd.lines().size()==lines.size(), "POINTS_EARN_INPUT_INVALID");
+        long deduction=0;
+        var redeemed=read.position(PositionMove.Kind.REDEEM.table(),PointsKeys.position("R",cmd.typeCode(),cmd.subOrderNo()));
+        if(redeemed!=null) {
+            var held=json.readValue((String)redeemed.get("payload_json"),ai.neargo.shop.pay.points.redeem.impl.RedeemServiceImpl.RedeemSnapshot.class);
+            require(held.userNo().equals(cmd.userNo()) && held.subOrderNo().equals(cmd.subOrderNo())
+                    && held.target().merchantNo().equals(cmd.merchantNo()) && held.target().storeNo().equals(cmd.storeNo())
+                    && !"RELEASED".equals(redeemed.get("state")),"POINTS_EARN_REDEMPTION_MISMATCH");
+            require(held.target().items().size()==paid.lines().size(),"POINTS_EARN_REDEMPTION_MISMATCH");
+            for(int i=0;i<paid.lines().size();i++) {
+                var original=held.target().items().get(i);var actual=paid.lines().get(i);
+                require(original.itemId().equals(actual.itemId())&&original.goodsMinor()==actual.goodsMinor(),"POINTS_EARN_REDEMPTION_MISMATCH");
+            }
+            deduction=held.share().minor();
+        }
+        require(paid.lines().stream().mapToLong(PointsFactPort.LineSnapshot::goodsMinor).reduce(0,Math::addExact)==paid.finalGoodsMinor(),"POINTS_EARN_SNAPSHOT_MISMATCH");
+        var cash=ai.neargo.shop.pay.points.policy.EarningCashBasis.allocate(paid.lines(),deduction);
+        require(paid.payment().orderTotalMinor()>=Math.subtractExact(paid.finalGoodsMinor(),deduction),"POINTS_PAID_PROOF_REQUIRED");
         var seen=new HashSet<String>();
         for(var line:cmd.lines()) {
             var actual=lines.get(line.itemId());
-            require(seen.add(line.itemId())&&actual!=null&&line.quantity()==actual.quantity()&&line.goodsCashMinor()==actual.goodsMinor()&&line.refundedBeforeGrantMinor()==actual.refundedGoodsMinor()&&line.rule()!=null&&line.rule().mode()==PointsEarnPort.RuleMode.RATIO&&line.rule().value()>=0&&line.rule().value()<=10000, "POINTS_EARN_SNAPSHOT_MISMATCH");
+            require(seen.add(line.itemId())&&actual!=null&&line.quantity()==actual.quantity()&&line.goodsCashMinor()==cash.get(line.itemId())&&line.refundedBeforeGrantMinor()==actual.refundedGoodsMinor()&&line.rule()!=null&&line.rule().mode()==PointsEarnPort.RuleMode.RATIO&&line.rule().value()>=0&&line.rule().value()<=10000, "POINTS_EARN_SNAPSHOT_MISMATCH");
         }
         return journal.apply(c, Action.EARN, input, Receipt.class, ()-> {
             active(c.operation().typeCode());

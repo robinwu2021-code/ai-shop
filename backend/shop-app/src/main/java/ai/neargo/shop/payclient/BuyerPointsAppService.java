@@ -24,9 +24,9 @@ public interface BuyerPointsAppService {
             boolean frozen,
             Long expireAt) {}
 
-    record Entry(String entryNo, String bucket, long points, long balanceAfter, long at, String voucherNo, String voucherDocumentNo, String direction, String businessRef) {
+    record Entry(String entryNo, String bucket, long points, long balanceAfter, long at, String voucherNo, String voucherDocumentNo, String direction, String businessRef, String orderNo) {
         public Entry(String entryNo, String bucket, long points, long balanceAfter, long at) {
-            this(entryNo, bucket, points, balanceAfter, at, null, null, null, null);
+            this(entryNo, bucket, points, balanceAfter, at, null, null, null, null, null);
         }
     }
 

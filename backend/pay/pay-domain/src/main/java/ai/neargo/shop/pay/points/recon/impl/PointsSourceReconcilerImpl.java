@@ -55,7 +55,7 @@ public class PointsSourceReconcilerImpl implements PointsSourceReconciler {
                     "POINTS_SOURCE_SEQUENCE_INVALID");
             sequence = fact.sequence();
             int kinds =
-                    (fact.lifecycle() == null ? 0 : 1)
+                    (fact.lifecycle() == null && fact.earning() == null ? 0 : 1)
                             + (fact.closure() == null ? 0 : 1)
                             + (fact.zeroCash() == null ? 0 : 1)
                             + (fact.refund() == null ? 0 : 1);
@@ -63,7 +63,7 @@ public class PointsSourceReconcilerImpl implements PointsSourceReconciler {
             String factType =
                     fact.lifecycle() != null
                             ? fact.lifecycle().typeCode()
-                            : fact.closure() != null
+                            : fact.earning() != null ? fact.earning().typeCode() : fact.closure() != null
                                     ? fact.closure().typeCode()
                                     : fact.zeroCash() != null
                                             ? fact.zeroCash().typeCode()
@@ -71,16 +71,16 @@ public class PointsSourceReconcilerImpl implements PointsSourceReconciler {
             require(type.equals(factType), "POINTS_SOURCE_TYPE_MISMATCH");
             if (fact.earning() != null) {
                 require(
-                        fact.lifecycle() != null
-                                && fact.lifecycle().kind() == PointsFactPort.FactKind.PAID
+                        fact.lifecycle() == null || (fact.lifecycle().kind() == PointsFactPort.FactKind.PAID
                                 && type.equals(fact.earning().typeCode())
                                 && fact.lifecycle()
                                         .subOrderNo()
-                                        .equals(fact.earning().subOrderNo()),
+                                        .equals(fact.earning().subOrderNo())),
                         "POINTS_SOURCE_EARNING_MISMATCH");
             }
         }
         for (var fact : page.facts()) {
+            if (source.deliver(fact)) continue;
             if (fact.lifecycle() != null) {
                 facts.accept(fact.lifecycle());
             }

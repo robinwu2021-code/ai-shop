@@ -147,6 +147,9 @@ public interface PointsInspectionService {
         }
     }
 
+    /** Source sub-order for a grant voucher; callers must verify holder association before linking. */
+    default String earningOrder(String typeCode, String voucherNo) { return null; }
+
     EarningView earning(String typeCode, String subOrderNo);
 
     record EarningView(String state, long expectedPoints, long grantedPoints, long availablePoints,

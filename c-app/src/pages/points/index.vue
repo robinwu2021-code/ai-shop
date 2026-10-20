@@ -78,6 +78,9 @@ async function load() {
 }
 
 onShow(load);
+function openOrder(no: string) {
+  uni.navigateTo({url: `/pages/order/index?orderNo=${encodeURIComponent(no)}`});
+}
 </script>
 
 <template>
@@ -120,6 +123,7 @@ onShow(load);
       <view v-for="r in records" :key="r.entryNo" class="rec sh-row">
         <view class="sh-fill">
           <text class="txt-sub rec__title">{{ $t(`points.direction${r.direction || "OTHER"}`) }} · {{ $t(`points.bucket${r.bucket}`) }}</text>
+          <view v-if="r.orderNo" class="txt-caption" @tap="openOrder(r.orderNo)">{{ $t("points.viewOrder") }}</view>
           <text v-if="r.businessRef" class="txt-caption rec__at">{{ r.businessRef }}</text>
           <text v-if="r.voucherDocumentNo || r.voucherNo" class="txt-caption rec__at">{{ r.voucherDocumentNo || r.voucherNo }}</text>
           <text class="txt-caption rec__at">{{ $t("points.posted") }}</text>

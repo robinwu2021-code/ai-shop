@@ -12,6 +12,8 @@ describe("买家积分账本读取", () => {
   it("按类型读取账户和游标流水，不传可伪造的用户号", async () => {
     await httpApi.pointsAccounts();
     expect(get).toHaveBeenLastCalledWith("/mp/points/accounts", undefined, undefined);
+    await httpApi.orderPointsEarning("S");
+    expect(get).toHaveBeenLastCalledWith("/mp/order/S/points-earning", undefined, undefined);
     await httpApi.pointsEntries("CN", 42);
     expect(get).toHaveBeenLastCalledWith("/mp/points/entries",
       { typeCode: "CN", after: 42, limit: 20 }, undefined);

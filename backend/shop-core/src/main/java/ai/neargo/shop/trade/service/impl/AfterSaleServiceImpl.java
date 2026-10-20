@@ -127,6 +127,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     private final ai.neargo.shop.trade.order.mapper.OrderPointsBindingMapper pointsBindings;
     private final TransactionTemplate refundTransactions;
     private ai.neargo.shop.spi.points.PointsPaymentSnapshotPort pointsPayments;
+    @Autowired(required=false)
+    private ai.neargo.shop.trade.order.points.OrderPointsRefundRouting pointsRefundRouting;
+    private ai.neargo.shop.spi.points.PointsRefundPort pointsRefundPort(String afterSaleNo) {
+        return pointsRefundRouting==null?pointsRefunds:pointsRefundRouting.route(afterSaleNo,pointsRefunds);
+    }
     private ai.neargo.shop.spi.points.PointsRefundPort pointsRefunds;
     private ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator pointsRefundSource;
     private ai.neargo.shop.trade.order.points.OrderPointsOutboxConsumer pointsSourceDelivery;
@@ -1407,7 +1412,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 && binding.phase() != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.CASH_FAILED_PENDING_OPERATOR)
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         var prep = binding.preparation();
-        var proof = pointsRefunds.recoveryStatus(prep.preparationNo(), prep.inputHash());
+        var proof = pointsRefundPort(afterSaleNo).recoveryStatus(prep.preparationNo(), prep.inputHash());
         var execution = refundExecutions.inspect(afterSaleNo);
         if (execution == null) throw new IllegalStateException("POINTS_OPERATOR_REFUND_SOURCE_MISSING");
         var plan = execution.plan();
@@ -1450,7 +1455,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 && binding.phase() != ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.CASH_FAILED_PENDING_OPERATOR)
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         var prep = binding.preparation();
-        var proof = pointsRefunds.recoveryStatus(prep.preparationNo(), prep.inputHash());
+        var proof = pointsRefundPort(afterSaleNo).recoveryStatus(prep.preparationNo(), prep.inputHash());
         var execution = refundExecutions.inspect(afterSaleNo);
         if (execution == null) throw new IllegalStateException("POINTS_OPERATOR_REFUND_SOURCE_MISSING");
         var plan = execution.plan();
@@ -1548,7 +1553,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 || binding.phase()==ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.CASH_FAILED_PENDING_OPERATOR)
             return;
         var preparation=binding.preparation()!=null ? binding.preparation()
-                : pointsRefunds.prepare(binding.command());
+                : pointsRefundPort(afterSaleNo).prepare(binding.command());
         binding=pointsRefundSource.acceptPreparation(afterSaleNo,preparation);
         if(preparation.netCashMinor()==0) {
             var plan=execution.plan();
@@ -1560,7 +1565,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             refundTransactions.executeWithoutResult(status -> pointsRefundSource.recordZeroCash(afterSaleNo));
             String zeroEvent="ORDER:ZERO_CASH:"+afterSaleNo;
             pointsSourceDelivery.deliver(zeroEvent,plan.subOrderNo());
-            var zeroConfirmed=pointsRefunds.confirm(new ai.neargo.shop.spi.points.PointsRefundPort.RefundConfirmation(
+            var zeroConfirmed=pointsRefundPort(afterSaleNo).confirm(new ai.neargo.shop.spi.points.PointsRefundPort.RefundConfirmation(
                     preparation.preparationNo(),preparation.inputHash(),null,
                     preparation.collectionTicket(),null,zeroEvent));
             pointsRefundSource.acceptPointsConfirmation(afterSaleNo,zeroConfirmed);
@@ -1572,7 +1577,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             return;
         }
         if(binding.phase()==ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.COMPENSATING) {
-            var status=pointsRefunds.recoveryStatus(preparation.preparationNo(),preparation.inputHash());
+            var status=pointsRefundPort(afterSaleNo).recoveryStatus(preparation.preparationNo(),preparation.inputHash());
             if("ABORTED".equals(status.state()) && status.compensationSucceeded()) {
                 var plan=execution.plan();
                 var sub=subOrderOf(plan.subOrderNo());
@@ -1583,13 +1588,13 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 pointsRefundSource.recordCompensated(afterSaleNo,status);
                 return;
             }
-            pointsRefunds.requestCompensation(new ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort(
+            pointsRefundPort(afterSaleNo).requestCompensation(new ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort(
                     preparation.preparationNo(),preparation.inputHash(),binding.cashPaymentNo()),
                     preparation.revision());
             return;
         }
         if(binding.phase()==ai.neargo.shop.trade.order.points.OrderPointsRefundCoordinator.Phase.PREPARED) {
-            var decision=pointsRefunds.authorizeCash(preparation.preparationNo(),
+            var decision=pointsRefundPort(afterSaleNo).authorizeCash(preparation.preparationNo(),
                     preparation.inputHash(),preparation.revision());
             binding=pointsRefundSource.authorizeCash(afterSaleNo,decision);
         }
@@ -1613,15 +1618,15 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         var evidence=settlePort.refundEvidence(paymentNo);
         if(evidence!=null && evidence.safety()!=null && evidence.safety().safeToRecover()) {
             if(preparation.collectionTicket()==null) {
-                pointsRefunds.abort(new ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort(
+                pointsRefundPort(afterSaleNo).abort(new ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort(
                         preparation.preparationNo(),preparation.inputHash(),paymentNo));
-                var status=pointsRefunds.recoveryStatus(preparation.preparationNo(),preparation.inputHash());
+                var status=pointsRefundPort(afterSaleNo).recoveryStatus(preparation.preparationNo(),preparation.inputHash());
                 refundTransactions.executeWithoutResult(tx ->
                         pointsRefundSource.recordNoCollectionCashFailure(afterSaleNo,evidence,status));
                 return;
             }
             refundTransactions.executeWithoutResult(status -> pointsRefundSource.recordCashFailure(afterSaleNo,evidence));
-            pointsRefunds.requestCompensation(new ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort(
+            pointsRefundPort(afterSaleNo).requestCompensation(new ai.neargo.shop.spi.points.PointsRefundPort.RefundAbort(
                     preparation.preparationNo(),preparation.inputHash(),paymentNo),preparation.revision());
             return;
         }
@@ -1632,7 +1637,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         });
         String eventNo="ORDER:REFUND_CONFIRM:"+afterSaleNo;
         pointsSourceDelivery.deliver(eventNo,plan.subOrderNo());
-        var confirmed=pointsRefunds.confirm(new ai.neargo.shop.spi.points.PointsRefundPort.RefundConfirmation(
+        var confirmed=pointsRefundPort(afterSaleNo).confirm(new ai.neargo.shop.spi.points.PointsRefundPort.RefundConfirmation(
                 preparation.preparationNo(),preparation.inputHash(),paymentNo,
                 preparation.collectionTicket(),null));
         pointsRefundSource.acceptPointsConfirmation(afterSaleNo,confirmed);

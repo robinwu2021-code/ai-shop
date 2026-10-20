@@ -43,6 +43,13 @@ public class OrderPointsCoordinatorImpl
         this.source = source;
     }
 
+    private ObjectProvider<PointsOperationsPort> operations;
+    private ObjectProvider<PointsRefundPort> refundProofs;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setRefundProofs(ObjectProvider<PointsRefundPort> refunds) { this.refundProofs=refunds; }
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setUnifiedOperations(ObjectProvider<PointsOperationsPort> operations) { this.operations = operations; }
+
     @Override
     public Decision decide(Context c) {
         require(c != null, "POINTS_INTEGRATION_INPUT_INVALID");
@@ -102,9 +109,49 @@ public class OrderPointsCoordinatorImpl
         var port = facts.getIfAvailable();
         require(port != null, "POINTS_IMPLEMENTATION_REQUIRED");
         var f = event.fact();
+        var frozen = json.readValue(a.snapshot().ruleSnapshot(), PointsOrderPlacementCoordinator.EarningSnapshot.class);
+        if(frozen.schemaVersion()==3 && f.earning()==null) {
+            var unified=operations==null?null:operations.getIfAvailable();
+            require(unified!=null,"POINTS_IMPLEMENTATION_REQUIRED");
+            String business=a.subOrderNo();
+            if(f.zeroCash()!=null)business=f.zeroCash().afterSaleNo();
+            if(f.refund()!=null) {
+                var proofs=refundProofs==null?null:refundProofs.getIfAvailable();
+                require(proofs!=null,"POINTS_IMPLEMENTATION_REQUIRED");
+                var confirmation=f.refund().confirmation();
+                var proof=proofs.recoveryStatus(confirmation.preparationNo(),confirmation.inputHash());
+                require(proof!=null&&a.subOrderNo().equals(proof.subOrderNo()),"POINTS_REFUND_SOURCE_CONFLICT");
+                business=proof.afterSaleNo();
+            }
+            String digest;
+            try {digest=java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(event.eventNo().getBytes(java.nio.charset.StandardCharsets.UTF_8)));}
+            catch(java.security.NoSuchAlgorithmException impossible){throw new IllegalStateException(impossible);}
+            var context=new PointsOperationsPort.Context("TRADE:FACT:"+digest,
+                new PointsOperationsPort.Operation(PointsOperationsPort.Source.TRADE,business,"FACT:"+digest.substring(0,32),a.typeCode()),a.currency());
+            if(f.lifecycle()!=null)unified.acceptLifecycle(context,f.lifecycle());
+            else if(f.closure()!=null)unified.acceptClosure(context,f.closure());
+            else if(f.zeroCash()!=null)unified.acceptZeroCash(context,f.zeroCash());
+            else unified.acceptRefundFact(context,f.refund());
+            return;
+        }
         if (f.earning() != null) {
             require(a.earning(), "POINTS_EARNING_NOT_ADMITTED");
-            port.acceptEarning(f.earning());
+            var snapshot = json.readValue(a.snapshot().ruleSnapshot(), PointsOrderPlacementCoordinator.EarningSnapshot.class);
+            if (snapshot.schemaVersion() >= 3) {
+                require(snapshot.schemaVersion() == 3 && snapshot.operationNo() != null, "POINTS_EARNING_SCHEMA_UNSUPPORTED");
+                var unified = operations == null ? null : operations.getIfAvailable();
+                require(unified != null, "POINTS_IMPLEMENTATION_REQUIRED");
+                var original = source.getIfAvailable();
+                require(original != null, "POINTS_PAID_PROOF_REQUIRED");
+                var paidEvent = original.find("ORDER:PAID:" + a.subOrderNo())
+                        .orElseThrow(() -> new IllegalArgumentException("POINTS_PAID_PROOF_REQUIRED"));
+                require(paidEvent.orderNo().equals(a.orderNo()) && paidEvent.typeCode().equals(a.typeCode())
+                        && paidEvent.storeNo().equals(a.storeNo()) && paidEvent.merchantNo().equals(a.merchantNo()),
+                        "POINTS_PAID_PROOF_REQUIRED");
+                var op = new PointsOperationsPort.Operation(PointsOperationsPort.Source.TRADE, a.subOrderNo(), snapshot.operationNo(), a.typeCode());
+                var context = new PointsOperationsPort.Context("TRADE:EARN:" + binding.bindingNo(), op, a.currency());
+                unified.submitEarning(context, new PointsOperationsPort.Earning(f.earning(), paidEvent.fact().lifecycle()));
+            } else port.acceptEarning(f.earning());
         } else if (f.lifecycle() != null) port.accept(f.lifecycle());
         else if (f.closure() != null) port.acceptClosure(f.closure());
         else if (f.zeroCash() != null) port.acceptZeroCash(f.zeroCash());

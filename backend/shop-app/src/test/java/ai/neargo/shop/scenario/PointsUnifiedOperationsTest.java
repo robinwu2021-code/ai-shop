@@ -18,11 +18,12 @@ import java.util.*;
 import java.time.Instant;
 import static org.assertj.core.api.Assertions.*;
 @SpringBootTest(properties= {
-    "shop.points.enabled=true", "spring.datasource.url=jdbc:h2:mem:points_unified;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"
+    "shop.points.enabled=true", "shop.points.default-participation-enabled=true", "shop.points.default-participation-since=1", "spring.datasource.url=jdbc:h2:mem:points_unified;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"
 }) @ActiveProfiles("test") @Import(RedeemServiceTest.VerifiedCapabilities.class) class PointsUnifiedOperationsTest {
     @Autowired ai.neargo.shop.pay.points.agreement.AgreementService agreements;
     @Autowired @Qualifier("dataSource") DataSource shopData;
     @Autowired PointsOperationsPort ops;
+    @Autowired ai.neargo.shop.pay.points.admin.PointsInspectionService inspection;
     @Autowired PointTypeService types;
     @Autowired PointsPostingService posting;
     @Autowired PointsSourceFactHandler source;
@@ -55,9 +56,10 @@ import static org.assertj.core.api.Assertions.*;
         var f=fact(type, sub, PointsFactPort.FactKind.PAID);
         return new Earning(new PointsEarnPort.GrantCommand("E:"+type+":"+sub, sub, "USER", type, "S", "TEST", "ONLINE", 1, List.of(new PointsEarnPort.EarnLine("I", "G", "C", 1, 10000, 0, new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.RATIO, 100))), "M", "MP", f.payment()), f);
     }
-    void process(String type) {
+    void process(String type) { processAt(type, System.currentTimeMillis()+1000); }
+    void processAt(String type, long now) {
         for(int i=0; i<4; i++) {
-            var lease=queue.claim(type, System.currentTimeMillis()+1000);
+            var lease=queue.claim(type, now);
             if(lease==null)return;
             try {
                 if(lease.message().kind()==PointsEventQueue.Kind.SOURCE_FACT)source.apply(new tools.jackson.databind.ObjectMapper().readValue(lease.message().payload(), PointsFactPort.LifecycleFact.class));
@@ -70,6 +72,37 @@ import static org.assertj.core.api.Assertions.*;
                 throw e;
             }
         }
+    }
+    @Test void versionedOrderDeliveryUsesRealLedgerAndReplaysWithoutDoubleGrant() {
+        String type=create(1000), sub="WIRE"+UUID.randomUUID().toString().replace("-", "").substring(0,20);
+        var input=earning(type,sub);
+        var json=new tools.jackson.databind.ObjectMapper();
+        var paid=input.paidFact();
+        var paidEvent=new PointsOrderEvent("O"+sub,sub,"M","S","USER",type,"CNY",1,paid.occurredAt(),new SourceFactsPort.Fact(1,paid,null,null,null,null));
+        var event=new PointsOrderEvent("O"+sub,sub,"M","S","USER",type,"CNY",1,paid.occurredAt(),new SourceFactsPort.Fact(2,null,input.command(),null,null,null));
+        var frozen=new ai.neargo.shop.trade.order.points.PointsOrderPlacementCoordinator.EarningSnapshot(3,1,input.command().lines(),List.of(),"ORDER_EARN_V3");
+        var admission=new ai.neargo.shop.trade.order.points.OrderPointsBindingService.Admission("R"+sub,"O"+sub,sub,"USER","M","S",type,"CNY","ONLINE",0,true,false,
+            new ai.neargo.shop.trade.order.points.OrderPointsBindingService.Snapshot(10000,0,0,1,1,json.writeValueAsString(frozen),"null",paid.payment(),List.of(new PointsRedeemPort.Item("I",10000))));
+        var bindings=org.mockito.Mockito.mock(ai.neargo.shop.trade.order.points.OrderPointsBindingService.class);
+        org.mockito.Mockito.when(bindings.find(sub)).thenReturn(new ai.neargo.shop.trade.order.points.OrderPointsBindingService.Binding("B"+sub,admission,ai.neargo.shop.trade.order.points.OrderPointsBindingService.Phase.BOUND,1,null));
+        var sourcePort=org.mockito.Mockito.mock(OrderPointsSourcePort.class);
+        org.mockito.Mockito.when(sourcePort.find("ORDER:PAID:"+sub)).thenReturn(Optional.of(paidEvent));
+        var factory=new org.springframework.beans.factory.support.StaticListableBeanFactory();
+        factory.addBean("facts",org.mockito.Mockito.mock(PointsFactPort.class));factory.addBean("source",sourcePort);factory.addBean("ops",ops);
+        var delivery=new ai.neargo.shop.trade.order.points.impl.OrderPointsCoordinatorImpl(
+            org.mockito.Mockito.mock(ai.neargo.shop.trade.order.points.PointsIntegrationPolicyService.class),bindings,
+            org.mockito.Mockito.mock(ai.neargo.shop.trade.order.mapper.OrderPointsBindingMapper.class),factory.getBeanProvider(PointsRedeemPort.class),factory.getBeanProvider(PointsFactPort.class),factory.getBeanProvider(PointsObligationPort.class),factory.getBeanProvider(OrderPointsSourcePort.class));
+        delivery.setUnifiedOperations(factory.getBeanProvider(PointsOperationsPort.class));
+        delivery.onSourceEvent(event);process(type);delivery.onSourceEvent(event);process(type);
+        assertThat(ops.balance(type,Holder.USER,"USER").pendingPoints()).isEqualTo(100);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_voucher WHERE type_code=? AND biz_ref LIKE 'GRANT:%'",Long.class,type)).isEqualTo(1);
+        var voucher=jdbc().queryForObject("SELECT voucher_no FROM pts_voucher WHERE type_code=? AND biz_ref LIKE 'GRANT:%'",String.class,type);
+        assertThat(inspection.earningOrder(type,voucher)).isEqualTo(sub);
+        var operation=new Operation(Source.TRADE,sub,"ORDER_EARN_V3",type);
+        assertThat(ops.status(operation,Action.EARN).domainState()).isEqualTo("PENDING");
+        ops.acceptLifecycle(context(type,sub,"FINAL"),fact(type,sub,PointsFactPort.FactKind.FINALIZED));process(type);
+        assertThat(ops.status(operation,Action.EARN).domainState()).isEqualTo("AVAILABLE");
+        assertThat(ops.balance(type,Holder.USER,"USER").availablePoints()).isEqualTo(100);
     }
     @Test void missingAccountReadDoesNotCreateAndCurrencyMismatchDoesNotWrite() {
         String type=create(0);
@@ -108,6 +141,16 @@ import static org.assertj.core.api.Assertions.*;
         assertThat(ops.status(c.operation(), Action.EARN).status()).isEqualTo(Status.RETRYABLE);
         assertThat(ops.balance(type, Holder.USER, "USER").pendingPoints()).isZero();
         assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_voucher WHERE type_code=? AND biz_ref LIKE 'GRANT:%'", Long.class, type)).isZero();
+        var evidence=new EvidenceRef("TOPUP:"+type,"CNY",1000);posting.recordEvidence(evidence);
+        posting.post(new Voucher("TOPUP:"+type,type,"CNY",new RedeemRate(1,1),List.of(
+            new PointsMove(new AccountKey(type,HolderType.MINT,"PLATFORM",Bucket.ISSUED),-1000),
+            new PointsMove(new AccountKey(type,HolderType.ISSUE,"PLATFORM",Bucket.ISSUABLE),1000)),
+            List.of(new FundMove(FundBucket.U,1000)),List.of(),0,List.of(evidence),"{}"));
+        ops.submitEarning(c,earning(type,sub));
+        processAt(type,System.currentTimeMillis()+3_600_000);
+        assertThat(ops.status(c.operation(),Action.EARN).status()).isEqualTo(Status.SUCCEEDED);
+        assertThat(ops.balance(type,Holder.USER,"USER").pendingPoints()).isEqualTo(100);
+        assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_voucher WHERE type_code=? AND biz_ref LIKE 'GRANT:%'",Long.class,type)).isEqualTo(1);
     }
     @Test void changedBusinessIntentConflictsEvenWithNewRequest() {
         String type=create(1000);
@@ -281,4 +324,48 @@ import static org.assertj.core.api.Assertions.*;
         assertThat(ops.balance(type, Holder.USER, "USER").heldPoints()).isZero();
         assertThat(ops.status(c.operation(), Action.HOLD).domainState()).isEqualTo("RELEASED");
     }
+    @Test void mixedCashEarningUsesTrustedDeductionAndPartialRefundsReturnOriginalPoints() {
+        String type=create(1000);makeAvailable(type);
+        String store=setupStore(type,null),order="MIX"+UUID.randomUUID().toString().substring(0,16),sub="SUB"+order;
+        var hc=context(type,order,"HOLD");var h=hold(order,sub,store);ops.hold(hc,h);
+        var payment=new PointsRefundPort.PaymentSnapshot("DIRECT","TEST","M"+store,store,"A1",null,"TRADE:"+sub,"PAY:"+sub,950);
+        var raw=new PointsFactPort.LifecycleFact("PAID:"+sub,null,sub,"USER",type,1,PointsFactPort.FactKind.PAID,1000,0,List.of(new PointsFactPort.LineSnapshot("I",1,1000,0)),Instant.now(),payment);
+        var paid=new PointsFactPort.LifecycleFact(raw.eventNo(),PointsLifecycleFacts.digest(raw,new tools.jackson.databind.ObjectMapper()::writeValueAsString),sub,"USER",type,1,raw.kind(),1000,0,raw.lines(),raw.occurredAt(),payment);
+        ops.acceptLifecycle(context(type,sub,"PAID"),paid);process(type);
+        assertThat(ops.status(hc.operation(),Action.HOLD).domainState()).isEqualTo("CONSUMED");
+        var command=new PointsEarnPort.GrantCommand("E:"+sub,sub,"USER",type,store,"TEST","ONLINE",1,List.of(new PointsEarnPort.EarnLine("I","G","C",1,950,0,new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.RATIO,1000))),"M"+store,"MP",payment);
+        var ec=context(type,sub,"EARN");ops.submitEarning(ec,new Earning(command,paid));process(type);
+        assertThat(ops.balance(type,Holder.USER,"USER").pendingPoints()).isEqualTo(95);
+        var bad=new PointsEarnPort.GrantCommand("BAD:"+sub,sub,"USER",type,store,"TEST","ONLINE",1,List.of(new PointsEarnPort.EarnLine("I","G","C",1,1000,0,new PointsEarnPort.EarnRule(PointsEarnPort.RuleMode.RATIO,1000))),"M"+store,"MP",payment);
+        assertThatThrownBy(()->ops.submitEarning(context(type,sub,"BAD"),new Earning(bad,paid))).hasMessage("POINTS_EARN_SNAPSHOT_MISMATCH");
+        for(int step=1;step<=2;step++) {
+        String afterSale="AS"+step+sub;var rc=context(type,afterSale,"REFUND");
+        var refund=new PointsRefundPort.RefundCommand(afterSale,sub,"USER",type,"CNY",step,475,step*500,List.of(new PointsRefundPort.RefundLine("I",step*500)),payment);
+        var prepared=ops.prepareRefund(rc,refund);
+        assertThat(prepared.netCashMinor()).isEqualTo(475);
+        ops.authorizeRefund(new Context("AUTH:"+afterSale,rc.operation(),"CNY"),new RefundAuthorization(prepared.preparationNo(),prepared.inputHash(),prepared.revision()));
+        var confirmation=new PointsRefundPort.RefundConfirmation(prepared.preparationNo(),prepared.inputHash(),"CASH:"+afterSale,null,null);
+        var cc=new Context("CONF:"+afterSale,rc.operation(),"CNY");
+        assertThatThrownBy(()->ops.confirmRefund(cc,confirmation)).hasMessage("POINTS_CASH_REFUND_NOT_CONFIRMED");
+        jdbc().update("INSERT INTO stl_payment(payment_no,direction,after_sale_no,sub_order_no,order_no,user_no,currency,amount_minor,status,pay_channel,trade_no,succeeded_at,refund_verified_minor,refund_verified_at,refund_verified_provider_no,created_at,updated_at) VALUES(?,'REFUND',?,?,?,'USER','CNY',?,'SUCCESS','TEST',?,1,?,1,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)","CASH:"+afterSale,afterSale,sub,order,prepared.netCashMinor(),"RECEIPT:"+afterSale,prepared.netCashMinor(),"VERIFIED:"+afterSale);
+        var outcome=ops.confirmRefund(cc,confirmation);
+        assertThat(outcome.state()).isEqualTo("CONFIRMED");
+        assertThat(outcome.returnedPoints()).isEqualTo(25);assertThat(outcome.reclaimedPoints()).isEqualTo(step==1?47:48);
+        assertThat(ops.confirmRefund(cc,confirmation)).isEqualTo(outcome);
+        }
+        assertThat(ops.balance(type,Holder.USER,"USER").availablePoints()).isEqualTo(100);
+        assertThat(ops.balance(type,Holder.USER,"USER").pendingPoints()).isZero();
+    }
+
+    @Autowired ai.neargo.shop.pay.points.redeem.RedeemService redeemService;
+    @Test void defaultParticipationAllowsUnsignedStoreWithoutCreatingAgreement() {
+        String type=create(1000);makeAvailable(type);String store=setupStore(type,null);
+        jdbc().update("DELETE FROM pts_merchant_agreement WHERE type_code=?",type);
+        {
+            String order="UNSIGNED"+UUID.randomUUID().toString().substring(0,12);
+            assertThat(ops.hold(context(type,order,"HOLD"),hold(order,"SUB"+order,store)).points()).isEqualTo(50);
+            assertThat(jdbc().queryForObject("SELECT COUNT(*) FROM pts_merchant_agreement WHERE type_code=?",Long.class,type)).isZero();
+        }
+    }
+
 }

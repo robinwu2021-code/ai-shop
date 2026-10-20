@@ -82,6 +82,7 @@ export interface StorePointEntryPage {
     voucherDocumentNo?: string | null;
     direction?: string | null;
     businessRef?: string | null;
+    orderNo?: string | null;
     /** 账本持有人类型 */
     holderType: "STORE";
     /** 账本持有人编号，与持有人类型联合定位 */
@@ -1923,4 +1924,23 @@ export interface StorePointStatementReceipt {
   reference: string;
   /** 操作受理时间，毫秒时间戳 */
   at: number;
+}
+
+/** Server-projected earning for an authorized order; accepted work is not an account credit. */
+export interface OrderPointsEarning {
+  orderNo: string;
+  typeCode: string;
+  name: string;
+  currency: string;
+  state: "NONE" | "EXPECTED" | "PROCESSING" | "PENDING" | "AVAILABLE" | "RETRYABLE" | "MANUAL" | "SKIPPED" | "RECLAIMED";
+  redemptionState: "NONE" | "PROCESSING" | "HELD" | "RELEASED" | "CONSUMED" | "REFUND_PROCESSING" | "RETURNED" | "PARTIALLY_RETURNED";
+  usedPoints: number;
+  refundState: "NONE" | "PROCESSING" | "MANUAL" | "COMPLETED";
+  returnedPoints: number;
+  expectedPoints: number;
+  grantedPoints: number;
+  pendingPoints: number;
+  availablePoints: number;
+  reclaimedPoints: number;
+  reason: string | null;
 }

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ShPointsEarning from "@ai-shop/ui/components/sh-points-earning.vue";
+import type { OrderPointsEarning } from "@shared/types";
 import { useRecipientName } from "@/shared/recipient-name";
 const recipientName = useRecipientName();
 // 订单详情：码 → 状态时间线 → 商品 → 金额 → 履约信息 → 操作。
@@ -186,6 +188,20 @@ const expressCompanyName = computed(() => {
 });
 
 const order = ref<Order | null>(null);
+const earningRows = ref<OrderPointsEarning[]>([]);
+const earningFailed = ref(false);
+let earningEpoch = 0;
+async function loadEarning() {
+  const no = order.value?.orderNo;
+  const token = ++earningEpoch;
+  earningRows.value = []; earningFailed.value = false;
+  if (!no) return;
+  try {
+    const rows = await api.orderPointsEarning(no);
+    if (token === earningEpoch && order.value?.orderNo === no) earningRows.value = rows;
+  } catch { if (token === earningEpoch && order.value?.orderNo === no) earningFailed.value = true; }
+}
+
 /**
  * 这一单参加的团（原型 p08）。团单在订单里多一张进度卡：还差几人、还剩多久、邀请。
  * 此前订单详情看不出这是团单，用户只能回商品页去找那个团。取不到就不画，不拖垮订单页。
@@ -450,6 +466,7 @@ async function load() {
       o = await api.orderDetail(only);
     }
     order.value = o;
+    void loadEarning();
     // 开票按主单号查，要等详情回来才知道主单号
     await loadInvoice();
     grp.value = o.groupNo ? await api.groupBuyDetail(o.groupNo).catch(() => null) : null;
@@ -609,6 +626,7 @@ onPullDownRefresh(async () => {
     </sh-empty>
 
     <template v-if="order">
+      <ShPointsEarning :rows="earningRows" :failed="earningFailed" @retry="loadEarning" />
     <!--
       订单详情重排（原型 prototypes/c-order-detail.html，2026-10-10）。
       恒定骨架：状态头 → 收货/自提 → 店铺+商品 → 金额 → 订单信息 → 附属卡 → 吸底操作条。

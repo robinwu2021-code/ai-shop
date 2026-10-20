@@ -445,6 +445,7 @@ const RESPONSE_TYPES = {
   mSpecTemplates: "SpecTemplate[]",
   mSaveSpecTemplate: "SpecTemplate",
   mOrderList: "PageResult<Order>",
+  mOrderPointsEarning: "OrderPointsEarning[]",
   mOrderDetail: "Order",
   mOrderTrace: "ShipmentTrace",
   mOrderUpdates: "LogisticsUpdateRecord[]",

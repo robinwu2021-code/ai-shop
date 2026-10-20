@@ -14,6 +14,7 @@ import { groupMock } from "./group";
 import { messageMock } from "./message";
 
 export const mockApi: ShopApi = {
+  orderPointsEarning: async () => [],
   ...userMock,
   ...communityMock,
   ...catalogMock,

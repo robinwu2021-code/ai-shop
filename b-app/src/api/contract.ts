@@ -1,3 +1,4 @@
+import type { OrderPointsEarning } from "@shared/types";
 import type * as SV from './stored-value-types';
 import type { StorePointStatementPage, StorePointStatementChange, StorePointStatement, StorePointStatementLinePage, StorePointStatementReceipt } from "@shared/types";
 // B 端唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
@@ -1577,6 +1578,7 @@ export interface MerchantApi {
       to?: string;
     },
   ): Promise<PageResult<Order>>;
+  mOrderPointsEarning(orderNo: string): Promise<OrderPointsEarning[]>;
   mOrderDetail(orderNo: string): Promise<Order>;
   mOrderInventoryTrace(orderNo: string): Promise<MerchantInventoryTrace>;
   mFulfillmentOptions(orderNo: string): Promise<MerchantFulfillmentOptions>;

@@ -54,6 +54,8 @@ public class RedeemServiceImpl implements RedeemService {
     private final PointsPostingService posting;
     private final ObjectProvider<PointsFundsGateway> gateway;
     private final boolean enabled;
+    @Value("${shop.points.default-participation-enabled:${shop.points.unified-earning-enabled:false}}")
+    private boolean defaultParticipation;
     private final AccountExpiryGuard expiry;
     private final RedeemPolicy policy = new DefaultRedeemPolicy();
     private final ObjectMapper json = new ObjectMapper();
@@ -382,6 +384,10 @@ public class RedeemServiceImpl implements RedeemService {
                     break;
                 }
                 AgreementSnapshot agreement = agreements.active(type.typeCode(), target.storeNo());
+                if(agreement==null && defaultParticipation) agreement=new AgreementSnapshot(
+                        "POLICY:"+type.typeCode()+":"+target.storeNo(),type.typeCode(),target.merchantNo(),target.storeNo(),
+                        "SYSTEM_POLICY","ALL_STORES_V1","ALL_STORES_V1","平台统一积分规则，默认全部门店参与",
+                        "PER_ORDER",target.path(),target.channel(),target.accountVersion(),"ACTIVE");
                 if (agreement == null || !agreement.merchantNo().equals(target.merchantNo())) {
                     reason = "POINTS_STORE_NOT_ACCEPTING";
                     break;

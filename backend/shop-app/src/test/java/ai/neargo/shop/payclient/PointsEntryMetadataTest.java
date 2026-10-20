@@ -32,7 +32,16 @@ class PointsEntryMetadataTest {
         assertThat(reader.forVoucher("HOLD").direction()).isEqualTo("HOLD");
         assertThat(reader.forVoucher("RELEASE").direction()).isEqualTo("RELEASE");
         assertThat(reader.forVoucher("CANCEL").direction()).isEqualTo("RELEASE");
-        assertThat(reader.forVoucher("FINALIZE").direction()).isEqualTo("REDEEM");
+        assertThat(reader.forVoucher("FINALIZE").direction()).isEqualTo("FINALIZE");
+    }
+    @Test void order_link_is_returned_only_after_holder_authorization() {
+        var inspection = mock(PointsInspectionService.class);
+        when(inspection.transaction("P", "V")).thenReturn(new PointsInspectionService.TransactionDetail(
+            PointsInspectionService.TransactionDirection.EARN,
+            new PointsInspectionService.VoucherView(1, "V", "GRANT:V2:HASH", "CNY", 1, 1), null));
+        when(inspection.earningOrder("P", "V")).thenReturn("REAL_SUB_ORDER");
+        assertThat(new PointsEntryMetadata(inspection, "P", sub -> null).forVoucher("V").orderNo()).isNull();
+        assertThat(new PointsEntryMetadata(inspection, "P", sub -> sub).forVoucher("V").orderNo()).isEqualTo("REAL_SUB_ORDER");
     }
     @Test void unrelated_query_errors_are_not_hidden() {
         var inspection = mock(PointsInspectionService.class);

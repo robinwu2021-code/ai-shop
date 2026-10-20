@@ -86,13 +86,17 @@ public interface PointsOrderPlacementCoordinator {
     }
 
     record EarningSnapshot(
-            int schemaVersion, long fallbackRevision, List<PointsEarnPort.EarnLine> lines, List<RuleTrace> ruleTraces) {
+            int schemaVersion, long fallbackRevision, List<PointsEarnPort.EarnLine> lines, List<RuleTrace> ruleTraces,
+            @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) String operationNo) {
         public EarningSnapshot {
             lines = List.copyOf(lines);
             ruleTraces = ruleTraces == null ? List.of() : List.copyOf(ruleTraces);
         }
+        public EarningSnapshot(int schemaVersion, long fallbackRevision, List<PointsEarnPort.EarnLine> lines, List<RuleTrace> traces) {
+            this(schemaVersion, fallbackRevision, lines, traces, null);
+        }
         public EarningSnapshot(int schemaVersion, long fallbackRevision, List<PointsEarnPort.EarnLine> lines) {
-            this(schemaVersion, fallbackRevision, lines, List.of());
+            this(schemaVersion, fallbackRevision, lines, List.of(), null);
         }
     }
 
@@ -102,11 +106,16 @@ public interface PointsOrderPlacementCoordinator {
             List<OrderPointsBindingService.Admission> admissions,
             PointsRedeemPort.RedeemQuote quote,
             PointsRedeemPort.HoldCommand command,
-            PointsRedeemPort.ReleaseCommand cancellationCommand) {
+            PointsRedeemPort.ReleaseCommand cancellationCommand,
+            @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) String operationNo) {
         public Resolved {
             admissions = List.copyOf(admissions);
         }
 
+        public Resolved(List<OrderPointsBindingService.Admission> admissions, PointsRedeemPort.RedeemQuote quote,
+                        PointsRedeemPort.HoldCommand command, PointsRedeemPort.ReleaseCommand cancellationCommand) {
+            this(admissions,quote,command,cancellationCommand,null);
+        }
         public Resolved(
                 List<OrderPointsBindingService.Admission> admissions,
                 PointsRedeemPort.RedeemQuote quote,

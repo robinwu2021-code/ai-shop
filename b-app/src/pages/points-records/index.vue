@@ -46,6 +46,9 @@ watch(() => merchant.storeNo, () => {
   ++epoch; busy.value = false; types.value = []; page.value = { rows: [], next: 0, hasMore: false };
   void load();
 });
+function openOrder(no: string) {
+  uni.navigateTo({url: `/pages/order/index?orderNo=${encodeURIComponent(no)}`});
+}
 </script>
 
 <template>
@@ -59,6 +62,7 @@ watch(() => merchant.storeNo, () => {
         <text class="sh-num">{{ entry.deltaPoints > 0 ? '+' : '' }}{{ entry.deltaPoints }}</text></view>
       <view class="sh-row sh-row--between"><text v-if="entry.voucherDocumentNo || entry.voucherNo" class="txt-caption sh-muted">{{ entry.voucherDocumentNo || entry.voucherNo }}</text>
         <text class="txt-caption sh-muted">{{ datetime(entry.at) }}</text></view>
+      <view v-if="entry.orderNo && merchant.can('biz:order:view')" class="txt-caption" @tap="openOrder(entry.orderNo)">{{ $t("points.viewOrder") }}</view>
       <text v-if="entry.businessRef" class="txt-caption sh-muted">{{ entry.businessRef }}</text>
       <text class="txt-caption sh-muted">{{ $t("points.posted") }}</text>
       <text class="txt-caption sh-muted">{{ $t("points.balanceAfter") }}: {{ entry.afterPoints }}</text>

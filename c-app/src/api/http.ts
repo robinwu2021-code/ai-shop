@@ -1,3 +1,4 @@
+import type { OrderPointsEarning } from "@shared/types";
 import type { MemberCodeView } from "@shared/types";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 的端点表取。
 //
@@ -205,6 +206,7 @@ export const httpApi: ShopApi = {
   myInvoices: () => call<InvoiceRequest[]>("myInvoices"),
   invoiceOfOrder: (orderNo) => call<InvoiceRequest | null>("invoiceOfOrder", { orderNo }),
   orderDetail: (orderNo, paymentReference) => call<Order>("orderDetail", { orderNo }, paymentReference ? { paymentReference: true } : undefined),
+  orderPointsEarning: (orderNo) => call<OrderPointsEarning[]>("orderPointsEarning", { orderNo }),
   orderPointsState: (orderNo) => call<PointsOrderState>("orderPointsState", { orderNo }),
   track: (t) => call<TrackView | null>("track", undefined, { t }),
   trackMiniLink: (t) => call<{ url: string } | null>("trackMiniLink", undefined, { t }),

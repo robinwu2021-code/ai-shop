@@ -4151,6 +4151,10 @@ components:
                 type:
                   - "string"
                   - "null"
+              orderNo:
+                type:
+                  - "string"
+                  - "null"
               holderType:
                 type: "string"
                 const: "STORE"
@@ -12424,6 +12428,10 @@ components:
           type:
             - "string"
             - "null"
+        orderNo:
+          type:
+            - "string"
+            - "null"
         entryNo:
           type: "string"
           description: "不可变积分分录编号"
@@ -12446,7 +12454,6 @@ components:
         - "balanceAfter"
         - "at"
       additionalProperties: false
-
     BuyerPointsEntryPage:
       type: "object"
       properties:
@@ -12586,6 +12593,83 @@ components:
         - "UNAVAILABLE"
       description: "OrderPointsQuote 的 state 取值域，按服务端契约校验。"
 
+    OrderPointsEarning:
+      type: "object"
+      properties:
+        orderNo:
+          type: "string"
+        typeCode:
+          type: "string"
+        name:
+          type: "string"
+        currency:
+          type: "string"
+        state:
+          type: "string"
+          enum:
+            - "NONE"
+            - "EXPECTED"
+            - "PROCESSING"
+            - "PENDING"
+            - "AVAILABLE"
+            - "RETRYABLE"
+            - "MANUAL"
+            - "SKIPPED"
+            - "RECLAIMED"
+        redemptionState:
+          type: "string"
+          enum:
+            - "NONE"
+            - "PROCESSING"
+            - "HELD"
+            - "RELEASED"
+            - "CONSUMED"
+            - "REFUND_PROCESSING"
+            - "RETURNED"
+            - "PARTIALLY_RETURNED"
+        usedPoints:
+          type: "number"
+        refundState:
+          type: "string"
+          enum:
+            - "NONE"
+            - "PROCESSING"
+            - "MANUAL"
+            - "COMPLETED"
+        returnedPoints:
+          type: "number"
+        expectedPoints:
+          type: "number"
+        grantedPoints:
+          type: "number"
+        pendingPoints:
+          type: "number"
+        availablePoints:
+          type: "number"
+        reclaimedPoints:
+          type: "number"
+        reason:
+          type:
+            - "string"
+            - "null"
+      required:
+        - "orderNo"
+        - "typeCode"
+        - "name"
+        - "currency"
+        - "state"
+        - "redemptionState"
+        - "usedPoints"
+        - "refundState"
+        - "returnedPoints"
+        - "expectedPoints"
+        - "grantedPoints"
+        - "pendingPoints"
+        - "availablePoints"
+        - "reclaimedPoints"
+        - "reason"
+      additionalProperties: false
+      description: "Server-projected earning for an authorized order; accepted work is not an account credit."
 paths:
   "/mp/user/otp/send":
     post:
@@ -16784,6 +16868,42 @@ paths:
                   data:
                     description: "无返回体（data 恒为 null）"
                     nullable: true
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+
+  "/mp/order/{orderNo}/points-earning":
+    get:
+      operationId: "orderPointsEarning"
+      summary: "订单赠送积分进度"
+      tags:
+        - "order"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: "orderNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "array"
+                    items:
+                      "$ref": "#/components/schemas/OrderPointsEarning"
                 required:
                   - "code"
                   - "msg"

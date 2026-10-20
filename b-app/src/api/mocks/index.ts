@@ -19,6 +19,7 @@ import { messageMock } from "./message";
 import { inventoryMock } from "./inventory";
 
 export const mockApi: MerchantApi = {
+  mOrderPointsEarning: async () => [],
   ...storedValueMock,
   ...accountMock,
   ...storeMock,
