@@ -72,7 +72,7 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
       {canEdit && <Button onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button>}
     </div>
     <Notice>{t("金额使用类型币种的最小货币单位。配置只影响后续交易，旧交易保留原比例和规则快照。", "Amounts use the type's minor currency unit. Configuration affects future transactions; existing transactions keep their original rate and rules.")}</Notice>
-    <p className="txt-caption text-muted-foreground"><Link href="/points?tab=configuration-legacy" className="text-primary-ink underline">{t("其他积分操作（临时入口）", "Other points operations (temporary entry)")}</Link></p>
+    <p className="txt-caption text-muted-foreground"><Link href="/points?tab=configuration-legacy" className="focus-ring rounded-field text-primary-ink underline">{t("其他积分操作（临时入口）", "Other points operations (temporary entry)")}</Link></p>
     <DataTable columns={columns} rows={types.data} loading={types.isPending} error={types.error} onRetry={() => void types.refetch()}
       rowKey={(row) => row.typeCode} empty={t("还没有积分类型，请先新建。", "No points types yet. Create one to get started.")}
       emptyAction={canEdit ? <Button size="sm" onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button> : undefined}

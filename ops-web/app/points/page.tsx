@@ -43,8 +43,8 @@ function PointsInner() {
   if (legacyConfiguration) return <div className="space-y-4" dir="ltr" lang={locale}>
     <TabHeader tabs={[{ key: "legacy", label: t("积分资金与日常（旧版）", "Points funds & daily (legacy)") }]} value="legacy" onChange={() => {}} desc={t("临时兼容页面", "Temporary compatibility page")} />
     <div className="flex flex-wrap gap-3 txt-caption">
-      <Link href="/points/types" className="text-primary-ink underline">{t("积分类型与规则", "Points types & rules")}</Link>
-      <Link href="/points/store-access" className="text-primary-ink underline">{t("门店协议与接入", "Store agreements & access")}</Link>
+      <Link href="/points/types" className="focus-ring rounded-field text-primary-ink underline">{t("积分类型与规则", "Points types & rules")}</Link>
+      <Link href="/points/store-access" className="focus-ring rounded-field text-primary-ink underline">{t("门店协议与接入", "Store agreements & access")}</Link>
     </div>
     <PointsConfigurationTab canEdit={can("finance:settle:execute")} />
   </div>;

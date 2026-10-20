@@ -20,7 +20,7 @@ const MIGRATION_DIR = join(ROOT, "backend/shop-app/src/main/resources/db/migrati
 
 /** 从所有迁移里收 sys_function_point 的 INSERT（V62 建 78 个，V64 补 24 个） */
 function seededPoints() {
-  const out: { pointCode: string; group: string | null; href: string | null;
+  const out: { pointCode: string; functionCode: string; group: string | null; href: string | null;
                ui: string | null; type: string }[] = [];
   for (const f of readdirSync(MIGRATION_DIR).sort()) {
     if (!f.endsWith(".sql")) continue;
@@ -61,6 +61,7 @@ function seededPoints() {
         const lit = (v: string) => (v === "NULL" ? null : v.replace(/^'|'$/g, ""));
         out.push({
           pointCode: lit(cells[0])!,
+          functionCode: lit(cells[1])!,
           group: lit(cells[3]),
           href: lit(cells[4]),
           ui: lit(cells[5]),
@@ -87,11 +88,16 @@ function seededPoints() {
     }
   }
   const removed = new Set<string>();
+  const removedFunctions = new Set<string>();
   for (const f of readdirSync(MIGRATION_DIR).sort()) {
     if (!f.endsWith(".sql")) continue;
     const sql = readFileSync(join(MIGRATION_DIR, f), "utf8");
     for (const m of sql.matchAll(/DELETE\s+FROM\s+sys_function_point\s+WHERE\s+point_code\s*=\s*'([^']+)'/g)) {
       removed.add(m[1]);
+    }
+    // A soft-retirement by function_code also retires each child menu point.
+    for (const m of sql.matchAll(/UPDATE\s+sys_function_point\s+SET\s+[^;]*?\bdeleted\s*=\s*1[^;]*?\bWHERE\s+function_code\s*=\s*'([^']+)'/g)) {
+      removedFunctions.add(m[1]);
     }
   }
   /*
@@ -100,7 +106,7 @@ function seededPoints() {
    * 于是同一个 href 在 `out` 里有两条 —— 只减掉新码那条，旧码那条还会把 href 报成「只在库里」。
    */
   const removedHrefs = new Set(out.filter((p) => removed.has(p.pointCode)).map((p) => p.href));
-  return out.filter((p) => !removed.has(p.pointCode) && !(p.href && removedHrefs.has(p.href)));
+  return out.filter((p) => !removed.has(p.pointCode) && !removedFunctions.has(p.functionCode) && !(p.href && removedHrefs.has(p.href)));
 }
 
 /** nav.ts 里的叶子（有 href + label 的那些） */
