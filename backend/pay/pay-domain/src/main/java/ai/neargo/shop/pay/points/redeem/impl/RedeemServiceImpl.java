@@ -78,10 +78,11 @@ public class RedeemServiceImpl implements RedeemService {
     @Override
     public RedeemQuote quote(RedeemQuery q) {
         validate(q);
-        PointType type = read.activeType(q.market()).orElse(null);
+        PointType type = q.typeCode()==null?read.activeType(q.market()).orElse(null):read.type(q.typeCode()).orElse(null);
         if (type == null) {
             return new RedeemQuote(null, 0, 0, 0, 0, "POINTS_TYPE_NOT_ACTIVE", List.of());
         }
+        if(q.typeCode()!=null && (type.status()!=PointType.Status.ACTIVE||!type.market().equals(q.market()))) throw new IllegalArgumentException("POINTS_TYPE_NOT_ACTIVE");
         return evaluate(q, type, false).quote();
     }
 
@@ -97,13 +98,13 @@ public class RedeemServiceImpl implements RedeemService {
                         c.wantPoints(),
                         c.payMode(),
                         c.clientType(),
-                        c.targets());
+                        c.targets(),c.typeCode());
         validate(q);
-        String root = root(c.orderNo());
+        String root = ai.neargo.shop.pay.points.operation.PointsOperationKeys.holdRoot(c.orderNo(),c.typeCode(),c.operationKey());
         Map<String, Object> prior = read.position(PositionMove.Kind.REDEEM.table(), root);
         PointType type =
                 prior == null
-                        ? read.activeType(c.market()).orElse(null)
+                        ? (c.typeCode()==null?read.activeType(c.market()).orElse(null):read.type(c.typeCode()).orElse(null))
                         : read.type((String) prior.get("type_code")).orElseThrow();
         if (type == null) {
             if (c.acceptedPrice() != null)
@@ -125,6 +126,11 @@ public class RedeemServiceImpl implements RedeemService {
             return old.outcome();
         }
         type = read.type(type.typeCode()).orElseThrow();
+        if(c.operationKey()!=null) {
+            if(type.status()!=PointType.Status.ACTIVE || !type.market().equals(c.market())) throw new IllegalArgumentException("POINTS_TYPE_NOT_ACTIVE");
+            if(read.position(PositionMove.Kind.REDEEM.table(),root(c.orderNo()))!=null) throw new IllegalArgumentException("POINTS_LEGACY_OPERATION_CONFLICT");
+            for(var target:c.targets()) if(read.position(PositionMove.Kind.REDEEM.table(),PointsKeys.position("R",type.typeCode(),target.subOrderNo()))!=null) throw new IllegalArgumentException("POINTS_OPERATION_CONFLICT");
+        }
         Evaluation e = evaluate(q, type, true);
         RedeemQuote quote = e.quote();
         var acceptedPrice = c.acceptedPrice();
@@ -197,7 +203,7 @@ public class RedeemServiceImpl implements RedeemService {
                                 userMove(type, c.userNo(), Bucket.HELD, outcome.points()));
         posting.post(
                 new Voucher(
-                        "HOLD:" + c.orderNo(),
+                        ai.neargo.shop.pay.points.operation.PointsOperationKeys.reference("HOLD",c.orderNo(),c.typeCode(),c.operationKey()),
                         type.typeCode(),
                         type.currency(),
                         type.rate(),
@@ -216,7 +222,7 @@ public class RedeemServiceImpl implements RedeemService {
         if (c.orderNo() == null || c.orderNo().isBlank() || c.sourceVersion() < 0) {
             throw new IllegalArgumentException("POINTS_RELEASE_INPUT_INVALID");
         }
-        String root = root(c.orderNo());
+        String root = ai.neargo.shop.pay.points.operation.PointsOperationKeys.holdRoot(c.orderNo(),c.typeCode(),c.operationKey());
         var head = read.position(PositionMove.Kind.REDEEM.table(), root);
         if (head == null) {
             return new HoldOutcome(root, null, 0, 0, "ABSENT", null, List.of());
@@ -229,8 +235,10 @@ public class RedeemServiceImpl implements RedeemService {
             if ("SKIPPED".equals(head.get("state"))) {
                 return held.outcome();
             }
+            if(!"RELEASED".equals(head.get("state"))) throw new IllegalArgumentException("POINTS_HOLD_ALREADY_PAID");
             return releaseOutcome(held);
         }
+        if(c.operationKey()!=null && (!Objects.equals(c.typeCode(),held.command().typeCode()) || !Objects.equals(c.operationKey(),held.command().operationKey()))) throw new IllegalArgumentException("POINTS_OPERATION_CONFLICT");
         List<PositionMove> positions = new ArrayList<>();
         List<ReserveMove> reserves = new ArrayList<>();
         long releasedPoints = 0, releasedMinor = 0;
@@ -302,7 +310,7 @@ public class RedeemServiceImpl implements RedeemService {
                                         releasedPoints));
         posting.post(
                 new Voucher(
-                        "RELEASE:" + c.orderNo(),
+                        ai.neargo.shop.pay.points.operation.PointsOperationKeys.reference("RELEASE",c.orderNo(),c.typeCode(),c.operationKey()),
                         type.typeCode(),
                         type.currency(),
                         type.rate(),

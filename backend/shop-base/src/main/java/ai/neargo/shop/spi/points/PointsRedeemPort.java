@@ -37,7 +37,10 @@ public interface PointsRedeemPort {
             long wantPoints,
             String payMode,
             String clientType,
-            List<Target> targets) {
+            List<Target> targets, @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) String typeCode) {
+        public RedeemQuery(String market,String userNo,long wantPoints,String payMode,String clientType,List<Target> targets) {
+            this(market,userNo,wantPoints,payMode,clientType,targets,null);
+        }
         public RedeemQuery {
             targets = List.copyOf(targets);
         }
@@ -63,7 +66,10 @@ public interface PointsRedeemPort {
             String payMode,
             String clientType,
             List<Target> targets,
-            AcceptedPrice acceptedPrice) {
+            AcceptedPrice acceptedPrice, @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) String typeCode, @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) String operationKey) {
+        public HoldCommand(String orderNo,String market,String userNo,long wantPoints,String payMode,String clientType,List<Target> targets,AcceptedPrice acceptedPrice) {
+            this(orderNo,market,userNo,wantPoints,payMode,clientType,targets,acceptedPrice,null,null);
+        }
         public HoldCommand {
             targets = List.copyOf(targets);
         }
@@ -80,7 +86,9 @@ public interface PointsRedeemPort {
         }
     }
 
-    record ReleaseCommand(String orderNo, String eventNo, long sourceVersion) {}
+    record ReleaseCommand(String orderNo, String eventNo, long sourceVersion,@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) String typeCode,@com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) String operationKey) {
+        public ReleaseCommand(String orderNo,String eventNo,long sourceVersion){this(orderNo,eventNo,sourceVersion,null,null);}
+    }
 
     record Share(String subOrderNo, String merchantNo, String storeNo, long points, long minor) {}
 

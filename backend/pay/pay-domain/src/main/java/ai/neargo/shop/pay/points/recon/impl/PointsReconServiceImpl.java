@@ -179,7 +179,7 @@ public class PointsReconServiceImpl implements PointsReconService {
         for (var voucher : vouchers) {
             String ref = text(voucher, "biz_ref");
             if (ref.startsWith("GRANT:")) {
-                String no = PointsKeys.position("G", type, ref.substring(6));
+                String no = ai.neargo.shop.pay.points.operation.PointsOperationKeys.grantPosition(type,ref);
                 if (!grantIndex.containsKey(no)) {
                     errors.add(new Difference("MISSING_GRANT_POSITION", ref, 1, 0));
                 }

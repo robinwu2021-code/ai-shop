@@ -334,6 +334,8 @@ class RedeemServiceTest {
                 new PointTypeService.CreateType(type, "CN", new RedeemRate(1, 1), 10000, 365),
                 "ops");
         types.activate(type, "ops");
+        // This fixture models a historical type with 100% redemption, independent of the new 30% creation default.
+        db("payDataSource").update("UPDATE pts_point_type SET deduct_ratio_bp=10000 WHERE type_code=?", type);
         fund(type, "U", PoolRequest.Action.TOPUP_U);
         if (reserve) {
             fund(type, "B", PoolRequest.Action.TOPUP_B);

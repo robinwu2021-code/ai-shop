@@ -87,14 +87,14 @@ public class EarnServiceImpl implements EarnService {
             throw new IllegalArgumentException("POINTS_EARN_PAYMENT_MISMATCH");
         }
         config.lockTypeAndPool(c.typeCode());
-        String ref = "GRANT:" + c.subOrderNo();
+        String ref = ai.neargo.shop.pay.points.operation.PointsOperationKeys.grantRef(c.typeCode(),c.subOrderNo(),c.operationKey());
         String position = PointsKeys.position("G", c.typeCode(), c.subOrderNo());
         var prior = read.position(PositionMove.Kind.GRANT.table(), position);
         if (prior != null) {
             var stored = json.readTree((String) prior.get("payload_json"));
             var original =
                     json.treeToValue(stored.get("command"), PointsEarnPort.GrantCommand.class);
-            if (!original.userNo().equals(c.userNo())
+            if (!Objects.equals(original.operationKey(),c.operationKey()) || !original.userNo().equals(c.userNo())
                     || !original.typeCode().equals(c.typeCode())
                     || !Objects.equals(original.storeNo(), c.storeNo())
                     || !original.lines().equals(c.lines())

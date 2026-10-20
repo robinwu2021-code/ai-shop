@@ -79,7 +79,7 @@ public class PointsStatsServiceImpl implements PointsStatsService {
                 var head =
                         read.position(
                                 PositionMove.Kind.GRANT.table(),
-                                PointsKeys.position("G", type, ref.substring(6)));
+                                ai.neargo.shop.pay.points.operation.PointsOperationKeys.grantPosition(type,ref));
                 if (head != null) {
                     var command = body(head).path("command");
                     user = command.path("userNo").asText(null);
