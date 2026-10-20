@@ -1,6 +1,6 @@
 {
   "status": "PROPOSED",
-  "version": "2026-10-19",
+  "version": "2026-10-20-module-alignment",
   "domains": [
     {
       "code": "A",
@@ -64,7 +64,10 @@
         "fnb_menu_item",
         "fnb_menu_item_sku",
         "fnb_station",
-        "fnb_sku_station"
+        "fnb_sku_station",
+        "fnb_config_revision",
+        "fnb_sales_restriction",
+        "fnb_sales_quota_claim"
       ],
       "apis": [
         "FOOD-API-004",
@@ -86,7 +89,22 @@
         "FOOD-API-020",
         "FOOD-API-021",
         "FOOD-API-022",
-        "FOOD-API-023"
+        "FOOD-API-023",
+        "FOOD-API-109",
+        "FOOD-API-110",
+        "FOOD-API-111",
+        "FOOD-API-112",
+        "FOOD-API-113",
+        "FOOD-API-114",
+        "FOOD-API-115",
+        "FOOD-API-116",
+        "FOOD-API-117",
+        "FOOD-API-118",
+        "FOOD-API-119",
+        "FOOD-API-120",
+        "FOOD-API-121",
+        "FOOD-API-122",
+        "FOOD-API-141"
       ]
     },
     {
@@ -112,7 +130,9 @@
         "fnb_table_occupancy",
         "fnb_check_relation",
         "fnb_guest_session",
-        "fnb_seat"
+        "fnb_seat",
+        "fnb_table_area",
+        "fnb_table_operation"
       ],
       "apis": [
         "FOOD-API-024",
@@ -127,7 +147,26 @@
         "FOOD-API-033",
         "FOOD-API-034",
         "FOOD-API-035",
-        "FOOD-API-036"
+        "FOOD-API-036",
+        "FOOD-API-092",
+        "FOOD-API-093",
+        "FOOD-API-094",
+        "FOOD-API-095",
+        "FOOD-API-096",
+        "FOOD-API-097",
+        "FOOD-API-098",
+        "FOOD-API-099",
+        "FOOD-API-100",
+        "FOOD-API-101",
+        "FOOD-API-102",
+        "FOOD-API-103",
+        "FOOD-API-104",
+        "FOOD-API-105",
+        "FOOD-API-106",
+        "FOOD-API-107",
+        "FOOD-API-108",
+        "FOOD-API-138",
+        "FOOD-API-139"
       ]
     },
     {
@@ -155,7 +194,8 @@
         "fnb_order_line",
         "fnb_core_line_allocation",
         "fnb_order_component",
-        "fnb_order_modifier"
+        "fnb_order_modifier",
+        "fnb_check_batch_membership"
       ],
       "apis": [
         "FOOD-API-037",
@@ -164,7 +204,18 @@
         "FOOD-API-040",
         "FOOD-API-041",
         "FOOD-API-042",
-        "FOOD-API-043"
+        "FOOD-API-043",
+        "FOOD-API-123",
+        "FOOD-API-124",
+        "FOOD-API-125",
+        "FOOD-API-126",
+        "FOOD-API-127",
+        "FOOD-API-128",
+        "FOOD-API-129",
+        "FOOD-API-130",
+        "FOOD-API-131",
+        "FOOD-API-132",
+        "FOOD-API-133"
       ]
     },
     {
@@ -233,7 +284,10 @@
         "FOOD-API-058",
         "FOOD-API-059",
         "FOOD-API-060",
-        "FOOD-API-061"
+        "FOOD-API-061",
+        "FOOD-API-134",
+        "FOOD-API-135",
+        "FOOD-API-140"
       ]
     },
     {
@@ -259,7 +313,9 @@
       "apis": [
         "FOOD-API-062",
         "FOOD-API-063",
-        "FOOD-API-064"
+        "FOOD-API-064",
+        "FOOD-API-136",
+        "FOOD-API-137"
       ]
     },
     {
@@ -453,6 +509,27 @@
           "label": "配置状态 Status",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "presentation",
+          "type": "json",
+          "label": "餐饮别名/多语言/标签/过敏展示覆盖；基础图文仍引用商品",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "measurement_policy",
+          "type": "json",
+          "label": "单位及称重允差，成交计量须核心支持",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "config_version",
+          "type": "bigint",
+          "label": "餐饮属性规则版本",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -488,6 +565,13 @@
           "label": "状态 Status",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "published_revision_no",
+          "type": "varchar(32)",
+          "label": "当前已生效配置快照",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
         }
       ],
       "unique": [
@@ -526,14 +610,14 @@
         },
         {
           "name": "min_qty",
-          "type": "int",
+          "type": "decimal(18,6)",
           "label": "最少选几份 Minimum",
           "ref": null,
           "nullable": false
         },
         {
           "name": "max_qty",
-          "type": "int",
+          "type": "decimal(18,6)",
           "label": "最多选几份 Maximum",
           "ref": null,
           "nullable": false
@@ -559,7 +643,7 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_bundle_choice",
@@ -596,21 +680,21 @@
         },
         {
           "name": "min_qty",
-          "type": "int",
+          "type": "decimal(18,6)",
           "label": "单项最少选择 Min picks",
           "ref": null,
           "nullable": false
         },
         {
           "name": "max_qty",
-          "type": "int",
+          "type": "decimal(18,6)",
           "label": "单项最多选择 Max picks",
           "ref": null,
           "nullable": false
         },
         {
           "name": "default_qty",
-          "type": "int",
+          "type": "decimal(18,6)",
           "label": "默认选择 Default picks",
           "ref": null,
           "nullable": false
@@ -640,7 +724,7 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_modifier",
@@ -681,6 +765,13 @@
           "label": "状态 Status",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "published_revision_no",
+          "type": "varchar(32)",
+          "label": "当前已生效配置快照",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
         }
       ],
       "unique": [
@@ -735,7 +826,7 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_option_group",
@@ -752,21 +843,42 @@
         {
           "name": "name",
           "type": "varchar(64)",
-          "label": "名称 Name",
+          "label": "组名",
           "ref": null,
           "nullable": false
         },
         {
           "name": "min_qty",
-          "type": "int",
-          "label": "最少选几项 Minimum",
+          "type": "decimal(18,6)",
+          "label": "最少总选择量",
           "ref": null,
           "nullable": false
         },
         {
           "name": "max_qty",
-          "type": "int",
-          "label": "最多选几项 Maximum",
+          "type": "decimal(18,6)",
+          "label": "最多总选择量",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "published_revision_no",
+          "type": "varchar(32)",
+          "label": "当前已生效配置快照",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "DRAFT / ACTIVE / DISABLED",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "selection_rules",
+          "type": "json",
+          "label": "有schema的互斥/依赖约束，按选项号引用",
           "ref": null,
           "nullable": false
         }
@@ -839,6 +951,13 @@
           "label": "排序",
           "nullable": false,
           "ref": null
+        },
+        {
+          "name": "min_qty",
+          "type": "decimal(18,6)",
+          "label": "本选项最小选择量",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -855,7 +974,7 @@
         ]
       ],
       "domain": "B",
-      "rules": "source_kind决定且仅允许一个引用非空；SPEC_VALUE须经prd_spec_dim语义及组绑定校验；不直接用PROP描述值作为顾客选择授权。"
+      "rules": "source_kind决定且仅允许一个引用非空；SPEC_VALUE须经prd_spec_dim语义及组绑定校验；不直接用PROP描述值作为顾客选择授权。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_dish_option_group",
@@ -886,11 +1005,12 @@
       ],
       "unique": [
         [
-          "goods_no"
+          "goods_no",
+          "group_no"
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu",
@@ -929,14 +1049,14 @@
           "name": "valid_from",
           "type": "date",
           "label": "生效日 Valid from",
-          "ref": "",
+          "ref": null,
           "nullable": true
         },
         {
           "name": "valid_to",
           "type": "date",
           "label": "结束日 Valid to",
-          "ref": "",
+          "ref": null,
           "nullable": true
         },
         {
@@ -950,7 +1070,7 @@
           "name": "exclusive_group",
           "type": "varchar(32)",
           "label": "互斥餐牌组 Exclusive group",
-          "ref": "",
+          "ref": null,
           "nullable": true
         },
         {
@@ -966,6 +1086,13 @@
           "label": "配置版本 Version",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "published_revision_no",
+          "type": "varchar(32)",
+          "label": "当前已生效配置快照",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
         }
       ],
       "unique": [
@@ -994,15 +1121,23 @@
           "label": "门店 Store",
           "ref": "mch_store.store_no",
           "nullable": false
+        },
+        {
+          "name": "override_revision_no",
+          "type": "varchar(32)",
+          "label": "获准门店差异快照",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
         }
       ],
       "unique": [
         [
-          "menu_no"
+          "menu_no",
+          "store_no"
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu_context",
@@ -1049,7 +1184,7 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu_schedule",
@@ -1105,7 +1240,7 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu_exception",
@@ -1144,14 +1279,14 @@
           "name": "start_time",
           "type": "time",
           "label": "营业开始 Start",
-          "ref": "",
+          "ref": null,
           "nullable": true
         },
         {
           "name": "end_time",
           "type": "time",
           "label": "营业结束 End",
-          "ref": "",
+          "ref": null,
           "nullable": true
         },
         {
@@ -1172,7 +1307,7 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu_category",
@@ -1214,7 +1349,7 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu_item",
@@ -1255,6 +1390,13 @@
           "label": "是否启用 Enabled",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "sku_scope",
+          "type": "varchar(16)",
+          "label": "ALL / EXPLICIT；EXPLICIT必须非空",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -1267,7 +1409,7 @@
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_menu_item_sku",
@@ -1287,15 +1429,23 @@
           "label": "可售规格 SKU",
           "ref": "prd_sku.sku_no",
           "nullable": false
+        },
+        {
+          "name": "selection_mode",
+          "type": "varchar(16)",
+          "label": "EXPLICIT；空白名单语义存父项",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
         [
-          "menu_item_no"
+          "menu_item_no",
+          "sku_no"
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。"
     },
     {
       "name": "fnb_station",
@@ -1336,6 +1486,13 @@
           "label": "启用 Enabled",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "published_revision_no",
+          "type": "varchar(32)",
+          "label": "当前已生效配置快照",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
         }
       ],
       "unique": [
@@ -1378,15 +1535,25 @@
           "label": "路由版本 Version",
           "ref": null,
           "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "路由适用门店",
+          "ref": "mch_store.store_no",
+          "nullable": false
         }
       ],
       "unique": [
         [
-          "sku_no"
+          "store_no",
+          "sku_no",
+          "station_no",
+          "task_role"
         ]
       ],
       "domain": "B",
-      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。"
+      "rules": "配置版本冻结；关联对象同主体，SKU必须属于指定商品；具体选择规则见旧菜品模型，以下修订优先。；草稿子关系按业务唯一键upsert/差集更新，不能统一逻辑删除再插入导致唯一键冲突；受控物理替换仅限未发布工作头，已发布快照永不修改。；派工时按受理瞬间route_version冻结路由到ticket/task，即使当前头被改也不能重算旧任务目标。"
     },
     {
       "domain": "A",
@@ -1540,13 +1707,6 @@
           "ref": "mch_store.store_no"
         },
         {
-          "name": "area_name",
-          "type": "varchar(64)",
-          "label": "桌区",
-          "nullable": false,
-          "ref": null
-        },
-        {
           "name": "capacity",
           "type": "int",
           "label": "座位",
@@ -1566,14 +1726,53 @@
           "label": "ACTIVE/DISABLED",
           "nullable": false,
           "ref": null
+        },
+        {
+          "name": "area_no",
+          "type": "varchar(32)",
+          "label": "桌区 Area",
+          "ref": "fnb_table_area.area_no",
+          "nullable": false
+        },
+        {
+          "name": "code",
+          "type": "varchar(32)",
+          "label": "门店内桌台编码 Code",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(64)",
+          "label": "展示名称 Name",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "排序 Sort",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "turnover_state",
+          "type": "varchar(16)",
+          "label": "IDLE / IN_USE / NEEDS_CLEANING",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
         [
           "table_no"
+        ],
+        [
+          "store_no",
+          "code"
         ]
       ],
-      "rules": ""
+      "rules": "status仅ACTIVE/DISABLED配置状态；turnover_state是服务端维护的资源投影，不是支付状态。锁定桌台仲裁行核验活动占用座位总和不超过capacity；有占用禁止停用/归档/缩容。清台不得删除未结应收；同店桌号编码终身不复用。"
     },
     {
       "domain": "C",
@@ -1614,6 +1813,13 @@
           "label": "吊销时间",
           "nullable": true,
           "ref": null
+        },
+        {
+          "name": "revoked_reason",
+          "type": "varchar(255)",
+          "label": "吊销原因",
+          "ref": null,
+          "nullable": true
         }
       ],
       "unique": [
@@ -1783,6 +1989,20 @@
           "label": "关闭时间",
           "nullable": true,
           "ref": null
+        },
+        {
+          "name": "service_employee_no",
+          "type": "varchar(32)",
+          "label": "获准服务员工引用",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "service_state",
+          "type": "varchar(16)",
+          "label": "OPEN / NEEDS_CLEANING / RELEASED；与结清状态分开",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -1967,6 +2187,27 @@
           "label": "范围",
           "nullable": false,
           "ref": null
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "门店 Store",
+          "ref": "mch_store.store_no",
+          "nullable": false
+        },
+        {
+          "name": "table_no",
+          "type": "varchar(32)",
+          "label": "扫码桌台，可未开台",
+          "ref": "fnb_table.table_no",
+          "nullable": true
+        },
+        {
+          "name": "revoked_at",
+          "type": "datetime(3)",
+          "label": "主动结束/设备清理时间",
+          "ref": null,
+          "nullable": true
         }
       ],
       "unique": [
@@ -2063,6 +2304,34 @@
           "label": "OPEN/SUBMITTING/CLOSED",
           "nullable": false,
           "ref": null
+        },
+        {
+          "name": "buyer_no",
+          "type": "varchar(32)",
+          "label": "真实买家/获准匿名主体",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "order_source",
+          "type": "varchar(24)",
+          "label": "CASHIER / WAITER / QR_H5 / MINI_APP / KIOSK",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "fulfillment",
+          "type": "varchar(16)",
+          "label": "DINE_IN / PICKUP / DELIVERY",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "scheduled_at",
+          "type": "datetime(3)",
+          "label": "预约出餐时点",
+          "ref": null,
+          "nullable": true
         }
       ],
       "unique": [
@@ -2223,7 +2492,7 @@
         {
           "name": "status",
           "type": "varchar(24)",
-          "label": "PREPARED/PLACING/BOUND/ACCEPTED/FAILED",
+          "label": "PREPARED / PLACING / UNKNOWN / BOUND / ACCEPTED / CANCEL_PENDING / CANCELLED / FAILED",
           "nullable": false,
           "ref": null
         },
@@ -2240,6 +2509,90 @@
           "label": "受理时间",
           "nullable": true,
           "ref": null
+        },
+        {
+          "name": "cart_no",
+          "type": "varchar(32)",
+          "label": "源购物车",
+          "ref": "fnb_check_cart.cart_no",
+          "nullable": false
+        },
+        {
+          "name": "cart_version",
+          "type": "bigint",
+          "label": "选定草稿版本",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "quote_ref",
+          "type": "varchar(64)",
+          "label": "核心报价引用",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "quote_hash",
+          "type": "char(64)",
+          "label": "确认范围摘要",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "business_date",
+          "type": "date",
+          "label": "本批实际营业日，不覆盖开台日",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "policy_no",
+          "type": "varchar(32)",
+          "label": "批次规则快照",
+          "ref": "fnb_store_policy.policy_no",
+          "nullable": false
+        },
+        {
+          "name": "fulfillment",
+          "type": "varchar(16)",
+          "label": "DINE_IN / PICKUP / DELIVERY",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "pay_mode",
+          "type": "varchar(16)",
+          "label": "PREPAY / POSTPAY",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "scheduled_at",
+          "type": "datetime(3)",
+          "label": "计划出餐时刻",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "actor_realm",
+          "type": "varchar(16)",
+          "label": "MERCHANT / CONSUMER / DEVICE / SYSTEM",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "payer_ref",
+          "type": "varchar(64)",
+          "label": "资金权威提供实际付款人引用",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "quota_claim_refs",
+          "type": "json",
+          "label": "此批额度预占引用，绑定限制与量",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -2375,11 +2728,36 @@
           "label": "名称菜单单位等历史展示",
           "nullable": false,
           "ref": null
+        },
+        {
+          "name": "source_line_ref",
+          "type": "varchar(64)",
+          "label": "提交源行号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "config_revision_nos",
+          "type": "json",
+          "label": "口味/套餐/餐牌冻结版本号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "unit",
+          "type": "varchar(16)",
+          "label": "成交计量单位",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
         [
           "food_line_no"
+        ],
+        [
+          "batch_no",
+          "source_line_ref"
         ]
       ],
       "rules": "源行与核心行经分配表关联不按SKU取第一行"
@@ -2423,6 +2801,27 @@
           "label": "核心成交快照指纹",
           "nullable": false,
           "ref": null
+        },
+        {
+          "name": "core_amount_minor",
+          "type": "bigint",
+          "label": "核心原成交分配金额缓存，非餐饮自行计价",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "currency",
+          "type": "char(3)",
+          "label": "核心成交币种",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "unit",
+          "type": "varchar(16)",
+          "label": "核心分配数量单位",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -2751,6 +3150,20 @@
           "label": "HELD/QUEUED/MAKING/READY/SERVED/VOIDED",
           "nullable": false,
           "ref": null
+        },
+        {
+          "name": "task_part_key",
+          "type": "varchar(96)",
+          "label": "非空源行/组件稳定键",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "task_role",
+          "type": "varchar(16)",
+          "label": "MAKE / ASSEMBLE / PACK",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -2759,12 +3172,12 @@
         ],
         [
           "ticket_no",
-          "food_line_no",
-          "component_no",
-          "station_no"
+          "task_part_key",
+          "station_no",
+          "task_role"
         ]
       ],
-      "rules": "可空组件唯一键须用非空scope_key实现；数量均非负，非互斥累计量不能简单相加"
+      "rules": "可空组件唯一键须用非空scope_key实现；数量均非负，非互斥累计量不能简单相加；task_part_key由food_line_no与可选component_no规范生成，非空；重放唯一键不能依赖MySQL可空列。"
     },
     {
       "domain": "E",
@@ -2967,6 +3380,13 @@
           "label": "核心版本",
           "nullable": false,
           "ref": null
+        },
+        {
+          "name": "scope_key",
+          "type": "varchar(128)",
+          "label": "核心应收范围规范键，整单使用固定FULL标识",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -2975,11 +3395,10 @@
         ],
         [
           "settlement_no",
-          "store_order_no",
-          "allocation_ref"
+          "scope_key"
         ]
       ],
-      "rules": "活动占用使用CAS范围锁键，不能只依赖此唯一键防双收"
+      "rules": "活动占用使用CAS范围锁键，不能只依赖此唯一键防双收；scope_key含门店单及规范FULL/核心分配引用，不能因allocation_ref=NULL绕过本结账范围去重；跨结账占用仍由核心仲裁。"
     },
     {
       "domain": "F",
@@ -3034,6 +3453,20 @@
           "label": "参数哈希",
           "nullable": false,
           "ref": null
+        },
+        {
+          "name": "cash_shift_no",
+          "type": "varchar(32)",
+          "label": "现金当班",
+          "ref": "fnb_cash_shift.shift_no",
+          "nullable": true
+        },
+        {
+          "name": "request_snapshot",
+          "type": "json",
+          "label": "受控支付工具/请求金额/现金凭据引用；敏感凭据只存加密引用",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -3107,6 +3540,13 @@
           "label": "售后或调整引用",
           "nullable": true,
           "ref": null
+        },
+        {
+          "name": "kitchen_status",
+          "type": "varchar(24)",
+          "label": "厨房轨道 PENDING / VOIDING / HANDLED / FAILED",
+          "ref": null,
+          "nullable": false
         }
       ],
       "unique": [
@@ -3314,6 +3754,13 @@
           "label": "OPEN/CLOSING/CLOSED",
           "nullable": false,
           "ref": null
+        },
+        {
+          "name": "current_close_refs",
+          "type": "json",
+          "label": "受控币种到当前正式close_no映射，只是权威签核指针不是金额账",
+          "nullable": false,
+          "ref": null
         }
       ],
       "unique": [
@@ -3325,7 +3772,7 @@
           "business_date"
         ]
       ],
-      "rules": "跨午夜与夏令时冻结边界"
+      "rules": "跨午夜与夏令时冻结边界；签核锁定day行，在同币种下CAS更换当前正式close_no指针；旧SIGNED内容不覆盖且不删除，重审以previous_close_no形成链。"
     },
     {
       "domain": "I",
@@ -5084,6 +5531,473 @@
       ],
       "rules": "金额指标必须整数最小单位；投影可重建，不替换既有自然日rpt_daily_store",
       "owner": "共享能力候选，非餐饮私有表"
+    },
+    {
+      "name": "fnb_table_area",
+      "label": "桌区 Table area",
+      "domain": "C",
+      "existing": false,
+      "fields": [
+        {
+          "name": "area_no",
+          "type": "varchar(32)",
+          "label": "桌区业务号 Area ID",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "门店 Store",
+          "ref": "mch_store.store_no",
+          "nullable": false
+        },
+        {
+          "name": "code",
+          "type": "varchar(32)",
+          "label": "门店内桌区编码 Code",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "type": "varchar(64)",
+          "label": "名称 Name",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "sort_no",
+          "type": "int",
+          "label": "排序 Sort",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "ACTIVE / DISABLED",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "area_no"
+        ],
+        [
+          "store_no",
+          "code"
+        ]
+      ],
+      "rules": "同主体同门店；有启用桌台或活动占用时禁止停用/归档；历史关联保留；编码归档后不复用。"
+    },
+    {
+      "name": "fnb_table_operation",
+      "label": "桌台协作操作意图 Table operation",
+      "domain": "C",
+      "existing": false,
+      "fields": [
+        {
+          "name": "operation_no",
+          "type": "varchar(32)",
+          "label": "可恢复操作号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "门店",
+          "ref": "mch_store.store_no",
+          "nullable": false
+        },
+        {
+          "name": "kind",
+          "type": "varchar(24)",
+          "label": "TRANSFER / COMBINE_TABLES / SHARE_TABLE / MERGE_SERVICE / SPLIT_SERVICE / CLEAR",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "check_no",
+          "type": "varchar(32)",
+          "label": "来源台账",
+          "ref": "fnb_check.check_no",
+          "nullable": false
+        },
+        {
+          "name": "target_check_no",
+          "type": "varchar(32)",
+          "label": "目标台账",
+          "ref": "fnb_check.check_no",
+          "nullable": true
+        },
+        {
+          "name": "request_key",
+          "type": "varchar(64)",
+          "label": "幂等键",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "request_hash",
+          "type": "char(64)",
+          "label": "参数哈希",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "expected_versions",
+          "type": "json",
+          "label": "受控台账/桌台版本集合",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "target_scope",
+          "type": "json",
+          "label": "桌台/人数/座位配置，不包含资金迁移",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "resource_operation_ref",
+          "type": "varchar(64)",
+          "label": "资源仲裁操作引用",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "varchar(24)",
+          "label": "PREPARED / CLAIMING / APPLIED / RECOVERING / FAILED",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "reason",
+          "type": "varchar(255)",
+          "label": "原因",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "operation_no"
+        ],
+        [
+          "store_no",
+          "kind",
+          "request_key"
+        ]
+      ],
+      "rules": "先申请目标资源后释放来源，外部成功本地失败可按原operation_no查询恢复。不可覆盖源订单的check_no、业务主体或付款归属。冻结/未知资金台账的协作按结账合同拒绝或显式受控解冻。"
+    },
+    {
+      "name": "fnb_config_revision",
+      "label": "餐饮配置发布快照 Config revision",
+      "domain": "B",
+      "existing": false,
+      "fields": [
+        {
+          "name": "revision_no",
+          "type": "varchar(32)",
+          "label": "快照业务号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "config_kind",
+          "type": "varchar(24)",
+          "label": "MENU / BUNDLE / OPTION_GROUP / MODIFIER / STATION",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "config_no",
+          "type": "varchar(32)",
+          "label": "配置业务号或SKU，按kind引用",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "revision",
+          "type": "bigint",
+          "label": "单配置单调发布修订号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "content_schema",
+          "type": "int",
+          "label": "冻结文档结构版本",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "definition_snapshot",
+          "type": "json",
+          "label": "完整聚合定义及引用发布版本，不存资金真源",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "content_hash",
+          "type": "char(64)",
+          "label": "规范内容摘要",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "effective_at",
+          "type": "datetime(3)",
+          "label": "计划生效",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "SCHEDULED / EFFECTIVE / CANCELLED",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "previous_revision_no",
+          "type": "varchar(32)",
+          "label": "前修订",
+          "ref": "fnb_config_revision.revision_no",
+          "nullable": true
+        },
+        {
+          "name": "scope_store_nos",
+          "type": "json",
+          "label": "冻结的授权适用门店集合，配置头归主体",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "revision_no"
+        ],
+        [
+          "entity_no",
+          "config_kind",
+          "config_no",
+          "revision"
+        ]
+      ],
+      "rules": "关系表保存当前草稿/头；发布事务校验完整聚合并冻结子表及依赖快照版本。可售目录按时点解析已发布快照，不读取可变草稿；下单保存revision_no。已发布内容不可改，回滚以旧内容发布新修订；暂停是门控，不篡改快照。"
+    },
+    {
+      "name": "fnb_sales_restriction",
+      "label": "门店可售限制 Sales restriction",
+      "domain": "B",
+      "existing": false,
+      "fields": [
+        {
+          "name": "restriction_no",
+          "type": "varchar(32)",
+          "label": "限制号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "store_no",
+          "type": "varchar(32)",
+          "label": "门店",
+          "ref": "mch_store.store_no",
+          "nullable": false
+        },
+        {
+          "name": "sku_no",
+          "type": "varchar(32)",
+          "label": "SKU",
+          "ref": "prd_sku.sku_no",
+          "nullable": false
+        },
+        {
+          "name": "mode",
+          "type": "varchar(16)",
+          "label": "SOLD_OUT / QUOTA / PREORDER_LIMIT",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "business_date",
+          "type": "date",
+          "label": "每日额度归期，非每日规则可空",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "quota_qty",
+          "type": "decimal(18,6)",
+          "label": "限制总量",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "reserved_qty",
+          "type": "decimal(18,6)",
+          "label": "未终结批次占用额度，初值0",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "consumed_qty",
+          "type": "decimal(18,6)",
+          "label": "已受理额度，初值0",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "starts_at",
+          "type": "datetime(3)",
+          "label": "开始",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "type": "datetime(3)",
+          "label": "结束",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "ACTIVE / CLEARED / EXPIRED",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "reason",
+          "type": "varchar(255)",
+          "label": "原因",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "restriction_no"
+        ]
+      ],
+      "rules": "同SKU同类同时间范围的有效规则在店/SKU仲裁行下修改。额度预占以批次幂等，事务条件reserved+consumed<=quota，消费/释放各一次；清除只能释放该限制，不修改物理库存。正式实施复用共享可售能力时迁移映射本对象，不双记额度。"
+    },
+    {
+      "name": "fnb_check_batch_membership",
+      "label": "台账批次展示归属 Check batch membership",
+      "domain": "D",
+      "existing": false,
+      "fields": [
+        {
+          "name": "membership_no",
+          "type": "varchar(32)",
+          "label": "归属记录号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "check_no",
+          "type": "varchar(32)",
+          "label": "当前服务台账",
+          "ref": "fnb_check.check_no",
+          "nullable": false
+        },
+        {
+          "name": "batch_no",
+          "type": "varchar(32)",
+          "label": "来源批次",
+          "ref": "fnb_order_batch.batch_no",
+          "nullable": false
+        },
+        {
+          "name": "attached_at",
+          "type": "datetime(3)",
+          "label": "关联生效",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "detached_at",
+          "type": "datetime(3)",
+          "label": "结束，可空",
+          "ref": null,
+          "nullable": true
+        },
+        {
+          "name": "operation_no",
+          "type": "varchar(32)",
+          "label": "协作或首次受理操作号",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "membership_no"
+        ]
+      ],
+      "rules": "批次check_no为原始成交就餐快照不改；协作展示归属通过本表追加，锁batch行保证仅一个活动归属。付过款的资金订单不迁移，结账必须按原始核心scope查询应收。移动前核验源和目标台账版本及冻结范围。"
+    },
+    {
+      "name": "fnb_sales_quota_claim",
+      "label": "批次销售额度预占 Quota claim",
+      "domain": "B",
+      "existing": false,
+      "fields": [
+        {
+          "name": "claim_no",
+          "type": "varchar(32)",
+          "label": "预占号",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "restriction_no",
+          "type": "varchar(32)",
+          "label": "规则",
+          "ref": "fnb_sales_restriction.restriction_no",
+          "nullable": false
+        },
+        {
+          "name": "batch_no",
+          "type": "varchar(32)",
+          "label": "提交批次",
+          "ref": "fnb_order_batch.batch_no",
+          "nullable": false
+        },
+        {
+          "name": "quantity",
+          "type": "decimal(18,6)",
+          "label": "正额度数量",
+          "ref": null,
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "varchar(16)",
+          "label": "RESERVED / CONSUMED / RELEASED",
+          "ref": null,
+          "nullable": false
+        }
+      ],
+      "unique": [
+        [
+          "claim_no"
+        ],
+        [
+          "restriction_no",
+          "batch_no"
+        ]
+      ],
+      "rules": "预占与批次PREPARED同一餐饮事务；锁定规则容量行并以唯一键去重。核心UNKNOWN保留预占，确认受理转消费；确认未建单/取消才释放；状态条件更新保证各转换一次。已售退餐是否回补额度由规则决定，不自动等同库存回补。"
     }
   ],
   "apis": [
@@ -5095,7 +6009,7 @@
       "path": "/biz/x/food/stores/{storeNo}/policy",
       "input": "at?:datetime:查询时点",
       "output": "policyNo:string:策略;timezone:string:IANA时区;cutoverMinute:int32:切点;payPolicy:string:先后付;capabilities:string[]:启用能力;version:int64:版本",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
       "needs": "餐饮新增"
     },
     {
@@ -5139,7 +6053,7 @@
       "path": "/biz/x/food/stores/{storeNo}/menus/{configNo}",
       "input": "",
       "output": "config:Config:具体配置，类型由路径确定",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
       "needs": "餐饮新增"
     },
     {
@@ -5149,8 +6063,8 @@
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/menus/{configNo}:publish",
       "input": "version:int64:草稿版本;effectiveAt:datetime:生效时刻;approvalRef?:string:审批",
-      "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "output": "publication:ConfigRevision:冻结发布修订",
+      "guard": "CAS草稿头及完整聚合校验；冻结依赖发布版本和definition；发布内容不可改，客户端不可自填已发布凭据",
       "needs": "餐饮新增"
     },
     {
@@ -5159,7 +6073,7 @@
       "name": "创建option-groups",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/option-groups",
-      "input": "name:string:组名;minQty:decimal:下限;maxQty:decimal:上限",
+      "input": "name:string:组名;minQty:decimal:非负下限;maxQty:decimal:不小于下限",
       "output": "configNo:string:配置号;version:int64:草稿版本;status:string:DRAFT",
       "guard": "门店范围与对象权限；写操作CAS版本及幂等",
       "needs": "餐饮新增"
@@ -5172,7 +6086,7 @@
       "path": "/biz/x/food/stores/{storeNo}/option-groups/{configNo}",
       "input": "",
       "output": "config:Config:具体配置，类型由路径确定",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
       "needs": "餐饮新增"
     },
     {
@@ -5182,8 +6096,8 @@
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/option-groups/{configNo}:publish",
       "input": "version:int64:草稿版本;effectiveAt:datetime:生效时刻;approvalRef?:string:审批",
-      "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "output": "publication:ConfigRevision:冻结发布修订",
+      "guard": "CAS草稿头及完整聚合校验；冻结依赖发布版本和definition；发布内容不可改，客户端不可自填已发布凭据",
       "needs": "餐饮新增"
     },
     {
@@ -5192,9 +6106,9 @@
       "name": "创建bundles",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/bundles",
-      "input": "skuNo:string:主SKU;configVersion:int64:版本",
-      "output": "configNo:string:配置号;version:int64:草稿版本;status:string:DRAFT",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "input": "skuNo:string:主SKU",
+      "output": "configNo:string:主SKU业务号;version:int64:草稿CAS;status:string:DRAFT",
+      "guard": "主SKU属于当前主体且未重复建套餐定义；configVersion由服务端分配，不接受客户端指定",
       "needs": "餐饮新增"
     },
     {
@@ -5205,7 +6119,7 @@
       "path": "/biz/x/food/stores/{storeNo}/bundles/{configNo}",
       "input": "",
       "output": "config:Config:具体配置，类型由路径确定",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
       "needs": "餐饮新增"
     },
     {
@@ -5215,8 +6129,8 @@
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/bundles/{configNo}:publish",
       "input": "version:int64:草稿版本;effectiveAt:datetime:生效时刻;approvalRef?:string:审批",
-      "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "output": "publication:ConfigRevision:冻结发布修订",
+      "guard": "CAS草稿头及完整聚合校验；冻结依赖发布版本和definition；发布内容不可改，客户端不可自填已发布凭据",
       "needs": "餐饮新增"
     },
     {
@@ -5225,7 +6139,7 @@
       "name": "创建stations",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/stations",
-      "input": "name:string:工位名;kind:string:HOT或COLD或BAR或PACK",
+      "input": "name:string:工位名;stationType:string:HOT或COLD或BAR或PACK",
       "output": "configNo:string:配置号;version:int64:草稿版本;status:string:DRAFT",
       "guard": "门店范围与对象权限；写操作CAS版本及幂等",
       "needs": "餐饮新增"
@@ -5238,7 +6152,7 @@
       "path": "/biz/x/food/stores/{storeNo}/stations/{configNo}",
       "input": "",
       "output": "config:Config:具体配置，类型由路径确定",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
       "needs": "餐饮新增"
     },
     {
@@ -5248,8 +6162,8 @@
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/stations/{configNo}:publish",
       "input": "version:int64:草稿版本;effectiveAt:datetime:生效时刻;approvalRef?:string:审批",
-      "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "output": "publication:ConfigRevision:冻结发布修订",
+      "guard": "CAS草稿头及完整聚合校验；冻结依赖发布版本和definition；发布内容不可改，客户端不可自填已发布凭据",
       "needs": "餐饮新增"
     },
     {
@@ -5258,9 +6172,9 @@
       "name": "菜品餐饮属性",
       "method": "PUT",
       "path": "/biz/x/food/stores/{storeNo}/dishes/{goodsNo}",
-      "input": "dishKind:string:SINGLE或BUNDLE或ADDON;prepSeconds:int32:制作秒数;version:int64:版本",
-      "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "input": "dishKind:string:SINGLE或BUNDLE或ADDON;prepSeconds:int32:非负;presentation:DishPresentation:餐饮展示覆盖;measurement:MeasurementPolicy:计量规则;version?:int64:创建时不传，修改时必须CAS",
+      "output": "dish:Dish:菜品",
+      "guard": "商品同主体；缺version仅当餐饮扩展不存在时创建，存在则冲突；传version只允许CAS修改已存在扩展；基础图文价格库存仍在商品域",
       "needs": "餐饮新增"
     },
     {
@@ -5269,9 +6183,9 @@
       "name": "菜单组成与时段配置",
       "method": "PUT",
       "path": "/biz/x/food/menus/{menuNo}/definition",
-      "input": "version:int64:草稿版本;storeNos:string[]:适用门店;contexts:ContextInput[]:渠道与履约;weekSchedules:WeekScheduleInput[]:weekday起止时间和跨日标记;exceptions:ExceptionInput[]:日期及OPEN或CLOSED和时间;categories:MenuCategoryInput[]:分类号名称排序及商品SKU白名单",
-      "output": "menuNo:string:菜单;version:int64:新草稿版本",
-      "guard": "菜单管理权限；逐项按菜单子表字段拒未知值，发布校验重叠及时区",
+      "input": "version:int64:草稿版本;storeNos:string[]:适用门店;contexts:ContextInput[]:渠道与履约;weekSchedules:WeekScheduleInput[]:weekday起止时间和跨日标记;exceptions:ExceptionInput[]:日期及OPEN或CLOSED和时间;categories:MenuCategoryInput[]:分类号名称排序及商品SKU白名单;validFrom?:date:适用首日;validTo?:date:适用末日",
+      "output": "menu:Menu:草稿头",
+      "guard": "仅更新草稿；分类/菜项同属本餐牌；SKU须属于商品；时段跨日及例外完整校验",
       "needs": "餐饮新增"
     },
     {
@@ -5291,9 +6205,9 @@
       "name": "配置选择项",
       "method": "PUT",
       "path": "/biz/x/food/option-groups/{groupNo}/items",
-      "input": "version:int64:版本;items:OptionItemInput[]:optionItemNo/sourceKind/specValueNo或modifierNo/maxQty/defaultQty/sortNo;goodsNos:string[]:绑定商品",
+      "input": "version:int64:版本;items:OptionItemInput[]:optionItemNo/sourceKind/specValueNo或modifierNo/maxQty/defaultQty/sortNo;goodsNos:string[]:绑定商品;selectionRules:SelectionRules:互斥依赖结构",
       "output": "configNo:string:组;version:int64:新版本",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "SPEC_VALUE与MODIFIER二选一；绑定菜品可有多组选配；min/default/max及互斥不得矛盾；依赖图拒循环",
       "needs": "餐饮新增"
     },
     {
@@ -5302,9 +6216,9 @@
       "name": "配料组合配置",
       "method": "PUT",
       "path": "/biz/x/food/modifiers/{modifierNo}",
-      "input": "name:string:名称;kind:string:ADDON或COMBO;salesSkuNo?:string:收费SKU;components:ComponentInput[]:memberNo及正quantity;version:int64:版本",
+      "input": "name:string:名称;kind:string:ADDON或COMBO;salesSkuNo?:string:收费SKU;components:ComponentInput[]:成员及正数量;version:int64:现有对象CAS",
       "output": "configNo:string:配料;version:int64:新版本",
-      "guard": "配料管理权限；组合禁止循环、价格和库存不双算",
+      "guard": "已存在配料同主体且CAS更新；新建使用141由服务端生成业务号；ADDON/COMBO结构及递归防循环；叶子单位一致或有正式换算合同",
       "needs": "餐饮新增"
     },
     {
@@ -5324,9 +6238,9 @@
       "name": "沽清与恢复",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/sales-restrictions",
-      "input": "skuNo:string:SKU;mode:string:SOLD_OUT或QUOTA或CLEAR;quota?:decimal:正配额;expiresAt?:datetime:到期;reason:string:原因",
+      "input": "skuNo:string:SKU;mode:string:SOLD_OUT或QUOTA或PREORDER_LIMIT或CLEAR;restrictionNo?:string:CLEAR时必填;quota?:decimal:额度模式必填正值;businessDate?:date:每日额度必填;startsAt?:datetime:缺省现在;expiresAt?:datetime:到期;reason:string:原因",
       "output": "restrictionNo:string:销售约束引用;status:string:结果",
-      "guard": "沽清权限不改物理库存",
+      "guard": "店SKU有效约束串行化；CLEAR仅清指定限制；配额批次幂等预占释放一次且不修改实存",
       "needs": "共享可售约束或新增通用能力"
     },
     {
@@ -5335,9 +6249,9 @@
       "name": "顾客菜单视图",
       "method": "GET",
       "path": "/mp/x/food/catalog",
-      "input": "storeNo:string:门店;sessionNo?:string:会话;channel:string:销售渠道;fulfillment:string:履约;at?:datetime:预览时间",
-      "output": "menuNos:string[]:生效菜单;items:object[]:商品SKU名称当前价可售量选择组;configVersion:int64:版本;asOf:datetime:时点",
-      "guard": "门店或会话授权，客户端at仅预览不决定提交时刻",
+      "input": "storeNo:string:门店;sessionNo?:string:会话;orderSource:string:销售来源;fulfillment:string:履约",
+      "output": "menus:Menu[]:生效菜单;items:CatalogItem[]:商品规格选配可售提示;asOf:datetime:时点",
+      "guard": "公开目录或合法会话范围；来源须与客户端身份匹配；用户不能指定任意未来时间绕过接单",
       "needs": "餐饮新增"
     },
     {
@@ -5346,9 +6260,9 @@
       "name": "建桌",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/tables",
-      "input": "name:string:桌名;areaName:string:桌区;capacity:int32:座位;resourceNo?:string:资源",
-      "output": "tableNo:string:编号;version:int64:版本",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "input": "areaNo:string:桌区;code:string:门店唯一桌台编码;name:string:名称;capacity:int32:正座位数;sortNo:int32:排序;resourceNo?:string:共享资源",
+      "output": "table:Table:桌台",
+      "guard": "主体门店及桌区一致；同店code唯一；初始空闲；不允许客户端传占用状态",
       "needs": "餐饮新增"
     },
     {
@@ -5359,7 +6273,7 @@
       "path": "/biz/x/food/tables/{tableNo}:rotate-token",
       "input": "expiresAt:datetime:到期;version:int64:版本",
       "output": "token:string:仅本次返回明文;expiresAt:datetime:到期",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "桌台管理权限与CAS；轮换吊销旧码及按策略撤销旧会话；token仅本次返回，日志不记明文",
       "needs": "餐饮新增"
     },
     {
@@ -5368,9 +6282,9 @@
       "name": "桌码换短会话",
       "method": "POST",
       "path": "/mp/x/food/sessions",
-      "input": "tableToken:string:桌码;deviceNo?:string:设备",
+      "input": "tableToken:string:桌码;deviceCredential?:string:可验证设备凭据，不信任deviceNo自报",
       "output": "sessionNo:string:会话;accessToken:string:短期令牌;expiresAt:datetime:到期;checkNo?:string:获准台账",
-      "guard": "限流及桌码哈希校验，不返回他人私密资料",
+      "guard": "桌码哈希/有效期/吊销及店状态校验；只签发桌级受限会话，不凭桌码自动获取同桌所有台账",
       "needs": "餐饮新增"
     },
     {
@@ -5390,9 +6304,9 @@
       "name": "预约cancel",
       "method": "POST",
       "path": "/biz/x/food/reservations/{reservationNo}:cancel",
-      "input": "version:int64:版本;reason?:string:取消原因;tableNos?:string[]:到店占桌",
-      "output": "operationNo:string:操作;status:string:状态;checkNo?:string:开台结果",
-      "guard": "预约权限及资源接力，失败保留可恢复意图",
+      "input": "version:int64:版本;reason:string:取消或爽约原因",
+      "output": "operation:Operation:资源释放和资金处理进度",
+      "guard": "预约权限及版本；订金退款/没收单独走资金审批合同，资源取消不意味着已退款",
       "needs": "餐饮新增"
     },
     {
@@ -5401,9 +6315,9 @@
       "name": "预约no-show",
       "method": "POST",
       "path": "/biz/x/food/reservations/{reservationNo}:no-show",
-      "input": "version:int64:版本;reason?:string:取消原因;tableNos?:string[]:到店占桌",
-      "output": "operationNo:string:操作;status:string:状态;checkNo?:string:开台结果",
-      "guard": "预约权限及资源接力，失败保留可恢复意图",
+      "input": "version:int64:版本;reason:string:取消或爽约原因",
+      "output": "operation:Operation:资源释放和资金处理进度",
+      "guard": "预约权限及版本；订金退款/没收单独走资金审批合同，资源取消不意味着已退款",
       "needs": "餐饮新增"
     },
     {
@@ -5412,9 +6326,9 @@
       "name": "预约arrive",
       "method": "POST",
       "path": "/biz/x/food/reservations/{reservationNo}:arrive",
-      "input": "version:int64:版本;reason?:string:取消原因;tableNos?:string[]:到店占桌",
+      "input": "version:int64:预约版本;tableNos:string[]:占桌;tableVersions:TableVersionInput[]:资源版本;partySize:int32:实际人数",
       "output": "operationNo:string:操作;status:string:状态;checkNo?:string:开台结果",
-      "guard": "预约权限及资源接力，失败保留可恢复意图",
+      "guard": "新占用失败保留原预约资源；到店只生成一个台账；原预约和资金凭据保留",
       "needs": "餐饮新增"
     },
     {
@@ -5423,9 +6337,9 @@
       "name": "开台",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/checks",
-      "input": "tableNos:string[]:可空无桌;partySize:int32:人数;payMode:string:先后付;reservationNo?:string:来源预约",
+      "input": "tableNos:string[]:空为无桌;partySize:int32:正人数;payMode:string:PREPAY或POSTPAY;reservationNo?:string:来源预约;tableVersions:TableVersionInput[]:所有目标桌版本;sharingMode:string:EXCLUSIVE或SHARED;seats:SeatInput[]:座位;serviceEmployeeNo?:string:获准员工",
       "output": "check:Check:台账",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "开台权限与店级资源仲裁；共享容量核验；后付须能力开通；操作人来自认证",
       "needs": "餐饮新增"
     },
     {
@@ -5436,7 +6350,7 @@
       "path": "/biz/x/food/stores/{storeNo}/checks",
       "input": "status?:string:过滤;businessDate?:date:营业日;page?:int32:默认1;size?:int32:默认20最大100",
       "output": "records:Check[]:列表;total:int64:总数;page:int32:当前页;size:int32:每页条数",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
       "needs": "餐饮新增"
     },
     {
@@ -5445,31 +6359,31 @@
       "name": "台账transfer",
       "method": "POST",
       "path": "/biz/x/food/checks/{checkNo}:transfer",
-      "input": "version:int64:版本;reason:string:原因;approvalRef?:string:审批;targetTableNos:string[]:转入桌台",
-      "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
+      "input": "version:int64:版本;reason:string:原因;approvalRef?:string:审批;targetTableNos:string[]:转入桌台;tableVersions:TableVersionInput[]:所有来源目标桌版本",
+      "output": "operation:Operation:转台受理及恢复结果",
       "guard": "逐动作权限；动作相关目标必填；先占新再放旧；不直接拆核心已付订单",
       "needs": "餐饮新增"
     },
     {
       "id": "FOOD-API-034",
       "domain": "C",
-      "name": "台账merge",
+      "name": "合并就餐服务台账",
       "method": "POST",
       "path": "/biz/x/food/checks/{checkNo}:merge",
-      "input": "version:int64:版本;reason:string:原因;approvalRef?:string:审批;targetCheckNo:string:目标台账",
-      "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "逐动作权限；动作相关目标必填；先占新再放旧；不直接拆核心已付订单",
-      "needs": "餐饮新增"
+      "input": "version:int64:来源版本;targetCheckNo:string:目标台账;targetVersion:int64:目标版本;tableVersions:TableVersionInput[]:桌台版本;reason:string:原因;approvalRef?:string:审批",
+      "output": "operation:Operation:协作结果",
+      "guard": "仅合并服务/占用展示归属；原批次check及核心资金归属不改；结账冻结/未知资金时拒绝；合账收款另走settlement",
+      "needs": "餐饮桌台操作意图及追加归属；资金合账取决于核心收银"
     },
     {
       "id": "FOOD-API-035",
       "domain": "C",
-      "name": "台账split",
+      "name": "拆分就餐服务台账",
       "method": "POST",
       "path": "/biz/x/food/checks/{checkNo}:split",
-      "input": "version:int64:版本;reason:string:原因;approvalRef?:string:审批;selectedBatchNos:string[]:仅未结且允许迁移的批次;targetCheckNo:string:目标台账",
-      "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "逐动作权限；动作相关目标必填；先占新再放旧；不直接拆核心已付订单",
+      "input": "version:int64:来源版本;targetCheckNo:string:目标台账;targetVersion:int64:目标版本;selectedBatchNos:string[]:允许调整展示归属的完整批次;reason:string:原因;approvalRef?:string:审批",
+      "output": "operation:Operation:协作结果",
+      "guard": "仅调整批次服务归属，不改成交和资金；需锁批次且拒绝冻结/未知资金范围；按菜拆账走核心应收分摊",
       "needs": "餐饮新增"
     },
     {
@@ -5480,7 +6394,7 @@
       "path": "/biz/x/food/checks/{checkNo}:clear",
       "input": "version:int64:版本;reason:string:原因;approvalRef?:string:审批;occupancyNos:string[]:结束占用不删除未收应收",
       "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "逐动作权限；动作相关目标必填；先占新再放旧；不直接拆核心已付订单",
+      "guard": "清台权限及占用版本校验；仅结束指定占用；未结应收/制作任务以异常移交保留，不以清台关闭资金台账",
       "needs": "餐饮新增"
     },
     {
@@ -5490,8 +6404,8 @@
       "method": "GET",
       "path": "/biz/x/food/carts/{cartNo}",
       "input": "",
-      "output": "cartNo:string:购物车;version:int64:版本;lines:OrderLineInput[]:草稿",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "output": "cart:Cart:获准购物车",
+      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
       "needs": "餐饮新增"
     },
     {
@@ -5500,9 +6414,9 @@
       "name": "创建购物车",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/carts",
-      "input": "checkNo?:string:台账;sessionNo?:string:无台会话",
-      "output": "cartNo:string:购物车;version:int64:版本",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "input": "checkNo?:string:获准台账;sessionNo?:string:无台会话;buyerNo?:string:受权代客买家;orderSource:string:受控来源;fulfillment:string:受控履约;scheduledAt?:datetime:定时出餐",
+      "output": "cart:Cart:购物车",
+      "guard": "无台也需店级授权；session及check归属匹配；来源终端经鉴权验证，客户端不能开启后付能力",
       "needs": "餐饮新增"
     },
     {
@@ -5513,7 +6427,7 @@
       "path": "/biz/x/food/carts/{cartNo}/lines/{sourceLineRef}",
       "input": "line:OrderLineInput:本行;version:int64:购物车版本",
       "output": "cartNo:string:购物车;version:int64:新版本",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "path sourceLineRef与line.sourceLineRef必须一致；购物车CAS；未提交且SKU选配合法",
       "needs": "餐饮新增"
     },
     {
@@ -5533,9 +6447,9 @@
       "name": "点单报价",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/quotes",
-      "input": "checkNo?:string:台账;buyerNo?:string:真实买家;fulfillment:string:履约;channel:string:渠道;lines:OrderLineInput[]:源行",
+      "input": "checkNo?:string:台账;buyerNo?:string:真实买家;fulfillment:string:履约;orderSource:string:经认证来源;lines:OrderLineInput[]:源行;cartNo:string:源车;cartVersion:int64:车版本;scheduledAt?:datetime:出餐时点",
       "output": "quote:Quote:权威报价",
-      "guard": "范围与代办；不锁库存不建单",
+      "guard": "报价绑定主体门店/车版本/源行内容/规则版本；确认价格变化；服务端最终重验可售及核心库存能力",
       "needs": "已有报价适配；选配计量等分项门控"
     },
     {
@@ -5546,7 +6460,7 @@
       "path": "/biz/x/food/stores/{storeNo}/batches",
       "input": "cartNo:string:购物车;cartVersion:int64:版本;selectedLineRefs:string[]:本次行;quoteNo:string:已确认报价;payMode:string:先后付;splitByPerson:boolean:预分单",
       "output": "batch:Batch:绑定或处理中",
-      "guard": "强餐饮规则校验；匿名身份未就绪拒绝；后付需受理契约",
+      "guard": "提交必须匹配报价指纹、源行集合和车版本；冻结selected行；绑定核心成功后仅清理这些行；UNKNOWN同键恢复；payMode由获准策略校验",
       "needs": "当前OrderService适配及通用缺口"
     },
     {
@@ -5556,8 +6470,8 @@
       "method": "GET",
       "path": "/biz/x/food/batches/{batchNo}",
       "input": "",
-      "output": "batch:Batch:原请求结果",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "output": "detail:BatchDetail:原批次及资金履约独立状态",
+      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
       "needs": "餐饮新增"
     },
     {
@@ -5568,7 +6482,7 @@
       "path": "/biz/x/food/stores/{storeNo}/kitchen/tasks",
       "input": "stationNo:string:工位;status?:string:状态;page?:int32:默认1;size?:int32:默认20最大100",
       "output": "records:Task[]:任务;total:int64:总数;page:int32:当前页;size:int32:每页条数",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
       "needs": "餐饮新增"
     },
     {
@@ -5577,9 +6491,9 @@
       "name": "制作任务start",
       "method": "POST",
       "path": "/biz/x/food/tasks/{taskNo}:start",
-      "input": "version:int64:任务版本;qty?:decimal:数量动作必填;reason?:string:撤菜重做必填;returnNo?:string:退餐授权引用",
-      "output": "task:Task:新任务状态;eventNo:string:追加事实;newTaskNo?:string:重做任务",
-      "guard": "工位/传菜/退餐分别鉴权；累计数量守恒；重做审批不直接改资金",
+      "input": "version:int64:任务版本;qty:decimal:本次正数量",
+      "output": "task:Task:任务状态;eventNo:string:数量事实",
+      "guard": "获准工位/传菜权限；只推进合法前态数量，CAS及累计数量守恒；重放不重复加量",
       "needs": "餐饮新增"
     },
     {
@@ -5588,9 +6502,9 @@
       "name": "制作任务ready",
       "method": "POST",
       "path": "/biz/x/food/tasks/{taskNo}:ready",
-      "input": "version:int64:任务版本;qty?:decimal:数量动作必填;reason?:string:撤菜重做必填;returnNo?:string:退餐授权引用",
-      "output": "task:Task:新任务状态;eventNo:string:追加事实;newTaskNo?:string:重做任务",
-      "guard": "工位/传菜/退餐分别鉴权；累计数量守恒；重做审批不直接改资金",
+      "input": "version:int64:任务版本;qty:decimal:本次正数量",
+      "output": "task:Task:任务状态;eventNo:string:数量事实",
+      "guard": "获准工位/传菜权限；只推进合法前态数量，CAS及累计数量守恒；重放不重复加量",
       "needs": "餐饮新增"
     },
     {
@@ -5599,9 +6513,9 @@
       "name": "制作任务serve",
       "method": "POST",
       "path": "/biz/x/food/tasks/{taskNo}:serve",
-      "input": "version:int64:任务版本;qty?:decimal:数量动作必填;reason?:string:撤菜重做必填;returnNo?:string:退餐授权引用",
-      "output": "task:Task:新任务状态;eventNo:string:追加事实;newTaskNo?:string:重做任务",
-      "guard": "工位/传菜/退餐分别鉴权；累计数量守恒；重做审批不直接改资金",
+      "input": "version:int64:任务版本;qty:decimal:本次正数量",
+      "output": "task:Task:任务状态;eventNo:string:数量事实",
+      "guard": "获准工位/传菜权限；只推进合法前态数量，CAS及累计数量守恒；重放不重复加量",
       "needs": "餐饮新增"
     },
     {
@@ -5610,9 +6524,9 @@
       "name": "制作任务hold",
       "method": "POST",
       "path": "/biz/x/food/tasks/{taskNo}:hold",
-      "input": "version:int64:任务版本;qty?:decimal:数量动作必填;reason?:string:撤菜重做必填;returnNo?:string:退餐授权引用",
-      "output": "task:Task:新任务状态;eventNo:string:追加事实;newTaskNo?:string:重做任务",
-      "guard": "工位/传菜/退餐分别鉴权；累计数量守恒；重做审批不直接改资金",
+      "input": "version:int64:任务版本;reason?:string:原因",
+      "output": "task:Task:任务状态;eventNo:string:状态事实",
+      "guard": "获准工位/服务权限；hold/fire仅操作尚未制作部分，urge只记录催菜不加制作数量或销量",
       "needs": "餐饮新增"
     },
     {
@@ -5621,9 +6535,9 @@
       "name": "制作任务fire",
       "method": "POST",
       "path": "/biz/x/food/tasks/{taskNo}:fire",
-      "input": "version:int64:任务版本;qty?:decimal:数量动作必填;reason?:string:撤菜重做必填;returnNo?:string:退餐授权引用",
-      "output": "task:Task:新任务状态;eventNo:string:追加事实;newTaskNo?:string:重做任务",
-      "guard": "工位/传菜/退餐分别鉴权；累计数量守恒；重做审批不直接改资金",
+      "input": "version:int64:任务版本;reason?:string:原因",
+      "output": "task:Task:任务状态;eventNo:string:状态事实",
+      "guard": "获准工位/服务权限；hold/fire仅操作尚未制作部分，urge只记录催菜不加制作数量或销量",
       "needs": "餐饮新增"
     },
     {
@@ -5632,9 +6546,9 @@
       "name": "制作任务urge",
       "method": "POST",
       "path": "/biz/x/food/tasks/{taskNo}:urge",
-      "input": "version:int64:任务版本;qty?:decimal:数量动作必填;reason?:string:撤菜重做必填;returnNo?:string:退餐授权引用",
-      "output": "task:Task:新任务状态;eventNo:string:追加事实;newTaskNo?:string:重做任务",
-      "guard": "工位/传菜/退餐分别鉴权；累计数量守恒；重做审批不直接改资金",
+      "input": "version:int64:任务版本;reason?:string:原因",
+      "output": "task:Task:任务状态;eventNo:string:状态事实",
+      "guard": "获准工位/服务权限；hold/fire仅操作尚未制作部分，urge只记录催菜不加制作数量或销量",
       "needs": "餐饮新增"
     },
     {
@@ -5643,8 +6557,8 @@
       "name": "制作任务void",
       "method": "POST",
       "path": "/biz/x/food/tasks/{taskNo}:void",
-      "input": "version:int64:任务版本;qty?:decimal:数量动作必填;reason?:string:撤菜重做必填;returnNo?:string:退餐授权引用",
-      "output": "task:Task:新任务状态;eventNo:string:追加事实;newTaskNo?:string:重做任务",
+      "input": "version:int64:任务版本;qty:decimal:正撤销量;reason:string:原因;returnNo:string:已获准退餐凭据",
+      "output": "task:Task:任务状态;eventNo:string:撤菜事实",
       "guard": "工位/传菜/退餐分别鉴权；累计数量守恒；重做审批不直接改资金",
       "needs": "餐饮新增"
     },
@@ -5654,8 +6568,8 @@
       "name": "制作任务remake",
       "method": "POST",
       "path": "/biz/x/food/tasks/{taskNo}:remake",
-      "input": "version:int64:任务版本;qty?:decimal:数量动作必填;reason?:string:撤菜重做必填;returnNo?:string:退餐授权引用",
-      "output": "task:Task:新任务状态;eventNo:string:追加事实;newTaskNo?:string:重做任务",
+      "input": "version:int64:任务版本;qty:decimal:正重做量;reason:string:原因;approvalRef:string:重做授权",
+      "output": "task:Task:原任务;eventNo:string:重做事实;newTaskNo:string:关联重做任务",
       "guard": "工位/传菜/退餐分别鉴权；累计数量守恒；重做审批不直接改资金",
       "needs": "餐饮新增"
     },
@@ -5711,7 +6625,7 @@
       "path": "/biz/x/food/settlements/{settlementNo}",
       "input": "",
       "output": "settlement:Settlement:当前状态;confirmedAmount:Money:核心已确认;pendingIntentNos:string[]:未知请求",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
       "needs": "餐饮新增"
     },
     {
@@ -5720,9 +6634,9 @@
       "name": "结账pay",
       "method": "POST",
       "path": "/biz/x/food/settlements/{settlementNo}:pay",
-      "input": "version:int64:版本;tool:string:支付工具;amount:Money:本次金额;corePaymentToken?:string:临时凭证",
+      "input": "version:int64:版本;tool:string:支付工具;amount:Money:本次金额;corePaymentToken?:string:临时凭证;shiftNo?:string:现金时必填当班;cashTendered?:Money:现金时必填实收;cashEvidenceRef?:string:现金凭据引用",
       "output": "intentNo:string:请求意图;status:string:含UNKNOWN;coreReference?:string:核心结果;paymentAction?:object:核心返回端上支付动作",
-      "guard": "不得传markPaid；finalize需核心结清且无未知资金",
+      "guard": "服务端查询核心资金；不接受markPaid。现金仅biz收银权限且班次/完整单根影响集匹配，找零由服务端计算；顾客端只获准线上工具；未知状态按原意图恢复",
       "needs": "核心支付/现金确认；混合与跨根需扩展"
     },
     {
@@ -5732,8 +6646,8 @@
       "method": "POST",
       "path": "/biz/x/food/settlements/{settlementNo}:cancel",
       "input": "version:int64:版本;reason:string:原因",
-      "output": "intentNo:string:请求意图;status:string:含UNKNOWN;coreReference?:string:核心结果;paymentAction?:object:核心返回端上支付动作",
-      "guard": "不得传markPaid；finalize需核心结清且无未知资金",
+      "output": "operation:Operation:取消冻结范围结果",
+      "guard": "仅无成功/未知不可撤销资金时由核心释放；与付款回调串行仲裁；不得仅按客户端状态解冻",
       "needs": "核心支付/现金确认；混合与跨根需扩展"
     },
     {
@@ -5743,8 +6657,8 @@
       "method": "POST",
       "path": "/biz/x/food/settlements/{settlementNo}:finalize",
       "input": "version:int64:版本;scopeHash:string:冻结范围指纹",
-      "output": "intentNo:string:请求意图;status:string:含UNKNOWN;coreReference?:string:核心结果;paymentAction?:object:核心返回端上支付动作",
-      "guard": "不得传markPaid；finalize需核心结清且无未知资金",
+      "output": "settlement:Settlement:核心已结清且无未知请求时终结",
+      "guard": "scopeHash与冻结版本一致；核心结清且无未知资金；不能接受markPaid或以上菜/清台作为已付证据",
       "needs": "核心支付/现金确认；混合与跨根需扩展"
     },
     {
@@ -5787,8 +6701,8 @@
       "method": "GET",
       "path": "/biz/x/food/returns/{returnNo}",
       "input": "",
-      "output": "returnNo:string:申请;items:ReturnItem[]:明细;status:string:申请状态;financialStatus:string:资金状态;coreCaseRef?:string:核心售后;version:int64:版本",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "output": "returnNo:string:申请;items:ReturnItem[]:明细;status:string:申请状态;financialStatus:string:资金状态;coreCaseRef?:string:核心售后;version:int64:版本;kitchenStatus:string:厨房轨道",
+      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
       "needs": "餐饮新增"
     },
     {
@@ -5887,7 +6801,7 @@
       "path": "/biz/x/food/closes/{closeNo}",
       "input": "",
       "output": "close:Close:版本快照",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "门店范围与对象权限；仅授权读取，无写入副作用",
       "needs": "餐饮新增"
     },
     {
@@ -6087,6 +7001,556 @@
       "output": "intentNo:string:意图;status:string:含UNKNOWN;externalRef?:string:PMS结果",
       "guard": "房账权限不含支付成功确认",
       "needs": "核心应收与PMS契约"
+    },
+    {
+      "id": "FOOD-API-092",
+      "domain": "C",
+      "name": "桌区列表",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/table-areas",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100;status?:string:状态",
+      "output": "records:TableArea[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-093",
+      "domain": "C",
+      "name": "创建桌区",
+      "method": "POST",
+      "path": "/biz/x/food/stores/{storeNo}/table-areas",
+      "input": "code:string:店内唯一;name:string:名称;sortNo:int32:排序",
+      "output": "area:TableArea:桌区",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-094",
+      "domain": "C",
+      "name": "编辑桌区",
+      "method": "PUT",
+      "path": "/biz/x/food/table-areas/{areaNo}",
+      "input": "name:string:名称;sortNo:int32:排序;version:int64:版本",
+      "output": "area:TableArea:桌区",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-095",
+      "domain": "C",
+      "name": "桌区启停",
+      "method": "POST",
+      "path": "/biz/x/food/table-areas/{areaNo}:set-status",
+      "input": "status:string:ACTIVE或DISABLED;version:int64:版本;reason:string:原因",
+      "output": "area:TableArea:桌区",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；有启用桌台或占用禁止停用",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-096",
+      "domain": "C",
+      "name": "桌台列表",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/tables",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100;areaNo?:string:桌区;status?:string:配置状态;turnoverState?:string:资源状态;keyword?:string:编码名称",
+      "output": "records:Table[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；占用/台账按授权过滤，不以资金状态替代桌态",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-097",
+      "domain": "C",
+      "name": "桌台详情",
+      "method": "GET",
+      "path": "/biz/x/food/tables/{tableNo}",
+      "input": "",
+      "output": "table:Table:桌台详情",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-098",
+      "domain": "C",
+      "name": "编辑桌台",
+      "method": "PUT",
+      "path": "/biz/x/food/tables/{tableNo}",
+      "input": "areaNo:string:同店桌区;name:string:名称;capacity:int32:正容量;sortNo:int32:排序;version:int64:版本",
+      "output": "table:Table:桌台",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；有活动占用禁止移区和缩容；code不可复用修改",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-099",
+      "domain": "C",
+      "name": "桌台启停",
+      "method": "POST",
+      "path": "/biz/x/food/tables/{tableNo}:set-status",
+      "input": "status:string:ACTIVE或DISABLED;version:int64:版本;reason:string:原因",
+      "output": "table:Table:桌台",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；有活动占用禁止停用",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-100",
+      "domain": "C",
+      "name": "归档桌台",
+      "method": "POST",
+      "path": "/biz/x/food/tables/{tableNo}:archive",
+      "input": "version:int64:版本;reason:string:原因",
+      "output": "operation:Operation:归档记录",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；先停用，无活动占用；历史引用保留",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-101",
+      "domain": "C",
+      "name": "吊销桌码",
+      "method": "POST",
+      "path": "/biz/x/food/tables/{tableNo}:revoke-token",
+      "input": "version:int64:桌台版本;reason:string:原因",
+      "output": "operation:Operation:吊销结果",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；吊销有效码和旧会话，不取消原订单",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-102",
+      "domain": "C",
+      "name": "就餐台账详情",
+      "method": "GET",
+      "path": "/biz/x/food/checks/{checkNo}",
+      "input": "",
+      "output": "check:Check:台账;seats:SeatInput[]:座位;occupancies:Occupancy[]:占用",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-103",
+      "domain": "C",
+      "name": "修改人数与座位",
+      "method": "PUT",
+      "path": "/biz/x/food/checks/{checkNo}/seats",
+      "input": "version:int64:台账版本;partySize:int32:人数;seats:SeatInput[]:完整座位;reason:string:原因",
+      "output": "check:Check:台账",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；容量仲裁；已成交引用座位不可删除，只能保留历史别名",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-104",
+      "domain": "C",
+      "name": "并入桌台",
+      "method": "POST",
+      "path": "/biz/x/food/checks/{checkNo}:combine-tables",
+      "input": "version:int64:台账版本;tableVersions:TableVersionInput[]:新增桌台;reason:string:原因",
+      "output": "operation:Operation:并桌结果",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；一个台账多桌，不合账不改付款",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-105",
+      "domain": "C",
+      "name": "同桌新开独立台账",
+      "method": "POST",
+      "path": "/biz/x/food/tables/{tableNo}:share",
+      "input": "version:int64:桌版本;partySize:int32:正人数;payMode:string:获准先后付",
+      "output": "check:Check:新独立台账",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；共享容量原子检查；不继承原台账支付/顾客权限",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-106",
+      "domain": "C",
+      "name": "桌台操作恢复查询",
+      "method": "GET",
+      "path": "/biz/x/food/table-operations/{operationNo}",
+      "input": "",
+      "output": "operation:Operation:受权操作进度",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-107",
+      "domain": "C",
+      "name": "预约列表",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/reservations",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100;from:datetime:起含;to:datetime:止不含;status?:string:状态",
+      "output": "records:Reservation[]:预约;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-108",
+      "domain": "C",
+      "name": "就餐操作历史",
+      "method": "GET",
+      "path": "/biz/x/food/checks/{checkNo}/actions",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100",
+      "output": "records:ActionLog[]:获准审计;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；联系人/令牌/敏感凭据脱敏",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-109",
+      "domain": "B",
+      "name": "餐牌列表",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/menus",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100;status?:string:状态;keyword?:string:名称",
+      "output": "records:Menu[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-110",
+      "domain": "B",
+      "name": "编辑餐牌头",
+      "method": "PUT",
+      "path": "/biz/x/food/menus/{menuNo}",
+      "input": "name:string:名称;menuType:string:受控类型;timezone:string:时区;priority:int32:优先级;exclusiveGroup?:string:互斥组;version:int64:版本",
+      "output": "menu:Menu:草稿头",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；仅改草稿不改变现行发布",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-111",
+      "domain": "B",
+      "name": "餐牌停用",
+      "method": "POST",
+      "path": "/biz/x/food/menus/{menuNo}:disable",
+      "input": "version:int64:版本;reason:string:原因",
+      "output": "operation:Operation:接单门控结果",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；旧订单快照保留",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-112",
+      "domain": "B",
+      "name": "菜品列表",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/dishes",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100;keyword?:string:名称;dishKind?:string:类型",
+      "output": "records:Dish[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-113",
+      "domain": "B",
+      "name": "菜品详情",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/dishes/{goodsNo}",
+      "input": "",
+      "output": "dish:Dish:餐饮配置;optionGroups:Config[]:获准选择组;coreCatalogRef:string:基础商品查询引用",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-114",
+      "domain": "B",
+      "name": "经营端可售餐牌",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/catalog",
+      "input": "orderSource:string:授权来源;fulfillment:string:履约;at?:datetime:有预览权限才可指定",
+      "output": "menus:Menu[]:生效餐牌;items:CatalogItem[]:可售菜品;asOf:datetime:截至",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；仅解析已发布快照；可售提交时再次验证",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-115",
+      "domain": "B",
+      "name": "配置发布历史",
+      "method": "GET",
+      "path": "/biz/x/food/config-revisions",
+      "input": "configKind:string:受控类型;configNo:string:配置号;page?:int32:默认1;size?:int32:默认20最大100",
+      "output": "records:ConfigRevision[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-116",
+      "domain": "B",
+      "name": "回滚配置为新修订",
+      "method": "POST",
+      "path": "/biz/x/food/config-revisions/{revisionNo}:republish",
+      "input": "version:int64:当前头版本;effectiveAt:datetime:生效;reason:string:原因;approvalRef?:string:审批",
+      "output": "publication:ConfigRevision:新发布号",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；旧快照不可改，旧引用现可售性重新校验",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-117",
+      "domain": "B",
+      "name": "配料组合发布",
+      "method": "POST",
+      "path": "/biz/x/food/modifiers/{modifierNo}:publish",
+      "input": "version:int64:草稿版;effectiveAt:datetime:生效",
+      "output": "publication:ConfigRevision:发布快照",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；递归检查循环及计量，冻结成员版本",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-118",
+      "domain": "B",
+      "name": "选配组列表",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/option-groups",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100",
+      "output": "records:Config[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-119",
+      "domain": "B",
+      "name": "套餐列表",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/bundles",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100",
+      "output": "records:Config[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-120",
+      "domain": "B",
+      "name": "配料列表",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/modifiers",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100",
+      "output": "records:Config[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-121",
+      "domain": "B",
+      "name": "工位列表",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/stations",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100",
+      "output": "records:Config[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-122",
+      "domain": "B",
+      "name": "可售限制查询",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/sales-restrictions",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100;skuNo?:string:SKU;status?:string:状态",
+      "output": "records:SalesRestriction[]:约束;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-123",
+      "domain": "D",
+      "name": "按台账或条件查询批次",
+      "method": "GET",
+      "path": "/biz/x/food/stores/{storeNo}/batches",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100;checkNo?:string:原/当前服务台账;membershipMode?:string:ORIGINAL或CURRENT;status?:string:受理状态;businessDate?:date:批次营业日;orderSource?:string:来源",
+      "output": "records:Batch[]:授权列表;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；资金按原核心单归属，查询不更新历史",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-124",
+      "domain": "D",
+      "name": "取消正式批次",
+      "method": "POST",
+      "path": "/biz/x/food/batches/{batchNo}:cancel",
+      "input": "version:int64:批次版;reason:string:原因;approvalRef?:string:审批",
+      "output": "operation:Operation:取消进度;batch:Batch:批次",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；调用核心取消；支付竞争/已制作按核心守卫和退餐处理；未知不换键重建",
+      "needs": "核心取消及后付库存合同"
+    },
+    {
+      "id": "FOOD-API-125",
+      "domain": "D",
+      "name": "批次操作恢复查询",
+      "method": "GET",
+      "path": "/biz/x/food/batches/{batchNo}/operations",
+      "input": "page?:int32:默认1;size?:int32:默认20最大100",
+      "output": "records:Operation[]:建单取消受理恢复;total:int64:总数;page:int32:页;size:int32:页长",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-126",
+      "domain": "D",
+      "name": "关闭草稿购物车",
+      "method": "POST",
+      "path": "/biz/x/food/carts/{cartNo}:archive",
+      "input": "version:int64:购物车版",
+      "output": "operation:Operation:关闭结果",
+      "guard": "主体门店对象一致；鉴权及写操作CAS/幂等；不暴露物理id；不删除已提交批次；提交中冻结行须先恢复",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-127",
+      "domain": "D",
+      "name": "顾客购物车读取",
+      "method": "GET",
+      "path": "/mp/x/food/carts/{cartNo}",
+      "input": "",
+      "output": "cart:Cart:获准购物车",
+      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-128",
+      "domain": "D",
+      "name": "顾客创建购物车",
+      "method": "POST",
+      "path": "/mp/x/food/stores/{storeNo}/carts",
+      "input": "checkNo?:string:获准台账;fulfillment:string:受控履约;scheduledAt?:datetime:定时出餐;sessionNo:string:获准会话",
+      "output": "cart:Cart:购物车",
+      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-129",
+      "domain": "D",
+      "name": "顾客替换草稿行",
+      "method": "PUT",
+      "path": "/mp/x/food/carts/{cartNo}/lines/{sourceLineRef}",
+      "input": "line:OrderLineInput:本行;version:int64:购物车版本",
+      "output": "cartNo:string:购物车;version:int64:新版本",
+      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-130",
+      "domain": "D",
+      "name": "顾客归档购物车草稿行",
+      "method": "POST",
+      "path": "/mp/x/food/carts/{cartNo}/lines/{sourceLineRef}:archive",
+      "input": "version:int64:购物车版本",
+      "output": "cartNo:string:购物车;version:int64:新版本",
+      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-131",
+      "domain": "D",
+      "name": "顾客点单报价",
+      "method": "POST",
+      "path": "/mp/x/food/stores/{storeNo}/quotes",
+      "input": "checkNo?:string:台账;fulfillment:string:履约;orderSource:string:经认证来源;lines:OrderLineInput[]:源行;cartNo:string:源车;cartVersion:int64:车版本;scheduledAt?:datetime:出餐时点;sessionNo:string:获准会话",
+      "output": "quote:Quote:权威报价",
+      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
+      "needs": "已有报价适配；选配计量等分项门控"
+    },
+    {
+      "id": "FOOD-API-132",
+      "domain": "D",
+      "name": "顾客提交点餐批次",
+      "method": "POST",
+      "path": "/mp/x/food/stores/{storeNo}/batches",
+      "input": "cartNo:string:购物车;cartVersion:int64:版本;selectedLineRefs:string[]:本次行;quoteNo:string:已确认报价;payMode:string:先后付;splitByPerson:boolean:预分单",
+      "output": "batch:Batch:绑定或处理中",
+      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
+      "needs": "当前OrderService适配及通用缺口"
+    },
+    {
+      "id": "FOOD-API-133",
+      "domain": "D",
+      "name": "顾客批次结果查询",
+      "method": "GET",
+      "path": "/mp/x/food/batches/{batchNo}",
+      "input": "",
+      "output": "detail:BatchDetail:原批次及资金履约独立状态",
+      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-134",
+      "domain": "F",
+      "name": "顾客读取预结账",
+      "method": "GET",
+      "path": "/mp/x/food/settlements/{settlementNo}",
+      "input": "",
+      "output": "settlement:Settlement:当前状态;confirmedAmount:Money:核心已确认;pendingIntentNos:string[]:未知请求",
+      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-135",
+      "domain": "F",
+      "name": "顾客结账pay",
+      "method": "POST",
+      "path": "/mp/x/food/settlements/{settlementNo}:pay",
+      "input": "version:int64:版本;tool:string:获准线上工具;amount:Money:本次付款",
+      "output": "intentNo:string:请求意图;status:string:含UNKNOWN;coreReference?:string:核心结果;paymentAction?:object:核心返回端上支付动作",
+      "guard": "服务端查询核心资金；不接受markPaid。现金仅biz收银权限且班次/完整单根影响集匹配，找零由服务端计算；顾客端只获准线上工具；未知状态按原意图恢复",
+      "needs": "核心支付/现金确认；混合与跨根需扩展"
+    },
+    {
+      "id": "FOOD-API-136",
+      "domain": "G",
+      "name": "顾客退餐申请",
+      "method": "POST",
+      "path": "/mp/x/food/stores/{storeNo}/returns",
+      "input": "checkNo?:string:台账;items:ReturnItem[]:逐行退量;reason:string:原因",
+      "output": "returnNo:string:申请;status:string:REQUESTED;version:int64:版本",
+      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-137",
+      "domain": "G",
+      "name": "顾客退餐查询",
+      "method": "GET",
+      "path": "/mp/x/food/returns/{returnNo}",
+      "input": "",
+      "output": "returnNo:string:申请;items:ReturnItem[]:明细;status:string:申请状态;financialStatus:string:资金状态;coreCaseRef?:string:核心售后;version:int64:版本;kitchenStatus:string:厨房轨道",
+      "guard": "会话/本人及授权台账范围；不能仅凭桌码访问同桌他人订单；禁止现金确认、审批、签核、任意代付身份；配置来源由服务端确定",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-138",
+      "domain": "C",
+      "name": "顾客就餐进度",
+      "method": "GET",
+      "path": "/mp/x/food/checks/{checkNo}",
+      "input": "",
+      "output": "check:Check:获准视图;foodLines:FoodLine[]:仅获准行;financialStatus:string:权限过滤的资金状态",
+      "guard": "会话/本人台账范围；不返回其他顾客联系方式或隐私凭据",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-139",
+      "domain": "C",
+      "name": "主动结束顾客会话",
+      "method": "POST",
+      "path": "/mp/x/food/sessions/{sessionNo}:end",
+      "input": "",
+      "output": "operation:Operation:吊销结果",
+      "guard": "仅本人会话或获准设备；清除设备本次会话，不取消已下订单",
+      "needs": "餐饮新增"
+    },
+    {
+      "id": "FOOD-API-140",
+      "domain": "F",
+      "name": "顾客申请获准范围结账",
+      "method": "POST",
+      "path": "/mp/x/food/checks/{checkNo}/settlements",
+      "input": "version:int64:台账版本;foodLineNos:string[]:获准源行范围，空代表本人获准未结范围;scopeHash:string:顾客已确认应收摘要",
+      "output": "settlement:Settlement:核心冻结范围",
+      "guard": "会话本人范围；服务端解析核心单及分配，不接受任意核心单号；整桌代付须台账明确授权；冻结排他与未知资金守卫同biz；不得创建现金/免单/跨币种结账",
+      "needs": "核心应收冻结；部分/跨根能力门控"
+    },
+    {
+      "id": "FOOD-API-141",
+      "domain": "B",
+      "name": "创建配料或配料组合",
+      "method": "POST",
+      "path": "/biz/x/food/stores/{storeNo}/modifiers",
+      "input": "name:string:名称;kind:string:ADDON或COMBO;salesSkuNo?:string:收费SKU;components:ComponentInput[]:组合成员或空",
+      "output": "configNo:string:服务端生成配料业务号;version:int64:草稿CAS版本;status:string:DRAFT",
+      "guard": "主体门店权限与创建幂等；SKU同主体；COMBO引用已存在配料并拒循环；不接受客户端伪造业务号或价格",
+      "needs": "餐饮配置；收费成交需核心报价"
     }
   ],
   "dtos": {
@@ -6097,7 +7561,7 @@
     "Quote": "quoteNo:string:报价;expiresAt:datetime:失效;scopeHash:string:范围指纹;lines:QuoteLine[]:逐行金额;total:Money:应收;capabilities:string[]:可用能力",
     "Check": "checkNo:string:台账;storeNo:string:门店;businessDate:date:开台营业日;status:string:营业状态;payMode:string:先后付;partySize:int32:人数;tableNos:string[]:占桌;version:int64:版本",
     "Task": "taskNo:string:任务;foodLineNo:string:菜品源行;stationNo:string:工位;status:string:状态;targetQty:decimal:目标量;readyQty:decimal:出品量;servedQty:decimal:上菜量;voidQty:decimal:撤销量;version:int64:版本",
-    "Batch": "batchNo:string:批次;status:string:处理中或完成;paymentRootNos:string[]:核心支付根;storeOrderNos:string[]:门店单;foodLineNos:string[]:餐饮行;version:int64:版本",
+    "Batch": "batchNo:string:批次;checkNo?:string:原台账;storeNo:string:门店;businessDate:date:本批归期;payMode:string:先后付;orderSource:string:真实入口;fulfillment:string:履约;status:string:含UNKNOWN及CANCEL_PENDING;paymentRootNos:string[]:核心支付根;storeOrderNos:string[]:门店单;foodLineNos:string[]:餐饮行;version:int64:版本",
     "MetricCell": "metricCode:string:指标;value:decimal:值;unit:string:单位;currency?:string:金额币种;definitionVersion:int64:口径版本",
     "Report": "rows:MetricCell[]:指标行;asOf:datetime:数据截至;complete:boolean:完整性;timeBasis:string:时间基准;watermark:string:源水位;total:int64:总行数;page:int32:页码;size:int32:每页条数",
     "ScopeItem": "storeOrderNo:string:核心门店单;coreAllocationRef?:string:部分分摊引用",
@@ -6107,17 +7571,39 @@
     "ReturnItem": "foodLineNo:string:源行;componentNo?:string:组件;qty:decimal:退量;disposition:string:CANCEL或LOSS或KEEP或REMAKE",
     "Page": "records:object[]:该端点明确的业务VO;total:int64:总数;page:int32:页码;size:int32:每页条数",
     "MenuCategoryInput": "categoryNo:string:分类;name:string:名称;sortNo:int32:排序;items:MenuItemInput[]:商品项",
-    "MenuItemInput": "menuItemNo:string:项号;goodsNo:string:商品;sortNo:int32:排序;enabled:boolean:启用;skuNos:string[]:空表示全部合法可售SKU",
+    "MenuItemInput": "menuItemNo:string:项号;goodsNo:string:商品;sortNo:int32:排序;enabled:boolean:启用;skuScope:string:ALL或EXPLICIT;skuNos:string[]:EXPLICIT必须非空且属于商品",
     "WeekScheduleInput": "weekday:int32:1至7;startTime:string:HH:mm;endTime:string:HH:mm;endDayOffset:int32:0或1",
     "ExceptionInput": "localDate:date:日期;mode:string:OPEN或CLOSED;startTime?:string:OPEN必填;endTime?:string:OPEN必填;endDayOffset:int32:跨日标记",
     "ContextInput": "orderSource:string:受控来源;fulfillment:string:受控履约",
-    "BundleGroupInput": "groupNo:string:组号;name:string:名称;minQty:decimal:最少;maxQty:decimal:最多;baseSkuNo?:string:补差基准",
-    "BundleChoiceInput": "choiceNo:string:选项;groupNo:string:组;skuNo:string:SKU;unitsPerPick:decimal:每选用量;priceMode:string:INCLUDED或ADD_SKU或DIFF_BASE;defaultQty:decimal:默认;minQty:decimal:下限;maxQty:decimal:上限",
-    "OptionItemInput": "optionItemNo:string:项号;sourceKind:string:SPEC_VALUE或MODIFIER;specValueNo?:string:字典值;modifierNo?:string:配料;maxQty:decimal:上限;defaultQty:decimal:默认;sortNo:int32:排序",
+    "BundleGroupInput": "groupNo:string:组号;name:string:名称;minQty:decimal:最少;maxQty:decimal:最多;baseSkuNo?:string:补差基准;sortNo:int32:排序",
+    "BundleChoiceInput": "choiceNo:string:选项;groupNo:string:组;skuNo:string:SKU;unitsPerPick:decimal:每选用量;priceMode:string:INCLUDED或ADD_SKU或DIFF_BASE;defaultQty:decimal:默认;minQty:decimal:下限;maxQty:decimal:上限;sortNo:int32:排序",
+    "OptionItemInput": "optionItemNo:string:项号;sourceKind:string:SPEC_VALUE或MODIFIER;specValueNo?:string:字典值;modifierNo?:string:配料;maxQty:decimal:上限;defaultQty:decimal:默认;sortNo:int32:排序;minQty:decimal:本选项下限",
     "ComponentInput": "memberNo:string:叶子配料;quantity:decimal:正用量",
     "RouteInput": "stationNo:string:工位;taskRole:string:MAKE或ASSEMBLE或PACK;routeVersion:int64:路由版",
     "VersionInput": "checkNo:string:台账;version:int64:版本",
-    "DeliveryLineInput": "foodLineNo:string:餐饮行;qty:decimal:交付量"
+    "DeliveryLineInput": "foodLineNo:string:餐饮行;qty:decimal:交付量",
+    "TableArea": "areaNo:string:桌区号;storeNo:string:门店;code:string:编码;name:string:名称;sortNo:int32:排序;status:string:启停;version:int64:版本",
+    "Table": "tableNo:string:桌号;storeNo:string:门店;areaNo:string:桌区;code:string:店内编码;name:string:名称;capacity:int32:容量;sortNo:int32:排序;status:string:ACTIVE或DISABLED;turnoverState:string:IDLE或IN_USE或NEEDS_CLEANING;occupancies:Occupancy[]:权限过滤后的活动占用;version:int64:版本",
+    "Occupancy": "occupancyNo:string:占用号;tableNo:string:桌台;checkNo:string:获准台账;seats:int32:占座;startedAt:datetime:开始",
+    "SeatInput": "seatNo:string:座位业务号;label:string:台账内唯一座位标签;guestRef?:string:获准匿名或顾客引用",
+    "Dish": "goodsNo:string:商品;dishKind:string:SINGLE或BUNDLE或ADDON;prepSeconds:int32:制作时间;presentation:DishPresentation:覆盖展示;measurement:MeasurementPolicy:计量;configVersion:int64:规则版本;version:int64:并发版本",
+    "DishPresentation": "displayName?:string:餐饮别名;localizedNames:LocalizedName[]:语言名称;imageRefs:string[]:已有媒资引用;tags:string[]:标签;allergenNotes:string[]:食材过敏提示非医疗保证",
+    "LocalizedName": "locale:string:受控语言;name:string:名称",
+    "MeasurementPolicy": "unit:string:受控单位;mode:string:COUNT或WEIGHT;scale:int32:精度;allowedDeviation?:decimal:需顾客确认的允差",
+    "ConfigRevision": "revisionNo:string:冻结发布号;configKind:string:类型;configNo:string:对象;revision:int64:发布修订;effectiveAt:datetime:生效;contentHash:string:摘要;status:string:状态",
+    "Menu": "menuNo:string:餐牌;name:string:名称;status:string:草稿头状态;configVersion:int64:草稿规则版;publishedRevision?:ConfigRevision:已生效发布;version:int64:并发版",
+    "BatchDetail": "batch:Batch:批次;lines:FoodLine[]:冻结源行;financialStatus:string:核心资金投影;fulfillmentStatus:string:核心履约投影;pendingOperationNos:string[]:未知操作",
+    "FoodLine": "foodLineNo:string:餐饮行;sourceLineRef:string:原源行;goodsNo:string:商品;skuNo:string:SKU;qty:decimal:数量;unit:string:单位;seatNo?:string:座位;configRevisionNos:string[]:发布版本;displaySnapshot:object:受控历史展示;coreAllocations:CoreLineAllocation[]:受权核心分配",
+    "CoreLineAllocation": "allocationNo:string:分配号;qty:decimal:数量;amount:Money:核心分配金额;coreSnapshotHash:string:快照摘要",
+    "Cart": "cartNo:string:购物车;checkNo?:string:台账;version:int64:版本;lines:OrderLineInput[]:草稿;orderSource:string:来源;fulfillment:string:履约;scheduledAt?:datetime:出餐时点",
+    "Operation": "operationNo:string:操作;status:string:含处理中未知失败;version:int64:当前版本;resultRef?:string:结果号",
+    "TableVersionInput": "tableNo:string:桌台;version:int64:资源版本",
+    "SelectionRules": "mutexSets:string[][]:不可同选的optionItemNo集合;requires:SelectionDependency[]:选择依赖",
+    "SelectionDependency": "optionItemNo:string:被选项;requiresItemNos:string[]:必须同时选项",
+    "Reservation": "reservationNo:string:预约;partySize:int32:人数;startAt:datetime:开始;endAt:datetime:结束;status:string:资源状态;depositRef?:string:获准订金凭据;checkNo?:string:到店台账;version:int64:版本",
+    "ActionLog": "actionNo:string:记录;action:string:动作;actorRef:string:审计操作人;occurredAt:datetime:时间;reason?:string:原因",
+    "CatalogItem": "goodsNo:string:商品;skuNo:string:规格;name:string:名称;imageRefs:string[]:媒资;price:Money:核心当前报价提示;available:boolean:可售;configRevisionNos:string[]:引用发布版本",
+    "SalesRestriction": "restrictionNo:string:约束;skuNo:string:SKU;mode:string:类型;status:string:状态;quotaQty?:decimal:额度;reservedQty:decimal:预占;consumedQty:decimal:已用;version:int64:版本"
   },
   "commonFields": [
     [
@@ -6166,5 +7652,2276 @@
       "BaseEntity逻辑删除；签核和事实表禁止业务归档覆盖历史"
     ]
   ],
-  "compatibility": "docs/technical/design/餐饮系统-项目底座兼容对齐.md"
+  "compatibility": "docs/technical/design/餐饮系统-项目底座兼容对齐.md",
+  "reviewDate": "2026-10-20",
+  "businessModules": [
+    {
+      "id": "MOD-01",
+      "name": "桌台与就餐管理",
+      "requirements": [
+        "FNB-A04",
+        "FNB-C01",
+        "FNB-C02",
+        "FNB-C03",
+        "FNB-C04",
+        "FNB-C05",
+        "FNB-C06",
+        "FNB-C08"
+      ],
+      "tables": [
+        "fnb_check",
+        "fnb_check_batch_membership",
+        "fnb_check_relation",
+        "fnb_guest_session",
+        "fnb_reservation",
+        "fnb_seat",
+        "fnb_table",
+        "fnb_table_area",
+        "fnb_table_occupancy",
+        "fnb_table_operation",
+        "fnb_table_token"
+      ],
+      "apis": [
+        "FOOD-API-024",
+        "FOOD-API-025",
+        "FOOD-API-026",
+        "FOOD-API-027",
+        "FOOD-API-028",
+        "FOOD-API-029",
+        "FOOD-API-030",
+        "FOOD-API-031",
+        "FOOD-API-033",
+        "FOOD-API-034",
+        "FOOD-API-035",
+        "FOOD-API-036",
+        "FOOD-API-092",
+        "FOOD-API-093",
+        "FOOD-API-094",
+        "FOOD-API-095",
+        "FOOD-API-096",
+        "FOOD-API-097",
+        "FOOD-API-098",
+        "FOOD-API-099",
+        "FOOD-API-100",
+        "FOOD-API-101",
+        "FOOD-API-102",
+        "FOOD-API-103",
+        "FOOD-API-104",
+        "FOOD-API-105",
+        "FOOD-API-106",
+        "FOOD-API-107",
+        "FOOD-API-108",
+        "FOOD-API-138",
+        "FOOD-API-139"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    },
+    {
+      "id": "MOD-02",
+      "name": "菜品与餐牌管理",
+      "requirements": [
+        "FNB-B01",
+        "FNB-B02",
+        "FNB-B03",
+        "FNB-B04",
+        "FNB-B05",
+        "FNB-B06",
+        "FNB-B07",
+        "FNB-B08",
+        "FNB-B09",
+        "FNB-B10",
+        "FNB-B11",
+        "FNB-K01"
+      ],
+      "tables": [
+        "fnb_bundle",
+        "fnb_bundle_choice",
+        "fnb_bundle_group",
+        "fnb_config_revision",
+        "fnb_dish",
+        "fnb_dish_option_group",
+        "fnb_menu",
+        "fnb_menu_category",
+        "fnb_menu_context",
+        "fnb_menu_exception",
+        "fnb_menu_item",
+        "fnb_menu_item_sku",
+        "fnb_menu_schedule",
+        "fnb_menu_store",
+        "fnb_modifier",
+        "fnb_modifier_component",
+        "fnb_option_group",
+        "fnb_option_group_item",
+        "fnb_order_line",
+        "fnb_sales_quota_claim",
+        "fnb_sales_restriction",
+        "fnb_store_policy"
+      ],
+      "apis": [
+        "FOOD-API-004",
+        "FOOD-API-005",
+        "FOOD-API-006",
+        "FOOD-API-007",
+        "FOOD-API-008",
+        "FOOD-API-009",
+        "FOOD-API-010",
+        "FOOD-API-011",
+        "FOOD-API-012",
+        "FOOD-API-016",
+        "FOOD-API-017",
+        "FOOD-API-018",
+        "FOOD-API-019",
+        "FOOD-API-020",
+        "FOOD-API-022",
+        "FOOD-API-041",
+        "FOOD-API-061",
+        "FOOD-API-109",
+        "FOOD-API-110",
+        "FOOD-API-111",
+        "FOOD-API-112",
+        "FOOD-API-113",
+        "FOOD-API-114",
+        "FOOD-API-115",
+        "FOOD-API-116",
+        "FOOD-API-117",
+        "FOOD-API-118",
+        "FOOD-API-119",
+        "FOOD-API-120",
+        "FOOD-API-122",
+        "FOOD-API-141"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    },
+    {
+      "id": "MOD-03",
+      "name": "点餐与订单管理",
+      "requirements": [
+        "FNB-D01",
+        "FNB-D02",
+        "FNB-D03",
+        "FNB-D04",
+        "FNB-D05",
+        "FNB-D06",
+        "FNB-D07",
+        "FNB-D08",
+        "FNB-D09"
+      ],
+      "tables": [
+        "fnb_charge_intent",
+        "fnb_check",
+        "fnb_check_cart",
+        "fnb_check_cart_item",
+        "fnb_core_line_allocation",
+        "fnb_guest_session",
+        "fnb_order_batch",
+        "fnb_order_component",
+        "fnb_order_line",
+        "fnb_order_modifier",
+        "fnb_return",
+        "fnb_return_item",
+        "fnb_seat",
+        "fnb_settlement"
+      ],
+      "apis": [
+        "FOOD-API-026",
+        "FOOD-API-031",
+        "FOOD-API-037",
+        "FOOD-API-038",
+        "FOOD-API-039",
+        "FOOD-API-040",
+        "FOOD-API-041",
+        "FOOD-API-042",
+        "FOOD-API-043",
+        "FOOD-API-056",
+        "FOOD-API-058",
+        "FOOD-API-061",
+        "FOOD-API-062",
+        "FOOD-API-063",
+        "FOOD-API-103",
+        "FOOD-API-123",
+        "FOOD-API-124",
+        "FOOD-API-125",
+        "FOOD-API-126",
+        "FOOD-API-127",
+        "FOOD-API-128",
+        "FOOD-API-129",
+        "FOOD-API-130",
+        "FOOD-API-131",
+        "FOOD-API-132",
+        "FOOD-API-133",
+        "FOOD-API-135",
+        "FOOD-API-138",
+        "FOOD-API-139"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    },
+    {
+      "id": "MOD-04",
+      "name": "厨房与履约管理",
+      "requirements": [
+        "FNB-E01",
+        "FNB-E02",
+        "FNB-E03",
+        "FNB-E04",
+        "FNB-E05",
+        "FNB-E06",
+        "FNB-E07",
+        "FNB-E08",
+        "FNB-E09",
+        "FNB-E10"
+      ],
+      "tables": [
+        "fnb_course",
+        "fnb_kitchen_task",
+        "fnb_kitchen_ticket",
+        "fnb_order_batch",
+        "fnb_order_component",
+        "fnb_return_item",
+        "fnb_service_event",
+        "fnb_store_policy"
+      ],
+      "apis": [
+        "FOOD-API-044",
+        "FOOD-API-045",
+        "FOOD-API-046",
+        "FOOD-API-047",
+        "FOOD-API-048",
+        "FOOD-API-049",
+        "FOOD-API-050",
+        "FOOD-API-051",
+        "FOOD-API-052",
+        "FOOD-API-053",
+        "FOOD-API-054",
+        "FOOD-API-055",
+        "FOOD-API-062",
+        "FOOD-API-063",
+        "FOOD-API-081"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    },
+    {
+      "id": "MOD-05",
+      "name": "收银与结账管理",
+      "requirements": [
+        "FNB-C07",
+        "FNB-F01",
+        "FNB-F02",
+        "FNB-F03",
+        "FNB-F04",
+        "FNB-F05",
+        "FNB-F06",
+        "FNB-F07",
+        "FNB-F08",
+        "FNB-F09",
+        "FNB-F10"
+      ],
+      "tables": [
+        "fnb_cash_payment_link",
+        "fnb_cash_shift",
+        "fnb_charge_intent",
+        "fnb_room_charge_intent",
+        "fnb_settlement",
+        "fnb_settlement_item"
+      ],
+      "apis": [
+        "FOOD-API-056",
+        "FOOD-API-057",
+        "FOOD-API-058",
+        "FOOD-API-059",
+        "FOOD-API-060",
+        "FOOD-API-061",
+        "FOOD-API-068",
+        "FOOD-API-070",
+        "FOOD-API-071",
+        "FOOD-API-091",
+        "FOOD-API-134",
+        "FOOD-API-135",
+        "FOOD-API-140"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    },
+    {
+      "id": "MOD-06",
+      "name": "退餐与售后管理",
+      "requirements": [
+        "FNB-G01",
+        "FNB-G02",
+        "FNB-G03",
+        "FNB-G04",
+        "FNB-G05",
+        "FNB-G06",
+        "FNB-G07",
+        "FNB-G08"
+      ],
+      "tables": [
+        "fnb_action_log",
+        "fnb_charge_intent",
+        "fnb_check_cart_item",
+        "fnb_close_adjustment",
+        "fnb_order_batch",
+        "fnb_return",
+        "fnb_return_item"
+      ],
+      "apis": [
+        "FOOD-API-040",
+        "FOOD-API-061",
+        "FOOD-API-062",
+        "FOOD-API-063",
+        "FOOD-API-064",
+        "FOOD-API-076",
+        "FOOD-API-108",
+        "FOOD-API-124",
+        "FOOD-API-125",
+        "FOOD-API-126",
+        "FOOD-API-136",
+        "FOOD-API-137"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    },
+    {
+      "id": "MOD-07",
+      "name": "打印、通知与设备管理",
+      "requirements": [
+        "FNB-A08",
+        "FNB-H01",
+        "FNB-H02",
+        "FNB-H03",
+        "FNB-H04",
+        "FNB-H05",
+        "FNB-H06",
+        "FNB-H07"
+      ],
+      "tables": [
+        "prn_attempt",
+        "prn_device",
+        "prn_job",
+        "prn_route",
+        "prn_template"
+      ],
+      "apis": [
+        "FOOD-API-065",
+        "FOOD-API-066",
+        "FOOD-API-067"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    },
+    {
+      "id": "MOD-08",
+      "name": "班次与现金管理",
+      "requirements": [
+        "FNB-I01",
+        "FNB-I02",
+        "FNB-I03",
+        "FNB-I07"
+      ],
+      "tables": [
+        "fnb_cash_count",
+        "fnb_cash_entry",
+        "fnb_cash_payment_link",
+        "fnb_cash_shift",
+        "fnb_close_exception"
+      ],
+      "apis": [
+        "FOOD-API-068",
+        "FOOD-API-069",
+        "FOOD-API-070",
+        "FOOD-API-071",
+        "FOOD-API-074"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    },
+    {
+      "id": "MOD-09",
+      "name": "营业日、日结与对账管理",
+      "requirements": [
+        "FNB-I04",
+        "FNB-I05",
+        "FNB-I06",
+        "FNB-I08",
+        "FNB-I09",
+        "FNB-I10"
+      ],
+      "tables": [
+        "fnb_business_day",
+        "fnb_close_adjustment",
+        "fnb_close_balance",
+        "fnb_close_exception",
+        "fnb_close_run",
+        "fnb_report_run"
+      ],
+      "apis": [
+        "FOOD-API-072",
+        "FOOD-API-073",
+        "FOOD-API-074",
+        "FOOD-API-075",
+        "FOOD-API-076",
+        "FOOD-API-080"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    },
+    {
+      "id": "MOD-10",
+      "name": "经营报表管理",
+      "requirements": [
+        "FNB-J01",
+        "FNB-J02",
+        "FNB-J03",
+        "FNB-J04",
+        "FNB-J05",
+        "FNB-J06",
+        "FNB-J07",
+        "FNB-J08",
+        "FNB-J09",
+        "FNB-J10",
+        "FNB-J11",
+        "FNB-J12",
+        "FNB-J13",
+        "FNB-L06"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "apis": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    },
+    {
+      "id": "MOD-11",
+      "name": "专项业态管理",
+      "requirements": [
+        "FNB-D10",
+        "FNB-L01",
+        "FNB-L02",
+        "FNB-L03",
+        "FNB-L04",
+        "FNB-L05"
+      ],
+      "tables": [
+        "fnb_banquet_plan",
+        "fnb_bottle_custody",
+        "fnb_charge_intent",
+        "fnb_custody_entry",
+        "fnb_dining_entitlement",
+        "fnb_room_charge_intent"
+      ],
+      "apis": [
+        "FOOD-API-061",
+        "FOOD-API-085",
+        "FOOD-API-086",
+        "FOOD-API-087",
+        "FOOD-API-088",
+        "FOOD-API-089",
+        "FOOD-API-090",
+        "FOOD-API-091"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    },
+    {
+      "id": "MOD-12",
+      "name": "第三方接入与离线营业",
+      "requirements": [
+        "FNB-K02",
+        "FNB-K03",
+        "FNB-K04",
+        "FNB-K05",
+        "FNB-K06",
+        "FNB-K07",
+        "FNB-K08"
+      ],
+      "tables": [
+        "fnb_action_log",
+        "fnb_edge_lease",
+        "fnb_external_mapping",
+        "fnb_integration_exception",
+        "fnb_store_policy",
+        "fnb_sync_batch"
+      ],
+      "apis": [
+        "FOOD-API-081",
+        "FOOD-API-082",
+        "FOOD-API-083",
+        "FOOD-API-084",
+        "FOOD-API-108"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    },
+    {
+      "id": "MOD-13",
+      "name": "营业配置与权限治理",
+      "requirements": [
+        "FNB-A01",
+        "FNB-A02",
+        "FNB-A03",
+        "FNB-A05",
+        "FNB-A06",
+        "FNB-A07"
+      ],
+      "tables": [
+        "fnb_action_log",
+        "fnb_business_day",
+        "fnb_check_cart",
+        "fnb_config_revision",
+        "fnb_sales_restriction",
+        "fnb_service_calendar",
+        "fnb_store_policy"
+      ],
+      "apis": [
+        "FOOD-API-001",
+        "FOOD-API-002",
+        "FOOD-API-003",
+        "FOOD-API-022",
+        "FOOD-API-038",
+        "FOOD-API-041",
+        "FOOD-API-081"
+      ],
+      "boundary": "具体功能及首次交付见业务模块功能清单；DEFINED只表示目标结构/合同可追踪，不表示已实现；CORE_CONTRACT依赖权威底座，DESIGN_GAP须补设计后实施。"
+    }
+  ],
+  "requirementAlignment": [
+    {
+      "requirementId": "FNB-A04",
+      "moduleId": "MOD-01",
+      "apiIds": [
+        "FOOD-API-024",
+        "FOOD-API-025",
+        "FOOD-API-092",
+        "FOOD-API-093",
+        "FOOD-API-094",
+        "FOOD-API-095",
+        "FOOD-API-096",
+        "FOOD-API-097",
+        "FOOD-API-098",
+        "FOOD-API-099",
+        "FOOD-API-100",
+        "FOOD-API-101"
+      ],
+      "tables": [
+        "fnb_table_area",
+        "fnb_table",
+        "fnb_table_token"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-C01",
+      "moduleId": "MOD-01",
+      "apiIds": [
+        "FOOD-API-027",
+        "FOOD-API-030",
+        "FOOD-API-107"
+      ],
+      "tables": [
+        "fnb_reservation"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "预约资源已设计；预点菜草稿到预约的引用与预点命令未定义，实施预约预点前补齐，不能提前生成交易单"
+    },
+    {
+      "requirementId": "FNB-C02",
+      "moduleId": "MOD-01",
+      "apiIds": [
+        "FOOD-API-027",
+        "FOOD-API-028",
+        "FOOD-API-029"
+      ],
+      "tables": [
+        "fnb_reservation"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "订金/预付款核销、没收审批与退款状态取权威资金合同；deposit_ref只存引用，不表示已覆盖全部资金动作"
+    },
+    {
+      "requirementId": "FNB-C03",
+      "moduleId": "MOD-01",
+      "apiIds": [],
+      "tables": [],
+      "status": "DESIGN_GAP",
+      "note": "复用共享排队/通知，但当前餐饮设计没有正式取号/叫号/过号合同；不得把自取取餐号当排队号"
+    },
+    {
+      "requirementId": "FNB-C04",
+      "moduleId": "MOD-01",
+      "apiIds": [
+        "FOOD-API-027",
+        "FOOD-API-030",
+        "FOOD-API-031"
+      ],
+      "tables": [
+        "fnb_reservation",
+        "fnb_table_operation",
+        "fnb_table_occupancy"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-C05",
+      "moduleId": "MOD-01",
+      "apiIds": [
+        "FOOD-API-026",
+        "FOOD-API-031",
+        "FOOD-API-102",
+        "FOOD-API-103",
+        "FOOD-API-105",
+        "FOOD-API-138",
+        "FOOD-API-139"
+      ],
+      "tables": [
+        "fnb_check",
+        "fnb_guest_session",
+        "fnb_seat",
+        "fnb_table_occupancy"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-C06",
+      "moduleId": "MOD-01",
+      "apiIds": [
+        "FOOD-API-033",
+        "FOOD-API-034",
+        "FOOD-API-035",
+        "FOOD-API-104",
+        "FOOD-API-105",
+        "FOOD-API-106"
+      ],
+      "tables": [
+        "fnb_table_operation",
+        "fnb_table_occupancy",
+        "fnb_check_relation",
+        "fnb_check_batch_membership"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-C08",
+      "moduleId": "MOD-01",
+      "apiIds": [
+        "FOOD-API-036",
+        "FOOD-API-096",
+        "FOOD-API-102",
+        "FOOD-API-108"
+      ],
+      "tables": [
+        "fnb_check",
+        "fnb_table_occupancy",
+        "fnb_table_operation"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-B01",
+      "moduleId": "MOD-02",
+      "apiIds": [
+        "FOOD-API-016",
+        "FOOD-API-112",
+        "FOOD-API-113"
+      ],
+      "tables": [
+        "fnb_dish"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "基础SKU/上下架/价格库存复用商品服务；本文不新增餐饮商品副本"
+    },
+    {
+      "requirementId": "FNB-B02",
+      "moduleId": "MOD-02",
+      "apiIds": [
+        "FOOD-API-004",
+        "FOOD-API-005",
+        "FOOD-API-006",
+        "FOOD-API-017",
+        "FOOD-API-109",
+        "FOOD-API-110",
+        "FOOD-API-111",
+        "FOOD-API-114",
+        "FOOD-API-115",
+        "FOOD-API-116"
+      ],
+      "tables": [
+        "fnb_menu",
+        "fnb_menu_store",
+        "fnb_menu_context",
+        "fnb_menu_schedule",
+        "fnb_menu_exception",
+        "fnb_menu_category",
+        "fnb_menu_item",
+        "fnb_menu_item_sku",
+        "fnb_config_revision"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-B03",
+      "moduleId": "MOD-02",
+      "apiIds": [
+        "FOOD-API-007",
+        "FOOD-API-008",
+        "FOOD-API-009",
+        "FOOD-API-016",
+        "FOOD-API-019",
+        "FOOD-API-118"
+      ],
+      "tables": [
+        "fnb_dish",
+        "fnb_option_group",
+        "fnb_option_group_item",
+        "fnb_dish_option_group",
+        "fnb_config_revision"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-B04",
+      "moduleId": "MOD-02",
+      "apiIds": [
+        "FOOD-API-007",
+        "FOOD-API-008",
+        "FOOD-API-009",
+        "FOOD-API-016",
+        "FOOD-API-019",
+        "FOOD-API-118"
+      ],
+      "tables": [
+        "fnb_dish",
+        "fnb_option_group",
+        "fnb_option_group_item",
+        "fnb_dish_option_group",
+        "fnb_config_revision"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-B05",
+      "moduleId": "MOD-02",
+      "apiIds": [
+        "FOOD-API-010",
+        "FOOD-API-011",
+        "FOOD-API-012",
+        "FOOD-API-018",
+        "FOOD-API-041",
+        "FOOD-API-119"
+      ],
+      "tables": [
+        "fnb_bundle",
+        "fnb_bundle_group",
+        "fnb_bundle_choice",
+        "fnb_config_revision"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "配置及版本已定义，套餐成交分摊、补差、组件库存展开需核心组合报价合同"
+    },
+    {
+      "requirementId": "FNB-B06",
+      "moduleId": "MOD-02",
+      "apiIds": [
+        "FOOD-API-019",
+        "FOOD-API-020",
+        "FOOD-API-041",
+        "FOOD-API-117",
+        "FOOD-API-120",
+        "FOOD-API-141"
+      ],
+      "tables": [
+        "fnb_modifier",
+        "fnb_modifier_component",
+        "fnb_option_group_item",
+        "fnb_config_revision"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "组合配置防循环；双拼/半份的单位换算与收费必须核心计量/报价通过后启用"
+    },
+    {
+      "requirementId": "FNB-B07",
+      "moduleId": "MOD-02",
+      "apiIds": [
+        "FOOD-API-041",
+        "FOOD-API-061"
+      ],
+      "tables": [
+        "fnb_dish",
+        "fnb_store_policy"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "餐段/渠道价、茶位低消服务费等规则归共享报价；当前缺明确通用费用规则配置合同，不在settings任意JSON里影子计价"
+    },
+    {
+      "requirementId": "FNB-B08",
+      "moduleId": "MOD-02",
+      "apiIds": [
+        "FOOD-API-022",
+        "FOOD-API-122"
+      ],
+      "tables": [
+        "fnb_sales_restriction",
+        "fnb_sales_quota_claim"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-B09",
+      "moduleId": "MOD-02",
+      "apiIds": [
+        "FOOD-API-016",
+        "FOOD-API-041"
+      ],
+      "tables": [
+        "fnb_dish",
+        "fnb_order_line"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "计量规则有位置；标称/实称/允差确认及补差动作尚缺正式DTO和命令，不能只配置就售卖称重菜"
+    },
+    {
+      "requirementId": "FNB-B10",
+      "moduleId": "MOD-02",
+      "apiIds": [
+        "FOOD-API-041",
+        "FOOD-API-061"
+      ],
+      "tables": [
+        "fnb_dish",
+        "fnb_store_policy"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "餐段/渠道价、茶位低消服务费等规则归共享报价；当前缺明确通用费用规则配置合同，不在settings任意JSON里影子计价"
+    },
+    {
+      "requirementId": "FNB-B11",
+      "moduleId": "MOD-02",
+      "apiIds": [
+        "FOOD-API-016",
+        "FOOD-API-112",
+        "FOOD-API-113"
+      ],
+      "tables": [
+        "fnb_dish",
+        "fnb_config_revision"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "展示字段及冻结已补；批量导入预检/结果/导出尚依赖商品导入合同，明确接入后才算完成"
+    },
+    {
+      "requirementId": "FNB-K01",
+      "moduleId": "MOD-02",
+      "apiIds": [
+        "FOOD-API-006",
+        "FOOD-API-017",
+        "FOOD-API-115",
+        "FOOD-API-116"
+      ],
+      "tables": [
+        "fnb_config_revision",
+        "fnb_menu_store"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-D01",
+      "moduleId": "MOD-03",
+      "apiIds": [
+        "FOOD-API-026",
+        "FOOD-API-038",
+        "FOOD-API-041",
+        "FOOD-API-042",
+        "FOOD-API-127",
+        "FOOD-API-128",
+        "FOOD-API-129",
+        "FOOD-API-130",
+        "FOOD-API-131",
+        "FOOD-API-132",
+        "FOOD-API-133",
+        "FOOD-API-138",
+        "FOOD-API-139"
+      ],
+      "tables": [
+        "fnb_guest_session",
+        "fnb_check_cart",
+        "fnb_order_batch"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "顾客路由已逐项编号；匿名主体、代客、设备鉴权及各客户端支付参数必须沿身份/资金权威合同"
+    },
+    {
+      "requirementId": "FNB-D02",
+      "moduleId": "MOD-03",
+      "apiIds": [
+        "FOOD-API-026",
+        "FOOD-API-038",
+        "FOOD-API-041",
+        "FOOD-API-042",
+        "FOOD-API-127",
+        "FOOD-API-128",
+        "FOOD-API-129",
+        "FOOD-API-130",
+        "FOOD-API-131",
+        "FOOD-API-132",
+        "FOOD-API-133",
+        "FOOD-API-138",
+        "FOOD-API-139"
+      ],
+      "tables": [
+        "fnb_guest_session",
+        "fnb_check_cart",
+        "fnb_order_batch"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "顾客路由已逐项编号；匿名主体、代客、设备鉴权及各客户端支付参数必须沿身份/资金权威合同"
+    },
+    {
+      "requirementId": "FNB-D03",
+      "moduleId": "MOD-03",
+      "apiIds": [
+        "FOOD-API-037",
+        "FOOD-API-038",
+        "FOOD-API-039",
+        "FOOD-API-040",
+        "FOOD-API-103",
+        "FOOD-API-126",
+        "FOOD-API-127",
+        "FOOD-API-128",
+        "FOOD-API-129",
+        "FOOD-API-130"
+      ],
+      "tables": [
+        "fnb_check_cart",
+        "fnb_check_cart_item",
+        "fnb_seat"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-D04",
+      "moduleId": "MOD-03",
+      "apiIds": [
+        "FOOD-API-041",
+        "FOOD-API-131"
+      ],
+      "tables": [
+        "fnb_check_cart",
+        "fnb_order_batch"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "报价绑定草稿版本及指纹；价格变化须顾客确认；核心报价是权威"
+    },
+    {
+      "requirementId": "FNB-D05",
+      "moduleId": "MOD-03",
+      "apiIds": [
+        "FOOD-API-042",
+        "FOOD-API-043",
+        "FOOD-API-123",
+        "FOOD-API-125",
+        "FOOD-API-132",
+        "FOOD-API-133"
+      ],
+      "tables": [
+        "fnb_order_batch",
+        "fnb_order_line",
+        "fnb_core_line_allocation",
+        "fnb_order_modifier",
+        "fnb_order_component"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "源行/批次追踪已补；当前核心Item缺源行映射，需正式扩展合同"
+    },
+    {
+      "requirementId": "FNB-D06",
+      "moduleId": "MOD-03",
+      "apiIds": [
+        "FOOD-API-061",
+        "FOOD-API-062",
+        "FOOD-API-063"
+      ],
+      "tables": [
+        "fnb_return",
+        "fnb_return_item",
+        "fnb_charge_intent"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "赠菜/换菜/缺货替换的顾客确认和原新源行关系未定义专用命令；不能仅凭调整或退餐接口宣称覆盖"
+    },
+    {
+      "requirementId": "FNB-D07",
+      "moduleId": "MOD-03",
+      "apiIds": [
+        "FOOD-API-042",
+        "FOOD-API-058",
+        "FOOD-API-124",
+        "FOOD-API-125",
+        "FOOD-API-132",
+        "FOOD-API-135"
+      ],
+      "tables": [
+        "fnb_order_batch",
+        "fnb_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "先付权威回调与核心取消竞争；UNKNOWN恢复不能重建"
+    },
+    {
+      "requirementId": "FNB-D08",
+      "moduleId": "MOD-03",
+      "apiIds": [
+        "FOOD-API-031",
+        "FOOD-API-042",
+        "FOOD-API-056",
+        "FOOD-API-058"
+      ],
+      "tables": [
+        "fnb_check",
+        "fnb_order_batch",
+        "fnb_settlement"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "后付受理、库存承诺、未付堂食交付、超时取消守卫需核心扩展，不能用延长支付期限代替"
+    },
+    {
+      "requirementId": "FNB-D09",
+      "moduleId": "MOD-03",
+      "apiIds": [
+        "FOOD-API-038",
+        "FOOD-API-041",
+        "FOOD-API-042"
+      ],
+      "tables": [
+        "fnb_check_cart",
+        "fnb_order_batch"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "scheduled_at位置已补；预售截止/产能预占/定时派工的正式策略及恢复合同仍待细化"
+    },
+    {
+      "requirementId": "FNB-E01",
+      "moduleId": "MOD-04",
+      "apiIds": [
+        "FOOD-API-044",
+        "FOOD-API-045"
+      ],
+      "tables": [
+        "fnb_kitchen_ticket",
+        "fnb_kitchen_task"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-E02",
+      "moduleId": "MOD-04",
+      "apiIds": [
+        "FOOD-API-048",
+        "FOOD-API-049",
+        "FOOD-API-050"
+      ],
+      "tables": [
+        "fnb_kitchen_task",
+        "fnb_service_event"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-E03",
+      "moduleId": "MOD-04",
+      "apiIds": [
+        "FOOD-API-046",
+        "FOOD-API-047"
+      ],
+      "tables": [
+        "fnb_kitchen_task",
+        "fnb_service_event"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-E04",
+      "moduleId": "MOD-04",
+      "apiIds": [
+        "FOOD-API-053",
+        "FOOD-API-054",
+        "FOOD-API-048",
+        "FOOD-API-049"
+      ],
+      "tables": [
+        "fnb_course",
+        "fnb_kitchen_task"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-E05",
+      "moduleId": "MOD-04",
+      "apiIds": [
+        "FOOD-API-046",
+        "FOOD-API-047",
+        "FOOD-API-055"
+      ],
+      "tables": [
+        "fnb_service_event",
+        "fnb_kitchen_task"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "出品/上菜已分轨，撤回交接和漏菜反馈动作需明确数量冲销规则及端点，不以负qty复用serve"
+    },
+    {
+      "requirementId": "FNB-E06",
+      "moduleId": "MOD-04",
+      "apiIds": [
+        "FOOD-API-044",
+        "FOOD-API-046",
+        "FOOD-API-055"
+      ],
+      "tables": [
+        "fnb_kitchen_task",
+        "fnb_order_component"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "有组件与跨工位任务，但齐套/打包清单确认缺专用合同，不能仅全部任务ready替代人工打包核对"
+    },
+    {
+      "requirementId": "FNB-E07",
+      "moduleId": "MOD-04",
+      "apiIds": [
+        "FOOD-API-055"
+      ],
+      "tables": [
+        "fnb_order_batch"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "叫号/核销/配送状态复用对应履约配送合同；handover不能代替叫号及防重核销全部步骤"
+    },
+    {
+      "requirementId": "FNB-E08",
+      "moduleId": "MOD-04",
+      "apiIds": [
+        "FOOD-API-055"
+      ],
+      "tables": [
+        "fnb_order_batch"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "叫号/核销/配送状态复用对应履约配送合同；handover不能代替叫号及防重核销全部步骤"
+    },
+    {
+      "requirementId": "FNB-E09",
+      "moduleId": "MOD-04",
+      "apiIds": [
+        "FOOD-API-051",
+        "FOOD-API-052",
+        "FOOD-API-062",
+        "FOOD-API-063"
+      ],
+      "tables": [
+        "fnb_kitchen_task",
+        "fnb_service_event",
+        "fnb_return_item"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "制作损耗及退餐回库由库存权威判定；重做不自动计新增销量"
+    },
+    {
+      "requirementId": "FNB-E10",
+      "moduleId": "MOD-04",
+      "apiIds": [
+        "FOOD-API-044",
+        "FOOD-API-081"
+      ],
+      "tables": [
+        "fnb_store_policy",
+        "fnb_kitchen_task"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "工位队列已有；超时阈值/拥堵暂停的配置、告警订阅与恢复命令尚未明确"
+    },
+    {
+      "requirementId": "FNB-C07",
+      "moduleId": "MOD-05",
+      "apiIds": [
+        "FOOD-API-056",
+        "FOOD-API-057",
+        "FOOD-API-058",
+        "FOOD-API-059",
+        "FOOD-API-060",
+        "FOOD-API-140"
+      ],
+      "tables": [
+        "fnb_settlement",
+        "fnb_settlement_item",
+        "fnb_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "主责MOD-05；桌台merge/split只改服务归属，资金拆合必须核心应收范围及分配合同"
+    },
+    {
+      "requirementId": "FNB-F01",
+      "moduleId": "MOD-05",
+      "apiIds": [
+        "FOOD-API-056",
+        "FOOD-API-057",
+        "FOOD-API-059",
+        "FOOD-API-060",
+        "FOOD-API-134",
+        "FOOD-API-140"
+      ],
+      "tables": [
+        "fnb_settlement",
+        "fnb_settlement_item"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "冻结范围及防重复占应收需核心权威仲裁；预结不是已付款"
+    },
+    {
+      "requirementId": "FNB-F02",
+      "moduleId": "MOD-05",
+      "apiIds": [
+        "FOOD-API-058",
+        "FOOD-API-068",
+        "FOOD-API-070",
+        "FOOD-API-071",
+        "FOOD-API-135"
+      ],
+      "tables": [
+        "fnb_charge_intent",
+        "fnb_cash_shift",
+        "fnb_cash_payment_link"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "单根支付可适配；现金仍遵守完整门店单影响集限制，班次/证据必须齐全"
+    },
+    {
+      "requirementId": "FNB-F03",
+      "moduleId": "MOD-05",
+      "apiIds": [
+        "FOOD-API-056",
+        "FOOD-API-058",
+        "FOOD-API-140"
+      ],
+      "tables": [
+        "fnb_settlement",
+        "fnb_settlement_item",
+        "fnb_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "跨根、按人按菜AA、混合支付及会员资产原路退款分配需核心合同；单根成功不能markPaid其他单"
+    },
+    {
+      "requirementId": "FNB-F04",
+      "moduleId": "MOD-05",
+      "apiIds": [
+        "FOOD-API-056",
+        "FOOD-API-058",
+        "FOOD-API-140"
+      ],
+      "tables": [
+        "fnb_settlement",
+        "fnb_settlement_item",
+        "fnb_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "跨根、按人按菜AA、混合支付及会员资产原路退款分配需核心合同；单根成功不能markPaid其他单"
+    },
+    {
+      "requirementId": "FNB-F05",
+      "moduleId": "MOD-05",
+      "apiIds": [
+        "FOOD-API-056",
+        "FOOD-API-058",
+        "FOOD-API-140"
+      ],
+      "tables": [
+        "fnb_settlement",
+        "fnb_settlement_item",
+        "fnb_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "跨根、按人按菜AA、混合支付及会员资产原路退款分配需核心合同；单根成功不能markPaid其他单"
+    },
+    {
+      "requirementId": "FNB-F06",
+      "moduleId": "MOD-05",
+      "apiIds": [
+        "FOOD-API-061"
+      ],
+      "tables": [
+        "fnb_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "折扣抹零免单及税费小费归权威报价/审批；小费保留P4且一期不收超额，不能覆盖旧成交快照"
+    },
+    {
+      "requirementId": "FNB-F07",
+      "moduleId": "MOD-05",
+      "apiIds": [
+        "FOOD-API-061"
+      ],
+      "tables": [
+        "fnb_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "折扣抹零免单及税费小费归权威报价/审批；小费保留P4且一期不收超额，不能覆盖旧成交快照"
+    },
+    {
+      "requirementId": "FNB-F08",
+      "moduleId": "MOD-05",
+      "apiIds": [
+        "FOOD-API-061",
+        "FOOD-API-091"
+      ],
+      "tables": [
+        "fnb_charge_intent",
+        "fnb_room_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "企业挂账及房账须权威应收/信用核销合同；不能通过餐饮调整伪装已付款"
+    },
+    {
+      "requirementId": "FNB-F09",
+      "moduleId": "MOD-05",
+      "apiIds": [],
+      "tables": [],
+      "status": "CORE_CONTRACT",
+      "note": "押金器具租赁引用共享资金/资源合同，当前未设计完整动作和引用模型；押金不得计营收，须专项细化后启用"
+    },
+    {
+      "requirementId": "FNB-F10",
+      "moduleId": "MOD-05",
+      "apiIds": [],
+      "tables": [],
+      "status": "CORE_CONTRACT",
+      "note": "税务发票/电子收据/冲红由共享票据服务提供正式合同；普通打印不是发票"
+    },
+    {
+      "requirementId": "FNB-G01",
+      "moduleId": "MOD-06",
+      "apiIds": [
+        "FOOD-API-040",
+        "FOOD-API-124",
+        "FOOD-API-126"
+      ],
+      "tables": [
+        "fnb_check_cart_item",
+        "fnb_order_batch"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "草稿归档已定义；正式取消受核心支付/制作守卫约束"
+    },
+    {
+      "requirementId": "FNB-G02",
+      "moduleId": "MOD-06",
+      "apiIds": [
+        "FOOD-API-062",
+        "FOOD-API-063",
+        "FOOD-API-064",
+        "FOOD-API-136",
+        "FOOD-API-137"
+      ],
+      "tables": [
+        "fnb_return",
+        "fnb_return_item"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "当前只可整门店单全额；未付应收调整/部分退分摊均需合同。退款按原请求恢复，厨房结果分轨"
+    },
+    {
+      "requirementId": "FNB-G03",
+      "moduleId": "MOD-06",
+      "apiIds": [
+        "FOOD-API-062",
+        "FOOD-API-063",
+        "FOOD-API-064",
+        "FOOD-API-136",
+        "FOOD-API-137"
+      ],
+      "tables": [
+        "fnb_return",
+        "fnb_return_item"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "当前只可整门店单全额；未付应收调整/部分退分摊均需合同。退款按原请求恢复，厨房结果分轨"
+    },
+    {
+      "requirementId": "FNB-G04",
+      "moduleId": "MOD-06",
+      "apiIds": [
+        "FOOD-API-062",
+        "FOOD-API-063",
+        "FOOD-API-064",
+        "FOOD-API-136",
+        "FOOD-API-137"
+      ],
+      "tables": [
+        "fnb_return",
+        "fnb_return_item"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "当前只可整门店单全额；未付应收调整/部分退分摊均需合同。退款按原请求恢复，厨房结果分轨"
+    },
+    {
+      "requirementId": "FNB-G05",
+      "moduleId": "MOD-06",
+      "apiIds": [
+        "FOOD-API-062",
+        "FOOD-API-063",
+        "FOOD-API-064",
+        "FOOD-API-136",
+        "FOOD-API-137"
+      ],
+      "tables": [
+        "fnb_return",
+        "fnb_return_item"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "当前只可整门店单全额；未付应收调整/部分退分摊均需合同。退款按原请求恢复，厨房结果分轨"
+    },
+    {
+      "requirementId": "FNB-G06",
+      "moduleId": "MOD-06",
+      "apiIds": [
+        "FOOD-API-108",
+        "FOOD-API-125"
+      ],
+      "tables": [
+        "fnb_action_log",
+        "fnb_order_batch"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "错单重开/离线补录认领关系及申请审批命令未定义，不能删除旧单重造销量"
+    },
+    {
+      "requirementId": "FNB-G07",
+      "moduleId": "MOD-06",
+      "apiIds": [
+        "FOOD-API-076",
+        "FOOD-API-061"
+      ],
+      "tables": [
+        "fnb_close_adjustment",
+        "fnb_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "关账后更正有模型；反结账和坏账必须权威应收审批合同，不重写原签核"
+    },
+    {
+      "requirementId": "FNB-G08",
+      "moduleId": "MOD-06",
+      "apiIds": [
+        "FOOD-API-108"
+      ],
+      "tables": [
+        "fnb_action_log"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "审计表与查询已设计；复用全平台不可篡改审计存储/权限，餐饮本地日志本身不构成不可抵赖证据"
+    },
+    {
+      "requirementId": "FNB-A08",
+      "moduleId": "MOD-07",
+      "apiIds": [
+        "FOOD-API-065",
+        "FOOD-API-066"
+      ],
+      "tables": [
+        "prn_device",
+        "prn_route"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "设备自检/开班检查聚合查询尚无明确请求响应；不可用打印任务接口代替，模块07实施前补齐"
+    },
+    {
+      "requirementId": "FNB-H01",
+      "moduleId": "MOD-07",
+      "apiIds": [
+        "FOOD-API-065"
+      ],
+      "tables": [
+        "prn_device",
+        "prn_template",
+        "prn_route"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "打印配置表已设计，设备绑定/模板版本/路由维护与测试端点尚缺明确共享合同"
+    },
+    {
+      "requirementId": "FNB-H02",
+      "moduleId": "MOD-07",
+      "apiIds": [
+        "FOOD-API-065",
+        "FOOD-API-066",
+        "FOOD-API-067"
+      ],
+      "tables": [
+        "prn_job",
+        "prn_template"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "内容由餐饮冻结业务凭据，投递归共享打印；日结/交班票依赖对应模块真实版本"
+    },
+    {
+      "requirementId": "FNB-H03",
+      "moduleId": "MOD-07",
+      "apiIds": [
+        "FOOD-API-065",
+        "FOOD-API-066",
+        "FOOD-API-067"
+      ],
+      "tables": [
+        "prn_job",
+        "prn_template"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "内容由餐饮冻结业务凭据，投递归共享打印；日结/交班票依赖对应模块真实版本"
+    },
+    {
+      "requirementId": "FNB-H04",
+      "moduleId": "MOD-07",
+      "apiIds": [
+        "FOOD-API-065",
+        "FOOD-API-066",
+        "FOOD-API-067"
+      ],
+      "tables": [
+        "prn_job",
+        "prn_template"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "内容由餐饮冻结业务凭据，投递归共享打印；日结/交班票依赖对应模块真实版本"
+    },
+    {
+      "requirementId": "FNB-H05",
+      "moduleId": "MOD-07",
+      "apiIds": [
+        "FOOD-API-066",
+        "FOOD-API-067"
+      ],
+      "tables": [
+        "prn_job",
+        "prn_attempt"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-H06",
+      "moduleId": "MOD-07",
+      "apiIds": [],
+      "tables": [
+        "prn_device"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "KDS订阅/通知/语音和远程设备诊断权限、配置下发、状态失效合同未定义；不能以任务查询代替推送治理"
+    },
+    {
+      "requirementId": "FNB-H07",
+      "moduleId": "MOD-07",
+      "apiIds": [],
+      "tables": [
+        "prn_device"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "KDS订阅/通知/语音和远程设备诊断权限、配置下发、状态失效合同未定义；不能以任务查询代替推送治理"
+    },
+    {
+      "requirementId": "FNB-I01",
+      "moduleId": "MOD-08",
+      "apiIds": [
+        "FOOD-API-068",
+        "FOOD-API-069",
+        "FOOD-API-070",
+        "FOOD-API-071"
+      ],
+      "tables": [
+        "fnb_cash_shift",
+        "fnb_cash_entry",
+        "fnb_cash_payment_link",
+        "fnb_cash_count"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-I02",
+      "moduleId": "MOD-08",
+      "apiIds": [
+        "FOOD-API-068",
+        "FOOD-API-069",
+        "FOOD-API-070",
+        "FOOD-API-071"
+      ],
+      "tables": [
+        "fnb_cash_shift",
+        "fnb_cash_entry",
+        "fnb_cash_payment_link",
+        "fnb_cash_count"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-I03",
+      "moduleId": "MOD-08",
+      "apiIds": [
+        "FOOD-API-068",
+        "FOOD-API-069",
+        "FOOD-API-070",
+        "FOOD-API-071"
+      ],
+      "tables": [
+        "fnb_cash_shift",
+        "fnb_cash_entry",
+        "fnb_cash_payment_link",
+        "fnb_cash_count"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-I07",
+      "moduleId": "MOD-08",
+      "apiIds": [
+        "FOOD-API-071",
+        "FOOD-API-074"
+      ],
+      "tables": [
+        "fnb_cash_shift",
+        "fnb_close_exception"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "班次交接有入口，跨班未收责任移交/认领需细化非现金应收责任合同，不迁移原营业日"
+    },
+    {
+      "requirementId": "FNB-I04",
+      "moduleId": "MOD-09",
+      "apiIds": [
+        "FOOD-API-072",
+        "FOOD-API-073"
+      ],
+      "tables": [
+        "fnb_business_day",
+        "fnb_close_run",
+        "fnb_close_balance",
+        "fnb_close_exception"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "预结快照引用权威对账和支付证据；通道账期不等同营业日"
+    },
+    {
+      "requirementId": "FNB-I05",
+      "moduleId": "MOD-09",
+      "apiIds": [
+        "FOOD-API-072",
+        "FOOD-API-073"
+      ],
+      "tables": [
+        "fnb_business_day",
+        "fnb_close_run",
+        "fnb_close_balance",
+        "fnb_close_exception"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "预结快照引用权威对账和支付证据；通道账期不等同营业日"
+    },
+    {
+      "requirementId": "FNB-I06",
+      "moduleId": "MOD-09",
+      "apiIds": [
+        "FOOD-API-072",
+        "FOOD-API-073",
+        "FOOD-API-075"
+      ],
+      "tables": [
+        "fnb_close_run",
+        "fnb_close_balance"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-I08",
+      "moduleId": "MOD-09",
+      "apiIds": [
+        "FOOD-API-074",
+        "FOOD-API-075"
+      ],
+      "tables": [
+        "fnb_close_exception",
+        "fnb_close_run"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "例外需获准审批；资金UNKNOWN只能移交证据，不能改成成功"
+    },
+    {
+      "requirementId": "FNB-I09",
+      "moduleId": "MOD-09",
+      "apiIds": [
+        "FOOD-API-076"
+      ],
+      "tables": [
+        "fnb_close_adjustment",
+        "fnb_close_run"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-I10",
+      "moduleId": "MOD-09",
+      "apiIds": [
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_report_run",
+        "fnb_close_run"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "复用任务水位/幂等补跑；投影重建不等于重新签核或重开钱箱"
+    },
+    {
+      "requirementId": "FNB-J01",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "DEFINED",
+      "note": "按受控reportCode及指标版本查询，权限水位币种时间基准明确；细分维度实施前登记指标定义"
+    },
+    {
+      "requirementId": "FNB-J02",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "DEFINED",
+      "note": "按受控reportCode及指标版本查询，权限水位币种时间基准明确；细分维度实施前登记指标定义"
+    },
+    {
+      "requirementId": "FNB-J03",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "DEFINED",
+      "note": "按受控reportCode及指标版本查询，权限水位币种时间基准明确；细分维度实施前登记指标定义"
+    },
+    {
+      "requirementId": "FNB-J04",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "应收账龄依赖共享AR核销流水"
+    },
+    {
+      "requirementId": "FNB-J05",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "DEFINED",
+      "note": "按受控reportCode及指标版本查询，权限水位币种时间基准明确；细分维度实施前登记指标定义"
+    },
+    {
+      "requirementId": "FNB-J06",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "DEFINED",
+      "note": "按受控reportCode及指标版本查询，权限水位币种时间基准明确；细分维度实施前登记指标定义"
+    },
+    {
+      "requirementId": "FNB-J07",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "DEFINED",
+      "note": "按受控reportCode及指标版本查询，权限水位币种时间基准明确；细分维度实施前登记指标定义"
+    },
+    {
+      "requirementId": "FNB-J08",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "DEFINED",
+      "note": "按受控reportCode及指标版本查询，权限水位币种时间基准明确；细分维度实施前登记指标定义"
+    },
+    {
+      "requirementId": "FNB-J09",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "DEFINED",
+      "note": "按受控reportCode及指标版本查询，权限水位币种时间基准明确；细分维度实施前登记指标定义"
+    },
+    {
+      "requirementId": "FNB-J10",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "会员充值/本金/赠金/消费沿资产权威，不重复记销售"
+    },
+    {
+      "requirementId": "FNB-J11",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "BOM/历史成本未提供则标未知，不用当前采购价伪造历史毛利"
+    },
+    {
+      "requirementId": "FNB-J12",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "预约排队/客诉的权威事实及分母合同需补齐"
+    },
+    {
+      "requirementId": "FNB-J13",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079",
+        "FOOD-API-080"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "fnb_report_run",
+        "rpt_food_metric_daily"
+      ],
+      "status": "DEFINED",
+      "note": "按受控reportCode及指标版本查询，权限水位币种时间基准明确；细分维度实施前登记指标定义"
+    },
+    {
+      "requirementId": "FNB-L06",
+      "moduleId": "MOD-10",
+      "apiIds": [
+        "FOOD-API-077",
+        "FOOD-API-078",
+        "FOOD-API-079"
+      ],
+      "tables": [
+        "fnb_metric_definition",
+        "rpt_food_metric_daily"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "专项报表只对已开通能力开放，依赖对应事实和口径定义"
+    },
+    {
+      "requirementId": "FNB-D10",
+      "moduleId": "MOD-11",
+      "apiIds": [
+        "FOOD-API-087",
+        "FOOD-API-088"
+      ],
+      "tables": [
+        "fnb_banquet_plan"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "宴会保证人数、实际加席及收费依赖预约/报价资金合同；冻结菜单与计划"
+    },
+    {
+      "requirementId": "FNB-L01",
+      "moduleId": "MOD-11",
+      "apiIds": [
+        "FOOD-API-085",
+        "FOOD-API-086",
+        "FOOD-API-061"
+      ],
+      "tables": [
+        "fnb_dining_entitlement",
+        "fnb_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "人数限时规则已有；频控/最后点单在提交守卫校验，超时浪费费用需核心报价和审批"
+    },
+    {
+      "requirementId": "FNB-L02",
+      "moduleId": "MOD-11",
+      "apiIds": [
+        "FOOD-API-085",
+        "FOOD-API-086",
+        "FOOD-API-061"
+      ],
+      "tables": [
+        "fnb_dining_entitlement",
+        "fnb_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "人数限时规则已有；频控/最后点单在提交守卫校验，超时浪费费用需核心报价和审批"
+    },
+    {
+      "requirementId": "FNB-L03",
+      "moduleId": "MOD-11",
+      "apiIds": [
+        "FOOD-API-085",
+        "FOOD-API-086",
+        "FOOD-API-061"
+      ],
+      "tables": [
+        "fnb_dining_entitlement",
+        "fnb_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "人数限时规则已有；频控/最后点单在提交守卫校验，超时浪费费用需核心报价和审批"
+    },
+    {
+      "requirementId": "FNB-L04",
+      "moduleId": "MOD-11",
+      "apiIds": [
+        "FOOD-API-089",
+        "FOOD-API-090"
+      ],
+      "tables": [
+        "fnb_bottle_custody",
+        "fnb_custody_entry"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "寄存归属及授权须实名/凭据合同；超领CAS拒绝，报损不等同销售"
+    },
+    {
+      "requirementId": "FNB-L05",
+      "moduleId": "MOD-11",
+      "apiIds": [
+        "FOOD-API-091"
+      ],
+      "tables": [
+        "fnb_room_charge_intent"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "PMS授权、应收转挂及原键查询撤销需专项合同，UNKNOWN不能结清"
+    },
+    {
+      "requirementId": "FNB-K02",
+      "moduleId": "MOD-12",
+      "apiIds": [
+        "FOOD-API-082",
+        "FOOD-API-083"
+      ],
+      "tables": [
+        "fnb_external_mapping",
+        "fnb_integration_exception"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "仅映射与异常查询，第三方订单导入/回调鉴权/商品同步/配送及对账适配仍需选定供应商协议；不能宣称已完整接入"
+    },
+    {
+      "requirementId": "FNB-K03",
+      "moduleId": "MOD-12",
+      "apiIds": [
+        "FOOD-API-084"
+      ],
+      "tables": [
+        "fnb_edge_lease",
+        "fnb_sync_batch",
+        "fnb_integration_exception"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "批次认领已有；租约获取/续租/隔离、离线可售额度与冲突处理协议未完整定义，需专项合同并实机演练"
+    },
+    {
+      "requirementId": "FNB-K04",
+      "moduleId": "MOD-12",
+      "apiIds": [
+        "FOOD-API-084"
+      ],
+      "tables": [
+        "fnb_edge_lease",
+        "fnb_sync_batch",
+        "fnb_integration_exception"
+      ],
+      "status": "DESIGN_GAP",
+      "note": "批次认领已有；租约获取/续租/隔离、离线可售额度与冲突处理协议未完整定义，需专项合同并实机演练"
+    },
+    {
+      "requirementId": "FNB-K05",
+      "moduleId": "MOD-12",
+      "apiIds": [
+        "FOOD-API-081"
+      ],
+      "tables": [
+        "fnb_store_policy"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "双部署本地远程同合同、开关及版本灰度需装配/CI验证；HTTP接口不能证明可独立部署"
+    },
+    {
+      "requirementId": "FNB-K06",
+      "moduleId": "MOD-12",
+      "apiIds": [
+        "FOOD-API-081"
+      ],
+      "tables": [
+        "fnb_store_policy"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "双部署本地远程同合同、开关及版本灰度需装配/CI验证；HTTP接口不能证明可独立部署"
+    },
+    {
+      "requirementId": "FNB-K07",
+      "moduleId": "MOD-12",
+      "apiIds": [
+        "FOOD-API-081",
+        "FOOD-API-083",
+        "FOOD-API-108"
+      ],
+      "tables": [
+        "fnb_action_log"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "沿底座隔离、脱敏、审计和导出权限；平台诊断无营业收退款权"
+    },
+    {
+      "requirementId": "FNB-K08",
+      "moduleId": "MOD-12",
+      "apiIds": [],
+      "tables": [],
+      "status": "CORE_CONTRACT",
+      "note": "备份恢复告警灾备为运行合同和演练，不能伪造餐饮CRUD接口覆盖"
+    },
+    {
+      "requirementId": "FNB-A01",
+      "moduleId": "MOD-13",
+      "apiIds": [
+        "FOOD-API-001",
+        "FOOD-API-081"
+      ],
+      "tables": [
+        "fnb_store_policy",
+        "fnb_action_log"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "沿现有身份/门店授权及共享审批；金额阈值和权限种子需实施时逐项登记，不能由客户端自报主体或审批人"
+    },
+    {
+      "requirementId": "FNB-A02",
+      "moduleId": "MOD-13",
+      "apiIds": [
+        "FOOD-API-001",
+        "FOOD-API-002",
+        "FOOD-API-003"
+      ],
+      "tables": [
+        "fnb_store_policy",
+        "fnb_service_calendar",
+        "fnb_business_day"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-A03",
+      "moduleId": "MOD-13",
+      "apiIds": [
+        "FOOD-API-001",
+        "FOOD-API-002",
+        "FOOD-API-081"
+      ],
+      "tables": [
+        "fnb_store_policy",
+        "fnb_config_revision"
+      ],
+      "status": "DEFINED",
+      "note": "结构与目标接口已定义；仍需实现与业务验收"
+    },
+    {
+      "requirementId": "FNB-A05",
+      "moduleId": "MOD-13",
+      "apiIds": [
+        "FOOD-API-001",
+        "FOOD-API-002",
+        "FOOD-API-038",
+        "FOOD-API-041"
+      ],
+      "tables": [
+        "fnb_store_policy",
+        "fnb_check_cart"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "渠道/履约/先后付独立字段；核心需确认堂食和后付可用合同"
+    },
+    {
+      "requirementId": "FNB-A06",
+      "moduleId": "MOD-13",
+      "apiIds": [
+        "FOOD-API-002",
+        "FOOD-API-003",
+        "FOOD-API-022"
+      ],
+      "tables": [
+        "fnb_store_policy",
+        "fnb_service_calendar",
+        "fnb_sales_restriction"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "暂停/节日限制可配置；全局结构化营业时间与接单容量依赖共享合同，当前openHours文本不能假定覆盖多时段多时区硬校验"
+    },
+    {
+      "requirementId": "FNB-A07",
+      "moduleId": "MOD-13",
+      "apiIds": [
+        "FOOD-API-001",
+        "FOOD-API-081"
+      ],
+      "tables": [
+        "fnb_store_policy",
+        "fnb_action_log"
+      ],
+      "status": "CORE_CONTRACT",
+      "note": "沿现有身份/门店授权及共享审批；金额阈值和权限种子需实施时逐项登记，不能由客户端自报主体或审批人"
+    }
+  ],
+  "reviewSummary": {
+    "baselineTables": 73,
+    "baselineApis": 91,
+    "candidateTables": 79,
+    "candidateApis": 141,
+    "addedTables": [
+      "fnb_table_area",
+      "fnb_table_operation",
+      "fnb_config_revision",
+      "fnb_sales_restriction",
+      "fnb_check_batch_membership",
+      "fnb_sales_quota_claim"
+    ],
+    "scope": "目标设计修订；非SQL迁移或API实现；18项专项设计缺口保持显式待办"
+  },
+  "databaseInitialization": {
+    "date": "2026-10-20",
+    "environment": "local",
+    "database": "ai_shop",
+    "host": "127.0.0.1",
+    "port": 3306,
+    "engine": "MariaDB 12.2.2",
+    "businessTableCount": 73,
+    "historyTable": "fnb_flyway_history",
+    "version": "1",
+    "migration": "backend-plugins/shop-industry-food/food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql",
+    "migrationSha256": "215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9",
+    "sharedTablesCreated": false,
+    "apiImplemented": false,
+    "executionRecord": "docs/technical/TDD-餐饮系统-数据库初始化.md"
+  }
 }

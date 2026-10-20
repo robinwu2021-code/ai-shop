@@ -46,6 +46,24 @@
                         <food.reactor.root>${project.basedir}/..</food.reactor.root>
                     </systemPropertyVariables>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>verify-food-migration-resources</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <configuration>
+                            <includes>
+                                <include>**/FoodMigrationPackagingIT.java</include>
+                            </includes>
+                            <reportsDirectory>${project.build.directory}/migration-resource-reports</reportsDirectory>
+                            <systemPropertyVariables>
+                                <food.project.version>${project.version}</food.project.version>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

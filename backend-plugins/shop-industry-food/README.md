@@ -1,4 +1,4 @@
-# 餐饮业务工程 · NEXT-01～03
+# 餐饮业务工程 · NEXT-01～04
 
 本工程复用平台 `shop-parent → neargo-parent`、Java 21 与统一依赖版本管理。
 已实现五模块独立构建、条件装配、宿主可选挂载及内部服务安全骨架，未实现营业 API、数据库装配或支付/库存联调。
@@ -117,8 +117,38 @@ SHOP_INTERNAL_TOKEN 接既有 shop.services.internal-token。独立进程明确�
 - 为区分本轮影响，复制原两个测试和原 SQL 到独立临时 Maven 工程，仅依赖 Spring JDBC/H2/JUnit，不依赖 host 或 food：3 项中 1 失败、1 错误，复现相同原因。未改支付/活动 SQL；全量回归在确认这两项失败后主动中止，不能标记全量通过。
 - 未连接共享业务数据库，未运行真实 jar 联调；完整营业、迁移与独立支付/库存合同验收仍在 NEXT-05/07/10。
 
+## NEXT-04 冻结迁移归属 · 2026-10-20
+
+唯一源码：[V1__food_business_tables.sql](food-core/src/main/resources/db/industry/food/V1__food_business_tables.sql)。
+原文件未被 Git 跟踪，本轮只在 food-core 新位置入库，同时纳入此前餐饮专属生成器、校验依赖和匹配的设计基线，供新检出复验。
+
+- 移动前后 SHA-256：`215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9`。
+- classpath 仍为 `db/industry/food/V1__food_business_tables.sql`；版本1、fnb_flyway_history 和 SQL 字节均不变。
+- 已应用 V1 原有结尾空行保持不变；项目级 .gitattributes 禁止该文件换行转换，并只对它豁免 blank-at-eof 检查。
+- 宿主源码不留副本，不放入平台默认 `db/migration`。后续宿主构建应先安装当前餐饮库，并 clean 旧构建输出，避免旧 target/classes 或本机旧 SNAPSHOT 造成假验证。
+- gen-food-schema 固定已应用摘要；即使同步修改设计与 SQL，生成/检查都拒绝回写 V1。改表应追加新版本迁移。
+- 隔离 MySQL 校验读取实际冻结文件，只用本机缓存镜像、无网络、无暴露端口、tmpfs 和一次性随机容器；执行完删除，不读取应用库凭据。
+
+验证命令（JDK21；在仓库根）：
+
+```sh
+node --test scripts/tests/food-schema-sql.test.mjs scripts/tests/food-design-contract.test.mjs
+node scripts/gen-food-schema.mjs --check
+mvn -o -f backend-plugins/shop-industry-food/pom.xml clean verify
+node scripts/verify-food-schema-mysql.mjs
+```
+
+结果：Node 15 项通过（DDL6+设计9）；Java 38 项通过（原35+verify阶段3项构建产物检查），均无失败/错误/跳过。
+`FoodMigrationPackagingIT` 通过现有平台 Surefire 的独立 verify-phase execution 读取实际普通jar和server嵌套jar；只有 core 包含一份 V1，server 通过嵌套 core 包含一份，摘要一致。报告位于 server/target/migration-resource-reports，不与普通单元测试报告混淆。
+独立 server 的验收只依赖它的 Maven 构件闭包，不要求 food-web 的 target 存在；实际移除 web target 后 server-only clean verify 的29项测试通过。
+另以 HEAD 工程与本轮 Git 暂存文件构造独立临时检出，Node15项及Maven38项复验通过，不依赖原工作区其他未跟踪文件。
+
+一次性 MySQL 9.7.2 实际创建73表，验证一餐牌多店、一菜多选择组、菜项多SKU、跨店多工位、任务与源行去重、配额及容量检查。
+这不是应用库迁移；本轮未连接 ai_shop，也未执行共享库 migrate/repair/validate。已应用环境的 Flyway.validate 和自动迁移接线属于 NEXT-05。
+NEXT-03 记录的两项独立 schema 回归失败未在本轮修复，不将上述定向通过解释为整个 backend 全量回归通过。
+
 ## 后续边界
 
-下一步是 NEXT-04 冻结迁移资源归餐饮，再接 NEXT-05 主库校验与可信范围，最后实现首个桌区切片。
+下一步是 NEXT-05 主库、事务及独立迁移校验，再接可信范围和首个桌区切片。
 Actuator 与 MySQL 驱动已随独立进程加入；餐饮 Flyway 校验与业务协议按对应接线任务落地，不生成空业务实现。
-当前不新增 Controller/Service/Mapper 壳，不移动冻结 V1，不连接或修改数据库。
+当前未新增 Controller/Service/Mapper 业务壳，已原字节移动冻结 V1；未连接或修改应用数据库。
