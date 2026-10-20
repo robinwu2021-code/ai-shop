@@ -8,7 +8,7 @@ export default {
     "findMember": "البحث عن عضو",
     "noMember": "لم يتم العثور على عضو",
     "chooseMember": "اختر عضواً",
-    "offlineConfirm": "تأكيد الشحن",
+    "offlineConfirm": "شحن الرصيد",
     "offlineHint": "التأكيد يعني استلام {amount} خارج المنصة",
     "finish": "تم",
     "saveAndRecharge": "حفظ وشحن",

@@ -34,7 +34,7 @@
   document.querySelector('figure.is-active .ph').append($('recharge-overlay'));
   $('recharge-overlay').hidden=false;$('sheet-options').hidden=false;
   $('sheet-title').textContent='选择储值方案';$('sheet-hint').textContent=plans.length?'':'暂无可用方案';
-  $('confirm-recharge').textContent='确认储值';$('confirm-recharge').disabled=true;
+  $('confirm-recharge').textContent='储值';$('confirm-recharge').disabled=true;
   $('close-sheet').focus();
  }
  function close(){if(status!=='PROCESSING')$('recharge-overlay').hidden=true;}
@@ -54,8 +54,8 @@
   const option=e.target.closest('[data-sv-plan]');if(option){
    chosen=plans.find(p=>p.id===option.dataset.svPlan);
    document.querySelectorAll('[data-sv-plan]').forEach(x=>x.setAttribute('aria-checked',String(x===option)));
-   $('sheet-hint').textContent='确认表示已线下收取 '+money(chosen.paid);
-   $('confirm-recharge').textContent='确认储值 · '+money(chosen.paid);$('confirm-recharge').disabled=false;
+   $('sheet-hint').textContent='';
+   $('confirm-recharge').textContent='储值 · '+money(chosen.paid);$('confirm-recharge').disabled=false;
   }
  });
  $('close-sheet').addEventListener('click',close);
@@ -64,15 +64,14 @@
  $('confirm-recharge').addEventListener('click',()=>{
   if(status==='CREDITED'){close();return;}if(!chosen||status==='PROCESSING')return;
   status='PROCESSING';$('confirm-recharge').disabled=true;$('close-sheet').disabled=true;$('sheet-options').hidden=true;
-  $('sheet-title').textContent='储值处理中';$('sheet-hint').textContent='正在查询到账结果';
-  setTimeout(()=>{
+
    customer.balance=(customer.balance??0)+chosen.paid+chosen.bonus;
    // Deterministic virtual time, increasing with each demo command.
    customer.last='2026-10-20 16:'+String(++tick).padStart(2,'0');status='CREDITED';render();details();
    document.dispatchEvent(new CustomEvent('sv-prototype-credited',{detail:{...customer,plan:{...chosen}}}));
    $('sheet-title').textContent='储值成功';$('sheet-hint').textContent='本次到账 '+money(chosen.paid+chosen.bonus);
    $('confirm-recharge').textContent='完成';$('confirm-recharge').disabled=false;$('close-sheet').disabled=false;
-  },600);
+
  });
  window.addEventListener('hashchange',()=>{close();details();});render();details();
 })();

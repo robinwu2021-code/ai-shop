@@ -1231,3 +1231,6 @@ a{color:inherit}
 .points-valuation .pv-rate-fields{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}.points-valuation .pv-fields{grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:600px){.points-valuation .pv-rate-fields,.points-valuation .pv-fields{grid-template-columns:1fr}}
 
 .points-valuation .pv-rate-fields{grid-template-columns:minmax(0,210px) minmax(0,120px) minmax(0,140px)}.points-valuation .pv-fields{max-width:510px}@media(max-width:600px){.points-valuation .pv-rate-fields{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);max-width:360px}.points-valuation .pv-rate-fields .ops-field:nth-child(3){max-width:140px}}
+/* Stored-value plans keep room even when only one option is available. */
+.member-sv-sheet #sheet-options{min-height:200px;padding-block:12px}
+.member-sv-sheet #sheet-hint:empty{display:none}

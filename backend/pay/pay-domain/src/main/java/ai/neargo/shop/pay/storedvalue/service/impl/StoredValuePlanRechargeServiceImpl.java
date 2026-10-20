@@ -104,11 +104,14 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
         return recharges.find(ctx.tenantNo(),no)==null&&reply.status()==RechargeState.CANCELLED?reply:query(ctx,entity,no);
     }
 
-    /** A single Pay-local transaction; all Core authorization/identity facts are resolved before entry. */
+    /** Receipt and posting commit in one Pay-local transaction; Core facts are resolved before entry. */
     @Override @Transactional("payTxManager")
     public RechargeView confirmOffline(EntitlementContext ctx,String entity,Create command) {
         var current=create(ctx,entity,command);
-        if(current.status()==RechargeState.RECEIVED||current.status()==RechargeState.CREDITED)return current;
+        if(current.status()==RechargeState.CREDITED)return current;
+        if(current.status()==RechargeState.RECEIVED){
+            return creditReceipt(ctx,owned(ctx,entity,current.rechargeNo()));
+        }
         String receipt=no("OC",List.of(ctx.tenantNo(),entity,current.rechargeNo()),json);
         String evidence=digest(List.of("MERCHANT_OFFLINE",ctx.tenantNo(),entity,current.rechargeNo(),receipt),json);
         var submitCtx=new EntitlementContext(ctx.tenantNo(),ctx.actorNo(),no("OS",List.of(ctx.requestId()),json),"0".repeat(64));
@@ -119,8 +122,10 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
         }
         if(current.status()!=RechargeState.SUBMITTED)throw BizException.of(ErrorCode.CONFLICT);
         var receiveCtx=new EntitlementContext(ctx.tenantNo(),ctx.actorNo(),no("OR",List.of(ctx.requestId()),json),"0".repeat(64));
-        return writer.receive(receiveCtx,entity,new ai.neargo.shop.spi.storedvalue.StoredValuePort.ReceiveRecharge(
+        writer.receive(receiveCtx,entity,new ai.neargo.shop.spi.storedvalue.StoredValuePort.ReceiveRecharge(
                 current.rechargeNo(),current.revision(),evidence,"Merchant confirmed offline collection"));
+        // Reuse the original receipt decision and credit identity; the asynchronous event remains idempotent.
+        return creditReceipt(ctx,owned(ctx,entity,current.rechargeNo()));
     }
 
     @Override public ReplayResult replay(EntitlementContext ctx,String entity,Replay c){
@@ -152,10 +157,14 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
         if(r==null||!"PLAN".equals(r.getSourceKind()))return false;
         if(!entity.equals(r.getEntityNo()))throw BizException.of(ErrorCode.NOT_FOUND);
         if("RECEIVED".equals(r.getStatus())){
-            credits.credit(ctx,new CreditRecharge(no,new SourceRef("PAY","RECHARGE",no,null,null,null,0),
-                    json.readValue(r.getReceivedDecisionSnapshot(),DecisionRef.class)));
+            creditReceipt(ctx,r);
         }
         return true;
+    }
+    private RechargeView creditReceipt(EntitlementContext ctx,SvRecharge recharge){
+        String no=recharge.getRechargeNo();
+        return credits.credit(ctx,new CreditRecharge(no,new SourceRef("PAY","RECHARGE",no,null,null,null,0),
+                json.readValue(recharge.getReceivedDecisionSnapshot(),DecisionRef.class)));
     }
     private SvRecharge owned(EntitlementContext ctx,String entity,String no){
         var r=recharges.find(ctx.tenantNo(),no);

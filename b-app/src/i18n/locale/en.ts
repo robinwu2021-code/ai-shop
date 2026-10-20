@@ -8,7 +8,7 @@ export default {
     "findMember": "Find member",
     "noMember": "No member found",
     "chooseMember": "Select a member",
-    "offlineConfirm": "Confirm top-up",
+    "offlineConfirm": "Top up",
     "offlineHint": "Confirm that {amount} was collected offline",
     "finish": "Done",
     "saveAndRecharge": "Save and top up",

@@ -129,7 +129,7 @@ onUnmounted(()=>{generation++;clearTimeout(timer);});
 </script>
 <template>
  <sh-sheet :visible="props.visible" :title="title" fit @close="close">
-  <view class="sv-sheet-list">
+  <view class="sv-sheet-list" :class="{'sv-sheet-list--plans':!progress}">
    <view v-for="choice in recoveryChoices" :key="choice.scope" role="button" class="sh-card" @tap="chooseRecovery(choice)"><text class="txt-strong">{{choice.pending.customer.displayName}}</text><text class="sh-muted">{{choice.pending.customer.phoneMasked}}</text></view>
    <view v-if="customer" class="sh-row sh-row--between"><text class="txt-strong">{{customer.displayName}}</text><text class="sh-muted sh-num">{{customer.phoneMasked}}</text></view>
    <view v-if="pending&&!progress" class="sh-card"><text class="txt-strong">{{pending.plan.name}}</text><sh-kv :label="t('storedValue.total')" between>{{money(pending.plan.totalAmountMinor,pending.plan.currency)}}</sh-kv></view>
@@ -148,15 +148,15 @@ onUnmounted(()=>{generation++;clearTimeout(timer);});
     <text class="sh-muted sh-num">{{progress.rechargeNo}}</text>
     <sh-kv v-if="credited" :label="t('storedValue.total')" between>{{money(progress.creditedTotalMinor||0,progress.currency)}}</sh-kv>
    </view>
-   <text v-if="selected&&!progress" class="sh-hint">{{t('storedValue.offlineHint',{amount:money(selected.paidAmountMinor,selected.currency)})}}</text>
    <text v-if="!allowed" class="sh-hint">{{t('storedValue.noPermission')}}</text>
    <text v-if="error" class="sh-hint">{{error}}</text><view v-if="pending&&!terminal&&(!progress||['WAIT_COLLECTION','SUBMITTED'].includes(progress.status))" role="button" class="sh-link sh-hit" @tap="cancelPending">{{t('storedValue.cancelRecharge')}}</view>
   </view>
-  <template #foot><view data-testid="confirm-offline" role="button" class="sh-btn" :class="{'is-disabled':busy||loading||!allowed||!selected||failed}" :aria-disabled="busy||loading||!allowed||!selected||failed" @tap="perform">{{busy?t('storedValue.processing'):action}}<template v-if="selected&&!progress"> · {{money(selected.paidAmountMinor,selected.currency)}}</template></view></template>
+  <template #foot><view data-testid="confirm-offline" role="button" class="sh-btn" :class="{'is-disabled':busy||loading||!allowed||!selected||failed}" :aria-disabled="busy||loading||!allowed||!selected||failed" @tap="perform">{{action}}<template v-if="selected&&!progress"> · {{money(selected.paidAmountMinor,selected.currency)}}</template></view></template>
  </sh-sheet>
 </template>
 <style scoped>
 .sv-sheet-list{display:flex;flex-direction:column;gap:var(--sh-gap-block)}
+.sv-sheet-list--plans{min-height:32vh;padding-block:var(--sh-gap-block)}
 .sv-plan{background:var(--sh-bg)}
 .sv-plan--selected{background:var(--sh-primary-tint)}
 </style>

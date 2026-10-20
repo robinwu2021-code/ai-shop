@@ -83,3 +83,12 @@ it('shows a terminal result when a missing original is sealed from recovery with
  expect(w.text()).toContain('storedValue.cancelled');expect(w.find('[data-testid="confirm-offline"]').text()).toContain('storedValue.finish');
  expect(m.confirm).not.toHaveBeenCalled();w.unmount();
 });
+
+it('keeps a single-plan sheet spacious without a receipt explanation or confirmation label',async()=>{
+ const w=mount(Sheet,{props:{visible:true,source:{type:'MEMBER',memberNo:'MEM1'}}});await flushPromises();
+ expect(w.find('.sv-sheet-list').classes()).toContain('sv-sheet-list--plans');
+ await w.find('[data-testid="recharge-plan"]').trigger('tap');
+ expect(w.text()).not.toContain('storedValue.offlineHint');
+ expect(m.confirm).not.toHaveBeenCalled();
+ w.unmount();
+});

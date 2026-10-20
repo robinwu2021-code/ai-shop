@@ -57,7 +57,7 @@ class StoredValueMemberRechargeHttpFlowTest {
   var body=Map.of("storeNo",store,"customerRef",ref,"planNo",plan.planNo(),"versionNo",plan.versionNo());String key=id();
   assertThat(send(mvc,"/biz/stored-value/plan-recharges/confirm-offline",buyer,store,body,id()).path("code").asInt()).isNotZero();
   var first=send(mvc,"/biz/stored-value/plan-recharges/confirm-offline",merchant,store,body,key);
-  assertThat(first.path("code").asInt()).isZero();String no=first.path("data").path("rechargeNo").asString();
+  assertThat(first.path("code").asInt()).isZero();assertThat(first.path("data").path("status").asString()).isEqualTo("CREDITED");String no=first.path("data").path("rechargeNo").asString();
   String person=jdbc.queryForObject("SELECT person_no FROM mbr_member WHERE member_no=?",String.class,member);
   jdbc.update("UPDATE mbr_identity_ticket SET issued_at=?,expires_at=? WHERE customer_no=?",LocalDateTime.now(ZoneOffset.UTC).minusMinutes(2),LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1),person);
   var replay=send(mvc,"/biz/stored-value/plan-recharges/confirm-offline",merchant,store,body,key);

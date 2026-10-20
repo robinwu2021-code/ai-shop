@@ -10,7 +10,7 @@ export default {
     "findMember": "查询会员",
     "noMember": "未找到该会员",
     "chooseMember": "请选择会员",
-    "offlineConfirm": "确认储值",
+    "offlineConfirm": "储值",
     "offlineHint": "确认表示已线下收取 {amount}",
     "finish": "完成",
     "saveAndRecharge": "保存并储值",

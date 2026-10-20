@@ -48,13 +48,25 @@ class StoredValueStorePlanFlowTest {
         var ctx=new EntitlementContext("MAIN","OWNER",id(),"0".repeat(64));
         var command=new StoredValuePlanRecharges.Create(user,store,"测试门店",plan.planNo(),plan.versionNo(),"f".repeat(64));
         var first=direct.confirmOffline(ctx,entity,command);
-        assertThat(first.status().name()).isEqualTo("RECEIVED");
+        assertThat(first.status().name()).isEqualTo("CREDITED");
+        assertThat(accounts.balance(ctx,new BalanceQuery(user,entity,"CNY",store)).availableMinor()).isEqualTo(13000);
         assertThat(direct.confirmOffline(ctx,entity,command).rechargeNo()).isEqualTo(first.rechargeNo());
         assertThat(jdbc.queryForObject("SELECT collection_method FROM sv_recharge WHERE recharge_no=?",String.class,first.rechargeNo())).isEqualTo("MERCHANT_OFFLINE");
         assertThat(jdbc.queryForObject("SELECT actual_amount_minor FROM sv_recharge WHERE recharge_no=?",Long.class,first.rechargeNo())).isEqualTo(10000);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_recharge WHERE user_no=?",Integer.class,user)).isEqualTo(1);
         direct.recover(ctx,entity,first.rechargeNo());
         assertThat(accounts.balance(ctx,new BalanceQuery(user,entity,"CNY",store)).availableMinor()).isEqualTo(13000);
+    }
+
+    @Test void offlinePostingFailureRollsBackTheWholeCommand() {
+        String entity=id(),store=id(),user=id();
+        var ctx=new EntitlementContext("MAIN","OWNER",id(),"0".repeat(64));
+        credits.credit(ctx,StoredValueCreditFixture.received(jdbc,json,user,entity,store,Long.MAX_VALUE-5000,0));
+        var plan=plans.create(new CatalogScope("MAIN",entity,"OWNER",false),new Create(store,"同步入账边界","CNY",10000,3000),id());
+        var command=new StoredValuePlanRecharges.Create(user,store,"测试门店",plan.planNo(),plan.versionNo(),"d".repeat(64));
+        assertThatThrownBy(()->direct.confirmOffline(ctx,entity,command)).isInstanceOf(BizException.class);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_recharge WHERE user_no=? AND source_kind='PLAN'",Integer.class,user)).isZero();
+        assertThat(accounts.balance(ctx,new BalanceQuery(user,entity,"CNY",store)).availableMinor()).isEqualTo(Long.MAX_VALUE-5000);
     }
 
     @Test void unregisteredCustomerCreditsWithoutFakeUserAndClaimsSameAccountAfterRegistration() {
