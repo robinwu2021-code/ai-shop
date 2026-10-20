@@ -73,6 +73,7 @@ JAR smoke明确关闭美业、清空数据源 URL并监听本机随机端口，�
 零售拥有的 auth、IdempotencyService、PLATFORM outbox 和主库事务继续作为核心：
 公共包新增 StoreRequestScopeValidator、IdempotencyScope、PlatformOutboxPublisher、PlatformWritePrerequisites，
 餐饮和美业接入；零售既有默认门店回落与无 key 的旧接口行为保持兼容，并有回归用例。
+收尾已追平餐饮最新已提交 c634de551（本分支74fdaf218），包括实际政策读取入口。
 元数据前置检查复用事务连接，单连接池也能发布；不执行公共表 DDL。
 
 生产必须注册本事件的正式消费者或明确的归档合同；没有路由时拒绝发布并整体回滚。
