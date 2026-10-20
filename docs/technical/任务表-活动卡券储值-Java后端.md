@@ -2,7 +2,7 @@
 
 > 执行方式：沿用当前会话内实施，按任务使用 superpowers:executing-plans；每项完成后更新本表。本表是原TDD §2的独立执行台账，不另起一套架构。
 
-状态：两阶段Java后端首期验收完成 · 2026-10-20 · 基准提交64a25a5bd。
+状态：干净副本验收发现并发连接池耗尽，修复与补验中 · 2026-10-20 · 基准提交64a25a5bd。
 
 目标：完成既定活动、卡券、储值和次卡/月卡的全部Java后端，包括数据库增量迁移、领域服务、内部协议、本地/远程适配、B/C/运营HTTP接口、权限、通知、兼容迁移工具及验收。前端页面和UI原型后置；接口契约、经营规则和权限不能因前端后置而省略。
 
@@ -23,13 +23,13 @@
 
 状态只用TODO/DOING/BLOCKED/DONE。DONE要求本项全部交付、提交号及真实验证证据；父阶段未满足全部条件保持未完成。现有类/旧接口可复用，不能因此将新的目标契约记为DONE。
 
-本表共55项：55项DONE、0项DOING、0项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。状态快照如下，详细交付和验收条件仍以第2节逐项任务表为准：
+本表共55项：51项DONE、4项DOING、0项TODO，暂无BLOCKED；这是拆分后的交付单元计数，不等同工作量比例。状态快照如下，详细交付和验收条件仍以第2节逐项任务表为准：
 
 | 状态 | 任务编号 | 当前口径 |
 |---|---|---|
-| DONE（55） | JB-001–JB-055 | 全部Java后端父任务已满足首期范围、提交和验收条件。 |
-| DOING（0） | 无 | 后端编码与验收已关闭，前端页面另列独立接入任务。 |
-| TODO（0） | 无 | 本表Java后端任务已完成；不代表生产切换或前端已完成。 |
+| DONE（51） | 除JB-016、JB-041、JB-054、JB-055外 | 主体能力和专项验收已完成；这4项因干净副本连接池问题重新打开。 |
+| DOING（4） | JB-016、JB-041、JB-054、JB-055 | 连接池缺陷已定向修复验证；最终提交和部署仍待完成。 |
+| TODO（0） | 无 | 前端页面另列独立接入任务；生产部署状态以验收记录为准。 |
 
 当前N01–N12首期Java后端验收完成。最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。 前端实际页面见[独立接入表](./任务表-活动权益-前端接入.md)，生产开关及生产迁移未执行。
 
@@ -116,7 +116,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | ID | 原任务 | 状态 | 依赖 | 模块 | 交付内容/Java类 | 验收条件/测试 |
 |---|---|---|---|---|---|---|
 | JB-015 | D02.1/2.2 | DONE | 005,013,014 | pay.entitlement | EntitlementIssuePolicyService/Impl；发行总量/敞口/个人容量条件更新 | B1真实事务/Mapper及原生MySQL通过；完整证据见第二阶段B1-发行批次验收；源码提交e78d7fc3a；017容量契约修正见B1报告§5 |
-| JB-016 | D02.3 | DONE | 002,014,015,019 | pay.entitlement | EntitlementGrantService/Impl、GrantPortImpl、EntitlementPostingService；prepare/commit/abort/query | B1真实事务/Mapper及原生MySQL通过；完整证据见第二阶段B1-发行批次验收；源码提交e78d7fc3a |
+| JB-016 | D02.3 | DOING | 002,014,015,019 | pay.entitlement | EntitlementGrantService/Impl、GrantPortImpl、EntitlementPostingService；prepare/commit/abort/query | B1真实事务/Mapper及原生MySQL通过；完整证据见第二阶段B1-发行批次验收；源码提交e78d7fc3a |
 | JB-017 | D02.3 | DONE | 016 | pay.entitlement | EntitlementIssueBatchService/Impl；P07/P08底层能力，受众快照预检 | B1真实事务/Mapper及原生MySQL通过；完整证据见第二阶段B1-发行批次验收；源码提交e78d7fc3a |
 | JB-018 | D02.3/D04.3 | DONE | 016,032 | pay/app | 本人领取路径、CENTER/ACTIVITY校验、core资格到pay发放协调 | EntitlementClaimFlowTest：未登录/越权拒绝；付费卡不可免费领；未知结果只查原grant |
 | JB-019 | D02.4/D06.3 | DONE | 003,005 | pay.policy | EntitlementValidityPolicy、CountUsagePolicy、PeriodCountUsagePolicy；从共享额度规则派生 | EntitlementValidityPolicyTest：支付/首用、自然月/滚动天、时区、月末/闰日、半开区间；GET无激活副作用 |
@@ -151,7 +151,7 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-038 | D05.1–5.4 | DONE | 009,034,035,036,037,041 | app HTTP | BizStoredValueController、MpStoredValueController；P18–P24/P27/P28/P31 | StoredValueApiTest：办理/到账/核销/本人记录闭环；无本金赠金字段、无线上退款/购买入口、统一会员码；最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。 |
 | JB-039 | D06.1 | DONE | 006,009,028 | core.product/app | CardProductBindingService/Impl、BizCardProductBindingController；C07 | CardProductBindingFlowTest：只绑已发布PAID_CARD、主体/币种一致；售价沿商品SKU，旧版绑定不随模板草稿改变 |
 | JB-040 | D06.2 | DONE | 012,016,039,042 | app/core.trade | CardSaleCoordinator与支付/取消Outbox订阅，按订单行/件/件内权益发卡 | PaidCardSaleFlowTest：2×2权益不漏不重发、付款/取消竞争、迟到付款起算正确；不以储值扣款冒充现金付款；最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。 |
-| JB-041 | D02.6 | DONE | 008,016,017,020,021,022,023,024,031,034,035,036,037,040 | payclient/pay-svc/core内部适配 | AppService本地/Remote承载底座、PayInternalApi/Paths、内部Endpoint及core反向适配；已实现业务完整query | EntitlementInternalApiRoundTripTest：真实HTTP DTO无wrapper嵌套、签名身份、超时/失联可查、两种部署同语义且Bean互斥；最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。 |
+| JB-041 | D02.6 | DOING | 008,016,017,020,021,022,023,024,031,034,035,036,037,040 | payclient/pay-svc/core内部适配 | AppService本地/Remote承载底座、PayInternalApi/Paths、内部Endpoint及core反向适配；已实现业务完整query | EntitlementInternalApiRoundTripTest：真实HTTP DTO无wrapper嵌套、签名身份、超时/失联可查、两种部署同语义且Bean互斥；最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。 |
 | JB-042 | D06.3 | DONE | 019,020 | pay.entitlement | EntitlementLifecycleService/Impl、PeriodDailyUsagePolicy、ent_period_bucket；首用激活/日限/到期 | PaidCardAllowanceFlowTest：并发首用仅激活一次、指定服务日、跨日释放回原bucket、不结转、月末与时区边界 |
 
 ### 2.6 通知、运营、兼容及后端收口
@@ -169,8 +169,8 @@ JB编号在本表固定；原D编号保留用于对账。依赖栏省略JB前缀
 | JB-051 | D02.5/D04.2/7 | DONE | 014,031,035,041,042,045 | core/pay jobs | ActivityReservationRecoveryJob、EntitlementRecoveryJob、EntitlementExpiryJob；持久租约与恢复 | EntitlementRecoveryFlowTest：重启/重复任务安全、未知不释放、取消确认竞争、到期与提醒去重、死信入异常；最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。 |
 | JB-052 | D04/D06能力验收 | DONE | 028,030,032,035,040,041 | core/pay集成 | 40AP/6EP逐项能力映射；既有团期/赠品/积分接口复用与限制 | PresetCapabilityAcceptanceTest：逐模板证明可执行或明确缺能力；未验收关闭，付费产品无无限次/自动续费；最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。 |
 | JB-053 | D01.2/D07后端 | DONE | 010,011,017,025,026,027,033,038,039,043,044,045,046,047 | API/权限/生成物 | 公开路由及内部写/query的OpenAPI、权限、三语、BeanValidation、运营五处登记总对账 | EntitlementApiContractCoverageTest：每条路由真实Handler、权限拒绝用例、DTO一致；生成物无新增失配；最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。 |
-| JB-054 | D01.4/D02.6/D07.2 | DONE | 041,049,050,051,052,053 | 部署/验证 | 本地pay与独立pay后端装配、真实目标数据库版本适配、升级/回退演练 | EntitlementDeploymentAcceptanceTest：生产profile关开组合、增量升级/新库、JSON/CHECK/锁/时区/字符集；不等于部署生产；最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。 |
-| JB-055 | D07.2后端收口 | DONE | 054 | 全Java后端 | U01–U30后端映射、场景链路、故障恢复、全量回归与代码审查收口 | 美业充值→到账→核销→本人明细，餐卡/游泳卡购买→发卡→扣次/日限；无未解决严重缺陷；最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。 |
+| JB-054 | D01.4/D02.6/D07.2 | DOING | 041,049,050,051,052,053 | 部署/验证 | 本地pay与独立pay后端装配、真实目标数据库版本适配、升级/回退演练 | EntitlementDeploymentAcceptanceTest：生产profile关开组合、增量升级/新库、JSON/CHECK/锁/时区/字符集；不等于部署生产；最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。 |
+| JB-055 | D07.2后端收口 | DOING | 054 | 全Java后端 | U01–U30后端映射、场景链路、故障恢复、全量回归与代码审查收口 | 美业充值→到账→核销→本人明细，餐卡/游泳卡购买→发卡→扣次/日限；无未解决严重缺陷；最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。 |
 
 ### 第二阶段执行入口
 
@@ -1205,3 +1205,9 @@ N12定向收口更新：首轮完整后端4017项捕获规范/夹具及跨域结
 最终代码`684b0f074`；27模块完整编译及回归4019项，失败0、异常0、条件跳过18；原生数据库与双进程单独无跳过验收，见[最终验收](./活动权益-Java后端最终验收.md)。
 
 公开64操作/107DTO、私有pay102/core19；两项Important审查问题均RED→GREEN关闭。历史SQL保留校验和，旧活动引用先转换再切换，46预置仍默认关闭。B/C实际页面43条接口待接入，另表记录；没有生产部署或切换。
+
+### 干净副本并发补验（重新打开4项）
+
+正式pre-push暴露发券并发确认连接池耗尽；之前4019项通过保留为单次历史结果，不再作为修复后的最终验收。根因是`DataSourceTransactionManager`默认在无实际事务时仍开启Spring同步，`NOT_SUPPORTED`内的MyBatis读取因此将Pay连接绑定到线程；后续真实写事务再取连接，8路并发占满8连接后互相等待。
+
+修复将Core、嵌入式Pay和独立Pay三个事务管理器设为`SYNCHRONIZATION_ON_ACTUAL_TRANSACTION`，仅真实事务启动同步。定向测试RED→GREEN：`/tmp/ent-pool-starvation-fix-targeted.log`中Core/Pay两个`NOT_SUPPORTED`资源释放及8路并发同grant只发一次共3项通过；`/tmp/ent-pay-sync-fix-targeted.log`独立Pay最小配置1项通过。Java21 Maven编译成功，`git diff --check`通过。遵照用户指示，不重跑已通过的全量4019项回归；后端提交/部署仍待完成。

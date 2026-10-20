@@ -42,6 +42,12 @@ class EntitlementGrantFlowTest {
     @Autowired EntitlementGrantService grants;
     @Autowired EntitlementGrantWriter writer;
     @Autowired JdbcTemplate jdbc;
+    @Autowired @org.springframework.beans.factory.annotation.Qualifier("payDataSource")
+    javax.sql.DataSource payDataSource;
+    @Autowired @org.springframework.beans.factory.annotation.Qualifier("payTxManager")
+    org.springframework.transaction.PlatformTransactionManager payTransactions;
+    @Autowired @org.springframework.beans.factory.annotation.Qualifier("transactionManager")
+    org.springframework.transaction.PlatformTransactionManager coreTransactions;
     @MockitoBean(name = "batchGrantSourcePortImpl") EntitlementGrantSourcePort source;
     @MockitoBean SourceDecisionPort decisions;
     private final CatalogScope scope = new CatalogScope("MAIN", "GR-" + UUID.randomUUID(), "GRANT-TEST", false);
@@ -129,6 +135,23 @@ class EntitlementGrantFlowTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_grant WHERE grant_no=?", Integer.class,
                 c.grantNo())).isZero();
     }
+    @Test void nonTransactionalCoreOrchestrationDoesNotPinPayReadConnections() {
+        assertReadConnectionIsReleased(coreTransactions);
+    }
+    @Test void nonTransactionalPayOrchestrationDoesNotPinPayReadConnections() {
+        assertReadConnectionIsReleased(payTransactions);
+    }
+    private void assertReadConnectionIsReleased(org.springframework.transaction.PlatformTransactionManager manager) {
+        var template = new org.springframework.transaction.support.TransactionTemplate(manager);
+        template.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
+        template.executeWithoutResult(ignored -> {
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            assertThat(grants.query(context(), scope.entityNo(), key()).status()).isEqualTo(EntitlementGrantPort.State.NOT_FOUND);
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.hasResource(payDataSource))
+                    .as("nontransactional reads must return the pay connection before the financial transaction").isFalse();
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()).isFalse();
+        });
+    }
     @Test void concurrentSameGrantConsumesAndIssuesOnlyOnce() throws Exception {
         var c = command(); origin(c);
         try (var pool = Executors.newFixedThreadPool(8)) {
@@ -138,10 +161,26 @@ class EntitlementGrantFlowTest {
                 assertThat(result.get().status()).isEqualTo(EntitlementGrantPort.State.PREPARED);
             }
             var d = decision(c, true);
+            var truth = decisions.query(context(), c.sourceRef());
+            var ready = new java.util.concurrent.CyclicBarrier(8);
+            var callbacks = new java.util.concurrent.atomic.AtomicInteger();
+            when(decisions.query(any(), any())).thenAnswer(call -> {
+                if (callbacks.getAndIncrement() < 8) ready.await(5, java.util.concurrent.TimeUnit.SECONDS);
+                return truth;
+            });
             var commits = new ArrayList<Callable<EntitlementGrantPort.GrantView>>();
             for (int i = 0; i < 20; i++) commits.add(() -> grants.commit(context(),
                     new EntitlementGrantPort.GrantDecision(c.grantNo(), c.sourceRef(), d)));
-            for (var result : pool.invokeAll(commits)) assertThat(result.get().instanceNos()).hasSize(2);
+            var dataSource = (com.zaxxer.hikari.HikariDataSource) payDataSource;
+            long timeout = dataSource.getConnectionTimeout();
+            dataSource.setConnectionTimeout(1000);
+            try {
+                for (var result : pool.invokeAll(commits, 15, java.util.concurrent.TimeUnit.SECONDS)) {
+                    assertThat(result.get().instanceNos()).hasSize(2);
+                }
+            } finally {
+                dataSource.setConnectionTimeout(timeout);
+            }
         }
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_instance WHERE grant_no=?", Integer.class,
                 c.grantNo())).isEqualTo(2);
