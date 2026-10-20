@@ -72,7 +72,7 @@ class MpEndpointAuthTest {
             "GET /mp/entitlement-service-orders",
             "GET /mp/entitlement-service-orders/{serviceOrderNo}",
             "GET /mp/stored-value/stores",
-            "GET /mp/stored-value/stores/{storeNo}/records",
+            "GET /mp/stored-value/store/{storeNo}/records",
             "GET /mp/stored-value/consumptions",
             "GET /mp/entitlements",
             "GET /mp/entitlements/{instanceNo}",

@@ -14,6 +14,10 @@ import ai.neargo.shop.spi.storedvalue.StoredValuePlans.Create;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -23,6 +27,9 @@ import org.springframework.test.context.ActiveProfiles;
         "spring.datasource.url=jdbc:h2:mem:consumer-stored-value-flow;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"})
 @ActiveProfiles("test")
 class ConsumerStoredValueFlowTest {
+    @Autowired
+    @Qualifier("requestMappingHandlerMapping")
+    RequestMappingHandlerMapping mappings;
     @Autowired StoredValuePlanService plans;
     @Autowired StoredValuePlanRechargeService recharges;
     @Autowired StoredValueConsumerQueryAppService reads;
@@ -53,6 +60,16 @@ class ConsumerStoredValueFlowTest {
         assertThatThrownBy(()->reads.records(consumer,store,"RECHARGE",null,null,null,page.nextCursor(),1))
                 .isInstanceOf(BizException.class);
         assertThat(second.documentNo()).isNotEqualTo(first.documentNo());
+    }
+    @Test void consumerHttpRouteMatchesPublishedContract() throws Exception {
+        var request=new MockHttpServletRequest("GET",
+                "/mp/stored-value/store/STORE_TEST/records");
+        var handler=mappings.getHandler(request);
+        assertThat(handler).isNotNull();
+        assertThat(handler.getHandler()).isInstanceOf(HandlerMethod.class);
+        var method=(HandlerMethod)handler.getHandler();
+        assertThat(method.getBeanType().getSimpleName()).isEqualTo("MpStoredValueController");
+        assertThat(method.getMethod().getName()).isEqualTo("records");
     }
     private static EntitlementContext context(String actor) {
         return new EntitlementContext("MAIN",actor,id(),"f".repeat(64));

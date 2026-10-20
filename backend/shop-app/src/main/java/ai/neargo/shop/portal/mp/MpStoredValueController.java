@@ -51,7 +51,7 @@ public class MpStoredValueController {
                 .toList(),page.nextCursor());
     }
 
-    @GetMapping("/mp/stored-value/stores/{storeNo}/records")
+    @GetMapping("/mp/stored-value/store/{storeNo}/records")
     public StoredValueConsumerViews.Records records(@PathVariable String storeNo,
             @RequestParam(defaultValue="ALL") String type,
             @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate startDate,

@@ -245,3 +245,9 @@ H2新增V543段使用scoped generator生成并追加；全量schema generator受
 已整合远端437136b8e（包括已发布的积分账户与订单变更），保留C端积分服务端开关。合并后的Core/独立Pay及依赖编译通过；C端vue-tsc通过，仅重测冲突涉及的储值API契约1项通过；OpenAPI重新生成120路径/128操作/412schema。统一UI目录284页面、原型总览44份校验通过。补登记远端已存在的points-bc-accounts原型及3个锚点，没有改变积分产品逻辑。
 
 额外生成检查：模型对账生成器因原有MemberSetting→mbr_setting字段匹配失败而未完成；ERD全量生成出现其他域的历史漂移，相关无关产物已恢复。新增任务表的设计以V543及本节实现记录为准。本次没有宣称全项目生成物闸门通过，也未修改已有欠账基线。
+
+### 11.3 部署验证发现的路由修复
+
+首轮环境只读验证发现：前端已采用规范单数store路径，后端Controller仍残留stores复数路径，导致新地址404。补ConsumerStoredValueFlowTest.consumerHttpRouteMatchesPublishedContract，以完整Spring实际路由匹配复现红（handler为空），修正Controller和MP鉴权登记后同方法1/1通过。此轮仅重测修复点。
+
+用户已明确选择“模板尚未准备，先发布页面与通知能力，真实微信发送待配置”。环境已应用V543，站内INAPP启用、WXSUB关闭，通知worker已从受认证declarations确认注册；没有执行真实微信发送或真实资金操作。首轮Pay已部署82561e7c2；主应用还需以路由修复提交重新发布，C端将在路由验收后发布。
