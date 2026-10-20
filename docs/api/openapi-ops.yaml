@@ -3746,6 +3746,10 @@ components:
             - "string"
             - "null"
           description: "归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。"
+        documentNo:
+          type:
+            - "string"
+            - "null"
         couponNo:
           type: "string"
           description: "券模板单号"
@@ -3870,6 +3874,10 @@ components:
     CouponIssue:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         issueNo:
           type: "string"
           description: "发放记录单号"
@@ -3979,6 +3987,10 @@ components:
             - "string"
             - "null"
           description: "归档时间。**软删除标记** —— 有值即视为已删除，列表默认不返回。 契约禁止 `delete*`，一律 `archive*` / `unarchive*`（工程约定 §10.6）。"
+        documentNo:
+          type:
+            - "string"
+            - "null"
         campaignNo:
           type: "string"
           description: "活动号。跨端唯一，平台治理与商家自己看到的是同一个"
@@ -4504,6 +4516,10 @@ components:
     AfterSale:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         refundExecution:
           anyOf:
             - "$ref": "#/components/schemas/RefundExecutionProgress"
@@ -6847,6 +6863,10 @@ components:
     Settlement:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         settleNo:
           type: "string"
           description: "结算单号"
@@ -6944,6 +6964,10 @@ components:
     SplitLog:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         settleNo:
           type: "string"
           description: "所属结算单"
@@ -7100,6 +7124,10 @@ components:
     Withdrawal:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         withdrawNo:
           type: "string"
           description: "提现单号"
@@ -7164,6 +7192,10 @@ components:
     InvoiceRequest:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         invoiceNo:
           type: "string"
           description: "开票申请单号"
@@ -7276,6 +7308,14 @@ components:
     PurchaseInvoice:
       type: "object"
       properties:
+        settleDocumentNos:
+          type: "array"
+          items:
+            type: "string"
+        documentNo:
+          type:
+            - "string"
+            - "null"
         invoiceNo:
           type: "string"
           description: "平台侧的进项票记录号（不是发票上印的号）"
@@ -7355,6 +7395,10 @@ components:
     BuyerInvoiceRequest:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         requestNo:
           type: "string"
           description: "开票申请号"
@@ -7471,6 +7515,10 @@ components:
     PayoutRow:
       type: "object"
       properties:
+        settleDocumentNos:
+          type: "array"
+          items:
+            type: "string"
         payoutNo:
           type:
             - "string"
@@ -7900,6 +7948,10 @@ components:
     SettleBatch:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         batchNo:
           type: "string"
           description: "批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话"
@@ -9891,6 +9943,10 @@ components:
     PointsVoucherView:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         id:
           type: "number"
           description: "持久记录主键"
@@ -9992,6 +10048,10 @@ components:
     PointsEntryView:
       type: "object"
       properties:
+        voucherDocumentNo:
+          type:
+            - "string"
+            - "null"
         id:
           type: "number"
           description: "持久记录主键"
@@ -10033,6 +10093,10 @@ components:
     PointsFlowView:
       type: "object"
       properties:
+        voucherDocumentNo:
+          type:
+            - "string"
+            - "null"
         id:
           type: "number"
           description: "持久记录主键"
@@ -10790,6 +10854,10 @@ components:
     FissionCampaign:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         fissionNo:
           type: "string"
           description: "活动单号"
@@ -12779,6 +12847,10 @@ components:
     OpsPlatformActivity:
       type: "object"
       properties:
+        documentNo:
+          type:
+            - "string"
+            - "null"
         activityNo:
           type: "string"
           description: "活动号"
