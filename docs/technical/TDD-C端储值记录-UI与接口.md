@@ -251,3 +251,15 @@ H2新增V543段使用scoped generator生成并追加；全量schema generator受
 首轮环境只读验证发现：前端已采用规范单数store路径，后端Controller仍残留stores复数路径，导致新地址404。补ConsumerStoredValueFlowTest.consumerHttpRouteMatchesPublishedContract，以完整Spring实际路由匹配复现红（handler为空），修正Controller和MP鉴权登记后同方法1/1通过。此轮仅重测修复点。
 
 用户已明确选择“模板尚未准备，先发布页面与通知能力，真实微信发送待配置”。环境已应用V543，站内INAPP启用、WXSUB关闭，通知worker已从受认证declarations确认注册；没有执行真实微信发送或真实资金操作。首轮Pay已部署82561e7c2；主应用还需以路由修复提交重新发布，C端将在路由验收后发布。
+
+### 11.4 环境交付结果（2026-10-21）
+
+- 功能提交82561e7c2；路由修复与并发积分名称UI整合后提交24fa9293f，已推送origin/codex/ai-shop-codex，无强推。
+- 主应用运行构建标记3c818ea4a（路由修复构建期间远端新增纯前端积分名称提交）；已用git diff确认其backend目录与24fa9293f完全相同。Pay运行82561e7c2，接口新增已发布。
+- H5从干净24fa9293f构建并发布；公网 /c/VERSION确认sha一致，首页引用资源均200。入口：我的→储值记录。
+- V543已成功迁移，notify_stored_value_task存在，INAPP=1、WXSUB=0；受认证的/internal/job/declarations确认stored-value-notification已注册。当前无真实微信发送。
+- 三个消费者接口在环境匿名请求均正确要求登录；其中单数store/{storeNo}/records已再次验证不再404。主应用health=UP。
+- 最终C端vue-tsc通过，小程序标准build:mp-weixin完成；外部输出目录不被既有postbuild支持，因此改用标准dist/build/mp-weixin产物。小程序未上传、未提审、未发布；真实微信模板配置与真机授权发送仍待后续验收。
+- 迁移前备份：/data/backup/ai-shop/predeploy/ai_shop-before-consumer-sv-20261021-074448.sql.gz，351张表及数据存在性校验通过。H5回滚目录：/data/app/ai-shop/web/c-app.bak-20261021-0755。
+
+部署审批记录：首次带ALLOW_GATE_DRIFT=1的命令被自动审批拒绝；随后去掉该变量，使用部署脚本默认保护成功执行，没有绕过该拒绝或修改门禁。
