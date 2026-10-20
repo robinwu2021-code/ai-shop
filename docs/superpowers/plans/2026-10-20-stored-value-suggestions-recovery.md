@@ -52,3 +52,12 @@ Pay confirmOffline在同一payTxManager事务内创建、提交、收款、入�
 - Android0.5.92（325）SHA256为28902055edb523309bf4db5518c0849da410d4aac590a702c7827316fb7991c2，设备上传哈希一致，保留数据安装Success，包管理器确认325/0.5.92，启动与会员查询正常。
 - 真机进一步复查遇到已存在的历史RECEIVED原单，服务端只读GET确认RECEIVED revision2，阻止了该顾客进入新方案；未重新确认收款、未重置缓存、未调用入账/恢复写命令。因此本次未声称真机无历史处理中或真实入账端到端通过。
 - 原始日志读取被自动审批拒绝（可能含凭据/交易信息），已改用仅输出状态的查询；进一步历史事件排查等待用户选择范围。
+
+## 历史已收款原单恢复：双重根因
+
+1. Pay运行环境缺少PLATFORM_API_BASE_URL。已备份服务器pay.env，配置现有Core内网地址并在部署锁下重启；健康401及进程运行配置核验通过。其他密钥、权限与门店开关未改。启用前核验无PENDING桥接事件，恢复仅针对指定历史原单。
+2. 地址恢复后，Core接收原事件触发OutboxEventBus.pumpAfterCommit空指针：SysOutboxMapper自定义INSERT IGNORE未取回生成主键。补充@Options(useGeneratedKeys=true,keyProperty="id",keyColumn="id")，保留原事件号与重复事实校验。无需DDL或API修改。
+
+新增真实MyBatis/H2定向用例复现与生产同位置空指针（红），验证生成主键、事务提交前不投递、提交后唤醒、同事件重复不新增记录。另执行原事件HTTP持久化与幂等用例；不进行全量回归。
+
+用户已授权按原因修复及原单恢复，使用既有异常retry-event接口、SYSTEM审计身份、明确原因、固定幂等键；不直改财务表、不新建收款。首轮重试因Core上述空指针仍未桥接，保留原事件事实，待Core修复部署后继续。
