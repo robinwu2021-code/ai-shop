@@ -184,8 +184,8 @@ class FoodStoreScopeTest {
         @Bean SecurityFilterChain chain(HttpSecurity http, MemoryTokenStore tokens) throws Exception {
             var context = new BizContextFilter((actor, requested) -> new BizContext("E", Set.of(), Set.of(),
                     Set.of("A", "B"), "A", false, Map.of(), Map.of(
-                            "A", actor.equals("cashier") ? Set.of() : Set.of("biz:finance"),
-                            "B", Set.of("biz:finance"))));
+                            "A", actor.equals("cashier") ? Set.of() : Set.of("biz:finance", "biz:store"),
+                            "B", Set.of("biz:finance", "biz:store"))));
             return http.csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
                     .exceptionHandling(errors -> errors.authenticationEntryPoint((req, res, ex) -> res.sendError(401)))
                     .addFilterBefore(new MerchantTokenAuthFilter(tokens), UsernamePasswordAuthenticationFilter.class)

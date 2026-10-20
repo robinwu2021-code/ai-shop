@@ -284,9 +284,44 @@ Controller 必须先从既有身份解析取得主体、currentStore、授权门
 
 裁定：没有完整合同/提供方环境就保留交易验收阻塞，不以启动或局部HTTP测试代替；代价是餐饮交易能力仍关闭。原三端对齐文档原已在工作区但未跟踪，本轮按计划保留内容并纳入Git，既有API清单仍是设计而非已交付路由。
 
+## NEXT-08A 门店餐饮策略读取 · 2026-10-20
+
+目的：为桌台、营业日和后续点餐规则提供同一份门店策略快照，先完成一条真实的读取链路。
+本轮仅实现FOOD-API-001，具体文件与后续步骤见[M0方案NEXT-08A](../../docs/technical/TDD-餐饮系统-M0基础工程与接入方案.md#next-08a先交付api001读取切片本轮实施计划)。
+
+- B端 `GET /biz/x/food/stores/{storeNo}/policy?at=2026-10-20T20:00:00%2B08:00`；at可省略，取服务当前时刻。输入主体来自原BizContext，query中的entityNo不生效。
+- 输出仅 `policyNo/timezone/cutoverMinute/payPolicy/capabilities/version`；B端使用原ApiResult包装和业务错误码，无生效策略为NOT_FOUND，不读后补写。
+- 权限沿STORE；门店路径、原始X-Store-No、当前店/授权店及门店目录真实归属共同校验，目录不可见时不进入策略查询。
+- 本地读取由StoreOperationServiceImpl→FoodMappers.StorePolicyMapper，沿原主库只读事务；逻辑删除/未来策略排除，最近生效时间含等号。
+- standalone由FoodClientConfiguration→RemoteStoreOperationService→原InternalHttp/ServiceCalls→`POST /internal/food/store-policy/get`，入参为entityNo/storeNo/at，返回同一typed VO。内部400/403/404/409转回原业务错误；未配置、不可达、超时等沿共享调用失败，不回退本地或重试。
+- 独立地址沿 `shop.services.targets.FOOD`，凭证沿 `shop.services.internal-token`；当前调用3秒连接/5秒读取超时。food-server不引入food-web或用户鉴权，原内部安全链校验令牌；必填范围和SQL隔离在服务侧再次验证。
+
+验证命令（JDK21，构件已安装到本地Maven缓存）：
+
+```sh
+mvn -o -f backend-plugins/shop-industry-food/pom.xml verify
+python3 scripts/verify-food-primary-mysql.py
+mvn -o -f backend/pom.xml -pl shop-app -am test -Dtest=FoodEmbeddedWiringTest -Dsurefire.failIfNoSpecifiedTests=false
+mvn -o -f backend/pom.xml -pl shop-app -am -Pfood-embedded test -Dtest=FoodEmbeddedWiringTest -Dsurefire.failIfNoSpecifiedTests=false -Dfood.build.shape=embedded
+mvn -o -f backend/pom.xml -pl shop-app -am -Pfood-standalone test -Dtest=FoodEmbeddedWiringTest -Dsurefire.failIfNoSpecifiedTests=false -Dfood.build.shape=standalone
+```
+
+常规reactor含迁移打包91项实际通过，数据库专用16项条件跳过；另一次性MySQL 34项实际通过且0跳过（15主库/13写入基础/5策略/1真实server）。宿主三形态实际5/5/6通过；少数与形态不符的条件测试明确跳过。真实HTTP测试使用本机临时端口和测试令牌；领域响应替身只证明传输，实际SQL另由H2/MySQL与真实server验证。
+Service/Remote/内部入口初始失败后实现；移除范围校验会使非法原始门店头绕过并令测试失败，恢复后通过。B端使用真实统一异常处理器，验证业务码，不用测试自定义403代替平台响应约定。
+
+裁定及代价：
+
+- effective_from以UTC LocalDateTime表达Instant，审计时间仍沿平台。后续发布必须使用相同约定，不能把策略timezone当数据库时区。
+- 两种部署同时完成真实读取；独立调用需配置既有服务发现/令牌，内部入口信任平台身份并强制主体/门店查询范围，不复制用户会话体系。
+- GET不创建默认策略，已发布配置不代表授权或readiness。API002交付前，不能用业务API初始化策略；返回POSTPAY不表示可收款后付。
+
+独立只读审查未发现Critical/Important/Minor遗留项；30项既有设计守卫通过。实环境FOOD地址/令牌需由部署提供，本轮不声称已核验；同生效时刻唯一性沿冻结V1的uk_food_2(store_no,effective_from)，不通过排序掩盖缺约束的库。
+
+本轮无迁移、未访问/升级现有库，V1未变；API002/003/081、写审计与首写原子性继续待办，不以只读测试关闭NEXT-06业务AC。下一步先整理并实现API002的版本/CAS及策略发布输入约束，再处理日历和平台能力授权。
+
 ## 后续边界
 
-下一步为 NEXT-08：营业治理与审计的首个小切片，再进入NEXT-09桌区首写；NEXT-06业务级AC随之验收。独立支付/库存的权威域子任务可并行推进，但不得用它们的待实施状态开放正式交易。
+下一步为 NEXT-08B：策略发布与版本控制，再推进日历/授权/真实审计及NEXT-09桌区首写；NEXT-06业务级AC随之验收。独立支付/库存的权威域子任务可并行推进，但不得用它们的待实施状态开放正式交易。
 现有主库前置缺项与远程支付/库存合同尚未完成，不能把本轮 schema 接线通过解释为可营业。
 
 ## 三行业共用写入基础（2026-10-20）

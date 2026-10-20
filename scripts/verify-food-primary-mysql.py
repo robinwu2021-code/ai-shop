@@ -43,7 +43,7 @@ def main():
         env.update(FOOD_TEST_DISPOSABLE='true', FOOD_TEST_JDBC_URL='jdbc:mysql://' + binding + '/mysql')
         with tempfile.NamedTemporaryFile(prefix='food-primary-tests-', suffix='.log', delete=False) as log:
             result = subprocess.run(['mvn', '-o', '-f', 'backend-plugins/shop-industry-food/pom.xml',
-                                     '-pl', 'food-server', '-am', 'test', '-Dtest=FoodPrimaryDatabaseTest,FoodIdempotencyTest,FoodOutboxWiringTest,FoodServerPrimaryDatabaseTest',
+                                     '-pl', 'food-server', '-am', 'test', '-Dtest=FoodPrimaryDatabaseTest,FoodIdempotencyTest,FoodOutboxWiringTest,StoreOperationServiceTest,FoodServerPrimaryDatabaseTest',
                                      '-Dsurefire.failIfNoSpecifiedTests=false'], cwd=ROOT, env=env,
                                     stdout=log, stderr=subprocess.STDOUT)
         print('Test log:', log.name)
@@ -59,7 +59,7 @@ def main():
         if int(server.attrib['tests']) != 1 or any(int(server.attrib[k]) for k in ['failures', 'errors', 'skipped']):
             raise RuntimeError('Standalone MySQL test did not execute and pass')
         guards = 0
-        for name, minimum in [('FoodIdempotencyTest', 6), ('FoodOutboxWiringTest', 7)]:
+        for name, minimum in [('FoodIdempotencyTest', 6), ('FoodOutboxWiringTest', 7), ('StoreOperationServiceTest', 5)]:
             report = ROOT / ('backend-plugins/shop-industry-food/food-core/target/surefire-reports/'
                              + 'TEST-ai.neargo.shop.food.scenario.' + name + '.xml')
             guard = ET.parse(report).getroot()

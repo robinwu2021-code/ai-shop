@@ -231,6 +231,30 @@ embedded餐饮复用平台dataSource/sqlSessionFactory/transactionManager；stan
 - [ ] 先验当前桌区配置所需开关/权限与审计，再逐项补GOV其余业务；营业时间读既有openHours，接单日历不覆盖门店营业时间。未交付后付/复杂收退款仍关闭。
 - [ ] 涉及未定义的授权持久化/CAS语义，先登记合同缺口并在原真源补齐，不能临时用任意settings字段改变协议后直接写代码。提交按每个独立GOV切片拆分，不把四API合成一个大提交。
 
+##### NEXT-08A：先交付API001读取切片（本轮实施计划）
+
+目的：建立真实的门店餐饮策略读取，为后续桌区与营业规则提供一致快照，不开放交易能力。
+不把整个NEXT-08一次生成；API002发布、003日历、081授权及真实写入审计留后续独立切片。
+
+| 文件 | 当前职责 |
+|---|---|
+| food-api/service/StoreOperationService；dto/GetPolicyQuery、StoreOperationPolicyResultVO | 原getPolicy(entityNo,storeNo,query)签名与API001六字段，不补空的未来方法 |
+| food-core/service/impl/StoreOperationServiceImpl；entity/FnbStorePolicy；FoodMappers.StorePolicyMapper | 主体/店/生效时点/逻辑删除过滤，最近生效策略，只读主事务；无默认补写 |
+| food-core/config/FoodAutoConfiguration、FoodDataScopeRegistration | 当前实现条件装配、fnb_store_policy真实entity_no登记 |
+| food-web/api/biz/BizStoreOperationPolicyController | 原B端登录/门店目录/范围/STORE权限；只在api profile启用 |
+| food-api/spi/StoreOperationInternalApi（含Lookup） | typed POST /internal/food/store-policy/get，entityNo/storeNo/at由可信平台入口组装 |
+| food-web/foodclient/FoodClientConfiguration、RemoteStoreOperationService | standalone读取代理，沿InternalHttp/ServiceCalls，无本地业务回退 |
+| food-server/server/api/InternalStoreOperationPolicyController | 仅内部适配，原服务密钥保护；范围参数复核、错误状态，不装B端鉴权 |
+| shop-base/svc/ServiceName | 追加FOOD用于本次真实读取，不修改PAY/库存业务或引入自定义地址键 |
+| StoreOperationServiceTest、FoodPolicyApiTest、RemoteStoreOperationServiceTest、InternalPolicyApiTest及MySQL实际查询验证 | 时点/主体/门店/无策略/坏数据，实际Controller权限/参数，真HTTP独立链路及错误、只读无写入 |
+
+- [x] 先写读取/边界失败测试，再实现实体、Service和主库查询；at缺省用UTC时钟，effective_from以UTC映射LocalDateTime，不改变审计/全局时间。
+- [x] 实现B端API001；权限沿BizPerms.STORE，门店事实沿StoreDirectoryPort，原头/path/currentStore均核对。未授权或门店不存在不进入策略查询。
+- [x] 实现typed独立读取和ServiceName.FOOD；独立服务只暴露internal，错误结果与embedded语义一致，不创建空远程代理或缺配置时回退本地。
+- [x] 真实MySQL验证读取生效边界、逻辑删除和主体隔离、行数不变；常规reactor、三形态宿主与真实HTTP合同验证。只读GET不写业务审计/Outbox，不关闭NEXT-06真实首写AC。
+
+API001输入/输出沿既有API册；无生效策略沿NOT_FOUND。策略中的capabilities/payPolicy是已发布配置快照，不是营业许可；不因返回POSTPAY而开放后付。跨夜openHours与日历求交在API003切片实现，本轮不虚构open字段或改共享营业时间。
+
 #### NEXT-09：桌区首个真实业务切片（TBL-01）
 
 **文件：**
@@ -352,3 +376,21 @@ NEXT-04实际验证：Java38项通过（含3项verify阶段资源检查）；Nod
 普通收退款的独立PAY协议与完整独立库存协议在当前仓库仍未闭环；PAY权益/储值既有远程能力不被误判为不存在。运行环境仅核验仓库配置/部署资料，不声称外部实例已联通或一定不存在。
 已有费率/发票真HTTP传输测试5项通过，替身领域服务只作传输基线；未创建或用mock关闭Independent*业务验收。全部CORE/PAY/RET子任务及两项真实合同验收的前置门槛详见[核验册](./TDD-餐饮系统-独立支付库存合同核验.md)。
 NEXT-07任务完成指核验和拆分完成；独立资金/库存营业验收继续阻塞。下一步NEXT-08营业治理/审计切片，随后NEXT-09桌区首写；NEXT-06真实业务AC跟随这些切片验收。未改业务代码、V1或现有主库。
+
+
+### NEXT-08A 策略读取回填 · 2026-10-20
+
+本轮只完成FOOD-API-001：B端GET `/biz/x/food/stores/{storeNo}/policy`；`at`可省略或提供带时区的ISO时刻，返回policyNo/timezone/cutoverMinute/payPolicy/capabilities/version六个平铺字段。
+主体取原BizContext，门店同时核对currentStore、授权集合、原始X-Store-No及StoreDirectoryPort真实归属；权限沿BizPerms.STORE。B端成功与失败复用ApiResponseWrapper/GlobalExceptionHandler，保持HTTP 200加业务码（登录失败仍沿401），未创造餐饮响应格式。
+本地Service沿主库Mapper和原只读事务，按主体/门店/生效时刻/逻辑删除筛选最近策略。独立模式由food-web的Remote Service沿InternalHttp/ServiceCalls调用food-server typed内部入口；内部令牌、必填范围和SQL条件均实际验证，无本地回退/重试。只追加ServiceName.FOOD，不改支付库存业务。
+
+裁定：effective_from这一新业务字段以UTC LocalDateTime保存、Instant查询，策略timezone用于营业日规则，审计字段与全局时区保持现有口径；代价是后续API002必须采用同一映射。
+裁定：本轮同时交付本地与typed独立读取；代价是独立部署必须配置原服务发现FOOD地址与内部令牌。内部入口只信任平台服务，不重复装配用户认证，平台入口负责用户/门店权限。
+裁定：没有生效策略返回原NOT_FOUND，不在GET补默认值；capabilities/payPolicy只表达发布快照；代价是API002交付前不能通过业务API创建策略，也不能据POSTPAY返回判断可营业。
+
+验证：JDK21，餐饮reactor verify（含迁移打包）91项实际执行通过、16项数据库专用条件跳过；另以一次性MySQL执行15主库+13写入基础+5策略读取+1真实server，34项通过、0跳过。真实server使用冻结V1表，验证令牌、查询、参数拒绝、外主体无结果及行数/幂等/Outbox不变。宿主默认/embedded/standalone分别5/5/6项执行通过。B端测试含原始头回落、跨店、目录外主体/缺失、角色不足、无效at和伪造entity参数；真实HTTP验证typed JSON/Instant/令牌。
+RED证据：Service初始5项断言失败；Remote初始3项失败；Internal入口初始2项失败，真实MySQL server读初始404。移除范围校验后原始非法头出现200且断言失败，恢复通过。首轮Mock环境自附加受限已改为显式目录夹具；真HTTP首轮本地bind受沙箱限制，后在允许本机网络的执行环境通过，未通过跳过规避。
+
+NEXT-08整体仍未完成：API002策略发布/CAS、API003跨夜openHours与接单日历求交、API081授权及真实首写审计/意图/幂等摘要仍待实施。API001不追加open字段、不变更共享营业时间、不发Outbox、不改变readiness。既有主库未访问/升级，冻结V1 SHA256仍为215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9；普通支付/库存真实营业验收仍按NEXT-07阻塞。
+
+独立只读代码审查未发现需修复的Critical/Important/Minor项；30项既有餐饮设计守卫通过。实环境FOOD发现/令牌未核验，部署仍须提供；同生效时刻唯一性沿冻结V1的uk_food_2(store_no,effective_from)。未声称全backend测试通过，NEXT-03的两项独立schema已知失败仍保留原记录。

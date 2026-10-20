@@ -1,11 +1,19 @@
 package ai.neargo.shop.food.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import ai.neargo.shop.common.AuditMetaObjectHandler;
 import ai.neargo.shop.food.config.FoodSchemaReady;
 import ai.neargo.shop.food.mapper.FoodMappers;
 import ai.neargo.shop.food.server.FoodApplication;
+import ai.neargo.shop.food.spi.StoreOperationInternalApi;
+import ai.neargo.shop.svc.InternalHttp;
+import org.springframework.http.MediaType;
+import org.springframework.security.web.FilterChainProxy;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -49,6 +57,33 @@ class FoodServerPrimaryDatabaseTest {
                         assertThat(context.getBean(MetaObjectHandler.class)).isInstanceOf(AuditMetaObjectHandler.class);
                         assertThat(context.getBean(FoodSchemaReady.class).ready()).isTrue();
                         assertThat(context.getEnvironment().getProperty("spring.flyway.enabled", Boolean.class)).isFalse();
+                        var sql = new JdbcTemplate(context.getBean(DataSource.class));
+                        sql.update("INSERT INTO fnb_store_policy(tenant_no,entity_no,policy_no,store_no,timezone,"
+                                + "cutover_minute,effective_from,pay_policy,capabilities,settings,created_at,created_by,updated_at,updated_by) VALUES "
+                                + "('MAIN','E','P1','A','Asia/Shanghai',240,'2026-10-01 00:00:00',"
+                                + "'POSTPAY','[\"TABLE_CONFIG\"]','{}',NOW(3),'SYSTEM',NOW(3),'SYSTEM')");
+                        var mvc = MockMvcBuilders.webAppContextSetup(context)
+                                .addFilters(context.getBean(FilterChainProxy.class)).build();
+                        String body = "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"at\":\"2026-10-20T12:00:00Z\"}";
+                        mvc.perform(post(StoreOperationInternalApi.POLICY_PATH).contentType(MediaType.APPLICATION_JSON)
+                                        .content(body)).andExpect(status().isUnauthorized());
+                        mvc.perform(post(StoreOperationInternalApi.POLICY_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.policyNo").value("P1"))
+                                .andExpect(jsonPath("$.payPolicy").value("POSTPAY"))
+                                .andExpect(jsonPath("$.data").doesNotExist());
+                        mvc.perform(post(StoreOperationInternalApi.POLICY_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON).content(body.replace("\"E\"","\"FOREIGN\"")))
+                                .andExpect(status().isNotFound());
+                        mvc.perform(post(StoreOperationInternalApi.POLICY_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON).content("{\"storeNo\":\"A\"}"))
+                                .andExpect(status().isBadRequest());
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_store_policy",Integer.class)).isEqualTo(1);
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent",Integer.class)).isZero();
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class)).isZero();
                     });
         } finally { admin.execute("DROP DATABASE " + database); }
     }

@@ -18,6 +18,9 @@ public final class ServiceName {
     /** 定时任务调度器。它<b>不接受调用</b>，只调别人；列在这里是为了名字统一 */
     public static final String JOB = "JOB";
 
+    /** 餐饮独立进程；三端用户入口仍在PLATFORM。 */
+    public static final String FOOD = "FOOD";
+
     private ServiceName() {
     }
 }
