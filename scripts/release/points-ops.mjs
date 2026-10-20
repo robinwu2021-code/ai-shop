@@ -62,7 +62,7 @@ function main() {
     }
   } catch { /* No successful receipt for this exact commit and base. */ }
   git('merge-base', '--is-ancestor', manifest.releaseBase, base);
-  const files = git('diff', '--name-only', '--no-renames', manifest.releaseBase, head).split('\n').filter(Boolean);
+  const files = git('diff', '--name-only', '-z', '--no-renames', manifest.releaseBase, head).split('\0').filter(Boolean);
   validateFiles(files);
   run('git', ['diff', '--check', base, head]);
   run('node', ['--test', 'scripts/release/points-ops.test.mjs']);
