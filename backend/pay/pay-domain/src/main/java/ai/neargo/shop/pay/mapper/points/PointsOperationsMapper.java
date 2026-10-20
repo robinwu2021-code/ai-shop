@@ -15,6 +15,30 @@ import java.util.Map;
 @Mapper
 public interface PointsOperationsMapper {
     @Select(
+            "<script>SELECT v.id,v.voucher_no,v.biz_ref,v.currency,v.rate_points,v.rate_minor,v.created_at FROM pts_voucher v WHERE v.type_code=#{type} AND v.id&gt;#{after} AND v.deleted=0 AND v.created_at&gt;=#{from} AND v.created_at&lt;#{to}<choose><when test='direction == \"EARN\"'> AND v.biz_ref LIKE 'GRANT:%'</when><when test='direction == \"REDEEM\"'> AND (v.biz_ref LIKE 'HOLD:%' OR v.biz_ref LIKE 'RELEASE:%' OR v.biz_ref LIKE 'FINALIZE:%')</when><otherwise> AND (v.biz_ref LIKE 'CANCEL:%' OR v.biz_ref LIKE 'REFUND_CLOSE:%' OR v.biz_ref LIKE 'REFUND_CONFIRM:%')</otherwise></choose><if test='store != null'> AND EXISTS (SELECT 1 FROM pts_ledger_entry e WHERE e.type_code=v.type_code AND e.voucher_no=v.voucher_no AND e.holder_type='STORE' AND e.holder_no=#{store} AND e.deleted=0)</if><if test='user != null'> AND EXISTS (SELECT 1 FROM pts_ledger_entry e WHERE e.type_code=v.type_code AND e.voucher_no=v.voucher_no AND e.holder_type='USER' AND e.holder_no=#{user} AND e.deleted=0)</if> ORDER BY v.id LIMIT #{limit}</script>")
+    List<Map<String, Object>> transactionVouchers(
+            @Param("type") String type,
+            @Param("direction") String direction,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            @Param("store") String store,
+            @Param("user") String user,
+            @Param("after") long after,
+            @Param("limit") int limit);
+
+    @Select("SELECT id,voucher_no,biz_ref,currency,rate_points,rate_minor,created_at FROM pts_voucher WHERE type_code=#{type} AND voucher_no=#{voucher} AND deleted=0")
+    Map<String, Object> voucherByNo(@Param("type") String type, @Param("voucher") String voucher);
+
+    @Select(
+            "<script>SELECT id,type_code,holder_type,holder_no,issued_points,issuable_points,pending_points,available_points,held_points,refund_reserved_points,recirculatable_points,frozen,expire_at,expiry_revision,last_active_at,version FROM pts_account WHERE type_code=#{type} AND holder_type=#{holder}<if test='holderNo != null'> AND holder_no=#{holderNo}</if> AND id&gt;#{after} AND deleted=0 ORDER BY id LIMIT #{limit}</script>")
+    List<Map<String, Object>> accounts(
+            @Param("type") String type,
+            @Param("holder") ai.neargo.shop.pay.points.model.HolderType holder,
+            @Param("holderNo") String holderNo,
+            @Param("after") long after,
+            @Param("limit") int limit);
+
+    @Select(
             "SELECT version FROM pts_account WHERE type_code=#{type} AND holder_type=#{holder} AND"
                 + " holder_no=#{subject} AND deleted=0")
     Map<String, Object> accountHead(

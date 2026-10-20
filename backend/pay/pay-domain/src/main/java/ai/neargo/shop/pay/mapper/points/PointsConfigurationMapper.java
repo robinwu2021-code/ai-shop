@@ -403,17 +403,17 @@ public interface PointsConfigurationMapper {
 
     @Insert(
             "INSERT INTO"
-                + " pts_pool_request(type_code,request_no,submitted_by,evidence_no,state,payload_json,created_by)"
-                + " VALUES(#{r.typeCode},#{r.requestNo},#{r.submittedBy},#{r.evidenceNo},'SUBMITTED',#{json},#{r.submittedBy})")
-    int submit(@Param("r") PoolRequest request, @Param("json") String json);
+                + " pts_pool_request(type_code,request_no,submitted_by,evidence_no,state,payload_json,created_by,submitted_reason)"
+                + " VALUES(#{r.typeCode},#{r.requestNo},#{r.submittedBy},#{r.evidenceNo},'SUBMITTED',#{json},#{r.submittedBy},#{reason})")
+    int submit(@Param("r") PoolRequest request, @Param("json") String json, @Param("reason") String reason);
 
     @Select("SELECT * FROM pts_pool_request WHERE request_no=#{no} FOR UPDATE")
     Map<String, Object> lockRequest(String no);
 
     @Update(
-            "UPDATE pts_pool_request SET approved_by=#{actor},state='APPROVING',version=version+1 "
+            "UPDATE pts_pool_request SET approved_by=#{actor},reviewed_at=CURRENT_TIMESTAMP,review_reason=#{reason},state='APPROVING',version=version+1 "
                     + "WHERE request_no=#{no} AND state='SUBMITTED' AND submitted_by<>#{actor}")
-    int beginApproval(@Param("no") String no, @Param("actor") String actor);
+    int beginApproval(@Param("no") String no, @Param("actor") String actor, @Param("reason") String reason);
 
     @Update(
             "UPDATE pts_pool_request SET state='APPROVED',payload_json=#{json},version=version+1 "
@@ -422,11 +422,11 @@ public interface PointsConfigurationMapper {
 
     @Update(
             "UPDATE pts_pool_request SET"
-                + " state='REJECTED',approved_by=#{actor},updated_by=#{actor},updated_at=CURRENT_TIMESTAMP,version=version+1"
+                + " state='REJECTED',approved_by=#{actor},reviewed_at=CURRENT_TIMESTAMP,review_reason=#{reason},updated_by=#{actor},updated_at=CURRENT_TIMESTAMP,version=version+1"
                 + " WHERE request_no=#{no} AND state='SUBMITTED' AND version=#{version} AND"
                 + " submitted_by<>#{actor}")
     int rejectRequest(
-            @Param("no") String no, @Param("version") long version, @Param("actor") String actor);
+            @Param("no") String no, @Param("version") long version, @Param("actor") String actor, @Param("reason") String reason);
 
     @Select("SELECT COALESCE(MAX(ready_seq),0) FROM pts_statement_final_fact WHERE type_code=#{type}")
     long statementBuildHighWater(String type);

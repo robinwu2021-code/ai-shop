@@ -31,6 +31,9 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 
@@ -86,6 +89,92 @@ class PointsOpsInspectionTest {
         assertThat(inspection.flows(type, 0, 1).rows())
                 .singleElement()
                 .satisfies(f -> assertThat(f.deltaMinor()).isEqualTo(100));
+    }
+
+    @Test
+    void account_pages_filter_holder_type_and_continue_by_account_id() {
+        String type = fundedType();
+        JdbcTemplate jdbc = new JdbcTemplate(data);
+        jdbc.update("INSERT INTO pts_account(type_code,holder_type,holder_no,available_points,last_active_at) VALUES(?,?,?,?,?)", type, "USER", "U_A", 17, 1234);
+        jdbc.update("INSERT INTO pts_account(type_code,holder_type,holder_no,available_points,frozen,last_active_at) VALUES(?,?,?,?,?,?)", type, "USER", "U_B", 29, 1, 2345);
+        jdbc.update("INSERT INTO pts_account(type_code,holder_type,holder_no,available_points) VALUES(?,?,?,?)", type, "STORE", "S_A", 41);
+
+        var first = inspection.accounts(type, HolderType.USER, null, 0, 1);
+        assertThat(first.rows()).hasSize(1);
+        assertThat(first.rows().getFirst().snapshot().holderType()).isEqualTo(HolderType.USER);
+        assertThat(first.rows().getFirst().snapshot().points(Bucket.AVAILABLE)).isEqualTo(17);
+        assertThat(first.rows().getFirst().snapshot().lastActiveAt()).isEqualTo(1234);
+        assertThat(first.hasMore()).isTrue();
+
+        var second = inspection.accounts(type, HolderType.USER, null, first.next(), 1);
+        assertThat(second.rows()).singleElement().satisfies(row -> {
+            assertThat(row.snapshot().holderNo()).isEqualTo("U_B");
+            assertThat(row.snapshot().frozen()).isTrue();
+            assertThat(row.snapshot().points(Bucket.AVAILABLE)).isEqualTo(29);
+        });
+        assertThat(inspection.accounts(type, HolderType.STORE, null, 0, 20).rows())
+                .singleElement().satisfies(row -> assertThat(row.snapshot().holderNo()).isEqualTo("S_A"));
+    }
+
+    @Test
+    void transaction_queries_use_voucher_family_persisted_time_and_ledger_dimensions() {
+        String type = fundedType();
+        JdbcTemplate jdbc = new JdbcTemplate(data);
+        LocalDateTime at = LocalDateTime.of(2026, 10, 20, 10, 0);
+        jdbc.update("INSERT INTO pts_voucher(voucher_no,biz_ref,payload_hash,type_code,currency,rate_points,rate_minor,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                "V_GRANT_" + type, "GRANT:SUB_1", "HASH", type, "CNY", 2, 1, "{}", at);
+        jdbc.update("INSERT INTO pts_ledger_entry(entry_no,voucher_no,type_code,holder_type,holder_no,bucket,delta_points,after_points,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                "E_" + type, "V_GRANT_" + type, type, "USER", "USER_1", "AVAILABLE", 20, 20, at);
+        jdbc.update("INSERT INTO pts_voucher(voucher_no,biz_ref,payload_hash,type_code,currency,rate_points,rate_minor,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                "V_ADJUST_" + type, "ADJUST:ADJ_1", "HASH2", type, "CNY", 2, 1, "{}", at);
+        jdbc.update("INSERT INTO pts_voucher(voucher_no,biz_ref,payload_hash,type_code,currency,rate_points,rate_minor,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                "V_HOLD_" + type, "HOLD:ORDER_1", "HASH3", type, "CNY", 2, 1, "{}", at);
+        jdbc.update("INSERT INTO pts_voucher(voucher_no,biz_ref,payload_hash,type_code,currency,rate_points,rate_minor,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                "V_CANCEL_" + type, "CANCEL:EVENT_1", "HASH4", type, "CNY", 2, 1, "{}", at);
+        jdbc.update("INSERT INTO pts_voucher(voucher_no,biz_ref,payload_hash,type_code,currency,rate_points,rate_minor,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                "V_REFUND_" + type, "REFUND_CONFIRM:PREP_1", "HASH5", type, "CNY", 2, 1, "{}", at);
+
+        var page = inspection.transactions(type, PointsInspectionService.TransactionDirection.EARN,
+                LocalDate.of(2026, 10, 20), LocalDate.of(2026, 10, 20), null, "USER_1", 0, 10);
+        assertThat(page.rows()).singleElement().satisfies(row -> {
+            assertThat(row.direction()).isEqualTo(PointsInspectionService.TransactionDirection.EARN);
+            assertThat(row.voucher().bizRef()).isEqualTo("GRANT:SUB_1");
+        });
+        assertThat(inspection.transactions(type, PointsInspectionService.TransactionDirection.REDEEM,
+                LocalDate.of(2026, 10, 20), LocalDate.of(2026, 10, 20), null, null, 0, 10).rows())
+                .singleElement().satisfies(row -> assertThat(row.voucher().bizRef()).isEqualTo("HOLD:ORDER_1"));
+        assertThat(inspection.transactions(type, PointsInspectionService.TransactionDirection.REVERSAL,
+                LocalDate.of(2026, 10, 20), LocalDate.of(2026, 10, 20), null, null, 0, 10).rows())
+                .extracting(row -> row.voucher().bizRef())
+                .contains("CANCEL:EVENT_1", "REFUND_CONFIRM:PREP_1");
+        var detail = inspection.transaction(type, "V_GRANT_" + type);
+        assertThat(detail.entries().rows()).singleElement().satisfies(entry -> {
+            assertThat(entry.holderNo()).isEqualTo("USER_1");
+            assertThat(entry.deltaPoints()).isEqualTo(20);
+        });
+    }
+
+    @Test
+    void budget_request_list_exposes_persisted_submission_and_review_audit_fields() {
+        String type = fundedType();
+        String requestNo = "AUDIT:" + type;
+        treasury.submit(new ai.neargo.shop.pay.points.admin.PointsTreasuryService.Submission(
+                "SUBMIT:" + type, requestNo, type,
+                ai.neargo.shop.pay.points.model.PoolRequest.Action.TOPUP_U, 100,
+                "EVIDENCE:" + type, null, "季度预算补充"), "MAKER");
+        var before = treasury.requests(type, 0, 20).rows().stream()
+                .filter(r -> r.requestNo().equals(requestNo)).findFirst().orElseThrow();
+        assertThat(before.submittedBy()).isEqualTo("MAKER");
+        assertThat(before.submittedAt()).isPositive();
+        assertThat(before.submittedReason()).isEqualTo("季度预算补充");
+
+        treasury.review(new ai.neargo.shop.pay.points.admin.PointsTreasuryService.Review(
+                "REVIEW:" + type, type, requestNo, before.version(), false, "凭证需补充"), "CHECKER");
+        var after = treasury.requests(type, 0, 20).rows().stream()
+                .filter(r -> r.requestNo().equals(requestNo)).findFirst().orElseThrow();
+        assertThat(after.approvedBy()).isEqualTo("CHECKER");
+        assertThat(after.reviewedAt()).isPositive();
+        assertThat(after.reviewReason()).isEqualTo("凭证需补充");
     }
 
     @Autowired PointsPayoutPreparationTest.TestClock clock;
@@ -214,6 +303,13 @@ class PointsOpsInspectionTest {
                 "OPS");
         assertThat(inspection.stats(type, day, PointsInspectionService.StatsScope.TOTAL, null))
                 .isNotNull();
+        var period = inspection.periodStats(type, day, day.plusDays(1));
+        assertThat(period.availableDays()).isEqualTo(1);
+        assertThat(period.missingDays()).isEqualTo(1);
+        assertThat(period.metrics()).containsKeys("granted_points", "redeemed_points");
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> inspection.periodStats(type, day, day.plusDays(93)))
+                .hasMessageContaining("PERIOD_INVALID");
         var result =
                 inspection.reconcile(
                         new PointsInspectionService.ReconRun("RECON:" + type, type, "TEST"), "OPS");

@@ -6,6 +6,7 @@ import ai.neargo.shop.pay.points.model.Bucket;
 import ai.neargo.shop.pay.points.model.HolderType;
 import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.query.PointsStatsService.Snapshot;
+import ai.neargo.shop.pay.points.query.PointsStatsService.PeriodSnapshot;
 import ai.neargo.shop.pay.points.recon.PointsReconService.Report;
 
 import java.time.LocalDate;
@@ -14,6 +15,13 @@ import java.util.List;
 /** Whitelisted financial inspection; reads never repair balances or manufacture evidence. */
 public interface PointsInspectionService {
     AccountView account(String typeCode, HolderType holderType, String holderNo);
+
+    AccountPage accounts(String typeCode, HolderType holderType, String holderNo, long after, int limit);
+
+    TransactionPage transactions(String typeCode, TransactionDirection direction, LocalDate from, LocalDate to,
+            String storeNo, String userNo, long after, int limit);
+
+    TransactionDetail transaction(String typeCode, String voucherNo);
 
     OperatorResult freeze(Freeze request, String actor);
 
@@ -33,6 +41,8 @@ public interface PointsInspectionService {
 
     Snapshot stats(String typeCode, LocalDate day, StatsScope scope, String subjectNo);
 
+    PeriodSnapshot periodStats(String typeCode, LocalDate from, LocalDate to);
+
     OperatorResult rebuildStats(StatsRebuild request, String actor);
 
     Report reconciliation(String typeCode, LocalDate day);
@@ -46,6 +56,20 @@ public interface PointsInspectionService {
     }
 
     record AccountView(AccountSnapshot snapshot, boolean exists, long version) {}
+
+    record AccountPage(List<AccountView> rows, long next, boolean hasMore) {
+        public AccountPage { rows = List.copyOf(rows); }
+    }
+
+    enum TransactionDirection { EARN, REDEEM, REVERSAL }
+
+    record TransactionRow(TransactionDirection direction, VoucherView voucher) {}
+
+    record TransactionPage(List<TransactionRow> rows, long next, boolean hasMore) {
+        public TransactionPage { rows = List.copyOf(rows); }
+    }
+
+    record TransactionDetail(TransactionDirection direction, VoucherView voucher, EntryPage entries) {}
 
     record Freeze(
             String requestId,

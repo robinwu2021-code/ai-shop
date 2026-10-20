@@ -12,6 +12,7 @@ import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -65,33 +66,47 @@ class PointsOrderBindingTest {
                 snapshot);
     }
 
+    String store() {
+        return "ST_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+    }
+
+    /** Compatibility helper: store participation is global and needs no per-store activation. */
     String activate() {
-        String store = "ST_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-        policies.change(
-                new IntegrationPolicyChange(
-                        "ACTIVE:" + store, store, "ONLINE", Mode.ACTIVE, true, true, -1, "QA"),
-                "OPS");
-        return store;
+        return store();
     }
 
     @Test
-    void freezes_original_binding_and_replays_even_after_stopping_new_admission() {
-        String store = activate();
+    void admits_new_binding_even_when_legacy_store_policy_is_detached() {
+        String store = "ST_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+        new JdbcTemplate(data)
+                .update(
+                        "INSERT INTO ord_points_integration_policy(store_no,scene,mode,version)"
+                                + " VALUES(?,?,?,?)",
+                        store,
+                        "ONLINE",
+                        "DETACHED",
+                        0);
+
+        var binding = bindings.admit(admission(store, "S:" + store));
+
+        assertThat(binding.phase()).isEqualTo(Phase.PENDING);
+        assertThat(policies.policy(store, "ONLINE").mode()).isEqualTo(Mode.ACTIVE);
+    }
+
+    @Test
+    void admits_all_stores_and_replays_binding_without_store_policy_rows() {
+        String store = store();
         var c = admission(store, "S:" + store);
         var first = bindings.admit(c);
-        policies.change(
-                new IntegrationPolicyChange(
-                        "DRAIN:" + store, store, "ONLINE", Mode.DRAINING, false, false, 0, "QA"),
-                "OPS");
         assertThat(bindings.admit(c)).isEqualTo(first);
         assertThat(bindings.find(c.subOrderNo()).snapshot().quotedMinor()).isEqualTo(10);
-        assertThatThrownBy(() -> bindings.admit(admission(store, "NEW:" + store)))
-                .hasMessageContaining("ADMISSION_CLOSED");
+        assertThat(bindings.admit(admission(store(), "NEW:" + store))).isNotNull();
+        assertThat(policies.policy(store, "ONLINE").mode()).isEqualTo(Mode.ACTIVE);
     }
 
     @Test
     void rejects_changed_body_cross_store_and_stale_policy_without_partial_binding() {
-        String store = activate();
+        String store = store();
         var c = admission(store, "S:" + store);
         bindings.admit(c);
         var changed =
@@ -148,7 +163,7 @@ class PointsOrderBindingTest {
 
     @Test
     void phase_cas_preserves_original_hold_number() {
-        String store = activate();
+        String store = store();
         var b = bindings.admit(admission(store, "S:" + store));
         var change = new Transition(b.bindingNo(), 0, Phase.BOUND, "HOLD");
         var bound = bindings.transition(change);

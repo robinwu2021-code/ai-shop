@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.points.store;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +48,18 @@ public interface PointsOperationsStore {
             String typeCode,
             ai.neargo.shop.pay.points.model.HolderType holderType,
             String holderNo);
+
+    List<Map<String, Object>> accounts(
+            String typeCode,
+            ai.neargo.shop.pay.points.model.HolderType holderType,
+            String holderNo,
+            long after,
+            int limit);
+
+    List<Map<String, Object>> transactionVouchers(String typeCode, String direction, LocalDateTime from,
+            LocalDateTime to, String storeNo, String userNo, long after, int limit);
+
+    Map<String, Object> voucherByNo(String typeCode, String voucherNo);
 
     List<Map<String, Object>> entries(
             String typeCode,

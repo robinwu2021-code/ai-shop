@@ -2,6 +2,10 @@ package ai.neargo.shop.payclient.impl;
 
 import ai.neargo.shop.pay.points.admin.PointsInspectionService;
 import ai.neargo.shop.pay.points.admin.PointsInspectionService.AccountView;
+import ai.neargo.shop.pay.points.admin.PointsInspectionService.AccountPage;
+import ai.neargo.shop.pay.points.admin.PointsInspectionService.TransactionDirection;
+import ai.neargo.shop.pay.points.admin.PointsInspectionService.TransactionPage;
+import ai.neargo.shop.pay.points.admin.PointsInspectionService.TransactionDetail;
 import ai.neargo.shop.pay.points.admin.PointsInspectionService.EntryPage;
 import ai.neargo.shop.pay.points.admin.PointsInspectionService.FlowPage;
 import ai.neargo.shop.pay.points.admin.PointsInspectionService.Freeze;
@@ -14,6 +18,7 @@ import ai.neargo.shop.pay.points.admin.PointsOperatorJournal.OperatorResult;
 import ai.neargo.shop.pay.points.model.HolderType;
 import ai.neargo.shop.pay.points.model.PositionMove;
 import ai.neargo.shop.pay.points.query.PointsStatsService.Snapshot;
+import ai.neargo.shop.pay.points.query.PointsStatsService.PeriodSnapshot;
 import ai.neargo.shop.pay.points.recon.PointsReconService.Report;
 import ai.neargo.shop.payclient.PointsInspectionAppService;
 import ai.neargo.shop.payclient.PointsOpsAccess;
@@ -41,6 +46,28 @@ public class PointsInspectionAppServiceImpl implements PointsInspectionAppServic
         if (holderType == HolderType.STORE) PointsOpsAccess.store(stores, holderNo);
         else PointsOpsAccess.platform();
         return PointsOpsErrors.call(() -> service.account(typeCode, holderType, holderNo));
+    }
+
+    @Override
+    public AccountPage accounts(String typeCode, HolderType holderType, String holderNo, long after, int limit) {
+        if (holderType == HolderType.STORE && holderNo != null && !holderNo.isBlank())
+            PointsOpsAccess.store(stores, holderNo);
+        else PointsOpsAccess.platform();
+        return PointsOpsErrors.call(() -> service.accounts(typeCode, holderType, holderNo, after, limit));
+    }
+
+    @Override
+    public TransactionPage transactions(String typeCode, TransactionDirection direction, LocalDate from,
+            LocalDate to, String storeNo, String userNo, long after, int limit) {
+        if (storeNo != null && userNo == null) PointsOpsAccess.store(stores, storeNo);
+        else PointsOpsAccess.platform();
+        return PointsOpsErrors.call(() -> service.transactions(typeCode, direction, from, to, storeNo, userNo, after, limit));
+    }
+
+    @Override
+    public TransactionDetail transaction(String typeCode, String voucherNo) {
+        PointsOpsAccess.platform();
+        return PointsOpsErrors.call(() -> service.transaction(typeCode, voucherNo));
     }
 
     @Override
@@ -87,6 +114,12 @@ public class PointsInspectionAppServiceImpl implements PointsInspectionAppServic
         if (scope == StatsScope.STORE) PointsOpsAccess.store(stores, subjectNo);
         else PointsOpsAccess.platform();
         return PointsOpsErrors.call(() -> service.stats(typeCode, day, scope, subjectNo));
+    }
+
+    @Override
+    public PeriodSnapshot periodStats(String typeCode, LocalDate from, LocalDate to) {
+        PointsOpsAccess.platform();
+        return PointsOpsErrors.call(() -> service.periodStats(typeCode, from, to));
     }
 
     @Override

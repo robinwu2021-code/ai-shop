@@ -34,6 +34,11 @@ public class PoolRequestServiceImpl implements PoolRequestService {
 
     @Override
     public void submit(PoolRequest r) {
+        submit(r, null);
+    }
+
+    @Override
+    public void submit(PoolRequest r, String reason) {
         if (r.requestNo() == null
                 || r.requestNo().isBlank()
                 || r.submittedBy() == null
@@ -49,7 +54,7 @@ public class PoolRequestServiceImpl implements PoolRequestService {
             throw new IllegalArgumentException("POINTS_WITHDRAW_TARGET_REQUIRED");
         }
         try {
-            config.submit(r, json.writeValueAsString(new Envelope(r, null)));
+            config.submit(r, json.writeValueAsString(new Envelope(r, null)), reason);
         } catch (DuplicateKeyException e) {
             var prior = config.lockRequest(r.requestNo());
             if (!json.readValue((String) prior.get("payload_json"), Envelope.class)
@@ -62,6 +67,11 @@ public class PoolRequestServiceImpl implements PoolRequestService {
 
     @Override
     public PostingResult approve(String no, String actor) {
+        return approve(no, actor, null);
+    }
+
+    @Override
+    public PostingResult approve(String no, String actor, String reason) {
         var hint = config.request(no);
         if (hint == null) {
             throw new IllegalArgumentException("POINTS_REQUEST_UNKNOWN");
@@ -78,7 +88,7 @@ public class PoolRequestServiceImpl implements PoolRequestService {
         if ("APPROVED".equals(row.get("state"))) {
             return envelope.result();
         }
-        config.beginApproval(no, actor);
+        config.beginApproval(no, actor, reason);
         PostingResult result = pools.applyApproved(envelope.request());
         config.approve(
                 no, actor, json.writeValueAsString(new Envelope(envelope.request(), result)));

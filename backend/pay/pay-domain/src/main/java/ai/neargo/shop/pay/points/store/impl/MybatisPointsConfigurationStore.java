@@ -149,6 +149,11 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
 
     @Override
     public void submit(PoolRequest r, String json) {
+        submit(r, json, null);
+    }
+
+    @Override
+    public void submit(PoolRequest r, String json, String reason) {
         lockTypeAndPool(r.typeCode());
         DataScopeContext.executeWithoutScope(
                 () -> {
@@ -158,7 +163,7 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
                         }
                         throw new IllegalArgumentException("POINTS_TYPE_RETIRED");
                     }
-                    mapper.submit(r, json);
+                    mapper.submit(r, json, reason);
                     return null;
                 });
     }
@@ -175,9 +180,14 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
 
     @Override
     public void beginApproval(String no, String actor) {
+        beginApproval(no, actor, null);
+    }
+
+    @Override
+    public void beginApproval(String no, String actor, String reason) {
         DataScopeContext.executeWithoutScope(
                 () -> {
-                    if (mapper.beginApproval(no, actor) != 1) {
+                    if (mapper.beginApproval(no, actor, reason) != 1) {
                         throw new IllegalStateException("POINTS_REQUEST_STATE");
                     }
                     return null;
@@ -197,9 +207,14 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
 
     @Override
     public void rejectRequest(String no, long version, String actor) {
+        rejectRequest(no, version, actor, null);
+    }
+
+    @Override
+    public void rejectRequest(String no, long version, String actor, String reason) {
         DataScopeContext.executeWithoutScope(
                 () -> {
-                    if (mapper.rejectRequest(no, version, actor) != 1)
+                    if (mapper.rejectRequest(no, version, actor, reason) != 1)
                         throw new IllegalArgumentException("POINTS_REQUEST_STATE_CONFLICT");
                     return null;
                 });

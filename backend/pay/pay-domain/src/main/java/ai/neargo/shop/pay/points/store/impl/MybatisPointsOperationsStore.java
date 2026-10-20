@@ -7,6 +7,7 @@ import ai.neargo.shop.pay.points.store.PointsOperationsStore;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Collection;
@@ -26,6 +27,31 @@ public class MybatisPointsOperationsStore implements PointsOperationsStore {
     public List<Map<String, Object>> switches(String type, long after, int limit) {
         require(after >= 0 && limit > 0 && limit <= 200, "POINTS_PAGE_INVALID");
         return DataScopeContext.executeWithoutScope(() -> mapper.switches(type, after, limit));
+    }
+
+    @Override
+    public List<Map<String, Object>> accounts(
+            String type,
+            ai.neargo.shop.pay.points.model.HolderType holder,
+            String holderNo,
+            long after,
+            int limit) {
+        require(type != null && !type.isBlank() && holder != null && after >= 0 && limit > 0 && limit <= 201, "POINTS_PAGE_INVALID");
+        return DataScopeContext.executeWithoutScope(() -> mapper.accounts(type, holder, holderNo, after, limit));
+    }
+
+    @Override
+    public List<Map<String, Object>> transactionVouchers(String type, String direction, LocalDateTime from,
+            LocalDateTime to, String store, String user, long after, int limit) {
+        require(type != null && !type.isBlank() && List.of("EARN", "REDEEM", "REVERSAL").contains(direction)
+                && from != null && to != null && from.isBefore(to) && after >= 0 && limit > 0 && limit <= 201,
+                "POINTS_PAGE_INVALID");
+        return DataScopeContext.executeWithoutScope(() -> mapper.transactionVouchers(type, direction, from, to, store, user, after, limit));
+    }
+
+    @Override
+    public Map<String, Object> voucherByNo(String type, String voucherNo) {
+        return DataScopeContext.executeWithoutScope(() -> mapper.voucherByNo(type, voucherNo));
     }
 
     @Override

@@ -39,6 +39,7 @@ public interface PointsConfigurationStore {
             String actor);
 
     void submit(PoolRequest request, String json);
+    default void submit(PoolRequest request, String json, String reason) { submit(request, json); }
 
     Map<String, Object> lockRequest(String requestNo);
 
@@ -58,8 +59,10 @@ public interface PointsConfigurationStore {
     void terminateAgreement(String activeKey, String actor);
 
     void rejectRequest(String requestNo, long expectedVersion, String actor);
+    default void rejectRequest(String requestNo, long expectedVersion, String actor, String reason) { rejectRequest(requestNo, expectedVersion, actor); }
 
     void beginApproval(String requestNo, String actor);
+    default void beginApproval(String requestNo, String actor, String reason) { beginApproval(requestNo, actor); }
 
     void approve(String requestNo, String actor, String resultJson);
 }

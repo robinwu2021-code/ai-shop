@@ -7,9 +7,11 @@ import ai.neargo.common.data.scope.DataScopeSpec;
 import ai.neargo.shop.auth.LoginUser;
 import ai.neargo.shop.auth.ScopeDim;
 import ai.neargo.shop.pay.points.admin.PointsWorkbenchService;
+import ai.neargo.shop.pay.points.admin.PointsInspectionService;
 import ai.neargo.shop.pay.points.query.PointsOverviewService;
 import ai.neargo.shop.payclient.impl.PointsOpsAppServiceImpl;
 import ai.neargo.shop.payclient.impl.PointsWorkbenchAppServiceImpl;
+import ai.neargo.shop.payclient.impl.PointsInspectionAppServiceImpl;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -127,5 +129,35 @@ class PointsOpsDataScopeTest {
         assertThatThrownBy(() -> app.changeStatement(request, "OPS"))
                 .isInstanceOf(AccessDeniedException.class);
         verifyNoInteractions(kernel);
+    }
+
+    @Test
+    void restricted_operator_can_only_page_one_authorized_store_account() {
+        restricted();
+        var stores = mock(ai.neargo.shop.spi.user.StoreDirectoryPort.class);
+        when(stores.cards(List.of("STORE_A"))).thenReturn(java.util.Map.of("STORE_A",
+                new ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard("STORE_A", "QA", "MERCHANT_A", null, "ACTIVE", true, null, null, null, null, 0, 0)));
+        when(stores.cards(List.of("STORE_B"))).thenReturn(java.util.Map.of("STORE_B",
+                new ai.neargo.shop.spi.user.StoreDirectoryPort.StoreCard("STORE_B", "QA", "MERCHANT_B", null, "ACTIVE", true, null, null, null, null, 0, 0)));
+        var kernel = mock(PointsInspectionService.class);
+        var app = new PointsInspectionAppServiceImpl(kernel);
+        org.springframework.test.util.ReflectionTestUtils.setField(app, "stores", stores);
+
+        app.accounts("T", ai.neargo.shop.pay.points.model.HolderType.STORE, "STORE_A", 0, 10);
+        app.transactions("T", ai.neargo.shop.pay.points.admin.PointsInspectionService.TransactionDirection.EARN,
+                java.time.LocalDate.of(2026, 10, 1), java.time.LocalDate.of(2026, 10, 20), "STORE_A", null, 0, 10);
+        assertThatThrownBy(() -> app.accounts("T", ai.neargo.shop.pay.points.model.HolderType.STORE, null, 0, 10))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> app.accounts("T", ai.neargo.shop.pay.points.model.HolderType.USER, null, 0, 10))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> app.transactions("T", ai.neargo.shop.pay.points.admin.PointsInspectionService.TransactionDirection.EARN,
+                java.time.LocalDate.of(2026, 10, 1), java.time.LocalDate.of(2026, 10, 20), null, "USER_A", 0, 10))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> app.accounts("T", ai.neargo.shop.pay.points.model.HolderType.STORE, "STORE_B", 0, 10))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(kernel).accounts("T", ai.neargo.shop.pay.points.model.HolderType.STORE, "STORE_A", 0, 10);
+        verify(kernel).transactions("T", ai.neargo.shop.pay.points.admin.PointsInspectionService.TransactionDirection.EARN,
+                java.time.LocalDate.of(2026, 10, 1), java.time.LocalDate.of(2026, 10, 20), "STORE_A", null, 0, 10);
+        verifyNoMoreInteractions(kernel);
     }
 }

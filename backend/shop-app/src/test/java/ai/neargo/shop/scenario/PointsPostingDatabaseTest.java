@@ -173,6 +173,14 @@ class PointsPostingDatabaseTest {
             try (var confirmation = connection.getMetaData().getTables(connection.getCatalog(), null, "pts_statement_confirmation", null)) {
                 if (!confirmation.next()) new ResourceDatabasePopulator(new ClassPathResource("db/migration/V469__points_statement_confirmation.sql")).execute(dataSource);
             }
+            try (var auditColumns = connection.getMetaData().getColumns(connection.getCatalog(), null, "pts_pool_request", "submitted_reason")) {
+                if (!auditColumns.next()) new ResourceDatabasePopulator(new ClassPathResource("db/migration/V530__points_pool_request_audit.sql")).execute(dataSource);
+            }
+            try (var queryIndex = connection.getMetaData().getIndexInfo(connection.getCatalog(), null, "pts_voucher", false, false)) {
+                boolean queryIndexInstalled = false;
+                while (queryIndex.next()) queryIndexInstalled |= "idx_pts_voucher_ops_cursor".equalsIgnoreCase(queryIndex.getString("INDEX_NAME"));
+                if (!queryIndexInstalled) new ResourceDatabasePopulator(new ClassPathResource("db/migration/V531__points_operations_query_indexes.sql")).execute(dataSource);
+            }
         } catch (SQLException failure) {
             throw new IllegalStateException("Points schema fixture failed", failure);
         }

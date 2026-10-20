@@ -25,8 +25,11 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Map;
+import java.util.EnumMap;
+import java.util.List;
 
 @Service
 public class PointsInspectionServiceImpl implements PointsInspectionService {
@@ -66,6 +69,75 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
                 read.account(type, holder, subject),
                 head != null,
                 head == null ? -1 : num(head, "version"));
+    }
+
+    @Override
+    @Transactional(value = "payTxManager", readOnly = true)
+    public AccountPage accounts(String type, HolderType holder, String holderNo, long after, int limit) {
+        page(type, after, limit);
+        require(holder == HolderType.USER || holder == HolderType.STORE, "POINTS_ACCOUNT_HOLDER_INVALID");
+        require(holderNo == null || !holderNo.isBlank(), "POINTS_ACCOUNT_INPUT_INVALID");
+        var raw = store.accounts(type, holder, holderNo, after, limit + 1);
+        boolean more = raw.size() > limit;
+        var pageRows = more ? raw.subList(0, limit) : raw;
+        var rows = pageRows.stream().map(r -> {
+            var balances = new EnumMap<Bucket, Long>(Bucket.class);
+            for (Bucket bucket : Bucket.values()) balances.put(bucket, num(r, bucket.column()));
+            HolderType accountHolder = HolderType.valueOf(text(r, "holder_type"));
+            var snapshot = new ai.neargo.shop.pay.points.model.AccountSnapshot(
+                    text(r, "type_code"), accountHolder, text(r, "holder_no"), balances,
+                    num(r, "frozen") == 1,
+                    r.get("expire_at") == null ? null : num(r, "expire_at"),
+                    num(r, "expiry_revision"), r.get("last_active_at") == null ? 0 : num(r, "last_active_at"));
+            return new AccountView(snapshot, true, num(r, "version"));
+        }).toList();
+        long next = pageRows.isEmpty() ? after : num(pageRows.getLast(), "id");
+        return new AccountPage(rows, next, more);
+    }
+
+    @Override
+    @Transactional(value = "payTxManager", readOnly = true)
+    public TransactionPage transactions(String type, TransactionDirection direction, LocalDate from,
+            LocalDate to, String storeNo, String userNo, long after, int limit) {
+        type(type);
+        require(direction != null && from != null && to != null && !to.isBefore(from)
+                && java.time.temporal.ChronoUnit.DAYS.between(from, to) <= 92, "POINTS_TRANSACTION_FILTER_INVALID");
+        require(storeNo == null || !storeNo.isBlank(), "POINTS_TRANSACTION_FILTER_INVALID");
+        require(userNo == null || !userNo.isBlank(), "POINTS_TRANSACTION_FILTER_INVALID");
+        page(type, after, limit);
+        var raw = store.transactionVouchers(type, direction.name(), from.atStartOfDay(),
+                to.plusDays(1).atStartOfDay(), storeNo, userNo, after, limit + 1);
+        boolean more = raw.size() > limit;
+        var pageRows = more ? raw.subList(0, limit) : raw;
+        var rows = pageRows.stream().map(r -> new TransactionRow(direction, voucher(r))).toList();
+        long next = pageRows.isEmpty() ? after : num(pageRows.getLast(), "id");
+        return new TransactionPage(rows, next, more);
+    }
+
+    @Override
+    @Transactional(value = "payTxManager", readOnly = true)
+    public TransactionDetail transaction(String type, String voucherNo) {
+        type(type);
+        require(nonblank(voucherNo), "POINTS_TRANSACTION_INPUT_INVALID");
+        var row = store.voucherByNo(type, voucherNo);
+        require(row != null, "POINTS_VOUCHER_UNKNOWN");
+        var direction = direction(text(row, "biz_ref"));
+        require(direction != null, "POINTS_TRANSACTION_DIRECTION_UNSUPPORTED");
+        var entries = entries(type, null, null, voucherNo, 0, 200);
+        return new TransactionDetail(direction, voucher(row), entries);
+    }
+
+    private VoucherView voucher(Map<String, Object> r) {
+        return new VoucherView(num(r, "id"), text(r, "voucher_no"), text(r, "biz_ref"),
+                text(r, "currency"), num(r, "rate_points"), num(r, "rate_minor"));
+    }
+
+    private TransactionDirection direction(String ref) {
+        if (ref == null) return null;
+        if (ref.startsWith("GRANT:")) return TransactionDirection.EARN;
+        if (ref.startsWith("HOLD:") || ref.startsWith("RELEASE:") || ref.startsWith("FINALIZE:")) return TransactionDirection.REDEEM;
+        if (ref.startsWith("CANCEL:") || ref.startsWith("REFUND_CLOSE:") || ref.startsWith("REFUND_CONFIRM:")) return TransactionDirection.REVERSAL;
+        return null;
     }
 
     @Override
@@ -190,6 +262,12 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
                     case USER -> "USER:" + PointsKeys.position("U", type, subject);
                 };
         return statistics.read(type, day, key);
+    }
+
+    @Override
+    public PointsStatsService.PeriodSnapshot periodStats(String type, LocalDate from, LocalDate to) {
+        type(type);
+        return statistics.period(type, from, to);
     }
 
     @Override
