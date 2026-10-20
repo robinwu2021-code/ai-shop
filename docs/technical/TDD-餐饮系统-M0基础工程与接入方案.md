@@ -1,6 +1,6 @@
 # 餐饮系统 M0 基础工程与接入方案
 
-> 状态：实施中，NEXT-01～05已完成；NEXT-06基础接线完成，业务AC随NEXT-08/09验收；NEXT-07待执行 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
+> 状态：实施中，NEXT-01～05已完成；NEXT-06基础接线完成，业务AC随NEXT-08/09验收；NEXT-07源码核验完成，独立交易验收阻塞；NEXT-08待执行 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
 > **本版替代上一版独立food-server三端鉴权、远程用户session解析的设计。** 独立餐饮只提供内部接口，C/B/平台运营Controller源码均归餐饮food-web，由shop-app挂载。
 > [独立项目、包及依赖清单](./TDD-餐饮系统-独立项目与包依赖方案.md) · [统一架构及三端完整清单](./TDD-餐饮系统-三端API与独立服务对齐.md) · [总计划](./TDD-餐饮系统-后端开发计划.md) · [平台Java规范](../../.claude/skills/ai-shop-dev-standards/references/java.md)。
 
@@ -120,7 +120,7 @@ embedded餐饮复用平台dataSource/sqlSessionFactory/transactionManager；stan
 
 **目标：** 五模块独立构建与装配通过，冻结迁移资源归餐饮，主库和授权范围接通，随后交付桌区092～095第一个真实业务切片。桌台、菜品和订单仍按总计划依次推进，不扩大本轮为全量餐饮实现。
 
-**执行方式：** 后续编码使用`superpowers:executing-plans`，在隔离分支/工作树中逐任务自实施。先读本TDD、[独立项目方案](./TDD-餐饮系统-独立项目与包依赖方案.md)与[方法清单](./design/餐饮系统-Controller-Service-Mapper方法清单.md)。NEXT-01～05及NEXT-06基础接线已实施；NEXT-06业务AC随NEXT-08/09首写完成，NEXT-07起待执行，实际命令与边界见餐饮工程README。
+**执行方式：** 后续编码使用`superpowers:executing-plans`，在隔离分支/工作树中逐任务自实施。先读本TDD、[独立项目方案](./TDD-餐饮系统-独立项目与包依赖方案.md)与[方法清单](./design/餐饮系统-Controller-Service-Mapper方法清单.md)。NEXT-01～05及NEXT-06基础接线已实施；NEXT-06业务AC随NEXT-08/09首写完成，NEXT-07已完成源码核验/任务拆分（非独立交易验收），NEXT-08起待执行，实际命令与边界见餐饮工程README。
 
 #### 文件定位与全局约束
 
@@ -214,10 +214,12 @@ embedded餐饮复用平台dataSource/sqlSessionFactory/transactionManager；stan
 
 **消费/产出：** 沿已有SPI核验实际签名；每项登记提供服务/请求结果/幂等/查询恢复/当前可用性/权威域实施任务与验收环境。FOOD/INVENTORY服务名与协议缺口先设计登记，不假定已存在。
 
-- [ ] 逐项核验收款、查询关闭、退款、库存锁/释放/分配/出库/原路恢复/退货收货；特别识别本地PaymentLedgerService依赖及StockPort默认no-op。
-- [ ] 为真实可用合同安排`IndependentPaymentContractTest#recoverUnknownPaymentByOriginalKey`、`IndependentInventoryContractTest#reserveOnceAndReleaseAfterCancellation`；没有服务或合同则登记阻塞，不用mock关闭。
-- [ ] 将权威域缺口拆为CORE/PAY/RET的可评审子任务；保留订单唯一触发库存/资金写入，禁止餐饮与核心双扣。没有部署服务事实时先核验现有环境资料，不宣称远程已经联通。
-- [ ] 合同核验可与NEXT-08/09分别推进，不阻塞无交易的桌区配置；但任何正式下单收款readiness必须等待对应合同通过。提交建议：`docs(food): audit independent payment and stock contracts`。
+- [x] 逐项核验收款、查询关闭、退款、库存锁/释放/分配/出库/原路恢复/退货收货；特别识别本地PaymentLedgerService依赖及StockPort默认no-op。
+- [x] 已安排后续实际合同验收并记录阻塞（未生成空类/未用mock关闭）：为真实可用合同安排`IndependentPaymentContractTest#recoverUnknownPaymentByOriginalKey`、`IndependentInventoryContractTest#reserveOnceAndReleaseAfterCancellation`；没有服务或合同则登记阻塞，不用mock关闭。
+- [x] 将权威域缺口拆为CORE/PAY/RET的可评审子任务；保留订单唯一触发库存/资金写入，禁止餐饮与核心双扣。没有部署服务事实时先核验现有环境资料，不宣称远程已经联通。
+- [x] 合同核验可与NEXT-08/09分别推进，不阻塞无交易的桌区配置；但任何正式下单收款readiness必须等待对应合同通过。提交建议：`docs(food): audit independent payment and stock contracts`。
+
+**核验收据：** [独立支付库存合同核验](./TDD-餐饮系统-独立支付库存合同核验.md)逐项列出现有签名/输入输出、本地与远程状态、恢复要求及CORE/PAY/RET权威域子任务。本轮PAY费率/发票HTTP传输基线5项通过，不证明普通收退款；两项Independent*测试保留BLOCKED_CONTRACT_AND_ENVIRONMENT。NEXT-08/09无交易配置可继续，任何正式下单收银不放行。
 
 #### NEXT-08：营业治理与审计当前切片（GOV-01/02）
 
@@ -342,3 +344,11 @@ NEXT-04实际验证：Java38项通过（含3项verify阶段资源检查）；Nod
 常规reactor70项执行通过；一次性MySQL另执行15主库+13写入基础+1真实server，29项通过且无跳过，真实事件flush后再失败也验证数据库回滚。消融原始门店头比较后1项断言失败，恢复后完整通过；宿主三形态定向回归通过，独立审查无遗留项。
 **NEXT-06只标基础接线完成**：当前scope探针、固定摘要、source/intent/audit夹具均非营业实现；缺key拒绝、typed规范化摘要、真实fnb_action_log/业务意图与事件原子写入，保留在NEXT-08/09验收，不用通用测试关闭这些AC。
 操作域、摘要、事务调用规则及本轮裁定见[餐饮工程README](../../backend-plugins/shop-industry-food/README.md)。本轮不访问/升级现有ai_shop；NEXT-05记录的core381前置缺项仍未处理。
+
+
+### NEXT-07 源码合同核验回填 · 2026-10-20
+
+完成普通收款/查单/关单/退款与库存锁定、取消、分配、出库、原路恢复及收货逐项核验；明确本地PaymentLedgerService/退款服务依赖、库存Service直调、默认no-op/无限量、预留同键异参和后付/数量精度缺口。
+普通收退款的独立PAY协议与完整独立库存协议在当前仓库仍未闭环；PAY权益/储值既有远程能力不被误判为不存在。运行环境仅核验仓库配置/部署资料，不声称外部实例已联通或一定不存在。
+已有费率/发票真HTTP传输测试5项通过，替身领域服务只作传输基线；未创建或用mock关闭Independent*业务验收。全部CORE/PAY/RET子任务及两项真实合同验收的前置门槛详见[核验册](./TDD-餐饮系统-独立支付库存合同核验.md)。
+NEXT-07任务完成指核验和拆分完成；独立资金/库存营业验收继续阻塞。下一步NEXT-08营业治理/审计切片，随后NEXT-09桌区首写；NEXT-06真实业务AC跟随这些切片验收。未改业务代码、V1或现有主库。
