@@ -30,7 +30,7 @@
 ### Task 1: Pay event and inbox persistence
 
 **Files:**
-- Create: `backend/shop-app/src/main/resources/db/migration/V429__pay_entitlement_event_outbox_inbox.sql`
+- Create: `backend/shop-app/src/main/resources/db/migration/V482__pay_entitlement_event_outbox_inbox.sql`
 - Create: pay-domain entitlement event contract, outbox/inbox entities, MyBatis mappers, publisher and inbox processor.
 - Create: `backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/entitlement/event/PayEntitlementOutboxRelay.java` for after-commit forwarding and restart/poll recovery.
 - Modify: `backend/shop-store-mybatis/src/main/java/ai/neargo/shop/event/OutboxEventBus.java` and mapper for a stable event number overload.

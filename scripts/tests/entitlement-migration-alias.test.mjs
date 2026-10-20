@@ -18,7 +18,7 @@ test('native alias recognition preserves exact member uniqueness and cannot beco
             catch {await new Promise(resolve=>setTimeout(resolve,500));}
         }
         assert.ok(ready);
-        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V464__entitlement_migration_alias.sql',
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V517__entitlement_migration_alias.sql',
             import.meta.url),'utf8'));
         const insert=(no,pmt,mkt,key)=>"INSERT INTO ent_migration_alias(tenant_no,alias_no,entity_no,migration_batch_no,"
             +"pmt_stage_no,mkt_stage_no,canonical_stage_no,pmt_content_hash,mkt_content_hash,comparison_hash,"

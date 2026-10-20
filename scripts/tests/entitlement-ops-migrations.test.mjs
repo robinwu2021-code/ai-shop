@@ -21,12 +21,12 @@ test('V452–V461 enforce exception audit, reconciliation, freeze permission and
             catch { await new Promise(resolve => setTimeout(resolve,500)); }
         }
         assert.ok(ready,'isolated MySQL must start');
-        sql(migration('V434__entitlement_grants_and_ledger.sql'));
-        sql(migration('V459__entitlement_lifecycle_scan.sql'));
+        sql(migration('V487__entitlement_grants_and_ledger.sql'));
+        sql(migration('V512__entitlement_lifecycle_scan.sql'));
         assert.equal(sql("SELECT GROUP_CONCAT(column_name ORDER BY seq_in_index) FROM information_schema.statistics "
             + "WHERE table_schema='entops' AND table_name='ent_instance' AND index_name='ix_instance_expiry'"),
             'tenant_no,status,effective_until,id');
-        sql(migration('V452__pay_entitlement_exception.sql'));
+        sql(migration('V505__pay_entitlement_exception.sql'));
         sql(`INSERT INTO pay_ent_exception(tenant_no,exception_no,entity_no,kind,biz_no,status,evidence,
             created_at,updated_at,created_by,updated_by) VALUES('MAIN','EX1','M1','GRANT_DELIVERY','G1','OPEN','{}',
             UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'OP','OP')`);
@@ -35,17 +35,17 @@ test('V452–V461 enforce exception audit, reconciliation, freeze permission and
         assert.throws(() => sql(`INSERT INTO pay_ent_exception(tenant_no,exception_no,entity_no,kind,biz_no,status,
             evidence,created_at,updated_at,created_by,updated_by) SELECT tenant_no,'EX2',entity_no,kind,biz_no,status,
             evidence,created_at,updated_at,created_by,updated_by FROM pay_ent_exception`),/Duplicate entry/);
-        sql(migration('V453__entitlement_exception_action.sql'));
+        sql(migration('V506__entitlement_exception_action.sql'));
         sql(`INSERT INTO pay_ent_exception_action(tenant_no,action_no,exception_no,request_key,payload_hash,reason,
             entity_no,actor_no,status,created_at,updated_at,created_by,updated_by)
             VALUES('MAIN','EA1','EX1','KEY',REPEAT('a',64),'verified','M1','OP','PENDING',
             UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'OP','OP')`);
         assert.throws(() => sql("UPDATE pay_ent_exception_action SET status='DONE'"),/Check constraint/);
-        sql(migration('V454__exception_action_kind.sql'));
+        sql(migration('V507__exception_action_kind.sql'));
         assert.equal(sql('SELECT operation_kind FROM pay_ent_exception_action'),'RETRY_GRANT');
         assert.throws(() => sql("UPDATE pay_ent_exception_action SET operation_kind='ADJUST_BALANCE'"),/Check constraint/);
         sql("UPDATE pay_ent_exception_action SET status='DONE',response_snapshot='{}',operation_kind='QUERY_SOURCE'");
-        sql(migration('V461__exception_event_recovery_actions.sql'));
+        sql(migration('V514__exception_event_recovery_actions.sql'));
         sql("UPDATE pay_ent_exception_action SET operation_kind='RETRY_EVENT'");
         sql("UPDATE pay_ent_exception_action SET operation_kind='QUERY_EVENT'");
         assert.throws(() => sql("UPDATE pay_ent_exception_action SET operation_kind='ADJUST_BALANCE'"),/Check constraint/);
@@ -60,17 +60,17 @@ test('V452–V461 enforce exception audit, reconciliation, freeze permission and
             const ddl=iam.match(new RegExp(`CREATE TABLE IF NOT EXISTS ${table}\\s*\\([\\s\\S]*?;`));
             assert.ok(ddl,`missing original IAM table ${table}`); sql(ddl[0]);
         }
-        const permissions=migration('V455__entitlement_ops_permissions.sql');
+        const permissions=migration('V508__entitlement_ops_permissions.sql');
         sql(permissions); sql(permissions);
         assert.equal(sql("SELECT COUNT(*) FROM sys_function_point WHERE point_code LIKE 'ACT__PAY_ENT_%'"),'3');
         assert.equal(sql("SELECT COUNT(*) FROM sys_role_point WHERE point_code LIKE 'ACT__PAY_ENT_%'"),'3');
         assert.equal(sql("SELECT COUNT(*) FROM sys_role_point WHERE role_code<>'SUPER_ADMIN'"),'0');
-        const freezePermission=migration('V457__entitlement_freeze_permission.sql');
+        const freezePermission=migration('V510__entitlement_freeze_permission.sql');
         sql(freezePermission); sql(freezePermission);
         assert.equal(sql("SELECT COUNT(*) FROM sys_function_point WHERE perm_code='ops:pay:ent:freeze'"),'1');
         assert.equal(sql("SELECT COUNT(*) FROM sys_role_point WHERE point_code='ACT__PAY_ENT_FREEZE'"),'1');
         assert.equal(sql("SELECT role_code FROM sys_role_point WHERE point_code='ACT__PAY_ENT_FREEZE'"),'SUPER_ADMIN');
-        sql(migration('V456__entitlement_reconciliation.sql'));
+        sql(migration('V509__entitlement_reconciliation.sql'));
         const run=(no,key,axis,currency) => `INSERT INTO pay_ent_recon_run(tenant_no,recon_no,request_key,
             payload_hash,entity_no,axis,currency,biz_date,market_zone,status,started_at,created_at,updated_at,
             created_by,updated_by) VALUES('MAIN','${no}','${key}',REPEAT('b',64),'M1','${axis}',${currency},
@@ -91,7 +91,7 @@ test('V452–V461 enforce exception audit, reconciliation, freeze permission and
             diff_kind,expected_snapshot,actual_snapshot,status,created_at,updated_at,created_by,updated_by)
             SELECT tenant_no,'RD2',recon_no,entity_no,resource_no,diff_kind,expected_snapshot,actual_snapshot,status,
             created_at,updated_at,created_by,updated_by FROM pay_ent_recon_diff`),/Duplicate entry/);
-        sql(migration('V458__entitlement_owner_registry.sql'));
+        sql(migration('V511__entitlement_owner_registry.sql'));
         const owner=(system,kind,no) => `INSERT INTO ent_owner_registry(tenant_no,source_system,source_kind,source_no,
             owner_system,migration_batch_no,status,created_at,updated_at,created_by,updated_by)
             VALUES('MAIN','${system}','${kind}','${no}','CORE_LEGACY','B1','PREPARING',

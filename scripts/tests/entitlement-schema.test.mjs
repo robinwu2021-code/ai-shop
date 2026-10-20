@@ -32,7 +32,7 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         sql(readFileSync(new URL('../../docs/technical/design/活动权益-support-schema.sql', import.meta.url), 'utf8'));
         assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_test'"), '69');
         const serviceMigration = readFileSync(new URL(
-            '../../backend/shop-app/src/main/resources/db/migration/V442__entitlement_service_order.sql', import.meta.url),
+            '../../backend/shop-app/src/main/resources/db/migration/V495__entitlement_service_order.sql', import.meta.url),
             'utf8');
         sql('CREATE DATABASE entitlement_service_fixture');
         sql(serviceMigration, 'entitlement_service_fixture');
@@ -56,16 +56,16 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
         sql("UPDATE ord_ent_service_order SET status='COMMITTED',decision_snapshot='{}' WHERE service_order_no='svc1'");
         sql('CREATE DATABASE entitlement_checkout_fixture');
         sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
-            + 'V427__entitlement_authorization_source_decision.sql', import.meta.url), 'utf8'),
+            + 'V480__entitlement_authorization_source_decision.sql', import.meta.url), 'utf8'),
         'entitlement_checkout_fixture');
         sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
-            + 'V443__entitlement_checkout_selection.sql', import.meta.url), 'utf8'), 'entitlement_checkout_fixture');
+            + 'V496__entitlement_checkout_selection.sql', import.meta.url), 'utf8'), 'entitlement_checkout_fixture');
         const authColumns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns
             WHERE table_schema='${database}' AND table_name='ord_ent_authorization' ORDER BY column_name`);
         assert.equal(authColumns('entitlement_checkout_fixture'), authColumns('entitlement_test'));
         sql('CREATE DATABASE entitlement_binding_fixture');
         sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
-            + 'V444__card_product_binding.sql', import.meta.url), 'utf8'), 'entitlement_binding_fixture');
+            + 'V497__card_product_binding.sql', import.meta.url), 'utf8'), 'entitlement_binding_fixture');
         for (const table of ['prd_entitlement_binding', 'prd_ent_binding_command']) {
             const columns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns
                 WHERE table_schema='${database}' AND table_name='${table}' ORDER BY ordinal_position`);
@@ -78,14 +78,14 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
             /Check constraint/, 'a completed binding command needs its original reply');
         sql('CREATE DATABASE stored_value_credit_fixture');
         sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
-            + 'V445__stored_value_credit_ledger.sql', import.meta.url), 'utf8'), 'stored_value_credit_fixture');
+            + 'V498__stored_value_credit_ledger.sql', import.meta.url), 'utf8'), 'stored_value_credit_fixture');
         sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
-            + 'V446__stored_value_total_balance_bound.sql', import.meta.url), 'utf8'), 'stored_value_credit_fixture');
+            + 'V499__stored_value_total_balance_bound.sql', import.meta.url), 'utf8'), 'stored_value_credit_fixture');
         sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
-            + 'V448__stored_value_receipt_lifecycle.sql', import.meta.url), 'utf8'), 'stored_value_credit_fixture');
+            + 'V501__stored_value_receipt_lifecycle.sql', import.meta.url), 'utf8'), 'stored_value_credit_fixture');
         sql('CREATE DATABASE recharge_source_fixture');
         sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'
-            + 'V447__recharge_source_intent.sql', import.meta.url), 'utf8'), 'recharge_source_fixture');
+            + 'V500__recharge_source_intent.sql', import.meta.url), 'utf8'), 'recharge_source_fixture');
         const sourceColumns = database => sql(`SELECT column_name,column_type,is_nullable FROM information_schema.columns
             WHERE table_schema='${database}' AND table_name='pmt_recharge_intent' ORDER BY ordinal_position`);
         assert.equal(sourceColumns('recharge_source_fixture'), sourceColumns('entitlement_test'));
@@ -121,12 +121,12 @@ test('target schema enforces daily quota, tenant uniqueness, conditional holds a
             /Check constraint/, 'a cancellation cannot assert a commit decision');
 
         const migration = readFileSync(new URL(
-            '../../backend/shop-app/src/main/resources/db/migration/V425__entitlement_catalog.sql', import.meta.url), 'utf8');
+            '../../backend/shop-app/src/main/resources/db/migration/V478__entitlement_catalog.sql', import.meta.url), 'utf8');
         sql('CREATE DATABASE entitlement_runtime_test');
         sql(migration, 'entitlement_runtime_test');
         sql(migration, 'entitlement_runtime_test');
         const memberMigration = readFileSync(new URL(
-            '../../backend/shop-app/src/main/resources/db/migration/V426__member_identity_ticket.sql', import.meta.url), 'utf8');
+            '../../backend/shop-app/src/main/resources/db/migration/V479__member_identity_ticket.sql', import.meta.url), 'utf8');
         sql(memberMigration, 'entitlement_runtime_test');
         sql(memberMigration, 'entitlement_runtime_test');
         assert.equal(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='entitlement_runtime_test'"), '4');

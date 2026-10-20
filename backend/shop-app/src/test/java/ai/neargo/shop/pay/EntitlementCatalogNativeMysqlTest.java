@@ -58,7 +58,7 @@ class EntitlementCatalogNativeMysqlTest {
         String url = System.getenv("ENTITLEMENT_NATIVE_MYSQL_URL");
         assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/entitlement_native_fixture\\?.*");
         var ds = new DriverManagerDataSource(url, "root", "");
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V425__entitlement_catalog.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V478__entitlement_catalog.sql")).execute(ds);
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         var interceptor = new MybatisPlusInterceptor();

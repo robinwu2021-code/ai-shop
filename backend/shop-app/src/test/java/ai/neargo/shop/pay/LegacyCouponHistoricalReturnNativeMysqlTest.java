@@ -52,13 +52,13 @@ class LegacyCouponHistoricalReturnNativeMysqlTest {
         assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/legacy_import_native_fixture\\?.*");
         var ds=new DriverManagerDataSource(url,"root","");var jdbc=new JdbcTemplate(ds);
         var ddl=new ResourceDatabasePopulator();
-        for(String file:List.of("V425__entitlement_catalog.sql","V429__pay_entitlement_event_outbox_inbox.sql",
-                "V433__entitlement_issue_capacity.sql","V434__entitlement_grants_and_ledger.sql",
-                "V436__entitlement_use_and_daily_quota.sql","V458__entitlement_owner_registry.sql",
-                "V462__entitlement_migration_evidence_stage.sql","V463__entitlement_manifest_stage_metadata.sql",
-                "V464__entitlement_migration_alias.sql","V468__legacy_coupon_usage_facts.sql",
-                "V469__legacy_coupon_target_plan.sql","V471__legacy_coupon_target_import.sql",
-                "V472__legacy_coupon_historical_usage.sql","V473__legacy_coupon_historical_return.sql"))
+        for(String file:List.of("V478__entitlement_catalog.sql","V482__pay_entitlement_event_outbox_inbox.sql",
+                "V486__entitlement_issue_capacity.sql","V487__entitlement_grants_and_ledger.sql",
+                "V489__entitlement_use_and_daily_quota.sql","V511__entitlement_owner_registry.sql",
+                "V515__entitlement_migration_evidence_stage.sql","V516__entitlement_manifest_stage_metadata.sql",
+                "V517__entitlement_migration_alias.sql","V521__legacy_coupon_usage_facts.sql",
+                "V522__legacy_coupon_target_plan.sql","V524__legacy_coupon_target_import.sql",
+                "V525__legacy_coupon_historical_usage.sql","V526__legacy_coupon_historical_return.sql"))
             ddl.addScript(new ClassPathResource("db/migration/"+file));
         ddl.execute(ds);
         var cfg=new MybatisConfiguration();cfg.setMapUnderscoreToCamelCase(true);

@@ -27,7 +27,7 @@ class CardSaleSnapshotNativeMysqlTest {
         dataSource.setPassword("");
         jdbc = new JdbcTemplate(dataSource);
         new ResourceDatabasePopulator(new ClassPathResource(
-                "db/migration/V428__card_sale_entitlement_snapshot.sql")).execute(dataSource);
+                "db/migration/V481__card_sale_entitlement_snapshot.sql")).execute(dataSource);
     }
 
     @AfterAll

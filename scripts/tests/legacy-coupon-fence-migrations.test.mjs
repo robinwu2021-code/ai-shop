@@ -33,7 +33,7 @@ test('V460 upgrades existing legacy roots without altering coupon facts and enfo
             created_at,updated_at) VALUES('LC1','original','FULL_CUT',100,1,99999,'MERCHANT','M1',3,NOW(),NOW());
             INSERT INTO pmt_coupon(coupon_no,title,benefit_mode,benefit_value,entity_no,received_count,
             created_at,updated_at) VALUES('PC1','original','CASH',100,'M1',3,NOW(),NOW())`);
-        sql(migration('V460__legacy_coupon_source_fence.sql'));
+        sql(migration('V513__legacy_coupon_source_fence.sql'));
         for (const [table, no] of [['mkt_coupon', 'LC1'], ['pmt_coupon', 'PC1']]) {
             assert.equal(sql(`SELECT CONCAT(migration_state,':',received_count,':',status) FROM ${table} WHERE coupon_no='${no}'`),
                 'OPEN:3:ACTIVE');

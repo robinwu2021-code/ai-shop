@@ -18,7 +18,7 @@ test('V462/V463 evidence stage preserves legacy rows and enforces exact origin/r
             catch { await new Promise(resolve => setTimeout(resolve,500)); }
         }
         assert.ok(ready);
-        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V462__entitlement_migration_evidence_stage.sql',
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V515__entitlement_migration_evidence_stage.sql',
             import.meta.url),'utf8'));
         const insert=(no,key,batch,system='PMT') => "INSERT INTO ent_migration_stage(tenant_no,stage_no,source_system,"
             +"source_template_no,migration_batch_no,entity_no,request_key,command_hash,reason,source_schema_version,"
@@ -39,7 +39,7 @@ test('V462/V463 evidence stage preserves legacy rows and enforces exact origin/r
         assert.equal(sql('SELECT COUNT(*) FROM ent_migration_stage'),'3');
         assert.equal(sql("SELECT status FROM ent_migration_stage WHERE stage_no='MS1'"),'STAGED');
         const original=sql("SELECT CONCAT(payload_cipher,':',command_hash,':',content_hash) FROM ent_migration_stage WHERE stage_no='MS1'");
-        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V463__entitlement_manifest_stage_metadata.sql',
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V516__entitlement_manifest_stage_metadata.sql',
             import.meta.url),'utf8'));
         assert.equal(sql("SELECT CONCAT(payload_cipher,':',command_hash,':',content_hash) FROM ent_migration_stage WHERE stage_no='MS1'"),original);
         assert.equal(sql("SELECT CONCAT(manifest_version,':',history_available) FROM ent_migration_stage WHERE stage_no='MS1'"),'1:1');
@@ -69,7 +69,7 @@ test('native fixed target plan cannot masquerade as source commitment or importe
             catch {await new Promise(resolve=>setTimeout(resolve,500));}
         }
         assert.ok(ready);
-        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V469__legacy_coupon_target_plan.sql',import.meta.url),'utf8'));
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V522__legacy_coupon_target_plan.sql',import.meta.url),'utf8'));
         sql(`INSERT INTO ent_migration_plan(tenant_no,plan_no,stage_no,source_system,source_template_no,migration_batch_no,
             entity_no,request_key,command_hash,reason,plan_hash,source_bundle_hash,crypto_key_id,payload_cipher,payload_bytes,
             asset_count,archival_count,version_count,assessed_at,status,created_at,updated_at,created_by,updated_by)
@@ -96,7 +96,7 @@ test('native core source decision and binding remain immutable permanent evidenc
             catch {await new Promise(resolve=>setTimeout(resolve,500));}
         }
         assert.ok(ready);
-        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V470__legacy_coupon_source_commit.sql',import.meta.url),'utf8'));
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V523__legacy_coupon_source_commit.sql',import.meta.url),'utf8'));
         sql(`INSERT INTO pmt_migration_decision(tenant_no,decision_no,plan_no,entity_no,migration_batch_no,plan_hash,source_bundle_hash,
             plan_snapshot,command_hash,request_key,reason,actor_no,decided_at,status,created_at,updated_at,created_by,updated_by)
             VALUES('MAIN','D1','P1','M1','B1',REPEAT('a',64),REPEAT('b',64),'{}',REPEAT('c',64),'K1','commit','OP1',
@@ -124,7 +124,7 @@ test('native pay import keeps one receipt and archival mappings cannot create ph
             catch {await new Promise(resolve=>setTimeout(resolve,500));}
         }
         assert.ok(ready);
-        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V471__legacy_coupon_target_import.sql',import.meta.url),'utf8'));
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V524__legacy_coupon_target_import.sql',import.meta.url),'utf8'));
         sql(`INSERT INTO ent_migration_import(tenant_no,import_no,plan_no,entity_no,source_decision_no,plan_hash,source_bundle_hash,
             proof_snapshot,asset_count,archival_count,imported_at,status,created_at,updated_at,created_by,updated_by)
             VALUES('MAIN','I1','P1','M1','D1',REPEAT('a',64),REPEAT('b',64),'[]',1,1,UTC_TIMESTAMP(3),'IMPORTED',
@@ -151,7 +151,7 @@ test('native history upgrade namespaces real operation IDs and preserves known-z
         let ready=false;
         for(let i=0;i<60;i++) {try {sql('SELECT 1');ready=true;break;}catch {await new Promise(resolve=>setTimeout(resolve,500));}}
         assert.ok(ready);
-        for(const file of ['V436__entitlement_use_and_daily_quota.sql','V468__legacy_coupon_usage_facts.sql','V471__legacy_coupon_target_import.sql','V472__legacy_coupon_historical_usage.sql'])
+        for(const file of ['V489__entitlement_use_and_daily_quota.sql','V521__legacy_coupon_usage_facts.sql','V524__legacy_coupon_target_import.sql','V525__legacy_coupon_historical_usage.sql'])
             sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/'+file,import.meta.url),'utf8'));
         const insert=(no,protocol,extra)=>`INSERT INTO ent_usage(tenant_no,usage_no,operation_no,protocol,migration_import_no,user_no,entity_no,
             store_no,store_name,asset_kind,title,units,amount_minor,currency,items_snapshot,operator_no,status,occurred_at,created_at,updated_at,created_by,updated_by)

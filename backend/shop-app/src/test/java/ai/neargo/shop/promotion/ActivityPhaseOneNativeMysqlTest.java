@@ -34,9 +34,9 @@ class ActivityPhaseOneNativeMysqlTest {
         var jdbc=new JdbcTemplate(ds);
         jdbc.execute("CREATE TABLE pmt_activity (id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) NOT NULL,entity_no VARCHAR(64) NOT NULL,status VARCHAR(24) NOT NULL) ENGINE=InnoDB");
         new ResourceDatabasePopulator(
-                new ClassPathResource("db/migration/V430__promotion_preset_catalog.sql"),
-                new ClassPathResource("db/migration/V431__promotion_version_participation.sql"),
-                new ClassPathResource("db/migration/V432__promotion_effect_store_scope.sql")).execute(ds);
+                new ClassPathResource("db/migration/V483__promotion_preset_catalog.sql"),
+                new ClassPathResource("db/migration/V484__promotion_version_participation.sql"),
+                new ClassPathResource("db/migration/V485__promotion_effect_store_scope.sql")).execute(ds);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_preset_template",Integer.class)).isEqualTo(46);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM pmt_preset_template WHERE enabled<>0",Integer.class)).isZero();
         assertThatThrownBy(()->jdbc.update("UPDATE pmt_preset_template SET draft_schema='invalid-json' WHERE template_code='AP001'"))

@@ -35,10 +35,10 @@ class EntitlementIssuanceNativeMysqlTest {
         var ds=new DriverManagerDataSource(url,"root","");
         var jdbc=new JdbcTemplate(ds);
         new ResourceDatabasePopulator(
-                new ClassPathResource("db/migration/V425__entitlement_catalog.sql"),
-                new ClassPathResource("db/migration/V433__entitlement_issue_capacity.sql"),
-                new ClassPathResource("db/migration/V434__entitlement_grants_and_ledger.sql"),
-                new ClassPathResource("db/migration/V435__entitlement_issue_batch.sql")).execute(ds);
+                new ClassPathResource("db/migration/V478__entitlement_catalog.sql"),
+                new ClassPathResource("db/migration/V486__entitlement_issue_capacity.sql"),
+                new ClassPathResource("db/migration/V487__entitlement_grants_and_ledger.sql"),
+                new ClassPathResource("db/migration/V488__entitlement_issue_batch.sql")).execute(ds);
         seedBudget(jdbc,"A1",20,2000,2);
         assertThatThrownBy(()->jdbc.update("UPDATE ent_issue_policy SET issued_count=21 WHERE template_no='A1'"))
                 .isInstanceOf(DataAccessException.class);

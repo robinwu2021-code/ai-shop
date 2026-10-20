@@ -18,7 +18,7 @@ test('native legacy operation distinguishes a no-hold abort and requires every f
             catch {await new Promise(resolve=>setTimeout(resolve,500));}
         }
         assert.ok(ready);
-        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V465__legacy_coupon_pay_operation.sql',
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V518__legacy_coupon_pay_operation.sql',
             import.meta.url),'utf8'));
         const insert=no=>"INSERT INTO ent_legacy_coupon_operation(tenant_no,operation_no,checkout_no,origin_system,origin_no,"
             +"instance_no,user_no,entity_no,currency,owner_batch_no,owner_plan_hash,economic_hash,command_hash,source_version,"
@@ -68,7 +68,7 @@ test('native core checkout journal rejects terminal states without original deci
             catch {await new Promise(resolve=>setTimeout(resolve,500));}
         }
         assert.ok(ready);
-        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V466__legacy_coupon_core_checkout.sql',import.meta.url),'utf8'));
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V519__legacy_coupon_core_checkout.sql',import.meta.url),'utf8'));
         sql(`INSERT INTO ord_legacy_coupon_checkout(tenant_no,checkout_no,operation_no,user_no,entity_no,command_hash,
             stage_hash,economic_hash,fact_snapshot,status,created_at,updated_at,created_by,updated_by)
             VALUES('MAIN','C1','O1','U1','M1',REPEAT('a',64),REPEAT('b',64),REPEAT('c',64),'{}','OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'U1','U1')`);
@@ -95,12 +95,12 @@ test('native upgrade keeps unknown delivery pending and binds acknowledgments to
             catch {await new Promise(resolve=>setTimeout(resolve,500));}
         }
         assert.ok(ready);
-        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V466__legacy_coupon_core_checkout.sql',import.meta.url),'utf8'));
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V519__legacy_coupon_core_checkout.sql',import.meta.url),'utf8'));
         const insert=no=>`INSERT INTO ord_legacy_coupon_checkout(tenant_no,checkout_no,operation_no,user_no,entity_no,command_hash,
             stage_hash,economic_hash,fact_snapshot,status,created_at,updated_at,created_by,updated_by)
             VALUES('MAIN','${no}','OP-${no}','U1','M1',REPEAT('a',64),REPEAT('b',64),REPEAT('c',64),'{}','OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'U1','U1')`;
         sql(insert('C1'));
-        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V467__legacy_coupon_delivery_recovery.sql',import.meta.url),'utf8'));
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V520__legacy_coupon_delivery_recovery.sql',import.meta.url),'utf8'));
         assert.equal(sql("SELECT CONCAT(pay_state,':',recovery_due_at IS NULL,':',pay_decision_no IS NULL) FROM ord_legacy_coupon_checkout WHERE checkout_no='C1'"),'PENDING:1:1');
         assert.throws(()=>sql("UPDATE ord_legacy_coupon_checkout SET pay_state='COMMITTED',pay_decision_no='D1',pay_acked_at=UTC_TIMESTAMP(3) WHERE checkout_no='C1'"),/Check constraint/);
         sql("UPDATE ord_legacy_coupon_checkout SET status='COMMITTED',order_no='SO1',held_snapshot='{}',decision_snapshot='{}' WHERE checkout_no='C1'");
@@ -130,11 +130,11 @@ test('native usage upgrade keeps standard store guarantees and records real lega
             catch {await new Promise(resolve=>setTimeout(resolve,500));}
         }
         assert.ok(ready);
-        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V436__entitlement_use_and_daily_quota.sql',import.meta.url),'utf8'));
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V489__entitlement_use_and_daily_quota.sql',import.meta.url),'utf8'));
         const insert=`INSERT INTO ent_usage(tenant_no,usage_no,operation_no,user_no,entity_no,store_no,store_name,asset_kind,title,units,amount_minor,currency,items_snapshot,source_order_no,operator_no,status,occurred_at,created_at,updated_at,created_by,updated_by)
             VALUES('MAIN','U1','OP1','BUYER','M1','S1','Store','ORDER_COUPON','Coupon',1,100,'CNY','[]','SO1','T','COMMITTED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'T','T')`;
         sql(insert);
-        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V468__legacy_coupon_usage_facts.sql',import.meta.url),'utf8'));
+        sql(readFileSync(new URL('../../backend/shop-app/src/main/resources/db/migration/V521__legacy_coupon_usage_facts.sql',import.meta.url),'utf8'));
         assert.equal(sql("SELECT protocol FROM ent_usage WHERE usage_no='U1'"),'STANDARD');
         assert.throws(()=>sql("UPDATE ent_usage SET store_no=NULL WHERE usage_no='U1'"),/Check constraint/);
         sql("UPDATE ent_usage SET protocol='LEGACY',legacy_instance_no='I1',store_no=NULL,store_name=NULL WHERE usage_no='U1'");

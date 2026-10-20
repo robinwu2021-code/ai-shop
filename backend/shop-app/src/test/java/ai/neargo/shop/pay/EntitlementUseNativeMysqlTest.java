@@ -84,13 +84,13 @@ class EntitlementUseNativeMysqlTest {
         assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/use_native_fixture\\?.*");
         var ds = new DriverManagerDataSource(url, "root", "");
         var jdbc = new JdbcTemplate(ds);
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V425__entitlement_catalog.sql"),
-                new ClassPathResource("db/migration/V434__entitlement_grants_and_ledger.sql"),
-                new ClassPathResource("db/migration/V429__pay_entitlement_event_outbox_inbox.sql"),
-                new ClassPathResource("db/migration/V436__entitlement_use_and_daily_quota.sql"),
-                new ClassPathResource("db/migration/V437__pay_entitlement_source_fence.sql"),
-                new ClassPathResource("db/migration/V445__stored_value_credit_ledger.sql"),
-                new ClassPathResource("db/migration/V449__stored_value_hold_allocation.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V478__entitlement_catalog.sql"),
+                new ClassPathResource("db/migration/V487__entitlement_grants_and_ledger.sql"),
+                new ClassPathResource("db/migration/V482__pay_entitlement_event_outbox_inbox.sql"),
+                new ClassPathResource("db/migration/V489__entitlement_use_and_daily_quota.sql"),
+                new ClassPathResource("db/migration/V490__pay_entitlement_source_fence.sql"),
+                new ClassPathResource("db/migration/V498__stored_value_credit_ledger.sql"),
+                new ClassPathResource("db/migration/V502__stored_value_hold_allocation.sql")).execute(ds);
         var config = new MybatisConfiguration();
         config.setMapUnderscoreToCamelCase(true);
         var plugin = new MybatisPlusInterceptor();

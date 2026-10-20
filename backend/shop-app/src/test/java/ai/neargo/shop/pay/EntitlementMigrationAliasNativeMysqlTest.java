@@ -50,10 +50,10 @@ class EntitlementMigrationAliasNativeMysqlTest {
         String url=System.getenv("ALIAS_NATIVE_MYSQL_URL");
         assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/alias_native_fixture\\?.*");
         var ds=new DriverManagerDataSource(url,"root",""); var jdbc=new JdbcTemplate(ds);
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V425__entitlement_catalog.sql"),
-                new ClassPathResource("db/migration/V462__entitlement_migration_evidence_stage.sql"),
-                new ClassPathResource("db/migration/V463__entitlement_manifest_stage_metadata.sql"),
-                new ClassPathResource("db/migration/V464__entitlement_migration_alias.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V478__entitlement_catalog.sql"),
+                new ClassPathResource("db/migration/V515__entitlement_migration_evidence_stage.sql"),
+                new ClassPathResource("db/migration/V516__entitlement_manifest_stage_metadata.sql"),
+                new ClassPathResource("db/migration/V517__entitlement_migration_alias.sql")).execute(ds);
         var config=new MybatisConfiguration(); config.setMapUnderscoreToCamelCase(true);
         var factory=new MybatisSqlSessionFactoryBean(); factory.setDataSource(ds); factory.setConfiguration(config);
         SqlSessionFactory sessions=factory.getObject();

@@ -58,14 +58,14 @@ class LegacyCouponUseNativeMysqlTest {
         String url=System.getenv("LEGACY_USE_NATIVE_MYSQL_URL");
         assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/legacy_use_native_fixture\\?.*");
         var ds=new DriverManagerDataSource(url,"root","");var jdbc=new JdbcTemplate(ds);
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V425__entitlement_catalog.sql"),
-                new ClassPathResource("db/migration/V434__entitlement_grants_and_ledger.sql"),
-                new ClassPathResource("db/migration/V465__legacy_coupon_pay_operation.sql"),
-                new ClassPathResource("db/migration/V429__pay_entitlement_event_outbox_inbox.sql"),
-                new ClassPathResource("db/migration/V436__entitlement_use_and_daily_quota.sql"),
-                new ClassPathResource("db/migration/V468__legacy_coupon_usage_facts.sql"),
-                new ClassPathResource("db/migration/V471__legacy_coupon_target_import.sql"),
-                new ClassPathResource("db/migration/V472__legacy_coupon_historical_usage.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V478__entitlement_catalog.sql"),
+                new ClassPathResource("db/migration/V487__entitlement_grants_and_ledger.sql"),
+                new ClassPathResource("db/migration/V518__legacy_coupon_pay_operation.sql"),
+                new ClassPathResource("db/migration/V482__pay_entitlement_event_outbox_inbox.sql"),
+                new ClassPathResource("db/migration/V489__entitlement_use_and_daily_quota.sql"),
+                new ClassPathResource("db/migration/V521__legacy_coupon_usage_facts.sql"),
+                new ClassPathResource("db/migration/V524__legacy_coupon_target_import.sql"),
+                new ClassPathResource("db/migration/V525__legacy_coupon_historical_usage.sql")).execute(ds);
         var cfg=new MybatisConfiguration();cfg.setMapUnderscoreToCamelCase(true);
         var plugins=new MybatisPlusInterceptor();plugins.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
         var factory=new MybatisSqlSessionFactoryBean();factory.setDataSource(ds);factory.setConfiguration(cfg);factory.setPlugins(plugins);

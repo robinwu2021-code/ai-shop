@@ -1042,7 +1042,7 @@ pay仅接受ORDER_COUPON原成功使用；CORE/ORDER_REFUND的sourceNo为权威�
 
 核心服务新增`ord_ent_service_order`；支付服务继续独占实例、余次、日额度、预占与核销流水。
 服务单独立于`ord_order`现金订单，不能产生`stl_payment`或现金收入事件。字段与约束完整DDL见
-[core模型](./design/活动权益-core-schema.sql)，运行迁移为`V442__entitlement_service_order.sql`。
+[core模型](./design/活动权益-core-schema.sql)，运行迁移为`V495__entitlement_service_order.sql`。
 
 | 字段组 | 持久事实与约束 |
 |---|---|

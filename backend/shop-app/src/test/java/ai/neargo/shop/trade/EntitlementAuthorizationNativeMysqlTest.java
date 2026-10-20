@@ -28,7 +28,7 @@ class EntitlementAuthorizationNativeMysqlTest {
         dataSource.setUsername("root");
         dataSource.setPassword("");
         new ResourceDatabasePopulator(new ClassPathResource(
-                "db/migration/V427__entitlement_authorization_source_decision.sql")).execute(dataSource);
+                "db/migration/V480__entitlement_authorization_source_decision.sql")).execute(dataSource);
         jdbc = new JdbcTemplate(dataSource);
     }
 

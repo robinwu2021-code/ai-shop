@@ -66,11 +66,11 @@ class StoredValueCreditNativeMysqlTest {
         String url = System.getenv("SV_CREDIT_NATIVE_MYSQL_URL");
         assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/sv_credit_native_fixture\\?.*");
         var ds = new DriverManagerDataSource(url, "root", ""); var jdbc = new JdbcTemplate(ds);
-        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V425__entitlement_catalog.sql"),
-                new ClassPathResource("db/migration/V429__pay_entitlement_event_outbox_inbox.sql"),
-                new ClassPathResource("db/migration/V445__stored_value_credit_ledger.sql"),
-                new ClassPathResource("db/migration/V446__stored_value_total_balance_bound.sql"),
-                new ClassPathResource("db/migration/V448__stored_value_receipt_lifecycle.sql")).execute(ds);
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V478__entitlement_catalog.sql"),
+                new ClassPathResource("db/migration/V482__pay_entitlement_event_outbox_inbox.sql"),
+                new ClassPathResource("db/migration/V498__stored_value_credit_ledger.sql"),
+                new ClassPathResource("db/migration/V499__stored_value_total_balance_bound.sql"),
+                new ClassPathResource("db/migration/V501__stored_value_receipt_lifecycle.sql")).execute(ds);
         var config = new MybatisConfiguration(); config.setMapUnderscoreToCamelCase(true);
         var interceptor = new MybatisPlusInterceptor(); interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
         var factory = new MybatisSqlSessionFactoryBean(); factory.setDataSource(ds); factory.setConfiguration(config);

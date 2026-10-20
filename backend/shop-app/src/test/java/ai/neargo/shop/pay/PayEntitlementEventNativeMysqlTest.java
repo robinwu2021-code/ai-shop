@@ -43,7 +43,7 @@ class PayEntitlementEventNativeMysqlTest {
         assertThat(url).matches("jdbc:mysql://127\\.0\\.0\\.1:[0-9]+/entitlement_native_fixture\\?.*");
         var ds = new DriverManagerDataSource(url, "root", "");
         new ResourceDatabasePopulator(new ClassPathResource(
-                "db/migration/V429__pay_entitlement_event_outbox_inbox.sql")).execute(ds);
+                "db/migration/V482__pay_entitlement_event_outbox_inbox.sql")).execute(ds);
         new JdbcTemplate(ds).execute("""
                 CREATE TABLE sys_outbox (
                     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,

@@ -387,7 +387,7 @@ SourceRef提供grantKey/useIntentKey/settledKey，按长度前缀SHA256编码，
 |---|---|---|
 | D01.4 全量失败定位 | 按字母序组合AddressSalutationTest/M6bCouponFlowTest/ProxyOrderFlowTest，41项复现9红；AddressSalutationTest恢复G0001原履约配置后41项全绿 | 全量干净副本重验另记结果，不能只凭组合绿宣称全量绿 |
 | D01.2 目录端口 | shop-base EntitlementDefinition/EntitlementCatalogPort；pay本地PortImpl验证发布状态、主体、币种及ACTIVITY_GRANT/PAID_PRODUCT用途，停发仍可读历史 | 新对外权限/HTTP DTO、活动参与/发放/使用端口和独立pay远程接线仍待实现 |
-| D02.1 目录表子集 | V425__entitlement_catalog.sql，三张表ent_template/ent_template_version/pay_ent_command_dedup；对应实体/Mapper归pay工厂，H2 schema由生成器更新 | 不包含发行控制、实例、核销账、Outbox/Inbox或存量迁移；未连接生产 |
+| D02.1 目录表子集 | V478__entitlement_catalog.sql，三张表ent_template/ent_template_version/pay_ent_command_dedup；对应实体/Mapper归pay工厂，H2 schema由生成器更新 | 不包含发行控制、实例、核销账、Outbox/Inbox或存量迁移；未连接生产 |
 | D02.2 目录内核 | create/saveDraft/publish/changeStatus/get/getVersion/list；payTxManager原子提交业务与幂等响应；UTC/可信actor；不可变发布快照；终止状态和平台出资守卫 | P01–P05 HTTP入口及P06发行控制未开放。范围refs只做结构校验，对外接线前还须由core核实真实项目/门店归属与权限 |
 
 EntitlementCatalogFlowTest本批12项通过，覆盖持久回读、稳定幂等/异参冲突、发布与历史快照、跨主体/租户、暂停/结束、pay事务回滚、UTC审计、SQL分页、三类卡模型、并发同键、平台出资写权限、本地SPI引用、过期绝对期限不发布与键大小写/空白。已观察缺实现失败、平台状态守卫失败、空白键失败后修复；并发测试验证同键4线程只一份。原有架构/Mapper/Schema/支付部署装配守卫按受影响范围通过。
