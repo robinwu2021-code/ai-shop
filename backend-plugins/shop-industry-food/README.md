@@ -102,7 +102,7 @@ FoodApplication 只扫描 `ai.neargo.shop.food.server`，导入 FoodAutoConfigur
 配置沿 `spring.datasource.*` 指向商品/订单同一主库，环境入口为 FOOD_DB_URL/FOOD_DB_USER/FOOD_DB_PASSWORD，无开发密码回退；默认端口 8086，可由 FOOD_SERVER_PORT 设置。
 SHOP_INTERNAL_TOKEN 接既有 shop.services.internal-token。独立进程明确关闭默认 core Flyway，不执行共享主库迁移。
 
-`foodReadiness` 目前固定 OUT_OF_SERVICE，readiness 返回 503；schema 与远程 Port 就绪尚未实现，后续必须以真实检查替换本阶段阻塞指示器。
+`foodReadiness` 当前读取真实FoodSchemaReady详情，但营业状态仍固定OUT_OF_SERVICE，readiness返回503；远程交易合同与运行时动态依赖检查仍需另行实施，不以schema通过代替营业就绪。
 当前没有营业 Controller；内部路由及三端扫描陷阱均为 src/test 探针，不进入生产 jar。
 
 验证结果：
@@ -384,7 +384,11 @@ B端入口复用原STORE权限、可信操作人和目录范围；内部typed合
 
 本步只交付桌区配置，不含桌台、开台、拼桌/AA、支付库存或正式营业闭环。需求见[桌区需求细化](../../docs/requirements/餐饮系统-NEXT09桌区管理需求细化.md)。
 
+## NEXT-10：配置交付收口
+
+2026-10-21完成本批策略/日历与桌区配置的复验和对账，记录见[NEXT-10交付收口](../../docs/technical/TDD-餐饮系统-NEXT10交付收口.md)。下一步TBL-02桌台配置；动态营业就绪仍保留未验收项，不能按本批配置交付开放交易。
+
 ## 后续边界
 
-下一步做NEXT-10桌区交付证据收口并推进TBL-02桌台配置；NEXT-08平台授权（API081）仍单列待实施；NEXT-06业务级AC随之验收。独立支付/库存的权威域子任务可并行推进，但不得用它们的待实施状态开放正式交易。
+NEXT-10配置交付已收口，下一步推进TBL-02桌台配置；NEXT-08平台授权（API081）仍单列待实施；NEXT-06业务级AC随之验收。独立支付/库存的权威域子任务可并行推进，但不得用它们的待实施状态开放正式交易。
 现有主库前置缺项与远程支付/库存合同尚未完成，不能把本轮 schema 接线通过解释为可营业。
