@@ -48,9 +48,11 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | P09 | GET | /mp/entitlements | kind?,status?,cursor?,size | CursorPage<EntitlementItem> | 登录本人 | 本人卡券/次卡/月卡 |
 | P10 | GET | /mp/entitlements/{instanceNo} | entityNo? | EntitlementDetail | 登录本人 | 余次/期限/范围，已过期保留 |
 | P11 | POST | /mp/entitlement-claims | BenefitClaimCommand | ClaimReceipt | 登录本人 | 模板CENTER或活动资格，不任意领付费卡 |
+| P11a | GET | /mp/entitlement-claims/{intentNo} | 无 | ClaimReceipt | 登录本人 | 查询原领取意图及结果，不隐式重新发行 |
 | P12 | POST | /biz/entitlement-uses/preview | UsePreviewCommand | UsePreview | pay:ent:use | 先看后核，检查可用状态 |
 | P13 | POST | /biz/entitlement-uses | UseSubmitCommand | OperationView | pay:ent:use | 受控核销，由应用协调源授权，不裸露commit |
 | P14 | GET | /biz/entitlement-uses/{operationNo} | 无 | OperationView | pay:ent:read | 未知状态查原操作，不重新扣 |
+| P14a | POST | /biz/entitlement-uses/{operationNo}/cancel | reason + Idempotency-Key | OperationView | pay:ent:use | 原经办人和门店校验，只取消未完成意图，不是退款 |
 | P15 | POST | /mp/entitlement-quotes | QuoteRequest | QuoteView | 登录本人 | 可信订单draftRef，只试算 |
 | P16 | POST | /mp/entitlements/{instanceNo}/activation-quotes | 无 | ActivationQuote | 登录本人 | 查询起算效果，不任意提前激活 |
 | P17 | GET | /mp/entitlements/{instanceNo}/allowances | serviceDate? | AllowanceView | 登录本人 | 指定日剩余/冻结，与总次数区分 |
@@ -60,7 +62,7 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | P21 | POST | /biz/stored-value/recharges/{rechargeNo}/cancel | CancelCommand | RechargeView | pay:sv:recharge:create | 只未实收取消；驳回用reason同状态守卫 |
 | P22 | POST | /biz/stored-value/consumptions | StoredValueConsumeCommand | OperationView | pay:sv:consume:create | 绑定真实服务订单与本人授权 |
 | P23 | GET | /mp/stored-value/stores | cursor?,size | CursorPage<StoreItem> | 登录本人 | 有成功储值历史门店 |
-| P24 | GET | /mp/stored-value/consumptions | storeNo,cursor?,size | CursorPage<UsageItem> | 登录本人 | 该店本人储值使用历史 |
+| P24 | GET | /mp/stored-value/consumptions | entityNo,storeNo?,cursor?,size | CursorPage<UsageItem> | 登录本人 | 本主体本人储值使用历史，可按门店筛选 |
 | P25 | GET | /mp/entitlement-usage/{usageNo} | entityNo? | UsageDetail | 登录本人 | 本人统一核销详情 |
 | P25a | GET | /mp/entitlements/{instanceNo}/usage | entityNo?,cursor?,size=20 (1-50) | CursorPage<UsageItem> | Login owner | Full history; signed user/asset scoped cursor; occurredAt/usageNo DESC |
 | P25b | GET | /mp/entitlement-usage | entityNo?,cursor?,size=20 (1-50) | CursorPage<UsageItem> | 登录本人 | 统一核销历史，包含无活跃实例的归档记录；不返回未知的逐笔余次 |
@@ -70,6 +72,8 @@ HTTP入口在shop-app，core/pay列指业务所有者与事务。C用户从登�
 | P29 | GET | /biz/entitlements/{instanceNo} | customerRef,storeNo | EntitlementDetail | pay:ent:read | 本主体已识别本人指定卡余次，不任意枚举其他用户 |
 | P30 | POST | /mp/entitlements/{instanceNo}/redeem-codes | CodeRequest | CodeView | 登录本人 | 仅STORE_EXCHANGE签短期券码，不签储值码 |
 | P31 | POST | /biz/stored-value/consumptions/preview | Idempotency-Key + customerRef,storeNo,items | StoredValueConsumptionPreview | pay:sv:consume:create | 建立计价服务单并读取储值报价；无扣款/预占，C端仍需本人确认 |
+| P32 | GET | /mp/entitlement-service-orders | size=20(1–50) | List<ServiceView> | 登录本人 | 本人待确认或处理服务单，不接收客户端userNo |
+| P33 | GET | /mp/entitlement-service-orders/{serviceOrderNo} | 无 | ServiceView | 登录本人 | 本人服务单详情及确认元数据，不返回原命令或身份凭证 |
 
 P31创建时由core解析会员引用，重放按原key、原操作者/主体/门店及原payload核实，不依赖引用仍在TTL内；已提交服务单返回冻结报价，不重新报价改账。P22首次提交核实本人引用和授权，已有持久命令的重放核实原authorizationRef并返回原操作，短期引用过期不得阻断原结果恢复。新操作仍须有效身份引用；此规则不豁免权限、原门店范围或同号异参校验。
 

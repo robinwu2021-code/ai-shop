@@ -29,6 +29,7 @@
     python3 scripts/check-app-backend-orphan.py --check   # 超过基线就非零退出
 """
 import importlib.util
+import json
 import re
 import sys
 from pathlib import Path
@@ -44,6 +45,39 @@ _spec.loader.exec_module(_cac)
 norm, backend, contract = _cac.norm, _cac.backend, _cac.contract
 
 APPS = {"b-app": "/biz", "c-app": "/mp"}
+
+
+def validate_deferred(data, published, handlers, missing):
+    """Keep explicitly staged backend delivery distinct from historical UI debt."""
+    if data.get("version") != 1 or data.get("stage") != "JAVA_BACKEND_UI_DEFERRED" or not data.get("reason", "").strip():
+        raise ValueError("Invalid backend/UI delivery stage or missing reason")
+    result = set()
+    for entry in data.get("entries", []):
+        app, method, path = entry.get("app"), entry.get("method"), entry.get("path")
+        if app not in APPS or not isinstance(path, str) or not path.startswith(APPS[app] + "/"):
+            raise ValueError(f"Invalid staged app/path: {entry}")
+        endpoint = (method, norm(path))
+        key = f"{app} {method} {endpoint[1]}"
+        if key in result or endpoint not in published or endpoint not in handlers:
+            raise ValueError(f"Duplicate staged endpoint or missing published contract/handler: {key}")
+        if key not in missing:
+            raise ValueError(f"Staged endpoint is already connected or removed; remove its staging entry: {key}")
+        result.add(key)
+    return result
+
+
+def deferred_delivery(missing):
+    file = ROOT / "docs/api/backend-ui-delivery.json"
+    if not file.exists():
+        return set()
+    data = json.loads(file.read_text(encoding="utf-8"))
+    plan = data.get("plan", "")
+    if not plan.startswith("docs/technical/") or ".." in Path(plan).parts or not (ROOT / plan).is_file():
+        raise ValueError("Staged delivery must point to its existing frontend task plan")
+    spec = json.loads((ROOT / "docs/api/entitlement-backend.openapi.json").read_text(encoding="utf-8"))
+    published = {(method.upper(), norm(path)) for path, methods in spec["paths"].items()
+                 for method in methods if method in {"get", "post", "put", "patch", "delete"}}
+    return validate_deferred(data, published, set(backend()), missing)
 
 # **按设计就没有端上出口的端点** —— 服务器到服务器调用。
 # 把它们记进「只准变短」的名单是错的：那种行永远变不短，而一份含着
@@ -104,10 +138,15 @@ def main() -> int:
     if BASELINE.exists():
         known = {l.strip() for l in BASELINE.read_text(encoding="utf-8").splitlines()
                  if l.strip() and not l.startswith("#")}
+    actual = orphans()
+    deferred = deferred_delivery({f"{app} {m} {p}" for app, eps in actual.items() for m, p in eps})
+    print(f"明确分阶段交付、前端待接入：{len(deferred)} 条（真实Handler及公开契约已核验，不计入历史欠账）")
     rows, fresh, stale = [], [], set(known)
-    for app, eps in orphans().items():
+    for app, eps in actual.items():
         for m, p in eps:
             key = f"{app} {m} {p}"
+            if key in deferred:
+                continue
             rows.append(key)
             stale.discard(key)
             if key not in known:

@@ -676,6 +676,22 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueController$CancelRequest"
       },
+      "CancelRequest_3a23a3fd60": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.portal.biz.BizEntitlementUseController$CancelRequest"
+      },
       "CardProductBindingView_7e26a87ef7": {
         "properties": {
           "bindingRevision": {
@@ -7398,6 +7414,80 @@
         "x-permission-expression": "@perm.canBiz('pay:ent:read')"
       }
     },
+    "/biz/entitlement-uses/{operationNo}/cancel": {
+      "post": {
+        "operationId": "BizEntitlementUseController_cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operationNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelRequest_3a23a3fd60"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Operation_9dd4099e6d"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:ent:use')"
+      }
+    },
     "/biz/entitlements/{instanceNo}": {
       "get": {
         "operationId": "BizEntitlementQueryController_detail",
@@ -8300,6 +8390,69 @@
         ]
       }
     },
+    "/mp/entitlement-claims/{intentNo}": {
+      "get": {
+        "operationId": "MpEntitlementController_query",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "intentNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ClaimReceipt_a3e28cf16d"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "mp"
+        ]
+      }
+    },
     "/mp/entitlement-quotes": {
       "post": {
         "operationId": "MpEntitlementQuoteController_quote",
@@ -8326,6 +8479,137 @@
                       "anyOf": [
                         {
                           "$ref": "#/components/schemas/QuoteView_0d77b7b1c1"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "mp"
+        ]
+      }
+    },
+    "/mp/entitlement-service-orders": {
+      "get": {
+        "operationId": "MpEntitlementServiceOrderController_pendingServices",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "$ref": "#/components/schemas/ServiceView_c57f0537bf"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "mp"
+        ]
+      }
+    },
+    "/mp/entitlement-service-orders/{serviceOrderNo}": {
+      "get": {
+        "operationId": "MpEntitlementServiceOrderController_service",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "serviceOrderNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ServiceView_c57f0537bf"
                         },
                         {
                           "type": "null"

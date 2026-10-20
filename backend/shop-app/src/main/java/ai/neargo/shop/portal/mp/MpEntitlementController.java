@@ -9,9 +9,6 @@ import ai.neargo.shop.paybridge.ActivityBenefitCoordinator.ClaimView;
 import ai.neargo.shop.promotion.dto.BenefitClaimCommand;
 import ai.neargo.shop.promotion.service.ActivityCommandDeduplicator;
 import ai.neargo.shop.spi.entitlement.EntitlementContext;
-import ai.neargo.shop.trade.service.EntitlementServiceOrderService;
-import ai.neargo.shop.paybridge.dto.EntitlementServiceViews;
-import ai.neargo.shop.paybridge.dto.EntitlementServiceViews.ServiceView;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.AssetQuery;
 import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.AssetState;
@@ -48,10 +45,9 @@ public class MpEntitlementController {
     private final ActivityBenefitCoordinator benefits;
     private final EntitlementQueryPort assets;
     private final EntitlementCodeAppService codes;
-    private final EntitlementServiceOrderService serviceOrders;
     public MpEntitlementController(ActivityBenefitCoordinator benefits, EntitlementQueryPort assets,
-                                   EntitlementCodeAppService codes, EntitlementServiceOrderService serviceOrders) {
-        this.benefits = benefits; this.assets = assets; this.codes = codes; this.serviceOrders = serviceOrders;
+                                   EntitlementCodeAppService codes) {
+        this.benefits = benefits; this.assets = assets; this.codes = codes;
     }
     @PostMapping("/mp/entitlement-claims")
     public ClaimReceipt claim(@RequestBody BenefitClaimCommand command, @RequestHeader("Idempotency-Key") String key) {
@@ -107,17 +103,6 @@ public class MpEntitlementController {
                          @RequestHeader("Idempotency-Key") String key) {
         var ctx = context(key, instanceNo);
         return codes.issue(ctx, ctx.actorNo(), instanceNo, request, key);
-    }
-    @GetMapping("/mp/entitlement-service-orders")
-    public List<ServiceView> pendingServices(@RequestParam(defaultValue = "20") int size) {
-        var ctx = context("pending-services", "pending-services");
-        return serviceOrders.pending(ctx.tenantNo(), ctx.actorNo(), size).stream()
-                .map(EntitlementServiceViews::consumer).toList();
-    }
-    @GetMapping("/mp/entitlement-service-orders/{serviceOrderNo}")
-    public ServiceView service(@PathVariable String serviceOrderNo) {
-        var ctx = context("service-detail", serviceOrderNo);
-        return EntitlementServiceViews.consumer(serviceOrders.mine(ctx.tenantNo(), ctx.actorNo(), serviceOrderNo));
     }
     private EntitlementContext context(String request, String payload) {
         var user = SecurityUtils.requireUser();

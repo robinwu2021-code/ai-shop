@@ -40,6 +40,7 @@ class EntitlementApiContractCoverageTest {
         var id=Pattern.compile("[CPO][0-9]+[a-z]?");
         var permission=Pattern.compile("[a-z][a-z0-9_-]*(?::[a-z0-9_-]+){1,}");
         var report=new ArrayList<String>();
+        var documented = new java.util.HashSet<String>();
         var exporter = new EntitlementOpenApiExporter(json);
         for(String row:rows) {
             if(!row.startsWith("| ")) continue;
@@ -59,8 +60,22 @@ class EntitlementApiContractCoverageTest {
                 assertThat(authorize.value()).as("%s %s",method,path).contains(codes.group());
             }
             exporter.add(method, path, handler, columns[4].contains("model=unified"));
+            documented.add(method + " " + path);
             report.add(method+" "+path+" -> "+handler.getBeanType().getSimpleName()+"#"+handler.getMethod().getName());
         }
+        mapping.getHandlerMethods().forEach((info, handler) -> {
+            for (String path : info.getPatternValues()) {
+                boolean entitlement = java.util.stream.Stream.of("/biz/entitlement-", "/biz/entitlements",
+                        "/biz/stored-value/", "/mp/entitlement-", "/mp/entitlements",
+                        "/mp/stored-value/", "/ops/pay/entitlement").anyMatch(path::startsWith);
+                if (entitlement) {
+                    for (var method : info.getMethodsCondition().getMethods()) {
+                        assertThat(documented).as("Live entitlement handler must appear in the public contract")
+                                .contains(method.name() + " " + path);
+                    }
+                }
+            }
+        });
         assertThat(report).as("avoid vacuous success after a table parser change").hasSizeGreaterThanOrEqualTo(50);
         Files.createDirectories(Path.of("target"));
         Files.write(Path.of("target/entitlement-api-coverage.txt"),report);
