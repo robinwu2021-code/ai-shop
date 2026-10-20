@@ -52,6 +52,15 @@ function main() {
   const head = git('rev-parse', 'HEAD');
   const base = validateUpdate(readFileSync(0, 'utf8'), head);
   git('merge-base', '--is-ancestor', base, head);
+  const receiptDir = resolve(root, git('rev-parse', '--git-common-dir'), 'points-ops-receipts');
+  const receiptPath = join(receiptDir, `${head}.json`);
+  try {
+    const prior = JSON.parse(readFileSync(receiptPath, 'utf8'));
+    if (prior.head === head && prior.base === base && prior.profile === 'points-ops') {
+      console.log(`✓ 复用同一提交的专项验证记录：${head}`);
+      return;
+    }
+  } catch { /* No successful receipt for this exact commit and base. */ }
   const files = git('diff', '--name-only', '--no-renames', base, head).split('\n').filter(Boolean);
   validateFiles(files);
   run('git', ['diff', '--check', base, head]);
@@ -73,7 +82,6 @@ function main() {
   process.env.NEXT_PUBLIC_BASE_PATH = '/ops-web';
   run('node', [join(root, 'node_modules/next/dist/bin/next'), 'build', '--webpack'], ops);
   run('node', ['scripts/assert-prod-build.mjs'], ops);
-  const receiptDir = resolve(root, git('rev-parse', '--git-common-dir'), 'points-ops-receipts');
   mkdirSync(receiptDir, { recursive: true });
   writeFileSync(join(receiptDir, `${head}.json`), JSON.stringify({ profile: 'points-ops', head, base, files, backend, checkedAt: new Date().toISOString() }, null, 2));
   console.log(`✓ points-ops 发布检查通过：${head}（B/C 未变更）`);

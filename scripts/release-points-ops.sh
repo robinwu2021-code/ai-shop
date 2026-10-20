@@ -15,6 +15,7 @@ if [ "$MODE" = --check ]; then
   exit 0
 fi
 if [ "$SHA" != "$BASE" ]; then
+  printf 'HEAD %s refs/heads/codex/ai-shop-codex %s\n' "$SHA" "$BASE" | SHOP_RELEASE_PROFILE=points-ops bash .githooks/pre-push
   SHOP_RELEASE_PROFILE=points-ops git push origin HEAD:refs/heads/codex/ai-shop-codex
 fi
 [ "$MODE" = --deploy ] || exit 0
