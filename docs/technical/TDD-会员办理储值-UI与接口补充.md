@@ -149,7 +149,7 @@
 
 ## 5. 身份与数据改造边界
 
-这是已有userNo账户模型的兼容改造。最终采用Core既有personNo作为稳定customerNo，独立字段表达；真实userNo可空，不创建假用户。Pay以customerNo选账，注册后通过Core已验证的人档关系绑定。V536/V537为本轮增量迁移。
+这是已有userNo账户模型的兼容改造。最终采用Core既有personNo作为稳定customerNo，独立字段表达；真实userNo可空，不创建假用户。Pay以customerNo选账，注册后通过Core已验证的人档关系绑定。V538/V539为本轮增量迁移。
 
 必须覆盖：sv_account唯一键／账户号算法；sv_recharge、批次、账务凭证、收支投影、门店索引、冻结／核销选账、消费者账户读取、短时身份引用、内部远程DTO及原单指纹。不得只把开户处userNo换成memberNo，或把personNo塞入userNo字段。
 
@@ -191,12 +191,12 @@
 
 | 迁移 | 表 | 变更及兼容 |
 |---|---|---|
-| V536 | sv_recharge | 保留原实收金额/凭据CHECK，增加MERCHANT_OFFLINE类型 |
-| V537 | sv_account | customer_no及租户/顾客/商家/门店/币种唯一键；user_no可空；保留原账户号 |
-| V537 | sv_recharge、sv_statement | 新增customer_no，user_no可空；旧行从真实user_no回填，不改金额与历史凭证 |
-| V537 | sv_user_store_index | customer_no及租户/顾客/门店唯一键；user_no可空 |
-| V537 | mbr_identity_ticket | customer_no、可空user_no，新增CUSTOMER_SELECTION来源约束 |
-| V537 | sv_customer_identity | 租户内顾客与真实登录账号一对一；冲突拒绝，不自动合并余额 |
+| V538 | sv_recharge | 保留原实收金额/凭据CHECK，增加MERCHANT_OFFLINE类型 |
+| V539 | sv_account | customer_no及租户/顾客/商家/门店/币种唯一键；user_no可空；保留原账户号 |
+| V539 | sv_recharge、sv_statement | 新增customer_no，user_no可空；旧行从真实user_no回填，不改金额与历史凭证 |
+| V539 | sv_user_store_index | customer_no及租户/顾客/门店唯一键；user_no可空 |
+| V539 | mbr_identity_ticket | customer_no、可空user_no，新增CUSTOMER_SELECTION来源约束 |
+| V539 | sv_customer_identity | 租户内顾客与真实登录账号一对一；冲突拒绝，不自动合并余额 |
 
 绑定只更新账户及目录的身份元数据、版本和修改审计，不改历史充值/账务快照；同一真实用户的历史原单仍可恢复。新开户时若顾客已注册，Pay使用绑定关系填写真实userNo。消费仍须由已认证顾客的既有消费授权链路发起，会员选用不构成扣款授权。
 
