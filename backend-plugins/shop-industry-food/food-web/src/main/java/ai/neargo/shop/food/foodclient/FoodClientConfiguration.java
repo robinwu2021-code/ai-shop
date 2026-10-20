@@ -4,6 +4,7 @@ import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.spi.StoreOperationInternalApi;
+import ai.neargo.shop.food.spi.StorePolicyPublicationInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.shop.svc.ServiceName;
 import java.time.Duration;
@@ -27,6 +28,7 @@ public class FoodClientConfiguration {
     @ConditionalOnMissingBean(StoreOperationService.class)
     StoreOperationService remoteStoreOperationService(InternalHttp http) {
         return new RemoteStoreOperationService(http.client(ServiceName.FOOD, StoreOperationInternalApi.class,
-                Duration.ofSeconds(5)));
+                Duration.ofSeconds(5)),
+                http.client(ServiceName.FOOD, StorePolicyPublicationInternalApi.class, Duration.ofSeconds(5)));
     }
 }

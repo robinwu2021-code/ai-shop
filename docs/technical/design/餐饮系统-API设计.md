@@ -433,7 +433,7 @@
 
 `POST /biz/x/food/stores/{storeNo}/policies`
 
-权限与守卫：门店范围与对象权限；写操作CAS版本及幂等。
+权限与守卫：门店范围与对象权限；写操作CAS版本及幂等；version首次0、追加递增且effectiveFrom晚于最新发布；能力与审批未交付前非空拒绝。
 
 能力依赖：餐饮新增。
 
@@ -453,6 +453,7 @@
 | payPolicy | string | 是 | PREPAY或POSTPAY |
 | capabilities | string[] | 是 | 能力码 |
 | approvalRef | string | 否 | 审批 |
+| version | int64 | 是 | 最新发布版，首次0，含未来版 |
 
 成功输出（data）：
 

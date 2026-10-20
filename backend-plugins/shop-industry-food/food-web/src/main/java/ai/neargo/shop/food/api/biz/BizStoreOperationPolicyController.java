@@ -3,12 +3,15 @@ package ai.neargo.shop.food.api.biz;
 import ai.neargo.shop.auth.BizContext;
 import ai.neargo.shop.auth.BizContextFilter;
 import ai.neargo.shop.auth.BizPerms;
+import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.api.FoodRequestScopeValidator;
 import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
+import ai.neargo.shop.food.dto.CreatePolicyReq;
 import ai.neargo.shop.food.dto.GetPolicyQuery;
+import ai.neargo.shop.food.dto.OperationVO;
 import ai.neargo.shop.food.dto.StoreOperationPolicyResultVO;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
@@ -24,6 +27,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 /** User scope is resolved by the platform; public parameters never define the merchant identity. */
@@ -47,6 +53,21 @@ public class BizStoreOperationPolicyController {
     @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
     public StoreOperationPolicyResultVO getPolicy(@PathVariable("storeNo") @NotBlank @Size(max = 32) String storeNo,
             @Valid @ModelAttribute GetPolicyQuery query, HttpServletRequest request) {
+        BizContext context = requireStore(storeNo, request);
+        return service.getPolicy(context.merchantNo(), storeNo, query);
+    }
+
+    /** Publishes under the platform actor and original client key; no caller-defined identity is accepted. */
+    @PostMapping("/biz/x/food/stores/{storeNo}/policies")
+    @PreAuthorize("@perm.canBiz('" + BizPerms.STORE + "')")
+    public OperationVO createPolicy(@PathVariable("storeNo") @NotBlank @Size(max = 32) String storeNo,
+            @Valid @RequestBody CreatePolicyReq req,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 128) String key, HttpServletRequest request) {
+        BizContext context = requireStore(storeNo, request);
+        return service.createPolicy(context.merchantNo(), storeNo, SecurityUtils.currentUserNo(), req, key);
+    }
+
+    private BizContext requireStore(String storeNo, HttpServletRequest request) {
         BizContext context = BizContext.current();
         // Check path/header before directory lookup as well as against the directory's actual owner.
         scope.requireStoreTarget(context.merchantNo(), context.currentStoreNo(), context.merchantNo(), storeNo,
@@ -55,6 +76,6 @@ public class BizStoreOperationPolicyController {
         if (card == null) throw BizException.of(ErrorCode.NOT_FOUND);
         scope.requireStoreTarget(context.merchantNo(), context.currentStoreNo(), card.entityNo(), card.storeNo(),
                 request.getHeader(BizContextFilter.STORE_HEADER), context.storeNos());
-        return service.getPolicy(context.merchantNo(), storeNo, query);
+        return context;
     }
 }

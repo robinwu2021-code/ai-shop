@@ -1,6 +1,6 @@
 # 餐饮系统 M0 基础工程与接入方案
 
-> 状态：实施中，NEXT-01～05已完成；NEXT-06基础接线完成，业务AC随NEXT-08/09验收；NEXT-07源码核验完成，独立交易验收阻塞；NEXT-08待执行 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
+> 状态：实施中，NEXT-01～05已完成；NEXT-06基础接线完成，业务AC随NEXT-08/09验收；NEXT-07源码核验完成，独立交易验收阻塞；NEXT-08A读取、NEXT-08B受限策略发布已完成 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
 > **本版替代上一版独立food-server三端鉴权、远程用户session解析的设计。** 独立餐饮只提供内部接口，C/B/平台运营Controller源码均归餐饮food-web，由shop-app挂载。
 > [独立项目、包及依赖清单](./TDD-餐饮系统-独立项目与包依赖方案.md) · [统一架构及三端完整清单](./TDD-餐饮系统-三端API与独立服务对齐.md) · [总计划](./TDD-餐饮系统-后端开发计划.md) · [平台Java规范](../../.claude/skills/ai-shop-dev-standards/references/java.md)。
 
@@ -120,7 +120,7 @@ embedded餐饮复用平台dataSource/sqlSessionFactory/transactionManager；stan
 
 **目标：** 五模块独立构建与装配通过，冻结迁移资源归餐饮，主库和授权范围接通，随后交付桌区092～095第一个真实业务切片。桌台、菜品和订单仍按总计划依次推进，不扩大本轮为全量餐饮实现。
 
-**执行方式：** 后续编码使用`superpowers:executing-plans`，在隔离分支/工作树中逐任务自实施。先读本TDD、[独立项目方案](./TDD-餐饮系统-独立项目与包依赖方案.md)与[方法清单](./design/餐饮系统-Controller-Service-Mapper方法清单.md)。NEXT-01～05及NEXT-06基础接线已实施；NEXT-06业务AC随NEXT-08/09首写完成，NEXT-07已完成源码核验/任务拆分（非独立交易验收），NEXT-08起待执行，实际命令与边界见餐饮工程README。
+**执行方式：** 后续编码使用`superpowers:executing-plans`，在隔离分支/工作树中逐任务自实施。先读本TDD、[独立项目方案](./TDD-餐饮系统-独立项目与包依赖方案.md)与[方法清单](./design/餐饮系统-Controller-Service-Mapper方法清单.md)。NEXT-01～05及NEXT-06基础接线已实施；NEXT-06业务AC随NEXT-08/09首写完成，NEXT-07已完成源码核验/任务拆分（非独立交易验收），NEXT-08A/B已交付，接单日历/平台授权及NEXT-09起待执行，实际命令与边界见餐饮工程README。
 
 #### 文件定位与全局约束
 
@@ -254,6 +254,34 @@ embedded餐饮复用平台dataSource/sqlSessionFactory/transactionManager；stan
 - [x] 真实MySQL验证读取生效边界、逻辑删除和主体隔离、行数不变；常规reactor、三形态宿主与真实HTTP合同验证。只读GET不写业务审计/Outbox，不关闭NEXT-06真实首写AC。
 
 API001输入/输出沿既有API册；无生效策略沿NOT_FOUND。策略中的capabilities/payPolicy是已发布配置快照，不是营业许可；不因返回POSTPAY而开放后付。跨夜openHours与日历求交在API003切片实现，本轮不虚构open字段或改共享营业时间。
+
+##### NEXT-08B：API002策略发布与版本控制（本轮实施计划）
+
+**目标/范围：** 沿API002原createPolicy签名补真实配置写入；沿既有StorePolicy/ActionLog和平台幂等/统一Outbox，不新增表、不改冻结V1、不实现003/081或交易就绪。档位1。API原声明CAS但缺输入版本，先在food-system-design.json API002补version，再同步API册。
+
+**语义裁定：** version为当前最新已发布策略版本（包括尚未生效者），初始0；新版本=旧版+1，输出resultRef为新policyNo，operationNo为本次actionNo、status=SUCCEEDED（发布持久化完成，不表示已到生效时间）。只追加且effectiveFrom严格晚于既有最大生效时间；相同时间/旧version冲突。不覆盖旧行，也不把BaseEntity审计时间改为UTC。时间须在MySQL DATETIME范围、毫秒精度、IANA timezone、cutover0..1439；能力集合归一排序去重；审批引用非空与能力列表非空因缺权威校验而拒绝；PREPAY/POSTPAY仅为配置快照，不能开交易。历史时点允许追加但不能插入既有策略时间线中间；正式历史报表需引用原策略号快照，不能追溯改原单。
+
+**并发裁定：** 不给既有门店核心表加写锁/字段；发布通过本域短SERIALIZABLE事务查询最新行FOR UPDATE，含空范围的InnoDB间隙锁，唯一键兜底。同店不同生效时刻的并发首次发布必须仅一个成功，锁冲突/重复时返回CONFLICT，由客户端原键重试；不自动重试写入。不允许嵌套进未知隔离级别的现有事务。平台原主池/事务不替换，策略、真实action_log、幂等回执、事件原子提交。纯本地配置无远程资金意图，不滥用charge_intent；HTTP结果未知以同键回查首次结果。缺PLATFORM源必须全回滚；无消费者沿平台持久化FAILED/NO_CONSUMER并保留恢复，不等于交付成功，不能用探针或空消费者当营业验收。
+
+| 落点 | 本轮内容 |
+|---|---|
+| food-api/dto/CreatePolicyReq、OperationVO；StoreOperationService | 原createPolicy签名，增加version；不生成其余空方法 |
+| food-api内food/spi/StorePolicyPublicationInternalApi；平台spi/food/StorePolicyPublished | typed写合同携entity/store/actor/key/req；发布事件不含凭证或任意settings |
+| food-core/entity/FnbActionLog、FoodMappers.ActionLogMapper | 沿冻结审计表，真实操作者、请求指纹、前后策略引用 |
+| food-core/service/impl/StoreOperationServiceImpl | 短事务、校验、CAS、平台幂等、策略/审计/Outbox；读方法保持原语义 |
+| food-core/policy/FoodCommandFingerprint | 稳定typed摘要/域编码，操作+主体+门店长度前缀SHA256，不截断key |
+| food-core/config/FoodAutoConfiguration、FoodDataScopeRegistration | 真实对象装配与主体字段登记，关闭/OFF不装写业务 |
+| food-web/BizStoreOperationPolicyController、RemoteStoreOperationService、FoodClientConfiguration | 原STORE/目录/原始头，可信actor，必填key，独立写typed转发 |
+| food-server/InternalStoreOperationPolicyController | 原内部安全链、请求校验和业务失败状态；不复制用户认证 |
+| core/StorePolicyPublicationTest、web/FoodPolicyApiTest与Remote测试、server/InternalPolicyApiTest、FoodArchitectureTest与真实MySQL server测试 | 下表AC及两种部署、原子回滚、真实并发 |
+
+- [x] AC1：先观察失败测试，再实现首次/后续发布、未来生效、读回快照、历史不覆盖、旧version与同时间冲突。
+- [x] AC2：同域同key同参同actor回首次结果；异参/换actor拒绝；跨店同key独立；缺key/非法参数/非空能力或审批零写入。
+- [x] AC3：真实policy/action/idem/outbox同提交；发布失败和beforeCommit事件落库后异常均全回滚；缺统一源明确失败，不新建运行时。
+- [x] AC4：B端实际Controller复用原权限/范围/统一错误包装；header/path/目录/伪造actor均不能越权；独立typed JSON写/回执/错误无重试。
+- [x] AC5：一次性MySQL并发首次发布不同时间仅一成功，后续旧版本冲突，全部实际执行；常规reactor/冻结资源/宿主三形态通过；消融CAS后测试变红。
+
+**审查重点：** 空范围并发、客户端读到有效版而未来已有发布版、毫秒/时区语义、独立进程actor审计、Outbox未注册时的原子拒绝。API002所需version字段属本轮明确修订，不偷偷放入settings；未来授权/审批接通后再放开对应参数。
 
 #### NEXT-09：桌区首个真实业务切片（TBL-01）
 
@@ -394,3 +422,18 @@ RED证据：Service初始5项断言失败；Remote初始3项失败；Internal入
 NEXT-08整体仍未完成：API002策略发布/CAS、API003跨夜openHours与接单日历求交、API081授权及真实首写审计/意图/幂等摘要仍待实施。API001不追加open字段、不变更共享营业时间、不发Outbox、不改变readiness。既有主库未访问/升级，冻结V1 SHA256仍为215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9；普通支付/库存真实营业验收仍按NEXT-07阻塞。
 
 独立只读代码审查未发现需修复的Critical/Important/Minor项；30项既有餐饮设计守卫通过。实环境FOOD发现/令牌未核验，部署仍须提供；同生效时刻唯一性沿冻结V1的uk_food_2(store_no,effective_from)。未声称全backend测试通过，NEXT-03的两项独立schema已知失败仍保留原记录。
+
+
+### NEXT-08B 实施回填 · 2026-10-20
+
+API002原CAS声明缺version输入，已在food-system-design.json补齐并在隔离目录运行原生成器，只回填API册002章节，保留其他会话未提交设计段落。实现沿原StoreOperationService接口/Impl直接调用本域Mapper，新增CreatePolicyReq/OperationVO、真实FnbActionLog/ActionLogMapper、food.policy摘要辅助和food-api内平台spi命名的typed事件；五模块/Controller归属与V1均不变。
+
+首次version0，新策略递增；最新发布包含未来版，生效时刻严格递增，历史不可覆盖。主库短SERIALIZABLE+FOR UPDATE，初次空范围并发在真实MySQL以SELECT后双线程屏障验证仅一成功；原key重放不二次插入，异参/异actor拒绝，所有合法输入字段均参与typed摘要。主体/店/操作域长度前缀，原key不截断。非空审批或能力拒绝、先后付仅配置，不开放交易。未知body字段在DTO局部拒绝，不改平台ObjectMapper。
+
+真实审计operator_no记录可信actor，独立服务BaseEntity审计仍可为SYSTEM；同步配置无远程资金意图，操作号取真实actionNo，由平台幂等回执恢复HTTP未知结果。策略/审计/幂等/事件原子提交；事件flush后故障也全回滚。缺PLATFORM源拒绝整笔写入；无消费者按原平台持久化FAILED/NO_CONSUMER，不用生产空消费者造成功。测试archive-only路由仅证明事务，真实投递与营业readiness仍未验收。
+
+红绿证据：发布Service首轮6项断言失败后实现；B端新增POST首轮2项404失败后实现；未知actorNo字段首轮业务code0而期望10400，局部JsonAnySetter修复后通过。消融version比较后旧版本发布不再抛CONFLICT、对应测试失败，恢复通过。共享Maven快照被其他构建覆盖导致常量缺失，最终使用任务私有临时构件缓存，未以跳过测试规避依赖问题。
+
+完整命令、当前输出、裁定及代价回填餐饮工程README；API003/081及真实支付库存营业验收继续待办，本轮不声称NEXT-08整体完成，也不升级既有主库。
+
+最终验证：餐饮reactor含打包106项实际通过、17项专用条件跳过；另一次性MySQL44项全部实际通过，宿主三形态5/5/6通过，设计守卫30通过。独立审查无Critical/Important/Minor遗留；真实生产消费者和交易readiness未交付。冻结V1 SHA256仍为215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9。

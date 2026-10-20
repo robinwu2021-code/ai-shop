@@ -5,29 +5,32 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController;
+import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
+import ai.neargo.shop.food.dto.CreatePolicyReq;
 import ai.neargo.shop.food.dto.GetPolicyQuery;
+import ai.neargo.shop.food.dto.OperationVO;
 import ai.neargo.shop.food.dto.StoreOperationPolicyResultVO;
 import ai.neargo.shop.food.foodclient.RemoteStoreOperationService;
+import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.spi.StoreOperationInternalApi;
+import ai.neargo.shop.food.spi.StorePolicyPublicationInternalApi;
+import ai.neargo.shop.spi.user.StoreDirectoryPort;
+import ai.neargo.shop.svc.InternalHttp;
 import ai.neargo.svc.client.CallOutcome;
 import ai.neargo.svc.client.ServiceCallException;
-import java.time.Instant;
+import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import com.sun.net.httpserver.HttpServer;
-import java.util.concurrent.atomic.AtomicReference;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
-import ai.neargo.shop.svc.InternalHttp;
-import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
-import ai.neargo.shop.food.service.StoreOperationService;
-import ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController;
-import ai.neargo.shop.spi.user.StoreDirectoryPort;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.Test;
 
 class RemoteStoreOperationServiceTest {
     @Test void sharedHttpClientUsesRealWireContractAndCredentials() throws Exception {
@@ -50,13 +53,48 @@ class RemoteStoreOperationServiceTest {
             var http = new InternalHttp(name -> Optional.of("http://127.0.0.1:" + server.getAddress().getPort()),
                     "wire-test");
             var service = new RemoteStoreOperationService(http.client("FOOD", StoreOperationInternalApi.class,
-                    Duration.ofSeconds(2)));
+                    Duration.ofSeconds(2)), request -> { throw new AssertionError("Unexpected write"); });
             var result = service.getPolicy("E", "A", new GetPolicyQuery(Instant.parse("2026-10-20T12:00:00Z")));
             assertThat(result.policyNo()).isEqualTo("P1");
             assertThat(result.payPolicy()).isEqualTo("POSTPAY");
             assertThat(credential).hasValue("wire-test");
             assertThat(requestBody.get()).contains("\"entityNo\":\"E\"", "\"storeNo\":\"A\"",
                     "2026-10-20T12:00:00Z");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test void publicationUsesRealTypedHttpAndNeverRetriesConflicts() throws Exception {
+        var calls = new AtomicInteger();
+        var content = new AtomicReference<String>();
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH, exchange -> {
+            int attempt = calls.incrementAndGet();
+            content.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            byte[] response = "{\"operationNo\":\"OP1\",\"status\":\"SUCCEEDED\",\"version\":1,\"resultRef\":\"P1\"}"
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(attempt == 1 ? 200 : 409, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            var http = new InternalHttp(
+                    name -> Optional.of("http://127.0.0.1:" + server.getAddress().getPort()), "wire");
+            var service = new RemoteStoreOperationService(request -> { throw new AssertionError("Unexpected read"); },
+                    http.client("FOOD", StorePolicyPublicationInternalApi.class, Duration.ofSeconds(2)));
+            var request = new CreatePolicyReq("Asia/Shanghai", 240, Instant.parse("2026-10-22T12:00:00Z"),
+                    "POSTPAY", List.of(), null, 0L);
+            assertThat(service.createPolicy("E", "A", "actor", request, "original"))
+                    .isEqualTo(new OperationVO("OP1", "SUCCEEDED", 1, "P1"));
+            assertThat(content.get()).contains("\"actorNo\":\"actor\"", "\"idempotencyKey\":\"original\"",
+                    "\"version\":0", "2026-10-22T12:00:00Z");
+            assertThatThrownBy(() -> service.createPolicy("E", "A", "actor", request, "original"))
+                    .isInstanceOfSatisfying(BizException.class,
+                            e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+            assertThat(calls).hasValue(2);
         } finally {
             server.stop(0);
         }
@@ -88,7 +126,9 @@ class RemoteStoreOperationServiceTest {
             assertThat(request).isEqualTo(new StoreOperationInternalApi.Lookup("E", "A", at));
             return expected;
         };
-        assertThat(new RemoteStoreOperationService(api).getPolicy("E", "A", new GetPolicyQuery(at)))
+        var service = new RemoteStoreOperationService(api,
+                request -> { throw new AssertionError("Unexpected write"); });
+        assertThat(service.getPolicy("E", "A", new GetPolicyQuery(at)))
                 .isEqualTo(expected);
     }
 
@@ -98,7 +138,7 @@ class RemoteStoreOperationServiceTest {
             var service = new RemoteStoreOperationService(request -> {
                 calls.incrementAndGet();
                 throw new ServiceCallException(CallOutcome.REMOTE_ERROR, "FOOD", status, "remote failure");
-            });
+            }, request -> { throw new AssertionError("Unexpected write"); });
             ErrorCode expected = switch (status) {
                 case 400 -> ErrorCode.BAD_REQUEST;
                 case 403 -> ErrorCode.FORBIDDEN;
@@ -113,7 +153,8 @@ class RemoteStoreOperationServiceTest {
 
     @Test void unavailableServiceRemainsAnExplicitFailure() {
         var failure = new ServiceCallException(CallOutcome.UNREACHABLE, "FOOD", 0, "unavailable");
-        var service = new RemoteStoreOperationService(request -> { throw failure; });
+        var service = new RemoteStoreOperationService(request -> { throw failure; },
+                request -> { throw new AssertionError("Unexpected write"); });
         assertThatThrownBy(() -> service.getPolicy("E", "A", null)).isSameAs(failure);
     }
 }

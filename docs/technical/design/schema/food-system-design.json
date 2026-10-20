@@ -6018,9 +6018,9 @@
       "name": "发布营业策略",
       "method": "POST",
       "path": "/biz/x/food/stores/{storeNo}/policies",
-      "input": "timezone:string:IANA时区;cutoverMinute:int32:0至1439;effectiveFrom:datetime:生效;payPolicy:string:PREPAY或POSTPAY;capabilities:string[]:能力码;approvalRef?:string:审批",
+      "input": "timezone:string:IANA时区;cutoverMinute:int32:0至1439;effectiveFrom:datetime:生效;payPolicy:string:PREPAY或POSTPAY;capabilities:string[]:能力码;approvalRef?:string:审批;version:int64:最新发布版，首次0，含未来版",
       "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等",
+      "guard": "门店范围与对象权限；写操作CAS版本及幂等；version首次0、追加递增且effectiveFrom晚于最新发布；能力与审批未交付前非空拒绝",
       "needs": "餐饮新增"
     },
     {

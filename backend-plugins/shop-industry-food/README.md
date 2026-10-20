@@ -319,7 +319,54 @@ Service/Remote/内部入口初始失败后实现；移除范围校验会使非�
 
 本轮无迁移、未访问/升级现有库，V1未变；API002/003/081、写审计与首写原子性继续待办，不以只读测试关闭NEXT-06业务AC。下一步先整理并实现API002的版本/CAS及策略发布输入约束，再处理日历和平台能力授权。
 
+## NEXT-08B 门店餐饮策略发布 · 2026-10-20
+
+本轮交付FOOD-API-002：`POST /biz/x/food/stores/{storeNo}/policies`，继续使用原StoreOperationService/StoreOperationServiceImpl/FoodMappers、主库和统一响应。代码/逐AC计划见[M0方案NEXT-08B](../../docs/technical/TDD-餐饮系统-M0基础工程与接入方案.md)。
+
+请求：timezone、cutoverMinute、effectiveFrom、payPolicy、capabilities、可选approvalRef，**新增必填version**补齐原设计漏项；另需原Idempotency-Key。主体/操作者不由body提供，未知字段也拒绝。有效时刻须为UTC绝对时刻、毫秒精度且在MySQL DATETIME范围；业务timezone为IANA名称，审计时间仍沿平台。
+
+```json
+{"timezone":"Asia/Shanghai","cutoverMinute":240,"effectiveFrom":"2026-10-22T12:00:00Z","payPolicy":"POSTPAY","capabilities":[],"version":0}
+```
+
+首次version=0，输出新版本1；有策略时须传**最新发布版（含未来版）**，并晚于该版effectiveFrom。成功data为operationNo/status/version/resultRef，status=SUCCEEDED只表示发布已提交，resultRef为新policyNo；操作号沿本次不可变actionNo。历史策略不覆盖，API001查询时点仍选择当时生效版本。后续发布的版本不能从“此刻有效版”盲取，已有未来发布时要按计划时间查询/沿首次发布回执获得最新版本。
+
+| 规则 | 实现与边界 |
+|---|---|
+| 范围/权限 | B端沿原STORE、BizContext、原始门店头、path/currentStore、目录主体归属；actor取SecurityUtils |
+| 原子提交 | 策略、fnb_action_log、平台幂等回执及typed Outbox同一主事务；无远程RPC/自动写重试/REQUIRES_NEW拆写 |
+| 并发发布 | 短SERIALIZABLE事务+最新策略FOR UPDATE及原唯一键，空范围由InnoDB间隙锁保护；冲突返回原CONFLICT；拒绝加入未知隔离级别的外层事务 |
+| 幂等 | 操作/主体/门店长度前缀SHA256形成72字符域；typed参数稳定摘要，actor绑定原userNo；同键异参/他人重放拒绝，跨店同key独立 |
+| 审计 | 真实operator_no记录平台传来的actor；请求键只作哈希关联，前后策略引用明确；独立服务BaseEntity审计可为SYSTEM，不伪造用户登录 |
+| 独立部署 | typed POST `/internal/food/store-policy/create`传entity/store/actor/原key/policy，原内部令牌保护；Remote不重试/不回退，业务错误恢复为共享错误码 |
+| 能力/审批 | PREPAY/POSTPAY仅配置快照；非空capabilities或approvalRef因缺权威校验而FORBIDDEN，不凭任意settings启用能力 |
+| Outbox | 缺注册PLATFORM源则整笔回滚；无消费者沿平台写FAILED/NO_CONSUMER留待恢复，不表示已投递；测试archive路由只作原子性证明，不创建生产空消费者 |
+
+本轮不新增库表/迁移、不修改基础商品/订单/支付/库存业务，也未升级或访问现有库。跨域事件在food-api契约jar的`ai.neargo.shop.spi.food`，语义摘要辅助在food-core的`food.policy`，不另造具体XxxService或Repository转发层。
+
+验证收据：常规reactor verify（含迁移打包）106项实际通过，17项数据库专用条件跳过；另一次性MySQL44项实际通过、0跳过（15主库+6幂等+7Outbox+5读取+10发布+1真实server）。真实server使用冻结V1表，验证内部POST发布/原键重放/异参冲突及真实审计/事件。宿主默认/embedded/standalone实际5/5/6项通过，形态专用条件跳过1/1/0；30项设计守卫通过。独立只读审查无Critical/Important/Minor遗留；作者运行最终验证，审查者未重跑测试。
+
+实际执行使用JDK21与任务私有Maven缓存，避免其他构建覆盖本机SNAPSHOT。先在该缓存安装当前shop-base和餐饮模块，再运行：
+
+```sh
+mvn -o -Dmaven.repo.local=/private/tmp/food-next08b-m2 -f backend-plugins/shop-industry-food/pom.xml verify
+MAVEN_OPTS=-Dmaven.repo.local=/private/tmp/food-next08b-m2 python3 scripts/verify-food-primary-mysql.py
+mvn -o -Dmaven.repo.local=/private/tmp/food-next08b-m2 -f backend/pom.xml -pl shop-app -am test -Dtest=FoodEmbeddedWiringTest -Dsurefire.failIfNoSpecifiedTests=false
+mvn -o -Dmaven.repo.local=/private/tmp/food-next08b-m2 -f backend/pom.xml -pl shop-app -am -Pfood-embedded test -Dtest=FoodEmbeddedWiringTest -Dsurefire.failIfNoSpecifiedTests=false -Dfood.build.shape=embedded
+mvn -o -Dmaven.repo.local=/private/tmp/food-next08b-m2 -f backend/pom.xml -pl shop-app -am -Pfood-standalone test -Dtest=FoodEmbeddedWiringTest -Dsurefire.failIfNoSpecifiedTests=false -Dfood.build.shape=standalone
+```
+
+初始发布Service6项断言RED→GREEN，B端POST初始404→通过；未知actorNo初始code0→10400。移除version比较后旧版本不再冲突、对应测试变红，恢复后通过。正常完整verify不运行真实MySQL测试，独立脚本强制全部数据库用例执行，未用跳过掩盖并发验收。
+
+本轮裁定及代价：
+
+- 补version，追加且有效时间严格递增；代价是未来策略不能在本API中替换/取消，也不能在已有时间线中间插入。
+- 本域SERIALIZABLE保护首次并发，不写锁核心门店表；代价是发布可能发生锁冲突，由客户端沿原key重试，嵌套事务明确拒绝。
+- 能力授权/审批未实现前拒绝非空入参；代价是本切片只接受空能力列表，先后付模式不会因此可营业。
+- 本地配置操作以actionNo作为持久化操作回执，同步发布不创建资金意图；代价是外部结果未知的恢复合同留给真正跨域交易切片。
+- 沿平台无消费者的FAILED/NO_CONSUMER语义，不改核心投递；代价是真实源/路由/消费者仍由平台所有者配置验收，发布成功不能等同下游成功。
+
 ## 后续边界
 
-下一步为 NEXT-08B：策略发布与版本控制，再推进日历/授权/真实审计及NEXT-09桌区首写；NEXT-06业务级AC随之验收。独立支付/库存的权威域子任务可并行推进，但不得用它们的待实施状态开放正式交易。
+下一步为 NEXT-08C：接单日历与原营业时间求交，再推进平台授权和NEXT-09桌区首写；NEXT-06业务级AC随之验收。独立支付/库存的权威域子任务可并行推进，但不得用它们的待实施状态开放正式交易。
 现有主库前置缺项与远程支付/库存合同尚未完成，不能把本轮 schema 接线通过解释为可营业。

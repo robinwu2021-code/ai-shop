@@ -6,11 +6,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.food.dto.CreatePolicyReq;
+import ai.neargo.shop.food.dto.GetPolicyQuery;
+import ai.neargo.shop.food.dto.OperationVO;
 import ai.neargo.shop.food.dto.StoreOperationPolicyResultVO;
 import ai.neargo.shop.food.server.api.InternalStoreOperationPolicyController;
 import ai.neargo.shop.food.server.config.FoodInternalSecurityConfiguration;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.spi.StoreOperationInternalApi;
+import ai.neargo.shop.food.spi.StorePolicyPublicationInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -58,6 +62,21 @@ class InternalPolicyApiTest {
                     .andExpect(status().isUnauthorized());
         });
     }
+    @Test void trustedPublicationValidatesNestedRequestAndActor() {
+        String command = "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"actorNo\":\"staff\",\"idempotencyKey\":\"original\","
+                + "\"policy\":{\"timezone\":\"Asia/Shanghai\",\"cutoverMinute\":240,"
+                + "\"effectiveFrom\":\"2026-10-22T12:00:00Z\",\"payPolicy\":\"POSTPAY\","
+                + "\"capabilities\":[],\"version\":7}}";
+        runner.run(context -> {
+            mvc(context).perform(post(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH)
+                            .header(InternalHttp.TOKEN_HEADER,"internal-test").contentType(MediaType.APPLICATION_JSON)
+                            .content(command)).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(8));
+            mvc(context).perform(post(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH)
+                            .header(InternalHttp.TOKEN_HEADER,"internal-test").contentType(MediaType.APPLICATION_JSON)
+                            .content(command.replace("\"version\":7", "\"version\":-1")))
+                    .andExpect(status().isBadRequest());
+        });
+    }
     private MockMvc mvc(WebApplicationContext context) {
         return MockMvcBuilders.webAppContextSetup(context).addFilters(context.getBean(FilterChainProxy.class)).build();
     }
@@ -66,9 +85,16 @@ class InternalPolicyApiTest {
     @Import({InternalStoreOperationPolicyController.class, FoodInternalSecurityConfiguration.class})
     static class Host {
         @Bean StoreOperationService service() {
-            return (entity, store, query) -> {
+            return new StoreOperationService() {
+                public StoreOperationPolicyResultVO getPolicy(String entity, String store, GetPolicyQuery query) {
                 if (!"E".equals(entity)) throw BizException.of(ErrorCode.NOT_FOUND);
                 return new StoreOperationPolicyResultVO("P1","Asia/Shanghai",240,"PREPAY",List.of(),1);
+                }
+                public OperationVO createPolicy(String entity, String store, String actor,
+                        CreatePolicyReq req, String key) {
+                    if (!"E".equals(entity) || !"A".equals(store)) throw new AssertionError("Untrusted scope");
+                    return new OperationVO("OP1", "SUCCEEDED", req.version() + 1, "P2");
+                }
             };
         }
     }

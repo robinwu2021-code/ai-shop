@@ -6,16 +6,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import ai.neargo.shop.common.AuditMetaObjectHandler;
+import ai.neargo.shop.event.outbox.runtime.JdbcOutboxStore;
+import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.config.FoodSchemaReady;
 import ai.neargo.shop.food.mapper.FoodMappers;
 import ai.neargo.shop.food.server.FoodApplication;
 import ai.neargo.shop.food.spi.StoreOperationInternalApi;
+import ai.neargo.shop.food.spi.StorePolicyPublicationInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
-import org.springframework.http.MediaType;
-import org.springframework.security.web.FilterChainProxy;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -24,11 +26,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.security.web.FilterChainProxy;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.PlatformTransactionManager;
+import tools.jackson.databind.ObjectMapper;
 
 @EnabledIfEnvironmentVariable(named = "FOOD_TEST_DISPOSABLE", matches = "true")
 class FoodServerPrimaryDatabaseTest {
@@ -46,7 +54,7 @@ class FoodServerPrimaryDatabaseTest {
             Flyway.configure().dataSource(source).locations("classpath:db/industry/food").table("fnb_flyway_history")
                     .baselineOnMigrate(true).baselineVersion("0").load().migrate();
             new WebApplicationContextRunner().withInitializer(new ConfigDataApplicationContextInitializer())
-                    .withUserConfiguration(FoodApplication.class)
+                    .withUserConfiguration(FoodApplication.class, PublicationRoute.class)
                     .withPropertyValues("spring.datasource.url=" + url, "spring.datasource.username=root", "spring.datasource.password=",
                             "shop.services.internal-token=food-disposable-server-test",
                             "spring.autoconfigure.exclude=org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration,org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration")
@@ -84,7 +92,46 @@ class FoodServerPrimaryDatabaseTest {
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_store_policy",Integer.class)).isEqualTo(1);
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent",Integer.class)).isZero();
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class)).isZero();
+                        String command = "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"actorNo\":\"trusted-actor\","
+                                + "\"idempotencyKey\":\"original-publication\","
+                                + "\"policy\":{\"timezone\":\"Asia/Shanghai\","
+                                + "\"cutoverMinute\":240,\"effectiveFrom\":\"2026-10-22T12:00:00Z\","
+                                + "\"payPolicy\":\"POSTPAY\",\"capabilities\":[],\"version\":0}}";
+                        String receipt = mvc.perform(post(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON).content(command))
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SUCCEEDED"))
+                                .andExpect(jsonPath("$.version").value(1))
+                                .andReturn().getResponse().getContentAsString();
+                        mvc.perform(post(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON).content(command))
+                                .andExpect(status().isOk()).andExpect(result -> assertThat(
+                                        result.getResponse().getContentAsString()).isEqualTo(receipt));
+                        mvc.perform(post(StorePolicyPublicationInternalApi.POLICY_CREATE_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(command.replace("2026-10-22", "2026-10-23")))
+                                .andExpect(status().isConflict());
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_store_policy",Integer.class))
+                                .isEqualTo(2);
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_action_log",Integer.class)).isOne();
+                        assertThat(sql.queryForObject("SELECT operator_no FROM fnb_action_log",String.class))
+                                .isEqualTo("trusted-actor");
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent",Integer.class)).isOne();
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class)).isOne();
                     });
         } finally { admin.execute("DROP DATABASE " + database); }
+    }
+    /** Only a disposable test source/route; production registration remains owned by the platform. */
+    @Configuration(proxyBeanMethods = false)
+    static class PublicationRoute {
+        @Bean UnifiedOutboxFacade policyFacade(DataSource source, PlatformTransactionManager manager,
+                ObjectMapper json) {
+            var facade = new UnifiedOutboxFacade(json);
+            facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
+            facade.setArchiveOnly(Set.of("PLATFORM:FOOD_STORE_POLICY_PUBLISHED"));
+            return facade;
+        }
     }
 }

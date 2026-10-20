@@ -71,6 +71,25 @@ class FoodArchitectureTest {
     }
 
     @Test
+    void servicesFollowPlatformInterfaceAndImplementationStyle() throws Exception {
+        Path root = reactorRoot();
+        Path api = root.resolve("food-api/src/main/java/ai/neargo/shop/food/service");
+        Path core = root.resolve("food-core/src/main/java/ai/neargo/shop/food/service/impl");
+        try (var interfaces = Files.walk(api); var implementations = Files.walk(core)) {
+            for (Path file : interfaces.filter(p -> p.toString().endsWith(".java")).toList()) {
+                String name = file.getFileName().toString().replace(".java", "");
+                assertTrue(name.endsWith("Service"), file.toString());
+                assertTrue(Files.readString(file).contains("interface " + name), file.toString());
+            }
+            for (Path file : implementations.filter(p -> p.toString().endsWith(".java")).toList()) {
+                String name = file.getFileName().toString().replace(".java", "");
+                assertTrue(name.endsWith("ServiceImpl"), file.toString());
+                assertTrue(Files.readString(file).contains("implements " + name.replace("Impl", "")), file.toString());
+            }
+        }
+    }
+
+    @Test
     void moduleGraphHasNoCycles() throws Exception {
         assertAcyclic(dependencies());
     }

@@ -1,16 +1,21 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.event.outbox.OutboxPublisher;
+import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.impl.StoreOperationServiceImpl;
-import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.context.annotation.Conditional;
-import tools.jackson.databind.ObjectMapper;
+import ai.neargo.shop.idem.IdempotencyService;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.Import;
+import org.springframework.transaction.PlatformTransactionManager;
+import tools.jackson.databind.ObjectMapper;
 
 /** 餐饮模块装配入口。 */
 @AutoConfiguration(afterName = {"org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration",
@@ -22,8 +27,10 @@ public class FoodAutoConfiguration {
     @Bean
     @Conditional(FoodPersistenceConfiguration.PersistenceEnabled.class)
     @ConditionalOnMissingBean(StoreOperationService.class)
-    StoreOperationService storeOperationService(StorePolicyMapper mapper, ObjectMapper json) {
-        return new StoreOperationServiceImpl(mapper, json);
+    StoreOperationService storeOperationService(StorePolicyMapper policies, ActionLogMapper actions,
+            IdempotencyService idempotency, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
+            ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new StoreOperationServiceImpl(policies, actions, idempotency, publisher, json, manager);
     }
 
     @Bean

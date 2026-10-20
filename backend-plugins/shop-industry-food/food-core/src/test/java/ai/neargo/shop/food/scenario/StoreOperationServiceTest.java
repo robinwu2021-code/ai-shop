@@ -6,23 +6,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.dto.GetPolicyQuery;
-import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.service.StoreOperationService;
-import ai.neargo.shop.food.service.impl.StoreOperationServiceImpl;
 import java.sql.Timestamp;
-import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
-import org.mybatis.spring.SqlSessionTemplate;
-import org.mybatis.spring.mapper.MapperFactoryBean;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
-import tools.jackson.databind.ObjectMapper;
 
 class StoreOperationServiceTest extends FoodWriteGuardFixture {
     private static final Instant NOW = Instant.parse("2026-10-20T15:30:00Z");
@@ -107,14 +100,6 @@ class StoreOperationServiceTest extends FoodWriteGuardFixture {
     }
     @Configuration(proxyBeanMethods = false)
     @EnableTransactionManagement
-    static class Policy {
-        @Bean MapperFactoryBean<StorePolicyMapper> storePolicyMapper(
-                @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate template) {
-            var factory = new MapperFactoryBean<>(StorePolicyMapper.class);
-            factory.setSqlSessionTemplate(template); return factory;
-        }
-        @Bean StoreOperationService policy(StorePolicyMapper mapper, ObjectMapper json) {
-            return new StoreOperationServiceImpl(mapper,json,Clock.fixed(NOW,ZoneOffset.UTC));
-        }
-    }
+    @Import(StorePolicyPublicationTest.Publication.class)
+    static class Policy { }
 }
