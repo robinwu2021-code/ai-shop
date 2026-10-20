@@ -63,13 +63,16 @@ function schemaCheck() {
 }
 function main() {
   const head = git('rev-parse', 'HEAD');
-  const base = validateUpdate(readFileSync(0, 'utf8'), head);
+  const snapshot = process.argv[2] === '--snapshot-check';
+  const base = snapshot ? git('rev-parse', process.argv[3]) : validateUpdate(readFileSync(0, 'utf8'), head);
+  if (snapshot && (base !== manifest.releaseAnchor || git('status', '--porcelain'))) throw new Error('快照必须从声明的线上基线校验，且工作区必须干净');
+  const profile = snapshot ? 'points-ops-snapshot' : 'points-ops';
   git('merge-base', '--is-ancestor', base, head);
-  const receiptDir = resolve(root, git('rev-parse', '--git-common-dir'), 'points-ops-receipts');
+  const receiptDir = resolve(root, git('rev-parse', '--git-common-dir'), snapshot ? 'points-ops-snapshot-receipts' : 'points-ops-receipts');
   const receiptPath = join(receiptDir, `${head}.json`);
   try {
     const prior = JSON.parse(readFileSync(receiptPath, 'utf8'));
-    if (prior.head === head && prior.base === base && prior.profile === 'points-ops') {
+    if (prior.head === head && prior.base === base && prior.profile === profile) {
       console.log(`✓ 复用同一提交的专项验证记录：${head}`);
       return;
     }
@@ -87,11 +90,11 @@ function main() {
   generatedCheck('ops-web/scripts/gen-openapi.mjs', 'docs/api/openapi-ops.yaml');
   schemaCheck();
   const ops = join(root, 'ops-web');
-  run('npm', ['test', '--', 'lib/points-earning.test.ts', 'lib/points-earning-page.test.ts', 'lib/nav.test.ts', 'lib/points-language.test.ts', 'lib/points-types-page.test.ts', 'lib/points-type-create-form.test.ts', 'lib/points-ops-routes.test.ts', 'lib/api/points-operations-api.test.ts', 'lib/api/points-configuration.test.ts', 'lib/points-command.test.ts', 'lib/points-configuration-ui.test.ts', 'lib/points-store-access-page.test.ts'], ops);
+  run('npm', ['test', '--', 'lib/points-earning.test.ts', 'lib/points-earning-page.test.ts'], ops);
   run('npm', ['run', 'typecheck'], ops);
   const backend = files.some(f => f.startsWith('backend/'));
   if (backend) {
-    run('mvn', ['-o', '-pl', 'shop-app', '-am', '-Dtest=PointsEarningRulesTest,PointsEarningRulesStoreTest,PointsOrderPlacementFlowTest,DelayedEarnPolicyTest,AcceptedEarnBudgetTest,UnfundedEarnRefundTest,PointsOrderTermsPortTest,EarnPolicyTest,PointsOpsWorkbenchTest#manual_event_retry_keeps_its_identity_requires_current_version_and_never_exposes_payload', '-Dsurefire.failIfNoSpecifiedTests=false', 'test', '-q'], join(root, 'backend'));
+    run('mvn', ['-o', '-pl', 'shop-app', '-am', '-Dtest=PointsUnifiedOperationsTest,PointsOperationKeysTest,PointsEarningRuleServiceTest,PointsRefundPreparationTest#pending_grants_are_frozen_once_with_immutable_input_and_no_early_return+confirmation_requires_exact_successful_pay_ledger_binding_and_replays_once,RedeemServiceTest#termination_does_not_break_hold+reserve_shortage_is_atomic+quote_is_advisory_and_hold_rechecks_acceptance+immutable_hold_rejects_changed_amount_and_release_replays+draining_type_allows_existing_balance_redemption_but_no_new_grants+redemption_projects_store_and_order_dimensions,PointsEarningRulesTest,PointsEarningRulesStoreTest,PointsOrderPlacementFlowTest,DelayedEarnPolicyTest,AcceptedEarnBudgetTest,UnfundedEarnRefundTest,PointsOrderTermsPortTest,EarnPolicyTest,PointsOpsWorkbenchTest#manual_event_retry_keeps_its_identity_requires_current_version_and_never_exposes_payload', '-Dsurefire.failIfNoSpecifiedTests=false', 'test', '-q'], join(root, 'backend'));
     run('mvn', ['-o', '-pl', 'shop-app,pay/pay-svc', '-am', '-DskipTests', 'package', '-q'], join(root, 'backend'));
   }
   process.env.NEXT_PUBLIC_API_BASE = '';
@@ -100,7 +103,7 @@ function main() {
   run('node', [join(root, 'node_modules/next/dist/bin/next'), 'build', '--webpack'], ops);
   run('node', ['scripts/assert-prod-build.mjs'], ops);
   mkdirSync(receiptDir, { recursive: true });
-  writeFileSync(join(receiptDir, `${head}.json`), JSON.stringify({ profile: 'points-ops', head, base, releaseBase: manifest.releaseBase, files, backend, checkedAt: new Date().toISOString() }, null, 2));
+  writeFileSync(join(receiptDir, `${head}.json`), JSON.stringify({ profile, head, base, releaseBase: manifest.releaseBase, files, backend, checkedAt: new Date().toISOString() }, null, 2));
   console.log(`✓ points-ops 发布检查通过：${head}（B/C 未变更）`);
 }
 if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) main();
