@@ -470,13 +470,18 @@ export interface MerchantCustomer {
 
 /** 统一会员身份凭证，ISO UTC截止时间；与登录令牌不同，不代表扣款同意。 */
 export interface MemberCodeView {
+  /** 短期会员身份凭证，仅用于识别本人，不代表消费授权。 */
   memberCode: string;
+  /** 凭证失效时间，ISO 8601 UTC。 */
   expiresAt: string;
 }
 
 /** 商家扫码得到的短期顾客引用，只在原主体、门店和操作人范围内可用。 */
 export interface CustomerReference {
+  /** 绑定原商家、门店和操作人的短期顾客引用。 */
   customerRef: string;
+  /** 脱敏顾客显示名称。 */
   maskedName: string;
+  /** 凭证失效时间，ISO 8601 UTC。 */
   expiresAt: string;
 }

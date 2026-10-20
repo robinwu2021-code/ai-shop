@@ -42,7 +42,7 @@ class EntitlementMigrationStageFlowTest {
             return (ctx,q) -> {
                 CALLS.incrementAndGet();
                 assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
-                return ((ai.neargo.shop.spi.entitlement.LegacyCouponMigrationManifestPort)fences).exportManifest(ctx,q);
+                return fences.exportManifest(ctx,q);
             };
         }
         @Bean @Primary LegacyCouponFrozenSnapshotPort observedSource(LegacyCouponSourceFenceService fences) {
@@ -50,7 +50,7 @@ class EntitlementMigrationStageFlowTest {
                 CALLS.incrementAndGet();
                 assertThat(TransactionSynchronizationManager.isActualTransactionActive())
                         .as("source evidence is fetched outside the pay transaction").isFalse();
-                return ((LegacyCouponFrozenSnapshotPort)fences).exportFrozen(ctx,q);
+                return fences.exportFrozen(ctx,q);
             };
         }
     }

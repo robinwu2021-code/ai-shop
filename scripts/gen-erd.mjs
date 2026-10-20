@@ -69,6 +69,26 @@ const DOMAINS = [
  * 与 packages/shared/tests/schema-lineage.test.ts 的同名表保持一致（有断言校验）。
  */
 export const KEY_OWNERS = {
+  tier_no: "pmt_recharge_tier",
+  grant_no: "ent_grant",
+  instance_no: "ent_instance",
+  usage_no: "ent_usage",
+  source_order_no: "ord_order",
+  recharge_no: "sv_recharge",
+  lot_no: "sv_lot",
+  voucher_no: "sv_voucher",
+  exception_no: "pay_ent_exception",
+  recon_no: "pay_ent_recon_run",
+  stage_no: "ent_migration_stage",
+  alias_no: "ent_migration_alias",
+  checkout_no: "ord_legacy_coupon_checkout",
+  plan_no: "ent_migration_plan",
+  import_no: "ent_migration_import",
+  return_no: "pmt_migration_return",
+  target_template_no: "ent_template",
+  template_version_no: "ent_template_version",
+  activity_version_no: "pmt_activity_version",
+
   /*
    * ── 2026-08-29 补齐的十三个 ──
    * 与 packages/shared/tests/schema-lineage.test.ts 的 KEY_OWNERS **必须逐条相等**
@@ -204,6 +224,24 @@ const TOPICS = [
  * 而守卫只查集合不查文档，漏了两天没人发现。
  */
 const NAME_COLLISIONS_WHY = {
+  migration_batch_no: "旧券迁移批次按tenant/sourceSystem/sourceTemplateNo限定，不是全局迁移主键；目标原子导入主键是import_no。",
+  aggregate_no: "订单状态聚合与Pay Outbox的多态聚合号，各自携带聚合类型。",
+  diff_no: "结算差异stl_recon_diff与权益差异pay_ent_recon_diff分别发号。",
+  current_version_no: "pmt_activity指活动版本，ent_template指权益模板版本，须按所属表限定。",
+  biz_no: "通道消息、储值凭证和权益异常各自按biz_type解释的多态业务号。",
+  account_no: "mch_payout_account为银行出款账户；sv_account为储值账户。",
+  version_no: "活动版本和权益模板版本各自发号；活动子表指pmt_activity_version，ent_template_version自持权益版本。",
+  resource_no: "幂等结果和对账差异按对应资源类型解释，不是同一实体。",
+  actor_no: "审计操作人可为商家账号、运营或系统，必须结合actor_type解释。",
+  decision_no: "Core订单源决定与旧券迁移永久源决定分别发号。",
+  reservation_no: "活动资源占用与Pay售卡承诺分别发号，关联必须结合业务协议。",
+  source_decision_no: "Core订单源决定或迁移源决定，由source协议与purpose限定。",
+  operation_no: "统一使用意图或旧券原操作号，由protocol决定根表，不能仅按号合并。",
+  intent_no: "活动发权益与储值充值协调意图分别发号。",
+  source_template_no: "旧MKT或PMT根号，须同时校验source_system与tenant，禁止同号猜测。",
+  source_instance_no: "原旧券实例号，须同时校验source_system与tenant，禁止跨来源连接。",
+  source_usage_no: "原历史流水号，须同时校验source_system与source_instance_no。",
+
   request_no: "`mkt_request` 是求团需求单号；`stl_split_log` 是分账幂等号",
   express_no: "`ord_sub_order` 是发货单号；`ord_after_sale` 是退货单号，**方向相反**",
   operator_no: "各表各自记录操作人，不是外键",
@@ -219,6 +257,10 @@ const AUDIT = new Set([
 const TABLE_KEY_OWNERS = {
   ent_template: { current_version_no: "ent_template_version" },
   ent_template_version: { template_no: "ent_template" },
+  pmt_activity: { current_version_no: "pmt_activity_version" },
+  pmt_activity_scope: { version_no: "pmt_activity_version" },
+  pmt_recharge_tier: { version_no: "pmt_activity_version" },
+  pmt_activity_reservation: { version_no: "pmt_activity_version" },
 };
 
 // ---------------------------------------------------------------- 关系
@@ -227,8 +269,9 @@ function relations(tables) {
   const out = [];
   for (const [table, def] of tables) {
     for (const c of def.cols) {
-      if (AUDIT.has(c.name) || NAME_COLLISIONS.has(c.name)) continue;
-      const owner = TABLE_KEY_OWNERS[table]?.[c.name] ?? KEY_OWNERS[c.name];
+      const qualifiedOwner = TABLE_KEY_OWNERS[table]?.[c.name];
+      if (AUDIT.has(c.name) || (!qualifiedOwner && NAME_COLLISIONS.has(c.name))) continue;
+      const owner = qualifiedOwner ?? KEY_OWNERS[c.name];
       if (!owner || owner === table || !tables.has(owner)) continue;
       out.push({ from: table, to: owner, col: c.name });
     }

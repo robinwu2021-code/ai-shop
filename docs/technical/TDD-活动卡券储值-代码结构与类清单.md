@@ -852,3 +852,9 @@ LegacyCouponIdentityPort新增core本地模板主体/已提交模板目录读取
 共享`LegacyCouponWriteFencePort`只提供原Core事务内的本地写屏障；marketing不再引用promotion的具体服务。`paybridge/port/LegacyCouponWriteFencePortImpl`和`LegacyCouponSnapshotPortImpl`薄转发给核心源协调器；成员受众经SourceCommit/Identity SPI验证真实来源决定和主体。跨域源身份端口位于`paybridge/port`；纯promotion的SourceCommit/IssuedProjection端口位于`promotion/port`。embedded历史退回由`pay.entitlement.port.LegacyCouponHistoricalReturnPortImpl`适配，替代装配类匿名端口。
 
 数据库/API契约未因包整理新增表或传输端点；完整验证状态见独立任务表与最终验收文档。
+
+### 最终验收补充：来源绑定实体与售卡确认状态
+
+- `core.promotion.migration.PmtMigrationSource`：`pmt_migration_source`的明确实体模型，含sourceSystem/sourceTemplateNo/decisionNo及BaseEntity审计列；唯一写者仍为`LegacyCouponSourceCommitMapper.bind`，不得增加通用CRUD绕过永久来源决定。
+- `core.trade.entitlement.entity.OrdCardSaleSnapshot.deliveryStatus`：映射既有迁移的PENDING/ACKNOWLEDGED确认列；保存和恢复继续使用原售卡协议，不因实体补齐而重复发卡。
+- 储值消费`ConsumptionQuery.storeNo`可选；为空时按本人和主体查询所有门店，签名游标仍绑定本人、主体和门店过滤条件，不能互换使用。

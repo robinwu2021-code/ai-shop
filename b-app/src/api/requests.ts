@@ -786,6 +786,8 @@ export interface StockOutboundReq {
 
 /** 身份/主体由会话解析，端上只提交扫描凭证和门店。 */
 export interface MemberResolveReq {
+  /** 顾客出示的短期统一会员码。 */
   memberCode: string;
+  /** 当前办理业务的门店号，必须属于商家会话主体。 */
   storeNo: string;
 }

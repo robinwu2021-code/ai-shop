@@ -91,6 +91,10 @@ public class LegacyCouponUseWriter {
                 || !("LEGACY_COMMIT:"+row.getOperationNo()).equals(origin.getBizKey())
                 || !Integer.valueOf(-1).equals(origin.getUnitsDelta())) conflict();
         if(asset.getRemainingUnits()>=asset.getTotalUnits()) conflict();
+        if ("EXHAUSTED".equals(asset.getStatus())) {
+            asset.setStatus(asset.getEffectiveUntil() != null
+                    && !EntitlementRecords.now().isBefore(asset.getEffectiveUntil()) ? "EXPIRED" : "ACTIVE");
+        }
         mutate(ctx,asset,1,0,"LEGACY_REVERSE",row.getOperationNo(),origin.getEntryNo());
         row.setReverseAssetSeq(asset.getAssetSeq()); row.setReverseDecisionNo(reversal.decisionNo());
         row.setReverseSnapshot(json.writeValueAsString(reversal)); row.setReversedAt(EntitlementRecords.now());

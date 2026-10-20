@@ -61,6 +61,7 @@ class PresetCapabilityAcceptanceTest {
         var executable=Set.of("AP004","AP008","AP009","AP010","AP024","AP030","AP034","AP037",
                 "EP001","EP002","EP003","EP004","EP005","EP006");
         var report=new ArrayList<>(List.of("# 预置活动与付费卡能力矩阵", "",
+                "状态：后端能力验收矩阵；正式预置默认关闭，生产部署另行验收。", "",
                 "来源：PresetCapabilityAcceptanceTest。仅隔离测试库显式开启开关及预置；正式种子46项仍默认关闭。",
                 "可执行表示当前实现与运行门禁均满足，不表示每一业态已通过生产部署验收。", "",
                 "| 编号 | 名称 | 分类 | 业态 | 场景/模型 | 测试配置可执行 | 缺口 |", "|---|---|---|---|---|---|---|"));

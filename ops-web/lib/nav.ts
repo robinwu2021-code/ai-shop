@@ -307,7 +307,7 @@ export const NAV: NavSection[] = [
     // 只是旧断言按 href 反查目标 section 把它绕过去了 —— 改成集合判定之后要显式写出来。
     // ⚠️ 注释放在 key 行**之前**：gen-ui-catalog.py 按行认 section 头
     // （`key: … label: … href: …` 要在同一行），插在中间会让这个域从界面清单里消失
-    key: "aftersale", label: "售后治理", icon: "Undo2", modules: ["aftersale", "finance"], href: "/after-sales",
+    key: "aftersale", label: "售后治理", icon: "Undo2", modules: ["aftersale", "finance", "ops"], href: "/after-sales",
     children: [
       { href: "/after-sales", label: "售后工单池", perm: "aftersale:ticket:read", group: "处置", matrix: "P-6.1", ready: true },
       // 责任判定（6.1.4）并入裁决抽屉：判了责任才谈得上赔付归属，拆成两页会出现

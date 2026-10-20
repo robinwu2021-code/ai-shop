@@ -83,7 +83,7 @@ public class StoredValueQueryServiceImpl implements StoredValueQueryService {
     @Override
     public CursorPage<UsageItem> consumptions(EntitlementContext context, ConsumptionQuery query) {
         String filters = digest(json.writeValueAsString(List.of("STORED_VALUE_CONSUMPTIONS",
-                query.entityNo(), query.storeNo())));
+                query.entityNo(), query.storeNo() == null ? "" : query.storeNo())));
         var cursor = cursors.decode(query.cursor(), "CONSUMPTIONS", context.tenantNo(), query.userNo(), filters);
         LocalDateTime afterAt = cursor == null ? null : LocalDateTime.ofInstant(
                 Instant.ofEpochMilli(cursor.occurredAtMillis()), ZoneOffset.UTC);

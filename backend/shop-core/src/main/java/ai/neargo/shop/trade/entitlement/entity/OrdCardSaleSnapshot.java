@@ -28,5 +28,6 @@ public class OrdCardSaleSnapshot extends BaseEntity {
     private String ruleSnapshot;
     private String snapshotHash;
     private String paidFactNo;
+    private String deliveryStatus;
     private LocalDateTime paidAt;
 }

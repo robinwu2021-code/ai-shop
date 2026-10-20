@@ -327,6 +327,39 @@ class StoredValueConsumptionFlowTest {
                 holder, entity, "S1", first.nextCursor(), 1)))
                 .isInstanceOf(ai.neargo.shop.common.BizException.class);
     }
+    @Test void merchantHistoryWithoutStorePagesAcrossStoresAndBindsCursorToOwnerAndFilter() {
+        String prefix = id();
+        var at = java.time.LocalDateTime.of(2026, 10, 1, 10, 0);
+        for (int i = 1; i <= 6; i++) {
+            jdbc.update("INSERT INTO ent_usage(tenant_no,usage_no,operation_no,user_no,entity_no,store_no,"
+                    + "store_name,asset_kind,title,amount_minor,currency,items_snapshot,operator_no,status,"
+                    + "occurred_at,created_at,updated_at,created_by,updated_by) "
+                    + "VALUES('MAIN',?,?,?,?,?, 'Store','STORED_VALUE','Care',100,'CNY','[]','TEST',?,?,"
+                    + "CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'TEST','TEST')", prefix + i, id(),
+                    i == 4 ? actor : user, i == 5 ? id() : entity, i == 2 ? "SECOND" : store,
+                    i == 6 ? "REVERSED" : "COMMITTED", at);
+        }
+        var first = queries.consumptions(ctx, new StoredValuePort.ConsumptionQuery(user, entity, null, null, 1));
+        assertThat(first.records()).extracting(r -> r.usageNo()).containsExactly(prefix + 3);
+        var second = queries.consumptions(ctx,
+                new StoredValuePort.ConsumptionQuery(user, entity, null, first.nextCursor(), 1));
+        assertThat(second.records()).extracting(r -> r.usageNo()).containsExactly(prefix + 2);
+        var last = queries.consumptions(ctx,
+                new StoredValuePort.ConsumptionQuery(user, entity, null, second.nextCursor(), 1));
+        assertThat(last.records()).extracting(r -> r.usageNo()).containsExactly(prefix + 1);
+        assertThat(last.nextCursor()).isNull();
+        assertThat(queries.consumptions(ctx, new StoredValuePort.ConsumptionQuery(user, entity, store, null, 20))
+                .records()).extracting(r -> r.usageNo()).containsExactly(prefix + 3, prefix + 1);
+        assertThatThrownBy(() -> queries.consumptions(ctx,
+                new StoredValuePort.ConsumptionQuery(user, entity, store, first.nextCursor(), 1)))
+                .isInstanceOf(ai.neargo.shop.common.BizException.class);
+        assertThatThrownBy(() -> queries.consumptions(ctx,
+                new StoredValuePort.ConsumptionQuery(actor, entity, null, first.nextCursor(), 1)))
+                .isInstanceOf(ai.neargo.shop.common.BizException.class);
+        assertThatThrownBy(() -> queries.consumptions(ctx,
+                new StoredValuePort.ConsumptionQuery(user, id(), null, first.nextCursor(), 1)))
+                .isInstanceOf(ai.neargo.shop.common.BizException.class);
+    }
     private long balance() { return jdbc.queryForObject("SELECT principal_minor+bonus_minor FROM sv_account "
             + "WHERE user_no=?", Long.class, user); }
     private long held() { return jdbc.queryForObject("SELECT held_principal_minor+held_bonus_minor FROM sv_account "

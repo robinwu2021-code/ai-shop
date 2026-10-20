@@ -44,7 +44,7 @@ const COL_TYPES =
   "BIGINT|MEDIUMINT|SMALLINT|TINYINT|INTEGER|INT|VARCHAR|CHAR|DATETIME|TIMESTAMP|DATE|TIME"
   + "|MEDIUMTEXT|LONGTEXT|TINYTEXT|TEXT|JSON|DECIMAL|NUMERIC|DOUBLE|FLOAT"
   + "|MEDIUMBLOB|LONGBLOB|BLOB";
-const NOT_A_COLUMN = /^(KEY|UNIQUE|PRIMARY|INDEX|CONSTRAINT|FULLTEXT)$/i;
+const NOT_A_COLUMN = /^(KEY|UNIQUE|PRIMARY|INDEX|CONSTRAINT|FULLTEXT|CHECK|FOREIGN|SPATIAL)$/i;
 
 /** 把迁移按**版本号数字**拼成一条时间线。字典序会把 V15 排在 V2 前面。 */
 function concatMigrations(dir) {
@@ -130,7 +130,7 @@ export function readSchema(root, dirs = [MIGRATION_DIR]) {
     const indexes = [];
     // 索引名 → 列规格。**DROP INDEX 是按名字删的**，不记名字就删不掉
     const indexNames = new Map();
-    for (const raw of body.split("\n")) {
+    for (const raw of splitTopLevel(body)) {
       const line = raw.trim();
       const u = line.match(/^UNIQUE KEY (\w+) \(([^)]*)\)/i);
       if (u) {
@@ -308,14 +308,29 @@ function splitTopLevel(body) {
   const parts = [];
   let buf = "";
   let depth = 0;
-  let quoted = false;
-  for (const ch of body) {
+  let quoted = null;
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
     if (quoted) {
       buf += ch;
-      if (ch === "'") quoted = false;
+      if (ch === "\\" && i + 1 < body.length) buf += body[++i];
+      else if (ch === quoted && body[i + 1] === quoted) buf += body[++i];
+      else if (ch === quoted) quoted = null;
       continue;
     }
-    if (ch === "'") quoted = true;
+    if (ch === "-" && body[i + 1] === "-") {
+      while (i + 1 < body.length && body[i + 1] !== "\n") i++;
+      buf += " ";
+      continue;
+    }
+    if (ch === "/" && body[i + 1] === "*") {
+      i += 2;
+      while (i < body.length && !(body[i] === "*" && body[i + 1] === "/")) i++;
+      i++;
+      buf += " ";
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`") quoted = ch;
     else if (ch === "(") depth++;
     else if (ch === ")") depth--;
     if (ch === "," && depth === 0) {

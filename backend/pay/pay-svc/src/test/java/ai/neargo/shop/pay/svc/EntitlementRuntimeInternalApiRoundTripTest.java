@@ -408,6 +408,9 @@ class EntitlementRuntimeInternalApiRoundTripTest {
         assertThat(api.svBalance(new PayStoredValueRequests.Balance(ctx, balanceQuery))).isEqualTo(balance);
         assertThat(api.svStores(new PayStoredValueRequests.Stores(ctx, storeQuery))).isEqualTo(stores);
         assertThat(api.svConsumptions(new PayStoredValueRequests.Consumptions(ctx, usageQuery))).isEqualTo(usages);
+        var allStores = new StoredValuePort.ConsumptionQuery("U1", "M1", null, null, 20);
+        when(storedValueQueries.consumptions(ctx, allStores)).thenReturn(usages);
+        assertThat(api.svConsumptions(new PayStoredValueRequests.Consumptions(ctx, allStores))).isEqualTo(usages);
         assertThat(api.svUseQuote(new PayStoredValueRequests.UseQuote(ctx, src))).isEqualTo(quote);
         assertStatus(401, () -> api("wrong").svBalance(new PayStoredValueRequests.Balance(ctx, balanceQuery)));
     }

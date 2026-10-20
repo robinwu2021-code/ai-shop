@@ -104,7 +104,7 @@ public interface StoredValuePort {
         public ConsumptionQuery {
             ContractChecks.id(userNo);
             ContractChecks.id(entityNo);
-            ContractChecks.id(storeNo);
+            ContractChecks.optionalId(storeNo);
             EntitlementQueryPort.checkPage(cursor, size);
         }
     }

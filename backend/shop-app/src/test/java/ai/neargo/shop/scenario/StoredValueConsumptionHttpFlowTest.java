@@ -120,6 +120,11 @@ class StoredValueConsumptionHttpFlowTest {
         assertThat(history.path("data").path("records").size()).isEqualTo(1);
         assertThat(history.path("data").path("records").get(0).path("amountMinor").asLong()).isEqualTo(1000);
         assertThat(history.path("data").toString()).doesNotContain("principal", "bonus", "authorizationRef");
+        var allStores = getJson(mvc, "/mp/stored-value/consumptions?entityNo=" + entity, buyer);
+        assertThat(allStores.path("code").asInt()).as(allStores.toString()).isZero();
+        assertThat(allStores.path("data")).isEqualTo(history.path("data"));
+        assertThat(getJson(mvc, "/mp/stored-value/consumptions?entityNo=" + entity, ownerConsumer)
+                .path("data").path("records").size()).isZero();
         assertThat(getJson(mvc, historyPath, ownerConsumer).path("data").path("records").size()).isZero();
     }
 }

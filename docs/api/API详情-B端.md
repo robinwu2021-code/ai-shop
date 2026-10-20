@@ -3405,8 +3405,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `memberCode` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
+| `memberCode` | `string` | 是 | 顾客出示的短期统一会员码。 |
+| `storeNo` | `string` | 是 | 当前办理业务的门店号，必须属于商家会话主体。 |
 
 **出参**（`data`）
 
@@ -3414,9 +3414,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `customerRef` | `string` | 是 | — |
-| `maskedName` | `string` | 是 | — |
-| `expiresAt` | `string` | 是 | — |
+| `customerRef` | `string` | 是 | 绑定原商家、门店和操作人的短期顾客引用。 |
+| `maskedName` | `string` | 是 | 脱敏顾客显示名称。 |
+| `expiresAt` | `string` | 是 | 凭证失效时间，ISO 8601 UTC。 |
 
 
 ### member-reach
@@ -7895,9 +7895,9 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `customerRef` | `string` | 是 | — |
-| `maskedName` | `string` | 是 | — |
-| `expiresAt` | `string` | 是 | — |
+| `customerRef` | `string` | 是 | 绑定原商家、门店和操作人的短期顾客引用。 |
+| `maskedName` | `string` | 是 | 脱敏顾客显示名称。 |
+| `expiresAt` | `string` | 是 | 凭证失效时间，ISO 8601 UTC。 |
 
 ### DailyFlow
 
@@ -8668,8 +8668,8 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `memberCode` | `string` | 是 | — |
-| `storeNo` | `string` | 是 | — |
+| `memberCode` | `string` | 是 | 顾客出示的短期统一会员码。 |
+| `storeNo` | `string` | 是 | 当前办理业务的门店号，必须属于商家会话主体。 |
 
 ### MemberSegment
 

@@ -3695,8 +3695,10 @@ components:
       properties:
         memberCode:
           type: "string"
+          description: "短期会员身份凭证，仅用于识别本人，不代表消费授权。"
         expiresAt:
           type: "string"
+          description: "凭证失效时间，ISO 8601 UTC。"
       required:
         - "memberCode"
         - "expiresAt"
@@ -3707,10 +3709,13 @@ components:
       properties:
         customerRef:
           type: "string"
+          description: "绑定原商家、门店和操作人的短期顾客引用。"
         maskedName:
           type: "string"
+          description: "脱敏顾客显示名称。"
         expiresAt:
           type: "string"
+          description: "凭证失效时间，ISO 8601 UTC。"
       required:
         - "customerRef"
         - "maskedName"

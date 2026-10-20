@@ -10,7 +10,7 @@ import org.apache.ibatis.annotations.Select;
 /** Bound to the pay SqlSessionFactory only. */
 public interface EntUsageMapper extends BaseMapper<EntUsage> {
     @Select("SELECT * FROM ent_usage WHERE tenant_no=#{tenant} AND user_no=#{user} AND entity_no=#{entity} "
-            + "AND store_no=#{store} AND asset_kind='STORED_VALUE' AND status='COMMITTED' AND deleted=0 "
+            + "AND (#{store} IS NULL OR store_no=#{store}) AND asset_kind='STORED_VALUE' AND status='COMMITTED' AND deleted=0 "
             + "ORDER BY occurred_at DESC,usage_no DESC LIMIT #{limit}")
     @org.apache.ibatis.annotations.Options(flushCache = org.apache.ibatis.annotations.Options.FlushCachePolicy.TRUE,
             useCache = false)
@@ -18,7 +18,7 @@ public interface EntUsageMapper extends BaseMapper<EntUsage> {
             @Param("entity") String entity, @Param("store") String store, @Param("limit") int limit);
 
     @Select("SELECT * FROM ent_usage WHERE tenant_no=#{tenant} AND user_no=#{user} AND entity_no=#{entity} "
-            + "AND store_no=#{store} AND asset_kind='STORED_VALUE' AND status='COMMITTED' AND deleted=0 "
+            + "AND (#{store} IS NULL OR store_no=#{store}) AND asset_kind='STORED_VALUE' AND status='COMMITTED' AND deleted=0 "
             + "AND (occurred_at<#{afterAt} OR (occurred_at=#{afterAt} AND usage_no<#{afterUsage})) "
             + "ORDER BY occurred_at DESC,usage_no DESC LIMIT #{limit}")
     @org.apache.ibatis.annotations.Options(flushCache = org.apache.ibatis.annotations.Options.FlushCachePolicy.TRUE,

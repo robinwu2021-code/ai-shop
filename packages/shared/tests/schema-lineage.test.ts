@@ -137,6 +137,26 @@ const LINEAGE: Hop[] = [
  * 例如「发放方商家」`issuer_merchant_no` 指向 `usr_merchant.merchant_no`。
  */
 const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
+  tier_no: { table: "pmt_recharge_tier" },
+  grant_no: { table: "ent_grant" },
+  instance_no: { table: "ent_instance" },
+  usage_no: { table: "ent_usage" },
+  source_order_no: { table: "ord_order", col: "order_no" },
+  recharge_no: { table: "sv_recharge" },
+  lot_no: { table: "sv_lot" },
+  voucher_no: { table: "sv_voucher" },
+  exception_no: { table: "pay_ent_exception" },
+  recon_no: { table: "pay_ent_recon_run" },
+  stage_no: { table: "ent_migration_stage" },
+  alias_no: { table: "ent_migration_alias" },
+  checkout_no: { table: "ord_legacy_coupon_checkout" },
+  plan_no: { table: "ent_migration_plan" },
+  import_no: { table: "ent_migration_import" },
+  return_no: { table: "pmt_migration_return" },
+  target_template_no: { table: "ent_template", col: "template_no" },
+  template_version_no: { table: "ent_template_version", col: "version_no" },
+  activity_version_no: { table: "pmt_activity_version", col: "version_no" },
+
   /*
    * ── 2026-08-29 补齐的十三个 ──
    * 归属判据不是靠猜：**看哪张表把它建成了唯一键**（schema-test.sql 里逐个查过），
@@ -239,6 +259,24 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
  * 我们自己就连错过一次。
  */
 const NAME_COLLISIONS: Record<string, string> = {
+  migration_batch_no: "旧券迁移批次按tenant/sourceSystem/sourceTemplateNo限定，不是全局迁移主键；目标原子导入主键是import_no。",
+  aggregate_no: "订单状态聚合与Pay Outbox的多态聚合号，各自携带聚合类型。",
+  diff_no: "结算差异stl_recon_diff与权益差异pay_ent_recon_diff分别发号。",
+  current_version_no: "pmt_activity指活动版本，ent_template指权益模板版本，须按所属表限定。",
+  biz_no: "通道消息、储值凭证和权益异常各自按biz_type解释的多态业务号。",
+  account_no: "mch_payout_account为银行出款账户；sv_account为储值账户。",
+  version_no: "活动版本和权益模板版本各自发号；活动子表指pmt_activity_version，ent_template_version自持权益版本。",
+  resource_no: "幂等结果和对账差异按对应资源类型解释，不是同一实体。",
+  actor_no: "审计操作人可为商家账号、运营或系统，必须结合actor_type解释。",
+  decision_no: "Core订单源决定与旧券迁移永久源决定分别发号。",
+  reservation_no: "活动资源占用与Pay售卡承诺分别发号，关联必须结合业务协议。",
+  source_decision_no: "Core订单源决定或迁移源决定，由source协议与purpose限定。",
+  operation_no: "统一使用意图或旧券原操作号，由protocol决定根表，不能仅按号合并。",
+  intent_no: "活动发权益与储值充值协调意图分别发号。",
+  source_template_no: "旧MKT或PMT根号，须同时校验source_system与tenant，禁止同号猜测。",
+  source_instance_no: "原旧券实例号，须同时校验source_system与tenant，禁止跨来源连接。",
+  source_usage_no: "原历史流水号，须同时校验source_system与source_instance_no。",
+
   parent_no: "cmt_community.parent_no是社区层级，prd_category.parent_no是商品类目层级；各自树内引用，不能按全局名字连线。",
   waybill_no:
     "两边是**同一个快递运单号**，但它**不是外键**：运单号只在承运商内唯一，lgs_waybill 按（承运商, 运单号）登记；" +

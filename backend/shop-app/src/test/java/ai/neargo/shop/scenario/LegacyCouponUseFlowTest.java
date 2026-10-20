@@ -36,6 +36,7 @@ import tools.jackson.databind.ObjectMapper;
 @org.junit.jupiter.api.parallel.Execution(org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD)
 class LegacyCouponUseFlowTest {
     @Autowired LegacyCouponUseService uses;
+    @Autowired ai.neargo.shop.pay.entitlement.service.EntitlementLifecycleService lifecycle;
     @Autowired ai.neargo.shop.pay.entitlement.service.EntitlementReconciliationService reconciliation;
     @Autowired PayEntitlementProperties properties;
     @Autowired JdbcTemplate jdbc;
@@ -113,6 +114,40 @@ class LegacyCouponUseFlowTest {
         assertThat(count(f,"reserved_units")).isZero();
         assertThat(jdbc.queryForObject("SELECT status FROM ent_instance WHERE instance_no=?",String.class,f.asset())).isEqualTo("FROZEN");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ent_ledger WHERE instance_no=?",Integer.class,f.asset())).isEqualTo(4);
+    }
+    @Test void exhaustedThenFrozenAndUnfrozenCouponIsUsableAgainAfterOriginalOrderReversal() {
+        var f = fixture(1);
+        uses.prepare(ctx, f.command());
+        decision(f, "D1", Outcome.COMMIT, 100L);
+        uses.commit(ctx, completion(f, "D1"));
+        var scope = new ai.neargo.shop.pay.entitlement.dto.CatalogScope("MAIN", "M1", "OPS", true);
+        var state = lifecycle.state(scope, f.asset());
+        var frozen = lifecycle.freeze(scope, f.asset(),
+                new ai.neargo.shop.pay.entitlement.dto.LifecycleViews.FreezeCommand(state.revision(), "FREEZE", "review"),
+                UUID.randomUUID().toString());
+        assertThat(lifecycle.freeze(scope, f.asset(),
+                new ai.neargo.shop.pay.entitlement.dto.LifecycleViews.FreezeCommand(frozen.revision(), "UNFREEZE", "review"),
+                UUID.randomUUID().toString()).status()).isEqualTo("EXHAUSTED");
+        when(sources.reversal(any(), eq(f.fact().checkoutNo()))).thenReturn(Optional.of(new Reversal(
+                f.fact().checkoutNo(), f.fact().operationNo(), "R1", "ORDER1", "CANCEL1", f.fact().economicHash(),
+                "CNY", 100, ReverseReason.CANCELLED, Instant.now())));
+        uses.reverse(ctx, completion(f, "R1"));
+        uses.reverse(ctx, completion(f, "R1"));
+        assertThat(count(f, "remaining_units")).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT status FROM ent_instance WHERE instance_no=?", String.class, f.asset()))
+                .isEqualTo("ACTIVE");
+        var base = f.fact();
+        String checkout = "REUSE" + UUID.randomUUID(), operation = "REUSE" + UUID.randomUUID();
+        var next = new CheckoutFact(1, IntentKind.CHECKOUT, base.tenantNo(), checkout, operation,
+                base.userNo(), base.entityNo(), base.origin(), base.targetInstanceNo(), base.ownerBatchNo(),
+                base.ownerPlanHash(), base.currency(), base.groups(), base.economicHash(), base.selectionActorNo(),
+                base.createdAt(), base.deadlineAt());
+        when(sources.resolve(any(), eq(checkout))).thenReturn(next);
+        when(sources.decision(any(), eq(checkout))).thenReturn(Optional.empty());
+        when(sources.reversal(any(), eq(checkout))).thenReturn(Optional.empty());
+        var command = new LegacyCouponUsePort.Prepare(checkout, operation, base.userNo(), base.entityNo());
+        assertThat(uses.quote(ctx, command).discountMinor()).isEqualTo(100);
+        assertThat(uses.prepare(ctx, command).status()).isEqualTo(LegacyCouponUsePort.State.HELD);
     }
     @Test void abortBeforeHoldPersistsATombstoneWithoutInventingAUseOrDiscount() {
         var f=fixture(3);

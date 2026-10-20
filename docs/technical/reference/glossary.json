@@ -27798,6 +27798,13 @@
       "package": "ai.neargo.shop.trade.entity"
     },
     {
+      "table": "pmt_migration_source",
+      "class": "PmtMigrationSource",
+      "zh": "Immutable source binding; LegacyCouponSourceCommitMapper is its sole writer.",
+      "module": "shop-core",
+      "package": "ai.neargo.shop.promotion.migration"
+    },
+    {
       "table": "pmt_pay_coupon_projection",
       "class": "PmtPayCouponProjection",
       "zh": "",

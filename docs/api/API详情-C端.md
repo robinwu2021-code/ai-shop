@@ -1335,8 +1335,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `memberCode` | `string` | 是 | — |
-| `expiresAt` | `string` | 是 | — |
+| `memberCode` | `string` | 是 | 短期会员身份凭证，仅用于识别本人，不代表消费授权。 |
+| `expiresAt` | `string` | 是 | 凭证失效时间，ISO 8601 UTC。 |
 
 
 ### member-reach
@@ -3998,8 +3998,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `memberCode` | `string` | 是 | — |
-| `expiresAt` | `string` | 是 | — |
+| `memberCode` | `string` | 是 | 短期会员身份凭证，仅用于识别本人，不代表消费授权。 |
+| `expiresAt` | `string` | 是 | 凭证失效时间，ISO 8601 UTC。 |
 
 ### Merchant
 
