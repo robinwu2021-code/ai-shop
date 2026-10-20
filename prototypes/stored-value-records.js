@@ -20,7 +20,16 @@
   const row=(k,v)=>'<div class="frow"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>';
   function recordLink(r,showCustomer=true){return '<a href="#s27" class="sv-record" data-record="'+r.id+'"><div class="hd"><b>'+esc(r.kind==='recharge'?'储值 · '+r.name:'核销 · '+r.name)+'</b><strong class="num">'+(r.amount>0?'+':'−')+money(r.amount)+'</strong></div><div class="meta">'+(showCustomer?esc(owner(r).name)+' · ':'')+esc(r.store)+'</div><div class="meta sv-split"><span>'+r.time+'</span><span class="num">余额 '+money(r.balance)+'</span></div></a>';}
   function accountList(){document.dispatchEvent(new Event('sv-directory-render'));}
-  function accountDetail(){const c=customers.find(x=>x.id===selected);$('#sv-account-summary').innerHTML='<div class="card"><b>'+esc(c.name)+'</b><span class="meta">'+esc(c.phone)+'</span><span class="meta">可用余额</span><strong class="num sv-balance">'+money(c.balance)+'</strong></div>';$('#sv-account-recent').innerHTML=records.filter(r=>r.customer===selected).slice(0,3).map(r=>recordLink(r,false)).join('');}
+  function accountDetail(){
+    const c=customers.find(x=>x.id===selected);
+    $('#sv-account-summary').innerHTML='<div class="card"><b>'+esc(c.name)+'</b><span class="meta">'+esc(c.phone)+'</span>'+(c.balance===null?'':'<span class="meta">可用余额</span><strong class="num sv-balance">'+money(c.balance)+'</strong>')+'</div>';
+    $('#sv-account-recent').innerHTML=records.filter(r=>r.customer===selected).slice(0,3).map(r=>recordLink(r,false)).join('')||'<div class="meta">暂无收支记录</div>';
+  }
+  document.addEventListener('sv-member-selected',e=>{
+    const d=e.detail;let c=customers.find(c=>c.id===d.id);
+    if(!c){c={id:d.id,name:d.name,phone:d.phone.slice(0,3)+'****'+d.phone.slice(-4)};customers.push(c);}
+    c.balance=d.balance===null?null:Math.round(d.balance*100);selected=c.id;accountDetail();
+  });
   function recordList(){
     $('#s26 .bk').href=scope?'#s13':'#s11';
     $('#sv-record-context').hidden=!scope;
@@ -52,7 +61,7 @@
     const d=e.detail;let c=customers.find(c=>c.id===d.id);
     if(!c){c={id:d.id,name:d.name,phone:d.phone.slice(0,3)+'****'+d.phone.slice(-4),balance:0};customers.push(c);}
     c.balance=Math.round(d.balance*100);
-    records.unshift({id:'DEMO'+records.length,customer:c.id,kind:'recharge',time:d.last,store:'人民路店',name:d.plan.name,amount:Math.round((d.plan.paid+d.plan.bonus)*100),balance:c.balance,paid:Math.round(d.plan.paid*100),bonus:Math.round(d.plan.bonus*100)});
+    records.unshift({id:'DEMO'+records.length,customer:c.id,kind:'recharge',time:d.last,store:'人民路店',name:d.plan.name,amount:Math.round((d.plan.paid+d.plan.bonus)*100),balance:c.balance,paid:Math.round(d.plan.paid*100),bonus:Math.round(d.plan.bonus*100)});accountDetail();
   });
   function timeDialog(open){
     $('#sv-time-overlay').hidden=!open;

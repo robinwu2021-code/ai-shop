@@ -69,15 +69,7 @@
     $('#s07 .scr').innerHTML='<div class="card"><div class="hd"><b>'+esc(name)+'</b><span class="chip '+(state.paused?'':'ok')+'">'+(state.paused?'已暂停':'进行中')+'</span></div><div class="meta">活动规则版本1 · 全部门店</div></div><div class="card"><b>活动规则</b><div>'+esc(rule)+'</div></div>'+links+'<a class="card" href="#s19"><b>查看活动效果 ›</b></a><div class="note">暂停只停止新增参与，已获得权益及已产生的团/期继续按原规则处理。</div>';
     $('#s21 [data-activity-name]').textContent=name;
   }
-  function charge(mode){
-    document.querySelectorAll('[data-charge]').forEach(x=>x.classList.toggle('on',x.dataset.charge===mode));
-    const activity=state.publishedRecharge??{name:'门店多档充赠',tiers:defaultTiers()};
-    $('#charge-summary').innerHTML=mode==='normal'?'<div class="card"><b>日常储值 · 基础规则</b><div class="meta">不参加促销活动</div></div><div class="group">'+ruleRow('实收金额','1000元')+ruleRow('到账金额','1000元')+'</div>':'<div class="card"><b>'+esc(activity.name)+'</b><span class="meta">固定版本与档位，赠送额自动带出。</span><label class="review-field">选择充值档位<select class="inp" id="charge-tier">'+activity.tiers.map((t,i)=>'<option value="'+i+'">充'+esc(t.paid)+'送'+esc(t.bonus)+' · 到账'+tierTotal(t)+'</option>').join('')+'</select></label></div><div class="group" id="charge-values"></div>';
-    if(mode==='activity')showChargeTier(0);
-  }
-  function showChargeTier(i){const t=(state.publishedRecharge?.tiers??defaultTiers())[i];$('#charge-values').innerHTML=ruleRow('实收金额',esc(t.paid)+'元')+ruleRow('活动赠送',esc(t.bonus)+'元')+ruleRow('到账合计',tierTotal(t));}
   document.addEventListener('input',e=>{const x=e.target.closest('[data-tier]');if(!x)return;const i=Number(x.dataset.tier);state.tiers[i][x.dataset.field]=x.value;$('[data-tier-total="'+i+'"]').textContent=tierTotal(state.tiers[i]);});
-  document.addEventListener('change',e=>{if(e.target.id==='charge-tier')showChargeTier(Number(e.target.value));});
   function navigate(id){if(id==='s14')id='s25';
     if(!document.getElementById(id))id='s01';
     document.querySelectorAll('figure').forEach(x=>x.classList.toggle('is-active',x.id===id));
@@ -96,7 +88,6 @@
     const type=e.target.closest('[data-type]');if(type){state.type=type.dataset.type;state.custom=false;}
     if(e.target.closest('[data-custom]')){state.custom=true;state.type='自定义'+kinds[state.category].title;}
     if(cat||type||e.target.closest('[data-custom]'))state.tiers=state.custom?[{paid:'',bonus:''}]:state.type==='普通储值规则'?[{paid:'50',bonus:'0'},{paid:'100',bonus:'0'},{paid:'200',bonus:'0'}]:defaultTiers();
-    const chargeButton=e.target.closest('[data-charge]');if(chargeButton){charge(chargeButton.dataset.charge);return;}
     const demo=e.target.closest('[data-demo]');
     if(demo){
       if(demo.closest('#s21'))state.paused=true;
@@ -137,7 +128,7 @@
     if(state.category==='RECHARGE')$('#review-rules').innerHTML=tiersRows(state.tiers);
     navigate('s06');
   });
-  $('#publish-demo').addEventListener('click',()=>{state.context='CREATED';if(state.category==='RECHARGE'){state.publishedRecharge={name:state.name,tiers:state.tiers.map(t=>({...t}))};charge('activity');}showDetail();navigate('s07');});
+  $('#publish-demo').addEventListener('click',()=>{state.context='CREATED';if(state.category==='RECHARGE'){state.publishedRecharge={name:state.name,tiers:state.tiers.map(t=>({...t}))};}showDetail();navigate('s07');});
   window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
-  renderPresets();renderForm();charge('normal');navigate(location.hash.slice(1)||'s01');
+  renderPresets();renderForm();navigate(location.hash.slice(1)||'s01');
 })();
