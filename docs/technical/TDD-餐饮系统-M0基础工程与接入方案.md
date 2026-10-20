@@ -1,6 +1,6 @@
 # 餐饮系统 M0 基础工程与接入方案
 
-> 状态：实施中，NEXT-01～05已完成，NEXT-06起待执行 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
+> 状态：实施中，NEXT-01～05已完成；NEXT-06基础接线完成，业务AC随NEXT-08/09验收；NEXT-07待执行 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
 > **本版替代上一版独立food-server三端鉴权、远程用户session解析的设计。** 独立餐饮只提供内部接口，C/B/平台运营Controller源码均归餐饮food-web，由shop-app挂载。
 > [独立项目、包及依赖清单](./TDD-餐饮系统-独立项目与包依赖方案.md) · [统一架构及三端完整清单](./TDD-餐饮系统-三端API与独立服务对齐.md) · [总计划](./TDD-餐饮系统-后端开发计划.md) · [平台Java规范](../../.claude/skills/ai-shop-dev-standards/references/java.md)。
 
@@ -120,7 +120,7 @@ embedded餐饮复用平台dataSource/sqlSessionFactory/transactionManager；stan
 
 **目标：** 五模块独立构建与装配通过，冻结迁移资源归餐饮，主库和授权范围接通，随后交付桌区092～095第一个真实业务切片。桌台、菜品和订单仍按总计划依次推进，不扩大本轮为全量餐饮实现。
 
-**执行方式：** 后续编码使用`superpowers:executing-plans`，在隔离分支/工作树中逐任务自实施。先读本TDD、[独立项目方案](./TDD-餐饮系统-独立项目与包依赖方案.md)与[方法清单](./design/餐饮系统-Controller-Service-Mapper方法清单.md)。NEXT-01～05已按下列计划实施；NEXT-06起尚未执行，实际命令与边界见餐饮工程README。
+**执行方式：** 后续编码使用`superpowers:executing-plans`，在隔离分支/工作树中逐任务自实施。先读本TDD、[独立项目方案](./TDD-餐饮系统-独立项目与包依赖方案.md)与[方法清单](./design/餐饮系统-Controller-Service-Mapper方法清单.md)。NEXT-01～05及NEXT-06基础接线已实施；NEXT-06业务AC随NEXT-08/09首写完成，NEXT-07起待执行，实际命令与边界见餐饮工程README。
 
 #### 文件定位与全局约束
 
@@ -188,9 +188,25 @@ embedded餐饮复用平台dataSource/sqlSessionFactory/transactionManager；stan
 
 **消费/产出：** 复用现有BizContext、PermChecker、IdempotencyService(requestHash)、AuditMetaObjectHandler/OutboxPublisher；产出可供NEXT-08/09使用的原有调用入口与范围约束，不新建认证服务。 范围校验目标签名为`void requireStoreTarget(String trustedEntityNo, String trustedStoreNo, String targetEntityNo, String targetStoreNo, String requestedStoreNo, Set<String> authorizedStoreNos)`；目标事实须先由既有目录/资源读取验证，参数均由Controller可信上下文组装，禁止直接绑定请求为可信参数。
 
-- [ ] 写`rejectInvalidHeaderAfterDefaultFallback`、`rejectCrossEntityResource`、`ignoreSpoofedActor`、`rejectChangedRequestWithSameKey`、`rollbackWithSourceTransaction`，分别断言不写错店、不同主体拒绝、actor取登录态、异参冲突、意图/审计/outbox同回滚。
-- [ ] 明确客户端key作用域和请求摘要；校验请求头/path/resource与可信currentStore，缺主体或门店时拒绝，不把客户端值作为身份。未知跨域结果仍交对应意图恢复。
+- [x] 基础夹具实现（非业务端点验收）：写`rejectInvalidHeaderAfterDefaultFallback`、`rejectCrossEntityResource`、`ignoreSpoofedActor`、`rejectChangedRequestWithSameKey`、`rollbackWithSourceTransaction`，分别断言不写错店、不同主体拒绝、actor取登录态、异参冲突、意图/审计/outbox同回滚。
+- [x] 基础规则已明确（typed摘要与必填key验证随首写实现）：明确客户端key作用域和请求摘要；校验请求头/path/resource与可信currentStore，缺主体或门店时拒绝，不把客户端值作为身份。未知跨域结果仍交对应意图恢复。
 - [ ] 实际持久化断言随NEXT-08/09首写场景执行；本单元只有通用接线测试时只能标基础接线完成，不能宣称业务事务已验证。提交建议：`feat(food): reuse platform scope and write guards`。
+
+**当前实施文件清单（先登记后实现）：**
+
+| 文件 | 当前职责 |
+|---|---|
+| `food-web/.../api/FoodRequestScopeValidator.java` | 只核对可信主体/门店、已读取资源归属、原始请求门店头；不复制BizContext |
+| `food-web/.../config/FoodWebAutoConfiguration.java` | 在原有enabled/profile条件下提供上述无状态校验器 |
+| `food-core/.../config/FoodWriteGuardConfiguration.java` | 条件复用已有IdempotencyService/共享Mapper及主事务模板；提供限定名foodOutboxPublisher，缺统一源时拒绝，不另建Outbox运行时 |
+| `food-core/.../config/FoodAutoConfiguration.java` | 导入本轮写入基础接线，off不注册 |
+| `food-web/.../scenario/FoodStoreScopeTest.java` | 用原有认证/经营上下文过滤器与PermChecker验证请求边界，探针只在test |
+| `food-core/.../scenario/FoodIdempotencyTest.java`、`FoodOutboxWiringTest.java` | 真实共享持久层的回放、异参冲突、事务与审计基础合同；非餐饮业务端点验收 |
+| `food-core/.../scenario/FoodWriteGuardFixture.java`、test资源`food-write-guard-fixture.sql` | 同一夹具支持默认隔离H2与显式一次性MySQL；source/intent/audit均为测试表 |
+| `food-core/.../scenario/FoodPrimaryDatabaseTest.java` | 为新接线提供平台JSON组件，不改既有主库验证语义 |
+| `scripts/verify-food-primary-mysql.py` | 沿原一次性容器运行器增加写入基础用例，TCP实际查询后才运行，完整检查报告零跳过 |
+
+本轮不创建营业Controller、Service空壳或业务审计表写者。幂等操作域、请求摘要及真实意图/审计/outbox原子写入随NEXT-08/09各个业务方法落地；通用夹具通过不等于业务事务验收。
 
 #### NEXT-07：独立支付/进销存合同核验与缺口清单（FND-02，衔接CORE/PAY/RET）
 
@@ -316,3 +332,13 @@ NEXT-04实际验证：Java38项通过（含3项verify阶段资源检查）；Nod
 常规reactor44项实际通过；另以一次性MySQL执行15项core+1项真实server测试，覆盖回滚、真正并发CAS、数据域、Flyway共存与异常拒绝。宿主默认、embedded、standalone定向均通过；共享持久层5项通过。两项NEXT-03独立schema失败仍未修复，不声称全backend通过。
 已有主库只读validate：MariaDB12.2.2，餐饮V1历史/字段有效；两份history校验前后完全一致，未migrate/repair。业务ready=false，缺sys_idempotent.request_hash和V471 Outbox字段/唯一键/三表，须由平台原迁移流程另行升级。本任务只完成接线与如实阻断，不代跑核心迁移。
 审查发现JDBC表名下划线通配符可能并入相似表字段，回归先失败后修复为精确表名过滤。详细配置、命令、收据、裁定与代价见[餐饮工程README](../../backend-plugins/shop-industry-food/README.md#next-05-主库事务与独立迁移校验--2026-10-20)。
+
+
+### NEXT-06 基础接线回填 · 2026-10-20
+
+本轮完成 food-web 可信范围校验器与 food-core 原平台幂等/限定名Outbox接线，未新增营业Controller、Service空壳、权限码、配置项或迁移。
+原始X-Store-No即便被共享过滤器回落默认店，餐饮仍拒绝不一致头；目标归属先由真实目录/资源读取，actor取登录态，动作权限沿PermChecker。
+保留原IdempotencyService/SysIdempotentMapper，缺省才补独立进程装配；限定名foodOutboxPublisher只委托既有统一PLATFORM源，缺源明确拒绝，不造第二套运行时或legacy fallback。
+常规reactor70项执行通过；一次性MySQL另执行15主库+13写入基础+1真实server，29项通过且无跳过，真实事件flush后再失败也验证数据库回滚。消融原始门店头比较后1项断言失败，恢复后完整通过；宿主三形态定向回归通过，独立审查无遗留项。
+**NEXT-06只标基础接线完成**：当前scope探针、固定摘要、source/intent/audit夹具均非营业实现；缺key拒绝、typed规范化摘要、真实fnb_action_log/业务意图与事件原子写入，保留在NEXT-08/09验收，不用通用测试关闭这些AC。
+操作域、摘要、事务调用规则及本轮裁定见[餐饮工程README](../../backend-plugins/shop-industry-food/README.md)。本轮不访问/升级现有ai_shop；NEXT-05记录的core381前置缺项仍未处理。
