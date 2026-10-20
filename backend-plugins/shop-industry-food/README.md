@@ -1,7 +1,7 @@
-# 餐饮业务工程 · NEXT-01～04
+# 餐饮业务工程 · NEXT-01～05
 
 本工程复用平台 `shop-parent → neargo-parent`、Java 21 与统一依赖版本管理。
-已实现五模块独立构建、条件装配、宿主可选挂载及内部服务安全骨架，未实现营业 API、数据库装配或支付/库存联调。
+已实现五模块独立构建、条件装配、宿主可选挂载、内部服务安全骨架，以及共用主库/事务/审计和餐饮独立迁移校验。营业 API、可信范围与支付/库存联调尚未实现。
 
 | 构件 | 职责 | 当前直接依赖 |
 |---|---|---|
@@ -147,8 +147,78 @@ node scripts/verify-food-schema-mysql.mjs
 这不是应用库迁移；本轮未连接 ai_shop，也未执行共享库 migrate/repair/validate。已应用环境的 Flyway.validate 和自动迁移接线属于 NEXT-05。
 NEXT-03 记录的两项独立 schema 回归失败未在本轮修复，不将上述定向通过解释为整个 backend 全量回归通过。
 
+## NEXT-05 主库、事务与独立迁移校验 · 2026-10-20
+
+### 装配与运行配置
+
+平台原 `PlatformDataSourceConfig`、`MybatisPlusConfig` 的 bean 方法提取到共享持久层
+`PrimaryPersistenceConfiguration`，原宿主类保留导入入口与 Mapper 扫描。连接池、工厂、事务 bean 名和 Primary、配置绑定、审计注入、数据域→分页→乐观锁顺序不变。
+独立 server 导入同一个公共装配，不依赖 shop-app、不复制连接池配置；与平台一样排除 neargo 通用 DataAutoConfiguration，使用平台 AuditMetaObjectHandler，避免两种具体填充器重名注册。
+
+餐饮 Mapper 使用 `foodSqlSessionTemplate` 作为 schema 就绪门禁；该模板绑定已有主 `sqlSessionFactory`，不新建工厂、主池或事务管理器，并核验三者 DataSource 对象身份。
+所有主库参数使用明确 bean 名限定符，不回退 inventory/pay/report。
+`FoodDataScopeRegistration` 当前只登记已落地的 `fnb_table_area → MERCHANT/entity_no`。
+仅为真实接线验证从 NEXT-09 提前落地 FnbTableArea 和 FoodMappers.TableAreaMapper；无 Controller、Service 或营业写接口。
+沿用 BaseEntity：审计自动填充，tenant/version/deleted 的数据库默认值应在回读后使用，更新前读取版本号。
+
+| shop.food.migration.mode | 行为 |
+|---|---|
+| validate（默认） | JDBC 只读连接、Flyway validate/info；缺历史、pending/failed/future/checksum/物理字段漂移拒绝启动，无 migrate/repair |
+| migrate（显式发布） | 仅餐饮 location + fnb_flyway_history；新库须已有 prd_goods/ord_order，无历史但已有 fnb 表时拒绝，不隐式接管 |
+| off | 仅无数据库骨架装配测试；不扫描餐饮 Mapper、不提供餐饮模板，FoodSchemaReady 永远不就绪 |
+
+仅创建局部 Flyway 对象，不发布第二个 Flyway 类型 bean；与平台核心 Flyway initializer 的依赖顺序通过真实共存测试验证。
+独立 server 仍默认 `spring.flyway.enabled=false`，不执行 core 迁移。
+餐饮冻结 V1 仍唯一原字节；运行时核对 SHA-256、73 表字段清单、迁移历史，并检查平台幂等和新版 Outbox 的字段及关键唯一键。
+缺平台前置能力时列出能力名并阻止 Mapper 可用，从不自动 ALTER、升级 core、baseline 既有餐饮表或 repair 历史。
+后续追加餐饮迁移时须同步演进物理结构合同，不能修改已应用 V1。
+SchemaReady 不是营业就绪；独立 server 健康检查报告真实 schema 状态，远程 Port 未接好前仍 OUT_OF_SERVICE；关闭餐饮时不要求 schema bean，健康检查仍可访问且不就绪。
+
+### 验证与可重复执行
+
+```sh
+# 先安装共享持久层和当前餐饮库，再执行宿主矩阵，避免旧 SNAPSHOT。
+mvn -o -f backend/pom.xml -pl shop-store-mybatis -am install -DskipTests
+mvn -o -f backend-plugins/shop-industry-food/pom.xml clean verify
+mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-api,food-core,food-web,food-channel -am install -DskipTests
+# 实际建库测试只连接本脚本新建的 tmpfs MySQL，不读取业务配置。
+python3 scripts/verify-food-primary-mysql.py
+```
+
+- 常规 reactor：44 项实际执行通过（含产物资源3项），15 项核心 MySQL测试 +1项 server MySQL测试按环境条件跳过，必须另跑脚本。
+- 一次性 MySQL：15 项核心 +1 项真实 FoodApplication 装配通过，零跳过；循环临时库、随机容器名、只绑定127.0.0.1随机端口、缓存镜像 mysql:9.7.2、tmpfs，结束删除容器。版本沿本机已有缓存，不代表生产版本选型。
+- 验证主池/工厂/事务身份、共享审计、实际回滚、查询及更新主体隔离、两线程乐观锁只有一个胜出、逻辑删除；无主库不能误接进销存。
+- 覆盖 core Flyway 不退让、平台 initializer 先于餐饮校验、validate 不应用 core 迁移、不写历史；无历史、未登记餐饮表、pending/failed/future/checksum、物理缺列、Outbox 缺唯一键都拒绝。
+- 审查补充回归：相似表 `sysXidempotent` 的字段不能掩盖 `sys_idempotent.request_hash` 缺失。JDBC tableNamePattern 的下划线是通配符，按元数据返回的真实 TABLE_NAME 再精确过滤；用例先产生1个断言失败，再修复通过。
+- 共享持久层定向5项通过；宿主默认：餐饮/支付条件装配7项通过、1项不适用跳过，另含共享5项；embedded：5项通过、1项不适用跳过；standalone：6项通过。
+- 本轮未重跑整个 backend 全量；NEXT-03 两项独立 schema 回归失败未修复，不把定向通过解释为全量通过。
+
+### 已应用环境的只读收据
+
+目标为之前已应用餐饮 V1 的本机主库 `127.0.0.1:3306/ai_shop`，MariaDB 12.2.2。
+通过显式诊断测试 `FoodAppliedSchemaValidationIT` 执行 VALIDATE，凭据仅从环境读入；运行时全部餐饮校验连接标记只读。
+餐饮 V1 checksum 为 `-624286550`，历史2行（baseline0 + V1），平台历史最高版本381；checksum/73表字段校验通过，`schemaValidated=true, version=1, ready=false`。
+餐饮与平台两份历史在校验前后逐行一致；没有执行 migrate、repair、ALTER 或补写历史。
+
+当前阻塞：`sys_idempotent.request_hash`；`sys_outbox` 的 source_system/source_event_no/schema_version/payload_hash/stream_key/stream_sequence/routing_mode/occurred_at；对应来源与序列唯一键；sys_outbox_stream、sys_outbox_delivery、sys_outbox_operation 三表。
+这些属于平台 V410/V471 前置能力，须由平台原发布流程另行处理，当前没有授权升级现有库，餐饮不会自行代跑。
+
+显式只读复验（自行通过环境注入 FOOD_VALIDATE_JDBC_URL/USER/PASSWORD，不把凭据放进命令行）：
+
+```sh
+FOOD_VALIDATE_EXISTING=true mvn -o -f backend-plugins/shop-industry-food/pom.xml -pl food-core -am test -Dtest=FoodAppliedSchemaValidationIT -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+### 本轮裁定与代价
+
+- 提取平台已有公共主库装配，保留原入口和行为；若遗漏平台选项会影响零售，故用共享属性/审计测试及宿主三形态回归覆盖。
+- 提前落地一个桌区实体/Mapper，仅验证真实接线；代价是 NEXT-09 应扩充它们而非重复生成。
+- OFF 只支持无数据库骨架，永远不就绪；误配不会获得可用 Mapper，默认运行保持 validate。
+- 只使用局部餐饮 Flyway 并报告核心缺项；代价是旧主库在平台完成原迁移前不能启用餐饮业务。
+- 独立 server 精确排除通用 DataAutoConfiguration，与平台一致；代价是必须显式保留平台工厂与审计装配，由真实 server MySQL 测试守护。
+- 审查的表名通配符问题按漏报前置能力风险升为 Important，已完成 RED→GREEN 修复；无遗留审查项。
+
 ## 后续边界
 
-下一步是 NEXT-05 主库、事务及独立迁移校验，再接可信范围和首个桌区切片。
-Actuator 与 MySQL 驱动已随独立进程加入；餐饮 Flyway 校验与业务协议按对应接线任务落地，不生成空业务实现。
-当前未新增 Controller/Service/Mapper 业务壳，已原字节移动冻结 V1；未连接或修改应用数据库。
+下一步为 NEXT-06：可信主体/门店范围、共享幂等和审计/Outbox 接线，再进入桌区首写切片。
+现有主库前置缺项与远程支付/库存合同尚未完成，不能把本轮 schema 接线通过解释为可营业。

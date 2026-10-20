@@ -25,7 +25,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 class FoodDeploymentContractTest {
     private static final String TOKEN = "food-unit-test-service-token";
-    private final WebApplicationContextRunner runner = new WebApplicationContextRunner()
+    private final WebApplicationContextRunner runner = new WebApplicationContextRunner().withPropertyValues("shop.food.migration.mode=off", "spring.datasource.url=jdbc:h2:mem:food_server_skeleton", "spring.datasource.username=sa", "spring.datasource.password=")
             .withInitializer(new ConfigDataApplicationContextInitializer())
             .withUserConfiguration(FoodApplication.class)
             .withPropertyValues("spring.autoconfigure.exclude="
@@ -33,6 +33,15 @@ class FoodDeploymentContractTest {
                     + "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration,"
                     + "org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration,"
                     + "org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration");
+
+    @Test
+    void disabledFoodStillExposesNotReadyHealthWithoutPersistence() {
+        runner.withPropertyValues("shop.food.enabled=false", "shop.services.internal-token=" + TOKEN).run(context -> {
+            assertThat(context).hasNotFailed().doesNotHaveBean(ai.neargo.shop.food.config.FoodSchemaReady.class)
+                    .doesNotHaveBean(ai.neargo.shop.food.mapper.FoodMappers.TableAreaMapper.class);
+            mvc(context).perform(get("/actuator/health/readiness")).andExpect(status().isServiceUnavailable());
+        });
+    }
 
     @Test
     void standaloneServerHasNoPublicClientMappings() {
@@ -100,7 +109,7 @@ class FoodDeploymentContractTest {
     @Test
     void standaloneDoesNotAutoConfigureUserSessions() {
         assertThat(FoodApplication.class.getAnnotation(SpringBootApplication.class).excludeName())
-                .contains("ai.neargo.common.security.SecurityAutoConfiguration",
+                .contains("ai.neargo.common.data.DataAutoConfiguration", "ai.neargo.common.security.SecurityAutoConfiguration",
                         "ai.neargo.common.security.SessionStoreAutoConfiguration",
                         "ai.neargo.common.security.rbac.RbacAutoConfiguration",
                         "org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration");

@@ -1,19 +1,11 @@
 package ai.neargo.shop.config;
 
-import ai.neargo.common.data.scope.DataScopeHandler;
-import ai.neargo.common.data.scope.DataScopeRegistrar;
-import ai.neargo.common.data.scope.DataScopeTableRegistry;
-import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.DataPermissionInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
+import ai.neargo.shop.common.config.PrimaryPersistenceConfiguration;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.List;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 
 /**
  * MyBatis-Plus 装配：**数据权限 → 分页 → 乐观锁**，顺序不能换。
@@ -23,6 +15,7 @@ import java.util.List;
  * —— 表现为「总数 100 条但只能翻 3 页」，且不报错。
  */
 @Configuration
+@Import(PrimaryPersistenceConfiguration.class)
 /*
  * ⚠️ **进销存的 Mapper 必须排除在外**。
  *
@@ -80,25 +73,4 @@ import java.util.List;
         annotationClass = org.apache.ibatis.annotations.Mapper.class,
         sqlSessionFactoryRef = "sqlSessionFactory")
 public class MybatisPlusConfig {
-
-    @Bean
-    DataScopeTableRegistry dataScopeTableRegistry(List<DataScopeRegistrar> registrars) {
-        DataScopeTableRegistry registry = new DataScopeTableRegistry();
-        registrars.forEach(r -> r.register(registry));
-        return registry;
-    }
-
-    @Bean
-    DataScopeHandler dataScopeHandler(DataScopeTableRegistry registry) {
-        return new DataScopeHandler(registry);
-    }
-
-    @Bean
-    MybatisPlusInterceptor mybatisPlusInterceptor(DataScopeHandler dataScopeHandler) {
-        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        interceptor.addInnerInterceptor(new DataPermissionInterceptor(dataScopeHandler));
-        interceptor.addInnerInterceptor(new PaginationInnerInterceptor());
-        interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
-        return interceptor;
-    }
 }

@@ -97,7 +97,7 @@ class FoodEmbeddedWiringTest {
                 configs.add(ClassUtils.resolveClassName(name, getClass().getClassLoader()));
             }
         }
-        return new ApplicationContextRunner().withUserConfiguration(FoodDeploymentConfiguration.class)
+        return new ApplicationContextRunner().withPropertyValues("shop.food.migration.mode=off").withUserConfiguration(FoodDeploymentConfiguration.class)
                 .withConfiguration(AutoConfigurations.of(configs.toArray(Class<?>[]::new)));
     }
 

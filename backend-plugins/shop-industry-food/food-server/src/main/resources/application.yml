@@ -10,7 +10,7 @@ spring:
     url: ${FOOD_DB_URL:}
     username: ${FOOD_DB_USER:}
     password: ${FOOD_DB_PASSWORD:}
-  # 本进程禁止驱动平台 core 迁移；餐饮专用校验在 NEXT-05 接入。
+  # 本进程禁止驱动平台 core 迁移；餐饮专用校验使用独立历史，默认只读 validate。
   flyway:
     enabled: false
 

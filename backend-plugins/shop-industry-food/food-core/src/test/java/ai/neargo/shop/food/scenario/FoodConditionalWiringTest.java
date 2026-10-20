@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Configuration;
 
 class FoodConditionalWiringTest {
 
-    private final ApplicationContextRunner runner = new ApplicationContextRunner()
+    private final ApplicationContextRunner runner = new ApplicationContextRunner().withPropertyValues("shop.food.migration.mode=off")
             .withConfiguration(AutoConfigurations.of(FoodAutoConfiguration.class))
             .withUserConfiguration(HostScan.class);
 

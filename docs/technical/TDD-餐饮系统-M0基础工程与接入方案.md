@@ -1,6 +1,6 @@
 # 餐饮系统 M0 基础工程与接入方案
 
-> 状态：实施中，NEXT-01～04已完成，NEXT-05起待执行 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
+> 状态：实施中，NEXT-01～05已完成，NEXT-06起待执行 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
 > **本版替代上一版独立food-server三端鉴权、远程用户session解析的设计。** 独立餐饮只提供内部接口，C/B/平台运营Controller源码均归餐饮food-web，由shop-app挂载。
 > [独立项目、包及依赖清单](./TDD-餐饮系统-独立项目与包依赖方案.md) · [统一架构及三端完整清单](./TDD-餐饮系统-三端API与独立服务对齐.md) · [总计划](./TDD-餐饮系统-后端开发计划.md) · [平台Java规范](../../.claude/skills/ai-shop-dev-standards/references/java.md)。
 
@@ -120,7 +120,7 @@ embedded餐饮复用平台dataSource/sqlSessionFactory/transactionManager；stan
 
 **目标：** 五模块独立构建与装配通过，冻结迁移资源归餐饮，主库和授权范围接通，随后交付桌区092～095第一个真实业务切片。桌台、菜品和订单仍按总计划依次推进，不扩大本轮为全量餐饮实现。
 
-**执行方式：** 后续编码使用`superpowers:executing-plans`，在隔离分支/工作树中逐任务自实施。先读本TDD、[独立项目方案](./TDD-餐饮系统-独立项目与包依赖方案.md)与[方法清单](./design/餐饮系统-Controller-Service-Mapper方法清单.md)。NEXT-01～04已按下列计划实施；NEXT-05起尚未执行，实际命令与边界见餐饮工程README。
+**执行方式：** 后续编码使用`superpowers:executing-plans`，在隔离分支/工作树中逐任务自实施。先读本TDD、[独立项目方案](./TDD-餐饮系统-独立项目与包依赖方案.md)与[方法清单](./design/餐饮系统-Controller-Service-Mapper方法清单.md)。NEXT-01～05已按下列计划实施；NEXT-06起尚未执行，实际命令与边界见餐饮工程README。
 
 #### 文件定位与全局约束
 
@@ -177,10 +177,10 @@ embedded餐饮复用平台dataSource/sqlSessionFactory/transactionManager；stan
 
 **接口：** `FoodSchemaReady foodSchemaReady(DataSource dataSource, FoodProperties properties)`；`void register(DataScopeTableRegistry registry)`。前者用明确主DataSource/限定符，不向容器注册第二个Flyway类型Bean；不重建宿主主连接池。
 
-- [ ] 写`bindFoodMapperToPlatformFactory`、`validateDoesNotApplyCoreMigrations`、`foodDoesNotSuppressCoreFlyway`、`rejectUntrackedFoodTables`：目标为真实主工厂和事务，validate无写入，失败/pending/缺字段有明确结果。
-- [ ] 接独立fnb历史和classpath餐饮迁移；默认validate，发布单元migrate；独立server关闭默认core迁移。核心前置列/outbox版本不满足则报告所缺能力，不自动ALTER或升级core。
-- [ ] 数据域仅登记当前实际访问表及真实entity列；无主数据源时不落到inventory/pay/report库。并发和事务使用一次性隔离MariaDB/MySQL，不能在已有ai_shop跑破坏性夹具。
-- [ ] 原已应用环境只受控validate并核对checksum/history；保存实际结果。提交建议：`feat(food): bind primary persistence and schema validation`。
+- [x] 写`bindFoodMapperToPlatformFactory`、`validateDoesNotApplyCoreMigrations`、`foodDoesNotSuppressCoreFlyway`、`rejectUntrackedFoodTables`：目标为真实主工厂和事务，validate无写入，失败/pending/缺字段有明确结果。
+- [x] 接独立fnb历史和classpath餐饮迁移；默认validate，发布单元migrate；独立server关闭默认core迁移。核心前置列/outbox版本不满足则报告所缺能力，不自动ALTER或升级core。
+- [x] 数据域仅登记当前实际访问表及真实entity列；无主数据源时不落到inventory/pay/report库。并发和事务使用一次性隔离MariaDB/MySQL，不能在已有ai_shop跑破坏性夹具。
+- [x] 原已应用环境只受控validate并核对checksum/history；保存实际结果。提交建议：`feat(food): bind primary persistence and schema validation`。
 
 #### NEXT-06：可信范围、幂等及审计基础（FND-02/GOV-02）
 
@@ -307,3 +307,12 @@ M0-A可先用隔离配置上下文测试；真实jar、数据库和独立服务�
 完成五模块工程及NEXT-02/03装配后，将V1原字节归入food-core。移动前后SHA-256为 `215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9`；classpath位置、版本、历史表不变。增加构建后实际jar及嵌套jar校验，生成器同时固定已应用字节摘要，拒绝设计/SQL一起变更来回写V1。
 
 NEXT-04实际验证：Java38项通过（含3项verify阶段资源检查）；Node设计/DDL15项通过；冻结DDL检查通过；一次性无网络MySQL用冻结文件建73表并验证关系、去重、配额及容量约束。未访问共享库或更改既有迁移历史；NEXT-03独立schema失败仍单列，未通过本轮跳过掩盖。完整说明见[餐饮工程README](../../backend-plugins/shop-industry-food/README.md)。
+
+
+### NEXT-05 实施回填 · 2026-10-20
+
+复用平台持久层装配（原宿主配置保留入口），独立 server 直接导入公共装配并使用平台审计；餐饮模板与主池/工厂/事务绑定同一对象，schema校验先于Mapper可用。
+默认只读 validate，只有显式发布 migrate；局部餐饮Flyway对象不作为Bean，不抑制core初始化。只提前实现桌区实体/Mapper并注册真实entity_no，无空Service/Controller。
+常规reactor44项实际通过；另以一次性MySQL执行15项core+1项真实server测试，覆盖回滚、真正并发CAS、数据域、Flyway共存与异常拒绝。宿主默认、embedded、standalone定向均通过；共享持久层5项通过。两项NEXT-03独立schema失败仍未修复，不声称全backend通过。
+已有主库只读validate：MariaDB12.2.2，餐饮V1历史/字段有效；两份history校验前后完全一致，未migrate/repair。业务ready=false，缺sys_idempotent.request_hash和V471 Outbox字段/唯一键/三表，须由平台原迁移流程另行升级。本任务只完成接线与如实阻断，不代跑核心迁移。
+审查发现JDBC表名下划线通配符可能并入相似表字段，回归先失败后修复为精确表名过滤。详细配置、命令、收据、裁定与代价见[餐饮工程README](../../backend-plugins/shop-industry-food/README.md#next-05-主库事务与独立迁移校验--2026-10-20)。
