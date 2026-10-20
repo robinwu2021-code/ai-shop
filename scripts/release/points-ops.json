@@ -73,6 +73,6 @@
     "scripts/release/points-ops.mjs",
     "scripts/release/points-ops.test.mjs"
   ],
-  "releaseBase": "8f8fa7851ed444d62571519a9ffbba0375825985",
-  "releaseAnchor": "8f8fa7851ed444d62571519a9ffbba0375825985"
+  "releaseBase": "ff135c1eaad1694a6cdb29149a419b61df71e849",
+  "releaseAnchor": "ff135c1eaad1694a6cdb29149a419b61df71e849"
 }
