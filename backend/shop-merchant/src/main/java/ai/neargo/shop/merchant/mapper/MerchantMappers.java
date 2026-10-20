@@ -1,21 +1,33 @@
 package ai.neargo.shop.merchant.mapper;
 
+import ai.neargo.shop.merchant.dto.PersonnelAssignmentFactRow;
+import ai.neargo.shop.merchant.dto.PersonnelPositionFactRow;
+import ai.neargo.shop.merchant.dto.PersonnelQualificationFactRow;
 import ai.neargo.shop.merchant.entity.MchAccount;
 import ai.neargo.shop.merchant.entity.MchEntity;
 import ai.neargo.shop.merchant.entity.MchEntityCommunity;
 import ai.neargo.shop.merchant.entity.MchPaymentMerchant;
 import ai.neargo.shop.merchant.entity.MchPayoutAccount;
+import ai.neargo.shop.merchant.entity.MchPersonnel;
+import ai.neargo.shop.merchant.entity.MchPersonnelAccount;
+import ai.neargo.shop.merchant.entity.MchPersonnelPosition;
+import ai.neargo.shop.merchant.entity.MchPersonnelSkill;
+import ai.neargo.shop.merchant.entity.MchPersonnelStore;
 import ai.neargo.shop.merchant.entity.MchQualification;
 import ai.neargo.shop.merchant.entity.MchStore;
 import ai.neargo.shop.merchant.entity.MchStoreRole;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 /**
  * merchant 域的 Mapper 集合（嵌套接口，沿用 powerbank 的写法）。
- * Mapper 只做单表 CRUD 与条件组合，跨表聚合放 Service —— 一旦 Mapper 里出现业务分支，
- * 数据域拦截器与状态机就会被绕过。
+ * Mapper负责CRUD与范围投影；关系投影可JOIN确认父链和规范身份。
+ * 事务编排、权限和资源/资格许可仍由所有者业务层负责，不在Mapper中替代。
  *
  * <p>原先这六个接口与 user 的四个同住 {@code UserMappers}。合在一起的直接后果是：
  * 任何拿到 {@code UserMappers} 的类都顺手能读写商家表，边界靠自觉——
@@ -323,4 +335,82 @@ public final class MerchantMappers {
     public interface PayoutAccountMapper extends BaseMapper<MchPayoutAccount> {
     }
 
+
+    /** Shared personnel master; login accounts are optional independent associations. */
+    public interface PersonnelMapper extends BaseMapper<MchPersonnel> {
+    }
+
+    /** Current optional account link; mutations require a future owner workflow and audit. */
+    public interface PersonnelAccountMapper extends BaseMapper<MchPersonnelAccount> {
+    }
+
+    /** Bounded effective employment projection; overlapping rows remain visible for explicit ambiguity rejection. */
+    public interface PersonnelStoreMapper extends BaseMapper<MchPersonnelStore> {
+        /** Canonical parent identity and all effective employments let the owner reject ambiguity. */
+        @Select("""
+                <script>
+                SELECT a.assignment_no, p.personnel_no, p.name AS display_name, a.level_code,
+                a.public_visible, a.sort_order, a.valid_from, a.valid_to
+                FROM mch_personnel_store a
+                JOIN mch_personnel p ON p.tenant_no=a.tenant_no AND p.entity_no=a.entity_no
+                AND p.personnel_no=a.personnel_no
+                JOIN mch_store s ON s.tenant_no=a.tenant_no AND s.entity_no=a.entity_no AND s.store_no=a.store_no
+                JOIN mch_entity e ON e.tenant_no=a.tenant_no AND e.entity_no=a.entity_no
+                WHERE a.tenant_no=#{tenantNo} AND a.entity_no=#{entityNo} AND a.store_no=#{storeNo}
+                AND a.deleted=0 AND p.deleted=0 AND s.deleted=0 AND e.deleted=0
+                AND a.status='ACTIVE' AND p.status='ACTIVE' AND s.status='ACTIVE' AND e.status='ACTIVE'
+                AND e.archived_at IS NULL AND a.valid_from &lt;= #{at} AND (a.valid_to IS NULL OR a.valid_to>#{at})
+                AND a.personnel_no IN
+                <foreach collection="personnelNos" item="person" open="(" separator="," close=")">#{person}</foreach>
+                ORDER BY a.sort_order, a.personnel_no, a.assignment_no LIMIT 201
+                </script>
+                """)
+        List<PersonnelAssignmentFactRow> selectEffectiveAssignments(@Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("personnelNos") Set<String> personnelNos, @Param("at") LocalDateTime at);
+    }
+
+    /** Batch positions only for the already authorized employment rows in the same snapshot. */
+    public interface PersonnelPositionMapper extends BaseMapper<MchPersonnelPosition> {
+        /** Read only authorized assignment IDs; the parent supplies the stable grouping identity. */
+        @Select("""
+                <script>
+                SELECT a.assignment_no, p.position_code FROM mch_personnel_position p
+                JOIN mch_personnel_store a ON a.tenant_no=p.tenant_no AND a.entity_no=p.entity_no
+                AND a.assignment_no=p.assignment_no
+                WHERE p.tenant_no=#{tenantNo} AND p.entity_no=#{entityNo} AND a.store_no=#{storeNo}
+                AND p.deleted=0 AND a.deleted=0 AND p.status='ACTIVE' AND a.status='ACTIVE'
+                AND p.assignment_no IN
+                <foreach collection="assignmentNos" item="assignment" open="(" separator="," close=")">
+                #{assignment}</foreach>
+                ORDER BY p.assignment_no, p.position_code LIMIT 2001
+                </script>
+                """)
+        List<PersonnelPositionFactRow> selectByAssignments(@Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("assignmentNos") List<String> assignmentNos);
+    }
+
+    /** Verified effective qualification facts carry their original store scope; no permission inference. */
+    public interface PersonnelSkillMapper extends BaseMapper<MchPersonnelSkill> {
+        /** Resolve child references through the master identity under the same owner snapshot. */
+        @Select("""
+                <script>
+                SELECT p.personnel_no, k.skill_no, k.store_no, k.goods_no, k.sku_no, k.level_code,
+                k.valid_from, k.valid_to FROM mch_personnel_skill k
+                JOIN mch_personnel p ON p.tenant_no=k.tenant_no AND p.entity_no=k.entity_no
+                AND p.personnel_no=k.personnel_no
+                WHERE k.tenant_no=#{tenantNo} AND k.entity_no=#{entityNo} AND k.deleted=0 AND k.status='VERIFIED'
+                AND p.deleted=0 AND p.status='ACTIVE'
+                AND (k.store_no IS NULL OR k.store_no=#{storeNo})
+                AND k.valid_from &lt;= #{at} AND (k.valid_to IS NULL OR k.valid_to>#{at})
+                AND k.personnel_no IN
+                <foreach collection="personnelNos" item="person" open="(" separator="," close=")">#{person}</foreach>
+                ORDER BY k.personnel_no, k.skill_no LIMIT 2001
+                </script>
+                """)
+        List<PersonnelQualificationFactRow> selectEffectiveByPersonnel(@Param("tenantNo") String tenantNo,
+                @Param("entityNo") String entityNo, @Param("storeNo") String storeNo,
+                @Param("personnelNos") Set<String> personnelNos, @Param("at") LocalDateTime at);
+    }
 }

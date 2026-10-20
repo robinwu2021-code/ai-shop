@@ -105,6 +105,8 @@ export const KEY_OWNERS = {
   // 门店与商家账号。store_no 与 entity_no 是两级，别按名字互相 join
   store_no: "mch_store",
   mch_account_no: "mch_account",
+  personnel_no: "mch_personnel",
+  assignment_no: "mch_personnel_store",
   pay_merchant_no: "mch_payment_merchant",
   user_no: "usr_account",
   order_no: "ord_order",
@@ -258,7 +260,8 @@ const NAME_COLLISIONS_WHY = {
   scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
   revision_no: "商品版本与积分账单版本，各自独立。",
   holder_no: "积分持有人多态编号，必须结合 holder_type。",
-  position_no: "不同种类积分持仓的多态编号，必须结合持仓类型。",
+  position_no: "积分持仓与业务岗位分配的编号分别属于各自表，必须结合所属业务。",
+  link_no: "会员来源关联号与业务人员账号关联号分别属于各自表，不可按列名关联。",
   ticket_no: "积分资金指令与客服工单的独立编号，不可直接关联。",
   request_no: "`mkt_request` 是求团需求单号；`stl_split_log` 是分账幂等号",
   express_no: "`ord_sub_order` 是发货单号；`ord_after_sale` 是退货单号，**方向相反**",

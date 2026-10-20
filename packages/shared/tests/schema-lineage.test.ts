@@ -208,6 +208,8 @@ const KEY_OWNERS: Record<string, { table: string; col?: string }> = {
   store_no: { table: "mch_store" },
   // 商家账号（B 端账号池本身，不是"员工附属表"），与平台运营 sys_ops_staff 无关
   mch_account_no: { table: "mch_account" },
+  personnel_no: { table: "mch_personnel" },
+  assignment_no: { table: "mch_personnel_store" },
   // 收款商户号业务键 —— 全库唯一合法的 "merchant" 用法；mch_store 引用它选收款号
   pay_merchant_no: { table: "mch_payment_merchant" },
   user_no: { table: "usr_account" },
@@ -268,7 +270,8 @@ const NAME_COLLISIONS: Record<string, string> = {
   scope_no: "角色授权范围与积分开关统计范围，须按各自范围类型解释。",
   revision_no: "商品版本与积分账单版本，各自独立。",
   holder_no: "积分持有人多态编号，必须结合 holder_type。",
-  position_no: "不同种类积分持仓的多态编号，必须结合持仓类型。",
+  position_no: "积分持仓与业务岗位分配的编号分别属于各自表，必须结合所属业务。",
+  link_no: "会员来源关联号与业务人员账号关联号分别属于各自表，不可按列名关联。",
   ticket_no: "积分资金指令与客服工单的独立编号，不可直接关联。",
   migration_batch_no: "旧券迁移批次按tenant/sourceSystem/sourceTemplateNo限定，不是全局迁移主键；目标原子导入主键是import_no。",
   aggregate_no: "订单状态聚合与Pay Outbox的多态聚合号，各自携带聚合类型。",
@@ -382,6 +385,18 @@ const NAME_COLLISIONS: Record<string, string> = {
 
 describe("对账血缘", () => {
   const schema = readSchema();
+
+  it("共用人员键归属明确且不把账号关联或岗位编号误连到其他业务", async () => {
+    const gen = (await import("../../../scripts/gen-erd.mjs")) as { KEY_OWNERS: Record<string, string> };
+    expect(KEY_OWNERS.personnel_no).toEqual({ table: "mch_personnel" });
+    expect(KEY_OWNERS.assignment_no).toEqual({ table: "mch_personnel_store" });
+    expect(gen.KEY_OWNERS.personnel_no).toBe("mch_personnel");
+    expect(gen.KEY_OWNERS.assignment_no).toBe("mch_personnel_store");
+    expect(NAME_COLLISIONS.link_no).toContain("人员");
+    expect(NAME_COLLISIONS.position_no).toContain("岗位");
+    expect(schema.get("mch_personnel_store")?.has("personnel_no")).toBe(true);
+    expect(schema.get("mch_personnel_position")?.has("assignment_no")).toBe(true);
+  });
 
   it("解析到了迁移 —— 解析失效时不能静默通过", () => {
     // 正则解析最坏的失败方式是「一张表都没抽到」却报绿

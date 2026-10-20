@@ -20,7 +20,8 @@
 | POL-01 / DEF-01 | 部分完成 / 主接口完成 | 政策查询发布、定义查询发布已交付；POL-01公开营业信息BAPI-144未在本批范围 |
 | DATA-05/06 | 数据层完成 | 7项实体、15个原始Mapper方法、25项真实MySQL用例；见§9，不含预约/工单业务Service与工作台API |
 | DATA-07 | 数据层完成 | 3项新实体、9条原始Mapper方法，复用已有动作日志；21项真实MySQL通过，见§10 |
-| 后续业务 | 未完成 | 共用人员/资源、来源恢复与预约/日历/任务业务闭环仍待实施，不以数据层通过计作营业可用 |
+| SHR-01a | 基础切片完成 | 共用人员5表及内部事实查询，见§11；SHR-01/02整体、写维护和远程接入仍未完成 |
+| 后续业务 | 未完成 | 共用资源、排班、来源恢复与预约/日历/任务业务闭环仍待实施，不以数据层通过计作营业可用 |
 
 首批基础阶段验证（后续批次增量见§8、§9）：独立reactor 42项测试通过，Node生成器6项通过，隔离MySQL DDL约束通过，23项真实JDBC IT通过。
 宿主retail/embedded各6通过＋1个不适用形态用例跳过，standalone 7项全部通过；无H2替代MySQL约束结论。
@@ -499,3 +500,82 @@ ActionLog复用已有类，未新建Repository/转发Service、未加公共接�
 
 最终双部署与可执行验证：BeautyStandaloneEndToEndIT实际TCP→业务→MySQL1项通过；BeautyPolicyEndToEndIT宿主HTTP→MySQL1项通过，全部0失败/错误/跳过。
 实际最终JAR关闭态无数据库启动，liveness200/readiness503。本地检查点保留在美业隔离工作树，不合并/推送。
+
+## §11 SHR-01a：共用人员基础数据与批量事实查询
+
+### 11.0 核验与本批边界
+
+基线aaa7ff243；只读核验最新本地餐饮分支codex/food-next01=07f6b2347。其shop-merchant没有新增人员/资源实现，
+账号与预约槽实现沿现有共同基线；不合并其无关餐饮/前端工作。原目录仍有用户未提交变更，不写入该目录。
+复用MchAccount作为可选登录身份、MchStoreRole作为权限，不把权限角色当业务岗位。现有AppointmentSlotPort只支持单店总名额，
+不具备跨店STAFF、技能、组合hold/原子替换；本批保留原接口及行为。
+
+发现依赖：原SHR-01包含按resourceNo排班，而SHR-02依赖SHR-01。按既定所有权拆为SHR-01a人员5表→SHR-02a规范资源→SHR-01b班表→SHR-02b组合仲裁。
+本批只交付01a基础数据和内部批量事实查询，不实现人员维护HTTP、账号绑定/任职写Service、排班、资源占用或美业远程接入；SHR-01/02整体不标完成。
+
+### 11.1 设计与合同
+
+- shop-base新增spi.personnel.PersonnelFactsPort，getBatch(Query)：tenant/entity/store、1..200个明确personnelNos、UTC时点（截到毫秒）；
+  返回稳定personnelNo与assignmentNo、业务姓名/本店等级、公开标记、生效区间、业务岗位和已核验有效资格。
+  不返回账号号、电话、联系资料或权限；有无/停用登录账号不决定业务任职。无结果是没有有效事实，数据库/范围查询错误不得伪装空闲或匹配成功。
+- shop-merchant新增5个Entity，原MerchantMappers增加对应5接口；实际任职、岗位、资格投影PersonnelAssignmentFactRow/PersonnelPositionFactRow/PersonnelQualificationFactRow归merchant.dto。
+  查询按tenant/entity/store与有效主体/门店/人员/任职父链，区间[validFrom,validTo)，岗位只读ACTIVE，资格只读VERIFIED且有效、门店为当前店或主体通用。
+  返回全部符合条件的资格及其scope，匹配策略/开工许可由后续实现；不在本查询中授予收款、隐私或服务权限。
+- PersonnelFactsPortImpl直接查询本域Mapper。四处上限：最多200个人、最多200条任职（SQL取201作溢出哨兵）、岗位/资格各最多2000条（取2001）；
+  超限或同人员同店同一时点存在多个有效任职，明确拒绝，不能LIMIT后静默丢记录或任取一条。
+  三次批量SQL在独立只读REPEATABLE_READ快照事务内执行；拒绝外层事务，调用方在自己的写事务外读取事实。
+  数据域绕过仅封装内部可信查询，全部SQL仍有显式范围；通用BaseMapper的5表主体域仍注册。
+- shop-app正式平台迁移V532__shared_personnel_foundation.sql，5表沿既有设计真源字段、业务唯一键带tenant/entity；
+  CHECK保护状态、有效区间和公共version/deleted；不加跨域外键、不修改已应用迁移。账号主体/任职不重叠的写业务守卫与审计由后续维护Service完成，当前读取拒绝歧义。
+  新表随数据库默认字符集/排序规则，避免引入MariaDB/MySQL专有排序规则。只在一次性MySQL执行，不连接营业库。
+
+### 11.2 RED→GREEN计划与准出
+
+| 任务 | 精确文件/职责 | 测试与预期 |
+|---|---|---|
+| P1 | backend/shop-base/.../spi/personnel/PersonnelFactsPort.java | Query拒绝缺范围、空/超200名单，毫秒规范化与不可变集合 |
+| P2 | shop-merchant/entity/MchPersonnel{,Account,Store,Position,Skill}.java；mapper/MerchantMappers；dto/Personnel{Assignment,Position,Qualification}FactRow；port/PersonnelFactsPortImpl；config/PersonnelDataScopeRegistration | PersonnelFactsPersistenceIT：无账号、多店、资格过期/未核验/跨主体、权限角色不授技能、时间端点、父链停用、歧义、超限、事务边界、真实审计和主体数据域 |
+| P3 | shop-app/resources/db/migration/V532__shared_personnel_foundation.sql；scripts/verify-personnel-persistence.mjs | 直接执行正式迁移；状态/区间/账号可空唯一键/业务唯一键真实MySQL验证；不以H2约束替代 |
+| P4 | README、TDD本节、ADR-040及ledger | 全量merchant依赖测试、既有账号/slot回归、美业reactor与DB回归、SQL/设计/静态检查、消融及一次独立审查；只本地提交 |
+
+先写真实IT并确认缺类红灯，再实现；新增功能的每项验收按实际方法回填§11.3。
+架构决定沿既有多行业方案落在merchant，不新建行业人员表；ADR仅记录这次实施和阶段拆分，不重新定义账号权限。
+
+审查P2：不区分大小写的数据库可能将子引用P/p、A/a关联到同一父行；Java不得按子引用原字符串分组。
+实际MySQL三反例19项/3断言失败/0错误后，SQL投影统一取父行规范业务号，任职歧义与子事实分组使用规范号；不修改部署排序规则。
+快照验收增加真实第二连接在第一读后更改岗位/资格，当前快照仍读原值，下次查询读新值；消融切为READ_COMMITTED须触发断言失败。
+
+派生文档范围：新增merchant表/Entity/Port触发表清单、词汇、分层及ER生成；按当前分支真源同步派生物，不修改原餐饮工作区。全局ER同时收敛既有源与派生物漂移，不据此声称新增无关业务。
+
+新增表配套血缘：personnel_no/assignment_no登记到共用主档/任职，link_no和position_no按不同业务登记冲突而非错误关联；正式V532收尾采用InnoDB，不指定字符集/排序规则。
+H2派生schema随平台迁移重生成，仍以MySQL断言证明约束。新增业务键断言先失败再修复。
+基线aaa7ff243在/tmp干净归档只读重现schema-lineage两个既有失败：跨表同名业务键未分类、gen-erd键表不一致；不修无关资金/营销语义，单独记录实际结果。
+
+
+### 11.3 实际交付与验收
+
+实际新增5个Entity、5个嵌套Mapper、3个本域事实投影、1个共用PersonnelFactsPort及其merchant实现、数据域注册，
+以及正式V532和可重复的一次性MySQL验证脚本。人员归属merchant，零售、餐饮、美业共用同一事实合同。
+
+| AC | PersonnelFactsPersistenceIT实际方法 | 验收结果 |
+|---|---|---|
+| 可选登录、业务身份与权限分离 | personnelWithoutLoginAccountHasStableBusinessIdentityAndNoContactLeak、loginPermissionsDoNotCreateBusinessPositionOrQualification | 无账号仍有业务身份，不泄露联系资料，权限角色不授岗位/资格 |
+| 多店与有效区间 | samePersonnelCanHaveIndependentStoreAssignments、effectiveIntervalsAreInclusiveAtStartAndExclusiveAtEnd | 任职按店独立，[from,to)端点通过 |
+| 有效岗位、资格及父链 | businessPositionIsReadFromActiveAssignmentRowsOnly、onlyVerifiedCurrentStoreOrEntityWideQualificationsAreReturned，以及foreignSubject/inactivePersonnel/inactiveOrForeignStore/archivedEntity四项 | 只返回有效本域事实，错误父链不返回 |
+| 歧义与规模上限 | overlappingEffectiveAssignmentsFailInsteadOfPickingAnArbitraryRow、tooManyChildFactsFailInsteadOfTruncatingSilently、queryRequiresBoundedExplicitNamesAndNormalizesToMilliseconds | 重叠任职、超限、非法请求明确拒绝 |
+| 数据库规范身份 | databaseEquivalentPersonnelRefsCannotBypassAmbiguity、databaseEquivalentAssignmentRefKeepsPositionFact、databaseEquivalentPersonnelRefKeepsQualificationFact | 实际CI排序规则三反例先RED再GREEN，不按子引用字符串误分组 |
+| 快照与事务边界 | factsMustBeReadOutsideCallerWriteTransactions、laterFactQueriesUseSameSnapshotDespiteAnotherConnectionChangingRows | 拒绝外层事务；第二连接更新不撕裂当前事实快照，下次读取可见新值 |
+| 正式DDL、主库审计及主体域 | formalMigrationEnforcesIntervalsStatusesAndNullableAccountUniqueness、actualMapperInsertUsesAuditAndDataScopeRestoresAfterTrustedLookup | 正式V532真实执行、CHECK/唯一键、实际Mapper审计和主体域通过 |
+
+最终人员MySQL20/20，共用merchant及依赖253/253，原账号/预约槽/商品事实兼容37/37，均0失败、0错误、0跳过。
+美业普通reactor54/54、实际MySQL87/87、独立部署与宿主HTTP→MySQL各1项通过；最终关闭态JAR无数据库启动，liveness200/readiness503。
+RR消融切换为READ_COMMITTED时20项中1断言失败、0错误；finally恢复，最终20项全绿。独立审查一次，P2规范身份问题已修复，无遗留审查项。
+
+全局派生与边界：五组美业设计生成器、冻结V1、Node6项、SQL无新增方言依赖检查通过。新人员血缘断言1项通过，
+完整schema-lineage为14通过/2失败；干净基线aaa7ff243为13通过/同2项失败，分别为“新出现的跨表同名业务键必须被分类”与
+“与gen-erd.mjs的键归属表一致”。遗留source_event_no/execution_no/entry_no/line_no及旧资金键歧义不在本批修改范围，不能声称全局闸门全绿。
+新5表已进入生成H2及ER/表清单，H2与迁移表集合一致；约束证明仍以实际MySQL为准。
+
+本批仅SHR-01a基础切片完成。SHR-01/02整体、人员写维护/账号绑定守卫、美业远程消费、排班、资源占用和预约日历均未完成。
+接续顺序：SHR-02a规范资源身份→SHR-01b排班→SHR-02b组合占用仲裁，再接美业预约任务与工作元占用日历；保持零售既有账号和预约槽兼容。
+只在美业隔离工作树本地提交，不合并、不推送、不执行营业库迁移。

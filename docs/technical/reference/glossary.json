@@ -28320,6 +28320,41 @@
       "package": "ai.neargo.shop.merchant.entity"
     },
     {
+      "table": "mch_personnel",
+      "class": "MchPersonnel",
+      "zh": "共用业务人员主档。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_personnel_account",
+      "class": "MchPersonnelAccount",
+      "zh": "当前人员账号关联。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_personnel_position",
+      "class": "MchPersonnelPosition",
+      "zh": "任职上的业务岗位。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_personnel_skill",
+      "class": "MchPersonnelSkill",
+      "zh": "项目服务资格。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
+      "table": "mch_personnel_store",
+      "class": "MchPersonnelStore",
+      "zh": "跨门店业务任职。",
+      "module": "shop-merchant",
+      "package": "ai.neargo.shop.merchant.entity"
+    },
+    {
       "table": "mch_qualification",
       "class": "MchQualification",
       "zh": "商家资质。",
@@ -31960,6 +31995,20 @@
         "name": "JOB",
         "value": "JOB",
         "zh": "定时任务调度器。",
+        "module": "shop-base"
+      },
+      {
+        "host": "ServiceName",
+        "name": "FOOD",
+        "value": "FOOD",
+        "zh": "餐饮独立进程。",
+        "module": "shop-base"
+      },
+      {
+        "host": "ServiceName",
+        "name": "BEAUTY",
+        "value": "BEAUTY",
+        "zh": "美业独立内部业务进程。",
         "module": "shop-base"
       },
       {
@@ -37241,6 +37290,24 @@
         "module": "shop-base"
       },
       {
+        "name": "Deployment",
+        "values": [
+          "EMBEDDED",
+          "STANDALONE"
+        ],
+        "zh": "",
+        "module": "shop-app"
+      },
+      {
+        "name": "Deployment",
+        "values": [
+          "EMBEDDED",
+          "STANDALONE"
+        ],
+        "zh": "",
+        "module": "shop-app"
+      },
+      {
         "name": "Dim",
         "values": [
           "STORE",
@@ -38437,6 +38504,16 @@
         ],
         "zh": "统一的物流状态（TDD-圆通物流直连 §5）。",
         "module": "shop-base"
+      },
+      {
+        "name": "TransactionDirection",
+        "values": [
+          "EARN",
+          "REDEEM",
+          "REVERSAL"
+        ],
+        "zh": "",
+        "module": "pay/pay-domain"
       },
       {
         "name": "TriggerType",

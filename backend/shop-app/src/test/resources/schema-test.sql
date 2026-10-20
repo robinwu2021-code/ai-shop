@@ -8170,6 +8170,133 @@ CREATE TABLE IF NOT EXISTS pmt_pay_coupon_projection
     CHECK (CHAR_LENGTH(plan_hash)=64 AND CHAR_LENGTH(fact_hash)=64)
 );
 
+CREATE TABLE IF NOT EXISTS mch_personnel
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    personnel_no VARCHAR(32) NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    avatar_ref VARCHAR(64) NULL,
+    status VARCHAR(24) NOT NULL,
+    contact_ref VARCHAR(64) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_1 UNIQUE (tenant_no, entity_no, personnel_no),
+    CONSTRAINT ck_mch_personnel_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_2 CHECK (deleted IN (0,1)),
+    CONSTRAINT ck_mch_personnel_3 CHECK (status IN ('ACTIVE','SUSPENDED','LEFT'))
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel_account
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    link_no VARCHAR(32) NOT NULL,
+    personnel_no VARCHAR(32) NOT NULL,
+    mch_account_no VARCHAR(32) NULL,
+    linked_at DATETIME(3) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_account_1 UNIQUE (tenant_no, entity_no, link_no),
+    CONSTRAINT uk_mch_personnel_account_2 UNIQUE (tenant_no, entity_no, personnel_no),
+    CONSTRAINT uk_mch_personnel_account_3 UNIQUE (tenant_no, entity_no, mch_account_no),
+    CONSTRAINT ck_mch_personnel_account_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_account_2 CHECK (deleted IN (0,1))
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel_store
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    assignment_no VARCHAR(32) NOT NULL,
+    personnel_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NOT NULL,
+    valid_from DATETIME(3) NOT NULL,
+    valid_to DATETIME(3) NULL,
+    status VARCHAR(24) NOT NULL,
+    public_visible TINYINT NOT NULL,
+    level_code VARCHAR(32) NULL,
+    sort_order INT NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_store_1 UNIQUE (tenant_no, entity_no, assignment_no),
+    CONSTRAINT ck_mch_personnel_store_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_store_2 CHECK (deleted IN (0,1)),
+    CONSTRAINT ck_mch_personnel_store_3 CHECK (valid_to IS NULL OR valid_to > valid_from),
+    CONSTRAINT ck_mch_personnel_store_4 CHECK (status IN ('ACTIVE','INACTIVE')),
+    CONSTRAINT ck_mch_personnel_store_5 CHECK (public_visible IN (0,1))
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel_position
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    position_no VARCHAR(32) NOT NULL,
+    assignment_no VARCHAR(32) NOT NULL,
+    position_code VARCHAR(32) NOT NULL,
+    status VARCHAR(24) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_position_1 UNIQUE (tenant_no, entity_no, position_no),
+    CONSTRAINT uk_mch_personnel_position_2 UNIQUE (tenant_no, entity_no, assignment_no, position_code),
+    CONSTRAINT ck_mch_personnel_position_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_position_2 CHECK (deleted IN (0,1)),
+    CONSTRAINT ck_mch_personnel_position_3 CHECK (status IN ('ACTIVE','INACTIVE'))
+);
+
+CREATE TABLE IF NOT EXISTS mch_personnel_skill
+(
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(32) NOT NULL DEFAULT 'MAIN',
+    entity_no VARCHAR(32) NOT NULL,
+    created_at DATETIME(3) NOT NULL,
+    created_by VARCHAR(64) NULL,
+    updated_at DATETIME(3) NOT NULL,
+    updated_by VARCHAR(64) NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    deleted INT NOT NULL DEFAULT 0,
+    skill_no VARCHAR(32) NOT NULL,
+    personnel_no VARCHAR(32) NOT NULL,
+    store_no VARCHAR(32) NULL,
+    goods_no VARCHAR(32) NOT NULL,
+    sku_no VARCHAR(32) NULL,
+    level_code VARCHAR(32) NULL,
+    valid_from DATETIME(3) NOT NULL,
+    valid_to DATETIME(3) NULL,
+    status VARCHAR(24) NOT NULL,
+    verified_by VARCHAR(64) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_mch_personnel_skill_1 UNIQUE (tenant_no, entity_no, skill_no),
+    CONSTRAINT ck_mch_personnel_skill_1 CHECK (version >= 0),
+    CONSTRAINT ck_mch_personnel_skill_2 CHECK (deleted IN (0,1)),
+    CONSTRAINT ck_mch_personnel_skill_3 CHECK (valid_to IS NULL OR valid_to > valid_from),
+    CONSTRAINT ck_mch_personnel_skill_4 CHECK (status IN ('PENDING','VERIFIED','REVOKED'))
+);
+
 -- 种子数据
 INSERT IGNORE INTO sys_industry VALUES
 (1,'CATERING','餐饮',10,1,1,0,0,'微信小微白名单内','MAIN','2026-08-09 12:49:36','SYSTEM','2026-08-09 12:49:36',NULL,0,0),
