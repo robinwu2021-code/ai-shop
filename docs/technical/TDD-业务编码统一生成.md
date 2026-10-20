@@ -222,3 +222,71 @@ source_no为内部原单/原核销记录/原凭证号，保持原值。document_
 - 可读序列会暴露大致发号量，号段空洞和失败号码也会计入；如有防业务量推断要求，另用受控随机查单凭证，不能把短序号当安全令牌。
 - 首批仅落储值人工业务单号，其他批次按上述矩阵实施。旧内部号永久保留，无在线批量换号计划。
 - 日期取原始可信业务时间；历史映射只在需要展示时分批补齐，并持久化后保持不变，不在每次读取时即时生成。
+
+
+## §9 全系统同类需求盘点（2026-10-20 静态审查）
+
+### §9.1 结论与范围
+
+储值长单号不是孤立需求。当前系统同时存在内部摘要号直接展示、UUID凭证号用于人工查单、同类记录采用不同编号规则、单号语义混用，以及生成规范与架构守卫覆盖不一致的问题。统一按§8新增人工业务单号，不能把所有名为`*No`的字段一律替换。
+
+本次检查覆盖仓库内Core、Pay、库存桥接代码，以及B端、C端、运营端的编号生成、展示、查询和格式解析。以下为源码确认结果；未执行运行时全链路验证，未修改生成代码、数据库或历史数据。P1表示近期实施或兼容性前置事项，P2表示后续统一；容量风险不等同于已经发生线上故障。
+
+### §9.2 功能需求矩阵
+
+| 编号 | 归属及对象 | 已确认现状 | 整理后的需求 | 优先级 |
+|---|---|---|---|---|
+| NUM-01 | Pay／B端储值收支详情 | `businessNo`来自凭证`bizNo`，详情直接展示；计划充值内部号PR+60位摘要，共62字符 | 充值单映射短号；核销业务号解析到对应核销记录短号。DTO新增documentNo，保留businessNo定位语义，历史无映射时不显示长号 | P1，首批 |
+| NUM-02 | B端历史储值恢复页 | 存在旧本地缓存时仍进入LegacyRecharge，结果卡直接显示rechargeNo | 与新储值结果保持一致，到账状态旁不展示内部号；历史恢复、取消、查询继续使用原号 | P1，首批 |
+| NUM-03 | Pay权益核销 | 普通核销EU+32位UUID，共34字符；储值核销EU+60位摘要，共62字符 | 两条核销路径统一人工单号EU；保留各自usageNo，组合操作与明细分别关联，不合并不同核销事实 | P1 |
+| NUM-04 | Pay权益发放、卡券实例 | 实例EI+32位UUID，分录EL+32位UUID；发放事件另有摘要号 | 发放单／批次按人工查单需求编号；券实例号继续用于资产定位，安全核销凭证单独管理。不得为缩短展示而修改已发资产主标识 | P1，与权益批次一起 |
+| NUM-05 | Pay积分／B端积分记录、对账单／运营积分查询 | 凭证号为36字符UUID，分录及资金流水也用UUID；B端和运营表格直接展示，B端对账导出含voucherNo | 为积分凭证新增短号；默认展示凭证短号，运营详情保留可复制的原凭证／分录／流水号；导出区分“业务单号”和“内部凭证号” | P1 |
+| NUM-06 | Pay旧券发放与迁移 | 旧券发放LI、批次LB使用前缀+62位摘要，共64字符；迁移阶段MS+60位摘要 | 发放批次、迁移计划／导入／阶段按人工操作对象增加短号；冻结快照、源券映射、发放幂等和重跑游标保留原号 | P1，运维查单批次 |
+| NUM-07 | Pay权益对账与异常处置 | 对账运行RR、差异RD、异常EX、处置EA均存在前缀+60位摘要 | 优先给对账运行、异常工单增加人工单号；差异、处置动作默认放详情，保留原事件链。本项已确认服务端需求，不能据此认定运营页面已经接入 | P1，运维查单批次 |
+| NUM-08 | Core库存桥接／B端库存同步记录 | AUTO-/SYNC-+60位摘要为65字符，ALIGN-+60位摘要为66字符；同步记录直接展示operationNo | 同步任务／调整批次使用人工单号，摘要operationNo继续幂等；逐行操作号放详情，不默认作为记录标题 | P1 |
+| NUM-09 | Core库存桥接／B端库存对齐 | batchNo为AL+32位UUID，共34字符，页面直接展示 | 为对齐批次增加可查、可复制短号，保留batchNo及确认接口定位；不改变外部库存服务的单据所有权 | P2，可与NUM-08合并 |
+| NUM-10 | Core活动、券模板、发券批次 | 新营销使用PT／PC／PI等BizKey编码；旧营销券模板与用户券共用COUPON前缀，旧发放记录额外追加-I | 按§8接入Core人工单号；界面明确区分活动、模板、用户券、批次。老、新营销兼容期间按对象类型解析，不能只看前缀；现有编码不是62位长号故障 | P2 |
+| NUM-11 | Core订单生成 | O+小时+四位循环序列；同小时最多9999个可用展示号，存在容量上限；日期依赖JVM默认时区 | 单独升级ADR-035，取消回绕、明确时区；升级前检验所有格式消费者及渠道长度限制，不在储值首批顺带换订单号 | P1设计前置，单独实施 |
+| NUM-12 | C端订单展示及支付跳转 | 列表以“订单号”展示payOrderNo或orderNo；orderNoOf通过去掉末尾-数字还原支付重试号，其注释假定订单不含短横，但当前子单存在-序号 | 明确主订单／子订单／支付尝试号的字段与文案；核对微信返回的是哪一种号，优先服务端显式关联。增加“子单-1”和“支付重试-2”兼容用例；源码存在规则假设冲突，尚未证明实际误跳转 | P1兼容性核查 |
+| NUM-13 | Core售后、开票；Pay提现、结算 | 已使用BizKey；部分结算开票号由结算前缀另加I后缀 | 纳入人工单号类型登记，按用户查单价值分批接入；与支付渠道原始流水号、税务发票号码分字段，禁止替换外部法定／渠道编号 | P2 |
+| NUM-14 | 基础规范与架构守卫 | BizKey类注释仍描述时间戳+序号，实际为yyMMdd+随机串；现有守卫只抓特定setNo拼接，无法覆盖局部变量、构造器或摘要助手 | 修正文档和实际实现差异；按“实体码／人工单号／内部幂等／安全凭证”建立允许规则，补登记及绕过规则的定向检测，不能把合法内部摘要一概禁止 | P1，首批规范配套 |
+
+补充核查项：C端卡包直接展示cardNo，但本轮未完成该字段到真实资产来源的逐层映射，暂不按长号缺陷安排迁移。库存已有人工单据号、物流运单号和第三方支付号也需先核对归属及合同约束，不能由Core或Pay重新编号覆盖。
+
+### §9.3 关键源码依据
+
+以下链接用于复核当前实现，行号随后续开发可能变化。
+
+| 需求 | 生成／投影证据 | 页面／契约证据 |
+|---|---|---|
+| NUM-01～02 | [储值收支投影](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/service/StoredValueStatementProjector.java)、[内部摘要生成](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/policy/StoredValueFacts.java) | [收支详情](../../b-app/src/pages/stored-value-record/index.vue)、[旧恢复页](../../b-app/src/pages/stored-value-recharge/LegacyRecharge.vue)、[兼容路由](../../b-app/src/pages/stored-value-recharge/index.vue) |
+| NUM-03～04 | [普通权益核销](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/entitlement/service/EntitlementUseWriter.java)、[储值核销](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/storedvalue/service/impl/StoredValueRedemptionPostingServiceImpl.java)、[权益发放](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/entitlement/service/EntitlementGrantWriter.java) | [权益生成助手](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/entitlement/service/EntitlementRecords.java) |
+| NUM-05 | [积分记账](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/posting/impl/PointsPostingServiceImpl.java)、[凭证存储](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/store/impl/MybatisPostingStore.java) | [B端积分记录](../../b-app/src/pages/points-records/index.vue)、[B端对账单及导出](../../b-app/src/pages/statement/index.vue)、[运营查询](../../ops-web/app/points/queries-tab.tsx)、[运营账户分录](../../ops-web/app/points/accounts/page.tsx) |
+| NUM-06～07 | [旧券发放](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/migration/service/LegacyCouponIssueWriter.java)、[迁移阶段](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/migration/service/impl/EntitlementMigrationServiceImpl.java) | [对账运行和差异](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/entitlement/service/impl/EntitlementReconciliationServiceImpl.java)、[异常交付及处置](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/entitlement/service/impl/EntitlementEventDeliveryServiceImpl.java) |
+| NUM-08～09 | [库存同步](../../backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockReconcileService.java)、[库存对齐](../../backend/shop-app/src/main/java/ai/neargo/shop/invbridge/StockAlignmentService.java) | [同步记录](../../b-app/src/pages/stock-sync-records/index.vue)、[对齐批次](../../b-app/src/pages/stock-align/index.vue) |
+| NUM-10 | [营销券及批次](../../backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/PmtCouponServiceImpl.java)、[旧营销券](../../backend/shop-core/src/main/java/ai/neargo/shop/marketing/coupon/impl/CouponServiceImpl.java) | [活动创建](../../backend/shop-core/src/main/java/ai/neargo/shop/promotion/service/impl/ActivityServiceImpl.java) |
+| NUM-11～12 | [订单号生成器](../../backend/shop-core/src/main/java/ai/neargo/shop/trade/support/OrderNoGenerator.java) | [C端订单列表](../../c-app/src/pages/orders/index.vue)、[支付回跳还原](../../c-app/src/shared/order-no.ts) |
+| NUM-13～14 | [提现](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/service/impl/WithdrawServiceImpl.java)、[结算及开票](../../backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/impl/SettleServiceImpl.java) | [BizKey](../../backend/shop-base/src/main/java/ai/neargo/shop/common/BizKey.java)、[现有架构守卫](../../backend/shop-app/src/test/java/ai/neargo/shop/arch/BizKeyConventionTest.java) |
+
+### §9.4 共性约束及不应修改的对象
+
+1. **按类型登记，不按前缀猜类型。** 现有命名空间跨层重复，例如Core的EI权益意图与Pay的EI权益实例、Core的EA权益授权与Pay的EA异常动作、Core的MS会员来源与Pay的MS迁移阶段、Core的SL内容位与Pay的SL储值批次。它们不代表已发生同表唯一键冲突，但不允许用通用前缀解析器路由。新增documentType必须携带所属服务和资源类型。
+2. **人工单号字段不能覆盖内部字段。** UUID、摘要号长度不同不意味着其唯一性或幂等性失效；保持原有外键、冻结事实、账务摘要、Outbox和重试定位。内部字段的长度继续按原契约，不能统一缩为32位；库存操作号已有96字符入口上限，不因其超过64字符就认定越界。
+3. **保持排序和游标语义。** 时间线用业务发生时间及稳定次键；账户顺序用账户序列。对账的原始资源号游标、并发锁定时按内部编号排序属于合法用途，不能替换成人工单号；新增短号也不能改变历史分页边界。
+4. **保留安全与外部标识。** 会员码／核销令牌、登录会话、验证码、签名、上传文件名、任务领取令牌、请求幂等键、完整事实摘要不纳入短单号改造。第三方支付、退款、物流、发票等外部编号原样保存，界面分清“业务单号”与“渠道流水号”。
+5. **展示、搜索、导出同步设计。** B/C默认展示可理解的业务信息及必要的短号；运营详情保留原始编号复制能力。查单明确支持哪类编号，不能把documentNo传入只接受sourceNo的原接口；CSV按字符串输出，Excel类导出使用文本单元格，历史空映射不填假号。
+6. **通知与日志按用途选择。** 后续短信、订阅消息、小票和业务操作审计按需使用documentNo；内部排障继续关联sourceNo、traceId。该项为统一接入要求，本轮没有认定所有通知模板都存在长号缺陷。
+
+### §9.5 合并实施任务与定向验收
+
+本节扩展§8.7的覆盖对象，不要求一次切换全部模块。新前缀只有§8.3已登记项可直接使用，其余先补类型登记及归属评审；不临时拼接EI、EX、RR等旧内部前缀作为新统一规则。Core营销发券批次与Pay实际资产发放批次是两个对象，分别保留映射和关联，Pay不能复用已登记给Core的PI前缀。
+
+| 执行包 | 覆盖需求 | 实施与验收边界 |
+|---|---|---|
+| A：规范与储值 | NUM-01、02、14及§8基础能力 | 建立Pay号码映射和类型登记，补充值查询／收支详情DTO及B端展示；检查新充值、旧缓存恢复、重复请求、历史空映射、权限和长号查询兼容。资金事务前预留全部号码，避免增加嵌套连接 |
+| B：权益与积分凭证 | NUM-03～05 | 两种核销路径、发放批次和积分凭证接入；检查一操作多明细、同请求重试不重复发放／记账、B端与运营显示及导出字段一致 |
+| C：迁移、对账及库存 | NUM-06～09 | 按服务分别接入，检查迁移续跑／事件重放不换号、对账游标不变、库存重复同步不重做；不重构资金恢复链路或外部库存协议 |
+| D：营销与财务单据 | NUM-10、13 | 接入Core营销人工编号及需要人工查单的财务对象；检查活动／模板／用户券／批次不混淆，第三方编号原样保留 |
+| E：订单专项 | NUM-11、12 | 先完成主子单、支付重试及微信回跳合同核对，再升级订单生成器；验收容量边界、时区、子单及重试后缀、旧链接兼容，不能仅改正则或加宽数据库 |
+
+每个执行包完成后先编译及相关基本单测，只回归本包修改和发现的问题；不重复已通过的旧链路，不跑全量测试。本次仅整理需求文档，验证范围为源码依据、链接、格式示例和文档差异；不宣称以上任务已经编码完成。
