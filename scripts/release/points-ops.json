@@ -2,6 +2,7 @@
   "target": "refs/heads/codex/ai-shop-codex",
   "allowedFiles": [
     ".githooks/pre-push",
+    "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/entitlement/service/PayRightsNumberReservations.java",
     "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/mapper/points/PointsConfigurationMapper.java",
     "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/mapper/points/PointsEventMapper.java",
     "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/mapper/points/PointsOperationsMapper.java",
@@ -28,6 +29,7 @@
     "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/store/impl/MybatisPointsReadStore.java",
     "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/type/PointTypeService.java",
     "backend/pay/pay-domain/src/main/java/ai/neargo/shop/pay/points/type/impl/PointTypeServiceImpl.java",
+    "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/entitlement/service/PayRightsNumberReservationsTest.java",
     "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/points/AcceptedEarnBudgetTest.java",
     "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/points/DelayedEarnPolicyTest.java",
     "backend/pay/pay-domain/src/test/java/ai/neargo/shop/pay/points/UnfundedEarnRefundTest.java",
@@ -52,6 +54,7 @@
     "backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsOpsConfigurationTest.java",
     "backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsOpsWorkbenchTest.java",
     "backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsOrderPlacementFlowTest.java",
+    "backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsPostingDatabaseTest.java",
     "backend/shop-app/src/test/java/ai/neargo/shop/scenario/PointsUnifiedOperationsTest.java",
     "backend/shop-app/src/test/java/ai/neargo/shop/scenario/RedeemServiceTest.java",
     "backend/shop-app/src/test/resources/schema-test.sql",

@@ -73,6 +73,13 @@ class PointsPostingDatabaseTest {
     }
 
     static void initializeSchema(DataSource dataSource) {
+        try {
+            String numbers = new ClassPathResource("db/migration/V542__document_numbers.sql")
+                    .getContentAsString(java.nio.charset.StandardCharsets.UTF_8)
+                    .replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ");
+            new ResourceDatabasePopulator(new org.springframework.core.io.ByteArrayResource(
+                    numbers.getBytes(java.nio.charset.StandardCharsets.UTF_8))).execute(dataSource);
+        } catch (java.io.IOException ex) { throw new IllegalStateException(ex); }
         new ResourceDatabasePopulator(
                         new ClassPathResource("db/migration/V425__points_v3_ledger.sql"))
                 .execute(dataSource);
@@ -513,7 +520,10 @@ class PointsPostingDatabaseTest {
 
     @Configuration
     @EnableTransactionManagement
-    @Import({PayDataSourceConfig.class, PointsPostingServiceImpl.class, MybatisPostingStore.class})
+    @Import({PayDataSourceConfig.class, PointsPostingServiceImpl.class, MybatisPostingStore.class,
+        ai.neargo.shop.pay.numbering.PayDocumentNumberConfiguration.class,
+        ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers.class,
+        ai.neargo.shop.pay.entitlement.service.PayRightsNumberReservations.class})
     static class Config {
         @Bean
         MybatisPlusInterceptor interceptor() {

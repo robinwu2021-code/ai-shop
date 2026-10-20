@@ -33,4 +33,10 @@ class PayRightsNumberReservationsTest {
   }
  }
 
+ @Test void unifiedPointsBoundaryReservesBeforeItsOuterPayTransaction() {
+  assertEquals(Map.of(DocumentType.POINTS_VOUCHER,1),PayRightsNumberReservations.counts("PointsOperationsPortImpl","hold",new Object[0]));
+  assertEquals(Map.of(DocumentType.POINTS_VOUCHER,2),PayRightsNumberReservations.counts("PointsOperationsPortImpl","prepareRefund",new Object[0]));
+  assertTrue(PayRightsNumberReservations.counts("PointsOperationsPortImpl","balance",new Object[0]).isEmpty());
+ }
+
 }

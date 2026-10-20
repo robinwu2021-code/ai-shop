@@ -21,7 +21,8 @@ import org.springframework.util.ClassUtils;
 @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
 public class PayRightsNumberReservations extends DefaultPointcutAdvisor {
     private static final Map<String,Set<String>> POINTS = Map.ofEntries(
-        entry("PointsPostingServiceImpl", "post"), entry("EarnServiceImpl", "grant", "grantAccepted"),
+        entry("PointsPostingServiceImpl", "post"),
+        entry("PointsOperationsPortImpl", "hold", "release", "prepareRefund", "authorizeRefund", "confirmRefund", "abortRefund", "compensateRefund"), entry("EarnServiceImpl", "grant", "grantAccepted"),
         entry("RedeemServiceImpl", "hold", "release"), entry("RefundClosureServiceImpl", "close"),
         entry("ExpiryServiceImpl", "prepare", "claim", "accept"), entry("TypeRetirementServiceImpl", "retire"),
         entry("PointTypeServiceImpl", "retire"), entry("PointsAdministrationServiceImpl", "transition"), entry("PoolServiceImpl", "applyApproved"),
@@ -97,7 +98,7 @@ public class PayRightsNumberReservations extends DefaultPointcutAdvisor {
         // One financial voucher per operation, except the two documented composed/bounded operations.
         int count=1;
         if (name.equals("PointsWorkbenchServiceImpl") && method.equals("draftStatements")) count=400;
-        if (name.equals("PointsRefundPreparationServiceImpl")) count=2; // optional reopen + preparation
+        if (name.equals("PointsRefundPreparationServiceImpl") || name.equals("PointsOperationsPortImpl") && method.equals("prepareRefund")) count=2; // optional reopen + preparation
         if (name.equals("StatementBuildServiceImpl")) count=200; // PAGE_SIZE, <=200 new route heads
         if (name.equals("StoreStatementServiceImpl") && Set.of("draft", "draftGroups").contains(method))
             count=400; // <=200 new route heads plus <=200 completed heads published in this page
