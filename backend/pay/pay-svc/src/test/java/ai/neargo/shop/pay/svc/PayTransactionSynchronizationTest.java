@@ -13,7 +13,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 class PayTransactionSynchronizationTest {
     @Test void standaloneNonTransactionalBoundaryDoesNotCreateResourceSynchronization() {
         DataSource dataSource = mock(DataSource.class);
-        var manager = new EntitlementPayBootstrap().payTransactions(dataSource);
+        var manager = new PayTransactionConfig().payTransactionManager(dataSource);
         var template = new TransactionTemplate(manager);
         template.setPropagationBehavior(TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
         template.executeWithoutResult(ignored -> {

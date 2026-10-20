@@ -45,22 +45,12 @@ import ai.neargo.shop.pay.storedvalue.service.StoredValueRedemptionService;
 import ai.neargo.shop.pay.entitlement.event.PayEntitlementOutboxRelay;
 import ai.neargo.shop.pay.mapper.entitlement.PayEntOutboxMapper;
 import ai.neargo.shop.spi.entitlement.PayEntitlementEventBridgePort;
-import javax.sql.DataSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 
 /** A single pay resource, with the explicit transaction name also used in embedded deployment. */
 @Configuration(proxyBeanMethods = false)
 public class EntitlementPayBootstrap {
-    @Bean(name = {"transactionManager", "payTxManager"})
-    DataSourceTransactionManager payTransactions(DataSource dataSource) {
-        var manager = new DataSourceTransactionManager(dataSource);
-        manager.setTransactionSynchronization(
-                AbstractPlatformTransactionManager.SYNCHRONIZATION_ON_ACTUAL_TRANSACTION);
-        return manager;
-    }
     @Bean
     EntitlementCatalogPort entitlementCatalogPort(EntitlementCatalogService catalog,
                                                 PayEntitlementFeatureGate features) {
