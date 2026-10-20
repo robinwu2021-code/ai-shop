@@ -25,13 +25,6 @@ function statusKey(status: number): string {
 // - 同源 nginx 反代（生产）：留空 → 走同源 /ops/**；
 // - 跨源本地开发：置后端源 http://localhost:8080。
 const BASE = process.env.NEXT_PUBLIC_API_BASE || "";
-/*
- * 电子元器件是**独立服务**（elec-svc，/elec/ops/**）。生产上与主系统同域、nginx 分流，留空即可；
- * 开发期它在另一个端口（默认 8085），而运营端没有开发代理（静态导出），所以要单给一个基址 ——
- * 同时 elec-svc 要在开发配置里放行 ops-web 的源（ELEC_DEV_CORS_ORIGINS，生产不配 = 不开跨域）。
- * 令牌、语言、401/403 的处理与主系统完全一样：认令牌的是主系统，elec-svc 只是转问。
- */
-const ELEC_BASE = process.env.NEXT_PUBLIC_ELEC_BASE || "";
 
 function headers(path: string): Record<string, string> {
   const a = currentAuth();
@@ -143,12 +136,6 @@ function makeClient(base: string) {
 }
 
 export const client = makeClient(BASE);
-
-/**
- * 元器件服务（/elec/ops/**）。**导入时改名成 client**（`import { elecClient as client }`）——
- * openapi-parity 与 gen-openapi 按字面量 `client.` 扫调用，换了名字这些调用就从契约里消失
- */
-export const elecClient = makeClient(ELEC_BASE);
 
 function qs(q?: object): string {
   if (!q) return "";

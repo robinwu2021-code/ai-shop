@@ -64,11 +64,15 @@ const OVERLAY: Record<string, Record<string, string>> = {
   当面付禁用类目: { en: "Pay-on-site deny list" },
   "类目 × 积分": { en: "Category × points" },
   积分范围开关: { en: "Points availability switches" },
-  积分类型与协议: { en: "Points types and agreements" },
   积分账单与退款: { en: "Points statements and refunds" },
   积分账务与对账: { en: "Points ledger and reconciliation" },
   积分资金工作台: { en: "Points treasury" },
   积分运营: { en: "Points operations" },
+  积分总览: { en: "Points overview" },
+  积分类型与规则: { en: "Points types & rules" },
+  门店协议与接入: { en: "Store agreements & access" },
+  配置与接入: { en: "Configuration & access" },
+  "资金与日常（旧版）": { en: "Funding & operations (legacy)" },
   应付与发票: { en: "Payables & invoices" },
   自营应付账款: { en: "Self-operated payables" },
   经营统计: { en: "Settlement stats" },
@@ -252,15 +256,7 @@ const OVERLAY: Record<string, Record<string, string>> = {
   审计: { en: "Audit" },
   外观与语言: { en: "Appearance & language" },
   运行配置: { en: "Runtime config" },
-  // P-19 电子元器件：根菜单、四个叶子、三个分组
-  元器件: { en: "Electronic components" },
-  询报价: { en: "RFQs & quotes" },
-  供应商: { en: "Suppliers" },
-  料号与库存: { en: "Parts & stock" },
-  基础数据: { en: "Master data" },
-  撮合: { en: "Matching" },
-  货源: { en: "Sourcing" },
-  主数据: { en: "Reference data" },
+  "其他积分任务（旧版）": { en: "Other points tasks (legacy)" },
 };
 
 export function tNav(label: string, locale: Locale): string {
