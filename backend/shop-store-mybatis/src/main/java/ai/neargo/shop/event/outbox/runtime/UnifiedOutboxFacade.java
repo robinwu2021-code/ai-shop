@@ -77,6 +77,11 @@ public final class UnifiedOutboxFacade {
         return store(source).statusOf(aggregateType, aggregateId, eventType);
     }
     public boolean enabled(String source) { return stores.containsKey(source); }
+    /** Strict new-command adapters check routing while legacy publishers retain existing failure-ledger behavior. */
+    public boolean hasRoute(String source, String eventType) {
+        return enabled(source) && (archiveOnly.contains(source + ":" + eventType)
+                || handlers.getOrDefault(source, Map.of()).values().stream().anyMatch(h -> h.supports(eventType)));
+    }
     public OutboxHandler handler(String source, String id) {
         return handlers.getOrDefault(source, Map.of()).get(id);
     }

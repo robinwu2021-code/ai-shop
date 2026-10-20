@@ -303,7 +303,7 @@ BusinessTraceVO getBusinessTrace(@PathVariable("businessNo") String businessNo);
 
 ```java
 StorePolicyVO getPolicy(@Valid @ModelAttribute StorePolicyQuery query);
-PolicyVersionVO publishPolicyVersion(@Valid @RequestBody PublishStorePolicyVersionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+PolicyVersionVO publishPolicyVersion(@Valid @RequestBody PublishStorePolicyVersionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 追溯：BAPI-001、BAPI-002。

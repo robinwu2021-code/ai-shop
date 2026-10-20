@@ -1,2 +1,3 @@
 ai.neargo.shop.beauty.config.BeautyAutoConfiguration
 ai.neargo.shop.beauty.config.BeautyPersistenceAutoConfiguration
+ai.neargo.shop.beauty.config.BeautyBusinessAutoConfiguration

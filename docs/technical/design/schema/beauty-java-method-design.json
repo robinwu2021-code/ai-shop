@@ -65,6 +65,12 @@
           "name": "idempotencyKey",
           "annotation": "@RequestHeader(\"Idempotency-Key\")",
           "source": "HEADER"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
+          "source": "HEADER"
         }
       ],
       "serviceParameters": [

@@ -231,7 +231,7 @@ python3 scripts/gen-beauty-development-plan.py --check
 
 | 任务 | 实际文件/版本 | 红灯→绿灯/消融 | 真实环境与执行数 | 剩余阻塞/是否营业就绪 |
 |---|---|---|---|---|
-| 当前所有49任务 | 尚未实施 | 尚未执行业务测试 | 只做计划与设计一致性校验 | 不宣称任何业务上线 |
+| 原49任务总体 | 基础工程与首批数据层见执行账本；本轮增量见§7 | 各切片记录实际红绿验证 | 不以计划检查代替业务测试 | 完整营业能力尚未完成 |
 
 不在开始前承诺日历工期。先完成ENG-01/02和DATA-01～04测得真实构建/环境/合同成本，再估后续小切片；P2/P3/P4外部条件单列，不用任务数乘固定人日虚构排期。
 
@@ -246,3 +246,32 @@ python3 scripts/gen-beauty-development-plan.py --check
 - 五组美业任务/Java方法/项目结构/API/数据库设计生成物校验通过；任务依赖无环，49任务覆盖全部160个API/合同、118功能与39项数据结构，首次归属唯一。
 - 未发现早期阶段依赖后期能力；文档本地链接、状态行、README索引与定向空白检查通过。
 - 未运行Maven、业务测试或DDL；未创建美业工程。以上结果只证明设计与计划一致，不证明业务可运行。
+
+## §7 三行业公共写入基础实施（2026-10-20）
+
+零售作为公共核心，餐饮最新已提交693ad5b77（NEXT-06实现ec5aba9a5）作为增强基线，美业接入。只导入经git status逐文件确认干净的15项已提交差异。原餐饮工作区的未提交NEXT-08等内容未导入。
+
+| 任务 | 交付 | 验收 |
+|---|---|---|
+| S1 | auth/StoreRequestScopeValidator及餐饮薄封装 | 通用主体/门店比较；非法原门店头拒绝；零售旧过滤器不变 |
+| S2 | idem/IdempotencyScope、PlatformOutboxPublisher、PlatformWritePrerequisites | 固定行业操作域、严格key、统一PLATFORM源和真实共享表检查；旧幂等接口兼容 |
+| S3 | 两行业WriteGuardConfiguration及美业Web接线 | 复用原Mapper/Service；错事务/缺来源拒绝，schemaReady与可写前置分开 |
+| S4 | BAPI-002原Controller/Service/Req/VO、ActionLog实体Mapper、spi/beauty事件合同 | 首个真实政策发布；不可变版本/头CAS/审计/幂等/outbox同主库事务；首建唯一键仲裁 |
+| S5 | 零售/餐饮回归、美业真实HTTP和一次性MySQL测试 | 同键一次、异参冲突、并发首建、过期版本、跨店/伪造actor、原子回滚 |
+
+每项先失败测试、后实现、绿灯及提交。公共代码放现有模块，不增加Maven子项目，不依赖food-core/web。原零售默认店回落和无key兼容保持；新入口采用严格校验。客户端key1～128字符；操作域BEAUTY:v1:<SHA256>，输入operation/entity/store逐段UTF-8长度编码。请求hash使用typed规范字段，包括expectedRevision/validFrom/policy，排除追踪字段。
+
+首写沿既有方法签名；expectedRevision=0仅表示创建尚不存在的门店政策头，首版根version=1，后续必须带正数当前version。政策内容本批细化为bookingAheadDays、cancelRule（freeCancelBeforeMinutes/allowCustomerCancel）、allowedModes；P1仅PREPAID_SINGLE模式，不据配置开放后付。OffsetDateTime统一UTC毫秒持久化。事件合同位于shop-base/spi/beauty，正式路由未登记则发布失败、整体回滚，不以测试archive路由冒充投递就绪。政策本地发布不增加长流程ServiceSubmission。
+
+### 7.1 实际实现边界
+
+S1～S4 已落地；S5 以本节后续验证记录为准。共用能力所有者是零售已有核心包，
+不是由美业反向承载零售。餐饮薄封装和美业入口使用共用门店校验；既有零售过滤器保持原行为。
+BAPI-002 Controller 增加可选原始门店头 requestedStore，已同步 Java 方法真源；Service 签名保持不变。
+业务审计沿系统员工身份；预约匹配所需技能、排班、资源及工作流留在后续共用人员/资源合同中。
+已有疗程权益可复用共用权益合同；本次政策发布不实施售卡、核销或资金流程。
+
+独立复核指出事务内元数据检查重复取连接可能耗尽连接池，已以真实 MySQL 单连接池复现，
+改为 DataSourceUtils 统一复用/释放连接，不改变事务连接状态；复核确认原问题关闭。
+本地政策、操作日志、幂等和事件原子写入不代表正式消费者和 standalone 远程调用提供方已完成。
+readiness 保持503；未完成任务继续沿原49任务索引推进，不将本切片等同全量美业交付。

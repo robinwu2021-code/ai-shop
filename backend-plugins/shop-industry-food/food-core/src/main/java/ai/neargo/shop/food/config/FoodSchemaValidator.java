@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.config;
 
+import ai.neargo.shop.common.config.PlatformWritePrerequisites;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.sql.Connection;
@@ -50,55 +51,9 @@ public final class FoodSchemaValidator {
             if (!actual.getOrDefault(table, Set.of()).contains(field)) missing.add(table + "." + field);
         }));
         require(missing.isEmpty(), "missing food columns: " + missing);
-        missing.addAll(missingCoreCapabilities(actual));
-        missing.addAll(missingCoreUniqueKeys(source, actual));
+        missing.addAll(new PlatformWritePrerequisites().missing(source));
         Collections.sort(missing);
         return new FoodSchemaReady(true, "1", missing);
-    }
-
-    private static List<String> missingCoreCapabilities(Map<String, Set<String>> actual) {
-        Map<String, String> contract = Map.of(
-            "sys_idempotent", "id idem_key endpoint user_no result_json created_at expire_at request_hash",
-            "sys_outbox", "id event_no aggregate_type aggregate_id event_type payload status retry_count next_retry_at last_error created_at sent_at source_system source_event_no schema_version payload_hash stream_key stream_sequence routing_mode occurred_at",
-            "sys_outbox_stream", "stream_key next_sequence",
-            "sys_outbox_delivery", "id event_no handler_id stream_key stream_sequence external_workflow status attempt_count round_attempt_count replay_count next_retry_at claim_token lease_until first_attempt_at last_attempt_at last_replayed_at completed_at last_error_code last_error created_at",
-            "sys_outbox_operation", "id request_id event_no handler_id operation actor reason original_error_code original_error original_attempt_count original_round_attempt_count original_last_attempt_at original_next_retry_at before_status after_status created_at");
-        List<String> missing = new ArrayList<>();
-        contract.forEach((table, fields) -> {
-            if (!actual.containsKey(table)) missing.add(table);
-            else for (String field : fields.split(" "))
-                if (!actual.get(table).contains(field)) missing.add(table + "." + field);
-        });
-        return missing;
-    }
-
-    private static List<String> missingCoreUniqueKeys(DataSource source, Map<String, Set<String>> actual) {
-        Map<String, List<String>> required = Map.of(
-                "sys_idempotent", List.of("idem_key,endpoint"),
-                "sys_outbox", List.of("event_no", "source_system,source_event_no", "stream_key,stream_sequence"),
-                "sys_outbox_stream", List.of("stream_key"),
-                "sys_outbox_delivery", List.of("event_no,handler_id"),
-                "sys_outbox_operation", List.of("request_id"));
-        List<String> missing = new ArrayList<>();
-        try (Connection connection = source.getConnection()) {
-            connection.setReadOnly(true);
-            for (var contract : required.entrySet()) {
-                if (!actual.containsKey(contract.getKey())) continue;
-                Map<String, SortedMap<Integer, String>> keys = new HashMap<>();
-                try (var rows = connection.getMetaData().getIndexInfo(connection.getCatalog(), connection.getSchema(), contract.getKey(), true, false)) {
-                    while (rows.next()) {
-                        String field = rows.getString("COLUMN_NAME"); String name = rows.getString("INDEX_NAME");
-                        if (name != null && field != null) keys.computeIfAbsent(name, n -> new TreeMap<>())
-                                .put(rows.getInt("ORDINAL_POSITION"), field.toLowerCase(Locale.ROOT));
-                    }
-                }
-                Set<String> present = new HashSet<>();
-                keys.values().forEach(key -> present.add(String.join(",", key.values())));
-                for (String key : contract.getValue()) if (!present.contains(key))
-                    missing.add(contract.getKey() + ".unique(" + key + ")");
-            }
-        } catch (SQLException ex) { throw new IllegalStateException("Cannot inspect primary unique keys (SQLState=" + ex.getSQLState() + ")"); }
-        return missing;
     }
 
     private static DataSource readOnly(DataSource source) {

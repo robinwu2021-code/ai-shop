@@ -16,8 +16,14 @@ try {
   const address = docker(['port', name, '3306/tcp']);
   assert.match(address, /^127\.0\.0\.1:[0-9]+$/);
   const jdbc = `jdbc:mysql://${address}/mysql?useSSL=false&allowPublicKeyRetrieval=true&connectionTimeZone=UTC`;
-  const result = spawnSync('mvn', ['-o', '-f', root + 'backend-plugins/shop-industry-beauty/pom.xml', '-pl', 'beauty-core', '-am', 'test', '-Dtest=BeautySchemaMigrationIT,PolicyDefinitionPersistenceIT,BeautyPlatformFlywayIT', '-Dsurefire.failIfNoSpecifiedTests=false', `-Dbeauty.test.admin-url=${jdbc}`], {cwd: root, env: process.env, stdio: 'inherit'});
+  const result = spawnSync('mvn', ['-o', '-f', root + 'backend-plugins/shop-industry-beauty/pom.xml', '-pl', 'beauty-core', '-am', 'test', '-Dtest=BeautySchemaMigrationIT,PolicyDefinitionPersistenceIT,BeautyPlatformFlywayIT,BeautyPolicyPublicationIT', '-Dsurefire.failIfNoSpecifiedTests=false', `-Dbeauty.test.admin-url=${jdbc}`], {cwd: root, env: process.env, stdio: 'inherit'});
   assert.equal(result.status, 0, 'Beauty disposable JDBC integration tests failed');
+  if (process.argv.includes('--include-host')) {
+    const host = spawnSync('mvn', ['-o', '-f', root + 'backend/pom.xml', '-pl', 'shop-app', '-am',
+      '-Pbeauty-embedded', 'test', '-Dtest=BeautyPolicyEndToEndIT', '-Dsurefire.failIfNoSpecifiedTests=false',
+      `-Dbeauty.test.admin-url=${jdbc}`], {cwd: root, env: process.env, stdio: 'inherit'});
+    assert.equal(host.status, 0, 'Beauty real HTTP-to-database integration failed');
+  }
 } finally {
   docker(['rm', '--force', name]);
 }

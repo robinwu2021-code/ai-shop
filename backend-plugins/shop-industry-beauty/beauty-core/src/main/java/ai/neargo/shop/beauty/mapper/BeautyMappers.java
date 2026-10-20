@@ -1,6 +1,7 @@
 package ai.neargo.shop.beauty.mapper;
 
 import ai.neargo.shop.beauty.entity.BtyStorePolicy;
+import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyStorePolicyVersion;
 import ai.neargo.shop.beauty.entity.BtyServiceDefinition;
 import ai.neargo.shop.beauty.entity.BtyServiceDefinitionVersion;
@@ -87,4 +88,8 @@ public final class BeautyMappers {
     /** Requirements belong to an authorized definition version, checked by the publishing transaction. */
     public interface ServiceRequirementMapper extends BaseMapper<BtyServiceRequirement> {
     }
+    /** Critical actions are appended with the aggregate transaction; they are not mutable operational state. */
+    public interface ActionLogMapper extends BaseMapper<BtyActionLog> {
+    }
+
 }

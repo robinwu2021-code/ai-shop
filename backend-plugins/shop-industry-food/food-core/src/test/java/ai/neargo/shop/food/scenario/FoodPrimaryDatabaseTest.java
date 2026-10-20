@@ -10,6 +10,7 @@ import ai.neargo.shop.food.config.*;
 import ai.neargo.shop.food.entity.FnbTableArea;
 import ai.neargo.shop.food.mapper.FoodMappers;
 import java.util.UUID;
+import tools.jackson.databind.ObjectMapper;
 import javax.sql.DataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.flywaydb.core.Flyway;
@@ -57,6 +58,7 @@ class FoodPrimaryDatabaseTest {
         return new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(FoodAutoConfiguration.class))
                 .withUserConfiguration(PrimaryPersistenceConfiguration.class)
                 .withBean(AuditMetaObjectHandler.class)
+                .withBean(ObjectMapper.class, ObjectMapper::new)
                 .withPropertyValues("shop.food.enabled=true", "spring.datasource.url=" + ((DriverManagerDataSource)source).getUrl(),
                         "spring.datasource.username=root", "spring.datasource.password=");
     }

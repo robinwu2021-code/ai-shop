@@ -1,4 +1,4 @@
-# 餐饮业务工程 · NEXT-01～05
+# 餐饮业务工程 · NEXT-01～07 实施记录
 
 本工程复用平台 `shop-parent → neargo-parent`、Java 21 与统一依赖版本管理。
 已实现五模块独立构建、条件装配、宿主可选挂载、内部服务安全骨架，以及共用主库/事务/审计和餐饮独立迁移校验。营业 API、可信范围与支付/库存联调尚未实现。
@@ -218,7 +218,81 @@ FOOD_VALIDATE_EXISTING=true mvn -o -f backend-plugins/shop-industry-food/pom.xml
 - 独立 server 精确排除通用 DataAutoConfiguration，与平台一致；代价是必须显式保留平台工厂与审计装配，由真实 server MySQL 测试守护。
 - 审查的表名通配符问题按漏报前置能力风险升为 Important，已完成 RED→GREEN 修复；无遗留审查项。
 
+## NEXT-06 可信范围与共享写入基础 · 2026-10-20
+
+本轮完成基础接线，不新增营业 API、业务表、权限码或配置项。真实餐饮写入的规范化请求、意图及 FnbActionLog 与事件同事务验收，仍按原计划在 NEXT-08/09 的首个业务切片完成。
+
+### 入口范围
+
+`food-web/api/FoodRequestScopeValidator` 由原 Web 自动装配在 enabled + api/ops profile 条件下提供，不创建新的 BizContext 或认证链。
+Controller 必须先从既有身份解析取得主体、currentStore、授权门店集合，再读取目录/资源真实归属，最后把这些可信事实及原始请求头送入校验器。
+共享 BizContextFilter 对非法 X-Store-No 会回落默认店；餐饮在其后重新比较原始头，避免用户以为在A店操作，实际写到默认B店。
+
+- trusted/target 主体或门店缺失、当前门店未授权、跨主体、目标店与当前店不同均拒绝。
+- 只有完全未传门店头时允许沿用可信默认店；显式空白头拒绝。已授权另一门店也不能绕过切店后的上下文判权。
+- path/body 的真实目标须分别与资源事实/currentStore 核对；不能把请求绑定对象直接作为 trusted/target 参数。
+- actor 只取 SecurityUtils 当前登录态；`PermChecker` 仍负责动作权限，范围校验不授予任何动作权限。
+- C端按顾客会话/资源归属、运营端按原数据域解析可信事实；当前B端探针不能替代这些尚未落地的业务Controller验收。
+
+### 共享幂等与 Outbox
+
+`FoodWriteGuardConfiguration` 只在餐饮启用且非 migration.off 时装配。已有平台 IdempotencyService/SysIdempotentMapper 按类型复用；独立进程缺省才以 gated 主模板补齐原类，不扫描共享包或复制算法。原 IdempotencyService 保持不变。
+`foodOutboxPublisher` 必须按限定名注入，只委托现有 UnifiedOutboxFacade 的 PLATFORM 发布者，注册原主事务的既有事务监听器。缺 facade/未启用 PLATFORM、错误来源事务或事务外发布均拒绝。
+不新建 facade/store/runner，不默认开投递、不回退 legacy，不为餐饮发明 FOOD source；独立服务尚未注册统一源/路由时只能明确失败，健康检查仍不就绪。
+测试专用 archive 路由只用于验证原子性，不发布任何新的业务事件合同。业务事件的实际路由、消费者与投递恢复须在真实业务切片另验。
+
+**首写调用方的强制合同（本轮明确规则，NEXT-08/09按typed请求实施）：**
+
+1. 写操作先校验可信范围与权限，Idempotency-Key 必填、非空且最长128，不能依赖共享服务的“无key直接执行”兼容分支。
+2. 操作域包含稳定operation、可信entityNo、storeNo；建议将三个UTF-8值逐个以前缀32位大端字节长度编码后取SHA-256，持久化endpoint为 `FOOD:v1:<64位scopeHash>`（72字符，适配原128字段）。客户端key原样入idem_key，不能截断或用单纯key跨店复用。
+3. request_hash 为校验后的typed语义参数的稳定SHA-256；固定字段序/集合顺序/金额数量语义，包含影响操作的版本、目标和所有业务参数，排除请求追踪号等非语义信息。不要hash原始JSON字节，也不要把客户端actor当语义身份。
+4. 原 userNo 字段绑定可信actor，防止他人拿同key读取首次结果；同域同key异参沿原CONFLICT，不能重写旧摘要。餐饮前缀与所有首写必传hash避免撞入历史无hash兼容记录。
+5. 在主库同一个业务事务内执行幂等记账、业务/本地意图、审计和Outbox；不使用REQUIRES_NEW分拆这些写入。跨域结果未知仍交原意图查询恢复，事件落库不表示支付/库存成功。
+
+当前没有真实业务请求DTO，因此没有生成占位的统一摘要器/业务意图写者；规范化规则与缺key拒绝必须在首写Controller/Service验收，不能以本轮固定hash夹具宣称已经交付。
+
+### 实际验证与边界
+
+- FoodStoreScopeTest 13项：真实 MerchantTokenAuthFilter/BizContextFilter/PermChecker + test-only入口，覆盖原头回落拒绝、跨主体/门店、授权集、登录actor、防伪造与无财务权限拒绝。探针无数据库写入，不是正式API。
+- FoodIdempotencyTest 6项：真实共享Mapper与IdempotencyService，验证现有bean退让、同请求只执行一次、异参冲突、店/操作域分离、异actor结果保密。固定hash/域是基础设施合同夹具，不是业务摘要实现。
+- FoodOutboxWiringTest 7项：无统一源拒绝、原事务整体回滚、事件实际flush后失败的数据库回滚、提交及重放只发一次、平台审计actor、事务外/错误数据源拒绝、关闭/OFF不注册写入基础。
+- 常规独立reactor clean verify：70项执行通过，16项MySQL专用用例按环境条件跳过；一次性MySQL脚本另执行15项主库+13项写入基础+1项真实server，29项均通过、零跳过。
+- 当前餐饮库安装后，宿主默认7项通过（1项不适用跳过）、embedded5项通过（1项不适用跳过）、standalone6项通过；未跑全backend，不代表NEXT-03已知schema失败已修复。
+- 独立审查无代码阻断项；审查时发现的MySQL验证证据缺口已由完整29项零跳过复验消除，无遗留审查项。
+- 使用同一个 `python3 scripts/verify-food-primary-mysql.py`；新夹具在临时数据库中创建source/intent/audit测试表，不访问已有ai_shop，不改变冻结V1或核心迁移。
+- 消融原始门店头比较后，`rejectInvalidHeaderAfterDefaultFallback` 出现1个断言失败（0错误）；恢复后执行完整clean verify。
+- 首轮MySQL复验的10项连接错误来自容器socket ping误判初始化临时服务；改为TCP `SELECT 1`确认最终服务可用，再完整复验，不忽略失败。
+- 共享快照先使用 `mvn -o -f backend/pom.xml -pl shop-store-mybatis -am install -DskipTests` 安装，不能仅更新store而保留缺少OutboxPublisher合同的旧base快照。
+
+### 本轮裁定与代价
+
+- 复用原主体/门店过滤器，在餐饮入口加严格比较；不改变零售默认店回落。代价是后续每个业务Controller都要按可信事实正确组装，测试探针不替代业务入口验收。
+- 提供原类幂等与限定名发布者，不创建第二个Outbox运行时。代价是独立服务没有权威PLATFORM源/路由时不能发布，不能据bean存在判断可营业。
+- 本轮只完成基础接线，业务请求摘要、必填key及真实意图/审计事务跟随NEXT-08/09。代价是这些业务AC暂未完成，必须保留首写验收待办。
+- 新增辅助文件先登记已提交的M0实施清单，不改写其他会话未提交的全量生成代码计划。代价是这些生成清单发布时须合并本轮基础项。
+
+## NEXT-07 独立支付/库存合同核验 · 2026-10-20
+
+完整收据：[独立支付库存合同核验](../../docs/technical/TDD-餐饮系统-独立支付库存合同核验.md)，摘要回填三端接入方案；本轮只文档，不新增业务或假Remote实现。
+
+- 普通订单收退款仍经过SettlePortImpl本地PaymentLedgerService/RefundExecutionService等；PAY已存在权益/储值等远程能力，但不等于普通收款、查单、关单、退款闭环。
+- InventoryStockPort仍直调Service，inv独立库/事务与进程拆分分开判定；开放API的三条items/ledger/sync不能充当预留/取消RPC。
+- 明确StockPort默认no-op/MAX_VALUE、原预留缺完整异参校验与查询合同、后付库存承诺和int数量精度的待审定项；拆为CORE/PAY/RET的可评审子任务。
+- 两个Independent*真实交易测试保留BLOCKED_CONTRACT_AND_ENVIRONMENT，未创建空类或用mock关闭；下一步可做无交易的营业治理/桌区配置，正式下单/收银仍禁止就绪。
+- 实际执行已有PayInternalApiRoundTripTest，5项通过、零失败/错误/跳过；真HTTP与令牌/响应，领域服务为替身，只证明费率/发票传输。命令见核验册，不声称实际资金流或独立库存通过。
+- 只核验仓库中的部署资料；未读取生产环境文件、未调用真实支付或库存写接口、未访问共享库/升级迁移。本轮未重跑70项餐饮/全backend；先前验证结果保持原任务范围。
+
+裁定：没有完整合同/提供方环境就保留交易验收阻塞，不以启动或局部HTTP测试代替；代价是餐饮交易能力仍关闭。原三端对齐文档原已在工作区但未跟踪，本轮按计划保留内容并纳入Git，既有API清单仍是设计而非已交付路由。
+
 ## 后续边界
 
-下一步为 NEXT-06：可信主体/门店范围、共享幂等和审计/Outbox 接线，再进入桌区首写切片。
+下一步为 NEXT-08：营业治理与审计的首个小切片，再进入NEXT-09桌区首写；NEXT-06业务级AC随之验收。独立支付/库存的权威域子任务可并行推进，但不得用它们的待实施状态开放正式交易。
 现有主库前置缺项与远程支付/库存合同尚未完成，不能把本轮 schema 接线通过解释为可营业。
+
+## 三行业共用写入基础（2026-10-20）
+
+美业分支以餐饮已提交693ad5b77（NEXT-06实现ec5aba9a5）为基线抽取公共防护：
+门店目标比较委托 shop-base-auth 的 StoreRequestScopeValidator；公共表前置检查和严格 PLATFORM publisher
+放在 shop-store-mybatis，餐饮仅保留配置及行业迁移检查。
+零售旧过滤器、IdempotencyService 和 outbox 发布接口保持兼容；新入口通过严格适配器接入。
+未从原餐饮工作树复制未提交的 NEXT-08 业务实现。

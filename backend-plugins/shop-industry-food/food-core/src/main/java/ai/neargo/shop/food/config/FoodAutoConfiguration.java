@@ -9,7 +9,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 /** 餐饮模块装配入口。 */
 @AutoConfiguration(afterName = {"org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration",
         "com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration"})
-@Import(FoodPersistenceConfiguration.class)
+@Import({FoodPersistenceConfiguration.class, FoodWriteGuardConfiguration.class})
 @ConditionalOnFoodEnabled
 @EnableConfigurationProperties(FoodProperties.class)
 public class FoodAutoConfiguration {

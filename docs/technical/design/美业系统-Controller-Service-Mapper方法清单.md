@@ -60,7 +60,7 @@ StorePolicyVO getPolicy(String entityNo, String currentStoreNo, String actorNo, 
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizStorePolicyController`
 
 ```java
-PolicyVersionVO publishPolicyVersion(@Valid @RequestBody PublishStorePolicyVersionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+PolicyVersionVO publishPolicyVersion(@Valid @RequestBody PublishStorePolicyVersionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.StorePolicyService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.StorePolicyServiceImpl`
