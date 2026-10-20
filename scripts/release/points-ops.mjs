@@ -64,8 +64,10 @@ function main() {
       return;
     }
   } catch { /* No successful receipt for this exact commit and base. */ }
-  git('merge-base', '--is-ancestor', manifest.releaseBase, base);
-  const files = git('diff', '--name-only', '-z', '--no-renames', manifest.releaseBase, head).split('\0').filter(Boolean);
+  git('merge-base', '--is-ancestor', manifest.releaseBase, manifest.releaseAnchor);
+  git('merge-base', '--is-ancestor', manifest.releaseAnchor, base);
+  const paths = (from, to) => git('diff', '--name-only', '-z', '--no-renames', from, to).split('\0').filter(Boolean);
+  const files = [...new Set([...paths(manifest.releaseBase, manifest.releaseAnchor), ...paths(base, head)])];
   validateFiles(files);
   run('git', ['diff', '--check', base, head]);
   run('node', ['--test', 'scripts/release/points-ops.test.mjs']);

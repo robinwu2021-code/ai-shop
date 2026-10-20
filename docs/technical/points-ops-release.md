@@ -8,7 +8,7 @@ scripts/release-points-ops.sh --push    # 验证并快进推送到 codex/ai-shop
 scripts/release-points-ops.sh --deploy  # 推送成功后发布同一提交
 ```
 
-专项检查在 HEAD 的干净 worktree 运行。以清单中的 releaseBase 为本次积分交付的固定基线，校验全部新增、删除、改名文件；另外校验推送时远端提交到 HEAD 为快进。这样分次提交发布脚本也不会漏查本次后端改动；文件必须位于 `scripts/release/points-ops.json` 的明确清单内，B/C 目录始终拒绝。超出范围时使用通用发布，不自动放宽清单。现有共享文件列入清单是为了积分菜单、权限和错误提示；review 时仍须核对其 diff。
+专项检查在 HEAD 的干净 worktree 运行。清单中的 releaseBase 与 releaseAnchor 固定本次已经提交的积分交付包；检查该交付包与本次待推送差异的并集，并要求远端到 HEAD 为快进。这样分次提交发布脚本不会漏查原积分后端，也不会把别人已提交到远端的 B/C 改动算成本次修改。部署前还会严格检查 anchor 到目标提交的所有额外变化：如含 B/C 或清单外代码则拒绝专项部署，避免跨范围上线；文件必须位于 `scripts/release/points-ops.json` 的明确清单内，B/C 目录始终拒绝。超出范围时使用通用发布，不自动放宽清单。现有共享文件列入清单是为了积分菜单、权限和错误提示；review 时仍须核对其 diff。
 
 检查包括发布方案自身测试、运营界面清单、运营接口契约、运营 OpenAPI 生成物、积分类型迁移与测试 schema、8 个积分前端测试文件、运营端类型检查与真实 API 模式生产构建。涉及后端时运行 PointTypeServiceTest（包含数据库唯一约束）并打包 shop-app 和 pay-svc；不运行并发测试或全仓测试。未触及的 B/C 生成器和测试不属于专项检查，不能因此声称全仓通过。
 

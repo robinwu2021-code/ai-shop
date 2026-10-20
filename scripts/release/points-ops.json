@@ -60,5 +60,6 @@
     "scripts/release/points-ops.mjs",
     "scripts/release/points-ops.test.mjs"
   ],
-  "releaseBase": "10df1af13b42d8026ca6122d50620044e90e04fb"
+  "releaseBase": "10df1af13b42d8026ca6122d50620044e90e04fb",
+  "releaseAnchor": "71df7fdd03f1b2ddf4799b519bc3ac8a941c3bb6"
 }
