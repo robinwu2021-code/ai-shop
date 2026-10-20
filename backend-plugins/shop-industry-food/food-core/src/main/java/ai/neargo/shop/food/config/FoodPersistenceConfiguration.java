@@ -40,7 +40,7 @@ public class FoodPersistenceConfiguration {
         return new SqlSessionTemplate(factory);
     }
 
-    static final class PersistenceEnabled implements Condition {
+    public static final class PersistenceEnabled implements Condition {
         @Override public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
             return !"off".equalsIgnoreCase(context.getEnvironment().getProperty("shop.food.migration.mode", "validate"));
         }

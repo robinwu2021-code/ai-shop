@@ -1,0 +1,32 @@
+package ai.neargo.shop.food.foodclient;
+
+import ai.neargo.shop.food.config.ConditionalOnFoodWebEnabled;
+import ai.neargo.shop.food.config.FoodWebAutoConfiguration.PolicyEnabled;
+import ai.neargo.shop.food.service.StoreOperationService;
+import ai.neargo.shop.food.spi.StoreOperationInternalApi;
+import ai.neargo.shop.svc.InternalHttp;
+import ai.neargo.shop.svc.ServiceName;
+import java.time.Duration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
+
+/** Only the standalone gateway uses a remote Service; embedded assembly retains the local implementation. */
+@Configuration(proxyBeanMethods = false)
+@ConditionalOnFoodWebEnabled
+@ConditionalOnProperty(prefix = "shop.food", name = "deployment", havingValue = "standalone")
+@ConditionalOnBean(InternalHttp.class)
+@Conditional(PolicyEnabled.class)
+@Profile({"api", "ops"})
+public class FoodClientConfiguration {
+    @Bean
+    @ConditionalOnMissingBean(StoreOperationService.class)
+    StoreOperationService remoteStoreOperationService(InternalHttp http) {
+        return new RemoteStoreOperationService(http.client(ServiceName.FOOD, StoreOperationInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+}
