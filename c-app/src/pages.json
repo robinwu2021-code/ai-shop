@@ -281,6 +281,8 @@
         }
       }
     },
+    { "path": "pages/stored-value/index", "style": { "navigationBarTitleText": "储值记录", "navigationStyle": "custom" } },
+    { "path": "pages/stored-value-records/index", "style": { "navigationBarTitleText": "收支记录", "navigationStyle": "custom" } },
     {
       "path": "pages/points/index",
       "style": {

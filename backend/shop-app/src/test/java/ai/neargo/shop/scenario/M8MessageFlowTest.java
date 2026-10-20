@@ -218,16 +218,26 @@ class M8MessageFlowTest {
     @DisplayName("订阅消息授权：同意与**拒绝都要记**（不记会反复弹窗骚扰）")
     void subscribeRecordsBothAcceptAndReject() throws Exception {
         String token = login("12700127015");
+        mvc().perform(get("/mp/stored-value/notification-capability")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.available").value(false))
+                .andExpect(jsonPath("$.data.reasonCode").value("TEMPLATE_UNCONFIGURED"));
+        mvc().perform(post("/mp/message/subscribe").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"templateIds\":[\"unconfigured-template\"],\"accepted\":true}"))
+                .andExpect(jsonPath("$.code").value(10400));
+
 
         mvc().perform(post("/mp/message/subscribe").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"templateIds\":[\"tpl_order_paid\"],\"accepted\":true}"))
+                        .content("{\"templateIds\":[\"STUB_TPL_ORDER_ARRIVED\"],\"accepted\":true}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
 
         mvc().perform(post("/mp/message/subscribe").header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"templateIds\":[\"tpl_arrival\"],\"accepted\":false}"))
+                        .content("{\"templateIds\":[\"STUB_TPL_REFUNDED\"],\"accepted\":false}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
     }

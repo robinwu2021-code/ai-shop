@@ -1,6 +1,7 @@
 package ai.neargo.shop.pay.client;
 
 import ai.neargo.shop.spi.entitlement.EntitlementCapabilityPort;
+import ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews;
 import ai.neargo.shop.pay.entitlement.dto.LifecycleViews.ReminderPage;
 
 import ai.neargo.shop.spi.entitlement.EntitlementOwnerRegistryPort.OwnerRef;
@@ -252,6 +253,13 @@ public interface PayInternalApi {
 
     @PostExchange(PayInternalPaths.SV_BALANCE)
     BalanceView svBalance(@RequestBody PayStoredValueRequests.Balance request);
+
+    @PostExchange(PayInternalPaths.SV_CONSUMER_STORE)
+    StoredValuePort.StoreItem svConsumerStore(@RequestBody PayStoredValueConsumerRequests.Store request);
+    @PostExchange(PayInternalPaths.SV_CONSUMER_RECORDS)
+    CursorPage<StoredValueConsumerViews.Record> svConsumerRecords(@RequestBody PayStoredValueConsumerRequests.Records request);
+    @PostExchange(PayInternalPaths.SV_NOTIFICATION_FACT)
+    StoredValueConsumerViews.NotificationFact svNotificationFact(@RequestBody PayStoredValueConsumerRequests.Fact request);
 
     @PostExchange(PayInternalPaths.SV_STORES)
     CursorPage<StoreItem> svStores(@RequestBody PayStoredValueRequests.Stores request);

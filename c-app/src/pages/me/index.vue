@@ -177,6 +177,8 @@ function gotoCommunity() {
   uni.navigateTo({ url: ROUTES.address });
 }
 
+function gotoStoredValue() { uni.navigateTo({ url: ROUTES.storedValue }); }
+
 function gotoPoints() {
   uni.navigateTo({ url: ROUTES.points });
 }
@@ -674,6 +676,10 @@ watch(() => user.isPhoneLogin ? user.token : "", () => {
       </view>
       <view class="sh-cell sh-row sh-row--between" @tap="gotoAddress">
         <text class="txt-body cell__label">{{ $t("address.title") }}</text>
+      </view>
+      <view class="sh-cell sh-row sh-row--between" @tap="gotoStoredValue">
+        <text class="txt-body cell__label">{{ $t("storedValue.title") }}</text>
+        <text class="txt-caption cell__value">{{ $t("storedValue.entryHint") }}</text>
       </view>
       <view v-if="config.flag('points')" class="sh-cell sh-row sh-row--between" @tap="gotoPoints">
         <text class="txt-body cell__label">{{ $t("points.title") }}</text>

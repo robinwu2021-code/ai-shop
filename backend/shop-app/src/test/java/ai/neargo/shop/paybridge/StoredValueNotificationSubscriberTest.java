@@ -1,0 +1,66 @@
+package ai.neargo.shop.paybridge;
+
+import ai.neargo.shop.event.SysOutbox;
+import ai.neargo.shop.message.MessageService;
+import ai.neargo.shop.message.notify.StoredValueNotificationService;
+import ai.neargo.shop.payclient.StoredValueConsumerQueryAppService;
+import ai.neargo.shop.spi.entitlement.EntitlementEvents.EntitlementUsed;
+import ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews.NotificationFact;
+import java.time.Instant;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+class StoredValueNotificationSubscriberTest {
+    private final ObjectMapper json = new ObjectMapper();
+    private final MessageService messages = mock(MessageService.class);
+    private final StoredValueConsumerQueryAppService facts = mock(StoredValueConsumerQueryAppService.class);
+    private final StoredValueNotificationService tasks = mock(StoredValueNotificationService.class);
+    private final EntitlementNotificationSubscriber consumer = new EntitlementNotificationSubscriber(messages, json);
+
+    private SysOutbox row(String kind) {
+        var event = new EntitlementUsed("EV1", "US1", "U1", "M1", "S1", kind, "A1", "STORED_VALUE".equals(kind) ? 999L : null,
+                "STORED_VALUE".equals(kind) ? null : 1, 1000);
+        var row = new SysOutbox();
+        row.setEventNo(event.eventNo());
+        row.setEventType(event.eventType());
+        row.setAggregateId(event.aggregateId());
+        row.setAggregateType(event.aggregateType());
+        row.setPayload(json.writeValueAsString(event));
+        consumer.storedValueNotifications(facts, tasks);
+        return row;
+    }
+
+    @Test
+    void storedValueRoutesOnlyOnceUsingAuthoritativeCurrencyAndTime() {
+        when(facts.notificationFact(any(), eq("US1"))).thenReturn(new NotificationFact(
+                "US1", "U1", "S1", "门店", "洗车", "CNY", 125, Instant.ofEpochMilli(2000), "DC1"));
+        consumer.consume(row("STORED_VALUE"));
+        verify(tasks).enqueue("MAIN", "EV1", "US1", "U1", "S1", "DC1",
+                Map.of("store", "门店", "title", "洗车", "amount", "1.25 CNY", "time", "2000"));
+        verify(messages, never()).push(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void otherAssetKindsKeepTheirExistingInboxRoute() {
+        consumer.consume(row("PAID_CARD"));
+        verify(facts, never()).notificationFact(any(), any());
+        verify(messages).push(eq("U1"), eq("TRADE"), any(), any(), eq(null), any());
+    }
+
+    @Test
+    void mismatchedPayOwnerCannotCreateTask() {
+        when(facts.notificationFact(any(), eq("US1"))).thenReturn(new NotificationFact(
+                "US1", "OTHER", "S1", "门店", "洗车", "CNY", 125, Instant.EPOCH, "DC1"));
+        assertThatThrownBy(() -> consumer.consume(row("STORED_VALUE")))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(tasks, never()).enqueue(any(), any(), any(), any(), any(), any(), any());
+    }
+}

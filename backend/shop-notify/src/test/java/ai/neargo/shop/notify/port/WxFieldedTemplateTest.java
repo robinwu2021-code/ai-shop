@@ -20,6 +20,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 拼出来的 data 是不是微信收得下的样子**。
  */
 class WxFieldedTemplateTest {
+    @Test
+    void storedValueRequiresRealTemplateAndCompleteDistinctFieldMapping() {
+        var gateway = new WxSubscribeGateway("http://unused", "app", "secret", "arrived", "", "", "formal", false);
+        assertThat(gateway.configuredForApp("STORED_VALUE_REDEEMED")).isFalse();
+        gateway.storedValueTemplate("approved", "store:thing1,title:thing2,amount:amount3,time:time4");
+        assertThat(gateway.configuredForApp("STORED_VALUE_REDEEMED")).isTrue();
+        gateway.storedValueTemplate("approved", "store:thing1,title:thing1,amount:amount3,time:time4");
+        assertThat(gateway.configuredForApp("STORED_VALUE_REDEEMED")).isFalse();
+        assertThat(new StubWxSubscribeGateway().templateId("STORED_VALUE_REDEEMED")).isNull();
+    }
+
 
     // ---- 2026-10-09 写进生产 shop-app.env 的六行，逐字抄过来 ----
     private static final String AFTER_SALE_RESULT =

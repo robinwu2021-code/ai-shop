@@ -446,6 +446,9 @@ shop:
       mch-after-sale-fields: ${WX_TPL_MCH_AFTER_SALE_FIELDS:}
       mch-review: ${WX_TPL_MCH_REVIEW:}
       mch-review-fields: ${WX_TPL_MCH_REVIEW_FIELDS:}
+      # Only an approved template of WX_APPID; semantic keys: store,title,amount,time.
+      stored-value-redeemed: ${WX_TPL_STORED_VALUE_REDEEMED:}
+      stored-value-redeemed-fields: ${WX_TPL_STORED_VALUE_REDEEMED_FIELDS:}
 
   # App 推送（uni-push 2.0 / 个推，ADR-018）。**先用免费档**：
   # 在线消息不限量，厂商离线通道有日配额 —— 配额用尽时留痕 FAILED，站内信兜底。

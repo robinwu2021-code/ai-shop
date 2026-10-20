@@ -6,6 +6,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import ai.neargo.shop.common.PageData;
+import ai.neargo.shop.common.CursorPage;
+import ai.neargo.shop.pay.client.PayStoredValueConsumerRequests;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueConsumerQueryService;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.shop.spi.storedvalue.StoredValueConsumerViews;
+import java.time.Instant;
 import ai.neargo.shop.pay.client.PayInternalApi;
 import ai.neargo.shop.pay.client.PayInternalApi.IssueReq;
 import ai.neargo.shop.pay.client.PayInternalApi.RejectReq;
@@ -117,4 +123,27 @@ class PayInternalApiRoundTripTest {
                     assertThat(e.statusCode()).isEqualTo(401);
                 });
     }
+    @MockitoBean
+    private StoredValueConsumerQueryService consumerReads;
+
+    @Test
+    void consumerRecordsAndCommittedNotificationFactsRoundTripWithoutEnvelope() {
+        var ctx=new EntitlementContext("TENANT_A","USER_A","query","a".repeat(64));
+        var at=Instant.parse("2026-10-21T01:00:00Z");
+        var row=new StoredValueConsumerViews.Record("REDEMPTION","护理","CNY",-12800,at,"EU20261021000001");
+        var expected=new CursorPage<>(List.of(row),null);
+        when(consumerReads.records(ctx,"STORE_A","ALL",at,null,"EU20261021000001",null,20))
+                .thenReturn(expected);
+        var request=new PayStoredValueConsumerRequests.Records(ctx,"STORE_A","ALL",at,null,
+                "EU20261021000001",null,20);
+        assertThat(api("tk").svConsumerRecords(request)).isEqualTo(expected);
+        var fact=new StoredValueConsumerViews.NotificationFact("USE_A","USER_A","STORE_A","门店","护理",
+                "CNY",12800,at,"EU20261021000001");
+        when(consumerReads.notificationFact(ctx,"USE_A")).thenReturn(fact);
+        assertThat(api("tk").svNotificationFact(new PayStoredValueConsumerRequests.Fact(ctx,"USE_A"))).isEqualTo(fact);
+        verify(consumerReads).records(ctx,"STORE_A","ALL",at,null,"EU20261021000001",null,20);
+        assertThatThrownBy(()->ServiceCalls.call(ServiceName.PAY,()->api("wrong").svConsumerRecords(request)))
+                .isInstanceOfSatisfying(ServiceCallException.class,e->assertThat(e.statusCode()).isEqualTo(401));
+    }
+
 }

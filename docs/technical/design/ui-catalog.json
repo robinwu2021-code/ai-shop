@@ -1137,7 +1137,7 @@
     {
       "key": "c-app",
       "label": "买家小程序",
-      "count": 38,
+      "count": 40,
       "domains": [
         {
           "name": "工作台",
@@ -1457,6 +1457,28 @@
               "proto": null,
               "protoUrl": null,
               "preview": "http://localhost:5176/#/pages/track/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/stored-value/index",
+              "title": "储值记录",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/stored-value/index"
+            },
+            {
+              "app": "c-app",
+              "route": "/pages/stored-value-records/index",
+              "title": "收支记录",
+              "domain": "其它",
+              "tab": false,
+              "status": "已实现",
+              "proto": null,
+              "protoUrl": null,
+              "preview": "http://localhost:5176/#/pages/stored-value-records/index"
             },
             {
               "app": "c-app",
@@ -3561,5 +3583,5 @@
       ]
     }
   ],
-  "total": 282
+  "total": 284
 }

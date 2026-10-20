@@ -706,6 +706,8 @@ export const ROUTES = {
   cards: "/pages/cards/index",
   messages: "/pages/messages/index",
   requestCreate: "/pages/request-create/index",
+  storedValue: "/pages/stored-value/index",
+  storedValueRecords: "/pages/stored-value-records/index",
   points: "/pages/points/index",
   reviewWrite: "/pages/review-write/index",
   group: "/pages/group/index",

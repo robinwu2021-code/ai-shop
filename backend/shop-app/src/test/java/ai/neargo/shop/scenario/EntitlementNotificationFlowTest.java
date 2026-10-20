@@ -24,6 +24,20 @@ class EntitlementNotificationFlowTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
     @Autowired ai.neargo.shop.message.MessageService messages;
+    @Autowired ai.neargo.shop.message.notify.StoredValueNotificationService storedValueNotifications;
+
+    @Test void storedValueBusinessKeySurvivesDifferentEventNumbersWithoutHistoricalBackfill() {
+        String user=id(),usage=id();
+        var values=java.util.Map.of("store","测试门店","title","服务消费","amount","1.00 CNY","time","1000");
+        storedValueNotifications.enqueue("MAIN",id(),usage,user,"S1","DC1",values);
+        storedValueNotifications.enqueue("MAIN",id(),usage,user,"S1","DC1",values);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notify_stored_value_task WHERE usage_no=?",
+                Integer.class,usage)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT status FROM notify_stored_value_task WHERE usage_no=?",
+                String.class,usage)).isEqualTo("SKIPPED");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notify_message WHERE receiver_no=?",
+                Integer.class,user)).isEqualTo(1);
+    }
     private String id() { return UUID.randomUUID().toString().replace("-",""); }
     private SysOutbox row(PayEntitlementEvent event) {
         var row=new SysOutbox(); row.setEventNo(event.eventNo()); row.setEventType(event.eventType());
@@ -34,7 +48,7 @@ class EntitlementNotificationFlowTest {
         String user=id(); long at=System.currentTimeMillis();
         var events=java.util.List.of(
                 new EntitlementGranted(id(),id(),user,"M1","V1","PAID_CARD_ORDER","O1",at),
-                new EntitlementUsed(id(),id(),user,"M1","S1","STORED_VALUE","A1",100L,null,at),
+                new EntitlementUsed(id(),id(),user,"M1","S1","PAID_CARD","A1",null,1,at),
                 new StoredValueCredited(id(),id(),"A1",user,"M1","S1",1000,1200,"CNY",at));
         for(var event:events) { notifications.consume(row(event)); notifications.consume(row(event)); }
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM notify_message WHERE receiver_no=?",Integer.class,user))

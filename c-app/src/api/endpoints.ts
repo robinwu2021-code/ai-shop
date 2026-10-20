@@ -395,6 +395,9 @@ export const ENDPOINTS: Record<keyof ShopApi, EndpointDef> = {
   // 路径用**复数** `points`：与设计文档、B 端 `/biz/points/**` 一致。
   // 商家侧的两条已迁到 b-app —— ADR-007 §3「contract 层不共享」，
   // 它们挂在 C 端是契约写在 b-app 拆分之前留下的。
+  storedValueStores: { method: "GET", path: "/mp/stored-value/stores", auth: true, summary: "本人有储值记录的门店" },
+  storedValueRecords: { method: "GET", path: "/mp/stored-value/store/:storeNo/records", auth: true, summary: "本人门店储值与核销记录" },
+  storedValueNotificationCapability: { method: "GET", path: "/mp/stored-value/notification-capability", auth: true, summary: "储值消费微信通知能力" },
   pointsAccounts: { method: "GET", path: "/mp/points/accounts", auth: true, summary: "本人按类型积分账户" },
   pointsEntries: { method: "GET", path: "/mp/points/entries", auth: true, summary: "本人按类型积分流水" },
 

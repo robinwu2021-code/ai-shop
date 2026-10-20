@@ -1,6 +1,11 @@
 package ai.neargo.shop.message.impl;
 
 import ai.neargo.shop.message.MessageService;
+import ai.neargo.shop.spi.notify.WxSubscribePort;
+import java.util.Objects;
+import java.util.LinkedHashSet;
+import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.Perms;
@@ -46,6 +51,8 @@ public class MessageServiceImpl implements MessageService {
     /** 外发模板的发送量从这张表数 —— 它们不写 notify_message */
     private final ai.neargo.shop.message.mapper.MessageMappers.NotifyLogMapper notifyLogMapper;
     private final FaqMapper faqMapper;
+    @Autowired
+    private WxSubscribePort wxSubscribePort;
     private final ai.neargo.shop.spi.platform.AuditLogPort auditLogPort;
 
     public MessageServiceImpl(MessageMapper messageMapper, TicketMapper ticketMapper,
@@ -267,7 +274,13 @@ public class MessageServiceImpl implements MessageService {
     @Transactional
     public void subscribe(List<String> templateIds, boolean accepted) {
         String userNo = SecurityUtils.currentUserNo();
-        for (String templateId : templateIds == null ? List.<String>of() : templateIds) {
+        List<String> requested = templateIds == null ? List.of() : templateIds;
+        var allowed = WxSubscribePort.SCENES.stream()
+                .map(wxSubscribePort::templateId).filter(Objects::nonNull).collect(Collectors.toSet());
+        if (requested.size() > 3 || requested.stream().anyMatch(id -> id == null || !allowed.contains(id))) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        for (String templateId : new LinkedHashSet<>(requested)) {
             MsgSubscribe existing = subscribeMapper.selectOne(Wrappers.<MsgSubscribe>lambdaQuery()
                     .eq(MsgSubscribe::getUserNo, userNo)
                     .eq(MsgSubscribe::getTemplateId, templateId).last("limit 1"));

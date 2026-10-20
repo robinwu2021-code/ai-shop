@@ -1,4 +1,5 @@
 import type { OrderPointsEarning } from "@shared/types";
+import type { StoredValueStoresQuery, StoredValueRecordsQuery } from "./stored-value-types";
 import type { MemberCodeView } from "@shared/types";
 // 真实后端实现 —— **不手写 URL**，全部从 endpoints.ts 的端点表取。
 //
@@ -337,6 +338,9 @@ export const httpApi: ShopApi = {
   toggleReviewLike: (reviewNo) => call<Review>("toggleReviewLike", { reviewNo }),
 
   // ---- 积分
+  storedValueStores: (query) => call("storedValueStores", undefined, { ...query } satisfies StoredValueStoresQuery),
+  storedValueRecords: (storeNo, query) => call("storedValueRecords", { storeNo }, { ...query } satisfies StoredValueRecordsQuery),
+  storedValueNotificationCapability: () => call("storedValueNotificationCapability"),
   pointsAccounts: () => call<BuyerPointsAccount[]>("pointsAccounts"),
   pointsEntries: (typeCode, after = 0) => call<BuyerPointsEntryPage>(
     "pointsEntries", undefined, { typeCode, after, limit: 20 }),

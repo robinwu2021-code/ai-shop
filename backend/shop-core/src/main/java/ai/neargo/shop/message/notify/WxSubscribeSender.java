@@ -128,6 +128,21 @@ public class WxSubscribeSender {
         return send(userNo, scene, openId -> port.sendFielded(openId, scene, values, page));
     }
 
+    /** Durable workflows reserve quota in their enqueue transaction, never during a network retry. */
+    public Reservation reserve(String scene, String userNo) {
+        String templateId = port.templateId(scene);
+        if (templateId == null || templateId.isBlank()) {
+            return new Reservation(null, null, "TEMPLATE_UNCONFIGURED");
+        }
+        var openId = identityPort.wxOpenIdMp(userNo);
+        if (openId.isEmpty()) { return new Reservation(null, templateId, "NO_OPENID"); }
+        if (!consumeQuota(userNo, templateId)) { return new Reservation(null, templateId, "NO_QUOTA"); }
+        return new Reservation(openId.get(), templateId, null);
+    }
+
+    /** Snapshot used only by the reliable task ledger; never exposed to clients. */
+    public record Reservation(String openId, String templateId, String reasonCode) { }
+
     private boolean send(String userNo, String scene, java.util.function.Consumer<String> call) {
         String templateId = port.templateId(scene);
         if (templateId == null || templateId.isBlank()) {

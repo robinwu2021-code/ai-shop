@@ -13779,3 +13779,33 @@ CREATE TABLE IF NOT EXISTS pay_document_number (
     UNIQUE KEY uk_pay_document_no (document_no),
     UNIQUE KEY uk_pay_document_source (tenant_no,document_type,source_system,source_resource_type,source_no)
 );
+
+-- V543 scoped generation: python3 backend/scripts/gen-test-schema.py OUT DIR_WITH_V543_ONLY
+-- Full generator is blocked by the existing V538 dynamic MySQL SET/PREPARE statements.
+CREATE TABLE IF NOT EXISTS notify_stored_value_task
+(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    tenant_no VARCHAR(32) NOT NULL,
+    usage_no VARCHAR(64) NOT NULL,
+    recipient VARCHAR(64) NOT NULL,
+    scene VARCHAR(64) NOT NULL,
+    event_no VARCHAR(128) NOT NULL,
+    store_no VARCHAR(64) NOT NULL,
+    document_no VARCHAR(64) NULL,
+    values_json TEXT NOT NULL,
+    open_id VARCHAR(128) NULL,
+    template_id VARCHAR(128) NULL,
+    status VARCHAR(24) NOT NULL,
+    reason_code VARCHAR(64) NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    next_attempt_at DATETIME NULL,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_sv_notify_business UNIQUE (tenant_no, usage_no, recipient, scene)
+);
+
+-- 种子数据
+INSERT IGNORE INTO notify_scene_channel
+    (tenant_no,scene_code,audience,channel,enabled,push_level,version,deleted,created_at,updated_at,created_by,updated_by)
+VALUES
+    ('MAIN','STORED_VALUE_REDEEMED','C_USER','WXSUB',0,'NORMAL',0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYSTEM','SYSTEM'),
+    ('MAIN','STORED_VALUE_REDEEMED','C_USER','INAPP',1,'NORMAL',0,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,'SYSTEM','SYSTEM');

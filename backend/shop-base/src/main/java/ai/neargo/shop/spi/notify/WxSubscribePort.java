@@ -1,5 +1,7 @@
 package ai.neargo.shop.spi.notify;
 
+import java.util.Set;
+
 /**
  * 域 → channel：把一条微信小程序**订阅消息**（服务通知）交给通道。
  *
@@ -26,6 +28,13 @@ public interface WxSubscribePort {
      * 键名写在契约上，两边就不会各写各的字符串。
      */
     String TEMPLATES_SETTING_KEY = "notify.wx.templates";
+
+    /** Committed stored-value consumption; never used for card/coupon redemptions. */
+    String SCENE_STORED_VALUE_REDEEMED = "STORED_VALUE_REDEEMED";
+
+    /** Real, app-bound template readiness; stubs deliberately report unavailable. */
+    default boolean configuredForApp(String scene) { return false; }
+
 
     /** 场景：到货，可来自提点取货（C-FF-02）。 */
     String SCENE_ORDER_ARRIVED = "ORDER_ARRIVED";
@@ -81,6 +90,12 @@ public interface WxSubscribePort {
     String SCENE_MCH_AFTER_SALE = "MCH_AFTER_SALE";
     /** 场景（商家）：新评价 */
     String SCENE_MCH_REVIEW = "MCH_REVIEW";
+
+    /** Scenes accepted by the existing subscription authorization endpoint. */
+    Set<String> SCENES = Set.of(SCENE_ORDER_ARRIVED, SCENE_REFUNDED, SCENE_NEW_GOODS,
+            SCENE_ELEC_QUOTED, SCENE_WAYBILL_PICKED_UP, SCENE_WAYBILL_DELIVERING, SCENE_WAYBILL_SIGNED,
+            SCENE_AFTER_SALE_RESULT, SCENE_RETURN_WAIT, SCENE_GROUP_RESULT, SCENE_DELIVERY_START,
+            SCENE_MCH_NEW_ORDER, SCENE_MCH_AFTER_SALE, SCENE_MCH_REVIEW, SCENE_STORED_VALUE_REDEEMED);
 
     /**
      * 场景 → 微信模板号。没配这个场景时返回 {@code null}（调用方据此静默跳过）。
@@ -171,11 +186,19 @@ public interface WxSubscribePort {
     class WxSubscribeException extends RuntimeException {
         /** 网络类失败可重试；微信业务码（额度不足、模板被封）重试一万次也是同一个结果。 */
         private final boolean retryable;
+        private final boolean outcomeUnknown;
 
         public WxSubscribeException(String message, boolean retryable) {
+            this(message, retryable, false);
+        }
+
+        public WxSubscribeException(String message, boolean retryable, boolean outcomeUnknown) {
             super(message);
             this.retryable = retryable;
+            this.outcomeUnknown = outcomeUnknown;
         }
+
+        public boolean outcomeUnknown() { return outcomeUnknown; }
 
         public boolean retryable() {
             return retryable;

@@ -3,6 +3,14 @@ package ai.neargo.shop.paybridge;
 import ai.neargo.shop.event.OutboxConsumer;
 import ai.neargo.shop.event.SysOutbox;
 import ai.neargo.shop.message.MessageService;
+import ai.neargo.shop.message.notify.StoredValueNotificationService;
+import ai.neargo.shop.payclient.StoredValueConsumerQueryAppService;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import java.math.BigDecimal;
+import java.util.Currency;
+import java.util.Map;
+import java.util.Objects;
+import org.springframework.beans.factory.annotation.Autowired;
 import ai.neargo.shop.spi.entitlement.EntitlementEvents.EntitlementGranted;
 import ai.neargo.shop.spi.entitlement.EntitlementEvents.EntitlementUsed;
 import ai.neargo.shop.spi.entitlement.EntitlementEvents.LegacyCouponUsageChanged;
@@ -22,6 +30,16 @@ import tools.jackson.databind.ObjectMapper;
 public class EntitlementNotificationSubscriber implements OutboxConsumer {
     private final MessageService messages;
     private final ObjectMapper json;
+    private StoredValueConsumerQueryAppService facts;
+    private StoredValueNotificationService storedValueNotifications;
+
+    /** Optional only for legacy direct-construction tests; Spring always wires both application services. */
+    @Autowired
+    public void storedValueNotifications(StoredValueConsumerQueryAppService facts,
+            StoredValueNotificationService notifications) {
+        this.facts = facts;
+        this.storedValueNotifications = notifications;
+    }
     public EntitlementNotificationSubscriber(MessageService messages,ObjectMapper json) {
         this.messages=messages; this.json=json;
     }
@@ -56,6 +74,22 @@ public class EntitlementNotificationSubscriber implements OutboxConsumer {
         if(!event.eventNo().equals(row.getEventNo()) || !event.aggregateId().equals(row.getAggregateId())
                 || !event.aggregateType().equals(row.getAggregateType())) {
             throw new IllegalArgumentException("Notification event identity mismatch");
+        }
+        if (event instanceof EntitlementUsed used && "STORED_VALUE".equals(used.assetKind())) {
+            // Pay v1 ingress is MAIN-only. Read committed Pay facts instead of trusting event money or labels.
+            var fact = facts.notificationFact(new EntitlementContext("MAIN", "SYSTEM:NOTIFY",
+                    used.eventNo(), "0".repeat(64)), used.usageNo());
+            if (!used.usageNo().equals(fact.usageNo()) || !used.storeNo().equals(fact.storeNo())
+                    || (used.userNo() != null && !Objects.equals(used.userNo(), fact.userNo()))) {
+                throw new IllegalArgumentException("Stored-value notification fact identity mismatch");
+            }
+            Currency currency = Currency.getInstance(fact.currency());
+            String amount = BigDecimal.valueOf(fact.amountMinor(), currency.getDefaultFractionDigits())
+                    .toPlainString() + " " + fact.currency();
+            storedValueNotifications.enqueue("MAIN", used.eventNo(), used.usageNo(), fact.userNo(),
+                    fact.storeNo(), fact.documentNo(), Map.of("store", fact.storeName(), "title", fact.title(),
+                            "amount", amount, "time", String.valueOf(fact.occurredAt().toEpochMilli())));
+            return;
         }
         if(user==null)return; // Offline customers have no registered C-side inbox.
         messages.push(user,MessageService.TRADE,title,body,null,key(event.eventNo(),user));

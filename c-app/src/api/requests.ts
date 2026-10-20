@@ -502,3 +502,5 @@ export interface PointsEntriesQuery {
 }
 
 export type { WxPhoneLoginReq } from "@shared/types";
+
+export type { StoredValueStoresQuery, StoredValueRecordsQuery } from "./stored-value-types";

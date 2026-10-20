@@ -75,6 +75,9 @@ public final class PayInternalPaths {
     public static final String SV_CREDIT = "/internal/pay/stored-value/credit";
     public static final String SV_QUERY = "/internal/pay/stored-value/query/recharge";
     public static final String SV_BALANCE = "/internal/pay/stored-value/query/balance";
+    public static final String SV_CONSUMER_STORE = "/internal/pay/stored-value/consumer/store";
+    public static final String SV_CONSUMER_RECORDS = "/internal/pay/stored-value/consumer/records";
+    public static final String SV_NOTIFICATION_FACT = "/internal/pay/stored-value/consumer/notification-fact";
     public static final String SV_STORES = "/internal/pay/stored-value/query/stores";
     public static final String SV_CONSUMPTIONS = "/internal/pay/stored-value/query/consumptions";
     public static final String SV_USE_QUOTE = "/internal/pay/stored-value/use/quote";

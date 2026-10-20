@@ -26,6 +26,11 @@ public interface SvUserStoreIndexMapper extends BaseMapper<SvUserStoreIndex> {
             @Param("afterAt") LocalDateTime afterAt, @Param("afterStore") String afterStore,
             @Param("limit") int limit);
 
+    @Select("SELECT * FROM sv_user_store_index WHERE tenant_no=#{tenant} AND user_no=#{user} "
+            + "AND store_no=#{store} AND has_recharge=1 AND deleted=0")
+    SvUserStoreIndex consumerStore(@Param("tenant") String tenant, @Param("user") String user,
+            @Param("store") String store);
+
     @Insert("INSERT IGNORE INTO sv_user_store_index(tenant_no,user_no,customer_no,entity_no,store_no,store_name,has_recharge,"
             + "last_recharge_at,last_activity_at,last_activity_type,store_status,created_at,updated_at,created_by,"
             + "updated_by) VALUES(#{tenantNo},#{userNo},#{customerIdentity},#{entityNo},#{storeNo},#{storeName},1,#{lastRechargeAt},"

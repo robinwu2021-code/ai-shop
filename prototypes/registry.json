@@ -2,6 +2,79 @@
  "_readme": "界面原型登记表（真源，手工维护）。每份原型一条；screens[].client/route 让界面清单（gen-ui-catalog.py）能从页面跳到那一屏，路由还不存在的屏会在清单里列成「原型」行；同一路由被多份登记时，排在前面的赢。status: 在建 | 已落地 | 参考 | 作废（作废要写 supersededBy）。生成总览：python3 scripts/gen-proto-index.py；screens[].pageTitle 是清单里那一行的页名（屏名与页名不同时才写）",
  "prototypes": [
   {
+   "slug": "consumer-stored-value",
+   "file": "consumer-stored-value.html",
+   "title": "C端储值：统一门店入口与收支记录",
+   "kind": "pages",
+   "clients": [
+    "c-app"
+   ],
+   "status": "在建",
+   "date": "2026-10-21",
+   "summary": "统一C端组件密度、胶囊类型Tab与底部时间弹框；补核销微信通知及自主授权示意。",
+   "docs": [
+    {
+     "label": "UI与接口设计",
+     "path": "docs/technical/TDD-C端储值记录-UI与接口.md"
+    }
+   ],
+   "screens": [
+    {
+     "id": "s01",
+     "title": "我的·储值入口",
+     "client": "c-app",
+     "route": "/pages/me/index"
+    },
+    {
+     "id": "s02",
+     "title": "储值记录·门店列表",
+     "client": "c-app",
+     "route": "/pages/stored-value/index"
+    },
+    {
+     "id": "s03",
+     "title": "收支记录",
+     "client": "c-app",
+     "route": "/pages/stored-value-records/index"
+    },
+    {
+     "id": "s04",
+     "title": "类型筛选",
+     "client": "c-app",
+     "route": "/pages/stored-value-records/index"
+    },
+    {
+     "id": "s05",
+     "title": "时间筛选弹框",
+     "client": "c-app",
+     "route": "/pages/stored-value-records/index"
+    },
+    {
+     "id": "s06",
+     "title": "空状态",
+     "client": "c-app",
+     "route": "/pages/stored-value/index"
+    },
+    {
+     "id": "s07",
+     "title": "加载失败",
+     "client": "c-app",
+     "route": "/pages/stored-value/index"
+    },
+    {
+     "id": "s08",
+     "title": "核销微信通知示意",
+     "client": "c-app"
+    },
+    {
+     "id": "s09",
+     "title": "消费通知授权弹框",
+     "client": "c-app",
+     "route": "/pages/stored-value-records/index"
+    }
+   ]
+  },
+  {
    "slug": "points-earning-rules",
    "file": "points-earning-rules.html",
    "title": "线上交易积分：默认与品类赠送规则",
@@ -2982,6 +3055,39 @@
      "id": "s29",
      "title": "通知记录",
      "client": "ops-web"
+    }
+   ]
+  },
+  {
+   "slug": "points-bc-accounts",
+   "file": "points-bc-accounts.html",
+   "title": "B/C积分账户与订单赠送",
+   "kind": "pages",
+   "clients": [
+    "b-app",
+    "c-app"
+   ],
+   "status": "已落地",
+   "date": "2026-10-21",
+   "summary": "远端既有积分页面原型，补齐遗漏登记，不改变积分功能。",
+   "screens": [
+    {
+     "id": "s01",
+     "title": "门店积分账户",
+     "client": "b-app",
+     "route": "/pages/points/index"
+    },
+    {
+     "id": "s02",
+     "title": "我的积分",
+     "client": "c-app",
+     "route": "/pages/points/index"
+    },
+    {
+     "id": "s03",
+     "title": "订单赠送积分",
+     "client": "c-app",
+     "route": "/pages/order/index"
     }
    ]
   }

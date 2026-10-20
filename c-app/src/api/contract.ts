@@ -1,4 +1,6 @@
 import type { OrderPointsEarning } from "@shared/types";
+import type { StoredValueStoresQuery, StoredValueStoresPage, StoredValueRecordsQuery, StoredValueRecordsPage, StoredValueNotificationCapability } from "./stored-value-types";
+export type * from "./stored-value-types";
 import type { MemberCodeView } from "@shared/types";
 // 唯一契约。页面只依赖这个接口，不感知 mock / 真实后端。
 // 端点对齐后端 C 端 BFF `/mp/**`（见 docs/api）。
@@ -710,6 +712,10 @@ export interface ShopApi {
     scores?: ReviewScores;
   }): Promise<Review>;
 
+  // ---- 本人门店储值记录（消费者白名单，只读）
+  storedValueStores(query?: StoredValueStoresQuery): Promise<StoredValueStoresPage>;
+  storedValueRecords(storeNo: string, query?: StoredValueRecordsQuery): Promise<StoredValueRecordsPage>;
+  storedValueNotificationCapability(): Promise<StoredValueNotificationCapability>;
   // ---- 积分（C 端账户）
   pointsAccounts(): Promise<BuyerPointsAccount[]>;
   pointsEntries(typeCode: string, after?: number): Promise<BuyerPointsEntryPage>;

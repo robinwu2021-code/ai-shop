@@ -73,7 +73,7 @@ function generatorFor(file) {
 let schemas = { ...collectAll(typesFile), ...collectAll(reqFile),
   ...collectAll(path.resolve(root, "src/api/points-types.ts")) };
 // 支付协议声明在 C 端合同中，响应不能引用共享类型里不存在的组件。
-for (const name of ["PayInit", "PayMethodList"]) {
+for (const name of ["PayInit", "PayMethodList", "StoredValueStoresPage", "StoredValueRecordsPage", "StoredValueNotificationCapability"]) {
   const schema = generatorFor(path.resolve(root, "src/api/contract.ts")).createSchema(name);
   Object.assign(schemas, schema.definitions ?? {});
 }
@@ -268,6 +268,9 @@ const RESPONSE_TYPES = {
   invoiceOfOrder: "InvoiceRequest",
   unreadMessages: "number",
   subscribeReport: "void",
+  storedValueStores: "StoredValueStoresPage",
+  storedValueRecords: "StoredValueRecordsPage",
+  storedValueNotificationCapability: "StoredValueNotificationCapability",
   registerPushToken: "void",
   unregisterPushToken: "void",
 
@@ -316,6 +319,8 @@ const REQUEST_TYPES = {
   chooseQuote: "ChooseQuoteReq",
   merchantList: "MerchantListQuery",
   myStores: "MyStoresQuery",
+  storedValueStores: "StoredValueStoresQuery",
+  storedValueRecords: "StoredValueRecordsQuery",
   storeNearby: "StoreNearbyQuery",
   storeEnter: "StoreEnterReq",
   storeGoods: "StoreGoodsQuery",
