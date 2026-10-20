@@ -77,6 +77,7 @@ export interface StorePointEntryPage {
     entryNo: string;
     /** 原记账凭证编号 */
     voucherNo: string;
+    voucherDocumentNo?: string | null;
     /** 账本持有人类型 */
     holderType: "STORE";
     /** 账本持有人编号，与持有人类型联合定位 */
@@ -1167,6 +1168,8 @@ export interface PermOption {
  * > 连真后端会整片 undefined。与本轮反复撞到的「单看任一端都完整，断在两端之间」同形状。
  */
 export interface SettleBill {
+  batchDocumentNo?: string | null;
+  documentNo?: string | null;
   /** 结算单号 */
   settleNo: string;
   /** 对应的子订单号 —— 分账以它为单位 */
@@ -1286,6 +1289,7 @@ export type SettleBatchStatus =
  * 我的账期批次。**商家问的是「这一批什么时候放、卡在哪」**。
  */
 export interface MySettleBatch {
+  documentNo?: string | null;
   /** 批次号。**与结算单上的批次号是同一个** —— 商家照着单子来问的就是它 */
   batchNo: string;
   /** 支付通道码。**不同通道账期不同，所以不合批** */

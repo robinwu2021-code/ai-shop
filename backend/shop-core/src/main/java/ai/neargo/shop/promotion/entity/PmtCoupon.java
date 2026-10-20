@@ -17,6 +17,9 @@ import lombok.Setter;
 @Setter
 @TableName("pmt_coupon")
 public class PmtCoupon extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     /** 现金：{@code benefitValue} 是面额（分） */
     public static final String CASH = "CASH";

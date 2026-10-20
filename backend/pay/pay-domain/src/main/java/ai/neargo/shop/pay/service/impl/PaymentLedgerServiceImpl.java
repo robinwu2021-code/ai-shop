@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.common.BizException;
@@ -24,6 +26,8 @@ import java.util.Set;
 
 @Service
 public class PaymentLedgerServiceImpl implements PaymentLedgerService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
 
     private static final Logger log = LoggerFactory.getLogger(PaymentLedgerServiceImpl.class);
 
@@ -96,6 +100,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
         p.setCurrency(cmd.currency());
         p.setPaymentRequestJson(json.writeValueAsString(cmd));
         DataScopeContext.executeWithoutScope(() -> paymentMapper.insert(p));
+        documents.bind(DocumentType.PAYMENT_ATTEMPT, "MAIN", p.getPaymentNo());
         return outTradeNo;
     }
 
@@ -522,7 +527,7 @@ public class PaymentLedgerServiceImpl implements PaymentLedgerService {
     private SettlePort.PaymentReceipt receipt(StlPayment p) {
         return p == null ? null : new SettlePort.PaymentReceipt(p.getPaymentNo(), p.getOrderNo(),
                 p.getUserNo(), p.getPayChannel(), p.getTradeNo(), nz(p.getAmountMinor()),
-                p.getCurrency(), p.getStatus());
+                p.getCurrency(), p.getStatus()).withDocumentNo(documents.find(DocumentType.PAYMENT_ATTEMPT, "MAIN", p.getPaymentNo()));
     }
 
     private StlPayment lockPayment(String outTradeNo) {

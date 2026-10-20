@@ -33,6 +33,8 @@ import java.util.List;
 
 @Service
 public class PointsInspectionServiceImpl implements PointsInspectionService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final PointsReadStore read;
     private final PointsOperationsStore store;
     private final PointsOperatorJournal journal;
@@ -119,6 +121,7 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
     public TransactionDetail transaction(String type, String voucherNo) {
         type(type);
         require(nonblank(voucherNo), "POINTS_TRANSACTION_INPUT_INVALID");
+        voucherNo=documentNumbers.resolve(ai.neargo.shop.numbering.DocumentType.POINTS_VOUCHER,"MAIN",voucherNo);
         var row = store.voucherByNo(type, voucherNo);
         require(row != null, "POINTS_VOUCHER_UNKNOWN");
         var direction = direction(text(row, "biz_ref"));
@@ -129,7 +132,7 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
 
     private VoucherView voucher(Map<String, Object> r) {
         return new VoucherView(num(r, "id"), text(r, "voucher_no"), text(r, "biz_ref"),
-                text(r, "currency"), num(r, "rate_points"), num(r, "rate_minor"));
+                text(r, "currency"), num(r, "rate_points"), num(r, "rate_minor"), documentNumbers.find(ai.neargo.shop.numbering.DocumentType.POINTS_VOUCHER, "MAIN", text(r, "voucher_no")));
     }
 
     private TransactionDirection direction(String ref) {
@@ -171,18 +174,7 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
     @Override
     public VoucherPage vouchers(String type, long after, int limit) {
         page(type, after, limit);
-        var rows =
-                store.page(type, Kind.VOUCHER, after, limit).stream()
-                        .map(
-                                r ->
-                                        new VoucherView(
-                                                num(r, "id"),
-                                                text(r, "voucher_no"),
-                                                text(r, "biz_ref"),
-                                                text(r, "currency"),
-                                                num(r, "rate_points"),
-                                                num(r, "rate_minor")))
-                        .toList();
+        var rows = store.page(type, Kind.VOUCHER, after, limit).stream().map(this::voucher).toList();
         return new VoucherPage(
                 rows, rows.isEmpty() ? after : rows.getLast().id(), rows.size() == limit);
     }
@@ -196,8 +188,11 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
                         ? holder == null && subject == null
                         : holder != null && nonblank(subject),
                 "POINTS_ENTRY_FILTER_REQUIRED");
-        var rows =
-                store.entries(type, holder, subject, voucher, after, limit).stream()
+        voucher=documentNumbers.resolve(ai.neargo.shop.numbering.DocumentType.POINTS_VOUCHER,"MAIN",voucher);
+        var raw=store.entries(type, holder, subject, voucher, after, limit);
+        var aliases=documentNumbers.findAll(ai.neargo.shop.numbering.DocumentType.POINTS_VOUCHER,"MAIN",
+                raw.stream().map(r -> text(r,"voucher_no")).toList());
+        var rows = raw.stream()
                         .map(
                                 r ->
                                         new EntryView(
@@ -209,7 +204,7 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
                                                 Bucket.valueOf(text(r, "bucket")),
                                                 num(r, "delta_points"),
                                                 num(r, "after_points"),
-                                                time(r, "created_at")))
+                                                time(r, "created_at"),aliases.get(text(r,"voucher_no"))))
                         .toList();
         return new EntryPage(
                 rows, rows.isEmpty() ? after : rows.getLast().id(), rows.size() == limit);
@@ -218,8 +213,10 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
     @Override
     public FlowPage flows(String type, long after, int limit) {
         page(type, after, limit);
-        var rows =
-                store.page(type, Kind.FLOW, after, limit).stream()
+        var raw=store.page(type, Kind.FLOW, after, limit);
+        var aliases=documentNumbers.findAll(ai.neargo.shop.numbering.DocumentType.POINTS_VOUCHER,"MAIN",
+                raw.stream().map(r -> text(r,"voucher_no")).toList());
+        var rows = raw.stream()
                         .map(
                                 r ->
                                         new FlowView(
@@ -228,7 +225,7 @@ public class PointsInspectionServiceImpl implements PointsInspectionService {
                                                 text(r, "voucher_no"),
                                                 FlowBucket.valueOf(text(r, "bucket")),
                                                 num(r, "delta_minor"),
-                                                num(r, "after_minor")))
+                                                num(r, "after_minor"),aliases.get(text(r,"voucher_no"))))
                         .toList();
         return new FlowPage(
                 rows, rows.isEmpty() ? after : rows.getLast().id(), rows.size() == limit);

@@ -23,6 +23,9 @@ import java.util.List;
 
 @Service
 public class OpsPromotionServiceImpl implements OpsPromotionService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers documentNumbers;
+
 
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(OpsPromotionServiceImpl.class);
@@ -62,10 +65,10 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
          * 但没有任何角色同时持有社区/自提点数据域与 marketing:* —— 见
          * ops-data-scope.test.ts 的 ANCHOR_WAIVED 那段判据。
          */
-        return couponMapper.selectList(Wrappers.<PmtCoupon>lambdaQuery()
+        return documentNumbers.load(ai.neargo.shop.numbering.DocumentType.MARKETING_COUPON_TEMPLATE, "PMT", "pmt_coupon", couponMapper.selectList(Wrappers.<PmtCoupon>lambdaQuery()
                         .eq(entityNo != null && !entityNo.isBlank(),
                                 PmtCoupon::getEntityNo, entityNo)
-                        .orderByDesc(PmtCoupon::getId))
+                        .orderByDesc(PmtCoupon::getId)), PmtCoupon::getCouponNo, PmtCoupon::setDocumentNo)
                 .stream().map(this::vo).toList();
     }
 
@@ -79,13 +82,13 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
          * `entityNo` 参数仍然保留：它是运营主动筛某一家，与数据域是两回事
          * （数据域答「你能看到哪些」，参数答「你现在想看哪一家」）。
          */
-        return activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
+        return documentNumbers.load(ai.neargo.shop.numbering.DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
                         .eq(entityNo != null && !entityNo.isBlank(),
                                 PmtActivity::getEntityNo, entityNo)
                         // 这一页是「商家的活动会不会失控」；平台活动在「平台活动」那一栏看（s29 · s30）
                         .ne(PmtActivity::getOwner, PmtActivity.OWNER_PLATFORM)
                         .isNull(PmtActivity::getDraftSnapshot)
-                        .orderByDesc(PmtActivity::getId))
+                        .orderByDesc(PmtActivity::getId)), PmtActivity::getActivityNo, PmtActivity::setDocumentNo)
                 .stream().map(this::vo)
                 // 常驻无门槛直减置顶（P7）：它们是最容易出现「被薅」的一类，运营要一眼找到
                 .sorted(java.util.Comparator.comparing(
@@ -106,8 +109,8 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
              * 与审计，而那两张表上没有 MERCHANT 锚点 —— 半接不接会让停到一半失败。
              * 归属由上面 `activities` 那一页保证：看不到的活动，运营拿不到它的单号。
              */
-            PmtActivity a = activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
-                    .eq(PmtActivity::getActivityNo, activityNo).isNull(PmtActivity::getDraftSnapshot).last("limit 1"));
+            PmtActivity a = documentNumbers.loadOne(ai.neargo.shop.numbering.DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", activityMapper.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+                    .eq(PmtActivity::getActivityNo, activityNo).isNull(PmtActivity::getDraftSnapshot).last("limit 1")), PmtActivity::getActivityNo, PmtActivity::setDocumentNo);
             if (a == null) {
                 throw BizException.of(ErrorCode.NOT_FOUND);
             }
@@ -159,7 +162,7 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
         return new OpsCouponVO(c.getCouponNo(), c.getEntityNo(), entityName(c.getEntityNo()),
                 c.getTitle(), c.getBenefitMode(), nz(c.getBenefitValue()), c.getBenefitCapMinor(),
                 c.getTotalCount(), nz(c.getReceivedCount()), c.getBudgetMinor(),
-                exposure, c.getStatus(), flags);
+                exposure, c.getStatus(), flags).withDocumentNo(c.getDocumentNo());
     }
 
     static final String FLAG_ALWAYS_ON_FREE_CUT = "ALWAYS_ON_FREE_CUT";
@@ -198,7 +201,7 @@ public class OpsPromotionServiceImpl implements OpsPromotionService {
                 a.getName(), a.getTriggerType(), a.getBenefitType(), a.getScheduleType(),
                 a.getQuota(), nz(a.getQuotaUsed()), a.getBudgetMinor(), nz(a.getBudgetUsedMinor()),
                 audiences, a.getStatus(), a.getEndedReason(), flags,
-                applyMapper == null ? 0 : applyMapper.releasedCount(a.getActivityNo()));
+                applyMapper == null ? 0 : applyMapper.releasedCount(a.getActivityNo())).withDocumentNo(a.getDocumentNo());
     }
 
     private String entityName(String entityNo) {

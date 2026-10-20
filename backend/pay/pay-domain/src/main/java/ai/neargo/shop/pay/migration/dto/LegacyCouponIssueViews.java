@@ -21,7 +21,10 @@ public final class LegacyCouponIssueViews {
     public record View(String issueNo,String batchNo,String entityNo,String sourceSystem,String sourceTemplateNo,String targetTemplateNo,
                        String templateVersionNo,String migrationBatchNo,String planHash,String actorNo,String mode,String segmentNo,
                        List<AudienceItem> audiences,String status,int planned,int issued,int skipped,int pending,
-                       Map<String,Integer> skipReasons,long amountMinor,Instant occurredAt,List<Item> results,int usedCount,long usedAmountMinor,String targetDesc) {
+                       Map<String,Integer> skipReasons,long amountMinor,Instant occurredAt,List<Item> results,int usedCount,long usedAmountMinor,String targetDesc, String documentNo) {
+        public View(String issueNo, String batchNo, String entityNo, String sourceSystem, String sourceTemplateNo, String targetTemplateNo, String templateVersionNo, String migrationBatchNo, String planHash, String actorNo, String mode, String segmentNo, List<AudienceItem> audiences, String status, int planned, int issued, int skipped, int pending, Map<String,Integer> skipReasons, long amountMinor, Instant occurredAt, List<Item> results, int usedCount, long usedAmountMinor, String targetDesc) { this(issueNo, batchNo, entityNo, sourceSystem, sourceTemplateNo, targetTemplateNo, templateVersionNo, migrationBatchNo, planHash, actorNo, mode, segmentNo, audiences, status, planned, issued, skipped, pending, skipReasons, amountMinor, occurredAt, results, usedCount, usedAmountMinor, targetDesc, null); }
+        public View withDocumentNo(String documentNo) { return new View(issueNo, batchNo, entityNo, sourceSystem, sourceTemplateNo, targetTemplateNo, templateVersionNo, migrationBatchNo, planHash, actorNo, mode, segmentNo, audiences, status, planned, issued, skipped, pending, skipReasons, amountMinor, occurredAt, results, usedCount, usedAmountMinor, targetDesc, documentNo); }
+
         public View {audiences=List.copyOf(audiences);skipReasons=Map.copyOf(skipReasons);results=List.copyOf(results);}
         public View(String issueNo,String batchNo,String entityNo,String sourceSystem,String sourceTemplateNo,String targetTemplateNo,
                     String templateVersionNo,String migrationBatchNo,String planHash,String actorNo,String mode,String segmentNo,
@@ -32,11 +35,11 @@ public final class LegacyCouponIssueViews {
         }
         public View withTargetDesc(String description) {
             return new View(issueNo,batchNo,entityNo,sourceSystem,sourceTemplateNo,targetTemplateNo,templateVersionNo,migrationBatchNo,planHash,actorNo,mode,segmentNo,
-                    audiences,status,planned,issued,skipped,pending,skipReasons,amountMinor,occurredAt,results,usedCount,usedAmountMinor,description);
+                    audiences,status,planned,issued,skipped,pending,skipReasons,amountMinor,occurredAt,results,usedCount,usedAmountMinor,description,documentNo);
         }
         public View withUsage(int count,long amount) {
             return new View(issueNo,batchNo,entityNo,sourceSystem,sourceTemplateNo,targetTemplateNo,templateVersionNo,migrationBatchNo,planHash,actorNo,mode,segmentNo,
-                    audiences,status,planned,issued,skipped,pending,skipReasons,amountMinor,occurredAt,results,count,amount,targetDesc);
+                    audiences,status,planned,issued,skipped,pending,skipReasons,amountMinor,occurredAt,results,count,amount,targetDesc,documentNo);
         }
     }
 }

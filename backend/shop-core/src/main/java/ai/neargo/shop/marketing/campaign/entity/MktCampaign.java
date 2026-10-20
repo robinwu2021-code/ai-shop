@@ -20,6 +20,9 @@ import lombok.Setter;
 @Setter
 @TableName("mkt_campaign")
 public class MktCampaign extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     /** 店铺券：用户领取后在结算页抵扣。 */
     public static final String COUPON = "COUPON";

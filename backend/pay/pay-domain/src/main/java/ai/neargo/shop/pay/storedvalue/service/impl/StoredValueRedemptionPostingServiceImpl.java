@@ -57,6 +57,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Fixed lock order: fence -> intent -> account -> lots. Every source/authorization lookup precedes this boundary. */
 @Service
 public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedemptionPostingService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final EntitlementSourceFence fences;
     private final EntUseIntentMapper intents;
     private final SvAccountMapper accounts;
@@ -179,6 +181,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
             usage.setServiceStaffName(frozen.source().serviceStaffName()); usage.setSourceOrderNo(source.sourceNo());
             usage.setOperatorNo(ctx.actorNo()); usage.setStatus("COMMITTED"); usage.setOccurredAt(at);
             changed(usages.insert(usage));
+            documentNumbers.bind(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, ctx.tenantNo(), usage.getUsageNo());
             statements.redemption(ctx, account, usage, voucher);
             stores.consume(ctx, c.userNo(), c.entityNo(), c.storeNo(), frozen.source().storeName(), at);
             events.publish(new EntitlementUsed(no("UE", List.of(ctx.tenantNo(), operation), json), row.getUsageNo(),
@@ -205,6 +208,7 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
         voucher.setPrincipalDelta(-principal); voucher.setBonusDelta(-bonus);
         voucher.setAfterPrincipalMinor(account.getPrincipalMinor()); voucher.setAfterBonusMinor(account.getBonusMinor());
         voucher.setOccurredAt(at); changed(vouchers.insert(voucher));
+        documentNumbers.bind(ai.neargo.shop.numbering.DocumentType.SV_VOUCHER, ctx.tenantNo(), voucher.getVoucherNo());
         for (var part : parts) {
             var entry = new SvEntry(); audit(entry, ctx, now()); entry.setVoucherNo(voucher.getVoucherNo());
             entry.setLotNo(part.getLotNo()); entry.setPrincipalDelta(-part.getPrincipalMinor());
@@ -229,9 +233,9 @@ public class StoredValueRedemptionPostingServiceImpl implements StoredValueRedem
                 || account.getBonusMinor() < account.getHeldBonusMinor()) conflict();
         account.setUpdatedAt(now()); account.setUpdatedBy(ctx.actorNo()); changed(accounts.updateById(account));
     }
-    private static HoldView view(EntUseIntent row) {
+    private HoldView view(EntUseIntent row) {
         return new HoldView(row.getOperationNo(), State.valueOf(row.getStatus()), row.getOperationNo(), row.getUsageNo(),
-                instant(row.getCommittedAt() == null ? row.getCreatedAt() : row.getCommittedAt()));
+                instant(row.getCommittedAt() == null ? row.getCreatedAt() : row.getCommittedAt()), documentNumbers.find(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, row.getTenantNo(), row.getUsageNo()));
     }
     private static void changed(int result) { if (result != 1) conflict(); }
     private static LocalDateTime now() {

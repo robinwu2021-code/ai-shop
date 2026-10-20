@@ -29,6 +29,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Creation reserves every eligible grant atomically; each bounded resume commits one grant and its cursor. */
 @Component
 public class EntitlementIssueBatchWriter {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final EntIssueBatchMapper batches;
     private final EntitlementGrantService grants;
     private final EntitlementCommandDeduplicator commands;
@@ -54,6 +56,7 @@ public class EntitlementIssueBatchWriter {
             row.setVersion(0L); row.setDeleted(0); row.setCreatedBy(scope.actorNo()); row.setUpdatedBy(scope.actorNo());
             row.setCreatedAt(LocalDateTime.ofInstant(snapshot.createdAt(), ZoneOffset.UTC)); row.setUpdatedAt(row.getCreatedAt());
             changed(batches.insert(row));
+            documentNumbers.bind(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_ISSUE_BATCH, scope.tenantNo(), row.getBatchNo());
             // Only PAY/TARGETED facts are consulted here: all source facts are in this same local batch snapshot.
             for (int index = 0; index < snapshot.audience().recipients().size(); index++) {
                 var recipient = snapshot.audience().recipients().get(index);
@@ -73,6 +76,7 @@ public class EntitlementIssueBatchWriter {
     }
     @Transactional("payTxManager")
     public boolean step(CatalogScope scope, String no, int expectedCursor) {
+        no=documentNumbers.resolve(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_ISSUE_BATCH,scope.tenantNo(),no);
         var row = owned(scope, no, true);
         if (row.getPendingCount() == 0 || row.getCursorOffset() != expectedCursor) return false;
         var snap = json.readValue(row.getAudienceSnapshot(), BatchSnapshot.class);
@@ -105,6 +109,7 @@ public class EntitlementIssueBatchWriter {
         row.setUpdatedAt(LocalDateTime.now(ZoneOffset.UTC)); changed(batches.updateById(row));
     }
     public EntIssueBatch owned(CatalogScope scope, String no, boolean lock) {
+        no=documentNumbers.resolve(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_ISSUE_BATCH,scope.tenantNo(),no);
         var row = lock ? batches.lock(scope.tenantNo(), scope.entityNo(), no) : batches.find(scope.tenantNo(), scope.entityNo(), no);
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
         return row;
@@ -112,7 +117,7 @@ public class EntitlementIssueBatchWriter {
     public BatchView view(EntIssueBatch row) {
         return new BatchView(row.getBatchNo(), row.getStatus(), row.getPlannedCount(), row.getIssuedCount(),
                 row.getSkippedCount(), row.getFailedCount(), row.getPendingCount(),
-                Arrays.asList(json.readValue(row.getRecipientResults(), Item[].class)));
+                Arrays.asList(json.readValue(row.getRecipientResults(), Item[].class)), documentNumbers.find(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_ISSUE_BATCH, row.getTenantNo(), row.getBatchNo()));
     }
     private static void changed(int n) { if (n != 1) throw BizException.of(ErrorCode.CONFLICT); }
 }

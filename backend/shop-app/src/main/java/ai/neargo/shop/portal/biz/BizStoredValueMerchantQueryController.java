@@ -97,11 +97,16 @@ public class BizStoredValueMerchantQueryController {
     }
     private static RecordView record(StoredValueMerchantViews.Record r,StoredValueCustomerProfilePort.Profile p){
         return new RecordView(r.recordNo(),p==null?"顾客":p.maskedName(),p==null?"":p.maskedPhone(),r.type(),r.title(),r.storeNo(),r.storeName(),
-                r.currency(),r.signedAmountMinor(),r.balanceAfterMinor(),r.occurredAt(),r.businessNo(),r.planNo(),r.versionNo(),r.paidAmountMinor(),r.bonusAmountMinor());
+                r.currency(),r.signedAmountMinor(),r.balanceAfterMinor(),r.occurredAt(),r.businessNo(),r.planNo(),r.versionNo(),r.paidAmountMinor(),r.bonusAmountMinor(),r.documentNo(),r.voucherDocumentNo());
     }
     public record AccountView(String accountRef,String maskedName,String maskedPhone,String currency,long balanceMinor,
             long heldMinor,long availableMinor,Instant lastOccurredAt,Instant lastRechargeAt){ }
     public record RecordView(String recordNo,String maskedName,String maskedPhone,String type,String title,String storeNo,String storeName,
             String currency,long signedAmountMinor,long balanceAfterMinor,Instant occurredAt,String businessNo,String planNo,String versionNo,
-            Long paidAmountMinor,Long bonusAmountMinor){ }
+            Long paidAmountMinor,Long bonusAmountMinor,String documentNo,String voucherDocumentNo){
+        public RecordView(String recordNo,String maskedName,String maskedPhone,String type,String title,String storeNo,String storeName,
+                String currency,long signedAmountMinor,long balanceAfterMinor,Instant occurredAt,String businessNo,String planNo,String versionNo,
+                Long paidAmountMinor,Long bonusAmountMinor){this(recordNo,maskedName,maskedPhone,type,title,storeNo,storeName,currency,signedAmountMinor,
+                    balanceAfterMinor,occurredAt,businessNo,planNo,versionNo,paidAmountMinor,bonusAmountMinor,null,null);}
+    }
 }

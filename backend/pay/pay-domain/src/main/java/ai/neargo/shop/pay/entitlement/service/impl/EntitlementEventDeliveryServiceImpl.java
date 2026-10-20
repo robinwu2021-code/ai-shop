@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.entitlement.service.impl;
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.pay.entitlement.service.EntitlementCursorCodec;
 import ai.neargo.shop.pay.entitlement.service.EntitlementEventDeliveryService;
 import ai.neargo.shop.pay.entitlement.service.EntitlementRecords;
@@ -29,6 +31,8 @@ import tools.jackson.databind.ObjectMapper;
 @Service("entitlementEventDeliveryService")
 @Transactional("payTxManager")
 public class EntitlementEventDeliveryServiceImpl implements EntitlementEventDeliveryService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private static final String TENANT="MAIN";
     private final PayEntOutboxMapper outbox;
     private final PayEntExceptionMapper exceptions;
@@ -61,7 +65,8 @@ public class EntitlementEventDeliveryServiceImpl implements EntitlementEventDeli
         EntitlementRecords.audit(row,new EntitlementContext(TENANT,"SYSTEM",eventNo,event.getPayloadHash()));
         row.setExceptionNo("EX"+EntitlementRecords.digest(TENANT+":OUTBOX_DELIVERY:"+eventNo).substring(0,60));
         row.setEntityNo(fact.entityNo()); row.setKind("OUTBOX_DELIVERY"); row.setBizNo(eventNo);
-        row.setEvidence(json.writeValueAsString(evidence(event))); exceptions.claim(row);
+        row.setEvidence(json.writeValueAsString(evidence(event))); int created = exceptions.claim(row);
+        if (created == 1) documents.bind(DocumentType.ENTITLEMENT_EXCEPTION, TENANT, row.getExceptionNo());
         row=exceptions.lock(TENANT,row.getExceptionNo());
         if(!fact.entityNo().equals(row.getEntityNo())) throw BizException.of(ErrorCode.CONFLICT);
         if("RESOLVED".equals(row.getStatus())) throw BizException.of(ErrorCode.CONFLICT);
@@ -127,9 +132,10 @@ public class EntitlementEventDeliveryServiceImpl implements EntitlementEventDeli
         action.setActionNo("EA"+EntitlementRecords.digest(TENANT+":"+key).substring(0,60));
         action.setExceptionNo(no); action.setEntityNo(scope.entityNo()); action.setActorNo(scope.actorNo());
         action.setOperationKind(mode); action.setRequestKey(key); action.setPayloadHash(hash); action.setReason(command.reason());
-        actions.claim(action);
+        int created = actions.claim(action);
         action=actions.lock(TENANT,key);
         if(!hash.equals(action.getPayloadHash())) throw BizException.of(ErrorCode.CONFLICT);
+        if (created == 1) documents.bind(DocumentType.ENTITLEMENT_EXCEPTION_ACTION, TENANT, action.getActionNo());
         row.setEvidence(json.writeValueAsString(evidence(event))); row.setLastAction(mode);
         row.setHandledBy(scope.actorNo()); row.setHandledAt(EntitlementRecords.now()); changed(row,scope.actorNo());
         var result=view(row);
@@ -148,6 +154,6 @@ public class EntitlementEventDeliveryServiceImpl implements EntitlementEventDeli
     }
     private ExceptionView view(PayEntException row) {
         return new ExceptionView(row.getExceptionNo(),row.getEntityNo(),row.getKind(),row.getBizNo(),row.getStatus(),
-                json.readValue(row.getEvidence(),Evidence.class),row.getLastAction(),row.getVersion());
+                json.readValue(row.getEvidence(),Evidence.class),row.getLastAction(),row.getVersion()).withDocumentNo(documents.find(DocumentType.ENTITLEMENT_EXCEPTION, TENANT, row.getExceptionNo()));
     }
 }

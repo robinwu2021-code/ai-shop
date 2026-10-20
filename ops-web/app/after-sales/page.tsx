@@ -138,7 +138,7 @@ function AfterSalesInner() {
   };
 
   const columns: Column<AfterSale>[] = [
-    { header: c.colAsNo, cell: (a) => <IdCell value={a.afterSaleNo} />, numeric: true, align: "start" },
+    { header: c.colAsNo, cell: (a) => <IdCell value={a.documentNo ?? ""} />, numeric: true, align: "start" },
     { header: c.colOrderNo, cell: (a) => <IdCell value={a.orderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (a) => a.merchantName },
     { header: c.colBuyer, cell: (a) => a.buyerNickname },
@@ -289,7 +289,7 @@ function AfterSalesInner() {
       <Drawer
         open={!!current}
         onOpenChange={(o) => { if (!o) { setCurrent(null); setForm(null); } }}
-        title={current ? `${current.afterSaleNo} · ${current.merchantName}` : ""}
+        title={current ? `${current.documentNo ?? ""} · ${current.merchantName}` : ""}
         desc={current ? fill(c.drawerOrder, { no: current.orderNo }) : undefined}
         width="w-[560px]"
         footer={

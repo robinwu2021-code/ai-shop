@@ -52,6 +52,9 @@ public interface PayoutService {
                     long amountMinor, int billCount, String currency, String status, String channel,
                     String paymentRef, String bankFlowNo,
                     Long exportedAt, Long paidAt, String paidBy, Long matchedAt, String failReason,
-                    List<String> settleNos) {
+                    List<String> settleNos, java.util.List<String> settleDocumentNos) {
+    public PayoutVO(String payoutNo, String batchNo, String entityNo, String payMerchantNo, String accountName, String bankName, String bankBranch, String accountNoMasked, long amountMinor, int billCount, String currency, String status, String channel, String paymentRef, String bankFlowNo, Long exportedAt, Long paidAt, String paidBy, Long matchedAt, String failReason, List<String> settleNos) { this(payoutNo, batchNo, entityNo, payMerchantNo, accountName, bankName, bankBranch, accountNoMasked, amountMinor, billCount, currency, status, channel, paymentRef, bankFlowNo, exportedAt, paidAt, paidBy, matchedAt, failReason, settleNos, java.util.List.of()); }
+    public PayoutVO withSettleDocumentNos(java.util.List<String> settleDocumentNos) { return new PayoutVO(payoutNo, batchNo, entityNo, payMerchantNo, accountName, bankName, bankBranch, accountNoMasked, amountMinor, billCount, currency, status, channel, paymentRef, bankFlowNo, exportedAt, paidAt, paidBy, matchedAt, failReason, settleNos, settleDocumentNos); }
+
     }
 }

@@ -7,7 +7,10 @@ public final class MigrationImportViews {
         public ImportCommand { ContractChecks.id(planNo);ContractChecks.require(reason!=null && !reason.isBlank() && reason.length()<=500); }
     }
     public record ImportView(String importNo,String planNo,String entityNo,String sourceDecisionNo,String planHash,
-                             String status,long assetCount,long archivalCount,boolean issuanceEnabledAtImport,Instant importedAt) {
+                             String status,long assetCount,long archivalCount,boolean issuanceEnabledAtImport,Instant importedAt, String documentNo) {
+        public ImportView(String importNo, String planNo, String entityNo, String sourceDecisionNo, String planHash, String status, long assetCount, long archivalCount, boolean issuanceEnabledAtImport, Instant importedAt) { this(importNo, planNo, entityNo, sourceDecisionNo, planHash, status, assetCount, archivalCount, issuanceEnabledAtImport, importedAt, null); }
+        public ImportView withDocumentNo(String documentNo) { return new ImportView(importNo, planNo, entityNo, sourceDecisionNo, planHash, status, assetCount, archivalCount, issuanceEnabledAtImport, importedAt, documentNo); }
+
         public ImportView {
             ContractChecks.id(importNo);ContractChecks.id(planNo);ContractChecks.id(entityNo);ContractChecks.id(sourceDecisionNo);
             ContractChecks.hash(planHash);ContractChecks.present(importedAt);

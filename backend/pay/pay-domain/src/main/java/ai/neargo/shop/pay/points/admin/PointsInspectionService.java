@@ -85,7 +85,11 @@ public interface PointsInspectionService {
             String bizRef,
             String currency,
             long ratePoints,
-            long rateMinor) {}
+            long rateMinor, String documentNo) {
+        public VoucherView(long id, String voucherNo, String bizRef, String currency, long ratePoints, long rateMinor) {
+            this(id,voucherNo,bizRef,currency,ratePoints,rateMinor,null);
+        }
+    }
 
     record VoucherPage(List<VoucherView> rows, long next, boolean hasMore) {
         public VoucherPage {
@@ -102,7 +106,12 @@ public interface PointsInspectionService {
             Bucket bucket,
             long deltaPoints,
             long afterPoints,
-            long at) {}
+            long at,String voucherDocumentNo) {
+        public EntryView(long id,String entryNo,String voucherNo,HolderType holderType,String holderNo,Bucket bucket,
+                long deltaPoints,long afterPoints,long at) {
+            this(id,entryNo,voucherNo,holderType,holderNo,bucket,deltaPoints,afterPoints,at,null);
+        }
+    }
 
     record EntryPage(List<EntryView> rows, long next, boolean hasMore) {
         public EntryPage {
@@ -126,7 +135,11 @@ public interface PointsInspectionService {
             String voucherNo,
             FlowBucket bucket,
             long deltaMinor,
-            long afterMinor) {}
+            long afterMinor,String voucherDocumentNo) {
+        public FlowView(long id,String flowNo,String voucherNo,FlowBucket bucket,long deltaMinor,long afterMinor) {
+            this(id,flowNo,voucherNo,bucket,deltaMinor,afterMinor,null);
+        }
+    }
 
     record FlowPage(List<FlowView> rows, long next, boolean hasMore) {
         public FlowPage {

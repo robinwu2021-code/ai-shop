@@ -76,7 +76,7 @@ public class OpsPayoutListAppServiceImpl implements OpsPayoutListAppService {
                         payoutAccounts.decryptAccountNumber(acc.accountNo()),
                         acc.bankName(), acc.bankBranch(), p.amountMinor(), p.billCount(),
                         // 附言带放款单号：银行回单上这个号能直接勾到记录
-                        "货款-" + p.entityNo() + "-" + p.payoutNo(), p.settleNos(), p.payoutNo()));
+                        "货款-" + p.entityNo() + "-" + p.payoutNo(), p.settleNos(), p.payoutNo()).withSettleDocumentNos(p.settleDocumentNos()));
             }
             payoutService.markExported(rows.stream().map(PayoutRow::payoutNo)
                     .filter(java.util.Objects::nonNull).toList(), null);
@@ -155,7 +155,8 @@ public class OpsPayoutListAppServiceImpl implements OpsPayoutListAppService {
                     acc.bankName(), acc.bankBranch(), amount, payable.size(),
                     // 银行附言要能回勾：给的是主体号不是商家名 —— 名字会改，号不会
                     "货款-" + ent,
-                    payable.stream().map(SettleBillVO::settleNo).toList(), null));
+                    payable.stream().map(SettleBillVO::settleNo).toList(), null)
+                    .withSettleDocumentNos(payable.stream().map(SettleBillVO::documentNo).filter(java.util.Objects::nonNull).toList()));
         }
         return new PayoutListVO(rows, blocked, total);
     }

@@ -15,6 +15,7 @@ import type { PurchaseInvoice } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { IdCell } from "@/components/ui/misc";
 import { HelpNote } from "@/components/ui/help-note";
 import { SectionHeader } from "@/components/ui/section-header";
 import type { FinanceCopy } from "./copy";
@@ -65,9 +66,14 @@ export function PurchaseInvoiceTab({ c, canVerify }: { c: FinanceCopy; canVerify
     {
       header: c.piColSettle,
       // 这张票覆盖哪几张结算单 —— 核验通过之后那几张才付得了
-      cell: (r) => (r.settleNos.length
-        ? <span className="font-mono txt-caption">{r.settleNos.join(" ")}</span>
-        : <span className="text-muted-foreground">—</span>),
+      cell: (r) => <div>
+        {r.settleDocumentNos?.length
+          ? <span className="font-mono txt-caption">{r.settleDocumentNos.join(" ")}</span>
+          : <span className="text-muted-foreground">—</span>}
+        <details className="txt-caption"><summary>{c.internalSettlementNos}</summary>
+          <IdCell value={r.settleNos.join(" ")} />
+        </details>
+      </div>,
       width: "10rem",
     },
     {

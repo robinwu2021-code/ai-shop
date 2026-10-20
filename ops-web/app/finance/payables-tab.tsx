@@ -17,6 +17,7 @@ import type { Settlement } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { IdCell } from "@/components/ui/misc";
 import { HelpNote } from "@/components/ui/help-note";
 import { SectionHeader } from "@/components/ui/section-header";
 import { exportCsv } from "@/lib/export-csv";
@@ -61,12 +62,15 @@ export function PayablesTab({ c, canEdit, canPay }: {
    */
   const [blocked, setBlocked] = useState<PayoutBlockedRow[] | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [auditReferences, setAuditReferences] = useState<string[][]>([]);
 
   async function doExport() {
     setExporting(true);
     try {
       const vo = await api.payoutList();
       setBlocked(vo.blocked);
+      // Keep only internal reference IDs for audit; plaintext bank accounts never enter component state.
+      setAuditReferences(vo.rows.map((row) => row.settleNos));
       if (vo.rows.length) {
         /*
          * **明文账号只在这一刻存在**：从响应直接进 CSV，不落任何 state。
@@ -82,7 +86,7 @@ export function PayablesTab({ c, canEdit, canPay }: {
           { header: c.plColAmount, value: (r) => (r.amountMinor / 100).toFixed(2) },
           { header: c.plColBills, value: (r) => r.billCount },
           { header: c.plColRemark, value: (r) => r.remark },
-          { header: c.plColSettleNos, value: (r) => r.settleNos.join(" ") },
+          { header: c.plColSettleNos, value: (r) => (r.settleDocumentNos ?? []).join(" ") },
         ], vo.rows);
       }
     } finally {
@@ -135,7 +139,7 @@ export function PayablesTab({ c, canEdit, canPay }: {
       header: c.pyColBill,
       cell: (r) => (
         <div>
-          <div className="font-mono txt-body">{r.settleNo}</div>
+          <div className="font-mono txt-body">{r.documentNo ?? "—"}</div>
           <div className="txt-caption text-muted-foreground">{r.merchantNo} · {r.subOrderNo}</div>
         </div>
       ),
@@ -255,6 +259,9 @@ export function PayablesTab({ c, canEdit, canPay }: {
         </div>
       )}
 
+      {!!auditReferences.length && <details className="mb-3 txt-caption"><summary>{c.internalSettlementNos}</summary>
+        {auditReferences.map((references, index) => <div key={index}><IdCell value={references.join(" ")} /></div>)}
+      </details>}
       {blocked !== null && blocked.length > 0 && (
         <HelpNote className="mb-3">
           <div className="txt-strong">{c.plBlockedTitle.replace("{n}", String(blocked.length))}</div>

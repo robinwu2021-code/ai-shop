@@ -18,7 +18,7 @@ import type { ComposerTranslation } from "vue-i18n";
  */
 export function buildOrderCopyText(order: Order, t: ComposerTranslation): string {
   const lines: string[] = [
-    `${t("order.no")}: ${order.orderNo}`,
+    ...(order.documentNo ? [`${t("order.no")}: ${order.documentNo}`] : []),
     `${t("order.createdAt")}: ${datetime(order.createdAt)}`,
   ];
   const r = order.receiver;

@@ -52,6 +52,8 @@ import tools.jackson.databind.ObjectMapper;
 /** White-listed reads bind tenant and beneficiary; merchant records additionally bind owner and permitted stores. */
 @Service
 public class EntitlementQueryServiceImpl implements EntitlementQueryService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final EntInstanceMapper instances;
     private final EntPeriodBucketMapper buckets;
     private final EntUsageMapper usages;
@@ -125,7 +127,7 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
     public UsageDetail usage(EntitlementContext context, UsageQuery q) {
         var row = usages.selectOne(Wrappers.<EntUsage>lambdaQuery().eq(EntUsage::getTenantNo, context.tenantNo())
                 .eq(EntUsage::getUserNo, q.userNo()).eq(q.entityNo() != null, EntUsage::getEntityNo, q.entityNo())
-                .eq(EntUsage::getUsageNo, q.usageNo()));
+                .eq(EntUsage::getUsageNo, documentNumbers.resolve(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, context.tenantNo(), q.usageNo())));
         if (row == null) throw BizException.of(ErrorCode.NOT_FOUND);
         if ("MIGRATED".equals(row.getProtocol())) {
             return new UsageDetail(usageItem(row), List.of(), null, row.getSourceOrderNo(), null);
@@ -212,7 +214,7 @@ public class EntitlementQueryServiceImpl implements EntitlementQueryService {
     private UsageItem usageItem(EntUsage row) {
         return new UsageItem(row.getUsageNo(), AssetKind.valueOf(row.getAssetKind()), row.getTitle(),
                 row.getAmountMinor(), row.getCurrency(), row.getUnits(), row.getStoreNo(), row.getStoreName(),
-                instant(row.getOccurredAt()), row.getStatus());
+                instant(row.getOccurredAt()), row.getStatus(), documentNumbers.find(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, row.getTenantNo(), row.getUsageNo()));
     }
     private EntInstance owned(EntitlementContext context, String user, String entity, String no) {
         var row = instances.selectOne(Wrappers.<EntInstance>lambdaQuery()

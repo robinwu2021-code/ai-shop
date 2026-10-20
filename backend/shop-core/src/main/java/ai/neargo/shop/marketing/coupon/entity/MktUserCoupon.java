@@ -10,6 +10,9 @@ import lombok.Setter;
 @Setter
 @TableName("mkt_user_coupon")
 public class MktUserCoupon extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     public static final String UNUSED = "UNUSED";
     public static final String USED = "USED";

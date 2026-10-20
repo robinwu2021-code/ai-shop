@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 回调乱序、验签失败、下单幂等、越权读单。重复的用例不是多一层保险，
  * 是多一处改契约时要同步的地方。
  */
-@SpringBootTest
+@SpringBootTest(properties="spring.datasource.url=jdbc:h2:mem:consumer-order-flow;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1")
 @ActiveProfiles("test")
 class ConsumerOrderFlowTest {
 
@@ -145,6 +145,9 @@ class ConsumerOrderFlowTest {
         String second = createOrder(token, "idem-same-key");
 
         assertThat(second).isEqualTo(first);
+        assertThat(ai.neargo.shop.numbering.DocumentNumberFormatter.isValid(
+            ai.neargo.shop.numbering.DocumentType.TRADE_ORDER,first)).isTrue();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM core_document_number WHERE source_no=? AND document_type='TRADE_ORDER'",Integer.class,first)).isEqualTo(1);
     }
 
     @Test

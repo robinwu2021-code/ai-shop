@@ -163,7 +163,7 @@ function MarketingInner() {
     // 默认「指定用户」：它是唯一后端能真发的，也是最高频的场景（客服补偿券）
     target: "SINGLE_USER", targetDesc: "", userNo: "", count: "1",
   });
-  const [budgetEdit, setBudgetEdit] = useState<{ couponNo: string; value: string } | null>(null);
+  const [budgetEdit, setBudgetEdit] = useState<{ couponNo: string; documentNo?: string | null; value: string } | null>(null);
   const [couponForm, setCouponForm] = useState<CouponForm | null>(null);
   const [slotForm, setSlotForm] = useState<SlotForm | null>(null);
 
@@ -274,14 +274,14 @@ function MarketingInner() {
   const askCouponStatus = (x: Coupon, status: CouponStatus) =>
     confirm({
       title: status === "PAUSED" ? c.pauseCouponTitle : c.resumeCouponTitle,
-      desc: `${x.name}（${x.couponNo}）`,
+      desc: x.documentNo ? `${x.name}（${x.documentNo}）` : x.name,
       danger: status === "PAUSED",
       requireReason: true,
       action: (reason) => statusMut.mutateAsync({ couponNo: x.couponNo, status, reason }),
     });
 
   const couponColumns: Column<Coupon>[] = [
-    { header: c.colCouponNo, cell: (x) => x.couponNo, numeric: true, align: "start" },
+    { header: c.colCouponNo, cell: (x) => x.documentNo ?? "—", numeric: true, align: "start" },
     { header: c.colName, cell: (x) => x.name },
     { header: c.colType, cell: (x) => <StatusBadge map={couponTypeMap} value={x.type} /> },
     { header: c.colValue, cell: (x) => couponValue(x, c), numeric: true },
@@ -301,7 +301,7 @@ function MarketingInner() {
           disabled={!canIssue}
           title={c.budgetTitle}
           className="focus-ring flex w-full items-center gap-2 rounded-field px-1 transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
-          onClick={() => setBudgetEdit({ couponNo: r.couponNo, value: (r.budget / 100).toFixed(2) })}
+          onClick={() => setBudgetEdit({ couponNo: r.couponNo, documentNo: r.documentNo, value: (r.budget / 100).toFixed(2) })}
         >
           {r.budget > 0 && (
             <Progress value={r.issuedAmount} total={r.budget} warnAt={90} showText={false} className="w-20" />
@@ -348,7 +348,7 @@ function MarketingInner() {
                     }
                   : {
                       label: t(ARCHIVE_LABEL_KEY), danger: true,
-                      onSelect: () => confirm(archiveConfirm(c.entityCoupon, x.name, x.couponNo, () => archiveMut.mutateAsync({ kind: "coupon", no: x.couponNo, restore: false }))),
+                      onSelect: () => confirm(archiveConfirm(c.entityCoupon, x.name, x.documentNo ?? "", () => archiveMut.mutateAsync({ kind: "coupon", no: x.couponNo, restore: false }))),
                     }),
               ]}
             />
@@ -359,7 +359,7 @@ function MarketingInner() {
   ];
 
   const issueColumns: Column<CouponIssue>[] = [
-    { header: c.colIssueNo, cell: (r) => r.issueNo, numeric: true, align: "start" },
+    { header: c.colIssueNo, cell: (r) => r.documentNo ?? "—", numeric: true, align: "start" },
     { header: c.colCoupon, cell: (r) => r.couponName },
     { header: c.colTarget, cell: (r) => `${t(`issueTarget.${r.target}`)} · ${r.targetDesc}` },
     { header: c.colCount, cell: (r) => r.count, numeric: true },
@@ -385,7 +385,7 @@ function MarketingInner() {
     });
 
   const campaignColumns: Column<MerchantCampaign>[] = [
-    { header: c.colCampaignNo, cell: (x) => x.campaignNo, numeric: true, align: "start" },
+    { header: c.colCampaignNo, cell: (x) => x.documentNo ?? "—", numeric: true, align: "start" },
     { header: c.colName, cell: (x) => x.name },
     { header: c.colMerchant, cell: (x) => x.merchantNo },
     { header: c.colType, cell: (x) => <StatusBadge map={campaignTypeMap} value={x.type} /> },
@@ -588,7 +588,7 @@ function MarketingInner() {
         open={!!issuing}
         onOpenChange={(o) => !o && setIssuing(null)}
         title={issuing ? fill(c.issueTitle, { name: issuing.name }) : ""}
-        desc={issuing?.couponNo}
+        desc={issuing?.documentNo ?? undefined}
         footer={
           issuing ? (
             <Button
@@ -653,7 +653,7 @@ function MarketingInner() {
 
       {/* 预算编辑：入口在券列表的预算列（点数字），此处只放校验说明 */}
       {budgetEdit && (
-        <Drawer open onOpenChange={() => setBudgetEdit(null)} title={c.budgetTitle} desc={budgetEdit.couponNo}>
+        <Drawer open onOpenChange={() => setBudgetEdit(null)} title={c.budgetTitle} desc={budgetEdit.documentNo ?? undefined}>
           <div className="space-y-1">
             <Label htmlFor="bud" required>{c.fieldBudget}</Label>
             <Input id="bud" className="w-full" value={budgetEdit.value} onChange={(e) => setBudgetEdit({ ...budgetEdit, value: e.target.value })} />
@@ -672,7 +672,7 @@ function MarketingInner() {
           open
           onOpenChange={(o) => !o && setCouponForm(null)}
           title={couponForm.couponNo ? fill(c.editCouponTitle, { name: couponForm.name }) : c.newCouponTitle}
-          desc={couponForm.couponNo}
+          desc={coupons.data?.records.find((row) => row.couponNo === couponForm.couponNo)?.documentNo ?? undefined}
           footer={
             <Button loading={saveCouponMut.isPending} onClick={() => saveCouponMut.mutate(couponForm)}>
               {c.btnSaveCoupon}

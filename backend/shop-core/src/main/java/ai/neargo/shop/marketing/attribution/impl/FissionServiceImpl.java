@@ -1,5 +1,8 @@
 package ai.neargo.shop.marketing.attribution.impl;
 
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -19,6 +22,12 @@ import java.util.List;
 /** {@link FissionService} 实现。 */
 @Service
 public class FissionServiceImpl implements FissionService {
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
 
     private final ai.neargo.shop.spi.entitlement.LegacyCouponWriteFencePort sourceFence;
     private final FissionCampaignMapper campaignMapper;
@@ -42,13 +51,16 @@ public class FissionServiceImpl implements FissionService {
         var w = Wrappers.<MktFissionCampaign>lambdaQuery()
                 .eq(enabledOnly, MktFissionCampaign::getEnabled, true)
                 .orderByDesc(MktFissionCampaign::getId);
-        return DataScopeContext.executeWithoutScope(() -> campaignMapper.selectList(w))
+        return DataScopeContext.executeWithoutScope(() -> documentNumbers.load(DocumentType.MARKETING_ACTIVITY, "CORE_LEGACY", "MKT_FISSION_CAMPAIGN", campaignMapper.selectList(w), MktFissionCampaign::getFissionNo, MktFissionCampaign::setDocumentNo))
                 .stream().map(this::toVO).toList();
     }
 
     @Override
-    @Transactional
     public CampaignVO save(SaveCommand cmd, String operatorNo) {
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_ACTIVITY, 1), () -> saveNumbered(cmd, operatorNo));
+    }
+
+    private CampaignVO saveNumbered(SaveCommand cmd, String operatorNo) {
         if (cmd.name() == null || cmd.name().isBlank()) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
@@ -90,7 +102,7 @@ public class FissionServiceImpl implements FissionService {
         row.setInviteeCount(invitee);
         MktFissionCampaign toSave = row;
         DataScopeContext.executeWithoutScope(() ->
-                fresh ? campaignMapper.insert(toSave) : campaignMapper.updateById(toSave));
+                fresh ? documentNumbers.bind(DocumentType.MARKETING_ACTIVITY, "CORE_LEGACY", "MKT_FISSION_CAMPAIGN", toSave, toSave.getFissionNo(), campaignMapper::insert, MktFissionCampaign::setDocumentNo) : campaignMapper.updateById(toSave));
         return toVO(row);
     }
 
@@ -118,8 +130,8 @@ public class FissionServiceImpl implements FissionService {
 
     private MktFissionCampaign require(String fissionNo) {
         MktFissionCampaign row = DataScopeContext.executeWithoutScope(() ->
-                campaignMapper.selectOne(Wrappers.<MktFissionCampaign>lambdaQuery()
-                        .eq(MktFissionCampaign::getFissionNo, fissionNo).last("limit 1")));
+                documentNumbers.loadOne(DocumentType.MARKETING_ACTIVITY, "CORE_LEGACY", "MKT_FISSION_CAMPAIGN", campaignMapper.selectOne(Wrappers.<MktFissionCampaign>lambdaQuery()
+                        .eq(MktFissionCampaign::getFissionNo, fissionNo).last("limit 1")), MktFissionCampaign::getFissionNo, MktFissionCampaign::setDocumentNo));
         if (row == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -145,7 +157,7 @@ public class FissionServiceImpl implements FissionService {
                 nz(c.getInviterCount()), nz(c.getInviteeCount()),
                 Boolean.TRUE.equals(c.getEnabled()),
                 (int) invited, (int) converted,
-                IsoTime.toIso(c.getCreatedAt()));
+                IsoTime.toIso(c.getCreatedAt())).withDocumentNo(c.getDocumentNo());
     }
 
     /**
@@ -186,7 +198,7 @@ public class FissionServiceImpl implements FissionService {
                 coupon == null ? "" : coupon.getTitle(),
                 coupon == null || coupon.getFaceMinor() == null ? 0L : coupon.getFaceMinor(),
                 coupon == null || coupon.getThresholdMinor() == null ? 0L : coupon.getThresholdMinor(),
-                (int) mine, (int) mineConverted));
+                (int) mine, (int) mineConverted).withDocumentNo(c.documentNo()));
     }
 
     /**

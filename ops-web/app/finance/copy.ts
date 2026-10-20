@@ -2,6 +2,7 @@
 import type { PageCopy } from "@/lib/use-copy";
 
 const zh = {
+  internalSettlementNos: "内部结算标识（审计）",
   ppTitle: "积分范围开关",
   ppLoading: "加载中…",
   ppSave: "保存",
@@ -537,6 +538,7 @@ const zh = {
 };
 
 const en: typeof zh = {
+  internalSettlementNos: "Internal settlement IDs (audit)",
   ppTitle: "Points availability switches",
   ppLoading: "Loading…",
   ppSave: "Save",

@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.impl;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -32,6 +34,8 @@ import java.util.Map;
 /** {@link PayoutService} 实现。所有读写都绕数据域：放款跑在运营会话与无会话任务里 */
 @Service
 public class PayoutServiceImpl implements PayoutService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private static final Logger log = LoggerFactory.getLogger(PayoutServiceImpl.class);
     private static final String DEFAULT_CURRENCY = "CNY";
 
@@ -156,7 +160,10 @@ public class PayoutServiceImpl implements PayoutService {
                 .eq(byStatus, StlPayout::getStatus, status)
                 .eq(byEntity, StlPayout::getEntityNo, entityNo)
                 .orderByDesc(StlPayout::getId));
-        return rows.stream().map(p -> toVO(p, settleNosOf(p.getPayoutNo()))).toList();
+        var views = rows.stream().map(p -> toVO(p, settleNosOf(p.getPayoutNo()))).toList();
+        var numbers = documents.findAll(DocumentType.SETTLEMENT_BILL, "MAIN", views.stream().flatMap(v -> v.settleNos().stream()).toList());
+        return views.stream().map(view -> view.withSettleDocumentNos(view.settleNos().stream()
+                .map(numbers::get).filter(java.util.Objects::nonNull).toList())).toList();
     }
 
     @Override

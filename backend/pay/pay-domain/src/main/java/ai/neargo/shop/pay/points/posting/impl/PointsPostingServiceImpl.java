@@ -27,6 +27,8 @@ import java.util.UUID;
 /** Sole financial writer: immutable replay, conserved amounts, and one atomic pay transaction. */
 @Service("pointsPostingService")
 public class PointsPostingServiceImpl implements PointsPostingService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final PostingStore store;
     private final ObjectMapper json = new ObjectMapper();
 
@@ -41,9 +43,10 @@ public class PointsPostingServiceImpl implements PointsPostingService {
             String hash = hash(voucher);
             String no = UUID.randomUUID().toString();
             PostingResult claimed = store.claim(voucher, hash, no);
-            if (claimed.replayed()) { return claimed; }
+            if (claimed.replayed()) { return withDocumentNumber(claimed); }
+            documentNumbers.bind(ai.neargo.shop.numbering.DocumentType.POINTS_VOUCHER, "MAIN", no);
             store.applyConditions(voucher, no);
-            return claimed;
+            return withDocumentNumber(claimed);
         });
     }
 
@@ -58,6 +61,10 @@ public class PointsPostingServiceImpl implements PointsPostingService {
         DataScopeContext.executeWithoutScope(() -> { store.recordEvidence(e); return null; });
     }
 
+    private PostingResult withDocumentNumber(PostingResult result) {
+        return new PostingResult(result.voucherNo(), result.replayed(), result.resultJson(),
+                documentNumbers.find(ai.neargo.shop.numbering.DocumentType.POINTS_VOUCHER, "MAIN", result.voucherNo()));
+    }
     private String hash(Voucher voucher) {
         // Canonical lists and JSON preserve semantic equality while rejecting a changed amount under the same key.
         Voucher canonical = new Voucher(voucher.bizRef(), voucher.typeCode(), voucher.currency(), voucher.rate(),

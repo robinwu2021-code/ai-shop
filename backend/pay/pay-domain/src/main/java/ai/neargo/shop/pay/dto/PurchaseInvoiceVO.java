@@ -24,5 +24,11 @@ public record PurchaseInvoiceVO(String invoiceNo,
                                 String status,
                                 String rejectReason,
                                 boolean titleMatched,
-                                List<String> settleNos) {
+                                List<String> settleNos, String documentNo, java.util.List<String> settleDocumentNos) {
+    public PurchaseInvoiceVO(String invoiceNo, String entityNo, String period, String invoiceCode, String invoiceNumber, String invoiceType, String titleName, String titleTaxNo, long amountMinor, long taxAmountMinor, int taxRate, Long invoiceDate, String imageUrl, String status, String rejectReason, boolean titleMatched, List<String> settleNos, String documentNo) { this(invoiceNo, entityNo, period, invoiceCode, invoiceNumber, invoiceType, titleName, titleTaxNo, amountMinor, taxAmountMinor, taxRate, invoiceDate, imageUrl, status, rejectReason, titleMatched, settleNos, documentNo, java.util.List.of()); }
+    public PurchaseInvoiceVO withSettleDocumentNos(java.util.List<String> settleDocumentNos) { return new PurchaseInvoiceVO(invoiceNo, entityNo, period, invoiceCode, invoiceNumber, invoiceType, titleName, titleTaxNo, amountMinor, taxAmountMinor, taxRate, invoiceDate, imageUrl, status, rejectReason, titleMatched, settleNos, documentNo, settleDocumentNos); }
+
+        public PurchaseInvoiceVO(String invoiceNo, String entityNo, String period, String invoiceCode, String invoiceNumber, String invoiceType, String titleName, String titleTaxNo, long amountMinor, long taxAmountMinor, int taxRate, Long invoiceDate, String imageUrl, String status, String rejectReason, boolean titleMatched, List<String> settleNos) { this(invoiceNo, entityNo, period, invoiceCode, invoiceNumber, invoiceType, titleName, titleTaxNo, amountMinor, taxAmountMinor, taxRate, invoiceDate, imageUrl, status, rejectReason, titleMatched, settleNos, null); }
+        public PurchaseInvoiceVO withDocumentNo(String documentNo) { return new PurchaseInvoiceVO(invoiceNo, entityNo, period, invoiceCode, invoiceNumber, invoiceType, titleName, titleTaxNo, amountMinor, taxAmountMinor, taxRate, invoiceDate, imageUrl, status, rejectReason, titleMatched, settleNos, documentNo, settleDocumentNos); }
+
 }

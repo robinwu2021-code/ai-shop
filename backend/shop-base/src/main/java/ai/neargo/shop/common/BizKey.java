@@ -5,7 +5,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
 /**
- * 业务键生成：{@code 前缀 + yyyyMMddHHmmss + 4 位序 + 3 位随机}。
+ * 实体业务键生成：{@code 前缀 + yyMMdd + 10 位 Crockford 随机串}。
+ * 人工业务单号使用 numbering.DocumentNumberGenerator；安全凭证及内部幂等标识另按所属协议生成。
  *
  * <p>为什么不用 UUID：业务键会被人念（客服问「您的订单号是」）、会被打印在取货码小票上、
  * 会按时间排序做运营查询。UUID 三样都不占。

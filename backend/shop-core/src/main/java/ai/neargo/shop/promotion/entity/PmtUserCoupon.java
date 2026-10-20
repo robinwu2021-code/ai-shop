@@ -16,6 +16,9 @@ import lombok.Setter;
 @Setter
 @TableName("pmt_user_coupon")
 public class PmtUserCoupon extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     public static final String UNUSED = "UNUSED";
     /** 一次性券用掉了，或次卡用满了 */

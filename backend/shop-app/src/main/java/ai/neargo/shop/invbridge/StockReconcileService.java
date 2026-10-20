@@ -1,6 +1,11 @@
 package ai.neargo.shop.invbridge;
 
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.DocumentSource;
+import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Qualifier;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.product.entity.PrdGoods;
 import ai.neargo.shop.product.entity.PrdSku;
@@ -28,11 +33,16 @@ import org.springframework.jdbc.core.RowMapper;
 @Service
 @ConditionalOnInventory
 public class StockReconcileService {
-    public record OperationResult(String operationNo, String status, StockSyncService.Result result) { }
+    public record OperationResult(String operationNo, String status, StockSyncService.Result result,String documentNo) {
+        public OperationResult(String operationNo,String status,StockSyncService.Result result){this(operationNo,status,result,null);}
+    }
     public record OperationRecord(String operationNo, String skuNo, String reason, String status,
-                                  StockSyncService.Result result, LocalDateTime updatedAt) { }
+                                  StockSyncService.Result result, LocalDateTime updatedAt,String documentNo) {
+        public OperationRecord(String operationNo,String skuNo,String reason,String status,StockSyncService.Result result,LocalDateTime updatedAt){this(operationNo,skuNo,reason,status,result,updatedAt,null);}
+    }
 
     private final JdbcTemplate jdbc;
+    private final DocumentNumberCoordinator numbers;
     private final SyncAction action;
     private final StockSyncService stockSync;
     private final InvManagedService invManaged;
@@ -50,8 +60,10 @@ public class StockReconcileService {
     public StockReconcileService(DataSource dataSource, StockSyncService stockSync, InvManagedService invManaged,
                                  InventoryAclService acl, MerchantQueryPort merchants,
                                  InventoryDeliveryGuard deliveryGuard,
-                                 tools.jackson.databind.ObjectMapper json) {
+                                 tools.jackson.databind.ObjectMapper json,
+                                 @Qualifier("coreDocumentNumberCoordinator") DocumentNumberCoordinator numbers) {
         this.jdbc = new JdbcTemplate(dataSource);
+        this.numbers = numbers;
         this.stockSync = stockSync;
         this.invManaged = invManaged;
         this.acl = acl;
@@ -62,8 +74,10 @@ public class StockReconcileService {
     }
 
     StockReconcileService(JdbcTemplate jdbc, InventoryWritebackService writeback,
-                          tools.jackson.databind.ObjectMapper json) {
+                          tools.jackson.databind.ObjectMapper json,
+                                 @Qualifier("coreDocumentNumberCoordinator") DocumentNumberCoordinator numbers) {
         this.jdbc = jdbc;
+        this.numbers = numbers;
         this.action = (entity, store, sku, sourceRef) -> writeback.syncOne(entity, store, sku, sourceRef);
         this.stockSync = null;
         this.invManaged = null;
@@ -85,7 +99,7 @@ public class StockReconcileService {
         Stored stored = stored(operationNo);
         if (!Objects.equals(hash, stored.requestHash())) throw new IllegalArgumentException("operationNo 已用于其他库存请求");
         if (!inserted && "COMPLETED".equals(stored.status())) {
-            return new OperationResult(operationNo, stored.status(), readResult(stored.resultJson()));
+            return new OperationResult(operationNo, stored.status(), readResult(stored.resultJson()),documentNo(operationNo));
         }
         if (!inserted) jdbc.update("UPDATE prd_stock_sync_operation SET status='PROCESSING', updated_at=? WHERE operation_no=?",
                 LocalDateTime.now(), operationNo);
@@ -97,7 +111,7 @@ public class StockReconcileService {
             String resultJson = result == null ? null : writeResult(result);
             jdbc.update("UPDATE prd_stock_sync_operation SET status=?, result_json=?, updated_at=? WHERE operation_no=?",
                     status, resultJson, LocalDateTime.now(), operationNo);
-            return new OperationResult(operationNo, status, result);
+            return new OperationResult(operationNo, status, result,documentNo(operationNo));
         } catch (RuntimeException failure) {
             String status = failure instanceof InventoryWritebackService.MirrorNotCaughtUp ? "WAITING" : "FAILED";
             jdbc.update("UPDATE prd_stock_sync_operation SET status=?, updated_at=? WHERE operation_no=?",
@@ -164,7 +178,8 @@ public class StockReconcileService {
                 (rs, row) -> new OperationResult(operationNo, rs.getString(1), readResult(rs.getString(2))),
                 operationNo, entityNo, storeNo);
         if (rows.isEmpty()) throw new IllegalArgumentException("库存操作不存在");
-        return rows.get(0);
+        var row=rows.get(0);
+        return new OperationResult(row.operationNo(),row.status(),row.result(),documentNo(operationNo));
     }
 
     /** Merchant-safe, newest-first operation history; raw outbox payloads are never exposed. */
@@ -177,20 +192,25 @@ public class StockReconcileService {
         RowMapper<OperationRecord> mapper = (rs, row) -> new OperationRecord(rs.getString("operation_no"),
                 rs.getString("sku_no"), rs.getString("reason"), rs.getString("status"),
                 readResult(rs.getString("result_json")), rs.getTimestamp("updated_at").toLocalDateTime());
-        if (skuNo == null || skuNo.isBlank()) return jdbc.query(sql, mapper, entityNo, storeNo, safeSize, safePage * safeSize);
-        return jdbc.query(sql, mapper, entityNo, storeNo, skuNo, safeSize, safePage * safeSize);
+        var rows = skuNo == null || skuNo.isBlank() ? jdbc.query(sql, mapper, entityNo, storeNo, safeSize, safePage * safeSize)
+                : jdbc.query(sql, mapper, entityNo, storeNo, skuNo, safeSize, safePage * safeSize);
+        var documents=numbers.findAll(DocumentType.INVENTORY_SYNC,rows.stream().map(r->source(r.operationNo())).toList());
+        return rows.stream().map(r->new OperationRecord(r.operationNo(),r.skuNo(),r.reason(),r.status(),r.result(),r.updatedAt(),documents.get(source(r.operationNo())))).toList();
     }
 
     private boolean claim(String operationNo, String entityNo, String storeNo, String skuNo,
                           String reason, String hash) {
-        try {
-            jdbc.update("INSERT INTO prd_stock_sync_operation (operation_no,entity_no,store_no,sku_no,reason,request_hash,status,updated_at) VALUES (?,?,?,?,?,?,'PROCESSING',?)",
-                    operationNo, entityNo, storeNo, skuNo, reason, hash, LocalDateTime.now());
-            return true;
-        } catch (DuplicateKeyException exists) {
-            return false;
-        }
+        return numbers.transaction(Map.of(DocumentType.INVENTORY_SYNC,1),()-> {
+            try {
+                jdbc.update("INSERT INTO prd_stock_sync_operation (operation_no,entity_no,store_no,sku_no,reason,request_hash,status,updated_at) VALUES (?,?,?,?,?,?,'PROCESSING',?)",
+                        operationNo, entityNo, storeNo, skuNo, reason, hash, LocalDateTime.now());
+                numbers.bind(DocumentType.INVENTORY_SYNC,source(operationNo));
+                return true;
+            } catch (DuplicateKeyException exists) { return false; }
+        });
     }
+    private static DocumentSource source(String operationNo) {return new DocumentSource("MAIN","CORE","INVENTORY_SYNC",operationNo);}
+    private String documentNo(String operationNo) {return numbers.find(DocumentType.INVENTORY_SYNC,source(operationNo)).orElse(null);}
 
     private Stored stored(String operationNo) {
         return jdbc.queryForObject("SELECT request_hash,status,result_json FROM prd_stock_sync_operation WHERE operation_no=?",

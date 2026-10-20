@@ -13740,3 +13740,42 @@ WHERE source.point_code='OPS_POINTS__TAB_CONFIGURATION' AND source.end_code='OPS
  AND NOT EXISTS (SELECT 1 FROM sys_role_point existing WHERE existing.role_code=source.role_code
  AND existing.point_code='OPS_POINTS__TAB_EARNING_RULES' AND existing.end_code=source.end_code
  AND existing.tenant_no=source.tenant_no AND (existing.entity_no=source.entity_no OR (existing.entity_no IS NULL AND source.entity_no IS NULL)) AND existing.deleted=0);
+
+-- V542: service-local human document numbering
+-- Human-facing numbers only. Internal financial IDs, order rules and event payloads remain unchanged.
+CREATE TABLE IF NOT EXISTS pay_document_sequence (
+    seq_key VARCHAR(32) NOT NULL,
+    next_value BIGINT NOT NULL DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (seq_key)
+);
+
+CREATE TABLE IF NOT EXISTS core_document_number (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(64) NOT NULL,
+    document_type VARCHAR(40) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_resource_type VARCHAR(64) NOT NULL,
+    source_no VARCHAR(128) NOT NULL,
+    document_no VARCHAR(32) NOT NULL,
+    business_date DATE NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_core_document_no (document_no),
+    UNIQUE KEY uk_core_document_source (tenant_no,document_type,source_system,source_resource_type,source_no)
+);
+
+CREATE TABLE IF NOT EXISTS pay_document_number (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    tenant_no VARCHAR(64) NOT NULL,
+    document_type VARCHAR(40) NOT NULL,
+    source_system VARCHAR(32) NOT NULL,
+    source_resource_type VARCHAR(64) NOT NULL,
+    source_no VARCHAR(128) NOT NULL,
+    document_no VARCHAR(32) NOT NULL,
+    business_date DATE NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_pay_document_no (document_no),
+    UNIQUE KEY uk_pay_document_source (tenant_no,document_type,source_system,source_resource_type,source_no)
+);

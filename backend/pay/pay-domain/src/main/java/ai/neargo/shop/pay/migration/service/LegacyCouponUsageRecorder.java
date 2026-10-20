@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.migration.service;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.entity.EntUsage;
@@ -28,6 +30,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Common read fact, written under the original operation lock in the same pay transaction. */
 @Component
 public class LegacyCouponUsageRecorder {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private final EntUsageMapper usages;
     private final ObjectMapper json;
     private final EntLedgerMapper ledger;
@@ -60,7 +64,7 @@ public class LegacyCouponUsageRecorder {
             row.setUnits(1);row.setAmountMinor(operation.getDiscountMinor());row.setCurrency(operation.getCurrency());
             row.setItemsSnapshot("[]");row.setSourceOrderNo(operation.getSourceOrderNo());row.setOperatorNo(json.readValue(operation.getSourceSnapshot(),CheckoutFact.class).selectionActorNo());
             row.setStatus(operation.getStatus());row.setOccurredAt(operation.getSourceCommittedAt());
-            usages.insert(row);changed=true;
+            usages.insert(row); documents.bind(DocumentType.ENTITLEMENT_USAGE, ctx.tenantNo(), row.getUsageNo()); changed=true;
         } else {
             if(!"LEGACY".equals(row.getProtocol()) || !Objects.equals(row.getLegacyInstanceNo(),operation.getInstanceNo())
                     || !Objects.equals(row.getUserNo(),operation.getUserNo()) || !Objects.equals(row.getEntityNo(),operation.getEntityNo())

@@ -157,7 +157,10 @@ public interface SettlePort {
     default PaymentReceipt paymentByOutTradeNo(String outTradeNo) { return null; }
 
     record PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel,
-                          String tradeNo, long amountMinor, String currency, String status) { }
+                          String tradeNo, long amountMinor, String currency, String status, String documentNo) {
+        public PaymentReceipt(String paymentNo, String orderNo, String userNo, String payChannel, String tradeNo, long amountMinor, String currency, String status) { this(paymentNo, orderNo, userNo, payChannel, tradeNo, amountMinor, currency, status, null); }
+        public PaymentReceipt withDocumentNo(String documentNo) { return new PaymentReceipt(paymentNo, orderNo, userNo, payChannel, tradeNo, amountMinor, currency, status, documentNo); }
+ }
 
 
     /**

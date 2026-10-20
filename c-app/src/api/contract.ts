@@ -411,7 +411,7 @@ export interface ShopApi {
   myInvoices(): Promise<InvoiceRequest[]>;
   /** 某单的开票状态。**没申请过返回 null 而不是报错** —— 那是常态不是错误 */
   invoiceOfOrder(orderNo: string): Promise<InvoiceRequest | null>;
-  orderDetail(orderNo: string): Promise<Order>;
+  orderDetail(orderNo: string, paymentReference?: boolean): Promise<Order>;
   orderPointsState(orderNo: string): Promise<PointsOrderState>;
   /**
    * 免登录看件（TDD-收件人物流触达与分享裂变 §3）。发货短信/分享链接里的 `t` 是看件令牌。

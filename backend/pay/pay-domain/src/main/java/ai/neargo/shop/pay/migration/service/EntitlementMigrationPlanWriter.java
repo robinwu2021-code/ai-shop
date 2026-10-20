@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.migration.service;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
@@ -21,6 +23,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Dedup -> sorted local source evidences -> alias -> plan locks. No remote or financial calls. */
 @Component
 public class EntitlementMigrationPlanWriter {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     public static final String OPERATION="MIGRATION_PLAN";
     private final EntMigrationPlanMapper plans;
     private final EntMigrationStageMapper stages;
@@ -47,7 +51,8 @@ public class EntitlementMigrationPlanWriter {
             var row=plans.lock(scope.tenantNo(),candidate.getPlanNo());
             if(row==null || !candidate.getCommandHash().equals(row.getCommandHash())
                     || !scope.entityNo().equals(row.getEntityNo())) conflict();
-            return EntitlementMigrationPlanService.view(row);
+            documents.bind(DocumentType.ENTITLEMENT_MIGRATION_PLAN, scope.tenantNo(), row.getPlanNo());
+            return EntitlementMigrationPlanService.view(row).withDocumentNo(documents.find(DocumentType.ENTITLEMENT_MIGRATION_PLAN, row.getTenantNo(), row.getPlanNo()));
         });
     }
     private static void conflict() { throw BizException.of(ErrorCode.CONFLICT); }

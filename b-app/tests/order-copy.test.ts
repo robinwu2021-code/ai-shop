@@ -18,6 +18,7 @@ const t = ((k: string) => k) as unknown as Parameters<typeof buildOrderCopyText>
 function order(over: Partial<Order> = {}): Order {
   return {
     orderNo: "O2026100400001",
+    documentNo: "OS20261020000001",
     status: "WAIT_SHIP",
     fulfillment: "EXPRESS",
     createdAt: 1_790_000_000_000,
@@ -34,7 +35,8 @@ function order(over: Partial<Order> = {}): Order {
 describe("复制订单信息给供应商", () => {
   it("★★★ 含商品+数量+收件人+地址，且**不含售价**", () => {
     const text = buildOrderCopyText(order(), t);
-    expect(text).toContain("O2026100400001");
+    expect(text).toContain("OS20261020000001");
+    expect(text).not.toContain("O2026100400001");
     expect(text).toContain(datetime(1_790_000_000_000));
     expect(text).toContain("张三 13900005678");
     expect(text).toContain("深圳市福田区XX路1号101");
@@ -65,4 +67,11 @@ describe("复制订单信息给供应商", () => {
     expect(text).toContain("赠品小番茄 1盒 ×1");
     expect(text).toContain("order.copyGift");
   });
+  it("历史无映射时不把内部号当作人工单号复制", () => {
+    const text = buildOrderCopyText(order({ documentNo: null }), t);
+    expect(text).not.toContain("O2026100400001");
+    expect(text).not.toContain("order.no:");
+    expect(text).toContain("阳光玫瑰");
+  });
+
 });

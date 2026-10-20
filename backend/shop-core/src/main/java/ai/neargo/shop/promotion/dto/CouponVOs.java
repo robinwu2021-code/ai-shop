@@ -40,7 +40,14 @@ public final class CouponVOs {
                            String issueMode, String redeemMode, Integer timesTotal,
                            Integer totalCount, Integer receivedCount, Integer perUserLimit,
                            Long budgetMinor, Long maxExposureMinor, String status,
-                           int usedTimes, long spentMinor) {
+                           int usedTimes, long spentMinor, String documentNo) {
+    public CouponVO(String couponNo, String title, String benefitMode, Long benefitValue, Long benefitCapMinor, String benefitRef, Long minAmountMinor, Integer minQty, String scopeType, List<String> scopeRefs, String scopeDesc, String validityMode, Long startAt, Long endAt, Integer validDays, String issueMode, String redeemMode, Integer timesTotal, Integer totalCount, Integer receivedCount, Integer perUserLimit, Long budgetMinor, Long maxExposureMinor, String status, int usedTimes, long spentMinor) {
+        this(couponNo, title, benefitMode, benefitValue, benefitCapMinor, benefitRef, minAmountMinor, minQty, scopeType, scopeRefs, scopeDesc, validityMode, startAt, endAt, validDays, issueMode, redeemMode, timesTotal, totalCount, receivedCount, perUserLimit, budgetMinor, maxExposureMinor, status, usedTimes, spentMinor, null);
+    }
+    public CouponVO withDocumentNo(String number) {
+        return new CouponVO(couponNo, title, benefitMode, benefitValue, benefitCapMinor, benefitRef, minAmountMinor, minQty, scopeType, scopeRefs, scopeDesc, validityMode, startAt, endAt, validDays, issueMode, redeemMode, timesTotal, totalCount, receivedCount, perUserLimit, budgetMinor, maxExposureMinor, status, usedTimes, spentMinor, number);
+    }
+
     }
 
     /**
@@ -59,7 +66,14 @@ public final class CouponVOs {
                              /** 发券的店（原型 s24「张记粮油 · 全店」）；取不到时为空 */
                              String merchantName,
                              /** 适用范围一句话（「全店」「指定商品」）；由端上按 scopeType 说，这里给原值 */
-                             String scopeType) {
+                             String scopeType, String documentNo) {
+    public MyCouponVO(String userCouponNo, String couponNo, String title, String benefitText, String entityNo, String redeemMode, String redeemCode, Long minAmountMinor, int timesTotal, int timesUsed, int remaining, long expireAt, String status, boolean usableNow, String merchantName, String scopeType) {
+        this(userCouponNo, couponNo, title, benefitText, entityNo, redeemMode, redeemCode, minAmountMinor, timesTotal, timesUsed, remaining, expireAt, status, usableNow, merchantName, scopeType, null);
+    }
+    public MyCouponVO withDocumentNo(String number) {
+        return new MyCouponVO(userCouponNo, couponNo, title, benefitText, entityNo, redeemMode, redeemCode, minAmountMinor, timesTotal, timesUsed, remaining, expireAt, status, usableNow, merchantName, scopeType, number);
+    }
+
     }
 
     /**
@@ -82,7 +96,14 @@ public final class CouponVOs {
                                 List<SkipReason> skipReasons, long amountMinor,
                                 String operatorNo, long issuedAt,
                                 List<ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem> audiences,
-                                int usedCount, long usedAmountMinor) {
+                                int usedCount, long usedAmountMinor, String documentNo) {
+    public CouponIssueVO(String issueNo, String couponNo, String segmentNo, int planned, int issued, int skipped, List<SkipReason> skipReasons, long amountMinor, String operatorNo, long issuedAt, List<ai.neargo.shop.spi.member.MemberQueryPort.AudienceItem> audiences, int usedCount, long usedAmountMinor) {
+        this(issueNo, couponNo, segmentNo, planned, issued, skipped, skipReasons, amountMinor, operatorNo, issuedAt, audiences, usedCount, usedAmountMinor, null);
+    }
+    public CouponIssueVO withDocumentNo(String number) {
+        return new CouponIssueVO(issueNo, couponNo, segmentNo, planned, issued, skipped, skipReasons, amountMinor, operatorNo, issuedAt, audiences, usedCount, usedAmountMinor, number);
+    }
+
 
         public record SkipReason(String reason, int count) {
         }
@@ -98,7 +119,14 @@ public final class CouponVOs {
     public record CustomerCoupon(String couponNo, String title, String benefitMode,
                                  long benefitValue, long capMinor, long minAmountMinor,
                                  String entityNo, String funder, long startAt, long endAt,
-                                 Integer validDays, int remain, boolean received, String status) {
+                                 Integer validDays, int remain, boolean received, String status, String documentNo) {
+    public CustomerCoupon(String couponNo, String title, String benefitMode, long benefitValue, long capMinor, long minAmountMinor, String entityNo, String funder, long startAt, long endAt, Integer validDays, int remain, boolean received, String status) {
+        this(couponNo, title, benefitMode, benefitValue, capMinor, minAmountMinor, entityNo, funder, startAt, endAt, validDays, remain, received, status, null);
+    }
+    public CustomerCoupon withDocumentNo(String number) {
+        return new CustomerCoupon(couponNo, title, benefitMode, benefitValue, capMinor, minAmountMinor, entityNo, funder, startAt, endAt, validDays, remain, received, status, number);
+    }
+
 
         /** 与下单算价同一个实现（{@link ai.neargo.shop.promotion.entity.PmtCoupon#discountFor}） */
         public long discountFor(long base) {
@@ -116,6 +144,13 @@ public final class CouponVOs {
      * @param expireAt 到期时刻（领取时就算好落库的那个）
      */
     public record HeldCoupon(String userCouponNo, CustomerCoupon coupon, String status,
-                             boolean usableNow, long receivedAt, Long usedAt, long expireAt) {
+                             boolean usableNow, long receivedAt, Long usedAt, long expireAt, String documentNo) {
+    public HeldCoupon(String userCouponNo, CustomerCoupon coupon, String status, boolean usableNow, long receivedAt, Long usedAt, long expireAt) {
+        this(userCouponNo, coupon, status, usableNow, receivedAt, usedAt, expireAt, null);
+    }
+    public HeldCoupon withDocumentNo(String number) {
+        return new HeldCoupon(userCouponNo, coupon, status, usableNow, receivedAt, usedAt, expireAt, number);
+    }
+
     }
 }

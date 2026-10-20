@@ -1,5 +1,8 @@
 package ai.neargo.shop.event;
 
+import java.util.ArrayDeque;
+import java.util.Objects;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -48,11 +51,56 @@ public final class AfterCommit {
     private AfterCommit() {
     }
 
+    private record DeferredAction(String label, Runnable action) { }
+    private static final ThreadLocal<ArrayDeque<DeferredAction>> DEFERRED = new ThreadLocal<>();
+
+    /** Opt-in outer boundary: committed work runs only after the original transaction manager cleans up. */
+    public static <T> T withDeferredActions(Supplier<T> action) {
+        Objects.requireNonNull(action);
+        if (DEFERRED.get() != null) return action.get();
+        requireCleanBoundary();
+        var committed = new ArrayDeque<DeferredAction>();
+        DEFERRED.set(committed);
+        Throwable actionFailure = null;
+        try {
+            return action.get();
+        } catch (RuntimeException | Error failure) {
+            actionFailure = failure;
+            throw failure;
+        } finally {
+            DEFERRED.remove();
+            if (TransactionSynchronizationManager.isActualTransactionActive()
+                    || TransactionSynchronizationManager.isSynchronizationActive()) {
+                var failure = new IllegalStateException("Deferred after-commit boundary returned before transaction cleanup");
+                if (actionFailure != null) actionFailure.addSuppressed(failure);
+                else throw failure;
+            } else {
+                // A later outer failure does not undo earlier, independently committed domain work.
+                for (DeferredAction task : committed) runSafely(task.label(), task.action());
+            }
+        }
+    }
+
+    private static void requireCleanBoundary() {
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                || TransactionSynchronizationManager.isSynchronizationActive())
+            throw new IllegalStateException("Deferred after-commit actions require a transaction-free outer entry");
+    }
+
     /**
      * @param label  出错时写进日志的名字 —— 要能一眼看出是哪条链路
      * @param action 事务提交后执行的动作。**必须幂等**：巡检补做时会再跑一次
      */
     public static void run(String label, Runnable action) {
+        var deferred = DEFERRED.get();
+        if (deferred != null) {
+            var task = new DeferredAction(label, action);
+            if (!TransactionSynchronizationManager.isSynchronizationActive()) deferred.addLast(task);
+            else TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { deferred.addLast(task); }
+            });
+            return;
+        }
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             /*
              * 没有事务时立刻执行 —— 语义等价（"提交之后"在没有事务时就是"现在"）。

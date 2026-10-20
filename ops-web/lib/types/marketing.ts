@@ -34,6 +34,7 @@ export const COUPON_TRANSITIONS: Record<CouponStatus, CouponStatus[]> = {
 };
 
 export interface Coupon extends Archivable {
+  documentNo?: string | null;
   /** 券模板单号 */
   couponNo: string;
   /** 券名，展示给用户 */
@@ -121,6 +122,7 @@ export interface CouponSaveReq {
 export type IssueTarget = "ALL" | "NEW_USER" | "COMMUNITY" | "SINGLE_USER";
 
 export interface CouponIssue {
+  documentNo?: string | null;
   /** 发放记录单号 */
   issueNo: string;
   /** 发放的券模板 */
@@ -204,6 +206,7 @@ export interface PlatformSlot extends Archivable {
  * 曾经被一根 HTTP 路径连着，见 `docs/technical/运营端营销列表契约错配.md`。
  */
 export interface MerchantCampaign extends Archivable {
+  documentNo?: string | null;
   /** 活动号。跨端唯一，平台治理与商家自己看到的是同一个 */
   campaignNo: string;
   /** 所属商家（主体号）。平台视角要按它归堆 */

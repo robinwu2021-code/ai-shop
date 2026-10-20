@@ -305,6 +305,9 @@ class StockSyncWritebackTest {
         JsonNode preview = ok(post("/biz/store/" + s.storeNo + "/stock-alignment/preview")
                 .content("{\"mode\":\"MALL\"}"), s.token);
         String batchNo = preview.get("batchNo").asString();
+        String documentNo=preview.get("documentNo").asString();
+        assertThat(ai.neargo.shop.numbering.DocumentNumberFormatter.isValid(
+            ai.neargo.shop.numbering.DocumentType.INVENTORY_ALIGNMENT,documentNo)).isTrue();
         String version = preview.get("snapshotVersion").asString();
         assertThat(preview.get("rows").get(0).get("beforeQty").asInt()).isZero();
         assertThat(preview.get("rows").get(0).get("afterQty").asInt()).isEqualTo(8);
@@ -316,6 +319,8 @@ class StockSyncWritebackTest {
                 .content("{\"operationNo\":\"ALIGN-" + batchNo + "\",\"snapshotVersion\":\"" + version + "\"}"), s.token);
         assertThat(confirmed.get("status").asString()).isEqualTo("COMPLETED");
         assertThat(repeated.get("status").asString()).isEqualTo("COMPLETED");
+        assertThat(confirmed.get("documentNo").asString()).isEqualTo(documentNo);
+        assertThat(repeated.get("documentNo").asString()).isEqualTo(documentNo);
         assertThat(acl.stockAt(s.entityNo, s.storeNo, s.skuNo).onHand()).isEqualTo(8);
         assertThat(ok(get(path), s.token).get("batchNo").asString()).isEqualTo(batchNo);
 

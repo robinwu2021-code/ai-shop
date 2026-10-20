@@ -14,7 +14,10 @@ public final class MigrationPlanViews {
     }
     public record PlanView(String planNo,String stageNo,String entityNo,String migrationBatchNo,String status,
                            String planHash,String sourceBundleHash,long assetCount,long archivalCount,
-                           int versionCount,Instant assessedAt,boolean importReady,long revision) {
+                           int versionCount,Instant assessedAt,boolean importReady,long revision, String documentNo) {
+        public PlanView(String planNo, String stageNo, String entityNo, String migrationBatchNo, String status, String planHash, String sourceBundleHash, long assetCount, long archivalCount, int versionCount, Instant assessedAt, boolean importReady, long revision) { this(planNo, stageNo, entityNo, migrationBatchNo, status, planHash, sourceBundleHash, assetCount, archivalCount, versionCount, assessedAt, importReady, revision, null); }
+        public PlanView withDocumentNo(String documentNo) { return new PlanView(planNo, stageNo, entityNo, migrationBatchNo, status, planHash, sourceBundleHash, assetCount, archivalCount, versionCount, assessedAt, importReady, revision, documentNo); }
+
         public PlanView {
             ContractChecks.id(planNo);ContractChecks.id(stageNo);ContractChecks.id(entityNo);ContractChecks.id(migrationBatchNo);
             ContractChecks.hash(planHash);ContractChecks.hash(sourceBundleHash);ContractChecks.present(assessedAt);

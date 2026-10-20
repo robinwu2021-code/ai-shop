@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.entitlement.service.impl;
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.common.PageData;
@@ -27,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 @Service
 public class EntitlementExceptionServiceImpl implements EntitlementExceptionService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private final PayEntExceptionMapper exceptions;
     private final EntGrantMapper grants;
     private final ObjectMapper json;
@@ -52,15 +56,17 @@ public class EntitlementExceptionServiceImpl implements EntitlementExceptionServ
         row.setEntityNo(entity); row.setKind("GRANT_DELIVERY"); row.setBizNo(no);
         row.setEvidence(json.writeValueAsString(new Evidence(no,grant.getStatus(),source.sourceType(),"DELIVERY_FAILED")));
         exceptions.claim(row);
+        documents.bind(DocumentType.ENTITLEMENT_EXCEPTION, ctx.tenantNo(), row.getExceptionNo());
         events.publish(new ExceptionOpened("EE"+EntitlementRecords.digest(row.getExceptionNo()).substring(0,60),
                 row.getExceptionNo(),entity,row.getKind(),no,row.getCreatedAt().toInstant(ZoneOffset.UTC).toEpochMilli()));
         return view(exceptions.findGrant(ctx.tenantNo(),no));
     }
     @Override public ExceptionView get(CatalogScope scope,String no) {
         platform(scope);
+        String sourceNo=documents.internal(DocumentType.ENTITLEMENT_EXCEPTION, scope.tenantNo(), no);
         var row=exceptions.selectOne(Wrappers.<PayEntException>lambdaQuery()
                 .eq(PayEntException::getTenantNo,scope.tenantNo()).eq(PayEntException::getEntityNo,scope.entityNo())
-                .eq(PayEntException::getExceptionNo,no));
+                .eq(PayEntException::getExceptionNo,sourceNo));
         if(row==null) throw BizException.of(ErrorCode.NOT_FOUND);
         return view(row);
     }
@@ -70,19 +76,22 @@ public class EntitlementExceptionServiceImpl implements EntitlementExceptionServ
                 kind, status, page, size);
     }
     @Override public PageData<ActionView> actions(CatalogScope scope,String no,long page,long size) {
-        get(scope,no);
+        var exception = get(scope,no);
         if(page<1 || page>1000000 || size<1 || size>100) throw BizException.of(ErrorCode.BAD_REQUEST);
         var result=actions.selectPage(new Page<>(page,size),Wrappers.<PayEntExceptionAction>lambdaQuery()
                 .eq(PayEntExceptionAction::getTenantNo,scope.tenantNo())
                 .eq(PayEntExceptionAction::getEntityNo,scope.entityNo())
-                .eq(PayEntExceptionAction::getExceptionNo,no).orderByDesc(PayEntExceptionAction::getId));
-        return new PageData<>(result.getRecords().stream().map(a -> new ActionView(a.getActionNo(),a.getExceptionNo(),
-                a.getOperationKind(),a.getStatus(),a.getActorNo(),a.getReason(),a.getCreatedAt(),a.getUpdatedAt()))
-                .toList(),result.getTotal(),page,size);
+                .eq(PayEntExceptionAction::getExceptionNo,exception.exceptionNo()).orderByDesc(PayEntExceptionAction::getId));
+        var records = documents.project(DocumentType.ENTITLEMENT_EXCEPTION_ACTION, result.getRecords(),
+                PayEntExceptionAction::getTenantNo, PayEntExceptionAction::getActionNo,
+                a -> new ActionView(a.getActionNo(), a.getExceptionNo(), a.getOperationKind(), a.getStatus(),
+                        a.getActorNo(), a.getReason(), a.getCreatedAt(), a.getUpdatedAt())
+                        .withDocumentNo(documents.find(DocumentType.ENTITLEMENT_EXCEPTION_ACTION, a.getTenantNo(), a.getActionNo())));
+        return new PageData<>(records, result.getTotal(), page, size);
     }
     private ExceptionView view(PayEntException row) {
         return new ExceptionView(row.getExceptionNo(),row.getEntityNo(),row.getKind(),row.getBizNo(),row.getStatus(),
-                json.readValue(row.getEvidence(),Evidence.class),row.getLastAction(),row.getVersion());
+                json.readValue(row.getEvidence(),Evidence.class),row.getLastAction(),row.getVersion()).withDocumentNo(documents.find(DocumentType.ENTITLEMENT_EXCEPTION, row.getTenantNo(), row.getExceptionNo()));
     }
     private static void platform(CatalogScope scope) {
         if(!scope.platformActor()) throw BizException.of(ErrorCode.FORBIDDEN);
@@ -101,6 +110,6 @@ public class EntitlementExceptionServiceImpl implements EntitlementExceptionServ
                 .orderByDesc(PayEntException::getCreatedAt, PayEntException::getId);
         if (scope.entityNos() != null) query.in(PayEntException::getEntityNo, scope.entityNos());
         var result = exceptions.selectPage(new Page<>(page, size), query);
-        return new PageData<>(result.getRecords().stream().map(this::view).toList(), result.getTotal(), page, size);
+        return new PageData<>(documents.project(DocumentType.ENTITLEMENT_EXCEPTION, result.getRecords(), PayEntException::getTenantNo, PayEntException::getExceptionNo, this::view), result.getTotal(), page, size);
     }
 }

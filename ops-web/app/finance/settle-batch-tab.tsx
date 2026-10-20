@@ -105,7 +105,7 @@ export function SettleBatchTab({ c, canExecute, canPayout }: { c: FinanceCopy; c
   const STATUS = statusMap(c);
 
   const columns: Column<SettleBatch>[] = [
-    { header: c.sbColBatch, cell: (b) => b.batchNo },
+    { header: c.sbColBatch, cell: (b) => b.documentNo ?? "—" },
     { header: c.sbColEntity, cell: (b) => b.entityNo },
     { header: c.sbColChannel, cell: (b) => b.payChannel },
     { header: c.sbColCycle, cell: (b) => b.settleCycle },
@@ -149,7 +149,7 @@ export function SettleBatchTab({ c, canExecute, canPayout }: { c: FinanceCopy; c
   };
   const poColumns: Column<Payout>[] = [
     { header: c.poColNo, cell: (p) => p.payoutNo },
-    { header: c.poColBatch, cell: (p) => p.batchNo },
+    { header: c.poColBatch, cell: (p) => batches.data?.find((batch) => batch.batchNo === p.batchNo)?.documentNo ?? "—" },
     { header: c.poColEntity, cell: (p) => p.entityNo },
     // 收款户只给户名与掩码：明文账号只在导出付款清单那一刻存在
     { header: c.poColAccount, cell: (p) => `${p.accountName ?? "—"} ${p.accountNoMasked ?? ""}` },
@@ -197,7 +197,7 @@ export function SettleBatchTab({ c, canExecute, canPayout }: { c: FinanceCopy; c
           {blocked.map((b) => (
             <div key={b.batchNo} className="rounded-card bg-warning-tint p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="txt-strong">{b.batchNo} · {b.entityNo}</span>
+                <span className="txt-strong">{b.documentNo ?? "—"} · {b.entityNo}</span>
                 <span className="txt-body tabular-nums">{money(b.netMinor)} · {b.billCount} {c.sbUnitBill}</span>
               </div>
               {/*
@@ -256,7 +256,7 @@ export function SettleBatchTab({ c, canExecute, canPayout }: { c: FinanceCopy; c
           {!canPayout && <ReadOnlyNotice what={c.sbReadOnlyPayout} perm="finance:payout:execute" />}
           {ready.map((b) => (
             <div key={b.batchNo} className="rounded-card bg-muted p-4 flex flex-wrap items-center justify-between gap-2">
-              <span className="txt-strong">{b.batchNo} · {b.entityNo}</span>
+              <span className="txt-strong">{b.documentNo ?? "—"} · {b.entityNo}</span>
               <span className="txt-body tabular-nums">{money(b.netMinor)} · {b.billCount} {c.sbUnitBill}</span>
               {canPayout && (
                 <Button disabled={release.isPending} onClick={() => release.mutate(b.batchNo)}>

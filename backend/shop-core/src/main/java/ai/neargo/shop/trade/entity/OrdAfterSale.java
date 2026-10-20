@@ -15,6 +15,9 @@ import lombok.Setter;
 @Setter
 @TableName("ord_after_sale")
 public class OrdAfterSale extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     public static final String APPLIED = "APPLIED";
     public static final String REFUNDING = "REFUNDING";

@@ -1,6 +1,6 @@
 # TDD-业务编码统一生成
 
-状态：批 1-3 实现完成，全量后端 2597/0/0（待提交）
+状态：实体码基础改造已完成；人工业务单号全模块接入见 §12（2026-10-20）
 档位：2（新生成算法 = 架构级准不可逆；跨系统；改所有新码格式 = 对外契约）
 关联：[ADR-033 业务编码统一生成](ADR/ADR-033-业务编码统一生成.md)
 创建：2026-10-09
@@ -290,3 +290,231 @@ source_no为内部原单/原核销记录/原凭证号，保持原值。document_
 | E：订单专项 | NUM-11、12 | 先完成主子单、支付重试及微信回跳合同核对，再升级订单生成器；验收容量边界、时区、子单及重试后缀、旧链接兼容，不能仅改正则或加宽数据库 |
 
 每个执行包完成后先编译及相关基本单测，只回归本包修改和发现的问题；不重复已通过的旧链路，不跑全量测试。本次仅整理需求文档，验证范围为源码依据、链接、格式示例和文档差异；不宣称以上任务已经编码完成。
+
+
+## §10 分模块编号规则（2026-10-20 设计稿，待实施）
+
+### §10.1 共同规则
+
+本节细化NUM-01～14。PR、EU、SV、PT、PC、PI沿用§8登记；其余前缀为本次建议登记，不代表现有生成器已支持。前缀只在新的人工documentNo命名空间内唯一；允许与历史内部编号前缀相同，但查询必须明确字段和类型。
+
+统一格式为`<2～3位大写字母前缀><yyyyMMdd><至少6位十进制序列>`。例如`PR20261020000001`，通常16～17字符。登记中的前缀与documentType一对一，唯一归属一个服务；禁止通过截取固定两位识别三位前缀。
+
+| 项目 | 编码规则 |
+|---|---|
+| 日期 | 使用业务记录首次创建时确定的可信业务日期；默认Asia/Shanghai，显式配置并持久化。后续到账、修改、重试、跨日重放不换日期、不换号 |
+| 序列范围 | 按所属服务、documentType、businessDate发号；该类型在所有租户、商家、门店共享序列，不按门店重置 |
+| 序列宽度 | 从000001开始，六位起；999999后为1000000，禁止取模、截断、回绕或复用取消号码 |
+| 领号与落库 | 所属服务数据库独立短事务领号段；进入业务写事务前预留本次全部号码；业务记录、号码映射与幂等结果在同一业务事务提交 |
+| 重复提交 | 先查原幂等记录；同一来源记录只绑定一个号。并发请求只保留胜出映射，落败预留号作废；同键异参拒绝 |
+| 修改与重发 | 编辑活动、启停方案、改状态、重试、恢复、导出均不产生新号；新建独立业务单才取新号。冲正／补发形成新业务事实时另取号并关联原单 |
+| 唯一约束 | 服务内UNIQUE(document_no)，UNIQUE(tenant_no,document_type,source_no)；全系统依靠前缀唯一归属保证无跨服务重号 |
+| 持久化 | document_no使用VARCHAR(32)，business_date独立DATE；source_no保留原类型、长度和原值，库存等96位标识不能套用Pay常见64位限制 |
+| 超长边界 | 不允许32位存储静默截断；序列BIGINT及格式总长度有显式上限，接近上限告警、耗尽时拒绝发号，不重新从1开始 |
+| 格式校验 | 先查精确类型登记，再校验该前缀、真实日历日期、十进制序列及长度；新号序列大于0。不能仅凭一个宽松正则判断有效单号 |
+| 查询与权限 | 人工查单用documentType/documentNo解析到原sourceNo，再走原业务授权；不能将documentNo直接传入旧sourceNo路径，不凭前缀授予权限 |
+| 展示与排序 | B/C列表优先业务名称、金额、状态、时间；详情按需展示完整短号。运营详情保留内部编号复制。时间线用时间和稳定次键，不按documentNo排序 |
+| 历史兼容 | 无映射旧单documentNo为空，不把内部长号冒充短号。历史映射由受控补齐任务写入，使用可信历史日期，后续固定；读接口不即时发号 |
+
+### §10.2 储值、核销、发放与积分（NUM-01～05）
+
+| 对象／documentType | 归属 | 前缀与示例 | 生成及关联规则 |
+|---|---|---|---|
+| 储值充值单／SV_RECHARGE | Pay | PR20261020000001 | 首次持久化充值原单时绑定；收款、到账、恢复共用同一号。rechargeNo继续定位内部原单 |
+| 储值账务凭证／SV_VOUCHER | Pay | SV20261020000001 | 每张独立账务凭证一个号；一张充值凭证关联PR，一张核销凭证关联对应核销事实；冲正凭证另取SV并关联原凭证 |
+| 权益核销记录／ENTITLEMENT_USAGE | Pay | EU20261020000001 | 普通权益与储值核销共用该类型；每条核销事实一个号。一次组合操作产生多条记录时，各有EU，使用原operationNo关联，不能以操作号替代全部明细 |
+| 权益发放单／ENTITLEMENT_GRANT | Pay | EGD20261020000001 | 每个实际发放事实一个号；重试不新发、不换号，独立补发另取号并记录原发放关联 |
+| 权益发放批次／ENTITLEMENT_ISSUE_BATCH | Pay | EGB20261020000001 | Pay实际资产批次一个号；多个EGD通过内部batchNo关联。Core营销批次PI另存，PI与EGB不要求一对一，也不能相互冒充 |
+| 积分凭证／POINTS_VOUCHER | Pay | PTV20261020000001 | 一张积分记账凭证一个号；凭证下多条entryNo、flowNo保持UUID，不逐条增加人工号。冲正生成新PTV，保留原凭证关联 |
+
+储值收支DTO的documentNo按记录类型返回充值PR或核销EU；另有需要时显式返回voucherDocumentNo（SV），不能把同一个字段有时当业务单、有时当凭证。已有businessNo、rechargeNo、usageNo、voucherNo原值不变。
+
+NUM-02历史恢复页不新增编号对象；复用原充值映射，到账结果只展示业务结果。NUM-04的资产instanceNo、分录entryNo和核销令牌不改为EGD/EGB，资产定位与发放查单是不同用途。
+
+### §10.3 旧券、迁移、对账及异常（NUM-06～07）
+
+| 对象／documentType | 归属 | 前缀与示例 | 生成及关联规则 |
+|---|---|---|---|
+| 旧券发放工单／LEGACY_COUPON_ISSUE | Pay | LCI20261020000001 | 原LI工单首次持久化时绑定；prepare、finish及恢复复用，同工单不能重复发行 |
+| 旧券实际发放批次 | Pay | EGB20261020000002 | 原LB批次映射到§10.2已有ENTITLEMENT_ISSUE_BATCH，不再另建人工批次类型；LCI关联EGB，保留旧LB定位 |
+| 迁移计划／ENTITLEMENT_MIGRATION_PLAN | Pay | MGP20261020000001 | 每个计划一个号，修改和审批不换号；复制为新计划才取新号 |
+| 迁移导入／ENTITLEMENT_MIGRATION_IMPORT | Pay | MGI20261020000001 | 每次独立导入业务对象一个号；同一幂等命令重试复用，文件摘要和源行号保持原值 |
+| 迁移阶段／ENTITLEMENT_MIGRATION_STAGE | Pay | MGS20261020000001 | 每条已持久化阶段记录一个号；阶段内分批执行、断点续跑及重放不换号；另建阶段才取新号 |
+| 权益对账运行／ENTITLEMENT_RECON_RUN | Pay | ERC20261020000001 | 每次独立对账运行一个号；同命令恢复复用，明确新发起运行才另取号 |
+| 权益对账差异／ENTITLEMENT_RECON_DIFF | Pay | ERD20261020000001 | 可选详细查单号；启用时每条差异一个号，重跑同一运行的同一差异复用；不替代原资源游标 |
+| 权益异常工单／ENTITLEMENT_EXCEPTION | Pay | EEX20261020000001 | 同一原异常记录一个号，重试和解决不换号；是否合并异常继续由原业务规则决定 |
+| 异常处置动作／ENTITLEMENT_EXCEPTION_ACTION | Pay | EAC20261020000001 | 可选审计号；启用时每条真实处置动作一个号，幂等重试不增加动作；关联EEX，原actionNo仍用于内部定位 |
+
+ERD、EAC只在运营需要独立查询／引用动作时接入，不因登记前缀就要求首批给每条技术明细发号。事件eventNo、投递次数、分片、游标、原始源券号继续保留，不派生新的人工单号。
+
+### §10.4 库存同步与对齐（NUM-08～09）
+
+| 对象／documentType | 归属 | 前缀与示例 | 生成及关联规则 |
+|---|---|---|---|
+| 库存同步操作／INVENTORY_SYNC | Core库存桥接 | ISY20261020000001 | 持久化的独立同步操作一个号；自动同步、人工重试复用同一原操作映射，不改变AUTO-/SYNC-等operationNo |
+| 库存对齐批次／INVENTORY_ALIGNMENT | Core库存桥接 | IAL20261020000001 | 每个对齐batchNo一个号；预览已有批次、确认、刷新与失败恢复不换号；明确新建快照批次才取新号 |
+
+对齐批次内逐SKU操作继续保留ALIGN-摘要幂等键，默认只展示IAL批次号，不要求每个技术步骤另取ISY。若其本身也是持久化的独立同步记录，可有ISY并关联IAL。外部库存系统的采购、入库、盘点、出库单号原样保留，本服务不重新发号覆盖。
+
+### §10.5 活动与卡券（NUM-10）
+
+| 对象／documentType | 归属 | 前缀与示例 | 生成及关联规则 |
+|---|---|---|---|
+| 营销活动／MARKETING_ACTIVITY | Core营销 | PT20261020000001 | 首次保存活动时绑定；草稿、发布、暂停、结束不换号。复制活动另取PT；版本号单独记录，不拼在PT后面 |
+| 券模板／MARKETING_COUPON_TEMPLATE | Core营销 | PC20261020000001 | 一个模板一个号；编辑／发布版本不换号，复制为新模板才取新号；不表示消费者持有的券 |
+| 营销发券批次／MARKETING_COUPON_ISSUE | Core营销 | PI20261020000001 | 一次持久化营销发放批次一个号；执行分片、失败重试不换号；关联活动PT、模板PC和实际Pay批次EGB |
+| 用户券展示号／MARKETING_USER_COUPON | Core营销兼容域 | PUC20261020000001 | 可选，仅用于仍归Core管理的用户券人工查单；userCouponNo保持原值。已归Pay管理的资产不由Core另发PUC，使用原instanceNo定位及EGD追溯 |
+
+新旧营销实现共用类型时sourceNo必须无歧义；如两个存储域的原号空间不能证明唯一，映射源键应为“来源系统+资源类型+原号”的规范化组合，分字段保存原始值，不截断拼接。此场景须将§8的来源唯一约束扩展为UNIQUE(tenant_no,document_type,source_system,source_resource_type,source_no)，旧单来源补固定值；不得把拼接结果硬塞进64位source_no。营销活动、储值方案、权益资产分别保持归属；独立储值操作不需要为了取得PR而临时创建PT。
+
+### §10.6 订单、子单及支付关联（NUM-11～12）
+
+本表为最初的渐进设计。§12 已完成订单专项切换：新主单／子单直接采用 OD／OS，旧 O 订单不改；支付关联显式解析，内部 paymentNo 与渠道号保持原值。
+
+| 对象／documentType | 归属 | 建议格式及示例 | 规则 |
+|---|---|---|---|
+| 主订单／TRADE_ORDER | Core订单 | OD20261020000001 | 首次创建主订单绑定，整单生命周期固定；新规则不使用小时取模 |
+| 子订单／TRADE_SUBORDER | Core订单 | OS20261020000001 | 每个子单独立人工号，通过parentOrderNo关联主单；人工号不拼-1等序号；原子单号及父子关联保留 |
+| 支付尝试／PAYMENT_ATTEMPT | Pay支付台账 | PY20261020000001 | 每条持久化支付尝试记录独立映射；同尝试重试复用，关闭后新开尝试可取新PY，关联原业务订单与原paymentNo |
+
+PY是人工查单映射，不直接替换商户out_trade_no，更不覆盖第三方trade_no。Core的payOrderNo也不能仅因名称相似就解释为Pay的paymentNo，需按实际合同显式关联。一个订单可有多个支付尝试，不要求OD与PY序号相同。
+
+C端“订单号”展示OD或对应OS；支付详情展示PY并标注“支付单号”。外部支付回跳先按受信渠道合同精确查询商户支付单到订单的关联，不通过删除末尾-数字猜测主／子订单。兼容旧格式时须限定来源和版本，验证主单、子单、重试支付以及未知号的解析结果；未完成该关联核对前不删除现有兼容逻辑。
+
+### §10.7 售后、开票与财务（NUM-13）
+
+| 对象／documentType | 归属 | 前缀与示例 | 生成及关联规则 |
+|---|---|---|---|
+| 售后申请／AFTER_SALE | Core交易 | AS20261020000001 | 每份售后申请一个号；审核、退货、协商不换号；独立新申请另取号并关联订单 |
+| 交易开票申请／TRADE_INVOICE_REQUEST | Core交易 | IRQ20261020000001 | 每份平台开票申请一个号；重试／状态更新不换号；税务发票号码另存 |
+| 提现申请／WITHDRAWAL | Pay | WD20261020000001 | 每份提现申请一个号；审核、打款、重试不换号；渠道支付流水另存 |
+| 结算批次／SETTLEMENT_BATCH | Pay | STB20261020000001 | 每个结算批次一个号；批次重跑复用原号，另开批次才取新号 |
+| 结算账单／SETTLEMENT_BILL | Pay | STS20261020000001 | 每份结算账单一个号，关联STB；取消重算是否为新账单由业务事实决定，不在编号层偷偷换号 |
+| 结算开票申请／SETTLEMENT_INVOICE_REQUEST | Pay | SIR20261020000001 | 每份结算开票申请一个号，与Core交易开票申请区分；取消、审批不换号，发票代码及号码原样保存 |
+
+退款如需纳入，先确认实际退款申请、支付尝试及渠道退款对象的合同和归属，再登记独立documentType；本轮不把所有退款相关字段统一改成某一个号。门店、会员、商品、账户等实体码仍使用既有BizKey或所属域规则，不套用上述单据前缀。
+
+### §10.8 代码、API与兼容约束（NUM-14及所有模块）
+
+- 类型注册：使用枚举／受控登记定义documentType、ownerService、prefix、version、minSequenceWidth及businessZone；启动或构建时检查前缀唯一、类型唯一和服务归属，不接受前端传入自由前缀。前缀一经投入使用不转让给另一服务或另一类型。
+- 生成入口：公共模块只处理类型和格式；Core、Pay分别持有数据库号段与号码映射，不跨服务同步取号。业务服务只请求已登记类型，不能自行拼UUID或摘要作为documentNo。
+- 关联字段：DTO明确返回documentType、documentNo及现有内部字段；需要同时返回多个对象时使用rechargeDocumentNo、voucherDocumentNo、batchDocumentNo等明确名称，禁止前端自行推导关联号。
+- 变更范围：只新增映射与展示字段；旧接口路径、数据库主键、幂等载荷、签名摘要、事件原单号不改。新格式对象不能通过旧长度判断器或前缀路由器处理。
+- 架构守卫：分别检查人工号是否来自注册生成器、实体码是否遵守BizKey、内部幂等是否稳定、安全令牌是否使用原安全机制；建立有归属和理由的例外清单，不能只靠一条setNo正则声称全覆盖。
+- 定向测试：格式边界、前缀重复、明确时区、序列扩宽、多实例唯一、重复请求、失败不复用、历史空映射、关联查询权限及各包所改页面展示；订单额外测子单／支付回跳。按执行包编译和基本单测，不重复全量回归。
+
+本节是逐项编码规则设计；2026-10-20 的实际接入范围、订单切换差异和验证结果见 §12。
+
+
+## §11 基础编号组件首批实施记录（2026-10-20）
+
+本节保留基础组件首批交付时的阶段记录；后续全模块切换状态以 §12 为准。
+
+| 能力 | 已实现内容 |
+|---|---|
+| 基础契约 | shop-base的numbering包：DocumentOwner、DocumentType（29类）、DocumentNumberFormatter、ReservedDocumentNumber、DocumentSource、DocumentNumberGenerator、DocumentNumberService |
+| 通用持久化实现 | shop-store-mybatis的numbering/store包：DocumentNumberProperties、SegmentDocumentNumberGenerator、JdbcDocumentNumberRepository；不为每种规则编写独立类 |
+| Core／Pay装配 | CoreDocumentNumberConfiguration、PayDocumentNumberConfiguration，分别使用transactionManager／payTxManager绑定的真实DataSource；业务注入时明确core/pay限定名 |
+| 可配置项 | shop.numbering.business-zone默认Asia/Shanghai；shop.numbering.segment-size默认100、允许1～100000。前缀和归属在枚举中受控管理；批量预留上限10000，本地缓存最多256个类型／日期号段 |
+| 数据库 | V542新增pay_document_sequence、core_document_number、pay_document_number；Core复用sys_sequence。source_no统一留128字符容纳现有不同域长度，来源系统／资源类型独立列，避免截断复合源键 |
+| 首批业务 | 门店方案储值充值通过StoredValueNumberedPlanRechargeService接入PR：先预留，再在同一Pay事务执行原充值／线下确认与号码绑定；原内部号、冻结事实及账务流程保留 |
+| 对外结果 | RechargeView、StoredValueRechargeProgress新增可空documentNo；B端SvProgress增加可选类型。新建、查询、重放及计划充值状态变更保留号码；无原单的取消标记不绑定号码，旧单查询不补号 |
+| 安全边界 | 事务内预留一律拒绝，即使命中缓存；绑定必须已有所属数据源事务；同源并发返回胜出号，不靠后续快照读推测；按租户、类型及显式来源查映射 |
+
+业务调用示意：
+
+```java
+// 根据业务归属注入payDocumentNumberGenerator / payDocumentNumbers，Core则用core限定名。
+var reserved = generator.reserve(DocumentType.SV_RECHARGE, trustedBusinessInstant);
+// 以下在已有Pay业务事务中执行：创建原单后绑定；不得在这里调用reserve。
+var source = new DocumentSource(tenantNo, "PAY", "SV_RECHARGE", rechargeNo);
+String documentNo = numbers.bind(DocumentType.SV_RECHARGE, source, reserved);
+// bind返回值可能来自并发胜出的映射，必须使用返回值，不能直接返回预留候选号。
+```
+
+验证：基础格式3项、JDBC号段与映射7项、储值装饰编排2项、储值确认／回滚场景2项、BFF短号透传1项、原入账返回兼容1项，共16项定向测试通过；Core和独立Pay服务编译通过，B端类型检查通过。审查覆盖号段、事务、并发绑定及返回契约；并发测试使用H2，未进行真实MySQL压测。本轮没有执行全量回归。
+
+首批交付时尚未切换（已在 §12 继续实施）：旧活动来源充值、核销EU、账务SV、积分、营销、库存、订单及其他业务的实际发号与页面短号展示。收支详情的documentNo与按短号查单的HTTP入口也属于后续业务接入；当前组件已提供内部findBySource／resolve能力，不能将其误认为已发布通用查单接口。储值结果不恢复“到账状态后展示内部号”的旧交互。
+
+部署顺序：先由主应用执行V542迁移，再更新Core／Pay应用；独立Pay沿用现有Flyway关闭、迁移由主应用负责的部署约定。本轮仅提交代码和文档，未执行服务器迁移或部署。
+
+
+## §12 全模块业务接入（2026-10-20）
+
+### 12.1 范围与验收对账
+
+本次按 NUM-01～14 清单接入全部 29 类已登记人工业务号。§0～6 是此前实体码改造的历史记录，不将其随机不可枚举要求套用于本次人工流水号；人工号仍须经过原业务权限检查，不能当作访问凭据。
+
+| 验收项 | 实现落点 | 定向验证 |
+|---|---|---|
+| 一个受控生成器供所有业务使用 | DocumentType + DocumentNumberCoordinator；Core／Pay独立数据源与事务 | DocumentNumberCoordinatorTest、各域预算测试 |
+| 事务外预留、写入同事务绑定 | 显式入口 advisor／编排门面；嵌套复用外层预算，不在业务事务中续号 | PayRightsWorkbenchReservationTest、StoredValueStorePlanFlowTest |
+| 每次事实创建取号，重试不换号 | 原业务幂等检查保留，绑定按租户／类型／来源系统／资源／原号唯一 | PayRightsPointsNumberingTest、StockReconcileProtectionTest |
+| 短号可展示和查单，历史单兼容 | DTO 可空字段、批量投影、解析短号后执行原作用域检查 | StoredValueRecordAliasLookupTest、PayRightsReadProjectionTest、LegacyCouponMigrationImportReadNumberTest |
+| 订单不再四位取模，旧链接兼容 | 新 OD／OS 同时作为实际订单身份和映射号；明确支付引用解析 | OrderCreationNumberReservationsTest、BuyerOrderReferenceResolverTest、ConsumerOrderFlowTest |
+| 默认页面不再暴露冗长内部流水 | B／C／Ops 现有相关页面及导出使用显式人工号字段 | 三端定向展示测试和类型检查；源码创建点守卫 |
+
+### 12.2 模块接入矩阵
+
+| 归属／人工号 | 实际创建点 | 查询及关联 |
+|---|---|---|
+| Pay：PR | 门店方案充值门面、旧活动充值冻结写入 | 充值进度、查询、原单操作兼容；原 rechargeNo 保留 |
+| Pay：SV | 储值到账与核销账务凭证 | 储值收支 voucherDocumentNo，按 SV 定位原凭证 |
+| Pay：EGD／EGB／EU | 权益发放准备、发放批次、核销完成；旧券历史导入和核销记录 | 发放、批次、核销 DTO；储值核销收支通过 operationNo 显式关联 EU |
+| Pay：PTV | 积分新凭证；对账、运营工作台、退款及结算积分嵌套入口预留 | B 积分分录、Ops 分录／流水；PTV 筛选先解析原 voucherNo |
+| Pay：LCI／MGP／MGI／MGS | 旧券发放、迁移计划／导入／阶段 claim | 对应已有详情和列表；MGI 按 importNo 解析，旧接口仍兼容 planNo |
+| Pay：ERC／ERD | 对账执行及实际差异插入 | 运行和差异 DTO；无差异不会强建差异号 |
+| Pay：EEX／EAC | 发放失败、死信捕获；异常操作和事件重试／查询操作 | 异常及动作 DTO；重复 claim 复用映射 |
+| Pay：PY | 支付台账新尝试 open | 支付回执 documentNo；原 paymentNo／outTradeNo／tradeNo 不变 |
+| Pay：WD／STB／STS／SIR | 提现申请、结算批次、订单结算账单、结算采购开票申请 | 财务列表、关联账单、批次与申请 DTO；分页后批量映射 |
+| Core：PT／PC／PI／PUC | 新营销活动／版本首存、券模板／批次／用户券；旧营销 campaign、fission、coupon 发放 | 新旧营销明确来源命名空间；活动编辑和发布不换号，版本字段独立 |
+| Core：ISY／IAL | 库存持久化同步 claim、对齐预览批次写入 | B 库存同步和对齐；AUTO／SYNC／ALIGN 内部操作键保留 |
+| Core：OD／OS | 实际创建主单／每个子单 | 订单、配送工作项、主子单映射；新单不再调用旧 main/sub 取模生成 |
+| Core：AS／IRQ | 用户／系统／补偿退款的售后新申请，交易开票新申请 | 售后和开票 DTO；保留原事务隔离与申请身份 |
+
+新旧营销不会仅按原号跨存储域取映射，分别记录来源系统及资源类型。PC 同时覆盖旧活动隐式创建券模板。邀请注册提前固定可用活动及其发券预算，业务事务中继续执行原资格检查。
+
+### 12.3 编排与事务边界
+
+- `DocumentNumberCoordinator.withReservation` 在最外层业务事务开始前按类型／数量预留；嵌套调用只消费已准备的预算。允许有未消费号码形成空洞，不回收、不补号。各业务仍使用原有数量上限，生成器批量 API 上限仍为 10000。
+- 显式的 Core／Pay advisor 必须标注 Spring `ROLE_INFRASTRUCTURE`，才能被应用现有 `InfrastructureAdvisorAutoProxyCreator` 装配；增加真实 `@EnableTransactionManagement` 测试，不能只靠手工 ProxyFactory 证明应用装配。
+- 列表在原权限过滤和分页后执行 `findAll`，按租户／来源分组，每组最多 500 个参数分段查询；不按行发起映射查询。短号解析只做身份转换，原租户、主体、门店、买家权限不被绕过。
+- 原 `AfterCommit.run` 在 Spring 提交回调阶段仍可能持有事务资源。仅对确实需要跨域后续动作的 Core 写入口启用 `AfterCommit.withDeferredActions`：提交回调只入队，原事务管理器清理完成后，由最外层 scope 同步执行；回滚不入队、嵌套复用、先清 scope 再执行后续动作。未引入全局异步执行或手工清除 Spring 事务状态。
+- 未被外层 scope 承接的活动事务不能伪装成清理完成。仅提醒、只读、非退款售后方法不加入此 scope。既有提交后执行窗口及巡检补偿约定保持不变，本次未改造成持久化 outbox。
+- 订单购物车缺省／空 items 时，在事务外按真实买家读取选中快照，用同一快照预算及创建；不修改请求体和幂等指纹。取消按已授权订单子单数保守预留 AS，避免事务外 WAIT_PAY 到事务内 PAID 的竞态造成退款缺号。
+
+### 12.4 兼容与保留项
+
+- 新 OD／OS 直接作为新主／子单实际身份，是 §10.8 “只加映射”的有意例外，用以消除旧取模容量风险。存量 O 号和接口路径参数继续支持；明确订单引用时优先查实际主／子单，明确支付引用时先查真实支付关联及买家权限，禁止删除任意数字后缀猜单。
+- Core `payOrderNo` 的展示关联是主订单 OD，不冒充 Pay 支付尝试 PY。页面使用后端提供的 `documentNo`／`payDocumentNo` 等字段，内部路径和行标识仍按真实身份操作。
+- 权益资产 instanceNo、账务 entryNo、历史 usageNo、幂等摘要、事件键、安全令牌继续保留。`BizKeyConventionTest` 对内部身份仅按具体文件和 setter 建立例外，人工 documentNo 不享受例外。
+- 银行／渠道收款凭据 voucherNo、渠道交易流水及税务号码保留；不能将同名 voucherNo 一律当作内部积分凭证替换。B 结算清单导出同时保留外部凭据。
+- 现有 SIR 写入点是 `StlPurchaseInvoice`；仓库中没有 `StlSettleInvoice` 的创建入口，读取无映射时保持空。没有现成的 Ops 迁移／异常／提现页面，不为编号接入虚构新页面；已有 API 返回字段已接入。
+- 历史无映射返回空，默认页面不退回显示长内部流水；不读时补号、不批量改历史身份。本次没有新增公共万能查单端点，仅扩展各域现有查询合同。
+
+### 12.5 验证与交付
+
+本轮仅做新增与修复范围的编译、单测和真实 Spring/H2 集成测试；不运行全量回归。以下结果核对对应 Surefire XML、命令退出码及前端日志，不把之前全量测试数字计入本轮。
+
+| 验证包 | 实际结果／证据 |
+|---|---|
+| Core、独立 Pay 及依赖 | Java21 `mvn -o -q -f backend/pom.xml -pl shop-app,pay/pay-svc -am -DskipTests compile`，exit 0 |
+| Core 定向 | AfterCommit 6、营销 3、邀请 2、活动版本 4、旧活动 2、引用解析 4、订单投影 2、订单预算 4、嵌套 offline 提交 1：28 项通过；最后仅对取消状态竞态和售后 deferral 范围分别复测 1 项，均通过 |
+| 公共／储值门面 | Coordinator 4、方案充值门面 3 项通过 |
+| Pay 权益与积分 | 预算 5、积分持久化 2、收支投影 1、读取投影 2、Workbench／自动确认／真实 advisor 装配 3、收支短号查单 2 项通过 |
+| Pay 运维和财务 | 运维预算 5、迁移导入短号查询 1、结算关联号批量投影 1、历史核销写入 1 项通过 |
+| 真实 Spring/H2 | 储值到账失败整命令回滚 1、真实重复下单／支付取货码 2、库存同步保护 3、库存对齐幂等 1 项通过；不同测试上下文独立 H2 库，避免测试共享库索引冲突 |
+| 源码守卫 | BizKeyConventionTest 3 项通过（包括 Pay 嵌套模块）；Core 创建点守卫 3、全局切换守卫 3、Pay 运维创建点守卫 1 项通过 |
+| 前端 | B 展示／收支／积分 13、B 订单复制 4、C 订单解析 5、Ops 展示／积分路由 24 项通过；B／C vue-tsc、Ops tsc 通过 |
+| UI 清单 | `python3 scripts/gen-ui-catalog.py --check` 通过，282 个界面；本次无新增页面／标题／菜单 |
+
+失败修复证据：PR 短号查询、PTV 流水筛选、取消支付状态竞态等先观察失败后修复；真实 Spring 集成最初暴露 advisor 未装配，改为 infrastructure role 后相同储值回滚场景通过。新增扫描发现的 EL／历史 usage UUID 是内部身份，按具体文件和 setter 建例外，人工号仍受守卫约束。真实 MySQL 多实例压力测试不在本轮验证范围。
+
+数据库继续使用上一批 V542：主应用负责迁移，独立 Pay 不运行 Flyway。本次未修改已提交迁移、未执行服务器迁移、未部署、未操作真实资金。
+
+
+### 12.6 设计与代码对账
+
+本轮 diff 涉及 199 个文件：Pay 70、Core 59、主应用 10、基础 SPI 9、持久层 4、B 端 15、C 端 6、Ops 19、共享类型 4、脚本 1、文档 2。对应 §12.2 的实际创建／读取／展示边界；未新增独立发号微服务、未为每类规则新增生成器、未新增数据库迁移。代码与测试按各自模块存放，公共类清单新增 Coordinator，其他新增类是各域的预留／批量投影适配器。
+
+与初始计划的差异：订单直接以新 OD／OS 创建；增加 opt-in 提交后动作清理边界；扩展旧活动隐式券及邀请批量预算；补齐积分运营工作台、自动确认和事件恢复入口。以上均用于保证原业务链路在严格禁止事务内预留的约束下继续工作，未扩展活动／储值业务功能范围。

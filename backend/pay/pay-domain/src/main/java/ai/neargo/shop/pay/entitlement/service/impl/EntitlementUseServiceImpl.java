@@ -192,7 +192,7 @@ public class EntitlementUseServiceImpl implements EntitlementUseService {
     @Override
     public UseReceipt commit(EntitlementContext context, UseDecision c) {
         var held = finish(context, c.operationNo(), c.sourceRef(), c.decisionRef(), true);
-        return new UseReceipt(held.operationNo(), held.status(), held.usageNo(), held.occurredAt());
+        return new UseReceipt(held.operationNo(), held.status(), held.usageNo(), held.occurredAt(), held.documentNo());
     }
 
     @Override

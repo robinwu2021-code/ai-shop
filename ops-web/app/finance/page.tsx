@@ -105,7 +105,8 @@ function FinanceInner() {
 
   // 后端这两个查询不分页：结算单按子单一张，量大但筛选维度窄，
   // 先给筛选、分页等有量之后再说 —— 造一个假的分页壳比没有分页更误导
-  const settleQ = { status: status || undefined, merchantNo: keyword || undefined };
+  const documentSearch = /^STS[0-9]{14,}$/.test(keyword.trim());
+  const settleQ = { status: status || undefined, merchantNo: documentSearch ? undefined : keyword || undefined };
   const settlements = useQuery({ queryKey: ["settlements", settleQ], queryFn: () => api.listSettlements(settleQ), enabled: tab === "settlements" });
   const splitQ = { settleNo: keyword || undefined };
   const splits = useQuery({ queryKey: ["splits", splitQ], queryFn: () => api.listSplitRecords(splitQ), enabled: tab === "splits" });
@@ -123,7 +124,7 @@ function FinanceInner() {
   });
 
   const settleColumns: Column<Settlement>[] = [
-    { header: c.colSettleNo, cell: (s) => <IdCell value={s.settleNo} />, numeric: true, align: "start" },
+    { header: c.colSettleNo, cell: (s) => <IdCell value={s.documentNo ?? ""} />, numeric: true, align: "start" },
     { header: c.colOrder, cell: (s) => <IdCell value={s.subOrderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (s) => s.merchantNo },
     {
@@ -172,7 +173,7 @@ function FinanceInner() {
   ];
 
   const splitColumns: Column<SplitLog>[] = [
-    { header: c.colSettleNo, cell: (r) => <IdCell value={r.settleNo} />, numeric: true, align: "start" },
+    { header: c.colSettleNo, cell: (r) => <IdCell value={r.documentNo ?? ""} />, numeric: true, align: "start" },
     { header: c.colOrder, cell: (r) => r.subOrderNo, numeric: true, align: "start" },
     {
       header: c.colAction,
@@ -191,7 +192,7 @@ function FinanceInner() {
   ];
 
   const backColumns: Column<AfterSale>[] = [
-    { header: c.colAsNo, cell: (a) => a.afterSaleNo, numeric: true, align: "start" },
+    { header: c.colAsNo, cell: (a) => a.documentNo ?? "—", numeric: true, align: "start" },
     { header: c.colOrderNo, cell: (a) => <IdCell value={a.orderNo} />, numeric: true, align: "start" },
     { header: c.colMerchant, cell: (a) => a.merchantName },
     { header: c.colRefundAmount, cell: (a) => money(a.refundMinor), numeric: true },
@@ -212,7 +213,7 @@ function FinanceInner() {
             size="sm"
             onClick={async () => {
               const ok = await confirm({
-                title: fill(c.confirmBackTitle, { no: a.afterSaleNo }),
+                title: fill(c.confirmBackTitle, { no: a.documentNo ?? "" }),
                 desc: fill(c.confirmBackDesc, { amount: money(a.refundMinor) }),
                 danger: true, confirmText: c.confirmBackOk,
               });
@@ -259,7 +260,7 @@ function FinanceInner() {
             <FilterSelect aria-label={c.filterStatus} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={settleStatusMap} allLabel={c.filterStatusAll} />
           </Toolbar>
           <DataTable
-            columns={settleColumns} rows={settlements.data?.records ?? []} loading={settlements.isLoading}
+            columns={settleColumns} rows={(settlements.data?.records ?? []).filter((row) => !documentSearch || row.documentNo === keyword.trim())} loading={settlements.isLoading}
             error={settlements.error} onRetry={() => settlements.refetch()}
             rowKey={(s) => s.settleNo}
             empty={c.emptySettle}

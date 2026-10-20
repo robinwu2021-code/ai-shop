@@ -1,5 +1,8 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.BizKey;
@@ -47,6 +50,12 @@ import java.util.stream.Collectors;
  */
 @Service
 public class PlatformActivityServiceImpl implements PlatformActivityService {
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
 
     private static final Logger log = LoggerFactory.getLogger(PlatformActivityServiceImpl.class);
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
@@ -78,16 +87,19 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
     @Override
     public List<PlatformActivityVO> opsList() {
         List<PmtActivity> all = DataScopeContext.executeWithoutScope(() ->
-                activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
+                documentNumbers.load(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
                         .eq(PmtActivity::getOwner, PmtActivity.OWNER_PLATFORM)
-                        .orderByDesc(PmtActivity::getId)));
+                        .orderByDesc(PmtActivity::getId)), PmtActivity::getActivityNo, PmtActivity::setDocumentNo));
         Map<String, List<PmtEnrollment>> byActivity = enrollmentsOf(all.stream().map(PmtActivity::getActivityNo).toList());
         return all.stream().map(a -> vo(a, byActivity.getOrDefault(a.getActivityNo(), List.of()), null)).toList();
     }
 
     @Override
-    @Transactional
     public PlatformActivityVO save(PlatformDraft d, String operatorNo) {
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_ACTIVITY, 1), () -> saveNumbered(d, operatorNo));
+    }
+
+    private PlatformActivityVO saveNumbered(PlatformDraft d, String operatorNo) {
         PmtActivity a = d.activityNo() == null || d.activityNo().isBlank() ? null : requirePlatform(d.activityNo());
         boolean create = a == null;
         if (create) {
@@ -122,7 +134,7 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
         }
         final PmtActivity row = a;
         if (create) {
-            DataScopeContext.executeWithoutScope(() -> activityMapper.insert(row));
+            DataScopeContext.executeWithoutScope(() -> documentNumbers.bind(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", row, row.getActivityNo(), activityMapper::insert, PmtActivity::setDocumentNo));
         } else {
             DataScopeContext.executeWithoutScope(() -> activityMapper.updateById(row));
         }
@@ -264,10 +276,10 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
     @Override
     public List<PlatformActivityVO> forMerchant(String entityNo, String tab) {
         List<PmtActivity> all = DataScopeContext.executeWithoutScope(() ->
-                activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
+                documentNumbers.load(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", activityMapper.selectList(Wrappers.<PmtActivity>lambdaQuery()
                         .eq(PmtActivity::getOwner, PmtActivity.OWNER_PLATFORM)
                         .ne(PmtActivity::getStatus, PmtActivity.DRAFT)
-                        .orderByDesc(PmtActivity::getId)));
+                        .orderByDesc(PmtActivity::getId)), PmtActivity::getActivityNo, PmtActivity::setDocumentNo));
         Map<String, PmtEnrollment> mine = mineOf(entityNo);
         long now = System.currentTimeMillis();
         List<PlatformActivityVO> out = new ArrayList<>();
@@ -431,7 +443,7 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
                 a.getPlatformShareBp() == null ? 0 : a.getPlatformShareBp(), a.getBudgetMinor(),
                 nz(a.getEnrollReservedMinor()),
                 perPlatform, nz(a.getBenefitAmountMinor()) - perPlatform,
-                readRule(a.getEnrollRule()), a.getStatus(), submitted, approved, rejected, mine);
+                readRule(a.getEnrollRule()), a.getStatus(), submitted, approved, rejected, mine).withDocumentNo(a.getDocumentNo());
     }
 
     private EnrollmentVO enrollmentVO(PmtEnrollment e) {
@@ -473,11 +485,11 @@ public class PlatformActivityServiceImpl implements PlatformActivityService {
     }
 
     private PmtActivity requirePlatform(String activityNo) {
-        PmtActivity a = DataScopeContext.executeWithoutScope(() -> activityMapper.selectOne(
+        PmtActivity a = DataScopeContext.executeWithoutScope(() -> documentNumbers.loadOne(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", activityMapper.selectOne(
                 Wrappers.<PmtActivity>lambdaQuery()
                         .eq(PmtActivity::getActivityNo, activityNo)
                         .eq(PmtActivity::getOwner, PmtActivity.OWNER_PLATFORM)
-                        .last("limit 1")));
+                        .last("limit 1")), PmtActivity::getActivityNo, PmtActivity::setDocumentNo));
         if (a == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }

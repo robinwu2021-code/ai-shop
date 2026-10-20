@@ -64,6 +64,10 @@ import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.event.AfterCommit;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.trade.support.OrderNoGenerator;
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.DocumentSource;
+import ai.neargo.shop.numbering.ReservedDocumentNumber;
+import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import ai.neargo.shop.common.Fulfillments;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.common.ErrorCode;
@@ -160,6 +164,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     private final CloseRuleService closeRuleService;
     private final ShipmentTraceQueryPort shipmentTracePort;
     private final OrderNoGenerator orderNoGenerator;
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.beans.factory.annotation.Qualifier("coreDocumentNumberCoordinator")
+    private DocumentNumberCoordinator documentNumbers;
     private static final String CURRENCY_CNY = "CNY";
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -1660,11 +1667,9 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         requireAppointmentWhenNeeded(cmd, split, storeOfMerchant);
 
         long now = System.currentTimeMillis();
-        // 订单号序列化（ADR-035）：O + yyMMddHH + 4位序列（号段），撞 uk 兜底续号
-        String orderNo = orderNoGenerator.mainOrderNo(now,
-                no -> orderMapper.selectCount(com.baomidou.mybatisplus.core.toolkit.Wrappers
-                        .<ai.neargo.shop.trade.entity.OrdOrder>lambdaQuery()
-                        .eq(ai.neargo.shop.trade.entity.OrdOrder::getOrderNo, no)) > 0);
+        // New orders use the already-reserved shared namespace; old O identifiers remain queryable.
+        var mainDocument = documentNumbers.takeReserved(DocumentType.TRADE_ORDER);
+        String orderNo = mainDocument.value();
 
         /*
          * 买赠：算出每行该送几件。
@@ -1683,10 +1688,12 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
          * 而扣减必须在落库之前完成 —— 余额不足要能降级成不抵扣，不能让订单先落库再回滚。
          */
         Map<String, String> subOrderNoOf = new LinkedHashMap<>();
-        int subIdx = 0;
+        Map<String, ReservedDocumentNumber> subDocuments = new LinkedHashMap<>();
         for (Group g : split.groups) {
-            // 子单号 = 主单号 + 后缀（ADR-035），一眼看出属于哪一单；不消耗序列
-            subOrderNoOf.put(g.key(), orderNoGenerator.subOrderNo(orderNo, ++subIdx));
+            // Each child has its own reserved OS; the persisted orderNo carries the parent association.
+            var childDocument = documentNumbers.takeReserved(DocumentType.TRADE_SUBORDER);
+            subDocuments.put(g.key(),childDocument);
+            subOrderNoOf.put(g.key(),childDocument.value());
         }
 
         // 积分占用在普通源订单写入后通过门店策略和持久化 placement 阶段处理。
@@ -1829,6 +1836,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
         }
 
         orderMapper.insert(order);
+        documentNumbers.bindReserved(new DocumentSource(order.getTenantNo()==null?"MAIN":order.getTenantNo(),
+                "CORE","TRADE_ORDER",orderNo),mainDocument);
 
         List<String> subOrderNos = new ArrayList<>();
         Map<String, List<ai.neargo.shop.trade.order.points.OrderPointsTargetFactory.PricedLine>> pointLines =
@@ -1935,6 +1944,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
                 sub.setArriveDate(ticket.pickupDate());
             }
             subOrderMapper.insert(sub);
+            documentNumbers.bindReserved(new DocumentSource(sub.getTenantNo()==null?"MAIN":sub.getTenantNo(),
+                    "CORE","TRADE_SUBORDER",subOrderNo),subDocuments.get(g.key()));
             appendStatusLog(subOrderNo, OrdSubOrder.WAIT_PAY, "已下单，待付款",
                     OrdStatusLog.BY_USER, userNo);
 
@@ -3322,6 +3333,8 @@ public class OrderServiceImpl implements OrderService, LegacyCouponOrderPricingS
     }
 
     private List<CreateOrderCommand.Item> selectedCartItems() {
+        var selection = ai.neargo.shop.trade.numbering.OrderCreationNumberReservations.cartSelection();
+        if (selection.isPresent()) return selection.get().items();
         return cartMapper.selectList(Wrappers.<TrdCartItem>lambdaQuery()
                         .eq(TrdCartItem::getUserNo, SecurityUtils.currentUserNo())
                         .eq(TrdCartItem::getSelected, true)).stream()

@@ -158,7 +158,7 @@ export function PlatformTab({ c, canEdit }: { c: MarketingCopy; canEdit: boolean
           open
           onOpenChange={(o) => !o && setForm(null)}
           title={f.activityNo ? c.platformEdit : c.platformNew}
-          desc={f.activityNo}
+          desc={acts.data?.find((row) => row.activityNo === f.activityNo)?.documentNo ?? undefined}
           footer={
             <div className="flex gap-2">
               {!locked && (

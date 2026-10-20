@@ -1,5 +1,8 @@
 package ai.neargo.shop.trade.port;
 
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.spi.trade.PeriodOrderPort;
 import ai.neargo.shop.trade.entity.OrdItem;
@@ -21,6 +24,12 @@ import java.util.stream.Collectors;
 /** {@link PeriodOrderPort} 的实现。见接口注释。 */
 @Component
 public class PeriodOrderPortImpl implements PeriodOrderPort {
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
 
     private static final Logger log = LoggerFactory.getLogger(PeriodOrderPortImpl.class);
 
@@ -80,6 +89,7 @@ public class PeriodOrderPortImpl implements PeriodOrderPort {
                         .eq(OrdSubOrder::getPeriodNo, periodNo)
                         .notIn(OrdSubOrder::getStatus,
                                 List.of(OrdSubOrder.WAIT_PAY, OrdSubOrder.CANCELLED, OrdSubOrder.REFUNDED))));
+        return documentNumbers.withReservation(java.util.Map.of(DocumentType.AFTER_SALE, subs.size()), () -> {
         int started = 0;
         for (OrdSubOrder s : subs) {
             /*
@@ -96,5 +106,6 @@ public class PeriodOrderPortImpl implements PeriodOrderPort {
             }
         }
         return started;
+        });
     }
 }
