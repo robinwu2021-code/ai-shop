@@ -8,7 +8,7 @@
 | 构件 | 职责 | 当前实现 |
 |---|---|---|
 | beauty-api | DTO / Service 接口 | 政策及项目定义的请求、响应、Service与内部HTTP合同 |
-| beauty-core | 领域实现、实体、Mapper | 首批16表迁移、结构校验、主库接线；政策/定义及操作日志6个实体与Mapper、政策与项目定义发布/历史查询事务 |
+| beauty-core | 领域实现、实体、Mapper | 首批16表迁移、结构校验、主库接线；政策/定义、操作日志及预约/工单任务13个实体与Mapper、政策与项目定义发布/历史查询事务 |
 | beauty-web | 用户端 HTTP 入口 | 独立条件配置、api/ops profile隔离；政策和项目定义查询/发布 Controller |
 | beauty-channel | 内部协议适配 | standalone 的政策/定义远程Service；商品事实反向适配 |
 | beauty-server | 独立内部服务 | 可执行启动、内部政策/定义端点、服务令牌安全链、主库与PLATFORM outbox接线 |
@@ -101,4 +101,8 @@ standalone 宿主需要配置 `shop.services.targets.BEAUTY`；beauty-server 反
 readiness 继续为503，直到业务提供方、正式投递和后续合同完成验收。
 
 ENG-03 在政策/定义切片通过；DATA-04 的定义版本发布和父链隔离已实现。公开营业信息与完整商品目录、预约/工单等仍待后续切片。
-后续推进 DATA-05预约、DATA-06工单任务、DATA-07来源编排及共用合同；完整49任务尚未完成。
+DATA-05/06的数据层已实现：预约及项目/安排历史、工单、任务、步骤、实际参与段7实体，15条既定自定义Mapper方法；
+没有新增公开接口。改约/签到、任务启停/数量、绑定版本、冻结/关闭均做本地范围及CAS检查，
+返回0须由后续业务Service转为冲突。安排revision、工单scopeRevision、任务bindingRevision与BaseEntity.version分别处理。
+未来业务事务必须按工单根→排序任务→子行加锁；当前trade_binding读取仅校验本地引用完整性，不能代表来源授权或资源确认。
+后续推进DATA-07来源编排，以及预约/工作台和工单业务Service、共用人员/资源合同；完整49任务尚未完成。

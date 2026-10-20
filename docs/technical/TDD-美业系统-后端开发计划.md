@@ -1,6 +1,6 @@
 # 美业系统后端开发任务计划
 
-> 状态：实施中 · 2026-10-20 · 已完成工程/迁移基础，政策与执行定义数据切片部分实现；全量业务未完成。
+> 状态：实施中 · 2026-10-20 · 已完成工程/迁移基础、政策/定义业务及预约/工单任务数据层；全量业务未完成。
 > **执行方式：** 使用`superpowers:executing-plans`逐任务实施，每步使用复现过的红灯/绿灯证据；本会话只推进美业。
 > **Spec：** [功能矩阵](../requirements/美业系统-多端功能矩阵.md) · [独立Java结构](./TDD-美业系统-独立项目与包依赖方案.md) · [API清单](./design/美业系统-API清单.md) · [类与方法](./design/美业系统-Java类与方法清单.md) · [逐API方法](./design/美业系统-Controller-Service-Mapper方法清单.md) · [数据库设计](./design/美业系统-数据库结构设计.md)。
 
@@ -14,13 +14,14 @@
 | ENG-02 | 完成 | 默认关闭、显式部署形态；宿主retail/embedded/standalone验证；独立服务无用户入口；实际JAR无数据库启动及200/503探针 |
 | DATA-01 | 完成 | 首批16表归属、BaseEntity字段、tenant/entity索引、源行guard身份与可空唯一键审计；共享14项及P3/P4留在原任务 |
 | DATA-02 | 完成 | 冻结V1、专属历史；MySQL实际DDL与Flyway重入/漂移测试；拒绝无归属旧美业表；平台Flyway共存 |
-| DATA-03 | 部分完成 | 主工厂/主事务/审计接线与政策/定义/动作日志6项实体数据域；其余聚合随各批联验 |
+| DATA-03 | 部分完成 | 主工厂/主事务/审计接线与13项实体数据域；其余来源聚合随DATA-07联验 |
 | DATA-04 | 本批切片完成 | 政策/定义5项实体Mapper；不可变发布、版本CAS、历史查询和父链范围已真实SQL验收，实际记录见§8 |
 | ENG-03 | 部分完成 | 政策/定义可信入口、幂等/审计/outbox及双部署已验收，后续聚合仍须各自完成业务级前置 |
 | POL-01 / DEF-01 | 部分完成 / 主接口完成 | 政策查询发布、定义查询发布已交付；POL-01公开营业信息BAPI-144未在本批范围 |
-| DATA-05～07及后续 | 未完成 | 预约/日历/任务等业务闭环仍待实施，不以基础工程通过计作营业可用 |
+| DATA-05/06 | 数据层完成 | 7项实体、15个原始Mapper方法、25项真实MySQL用例；见§9，不含预约/工单业务Service与工作台API |
+| DATA-07及后续 | 未完成 | 来源编排与预约/日历/任务业务闭环仍待实施，不以数据层通过计作营业可用 |
 
-首批基础阶段验证（本批增量见§8）：独立reactor 42项测试通过，Node生成器6项通过，隔离MySQL DDL约束通过，23项真实JDBC IT通过。
+首批基础阶段验证（后续批次增量见§8、§9）：独立reactor 42项测试通过，Node生成器6项通过，隔离MySQL DDL约束通过，23项真实JDBC IT通过。
 宿主retail/embedded各6通过＋1个不适用形态用例跳过，standalone 7项全部通过；无H2替代MySQL约束结论。
 设计API/Java/数据库/任务索引生成校验通过，SQL方言守卫无新增命中。独立服务readiness仍为OUT_OF_SERVICE。
 全局文档守卫为5通过/3失败，剩余为既有方案输入中的Mermaid基线、餐饮断链和索引欠账；美业生成与链接检查不在失败清单中，未将全局守卫标记通过。
@@ -168,8 +169,8 @@ CAL-01可先开发资源占用视图，但完整准出依赖TASK-01任务摘要�
 | 任务 | 数据与精确类范围 | 关键方法/不变量 | 目标失败用例 |
 |---|---|---|---|
 | DATA-04 政策/定义5项 | entity/BtyStorePolicy、BtyStorePolicyVersion、BtyServiceDefinition、BtyServiceDefinitionVersion、BtyServiceRequirement及同对象内嵌Mapper | selectScopedForUpdate、switchCurrentVersion；发布版本与要求追加；头指针CAS、唯一门店/SKU范围 | `PolicyDefinitionPersistenceTest#rejectsStalePointerSwitch`、`#keepsPublishedSnapshotImmutable`、`#rejectsCrossEntityRequirement` |
-| DATA-05 预约3项 | entity/BtyAppointment、BtyAppointmentItem、BtyAppointmentAssignment及对应Mapper | changeSchedule、markArrived、changeStatus、selectByAppointmentRevision；原安排不覆盖，指定意愿不当实际执行 | `AppointmentPersistenceTest#keepsPreviousAssignmentRevision`、`#rejectsStaleScheduleChange`、`#limitsChildRowsToAuthorizedParent` |
-| DATA-06 工单任务4项 | entity/BtyWorkOrder、BtyServiceTask、BtyServiceStep、BtyServiceParticipation及对应Mapper | freezeScope、advanceScope、closeFrozenScope、recordCompletion、switchBindingRevision、endParticipation；范围/绑定/根版本分开，参与区间追加 | `ServiceTaskPersistenceTest#rejectsOverCompletion`、`#rejectsScopeMutationWhenFrozen`、`#closesOnlyCurrentParticipation` |
+| DATA-05 预约3项 | entity/BtyAppointment、BtyAppointmentItem、BtyAppointmentAssignment及对应Mapper | changeSchedule、markArrived、changeStatus、selectByAppointmentRevision；原安排不覆盖，指定意愿不当实际执行 | `AppointmentPersistenceIT#keepsPreviousAssignmentRevisionAndRequestedPersonSeparate`、`#rejectsStaleScheduleAndWrongStoreOrTerminalState`、`#limitsAssignmentsToAuthorizedUndeletedParentChain` |
+| DATA-06 工单任务4项 | entity/BtyWorkOrder、BtyServiceTask、BtyServiceStep、BtyServiceParticipation及对应Mapper | freezeScope、advanceScope、closeFrozenScope、recordCompletion、switchBindingRevision、endParticipation；范围/绑定/根版本分开，参与区间追加 | `ServiceTaskPersistenceIT#rejectsOverCompletionAndStaleBindingAndKeepsPartialWorkOpen`、`#freezeBlocksTaskMutationAndScopeAdvance`、`#closesOnlyCurrentParticipationAndNeverOverwritesPersonnel` |
 | DATA-07 来源编排4项 | entity/BtyServiceSubmission、BtyTradeBinding、BtyActionLog、BtySourceAllocationGuard及对应Mapper | selectByRequestKey、advanceProgress、selectSourceForUpdate、allocateQuantity、releaseUnconsumedQuantity、refreshSourceSnapshot；同源guard跨任务累计上限，原号/原绑定留存 | `SourceAllocationConcurrencyTest#allocatesWithinOriginalQuantity`、`#sharesGuardAcrossSourceRevisions`、`#rejectsChangedPayloadForSameKey`、`#doesNotReleaseConsumedQuantity` |
 
 每批具体步骤：
@@ -383,3 +384,53 @@ BackendI18nParityTest6/6；文档守卫5/8，既有Mermaid基线及餐饮链接/
 无beauty-core；关闭美业不创建远程提供方，8项美业形态/装配用例全部通过。
 消融移除query的@Max(100)后，4项Web用例中1个断言失败/0错误；finally恢复，完整54项reactor通过。
 实际关闭态JAR不连接数据库启动，liveness200/readiness503。最终源文件按120列及补丁空白检查收口。
+
+## §9 DATA-05/06：预约与工单任务数据切片
+
+本批接续183b04e8a，工作树干净；只实现已定义的7项Entity和15条自定义Mapper方法，不新增HTTP、人员资源主档或迁移。
+
+### 9.1 实施规则和接口对账
+
+- E1 预约：BtyAppointment/Item/Assignment继承BaseEntity，字段沿冻结V1；AppointmentMapper原4方法与AssignmentMapper原读取方法不改签名。
+  安排revision为显式历史版本，不从状态更新后的根version推算。改约限HELD/CONFIRMED且版本/前态一致，必须有非空新hold与合法时段；旧安排行只追加不覆盖。
+  changeStatus只允许HELD→CONFIRMED/CANCELLED/EXPIRED、CONFIRMED→CANCELLED/NO_SHOW；确认须hold。
+  markArrived只允许CONFIRMED→CHECKED_IN、首次签到、非空时间；其他终态拒绝。
+  assignment读取从安排→项目→预约联结tenant/entity/业务号/store，跨店/跨主体/软删父链不得读到；requestedPersonnel与安排人员分开保存。
+- E2 工单任务：BtyWorkOrder/ServiceTask/ServiceStep/ServiceParticipation，Mapper方法按既有清单。
+  所有标量CAS显式version+1及actor/updatedAt，错范围、错版本、非法前态返回0；后续业务Service必须将0映射冲突。
+  工单范围版本、task绑定版本、BaseEntity版本分别校验；旧task的创建scopeRevision允许小于当前根scopeRevision。
+  advanceScope仅OPEN/IN_SERVICE且未冻结；freezeScope接受OPEN/IN_SERVICE/SERVICE_FINISHED，关闭仅SERVICE_FINISHED+已冻结。
+  closeFrozenScope重查真实任务数量/终态、步骤、参与段和当前绑定引用，不以计数快照关闭；空工单不关闭。
+  recordCompletion仅IN_SERVICE，正增量且最多六位小数、不超过qty-voided、最终完成须至少一步且步骤齐备；只有全额完成设置DONE/finishedAt。
+  changeStatus不提供任意target捷径：PENDING/PAUSED→IN_SERVICE、IN_SERVICE→PAUSED；VOIDED仅PENDING、从未开始且done0/voided=qty。
+  启动/暂停恢复与绑定切换要求净数量qty-voided>0；全部作废的待执行任务只能进入VOIDED。
+  switchBindingRevision只前进，须本域相同任务的新绑定行按uom完整覆盖qty-voided（来源外部许可/guard原子分配仍由DATA-07/SRC负责）。
+  step完成仅IN_PROGRESS且task在服务中，开始结束合法、前序步骤已DONE/SKIPPED；resultSnapshot非空JSON。
+  participation只结束未结束区间，时间不倒置、保留人员与原计划；允许在冻结待关闭期间收口参与段，但已关闭/取消根不可变。
+- 锁序：后续业务事务先锁workOrder，再稳定排序锁task，再子行；冻结/完成并发验收遵循此序。
+  本地SQL检查不代表Core/Pay许可或公共资源占用已确认，不在本批创建假服务、假资源或成功占位。
+
+### 9.2 RED→GREEN任务及文件
+
+| 任务 | 文件 | 验收 |
+|---|---|---|
+| E1 | beauty-core/entity/BtyAppointment*.java；BeautyMappers内3个Mapper；BeautyDataScopeRegistration | AppointmentPersistenceIT：字段/主库审计、安排历史、改约CAS及回滚、状态/签到、父链隔离、同版本并发单胜者 |
+| E2 | entity/BtyWorkOrder/BtyServiceTask/BtyServiceStep/BtyServiceParticipation；BeautyMappers内4个Mapper；注册数据域 | ServiceTaskPersistenceIT：冻结/范围、数量上限、绑定单调、步骤顺序、参与结束、真实关闭条件、租户/门店隔离、事务回滚和根锁并发 |
+| E3 | scripts/verify-beauty-persistence.mjs、README及本页 | 先缺类红灯再完整真实MySQL；普通reactor、冻结SQL/生成物、关键CAS消融、独立复核；本地提交不合并推送 |
+
+Ruling：本批复用V1已存在的trade_binding表做只读局部守卫，不实现DATA-07 Mapper或任何外部资金/资源权威；多聚合业务编排仍待后续Service验收。
+
+### 9.3 本批实际验收
+
+- 数据层范围：7实体、7个Mapper接口（其中预约项目只用BaseMapper）、15条原始自定义方法；累计13实体数据域。
+  DATA-05/06仅持久化层完成，预约/任务Service与Controller、DATA-07来源编排及公共资源匹配未交付；readiness仍为503。
+- RED→GREEN：缺实体16项断言失败；数量精度/缺步骤/关闭早于任务完成3项反例失败；
+  已开始任务误作废1项反例失败；零净数量启动/空绑定切换2项反例失败；全部修复后最终66项真实MySQL通过，0失败/错误/跳过。
+  新增预约8项、工单任务17项；原有41项保持通过。解析器PRIOR别名改为earlier_step，不绕过平台拦截器。
+- 完整美业reactor 54项通过。五组设计生成器、冻结V1和Node6项通过；SQL方言扫描无新增依赖；新增Java120列及补丁空白检查通过。
+- 消融：仅移除数量六位精度守卫，23项用例中1断言失败、0错误；finally恢复，最终全量回归通过。
+- 独立复核核对7实体字段、15原始签名及父链/CAS/时间/数量守卫；发现的零净数量P2已有真实反例与修复复核。
+  基于原冻结结构实现，不修改全局审计和V1，不连接营业库，不改原餐饮工作区。
+
+最终双部署补验：BeautyStandaloneEndToEndIT实际TCP→业务→MySQL1项通过；BeautyPolicyEndToEndIT宿主HTTP→MySQL1项通过。
+实际可执行JAR关闭态无数据库启动，liveness200/readiness503；全部以最终源码构建后执行。
