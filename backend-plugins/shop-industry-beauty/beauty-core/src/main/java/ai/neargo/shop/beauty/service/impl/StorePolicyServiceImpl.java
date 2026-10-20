@@ -2,6 +2,8 @@ package ai.neargo.shop.beauty.service.impl;
 
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.beauty.dto.PolicyVersionVO;
+import ai.neargo.shop.beauty.dto.StorePolicyQuery;
+import ai.neargo.shop.beauty.dto.StorePolicyVO;
 import ai.neargo.shop.beauty.dto.PublishStorePolicyVersionReq;
 import ai.neargo.shop.beauty.entity.BtyActionLog;
 import ai.neargo.shop.beauty.entity.BtyStorePolicy;
@@ -21,6 +23,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.dao.DuplicateKeyException;
@@ -47,6 +50,37 @@ public class StorePolicyServiceImpl implements StorePolicyService {
         this.publisher = publisher;
         this.source = source;
         this.json = json;
+    }
+
+    @Override
+    @Transactional(transactionManager = "transactionManager", readOnly = true)
+    public StorePolicyVO getPolicy(String entityNo, String currentStoreNo, String actorNo, StorePolicyQuery query) {
+        IdempotencyScope.endpoint("BEAUTY", "GET_STORE_POLICY", entityNo, currentStoreNo);
+        if (actorNo == null || actorNo.isBlank() || query == null) { throw BizException.of(ErrorCode.BAD_REQUEST); }
+        if (query.storeNo() != null && !currentStoreNo.equals(query.storeNo())) {
+            throw BizException.of(ErrorCode.FORBIDDEN);
+        }
+        LocalDateTime at = query.at() == null ? LocalDateTime.now(ZoneOffset.UTC)
+                : query.at().withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        return DataScopeContext.executeWithoutScope(() -> {
+            var head = policies.selectOne(Wrappers.<BtyStorePolicy>lambdaQuery()
+                    .eq(BtyStorePolicy::getTenantNo, "MAIN").eq(BtyStorePolicy::getEntityNo, entityNo)
+                    .eq(BtyStorePolicy::getStoreNo, currentStoreNo).eq(BtyStorePolicy::getStatus, "ACTIVE"));
+            if (head == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
+            var version = versions.selectOne(Wrappers.<BtyStorePolicyVersion>lambdaQuery()
+                    .eq(BtyStorePolicyVersion::getTenantNo, "MAIN").eq(BtyStorePolicyVersion::getEntityNo, entityNo)
+                    .eq(BtyStorePolicyVersion::getPolicyNo, head.getPolicyNo())
+                    .le(BtyStorePolicyVersion::getEffectiveAt, at)
+                    .orderByDesc(BtyStorePolicyVersion::getEffectiveAt, BtyStorePolicyVersion::getRevisionIndex)
+                    .last("LIMIT 1"));
+            if (version == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
+            var rule = json.readValue(version.getCancelRule(), PublishStorePolicyVersionReq.CancellationRule.class);
+            var modes = json.readValue(version.getAllowedModes(), String[].class);
+            return new StorePolicyVO(head.getPolicyNo(), currentStoreNo, head.getVersion(),
+                    version.getPolicyVersionNo(),
+                    version.getRevisionIndex(), version.getEffectiveAt().atOffset(ZoneOffset.UTC),
+                    new PublishStorePolicyVersionReq.Policy(version.getBookingAheadDays(), rule, Set.of(modes)));
+        });
     }
 
     @Override

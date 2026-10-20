@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import ai.neargo.shop.config.MybatisPlusConfig;
+import ai.neargo.shop.svc.InternalHttp;
+import java.util.Optional;
 import ai.neargo.shop.config.PlatformDataSourceConfig;
 import com.baomidou.mybatisplus.autoconfigure.MybatisPlusProperties;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
@@ -139,4 +141,35 @@ class BeautyEmbeddedWiringTest {
         assertThat(filters.stream().noneMatch(pattern ->
                 pattern.matcher("ai.neargo.shop.trade.mapper.OrderMapper").matches())).isTrue();
     }
+    @Test
+    @EnabledIfSystemProperty(named = "beauty.build.shape", matches = "standalone")
+    void standaloneAutoConfigurationProvidesBothRemoteServicesWithoutCore() {
+        Class<?> channel = ClassUtils.resolveClassName("ai.neargo.shop.beauty.config.BeautyChannelAutoConfiguration",
+                getClass().getClassLoader());
+        new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(channel,
+                ClassUtils.resolveClassName(WEB, getClass().getClassLoader())))
+                .withBean(InternalHttp.class, () -> new InternalHttp(service -> Optional.empty(), "test-only-token"))
+                .withPropertyValues("shop.beauty.enabled=true", "shop.beauty.deployment=standalone",
+                        "spring.profiles.active=api").run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean("remoteStorePolicyService").getClass().getSimpleName())
+                            .isEqualTo("RemoteStorePolicyService");
+                    assertThat(context.getBean("remoteServiceDefinitionService").getClass().getSimpleName())
+                            .isEqualTo("RemoteServiceDefinitionService");
+                    assertThat(context.getBeansOfType(ClassUtils.resolveClassName(
+                            "ai.neargo.shop.beauty.api.biz.BizStorePolicyController", getClass().getClassLoader())))
+                            .hasSize(1);
+                    assertThat(context.getBeansOfType(ClassUtils.resolveClassName(
+                            "ai.neargo.shop.beauty.api.biz.BizServiceDefinitionController",
+                            getClass().getClassLoader())))
+                            .hasSize(1);
+                    assertThat(present(CORE)).isFalse();
+                });
+        new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(channel))
+                .withBean(InternalHttp.class, () -> new InternalHttp(service -> Optional.empty(), "test-only-token"))
+                .withPropertyValues("shop.beauty.enabled=false", "shop.beauty.deployment=standalone")
+                .run(context -> assertThat(context).hasNotFailed().doesNotHaveBean("remoteStorePolicyService")
+                        .doesNotHaveBean("remoteServiceDefinitionService"));
+    }
+
 }

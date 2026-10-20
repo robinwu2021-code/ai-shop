@@ -242,7 +242,8 @@ class BeautyPolicyPublicationIT {
         UnifiedOutboxFacade facade(DataSource source, PlatformTransactionManager manager, ObjectMapper json) {
             var facade = new UnifiedOutboxFacade(json);
             facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            facade.setArchiveOnly(Set.of("PLATFORM:" + EVENT)); // Test route only; no production readiness claim.
+            // Test route only; no production readiness claim.
+            facade.setArchiveOnly(Set.of("PLATFORM:" + EVENT, "PLATFORM:BEAUTY_SERVICE_DEFINITION_VERSION_PUBLISHED"));
             return facade;
         }
     }

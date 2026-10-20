@@ -1,20 +1,20 @@
 # 美业独立 Java 工程
 
-> 状态：基础工程、首批数据层和 BAPI-002 政策版本发布已实现 · 2026-10-20。完整营业能力仍在开发。
+> 状态：基础工程、首批数据层及政策/项目定义查询发布已实现 · 2026-10-20。完整营业能力仍在开发。
 
 沿零售的 shop-parent、Java 21、MyBatis-Plus、主库事务及审计规范实现。
 执行范围、原始方法签名和验收进度见[后端开发计划](../../docs/technical/TDD-美业系统-后端开发计划.md)。
 
 | 构件 | 职责 | 当前实现 |
 |---|---|---|
-| beauty-api | DTO / Service 接口 | 发布政策版本的请求、响应和 Service 合同 |
-| beauty-core | 领域实现、实体、Mapper | 首批16表迁移、结构校验、主库接线；政策/定义及操作日志6个实体与Mapper、政策发布事务 |
-| beauty-web | 用户端 HTTP 入口 | 独立条件配置、api/ops profile隔离；政策版本发布 Controller |
-| beauty-channel | 内部协议适配 | 构件与依赖边界 |
-| beauty-server | 独立内部服务 | 可执行启动、服务令牌安全链、健康探针及显式主库配置 |
+| beauty-api | DTO / Service 接口 | 政策及项目定义的请求、响应、Service与内部HTTP合同 |
+| beauty-core | 领域实现、实体、Mapper | 首批16表迁移、结构校验、主库接线；政策/定义及操作日志6个实体与Mapper、政策与项目定义发布/历史查询事务 |
+| beauty-web | 用户端 HTTP 入口 | 独立条件配置、api/ops profile隔离；政策和项目定义查询/发布 Controller |
+| beauty-channel | 内部协议适配 | standalone 的政策/定义远程Service；商品事实反向适配 |
+| beauty-server | 独立内部服务 | 可执行启动、内部政策/定义端点、服务令牌安全链、主库与PLATFORM outbox接线 |
 
 只有 server 是可执行 JAR。web/channel 不依赖 core；商品、订单、资金、人员、排班、资源、库存及通知打印沿原所有者提供。
-当前 readiness 固定 OUT_OF_SERVICE，等待真实业务提供方和业务写入联验。
+当前 readiness 固定 OUT_OF_SERVICE，等待预约/资源、来源/履约等后续权威合同和完整营业验收。
 
 ## 构建与宿主形态
 
@@ -53,7 +53,7 @@ V1首次生成后冻结；后续新增版本，不回写已执行文件。P3/P4�
 node --test scripts/tests/beauty-schema-sql.test.mjs
 node scripts/gen-beauty-schema.mjs --check
 node scripts/verify-beauty-schema-mysql.mjs
-node scripts/verify-beauty-persistence.mjs --include-host
+node scripts/verify-beauty-persistence.mjs --include-server --include-host
 node scripts/smoke-beauty-server.mjs
 ```
 
@@ -76,10 +76,29 @@ JAR smoke明确关闭美业、清空数据源 URL并监听本机随机端口，�
 收尾已追平餐饮最新已提交 c634de551（本分支74fdaf218），包括实际政策读取入口。
 元数据前置检查复用事务连接，单连接池也能发布；不执行公共表 DDL。
 
-生产必须注册本事件的正式消费者或明确的归档合同；没有路由时拒绝发布并整体回滚。
-测试的 archive-only 路由只用于验证真实持久化和事务，不代表生产消费者已交付。
-standalone 的 typed 远程 Service 提供方尚未实现，不能据 web/channel 构件可启动宣称该模式可办理政策业务。
+本批新增 `GET /biz/x/beauty/store-policies`、`GET /biz/x/beauty/service-definitions`、
+`POST /biz/x/beauty/service-definitions/versions`。两种 Service 同时提供 embedded 与 standalone 实现。
+政策按 `effective_at` 选有效版本，不把未来版本提前生效；响应分别给出根revision和有效版本revision。
+定义使用现有审计 `created_at` 作历史查询时点，沿平台JVM本地审计约定换算；部署各实例须使用同一稳定时区，
+返回publishedAt转换为UTC。定义查询page默认1、size默认20且最大100；子要求只能通过当前范围内父版本读取。
+
+定义的 `duration` 包含 minutes/bufferBeforeMin/bufferAfterMin；requirements包含角色、资源类型、技能项目、数量和占用区间。
+P1仅单步骤SERVICE（sequenceNo=0）、ANY_QUALIFIED规则，资源类型STAFF/ROOM/SEAT/DEVICE；实际人员匹配在后续资源合同验收。
+基础时长校验 `prd_goods.duration_min`，共享商品域ServiceProductFactsPort负责MAIN/CN、本店、SERVICE类型及在架报价事实。
+美业不保存售价；duration与商品事实不符时拒绝。商品外部查询在主事务外执行，禁止从已开启事务调用定义发布。
+
+不可变政策/定义发布事件本批采用明确归档合同：版本表和action_log为权威，outbox事件留作发布凭据，
+不承诺通知、支付或资源副作用。部署需显式设置
+`spring.config.import=classpath:beauty-publication-archive.yml`（可合并到已有导入列表）；
+此文件精确登记两个事件并将platform源设为UNIFIED，不默认开启，也不覆盖其他消费者合同。
+已有实际消费者的部署应自行配置正式路由，不能同时归档同一事件。缺路由仍拒绝发布、整体回滚。
+独立server本批只装配共享PLATFORM存储用于归档；需要实际投递消费者时须先接入交付引擎并验收。
+
+standalone 宿主需要配置 `shop.services.targets.BEAUTY`；beauty-server 反向查商品需配置
+`shop.services.targets.PLATFORM`，两者使用原 `shop.services.internal-token`。
+令牌只授予受信平台内部委托资格；公开用户不得直接提交entity/store/actor。
+内部scope字段非空有长度约束，Service再次校验query门店和SQL范围；操作人适配原审计后finally恢复线程身份。
 readiness 继续为503，直到业务提供方、正式投递和后续合同完成验收。
 
-ENG-03 仅本政策切片通过；DATA-04 的定义版本发布和父链校验仍待完成。
+ENG-03 在政策/定义切片通过；DATA-04 的定义版本发布和父链隔离已实现。公开营业信息与完整商品目录、预约/工单等仍待后续切片。
 后续推进 DATA-05预约、DATA-06工单任务、DATA-07来源编排及共用合同；完整49任务尚未完成。

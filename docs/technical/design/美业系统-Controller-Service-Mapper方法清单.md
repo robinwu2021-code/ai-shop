@@ -36,7 +36,7 @@
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizStorePolicyController`
 
 ```java
-StorePolicyVO getPolicy(@Valid @ModelAttribute StorePolicyQuery query);
+StorePolicyVO getPolicy(@Valid @ModelAttribute StorePolicyQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.StorePolicyService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.StorePolicyServiceImpl`
@@ -136,7 +136,7 @@ PublicStoreVO getPublicStore(String storeNo);
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceDefinitionController`
 
 ```java
-PageData<ServiceDefinitionVO> listDefinitions(@Valid @ModelAttribute ServiceDefinitionQuery query);
+PageData<ServiceDefinitionVO> listDefinitions(@Valid @ModelAttribute ServiceDefinitionQuery query, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceDefinitionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceDefinitionServiceImpl`
@@ -160,7 +160,7 @@ PageData<ServiceDefinitionVO> listDefinitions(String entityNo, String currentSto
 Controller（beauty-web）：`ai.neargo.shop.beauty.api.biz.BizServiceDefinitionController`
 
 ```java
-ServiceDefinitionVersionVO publishDefinitionVersion(@Valid @RequestBody PublishServiceDefinitionVersionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey);
+ServiceDefinitionVersionVO publishDefinitionVersion(@Valid @RequestBody PublishServiceDefinitionVersionReq req, @RequestHeader("Idempotency-Key") String idempotencyKey, @RequestHeader(value = "X-Store-No", required = false) String requestedStore);
 ```
 
 Service（beauty-api）：`ai.neargo.shop.beauty.service.ServiceDefinitionService`；Impl（beauty-core）：`ai.neargo.shop.beauty.service.impl.ServiceDefinitionServiceImpl`
@@ -3270,6 +3270,14 @@ RechargeView createRecharge(EntitlementContext context, CreateRecharge command);
 
 ```java
 RechargeView queryRecharge(EntitlementContext context, String entityNo, String rechargeNo);
+```
+
+### ai.neargo.shop.spi.product.ServiceProductFactsPort
+
+[源码](../../../backend/shop-base/src/main/java/ai/neargo/shop/spi/product/ServiceProductFactsPort.java)；已实现MAIN/CN本店SERVICE商品事实；定价仍在GoodsQueryPort；基础时长来源prd_goods.duration_min；独立服务走公共内部HTTP合同。
+
+```java
+Fact get(String entityNo, String storeNo, String skuNo);
 ```
 
 ## 六、事务与验收重点

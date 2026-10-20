@@ -1,0 +1,39 @@
+package ai.neargo.shop.beauty.config;
+
+import ai.neargo.shop.beauty.client.RemoteStorePolicyService;
+import ai.neargo.shop.beauty.client.RemoteServiceDefinitionService;
+import ai.neargo.shop.beauty.service.StorePolicyService;
+import ai.neargo.shop.beauty.service.ServiceDefinitionService;
+import ai.neargo.shop.beauty.spi.BeautyPolicyInternalApi;
+import ai.neargo.shop.beauty.spi.BeautyDefinitionInternalApi;
+import ai.neargo.shop.svc.InternalHttp;
+import ai.neargo.shop.svc.ServiceName;
+import java.time.Duration;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+
+/** Loaded only with standalone channel artifacts; no dependency on beauty-core or its tables. */
+@AutoConfiguration
+@ConditionalOnBean(InternalHttp.class)
+@ConditionalOnMissingClass("ai.neargo.shop.beauty.config.BeautyAutoConfiguration")
+@ConditionalOnProperty(prefix = "shop.beauty", name = "enabled", havingValue = "true")
+public class BeautyChannelAutoConfiguration {
+    @Bean
+    @ConditionalOnProperty(prefix = "shop.beauty", name = "deployment", havingValue = "standalone")
+    @ConditionalOnMissingBean(StorePolicyService.class)
+    StorePolicyService remoteStorePolicyService(InternalHttp http) {
+        return new RemoteStorePolicyService(http.client(ServiceName.BEAUTY, BeautyPolicyInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+    @Bean
+    @ConditionalOnProperty(prefix = "shop.beauty", name = "deployment", havingValue = "standalone")
+    @ConditionalOnMissingBean(ServiceDefinitionService.class)
+    ServiceDefinitionService remoteServiceDefinitionService(InternalHttp http) {
+        return new RemoteServiceDefinitionService(http.client(ServiceName.BEAUTY, BeautyDefinitionInternalApi.class,
+                Duration.ofSeconds(5)));
+    }
+}

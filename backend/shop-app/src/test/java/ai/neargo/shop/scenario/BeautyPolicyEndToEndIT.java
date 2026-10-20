@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import ai.neargo.shop.auth.BizContext;
@@ -97,6 +98,15 @@ class BeautyPolicyEndToEndIT {
                             .content(body.replace("18:00:00+08:00", "10:00:00Z")))
                             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
                     assertThat(replay).isEqualTo(first);
+                    String effective = mvc.perform(get("/biz/x/beauty/store-policies")
+                            .header("Authorization", "Bearer " + token).param("storeNo", "S")
+                            .param("at", "2026-10-20T18:00:00+08:00"))
+                            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+                    assertThat(new ObjectMapper().readTree(effective).get("effectiveRevision").asLong()).isOne();
+                    mvc.perform(get("/biz/x/beauty/store-policies")
+                            .header("Authorization", "Bearer " + token).param("storeNo", "OTHER"))
+                            .andExpect(status().isForbidden());
+
                     mvc.perform(post(path).header("Authorization", "Bearer " + token)
                             .header("Idempotency-Key", "BAD-STORE").header("X-Store-No", "FOREIGN")
                             .contentType("application/json").content(body)).andExpect(status().isForbidden());

@@ -17,6 +17,12 @@
           "name": "query",
           "annotation": "@Valid @ModelAttribute",
           "source": "QUERY"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
+          "source": "HEADER"
         }
       ],
       "serviceParameters": [
@@ -198,6 +204,12 @@
           "name": "query",
           "annotation": "@Valid @ModelAttribute",
           "source": "QUERY"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
+          "source": "HEADER"
         }
       ],
       "serviceParameters": [
@@ -245,6 +257,12 @@
           "type": "String",
           "name": "idempotencyKey",
           "annotation": "@RequestHeader(\"Idempotency-Key\")",
+          "source": "HEADER"
+        },
+        {
+          "type": "String",
+          "name": "requestedStore",
+          "annotation": "@RequestHeader(value = \"X-Store-No\", required = false)",
           "source": "HEADER"
         }
       ],
@@ -6023,7 +6041,7 @@
       "class": "ai.neargo.shop.beauty.dto.StorePolicyVO",
       "kind": "VO",
       "fieldsContract": [
-        "StorePolicyVO含版本和有效能力"
+        "policyNo,storeNo,revision,policyVersionNo,effectiveRevision,validFrom,policy"
       ],
       "apiIds": [
         "BAPI-001"
@@ -6083,7 +6101,7 @@
       "class": "ai.neargo.shop.beauty.dto.ServiceDefinitionQuery",
       "kind": "QUERY",
       "fieldsContract": [
-        "storeNo,skuNo,at"
+        "storeNo,skuNo,at,page=1,size=20(max100)"
       ],
       "apiIds": [
         "BAPI-007"
@@ -6093,7 +6111,7 @@
       "class": "ai.neargo.shop.beauty.dto.ServiceDefinitionVO",
       "kind": "VO",
       "fieldsContract": [
-        "PageData<ServiceDefinitionVO>"
+        "definitionNo,storeNo,skuNo,revision,definitionVersionNo,effectiveRevision,publishedAt,duration,requirements,snapshotHash"
       ],
       "apiIds": [
         "BAPI-007"
@@ -6103,7 +6121,7 @@
       "class": "ai.neargo.shop.beauty.dto.PublishServiceDefinitionVersionReq",
       "kind": "REQ",
       "fieldsContract": [
-        "skuNo,expectedRevision,duration,requirements"
+        "skuNo,expectedRevision,duration{minutes,bufferBeforeMin,bufferAfterMin},requirements[{roleCode,resourceType,skillGoodsNo,qty,sequenceNo,offsetMin,durationMin,selectionRule}]"
       ],
       "apiIds": [
         "BAPI-008"
@@ -6113,7 +6131,7 @@
       "class": "ai.neargo.shop.beauty.dto.ServiceDefinitionVersionVO",
       "kind": "VO",
       "fieldsContract": [
-        "ServiceDefinitionVersionVO"
+        "definitionNo,definitionVersionNo,revision,snapshotHash"
       ],
       "apiIds": [
         "BAPI-008"
@@ -10488,6 +10506,12 @@
       "signature": "RechargeView queryRecharge(EntitlementContext context, String entityNo, String rechargeNo);",
       "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/storedvalue/StoredValuePort.java",
       "note": "未知按原号查单；不手调余额"
+    },
+    {
+      "owner": "ai.neargo.shop.spi.product.ServiceProductFactsPort",
+      "signature": "Fact get(String entityNo, String storeNo, String skuNo);",
+      "path": "backend/shop-base/src/main/java/ai/neargo/shop/spi/product/ServiceProductFactsPort.java",
+      "note": "已实现MAIN/CN本店SERVICE商品事实；定价仍在GoodsQueryPort；基础时长来源prd_goods.duration_min；独立服务走公共内部HTTP合同"
     }
   ],
   "supportClasses": [

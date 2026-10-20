@@ -21,6 +21,9 @@ public final class ServiceName {
     /** 餐饮独立进程；三端用户入口仍在PLATFORM。 */
     public static final String FOOD = "FOOD";
 
+    /** 美业独立内部业务进程；公开入口仍在PLATFORM。 */
+    public static final String BEAUTY = "BEAUTY";
+
     private ServiceName() {
     }
 }

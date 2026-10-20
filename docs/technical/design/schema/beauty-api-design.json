@@ -496,7 +496,7 @@
             "BTY-A04"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现；部署与验收边界见后端开发计划§8"
         },
         {
           "id": "BAPI-002",
@@ -510,7 +510,7 @@
             "BTY-A04"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现；部署与验收边界见后端开发计划§8"
         },
         {
           "id": "BAPI-003",
@@ -593,13 +593,13 @@
           "method": "GET",
           "path": "/biz/x/beauty/service-definitions",
           "purpose": "查项目作业定义",
-          "request": "storeNo,skuNo,at",
+          "request": "storeNo,skuNo,at,page?,size?",
           "response": "PageData<ServiceDefinitionVO>",
           "functions": [
             "BTY-B04"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现；部署与验收边界见后端开发计划§8"
         },
         {
           "id": "BAPI-008",
@@ -612,7 +612,7 @@
             "BTY-B04"
           ],
           "phase": "P1",
-          "status": "美业候选新接口"
+          "status": "已实现；部署与验收边界见后端开发计划§8"
         },
         {
           "id": "BAPI-009",

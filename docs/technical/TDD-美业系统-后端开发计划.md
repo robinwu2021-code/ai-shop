@@ -14,11 +14,13 @@
 | ENG-02 | 完成 | 默认关闭、显式部署形态；宿主retail/embedded/standalone验证；独立服务无用户入口；实际JAR无数据库启动及200/503探针 |
 | DATA-01 | 完成 | 首批16表归属、BaseEntity字段、tenant/entity索引、源行guard身份与可空唯一键审计；共享14项及P3/P4留在原任务 |
 | DATA-02 | 完成 | 冻结V1、专属历史；MySQL实际DDL与Flyway重入/漂移测试；拒绝无归属旧美业表；平台Flyway共存 |
-| DATA-03 | 部分完成 | 主工厂/主事务/审计接线与5项实体数据域；真实policy Mapper回滚和范围CAS通过，其余Mapper随各批联验 |
-| DATA-04 | 部分完成 | 5项Entity/嵌套Mapper、4个自定义方法；版本CAS与INACTIVE状态通过；不可变发布事务和同主体跨店子表父链尚待补齐 |
-| ENG-03、DATA-05～07及后续 | 未完成 | 未实现可信业务入口、幂等/outbox联验、预约/日历/任务等业务闭环，不以基础工程通过计作营业可用 |
+| DATA-03 | 部分完成 | 主工厂/主事务/审计接线与政策/定义/动作日志6项实体数据域；其余聚合随各批联验 |
+| DATA-04 | 本批切片完成 | 政策/定义5项实体Mapper；不可变发布、版本CAS、历史查询和父链范围已真实SQL验收，实际记录见§8 |
+| ENG-03 | 部分完成 | 政策/定义可信入口、幂等/审计/outbox及双部署已验收，后续聚合仍须各自完成业务级前置 |
+| POL-01 / DEF-01 | 部分完成 / 主接口完成 | 政策查询发布、定义查询发布已交付；POL-01公开营业信息BAPI-144未在本批范围 |
+| DATA-05～07及后续 | 未完成 | 预约/日历/任务等业务闭环仍待实施，不以基础工程通过计作营业可用 |
 
-实际验证：独立reactor 42项测试通过，Node生成器6项通过，隔离MySQL DDL约束通过，23项真实JDBC IT通过。
+首批基础阶段验证（本批增量见§8）：独立reactor 42项测试通过，Node生成器6项通过，隔离MySQL DDL约束通过，23项真实JDBC IT通过。
 宿主retail/embedded各6通过＋1个不适用形态用例跳过，standalone 7项全部通过；无H2替代MySQL约束结论。
 设计API/Java/数据库/任务索引生成校验通过，SQL方言守卫无新增命中。独立服务readiness仍为OUT_OF_SERVICE。
 全局文档守卫为5通过/3失败，剩余为既有方案输入中的Mermaid基线、餐饮断链和索引欠账；美业生成与链接检查不在失败清单中，未将全局守卫标记通过。
@@ -302,3 +304,82 @@ readiness 保持503；未完成任务继续沿原49任务索引推进，不将�
 独立复核已关闭单连接池问题。全仓文档规范仍为5通过/3既有失败：Mermaid数量基线、
 2处既有餐饮任务索引断链、5篇既有餐饮索引遗漏；没有新增美业断链。
 本批S1～S5完成，不把完整49任务、正式事件消费或美业standalone业务能力标成已完成。
+
+## §8 政策与项目定义实施批次（2026-10-20）
+
+用户已批准上一轮列出的第1、2项；沿现有五模块实现，不提前开发预约。使用 executing-plans/TDD，原工作树不变。
+
+### 8.1 规则与文件边界
+
+- N1：补 StorePolicyQuery/StorePolicyVO、StorePolicyService#getPolicy 及原 BizStorePolicyController GET。
+  读取本店 ACTIVE 头下 effective_at<=at 的最新有效版本（effective_at降序、revision_index降序）；
+  返回配置头revision及有效版本revision，未来版本不提前生效，缺有效版本404，不能将配置当交易能力许可。
+- N2：在 api/spi 放 BeautyPolicyInternalApi、BeautyDefinitionInternalApi；channel/client 实现两种远程Service；
+  server/api 提供内部端点，沿现有服务令牌保护。actor仅由平台认证入口委托，内部请求显式验证entity/store/actor，
+  自带query.storeNo不得偏离委托门店；审计通过受控内部请求建立短生命周期操作身份并finally还原。
+  ServiceName新增BEAUTY；所有网络调用在本地主事务之外，不在写锁中请求公共商品服务。
+- N3：商品权威域补 ServiceProductFactsPort/实现及内部只读合同，返回本店SERVICE SKU的商品号、基础时长和实时报价；
+  门店/主体归属、上架及类型检查在商品所有者完成。美业只存基础时长快照，duration必须与商品事实一致；售价不写bty表。
+  ServiceDefinitionService按既有listDefinitions/publishDefinitionVersion签名实现；duration细化为minutes/bufferBeforeMin/bufferAfterMin，
+  requirements使用现有字段，资源类型STAFF/ROOM/SEAT/DEVICE，selectionRule=ANY_QUALIFIED，P1单步骤。
+  首建expectedRevision0、根version1；后续CAS。定义版本与要求追加，跨主体和同主体跨店父链隔离；
+  查询at使用版本created_at（现有定义表无effective_at），按创建时间/版本号选历史版本，禁止改冻结V1。
+  分页增加page/size（默认1/20，上限100）并同步方法真源。步骤固定SERVICE/顺序0；复杂步骤留P4。
+- N4：政策/定义发布事实采用明确的归档合同：SQL版本和action_log是权威，事件作为可追溯发布凭据，
+  本批没有必须异步执行的业务副作用。提供显式部署配置 shop.outbox.archive-only 两个精确事件名，
+  不默认修改公共路由、不注册空消费者、不据归档宣称通知已交付；没启用正式配置或消费者仍拒绝写入。
+  后续如要求异步投影/通知，先迁移路由并验收消费者，再去掉对应归档合同。
+
+### 8.2 独立验收任务
+
+| 任务 | RED→GREEN步骤与准出 |
+|---|---|
+| N1 政策有效版本读取 | 先真实MySQL测试未来版本/时点等价/异店拒绝，再DTO、Service、Controller；缺有效版本404且无写副作用 |
+| N2 远程提供方 | 先真实HTTP测试缺/错令牌、范围不符、原actor审计、业务400/403/404/409传递，再内部合同、客户端、配置；web/channel不得依赖core |
+| N3 项目定义发布查询 | 先真实MySQL测试商品类型/时长不符、幂等、版本CAS、并发首建、不可变父链、回滚，再共享商品合同与本域业务；外部查询不占主事务 |
+| N4 路由与回归 | 正式归档配置由测试读取并使用真实outbox；非法路由仍回滚；三行业共享回归、设计生成器、SQL冻结、消融及独立复核 |
+
+每项运行目标测试确认失败原因，再实现并运行完整受影响reactor；各完成点提交。最终按实际测试回填§8.3。
+Ruling：前两项既有接口实施属于1档；补商品SPI不是新商品域，也不新增表/账本。已有用户执行授权覆盖常规实现选择，不重复请求审批。
+
+### 8.3 实际交付对账
+
+N1/N3已实现原四项HTTP（BAPI-001/002/007/008），DTO和方法真源已重新生成；N2实现两组内部合同、
+channel远程Service、server内部入口和商品反向合同。商品所属实现位于shop-core/product/port，
+公共合同在shop-base/spi/product，PLATFORM内部端点在shop-app/portal/internal；美业没有导入商品Entity/Mapper。
+N4配置为core资源beauty-publication-archive.yml，独立server沿原JdbcOutboxStore注册PLATFORM归档存储，
+缺正式路由拒绝写入；standalone实际TCP到DB已确认两类事件ARCHIVED和原actor审计。
+
+执行中反例：新增多市场SKU导致selectOne多行，现补CN条件，与已有GoodsQueryPort同口径；
+外层事务调用定义发布导致外部事实查询落入事务，现显式拒绝ambient事务；两处均先失败后修复。
+历史定义created_at沿现有AuditMetaObjectHandler的JVM本地时间，按稳定部署时区转换，不能把它当UTC裸时刻；
+本轮没有修改零售全局审计或冻结V1。政策effective_at仍为独立明确的UTC值。
+
+界线：DEF-01主HTTP切片完成情况以最终验证为准；POL-01的BAPI-144公开营业信息未在本批范围，
+完整预约/资源匹配、任务工作台、通知及投递引擎仍待后续。readiness保持503。
+全局架构检查发现既有OpsPointsInspectionController的全限定注解导致1项失败，先核验基线并记录，不冒充新代码违规。
+
+### 8.4 本批验收与剩余边界
+
+| 对账 | 实际证据 |
+|---|---|
+| N1 有效政策、N3定义发布及父链 | BeautyCatalogIT10项真实MySQL通过；含未来政策、历史选版、首版前空页、幂等重放、商品错范围/时长、并发首建、outbox实际flush后回滚与外层事务拒绝 |
+| N2 双部署 | BeautyStandaloneEndToEndIT实际TCP→独立安全链→业务→MySQL通过；BeautyPolicyEndToEndIT实际宿主HTTP→SQL通过，包含政策GET时间参数及跨店查询拒绝 |
+| N4 正式归档配置 | 独立服务测试显式导入实际YAML，SQL确认两类事件ARCHIVED、审计actor为原委托人；不据归档冒充业务投递 |
+| 商品事实 | ServiceProductFactsPortTest6项真实H2 Mapper SQL通过；真实HTTP反向商品错误映射测试通过；外部商品依赖在独立端到端中提供受控事实测试替身 |
+| 普通reactor | 美业54项通过；公共模块210项通过；餐饮91项普通测试通过（16项数据库专用未在本轮重复，上一批34项已执行，不算本批新证据） |
+| 宿主组合 | 双standalone14项形态/自动装配＋6商品事实＋6i18n共26通过；双embedded11通过＋2个不适用standalone形态跳过 |
+| 设计与迁移 | 五组设计生成器、冻结SQL、Node6项通过；没有新增SQL方言依赖或修改V1 |
+
+独立复核发现2项P2并已补反例修复：分页前EXISTS过滤尚无历史版本的头，确保records/total一致；
+查询record构造仅填默认值，Bean Validation处理HTTP非法分页，Service继续显式防御，内部query加@Valid。
+两项均经历真实RED→GREEN，复核确认代码原因关闭。
+
+全局检查保留真实结论：ArchitectureTest15/16，既有OpsPointsInspectionController的@PathVariable全限定名违规在基线9ae57e5e6已存在；
+BackendI18nParityTest6/6；文档守卫5/8，既有Mermaid基线及餐饮链接/索引3项失败未扩大，不修改无关业务或抬升基线。
+本批只交付政策/项目定义切片，readiness503不变，未连接营业库、未合并或推送。
+
+最终补验：standalone宿主从实际AutoConfiguration注册两个Remote Service与两个公开Controller，
+无beauty-core；关闭美业不创建远程提供方，8项美业形态/装配用例全部通过。
+消融移除query的@Max(100)后，4项Web用例中1个断言失败/0错误；finally恢复，完整54项reactor通过。
+实际关闭态JAR不连接数据库启动，liveness200/readiness503。最终源文件按120列及补丁空白检查收口。
