@@ -32,7 +32,7 @@ export function PointsTab({ c }: { c: Copy }) {
   ] as const;
   return <div className="space-y-4">
     <Notice tone="muted">{c.ptHint}</Notice>
-    <label>{t("积分类型", "Points type")} <Select value={typeCode} onChange={(e) => select(e.target.value)}>{types.data?.map((t) => <option key={t.typeCode} value={t.typeCode}>{t.typeCode} · {t.market} · {t.status}</option>)}</Select></label>
+    <label>{t("积分类型", "Points type")} <Select value={typeCode} onChange={(e) => select(e.target.value)}>{types.data?.map((t) => <option key={t.typeCode} value={t.typeCode}>{t.name} · {t.typeCode} · {t.market} · {t.status}</option>)}</Select></label>
     <p dir="auto">{d.typeCode} · {d.market} · {d.currency}</p>
     <p dir="auto">{c.ptRate}: {d.ratePoints} / {d.rateMinor}</p>
     <div className="grid gap-3 sm:grid-cols-4">

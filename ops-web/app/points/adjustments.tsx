@@ -23,7 +23,7 @@ export function PointsAdjustments({ canMake, canCheck }: { canMake: boolean; can
  return <section className="space-y-3 rounded-card border border-border p-4">
   <h3>{t("用户积分调账 · 双人审批","User adjustments · maker and checker")}</h3>
   <p>{t("调增消耗平台预算；调减仅扣可用积分并释放回平台可发预算，待生效和占用积分不参与，不发起外部转账。","Increases consume platform budget; decreases release available points back to platform issuance budget without an external transfer. Pending and held points are excluded.")}</p>
-  <label>{t("积分类型","Point type")}<Select value={code} onChange={e=>{select(e.target.value);setAfter(0);}}>{types.data?.map(x=><option key={x.typeCode} value={x.typeCode}>{x.typeCode}</option>)}</Select></label>
+  <label>{t("积分类型","Point type")}<Select value={code} onChange={e=>{select(e.target.value);setAfter(0);}}>{types.data?.map(x=><option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode}</option>)}</Select></label>
   <label>{t("操作原因","Reason")}<Input value={reason} maxLength={1000} onChange={e=>setReason(e.target.value)} /></label>
   {canMake && <form className="space-y-2" onSubmit={e=>{e.preventDefault();const d=new FormData(e.currentTarget);send({kind:"SUBMIT",value:{requestId:"",adjustmentNo:String(d.get("no")).trim(),typeCode:code,userNo:String(d.get("user")).trim(),direction:d.get("direction") as "INCREASE"|"DECREASE",points:Number(d.get("points")),reason:reason.trim()}});}}>
    <label>{t("申请号（重试保留原号）","Request number (retain for retry)")}<Input name="no" required maxLength={40}/></label>

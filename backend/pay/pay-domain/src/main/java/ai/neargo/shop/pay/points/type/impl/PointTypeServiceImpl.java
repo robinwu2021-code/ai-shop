@@ -3,6 +3,7 @@ package ai.neargo.shop.pay.points.type.impl;
 import ai.neargo.shop.pay.market.MarketService;
 import ai.neargo.shop.pay.points.lifecycle.TypeRetirementService;
 import ai.neargo.shop.pay.points.model.PointType;
+import ai.neargo.shop.pay.points.model.RedeemRate;
 import ai.neargo.shop.pay.points.store.PointsConfigurationStore;
 import ai.neargo.shop.pay.points.store.PointsReadStore;
 import ai.neargo.shop.pay.points.type.PointTypeService;
@@ -37,19 +38,25 @@ public class PointTypeServiceImpl implements PointTypeService {
 
     @Override
     public PointType create(CreateType c, String actor) {
-        if (c.typeCode() == null
-                || c.typeCode().isBlank()
-                || c.typeCode().length() > 40
+        String typeCode = c.typeCode() == null ? "" : c.typeCode().trim();
+        String name = c.name() == null ? "" : c.name().trim();
+        if (typeCode.isBlank()
+                || typeCode.length() > 40
+                || name.isBlank()
+                || name.length() > 80
                 || actor == null
-                || actor.isBlank()
-                || c.rate() == null
-                || c.deductRatioBp() < 0
-                || c.deductRatioBp() > 10000
-                || c.idleDays() <= 0) {
+                || actor.isBlank()) {
             throw new IllegalArgumentException("POINTS_TYPE_INVALID");
         }
+        if (read.types().stream()
+                .anyMatch(
+                        t ->
+                                t.typeCode().equalsIgnoreCase(typeCode)
+                                        || t.name().equalsIgnoreCase(name))) {
+            throw new IllegalArgumentException("POINTS_TYPE_DUPLICATE");
+        }
         MarketService.MarketRow market =
-                markets.find(c.market())
+                markets.find("CN")
                         .filter(MarketService.MarketRow::enabled)
                         .orElseThrow(() -> new IllegalArgumentException("POINTS_MARKET_UNKNOWN"));
         if (!"CN".equals(market.market()) || !"CNY".equals(market.currency())) {
@@ -57,13 +64,14 @@ public class PointTypeServiceImpl implements PointTypeService {
         }
         PointType type =
                 new PointType(
-                        c.typeCode(),
+                        typeCode,
+                        name,
                         market.market(),
                         market.currency(),
                         market.currencyScale(),
-                        c.rate(),
-                        c.deductRatioBp(),
-                        c.idleDays(),
+                        new RedeemRate(1, 1),
+                        3000,
+                        365,
                         PointType.Status.DRAFT);
         config.createType(type, actor);
         return type;

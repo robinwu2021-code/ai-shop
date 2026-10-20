@@ -45,7 +45,7 @@ export function PointsPolicyTab({ c, canEdit }: { c: FinanceCopy; canEdit: boole
     {types.data?.length === 0 && <p dir="auto">{text("尚未创建积分类型，请先在积分配置中创建。", "No points type exists. Create one in points configuration first.")}</p>}
     {!!types.data?.length && <>
       <label className="block">{text("积分类型", "Points type")} <Select value={typeCode} onChange={(e) => { setSelected(e.target.value); setAfter(0); save.reset(); }}>
-        {types.data.map((t) => <option key={t.typeCode} value={t.typeCode}>{t.typeCode} · {t.market} · {t.status}</option>)}
+        {types.data.map((t) => <option key={t.typeCode} value={t.typeCode}>{t.name} · {t.typeCode} · {t.market} · {t.status}</option>)}
       </Select></label>
       <form className="grid gap-3 rounded-card border border-border p-4 md:grid-cols-2" onSubmit={(e) => {
         e.preventDefault();

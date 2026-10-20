@@ -189,6 +189,7 @@ public class MybatisPointsReadStore implements PointsReadStore {
     private PointType type(Map<String, Object> r) {
         return new PointType(
                 (String) r.get("type_code"),
+                (String) r.getOrDefault("name", r.get("type_code")),
                 (String) r.get("market"),
                 (String) r.get("currency"),
                 (int) num(r, "scale"),

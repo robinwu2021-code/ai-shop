@@ -47,12 +47,16 @@ public class MybatisPointsConfigurationStore implements PointsConfigurationStore
 
     @Override
     public void createType(PointType t, String actor) {
-        DataScopeContext.executeWithoutScope(
-                () -> {
-                    mapper.createType(t, actor);
-                    mapper.createPool(t.typeCode(), t.currency(), actor);
-                    return null;
-                });
+        try {
+            DataScopeContext.executeWithoutScope(
+                    () -> {
+                        mapper.createType(t, actor);
+                        mapper.createPool(t.typeCode(), t.currency(), actor);
+                        return null;
+                    });
+        } catch (DuplicateKeyException duplicate) {
+            throw new IllegalArgumentException("POINTS_TYPE_DUPLICATE", duplicate);
+        }
     }
 
     @Override

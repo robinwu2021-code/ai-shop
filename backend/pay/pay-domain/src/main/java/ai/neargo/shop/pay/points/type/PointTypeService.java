@@ -13,6 +13,14 @@ public interface PointTypeService {
 
     PointType retire(String typeCode, String actor);
 
-    record CreateType(
-            String typeCode, String market, RedeemRate rate, int deductRatioBp, int idleDays) {}
+    record CreateType(String typeCode, String name) {
+        public CreateType(String typeCode, String name, String market, RedeemRate rate,
+                          int deductRatioBp, int idleDays) {
+            this(typeCode, name);
+        }
+        public CreateType(String typeCode, String market, RedeemRate rate,
+                          int deductRatioBp, int idleDays) {
+            this(typeCode, typeCode);
+        }
+    }
 }

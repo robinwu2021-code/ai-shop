@@ -4,7 +4,7 @@ import { fail } from "@/lib/biz-error";
 import { wait } from "./_wait";
 
 // Synthetic configuration only. No store signature, source fact or bank receipt is fabricated.
-const types: PointsTypeConfig[] = [{ typeCode: "POINTS_DEMO", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 2, minorUnit: 1 }, deductRatioBp: 2000, idleDays: 365, status: "ACTIVE" }];
+const types: PointsTypeConfig[] = [{ typeCode: "POINTS_DEMO", name: "演示积分", market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE" }];
 const rules = new Map<string, PointsFallback>();
 const terms = new Map<string, PointsTerms>();
 const switches: PointsSwitchView[] = [];
@@ -33,9 +33,8 @@ export const pointsConfigurationMock: Pick<FinanceApi,
   "pointsSwitches" | "changePointsSwitch" | "pointsTerms" | "publishPointsTerms" | "pointsAgreements"> = {
   pointsTypes: () => wait(structuredClone(types)),
   createPointsType: (v) => command("CREATE", { ...v, typeCode: v.command.typeCode }, () => {
-    if (types.some((t) => t.typeCode === v.command.typeCode)) fail("类型已存在", "Type already exists");
-    if (v.command.market !== "CN") fail("演示仅配置 CN", "Only CN is configured in this demo");
-    types.push({ ...v.command, currency: "CNY", scale: 2, status: "DRAFT" });
+    if (types.some((t) => t.typeCode.toLocaleLowerCase() === v.command.typeCode.trim().toLocaleLowerCase() || t.name.trim().toLocaleLowerCase() === v.command.name.trim().toLocaleLowerCase())) fail("积分代码或名称已存在，请修改后重试。", "This points code or name already exists. Change it and try again.");
+    types.push({ ...v.command, typeCode: v.command.typeCode.trim(), name: v.command.name.trim(), market: "CN", currency: "CNY", scale: 2, rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "DRAFT" });
   }),
   transitionPointsType: (v) => command("STATE", v, () => {
     const t = type(v.typeCode);

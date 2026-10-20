@@ -50,10 +50,9 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
   }
 
   const columns = [
-    { header: t("积分类型", "Points type"), cell: (row: PointsTypeConfig) => <div><p className="font-semibold">{row.typeCode}</p><p className="txt-caption text-muted-foreground">{row.market} · {row.currency}</p></div> },
-    { header: t("兑换比例", "Conversion rate"), cell: (row: PointsTypeConfig) => `${row.rate.pointsUnit} ${t("积分", "points")} = ${row.rate.minorUnit} ${t("最小货币单位", "minor units")}` },
+    { header: t("积分名称", "Points name"), cell: (row: PointsTypeConfig) => <div><p className="font-semibold">{row.name}</p><p className="txt-caption text-muted-foreground">{row.typeCode} · {row.market} · {row.currency}</p></div> },
+    { header: t("兑换比例", "Conversion rate"), cell: (row: PointsTypeConfig) => `${row.rate.pointsUnit} ${t("积分", "points")} = ${row.rate.minorUnit} ${t("分", "fen")}` },
     { header: t("抵扣上限", "Deduction cap"), numeric: true, cell: (row: PointsTypeConfig) => `${(row.deductRatioBp / 100).toFixed(2)}%` },
-    { header: t("闲置天数", "Idle days"), numeric: true, cell: (row: PointsTypeConfig) => row.idleDays },
     { header: t("状态", "Status"), cell: (row: PointsTypeConfig) => t(
       row.status === "DRAFT" ? "草稿" : row.status === "ACTIVE" ? "生效中" : row.status === "DRAINING" ? "清偿中" : "已退役", row.status,
     ) },
@@ -71,45 +70,42 @@ export function PointsTypesTab({ canEdit }: { canEdit: boolean }) {
     <DataTable columns={columns} rows={types.data} loading={types.isPending} error={types.error} onRetry={() => void types.refetch()}
       rowKey={(row) => row.typeCode} empty={t("还没有积分类型，请先新建。", "No points types yet. Create one to get started.")}
       emptyAction={canEdit ? <Button size="sm" onClick={() => { save.reset(); setCreateOpen(true); }}>{t("新建积分类型", "New points type")}</Button> : undefined}
-      rowProps={(row) => ({ role: "button", tabIndex: 0, "aria-label": `${t("查看积分类型", "View points type")} ${row.typeCode}`,
+      rowProps={(row) => ({ role: "button", tabIndex: 0, "aria-label": `${t("查看积分类型", "View points type")} ${row.name}`,
         className: "cursor-pointer hover:bg-accent/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
         onClick: () => { setSelectedCode(row.typeCode); save.reset(); },
         onKeyDown: (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedCode(row.typeCode); save.reset(); } },
       })} />
 
     <Drawer open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) save.reset(); }}
-      title={t("新建积分类型（草稿）", "Create points type (draft)")}
-      desc={t("设置市场、兑换比例与使用边界。创建后还需在详情中激活。", "Set the market, conversion rate and usage limits. Activate it from details after creation.")}
+      title={t("新建积分", "Create points")}
+      desc={t("市场暂按中国（CN）统一配置，兑换比例固定为 1 积分 = 1 分。创建后可在详情中激活。", "The market is currently China (CN), with a fixed rate of 1 point = 1 fen. Activate it from details after creation.")}
       width="w-[640px]"
-      footer={<><Button variant="outline" onClick={() => setCreateOpen(false)}>{t("取消", "Cancel")}</Button><Button type="submit" form="points-type-create" disabled={save.isPending}>{t("新建草稿", "Create draft")}</Button></>}>
+      footer={<><Button variant="outline" onClick={() => setCreateOpen(false)}>{t("取消", "Cancel")}</Button><Button type="submit" form="points-type-create" disabled={save.isPending}>{t("创建积分", "Create points")}</Button></>}>
       {save.isError && <Notice tone="warning">{t(save.error.message, save.error.message)}</Notice>}
       <form id="points-type-create" className="space-y-4" onSubmit={(event) => {
         event.preventDefault(); const form = new FormData(event.currentTarget);
         submit({ kind: "CREATE", value: { requestId: "", command: {
-          typeCode: String(form.get("code")).trim(), market: String(form.get("market")),
-          rate: { pointsUnit: Number(form.get("points")), minorUnit: Number(form.get("minor")) },
-          deductRatioBp: Number(form.get("ratio")), idleDays: Number(form.get("days")),
-        }, reason: String(form.get("reason")).trim() } });
+          typeCode: String(form.get("code")).trim(), name: String(form.get("name")).trim(),
+        }, reason: String(form.get("remark")).trim() } });
       }}>
         <div className="grid gap-3 md:grid-cols-2">
-          <label>{t("类型代码", "Type code")}<Input dir="auto" name="code" required maxLength={40} /></label>
-          <label>{t("市场代码", "Market")}<Input dir="auto" name="market" required maxLength={24} /></label>
-          {[["points",t("比例：积分单位", "Rate: points unit"),1,Number.MAX_SAFE_INTEGER], ["minor",t("比例：最小货币单位", "Rate: minor currency unit"),1,Number.MAX_SAFE_INTEGER], ["ratio",t("抵扣上限（万分比）", "Deduction cap (bp)"),0,10000], ["days",t("闲置天数", "Idle days"),1,36500]].map(([name,label,min,max]) =>
-            <label key={String(name)}>{label}<Input dir="auto" name={String(name)} type="number" required min={Number(min)} max={Number(max)} step={1} /></label>)}
-          <label className="md:col-span-2">{t("原因", "Reason")}<Input dir="auto" name="reason" required maxLength={500} /></label>
+          <label>{t("积分名称", "Points name")}<Input dir="auto" name="name" required maxLength={80} /></label>
+          <label>{t("积分代码", "Points code")}<Input dir="auto" name="code" required maxLength={40} /></label>
+          <div className="rounded-field border border-border bg-muted/30 p-3 md:col-span-2"><p className="txt-label">{t("市场与兑换方式", "Market and conversion")}</p><p className="mt-1 txt-body">CN · CNY · 1 {t("积分", "point")} = 1 {t("分", "fen")}</p></div>
+          <label className="md:col-span-2">{t("备注", "Remark")}<Input dir="auto" name="remark" required maxLength={500} /></label>
         </div>
       </form>
     </Drawer>
 
     <Drawer open={!!selected} onOpenChange={(open) => { if (!open) { setSelectedCode(""); save.reset(); } }}
-      title={selected ? `${selected.typeCode} · ${selected.market} · ${selected.status}` : ""}
+      title={selected ? `${selected.name} · ${selected.typeCode} · ${selected.status}` : ""}
       desc={t("维护积分类型状态和兜底规则。", "Manage points type state and fallback rule.")}
       width="w-[760px]">
       {error && <Notice tone="warning">{t(error.message, error.message)}<Button onClick={() => { void fallback.refetch(); }}>{t("重试", "Retry")}</Button></Notice>}
       {save.isError && <Notice tone="warning">{t(save.error.message, save.error.message)}</Notice>}
       {save.isSuccess && <Notice>{t("已保存，操作号：", "Saved, request ID: ")}{save.data.requestId}</Notice>}
       {selected && <div className={card}>
-        <p dir="auto">{selected.currency} / {selected.scale} · {selected.rate.pointsUnit} {t("积分", "points")} = {selected.rate.minorUnit} {t("最小货币单位", "minor units")} · {t("抵扣上限（万分比）", "Deduction cap (bp)")} {selected.deductRatioBp} · {t("闲置天数", "Idle days")} {selected.idleDays}</p>
+        <p dir="auto">{selected.currency} / {selected.scale} · {selected.rate.pointsUnit} {t("积分", "points")} = {selected.rate.minorUnit} {t("分", "fen")} · {t("抵扣上限（万分比）", "Deduction cap (bp)")} {selected.deductRatioBp}</p>
         <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => {
           event.preventDefault(); const form = new FormData(event.currentTarget);
           submit({ kind: "STATE", value: { requestId: "", typeCode: selected.typeCode,

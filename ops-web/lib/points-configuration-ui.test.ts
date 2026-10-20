@@ -30,8 +30,8 @@ vi.mock("@/components/ui/drawer", async () => {
 
 import { PointsConfigurationTab } from "@/app/points/legacy-configuration-tab";
 
-const type = { typeCode: "HXPOINTS_CN", market: "CN", currency: "CNY", scale: 2,
-  rate: { pointsUnit: 100, minorUnit: 100 }, deductRatioBp: 2000, idleDays: 365, status: "ACTIVE" };
+const type = { typeCode: "HXPOINTS_CN", name: "和小积分", market: "CN", currency: "CNY", scale: 2,
+  rate: { pointsUnit: 1, minorUnit: 1 }, deductRatioBp: 3000, idleDays: 365, status: "ACTIVE" };
 let root: Root;
 let host: HTMLDivElement;
 let query: QueryClient;
@@ -60,6 +60,7 @@ afterEach(async () => {
 it("lists points types and opens the selected type details in a drawer", async () => {
   await render();
   expect(host.querySelector('[data-testid="points-type-list"]')?.textContent).toContain("HXPOINTS_CN");
+  expect(host.querySelector('[data-testid="points-type-list"]')?.textContent).toContain("和小积分");
   expect(host.querySelector('[role="dialog"]')).toBeNull();
 
   const row = Array.from(host.querySelectorAll("button")).find((button) => button.textContent?.includes("HXPOINTS_CN"));
@@ -78,7 +79,8 @@ it("opens the create form in a separate drawer instead of inline on the list", a
   await act(async () => add!.click());
 
   const dialog = host.querySelector('[role="dialog"]');
-  expect(dialog?.textContent).toContain("新建积分类型（草稿）");
+  expect(dialog?.textContent).toContain("新建积分");
+  expect(dialog?.textContent).not.toContain("草稿");
   expect(host.querySelector('[data-testid="points-type-list"]')?.textContent).toContain("HXPOINTS_CN");
   expect(mock.create).not.toHaveBeenCalled();
 });

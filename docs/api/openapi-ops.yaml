@@ -8233,6 +8233,9 @@ components:
         typeCode:
           type: "string"
           description: "积分类型唯一编码"
+        name:
+          type: "string"
+          description: "积分名称，运营端展示名称"
         market:
           type: "string"
           description: "市场代码"
@@ -8267,6 +8270,7 @@ components:
           description: "服务端业务状态"
       required:
         - "typeCode"
+        - "name"
         - "market"
         - "currency"
         - "scale"
@@ -8309,35 +8313,12 @@ components:
             typeCode:
               type: "string"
               description: "积分类型唯一编码"
-            market:
+            name:
               type: "string"
-              description: "市场代码"
-            rate:
-              type: "object"
-              properties:
-                pointsUnit:
-                  type: "number"
-                  description: "换算比例中的积分数量"
-                minorUnit:
-                  type: "number"
-                  description: "换算比例中的最小货币单位数量"
-              required:
-                - "pointsUnit"
-                - "minorUnit"
-              additionalProperties: false
-              description: "积分与最小货币单位的换算比例"
-            deductRatioBp:
-              type: "number"
-              description: "最大抵扣比例，万分比"
-            idleDays:
-              type: "number"
-              description: "账户无活动失效天数"
+              description: "积分名称"
           required:
             - "typeCode"
-            - "market"
-            - "rate"
-            - "deductRatioBp"
-            - "idleDays"
+            - "name"
           additionalProperties: false
           description: "类型创建参数，服务端校验"
         reason:

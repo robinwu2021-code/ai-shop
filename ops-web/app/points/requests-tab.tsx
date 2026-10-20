@@ -62,7 +62,7 @@ export function PointsTreasuryTab({ canMake, canCheck }: { canMake: boolean; can
     {save.data && <Notice>{"status" in save.data ? `${save.data.ticketNo} · ${save.data.status} · ${amount(save.data.confirmedMinor)}` : `${t("已受理操作", "Operation accepted")} ${save.data.requestId} · ${save.data.reference}`}</Notice>}
     <label className="block">{t("积分类型", "Points type")}<Select value={code} onChange={(e) => { select(e.target.value); setRequestAfter(0); setPlanAfter(0); setEditingPlan(null); save.reset(); }}>
       {!types.data?.length && <option value="">{types.isPending ? t("加载中…", "Loading…") : t("尚无积分类型", "No points types")}</option>}
-      {types.data?.map((x) => <option key={x.typeCode} value={x.typeCode}>{x.typeCode} · {x.currency} · {x.status}</option>)}
+      {types.data?.map((x) => <option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode} · {x.currency} · {x.status}</option>)}
     </Select></label>
     <label className="block">{t("本次操作原因（复核和执行均必填）", "Operation reason (required for review and execution)")}<Input dir="auto" value={reason} onChange={(e) => setReason(e.target.value)} required /></label>
     {canMake && code && <form className={card} onSubmit={(e) => {

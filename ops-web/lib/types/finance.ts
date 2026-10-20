@@ -1051,6 +1051,8 @@ export type DebtTxnType =
 export interface PointsTypeConfig {
   /** 积分类型唯一编码 */
   typeCode: string;
+  /** 积分名称，运营端展示名称 */
+  name: string;
   /** 市场代码 */
   market: string;
   /** ISO 货币代码 */
@@ -1088,14 +1090,8 @@ export interface PointsCreate {
   command: {
     /** 积分类型唯一编码 */
     typeCode: string;
-    /** 市场代码 */
-    market: string;
-    /** 积分与最小货币单位的换算比例 */
-    rate: PointsTypeConfig["rate"];
-    /** 最大抵扣比例，万分比 */
-    deductRatioBp: number;
-    /** 账户无活动失效天数 */
-    idleDays: number;
+    /** 积分名称 */
+    name: string;
   };
   /** 服务端不可用原因或操作审计原因 */
   reason: string;

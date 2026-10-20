@@ -349,8 +349,8 @@ public interface PointsConfigurationMapper {
 
     @Insert(
             "INSERT INTO"
-                + " pts_point_type(type_code,market,currency,scale,rate_points,rate_minor,deduct_ratio_bp,idle_days,status,created_by)"
-                + " VALUES(#{t.typeCode},#{t.market},#{t.currency},#{t.scale},"
+                + " pts_point_type(type_code,name,market,currency,scale,rate_points,rate_minor,deduct_ratio_bp,idle_days,status,created_by)"
+                + " VALUES(#{t.typeCode},#{t.name},#{t.market},#{t.currency},#{t.scale},"
                 + "#{t.rate.pointsUnit},#{t.rate.minorUnit},#{t.deductRatioBp},#{t.idleDays},'DRAFT',#{actor})")
     int createType(@Param("t") PointType type, @Param("actor") String actor);
 

@@ -590,6 +590,7 @@ public enum ErrorCode {
     POINTS_FUNDS_UNAVAILABLE(50042, "err.points.funds_unavailable"),
     POINTS_EVIDENCE_REQUIRED(50043, "err.points.evidence_required"),
     POINTS_OPERATION_REJECTED(50044, "err.points.operation_rejected"),
+    POINTS_TYPE_DUPLICATE(50045, "err.points.type_duplicate"),
 
     // ---- 6xxxx 风控 ----
     RISK_BLOCKED(60001, "err.risk.blocked"),

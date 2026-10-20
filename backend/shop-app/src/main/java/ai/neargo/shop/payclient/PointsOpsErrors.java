@@ -19,6 +19,8 @@ public final class PointsOpsErrors {
             if (code == null || !code.matches("POINTS_[A-Z0-9_]{1,100}")) throw rejected;
             if (code.equals("POINTS_SELF_APPROVE"))
                 throw BizException.of(ErrorCode.POINTS_SELF_REVIEW);
+            if (code.equals("POINTS_TYPE_DUPLICATE"))
+                throw BizException.of(ErrorCode.POINTS_TYPE_DUPLICATE);
             if (code.contains("REVISION") || code.contains("CONFLICT"))
                 throw BizException.of(ErrorCode.POINTS_REVISION_CHANGED);
             if (code.contains("UNSUPPORTED") || code.contains("INSUFFICIENT"))

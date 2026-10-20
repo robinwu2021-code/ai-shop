@@ -55,7 +55,7 @@ export function PointsSettlementsTab({ canMake, canExecute }: { canMake: boolean
     <Notice>{t("按门店核对每个原路由账单组。R 是应收，账单付款时只抵销同店债务。退款准备来自原交易事实；现金确认和恢复以支付系统证据为准。", "Review every original-route statement group by store. R is a receivable; statement payouts offset debts of the same store only. Refund preparations originate from source transactions. Cash confirmation and restoration require payment evidence.")}</Notice>
     {IS_MOCK && <Notice tone="warning">{t("演示没有真实门店、订单和银行数据；操作请连接隔离后端验证。", "The demo has no real stores, source orders or bank data. Verify operations with an isolated backend.")}</Notice>}
     <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); const d = new FormData(e.currentTarget); setFilter({ typeCode: String(d.get("type")), storeNo: String(d.get("store")).trim() }); setStatementAfter(0); setReceivableAfter(0); setDebt(null); setFundsRef(null); setRefundRef(null); save.reset(); }}>
-      <label>{t("积分类型", "Points type")}<Select name="type" required>{types.data?.map((x) => <option key={x.typeCode} value={x.typeCode}>{x.typeCode} · {x.market}</option>)}</Select></label>
+      <label>{t("积分类型", "Points type")}<Select name="type" required>{types.data?.map((x) => <option key={x.typeCode} value={x.typeCode}>{x.name} · {x.typeCode} · {x.market}</option>)}</Select></label>
       <label>{t("门店编号", "Store ID")}<Input dir="auto" name="store" required /></label><Button disabled={!types.data?.length} type="submit">{t("查询门店", "Search store")}</Button>
     </form>
     {filter && <p dir="auto">{filter.typeCode} · {filter.storeNo} · {type?.currency}</p>}

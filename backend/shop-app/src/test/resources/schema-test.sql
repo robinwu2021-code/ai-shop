@@ -5111,6 +5111,7 @@ CREATE TABLE IF NOT EXISTS lgs_update_log
 CREATE TABLE IF NOT EXISTS pts_point_type
 (
     type_code VARCHAR(40) NOT NULL,
+    name VARCHAR(80) NOT NULL,
     market VARCHAR(16) NOT NULL,
     currency VARCHAR(8) NOT NULL,
     scale INT NOT NULL DEFAULT 2,
@@ -5122,6 +5123,7 @@ CREATE TABLE IF NOT EXISTS pts_point_type
     active_market VARCHAR(16) DEFAULT NULL,
     fallback_rule_json MEDIUMTEXT DEFAULT NULL,
     CONSTRAINT uk_pts_type UNIQUE (type_code),
+    CONSTRAINT uk_pts_type_name UNIQUE (name),
     CONSTRAINT uk_pts_active_market UNIQUE (active_market),
     id BIGINT NOT NULL AUTO_INCREMENT,
     tenant_no VARCHAR(32) DEFAULT NULL,
