@@ -4,7 +4,7 @@
 // **合规提示在保存之前，不在保存之后**：录入手机号不等于拿到推送许可。
 // 他按下保存前就该知道「这条是线索、不会收到消息」，否则等他发现发不出去，
 // 他会以为是功能坏了 —— 而那时他已经录了三十个号。
-import { computed, ref, getCurrentInstance } from "vue";
+import { computed, ref } from "vue";
 import { onLoad,onShow } from "@dcloudio/uni-app";
 import { useI18n } from "vue-i18n";
 import { api } from "@/api";
@@ -13,7 +13,6 @@ import type { MemberTag } from "@shared/types";
 import { isPhone } from "@shared/utils/validate";
 
 const { t } = useI18n();
-const pageProxy=getCurrentInstance()?.proxy;
 const merchant = useMerchantStore();
 
 const phone = ref("");
@@ -21,8 +20,8 @@ const remark = ref("");
 const tags = ref<MemberTag[]>([]);
 const picked = ref<string[]>([]);
 const saving = ref(false);
-let fromStoredValue=false,originStore="";
-onLoad(q=>{fromStoredValue=q?.from==='stored-value';originStore=q?.storeNo||merchant.storeNo;});
+let originStore="";
+onLoad(q=>{originStore=q?.storeNo||merchant.storeNo;});
 
 /** 商家自己的标签才能在这里打 —— 系统标签是算出来的，手动打上去只会让口径变脏 */
 const mine = computed(() => tags.value.filter((x) => x.tagType === "MCH" && x.status === "ACTIVE"));
@@ -76,12 +75,7 @@ async function save(recharge=false) {
     remark.value = "";
     picked.value = [];
     if(recharge&&merchant.can('pay:sv:recharge:create')){
-      if(fromStoredValue){
-        const channel=(pageProxy as unknown as {getOpenerEventChannel?:()=>{emit:(event:string,data:{memberNo:string})=>void}})?.getOpenerEventChannel?.();
-        if(channel){channel.emit('member-enrolled',{memberNo:m.memberNo});uni.navigateBack();}
-        else uni.redirectTo({url:`/pages/stored-value-recharge/index?memberNo=${encodeURIComponent(m.memberNo)}&storeNo=${encodeURIComponent(merchant.storeNo)}`});
-      }
-      else uni.redirectTo({url:`/pages/stored-value-recharge/index?memberNo=${encodeURIComponent(m.memberNo)}&storeNo=${encodeURIComponent(merchant.storeNo)}`});
+      uni.redirectTo({url:`/pages/stored-value-account/index?memberNo=${encodeURIComponent(m.memberNo)}&storeNo=${encodeURIComponent(merchant.storeNo)}`});
     }else setTimeout(() => uni.navigateBack(), 800);
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: "none" });

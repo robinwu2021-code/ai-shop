@@ -39,21 +39,21 @@ public class StoredValueMerchantQueryServiceImpl implements StoredValueMerchantQ
     @Override public CursorPage<Account> directory(CatalogScope scope,String store,List<String> users,String keywordHash,String cursor,int size){
         read(scope,store,size);ContractChecks.require(users==null||users.size()<=200);
         String filters=digest(List.of(scope.entityNo(),store,keywordHash==null?"":keywordHash,users==null?List.of():users.stream().sorted().toList()),json);
-        var after=cursors.decode(cursor,"SV_CUSTOMERS",scope.tenantNo(),scope.actorNo(),filters);
+        var after=cursors.decode(cursor,"SV_CUSTOMERS_RECHARGE",scope.tenantNo(),scope.actorNo(),filters);
         if(users!=null&&users.isEmpty())return new CursorPage<>(List.of(),null);
         var rows=directory.directory(scope.tenantNo(),scope.entityNo(),store,users,
                 after==null?null:local(Instant.ofEpochMilli(after.occurredAtMillis())),after==null?null:after.sortKey(),size+1);
         boolean more=rows.size()>size;var shown=rows.subList(0,Math.min(size,rows.size()));String next=null;
-        if(more){var last=shown.getLast();next=cursors.encode("SV_CUSTOMERS",scope.tenantNo(),scope.actorNo(),filters,
-                instant(last.getLastActivityAt()).toEpochMilli(),last.getAccountNo());}
-        return new CursorPage<>(shown.stream().map(a->view(scope,a,instant(a.getLastActivityAt()))).toList(),next);
+        if(more){var last=shown.getLast();next=cursors.encode("SV_CUSTOMERS_RECHARGE",scope.tenantNo(),scope.actorNo(),filters,
+                instant(last.getLastRechargeAt()).toEpochMilli(),last.getAccountNo());}
+        return new CursorPage<>(shown.stream().map(a->view(scope,a,instant(a.getLastActivityAt()),instant(a.getLastRechargeAt()))).toList(),next);
     }
     @Override public Account account(CatalogScope scope,String store,String ref){
         read(scope,store,1);String no=accountNo(scope,store,ref);
         var a=accounts.selectOne(Wrappers.<SvAccount>lambdaQuery().eq(SvAccount::getTenantNo,scope.tenantNo())
                 .eq(SvAccount::getEntityNo,scope.entityNo()).eq(SvAccount::getStoreNo,store).eq(SvAccount::getAccountNo,no));
         if(a==null)throw BizException.of(ErrorCode.NOT_FOUND);
-        return view(scope,a,null);
+        return view(scope,a,null,null);
     }
     @Override public CursorPage<Record> records(CatalogScope scope,String store,String type,Instant from,Instant to,String ref,String cursor,int size){
         read(scope,store,size);ContractChecks.require(List.of("ALL","RECHARGE","REDEMPTION").contains(type));
@@ -80,12 +80,12 @@ public class StoredValueMerchantQueryServiceImpl implements StoredValueMerchantQ
                 .eq(SvStatement::getEntityNo,scope.entityNo()).eq(SvStatement::getStoreNo,store).eq(SvStatement::getRecordNo,no));
         if(r==null)throw BizException.of(ErrorCode.NOT_FOUND);return view(r);
     }
-    private Account view(CatalogScope s,SvAccount a,Instant last){
+    private Account view(CatalogScope s,SvAccount a,Instant last,Instant lastRecharge){
         String ref=cursors.encode("SV_ACCOUNT_REF",s.tenantNo(),s.actorNo(),digest(List.of(s.entityNo(),a.getStoreNo()),json),
                 Math.max(1,instant(a.getCreatedAt()).toEpochMilli()),a.getAccountNo());
         long balance=Math.addExact(a.getPrincipalMinor(),a.getBonusMinor());long held=Math.addExact(a.getHeldPrincipalMinor(),a.getHeldBonusMinor());
         if(held>balance)throw BizException.of(ErrorCode.CONFLICT);
-        return new Account(ref,a.getUserNo(),a.getCurrency(),balance,held,"ACTIVE".equals(a.getStatus())?balance-held:0,last,a.customerIdentity());
+        return new Account(ref,a.getUserNo(),a.getCurrency(),balance,held,"ACTIVE".equals(a.getStatus())?balance-held:0,last,a.customerIdentity(),lastRecharge);
     }
     private String accountNo(CatalogScope s,String store,String ref){
         ContractChecks.require(ref!=null&&!ref.isBlank()&&ref.length()<=512);return cursors.decode(ref,"SV_ACCOUNT_REF",s.tenantNo(),s.actorNo(),digest(List.of(s.entityNo(),store),json)).sortKey();

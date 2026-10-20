@@ -1,5 +1,7 @@
 export default {
   storedValue: {
+    "resumePending": "متابعة الشحن المعلق",
+    "lastRecharge": "آخر شحن",
     "memberPhone": "أدخل رقم الجوال كاملاً",
     "findMember": "البحث عن عضو",
     "noMember": "لم يتم العثور على عضو",
@@ -92,7 +94,7 @@ export default {
     "receivePending": "تم الإرسال. يجب على موظف مخوّل تأكيد الاستلام.",
     "receiptRequired": "أدخل رقم إثبات الاستلام",
     "reset": "إعادة تعيين",
-    "accountDetail": "تفاصيل الحساب",
+    "accountDetail": "تفاصيل العضو",
     "planDetail": "تفاصيل الخطة",
     "rechargeTitle": "شحن الرصيد",
     "currentStore": "المتجر الحالي",

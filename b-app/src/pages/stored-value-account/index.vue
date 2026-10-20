@@ -1,13 +1,43 @@
 <script setup lang="ts">
+import {computed,ref,watch} from 'vue';
+import {onLoad,onShow} from '@dcloudio/uni-app';
+import {useI18n} from 'vue-i18n';
+import {api} from '@/api';
+import {useMerchantStore} from '@/stores/merchant';
+import {money} from '@shared/utils/money';
 import StoredValueRechargeSheet from '../stored-value/components/StoredValueRechargeSheet.vue';
-import { ref,watch } from 'vue';import { onLoad,onShow } from '@dcloudio/uni-app';import { useI18n } from 'vue-i18n';import { api } from '@/api';import { useMerchantStore } from '@/stores/merchant';import { money } from '@shared/utils/money';import StoredValueRecordList from '../stored-value/components/StoredValueRecordList.vue';import type { SvAccount } from '@/api/stored-value-types';
-const {t}=useI18n();const merchant=useMerchantStore();const account=ref<SvAccount|null>(null);const rechargeVisible=ref(false);const all=ref(false);const failed=ref(false);const error=ref('');let store='',refNo='',seq=0;
-async function load(){const token=++seq;try{if(!store){await merchant.ensureStores();store=merchant.storeNo;}const a=await api.mSvAccount(refNo,store);if(token===seq&&store===merchant.storeNo){account.value=a;failed.value=false;}}catch(e){if(token===seq){failed.value=true;error.value=(e as Error).message;}}}
-watch(()=>merchant.storeNo,()=>{seq++;account.value=null;failed.value=true;error.value=t('storedValue.leaveStore');});onLoad(q=>{refNo=q?.accountRef||'';void load();});onShow(()=>{if(store)void load();});
-function navigate(url:string){uni.navigateTo({url});}
+import StoredValueRecordList from '../stored-value/components/StoredValueRecordList.vue';
+import type {SvAccount,SvSelectedCustomer,SvSelectionSource} from '@/api/stored-value-types';
+const {t}=useI18n();const merchant=useMerchantStore();
+const account=ref<SvAccount|null>(null),customer=ref<SvSelectedCustomer|null>(null),rechargeVisible=ref(false),all=ref(false),failed=ref(false),error=ref('');
+const recordList=ref<{refresh:()=>unknown}|null>(null);
+let store='',refNo='',memberNo='',originStore='',planNo='',seq=0;
+const source=computed<SvSelectionSource>(()=>memberNo?{type:'MEMBER',memberNo}:{type:'ACCOUNT',accountRef:refNo});
+const denied=computed(()=>memberNo?(!merchant.can('biz:customer')||!merchant.can('pay:sv:recharge:create')):!merchant.can('pay:sv:account:read'));
+async function load(){
+ const token=++seq;error.value='';
+ try{
+  if(!store){await merchant.ensureStores();store=originStore||merchant.storeNo;}
+  if(store!==merchant.storeNo)throw Error(t('storedValue.leaveStore'));
+  if(!memberNo&&!refNo)throw Error(t('storedValue.chooseMember'));
+  let a:SvAccount|null=null,c:SvSelectedCustomer|null=null;
+  if(memberNo){
+   c=await api.mSvSelectCustomer({storeNo:store,source:{type:'MEMBER',memberNo}});
+   if(c.account&&merchant.can('pay:sv:account:read'))a=await api.mSvAccount(c.account.accountRef,store);
+  }else a=await api.mSvAccount(refNo,store);
+  if(token===seq&&store===merchant.storeNo){account.value=a;customer.value=c;failed.value=false;void recordList.value?.refresh();}
+ }catch(e){if(token===seq){failed.value=true;error.value=(e as Error).message;}}
+}
+watch(()=>merchant.storeNo,()=>{seq++;account.value=null;customer.value=null;rechargeVisible.value=false;failed.value=true;error.value=t('storedValue.leaveStore');});
+onLoad(q=>{refNo=q?.accountRef||'';memberNo=q?.memberNo||'';originStore=q?.storeNo||'';planNo=q?.planNo||'';void load();});
+onShow(()=>{if(store)void load();});
 </script>
-<template><sh-scaffold :title-suffix="merchant.multiStore ? merchant.currentStore?.name : ''" title-key="storedValue.accountDetail" :denied="!merchant.can('pay:sv:account:read')" :failed="failed" :pending="!account&&!failed" @retry="load">
- <view v-if="account" class="sh-card sv-card"><text class="txt-title">{{account.maskedName}}</text><text class="sh-muted">{{account.maskedPhone}}</text><sh-kv :label="t('storedValue.balance')" between><text class="txt-price sh-num">{{money(account.availableMinor,account.currency)}}</text></sh-kv></view>
- <view v-if="account" class="sh-row sh-row--between"><text class="txt-strong">{{t('storedValue.recent')}}</text><button class="sh-link sh-hit" @tap="all=!all">{{t(all?'storedValue.recent':'storedValue.allRecords')}}</button></view><StoredValueRecordList v-if="account" :key="account.accountRef" :account-ref="account.accountRef" :compact="!all"/>
- <text v-if="error" class="sh-hint">{{error}}</text><sh-actionbar v-if="account&&merchant.can('pay:sv:recharge:create')"><view role="button" class="sh-btn" @tap="rechargeVisible=true">{{t('storedValue.rechargeTitle')}}</view></sh-actionbar><StoredValueRechargeSheet v-if="account" :visible="rechargeVisible" :source="{type:'ACCOUNT',accountRef:account.accountRef}" @close="rechargeVisible=false" @credited="load"/>
+<template><sh-scaffold :title-suffix="merchant.multiStore?merchant.currentStore?.name:''" title-key="storedValue.accountDetail" :denied="denied" :failed="failed" :pending="!account&&!customer&&!failed" @retry="load">
+ <view v-if="account||customer" class="sh-card sv-card"><text class="txt-title">{{customer?.displayName||account?.maskedName}}</text><text class="sh-muted">{{customer?.phoneMasked||account?.maskedPhone}}</text><sh-kv v-if="account" :label="t('storedValue.balance')" between><text class="txt-price sh-num">{{money(account.availableMinor,account.currency)}}</text></sh-kv></view>
+ <view v-if="account" class="sh-row sh-row--between"><text class="txt-strong">{{t('storedValue.recent')}}</text><view role="button" class="sh-link sh-hit" @tap="all=!all">{{t(all?'storedValue.recent':'storedValue.allRecords')}}</view></view>
+ <StoredValueRecordList v-if="account" :key="account.accountRef" ref="recordList" :account-ref="account.accountRef" :compact="!all"/>
+ <sh-empty v-else-if="customer" :text="t('storedValue.empty')" compact/>
+ <text v-if="error" class="sh-hint">{{error}}</text>
+ <sh-actionbar v-if="(account||customer)&&merchant.can('pay:sv:recharge:create')"><view data-testid="detail-recharge" role="button" class="sh-btn sh-fill" @tap="rechargeVisible=true">{{t('storedValue.recharge')}}</view></sh-actionbar>
+ <StoredValueRechargeSheet v-if="account||customer" :visible="rechargeVisible" :source="source" :plan-no="planNo" @close="rechargeVisible=false" @credited="load"/>
 </sh-scaffold></template>

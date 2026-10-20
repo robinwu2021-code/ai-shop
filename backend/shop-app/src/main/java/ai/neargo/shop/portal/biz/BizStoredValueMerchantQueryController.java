@@ -93,14 +93,14 @@ public class BizStoredValueMerchantQueryController {
     }
     private static AccountView account(StoredValueMerchantViews.Account a,StoredValueCustomerProfilePort.Profile p){
         return new AccountView(a.accountRef(),p==null?"顾客":p.maskedName(),p==null?"":p.maskedPhone(),a.currency(),
-                a.balanceMinor(),a.heldMinor(),a.availableMinor(),a.lastOccurredAt());
+                a.balanceMinor(),a.heldMinor(),a.availableMinor(),a.lastOccurredAt(),a.lastRechargeAt());
     }
     private static RecordView record(StoredValueMerchantViews.Record r,StoredValueCustomerProfilePort.Profile p){
         return new RecordView(r.recordNo(),p==null?"顾客":p.maskedName(),p==null?"":p.maskedPhone(),r.type(),r.title(),r.storeNo(),r.storeName(),
                 r.currency(),r.signedAmountMinor(),r.balanceAfterMinor(),r.occurredAt(),r.businessNo(),r.planNo(),r.versionNo(),r.paidAmountMinor(),r.bonusAmountMinor());
     }
     public record AccountView(String accountRef,String maskedName,String maskedPhone,String currency,long balanceMinor,
-            long heldMinor,long availableMinor,Instant lastOccurredAt){ }
+            long heldMinor,long availableMinor,Instant lastOccurredAt,Instant lastRechargeAt){ }
     public record RecordView(String recordNo,String maskedName,String maskedPhone,String type,String title,String storeNo,String storeName,
             String currency,long signedAmountMinor,long balanceAfterMinor,Instant occurredAt,String businessNo,String planNo,String versionNo,
             Long paidAmountMinor,Long bonusAmountMinor){ }

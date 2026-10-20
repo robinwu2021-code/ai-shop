@@ -30,7 +30,7 @@ function navigate(url:string){uni.navigateTo({url});}
   </template>
   <text v-if="error" class="sh-hint">{{error}}</text>
   <sh-actionbar v-if="plan?.status==='ACTIVE'&&merchant.can('pay:sv:recharge:create')">
-   <view role="button" class="sh-btn" @tap="navigate(`/pages/stored-value-recharge/index?planNo=${encodeURIComponent(no)}`)">{{t('storedValue.rechargeTitle')}}</view>
+   <view role="button" class="sh-btn" @tap="navigate(`/pages/stored-value/index?tab=customers&planNo=${encodeURIComponent(no)}`)">{{t('storedValue.recharge')}}</view>
   </sh-actionbar>
  </sh-scaffold>
 </template>

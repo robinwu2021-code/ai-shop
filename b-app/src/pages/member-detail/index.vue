@@ -217,7 +217,7 @@ onLoad(async (q) => {
 
       <text class="sh-hint sh-mt-md">{{ $t("members.privacyHint") }}</text>
 
-      <view v-if="merchant.can('pay:sv:recharge:create')" role="button" class="sh-btn sh-mt-sm" @tap="rechargeVisible=true">{{$t('storedValue.recharge')}}</view>
+      <sh-actionbar v-if="merchant.can('pay:sv:recharge:create')"><view role="button" class="sh-btn sh-fill" @tap="rechargeVisible=true">{{$t('storedValue.recharge')}}</view></sh-actionbar>
       <StoredValueRechargeSheet :visible="rechargeVisible" :source="{type:'MEMBER',memberNo:memberNo}" @close="rechargeVisible=false" @credited="load"/>
       <sh-sheet :visible="showTags" :title="tt('memberDetail.tagsOf')" @close="showTags = false">
         <view class="sh-cells">

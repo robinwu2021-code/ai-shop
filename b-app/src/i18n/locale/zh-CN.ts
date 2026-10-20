@@ -2,6 +2,8 @@
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
   storedValue: {
+    "resumePending": "继续处理未完成储值",
+    "lastRecharge": "最近储值",
     "memberPhone": "输入完整手机号",
     "findMember": "查询会员",
     "noMember": "未找到该会员",
@@ -94,7 +96,7 @@ export default {
     "receivePending": "已提交，请有收款确认权限的人员确认",
     "receiptRequired": "请填写收款凭证号",
     "reset": "重置",
-    "accountDetail": "账户详情",
+    "accountDetail": "会员详情",
     "planDetail": "储值方案详情",
     "rechargeTitle": "办理储值",
     "currentStore": "当前门店",

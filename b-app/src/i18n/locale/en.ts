@@ -1,5 +1,7 @@
 export default {
   storedValue: {
+    "resumePending": "Resume pending top-up",
+    "lastRecharge": "Last top-up",
     "memberPhone": "Enter full mobile number",
     "findMember": "Find member",
     "noMember": "No member found",
@@ -92,7 +94,7 @@ export default {
     "receivePending": "Submitted. An authorized operator must confirm receipt.",
     "receiptRequired": "Enter a receipt reference",
     "reset": "Reset",
-    "accountDetail": "Account details",
+    "accountDetail": "Member details",
     "planDetail": "Plan details",
     "rechargeTitle": "Recharge",
     "currentStore": "Current store",

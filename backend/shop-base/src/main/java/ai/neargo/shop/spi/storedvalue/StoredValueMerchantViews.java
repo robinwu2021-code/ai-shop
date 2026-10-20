@@ -6,7 +6,8 @@ import java.time.Instant;
 public final class StoredValueMerchantViews {
     private StoredValueMerchantViews() { }
     public record Account(String accountRef, String userNo, String currency, long balanceMinor,
-            long heldMinor, long availableMinor, Instant lastOccurredAt,String customerNo) {
+            long heldMinor, long availableMinor, Instant lastOccurredAt,String customerNo,Instant lastRechargeAt) {
+        public Account(String ref,String user,String currency,long balance,long held,long available,Instant last,String customer){this(ref,user,currency,balance,held,available,last,customer,null);}
         public Account(String ref,String user,String currency,long balance,long held,long available,Instant last){this(ref,user,currency,balance,held,available,last,user);}
         public String identityNo(){return customerNo==null?userNo:customerNo;}
     }

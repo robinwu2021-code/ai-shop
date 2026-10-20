@@ -90,6 +90,22 @@ class StoredValueStorePlanFlowTest {
         assertThat(jdbc.queryForObject("SELECT customer_no FROM sv_account WHERE account_no=?",String.class,before.accountNo())).isEqualTo(person);
     }
 
+    @Test void merchantDirectoryPagesByLastRechargeEvenWhenConsumptionIsNewer() {
+        String entity=id(),store=id(),older=id(),newer=id();
+        var ctx=new EntitlementContext("MAIN","OWNER",id(),"0".repeat(64));
+        credits.credit(ctx,StoredValueCreditFixture.received(jdbc,json,older,entity,store,5000,1000));
+        credits.credit(ctx,StoredValueCreditFixture.received(jdbc,json,newer,entity,store,10000,3000));
+        jdbc.update("UPDATE sv_user_store_index SET last_recharge_at='2026-10-19 10:00:00',last_activity_at='2026-10-20 18:00:00' WHERE user_no=?",older);
+        jdbc.update("UPDATE sv_user_store_index SET last_recharge_at='2026-10-20 10:00:00',last_activity_at='2026-10-20 10:00:00' WHERE user_no=?",newer);
+        var scope=new CatalogScope("MAIN",entity,"OWNER",false);
+        var first=reads.directory(scope,store,null,"",null,1);
+        assertThat(first.records().getFirst().userNo()).isEqualTo(newer);
+        assertThat(first.nextCursor()).isNotBlank();
+        var second=reads.directory(scope,store,null,"",first.nextCursor(),1);
+        assertThat(second.records().getFirst().userNo()).isEqualTo(older);
+        assertThat(second.nextCursor()).isNull();
+    }
+
     @Test void multipleStorePlansHaveImmutableAmountsAndIdempotentStatusCommands() {
         String entity = id(), store = id();
         var scope = new CatalogScope("MAIN", entity, "OWNER", false);

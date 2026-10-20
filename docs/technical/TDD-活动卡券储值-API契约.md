@@ -1084,3 +1084,5 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 | P80 | GET | /biz/stored-value/customer-candidates | storeNo,phone | PageData<Candidate> | biz:customer pay:sv:recharge:create | 完整手机号，会员可在尚未开户时被找到 |
 | P81 | POST | /biz/stored-value/customer-selections | SelectRequest | Selection | biz:customer pay:sv:recharge:create | 会员／账户来源二选一；独立短时选用凭证 |
 | P82 | POST | /biz/stored-value/plan-recharges/confirm-offline | CreateRequest + Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:create pay:sv:recharge:receive | Pay本地确认、原单重放、MERCHANT_OFFLINE；顾客标识与登录账号分离 |
+
+账户目录补充（2026-10-20）：默认以lastRechargeAt（最后成功储值时间）及账户号倒序分页；新增同名可空时间字段，lastOccurredAt仍表示最近收支。SV_CUSTOMERS_RECHARGE游标与旧排序游标不通用，账户引用不变。搜索会员仍复用P80/P81，不因查询自动开户。

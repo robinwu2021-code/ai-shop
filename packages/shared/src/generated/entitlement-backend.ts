@@ -3,7 +3,7 @@
 // Contextual business checks and constructors remain authoritative; dynamic JSON is unknown.
 // Monetary integers use minor units. Validate safe integer ranges before arithmetic.
 
-export type AccountView_a2884d5da1 = { "accountRef"?: string | null; "availableMinor"?: number; "balanceMinor"?: number; "currency"?: string | null; "heldMinor"?: number; "lastOccurredAt"?: string | null; "maskedName"?: string | null; "maskedPhone"?: string | null; };
+export type AccountView_a2884d5da1 = { "accountRef"?: string | null; "availableMinor"?: number; "balanceMinor"?: number; "currency"?: string | null; "heldMinor"?: number; "lastOccurredAt"?: string | null; "lastRechargeAt"?: string | null; "maskedName"?: string | null; "maskedPhone"?: string | null; };
 
 export type Account_fe73b25b80 = { "accountRef"?: string | null; "availableMinor"?: number; "currency"?: string | null; };
 

@@ -9,4 +9,5 @@ import lombok.Setter;
 @Setter
 public class StoreAccountRow extends SvAccount {
     private LocalDateTime lastActivityAt;
+    private LocalDateTime lastRechargeAt;
 }
