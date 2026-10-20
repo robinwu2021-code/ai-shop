@@ -1201,3 +1201,12 @@ a{color:inherit}
 .points-ops .ops-callout{padding:9px 10px;border-left:2px solid var(--note);background:var(--note-bg);color:var(--note);font-size:10px;line-height:1.5}
 .points-ops [hidden]{display:none!important}
 @media(max-width:900px){.points-ops .ops-window{aspect-ratio:auto;min-height:600px}.points-ops .ops-rail{width:38px;flex-basis:38px}.points-ops .ops-subnav{width:124px;flex-basis:124px;padding-inline:6px}.points-ops .ops-content{padding:10px}.points-ops .ops-drawer{max-width:72%}.points-ops .ops-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.points-ops .ops-table-wrap{overflow:auto}.points-ops .ops-table{min-width:680px}}
+
+/* 会员储值：沿用储值屏与底部浮层，方案是弹框中唯一选择。 */
+.marketing-review .sv-screen .sv-member-result{border:0;text-align:left;font:inherit;color:inherit;width:100%;cursor:pointer}
+.member-sv-overlay[hidden]{display:none!important}
+.member-sv-sheet{max-height:90%;overflow-y:auto;border-radius:16px;gap:12px}
+.member-sv-sheet .sv-plan-option{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:12px;border:0;border-radius:12px;background:var(--sh-bg);color:var(--sh-ink);font:inherit;text-align:left;cursor:pointer}
+.member-sv-sheet .sv-plan-option>span{display:flex;flex-direction:column;gap:4px}
+.member-sv-sheet .sv-plan-option[aria-checked="true"]{background:var(--sh-primary-tint);color:var(--sh-primary-text)}
+.member-sv-sheet .btn:disabled{background:var(--sh-faint);color:var(--sh-disabled);cursor:default}

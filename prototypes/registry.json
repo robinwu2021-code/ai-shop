@@ -4,14 +4,14 @@
   {
    "slug": "member-stored-value",
    "file": "member-stored-value.html",
-   "title": "会员办理储值：查询、新增、首次储值与续充",
+   "title": "会员储值：查询会员、底部选方案、直接办理",
    "kind": "pages",
    "clients": [
     "b-app"
    ],
    "status": "在建",
    "date": "2026-10-20",
-   "summary": "补齐会员选择、新增后储值、收款确认及已有账户续充；虚拟数据交互，未接真实业务接口。",
+   "summary": "门店沿用外层切换；点击会员直接打开底部方案弹框，新增后可继续储值；处理中与结果均在弹框反馈。",
    "docs": [
     {
      "label": "会员办理储值UI与接口补充",
@@ -31,47 +31,17 @@
     },
     {
      "id": "s03",
-     "title": "选择会员 · 虹选美业",
+     "title": "办理储值 · 虹选美业",
      "client": "b-app"
     },
     {
      "id": "s04",
-     "title": "确认会员",
+     "title": "会员详情",
      "client": "b-app"
     },
     {
      "id": "s05",
      "title": "新增会员",
-     "client": "b-app"
-    },
-    {
-     "id": "s06",
-     "title": "办理储值 · 虹选美业",
-     "client": "b-app"
-    },
-    {
-     "id": "s07",
-     "title": "确认储值",
-     "client": "b-app"
-    },
-    {
-     "id": "s08",
-     "title": "储值处理中",
-     "client": "b-app"
-    },
-    {
-     "id": "s09",
-     "title": "储值成功",
-     "client": "b-app"
-    },
-    {
-     "id": "s10",
-     "title": "顾客储值账户",
-     "client": "b-app"
-    },
-    {
-     "id": "s11",
-     "title": "待确认收款",
      "client": "b-app"
     }
    ]
