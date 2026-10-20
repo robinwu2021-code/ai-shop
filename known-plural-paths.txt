@@ -46,6 +46,28 @@
 /biz/inventory/transfers/{no}  transfers
 /biz/inventory/transfers/{no}/receive  transfers
 /biz/inventory/transfers/{no}/ship  transfers
+## Existing routes exposed by the refreshed generated API contracts.
+## Keep exact legacy paths until a coordinated route migration can retain aliases;
+## changing only one transfer action would also make the transfer resource inconsistent.
+/biz/inventory/transfers/{no}/void  transfers
+## Stored-value endpoints use the established plural B-app resource names.
+## They are already consumed by released B-app clients; keep these routes until a
+## coordinated stored-value API migration can publish singular paths with aliases.
+/biz/stored-value/accounts/{accountRef}  accounts
+/biz/stored-value/plan-recharges/{rechargeNo}  plan-recharges
+/biz/stored-value/plan-recharges/{rechargeNo}/cancel  plan-recharges
+/biz/stored-value/plan-recharges/{rechargeNo}/receive  plan-recharges
+/biz/stored-value/plan-recharges/{rechargeNo}/submit  plan-recharges
+/biz/stored-value/plans/{planNo}  plans
+/biz/stored-value/plans/{planNo}/status  plans
+/biz/stored-value/records/{recordNo}  records
+## These established ops actions use singular resource segments under the legacy
+## permission/controller layout. Keep routes stable; pluralization requires matching
+## controller, permission-matrix, and client migration with backward-compatible aliases.
+/ops/banned-word/{id}/remove  banned-word
+/ops/merchant/{entityNo}/nudge  merchant
+/ops/merchant/{entityNo}/stock-doubt  merchant
+/ops/product/{goodsNo}/chain  product
 /biz/member-segments/{segmentNo}  member-segments
 /biz/member-segments/{segmentNo}/remove  member-segments
 /biz/member-tags/{tagNo}  member-tags

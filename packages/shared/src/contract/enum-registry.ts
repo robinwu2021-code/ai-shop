@@ -122,6 +122,8 @@ export const ENUM_REGISTRY: EnumEntry[] = [
     note: "积分服务端契约或运营交互的明确取值域；不代表门店已接线或允许任意状态迁移。" },
   { decl: "ops-web:PointsPositionKind", dom: "finance", shape: "CLASS", verdict: "OK", words: ["GRANT", "REDEEM", "REFUND", "PAYOUT", "STATEMENT", "TRANSFER"],
     note: "积分服务端契约或运营交互的明确取值域；不代表门店已接线或允许任意状态迁移。" },
+  { decl: "ops-web:PointsTransactionDirection", dom: "finance", shape: "CLASS", verdict: "OK", words: ["EARN", "REDEEM", "REVERSAL"],
+    note: "积分业务流水的发放、核销与冲正方向。" },
   { decl: "c-app:PointsOrderStatePhase", dom: "finance", shape: "CLASS", verdict: "OK", words: ["NONE", "RAW", "ADMITTED", "UNKNOWN", "READY", "RECONFIRM", "CANCEL_REQUESTED"],
     note: "积分服务端契约或运营交互的明确取值域；不代表门店已接线或允许任意状态迁移。" },
   { decl: "c-app:OrderPointsQuoteState", dom: "finance", shape: "CLASS", verdict: "OK", words: ["AVAILABLE", "UNAVAILABLE"],

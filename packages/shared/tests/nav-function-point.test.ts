@@ -95,6 +95,10 @@ function seededPoints() {
     for (const m of sql.matchAll(/DELETE\s+FROM\s+sys_function_point\s+WHERE\s+point_code\s*=\s*'([^']+)'/g)) {
       removed.add(m[1]);
     }
+    // Bulk soft-retirement preserves historical rows but removes their menu points from the live catalog.
+    for (const m of sql.matchAll(/UPDATE\s+sys_function_point\s+SET\s+[^;]*?\bdeleted\s*=\s*1[^;]*?\bWHERE\s+point_code\s+IN\s*\(([^)]*)\)/g)) {
+      for (const point of m[1]!.matchAll(/'([^']+)'/g)) removed.add(point[1]!);
+    }
     // A soft-retirement by function_code also retires each child menu point.
     for (const m of sql.matchAll(/UPDATE\s+sys_function_point\s+SET\s+[^;]*?\bdeleted\s*=\s*1[^;]*?\bWHERE\s+function_code\s*=\s*'([^']+)'/g)) {
       removedFunctions.add(m[1]);
