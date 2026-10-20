@@ -1,6 +1,6 @@
 # 活动卡券储值代码结构与类清单
 
-状态：目标代码设计，待评审 · 2026-10-18
+状态：Java后端首期范围已按实现验收；生产切换与前端页面后置 · 2026-10-20
 
 执行状态与先后顺序见[Java后端独立任务表](./任务表-活动卡券储值-Java后端.md)，已实现目录内核直接复用，其余目标设计不视为已完成。
 
@@ -858,3 +858,18 @@ LegacyCouponIdentityPort新增core本地模板主体/已提交模板目录读取
 - `core.promotion.migration.PmtMigrationSource`：`pmt_migration_source`的明确实体模型，含sourceSystem/sourceTemplateNo/decisionNo及BaseEntity审计列；唯一写者仍为`LegacyCouponSourceCommitMapper.bind`，不得增加通用CRUD绕过永久来源决定。
 - `core.trade.entitlement.entity.OrdCardSaleSnapshot.deliveryStatus`：映射既有迁移的PENDING/ACKNOWLEDGED确认列；保存和恢复继续使用原售卡协议，不因实体补齐而重复发卡。
 - 储值消费`ConsumptionQuery.storeNo`可选；为空时按本人和主体查询所有门店，签名游标仍绑定本人、主体和门店过滤条件，不能互换使用。
+
+### 最终包归属（优先于上述历史增量记录）
+
+| 所属模块 | 当前包/类型 | 职责与数据源 |
+|---|---|---|
+| core | `promotion.migration.LegacyCouponSourceFenceService`、`trade.service.LegacyCouponHistoricalReturnService` | 核心源屏障及历史退回协调契约 |
+| 核心服务宿主shop-app | `paybridge.impl.LegacyCouponSourceFenceServiceImpl`、`LegacyCouponMigrationPreflightServiceImpl`、`LegacyCouponHistoricalReturnServiceImpl`、`EntitlementRecoveryScanServiceImpl` | 跨Core旧营销/活动/交易协调；继续用Core事务和SqlSessionFactory，paybridge包名不代表Pay拥有这些事实 |
+| 核心服务宿主shop-app | `paybridge.mapper.LegacyCouponFenceMapper`、`LegacyCouponHistoricalReturnMapper` | 仅Core库，显式纳入Core扫描 |
+| 核心服务宿主shop-app | `paybridge.port.LegacyCouponSnapshotPortImpl`、`LegacyCouponIdentityPortImpl`、`LegacyCouponWriteFencePortImpl` | 共享SPI适配，源快照独立RR事务，写屏障加入原Core事务 |
+| core | `promotion.port.LegacyCouponSourceCommitPortImpl`、`LegacyCouponIssuedProjectionPortImpl` | 纯核心来源证明和展示映射适配，不跨域引用Mapper |
+| pay | `migration.service`的Alias/Plan/HistoricalReturn/IssueRecovery/MigrationImport/MigrationRecovery/UsageRepair/Use八项Service契约及`service.impl`对应实现 | Pay固定计划、金融迁入、核销、回补和恢复；显式pay事务 |
+| pay | `entitlement.service.EntitlementEventDeliveryService`及`service.impl.EntitlementEventDeliveryServiceImpl` | 耐久事件投递，不重复金融命令 |
+| shop-app API | `portal.mp.MpEntitlementController`、`MpEntitlementServiceOrderController` | 本人权益/领取/消费记录与独立服务单资源；后者原URL及鉴权保持 |
+
+公开契约以实际Handler/Jackson导出为准；当前64操作、107DTO。前端入口实际接入单独见[前端任务表](./任务表-活动权益-前端接入.md)，不能把Java后端交付解释为页面已上线。

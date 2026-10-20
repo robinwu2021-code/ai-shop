@@ -1,6 +1,6 @@
 # 活动、卡券、储值 Java 后端最终验收
 
-状态：N12验收中；当前不作为全部完成声明。源码工作树为`codex/stored-value-entitlement-dev`；合并后的当前交付仍待全量回归、整体审查及提交。
+状态：N12首期Java后端验收完成；当前代码`684b0f074`。生产切换与前端页面不在本轮完成声明中。
 
 ## 范围与依据
 
@@ -70,7 +70,7 @@
 
 ## 最终回归与审查
 
-待执行：全量后端回归、最终生成物/权限/契约守卫、一次完整变更审查、必要修复及提交。父任务保持DOING，实际结果完成后更新本节。
+全量回归及审查修复已完成，实际汇总见末尾最终结果；以下保留首轮问题与逐批复验历史。
 
 ### N12首轮问题与定向复验
 
@@ -78,7 +78,7 @@
 
 结构整改后22模块66项通过（`/tmp/ent-final-architecture-green5.log`，含全部16项架构规则和38项支付HTTP契约）；SourceFence/历史及发放业务均通过。最新原生MySQL历史迁入/20并发回补1项、原券占用/确认/回补/取消/并发1项，均无跳过（`/tmp/ent-final-historical-native.log`、`/tmp/ent-final-coupon-use-native.log`）。双JVM/独立库7场景无跳过通过（`/tmp/ent-final-two-process.log`）。真实Handler/Jackson契约3项通过，公开60操作106DTO（`/tmp/ent-final-contract-extract.log`）；C消费明细的主体必选、门店可选，匿名探针提供合法参数后严格验证401。
 
-剩余：最终整体回归、独立整体审查及其必要修复、状态闭合与远端推送。冻结V449脚本保留原末尾空行，这是已知格式minor，不能通过改历史脚本消除。
+当时剩余：最终整体回归、独立整体审查及其必要修复、状态闭合与远端推送。冻结V449脚本保留原末尾空行，这是已知格式minor，不能通过改历史脚本消除。
 
 ### 独立整体审查（fa1c1d60a）
 
@@ -100,7 +100,7 @@
 
 ## 实施裁决完整留档（按发生顺序）
 
-以下保留各编码阶段当时的决策与代价。暂存、初次迁入、历史映射尚未实现等阶段性限制，已由后续条目和最终验收结果取代；当前上线边界以本文迁移及回退章节为准。
+以下记录各阶段当时的决策和代价。阶段性暂存/迁入限制已由后续条目取代；当前交付边界以迁移与回退章节为准。
 
 - Ruling: each axis scan page remains an independent current snapshot; bizDate is attribution, not historic day-end replay — matches the existing RIGHTS implementation and avoids claiming unimplemented temporal reconstruction — cost if wrong: historical balance reconstruction needs a separate design.
 - Ruling: first-implementation O07 response is FreezeView with revision instead of draft EntitlementDetail; add read-only lifecycle state — operators need a trusted revision before their first CAS write — cost if wrong: an unimplemented prototype response shape needs updating; no existing live caller is changed.
@@ -133,6 +133,7 @@
 - Final: Ruling: UI implementation remains deferred — Java-first instruction, contracts/prototypes retained — cost if wrong: separate frontend integration required.
 - Final: Ruling: entitlement and coordination tables use explicit domain authorization, not newly injected request-thread scope predicates — Pay standalone callers must carry authenticated tenant/owner facts, and Core records use trusted order/activity source IDs; arbitrary SELF predicates break merchant handling/recovery — cost if wrong: every new domain query must maintain explicit owner filters and denial tests. Guard registrations document this boundary without increasing debt baselines. Existing identity/use coordination tokens remain fail-closed for COMMUNITY/PICKUP-only Ops.
 - Final: Ruling: enum registrations with no independent client declaration keep clients empty, not DISMISSED — Java/OpenAPI-generated DTO remains authoritative and UI is deferred — cost if wrong: future client enum must be bound when introduced. Preset AP/EP values are ID prefixes, not a two-value enum; usage protocol includes actual MIGRATED despite frozen old comment.
+- Final: Ruling: frontend-first orphan debt cannot classify an explicitly authorized Java-backend-first delivery — add a separate exact staged API manifest checked against live handlers, published contracts and a concrete frontend task table; connected/deleted entries must leave the manifest, new entries are never automatically exempt — cost if wrong: 43 B/C endpoints still lack actual pages and must not be presented as UI-complete. Legacy orphan baseline unchanged; unit negative cases are a required push gate.
 
 ### 推送门禁收口
 
@@ -141,3 +142,13 @@
 [前端独立接入表](./任务表-活动权益-前端接入.md)列明7项页面接入任务及43条B/C端待接入接口。`backend-ui-delivery.json`按明确后端先行范围登记，检查真实Handler、专项公开契约及清单陈旧性；3项负向/正常单测通过并接入pre-push。没有增加历史孤儿基线，仍28条；新增未登记接口仍报错。不能将此清单当作前端已完成证据。
 
 B端189项、C端547项单测通过，双方类型检查通过。生成物24项及70份V2文档守卫通过。最终完整后端回归和远端推送仍待确认；之前两次因已定位失败或明确门禁收口而中止的回归不作为通过证据。
+
+## 最终验收结果
+
+代码`684b0f074`，完整命令`JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH mvn -o -f backend/pom.xml test`：27模块BUILD SUCCESS，700个测试类/场景组、4019项，失败0、异常0、条件跳过18。日志`/tmp/ent-final-backend-regression4.log`。条件跳过的原生数据库/双进程按本文独立命令执行，不作为未执行场景冒充通过。
+
+两项Important修复及18项Controller权限/查询验证、真实契约64/107、原生金融、完整新建/升级及7双进程场景均有独立证据。前端双类型检查与736项单测通过；共享守卫保留16条历史基线，无新增或增长，运营722断言全通过。
+
+Java任务55 DONE/0 DOING/0 TODO。前端7项接入任务和43条B/C接口仍待实际页面开发。只推送当前开发分支，不合并、不部署、不执行生产切换。
+
+延期minor：冻结V449末尾空行保留，格式不影响执行，不能为消除空白警告修改历史校验和。
