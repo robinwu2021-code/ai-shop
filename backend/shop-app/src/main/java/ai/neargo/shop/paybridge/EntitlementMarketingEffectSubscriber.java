@@ -30,6 +30,7 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 @Transactional(propagation=Propagation.NOT_SUPPORTED)
 public class EntitlementMarketingEffectSubscriber implements OutboxConsumer {
+    private final ai.neargo.shop.payclient.StoredValuePlanRechargeAppService direct;
     private final RechargeIntentService recharges;
     private final ActivityBenefitIntentService benefits;
     private final EntitlementMarketingFactsPort pay;
@@ -37,7 +38,18 @@ public class EntitlementMarketingEffectSubscriber implements OutboxConsumer {
     private final ObjectMapper json;
     public EntitlementMarketingEffectSubscriber(RechargeIntentService recharges,ActivityBenefitIntentService benefits,
             EntitlementMarketingFactsPort pay,MarketingEffectProjector projection,ObjectMapper json) {
-        this.recharges=recharges; this.benefits=benefits; this.pay=pay; this.projection=projection; this.json=json;
+        this(recharges,benefits,pay,projection,json,null);
+    }
+    @org.springframework.beans.factory.annotation.Autowired
+    public EntitlementMarketingEffectSubscriber(RechargeIntentService recharges,ActivityBenefitIntentService benefits,
+            EntitlementMarketingFactsPort pay,MarketingEffectProjector projection,ObjectMapper json,
+            ai.neargo.shop.payclient.StoredValuePlanRechargeAppService direct){
+        this.recharges=recharges;this.benefits=benefits;this.pay=pay;this.projection=projection;this.json=json;this.direct=direct;
+    }
+    private boolean directRecharge(String entity,String no){
+        if(direct==null)return false;
+        try{return direct.query(new EntitlementContext("MAIN","OUTBOX_READ",no,"0".repeat(64)),entity,no)!=null;}
+        catch(ai.neargo.shop.common.BizException e){if(e.errorCode()==ai.neargo.shop.common.ErrorCode.NOT_FOUND)return false;throw e;}
     }
     @Override public boolean supports(String type) {
         return Set.of("STORED_VALUE_RECHARGE_RECEIVED","STORED_VALUE_CREDITED","ENTITLEMENT_GRANTED",
@@ -62,11 +74,13 @@ public class EntitlementMarketingEffectSubscriber implements OutboxConsumer {
         else if(event instanceof EntitlementUseReversed e) reversed(e);
     }
     private void received(StoredValueRechargeReceived event) {
+        if(directRecharge(event.entityNo(),event.rechargeNo()))return;
         var plan=recharges.byRechargeNo(event.tenantNo(),event.rechargeNo());
         require(event.entityNo().equals(plan.permit().entityNo()));
         rechargeEffect(event,plan,"RECHARGE",plan.permit().payAmountMinor());
     }
     private void credited(StoredValueCredited event) {
+        if(directRecharge(event.entityNo(),event.rechargeNo()))return;
         var plan=recharges.byRechargeNo("MAIN",event.rechargeNo()); var permit=plan.permit();
         require(event.entityNo().equals(permit.entityNo()) && event.storeNo().equals(permit.storeNo())
                 && event.userNo().equals(permit.userNo()) && event.currency().equals(permit.currency())

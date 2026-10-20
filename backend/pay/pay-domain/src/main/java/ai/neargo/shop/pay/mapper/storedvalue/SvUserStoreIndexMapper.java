@@ -26,17 +26,17 @@ public interface SvUserStoreIndexMapper extends BaseMapper<SvUserStoreIndex> {
             @Param("afterAt") LocalDateTime afterAt, @Param("afterStore") String afterStore,
             @Param("limit") int limit);
 
-    @Insert("INSERT IGNORE INTO sv_user_store_index(tenant_no,user_no,entity_no,store_no,store_name,has_recharge,"
+    @Insert("INSERT IGNORE INTO sv_user_store_index(tenant_no,user_no,customer_no,entity_no,store_no,store_name,has_recharge,"
             + "last_recharge_at,last_activity_at,last_activity_type,store_status,created_at,updated_at,created_by,"
-            + "updated_by) VALUES(#{tenantNo},#{userNo},#{entityNo},#{storeNo},#{storeName},1,#{lastRechargeAt},"
+            + "updated_by) VALUES(#{tenantNo},#{userNo},#{customerIdentity},#{entityNo},#{storeNo},#{storeName},1,#{lastRechargeAt},"
             + "#{lastActivityAt},'RECHARGE','UNVERIFIED',#{createdAt},#{updatedAt},#{createdBy},#{updatedBy})")
     int ensure(SvUserStoreIndex row);
-    @Insert("INSERT IGNORE INTO sv_user_store_index(tenant_no,user_no,entity_no,store_no,store_name,has_recharge,"
+    @Insert("INSERT IGNORE INTO sv_user_store_index(tenant_no,user_no,customer_no,entity_no,store_no,store_name,has_recharge,"
             + "last_consume_at,last_activity_at,last_activity_type,store_status,created_at,updated_at,created_by,"
-            + "updated_by) VALUES(#{tenantNo},#{userNo},#{entityNo},#{storeNo},#{storeName},0,#{lastConsumeAt},"
+            + "updated_by) VALUES(#{tenantNo},#{userNo},#{customerIdentity},#{entityNo},#{storeNo},#{storeName},0,#{lastConsumeAt},"
             + "#{lastActivityAt},'CONSUMPTION','UNVERIFIED',#{createdAt},#{updatedAt},#{createdBy},#{updatedBy})")
     int ensureConsumption(SvUserStoreIndex row);
-    @Select("SELECT * FROM sv_user_store_index WHERE tenant_no=#{tenant} AND user_no=#{user} AND store_no=#{store} "
+    @Select("SELECT * FROM sv_user_store_index WHERE tenant_no=#{tenant} AND (user_no=#{user} OR customer_no=#{user}) AND store_no=#{store} "
             + "AND deleted=0 FOR UPDATE")
     SvUserStoreIndex lock(@Param("tenant") String tenant, @Param("user") String user, @Param("store") String store);
 }

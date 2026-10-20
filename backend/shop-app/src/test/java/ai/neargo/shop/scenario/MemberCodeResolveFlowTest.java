@@ -35,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @ActiveProfiles("test")
 class MemberCodeResolveFlowTest {
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private ai.neargo.shop.spi.user.PersonPort people;
     @Autowired private MemberCodeResolveService service;
     @Autowired private CustomerIdentityPort identity;
     @Autowired private MemberCodeProperties properties;
@@ -86,6 +87,16 @@ class MemberCodeResolveFlowTest {
         jdbc.update("DELETE FROM mch_entity WHERE entity_no=?", otherEntity);
         jdbc.update("DELETE FROM mch_entity WHERE entity_no=?", entity);
         jdbc.update("DELETE FROM usr_account WHERE user_no=?", user);
+    }
+
+    @Test void selectsUnregisteredPersonWithoutFakeCodeAndKeepsActorBinding() {
+        String phone="139"+String.format("%08d",Math.floorMod(UUID.randomUUID().getLeastSignificantBits(),100000000));
+        var person=people.resolveOrCreateByPhone(phone);
+        var ref=service.selectCustomer(scope,person.personNo(),null);
+        var resolved=service.requireReference(scope,ref.customerRef());
+        assertThat(resolved.userNo()).isNull();assertThat(resolved.customerNo()).isEqualTo(person.personNo());
+        assertThat(jdbc.queryForObject("SELECT purpose FROM mbr_identity_ticket WHERE customer_no=?",String.class,person.personNo())).isEqualTo("CUSTOMER_SELECTION");
+        assertThatThrownBy(()->service.requireReference(new MemberCodeScope(scope.tenantNo(),scope.entityNo(),scope.storeNo(),"OTHER_ACTOR"),ref.customerRef())).isInstanceOf(BizException.class);
     }
 
     @Test

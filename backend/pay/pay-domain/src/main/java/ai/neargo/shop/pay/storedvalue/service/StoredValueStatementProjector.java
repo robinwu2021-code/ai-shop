@@ -36,7 +36,7 @@ public class StoredValueStatementProjector {
     private static SvStatement base(EntitlementContext ctx,SvAccount a,SvVoucher v){
         var row=new SvStatement();audit(row,ctx,v.getOccurredAt());
         row.setRecordNo(v.getVoucherNo());row.setVoucherNo(v.getVoucherNo());row.setAccountNo(a.getAccountNo());
-        row.setAccountSeq(v.getAccountSeq());row.setUserNo(a.getUserNo());row.setEntityNo(a.getEntityNo());
+        row.setAccountSeq(v.getAccountSeq());row.setUserNo(a.getUserNo());row.setCustomerNo(a.customerIdentity());row.setEntityNo(a.getEntityNo());
         row.setStoreNo(a.getStoreNo());row.setCurrency(a.getCurrency());row.setBusinessNo(v.getBizNo());
         row.setSignedAmountMinor(Math.addExact(v.getPrincipalDelta(),v.getBonusDelta()));
         row.setBalanceAfterMinor(Math.addExact(v.getAfterPrincipalMinor(),v.getAfterBonusMinor()));row.setOccurredAt(v.getOccurredAt());

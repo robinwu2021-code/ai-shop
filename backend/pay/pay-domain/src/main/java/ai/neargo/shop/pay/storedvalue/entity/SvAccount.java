@@ -11,6 +11,9 @@ import lombok.Setter;
 public class SvAccount extends BaseEntity {
     private String accountNo;
     private String userNo;
+    private String customerNo;
+    public String getCustomerIdentity(){return customerIdentity();}
+    public String customerIdentity(){return customerNo==null?userNo:customerNo;}
     private String entityNo;
     private String storeNo;
     private String currency;

@@ -85,13 +85,13 @@ public class StoredValueMerchantQueryServiceImpl implements StoredValueMerchantQ
                 Math.max(1,instant(a.getCreatedAt()).toEpochMilli()),a.getAccountNo());
         long balance=Math.addExact(a.getPrincipalMinor(),a.getBonusMinor());long held=Math.addExact(a.getHeldPrincipalMinor(),a.getHeldBonusMinor());
         if(held>balance)throw BizException.of(ErrorCode.CONFLICT);
-        return new Account(ref,a.getUserNo(),a.getCurrency(),balance,held,"ACTIVE".equals(a.getStatus())?balance-held:0,last);
+        return new Account(ref,a.getUserNo(),a.getCurrency(),balance,held,"ACTIVE".equals(a.getStatus())?balance-held:0,last,a.customerIdentity());
     }
     private String accountNo(CatalogScope s,String store,String ref){
         ContractChecks.require(ref!=null&&!ref.isBlank()&&ref.length()<=512);return cursors.decode(ref,"SV_ACCOUNT_REF",s.tenantNo(),s.actorNo(),digest(List.of(s.entityNo(),store),json)).sortKey();
     }
     private static Record view(SvStatement r){return new Record(r.getRecordNo(),r.getUserNo(),r.getType(),r.getTitle(),r.getStoreNo(),r.getStoreName(),
-            r.getCurrency(),r.getSignedAmountMinor(),r.getBalanceAfterMinor(),instant(r.getOccurredAt()),r.getBusinessNo(),r.getPlanNo(),r.getPlanVersionNo(),r.getPaidAmountMinor(),r.getBonusAmountMinor());}
+            r.getCurrency(),r.getSignedAmountMinor(),r.getBalanceAfterMinor(),instant(r.getOccurredAt()),r.getBusinessNo(),r.getPlanNo(),r.getPlanVersionNo(),r.getPaidAmountMinor(),r.getBonusAmountMinor(),r.customerIdentity());}
     private static LocalDateTime local(Instant at){return LocalDateTime.ofInstant(at,ZoneOffset.UTC);}
     private static void read(CatalogScope s,String store,int size){
         ContractChecks.id(store);ContractChecks.require(size>=1&&size<=100);if(s.platformActor())throw BizException.of(ErrorCode.FORBIDDEN);

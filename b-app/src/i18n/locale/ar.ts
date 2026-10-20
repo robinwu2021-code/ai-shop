@@ -1,5 +1,16 @@
 export default {
   storedValue: {
+    "memberPhone": "أدخل رقم الجوال كاملاً",
+    "findMember": "البحث عن عضو",
+    "noMember": "لم يتم العثور على عضو",
+    "chooseMember": "اختر عضواً",
+    "offlineConfirm": "تأكيد الشحن",
+    "offlineHint": "التأكيد يعني استلام {amount} خارج المنصة",
+    "finish": "تم",
+    "saveAndRecharge": "حفظ وشحن",
+    "notFunded": "لم يتم الشحن بعد",
+    "memberBlocked": "الشحن غير متاح لهذا العضو",
+
     "createdAt": "تاريخ الإنشاء",
     "updatedAt": "تاريخ التعديل",
     "title": "إدارة الرصيد",

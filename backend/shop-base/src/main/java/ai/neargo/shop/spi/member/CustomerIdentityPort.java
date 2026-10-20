@@ -14,5 +14,7 @@ public interface CustomerIdentityPort {
         }
     }
 
-    record ResolvedCustomer(String userNo) { }
+    record ResolvedCustomer(String userNo,String customerNo) {
+        public ResolvedCustomer(String userNo){this(userNo,userNo);}
+    }
 }

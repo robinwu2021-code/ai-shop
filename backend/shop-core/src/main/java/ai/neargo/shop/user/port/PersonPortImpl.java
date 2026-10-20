@@ -32,6 +32,9 @@ public class PersonPortImpl implements PersonPort {
     }
 
     @Override
+    public Optional<PersonView> findByPhone(String phone) { return personService.findByPhone(phone).map(this::view); }
+
+    @Override
     public Optional<PersonView> findByUser(String userNo) {
         return personService.findByUser(userNo).map(this::view);
     }

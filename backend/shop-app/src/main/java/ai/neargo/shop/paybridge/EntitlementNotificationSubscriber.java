@@ -57,6 +57,7 @@ public class EntitlementNotificationSubscriber implements OutboxConsumer {
                 || !event.aggregateType().equals(row.getAggregateType())) {
             throw new IllegalArgumentException("Notification event identity mismatch");
         }
+        if(user==null)return; // Offline customers have no registered C-side inbox.
         messages.push(user,MessageService.TRADE,title,body,null,key(event.eventNo(),user));
     }
     private static String key(String no,String user) {

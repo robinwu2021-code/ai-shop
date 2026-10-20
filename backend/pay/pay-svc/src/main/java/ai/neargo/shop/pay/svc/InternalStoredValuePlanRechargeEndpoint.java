@@ -18,6 +18,16 @@ public class InternalStoredValuePlanRechargeEndpoint {
     private final String token;
     public InternalStoredValuePlanRechargeEndpoint(StoredValuePlanRechargeService direct,
             @Value("${shop.services.internal-token:}") String token) { this.direct=direct; this.token=token; }
+    @PostMapping(PayInternalPaths.SV_CUSTOMER_BIND)
+    public ResponseEntity<?> bind(@RequestBody PayStoredValuePlanRechargeRequests.Bind r,
+            @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given){
+        return InternalServiceResponses.invoke(token,given,()->{direct.bindCustomer(r.context(),r.customerNo(),r.userNo());return true;});
+    }
+    @PostMapping(PayInternalPaths.SV_PLAN_RECHARGE_CONFIRM_OFFLINE)
+    public ResponseEntity<?> confirmOffline(@RequestBody PayStoredValuePlanRechargeRequests.Create r,
+            @RequestHeader(value=InternalHttp.TOKEN_HEADER,required=false) String given){
+        return InternalServiceResponses.invoke(token,given,()->direct.confirmOffline(r.context(),r.entityNo(),r.command()));
+    }
     @PostMapping(PayInternalPaths.SV_PLAN_RECHARGE_CREATE)
     public ResponseEntity<?> create(@RequestBody PayStoredValuePlanRechargeRequests.Create r,
             @RequestHeader(value=InternalHttp.TOKEN_HEADER, required=false) String given) {

@@ -370,6 +370,10 @@ public interface PayInternalApi {
     CursorPage<StoredValuePlans.View> svPlanList(@RequestBody PayStoredValuePlanRequests.List request);
     @PostExchange(PayInternalPaths.SV_PLAN_STATUS)
     StoredValuePlans.View svPlanStatus(@RequestBody PayStoredValuePlanRequests.Status request);
+    @PostExchange(PayInternalPaths.SV_CUSTOMER_BIND)
+    Boolean svCustomerBind(@RequestBody PayStoredValuePlanRechargeRequests.Bind request);
+    @PostExchange(PayInternalPaths.SV_PLAN_RECHARGE_CONFIRM_OFFLINE)
+    StoredValuePort.RechargeView svPlanRechargeConfirmOffline(@RequestBody PayStoredValuePlanRechargeRequests.Create request);
     @PostExchange(PayInternalPaths.SV_PLAN_RECHARGE_CREATE)
     StoredValuePort.RechargeView svPlanRechargeCreate(@RequestBody PayStoredValuePlanRechargeRequests.Create request);
     @PostExchange(PayInternalPaths.SV_PLAN_RECHARGE_QUERY)

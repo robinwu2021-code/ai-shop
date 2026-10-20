@@ -129,6 +129,8 @@ public final class PayInternalPaths {
     public static final String SV_PLAN_GET = "/internal/pay/stored-value/plans/get";
     public static final String SV_PLAN_LIST = "/internal/pay/stored-value/plans/list";
     public static final String SV_PLAN_STATUS = "/internal/pay/stored-value/plans/status";
+    public static final String SV_CUSTOMER_BIND="/internal/pay/stored-value/customers/bind";
+    public static final String SV_PLAN_RECHARGE_CONFIRM_OFFLINE="/internal/pay/stored-value/plan-recharges/confirm-offline";
     public static final String SV_PLAN_RECHARGE_CREATE = "/internal/pay/stored-value/plan-recharges/create";
     public static final String SV_PLAN_RECHARGE_QUERY = "/internal/pay/stored-value/plan-recharges/query";
     public static final String SV_PLAN_RECHARGE_RECOVER = "/internal/pay/stored-value/plan-recharges/recover";

@@ -15,6 +15,8 @@ public interface PersonService {
     /** 按手机号解析，没有就建（{@code userNo} 留空）。商家录入会员走它 */
     UsrPerson resolveOrCreateByPhone(String phone);
 
+    Optional<UsrPerson> findByPhone(String phone);
+
     Optional<UsrPerson> findByUser(String userNo);
 
     Optional<UsrPerson> find(String personNo);

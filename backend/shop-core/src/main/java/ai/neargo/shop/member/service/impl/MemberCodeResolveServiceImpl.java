@@ -34,7 +34,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class MemberCodeResolveServiceImpl implements MemberCodeResolveService {
     private static final String CODE = "MEMBER_CODE";
     private static final String REFERENCE = "CUSTOMER_REFERENCE";
+    private static final String SELECTION = "CUSTOMER_SELECTION";
     private static final SecureRandom RANDOM = new SecureRandom();
+    private ai.neargo.shop.spi.user.PersonPort people;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setPeople(ai.neargo.shop.spi.user.PersonPort people){this.people=people;}
     private final MemberIdentityTicketMapper tickets;
     private final UserScopeFactsPort users;
     private final MerchantScopeFactsPort merchants;
@@ -78,6 +82,17 @@ public class MemberCodeResolveServiceImpl implements MemberCodeResolveService {
         return new CustomerReference(raw, mask(user.nickname()), ref.getExpiresAt().toInstant(ZoneOffset.UTC));
     }
 
+    @Override @Transactional
+    public CustomerReference selectCustomer(MemberCodeScope scope,String customer,String user){
+        requireEnabled();requireMerchant(scope);requireId(customer,64);
+        String name="顾客";
+        if(user!=null)name=activeUser(scope.tenantNo(),user).nickname();
+        else if(people==null||people.find(customer).isEmpty())throw BizException.of(ErrorCode.NOT_FOUND);
+        String raw=token("cr1_");var ref=ticket(scope.tenantNo(),user,SELECTION,raw,120,scope.actorNo());
+        ref.setCustomerNo(customer);ref.setEntityNo(scope.entityNo());ref.setStoreNo(scope.storeNo());ref.setActorNo(scope.actorNo());persist(ref);
+        return new CustomerReference(raw,mask(name),ref.getExpiresAt().toInstant(ZoneOffset.UTC));
+    }
+
     @Override
     @Transactional(readOnly = true)
     public ResolvedCustomer requireReference(MemberCodeScope scope, String customerRef) {
@@ -87,8 +102,17 @@ public class MemberCodeResolveServiceImpl implements MemberCodeResolveService {
                 || !scope.actorNo().equals(ref.getActorNo())) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        activeUser(scope.tenantNo(), ref.getUserNo());
-        return new ResolvedCustomer(ref.getUserNo());
+        if(ref.getUserNo()!=null)activeUser(scope.tenantNo(),ref.getUserNo());
+        String customer=ref.getCustomerNo()==null?ref.getUserNo():ref.getCustomerNo();
+        String user=ref.getUserNo();
+        if(user==null){
+            var person=people==null?java.util.Optional.<ai.neargo.shop.spi.user.PersonPort.PersonView>empty():people.find(customer);
+            if(person.isEmpty())throw BizException.of(ErrorCode.NOT_FOUND);
+            user=person.get().userNo();if(user!=null)activeUser(scope.tenantNo(),user);
+        }else if(people!=null){
+            customer=people.findByUser(user).map(ai.neargo.shop.spi.user.PersonPort.PersonView::personNo).orElse(customer);
+        }
+        return new ResolvedCustomer(user,customer);
     }
 
     private MbrIdentityTicket lookup(String tenant, String purpose, String prefix, String raw, ErrorCode failure) {
@@ -97,7 +121,7 @@ public class MemberCodeResolveServiceImpl implements MemberCodeResolveService {
         }
         var row = DataScopeContext.executeWithoutScope(() -> tickets.selectOne(
                 Wrappers.<MbrIdentityTicket>lambdaQuery().eq(MbrIdentityTicket::getTenantNo, tenant)
-                        .eq(MbrIdentityTicket::getPurpose, purpose).eq(MbrIdentityTicket::getTicketHash, hash(raw))));
+                        .in(MbrIdentityTicket::getPurpose, REFERENCE.equals(purpose)?java.util.List.of(REFERENCE,SELECTION):java.util.List.of(purpose)).eq(MbrIdentityTicket::getTicketHash, hash(raw))));
         if (row == null || !LocalDateTime.now(ZoneOffset.UTC).isBefore(row.getExpiresAt())) {
             throw BizException.of(failure);
         }

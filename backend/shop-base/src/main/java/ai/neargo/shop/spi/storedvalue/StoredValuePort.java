@@ -30,7 +30,7 @@ public interface StoredValuePort {
 
     CursorPage<UsageItem> consumptions(EntitlementContext context, ConsumptionQuery query);
 
-    enum CollectionMethod { CASH, TRANSFER }
+    enum CollectionMethod { CASH, TRANSFER, MERCHANT_OFFLINE }
 
     enum RechargeState { NOT_FOUND, WAIT_COLLECTION, SUBMITTED, RECEIVED, CREDITED, CANCELLED, REJECTED }
 
@@ -111,7 +111,8 @@ public interface StoredValuePort {
 
     record RechargeView(String rechargeNo, RechargeState status, String userNo, String entityNo, String storeNo,
                         String currency, Long paidAmountMinor, Long creditedTotalMinor, Instant receivedAt,
-                        Instant creditedAt, long revision) {
+                        Instant creditedAt, long revision,String customerNo) {
+        public RechargeView(String rechargeNo,RechargeState status,String userNo,String entityNo,String storeNo,String currency,Long paidAmountMinor,Long creditedTotalMinor,Instant receivedAt,Instant creditedAt,long revision){this(rechargeNo,status,userNo,entityNo,storeNo,currency,paidAmountMinor,creditedTotalMinor,receivedAt,creditedAt,revision,userNo);}
     }
 
     record BalanceView(String accountNo, String currency, long balanceMinor, long heldMinor, long availableMinor,

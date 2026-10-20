@@ -43,6 +43,20 @@ public class BizStoredValuePlanRechargeController {
             CustomerIdentityPort customers, StoreDirectoryPort stores,StoredValueRequestFingerprint fingerprints) {
         this.direct=direct;this.receipts=receipts;this.scopes=scopes;this.customers=customers;this.stores=stores;this.fingerprints=fingerprints;
     }
+    @PreAuthorize("@perm.canBiz('"+BizPerms.SV_RECHARGE_CREATE+"') and @perm.canBiz('"+BizPerms.SV_RECHARGE_RECEIVE+"')")
+    @PostMapping("/biz/stored-value/plan-recharges/confirm-offline")
+    public StoredValueRechargeProgress confirmOffline(@RequestBody CreateRequest c,@RequestHeader("Idempotency-Key") String key){
+        requireStore(c.storeNo(),BizPerms.SV_RECHARGE_CREATE);
+        requireStore(c.storeNo(),BizPerms.SV_RECHARGE_RECEIVE);
+        var ctx=context(key);String entity=BizContext.requireMerchantNo();
+        var card=stores.cards(List.of(c.storeNo())).get(c.storeNo());
+        if(card==null||!card.active()||!entity.equals(card.entityNo()))throw BizException.of(ErrorCode.NOT_FOUND);
+        var prior=direct.replay(ctx,entity,replay(c));
+        var user=prior.found()?new CustomerIdentityPort.ResolvedCustomer(prior.recharge().userNo(),prior.recharge().customerNo()):customers.resolveReference(ctx,new ReferenceQuery(entity,c.storeNo(),c.customerRef()));
+        return StoredValueRechargeProgress.from(direct.confirmOffline(ctx,entity,
+                new Create(user.userNo(),c.storeNo(),card.storeName(),c.planNo(),c.versionNo(),replay(c).referenceHash(),user.customerNo())));
+    }
+
     @PreAuthorize("@perm.canBiz('"+BizPerms.SV_RECHARGE_CREATE+"')")
     @PostMapping("/biz/stored-value/plan-recharges")
     public StoredValueRechargeProgress create(@RequestBody CreateRequest c,@RequestHeader("Idempotency-Key") String key){
@@ -54,7 +68,7 @@ public class BizStoredValuePlanRechargeController {
         if(prior.found())return StoredValueRechargeProgress.from(prior.recharge());
         var user=customers.resolveReference(ctx,new ReferenceQuery(entity,c.storeNo(),c.customerRef()));
         return StoredValueRechargeProgress.from(direct.create(ctx,entity,
-                new Create(user.userNo(),c.storeNo(),card.storeName(),c.planNo(),c.versionNo(),replay(c).referenceHash())));
+                new Create(user.userNo(),c.storeNo(),card.storeName(),c.planNo(),c.versionNo(),replay(c).referenceHash(),user.customerNo())));
     }
     @PreAuthorize("@perm.canBiz('"+BizPerms.SV_RECHARGE_READ+"') or @perm.canBiz('"+BizPerms.SV_RECHARGE_CREATE+"')")
     @GetMapping("/biz/stored-value/plan-recharges/{rechargeNo}")

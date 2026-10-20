@@ -13,6 +13,7 @@ function navigate(url:string){uni.navigateTo({url});}
   <sh-kv :label="t('storedValue.balance')" between><text class="txt-price sh-num">{{money(a.availableMinor,a.currency)}}</text></sh-kv>
   <text v-if="a.lastOccurredAt" class="sh-muted">{{t('storedValue.lastActivity')}} {{datetime(Date.parse(a.lastOccurredAt))}}</text>
  </view>
+ <view v-if="merchant.can('pay:sv:recharge:create')" role="button" class="sh-btn" @tap="navigate('/pages/stored-value-recharge/index')">{{t('storedValue.rechargeTitle')}}</view>
  <sh-empty v-if="!loading&&!error&&!records.length" :text="t('storedValue.empty')"/><text v-if="loading" class="sh-muted">{{t('storedValue.loading')}}</text>
  <button v-else-if="cursor" class="sh-btn sh-btn--muted" @tap="load(true)">{{t('storedValue.more')}}</button>
 </view></template>

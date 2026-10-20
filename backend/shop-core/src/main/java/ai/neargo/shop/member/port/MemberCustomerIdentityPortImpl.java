@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class MemberCustomerIdentityPortImpl implements CustomerIdentityPort {
     private final MemberCodeResolveService service;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.springframework.beans.factory.ObjectProvider<ai.neargo.shop.spi.storedvalue.StoredValueCustomerBindingPort> bindings;
 
     public MemberCustomerIdentityPortImpl(MemberCodeResolveService service) {
         this.service = service;
@@ -22,7 +24,9 @@ public class MemberCustomerIdentityPortImpl implements CustomerIdentityPort {
         if (context == null || query == null) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        return service.requireReference(new MemberCodeScope(context.tenantNo(), query.entityNo(), query.storeNo(),
+        var resolved=service.requireReference(new MemberCodeScope(context.tenantNo(), query.entityNo(), query.storeNo(),
                 context.actorNo()), query.customerRef());
+        if(bindings!=null){var binding=bindings.getIfAvailable();if(binding!=null)binding.ensureByUser(context,resolved.userNo());}
+        return resolved;
     }
 }

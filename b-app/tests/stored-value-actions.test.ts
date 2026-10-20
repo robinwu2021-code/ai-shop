@@ -9,7 +9,7 @@ vi.mock('@/stores/merchant',()=>({useMerchantStore:()=>({storeNo:'S1',multiStore
 vi.mock('vue-i18n',()=>({useI18n:()=>({t:(k:string)=>k})}));
 import PlanEdit from '@/pages/stored-value-plan-edit/index.vue';
 import Detail from '@/pages/stored-value-plan-detail/index.vue';
-import Recharge from '@/pages/stored-value-recharge/index.vue';
+import Recharge from '@/pages/stored-value-recharge/LegacyRecharge.vue';
 const plan={planNo:'P1',versionNo:'V1',revision:0,storeNo:'S1',name:'充50送10',currency:'CNY',paidAmountMinor:5000,bonusAmountMinor:1000,totalAmountMinor:6000,status:'ACTIVE',createdAt:'2026-10-20T01:00:00Z',updatedAt:'2026-10-20T02:00:00Z'};
 const options={global:{stubs:{'sh-scaffold':{template:'<div><slot/></div>'}}}};
 beforeEach(()=>{vi.clearAllMocks();m.plan.mockResolvedValue(plan);m.plans.mockResolvedValue({records:[plan],nextCursor:null});});

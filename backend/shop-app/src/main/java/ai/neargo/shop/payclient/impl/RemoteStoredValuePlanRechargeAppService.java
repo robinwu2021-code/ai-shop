@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 public class RemoteStoredValuePlanRechargeAppService implements StoredValuePlanRechargeAppService {
     private final PayInternalApi direct;
     public RemoteStoredValuePlanRechargeAppService(PayInternalApi direct) { this.direct=direct; }
+    @Override public void bindCustomer(EntitlementContext c,String customer,String user){RemoteEntitlementCalls.call(()->direct.svCustomerBind(new PayStoredValuePlanRechargeRequests.Bind(c,customer,user)));}
+    @Override public RechargeView confirmOffline(EntitlementContext c,String e,Create command){return RemoteEntitlementCalls.call(()->direct.svPlanRechargeConfirmOffline(new PayStoredValuePlanRechargeRequests.Create(c,e,command)));}
     @Override public RechargeView create(EntitlementContext c, String e, Create command) { return RemoteEntitlementCalls.call(()->direct.svPlanRechargeCreate(new PayStoredValuePlanRechargeRequests.Create(c,e,command))); }
     @Override public RechargeView query(EntitlementContext c, String e, String no) { return RemoteEntitlementCalls.call(()->direct.svPlanRechargeQuery(new PayStoredValuePlanRechargeRequests.Query(c,e,no))); }
     @Override public boolean recover(EntitlementContext c, String e, String no) { return RemoteEntitlementCalls.call(()->direct.svPlanRechargeRecover(new PayStoredValuePlanRechargeRequests.Query(c,e,no))); }

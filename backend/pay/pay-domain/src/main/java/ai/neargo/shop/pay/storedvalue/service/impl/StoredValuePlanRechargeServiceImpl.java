@@ -44,6 +44,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechargeService {
+    private final ai.neargo.shop.pay.mapper.storedvalue.SvCustomerIdentityMapper identities;
     private final SvRechargeMapper recharges;
     private final SvRechargePlanMapper plans;
     private final SvRechargePlanVersionMapper versions;
@@ -54,11 +55,22 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
     private final ObjectMapper json;
     private final StoredValueRechargeWriter writer;
 
-    public StoredValuePlanRechargeServiceImpl(SvRechargeMapper recharges, SvRechargePlanMapper plans,
+    public StoredValuePlanRechargeServiceImpl(ai.neargo.shop.pay.mapper.storedvalue.SvCustomerIdentityMapper identities,SvRechargeMapper recharges, SvRechargePlanMapper plans,
             SvRechargePlanVersionMapper versions, SvAccountMapper accounts, StoredValueCreditService credits,
             EntitlementCommandDeduplicator commands, PayEntitlementFeatureGate features, ObjectMapper json, StoredValueRechargeWriter writer) {
-        this.recharges=recharges; this.plans=plans; this.versions=versions; this.accounts=accounts;
+        this.identities=identities;this.recharges=recharges; this.plans=plans; this.versions=versions; this.accounts=accounts;
         this.credits=credits; this.commands=commands; this.features=features; this.json=json; this.writer=writer;
+    }
+
+    @Override @Transactional("payTxManager")
+    public void bindCustomer(EntitlementContext ctx,String customer,String user){
+        ai.neargo.shop.spi.entitlement.ContractChecks.id(customer);ai.neargo.shop.spi.entitlement.ContractChecks.id(user);
+        identities.ensure(ctx.tenantNo(),customer,user);
+        var rows=identities.lock(ctx.tenantNo(),customer,user);
+        if(rows.size()!=1||!customer.equals(rows.getFirst().customerNo())||!user.equals(rows.getFirst().userNo())
+                ||identities.conflicts(ctx.tenantNo(),customer,user)>0)conflict();
+        identities.bindAccounts(ctx.tenantNo(),customer,user,ctx.actorNo(),LocalDateTime.now(ZoneOffset.UTC));
+        identities.bindDirectory(ctx.tenantNo(),customer,user,ctx.actorNo(),LocalDateTime.now(ZoneOffset.UTC));
     }
 
     @Override @Transactional("payTxManager")
@@ -78,11 +90,11 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
             if(v==null)conflict();
             StoredValueAccountScope.requireMigrated(accounts,ctx.tenantNo(),c.userNo(),entity,p.getCurrency());
             var funding=new Funding(no,c.userNo(),entity,c.storeNo(),p.getCurrency(),p.getPlanNo(),v.getVersionNo(),
-                    p.getName(),v.getPaidAmountMinor(),v.getBonusAmountMinor(),json.readValue(v.getScopeSnapshot(),RedemptionScope.class));
+                    p.getName(),v.getPaidAmountMinor(),v.getBonusAmountMinor(),json.readValue(v.getScopeSnapshot(),RedemptionScope.class),c.customerNo());
             var at=LocalDateTime.now(ZoneOffset.UTC);
             var r=new SvRecharge();audit(r,ctx,at);r.setRechargeNo(no);r.setRequestId(ctx.requestId());r.setPayloadHash(digest(c,json));
             r.setSourceKind("PLAN");r.setPlanNo(p.getPlanNo());r.setPlanVersionNo(v.getVersionNo());
-            r.setUserNo(c.userNo());r.setEntityNo(entity);r.setStoreNo(c.storeNo());r.setStoreName(c.storeName());
+            r.setUserNo(c.userNo());r.setCustomerNo(c.customerNo());r.setEntityNo(entity);r.setStoreNo(c.storeNo());r.setStoreName(c.storeName());
             r.setCurrency(p.getCurrency());r.setPrincipalMinor(v.getPaidAmountMinor());r.setBonusMinor(v.getBonusAmountMinor());
             r.setStatus("WAIT_COLLECTION");r.setOperatorNo(ctx.actorNo());r.setExpiresAt(at.plusMinutes(30));
             r.setPermitSnapshot(json.writeValueAsString(funding));
@@ -90,6 +102,25 @@ public class StoredValuePlanRechargeServiceImpl implements StoredValuePlanRechar
             recharges.insert(r);return view(r);
         });
         return recharges.find(ctx.tenantNo(),no)==null&&reply.status()==RechargeState.CANCELLED?reply:query(ctx,entity,no);
+    }
+
+    /** A single Pay-local transaction; all Core authorization/identity facts are resolved before entry. */
+    @Override @Transactional("payTxManager")
+    public RechargeView confirmOffline(EntitlementContext ctx,String entity,Create command) {
+        var current=create(ctx,entity,command);
+        if(current.status()==RechargeState.RECEIVED||current.status()==RechargeState.CREDITED)return current;
+        String receipt=no("OC",List.of(ctx.tenantNo(),entity,current.rechargeNo()),json);
+        String evidence=digest(List.of("MERCHANT_OFFLINE",ctx.tenantNo(),entity,current.rechargeNo(),receipt),json);
+        var submitCtx=new EntitlementContext(ctx.tenantNo(),ctx.actorNo(),no("OS",List.of(ctx.requestId()),json),"0".repeat(64));
+        if(current.status()==RechargeState.WAIT_COLLECTION){
+            current=writer.submit(submitCtx,entity,new ai.neargo.shop.spi.storedvalue.StoredValuePort.SubmitRecharge(
+                    current.rechargeNo(),current.revision(),current.paidAmountMinor(),
+                    ai.neargo.shop.spi.storedvalue.StoredValuePort.CollectionMethod.MERCHANT_OFFLINE,receipt,evidence));
+        }
+        if(current.status()!=RechargeState.SUBMITTED)throw BizException.of(ErrorCode.CONFLICT);
+        var receiveCtx=new EntitlementContext(ctx.tenantNo(),ctx.actorNo(),no("OR",List.of(ctx.requestId()),json),"0".repeat(64));
+        return writer.receive(receiveCtx,entity,new ai.neargo.shop.spi.storedvalue.StoredValuePort.ReceiveRecharge(
+                current.rechargeNo(),current.revision(),evidence,"Merchant confirmed offline collection"));
     }
 
     @Override public ReplayResult replay(EntitlementContext ctx,String entity,Replay c){

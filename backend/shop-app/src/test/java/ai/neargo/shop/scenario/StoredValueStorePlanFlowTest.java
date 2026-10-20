@@ -40,6 +40,55 @@ class StoredValueStorePlanFlowTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ai.neargo.shop.user.mapper.UserMappers.UserMapper users;
     @Autowired ObjectMapper json;
+    @Autowired ai.neargo.shop.spi.user.PersonPort people;
+
+    @Test void offlineConfirmationUsesFrozenAmountAndReplaysWithoutAnotherRecharge() {
+        String entity=id(),store=id(),user=id();
+        var plan=plans.create(new CatalogScope("MAIN",entity,"OWNER",false),new Create(store,"弹框充100送30","CNY",10000,3000),id());
+        var ctx=new EntitlementContext("MAIN","OWNER",id(),"0".repeat(64));
+        var command=new StoredValuePlanRecharges.Create(user,store,"测试门店",plan.planNo(),plan.versionNo(),"f".repeat(64));
+        var first=direct.confirmOffline(ctx,entity,command);
+        assertThat(first.status().name()).isEqualTo("RECEIVED");
+        assertThat(direct.confirmOffline(ctx,entity,command).rechargeNo()).isEqualTo(first.rechargeNo());
+        assertThat(jdbc.queryForObject("SELECT collection_method FROM sv_recharge WHERE recharge_no=?",String.class,first.rechargeNo())).isEqualTo("MERCHANT_OFFLINE");
+        assertThat(jdbc.queryForObject("SELECT actual_amount_minor FROM sv_recharge WHERE recharge_no=?",Long.class,first.rechargeNo())).isEqualTo(10000);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_recharge WHERE user_no=?",Integer.class,user)).isEqualTo(1);
+        direct.recover(ctx,entity,first.rechargeNo());
+        assertThat(accounts.balance(ctx,new BalanceQuery(user,entity,"CNY",store)).availableMinor()).isEqualTo(13000);
+    }
+
+    @Test void unregisteredCustomerCreditsWithoutFakeUserAndClaimsSameAccountAfterRegistration() {
+        String entity=id(),store=id(),person=id(),user=id();
+        var plan=plans.create(new CatalogScope("MAIN",entity,"OWNER",false),new Create(store,"线下会员","CNY",5000,1000),id());
+        var ctx=new EntitlementContext("MAIN","OWNER",id(),"0".repeat(64));
+        var command=new StoredValuePlanRecharges.Create(null,store,"测试门店",plan.planNo(),plan.versionNo(),"a".repeat(64),person);
+        var recharge=direct.confirmOffline(ctx,entity,command);direct.recover(ctx,entity,recharge.rechargeNo());
+        String account=jdbc.queryForObject("SELECT account_no FROM sv_account WHERE customer_no=?",String.class,person);
+        assertThat(jdbc.queryForObject("SELECT user_no FROM sv_account WHERE account_no=?",String.class,account)).isNull();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM usr_account WHERE user_no=?",Integer.class,person)).isZero();
+        direct.bindCustomer(ctx,person,user);direct.bindCustomer(ctx,person,user);
+        var balance=accounts.balance(ctx,new BalanceQuery(user,entity,"CNY",store));
+        assertThat(balance.accountNo()).isEqualTo(account);assertThat(balance.availableMinor()).isEqualTo(6000);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_account WHERE customer_no=?",Integer.class,person)).isEqualTo(1);
+        assertThatThrownBy(()->direct.bindCustomer(ctx,person,id())).isInstanceOf(BizException.class);
+    }
+
+    @Test void registeredLegacyAccountIsReusedAfterCanonicalIdentityBinding() {
+        String entity=id(),store=id(),user=id(),person=id();
+        var ctx=new EntitlementContext("MAIN","OWNER",id(),"0".repeat(64));
+        credits.credit(ctx,StoredValueCreditFixture.received(jdbc,json,user,entity,store,5000,1000));
+        var before=accounts.balance(ctx,new BalanceQuery(user,entity,"CNY",store));
+        direct.bindCustomer(ctx,person,user);
+        var plan=plans.create(new CatalogScope("MAIN",entity,"OWNER",false),new Create(store,"历史账户续充","CNY",10000,3000),id());
+        var command=new StoredValuePlanRecharges.Create(user,store,"本店",plan.planNo(),plan.versionNo(),"b".repeat(64),person);
+        var recharge=direct.confirmOffline(new EntitlementContext("MAIN","OWNER",id(),"0".repeat(64)),entity,command);
+        direct.recover(ctx,entity,recharge.rechargeNo());
+        var after=accounts.balance(ctx,new BalanceQuery(user,entity,"CNY",store));
+        assertThat(after.accountNo()).isEqualTo(before.accountNo());
+        assertThat(after.availableMinor()).isEqualTo(19000);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_account WHERE user_no=?",Integer.class,user)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT customer_no FROM sv_account WHERE account_no=?",String.class,before.accountNo())).isEqualTo(person);
+    }
 
     @Test void multipleStorePlansHaveImmutableAmountsAndIdempotentStatusCommands() {
         String entity = id(), store = id();
@@ -153,7 +202,7 @@ class StoredValueStorePlanFlowTest {
         jdbc.update("INSERT INTO usr_account(user_no,nickname,phone,tenant_no,created_at,updated_at) VALUES (?,?,?,'MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",outside,"同名外店","13912345678");
         var ownership=org.mockito.Mockito.mock(ai.neargo.shop.spi.user.MerchantScopeFactsPort.class);
         org.mockito.Mockito.when(ownership.storesOwned("MAIN",entity,java.util.Set.of(store))).thenReturn(true);
-        var port=new ai.neargo.shop.user.port.StoredValueCustomerProfilePortImpl(users,ownership);
+        var port=new ai.neargo.shop.user.port.StoredValueCustomerProfilePortImpl(users,ownership,people);
         assertThat(port.search("MAIN",entity,store,"同名",java.util.List.of(inside))).containsExactly(inside);
         assertThat(port.search("MAIN",entity,store,"5678",java.util.List.of(inside))).containsExactly(inside);
         var profile=port.profiles("MAIN",entity,store,java.util.List.of(inside)).get(inside);

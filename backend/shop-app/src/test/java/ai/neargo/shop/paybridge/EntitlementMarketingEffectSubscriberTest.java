@@ -24,11 +24,12 @@ import tools.jackson.databind.ObjectMapper;
 
 /** Projection dimensions and original-use bindings remain strict even if a remote owner reply is confused. */
 class EntitlementMarketingEffectSubscriberTest {
+    private final RechargeIntentService recharges=mock(RechargeIntentService.class);
     private final EntitlementMarketingFactsPort pay=mock(EntitlementMarketingFactsPort.class);
     private final MarketingEffectProjector projection=mock(MarketingEffectProjector.class);
     private final ObjectMapper json=new ObjectMapper();
     private final EntitlementMarketingEffectSubscriber subscriber=new EntitlementMarketingEffectSubscriber(
-            mock(RechargeIntentService.class),mock(ActivityBenefitIntentService.class),pay,projection,json);
+            recharges,mock(ActivityBenefitIntentService.class),pay,projection,json);
     private final long at=1_797_000_000_000L;
     @Test void couponUsageAndPartialRestorationKeepAmountsAndUnitsSeparate() {
         var facts=new UsageEffects("MAIN","EU1","U1","M1","S1","ORDER_COUPON","I1","CNY",100L,1,at,
@@ -55,6 +56,20 @@ class EntitlementMarketingEffectSubscriberTest {
         assertThatThrownBy(() -> subscriber.consume(row(new EntitlementUseReversed("ER1","R1","EU1","U1","M1","S1",
                 "I1",1,101,"CNY",at+1)))).isInstanceOf(IllegalStateException.class);
         verifyNoInteractions(projection);
+    }
+    @Test void directOfflineCreditsAreNotMisroutedIntoMarketingActivityIntents() {
+        var direct=mock(ai.neargo.shop.payclient.StoredValuePlanRechargeAppService.class);
+        var actual=new EntitlementMarketingEffectSubscriber(recharges,mock(ActivityBenefitIntentService.class),pay,projection,json,direct);
+        when(direct.query(any(),eq("M1"),eq("R1"))).thenReturn(new ai.neargo.shop.spi.storedvalue.StoredValuePort.RechargeView(
+                "R1",ai.neargo.shop.spi.storedvalue.StoredValuePort.RechargeState.CREDITED,null,"M1","S1","CNY",100L,120L,null,null,2,"PERSON1"));
+        actual.consume(row(new ai.neargo.shop.spi.entitlement.EntitlementEvents.StoredValueCredited("E1","R1","A1",null,"M1","S1",100,120,"CNY",at,"PERSON1")));
+        verifyNoInteractions(recharges,projection);
+    }
+    @Test void unregisteredCustomerCreditDoesNotInventAConsumerInboxRecipient() {
+        var messages=mock(ai.neargo.shop.message.MessageService.class);
+        var notifications=new EntitlementNotificationSubscriber(messages,json);
+        notifications.consume(row(new ai.neargo.shop.spi.entitlement.EntitlementEvents.StoredValueCredited("E1","R1","A1",null,"M1","S1",100,120,"CNY",at,"PERSON1")));
+        verifyNoInteractions(messages);
     }
     private SysOutbox row(PayEntitlementEvent event) {
         var row=new SysOutbox(); row.setEventNo(event.eventNo()); row.setEventType(event.eventType());

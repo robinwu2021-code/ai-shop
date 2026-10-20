@@ -1075,3 +1075,12 @@ Command包含精确模板Reference、TARGETED/CENTER及人群/标签选择条件
 | P75 | GET | /biz/stored-value/records/{recordNo} | storeNo | RecordView | pay:sv:account:read | 按凭证冻结金额及变动后余额 |
 
 具体字段、错误处理与模块映射见[TDD-门店储值实现与交付](./TDD-门店储值实现与交付.md)。新增接口已接入B端；旧活动/C端/运营的延期条目仍按交付登记管理。
+
+
+## 会员底部弹框储值增量（2026-10-20）
+
+| 编号 | 方法 | 路径 | 请求 | 响应 | 权限 | 规则 |
+|---|---|---|---|---|---|---|
+| P80 | GET | /biz/stored-value/customer-candidates | storeNo,phone | PageData<Candidate> | biz:customer pay:sv:recharge:create | 完整手机号，会员可在尚未开户时被找到 |
+| P81 | POST | /biz/stored-value/customer-selections | SelectRequest | Selection | biz:customer pay:sv:recharge:create | 会员／账户来源二选一；独立短时选用凭证 |
+| P82 | POST | /biz/stored-value/plan-recharges/confirm-offline | CreateRequest + Idempotency-Key | StoredValueRechargeProgress | pay:sv:recharge:create pay:sv:recharge:receive | Pay本地确认、原单重放、MERCHANT_OFFLINE；顾客标识与登录账号分离 |

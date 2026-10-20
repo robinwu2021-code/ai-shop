@@ -45,11 +45,11 @@ public class BizStoredValueMerchantQueryController {
         // Scan only Pay-authorized store accounts; cap work per HTTP request while preserving continuation.
         for(int batch=0;batch<10;batch++){
             var page=reads.directory(s,storeNo,null,ActivityCommandDeduplicator.hash(q),next,size-result.size());
-            var ids=page.records().stream().map(StoredValueMerchantViews.Account::userNo).distinct().toList();
+            var ids=page.records().stream().map(StoredValueMerchantViews.Account::identityNo).distinct().toList();
             var matches=q.isEmpty()?ids:profiles.search(s.tenantNo(),s.entityNo(),storeNo,q,ids);
             var people=profiles.profiles(s.tenantNo(),s.entityNo(),storeNo,matches);
-            page.records().stream().filter(a->matches.contains(a.userNo()))
-                    .forEach(a->result.add(account(a,people.get(a.userNo()))));
+            page.records().stream().filter(a->matches.contains(a.identityNo()))
+                    .forEach(a->result.add(account(a,people.get(a.identityNo()))));
             next=page.nextCursor();
             if(next==null||result.size()==size)break;
         }
@@ -59,7 +59,7 @@ public class BizStoredValueMerchantQueryController {
     @GetMapping("/biz/stored-value/accounts/{accountRef}")
     public AccountView account(@PathVariable String accountRef,@RequestParam String storeNo){
         var s=scope(storeNo);var a=reads.account(s,storeNo,accountRef);
-        return account(a,profiles.profiles(s.tenantNo(),s.entityNo(),storeNo,List.of(a.userNo())).get(a.userNo()));
+        return account(a,profiles.profiles(s.tenantNo(),s.entityNo(),storeNo,List.of(a.identityNo())).get(a.identityNo()));
     }
     @PreAuthorize("@perm.canBiz('"+BizPerms.SV_ACCOUNT_READ+"')")
     @GetMapping("/biz/stored-value/records")
@@ -78,14 +78,14 @@ public class BizStoredValueMerchantQueryController {
             if(endDate!=null)to=endDate.plusDays(1).atStartOfDay(zone).toInstant();
         }
         var page=reads.records(s,storeNo,type,from,to,accountRef,cursor,size);
-        var people=profiles.profiles(s.tenantNo(),s.entityNo(),storeNo,page.records().stream().map(StoredValueMerchantViews.Record::userNo).distinct().toList());
-        return new CursorPage<>(page.records().stream().map(r->record(r,people.get(r.userNo()))).toList(),page.nextCursor());
+        var people=profiles.profiles(s.tenantNo(),s.entityNo(),storeNo,page.records().stream().map(StoredValueMerchantViews.Record::identityNo).distinct().toList());
+        return new CursorPage<>(page.records().stream().map(r->record(r,people.get(r.identityNo()))).toList(),page.nextCursor());
     }
     @PreAuthorize("@perm.canBiz('"+BizPerms.SV_ACCOUNT_READ+"')")
     @GetMapping("/biz/stored-value/records/{recordNo}")
     public RecordView record(@PathVariable String recordNo,@RequestParam String storeNo){
         var s=scope(storeNo);var r=reads.record(s,storeNo,recordNo);
-        return record(r,profiles.profiles(s.tenantNo(),s.entityNo(),storeNo,List.of(r.userNo())).get(r.userNo()));
+        return record(r,profiles.profiles(s.tenantNo(),s.entityNo(),storeNo,List.of(r.identityNo())).get(r.identityNo()));
     }
     private CatalogScope scope(String store){
         var s=scopes.resolve(new RedemptionScope("STORES",List.of(store)));

@@ -20,6 +20,8 @@ public class SvRecharge extends BaseEntity {
     private String activityNo;
     private String activityVersionNo;
     private String userNo;
+    private String customerNo;
+    public String customerIdentity(){return customerNo==null?userNo:customerNo;}
     private String entityNo;
     private String storeNo;
     private String storeName;

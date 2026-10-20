@@ -11,3 +11,7 @@ export interface SvRechargeCreate { storeNo:string;customerRef:string;planNo:str
 export interface SvReceipt { expectedRevision:number;actualAmountMinor:number;collectionMethod:'CASH'|'TRANSFER';receiptNo:string }
 export interface SvReceive { expectedRevision:number;receiptNo:string;confirmationNote:string }
 export interface SvCustomer { customerRef:string;maskedName:string;expiresAt:string }
+
+export type SvSelectionSource={type:'MEMBER';memberNo:string}|{type:'ACCOUNT';accountRef:string};
+export interface SvCandidate {memberNo:string;displayName:string;phoneMasked:string;memberStatus:string;canRecharge:boolean;unavailableReason:string|null;account:{accountRef:string;currency:CurrencyCode;availableMinor:number}|null}
+export interface SvSelectedCustomer {customerRef:string;expiresAt:string;memberNo?:string|null;displayName:string;phoneMasked:string;account:SvCandidate['account']}

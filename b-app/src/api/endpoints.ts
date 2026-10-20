@@ -15,6 +15,9 @@ export interface EndpointDef {
 
 /** key 与 MerchantApi 的方法名一一对应，缺一个就编译不过 */
 export const ENDPOINTS: Record<keyof MerchantApi, EndpointDef> = {
+  mSvCandidates: {method:"GET",path:"/biz/stored-value/customer-candidates",auth:true,summary:"查找可办理储值的会员"},
+  mSvSelectCustomer: {method:"POST",path:"/biz/stored-value/customer-selections",auth:true,summary:"选用储值顾客"},
+  mSvConfirmOffline: {method:"POST",path:"/biz/stored-value/plan-recharges/confirm-offline",auth:true,summary:"确认商家线下储值"},
   mSvContext: { method:"GET",path:"/biz/stored-value/context",auth:true,summary:"储值上下文" },
   mSvPlans: { method:"GET",path:"/biz/stored-value/plans",auth:true,summary:"门店储值方案" },
   mSvPlan: { method:"GET",path:"/biz/stored-value/plans/{planNo}",auth:true,summary:"储值方案详情" },

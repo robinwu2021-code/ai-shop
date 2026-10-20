@@ -4,6 +4,7 @@
 // **「谁发的链接」必须写出来**：只记「来自分享」的话，分享激励没法结算，
 // 商家也不知道该谢谁 —— 而那句「李姐帮我拉来的」正是他会记住的东西。
 import { computed, ref } from "vue";
+import StoredValueRechargeSheet from '../stored-value/components/StoredValueRechargeSheet.vue';
 import { onLoad } from "@dcloudio/uni-app";
 import { api } from "@/api";
 import { useMerchantStore } from "@/stores/merchant";
@@ -44,6 +45,7 @@ const tt = (k: string, a?: Record<string, unknown>) => String(t(k, a ?? {}));
 
 /** 每人最多几个商家标签。与后端 member.tag.max-per-member 的默认值一致；超了后端会拒并写明上限 */
 const MAX_TAGS = 10;
+const rechargeVisible=ref(false);
 
 /** 他身上的商家标签。系统标签（分层）不在这里 —— 那是按口径算的，不能手改 */
 const mine = computed(() => (data.value?.tags ?? []).filter((x) => x.tagType === "MCH"));
@@ -215,6 +217,8 @@ onLoad(async (q) => {
 
       <text class="sh-hint sh-mt-md">{{ $t("members.privacyHint") }}</text>
 
+      <view v-if="merchant.can('pay:sv:recharge:create')" role="button" class="sh-btn sh-mt-sm" @tap="rechargeVisible=true">{{$t('storedValue.recharge')}}</view>
+      <StoredValueRechargeSheet :visible="rechargeVisible" :source="{type:'MEMBER',memberNo:memberNo}" @close="rechargeVisible=false" @credited="load"/>
       <sh-sheet :visible="showTags" :title="tt('memberDetail.tagsOf')" @close="showTags = false">
         <view class="sh-cells">
           <view v-for="tg in allTags" :key="tg.tagNo" class="sh-cell sh-row sh-row--between" @tap="toggleTag(tg.tagNo)">

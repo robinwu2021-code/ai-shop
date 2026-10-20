@@ -1,34 +1,56 @@
 <script setup lang="ts">
-import { computed,ref,watch,onUnmounted } from 'vue';import { onLoad,onHide,onShow } from '@dcloudio/uni-app';import { useI18n } from 'vue-i18n';import { api } from '@/api';import { useMerchantStore } from '@/stores/merchant';import { createRechargeProgress } from '@/shared/stored-value-form';import { scanCode } from '@shared/ports/scan';import { money } from '@shared/utils/money';import { idempotencyKey } from '@shared/net/http-client';import { confirm } from '@ai-shop/ui/prompt';import type { SvPlan,SvCustomer,SvProgress,SvRechargeCreate } from '@/api/stored-value-types';
-interface Pending { body:SvRechargeCreate;plan:SvPlan;name:string;receiptNo:string;method:'CASH'|'TRANSFER';keys:{create:string;submit:string;receive:string;cancel:string};current:SvProgress|null }
-const {t}=useI18n();const merchant=useMerchantStore();const plans=ref<SvPlan[]>([]);const next=ref<string|null>(null);const selected=ref<SvPlan|null>(null);const customer=ref<SvCustomer|null>(null);const code=ref('');const receipt=ref('');const method=ref<'CASH'|'TRANSFER'>('CASH');const progress=ref<SvProgress|null>(null);const pending=ref<Pending|null>(null);const busy=ref(false);const failed=ref(false);const ready=ref(false);const error=ref('');const picker=ref(false);let store='',storage='',requested='',generation=0;let visible=true;let timer:ReturnType<typeof setTimeout>|undefined;let flow:ReturnType<typeof createRechargeProgress<SvProgress>>|null=null;
-const locked=computed(()=>busy.value||!!pending.value||store!==merchant.storeNo);const status=computed(()=>({WAIT_COLLECTION:'waitCollection',SUBMITTED:'submitted',RECEIVED:'received',CREDITED:'credited',CANCELLED:'cancelled',REJECTED:'rejected',PROCESSING:'processing'}[progress.value?.status||'']||'unknown'));
-function persist(r?:SvProgress){if(!pending.value)return;if(r){pending.value.current=r;progress.value=r;}uni.setStorageSync(storage,JSON.stringify(pending.value));if(r&&['CREDITED','CANCELLED','REJECTED'].includes(r.status))uni.removeStorageSync(storage);}
-function buildFlow(){const p=pending.value!;const token=generation;const accept=(r:SvProgress)=>{if(token===generation&&store===merchant.storeNo)persist(r);};flow=createRechargeProgress({create:()=>api.mSvCreateRecharge(p.body,p.keys.create),submit:r=>api.mSvSubmit(r.rechargeNo,{expectedRevision:r.revision,actualAmountMinor:p.plan.paidAmountMinor,collectionMethod:p.method,receiptNo:p.receiptNo},p.keys.submit),receive:r=>merchant.can('pay:sv:recharge:receive')?api.mSvReceive(r.rechargeNo,{expectedRevision:r.revision,receiptNo:p.receiptNo,confirmationNote:''},p.keys.receive):Promise.resolve(r),query:no=>api.mSvRecharge(no)},accept,p.current,()=>token===generation&&store===merchant.storeNo&&visible);}
-async function list(more=false){const token=generation;const result=await api.mSvPlans({storeNo:store,status:'ACTIVE',cursor:more?next.value||undefined:undefined});if(token!==generation||store!==merchant.storeNo)return;plans.value=more?[...plans.value,...result.records]:result.records;next.value=result.nextCursor;}
-async function load(){failed.value=false;error.value='';try{await merchant.ensureStores();if(!store){store=merchant.storeNo;storage=`sv.recharge:${merchant.profile?.merchantNo}:${store}`;}if(store!==merchant.storeNo)return;const saved=uni.getStorageSync(storage);if(saved){const p=JSON.parse(String(saved)) as Pending;if(p.body?.storeNo===store&&p.keys?.create&&p.plan?.planNo===p.body.planNo){pending.value=p;selected.value=p.plan;receipt.value=p.receiptNo;method.value=p.method;progress.value=p.current;buildFlow();await refresh();}}
- if(!pending.value){await list();if(requested)selected.value=await api.mSvPlan(requested,store);}ready.value=true;}catch(e){failed.value=true;error.value=(e as Error).message;}}
-async function identify(scanned=false){if(locked.value)return;busy.value=true;error.value='';const token=generation;try{const value=scanned?await scanCode():code.value.trim();if(!value)throw Error(t('storedValue.required'));const c=await api.mResolveMemberCode({memberCode:value,storeNo:store});if(token===generation&&store===merchant.storeNo){customer.value=c;code.value='';}}catch(e){if(token===generation)error.value=(e as Error).message;}finally{busy.value=false;}}
-async function advance(){if(busy.value||store!==merchant.storeNo)return;error.value='';busy.value=true;const token=generation;try{if(!pending.value){if(!customer.value||Date.parse(customer.value.expiresAt)<=Date.now())throw Error(t('storedValue.referenceExpired'));if(!selected.value||!receipt.value.trim())throw Error(t('storedValue.receiptRequired'));
- pending.value={body:{storeNo:store,customerRef:customer.value.customerRef,planNo:selected.value.planNo,versionNo:selected.value.versionNo},plan:selected.value,name:customer.value.maskedName,receiptNo:receipt.value.trim(),method:method.value,keys:{create:idempotencyKey(),submit:idempotencyKey(),receive:idempotencyKey(),cancel:idempotencyKey()},current:null};persist();buildFlow();}
- await flow!.advance();if(token===generation&&progress.value?.status==='RECEIVED')schedule();}catch(e){if(token===generation)error.value=`${(e as Error).message} · ${t('storedValue.networkUnknown')}`;}finally{if(token===generation)busy.value=false;}}
-async function refresh(){if(!flow||!pending.value||store!==merchant.storeNo)return;try{if(!pending.value.current){const result=await api.mSvResolveRecharge(pending.value.body,pending.value.keys.create);if(result.found&&result.recharge){persist(result.recharge);buildFlow();}else return;}if(progress.value&&['CANCELLED','CREDITED','REJECTED'].includes(progress.value.status))return;await flow.refresh();if(progress.value?.status==='RECEIVED')schedule();}catch(e){error.value=(e as Error).message;}}
-function schedule(){clearTimeout(timer);if(!visible)return;timer=setTimeout(()=>void refresh(),3000);}
-async function cancel(){if(!pending.value||busy.value||store!==merchant.storeNo)return;if(!await confirm({title:t('storedValue.cancelRecharge')}))return;busy.value=true;try{const r=pending.value.current?await api.mSvCancel(pending.value.current.rechargeNo,{expectedRevision:pending.value.current.revision,reason:t('storedValue.cancelRecharge')},pending.value.keys.cancel):await api.mSvCancelCreate(pending.value.body,pending.value.keys.create);persist(r);buildFlow();}catch(e){error.value=(e as Error).message;}finally{busy.value=false;}}
-function choose(p:SvPlan){selected.value=p;picker.value=false;}
-function leave(){generation++;clearTimeout(timer);customer.value=null;selected.value=null;progress.value=null;flow=null;pending.value=null;ready.value=false;error.value=t('storedValue.leaveStore');failed.value=true;}
-watch(()=>merchant.storeNo,()=>{if(store&&store!==merchant.storeNo)leave();});onLoad(q=>{requested=q?.planNo||'';void load();});onHide(()=>{visible=false;clearTimeout(timer);});onShow(()=>{visible=true;if(progress.value?.status==='RECEIVED')schedule();});onUnmounted(()=>{generation++;clearTimeout(timer);});
+import {ref,watch} from 'vue';
+import {onLoad} from '@dcloudio/uni-app';
+import {useI18n} from 'vue-i18n';
+import {api} from '@/api';
+import {useMerchantStore} from '@/stores/merchant';
+import {scanCode} from '@shared/ports/scan';
+import {money} from '@shared/utils/money';
+import StoredValueRechargeSheet from '../stored-value/components/StoredValueRechargeSheet.vue';
+import LegacyRecharge from './LegacyRecharge.vue';
+import type {SvCandidate,SvSelectedCustomer,SvSelectionSource} from '@/api/stored-value-types';
+const merchant=useMerchantStore();const {t}=useI18n();
+const phone=ref(''),records=ref<SvCandidate[]>([]),busy=ref(false),error=ref(''),searched=ref(false),sheet=ref(false),legacy=ref(false);
+const source=ref<SvSelectionSource>(),identified=ref<SvSelectedCustomer>(),planNo=ref('');let generation=0,store='';
+async function search(){
+ if(busy.value)return;if(!/^1[3-9]\d{9}$/.test(phone.value.trim())){error.value=t('storedValue.memberPhone');return;}
+ const token=++generation;const current=merchant.storeNo;busy.value=true;error.value='';records.value=[];searched.value=false;
+ try{const page=await api.mSvCandidates({storeNo:current,phone:phone.value.trim()});if(token===generation&&current===merchant.storeNo){records.value=page.records;searched.value=true;}}
+ catch(e){if(token===generation)error.value=(e as Error).message;}
+ finally{if(token===generation)busy.value=false;}
+}
+function choose(c:SvCandidate){if(!c.canRecharge){error.value=t('storedValue.memberBlocked');return;}source.value={type:'MEMBER',memberNo:c.memberNo};identified.value=undefined;sheet.value=true;}
+function add(){uni.navigateTo({url:`/pages/member-add/index?from=stored-value&storeNo=${encodeURIComponent(merchant.storeNo)}`,events:{'member-enrolled':(m:{memberNo:string})=>{if(store!==merchant.storeNo)return;source.value={type:'MEMBER',memberNo:m.memberNo};identified.value=undefined;sheet.value=true;}}});}
+async function scan(){
+ if(busy.value)return;busy.value=true;error.value='';const token=generation,current=merchant.storeNo;
+ try{const code=await scanCode();if(!code)return;const c=await api.mResolveMemberCode({storeNo:current,memberCode:code});if(token!==generation||current!==merchant.storeNo)return;
+  identified.value={customerRef:c.customerRef,expiresAt:c.expiresAt,displayName:c.maskedName,phoneMasked:'',account:null};source.value=undefined;sheet.value=true;
+ }catch(e){if(token===generation)error.value=(e as Error).message;}finally{if(token===generation)busy.value=false;}
+}
+function done(){if(phone.value)void search();}
+watch(()=>merchant.storeNo,()=>{generation++;busy.value=false;records.value=[];searched.value=false;sheet.value=false;source.value=undefined;identified.value=undefined;store=merchant.storeNo;error.value=t('storedValue.leaveStore');});
+onLoad(async q=>{
+ await merchant.ensureStores();store=merchant.storeNo;planNo.value=q?.planNo||'';
+ const saved=uni.getStorageSync(`sv.recharge:${merchant.profile?.merchantNo}:${store}`);
+ if(saved){legacy.value=true;return;}
+ if(q?.memberNo&&(!q.storeNo||q.storeNo===store)){source.value={type:'MEMBER',memberNo:q.memberNo};sheet.value=true;}
+ else if(uni.getStorageSync(`sv.offline:${merchant.profile?.merchantNo}:${store}`))sheet.value=true;
+});
 </script>
-<template><sh-scaffold :title-suffix="merchant.multiStore ? merchant.currentStore?.name : ''" title-key="storedValue.rechargeTitle" :denied="!merchant.can('pay:sv:recharge:create')" :failed="failed" :pending="!ready&&!failed" @retry="load">
- <view class="sh-card sv-card"><text class="txt-strong">{{t('storedValue.customers')}}</text><text v-if="customer||pending" class="txt-body">{{customer?.maskedName||pending?.name}}</text><template v-else><input v-model="code" class="field__input" :placeholder="t('storedValue.memberCode')" :disabled="locked"/><view class="sh-row" data-testid="member-actions">
- <view role="button" class="sh-btn sh-btn--soft sh-fill" :class="{'is-disabled':locked}" :aria-disabled="locked" @tap="identify(false)">{{t('storedValue.identify')}}</view>
- <view role="button" class="sh-btn sh-btn--soft sh-fill" :class="{'is-disabled':locked}" :aria-disabled="locked" @tap="identify(true)">{{t('storedValue.scan')}}</view>
- </view></template></view>
- <view class="sh-card sv-card" @tap="!locked&&(picker=true)"><view class="sh-row sh-row--between"><text class="txt-strong">{{selected?.name||t('storedValue.selectPlan')}}</text><sh-icon v-if="!locked" name="chevronRight" :size="24"/></view><template v-if="selected"><sh-kv :label="t('storedValue.paid')" between>{{money(selected.paidAmountMinor,selected.currency)}}</sh-kv><sh-kv :label="t('storedValue.bonus')" between>{{money(selected.bonusAmountMinor,selected.currency)}}</sh-kv><sh-kv :label="t('storedValue.total')" between><text class="txt-price sh-num">{{money(selected.totalAmountMinor,selected.currency)}}</text></sh-kv></template></view>
- <view class="sh-card sv-card"><text class="field__label">{{t('storedValue.method')}}</text><sh-tabs :items="[{key:'CASH',label:t('storedValue.cash')},{key:'TRANSFER',label:t('storedValue.transfer')}]" :active="method" @change="!locked&&(method=$event as 'CASH'|'TRANSFER')"/><text class="field__label">{{t('storedValue.receipt')}}</text><input v-model="receipt" class="field__input" :placeholder="t('storedValue.receiptHint')" maxlength="64" :disabled="locked"/></view>
- <view v-if="progress" class="sh-card sv-card"><text class="txt-strong">{{t(`storedValue.${status}`)}}</text><text class="sh-muted sh-num">{{progress.rechargeNo}}</text><text v-if="progress.status==='SUBMITTED'&&!merchant.can('pay:sv:recharge:receive')" class="sh-hint">{{t('storedValue.receivePending')}}</text><view role="button" v-if="!['CREDITED','CANCELLED','REJECTED'].includes(progress.status)" class="sh-link sh-hit" @tap="refresh">{{t('storedValue.refresh')}}</view><view role="button" v-if="['WAIT_COLLECTION','SUBMITTED'].includes(progress.status)" class="sh-link sh-hit" @tap="cancel">{{t('storedValue.cancelRecharge')}}</view></view>
- <view v-if="pending&&!progress" class="sh-card sv-card"><text class="sh-hint">{{t('storedValue.networkUnknown')}}</text><view role="button" class="sh-link sh-hit" @tap="refresh">{{t('storedValue.refresh')}}</view><view role="button" class="sh-link sh-hit" @tap="cancel">{{t('storedValue.cancelRecharge')}}</view></view>
- <text v-if="error" class="sh-hint">{{error}}</text><sh-actionbar v-if="!progress||['WAIT_COLLECTION','SUBMITTED'].includes(progress.status)"><view data-testid="recharge-submit" role="button" class="sh-btn" :class="{'is-disabled':busy||store!==merchant.storeNo||(progress?.status==='SUBMITTED'&&!merchant.can('pay:sv:recharge:receive'))}" :aria-disabled="busy||store!==merchant.storeNo||(progress?.status==='SUBMITTED'&&!merchant.can('pay:sv:recharge:receive'))" @tap="advance">{{t(busy?'storedValue.loading':pending?'storedValue.resume':'storedValue.confirmReceipt')}}</view></sh-actionbar>
- <sh-sheet :visible="picker" :title="t('storedValue.selectPlan')" @close="picker=false"><view class="sv-list"><view v-for="p in plans" :key="p.planNo" class="sh-card sv-card" @tap="choose(p)"><text class="txt-strong">{{p.name}}</text><text class="sh-muted sh-num">{{money(p.paidAmountMinor,p.currency)}} → {{money(p.totalAmountMinor,p.currency)}}</text></view><sh-empty v-if="!plans.length" :text="t('storedValue.empty')"/><button v-if="next" class="sh-btn sh-btn--muted" @tap="list(true).catch(e=>error=e.message)">{{t('storedValue.more')}}</button></view></sh-sheet>
-</sh-scaffold></template>
-<style scoped>.sv-list{display:flex;flex-direction:column;gap:var(--sh-gap-block)}</style>
+<template>
+ <LegacyRecharge v-if="legacy"/>
+ <sh-scaffold v-else :title-suffix="merchant.multiStore?merchant.currentStore?.name:''" title-key="storedValue.rechargeTitle" :denied="!merchant.can('biz:customer')||!merchant.can('pay:sv:recharge:create')">
+  <view class="sh-card sv-card"><input v-model="phone" class="field__input sh-num" type="number" maxlength="11" :placeholder="t('storedValue.memberPhone')" @confirm="search"/>
+   <view class="sh-row" data-testid="member-actions"><view role="button" class="sh-btn sh-btn--soft sh-fill" :class="{'is-disabled':busy}" @tap="search">{{t('storedValue.findMember')}}</view><view role="button" class="sh-btn sh-btn--soft sh-fill" :class="{'is-disabled':busy}" @tap="scan">{{t('storedValue.scan')}}</view></view>
+  </view>
+  <text v-if="error" class="sh-hint">{{error}}</text>
+  <view v-for="c in records" :key="c.memberNo" role="button" class="sh-card sv-card" @tap="choose(c)">
+   <view class="sh-row sh-row--between"><text class="txt-strong">{{c.displayName}}</text><sh-go :text="t('storedValue.recharge')"/></view><text class="sh-muted sh-num">{{c.phoneMasked}}</text>
+   <text class="sh-muted">{{c.account?`${t('storedValue.balance')} ${money(c.account.availableMinor,c.account.currency)}`:t('storedValue.notFunded')}}</text>
+  </view>
+  <sh-empty v-if="busy" pending compact/>
+  <sh-empty v-else-if="searched&&!records.length" :text="t('storedValue.noMember')" compact/>
+  <view role="button" class="sh-link sh-hit" @tap="add">＋ {{t('memberAdd.title')}}</view>
+  <StoredValueRechargeSheet :visible="sheet" :source="source" :identified="identified" :plan-no="planNo" @close="sheet=false" @credited="done"/>
+ </sh-scaffold>
+</template>

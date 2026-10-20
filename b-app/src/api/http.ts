@@ -200,6 +200,9 @@ import type {
 } from "@shared/types";
 
 export const httpApi: MerchantApi = {
+  mSvCandidates:(q)=>http.get<PageResult<SV.SvCandidate>>(E.mSvCandidates.path,q),
+  mSvSelectCustomer:(body)=>http.post<SV.SvSelectedCustomer>(E.mSvSelectCustomer.path,body),
+  mSvConfirmOffline:(body,key)=>http.post<SV.SvProgress>(E.mSvConfirmOffline.path,body,{'Idempotency-Key':key}),
   mSvContext:(storeNo)=>http.get<SV.SvContext>(E.mSvContext.path,{storeNo}),
   mSvPlans:(q)=>http.get<SV.SvPage<SV.SvPlan>>(E.mSvPlans.path,q),
   mSvPlan:(planNo,storeNo)=>http.get<SV.SvPlan>(buildPath(E.mSvPlan.path,{planNo}),{storeNo}),

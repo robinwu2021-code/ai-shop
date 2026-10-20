@@ -15,6 +15,8 @@ public class SvStatement extends BaseEntity {
     private String accountNo;
     private Long accountSeq;
     private String userNo;
+    private String customerNo;
+    public String customerIdentity(){return customerNo==null?userNo:customerNo;}
     private String entityNo;
     private String storeNo;
     private String storeName;

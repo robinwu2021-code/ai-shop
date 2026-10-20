@@ -35,7 +35,7 @@ public final class StoredValueFacts {
                 || r.getReceivedDecisionSnapshot() == null || r.getReceivedAt() == null
                 || r.getReceivedBy() == null || r.getReceiptRef() == null || r.getReceiptDigest() == null
                 || r.getCollectionMethod() == null
-                || !List.of("CASH", "TRANSFER").contains(r.getCollectionMethod())
+                || !List.of("CASH", "TRANSFER", "MERCHANT_OFFLINE").contains(r.getCollectionMethod())
                 || !Objects.equals(r.getActualAmountMinor(), r.getPrincipalMinor()) || r.getPrincipalMinor() <= 0
                 || r.getBonusMinor() < 0) conflict();
         var decision = json.readValue(r.getReceivedDecisionSnapshot(), DecisionRef.class);
@@ -45,7 +45,7 @@ public final class StoredValueFacts {
         if ("PLAN".equals(r.getSourceKind())) {
             var f = json.readValue(r.getPermitSnapshot(), Funding.class);
             if (!new SourceRef("PAY", "RECHARGE_PLAN", r.getRechargeNo(), null, null, null, 0).equals(source)
-                    || !r.getRechargeNo().equals(f.rechargeNo()) || !r.getUserNo().equals(f.userNo())
+                    || !r.getRechargeNo().equals(f.rechargeNo()) || !Objects.equals(r.getUserNo(),f.userNo()) || !r.customerIdentity().equals(f.customerNo())
                     || !r.getEntityNo().equals(f.entityNo()) || !r.getStoreNo().equals(f.storeNo())
                     || !r.getCurrency().equals(f.currency()) || !Objects.equals(r.getPlanNo(), f.planNo())
                     || !Objects.equals(r.getPlanVersionNo(), f.versionNo())
@@ -71,7 +71,7 @@ public final class StoredValueFacts {
     public static RechargeView view(SvRecharge r) {
         return new RechargeView(r.getRechargeNo(), RechargeState.valueOf(r.getStatus()), r.getUserNo(), r.getEntityNo(),
                 r.getStoreNo(), r.getCurrency(), r.getPrincipalMinor(), add(r.getPrincipalMinor(), r.getBonusMinor()),
-                instant(r.getReceivedAt()), instant(r.getCreditedAt()), r.getVersion());
+                instant(r.getReceivedAt()), instant(r.getCreditedAt()), r.getVersion(),r.customerIdentity());
     }
     public static long add(long first, long second) {
         try { return Math.addExact(first, second); }

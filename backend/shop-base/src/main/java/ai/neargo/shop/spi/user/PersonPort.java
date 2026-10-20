@@ -24,6 +24,8 @@ public interface PersonPort {
     PersonView resolveOrCreateByPhone(String phone);
 
     /** 按账号找人档。微信登录且没授权手机号的人没有人档，返回空 */
+    Optional<PersonView> findByPhone(String phone);
+
     Optional<PersonView> findByUser(String userNo);
 
     Optional<PersonView> find(String personNo);

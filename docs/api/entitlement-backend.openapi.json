@@ -70,6 +70,36 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValueMerchantQueryController$AccountView"
       },
+      "Account_fe73b25b80": {
+        "properties": {
+          "accountRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "availableMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.paybridge.dto.StoredValueCustomerViews$Account"
+      },
       "ActionView_d9019e9a24": {
         "properties": {
           "actionNo": {
@@ -780,6 +810,75 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.portal.biz.BizStoredValuePlanRechargeController$CancelRequest"
+      },
+      "Candidate_26d715df44": {
+        "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Account_fe73b25b80"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "canRecharge": {
+            "type": "boolean"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memberNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memberStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phoneMasked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unavailableReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.paybridge.dto.StoredValueCustomerViews$Candidate"
       },
       "CardProductBindingView_7e26a87ef7": {
         "properties": {
@@ -3243,6 +3342,37 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.common.PageData<ai.neargo.shop.pay.entitlement.dto.ReconciliationViews$DiffView>"
       },
+      "PageData_ef3a70f051": {
+        "properties": {
+          "page": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "records": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Candidate_26d715df44"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.common.PageData<ai.neargo.shop.paybridge.dto.StoredValueCustomerViews$Candidate>"
+      },
       "Payment_e2dd0dd6c5": {
         "properties": {
           "amountMinor": {
@@ -4684,6 +4814,99 @@
         "type": "object",
         "x-java-type": "ai.neargo.shop.promotion.dto.UnifiedActivityDefinition$Schedule"
       },
+      "SelectRequest_c03fdd373c": {
+        "properties": {
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Source_355ce83777"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "storeNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.paybridge.dto.StoredValueCustomerViews$SelectRequest"
+      },
+      "Selection_969db05801": {
+        "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Account_fe73b25b80"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "customerRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memberNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phoneMasked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.paybridge.dto.StoredValueCustomerViews$Selection"
+      },
       "ServiceView_c57f0537bf": {
         "properties": {
           "asset": {
@@ -4947,6 +5170,42 @@
         },
         "type": "object",
         "x-java-type": "ai.neargo.shop.spi.entitlement.SourceRef"
+      },
+      "Source_355ce83777": {
+        "properties": {
+          "accountRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memberNo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "x-java-type": "ai.neargo.shop.paybridge.dto.StoredValueCustomerViews$Source"
       },
       "StatusRequest_1167cddef0": {
         "properties": {
@@ -5371,7 +5630,8 @@
               {
                 "enum": [
                   "CASH",
-                  "TRANSFER"
+                  "TRANSFER",
+                  "MERCHANT_OFFLINE"
                 ]
               },
               {
@@ -5408,7 +5668,8 @@
               {
                 "enum": [
                   "CASH",
-                  "TRANSFER"
+                  "TRANSFER",
+                  "MERCHANT_OFFLINE"
                 ]
               },
               {
@@ -8867,6 +9128,142 @@
         "x-permission-expression": "@perm.canBiz('pay:sv:plan:read') or @perm.canBiz('pay:sv:plan:manage') or @perm.canBiz('pay:sv:account:read') or @perm.canBiz('pay:sv:recharge:create')"
       }
     },
+    "/biz/stored-value/customer-candidates": {
+      "get": {
+        "operationId": "BizStoredValueCustomerController_candidates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "storeNo",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "phone",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/PageData_ef3a70f051"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('biz:customer') and @perm.canBiz('pay:sv:recharge:create')"
+      }
+    },
+    "/biz/stored-value/customer-selections": {
+      "post": {
+        "operationId": "BizStoredValueCustomerController_select",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectRequest_c03fdd373c"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/Selection_969db05801"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('biz:customer') and @perm.canBiz('pay:sv:recharge:create')"
+      }
+    },
     "/biz/stored-value/plan-recharges": {
       "post": {
         "operationId": "BizStoredValuePlanRechargeController_create",
@@ -9013,6 +9410,80 @@
           "biz"
         ],
         "x-permission-expression": "@perm.canBiz('pay:sv:recharge:create')"
+      }
+    },
+    "/biz/stored-value/plan-recharges/confirm-offline": {
+      "post": {
+        "operationId": "BizStoredValuePlanRechargeController_confirmOffline",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest_6c84c85148"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/StoredValueRechargeProgress_ba849030ea"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "msg"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Business envelope: code=0 succeeds; validation and business failures use nonzero code. Constructor and contextual business validation remain defined by the API TDD."
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Authorization denied"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "biz"
+        ],
+        "x-permission-expression": "@perm.canBiz('pay:sv:recharge:create') and @perm.canBiz('pay:sv:recharge:receive')"
       }
     },
     "/biz/stored-value/plan-recharges/resolve": {

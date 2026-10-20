@@ -24,6 +24,8 @@ import ai.neargo.shop.spi.entitlement.EntitlementQueryPort.UsageItem;
 @Service
 @ConditionalOnProperty(name = "shop.pay.deployment", havingValue = "embedded", matchIfMissing = true)
 public class StoredValueRechargeAppServiceImpl implements StoredValueRechargeAppService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.spi.storedvalue.StoredValueCustomerBindingPort bindings;
     private final StoredValueRechargeService recharges;
     private final StoredValueCreditService credits;
     private final StoredValueQueryService queries;
@@ -47,9 +49,9 @@ public class StoredValueRechargeAppServiceImpl implements StoredValueRechargeApp
     @Override public RechargeView query(EntitlementContext ctx, String entity, String no) {
         return recharges.query(ctx, entity, no);
     }
-    @Override public BalanceView balance(EntitlementContext ctx, BalanceQuery q) { return queries.balance(ctx, q); }
-    @Override public CursorPage<StoreItem> stores(EntitlementContext ctx, StoreQuery q) { return queries.stores(ctx, q); }
-    @Override public CursorPage<UsageItem> consumptions(EntitlementContext ctx, ConsumptionQuery q) {
+    @Override public BalanceView balance(EntitlementContext ctx, BalanceQuery q) { bindings.ensureByUser(ctx,q.userNo()); return queries.balance(ctx, q); }
+    @Override public CursorPage<StoreItem> stores(EntitlementContext ctx, StoreQuery q) { bindings.ensureByUser(ctx,q.userNo()); return queries.stores(ctx, q); }
+    @Override public CursorPage<UsageItem> consumptions(EntitlementContext ctx, ConsumptionQuery q) { bindings.ensureByUser(ctx,q.userNo());
         return queries.consumptions(ctx, q);
     }
 }

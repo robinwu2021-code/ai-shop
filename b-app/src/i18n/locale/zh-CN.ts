@@ -2,6 +2,17 @@
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
   storedValue: {
+    "memberPhone": "输入完整手机号",
+    "findMember": "查询会员",
+    "noMember": "未找到该会员",
+    "chooseMember": "请选择会员",
+    "offlineConfirm": "确认储值",
+    "offlineHint": "确认表示已线下收取 {amount}",
+    "finish": "完成",
+    "saveAndRecharge": "保存并储值",
+    "notFunded": "未储值",
+    "memberBlocked": "该会员暂不可办理储值",
+
     "createdAt": "创建时间",
     "updatedAt": "修改时间",
     "title": "储值管理",

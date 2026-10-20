@@ -92,6 +92,14 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
+    public Optional<UsrPerson> findByPhone(String phone) {
+        String hash=crypto.hash(phone);
+        if(hash==null)throw BizException.of(ErrorCode.BAD_REQUEST);
+        return ai.neargo.common.data.scope.DataScopeContext.executeWithoutScope(()->
+                Optional.ofNullable(byHash(hash)).filter(p->UsrPerson.ACTIVE.equals(p.getStatus())));
+    }
+
+    @Override
     public Optional<UsrPerson> findByUser(String userNo) {
         if (userNo == null || userNo.isBlank()) {
             return Optional.empty();

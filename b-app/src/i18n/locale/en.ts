@@ -1,5 +1,16 @@
 export default {
   storedValue: {
+    "memberPhone": "Enter full mobile number",
+    "findMember": "Find member",
+    "noMember": "No member found",
+    "chooseMember": "Select a member",
+    "offlineConfirm": "Confirm top-up",
+    "offlineHint": "Confirm that {amount} was collected offline",
+    "finish": "Done",
+    "saveAndRecharge": "Save and top up",
+    "notFunded": "No top-ups yet",
+    "memberBlocked": "Top-up is unavailable for this member",
+
     "createdAt": "Created at",
     "updatedAt": "Updated at",
     "title": "Stored value",

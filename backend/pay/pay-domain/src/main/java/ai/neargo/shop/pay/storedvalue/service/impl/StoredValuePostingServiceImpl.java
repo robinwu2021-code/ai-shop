@@ -43,6 +43,7 @@ import tools.jackson.databind.ObjectMapper;
 /** Account -> receipt lock order. No core/network call enters the owned posting transaction. */
 @Service
 public class StoredValuePostingServiceImpl implements StoredValuePostingService {
+    private final ai.neargo.shop.pay.mapper.storedvalue.SvCustomerIdentityMapper identities;
     private final SvAccountMapper accounts;
     private final SvRechargeMapper recharges;
     private final SvLotMapper lots;
@@ -53,10 +54,10 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
     private final PayEntitlementEventPublisher events;
     private final ObjectMapper json;
     private final StoredValueStatementProjector statements;
-    public StoredValuePostingServiceImpl(SvAccountMapper accounts, SvRechargeMapper recharges, SvLotMapper lots,
+    public StoredValuePostingServiceImpl(ai.neargo.shop.pay.mapper.storedvalue.SvCustomerIdentityMapper identities,SvAccountMapper accounts, SvRechargeMapper recharges, SvLotMapper lots,
             SvVoucherMapper vouchers, SvEntryMapper entries, SvPostingLineMapper journal,
             StoredValueStoreProjector stores, PayEntitlementEventPublisher events, ObjectMapper json, StoredValueStatementProjector statements) {
-        this.accounts = accounts; this.recharges = recharges; this.lots = lots; this.vouchers = vouchers;
+        this.identities=identities;this.accounts = accounts; this.recharges = recharges; this.lots = lots; this.vouchers = vouchers;
         this.entries = entries; this.journal = journal; this.stores = stores; this.events = events; this.json = json; this.statements=statements;
     }
     @Override @Transactional("payTxManager")
@@ -65,18 +66,18 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
         requireReceived(original, c, json);
         var at = LocalDateTime.ofInstant(Instant.ofEpochMilli(System.currentTimeMillis()), ZoneOffset.UTC);
         var claim = new SvAccount(); audit(claim, ctx, at);
-        claim.setAccountNo(no("SA", List.of(ctx.tenantNo(), original.getUserNo(), original.getEntityNo(),
+        claim.setAccountNo(no("SA", List.of(ctx.tenantNo(), original.customerIdentity(), original.getEntityNo(),
                 original.getCurrency(), original.getStoreNo()), json));
         claim.setStoreNo(original.getStoreNo());
-        claim.setUserNo(original.getUserNo()); claim.setEntityNo(original.getEntityNo());
+        claim.setUserNo(original.getUserNo()==null?identities.boundUser(ctx.tenantNo(),original.customerIdentity()):original.getUserNo());claim.setCustomerNo(original.customerIdentity()); claim.setEntityNo(original.getEntityNo());
         claim.setCurrency(original.getCurrency());
-        StoredValueAccountScope.requireMigrated(accounts, ctx.tenantNo(), original.getUserNo(), original.getEntityNo(), original.getCurrency());
+        StoredValueAccountScope.requireMigrated(accounts, ctx.tenantNo(), original.customerIdentity(), original.getEntityNo(), original.getCurrency());
         if (!"CREDITED".equals(original.getStatus())) accounts.ensure(claim);
-        var account = accounts.lockOwner(ctx.tenantNo(), original.getUserNo(), original.getEntityNo(),
+        var account = accounts.lockOwner(ctx.tenantNo(), original.customerIdentity(), original.getEntityNo(),
                 original.getCurrency(), original.getStoreNo());
         var recharge = recharges.lock(ctx.tenantNo(), c.rechargeNo());
         var permit = requireReceived(recharge, c, json);
-        if (account == null || !recharge.getUserNo().equals(account.getUserNo())
+        if (account == null || (!recharge.customerIdentity().equals(account.customerIdentity()) && !(recharge.getUserNo()!=null && recharge.getUserNo().equals(account.getUserNo())))
                 || !recharge.getEntityNo().equals(account.getEntityNo())
                 || !recharge.getCurrency().equals(account.getCurrency())) conflict();
         String payload = digest(List.of(c, recharge.getPayloadHash(), recharge.getReceiptDigest(),
@@ -135,7 +136,7 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
         stores.credit(ctx, recharge, at);
         events.publish(new StoredValueCredited(no("SC", List.of(ctx.tenantNo(), c.rechargeNo()), json), c.rechargeNo(),
                 account.getAccountNo(), recharge.getUserNo(), recharge.getEntityNo(), recharge.getStoreNo(),
-                principal, total, recharge.getCurrency(), instant(at).toEpochMilli()));
+                principal, total, recharge.getCurrency(), instant(at).toEpochMilli(),recharge.customerIdentity()));
         return view(recharge);
     }
 }

@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 public class StoredValuePlanRechargeAppServiceImpl implements StoredValuePlanRechargeAppService {
     private final StoredValuePlanRechargeService direct;
     public StoredValuePlanRechargeAppServiceImpl(StoredValuePlanRechargeService direct) { this.direct=direct; }
+    @Override public void bindCustomer(EntitlementContext c,String customer,String user){direct.bindCustomer(c,customer,user);}
+    @Override public RechargeView confirmOffline(EntitlementContext c,String e,Create command){return direct.confirmOffline(c,e,command);}
     @Override public RechargeView create(EntitlementContext c, String e, Create command) { return direct.create(c,e,command); }
     @Override public RechargeView query(EntitlementContext c, String e, String no) { return direct.query(c,e,no); }
     @Override public boolean recover(EntitlementContext c, String e, String no) { return direct.recover(c,e,no); }

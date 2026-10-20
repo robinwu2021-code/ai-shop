@@ -1,6 +1,9 @@
 import type { MerchantApi } from '../contract';
 const unavailable=async ():Promise<never>=>{throw Error('Stored value requires the real backend');};
-export const storedValueMock: Pick<MerchantApi,'mSvResolveRecharge'|'mSvCancelCreate'|'mSvContext'|'mSvPlans'|'mSvPlan'|'mSvCreatePlan'|'mSvPlanStatus'|'mSvAccounts'|'mSvAccount'|'mSvRecords'|'mSvRecord'|'mSvCreateRecharge'|'mSvRecharge'|'mSvSubmit'|'mSvReceive'|'mSvCancel'>={
+export const storedValueMock: Pick<MerchantApi,'mSvCandidates'|'mSvSelectCustomer'|'mSvConfirmOffline'|'mSvResolveRecharge'|'mSvCancelCreate'|'mSvContext'|'mSvPlans'|'mSvPlan'|'mSvCreatePlan'|'mSvPlanStatus'|'mSvAccounts'|'mSvAccount'|'mSvRecords'|'mSvRecord'|'mSvCreateRecharge'|'mSvRecharge'|'mSvSubmit'|'mSvReceive'|'mSvCancel'>={
+ mSvCandidates:unavailable,
+ mSvSelectCustomer:unavailable,
+ mSvConfirmOffline:unavailable,
  mSvResolveRecharge:unavailable,
  mSvCancelCreate:unavailable,
  mSvContext:unavailable,

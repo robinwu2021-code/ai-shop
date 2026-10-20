@@ -6322,7 +6322,8 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket
     tenant_no VARCHAR(32) NOT NULL,
     ticket_hash CHAR(64) NOT NULL,
     purpose VARCHAR(24) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
+    customer_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NULL,
     store_no VARCHAR(64) NULL,
     actor_no VARCHAR(64) NULL,
@@ -6338,7 +6339,7 @@ CREATE TABLE IF NOT EXISTS mbr_identity_ticket
     PRIMARY KEY (id),
     CONSTRAINT uk_member_identity_hash UNIQUE (tenant_no,ticket_hash),
     CHECK (expires_at>issued_at),
-    CHECK ((purpose='MEMBER_CODE' AND entity_no IS NULL AND store_no IS NULL AND actor_no IS NULL AND source_ticket_hash IS NULL) OR (purpose='CUSTOMER_REFERENCE' AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL))
+    CHECK ((purpose='MEMBER_CODE' AND entity_no IS NULL AND store_no IS NULL AND actor_no IS NULL AND source_ticket_hash IS NULL) OR (purpose='CUSTOMER_REFERENCE' AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NOT NULL) OR (purpose='CUSTOMER_SELECTION' AND entity_no IS NOT NULL AND store_no IS NOT NULL AND actor_no IS NOT NULL AND source_ticket_hash IS NULL AND customer_no IS NOT NULL))
 );
 
 CREATE TABLE IF NOT EXISTS ord_ent_authorization
@@ -7271,7 +7272,8 @@ CREATE TABLE IF NOT EXISTS sv_account
     id BIGINT NOT NULL AUTO_INCREMENT,
     tenant_no VARCHAR(32) NOT NULL,
     account_no VARCHAR(64) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
+    customer_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NOT NULL,
     store_no VARCHAR(64) NULL,
     currency VARCHAR(8) NOT NULL,
@@ -7308,7 +7310,8 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     reservation_no VARCHAR(64) NULL,
     activity_no VARCHAR(64) NULL,
     activity_version_no VARCHAR(64) NULL,
-    user_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
+    customer_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NOT NULL,
     store_no VARCHAR(64) NOT NULL,
     store_name VARCHAR(100) NOT NULL,
@@ -7345,7 +7348,7 @@ CREATE TABLE IF NOT EXISTS sv_recharge
     CONSTRAINT uk_recharge_permit UNIQUE (tenant_no,reservation_no),
     CHECK (principal_minor>0 AND bonus_minor>=0),
     CHECK (status IN ('WAIT_COLLECTION','SUBMITTED','RECEIVED','CREDITED','CANCELLED','REJECTED')),
-    CHECK (status NOT IN ('SUBMITTED','RECEIVED','CREDITED') OR (collection_method IS NOT NULL AND actual_amount_minor IS NOT NULL AND collection_method IN ('CASH','TRANSFER') AND actual_amount_minor=principal_minor AND receipt_ref IS NOT NULL AND receipt_digest IS NOT NULL)),
+    CHECK (status NOT IN ('SUBMITTED','RECEIVED','CREDITED') OR (collection_method IS NOT NULL AND actual_amount_minor IS NOT NULL AND collection_method IN ('CASH','TRANSFER','MERCHANT_OFFLINE') AND actual_amount_minor=principal_minor AND receipt_ref IS NOT NULL AND receipt_digest IS NOT NULL)),
     CHECK (status NOT IN ('RECEIVED','CREDITED') OR (received_by IS NOT NULL AND received_at IS NOT NULL AND received_decision_snapshot IS NOT NULL)),
     CHECK ((status='CREDITED' AND credited_at IS NOT NULL) OR (status<>'CREDITED' AND credited_at IS NULL)),
     CONSTRAINT ck_sv_cancel_facts CHECK ((status='CANCELLED' AND cancellation_reason IS NOT NULL AND cancelled_at IS NOT NULL)
@@ -7430,7 +7433,8 @@ CREATE TABLE IF NOT EXISTS sv_user_store_index
 (
     id BIGINT NOT NULL AUTO_INCREMENT,
     tenant_no VARCHAR(32) NOT NULL,
-    user_no VARCHAR(64) NOT NULL,
+    user_no VARCHAR(64) NULL,
+    customer_no VARCHAR(64) NULL,
     entity_no VARCHAR(64) NOT NULL,
     store_no VARCHAR(64) NOT NULL,
     store_name VARCHAR(100) NOT NULL,
@@ -13664,7 +13668,8 @@ CREATE TABLE IF NOT EXISTS sv_statement (
  voucher_no VARCHAR(64) NOT NULL,
  account_no VARCHAR(64) NOT NULL,
  account_seq BIGINT NOT NULL,
- user_no VARCHAR(64) NOT NULL,
+ user_no VARCHAR(64) NULL,
+    customer_no VARCHAR(64) NULL,
  entity_no VARCHAR(64) NOT NULL,
  store_no VARCHAR(64) NOT NULL,
  store_name VARCHAR(100) NOT NULL,
@@ -13692,4 +13697,11 @@ CREATE TABLE IF NOT EXISTS sv_statement (
  KEY ix_sv_statement_account (tenant_no,entity_no,store_no,account_no,occurred_at,record_no),
  CHECK (balance_after_minor>=0),
  CHECK ((type='RECHARGE' AND signed_amount_minor>0) OR (type='REDEMPTION' AND signed_amount_minor<0))
+);
+
+CREATE UNIQUE INDEX uk_sv_customer_owner ON sv_account(tenant_no,customer_no,entity_no,store_no,currency);
+CREATE UNIQUE INDEX uk_sv_customer_store ON sv_user_store_index(tenant_no,customer_no,store_no);
+CREATE TABLE sv_customer_identity (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) NOT NULL,customer_no VARCHAR(64) NOT NULL,user_no VARCHAR(64) NOT NULL,
+ UNIQUE(tenant_no,customer_no),UNIQUE(tenant_no,user_no)
 );

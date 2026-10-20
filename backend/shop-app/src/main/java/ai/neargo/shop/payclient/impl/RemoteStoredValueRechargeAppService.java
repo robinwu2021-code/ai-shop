@@ -25,6 +25,8 @@ import ai.neargo.shop.pay.client.PayStoredValueRequests;
 @Service
 @ConditionalOnProperty(name = "shop.pay.deployment", havingValue = "standalone")
 public class RemoteStoredValueRechargeAppService implements StoredValueRechargeAppService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.spi.storedvalue.StoredValueCustomerBindingPort bindings;
     private final PayInternalApi pay;
     public RemoteStoredValueRechargeAppService(PayInternalApi pay) { this.pay = pay; }
     @Override public RechargeView create(EntitlementContext ctx, String entity, CreateRecharge c) {
@@ -45,13 +47,13 @@ public class RemoteStoredValueRechargeAppService implements StoredValueRechargeA
     @Override public RechargeView query(EntitlementContext ctx, String entity, String no) {
         return RemoteEntitlementCalls.call(() -> pay.svQuery(new PayStoredValueRequests.QueryRecharge(ctx, entity, no)));
     }
-    @Override public BalanceView balance(EntitlementContext ctx, BalanceQuery q) {
+    @Override public BalanceView balance(EntitlementContext ctx, BalanceQuery q) { bindings.ensureByUser(ctx,q.userNo());
         return RemoteEntitlementCalls.call(() -> pay.svBalance(new PayStoredValueRequests.Balance(ctx, q)));
     }
-    @Override public CursorPage<StoreItem> stores(EntitlementContext ctx, StoreQuery q) {
+    @Override public CursorPage<StoreItem> stores(EntitlementContext ctx, StoreQuery q) { bindings.ensureByUser(ctx,q.userNo());
         return RemoteEntitlementCalls.call(() -> pay.svStores(new PayStoredValueRequests.Stores(ctx, q)));
     }
-    @Override public CursorPage<UsageItem> consumptions(EntitlementContext ctx, ConsumptionQuery q) {
+    @Override public CursorPage<UsageItem> consumptions(EntitlementContext ctx, ConsumptionQuery q) { bindings.ensureByUser(ctx,q.userNo());
         return RemoteEntitlementCalls.call(() -> pay.svConsumptions(new PayStoredValueRequests.Consumptions(ctx, q)));
     }
 }

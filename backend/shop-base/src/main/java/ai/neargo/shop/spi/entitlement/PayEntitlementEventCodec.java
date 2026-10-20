@@ -99,7 +99,7 @@ public final class PayEntitlementEventCodec {
             if (!"MAIN".equals(cancelled.tenantNo()) || !id(cancelled.rechargeNo()) || !id(cancelled.entityNo()))
                 throw new IllegalArgumentException("Stored value cancellation event identity is incomplete");
         } else if (event instanceof EntitlementEvents.StoredValueCredited credited) {
-            if (!id(credited.rechargeNo()) || !id(credited.accountNo()) || !id(credited.userNo())
+            if (!id(credited.rechargeNo()) || !id(credited.accountNo()) || !id(credited.customerNo()) || credited.userNo()!=null && !id(credited.userNo())
                     || !id(credited.entityNo()) || !id(credited.storeNo()) || !id(credited.currency())
                     || credited.paidAmountMinor() < 0 || credited.creditedAmountMinor() < 0)
                 throw new IllegalArgumentException("Stored value credit event fields are incomplete");
