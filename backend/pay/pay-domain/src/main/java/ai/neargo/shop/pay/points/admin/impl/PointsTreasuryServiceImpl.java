@@ -85,7 +85,7 @@ public class PointsTreasuryServiceImpl implements PointsTreasuryService {
                                     r.amountMinor(),
                                     actor,
                                     r.evidenceNo(),
-                                    r.fundsContext()));
+                                    r.fundsContext()), r.reason());
                     return r.requestNo();
                 });
     }
@@ -109,8 +109,8 @@ public class PointsTreasuryServiceImpl implements PointsTreasuryService {
                     require(
                             num(row, "version") == r.expectedVersion(),
                             "POINTS_REQUEST_REVISION_CONFLICT");
-                    if (r.approve()) requests.approve(r.requestNo(), actor);
-                    else configuration.rejectRequest(r.requestNo(), r.expectedVersion(), actor);
+                    if (r.approve()) requests.approve(r.requestNo(), actor, r.reason());
+                    else configuration.rejectRequest(r.requestNo(), r.expectedVersion(), actor, r.reason());
                     return r.requestNo();
                 });
     }
@@ -140,6 +140,10 @@ public class PointsTreasuryServiceImpl implements PointsTreasuryService {
                                             (String) r.get("state"),
                                             request.submittedBy(),
                                             (String) r.get("approved_by"),
+                                            time(r, "created_at"),
+                                            r.get("reviewed_at") == null ? 0 : time(r, "reviewed_at"),
+                                            (String) r.get("submitted_reason"),
+                                            (String) r.get("review_reason"),
                                             request.evidenceNo() != null
                                                     && !request.evidenceNo().isBlank(),
                                             withdrawal
@@ -319,6 +323,14 @@ public class PointsTreasuryServiceImpl implements PointsTreasuryService {
 
     private long num(Map<String, Object> r, String key) {
         return ((Number) r.get(key)).longValue();
+    }
+
+    private long time(Map<String, Object> row, String field) {
+        Object value = row.get(field);
+        if (value instanceof java.util.Date date) return date.getTime();
+        if (value instanceof java.time.LocalDateTime local)
+            return local.atZone(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli();
+        return 0;
     }
 
     private void require(boolean value, String code) {

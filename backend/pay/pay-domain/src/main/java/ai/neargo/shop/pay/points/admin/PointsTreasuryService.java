@@ -55,6 +55,10 @@ public interface PointsTreasuryService {
             String state,
             String submittedBy,
             String approvedBy,
+            long submittedAt,
+            long reviewedAt,
+            String submittedReason,
+            String reviewReason,
             boolean hasEvidence,
             String ticketNo,
             long version) {}

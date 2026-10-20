@@ -248,25 +248,28 @@ class PointsOrderPlacementFlowTest {
     }
 
     @Test
-    void stopping_admission_after_raw_creation_requires_reconfirmation_before_any_hold() {
+    void per_store_pause_is_unavailable_and_all_stores_remain_admitted() {
         var d = draft();
         stage(d);
         var c = d.candidates().getFirst();
         String store = c.target().target().storeNo();
-        policies.change(
-                new PointsIntegrationPolicyService.IntegrationPolicyChange(
-                        "DRAIN:" + store,
-                        store,
-                        "ONLINE",
-                        PointsIntegrationPolicyService.Mode.DRAINING,
-                        false,
-                        false,
-                        0,
-                        "QA"),
-                "OPS");
-        assertThat(placement.resume(d.orderNo()).phase()).isEqualTo(Phase.RECONFIRM);
-        assertThat(bindings.find(d.allSubOrderNos().getFirst())).isNull();
-        verify(redeem, never()).hold(any());
+        assertThatThrownBy(
+                        () ->
+                                policies.change(
+                                        new PointsIntegrationPolicyService.IntegrationPolicyChange(
+                                                "DRAIN:" + store,
+                                                store,
+                                                "ONLINE",
+                                                PointsIntegrationPolicyService.Mode.DRAINING,
+                                                false,
+                                                false,
+                                                0,
+                                                "QA"),
+                                        "OPS"))
+                .hasMessage("POINTS_STORE_POLICY_UNSUPPORTED");
+        assertThat(placement.resume(d.orderNo()).phase()).isEqualTo(Phase.READY);
+        assertThat(bindings.find(d.allSubOrderNos().getFirst())).isNotNull();
+        verify(redeem, times(1)).hold(any());
     }
 
     static class Sources implements SourceOrders {

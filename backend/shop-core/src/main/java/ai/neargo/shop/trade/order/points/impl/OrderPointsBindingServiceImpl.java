@@ -4,6 +4,7 @@ import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.PayModes;
 import ai.neargo.shop.trade.order.mapper.OrderPointsBindingMapper;
 import ai.neargo.shop.trade.order.points.OrderPointsBindingService;
+import ai.neargo.shop.trade.order.points.PointsIntegrationPolicyService;
 import ai.neargo.shop.trade.order.points.PointsIntegrationPolicyService.*;
 
 import org.springframework.beans.factory.ObjectProvider;
@@ -19,12 +20,16 @@ import java.util.*;
 @Transactional("transactionManager")
 public class OrderPointsBindingServiceImpl implements OrderPointsBindingService {
     private final OrderPointsBindingMapper mapper;
+    private final PointsIntegrationPolicyService policies;
     private final ObjectProvider<CompletionGuard> guards;
     private final ObjectMapper json = new ObjectMapper();
 
     public OrderPointsBindingServiceImpl(
-            OrderPointsBindingMapper mapper, ObjectProvider<CompletionGuard> guards) {
+            OrderPointsBindingMapper mapper,
+            PointsIntegrationPolicyService policies,
+            ObjectProvider<CompletionGuard> guards) {
         this.mapper = mapper;
+        this.policies = policies;
         this.guards = guards;
     }
 
@@ -33,20 +38,8 @@ public class OrderPointsBindingServiceImpl implements OrderPointsBindingService 
         validate(c);
         return DataScopeContext.executeWithoutScope(
                 () -> {
-                    mapper.initializePolicy(c.storeNo(), PayModes.ONLINE);
-                    mapper.initializePolicy(c.storeNo(), PayModes.OFFLINE);
-                    var head = mapper.lockPolicy(c.storeNo(), c.scene());
-                    var prior = mapper.existingBinding(c.requestId(), c.subOrderNo());
-                    if (!prior.isEmpty()) {
-                        require(prior.size() == 1, "POINTS_BINDING_IDENTITY_CONFLICT");
-                        var original = decode(prior.getFirst());
-                        require(original.admission().equals(c), "POINTS_BINDING_INPUT_CONFLICT");
-                        return original;
-                    }
-                    require("ACTIVE".equals(head.get("mode")), "POINTS_ADMISSION_CLOSED");
-                    var policy =
-                            json.readValue(
-                                    (String) head.get("payload_json"), IntegrationPolicy.class);
+                    var policy = policies.policy(c.storeNo(), c.scene());
+                    require(policy.mode() == Mode.ACTIVE, "POINTS_ADMISSION_CLOSED");
                     require(
                             policy.version() == c.policyVersion(),
                             "POINTS_ADMISSION_REVISION_CONFLICT");
@@ -54,6 +47,13 @@ public class OrderPointsBindingServiceImpl implements OrderPointsBindingService 
                             (!c.earning() || policy.earnEnabled())
                                     && (!c.redemption() || policy.redeemEnabled()),
                             "POINTS_ADMISSION_CLOSED");
+                    var prior = mapper.existingBinding(c.requestId(), c.subOrderNo());
+                    if (!prior.isEmpty()) {
+                        require(prior.size() == 1, "POINTS_BINDING_IDENTITY_CONFLICT");
+                        var original = decode(prior.getFirst());
+                        require(original.admission().equals(c), "POINTS_BINDING_INPUT_CONFLICT");
+                        return original;
+                    }
                     var result =
                             new Binding(UUID.randomUUID().toString(), c, Phase.PENDING, 0, null);
                     mapper.createBinding(
