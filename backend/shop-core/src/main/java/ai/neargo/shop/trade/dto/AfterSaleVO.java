@@ -61,7 +61,14 @@ public record AfterSaleVO(String afterSaleNo,
                           RefundExecutionProgress refundExecution,
                           List<ReturnItem> returnItems,
                           /** 独立于退款资金状态的退货库存处理结果。 */
-                          String returnInventoryStatus) {
+                          String returnInventoryStatus, String documentNo) {
+    public AfterSaleVO(String afterSaleNo, String subOrderNo, String orderNo, String type, String status, String reason, List<String> images, long refundMinor, boolean instant, String merchantReply, String returnExpressNo, String liability, long createdAt, long updatedAt, List<TimelineNode> timeline, RefundImpact impact, String refundMode, Long refundPoints, Long approvedMinor, String fulfillStage, boolean waitReceipt, boolean canEscalate, RefundExecutionProgress refundExecution, List<ReturnItem> returnItems, String returnInventoryStatus) {
+        this(afterSaleNo, subOrderNo, orderNo, type, status, reason, images, refundMinor, instant, merchantReply, returnExpressNo, liability, createdAt, updatedAt, timeline, impact, refundMode, refundPoints, approvedMinor, fulfillStage, waitReceipt, canEscalate, refundExecution, returnItems, returnInventoryStatus, null);
+    }
+    public AfterSaleVO withDocumentNo(String number) {
+        return new AfterSaleVO(afterSaleNo, subOrderNo, orderNo, type, status, reason, images, refundMinor, instant, merchantReply, returnExpressNo, liability, createdAt, updatedAt, timeline, impact, refundMode, refundPoints, approvedMinor, fulfillStage, waitReceipt, canEscalate, refundExecution, returnItems, returnInventoryStatus, number);
+    }
+
 
     /** Preserve existing producers while progress becomes available on the real refund execution path. */
     public AfterSaleVO(String afterSaleNo, String subOrderNo, String orderNo, String type, String status,
@@ -101,7 +108,7 @@ public record AfterSaleVO(String afterSaleNo,
                 refundMinor, instant, merchantReply, returnExpressNo, liability, createdAt,
                 updatedAt, timeline, i == null || i.isEmpty() ? null : i,
                 refundMode, refundPoints, approvedMinor, fulfillStage, waitReceipt, canEscalate,
-                refundExecution, returnItems, returnInventoryStatus);
+                refundExecution, returnItems, returnInventoryStatus, documentNo);
     }
 
     public record TimelineNode(String status, String label, long at) {

@@ -1,5 +1,8 @@
 package ai.neargo.shop.marketing.attribution.impl;
 
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.marketing.attribution.FissionInviteService;
 import ai.neargo.shop.marketing.attribution.entity.MktFissionCampaign;
@@ -21,6 +24,12 @@ import java.util.Set;
 /** 见 {@link FissionInviteService}。 */
 @Service
 public class FissionInviteServiceImpl implements FissionInviteService {
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
 
     private static final Logger log = LoggerFactory.getLogger(FissionInviteServiceImpl.class);
 
@@ -44,23 +53,35 @@ public class FissionInviteServiceImpl implements FissionInviteService {
     }
 
     @Override
-    @Transactional
     public void record(String fissionNo, String inviterNo, String inviteeNo,
                        String deviceId, String phoneTail) {
         if (blank(fissionNo) || blank(inviterNo) || blank(inviteeNo)) {
             return;
         }
+        MktFissionCampaign campaign = ai.neargo.shop.promotion.service.InvitationDocumentNumberReservationAdvisor.hasSnapshot()
+                ? ai.neargo.shop.promotion.service.InvitationDocumentNumberReservationAdvisor.currentCampaign()
+                        .filter(selected -> fissionNo.equals(selected.getFissionNo())).orElse(null)
+                : DataScopeContext.executeWithoutScope(() ->
+                campaignMapper.selectOne(Wrappers.<MktFissionCampaign>lambdaQuery()
+                        .eq(MktFissionCampaign::getFissionNo, fissionNo).last("limit 1")));
+        if (campaign == null || !Boolean.TRUE.equals(campaign.getEnabled())) {
+            return;
+        }
+        int upperBound = Math.addExact(Math.max(0, nz(campaign.getInviterCount())),
+                Math.max(0, nz(campaign.getInviteeCount())));
+        documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_USER_COUPON, upperBound), () -> {
+            recordNumbered(fissionNo, inviterNo, inviteeNo, deviceId, phoneTail, campaign);
+            return null;
+        });
+    }
+
+    private void recordNumbered(String fissionNo, String inviterNo, String inviteeNo,
+            String deviceId, String phoneTail, MktFissionCampaign campaign) {
         /*
          * **自己邀自己直接不落行。** 它不是「非新客」那一类（那类要落行让运营看得见），
          * 而是压根不成立的一次邀请 —— 落进去只会让 invitedCount 虚高。
          */
         if (inviterNo.equals(inviteeNo)) {
-            return;
-        }
-        MktFissionCampaign campaign = DataScopeContext.executeWithoutScope(() ->
-                campaignMapper.selectOne(Wrappers.<MktFissionCampaign>lambdaQuery()
-                        .eq(MktFissionCampaign::getFissionNo, fissionNo).last("limit 1")));
-        if (campaign == null || !Boolean.TRUE.equals(campaign.getEnabled())) {
             return;
         }
         /*

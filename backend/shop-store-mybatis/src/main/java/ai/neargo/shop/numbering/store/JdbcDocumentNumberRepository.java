@@ -5,6 +5,12 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Collection;
+import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -47,13 +53,37 @@ public final class JdbcDocumentNumberRepository implements DocumentNumberService
     @Override public String bind(DocumentType type,DocumentSource source,ReservedDocumentNumber reserved) {
         requireOwner(type);Objects.requireNonNull(source);Objects.requireNonNull(reserved);
         if(type!=reserved.type())throw new IllegalArgumentException("Reservation type mismatch");
-        if(!TransactionSynchronizationManager.isActualTransactionActive()
-                || !TransactionSynchronizationManager.hasResource(Objects.requireNonNull(manager.getDataSource())))
-            throw new IllegalStateException("Bind must join the owning service transaction");
+        requireBusinessTransaction();
         // A concurrent same-source request wins once; never overwrite its number or business date.
         jdbc.update("INSERT INTO "+mappingTable+"(tenant_no,document_type,source_system,source_resource_type,source_no,document_no,business_date) VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE document_no=document_no",
             source.tenantNo(),type.name(),source.sourceSystem(),source.resourceType(),source.sourceNo(),reserved.value(),java.sql.Date.valueOf(reserved.businessDate()));
         return find(type,source,true).orElseThrow(()->new IllegalStateException("Document number collision with a different source"));
+    }
+    void requireBusinessTransaction() {
+        if(!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.hasResource(Objects.requireNonNull(manager.getDataSource())))
+            throw new IllegalStateException("Bind must join the owning service transaction");
+    }
+    @Override public Map<DocumentSource,String> findAll(DocumentType type,Collection<DocumentSource> sources) {
+        requireOwner(type);Objects.requireNonNull(sources);
+        var unique=new ArrayList<>(new LinkedHashSet<>(sources));
+        if(unique.stream().anyMatch(Objects::isNull))throw new IllegalArgumentException("Null document source");
+        var result=new LinkedHashMap<DocumentSource,String>();
+        record Namespace(String tenant,String system,String resource) { }
+        for(int offset=0;offset<unique.size();offset+=500) {
+            var groups=new LinkedHashMap<Namespace,List<String>>();
+            for(var source:unique.subList(offset,Math.min(offset+500,unique.size())))
+                groups.computeIfAbsent(new Namespace(source.tenantNo(),source.sourceSystem(),source.resourceType()),key->new ArrayList<>()).add(source.sourceNo());
+            var filters=new ArrayList<String>();var args=new ArrayList<Object>();args.add(type.name());
+            for(var entry:groups.entrySet()) {
+                var key=entry.getKey();
+                filters.add("(tenant_no=? AND source_system=? AND source_resource_type=? AND source_no IN ("+String.join(",",java.util.Collections.nCopies(entry.getValue().size(),"?"))+"))");
+                args.add(key.tenant());args.add(key.system());args.add(key.resource());args.addAll(entry.getValue());
+            }
+            jdbc.query("SELECT tenant_no,source_system,source_resource_type,source_no,document_no FROM "+mappingTable+" WHERE document_type=? AND ("+String.join(" OR ",filters)+")",
+                rs->{result.put(new DocumentSource(rs.getString(1),rs.getString(2),rs.getString(3),rs.getString(4)),rs.getString(5));},args.toArray());
+        }
+        return Map.copyOf(result);
     }
     @Override public Optional<String> findBySource(DocumentType type,DocumentSource source) {
         requireOwner(type); Objects.requireNonNull(source); return find(type,source,false);

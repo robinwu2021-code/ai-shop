@@ -1,0 +1,67 @@
+package ai.neargo.shop.pay.entitlement.service;
+import ai.neargo.shop.numbering.*;
+import ai.neargo.shop.numbering.store.*;
+import ai.neargo.shop.pay.points.admin.*;
+import ai.neargo.shop.pay.points.admin.impl.PointsInspectionServiceImpl;
+import ai.neargo.shop.pay.points.model.*;
+import ai.neargo.shop.pay.points.store.*;
+import ai.neargo.shop.pay.storedvalue.entity.SvRecharge;
+import ai.neargo.shop.pay.storedvalue.service.StoredValueRechargeWriter;
+import ai.neargo.shop.pay.storedvalue.service.impl.StoredValueRechargeWriterImpl;
+import ai.neargo.shop.pay.mapper.storedvalue.SvRechargeMapper;
+import ai.neargo.shop.pay.entitlement.event.PayEntitlementEventPublisher;
+import ai.neargo.shop.spi.entitlement.EntitlementContext;
+import ai.neargo.shop.spi.storedvalue.StoredValuePort.*;
+import java.util.*;
+import java.time.*;
+import java.util.function.Supplier;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.jdbc.datasource.*;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.ObjectMapper;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+class PayRightsReadProjectionTest {
+ @Test void entriesAndFlowsExposeBatchedVoucherAliasesWithoutChangingInternalNumbers() throws Exception {
+  assertNotNull(PointsInspectionService.EntryView.class.getMethod("voucherDocumentNo"));
+  assertNotNull(PointsInspectionService.FlowView.class.getMethod("voucherDocumentNo"));
+  var read=mock(PointsReadStore.class);var store=mock(PointsOperationsStore.class);
+  when(read.type("POINT")).thenReturn(Optional.of(new PointType("POINT","CN","CNY",2,new RedeemRate(1,1),10000,30,PointType.Status.ACTIVE)));
+  var service=new PointsInspectionServiceImpl(read,store,mock(PointsOperatorJournal.class),null,null,null,mock(ObjectProvider.class));
+  var numbers=mock(DocumentNumberService.class);var aliases=new PayRightsDocumentNumbers(mock(DocumentNumberCoordinator.class));
+  ReflectionTestUtils.setField(aliases,"lookup",numbers);ReflectionTestUtils.setField(service,"documentNumbers",aliases);
+  when(numbers.findAll(eq(DocumentType.POINTS_VOUCHER),anyCollection())).thenReturn(Map.of(new DocumentSource("MAIN","PAY","POINTS_VOUCHER","voucher"),"PTV20261020000001"));
+  var entry=new HashMap<String,Object>();entry.put("id",1L);entry.put("entry_no","entry");entry.put("voucher_no","voucher");
+  entry.put("holder_type","STORE");entry.put("holder_no","STORE");entry.put("bucket","AVAILABLE");entry.put("delta_points",10L);entry.put("after_points",10L);entry.put("created_at",LocalDateTime.of(2026,10,20,0,0));
+  var old=new HashMap<>(entry);old.put("id",2L);old.put("entry_no","old-entry");old.put("voucher_no","historical");
+  when(store.entries("POINT",HolderType.STORE,"STORE",null,0,10)).thenReturn(List.of(entry,old));
+  var entries=service.entries("POINT",HolderType.STORE,"STORE",null,0,10).rows();
+  assertEquals("entry",entries.getFirst().entryNo());assertEquals("voucher",entries.getFirst().voucherNo());
+  assertEquals("PTV20261020000001",entries.getFirst().getClass().getMethod("voucherDocumentNo").invoke(entries.getFirst()));
+  assertNull(entries.getLast().getClass().getMethod("voucherDocumentNo").invoke(entries.getLast()));
+  when(store.page("POINT",PointsOperationsStore.Kind.FLOW,0,10)).thenReturn(List.of(Map.<String,Object>of("id",1L,"flow_no","flow","voucher_no","voucher","bucket","U","delta_minor",10L,"after_minor",10L)));
+  var flow=service.flows("POINT",0,10).rows().getFirst();assertEquals("flow",flow.flowNo());
+  assertEquals("PTV20261020000001",flow.getClass().getMethod("voucherDocumentNo").invoke(flow));
+  when(numbers.resolve("MAIN",DocumentType.POINTS_VOUCHER,"PTV20261020000001")).thenReturn(Optional.of(new DocumentSource("MAIN","PAY","POINTS_VOUCHER","voucher")));
+  when(store.entries("POINT",null,null,"voucher",0,10)).thenReturn(List.of(entry));
+  var located=service.entries("POINT",null,null,"PTV20261020000001",0,10).rows();
+  assertEquals("voucher",located.getFirst().voucherNo());
+  verify(numbers,times(3)).findAll(eq(DocumentType.POINTS_VOUCHER),anyCollection());verify(numbers,never()).findBySource(any(),any());verify(numbers,never()).bind(any(),any(),any());
+ }
+ @Test void existingPlanCancellationInsideOriginalTransactionNeedsNoReservation() {
+  var manager=new DataSourceTransactionManager(new DriverManagerDataSource("jdbc:h2:mem:cancel-"+UUID.randomUUID(),"sa",""));
+  var generator=mock(DocumentNumberGenerator.class);var coordinator=new DocumentNumberCoordinator(new JdbcDocumentNumberRepository(DocumentOwner.PAY,manager),generator,manager);
+  var rows=mock(SvRechargeMapper.class);var commands=mock(EntitlementCommandDeduplicator.class);
+  when(commands.execute(any(),any(),any(),any(),any(),eq(RechargeView.class),any())).thenAnswer(a->((Supplier<?>)a.getArgument(6)).get());
+  var row=new SvRecharge();row.setRechargeNo("internal");row.setEntityNo("ENTITY");row.setTenantNo("MAIN");row.setUserNo("USER");row.setStatus("WAIT_COLLECTION");row.setPrincipalMinor(100L);row.setBonusMinor(0L);row.setVersion(0L);row.setCurrency("CNY");
+  when(rows.lock("MAIN","internal")).thenReturn(row);when(rows.updateById(row)).thenReturn(1);
+  var writer=new StoredValueRechargeWriterImpl(rows,commands,mock(PayEntitlementEventPublisher.class),new ObjectMapper());
+  ReflectionTestUtils.setField(writer,"documentNumbers",mock(PayRightsDocumentNumbers.class));
+  var factory=new ProxyFactory(writer);factory.addAdvisor(new PayRightsNumberReservations(coordinator));var proxy=(StoredValueRechargeWriter)factory.getProxy();
+  var result=new TransactionTemplate(manager).execute(tx->proxy.cancel(new EntitlementContext("MAIN","ACTOR","REQ","0".repeat(64)),"ENTITY",new CancelRecharge("internal",0,"cancel"),null));
+  assertEquals(RechargeState.CANCELLED,result.status());verifyNoInteractions(generator);verify(rows,never()).insert(any(SvRecharge.class));
+ }
+}

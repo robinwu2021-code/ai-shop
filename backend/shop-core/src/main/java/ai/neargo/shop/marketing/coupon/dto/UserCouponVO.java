@@ -6,5 +6,12 @@ public record UserCouponVO(String userCouponNo,
                            String status,
                            boolean usableNow,
                            long receivedAt,
-                           Long usedAt) {
+                           Long usedAt, String documentNo) {
+    public UserCouponVO(String userCouponNo, CouponVO coupon, String status, boolean usableNow, long receivedAt, Long usedAt) {
+        this(userCouponNo, coupon, status, usableNow, receivedAt, usedAt, null);
+    }
+    public UserCouponVO withDocumentNo(String number) {
+        return new UserCouponVO(userCouponNo, coupon, status, usableNow, receivedAt, usedAt, number);
+    }
+
 }

@@ -34,6 +34,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Member-safe read side: visible stores require credited money, and all histories contain committed use only. */
 @Service
 public class StoredValueQueryServiceImpl implements StoredValueQueryService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final SvAccountMapper accounts;
     private final SvUserStoreIndexMapper stores;
     private final EntUsageMapper usages;
@@ -114,6 +116,6 @@ public class StoredValueQueryServiceImpl implements StoredValueQueryService {
     private UsageItem usageItem(EntUsage row) {
         return new UsageItem(row.getUsageNo(), AssetKind.STORED_VALUE, row.getTitle(), row.getAmountMinor(),
                 row.getCurrency(), row.getUnits(), row.getStoreNo(), row.getStoreName(), instant(row.getOccurredAt()),
-                row.getStatus());
+                row.getStatus(), documentNumbers.find(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, row.getTenantNo(), row.getUsageNo()));
     }
 }

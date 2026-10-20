@@ -65,6 +65,13 @@ public interface InvoiceRequestService {
     record InvoiceRequestVO(String requestNo, String orderNo, String titleType, String title,
                             String taxNo, String email, long amountMinor, String status,
                             String invoiceNo, Long issuedAt, String rejectReason,
-                            Long createdAt) {
+                            Long createdAt, String documentNo) {
+    public InvoiceRequestVO(String requestNo, String orderNo, String titleType, String title, String taxNo, String email, long amountMinor, String status, String invoiceNo, Long issuedAt, String rejectReason, Long createdAt) {
+        this(requestNo, orderNo, titleType, title, taxNo, email, amountMinor, status, invoiceNo, issuedAt, rejectReason, createdAt, null);
+    }
+    public InvoiceRequestVO withDocumentNo(String number) {
+        return new InvoiceRequestVO(requestNo, orderNo, titleType, title, taxNo, email, amountMinor, status, invoiceNo, issuedAt, rejectReason, createdAt, number);
+    }
+
     }
 }

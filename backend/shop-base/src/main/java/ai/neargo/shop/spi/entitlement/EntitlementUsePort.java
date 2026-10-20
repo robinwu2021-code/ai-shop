@@ -206,7 +206,8 @@ public interface EntitlementUsePort {
         }
     }
 
-    record HoldView(String operationNo, State status, String holdNo, String usageNo, Instant occurredAt) {
+    record HoldView(String operationNo, State status, String holdNo, String usageNo, Instant occurredAt, String documentNo) {
+        public HoldView(String operationNo, State status, String holdNo, String usageNo, Instant occurredAt) { this(operationNo, status, holdNo, usageNo, occurredAt, null); }
         public HoldView {
             ContractChecks.id(operationNo);
             ContractChecks.present(status);
@@ -222,7 +223,8 @@ public interface EntitlementUsePort {
         }
     }
 
-    record UseReceipt(String operationNo, State status, String usageNo, Instant occurredAt) {
+    record UseReceipt(String operationNo, State status, String usageNo, Instant occurredAt, String documentNo) {
+        public UseReceipt(String operationNo, State status, String usageNo, Instant occurredAt) { this(operationNo, status, usageNo, occurredAt, null); }
         public UseReceipt {
             ContractChecks.id(operationNo);
             ContractChecks.present(status);

@@ -7,7 +7,7 @@ import static ai.neargo.shop.pay.storedvalue.policy.StoredValueFacts.digest;
 import static ai.neargo.shop.pay.storedvalue.policy.StoredValueFacts.instant;
 import static ai.neargo.shop.pay.storedvalue.policy.StoredValueFacts.no;
 import static ai.neargo.shop.pay.storedvalue.policy.StoredValueFacts.requireReceived;
-import static ai.neargo.shop.pay.storedvalue.policy.StoredValueFacts.view;
+
 
 import ai.neargo.shop.pay.entitlement.event.PayEntitlementEventPublisher;
 import ai.neargo.shop.pay.mapper.storedvalue.SvAccountMapper;
@@ -43,6 +43,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Account -> receipt lock order. No core/network call enters the owned posting transaction. */
 @Service
 public class StoredValuePostingServiceImpl implements StoredValuePostingService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final ai.neargo.shop.pay.mapper.storedvalue.SvCustomerIdentityMapper identities;
     private final SvAccountMapper accounts;
     private final SvRechargeMapper recharges;
@@ -115,6 +117,7 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
         voucher.setAfterPrincipalMinor(afterPrincipal); voucher.setAfterBonusMinor(afterBonus);
         voucher.setOccurredAt(at);
         if (vouchers.insert(voucher) != 1) conflict();
+        documentNumbers.bind(ai.neargo.shop.numbering.DocumentType.SV_VOUCHER, ctx.tenantNo(), voucher.getVoucherNo());
         statements.recharge(ctx, account, recharge, voucher);
         var entry = new SvEntry(); audit(entry, ctx, at); entry.setVoucherNo(voucher.getVoucherNo());
         entry.setLotNo(lot.getLotNo()); entry.setPrincipalDelta(principal); entry.setBonusDelta(bonus);
@@ -139,4 +142,11 @@ public class StoredValuePostingServiceImpl implements StoredValuePostingService 
                 principal, total, recharge.getCurrency(), instant(at).toEpochMilli(),recharge.customerIdentity()));
         return view(recharge);
     }
+    private RechargeView view(SvRecharge row) {
+        var r=ai.neargo.shop.pay.storedvalue.policy.StoredValueFacts.view(row);
+        return new RechargeView(r.rechargeNo(),r.status(),r.userNo(),r.entityNo(),r.storeNo(),r.currency(),
+                r.paidAmountMinor(),r.creditedTotalMinor(),r.receivedAt(),r.creditedAt(),r.revision(),r.customerNo(),
+                documentNumbers.find(ai.neargo.shop.numbering.DocumentType.SV_RECHARGE,row.getTenantNo(),row.getRechargeNo()));
+    }
+
 }

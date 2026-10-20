@@ -3,6 +3,11 @@ package ai.neargo.shop.invbridge;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.inventory.config.ConditionalOnInventory;
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.numbering.DocumentSource;
+import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
+import org.springframework.beans.factory.annotation.Qualifier;
+import java.util.Map;
 import ai.neargo.shop.inventory.service.InventoryAclService;
 import ai.neargo.shop.inventory.service.LocationService;
 import ai.neargo.shop.inventory.service.StockCountService;
@@ -32,6 +37,7 @@ import java.util.UUID;
 public class StockAlignmentService {
     private static final int PREVIEW_MINUTES = 15;
     private final JdbcTemplate jdbc;
+    private final DocumentNumberCoordinator numbers;
     private final StockSyncAppService syncApp;
     private final StockSyncService stockSync;
     private final InventoryAclService acl;
@@ -42,8 +48,10 @@ public class StockAlignmentService {
 
     public StockAlignmentService(DataSource dataSource, StockSyncAppService syncApp, StockSyncService stockSync,
                                  InventoryAclService acl, LocationService locations, StockCountService counts,
-                                 StockReconcileService reconcile, tools.jackson.databind.ObjectMapper json) {
+                                 StockReconcileService reconcile, tools.jackson.databind.ObjectMapper json,
+                                 @Qualifier("coreDocumentNumberCoordinator") DocumentNumberCoordinator numbers) {
         this.jdbc = new JdbcTemplate(dataSource);
+        this.numbers = numbers;
         this.syncApp = syncApp;
         this.stockSync = stockSync;
         this.acl = acl;
@@ -59,7 +67,10 @@ public class StockAlignmentService {
 
     public record BatchView(String batchNo, String storeNo, String mode, String snapshotVersion,
                             Long expiresAt, String status, int completed, int blocked, int waiting,
-                            List<LineView> rows) { }
+                            List<LineView> rows,String documentNo) {
+        public BatchView(String batchNo,String storeNo,String mode,String snapshotVersion,Long expiresAt,String status,
+                int completed,int blocked,int waiting,List<LineView> rows){this(batchNo,storeNo,mode,snapshotVersion,expiresAt,status,completed,blocked,waiting,rows,null);}
+    }
 
     private record SnapshotLine(StockSyncAppService.AlignRow row, long inventoryVersion, int safety,
                                 long mallVersion) { }
@@ -88,8 +99,7 @@ public class StockAlignmentService {
         String batchNo = "AL" + UUID.randomUUID().toString().replace("-", "");
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expires = now.plusMinutes(PREVIEW_MINUTES);
-        jdbc.update("INSERT INTO prd_stock_alignment_batch(batch_no,entity_no,store_no,mode,snapshot_version,context_version,expires_at,status,operator,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'PREVIEW',?,?,?)",
-                batchNo, entityNo, storeNo, mode, snapshot, context, expires, operator, now, now);
+        List<Object[]> preparedLines = new ArrayList<>();
         int lineNo = 0;
         for (var row : rows) {
             InventoryAclService.StockAt physical = acl.stockAt(entityNo, storeNo, row.skuNo());
@@ -97,13 +107,18 @@ public class StockAlignmentService {
             int after = PrdStoreStockSync.ALIGN_MALL.equals(mode) ? row.mallStock() : (row.onHand() == null ? 0 : row.onHand());
             String lineStatus = row.note() == null && physical != null ? "PENDING" : "BLOCKED";
             String opNo = lineOperation(batchNo, row.skuNo());
-            jdbc.update("INSERT INTO prd_stock_alignment_line(batch_no,line_no,goods_no,sku_no,item_id,title,spec,before_qty,reserved_qty,safety_qty,inventory_version,mall_stock,mall_locked,mall_version,after_qty,note,status,line_operation_no,sync_operation_no,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    batchNo, ++lineNo, row.goodsNo(), row.skuNo(), acl.itemIdOfSku(row.skuNo()), row.title(), row.spec(),
+            preparedLines.add(new Object[]{batchNo, ++lineNo, row.goodsNo(), row.skuNo(), acl.itemIdOfSku(row.skuNo()), row.title(), row.spec(),
                     row.onHand(), row.reserved(), physical == null ? null : physical.safety(), physical == null ? 0 : physical.version(),
                     row.mallStock(), row.mallLocked(), mall.version(), after, row.note(), lineStatus, opNo,
-                    "SYNC-" + hash(batchNo + "\n" + row.skuNo()).substring(0, 60), now, now);
+                    "SYNC-" + hash(batchNo + "\n" + row.skuNo()).substring(0, 60), now, now});
         }
-        return view(batch(batchNo, entityNo, storeNo));
+        return numbers.transaction(Map.of(DocumentType.INVENTORY_ALIGNMENT,1),()-> {
+            jdbc.update("INSERT INTO prd_stock_alignment_batch(batch_no,entity_no,store_no,mode,snapshot_version,context_version,expires_at,status,operator,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'PREVIEW',?,?,?)",
+                batchNo, entityNo, storeNo, mode, snapshot, context, expires, operator, now, now);
+            for(Object[] values:preparedLines)jdbc.update("INSERT INTO prd_stock_alignment_line(batch_no,line_no,goods_no,sku_no,item_id,title,spec,before_qty,reserved_qty,safety_qty,inventory_version,mall_stock,mall_locked,mall_version,after_qty,note,status,line_operation_no,sync_operation_no,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",values);
+            numbers.bind(DocumentType.INVENTORY_ALIGNMENT,new DocumentSource("MAIN","CORE","INVENTORY_ALIGNMENT",batchNo));
+            return view(batch(batchNo,entityNo,storeNo));
+        });
     }
 
     public BatchView confirm(String entityNo, String storeNo, String batchNo, String operationNo,
@@ -238,7 +253,8 @@ public class StockAlignmentService {
                 batch.expires().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli(), batch.status(),
                 (int) stored.stream().filter(l -> "COMPLETED".equals(l.status())).count(),
                 (int) stored.stream().filter(l -> "BLOCKED".equals(l.status())).count(),
-                (int) stored.stream().filter(l -> "WAITING".equals(l.status()) || "FAILED".equals(l.status())).count(), rows);
+                (int) stored.stream().filter(l -> "WAITING".equals(l.status()) || "FAILED".equals(l.status())).count(), rows,numbers.find(DocumentType.INVENTORY_ALIGNMENT,
+                    new DocumentSource("MAIN","CORE","INVENTORY_ALIGNMENT",batch.batchNo())).orElse(null));
     }
 
     private void updateBatch(String batchNo, String status, String operationNo) {

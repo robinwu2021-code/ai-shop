@@ -517,6 +517,7 @@ export interface StockSyncState {
 }
 
 export interface StockSyncOperationRecord {
+  documentNo?: string | null;
   /** Identifier of this stock synchronization operation. */
   operationNo: string;
   /** SKU whose stock was synchronized. */
@@ -558,6 +559,7 @@ export interface StockAlignRow {
 }
 
 export interface StockAlignmentBatch {
+  documentNo?: string | null;
   /** Identifier of this inventory alignment batch. */
   batchNo: string;
   /** Store whose opening inventory is being aligned. */

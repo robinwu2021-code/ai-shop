@@ -41,12 +41,18 @@ class ActivityVersionManagementTest {
         when(commands.execute(any(), anyString(), anyString(), any(), anyString(), any(), any()))
                 .thenAnswer(call -> ((Supplier<?>) call.getArgument(6)).get());
         when(heads.insert(any(PmtActivity.class))).thenReturn(1);
-        return new ActivityVersionServiceImpl(heads, mock(UnifiedActivityManagementMapper.class),
+        var service = new ActivityVersionServiceImpl(heads, mock(UnifiedActivityManagementMapper.class),
                 mock(PmtActivityVersionMapper.class), mock(PmtActivityBudgetMapper.class),
                 mock(PmtActivityScopeMapper.class), mock(PmtRechargeTierMapper.class), presets, commands,
                 new ActivityRuleValidator(), mock(EntitlementScopeValidationService.class), catalog,
                 mock(ProductScopeFactsPort.class), mock(MemberQueryPort.class), new PromotionFeatureGate(props),
                 evidence, new ObjectMapper());
+        var coordinator = mock(ai.neargo.shop.numbering.store.DocumentNumberCoordinator.class);
+        when(coordinator.transaction(anyMap(), any())).thenAnswer(call -> ((Supplier<?>) call.getArgument(1)).get());
+        when(coordinator.findAll(any(), anyCollection())).thenReturn(Map.of());
+        when(coordinator.bind(any(), any())).thenReturn("PT20300101000001");
+        service.setDocumentNumbers(new ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers(coordinator));
+        return service;
     }
     private UnifiedActivityDefinition definition(String name, String scene) {
         return new UnifiedActivityDefinition(name, scene, "AP001", 0, new RedemptionScope("ALL", List.of()),

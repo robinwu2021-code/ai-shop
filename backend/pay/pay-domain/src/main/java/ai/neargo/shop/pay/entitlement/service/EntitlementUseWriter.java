@@ -39,6 +39,8 @@ import tools.jackson.databind.ObjectMapper;
 /** No external port may be invoked inside this transaction. Lock intent -> instance -> original day bucket. */
 @Component
 public class EntitlementUseWriter {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     public static final String PERIOD = "LIFETIME";
     private final EntUseIntentMapper intents;
     private final EntitlementSourceFence fences;
@@ -156,6 +158,7 @@ public class EntitlementUseWriter {
             row.setCommittedAt(utc(decision.occurredAt()));
             var usage = usage(context, frozen, row, asset);
             changed(usages.insert(usage));
+            documentNumbers.bind(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, context.tenantNo(), usage.getUsageNo());
             events.publish(new EntitlementUsed(UUID.randomUUID().toString(), usageNo, c.userNo(), c.entityNo(),
                     c.storeNo(), c.assetKind().name(), c.instanceNo(), null, c.units(),
                     decision.occurredAt().toEpochMilli()));
@@ -224,6 +227,6 @@ public class EntitlementUseWriter {
     }
     public HoldView view(EntUseIntent row) {
         return new HoldView(row.getOperationNo(), State.valueOf(row.getStatus()), row.getOperationNo(),
-                row.getUsageNo(), instant(row.getCommittedAt() == null ? row.getCreatedAt() : row.getCommittedAt()));
+                row.getUsageNo(), instant(row.getCommittedAt() == null ? row.getCreatedAt() : row.getCommittedAt()), documentNumbers.find(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_USAGE, row.getTenantNo(), row.getUsageNo()));
     }
 }

@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.migration.service.impl;
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.*;
 import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
 import ai.neargo.shop.pay.entitlement.policy.PayEntitlementFeatureGate;
@@ -16,6 +18,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 /** Fetch core audience before the pay capacity transaction. Recovery uses only the accepted native batch. */
 @Service
 public class LegacyCouponIssueServiceImpl implements LegacyCouponIssueService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private final ObjectProvider<LegacyCouponAudiencePort> audience;
     private final EntitlementCommandDeduplicator commands;
     private final LegacyCouponTemplateManagementService definitions;
@@ -54,18 +58,18 @@ public class LegacyCouponIssueServiceImpl implements LegacyCouponIssueService {
             var before=current.pending();batches.resume(scope,row.getBatchNo(),Math.min(100,limit-used));current=writer.read(scope,row);
             if(current.pending()>=before) return current;
         }
-        return current.pending()==0?writer.finish(scope,no):current;
+        return current.pending()==0?writer.finish(scope,row.getIssueNo()):current;
     }
     public List<View> list(CatalogScope scope,String system,String no) {
         outside(scope);ContractChecks.id(system);ContractChecks.optionalId(no);
-        return issues.selectList(Wrappers.<EntLegacyCouponIssue>lambdaQuery().eq(EntLegacyCouponIssue::getTenantNo,scope.tenantNo())
+        var rows = issues.selectList(Wrappers.<EntLegacyCouponIssue>lambdaQuery().eq(EntLegacyCouponIssue::getTenantNo,scope.tenantNo())
                 .eq(EntLegacyCouponIssue::getEntityNo,scope.entityNo()).eq(EntLegacyCouponIssue::getSourceSystem,system)
-                .eq(no!=null,EntLegacyCouponIssue::getSourceTemplateNo,no).orderByDesc(EntLegacyCouponIssue::getId))
-                .stream().map(row->writer.read(scope,row)).toList();
+                .eq(no!=null,EntLegacyCouponIssue::getSourceTemplateNo,no).orderByDesc(EntLegacyCouponIssue::getId));
+        return documents.project(DocumentType.LEGACY_COUPON_ISSUE, rows, EntLegacyCouponIssue::getTenantNo, EntLegacyCouponIssue::getIssueNo, row -> writer.read(scope,row));
     }
     private EntLegacyCouponIssue owned(CatalogScope scope,String no) {
-        ContractChecks.id(no);var row=issues.selectOne(Wrappers.<EntLegacyCouponIssue>lambdaQuery().eq(EntLegacyCouponIssue::getTenantNo,scope.tenantNo())
-                .eq(EntLegacyCouponIssue::getEntityNo,scope.entityNo()).eq(EntLegacyCouponIssue::getIssueNo,no));
+        ContractChecks.id(no);String sourceNo=documents.internal(DocumentType.LEGACY_COUPON_ISSUE, scope.tenantNo(), no);var row=issues.selectOne(Wrappers.<EntLegacyCouponIssue>lambdaQuery().eq(EntLegacyCouponIssue::getTenantNo,scope.tenantNo())
+                .eq(EntLegacyCouponIssue::getEntityNo,scope.entityNo()).eq(EntLegacyCouponIssue::getIssueNo,sourceNo));
         if(row==null) throw BizException.of(ErrorCode.NOT_FOUND);return row;
     }
     private static void outside(CatalogScope scope) {

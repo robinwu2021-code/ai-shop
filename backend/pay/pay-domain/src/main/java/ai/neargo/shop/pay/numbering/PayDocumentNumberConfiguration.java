@@ -23,4 +23,11 @@ public class PayDocumentNumberConfiguration {
             @Value("${shop.numbering.segment-size:100}") int size) {
         return new SegmentDocumentNumberGenerator(repository,new DocumentNumberProperties(ZoneId.of(zone),size));
     }
+    @Bean("payDocumentNumberCoordinator")
+    public DocumentNumberCoordinator coordinator(@Qualifier("payDocumentNumbers") JdbcDocumentNumberRepository repository,
+            @Qualifier("payDocumentNumberGenerator") DocumentNumberGenerator generator,
+            @Qualifier("payTxManager") PlatformTransactionManager manager) {
+        return new DocumentNumberCoordinator(repository,generator,manager);
+    }
+
 }

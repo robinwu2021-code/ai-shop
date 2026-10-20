@@ -53,7 +53,7 @@ onLoad(async (params) => {
     <view v-for="entry in page.rows" :key="entry.id" class="sh-card sh-mt-xs">
       <view class="sh-row sh-row--between"><text>{{ entry.bucket }}</text>
         <text class="sh-num">{{ entry.deltaPoints > 0 ? '+' : '' }}{{ entry.deltaPoints }}</text></view>
-      <view class="sh-row sh-row--between"><text class="txt-caption sh-muted">{{ entry.voucherNo }}</text>
+      <view class="sh-row sh-row--between"><text v-if="entry.voucherDocumentNo" class="txt-caption sh-muted">{{ entry.voucherDocumentNo }}</text>
         <text class="txt-caption sh-muted">{{ datetime(entry.at) }}</text></view>
       <text class="txt-caption sh-muted">{{ $t("points.balanceAfter") }}: {{ entry.afterPoints }}</text>
     </view>

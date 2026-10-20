@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.migration.service.impl;
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.pay.migration.service.EntitlementMigrationPlanService;
 import ai.neargo.shop.pay.migration.service.EntitlementMigrationPlanWriter;
 import ai.neargo.shop.pay.migration.service.EntitlementMigrationService;
@@ -36,6 +38,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Prepares fixed target identities from authenticated full evidence, without source COMMIT or pay import. */
 @Service("entitlementMigrationPlanService")
 public class EntitlementMigrationPlanServiceImpl implements EntitlementMigrationPlanService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private final EntMigrationPlanMapper plans;
     private final EntMigrationAliasMapper aliases;
     private final LegacyMigrationEvidenceReader evidence;
@@ -53,7 +57,7 @@ public class EntitlementMigrationPlanServiceImpl implements EntitlementMigration
     public PlanView prepare(CatalogScope scope,String stageNo,String reason,String key) {
         outside(scope);var command=new PlanCommand(stageNo,reason);ContractChecks.id(key);
         var replay=commands.replay(scope,EntitlementMigrationPlanWriter.OPERATION,key,command,PlanView.class);
-        if(replay.isPresent()) return replay.get();
+        if(replay.isPresent()) return numbered(replay.get(), scope.tenantNo());
         cipher.requireConfigured();
         var primary=evidence.owned(scope,stageNo);
         if(evidence.mode(primary)!=2) throw BizException.of(ErrorCode.ENTITLEMENT_FEATURE_UNAVAILABLE);
@@ -88,7 +92,7 @@ public class EntitlementMigrationPlanServiceImpl implements EntitlementMigration
         row.setPayloadCipher(cipher.encrypt(plaintext,aad(row)));
         return writer.claim(scope,command,key,row,sources,alias);
     }
-    public PlanView get(CatalogScope scope,String no) { outside(scope);return view(owned(scope,no)); }
+    public PlanView get(CatalogScope scope,String no) { outside(scope);return numbered(view(owned(scope,no)), scope.tenantNo()); }
     /** Validates ciphertext, target hash and the entire still-frozen source bundle. */
     public PlanView verify(CatalogScope scope,String no) {
         outside(scope);var row=owned(scope,no);var payload=decode(row);
@@ -99,7 +103,7 @@ public class EntitlementMigrationPlanServiceImpl implements EntitlementMigration
         }
         var report=migration.assess(scope,row.getStageNo());
         if(!"NORMALIZED".equals(report.status()) || !report.blockers().isEmpty()) conflict();
-        return view(row);
+        return numbered(view(row), scope.tenantNo());
     }
     /** Integrity-checked immutable plan header. Fresh source validation belongs inside the core source transaction. */
     public LegacyCouponMigrationPlan prepared(CatalogScope scope,String no) {
@@ -128,8 +132,9 @@ public class EntitlementMigrationPlanServiceImpl implements EntitlementMigration
     public EntMigrationPlan owned(CatalogScope scope,String no) {
         outside(scope);
         ContractChecks.id(no);
+        String sourceNo=documents.internal(DocumentType.ENTITLEMENT_MIGRATION_PLAN, scope.tenantNo(), no);
         var row=plans.selectOne(Wrappers.<EntMigrationPlan>lambdaQuery().eq(EntMigrationPlan::getTenantNo,scope.tenantNo())
-                .eq(EntMigrationPlan::getEntityNo,scope.entityNo()).eq(EntMigrationPlan::getPlanNo,no));
+                .eq(EntMigrationPlan::getEntityNo,scope.entityNo()).eq(EntMigrationPlan::getPlanNo,sourceNo));
         if(row==null) throw BizException.of(ErrorCode.NOT_FOUND);return row;
     }
     private LegacyCouponTargetPlan.SourceRef reference(EntMigrationStage row) {
@@ -142,6 +147,7 @@ public class EntitlementMigrationPlanServiceImpl implements EntitlementMigration
                 r.getEntityNo(),r.getRequestKey(),r.getCommandHash(),r.getReason(),r.getPlanHash(),r.getSourceBundleHash(),
                 r.getCryptoKeyId(),r.getPayloadBytes(),r.getAssetCount(),r.getArchivalCount(),r.getVersionCount(),r.getAssessedAt(),r.getCreatedBy()));
     }
+    private PlanView numbered(PlanView view, String tenant) { return view.withDocumentNo(documents.find(DocumentType.ENTITLEMENT_MIGRATION_PLAN, tenant, view.planNo())); }
     public static PlanView view(EntMigrationPlan row) {
         return new PlanView(row.getPlanNo(),row.getStageNo(),row.getEntityNo(),row.getMigrationBatchNo(),row.getStatus(),
                 row.getPlanHash(),row.getSourceBundleHash(),row.getAssetCount(),row.getArchivalCount(),row.getVersionCount(),

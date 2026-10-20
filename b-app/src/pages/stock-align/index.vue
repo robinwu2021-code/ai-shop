@@ -99,7 +99,7 @@ onShow(() => {
     <view v-if="batch" class="sh-card sh-mb-sm">
       <view class="sh-row sh-row--between">
         <text class="txt-strong">{{ batch.status === "PREVIEW" ? "对齐预览" : "批次处理结果" }}</text>
-        <text class="txt-caption sh-muted">{{ batch.batchNo }}</text>
+        <text v-if="batch.documentNo" class="txt-caption sh-muted">{{ batch.documentNo }}</text>
       </view>
       <text class="txt-caption sh-muted">{{ batch.mode === "MALL" ? "以线上库存为准" : "按已实地盘点" }} · {{ batch.completed }}项完成 · {{ batch.blocked }}项阻断 · {{ batch.waiting }}项等待</text>
       <view v-for="line in batch.rows" :key="line.skuNo" class="batch-line">

@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.migration.service;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
@@ -23,6 +25,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Dedup -> sorted evidence -> fixed plan -> sorted ownership -> target records, all one pay transaction. */
 @Component
 public class LegacyCouponMigrationImportWriter {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     public static final String OPERATION="MIGRATION_IMPORT";
     private final EntMigrationPlanMapper plans;
     private final EntMigrationStageMapper stages;
@@ -62,7 +66,7 @@ public class LegacyCouponMigrationImportWriter {
                     .eq(EntMigrationImport::getPlanNo,plan.planNo()));
             if(old!=null) {
                 if(!old.getPlanHash().equals(expected.getPlanHash()) || !old.getSourceDecisionNo().equals(proofs.getFirst().decisionNo())) conflict();
-                return view(old);
+                return numbered(old);
             }
             var ctx=new EntitlementContext(scope.tenantNo(),scope.actorNo(),key,expected.getPlanHash());
             var ownership=new ArrayList<Ownership>();
@@ -129,8 +133,8 @@ public class LegacyCouponMigrationImportWriter {
             receipt.setSourceDecisionNo(proofs.getFirst().decisionNo());receipt.setPlanHash(expected.getPlanHash());
             receipt.setSourceBundleHash(expected.getSourceBundleHash());receipt.setProofSnapshot(json.writeValueAsString(proofs));
             receipt.setHistoricalRecordCount((long)historicalFacts.size());receipt.setAssetCount(expected.getAssetCount());receipt.setArchivalCount(expected.getArchivalCount());
-            receipt.setImportedAt(EntitlementRecords.now());receipt.setStatus("IMPORTED");imports.insert(receipt);
-            return view(receipt);
+            receipt.setImportedAt(EntitlementRecords.now());receipt.setStatus("IMPORTED");imports.insert(receipt); documents.bind(DocumentType.ENTITLEMENT_MIGRATION_IMPORT, scope.tenantNo(), no);
+            return numbered(receipt);
         });
     }
     private EntTemplateVersion version(EntitlementContext ctx,String template,LegacyCouponTargetPlan.Version planned) {
@@ -146,6 +150,7 @@ public class LegacyCouponMigrationImportWriter {
         row.setPolicySnapshot(snapshot);row.setSnapshotHash(EntitlementRecords.digest(snapshot));row.setPublishedBy(ctx.actorNo());row.setPublishedAt(EntitlementRecords.now());
         return row;
     }
+    private ImportView numbered(EntMigrationImport row) { return view(row).withDocumentNo(documents.find(DocumentType.ENTITLEMENT_MIGRATION_IMPORT, row.getTenantNo(), row.getImportNo())); }
     public static ImportView view(EntMigrationImport row) {
         return new ImportView(row.getImportNo(),row.getPlanNo(),row.getEntityNo(),row.getSourceDecisionNo(),row.getPlanHash(),
                 row.getStatus(),row.getAssetCount(),row.getArchivalCount(),false,EntitlementRecords.instant(row.getImportedAt()));

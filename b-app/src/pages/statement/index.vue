@@ -51,6 +51,7 @@
       <text class="txt-strong">{{ t("statement.linesTitle") }}</text>
       <sh-empty v-if="!lines.length" :pending="!loaded" :failed="failed" @retry="load" bare :text="String(t('statement.empty'))"></sh-empty>
       <view v-for="l in lines" :key="l.settleNo" class="sh-row--divided">
+        <text v-if="l.documentNo" class="txt-caption sh-num">{{ l.documentNo }}</text>
         <view class="sh-row sh-row--between">
           <text class="txt-caption sh-num">{{ l.orderNo }}</text>
           <text class="txt-strong sh-num">{{ money(l.netMinor) }}</text>
@@ -153,7 +154,7 @@ function exportCsv() {
     t("statement.net"), t("statement.csvStatus"), t("statement.csvVoucher"),
   ].join(",");
   const rows = lines.value.map((l) => [
-    l.settleNo, l.orderNo,
+    l.documentNo ?? "", l.orderNo,
     (l.grossMinor / 100).toFixed(2), pct(l.commissionRate),
     (l.commissionMinor / 100).toFixed(2), (l.serviceFeeMinor / 100).toFixed(2),
     (l.freightIncomeMinor / 100).toFixed(2), (l.freightCostMinor / 100).toFixed(2),

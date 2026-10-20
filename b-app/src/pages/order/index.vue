@@ -556,9 +556,9 @@ onPullDownRefresh(async () => {
 
       <view class="sh-card">
         <view class="line sh-row sh-row--between">
-          <text class="sh-muted">{{ $t("order.no") }}</text>
+          <text v-if="order.documentNo" class="sh-muted">{{ $t("order.no") }}</text>
           <view class="sh-row no-row__v">
-            <text class="sh-num">{{ order.payOrderNo || order.orderNo }}</text>
+            <text v-if="order.documentNo" class="sh-num">{{ order.documentNo }}</text>
             <!-- 复制订单信息发给供应商（§5）。**不占一整行**：它是顺手动作，
                  而整宽按钮会把它读成这一页的主动作，挤掉真正的主动作（发货）。
                  贴在订单号右边：复制的正是这张卡上的东西 -->

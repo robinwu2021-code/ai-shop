@@ -445,6 +445,10 @@ export interface OrderStore {
   storeName?: string | null;
 }
 export interface Order {
+  /** Human order number (OD/OS); historical unmapped rows leave it empty. */
+  documentNo?: string | null;
+  /** Core main-order summary number (OD), corresponding to payOrderNo; not a Pay attempt number. */
+  payDocumentNo?: string | null;
   /** 订单单号 */
   orderNo: string;
   /**
@@ -820,6 +824,7 @@ export interface RefundExecutionProgress {
   nextAttemptAt?: number | null;
 }
 export interface AfterSale {
+  documentNo?: string | null;
   /**
    * 售后单号。**售后是独立资源，不是订单上的一个字段** ——
    * 它有自己的生命周期（申请→同意/驳回→寄回→收货→退款），能被取消、能上升平台，

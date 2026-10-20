@@ -1,5 +1,8 @@
 package ai.neargo.shop.promotion.service.impl;
 
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BaseEntity;
 import ai.neargo.shop.common.BizException;
@@ -52,6 +55,12 @@ import tools.jackson.databind.ObjectMapper;
 /** Published rules and participation budgets remain core facts, separate from pay issuance authorization. */
 @Service
 public class ActivityVersionServiceImpl implements ActivityVersionService {
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
     private final ActivityMapper heads;
     private final UnifiedActivityManagementMapper writes;
     private final PmtActivityVersionMapper versions;
@@ -82,8 +91,11 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
     }
 
     @Override
-    @Transactional("transactionManager")
     public ActivityView saveDraft(ActivityActor actor, SaveDraft command, String requestKey) {
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.MARKETING_ACTIVITY, 1), () -> saveDraftNumbered(actor, command, requestKey));
+    }
+
+    private ActivityView saveDraftNumbered(ActivityActor actor, SaveDraft command, String requestKey) {
         if (command == null) throw BizException.of(ErrorCode.BAD_REQUEST);
         var replay = commands.replay(actor, "ACTIVITY_DRAFT", requestKey, command, ActivityView.class);
         if (replay.isPresent()) {
@@ -117,7 +129,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
             row.setEndAt(d.schedule().endAt() == null ? null : d.schedule().endAt().toEpochMilli());
             row.setDraftSnapshot(json.writeValueAsString(d));
             row.setUpdatedAt(now()); row.setUpdatedBy(actor.actorNo());
-            if (command.activityNo() == null) changed(heads.insert(row));
+            if (command.activityNo() == null) changed(documentNumbers.bind(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", row, row.getActivityNo(), heads::insert, PmtActivity::setDocumentNo));
             else persist(row);
             return view(row);
         });
@@ -226,11 +238,11 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
                 || (status != null && !Set.of("DRAFT", "RUNNING", "PAUSED", "ENDED").contains(status))) {
             throw BizException.of(ErrorCode.BAD_REQUEST);
         }
-        var rows = DataScopeContext.executeWithoutScope(() -> heads.selectList(Wrappers.<PmtActivity>lambdaQuery()
+        var rows = DataScopeContext.executeWithoutScope(() -> documentNumbers.load(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", heads.selectList(Wrappers.<PmtActivity>lambdaQuery()
                 .eq(PmtActivity::getTenantNo, actor.tenantNo()).eq(PmtActivity::getEntityNo, actor.entityNo())
                 .isNotNull(PmtActivity::getDraftSnapshot).isNull(PmtActivity::getArchivedAt)
                 .eq(scene != null, PmtActivity::getScene, scene).eq(status != null, PmtActivity::getStatus, status)
-                .orderByDesc(PmtActivity::getId)));
+                .orderByDesc(PmtActivity::getId)), PmtActivity::getActivityNo, PmtActivity::setDocumentNo));
         List<ActivityView> visible = new ArrayList<>();
         for (var row : rows) if (visible(actor, definition(row))) visible.add(view(row));
         int start = (int) Math.min((page - 1) * size, visible.size());
@@ -239,10 +251,10 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
     }
 
     private PmtActivity owned(ActivityActor actor, String no, boolean lock) {
-        var row = DataScopeContext.executeWithoutScope(() -> heads.selectOne(Wrappers.<PmtActivity>lambdaQuery()
+        var row = DataScopeContext.executeWithoutScope(() -> documentNumbers.loadOne(DocumentType.MARKETING_ACTIVITY, "PMT", "pmt_activity", heads.selectOne(Wrappers.<PmtActivity>lambdaQuery()
                 .eq(PmtActivity::getTenantNo, actor.tenantNo()).eq(PmtActivity::getEntityNo, actor.entityNo())
                 .eq(PmtActivity::getActivityNo, no).isNotNull(PmtActivity::getDraftSnapshot)
-                .isNull(PmtActivity::getArchivedAt).last(lock ? "FOR UPDATE" : "")));
+                .isNull(PmtActivity::getArchivedAt).last(lock ? "FOR UPDATE" : "")), PmtActivity::getActivityNo, PmtActivity::setDocumentNo));
         if (row == null || !visible(actor, definition(row))) throw BizException.of(ErrorCode.NOT_FOUND);
         return row;
     }
@@ -347,7 +359,7 @@ public class ActivityVersionServiceImpl implements ActivityVersionService {
     }
     private ActivityView view(PmtActivity row) {
         return new ActivityView(row.getActivityNo(), row.getVersion(), row.getStatus(),
-                row.getCurrentVersionNo(), definition(row));
+                row.getCurrentVersionNo(), definition(row)).withDocumentNo(row.getDocumentNo());
     }
     private void persist(PmtActivity row) {
         changed(DataScopeContext.executeWithoutScope(() -> writes.update(row)));

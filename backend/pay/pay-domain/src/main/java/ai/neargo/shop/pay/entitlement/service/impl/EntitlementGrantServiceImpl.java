@@ -37,6 +37,8 @@ import tools.jackson.databind.ObjectMapper;
 /** External owner lookups precede grant locks; replay and finishing promises do not re-open issuance gates. */
 @Service
 public class EntitlementGrantServiceImpl implements EntitlementGrantService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private ai.neargo.shop.pay.entitlement.service.PayRightsDocumentNumbers documentNumbers;
     private final EntGrantMapper grants;
     private final EntitlementSourceFence fences;
     private final EntitlementCatalogService catalog;
@@ -155,6 +157,7 @@ public class EntitlementGrantServiceImpl implements EntitlementGrantService {
         }
     }
     @Override public GrantView query(EntitlementContext context, String entity, String no) {
+        no=documentNumbers.resolve(ai.neargo.shop.numbering.DocumentType.ENTITLEMENT_GRANT,context.tenantNo(),no);
         var row = grants.find(context.tenantNo(), no);
         if (row == null) {
             var fence = fences.find(context, "GRANT", no);

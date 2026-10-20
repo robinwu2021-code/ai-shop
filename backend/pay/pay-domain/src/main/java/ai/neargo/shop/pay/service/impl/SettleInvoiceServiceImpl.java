@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
@@ -16,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 /** {@link SettleInvoiceService} 实现。 */
 @Service
 public class SettleInvoiceServiceImpl implements SettleInvoiceService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
 
     private final SettleInvoiceMapper mapper;
 
@@ -30,7 +34,7 @@ public class SettleInvoiceServiceImpl implements SettleInvoiceService {
         var w = Wrappers.<StlSettleInvoice>lambdaQuery()
                 .eq(status != null && !status.isBlank(), StlSettleInvoice::getStatus, status);
         if (keyword != null && !keyword.isBlank()) {
-            String k = keyword.trim();
+            String k = documents.internal(DocumentType.SETTLEMENT_INVOICE_REQUEST, "MAIN", keyword.trim());
             w.and(q -> q.like(StlSettleInvoice::getInvoiceNo, k)
                     .or().like(StlSettleInvoice::getMerchantName, k)
                     .or().like(StlSettleInvoice::getTitle, k));
@@ -39,7 +43,7 @@ public class SettleInvoiceServiceImpl implements SettleInvoiceService {
         w.orderByAsc(StlSettleInvoice::getId);
         // 运营端全量开票队列 —— 不绕过（stl_settle_invoice 已登记 MERCHANT → entity_no）
         var pg = mapper.selectPage(new Page<>(p, s), w);
-        return PageData.of(pg.getRecords().stream().map(SettleInvoiceServiceImpl::toVO).toList(),
+        return PageData.of(documents.project(DocumentType.SETTLEMENT_INVOICE_REQUEST, pg.getRecords(), row -> "MAIN", StlSettleInvoice::getInvoiceNo, this::toVO),
                 pg.getTotal(), p, s);
     }
 
@@ -102,12 +106,12 @@ public class SettleInvoiceServiceImpl implements SettleInvoiceService {
         return iv;
     }
 
-    private static SettleInvoiceVO toVO(StlSettleInvoice iv) {
+    private SettleInvoiceVO toVO(StlSettleInvoice iv) {
         return new SettleInvoiceVO(iv.getInvoiceNo(), iv.getEntityNo(), iv.getMerchantName(),
                 iv.getPeriod(), WithdrawServiceImpl.nz(iv.getAmountMinor()),
                 WithdrawServiceImpl.nz(iv.getSettledAmountMinor()),
                 iv.getTitleType(), iv.getTitle(), iv.getTaxNo(), iv.getStatus(), iv.getSerialNo(),
                 WithdrawServiceImpl.iso(iv.getAppliedAt()),
-                WithdrawServiceImpl.iso(iv.getDecidedAt()), iv.getRemark());
+                WithdrawServiceImpl.iso(iv.getDecidedAt()), iv.getRemark()).withDocumentNo(documents.find(DocumentType.SETTLEMENT_INVOICE_REQUEST, "MAIN", iv.getInvoiceNo()));
     }
 }

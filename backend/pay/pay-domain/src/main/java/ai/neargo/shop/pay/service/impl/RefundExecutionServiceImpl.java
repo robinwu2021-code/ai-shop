@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.service.impl;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.channel.PayGateway;
@@ -16,6 +18,8 @@ import org.springframework.stereotype.Service;
 /** External sends occur only after the financial claim commits; uncertain sends are only queried. */
 @Service
 public class RefundExecutionServiceImpl implements RefundExecutionService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private final RefundPaymentStore store;
     private final RefundCapacityLedger capacity;
     private final PayGatewayRouter gateways;
@@ -33,7 +37,7 @@ public class RefundExecutionServiceImpl implements RefundExecutionService {
     public PaymentReceipt origin(String order, String trade, String channel) {
         StlPayment p = store.origin(order, trade, channel);
         return p == null ? null : new PaymentReceipt(p.getPaymentNo(), p.getOrderNo(), p.getUserNo(),
-                p.getPayChannel(), p.getTradeNo(), p.getAmountMinor(), p.getCurrency(), p.getStatus());
+                p.getPayChannel(), p.getTradeNo(), p.getAmountMinor(), p.getCurrency(), p.getStatus()).withDocumentNo(documents.find(DocumentType.PAYMENT_ATTEMPT, "MAIN", p.getPaymentNo()));
     }
 
     @Override

@@ -56,6 +56,7 @@ export interface CouponBestResult {
 }
 
 export interface Coupon {
+  documentNo?: string | null;
   /** 券单号 */
   couponNo: string;
   /** 券名，如「满 50 减 5」 */
@@ -333,6 +334,7 @@ export type CampaignType =
   | "BUY_GIFT"; // 买赠：买 N 送 M
 export type CampaignStatus = "DRAFT" | "RUNNING" | "PAUSED" | "ENDED";
 export interface MarketingCampaign {
+  documentNo?: string | null;
   /** 活动单号 */
   campaignNo: string;
   /** 所属商家。活动是店铺级的，不跨店 */
@@ -545,6 +547,7 @@ export interface MerchantCouponDraft {
  * 实发 25 张，只说「发放成功」的话，他会以为发出去 37 张 —— 直到某个顾客说没收到。
  */
 export interface CouponIssueBatch {
+  documentNo?: string | null;
   /** 这一批发放的编号 */
   issueNo: string;
   /** 券模板号 —— 一张券和它的模板是两个对象 */
@@ -672,6 +675,7 @@ export interface CouponRedeemResult {
  * 不给一个点进去说「暂无活动」的入口，那比没有入口更糟。
  */
 export interface MyFission {
+  documentNo?: string | null;
   /** 活动号。端上只用来回传，不显示 */
   fissionNo: string;
   /** 活动名，运营配的 */

@@ -29,7 +29,12 @@ public interface FissionService {
      */
     record CampaignVO(String fissionNo, String name, String rewardType, String couponNo,
                       int inviterCount, int inviteeCount, boolean enabled,
-                      int invitedCount, int convertedCount, String createdAt) {
+                      int invitedCount, int convertedCount, String createdAt, String documentNo) {
+        public CampaignVO(String fissionNo, String name, String rewardType, String couponNo,
+                      int inviterCount, int inviteeCount, boolean enabled,
+                      int invitedCount, int convertedCount, String createdAt) { this(fissionNo, name, rewardType, couponNo, inviterCount, inviteeCount, enabled, invitedCount, convertedCount, createdAt, null); }
+        public CampaignVO withDocumentNo(String number) { return new CampaignVO(fissionNo, name, rewardType, couponNo, inviterCount, inviteeCount, enabled, invitedCount, convertedCount, createdAt, number); }
+
     }
 
     record SaveCommand(String fissionNo, String name, String couponNo,
@@ -63,6 +68,11 @@ public interface FissionService {
      */
     record MyFissionVO(String fissionNo, String name, int inviterCount, int inviteeCount,
                        String couponTitle, long faceMinor, long thresholdMinor,
-                       int myInvited, int myConverted) {
+                       int myInvited, int myConverted, String documentNo) {
+        public MyFissionVO(String fissionNo, String name, int inviterCount, int inviteeCount,
+                       String couponTitle, long faceMinor, long thresholdMinor,
+                       int myInvited, int myConverted) { this(fissionNo, name, inviterCount, inviteeCount, couponTitle, faceMinor, thresholdMinor, myInvited, myConverted, null); }
+        public MyFissionVO withDocumentNo(String number) { return new MyFissionVO(fissionNo, name, inviterCount, inviteeCount, couponTitle, faceMinor, thresholdMinor, myInvited, myConverted, number); }
+
     }
 }

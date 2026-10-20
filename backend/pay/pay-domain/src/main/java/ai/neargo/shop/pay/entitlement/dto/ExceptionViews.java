@@ -26,8 +26,14 @@ public final class ExceptionViews {
         public DeadLetterPage { records=java.util.List.copyOf(records); }
     }
     public record ExceptionView(String exceptionNo,String entityNo,String kind,String bizNo,String status,
-                                Evidence evidence,String lastAction,long revision) { }
+                                Evidence evidence,String lastAction,long revision, String documentNo) {
+        public ExceptionView(String exceptionNo, String entityNo, String kind, String bizNo, String status, Evidence evidence, String lastAction, long revision) { this(exceptionNo, entityNo, kind, bizNo, status, evidence, lastAction, revision, null); }
+        public ExceptionView withDocumentNo(String documentNo) { return new ExceptionView(exceptionNo, entityNo, kind, bizNo, status, evidence, lastAction, revision, documentNo); }
+ }
     /** Audit metadata only; durable request keys and internal response snapshots never leave pay. */
     public record ActionView(String actionNo,String exceptionNo,String operationKind,String status,String actorNo,
-                             String reason,LocalDateTime createdAt,LocalDateTime updatedAt) { }
+                             String reason,LocalDateTime createdAt,LocalDateTime updatedAt, String documentNo) {
+        public ActionView(String actionNo, String exceptionNo, String operationKind, String status, String actorNo, String reason, LocalDateTime createdAt, LocalDateTime updatedAt) { this(actionNo, exceptionNo, operationKind, status, actorNo, reason, createdAt, updatedAt, null); }
+        public ActionView withDocumentNo(String documentNo) { return new ActionView(actionNo, exceptionNo, operationKind, status, actorNo, reason, createdAt, updatedAt, documentNo); }
+ }
 }

@@ -26,7 +26,14 @@ public record OpsAfterSaleVO(String afterSaleNo,
                              String liability,
                              long createdAt,
                              List<AfterSaleVO.TimelineNode> timeline,
-                             AfterSaleVO.RefundExecutionProgress refundExecution) {
+                             AfterSaleVO.RefundExecutionProgress refundExecution, String documentNo) {
+    public OpsAfterSaleVO(String afterSaleNo, String subOrderNo, String orderNo, String merchantNo, String merchantName, String buyerNickname, String type, String status, String reason, List<String> images, long refundMinor, boolean instant, String merchantRemark, String expressNo, String liability, long createdAt, List<AfterSaleVO.TimelineNode> timeline, AfterSaleVO.RefundExecutionProgress refundExecution) {
+        this(afterSaleNo, subOrderNo, orderNo, merchantNo, merchantName, buyerNickname, type, status, reason, images, refundMinor, instant, merchantRemark, expressNo, liability, createdAt, timeline, refundExecution, null);
+    }
+    public OpsAfterSaleVO withDocumentNo(String number) {
+        return new OpsAfterSaleVO(afterSaleNo, subOrderNo, orderNo, merchantNo, merchantName, buyerNickname, type, status, reason, images, refundMinor, instant, merchantRemark, expressNo, liability, createdAt, timeline, refundExecution, number);
+    }
+
     /** Retain existing callers; real query mapping supplies the original execution progress. */
     public OpsAfterSaleVO(String afterSaleNo, String subOrderNo, String orderNo, String merchantNo,
                          String merchantName, String buyerNickname, String type, String status, String reason,

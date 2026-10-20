@@ -39,7 +39,7 @@ export default function PointsAccountsPage() {
       <h3 className="txt-heading">{t("账务分录", "Ledger entries")}</h3>{entries.error && <Notice tone="warning">{entries.error.message}<Button onClick={() => void entries.refetch()}>{t("重试", "Retry")}</Button></Notice>}
       <DataTable columns={[
         { header: t("时间", "Time"), cell: (e) => e.at ? new Date(e.at).toLocaleString() : "—" },
-        { header: t("凭证 / 业务", "Voucher / business"), cell: (e) => <div><b>{e.voucherNo}</b><p className="txt-caption">{e.entryNo}</p></div> },
+        { header: t("凭证 / 业务", "Voucher / business"), cell: (e) => <div><b>{e.voucherDocumentNo ?? "—"}</b><p className="txt-caption">{e.entryNo}</p></div> },
         { header: t("分桶", "Bucket"), cell: (e) => e.bucket },
         { header: t("变化", "Delta"), numeric: true, cell: (e) => e.deltaPoints.toLocaleString() },
         { header: t("余额", "After"), numeric: true, cell: (e) => e.afterPoints.toLocaleString() },

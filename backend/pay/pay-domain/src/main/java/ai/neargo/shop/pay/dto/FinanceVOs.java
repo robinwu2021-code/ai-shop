@@ -29,7 +29,10 @@ public final class FinanceVOs {
     public record WithdrawVO(String withdrawNo, String merchantNo, String merchantName,
                              long amount, long availableBalance, String bankAccountMasked,
                              String status, String appliedAt, String decidedAt,
-                             String decidedBy, String remark) {
+                             String decidedBy, String remark, String documentNo) {
+        public WithdrawVO(String withdrawNo, String merchantNo, String merchantName, long amount, long availableBalance, String bankAccountMasked, String status, String appliedAt, String decidedAt, String decidedBy, String remark) { this(withdrawNo, merchantNo, merchantName, amount, availableBalance, bankAccountMasked, status, appliedAt, decidedAt, decidedBy, remark, null); }
+        public WithdrawVO withDocumentNo(String documentNo) { return new WithdrawVO(withdrawNo, merchantNo, merchantName, amount, availableBalance, bankAccountMasked, status, appliedAt, decidedAt, decidedBy, remark, documentNo); }
+
     }
 
     /**
@@ -44,7 +47,10 @@ public final class FinanceVOs {
                                   String period, long amount, long settledAmount,
                                   String titleType, String title, String taxNo,
                                   String status, String serialNo, String appliedAt,
-                                  String decidedAt, String remark) {
+                                  String decidedAt, String remark, String documentNo) {
+        public SettleInvoiceVO(String invoiceNo, String merchantNo, String merchantName, String period, long amount, long settledAmount, String titleType, String title, String taxNo, String status, String serialNo, String appliedAt, String decidedAt, String remark) { this(invoiceNo, merchantNo, merchantName, period, amount, settledAmount, titleType, title, taxNo, status, serialNo, appliedAt, decidedAt, remark, null); }
+        public SettleInvoiceVO withDocumentNo(String documentNo) { return new SettleInvoiceVO(invoiceNo, merchantNo, merchantName, period, amount, settledAmount, titleType, title, taxNo, status, serialNo, appliedAt, decidedAt, remark, documentNo); }
+
     }
 
     /**

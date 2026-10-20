@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.impl;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.common.BizKey;
 import ai.neargo.shop.pay.BillIdentity;
@@ -30,6 +32,8 @@ import ai.neargo.shop.pay.channel.master.PayChannelMasterService;
 
 @Service
 public class SettleBatchServiceImpl implements SettleBatchService {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
 
     private static final Logger log = LoggerFactory.getLogger(SettleBatchServiceImpl.class);
 
@@ -266,6 +270,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
         batch.setGrossMinor(0L);
         batch.setNetMinor(0L);
         DataScopeContext.executeWithoutScope(() -> batchMapper.insert(batch));
+        documents.bind(DocumentType.SETTLEMENT_BATCH, "MAIN", batch.getBatchNo());
         return batch;
     }
 
@@ -591,7 +596,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
         // B 端无锚点，放款记录同样绕过（与批次同一条理由）
         Map<String, ai.neargo.shop.pay.entity.StlPayout> latest =
                 DataScopeContext.executeWithoutScope(() -> latestPayouts(rows));
-        return rows.stream().map(b -> toVO(b, latest.get(b.getBatchNo()))).toList();
+        return documents.project(DocumentType.SETTLEMENT_BATCH, rows, row -> "MAIN", StlSettleBatch::getBatchNo, b -> toVO(b, latest.get(b.getBatchNo())));
     }
 
     /**
@@ -626,7 +631,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
                 .eq(byEntity, StlSettleBatch::getEntityNo, entityNo)
                 .orderByDesc(StlSettleBatch::getId));
         Map<String, ai.neargo.shop.pay.entity.StlPayout> latest = latestPayouts(rows);
-        return rows.stream().map(b -> toVO(b, latest.get(b.getBatchNo()))).toList();
+        return documents.project(DocumentType.SETTLEMENT_BATCH, rows, row -> "MAIN", StlSettleBatch::getBatchNo, b -> toVO(b, latest.get(b.getBatchNo())));
     }
 
     @Override
@@ -691,11 +696,11 @@ public class SettleBatchServiceImpl implements SettleBatchService {
                         .eq(StlSettleBatch::getBatchNo, batchNo).last("LIMIT 1"))));
     }
 
-    private static BatchVO toVO(StlSettleBatch b) {
+    private BatchVO toVO(StlSettleBatch b) {
         return toVO(b, null);
     }
 
-    private static BatchVO toVO(StlSettleBatch b, ai.neargo.shop.pay.entity.StlPayout p) {
+    private BatchVO toVO(StlSettleBatch b, ai.neargo.shop.pay.entity.StlPayout p) {
         return new BatchVO(b.getBatchNo(), b.getEntityNo(), b.getPayChannel(), b.getSettleCycle(),
                 nz(b.getPeriodFrom()), nz(b.getDueAt()), b.getReleasedAt(), b.getFreezeExpireAt(),
                 b.getStatus(), b.getBillCount() == null ? 0 : b.getBillCount(),
@@ -703,7 +708,7 @@ public class SettleBatchServiceImpl implements SettleBatchService {
                 b.getBlockedReason(), b.getBlockedAt(), b.getBlockExpireAt(),
                 b.getDecidedBy(), b.getDecideRemark(),
                 p == null ? null : p.getStatus(), p == null ? null : p.getPaymentRef(),
-                p == null ? null : p.getPaidAt());
+                p == null ? null : p.getPaidAt()).withDocumentNo(documents.find(DocumentType.SETTLEMENT_BATCH, "MAIN", b.getBatchNo()));
     }
 
     private ZoneId zoneOf() {

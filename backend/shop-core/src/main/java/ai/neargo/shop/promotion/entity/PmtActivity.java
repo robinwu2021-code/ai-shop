@@ -16,6 +16,9 @@ import lombok.Setter;
 @Setter
 @TableName("pmt_activity")
 public class PmtActivity extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     /** 无条件（发券型活动） */
     public static final String TRIGGER_NONE = "NONE";

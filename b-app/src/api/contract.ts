@@ -353,6 +353,7 @@ export interface Statement {
 
 /** 一行 = 一张结算单 */
 export interface StatementLine {
+  documentNo?: string | null;
   settleNo: string;
   orderNo: string;
   subOrderNo: string;

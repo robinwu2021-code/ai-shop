@@ -1,5 +1,7 @@
 package ai.neargo.shop.pay.migration.service;
 
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
@@ -26,6 +28,8 @@ import tools.jackson.databind.ObjectMapper;
 /** Shared authenticated evidence reader. Raw evidence stays inside pay migration, never in public metadata views. */
 @org.springframework.stereotype.Component
 public class LegacyMigrationEvidenceReader {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private final EntMigrationStageMapper stages;
     private final ObjectProvider<LegacyCouponFrozenSnapshotPort> sources;
     private final LegacySnapshotCipher cipher;
@@ -105,9 +109,10 @@ public class LegacyMigrationEvidenceReader {
     }
     public EntMigrationStage owned(CatalogScope scope,String no) {
         platform(scope); ContractChecks.id(no);
+        String sourceNo=documents.internal(DocumentType.ENTITLEMENT_MIGRATION_STAGE, scope.tenantNo(), no);
         var row=stages.selectOne(Wrappers.<EntMigrationStage>lambdaQuery()
                 .eq(EntMigrationStage::getTenantNo,scope.tenantNo()).eq(EntMigrationStage::getEntityNo,scope.entityNo())
-                .eq(EntMigrationStage::getStageNo,no));
+                .eq(EntMigrationStage::getStageNo,sourceNo));
         if(row==null) throw BizException.of(ErrorCode.NOT_FOUND);
         return row;
     }

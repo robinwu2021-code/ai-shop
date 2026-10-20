@@ -23,4 +23,11 @@ public class CoreDocumentNumberConfiguration {
             @Value("${shop.numbering.segment-size:100}") int size) {
         return new SegmentDocumentNumberGenerator(repository,new DocumentNumberProperties(ZoneId.of(zone),size));
     }
+    @Bean("coreDocumentNumberCoordinator")
+    public DocumentNumberCoordinator coordinator(@Qualifier("coreDocumentNumbers") JdbcDocumentNumberRepository repository,
+            @Qualifier("coreDocumentNumberGenerator") DocumentNumberGenerator generator,
+            @Qualifier("transactionManager") PlatformTransactionManager manager) {
+        return new DocumentNumberCoordinator(repository,generator,manager);
+    }
+
 }

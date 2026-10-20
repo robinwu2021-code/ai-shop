@@ -190,6 +190,7 @@ export interface PointsReceivablePage {
 }
 
 export interface Settlement {
+  documentNo?: string | null;
   /** 结算单号 */
   settleNo: string;
   /** 对应的子订单，**一条 = 一个子订单** */
@@ -259,6 +260,7 @@ export interface Settlement {
  * 出问题时要看的是后者。失败的记录也在这里。
  */
 export interface SplitLog {
+  documentNo?: string | null;
   /** 所属结算单 */
   settleNo: string;
   /** 对应的子订单 */
@@ -381,6 +383,7 @@ export const WITHDRAW_TRANSITIONS: Record<WithdrawStatus, WithdrawStatus[]> = {
 };
 
 export interface Withdrawal {
+  documentNo?: string | null;
   /** 提现单号 */
   withdrawNo: string;
   /** 申请商家 */
@@ -413,6 +416,7 @@ export type InvoiceTitleType = "COMPANY" | "PERSONAL";
 export type InvoiceStatus = "PENDING" | "ISSUED" | "REJECTED";
 
 export interface InvoiceRequest {
+  documentNo?: string | null;
   /** 开票申请单号 */
   invoiceNo: string;
   /** 申请商家 */
@@ -488,6 +492,8 @@ export interface TaxRule {
  * 只会去问开票的人，而对方也不知道。
  */
 export interface PurchaseInvoice {
+  settleDocumentNos?: string[];
+  documentNo?: string | null;
   /** 平台侧的进项票记录号（不是发票上印的号） */
   invoiceNo: string;
   /** 哪家商家的票 */
@@ -538,6 +544,7 @@ export interface PurchaseInvoice {
  * 前两个此前已有类型，本类型是补的 —— 它按订单走（`orderNo`），前两个按主体/账期走。
  */
 export interface BuyerInvoiceRequest {
+  documentNo?: string | null;
   /** 开票申请号 */
   requestNo: string;
   /** 针对哪一单 */
@@ -637,6 +644,7 @@ export interface ChannelMessage {
  * 不要存进任何全局 state、不要打日志。
  */
 export interface PayoutRow {
+  settleDocumentNos?: string[];
   /**
    * 放款单号（V391）。**有号的按号回填凭证**（`payPayout`），
    * 没号的是存量老路（逐张 `payPayable`）。两条路并存到存量清零。
@@ -873,6 +881,7 @@ export interface PayChannelSetting {
  * 所以这一页回答的是「这家的钱卡在哪一批」，而不是「这一笔多少钱」。
  */
 export interface SettleBatch {
+  documentNo?: string | null;
   /** 批次号。**商家在自己的账期页上看到的是同一个号**，客服照它对话 */
   batchNo: string;
   /** 收款主体号 */
@@ -1713,6 +1722,7 @@ export interface PointsFreeze {
   reason: string;
 }
 export interface PointsVoucherView {
+  documentNo?: string | null;
   /** 持久记录主键 */
   id: number;
   /** 原记账凭证编号 */
@@ -1764,6 +1774,7 @@ export interface PointsCursorPage<T> {
   hasMore: boolean;
 }
 export interface PointsEntryView {
+  voucherDocumentNo?: string | null;
   /** 持久记录主键 */
   id: number;
   /** 不可变积分分录编号 */
@@ -1784,6 +1795,7 @@ export interface PointsEntryView {
   at: number;
 }
 export interface PointsFlowView {
+  voucherDocumentNo?: string | null;
   /** 持久记录主键 */
   id: number;
   /** 不可变资金池流水号 */

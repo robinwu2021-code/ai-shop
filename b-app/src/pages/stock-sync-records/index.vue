@@ -52,7 +52,7 @@ onShow(async () => { await merchant.ensureStores(); await load(); });
       </view>
       <view class="txt-caption sh-muted detail">{{ resultText(record) }}</view>
       <view class="txt-caption sh-muted detail">{{ record.reason }} · {{ record.updatedAt }}</view>
-      <view class="txt-caption sh-muted detail">操作号：{{ record.operationNo }}</view>
+      <view v-if="record.documentNo" class="txt-caption sh-muted detail">操作号：{{ record.documentNo }}</view>
     </view>
   </sh-scaffold>
 </template>

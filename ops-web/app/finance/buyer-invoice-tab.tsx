@@ -50,7 +50,7 @@ export function BuyerInvoiceTab({ c, canIssue }: { c: FinanceCopy; canIssue: boo
       cell: (r) => (
         <div>
           <div className="font-mono txt-body">{r.orderNo}</div>
-          <div className="txt-caption text-muted-foreground">{r.requestNo}</div>
+          <div className="txt-caption text-muted-foreground">{r.documentNo ?? "—"}</div>
         </div>
       ),
       width: "13rem",

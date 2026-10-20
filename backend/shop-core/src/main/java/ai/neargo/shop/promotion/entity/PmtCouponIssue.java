@@ -16,6 +16,9 @@ import lombok.Setter;
 @Setter
 @TableName("pmt_coupon_issue")
 public class PmtCouponIssue extends BaseEntity {
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String documentNo;
+
 
     private String issueNo;
     private String couponNo;

@@ -240,7 +240,10 @@ public interface SettleService {
      */
     record SplitLogVO(String settleNo, String subOrderNo, String splitAction,
                       long amountMinor, String result, String requestNo,
-                      String providerNo, String message, long createdAt) {
+                      String providerNo, String message, long createdAt, String documentNo) {
+        public SplitLogVO(String settleNo, String subOrderNo, String splitAction, long amountMinor, String result, String requestNo, String providerNo, String message, long createdAt) { this(settleNo, subOrderNo, splitAction, amountMinor, result, requestNo, providerNo, message, createdAt, null); }
+        public SplitLogVO withDocumentNo(String documentNo) { return new SplitLogVO(settleNo, subOrderNo, splitAction, amountMinor, result, requestNo, providerNo, message, createdAt, documentNo); }
+
     }
 
     /**

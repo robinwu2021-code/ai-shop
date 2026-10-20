@@ -1,4 +1,6 @@
 package ai.neargo.shop.pay.entitlement.service;
+import ai.neargo.shop.pay.numbering.PayOperationsDocuments;
+import ai.neargo.shop.numbering.DocumentType;
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.pay.entitlement.dto.CatalogScope;
@@ -15,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 @Component
 public class EntitlementExceptionActionWriter {
+    @org.springframework.beans.factory.annotation.Autowired
+    private PayOperationsDocuments documents;
     private final PayEntExceptionMapper exceptions;
     private final PayEntExceptionActionMapper actions;
     private final ObjectMapper json;
@@ -47,6 +51,7 @@ public class EntitlementExceptionActionWriter {
         action.setEntityNo(scope.entityNo()); action.setActorNo(scope.actorNo()); actions.claim(action);
         var claimed=actions.lock(scope.tenantNo(),key);
         if(!hash.equals(claimed.getPayloadHash())) throw BizException.of(ErrorCode.CONFLICT);
+        documents.bind(DocumentType.ENTITLEMENT_EXCEPTION_ACTION, scope.tenantNo(), claimed.getActionNo());
         row.setStatus("PROCESSING"); row.setLastAction(mode); row.setHandledBy(scope.actorNo());
         row.setHandledAt(EntitlementRecords.now()); row.setUpdatedAt(row.getHandledAt()); row.setUpdatedBy(scope.actorNo());
         EntitlementRecords.changed(exceptions.updateById(row));
@@ -73,7 +78,7 @@ public class EntitlementExceptionActionWriter {
         row.setUpdatedAt(row.getHandledAt()); row.setUpdatedBy(scope.actorNo());
         EntitlementRecords.changed(exceptions.updateById(row));
         var view=new ExceptionView(row.getExceptionNo(),row.getEntityNo(),row.getKind(),row.getBizNo(),row.getStatus(),
-                json.readValue(row.getEvidence(),Evidence.class),row.getLastAction(),row.getVersion());
+                json.readValue(row.getEvidence(),Evidence.class),row.getLastAction(),row.getVersion()).withDocumentNo(documents.find(DocumentType.ENTITLEMENT_EXCEPTION, row.getTenantNo(), row.getExceptionNo()));
         action.setStatus("DONE"); action.setResponseSnapshot(json.writeValueAsString(view));
         action.setUpdatedAt(EntitlementRecords.now()); action.setUpdatedBy(scope.actorNo());
         EntitlementRecords.changed(actions.updateById(action));

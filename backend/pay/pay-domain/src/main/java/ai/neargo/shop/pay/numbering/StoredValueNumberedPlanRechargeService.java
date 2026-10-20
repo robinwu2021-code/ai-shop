@@ -8,6 +8,8 @@ import ai.neargo.shop.spi.storedvalue.StoredValuePlanRecharges.*;
 import ai.neargo.shop.spi.storedvalue.StoredValuePort.RechargeView;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import ai.neargo.shop.numbering.store.DocumentNumberCoordinator;
 import java.util.Objects;
 import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -28,20 +30,23 @@ public class StoredValueNumberedPlanRechargeService implements StoredValuePlanRe
     private final DocumentNumberService numbers;
     private final TransactionTemplate transaction;
     private final ObjectMapper json;
+    private final DocumentNumberCoordinator coordinator;
     public StoredValueNumberedPlanRechargeService(
             @Qualifier("storedValuePlanRechargeServiceImpl") StoredValuePlanRechargeService direct,
             SvRechargeMapper recharges,
             @Qualifier("payDocumentNumberGenerator") DocumentNumberGenerator generator,
             @Qualifier("payDocumentNumbers") DocumentNumberService numbers,
-            @Qualifier("payTxManager") PlatformTransactionManager manager,ObjectMapper json) {
+            @Qualifier("payTxManager") PlatformTransactionManager manager,ObjectMapper json,
+            @Qualifier("payDocumentNumberCoordinator") DocumentNumberCoordinator coordinator) {
         this.direct=direct;this.recharges=recharges;this.generator=generator;this.numbers=numbers;
-        this.transaction=new TransactionTemplate(manager);this.json=json;
+        this.transaction=new TransactionTemplate(manager);this.json=json;this.coordinator=coordinator;
     }
     @Override public RechargeView create(EntitlementContext context,String entity,Create command) {
         return numbered(context,entity,()->direct.create(context,entity,command));
     }
     @Override public RechargeView confirmOffline(EntitlementContext context,String entity,Create command) {
-        return numbered(context,entity,()->direct.confirmOffline(context,entity,command));
+        return coordinator.withReservation(Map.of(DocumentType.SV_VOUCHER,1),
+            ()->numbered(context,entity,()->direct.confirmOffline(context,entity,command)));
     }
     private RechargeView numbered(EntitlementContext context,String entity,Supplier<RechargeView> action) {
         String internal=no("PR",List.of(context.tenantNo(),entity,context.actorNo(),context.requestId()),json);
@@ -72,7 +77,13 @@ public class StoredValueNumberedPlanRechargeService implements StoredValuePlanRe
             result.revision(),result.customerNo(),number);
     }
     @Override public RechargeView query(EntitlementContext c,String entity,String rechargeNo) {
-        return decorate(c,direct.query(c,entity,rechargeNo));
+        String original=rechargeNo;
+        if(DocumentNumberFormatter.isValid(DocumentType.SV_RECHARGE,rechargeNo)) {
+            original=numbers.resolve(c.tenantNo(),DocumentType.SV_RECHARGE,rechargeNo)
+                .filter(source->"PAY".equals(source.sourceSystem()) && "SV_RECHARGE".equals(source.resourceType()))
+                .map(DocumentSource::sourceNo).orElseThrow(()->ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.NOT_FOUND));
+        }
+        return decorate(c,direct.query(c,entity,original));
     }
     @Override public ReplayResult replay(EntitlementContext c,String entity,Replay command) {
         var result=direct.replay(c,entity,command);

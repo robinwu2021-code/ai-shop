@@ -1,5 +1,8 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
+
 import ai.neargo.common.data.scope.DataScopeContext;
 import ai.neargo.shop.auth.SecurityUtils;
 import ai.neargo.shop.common.BizException;
@@ -21,6 +24,12 @@ import java.util.List;
 /** {@link InvoiceRequestService} 的实现。手工开票版，口径见接口注释。 */
 @Service
 public class InvoiceRequestServiceImpl implements InvoiceRequestService {
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
 
     private final InvoiceRequestMapper mapper;
     private final PaymentMapper orderMapper;
@@ -31,8 +40,11 @@ public class InvoiceRequestServiceImpl implements InvoiceRequestService {
     }
 
     @Override
-    @Transactional
     public InvoiceRequestVO apply(ApplyCommand cmd) {
+        return documentNumbers.transaction(java.util.Map.of(DocumentType.TRADE_INVOICE_REQUEST, 1), () -> applyNumbered(cmd));
+    }
+
+    private InvoiceRequestVO applyNumbered(ApplyCommand cmd) {
         String userNo = SecurityUtils.currentUserNo();
         // 属主鉴权放在查询条件里，而不是查出来再判 —— 防 IDOR 的第一层
         OrdOrder order = orderMapper.selectOne(Wrappers.<OrdOrder>lambdaQuery()
@@ -88,24 +100,24 @@ public class InvoiceRequestServiceImpl implements InvoiceRequestService {
         // 金额落快照：后续退款会改订单金额，而已开的票不会跟着变
         r.setAmountMinor(order.getPayAmount() == null ? 0L : order.getPayAmount());
         r.setStatus(OrdInvoiceRequest.REQUESTED);
-        mapper.insert(r);
+        documentNumbers.bind(DocumentType.TRADE_INVOICE_REQUEST, "CORE_TRADE", "ord_invoice_request", r, r.getRequestNo(), mapper::insert, OrdInvoiceRequest::setDocumentNo);
         return toVO(r);
     }
 
     @Override
     public List<InvoiceRequestVO> mine() {
-        return mapper.selectList(Wrappers.<OrdInvoiceRequest>lambdaQuery()
+        return documentNumbers.load(DocumentType.TRADE_INVOICE_REQUEST, "CORE_TRADE", "ord_invoice_request", mapper.selectList(Wrappers.<OrdInvoiceRequest>lambdaQuery()
                         .eq(OrdInvoiceRequest::getUserNo, SecurityUtils.currentUserNo())
-                        .orderByDesc(OrdInvoiceRequest::getId))
+                        .orderByDesc(OrdInvoiceRequest::getId)), OrdInvoiceRequest::getRequestNo, OrdInvoiceRequest::setDocumentNo)
                 .stream().map(this::toVO).toList();
     }
 
     @Override
     public InvoiceRequestVO ofOrder(String orderNo) {
-        OrdInvoiceRequest r = mapper.selectOne(Wrappers.<OrdInvoiceRequest>lambdaQuery()
+        OrdInvoiceRequest r = documentNumbers.loadOne(DocumentType.TRADE_INVOICE_REQUEST, "CORE_TRADE", "ord_invoice_request", mapper.selectOne(Wrappers.<OrdInvoiceRequest>lambdaQuery()
                 .eq(OrdInvoiceRequest::getOrderNo, orderNo)
                 .eq(OrdInvoiceRequest::getUserNo, SecurityUtils.currentUserNo())
-                .last("limit 1"));
+                .last("limit 1")), OrdInvoiceRequest::getRequestNo, OrdInvoiceRequest::setDocumentNo);
         return r == null ? null : toVO(r);
     }
 
@@ -115,9 +127,9 @@ public class InvoiceRequestServiceImpl implements InvoiceRequestService {
                 .eq(status != null && !status.isBlank(), OrdInvoiceRequest::getStatus, status)
                 // 先到先开：手工处理时顺序就是公平性
                 .orderByAsc(OrdInvoiceRequest::getId);
-        return DataScopeContext.executeWithoutScope(() ->
+        return documentNumbers.load(DocumentType.TRADE_INVOICE_REQUEST, "CORE_TRADE", "ord_invoice_request", DataScopeContext.executeWithoutScope(() ->
                         mapper.selectPage(new Page<>(Math.max(page, 1), Math.max(size, 1)), w))
-                .getRecords().stream().map(this::toVO).toList();
+                .getRecords(), OrdInvoiceRequest::getRequestNo, OrdInvoiceRequest::setDocumentNo).stream().map(this::toVO).toList();
     }
 
     @Override
@@ -162,14 +174,14 @@ public class InvoiceRequestServiceImpl implements InvoiceRequestService {
     // ---------------------------------------------------------------- 内部
 
     private OrdInvoiceRequest ofOrderRaw(String orderNo) {
-        return mapper.selectOne(Wrappers.<OrdInvoiceRequest>lambdaQuery()
-                .eq(OrdInvoiceRequest::getOrderNo, orderNo).last("limit 1"));
+        return documentNumbers.loadOne(DocumentType.TRADE_INVOICE_REQUEST, "CORE_TRADE", "ord_invoice_request", mapper.selectOne(Wrappers.<OrdInvoiceRequest>lambdaQuery()
+                .eq(OrdInvoiceRequest::getOrderNo, orderNo).last("limit 1")), OrdInvoiceRequest::getRequestNo, OrdInvoiceRequest::setDocumentNo);
     }
 
     private OrdInvoiceRequest requireRequest(String requestNo) {
         OrdInvoiceRequest r = DataScopeContext.executeWithoutScope(() ->
-                mapper.selectOne(Wrappers.<OrdInvoiceRequest>lambdaQuery()
-                        .eq(OrdInvoiceRequest::getRequestNo, requestNo).last("limit 1")));
+                documentNumbers.loadOne(DocumentType.TRADE_INVOICE_REQUEST, "CORE_TRADE", "ord_invoice_request", mapper.selectOne(Wrappers.<OrdInvoiceRequest>lambdaQuery()
+                        .eq(OrdInvoiceRequest::getRequestNo, requestNo).last("limit 1")), OrdInvoiceRequest::getRequestNo, OrdInvoiceRequest::setDocumentNo));
         if (r == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -186,6 +198,6 @@ public class InvoiceRequestServiceImpl implements InvoiceRequestService {
                 r.getAmountMinor() == null ? 0L : r.getAmountMinor(),
                 r.getStatus(), r.getInvoiceNo(), r.getIssuedAt(), r.getRejectReason(),
                 r.getCreatedAt() == null ? null
-                        : r.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+                        : r.getCreatedAt().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()).withDocumentNo(r.getDocumentNo());
     }
 }

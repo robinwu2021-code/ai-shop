@@ -1,5 +1,8 @@
 package ai.neargo.shop.trade.service.impl;
 
+import ai.neargo.shop.numbering.DocumentType;
+import ai.neargo.shop.promotion.service.CoreMarketingDocumentNumbers;
+
 import ai.neargo.shop.trade.order.command.OrderActor;
 import ai.neargo.shop.trade.order.refund.model.RefundPlan;
 import ai.neargo.shop.trade.order.refund.model.RefundLine;
@@ -71,6 +74,12 @@ import java.util.Objects;
  */
 @Service
 public class AfterSaleServiceImpl implements AfterSaleService {
+    private CoreMarketingDocumentNumbers documentNumbers;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void setDocumentNumbers(CoreMarketingDocumentNumbers documentNumbers) {
+        this.documentNumbers = documentNumbers;
+    }
+
     private final ai.neargo.shop.trade.order.refund.service.RefundObligationService refundObligations;
     private final PointsRefundResourceService pointsResources;
 
@@ -274,8 +283,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     // ---------------------------------------------------------------- C 端
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
     public AfterSaleVO apply(String subOrderNo, ApplyCommand cmd) {
+        return documentNumbers.withReservation(java.util.Map.of(DocumentType.AFTER_SALE, 1), () -> refundTransactions.execute(status -> applyNumbered(subOrderNo, cmd)));
+    }
+
+    private AfterSaleVO applyNumbered(String subOrderNo, ApplyCommand cmd) {
         // 售后定位日志（2026-10-11 店主反馈退款"数据不存在"）：先把"谁在退哪一单、带没带图"记下来
         LOG.info("[after-sale] apply 进入 subOrderNo={} currentUser={} type={} hasReason={} imageCount={}",
                 subOrderNo, SecurityUtils.currentUserNo(),
@@ -381,7 +393,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         as.setInstant(false);
         // 库内占位：并发两次申请只一张成功（上面的 activeOf 是先查后插，挡不住两个实例同时到）
         slots.occupy(subOrderNo, as.getAfterSaleNo());
-        afterSaleMapper.insert(as);
+        documentNumbers.bind(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", as, as.getAfterSaleNo(), afterSaleMapper::insert, OrdAfterSale::setDocumentNo);
         requestPlanner.save(as.getAfterSaleNo(), plan);
         // 日志要写**真实去向**：自营单没有「等商家处理」这一步，
         // 写成一样的话，用户看时间线会以为在等商家，而实际在等平台
@@ -403,8 +415,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.READ_COMMITTED)
     public java.util.Optional<AfterSaleVO> systemRefund(String subOrderNo, String reason, String label) {
+        return documentNumbers.withReservation(java.util.Map.of(DocumentType.AFTER_SALE, 1), () -> refundTransactions.execute(status -> systemRefundNumbered(subOrderNo, reason, label)));
+    }
+
+    private java.util.Optional<AfterSaleVO> systemRefundNumbered(String subOrderNo, String reason, String label) {
         lockRefundChild(subOrderNo);
         OrdSubOrder sub = subOrderOf(subOrderNo);
         if (sub == null) {
@@ -445,7 +460,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             // 另一个实例刚建了一张：交给它，不建第二张（与上面「已有一张在路上」同一个口径）
             return java.util.Optional.ofNullable(activeOf(subOrderNo)).map(this::detailOf);
         }
-        DataScopeContext.executeWithoutScope(() -> afterSaleMapper.insert(as));
+        DataScopeContext.executeWithoutScope(() -> documentNumbers.bind(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", as, as.getAfterSaleNo(), afterSaleMapper::insert, OrdAfterSale::setDocumentNo));
         appendLog(subOrderNo, OrdAfterSale.REFUNDING, label, OrdStatusLog.BY_SYSTEM, null);
         doRefund(as, label, AfterSaleEvent.TRADE_VOID, Actor.SYSTEM, null);
         return java.util.Optional.of(detailOf(as));
@@ -453,16 +468,16 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     private java.util.Optional<OrdAfterSale> latestOf(String subOrderNo) {
         return java.util.Optional.ofNullable(DataScopeContext.executeWithoutScope(() ->
-                afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+                documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
                         .eq(OrdAfterSale::getSubOrderNo, subOrderNo)
-                        .orderByDesc(OrdAfterSale::getId).last("limit 1"))));
+                        .orderByDesc(OrdAfterSale::getId).last("limit 1")), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo)));
     }
 
     @Override
     public List<AfterSaleVO> myList() {
-        return afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
+        return documentNumbers.load(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
                         .eq(OrdAfterSale::getUserNo, SecurityUtils.currentUserNo())
-                        .orderByDesc(OrdAfterSale::getId)).stream()
+                        .orderByDesc(OrdAfterSale::getId)), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo).stream()
                 .map(this::detailOf).toList();
     }
 
@@ -519,7 +534,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             w.eq(OrdAfterSale::getStatus, status);
         }
         w.orderByDesc(OrdAfterSale::getId);
-        return DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectList(w))
+        return DataScopeContext.executeWithoutScope(() -> documentNumbers.load(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectList(w), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo))
                 .stream().map(as -> {
                     AfterSaleVO vo = detailOf(as);
                     // 待处理的才算「同意之后会退回什么」—— 已经处理完的，说了也改变不了什么
@@ -546,7 +561,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         query.orderByDesc(OrdAfterSale::getId);
         var rows = DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectPage(
                 com.baomidou.mybatisplus.extension.plugins.pagination.Page.of(page, size), query));
-        return ai.neargo.shop.common.PageData.of(rows.getRecords().stream().map(as -> {
+        return ai.neargo.shop.common.PageData.of(documentNumbers.load(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", rows.getRecords(), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo).stream().map(as -> {
             AfterSaleVO vo = detailOf(as);
             return pending ? vo.withImpact(impactOf(as)) : vo;
         }).toList(), rows.getTotal(), page, size);
@@ -554,9 +569,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     @Override
     public AfterSaleVO merchantDetail(String merchantNo, String storeNo, String afterSaleNo) {
-        OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectOne(
+        OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(
                 Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getAfterSaleNo, afterSaleNo)
-                        .eq(OrdAfterSale::getEntityNo, merchantNo).last("limit 1")));
+                        .eq(OrdAfterSale::getEntityNo, merchantNo).last("limit 1")), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo));
         OrdSubOrder sub = as == null ? null : subOrderOf(as.getSubOrderNo());
         if (sub == null || storeNo == null || !storeNo.equals(sub.getStoreNo())) {
             throw BizException.of(ErrorCode.NOT_FOUND);
@@ -573,12 +588,12 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 || !merchantNo.equals(sub.getEntityNo())) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
-        OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectOne(
+        OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(
                 Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getSubOrderNo, subOrderNo)
                         .eq(OrdAfterSale::getEntityNo, merchantNo)
                         .notIn(OrdAfterSale::getStatus, OrdAfterSale.REFUNDED,
                                 OrdAfterSale.REJECTED, OrdAfterSale.CLOSED)
-                        .orderByDesc(OrdAfterSale::getId).last("limit 1")));
+                        .orderByDesc(OrdAfterSale::getId).last("limit 1")), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo));
         return as == null ? null : detailOf(as);
     }
 
@@ -805,11 +820,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Override
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public void settleOnReceipt(String subOrderNo) {
-        OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectOne(
+        OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(
                 Wrappers.<OrdAfterSale>lambdaQuery()
                         .eq(OrdAfterSale::getSubOrderNo, subOrderNo)
                         .eq(OrdAfterSale::getStatus, OrdAfterSale.WAIT_RECEIPT)
-                        .last("limit 1")));
+                        .last("limit 1")), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo));
         if (as == null) {
             return;
         }
@@ -978,10 +993,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     // ---------------------------------------------------------------- 装配
 
     private OrdAfterSale own(String afterSaleNo) {
-        OrdAfterSale as = afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+        OrdAfterSale as = documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
                 .eq(OrdAfterSale::getAfterSaleNo, afterSaleNo)
                 .eq(OrdAfterSale::getUserNo, SecurityUtils.currentUserNo())
-                .last("limit 1"));
+                .last("limit 1")), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo);
         if (as == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -997,26 +1012,26 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     /** 商家侧：属主是 merchantNo。查不到即 404 —— 不区分「不存在」与「不是你的」。 */
     private OrdAfterSale ofMerchant(String merchantNo, String afterSaleNo) {
         OrdAfterSale as = DataScopeContext.executeWithoutScope(() ->
-                afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+                documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
                         .eq(OrdAfterSale::getAfterSaleNo, afterSaleNo)
                         .eq(OrdAfterSale::getEntityNo, merchantNo)
-                        .last("limit 1")));
+                        .last("limit 1")), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo));
         if (as == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
         lockRefundChild(as.getSubOrderNo());
-        return DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectOne(
+        return DataScopeContext.executeWithoutScope(() -> documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(
                 Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getAfterSaleNo, afterSaleNo)
-                        .eq(OrdAfterSale::getEntityNo, merchantNo)));
+                        .eq(OrdAfterSale::getEntityNo, merchantNo)), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo));
     }
 
     private OrdAfterSale activeOf(String subOrderNo) {
         return DataScopeContext.executeWithoutScope(() ->
-                afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+                documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
                         .eq(OrdAfterSale::getSubOrderNo, subOrderNo)
                         .notIn(OrdAfterSale::getStatus,
                                 List.of(OrdAfterSale.CLOSED, OrdAfterSale.REJECTED, OrdAfterSale.REFUNDED))
-                        .last("limit 1")));
+                        .last("limit 1")), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo));
     }
 
     private OrdSubOrder ownSubOrder(String subOrderNo) {
@@ -1075,10 +1090,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          * 取第一张的话，订单详情会一直显示那张已经作废的驳回单，
          * 而用户正在等的是新提的那张。
          */
-        OrdAfterSale as = afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+        OrdAfterSale as = documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
                 .eq(OrdAfterSale::getSubOrderNo, subOrderNo)
                 .orderByDesc(OrdAfterSale::getId)
-                .last("limit 1"));
+                .last("limit 1")), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo);
         return java.util.Optional.ofNullable(as).map(this::detailOf);
     }
 
@@ -1105,7 +1120,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 as.getRefundMode(), as.getRefundPoints(), as.getApprovedMinor(), as.getFulfillStage(),
                 OrdAfterSale.WAIT_RECEIPT.equals(as.getStatus()), escalationOpen(as), refundProgress(as), returnItems,
                 as.getReturnReceivedAt() == null ? null
-                        : stockPort.returnReceiptStatus("RR-" + as.getAfterSaleNo()));
+                        : stockPort.returnReceiptStatus("RR-" + as.getAfterSaleNo())).withDocumentNo(as.getDocumentNo());
     }
 
     private List<AfterSaleVO.ReturnItem> returnItems(OrdAfterSale as) {
@@ -1195,14 +1210,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         if (storeNo == null || storeNo.isBlank() || afterSaleNos == null || afterSaleNos.isEmpty()) {
             return java.util.Set.of();
         }
-        return DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectList(
+        return DataScopeContext.executeWithoutScope(() -> documentNumbers.load(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectList(
                 Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getEntityNo, merchantNo)
                         .in(OrdAfterSale::getAfterSaleNo, afterSaleNos)
                         .in(OrdAfterSale::getStatus, OrdAfterSale.APPLIED,
                                 OrdAfterSale.RETURNING, OrdAfterSale.WAIT_RECEIPT)
                         .apply("EXISTS (SELECT 1 FROM ord_sub_order so WHERE so.sub_order_no = "
                                 + "ord_after_sale.sub_order_no AND so.store_no = {0} AND so.deleted = 0)",
-                                storeNo)))
+                                storeNo)), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo))
                 .stream().map(OrdAfterSale::getAfterSaleNo).collect(java.util.stream.Collectors.toSet());
     }
 
@@ -1223,13 +1238,13 @@ public class AfterSaleServiceImpl implements AfterSaleService {
          * 正是数据域该起作用的地方。这一页上有商家名与买家昵称 ——
          * 配了商家域的运营不该看到别家的工单，而下一步动作是裁决赔付。
          */
-        return afterSaleMapper.selectList(w).stream().map(this::opsDetailOf).toList();
+        return documentNumbers.load(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectList(w), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo).stream().map(this::opsDetailOf).toList();
     }
 
     @Override
     public OpsAfterSaleVO recoverRefund(String afterSaleNo, String operatorNo) {
-        OrdAfterSale as = afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
-                .eq(OrdAfterSale::getAfterSaleNo, afterSaleNo));
+        OrdAfterSale as = documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+                .eq(OrdAfterSale::getAfterSaleNo, afterSaleNo)), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo);
         if (as == null) {
             throw BizException.of(ErrorCode.NOT_FOUND);
         }
@@ -1239,7 +1254,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             throw BizException.of(ErrorCode.ORDER_STATE_ILLEGAL);
         }
         basicRefunds.recover(execution.getExecutionNo());
-        return opsDetailOf(afterSaleMapper.selectById(as.getId()));
+        return opsDetailOf(documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectById(as.getId()), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo));
     }
 
     /**
@@ -1258,7 +1273,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 as.getEntityNo(), merchantName, buyerNickname,
                 base.type(), base.status(), base.reason(), base.images(), base.refundMinor(),
                 base.instant(), base.merchantReply(), base.returnExpressNo(), base.liability(),
-                base.createdAt(), base.timeline(), base.refundExecution());
+                base.createdAt(), base.timeline(), base.refundExecution()).withDocumentNo(base.documentNo());
     }
 
     @Override
@@ -1311,7 +1326,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 java.time.Instant.ofEpochMilli(stuckBefore), java.time.ZoneId.systemDefault());
         // System queue: fresh persisted work is eligible now; older unprepared decisions retain the age cutoff.
         List<String> older = DataScopeContext.executeWithoutScope(() ->
-                afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
+                documentNumbers.load(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
                                 .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDING)
                                 .notInSql(OrdAfterSale::getAfterSaleNo,
                                         "SELECT after_sale_no FROM ord_points_refund_binding"
@@ -1319,7 +1334,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                                         + " 'CASH_FAILED_PENDING_OPERATOR')")
                                 .lt(OrdAfterSale::getUpdatedAt, cutoff)
                                 .orderByAsc(OrdAfterSale::getUpdatedAt)
-                                .last("limit " + Math.max(1, limit)))
+                                .last("limit " + Math.max(1, limit))), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo)
                         .stream().map(OrdAfterSale::getAfterSaleNo).toList());
         var ready = new LinkedHashSet<>(refundExecutions.pendingNos(Math.max(1, Math.min(limit, 1000))));
         ready.addAll(older);
@@ -1341,12 +1356,12 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Override
     public List<String> refundedWithoutSplitReversal(long since, int limit) {
         return DataScopeContext.executeWithoutScope(() ->
-                afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
+                documentNumbers.load(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectList(Wrappers.<OrdAfterSale>lambdaQuery()
                                 .eq(OrdAfterSale::getStatus, OrdAfterSale.REFUNDED)
                                 .ge(OrdAfterSale::getRefundedAt, since)
                                 .eq(OrdAfterSale::getSplitReversed, false)
                                 .orderByAsc(OrdAfterSale::getRefundedAt)
-                                .last("limit " + Math.max(1, limit)))
+                                .last("limit " + Math.max(1, limit))), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo)
                         .stream().map(OrdAfterSale::getAfterSaleNo).toList());
     }
 
@@ -1444,7 +1459,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 afterSaleNo, plan.goodsMinor(), plan.freightMinor(), LineShares.goodsPaid(subForHold)),
                 prep.preparationNo(), prep.inputHash()))
             throw BizException.of(ErrorCode.SPLIT_EXPIRED);
-        String next = refundTransactions.execute(status -> DataScopeContext.executeWithoutScope(() -> {
+        String next = documentNumbers.withReservation(java.util.Map.of(DocumentType.AFTER_SALE, 1), () -> refundTransactions.execute(status -> DataScopeContext.executeWithoutScope(() -> {
             var original = refundAfterSale(afterSaleNo, false);
             var sub = subOrderMapper.selectOne(Wrappers.<OrdSubOrder>lambdaQuery()
                     .eq(OrdSubOrder::getSubOrderNo, original.getSubOrderNo())
@@ -1494,7 +1509,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             retried.setExpressCompany(original.getExpressCompany());
             retried.setExpressNo(original.getExpressNo());
             slots.occupy(sub.getSubOrderNo(), retried.getAfterSaleNo());
-            afterSaleMapper.insert(retried);
+            documentNumbers.bind(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", retried, retried.getAfterSaleNo(), afterSaleMapper::insert, OrdAfterSale::setDocumentNo);
             requestPlanner.save(retried.getAfterSaleNo(), plan);
             refundExecutor.prepare(retried, sub);
             retryRows.create(afterSaleNo, retried.getAfterSaleNo(), operatorNo, reason.trim());
@@ -1502,7 +1517,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                     "运营重新发起退款（原售后 " + afterSaleNo + "）：" + reason.trim(),
                     OrdStatusLog.BY_PLATFORM, operatorNo);
             return retried.getAfterSaleNo();
-        }));
+        })));
         return opsDetailOf(refundAfterSale(next, false));
     }
 
@@ -1680,9 +1695,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     private OrdAfterSale refundAfterSale(String afterSaleNo, boolean lock) {
-        OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> afterSaleMapper.selectOne(
+        OrdAfterSale as = DataScopeContext.executeWithoutScope(() -> documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(
                 Wrappers.<OrdAfterSale>lambdaQuery().eq(OrdAfterSale::getAfterSaleNo, afterSaleNo)
-                        .last(lock ? "LIMIT 1 FOR UPDATE" : "LIMIT 1")));
+                        .last(lock ? "LIMIT 1 FOR UPDATE" : "LIMIT 1")), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo));
         if (as == null) { throw BizException.of(ErrorCode.NOT_FOUND); }
         return as;
 
@@ -1727,7 +1742,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
                 .orderByAsc(OrdAfterSale::getUpdatedAt)
                 .last("limit " + Math.max(1, limit));
         return DataScopeContext.executeWithoutScope(() ->
-                afterSaleMapper.selectList(q).stream()
+                documentNumbers.load(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectList(q), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo).stream()
                         .map(OrdAfterSale::getAfterSaleNo).toList());
     }
 
@@ -1859,8 +1874,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     /** 系统身份取单：没有属主校验（{@link #ofMerchant} 那套是给商家用的），也不带数据域 */
     private OrdAfterSale bySystem(String afterSaleNo) {
         return DataScopeContext.executeWithoutScope(() ->
-                afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
-                        .eq(OrdAfterSale::getAfterSaleNo, afterSaleNo).last("limit 1")));
+                documentNumbers.loadOne(DocumentType.AFTER_SALE, "CORE_TRADE", "ord_after_sale", afterSaleMapper.selectOne(Wrappers.<OrdAfterSale>lambdaQuery()
+                        .eq(OrdAfterSale::getAfterSaleNo, afterSaleNo).last("limit 1")), OrdAfterSale::getAfterSaleNo, OrdAfterSale::setDocumentNo));
     }
 
     /** 责任方取值域，与 {@code ord_after_sale.liability} 的注释一致。 */
