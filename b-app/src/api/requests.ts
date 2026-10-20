@@ -458,6 +458,7 @@ export interface ShipReq {
    * 而不报的后果是那笔订单的货款一直冻在微信那边 —— 买家无感，商家几天后才发现。
    */
   expressCompany: string;
+  /** Explicitly confirm shipping after the server detects a pre-existing carrier trace. */
   confirmExistingTrace?: boolean;
 }
 

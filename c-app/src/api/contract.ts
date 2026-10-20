@@ -70,6 +70,7 @@ export interface PayMethodList {
   currency: string | null;
   /** 有没有商家配过支付方式。false = 进件未完成，不是「一种都不支持」 */
   configured: boolean;
+  /** Payment methods currently offered for the selected store and order. */
   methods: PayMethodItem[];
 }
 
@@ -77,16 +78,22 @@ import type { PointsOrderState, OrderPointsQuote, BuyerPointsAccount, BuyerPoint
 export type { PointsOrderState, OrderPointsQuote, BuyerPointsAccount, BuyerPointsEntry, BuyerPointsEntryPage } from "./points-types";
 
 export interface PayMethodItem {
+  /** Stable business code used to initialize this payment method. */
   methodCode: string;
+  /** Payment provider/channel that handles this method. */
   payChannel: string;
+  /** Human-readable payment method name. */
   name: string;
+  /** Whether this method can be selected for the current payment. */
   available: boolean;
   /** 不可用的原因，由服务端出文案 —— 端上不拼 */
   unavailableReason: string | null;
 }
 
 export interface PayInit {
+  /** Merchant order identifier for the payment request. */
   orderNo: string;
+  /** Payment channel selected for this order. */
   payChannel: string;
   /** 端上唤起收银台要用的参数，**原样透传给 uni.requestPayment** */
   payParams: Record<string, string>;

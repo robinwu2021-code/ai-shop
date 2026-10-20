@@ -1419,22 +1419,29 @@ components:
       properties:
         subOrderNo:
           type: "string"
+          description: "Child order identifier affected by cancellation."
         merchantNo:
           type: "string"
+          description: "Merchant owning the affected child order."
         merchantName:
           type: "string"
+          description: "Display name of the affected merchant."
         storeNo:
           type:
             - "string"
             - "null"
+          description: "Store fulfilling the order; null when fulfillment has no store assignment."
         storeName:
           type:
             - "string"
             - "null"
+          description: "Display name of the fulfillment store; null when there is no store."
         payableMinor:
           type: "number"
+          description: "Amount payable for this child order in the order currency's minor units."
         status:
           "$ref": "#/components/schemas/OrderStatus"
+          description: "Current business state of the affected child order."
       required:
         - "subOrderNo"
         - "merchantNo"
@@ -4435,10 +4442,12 @@ components:
             - "PENDING"
             - "DONE"
             - null
+          description: "State of order and resource closure for this refund."
         cashStatus:
           type:
             - "string"
             - "null"
+          description: "Cash refund state reported by the payment execution."
         benefitsStatus:
           type:
             - "string"
@@ -4447,6 +4456,7 @@ components:
             - "PENDING"
             - "SETTLED"
             - null
+          description: "Whether points, coupons and other benefits have been restored."
         executionNo:
           type: "string"
           description: "原退款执行号"
@@ -6047,14 +6057,17 @@ components:
       properties:
         orderNo:
           type: "string"
+          description: "Order identifier whose inventory lifecycle is being audited."
         reservations:
           type: "array"
           items:
             "$ref": "#/components/schemas/InvTraceReservation"
+          description: "Physical stock reservations associated with this order."
         syncEvents:
           type: "array"
           items:
             "$ref": "#/components/schemas/InvTraceSyncEvent"
+          description: "Inventory synchronization events associated with this order."
       required:
         - "orderNo"
         - "reservations"
@@ -6066,26 +6079,33 @@ components:
       properties:
         reservationId:
           type: "string"
+          description: "Inventory reservation identifier."
         ownerId:
           type: "string"
+          description: "Business owner identifier for this reservation."
         status:
           type: "string"
+          description: "Current lifecycle state of the reservation."
         lifecycleVersion:
           type:
             - "number"
             - "null"
+          description: "Version used to detect concurrent reservation lifecycle updates."
         outboundNo:
           type:
             - "string"
             - "null"
+          description: "Outbound document that issued the reserved stock, if issued."
         createdAt:
           type:
             - "string"
             - "null"
+          description: "Reservation creation time."
         lines:
           type: "array"
           items:
             "$ref": "#/components/schemas/InvTraceLine"
+          description: "Per-item quantities and issue/return history for this reservation."
       required:
         - "reservationId"
         - "ownerId"
@@ -6100,40 +6120,52 @@ components:
       properties:
         lineNo:
           type: "number"
+          description: "Line number within the reservation."
         fulfillmentRef:
           type:
             - "string"
             - "null"
+          description: "Fulfillment reference linked to this reservation line, if present."
         itemId:
           type: "string"
+          description: "Inventory item identifier."
         locationId:
           type: "string"
+          description: "Physical location identifier."
         reservedQty:
           type: "number"
+          description: "Quantity originally reserved."
         issuedQty:
           type: "number"
+          description: "Quantity issued to fulfillment."
         releasedQty:
           type: "number"
+          description: "Quantity released without being issued."
         outboundNo:
           type:
             - "string"
             - "null"
+          description: "Outbound document identifier for the issued quantity."
         issuedAt:
           type:
             - "string"
             - "null"
+          description: "Time the reservation line was issued, if issued."
         updatedBy:
           type:
             - "string"
             - "null"
+          description: "Staff or process that last updated the issue record."
         issueLedger:
           type: "array"
           items:
             "$ref": "#/components/schemas/InvTraceLedger"
+          description: "Immutable inventory ledger rows generated by issuing this line."
         returns:
           type: "array"
           items:
             "$ref": "#/components/schemas/InvTraceReturn"
+          description: "Returns received against this reservation line."
       required:
         - "lineNo"
         - "fulfillmentRef"
@@ -6153,26 +6185,35 @@ components:
       properties:
         id:
           type: "number"
+          description: "Inventory ledger row identifier."
         docNo:
           type: "string"
+          description: "Inventory document that recorded the quantity change."
         reasonCode:
           type: "string"
+          description: "Business reason code for the quantity change."
         qtyDelta:
           type: "number"
+          description: "Signed quantity change recorded by the ledger."
         balanceBefore:
           type: "number"
+          description: "Stock balance before applying this ledger entry."
         balanceAfter:
           type: "number"
+          description: "Stock balance after applying this ledger entry."
         operator:
           type:
             - "string"
             - "null"
+          description: "Human-readable operator name, if available."
         createdBy:
           type:
             - "string"
             - "null"
+          description: "Creator identifier, if available."
         occurredAt:
           type: "string"
+          description: "Business occurrence time of the ledger entry."
       required:
         - "id"
         - "docNo"
@@ -6189,22 +6230,30 @@ components:
       properties:
         receiptNo:
           type: "string"
+          description: "Inventory receipt identifier for the returned quantity."
         afterSaleNo:
           type: "string"
+          description: "After-sale case associated with the return."
         qty:
           type: "number"
+          description: "Returned quantity received into inventory."
         quality:
           type: "string"
+          description: "Quality classification recorded at receipt."
         locationId:
           type: "string"
+          description: "Physical location that received the return."
         inboundNo:
           type: "string"
+          description: "Inbound document generated for the return."
         createdBy:
           type:
             - "string"
             - "null"
+          description: "Staff or process that created the receipt."
         createdAt:
           type: "string"
+          description: "Receipt creation time."
       required:
         - "receiptNo"
         - "afterSaleNo"
@@ -6220,10 +6269,13 @@ components:
       properties:
         aggregateId:
           type: "string"
+          description: "Identifier of the event aggregate that produced this synchronization."
         eventType:
           type: "string"
+          description: "Event type emitted by the inventory or order lifecycle."
         source:
           type: "string"
+          description: "System that requested or handled the synchronization."
         status:
           type: "string"
           enum:
@@ -6233,11 +6285,13 @@ components:
             - "WARNING"
             - "SKIPPED"
             - "ARCHIVED"
+          description: "Delivery state of the synchronization event."
         outboxMode:
           type: "string"
           enum:
             - "UNIFIED"
             - "LEGACY"
+          description: "Outbox implementation that persisted the event."
       required:
         - "aggregateId"
         - "eventType"

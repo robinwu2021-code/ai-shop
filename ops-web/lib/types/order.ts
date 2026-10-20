@@ -214,11 +214,18 @@ export type CancellationImpact =
       currency: string; affectedOrders: CancellationAffectedOrder[] };
 
 export interface CancellationAffectedOrder {
+  /** Child order identifier affected by cancellation. */
   subOrderNo: string;
+  /** Merchant owning the affected child order. */
   merchantNo: string;
+  /** Display name of the affected merchant. */
   merchantName: string;
+  /** Store fulfilling the order; null when fulfillment has no store assignment. */
   storeNo: string | null;
+  /** Display name of the fulfillment store; null when there is no store. */
   storeName: string | null;
+  /** Amount payable for this child order in the order currency's minor units. */
   payableMinor: number;
+  /** Current business state of the affected child order. */
   status: OrderStatus;
 }

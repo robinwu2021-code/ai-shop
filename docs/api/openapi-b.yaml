@@ -693,49 +693,62 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Merchant store identifier used to scope inventory values."
         skuNo:
           type: "string"
+          description: "SKU identifier for the inventory row."
         unit:
           type:
             - "string"
             - "null"
+          description: "Physical stock unit; null when the SKU has no configured unit."
         inventoryState:
           type: "string"
           enum:
             - "UNMANAGED"
             - "INITIALIZING"
             - "MAPPED"
+          description: "Inventory onboarding state: unmanaged, initializing or mapped."
         accountingMode:
           type: "string"
           enum:
             - "PAYMENT_DEDUCT"
             - "HANDOFF_DEDUCT"
+          description: "Point at which physical inventory is deducted: payment or handoff."
         onHand:
           type:
             - "number"
             - "null"
+          description: "Physical on-hand quantity; null means the value is unknown."
         reserved:
           type:
             - "number"
             - "null"
+          description: "Quantity reserved by open fulfillment work; null means unknown."
         available:
           type:
             - "number"
             - "null"
+          description: "Physical quantity not reserved; null means it cannot be calculated."
         safetyStock:
           type:
             - "number"
             - "null"
+          description: "Minimum desired physical quantity; null when no safety stock is configured."
         supplyAvailable:
           type:
             - "number"
             - "null"
+          description: "Quantity currently available to fulfill supply-side demand."
         onlineSellable:
           type: "number"
+          description: "Quantity the online store may currently sell."
         onlineLocked:
           type: "number"
+          description: "Quantity withheld from online sale by active locks."
         salesStockMode:
           type: "string"
+          description: "Rule controlling online sellable quantity."
         ruleSource:
           type: "object"
           properties:
@@ -753,13 +766,17 @@ components:
             - "ruleType"
             - "param"
           additionalProperties: false
+          description: "Rule scope and parameters that produced the online sellable quantity."
         syncEnabled:
           type: "boolean"
+          description: "Whether online stock changes are synchronized to inventory."
         syncHealth:
           type: "string"
           const: "NOT_ASSESSED"
+          description: "Synchronization health marker returned by the service."
         asOf:
           type: "number"
+          description: "Millisecond timestamp at which this inventory view was calculated."
       required:
         - "storeNo"
         - "skuNo"
@@ -1566,10 +1583,13 @@ components:
       properties:
         operationNo:
           type: "string"
+          description: "Identifier of this stock synchronization operation."
         skuNo:
           type: "string"
+          description: "SKU whose stock was synchronized."
         reason:
           type: "string"
+          description: "Business reason recorded for the synchronization."
         status:
           type: "string"
           enum:
@@ -1578,6 +1598,7 @@ components:
             - "FAILED"
             - "BLOCKED"
             - "COMPLETED"
+          description: "Current processing state of the operation."
         result:
           anyOf:
             - type: "object"
@@ -1607,8 +1628,10 @@ components:
                 - "after"
               additionalProperties: false
             - type: "null"
+          description: "Applied quantity change or skip details; null before processing finishes."
         updatedAt:
           type: "string"
+          description: "Time when this operation was last updated."
       required:
         - "operationNo"
         - "skuNo"
@@ -1683,16 +1706,21 @@ components:
       properties:
         batchNo:
           type: "string"
+          description: "Identifier of this inventory alignment batch."
         storeNo:
           type: "string"
+          description: "Store whose opening inventory is being aligned."
         mode:
           "$ref": "#/components/schemas/StockAlignMode"
+          description: "Whether alignment adopts mall quantities or a physical count."
         snapshotVersion:
           type: "string"
+          description: "Inventory snapshot version used to guard against stale confirmation."
         expiresAt:
           type:
             - "number"
             - "null"
+          description: "Expiry time in milliseconds; null when the preview has no expiry."
         status:
           type: "string"
           enum:
@@ -1703,12 +1731,16 @@ components:
             - "COMPLETED"
             - "STALE"
             - "EXPIRED"
+          description: "Current preview or execution state of the batch."
         completed:
           type: "number"
+          description: "Number of rows aligned successfully."
         blocked:
           type: "number"
+          description: "Number of rows blocked from alignment."
         waiting:
           type: "number"
+          description: "Number of rows waiting for a later operation."
         rows:
           type: "array"
           items:
@@ -1759,6 +1791,7 @@ components:
               - "operationNo"
               - "errorCode"
             additionalProperties: false
+          description: "Per-SKU proposed and completed alignment results."
       required:
         - "batchNo"
         - "storeNo"
@@ -10727,10 +10760,12 @@ components:
             - "PENDING"
             - "DONE"
             - null
+          description: "Whether order/resource closure is pending or complete."
         cashStatus:
           type:
             - "string"
             - "null"
+          description: "Cash refund outcome reported by the payment execution."
         benefitsStatus:
           type:
             - "string"
@@ -10739,6 +10774,7 @@ components:
             - "PENDING"
             - "SETTLED"
             - null
+          description: "Whether points, coupons and other benefits have been restored."
         executionNo:
           type: "string"
           description: "原退款执行号；恢复仍使用同一执行。"
@@ -12345,6 +12381,7 @@ components:
           description: "快递公司，取 `EXPRESS_COMPANIES` 里的码（微信 delivery_id，如 SF / ZTO）。\n\n**与运单号成对必填**：微信发货信息录入缺一就拒（268485226 / 268485227）， 而不报的后果是那笔订单的货款一直冻在微信那边 —— 买家无感，商家几天后才发现。"
         confirmExistingTrace:
           type: "boolean"
+          description: "Explicitly confirm shipping after the server detects a pre-existing carrier trace."
       required:
         - "expressNo"
         - "expressCompany"
@@ -12936,6 +12973,7 @@ components:
       properties:
         orderNo:
           type: "string"
+          description: "Order identifier whose inventory lifecycle is being audited."
         syncEvents:
           type: "array"
           items:
@@ -12943,10 +12981,13 @@ components:
             properties:
               aggregateId:
                 type: "string"
+                description: "Event aggregate that produced this synchronization."
               eventType:
                 type: "string"
+                description: "Inventory or order event type."
               source:
                 type: "string"
+                description: "System that requested or handled the synchronization."
               status:
                 type: "string"
                 enum:
@@ -12956,11 +12997,13 @@ components:
                   - "WARNING"
                   - "SKIPPED"
                   - "ARCHIVED"
+                description: "Delivery state of the synchronization event."
               outboxMode:
                 type: "string"
                 enum:
                   - "UNIFIED"
                   - "LEGACY"
+                description: "Outbox implementation that persisted the event."
             required:
               - "aggregateId"
               - "eventType"
@@ -12968,6 +13011,7 @@ components:
               - "status"
               - "outboxMode"
             additionalProperties: false
+          description: "Inventory synchronization events associated with this order."
         reservations:
           type: "array"
           items:
@@ -12975,22 +13019,28 @@ components:
             properties:
               reservationId:
                 type: "string"
+                description: "Inventory reservation identifier."
               ownerId:
                 type: "string"
+                description: "Business owner identifier for the reservation."
               status:
                 type: "string"
+                description: "Current lifecycle state of the reservation."
               lifecycleVersion:
                 type:
                   - "number"
                   - "null"
+                description: "Version used to detect concurrent lifecycle updates."
               outboundNo:
                 type:
                   - "string"
                   - "null"
+                description: "Outbound document that issued the reserved stock, if issued."
               createdAt:
                 type:
                   - "string"
                   - "null"
+                description: "Reservation creation time."
               lines:
                 type: "array"
                 items:
@@ -12998,32 +13048,42 @@ components:
                   properties:
                     lineNo:
                       type: "number"
+                      description: "Line number within the reservation."
                     fulfillmentRef:
                       type:
                         - "string"
                         - "null"
+                      description: "Fulfillment reference linked to this reservation line, if present."
                     itemId:
                       type: "string"
+                      description: "Inventory item identifier."
                     locationId:
                       type: "string"
+                      description: "Physical location identifier."
                     reservedQty:
                       type: "number"
+                      description: "Quantity originally reserved."
                     issuedQty:
                       type: "number"
+                      description: "Quantity issued to fulfillment."
                     releasedQty:
                       type: "number"
+                      description: "Quantity released without being issued."
                     outboundNo:
                       type:
                         - "string"
                         - "null"
+                      description: "Outbound document identifier for issued quantity."
                     issuedAt:
                       type:
                         - "string"
                         - "null"
+                      description: "Time the reservation line was issued, if issued."
                     updatedBy:
                       type:
                         - "string"
                         - "null"
+                      description: "Staff or process that last updated the issue record."
                     issueLedger:
                       type: "array"
                       items:
@@ -13031,26 +13091,35 @@ components:
                         properties:
                           id:
                             type: "number"
+                            description: "Inventory ledger row identifier."
                           docNo:
                             type: "string"
+                            description: "Inventory document that recorded the quantity change."
                           reasonCode:
                             type: "string"
+                            description: "Business reason code for the quantity change."
                           qtyDelta:
                             type: "number"
+                            description: "Signed quantity change recorded by the ledger."
                           balanceBefore:
                             type: "number"
+                            description: "Stock balance before applying this ledger entry."
                           balanceAfter:
                             type: "number"
+                            description: "Stock balance after applying this ledger entry."
                           operator:
                             type:
                               - "string"
                               - "null"
+                            description: "Human-readable operator name, if available."
                           createdBy:
                             type:
                               - "string"
                               - "null"
+                            description: "Creator identifier, if available."
                           occurredAt:
                             type: "string"
+                            description: "Business occurrence time of the ledger entry."
                         required:
                           - "id"
                           - "docNo"
@@ -13062,6 +13131,7 @@ components:
                           - "createdBy"
                           - "occurredAt"
                         additionalProperties: false
+                      description: "Immutable inventory ledger rows generated by issuing this line."
                     returns:
                       type: "array"
                       items:
@@ -13069,22 +13139,30 @@ components:
                         properties:
                           receiptNo:
                             type: "string"
+                            description: "Inventory receipt identifier."
                           afterSaleNo:
                             type: "string"
+                            description: "After-sale case associated with the return."
                           qty:
                             type: "number"
+                            description: "Returned quantity received into inventory."
                           quality:
                             type: "string"
+                            description: "Quality classification recorded at receipt."
                           locationId:
                             type: "string"
+                            description: "Physical location that received the return."
                           inboundNo:
                             type: "string"
+                            description: "Inbound document generated for the return."
                           createdBy:
                             type:
                               - "string"
                               - "null"
+                            description: "Staff or process that created the receipt."
                           createdAt:
                             type: "string"
+                            description: "Receipt creation time."
                         required:
                           - "receiptNo"
                           - "afterSaleNo"
@@ -13095,6 +13173,7 @@ components:
                           - "createdBy"
                           - "createdAt"
                         additionalProperties: false
+                      description: "Returns received against this reservation line."
                   required:
                     - "lineNo"
                     - "fulfillmentRef"
@@ -13109,6 +13188,7 @@ components:
                     - "issueLedger"
                     - "returns"
                   additionalProperties: false
+                description: "Per-item quantities and issue/return history."
             required:
               - "reservationId"
               - "ownerId"
@@ -13118,6 +13198,7 @@ components:
               - "createdAt"
               - "lines"
             additionalProperties: false
+          description: "Physical stock reservations associated with this order."
       required:
         - "orderNo"
         - "syncEvents"

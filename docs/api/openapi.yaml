@@ -694,49 +694,62 @@ components:
       properties:
         storeNo:
           type: "string"
+          description: "Merchant store identifier used to scope inventory values."
         skuNo:
           type: "string"
+          description: "SKU identifier for the inventory row."
         unit:
           type:
             - "string"
             - "null"
+          description: "Physical stock unit; null when the SKU has no configured unit."
         inventoryState:
           type: "string"
           enum:
             - "UNMANAGED"
             - "INITIALIZING"
             - "MAPPED"
+          description: "Inventory onboarding state: unmanaged, initializing or mapped."
         accountingMode:
           type: "string"
           enum:
             - "PAYMENT_DEDUCT"
             - "HANDOFF_DEDUCT"
+          description: "Point at which physical inventory is deducted: payment or handoff."
         onHand:
           type:
             - "number"
             - "null"
+          description: "Physical on-hand quantity; null means the value is unknown."
         reserved:
           type:
             - "number"
             - "null"
+          description: "Quantity reserved by open fulfillment work; null means unknown."
         available:
           type:
             - "number"
             - "null"
+          description: "Physical quantity not reserved; null means it cannot be calculated."
         safetyStock:
           type:
             - "number"
             - "null"
+          description: "Minimum desired physical quantity; null when no safety stock is configured."
         supplyAvailable:
           type:
             - "number"
             - "null"
+          description: "Quantity currently available to fulfill supply-side demand."
         onlineSellable:
           type: "number"
+          description: "Quantity the online store may currently sell."
         onlineLocked:
           type: "number"
+          description: "Quantity withheld from online sale by active locks."
         salesStockMode:
           type: "string"
+          description: "Rule controlling online sellable quantity."
         ruleSource:
           type: "object"
           properties:
@@ -754,13 +767,17 @@ components:
             - "ruleType"
             - "param"
           additionalProperties: false
+          description: "Rule scope and parameters that produced the online sellable quantity."
         syncEnabled:
           type: "boolean"
+          description: "Whether online stock changes are synchronized to inventory."
         syncHealth:
           type: "string"
           const: "NOT_ASSESSED"
+          description: "Synchronization health marker returned by the service."
         asOf:
           type: "number"
+          description: "Millisecond timestamp at which this inventory view was calculated."
       required:
         - "storeNo"
         - "skuNo"
@@ -1567,10 +1584,13 @@ components:
       properties:
         operationNo:
           type: "string"
+          description: "Identifier of this stock synchronization operation."
         skuNo:
           type: "string"
+          description: "SKU whose stock was synchronized."
         reason:
           type: "string"
+          description: "Business reason recorded for the synchronization."
         status:
           type: "string"
           enum:
@@ -1579,6 +1599,7 @@ components:
             - "FAILED"
             - "BLOCKED"
             - "COMPLETED"
+          description: "Current processing state of the operation."
         result:
           anyOf:
             - type: "object"
@@ -1608,8 +1629,10 @@ components:
                 - "after"
               additionalProperties: false
             - type: "null"
+          description: "Applied quantity change or skip details; null before processing finishes."
         updatedAt:
           type: "string"
+          description: "Time when this operation was last updated."
       required:
         - "operationNo"
         - "skuNo"
@@ -1684,16 +1707,21 @@ components:
       properties:
         batchNo:
           type: "string"
+          description: "Identifier of this inventory alignment batch."
         storeNo:
           type: "string"
+          description: "Store whose opening inventory is being aligned."
         mode:
           "$ref": "#/components/schemas/StockAlignMode"
+          description: "Whether alignment adopts mall quantities or a physical count."
         snapshotVersion:
           type: "string"
+          description: "Inventory snapshot version used to guard against stale confirmation."
         expiresAt:
           type:
             - "number"
             - "null"
+          description: "Expiry time in milliseconds; null when the preview has no expiry."
         status:
           type: "string"
           enum:
@@ -1704,12 +1732,16 @@ components:
             - "COMPLETED"
             - "STALE"
             - "EXPIRED"
+          description: "Current preview or execution state of the batch."
         completed:
           type: "number"
+          description: "Number of rows aligned successfully."
         blocked:
           type: "number"
+          description: "Number of rows blocked from alignment."
         waiting:
           type: "number"
+          description: "Number of rows waiting for a later operation."
         rows:
           type: "array"
           items:
@@ -1760,6 +1792,7 @@ components:
               - "operationNo"
               - "errorCode"
             additionalProperties: false
+          description: "Per-SKU proposed and completed alignment results."
       required:
         - "batchNo"
         - "storeNo"
@@ -10728,10 +10761,12 @@ components:
             - "PENDING"
             - "DONE"
             - null
+          description: "Whether order/resource closure is pending or complete."
         cashStatus:
           type:
             - "string"
             - "null"
+          description: "Cash refund outcome reported by the payment execution."
         benefitsStatus:
           type:
             - "string"
@@ -10740,6 +10775,7 @@ components:
             - "PENDING"
             - "SETTLED"
             - null
+          description: "Whether points, coupons and other benefits have been restored."
         executionNo:
           type: "string"
           description: "原退款执行号；恢复仍使用同一执行。"
@@ -12200,8 +12236,10 @@ components:
       properties:
         orderNo:
           type: "string"
+          description: "Merchant order identifier for the payment request."
         payChannel:
           type: "string"
+          description: "Payment channel selected for this order."
         payParams:
           "$ref": "#/components/schemas/Record_string_string"
           description: "端上唤起收银台要用的参数，**原样透传给 uni.requestPayment**"
@@ -12228,6 +12266,7 @@ components:
           type: "array"
           items:
             "$ref": "#/components/schemas/PayMethodItem"
+          description: "Payment methods currently offered for the selected store and order."
       required:
         - "currency"
         - "configured"
@@ -12238,12 +12277,16 @@ components:
       properties:
         methodCode:
           type: "string"
+          description: "Stable business code used to initialize this payment method."
         payChannel:
           type: "string"
+          description: "Payment provider/channel that handles this method."
         name:
           type: "string"
+          description: "Human-readable payment method name."
         available:
           type: "boolean"
+          description: "Whether this method can be selected for the current payment."
         unavailableReason:
           type:
             - "string"

@@ -794,8 +794,11 @@ export interface PaymentResolution {
 export interface RefundExecutionProgress {
   /** Persisted protocol version; absent means legacy recovery semantics. */
   closureVersion?: number | null;
+  /** Whether order/resource closure is pending or complete. */
   closureStatus?: "LEGACY" | "PENDING" | "DONE" | null;
+  /** Cash refund outcome reported by the payment execution. */
   cashStatus?: string | null;
+  /** Whether points, coupons and other benefits have been restored. */
   benefitsStatus?: "PENDING" | "SETTLED" | null;
   /** 原退款执行号；恢复仍使用同一执行。 */
   executionNo: string;

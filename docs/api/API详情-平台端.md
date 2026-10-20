@@ -4940,9 +4940,9 @@ Whole reservation → issue → return chain for a parent order. */
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | — |
-| `reservations` | [`InvTraceReservation`](#invtracereservation)\[\] | 是 | — |
-| `syncEvents` | [`InvTraceSyncEvent`](#invtracesyncevent)\[\] | 是 | — |
+| `orderNo` | `string` | 是 | Order identifier whose inventory lifecycle is being audited. |
+| `reservations` | [`InvTraceReservation`](#invtracereservation)\[\] | 是 | Physical stock reservations associated with this order. |
+| `syncEvents` | [`InvTraceSyncEvent`](#invtracesyncevent)\[\] | 是 | Inventory synchronization events associated with this order. |
 
 
 #### GET `/ops/inventory/policy`
@@ -11217,13 +11217,13 @@ _无字段_
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `subOrderNo` | `string` | 是 | — |
-| `merchantNo` | `string` | 是 | — |
-| `merchantName` | `string` | 是 | — |
-| `storeNo` | `string,null` | 是 | — |
-| `storeName` | `string,null` | 是 | — |
-| `payableMinor` | `number` | 是 | — |
-| `status` | [`OrderStatus`](#orderstatus) | 是 | — |
+| `subOrderNo` | `string` | 是 | Child order identifier affected by cancellation. |
+| `merchantNo` | `string` | 是 | Merchant owning the affected child order. |
+| `merchantName` | `string` | 是 | Display name of the affected merchant. |
+| `storeNo` | `string,null` | 是 | Store fulfilling the order; null when fulfillment has no store assignment. |
+| `storeName` | `string,null` | 是 | Display name of the fulfillment store; null when there is no store. |
+| `payableMinor` | `number` | 是 | Amount payable for this child order in the order currency's minor units. |
+| `status` | [`OrderStatus`](#orderstatus) | 是 | Current business state of the affected child order. |
 
 ### CancellationImpact
 
@@ -12313,9 +12313,9 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | — |
-| `reservations` | [`InvTraceReservation`](#invtracereservation)\[\] | 是 | — |
-| `syncEvents` | [`InvTraceSyncEvent`](#invtracesyncevent)\[\] | 是 | — |
+| `orderNo` | `string` | 是 | Order identifier whose inventory lifecycle is being audited. |
+| `reservations` | [`InvTraceReservation`](#invtracereservation)\[\] | 是 | Physical stock reservations associated with this order. |
+| `syncEvents` | [`InvTraceSyncEvent`](#invtracesyncevent)\[\] | 是 | Inventory synchronization events associated with this order. |
 
 ### InvPolicy
 
@@ -12364,67 +12364,67 @@ Order-to-inventory audit chain; all quantities and source locations come from du
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `id` | `number` | 是 | — |
-| `docNo` | `string` | 是 | — |
-| `reasonCode` | `string` | 是 | — |
-| `qtyDelta` | `number` | 是 | — |
-| `balanceBefore` | `number` | 是 | — |
-| `balanceAfter` | `number` | 是 | — |
-| `operator` | `string,null` | 是 | — |
-| `createdBy` | `string,null` | 是 | — |
-| `occurredAt` | `string` | 是 | — |
+| `id` | `number` | 是 | Inventory ledger row identifier. |
+| `docNo` | `string` | 是 | Inventory document that recorded the quantity change. |
+| `reasonCode` | `string` | 是 | Business reason code for the quantity change. |
+| `qtyDelta` | `number` | 是 | Signed quantity change recorded by the ledger. |
+| `balanceBefore` | `number` | 是 | Stock balance before applying this ledger entry. |
+| `balanceAfter` | `number` | 是 | Stock balance after applying this ledger entry. |
+| `operator` | `string,null` | 是 | Human-readable operator name, if available. |
+| `createdBy` | `string,null` | 是 | Creator identifier, if available. |
+| `occurredAt` | `string` | 是 | Business occurrence time of the ledger entry. |
 
 ### InvTraceLine
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `lineNo` | `number` | 是 | — |
-| `fulfillmentRef` | `string,null` | 是 | — |
-| `itemId` | `string` | 是 | — |
-| `locationId` | `string` | 是 | — |
-| `reservedQty` | `number` | 是 | — |
-| `issuedQty` | `number` | 是 | — |
-| `releasedQty` | `number` | 是 | — |
-| `outboundNo` | `string,null` | 是 | — |
-| `issuedAt` | `string,null` | 是 | — |
-| `updatedBy` | `string,null` | 是 | — |
-| `issueLedger` | [`InvTraceLedger`](#invtraceledger)\[\] | 是 | — |
-| `returns` | [`InvTraceReturn`](#invtracereturn)\[\] | 是 | — |
+| `lineNo` | `number` | 是 | Line number within the reservation. |
+| `fulfillmentRef` | `string,null` | 是 | Fulfillment reference linked to this reservation line, if present. |
+| `itemId` | `string` | 是 | Inventory item identifier. |
+| `locationId` | `string` | 是 | Physical location identifier. |
+| `reservedQty` | `number` | 是 | Quantity originally reserved. |
+| `issuedQty` | `number` | 是 | Quantity issued to fulfillment. |
+| `releasedQty` | `number` | 是 | Quantity released without being issued. |
+| `outboundNo` | `string,null` | 是 | Outbound document identifier for the issued quantity. |
+| `issuedAt` | `string,null` | 是 | Time the reservation line was issued, if issued. |
+| `updatedBy` | `string,null` | 是 | Staff or process that last updated the issue record. |
+| `issueLedger` | [`InvTraceLedger`](#invtraceledger)\[\] | 是 | Immutable inventory ledger rows generated by issuing this line. |
+| `returns` | [`InvTraceReturn`](#invtracereturn)\[\] | 是 | Returns received against this reservation line. |
 
 ### InvTraceReservation
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `reservationId` | `string` | 是 | — |
-| `ownerId` | `string` | 是 | — |
-| `status` | `string` | 是 | — |
-| `lifecycleVersion` | `number,null` | 是 | — |
-| `outboundNo` | `string,null` | 是 | — |
-| `createdAt` | `string,null` | 是 | — |
-| `lines` | [`InvTraceLine`](#invtraceline)\[\] | 是 | — |
+| `reservationId` | `string` | 是 | Inventory reservation identifier. |
+| `ownerId` | `string` | 是 | Business owner identifier for this reservation. |
+| `status` | `string` | 是 | Current lifecycle state of the reservation. |
+| `lifecycleVersion` | `number,null` | 是 | Version used to detect concurrent reservation lifecycle updates. |
+| `outboundNo` | `string,null` | 是 | Outbound document that issued the reserved stock, if issued. |
+| `createdAt` | `string,null` | 是 | Reservation creation time. |
+| `lines` | [`InvTraceLine`](#invtraceline)\[\] | 是 | Per-item quantities and issue/return history for this reservation. |
 
 ### InvTraceReturn
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `receiptNo` | `string` | 是 | — |
-| `afterSaleNo` | `string` | 是 | — |
-| `qty` | `number` | 是 | — |
-| `quality` | `string` | 是 | — |
-| `locationId` | `string` | 是 | — |
-| `inboundNo` | `string` | 是 | — |
-| `createdBy` | `string,null` | 是 | — |
-| `createdAt` | `string` | 是 | — |
+| `receiptNo` | `string` | 是 | Inventory receipt identifier for the returned quantity. |
+| `afterSaleNo` | `string` | 是 | After-sale case associated with the return. |
+| `qty` | `number` | 是 | Returned quantity received into inventory. |
+| `quality` | `string` | 是 | Quality classification recorded at receipt. |
+| `locationId` | `string` | 是 | Physical location that received the return. |
+| `inboundNo` | `string` | 是 | Inbound document generated for the return. |
+| `createdBy` | `string,null` | 是 | Staff or process that created the receipt. |
+| `createdAt` | `string` | 是 | Receipt creation time. |
 
 ### InvTraceSyncEvent
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `aggregateId` | `string` | 是 | — |
-| `eventType` | `string` | 是 | — |
-| `source` | `string` | 是 | — |
-| `status` | `COMPLETED` \| `PENDING` \| `FAILED` \| `WARNING` \| `SKIPPED` \| `ARCHIVED` | 是 | — |
-| `outboxMode` | `UNIFIED` \| `LEGACY` | 是 | — |
+| `aggregateId` | `string` | 是 | Identifier of the event aggregate that produced this synchronization. |
+| `eventType` | `string` | 是 | Event type emitted by the inventory or order lifecycle. |
+| `source` | `string` | 是 | System that requested or handled the synchronization. |
+| `status` | `COMPLETED` \| `PENDING` \| `FAILED` \| `WARNING` \| `SKIPPED` \| `ARCHIVED` | 是 | Delivery state of the synchronization event. |
+| `outboxMode` | `UNIFIED` \| `LEGACY` | 是 | Outbox implementation that persisted the event. |
 
 ### InvoiceRequest
 
@@ -14785,9 +14785,9 @@ PointsTypeConfig 的 status 取值域，按服务端契约校验。
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `closureVersion` | `number,null` | 否 | Persisted protocol version; absent means legacy recovery semantics. |
-| `closureStatus` | `LEGACY` \| `PENDING` \| `DONE` \| `null` | 否 | — |
-| `cashStatus` | `string,null` | 否 | — |
-| `benefitsStatus` | `PENDING` \| `SETTLED` \| `null` | 否 | — |
+| `closureStatus` | `LEGACY` \| `PENDING` \| `DONE` \| `null` | 否 | State of order and resource closure for this refund. |
+| `cashStatus` | `string,null` | 否 | Cash refund state reported by the payment execution. |
+| `benefitsStatus` | `PENDING` \| `SETTLED` \| `null` | 否 | Whether points, coupons and other benefits have been restored. |
 | `executionNo` | `string` | 是 | 原退款执行号 |
 | `paymentNo` | `string,null` | 否 | 资金退款单号 |
 | `status` | `string` | 是 | 资金执行状态 |

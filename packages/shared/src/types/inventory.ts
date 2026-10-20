@@ -1,21 +1,38 @@
 /** Merchant stock overview; matches InventoryOverviewQuery. Null physical values mean unknown, not zero. */
 export interface StockOverview {
+  /** Merchant store identifier used to scope inventory values. */
   storeNo: string;
+  /** SKU identifier for the inventory row. */
   skuNo: string;
+  /** Physical stock unit; null when the SKU has no configured unit. */
   unit: string | null;
+  /** Inventory onboarding state: unmanaged, initializing or mapped. */
   inventoryState: "UNMANAGED" | "INITIALIZING" | "MAPPED";
+  /** Point at which physical inventory is deducted: payment or handoff. */
   accountingMode: "PAYMENT_DEDUCT" | "HANDOFF_DEDUCT";
+  /** Physical on-hand quantity; null means the value is unknown. */
   onHand: number | null;
+  /** Quantity reserved by open fulfillment work; null means unknown. */
   reserved: number | null;
+  /** Physical quantity not reserved; null means it cannot be calculated. */
   available: number | null;
+  /** Minimum desired physical quantity; null when no safety stock is configured. */
   safetyStock: number | null;
+  /** Quantity currently available to fulfill supply-side demand. */
   supplyAvailable: number | null;
+  /** Quantity the online store may currently sell. */
   onlineSellable: number;
+  /** Quantity withheld from online sale by active locks. */
   onlineLocked: number;
+  /** Rule controlling online sellable quantity. */
   salesStockMode: string;
+  /** Rule scope and parameters that produced the online sellable quantity. */
   ruleSource: { scopeType: string; scopeRef: string; ruleType: string; param: number };
+  /** Whether online stock changes are synchronized to inventory. */
   syncEnabled: boolean;
+  /** Synchronization health marker returned by the service. */
   syncHealth: "NOT_ASSESSED";
+  /** Millisecond timestamp at which this inventory view was calculated. */
   asOf: number;
 }
 
@@ -500,11 +517,17 @@ export interface StockSyncState {
 }
 
 export interface StockSyncOperationRecord {
+  /** Identifier of this stock synchronization operation. */
   operationNo: string;
+  /** SKU whose stock was synchronized. */
   skuNo: string;
+  /** Business reason recorded for the synchronization. */
   reason: string;
+  /** Current processing state of the operation. */
   status: "PROCESSING" | "WAITING" | "FAILED" | "BLOCKED" | "COMPLETED";
+  /** Applied quantity change or skip details; null before processing finishes. */
   result: { applied: boolean; skipped: string | null; ruleType: string | null; available: number; before: number; after: number } | null;
+  /** Time when this operation was last updated. */
   updatedAt: string;
 }
 
@@ -535,15 +558,25 @@ export interface StockAlignRow {
 }
 
 export interface StockAlignmentBatch {
+  /** Identifier of this inventory alignment batch. */
   batchNo: string;
+  /** Store whose opening inventory is being aligned. */
   storeNo: string;
+  /** Whether alignment adopts mall quantities or a physical count. */
   mode: StockAlignMode;
+  /** Inventory snapshot version used to guard against stale confirmation. */
   snapshotVersion: string;
+  /** Expiry time in milliseconds; null when the preview has no expiry. */
   expiresAt: number | null;
+  /** Current preview or execution state of the batch. */
   status: "PREVIEW" | "PROCESSING" | "PARTIAL" | "BLOCKED" | "COMPLETED" | "STALE" | "EXPIRED";
+  /** Number of rows aligned successfully. */
   completed: number;
+  /** Number of rows blocked from alignment. */
   blocked: number;
+  /** Number of rows waiting for a later operation. */
   waiting: number;
+  /** Per-SKU proposed and completed alignment results. */
   rows: Array<{
     skuNo: string; title: string; spec: string | null; beforeQty: number | null; reserved: number | null;
     mallStock: number; mallLocked: number; afterQty: number | null; status: string; operationNo: string; errorCode: string | null;

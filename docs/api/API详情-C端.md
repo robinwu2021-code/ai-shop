@@ -2163,8 +2163,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | — |
-| `payChannel` | `string` | 是 | — |
+| `orderNo` | `string` | 是 | Merchant order identifier for the payment request. |
+| `payChannel` | `string` | 是 | Payment channel selected for this order. |
 | `payParams` | [`Record_string_string`](#record_string_string) | 是 | 端上唤起收银台要用的参数，**原样透传给 uni.requestPayment** |
 | `settled` | `boolean` | 否 | **这笔已经付掉了，不要唤起收银台**（应付 0 元的单）。此时 `payParams` 是空的。 优惠、券、积分任何一种都能把应付打到 0，而 0 元不需要向任何外部系统付款 —— 后端就地结清并把订单推成已支付，端上直接去查详情即可。 **不要改成按 `payChannel === "FREE"` 判**：那是把通道名当协议用， 将来多一个免支付的来源（全额积分抵扣、全额券）就要改端上。 |
 
@@ -2187,7 +2187,7 @@
 |---|---|:---:|---|
 | `currency` | `string,null` | 是 | 记账币种。**拿不到时不显示金额** —— 按 2 位小数显示在日元上会差 100 倍 |
 | `configured` | `boolean` | 是 | 有没有商家配过支付方式。false = 进件未完成，不是「一种都不支持」 |
-| `methods` | [`PayMethodItem`](#paymethoditem)\[\] | 是 | — |
+| `methods` | [`PayMethodItem`](#paymethoditem)\[\] | 是 | Payment methods currently offered for the selected store and order. |
 
 
 #### GET `/mp/order/{orderNo}/pay-result`
@@ -4580,8 +4580,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `orderNo` | `string` | 是 | — |
-| `payChannel` | `string` | 是 | — |
+| `orderNo` | `string` | 是 | Merchant order identifier for the payment request. |
+| `payChannel` | `string` | 是 | Payment channel selected for this order. |
 | `payParams` | [`Record_string_string`](#record_string_string) | 是 | 端上唤起收银台要用的参数，**原样透传给 uni.requestPayment** |
 | `settled` | `boolean` | 否 | **这笔已经付掉了，不要唤起收银台**（应付 0 元的单）。此时 `payParams` 是空的。 优惠、券、积分任何一种都能把应付打到 0，而 0 元不需要向任何外部系统付款 —— 后端就地结清并把订单推成已支付，端上直接去查详情即可。 **不要改成按 `payChannel === "FREE"` 判**：那是把通道名当协议用， 将来多一个免支付的来源（全额积分抵扣、全额券）就要改端上。 |
 
@@ -4589,10 +4589,10 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
-| `methodCode` | `string` | 是 | — |
-| `payChannel` | `string` | 是 | — |
-| `name` | `string` | 是 | — |
-| `available` | `boolean` | 是 | — |
+| `methodCode` | `string` | 是 | Stable business code used to initialize this payment method. |
+| `payChannel` | `string` | 是 | Payment provider/channel that handles this method. |
+| `name` | `string` | 是 | Human-readable payment method name. |
+| `available` | `boolean` | 是 | Whether this method can be selected for the current payment. |
 | `unavailableReason` | `string,null` | 是 | 不可用的原因，由服务端出文案 —— 端上不拼 |
 
 ### PayMethodList
@@ -4601,7 +4601,7 @@
 |---|---|:---:|---|
 | `currency` | `string,null` | 是 | 记账币种。**拿不到时不显示金额** —— 按 2 位小数显示在日元上会差 100 倍 |
 | `configured` | `boolean` | 是 | 有没有商家配过支付方式。false = 进件未完成，不是「一种都不支持」 |
-| `methods` | [`PayMethodItem`](#paymethoditem)\[\] | 是 | — |
+| `methods` | [`PayMethodItem`](#paymethoditem)\[\] | 是 | Payment methods currently offered for the selected store and order. |
 
 ### PaymentResolution
 
@@ -4837,9 +4837,9 @@ C 端点推送进店的回写结果。`counted=false` 不区分原因（对不�
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|:---:|---|
 | `closureVersion` | `number,null` | 否 | Persisted protocol version; absent means legacy recovery semantics. |
-| `closureStatus` | `LEGACY` \| `PENDING` \| `DONE` \| `null` | 否 | — |
-| `cashStatus` | `string,null` | 否 | — |
-| `benefitsStatus` | `PENDING` \| `SETTLED` \| `null` | 否 | — |
+| `closureStatus` | `LEGACY` \| `PENDING` \| `DONE` \| `null` | 否 | Whether order/resource closure is pending or complete. |
+| `cashStatus` | `string,null` | 否 | Cash refund outcome reported by the payment execution. |
+| `benefitsStatus` | `PENDING` \| `SETTLED` \| `null` | 否 | Whether points, coupons and other benefits have been restored. |
 | `executionNo` | `string` | 是 | 原退款执行号；恢复仍使用同一执行。 |
 | `paymentNo` | `string,null` | 否 | 资金流水号，尚未准备时可空。 |
 | `status` | `string` | 是 | 执行状态，以后端实际确认结果为准。 |

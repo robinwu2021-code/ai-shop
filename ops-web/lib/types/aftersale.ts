@@ -64,8 +64,11 @@ export interface LiabilityShare {
 export interface RefundExecutionProgress {
   /** Persisted protocol version; absent means legacy recovery semantics. */
   closureVersion?: number | null;
+  /** State of order and resource closure for this refund. */
   closureStatus?: "LEGACY" | "PENDING" | "DONE" | null;
+  /** Cash refund state reported by the payment execution. */
   cashStatus?: string | null;
+  /** Whether points, coupons and other benefits have been restored. */
   benefitsStatus?: "PENDING" | "SETTLED" | null;
   /** 原退款执行号 */
   executionNo: string;
