@@ -9742,6 +9742,28 @@ components:
         - "holderType"
         - "holderNo"
       additionalProperties: false
+    PointsAccountsQ:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码，用于限定账户账本。"
+        after:
+          type: "number"
+          description: "起始游标，首次为零"
+        limit:
+          type: "number"
+          description: "本次请求的记录上限"
+        holderType:
+          "$ref": "#/components/schemas/PointsHolder"
+          description: "账户持有人类别：会员或门店。"
+        holderNo:
+          type: "string"
+          description: "按精确编号筛选账户；省略时返回该类型的账户列表。"
+      required:
+        - "holderType"
+        - "typeCode"
+      additionalProperties: false
     PointsAccountView:
       type: "object"
       properties:
@@ -9864,6 +9886,9 @@ components:
         rateMinor:
           type: "number"
           description: "换算比例的最小货币单位数量"
+        createdAt:
+          type: "number"
+          description: "原凭证创建时间，Unix 毫秒"
       required:
         - "id"
         - "voucherNo"
@@ -9871,6 +9896,75 @@ components:
         - "currency"
         - "ratePoints"
         - "rateMinor"
+        - "createdAt"
+      additionalProperties: false
+    PointsTransactionDirection:
+      type: "string"
+      enum:
+        - "EARN"
+        - "REDEEM"
+        - "REVERSAL"
+    PointsTransactionsQ:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码。"
+        after:
+          type: "number"
+          description: "起始游标，首次为零"
+        limit:
+          type: "number"
+          description: "本次请求的记录上限"
+        direction:
+          "$ref": "#/components/schemas/PointsTransactionDirection"
+          description: "流水方向：发放、核销或冲正。"
+        from:
+          type: "string"
+          description: "查询区间起始时间，ISO-8601 格式。"
+        to:
+          type: "string"
+          description: "查询区间结束时间，ISO-8601 格式。"
+        storeNo:
+          type: "string"
+          description: "门店编号，可选的精确筛选条件。"
+        userNo:
+          type: "string"
+          description: "会员编号，可选的精确筛选条件。"
+      required:
+        - "direction"
+        - "from"
+        - "to"
+        - "typeCode"
+      additionalProperties: false
+    PointsTransactionView:
+      type: "object"
+      properties:
+        direction:
+          "$ref": "#/components/schemas/PointsTransactionDirection"
+          description: "该凭证对应的业务方向。"
+        voucher:
+          "$ref": "#/components/schemas/PointsVoucherView"
+          description: "本次积分业务的凭证及创建时间、比例快照。"
+        storeNo:
+          type:
+            - "string"
+            - "null"
+          description: "关联门店编号；无法归属门店时为空。"
+        userNo:
+          type:
+            - "string"
+            - "null"
+          description: "关联会员编号；不涉及会员时为空。"
+        pointsDelta:
+          type: "number"
+          description: "本凭证所有用户分录的净积分变化；可能为零，需查看详情理解分录。"
+      required:
+        - "direction"
+        - "voucher"
+        - "storeNo"
+        - "userNo"
+        - "pointsDelta"
       additionalProperties: false
     PointsEntryView:
       type: "object"
@@ -9899,6 +9993,9 @@ components:
         afterPoints:
           type: "number"
           description: "该分录完成后的积分余额"
+        at:
+          type: "number"
+          description: "分录创建时间，Unix 毫秒"
       required:
         - "id"
         - "entryNo"
@@ -9908,6 +10005,7 @@ components:
         - "bucket"
         - "deltaPoints"
         - "afterPoints"
+        - "at"
       additionalProperties: false
     PointsFlowView:
       type: "object"
@@ -10242,6 +10340,35 @@ components:
         - "skipReasons"
         - "throughVoucherId"
         - "rebuiltAt"
+      additionalProperties: false
+    PointsStatsPeriod:
+      type: "object"
+      properties:
+        typeCode:
+          type: "string"
+          description: "积分类型唯一编码。"
+        from:
+          type: "string"
+          description: "统计周期起始日期，YYYY-MM-DD。"
+        to:
+          type: "string"
+          description: "统计周期结束日期，YYYY-MM-DD。"
+        metrics:
+          "$ref": "#/components/schemas/Record%3Cstring%2Cnumber%3E"
+          description: "周期内由服务端聚合的指标。"
+        availableDays:
+          type: "number"
+          description: "统计数据可用的日期数量。"
+        missingDays:
+          type: "number"
+          description: "统计数据缺失的日期数量。"
+      required:
+        - "typeCode"
+        - "from"
+        - "to"
+        - "metrics"
+        - "availableDays"
+        - "missingDays"
       additionalProperties: false
     PointsStatsRebuild:
       type: "object"
@@ -16214,6 +16341,116 @@ paths:
                     type: "string"
                   data:
                     "$ref": "#/components/schemas/PointsAccountView"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/accounts":
+    get:
+      operationId: "pointsAccounts"
+      summary: "pointsAccounts"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/transactions":
+    get:
+      operationId: "pointsTransactions"
+      summary: "pointsTransactions"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/transactions/{voucherNo}":
+    get:
+      operationId: "pointsTransaction"
+      summary: "pointsTransaction"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    type: "object"
+                required:
+                  - "code"
+                  - "msg"
+                  - "data"
+      parameters:
+        - name: "voucherNo"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      description: "查询参数见 lib/api/query.ts 中对应的 *Q 类型。"
+  "/ops/points/stats-period":
+    get:
+      operationId: "pointsPeriodStats"
+      summary: "pointsPeriodStats"
+      tags:
+        - "finance"
+      responses:
+        "200":
+          description: "成功"
+          content:
+            "application/json":
+              schema:
+                type: "object"
+                properties:
+                  code:
+                    type: "integer"
+                    description: "0 表示成功"
+                  msg:
+                    type: "string"
+                  data:
+                    "$ref": "#/components/schemas/PointsStatsPeriod"
                 required:
                   - "code"
                   - "msg"

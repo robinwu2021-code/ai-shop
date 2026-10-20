@@ -10,6 +10,28 @@
 # 跳过（仅限确知不涉及后端的推送）：SKIP_COMPILE_GATE=1 git push
 set -euo pipefail
 
+# Explicit points operations release: a separate, bounded check plan.
+# The default all-project gate below is unchanged.
+if [ -n "${SHOP_RELEASE_PROFILE:-}" ]; then
+  [ "$SHOP_RELEASE_PROFILE" = "points-ops" ] || { echo "Unknown release profile" >&2; exit 1; }
+  PROFILE_ROOT="$(git rev-parse --show-toplevel)"
+  PROFILE_TMP="$(mktemp -d)"
+  trap 'git worktree remove --force "$PROFILE_TMP/head" >/dev/null 2>&1 || true; rm -rf "$PROFILE_TMP"' EXIT
+  cat > "$PROFILE_TMP/updates"
+  git worktree add -q --detach "$PROFILE_TMP/head" HEAD
+  [ -d "$PROFILE_ROOT/node_modules" ] || { echo "Install repository dependencies first" >&2; exit 1; }
+  ln -s "$PROFILE_ROOT/node_modules" "$PROFILE_TMP/head/node_modules"
+  if [ -d "$PROFILE_ROOT/ops-web/node_modules" ]; then
+    ln -s "$PROFILE_ROOT/ops-web/node_modules" "$PROFILE_TMP/head/ops-web/node_modules"
+  fi
+  if [ -x /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home/bin/java ]; then
+    export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+    export PATH="$JAVA_HOME/bin:$PATH"
+  fi
+  node "$PROFILE_TMP/head/scripts/release/points-ops.mjs" < "$PROFILE_TMP/updates"
+  exit 0
+fi
+
 if [ "${SKIP_COMPILE_GATE:-}" = "1" ]; then
   echo "⚠ 已跳过编译闸门（SKIP_COMPILE_GATE=1）"
   exit 0
