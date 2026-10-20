@@ -842,7 +842,7 @@ export interface EstateList {
 }
 
 export interface MerchantApi {
-  mSvCandidates(q:{storeNo:string;phone:string}):Promise<PageResult<SV.SvCandidate>>;
+  mSvCandidates(q:{storeNo:string;phone?:string;keyword?:string}):Promise<PageResult<SV.SvCandidate>>;
   mSvSelectCustomer(body:{storeNo:string;source:SV.SvSelectionSource}):Promise<SV.SvSelectedCustomer>;
   mSvConfirmOffline(body:SV.SvRechargeCreate,key:string):Promise<SV.SvProgress>;
   mSvContext(storeNo:string):Promise<SV.SvContext>;

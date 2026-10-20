@@ -4904,6 +4904,16 @@
               }
             ]
           },
+          "pendingScope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "phoneMasked": {
             "anyOf": [
               {
@@ -9154,7 +9164,15 @@
           {
             "in": "query",
             "name": "phone",
-            "required": true,
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "keyword",
+            "required": false,
             "schema": {
               "type": "string"
             }

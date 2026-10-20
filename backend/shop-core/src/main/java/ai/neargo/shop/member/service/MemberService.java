@@ -58,6 +58,9 @@ public interface MemberService {
 
     PageData<MemberVO> list(String entityNo, MemberQuery q);
 
+    record Suggestion(String memberNo,String remark,String status,ai.neargo.shop.spi.user.PersonPort.PersonView person) { }
+    java.util.List<Suggestion> suggest(String entityNo,String keyword);
+
     MemberStatsVO stats(String entityNo, String storeNo);
 
     Optional<MemberDetailVO> detail(String entityNo, String memberNo);

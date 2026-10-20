@@ -54,4 +54,17 @@ class StoredValueMemberSelectionTest {
         verifyNoInteractions(direct);
     }
 
+    @Test void recoveryScopeIsStableForTheCustomerAndIsolatedByOperator() {
+        var account=new ai.neargo.shop.spi.storedvalue.StoredValueMerchantViews.Account("REF","USER","CNY",100,0,100,java.time.Instant.now());
+        when(accounts.account(any(),eq("STORE"),eq("REF"))).thenReturn(account);
+        when(people.findByUser("USER")).thenReturn(Optional.of(new PersonPort.PersonView("PERSON","0001","USER","138****0001")));
+        when(accounts.directory(any(),eq("STORE"),anyList(),anyString(),isNull(),eq(1))).thenReturn(new CursorPage<>(List.of(account),null));
+        when(codes.selectCustomer(any(),anyString(),anyString())).thenReturn(new ai.neargo.shop.member.dto.MemberCodeViews.CustomerReference("cr1_ref","顾客",java.time.Instant.now().plusSeconds(120)));
+        var service=new StoredValueMemberSelectionService(members,people,codes,accounts,direct);var source=new Source("ACCOUNT",null,"REF");
+        var first=service.select(ctx,"ENTITY","STORE",source);
+        assertThat(service.select(ctx,"ENTITY","STORE",source).pendingScope()).isEqualTo(first.pendingScope());
+        var other=new EntitlementContext("MAIN","OTHER_OPERATOR","query","0".repeat(64));
+        assertThat(service.select(other,"ENTITY","STORE",source).pendingScope()).isNotEqualTo(first.pendingScope());
+    }
+
 }

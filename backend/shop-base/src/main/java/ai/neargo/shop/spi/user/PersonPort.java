@@ -30,6 +30,9 @@ public interface PersonPort {
 
     Optional<PersonView> find(String personNo);
 
+    /** Match only explicitly authorized person IDs; never return raw numbers. Batch size <=200. */
+    java.util.List<PersonView> matchPhones(java.util.List<String> personNos,String query);
+
     /**
      * 人档的对外视图。
      *

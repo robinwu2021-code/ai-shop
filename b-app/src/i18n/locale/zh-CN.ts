@@ -2,6 +2,8 @@
 // 同一笔订单两端说法不同，强行共用一套词条只会互相将就。
 export default {
   storedValue: {
+    "memberSuggest": "姓名、备注或手机号",
+    "suggestHint": "输入至少2个字或3位号码",
     "resumePending": "继续处理未完成储值",
     "lastRecharge": "最近储值",
     "memberPhone": "输入完整手机号",
@@ -83,7 +85,7 @@ export default {
     "businessNo": "业务单号",
     "occurredAt": "发生时间",
     "afterBalance": "变动后余额",
-    "savePending": "存在待确认操作",
+    "savePending": "上次储值结果查询中",
     "resume": "恢复原操作",
     "cancelRecharge": "取消办理",
     "stopConfirm": "停用后不支持新办理，已有余额不受影响。",

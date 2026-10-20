@@ -291,6 +291,23 @@ public class MemberServiceImpl implements MemberService {
     // ---------------------------------------------------------------- 读
 
     @Override
+    public List<MemberService.Suggestion> suggest(String entityNo,String keyword){
+        boolean phone=keyword.matches("[0-9]+");
+        var result=new java.util.ArrayList<MemberService.Suggestion>();Long after=null;
+        do{
+            var q=Wrappers.<MbrMember>lambdaQuery().eq(MbrMember::getEntityNo,entityNo)
+                    .gt(after!=null,MbrMember::getId,after).like(!phone,MbrMember::getRemark,keyword)
+                    .orderByAsc(MbrMember::getId).last("LIMIT 200");
+            var batch=memberMapper.selectList(q);if(batch.isEmpty())break;
+            var people=personPort.matchPhones(batch.stream().map(MbrMember::getPersonNo).distinct().toList(),phone?keyword:null)
+                    .stream().collect(java.util.stream.Collectors.toMap(PersonPort.PersonView::personNo,p->p));
+            for(var m:batch){var p=people.get(m.getPersonNo());if(p!=null){result.add(new MemberService.Suggestion(m.getMemberNo(),m.getRemark(),m.getStatus(),p));if(result.size()==20)return result;}}
+            after=batch.getLast().getId();if(batch.size()<200)break;
+        }while(true);
+        return result;
+    }
+
+    @Override
     public PageData<MemberVO> list(String entityNo, MemberQuery q) {
         LambdaQueryWrapper<MbrMember> w = baseQuery(entityNo, q);
         // 沉睡的排最前：那是店主唯一能立刻行动的信号，埋在列表底部等于没有

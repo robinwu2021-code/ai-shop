@@ -45,6 +45,9 @@ public class PersonPortImpl implements PersonPort {
     }
 
     @Override
+    public java.util.List<PersonView> matchPhones(java.util.List<String> ids,String query){return personService.matchPhones(ids,query).stream().map(this::view).toList();}
+
+    @Override
     public Optional<String> revealPhone(String personNo) {
         return personService.revealPhone(personNo);
     }

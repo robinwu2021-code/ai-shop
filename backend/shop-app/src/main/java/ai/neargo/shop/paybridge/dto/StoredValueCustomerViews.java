@@ -9,7 +9,8 @@ public final class StoredValueCustomerViews {
     public record Candidate(String memberNo,String displayName,String phoneMasked,String memberStatus,
                             boolean canRecharge,String unavailableReason,Account account) { }
     public record Selection(String customerRef,Instant expiresAt,String memberNo,String displayName,
-                            String phoneMasked,Account account) {
+                            String phoneMasked,Account account,String pendingScope) {
+        public Selection(String ref,Instant expires,String member,String name,String phone,Account account){this(ref,expires,member,name,phone,account,null);}
         @Override public String toString(){return "Selection[customerRef=REDACTED]";}
     }
     public record Source(String type,String memberNo,String accountRef) {

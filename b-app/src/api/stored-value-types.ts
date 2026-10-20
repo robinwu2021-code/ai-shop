@@ -14,4 +14,4 @@ export interface SvCustomer { customerRef:string;maskedName:string;expiresAt:str
 
 export type SvSelectionSource={type:'MEMBER';memberNo:string}|{type:'ACCOUNT';accountRef:string};
 export interface SvCandidate {memberNo:string;displayName:string;phoneMasked:string;memberStatus:string;canRecharge:boolean;unavailableReason:string|null;account:{accountRef:string;currency:CurrencyCode;availableMinor:number}|null}
-export interface SvSelectedCustomer {customerRef:string;expiresAt:string;memberNo?:string|null;displayName:string;phoneMasked:string;account:SvCandidate['account']}
+export interface SvSelectedCustomer {customerRef:string;expiresAt:string;pendingScope?:string;memberNo?:string|null;displayName:string;phoneMasked:string;account:SvCandidate['account']}

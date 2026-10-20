@@ -197,7 +197,7 @@ export type Schedule_d197720fdb = { "endAt"?: string | null; "from"?: string | n
 
 export type SelectRequest_c03fdd373c = { "source"?: Source_355ce83777 | null; "storeNo"?: string | null; };
 
-export type Selection_969db05801 = { "account"?: Account_fe73b25b80 | null; "customerRef"?: string | null; "displayName"?: string | null; "expiresAt"?: string | null; "memberNo"?: string | null; "phoneMasked"?: string | null; };
+export type Selection_969db05801 = { "account"?: Account_fe73b25b80 | null; "customerRef"?: string | null; "displayName"?: string | null; "expiresAt"?: string | null; "memberNo"?: string | null; "pendingScope"?: string | null; "phoneMasked"?: string | null; };
 
 export type ServiceView_c57f0537bf = { "asset"?: Asset_5d25c2311f | null; "confirmation"?: Confirmation_7b97af23d3 | null; "items"?: Array<Item_c3bc12262d> | null; "operationNo"?: string | null; "payment"?: Payment_e2dd0dd6c5 | null; "serviceAt"?: string | null; "serviceOrderNo"?: string | null; "serviceStaffName"?: string | null; "status"?: string | null; "storeName"?: string | null; "storeNo"?: string | null; };
 
@@ -517,7 +517,7 @@ export interface EntitlementBackendOperations {
   "BizStoredValueCustomerController_candidates": {
     method: "GET";
     path: "/biz/stored-value/customer-candidates";
-    query: { "phone": string; "storeNo": string; };
+    query: { "keyword"?: string; "phone"?: string; "storeNo": string; };
     headers: Record<string, never>;
     pathParams: Record<string, never>;
     response: { "code": number; "data"?: PageData_ef3a70f051 | null; "msg": string; };

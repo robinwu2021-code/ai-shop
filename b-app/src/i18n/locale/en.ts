@@ -1,5 +1,7 @@
 export default {
   storedValue: {
+    "memberSuggest": "Name, note or phone",
+    "suggestHint": "Enter 2 characters or 3 digits",
     "resumePending": "Resume pending top-up",
     "lastRecharge": "Last top-up",
     "memberPhone": "Enter full mobile number",
@@ -81,7 +83,7 @@ export default {
     "businessNo": "Business reference",
     "occurredAt": "Time",
     "afterBalance": "Balance after transaction",
-    "savePending": "An operation needs confirmation",
+    "savePending": "Checking previous top-up",
     "resume": "Resume operation",
     "cancelRecharge": "Cancel recharge",
     "stopConfirm": "Disabling stops new recharges. Existing balances remain available.",

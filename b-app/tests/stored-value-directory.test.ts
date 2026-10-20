@@ -36,3 +36,12 @@ it('opens the plan sheet only after the bottom recharge action on an unfunded me
  await w.find('[data-testid="detail-recharge"]').trigger('tap');await flushPromises();
  expect(w.find('[data-testid="confirm-offline"]').exists()).toBe(true);expect(w.findAll('select')).toHaveLength(0);w.unmount();
 });
+
+it('debounces partial member suggestions and discards the old query after clearing',async()=>{
+ vi.useFakeTimers();const w=mount(Directory);await flushPromises();
+ await w.find('input').setValue('138');await vi.advanceTimersByTimeAsync(150);
+ await w.find('input').setValue('1380');expect(m.candidates).not.toHaveBeenCalled();
+ await vi.advanceTimersByTimeAsync(350);await flushPromises();expect(m.candidates).toHaveBeenCalledTimes(1);
+ expect(m.candidates).toHaveBeenCalledWith({storeNo:'S1',keyword:'1380'});
+ expect(w.text()).toContain('未储值会员');w.unmount();vi.useRealTimers();
+});

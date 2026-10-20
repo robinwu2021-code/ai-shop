@@ -20,7 +20,7 @@
  }
  function render(){
   const q=$('sv-member-search').value.trim();
-  const list=(q?members.filter(c=>c.phone===q):members.filter(c=>c.last)).sort((a,b)=>(b.last||'').localeCompare(a.last||'')||a.id.localeCompare(b.id));
+  const list=(q?members.filter(c=>c.name.toLowerCase().includes(q.toLowerCase())||c.phone.startsWith(q)||c.phone.endsWith(q)):members.filter(c=>c.last)).sort((a,b)=>(b.last||'').localeCompare(a.last||'')||a.id.localeCompare(b.id));
   $('sv-member-hint').textContent=q?'':'最近储值';
   $('sv-member-list').innerHTML=list.map(c=>'<button type="button" class="card sv-member-result" data-member="'+c.id+'"><span class="hd"><b>'+esc(c.name)+'</b><span class="sv-link">详情 ›</span></span><span class="sv-split"><span class="meta">'+masked(c)+'</span>'+(c.balance===null?'':'<strong class="num">余额 '+money(c.balance)+'</strong>')+'</span>'+(c.last?'<span class="meta">最近储值 '+c.last+'</span>':'')+'</button>').join('')||'<div class="card sv-empty">'+(q?'未找到会员':'暂无储值会员')+'</div>';
  }
@@ -40,10 +40,11 @@
  function close(){if(status!=='PROCESSING')$('recharge-overlay').hidden=true;}
  $('member-search-form').addEventListener('submit',e=>{
   e.preventDefault();const q=$('sv-member-search').value.trim();
-  if(q&&!/^1[3-9]\d{9}$/.test(q)){$('sv-member-hint').textContent='请输入完整手机号';return;}
+  if(q&&q.length<(/^[0-9]+$/.test(q)?3:2)){$('sv-member-hint').textContent='输入至少2个字或3位号码';return;}
   render();
  });
- $('sv-member-search').addEventListener('input',()=>{if(!$('sv-member-search').value.trim())render();});
+ let suggestTimer;
+ $('sv-member-search').addEventListener('input',()=>{clearTimeout(suggestTimer);const q=$('sv-member-search').value.trim();if(!q)render();else if(q.length>=(/^[0-9]+$/.test(q)?3:2))suggestTimer=setTimeout(render,350);});
  document.addEventListener('sv-directory-render',render);
  document.addEventListener('sv-plan-options',e=>{plans=e.detail;});
  document.addEventListener('click',e=>{

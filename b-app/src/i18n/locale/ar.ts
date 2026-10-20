@@ -1,5 +1,7 @@
 export default {
   storedValue: {
+    "memberSuggest": "الاسم أو الملاحظة أو الهاتف",
+    "suggestHint": "أدخل حرفين أو ثلاثة أرقام",
     "resumePending": "متابعة الشحن المعلق",
     "lastRecharge": "آخر شحن",
     "memberPhone": "أدخل رقم الجوال كاملاً",
@@ -81,7 +83,7 @@ export default {
     "businessNo": "رقم العملية",
     "occurredAt": "الوقت",
     "afterBalance": "الرصيد بعد الحركة",
-    "savePending": "توجد عملية بانتظار التأكيد",
+    "savePending": "جار التحقق من الشحن السابق",
     "resume": "استئناف العملية",
     "cancelRecharge": "إلغاء الشحن",
     "stopConfirm": "الإيقاف يمنع الشحن الجديد ولا يؤثر في الرصيد الحالي.",

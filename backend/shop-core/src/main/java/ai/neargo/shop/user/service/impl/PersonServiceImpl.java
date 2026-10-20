@@ -154,6 +154,19 @@ public class PersonServiceImpl implements PersonService {
     }
 
     @Override
+    public java.util.List<UsrPerson> matchPhones(java.util.List<String> personNos,String query){
+        if(personNos==null||personNos.isEmpty())return java.util.List.of();
+        if(personNos.size()>200)throw ai.neargo.shop.common.BizException.of(ai.neargo.shop.common.ErrorCode.BAD_REQUEST);
+        return personMapper.selectList(Wrappers.<UsrPerson>lambdaQuery().in(UsrPerson::getPersonNo,personNos).eq(UsrPerson::getStatus,UsrPerson.ACTIVE))
+                .stream().filter(p->{
+                    if(query==null)return true;
+                    if(p.getPhoneTail()!=null&&p.getPhoneTail().startsWith(query))return true;
+                    if(p.getPhoneEnc()==null)return false;
+                    try{String phone=crypto.decrypt(p.getPhoneEnc());return phone!=null&&(phone.startsWith(query)||phone.endsWith(query));}catch(RuntimeException unavailable){return false;}
+                }).toList();
+    }
+
+    @Override
     public Optional<UsrPerson> find(String personNo) {
         if (personNo == null || personNo.isBlank()) {
             return Optional.empty();

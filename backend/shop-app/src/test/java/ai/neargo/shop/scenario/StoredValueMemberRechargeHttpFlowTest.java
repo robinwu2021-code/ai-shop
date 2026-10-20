@@ -28,7 +28,7 @@ import tools.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 
-@SpringBootTest(properties={"shop.member-code.enabled=true","shop.pay.stored-value.enabled=true",
+@SpringBootTest(properties={"shop.person.phone-key=YWktc2hvcC10ZXN0LWtleS0zMmJ5dGVzLSEhYWFhYSE=","shop.member-code.enabled=true","shop.pay.stored-value.enabled=true",
  "shop.pay.entitlement.cursor-key=member-recharge-http-cursor-key-at-least-thirty-two-characters",
  "spring.datasource.url=jdbc:h2:mem:member-recharge-http;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"})
 @ActiveProfiles("test")
@@ -69,6 +69,24 @@ class StoredValueMemberRechargeHttpFlowTest {
   var continuation=send(mvc,"/biz/stored-value/customer-selections",merchant,store,Map.of("storeNo",store,"source",Map.of("type","ACCOUNT","accountRef",account)),id());
   assertThat(continuation.path("code").asInt()).isZero();assertThat(continuation.path("data").path("account").path("availableMinor").asLong()).isEqualTo(13000);
   assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM usr_account WHERE phone=?",Integer.class,customerPhone)).isZero();
+ }
+ @Test void suggestionsStayInsideTheMerchantAndDoNotCreatePeopleOrFunding() throws Exception {
+  var mvc=MockMvcBuilders.webAppContextSetup(web).apply(SecurityMockMvcConfigurers.springSecurity()).build();
+  String ownerPhone=phone();String buyer=TestLogin.consumer(mvc,json,otp,ownerPhone);
+  String owner=tokens.of(Realm.CONSUMER).get(buyer).orElseThrow().user().userNo();String entity=id(),store=id();
+  jdbc.update("INSERT INTO mch_entity(entity_no,owner_user_no,name,status,market,tenant_no,created_at,updated_at) VALUES (?,?,'beauty','ACTIVE','CN','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",entity,owner);
+  jdbc.update("INSERT INTO mch_store(store_no,entity_no,name,status,tenant_no,created_at,updated_at) VALUES (?,?,'beauty store','ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",store,entity);
+  jdbc.update("INSERT INTO mch_account(mch_account_no,entity_no,user_no,is_owner,is_primary,status,tenant_no,created_at,updated_at) VALUES (?,?,?,1,1,'ACTIVE','MAIN',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",id(),entity,owner);
+  String merchant=TestLogin.merchantOwner(mvc,json,otp,ownerPhone);String target=phone();
+  send(mvc,"/biz/members",merchant,store,Map.of("phone",target,"remark","联想林女士","storeNo",store),id());
+  long before=jdbc.queryForObject("SELECT COUNT(*) FROM usr_person",Long.class);
+  for(String query:java.util.List.of(target.substring(0,5),target.substring(7),"联想林")){
+   var result=json.readTree(mvc.perform(get("/biz/stored-value/customer-candidates").param("storeNo",store).param("keyword",query).header("Authorization","Bearer "+merchant).header("X-Store-No",store)).andReturn().getResponse().getContentAsString());
+   assertThat(result.path("code").asInt()).isZero();assertThat(result.path("data").path("records").size()).as("query="+query).isEqualTo(1);
+   var row=result.path("data").path("records").get(0);assertThat(row.path("phoneMasked").asString()).contains("****");assertThat(row.path("account").isNull()).isTrue();
+  }
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM usr_person",Long.class)).isEqualTo(before);
+  assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sv_account WHERE entity_no=?",Long.class,entity)).isZero();
  }
  private JsonNode send(MockMvc mvc,String path,String token,String store,Object body,String key)throws Exception{
   return json.readTree(mvc.perform(post(path).header("Authorization","Bearer "+token).header("X-Store-No",store).header("Idempotency-Key",key).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body))).andReturn().getResponse().getContentAsString());

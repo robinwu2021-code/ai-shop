@@ -30,7 +30,20 @@ public class StoredValueMemberSelectionService {
         this.direct=direct;this.members=members;this.people=people;this.codes=codes;this.accounts=accounts;
     }
     public PageData<Candidate> candidates(EntitlementContext ctx,String entity,String store,String phone){
-        ContractChecks.require(phone!=null&&phone.matches("1[3-9][0-9]{9}"));
+        ContractChecks.require(phone!=null);phone=phone.strip();
+        ContractChecks.require(phone.length()<=100&&(!phone.matches("[0-9]+")||phone.length()<=11)&&phone.length()>=(phone.matches("[0-9]+")?3:2));
+        if(!phone.matches("1[3-9][0-9]{9}")){
+            String query=phone;var suggestions=DataScopeContext.executeWithoutScope(()->members.suggest(entity,query));
+            if(suggestions.isEmpty())return PageData.empty(1,20);
+            var ids=suggestions.stream().flatMap(s->java.util.stream.Stream.of(s.person().personNo(),s.person().userNo())).filter(java.util.Objects::nonNull).distinct().toList();
+            var funded=accounts.directory(new CatalogScope(ctx.tenantNo(),entity,ctx.actorNo(),false),store,ids,"member-suggest",null,100).records();
+            var list=suggestions.stream().map(s->{
+                boolean active=MbrMember.ACTIVE.equals(s.status())||MbrMember.LEAD.equals(s.status());
+                var a=funded.stream().filter(x->s.person().personNo().equals(x.customerNo())||(s.person().userNo()!=null&&s.person().userNo().equals(x.userNo()))).findFirst();
+                return new Candidate(s.memberNo(),name(s.remark()),s.person().phoneMasked(),s.status(),active,active?null:"MEMBER_BLOCKED",a.map(x->new Account(x.accountRef(),x.currency(),x.availableMinor())).orElse(null));
+            }).toList();
+            return PageData.of(list,list.size(),1,20);
+        }
         var person=people.findByPhone(phone);
         if(person.isEmpty())return PageData.empty(1,20);
         var member=DataScopeContext.executeWithoutScope(()->members.find(entity,person.get().personNo()));
@@ -56,7 +69,7 @@ public class StoredValueMemberSelectionService {
         }
         if(user!=null&&verifiedPerson)direct.bindCustomer(ctx,customer,user);
         var ref=codes.selectCustomer(new MemberCodeScope(ctx.tenantNo(),entity,store,ctx.actorNo()),customer,user);
-        return new Selection(ref.customerRef(),ref.expiresAt(),memberNo,display,phone,account(ctx,entity,store,customer));
+        return new Selection(ref.customerRef(),ref.expiresAt(),memberNo,display,phone,account(ctx,entity,store,customer),ai.neargo.shop.promotion.service.ActivityCommandDeduplicator.hash(java.util.stream.Stream.of(ctx.tenantNo(),entity,store,ctx.actorNo(),customer).map(x->x.length()+":"+x).collect(java.util.stream.Collectors.joining())));
     }
     private Account account(EntitlementContext ctx,String entity,String store,String user){
         var page=accounts.directory(new CatalogScope(ctx.tenantNo(),entity,ctx.actorNo(),false),store,List.of(user),"member-selection",null,1);

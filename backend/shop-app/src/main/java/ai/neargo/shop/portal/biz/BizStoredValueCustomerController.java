@@ -26,8 +26,8 @@ public class BizStoredValueCustomerController {
     }
     @PreAuthorize("@perm.canBiz('biz:customer') and @perm.canBiz('pay:sv:recharge:create')")
     @GetMapping("/biz/stored-value/customer-candidates")
-    public PageData<Candidate> candidates(@RequestParam String storeNo,@RequestParam String phone){
-        require(storeNo);var rows=customers.candidates(context(),BizContext.requireMerchantNo(),storeNo,phone);
+    public PageData<Candidate> candidates(@RequestParam String storeNo,@RequestParam(required=false) String phone,@RequestParam(required=false) String keyword){
+        require(storeNo);var rows=customers.candidates(context(),BizContext.requireMerchantNo(),storeNo,keyword==null?phone:keyword);
         if(BizContext.current().withStore(storeNo).can(BizPerms.SV_ACCOUNT_READ))return rows;
         return new PageData<>(rows.records().stream().map(c->new Candidate(c.memberNo(),c.displayName(),c.phoneMasked(),c.memberStatus(),c.canRecharge(),c.unavailableReason(),null)).toList(),rows.total(),rows.page(),rows.size());
     }
@@ -37,7 +37,7 @@ public class BizStoredValueCustomerController {
         require(request.storeNo());boolean read=BizContext.current().withStore(request.storeNo()).can(BizPerms.SV_ACCOUNT_READ);
         if("ACCOUNT".equals(request.source().type())&&!read)throw BizException.of(ErrorCode.FORBIDDEN);
         var selected=customers.select(context(),BizContext.requireMerchantNo(),request.storeNo(),request.source());
-        return read?selected:new Selection(selected.customerRef(),selected.expiresAt(),selected.memberNo(),selected.displayName(),selected.phoneMasked(),null);
+        return read?selected:new Selection(selected.customerRef(),selected.expiresAt(),selected.memberNo(),selected.displayName(),selected.phoneMasked(),null,selected.pendingScope());
     }
     private void require(String store){
         scopes.resolve(new RedemptionScope("STORES",List.of(store)));

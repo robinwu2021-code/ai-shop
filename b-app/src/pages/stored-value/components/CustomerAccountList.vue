@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ref,watch,onMounted} from 'vue';
+import {ref,watch,onMounted,onUnmounted} from 'vue';
 import {useI18n} from 'vue-i18n';
 import {api} from '@/api';
 import {useMerchantStore} from '@/stores/merchant';
@@ -7,13 +7,13 @@ import {useStoredValueList} from '@/shared/use-stored-value-list';
 import {money} from '@shared/utils/money';
 import {datetime} from '@shared/utils/datetime';
 import type {SvCandidate,SvSelectionSource} from '@/api/stored-value-types';
-const pending=ref(false);
+const pending=ref(false),typing=ref(false);
 const props=defineProps<{planNo?:string}>();
 const {t}=useI18n();const merchant=useMerchantStore();const keyword=ref(''),query=ref(''),validation=ref('');
 interface CustomerRow {key:string;source:SvSelectionSource;name:string;phone:string;account:SvCandidate['account'];lastRechargeAt?:string|null}
-const {records,cursor,loading,error,load}=useStoredValueList<CustomerRow>(()=>merchant.storeNo,async c=>{
+const {records,cursor,loading,error,load,invalidate}=useStoredValueList<CustomerRow>(()=>merchant.storeNo,async c=>{
  if(query.value){
-  const page=await api.mSvCandidates({storeNo:merchant.storeNo,phone:query.value});
+  const page=await api.mSvCandidates({storeNo:merchant.storeNo,keyword:query.value});
   return {records:page.records.map(a=>({key:a.memberNo,source:{type:'MEMBER',memberNo:a.memberNo} as SvSelectionSource,name:a.displayName,phone:a.phoneMasked,account:a.account})),nextCursor:null,hasMore:false};
  }
  if(!merchant.can('pay:sv:account:read'))return {records:[],nextCursor:null,hasMore:false};
@@ -21,8 +21,8 @@ const {records,cursor,loading,error,load}=useStoredValueList<CustomerRow>(()=>me
  return {...page,records:page.records.map(a=>({key:a.accountRef,source:{type:'ACCOUNT',accountRef:a.accountRef} as SvSelectionSource,name:a.maskedName,phone:a.maskedPhone,account:a,lastRechargeAt:a.lastRechargeAt}))};
 });
 function search(){
- const phone=String(keyword.value).trim();validation.value='';
- if(phone&&!/^1[3-9]\d{9}$/.test(phone)){validation.value=t('storedValue.memberPhone');return;}
+ clearTimeout(suggestTimer);typing.value=false;const phone=String(keyword.value).trim();validation.value='';
+ if(phone&&(phone.length<(/^[0-9]+$/.test(phone)?3:2)||phone.length>100)){validation.value=t('storedValue.suggestHint');return;}
  query.value=phone;void load();
 }
 function resume(){uni.navigateTo({url:'/pages/stored-value-recharge/index'});}
@@ -30,14 +30,20 @@ function detail(a:CustomerRow){
  const identity=a.source.type==='MEMBER'?`memberNo=${encodeURIComponent(a.source.memberNo)}`:`accountRef=${encodeURIComponent(a.source.accountRef)}`;
  uni.navigateTo({url:`/pages/stored-value-account/index?${identity}&storeNo=${encodeURIComponent(merchant.storeNo)}${props.planNo?`&planNo=${encodeURIComponent(props.planNo)}`:''}`});
 }
-watch(keyword,value=>{if(!String(value).trim()&&query.value){query.value='';validation.value='';void load();}});
-function checkPending(){const scope=`${merchant.profile?.merchantNo}:${merchant.storeNo}`;pending.value=!!(uni.getStorageSync(`sv.recharge:${scope}`)||uni.getStorageSync(`sv.offline:${scope}`));}
+let suggestTimer:ReturnType<typeof setTimeout>|undefined;
+watch(keyword,value=>{
+ clearTimeout(suggestTimer);typing.value=false;invalidate();const text=String(value).trim();
+ if(!text){query.value='';validation.value='';void load();return;}
+ if(text.length>=(/^[0-9]+$/.test(text)?3:2)){typing.value=true;suggestTimer=setTimeout(search,350);}
+});
+onUnmounted(()=>clearTimeout(suggestTimer));
+function checkPending(){const scope=`${merchant.profile?.merchantNo}:${merchant.storeNo}`;pending.value=!!(uni.getStorageSync(`sv.recharge:${scope}`)||uni.getStorageSync(`sv.offline:${scope}`)||uni.getStorageSync(`sv.offline.v2:${scope}`));}
 function refresh(){checkPending();return load();}
-watch(()=>merchant.storeNo,()=>{keyword.value='';query.value='';validation.value='';checkPending();},{flush:'sync'});
+watch(()=>merchant.storeNo,()=>{keyword.value='';query.value='';validation.value='';clearTimeout(suggestTimer);checkPending();},{flush:'sync'});
 onMounted(()=>void refresh());defineExpose({refresh});
 </script>
 <template><view class="sv-list">
- <view v-if="merchant.can('biz:customer')&&merchant.can('pay:sv:recharge:create')" class="sh-card sh-row"><input v-model="keyword" class="field__input sh-num sh-fill" type="number" maxlength="11" :placeholder="t('storedValue.memberPhone')" confirm-type="search" @confirm="search"/><view role="button" class="sh-link sh-hit" @tap="search">{{t('common.search')}}</view></view>
+ <view v-if="merchant.can('biz:customer')&&merchant.can('pay:sv:recharge:create')" class="sh-card sh-row"><input v-model="keyword" class="field__input sh-num sh-fill" type="text" maxlength="100" :placeholder="t('storedValue.memberSuggest')" confirm-type="search" @confirm="search"/><view role="button" class="sh-btn sh-btn--soft sh-btn--sm" @tap="search">{{t('common.search')}}</view></view>
  <view v-if="pending&&merchant.can('pay:sv:recharge:create')" role="button" class="sh-link sh-hit" @tap="resume">{{t('storedValue.resumePending')}}</view>
  <text v-if="validation||error" class="sh-hint">{{validation||error}}</text><view v-if="error" role="button" class="sh-btn sh-btn--soft" @tap="load()">{{t('storedValue.retry')}}</view>
  <view v-for="a in records" :key="a.key" data-testid="sv-customer" role="button" class="sh-card sv-card" @tap="detail(a)">
@@ -45,7 +51,7 @@ onMounted(()=>void refresh());defineExpose({refresh});
   <sh-kv v-if="a.account" :label="t('storedValue.balance')" between><text class="txt-price sh-num">{{money(a.account.availableMinor,a.account.currency)}}</text></sh-kv>
   <text v-if="a.lastRechargeAt" class="sh-muted">{{t('storedValue.lastRecharge')}} {{datetime(Date.parse(a.lastRechargeAt))}}</text>
  </view>
- <sh-empty v-if="!loading&&!error&&!records.length" :text="t(query?'storedValue.noMember':'storedValue.empty')"/><text v-if="loading" class="sh-muted">{{t('storedValue.loading')}}</text>
+ <sh-empty v-if="!loading&&!typing&&!error&&!records.length" :text="t(query?'storedValue.noMember':'storedValue.empty')"/><text v-if="loading||typing" class="sh-muted">{{t('storedValue.loading')}}</text>
  <view v-else-if="cursor" role="button" class="sh-btn sh-btn--muted" @tap="load(true)">{{t('storedValue.more')}}</view>
 </view></template>
 <style scoped>.sv-list{display:flex;flex-direction:column;gap:var(--sh-gap-block)}</style>

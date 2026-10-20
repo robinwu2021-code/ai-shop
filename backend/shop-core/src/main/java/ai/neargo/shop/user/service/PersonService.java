@@ -21,6 +21,8 @@ public interface PersonService {
 
     Optional<UsrPerson> find(String personNo);
 
+    java.util.List<UsrPerson> matchPhones(java.util.List<String> personNos,String query);
+
     /**
      * 按手机号后四位找人档（运营端 P8）。
      *
