@@ -18,11 +18,13 @@ import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
 import ai.neargo.shop.food.dto.CreatePolicyReq;
 import ai.neargo.shop.food.dto.GetPolicyQuery;
 import ai.neargo.shop.food.dto.OperationVO;
+import ai.neargo.shop.food.dto.SaveCalendarReq;
 import ai.neargo.shop.food.dto.StoreOperationPolicyResultVO;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.spi.user.MerchantQueryPort;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -184,6 +186,14 @@ class FoodPolicyApiTest {
                 assertThat(store).isEqualTo("A");
                 calls.count.incrementAndGet(); calls.at.set(query.at());
                 return new StoreOperationPolicyResultVO("P1","Asia/Shanghai",240,"PREPAY",List.of("TABLE_CONFIG"),7);
+                }
+                public OperationVO saveCalendar(String entity, String store, LocalDate day, String actor,
+                        SaveCalendarReq req, String key) {
+                    assertThat(entity).isEqualTo("E");
+                    assertThat(store).isEqualTo("A");
+                    assertThat(actor).isEqualTo("staff");
+                    assertThat(key).isEqualTo("calendar-original");
+                    return new OperationVO("CA1", "SUCCEEDED", req.version()+1, "CAL1");
                 }
                 public OperationVO createPolicy(String entity, String store, String actor,
                         CreatePolicyReq req, String key) {

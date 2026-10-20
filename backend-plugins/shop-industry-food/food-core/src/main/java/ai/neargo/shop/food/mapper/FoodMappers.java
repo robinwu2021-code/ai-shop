@@ -1,6 +1,7 @@
 package ai.neargo.shop.food.mapper;
 
 import ai.neargo.shop.food.entity.FnbActionLog;
+import ai.neargo.shop.food.entity.FnbServiceCalendar;
 import ai.neargo.shop.food.entity.FnbStorePolicy;
 import ai.neargo.shop.food.entity.FnbTableArea;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -11,6 +12,9 @@ public final class FoodMappers {
     }
 
     public interface ActionLogMapper extends BaseMapper<FnbActionLog> {
+    }
+
+    public interface ServiceCalendarMapper extends BaseMapper<FnbServiceCalendar> {
     }
 
     public interface StorePolicyMapper extends BaseMapper<FnbStorePolicy> {

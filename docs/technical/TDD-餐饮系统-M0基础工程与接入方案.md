@@ -1,6 +1,6 @@
 # 餐饮系统 M0 基础工程与接入方案
 
-> 状态：实施中，NEXT-01～05已完成；NEXT-06基础接线完成，业务AC随NEXT-08/09验收；NEXT-07源码核验完成，独立交易验收阻塞；NEXT-08A读取、NEXT-08B受限策略发布已完成 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
+> 状态：实施中，NEXT-01～05已完成；NEXT-06基础接线完成，业务AC随NEXT-08/09验收；NEXT-07源码核验完成，独立交易验收阻塞；NEXT-08A读取、NEXT-08B受限策略发布、NEXT-08C接单日历已完成 · 2026-10-20。按用户最新要求，严格沿现有平台三端接入和独立业务服务架构。
 > **本版替代上一版独立food-server三端鉴权、远程用户session解析的设计。** 独立餐饮只提供内部接口，C/B/平台运营Controller源码均归餐饮food-web，由shop-app挂载。
 > [独立项目、包及依赖清单](./TDD-餐饮系统-独立项目与包依赖方案.md) · [统一架构及三端完整清单](./TDD-餐饮系统-三端API与独立服务对齐.md) · [总计划](./TDD-餐饮系统-后端开发计划.md) · [平台Java规范](../../.claude/skills/ai-shop-dev-standards/references/java.md)。
 
@@ -282,6 +282,37 @@ API001输入/输出沿既有API册；无生效策略沿NOT_FOUND。策略中的c
 - [x] AC5：一次性MySQL并发首次发布不同时间仅一成功，后续旧版本冲突，全部实际执行；常规reactor/冻结资源/宿主三形态通过；消融CAS后测试变红。
 
 **审查重点：** 空范围并发、客户端读到有效版而未来已有发布版、毫秒/时区语义、独立进程actor审计、Outbox未注册时的原子拒绝。API002所需version字段属本轮明确修订，不偷偷放入settings；未来授权/审批接通后再放开对应参数。
+
+##### NEXT-08C：接单日历简单实现（已实施）
+
+用户确认日期按营业日切点，并纠正要求按简单逻辑实现。档位1，交付原API003，原mode/intervals/version及saveCalendar签名保持；只复用现有表/主事务/幂等/审计/Outbox，不增加调度框架、日历策略失效流程或邻日自动拆分。
+
+规则：当前策略timezone下，时钟早于cutoverMinute归前一营业日；CLOSED不接单，OPEN时段与共享openHours取交集，无日历沿共享营业时间。区间为HH:mm-HH:mm，跨夜用“>=开始或<结束”，同起止为全天；多个时段取并集、去重排序，不额外增加重叠/跨切点审批。整个判定仍限制在所查询营业日，时段不写入相邻日期。时区沿Java Instant转当地时钟，不建立特殊DST调度。
+
+保存时policy_no记录当前生效策略以供追溯，不用它引入“策略更新导致所有日历失效”的新流程。首次version0→1，修改按原BaseEntity乐观锁；锁当前策略作为已有仲裁行，复用现有短SERIALIZABLE事务与原唯一键，原key/actor/hash/动作日志/事件同事务。缺当前策略或源明确失败，无消费者沿原平台NO_CONSUMER，配置成功不等于可营业。
+
+| 文件 | 本轮职责 |
+|---|---|
+| shop-base/common/OpenHours；OpenHoursAtTest | 新增公开按给定时钟判定的严格入口，复用原格式及判断；旧openNow展示行为保持 |
+| food-api/SaveCalendarReq、StoreOperationService、ServiceCalendarInternalApi；spi/food/ServiceCalendarSaved | 原API003的DTO/签名/typed内部写与事件，原key/actor/日期传播 |
+| food-core/FnbServiceCalendar、FoodMappers.ServiceCalendarMapper | 现有表与原乐观锁，主体/门店/日期范围 |
+| food-core/policy/ServiceCalendarPolicy、FoodCommandFingerprint | 简单营业日、时段与共享营业时间求交；规范摘要包含日期、模式、时段及version |
+| food-core/StoreOperationServiceImpl、FoodAutoConfiguration、FoodDataScopeRegistration | 直接本域Mapper及现有写入基础，无额外业务Service/Repository |
+| food-web/BizServiceCalendarController、FoodWebAutoConfiguration、RemoteStoreOperationService/FoodClientConfiguration | 原STORE权限/目录/原始头，可信actor，统一包装与独立调用 |
+| food-server/InternalServiceCalendarController | 原内部令牌、typed入参与错误状态，不复制用户认证 |
+| core/ServiceCalendarPolicyTest、ServiceCalendarServiceTest及既有夹具；web/实际API与Remote测试；server/实际入口与MySQL测试 | 下列AC |
+
+- [x] AC1：共享时点入口RED→GREEN；营业日切点、跨夜与结束边界、CLOSED及OPEN求交；未知格式不自动接单。只提供真实业务判定，不声称尚未实现的订单服务已接线。
+- [x] AC2：真实日历首写、修改、旧版本拒绝、无策略拒绝；同key同参重放、异参/异actor拒绝，时段顺序等价、同key换日期冲突。
+- [x] AC3：日历/审计/幂等/Outbox同主事务；缺源及事件flush后故障全回滚；不改共享门店营业时间。
+- [x] AC4：实际B/内部入口、原权限和范围、未知body/缺key/非法日期、typed独立调用不重试；关闭/OFF保持无业务入口。
+- [x] AC5：一次性MySQL真实首写/并发修改仅一成功；reactor/共享解析/三形态宿主/设计守卫，移除CLOSED或CAS校验必须测试变红。
+
+审查重点仅为切点、原始范围、乐观锁、原子性和真实部署一致性；保持用户“简单逻辑”的纠正，不扩展未要求的调度/失效治理规则。
+
+**实施收据（2026-10-20）：** 共享OpenHours指定时点入口3项通过；餐饮reactor实际117项通过、18项数据库条件跳过；一次性MySQL实际50项通过且0跳过，覆盖冻结表、并发修改与事务回滚。默认/embedded/standalone宿主实际5/5/6项通过（条件跳过1/1/0）；设计守卫30项通过。冻结V1 SHA256仍为 `215d76bf3a1c23aefc31bbbaa1eea25fd62c7bad3d7eb9123f5a84f0cc347aa9`，未访问或修改既有业务库。共享解析及日历测试观察RED→GREEN，消融CLOSED后测试实际失败并恢复。
+
+独立只读审查无发现；审查者未运行测试，以上验证由实施者执行。简化裁决：不做特殊DST调度、邻日拆分或策略自动失效；policy_no只追溯，按当前策略解释时钟。正式订单消费接单判定、事件下游交付及支付库存交易就绪不在本切片验收范围；其他工作区修改不纳入本次审查或提交。
 
 #### NEXT-09：桌区首个真实业务切片（TBL-01）
 

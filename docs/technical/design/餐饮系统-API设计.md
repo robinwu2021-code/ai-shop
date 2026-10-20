@@ -468,7 +468,7 @@
 
 `PUT /biz/x/food/stores/{storeNo}/calendar/{localDate}`
 
-权限与守卫：门店范围与对象权限；写操作CAS版本及幂等；不是门店openHours编辑入口，不修改共享营业时间。
+权限与守卫：门店范围与对象权限；写操作CAS版本及幂等；不是门店openHours编辑入口，不修改共享营业时间；localDate按策略营业日切点；CLOSED关闭该营业日，OPEN与原营业时间取交集；policy_no仅追溯。
 
 能力依赖：餐饮新增。
 

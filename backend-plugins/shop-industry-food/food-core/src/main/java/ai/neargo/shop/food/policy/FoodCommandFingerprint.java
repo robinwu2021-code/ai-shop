@@ -1,10 +1,12 @@
 package ai.neargo.shop.food.policy;
 
 import ai.neargo.shop.food.dto.CreatePolicyReq;
+import ai.neargo.shop.food.dto.SaveCalendarReq;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
@@ -26,6 +28,14 @@ public final class FoodCommandFingerprint {
         fields.addAll(capabilities);
         fields.add(req.approvalRef() == null || req.approvalRef().isBlank() ? "" : req.approvalRef());
         fields.add(req.version().toString());
+        return hash(fields.toArray(String[]::new));
+    }
+
+    /** Date and all normalized fields participate so a key cannot silently target another day. */
+    public static String calendar(LocalDate date, SaveCalendarReq req, List<String> intervals) {
+        var fields = new ArrayList<>(List.of("calendar:v1", date.toString(), req.mode(), req.version().toString(),
+                Integer.toString(intervals.size())));
+        fields.addAll(intervals);
         return hash(fields.toArray(String[]::new));
     }
 

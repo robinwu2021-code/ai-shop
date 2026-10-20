@@ -10,22 +10,29 @@ import ai.neargo.shop.food.config.FoodPersistenceConfiguration.PersistenceEnable
 import ai.neargo.shop.food.dto.CreatePolicyReq;
 import ai.neargo.shop.food.dto.GetPolicyQuery;
 import ai.neargo.shop.food.dto.OperationVO;
+import ai.neargo.shop.food.dto.SaveCalendarReq;
 import ai.neargo.shop.food.dto.StoreOperationPolicyResultVO;
 import ai.neargo.shop.food.entity.FnbActionLog;
+import ai.neargo.shop.food.entity.FnbServiceCalendar;
 import ai.neargo.shop.food.entity.FnbStorePolicy;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ServiceCalendarMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.policy.FoodCommandFingerprint;
+import ai.neargo.shop.food.policy.ServiceCalendarPolicy;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.idem.IdempotencyService;
+import ai.neargo.shop.spi.food.ServiceCalendarSaved;
 import ai.neargo.shop.spi.food.StorePolicyPublished;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.time.Clock;
 import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -48,6 +55,7 @@ public class StoreOperationServiceImpl implements StoreOperationService {
     private static final String POLICY_PREFIX = "FPOL";
     private static final String ACTION_PREFIX = "FACT";
     private final StorePolicyMapper policies;
+    private final ServiceCalendarMapper calendars;
     private final ActionLogMapper actions;
     private final IdempotencyService idempotency;
     private final OutboxPublisher publisher;
@@ -58,16 +66,19 @@ public class StoreOperationServiceImpl implements StoreOperationService {
     /** Reuses the platform primary transaction and its existing idempotency/outbox implementations. */
     @Autowired
     public StoreOperationServiceImpl(StorePolicyMapper policies, ActionLogMapper actions,
+            ServiceCalendarMapper calendars,
             IdempotencyService idempotency, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
             ObjectMapper json, @Qualifier("transactionManager") PlatformTransactionManager manager) {
-        this(policies, actions, idempotency, publisher, json, manager, Clock.systemUTC());
+        this(policies, actions, calendars, idempotency, publisher, json, manager, Clock.systemUTC());
     }
 
     /** Explicit clock keeps reads deterministic; publication effective time always comes from the typed request. */
     public StoreOperationServiceImpl(StorePolicyMapper policies, ActionLogMapper actions,
+            ServiceCalendarMapper calendars,
             IdempotencyService idempotency, OutboxPublisher publisher, ObjectMapper json,
             PlatformTransactionManager manager, Clock clock) {
         this.policies = policies;
+        this.calendars = calendars;
         this.actions = actions;
         this.idempotency = idempotency;
         this.publisher = publisher;
@@ -96,6 +107,78 @@ public class StoreOperationServiceImpl implements StoreOperationService {
         } catch (ConcurrencyFailureException | DuplicateKeyException conflict) {
             throw BizException.of(ErrorCode.CONFLICT);
         }
+    }
+
+    @Override
+    public OperationVO saveCalendar(String entityNo, String storeNo, LocalDate date, String actorNo,
+            SaveCalendarReq req, String key) {
+        if (blank(entityNo) || entityNo.length() > 32 || blank(storeNo) || storeNo.length() > 32
+                || blank(actorNo) || actorNo.length() > 32) throw BizException.of(ErrorCode.FORBIDDEN);
+        if (blank(key) || key.length() > 128 || date == null || date.getYear() < 1000 || date.getYear() > 9999
+                || req == null || req.version() == null || req.version() < 0) {
+            throw BizException.of(ErrorCode.BAD_REQUEST);
+        }
+        var intervals = ServiceCalendarPolicy.normalize(req.mode(), req.intervals());
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("Calendar save cannot join an existing transaction");
+        }
+        String scope = FoodCommandFingerprint.scope("SAVE_CALENDAR", entityNo, storeNo);
+        String hash = FoodCommandFingerprint.calendar(date, req, intervals);
+        try {
+            return transaction.execute(status -> idempotency.execute(key, scope, actorNo, hash, OperationVO.class,
+                    () -> saveDay(entityNo, storeNo, date, actorNo, req, intervals,
+                            FoodCommandFingerprint.hash(scope, key))));
+        } catch (ConcurrencyFailureException | DuplicateKeyException conflict) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+    }
+
+    private OperationVO saveDay(String entityNo, String storeNo, LocalDate date, String actorNo,
+            SaveCalendarReq req, List<String> intervals, String requestNo) {
+        var policy = policies.selectList(Wrappers.<FnbStorePolicy>lambdaQuery()
+                .eq(FnbStorePolicy::getEntityNo, entityNo).eq(FnbStorePolicy::getStoreNo, storeNo)
+                .le(FnbStorePolicy::getEffectiveFrom, LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
+                .orderByDesc(FnbStorePolicy::getEffectiveFrom).last("LIMIT 1 FOR UPDATE"));
+        if (policy.isEmpty()) throw BizException.of(ErrorCode.NOT_FOUND);
+        var rows = calendars.selectList(Wrappers.<FnbServiceCalendar>lambdaQuery()
+                .eq(FnbServiceCalendar::getEntityNo, entityNo).eq(FnbServiceCalendar::getStoreNo, storeNo)
+                .eq(FnbServiceCalendar::getLocalDate, date).last("LIMIT 1 FOR UPDATE"));
+        var row = rows.isEmpty() ? new FnbServiceCalendar() : rows.getFirst();
+        long oldVersion = rows.isEmpty() ? 0 : row.getVersion();
+        if (req.version() != oldVersion || oldVersion == Long.MAX_VALUE) throw BizException.of(ErrorCode.CONFLICT);
+        String before = rows.isEmpty() ? null : FoodCommandFingerprint.hash(row.getMode(), row.getIntervals(),
+                row.getPolicyNo(), row.getVersion().toString());
+        row.setMode(req.mode());
+        row.setIntervals(json.writeValueAsString(intervals));
+        row.setPolicyNo(policy.getFirst().getPolicyNo());
+        if (rows.isEmpty()) {
+            row.setEntityNo(entityNo);
+            row.setStoreNo(storeNo);
+            row.setLocalDate(date);
+            row.setCalendarNo(BizKey.next("FCAL"));
+            row.setVersion(1L);
+            calendars.insert(row);
+        } else if (calendars.updateById(row) != 1) {
+            throw BizException.of(ErrorCode.CONFLICT);
+        }
+        var audit = new FnbActionLog();
+        audit.setEntityNo(entityNo);
+        audit.setStoreNo(storeNo);
+        audit.setActionNo(BizKey.next(ACTION_PREFIX));
+        audit.setObjectType("SERVICE_CALENDAR");
+        audit.setObjectNo(row.getCalendarNo());
+        audit.setAction("SAVE_CALENDAR");
+        audit.setOperatorNo(actorNo);
+        audit.setRequestNo(requestNo);
+        audit.setBeforeRef(before);
+        audit.setAfterRef(FoodCommandFingerprint.hash(row.getMode(), row.getIntervals(), row.getPolicyNo(),
+                row.getVersion().toString()));
+        actions.insert(audit);
+        publisher.publish(new ServiceCalendarSaved(entityNo, storeNo, row.getCalendarNo(), date, row.getMode(),
+                        row.getVersion(), audit.getActionNo()),
+                new PublishOptions("FOOD_CALENDAR:"
+                        + FoodCommandFingerprint.hash(entityNo, storeNo, date.toString()), 1));
+        return new OperationVO(audit.getActionNo(), "SUCCEEDED", row.getVersion(), row.getCalendarNo());
     }
 
     private OperationVO publish(String entityNo, String storeNo, String actorNo, CreatePolicyReq req,

@@ -11,6 +11,7 @@ import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.dto.CreatePolicyReq;
 import ai.neargo.shop.food.dto.OperationVO;
 import ai.neargo.shop.food.mapper.FoodMappers.ActionLogMapper;
+import ai.neargo.shop.food.mapper.FoodMappers.ServiceCalendarMapper;
 import ai.neargo.shop.food.mapper.FoodMappers.StorePolicyMapper;
 import ai.neargo.shop.food.service.StoreOperationService;
 import ai.neargo.shop.food.service.impl.StoreOperationServiceImpl;
@@ -54,6 +55,10 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
     private static final Instant FIRST = Instant.parse("2026-10-20T12:00:00Z");
     private Fixture fixture(AssertableApplicationContext context) {
         var f = prepare(context);
+        createPolicyTables(f);
+        return f;
+    }
+    static void createPolicyTables(Fixture f) {
         String common = "id BIGINT AUTO_INCREMENT PRIMARY KEY,tenant_no VARCHAR(32) DEFAULT 'MAIN',"
                 + "entity_no VARCHAR(32),created_at DATETIME(3),created_by VARCHAR(32),updated_at DATETIME(3),"
                 + "updated_by VARCHAR(32),version BIGINT DEFAULT 0,deleted INT DEFAULT 0,";
@@ -65,7 +70,6 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
                 + "action_no VARCHAR(32) UNIQUE,store_no VARCHAR(32),object_type VARCHAR(32),object_no VARCHAR(32),"
                 + "action VARCHAR(32),operator_no VARCHAR(32),request_no VARCHAR(64),reason VARCHAR(255),"
                 + "before_ref VARCHAR(64),after_ref VARCHAR(64))");
-        return f;
     }
     private static CreatePolicyReq request(long version, Instant time) {
         return new CreatePolicyReq("Asia/Shanghai", 240, time, "POSTPAY", List.of(), null, version);
@@ -255,6 +259,12 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
             factory.setSqlSessionTemplate(template);
             return factory;
         }
+        @Bean MapperFactoryBean<ServiceCalendarMapper> calendars(
+                @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate template) {
+            var factory = new MapperFactoryBean<>(ServiceCalendarMapper.class);
+            factory.setSqlSessionTemplate(template);
+            return factory;
+        }
         @Bean MapperFactoryBean<ActionLogMapper> actions(
                 @Qualifier("foodSqlSessionTemplate") SqlSessionTemplate template) {
             var factory = new MapperFactoryBean<>(ActionLogMapper.class);
@@ -262,6 +272,7 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
             return factory;
         }
         @Bean StoreOperationService publication(StorePolicyMapper policies, ActionLogMapper actions,
+            ServiceCalendarMapper calendars,
                 IdempotencyService idem, @Qualifier("foodOutboxPublisher") OutboxPublisher publisher,
                 ObjectMapper json, PlatformTransactionManager manager, Signals signals, DataSource source) {
             OutboxPublisher checked = (event, options) -> {
@@ -276,7 +287,7 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
                         });
                 return receipt;
             };
-            return new StoreOperationServiceImpl(policies, actions, idem, checked, json, manager,
+            return new StoreOperationServiceImpl(policies, actions, calendars, idem, checked, json, manager,
                     Clock.fixed(Instant.parse("2026-10-20T15:30:00Z"), ZoneOffset.UTC));
         }
         @Bean Signals signals() { return new Signals(); }
@@ -287,7 +298,8 @@ class StorePolicyPublicationTest extends FoodWriteGuardFixture {
             var facade = new UnifiedOutboxFacade(json);
             facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
             if (env.getProperty("test.policy.archive", Boolean.class, true)) {
-                facade.setArchiveOnly(Set.of("PLATFORM:FOOD_STORE_POLICY_PUBLISHED"));
+                facade.setArchiveOnly(Set.of("PLATFORM:FOOD_STORE_POLICY_PUBLISHED",
+                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED"));
             }
             return facade;
         }

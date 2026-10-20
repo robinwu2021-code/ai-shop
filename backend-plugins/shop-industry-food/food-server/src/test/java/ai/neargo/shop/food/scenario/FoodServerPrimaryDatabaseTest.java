@@ -11,6 +11,7 @@ import ai.neargo.shop.event.outbox.runtime.UnifiedOutboxFacade;
 import ai.neargo.shop.food.config.FoodSchemaReady;
 import ai.neargo.shop.food.mapper.FoodMappers;
 import ai.neargo.shop.food.server.FoodApplication;
+import ai.neargo.shop.food.spi.ServiceCalendarInternalApi;
 import ai.neargo.shop.food.spi.StoreOperationInternalApi;
 import ai.neargo.shop.food.spi.StorePolicyPublicationInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
@@ -120,6 +121,36 @@ class FoodServerPrimaryDatabaseTest {
                                 .isEqualTo("trusted-actor");
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_idempotent",Integer.class)).isOne();
                         assertThat(sql.queryForObject("SELECT COUNT(*) FROM sys_outbox",Integer.class)).isOne();
+                        String calendar = "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"actorNo\":\"trusted-actor\","
+                                + "\"localDate\":\"2026-10-20\",\"idempotencyKey\":\"calendar-create\","
+                                + "\"calendar\":{\"mode\":\"CLOSED\",\"intervals\":[],\"version\":0}}";
+                        for (int retry=0; retry<2; retry++) {
+                            mvc.perform(post(ServiceCalendarInternalApi.SAVE_PATH)
+                                            .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                            .contentType(MediaType.APPLICATION_JSON).content(calendar))
+                                    .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
+                        }
+                        String update = calendar.replace("calendar-create", "calendar-update")
+                                .replace("\"CLOSED\",\"intervals\":[]", "\"OPEN\",\"intervals\":[\"22:00-02:00\"]")
+                                .replace("\"version\":0", "\"version\":1");
+                        mvc.perform(post(ServiceCalendarInternalApi.SAVE_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON).content(update))
+                                .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
+                        mvc.perform(post(ServiceCalendarInternalApi.SAVE_PATH)
+                                        .header(InternalHttp.TOKEN_HEADER,"food-disposable-server-test")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(calendar.replace("calendar-create", "calendar-stale")))
+                                .andExpect(status().isConflict());
+                        assertThat(sql.queryForObject("SELECT COUNT(*) FROM fnb_service_calendar",Integer.class))
+                                .isOne();
+                        assertThat(sql.queryForObject("SELECT version FROM fnb_service_calendar",Long.class))
+                                .isEqualTo(2);
+                        assertThat(sql.queryForObject("SELECT policy_no FROM fnb_service_calendar",String.class))
+                                .isEqualTo("P1");
+                        for (String table:List.of("fnb_action_log","sys_idempotent","sys_outbox")) {
+                            assertThat(sql.queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isEqualTo(3);
+                        }
                     });
         } finally { admin.execute("DROP DATABASE " + database); }
     }
@@ -130,7 +161,8 @@ class FoodServerPrimaryDatabaseTest {
                 ObjectMapper json) {
             var facade = new UnifiedOutboxFacade(json);
             facade.register(new JdbcOutboxStore(JdbcOutboxStore.Source.PLATFORM, source, manager, json), List.of());
-            facade.setArchiveOnly(Set.of("PLATFORM:FOOD_STORE_POLICY_PUBLISHED"));
+            facade.setArchiveOnly(Set.of("PLATFORM:FOOD_STORE_POLICY_PUBLISHED",
+                    "PLATFORM:FOOD_SERVICE_CALENDAR_SAVED"));
             return facade;
         }
     }

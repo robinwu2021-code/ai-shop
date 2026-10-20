@@ -1,5 +1,6 @@
 package ai.neargo.shop.food.scenario;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -9,13 +10,17 @@ import ai.neargo.shop.common.ErrorCode;
 import ai.neargo.shop.food.dto.CreatePolicyReq;
 import ai.neargo.shop.food.dto.GetPolicyQuery;
 import ai.neargo.shop.food.dto.OperationVO;
+import ai.neargo.shop.food.dto.SaveCalendarReq;
 import ai.neargo.shop.food.dto.StoreOperationPolicyResultVO;
+import ai.neargo.shop.food.server.api.InternalServiceCalendarController;
 import ai.neargo.shop.food.server.api.InternalStoreOperationPolicyController;
 import ai.neargo.shop.food.server.config.FoodInternalSecurityConfiguration;
 import ai.neargo.shop.food.service.StoreOperationService;
+import ai.neargo.shop.food.spi.ServiceCalendarInternalApi;
 import ai.neargo.shop.food.spi.StoreOperationInternalApi;
 import ai.neargo.shop.food.spi.StorePolicyPublicationInternalApi;
 import ai.neargo.shop.svc.InternalHttp;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
@@ -77,18 +82,44 @@ class InternalPolicyApiTest {
                     .andExpect(status().isBadRequest());
         });
     }
+    @Test void calendarValidatesTrustedCommandAndDate() {
+        String body = "{\"entityNo\":\"E\",\"storeNo\":\"A\",\"actorNo\":\"staff\",\"localDate\":\"2026-10-20\","
+                + "\"idempotencyKey\":\"calendar-original\","
+                + "\"calendar\":{\"mode\":\"CLOSED\",\"intervals\":[],\"version\":0}}";
+        runner.run(context -> {
+            mvc(context).perform(post(ServiceCalendarInternalApi.SAVE_PATH)
+                            .header(InternalHttp.TOKEN_HEADER,"internal-test")
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
+            mvc(context).perform(post(ServiceCalendarInternalApi.SAVE_PATH)
+                            .header(InternalHttp.TOKEN_HEADER,"internal-test")
+                            .contentType(MediaType.APPLICATION_JSON).content(body.replace("2026-10-20","bad-date")))
+                    .andExpect(status().isBadRequest());
+            mvc(context).perform(post(ServiceCalendarInternalApi.SAVE_PATH).contentType(MediaType.APPLICATION_JSON)
+                            .content(body)).andExpect(status().isUnauthorized());
+        });
+    }
     private MockMvc mvc(WebApplicationContext context) {
         return MockMvcBuilders.webAppContextSetup(context).addFilters(context.getBean(FilterChainProxy.class)).build();
     }
     @Configuration(proxyBeanMethods = false)
     @EnableWebMvc
-    @Import({InternalStoreOperationPolicyController.class, FoodInternalSecurityConfiguration.class})
+    @Import({InternalStoreOperationPolicyController.class, InternalServiceCalendarController.class,
+            FoodInternalSecurityConfiguration.class})
     static class Host {
         @Bean StoreOperationService service() {
             return new StoreOperationService() {
                 public StoreOperationPolicyResultVO getPolicy(String entity, String store, GetPolicyQuery query) {
                 if (!"E".equals(entity)) throw BizException.of(ErrorCode.NOT_FOUND);
                 return new StoreOperationPolicyResultVO("P1","Asia/Shanghai",240,"PREPAY",List.of(),1);
+                }
+                public OperationVO saveCalendar(String entity, String store, LocalDate day, String actor,
+                        SaveCalendarReq req, String key) {
+                    assertThat(entity).isEqualTo("E");
+                    assertThat(store).isEqualTo("A");
+                    assertThat(actor).isEqualTo("staff");
+                    assertThat(key).isEqualTo("calendar-original");
+                    return new OperationVO("CA1", "SUCCEEDED", req.version()+1, "CAL1");
                 }
                 public OperationVO createPolicy(String entity, String store, String actor,
                         CreatePolicyReq req, String key) {

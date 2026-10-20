@@ -5,14 +5,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ai.neargo.shop.common.BizException;
 import ai.neargo.shop.common.ErrorCode;
+import ai.neargo.shop.food.api.biz.BizServiceCalendarController;
 import ai.neargo.shop.food.api.biz.BizStoreOperationPolicyController;
 import ai.neargo.shop.food.config.FoodWebAutoConfiguration;
 import ai.neargo.shop.food.dto.CreatePolicyReq;
 import ai.neargo.shop.food.dto.GetPolicyQuery;
 import ai.neargo.shop.food.dto.OperationVO;
+import ai.neargo.shop.food.dto.SaveCalendarReq;
 import ai.neargo.shop.food.dto.StoreOperationPolicyResultVO;
 import ai.neargo.shop.food.foodclient.RemoteStoreOperationService;
 import ai.neargo.shop.food.service.StoreOperationService;
+import ai.neargo.shop.food.spi.ServiceCalendarInternalApi;
 import ai.neargo.shop.food.spi.StoreOperationInternalApi;
 import ai.neargo.shop.food.spi.StorePolicyPublicationInternalApi;
 import ai.neargo.shop.spi.user.StoreDirectoryPort;
@@ -24,6 +27,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,7 +57,8 @@ class RemoteStoreOperationServiceTest {
             var http = new InternalHttp(name -> Optional.of("http://127.0.0.1:" + server.getAddress().getPort()),
                     "wire-test");
             var service = new RemoteStoreOperationService(http.client("FOOD", StoreOperationInternalApi.class,
-                    Duration.ofSeconds(2)), request -> { throw new AssertionError("Unexpected write"); });
+                    Duration.ofSeconds(2)), request -> { throw new AssertionError("Unexpected write"); },
+                request -> { throw new AssertionError("Unexpected calendar"); });
             var result = service.getPolicy("E", "A", new GetPolicyQuery(Instant.parse("2026-10-20T12:00:00Z")));
             assertThat(result.policyNo()).isEqualTo("P1");
             assertThat(result.payPolicy()).isEqualTo("POSTPAY");
@@ -84,7 +89,8 @@ class RemoteStoreOperationServiceTest {
             var http = new InternalHttp(
                     name -> Optional.of("http://127.0.0.1:" + server.getAddress().getPort()), "wire");
             var service = new RemoteStoreOperationService(request -> { throw new AssertionError("Unexpected read"); },
-                    http.client("FOOD", StorePolicyPublicationInternalApi.class, Duration.ofSeconds(2)));
+                    http.client("FOOD", StorePolicyPublicationInternalApi.class, Duration.ofSeconds(2)),
+                request -> { throw new AssertionError("Unexpected calendar"); });
             var request = new CreatePolicyReq("Asia/Shanghai", 240, Instant.parse("2026-10-22T12:00:00Z"),
                     "POSTPAY", List.of(), null, 0L);
             assertThat(service.createPolicy("E", "A", "actor", request, "original"))
@@ -100,6 +106,37 @@ class RemoteStoreOperationServiceTest {
         }
     }
 
+    @Test void calendarUsesTypedDateOriginalKeyAndDoesNotRetry() throws Exception {
+        var calls = new AtomicInteger();
+        var content = new AtomicReference<String>();
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext(ServiceCalendarInternalApi.SAVE_PATH, exchange -> {
+            content.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            byte[] response = "{\"operationNo\":\"CA1\",\"status\":\"SUCCEEDED\",\"version\":2,\"resultRef\":\"CAL1\"}"
+                    .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(calls.incrementAndGet()==1 ? 200 : 409, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            var http = new InternalHttp(name -> Optional.of("http://127.0.0.1:"+server.getAddress().getPort()),"wire");
+            var service = new RemoteStoreOperationService(request -> { throw new AssertionError("read"); },
+                    request -> { throw new AssertionError("publish"); },
+                    http.client("FOOD",ServiceCalendarInternalApi.class,Duration.ofSeconds(2)));
+            var req = new SaveCalendarReq("CLOSED",List.of(),1L);
+            assertThat(service.saveCalendar("E","A",LocalDate.of(2026,10,20),"staff",req,"original").version())
+                    .isEqualTo(2);
+            assertThat(content.get()).contains("\"localDate\":\"2026-10-20\"", "\"actorNo\":\"staff\"",
+                    "\"idempotencyKey\":\"original\"");
+            assertThatThrownBy(() -> service.saveCalendar("E","A",LocalDate.of(2026,10,20),"staff",req,"original"))
+                    .isInstanceOfSatisfying(BizException.class,
+                            e -> assertThat(e.errorCode()).isEqualTo(ErrorCode.CONFLICT));
+            assertThat(calls).hasValue(2);
+        } finally { server.stop(0); }
+    }
+
     @Test void standaloneGatewayAssemblesTypedServiceAndActualControllerWithoutCore() {
         new WebApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(FoodWebAutoConfiguration.class))
@@ -111,7 +148,8 @@ class RemoteStoreOperationServiceTest {
                         "spring.profiles.active=api")
                 .run(context -> {
                     assertThat(context).hasNotFailed().hasSingleBean(StoreOperationService.class)
-                            .hasSingleBean(BizStoreOperationPolicyController.class);
+                            .hasSingleBean(BizStoreOperationPolicyController.class)
+                            .hasSingleBean(BizServiceCalendarController.class);
                     assertThat(context.getBean(StoreOperationService.class))
                             .isInstanceOf(RemoteStoreOperationService.class);
                     assertThatThrownBy(() -> Class.forName("ai.neargo.shop.food.entity.FnbStorePolicy"))
@@ -127,7 +165,8 @@ class RemoteStoreOperationServiceTest {
             return expected;
         };
         var service = new RemoteStoreOperationService(api,
-                request -> { throw new AssertionError("Unexpected write"); });
+                request -> { throw new AssertionError("Unexpected write"); },
+                request -> { throw new AssertionError("Unexpected calendar"); });
         assertThat(service.getPolicy("E", "A", new GetPolicyQuery(at)))
                 .isEqualTo(expected);
     }
@@ -138,7 +177,8 @@ class RemoteStoreOperationServiceTest {
             var service = new RemoteStoreOperationService(request -> {
                 calls.incrementAndGet();
                 throw new ServiceCallException(CallOutcome.REMOTE_ERROR, "FOOD", status, "remote failure");
-            }, request -> { throw new AssertionError("Unexpected write"); });
+            }, request -> { throw new AssertionError("Unexpected write"); },
+                request -> { throw new AssertionError("Unexpected calendar"); });
             ErrorCode expected = switch (status) {
                 case 400 -> ErrorCode.BAD_REQUEST;
                 case 403 -> ErrorCode.FORBIDDEN;
@@ -154,7 +194,8 @@ class RemoteStoreOperationServiceTest {
     @Test void unavailableServiceRemainsAnExplicitFailure() {
         var failure = new ServiceCallException(CallOutcome.UNREACHABLE, "FOOD", 0, "unavailable");
         var service = new RemoteStoreOperationService(request -> { throw failure; },
-                request -> { throw new AssertionError("Unexpected write"); });
+                request -> { throw new AssertionError("Unexpected write"); },
+                request -> { throw new AssertionError("Unexpected calendar"); });
         assertThatThrownBy(() -> service.getPolicy("E", "A", null)).isSameAs(failure);
     }
 }

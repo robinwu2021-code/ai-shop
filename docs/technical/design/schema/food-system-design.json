@@ -6031,7 +6031,7 @@
       "path": "/biz/x/food/stores/{storeNo}/calendar/{localDate}",
       "input": "mode:string:OPEN或CLOSED;intervals:string[]:本地起止时段;version:int64:版本",
       "output": "operationNo:string:操作号;status:string:操作状态;version:int64:对象版本;resultRef?:string:结果业务号",
-      "guard": "门店范围与对象权限；写操作CAS版本及幂等；不是门店openHours编辑入口，不修改共享营业时间",
+      "guard": "门店范围与对象权限；写操作CAS版本及幂等；不是门店openHours编辑入口，不修改共享营业时间；localDate按策略营业日切点；CLOSED关闭该营业日，OPEN与原营业时间取交集；policy_no仅追溯",
       "needs": "餐饮新增"
     },
     {
