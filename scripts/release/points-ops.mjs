@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, mkdirSync, writeFileSync, mkdtempSync, rmSync, realpathSync, readdirSync, copyFileSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync, mkdtempSync, rmSync, realpathSync, readdirSync, copyFileSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -103,4 +103,4 @@ function main() {
   writeFileSync(join(receiptDir, `${head}.json`), JSON.stringify({ profile: 'points-ops', head, base, releaseBase: manifest.releaseBase, files, backend, checkedAt: new Date().toISOString() }, null, 2));
   console.log(`✓ points-ops 发布检查通过：${head}（B/C 未变更）`);
 }
-if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) main();
+if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) main();

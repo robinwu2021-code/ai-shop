@@ -44,3 +44,13 @@ test('schema check permits column order but detects missing uniqueness and nulla
   assert.notEqual(normalizeTable(a), normalizeTable(b.replace('CONSTRAINT uk_name UNIQUE (name),', '')));
   assert.notEqual(normalizeTable(a), normalizeTable(b.replace('name VARCHAR(80) NOT NULL', 'name VARCHAR(80)')));
 });
+
+test('deployment can import scope validation from node stdin without invoking the CLI', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const moduleUrl = new URL('./points-ops.mjs', import.meta.url).href;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-'], {
+    input: `import { validateFiles } from ${JSON.stringify(moduleUrl)}; validateFiles(['ops-web/app/points/types-tab.tsx']);`,
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, result.stderr);
+});
